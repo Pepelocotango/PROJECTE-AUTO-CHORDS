@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Entorns virtuals
+.venv/
+venv/
+env/
+*.egg-info/
+build/
+dist/
+
+# Qt / app
+*.log
+*.tmp
+
+# Editors i sistema
+.vscode/
+.idea/
+*~
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# Sortides locals (no es commitegen)
+*_obsolets/
+midis_acords/
+releases/
