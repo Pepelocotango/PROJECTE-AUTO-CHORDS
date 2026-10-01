@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-chords"
+version = "0.1.0"
+description = "De wav a acords: anàlisi (Chordino/Segmentino) + visor interactiu + wavs llestos per al Live/Reaper"
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "Pëp", email = "pepelocotango@gmail.com" }]
+requires-python = ">=3.10"
+# ⚠️ Q9400 sense SSE4.2: numpy<2 obligatori (el 2.x demana x86_64-v2).
+dependencies = [
+  "PyQt5>=5.15.9",
+  "pyqtgraph>=0.13",
+  "numpy>=1.22,<2",
+]
+
+[project.scripts]
+auto-chords = "app.main:main"
+wav-a-wavs = "wav_a_wavs:main"
+
+[tool.setuptools.packages.find]
+exclude = ["codi_font_chordino*"]

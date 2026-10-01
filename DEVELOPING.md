@@ -23,6 +23,24 @@ bash instal·la_local.sh   # crea .venv/ + pip PyQt5 + .deps/ (headers via apt d
 * C++ (`chordextract`): headers a `.deps/usr/include` (descarregats, no instal·lats); binari de prova a `/tmp/opencode/chordextract`, sense substituir l'annotator.
 * `.deps/` i `.venv/` no es commitegen.
 
+## Matriu ferro → eina (Q9400 + Ubuntu 24, verificada 01-10-2026)
+
+Ferro: Q9400 **sense AVX** (`grep avx` buit), SSE4.1. So del sistema:
+**PipeWire 1.0.5 + pipewire-pulse**. Qualsevol canvi d'eina ha de passar
+aquest filtre o mor al SIGILL / violació de segment.
+
+| Eina | Veredicte | Motiu (verificat) |
+|---|---|---|
+| `wave` stdlib | ✅ fem servir | Zero dependències; millor que `soundfile` |
+| `numpy` 1.26 (`numpy<2`) | ✅ fixat | El 2.x demana x86_64-v2 (SSE4.2) → `RuntimeError` al Q9400 |
+| PyQt5 + pyqtgraph | ✅ fem servir | Rodes amb Qt5; Qt6-GUI/PySide6 demana SSE4.2 |
+| `paplay --raw` (libpulse → PipeWire) | ✅ fem servir | Camí natiu Ubuntu 24 amb mescla; `aplay` (ALSA directe) només de reserva, `ffplay` últim recurs |
+| `QAudioOutput` QtMultimedia | ❌ aparcat | Les rodes SÍ porten plugins (`libqtaudio_alsa.so`); el segfault era format/QBuffer, però `paplay` té stderr visible i zero acoblament Qt — no es reobre sense motiu |
+| `sounddevice` (PortAudio) | ❌ innecessari | `libportaudio.so.2` hi és, però afegiria dependència pip+sistema sense guanyar res |
+| Chordino/Segmentino + `sonic-annotator` (compilats aquí) | ✅ fem servir | L'únic anàlisi Vamp que corre; `chordextract` compila a `.deps/` sense sudo |
+| `librosa` / `Essentia` | ❌ descartats | `llvmlite`/AVX (SIGILL) i AGPL3 respectivament |
+| `music21` (BSD, pur Python) | 🔶 futur | Per a normalitzar noms d'acords (substitueix el `style()` casolà) |
+
 ## Arrencar l'app (sistema)
 
 ```bash
@@ -42,7 +60,7 @@ python3 acords_a_live.py acords.csv 138 4 [offset_segons]
 ## Verificar canvis
 
 ```bash
-python3 -m py_compile acords_a_live.py app/main.py app/pipeline.py
+.venv/bin/python -m py_compile acords_a_live.py wav_a_wavs.py app/main.py app/pipeline.py app/visor.py
 ```
 
 ## VM Debian (execució, no compilació)

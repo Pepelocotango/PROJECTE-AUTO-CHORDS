@@ -2,6 +2,7 @@
 # main.py — Auto Chords (PyQt5/Qt5: l'únic Qt que corre al Q9400) —
 #           wav -> acords + estructura -> carpetes. Tot en català.
 import os
+import subprocess
 import sys
 
 from PyQt5.QtCore import QObject, QThread, QUrl, pyqtSignal
@@ -12,7 +13,10 @@ from PyQt5.QtWidgets import (
     QProgressBar, QPushButton, QSpinBox, QTextEdit, QVBoxLayout, QWidget,
 )
 
-import pipeline
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
+import pipeline  # noqa: E402
 
 FOSC = """
 QWidget { background: #202124; color: #e8eaed; font-size: 13px; }
@@ -157,10 +161,14 @@ class Finestra(QMainWindow):
         fila = QHBoxLayout()
         self.b_exec = QPushButton("Executa")
         self.b_exec.clicked.connect(self.executa)
+        self.b_visor = QPushButton("Obre visor")
+        self.b_visor.setObjectName("secundari")
+        self.b_visor.clicked.connect(self.obre_visor)
         self.b_carpeta = QPushButton("Obre la carpeta")
         self.b_carpeta.setObjectName("secundari")
         self.b_carpeta.clicked.connect(self.obre_carpeta)
         fila.addWidget(self.b_exec)
+        fila.addWidget(self.b_visor)
         fila.addWidget(self.b_carpeta)
         f3.addLayout(fila)
         self.barra = QProgressBar()
@@ -226,6 +234,29 @@ class Finestra(QMainWindow):
         else:
             self.registra(f"ERROR: {dada}")
             QMessageBox.critical(self, "Auto Chords", dada)
+
+    def obre_visor(self):
+        wav = self.wav_edit.text().strip()
+        if not wav or not os.path.isfile(wav):
+            QMessageBox.warning(self, "Auto Chords",
+                                "Tria una wav vàlida abans d'obrir el visor.")
+            return
+        cmd = [sys.executable, os.path.join(os.path.dirname(__file__), "visor.py"), wav]
+        if self.sortida:
+            acords_csv = os.path.join(self.sortida, "acords.csv")
+            abc_csv = os.path.join(self.sortida, "estructura_ABC.csv")
+            if os.path.isfile(acords_csv):
+                cmd.extend(["--acords", acords_csv])
+            if os.path.isfile(abc_csv):
+                cmd.extend(["--abc", abc_csv])
+        cmd.extend(["--bpm", str(self.bpm.value()), "--bpb", str(self.bpb.value())])
+        self.registra(f"Visor: {' '.join(cmd)}")
+        try:
+            subprocess.Popen(cmd, cwd=os.path.dirname(__file__), start_new_session=True)
+            self.registra("Visor obert ✅")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.critical(self, "Auto Chords",
+                                 f"No s'ha pogut obrir el visor:\n{e}")
 
     def obre_carpeta(self):
         if self.sortida and os.path.isdir(self.sortida):

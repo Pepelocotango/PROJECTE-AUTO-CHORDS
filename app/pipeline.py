@@ -66,16 +66,87 @@ def run_acords_py(csv_path, bpm, bpb, offset, workdir, log):
             os.path.join(workdir, "guia_acords.html"))
 
 
-def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False):
-    import re
+def pos_compas(t, bpm, lliure=False):
+    if lliure:
+        return f"{float(t):07.2f}s"
     step = 60.0 / bpm / 2
     SB = 8  # ranures per compàs de 4 temps (graella de corxera)
+    p = max(0, round(float(t) / step))
+    return "%d.%d.%d" % (p // SB + 1, (p % SB) // 2 + 1, 1 + 2 * (p % 2))
 
-    def pos(t):
-        if lliure:
-            return f"{t:07.2f}s"  # zero-padding: ordena bé a la carpeta
-        p = max(0, round(t / step))
-        return "%d.%d.%d" % (p // SB + 1, (p % SB) // 2 + 1, 1 + 2 * (p % 2))
+
+def seq_abc(seccions):
+    return "".join(s[2] for s in seccions)
+
+
+def lletra_lliure(seccions):
+    usades = {s[2] for s in seccions}
+    abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    for L in abc:
+        if L not in usades:
+            return L
+    k = 0
+    while f"X{k}" in usades:
+        k += 1
+    return f"X{k}"
+
+
+def parteix_seccio(seccions, i, talla, marge=0.05):
+    # Un tros → dos. La primera meitat conserva lletra; la segona en pren una de nova.
+    if i < 0 or i >= len(seccions):
+        raise ValueError("índex de secció inexistent")
+    ini, fi, L, fam = seccions[i]
+    talla = float(talla)
+    if not (ini + marge < talla < fi - marge):
+        raise ValueError(
+            f"el tall ({talla:.2f}s) ha de caure dins {ini:.2f}–{fi:.2f}s")
+    nova = lletra_lliure(seccions)
+    a = (ini, talla, L, fam)
+    b = (talla, fi, nova, nova)
+    return list(seccions[:i]) + [a, b] + list(seccions[i + 1:])
+
+
+def fusiona_seccions(seccions, i, amb="seguent"):
+    # Fusiona i amb el veí. Conserva lletra i família del que queda a l'esquerra.
+    if not seccions or i < 0 or i >= len(seccions):
+        raise ValueError("índex de secció inexistent")
+    if amb == "anterior":
+        if i == 0:
+            raise ValueError("no hi ha secció anterior")
+        i = i - 1
+    elif amb != "seguent":
+        raise ValueError("amb ha de ser 'seguent' o 'anterior'")
+    if i >= len(seccions) - 1:
+        raise ValueError("no hi ha secció següent")
+    a, b = seccions[i], seccions[i + 1]
+    nou = (a[0], b[1], a[2], a[3])
+    return list(seccions[:i]) + [nou] + list(seccions[i + 2:])
+
+
+def desa_abc_csv(ruta, seccions, bpm, log, lliure=False):
+    os.makedirs(os.path.dirname(os.path.abspath(ruta)) or ".", exist_ok=True)
+    with open(ruta, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["inici_s", "fi_s", "durada_s", "lletra", "família",
+                    "compas_ini", "compas_fi"])
+        for ini, fi, L, fam in seccions:
+            dur = fi - ini
+            w.writerow([round(ini, 2), round(fi, 2), round(dur, 2), L, fam,
+                        pos_compas(ini, bpm, lliure),
+                        pos_compas(fi, bpm, lliure)])
+    seq = seq_abc(seccions)
+    log(f"ABC: {len(seccions)} trossos, seqüència {seq}")
+    return seccions
+
+
+def regenera_wavs_estructura(abc_csv, sortida, sr, log):
+    dest = os.path.join(sortida, "wavs_estructura")
+    neteja_wavs(dest)
+    return fer_wavs_estructura(abc_csv, dest, sr, log)
+
+
+def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False):
+    import re
 
     def familia(lab):
         # Segmentino etiqueta N1,N4,N6... (mateixa família N) i B,A,C...
@@ -104,17 +175,11 @@ def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False):
             lletres[fam] = abc[k] if k < len(abc) else f"X{k}"
             k += 1
         L = lletres[fam]
-        rows.append((ini, fi, fi - ini, L, fam, pos(ini), pos(fi)))
-    with open(abc_csv, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(["inici_s", "fi_s", "durada_s", "lletra", "família",
-                    "compas_ini", "compas_fi"])
-        for ini, fi, dur, L, fam, pi, pf in rows:
-            w.writerow([round(ini, 2), round(fi, 2), round(dur, 2), L,
-                        fam, pi, pf])
-    seq = "".join(r[3] for r in rows)
+        rows.append((ini, fi, L, fam))
+    desa_abc_csv(abc_csv, rows, bpm, log, lliure=lliure)
+    seq = seq_abc(rows)
     rep = ", ".join(f"{L}×{seq.count(L)}" for L in sorted(set(seq)))
-    log(f"ABC: {len(rows)} trossos (famílies {len(lletres)}), seqüència {seq} ({rep})")
+    log(f"ABC famílies {len(lletres)} ({rep})")
     return rows
 
 
@@ -197,6 +262,89 @@ def fer_wavs_acords(locators_txt, bpm, dest_dir, sr, log, bpb=4):
             n += 1
     log(f"wavs_acords: {n}")
     return n
+
+
+def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
+                 tempo_fix=True, amb_estructura=True, total_s=None):
+    """Exporta el flux complet a partir dels CSVs ja generats.
+
+    Retorna un diccionari amb les rutes finals (csv + carpetes).
+    """
+    sortida = os.path.abspath(sortida)
+    os.makedirs(sortida, exist_ok=True)
+    csv_ac = os.path.abspath(csv_ac)
+    if not os.path.isfile(csv_ac):
+        raise FileNotFoundError(f"No trobo acords.csv: {csv_ac}")
+
+    result = {"acords_csv": csv_ac, "sortida": sortida}
+    if tempo_fix:
+        loc, guia = run_acords_py(csv_ac, bpm, bpb, offset, sortida, log)
+        result["locators_txt"] = loc
+        result["guia_html"] = guia
+        dest = os.path.join(sortida, "wavs_acords")
+        neteja_wavs(dest)
+        result["n_acords_wavs"] = fer_wavs_acords(loc, bpm, dest, sr, log, bpb)
+    else:
+        if total_s is None:
+            total_s = 0.0
+            with open(csv_ac, encoding="utf-8") as f:
+                for row in csv.reader(f):
+                    if not row or row[0].startswith("posici"):
+                        continue
+                    try:
+                        total_s = max(total_s, float(row[0]))
+                    except ValueError:
+                        pass
+        dest = os.path.join(sortida, "wavs_acords")
+        neteja_wavs(dest)
+        result["n_acords_wavs"] = fer_wavs_acords_lliures(
+            csv_ac, total_s, dest, sr, log)
+
+    if amb_estructura and csv_seg:
+        csv_seg = os.path.abspath(csv_seg)
+        if not os.path.isfile(csv_seg):
+            raise FileNotFoundError(f"No trobo segments.csv: {csv_seg}")
+        abc = os.path.join(sortida, "estructura_ABC.csv")
+        result["segments_csv"] = csv_seg
+        result["abc_csv"] = abc
+        fer_abc(csv_seg, abc, bpm, log, lliure=not tempo_fix)
+        dest_abc = os.path.join(sortida, "wavs_estructura")
+        neteja_wavs(dest_abc)
+        result["n_estructura_wavs"] = fer_wavs_estructura(
+            abc, dest_abc, sr, log)
+
+    return result
+
+
+def desa_acords_csv(ruta, items):
+    # Desa (temps, acord) sense re-analitzar. Conserva l'estampa original
+    # del temps si ve al 3r camp (round-trip Chordino).
+    os.makedirs(os.path.dirname(os.path.abspath(ruta)) or ".", exist_ok=True)
+    with open(ruta, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        for it in items:
+            t, c = it[0], it[1]
+            tsrc = it[2] if len(it) > 2 else f"{float(t):.9f}"
+            w.writerow([tsrc, c])
+
+
+def neteja_wavs(dest_dir):
+    if not os.path.isdir(dest_dir):
+        return
+    for fn in os.listdir(dest_dir):
+        if fn.endswith(".wav"):
+            os.remove(os.path.join(dest_dir, fn))
+
+
+def regenera_wavs_acords(csv_path, sortida, bpm, bpb, offset, total_s, sr, log,
+                         tempo_fix=True):
+    # Recalcula locators/guia + wavs_acords/ a partir del csv ja editat.
+    dest = os.path.join(sortida, "wavs_acords")
+    neteja_wavs(dest)
+    if tempo_fix:
+        loc, _guia = run_acords_py(csv_path, bpm, bpb, offset, sortida, log)
+        return fer_wavs_acords(loc, bpm, dest, sr, log, bpb)
+    return fer_wavs_acords_lliures(csv_path, total_s, dest, sr, log)
 
 
 def fer_wavs_estructura(abc_csv, dest_dir, sr, log):

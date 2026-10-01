@@ -1,4 +1,7 @@
 # requirements.txt — entorn aïllat del projecte (venv, sense apt/sudo).
 # El pipeline (acords_a_live.py, pipeline.py, als2rpp.py) és stdlib pur.
-# Només la GUI necessita PyQt5 (rodes amb Qt5 inclòs, sense llibreries del sistema).
+# GUI: PyQt5 (rodes amb Qt5 inclòs) + visor amb pyqtgraph.
+# ⚠️ Q9400 sense SSE4.2: numpy<2 obligatori (numpy 2.x demana x86_64-v2).
 PyQt5>=5.15.9
+pyqtgraph>=0.13
+numpy>=1.22,<2
