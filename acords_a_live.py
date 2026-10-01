@@ -11,7 +11,7 @@ def style(c):                     # Cmaj7->CMaj7, Am->A-, Em7->E-7
     return re.sub(r'^([A-G][#b]?)m(?!aj|Aj)', r'\1-', c)
 
 rows = [(float(t), c.strip()) for t, c in csv.reader(open(src))]
-segs, last = [], -1
+segs, last, end = [], -1, 0
 for t, c in rows:
     p = max(0, round((t - offset) / step))
     if c == 'N':
@@ -19,6 +19,8 @@ for t, c in rows:
     if p <= last: p = last + 1     # evita col·lisions després d'arrodonir
     if segs and segs[-1][1] == style(c): continue
     segs.append((p, style(c))); last = p
+if not segs:
+    sys.exit("cap acord detectat al csv (tot N): revisa la wav o l'extracció Chordino")
 end = max(end, segs[-1][0] + slots_bar)
 
 def pos(p):                        # posició estil Live: compàs.temps.setzena

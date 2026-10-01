@@ -72,10 +72,10 @@ python3 acords_a_live.py acords.csv 138 4 [offset]
 
 ## Pendent
 
-- Script únic `wav → wavs` (BPM/compàs/offset paràmetres).
-- `vamp-plugin-sdk` (compilar).
-- Detecció d'estructura del tema (seccions), més enllà d'acords.
-- Neteja a la carpeta del tema: `midis_acords/` + `*_obsolets/` (descartats).
+- [x] Script únic `wav → wavs` → `wav_a_wavs.py` (mateix motor que l'app).
+- [x] `vamp-plugin-sdk` sense sistema → `.deps/` via `bash instal·la_local.sh` + `chordextract` de prova a `/tmp` (annotator intacte).
+- [x] Detecció d'estructura: `fer_abc` agrupa per família (`N1/N4/N6→N`), fusiona adjacents (`C-C→C`) i resumeix repeticions (ex. `ABCBACDACA, A×4 B×2 C×3 D×1`).
+- Neteja a la carpeta del tema: `midis_acords/` + `*_obsolets/` (fora del repo; cal el camí del tema).
 
 ## Repartiment (definitiu 29-09, simplificat)
 

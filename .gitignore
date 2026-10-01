@@ -25,6 +25,10 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Dependències locals aïllades (sense sistema, es regeneren)
+.deps/
+*.deb
+
 # Sortides locals (no es commitegen)
 *_obsolets/
 midis_acords/

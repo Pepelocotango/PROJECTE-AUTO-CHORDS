@@ -1,0 +1,4 @@
+# requirements.txt — entorn aïllat del projecte (venv, sense apt/sudo).
+# El pipeline (acords_a_live.py, pipeline.py, als2rpp.py) és stdlib pur.
+# Només la GUI necessita PyQt5 (rodes amb Qt5 inclòs, sense llibreries del sistema).
+PyQt5>=5.15.9

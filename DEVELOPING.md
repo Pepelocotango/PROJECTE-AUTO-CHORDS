@@ -11,7 +11,19 @@ Tot en català. Llicència: GPLv3 (vegeu `LICENSE`).
 - `sonic-annotator` + plugin Chordino (`nnls-chroma-linux64-local/`)
   per al pas `wav → csv`.
 
-## Arrencar l'app
+## Entorn aïllat (Ubuntu, sense sudo)
+
+```bash
+bash instal·la_local.sh   # crea .venv/ + pip PyQt5 + .deps/ (headers via apt download, sense instal·lar)
+.venv/bin/python app/main.py
+.venv/bin/python wav_a_wavs.py tema.wav 138 4 [offset]
+```
+
+* Python: stdlib + PyQt5 en `.venv/` (rodes, sense apt).
+* C++ (`chordextract`): headers a `.deps/usr/include` (descarregats, no instal·lats); binari de prova a `/tmp/opencode/chordextract`, sense substituir l'annotator.
+* `.deps/` i `.venv/` no es commitegen.
+
+## Arrencar l'app (sistema)
 
 ```bash
 bash AUTO_CHORDS.sh

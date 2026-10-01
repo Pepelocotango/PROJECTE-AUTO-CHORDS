@@ -67,6 +67,7 @@ def run_acords_py(csv_path, bpm, bpb, offset, workdir, log):
 
 
 def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False):
+    import re
     step = 60.0 / bpm / 2
     SB = 8  # ranures per compàs de 4 temps (graella de corxera)
 
@@ -76,26 +77,44 @@ def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False):
         p = max(0, round(t / step))
         return "%d.%d.%d" % (p // SB + 1, (p % SB) // 2 + 1, 1 + 2 * (p % 2))
 
+    def familia(lab):
+        # Segmentino etiqueta N1,N4,N6... (mateixa família N) i B,A,C...
+        # Traiem dígits finals i normalitzem: N1->N, n1->N, B->B.
+        fam = re.sub(r"\d+$", "", lab.strip()).upper() or lab.strip()
+        return fam
+
+    # 1. Llegeix + fusiona adjacents de la mateixa família (C-C -> un sol tros).
+    trossos = []  # (ini, fi, família, etiqueta_original)
+    with open(seg_csv, encoding="utf-8") as f:
+        for ini, dur, _idx, lab in csv.reader(f):
+            ini, dur = float(ini), float(dur)
+            fam = familia(lab)
+            if trossos and trossos[-1][2] == fam:
+                trossos[-1][1] = ini + dur
+                trossos[-1][3] += "+" + lab
+            else:
+                trossos.append([ini, ini + dur, fam, lab])
+    # 2. Família -> lletra per ordre d'aparició (les repeticions casen: A...A).
     lletres = {}
     abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     k = 0
     rows = []
-    with open(seg_csv, encoding="utf-8") as f:
-        for ini, dur, _idx, lab in csv.reader(f):
-            ini, dur = float(ini), float(dur)
-            if lab not in lletres:
-                lletres[lab] = abc[k]
-                k += 1
-            L = lletres[lab]
-            rows.append((ini, ini + dur, dur, L, lab, pos(ini), pos(ini + dur)))
+    for ini, fi, fam, lab in trossos:
+        if fam not in lletres:
+            lletres[fam] = abc[k] if k < len(abc) else f"X{k}"
+            k += 1
+        L = lletres[fam]
+        rows.append((ini, fi, fi - ini, L, fam, pos(ini), pos(fi)))
     with open(abc_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["inici_s", "fi_s", "durada_s", "lletra", "família",
                     "compas_ini", "compas_fi"])
-        for ini, fi, dur, L, lab, pi, pf in rows:
+        for ini, fi, dur, L, fam, pi, pf in rows:
             w.writerow([round(ini, 2), round(fi, 2), round(dur, 2), L,
-                        lab, pi, pf])
-    log(f"ABC: {len(rows)} trossos, seqüència {''.join(r[3] for r in rows)}")
+                        fam, pi, pf])
+    seq = "".join(r[3] for r in rows)
+    rep = ", ".join(f"{L}×{seq.count(L)}" for L in sorted(set(seq)))
+    log(f"ABC: {len(rows)} trossos (famílies {len(lletres)}), seqüència {seq} ({rep})")
     return rows
 
 
