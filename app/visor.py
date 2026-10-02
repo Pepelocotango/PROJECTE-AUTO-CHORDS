@@ -5,7 +5,9 @@
 import argparse
 import atexit
 import csv
+import logging
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -15,6 +17,7 @@ import time
 import wave
 
 from PyQt5.QtCore import QObject, QThread, QTimer, Qt, pyqtSignal
+from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import (
     QApplication, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
     QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QSlider,
@@ -28,35 +31,11 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 import pipeline  # noqa: E402
+import theme  # noqa: E402
+
+VISOR_STYLESHEET = theme.visor_stylesheet()
 
 N_BUCKETS = 2000  # pics precalculats: obrir 250 s és instantani
-
-
-class FeinaAnalitza(QThread):
-    missatge = pyqtSignal(str)
-    feta = pyqtSignal(bool, str, str)  # ok, csv_acords, csv_abc
-
-    def __init__(self, wav, sortida, bpm):
-        super().__init__()
-        self.wav = wav
-        self.sortida = sortida
-        self.bpm = bpm
-
-    def run(self):
-        try:
-            os.makedirs(self.sortida, exist_ok=True)
-            csv_ac = os.path.join(self.sortida, "acords.csv")
-            self.missatge.emit("analitza 1/3: acords (Chordino)...")
-            pipeline.extract_chords(self.wav, csv_ac, self.missatge.emit)
-            csv_seg = os.path.join(self.sortida, "segments.csv")
-            self.missatge.emit("analitza 2/3: estructura (Segmentino)...")
-            pipeline.extract_segments(self.wav, csv_seg, self.missatge.emit)
-            abc = os.path.join(self.sortida, "estructura_ABC.csv")
-            self.missatge.emit("analitza 3/3: ABC...")
-            pipeline.fer_abc(csv_seg, abc, self.bpm, self.missatge.emit)
-            self.feta.emit(True, csv_ac, abc)
-        except Exception as e:  # noqa: BLE001
-            self.feta.emit(False, str(e), "")
 
 
 def llegeix_wav(ruta):
@@ -106,15 +85,18 @@ def llegeix_abc(ruta):
 
 
 class Visor(QMainWindow):
-    def __init__(self, wav, acords, abc, bpm, bpb):
+    def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True):
         super().__init__()
+        self.logger = logging.getLogger("auto_chords")
+        self._embedded = False
         self.setWindowTitle("Auto Chords — visor")
         self.resize(900, 600)
         self.wav_path = wav
         self.bpm, self.bpb = bpm, bpb
         self.offset = 0.0
-        self.tempo_fix = True
+        self.tempo_fix = bool(tempo_fix)
         self.csv_acords = os.path.abspath(acords) if acords else None
+        self.logger.info("Inicialitzant visor per %s | bpm=%s bpb=%s tempo_fix=%s", wav, bpm, bpb, tempo_fix)
         if not self.csv_acords:
             cand = os.path.join(self._carpeta_acords(), "acords.csv")
             if os.path.isfile(cand):
@@ -122,8 +104,8 @@ class Visor(QMainWindow):
         try:
             self.audio = llegeix_wav(wav)
         except Exception as e:  # noqa: BLE001
-            QMessageBox.critical(self, "Visor", f"No puc obrir la wav: {e}")
-            sys.exit(1)
+            self.logger.exception("No s'ha pogut carregar la WAV %s", wav)
+            raise RuntimeError(f"No puc obrir la wav: {e}") from e
         if not acords and self.csv_acords:
             acords = self.csv_acords
         self.acords = llegeix_acords(acords) if acords else []
@@ -132,11 +114,12 @@ class Visor(QMainWindow):
 
         arrel = QWidget()
         self.setCentralWidget(arrel)
+        self.setStyleSheet(VISOR_STYLESHEET)
         capa = QVBoxLayout(arrel)
 
         # ona
         self.corba = pg.PlotWidget()
-        self.corba.setLabel("bottom", "segons")
+        self.corba.setLabel("bottom", "compàs" if self.tempo_fix else "segons")
         self.corba.plot(self.audio["temps"], self.audio["pics"], pen="#8ab4f8")
         self.cursor = pg.InfiniteLine(pos=0, angle=90, pen="#ff5252")
         self.corba.addItem(self.cursor)
@@ -146,10 +129,12 @@ class Visor(QMainWindow):
         # llistes + controls
         div = QSplitter(Qt.Horizontal)
         self.llista_ac = QListWidget()
+        self.llista_ac.setContextMenuPolicy(Qt.CustomContextMenu)
         self.llista_ac.setToolTip("Clic: salta. Doble-clic: corregeix l'acord.")
         self._omple_llista_ac()
         self.llista_ac.itemClicked.connect(self._salt_acord)
         self.llista_ac.itemDoubleClicked.connect(self._edita_acord)
+        self.llista_ac.customContextMenuRequested.connect(self._menu_acord)
         div.addWidget(self.llista_ac)
         self.llista_ab = QListWidget()
         self.llista_ab.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -185,18 +170,9 @@ class Visor(QMainWindow):
         self.b_zp.clicked.connect(lambda: self.zoom(0.5))
         self.b_zt = QPushButton("Tot")
         self.b_zt.clicked.connect(self.zoom_tot)
-        self.b_obrir = QPushButton("Obre...")
-        self.b_obrir.clicked.connect(self.obrir)
-        self.b_analitza = QPushButton("🔍 Analitza")
-        self.b_analitza.setToolTip("Chordino+Segmentino en segon pla i omple les llistes")
-        self.b_analitza.clicked.connect(self.analitza)
-        self.b_exporta = QPushButton("📦 Exporta")
-        self.b_exporta.setToolTip("Genera locators, guia i wavs dels acords/estructura")
-        self.b_exporta.clicked.connect(self.exporta)
         for b in (self.b_play, self.b_stop, self.b_menys, self.b_mes,
                   self.b_A, self.b_B, self.b_loop,
-                  self.b_zm, self.b_zp, self.b_zt,
-                  self.b_obrir, self.b_analitza, self.b_exporta):
+                  self.b_zm, self.b_zp, self.b_zt):
             fila.addWidget(b)
         capa.addLayout(fila)
 
@@ -262,10 +238,86 @@ class Visor(QMainWindow):
         base = os.path.splitext(os.path.basename(self.wav_path))[0]
         return os.path.join(os.path.dirname(self.wav_path), base + "_ACORDS")
 
+    def _fmt_compas(self, s):
+        if not self.tempo_fix:
+            return f"{s:07.2f}s"
+        beat_len = 60.0 / self.bpm
+        beats = s / beat_len
+        compas = int(beats // self.bpb) + 1
+        beat = int(beats % self.bpb) + 1
+        return f"{compas}.{beat}"
+
+    def _parse_pos_label(self, text):
+        if "s" in text:
+            m = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*s", text)
+            if m:
+                return float(m.group(1))
+        m = re.search(r"(\d+)\.(\d+)", text)
+        if m:
+            compas = int(m.group(1))
+            beat = int(m.group(2))
+            return ((compas - 1) * self.bpb + (beat - 1)) * (60.0 / self.bpm)
+        return float(text.split()[0])
+
     def _omple_llista_ac(self):
         self.llista_ac.clear()
         for t, c, *_r in self.acords:
-            self.llista_ac.addItem(f"{t:07.2f}s  {c}")
+            et = self._fmt_compas(t) if self.tempo_fix else f"{t:07.2f}s"
+            self.llista_ac.addItem(f"{et}  {c}")
+
+    def _afegeix_acord(self, t, nom):
+        if nom is None:
+            nom = "N"
+        nom = str(nom).strip().replace(os.sep, "-").replace("\\", "-")
+        if not nom:
+            return False
+        item = (float(t), nom, f"{float(t):.9f}")
+        self.acords = sorted(self.acords + [item], key=lambda x: x[0])
+        if hasattr(self, "llista_ac"):
+            self._omple_llista_ac()
+        return True
+
+    def _elimina_acord(self, idx):
+        if idx is None:
+            idx = getattr(self, "llista_ac", None).currentRow() if hasattr(self, "llista_ac") else -1
+        if idx < 0 or idx >= len(self.acords):
+            return False
+        del self.acords[idx]
+        if hasattr(self, "llista_ac"):
+            self._omple_llista_ac()
+        return True
+
+    def _menu_acord(self, pos):
+        if not hasattr(self, "llista_ac"):
+            return
+        idx = self.llista_ac.indexAt(pos).row()
+        menu = QMenu(self)
+        afegir = menu.addAction("Afegeix acord aquí")
+        if idx >= 0:
+            esborrar = menu.addAction("Elimina acord")
+        accio = menu.exec_(self.llista_ac.mapToGlobal(pos))
+        if accio is None:
+            return
+        if accio == afegir:
+            nou, ok = QInputDialog.getText(self, "Afegeix acord",
+                                            f"Acord a {self.pos:.2f} s", text="N")
+            if not ok:
+                return
+            self._afegeix_acord(self.pos, nou)
+            try:
+                self._desa_i_regenera()
+                self.log(f"afegit acord a {self.pos:.2f}s: {nou}")
+            except Exception as e:  # noqa: BLE001
+                QMessageBox.warning(self, "Visor",
+                                    f"No s'ha pogut afegir l'acord:\n{e}")
+        elif idx >= 0 and accio == esborrar:
+            try:
+                self._elimina_acord(idx)
+                self._desa_i_regenera()
+                self.log(f"eliminat acord {idx}")
+            except Exception as e:  # noqa: BLE001
+                QMessageBox.warning(self, "Visor",
+                                    f"No s'ha pogut eliminar l'acord:\n{e}")
 
     def _edita_acord(self, item):
         fila = self.llista_ac.row(item)
@@ -406,12 +458,45 @@ class Visor(QMainWindow):
         m, r = divmod(int(s), 60)
         return f"{m:02d}:{r:02d}"
 
+    def _fmt_timeline(self, s):
+        if not self.tempo_fix:
+            return f"{self._fmt(s)} / {self._fmt(self.audio['durada'])}"
+
+        def _compas_beat(val):
+            if val <= 0:
+                return 1, 1
+            beats = val * self.bpm / 60.0
+            rem = beats % self.bpb
+            if rem == 0:
+                return int(beats // self.bpb), self.bpb
+            return int(beats // self.bpb) + 1, int(rem) + 1
+
+        compas, beat_idx = _compas_beat(s)
+        total_compas, total_beat_idx = _compas_beat(self.audio["durada"])
+        return f"{compas}.{beat_idx} / {total_compas}.{total_beat_idx}"
+
+    def _actualitza_temps(self):
+        if self.corba is not None:
+            self.corba.setLabel("bottom", "compàs" if self.tempo_fix else "segons")
+            eix = self.corba.getAxis("bottom")
+            if self.tempo_fix and eix is not None:
+                total_compassos = max(1, int((self.audio["durada"] * self.bpm / 60.0) // self.bpb) + 1)
+                ticks = []
+                for i in range(total_compassos):
+                    t = (i * self.bpb * 60.0) / self.bpm
+                    if t <= self.audio["durada"]:
+                        ticks.append((t, str(i + 1)))
+                eix.setTicks(ticks)
+            elif eix is not None:
+                eix.setTicks(None)
+        self.temps.setText(self._fmt_timeline(self.pos))
+
     # navegació
     def ves_a(self, t):
         self.pos = max(0.0, min(t, self.audio["durada"]))
         self.cursor.setPos(self.pos)
         self.lliscador.setValue(int(self.pos * 100))
-        self.temps.setText(f"{self._fmt(self.pos)} / {self._fmt(self.audio['durada'])}")
+        self._actualitza_temps()
         if self.sona:
             self._atura_proc()
             self._engega_des_de(self.pos)
@@ -423,15 +508,44 @@ class Visor(QMainWindow):
             self.ves_a(pt.x())
 
     def _salt_acord(self, item):
-        self.ves_a(float(item.text().split("s")[0]))
+        self.ves_a(self._parse_pos_label(item.text()))
 
     def _actualitza_llista_abc(self):
         self.llista_ab.clear()
         for ini, fi, L, fam in self.seccions:
-            self.llista_ab.addItem(f"{L} ({fam})  {ini:07.2f}s–{fi:07.2f}s")
+            if self.tempo_fix:
+                ini_txt = self._fmt_compas(ini)
+                fi_txt = self._fmt_compas(fi)
+            else:
+                ini_txt = f"{ini:07.2f}s"
+                fi_txt = f"{fi:07.2f}s"
+            self.llista_ab.addItem(f"{L} ({fam})  {ini_txt}–{fi_txt}")
+
+    def _afegeix_seccio(self, ini, fi, lletra=None, fam=None):
+        ini = float(ini)
+        fi = float(fi)
+        if fi <= ini:
+            fi = ini + 1.0
+        if fam is None:
+            fam = str(lletra or "A").strip() or "A"
+        if lletra is None:
+            lletra = fam
+        item = (ini, fi, str(lletra).strip() or "A", str(fam).strip() or "A")
+        self.seccions = sorted(self.seccions + [item], key=lambda x: x[0])
+        if hasattr(self, "llista_ab"):
+            self._actualitza_llista_abc()
+        return True
+
+    def _elimina_seccio(self, idx):
+        if idx < 0 or idx >= len(self.seccions):
+            return False
+        del self.seccions[idx]
+        if hasattr(self, "llista_ab"):
+            self._actualitza_llista_abc()
+        return True
 
     def _salt_seccio(self, item):
-        self.ves_a(float(item.text().split("  ")[1].split("s")[0]))
+        self.ves_a(self._parse_pos_label(item.text()))
 
     def _menu_seccio(self, pos):
         if not self.seccions:
@@ -441,13 +555,30 @@ class Visor(QMainWindow):
             return
         ini, fi, _L, _fam = self.seccions[idx]
         menu = QMenu(self)
+        afegir = menu.addAction("Afegeix secció aquí")
         partir = menu.addAction("Partir secció aquí")
         fusionar_prev = menu.addAction("Fusionar amb anterior")
         fusionar_next = menu.addAction("Fusionar amb següent")
+        eliminar = menu.addAction("Elimina secció")
         accio = menu.exec_(self.llista_ab.mapToGlobal(pos))
         if accio is None:
             return
-        if accio == partir:
+        if accio == afegir:
+            lletra, ok1 = QInputDialog.getText(self, "Afegeix secció",
+                                               "Etiqueta de la secció", text="A")
+            if not ok1:
+                return
+            fam, ok2 = QInputDialog.getText(self, "Afegeix secció",
+                                            "Família", text=lletra.strip() or "A")
+            if not ok2:
+                return
+            try:
+                self._afegeix_seccio(self.pos, min(self.audio["durada"], self.pos + 2.0), lletra, fam)
+                self._regenera_abc_des_de_totes_les_seccions(f"secció afegida a {self.pos:.2f}s")
+            except Exception as e:  # noqa: BLE001
+                QMessageBox.warning(self, "Visor",
+                                    f"No s'ha pogut afegir la secció:\n{e}")
+        elif accio == partir:
             frac = (ini + fi) / 2.0
             nou, ok = QInputDialog.getDouble(
                 self, "Partir secció",
@@ -479,6 +610,13 @@ class Visor(QMainWindow):
             except Exception as e:  # noqa: BLE001
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut fusionar amb següent:\n{e}")
+        elif accio == eliminar:
+            try:
+                self._elimina_seccio(idx)
+                self._regenera_abc_des_de_totes_les_seccions("secció eliminada")
+            except Exception as e:  # noqa: BLE001
+                QMessageBox.warning(self, "Visor",
+                                    f"No s'ha pogut eliminar la secció:\n{e}")
 
     def _regenera_abc_des_de_totes_les_seccions(self, msg):
         sortida = self._carpeta_acords()
@@ -607,7 +745,7 @@ class Visor(QMainWindow):
         self.pos = t
         self.cursor.setPos(t)
         self.lliscador.setValue(int(t * 100))
-        self.temps.setText(f"{self._fmt(t)} / {self._fmt(self.audio['durada'])}")
+        self._actualitza_temps()
         self._ressalta(t)
 
     def _ressalta(self, t):
@@ -631,43 +769,6 @@ class Visor(QMainWindow):
             if self.llista_ab.currentRow() != k:
                 self.llista_ab.setCurrentRow(k)
 
-    def obrir(self):
-        ruta, _ = QFileDialog.getOpenFileName(self, "Tria la wav", "",
-                                              "Àudio WAV (*.wav)")
-        if ruta:
-            QMessageBox.information(
-                self, "Visor",
-                "Tanca i torna a obrir amb:\n.venv/bin/python app/visor.py " + ruta)
-
-    def analitza(self):
-        base = os.path.splitext(os.path.basename(self.wav_path))[0]
-        sortida = os.path.join(os.path.dirname(self.wav_path), base + "_ACORDS")
-        self.log(f"analitza → {sortida} (fil en segon pla)...")
-        self.b_analitza.setEnabled(False)
-        self.feina = FeinaAnalitza(self.wav_path, sortida, self.bpm)
-        self.feina.missatge.connect(self.log)
-        self.feina.feta.connect(self._analitza_feta)
-        self.feina.start()
-
-    def _analitza_feta(self, ok, csv_ac, abc):
-        self.b_analitza.setEnabled(True)
-        if not ok:
-            self.log(f"analitza ERROR: {csv_ac}")
-            QMessageBox.warning(self, "Visor", f"No s'ha pogut analitzar:\n{csv_ac}")
-            return
-        self.csv_acords = os.path.abspath(csv_ac)
-        self.acords = llegeix_acords(csv_ac)
-        self.seccions = llegeix_abc(abc)
-        self._omple_llista_ac()
-        self.llista_ab.clear()
-        for ini, fi, L, fam in self.seccions:
-            self.llista_ab.addItem(f"{L} ({fam})  {ini:07.2f}s–{fi:07.2f}s")
-        self.etiqueta.setText(f"{self.audio['durada']:.1f} s · "
-                              f"{len(self.acords)} acords · "
-                              f"{len(self.seccions)} seccions")
-        self.log(f"analitza FET: {len(self.acords)} acords, "
-                 f"{len(self.seccions)} seccions — ja pots navegar")
-
     def exporta(self):
         if not self.acords:
             QMessageBox.warning(self, "Visor",
@@ -683,6 +784,11 @@ class Visor(QMainWindow):
                 abc = os.path.join(sortida, "estructura_ABC.csv")
                 pipeline.desa_abc_csv(abc, self.seccions, self.bpm,
                                       self.log, lliure=not self.tempo_fix)
+                pipeline.regenera_wavs_acords(self.csv_acords, sortida,
+                                              self.bpm, self.bpb,
+                                              self.offset, self.audio["durada"],
+                                              44100, self.log,
+                                              self.tempo_fix)
                 pipeline.regenera_wavs_estructura(abc, sortida, 44100,
                                                   self.log)
             else:
@@ -705,6 +811,8 @@ class Visor(QMainWindow):
         self.rellotge.stop()
         self._atura_proc()
         super().closeEvent(ev)
+        if getattr(self, "_embedded", False):
+            return
         QApplication.instance().quit()
 
 

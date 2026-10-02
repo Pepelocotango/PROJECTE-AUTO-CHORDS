@@ -184,10 +184,66 @@ def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False):
 
 
 def style(c):
-    # espill de acords_a_live.py: Cmaj7->CMaj7, Am->A-, Em7->E-7
+    """Normalitza noms d’acords a un format estable i llegible.
+
+    Exemples:
+    - cmaj7 -> CMaj7
+    - am -> A-
+    - Em7 -> E-7
+    - g/d -> G/D
+    - Bbmaj7 -> B♭Maj7
+    """
     import re
-    c = re.sub(r"^([A-G][#b]?)maj", r"\1Maj", c)
-    return re.sub(r"^([A-G][#b]?)m(?!aj|Aj)", r"\1-", c)
+
+    if c is None:
+        return ""
+
+    s = str(c).strip()
+    if not s:
+        return ""
+    if s.upper() == "N":
+        return "N"
+
+    def norm_alt(token):
+        if token in {"#", "♯"}:
+            return "#"
+        if token in {"b", "♭"}:
+            return "b"
+        return token
+
+    def norm_root(base):
+        if not base:
+            return ""
+        m = re.match(r"^([A-Ga-g])([#b♯♭]?)", base)
+        if not m:
+            return base
+        root, alt = m.groups()
+        return f"{root.upper()}{norm_alt(alt)}"
+
+    if "/" in s:
+        base, bass = s.split("/", 1)
+        return f"{style(base)}/{norm_root(bass)}"
+
+    s = s.replace("♭", "b").replace("♯", "#")
+    m = re.match(r"^([A-Ga-g])([#b]?)(.*)$", s)
+    if not m:
+        return s.strip()
+
+    root, alt, quality = m.groups()
+    root = root.upper()
+    alt = norm_alt(alt)
+    quality = quality.strip()
+
+    if quality.lower().startswith("maj"):
+        quality = "Maj" + quality[3:]
+    elif quality.lower().startswith("m") and not quality.lower().startswith("maj"):
+        quality = "-" + quality[1:]
+    elif quality.lower().startswith("dim"):
+        quality = "dim" + quality[3:]
+    elif quality.lower().startswith("aug"):
+        quality = "aug" + quality[3:]
+
+    return f"{root}{alt}{quality}"
 
 
 def segments_lliures(csv_path, total_s, log):
