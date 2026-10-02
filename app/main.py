@@ -23,7 +23,7 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 import pipeline  # noqa: E402
 import theme  # noqa: E402
-import visor as visor_mod  # noqa: E402
+from . import visor as visor_mod  # noqa: E402
 
 DEFAULT_LOG_PATH = os.path.join(PROJECT_ROOT, "auto_chords.log")
 
