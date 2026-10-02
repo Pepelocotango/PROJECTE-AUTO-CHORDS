@@ -52,9 +52,9 @@ echo "== 5/5 chordextract local (prova, sense substituir l'annotator) =="
 if [ -f .deps/usr/include/boost/tokenizer.hpp ]; then
   (cd codi_font_chordino && g++ -D_VAMP_PLUGIN_IN_HOST_NAMESPACE -O2 -ffast-math \
     -I../.deps/usr/include chordextract.cpp Chordino.cpp NNLSBase.cpp \
-    chromamethods.cpp viterbi.cpp nnls.c -o /tmp/opencode/chordextract \
+    chromamethods.cpp viterbi.cpp nnls.c -o ${AUTO_CHORDS_TEMP:-temp}/chordextract \
     -L../.deps/usr/lib/x86_64-linux-gnu -lsndfile -lvamp-hostsdk -ldl \
-    -Wl,-rpath,/tmp/opencode 2>&1 | head -10 && echo "chordextract: compilat a /tmp/opencode/chordextract") || \
+    -Wl,-rpath,${AUTO_CHORDS_TEMP:-temp} 2>&1 | head -10 && echo "chordextract: compilat a ${AUTO_CHORDS_TEMP:-temp}/chordextract") || \
     echo "AVÍS: chordextract no ha compilat (via annotator intacta)"
 else
   echo "chordextract: pendent headers (.deps incomplet, sense xarxa apt?)"

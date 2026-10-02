@@ -35,20 +35,18 @@ La funcionalitat principal ja està validada i els tests de regressió passaven 
 
 La idea central del projecte no és tenir “múltiples eines ocultes”, sinó una sola aplicació amb un flux clar i un model de dades coherent:
 
-- el fitxer de sortida és la font de veritat: els CSVs d’acords i estructura
-- les dades temporals es guarden com a intervals en segons
-- els acords i les seccions es tracten com a segments ordenats i no solapats
-- la vista en compàs/BPM és una representació derivada, no un model de dades diferent
-- les edicions manuals no són meres correccions visuals: es guarden, es normalitzen i regeneren els WAVs
 
 ### Semàntica del flux
 
-- `Processa`: extreu, genera i deixa preparat el material de treball del tema
-- `Revisa i edita`: el visor mostra la ona, els acords i l’estructura; l’usuari corregeix intervals i valors
-- `Finalitza i publica`: exporta el paquet final llest per a DAW
 
-### Principis de dades
+Configuració:
+- El projecte utilitza una carpeta temporal local al projecte per defecte (`temp` a l'arrel del repositori).
+- Per sobreescriure la ubicació temporal (útil per a fluxos de treball personalitzats), estableix la variable d'entorn `AUTO_CHORDS_TEMP` a un camí absolut o relatiu abans d'executar scripts. Exemple:
 
+```bash
+export AUTO_CHORDS_TEMP=/home/user/tmp_auto_chords
+python3 app/visor.py tema.wav
+```
 - els intervals tenen inici i fi; el fi no s’edita de manera independent perquè es deriva del següent inici o de la durada total
 - “N” és un valor de chord vàlid, no una excepció especial
 - el sistema accepta acords i seccions ordenats de manera estricta: no solapaments, no inversions de temps, no duplicats de start

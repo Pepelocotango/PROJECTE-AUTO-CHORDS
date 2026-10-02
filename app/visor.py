@@ -33,6 +33,9 @@ if APP_DIR not in sys.path:
 import pipeline  # noqa: E402
 import theme  # noqa: E402
 
+# Configuració centralitzada per al directori temporal (configurable)
+from .config import TEMP_DIR as OPENCODE_DIR
+
 VISOR_STYLESHEET = theme.visor_stylesheet()
 
 N_BUCKETS = 2000  # pics precalculats: obrir 250 s és instantani
@@ -750,8 +753,13 @@ class Visor(QMainWindow):
         inici = int(t * self.audio["sr"]) * 2  # 16 bits mono
         dades = self._mono_bytes()[inici:]
         self.log(f"play des de {t:.2f}s ({len(dades)} bytes) amb {self.player}...")
-        self.fitxer_err = "/tmp/opencode/visor_player.log"
+        self.fitxer_err = os.path.join(OPENCODE_DIR, "visor_player.log")
         try:
+            # Assegura que el directori temporal del projecte existeix
+            try:
+                os.makedirs(OPENCODE_DIR, exist_ok=True)
+            except Exception:
+                pass
             with open(self.fitxer_err, "wb") as ferr:
                 # start_new_session: el player queda en grup propi → el podem
                 # matar sencer (ell + fills) encara que la finestra mori.
