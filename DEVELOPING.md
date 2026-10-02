@@ -116,6 +116,78 @@ L’arquitectura està pensada perquè el producte sigui un flux de treball cohe
 
 El resultat és un sistema fàcil d’entendre, reproduïble i segur d’editar.
 
+## Àrees de futur: investigar, valorar i prioritzar
+
+Aquesta llista recull els temes que no són bloquejos del flux actual, però que tenen molt potencial i cal valorar amb criteri de producte i de manteniment.
+
+### 1) Representació de compassos amb 3 xifres
+
+- estudiar si el sistema ha de mostrar `1.1.3`, `1.1.50` o variants similars en la UI
+- decidir si aquest format és només visual o si forma part del llegible de sortida i del CSV d’entrada
+- definir un esquema de metadades per a compàs, beat i subdivisió sense confondre el model de temps intern
+- protegir la compatibilitat amb el model actual en segons
+
+### 2) Control avançat del processament automàtic
+
+- investigar la configuració real de `Chordino`, `Segmentino` i scripts associats
+- valorar un panell d’algoritmes amb sensibilitat, llindars i paràmetres d’autogeneració
+- discutir si el model ideal és “l’usuari no toca res” o “l’usuari expert ajusta llindars”
+- definir un mode per defecte estable i un mode avançat opcional
+
+### 3) Millora del tema visual i colors
+
+- simplificar la paleta global i fer-la coherent a tots els components
+- valorar una escala de grisos amb contrast millor i accents selectius
+- decidir si el color s’usa exclusivament com a suport visual o si cada estat ha de tenir un significat semàntic clar
+
+### 4) Gràfica amb línia temps segons/BPM
+
+- afegir una línia de temps visual que mostri tant segons com compàs/BPM segons el mode actiu
+- revisar si cal mostrar diferents escales o si una sola vista és suficient
+- decidir si el cursor de temps s’ha de sincronitzar amb la posició de reproducció i amb la selecció de segments
+
+### 5) Auditoria de seguretat
+
+- revisar tots els punts d’entrada de fitxers i subprocessos
+- validar que no hi hagi execucions no controlades ni paths vulnerables
+- definir una política de logs i de gestió d’errors per a entorns reals
+- verificar que els exportats no pateixen injecció de ruta, noms o contingut
+
+### 6) Nomenclatura de fitxers i ordres d’export
+
+- decidir una convenció semàntica que permeti ordenar de forma fàcil els clips finals
+- procurar que el nom principal contengui la informació més important al principi
+- revisar si els noms de acords i de seccions han d’indicar secció, ordre o temps inicial
+
+### 7) Altres formats de partitura / sortida musical
+
+- estudiar MusicXML, ABC, LilyPond o exportació de partitura en altres formats
+- valorar si aquests formats són producte core o eines de postproducció
+- decidir quins exportables tenen valor real per a usuaris de música i producció
+
+### 8) Desplegament real de l’app
+
+- definir un canal de distribució fiable per a usuaris finals
+- preparar packaging, instal·ladors o bundles per a un sistema real
+- pensar en versions, canvis, rollback i validació d’instal·lació
+
+### 9) Desplegament a altres SO
+
+- comprovar compatibilitats de Qt, Python i plugins en Linux, Windows i macOS
+- separar la part “núcleo del producte” de la part “platform-specific glue”
+- definir els punts de risc a cada OS: audio, subprocessos, paths, permisos, drivers, llicències
+
+### 10) Criteri per prioritzar el futur
+
+La regla sana és aquesta: no s’ha d’afegir complexitat fins que la base funcional no estigui molt estable. Per tant, el futur s’ha de prioritzar amb aquesta lògica:
+
+- primer estabilitat i claredat del flux
+- després UX i visualització
+- després configuració avançada i automatització
+- després exportacions més riques i desplegament generalitzat
+
+Aquesta llista és una guia de futur, no una promesa de feina immediata.
+
 ## Convencions
 
 - Comentaris i docs en català.
