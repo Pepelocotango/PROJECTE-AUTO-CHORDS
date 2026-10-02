@@ -188,6 +188,20 @@ La regla sana és aquesta: no s’ha d’afegir complexitat fins que la base fun
 
 Aquesta llista és una guia de futur, no una promesa de feina immediata.
 
+## Agraïments i reconeixement a eines de tercers
+
+Aquest projecte és un assemblatge de feina pròpia i de tecnologia de tercers. És important deixar-ho escrit explícitament:
+
+- agraïments al projecte Python i a la seva comunitat
+- agraïments a PyQt5, Qt5 i PyQtGraph per la base d’UI i gràfics
+- agraïments a NumPy per la manipulació eficient de dades d’àudio i de temps
+- agraïments a Chordino, Sonic Annotator i Vamp per la detecció automàtica d’acords
+- agraïments a Segmentino i als plugins de segmentació per la generació d’estructura
+- agraïments a les llibreries i components del sistema operatiu que fan possible la reproducció i la conversió d’àudio
+- agraïments a totes les persones i equips que han publicat biblioteques, plug-ins, tutorials i solucions que ens han ajudat a construir aquesta app
+
+La nostra feina és construir i integrar, però no és “des de zero” en el sentit absolut: hi ha moltes bases creades per altres projectes i persones. Reconèixer-ho és una bona pràctica, un signe de respecte i un acte de transparència técnica.
+
 ## Convencions
 
 - Comentaris i docs en català.

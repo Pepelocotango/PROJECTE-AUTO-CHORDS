@@ -101,6 +101,20 @@ També hi ha llançador de desktop:
 - numpy < 2
 - dependències locals de Chordino / Segmentino / Vamp al sistema
 
+## Agraïments i reconeixement a projectes de tercers
+
+Aquest projecte depèn de treballs previs i eines desenvolupades per altres persones i equips. Volem reconèixer-ho explícitament i agrair-ho sincerament:
+
+- Python i la comunitat Python
+- PyQt5 / Qt5 i PyQtGraph per la base de l’interfície i la visualització gràfica
+- NumPy pel processament numèric i la manipulació de dades d’àudio
+- Chordino i el sistema Vamp / Sonic Annotator per la detecció automàtica d’acords i estructures
+- Segmentino i la cadena de processament d’estructura/locators
+- les llibreries d’àudio del sistema i els drivers del entorn Linux que permeten la reproducció i la manipulació d’ona
+- les biblioteques i recursos de la comunitat open source que han servit de referência per a la normalització, l’edició i la integració de la app
+
+Sense aquest ecosistema, aquest projecte no seria possible. Els agraïments i el reconeixement formal són part de la forma de treball i del respecte que es mereixen les eines i els desenvolupadors que ens han donat base i inspiració.
+
 ## Llicència
 
 GPLv3 — vegeu `LICENSE`.
