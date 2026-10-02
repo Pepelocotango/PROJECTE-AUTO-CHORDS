@@ -31,6 +31,40 @@ La funcionalitat principal ja està validada i els tests de regressió passaven 
 3. Revisa i edita acords / seccions al visor
 4. Fes `Finalitza i publica`
 
+## Filosofia i lògica del flux
+
+La idea central del projecte no és tenir “múltiples eines ocultes”, sinó una sola aplicació amb un flux clar i un model de dades coherent:
+
+- el fitxer de sortida és la font de veritat: els CSVs d’acords i estructura
+- les dades temporals es guarden com a intervals en segons
+- els acords i les seccions es tracten com a segments ordenats i no solapats
+- la vista en compàs/BPM és una representació derivada, no un model de dades diferent
+- les edicions manuals no són meres correccions visuals: es guarden, es normalitzen i regeneren els WAVs
+
+### Semàntica del flux
+
+- `Processa`: extreu, genera i deixa preparat el material de treball del tema
+- `Revisa i edita`: el visor mostra la ona, els acords i l’estructura; l’usuari corregeix intervals i valors
+- `Finalitza i publica`: exporta el paquet final llest per a DAW
+
+### Principis de dades
+
+- els intervals tenen inici i fi; el fi no s’edita de manera independent perquè es deriva del següent inici o de la durada total
+- “N” és un valor de chord vàlid, no una excepció especial
+- el sistema accepta acords i seccions ordenats de manera estricta: no solapaments, no inversions de temps, no duplicats de start
+- la normalització ordena els elements abans de salvar-los i la validació rebutja canvis lògicament invàlids
+
+### Per què aquest model
+
+Perquè permet que el producte sigui coherent i predictible:
+
+- l’usuari sempre editant la mateixa font de dades
+- el visor reflecteix el que realment es guardarà
+- els exports són reproduïbles i no depenen d’una “modalitat temporal” distinta
+- el codi no es descontrola amb dades inconsistents ni amb dos models de temps barrejats
+
+Aquest és el criteri que ha acabat definint la base de l’app: una app única, un flux únic i una representació temporal única en el backend.
+
 ## Llançament
 
 Des de la carpeta del projecte:

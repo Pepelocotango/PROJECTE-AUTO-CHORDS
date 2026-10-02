@@ -218,11 +218,11 @@ class ExportPipelineTests(unittest.TestCase):
         self.assertEqual(len(v.acords), 2)
         self.assertEqual(v.acords[1][1], "Am")
 
-        v._afegeix_seccio(1.0, 2.0, "C", "C")
+        v._afegeix_seccio(4.0, 6.0, "C", "C")
         self.assertEqual(len(v.seccions), 3)
-        self.assertEqual(v.seccions[1][2], "C")
+        self.assertEqual(v.seccions[2][2], "C")
 
-        v._elimina_seccio(1)
+        v._elimina_seccio(2)
         self.assertEqual(len(v.seccions), 2)
         self.assertEqual(v.seccions[1][2], "B")
         app.quit()
@@ -248,6 +248,31 @@ class ExportPipelineTests(unittest.TestCase):
         exporta.assert_called_once()
         self.assertEqual(exporta.call_args.kwargs["sortida"], str(base / "tema_ACORDS"))
         app.quit()
+
+    def test_visor_normalizes_interval_order_for_chords_and_sections(self):
+        app = visor.QApplication.instance() or visor.QApplication([])
+        v = visor.Visor.__new__(visor.Visor)
+        v.acords = [(10.0, "E", "10.000000000"), (0.0, "C", "0.000000000"), (2.0, "Am", "2.000000000")]
+        v.seccions = [(10.0, 12.0, "C", "C"), (0.0, 2.0, "A", "A"), (2.0, 10.0, "B", "B")]
+
+        v._normalitza_acords(v.acords)
+        v._normalitza_seccions(v.seccions)
+
+        self.assertEqual([item[0] for item in v.acords], [0.0, 2.0, 10.0])
+        self.assertEqual([item[2] for item in v.seccions], ["A", "B", "C"])
+        app.quit()
+
+    def test_visor_rejects_invalid_edit_order_for_chords_and_sections(self):
+        v = visor.Visor.__new__(visor.Visor)
+        v.audio = {"durada": 30.0}
+        v.acords = [(0.0, "C", "0.000000000"), (5.0, "Am", "5.000000000"), (10.0, "G", "10.000000000")]
+        v.seccions = [(0.0, 5.0, "A", "A"), (5.0, 10.0, "B", "B"), (10.0, 30.0, "C", "C")]
+
+        with self.assertRaises(ValueError):
+            v._valida_canvis_acords([(0.0, "C", "0.000000000"), (0.0, "Am", "0.000000000"), (10.0, "G", "10.000000000")])
+
+        with self.assertRaises(ValueError):
+            v._valida_canvis_seccions([(0.0, 5.0, "A", "A"), (3.0, 10.0, "B", "B")])
 
 
 if __name__ == "__main__":

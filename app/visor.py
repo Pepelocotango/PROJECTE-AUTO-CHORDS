@@ -140,6 +140,7 @@ class Visor(QMainWindow):
         self.llista_ab.setContextMenuPolicy(Qt.CustomContextMenu)
         self._actualitza_llista_abc()
         self.llista_ab.itemClicked.connect(self._salt_seccio)
+        self.llista_ab.itemDoubleClicked.connect(self._edita_seccio)
         self.llista_ab.customContextMenuRequested.connect(self._menu_seccio)
         div.addWidget(self.llista_ab)
         capa.addWidget(div, stretch=2)
@@ -265,6 +266,30 @@ class Visor(QMainWindow):
             et = self._fmt_compas(t) if self.tempo_fix else f"{t:07.2f}s"
             self.llista_ac.addItem(f"{et}  {c}")
 
+    def _valida_canvis_acords(self, items):
+        if not items:
+            return []
+        ordenats = sorted(items, key=lambda x: float(x[0]))
+        prev_t = None
+        for idx, item in enumerate(ordenats):
+            t = float(item[0])
+            if t < 0:
+                raise ValueError(f"L'acord {item[1]} té un inici negatiu ({t:.2f}s)")
+            if prev_t is not None and t <= prev_t + 1e-9:
+                raise ValueError(
+                    "Els acords no poden compartir ni invertir el seu inici. "
+                    "L'ordre ha de ser estricte i sense solapaments."
+                )
+            prev_t = t
+        return ordenats
+
+    def _normalitza_acords(self, items=None):
+        items = self.acords if items is None else items
+        ordenats = self._valida_canvis_acords(items)
+        if isinstance(items, list):
+            self.acords = ordenats
+        return ordenats
+
     def _afegeix_acord(self, t, nom):
         if nom is None:
             nom = "N"
@@ -272,7 +297,8 @@ class Visor(QMainWindow):
         if not nom:
             return False
         item = (float(t), nom, f"{float(t):.9f}")
-        self.acords = sorted(self.acords + [item], key=lambda x: x[0])
+        nova = self._normalitza_acords(self.acords + [item])
+        self.acords = nova
         if hasattr(self, "llista_ac"):
             self._omple_llista_ac()
         return True
@@ -325,29 +351,46 @@ class Visor(QMainWindow):
             return
         t, vell, *rest = self.acords[fila]
         tsrc = rest[0] if rest else f"{t:.9f}"
-        nou, ok = QInputDialog.getText(
+        nou_nom, ok_nom = QInputDialog.getText(
             self, "Corregeix l'acord",
-            f"Acord a {t:.2f} s (abans: {vell})",
+            f"Nom de l'acord a {t:.2f} s (actual: {vell})",
             text=vell)
-        if not ok:
+        if not ok_nom:
             return
-        nou = nou.strip().replace(os.sep, "-").replace("\\", "-")
-        if not nou or nou == vell:
+        nou_nom = nou_nom.strip().replace(os.sep, "-").replace("\\", "-")
+        if not nou_nom:
             return
-        self.acords[fila] = (t, nou, tsrc)
+        nou_t, ok_t = QInputDialog.getDouble(
+            self, "Canvia l'inici de l'acord",
+            f"Inici en segons (actual: {t:.2f}s)",
+            float(t), 0.0, max(0.0, self.audio["durada"]), 3)
+        if not ok_t:
+            return
+        nou_t = max(0.0, min(float(nou_t), self.audio["durada"]))
+        antic = self.acords[fila]
+        nova = list(self.acords)
+        nova[fila] = (nou_t, nou_nom, f"{nou_t:.9f}")
+        try:
+            self.acords = self._normalitza_acords(nova)
+        except ValueError as e:
+            self.log(f"edició no vàlida: {e}")
+            QMessageBox.warning(self, "Visor",
+                                f"No es pot desar aquest canvi perquè trenca la lògica temporal:\n{e}")
+            return
         self._omple_llista_ac()
-        self.llista_ac.setCurrentRow(fila)
+        self.llista_ac.setCurrentRow(self.acords.index((nou_t, nou_nom, f"{nou_t:.9f}")))
         try:
             nwavs = self._desa_i_regenera()
         except Exception as e:  # noqa: BLE001
-            self.acords[fila] = (t, vell, tsrc)
+            self.acords[fila] = antic
+            self.acords = self._normalitza_acords(self.acords)
             self._omple_llista_ac()
             self.llista_ac.setCurrentRow(fila)
             self.log(f"edició ERROR: {e}")
             QMessageBox.warning(self, "Visor",
                                 f"No s'ha pogut desar l'acord:\n{e}")
             return
-        self.log(f"acord {t:.2f}s: {vell} → {nou} "
+        self.log(f"acord {t:.2f}s: {vell} → {nou_nom} @ {nou_t:.2f}s "
                  f"(csv + {nwavs} wavs_acords)")
 
     def _desa_i_regenera(self):
@@ -510,6 +553,33 @@ class Visor(QMainWindow):
     def _salt_acord(self, item):
         self.ves_a(self._parse_pos_label(item.text()))
 
+    def _valida_canvis_seccions(self, items):
+        if not items:
+            return []
+        ordenats = sorted(items, key=lambda x: float(x[0]))
+        prev_fi = -1e-9
+        for item in ordenats:
+            ini = float(item[0])
+            fi = float(item[1])
+            if ini < 0 or fi < 0:
+                raise ValueError(f"La secció {item[2]} té temps negatius ({ini:.2f}s–{fi:.2f}s)")
+            if fi <= ini:
+                raise ValueError(f"La secció {item[2]} té una durada no vàlida ({ini:.2f}s–{fi:.2f}s)")
+            if ini < prev_fi - 1e-9:
+                raise ValueError(
+                    "Les seccions no poden solapar-se ni invertir-se. "
+                    "L'ordre temporal ha de ser estricte."
+                )
+            prev_fi = fi
+        return ordenats
+
+    def _normalitza_seccions(self, items=None):
+        items = self.seccions if items is None else items
+        ordenats = self._valida_canvis_seccions(items)
+        if isinstance(items, list):
+            self.seccions = ordenats
+        return ordenats
+
     def _actualitza_llista_abc(self):
         self.llista_ab.clear()
         for ini, fi, L, fam in self.seccions:
@@ -531,7 +601,7 @@ class Visor(QMainWindow):
         if lletra is None:
             lletra = fam
         item = (ini, fi, str(lletra).strip() or "A", str(fam).strip() or "A")
-        self.seccions = sorted(self.seccions + [item], key=lambda x: x[0])
+        self.seccions = self._normalitza_seccions(self.seccions + [item])
         if hasattr(self, "llista_ab"):
             self._actualitza_llista_abc()
         return True
@@ -626,6 +696,50 @@ class Visor(QMainWindow):
                               lliure=not self.tempo_fix)
         pipeline.regenera_wavs_estructura(abc, sortida, 44100, self.log)
         self.log(f"ABC recalculat: {msg}")
+
+    def _edita_seccio(self, item):
+        fila = self.llista_ab.row(item)
+        if fila < 0 or fila >= len(self.seccions):
+            return
+        ini, fi, vell_lletra, vell_fam = self.seccions[fila]
+        nova_lletra, ok_l = QInputDialog.getText(
+            self, "Corregeix la secció",
+            f"Lletra de la secció {vell_lletra} ({ini:.2f}s–{fi:.2f}s)",
+            text=vell_lletra)
+        if not ok_l:
+            return
+        nova_lletra = str(nova_lletra).strip() or vell_lletra
+        nou_inici, ok_t = QInputDialog.getDouble(
+            self, "Canvia l'inici de la secció",
+            f"Inici en segons (actual: {ini:.2f}s)",
+            float(ini), 0.0, max(0.0, self.audio["durada"]), 3)
+        if not ok_t:
+            return
+        nou_inici = max(0.0, min(float(nou_inici), self.audio["durada"]))
+        antic = self.seccions[fila]
+        nova = list(self.seccions)
+        nova[fila] = (nou_inici, fi, nova_lletra, vell_fam)
+        try:
+            self.seccions = self._normalitza_seccions(nova)
+        except ValueError as e:
+            self.log(f"edició secció no vàlida: {e}")
+            QMessageBox.warning(self, "Visor",
+                                f"No es pot desar aquest canvi perquè trenca la lògica temporal:\n{e}")
+            return
+        self._actualitza_llista_abc()
+        self.llista_ab.setCurrentRow(self.seccions.index((nou_inici, fi, nova_lletra, vell_fam)))
+        try:
+            self._regenera_abc_des_de_totes_les_seccions(f"secció {vell_lletra}→{nova_lletra} @ {nou_inici:.2f}s")
+        except Exception as e:  # noqa: BLE001
+            self.seccions[fila] = antic
+            self.seccions = self._normalitza_seccions(self.seccions)
+            self._actualitza_llista_abc()
+            self.llista_ab.setCurrentRow(fila)
+            self.log(f"edició secció ERROR: {e}")
+            QMessageBox.warning(self, "Visor",
+                                f"No s'ha pogut desar la secció:\n{e}")
+            return
+        self.log(f"secció {ini:.2f}s: {vell_lletra} → {nova_lletra} @ {nou_inici:.2f}s")
 
     def _salt_lliscador(self, v):
         self.ves_a(v / 100.0)

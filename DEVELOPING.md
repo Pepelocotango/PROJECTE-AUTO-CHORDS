@@ -74,6 +74,48 @@ bash instal·la_vm_debian.sh   # demana 1 pkexec, dins la VM
 Nota: aquest repo viu al `/home` de l'host; la VM/Mac no hi accedeix
 directament. Per usar-lo allà, copia la carpeta o deixa-la a l'exFAT.
 
+## Lògica de producte i flux de treball
+
+La base del projecte és senzilla i molt important: no hauríem de tenir un “analitzador” separat, un “editor” separat i un “exportador” separat que no comparteixen model.
+
+### Model de dades
+
+- els CSVs d’acords i estructura són la font de veritat
+- cada registre és un interval temporal
+- el temps es guarda en segons al backend
+- el mode compàs/BPM és només una vista derivada, per a navegació humana i presentació del projecte
+- els acords i les seccions sempre s’ordenen cronològicament abans de ser persistits
+
+### Flux implementat
+
+1. la WAV s’obre a l’app principal
+2. `Processa` extreu acords i, si escau, estructura
+3. el visor carrega la ona, els acords i les seccions generades
+4. l’usuari pot corregir acords, afegir o esborrar seccions, i normalitzar l’ordre
+5. cada canvi es valida: no solapaments, no ordre invers, no duplicats lògics
+6. el visor regenerat els clips i les sortides associades
+7. `Finalitza i publica` genera el paquet final per a DAW
+
+### Regles de consistència
+
+- no es barregen segons i BPM en la mateixa base de dades
+- no es deixen intervals inconsistents en el CSV
+- no es permeten edicions que comportin solapaments o anàlisis contradictòries
+- el fi del segment es deriva del següent inici, perquè és la forma més robusta de representar intervals continus
+- els valors no coneguts no se’ls tracta com a “males dades”; en aquest producte, `N` és un acord vàlid i ha de poder circular sense ser reinterpretat com a error
+
+### Filosofia de disseny
+
+L’arquitectura està pensada perquè el producte sigui un flux de treball coherent i no una col·lecció de scripts amb criteris diferents. Per això:
+
+- una sola app front-end
+- un únic model intern de temps
+- un únic runtime de regeneració
+- una única acció d’export final
+- una validació d’edició que protegeix el dataset i evita “malformacions” que després trenquen la producció
+
+El resultat és un sistema fàcil d’entendre, reproduïble i segur d’editar.
+
 ## Convencions
 
 - Comentaris i docs en català.
