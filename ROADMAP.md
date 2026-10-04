@@ -1,22 +1,100 @@
 # Full de ruta — PROJECTE AUTO CHORDS
 
-Visió: a partir de un arxiu de audio carregat a la app, n'extraiem acords + estructura , pensat principalment en obtenir carpetes separades amb clips de wavs llestos per al Live/Reaper, pero obert a altres exportacions futures.
-amb un visor on **escoltar, navegar, corregir i re-exportar**.
-Tot en català. Llicència: GPLv3.
+> Eina per a **músics multi-DAW** que analitza una cançó (WAV), en deixa
+> **editar visualment** els acords i l'estructura com si fos una pista, i
+> n'exporta el resultat com a **clips d'àudio llestos per arrossegar a
+> qualsevol DAW** (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools,
+> Cubase…). Tot en català. Llicència: GPLv3.
 
-## Estat actual (2026-10-02)
+## Filosofia — Per què clips WAV silenciosos?
+
+La solució de **un fitxer WAV per acord/estructura** és enginyosa i
+universal, i és la **raó de ser** d'aquest projecte:
+
+- 🎯 **Nom = acord**: `1-1-1_Am.wav` → el clip es llegeix com “Am” al DAW.
+- 📏 **Durada = durada de l’acord**: cada WAV té exactament la longitud de
+  l’acord o secció que representa → de manera que un cop arrossegats al
+  DAW, els clips es col·loquen un darrera l’altre i dibuixen la
+  **progressió completa de la cançó**.
+- 🔌 **Zero plugins especials**: qualsevol DAW sap arrossegar una carpeta
+  d’àudio → funciona arreu sense coneixements de MIDI, VSTs, scripts o
+  fluxos nous.
+- ✂️ **Editable al DAW**: un cop els clips són allà, pots moure’ls,
+  tallar-los, duplicar-los, dividir-los, afegir-ne de nous, etc.
+- 🎼 **Doble pista al DAW**: `wavs_acords/` (un clip per acord) +
+  `wavs_estructura/` (un clip per secció) → pots posar-les com a dues
+  pistes sincronitzades (una d’acords, una d’estructura).
+
+> **Conclusió**: el que exportem **NO** és audio. És una **pista visual
+> de noms i durades** que qualsevol DAW pot consumir amb el seu propi
+> sistema de clips. La solució és deliberadament simple — i per això
+> funciona.
+
+## Cas d’ús principal
+
+1. 🎵 L’usuari tria una cançó (WAV).
+2. 🪄 L’app la processa amb **Chordino** (acords) i **Segmentino**
+   (estructura) → resultat semiautomàtic.
+3. ✏️ L’usuari **edita visualment** els acords i l’estructura amb un
+   visor DAW-like (drag, resize, snap, rename).
+4. 📦 L’app exporta dues carpetes: `wavs_acords/` + `wavs_estructura/`
+   amb noms ordenables i durades correctes.
+5. 🎚️ L’usuari **arrossega les carpetes al seu DAW** → obté una pista
+   visual d’acords i una d’estructura, sincronitzades, editables.
+
+**Multi-DAW**: la solució és inherentment portable perquè **no depèn**
+de cap DAW concret. Live, Reaper, Logic, Bitwig, Studio One, Pro Tools,
+Cubase, GarageBand — tots consumeixen WAVs amb nom.
+
+## Obertura tecnolítica
+
+El **core del projecte** (detecció amb Chordino+Segmentino, validació
+temporal, export WAVs amb noms intel·ligents) és estable i **independent
+de la interfície**. 
+
+L’**embolcall** (la GUI / el visor) pot canviar-se sense tocar el core.
+Això ens permet estar oberts a:
+
+- **PyQt5/QGraphicsView** (estat actual) — natiu, madur, però específic de
+  Qt.
+- **Electron + wavesurfer.js** — multiplataforma web (Chromium embebut).
+- **Tauri + wavesurfer.js** — més lleuger que Electron (WebView natiu).
+- **HTML/web (PWA)** — només si no calgui la integració amb el sistema.
+- **Altres** — qualsevol que ens doni la millor experiència d’usuari.
+
+> La tria tecnolítica **és intercanviable** mentre es preservi:
+> - El **core** (pipeline.py i la integració amb `sonic-annotator`).
+> - La **invariant de dades** (ordre estrictes, no solapaments, durades
+>    derivades).
+> - La **UX esperada** (visor DAW-like, edició semiautomàtica, drag/resize,
+>    snap, propagació de constraint).
+
+**Restriccions conegudes**:
+- 🖥️ **Q9400 (CPU sense AVX2)**: alguns binaris moderns (numpy 2.x,
+  Electron recent, Qt6) **no funcionaran**. Cal verificar la compatibilitat
+  ABANS d’escollir una tecnologia.
+- 🔒 **Sense secrets** al repo (`.secrets/` ignorat per `.gitignore`).
+- 🐧 **Linux prioritari** (AppImage idealment); multi-OS és nice-to-have.
+
+## Estat actual (2026-10-04)
 
 El projecte ja ha passat de prototip funcional a flux de producte útil:
 
 - app principal única i estable
-- visor integrat dins la mateixa finestra
+- **visor DAW-like (QGraphicsView)** amb ona, ruler BPM/segons i 2 carrils (acords + estructura)
+- **constraint propagation live** — moure l’inici d’un element ajusta automàticament el final de l’anterior i l’inici del següent
+- **nanses de resize** als extrems dels acords i les seccions + cos central per moure’l sencer
+- **rename inline** (doble-clic → edició al lloc, Enter desa, Esc cancel·la)
+- **snap intel·ligent** a compàs/beat/corxera (tempo_fix) o a 0.1/0.5/1/5 s (mode lliure) segons el zoom
+- **zoom** amb Ctrl+Roda (centrat al cursor) i **pan** amb Roda sola
 - procés d’anàlisi amb una sola acció clara (`Processa`)
 - revisió i edició d’acords i seccions des del visor
 - export final separat i explícit (`Finalitza i publica`)
 - llançament directe des de la carpeta del projecte
 - bloqueig de doble instància per evitar sobreposició d’aplicacions
+- **auditoria de seguretat/estabilitat aplicada**: clamp de temps, tipus d’excepció específics, `_proc_lock`, `safe_filename`, parser CSV robust, validació WAV (sr/ch > 0)
 
-La base funcional està validada. El que queda són millores de polish i estabilització, no reescriure el flux bàsic.
+La base funcional i el nou visor estan validats. El que queda són millores de polish, estabilització i les funcionalitats pràctiques descrites a l’apartat següent.
 
 ## Fase A — Visor navegable ✅
 
@@ -50,6 +128,65 @@ La base funcional està validada. El que queda són millores de polish i estabil
 - export final clar i separat del processament
 - llançador directe (`AUTO_CHORDS.sh` / `AUTO_CHORDS.desktop`)
 - sorteix sense dependre de terminal ni de múltiples finestres
+
+## Fase D — Interacció DAW-like ⏳ *(properà)*
+
+Aquesta fase és **el “kit de la qüestió”** del projecte: fer que el visor
+interactiu sigui tan usable i natural com un DAW modern treballant amb
+clips d’àudio. La detecció i l’export ja funcionen; ara toca que **editar
+sigui un plaer** i no una fricció.
+
+**Regla d’or** (ja implementada): cada clip d’acord o d’estructura
+**sempre acaba o comença el següent** — és a dir, el final d’un element
+és l’inici del veí (propagació de constraint en temps real).
+
+### D.1 — Crítiques (sense elles el visor no és usable)
+
+- **Click a un clip → mou cursor de play allà** (l’acció més bàsica d’un
+  DAW que actualment **no funciona**).
+- **Selecció persistent visual** — l’element seleccionat canvia de color
+  clarament (vora groga o color de fons diferent).
+- **Duplicar acord/estructura** — `Ctrl+D` o menú contextual; el duplicat
+  s’insereix immediatament al costat i propaga el constraint.
+- **Eliminar amb tecla `Delete`** (a més del menú contextual existent).
+- **Línia guia de snap més visible** durant el drag — color groc discontínu
+  que marqui on caurà el temps resultant.
+- **Feedback visual quan s’arrossega** — el cursor canvia segons la zona
+  (ja implementat parcialment) + highlight dels veins afectats.
+
+### D.2 — Importants (per semblar un DAW de veritat)
+
+- **Multi-selecció** amb `Ctrl+click` (afegir) i `Shift+click` (rang), i
+  poder moure/duplicar/eliminar el grup.
+- **Dreceres de teclat estàndard**: `Ctrl+C/V/X` (copy/cut/paste),
+  `Ctrl+D` (duplicar), `Ctrl+Z/Y` (desfer/refer), `Delete` (eliminar),
+  `Space` (play/pause), `Enter` (editar).
+- **Undo/Redo** amb stack d’accions (cobreix qualsevol modificació manual).
+- **Scroll drag amb mouse** per desplaçar-se horitzontalment quan el
+  cursor agafa la forma de “mà” (com Reaper).
+- **Indicador visual del mode actiu** (BPM/compàs vs segons) al ruler.
+
+### D.3 — Nice-to-have (quan la D.1 i D.2 estiguin consolidades)
+
+- **Drag-and-drop extern** d’un WAV per afegir manualment un acord nou.
+- **Tooltips** sobre botons i accions (a més dels que ja existeixen).
+- **Selecció amb drag-rectangle** (“lasso”) per seleccionar varis elements
+  d’un cop.
+- **Accel·leradors personalitzables** per l’usuari avançat.
+
+### Notes d’implementació
+
+- Tot canvi de la Fase D **ha de preservar**:
+  - La **invariant de dades** (ordre estrictes, no solapaments, durades
+    derivades).
+  - El **principi d’una sola font de veritat** (`app.pipeline` continua
+    sent el backend; el visor en reflecteix l’estat).
+  - La **regla d’or** del final = inici del següent (constraint live).
+- Si la base tecnolítica canvia (veure §“Obertura tecnolítica”), les
+  funcionalitats de la Fase D s’han de **reimplementar** sobre la nova
+  plataforma — però els **principis romanen**.
+- Cada feature nova porta **tests** (al manco un test d’smoke i un
+  unittest quan sigui possible).
 
 ## Prioritat de millores restants
 
@@ -161,6 +298,89 @@ Aquestes són idees i oportunitats que queden pendents de revisió i que convé 
   - subprocessos i reproductors d’àudio
   - paths i permisos de fitxers
 - decidir una estratègia modular per a build multi-platform i per a mantenir un nucli de producte estable
+
+## 10) Funcionalitats pràctiques pendents (propers commits)
+
+Idees d'usabilitat i productivitat anotades durant la sessió de proves del
+2026-10-04. Són **idees exploratòries** que poden acabar implementant-se o
+descartant-se — cap està planificada per data.
+
+> ℹ️ Les idees considerades **prioritàries** per la propera fase estan
+> consolidades a la **Fase D — Interacció DAW-like** (més amunt). Aquest
+> apartat §10 recull idees **complementàries** o **descartades per ara**.
+
+### A) Productivitat *(idees no cobertes per Fase D)*
+
+- 🔍 **Cerca i reemplaça d’acords** (ex. canviar tots els `C` per `Cm`
+  arreu, amb preview abans d’aplicar).
+- 📋 **Còpia / enganxa** d’acords o seccions individuals (amb un buffer
+  intern, no cal OS clipboard).
+- 🕐 **Recent files** (llista dels últims 5–10 WAVs processats).
+
+### B) Visualització ampliada
+
+- 🎨 **Color personalitzable** per acords/seccions (paleta configurable,
+  no només blau/grisa) — potser una paleta semàntica per graus musicals.
+- 🌈 **Forma d’ona amb gradient** de color segons la secció activa
+  (A→verd, B→taronja, C→blau…).
+- 🏷️ **Etiquetes d’acord sobreposades** a sobre de l’ona quan el cursor
+  s’hi acosta (tooltip persistent).
+- 🔎 **Zoom independent del waveform** vs els acords (per exemple, poder
+  fer zoom al waveform sense que els acords es comprimeixin, o al revés).
+- 🎯 **Cursor lluminós** quan el ratolí passa per sobre d’un acord al
+  waveform.
+
+### C) Reproducció
+
+- 🔁 **Loop region visual millorat**: rectangle que es pot redimensionar
+  arrossegant les vores (similar als handles del DAW).
+- 🎚️ **Velocitat de reproducció variable** (50%, 75%, 100%, 125%) — útil
+  per practicar o revisar cançons lentes.
+- 🔉 **Volum / equalitzador per secció** (mixatge bàsic: cada secció pot
+  tenir un nivell d’àudio diferent a l’export).
+- ⏱️ **Indicador visual de beat actual** (punt gros sobre el ruler quan el
+  cursor passa per un beat).
+
+### D) Export *(idees explorades i **descartades per ara**)*
+
+La solució **clips WAV** ja cobreix el cas d’ús principal
+(drag-and-drop al DAW). Els següents exports alternatius es van
+explorar però **no es prioritzaran** mentre la solució actual funcioni:
+
+- 📄 **Export a PDF** amb gràfic de l’ona + acords + estructura (per
+  imprimir fulls de paper per assajar).
+- 📝 **Export a Markdown / HTML** (per incrustar en una web o un document).
+- 🎵 **Export a MIDI dels acords** (un track MIDI amb els acords, durada
+  i nom — integrable a qualsevol DAW).
+- 🎤 **Export a format Lyrics+Chords** (per karaoke o fulls de cantant).
+- 📦 **Plantilles d’export** configurables (quins formats inclou el paquet
+  final per defecte).
+
+> 💡 Si en el futur canviem la base tecnolítica i trobem una manera
+> trivial d’afegir aquests exports, es poden recuperar d’aquesta llista.
+
+### E) Altres
+
+- 🌐 **Multi-idioma** de la interfície (català, espanyol, anglès —
+  sistema de traduccions amb `.po` o similar).
+- 🔌 **API / CLI** per integrar l’anàlisi amb altres eines (un
+  `auto-chords-cli` que faci el pipeline sense GUI).
+- 📱 **Versió mòbil / web** (només lectura o edició bàsica via web — útil
+  per revisar cançons des del mòbil).
+- 🧪 **Mode “preview ràpid”** que reprodueix un tros d’acord específic
+  sense haver de navegar a la posició.
+
+### Notes sobre la implementació
+
+- **Cap canvi trenca la invarianta** actual (`prev.fi == curr.t` per a
+  acords; ordre estricte sense solapaments per a tothom).
+- **Totes les noves funcionalitats han de mantenir el principi d’una sola
+  font de veritat**: el backend (`app.pipeline`) continua sent l’única
+  font de dades; la UI (`app.visor` + `app.timeline`) en reflecteix l’estat.
+- **Tests nous** per cada feature abans de fer merge.
+- **Reutilitzar els hooks** del visor (`chordTimeMoved`, `sectionMoved`,
+  `_on_chord_*`, `_on_section_*`) en lloc d’afegir-ne de nous quan sigui
+  possible.
 
 ## Criteri de producte actualitzat
 
