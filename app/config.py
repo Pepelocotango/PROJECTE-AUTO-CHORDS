@@ -8,5 +8,5 @@ TEMP_DIR = os.getenv("AUTO_CHORDS_TEMP", os.path.join(PROJECT_ROOT, "temp"))
 # Garantir que existeix quan s'importa
 try:
     os.makedirs(TEMP_DIR, exist_ok=True)
-except Exception:
-    pass
+except OSError:
+    pass  # permisos o disc ple; no és crític per arrencar

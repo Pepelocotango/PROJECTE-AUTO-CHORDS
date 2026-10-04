@@ -6,6 +6,7 @@ import argparse
 import atexit
 import csv
 import logging
+import math
 import os
 import re
 import shutil
@@ -25,13 +26,13 @@ from PyQt5.QtWidgets import (
 )
 
 import numpy as np
-import pyqtgraph as pg
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 import pipeline  # noqa: E402
 import theme  # noqa: E402
+from .timeline import TimelineView  # noqa: E402
 
 # Configuració centralitzada per al directori temporal (configurable)
 from .config import TEMP_DIR as OPENCODE_DIR
@@ -87,11 +88,15 @@ def llegeix_abc(ruta):
     return items
 
 
+
+
 class Visor(QMainWindow):
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
         self._embedded = False
+        # Lock curt per protegir self.proc entre fils (timer + alimentacio + UI)
+        self._proc_lock = threading.Lock()
         self.setWindowTitle("Auto Chords — visor")
         self.resize(900, 600)
         self.wav_path = wav
@@ -120,14 +125,20 @@ class Visor(QMainWindow):
         self.setStyleSheet(VISOR_STYLESHEET)
         capa = QVBoxLayout(arrel)
 
-        # ona
-        self.corba = pg.PlotWidget()
-        self.corba.setLabel("bottom", "compàs" if self.tempo_fix else "segons")
-        self.corba.plot(self.audio["temps"], self.audio["pics"], pen="#8ab4f8")
-        self.cursor = pg.InfiniteLine(pos=0, angle=90, pen="#ff5252")
-        self.corba.addItem(self.cursor)
-        self.corba.scene().sigMouseClicked.connect(self._clic_ona)
-        capa.addWidget(self.corba, stretch=3)
+        # Editor tipus DAW (ona + ruler + 2 carrils: acords + estructura)
+        self.timeline = TimelineView(self.audio, self.acords, self.seccions,
+                                    self.bpm, self.bpb, self.tempo_fix)
+        self.timeline.positionChanged.connect(self.ves_a)
+        self.timeline.chordTimeMoved.connect(self._on_chord_time_moved)
+        self.timeline.chordEndMoved.connect(self._on_chord_end_moved)
+        self.timeline.chordRenamed.connect(self._on_chord_renamed)
+        self.timeline.chordDeleteRequested.connect(self._elimina_acord_index)
+        self.timeline.chordEditRequested.connect(self._on_chord_edit_requested)
+        self.timeline.sectionMoved.connect(self._on_section_moved)
+        self.timeline.sectionRenamed.connect(self._on_section_renamed)
+        self.timeline.sectionDeleteRequested.connect(self._elimina_seccio_index)
+        self.timeline.sectionEditRequested.connect(self._on_section_edit_requested)
+        capa.addWidget(self.timeline, stretch=4)
 
         # llistes + controls
         div = QSplitter(Qt.Horizontal)
@@ -203,6 +214,7 @@ class Visor(QMainWindow):
                                f"{len(self.seccions)} seccions")
         fila2.addWidget(self.etiqueta)
         capa.addLayout(fila2)
+        self._actualitza_temps()
 
         # estat de transports
         self.vol = 1.0
@@ -250,6 +262,9 @@ class Visor(QMainWindow):
         compas = int(beats // self.bpb) + 1
         beat = int(beats % self.bpb) + 1
         return f"{compas}.{beat}"
+
+
+
 
     def _parse_pos_label(self, text):
         if "s" in text:
@@ -464,25 +479,35 @@ class Visor(QMainWindow):
     def _pinta_loop(self):
         for attr in ("_regio_loop",):
             if hasattr(self, attr):
-                self.corba.removeItem(getattr(self, attr))
-        if self.loop_a is not None and self.loop_b is not None \
-                and self.loop_b > self.loop_a:
-            self._regio_loop = pg.LinearRegionItem(
-                values=(self.loop_a, self.loop_b),
-                brush=pg.mkBrush(138, 180, 248, 40))
-            self.corba.addItem(self._regio_loop)
+                try:
+                    self.timeline._scene.removeItem(getattr(self, attr))
+                except (RuntimeError, AttributeError):
+                    pass  # l'item ja no és a l'escena
+        if (self.loop_a is not None and self.loop_b is not None
+                and self.loop_b > self.loop_a):
+            from PyQt5.QtWidgets import QGraphicsRectItem
+            from PyQt5.QtGui import QBrush, QColor, QPen
+            from PyQt5.QtCore import Qt
+            la, lb = self.loop_a, self.loop_b
+            x0 = self.timeline._x_offset + la * self.timeline._pps
+            x1 = self.timeline._x_offset + lb * self.timeline._pps
+            rect = QGraphicsRectItem(x0, 0,
+                                   max(1, x1 - x0),
+                                   self.timeline._total_h)
+            rect.setBrush(QBrush(QColor(138, 180, 248, 40)))
+            rect.setPen(QPen(Qt.NoPen))
+            rect.setZValue(30)
+            self.timeline._scene.addItem(rect)
+            self._regio_loop = rect
 
     def zoom(self, factor):
-        vb = self.corba.getViewBox()
-        x0, x1 = vb.viewRange()[0]
-        centre = self.pos
-        ampl = (x1 - x0) * factor
-        ampl = max(5.0, min(ampl, self.audio["durada"]))
-        vb.setXRange(max(0, centre - ampl / 2), centre + ampl / 2,
-                     padding=0)
+        if factor < 1.0:
+            self.timeline.zoom_in()
+        else:
+            self.timeline.zoom_out()
 
     def zoom_tot(self):
-        self.corba.getViewBox().setXRange(0, self.audio["durada"], padding=0)
+        self.timeline.zoom_full()
 
     def _canvia_volum(self, v):
         self.vol = v / 100.0
@@ -522,36 +547,142 @@ class Visor(QMainWindow):
         return f"{compas}.{beat_idx} / {total_compas}.{total_beat_idx}"
 
     def _actualitza_temps(self):
-        if self.corba is not None:
-            self.corba.setLabel("bottom", "compàs" if self.tempo_fix else "segons")
-            eix = self.corba.getAxis("bottom")
-            if self.tempo_fix and eix is not None:
-                total_compassos = max(1, int((self.audio["durada"] * self.bpm / 60.0) // self.bpb) + 1)
-                ticks = []
-                for i in range(total_compassos):
-                    t = (i * self.bpb * 60.0) / self.bpm
-                    if t <= self.audio["durada"]:
-                        ticks.append((t, str(i + 1)))
-                eix.setTicks(ticks)
-            elif eix is not None:
-                eix.setTicks(None)
+        self.timeline.set_tempo_mode(self.tempo_fix, self.bpm, self.bpb)
         self.temps.setText(self._fmt_timeline(self.pos))
+
+    def _edita_acord_index(self, idx):
+        if idx < 0 or idx >= len(self.acords):
+            return
+        if idx >= self.llista_ac.count():
+            return
+        item = self.llista_ac.item(idx)
+        if item is not None:
+            self._edita_acord(item)
+
+    def _elimina_acord_index(self, idx):
+        if idx < 0 or idx >= len(self.acords):
+            return
+        self._elimina_acord(idx)
+        self._desa_i_regenera()
+
+    def _edita_seccio_index(self, idx):
+        if idx < 0 or idx >= len(self.seccions):
+            return
+        if idx >= self.llista_ab.count():
+            return
+        item = self.llista_ab.item(idx)
+        if item is not None:
+            self._edita_seccio(item)
+
+    def _elimina_seccio_index(self, idx):
+        if idx < 0 or idx >= len(self.seccions):
+            return
+        self._elimina_seccio(idx)
+        self._regenera_abc_des_de_totes_les_seccions("secció eliminada")
+
+    # Handlers dels senyals del TimelineView (QGraphicsView DAW-like)
+    def _sync_timeline_acords(self):
+        """Recopiem els acords del timeline al model del Visor."""
+        self.acords = list(self.timeline._acords)
+        self._omple_llista_ac()
+
+    def _sync_timeline_seccions(self):
+        """Recopiem les seccions del timeline al model del Visor."""
+        self.seccions = list(self.timeline._seccions)
+        self._actualitza_llista_abc()
+
+    def _on_chord_time_moved(self, idx, new_t):
+        self._sync_timeline_acords()
+        try:
+            self._desa_i_regenera()
+            self.log(f"acord {idx} mogut a {new_t:.2f}s")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
+
+    def _on_chord_end_moved(self, idx, new_t):
+        self._sync_timeline_acords()
+        try:
+            self._desa_i_regenera()
+            self.log(f"final de l'acord {idx} mogut a {new_t:.2f}s")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
+
+    def _on_chord_renamed(self, idx, new_name):
+        self._sync_timeline_acords()
+        try:
+            self._desa_i_regenera()
+            self.log(f"acord {idx} reanomenat: {new_name}")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
+
+    def _on_chord_edit_requested(self, idx):
+        # Doble-clic al ChordItem: edició completa (nom + inici) amb QInputDialog
+        if idx < 0 or idx >= len(self.acords):
+            return
+        if idx < self.llista_ac.count():
+            item = self.llista_ac.item(idx)
+            if item is not None:
+                self._edita_acord(item)
+
+    def _elimina_acord_index(self, idx):
+        if idx < 0 or idx >= len(self.acords):
+            return
+        if not self._elimina_acord(idx):
+            return
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            self._desa_i_regenera()
+            self.log(f"eliminat acord {idx}")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Visor",
+                                f"No s'ha pogut eliminar:\n{e}")
+
+    def _elimina_seccio_index(self, idx):
+        if idx < 0 or idx >= len(self.seccions):
+            return
+        if not self._elimina_seccio(idx):
+            return
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            self._regenera_abc_des_de_totes_les_seccions("secció eliminada")
+            self.log(f"eliminada secció {idx}")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Visor",
+                                f"No s'ha pogut eliminar:\n{e}")
+
+    def _on_section_moved(self, idx, ini, fi):
+        self._sync_timeline_seccions()
+        try:
+            self._regenera_abc_des_de_totes_les_seccions(
+                f"secció {idx} moguda ({ini:.2f}-{fi:.2f})")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
+
+    def _on_section_renamed(self, idx, lletra, familia):
+        self._sync_timeline_seccions()
+        try:
+            self._regenera_abc_des_de_totes_les_seccions(
+                f"secció {idx} reanomenada: {lletra}")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
+
+    def _on_section_edit_requested(self, idx):
+        if idx < 0 or idx >= len(self.seccions):
+            return
+        if idx < self.llista_ab.count():
+            item = self.llista_ab.item(idx)
+            if item is not None:
+                self._edita_seccio(item)
 
     # navegació
     def ves_a(self, t):
-        self.pos = max(0.0, min(t, self.audio["durada"]))
-        self.cursor.setPos(self.pos)
+        self.pos = max(0.0, min(float(t), self.audio["durada"]))
+        self.timeline.set_position(self.pos, emit=False)
         self.lliscador.setValue(int(self.pos * 100))
         self._actualitza_temps()
         if self.sona:
             self._atura_proc()
             self._engega_des_de(self.pos)
-
-    def _clic_ona(self, ev):
-        if ev.double():
-            vb = self.corba.getViewBox()
-            pt = vb.mapSceneToView(ev.scenePos())
-            self.ves_a(pt.x())
 
     def _salt_acord(self, item):
         self.ves_a(self._parse_pos_label(item.text()))
@@ -750,6 +881,9 @@ class Visor(QMainWindow):
     # escolta
     def _engega_des_de(self, t):
         self._atura_proc()
+        # Clamp per seguretat (validació prèvia pot ser absent en alguns
+        # camins; evitem índex negatiu o inici més enllà de les dades).
+        t = max(0.0, min(float(t), float(self.audio["durada"])))
         inici = int(t * self.audio["sr"]) * 2  # 16 bits mono
         dades = self._mono_bytes()[inici:]
         self.log(f"play des de {t:.2f}s ({len(dades)} bytes) amb {self.player}...")
@@ -818,19 +952,27 @@ class Visor(QMainWindow):
     def _atura_proc(self):
         # invalida el fil d'alimentació i mata el grup sencer: res no queda sonant.
         self._sess += 1
-        if self.proc is not None:
+        with self._proc_lock:
+            proc = self.proc
+            self.proc = None
+            if proc is None:
+                return
             try:
-                os.killpg(os.getpgid(self.proc.pid), signal.SIGTERM)
-            except Exception:  # noqa: BLE001
-                pass
+                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+            except (ProcessLookupError, OSError):
+                pass  # ja era mort
             try:
-                self.proc.wait(timeout=2)
-            except Exception:  # noqa: BLE001
+                proc.wait(timeout=2)
+            except (subprocess.TimeoutExpired, OSError):
                 try:
-                    os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
-                except Exception:  # noqa: BLE001
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                except (ProcessLookupError, OSError):
                     pass
-        self.proc = None
+                # Re-collirem el zombie per no contaminar la taula de processos
+                try:
+                    proc.wait(timeout=1)
+                except (subprocess.TimeoutExpired, OSError):
+                    pass
 
     def play_stop(self):
         if self.sona:
@@ -865,7 +1007,7 @@ class Visor(QMainWindow):
             self.play_stop()
             return
         self.pos = t
-        self.cursor.setPos(t)
+        self.timeline.set_position(self.pos, emit=False)
         self.lliscador.setValue(int(t * 100))
         self._actualitza_temps()
         self._ressalta(t)
@@ -932,6 +1074,24 @@ class Visor(QMainWindow):
         self.log("tanco: mato l'àudio...")
         self.rellotge.stop()
         self._atura_proc()
+        # Disconnect dels signals del TimelineView per evitar memory leaks
+        if hasattr(self, "timeline"):
+            for sig, slot in [
+                ("positionChanged", self.ves_a),
+                ("chordTimeMoved", self._on_chord_time_moved),
+                ("chordEndMoved", self._on_chord_end_moved),
+                ("chordRenamed", self._on_chord_renamed),
+                ("chordDeleteRequested", self._elimina_acord_index),
+                ("chordEditRequested", self._on_chord_edit_requested),
+                ("sectionMoved", self._on_section_moved),
+                ("sectionRenamed", self._on_section_renamed),
+                ("sectionDeleteRequested", self._elimina_seccio_index),
+                ("sectionEditRequested", self._on_section_edit_requested),
+            ]:
+                try:
+                    getattr(self.timeline, sig).disconnect(slot)
+                except (TypeError, RuntimeError):
+                    pass  # ja estava disconnectat o signal inexistent
         super().closeEvent(ev)
         if getattr(self, "_embedded", False):
             return

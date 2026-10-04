@@ -234,8 +234,11 @@ class Finestra(QMainWindow):
             w.setEnabled(fix)
         if hasattr(self, "visor_ref") and self.visor_ref is not None:
             self.visor_ref.tempo_fix = bool(fix)
+            self.visor_ref.bpm = self.bpm.value()
+            self.visor_ref.bpb = self.bpb.value()
             self.visor_ref._actualitza_temps()
-            self.visor_ref.corba.setLabel("bottom", "compàs" if fix else "segons")
+            self.visor_ref.timeline.set_tempo_mode(
+                bool(fix), self.bpm.value(), self.bpb.value())
 
     def _mostra_placeholder_visor(self):
         cont = QWidget()

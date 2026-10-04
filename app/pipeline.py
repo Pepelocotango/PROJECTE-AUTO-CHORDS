@@ -18,6 +18,23 @@ VAMP_DIRS = [
 ]
 
 
+def safe_filename(name, fallback="X"):
+    """Retorna un nom segur per usar com a part d un filename.
+
+    - Substitueix separadors de path (/ i os.sep) per -
+    - Treu caracters de control (\0, \n, \r, \t)
+    - Retorna fallback si el resultat es buit
+    - Trunca a 64 caracters per evitar toxicitat
+    """
+    s = str(name).strip()
+    s = s.replace(os.sep, "-").replace("/", "-").replace("\\", "-")
+    s = s.replace("\0", "").replace("\n", "").replace("\r", "").replace("\t", "")
+    s = s.strip()
+    if not s:
+        s = fallback
+    return s[:64]
+
+
 def _vamp_env():
     env = dict(os.environ)
     env["VAMP_PATH"] = ":".join(VAMP_DIRS)
@@ -272,7 +289,7 @@ def fer_wavs_acords_lliures(csv_path, total_s, dest_dir, sr, log):
     for ini, fi, chord in segments_lliures(csv_path, total_s, log):
         frames = int(round((fi - ini) * sr))
         fn = (f"{ini:07.2f}s_{fi:07.2f}s_"
-              f"{chord.replace('/', '-')}.wav")
+              f"{safe_filename(chord, fallback='N')}.wav")
         with wave.open(os.path.join(dest_dir, fn), "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
@@ -313,7 +330,7 @@ def fer_wavs_acords(locators_txt, bpm, dest_dir, sr, log, bpb=4):
                     n += 1
                     log(f"capçalera N: {cap:.2f} temps")
                 primer = False
-            fn = f"{pos_.replace('.', '-')}_{chord.replace('/', '-')}.wav"
+            fn = f"{pos_.replace('.', '-')}_{safe_filename(chord, fallback='N')}.wav"
             escriu(fn, float(dur))
             n += 1
     log(f"wavs_acords: {n}")
@@ -409,7 +426,8 @@ def fer_wavs_estructura(abc_csv, dest_dir, sr, log):
     with open(abc_csv, encoding="utf-8") as f:
         for r in csv.DictReader(f):
             nm = (f"{r['compas_ini'].replace('.', '-')}_"
-                  f"{r['compas_fi'].replace('.', '-')}_{r['lletra']}")
+                  f"{r['compas_fi'].replace('.', '-')}_"
+                  f"{safe_filename(r['lletra'], fallback='X')}")
             frames = int(round(float(r["durada_s"]) * sr))
             with wave.open(os.path.join(dest_dir, nm + ".wav"), "wb") as w:
                 w.setnchannels(1)
