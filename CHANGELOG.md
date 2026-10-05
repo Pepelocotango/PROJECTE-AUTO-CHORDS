@@ -1,15 +1,39 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`).
+Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`, `v0.1.5-checkpoint`).
 
 ## [No publicat]
 
 ### Pendent de polir (visor)
 - Confusió visual entre clip **seleccionat** (vora groga) i **actiu**
   (fons més clar, segons el cursor).
-- Usabilitat: undo/redo, multi-selecció, duplicar/eliminar clips,
-  menú contextual, afegir clips amb click al buit.
+- Usabilitat: multi-selecció, duplicar/eliminar clips, menú contextual,
+  afegir clips amb click al buit.
+
+## [0.1.5] — 2026-10-05 (tag `v0.1.5-checkpoint`)
+
+### Afegit
+- **Desfer/refer (undo/redo)** d'edició: moviment, redimensionat i canvi
+  de nom, tant d'acords com d'estructures. Pila de **snapshots** del model
+  (`acords`/`seccions`). Dreceres **Ctrl+Z** (desfer) i
+  **Ctrl+Shift+Z** / **Ctrl+Y** (refer). Només en memòria de la sessió.
+- `docs/ESQUEMA_UI.md` — document de referència de la UI (noms de zones,
+  mides, interaccions).
+- `docs/ESQUEMA_UI.html` — réplica visual fidel de la GUI (HTML+CSS).
+- `docs/ESQUEMA_UI.svg` — versió vectorial de l'esquema.
+
+### Canviat
+- **Les wavs ja no es regeneren a cada edició.** `_desa_i_regenera()` i
+  `_regenera_abc_des_de_totes_les_seccions()` ara escriuen **NOMÉS el CSV**.
+  Les `wavs_acords/` i `wavs_estructura/` es generen **exclusivament** amb
+  `exporta()` («Finalitza i publica»), quan tot està revisat i editat.
+  Efecte: editar és **instantani** i l'undo/redo no toca mai les wavs.
+
+### Nota de disseny
+- Les wavs generades **no tenen cap paper** en la visualització ni l'edició:
+  l'ona i la reproducció fan servir el **WAV original**; l'edició treballa
+  sobre el **CSV**. Les wavs són el producte final d'exportació.
 
 ## [0.1.4] — 2026-10-05 (tag `v0.1.4-checkpoint`)
 

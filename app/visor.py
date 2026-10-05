@@ -3,6 +3,7 @@
 # Tot en català. Noves dependències aïllades: pyqtgraph + numpy<2 (Q9400).
 # Ús: .venv/bin/python app/visor.py tema.wav [--acords acords.csv] [--abc estructura_ABC.csv] [--bpm 138] [--bpb 4]
 import argparse
+import copy
 import atexit
 import csv
 import logging
@@ -145,6 +146,13 @@ class Visor(QMainWindow):
         # Dreceres de teclat: espai = play/pausa
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
         self._sc_play.activated.connect(self.play_stop)
+        # Drecerees de desfer/refer (undo/redo d'EDICIO; MAI toquen les wavs)
+        self._sc_undo = QShortcut(QKeySequence("Ctrl+Z"), self)
+        self._sc_undo.activated.connect(self.undo)
+        self._sc_redo = QShortcut(QKeySequence("Ctrl+Shift+Z"), self)
+        self._sc_redo.activated.connect(self.redo)
+        self._sc_redo2 = QShortcut(QKeySequence("Ctrl+Y"), self)
+        self._sc_redo2.activated.connect(self.redo)
 
         capa.addWidget(self.timeline, stretch=4)
 
@@ -257,6 +265,7 @@ class Visor(QMainWindow):
         self.log(f"ona: {len(a['pics'])} punts dibuixats | acords={len(self.acords)} "
                  f"seccions={len(self.seccions)}")
         self.log(f"player: {self.player} {' '.join(self.player_args)}")
+        self._undo_init()   # estat inicial = base per a la primera operacio
 
     def _carpeta_acords(self):
         base = os.path.splitext(os.path.basename(self.wav_path))[0]
@@ -420,15 +429,86 @@ class Visor(QMainWindow):
                  f"(csv + {nwavs} wavs_acords)")
 
     def _desa_i_regenera(self):
+        """Desa NOMÉS el CSV (l'edició és sobre text).
+
+        Les wavs són l'ÚLTIM pas: es generen explícitament amb `exporta()`
+        quan tot està revisat i editat. Mai a cada edició.
+        """
         sortida = self._carpeta_acords()
         os.makedirs(sortida, exist_ok=True)
         self.csv_acords = os.path.join(sortida, "acords.csv")
         pipeline.desa_acords_csv(self.csv_acords, self.acords)
-        self.log(f"desat {self.csv_acords}")
-        n = pipeline.regenera_wavs_acords(
-            self.csv_acords, sortida, self.bpm, self.bpb, self.offset,
-            self.audio["durada"], 44100, self.log, self.tempo_fix)
-        return n
+        self.log(f"desat CSV {self.csv_acords}")
+        return 0
+
+    # ---------- Undo/Redo: NOMÉS el model d'edició ----------
+    # Mai toca les wavs generades (aquestes són l'últim pas, via exporta()).
+    def _estat_edicio(self):
+        return (copy.deepcopy(list(self.acords)),
+                copy.deepcopy(list(self.seccions)))
+
+    def _undo_init(self):
+        if not hasattr(self, "_undo_stack"):
+            self._undo_stack = []
+            self._redo_stack = []
+            self._undo_base = self._estat_edicio()
+            self._undo_pending = None
+
+    def _undo_marca(self):
+        """Inici d'una operació d'edició: captura l'estat 'abans'."""
+        self._undo_init()
+        if self._undo_pending is None:
+            self._undo_pending = self._undo_base
+
+    def _undo_commit(self):
+        """Tanca l'operació d'edició i l'apila si hi ha hagut canvi."""
+        self._undo_init()
+        ara = self._estat_edicio()
+        if self._undo_pending is not None and ara != self._undo_pending:
+            self._undo_stack.append(self._undo_pending)
+            self._redo_stack.clear()
+            self.log(f"undo: apilada (desfer={len(self._undo_stack)} "
+                     f"refer={len(self._redo_stack)})")
+        self._undo_base = ara
+        self._undo_pending = None
+
+    def _aplica_estat(self, estat):
+        acords, seccions = estat
+        self.acords = copy.deepcopy(acords)
+        self.seccions = copy.deepcopy(seccions)
+        self.timeline.set_data(self.acords, self.seccions)
+        self._omple_llista_ac()
+        self._actualitza_llista_abc()
+        try:
+            self._desa_i_regenera()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"undo: no s'ha pogut desar el CSV: {e}")
+
+    def undo(self):
+        self._undo_init()
+        self._undo_commit()  # tanca qualsevol operacio oberta
+        if not self._undo_stack:
+            self.log("DESFER: res a desfer")
+            return
+        self._redo_stack.append(self._estat_edicio())
+        self._aplica_estat(self._undo_stack.pop())
+        self._undo_base = self._estat_edicio()
+        self._undo_pending = None
+        self.log(f"DESFER fet (desfer={len(self._undo_stack)} "
+                 f"refer={len(self._redo_stack)})")
+
+    def redo(self):
+        self._undo_init()
+        self._undo_commit()
+        if not self._redo_stack:
+            self.log("REFER: res a refer")
+            return
+        self._undo_stack.append(self._estat_edicio())
+        self._aplica_estat(self._redo_stack.pop())
+        self._undo_base = self._estat_edicio()
+        self._undo_pending = None
+        self.log(f"REFER fet (desfer={len(self._undo_stack)} "
+                 f"refer={len(self._redo_stack)})")
 
     def log(self, msg):
         print(f"[visor] {msg}", flush=True)
@@ -586,23 +666,26 @@ class Visor(QMainWindow):
         self._actualitza_llista_abc()
 
     def _on_chord_time_moved(self, idx, new_t):
-        # Només sincronitzem el model/llista; la regeneració va al release
+        # Només sincronitzem el model/llista; el desat va al release
+        self._undo_marca()
         self._sync_timeline_acords()
         self.log(f"acord {idx} → {new_t:.2f}s")
 
     def _on_chord_end_moved(self, idx, new_t):
+        self._undo_marca()
         self._sync_timeline_acords()
         self.log(f"final acord {idx} → {new_t:.2f}s")
 
     def _on_edit_finished(self):
-        """Fi d'un drag/resize → persistir (CSV + clips)."""
+        """Fi d'un drag/resize → tanca l'operació i desa el CSV."""
         self._sync_timeline_acords()
         self._sync_timeline_seccions()
+        self._undo_commit()
         try:
             self._desa_i_regenera()
             self._regenera_abc_des_de_totes_les_seccions("edició visual")
         except Exception as e:  # noqa: BLE001
-            self.log(f"regeneració ERROR: {e}")
+            self.log(f"desat ERROR: {e}")
 
     def _on_loop_changed(self, a, b):
         """Loop A/B seleccionat al regle del timeline."""
@@ -613,7 +696,9 @@ class Visor(QMainWindow):
         self.log(f"loop A={a:.2f}s B={b:.2f}s")
 
     def _on_chord_renamed(self, idx, new_name):
+        self._undo_marca()
         self._sync_timeline_acords()
+        self._undo_commit()
         try:
             self._desa_i_regenera()
             self.log(f"acord {idx} reanomenat: {new_name}")
@@ -656,6 +741,7 @@ class Visor(QMainWindow):
                                 f"No s'ha pogut eliminar:\n{e}")
 
     def _on_section_moved(self, idx, ini, fi):
+        self._undo_marca()
         self._sync_timeline_seccions()
         try:
             self._regenera_abc_des_de_totes_les_seccions(
@@ -664,7 +750,9 @@ class Visor(QMainWindow):
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
 
     def _on_section_renamed(self, idx, lletra, familia):
+        self._undo_marca()
         self._sync_timeline_seccions()
+        self._undo_commit()
         try:
             self._regenera_abc_des_de_totes_les_seccions(
                 f"secció {idx} reanomenada: {lletra}")
@@ -853,8 +941,7 @@ class Visor(QMainWindow):
         abc = os.path.join(sortida, "estructura_ABC.csv")
         pipeline.desa_abc_csv(abc, self.seccions, self.bpm, self.log,
                               lliure=not self.tempo_fix)
-        pipeline.regenera_wavs_estructura(abc, sortida, 44100, self.log)
-        self.log(f"ABC recalculat: {msg}")
+        self.log(f"ABC recalculat (només CSV): {msg}")
 
     def _edita_seccio(self, item):
         fila = self.llista_ab.row(item)

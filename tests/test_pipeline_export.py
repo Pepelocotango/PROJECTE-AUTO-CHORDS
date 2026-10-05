@@ -492,6 +492,113 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v.close()
 
 
+class UndoRedoTests(unittest.TestCase):
+    """Tests de desfer/refer (només edició; MAI toquen les wavs)."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _make_visor_with_data(self):
+        td = tempfile.mkdtemp()
+        wav_path = os.path.join(td, "tema.wav")
+        sortida = os.path.join(td, "tema_ACORDS")
+        os.makedirs(sortida)
+        with wave.open(wav_path, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)
+        with open(os.path.join(sortida, "acords.csv"), "w") as f:
+            f.write("0.0,C\n2.0,Am\n4.5,F\n7.0,G\n10.0,C\n")
+        with open(os.path.join(sortida, "estructura_ABC.csv"), "w") as f:
+            f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
+            f.write("0.0,5.0,5.0,A,A,1.1,5.1\n")
+            f.write("5.0,10.0,5.0,B,B,5.1,10.1\n")
+            f.write("10.0,20.0,10.0,C,C,10.1,20.1\n")
+        v = visor.Visor(wav_path,
+                        os.path.join(sortida, "acords.csv"),
+                        os.path.join(sortida, "estructura_ABC.csv"),
+                        bpm=120, bpb=4, tempo_fix=False)
+        return v, sortida
+
+    def _mou_acord(self, v, idx, nou_t):
+        v.timeline._on_chord_time_changed(idx, nou_t)
+        v.timeline._emit_edit_finished()
+
+    def test_undo_redo_chord_move(self):
+        v, _ = self._make_visor_with_data()
+        t_original = v.acords[1][0]
+        self._mou_acord(v, 1, 3.6)
+        self.assertAlmostEqual(v.acords[1][0], 3.6, places=4)
+        v.undo()
+        self.assertAlmostEqual(v.acords[1][0], t_original, places=4)
+        v.redo()
+        self.assertAlmostEqual(v.acords[1][0], 3.6, places=4)
+        v.close()
+
+    def test_undo_section_move(self):
+        v, _ = self._make_visor_with_data()
+        ini0 = v.seccions[1][0]
+        v.timeline._section_items[1]._drag_mode = 0
+        v.timeline._on_section_changed(1, 6.0, 10.0)
+        v.timeline._emit_edit_finished()
+        self.assertAlmostEqual(v.seccions[1][0], 6.0, places=4)
+        v.undo()
+        self.assertAlmostEqual(v.seccions[1][0], ini0, places=4)
+        v.close()
+
+    def test_undo_covers_rename(self):
+        v, _ = self._make_visor_with_data()
+        nom0 = v.acords[2][1]
+        # flux real: el timeline canvia el nom i emet chordRenamed
+        v.timeline._commit_rename("chord", 2, v.timeline._chord_items[2],
+                                  "Fmaj7")
+        self.assertEqual(v.acords[2][1], "Fmaj7")
+        v.undo()
+        self.assertEqual(v.acords[2][1], nom0)
+        v.redo()
+        self.assertEqual(v.acords[2][1], "Fmaj7")
+        v.close()
+
+    def test_undo_restores_timeline_items(self):
+        v, _ = self._make_visor_with_data()
+        t0 = v.acords[1][0]
+        self._mou_acord(v, 1, 3.6)
+        v.undo()
+        # el model I la UI (items del timeline) han de tornar
+        self.assertAlmostEqual(v.acords[1][0], t0, places=4)
+        self.assertAlmostEqual(v.timeline._chord_items[1].t, t0, places=4)
+        v.close()
+
+    def test_undo_does_not_generate_wavs(self):
+        """Les wavs són l'últim pas: editar/desfer NO n'ha de generar cap."""
+        v, sortida = self._make_visor_with_data()
+        self._mou_acord(v, 1, 3.6)
+        v.undo()
+        wavs = [f for f in os.listdir(sortida) if f.lower().endswith(".wav")]
+        self.assertEqual(wavs, [], f"no hauria de generar wavs, però hi ha: {wavs}")
+        # el CSV sí que s'ha d'actualitzar
+        self.assertTrue(os.path.isfile(os.path.join(sortida, "acords.csv")))
+        v.close()
+
+    def test_new_edit_clears_redo(self):
+        v, _ = self._make_visor_with_data()
+        self._mou_acord(v, 1, 3.6)
+        v.undo()
+        self._mou_acord(v, 2, 5.9)   # edició nova → esborra el refer
+        v.redo()                      # no ha de fer res
+        self.assertAlmostEqual(v.acords[1][0], v.acords[1][0], places=4)
+        self.assertFalse(v._redo_stack)
+        v.close()
+
+    def test_undo_empty_stack_is_safe(self):
+        v, _ = self._make_visor_with_data()
+        v.undo()   # no ha de petar
+        v.redo()
+        self.assertEqual(len(v.acords), 5)
+        v.close()
 
 
 if __name__ == "__main__":
