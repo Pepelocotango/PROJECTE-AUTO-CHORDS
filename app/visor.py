@@ -61,7 +61,7 @@ def llegeix_wav(ruta):
         pics[i] = np.abs(tram).max() / 32768.0 if len(tram) else 0.0
     temps = np.linspace(0, durada, N_BUCKETS)
     return {"sr": sr, "canals": ch, "durada": durada, "raw": raw,
-            "temps": temps, "pics": pics}
+            "mono": mono, "temps": temps, "pics": pics}
 
 
 def llegeix_acords(ruta):

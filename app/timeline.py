@@ -44,13 +44,25 @@ from PyQt5.QtWidgets import (
 # -----------------------------------------------------------------------------
 # Constants de layout i colors
 # -----------------------------------------------------------------------------
-RULER_H = 24            # alçada del grid superior
-WAVEFORM_H = 90         # alçada del carril d'ona
-CHORD_LANE_H = 56       # alçada del carril d'acords
-SECTION_LANE_H = 42     # alçada del carril d'estructura
+RULER_H = 26            # alçada del regle de temps (a dalt)
+WAVEFORM_H = 170        # alçada de la pista d'ona
 LEFT_PAD = 12           # marge intern a l'esquerra
 RIGHT_PAD = 12          # marge intern a la dreta
+# Els 2 carrils (estructura + acords) van SOBREPOSATS a l'ona, en
+# fraccions de WAVEFORM_H — estil DAW amb lanes semitransparents.
+LANE_H_FRAC = 0.32
+LANE_SEC_TOP_FRAC = 0.04
+LANE_ACC_TOP_FRAC = 0.46
+LANE_H = int(WAVEFORM_H * LANE_H_FRAC)
+LANE_SEC_TOP = RULER_H + WAVEFORM_H * LANE_SEC_TOP_FRAC
+LANE_ACC_TOP = RULER_H + WAVEFORM_H * LANE_ACC_TOP_FRAC
+TOTAL_H = RULER_H + WAVEFORM_H
 RULER_BG = "#10131a"
+# Colors de l'ona (BGRA — ordre de memòria de QImage.Format_RGB32)
+WF_BG = (0x1c, 0x15, 0x10)   # fons #10151c
+WF_ENV = (0xff, 0xc8, 0x7a)  # envolupant #7ac8ff (blau brillant)
+WF_MID = (0x50, 0x3e, 0x2c)  # línia central #2c3e50
+WF_GAIN = 1.7  # amplificació de visualització de l'ona
 WAVEFORM_BG = "#0f1218"
 LANE_BG_A = "#1a1d23"
 LANE_BG_B = "#15181d"
@@ -126,118 +138,118 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int) -> str:
 
 
 # -----------------------------------------------------------------------------
-# WaveformLayer — l'ona pintada com a QGraphicsPixmapItem (numpy → QImage)
+# WaveformLayer — l'ona pintada com a pixmap (estil Audacity/DAW)
 # -----------------------------------------------------------------------------
 class WaveformLayer(QGraphicsPixmapItem):
-    """L'ona pintada 1 cop. Es reposiciona en canviar pps/zoom."""
+    """L'ona amb envolupant plena (min/max per columna de píxel).
 
-    def __init__(self, pics: np.ndarray, height: int, pps: float,
-                 x_offset: float, parent: Optional[QGraphicsItem] = None):
+    Es recalcula per al tram visible cada cop que canvia el zoom/pan →
+    sempre nítida, com fa Audacity. Colors en ordre BGRA (Format_RGB32).
+    """
+
+    def __init__(self, samples, sr, height, pps, x_offset, top,
+                 parent=None):
         super().__init__(parent)
-        self._pics = np.asarray(pics, dtype=np.float32)
+        self._samples = np.ascontiguousarray(samples, dtype=np.int16)
+        self._sr = int(sr) or 1
         self._height = int(height)
         self._pps = float(pps)
         self._x_offset = float(x_offset)
+        self._top = float(top)
         self.setZValue(-10)
-        self._render()
+        self.setPos(self._x_offset, self._top)
+        self._render(0.0, self.durada())
 
-    def update_geometry(self, pps: float, x_offset: float,
-                        left: float, right: float) -> None:
-        """Canvia zoom/pan: regenera el pixmap només del tram visible."""
+    def durada(self):
+        return len(self._samples) / float(self._sr)
+
+    def update_geometry(self, pps, x_offset, left, right):
         self._pps = float(pps)
         self._x_offset = float(x_offset)
+        self.setPos(self._x_offset, self._top)
         self._render(left, right)
 
-    def _render(self, left: Optional[float] = None,
-                right: Optional[float] = None) -> None:
-        """Pinta l'ona en un QPixmap de mida adequada al tram visible."""
-        h = max(1, self._height)
-        pics = self._pics
-        n = len(pics)
+    def _render(self, left=None, right=None):
+        h = max(2, self._height)
+        n = len(self._samples)
         if n == 0:
             self.setPixmap(QPixmap(1, h))
             return
-        durada = n / self._pps if self._pps > 0 else 0.0
+        durada = self.durada()
         if left is None:
             left = 0.0
         if right is None:
             right = durada
-        i0 = max(0, int(left * self._pps))
-        i1 = min(n, int(right * self._pps) + 2)
-        if i1 <= i0:
-            i1 = min(n, i0 + 1)
-        ample = max(1, i1 - i0)
-        seg = pics[i0:i1]
-        # Si el rang visible és buit (zoom massa endavant), retornem
-        # un pixmap buit en lloc de petar amb IndexError.
-        if len(seg) == 0:
-            img = QImage(ample, h, QImage.Format_RGB32)
-            img.fill(QColor(WAVEFORM_BG))
-            self.setPixmap(QPixmap.fromImage(img))
-            return
-        # Generació del QImage escala 1:1 amb el zoom actual
-        img = QImage(ample, h, QImage.Format_RGB32)
-        img.fill(QColor(WAVEFORM_BG))
-        # Vectoritzat: cada pic s'escampa a una columna centrada
-        mig = h // 2
-        escala = (h - 4) / 2.0
-        arr = np.empty((h, ample), dtype=np.uint8)
-        # Per defecte fons WAVEFORM_BG, dibuixem la línia de centre i l'envolupant
-        arr[:] = 0x18
-        # dibuix midline
-        arr[mig, :] = 0x22
-        # envolupant
-        amp = np.clip(seg * escala, 0, escala).astype(np.int32)
-        top = mig - amp
-        bot = mig + amp
-        for c in range(len(top)):
-            t = int(top[c]); b = int(bot[c])
-            if 0 <= t < h:
-                arr[t, c] = 0xF8
-            if 0 <= b < h:
-                arr[b, c] = 0xF8
-        # Converteix a QImage (Format_RGB32 és BGRA a Qt: ho pintem a mà)
-        # Construcció ràpida amb frombytes
-        rgb = np.empty((h, ample, 3), dtype=np.uint8)
-        rgb[..., 0] = 0x18   # B
-        rgb[..., 1] = 0x12   # G
-        rgb[..., 2] = 0x0f   # R
-        # aplica envolupant blau clar (WAVEFORM_COLOR = #8ab4f8)
-        for c in range(len(top)):
-            t = int(top[c]); b = int(bot[c])
-            if 0 <= t < h:
-                rgb[t, c] = [0xf8, 0xb4, 0x8a]
-            if 0 <= b < h:
-                rgb[b, c] = [0xf8, 0xb4, 0x8a]
-            rgb[mig, c] = [0x30, 0x30, 0x30]
-        img_bytes = rgb.tobytes()
-        # Format_RGB32 → stride = ample * 4; reinterpretarem l'ordre BGRA
-        # Construcció directa per bytes (Qt rep bytes en ordre BGRA).
-        # Reordenem canals a BGRA.
-        bgra = np.empty((h, ample, 4), dtype=np.uint8)
-        bgra[..., 0] = rgb[..., 0]  # B
-        bgra[..., 1] = rgb[..., 1]  # G
-        bgra[..., 2] = rgb[..., 2]  # R
-        bgra[..., 3] = 255
-        img = QImage(bgra.data, ample, h, ample * 4,
-                     QImage.Format_RGB32).copy()
-        pix = QPixmap.fromImage(img)
-        self.setPixmap(pix)
-        # Posiciona'l al scene
-        x = self._x_offset + i0 / self._pps
-        self.setPos(x, self.scenePos().y() if self.scene() else 0)
+        left = max(0.0, min(float(left), durada))
+        right = max(left + 1e-6, min(float(right), durada))
+        s0 = max(0, min(int(left * self._sr), n - 1))
+        s1 = max(s0 + 1, min(int(right * self._sr) + 1, n))
+        n_cols = max(1, int(round((right - left) * self._pps)))
+        n_cols = max(1, min(n_cols, s1 - s0))
+        starts = np.linspace(s0, s1 - 1, n_cols).astype(np.int64)
+        starts = np.maximum.accumulate(starts)
+        mins = np.minimum.reduceat(self._samples, starts).astype(np.float32)
+        maxs = np.maximum.reduceat(self._samples, starts).astype(np.float32)
+        mins /= 32768.0
+        maxs /= 32768.0
+        # Gain de visualització (com fan els DAW): la majoria d'àudio no
+        # arriba a ±1.0 i queda prim. El multipliquem i clampejem a ±1.
+        mins = np.clip(mins * WF_GAIN, -1.0, 1.0)
+        maxs = np.clip(maxs * WF_GAIN, -1.0, 1.0)
+        img = np.empty((h, n_cols, 4), dtype=np.uint8)
+        img[..., 0] = WF_BG[0]
+        img[..., 1] = WF_BG[1]
+        img[..., 2] = WF_BG[2]
+        img[..., 3] = 255
+        mig = (h - 1) / 2.0
+        amp = (h / 2.0) - 2.0
+        y_top = np.clip(np.round(mig - maxs * amp).astype(np.int32), 0, h - 1)
+        y_bot = np.clip(np.round(mig - mins * amp).astype(np.int32), 0, h - 1)
+        rows = np.arange(h, dtype=np.int32)[:, None]
+        mask = (rows >= y_top[None, :]) & (rows <= y_bot[None, :])
+        for ch_i in range(3):
+            plane = img[..., ch_i]
+            plane[mask] = WF_ENV[ch_i]
+        mig_i = int(round(mig))
+        if 0 <= mig_i < h:
+            img[mig_i, :, 0] = WF_MID[0]
+            img[mig_i, :, 1] = WF_MID[1]
+            img[mig_i, :, 2] = WF_MID[2]
+        qimg = QImage(img.data, n_cols, h, n_cols * 4,
+                      QImage.Format_RGB32).copy()
+        self.setPixmap(QPixmap.fromImage(qimg))
+        self.setPos(self._x_offset + left * self._pps, self._top)
 
 
 # -----------------------------------------------------------------------------
-# RulerLayer — grid de temps (BPM/compàs o segons)
+# grid_levels — nivells de la graella segons zoom i mode (temps/BPM)
 # -----------------------------------------------------------------------------
-class RulerLayer(QGraphicsItem):
-    """El grid de temps pintat a sobre de l'ona. Es repinta en canviar zoom."""
+def grid_levels(tempo_fix, bpm, bpb, span):
+    """Retorna [(step_s, color, width), ...] de menys a més important."""
+    if tempo_fix:
+        beat = 60.0 / max(float(bpm), 1e-9)
+        measure = beat * max(int(bpb), 1)
+        levels = [(measure, "#55677f", 1)]
+        if span <= measure * 16:
+            levels.insert(0, (beat, "#3d4c60", 1))
+        if span <= beat * 8:
+            levels.insert(0, (beat / 2.0, "#303a48", 1))
+        return levels
+    step = _best_step_free(span)
+    levels = [(step, "#55677f", 1)]
+    if span <= 30.0:
+        levels.insert(0, (step / 5.0, "#303a48", 1))
+    return levels
 
-    def __init__(self, width: float, height: int, pps: float,
-                 x_offset: float, view_left: float, view_right: float,
-                 tempo_fix: bool, bpm: float, bpb: int,
-                 parent: Optional[QGraphicsItem] = None):
+
+# -----------------------------------------------------------------------------
+# GridLayer — línies verticals de la graella sobre l'ona (estil DAW)
+# -----------------------------------------------------------------------------
+class GridLayer(QGraphicsItem):
+    """Línies verticals de compàs/beat/subdivisió sobre l'ona."""
+
+    def __init__(self, height, pps, x_offset, view_left, view_right,
+                 tempo_fix, bpm, bpb, top, parent=None):
         super().__init__(parent)
         self._height = int(height)
         self._pps = float(pps)
@@ -247,62 +259,131 @@ class RulerLayer(QGraphicsItem):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
-        self.setZValue(-5)
-        self.setX(self._x_offset)
+        self._top = float(top)
+        self.setZValue(-6)
+        self.setPos(self._x_offset, self._top)
 
-    def boundingRect(self) -> QRectF:
+    def boundingRect(self):
         return QRectF(0, 0, max(1.0, (self._view_right - self._view_left) *
                                 self._pps), self._height)
 
-    def update_geometry(self, pps: float, x_offset: float,
-                       view_left: float, view_right: float) -> None:
+    def update_geometry(self, pps, x_offset, view_left, view_right):
         self._pps = float(pps)
         self._x_offset = float(x_offset)
         self._view_left = float(view_left)
         self._view_right = float(view_right)
-        self.setX(self._x_offset)
+        self.setPos(self._x_offset, self._top)
         self.prepareGeometryChange()
         self.update()
 
-    def update_mode(self, tempo_fix: bool, bpm: float, bpb: int) -> None:
+    def update_mode(self, tempo_fix, bpm, bpb):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self.update()
 
-    def paint(self, painter: QPainter, option, widget=None) -> None:
+    def paint(self, painter, option, widget=None):
         p = painter
         p.setRenderHint(QPainter.Antialiasing, False)
-        p.fillRect(self.boundingRect(), QColor(RULER_BG))
-        view_w = self.boundingRect().width()
-        # peu de grid: línies verticals + etiqueta
         span = max(self._view_right - self._view_left, 1e-6)
-        step = (_best_step_tempo(span, self._bpm, self._bpb) if self._tempo_fix
-                else _best_step_free(span))
-        t = math.floor(self._view_left / step) * step
-        if t < 0:
-            t = 0.0
-        minor = step / 2.0 if self._tempo_fix else step
+        for step, color, width in grid_levels(self._tempo_fix, self._bpm,
+                                              self._bpb, span):
+            if step <= 1e-9:
+                continue
+            p.setPen(QPen(QColor(color), width))
+            t = math.floor(self._view_left / step) * step
+            if t < 0:
+                t = 0.0
+            while t <= self._view_right + 1e-9:
+                x = (t - self._view_left) * self._pps
+                p.drawLine(QPointF(x, 0), QPointF(x, self._height))
+                t += step
+
+
+# -----------------------------------------------------------------------------
+# RulerLayer — el regle de temps (a dalt, estil DAW)
+# -----------------------------------------------------------------------------
+class RulerLayer(QGraphicsItem):
+    """El regle de temps: ticks i etiquetes (compàs.beat o segons)."""
+
+    def __init__(self, width, height, pps, x_offset, view_left, view_right,
+                 tempo_fix, bpm, bpb, top=0, parent=None):
+        super().__init__(parent)
+        self._height = int(height)
+        self._pps = float(pps)
+        self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
+        self._view_right = float(view_right)
+        self._tempo_fix = bool(tempo_fix)
+        self._bpm = float(bpm)
+        self._bpb = int(bpb)
+        self._top = float(top)
+        self.setZValue(-4)
+        self.setPos(self._x_offset, self._top)
+
+    def boundingRect(self):
+        return QRectF(0, 0, max(1.0, (self._view_right - self._view_left) *
+                                self._pps), self._height)
+
+    def update_geometry(self, pps, x_offset, view_left, view_right):
+        self._pps = float(pps)
+        self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
+        self._view_right = float(view_right)
+        self.setPos(self._x_offset, self._top)
+        self.prepareGeometryChange()
+        self.update()
+
+    def update_mode(self, tempo_fix, bpm, bpb):
+        self._tempo_fix = bool(tempo_fix)
+        self._bpm = float(bpm)
+        self._bpb = int(bpb)
+        self.update()
+
+    def paint(self, painter, option, widget=None):
+        p = painter
+        p.setRenderHint(QPainter.Antialiasing, False)
+        rect = self.boundingRect()
+        p.fillRect(rect, QColor(RULER_BG))
+        p.setPen(QPen(QColor("#2f3640"), 1))
+        p.drawLine(QPointF(0, self._height - 1),
+                   QPointF(rect.width(), self._height - 1))
+        span = max(self._view_right - self._view_left, 1e-6)
+        levels = grid_levels(self._tempo_fix, self._bpm, self._bpb, span)
+        # ticks dels nivells secundaris
+        for sub, subcolor, _w in levels[:-1]:
+            if sub <= 1e-9:
+                continue
+            p.setPen(QPen(QColor(subcolor), 1))
+            t = math.floor(self._view_left / sub) * sub
+            if t < 0:
+                t = 0.0
+            while t <= self._view_right + 1e-9:
+                x = (t - self._view_left) * self._pps
+                p.drawLine(QPointF(x, self._height - 4),
+                           QPointF(x, self._height - 1))
+                t += sub
+        # ticks principals + etiquetes
+        step, color, _w = levels[-1]
         font = QFont("Sans Serif", 8)
         p.setFont(font)
         fm = QFontMetricsF(font)
-        # etiqueta i línies
-        last_label_x = -100
-        while t <= self._view_right + step:
+        t = math.floor(self._view_left / step) * step
+        if t < 0:
+            t = 0.0
+        last_label_x = -1e9
+        while t <= self._view_right + 1e-9:
             x = (t - self._view_left) * self._pps
-            is_major = abs((t / step) - round(t / step)) < 1e-6
-            p.setPen(QPen(QColor("#3a4655" if is_major else "#2a2f37"), 1))
-            p.drawLine(QPointF(x, self._height - 6 if is_major else
-                               self._height - 3),
-                       QPointF(x, self._height))
-            if is_major:
-                lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb)
-                wlab = fm.width(lab)
-                if x - wlab / 2 > last_label_x:
-                    p.setPen(QPen(QColor(RULER_TEXT), 1))
-                    p.drawText(QPointF(x - wlab / 2, 12), lab)
-                    last_label_x = x + wlab / 2
-            t += minor if is_major else (step - minor)
+            p.setPen(QPen(QColor(color), 1))
+            p.drawLine(QPointF(x, self._height - 8),
+                       QPointF(x, self._height - 1))
+            lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb)
+            wlab = fm.width(lab)
+            if x - wlab / 2 > last_label_x:
+                p.setPen(QPen(QColor(RULER_TEXT), 1))
+                p.drawText(QPointF(x - wlab / 2, self._height - 11), lab)
+                last_label_x = x + wlab / 2
+            t += step
 
 
 # -----------------------------------------------------------------------------
@@ -441,6 +522,7 @@ class ChordItem(QGraphicsObject):
         y = self._lane_y + 4
         h = self._lane_h - 8
         fill = QColor(CHORD_ACTIVE_FILL if self._active else CHORD_FILL)
+        fill.setAlpha(240 if self._active else 170)  # semitransparent
         border = QPen(QColor(SELECTION_COLOR if self._selected
                              else CHORD_BORDER), 2 if self._selected else 1)
         painter.setBrush(QBrush(fill))
@@ -633,6 +715,7 @@ class SectionItem(QGraphicsObject):
         h = self._lane_h - 8
         fills = [QColor(c) for c in SECTION_FILLS]
         fill = fills[hash(self.lletra) % len(fills)]
+        fill.setAlpha(180)  # semitransparent (es veu l'ona a sota)
         if self._active:
             fill = fill.lighter(140)
         border = QPen(QColor(SELECTION_COLOR if self._selected
@@ -835,36 +918,39 @@ class TimelineView(QGraphicsView):
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.setMouseTracking(True)
 
-        # fons dels carrils
-        self._bg_waveform = LaneBackground(0, 0, 1, WAVEFORM_H,
-                                          WAVEFORM_BG, parent=None)
-        self._bg_chord = LaneBackground(0, WAVEFORM_H + RULER_H, 1,
-                                        CHORD_LANE_H, LANE_BG_A, parent=None)
-        self._bg_section = LaneBackground(0, WAVEFORM_H + RULER_H +
-                                          CHORD_LANE_H, 1, SECTION_LANE_H,
+        # fons subtils dels 2 carrils (sobreposats a l'ona)
+        self._bg_chord = LaneBackground(0, LANE_ACC_TOP, 1, LANE_H,
+                                        LANE_BG_A, parent=None)
+        self._bg_chord.setOpacity(0.18)
+        self._bg_section = LaneBackground(0, LANE_SEC_TOP, 1, LANE_H,
                                           LANE_BG_B, parent=None)
-        for bg in (self._bg_waveform, self._bg_chord, self._bg_section):
+        self._bg_section.setOpacity(0.18)
+        for bg in (self._bg_chord, self._bg_section):
             self._scene.addItem(bg)
 
-        # ona
-        pics = audio.get("pics")
-        if pics is None or len(pics) == 0:
-            pics = np.zeros(64, dtype=np.float32)
-        self._waveform = WaveformLayer(
-            pics, WAVEFORM_H, self._pps, self._x_offset)
-        self._waveform.setPos(self._x_offset, 0)
+        # ona (envolupant plena) — a sota de tot
+        samples = audio.get("mono")
+        if samples is None or len(samples) == 0:
+            samples = np.zeros(1024, dtype=np.int16)
+        sr = int(audio.get("sr", 44100))
+        self._waveform = WaveformLayer(samples, sr, WAVEFORM_H, self._pps,
+                                       self._x_offset, RULER_H)
         self._scene.addItem(self._waveform)
 
-        # ruler
-        self._ruler = RulerLayer(
-            1, RULER_H, self._pps, self._x_offset, self._view_left,
-            self._view_right, self._tempo_fix, self._bpm, self._bpb)
-        self._ruler.setPos(self._x_offset, WAVEFORM_H)
+        # graella (línies verticals sobre l'ona)
+        self._grid = GridLayer(WAVEFORM_H, self._pps, self._x_offset,
+                               self._view_left, self._view_right,
+                               self._tempo_fix, self._bpm, self._bpb, RULER_H)
+        self._scene.addItem(self._grid)
+
+        # regle de temps (a dalt)
+        self._ruler = RulerLayer(1, RULER_H, self._pps, self._x_offset,
+                                 self._view_left, self._view_right,
+                                 self._tempo_fix, self._bpm, self._bpb, top=0)
         self._scene.addItem(self._ruler)
 
         # cursor
-        self._cursor = CursorLine(0, WAVEFORM_H + RULER_H + CHORD_LANE_H +
-                                  SECTION_LANE_H - 4)
+        self._cursor = CursorLine(0, TOTAL_H - 2)
         self._scene.addItem(self._cursor)
 
         # items inicials
@@ -872,7 +958,7 @@ class TimelineView(QGraphicsView):
         self._rebuild_section_items()
 
         # mida inicial de l'escena (es força des de resizeEvent)
-        self._total_h = WAVEFORM_H + RULER_H + CHORD_LANE_H + SECTION_LANE_H
+        self._total_h = TOTAL_H
         self._scene.setSceneRect(0, 0, 1, self._total_h)
         self.setMinimumHeight(self._total_h + 4)
 
@@ -890,6 +976,7 @@ class TimelineView(QGraphicsView):
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self._ruler.update_mode(self._tempo_fix, self._bpm, self._bpb)
+        self._grid.update_mode(self._tempo_fix, self._bpm, self._bpb)
         self.update()
 
     def set_position(self, t: float, emit: bool = True) -> None:
@@ -933,6 +1020,8 @@ class TimelineView(QGraphicsView):
         # actualitza items
         self._ruler.update_geometry(self._pps, self._x_offset,
                                     self._view_left, self._view_right)
+        self._grid.update_geometry(self._pps, self._x_offset,
+                                   self._view_left, self._view_right)
         self._waveform.update_geometry(self._pps, self._x_offset,
                                        self._view_left, self._view_right)
         for it in self._chord_items:
@@ -985,7 +1074,7 @@ class TimelineView(QGraphicsView):
             next_t = self._acords[i + 1][0] if i + 1 < n else self._durada
             item = ChordItem(i, float(t), str(name), float(next_t),
                              self._pps, self._x_offset,
-                             WAVEFORM_H + RULER_H, CHORD_LANE_H)
+                             LANE_ACC_TOP, LANE_H)
             item.timeChanged.connect(
                 lambda nt, idx=i: self._on_chord_time_changed(idx, nt))
             item.endTimeChanged.connect(
@@ -1006,8 +1095,7 @@ class TimelineView(QGraphicsView):
         for i, (ini, fi, lletra, familia) in enumerate(self._seccions):
             item = SectionItem(i, float(ini), float(fi), str(lletra),
                                str(familia), self._pps, self._x_offset,
-                               WAVEFORM_H + RULER_H + CHORD_LANE_H,
-                               SECTION_LANE_H)
+                               LANE_SEC_TOP, LANE_H)
             item.timeChanged.connect(
                 lambda ni, nf, idx=i: self._on_section_changed(idx, ni, nf))
             item.editRequested.connect(
