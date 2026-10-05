@@ -11,7 +11,7 @@ import traceback
 from PyQt5.QtCore import QObject, QThread, Qt, QUrl, pyqtSignal
 from PyQt5.QtGui import QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
-    QApplication, QCheckBox, QFileDialog, QDoubleSpinBox, QDockWidget,
+    QAction, QApplication, QCheckBox, QFileDialog, QDoubleSpinBox, QDockWidget,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
     QMessageBox, QProgressBar, QPushButton, QShortcut, QSpinBox, QTextEdit,
     QVBoxLayout, QWidget,
@@ -26,6 +26,20 @@ import theme  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
 
 DEFAULT_LOG_PATH = os.path.join(PROJECT_ROOT, "auto_chords.log")
+
+
+def _instal·la_captura_excepcions():
+    """Registra al log qualsevol excepcio no gestionada (evita crashes muts)."""
+    import traceback
+    logger = logging.getLogger("auto_chords")
+
+    def _hook(tipus, valor, tb):
+        if issubclass(tipus, KeyboardInterrupt):
+            sys.__excepthook__(tipus, valor, tb)
+            return
+        logger.error("EXCEPCIO NO GESTIONADA:\n%s",
+                     "".join(traceback.format_exception(tipus, valor, tb)))
+    sys.excepthook = _hook
 
 
 def setup_logging(log_path=None):
@@ -48,6 +62,7 @@ def setup_logging(log_path=None):
     stream_handler = logging.StreamHandler(sys.stderr)
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
+    _instal·la_captura_excepcions()
 
     logger.info("Auto Chords startup | log=%s", log_file)
     return logger
@@ -224,6 +239,7 @@ class Finestra(QMainWindow):
         # visor està incrustat i el seu propi QShortcut no s'activaria).
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
         self._sc_play.activated.connect(self._toggle_play)
+        self._crea_menus()
         for p in (pipeline.SONIC, pipeline.ACORDS_PY,
                   *pipeline.VAMP_DIRS):
             if not os.path.exists(p):
@@ -234,6 +250,116 @@ class Finestra(QMainWindow):
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
             vr.play_stop()
+
+    # ---------------- BARRA DE MENUS + PROXIES CAP AL VISOR ----------------
+    def _act(self, menu, text, shortcut, slot, checkable=False):
+        a = QAction(text, self)
+        if shortcut:
+            a.setShortcut(QKeySequence(shortcut))
+        a.setCheckable(checkable)
+        a.triggered.connect(slot)
+        menu.addAction(a)
+        return a
+
+    def _crea_menus(self):
+        mb = self.menuBar()
+        # --- Fitxer ---
+        m = mb.addMenu("&Fitxer")
+        self._act(m, "Obre WAV…", "Ctrl+O", self.tria_wav)
+        m.addSeparator()
+        self._act(m, "Finalitza i publica", "", self.exporta)
+        self._act(m, "Obre la carpeta de sortida", "", self.obre_carpeta)
+        m.addSeparator()
+        self._act(m, "Surt", "Ctrl+Q", self.close)
+        # --- Edita ---
+        m = mb.addMenu("&Edita")
+        self._act(m, "Desfer", "Ctrl+Z", self._undo_visor)
+        self._act(m, "Refer", "Ctrl+Y", self._redo_visor)
+        self._act(m, "Refer (alternatiu)", "Ctrl+Shift+Z", self._redo_visor)
+        m.addSeparator()
+        self._act(m, "Paràmetres…", "", self._focus_parametres)
+        # --- Selecciona ---
+        m = mb.addMenu("&Selecciona")
+        self._act(m, "Marca inici de loop (A)", "", self._marca_A_visor)
+        self._act(m, "Marca fi de loop (B)", "", self._marca_B_visor)
+        self._act(m, "Activa/desactiva loop", "", self._loop_visor)
+        # --- Visualitza ---
+        m = mb.addMenu("&Visualitza")
+        self._act(m, "Zoom +", "Ctrl++", lambda: self._zoom_visor(0.5))
+        self._act(m, "Zoom −", "Ctrl+-", lambda: self._zoom_visor(2.0))
+        self._act(m, "Zoom total", "Ctrl+0", self._zoom_tot_visor)
+        m.addSeparator()
+        self.visor_dock.toggleViewAction().setText("Mostra el visor")
+        m.addAction(self.visor_dock.toggleViewAction())
+        # --- Analitza ---
+        m = mb.addMenu("&Analitza")
+        self._act(m, "Processa el WAV", "F5", self.executa)
+        # --- Ajuda ---
+        m = mb.addMenu("A&juda")
+        self._act(m, "Dreceres de teclat", "", self._mostra_dreceres)
+        self._act(m, "Quant a Auto Chords", "", self._quant_a)
+
+    def _undo_visor(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.undo()
+        else:
+            self.registra("Edita: no hi ha visor carregat")
+
+    def _redo_visor(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.redo()
+        else:
+            self.registra("Edita: no hi ha visor carregat")
+
+    def _zoom_visor(self, factor):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.zoom(factor)
+
+    def _zoom_tot_visor(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.zoom_tot()
+
+    def _marca_A_visor(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.marca_A()
+
+    def _marca_B_visor(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.marca_B()
+
+    def _loop_visor(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.commuta_loop()
+
+    def _focus_parametres(self):
+        self.bpm.setFocus()
+
+    def _mostra_dreceres(self):
+        QMessageBox.information(self, "Dreceres de teclat",
+            "<b>Reproducció</b><br>"
+            "Espai — play / pausa<br><br>"
+            "<b>Edició</b><br>"
+            "Ctrl+Z — desfer<br>"
+            "Ctrl+Y / Ctrl+Shift+Z — refer<br><br>"
+            "<b>Visor</b><br>"
+            "Roda del ratolí — zoom<br>"
+            "Botó dret arrossegant — desplaçar (pan)<br>"
+            "Arrossega sobre el regle — loop A/B<br>"
+            "Clic a un clip — posa el cursor al seu inici")
+
+    def _quant_a(self):
+        QMessageBox.about(self, "Quant a Auto Chords",
+            "<b>Auto Chords</b><br>"
+            "wav → acords + estructura<br><br>"
+            "Visor DAW-like (PyQt5).<br>"
+            "Motor: chordino + segmentino (vamp).")
 
     def registra(self, t):
         self.logger.info("UI: %s", t)

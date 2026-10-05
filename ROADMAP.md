@@ -191,12 +191,14 @@ sigui un plaer** i no una fricció.
 ## Prioritat de millores restants
 
 ### Alta
+- **barra de menús**: completar les accions pendents i els estats
+  dinàmics (vegeu §10-F)
 - confirmacions d’export més guiades i logs de resultat més rics
 - ajust final del layout i etiquetatge per a usuaris no tècnics
 - packaging més net i docs d’ús final
 
 ### Mitjana
-- historial d’edicions / desfer
+- ~~historial d’edicions / desfer~~ ✅ **(fet v0.1.5: undo/redo + menú Edita)**
 - opcions de preset de tempo i export
 - validacions visuals addicionals de l’ABC
 
@@ -369,6 +371,51 @@ explorar però **no es prioritzaran** mentre la solució actual funcioni:
   per revisar cançons des del mòbil).
 - 🧪 **Mode “preview ràpid”** que reprodueix un tros d’acord específic
   sense haver de navegar a la posició.
+
+### F) Barra de menús pròpia *(en construcció — 2026-10-05)*
+
+**Context.** La idea és que l’app tingui una **barra de menús estàndard** a
+dalt (com qualsevol aplicació), perquè totes les funcions siguin
+**descobertes** en comptes de viure amagades en botons. També resol el bug
+de les dreceres: un `QShortcut` dins el **visor incrustat** no s’activa, així
+que les dreceres han de viure com a `QAction` de la **finestra principal**.
+
+**✅ Fet (bàsic) — 2026-10-05** *(pendent de commit)*
+
+| Menú | Accions operatives |
+|---|---|
+| Fitxer | Obre WAV… `Ctrl+O` · Finalitza i publica · Obre la carpeta de sortida · Surt `Ctrl+Q` |
+| Edita | **Desfer `Ctrl+Z`** · **Refer `Ctrl+Y`** · Refer alt. `Ctrl+Shift+Z` · Paràmetres… |
+| Selecciona | Marca inici de loop (A) · Marca fi de loop (B) · Activa/desactiva loop |
+| Visualitza | Zoom + `Ctrl++` · Zoom − `Ctrl+-` · Zoom total `Ctrl+0` · Mostra el visor |
+| Analitza | Processa el WAV `F5` |
+| Ajuda | Dreceres de teclat · Quant a Auto Chords |
+
+> 🔧 **Fix inclòs**: undo/redo passa de `QShortcut` al visor → `QAction` de
+> la finestra principal (evita l’ambigüitat de dreceres i funciona
+> incrustat).
+
+**⏳ PER FER** — accions encara pendents d’implementar (anrem a poc a poc):
+
+- **Fitxer**: Desar `Ctrl+S` · Desar com… · Recent files · Nou projecte.
+- **Edita**: Afegeix acord… · Afegeix secció… · Elimina element seleccionat ·
+  Reanomena · Duplica · Copia/enganxa · 🔍 Cerca i reemplaça d’acords
+  (vegeu §10-A).
+- **Selecciona**: Selecciona tot `Ctrl+A` · Tots els acords · Totes les
+  seccions · Inverteix selecció · Neteja loop.
+- **Visualitza**: toggles ☑ **Mostra regle** · ☑ **Mostra graella** ·
+  ☑ **Mostra ona** (mostrar/amagar capes del timeline) · 🎨 presets de
+  colors (vegeu §3 i §10-B).
+- **Analitza**: Regenera wavs (exporta només les wavs) · sensibilitat i
+  llindars de Chordino/Segmentino (vegeu §2).
+- **Ajuda**: obrir l’esquema de la UI (`docs/ESQUEMA_UI.html`) des del menú.
+- **Barra d’eines (toolbar)** opcional, per duplicar les accions freqüents.
+- **Estats dinàmics**: les accions haurien de **desactivar-se** quan no
+  escauen (p. ex. Desfer/Refer si la pila és buida; Exporta sense WAV;
+  Zoom sense visor).
+- **Integritat**: qualsevol acció nova ha de respectar les invariantes
+  (§Notes d’implementació): una sola font de veritat al backend i, si
+  toca les wavs, fer-ho **només** via `exporta()`.
 
 ### Notes sobre la implementació
 

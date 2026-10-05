@@ -296,8 +296,8 @@ class GridLayer(QGraphicsItem):
         self._view_right = float(view_right)
         # Mateix raonament que el regle: coords relatives a view_left →
         # cal desplaçar la posició perquè el grid caigui al lloc absolut.
-        self.setPos(self._x_offset, self._top)
         self.prepareGeometryChange()
+        self.setPos(self._x_offset, self._top)
         self.update()
 
     def update_mode(self, tempo_fix, bpm, bpb):
@@ -357,8 +357,8 @@ class RulerLayer(QGraphicsItem):
         # IMPORTANT: el regle pinta en coords relatives a view_left, per tant
         # la seva posició ha de ser _x_offset + view_left*pps perquè les
         # etiquetes caiguin al mateix x absolut que els clips/ona.
-        self.setPos(self._x_offset, self._top)
         self.prepareGeometryChange()
+        self.setPos(self._x_offset, self._top)
         self.update()
 
     def update_mode(self, tempo_fix, bpm, bpb):
@@ -481,6 +481,7 @@ class ChordItem(QGraphicsObject):
     deleteRequested = pyqtSignal()
     editRequested = pyqtSignal()
     clicked = pyqtSignal()  # click sense drag → seek
+    dragStarted = pyqtSignal()   # INICI de gest (mouse press sobre el clip)
     dragFinished = pyqtSignal()  # fi de drag (moure/redimensionar)
 
     def __init__(self, idx: int, t: float, name: str, next_t: float,
@@ -510,20 +511,20 @@ class ChordItem(QGraphicsObject):
     # -- mètodes de geometria -------------------------------------------------
     def set_pps(self, pps: float, x_offset: float,
                 view_left: float = 0.0) -> None:
+        self.prepareGeometryChange()
         self._pps = float(pps)
         self._x_offset = float(x_offset)
         self._view_left = float(view_left)
-        self.prepareGeometryChange()
         self.update()
 
     def set_next_t(self, next_t: float) -> None:
-        self._next_t = float(next_t)
         self.prepareGeometryChange()
+        self._next_t = float(next_t)
         self.update()
 
     def set_time(self, t: float) -> None:
-        self.t = float(t)
         self.prepareGeometryChange()
+        self.t = float(t)
         self.update()
 
     def set_active(self, active: bool) -> None:
@@ -617,6 +618,7 @@ class ChordItem(QGraphicsObject):
         elif z == self.ZONE_BODY:
             self.setCursor(Qt.ClosedHandCursor)
         if z != self.ZONE_NONE:
+            self.dragStarted.emit()   # captura l'estat ABANS de cap canvi
             event.accept()
         else:
             super().mousePressEvent(event)
@@ -700,6 +702,7 @@ class SectionItem(QGraphicsObject):
     deleteRequested = pyqtSignal()
     editRequested = pyqtSignal()
     clicked = pyqtSignal()  # click sense drag → seek
+    dragStarted = pyqtSignal()   # INICI de gest (mouse press sobre el clip)
     dragFinished = pyqtSignal()  # fi de drag (moure/redimensionar)
 
     def __init__(self, idx: int, ini: float, fi: float, lletra: str,
@@ -730,20 +733,20 @@ class SectionItem(QGraphicsObject):
 
     def set_pps(self, pps: float, x_offset: float,
                 view_left: float = 0.0) -> None:
+        self.prepareGeometryChange()
         self._pps = float(pps)
         self._x_offset = float(x_offset)
         self._view_left = float(view_left)
-        self.prepareGeometryChange()
         self.update()
 
     def set_ini(self, ini: float) -> None:
-        self.ini = float(ini)
         self.prepareGeometryChange()
+        self.ini = float(ini)
         self.update()
 
     def set_fi(self, fi: float) -> None:
-        self.fi = float(fi)
         self.prepareGeometryChange()
+        self.fi = float(fi)
         self.update()
 
     def set_active(self, active: bool) -> None:
@@ -961,6 +964,7 @@ class TimelineView(QGraphicsView):
 
     positionChanged = pyqtSignal(float)
     clipSelected = pyqtSignal(str, int)   # ('chord'|'section', index)
+    editStarted = pyqtSignal()            # inici d'un gest d'edicio (undo)
     editFinished = pyqtSignal()           # fi d'un drag (cal persistir)
     loopChanged = pyqtSignal(float, float)  # nou loop A/B (segons)
     playRequested = pyqtSignal()          # espai premut
@@ -1007,6 +1011,9 @@ class TimelineView(QGraphicsView):
         self._scene.setBackgroundBrush(QBrush(QColor("#0f0f10")))
         self.setScene(self._scene)
         self.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+        # FullViewportUpdate: evita imatges fantasma amb els carrils
+        # semitransparents sobreposats (l'escena és petita: cost negligible).
+        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
@@ -1204,6 +1211,7 @@ class TimelineView(QGraphicsView):
             item.clicked.connect(
                 lambda it=item: self._seek_to(
                     float(it.t), "chord", getattr(it, "idx", -1)))
+            item.dragStarted.connect(self.editStarted.emit)
             item.dragFinished.connect(self._emit_edit_finished)
             item.editRequested.connect(
                 lambda idx=i: self._on_chord_edit(idx))
@@ -1227,6 +1235,7 @@ class TimelineView(QGraphicsView):
             item.clicked.connect(
                 lambda it=item: self._seek_to(
                     float(it.ini), "section", getattr(it, "idx", -1)))
+            item.dragStarted.connect(self.editStarted.emit)
             item.dragFinished.connect(self._emit_edit_finished)
             item.editRequested.connect(
                 lambda idx=i: self._on_section_edit(idx))

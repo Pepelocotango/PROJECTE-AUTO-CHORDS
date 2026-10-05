@@ -132,6 +132,7 @@ class Visor(QMainWindow):
         self.timeline.positionChanged.connect(self.ves_a)
         self.timeline.clipSelected.connect(self._on_clip_selected)
         self.timeline.playRequested.connect(self.play_stop)
+        self.timeline.editStarted.connect(self._on_edit_started)
         self.timeline.editFinished.connect(self._on_edit_finished)
         self.timeline.loopChanged.connect(self._on_loop_changed)
         self.timeline.chordTimeMoved.connect(self._on_chord_time_moved)
@@ -146,13 +147,8 @@ class Visor(QMainWindow):
         # Dreceres de teclat: espai = play/pausa
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
         self._sc_play.activated.connect(self.play_stop)
-        # Drecerees de desfer/refer (undo/redo d'EDICIO; MAI toquen les wavs)
-        self._sc_undo = QShortcut(QKeySequence("Ctrl+Z"), self)
-        self._sc_undo.activated.connect(self.undo)
-        self._sc_redo = QShortcut(QKeySequence("Ctrl+Shift+Z"), self)
-        self._sc_redo.activated.connect(self.redo)
-        self._sc_redo2 = QShortcut(QKeySequence("Ctrl+Y"), self)
-        self._sc_redo2.activated.connect(self.redo)
+        # NOTA: les dreceres de desfer/refer viuen a la FINESTRA PRINCIPAL
+        # (menu Edita). Un QShortcut dins el visor incrustat no s'activa.
 
         capa.addWidget(self.timeline, stretch=4)
 
@@ -405,6 +401,7 @@ class Visor(QMainWindow):
         antic = self.acords[fila]
         nova = list(self.acords)
         nova[fila] = (nou_t, nou_nom, f"{nou_t:.9f}")
+        self._undo_marca()
         try:
             self.acords = self._normalitza_acords(nova)
         except ValueError as e:
@@ -413,7 +410,13 @@ class Visor(QMainWindow):
                                 f"No es pot desar aquest canvi perquè trenca la lògica temporal:\n{e}")
             return
         self._omple_llista_ac()
-        self.llista_ac.setCurrentRow(self.acords.index((nou_t, nou_nom, f"{nou_t:.9f}")))
+        self._undo_commit()
+        # reforç: la normalitzacio pot canviar el nom/timestamps -> index segur
+        try:
+            self.llista_ac.setCurrentRow(self.acords.index(self.acords[fila]))
+        except (ValueError, IndexError):
+            if fila < self.llista_ac.count():
+                self.llista_ac.setCurrentRow(fila)
         try:
             nwavs = self._desa_i_regenera()
         except Exception as e:  # noqa: BLE001
@@ -454,6 +457,22 @@ class Visor(QMainWindow):
             self._undo_base = self._estat_edicio()
             self._undo_pending = None
 
+    def _undo_touch_base(self):
+        """La base = el darrer estat CONSOLIDAT (fora d'una operacio).
+
+        S'actualitza cada cop que se sincronitza el model sense operacio
+        pendent, aixi mai queda obsoleta (analisi, carrega, edicions fetes
+        per camins que no passen per _undo_marca)."""
+        if getattr(self, "_undo_pending", None) is None:
+            self._undo_base = self._estat_edicio()
+
+    def _undo_reset(self):
+        """Neteja l'historial (nou document / nova analisi)."""
+        self._undo_stack = []
+        self._redo_stack = []
+        self._undo_base = self._estat_edicio()
+        self._undo_pending = None
+
     def _undo_marca(self):
         """Inici d'una operació d'edició: captura l'estat 'abans'."""
         self._undo_init()
@@ -464,7 +483,8 @@ class Visor(QMainWindow):
         """Tanca l'operació d'edició i l'apila si hi ha hagut canvi."""
         self._undo_init()
         ara = self._estat_edicio()
-        if self._undo_pending is not None and ara != self._undo_pending:
+        canvi = self._undo_pending is not None and ara != self._undo_pending
+        if canvi:
             self._undo_stack.append(self._undo_pending)
             self._redo_stack.clear()
             self.log(f"undo: apilada (desfer={len(self._undo_stack)} "
@@ -513,6 +533,11 @@ class Visor(QMainWindow):
     def log(self, msg):
         print(f"[visor] {msg}", flush=True)
         self.registre.append(msg)
+        try:
+            import logging as _lg
+            _lg.getLogger("auto_chords").info("VISOR: %s", msg)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _tria_player(self):
         sr = self.audio["sr"]
@@ -633,12 +658,6 @@ class Visor(QMainWindow):
         if item is not None:
             self._edita_acord(item)
 
-    def _elimina_acord_index(self, idx):
-        if idx < 0 or idx >= len(self.acords):
-            return
-        self._elimina_acord(idx)
-        self._desa_i_regenera()
-
     def _edita_seccio_index(self, idx):
         if idx < 0 or idx >= len(self.seccions):
             return
@@ -648,22 +667,18 @@ class Visor(QMainWindow):
         if item is not None:
             self._edita_seccio(item)
 
-    def _elimina_seccio_index(self, idx):
-        if idx < 0 or idx >= len(self.seccions):
-            return
-        self._elimina_seccio(idx)
-        self._regenera_abc_des_de_totes_les_seccions("secció eliminada")
-
     # Handlers dels senyals del TimelineView (QGraphicsView DAW-like)
     def _sync_timeline_acords(self):
         """Recopiem els acords del timeline al model del Visor."""
         self.acords = list(self.timeline._acords)
         self._omple_llista_ac()
+        self._undo_touch_base()
 
     def _sync_timeline_seccions(self):
         """Recopiem les seccions del timeline al model del Visor."""
         self.seccions = list(self.timeline._seccions)
         self._actualitza_llista_abc()
+        self._undo_touch_base()
 
     def _on_chord_time_moved(self, idx, new_t):
         # Només sincronitzem el model/llista; el desat va al release
@@ -675,6 +690,13 @@ class Visor(QMainWindow):
         self._undo_marca()
         self._sync_timeline_acords()
         self.log(f"final acord {idx} → {new_t:.2f}s")
+
+    def _on_edit_started(self):
+        """Inici del gest (mouse press sobre un clip): captura l'estat 'abans'.
+
+        Model Audacity: PushState() explicit al punt de l'accio, en comptes
+        de dependre de senyals de canvi (que poden no arribar)."""
+        self._undo_marca()
 
     def _on_edit_finished(self):
         """Fi d'un drag/resize → tanca l'operació i desa el CSV."""
@@ -779,13 +801,6 @@ class Visor(QMainWindow):
 
     def _on_clip_selected(self, kind, index):
         """Click a un clip del timeline -> sincronitza la llista de sota."""
-        item_t = None
-        if kind == "chord" and 0 <= index < len(self.acords):
-            item_t = self.acords[index][0]
-        elif kind == "section" and 0 <= index < len(self.seccions):
-            item_t = self.seccions[index][0]
-        self.log(f"CLIP-SELECCIO {kind}#{index} @ {item_t if item_t is None else round(item_t,2)}s "
-                 f"(pos actual={self.pos:.2f}s)")
         if kind == "chord" and 0 <= index < self.llista_ac.count():
             self.llista_ac.setCurrentRow(index)
         elif kind == "section" and 0 <= index < self.llista_ab.count():
@@ -965,6 +980,7 @@ class Visor(QMainWindow):
         antic = self.seccions[fila]
         nova = list(self.seccions)
         nova[fila] = (nou_inici, fi, nova_lletra, vell_fam)
+        self._undo_marca()
         try:
             self.seccions = self._normalitza_seccions(nova)
         except ValueError as e:
@@ -973,7 +989,12 @@ class Visor(QMainWindow):
                                 f"No es pot desar aquest canvi perquè trenca la lògica temporal:\n{e}")
             return
         self._actualitza_llista_abc()
-        self.llista_ab.setCurrentRow(self.seccions.index((nou_inici, fi, nova_lletra, vell_fam)))
+        self._undo_commit()
+        try:
+            self.llista_ab.setCurrentRow(self.seccions.index(self.seccions[fila]))
+        except (ValueError, IndexError):
+            if fila < self.llista_ab.count():
+                self.llista_ab.setCurrentRow(fila)
         try:
             self._regenera_abc_des_de_totes_les_seccions(f"secció {vell_lletra}→{nova_lletra} @ {nou_inici:.2f}s")
         except Exception as e:  # noqa: BLE001
@@ -1190,10 +1211,18 @@ class Visor(QMainWindow):
         self.log("tanco: mato l'àudio...")
         self.rellotge.stop()
         self._atura_proc()
-        # Disconnect dels signals del TimelineView per evitar memory leaks
-        if hasattr(self, "timeline"):
+        # Disconnect dels signals del TimelineView per evitar memory leaks.
+        # NOMÉS si és una finestra autònoma: en incrustar-se el visor dins
+        # Finestra es fa `_embedded = True` + `close()` per amagar-lo, i
+        # desconnectar-lo allà deixaria el visor SORD (no rebria cap senyal).
+        if hasattr(self, "timeline") and not getattr(self, "_embedded", False):
             for sig, slot in [
                 ("positionChanged", self.ves_a),
+                ("clipSelected", self._on_clip_selected),
+                ("playRequested", self.play_stop),
+                ("editStarted", self._on_edit_started),
+                ("editFinished", self._on_edit_finished),
+                ("loopChanged", self._on_loop_changed),
                 ("chordTimeMoved", self._on_chord_time_moved),
                 ("chordEndMoved", self._on_chord_end_moved),
                 ("chordRenamed", self._on_chord_renamed),

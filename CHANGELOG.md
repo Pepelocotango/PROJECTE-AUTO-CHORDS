@@ -1,7 +1,7 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`, `v0.1.5-checkpoint`).
+Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`, `v0.1.5-checkpoint`, `v0.1.6-checkpoint`).
 
 ## [No publicat]
 
@@ -10,6 +10,38 @@ Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`, `v0.1.5-che
   (fons més clar, segons el cursor).
 - Usabilitat: multi-selecció, duplicar/eliminar clips, menú contextual,
   afegir clips amb click al buit.
+
+## [0.1.6] — 2026-10-05 (tag `v0.1.6-checkpoint`)
+
+### Afegit
+- **Barra de menús** (`app/main.py`): Fitxer · Edita · Selecciona ·
+  Visualitza · Analitza · Ajuda, amb les accions bàsiques cablejades
+  (obre WAV, exporta, desfer/refer, zoom, loop A/B, ajuda).
+- Captura d'**excepcions no gestionades** al log (`sys.excepthook`) i els
+  logs del visor ara també van a `auto_chords.log`.
+
+### Arreglat
+- **CRÍTIC — el visor incrustat quedava sord**: `_carrega_visor` fa
+  `_embedded = True` + `close()`, i el `closeEvent` **desconnectava tots
+  els senyals del timeline** sense comprovar `_embedded`. Ara només
+  desconnecta si el visor és una finestra autònoma. Això arreglava alhora
+  l'undo/redo i la propagació de canvis.
+- **Undo/Redo**: la captura de l'estat passava pel senyal de canvi i no
+  arribava mai. Ara es fa **a l'inici del gest** (`editStarted` al mouse
+  press dels clips) — model Audacity (`PushState` explícit). La base
+  s'autoactualitza (`_undo_touch_base`); el reanomenament pel diàleg
+  (`_edita_acord`/`_edita_seccio`) ara apila operació; i l'accés a la llista
+  va protegit (un `.index()` sobre una tupla normalitzada podia **fer
+  petar l'app**).
+- **Imatges fantasma** en redimensionar: `prepareGeometryChange()` ha
+  d'anar **abans** de canviar la geometria (8 llocs: setters de
+  `ChordItem`/`SectionItem` i les capes). Afegit `FullViewportUpdate`.
+- **Mètodes duplicats** `_elimina_acord_index` / `_elimina_seccio_index`
+  eliminats (la 2a definició guanyava).
+
+### Nota
+- Undo/Redo treballa **només** sobre el model (les dades que van al CSV);
+  mai regenera wavs.
 
 ## [0.1.5] — 2026-10-05 (tag `v0.1.5-checkpoint`)
 
