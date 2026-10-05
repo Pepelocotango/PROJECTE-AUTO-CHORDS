@@ -691,6 +691,13 @@ class Visor(QMainWindow):
 
     def _on_clip_selected(self, kind, index):
         """Click a un clip del timeline -> sincronitza la llista de sota."""
+        item_t = None
+        if kind == "chord" and 0 <= index < len(self.acords):
+            item_t = self.acords[index][0]
+        elif kind == "section" and 0 <= index < len(self.seccions):
+            item_t = self.seccions[index][0]
+        self.log(f"CLIP-SELECCIO {kind}#{index} @ {item_t if item_t is None else round(item_t,2)}s "
+                 f"(pos actual={self.pos:.2f}s)")
         if kind == "chord" and 0 <= index < self.llista_ac.count():
             self.llista_ac.setCurrentRow(index)
         elif kind == "section" and 0 <= index < self.llista_ab.count():

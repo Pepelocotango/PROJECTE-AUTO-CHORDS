@@ -354,7 +354,7 @@ class TimelineConstraintTests(unittest.TestCase):
         view.set_data([(0.0, "C", "0.0"), (1.7, "Am", "1.7"),
                        (3.0, "F", "3.0")], [])
         view._on_chord_time_changed(1, 1.7)
-        self.assertAlmostEqual(view._acords[1][0], 2.0, places=4)
+        self.assertAlmostEqual(view._acords[1][0], 1.75, places=4)
 
     def test_chord_snap_free(self):
         """Snap a 1s en mode lliure amb span ample."""
@@ -363,7 +363,7 @@ class TimelineConstraintTests(unittest.TestCase):
         view.set_data([(0.0, "C", "0.0"), (3.7, "Am", "3.7"),
                        (8.0, "F", "8.0")], [])
         view._on_chord_time_changed(1, 4.3)
-        self.assertAlmostEqual(view._acords[1][0], 4.0, places=4)
+        self.assertAlmostEqual(view._acords[1][0], 4.5, places=4)
 
     def test_section_resize_clamped_by_neighbours(self):
         """Les seccions esclamen pels veins."""
@@ -371,12 +371,12 @@ class TimelineConstraintTests(unittest.TestCase):
         view.set_data([], [(0.0, 3.0, "A", "A"),
                            (3.0, 6.0, "B", "B"),
                            (6.0, 10.0, "C", "C")])
-        view._section_items[1]._drag_mode = 0
+        view._section_items[1]._drag_mode = 0  # ZONE_NONE -> tractat com a LEFT
         view._on_section_changed(1, 1.5, 7.0)
-        # ini limitat per A.fi=3.0
-        self.assertAlmostEqual(view._seccions[1][0], 3.02, places=4)
-        # fi limitat per C.ini=6.0
-        self.assertAlmostEqual(view._seccions[1][1], 5.98, places=4)
+        # Amb la lògica nova (contigüitat), moure l'inici arrossega el fi
+        # de l'anterior; la secció queda [1.5, 5.98]
+        self.assertAlmostEqual(view._seccions[1][0], 1.5, places=4)
+        self.assertAlmostEqual(view._seccions[1][1], 6.0, places=4)
 
     def test_rename_chord_updates_data(self):
         """Rename inline programatic actualitza self.acords."""
@@ -464,8 +464,8 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
     def test_chord_move_via_timeline_propagates_to_visor(self):
         v, _ = self._make_visor_with_data()
         v.timeline._on_chord_time_changed(1, 3.6)
-        # Snap a 0.5 per span=20 → 3.5
-        self.assertAlmostEqual(v.acords[1][0], 3.5, places=4)
+        # Snap fi (span=20 → 0.1s a mode lliure) → 3.6
+        self.assertAlmostEqual(v.acords[1][0], 3.6, places=4)
         v.close()
 
     def test_rename_via_timeline_propagates_to_visor(self):
@@ -480,8 +480,7 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v.timeline._section_items[1]._drag_mode = 0
         v.timeline._on_section_changed(1, 6.0, 10.0)
         self.assertAlmostEqual(v.seccions[1][0], 6.0, places=4)
-        # Clamp fi per C.ini=10.0 → 9.98
-        self.assertAlmostEqual(v.seccions[1][1], 9.98, places=4)
+        self.assertAlmostEqual(v.seccions[1][1], 10.0, places=4)
         v.close()
 
     def test_delete_chord_via_visor_updates_timeline(self):

@@ -115,9 +115,31 @@ def _best_step_tempo(span_s: float, bpm: float, bpb: int) -> float:
 
 def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
               view_span: float) -> float:
-    """Arrodoneix t al pas de snap adequat segons el zoom (view_span)."""
-    step = _best_step_tempo(view_span, bpm, bpb) if tempo_fix \
-        else _best_step_free(view_span)
+    """Arrodoneix t al pas de snap adequat segons el zoom (view_span).
+
+    Amb BPM: mai no s'arrodoneix al compàs sencer (massa gruixut) — com a
+    màxim a un temps; segons el zoom, es va a corxera o setzena.
+    Sense BPM: 0,1 s (o més fi si el zoom és molt proper).
+    """
+    if tempo_fix:
+        beat = 60.0 / max(float(bpm), 1e-9)
+        if view_span <= beat * 8:
+            step = beat / 4.0      # setzena
+        elif view_span <= beat * 32:
+            step = beat / 2.0      # corxera
+        else:
+            step = beat            # temps (mai compàs)
+    else:
+        if view_span <= 2.0:
+            step = 0.02
+        elif view_span <= 5.0:
+            step = 0.05
+        elif view_span <= 20.0:
+            step = 0.1
+        elif view_span <= 60.0:
+            step = 0.5
+        else:
+            step = 1.0
     if step <= 0:
         return t
     return round(t / step) * step
@@ -482,6 +504,7 @@ class ChordItem(QGraphicsObject):
         self._drag_next_t0 = 0.0
         self._active = False
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
+        self.setAcceptHoverEvents(True)
         self.setZValue(10)
 
     # -- mètodes de geometria -------------------------------------------------
@@ -612,7 +635,7 @@ class ChordItem(QGraphicsObject):
         # el moviment es delega al TimelineView via signals (millor control de|
         # snap i propagació). Aquí només calculem deltas i emetem.|
         dx = event.pos().x() - self._drag_x0
-        if abs(dx) > 3:
+        if abs(dx) > 5:
             self._drag_moved = True
         dt = dx / self._pps if self._pps > 0 else 0.0
         if self._drag_mode == self.ZONE_LEFT:
@@ -627,6 +650,16 @@ class ChordItem(QGraphicsObject):
             self.timeChanged.emit(new_t)
             self.endTimeChanged.emit(new_next_t)
         event.accept()
+
+    def hoverMoveEvent(self, event) -> None:
+        z = self._zone_at(event.pos().x())
+        if z in (self.ZONE_LEFT, self.ZONE_RIGHT):
+            self.setCursor(Qt.SizeHorCursor)
+        elif z == self.ZONE_BODY:
+            self.setCursor(Qt.OpenHandCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
+        super().hoverMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
         moved = getattr(self, "_drag_moved", False)
@@ -692,6 +725,7 @@ class SectionItem(QGraphicsObject):
         self._drag_ini0 = 0.0
         self._drag_fi0 = 0.0
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
+        self.setAcceptHoverEvents(True)
         self.setZValue(8)
 
     def set_pps(self, pps: float, x_offset: float,
@@ -800,10 +834,17 @@ class SectionItem(QGraphicsObject):
 
     def mouseMoveEvent(self, event) -> None:
         if self._drag_mode == self.ZONE_NONE:
+            z = self._zone_at(event.pos().x())
+            if z in (self.ZONE_LEFT, self.ZONE_RIGHT):
+                self.setCursor(Qt.SizeHorCursor)
+            elif z == self.ZONE_BODY:
+                self.setCursor(Qt.OpenHandCursor)
+            else:
+                self.setCursor(Qt.ArrowCursor)
             super().mouseMoveEvent(event)
             return
         dx = event.pos().x() - self._drag_x0
-        if abs(dx) > 3:
+        if abs(dx) > 5:
             self._drag_moved = True
         dt = dx / self._pps if self._pps > 0 else 0.0
         if self._drag_mode == self.ZONE_LEFT:
@@ -811,9 +852,19 @@ class SectionItem(QGraphicsObject):
         elif self._drag_mode == self.ZONE_RIGHT:
             self.timeChanged.emit(self._drag_ini0, self._drag_fi0 + dt)
         elif self._drag_mode == self.ZONE_BODY:
-            self.timeChanged.emit(self._drag_ini0 + dt,
-                                  self._drag_fi0 + dt)
+            # Com els acords: el cos mou inici I fi alhora (desplaça la secció)
+            self.timeChanged.emit(self._drag_ini0 + dt, self._drag_fi0 + dt)
         event.accept()
+
+    def hoverMoveEvent(self, event) -> None:
+        z = self._zone_at(event.pos().x())
+        if z in (self.ZONE_LEFT, self.ZONE_RIGHT):
+            self.setCursor(Qt.SizeHorCursor)
+        elif z == self.ZONE_BODY:
+            self.setCursor(Qt.OpenHandCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
+        super().hoverMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
         moved = getattr(self, "_drag_moved", False)
@@ -1129,7 +1180,7 @@ class TimelineView(QGraphicsView):
                 lambda nt, idx=i: self._on_chord_end_changed(idx, nt))
             item.clicked.connect(
                 lambda t0=float(t), idx=i: self._seek_to(t0, "chord", idx))
-            item.dragFinished.connect(self.editFinished.emit)
+            item.dragFinished.connect(self._emit_edit_finished)
             item.editRequested.connect(
                 lambda idx=i: self._on_chord_edit(idx))
             item.deleteRequested.connect(
@@ -1151,7 +1202,7 @@ class TimelineView(QGraphicsView):
                 lambda ni, nf, idx=i: self._on_section_changed(idx, ni, nf))
             item.clicked.connect(
                 lambda t0=float(ini), idx=i: self._seek_to(t0, "section", idx))
-            item.dragFinished.connect(self.editFinished.emit)
+            item.dragFinished.connect(self._emit_edit_finished)
             item.editRequested.connect(
                 lambda idx=i: self._on_section_edit(idx))
             item.deleteRequested.connect(
@@ -1183,6 +1234,11 @@ class TimelineView(QGraphicsView):
         self._loop_item.setRect(0, 0, max(1.0, x1 - x0), self._total_h)
         self._loop_item.setPos(x0, 0)
         self._loop_item.setVisible(True)
+
+    def _emit_edit_finished(self) -> None:
+        """Fi de drag -> amaga la guia i reporta."""
+        self._hide_guide()
+        self.editFinished.emit()
 
     def _x_to_time(self, x: float) -> float:
         """De x de la vista a temps (coords relatives a la vista)."""
@@ -1301,41 +1357,83 @@ class TimelineView(QGraphicsView):
 
     def _on_section_changed(self, idx: int, new_ini: float,
                             new_fi: float) -> None:
+        """Redimensiona/mou una secció amb la MATEIXA lògica que els acords.
+
+        Regla d'or: el fi d'una secció és l'inici de la següent.
+          - vora esquerra: mou l'inici (i el fi de l'anterior)
+          - vora dreta:    mou el fi (= inici de la següent)
+          - cos:           desplaça la secció sencera
+        """
         if idx < 0 or idx >= len(self._seccions):
             return
-        old_ini, old_fi, lletra, familia = self._seccions[idx]
+        ini_o, fi_o, lletra, familia = self._seccions[idx]
         span = self._view_right - self._view_left
-        new_ini_s = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb,
-                              span)
-        new_fi_s = snap_time(new_fi, self._tempo_fix, self._bpm, self._bpb,
-                             span)
-        # limit per veïns
-        prev_fi = self._seccions[idx - 1][1] if idx - 1 >= 0 else 0.0
-        next_ini = (self._seccions[idx + 1][0]
-                    if idx + 1 < len(self._seccions) else self._durada)
-        new_ini_s = max(prev_fi + MIN_GAP_S,
-                        min(next_ini - MIN_SEC_LEN_S, new_ini_s))
-        new_fi_s = max(new_ini_s + MIN_SEC_LEN_S,
-                       min(next_ini - MIN_GAP_S, new_fi_s))
-        # si movem el cos sencer, preservem durada
-        if self._section_items[idx]._drag_mode == SectionItem.ZONE_BODY:
-            delta = new_ini_s - new_ini
-            new_fi_s = old_fi + (new_ini_s - old_ini)
-        self._show_guide_at(new_ini_s)
-        self._seccions[idx] = (new_ini_s, new_fi_s, lletra, familia)
-        self._section_items[idx].set_ini(new_ini_s)
-        self._section_items[idx].set_fi(new_fi_s)
-        # Contigüitat: l'anterior acaba on comença aquest; el següent
-        # comença on acaba aquest (regla d'or)
+        zone = self._section_items[idx]._drag_mode
+        n = len(self._seccions)
+
+        def prev_ini(i):
+            return self._seccions[i - 1][0] if i - 1 >= 0 else 0.0
+
+        def next_ini_of(i):
+            return self._seccions[i + 1][0] if i + 1 < n else self._durada
+
+        if zone == SectionItem.ZONE_RIGHT:
+            # Mou el FI -> és l'inici de la següent
+            max_end = (self._seccions[idx + 2][0] - MIN_GAP_S
+                       if idx + 2 < n else self._durada)
+            nt = snap_time(new_fi, self._tempo_fix, self._bpm, self._bpb, span)
+            nt = max(ini_o + MIN_SEC_LEN_S, min(max_end, nt))
+            self._seccions[idx] = (ini_o, nt, lletra, familia)
+            self._section_items[idx].set_fi(nt)
+            if idx + 1 < n:
+                nx = self._seccions[idx + 1]
+                self._seccions[idx + 1] = (nt, nx[1], nx[2], nx[3])
+                self._section_items[idx + 1].set_ini(nt)
+            self._show_guide_at(nt)
+            self.sectionMoved.emit(idx, ini_o, nt)
+            return
+
+        if zone == SectionItem.ZONE_BODY:
+            # Desplaça la secció sencera (inici i fi junts) — com l'acord
+            dur = fi_o - ini_o
+            nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, span)
+            lo = prev_ini(idx) + MIN_GAP_S
+            # El fi propi (nt+dur) passa a ser l'inici del següent; per tant
+            # el límit cap endavant és el FINAL del següent (= inici del
+            # següent-següent, o la durada total).
+            seguent_fi = (self._seccions[idx + 2][0] if idx + 2 < n
+                          else self._durada)
+            hi = max(lo, seguent_fi - dur - MIN_GAP_S)
+            nt = max(lo, min(hi, nt))
+            self._seccions[idx] = (nt, nt + dur, lletra, familia)
+            self._section_items[idx].set_ini(nt)
+            self._section_items[idx].set_fi(nt + dur)
+            if idx - 1 >= 0:
+                p = self._seccions[idx - 1]
+                self._seccions[idx - 1] = (p[0], nt, p[2], p[3])
+                self._section_items[idx - 1].set_fi(nt)
+            if idx + 1 < n:
+                x = self._seccions[idx + 1]
+                self._seccions[idx + 1] = (nt + dur, x[1], x[2], x[3])
+                self._section_items[idx + 1].set_ini(nt + dur)
+            self._show_guide_at(nt)
+            self.sectionMoved.emit(idx, nt, nt + dur)
+            return
+
+        # LEFT / NONE: mou l'INICI (i el fi de l'anterior)
+
+        lo = prev_ini(idx) + MIN_GAP_S
+        hi = fi_o - MIN_SEC_LEN_S
+        nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, span)
+        nt = max(lo, min(hi, nt))
+        self._seccions[idx] = (nt, fi_o, lletra, familia)
+        self._section_items[idx].set_ini(nt)
         if idx - 1 >= 0:
             p = self._seccions[idx - 1]
-            self._seccions[idx - 1] = (p[0], new_ini_s, p[2], p[3])
-            self._section_items[idx - 1].set_fi(new_ini_s)
-        if idx + 1 < len(self._seccions):
-            n = self._seccions[idx + 1]
-            self._seccions[idx + 1] = (new_fi_s, n[1], n[2], n[3])
-            self._section_items[idx + 1].set_ini(new_fi_s)
-        self.sectionMoved.emit(idx, new_ini_s, new_fi_s)
+            self._seccions[idx - 1] = (p[0], nt, p[2], p[3])
+            self._section_items[idx - 1].set_fi(nt)
+        self._show_guide_at(nt)
+        self.sectionMoved.emit(idx, nt, fi_o)
 
     def _on_section_edit(self, idx: int) -> None:
         item = self._section_by_idx.get(idx)
