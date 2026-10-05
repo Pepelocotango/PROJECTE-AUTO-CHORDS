@@ -18,11 +18,11 @@ import time
 import wave
 
 from PyQt5.QtCore import QObject, QThread, QTimer, Qt, pyqtSignal
-from PyQt5.QtGui import QCloseEvent
+from PyQt5.QtGui import QCloseEvent, QKeySequence
 from PyQt5.QtWidgets import (
     QApplication, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
-    QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QSlider,
-    QSplitter, QTextEdit, QVBoxLayout, QWidget,
+    QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QShortcut,
+    QSlider, QSplitter, QTextEdit, QVBoxLayout, QWidget,
 )
 
 import numpy as np
@@ -129,6 +129,10 @@ class Visor(QMainWindow):
         self.timeline = TimelineView(self.audio, self.acords, self.seccions,
                                     self.bpm, self.bpb, self.tempo_fix)
         self.timeline.positionChanged.connect(self.ves_a)
+        self.timeline.clipSelected.connect(self._on_clip_selected)
+        self.timeline.playRequested.connect(self.play_stop)
+        self.timeline.editFinished.connect(self._on_edit_finished)
+        self.timeline.loopChanged.connect(self._on_loop_changed)
         self.timeline.chordTimeMoved.connect(self._on_chord_time_moved)
         self.timeline.chordEndMoved.connect(self._on_chord_end_moved)
         self.timeline.chordRenamed.connect(self._on_chord_renamed)
@@ -138,6 +142,10 @@ class Visor(QMainWindow):
         self.timeline.sectionRenamed.connect(self._on_section_renamed)
         self.timeline.sectionDeleteRequested.connect(self._elimina_seccio_index)
         self.timeline.sectionEditRequested.connect(self._on_section_edit_requested)
+        # Dreceres de teclat: espai = play/pausa
+        self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
+        self._sc_play.activated.connect(self.play_stop)
+
         capa.addWidget(self.timeline, stretch=4)
 
         # llistes + controls
@@ -458,12 +466,14 @@ class Visor(QMainWindow):
     def marca_A(self):
         self.loop_a = self.pos
         self.log(f"loop A = {self.loop_a:.2f}s")
-        self._pinta_loop()
+        if self.loop_b is not None:
+            self.timeline.set_loop(self.loop_a, self.loop_b)
 
     def marca_B(self):
         self.loop_b = self.pos
         self.log(f"loop B = {self.loop_b:.2f}s")
-        self._pinta_loop()
+        if self.loop_a is not None:
+            self.timeline.set_loop(self.loop_a, self.loop_b)
 
     def commuta_loop(self):
         self.loop_on = self.b_loop.isChecked()
@@ -477,28 +487,12 @@ class Visor(QMainWindow):
         self._pinta_loop()
 
     def _pinta_loop(self):
-        for attr in ("_regio_loop",):
-            if hasattr(self, attr):
-                try:
-                    self.timeline._scene.removeItem(getattr(self, attr))
-                except (RuntimeError, AttributeError):
-                    pass  # l'item ja no és a l'escena
+        """El loop el dibuixa el mateix TimelineView."""
         if (self.loop_a is not None and self.loop_b is not None
                 and self.loop_b > self.loop_a):
-            from PyQt5.QtWidgets import QGraphicsRectItem
-            from PyQt5.QtGui import QBrush, QColor, QPen
-            from PyQt5.QtCore import Qt
-            la, lb = self.loop_a, self.loop_b
-            x0 = self.timeline._x_offset + la * self.timeline._pps
-            x1 = self.timeline._x_offset + lb * self.timeline._pps
-            rect = QGraphicsRectItem(x0, 0,
-                                   max(1, x1 - x0),
-                                   self.timeline._total_h)
-            rect.setBrush(QBrush(QColor(138, 180, 248, 40)))
-            rect.setPen(QPen(Qt.NoPen))
-            rect.setZValue(30)
-            self.timeline._scene.addItem(rect)
-            self._regio_loop = rect
+            self.timeline.set_loop(self.loop_a, self.loop_b)
+        else:
+            self.timeline.set_loop(0.0, 0.0)
 
     def zoom(self, factor):
         if factor < 1.0:
@@ -592,20 +586,31 @@ class Visor(QMainWindow):
         self._actualitza_llista_abc()
 
     def _on_chord_time_moved(self, idx, new_t):
+        # Només sincronitzem el model/llista; la regeneració va al release
         self._sync_timeline_acords()
-        try:
-            self._desa_i_regenera()
-            self.log(f"acord {idx} mogut a {new_t:.2f}s")
-        except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
+        self.log(f"acord {idx} → {new_t:.2f}s")
 
     def _on_chord_end_moved(self, idx, new_t):
         self._sync_timeline_acords()
+        self.log(f"final acord {idx} → {new_t:.2f}s")
+
+    def _on_edit_finished(self):
+        """Fi d'un drag/resize → persistir (CSV + clips)."""
+        self._sync_timeline_acords()
+        self._sync_timeline_seccions()
         try:
             self._desa_i_regenera()
-            self.log(f"final de l'acord {idx} mogut a {new_t:.2f}s")
+            self._regenera_abc_des_de_totes_les_seccions("edició visual")
         except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
+            self.log(f"regeneració ERROR: {e}")
+
+    def _on_loop_changed(self, a, b):
+        """Loop A/B seleccionat al regle del timeline."""
+        self.loop_a, self.loop_b = float(a), float(b)
+        self.loop_on = True
+        if hasattr(self, "b_loop"):
+            self.b_loop.setChecked(True)
+        self.log(f"loop A={a:.2f}s B={b:.2f}s")
 
     def _on_chord_renamed(self, idx, new_name):
         self._sync_timeline_acords()
@@ -684,7 +689,17 @@ class Visor(QMainWindow):
             self._atura_proc()
             self._engega_des_de(self.pos)
 
+    def _on_clip_selected(self, kind, index):
+        """Click a un clip del timeline -> sincronitza la llista de sota."""
+        if kind == "chord" and 0 <= index < self.llista_ac.count():
+            self.llista_ac.setCurrentRow(index)
+        elif kind == "section" and 0 <= index < self.llista_ab.count():
+            self.llista_ab.setCurrentRow(index)
+
     def _salt_acord(self, item):
+        row = self.llista_ac.row(item)
+        if row >= 0:
+            self.timeline.select_clip("chord", row)
         self.ves_a(self._parse_pos_label(item.text()))
 
     def _valida_canvis_seccions(self, items):
@@ -749,6 +764,9 @@ class Visor(QMainWindow):
         return True
 
     def _salt_seccio(self, item):
+        row = self.llista_ab.row(item)
+        if row >= 0:
+            self.timeline.select_clip("section", row)
         self.ves_a(self._parse_pos_label(item.text()))
 
     def _menu_seccio(self, pos):
@@ -982,6 +1000,8 @@ class Visor(QMainWindow):
             self.sona = False
             self.b_play.setText("▶ Escolta")
         else:
+            # Comencem SEMPRE des del cursor visible (no d'un estat antic)
+            self.pos = float(self.timeline.get_position())
             self._engega_des_de(self.pos)
             if self.proc is None:
                 return

@@ -218,7 +218,7 @@ class WaveformLayer(QGraphicsPixmapItem):
         qimg = QImage(img.data, n_cols, h, n_cols * 4,
                       QImage.Format_RGB32).copy()
         self.setPixmap(QPixmap.fromImage(qimg))
-        self.setPos(self._x_offset + left * self._pps, self._top)
+        self.setPos(self._x_offset, self._top)
 
 
 # -----------------------------------------------------------------------------
@@ -272,6 +272,8 @@ class GridLayer(QGraphicsItem):
         self._x_offset = float(x_offset)
         self._view_left = float(view_left)
         self._view_right = float(view_right)
+        # Mateix raonament que el regle: coords relatives a view_left →
+        # cal desplaçar la posició perquè el grid caigui al lloc absolut.
         self.setPos(self._x_offset, self._top)
         self.prepareGeometryChange()
         self.update()
@@ -330,6 +332,9 @@ class RulerLayer(QGraphicsItem):
         self._x_offset = float(x_offset)
         self._view_left = float(view_left)
         self._view_right = float(view_right)
+        # IMPORTANT: el regle pinta en coords relatives a view_left, per tant
+        # la seva posició ha de ser _x_offset + view_left*pps perquè les
+        # etiquetes caiguin al mateix x absolut que els clips/ona.
         self.setPos(self._x_offset, self._top)
         self.prepareGeometryChange()
         self.update()
@@ -412,8 +417,9 @@ class CursorLine(QGraphicsLineItem):
         self._y_top = y_top
         self._y_bottom = y_bottom
 
-    def set_time(self, t: float, pps: float, x_offset: float) -> None:
-        x = x_offset + t * pps
+    def set_time(self, t: float, pps: float, x_offset: float,
+                 view_left: float = 0.0) -> None:
+        x = x_offset + (t - view_left) * pps
         line = self.line()
         line.setP1(QPointF(x, self._y_top))
         line.setP2(QPointF(x, self._y_bottom))
@@ -452,6 +458,8 @@ class ChordItem(QGraphicsObject):
     renameRequested = pyqtSignal(str)         # usuari ha escrit nom nou
     deleteRequested = pyqtSignal()
     editRequested = pyqtSignal()
+    clicked = pyqtSignal()  # click sense drag → seek
+    dragFinished = pyqtSignal()  # fi de drag (moure/redimensionar)
 
     def __init__(self, idx: int, t: float, name: str, next_t: float,
                  pps: float, x_offset: float, lane_y: float, lane_h: float,
@@ -463,6 +471,7 @@ class ChordItem(QGraphicsObject):
         self._next_t = float(next_t)        # inici del següent (o durada_total)
         self._pps = float(pps)
         self._x_offset = float(x_offset)
+        self._view_left = 0.0   # coords RELATIVES a la vista
         self._lane_y = float(lane_y)
         self._lane_h = float(lane_h)
         self._selected = False
@@ -476,9 +485,11 @@ class ChordItem(QGraphicsObject):
         self.setZValue(10)
 
     # -- mètodes de geometria -------------------------------------------------
-    def set_pps(self, pps: float, x_offset: float) -> None:
+    def set_pps(self, pps: float, x_offset: float,
+                view_left: float = 0.0) -> None:
         self._pps = float(pps)
         self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
         self.prepareGeometryChange()
         self.update()
 
@@ -501,18 +512,18 @@ class ChordItem(QGraphicsObject):
         self.update()
 
     def _x_left(self) -> float:
-        return self._x_offset + self.t * self._pps
+        return self._x_offset + (self.t - self._view_left) * self._pps
 
     def _x_right(self) -> float:
         if self._next_t > self.t:
-            return self._x_offset + self._next_t * self._pps
+            return self._x_offset + (self._next_t - self._view_left) * self._pps
         return self._x_left() + self.MIN_W
 
     def boundingRect(self) -> QRectF:
         x = self._x_left()
         w = max(self.MIN_W, self._x_right() - x)
-        # una mica de padding per a nanses
-        return QRectF(x - 2, self._lane_y, w + 4, self._lane_h)
+        # sense padding: evita solapament amb el clip adjacent
+        return QRectF(x, self._lane_y, w, self._lane_h)
 
     # -- dibuix ---------------------------------------------------------------
     def paint(self, painter: QPainter, option, widget=None) -> None:
@@ -577,6 +588,7 @@ class ChordItem(QGraphicsObject):
         self._drag_x0 = event.pos().x()
         self._drag_t0 = self.t
         self._drag_next_t0 = self._next_t
+        self._drag_moved = False
         if z in (self.ZONE_LEFT, self.ZONE_RIGHT):
             self.setCursor(Qt.SizeHorCursor)
         elif z == self.ZONE_BODY:
@@ -600,6 +612,8 @@ class ChordItem(QGraphicsObject):
         # el moviment es delega al TimelineView via signals (millor control de|
         # snap i propagació). Aquí només calculem deltas i emetem.|
         dx = event.pos().x() - self._drag_x0
+        if abs(dx) > 3:
+            self._drag_moved = True
         dt = dx / self._pps if self._pps > 0 else 0.0
         if self._drag_mode == self.ZONE_LEFT:
             new_t = self._drag_t0 + dt
@@ -615,8 +629,13 @@ class ChordItem(QGraphicsObject):
         event.accept()
 
     def mouseReleaseEvent(self, event) -> None:
+        moved = getattr(self, "_drag_moved", False)
         self._drag_mode = self.ZONE_NONE
         super().mouseReleaseEvent(event)
+        if moved:
+            self.dragFinished.emit()
+        else:
+            self.clicked.emit()
 
     def mouseDoubleClickEvent(self, event) -> None:
         self.editRequested.emit()
@@ -647,6 +666,8 @@ class SectionItem(QGraphicsObject):
     renameRequested = pyqtSignal(str)
     deleteRequested = pyqtSignal()
     editRequested = pyqtSignal()
+    clicked = pyqtSignal()  # click sense drag → seek
+    dragFinished = pyqtSignal()  # fi de drag (moure/redimensionar)
 
     def __init__(self, idx: int, ini: float, fi: float, lletra: str,
                  familia: str, pps: float, x_offset: float,
@@ -660,6 +681,7 @@ class SectionItem(QGraphicsObject):
         self.familia = str(familia)
         self._pps = float(pps)
         self._x_offset = float(x_offset)
+        self._view_left = 0.0   # coords RELATIVES a la vista
         self._lane_y = float(lane_y)
         self._lane_h = float(lane_h)
         self._selected = False
@@ -672,9 +694,11 @@ class SectionItem(QGraphicsObject):
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.setZValue(8)
 
-    def set_pps(self, pps: float, x_offset: float) -> None:
+    def set_pps(self, pps: float, x_offset: float,
+                view_left: float = 0.0) -> None:
         self._pps = float(pps)
         self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
         self.prepareGeometryChange()
         self.update()
 
@@ -697,15 +721,15 @@ class SectionItem(QGraphicsObject):
         self.update()
 
     def _x_left(self) -> float:
-        return self._x_offset + self.ini * self._pps
+        return self._x_offset + (self.ini - self._view_left) * self._pps
 
     def _x_right(self) -> float:
-        return self._x_offset + self.fi * self._pps
+        return self._x_offset + (self.fi - self._view_left) * self._pps
 
     def boundingRect(self) -> QRectF:
         x = self._x_left()
         w = max(self.MIN_W, self._x_right() - x)
-        return QRectF(x - 2, self._lane_y, w + 4, self._lane_h)
+        return QRectF(x, self._lane_y, w, self._lane_h)
 
     def paint(self, painter: QPainter, option, widget=None) -> None:
         x = self._x_left()
@@ -768,6 +792,7 @@ class SectionItem(QGraphicsObject):
         self._drag_x0 = event.pos().x()
         self._drag_ini0 = self.ini
         self._drag_fi0 = self.fi
+        self._drag_moved = False
         if z != self.ZONE_NONE:
             event.accept()
         else:
@@ -778,6 +803,8 @@ class SectionItem(QGraphicsObject):
             super().mouseMoveEvent(event)
             return
         dx = event.pos().x() - self._drag_x0
+        if abs(dx) > 3:
+            self._drag_moved = True
         dt = dx / self._pps if self._pps > 0 else 0.0
         if self._drag_mode == self.ZONE_LEFT:
             self.timeChanged.emit(self._drag_ini0 + dt, self._drag_fi0)
@@ -789,8 +816,13 @@ class SectionItem(QGraphicsObject):
         event.accept()
 
     def mouseReleaseEvent(self, event) -> None:
+        moved = getattr(self, "_drag_moved", False)
         self._drag_mode = self.ZONE_NONE
         super().mouseReleaseEvent(event)
+        if moved:
+            self.dragFinished.emit()
+        else:
+            self.clicked.emit()
 
     def mouseDoubleClickEvent(self, event) -> None:
         self.editRequested.emit()
@@ -877,6 +909,10 @@ class TimelineView(QGraphicsView):
     """
 
     positionChanged = pyqtSignal(float)
+    clipSelected = pyqtSignal(str, int)   # ('chord'|'section', index)
+    editFinished = pyqtSignal()           # fi d'un drag (cal persistir)
+    loopChanged = pyqtSignal(float, float)  # nou loop A/B (segons)
+    playRequested = pyqtSignal()          # espai premut
     chordTimeMoved = pyqtSignal(int, float)
     chordEndMoved = pyqtSignal(int, float)
     chordRenamed = pyqtSignal(int, str)
@@ -907,6 +943,12 @@ class TimelineView(QGraphicsView):
         self._chord_by_idx: dict = {}
         self._section_by_idx: dict = {}
         self._guide_line: Optional[QGraphicsLineItem] = None
+        self._pos_t = 0.0          # temps del cursor (font de veritat)
+        self._sel = ("", -1)      # clip seleccionat (kind, index)
+        self._loop_item = None     # banda de loop A/B
+        self._loop_a = None
+        self._loop_b = None
+        self._loop_drag = False
 
         # escena
         self._scene = QGraphicsScene(self)
@@ -917,6 +959,8 @@ class TimelineView(QGraphicsView):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.setMouseTracking(True)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setContextMenuPolicy(Qt.NoContextMenu)  # botó dret = pan
 
         # fons subtils dels 2 carrils (sobreposats a l'ona)
         self._bg_chord = LaneBackground(0, LANE_ACC_TOP, 1, LANE_H,
@@ -981,7 +1025,8 @@ class TimelineView(QGraphicsView):
 
     def set_position(self, t: float, emit: bool = True) -> None:
         t = max(0.0, min(float(t), self._durada))
-        self._cursor.set_time(t, self._pps, self._x_offset)
+        self._pos_t = t
+        self._cursor.set_time(t, self._pps, self._x_offset, self._view_left)
         self._highlight_active(t)
         if emit:
             self.positionChanged.emit(t)
@@ -1001,10 +1046,11 @@ class TimelineView(QGraphicsView):
     # -- mètodes interns ------------------------------------------------------
     def _zoom_at(self, factor: float) -> None:
         l, r = self._view_left, self._view_right
-        mid = (l + r) / 2.0
-        ampl = max((r - l) * factor, 0.5)
-        self._set_view_range(max(0.0, mid - ampl / 2),
-                             min(self._durada, mid + ampl / 2))
+        ampl = max((r - l) * factor, 0.3)
+        centre = self.selected_center()
+        if centre is None:
+            centre = self._pos_t
+        self._center_on(centre, ampl)
 
     def _zoom_full(self) -> None:
         self._set_view_range(0.0, max(self._durada, 0.5))
@@ -1025,15 +1071,17 @@ class TimelineView(QGraphicsView):
         self._waveform.update_geometry(self._pps, self._x_offset,
                                        self._view_left, self._view_right)
         for it in self._chord_items:
-            it.set_pps(self._pps, self._x_offset)
+            it.set_pps(self._pps, self._x_offset, self._view_left)
         for it in self._section_items:
-            it.set_pps(self._pps, self._x_offset)
-        self._cursor.set_time(self._cursor.line().p1().x() / max(self._pps, 1e-9)
-                              - self._x_offset / self._pps,
-                              self._pps, self._x_offset)
-        # mida escena
-        total_w = (self._durada * self._pps) + LEFT_PAD + RIGHT_PAD
-        self._scene.setSceneRect(0, 0, max(total_w, 200), self._total_h)
+            it.set_pps(self._pps, self._x_offset, self._view_left)
+        # El cursor manté el TEMPS (no la x) en fer zoom/pan
+        self._cursor.set_time(self._pos_t, self._pps, self._x_offset,
+                              self._view_left)
+        self._update_loop_item()
+        # L'escena = mida de la viewport (no hi ha scroll del QGraphicsView:
+        # tot es dibuixa en coords relatives a la vista)
+        wv = max(200, self.viewport().width())
+        self._scene.setSceneRect(0, 0, wv, self._total_h)
         self._update_guide_line()
 
     def _update_guide_line(self) -> None:
@@ -1053,7 +1101,7 @@ class TimelineView(QGraphicsView):
     def _show_guide_at(self, t: float) -> None:
         if self._guide_line is None:
             self._update_guide_line()
-        x = self._x_offset + t * self._pps
+        x = self._x_offset + (t - self._view_left) * self._pps
         line = self._guide_line.line()
         line.setP1(QPointF(x, 0))
         line.setP2(QPointF(x, self._total_h))
@@ -1079,6 +1127,9 @@ class TimelineView(QGraphicsView):
                 lambda nt, idx=i: self._on_chord_time_changed(idx, nt))
             item.endTimeChanged.connect(
                 lambda nt, idx=i: self._on_chord_end_changed(idx, nt))
+            item.clicked.connect(
+                lambda t0=float(t), idx=i: self._seek_to(t0, "chord", idx))
+            item.dragFinished.connect(self.editFinished.emit)
             item.editRequested.connect(
                 lambda idx=i: self._on_chord_edit(idx))
             item.deleteRequested.connect(
@@ -1098,6 +1149,9 @@ class TimelineView(QGraphicsView):
                                LANE_SEC_TOP, LANE_H)
             item.timeChanged.connect(
                 lambda ni, nf, idx=i: self._on_section_changed(idx, ni, nf))
+            item.clicked.connect(
+                lambda t0=float(ini), idx=i: self._seek_to(t0, "section", idx))
+            item.dragFinished.connect(self.editFinished.emit)
             item.editRequested.connect(
                 lambda idx=i: self._on_section_edit(idx))
             item.deleteRequested.connect(
@@ -1105,6 +1159,73 @@ class TimelineView(QGraphicsView):
             self._scene.addItem(item)
             self._section_items.append(item)
             self._section_by_idx[i] = item
+
+    def set_loop(self, a: float, b: float) -> None:
+        """Defineix la regió de loop A/B (segons) i la dibuixa."""
+        self._loop_a = float(a)
+        self._loop_b = float(b)
+        self._update_loop_item()
+
+    def _update_loop_item(self) -> None:
+        if (self._loop_a is None or self._loop_b is None
+                or self._loop_b - self._loop_a <= 1e-9):
+            if self._loop_item is not None:
+                self._loop_item.setVisible(False)
+            return
+        if self._loop_item is None:
+            self._loop_item = QGraphicsRectItem()
+            self._loop_item.setBrush(QBrush(QColor(255, 209, 102, 40)))
+            self._loop_item.setPen(QPen(QColor(255, 209, 102, 200), 1))
+            self._loop_item.setZValue(-3)
+            self._scene.addItem(self._loop_item)
+        x0 = self._x_offset + (self._loop_a - self._view_left) * self._pps
+        x1 = self._x_offset + (self._loop_b - self._view_left) * self._pps
+        self._loop_item.setRect(0, 0, max(1.0, x1 - x0), self._total_h)
+        self._loop_item.setPos(x0, 0)
+        self._loop_item.setVisible(True)
+
+    def _x_to_time(self, x: float) -> float:
+        """De x de la vista a temps (coords relatives a la vista)."""
+        return self._view_left + (x - self._x_offset) / max(self._pps, 1e-9)
+
+    def selected_center(self) -> Optional[float]:
+        """Centre temporal del clip seleccionat (o None)."""
+        kind, idx = getattr(self, "_sel", ("", -1))
+        if kind == "chord" and 0 <= idx < len(self._chord_items):
+            it = self._chord_items[idx]
+            return (it.t + it._next_t) / 2.0
+        if kind == "section" and 0 <= idx < len(self._section_items):
+            it = self._section_items[idx]
+            return (it.ini + it.fi) / 2.0
+        return None
+
+    def _center_on(self, centre: float, ampl: float) -> None:
+        """Situa la vista centrada a `centre` amb amplada `ampl` (segons)."""
+        ampl = max(ampl, 0.3)
+        new_l = max(0.0, float(centre) - ampl / 2.0)
+        new_r = min(self._durada, new_l + ampl)
+        if new_r - new_l < ampl:
+            new_l = max(0.0, new_r - ampl)
+        self._set_view_range(new_l, new_r)
+
+    def get_position(self) -> float:
+        """Retorna el temps del cursor (marca vermella)."""
+        return float(self._pos_t)
+
+    def _seek_to(self, t: float, kind: str = "", index: int = -1) -> None:
+        """Click a un clip → situa el cursor al seu inici i reporta selecció."""
+        self.set_position(float(t), emit=True)
+        if kind:
+            self.select_clip(kind, index)
+            self.clipSelected.emit(kind, index)
+
+    def select_clip(self, kind: str, index: int) -> None:
+        """Marca visualment el clip seleccionat (i desmarca la resta)."""
+        self._sel = (kind, index)
+        for it in self._chord_items:
+            it.set_selected(kind == "chord" and getattr(it, "idx", -1) == index)
+        for it in self._section_items:
+            it.set_selected(kind == "section" and getattr(it, "idx", -1) == index)
 
     # -- gestió d'events dels items (constraint + propagació) -----------------
     def _on_chord_time_changed(self, idx: int, new_t: float) -> None:
@@ -1129,14 +1250,12 @@ class TimelineView(QGraphicsView):
         self._acords[idx] = (new_t_s, name,
                              f"{new_t_s:.9f}" if len(self._acords[idx]) > 2
                              else f"{new_t_s:.9f}")
-        # propaga al següent (el seu "fi implícit" canvia: la caixa de l'item)
-        if idx + 1 < len(self._chord_items):
-            self._chord_items[idx].set_next_t(new_t_s)
-        # propaga a l'anterior (el "fi" de l'anterior = new_t)
+        # El propi clip: canvia l'inici
+        self._chord_items[idx].set_time(new_t_s)
+        # El clip ANTERIOR: el seu fi = aquest inici (contigüitat)
         if idx - 1 >= 0:
             self._chord_items[idx - 1].set_next_t(new_t_s)
-        # propaga el propi item (inici)
-        self._chord_items[idx].set_time(new_t_s)
+        # El clip següent NO canvia (el seu inici segueix igual)
         self.chordTimeMoved.emit(idx, new_t_s)
 
     def _on_chord_end_changed(self, idx: int, new_next_t: float) -> None:
@@ -1163,13 +1282,10 @@ class TimelineView(QGraphicsView):
                 return
             self._acords[idx + 1] = (new_t_s, n_name,
                                       f"{new_t_s:.9f}")
-            # l'item actualitza el seu next_t (fi)
+            # El propi clip: canvia el seu fi
             self._chord_items[idx].set_next_t(new_t_s)
-            # l'item següent actualitza el seu time (inici)
+            # El clip següent: canvia el seu inici (i el seu fi NO)
             self._chord_items[idx + 1].set_time(new_t_s)
-            # el següent del següent (si n'hi ha) veu el fi canviat
-            if idx + 2 < len(self._chord_items):
-                self._chord_items[idx + 1].set_next_t(new_t_s)
             self.chordEndMoved.emit(idx, new_t_s)
         else:
             # no hi ha següent: el final és la durada total. No podem moure'l.
@@ -1209,6 +1325,16 @@ class TimelineView(QGraphicsView):
         self._seccions[idx] = (new_ini_s, new_fi_s, lletra, familia)
         self._section_items[idx].set_ini(new_ini_s)
         self._section_items[idx].set_fi(new_fi_s)
+        # Contigüitat: l'anterior acaba on comença aquest; el següent
+        # comença on acaba aquest (regla d'or)
+        if idx - 1 >= 0:
+            p = self._seccions[idx - 1]
+            self._seccions[idx - 1] = (p[0], new_ini_s, p[2], p[3])
+            self._section_items[idx - 1].set_fi(new_ini_s)
+        if idx + 1 < len(self._seccions):
+            n = self._seccions[idx + 1]
+            self._seccions[idx + 1] = (new_fi_s, n[1], n[2], n[3])
+            self._section_items[idx + 1].set_ini(new_fi_s)
         self.sectionMoved.emit(idx, new_ini_s, new_fi_s)
 
     def _on_section_edit(self, idx: int) -> None:
@@ -1288,55 +1414,125 @@ class TimelineView(QGraphicsView):
         self._set_view_range(self._view_left, self._view_right)
 
     def wheelEvent(self, event) -> None:
-        mods = event.modifiers()
-        if mods & Qt.ControlModifier:
-            # zoom centrat on el cursor
-            l, r = self._view_left, self._view_right
-            old_t = self._view_left + (event.position().x() - LEFT_PAD) / \
-                max(self._pps, 1e-9)
-            delta = event.angleDelta().y()
-            factor = 0.8 if delta > 0 else 1.25
-            ampl = max((r - l) * factor, 0.5)
-            new_l = max(0.0, old_t - (event.position().x() - LEFT_PAD) /
-                        max(self.viewport().width() - LEFT_PAD - RIGHT_PAD, 1)
-                        * ampl)
-            new_r = new_l + ampl
-            self._set_view_range(new_l, new_r)
-            event.accept()
-        else:
-            # pan horitzontal
-            dx = event.angleDelta().y()
+        """Roda = zoom centrat al cursor (mouse intel·ligent).
+        Shift+roda = desplaçament horitzontal (pan)."""
+        delta = event.angleDelta().y()
+        if delta == 0:
+            return
+        if event.modifiers() & Qt.ShiftModifier:
             span = self._view_right - self._view_left
-            dt = -dx / 120.0 * span * 0.1
+            dt = -delta / 120.0 * span * 0.1
             new_l = max(0.0, self._view_left + dt)
             new_r = min(self._durada, new_l + span)
             if new_r - new_l < span:
                 new_l = max(0.0, new_r - span)
             self._set_view_range(new_l, new_r)
             event.accept()
+            return
+        # Clip seleccionat? -> centrem la vista al seu centre.
+        # Si no, el zoom es centra al punt on apunta el cursor.
+        centre = self.selected_center()
+        ampl = max((self._view_right - self._view_left) *
+                   (0.85 if delta > 0 else (1.0 / 0.85)), 0.3)
+        if centre is not None:
+            self._center_on(centre, ampl)
+            event.accept()
+            return
+        l, r = self._view_left, self._view_right
+        try:
+            x = event.position().x()
+        except AttributeError:
+            x = float(event.pos().x())
+        ample_vp = max(self.viewport().width() - LEFT_PAD - RIGHT_PAD, 1)
+        frac = max(0.0, min(1.0, (x - LEFT_PAD) / ample_vp))
+        t_cursor = l + frac * (r - l)
+        self._center_on(t_cursor, ampl)
+        event.accept()
 
     def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.RightButton:
+            # Botó dret arrossegat = scroll horitzontal (pan)
+            self._pan_drag = True
+            self._pan_x0 = event.pos().x()
+            self._pan_left0 = self._view_left
+            self._pan_span0 = self._view_right - self._view_left
+            self.viewport().setCursor(Qt.ClosedHandCursor)
+            event.accept()
+            return
         if event.button() == Qt.LeftButton:
-            # click al fons → mou cursor
-            # mapToScene vol un QPoint, no pas el QMouseEvent sencer!
+            # Si hi ha un clip sota el cursor -> l'escena se n'encarrega
+            # (drag / resize / selecció). Sense això, el drag mai arriba!
+            self.setFocus()  # perquè Space arribi al timeline
+            # Click al regle (a dalt) -> comença una selecció de loop A/B
+            sp = self.mapToScene(event.pos())
+            if sp.y() < RULER_H:
+                t = max(0.0, min(self._durada, self._x_to_time(sp.x())))
+                self._loop_drag = True
+                self._loop_a = t
+                self._loop_b = t
+                self._update_loop_item()
+                event.accept()
+                return
+            it = self.itemAt(event.pos())
+            if isinstance(it, (ChordItem, SectionItem)):
+                super().mousePressEvent(event)
+                return
+            # Click al fons -> mou el cursor
             try:
                 pos = event.position() if hasattr(event, "position") else event.pos()
                 scene_pt = self.mapToScene(pos)
-                t = max(0.0, min(self._durada,
-                                 (scene_pt.x() - self._x_offset) /
-                                 max(self._pps, 1e-9)))
+                t = max(0.0, min(self._durada, self._x_to_time(scene_pt.x())))
                 self.set_position(t)
                 self._hide_guide()
                 event.accept()
             except (TypeError, ValueError):
-                # Si per algun motiu event no té .pos()/.position(),
-                # ignorem el click (millor que petar)
                 super().mousePressEvent(event)
         else:
             super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
+        if getattr(self, "_pan_drag", False):
+            dx = event.pos().x() - self._pan_x0
+            dt = -dx / max(self._pps, 1e-9)
+            span = self._pan_span0
+            max_l = max(0.0, self._durada - span)
+            new_l = max(0.0, min(max_l, self._pan_left0 + dt))
+            self._set_view_range(new_l, new_l + span)
+            event.accept()
+            return
+        if getattr(self, "_loop_drag", False):
+            sp = self.mapToScene(event.pos())
+            t = max(0.0, min(self._durada, self._x_to_time(sp.x())))
+            self._loop_a, self._loop_b = min(self._loop_a, t), max(self._loop_a, t)
+            self._update_loop_item()
+            event.accept()
+            return
         super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.RightButton and getattr(self, "_pan_drag", False):
+            self._pan_drag = False
+            self.viewport().setCursor(Qt.ArrowCursor)
+            event.accept()
+            return
+        if getattr(self, "_loop_drag", False):
+            self._loop_drag = False
+            if (self._loop_b is not None and self._loop_a is not None
+                    and self._loop_b - self._loop_a > 0.1):
+                self.loopChanged.emit(self._loop_a, self._loop_b)
+            else:
+                self._loop_a = self._loop_b = None
+                self._update_loop_item()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() == Qt.Key_Space:
+            self.playRequested.emit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def leaveEvent(self, event) -> None:
         self._hide_guide()

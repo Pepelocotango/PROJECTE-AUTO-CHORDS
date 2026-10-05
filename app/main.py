@@ -9,12 +9,12 @@ import tempfile
 import traceback
 
 from PyQt5.QtCore import QObject, QThread, Qt, QUrl, pyqtSignal
-from PyQt5.QtGui import QDesktopServices
+from PyQt5.QtGui import QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
     QApplication, QCheckBox, QFileDialog, QDoubleSpinBox, QDockWidget,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-    QMessageBox, QProgressBar, QPushButton, QSpinBox, QTextEdit, QVBoxLayout,
-    QWidget,
+    QMessageBox, QProgressBar, QPushButton, QShortcut, QSpinBox, QTextEdit,
+    QVBoxLayout, QWidget,
 )
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -220,10 +220,20 @@ class Finestra(QMainWindow):
 
         self.sortida = ""
         self.b_export.setEnabled(False)
+        # Drecera: espai = play/pausa (a la finestra principal, perquè el
+        # visor està incrustat i el seu propi QShortcut no s'activaria).
+        self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
+        self._sc_play.activated.connect(self._toggle_play)
         for p in (pipeline.SONIC, pipeline.ACORDS_PY,
                   *pipeline.VAMP_DIRS):
             if not os.path.exists(p):
                 self.registra(f"AVÍS: no trobo {p}")
+
+    def _toggle_play(self):
+        """Espai → play/pausa del visor, si n'hi ha."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.play_stop()
 
     def registra(self, t):
         self.logger.info("UI: %s", t)
