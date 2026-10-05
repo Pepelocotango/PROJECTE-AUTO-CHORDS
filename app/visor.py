@@ -1005,6 +1005,7 @@ class Visor(QMainWindow):
             self._atura_proc()
             self.rellotge.stop()
             self.sona = False
+            self.timeline.set_follow(False)
             self.b_play.setText("▶ Escolta")
         else:
             # Comencem SEMPRE des del cursor visible (no d'un estat antic)
@@ -1014,6 +1015,7 @@ class Visor(QMainWindow):
                 return
             self.rellotge.start()
             self.sona = True
+            self.timeline.set_follow(True)   # la vista segueix el cursor
             self.b_play.setText("⏸ Atura")
             self.log("escoltant...")
 

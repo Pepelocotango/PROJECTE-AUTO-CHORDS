@@ -995,6 +995,7 @@ class TimelineView(QGraphicsView):
         self._section_by_idx: dict = {}
         self._guide_line: Optional[QGraphicsLineItem] = None
         self._pos_t = 0.0          # temps del cursor (font de veritat)
+        self._follow = False       # seguir el cursor durant el play
         self._sel = ("", -1)      # clip seleccionat (kind, index)
         self._loop_item = None     # banda de loop A/B
         self._loop_a = None
@@ -1074,11 +1075,33 @@ class TimelineView(QGraphicsView):
         self._grid.update_mode(self._tempo_fix, self._bpm, self._bpb)
         self.update()
 
+    def set_follow(self, enabled: bool) -> None:
+        """Activa/desactiva el seguiment del cursor durant la reproducció."""
+        self._follow = bool(enabled)
+
+    def _follow_cursor(self, t: float) -> None:
+        """Si el cursor surt de la zona còmoda (o va endavant), desplaça la
+        vista perquè quedi a ~15% de l'esquerra (estil DAW)."""
+        span = self._view_right - self._view_left
+        if span <= 0:
+            return
+        frac = (t - self._view_left) / span
+        if 0.0 <= frac <= 0.85:
+            return
+        new_l = max(0.0, t - span * 0.15)
+        new_r = min(self._durada, new_l + span)
+        if new_r - new_l < span:
+            new_l = max(0.0, new_r - span)
+            new_r = new_l + span
+        self._set_view_range(new_l, new_r)
+
     def set_position(self, t: float, emit: bool = True) -> None:
         t = max(0.0, min(float(t), self._durada))
         self._pos_t = t
         self._cursor.set_time(t, self._pps, self._x_offset, self._view_left)
         self._highlight_active(t)
+        if self._follow:
+            self._follow_cursor(t)
         if emit:
             self.positionChanged.emit(t)
 
@@ -1179,7 +1202,8 @@ class TimelineView(QGraphicsView):
             item.endTimeChanged.connect(
                 lambda nt, idx=i: self._on_chord_end_changed(idx, nt))
             item.clicked.connect(
-                lambda t0=float(t), idx=i: self._seek_to(t0, "chord", idx))
+                lambda it=item: self._seek_to(
+                    float(it.t), "chord", getattr(it, "idx", -1)))
             item.dragFinished.connect(self._emit_edit_finished)
             item.editRequested.connect(
                 lambda idx=i: self._on_chord_edit(idx))
@@ -1201,7 +1225,8 @@ class TimelineView(QGraphicsView):
             item.timeChanged.connect(
                 lambda ni, nf, idx=i: self._on_section_changed(idx, ni, nf))
             item.clicked.connect(
-                lambda t0=float(ini), idx=i: self._seek_to(t0, "section", idx))
+                lambda it=item: self._seek_to(
+                    float(it.ini), "section", getattr(it, "idx", -1)))
             item.dragFinished.connect(self._emit_edit_finished)
             item.editRequested.connect(
                 lambda idx=i: self._on_section_edit(idx))
