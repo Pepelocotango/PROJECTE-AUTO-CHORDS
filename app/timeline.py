@@ -26,7 +26,7 @@ El model de dades continua sent el del projecte:
 Tot en català. Sense dependències noves (PyQt5.QtWidgets + numpy).
 """
 import math
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Callable, List, Optional, Sequence
 
 import numpy as np
 from PyQt5.QtCore import QLineF, QPoint, QPointF, QRectF, Qt, pyqtSignal
@@ -34,7 +34,6 @@ from PyQt5.QtGui import (
     QBrush, QColor, QCursor, QFont, QFontMetricsF, QImage, QPainter,
     QPainterPath, QPen, QPixmap,
 )
-from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import (
     QGraphicsItem, QGraphicsLineItem, QGraphicsObject, QGraphicsPixmapItem,
     QGraphicsRectItem, QGraphicsScene, QGraphicsView, QLineEdit, QWidget,

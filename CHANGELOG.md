@@ -13,6 +13,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 
 ## [0.1.8] — 2026-10-06 (tag `v0.1.8-checkpoint`)
 
+### Netejat
+- **Imports sense ús** trets (`pyflakes` no és al venv i instal·lar-lo seria
+  una dependència nova → anàlisi amb l'AST de la stdlib): `visor.py`
+  (`atexit`, `math`, `QObject`, `QThread`, `pyqtSignal`), `timeline.py`
+  (`QObject`, `Tuple`), `main.py` (`QObject`, `QSpinBox`). Variables
+  leftovers: `tsrc` i `idx`.
+- **`AUTO_CHORDS.desktop`**: tenia un **byte NUL** al final (podia trencar
+  alguns parsers) i una **ruta absoluta fixa** (`/home/peplx/...`). Ara usa
+  `%k` (la ubicació del mateix `.desktop`) → **funciona des de qualsevol
+  carpeta o usuari**. `launcher.sh` fa el seu propi `cd`.
+
 ### Canviat
 - **Missatges d'error al log**: els handlers `except Exception` que només
   mostraven un `QMessageBox` (o que s'empassaven l'error en silenci) ara

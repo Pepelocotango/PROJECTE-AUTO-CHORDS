@@ -7,7 +7,6 @@ import copy
 import atexit
 import csv
 import logging
-import math
 import os
 import re
 import shutil
@@ -18,7 +17,7 @@ import threading
 import time
 import wave
 
-from PyQt5.QtCore import QObject, QThread, QTimer, Qt, pyqtSignal
+from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QCloseEvent, QKeySequence
 from PyQt5.QtWidgets import (
     QApplication, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
@@ -306,7 +305,7 @@ class Visor(QMainWindow):
             return []
         ordenats = sorted(items, key=lambda x: float(x[0]))
         prev_t = None
-        for idx, item in enumerate(ordenats):
+        for item in ordenats:
             t = float(item[0])
             if t < 0:
                 raise ValueError(f"L'acord {item[1]} té un inici negatiu ({t:.2f}s)")
@@ -386,8 +385,7 @@ class Visor(QMainWindow):
         fila = self.llista_ac.row(item)
         if fila < 0 or fila >= len(self.acords):
             return
-        t, vell, *rest = self.acords[fila]
-        tsrc = rest[0] if rest else f"{t:.9f}"
+        t, vell = self.acords[fila][0], self.acords[fila][1]
         nou_nom, ok_nom = QInputDialog.getText(
             self, "Corregeix l'acord",
             f"Nom de l'acord a {t:.2f} s (actual: {vell})",

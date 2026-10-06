@@ -8,12 +8,12 @@ import sys
 import tempfile
 import traceback
 
-from PyQt5.QtCore import QObject, QThread, Qt, QUrl, pyqtSignal
+from PyQt5.QtCore import QThread, Qt, QUrl, pyqtSignal
 from PyQt5.QtGui import QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-    QMessageBox, QProgressBar, QPushButton, QShortcut, QSpinBox, QTextEdit,
+    QMessageBox, QProgressBar, QPushButton, QShortcut, QTextEdit,
     QVBoxLayout, QWidget,
 )
 
