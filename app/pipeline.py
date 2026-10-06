@@ -8,6 +8,8 @@ import os
 import subprocess
 import wave
 
+from app import tempo
+
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJ_DIR = os.path.dirname(APP_DIR)
 SONIC = os.path.join(PROJ_DIR, "sonic-annotator")
@@ -81,11 +83,20 @@ def extract_chords(wav_path, out_csv, log):
 
 
 def detecta_bpm(wav_path, log):
-    """Estima el BPM amb el plugin Vamp d'aubio, a partir de les pulsacions.
+    """Estima el BPM d'una WAV (numpy pur, vegeu app/tempo.py).
 
-    Retorna float (BPM) o None si no es pot estimar. El BPM es deriva de la
-    MEDIANA dels intervals entre pulsacions (mes estable que el `tempo`
-    per fotograma). Vegeu docs/AUBIO_TEMPO.md.
+    Substitueix l'antic metode basat en el beat tracker d'aubio, que
+    s'enganxava a un pols erroni en trossos del tema (p. ex. amb silenci
+    inicial o directes). El nou mesura la periodicitat real de la musica.
+    """
+    return tempo.detecta_bpm(wav_path, log)
+
+
+def detecta_bpm_aubio(wav_path, log):
+    """[antic] Estima el BPM amb el plugin Vamp d'aubio (beats + mediana).
+
+    Es conserva per referencia/comparacio. El beat tracker d'aubio pot
+    enganxar-se a una subdivision en parts del tema.
     """
     import statistics
     import tempfile

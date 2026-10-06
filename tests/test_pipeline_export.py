@@ -740,6 +740,63 @@ class MetronomTests(unittest.TestCase):
         self.assertEqual(len(self._onsets(self._a_array(out))), 3)
 
 
+class TempoTests(unittest.TestCase):
+    """Detecció de BPM (app/tempo.py) — autocorrelacio + comb, numpy pur."""
+
+    SR = 22050
+
+    def _wav_clics(self, td, bpm, dur=20.0, silenci_ini=3.0):
+        """Genera una WAV amb clics periodics (i silenci inicial)."""
+        import wave
+        n = int(self.SR * dur)
+        a = np.zeros(n, dtype=np.int16)
+        periode = 60.0 / bpm
+        t = silenci_ini
+        while t < dur - 0.05:
+            i = int(t * self.SR)
+            llarg = int(self.SR * 0.02)
+            env = np.exp(-8.0 * np.arange(llarg) / llarg).astype(np.float32)
+            to = (np.sin(2 * np.pi * 1000 * np.arange(llarg) / self.SR) * env * 12000)
+            a[i:i + llarg] = np.clip(a[i:i + llarg] + to.astype(np.int16),
+                                     -32768, 32767)
+            t += periode
+        ruta = os.path.join(td, "clics.wav")
+        with wave.open(ruta, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(self.SR)
+            w.writeframes(a.tobytes())
+        return ruta
+
+    def test_detecta_bpm_sintetic(self):
+        import tempfile
+        from app import tempo
+        for bpm in (101.0, 118.0, 120.0):
+            with tempfile.TemporaryDirectory() as td:
+                ruta = self._wav_clics(td, bpm)
+                b = tempo.detecta_bpm(ruta, lambda m: None)
+                self.assertIsNotNone(b, f"bpm {bpm}: None")
+                self.assertLess(abs(b - bpm), 4.0,
+                                f"bpm {bpm}: detectat {b}")
+
+    def test_detecta_bpm_amb_silenci_inicial(self):
+        """El silenci inicial NO ha de desviar la deteccio (cas real)."""
+        import tempfile
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            ruta = self._wav_clics(td, 101.0, dur=25.0, silenci_ini=9.5)
+            b = tempo.detecta_bpm(ruta, lambda m: None)
+            self.assertLess(abs(b - 101.0), 4.0, f"detectat {b}")
+
+    def test_detecta_bpm_silenci_retorna_none(self):
+        import tempfile, wave
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            ruta = os.path.join(td, "silenci.wav")
+            with wave.open(ruta, "wb") as w:
+                w.setnchannels(1); w.setsampwidth(2); w.setframerate(self.SR)
+                w.writeframes(b"\x00\x00" * self.SR * 2)
+            self.assertIsNone(tempo.detecta_bpm(ruta, lambda m: None))
+
+
 class OffsetTests(unittest.TestCase):
     """L'offset (segon del compàs 1) ha d'aplicar-se a graella, clic i export."""
 

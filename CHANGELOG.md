@@ -3,6 +3,20 @@
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
 Versions amb tag git (`v0.1-punt-control` … `v0.2.1-checkpoint`).
 
+## [No publicat]
+
+### Canviat
+- **Detecció de BPM reescrita (`app/tempo.py`, numpy pur)**: l'antic mètode
+  (beat tracker d'**aubio** + mediana dels intervals) fallava amb temes reals:
+  amb prou feines encertava `01 101bpm pep live RE-ESTRUCTURA.wav` (9,5 s de
+  silenci inicial; aubio hi veia **139,7** BPM quan és **101**). El nou mètode
+  calcula l'**envolupant d'onsets** (flux espectral, 10 ms), en treu el
+  silenci inicial, en fa l'**autocorrelació** i puntua cada BPM candidat amb
+  una **«comb»** (suma als múltiples 1-4, lleu biaix a 90-180 BPM).
+  **Validat**: `101 → 101,0` i `118 → 117,8`. `pipeline.detecta_bpm` ara
+  delega a `tempo.detecta_bpm`; l'antic queda com a `detecta_bpm_aubio`.
+  **3 tests nous** (`TempoTests`, amb WAV sintètica i silenci inicial).
+
 ## [0.2.1] — 2026-10-06 (tag `v0.2.1-checkpoint`)
 
 ### Canviat
