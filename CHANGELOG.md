@@ -6,6 +6,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Metrònom (PAS 2: integració a la reproducció)** — `app/visor.py`:
+  - Estat `metro_on = False` i `metro_vol = 0.6`.
+  - A `_engega_des_de()`, **després** d'aplicar volum/mute de la cançó, els
+    clics es **mesclen al mateix buffer** que s'envia al reproductor (només
+    des del punt de reproducció endavant → funciona des de qualsevol posició
+    i amb el loop A/B). **El mute/volum de la cançó no afecta el clic.**
+  - `commuta_metro()` i `_canvia_vol_metro(v)`, amb el **mateix patró** que
+    `commuta_mut`/`_canvia_volum`: si sona, atura i reengega des de la
+    posició actual. Volum amb clamp 0-1.
+  - 5 tests nous (`MetroVisorTests`). Encara **sense widgets**.
+
+### Canviat
 - **Metrònom (PAS 1: generador)** — `app/metronom.py`, numpy pur sense Qt:
   - `genera_clic(sr, accent)`: clic de 25 ms (sinusoide, envolupant
     exponencial). Accent → 1500 Hz (temps 1 de cada compàs); normal → 1000 Hz.

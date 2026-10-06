@@ -30,6 +30,7 @@ import numpy as np
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
+import metronom  # noqa: E402
 import pipeline  # noqa: E402
 import theme  # noqa: E402
 from .timeline import TimelineView  # noqa: E402
@@ -249,6 +250,9 @@ class Visor(QMainWindow):
         # estat de transports
         self.vol = 1.0
         self.mut = False
+        # metrònom: clic mesclat al buffer (no afectat pel mute/volum cançó)
+        self.metro_on = False
+        self.metro_vol = 0.6
         self.loop_a = None
         self.loop_b = None
         self.loop_on = False
@@ -630,6 +634,23 @@ class Visor(QMainWindow):
     def _canvia_volum(self, v):
         self.vol = v / 100.0
         if self.sona:  # s'aplica al proper tros (reinicia des d'aquí)
+            pos = self.pos
+            self._atura_proc()
+            self._engega_des_de(pos)
+
+    def commuta_metro(self):
+        """Activa/desactiva el metrònom. Si sona, reinicia des de la posició."""
+        self.metro_on = not self.metro_on
+        self.log(f"metrònom {'ON' if self.metro_on else 'OFF'}")
+        if self.sona:
+            pos = self.pos
+            self._atura_proc()
+            self._engega_des_de(pos)
+
+    def _canvia_vol_metro(self, v):
+        """Volum del clic (0-100). Si sona, reinicia des de la posició."""
+        self.metro_vol = max(0.0, min(1.0, v / 100.0))
+        if self.sona:
             pos = self.pos
             self._atura_proc()
             self._engega_des_de(pos)
@@ -1139,6 +1160,13 @@ class Visor(QMainWindow):
         t = max(0.0, min(float(t), float(self.audio["durada"])))
         inici = int(t * self.audio["sr"]) * 2  # 16 bits mono
         dades = self._mono_bytes()[inici:]
+        # Metrònom: els clics es MESCLEN al buffer que s'envia al reproductor
+        # (només des d'aquí endavant → funciona des de qualsevol posició i
+        # amb el loop A/B). El mute/volum de la cançó no els afecta.
+        if self.metro_on and self.metro_vol > 0:
+            dades = metronom.mescla_metronom(
+                dades, self.audio["sr"], t, self.bpm, self.bpb,
+                volum=self.metro_vol)
         self.log(f"play des de {t:.2f}s ({len(dades)} bytes) amb {self.player}...")
         self.fitxer_err = os.path.join(OPENCODE_DIR, "visor_player.log")
         try:

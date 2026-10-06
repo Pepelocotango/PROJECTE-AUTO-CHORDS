@@ -701,6 +701,72 @@ class MetronomTests(unittest.TestCase):
         self.assertEqual(len(self._onsets(self._a_array(out))), 3)
 
 
+class MetroVisorTests(unittest.TestCase):
+    """Integració del metrònom al visor (estat i reinici). Encara sense GUI."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _visor(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 3)
+        return visor.Visor(wav, None, None, 120.0, 4, True)
+
+    def test_estat_inicial(self):
+        v = self._visor()
+        self.assertFalse(v.metro_on)
+        self.assertAlmostEqual(v.metro_vol, 0.6)
+        v.close()
+
+    def test_commuta_metro_es_toggle(self):
+        v = self._visor()
+        v.commuta_metro()
+        self.assertTrue(v.metro_on)
+        v.commuta_metro()
+        self.assertFalse(v.metro_on)
+        v.close()
+
+    def test_canvia_vol_metro_amb_clamp(self):
+        v = self._visor()
+        v._canvia_vol_metro(25)
+        self.assertAlmostEqual(v.metro_vol, 0.25)
+        v._canvia_vol_metro(150)
+        self.assertAlmostEqual(v.metro_vol, 1.0)
+        v._canvia_vol_metro(-5)
+        self.assertAlmostEqual(v.metro_vol, 0.0)
+        v.close()
+
+    def test_commuta_metro_reinicia_des_de_la_posicio_si_sona(self):
+        v = self._visor()
+        v.sona = True
+        v.pos = 1.5
+        crides = {}
+        v._atura_proc = lambda: crides.__setitem__("atura", True)
+        v._engega_des_de = lambda t: crides.__setitem__("des_de", t)
+        v.commuta_metro()
+        self.assertTrue(crides.get("atura"))
+        self.assertAlmostEqual(crides.get("des_de"), 1.5)
+        v.close()
+
+    def test_canvia_vol_metro_reinicia_si_sona(self):
+        v = self._visor()
+        v.sona = True
+        v.pos = 0.7
+        crides = {}
+        v._atura_proc = lambda: crides.__setitem__("atura", True)
+        v._engega_des_de = lambda t: crides.__setitem__("des_de", t)
+        v._canvia_vol_metro(40)
+        self.assertTrue(crides.get("atura"))
+        self.assertAlmostEqual(crides.get("des_de"), 0.7)
+        v.close()
+
+
 class ContextMenuTests(unittest.TestCase):
     """Menu contextual (boto dret) sobre un clip del timeline."""
 
