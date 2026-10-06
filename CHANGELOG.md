@@ -5,6 +5,20 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **Metrònom (PAS 1: generador)** — `app/metronom.py`, numpy pur sense Qt:
+  - `genera_clic(sr, accent)`: clic de 25 ms (sinusoide, envolupant
+    exponencial). Accent → 1500 Hz (temps 1 de cada compàs); normal → 1000 Hz.
+  - `mescla_metronom(...)`: mescla els clics a la rodanxa int16 mono,
+    **només** els que cauen dins (funciona des de qualsevol posició i amb
+    loop A/B). Suma en **float32** i fa **clip a int16**. BPM ≤ 0 / no finit
+    → no fa res; `bpb < 1` → es tracta com 1; `volum=0` → retorna l'àudio.
+  - **Graella**: la MATEIXA que el regle (`beat = 60/bpm`, compàs cada `bpb`).
+    El visor **no aplica cap offset** a la visualització → no se n'ha afegit
+    (queda com a paràmetre opcional `offset=0.0`).
+  - 6 tests nous (`MetronomTests`): posicions a 120 BPM 4/4, començar a mig
+    compàs, BPM invàlid, clip, volum 0, `bpb<1`.
+
 ### Canviat
 - **Reorganització de la GUI — PAS 6: llistes al tauler «Inspector».**
   - Les llistes d'acords i estructura viuen en un **tauler lateral dret

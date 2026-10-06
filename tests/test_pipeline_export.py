@@ -614,6 +614,93 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v.close()
 
 
+class MetronomTests(unittest.TestCase):
+    """Generador de clics del metrònom (app/metronom.py) — numpy pur."""
+
+    SR = 44100
+
+    def _silenci(self, dur):
+        return b"\x00\x00" * int(self.SR * dur)
+
+    def _a_array(self, b):
+        return np.frombuffer(b, dtype=np.int16).astype(np.int32)
+
+    def _onsets(self, senyal, llindar=1000):
+        """Inici de cada esclat de clic (separats per >50 ms de silenci)."""
+        actiu = np.abs(senyal) > llindar
+        idx = np.where(actiu)[0]
+        if idx.size == 0:
+            return np.array([])
+        gaps = np.where(np.diff(idx) > 0.05 * self.SR)[0]
+        inicis = np.concatenate(([idx[0]], idx[gaps + 1]))
+        return inicis / self.SR
+
+    def _freq(self, tros):
+        sp = np.abs(np.fft.rfft(tros))
+        return np.fft.rfftfreq(len(tros), 1.0 / self.SR)[np.argmax(sp)]
+
+    def test_clics_a_120bpm_4_4(self):
+        from app import metronom
+        out = metronom.mescla_metronom(self._silenci(3.0), self.SR,
+                                       0.0, 120.0, 4, volum=1.0)
+        onsets = self._onsets(self._a_array(out))
+        # 0, 0.5, 1.0, 1.5, 2.0, 2.5
+        self.assertEqual(len(onsets), 6)
+        for k, o in enumerate(onsets):
+            self.assertAlmostEqual(o, k * 0.5, places=3)
+        # accent (≈1500 Hz) als beats 0 i 4; la resta ≈1000 Hz
+        n = int(self.SR * 0.02)
+        f0 = self._freq(self._a_array(out)[int(0.0 * self.SR):int(0.0 * self.SR) + n])
+        f2 = self._freq(self._a_array(out)[self.SR:self.SR + n])
+        self.assertGreater(f0, 1300)
+        self.assertLess(f2, 1100)
+
+    def test_comencar_a_mig_compas_mante_el_patro(self):
+        from app import metronom
+        # comencem a t=2.5 s (beat 5). En 2 s de buffer hi cauen els beats
+        # 5,6,7,8 -> a 0.0, 0.5, 1.0, 1.5 dins la rodanxa.
+        out = metronom.mescla_metronom(self._silenci(2.0), self.SR,
+                                       2.5, 120.0, 4, volum=1.0)
+        onsets = self._onsets(self._a_array(out))
+        self.assertEqual(len(onsets), 4)
+        for k, o in enumerate(onsets):
+            self.assertAlmostEqual(o, k * 0.5, places=3)
+        # el beat 8 (t=4.0 → 1.5 dins la rodanxa) ha de ser accentuat
+        arr = self._a_array(out)
+        n = int(self.SR * 0.02)
+        i = int(1.5 * self.SR)
+        self.assertGreater(self._freq(arr[i:i + n]), 1300)
+
+    def test_bpm_invalid_no_canvia_res(self):
+        from app import metronom
+        for bpm in (0, -5, float("nan"), float("inf")):
+            base = self._silenci(1.0)
+            out = metronom.mescla_metronom(base, self.SR, 0.0, bpm, 4, volum=1.0)
+            self.assertEqual(out, base, f"bpm={bpm} hauria de no fer res")
+
+    def test_volum_zero_no_canvia_l_audio(self):
+        from app import metronom
+        base = self._silenci(1.0)
+        out = metronom.mescla_metronom(base, self.SR, 0.0, 120.0, 4, volum=0.0)
+        self.assertEqual(out, base)
+
+    def test_la_mescla_no_desborda(self):
+        from app import metronom
+        # audio a tope (32767) -> amb el clic NO ha de superar int16
+        fort = (np.ones(self.SR, dtype=np.int16) * 32000).tobytes()
+        out = metronom.mescla_metronom(fort, self.SR, 0.0, 120.0, 4, volum=1.0)
+        arr = np.frombuffer(out, dtype=np.int16)
+        self.assertTrue(np.all(arr <= 32767))
+        self.assertTrue(np.all(arr >= -32768))
+
+    def test_bpb_menor_que_1_es_tracta_com_1(self):
+        from app import metronom
+        out = metronom.mescla_metronom(self._silenci(1.1), self.SR,
+                                       0.0, 120.0, 0, volum=1.0)
+        # amb bpb=1 tots els beats son accents (cada 0.5 s)
+        self.assertEqual(len(self._onsets(self._a_array(out))), 3)
+
+
 class ContextMenuTests(unittest.TestCase):
     """Menu contextual (boto dret) sobre un clip del timeline."""
 
