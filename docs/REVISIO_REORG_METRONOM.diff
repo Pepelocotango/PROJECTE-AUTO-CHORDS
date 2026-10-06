@@ -6,8 +6,8 @@
 # Projecte : AUTO CHORDS (PyQt5, Python 3.12, Ubuntu MATE 24.04, Q9400 sense AVX)
 # Autor    : OC (opencode)
 # Base     : 9b1beb8  tag 'v0.1.9-pre-reorg'  (P2-T5: menu contextual (boto dret) sobre un clip del timeline)
-# HEAD     : 1248318  (docs: diff anotat del metronom per a revisio externa)
-# Commits  : 11 des del tag
+# HEAD     : 760b8b2  (docs: diff anotat des del darrer tag (reorg GUI + metronom))
+# Commits  : 12 des del tag (fins i tot aquest document)
 # Tests    : 69/69 OK  (python -m unittest tests.test_pipeline_export)
 #
 # Restriccions respectades: numpy<2 · res de Qt6/PySide6 · cap dependencia

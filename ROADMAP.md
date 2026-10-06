@@ -142,6 +142,14 @@ sigui un plaer** i no una fricció.
 
 ### D.1 — Crítiques (sense elles el visor no és usable)
 
+> ✅ **FET (2026-10-06)**: clic a un clip mou el cursor · `Delete` elimina
+> l'element seleccionat (amb undo) · `Ctrl+D` duplica (repartint la durada,
+> amb undo) · distinció visual **seleccionat** (vora cian gruixuda) vs
+> **actiu** (fons verd) amb els colors a `app/theme.py` · **menú contextual**
+> (botó dret) sobre un clip amb Duplica/Elimina/Reanomena. També s'ha afegit
+> un **metrònom** (🥁, només mode BPM · compàs, volum propi) i la **GUI
+> reorganitzada** amb el timeline al centre.
+
 - **Click a un clip → mou cursor de play allà** (l’acció més bàsica d’un
   DAW que actualment **no funciona**).
 - **Selecció persistent visual** — l’element seleccionat canvia de color

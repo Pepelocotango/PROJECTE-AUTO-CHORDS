@@ -2,23 +2,30 @@
 
 > Aplicació desktop per analitzar una WAV, navegar-ne acords i estructura, corregir-la i exportar clips preparats per a DAW.
 
-## Estat actual (2026-10-06 · v0.1.8)
+## Estat actual (2026-10-06 · v0.2.0)
 
-La base del producte funciona com a aplicació única i coherent:
+L’app està **reorganitzada amb el timeline com a centre de la finestra**
+(estil Audacity/DAW): l’anàlisi és una **acció** sobre el que es veu, no un
+pas d’assistent.
 
-- la app principal carrega una WAV i processa sense terminal
-- el visor està integrat en la mateixa finestra principal
-- es generen acords, estructura i carpetes de sortida compartides
-- el flux és clar: `Processa` i `Finalitza i publica`
-- **barra de menús** (Fitxer · Edita · Selecciona · Visualitza · Analitza · Ajuda)
-- **desfer/refer** d’edició (Ctrl+Z / Ctrl+Y), mai toca els WAVs generats
-- **temps** en dos modes: **BPM · compàs** o **Lliure (hh:mm:ss)**, amb
-  **detecció automàtica del BPM** (plugin Vamp d’aubio)
-- els compassos de qualsevol mètrica (3/4, 6/8, 5/4…), no només 4/4
-- la llista d’acords i la d’estructura són editables
-- es pot llançar directament des de la carpeta del projecte amb doble clic
+- En obrir una WAV (**Fitxer ▸ Obre WAV…**, `Ctrl+O`) es mostren l’ona i el
+  timeline **de seguida**, amb les pistes Acords/Estructura buides.
+- **Barra de menús**: Fitxer · Edita · Selecciona · Visualitza · Analitza · Ajuda.
+- **Barra de temps** fina: mode **BPM · compàs** / **Lliure (hh:mm:ss)**,
+  BPM, compàs, offset, botó **🎯 Detecta** (aubio) i «Inclou estructura».
+- **Barra de transport** pròpia: play/stop, −10s/+10s, loop A/B, zoom i mute
+  (`Espai` = play/stop).
+- **Metrònom** 🥁 (només en mode BPM · compàs), amb **volum propi** (60 %).
+- **Analitza** (`F5`): progrés a la **barra d’estat**; el **log** és un tauler
+  plegable a baix (**Visualitza ▸ Mostra el log**).
+- **Exporta…** (`Ctrl+E`) a Fitxer; desactivat fins que hi ha resultat.
+- **Edició al timeline**: desfer/refer (`Ctrl+Z`/`Ctrl+Y`), `Delete`, `Ctrl+D`
+  (duplica) i **menú contextual** (botó dret). Mai toca els WAVs generats.
+- **Inspector** (**Visualitza ▸ Mostra l’inspector**): llistes d’acords i
+  estructura (clic per saltar, doble-clic per editar, menú contextual).
+- Compassos de **qualsevol mètrica** (3/4, 6/8, 5/4…), no només 4/4.
 
-La funcionalitat principal està validada: **45/45 tests OK** (`python -m unittest tests.test_pipeline_export`).
+La funcionalitat principal està validada: **69/69 tests OK** (`python -m unittest tests.test_pipeline_export`).
 
 ## Què fa l’app
 

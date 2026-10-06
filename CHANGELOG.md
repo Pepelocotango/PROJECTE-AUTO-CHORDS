@@ -1,9 +1,9 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
+Versions amb tag git (`v0.1-punt-control` … `v0.2.0-checkpoint`).
 
-## [No publicat]
+## [0.2.0] — 2026-10-06 (tag `v0.2.0-checkpoint`)
 
 ### Afegit
 - **Metrònom (PAS 3: interfície i estat gris)**:
