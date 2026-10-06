@@ -1,0 +1,1270 @@
+################################################################################
+# REVISIÓ DE FEINA — REORGANITZACIÓ GUI (6 passos) + METRÒNOM (3 passos)
+#                           DES DEL DARRER TAG
+################################################################################
+#
+# Projecte : AUTO CHORDS (PyQt5, Python 3.12, Ubuntu MATE 24.04, Q9400 sense AVX)
+# Autor    : OC (opencode)
+# Base     : 9b1beb8  tag 'v0.1.9-pre-reorg'  (P2-T5: menu contextual (boto dret) sobre un clip del timeline)
+# HEAD     : 1248318  (docs: diff anotat del metronom per a revisio externa)
+# Commits  : 11 des del tag
+# Tests    : 69/69 OK  (python -m unittest tests.test_pipeline_export)
+#
+# Restriccions respectades: numpy<2 · res de Qt6/PySide6 · cap dependencia
+# nova · sense sudo · catala. PIPELINE, CSV I INVARIANTS INTACTES.
+#
+# NOTA: aquest fitxer EXCLOU docs/REVISIO_METRONOM.diff del diff (seria un
+#       'diff del diff'); aquell document cobreix nomes el metronom.
+#
+################################################################################
+
+================================================================================
+PART A — CONTEXT
+================================================================================
+
+L'app tenia un formulari tipus assistent (3 QGroupBox: '1 Tria la wav',
+'2 Temps i parametres', '3 Analitza i exporta' amb log) al widget central
+i el visor en un QDockWidget a la dreta. Objectiu: que el TIMELINE sigui el
+centre de la finestra i que l'analisi sigui una ACCIO sobre el que es veu.
+Despres, afegir-hi un METRONOM.
+
+================================================================================
+PART B — REORGANITZACIÓ GUI (6 passos, 6 commits)
+================================================================================
+
+PAS 1 (ef5e424) — barra compacta de temps i parametres (una linia)
+  El QGroupBox '2 · Temps i parametres' -> QToolBar fina no-movible sota el
+  menu: selector BPM·compas/Lliure, BPM, Compas, Offset, boto Detecta i
+  casella Inclou estructura, TOT en una linia. Mateixos widgets i logica.
+
+PAS 2 (b33ce0d) — el timeline es la finestra
+  - Fora el QDockWidget: el visor es el widget central (QStackedWidget:
+    pagina 0 = placeholder, pagina 1 = visor).
+  - En obrir una WAV es mostren ona i timeline DE SEGUIDA amb pistes buides.
+    NO cal reescriure el visor: el constructor JA acceptava acords=None/abc=None.
+  - Fora el QGroupBox '1 · Tria la wav': Obre nomes per Fitxer>Obre (Ctrl+O)
+    i un boto 'Obre...' a la barra. Nom del fitxer al titol; info a la barra
+    d'estat. Sense WAV es mante el placeholder.
+
+PAS 3 (1ca7c6e) — Analitza com a accio + log plegable
+  - Fora el QGroupBox '3'. 'Processa' -> 'Analitza' (barra + menu, F5).
+  - Progres -> QProgressBar permanent de la QStatusBar.
+  - Log -> QDockWidget inferior plegable, TANCAT per defecte, s'obre en error.
+    Visualitza > Mostra el log.
+  - Estats dinamics: Analitza desactivat sense WAV i mentre hi ha feina.
+
+PAS 4 (34d37db) — exportar a Fitxer
+  'Finalitza i publica' -> Fitxer > Exporta... (Ctrl+E) + boto a la barra.
+  Desactivat fins que hi ha resultat d'analisi. Mateixa logica exporta().
+
+PAS 5 (72e3401) — barra de transport unica
+  Transport (play/stop, -10s/+10s, loop A/B, zoom, mute) en una QToolBar
+  propia (2a fila), FORA del visor. Reusa els metodes existents del visor
+  (play_stop, stop_inici, ves_a, marca_A/B, commuta_loop, zoom, zoom_tot,
+  commuta_mut). La fila de transport del visor s'amaga quan va incrustat
+  (segueix funcionant standalone). Tooltips amb la drecera (Espai).
+
+PAS 6 (4222696) — llistes al tauler Inspector
+  Les llistes d'acords i estructura -> QDockWidget 'Inspector' dret,
+  AMAGAT per defecte; Visualitza > Mostra l'inspector. Mantenen clic-per-
+  saltar, doble-clic-per-editar i menu contextual. El log propi del visor
+  s'amaga quan va incrustat.
+
+================================================================================
+PART C — METRÒNOM (3 passos + arreglos, 4 commits)
+================================================================================
+
+PAS 1 (e69b0ba) — generador de clics (app/metronom.py, NOU, numpy pur):
+  genera_clic(sr, accent): clic 25 ms, accent ~1500 Hz / normal ~1000 Hz.
+  mescla_metronom(...): mescla clics a la rodanxa int16 mono (nomes els
+  que hi cauen -> funciona des de qualsevol posicio i amb loop A/B).
+  Suma en float32 + clip int16. BPM invalid -> no fa res; bpb<1 -> 1.
+  GRAELLA = la del regle (beat=60/bpm, compas cada bpb); el visor NO aplica
+  offset a la visualitzacio -> no se n'ha afegit.
+
+PAS 2 (be2eac6) — integracio a la reproduccio (sense GUI):
+  Estat metro_on=False, metro_vol=0.6. A _engega_des_de(), DESPRES del
+  volum/mute de la canco, els clics es mesclen al MATEIX buffer enviat al
+  reproductor. El mute/volum de la canco NO afecta el clic. set_metro(),
+  commuta_metro(), _canvia_vol_metro() amb el patro de commuta_mut.
+
+PAS 3 (52c4c5a + 5f55169) — interficie i estat gris:
+  Boto marcable (drum) + QSlider 0-100 (defecte 60) a la barra de transport,
+  al costat del mute. Accio marcable Visualitza > Metronom, sincronitzada.
+  NOMES disponible en mode BPM·compas: en Lliure es desmarca i es
+  desactiven (gris) boto, accio i slider, amb tooltip explicatiu.
+  Color de l'estat activat a theme.METRO_ACTIU. _aplica_parametres_temps()
+  propaga BPM/compas al visor i reenvia si sona (el clic segueix la graella).
+
+================================================================================
+PART D — BUGS TROBATS I ARREGLATS DURANT EL DESENVOLUPAMENT
+================================================================================
+
+GUI:    - test_main_shows_placeholder... -> adaptat (ara el visor s'obre
+          sempre amb pistes buides).
+        - test_main_window_has_process... -> noms nous Analitza/Exporta.
+        - _carrega_visor: el boto Analitza s'activa a partir d'aqui (no
+          nomes al dialeg), perque el cami 'Obre' tambe hi passa.
+        - _valuador de noms del boto Exporta (encara ocult fins al pas 4).
+METRO:  a) genera_clic retorna +-1 NORMALITZAT -> cal escalar a 32767*volum
+           (si no, astype(int16) TRUNCAVA a 0, clics muts!).
+        b) _actualitza_temps() es crida a __init__ ABANS de metro_on ->
+           getattr defensiu.
+        c) Faltava l'import QSlider a app/main.py.
+        d) CHANGELOG: text perdut per escapament de backticks -> corregit.
+        e) El test del metronom comprovava sense visor (en depen).
+
+================================================================================
+PART E — NOTES PER A LA REVISIÓ
+================================================================================
+
+- ORDRE CLAU de la cadena d'audio: _mono_bytes() aplica (mute?0:vol) de la
+  canco; _engega_des_de() talla des de t i hi afegeix els clics. Per tant
+  amb la canco silenciada se sent el clic SOL.
+- El pipeline, els CSV i les invariants (intervals ordenats, sense
+  solapaments, prev.fi == curr.t) NO s'han tocat.
+- Tests: 56 (abans del metronom) -> 69. Nous: 6 MetronomTests + 5
+  MetroVisorTests + 2 GUI; i adaptats els 2 de layout/noms.
+- PUNT A VALORAR: la REPRODUCCIO REAL (que el clic vagi a temps amb el
+  regle, i que en parar no quedi res sonant) NO s'ha pogut verificar en
+  automatic: cal oida + audio. Els tests cobreixen posicions, mescla,
+  estat i reinici, pero no l'audicio.
+- Pendent menor: a mides petites (<1300 px) les barres fan overflow; el
+  boto mute surt 2 cops (transport + fila del lliscador del visor).
+
+================================================================================
+PART F — DIFF COMPLET  (git diff v0.1.9-pre-reorg..HEAD, excloent aquest doc)
+================================================================================
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 9df1987..a34cfb5 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -5,6 +5,124 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
+ 
+ ## [No publicat]
+ 
++### Afegit
++- **Metrònom (PAS 3: interfície i estat gris)**:
++  - Botó marcable **🥁** i un **QSlider 0-100** (per defecte **60**) a la barra
++    de transport, al costat del mute, amb tooltips. Acció marcable
++    **Visualitza ▸ Metrònom**, sincronitzada amb el botó.
++  - **Només disponible en mode BPM · compàs**: en mode **Lliure** es
++    desmarca i es desactiven (gris) botó, acció i slider, amb tooltip
++    «Només disponible en mode BPM · compàs». En tornar a BPM es reactiven.
++  - Si el mode passa a Lliure mentre sona amb el clic activat, **reengega
++    sense clic** des de la posició (a `_actualitza_temps`).
++  - El color de l'estat activat viu a `app/theme.py` (`METRO_ACTIU`), no al
++    codi del visor.
++  - 2 tests nous a la finestra.
++
++### Canviat
++- **Metrònom (PAS 2: integració a la reproducció)** — `app/visor.py`:
++  - Estat `metro_on = False` i `metro_vol = 0.6`.
++  - A `_engega_des_de()`, **després** d'aplicar volum/mute de la cançó, els
++    clics es **mesclen al mateix buffer** que s'envia al reproductor (només
++    des del punt de reproducció endavant → funciona des de qualsevol posició
++    i amb el loop A/B). **El mute/volum de la cançó no afecta el clic.**
++  - `commuta_metro()` i `_canvia_vol_metro(v)`, amb el **mateix patró** que
++    `commuta_mut`/`_canvia_volum`: si sona, atura i reengega des de la
++    posició actual. Volum amb clamp 0-1.
++  - 5 tests nous (`MetroVisorTests`). Encara **sense widgets**.
++
++### Canviat
++- **Metrònom (PAS 1: generador)** — `app/metronom.py`, numpy pur sense Qt:
++  - `genera_clic(sr, accent)`: clic de 25 ms (sinusoide, envolupant
++    exponencial). Accent → 1500 Hz (temps 1 de cada compàs); normal → 1000 Hz.
++  - `mescla_metronom(...)`: mescla els clics a la rodanxa int16 mono,
++    **només** els que cauen dins (funciona des de qualsevol posició i amb
++    loop A/B). Suma en **float32** i fa **clip a int16**. BPM ≤ 0 / no finit
++    → no fa res; `bpb < 1` → es tracta com 1; `volum=0` → retorna l'àudio.
++  - **Graella**: la MATEIXA que el regle (`beat = 60/bpm`, compàs cada `bpb`).
++    El visor **no aplica cap offset** a la visualització → no se n'ha afegit
++    (queda com a paràmetre opcional `offset=0.0`).
++  - 6 tests nous (`MetronomTests`): posicions a 120 BPM 4/4, començar a mig
++    compàs, BPM invàlid, clip, volum 0, `bpb<1`.
++
++### Canviat
++- **Reorganització de la GUI — PAS 6: llistes al tauler «Inspector».**
++  - Les llistes d'acords i estructura viuen en un **tauler lateral dret
++    plegable** (`QDockWidget` «Inspector»), **amagat per defecte**;
++    s'obre amb **Visualitza ▸ Mostra l'inspector**. Mantenen clic-per-salta,
++    doble-clic-per-editar i menú contextual.
++  - El visor les exposa en un contenidor (`self.inspector`) que la finestra
++    re-parenta al dock; si el visor s'executa sol, queden al lloc de sempre.
++  - **Edició des del timeline**: amb el panell amagat, desfer/refer, Delete,
++    Ctrl+D (duplica), menú contextual i renombrat inline **ja funcionen**
++    (passos P2-T2/T3/T5). Únic pendent: *afegir* un clip nou només és al
++    menú contextual de la llista (es pot afegir al timeline més endavant).
++  - El **log propi del visor** s'amaga quan va incrustat (ja hi ha el tauler
++    «Log» de la finestra).
++
++### Canviat (anteriors)
++- **Reorganització de la GUI — PAS 5: barra de transport única.**
++  - Els botons de transport (play/stop, −10s/+10s, loop A/B, zoom 🔍−/🔍+/Tot
++    i mute) viuen ara en una **QToolBar pròpia** de la finestra (2a fila),
++    **fora del visor**.
++  - **Reutilització**: els botons criden els **mètodes existents del visor**
++    (`play_stop`, `stop_inici`, `ves_a`, `marca_A/B`, `commuta_loop`,
++    `zoom`, `zoom_tot`, `commuta_mut`) — no s'ha reescrit cap lògica.
++  - Quan el visor va **incrustat**, la seva fila de transport **s'amaga**
++    (el visor segueix funcionant sol si s'executa standalone).
++  - **Tooltips amb la drecera** (Espai = play/stop). Es mantenen les
++    dreceres existents.
++  - Nota: el botó 🔇 del visor (a la fila del lliscador) es manté; el de la
++    barra de transport és el mateix estat.
++
++### Canviat (anteriors)
++- **Reorganització de la GUI — PAS 4: exportar a Fitxer.**
++  - «Finalitza i publica» passa a **Fitxer ▸ Exporta… (Ctrl+E)** i un botó
++    **«Exporta»** a la barra d'eines. Mateixa lògica de `exporta()`; **no
++    canvia què exporta ni els noms de carpetes/fitxers**.
++  - **Desactivat** fins que hi ha un resultat d'anàlisi (`b_export` només
++    s'activa a `acabada(True, …)`).
++
++### Canviat (anteriors)
++- **Reorganització de la GUI — PAS 3: «Analitza» com a acció + log plegable.**
++  - **Fora el QGroupBox «3 · Analitza i exporta»**.
++  - El botó «Processa» passa a **«Analitza»** a la barra d'eines (i a
++    **Analitza ▸ Analitza**, `F5`). Crida el mateix `executa()`.
++  - El **progrés** va a un `QProgressBar` permanent a la **barra d'estat**.
++  - El **log** passa a un **QDockWidget inferior plegable**, **tancat per
++    defecte**, que s'obre sol si hi ha error. **Visualitza ▸ Mostra el log**.
++  - **Estats dinàmics**: «Analitza» desactivat sense WAV i mentre hi ha una
++    feina en curs (centralitzat a `_carrega_visor`).
++  - 3 tests nous + 2 adaptats (els noms dels botons canvien a propòsit).
++
++### Canviat (anteriors)
++- **Reorganització de la GUI — PAS 2: el timeline és la finestra.**
++  - **Fora el `QDockWidget`**: el visor passa a ser el **widget central**
++    (via `QStackedWidget`: pàgina 0 = placeholder, pàgina 1 = visor).
++  - **Obrir una WAV mostra l'ona i el timeline immediatament**, ABANS
++    d'analitzar, amb les pistes Acords i Estructura **buides**. No cal
++    reescriure el visor: el seu constructor ja acceptava `acords=None` /
++    `abc=None` (pistes buides) i, si la carpeta té CSV, els carrega sols.
++  - **Fora el QGroupBox «1 · Tria la wav»**: obrir WAV passa per
++    **Fitxer ▸ Obre WAV… (Ctrl+O)** i un botó **«Obre…»** a la barra
++    d'eines. El **nom del fitxer va al títol** de la finestra i la info
++    (durada, canals, Hz) a la **barra d'estat**.
++  - Sense WAV es manté el **placeholder** al centre.
++  - Fora l'etiqueta «Flux: …» (ja no és un assistent) i l'acció
++    «Mostra el visor» del menú Visualitza.
++  - **Test adaptat** (`test_obre_wav_mostra_timeline_buit_abans_d_analitzar`):
++    abans s'esperava placeholder sense CSV; ara s'espera visor amb pistes
++    buides. Comportament canviat a propòsit pel pas 2.
++
++### Canviat (anteriors)
++- **Reorganització de la GUI (estil Audacity/DAW) — PAS 1**: el QGroupBox
++  «2 · Temps i paràmetres» passa a ser una **barra d'eines fina d'una sola
++  línia** (`QToolBar`, no movable) sota el menú: selector
++  **BPM · compàs / Lliure**, camps de text **BPM**, **Compàs**, **Offset (s)**,
++  botó **🎯 Detecta** i la casella **Inclou estructura**. Mateixos widgets i
++  mateixa lògica (entrada de text amb coma decimal; els paràmetres
++  s'amaguen en bloc en mode Lliure). La resta de la finestra no canvia.
++
+ ### Pendent de polir (visor)
+ - Confusió visual entre clip **seleccionat** (vora groga) i **actiu**
+   (fons més clar, segons el cursor).
+diff --git a/app/main.py b/app/main.py
+index 021f4b9..d139bad 100755
+--- a/app/main.py
++++ b/app/main.py
+@@ -13,7 +13,8 @@ from PyQt5.QtGui import QDesktopServices, QKeySequence
+ from PyQt5.QtWidgets import (
+     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
+     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
+-    QMessageBox, QProgressBar, QPushButton, QShortcut, QTextEdit,
++    QMessageBox, QProgressBar, QPushButton, QShortcut, QSlider, QTextEdit,
++    QStackedWidget, QToolBar,
+     QVBoxLayout, QWidget,
+ )
+ 
+@@ -146,48 +147,37 @@ class Finestra(QMainWindow):
+         self.feina = None
+         self.logger.info("Finestra inicialitzada")
+ 
++        # El VISOR és el widget central (abans era un QDockWidget a la dreta).
++        # Fem servir un QStackedWidget: pàgina 0 = placeholder, pàgina 1 = visor.
++        self.wav_edit = QLineEdit()      # només com a magatzem de la ruta
++        self.wav_edit.setVisible(False)
++        self.wav_info = QLabel("")
++        self.statusBar().addPermanentWidget(self.wav_info)
++
+         arrel = QWidget()
+         self.setCentralWidget(arrel)
+         capa = QVBoxLayout(arrel)
+-
+-        self.visor_dock = QDockWidget("Visor", self)
+-        self.visor_dock.setAllowedAreas(
+-            Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea | Qt.BottomDockWidgetArea)
+-        self.visor_dock.setFeatures(
+-            QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
+-        self.visor_dock.setVisible(True)
+-        self.addDockWidget(Qt.RightDockWidgetArea, self.visor_dock)
++        capa.setContentsMargins(0, 0, 0, 0)
++        self._stack = QStackedWidget()
++        capa.addWidget(self._stack, stretch=1)
+         self.visor_widget = None
+         self._mostra_placeholder_visor()
+ 
+-        # 1. wav
+-        g1 = QGroupBox("1 · Tria la wav")
+-        f1 = QHBoxLayout(g1)
+-        self.wav_edit = QLineEdit()
+-        self.wav_edit.setPlaceholderText("/camí/al/tema.wav")
+-        self.wav_edit.setToolTip("Ruta de la fitxer WAV que vols analitzar.")
+-        b_tria = QPushButton("Tria...")
+-        b_tria.setObjectName("secundari")
+-        b_tria.setToolTip("Selecciona la cançó o la gravació WAV a processar.")
+-        b_tria.clicked.connect(self.tria_wav)
+-        f1.addWidget(self.wav_edit)
+-        f1.addWidget(b_tria)
+-        capa.addWidget(g1)
+-        self.wav_info = QLabel("")
+-        capa.addWidget(self.wav_info)
+-
+-        self.flux_label = QLabel(
+-            "Flux: Tria WAV → Processa → Revisa i edita → Finalitza i publica"
+-        )
+-        self.flux_label.setStyleSheet("QLabel { color: #dfe3ea; font-weight: 600; }")
+-        capa.addWidget(self.flux_label)
+-
+-        # 2. temps i paràmetres — mode BPM·compàs vs Lliure (hh:mm:ss)
+-        g2 = QGroupBox("2 · Temps i paràmetres")
+-        v2 = QVBoxLayout(g2)
+-
+-        fila_mode = QHBoxLayout()
+-        fila_mode.addWidget(QLabel("Temps:"))
++        # barra d'eines principal: Obre (els passos 3/4 hi afegiran Analitza/Exporta)
++        barra_principal = QToolBar("Principal")
++        barra_principal.setObjectName("barra_principal")
++        barra_principal.setMovable(False)
++        b_obre = QPushButton("Obre…")
++        b_obre.setObjectName("secundari")
++        b_obre.setToolTip("Obre una WAV (Ctrl+O)")
++        b_obre.clicked.connect(self.tria_wav)
++        barra_principal.addWidget(b_obre)
++        barra_principal.addSeparator()
++        self.barra_principal = barra_principal
++        self.addToolBar(Qt.TopToolBarArea, barra_principal)
++
++        # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
++        #    (abans era un QGroupBox «2 · Temps i paràmetres»)
+         self.b_mode_bpm = QPushButton("BPM · compàs")
+         self.b_mode_bpm.setCheckable(True)
+         self.b_mode_bpm.setChecked(True)
+@@ -201,75 +191,113 @@ class Finestra(QMainWindow):
+         grp_mode.addButton(self.b_mode_lliure)
+         self.b_mode_bpm.clicked.connect(lambda: self._canvia_mode_temps(True))
+         self.b_mode_lliure.clicked.connect(lambda: self._canvia_mode_temps(False))
+-        fila_mode.addWidget(self.b_mode_bpm)
+-        fila_mode.addWidget(self.b_mode_lliure)
+-        fila_mode.addStretch(1)
+-        v2.addLayout(fila_mode)
+ 
+         # camps d'entrada MANUAL de text (sense fletxes ▲▼)
+         self.bpm = QLineEdit("120.0")
+-        self.bpm.setMaximumWidth(90)
++        self.bpm.setMaximumWidth(70)
+         self.bpm.setPlaceholderText("120.0")
+         self.bpm.setToolTip("BPM del tema. Entrada manual (text).")
+         self.bpb = QLineEdit("4")
+-        self.bpb.setMaximumWidth(90)
++        self.bpb.setMaximumWidth(40)
+         self.bpb.setPlaceholderText("4")
+         self.bpb.setToolTip("Temps per compàs (p. ex. 4).")
+         self.offset = QLineEdit("0.0")
+-        self.offset.setMaximumWidth(90)
++        self.offset.setMaximumWidth(60)
+         self.offset.setPlaceholderText("0.0")
+         self.offset.setToolTip("Offset del compàs 1, en segons.")
+         self.b_detecta = QPushButton("🎯 Detecta")
+         self.b_detecta.setObjectName("secundari")
+         self.b_detecta.setToolTip("Detecta el BPM automàticament amb aubio.")
+         self.b_detecta.clicked.connect(self._detecta_bpm)
+-
+-        self._params_temps = QWidget()
+-        ft = QFormLayout(self._params_temps)
+-        ft.setContentsMargins(0, 0, 0, 0)
+-        fila_bpm = QHBoxLayout()
+-        fila_bpm.addWidget(self.bpm)
+-        fila_bpm.addWidget(self.b_detecta)
+-        fila_bpm.addStretch(1)
+-        ft.addRow("BPM:", fila_bpm)
+-        ft.addRow("Temps per compàs:", self.bpb)
+-        ft.addRow("Offset compàs 1 (s):", self.offset)
+-        v2.addWidget(self._params_temps)
+-
+-        self.amb_est = QCheckBox("Inclou estructura (Segmentino → ABC)")
++        for camp in (self.bpm, self.bpb, self.offset):
++            camp.editingFinished.connect(self._aplica_parametres_temps)
++
++        self._params_temps = QWidget()      # s'amaga sencer en mode Lliure
++        hp = QHBoxLayout(self._params_temps)
++        hp.setContentsMargins(0, 0, 0, 0)
++        hp.setSpacing(6)
++        hp.addWidget(QLabel("BPM:"))
++        hp.addWidget(self.bpm)
++        hp.addWidget(self.b_detecta)
++        hp.addWidget(QLabel("Compàs:"))
++        hp.addWidget(self.bpb)
++        hp.addWidget(QLabel("Offset (s):"))
++        hp.addWidget(self.offset)
++
++        self.amb_est = QCheckBox("Inclou estructura")
+         self.amb_est.setChecked(True)
+         self.amb_est.setToolTip("Genera la jerarquia de seccions i l’ABC de l’estructura del tema.")
+-        v2.addWidget(self.amb_est)
+ 
+         # estat `tempo_fix` (ocult): el visor i la resta de codi el consulten
+         self.tempo_fix = QCheckBox()
+         self.tempo_fix.setChecked(True)
+         self.tempo_fix.setVisible(False)
+         self.tempo_fix.toggled.connect(self._canvia_tempo)
+-        capa.addWidget(g2)
+-
+-        # 3. executa
+-        g3 = QGroupBox("3 · Analitza i exporta")
+-        f3 = QVBoxLayout(g3)
+-        fila = QHBoxLayout()
+-        self.b_exec = QPushButton("Processa")
+-        self.b_exec.setToolTip("Extreu acords i estructura i genera el flux de treball del tema.")
++
++        # la barra pròpiament
++        barra_temps = QToolBar("Temps i paràmetres")
++        barra_temps.setObjectName("barra_temps")
++        barra_temps.setMovable(False)
++        barra_temps.addWidget(QLabel(" Temps: "))
++        barra_temps.addWidget(self.b_mode_bpm)
++        barra_temps.addWidget(self.b_mode_lliure)
++        barra_temps.addSeparator()
++        barra_temps.addWidget(self._params_temps)
++        barra_temps.addSeparator()
++        barra_temps.addWidget(self.amb_est)
++        self.addToolBar(Qt.TopToolBarArea, barra_temps)
++        self.barra_temps = barra_temps
++
++        # 3. «Analitza» és una ACCIÓ sobre el que es veu (ja no un pas d'assistent).
++        self.b_exec = QPushButton("Analitza")
++        self.b_exec.setObjectName("principal")
++        self.b_exec.setToolTip("Extreu acords i estructura de la WAV (F5)")
+         self.b_exec.clicked.connect(self.executa)
+-        self.b_export = QPushButton("Finalitza i publica")
+-        self.b_export.setObjectName("secundari")
+-        self.b_export.setToolTip("Genera la sortida final i publica el paquet llest per al DAW.")
+-        self.b_export.setEnabled(False)
++        self.b_exec.setEnabled(False)          # fins que hi hagi WAV
++        self.barra_principal.addWidget(self.b_exec)
++
++        # «Exporta» és una acció de Fitxer (vegeu el menú); botó a la barra
++        self.b_export = QPushButton("Exporta")
++        self.b_export.setToolTip("Exporta el paquet final (Ctrl+E)")
++        self.b_export.setEnabled(False)       # fins que hi hagi pistes
+         self.b_export.clicked.connect(self.exporta)
+-        fila.addWidget(self.b_exec)
+-        fila.addWidget(self.b_export)
+-        f3.addLayout(fila)
++        self.barra_principal.addWidget(self.b_export)
++
++        # progrés → barra d'estat (permanent)
+         self.barra = QProgressBar()
+-        f3.addWidget(self.barra)
++        self.barra.setMaximumWidth(180)
++        self.barra.setTextVisible(False)
++        self.statusBar().addPermanentWidget(self.barra)
++
++        # log → tauler plegable a baix (tancat per defecte)
+         self.log = QTextEdit()
+         self.log.setObjectName("log")
+         self.log.setReadOnly(True)
+-        f3.addWidget(self.log)
+-        capa.addWidget(g3)
++        self.log_dock = QDockWidget("Log", self)
++        self.log_dock.setObjectName("dock_log")
++        self.log_dock.setWidget(self.log)
++        self.log_dock.setVisible(False)
++        self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
++
++        # 6. INSPECTOR: tauler lateral dret plegable (llistes d'acords i
++        #    estructura). Amagat per defecte; Visualitza > Mostra l'inspector.
++        self.inspector_dock = QDockWidget("Inspector", self)
++        self.inspector_dock.setObjectName("dock_inspector")
++        self.inspector_dock.setAllowedAreas(
++            Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
++        self.inspector_dock.setVisible(False)
++        self.addDockWidget(Qt.RightDockWidgetArea, self.inspector_dock)
++
++        # 5. BARRA DE TRANSPORT única (fora del visor). Reutilitza els
++        #    mètodes del visor (play_stop, stop_inici, ves_a, marca_A/B,
++        #    commuta_loop, zoom, zoom_tot, commuta_mut): no es reescriu res.
++        barra_transport = QToolBar("Transport")
++        barra_transport.setObjectName("barra_transport")
++        barra_transport.setMovable(False)
++        self._crea_transport(barra_transport)
++        self.addToolBarBreak(Qt.TopToolBarArea)   # el transport, a la seva fila
++        self.addToolBar(Qt.TopToolBarArea, barra_transport)
++        self.barra_transport = barra_transport
+ 
+         self.sortida = ""
+         self.b_export.setEnabled(False)
+@@ -305,7 +333,7 @@ class Finestra(QMainWindow):
+         m = mb.addMenu("&Fitxer")
+         self._act(m, "Obre WAV…", "Ctrl+O", self.tria_wav)
+         m.addSeparator()
+-        self._act(m, "Finalitza i publica", "", self.exporta)
++        self._act(m, "Exporta…", "Ctrl+E", self.exporta)
+         self._act(m, "Obre la carpeta de sortida", "", self.obre_carpeta)
+         m.addSeparator()
+         self._act(m, "Surt", "Ctrl+Q", self.close)
+@@ -327,8 +355,14 @@ class Finestra(QMainWindow):
+         self._act(m, "Zoom −", "Ctrl+-", lambda: self._zoom_visor(2.0))
+         self._act(m, "Zoom total", "Ctrl+0", self._zoom_tot_visor)
+         m.addSeparator()
+-        self.visor_dock.toggleViewAction().setText("Mostra el visor")
+-        m.addAction(self.visor_dock.toggleViewAction())
++        # (El visor és ara el widget central: ja no cal «Mostra el visor»)
++        m.addAction(self.log_dock.toggleViewAction())
++        self.log_dock.toggleViewAction().setText("Mostra el log")
++        m.addAction(self.inspector_dock.toggleViewAction())
++        self.inspector_dock.toggleViewAction().setText("Mostra l'inspector")
++        m.addSeparator()
++        self.a_metro = self._act(m, "Metrònom", "", self._toggle_metro, checkable=True)
++        self.a_metro.setToolTip("Clic de metrònom (només en mode BPM · compàs)")
+         # --- Analitza ---
+         m = mb.addMenu("&Analitza")
+         self._act(m, "Processa el WAV", "F5", self.executa)
+@@ -426,6 +460,7 @@ class Finestra(QMainWindow):
+         """Canvia entre mode BPM·compàs i mode Lliure (hh:mm:ss)."""
+         self._params_temps.setVisible(bool(bpm_compas))
+         self.tempo_fix.setChecked(bool(bpm_compas))
++        self._actualitza_metro_ui()
+ 
+     def _detecta_bpm(self):
+         """Detecta el BPM amb aubio i l'escriu al camp (l'usuari pot editar-lo)."""
+@@ -449,6 +484,27 @@ class Finestra(QMainWindow):
+                 "No s'ha pogut estimar el BPM.\n"
+                 "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
+ 
++    def _aplica_parametres_temps(self):
++        """Propaga BPM/compàs/offset al visor. Si sona, reengega perquè el
++        metrònom segueixi la nova graella des de la posició actual."""
++        vr = getattr(self, "visor_ref", None)
++        if vr is None:
++            return
++        vr.bpm = self._bpm_val()
++        vr.bpb = self._bpb_val()
++        vr.offset = self._offset_val()
++        vr._actualitza_temps()
++        self._reenvia_si_sona()
++
++    def _reenvia_si_sona(self):
++        """En canviar BPM/compàs amb la reproducció en marxa, reengega perquè
++        el metrònom segueixi la nova graella des de la posició actual."""
++        vr = getattr(self, "visor_ref", None)
++        if vr is not None and getattr(vr, "sona", False):
++            pos = vr.pos
++            vr._atura_proc()
++            vr._engega_des_de(pos)
++
+     def _canvia_tempo(self, fix):
+         for w in (self.bpm, self.bpb, self.offset):
+             w.setEnabled(fix)
+@@ -462,6 +518,7 @@ class Finestra(QMainWindow):
+ 
+     def _mostra_placeholder_visor(self):
+         cont = QWidget()
++        cont.setObjectName("placeholder_visor")
+         cont.setStyleSheet(f"QWidget {{ background: {theme.BG}; color: {theme.TEXT}; }}")
+         lay = QVBoxLayout(cont)
+         lay.setContentsMargins(20, 20, 20, 20)
+@@ -469,7 +526,9 @@ class Finestra(QMainWindow):
+         label.setAlignment(Qt.AlignCenter)
+         label.setWordWrap(True)
+         lay.addWidget(label)
+-        self.visor_dock.setWidget(cont)
++        if self._stack.indexOf(cont) < 0:
++            self._stack.insertWidget(0, cont)   # pagina 0 = placeholder
++        self._stack.setCurrentWidget(cont)
+         self.visor_widget = None
+ 
+     def _detecta_sortida_wav(self, wav):
+@@ -485,6 +544,9 @@ class Finestra(QMainWindow):
+         if not wav or not os.path.isfile(wav):
+             self.logger.warning("No s'ha pogut carregar la WAV: %s", wav)
+             self.visor_ref = None
++            self.b_exec.setEnabled(False)
++            if hasattr(self, "inspector_dock"):
++                self.inspector_dock.setWidget(QWidget())   # buidem l'inspector
+             self._mostra_placeholder_visor()
+             return
+         try:
+@@ -501,10 +563,7 @@ class Finestra(QMainWindow):
+                     abc_csv = None
+ 
+             if acords_csv is None:
+-                self.logger.info("No hi ha resultat processat per %s; mostro placeholder", wav)
+-                self.visor_ref = None
+-                self._mostra_placeholder_visor()
+-                return
++                self.logger.info("Sense resultat processat per %s; obro el visor amb pistes buides", wav)
+ 
+             self.logger.info("Carregant visor per %s | sortida=%s", wav, self.sortida)
+             visor = visor_mod.Visor(
+@@ -517,11 +576,23 @@ class Finestra(QMainWindow):
+             )
+             self.visor_ref = visor
+             self.visor_widget = visor.centralWidget()
+-            self.visor_widget.setParent(self.visor_dock)
+-            self.visor_dock.setWidget(self.visor_widget)
++            self.visor_widget.setParent(self._stack)
++            if self._stack.indexOf(self.visor_widget) < 0:
++                self._stack.addWidget(self.visor_widget)   # pagina 1 = visor
++            self._stack.setCurrentWidget(self.visor_widget)
+             self.visor_widget.show()
+-            self.visor_dock.setVisible(True)
+-            self.visor_dock.raise_()
++            self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
++            self._actualitza_metro_ui()
++            if hasattr(visor, "cont_transport"):
++                # el transport viu a la barra de la finestra
++                visor.cont_transport.setVisible(False)
++            if hasattr(visor, "inspector"):
++                # les llistes passen al tauler lateral dret
++                visor.inspector.setParent(self.inspector_dock)
++                self.inspector_dock.setWidget(visor.inspector)
++            if hasattr(visor, "registre"):
++                # el log viu al tauler plegable de la finestra (pas 3)
++                visor.registre.setVisible(False)
+             visor._embedded = True
+             visor.setVisible(False)
+             visor.close()
+@@ -540,15 +611,122 @@ class Finestra(QMainWindow):
+                 info = pipeline.wav_info(ruta)
+                 self.sortida = self._detecta_sortida_wav(ruta)
+                 self.logger.info("WAV seleccionada: %s | info=%s | sortida_detectada=%s", ruta, info, self.sortida)
+-                self.wav_info.setText(
+-                    f"{info['durada']:.1f} s · {info['canals']} canals · "
+-                    f"{info['mostreig']} Hz")
++                self._actualitza_info_wav(ruta, info)
+                 self._carrega_visor(ruta)
+             except Exception as e:  # noqa: BLE001
+                 self.logger.exception("WAV no vàlida: %s", ruta)
+                 self.wav_info.setText(f"No és una wav vàlida: {e}")
+                 self._mostra_placeholder_visor()
+ 
++    def _acc_visor(self, nom, *args):
++        """Crida un mètode del visor (o una acció derivada) si n'hi ha."""
++        vr = getattr(self, "visor_ref", None)
++        if vr is None:
++            return
++        if nom == "menys10":
++            vr.ves_a(vr.pos - 10)
++        elif nom == "mes10":
++            vr.ves_a(vr.pos + 10)
++        else:
++            getattr(vr, nom)(*args)
++
++    def _crea_transport(self, bar):
++        def boto(text, tip, accio, checkable=False):
++            b = QPushButton(text)
++            b.setToolTip(tip)
++            if checkable:
++                b.setCheckable(True)
++            b.clicked.connect(accio)
++            bar.addWidget(b)
++            return b
++
++        boto("▶ Escolta", "Reprodueix / atura  (Espai)",
++             lambda: self._acc_visor("play_stop"))
++        boto("⏹", "Atura i torna a l'inici",
++             lambda: self._acc_visor("stop_inici"))
++        boto("−10s", "Endarrere 10 s",
++             lambda: self._acc_visor("menys10"))
++        boto("+10s", "Endavant 10 s",
++             lambda: self._acc_visor("mes10"))
++        bar.addSeparator()
++        boto("A⟨", "Marca inici de loop (A)",
++             lambda: self._acc_visor("marca_A"))
++        boto("⟩B", "Marca fi de loop (B)",
++             lambda: self._acc_visor("marca_B"))
++        self.tb_loop = boto("🔁", "Activa/desactiva el loop A-B",
++                            lambda: self._acc_visor("commuta_loop"),
++                            checkable=True)
++        bar.addSeparator()
++        boto("🔍−", "Allunya el zoom", lambda: self._acc_visor("zoom", 2.0))
++        boto("🔍+", "Apropa el zoom", lambda: self._acc_visor("zoom", 0.5))
++        boto("Tot", "Zoom total (veure-ho tot)",
++             lambda: self._acc_visor("zoom_tot"))
++        boto("🔇", "Silencia / reactiva el so",
++             lambda: self._acc_visor("commuta_mut"), checkable=True)
++        bar.addSeparator()
++        # metrònom: només en mode BPM · compàs (vegeu _actualitza_metro_ui)
++        self.b_metro = QPushButton("🥁")
++        self.b_metro.setObjectName("metro")
++        self.b_metro.setCheckable(True)
++        self.b_metro.setToolTip("Metrònom (només en mode BPM · compàs)")
++        self.b_metro.clicked.connect(self._toggle_metro)
++        bar.addWidget(self.b_metro)
++        self.vol_metro = QSlider(Qt.Horizontal)
++        self.vol_metro.setRange(0, 100)
++        self.vol_metro.setValue(60)
++        self.vol_metro.setMaximumWidth(90)
++        self.vol_metro.setToolTip("Volum del clic del metrònom (%)")
++        self.vol_metro.valueChanged.connect(self._canvia_vol_metro)
++        bar.addWidget(self.vol_metro)
++
++    def _toggle_metro(self, on=None):
++        """Activa/desactiva el metrònom (sincronitza botó i acció)."""
++        if on is None:      # clicat des de l'acció de menú
++            on = self.a_metro.isChecked()
++        self.b_metro.setChecked(bool(on))
++        self.a_metro.setChecked(bool(on))
++        vr = getattr(self, "visor_ref", None)
++        if vr is not None:
++            vr.set_metro(bool(on))
++
++    def _canvia_vol_metro(self, v):
++        vr = getattr(self, "visor_ref", None)
++        if vr is not None:
++            vr._canvia_vol_metro(int(v))
++
++    def _actualitza_metro_ui(self):
++        """El metrònom només està disponible en mode BPM · compàs."""
++        vr = getattr(self, "visor_ref", None)
++        disponible = vr is not None and vr.metro_disponible()
++        for w in (self.b_metro, self.vol_metro, self.a_metro):
++            w.setEnabled(disponible)
++        if not disponible:
++            # en mode Lliure: desmarcat i amb tooltip explicatiu
++            self.b_metro.setChecked(False)
++            self.a_metro.setChecked(False)
++            tip = "Només disponible en mode BPM · compàs"
++            self.b_metro.setToolTip(tip)
++            self.vol_metro.setToolTip(tip)
++            self.a_metro.setToolTip(tip)
++        else:
++            self.b_metro.setToolTip("Metrònom")
++            self.vol_metro.setToolTip("Volum del clic del metrònom (%)")
++            self.a_metro.setToolTip("Clic de metrònom")
++
++    def _actualitza_info_wav(self, ruta, info=None):
++        """Nom del fitxer al títol i la info (durada/Hz) a la barra d'estat."""
++        nom = os.path.basename(ruta)
++        self.setWindowTitle(f"{nom} — Auto Chords")
++        if info is None:
++            try:
++                info = pipeline.wav_info(ruta)
++            except Exception:  # noqa: BLE001
++                info = None
++        if info:
++            self.wav_info.setText(
++                f"{info['durada']:.1f} s · {info['canals']} canals · "
++                f"{info['mostreig']} Hz")
++
+     def executa(self):
+         wav = self.wav_edit.text().strip()
+         if not wav or not os.path.isfile(wav):
+@@ -586,6 +764,7 @@ class Finestra(QMainWindow):
+         else:
+             self.b_export.setEnabled(False)
+             self.registra(f"ERROR: {dada}")
++            self.log_dock.setVisible(True)    # en cas d'error, obrim el log
+             QMessageBox.critical(self, "Auto Chords", dada)
+ 
+     def exporta(self):
+diff --git a/app/metronom.py b/app/metronom.py
+new file mode 100644
+index 0000000..a5a9d14
+--- /dev/null
++++ b/app/metronom.py
+@@ -0,0 +1,92 @@
++"""metronom.py — generador de clics de metrònom (numpy pur, sense Qt).
++
++Els clics es MESCLEN al buffer d'àudio que s'envia al reproductor, en comptes
++de fer servir un segon reproductor o un QTimer (que derivaria respecte a la
++cançó). Veure `app/visor.py` (_engega_des_de / _mono_bytes).
++
++La graella és la MATEIXA que la del regle del visor: beat = 60/bpm, compàs =
++cada `bpb` beats, sense offset (el visor no n'aplica cap a la visualització).
++"""
++import numpy as np
++
++# Durada d'un clic (ms) i freqüències (Hz): accent = temps 1 de cada compàs.
++CLIC_MS = 25.0
++FREQ_ACCENT = 1500.0
++FREQ_NORMAL = 1000.0
++# Caiguda de l'envolupant: exp(-DECAY) al final del clic (~0,25 %)
++_DECAY = 6.0
++
++
++def genera_clic(sr, accent=True):
++    """Retorna un clic com a array float32 (accentuat o normal).
++
++    Sinusoide curta amb envolupant exponencial decreixent; comença a 0
++    (sin(0)) i acaba pràcticament a 0 → sense pops.
++    """
++    n = max(1, int(round(sr * CLIC_MS / 1000.0)))
++    t = np.arange(n, dtype=np.float32) / float(sr)
++    freq = FREQ_ACCENT if accent else FREQ_NORMAL
++    env = np.exp(-_DECAY * (t / t[-1] if n > 1 else 0.0)).astype(np.float32)
++    return (np.sin(2.0 * np.pi * freq * t) * env).astype(np.float32)
++
++
++def _es_valid(bpm, bpb):
++    """BPM ha de ser finit i > 0; bpb < 1 es tracta com a 1."""
++    try:
++        if not np.isfinite(bpm) or bpm <= 0:
++            return None
++    except TypeError:
++        return None
++    return max(1, int(bpb))
++
++
++def beats_a_temps(k, bpm, offset=0.0):
++    """Temps (s) del beat global `k` segons la graella."""
++    return k * (60.0 / float(bpm)) + float(offset)
++
++
++def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
++                    volum=0.6, offset=0.0):
++    """Mescla els clics a la rodanxa `mono_bytes` (int16 mono, a partir de
++    `t_inici` segons de la cançó) i retorna els bytes int16 resultants.
++
++    - Només genera els clics que cauen dins la rodanxa (funciona des de
++      qualsevol posició i amb el loop A/B).
++    - Suma en float32 i fa clip a int16 per evitar desbordament.
++    - volum 0 (o BPM invàlid) → retorna l'àudio sense canvis.
++    """
++    _bpb = _es_valid(bpm, bpb)
++    if _bpb is None or volum <= 0:
++        return mono_bytes
++
++    buf = np.frombuffer(mono_bytes, dtype=np.int16).astype(np.float32)
++    if buf.size == 0:
++        return mono_bytes
++    sr = float(sr)
++    dur = buf.size / sr
++    beat_len = 60.0 / float(bpm)
++
++    # genera_clic() retorna ±1 normalitzat: cal escalar-lo a la gamma int16
++    guany = 32767.0 * float(volum)
++    clic_accent = genera_clic(sr, True) * guany
++    clic_normal = genera_clic(sr, False) * guany
++
++    # Primer beat global amb temps >= t_inici (arrodonint cap amunt)
++    k0 = int(np.ceil((t_inici - offset) / beat_len))
++    if k0 < 0:
++        k0 = 0
++    k = k0
++    while True:
++        t_b = beats_a_temps(k, bpm, offset) - float(t_inici)
++        if t_b >= dur:
++            break
++        if t_b >= 0.0:
++            i = int(round(t_b * sr))
++            clic = clic_accent if (k % _bpb == 0) else clic_normal
++            n = min(clic.size, buf.size - i)
++            if n > 0:
++                buf[i:i + n] += clic[:n]
++        k += 1
++
++    np.clip(buf, -32768.0, 32767.0, out=buf)
++    return buf.astype(np.int16).tobytes()
+diff --git a/app/theme.py b/app/theme.py
+index cb10568..e45ef31 100644
+--- a/app/theme.py
++++ b/app/theme.py
+@@ -41,6 +41,8 @@ TL_GRID_BEAT = "#3d4c60"       # linia de temps
+ TL_GRID_SUB = "#303a48"        # subdivisio
+ TL_WAVE_MID = "#2f3640"        # linia central de l'ona
+ CLIP_SECTION_BORDER = "#dfe7f5"
++# Metrònom: color de l'estat activat (botó/acció)
++METRO_ACTIU = "#ffd166"
+ CLIP_FILL = "#2e3844"          # clip normal
+ CLIP_BORDER = "#b8c7dc"
+ CLIP_TEXT = "#edf3ff"
+@@ -174,6 +176,7 @@ QPushButton {{
+ QPushButton:hover {{ background: {SURFACE_2}; }}
+ QPushButton:pressed {{ background: {BORDER_SOFT}; }}
+ QPushButton:checked {{ background: {PRIMARY_LIGHT}; color: {BG}; }}
++QPushButton#metro:checked {{ background: {METRO_ACTIU}; color: {BG}; }}
+ QPushButton:disabled {{ background: {DISABLED}; color: {MUTED}; }}
+ QListWidget, QTextEdit, QSlider, QLabel {{
+     background: {PANEL};
+diff --git a/app/visor.py b/app/visor.py
+index 1ac2888..3fa7211 100644
+--- a/app/visor.py
++++ b/app/visor.py
+@@ -30,6 +30,7 @@ import numpy as np
+ APP_DIR = os.path.dirname(os.path.abspath(__file__))
+ if APP_DIR not in sys.path:
+     sys.path.insert(0, APP_DIR)
++import metronom  # noqa: E402
+ import pipeline  # noqa: E402
+ import theme  # noqa: E402
+ from .timeline import TimelineView  # noqa: E402
+@@ -176,7 +177,14 @@ class Visor(QMainWindow):
+         self.llista_ab.itemDoubleClicked.connect(self._edita_seccio)
+         self.llista_ab.customContextMenuRequested.connect(self._menu_seccio)
+         div.addWidget(self.llista_ab)
+-        capa.addWidget(div, stretch=2)
++        # Les llistes viuen en un contenidor propi perque la finestra les
++        # pugui posar en un tauler lateral («Inspector»). Si el visor va sol,
++        # queden al mateix lloc de sempre.
++        self.inspector = QWidget()
++        _lay_insp = QVBoxLayout(self.inspector)
++        _lay_insp.setContentsMargins(0, 0, 0, 0)
++        _lay_insp.addWidget(div)
++        capa.addWidget(self.inspector, stretch=2)
+ 
+         fila = QHBoxLayout()
+         self.b_play = QPushButton("▶ Escolta")
+@@ -208,7 +216,11 @@ class Visor(QMainWindow):
+                   self.b_A, self.b_B, self.b_loop,
+                   self.b_zm, self.b_zp, self.b_zt):
+             fila.addWidget(b)
+-        capa.addLayout(fila)
++        # Encaixem la fila en un contenidor per poder-la AMAGAR quan el visor
++        # va incrustat (aleshores el transport viu a la barra de la finestra).
++        self.cont_transport = QWidget()
++        self.cont_transport.setLayout(fila)
++        capa.addWidget(self.cont_transport)
+ 
+         fila2 = QHBoxLayout()
+         self.lliscador = QSlider(Qt.Horizontal)
+@@ -238,6 +250,9 @@ class Visor(QMainWindow):
+         # estat de transports
+         self.vol = 1.0
+         self.mut = False
++        # metrònom: clic mesclat al buffer (no afectat pel mute/volum cançó)
++        self.metro_on = False
++        self.metro_vol = 0.6
+         self.loop_a = None
+         self.loop_b = None
+         self.loop_on = False
+@@ -623,6 +638,34 @@ class Visor(QMainWindow):
+             self._atura_proc()
+             self._engega_des_de(pos)
+ 
++    def metro_disponible(self):
++        """El metrònom només té sentit amb graella (mode BPM · compàs)."""
++        return bool(self.tempo_fix)
++
++    def set_metro(self, on):
++        """Fixa l'estat del metrònom. Si sona, reinicia des de la posició."""
++        on = bool(on)
++        if on == self.metro_on:
++            return
++        self.metro_on = on
++        self.log(f"metrònom {'ON' if self.metro_on else 'OFF'}")
++        if self.sona:
++            pos = self.pos
++            self._atura_proc()
++            self._engega_des_de(pos)
++
++    def commuta_metro(self):
++        """Activa/desactiva el metrònom. Si sona, reinicia des de la posició."""
++        self.set_metro(not self.metro_on)
++
++    def _canvia_vol_metro(self, v):
++        """Volum del clic (0-100). Si sona, reinicia des de la posició."""
++        self.metro_vol = max(0.0, min(1.0, v / 100.0))
++        if self.sona:
++            pos = self.pos
++            self._atura_proc()
++            self._engega_des_de(pos)
++
+     def commuta_mut(self):
+         self.mut = self.b_mut.isChecked()
+         self.log(f"mute {'ON' if self.mut else 'OFF'}")
+@@ -655,6 +698,10 @@ class Visor(QMainWindow):
+ 
+     def _actualitza_temps(self):
+         self.timeline.set_tempo_mode(self.tempo_fix, self.bpm, self.bpb)
++        # En mode Lliure el metrònom no té sentit: l'apaguem (i si sona,
++        # reengega sense clic des de la posició actual).
++        if not self.tempo_fix and getattr(self, "metro_on", False):
++            self.set_metro(False)
+         self.temps.setText(self._fmt_timeline(self.pos))
+ 
+     def _edita_acord_index(self, idx):
+@@ -1128,6 +1175,13 @@ class Visor(QMainWindow):
+         t = max(0.0, min(float(t), float(self.audio["durada"])))
+         inici = int(t * self.audio["sr"]) * 2  # 16 bits mono
+         dades = self._mono_bytes()[inici:]
++        # Metrònom: els clics es MESCLEN al buffer que s'envia al reproductor
++        # (només des d'aquí endavant → funciona des de qualsevol posició i
++        # amb el loop A/B). El mute/volum de la cançó no els afecta.
++        if self.metro_on and self.metro_vol > 0:
++            dades = metronom.mescla_metronom(
++                dades, self.audio["sr"], t, self.bpm, self.bpb,
++                volum=self.metro_vol)
+         self.log(f"play des de {t:.2f}s ({len(dades)} bytes) amb {self.player}...")
+         self.fitxer_err = os.path.join(OPENCODE_DIR, "visor_player.log")
+         try:
+diff --git a/tests/test_pipeline_export.py b/tests/test_pipeline_export.py
+index 1213d2a..199958e 100644
+--- a/tests/test_pipeline_export.py
++++ b/tests/test_pipeline_export.py
+@@ -57,7 +57,12 @@ class ExportPipelineTests(unittest.TestCase):
+             self.assertGreater(window.visor_ref.llista_ac.count(), 0)
+             app.quit()
+ 
+-    def test_main_shows_placeholder_before_first_processing(self):
++    def test_obre_wav_mostra_timeline_buit_abans_d_analitzar(self):
++        """Reorg GUI (pas 2): obrir una WAV mostra l'ona i el timeline DE
++        SEGUIDA, encara que no s'hagi analitzat (pistes buides).
++
++        Abans (comportament d'assistent) es mostrava un placeholder fins que
++        hi havia CSV. Ara el visor s'obre sempre amb la WAV."""
+         with tempfile.TemporaryDirectory() as td:
+             wav = Path(td) / "tema.wav"
+             with wave.open(str(wav), "wb") as w:
+@@ -70,8 +75,11 @@ class ExportPipelineTests(unittest.TestCase):
+             window = app_main.Finestra()
+             window.sortida = ""
+             window._carrega_visor(str(wav))
+-            self.assertIsNone(window.visor_ref)
+-            self.assertTrue(window.visor_dock.widget() is not None)
++            self.assertIsNotNone(window.visor_ref)
++            self.assertEqual(len(window.visor_ref.acords), 0)
++            self.assertEqual(len(window.visor_ref.seccions), 0)
++            self.assertIsNotNone(window.visor_widget)
++            self.assertFalse(hasattr(window, "visor_dock"))
+             app.quit()
+ 
+     def test_exporta_total_generates_expected_outputs(self):
+@@ -200,13 +208,70 @@ class ExportPipelineTests(unittest.TestCase):
+             visor.Visor.__init__ = original_init
+ 
+ 
+-    def test_main_window_has_process_and_publish_actions(self):
++    def test_main_window_te_les_accions_analitza_i_exporta(self):
++        """Reorg GUI (pas 3): «Processa» passa a dir-se «Analitza» i
++        «Finalitza i publica» → «Exporta» (ara són accions, no passos
++        d'assistent)."""
+         app = app_main.QApplication.instance() or app_main.QApplication([])
+         window = app_main.Finestra()
+         self.assertTrue(hasattr(window, "b_exec"))
+         self.assertTrue(hasattr(window, "b_export"))
+-        self.assertEqual(window.b_exec.text(), "Processa")
+-        self.assertEqual(window.b_export.text(), "Finalitza i publica")
++        self.assertEqual(window.b_exec.text(), "Analitza")
++        self.assertEqual(window.b_export.text(), "Exporta")
++        app.quit()
++
++    def test_metro_desactivat_en_mode_lliure(self):
++        """El metrònom només està disponible en mode BPM · compàs."""
++        import tempfile, wave
++        app = app_main.QApplication.instance() or app_main.QApplication([])
++        window = app_main.Finestra()
++        # sense visor NO hi ha metrònom disponible
++        window._actualitza_metro_ui()
++        self.assertFalse(window.b_metro.isEnabled())
++        # amb una WAV carregada (mode BPM per defecte) → actiu
++        td = tempfile.mkdtemp()
++        wav = os.path.join(td, "t.wav")
++        with wave.open(wav, "wb") as w:
++            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
++            w.writeframes(b"\x00\x00" * 44100)
++        window.wav_edit.setText(wav)
++        window._carrega_visor(wav)
++        self.assertTrue(window.b_metro.isEnabled())
++        self.assertTrue(window.a_metro.isEnabled())
++        # passar a Lliure → desactivat + desmarcat + tooltip
++        window._toggle_metro(True)
++        window._canvia_mode_temps(False)
++        self.assertFalse(window.b_metro.isEnabled())
++        self.assertFalse(window.vol_metro.isEnabled())
++        self.assertFalse(window.a_metro.isEnabled())
++        self.assertFalse(window.b_metro.isChecked())
++        self.assertIn("BPM", window.b_metro.toolTip())
++        app.quit()
++
++    def test_volum_metro_per_defecte(self):
++        from app import theme
++        app = app_main.QApplication.instance() or app_main.QApplication([])
++        window = app_main.Finestra()
++        self.assertEqual(window.vol_metro.value(), 60)
++        self.assertEqual(window.vol_metro.minimum(), 0)
++        self.assertEqual(window.vol_metro.maximum(), 100)
++        # i el color de l'estat activat viu al theme, no al visor
++        self.assertTrue(hasattr(theme, "METRO_ACTIU"))
++        app.quit()
++
++    def test_analitza_desactivat_sense_wav(self):
++        """Estat dinàmic: «Analitza» està desactivat fins que hi ha WAV."""
++        app = app_main.QApplication.instance() or app_main.QApplication([])
++        window = app_main.Finestra()
++        self.assertFalse(window.b_exec.isEnabled())
++        app.quit()
++
++    def test_log_dock_amagat_per_defecte(self):
++        """El log és un tauler inferior plegable, tancat per defecte."""
++        app = app_main.QApplication.instance() or app_main.QApplication([])
++        window = app_main.Finestra()
++        self.assertTrue(hasattr(window, "log_dock"))
++        self.assertFalse(window.log_dock.isVisible())
+         app.quit()
+ 
+     def test_embedded_visor_close_does_not_quit_app(self):
+@@ -588,6 +653,159 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
+         v.close()
+ 
+ 
++class MetronomTests(unittest.TestCase):
++    """Generador de clics del metrònom (app/metronom.py) — numpy pur."""
++
++    SR = 44100
++
++    def _silenci(self, dur):
++        return b"\x00\x00" * int(self.SR * dur)
++
++    def _a_array(self, b):
++        return np.frombuffer(b, dtype=np.int16).astype(np.int32)
++
++    def _onsets(self, senyal, llindar=1000):
++        """Inici de cada esclat de clic (separats per >50 ms de silenci)."""
++        actiu = np.abs(senyal) > llindar
++        idx = np.where(actiu)[0]
++        if idx.size == 0:
++            return np.array([])
++        gaps = np.where(np.diff(idx) > 0.05 * self.SR)[0]
++        inicis = np.concatenate(([idx[0]], idx[gaps + 1]))
++        return inicis / self.SR
++
++    def _freq(self, tros):
++        sp = np.abs(np.fft.rfft(tros))
++        return np.fft.rfftfreq(len(tros), 1.0 / self.SR)[np.argmax(sp)]
++
++    def test_clics_a_120bpm_4_4(self):
++        from app import metronom
++        out = metronom.mescla_metronom(self._silenci(3.0), self.SR,
++                                       0.0, 120.0, 4, volum=1.0)
++        onsets = self._onsets(self._a_array(out))
++        # 0, 0.5, 1.0, 1.5, 2.0, 2.5
++        self.assertEqual(len(onsets), 6)
++        for k, o in enumerate(onsets):
++            self.assertAlmostEqual(o, k * 0.5, places=3)
++        # accent (≈1500 Hz) als beats 0 i 4; la resta ≈1000 Hz
++        n = int(self.SR * 0.02)
++        f0 = self._freq(self._a_array(out)[int(0.0 * self.SR):int(0.0 * self.SR) + n])
++        f2 = self._freq(self._a_array(out)[self.SR:self.SR + n])
++        self.assertGreater(f0, 1300)
++        self.assertLess(f2, 1100)
++
++    def test_comencar_a_mig_compas_mante_el_patro(self):
++        from app import metronom
++        # comencem a t=2.5 s (beat 5). En 2 s de buffer hi cauen els beats
++        # 5,6,7,8 -> a 0.0, 0.5, 1.0, 1.5 dins la rodanxa.
++        out = metronom.mescla_metronom(self._silenci(2.0), self.SR,
++                                       2.5, 120.0, 4, volum=1.0)
++        onsets = self._onsets(self._a_array(out))
++        self.assertEqual(len(onsets), 4)
++        for k, o in enumerate(onsets):
++            self.assertAlmostEqual(o, k * 0.5, places=3)
++        # el beat 8 (t=4.0 → 1.5 dins la rodanxa) ha de ser accentuat
++        arr = self._a_array(out)
++        n = int(self.SR * 0.02)
++        i = int(1.5 * self.SR)
++        self.assertGreater(self._freq(arr[i:i + n]), 1300)
++
++    def test_bpm_invalid_no_canvia_res(self):
++        from app import metronom
++        for bpm in (0, -5, float("nan"), float("inf")):
++            base = self._silenci(1.0)
++            out = metronom.mescla_metronom(base, self.SR, 0.0, bpm, 4, volum=1.0)
++            self.assertEqual(out, base, f"bpm={bpm} hauria de no fer res")
++
++    def test_volum_zero_no_canvia_l_audio(self):
++        from app import metronom
++        base = self._silenci(1.0)
++        out = metronom.mescla_metronom(base, self.SR, 0.0, 120.0, 4, volum=0.0)
++        self.assertEqual(out, base)
++
++    def test_la_mescla_no_desborda(self):
++        from app import metronom
++        # audio a tope (32767) -> amb el clic NO ha de superar int16
++        fort = (np.ones(self.SR, dtype=np.int16) * 32000).tobytes()
++        out = metronom.mescla_metronom(fort, self.SR, 0.0, 120.0, 4, volum=1.0)
++        arr = np.frombuffer(out, dtype=np.int16)
++        self.assertTrue(np.all(arr <= 32767))
++        self.assertTrue(np.all(arr >= -32768))
++
++    def test_bpb_menor_que_1_es_tracta_com_1(self):
++        from app import metronom
++        out = metronom.mescla_metronom(self._silenci(1.1), self.SR,
++                                       0.0, 120.0, 0, volum=1.0)
++        # amb bpb=1 tots els beats son accents (cada 0.5 s)
++        self.assertEqual(len(self._onsets(self._a_array(out))), 3)
++
++
++class MetroVisorTests(unittest.TestCase):
++    """Integració del metrònom al visor (estat i reinici). Encara sense GUI."""
++
++    @classmethod
++    def setUpClass(cls):
++        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
++        cls._app = visor.QApplication.instance() or visor.QApplication([])
++
++    def _visor(self):
++        import tempfile, wave
++        td = tempfile.mkdtemp()
++        wav = os.path.join(td, "t.wav")
++        with wave.open(wav, "wb") as w:
++            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
++            w.writeframes(b"\x00\x00" * 44100 * 3)
++        return visor.Visor(wav, None, None, 120.0, 4, True)
++
++    def test_estat_inicial(self):
++        v = self._visor()
++        self.assertFalse(v.metro_on)
++        self.assertAlmostEqual(v.metro_vol, 0.6)
++        v.close()
++
++    def test_commuta_metro_es_toggle(self):
++        v = self._visor()
++        v.commuta_metro()
++        self.assertTrue(v.metro_on)
++        v.commuta_metro()
++        self.assertFalse(v.metro_on)
++        v.close()
++
++    def test_canvia_vol_metro_amb_clamp(self):
++        v = self._visor()
++        v._canvia_vol_metro(25)
++        self.assertAlmostEqual(v.metro_vol, 0.25)
++        v._canvia_vol_metro(150)
++        self.assertAlmostEqual(v.metro_vol, 1.0)
++        v._canvia_vol_metro(-5)
++        self.assertAlmostEqual(v.metro_vol, 0.0)
++        v.close()
++
++    def test_commuta_metro_reinicia_des_de_la_posicio_si_sona(self):
++        v = self._visor()
++        v.sona = True
++        v.pos = 1.5
++        crides = {}
++        v._atura_proc = lambda: crides.__setitem__("atura", True)
++        v._engega_des_de = lambda t: crides.__setitem__("des_de", t)
++        v.commuta_metro()
++        self.assertTrue(crides.get("atura"))
++        self.assertAlmostEqual(crides.get("des_de"), 1.5)
++        v.close()
++
++    def test_canvia_vol_metro_reinicia_si_sona(self):
++        v = self._visor()
++        v.sona = True
++        v.pos = 0.7
++        crides = {}
++        v._atura_proc = lambda: crides.__setitem__("atura", True)
++        v._engega_des_de = lambda t: crides.__setitem__("des_de", t)
++        v._canvia_vol_metro(40)
++        self.assertTrue(crides.get("atura"))
++        self.assertAlmostEqual(crides.get("des_de"), 0.7)
++        v.close()
++
++
+ class ContextMenuTests(unittest.TestCase):
+     """Menu contextual (boto dret) sobre un clip del timeline."""
+ 
