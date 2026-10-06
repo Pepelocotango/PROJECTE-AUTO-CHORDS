@@ -478,6 +478,38 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
                                    msg=f"{nom}: cursor {obtingut} != {esperat}")
         v.close()
 
+    def test_delete_esborra_l_acord_seleccionat(self):
+        """Delete esborra l'acord seleccionat i passa per l'undo."""
+        from PyQt5.QtGui import QKeyEvent
+        from PyQt5.QtCore import QEvent, Qt
+        v, _ = self._make_visor_with_data()
+        n = len(v.acords)
+        v.timeline.select_clip("chord", 1)
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_Delete, Qt.NoModifier))
+        self.assertEqual(len(v.acords), n - 1)
+        self.assertEqual(len(v._undo_stack), 1)
+        v.undo()
+        self.assertEqual(len(v.acords), n)      # undo el restaura
+        v.close()
+
+    def test_delete_seccio_el_vei_ocupa_l_espai(self):
+        """En esborrar una secció, el previ s'estén (invariant de contigüitat)."""
+        from PyQt5.QtGui import QKeyEvent
+        from PyQt5.QtCore import QEvent, Qt
+        v, _ = self._make_visor_with_data()
+        n = len(v.seccions)
+        fi_alliberada = v.seccions[1][1]
+        v.timeline.select_clip("section", 1)
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_Delete, Qt.NoModifier))
+        self.assertEqual(len(v.seccions), n - 1)
+        # el fi del previ ara arriba on arribava el de la seccio esborrada
+        self.assertAlmostEqual(v.seccions[0][1], fi_alliberada, places=3)
+        v.undo()
+        self.assertEqual(len(v.seccions), n)
+        v.close()
+
     def test_visor_has_timeline_attribute(self):
         v, _ = self._make_visor_with_data()
         self.assertTrue(hasattr(v, "timeline"))

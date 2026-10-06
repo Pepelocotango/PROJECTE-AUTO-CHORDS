@@ -744,8 +744,10 @@ class Visor(QMainWindow):
     def _elimina_acord_index(self, idx):
         if idx < 0 or idx >= len(self.acords):
             return
+        self._undo_marca()
         if not self._elimina_acord(idx):
             return
+        self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
             self._desa_i_regenera()
@@ -758,8 +760,10 @@ class Visor(QMainWindow):
     def _elimina_seccio_index(self, idx):
         if idx < 0 or idx >= len(self.seccions):
             return
+        self._undo_marca()
         if not self._elimina_seccio(idx):
             return
+        self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
             self._regenera_abc_des_de_totes_les_seccions("secció eliminada")
@@ -877,7 +881,16 @@ class Visor(QMainWindow):
     def _elimina_seccio(self, idx):
         if idx < 0 or idx >= len(self.seccions):
             return False
+        ini, fi, _L, _fam = self.seccions[idx]
         del self.seccions[idx]
+        # Invariant: el fi d'una seccio = inici de la seguent. En treure'n una,
+        # el vei ocupa l'espai buit (el previ s'esten, o el seguent comenca abans).
+        if idx - 1 >= 0:
+            pi, _pf, pl, pfam = self.seccions[idx - 1]
+            self.seccions[idx - 1] = (pi, fi, pl, pfam)
+        elif idx < len(self.seccions):
+            _ni, nf, nl, nfam = self.seccions[idx]
+            self.seccions[idx] = (ini, nf, nl, nfam)
         if hasattr(self, "llista_ab"):
             self._actualitza_llista_abc()
         return True

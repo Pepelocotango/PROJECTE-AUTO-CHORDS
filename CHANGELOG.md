@@ -13,6 +13,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 
 ## [0.1.8] — 2026-10-06 (tag `v0.1.8-checkpoint`)
 
+### Afegit
+- **Tecla Delete/Backspace** esborra el **clip seleccionat** (acord o
+  secció) al visor. Passa pel sistema d'**undo** (`_undo_marca`/
+  `_undo_commit`) i respecta la contigüitat (en treure una secció, el
+  veí ocupa l'espai buit). Els items de QGraphicsView no reben tecles (no
+  són focusables), per tant es gestiona al `TimelineView`. 2 tests nous.
+
 ### Verificat
 - **Clic a un clip → cursor al seu inici** (acords i seccions): JA funcionava
   (es va arreglar en una versió anterior: el lambda del click capturava el

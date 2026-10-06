@@ -1663,6 +1663,16 @@ class TimelineView(QGraphicsView):
             self.playRequested.emit()
             event.accept()
             return
+        if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+            # Esborra el clip SELECCIONAT. Els items no reben tecles (no son
+            # focusables), per tant ho gestionem aquí, que si tenim el focus.
+            for items, sig in ((self._chord_items, self.chordDeleteRequested),
+                               (self._section_items, self.sectionDeleteRequested)):
+                for it in items:
+                    if getattr(it, "_selected", False):
+                        sig.emit(getattr(it, "idx", -1))
+                        event.accept()
+                        return
         super().keyPressEvent(event)
 
     def leaveEvent(self, event) -> None:
