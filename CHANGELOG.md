@@ -5,6 +5,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 
 ## [No publicat]
 
+### Canviat
+- **Reorganització de la GUI (estil Audacity/DAW) — PAS 1**: el QGroupBox
+  «2 · Temps i paràmetres» passa a ser una **barra d'eines fina d'una sola
+  línia** (`QToolBar`, no movable) sota el menú: selector
+  **BPM · compàs / Lliure**, camps de text **BPM**, **Compàs**, **Offset (s)**,
+  botó **🎯 Detecta** i la casella **Inclou estructura**. Mateixos widgets i
+  mateixa lògica (entrada de text amb coma decimal; els paràmetres
+  s'amaguen en bloc en mode Lliure). La resta de la finestra no canvia.
+
 ### Pendent de polir (visor)
 - Confusió visual entre clip **seleccionat** (vora groga) i **actiu**
   (fons més clar, segons el cursor).

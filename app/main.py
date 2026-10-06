@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
     QMessageBox, QProgressBar, QPushButton, QShortcut, QTextEdit,
+    QToolBar,
     QVBoxLayout, QWidget,
 )
 
@@ -182,12 +183,8 @@ class Finestra(QMainWindow):
         self.flux_label.setStyleSheet("QLabel { color: #dfe3ea; font-weight: 600; }")
         capa.addWidget(self.flux_label)
 
-        # 2. temps i paràmetres — mode BPM·compàs vs Lliure (hh:mm:ss)
-        g2 = QGroupBox("2 · Temps i paràmetres")
-        v2 = QVBoxLayout(g2)
-
-        fila_mode = QHBoxLayout()
-        fila_mode.addWidget(QLabel("Temps:"))
+        # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
+        #    (abans era un QGroupBox «2 · Temps i paràmetres»)
         self.b_mode_bpm = QPushButton("BPM · compàs")
         self.b_mode_bpm.setCheckable(True)
         self.b_mode_bpm.setChecked(True)
@@ -201,22 +198,18 @@ class Finestra(QMainWindow):
         grp_mode.addButton(self.b_mode_lliure)
         self.b_mode_bpm.clicked.connect(lambda: self._canvia_mode_temps(True))
         self.b_mode_lliure.clicked.connect(lambda: self._canvia_mode_temps(False))
-        fila_mode.addWidget(self.b_mode_bpm)
-        fila_mode.addWidget(self.b_mode_lliure)
-        fila_mode.addStretch(1)
-        v2.addLayout(fila_mode)
 
         # camps d'entrada MANUAL de text (sense fletxes ▲▼)
         self.bpm = QLineEdit("120.0")
-        self.bpm.setMaximumWidth(90)
+        self.bpm.setMaximumWidth(70)
         self.bpm.setPlaceholderText("120.0")
         self.bpm.setToolTip("BPM del tema. Entrada manual (text).")
         self.bpb = QLineEdit("4")
-        self.bpb.setMaximumWidth(90)
+        self.bpb.setMaximumWidth(40)
         self.bpb.setPlaceholderText("4")
         self.bpb.setToolTip("Temps per compàs (p. ex. 4).")
         self.offset = QLineEdit("0.0")
-        self.offset.setMaximumWidth(90)
+        self.offset.setMaximumWidth(60)
         self.offset.setPlaceholderText("0.0")
         self.offset.setToolTip("Offset del compàs 1, en segons.")
         self.b_detecta = QPushButton("🎯 Detecta")
@@ -224,29 +217,41 @@ class Finestra(QMainWindow):
         self.b_detecta.setToolTip("Detecta el BPM automàticament amb aubio.")
         self.b_detecta.clicked.connect(self._detecta_bpm)
 
-        self._params_temps = QWidget()
-        ft = QFormLayout(self._params_temps)
-        ft.setContentsMargins(0, 0, 0, 0)
-        fila_bpm = QHBoxLayout()
-        fila_bpm.addWidget(self.bpm)
-        fila_bpm.addWidget(self.b_detecta)
-        fila_bpm.addStretch(1)
-        ft.addRow("BPM:", fila_bpm)
-        ft.addRow("Temps per compàs:", self.bpb)
-        ft.addRow("Offset compàs 1 (s):", self.offset)
-        v2.addWidget(self._params_temps)
+        self._params_temps = QWidget()      # s'amaga sencer en mode Lliure
+        hp = QHBoxLayout(self._params_temps)
+        hp.setContentsMargins(0, 0, 0, 0)
+        hp.setSpacing(6)
+        hp.addWidget(QLabel("BPM:"))
+        hp.addWidget(self.bpm)
+        hp.addWidget(self.b_detecta)
+        hp.addWidget(QLabel("Compàs:"))
+        hp.addWidget(self.bpb)
+        hp.addWidget(QLabel("Offset (s):"))
+        hp.addWidget(self.offset)
 
-        self.amb_est = QCheckBox("Inclou estructura (Segmentino → ABC)")
+        self.amb_est = QCheckBox("Inclou estructura")
         self.amb_est.setChecked(True)
         self.amb_est.setToolTip("Genera la jerarquia de seccions i l’ABC de l’estructura del tema.")
-        v2.addWidget(self.amb_est)
 
         # estat `tempo_fix` (ocult): el visor i la resta de codi el consulten
         self.tempo_fix = QCheckBox()
         self.tempo_fix.setChecked(True)
         self.tempo_fix.setVisible(False)
         self.tempo_fix.toggled.connect(self._canvia_tempo)
-        capa.addWidget(g2)
+
+        # la barra pròpiament
+        barra_temps = QToolBar("Temps i paràmetres")
+        barra_temps.setObjectName("barra_temps")
+        barra_temps.setMovable(False)
+        barra_temps.addWidget(QLabel(" Temps: "))
+        barra_temps.addWidget(self.b_mode_bpm)
+        barra_temps.addWidget(self.b_mode_lliure)
+        barra_temps.addSeparator()
+        barra_temps.addWidget(self._params_temps)
+        barra_temps.addSeparator()
+        barra_temps.addWidget(self.amb_est)
+        self.addToolBar(Qt.TopToolBarArea, barra_temps)
+        self.barra_temps = barra_temps
 
         # 3. executa
         g3 = QGroupBox("3 · Analitza i exporta")
