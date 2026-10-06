@@ -588,6 +588,24 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v.close()
 
 
+class ThemeColorsTests(unittest.TestCase):
+    """Els colors del visor viuen a app/theme.py, i seleccionat != actiu."""
+
+    def test_seleccionat_i_actiu_son_distints(self):
+        from app import theme
+        self.assertNotEqual(theme.CLIP_SELECTED_BORDER,
+                            theme.CLIP_ACTIVE_FILL)
+        self.assertNotEqual(theme.CLIP_ACTIVE_FILL, theme.CLIP_FILL)
+
+    def test_el_timeline_pren_els_colors_del_theme(self):
+        from app import theme, timeline
+        self.assertEqual(timeline.SELECTION_COLOR,
+                         theme.CLIP_SELECTED_BORDER)
+        self.assertEqual(timeline.CHORD_ACTIVE_FILL,
+                         theme.CLIP_ACTIVE_FILL)
+        self.assertEqual(timeline.CURSOR_COLOR, theme.TL_CURSOR)
+
+
 class PipelineRunTests(unittest.TestCase):
     """run() ha de tenir timeout: un subprocés encallat no pot penjar-ho tot."""
 

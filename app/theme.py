@@ -22,6 +22,38 @@ WARNING = "#dfe3ea"
 DANGER = "#dfe3ea"
 DISABLED = "#2f3238"
 
+# --- Timeline i clips -------------------------------------------------------
+# ACTIU  = el clip que SONA (segueix el cursor)  -> fons tenyit suau.
+# SELECCIONAT = el clip que has CLICAT            -> vora gruixuda i brillant.
+# Son estats independents: un clip pot estar actiu i seleccionat alhora.
+TL_BG = "#0f1218"
+TL_LANE_BG_A = "#1a1d23"
+TL_LANE_BG_B = "#15181d"
+TL_LANE_DIVIDER = "#2a2f37"
+TL_RULER_TEXT = "#c4d0e2"
+TL_WAVEFORM = "#8ab4f8"
+TL_CURSOR = "#ff6b6b"
+TL_RULER_BG = "#10131a"
+TL_SCENE_BG = "#0f0f10"
+TL_GUIDE = "#ffd166"           # guia de snap / loop A-B
+TL_GRID_MEASURE = "#55677f"    # linia de compas
+TL_GRID_BEAT = "#3d4c60"       # linia de temps
+TL_GRID_SUB = "#303a48"        # subdivisio
+TL_WAVE_MID = "#2f3640"        # linia central de l'ona
+CLIP_SECTION_BORDER = "#dfe7f5"
+CLIP_FILL = "#2e3844"          # clip normal
+CLIP_BORDER = "#b8c7dc"
+CLIP_TEXT = "#edf3ff"
+CLIP_ACTIVE_FILL = "#1f5c3d"   # ACTIU: verd suau (sona)
+CLIP_ACTIVE_BORDER = "#4ade80"
+CLIP_ACTIVE_TEXT = "#eafff3"
+CLIP_SELECTED_BORDER = "#38bdf8"   # SELECCIONAT: cian brillant
+CLIP_SELECTED_WIDTH = 3
+CLIP_HANDLE = "#5b8dd6"
+CLIP_HANDLE_SELECTED = "#38bdf8"
+SECTION_FILLS = ("#3a4655", "#475a70", "#5d6f82", "#70849a", "#8996aa")
+SECTION_TEXT = "#edf3ff"
+
 
 def app_stylesheet():
     return f"""

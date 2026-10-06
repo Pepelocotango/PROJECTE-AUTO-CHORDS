@@ -39,6 +39,8 @@ from PyQt5.QtWidgets import (
     QGraphicsRectItem, QGraphicsScene, QGraphicsView, QLineEdit, QWidget,
 )
 
+from app import theme      # noqa: E402  (paleta centralitzada)
+
 
 # -----------------------------------------------------------------------------
 # Constants de layout i colors
@@ -56,30 +58,30 @@ LANE_H = int(WAVEFORM_H * LANE_H_FRAC)
 LANE_SEC_TOP = RULER_H + WAVEFORM_H * LANE_SEC_TOP_FRAC
 LANE_ACC_TOP = RULER_H + WAVEFORM_H * LANE_ACC_TOP_FRAC
 TOTAL_H = RULER_H + WAVEFORM_H
-RULER_BG = "#10131a"
+RULER_BG = theme.TL_RULER_BG
 # Colors de l'ona (BGRA — ordre de memòria de QImage.Format_RGB32)
 WF_BG = (0x1c, 0x15, 0x10)   # fons #10151c
 WF_ENV = (0xff, 0xc8, 0x7a)  # envolupant #7ac8ff (blau brillant)
 WF_MID = (0x50, 0x3e, 0x2c)  # línia central #2c3e50
 WF_GAIN = 1.7  # amplificació de visualització de l'ona
-WAVEFORM_BG = "#0f1218"
-LANE_BG_A = "#1a1d23"
-LANE_BG_B = "#15181d"
-LANE_DIVIDER = "#2a2f37"
-RULER_TEXT = "#c4d0e2"
-WAVEFORM_COLOR = "#8ab4f8"
-CHORD_FILL = "#2e3844"
-CHORD_ACTIVE_FILL = "#dce8ff"
-CHORD_TEXT = "#edf3ff"
-CHORD_ACTIVE_TEXT = "#141b22"
-CHORD_BORDER = "#b8c7dc"
-CHORD_HANDLE = "#5b8dd6"
-CHORD_HANDLE_ACTIVE = "#ffd166"
-SECTION_FILLS = ["#3a4655", "#475a70", "#5d6f82", "#70849a", "#8996aa"]
-SECTION_TEXT = "#edf3ff"
-CURSOR_COLOR = "#ff6b6b"
-GUIDE_COLOR = "#ffd166"
-SELECTION_COLOR = "#ffd166"
+WAVEFORM_BG = theme.TL_BG
+LANE_BG_A = theme.TL_LANE_BG_A
+LANE_BG_B = theme.TL_LANE_BG_B
+LANE_DIVIDER = theme.TL_LANE_DIVIDER
+RULER_TEXT = theme.TL_RULER_TEXT
+WAVEFORM_COLOR = theme.TL_WAVEFORM
+CHORD_FILL = theme.CLIP_FILL
+CHORD_ACTIVE_FILL = theme.CLIP_ACTIVE_FILL
+CHORD_TEXT = theme.CLIP_TEXT
+CHORD_ACTIVE_TEXT = theme.CLIP_ACTIVE_TEXT
+CHORD_BORDER = theme.CLIP_BORDER
+CHORD_HANDLE = theme.CLIP_HANDLE
+CHORD_HANDLE_ACTIVE = theme.CLIP_HANDLE_SELECTED
+SECTION_FILLS = list(theme.SECTION_FILLS)
+SECTION_TEXT = theme.SECTION_TEXT
+CURSOR_COLOR = theme.TL_CURSOR
+GUIDE_COLOR = theme.TL_GUIDE
+SELECTION_COLOR = theme.CLIP_SELECTED_BORDER
 PIXELS_PER_SECOND_DEFAULT = 60.0
 MIN_GAP_S = 0.02         # gap mínim entre inicis d'acords
 MIN_SEC_LEN_S = 0.05     # durada mínima d'una secció
@@ -250,16 +252,16 @@ def grid_levels(tempo_fix, bpm, bpb, span):
     if tempo_fix:
         beat = 60.0 / max(float(bpm), 1e-9)
         measure = beat * max(int(bpb), 1)
-        levels = [(measure, "#55677f", 1)]
+        levels = [(measure, "theme.TL_GRID_MEASURE", 1)]
         if span <= measure * 16:
-            levels.insert(0, (beat, "#3d4c60", 1))
+            levels.insert(0, (beat, "theme.TL_GRID_BEAT", 1))
         if span <= beat * 8:
-            levels.insert(0, (beat / 2.0, "#303a48", 1))
+            levels.insert(0, (beat / 2.0, "theme.TL_GRID_SUB", 1))
         return levels
     step = _best_step_free(span)
-    levels = [(step, "#55677f", 1)]
+    levels = [(step, "theme.TL_GRID_MEASURE", 1)]
     if span <= 30.0:
-        levels.insert(0, (step / 5.0, "#303a48", 1))
+        levels.insert(0, (step / 5.0, "theme.TL_GRID_SUB", 1))
     return levels
 
 
@@ -371,7 +373,7 @@ class RulerLayer(QGraphicsItem):
         p.setRenderHint(QPainter.Antialiasing, False)
         rect = self.boundingRect()
         p.fillRect(rect, QColor(RULER_BG))
-        p.setPen(QPen(QColor("#2f3640"), 1))
+        p.setPen(QPen(QColor(theme.TL_WAVE_MID), 1))
         p.drawLine(QPointF(0, self._height - 1),
                    QPointF(rect.width(), self._height - 1))
         span = max(self._view_right - self._view_left, 1e-6)
@@ -558,7 +560,7 @@ class ChordItem(QGraphicsObject):
         fill = QColor(CHORD_ACTIVE_FILL if self._active else CHORD_FILL)
         fill.setAlpha(240 if self._active else 170)  # semitransparent
         border = QPen(QColor(SELECTION_COLOR if self._selected
-                             else CHORD_BORDER), 2 if self._selected else 1)
+                             else CHORD_BORDER), theme.CLIP_SELECTED_WIDTH if self._selected else 1)
         painter.setBrush(QBrush(fill))
         painter.setPen(border)
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -779,7 +781,7 @@ class SectionItem(QGraphicsObject):
         if self._active:
             fill = fill.lighter(140)
         border = QPen(QColor(SELECTION_COLOR if self._selected
-                             else "#dfe7f5"), 2 if self._selected else 1)
+                             else theme.CLIP_SECTION_BORDER), theme.CLIP_SELECTED_WIDTH if self._selected else 1)
         painter.setBrush(QBrush(fill))
         painter.setPen(border)
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -1009,7 +1011,7 @@ class TimelineView(QGraphicsView):
 
         # escena
         self._scene = QGraphicsScene(self)
-        self._scene.setBackgroundBrush(QBrush(QColor("#0f0f10")))
+        self._scene.setBackgroundBrush(QBrush(QColor(theme.TL_SCENE_BG)))
         self.setScene(self._scene)
         self.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
         # FullViewportUpdate: evita imatges fantasma amb els carrils

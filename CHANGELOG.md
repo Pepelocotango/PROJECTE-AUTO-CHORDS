@@ -13,6 +13,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 
 ## [0.1.8] — 2026-10-06 (tag `v0.1.8-checkpoint`)
 
+### Canviat
+- **Seleccionat vs actiu, clarament diferents**: abans el `SELECTION_COLOR`
+  era el mateix groc que la guia de snap i el fons «actiu» era quasi blanc
+  (es confonien). Ara:
+  - **ACTIU** (el clip que sona) → **fons verd suau** (`#1f5c3d`) + vora verda;
+  - **SELECCIONAT** (el clip clicat) → **vora cian brillant i gruixuda**
+    (`#38bdf8`, 3 px).
+  Són estats **independents** (un clip pot ser tots dos alhora).
+- **Tots els colors del visor centralitzats a `app/theme.py`** (abans hi
+  havia ~18 hex escampats per `app/timeline.py`). Aquest ja no en conté cap.
+
 ### Afegit
 - **Ctrl+D duplica el clip seleccionat** (acord o secció), amb **undo** i
   respectant les invariants. On s'insereix: **just després de l'original,
