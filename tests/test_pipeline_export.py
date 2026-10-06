@@ -461,6 +461,23 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
                         bpm=120, bpb=4, tempo_fix=False)
         return v, sortida
 
+    def test_click_a_un_clip_mou_el_cursor(self):
+        """Clic (sense drag) a un acord o una secció → cursor al seu inici.
+
+        Regressió: el lambda del click capturava el valor antic d'ini/t i
+        després d'un resize anava al lloc vell."""
+        v, _ = self._make_visor_with_data()
+        v.timeline.zoom_to(0, 20)
+        casos = [("acord", v.timeline._chord_items, 1, 2.0),
+                 ("secció", v.timeline._section_items, 1, 5.0)]
+        for nom, items, idx, esperat in casos:
+            v.timeline.set_position(0.0, emit=False)
+            items[idx].clicked.emit()
+            obtingut = v.timeline.get_position()
+            self.assertAlmostEqual(obtingut, esperat, places=2,
+                                   msg=f"{nom}: cursor {obtingut} != {esperat}")
+        v.close()
+
     def test_visor_has_timeline_attribute(self):
         v, _ = self._make_visor_with_data()
         self.assertTrue(hasattr(v, "timeline"))

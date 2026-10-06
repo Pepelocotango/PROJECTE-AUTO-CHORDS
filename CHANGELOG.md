@@ -13,6 +13,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 
 ## [0.1.8] — 2026-10-06 (tag `v0.1.8-checkpoint`)
 
+### Verificat
+- **Clic a un clip → cursor al seu inici** (acords i seccions): JA funcionava
+  (es va arreglar en una versió anterior: el lambda del click capturava el
+  valor vell d'`ini`/`t`). Afegit un **test de regressió**
+  (`test_click_a_un_clip_mou_el_cursor`).
+
 ### Documentat
 - **README**: «Estat actual» posat al dia (v0.1.8) i el bloc de configuració
   de `AUTO_CHORDS_TEMP` tret de dins de «Filosofia i lògica del flux»
