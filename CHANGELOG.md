@@ -6,6 +6,25 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 ## [No publicat]
 
 ### Canviat
+- **Reorganització de la GUI — PAS 2: el timeline és la finestra.**
+  - **Fora el `QDockWidget`**: el visor passa a ser el **widget central**
+    (via `QStackedWidget`: pàgina 0 = placeholder, pàgina 1 = visor).
+  - **Obrir una WAV mostra l'ona i el timeline immediatament**, ABANS
+    d'analitzar, amb les pistes Acords i Estructura **buides**. No cal
+    reescriure el visor: el seu constructor ja acceptava `acords=None` /
+    `abc=None` (pistes buides) i, si la carpeta té CSV, els carrega sols.
+  - **Fora el QGroupBox «1 · Tria la wav»**: obrir WAV passa per
+    **Fitxer ▸ Obre WAV… (Ctrl+O)** i un botó **«Obre…»** a la barra
+    d'eines. El **nom del fitxer va al títol** de la finestra i la info
+    (durada, canals, Hz) a la **barra d'estat**.
+  - Sense WAV es manté el **placeholder** al centre.
+  - Fora l'etiqueta «Flux: …» (ja no és un assistent) i l'acció
+    «Mostra el visor» del menú Visualitza.
+  - **Test adaptat** (`test_obre_wav_mostra_timeline_buit_abans_d_analitzar`):
+    abans s'esperava placeholder sense CSV; ara s'espera visor amb pistes
+    buides. Comportament canviat a propòsit pel pas 2.
+
+### Canviat (anteriors)
 - **Reorganització de la GUI (estil Audacity/DAW) — PAS 1**: el QGroupBox
   «2 · Temps i paràmetres» passa a ser una **barra d'eines fina d'una sola
   línia** (`QToolBar`, no movable) sota el menú: selector

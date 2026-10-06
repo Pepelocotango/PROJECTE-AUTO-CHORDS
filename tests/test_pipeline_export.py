@@ -57,7 +57,12 @@ class ExportPipelineTests(unittest.TestCase):
             self.assertGreater(window.visor_ref.llista_ac.count(), 0)
             app.quit()
 
-    def test_main_shows_placeholder_before_first_processing(self):
+    def test_obre_wav_mostra_timeline_buit_abans_d_analitzar(self):
+        """Reorg GUI (pas 2): obrir una WAV mostra l'ona i el timeline DE
+        SEGUIDA, encara que no s'hagi analitzat (pistes buides).
+
+        Abans (comportament d'assistent) es mostrava un placeholder fins que
+        hi havia CSV. Ara el visor s'obre sempre amb la WAV."""
         with tempfile.TemporaryDirectory() as td:
             wav = Path(td) / "tema.wav"
             with wave.open(str(wav), "wb") as w:
@@ -70,8 +75,11 @@ class ExportPipelineTests(unittest.TestCase):
             window = app_main.Finestra()
             window.sortida = ""
             window._carrega_visor(str(wav))
-            self.assertIsNone(window.visor_ref)
-            self.assertTrue(window.visor_dock.widget() is not None)
+            self.assertIsNotNone(window.visor_ref)
+            self.assertEqual(len(window.visor_ref.acords), 0)
+            self.assertEqual(len(window.visor_ref.seccions), 0)
+            self.assertIsNotNone(window.visor_widget)
+            self.assertFalse(hasattr(window, "visor_dock"))
             app.quit()
 
     def test_exporta_total_generates_expected_outputs(self):

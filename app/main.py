@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
     QMessageBox, QProgressBar, QPushButton, QShortcut, QTextEdit,
-    QToolBar,
+    QStackedWidget, QToolBar,
     QVBoxLayout, QWidget,
 )
 
@@ -147,41 +147,33 @@ class Finestra(QMainWindow):
         self.feina = None
         self.logger.info("Finestra inicialitzada")
 
+        # El VISOR és el widget central (abans era un QDockWidget a la dreta).
+        # Fem servir un QStackedWidget: pàgina 0 = placeholder, pàgina 1 = visor.
+        self.wav_edit = QLineEdit()      # només com a magatzem de la ruta
+        self.wav_edit.setVisible(False)
+        self.wav_info = QLabel("")
+        self.statusBar().addPermanentWidget(self.wav_info)
+
         arrel = QWidget()
         self.setCentralWidget(arrel)
         capa = QVBoxLayout(arrel)
-
-        self.visor_dock = QDockWidget("Visor", self)
-        self.visor_dock.setAllowedAreas(
-            Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea | Qt.BottomDockWidgetArea)
-        self.visor_dock.setFeatures(
-            QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
-        self.visor_dock.setVisible(True)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.visor_dock)
+        capa.setContentsMargins(0, 0, 0, 0)
+        self._stack = QStackedWidget()
+        capa.addWidget(self._stack, stretch=1)
         self.visor_widget = None
         self._mostra_placeholder_visor()
 
-        # 1. wav
-        g1 = QGroupBox("1 · Tria la wav")
-        f1 = QHBoxLayout(g1)
-        self.wav_edit = QLineEdit()
-        self.wav_edit.setPlaceholderText("/camí/al/tema.wav")
-        self.wav_edit.setToolTip("Ruta de la fitxer WAV que vols analitzar.")
-        b_tria = QPushButton("Tria...")
-        b_tria.setObjectName("secundari")
-        b_tria.setToolTip("Selecciona la cançó o la gravació WAV a processar.")
-        b_tria.clicked.connect(self.tria_wav)
-        f1.addWidget(self.wav_edit)
-        f1.addWidget(b_tria)
-        capa.addWidget(g1)
-        self.wav_info = QLabel("")
-        capa.addWidget(self.wav_info)
-
-        self.flux_label = QLabel(
-            "Flux: Tria WAV → Processa → Revisa i edita → Finalitza i publica"
-        )
-        self.flux_label.setStyleSheet("QLabel { color: #dfe3ea; font-weight: 600; }")
-        capa.addWidget(self.flux_label)
+        # barra d'eines principal: Obre (els passos 3/4 hi afegiran Analitza/Exporta)
+        barra_principal = QToolBar("Principal")
+        barra_principal.setObjectName("barra_principal")
+        barra_principal.setMovable(False)
+        b_obre = QPushButton("Obre…")
+        b_obre.setObjectName("secundari")
+        b_obre.setToolTip("Obre una WAV (Ctrl+O)")
+        b_obre.clicked.connect(self.tria_wav)
+        barra_principal.addWidget(b_obre)
+        self.addToolBar(Qt.TopToolBarArea, barra_principal)
+        self.barra_principal = barra_principal
 
         # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
         #    (abans era un QGroupBox «2 · Temps i paràmetres»)
@@ -332,8 +324,7 @@ class Finestra(QMainWindow):
         self._act(m, "Zoom −", "Ctrl+-", lambda: self._zoom_visor(2.0))
         self._act(m, "Zoom total", "Ctrl+0", self._zoom_tot_visor)
         m.addSeparator()
-        self.visor_dock.toggleViewAction().setText("Mostra el visor")
-        m.addAction(self.visor_dock.toggleViewAction())
+        # (El visor és ara el widget central: ja no cal «Mostra el visor»)
         # --- Analitza ---
         m = mb.addMenu("&Analitza")
         self._act(m, "Processa el WAV", "F5", self.executa)
@@ -467,6 +458,7 @@ class Finestra(QMainWindow):
 
     def _mostra_placeholder_visor(self):
         cont = QWidget()
+        cont.setObjectName("placeholder_visor")
         cont.setStyleSheet(f"QWidget {{ background: {theme.BG}; color: {theme.TEXT}; }}")
         lay = QVBoxLayout(cont)
         lay.setContentsMargins(20, 20, 20, 20)
@@ -474,7 +466,9 @@ class Finestra(QMainWindow):
         label.setAlignment(Qt.AlignCenter)
         label.setWordWrap(True)
         lay.addWidget(label)
-        self.visor_dock.setWidget(cont)
+        if self._stack.indexOf(cont) < 0:
+            self._stack.insertWidget(0, cont)   # pagina 0 = placeholder
+        self._stack.setCurrentWidget(cont)
         self.visor_widget = None
 
     def _detecta_sortida_wav(self, wav):
@@ -506,10 +500,7 @@ class Finestra(QMainWindow):
                     abc_csv = None
 
             if acords_csv is None:
-                self.logger.info("No hi ha resultat processat per %s; mostro placeholder", wav)
-                self.visor_ref = None
-                self._mostra_placeholder_visor()
-                return
+                self.logger.info("Sense resultat processat per %s; obro el visor amb pistes buides", wav)
 
             self.logger.info("Carregant visor per %s | sortida=%s", wav, self.sortida)
             visor = visor_mod.Visor(
@@ -522,11 +513,11 @@ class Finestra(QMainWindow):
             )
             self.visor_ref = visor
             self.visor_widget = visor.centralWidget()
-            self.visor_widget.setParent(self.visor_dock)
-            self.visor_dock.setWidget(self.visor_widget)
+            self.visor_widget.setParent(self._stack)
+            if self._stack.indexOf(self.visor_widget) < 0:
+                self._stack.addWidget(self.visor_widget)   # pagina 1 = visor
+            self._stack.setCurrentWidget(self.visor_widget)
             self.visor_widget.show()
-            self.visor_dock.setVisible(True)
-            self.visor_dock.raise_()
             visor._embedded = True
             visor.setVisible(False)
             visor.close()
@@ -545,14 +536,26 @@ class Finestra(QMainWindow):
                 info = pipeline.wav_info(ruta)
                 self.sortida = self._detecta_sortida_wav(ruta)
                 self.logger.info("WAV seleccionada: %s | info=%s | sortida_detectada=%s", ruta, info, self.sortida)
-                self.wav_info.setText(
-                    f"{info['durada']:.1f} s · {info['canals']} canals · "
-                    f"{info['mostreig']} Hz")
+                self._actualitza_info_wav(ruta, info)
                 self._carrega_visor(ruta)
             except Exception as e:  # noqa: BLE001
                 self.logger.exception("WAV no vàlida: %s", ruta)
                 self.wav_info.setText(f"No és una wav vàlida: {e}")
                 self._mostra_placeholder_visor()
+
+    def _actualitza_info_wav(self, ruta, info=None):
+        """Nom del fitxer al títol i la info (durada/Hz) a la barra d'estat."""
+        nom = os.path.basename(ruta)
+        self.setWindowTitle(f"{nom} — Auto Chords")
+        if info is None:
+            try:
+                info = pipeline.wav_info(ruta)
+            except Exception:  # noqa: BLE001
+                info = None
+        if info:
+            self.wav_info.setText(
+                f"{info['durada']:.1f} s · {info['canals']} canals · "
+                f"{info['mostreig']} Hz")
 
     def executa(self):
         wav = self.wav_edit.text().strip()
