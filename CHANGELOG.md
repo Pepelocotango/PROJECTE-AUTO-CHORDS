@@ -5,6 +5,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.1-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **Compte enrere (count-in) al silenci inicial**: abans de l'offset (el
+  compàs 1) la graella ara és **negativa** en comptes de quedar-se clavada a
+  `1.1`. Així, si el compàs 1 cau a 9,5 s, el silenci es llegeix
+  `-3.1 … -2.2 … -1.3` (com un compte enrere). Passa a `fmt_pos` (regle) i
+  `pos_compas` (export). I el **clic del metrònom també sona al count-in**
+  (des de t=0 de la cançó, no només des de l'offset). **3 tests nous** (+1
+  adaptat).
+
 ### Canviat
 - **Detecció de BPM reescrita (`app/tempo.py`, numpy pur)**: l'antic mètode
   (beat tracker d'**aubio** + mediana dels intervals) fallava amb temes reals:

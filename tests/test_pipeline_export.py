@@ -823,18 +823,46 @@ class OffsetTests(unittest.TestCase):
         self.assertEqual(pos_compas(1.0, 120, 4, False, 1.0), "1.1.1")
         self.assertEqual(pos_compas(2.0, 120, 4, False, 1.0), "1.3.1")
 
+    def _onsets_metronom(self, out):
+        arr = np.frombuffer(out, dtype=np.int16).astype(np.int32)
+        idx = np.where(np.abs(arr) > 1000)[0]
+        gaps = np.where(np.diff(idx) > 0.05 * self.SR)[0]
+        return np.concatenate(([idx[0]], idx[gaps + 1])) / self.SR
+
     def test_metronom_amb_offset(self):
         from app import metronom
         base = b"\x00\x00" * int(self.SR * 2)
         out = metronom.mescla_metronom(base, self.SR, 0.0, 120.0, 4,
                                        volum=1.0, offset=1.0)
-        arr = np.frombuffer(out, dtype=np.int16).astype(np.int32)
-        actiu = np.abs(arr) > 1000
-        idx = np.where(actiu)[0]
-        gaps = np.where(np.diff(idx) > 0.05 * self.SR)[0]
-        onsets = np.concatenate(([idx[0]], idx[gaps + 1])) / self.SR
-        # amb offset=1.0 el primer clic cau a 1.0, no a 0
-        self.assertAlmostEqual(onsets[0], 1.0, places=3)
+        onsets = self._onsets_metronom(out)
+        # hi ha d'haver un clic JUST a l'offset (1.0)
+        self.assertTrue(any(abs(o - 1.0) < 0.03 for o in onsets),
+                        f"cap clic a l'offset: {onsets[:6]}")
+
+    def test_count_in_abans_de_l_offset(self):
+        """El silenci inicial s'omple amb el compte enrere (count-in)."""
+        from app import metronom
+        base = b"\x00\x00" * int(self.SR * 2)
+        out = metronom.mescla_metronom(base, self.SR, 0.0, 120.0, 4,
+                                       volum=1.0, offset=1.0)
+        onsets = self._onsets_metronom(out)
+        # hi ha clics ABANS de l'offset (count-in) i a l'offset
+        self.assertTrue(any(o < 0.95 for o in onsets),
+                        f"sense count-in: {onsets[:6]}")
+        self.assertTrue(any(abs(o - 1.0) < 0.03 for o in onsets))
+
+    def test_compas_negatiu_abans_de_l_offset(self):
+        """Abans de l'offset (compas 1) la graella es negativa (count-in)."""
+        from app.timeline import fmt_pos
+        from app.pipeline import pos_compas
+        # 120 BPM 4/4 -> compas = 2,0 s. Amb offset=3.0 (compas 1 a 3,0 s),
+        # t=0 cau al compas -1 (beat 3).
+        self.assertEqual(fmt_pos(0.0, True, 120, 4, 3.0), "-1.3")
+        self.assertEqual(pos_compas(0.0, 120, 4, False, 3.0), "-1.3.1")
+        # i el compas 1 si que es positiu a l'offset
+        self.assertEqual(fmt_pos(3.0, True, 120, 4, 3.0), "1.1")
+        # sense offset, tot positiu (comportament antic)
+        self.assertEqual(fmt_pos(0.0, True, 120, 4, 0.0), "1.1")
 
     def test_metronom_limita_bpm(self):
         from app import metronom

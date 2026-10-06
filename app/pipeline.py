@@ -155,7 +155,9 @@ def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0):
         return f"{float(t):07.2f}s"
     step = 60.0 / bpm / 2              # corxera
     SB = max(1, int(bpb)) * 2          # corxeres per compàs
-    p = max(0, round((float(t) - float(offset)) / step))
+    # Sense clampar: abans de l'offset (compàs 1) les posicions son negatives
+    # -> el silenci inicial queda com un compte enrere (compàs -1, -2...).
+    p = round((float(t) - float(offset)) / step)
     return "%d.%d.%d" % (p // SB + 1, (p % SB) // 2 + 1, 1 + 2 * (p % 2))
 
 

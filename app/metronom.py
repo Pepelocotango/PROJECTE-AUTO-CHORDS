@@ -75,10 +75,12 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
     clic_accent = genera_clic(sr, True) * guany
     clic_normal = genera_clic(sr, False) * guany
 
-    # Primer beat global amb temps >= t_inici (arrodonint cap amunt)
+    # Primer beat amb temps >= t_inici, pero mai abans de t=0 de la canco:
+    # aixi el SILENCI INICIAL tambe s'omple amb el compte enrere (count-in).
     k0 = int(np.ceil((t_inici - offset) / beat_len))
-    if k0 < 0:
-        k0 = 0
+    k_min = int(np.ceil((0.0 - offset) / beat_len))
+    if k0 < k_min:
+        k0 = k_min
     k = k0
     while True:
         t_b = beats_a_temps(k, bpm, offset) - float(t_inici)

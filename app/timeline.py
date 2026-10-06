@@ -156,8 +156,10 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
     if not tempo_fix:
         return f"{t:.1f}s"
     beat = 60.0 / max(bpm, 1e-9)
-    beats = max(0.0, t - float(offset)) / beat
-    compas = int(beats // bpb) + 1
+    # Sense clampar: abans de l'offset (el compàs 1) la graella és NEGATIVA
+    # -> el silenci inicial es llegeix com un compte enrere (-1, -2...).
+    beats = (t - float(offset)) / beat
+    compas = math.floor(beats / bpb) + 1
     beat_idx = int(round(beats % bpb)) + 1
     if beat_idx > bpb:
         compas += 1
