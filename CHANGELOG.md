@@ -6,6 +6,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 ## [No publicat]
 
 ### Canviat
+- **Reorganització de la GUI — PAS 4: exportar a Fitxer.**
+  - «Finalitza i publica» passa a **Fitxer ▸ Exporta… (Ctrl+E)** i un botó
+    **«Exporta»** a la barra d'eines. Mateixa lògica de `exporta()`; **no
+    canvia què exporta ni els noms de carpetes/fitxers**.
+  - **Desactivat** fins que hi ha un resultat d'anàlisi (`b_export` només
+    s'activa a `acabada(True, …)`).
+
+### Canviat (anteriors)
 - **Reorganització de la GUI — PAS 3: «Analitza» com a acció + log plegable.**
   - **Fora el QGroupBox «3 · Analitza i exporta»**.
   - El botó «Processa» passa a **«Analitza»** a la barra d'eines (i a

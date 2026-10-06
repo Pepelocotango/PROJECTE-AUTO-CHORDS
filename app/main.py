@@ -253,11 +253,12 @@ class Finestra(QMainWindow):
         self.b_exec.setEnabled(False)          # fins que hi hagi WAV
         self.barra_principal.addWidget(self.b_exec)
 
-        # l'exportació s'afegirà a Fitxer (pas 4); de moment, widget ocult
+        # «Exporta» és una acció de Fitxer (vegeu el menú); botó a la barra
         self.b_export = QPushButton("Exporta")
-        self.b_export.setVisible(False)
-        self.b_export.setEnabled(False)
+        self.b_export.setToolTip("Exporta el paquet final (Ctrl+E)")
+        self.b_export.setEnabled(False)       # fins que hi hagi pistes
         self.b_export.clicked.connect(self.exporta)
+        self.barra_principal.addWidget(self.b_export)
 
         # progrés → barra d'estat (permanent)
         self.barra = QProgressBar()
@@ -309,7 +310,7 @@ class Finestra(QMainWindow):
         m = mb.addMenu("&Fitxer")
         self._act(m, "Obre WAV…", "Ctrl+O", self.tria_wav)
         m.addSeparator()
-        self._act(m, "Finalitza i publica", "", self.exporta)
+        self._act(m, "Exporta…", "Ctrl+E", self.exporta)
         self._act(m, "Obre la carpeta de sortida", "", self.obre_carpeta)
         m.addSeparator()
         self._act(m, "Surt", "Ctrl+Q", self.close)
