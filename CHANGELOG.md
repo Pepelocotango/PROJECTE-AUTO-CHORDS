@@ -14,8 +14,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
     desmarca i es desactiven (gris) botó, acció i slider, amb tooltip
     «Només disponible en mode BPM · compàs». En tornar a BPM es reactiven.
   - Si el mode passa a Lliure mentre sona amb el clic activat, **reengega
-    sense clic** des de la posició (a \).
-  - El color de l'estat activat viu a \ (\).
+    sense clic** des de la posició (a `_actualitza_temps`).
+  - El color de l'estat activat viu a `app/theme.py` (`METRO_ACTIU`), no al
+    codi del visor.
   - 2 tests nous a la finestra.
 
 ### Canviat

@@ -209,6 +209,8 @@ class Finestra(QMainWindow):
         self.b_detecta.setObjectName("secundari")
         self.b_detecta.setToolTip("Detecta el BPM automàticament amb aubio.")
         self.b_detecta.clicked.connect(self._detecta_bpm)
+        for camp in (self.bpm, self.bpb, self.offset):
+            camp.editingFinished.connect(self._aplica_parametres_temps)
 
         self._params_temps = QWidget()      # s'amaga sencer en mode Lliure
         hp = QHBoxLayout(self._params_temps)
@@ -481,6 +483,18 @@ class Finestra(QMainWindow):
                 self, "Detecta BPM",
                 "No s'ha pogut estimar el BPM.\n"
                 "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
+
+    def _aplica_parametres_temps(self):
+        """Propaga BPM/compàs/offset al visor. Si sona, reengega perquè el
+        metrònom segueixi la nova graella des de la posició actual."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        vr.bpm = self._bpm_val()
+        vr.bpb = self._bpb_val()
+        vr.offset = self._offset_val()
+        vr._actualitza_temps()
+        self._reenvia_si_sona()
 
     def _reenvia_si_sona(self):
         """En canviar BPM/compàs amb la reproducció en marxa, reengega perquè

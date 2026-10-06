@@ -222,22 +222,29 @@ class ExportPipelineTests(unittest.TestCase):
 
     def test_metro_desactivat_en_mode_lliure(self):
         """El metrònom només està disponible en mode BPM · compàs."""
+        import tempfile, wave
         app = app_main.QApplication.instance() or app_main.QApplication([])
         window = app_main.Finestra()
-        # inicial (BPM · compàs) → actiu
+        # sense visor NO hi ha metrònom disponible
         window._actualitza_metro_ui()
+        self.assertFalse(window.b_metro.isEnabled())
+        # amb una WAV carregada (mode BPM per defecte) → actiu
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100)
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
         self.assertTrue(window.b_metro.isEnabled())
         self.assertTrue(window.a_metro.isEnabled())
-        # sense visor no hi ha metrònom disponible
-        self.assertIsNone(getattr(window, "visor_ref", None))
-        # passar a Lliure → desactivat + desmarcat
-        window.b_metro.setChecked(True)
+        # passar a Lliure → desactivat + desmarcat + tooltip
+        window._toggle_metro(True)
         window._canvia_mode_temps(False)
         self.assertFalse(window.b_metro.isEnabled())
         self.assertFalse(window.vol_metro.isEnabled())
         self.assertFalse(window.a_metro.isEnabled())
         self.assertFalse(window.b_metro.isChecked())
-        # tooltip explicatiu
         self.assertIn("BPM", window.b_metro.toolTip())
         app.quit()
 
