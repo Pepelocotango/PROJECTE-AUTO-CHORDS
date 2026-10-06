@@ -208,7 +208,11 @@ class Visor(QMainWindow):
                   self.b_A, self.b_B, self.b_loop,
                   self.b_zm, self.b_zp, self.b_zt):
             fila.addWidget(b)
-        capa.addLayout(fila)
+        # Encaixem la fila en un contenidor per poder-la AMAGAR quan el visor
+        # va incrustat (aleshores el transport viu a la barra de la finestra).
+        self.cont_transport = QWidget()
+        self.cont_transport.setLayout(fila)
+        capa.addWidget(self.cont_transport)
 
         fila2 = QHBoxLayout()
         self.lliscador = QSlider(Qt.Horizontal)

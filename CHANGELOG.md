@@ -6,6 +6,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 ## [No publicat]
 
 ### Canviat
+- **Reorganització de la GUI — PAS 5: barra de transport única.**
+  - Els botons de transport (play/stop, −10s/+10s, loop A/B, zoom 🔍−/🔍+/Tot
+    i mute) viuen ara en una **QToolBar pròpia** de la finestra (2a fila),
+    **fora del visor**.
+  - **Reutilització**: els botons criden els **mètodes existents del visor**
+    (`play_stop`, `stop_inici`, `ves_a`, `marca_A/B`, `commuta_loop`,
+    `zoom`, `zoom_tot`, `commuta_mut`) — no s'ha reescrit cap lògica.
+  - Quan el visor va **incrustat**, la seva fila de transport **s'amaga**
+    (el visor segueix funcionant sol si s'executa standalone).
+  - **Tooltips amb la drecera** (Espai = play/stop). Es mantenen les
+    dreceres existents.
+  - Nota: el botó 🔇 del visor (a la fila del lliscador) es manté; el de la
+    barra de transport és el mateix estat.
+
+### Canviat (anteriors)
 - **Reorganització de la GUI — PAS 4: exportar a Fitxer.**
   - «Finalitza i publica» passa a **Fitxer ▸ Exporta… (Ctrl+E)** i un botó
     **«Exporta»** a la barra d'eines. Mateixa lògica de `exporta()`; **no

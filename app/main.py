@@ -172,6 +172,7 @@ class Finestra(QMainWindow):
         b_obre.setToolTip("Obre una WAV (Ctrl+O)")
         b_obre.clicked.connect(self.tria_wav)
         barra_principal.addWidget(b_obre)
+        barra_principal.addSeparator()
         self.barra_principal = barra_principal
         self.addToolBar(Qt.TopToolBarArea, barra_principal)
 
@@ -275,6 +276,17 @@ class Finestra(QMainWindow):
         self.log_dock.setWidget(self.log)
         self.log_dock.setVisible(False)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
+
+        # 5. BARRA DE TRANSPORT única (fora del visor). Reutilitza els
+        #    mètodes del visor (play_stop, stop_inici, ves_a, marca_A/B,
+        #    commuta_loop, zoom, zoom_tot, commuta_mut): no es reescriu res.
+        barra_transport = QToolBar("Transport")
+        barra_transport.setObjectName("barra_transport")
+        barra_transport.setMovable(False)
+        self._crea_transport(barra_transport)
+        self.addToolBarBreak(Qt.TopToolBarArea)   # el transport, a la seva fila
+        self.addToolBar(Qt.TopToolBarArea, barra_transport)
+        self.barra_transport = barra_transport
 
         self.sortida = ""
         self.b_export.setEnabled(False)
@@ -530,6 +542,9 @@ class Finestra(QMainWindow):
             self._stack.setCurrentWidget(self.visor_widget)
             self.visor_widget.show()
             self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
+            if hasattr(visor, "cont_transport"):
+                # el transport viu a la barra de la finestra
+                visor.cont_transport.setVisible(False)
             visor._embedded = True
             visor.setVisible(False)
             visor.close()
@@ -554,6 +569,52 @@ class Finestra(QMainWindow):
                 self.logger.exception("WAV no vàlida: %s", ruta)
                 self.wav_info.setText(f"No és una wav vàlida: {e}")
                 self._mostra_placeholder_visor()
+
+    def _acc_visor(self, nom, *args):
+        """Crida un mètode del visor (o una acció derivada) si n'hi ha."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        if nom == "menys10":
+            vr.ves_a(vr.pos - 10)
+        elif nom == "mes10":
+            vr.ves_a(vr.pos + 10)
+        else:
+            getattr(vr, nom)(*args)
+
+    def _crea_transport(self, bar):
+        def boto(text, tip, accio, checkable=False):
+            b = QPushButton(text)
+            b.setToolTip(tip)
+            if checkable:
+                b.setCheckable(True)
+            b.clicked.connect(accio)
+            bar.addWidget(b)
+            return b
+
+        boto("▶ Escolta", "Reprodueix / atura  (Espai)",
+             lambda: self._acc_visor("play_stop"))
+        boto("⏹", "Atura i torna a l'inici",
+             lambda: self._acc_visor("stop_inici"))
+        boto("−10s", "Endarrere 10 s",
+             lambda: self._acc_visor("menys10"))
+        boto("+10s", "Endavant 10 s",
+             lambda: self._acc_visor("mes10"))
+        bar.addSeparator()
+        boto("A⟨", "Marca inici de loop (A)",
+             lambda: self._acc_visor("marca_A"))
+        boto("⟩B", "Marca fi de loop (B)",
+             lambda: self._acc_visor("marca_B"))
+        self.tb_loop = boto("🔁", "Activa/desactiva el loop A-B",
+                            lambda: self._acc_visor("commuta_loop"),
+                            checkable=True)
+        bar.addSeparator()
+        boto("🔍−", "Allunya el zoom", lambda: self._acc_visor("zoom", 2.0))
+        boto("🔍+", "Apropa el zoom", lambda: self._acc_visor("zoom", 0.5))
+        boto("Tot", "Zoom total (veure-ho tot)",
+             lambda: self._acc_visor("zoom_tot"))
+        boto("🔇", "Silencia / reactiva el so",
+             lambda: self._acc_visor("commuta_mut"), checkable=True)
 
     def _actualitza_info_wav(self, ruta, info=None):
         """Nom del fitxer al títol i la info (durada/Hz) a la barra d'estat."""
