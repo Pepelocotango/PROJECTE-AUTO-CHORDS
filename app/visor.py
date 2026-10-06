@@ -176,7 +176,14 @@ class Visor(QMainWindow):
         self.llista_ab.itemDoubleClicked.connect(self._edita_seccio)
         self.llista_ab.customContextMenuRequested.connect(self._menu_seccio)
         div.addWidget(self.llista_ab)
-        capa.addWidget(div, stretch=2)
+        # Les llistes viuen en un contenidor propi perque la finestra les
+        # pugui posar en un tauler lateral («Inspector»). Si el visor va sol,
+        # queden al mateix lloc de sempre.
+        self.inspector = QWidget()
+        _lay_insp = QVBoxLayout(self.inspector)
+        _lay_insp.setContentsMargins(0, 0, 0, 0)
+        _lay_insp.addWidget(div)
+        capa.addWidget(self.inspector, stretch=2)
 
         fila = QHBoxLayout()
         self.b_play = QPushButton("▶ Escolta")

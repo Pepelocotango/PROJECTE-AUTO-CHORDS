@@ -6,6 +6,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 ## [No publicat]
 
 ### Canviat
+- **Reorganització de la GUI — PAS 6: llistes al tauler «Inspector».**
+  - Les llistes d'acords i estructura viuen en un **tauler lateral dret
+    plegable** (`QDockWidget` «Inspector»), **amagat per defecte**;
+    s'obre amb **Visualitza ▸ Mostra l'inspector**. Mantenen clic-per-salta,
+    doble-clic-per-editar i menú contextual.
+  - El visor les exposa en un contenidor (`self.inspector`) que la finestra
+    re-parenta al dock; si el visor s'executa sol, queden al lloc de sempre.
+  - **Edició des del timeline**: amb el panell amagat, desfer/refer, Delete,
+    Ctrl+D (duplica), menú contextual i renombrat inline **ja funcionen**
+    (passos P2-T2/T3/T5). Únic pendent: *afegir* un clip nou només és al
+    menú contextual de la llista (es pot afegir al timeline més endavant).
+  - El **log propi del visor** s'amaga quan va incrustat (ja hi ha el tauler
+    «Log» de la finestra).
+
+### Canviat (anteriors)
 - **Reorganització de la GUI — PAS 5: barra de transport única.**
   - Els botons de transport (play/stop, −10s/+10s, loop A/B, zoom 🔍−/🔍+/Tot
     i mute) viuen ara en una **QToolBar pròpia** de la finestra (2a fila),
