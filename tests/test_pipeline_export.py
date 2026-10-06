@@ -220,6 +220,38 @@ class ExportPipelineTests(unittest.TestCase):
         self.assertEqual(window.b_export.text(), "Exporta")
         app.quit()
 
+    def test_metro_desactivat_en_mode_lliure(self):
+        """El metrònom només està disponible en mode BPM · compàs."""
+        app = app_main.QApplication.instance() or app_main.QApplication([])
+        window = app_main.Finestra()
+        # inicial (BPM · compàs) → actiu
+        window._actualitza_metro_ui()
+        self.assertTrue(window.b_metro.isEnabled())
+        self.assertTrue(window.a_metro.isEnabled())
+        # sense visor no hi ha metrònom disponible
+        self.assertIsNone(getattr(window, "visor_ref", None))
+        # passar a Lliure → desactivat + desmarcat
+        window.b_metro.setChecked(True)
+        window._canvia_mode_temps(False)
+        self.assertFalse(window.b_metro.isEnabled())
+        self.assertFalse(window.vol_metro.isEnabled())
+        self.assertFalse(window.a_metro.isEnabled())
+        self.assertFalse(window.b_metro.isChecked())
+        # tooltip explicatiu
+        self.assertIn("BPM", window.b_metro.toolTip())
+        app.quit()
+
+    def test_volum_metro_per_defecte(self):
+        from app import theme
+        app = app_main.QApplication.instance() or app_main.QApplication([])
+        window = app_main.Finestra()
+        self.assertEqual(window.vol_metro.value(), 60)
+        self.assertEqual(window.vol_metro.minimum(), 0)
+        self.assertEqual(window.vol_metro.maximum(), 100)
+        # i el color de l'estat activat viu al theme, no al visor
+        self.assertTrue(hasattr(theme, "METRO_ACTIU"))
+        app.quit()
+
     def test_analitza_desactivat_sense_wav(self):
         """Estat dinàmic: «Analitza» està desactivat fins que hi ha WAV."""
         app = app_main.QApplication.instance() or app_main.QApplication([])

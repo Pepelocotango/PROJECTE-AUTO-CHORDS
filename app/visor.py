@@ -638,14 +638,25 @@ class Visor(QMainWindow):
             self._atura_proc()
             self._engega_des_de(pos)
 
-    def commuta_metro(self):
-        """Activa/desactiva el metrònom. Si sona, reinicia des de la posició."""
-        self.metro_on = not self.metro_on
+    def metro_disponible(self):
+        """El metrònom només té sentit amb graella (mode BPM · compàs)."""
+        return bool(self.tempo_fix)
+
+    def set_metro(self, on):
+        """Fixa l'estat del metrònom. Si sona, reinicia des de la posició."""
+        on = bool(on)
+        if on == self.metro_on:
+            return
+        self.metro_on = on
         self.log(f"metrònom {'ON' if self.metro_on else 'OFF'}")
         if self.sona:
             pos = self.pos
             self._atura_proc()
             self._engega_des_de(pos)
+
+    def commuta_metro(self):
+        """Activa/desactiva el metrònom. Si sona, reinicia des de la posició."""
+        self.set_metro(not self.metro_on)
 
     def _canvia_vol_metro(self, v):
         """Volum del clic (0-100). Si sona, reinicia des de la posició."""
@@ -687,6 +698,10 @@ class Visor(QMainWindow):
 
     def _actualitza_temps(self):
         self.timeline.set_tempo_mode(self.tempo_fix, self.bpm, self.bpb)
+        # En mode Lliure el metrònom no té sentit: l'apaguem (i si sona,
+        # reengega sense clic des de la posició actual).
+        if not self.tempo_fix and getattr(self, "metro_on", False):
+            self.set_metro(False)
         self.temps.setText(self._fmt_timeline(self.pos))
 
     def _edita_acord_index(self, idx):

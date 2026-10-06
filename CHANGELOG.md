@@ -6,6 +6,19 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Metrònom (PAS 3: interfície i estat gris)**:
+  - Botó marcable **🥁** i un **QSlider 0-100** (per defecte **60**) a la barra
+    de transport, al costat del mute, amb tooltips. Acció marcable
+    **Visualitza ▸ Metrònom**, sincronitzada amb el botó.
+  - **Només disponible en mode BPM · compàs**: en mode **Lliure** es
+    desmarca i es desactiven (gris) botó, acció i slider, amb tooltip
+    «Només disponible en mode BPM · compàs». En tornar a BPM es reactiven.
+  - Si el mode passa a Lliure mentre sona amb el clic activat, **reengega
+    sense clic** des de la posició (a \).
+  - El color de l'estat activat viu a \ (\).
+  - 2 tests nous a la finestra.
+
+### Canviat
 - **Metrònom (PAS 2: integració a la reproducció)** — `app/visor.py`:
   - Estat `metro_on = False` i `metro_vol = 0.6`.
   - A `_engega_des_de()`, **després** d'aplicar volum/mute de la cançó, els

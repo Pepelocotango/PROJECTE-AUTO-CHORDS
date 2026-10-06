@@ -13,7 +13,7 @@ from PyQt5.QtGui import QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-    QMessageBox, QProgressBar, QPushButton, QShortcut, QTextEdit,
+    QMessageBox, QProgressBar, QPushButton, QShortcut, QSlider, QTextEdit,
     QStackedWidget, QToolBar,
     QVBoxLayout, QWidget,
 )
@@ -358,6 +358,9 @@ class Finestra(QMainWindow):
         self.log_dock.toggleViewAction().setText("Mostra el log")
         m.addAction(self.inspector_dock.toggleViewAction())
         self.inspector_dock.toggleViewAction().setText("Mostra l'inspector")
+        m.addSeparator()
+        self.a_metro = self._act(m, "Metrònom", "", self._toggle_metro, checkable=True)
+        self.a_metro.setToolTip("Clic de metrònom (només en mode BPM · compàs)")
         # --- Analitza ---
         m = mb.addMenu("&Analitza")
         self._act(m, "Processa el WAV", "F5", self.executa)
@@ -455,6 +458,7 @@ class Finestra(QMainWindow):
         """Canvia entre mode BPM·compàs i mode Lliure (hh:mm:ss)."""
         self._params_temps.setVisible(bool(bpm_compas))
         self.tempo_fix.setChecked(bool(bpm_compas))
+        self._actualitza_metro_ui()
 
     def _detecta_bpm(self):
         """Detecta el BPM amb aubio i l'escriu al camp (l'usuari pot editar-lo)."""
@@ -477,6 +481,15 @@ class Finestra(QMainWindow):
                 self, "Detecta BPM",
                 "No s'ha pogut estimar el BPM.\n"
                 "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
+
+    def _reenvia_si_sona(self):
+        """En canviar BPM/compàs amb la reproducció en marxa, reengega perquè
+        el metrònom segueixi la nova graella des de la posició actual."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None and getattr(vr, "sona", False):
+            pos = vr.pos
+            vr._atura_proc()
+            vr._engega_des_de(pos)
 
     def _canvia_tempo(self, fix):
         for w in (self.bpm, self.bpb, self.offset):
@@ -555,6 +568,7 @@ class Finestra(QMainWindow):
             self._stack.setCurrentWidget(self.visor_widget)
             self.visor_widget.show()
             self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
+            self._actualitza_metro_ui()
             if hasattr(visor, "cont_transport"):
                 # el transport viu a la barra de la finestra
                 visor.cont_transport.setVisible(False)
@@ -635,6 +649,55 @@ class Finestra(QMainWindow):
              lambda: self._acc_visor("zoom_tot"))
         boto("🔇", "Silencia / reactiva el so",
              lambda: self._acc_visor("commuta_mut"), checkable=True)
+        bar.addSeparator()
+        # metrònom: només en mode BPM · compàs (vegeu _actualitza_metro_ui)
+        self.b_metro = QPushButton("🥁")
+        self.b_metro.setObjectName("metro")
+        self.b_metro.setCheckable(True)
+        self.b_metro.setToolTip("Metrònom (només en mode BPM · compàs)")
+        self.b_metro.clicked.connect(self._toggle_metro)
+        bar.addWidget(self.b_metro)
+        self.vol_metro = QSlider(Qt.Horizontal)
+        self.vol_metro.setRange(0, 100)
+        self.vol_metro.setValue(60)
+        self.vol_metro.setMaximumWidth(90)
+        self.vol_metro.setToolTip("Volum del clic del metrònom (%)")
+        self.vol_metro.valueChanged.connect(self._canvia_vol_metro)
+        bar.addWidget(self.vol_metro)
+
+    def _toggle_metro(self, on=None):
+        """Activa/desactiva el metrònom (sincronitza botó i acció)."""
+        if on is None:      # clicat des de l'acció de menú
+            on = self.a_metro.isChecked()
+        self.b_metro.setChecked(bool(on))
+        self.a_metro.setChecked(bool(on))
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.set_metro(bool(on))
+
+    def _canvia_vol_metro(self, v):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr._canvia_vol_metro(int(v))
+
+    def _actualitza_metro_ui(self):
+        """El metrònom només està disponible en mode BPM · compàs."""
+        vr = getattr(self, "visor_ref", None)
+        disponible = vr is not None and vr.metro_disponible()
+        for w in (self.b_metro, self.vol_metro, self.a_metro):
+            w.setEnabled(disponible)
+        if not disponible:
+            # en mode Lliure: desmarcat i amb tooltip explicatiu
+            self.b_metro.setChecked(False)
+            self.a_metro.setChecked(False)
+            tip = "Només disponible en mode BPM · compàs"
+            self.b_metro.setToolTip(tip)
+            self.vol_metro.setToolTip(tip)
+            self.a_metro.setToolTip(tip)
+        else:
+            self.b_metro.setToolTip("Metrònom")
+            self.vol_metro.setToolTip("Volum del clic del metrònom (%)")
+            self.a_metro.setToolTip("Clic de metrònom")
 
     def _actualitza_info_wav(self, ruta, info=None):
         """Nom del fitxer al títol i la info (durada/Hz) a la barra d'estat."""

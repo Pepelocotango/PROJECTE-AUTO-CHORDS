@@ -41,6 +41,8 @@ TL_GRID_BEAT = "#3d4c60"       # linia de temps
 TL_GRID_SUB = "#303a48"        # subdivisio
 TL_WAVE_MID = "#2f3640"        # linia central de l'ona
 CLIP_SECTION_BORDER = "#dfe7f5"
+# Metrònom: color de l'estat activat (botó/acció)
+METRO_ACTIU = "#ffd166"
 CLIP_FILL = "#2e3844"          # clip normal
 CLIP_BORDER = "#b8c7dc"
 CLIP_TEXT = "#edf3ff"
@@ -174,6 +176,7 @@ QPushButton {{
 QPushButton:hover {{ background: {SURFACE_2}; }}
 QPushButton:pressed {{ background: {BORDER_SOFT}; }}
 QPushButton:checked {{ background: {PRIMARY_LIGHT}; color: {BG}; }}
+QPushButton#metro:checked {{ background: {METRO_ACTIU}; color: {BG}; }}
 QPushButton:disabled {{ background: {DISABLED}; color: {MUTED}; }}
 QListWidget, QTextEdit, QSlider, QLabel {{
     background: {PANEL};
