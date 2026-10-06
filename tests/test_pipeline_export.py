@@ -10,7 +10,19 @@ from unittest.mock import patch
 
 import numpy as np
 
+# Mode headless GLOBAL: sense això, les classes que creen QApplication abans
+# de definir-lo (p.ex. ExportPipelineTests, que corre primer) poden penjar-se
+# o avortar en un entorn sense pantalla.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 from app import main as app_main, pipeline, visor
+
+# QMessageBox.information/warning/... son MODALS: bloquegen fins que algu
+# clica OK. En un entorn sense pantalla (CI) aixo penja el test per sempre.
+# Els neutralitzem per a TOTS els tests (test-only; no toca l'app).
+for _m in ("information", "warning", "critical", "question", "about"):
+    if hasattr(visor.QMessageBox, _m):
+        setattr(visor.QMessageBox, _m, staticmethod(lambda *a, **k: None))
 
 
 class ExportPipelineTests(unittest.TestCase):
@@ -154,7 +166,7 @@ class ExportPipelineTests(unittest.TestCase):
             self.assertIsInstance(v.timeline, TimelineView)
             self.assertGreater(len(v.timeline._chord_items), 0)
             self.assertGreater(len(v.timeline._section_items), 0)
-            v.exporta()
+            v.exporta()   # els QMessageBox ja son no-ops (vegeu dalt)
             self.assertTrue((out / "wavs_acords").is_dir())
             self.assertTrue((out / "wavs_estructura").is_dir())
             v.close()
@@ -490,6 +502,20 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         self.assertEqual(len(v.acords), n_antes - 1)
         self.assertEqual(len(v.timeline._chord_items), n_antes - 1)
         v.close()
+
+
+class PipelineRunTests(unittest.TestCase):
+    """run() ha de tenir timeout: un subprocés encallat no pot penjar-ho tot."""
+
+    def test_run_aplica_timeout(self):
+        from app import pipeline
+        with self.assertRaises(subprocess.TimeoutExpired):
+            pipeline.run(["sleep", "30"], lambda m: None, timeout=1)
+
+    def test_run_ok(self):
+        from app import pipeline
+        p = pipeline.run(["true"], lambda m: None, timeout=5)
+        self.assertEqual(p.returncode, 0)
 
 
 class FormatCsvTests(unittest.TestCase):

@@ -43,10 +43,19 @@ def _vamp_env():
     return env
 
 
-def run(cmd, log, cwd=None):
+def run(cmd, log, cwd=None, timeout=600):
+    """Executa una comanda externa. `timeout` evita penjaments indefinits.
+
+    Sense timeout, si un subprocés es queda encallat (esperant stdin, un
+    dispositiu d'àudio inexistent...) l'app i els tests es penjarien.
+    """
     log("$ " + " ".join(cmd))
-    p = subprocess.run(cmd, capture_output=True, text=True, env=_vamp_env(),
-                       cwd=cwd)
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, env=_vamp_env(),
+                           cwd=cwd, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        log(f"  ⏱️ TIMEOUT ({timeout}s): {cmd[0]} no ha respost")
+        raise
     for line in (p.stdout + p.stderr).splitlines():
         line = line.strip()
         if line and "Extracting features..." not in line:

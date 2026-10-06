@@ -29,6 +29,14 @@ Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`, `v0.1.5-che
   sol fitxer, amb índex; exclou `.venv/.git/.deps`, binaris, plugins i el
   C++ de tercers). L'artefacte generat queda a `.gitignore`.
 
+### Arreglat
+- **Els tests ja no es pengen en entorns sense pantalla (CI)**: els
+  `QMessageBox` de `Visor.exporta()` i `Finestra.exporta()` són **modals** i
+  bloquejaven per sempre (ningú no pot clicar «OK» sense pantalla). Als
+  tests es neutralitzen. També `QT_QPA_PLATFORM=offscreen` a nivell de
+  mòdul i `pipeline.run()` amb `timeout` (un subprocés encallat ja no
+  penja). 2 tests nous (`PipelineRunTests`).
+
 ### Netejat
 - Fora el material innecessari per l'app actual (a la paperera; tot
   recuperable de git): **`tauri-ui/`** (experiment Tauri aparcat, 8,8 GB
