@@ -740,6 +740,61 @@ class MetronomTests(unittest.TestCase):
         self.assertEqual(len(self._onsets(self._a_array(out))), 3)
 
 
+class TransportBarTests(unittest.TestCase):
+    """Els botons de la BARRA de transport (fora del visor) han de fer efecte.
+
+    Regressió: commuta_mut()/commuta_loop() llegien l'estat dels botons
+    PROPIS del visor, no el de la barra -> el botó es marcava pero no passava res.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra_amb_visor(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100)
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        return window, window.visor_ref
+
+    def test_boto_mute_de_la_barra_afecta_el_visor(self):
+        window, v = self._finestra_amb_visor()
+        self.assertFalse(v.mut)
+        window.tb_mut.setChecked(True)
+        window.tb_mut.clicked.emit()
+        self.assertTrue(v.mut)
+        self.assertTrue(v.b_mut.isChecked())     # sincronitzat
+        window.tb_mut.setChecked(False)
+        window.tb_mut.clicked.emit()
+        self.assertFalse(v.mut)
+        window.close()
+
+    def test_boto_loop_de_la_barra_afecta_el_visor(self):
+        window, v = self._finestra_amb_visor()
+        v.loop_a, v.loop_b = 1.0, 3.0           # cal tenir A i B marcats
+        self.assertFalse(v.loop_on)
+        window.tb_loop.setChecked(True)
+        window.tb_loop.clicked.emit()
+        self.assertTrue(v.loop_on)
+        self.assertTrue(v.b_loop.isChecked())
+        window.close()
+
+    def test_boto_loop_no_activa_sense_a_i_b(self):
+        window, v = self._finestra_amb_visor()
+        v.loop_a = v.loop_b = None
+        window.tb_loop.setChecked(True)
+        window.tb_loop.clicked.emit()
+        self.assertFalse(v.loop_on)             # sense A/B no s'activa
+        window.close()
+
+
 class MetroVisorTests(unittest.TestCase):
     """Integració del metrònom al visor (estat i reinici). Encara sense GUI."""
 

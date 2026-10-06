@@ -603,16 +603,20 @@ class Visor(QMainWindow):
         if self.loop_a is not None:
             self.timeline.set_loop(self.loop_a, self.loop_b)
 
-    def commuta_loop(self):
-        self.loop_on = self.b_loop.isChecked()
+    def set_loop(self, on):
+        """Fixa l'estat del loop A-B (les barres de fora NO toquen b_loop)."""
+        self.loop_on = bool(on)
         if self.loop_on and (self.loop_a is None or self.loop_b is None
                              or self.loop_b <= self.loop_a):
             self.log("loop: cal marcar A i B (B > A) primer")
-            self.b_loop.setChecked(False)
             self.loop_on = False
-            return
+        if hasattr(self, "b_loop") and self.b_loop.isChecked() != self.loop_on:
+            self.b_loop.setChecked(self.loop_on)
         self.log(f"loop {'ON' if self.loop_on else 'OFF'}")
         self._pinta_loop()
+
+    def commuta_loop(self):
+        self.set_loop(not self.loop_on)
 
     def _pinta_loop(self):
         """El loop el dibuixa el mateix TimelineView."""
@@ -666,13 +670,19 @@ class Visor(QMainWindow):
             self._atura_proc()
             self._engega_des_de(pos)
 
-    def commuta_mut(self):
-        self.mut = self.b_mut.isChecked()
+    def set_mut(self, on):
+        """Fixa el mute (les barres de fora NO toquen b_mut)."""
+        self.mut = bool(on)
+        if hasattr(self, "b_mut") and self.b_mut.isChecked() != self.mut:
+            self.b_mut.setChecked(self.mut)
         self.log(f"mute {'ON' if self.mut else 'OFF'}")
         if self.sona:
             pos = self.pos
             self._atura_proc()
             self._engega_des_de(pos)
+
+    def commuta_mut(self):
+        self.set_mut(not self.mut)
 
     @staticmethod
     def _fmt(s):

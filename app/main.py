@@ -654,15 +654,18 @@ class Finestra(QMainWindow):
         boto("⟩B", "Marca fi de loop (B)",
              lambda: self._acc_visor("marca_B"))
         self.tb_loop = boto("🔁", "Activa/desactiva el loop A-B",
-                            lambda: self._acc_visor("commuta_loop"),
-                            checkable=True)
+                            lambda: None, checkable=True)
+        self.tb_loop.clicked.connect(
+            lambda: self._acc_visor("set_loop", self.tb_loop.isChecked()))
         bar.addSeparator()
         boto("🔍−", "Allunya el zoom", lambda: self._acc_visor("zoom", 2.0))
         boto("🔍+", "Apropa el zoom", lambda: self._acc_visor("zoom", 0.5))
         boto("Tot", "Zoom total (veure-ho tot)",
              lambda: self._acc_visor("zoom_tot"))
-        boto("🔇", "Silencia / reactiva el so",
-             lambda: self._acc_visor("commuta_mut"), checkable=True)
+        self.tb_mut = boto("🔇", "Silencia / reactiva el so",
+                           lambda: None, checkable=True)
+        self.tb_mut.clicked.connect(
+            lambda: self._acc_visor("set_mut", self.tb_mut.isChecked()))
         bar.addSeparator()
         # metrònom: només en mode BPM · compàs (vegeu _actualitza_metro_ui)
         self.b_metro = QPushButton("🥁")

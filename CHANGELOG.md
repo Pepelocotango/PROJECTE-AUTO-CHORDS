@@ -3,6 +3,17 @@
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
 Versions amb tag git (`v0.1-punt-control` … `v0.2.0-checkpoint`).
 
+## [No publicat]
+
+### Arreglat
+- **Els botons 🔇 (mute) i 🔁 (loop) de la barra de transport no feien res**:
+  `commuta_mut()` i `commuta_loop()` llegien l'estat dels botons **propis del
+  visor** (`b_mut`/`b_loop`), que la barra no toca -> el botó es marcava però
+  el visor veia el seu desmarcat. Ara hi ha `set_mut(on)`/`set_loop(on)`
+  (setters explícits) i els botons de la barra els criden amb el seu estat,
+  sincronitzant els botons interns. `commuta_*` passen a ser un toggle.
+  **3 tests nous** (`TransportBarTests`) que proven la barra.
+
 ## [0.2.0] — 2026-10-06 (tag `v0.2.0-checkpoint`)
 
 ### Afegit
