@@ -208,13 +208,31 @@ class ExportPipelineTests(unittest.TestCase):
             visor.Visor.__init__ = original_init
 
 
-    def test_main_window_has_process_and_publish_actions(self):
+    def test_main_window_te_les_accions_analitza_i_exporta(self):
+        """Reorg GUI (pas 3): «Processa» passa a dir-se «Analitza» i
+        «Finalitza i publica» → «Exporta» (ara són accions, no passos
+        d'assistent)."""
         app = app_main.QApplication.instance() or app_main.QApplication([])
         window = app_main.Finestra()
         self.assertTrue(hasattr(window, "b_exec"))
         self.assertTrue(hasattr(window, "b_export"))
-        self.assertEqual(window.b_exec.text(), "Processa")
-        self.assertEqual(window.b_export.text(), "Finalitza i publica")
+        self.assertEqual(window.b_exec.text(), "Analitza")
+        self.assertEqual(window.b_export.text(), "Exporta")
+        app.quit()
+
+    def test_analitza_desactivat_sense_wav(self):
+        """Estat dinàmic: «Analitza» està desactivat fins que hi ha WAV."""
+        app = app_main.QApplication.instance() or app_main.QApplication([])
+        window = app_main.Finestra()
+        self.assertFalse(window.b_exec.isEnabled())
+        app.quit()
+
+    def test_log_dock_amagat_per_defecte(self):
+        """El log és un tauler inferior plegable, tancat per defecte."""
+        app = app_main.QApplication.instance() or app_main.QApplication([])
+        window = app_main.Finestra()
+        self.assertTrue(hasattr(window, "log_dock"))
+        self.assertFalse(window.log_dock.isVisible())
         app.quit()
 
     def test_embedded_visor_close_does_not_quit_app(self):

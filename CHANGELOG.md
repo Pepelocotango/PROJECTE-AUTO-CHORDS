@@ -6,6 +6,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 ## [No publicat]
 
 ### Canviat
+- **Reorganització de la GUI — PAS 3: «Analitza» com a acció + log plegable.**
+  - **Fora el QGroupBox «3 · Analitza i exporta»**.
+  - El botó «Processa» passa a **«Analitza»** a la barra d'eines (i a
+    **Analitza ▸ Analitza**, `F5`). Crida el mateix `executa()`.
+  - El **progrés** va a un `QProgressBar` permanent a la **barra d'estat**.
+  - El **log** passa a un **QDockWidget inferior plegable**, **tancat per
+    defecte**, que s'obre sol si hi ha error. **Visualitza ▸ Mostra el log**.
+  - **Estats dinàmics**: «Analitza» desactivat sense WAV i mentre hi ha una
+    feina en curs (centralitzat a `_carrega_visor`).
+  - 3 tests nous + 2 adaptats (els noms dels botons canvien a propòsit).
+
+### Canviat (anteriors)
 - **Reorganització de la GUI — PAS 2: el timeline és la finestra.**
   - **Fora el `QDockWidget`**: el visor passa a ser el **widget central**
     (via `QStackedWidget`: pàgina 0 = placeholder, pàgina 1 = visor).

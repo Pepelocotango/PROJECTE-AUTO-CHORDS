@@ -172,8 +172,8 @@ class Finestra(QMainWindow):
         b_obre.setToolTip("Obre una WAV (Ctrl+O)")
         b_obre.clicked.connect(self.tria_wav)
         barra_principal.addWidget(b_obre)
-        self.addToolBar(Qt.TopToolBarArea, barra_principal)
         self.barra_principal = barra_principal
+        self.addToolBar(Qt.TopToolBarArea, barra_principal)
 
         # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
         #    (abans era un QGroupBox «2 · Temps i paràmetres»)
@@ -245,28 +245,35 @@ class Finestra(QMainWindow):
         self.addToolBar(Qt.TopToolBarArea, barra_temps)
         self.barra_temps = barra_temps
 
-        # 3. executa
-        g3 = QGroupBox("3 · Analitza i exporta")
-        f3 = QVBoxLayout(g3)
-        fila = QHBoxLayout()
-        self.b_exec = QPushButton("Processa")
-        self.b_exec.setToolTip("Extreu acords i estructura i genera el flux de treball del tema.")
+        # 3. «Analitza» és una ACCIÓ sobre el que es veu (ja no un pas d'assistent).
+        self.b_exec = QPushButton("Analitza")
+        self.b_exec.setObjectName("principal")
+        self.b_exec.setToolTip("Extreu acords i estructura de la WAV (F5)")
         self.b_exec.clicked.connect(self.executa)
-        self.b_export = QPushButton("Finalitza i publica")
-        self.b_export.setObjectName("secundari")
-        self.b_export.setToolTip("Genera la sortida final i publica el paquet llest per al DAW.")
+        self.b_exec.setEnabled(False)          # fins que hi hagi WAV
+        self.barra_principal.addWidget(self.b_exec)
+
+        # l'exportació s'afegirà a Fitxer (pas 4); de moment, widget ocult
+        self.b_export = QPushButton("Exporta")
+        self.b_export.setVisible(False)
         self.b_export.setEnabled(False)
         self.b_export.clicked.connect(self.exporta)
-        fila.addWidget(self.b_exec)
-        fila.addWidget(self.b_export)
-        f3.addLayout(fila)
+
+        # progrés → barra d'estat (permanent)
         self.barra = QProgressBar()
-        f3.addWidget(self.barra)
+        self.barra.setMaximumWidth(180)
+        self.barra.setTextVisible(False)
+        self.statusBar().addPermanentWidget(self.barra)
+
+        # log → tauler plegable a baix (tancat per defecte)
         self.log = QTextEdit()
         self.log.setObjectName("log")
         self.log.setReadOnly(True)
-        f3.addWidget(self.log)
-        capa.addWidget(g3)
+        self.log_dock = QDockWidget("Log", self)
+        self.log_dock.setObjectName("dock_log")
+        self.log_dock.setWidget(self.log)
+        self.log_dock.setVisible(False)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
 
         self.sortida = ""
         self.b_export.setEnabled(False)
@@ -325,6 +332,8 @@ class Finestra(QMainWindow):
         self._act(m, "Zoom total", "Ctrl+0", self._zoom_tot_visor)
         m.addSeparator()
         # (El visor és ara el widget central: ja no cal «Mostra el visor»)
+        m.addAction(self.log_dock.toggleViewAction())
+        self.log_dock.toggleViewAction().setText("Mostra el log")
         # --- Analitza ---
         m = mb.addMenu("&Analitza")
         self._act(m, "Processa el WAV", "F5", self.executa)
@@ -484,6 +493,7 @@ class Finestra(QMainWindow):
         if not wav or not os.path.isfile(wav):
             self.logger.warning("No s'ha pogut carregar la WAV: %s", wav)
             self.visor_ref = None
+            self.b_exec.setEnabled(False)
             self._mostra_placeholder_visor()
             return
         try:
@@ -518,6 +528,7 @@ class Finestra(QMainWindow):
                 self._stack.addWidget(self.visor_widget)   # pagina 1 = visor
             self._stack.setCurrentWidget(self.visor_widget)
             self.visor_widget.show()
+            self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
             visor._embedded = True
             visor.setVisible(False)
             visor.close()
@@ -594,6 +605,7 @@ class Finestra(QMainWindow):
         else:
             self.b_export.setEnabled(False)
             self.registra(f"ERROR: {dada}")
+            self.log_dock.setVisible(True)    # en cas d'error, obrim el log
             QMessageBox.critical(self, "Auto Chords", dada)
 
     def exporta(self):
