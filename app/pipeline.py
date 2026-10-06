@@ -134,7 +134,7 @@ def run_acords_py(csv_path, bpm, bpb, offset, workdir, log):
             os.path.join(workdir, "guia_acords.html"))
 
 
-def pos_compas(t, bpm, bpb=4, lliure=False):
+def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0):
     """Posició en format compàs.temps.subdivisió (qualsevol compàs).
 
     Graella = corxera (mig temps). `bpb` = temps per compàs, així funciona
@@ -144,7 +144,7 @@ def pos_compas(t, bpm, bpb=4, lliure=False):
         return f"{float(t):07.2f}s"
     step = 60.0 / bpm / 2              # corxera
     SB = max(1, int(bpb)) * 2          # corxeres per compàs
-    p = max(0, round(float(t) / step))
+    p = max(0, round((float(t) - float(offset)) / step))
     return "%d.%d.%d" % (p // SB + 1, (p % SB) // 2 + 1, 1 + 2 * (p % 2))
 
 
@@ -196,7 +196,7 @@ def fusiona_seccions(seccions, i, amb="seguent"):
     return list(seccions[:i]) + [nou] + list(seccions[i + 2:])
 
 
-def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4):
+def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0):
     os.makedirs(os.path.dirname(os.path.abspath(ruta)) or ".", exist_ok=True)
     with open(ruta, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -207,8 +207,8 @@ def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4):
             w.writerow([f"{float(ini):.{TEMPS_DEC}f}",
                         f"{float(fi):.{TEMPS_DEC}f}",
                         f"{float(dur):.{TEMPS_DEC}f}", L, fam,
-                        pos_compas(ini, bpm, bpb, lliure),
-                        pos_compas(fi, bpm, bpb, lliure)])
+                        pos_compas(ini, bpm, bpb, lliure, offset),
+                        pos_compas(fi, bpm, bpb, lliure, offset)])
     seq = seq_abc(seccions)
     log(f"ABC: {len(seccions)} trossos, seqüència {seq}")
     return seccions
@@ -220,7 +220,7 @@ def regenera_wavs_estructura(abc_csv, sortida, sr, log):
     return fer_wavs_estructura(abc_csv, dest, sr, log)
 
 
-def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4):
+def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0):
     import re
 
     def familia(lab):
@@ -251,7 +251,7 @@ def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4):
             k += 1
         L = lletres[fam]
         rows.append((ini, fi, L, fam))
-    desa_abc_csv(abc_csv, rows, bpm, log, lliure=lliure, bpb=bpb)
+    desa_abc_csv(abc_csv, rows, bpm, log, lliure=lliure, bpb=bpb, offset=offset)
     seq = seq_abc(rows)
     rep = ", ".join(f"{L}×{seq.count(L)}" for L in sorted(set(seq)))
     log(f"ABC famílies {len(lletres)} ({rep})")
@@ -438,7 +438,8 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         abc = os.path.join(sortida, "estructura_ABC.csv")
         result["segments_csv"] = csv_seg
         result["abc_csv"] = abc
-        fer_abc(csv_seg, abc, bpm, log, lliure=not tempo_fix, bpb=bpb)
+        fer_abc(csv_seg, abc, bpm, log, lliure=not tempo_fix, bpb=bpb,
+                offset=offset)
         dest_abc = os.path.join(sortida, "wavs_estructura")
         neteja_wavs(dest_abc)
         result["n_estructura_wavs"] = fer_wavs_estructura(

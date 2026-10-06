@@ -740,6 +740,57 @@ class MetronomTests(unittest.TestCase):
         self.assertEqual(len(self._onsets(self._a_array(out))), 3)
 
 
+class OffsetTests(unittest.TestCase):
+    """L'offset (segon del compàs 1) ha d'aplicar-se a graella, clic i export."""
+
+    SR = 44100
+
+    def test_fmt_pos_amb_offset(self):
+        from app.timeline import fmt_pos
+        # a 120 BPM (beat=0.5s), offset=1.0 -> t=2.0 es el compas 1 beat 3
+        self.assertEqual(fmt_pos(2.0, True, 120, 4, 1.0), "1.3")
+        self.assertEqual(fmt_pos(2.0, True, 120, 4, 0.0), "2.1")
+
+    def test_snap_time_amb_offset(self):
+        from app.timeline import snap_time
+        # offset=1.0 -> graella a 1.0, 1.125, 1.25... (setzena a 120 BPM)
+        self.assertAlmostEqual(snap_time(1.13, True, 120, 4, 4.0, 1.0),
+                               1.125, places=4)
+        self.assertAlmostEqual(snap_time(1.13, True, 120, 4, 4.0, 0.0),
+                               1.125, places=4)
+
+    def test_pos_compas_amb_offset(self):
+        from app.pipeline import pos_compas
+        # 120 BPM: el compas 1 cau a t=offset; sense offset, a t=0
+        self.assertEqual(pos_compas(0.0, 120, 4, False, 0.0), "1.1.1")
+        self.assertEqual(pos_compas(1.0, 120, 4, False, 1.0), "1.1.1")
+        self.assertEqual(pos_compas(2.0, 120, 4, False, 1.0), "1.3.1")
+
+    def test_metronom_amb_offset(self):
+        from app import metronom
+        base = b"\x00\x00" * int(self.SR * 2)
+        out = metronom.mescla_metronom(base, self.SR, 0.0, 120.0, 4,
+                                       volum=1.0, offset=1.0)
+        arr = np.frombuffer(out, dtype=np.int16).astype(np.int32)
+        actiu = np.abs(arr) > 1000
+        idx = np.where(actiu)[0]
+        gaps = np.where(np.diff(idx) > 0.05 * self.SR)[0]
+        onsets = np.concatenate(([idx[0]], idx[gaps + 1])) / self.SR
+        # amb offset=1.0 el primer clic cau a 1.0, no a 0
+        self.assertAlmostEqual(onsets[0], 1.0, places=3)
+
+    def test_metronom_limita_bpm(self):
+        from app import metronom
+        base = b"\x00\x00" * int(self.SR)
+        # BPM enorme -> no fa res (evita bucles de milions de voltes)
+        for bpm in (500.0, 10000.0):
+            self.assertEqual(
+                metronom.mescla_metronom(base, self.SR, 0.0, bpm, 4, volum=1.0),
+                base)
+        self.assertIsNone(metronom._es_valid(1000.0, 4))
+        self.assertIsNotNone(metronom._es_valid(120.0, 4))
+
+
 class TransportBarTests(unittest.TestCase):
     """Els botons de la BARRA de transport (fora del visor) han de fer efecte.
 

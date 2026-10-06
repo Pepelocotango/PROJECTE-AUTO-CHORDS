@@ -5,6 +5,22 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.0-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **Offset real (compàs 1)**: el camp «Offset (s)» ara s'aplica **a tot
+  arreu** amb la MATEIXA graella: el **regle/graella** del timeline
+  (`fmt_pos`, `grid_levels`, `snap_time` i el pintat de `GridLayer`/
+  `RulerLayer`), el **clic del metrònom** i l'**export** (`pos_compas` +
+  `desa_abc_csv`/`fer_abc`, coherent amb `acords_a_live.py` que ja
+  l'usava). Abans només l'usava l'export.
+- **Analitza ▸ «Marca el compàs 1 aquí»**: posa l'offset a la **posició del
+  cursor** i ho propaga (regle + clic + export). És el que fa que el
+  metrònom quadri amb cançons reals.
+- **Límit de BPM al metrònom**: sense clics per sobre de **400 BPM**
+  (`metronom.BPM_MAX`) → evita bucles de milions de voltes amb un BPM
+  exagerat.
+- **5 tests nous** (`OffsetTests`): fmt_pos, snap_time, pos_compas,
+  metrònom amb offset i límit de BPM.
+
 ### Arreglat
 - **Els botons 🔇 (mute) i 🔁 (loop) de la barra de transport no feien res**:
   `commuta_mut()` i `commuta_loop()` llegien l'estat dels botons **propis del

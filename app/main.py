@@ -128,7 +128,8 @@ class Feina(QThread):
                 self.log("5/5 ABC + wavs d'estructura...")
                 abc = os.path.join(self.sortida, "estructura_ABC.csv")
                 pipeline.fer_abc(csv_seg, abc, self.bpm, self.log,
-                                 lliure=not self.tempo_fix, bpb=self.bpb)
+                                 lliure=not self.tempo_fix, bpb=self.bpb,
+                                 offset=self.offset)
                 pipeline.fer_wavs_estructura(
                     abc, os.path.join(self.sortida, "wavs_estructura"),
                     44100, self.log)
@@ -366,6 +367,8 @@ class Finestra(QMainWindow):
         # --- Analitza ---
         m = mb.addMenu("&Analitza")
         self._act(m, "Processa el WAV", "F5", self.executa)
+        m.addSeparator()
+        self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
         # --- Ajuda ---
         m = mb.addMenu("A&juda")
         self._act(m, "Dreceres de teclat", "", self._mostra_dreceres)
@@ -483,6 +486,21 @@ class Finestra(QMainWindow):
                 self, "Detecta BPM",
                 "No s'ha pogut estimar el BPM.\n"
                 "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
+
+    def _marca_compas_1(self):
+        """Posa l'offset a la posició del cursor: la graella hi comença.
+
+        Aixi el regle, el metrònom i l'export queden alineats amb la música.
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        off = float(vr.pos)
+        vr.offset = off
+        self.offset.setText(f"{off:.2f}")
+        vr._actualitza_temps()
+        self._reenvia_si_sona()
+        self.registra(f"Compàs 1 marcat a {off:.2f}s")
 
     def _aplica_parametres_temps(self):
         """Propaga BPM/compàs/offset al visor. Si sona, reengega perquè el

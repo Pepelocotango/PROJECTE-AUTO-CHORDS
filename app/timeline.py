@@ -115,13 +115,14 @@ def _best_step_tempo(span_s: float, bpm: float, bpb: int) -> float:
 
 
 def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
-              view_span: float) -> float:
+              view_span: float, offset: float = 0.0) -> float:
     """Arrodoneix t al pas de snap adequat segons el zoom (view_span).
 
     Amb BPM: mai no s'arrodoneix al compàs sencer (massa gruixut) — com a
     màxim a un temps; segons el zoom, es va a corxera o setzena.
     Sense BPM: 0,1 s (o més fi si el zoom és molt proper).
     """
+    off = float(offset)
     if tempo_fix:
         beat = 60.0 / max(float(bpm), 1e-9)
         if view_span <= beat * 8:
@@ -143,15 +144,19 @@ def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
             step = 1.0
     if step <= 0:
         return t
-    return round(t / step) * step
+    return round((t - off) / step) * step + off
 
 
-def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int) -> str:
-    """Formata t per al ruler o status: '12.3s' o '3.2' (compàs.beat)."""
+def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
+            offset: float = 0.0) -> str:
+    """Formata t per al ruler o status: '12.3s' o '3.2' (compàs.beat).
+
+    `offset` = segon on cau el compàs 1 (la graella hi comença).
+    """
     if not tempo_fix:
         return f"{t:.1f}s"
     beat = 60.0 / max(bpm, 1e-9)
-    beats = max(0.0, t) / beat
+    beats = max(0.0, t - float(offset)) / beat
     compas = int(beats // bpb) + 1
     beat_idx = int(round(beats % bpb)) + 1
     if beat_idx > bpb:
@@ -301,27 +306,30 @@ class GridLayer(QGraphicsItem):
         self.setPos(self._x_offset, self._top)
         self.update()
 
-    def update_mode(self, tempo_fix, bpm, bpb):
+    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
+        self._offset = float(offset)
         self.update()
 
     def paint(self, painter, option, widget=None):
         p = painter
         p.setRenderHint(QPainter.Antialiasing, False)
         span = max(self._view_right - self._view_left, 1e-6)
+        off = getattr(self, "_offset", 0.0)
         for step, color, width in grid_levels(self._tempo_fix, self._bpm,
                                               self._bpb, span):
             if step <= 1e-9:
                 continue
             p.setPen(QPen(QColor(color), width))
-            t = math.floor(self._view_left / step) * step
+            t = off + math.floor((self._view_left - off) / step) * step
             if t < 0:
-                t = 0.0
+                t = off
             while t <= self._view_right + 1e-9:
-                x = (t - self._view_left) * self._pps
-                p.drawLine(QPointF(x, 0), QPointF(x, self._height))
+                if t >= 0:
+                    x = (t - self._view_left) * self._pps
+                    p.drawLine(QPointF(x, 0), QPointF(x, self._height))
                 t += step
 
 
@@ -362,15 +370,17 @@ class RulerLayer(QGraphicsItem):
         self.setPos(self._x_offset, self._top)
         self.update()
 
-    def update_mode(self, tempo_fix, bpm, bpb):
+    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
+        self._offset = float(offset)
         self.update()
 
     def paint(self, painter, option, widget=None):
         p = painter
         p.setRenderHint(QPainter.Antialiasing, False)
+        off = getattr(self, "_offset", 0.0)
         rect = self.boundingRect()
         p.fillRect(rect, QColor(RULER_BG))
         p.setPen(QPen(QColor(theme.TL_WAVE_MID), 1))
@@ -383,13 +393,14 @@ class RulerLayer(QGraphicsItem):
             if sub <= 1e-9:
                 continue
             p.setPen(QPen(QColor(subcolor), 1))
-            t = math.floor(self._view_left / sub) * sub
+            t = off + math.floor((self._view_left - off) / sub) * sub
             if t < 0:
-                t = 0.0
+                t = off
             while t <= self._view_right + 1e-9:
-                x = (t - self._view_left) * self._pps
-                p.drawLine(QPointF(x, self._height - 4),
-                           QPointF(x, self._height - 1))
+                if t >= 0:
+                    x = (t - self._view_left) * self._pps
+                    p.drawLine(QPointF(x, self._height - 4),
+                               QPointF(x, self._height - 1))
                 t += sub
         # ticks principals + etiquetes
         step, color, _w = levels[-1]
@@ -405,7 +416,7 @@ class RulerLayer(QGraphicsItem):
             p.setPen(QPen(QColor(color), 1))
             p.drawLine(QPointF(x, self._height - 8),
                        QPointF(x, self._height - 1))
-            lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb)
+            lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb, off)
             wlab = fm.width(lab)
             if x - wlab / 2 > last_label_x:
                 p.setPen(QPen(QColor(RULER_TEXT), 1))
@@ -1078,12 +1089,16 @@ class TimelineView(QGraphicsView):
         self._rebuild_chord_items()
         self._rebuild_section_items()
 
-    def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int) -> None:
+    def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
+                       offset: float = 0.0) -> None:
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
-        self._ruler.update_mode(self._tempo_fix, self._bpm, self._bpb)
-        self._grid.update_mode(self._tempo_fix, self._bpm, self._bpb)
+        self._offset = float(offset)
+        self._ruler.update_mode(self._tempo_fix, self._bpm, self._bpb,
+                                self._offset)
+        self._grid.update_mode(self._tempo_fix, self._bpm, self._bpb,
+                               self._offset)
         self.update()
 
     def set_follow(self, enabled: bool) -> None:
@@ -1333,7 +1348,8 @@ class TimelineView(QGraphicsView):
             else self._durada
         # snap
         span = self._view_right - self._view_left
-        new_t_s = snap_time(new_t, self._tempo_fix, self._bpm, self._bpb, span)
+        new_t_s = snap_time(new_t, self._tempo_fix, self._bpm, self._bpb, span,
+                          getattr(self, '_offset', 0.0))
         # limita entre prev_t + MIN_GAP_S i next_t - MIN_GAP_S
         new_t_s = max(prev_t + MIN_GAP_S, min(next_t - MIN_GAP_S, new_t_s))
         self._show_guide_at(new_t_s)
@@ -1366,7 +1382,7 @@ class TimelineView(QGraphicsView):
                    if idx + 2 < len(self._acords) else self._durada)
         span = self._view_right - self._view_left
         new_t_s = snap_time(new_next_t, self._tempo_fix, self._bpm, self._bpb,
-                            span)
+                            span, getattr(self, "_offset", 0.0))
         new_t_s = max(old_t + MIN_GAP_S, min(max_end, new_t_s))
         self._show_guide_at(new_t_s)
         # si hi ha següent, actualitza'l
@@ -1419,7 +1435,8 @@ class TimelineView(QGraphicsView):
             # Mou el FI -> és l'inici de la següent
             max_end = (self._seccions[idx + 2][0] - MIN_GAP_S
                        if idx + 2 < n else self._durada)
-            nt = snap_time(new_fi, self._tempo_fix, self._bpm, self._bpb, span)
+            nt = snap_time(new_fi, self._tempo_fix, self._bpm, self._bpb, span,
+                      getattr(self, '_offset', 0.0))
             nt = max(ini_o + MIN_SEC_LEN_S, min(max_end, nt))
             self._seccions[idx] = (ini_o, nt, lletra, familia)
             self._section_items[idx].set_fi(nt)
@@ -1434,7 +1451,8 @@ class TimelineView(QGraphicsView):
         if zone == SectionItem.ZONE_BODY:
             # Desplaça la secció sencera (inici i fi junts) — com l'acord
             dur = fi_o - ini_o
-            nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, span)
+            nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, span,
+                      getattr(self, '_offset', 0.0))
             lo = prev_ini(idx) + MIN_GAP_S
             # El fi propi (nt+dur) passa a ser l'inici del següent; per tant
             # el límit cap endavant és el FINAL del següent (= inici del
@@ -1462,7 +1480,8 @@ class TimelineView(QGraphicsView):
 
         lo = prev_ini(idx) + MIN_GAP_S
         hi = fi_o - MIN_SEC_LEN_S
-        nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, span)
+        nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, span,
+                      getattr(self, '_offset', 0.0))
         nt = max(lo, min(hi, nt))
         self._seccions[idx] = (nt, fi_o, lletra, familia)
         self._section_items[idx].set_ini(nt)

@@ -707,7 +707,8 @@ class Visor(QMainWindow):
         return f"{compas}.{beat_idx} / {total_compas}.{total_beat_idx}"
 
     def _actualitza_temps(self):
-        self.timeline.set_tempo_mode(self.tempo_fix, self.bpm, self.bpb)
+        self.timeline.set_tempo_mode(self.tempo_fix, self.bpm, self.bpb,
+                                     getattr(self, "offset", 0.0))
         # En mode Lliure el metrònom no té sentit: l'apaguem (i si sona,
         # reengega sense clic des de la posició actual).
         if not self.tempo_fix and getattr(self, "metro_on", False):
@@ -1121,7 +1122,8 @@ class Visor(QMainWindow):
         os.makedirs(sortida, exist_ok=True)
         abc = os.path.join(sortida, "estructura_ABC.csv")
         pipeline.desa_abc_csv(abc, self.seccions, self.bpm, self.log,
-                              lliure=not self.tempo_fix, bpb=self.bpb)
+                              lliure=not self.tempo_fix, bpb=self.bpb,
+                              offset=getattr(self, "offset", 0.0))
         self.log(f"ABC recalculat (només CSV): {msg}")
 
     def _edita_seccio(self, item):
@@ -1191,7 +1193,7 @@ class Visor(QMainWindow):
         if self.metro_on and self.metro_vol > 0:
             dades = metronom.mescla_metronom(
                 dades, self.audio["sr"], t, self.bpm, self.bpb,
-                volum=self.metro_vol)
+                volum=self.metro_vol, offset=getattr(self, "offset", 0.0))
         self.log(f"play des de {t:.2f}s ({len(dades)} bytes) amb {self.player}...")
         self.fitxer_err = os.path.join(OPENCODE_DIR, "visor_player.log")
         try:
@@ -1360,7 +1362,8 @@ class Visor(QMainWindow):
                 abc = os.path.join(sortida, "estructura_ABC.csv")
                 pipeline.desa_abc_csv(abc, self.seccions, self.bpm,
                                       self.log, lliure=not self.tempo_fix,
-                                      bpb=self.bpb)
+                                      bpb=self.bpb,
+                                      offset=getattr(self, "offset", 0.0))
                 pipeline.regenera_wavs_acords(self.csv_acords, sortida,
                                               self.bpm, self.bpb,
                                               self.offset, self.audio["durada"],

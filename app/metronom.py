@@ -9,6 +9,10 @@ cada `bpb` beats, sense offset (el visor no n'aplica cap a la visualització).
 """
 import numpy as np
 
+# Sense clics per sobre d'aquest BPM: evita bucles enormes (i no té sentit
+# musical). Tambe protegeix contra un BPM exagerat escrit a mà.
+BPM_MAX = 400.0
+
 # Durada d'un clic (ms) i freqüències (Hz): accent = temps 1 de cada compàs.
 CLIC_MS = 25.0
 FREQ_ACCENT = 1500.0
@@ -33,7 +37,7 @@ def genera_clic(sr, accent=True):
 def _es_valid(bpm, bpb):
     """BPM ha de ser finit i > 0; bpb < 1 es tracta com a 1."""
     try:
-        if not np.isfinite(bpm) or bpm <= 0:
+        if not np.isfinite(bpm) or bpm <= 0 or bpm > BPM_MAX:
             return None
     except TypeError:
         return None
