@@ -1,9 +1,9 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control` … `v0.2.1-checkpoint`).
+Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
-## [No publicat]
+## [0.2.2] — 2026-10-06 (tag `v0.2.2-checkpoint`)
 
 ### Afegit
 - **Compte enrere (count-in) al silenci inicial**: abans de l'offset (el
