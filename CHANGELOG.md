@@ -1,33 +1,17 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`, `v0.1.5-checkpoint`, `v0.1.6-checkpoint`).
+Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 
 ## [No publicat]
 
-### Afegit
-- **Plugin Vamp d'aubio** (`vamp-aubio-linux64-local/`): detecció de
-  **tempo/BPM** i **pulsacions** (`vamp:vamp-aubio:aubiotempo:beats`),
-  més onsets, pitch, notes, silencis i descriptors. Compilat localment
-  **sense sudo** (`libaubio-dev` via `apt-get download`), flags
-  `-msse -msse2` (sense AVX). Afegit a `VAMP_DIRS`.
-  Guia de reproducció i precisió: `docs/AUBIO_TEMPO.md`.
+### Pendent de polir (visor)
+- Confusió visual entre clip **seleccionat** (vora groga) i **actiu**
+  (fons més clar, segons el cursor).
+- Usabilitat: multi-selecció, duplicar/eliminar clips, menú contextual,
+  afegir clips amb click al buit (Fase D.1 del ROADMAP).
 
-- **Nou flux de temps** (`app/main.py`): en lloc del checkbox «tempo fix»,
-  un **selector de 2 estats** — **BPM · compàs** / **Lliure (hh:mm:ss)**.
-  En mode BPM hi ha un botó **🎯 Detecta** que crida `pipeline.detecta_bpm()`
-  (aubio) i omple el camp (editable). En mode Lliure s'amaguen els camps
-  de BPM.
-- **Entrada de text manual**: fora les fletxes ▲▼ (`QDoubleSpinBox`/
-  `QSpinBox` → `QLineEdit`). Accepta coma decimal (`101,5`).
-
-### Canviat
-- `pipeline.detecta_bpm(wav, log)`: BPM a partir de la **mediana** dels
-  intervals entre pulsacions (aubio).
-
-- **`concatena.py`**: genera `CODI_concatenat.txt` (tot el codi font en un
-  sol fitxer, amb índex; exclou `.venv/.git/.deps`, binaris, plugins i el
-  C++ de tercers). L'artefacte generat queda a `.gitignore`.
+## [0.1.8] — 2026-10-06 (tag `v0.1.8-checkpoint`)
 
 ### Arreglat
 - **Els tests ja no es pengen en entorns sense pantalla (CI)**: els
@@ -37,15 +21,29 @@ Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`, `v0.1.5-che
   mòdul i `pipeline.run()` amb `timeout` (un subprocés encallat ja no
   penja). 2 tests nous (`PipelineRunTests`).
 
-### Netejat
-- Fora el material innecessari per l'app actual (a la paperera; tot
-  recuperable de git): **`tauri-ui/`** (experiment Tauri aparcat, 8,8 GB
-  amb build + node_modules), `AUTO_CHORDS_TAURI.sh`,
-  `nnls-chroma-osx-v1.1/` (plugin macOS), `als2rpp.py` (v1 obsoleta),
-  `XXAUTO_CHORDS_dev.sh` (duplicat), `exemple_*`, `auto_chords.log`,
-  `__pycache__/`.
-- **Projecte: 9,3 GB → 508 MB (−95 %).**
-- ⚠️ `codi_font_chordino/` es va restaurar: `instal·la_local.sh` el necessita.
+## [0.1.7] — 2026-10-05 (tag `v0.1.7-checkpoint`)
+
+### Afegit
+- **Plugin Vamp d'aubio** (`vamp-aubio-linux64-local/`): detecció de
+  **tempo/BPM** i **pulsacions** (`vamp:vamp-aubio:aubiotempo:beats`),
+  més onsets, pitch, notes, silencis i descriptors. Compilat localment
+  **sense sudo** (`libaubio-dev` via `apt-get download`), flags
+  `-msse -msse2` (sense AVX). Afegit a `VAMP_DIRS`.
+  Guia de reproducció i precisió: `docs/AUBIO_TEMPO.md`.
+- **Nou flux de temps** (`app/main.py`): en lloc del checkbox «tempo fix»,
+  un **selector de 2 estats** — **BPM · compàs** / **Lliure (hh:mm:ss)**.
+  En mode BPM hi ha un botó **🎯 Detecta** que crida `pipeline.detecta_bpm()`
+  (aubio) i omple el camp (editable). En mode Lliure s'amaguen els camps
+  de BPM.
+- **Entrada de text manual**: fora les fletxes ▲▼ (`QDoubleSpinBox`/
+  `QSpinBox` → `QLineEdit`). Accepta coma decimal (`101,5`).
+- **`concatena.py`**: genera `CODI_concatenat.txt` (tot el codi font en un
+  sol fitxer, amb índex; exclou `.venv/.git/.deps`, binaris, plugins i el
+  C++ de tercers). L'artefacte generat queda a `.gitignore`.
+
+### Canviat
+- `pipeline.detecta_bpm(wav, log)`: BPM a partir de la **mediana** dels
+  intervals entre pulsacions (aubio).
 
 ### Arreglat
 - **Compàs de qualsevol mètrica**: `pos_compas` tenia `SB = 8` fix (només
@@ -57,11 +55,15 @@ Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`, `v0.1.5-che
   Ara tots dos a **2 decimals = 10 ms** (constant `TEMPS_DEC`).
   Tests nous a `FormatCsvTests`.
 
-### Pendent de polir (visor)
-- Confusió visual entre clip **seleccionat** (vora groga) i **actiu**
-  (fons més clar, segons el cursor).
-- Usabilitat: multi-selecció, duplicar/eliminar clips, menú contextual,
-  afegir clips amb click al buit.
+### Netejat
+- Fora el material innecessari per l'app actual (a la paperera; tot
+  recuperable de git): **`tauri-ui/`** (experiment Tauri aparcat, 8,8 GB
+  amb build + node_modules), `AUTO_CHORDS_TAURI.sh`,
+  `nnls-chroma-osx-v1.1/` (plugin macOS), `als2rpp.py` (v1 obsoleta),
+  `XXAUTO_CHORDS_dev.sh` (duplicat), `exemple_*`, `auto_chords.log`,
+  `__pycache__/`.
+- **Projecte: 9,3 GB → 508 MB (−95 %).**
+- ⚠️ `codi_font_chordino/` es va restaurar: `instal·la_local.sh` el necessita.
 
 ## [0.1.6] — 2026-10-05 (tag `v0.1.6-checkpoint`)
 

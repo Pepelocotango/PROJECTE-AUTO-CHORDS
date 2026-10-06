@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auto-chords"
-version = "0.1.0"
+version = "0.1.8"
 description = "De wav a acords: anàlisi (Chordino/Segmentino) + visor interactiu + wavs llestos per al Live/Reaper"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
