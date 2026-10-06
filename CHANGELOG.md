@@ -13,6 +13,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 
 ## [0.1.8] — 2026-10-06 (tag `v0.1.8-checkpoint`)
 
+### Documentat
+- **README**: «Estat actual» posat al dia (v0.1.8) i el bloc de configuració
+  de `AUTO_CHORDS_TEMP` tret de dins de «Filosofia i lògica del flux»
+  (trencava la secció «Semàntica del flux») → nova secció «Configuració».
+- **DEVELOPING.md**: «Python 3.8+» → **3.10+** (coincideix amb
+  `requires-python` del `pyproject.toml`).
+- **requirements.txt**: treta la menció a `als2rpp.py` (ja no hi és).
+
 ### Netejat
 - **Imports sense ús** trets (`pyflakes` no és al venv i instal·lar-lo seria
   una dependència nova → anàlisi amb l'AST de la stdlib): `visor.py`

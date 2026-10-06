@@ -4,7 +4,7 @@ Tot en català. Llicència: GPLv3 (vegeu `LICENSE`).
 
 ## Requisits
 
-- Python 3.8+ (stdlib; sense pip per al pipeline).
+- Python 3.10+ (stdlib; sense pip per al pipeline). Coincideix amb `requires-python` del `pyproject.toml`.
 - Per a l'app: PyQt5 del sistema (`python3-pyqt5`, Qt5).
   ⚠️ Qt6 **no** corre en CPU sense SSE4.2 (com el Q9400): no s'hi pot
   usar PySide6/PyQt6.

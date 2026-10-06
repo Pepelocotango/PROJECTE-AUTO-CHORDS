@@ -2,18 +2,23 @@
 
 > Aplicació desktop per analitzar una WAV, navegar-ne acords i estructura, corregir-la i exportar clips preparats per a DAW.
 
-## Estat actual (2026-10-02)
+## Estat actual (2026-10-06 · v0.1.8)
 
-La base del producte ja funciona com a aplicació única i coherent:
+La base del producte funciona com a aplicació única i coherent:
 
 - la app principal carrega una WAV i processa sense terminal
 - el visor està integrat en la mateixa finestra principal
 - es generen acords, estructura i carpetes de sortida compartides
 - el flux és clar: `Processa` i `Finalitza i publica`
-- la llista d’acords i la llista d’estructura són editables i regeneren els WAVs
+- **barra de menús** (Fitxer · Edita · Selecciona · Visualitza · Analitza · Ajuda)
+- **desfer/refer** d’edició (Ctrl+Z / Ctrl+Y), mai toca els WAVs generats
+- **temps** en dos modes: **BPM · compàs** o **Lliure (hh:mm:ss)**, amb
+  **detecció automàtica del BPM** (plugin Vamp d’aubio)
+- els compassos de qualsevol mètrica (3/4, 6/8, 5/4…), no només 4/4
+- la llista d’acords i la d’estructura són editables
 - es pot llançar directament des de la carpeta del projecte amb doble clic
 
-La funcionalitat principal ja està validada i els tests de regressió passaven al darrer control del pipeline i l’UI.
+La funcionalitat principal està validada: **45/45 tests OK** (`python -m unittest tests.test_pipeline_export`).
 
 ## Què fa l’app
 
@@ -38,15 +43,6 @@ La idea central del projecte no és tenir “múltiples eines ocultes”, sinó 
 
 ### Semàntica del flux
 
-
-Configuració:
-- El projecte utilitza una carpeta temporal local al projecte per defecte (`temp` a l'arrel del repositori).
-- Per sobreescriure la ubicació temporal (útil per a fluxos de treball personalitzats), estableix la variable d'entorn `AUTO_CHORDS_TEMP` a un camí absolut o relatiu abans d'executar scripts. Exemple:
-
-```bash
-export AUTO_CHORDS_TEMP=/home/user/tmp_auto_chords
-python3 app/visor.py tema.wav
-```
 - els intervals tenen inici i fi; el fi no s’edita de manera independent perquè es deriva del següent inici o de la durada total
 - “N” és un valor de chord vàlid, no una excepció especial
 - el sistema accepta acords i seccions ordenats de manera estricta: no solapaments, no inversions de temps, no duplicats de start
@@ -62,6 +58,17 @@ Perquè permet que el producte sigui coherent i predictible:
 - el codi no es descontrola amb dades inconsistents ni amb dos models de temps barrejats
 
 Aquest és el criteri que ha acabat definint la base de l’app: una app única, un flux únic i una representació temporal única en el backend.
+
+## Configuració
+
+- La carpeta temporal per defecte és `temp/` a l’arrel del projecte.
+- Es pot sobreescriure amb la variable d’entorn **`AUTO_CHORDS_TEMP`**
+  (camí absolut o relatiu), útil per a fluxos de treball personalitzats:
+
+```bash
+export AUTO_CHORDS_TEMP=/home/user/tmp_auto_chords
+python3 app/visor.py tema.wav
+```
 
 ## Llançament
 
