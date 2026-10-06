@@ -142,10 +142,12 @@ class Visor(QMainWindow):
         self.timeline.chordEndMoved.connect(self._on_chord_end_moved)
         self.timeline.chordRenamed.connect(self._on_chord_renamed)
         self.timeline.chordDeleteRequested.connect(self._elimina_acord_index)
+        self.timeline.chordDuplicateRequested.connect(self._duplica_acord_index)
         self.timeline.chordEditRequested.connect(self._on_chord_edit_requested)
         self.timeline.sectionMoved.connect(self._on_section_moved)
         self.timeline.sectionRenamed.connect(self._on_section_renamed)
         self.timeline.sectionDeleteRequested.connect(self._elimina_seccio_index)
+        self.timeline.sectionDuplicateRequested.connect(self._duplica_seccio_index)
         self.timeline.sectionEditRequested.connect(self._on_section_edit_requested)
         # Dreceres de teclat: espai = play/pausa
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
@@ -740,6 +742,55 @@ class Visor(QMainWindow):
             item = self.llista_ac.item(idx)
             if item is not None:
                 self._edita_acord(item)
+
+    def _duplica_acord_index(self, idx):
+        """Duplica l'acord idx: s'insereix JUST DESPRES i es reparteix la
+
+        durada — el duplicat va a mig camí entre l'original i el següent
+        (així no cal desplaçar res i es mantenen les invariants)."""
+        if idx < 0 or idx >= len(self.acords):
+            return
+        t, nom = self.acords[idx][0], self.acords[idx][1]
+        seguent = (self.acords[idx + 1][0] if idx + 1 < len(self.acords)
+                   else self.audio["durada"])
+        nou_t = (t + seguent) / 2.0
+        if nou_t - t < 0.02:          # massa poc espai per un duplicat
+            self.log(f"no es pot duplicar l'acord {idx}: no hi ha espai")
+            return
+        self._undo_marca()
+        self.acords.insert(idx + 1, (nou_t, nom, f"{nou_t:.9f}"))
+        self.acords = self._normalitza_acords(self.acords)
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            self._desa_i_regenera()
+            self.log(f"duplicat acord {idx} a {nou_t:.2f}s")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+
+    def _duplica_seccio_index(self, idx):
+        """Duplica la seccio idx: es parteix en dues (la meitat per a cada una).
+
+        El duplicat va JUST DESPRES i comparteix la durada de l'original,
+        sense desplaçar els seguents (manté les invariants)."""
+        if idx < 0 or idx >= len(self.seccions):
+            return
+        ini, fi, L, fam = self.seccions[idx]
+        mig = (ini + fi) / 2.0
+        if mig - ini < 0.05 or fi - mig < 0.05:
+            self.log(f"no es pot duplicar la secció {idx}: és massa curta")
+            return
+        self._undo_marca()
+        self.seccions[idx] = (ini, mig, L, fam)
+        self.seccions.insert(idx + 1, (mig, fi, L, fam))
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            self._regenera_abc_des_de_totes_les_seccions(
+                f"secció {idx} duplicada")
+            self.log(f"duplicada secció {idx}")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
 
     def _elimina_acord_index(self, idx):
         if idx < 0 or idx >= len(self.acords):

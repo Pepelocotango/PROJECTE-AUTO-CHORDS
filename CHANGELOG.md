@@ -14,6 +14,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 ## [0.1.8] — 2026-10-06 (tag `v0.1.8-checkpoint`)
 
 ### Afegit
+- **Ctrl+D duplica el clip seleccionat** (acord o secció), amb **undo** i
+  respectant les invariants. On s'insereix: **just després de l'original,
+  repartint la seva durada** (no es desplaça res):
+  - **acord** → el duplicat va a mig camí entre l'original i el següent;
+  - **secció** → l'original es parteix en dues meitats (ini–mig, mig–fi).
+  Si no hi ha espai suficient, no fa res i ho diu al log. 2 tests nous.
 - **Tecla Delete/Backspace** esborra el **clip seleccionat** (acord o
   secció) al visor. Passa pel sistema d'**undo** (`_undo_marca`/
   `_undo_commit`) i respecta la contigüitat (en treure una secció, el

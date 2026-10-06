@@ -971,10 +971,12 @@ class TimelineView(QGraphicsView):
     chordEndMoved = pyqtSignal(int, float)
     chordRenamed = pyqtSignal(int, str)
     chordDeleteRequested = pyqtSignal(int)
+    chordDuplicateRequested = pyqtSignal(int)
     chordEditRequested = pyqtSignal(int)
     sectionMoved = pyqtSignal(int, float, float)
     sectionRenamed = pyqtSignal(int, str, str)
     sectionDeleteRequested = pyqtSignal(int)
+    sectionDuplicateRequested = pyqtSignal(int)
     sectionEditRequested = pyqtSignal(int)
 
     def __init__(self, audio: dict, acords: Sequence, seccions: Sequence,
@@ -1668,6 +1670,15 @@ class TimelineView(QGraphicsView):
             # focusables), per tant ho gestionem aquí, que si tenim el focus.
             for items, sig in ((self._chord_items, self.chordDeleteRequested),
                                (self._section_items, self.sectionDeleteRequested)):
+                for it in items:
+                    if getattr(it, "_selected", False):
+                        sig.emit(getattr(it, "idx", -1))
+                        event.accept()
+                        return
+        if (event.modifiers() & Qt.ControlModifier) and event.key() == Qt.Key_D:
+            # Ctrl+D: duplica el clip seleccionat
+            for items, sig in ((self._chord_items, self.chordDuplicateRequested),
+                               (self._section_items, self.sectionDuplicateRequested)):
                 for it in items:
                     if getattr(it, "_selected", False):
                         sig.emit(getattr(it, "idx", -1))
