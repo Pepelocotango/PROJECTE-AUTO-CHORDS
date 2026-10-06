@@ -277,17 +277,11 @@ class Finestra(QMainWindow):
         self.log_dock = QDockWidget("Log", self)
         self.log_dock.setObjectName("dock_log")
         self.log_dock.setWidget(self.log)
-        self.log_dock.setVisible(False)
+        self.log_dock.setVisible(True)      # sortida de l'anàlisi, visible
         self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
 
-        # 6. INSPECTOR: tauler lateral dret plegable (llistes d'acords i
-        #    estructura). Amagat per defecte; Visualitza > Mostra l'inspector.
-        self.inspector_dock = QDockWidget("Inspector", self)
-        self.inspector_dock.setObjectName("dock_inspector")
-        self.inspector_dock.setAllowedAreas(
-            Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        self.inspector_dock.setVisible(False)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.inspector_dock)
+        # (L'inspector lateral s'ha retirat: les llistes tornen sota l'ona,
+        #  dins el visor, que és on tenen l'espai natural.)
 
         # 5. BARRA DE TRANSPORT única (fora del visor). Reutilitza els
         #    mètodes del visor (play_stop, stop_inici, ves_a, marca_A/B,
@@ -359,8 +353,6 @@ class Finestra(QMainWindow):
         # (El visor és ara el widget central: ja no cal «Mostra el visor»)
         m.addAction(self.log_dock.toggleViewAction())
         self.log_dock.toggleViewAction().setText("Mostra el log")
-        m.addAction(self.inspector_dock.toggleViewAction())
-        self.inspector_dock.toggleViewAction().setText("Mostra l'inspector")
         m.addSeparator()
         self.a_metro = self._act(m, "Metrònom", "", self._toggle_metro, checkable=True)
         self.a_metro.setToolTip("Clic de metrònom (només en mode BPM · compàs)")
@@ -563,8 +555,6 @@ class Finestra(QMainWindow):
             self.logger.warning("No s'ha pogut carregar la WAV: %s", wav)
             self.visor_ref = None
             self.b_exec.setEnabled(False)
-            if hasattr(self, "inspector_dock"):
-                self.inspector_dock.setWidget(QWidget())   # buidem l'inspector
             self._mostra_placeholder_visor()
             return
         try:
@@ -604,10 +594,6 @@ class Finestra(QMainWindow):
             if hasattr(visor, "cont_transport"):
                 # el transport viu a la barra de la finestra
                 visor.cont_transport.setVisible(False)
-            if hasattr(visor, "inspector"):
-                # les llistes passen al tauler lateral dret
-                visor.inspector.setParent(self.inspector_dock)
-                self.inspector_dock.setWidget(visor.inspector)
             if hasattr(visor, "registre"):
                 # el log viu al tauler plegable de la finestra (pas 3)
                 visor.registre.setVisible(False)

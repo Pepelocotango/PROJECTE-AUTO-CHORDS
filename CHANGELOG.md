@@ -1,9 +1,17 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control` … `v0.2.0-checkpoint`).
+Versions amb tag git (`v0.1-punt-control` … `v0.2.1-checkpoint`).
 
-## [No publicat]
+## [0.2.1] — 2026-10-06 (tag `v0.2.1-checkpoint`)
+
+### Canviat
+- **Llistes i log tornen a l'espai buit sota l'ona**: al PAS 6 les llistes
+  havien passat a un dock lateral i havien deixat el visor buit. Ara tornen
+  **al visor, sota l'ona** (acords | estructura) i el **log de l'anàlisi** és
+  **visible per defecte** a baix. Retirat el dock «Inspector» i la seva acció
+  del menú. Es mantenen clic-per-saltar, doble-clic-per-editar i menú
+  contextual de les llistes.
 
 ### Afegit
 - **Offset real (compàs 1)**: el camp «Offset (s)» ara s'aplica **a tot
