@@ -148,6 +148,8 @@ class Visor(QMainWindow):
         self.timeline.sectionRenamed.connect(self._on_section_renamed)
         self.timeline.sectionDeleteRequested.connect(self._elimina_seccio_index)
         self.timeline.sectionDuplicateRequested.connect(self._duplica_seccio_index)
+        self.timeline.clipContextMenuRequested.connect(
+            self._on_clip_context_menu)
         self.timeline.sectionEditRequested.connect(self._on_section_edit_requested)
         # Dreceres de teclat: espai = play/pausa
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
@@ -742,6 +744,35 @@ class Visor(QMainWindow):
             item = self.llista_ac.item(idx)
             if item is not None:
                 self._edita_acord(item)
+
+    def _on_clip_context_menu(self, kind, idx, pos):
+        """Menú contextual (botó dret) sobre un clip del timeline."""
+        te_clip = idx is not None and idx >= 0
+        menu = QMenu(self)
+        a_dup = menu.addAction("Duplica")
+        a_del = menu.addAction("Elimina")
+        menu.addSeparator()
+        a_ren = menu.addAction("Reanomena")
+        # desactivats si no hi ha cap clip seleccionat
+        for a in (a_dup, a_del, a_ren):
+            a.setEnabled(te_clip)
+        accio = menu.exec_(pos)
+        if accio is None or not te_clip:
+            return
+        if accio == a_dup:
+            if kind == "chord":
+                self._duplica_acord_index(idx)
+            else:
+                self._duplica_seccio_index(idx)
+        elif accio == a_del:
+            if kind == "chord":
+                self._elimina_acord_index(idx)
+            else:
+                self._elimina_seccio_index(idx)
+        elif accio == a_ren:
+            # reutilitza el rename inline existent
+            self.timeline.chordEditRequested.emit(idx) if kind == "chord" \
+                else self.timeline.sectionEditRequested.emit(idx)
 
     def _duplica_acord_index(self, idx):
         """Duplica l'acord idx: s'insereix JUST DESPRES i es reparteix la

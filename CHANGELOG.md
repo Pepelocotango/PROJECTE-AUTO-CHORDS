@@ -13,6 +13,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 
 ## [0.1.8] — 2026-10-06 (tag `v0.1.8-checkpoint`)
 
+### Afegit
+- **Menú contextual** (botó dret) sobre un clip del timeline amb
+  **Duplica**, **Elimina** i **Reanomena**, reutilitzant les accions dels
+  punts anteriors i el rename inline existent. Les tres accions surten
+  **desactivades** si no hi ha cap clip seleccionat. El botó dret al buit
+  segueix fent **pan** (no s'ha perdut).
+
 ### Canviat
 - **Seleccionat vs actiu, clarament diferents**: abans el `SELECTION_COLOR`
   era el mateix groc que la guia de snap i el fons «actiu» era quasi blanc

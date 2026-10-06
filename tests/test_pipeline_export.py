@@ -588,6 +588,56 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v.close()
 
 
+class ContextMenuTests(unittest.TestCase):
+    """Menu contextual (boto dret) sobre un clip del timeline."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _visor(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 2)
+        ac = os.path.join(td, "acords.csv")
+        open(ac, "w").write("0.0,C\n2.0,Am\n")
+        return visor.Visor(wav, ac, None, 120, 4, False)
+
+    def _captura(self, v, kind, idx):
+        from PyQt5.QtWidgets import QMenu
+        from PyQt5.QtCore import QPoint
+        capt = {}
+        orig = QMenu.exec_
+
+        def fake(self, pos, *a):
+            capt["accions"] = [(x.text(), x.isEnabled())
+                               for x in self.actions() if not x.isSeparator()]
+            return None
+        QMenu.exec_ = fake
+        try:
+            v._on_clip_context_menu(kind, idx, QPoint(0, 0))
+        finally:
+            QMenu.exec_ = orig
+        return capt.get("accions", [])
+
+    def test_menu_te_les_tres_accions(self):
+        v = self._visor()
+        accions = self._captura(v, "chord", 1)
+        self.assertEqual([x[0] for x in accions],
+                         ["Duplica", "Elimina", "Reanomena"])
+        v.close()
+
+    def test_menu_desactivat_sense_seleccio(self):
+        v = self._visor()
+        accions = self._captura(v, "chord", -1)
+        self.assertTrue(all(not habilitat for _n, habilitat in accions))
+        v.close()
+
+
 class ThemeColorsTests(unittest.TestCase):
     """Els colors del visor viuen a app/theme.py, i seleccionat != actiu."""
 

@@ -979,6 +979,7 @@ class TimelineView(QGraphicsView):
     sectionRenamed = pyqtSignal(int, str, str)
     sectionDeleteRequested = pyqtSignal(int)
     sectionDuplicateRequested = pyqtSignal(int)
+    clipContextMenuRequested = pyqtSignal(str, int, QPoint)  # (kind, idx, pos)
     sectionEditRequested = pyqtSignal(int)
 
     def __init__(self, audio: dict, acords: Sequence, seccions: Sequence,
@@ -1586,6 +1587,19 @@ class TimelineView(QGraphicsView):
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.RightButton:
+            # Si el botó dret cau SOBRE un clip -> menu contextual (i el
+            # seleccionem). Si cau al buit -> pan, com sempre.
+            it = self.itemAt(event.pos())
+            if isinstance(it, (ChordItem, SectionItem)):
+                kind = "chord" if isinstance(it, ChordItem) else "section"
+                idx = getattr(it, "idx", -1)
+                self.setFocus()
+                self.select_clip(kind, idx)
+                gp = event.globalPos() if hasattr(event, "globalPos") \
+                    else self.mapToGlobal(event.pos())
+                self.clipContextMenuRequested.emit(kind, idx, gp)
+                event.accept()
+                return
             # Botó dret arrossegat = scroll horitzontal (pan)
             self._pan_drag = True
             self._pan_x0 = event.pos().x()
