@@ -5,6 +5,46 @@ Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`, `v0.1.5-che
 
 ## [No publicat]
 
+### Afegit
+- **Plugin Vamp d'aubio** (`vamp-aubio-linux64-local/`): detecció de
+  **tempo/BPM** i **pulsacions** (`vamp:vamp-aubio:aubiotempo:beats`),
+  més onsets, pitch, notes, silencis i descriptors. Compilat localment
+  **sense sudo** (`libaubio-dev` via `apt-get download`), flags
+  `-msse -msse2` (sense AVX). Afegit a `VAMP_DIRS`.
+  Guia de reproducció i precisió: `docs/AUBIO_TEMPO.md`.
+
+- **Nou flux de temps** (`app/main.py`): en lloc del checkbox «tempo fix»,
+  un **selector de 2 estats** — **BPM · compàs** / **Lliure (hh:mm:ss)**.
+  En mode BPM hi ha un botó **🎯 Detecta** que crida `pipeline.detecta_bpm()`
+  (aubio) i omple el camp (editable). En mode Lliure s'amaguen els camps
+  de BPM.
+- **Entrada de text manual**: fora les fletxes ▲▼ (`QDoubleSpinBox`/
+  `QSpinBox` → `QLineEdit`). Accepta coma decimal (`101,5`).
+
+### Canviat
+- `pipeline.detecta_bpm(wav, log)`: BPM a partir de la **mediana** dels
+  intervals entre pulsacions (aubio).
+
+### Netejat
+- Fora el material innecessari per l'app actual (a la paperera; tot
+  recuperable de git): **`tauri-ui/`** (experiment Tauri aparcat, 8,8 GB
+  amb build + node_modules), `AUTO_CHORDS_TAURI.sh`,
+  `nnls-chroma-osx-v1.1/` (plugin macOS), `als2rpp.py` (v1 obsoleta),
+  `XXAUTO_CHORDS_dev.sh` (duplicat), `exemple_*`, `auto_chords.log`,
+  `__pycache__/`.
+- **Projecte: 9,3 GB → 508 MB (−95 %).**
+- ⚠️ `codi_font_chordino/` es va restaurar: `instal·la_local.sh` el necessita.
+
+### Arreglat
+- **Compàs de qualsevol mètrica**: `pos_compas` tenia `SB = 8` fix (només
+  4/4) i contradeia `acords_a_live.py`. Ara usa `bpb` (`SB = bpb*2`) i
+  funciona amb 3/4, 6/8, 5/4… El `bpb` es propaga a `desa_abc_csv`,
+  `fer_abc` i tots els camins de crida.
+- **Resolució temporal unificada dels CSV**: `acords.csv` guardava 9
+  decimals i `estructura_ABC.csv` 2 (7 ordres de magnitud de diferència).
+  Ara tots dos a **2 decimals = 10 ms** (constant `TEMPS_DEC`).
+  Tests nous a `FormatCsvTests`.
+
 ### Pendent de polir (visor)
 - Confusió visual entre clip **seleccionat** (vora groga) i **actiu**
   (fons més clar, segons el cursor).

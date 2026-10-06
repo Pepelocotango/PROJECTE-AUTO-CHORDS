@@ -955,7 +955,7 @@ class Visor(QMainWindow):
         os.makedirs(sortida, exist_ok=True)
         abc = os.path.join(sortida, "estructura_ABC.csv")
         pipeline.desa_abc_csv(abc, self.seccions, self.bpm, self.log,
-                              lliure=not self.tempo_fix)
+                              lliure=not self.tempo_fix, bpb=self.bpb)
         self.log(f"ABC recalculat (només CSV): {msg}")
 
     def _edita_seccio(self, item):
@@ -1184,7 +1184,8 @@ class Visor(QMainWindow):
             if self.seccions:
                 abc = os.path.join(sortida, "estructura_ABC.csv")
                 pipeline.desa_abc_csv(abc, self.seccions, self.bpm,
-                                      self.log, lliure=not self.tempo_fix)
+                                      self.log, lliure=not self.tempo_fix,
+                                      bpb=self.bpb)
                 pipeline.regenera_wavs_acords(self.csv_acords, sortida,
                                               self.bpm, self.bpb,
                                               self.offset, self.audio["durada"],

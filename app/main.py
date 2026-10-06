@@ -11,7 +11,7 @@ import traceback
 from PyQt5.QtCore import QObject, QThread, Qt, QUrl, pyqtSignal
 from PyQt5.QtGui import QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
-    QAction, QApplication, QCheckBox, QFileDialog, QDoubleSpinBox, QDockWidget,
+    QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
     QMessageBox, QProgressBar, QPushButton, QShortcut, QSpinBox, QTextEdit,
     QVBoxLayout, QWidget,
@@ -127,7 +127,7 @@ class Feina(QThread):
                 self.log("5/5 ABC + wavs d'estructura...")
                 abc = os.path.join(self.sortida, "estructura_ABC.csv")
                 pipeline.fer_abc(csv_seg, abc, self.bpm, self.log,
-                                 lliure=not self.tempo_fix)
+                                 lliure=not self.tempo_fix, bpb=self.bpb)
                 pipeline.fer_wavs_estructura(
                     abc, os.path.join(self.sortida, "wavs_estructura"),
                     44100, self.log)
@@ -182,32 +182,70 @@ class Finestra(QMainWindow):
         self.flux_label.setStyleSheet("QLabel { color: #dfe3ea; font-weight: 600; }")
         capa.addWidget(self.flux_label)
 
-        # 2. paràmetres
-        g2 = QGroupBox("2 · Paràmetres")
-        f2 = QFormLayout(g2)
-        self.bpm = QDoubleSpinBox()
-        self.bpm.setRange(40, 240)
-        self.bpm.setValue(120.0)
-        self.bpb = QSpinBox()
-        self.bpb.setRange(2, 12)
-        self.bpb.setValue(4)
-        self.offset = QDoubleSpinBox()
-        self.offset.setRange(0, 60)
-        self.offset.setSingleStep(0.1)
-        self.offset.setValue(0.0)
+        # 2. temps i paràmetres — mode BPM·compàs vs Lliure (hh:mm:ss)
+        g2 = QGroupBox("2 · Temps i paràmetres")
+        v2 = QVBoxLayout(g2)
+
+        fila_mode = QHBoxLayout()
+        fila_mode.addWidget(QLabel("Temps:"))
+        self.b_mode_bpm = QPushButton("BPM · compàs")
+        self.b_mode_bpm.setCheckable(True)
+        self.b_mode_bpm.setChecked(True)
+        self.b_mode_bpm.setToolTip("Treballar amb BPM i compassos.")
+        self.b_mode_lliure = QPushButton("Lliure (hh:mm:ss)")
+        self.b_mode_lliure.setCheckable(True)
+        self.b_mode_lliure.setToolTip("Treballar amb temps real (sense compassos).")
+        grp_mode = QButtonGroup(self)
+        grp_mode.setExclusive(True)
+        grp_mode.addButton(self.b_mode_bpm)
+        grp_mode.addButton(self.b_mode_lliure)
+        self.b_mode_bpm.clicked.connect(lambda: self._canvia_mode_temps(True))
+        self.b_mode_lliure.clicked.connect(lambda: self._canvia_mode_temps(False))
+        fila_mode.addWidget(self.b_mode_bpm)
+        fila_mode.addWidget(self.b_mode_lliure)
+        fila_mode.addStretch(1)
+        v2.addLayout(fila_mode)
+
+        # camps d'entrada MANUAL de text (sense fletxes ▲▼)
+        self.bpm = QLineEdit("120.0")
+        self.bpm.setMaximumWidth(90)
+        self.bpm.setPlaceholderText("120.0")
+        self.bpm.setToolTip("BPM del tema. Entrada manual (text).")
+        self.bpb = QLineEdit("4")
+        self.bpb.setMaximumWidth(90)
+        self.bpb.setPlaceholderText("4")
+        self.bpb.setToolTip("Temps per compàs (p. ex. 4).")
+        self.offset = QLineEdit("0.0")
+        self.offset.setMaximumWidth(90)
+        self.offset.setPlaceholderText("0.0")
+        self.offset.setToolTip("Offset del compàs 1, en segons.")
+        self.b_detecta = QPushButton("🎯 Detecta")
+        self.b_detecta.setObjectName("secundari")
+        self.b_detecta.setToolTip("Detecta el BPM automàticament amb aubio.")
+        self.b_detecta.clicked.connect(self._detecta_bpm)
+
+        self._params_temps = QWidget()
+        ft = QFormLayout(self._params_temps)
+        ft.setContentsMargins(0, 0, 0, 0)
+        fila_bpm = QHBoxLayout()
+        fila_bpm.addWidget(self.bpm)
+        fila_bpm.addWidget(self.b_detecta)
+        fila_bpm.addStretch(1)
+        ft.addRow("BPM:", fila_bpm)
+        ft.addRow("Temps per compàs:", self.bpb)
+        ft.addRow("Offset compàs 1 (s):", self.offset)
+        v2.addWidget(self._params_temps)
+
         self.amb_est = QCheckBox("Inclou estructura (Segmentino → ABC)")
         self.amb_est.setChecked(True)
         self.amb_est.setToolTip("Genera la jerarquia de seccions i l’ABC de l’estructura del tema.")
-        self.tempo_fix = QCheckBox("El tema té tempo fix (BPM definit)")
-        self.tempo_fix.setChecked(False)
-        self.tempo_fix.setToolTip(
-            "Desmarca-ho si el tema no té tempo fix i vols treballar per temps reals.")
+        v2.addWidget(self.amb_est)
+
+        # estat `tempo_fix` (ocult): el visor i la resta de codi el consulten
+        self.tempo_fix = QCheckBox()
+        self.tempo_fix.setChecked(True)
+        self.tempo_fix.setVisible(False)
         self.tempo_fix.toggled.connect(self._canvia_tempo)
-        f2.addRow("BPM:", self.bpm)
-        f2.addRow("Temps per compàs:", self.bpb)
-        f2.addRow("Offset compàs 1 (s):", self.offset)
-        f2.addRow(self.tempo_fix)
-        f2.addRow(self.amb_est)
         capa.addWidget(g2)
 
         # 3. executa
@@ -365,16 +403,62 @@ class Finestra(QMainWindow):
         self.logger.info("UI: %s", t)
         self.log.append(t)
 
+    # ---- lectura manual dels camps de text ----
+    @staticmethod
+    def _llegeix_num(w, defecte, minim, maxim, enter=False):
+        try:
+            v = float(str(w.text()).replace(",", ".").strip())
+        except (ValueError, AttributeError):
+            return defecte
+        v = max(minim, min(maxim, v))
+        return int(round(v)) if enter else v
+
+    def _bpm_val(self):
+        return self._llegeix_num(self.bpm, 120.0, 40, 240)
+
+    def _bpb_val(self):
+        return self._llegeix_num(self.bpb, 4, 2, 12, enter=True)
+
+    def _offset_val(self):
+        return self._llegeix_num(self.offset, 0.0, 0.0, 60.0)
+
+    def _canvia_mode_temps(self, bpm_compas):
+        """Canvia entre mode BPM·compàs i mode Lliure (hh:mm:ss)."""
+        self._params_temps.setVisible(bool(bpm_compas))
+        self.tempo_fix.setChecked(bool(bpm_compas))
+
+    def _detecta_bpm(self):
+        """Detecta el BPM amb aubio i l'escriu al camp (l'usuari pot editar-lo)."""
+        wav = self.wav_edit.text().strip()
+        if not wav or not os.path.isfile(wav):
+            QMessageBox.warning(self, "Detecta BPM",
+                                "Primer tria una WAV.")
+            return
+        self.registra("Detectant el BPM amb aubio…")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            bpm = pipeline.detecta_bpm(wav, self.registra)
+        finally:
+            QApplication.restoreOverrideCursor()
+        if bpm:
+            self.bpm.setText(f"{bpm:.1f}")
+            self.registra(f"BPM detectat: {bpm:.1f} (pots editar-lo)")
+        else:
+            QMessageBox.information(
+                self, "Detecta BPM",
+                "No s'ha pogut estimar el BPM.\n"
+                "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
+
     def _canvia_tempo(self, fix):
         for w in (self.bpm, self.bpb, self.offset):
             w.setEnabled(fix)
         if hasattr(self, "visor_ref") and self.visor_ref is not None:
             self.visor_ref.tempo_fix = bool(fix)
-            self.visor_ref.bpm = self.bpm.value()
-            self.visor_ref.bpb = self.bpb.value()
+            self.visor_ref.bpm = self._bpm_val()
+            self.visor_ref.bpb = self._bpb_val()
             self.visor_ref._actualitza_temps()
             self.visor_ref.timeline.set_tempo_mode(
-                bool(fix), self.bpm.value(), self.bpb.value())
+                bool(fix), self._bpm_val(), self._bpb_val())
 
     def _mostra_placeholder_visor(self):
         cont = QWidget()
@@ -427,8 +511,8 @@ class Finestra(QMainWindow):
                 os.path.abspath(wav),
                 acords_csv,
                 abc_csv,
-                self.bpm.value(),
-                self.bpb.value(),
+                self._bpm_val(),
+                self._bpb_val(),
                 tempo_fix=self.tempo_fix.isChecked(),
             )
             self.visor_ref = visor
@@ -478,8 +562,8 @@ class Finestra(QMainWindow):
         self.registra(f"Sortida: {self.sortida}")
         self.b_exec.setEnabled(False)
         self.b_export.setEnabled(False)
-        self.feina = Feina(wav, self.sortida, self.bpm.value(),
-                           self.bpb.value(), self.offset.value(),
+        self.feina = Feina(wav, self.sortida, self._bpm_val(),
+                           self._bpb_val(), self._offset_val(),
                            self.amb_est.isChecked(),
                            self.tempo_fix.isChecked())
         self.feina.missatge.connect(self.registra)
@@ -533,9 +617,9 @@ class Finestra(QMainWindow):
                 csv_ac=csv_ac,
                 csv_seg=csv_seg if amb_estructura else None,
                 sortida=self.sortida,
-                bpm=self.bpm.value(),
-                bpb=self.bpb.value(),
-                offset=self.offset.value(),
+                bpm=self._bpm_val(),
+                bpb=self._bpb_val(),
+                offset=self._offset_val(),
                 sr=44100,
                 log=self.registra,
                 tempo_fix=self.tempo_fix.isChecked(),

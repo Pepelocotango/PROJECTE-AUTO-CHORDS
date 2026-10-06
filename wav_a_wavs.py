@@ -82,7 +82,7 @@ def main():
     if csv_seg:
         log("5/5 ABC + wavs d'estructura...")
         abc = os.path.join(sortida, "estructura_ABC.csv")
-        pipeline.fer_abc(csv_seg, abc, a.bpm, log, lliure=not tempo_fix)
+        pipeline.fer_abc(csv_seg, abc, a.bpm, log, lliure=not tempo_fix, bpb=a.bpb)
         pipeline.fer_wavs_estructura(abc,
                                      os.path.join(sortida, "wavs_estructura"),
                                      a.sr, log)

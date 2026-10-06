@@ -492,6 +492,54 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v.close()
 
 
+class FormatCsvTests(unittest.TestCase):
+    """Resolució temporal unificada (10 ms) i compassos de qualsevol bpb."""
+
+    def test_acords_csv_te_2_decimals(self):
+        import tempfile
+        from app import pipeline
+        td = tempfile.mkdtemp()
+        ruta = os.path.join(td, "acords.csv")
+        pipeline.desa_acords_csv(ruta, [
+            (0.0, "C", "0.000000000"),
+            (16.439727891, "E7", "16.439727891"),
+        ])
+        files = open(ruta).read().strip().splitlines()
+        self.assertEqual(files[0], "0.00,C")
+        self.assertEqual(files[1], "16.44,E7")
+        for linia in files:
+            t = linia.split(",")[0]
+            self.assertLessEqual(len(t.split(".")[1]), 2,
+                                 f"mes de 2 decimals: {linia}")
+
+    def test_abc_csv_te_2_decimals(self):
+        import tempfile
+        from app import pipeline
+        td = tempfile.mkdtemp()
+        ruta = os.path.join(td, "estructura_ABC.csv")
+        pipeline.desa_abc_csv(ruta, [(0.0, 21.362, "A", "N")], 101.0,
+                              lambda m: None)
+        files = open(ruta).read().strip().splitlines()
+        self.assertEqual(files[0].split(",")[:3], ["inici_s", "fi_s", "durada_s"])
+        self.assertEqual(files[1].split(",")[:3], ["0.00", "21.36", "21.36"])
+
+    def test_pos_compas_respecta_bpb(self):
+        from app import pipeline
+        # 120 BPM -> beat 0.5s. Amb bpb=3, el 4t temps ja es compas 2.
+        self.assertEqual(pipeline.pos_compas(0.0, 120, 3), "1.1.1")
+        self.assertEqual(pipeline.pos_compas(0.5, 120, 3), "1.2.1")
+        self.assertEqual(pipeline.pos_compas(1.0, 120, 3), "1.3.1")
+        self.assertEqual(pipeline.pos_compas(1.5, 120, 3), "2.1.1")
+        # bpb=4: el 4t temps encara es compas 1
+        self.assertEqual(pipeline.pos_compas(1.5, 120, 4), "1.4.1")
+        self.assertEqual(pipeline.pos_compas(2.0, 120, 4), "2.1.1")
+
+    def test_pos_compas_lliure_mostra_segons(self):
+        from app import pipeline
+        self.assertTrue(pipeline.pos_compas(12.34, 120, 4, lliure=True)
+                        .endswith("s"))
+
+
 class UndoRedoTests(unittest.TestCase):
     """Tests de desfer/refer (només edició; MAI toquen les wavs)."""
 

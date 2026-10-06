@@ -15,6 +15,8 @@ ACORDS_PY = os.path.join(PROJ_DIR, "acords_a_live.py")
 VAMP_DIRS = [
     os.path.join(PROJ_DIR, "nnls-chroma-linux64-local"),
     os.path.join(PROJ_DIR, "segmentino-linux64-local"),
+    # tempo/beats via aubio (compilat localment; vegeu docs/AUBIO_TEMPO.md)
+    os.path.join(PROJ_DIR, "vamp-aubio-linux64-local"),
 ]
 
 
@@ -69,6 +71,46 @@ def extract_chords(wav_path, out_csv, log):
          "--csv-omit-filename", wav_path], log)
 
 
+def detecta_bpm(wav_path, log):
+    """Estima el BPM amb el plugin Vamp d'aubio, a partir de les pulsacions.
+
+    Retorna float (BPM) o None si no es pot estimar. El BPM es deriva de la
+    MEDIANA dels intervals entre pulsacions (mes estable que el `tempo`
+    per fotograma). Vegeu docs/AUBIO_TEMPO.md.
+    """
+    import statistics
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="ac_bpm_")
+    out = os.path.join(tmp, "beats.csv")
+    try:
+        run([SONIC, "-d", "vamp:vamp-aubio:aubiotempo:beats",
+             "-w", "csv", "--csv-one-file", out, "--csv-force",
+             "--csv-omit-filename", wav_path], log)
+        beats = []
+        with open(out, newline="", encoding="utf-8") as f:
+            for fila in csv.reader(f):
+                # agafem l'ultim camp numeric de cada fila (robust a formats)
+                for camp in reversed(fila):
+                    try:
+                        beats.append(float(camp))
+                        break
+                    except (ValueError, TypeError):
+                        continue
+        iv = [b - a for a, b in zip(beats, beats[1:])]
+        iv = [x for x in iv if 0.2 < x < 2.0]     # descarta outliers
+        if len(iv) < 4:
+            log("BPM: pocs beats detectats")
+            return None
+        med = statistics.median(iv)
+        bpm = 60.0 / med if med > 0 else None
+        log(f"BPM detectat: {bpm:.1f} ({len(beats)} pulsacions, "
+            f"interval mediana {med:.3f}s)")
+        return bpm
+    except Exception as e:  # noqa: BLE001
+        log(f"BPM: no s'ha pogut detectar ({e})")
+        return None
+
+
 def extract_segments(wav_path, out_csv, log):
     run([SONIC, "-d", "vamp:segmentino:segmentino:segmentation",
          "-w", "csv", "--csv-one-file", out_csv, "--csv-force",
@@ -83,11 +125,16 @@ def run_acords_py(csv_path, bpm, bpb, offset, workdir, log):
             os.path.join(workdir, "guia_acords.html"))
 
 
-def pos_compas(t, bpm, lliure=False):
+def pos_compas(t, bpm, bpb=4, lliure=False):
+    """Posició en format compàs.temps.subdivisió (qualsevol compàs).
+
+    Graella = corxera (mig temps). `bpb` = temps per compàs, així funciona
+    amb 3/4, 6/8, 5/4... (abans estava fixat a 8 corxeres = només 4/4).
+    """
     if lliure:
         return f"{float(t):07.2f}s"
-    step = 60.0 / bpm / 2
-    SB = 8  # ranures per compàs de 4 temps (graella de corxera)
+    step = 60.0 / bpm / 2              # corxera
+    SB = max(1, int(bpb)) * 2          # corxeres per compàs
     p = max(0, round(float(t) / step))
     return "%d.%d.%d" % (p // SB + 1, (p % SB) // 2 + 1, 1 + 2 * (p % 2))
 
@@ -140,7 +187,7 @@ def fusiona_seccions(seccions, i, amb="seguent"):
     return list(seccions[:i]) + [nou] + list(seccions[i + 2:])
 
 
-def desa_abc_csv(ruta, seccions, bpm, log, lliure=False):
+def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4):
     os.makedirs(os.path.dirname(os.path.abspath(ruta)) or ".", exist_ok=True)
     with open(ruta, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -148,9 +195,11 @@ def desa_abc_csv(ruta, seccions, bpm, log, lliure=False):
                     "compas_ini", "compas_fi"])
         for ini, fi, L, fam in seccions:
             dur = fi - ini
-            w.writerow([round(ini, 2), round(fi, 2), round(dur, 2), L, fam,
-                        pos_compas(ini, bpm, lliure),
-                        pos_compas(fi, bpm, lliure)])
+            w.writerow([f"{float(ini):.{TEMPS_DEC}f}",
+                        f"{float(fi):.{TEMPS_DEC}f}",
+                        f"{float(dur):.{TEMPS_DEC}f}", L, fam,
+                        pos_compas(ini, bpm, bpb, lliure),
+                        pos_compas(fi, bpm, bpb, lliure)])
     seq = seq_abc(seccions)
     log(f"ABC: {len(seccions)} trossos, seqüència {seq}")
     return seccions
@@ -162,7 +211,7 @@ def regenera_wavs_estructura(abc_csv, sortida, sr, log):
     return fer_wavs_estructura(abc_csv, dest, sr, log)
 
 
-def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False):
+def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4):
     import re
 
     def familia(lab):
@@ -193,7 +242,7 @@ def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False):
             k += 1
         L = lletres[fam]
         rows.append((ini, fi, L, fam))
-    desa_abc_csv(abc_csv, rows, bpm, log, lliure=lliure)
+    desa_abc_csv(abc_csv, rows, bpm, log, lliure=lliure, bpb=bpb)
     seq = seq_abc(rows)
     rep = ", ".join(f"{L}×{seq.count(L)}" for L in sorted(set(seq)))
     log(f"ABC famílies {len(lletres)} ({rep})")
@@ -380,7 +429,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         abc = os.path.join(sortida, "estructura_ABC.csv")
         result["segments_csv"] = csv_seg
         result["abc_csv"] = abc
-        fer_abc(csv_seg, abc, bpm, log, lliure=not tempo_fix)
+        fer_abc(csv_seg, abc, bpm, log, lliure=not tempo_fix, bpb=bpb)
         dest_abc = os.path.join(sortida, "wavs_estructura")
         neteja_wavs(dest_abc)
         result["n_estructura_wavs"] = fer_wavs_estructura(
@@ -389,16 +438,23 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
     return result
 
 
+# Resolució temporal unificada dels CSV: 10 ms (2 decimals) — opció (b).
+# Abans: acords.csv guardava 9 decimals i estructura_ABC.csv 2 → incoherent.
+TEMPS_DEC = 2
+
+
 def desa_acords_csv(ruta, items):
-    # Desa (temps, acord) sense re-analitzar. Conserva l'estampa original
-    # del temps si ve al 3r camp (round-trip Chordino).
+    """Desa (temps, acord) amb el temps arrodonit a TEMPS_DEC decimals.
+
+    S'ha unificat la resolució amb estructura_ABC.csv (10 ms) perquè els
+    límits de secció i els temps d'acord siguin coherents.
+    """
     os.makedirs(os.path.dirname(os.path.abspath(ruta)) or ".", exist_ok=True)
     with open(ruta, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         for it in items:
             t, c = it[0], it[1]
-            tsrc = it[2] if len(it) > 2 else f"{float(t):.9f}"
-            w.writerow([tsrc, c])
+            w.writerow([f"{float(t):.{TEMPS_DEC}f}", c])
 
 
 def neteja_wavs(dest_dir):
