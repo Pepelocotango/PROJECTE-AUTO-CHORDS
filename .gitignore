@@ -37,3 +37,6 @@ releases/
 # CARPETA WAVS PROVES
 WAVS_PROVA/
 
+
+# Concatenació de codi generada (regenerable amb concatena.py)
+CODI_concatenat*.txt

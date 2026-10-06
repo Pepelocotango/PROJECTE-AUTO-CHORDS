@@ -25,6 +25,10 @@ Versions amb tag git (`v0.1-punt-control`, ..., `v0.1.4-checkpoint`, `v0.1.5-che
 - `pipeline.detecta_bpm(wav, log)`: BPM a partir de la **mediana** dels
   intervals entre pulsacions (aubio).
 
+- **`concatena.py`**: genera `CODI_concatenat.txt` (tot el codi font en un
+  sol fitxer, amb índex; exclou `.venv/.git/.deps`, binaris, plugins i el
+  C++ de tercers). L'artefacte generat queda a `.gitignore`.
+
 ### Netejat
 - Fora el material innecessari per l'app actual (a la paperera; tot
   recuperable de git): **`tauri-ui/`** (experiment Tauri aparcat, 8,8 GB
