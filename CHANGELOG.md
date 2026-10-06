@@ -13,6 +13,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.1.8-checkpoint`).
 
 ## [0.1.8] — 2026-10-06 (tag `v0.1.8-checkpoint`)
 
+### Canviat
+- **Missatges d'error al log**: els handlers `except Exception` que només
+  mostraven un `QMessageBox` (o que s'empassaven l'error en silenci) ara
+  **també escriuen a `auto_chords.log`** amb el context. 14 punts a
+  `app/visor.py` (12 de `QMessageBox` + la lectura de CSV malmès + el
+  directori temporal). Els handlers benignes (procés ja mort, senyal ja
+  desconnectat, fallback d'API Qt) es deixen silenciosos a propòsit.
+  Comportament visible **sense canvis**.
+
 ### Arreglat
 - **Els tests ja no es pengen en entorns sense pantalla (CI)**: els
   `QMessageBox` de `Visor.exporta()` i `Finestra.exporta()` són **modals** i

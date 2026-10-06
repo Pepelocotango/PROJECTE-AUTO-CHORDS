@@ -76,6 +76,10 @@ def llegeix_acords(ruta):
                 try:
                     items.append((float(fila[0]), fila[1].strip(), fila[0]))
                 except ValueError:
+                    # linia malmesa al CSV: no la podem parsejar. Abans
+                    # s'ignorava en silenci (perdua de dades invisible).
+                    logging.getLogger("auto_chords").warning(
+                        "acords: linia ignorada (no numerica): %r", fila)
                     continue
     return items
 
@@ -365,6 +369,7 @@ class Visor(QMainWindow):
                 self._desa_i_regenera()
                 self.log(f"afegit acord a {self.pos:.2f}s: {nou}")
             except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut afegir l'acord:\n{e}")
         elif idx >= 0 and accio == esborrar:
@@ -373,6 +378,7 @@ class Visor(QMainWindow):
                 self._desa_i_regenera()
                 self.log(f"eliminat acord {idx}")
             except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut eliminar l'acord:\n{e}")
 
@@ -725,6 +731,7 @@ class Visor(QMainWindow):
             self._desa_i_regenera()
             self.log(f"acord {idx} reanomenat: {new_name}")
         except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
 
     def _on_chord_edit_requested(self, idx):
@@ -746,6 +753,7 @@ class Visor(QMainWindow):
             self._desa_i_regenera()
             self.log(f"eliminat acord {idx}")
         except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor",
                                 f"No s'ha pogut eliminar:\n{e}")
 
@@ -759,6 +767,7 @@ class Visor(QMainWindow):
             self._regenera_abc_des_de_totes_les_seccions("secció eliminada")
             self.log(f"eliminada secció {idx}")
         except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor",
                                 f"No s'ha pogut eliminar:\n{e}")
 
@@ -769,6 +778,7 @@ class Visor(QMainWindow):
             self._regenera_abc_des_de_totes_les_seccions(
                 f"secció {idx} moguda ({ini:.2f}-{fi:.2f})")
         except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
 
     def _on_section_renamed(self, idx, lletra, familia):
@@ -779,6 +789,7 @@ class Visor(QMainWindow):
             self._regenera_abc_des_de_totes_les_seccions(
                 f"secció {idx} reanomenada: {lletra}")
         except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
 
     def _on_section_edit_requested(self, idx):
@@ -908,6 +919,7 @@ class Visor(QMainWindow):
                 self._afegeix_seccio(self.pos, min(self.audio["durada"], self.pos + 2.0), lletra, fam)
                 self._regenera_abc_des_de_totes_les_seccions(f"secció afegida a {self.pos:.2f}s")
             except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut afegir la secció:\n{e}")
         elif accio == partir:
@@ -924,6 +936,7 @@ class Visor(QMainWindow):
                 self._regenera_abc_des_de_totes_les_seccions(
                     f"secció partida a {nou:.2f}s")
             except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut partir la secció:\n{e}")
         elif accio == fusionar_prev:
@@ -932,6 +945,7 @@ class Visor(QMainWindow):
                 self._actualitza_llista_abc()
                 self._regenera_abc_des_de_totes_les_seccions("seccions fusionades amb anterior")
             except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut fusionar amb anterior:\n{e}")
         elif accio == fusionar_next:
@@ -940,6 +954,7 @@ class Visor(QMainWindow):
                 self._actualitza_llista_abc()
                 self._regenera_abc_des_de_totes_les_seccions("seccions fusionades amb següent")
             except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut fusionar amb següent:\n{e}")
         elif accio == eliminar:
@@ -947,6 +962,7 @@ class Visor(QMainWindow):
                 self._elimina_seccio(idx)
                 self._regenera_abc_des_de_totes_les_seccions("secció eliminada")
             except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut eliminar la secció:\n{e}")
 
@@ -1025,8 +1041,10 @@ class Visor(QMainWindow):
             # Assegura que el directori temporal del projecte existeix
             try:
                 os.makedirs(OPENCODE_DIR, exist_ok=True)
-            except Exception:
-                pass
+            except OSError as e:
+                logging.getLogger("auto_chords").warning(
+                    "no s'ha pogut crear el directori temporal %s: %s",
+                    OPENCODE_DIR, e)
             with open(self.fitxer_err, "wb") as ferr:
                 # start_new_session: el player queda en grup propi → el podem
                 # matar sencer (ell + fills) encara que la finestra mori.
