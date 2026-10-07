@@ -31,4 +31,7 @@ tar xJf /tmp/ff.tar.xz -C /tmp/
 FFDIR=$(ls -d /tmp/ffmpeg-*-amd64-static | head -1)
 mkdir -p portable/bin
 cp "$FFDIR/ffmpeg" portable/bin/ffmpeg   # només ffmpeg (ffprobe no s'usa)
+echo "Llibreries natives de l'host Vamp (autoportabilitat)..."
+[ -x vamp_host_local ] || ./eines/compila_vamp_host.sh
+./eines/libreries_natives.sh
 echo "Fet. Mida: $(du -sh portable | cut -f1)"
