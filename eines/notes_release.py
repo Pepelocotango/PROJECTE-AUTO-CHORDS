@@ -53,9 +53,10 @@ O bé **doble clic** al fitxer (pot caler marcar «Executa» a les propietats).
 
 **Autor:** Pëp (pepelocotango@gmail.com) · **Llicència:** GPL-3.0-or-later.
 
-Desenvolupat en col·laboració amb agents d'IA: **opencode** (amb models com
-**DeepSeek**), **Claude** (Anthropic), **Gemini**, **Devin** i **Chatbox**.
-Gràcies! 💙
+Desenvolupat en col·laboració amb agents i assistents d'IA: **opencode** (amb
+models com **DeepSeek**, **Claude**, **Gemini**...), **Claude** (Anthropic),
+**Gemini** i **Google AI Studio**, **Devin**, **Chatbox**, **VS Code +
+GitHub Copilot** i **Windsurf + SWE**. Gràcies! 💙
 """
 
 

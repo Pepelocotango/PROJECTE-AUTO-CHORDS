@@ -231,11 +231,16 @@ reconèixer-ho explícitament:
   **workflows de GitHub Actions** (build + release), els **plugins Vamp de
   Queen Mary**, l'**host Vamp propi**, les **icones professionals**, la
   **coherència del play**, el diàleg d'opcions i bona part de la resta.
-  Amb models com **DeepSeek** (que va fer una feinada enorme 💙), entre d'altres.
+  Amb models com **DeepSeek** (que va fer una feinada enorme 💙), **Claude**,
+  **Gemini**, entre d'altres.
 - 🧠 **[Claude](https://claude.ai)** (Anthropic) — també hi ha ajudat
-- ✨ **Gemini** (agent `GM`)
+- ✨ **[Gemini](https://gemini.google.com)** i
+  **[Google AI Studio](https://aistudio.google.com)** (agent `GM`)
 - 🧭 **Devin** (agent `DV`)
-- 💬 **Chatbox** (agent `CB`)
+- 💬 **[Chatbox](https://chatboxai.app)** (agent `CB`)
+- 🛠️ **[VS Code](https://code.visualstudio.com)** amb
+  **[GitHub Copilot](https://github.com/features/copilot)** (agent `VS`)
+- 🌊 **[Windsurf](https://windsurf.com)** amb el model **SWE** (agent `WS`)
 - ⚡ **Spark** (`SPARK`, primeres versions de l'app)
 
 > **Nota legal**: els sistemes d'IA no són titulars de drets d'autor (UE/EUA);
