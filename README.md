@@ -232,6 +232,7 @@ reconèixer-ho explícitament:
   Queen Mary**, l'**host Vamp propi**, les **icones professionals**, la
   **coherència del play**, el diàleg d'opcions i bona part de la resta.
   Amb models com **DeepSeek** (que va fer una feinada enorme 💙), entre d'altres.
+- 🧠 **[Claude](https://claude.ai)** (Anthropic) — també hi ha ajudat
 - ✨ **Gemini** (agent `GM`)
 - 🧭 **Devin** (agent `DV`)
 - 💬 **Chatbox** (agent `CB`)
