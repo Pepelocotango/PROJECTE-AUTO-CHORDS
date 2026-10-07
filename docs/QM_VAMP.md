@@ -76,8 +76,16 @@ silenci) els compassos són:
 → **Es podria posar el compàs 1 sol** (l'acció que ara es fa a mà amb el
 botó 📍). I els `beats` donen la graella real de pulsacions.
 
+## Implementat (2026-10-07 · v0.4.0)
+- ✅ **Compàs 1 automàtic** (`🧭` + Analitza ▸ …): `qm-onsetdetector` (primer
+  onset = inici de música) + `qm-barbeattracker:bars` (downbeat més proper).
+  Al tema de 101 → **9,49 s** (silenci de 9,5 s). `pipeline.detecta_compas1`.
+- ✅ **Motor de BPM triable** (diàleg): `nostre` (defecte) · `qm` · `aubio` ·
+  **`consens`** (si coincideixen, confiança alta; si no, guanya el nostre i
+  avisa). `pipeline.detecta_bpm(..., motor=)` i `detecta_bpm_qm()`.
+- ✅ **Motor d'estructura**: **`qm` (qm-segmenter) per defecte**, o
+  `segmentino`. Mateix format de sortida → `fer_abc` igual.
+
 ## Pendents / idees
-- Motor de BPM triable al diàleg (nostre / qm / aubio) + mode **consens**.
-- **Auto-compàs 1** amb `qm-barbeattracker:bars`.
 - **Tonalitat** amb `qm-keydetector` (mostrar-la).
-- Provar `qm-segmenter` per a l'estructura (alternativa al Segmentino).
+- Afinar el qm-segmenter (conservar les seves etiquetes de repetició).

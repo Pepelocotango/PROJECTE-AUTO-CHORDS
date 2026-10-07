@@ -2,7 +2,7 @@
 
 > Document de referència de la UI (PyQt5). Noms que fa servir el codi i
 > noms «humans» de cada zona, mides reals i interaccions.
-> **Actualitzat: 2026-10-07 · v0.3.0** (GUI reordenada:
+> **Actualitzat: 2026-10-07 · v0.4.0** (GUI reordenada:
 > timeline al centre, barres d'eines, franja Editor, metrònom, count-in,
 > caixa d'informació, tap tempo i paleta de botons unificada).
 
@@ -51,6 +51,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 | — | `self.bpm` · `self.bpb` · `self.offset` · `self.offset_cb` | **BPM**, **Compàs**, **Offset (s)**, **≈ C.B** | `QLineEdit` |
 | — | `self.b_detecta` | **🎯 Detecta** (obre el diàleg de BPM) | `QPushButton` |
 | — | `self.b_bpm_x2` · `self.b_bpm_div2` | **×2 / ÷2** del BPM | `QPushButton` |
+| — | `self.b_compas_auto` | **🧭** detecta el compàs 1 automàticament | `QPushButton` |
 | — | `self.b_tap` | **TAP** (tecla **T**) | `QPushButton` |
 | — | `self.b_offset_cursor` | **📍** → compàs 1 al cursor | `QPushButton` |
 | — | `self.amb_est` | **Inclou estructura** | `QCheckBox` |
@@ -65,7 +66,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (ordre del flux) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · 🎯 Detecta · **TAP** · Compàs · Offset (s) · **📍** · ≈ C.B → **Inclou estructura** → **Analitza** → **Exporta** |
+| **Treball** (ordre del flux) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · 🎯 Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B → **Inclou estructura** → **Analitza** → **Exporta** |
 | **Transport** | **▶/⏸** (play/pausa) · `⏹` · `−10s` · `+10s` · `A⟨` · `⟩B` · `🔁` · `🔍−` · `🔍+` · `Tot` · `🔇` · `🥁` · volum del clic |
 
 ### Menús
@@ -273,7 +274,21 @@ Els títols són **en català** amb l'`id` del plugin a sota i una **ajuda**
 
 Les opcions es **recorden** a `opcions_detecta.json` (gitignored).
 
-### 7.2 Import de formats (`app/ffmpeg.py`)
+### 7.2 Motors d'autodetecció (Queen Mary)
+
+`docs/QM_VAMP.md`: s'han **compilat** els plugins **`qm-vamp-plugins`** de Queen
+Mary (els d'Audacity/Mixxx), **sense AVX**.
+
+| Pestanya | Motor per defecte | Altre motor |
+|----------|-------------------|-------------|
+| **BPM** | `nostre` (`app/tempo.py`) | `qm`, `aubio`, **`consens`** |
+| **Estructura** | **`qm`** (qm-segmenter) | `segmentino` |
+
+El **`🧭`** (i Analitza ▸ «Detecta el compàs 1 automàticament») usa
+`qm-onsetdetector` + `qm-barbeattracker` per posar l'offset sol (al tema de
+101 dona 9,49 s).
+
+### 7.3 Import de formats (`app/ffmpeg.py`)
 
 `Obre…` accepta **wav, mp3, aif/aiff, flac, m4a, ogg, opus, wma…**. Si el
 fitxer no és **WAV PCM 16 bits**, es converteix automàticament amb

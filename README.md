@@ -3,12 +3,14 @@
 > Aplicació desktop per analitzar un àudio, navegar-ne acords i estructura,
 > corregir-la i exportar clips preparats per a DAW.
 
-> **Novetats v0.3.0:** tap tempo (`TAP`/`T`), botó **📍** (compàs 1 al cursor),
-> botons **×2/÷2** del BPM, **diàleg d'opcions d'autodetecció** (paràmetres
-> reals del Chordino + post-processat), **import d'altres formats amb ffmpeg**
-> i franja **Editor** d'edició directa.
+> **Novetats v0.4.0:** **compàs 1 automàtic** (`🧭`, amb el Queen Mary),
+> **motors d'autodetecció triables** (BPM: nostre/qm/aubio/**consens**;
+> estructura: **qm-segmenter** per defecte), **plugins `qm-vamp-plugins`
+> compilats** (sense AVX), i **coherència del play** (volum/mute en viu, sense
+> congelar la GUI). De v0.3.0: tap tempo (`TAP`/`T`), botó **📍**, **×2/÷2**,
+> diàleg d'opcions, **import ffmpeg** i franja **Editor**.
 
-## Estat actual (2026-10-07 · v0.3.0)
+## Estat actual (2026-10-07 · v0.4.0)
 
 L’app està **reorganitzada amb el timeline com a centre de la finestra**
 (estil Audacity/DAW): l’anàlisi és una **acció** sobre el que es veu, no un
@@ -115,6 +117,7 @@ També hi ha llançador de desktop:
 - `app/dialegs.py` — diàleg d’opcions d’autodetecció
 - `app/postproc.py` — neteja posterior dels acords
 - `app/ffmpeg.py` — import d’altres formats (conversió a WAV)
+- `app/vamp_params.py` — paràmetres dels plugins Vamp (descriptors `.n3`)
 - `app/theme.py` — tema centralitzat
 - `AUTO_CHORDS.sh` — llançador directe
 
@@ -124,7 +127,8 @@ També hi ha llançador de desktop:
 - PyQt5
 - pyqtgraph
 - numpy < 2
-- dependències locals de Chordino / Segmentino / Vamp al sistema
+- dependències locals de Chordino / Segmentino / **qm-vamp-plugins** / Vamp
+  (tots compilats o desats dins el projecte, sense instal·lar res al sistema)
 - **ffmpeg/ffprobe** (opcional, per importar formats que no siguin WAV)
 
 ## Agraïments i reconeixement a projectes de tercers

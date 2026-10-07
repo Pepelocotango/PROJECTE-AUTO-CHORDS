@@ -9,9 +9,10 @@
 
 | Detecció | Motor actual | On |
 |----------|--------------|----|
-| **BPM** | `app/tempo.py` (numpy: envolupant d'onsets + autocorrelació + puntuació «comb») | `🎯 Detecta` |
+| **BPM** | `app/tempo.py` (numpy: envolupant d'onsets + autocorrelació + puntuació «comb» + **prior de plateau 85–150**) · motors alternatius: `qm-tempotracker`, `aubio`, **consens** | `🎯 Detecta` |
 | **Acords** | Vamp **`nnls-chroma:chordino:simplechord`** (paràmetres per defecte) | `Analitza` |
-| **Estructura** | Vamp **`segmentino:segmentino:segmentation`** | `Analitza` (+ `Inclou estructura`) |
+| **Estructura** | Vamp **`qm-segmenter`** (per defecte; troba repeticions) o `segmentino` | `Analitza` (+ `Inclou estructura`) |
+| **Compàs 1** | `qm-onsetdetector` + `qm-barbeattracker` (downbeats) | `🧭` |
 
 **Motors instal·lats disponibles** (Vamp, `.so` locals, sense AVX):
 

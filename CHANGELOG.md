@@ -1,9 +1,15 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
+Versions amb tag git (`v0.1-punt-control` … `v0.4.0-checkpoint`).
 
-## [No publicat]
+## [0.4.0] — 2026-10-07
+
+Segona tongada del dia: **coherència del play** (cache de mono, volum/mute en
+viu, latència, no tallar la cua), **BPM** (prior de plateau per l'ambigüitat
+d'octava + motors triables), **plugins Queen Mary compilats** (qm-tempotracker,
+qm-barbeattracker, qm-segmenter, qm-keydetector), **compàs 1 automàtic** i
+**qm-segmenter com a motor d'estructura per defecte**. 165 tests.
 
 ### Canviat
 - **L'estructura ara la fa el `qm-segmenter` per defecte** (abans Segmentino).
