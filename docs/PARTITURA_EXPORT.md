@@ -35,8 +35,13 @@ i **marques de secció** (cada secció comença línia).
       partitura.exporta_partitura(sortida, log=print, bpm=103, bpb=4,
                                   offset=0.0, key_fifths=0)
 
-- **App** («Exporta» + menú): pendent d'integrar a `app/main.py` (a càrrec
-  d'OC-1, que és el propietari d'aquesta àrea).
+- **App** (menú **Fitxer**):
+  - **«Inclou la partitura (xifrat)»** (commutable, per defecte **NO**): en fer
+    «Exporta», genera també el lead sheet.
+  - **«Exporta la partitura…»**: genera només la partitura de la sortida actual.
+  - **«Tonalitat automàtica (qm-keydetector)»** (per defecte **NO**): calcula
+    l'armadura amb `detecta_fifths` (triga uns segons).
+  - La GUI passa `new_system_each=4` (4 compassos per línia).
 
 ## Requisits i maquinari
 
@@ -62,11 +67,15 @@ i **marques de secció** (cada secció comença línia).
   `major-seventh`, `diminished`…); les desconegudes -> `<kind text="...">other`.
 - Acords amb baix (`G/D`, `A7/C#`) -> `<bass>`.
 - `--key auto` usa el `qm-keydetector` del projecte (via `app.pipeline`).
+- `new_system_each=N` (CLI `--compassos-per-linia`): salt de sistema cada N compassos
+  (a més de l'inici de cada secció).
+- `beat_type=N` (CLI `--beat-type`): denominador del compàs (per defecte 4; 8 per 6/8).
 - Tests: `tests/test_partitura.py` (no necessiten MuseScore).
 
 ## Coordinació
 
 - Fitxers **nous** d'OC-2: `app/partitura.py`, `eines/exporta_partitura.py`,
   `tests/test_partitura.py`, aquest document. **Cap fitxer existent tocat.**
-- El ganxo a `app/main.py` (acció «Exporta la partitura…» + crida dins
-  `exporta()`) el fa **OC-1** (propietari de `main.py`).
+- El ganxo a `app/main.py` (accions «Inclou la partitura», «Exporta la
+  partitura…» i «Tonalitat automàtica») el va fer **OC-1** (propietari de
+  `main.py`), a partir de la spec OC-2/182.
