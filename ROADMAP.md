@@ -335,9 +335,18 @@ Aquestes són idees i oportunitats que queden pendents de revisió i que convé 
 
 ### 7) Altres exportacions i formats de partitura
 
+> ✅ **FET (2026-10-07)** — **export de partitura (xifrat)**: `app/partitura.py`
+> converteix `acords_locators.txt` + `estructura_ABC.csv` a **MusicXML** i, si
+> hi ha **MuseScore** (4.6.x; ⚠️ 4.7+ demana SSE4.2+POPCNT i **no** va al
+> Q9400), també **PDF + MSCZ**. Ganxo a la GUI: **Fitxer ▸ Exporta la
+> partitura…** i l'acció commutable **«Inclou la partitura (xifrat)»**; també
+> CLI (`eines/exporta_partitura.py`). Només en mode **BPM · compàs** i només
+> **xifrat** (sense melodia). Detall: `docs/PARTITURA_EXPORT.md`.
+> **Encara pendent**: ABC / LilyPond i imatges resumides.
+
 - valorar exportar no només WAVs i carpetes de clips, sinó també altres sortides útils
 - possibilitats a estudiar:
-  - MusicXML
+  - ~~MusicXML~~ ✅ fet (vegeu la nota)
   - ABC / partitures basades en text
   - LilyPond
   - CSV intel·ligible per DAW i editors externs

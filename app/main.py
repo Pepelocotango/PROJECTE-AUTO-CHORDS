@@ -26,6 +26,7 @@ PROJECT_ROOT = os.path.dirname(APP_DIR)
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 import ffmpeg  # noqa: E402
+import partitura  # noqa: E402
 import pipeline  # noqa: E402
 import postproc  # noqa: E402
 import theme  # noqa: E402
@@ -283,6 +284,15 @@ class Finestra(QMainWindow):
         self.amb_est.setChecked(True)
         self.amb_est.setToolTip("Genera la jerarquia de seccions i l’ABC de l’estructura del tema.")
 
+        # "Inclou la partitura": accio commutable al menu Fitxer. Per defecte NO
+        # (el render amb MuseScore pot trigar); es tolerant si falta MuseScore.
+        self.amb_part = QAction("Inclou la partitura (xifrat)", self)
+        self.amb_part.setCheckable(True)
+        self.amb_part.setChecked(False)
+        self.amb_part.setToolTip(
+            "En exportar, genera tambe un lead sheet de xifrats: MusicXML i, si "
+            "hi ha MuseScore, PDF/MSCZ. Nomes en mode BPM · compàs.")
+
         # estat `tempo_fix` (ocult): el visor i la resta de codi el consulten
         self.tempo_fix = QCheckBox()
         self.tempo_fix.setChecked(True)
@@ -422,6 +432,8 @@ class Finestra(QMainWindow):
         self._act(m, "Obre WAV…", "Ctrl+O", self.tria_wav)
         m.addSeparator()
         self._act(m, "Exporta…", "Ctrl+E", self.exporta)
+        self._act(m, "Exporta la partitura…", "", self.exporta_partitura_ara)
+        m.addAction(self.amb_part)      # Inclou la partitura (commutable)
         self._act(m, "Obre la carpeta de sortida", "", self.obre_carpeta)
         m.addSeparator()
         self._act(m, "Surt", "Ctrl+Q", self.close)
@@ -1254,6 +1266,8 @@ class Finestra(QMainWindow):
                 tempo_fix=self.tempo_fix.isChecked(),
                 amb_estructura=amb_estructura,
             )
+            if self.amb_part.isChecked():
+                self._exporta_partitura()
             self.registra("Exportació feta ✅")
             QMessageBox.information(
                 self, "Auto Chords",
@@ -1263,6 +1277,48 @@ class Finestra(QMainWindow):
             self.registra(f"exporta ERROR: {e}")
             QMessageBox.critical(self, "Auto Chords",
                                  f"No s'ha pogut exportar:\n{e}")
+
+    def _exporta_partitura(self):
+        """Genera el lead sheet de xifrats de la carpeta de sortida.
+
+        Es **tolerant**: `app/partitura.py` escriu sempre el MusicXML i, nomes
+        si troba el MuseScore, el PDF/MSCZ. Cap error d'aqui no ha de fer caure
+        l'exportacio normal. Retorna el diccionari de resultats (o None).
+        """
+        try:
+            res = partitura.exporta_partitura(
+                self.sortida,
+                log=self.registra,
+                bpm=self._bpm_val(),
+                bpb=self._bpb_val(),
+                offset=self._offset_val(),
+                wav=(self.wav_edit.text().strip() or None),
+            )
+            if res.get("error"):
+                self.registra(f"partitura: sense resultat ({res['error']})")
+            return res
+        except Exception as e:  # noqa: BLE001
+            self.registra(f"partitura ERROR: {e}")
+            return None
+
+    def exporta_partitura_ara(self):
+        """Accio de menu: genera NOMES la partitura de la sortida actual."""
+        if not self.sortida:
+            QMessageBox.warning(self, "Auto Chords",
+                                "Exporta primer (cal la carpeta de resultats).")
+            return
+        res = self._exporta_partitura()
+        if not res or res.get("error"):
+            QMessageBox.warning(
+                self, "Auto Chords",
+                "No s'ha pogut generar la partitura.\n"
+                "Cal haver exportat abans, en mode BPM · compàs "
+                "(hi ha d'haver acords_locators.txt). Detall al log.")
+            return
+        ruta = res.get("musicxml") or res.get("pdf") or self.sortida
+        QMessageBox.information(self, "Auto Chords",
+                                f"Partitura generada:\n{ruta}")
+        self.obre_carpeta()
 
     def obre_carpeta(self):
         if self.sortida and os.path.isdir(self.sortida):
