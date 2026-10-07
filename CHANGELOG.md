@@ -5,6 +5,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
 ## [0.5.0] — 2026-10-07
 
+### Arreglat
+- **El paquet portable ja no porta cap `.gitignore`** (era una còpia per
+  accident: `rsync` no l'excloïa i, a més, `--exclude` *protegeix* els
+  fitxers ja existents al destí i no els esborrava). `empaqueta_portable.sh`
+  ara exclou `.gitignore`/`.git*` i, per si queden d'una build anterior, els
+  treu explícitament. El paquet **no és un repo** i no necessita res de git.
+
 ### Canviat
 - **Barres d'eines: 2 files amb `Analitza`/`Exporta` a la fila 1** (com a
   l'origen): **fila 1** = `Obre…` + temps/BPM/offset + **Analitza** +

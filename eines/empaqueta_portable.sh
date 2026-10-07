@@ -35,7 +35,8 @@ if command -v rsync >/dev/null; then
         --exclude 'temp/' --exclude '__pycache__/' --exclude '*.pyc' \
         --exclude 'tauri-ui/' --exclude '.pytest_cache/' \
         --exclude 'auto_chords.log' --exclude 'opcions_detecta.json' \
-        --exclude 'CODI_concatenat.txt' \
+        --exclude 'CODI_concatenat.txt' --exclude '.gitignore' \
+        --exclude '.git*' --exclude 'LLEGEIX-ME.txt' \
         "$SRC"/ "$DEST"/
 else
     echo "(sense rsync: còpia manual)"
@@ -47,6 +48,12 @@ else
     done
 fi
 chmod +x "$DEST/AUTO_CHORDS.sh" "$DEST/vamp_host_local" 2>/dev/null || true
+
+# rsync --exclude PROTEGEIX els fitxers exclosos que ja hi eren (no els
+# esborra): si una build anterior hi va deixar un .gitignore, el traiem.
+for brossa in .gitignore .git .gitattributes; do
+    [ -e "$DEST/$brossa" ] && gio trash "$DEST/$brossa" 2>/dev/null || true
+done
 
 # Nota dins el paquet: NO editar-hi codi.
 cat > "$DEST/LLEGEIX-ME.txt" <<'TXT'
