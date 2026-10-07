@@ -1,9 +1,12 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control` … `v0.4.0-checkpoint`).
+Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
-## [No publicat]
+## [0.5.0] — 2026-10-07
+
+Tongada de **portabilitat** (5 fases) + retirada de Segmentino/aubio +
+`Analitza`/`Exporta` ben separats. **166 tests.**
 
 ### Arreglat
 - **`Analitza` ja NO genera les carpetes de wavs** (es feien DUES vegades:

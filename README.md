@@ -10,17 +10,18 @@
 > congelar la GUI). De v0.3.0: tap tempo (`TAP`/`T`), botó **📍**, **×2/÷2**,
 > diàleg d'opcions, **import ffmpeg** i franja **Editor**.
 
-## Estat actual (2026-10-07 · v0.4.0)
+## Estat actual (2026-10-07 · v0.5.0)
 
 L’app està **reorganitzada amb el timeline com a centre de la finestra**
 (estil Audacity/DAW): l’anàlisi és una **acció** sobre el que es veu, no un
 pas d’assistent.
 
-- En obrir una WAV (**Fitxer ▸ Obre WAV…**, `Ctrl+O`) es mostren l’ona i el
+- En obrir un àudio (**Fitxer ▸ Obre…**, `Ctrl+O`) es mostren l’ona i el
   timeline **de seguida**, amb les pistes Acords/Estructura buides.
 - **Barra de menús**: Fitxer · Edita · Selecciona · Visualitza · Analitza · Ajuda.
 - **Barra de temps** fina: mode **BPM · compàs** / **Lliure (hh:mm:ss)**,
-  BPM, compàs, offset, botó **🎯 Detecta** (aubio) i «Inclou estructura».
+  BPM, botons **×2/÷2**, **🎯 Detecta** (motor triable), **TAP**, compàs,
+  Offset amb **📍** (cursor) i **🧭** (automàtic) i «Inclou estructura».
 - **Barra de transport** pròpia: play/stop, −10s/+10s, loop A/B, zoom i mute
   (`Espai` = play/stop).
 - **Metrònom** 🥁 (només en mode BPM · compàs), amb **volum propi** (60 %).
@@ -117,9 +118,20 @@ També hi ha llançador de desktop:
 - `app/dialegs.py` — diàleg d’opcions d’autodetecció
 - `app/postproc.py` — neteja posterior dels acords
 - `app/ffmpeg.py` — import d’altres formats (conversió a WAV)
-- `app/vamp_params.py` — paràmetres dels plugins Vamp (descriptors `.n3`)
 - `app/theme.py` — tema centralitzat
-- `AUTO_CHORDS.sh` — llançador directe
+- `eines/vamp_host.cpp` — **host Vamp propi** (`vamp_host_local`), sense Qt6
+- `eines/` — `crea_portable.sh`, `compila_vamp_host.sh`, `empaqueta_portable.sh`
+- `portable/` — Python + ffmpeg portables (entrada de build, gitignorat)
+- `AUTO_CHORDS.sh` — llançador (prefereix el Python portable)
+
+## Paquet portable (autocontingut)
+
+```bash
+eines/empaqueta_portable.sh      # -> ../AUTO_CHORDS_PORTABLE/
+cd ../AUTO_CHORDS_PORTABLE && ./AUTO_CHORDS.sh
+```
+El paquet **no s'edita mai** (és un artefacte de build): el codi viu aquí i es
+regenera. Detall: `docs/PORTABILITAT.md`.
 
 ## Requisits
 
