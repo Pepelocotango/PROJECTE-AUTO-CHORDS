@@ -40,3 +40,6 @@ WAVS_PROVA/
 
 # Concatenació de codi generada (regenerable amb concatena.py)
 CODI_concatenat*.txt
+
+# Opcions d'autodeteccio recordades a l'app (locals de cada usuari)
+opcions_detecta.json

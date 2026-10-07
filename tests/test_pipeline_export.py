@@ -15,7 +15,7 @@ import numpy as np
 # o avortar en un entorn sense pantalla.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from app import main as app_main, pipeline, theme, vamp_params, visor
+from app import dialegs, main as app_main, pipeline, theme, vamp_params, visor
 
 # QMessageBox.information/warning/... son MODALS: bloquegen fins que algu
 # clica OK. En un entorn sense pantalla (CI) aixo penja el test per sempre.
@@ -966,6 +966,96 @@ class OffsetTests(unittest.TestCase):
                 base)
         self.assertIsNone(metronom._es_valid(1000.0, 4))
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
+
+
+class FiltraSeccionsTests(unittest.TestCase):
+    """Post-processat de les seccions (opcions del dialeg)."""
+
+    def test_fusiona_iguals(self):
+        s = [(0, 5, "A", "A"), (5, 10, "B", "B"), (10, 14, "B", "B"),
+             (14, 18, "C", "C")]
+        r = pipeline.filtra_seccions(s, fusiona_iguals=True)
+        self.assertEqual(r, [(0, 5, "A", "A"), (5, 14, "B", "B"),
+                             (14, 18, "C", "C")])
+
+    def test_durada_minima(self):
+        s = [(0, 5, "A", "A"), (5, 6, "B", "B"), (6, 18, "C", "C")]
+        r = pipeline.filtra_seccions(s, durada_min=2)
+        self.assertEqual(r, [(0, 6, "A", "A"), (6, 18, "C", "C")])
+
+    def test_buit(self):
+        self.assertEqual(pipeline.filtra_seccions([]), [])
+
+
+class DialegOpcionsTests(unittest.TestCase):
+    """Dialeg d'opcions d'autodeteccio (BPM / Acords / Estructura)."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def setUp(self):
+        # ailla els tests del fitxer real d'opcions de l'usuari
+        import tempfile
+        self._patch = patch.object(
+            dialegs, "FITXER_OPCIONS",
+            os.path.join(tempfile.mkdtemp(), "op.json"))
+        self._patch.start()
+
+    def tearDown(self):
+        self._patch.stop()
+
+    def test_tres_pestanyes_i_tab_inicial(self):
+        d = dialegs.DialegOpcions(None, tab="acords")
+        self.assertEqual(d.tabs.count(), 3)
+        self.assertEqual(d.tabs.currentIndex(), 1)
+        d2 = dialegs.DialegOpcions(None, tab="bpm")
+        self.assertEqual(d2.tabs.currentIndex(), 0)
+
+    def test_opcions_son_els_6_parametres_del_chordino(self):
+        d = dialegs.DialegOpcions(None)
+        op = d.opcions()
+        self.assertEqual(sorted(op["chords"]),
+                         ["rollon", "s", "tuningmode", "useHMM",
+                          "useNNLS", "whitening"])
+        self.assertEqual(op["chords"]["useHMM"], 1)
+        self.assertAlmostEqual(op["chords"]["s"], 0.7, places=2)
+
+    def test_canvi_de_valors(self):
+        d = dialegs.DialegOpcions(None)
+        d._controls["chords"]["useHMM"].setChecked(False)
+        d._controls["chords"]["rollon"].setValue(3)
+        op = d.opcions()
+        self.assertEqual(op["chords"]["useHMM"], 0)
+        self.assertEqual(op["chords"]["rollon"], 3)
+
+    def test_estructura_te_les_seves_opcions(self):
+        d = dialegs.DialegOpcions(None)
+        op = d.opcions()
+        self.assertIn("durada_min", op["structure"])
+        self.assertIn("fusiona_iguals", op["structure"])
+
+    def test_bpm_te_rang_i_preferit(self):
+        d = dialegs.DialegOpcions(None)
+        b = d.opcions()["bpm"]
+        self.assertEqual(b["min"], 60)
+        self.assertEqual(b["pref_min"], 90)
+
+    def test_restaura_per_defecte(self):
+        d = dialegs.DialegOpcions(None)
+        d._controls["chords"]["useHMM"].setChecked(False)
+        d._controls["structure"]["durada_min"].setValue(9)
+        d._restaura()
+        op = d.opcions()
+        self.assertEqual(op["chords"]["useHMM"], 1)
+        self.assertEqual(op["structure"]["durada_min"], 0.0)
+
+    def test_desa_i_carrega(self):
+        op = dialegs.carrega_opcions()
+        op["chords"]["useHMM"] = 0
+        dialegs.desa_opcions(op)
+        self.assertEqual(dialegs.carrega_opcions()["chords"]["useHMM"], 0)
 
 
 class VampParamsTests(unittest.TestCase):

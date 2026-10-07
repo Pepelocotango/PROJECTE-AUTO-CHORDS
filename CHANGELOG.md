@@ -6,6 +6,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Diàleg d'opcions d'autodetecció** (fases 3+4 de `AUTODETECCIO_OPCIONS.md`):
+  en clicar **`🎯 Detecta`** (obre a la pestanya **BPM**) o **`Analitza`**
+  (obre a **Acords**) surt un diàleg amb 3 pestanyes:
+  - **BPM**: rang de cerca (min/max) i rang preferit.
+  - **Acords**: els **6 paràmetres del Chordino**, construïts
+    **dinàmicament** des del descriptor `.n3` (checkbox pels 0/1, combo pels
+    que tenen noms, spinbox pels numèrics).
+  - **Estructura**: durada mínima de secció + fusionar trossos iguals
+    (`pipeline.filtra_seccions`, post-processat del Segmentino).
+  Botó **«Restaura per defecte»**; les opcions es **recorden**
+  (`opcions_detecta.json`, gitignored). Nous `app/dialegs.py`,
+  `pipeline.filtra_seccions`, `fer_abc(durada_min=, fusiona_iguals=)` i
+  `detecta_bpm(bpm_min=, bpm_max=, preferit=)`. **10 tests nous**.
+
+### Afegit (anterior)
 - **Base d'opcions de l'autodetecció** (fases 1+2 de `docs/AUTODETECCIO_OPCIONS.md`):
   - `app/vamp_params.py`: llegeix els **paràmetres ajustables** dels plugins
     Vamp des dels seus descriptors **`.n3`** (id, títol, rang, pas, defecte i

@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
     QInputDialog, QMessageBox, QProgressBar, QPushButton, QShortcut, QSlider,
+    QDialog,
     QTextEdit,
     QStackedWidget, QToolBar,
     QVBoxLayout, QWidget,
@@ -26,6 +27,7 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 import pipeline  # noqa: E402
 import theme  # noqa: E402
+from . import dialegs  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
 
 DEFAULT_LOG_PATH = os.path.join(PROJECT_ROOT, "auto_chords.log")
@@ -80,7 +82,7 @@ class Feina(QThread):
     feta = pyqtSignal(bool, str)
 
     def __init__(self, wav, sortida, bpm, bpb, offset, amb_estructura,
-                 tempo_fix=True):
+                 tempo_fix=True, opcions=None):
         super().__init__()
         self.wav = wav
         self.sortida = sortida
@@ -89,6 +91,7 @@ class Feina(QThread):
         self.offset = offset
         self.amb_estructura = amb_estructura
         self.tempo_fix = tempo_fix
+        self.opcions = opcions or {}
 
     def log(self, t):
         self.missatge.emit(t)
@@ -98,7 +101,8 @@ class Feina(QThread):
             os.makedirs(self.sortida, exist_ok=True)
             csv_ac = os.path.join(self.sortida, "acords.csv")
             self.log("1/5 extreu acords (Chordino)...")
-            pipeline.extract_chords(self.wav, csv_ac, self.log)
+            pipeline.extract_chords(self.wav, csv_ac, self.log,
+                                    params=(self.opcions.get("chords") or None))
             self.progres.emit(35)
             if self.amb_estructura:
                 csv_seg = os.path.join(self.sortida, "segments.csv")
@@ -129,9 +133,12 @@ class Feina(QThread):
             if csv_seg:
                 self.log("5/5 ABC + wavs d'estructura...")
                 abc = os.path.join(self.sortida, "estructura_ABC.csv")
+                _est = self.opcions.get("structure") or {}
                 pipeline.fer_abc(csv_seg, abc, self.bpm, self.log,
                                  lliure=not self.tempo_fix, bpb=self.bpb,
-                                 offset=self.offset)
+                                 offset=self.offset,
+                                 durada_min=float(_est.get("durada_min", 0.0)),
+                                 fusiona_iguals=bool(_est.get("fusiona_iguals", True)))
                 pipeline.fer_wavs_estructura(
                     abc, os.path.join(self.sortida, "wavs_estructura"),
                     44100, self.log)
@@ -145,6 +152,7 @@ class Finestra(QMainWindow):
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
+        self.opcions = dialegs.carrega_opcions()    # ultimes opcions d'autodeteccio
         self.setWindowTitle("Auto Chords — wav → acords + estructura")
         self.resize(1500, 900)
         self.feina = None
@@ -204,7 +212,7 @@ class Finestra(QMainWindow):
         self.b_detecta = QPushButton("🎯 Detecta")
         self.b_detecta.setObjectName("secundari")
         self.b_detecta.setToolTip("Detecta el BPM automàticament amb aubio.")
-        self.b_detecta.clicked.connect(self._detecta_bpm)
+        self.b_detecta.clicked.connect(lambda: self._detecta_bpm())
         for camp in (self.bpm, self.bpb, self.offset):
             camp.editingFinished.connect(self._aplica_parametres_temps)
 
@@ -255,7 +263,7 @@ class Finestra(QMainWindow):
         self.b_exec = QPushButton("Analitza")
         self.b_exec.setObjectName("principal")
         self.b_exec.setToolTip("Extreu acords i estructura de la WAV (F5)")
-        self.b_exec.clicked.connect(self.executa)
+        self.b_exec.clicked.connect(lambda: self.executa())
         self.b_exec.setEnabled(False)          # fins que hi hagi WAV
         self.b_export = QPushButton("Exporta")
         self.b_export.setToolTip("Exporta el paquet final (Ctrl+E)")
@@ -418,7 +426,7 @@ class Finestra(QMainWindow):
         self.a_metro.setToolTip("Clic de metrònom (només en mode BPM · compàs)")
         # --- Analitza ---
         m = mb.addMenu("&Analitza")
-        self._act(m, "Processa el WAV", "F5", self.executa)
+        self._act(m, "Processa el WAV", "F5", lambda: self.executa())
         m.addSeparator()
         self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
         # --- Ajuda ---
@@ -548,17 +556,27 @@ class Finestra(QMainWindow):
         self.tempo_fix.setChecked(bool(bpm_compas))
         self._actualitza_metro_ui()
 
-    def _detecta_bpm(self):
-        """Detecta el BPM amb aubio i l'escriu al camp (l'usuari pot editar-lo)."""
+    def _detecta_bpm(self, pregunta=True):
+        """Obre el dialeg d'opcions de BPM i detecta (l'usuari pot editar-lo)."""
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
             QMessageBox.warning(self, "Detecta BPM",
                                 "Primer tria una WAV.")
             return
-        self.registra("Detectant el BPM amb aubio…")
+        if pregunta:
+            dlg = dialegs.DialegOpcions(self, tab="bpm", opcions=self.opcions)
+            if dlg.exec_() != QDialog.Accepted:
+                return
+            self.opcions = dlg.opcions()
+            dialegs.desa_opcions(self.opcions)
+        b = self.opcions.get("bpm", {})
+        self.registra("Detectant el BPM…")
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
-            bpm = pipeline.detecta_bpm(wav, self.registra)
+            bpm = pipeline.detecta_bpm(
+                wav, self.registra,
+                bpm_min=b.get("min"), bpm_max=b.get("max"),
+                preferit=(b.get("pref_min"), b.get("pref_max")))
         finally:
             QApplication.restoreOverrideCursor()
         if bpm:
@@ -995,12 +1013,19 @@ class Finestra(QMainWindow):
                 f"{info['durada']:.1f} s · {info['canals']} canals · "
                 f"{info['mostreig']} Hz")
 
-    def executa(self):
+    def executa(self, pregunta=True):
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
             QMessageBox.warning(self, "Auto Chords",
                                 "Tria una wav vàlida primer.")
             return
+        if pregunta:
+            dlg = dialegs.DialegOpcions(self, tab="acords",
+                                        opcions=self.opcions)
+            if dlg.exec_() != QDialog.Accepted:
+                return
+            self.opcions = dlg.opcions()
+            dialegs.desa_opcions(self.opcions)
         base = os.path.splitext(os.path.basename(wav))[0]
         self.sortida = os.path.join(os.path.dirname(wav), base + "_ACORDS")
         self.log.clear()
@@ -1011,14 +1036,15 @@ class Finestra(QMainWindow):
         self.feina = Feina(wav, self.sortida, self._bpm_val(),
                            self._bpb_val(), self._offset_val(),
                            self.amb_est.isChecked(),
-                           self.tempo_fix.isChecked())
+                           self.tempo_fix.isChecked(),
+                           opcions=self.opcions)
         self.feina.missatge.connect(self.registra)
         self.feina.progres.connect(self.barra.setValue)
         self.feina.feta.connect(self.acabada)
         self.feina.start()
 
     def _executa_i_exporta_final(self):
-        self.executa()
+        self.executa(pregunta=False)      # ja hem preguntat abans
 
     def acabada(self, be, dada):
         self.b_exec.setEnabled(True)

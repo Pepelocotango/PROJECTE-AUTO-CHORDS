@@ -84,14 +84,18 @@ def _comb_bpm(env, hop_s=HOP_S, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
     return best[1] if best else None
 
 
-def detecta_bpm(wav_path, log):
+def detecta_bpm(wav_path, log, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
+                preferit=BPM_PREFERIT):
     """Estima el BPM d'una WAV. Retorna float o None si no es pot.
 
     Pur numpy: no cal cap procés extern ni el plugin d'aubio.
+    `bpm_min`/`bpm_max` limiten la cerca; `preferit` premia el rang musical
+    habitual (per evitar el doble/meitat). Vegeu el dialeg d'opcions.
     """
     try:
         env, sr = _envolupant_onsets(wav_path)
-        bpm = _comb_bpm(env)
+        bpm = _comb_bpm(env, bpm_min=bpm_min, bpm_max=bpm_max,
+                        preferit=preferit)
         if bpm is None:
             log("BPM: senyal massa curt o silenciós")
             return None

@@ -149,14 +149,22 @@ def extract_chords(wav_path, out_csv, log, params=None):
              "--csv-omit-filename", wav_path], log)
 
 
-def detecta_bpm(wav_path, log):
+def detecta_bpm(wav_path, log, bpm_min=None, bpm_max=None, preferit=None):
     """Estima el BPM d'una WAV (numpy pur, vegeu app/tempo.py).
 
     Substitueix l'antic metode basat en el beat tracker d'aubio, que
     s'enganxava a un pols erroni en trossos del tema (p. ex. amb silenci
     inicial o directes). El nou mesura la periodicitat real de la musica.
+    `bpm_min`/`bpm_max`/`preferit` son opcionals (dialeg d'opcions).
     """
-    return tempo.detecta_bpm(wav_path, log)
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    return tempo.detecta_bpm(wav_path, log, **kw)
 
 
 def detecta_bpm_aubio(wav_path, log):
@@ -210,6 +218,43 @@ def extract_segments(wav_path, out_csv, log, params=None):
         run([SONIC, "-d", TRANSFORMS["structure"],
              "-w", "csv", "--csv-one-file", out_csv, "--csv-force",
              "--csv-omit-filename", wav_path], log)
+
+
+def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
+    """Post-processa les seccions del Segmentino (opcions del dialeg).
+
+    - `fusiona_iguals`: uneix trossos consecutius amb la MATEIXA etiqueta
+      (p. ex. «B» «B» -> una sola secció), conservant-ne els límits.
+    - `durada_min`: fusiona els trossos més curts que aquesta durada amb el
+      veí (el de l'esquerra; el primer, amb el de la dreta).
+
+    Manté l'invariant: intervals ordenats i contigus (prev.fi == curr.ini).
+    """
+    if not seccions:
+        return []
+    s = [list(x) for x in seccions]
+    if fusiona_iguals:
+        out = []
+        for it in s:
+            if out and out[-1][2] == it[2]:
+                out[-1][1] = it[1]            # esten el fi del mateix grup
+            else:
+                out.append(it)
+        s = out
+    if durada_min and durada_min > 0 and len(s) > 1:
+        i = 0
+        while i < len(s) and len(s) > 1:
+            if (s[i][1] - s[i][0]) < durada_min:
+                if i > 0:
+                    s[i - 1][1] = s[i][1]
+                    del s[i]
+                    i = max(0, i - 1)
+                else:
+                    s[1][0] = s[0][0]
+                    del s[0]
+            else:
+                i += 1
+    return [tuple(x) for x in s]
 
 
 def run_acords_py(csv_path, bpm, bpb, offset, workdir, log):
@@ -308,7 +353,8 @@ def regenera_wavs_estructura(abc_csv, sortida, sr, log):
     return fer_wavs_estructura(abc_csv, dest, sr, log)
 
 
-def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0):
+def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
+            durada_min=0.0, fusiona_iguals=True):
     import re
 
     def familia(lab):
@@ -323,11 +369,15 @@ def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0):
         for ini, dur, _idx, lab in csv.reader(f):
             ini, dur = float(ini), float(dur)
             fam = familia(lab)
-            if trossos and trossos[-1][2] == fam:
+            if fusiona_iguals and trossos and trossos[-1][2] == fam:
                 trossos[-1][1] = ini + dur
                 trossos[-1][3] += "+" + lab
             else:
                 trossos.append([ini, ini + dur, fam, lab])
+    # 1b. Filtratge per durada minima (opcio del dialeg).
+    if durada_min and durada_min > 0:
+        trossos = [list(t) for t in filtra_seccions(
+            [tuple(t) for t in trossos], durada_min=durada_min)]
     # 2. Família -> lletra per ordre d'aparició (les repeticions casen: A...A).
     lletres = {}
     abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
