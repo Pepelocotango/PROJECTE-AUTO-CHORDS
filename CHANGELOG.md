@@ -6,6 +6,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Botó `📍` a l'Offset**: llegeix la posició del **cursor vermell** i hi posa
+  el **compàs 1** (offset) a l'instant, actualitzant els dos camps
+  (segons i ≈ C.B) i la graella. És la versió *botó* de
+  `Analitza ▸ Marca el compàs 1 aquí`. **1 test nou**
+  (`OffsetBotoCursorTests`).
+
+### Afegit (anterior)
 - **TAP TEMPO** (botó `TAP` a la barra de temps + tecla **`T`**): per fixar
   el BPM marcant el pols mentre sona la cançó. Segueix el **patró estàndard
   dels DAWs** (investigat): guarda els instants dels últims taps, **mitjana

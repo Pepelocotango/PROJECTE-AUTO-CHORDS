@@ -225,6 +225,12 @@ class Finestra(QMainWindow):
         hp.addWidget(self.bpb)
         hp.addWidget(QLabel("Offset:"))
         hp.addWidget(self.offset)                 # segons
+        self.b_offset_cursor = QPushButton("📍")
+        self.b_offset_cursor.setObjectName("secundari")
+        self.b_offset_cursor.setToolTip(
+            "Posa l'offset a la posició del cursor vermell (compàs 1 aquí)")
+        self.b_offset_cursor.clicked.connect(self._marca_compas_1)
+        hp.addWidget(self.b_offset_cursor)
         hp.addWidget(QLabel("≈"))
         self.offset_cb = QLineEdit("1.1")         # el mateix, en compàs.beat
         self.offset_cb.setMaximumWidth(46)

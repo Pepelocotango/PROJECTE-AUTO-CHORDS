@@ -968,6 +968,43 @@ class OffsetTests(unittest.TestCase):
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
 
 
+class OffsetBotoCursorTests(unittest.TestCase):
+    """Boto a Offset: llegeix el cursor vermell i hi posa el compas 1."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n")
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        window.bpm.setText("101"); window.bpb.setText("4")
+        window._aplica_parametres_temps()
+        return window
+
+    def test_boto_llegeix_cursor_i_aplica_offset(self):
+        w = self._finestra(); v = w.visor_ref
+        v.ves_a(9.5)                       # "cursor vermell" a 9.5s
+        w.b_offset_cursor.click()          # com l'usuari
+        self.assertAlmostEqual(v.offset, 9.5, places=2)
+        self.assertEqual(w.offset.text(), "9.50")
+        # el camp compas.beat tambe s'actualitza
+        self.assertTrue(w.offset_cb.text().startswith("5."))
+        v.ves_a(3.0); w.b_offset_cursor.click()
+        self.assertAlmostEqual(v.offset, 3.0, places=2)
+        w.close()
+
+
 class TapTempoTests(unittest.TestCase):
     """Tap tempo (patro estandard: ultims taps -> mitjana -> 60/interval)."""
 
