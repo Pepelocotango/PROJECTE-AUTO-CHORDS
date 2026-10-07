@@ -6,7 +6,7 @@ set -e
 cd "$(dirname "$0")/.."
 BASE="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons"
 mkdir -p icones
-NOMES="play pause square repeat-2 volume-x drum target map-pin compass \
+NOMES="play pause square repeat-2 volume-x metronome target map-pin compass \
 zoom-in zoom-out rewind fast-forward maximize arrow-left-to-line \
 arrow-right-to-line music piano circle-gauge mic settings"
 for n in $NOMES; do

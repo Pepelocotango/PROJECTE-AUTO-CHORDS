@@ -1065,7 +1065,7 @@ class Finestra(QMainWindow):
         bar.addSeparator()
         # metrònom: només en mode BPM · compàs (vegeu _actualitza_metro_ui)
         self.b_metro = QPushButton()
-        self.b_metro.setIcon(icones.ico("drum"))
+        self.b_metro.setIcon(icones.ico("metronome"))
         self.b_metro.setObjectName("metro")
         self.b_metro.setCheckable(True)
         self.b_metro.setToolTip("Metrònom (només en mode BPM · compàs)")

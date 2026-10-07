@@ -9,7 +9,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 - **ICONES PROFESSIONALS (Lucide, ISC) en comptes d'emoji**: l'app ja no
   sembla de joguina. Nou `app/icones.py` (carrega els SVG de `icones/`,
   els **recoloreix** via QtSvg) i `eines/baixa_icones.sh` (21 icones, 88 KB).
-  Substituïts: 🎯→`target`, 📍→`map-pin`, 🧭→`compass`, 🥁→`drum`,
+  Substituïts: 🎯→`target`, 📍→`map-pin`, 🧭→`compass`, 🥁→`metronome`,
   🔁→`repeat-2`, 🔇→`volume-x`, 🔍±→`zoom-in/out`, ▶→`play`, ⏸→`pause`,
   ⏹→`square`, −10s/+10s→`rewind`/`fast-forward`, A⟨/⟩B→`arrow-*-to-line`,
   Tot→`maximize`, 🎵/🎼→`music`/`piano`. `×2`/`÷2` eixamplats perquè no es
