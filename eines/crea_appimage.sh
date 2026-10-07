@@ -7,7 +7,7 @@
 # Requisits: portable/ (-> eines/crea_portable.sh), vamp_host_local
 # (-> eines/compila_vamp_host.sh), icona/ (-> eines/crea_icona.py).
 # Descarrega appimagetool si no el troba (a portable/bin, gitignorat).
-set -e
+set -eo pipefail
 cd "$(dirname "$0")/.."
 PROJ="$PWD"
 DESTI="${1:-$PROJ/../AUTO_CHORDS-x86_64.AppImage}"
@@ -65,7 +65,9 @@ chmod +x "$APP/AppRun" "$APP/usr/share/auto-chords/AUTO_CHORDS.sh"
 
 echo "3/4 construint l'AppImage..."
 export ARCH=x86_64
-"$TOOL" --no-appstream "$APP" "$DESTI" 2>&1 | tail -3
+# Sense `| tail -3`: amb pipefail el fallo d'appimagetool s'ha de propagar (abans
+# quedava amagat pel tail i el job "passava" fins al ls final, amb error confús).
+"$TOOL" --no-appstream "$APP" "$DESTI"
 
 echo "4/4 fet."
 ls -la "$DESTI" 2>/dev/null | awk '{print "  AppImage: "$NF" ("$5/1048576" MB)"}'

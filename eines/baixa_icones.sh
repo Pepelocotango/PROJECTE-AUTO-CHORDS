@@ -10,10 +10,16 @@ NOMES="play pause square repeat-2 volume-x metronome target map-pin compass \
 audio-lines zoom-in zoom-out rewind fast-forward maximize arrow-left-to-line \
 arrow-right-to-line music piano circle-gauge mic settings"
 for n in $NOMES; do
-    if curl -sfL -o "icones/$n.svg" "$BASE/$n.svg"; then
+    tmp="$(mktemp)"
+    # Baixem a un temporal i NOMES el substituim si ha anat bé: així, si la xarxa
+    # falla, es conserva la icona que ja hi havia al repo (abans esborrava el
+    # fitxer i deixava el projecte sense icones).
+    if curl -sfL -o "$tmp" "$BASE/$n.svg"; then
+        mv -f "$tmp" "icones/$n.svg"
         echo "  ✓ $n"
     else
-        echo "  ⚠️  no trobat: $n"; rm -f "icones/$n.svg"
+        echo "  ⚠️  no trobat: $n (deixo la que hi havia)"
+        gio trash "$tmp" 2>/dev/null || true
     fi
 done
 echo "fet: $(ls icones | wc -l) icones ($(du -sh icones | cut -f1))"
