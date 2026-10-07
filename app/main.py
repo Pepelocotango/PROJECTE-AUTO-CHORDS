@@ -159,7 +159,7 @@ class Finestra(QMainWindow):
         self.setWindowTitle("Auto Chords — wav → acords + estructura")
         self.resize(1500, 900)
         # Amplada minima: per sota, les barres d\'eines es tallarien.
-        self.setMinimumWidth(1040)
+        self.setMinimumWidth(1210)
         self.feina = None
         self.logger.info("Finestra inicialitzada")
 
@@ -305,23 +305,12 @@ class Finestra(QMainWindow):
         barra.addWidget(self.b_mode_lliure)
         barra.addSeparator()
         barra.addWidget(self._params_temps)
+        barra.addSeparator()
+        barra.addWidget(self.b_exec)
+        barra.addWidget(self.b_export)
         self.addToolBar(Qt.TopToolBarArea, barra)
         self.barra_principal = barra
         self.barra_temps = barra
-
-        # BARRA D'ACCIONS (la seva pròpia fila): "Inclou estructura",
-        # "Analitza" i "Exporta". Es una fila a part perque en finestres
-        # estretes (<1400 px) aquests botons quedaven TALLATS i, com que
-        # QToolBar no crea cap boto d'extensio aqui, eren INACCESSIBLES.
-        # Aixi queden sempre a la vista.
-        self.addToolBarBreak(Qt.TopToolBarArea)   # que vagi a una fila NOVA
-        barra_acc = QToolBar("Accions")
-        barra_acc.setObjectName("barra_accions")
-        barra_acc.setMovable(False)
-        barra_acc.addWidget(self.b_exec)
-        barra_acc.addWidget(self.b_export)
-        self.addToolBar(Qt.TopToolBarArea, barra_acc)
-        self.barra_accions = barra_acc
 
         # progrés → barra d'estat (permanent)
         self.barra = QProgressBar()
@@ -369,8 +358,8 @@ class Finestra(QMainWindow):
         barra_transport.setObjectName("barra_transport")
         barra_transport.setMovable(False)
         self._crea_transport(barra_transport)
-        # El transport COMPARTEIX fila amb la barra d'accions (aixi nomes hi ha
-        # 2 files de barres: opcions a dalt, accions+transport a sota).
+        # 2 files: fila 1 = opcions + Analitza/Exporta; fila 2 = transport.
+        self.addToolBarBreak(Qt.TopToolBarArea)
         self.addToolBar(Qt.TopToolBarArea, barra_transport)
         self.barra_transport = barra_transport
 

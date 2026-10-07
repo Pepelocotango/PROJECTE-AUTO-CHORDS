@@ -67,7 +67,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 | Barra | Contingut |
 |-------|-----------|
 | **Treball** (ordre del flux) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · 🎯 Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B → **Inclou estructura** → **Analitza** → **Exporta** |
-| **Accions** (comparteix fila amb Transport) | **Analitza** · **Exporta** (`Inclou estructura` és ara una acció del **menú Analitza**) |
+| **Treball** (fila 1) | … → **Analitza** · **Exporta** (`Inclou estructura` és una acció del **menú Analitza**) |
 | **Transport** | **▶/⏸** (play/pausa) · `⏹` · `−10s` · `+10s` · `A⟨` · `⟩B` · `🔁` · `🔍−` · `🔍+` · `Tot` · `🔇` · `🥁` · volum del clic |
 
 ### Menús

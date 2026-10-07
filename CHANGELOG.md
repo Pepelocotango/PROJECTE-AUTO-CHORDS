@@ -6,6 +6,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 ## [0.5.0] — 2026-10-07
 
 ### Canviat
+- **Barres d'eines: 2 files amb `Analitza`/`Exporta` a la fila 1** (com a
+  l'origen): **fila 1** = `Obre…` + temps/BPM/offset + **Analitza** +
+  **Exporta** (1197 px); **fila 2** = **transport** (play/loop/zoom/mute/
+  metrònom, 703 px). Amplada mínima de finestra **1210** perquè res no es
+  talli (`Inclou estructura` és a `Analitza ▸ Inclou estructura`).
+
+### Canviat
 - **`Inclou estructura` surt de la barra d'eines** (era un `QCheckBox`) i passa
   a ser una **acció commutable al menú Analitza** (per defecte marcada). La
   **funció és la mateixa**; només canvia d'ubicació. La barra «Accions» queda
