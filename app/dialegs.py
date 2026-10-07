@@ -57,10 +57,12 @@ DEFECTES = {
     # Els valors dels ACORDS son els del descriptor del plugin (buit = defecte).
     "chords": {},
     "bpm": {
+        "motor": "nostre",
         "min": tempo.BPM_MIN, "max": tempo.BPM_MAX,
         "pref_min": tempo.BPM_PREFERIT[0], "pref_max": tempo.BPM_PREFERIT[1],
     },
-    "structure": {"durada_min": 0.0, "fusiona_iguals": True},
+    "structure": {"motor": "segmentino", "durada_min": 0.0,
+                  "fusiona_iguals": True},
     # Neteja posterior dels acords (post-processat, app/postproc.py)
     "clean": {"durada_min": 0.0, "fusiona_iguals": True, "sense_baix": False,
               "reduir": False, "snap": False, "divisio": 1},
@@ -149,6 +151,18 @@ class DialegOpcions(QDialog):
         f = QFormLayout(w)
         self._controls["bpm"] = {}
         d = val or DEFECTES["bpm"]
+        c = QComboBox()
+        for m, lbl in (("nostre", "Nostre (tempo.py)"),
+                       ("qm", "Queen Mary (qm-tempotracker)"),
+                       ("aubio", "aubio (antic)"),
+                       ("consens", "Consens (nostre + qm)")):
+            c.addItem(lbl, m)
+        i = c.findData(d.get("motor", "nostre"))
+        c.setCurrentIndex(i if i >= 0 else 0)
+        c.setToolTip("Motor de detecció del BPM. «Consens» avisa si els dos "
+                     "motors no coincideixen.")
+        self._controls["bpm"]["motor"] = c
+        f.addRow(QLabel("Motor de detecció"), c)
         for clau, etiqueta, (mn, mx, pas) in (
                 ("min", "Rang de cerca · mínim (BPM)", (30, 400, 1)),
                 ("max", "Rang de cerca · màxim (BPM)", (30, 400, 1)),
@@ -230,6 +244,16 @@ class DialegOpcions(QDialog):
         f = QFormLayout(w)
         self._controls["structure"] = {}
         d = val or DEFECTES["structure"]
+        c = QComboBox()
+        for m, lbl in (("segmentino", "Segmentino"),
+                       ("qm", "Queen Mary (qm-segmenter)")):
+            c.addItem(lbl, m)
+        i = c.findData(d.get("motor", "segmentino"))
+        c.setCurrentIndex(i if i >= 0 else 0)
+        c.setToolTip("Motor d'estructura. El qm-segmenter troba repeticions "
+                     "(A...A) millor que el Segmentino.")
+        self._controls["structure"]["motor"] = c
+        f.addRow(QLabel("Motor d'estructura"), c)
         s = _spin(0, 120, 0.5, d.get("durada_min", 0.0), 1)
         self._controls["structure"]["durada_min"] = s
         f.addRow(QLabel("Durada mínima d'una secció (s)"), s)
@@ -246,7 +270,8 @@ class DialegOpcions(QDialog):
     # -- resultat ----------------------------------------------------------
     def _restaura(self):
         for clau, w in self._controls["bpm"].items():
-            w.setValue(float(DEFECTES["bpm"][clau]))
+            if clau != "motor":
+                w.setValue(float(DEFECTES["bpm"][clau]))
         for p in vamp_params.params_de("chords"):
             w = self._controls["chords"][p["id"]]
             if isinstance(w, QCheckBox):
@@ -255,6 +280,10 @@ class DialegOpcions(QDialog):
                 w.setCurrentIndex(int(p["defecte"]))
             else:
                 w.setValue(float(p["defecte"]))
+        self._controls["bpm"]["motor"].setCurrentIndex(
+            self._controls["bpm"]["motor"].findData("nostre"))
+        self._controls["structure"]["motor"].setCurrentIndex(
+            self._controls["structure"]["motor"].findData("segmentino"))
         self._controls["structure"]["durada_min"].setValue(0.0)
         self._controls["structure"]["fusiona_iguals"].setChecked(True)
         cl = self._controls["clean"]
@@ -267,7 +296,10 @@ class DialegOpcions(QDialog):
 
     def opcions(self):
         """Retorna les opcions triades, a punt per al pipeline."""
-        bpm = {k: int(w.value()) for k, w in self._controls["bpm"].items()}
+        bpm = {"motor": self._controls["bpm"]["motor"].currentData()}
+        for k, w in self._controls["bpm"].items():
+            if k != "motor":
+                bpm[k] = int(w.value())
         chords = {}
         for pid, w in self._controls["chords"].items():
             if isinstance(w, QCheckBox):
@@ -277,6 +309,7 @@ class DialegOpcions(QDialog):
             else:
                 chords[pid] = round(float(w.value()), 3)
         est = {
+            "motor": self._controls["structure"]["motor"].currentData(),
             "durada_min": round(float(
                 self._controls["structure"]["durada_min"].value()), 2),
             "fusiona_iguals": bool(

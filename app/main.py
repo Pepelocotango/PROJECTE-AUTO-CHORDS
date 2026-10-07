@@ -122,7 +122,10 @@ class Feina(QThread):
             if self.amb_estructura:
                 csv_seg = os.path.join(self.sortida, "segments.csv")
                 self.log("2/5 extreu estructura (Segmentino)...")
-                pipeline.extract_segments(self.wav, csv_seg, self.log)
+                pipeline.extract_segments(
+                    self.wav, csv_seg, self.log,
+                    motor=(self.opcions.get("structure") or {}).get(
+                        "motor", "segmentino"))
                 self.progres.emit(60)
             else:
                 csv_seg = None
@@ -613,7 +616,8 @@ class Finestra(QMainWindow):
             bpm = pipeline.detecta_bpm(
                 wav, self.registra,
                 bpm_min=b.get("min"), bpm_max=b.get("max"),
-                preferit=(b.get("pref_min"), b.get("pref_max")))
+                preferit=(b.get("pref_min"), b.get("pref_max")),
+                motor=b.get("motor", "nostre"))
         finally:
             QApplication.restoreOverrideCursor()
         if bpm:

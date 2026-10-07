@@ -152,7 +152,44 @@ def extract_chords(wav_path, out_csv, log, params=None):
              "--csv-omit-filename", wav_path], log)
 
 
-def detecta_bpm(wav_path, log, bpm_min=None, bpm_max=None, preferit=None):
+MOTORS_BPM = ("nostre", "qm", "aubio", "consens")
+MOTORS_ESTRUCTURA = ("segmentino", "qm")
+
+
+def _qm_valors(transform, wav_path, col=1, timeout=1800):
+    """Valors numerics d'una columna d'un transform del qm."""
+    import tempfile
+    d = tempfile.mkdtemp(prefix="ac_qm_")
+    out = os.path.join(d, "x.csv")
+    run([SONIC, "-d", transform, "-w", "csv", "--csv-one-file", out,
+         "--csv-force", "--csv-omit-filename", wav_path], lambda *a: None,
+        silenci=True, timeout=timeout)
+    vals = []
+    if os.path.exists(out):
+        with open(out, newline="", encoding="utf-8") as f:
+            for r in csv.reader(f):
+                try:
+                    vals.append(float(r[col]))
+                except (ValueError, IndexError):
+                    continue
+    return vals
+
+
+def detecta_bpm_qm(wav_path, log=None):
+    """BPM amb el qm-tempotracker (mediana dels valors per fotograma)."""
+    import statistics
+    vals = _qm_valors("vamp:qm-vamp-plugins:qm-tempotracker:tempo",
+                      wav_path)
+    if not vals:
+        return None
+    bpm = statistics.median(vals)
+    if log:
+        log(f"BPM (qm-tempotracker): {bpm:.1f}")
+    return bpm
+
+
+def detecta_bpm(wav_path, log, bpm_min=None, bpm_max=None, preferit=None,
+                motor="nostre"):
     """Estima el BPM d'una WAV (numpy pur, vegeu app/tempo.py).
 
     Substitueix l'antic metode basat en el beat tracker d'aubio, que
@@ -160,6 +197,12 @@ def detecta_bpm(wav_path, log, bpm_min=None, bpm_max=None, preferit=None):
     inicial o directes). El nou mesura la periodicitat real de la musica.
     `bpm_min`/`bpm_max`/`preferit` son opcionals (dialeg d'opcions).
     """
+    if motor == "qm":
+        return detecta_bpm_qm(wav_path, log)
+    if motor == "aubio":
+        return detecta_bpm_aubio(wav_path, log)
+    if motor == "consens":
+        return _bpm_consens(wav_path, log, bpm_min, bpm_max, preferit)
     kw = {}
     if bpm_min is not None:
         kw["bpm_min"] = bpm_min
@@ -168,6 +211,36 @@ def detecta_bpm(wav_path, log, bpm_min=None, bpm_max=None, preferit=None):
     if preferit is not None:
         kw["preferit"] = preferit
     return tempo.detecta_bpm(wav_path, log, **kw)
+
+
+def _bpm_consens(wav_path, log, bpm_min, bpm_max, preferit):
+    """Consens: si el nostre motor i el qm coincideixen, confiança alta.
+
+    Si difereixen mes d'un 4 %, guanya el nostre (afinat) i s'avisa.
+    """
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    nostre = tempo.detecta_bpm(wav_path, log, **kw)
+    qm = detecta_bpm_qm(wav_path, log)
+    if not nostre:
+        return qm
+    if not qm:
+        return nostre
+    # coincideixen (mateix tempo o doble/meitat exactes)?
+    ratio = max(nostre, qm) / min(nostre, qm)
+    for r in (1.0, 2.0):
+        if abs(ratio - r) < 0.045 * r:
+            log(f"consens: els dos motors coincideixen ({nostre:.1f} / "
+                f"{qm:.1f}) → {nostre:.1f}")
+            return nostre
+    log(f"⚠️ consens: els motors NO coincideixen (nostre {nostre:.1f} vs "
+        f"qm {qm:.1f}) → em quedo el nostre")
+    return nostre
 
 
 # --- Queen Mary: onsets, bars, beats, key (vegeu docs/QM_VAMP.md) ----------
@@ -262,8 +335,16 @@ def detecta_bpm_aubio(wav_path, log):
         return None
 
 
-def extract_segments(wav_path, out_csv, log, params=None):
-    """Estructura via Segmentino (no té paràmetres; `params` per simetria)."""
+def extract_segments(wav_path, out_csv, log, params=None, motor="segmentino"):
+    """Estructura via Segmentino (per defecte) o qm-segmenter.
+
+    Els dos donen el mateix format (inici, durada, index, etiqueta), aixi que
+    la resta del pipeline (fer_abc) funciona igual.
+    """
+    if motor == "qm":
+        return run([SONIC, "-d", QM["segments"], "-w", "csv",
+                    "--csv-one-file", out_csv, "--csv-force",
+                    "--csv-omit-filename", wav_path], log)
     if params:
         import tempfile
         ttl = os.path.join(tempfile.mkdtemp(prefix="ac_ttl_"), "seg.ttl")

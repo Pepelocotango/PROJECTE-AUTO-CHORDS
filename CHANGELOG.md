@@ -6,6 +6,19 @@ Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Motor de BPM triable i motor d'estructura** (parts 2 i 4/3 amb el
+  Queen Mary), al diàleg d'opcions:
+  - **BPM**: `nostre` (tempo.py, per defecte) · `qm` (qm-tempotracker) ·
+    `aubio` (l'antic) · **`consens`** (nostre + qm; si coincideixen — mateix
+    tempo o doble/meitat dins d'un 4 % — ho diu com a confiança alta; si no,
+    guanya el nostre i avisa).
+    `pipeline.detecta_bpm(..., motor=)` i `detecta_bpm_qm()`.
+  - **Estructura**: `segmentino` (per defecte) o `qm` (**qm-segmenter**, que
+    a més troba les repeticions A…A). Mateix format de sortida, així que
+    `fer_abc` funciona igual. `extract_segments(..., motor=)`.
+  Res de la barra 1 s'ha tret. **3 tests nous**.
+
+### Afegit (anterior)
 - **Compàs 1 automàtic** (part 1/3 de les millores amb el Queen Mary): botó
   **`🧭`** a la barra de temps (al costat del 📍) + acció **Analitza ▸
   «Detecta el compàs 1 automàticament»**. Usa `qm-onsetdetector` (l'inici

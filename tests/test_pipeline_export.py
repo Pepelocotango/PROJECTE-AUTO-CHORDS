@@ -1467,6 +1467,21 @@ class DialegOpcionsTests(unittest.TestCase):
         b = d.opcions()["bpm"]
         self.assertEqual(b["min"], 60)
         self.assertEqual(b["pref_min"], 85)    # plateau del prior
+        self.assertEqual(b["motor"], "nostre")
+
+    def test_motors_estructura(self):
+        d = dialegs.DialegOpcions(None)
+        self.assertEqual(d.opcions()["structure"]["motor"], "segmentino")
+        c = d._controls["structure"]["motor"]
+        c.setCurrentIndex(c.findData("qm"))
+        self.assertEqual(d.opcions()["structure"]["motor"], "qm")
+
+    def test_motors_bpm(self):
+        d = dialegs.DialegOpcions(None)
+        c = d._controls["bpm"]["motor"]
+        for m in ("nostre", "qm", "aubio", "consens"):
+            c.setCurrentIndex(c.findData(m))
+            self.assertEqual(d.opcions()["bpm"]["motor"], m)
 
     def test_restaura_per_defecte(self):
         d = dialegs.DialegOpcions(None)
