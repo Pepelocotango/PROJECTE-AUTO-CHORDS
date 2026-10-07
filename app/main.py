@@ -348,6 +348,13 @@ class Finestra(QMainWindow):
             if not os.path.exists(p):
                 self.registra(f"AVÍS: no trobo {p}")
 
+    def _on_play_state(self, on):
+        """Icona del boto de transport: ▶ aturat / ⏸ sonant."""
+        if hasattr(self, "b_play_tb"):
+            self.b_play_tb.setText("⏸" if on else "▶")
+            self.b_play_tb.setToolTip("Atura  (Espai)" if on
+                                      else "Reprodueix  (Espai)")
+
     def _toggle_play(self):
         """Espai → play/pausa del visor, si n'hi ha."""
         vr = getattr(self, "visor_ref", None)
@@ -723,6 +730,11 @@ class Finestra(QMainWindow):
         # propaga al visor (regle + clic) SENSE reengegar l'audio en curs
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
+            try:
+                vr.playStateChanged.disconnect(self._on_play_state)
+            except (TypeError, AttributeError):
+                pass
+            vr.playStateChanged.connect(self._on_play_state)
             vr.bpm = self._bpm_val()
             vr._actualitza_temps()
         self.b_tap.setText(f"TAP ({len(self._taps)}) {bpm:.0f}")
@@ -892,8 +904,8 @@ class Finestra(QMainWindow):
             bar.addWidget(b)
             return b
 
-        boto("▶ Escolta", "Reprodueix / atura  (Espai)",
-             lambda: self._acc_visor("play_stop"))
+        self.b_play_tb = boto("▶", "Reprodueix / atura  (Espai)",
+                              lambda: self._acc_visor("play_stop"))
         boto("⏹", "Atura i torna a l'inici",
              lambda: self._acc_visor("stop_inici"))
         boto("−10s", "Endarrere 10 s",

@@ -15,7 +15,7 @@ import numpy as np
 # o avortar en un entorn sense pantalla.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from app import main as app_main, pipeline, visor
+from app import main as app_main, pipeline, theme, visor
 
 # QMessageBox.information/warning/... son MODALS: bloquegen fins que algu
 # clica OK. En un entorn sense pantalla (CI) aixo penja el test per sempre.
@@ -966,6 +966,87 @@ class OffsetTests(unittest.TestCase):
                 base)
         self.assertIsNone(metronom._es_valid(1000.0, 4))
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
+
+
+class BotoOnOffTests(unittest.TestCase):
+    """Botons: icona play/pause i estat ences/apagat ben visible."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def setUp(self):
+        self._app.setStyleSheet(theme.app_stylesheet())   # com fa main()
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 10)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n")
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        return window
+
+    def test_play_icona_play_i_pause(self):
+        w = self._finestra()
+        self.assertEqual(w.b_play_tb.text(), "▶")
+        w._on_play_state(True)
+        self.assertEqual(w.b_play_tb.text(), "⏸")
+        w._on_play_state(False)
+        self.assertEqual(w.b_play_tb.text(), "▶")
+        self.assertNotIn("Escolta", w.b_play_tb.text())
+        w.close()
+
+    def test_visor_emet_play_state(self):
+        w = self._finestra(); v = w.visor_ref
+        rebut = []
+        v.playStateChanged.connect(rebut.append)
+        v.sona = True                       # simulem que estaba sonant
+        v.play_stop()                       # -> atura i ha d'emetre False
+        self.assertIn(False, rebut)
+        self.assertEqual(w.b_play_tb.text(), "▶")
+        w.close()
+
+    def test_commutables_son_checkable(self):
+        w = self._finestra()
+        for b in (w.tb_loop, w.tb_mut, w.b_metro, w.b_mode_bpm, w.b_mode_lliure):
+            self.assertTrue(b.isCheckable())
+        w.close()
+
+    def test_estil_te_estat_checked(self):
+        e = theme.app_stylesheet()
+        self.assertIn("QPushButton:checked", e)
+        self.assertIn(theme.ACTIU, e)
+        self.assertIn("QPushButton#metro:checked", e)
+
+    def test_render_ences_vs_apagat(self):
+        """El fons del boto canvia de debò (pixel) entre apagat i ences."""
+        from PyQt5.QtCore import QPoint
+        w = self._finestra(); w.resize(1100, 600); w.show()
+        self._app.processEvents()
+
+        def fons(bot):
+            img = w.grab().toImage()
+            p = bot.mapTo(w, QPoint(5, bot.height() // 2))
+            c = img.pixelColor(p.x(), p.y())
+            return (c.red(), c.green(), c.blue())
+
+        apagat = fons(w.tb_loop)
+        w.tb_loop.setChecked(True); self._app.processEvents()
+        ences = fons(w.tb_loop)
+        self.assertNotEqual(apagat, ences)
+        self.assertGreater(ences[1], ences[0] + 25)      # es veu verd
+        # el metronom te accent propi (groc)
+        w.b_metro.setChecked(True); self._app.processEvents()
+        mg = fons(w.b_metro)
+        self.assertGreater(mg[0], 200); self.assertLess(mg[2], 130)
+        w.close()
 
 
 class LlistaSeleccioTests(unittest.TestCase):

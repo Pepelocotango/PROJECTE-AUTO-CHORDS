@@ -43,6 +43,12 @@ TL_WAVE_MID = "#2f3640"        # linia central de l'ona
 CLIP_SECTION_BORDER = "#dfe7f5"
 # Metrònom: color de l'estat activat (botó/acció)
 METRO_ACTIU = "#ffd166"
+# Estat ENCES/APAGAT dels botons commutables (play/pause, loop, mute, metro,
+# modes...). 1 sol color per a tots -> es veu d'un cop d'ull que esta actiu.
+ACTIU = "#2e7d32"            # fons del boto ences (verd)
+ACTIU_HOVER = "#388e3c"      # en passar-hi per sobre
+ACTIU_DARK = "#1b5e20"       # vora
+ACTIU_TEXT = "#ffffff"
 CLIP_FILL = "#2e3844"          # clip normal
 CLIP_BORDER = "#b8c7dc"
 CLIP_TEXT = "#edf3ff"
@@ -125,6 +131,29 @@ QPushButton#secundari {{
 }}
 QPushButton#secundari:hover {{
     background: {SURFACE_2};
+}}
+/* --- Botons commutables: ENCES vs APAGAT --- */
+QPushButton:checked {{
+    background: {ACTIU};
+    color: {ACTIU_TEXT};
+    border: 2px solid {ACTIU_DARK};
+    font-weight: 700;
+}}
+QPushButton:checked:hover {{
+    background: {ACTIU_HOVER};
+}}
+QPushButton:checked:pressed {{
+    background: {ACTIU_DARK};
+}}
+QPushButton#metro:checked {{
+    background: {METRO_ACTIU};
+    color: {BG};
+    border: 2px solid {ACTIU_DARK};
+}}
+QPushButton#secundari:checked {{
+    background: {ACTIU};
+    color: {ACTIU_TEXT};
+    border: 2px solid {ACTIU_DARK};
 }}
 QProgressBar {{
     border: 1px solid {BORDER};

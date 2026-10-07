@@ -18,7 +18,7 @@ import threading
 import time
 import wave
 
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QCloseEvent, QKeySequence
 from PyQt5.QtWidgets import (
     QApplication, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
@@ -98,6 +98,8 @@ def llegeix_abc(ruta):
 
 
 class Visor(QMainWindow):
+    # avisa la barra de fora (icona play/pause) quan canvia l'estat de so
+    playStateChanged = pyqtSignal(bool)
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
@@ -239,7 +241,8 @@ class Visor(QMainWindow):
         capa.addWidget(self.inspector, stretch=2)
 
         fila = QHBoxLayout()
-        self.b_play = QPushButton("▶ Escolta")
+        self.b_play = QPushButton("▶")
+        self.b_play.setToolTip("Reprodueix / atura (Espai)")
         self.b_play.clicked.connect(self.play_stop)
         self.b_stop = QPushButton("⏹")
         self.b_stop.setToolTip("Atura i torna a l'inici")
@@ -1475,7 +1478,8 @@ class Visor(QMainWindow):
             self.rellotge.stop()
             self.sona = False
             self.timeline.set_follow(False)
-            self.b_play.setText("▶ Escolta")
+            self.b_play.setText("▶")
+            self.playStateChanged.emit(False)
         else:
             # Comencem SEMPRE des del cursor visible (no d'un estat antic)
             self.pos = float(self.timeline.get_position())
@@ -1485,7 +1489,8 @@ class Visor(QMainWindow):
             self.rellotge.start()
             self.sona = True
             self.timeline.set_follow(True)   # la vista segueix el cursor
-            self.b_play.setText("⏸ Atura")
+            self.b_play.setText("⏸")
+            self.playStateChanged.emit(True)
             self.log("escoltant...")
 
     def _tiquet(self):
