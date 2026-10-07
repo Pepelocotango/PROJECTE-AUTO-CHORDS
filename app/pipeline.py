@@ -9,18 +9,17 @@ import re
 import subprocess
 import wave
 
-from app import tempo
+from app import plataforma, tempo
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJ_DIR = os.path.dirname(APP_DIR)
 SONIC = os.path.join(PROJ_DIR, "sonic-annotator")
 ACORDS_PY = os.path.join(PROJ_DIR, "acords_a_live.py")
-VAMP_DIRS = [
-    os.path.join(PROJ_DIR, "nnls-chroma-linux64-local"),
-    # Queen Mary (qm-tempotracker: beat+tempo, qm-segmenter, qm-keydetector...)
-    # Compilat localment amb -msse -msse2 (sense AVX). Vegeu docs/QM_VAMP.md
-    os.path.join(PROJ_DIR, "qm-vamp-plugins-linux64-local"),
-]
+# Directoris dels plugins Vamp SEGONS EL SO (vegeu `app/plataforma.py`):
+#   Linux   -> nnls-chroma-linux64-local + qm-vamp-plugins-linux64-local
+#   Windows -> nnls-chroma-win64-local   + qm-vamp-plugins-win64-local
+#   macOS   -> nnls-chroma-macos-local   + qm-vamp-plugins-macos-local
+VAMP_DIRS = plataforma.dirs_plugins(PROJ_DIR)
 
 
 def safe_filename(name, fallback="X"):
@@ -42,7 +41,7 @@ def safe_filename(name, fallback="X"):
 
 def _vamp_env():
     env = dict(os.environ)
-    env["VAMP_PATH"] = ":".join(VAMP_DIRS)
+    env["VAMP_PATH"] = plataforma.path_env_vamp(VAMP_DIRS)
     return env
 
 
@@ -86,7 +85,7 @@ def wav_info(path):
 # --- Host Vamp propi (vamp_host_local) ------------------------------------
 # Substitueix `sonic-annotator` (que arrossegava Qt6/ICU/glib). El nostre host
 # nomes depen de libc/libstdc++/sndfile. Vegeu eines/vamp_host.cpp.
-HOST = os.path.join(PROJ_DIR, "vamp_host_local")
+HOST = os.path.join(PROJ_DIR, plataforma.NOM_HOST)   # .exe a Windows
 
 # mida de finestra (step, block) per transform: son les que fa servir el
 # sonic-annotator (extretes del seu `-s`). Calen per replicar-ne la resolucio.
@@ -439,7 +438,9 @@ def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
 
 
 def run_acords_py(csv_path, bpm, bpb, offset, workdir, log):
-    run(["python3", ACORDS_PY, csv_path, str(bpm), str(bpb),
+    # `sys.executable` (mai un `python3` fix): trencava a Windows i amb
+    # PyInstaller. Vegeu `app/plataforma.py`.
+    run([plataforma.python_actual(), ACORDS_PY, csv_path, str(bpm), str(bpb),
          str(offset)], log, cwd=workdir)
     # el py escriu al directori de treball
     return (os.path.join(workdir, "acords_locators.txt"),

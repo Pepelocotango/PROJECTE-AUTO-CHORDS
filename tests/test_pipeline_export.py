@@ -41,7 +41,7 @@ import numpy as np
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from app import (config, dialegs, ffmpeg, main as app_main, pipeline,
-                 postproc, theme, vamp_params, visor)
+                 plataforma, postproc, theme, vamp_params, visor)
 
 # QMessageBox.information/warning/... son MODALS: bloquegen fins que algu
 # clica OK. En un entorn sense pantalla (CI) aixo penja el test per sempre.
@@ -2636,6 +2636,77 @@ class ConfigEscripturaTests(unittest.TestCase):
     def test_main_i_dialegs_apanten_al_config(self):
         self.assertEqual(app_main.DEFAULT_LOG_PATH, config.LOG_PATH)
         self.assertEqual(dialegs.FITXER_OPCIONS, config.OPCIONS_PATH)
+
+
+class PlataformaTests(unittest.TestCase):
+    """Capa d'abstracció de plataforma (`app/plataforma.py`).
+
+    Al Linux ha de retornar EXACTAMENT els valors d'abans (cap regressió);
+    la resta de SO es cobreix als CI de Windows/macOS.
+    """
+
+    def test_so_detectat(self):
+        self.assertIn(plataforma.SO, ("linux", "win", "mac"))
+        self.assertEqual(sum([plataforma.ES_LINUX, plataforma.ES_WINDOWS,
+                              plataforma.ES_MAC]), 1)
+
+    def test_noms_binaris(self):
+        if plataforma.ES_WINDOWS:
+            self.assertTrue(plataforma.NOM_HOST.endswith(".exe"))
+            self.assertTrue(plataforma.NOM_FFMPEG.endswith(".exe"))
+        else:
+            self.assertEqual(plataforma.NOM_HOST, "vamp_host_local")
+            self.assertEqual(plataforma.NOM_FFMPEG, "ffmpeg")
+
+    def test_candidats_reproductor(self):
+        c = plataforma.candidats_reproductor()
+        if plataforma.ES_LINUX:
+            self.assertEqual(c, ("paplay", "aplay"))
+        else:
+            self.assertEqual(c, ("ffplay",))
+
+    def test_dirs_plugins(self):
+        d = [os.path.basename(x) for x in plataforma.dirs_plugins("/tmp")]
+        if plataforma.ES_LINUX:
+            self.assertIn("nnls-chroma-linux64-local", d)
+            self.assertIn("qm-vamp-plugins-linux64-local", d)
+        elif plataforma.ES_WINDOWS:
+            self.assertIn("nnls-chroma-win64-local", d)
+        else:
+            self.assertIn("nnls-chroma-macos-local", d)
+
+    def test_path_env_vamp_separador_del_so(self):
+        self.assertEqual(plataforma.path_env_vamp(["/a", "/b"]),
+                         os.pathsep.join(["/a", "/b"]))
+
+    def test_executable(self):
+        self.assertFalse(plataforma.executable("/no/existeix"))
+        self.assertTrue(plataforma.executable(sys.executable))
+
+    def test_kwargs_nou_grup(self):
+        k = plataforma.kwargs_nou_grup()
+        if plataforma.ES_WINDOWS:
+            self.assertIn("creationflags", k)
+        else:
+            self.assertEqual(k, {"start_new_session": True})
+
+    def test_mata_grup_tolerant(self):
+        plataforma.mata_grup(None)   # no ha de petar
+
+        class P:                      # procés inexistent
+            pid = 10 ** 9
+
+            def terminate(self):
+                pass
+
+            def kill(self):
+                pass
+
+        plataforma.mata_grup(P())     # ha de ser tolerant
+
+    def test_python_actual_mai_fix(self):
+        self.assertTrue(plataforma.python_actual())
+        self.assertNotEqual(plataforma.python_actual(), "python3")
 
 
 if __name__ == "__main__":

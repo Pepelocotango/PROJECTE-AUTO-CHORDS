@@ -16,13 +16,17 @@ import os
 import subprocess
 import wave
 
+from app import plataforma
+
 # Els binaris poden ser dins el projecte (portable/bin, fases 2-3 de
-# portabilitat) o al sistema. Es prefereix el local.
+# portabilitat) o al sistema. Es prefereix el local. Noms amb `.exe` a Windows i
+# comprovació d'executable tolerant (allà `os.access(X_OK)` no és fiable):
+# vegeu `app/plataforma.py`.
 _PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_LOCAL_FFMPEG = os.path.join(_PROJ, "portable", "bin", "ffmpeg")
-_LOCAL_FFPROBE = os.path.join(_PROJ, "portable", "bin", "ffprobe")
-FFMPEG = _LOCAL_FFMPEG if os.access(_LOCAL_FFMPEG, os.X_OK) else "ffmpeg"
-FFPROBE = _LOCAL_FFPROBE if os.access(_LOCAL_FFPROBE, os.X_OK) else "ffprobe"
+_LOCAL_FFMPEG = os.path.join(_PROJ, "portable", "bin", plataforma.NOM_FFMPEG)
+_LOCAL_FFPROBE = os.path.join(_PROJ, "portable", "bin", plataforma.NOM_FFPROBE)
+FFMPEG = _LOCAL_FFMPEG if plataforma.executable(_LOCAL_FFMPEG) else plataforma.NOM_FFMPEG
+FFPROBE = _LOCAL_FFPROBE if plataforma.executable(_LOCAL_FFPROBE) else plataforma.NOM_FFPROBE
 SUFIX = "_convertit"
 
 # Extensions d'àudio que acceptem obrir (es converteixen si cal).

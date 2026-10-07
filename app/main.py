@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # main.py — Auto Chords (PyQt5/Qt5: l'únic Qt que corre al Q9400) —
 #           wav -> acords + estructura -> carpetes. Tot en català.
-import fcntl
 import logging
 import os
 import sys
@@ -33,6 +32,7 @@ import theme  # noqa: E402
 from . import config  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402
+from . import plataforma  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
 
 # Sempre a un directori ESCRIPTIBLE: en una AppImage muntada la carpeta del
@@ -1358,9 +1358,7 @@ def main():
 
     lock_path = os.path.join(tempfile.gettempdir(), "auto_chords_single_instance.lock")
     lock_file = open(lock_path, "w", encoding="utf-8")
-    try:
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
+    if not plataforma.bloqueja_instancia_unica(lock_file):
         logger.warning("Ja hi ha una instància d'Auto Chords en execució; s'aborta la segona.")
         print("[main] Auto Chords ja està en execució; no es permet iniciar-ne una segona instància.", file=sys.stderr)
         lock_file.close()
@@ -1375,7 +1373,7 @@ def main():
         sys.exit(app.exec_())
     finally:
         logger.info("Sortida de l'aplicació")
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        plataforma.desbloqueja(lock_file)
         lock_file.close()
         try:
             os.unlink(lock_path)

@@ -40,6 +40,7 @@ from .timeline import TimelineView  # noqa: E402
 
 # Configuració centralitzada per al directori temporal (configurable)
 from .config import TEMP_DIR as OPENCODE_DIR
+from . import plataforma  # noqa: E402
 
 VISOR_STYLESHEET = theme.visor_stylesheet()
 
@@ -679,24 +680,29 @@ class Visor(QMainWindow):
             pass
 
     def _tria_player(self):
-        """Tria el reproductor extern: `paplay` (PipeWire/Pulse) o `aplay` (ALSA).
+        """Tria el reproductor extern segons el SO (vegeu `app/plataforma.py`).
 
-        Tots dos són estàndard a qualsevol escriptori Linux (PipeWire o
-        PulseAudio pel primer, ALSA pel segon). Si no n'hi ha cap, retorna
-        `(None, [])` i el visor ho avisa: la resta de l'app (analitzar, editar,
-        exportar) funciona igual.
+        Linux: `paplay` (PipeWire/Pulse) o `aplay` (ALSA) — els de qualsevol
+        escriptori. Windows i macOS: `ffplay` (el portem empaquetat i accepta
+        PCM per stdin). Si no n'hi ha cap, retorna `(None, [])` i el visor ho
+        avisa: la resta de l'app (analitzar, editar, exportar) funciona igual.
         """
         sr = self.audio["sr"]
-        if shutil.which("paplay"):
-            # --latency-msec=100 baixa el buffer del servidor (per defecte en
-            # demana molt mes) -> el so arrenca abans i el cursor de paret
-            # quadra millor amb el que se sent.
-            return ("paplay", ["--raw", "--format=s16le",
-                               f"--rate={sr}", "--channels=1",
-                               "--latency-msec=100"])
-        if shutil.which("aplay"):
-            return ("aplay", ["--format=S16_LE", f"--rate={sr}",
-                              "--channels=1", "-"])
+        for nom in plataforma.candidats_reproductor():
+            if not shutil.which(nom):
+                continue
+            if nom == "paplay":
+                # --latency-msec=100 baixa el buffer del servidor (per defecte en
+                # demana molt mes) -> el so arrenca abans i el cursor de paret
+                # quadra millor amb el que se sent.
+                return ("paplay", ["--raw", "--format=s16le",
+                                   f"--rate={sr}", "--channels=1",
+                                   "--latency-msec=100"])
+            if nom == "aplay":
+                return ("aplay", ["--format=S16_LE", f"--rate={sr}",
+                                  "--channels=1", "-"])
+            return ("ffplay", ["-nodisp", "-autoexit", "-f", "s16le",
+                               "-ar", str(sr), "-ac", "1", "-i", "-"])
         return (None, [])
 
     def _mono_bytes(self):
@@ -1467,7 +1473,7 @@ class Visor(QMainWindow):
                                              stdin=subprocess.PIPE,
                                              stdout=subprocess.DEVNULL,
                                              stderr=ferr,
-                                             start_new_session=True)
+                                             **plataforma.kwargs_nou_grup())
                 # L'escriptura va en fil propi: el pipe només empassa al
                 # ritme del so i un write() sencer congelaria la GUI.
                 sess = self._sess
@@ -1531,22 +1537,16 @@ class Visor(QMainWindow):
             self.proc = None
             if proc is None:
                 return
-            try:
-                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-            except (ProcessLookupError, OSError):
-                pass  # ja era mort
-            try:
-                proc.wait(timeout=2)
-            except (subprocess.TimeoutExpired, OSError):
-                try:
-                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-                except (ProcessLookupError, OSError):
-                    pass
-                # Re-collirem el zombie per no contaminar la taula de processos
-                try:
-                    proc.wait(timeout=1)
-                except (subprocess.TimeoutExpired, OSError):
-                    pass
+        plataforma.mata_grup(proc)                 # SIGTERM (o terminate a Windows)
+        try:
+            proc.wait(timeout=2)
+        except (subprocess.TimeoutExpired, OSError):
+            plataforma.mata_grup(proc, forcat=True)    # SIGKILL
+        # Re-collirem el zombie per no contaminar la taula de processos
+        try:
+            proc.wait(timeout=1)
+        except (subprocess.TimeoutExpired, OSError):
+            pass
 
     def play_stop(self):
         if self.sona:
