@@ -1070,6 +1070,52 @@ class TempoOctavaTests(unittest.TestCase):
                                    msg=f"esperava {bpm}, vaig rebre {b}")
 
 
+class InfoBoxTests(unittest.TestCase):
+    """La caixa d'informacio explica el "ratoli intel·ligent" del timeline."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n8.0,G\n")
+        open(os.path.join(ac, "estructura_ABC.csv"), "w").write(
+            "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
+            "0.0,8.0,8.0,A,N,1,1\n")
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        return window
+
+    def test_zona_regle(self):
+        from PyQt5.QtCore import QPoint
+        w = self._finestra(); tv = w.visor_ref.timeline
+        self.assertIn("LOOP", tv.info_zona(QPoint(200, 5)))
+
+    def test_zona_ona(self):
+        from PyQt5.QtCore import QPoint
+        w = self._finestra(); tv = w.visor_ref.timeline
+        txt = tv.info_zona(QPoint(900, 95))
+        self.assertTrue("cursor" in txt.lower() or "zoom" in txt.lower())
+        w.close()
+
+    def test_zona_clip(self):
+        from PyQt5.QtCore import QPoint
+        w = self._finestra(); tv = w.visor_ref.timeline
+        # el cos d'un clip te una accio de MOURE
+        txt = tv.info_zona(QPoint(60, 130))
+        self.assertTrue("Mou" in txt)
+        w.close()
+
+
 class Compas1Tests(unittest.TestCase):
     """Deteccio automatica del compas 1 (downbeat) amb el Queen Mary."""
 

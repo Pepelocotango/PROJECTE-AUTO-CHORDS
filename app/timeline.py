@@ -995,6 +995,44 @@ class TimelineView(QGraphicsView):
     clipContextMenuRequested = pyqtSignal(str, int, QPoint)  # (kind, idx, pos)
     sectionEditRequested = pyqtSignal(int)
 
+    def info_zona(self, pos_vista) -> str:
+        """Text d'ajuda per a la caixa d'informacio, segons on es el ratoli.
+
+        Es el costat "visible" del ratoli intel·ligent: la info box explica
+        quina accio fa el ratoli en aquesta zona (moure, redimensionar,
+        loop, pan, zoom...).
+        """
+        p = self.mapToScene(pos_vista)
+        if p.y() < RULER_H:
+            return ("Regle: arrossega per crear un LOOP A/B · clic per saltar-hi")
+        it = self.itemAt(pos_vista)
+        if isinstance(it, ChordItem):
+            nom = getattr(it, "name", "?")
+            z = it._zone_at(it.mapFromScene(p).x())
+            if z == ChordItem.ZONE_LEFT:
+                return f"↔ Mou l'INICI de l'acord «{nom}»"
+            if z == ChordItem.ZONE_RIGHT:
+                return (f"↔ Mou el FINAL de «{nom}» (mou també l'inici del "
+                        "següent)")
+            return (f"✋ Mou l'acord «{nom}» · doble-clic: editar · "
+                    "botó dret: menú")
+        if isinstance(it, SectionItem):
+            L = getattr(it, "lletra", "?")
+            fam = getattr(it, "familia", "")
+            et = f"{L} · {fam}" if fam and fam != L else L
+            z = it._zone_at(it.mapFromScene(p).x())
+            if z == SectionItem.ZONE_LEFT:
+                return f"↔ Mou l'INICI de la secció «{et}»"
+            if z == SectionItem.ZONE_RIGHT:
+                return f"↔ Mou el FINAL de la secció «{et}»"
+            return (f"✋ Mou la secció «{et}» · doble-clic: editar · "
+                    "botó dret: menú")
+        # zona buida (ona)
+        if self._cursor is not None and abs(p.x() - self._cursor.scenePos().x()) < 5:
+            return "CURSOR: clic per moure'l · arrossega el regle per fer un loop"
+        return ("Ona: clic = posar el cursor · botó dret = moure la vista · "
+                "roda = zoom · Shift+roda = desplaçar")
+
     def __init__(self, audio: dict, acords: Sequence, seccions: Sequence,
                  bpm: float, bpb: int, tempo_fix: bool,
                  parent: Optional[QWidget] = None):

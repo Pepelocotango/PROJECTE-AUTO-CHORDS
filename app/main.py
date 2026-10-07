@@ -631,6 +631,20 @@ class Finestra(QMainWindow):
             return
         if w is None:
             return
+        # El VISOR (timeline) es un sol giny: li demanem la zona del ratoli
+        # (el seu "ratoli intel·ligent") per explicar quina accio hi faria.
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            tv = getattr(vr, "timeline", None)
+            if tv is not None and (w is tv or w is tv.viewport()):
+                try:
+                    pos = tv.viewport().mapFromGlobal(QCursor.pos())
+                    html = f"<b>{tv.info_zona(pos)}</b>"
+                    if self.info_box.toHtml() != html:
+                        self.info_box.setHtml(html)
+                except Exception:  # noqa: BLE001
+                    pass
+                return
         # pugem fins a un widget que tingui tooltip (els fills solen no tenir-ne)
         x = w
         while x is not None and not x.toolTip():

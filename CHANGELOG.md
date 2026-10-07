@@ -5,6 +5,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
 ## [0.5.0] — 2026-10-07
 
+### Afegit
+- **La caixa d'informació explica el «ratolí intel·ligent» del visor**: abans
+  només mostrava el tooltip del *giny* (i el timeline és un sol giny), així
+  que sobre el visor no deia res. Ara `TimelineView.info_zona()` retorna
+  l'acció segons on és el ratolí: **regle** (loop/saltar), **ona** (cursor/
+  pan/zoom), **cos d'un clip** (moure/editar/menú), **vores** (moure inici/
+  final) — amb el nom de l'acord o secció. La info box ho mostra en passar-hi
+  el ratolí. **3 tests nous** (`InfoBoxTests`, 169 en total).
+
 ### Canviat
 - **ICONES PROFESSIONALS (Lucide, ISC) en comptes d'emoji**: l'app ja no
   sembla de joguina. Nou `app/icones.py` (carrega els SVG de `icones/`,
