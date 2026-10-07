@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
 ## [0.5.0] — 2026-10-07
 
+### Afegit
+- **CI a prova d'errors + logs de debug**:
+  - **Diagnòstic** al inici de cada workflow (OS, glibc, g++, Python, disc, RAM).
+  - Si **alguna cosa falla**: un pas **`if: failure()`** imprimeix pistes (disc,
+    fitxers, logs) i un altre **puja els logs** com a artefacte `debug-logs-<N>`.
+  - Nota al capdamunt dels workflows sobre el mode **`ACTIONS_STEP_DEBUG`**.
+  - **Robustesa dels scripts**: `curl` del CPython i de l'ffmpeg ara amb **`-f`**
+    (fallen si hi ha error HTTP, abans un 404 passava com a èxit); el
+    `empaqueta_portable.sh` ja **no s'empassa** els errors de còpia.
+
 ### Arreglat
 - **CI robust**: els 3 tests de `EscriuTtlTests` depenien de `sonic-annotator`
   (que vol Qt6/ICU/glib). Ara es fan **SKIP** (`skipUnless`) si no es pot

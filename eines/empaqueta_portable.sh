@@ -45,7 +45,9 @@ else
              LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md \
              DEVELOPING.md requirements.txt concatena.py acords_a_live.py \
              wav_a_wavs.py portable; do
-        [ -e "$f" ] && cp -r "$f" "$DEST"/ 2>/dev/null || true
+        if [ -e "$f" ]; then
+            cp -r "$f" "$DEST"/ || { echo "ERROR copiant $f" >&2; exit 1; }
+        fi
     done
 fi
 chmod +x "$DEST/AUTO_CHORDS.sh" "$DEST/vamp_host_local" 2>/dev/null || true

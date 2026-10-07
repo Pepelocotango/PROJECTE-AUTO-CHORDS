@@ -1,5 +1,15 @@
 name: Compilar AppImage (Linux)
 
+# ── Per DEPURAR ────────────────────────────────────────────────────────────
+# · Cada pas imprimeix la seva sortida al log de l'execució.
+# · Si alguna cosa falla, l'última passa ("ZZ") imprimeix pistes (disc, fitxers,
+#   logs) i "ZZ2" puja els logs com a artefacte `debug-logs-<N>`.
+# · Per a MOLT més detall: a GitHub > Settings > Secrets and variables >
+#   Actions, crea la variable `ACTIONS_STEP_DEBUG` = `true` (modes verbose).
+# · Els scripts (`eines/*.sh`) tenen `set -e` i el seu propi `echo` de progrés.
+# ───────────────────────────────────────────────────────────────────────────
+
+
 # NOMES MANUAL (workflow_dispatch): s'executa quan TU pitges "Run workflow"
 # a GitHub > Actions. NO te cap trigger automatic (ni push ni tags ni schedule).
 # Construeix l'AppImage i el deixa com a ARTEFACTE descarregable. No fa cap push
@@ -16,6 +26,19 @@ jobs:
     steps:
       - name: 1. Checkout del codi
         uses: actions/checkout@v4
+
+      - name: 1b. Diagnòstic de l'entorn (versions, glibc, disc)
+        run: |
+          echo "::group::Entorn del runner"
+          uname -a
+          (lsb_release -a 2>/dev/null) || cat /etc/os-release
+          echo "glibc: $(ldd --version | head -1)"
+          echo "g++:   $(g++ --version | head -1)"
+          echo "python del sistema: $(python3 --version)"
+          echo "--- disc ---"; df -h . /tmp
+          echo "--- memoria ---"; free -h || true
+          echo "::endgroup::"
+
 
       - name: 2. Dependències del sistema (compilar l'host + libfuse2)
         run: |
@@ -74,3 +97,27 @@ jobs:
           name: ${{ steps.prep.outputs.nom }}
           path: ${{ steps.prep.outputs.nom }}/
           retention-days: 30
+
+      # Si alguna cosa falla, deixa pistes per depurar (logs + estat).
+      - name: "ZZ. Debug si ha fallat"
+        if: failure()
+        run: |
+          echo "::group::Estat en fallar"
+          echo "--- disc ---"; df -h . /tmp || true
+          echo "--- fitxers de build ---"; ls -la | head -40
+          echo "--- /tmp ---"; ls -la /tmp | head -40
+          echo "--- log de l'app ---"; cat auto_chords.log 2>/dev/null | tail -50 || true
+          echo "--- log del reproductor ---"; cat temp/visor_player.log 2>/dev/null || true
+          echo "::endgroup::"
+
+      - name: "ZZ2. Pujar els logs de debug (nomes si falla)"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-logs-${{ github.run_number }}
+          if-no-files-found: ignore
+          path: |
+            auto_chords.log
+            /tmp/*.log
+            /tmp/ac_*
+            /tmp/opencode/*.log
