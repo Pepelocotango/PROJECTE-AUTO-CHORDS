@@ -1,12 +1,11 @@
 name: Compilar AppImage (Linux)
 
-# Manual (workflow_dispatch), com al GEP. Quan el projecte sigui a GitHub,
-# aquest workflow construeix l'AppImage d'AUTO CHORDS i el puja com a artefacte.
-# Descomenta el bloc `push: tags` quan vulguem que tambe corri en crear un tag.
+# NOMES MANUAL (workflow_dispatch): s'executa quan TU pitges "Run workflow"
+# a GitHub > Actions. NO te cap trigger automatic (ni push ni tags ni schedule).
+# Construeix l'AppImage i el deixa com a ARTEFACTE descarregable. No fa cap push
+# al repositori ni cap Release.
 on:
   workflow_dispatch:
-  # push:
-  #   tags: ['v*']
 
 jobs:
   build-appimage:
