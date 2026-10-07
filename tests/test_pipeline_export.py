@@ -1224,7 +1224,8 @@ class Compas1Tests(unittest.TestCase):
         with wave.open(wav, "wb") as f:
             f.setnchannels(1); f.setsampwidth(2); f.setframerate(sr)
             f.writeframes(a.tobytes())
-        r = pipeline.detecta_compas1(wav, lambda *a: None)
+        # Log VISIBLE: si el host falla, el motiu ha de sortir al log del CI.
+        r = pipeline.detecta_compas1(wav, lambda m: print("[compas1]", m, flush=True))
         self.assertTrue(r is None or isinstance(r, float))
         if r is not None:
             self.assertTrue(0.0 <= r <= 8.5)

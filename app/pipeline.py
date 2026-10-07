@@ -66,7 +66,11 @@ def run(cmd, log, cwd=None, timeout=600, silenci=False):
             if line and "Extracting features..." not in line:
                 log("  " + line)
     if p.returncode != 0:
-        raise RuntimeError(f"ha fallat: {cmd[0]} (codi {p.returncode})")
+        # Inclou la cua de stderr: si el log és un no-op (p. ex. dins els tests)
+        # la causa es perdia i només es veia "codi 1", sense cap pista.
+        cua = [l.strip() for l in (p.stderr or "").splitlines() if l.strip()]
+        raise RuntimeError(f"ha fallat: {cmd[0]} (codi {p.returncode})"
+                           + (": " + " | ".join(cua[-3:]) if cua else ""))
     return p
 
 
@@ -330,12 +334,15 @@ QM = {
 }
 
 
-def _qm_temps(transform, wav_path, timeout=1800):
-    """Primera columna (segons) d'un transform del qm (onsets/bars/beats)."""
+def _qm_temps(transform, wav_path, timeout=1800, log=None):
+    """Primera columna (segons) d'un transform del qm (onsets/bars/beats).
+
+    `log` (opcional) rep la sortida del host; si no es passa, es descarta.
+    """
     import tempfile
     d = tempfile.mkdtemp(prefix="ac_qm_")
     out = os.path.join(d, "x.csv")
-    executa_transform(transform, out, wav_path, lambda *a: None)
+    executa_transform(transform, out, wav_path, log or (lambda *a: None))
     temps = []
     if os.path.exists(out):
         with open(out, newline="", encoding="utf-8") as f:
@@ -357,8 +364,8 @@ def detecta_compas1(wav_path, log=None):
     def _log(t):
         if log:
             log(t)
-    ons = _qm_temps(QM["onsets"], wav_path)
-    bars = _qm_temps(QM["bars"], wav_path)
+    ons = _qm_temps(QM["onsets"], wav_path, log=_log)
+    bars = _qm_temps(QM["bars"], wav_path, log=_log)
     if not bars:
         _log("compàs 1: no he pogut detectar els compassos")
         return None
