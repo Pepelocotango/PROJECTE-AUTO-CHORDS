@@ -55,7 +55,7 @@ jobs:
           # NO existeix cap paquet `libvamp-hostsdk-dev` (abans hi era i feia
           # fallar el job amb exit 100).
           sudo apt-get install -y --no-install-recommends \
-            vamp-plugin-sdk libsndfile1-dev libfuse2 file
+            vamp-plugin-sdk libboost-dev libsndfile1-dev libfuse2 file
 
           # Best effort: libreries del `sonic-annotator` (reserva) perque els
           # 3 tests de TTL tambe puguin correr. Si no hi son, es fan SKIP.
@@ -66,7 +66,12 @@ jobs:
         run: ./eines/baixa_icones.sh
 
       - name: 4. Compilar l'host Vamp
-        run: ./eines/compila_vamp_host.sh
+        run: |
+          ./eines/compila_vamp_host.sh
+          # Els plugins Vamp s'han de compilar AQUI (jammy/GCC 11): els .so del
+          # repo son fets a 24.04 (GCC 13) i demanaven GLIBCXX_3.4.32 i glibc
+          # 2.38 -> no carregaven ni al runner ni a un desti Ubuntu 22.04.
+          ./eines/compila_vamp_plugins.sh
 
       - name: 5. Python portable + ffmpeg
         run: |
