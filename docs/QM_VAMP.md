@@ -95,6 +95,25 @@ botó 📍). I els `beats` donen la graella real de pulsacions.
 - Així el projecte només depèn de **2 conjunts de plugins**: `nnls-chroma`
   (Chordino) i `qm-vamp-plugins`.
 
+## Host Vamp propi (substitueix `sonic-annotator`)
+
+`sonic-annotator` arrossegava **~70 llibreries** (Qt6, ICU, glib, gnutls…).
+S'ha escrit **`eines/vamp_host.cpp`** → `vamp_host_local` (**48 KB**, **13
+llibreries**: libc/libstdc++ + libvamp-hostsdk + libsndfile), compilat amb
+**`-msse -msse2`** (sense AVX). Compilació: `eines/compila_vamp_host.sh`.
+
+**Claus descobertes**:
+1. Els canals s'han de passar **desintercalats** (si no, els acords surten
+   completament diferents).
+2. Cal el **step/block de cada transform** (taula `pipeline.STEPS`, valors de
+   44100 Hz) **escalats pel mostreig real** del fitxer. Els plugins els
+   refusen si no quadren → `executa_transform` reintenta amb els preferits.
+3. **Sense** el `PluginBufferingAdapter` (trencava el Segmentino, retirat).
+
+**Resultats**: **idèntics** al `sonic-annotator` per al Chordino (54 acords),
+`qm-tempotracker` i `qm-onsetdetector`; equivalents per al `qm-segmenter` i
+el `qm-barbeattracker`. El `sonic-annotator` es conserva com a **reserva**.
+
 ## Pendents / idees
 - **Tonalitat** amb `qm-keydetector` (mostrar-la).
 - Afinar el qm-segmenter (conservar les seves etiquetes de repetició).

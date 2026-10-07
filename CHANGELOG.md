@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.4.0-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **Fase 1 de portabilitat — host Vamp propi** (`eines/vamp_host.cpp` →
+  `vamp_host_local`, 48 KB): substitueix `sonic-annotator` (que arrossegava
+  ~70 llibreries: Qt6/ICU/glib/gnutls). Només depèn de libc/libstdc++ +
+  libvamp-hostsdk + libsndfile. Compilat amb `-msse -msse2` (sense AVX).
+  `eines/compila_vamp_host.sh`. Resultats idèntics al sonic-annotator per al
+  Chordino/qm-tempotracker/qm-onsetdetector. `pipeline.usa_host()` +
+  `executa_transform` (el sonic-annotator queda de reserva). Vegeu
+  `docs/QM_VAMP.md` i `docs/PORTABILITAT.md`.
+
 ### Canviat
 - **Retirats el Segmentino i l'aubio**: l'**estructura** la fa només el
   **`qm-segmenter`** (l'única cosa que hi havia al diàleg) i el **BPM** el

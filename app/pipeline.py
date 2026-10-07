@@ -139,8 +139,25 @@ def _cmd_transform(transform, out_csv, wav, params=None):
 
 
 def executa_transform(transform, out_csv, wav, log, params=None):
-    """Executa un transform Vamp i desa el CSV."""
-    return run(_cmd_transform(transform, out_csv, wav, params), log)
+    """Executa un transform Vamp i desa el CSV.
+
+    Primer amb el step/block de la taula (fidelitat amb el sonic-annotator);
+    si el plugin els refusa (depenen del mostreig), reintenta amb els seus
+    valors preferits (sempre funcionen).
+    """
+    cmd = _cmd_transform(transform, out_csv, wav, params)
+    try:
+        return run(cmd, log)
+    except RuntimeError:
+        if "--step" not in cmd:
+            raise
+        import tempfile
+        cmd2 = _cmd_transform(transform, out_csv, wav, params)
+        i = cmd2.index("--step")
+        del cmd2[i:i + 4]                 # treu --step N --block M
+        if log:
+            log("  (step/block de la taula refusats; uso els del plugin)")
+        return run(cmd2, log)
 
 
 # Transform Vamp per defecte de cada deteccio (vegeu docs/AUTODETECCIO_OPCIONS.md)

@@ -60,6 +60,10 @@ els bloquejos són (a) el **host Vamp** (`sonic-annotator`+Qt6), (b) el
 
 ## 3. Proposta de camí (per fases)
 
+> ✅ **Fase 1 FETA (2026-10-07)**: host Vamp propi (`vamp_host_local`, 48 KB,
+> 13 llibreries en comptes de 73) → `docs/QM_VAMP.md`. Ja no cal
+> `sonic-annotator` (queda de reserva).
+
 | Fase | Què | Mida resultant | Esforç |
 |------|-----|----------------|--------|
 | **1** | **Host Vamp propi** (treure `sonic-annotator`) | −(Qd6/ICU/glib) | mitjà |
