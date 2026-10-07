@@ -133,15 +133,55 @@ cd ../AUTO_CHORDS_PORTABLE && ./AUTO_CHORDS.sh
 El paquet **no s'edita mai** (és un artefacte de build): el codi viu aquí i es
 regenera. Detall: `docs/PORTABILITAT.md`.
 
+## AppImage (un sol fitxer executable)
+
+L'AppImage embolcalla el paquet portable + un `AppRun` + el `.desktop` + la
+icona, i el comprimeix (squashfs): dels ~530 MB surt un fitxer d'**~160 MB**
+que s'executa a qualsevol **Linux x86_64** sense instal·lar res.
+
+### Construir-lo localment
+```bash
+eines/crea_appimage.sh          # -> ../AUTO_CHORDS-x86_64.AppImage
+```
+Requereix haver fet abans: `eines/crea_portable.sh` (Python + ffmpeg) i
+`eines/compila_vamp_host.sh` (l'host Vamp). L'`appimagetool` es baixa sol.
+
+### Executar-lo
+```bash
+chmod +x AUTO_CHORDS-x86_64.AppImage
+./AUTO_CHORDS-x86_64.AppImage
+```
+O **doble clic**. ⚠️ Per **escoltar** cal **PipeWire** o **PulseAudio** (sense
+ells l'app funciona igual, només avisa). Si falla per FUSE:
+`./AUTO_CHORDS-*.AppImage --appimage-extract-and-run`
+
+### GitHub Actions
+Dos workflows a `.github/workflows/`:
+
+| Workflow | Quan s'activa | Què fa |
+|----------|---------------|--------|
+| **`build-appimage.yml`** | **només manual** (GitHub ▸ Actions ▸ Run workflow) | Construeix l'AppImage i la deixa com a **artefacte** descarregable |
+| **`release.yml`** | en **pujar un tag `v*`** | Construeix l'AppImage i crea un **Release (esborrany)** amb títol `AUTO CHORDS v<versió>`, el cos **en català** (de `CHANGELOG.md` via `eines/notes_release.py`) i l'AppImage adjunta |
+
+```bash
+git tag v0.5.0 -m "..." && git push origin v0.5.0   # -> Release esborrany
+```
+> El Release es crea com a **esborrany**: el revises a GitHub ▸ Releases i el
+> publiques tu. Cap workflow fa `git push` al repositori.
+
+> ⚠️ Els runners són `ubuntu-22.04` (no 24.04): allà s'hi **compila
+> `vamp_host_local`**, i la seva glibc marca l'abast mínim de l'AppImage.
+> Detall: `docs/PORTABILITAT.md`.
+
 ## Requisits
 
-- Python 3.10+
-- PyQt5
-- pyqtgraph
-- numpy < 2
-- dependències locals de **Chordino** (`nnls-chroma`) i **qm-vamp-plugins**
-  (Queen Mary), totes dins el projecte — **sense instal·lar res al sistema**
-- **ffmpeg/ffprobe** (opcional, per importar formats que no siguin WAV)
+- **Python 3.10+** + **PyQt5** + **numpy < 2** (QtSvg inclòs a PyQt5)
+  → o, millor, el **Python portable** que ja porta tot això (`portable/`)
+- **Plugins Vamp** dins el projecte: **Chordino** (`nnls-chroma`) i
+  **qm-vamp-plugins** (Queen Mary) — **sense instal·lar res al sistema**
+- **Host Vamp propi** (`vamp_host_local`) — substitueix `sonic-annotator`
+- **`ffmpeg`** (opcional, per importar formats que no siguin WAV); s'embega a
+  `portable/bin/ffmpeg`
 
 ## Agraïments i reconeixement a projectes de tercers
 
