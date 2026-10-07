@@ -33,7 +33,7 @@ universal, i és la **raó de ser** d'aquest projecte:
 ## Cas d’ús principal
 
 1. 🎵 L’usuari tria una cançó (WAV).
-2. 🪄 L’app la processa amb **Chordino** (acords) i **Segmentino**
+2. 🪄 L’app la processa amb **Chordino** (acords) i **qm-segmenter**
    (estructura) → resultat semiautomàtic.
 3. ✏️ L’usuari **edita visualment** els acords i l’estructura amb un
    visor DAW-like (drag, resize, snap, rename).
@@ -48,7 +48,7 @@ Cubase, GarageBand — tots consumeixen WAVs amb nom.
 
 ## Obertura tecnolítica
 
-El **core del projecte** (detecció amb Chordino+Segmentino, validació
+El **core del projecte** (detecció amb Chordino + qm-segmenter, validació
 temporal, export WAVs amb noms intel·ligents) és estable i **independent
 de la interfície**. 
 
@@ -76,7 +76,7 @@ Això ens permet estar oberts a:
 - 🔒 **Sense secrets** al repo (`.secrets/` ignorat per `.gitignore`).
 - 🐧 **Linux prioritari** (AppImage idealment); multi-OS és nice-to-have.
 
-## Estat actual (2026-10-07 · v0.4.0)
+## Estat actual (2026-10-07 · v0.5.0)
 
 El projecte ja ha passat de prototip funcional a flux de producte útil:
 
@@ -87,21 +87,27 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
 - **rename inline** (doble-clic → edició al lloc, Enter desa, Esc cancel·la)
 - **snap intel·ligent** a compàs/beat/corxera (tempo_fix) o a 0.1/0.5/1/5 s (mode lliure) segons el zoom
 - **zoom** amb Ctrl+Roda (centrat al cursor) i **pan** amb Roda sola
-- procés d’anàlisi amb una sola acció clara (`Processa`)
+- procés d’anàlisi amb una sola acció clara (`Analitza`, F5)
 - revisió i edició d’acords i seccions des del visor
-- export final separat i explícit (`Finalitza i publica`)
+- export final separat i explícit (`Exporta`, Ctrl+E)
 - llançament directe des de la carpeta del projecte
 - bloqueig de doble instància per evitar sobreposició d’aplicacions
 - **auditoria de seguretat/estabilitat aplicada**: clamp de temps, tipus d’excepció específics, `_proc_lock`, `safe_filename`, parser CSV robust, validació WAV (sr/ch > 0)
 
-**Novetats v0.3.0–v0.4.0 (2026-10-07):**
+**Novetats v0.3.0–v0.5.0 (2026-10-07):**
+
+- **Autocontingut i portable**: **AppImage** (~160 MB, runtime estàtic → sense
+  `libfuse2`), **host Vamp propi**, **CPython portable** (sense AVX) i ffmpeg
+  estàtic. **GitHub Actions**: build manual + Release automàtic en tag.
+- **Icones professionals (Lucide)** en comptes d'emoji + **icona d'app**.
+- **Info box**: ratolí intel·ligent del visor + desfer/refer.
 
 - **Autodetecció amb opcions**: diàleg (BPM / Acords / Estructura) amb els
   **paràmetres reals del Chordino** (llegits dels descriptors `.n3`) i
   **neteja posterior** dels acords (treure baix, reduir, fusionar, durada
   mínima, snap a la graella).
-- **Motors triables**: BPM = `nostre` (tempo.py) · `qm` · `aubio` ·
-  **`consens`**; Estructura = **`qm-segmenter`** (per defecte) o Segmentino.
+- **Motors triables**: BPM = `nostre` (tempo.py) · `qm` · **`consens`**;
+  Estructura = **`qm-segmenter`** (únic; el Segmentino i l'aubio es van retirar).
 - **Plugins Queen Mary compilats** (`qm-tempotracker`, `qm-barbeattracker`,
   `qm-segmenter`, `qm-keydetector`) sense AVX → `docs/QM_VAMP.md`.
 - **Compàs 1 automàtic** (`🧭`): `qm-onsetdetector` + `qm-barbeattracker`.
@@ -443,11 +449,11 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 
 | Menú | Accions operatives |
 |---|---|
-| Fitxer | Obre WAV… `Ctrl+O` · Finalitza i publica · Obre la carpeta de sortida · Surt `Ctrl+Q` |
+| Fitxer | Obre… `Ctrl+O` · Exporta `Ctrl+E` · Obre la carpeta de sortida · Surt `Ctrl+Q` |
 | Edita | **Desfer `Ctrl+Z`** · **Refer `Ctrl+Y`** · Refer alt. `Ctrl+Shift+Z` · Paràmetres… |
 | Selecciona | Marca inici de loop (A) · Marca fi de loop (B) · Activa/desactiva loop |
 | Visualitza | Zoom + `Ctrl++` · Zoom − `Ctrl+-` · Zoom total `Ctrl+0` · Mostra el visor |
-| Analitza | Processa el WAV `F5` |
+| Analitza | Analitza `F5` · Detecta el compàs 1 · Inclou estructura |
 | Ajuda | Dreceres de teclat · Quant a Auto Chords |
 
 > 🔧 **Fix inclòs**: undo/redo passa de `QShortcut` al visor → `QAction` de
@@ -466,7 +472,7 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
   ☑ **Mostra ona** (mostrar/amagar capes del timeline) · 🎨 presets de
   colors (vegeu §3 i §10-B).
 - **Analitza**: Regenera wavs (exporta només les wavs) · sensibilitat i
-  llindars de Chordino/Segmentino (vegeu §2).
+  llindars de Chordino/QM (vegeu §2).
 - **Ajuda**: obrir l’esquema de la UI (`docs/ESQUEMA_UI.html`) des del menú.
 - **Barra d’eines (toolbar)** opcional, per duplicar les accions freqüents.
 - **Estats dinàmics**: les accions haurien de **desactivar-se** quan no

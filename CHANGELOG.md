@@ -5,6 +5,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
 ## [0.5.0] — 2026-10-07
 
+### Arreglat
+- **Revisió 1 a 1 de tota la documentació**: tretes/actualitzades les restes
+  de l'etapa anterior (Segmentino, aubio, pyqtgraph, «Processa»/«Finalitza i
+  publica», `v0.4.0`). Actualitzats: `ROADMAP` (estat v0.5.0 + novetats),
+  `DEVELOPING` (matriu + mòduls + menús), `docs/ESQUEMA_UI.md` (v0.5.0,
+  amplada mínima 1240, diagrama de 2 files amb **icones**, `amb_est`=QAction),
+  `docs/ESQUEMA_UI.html`/`.svg` (v0.5.0, ◎ Detecta, fora «Inclou estructura»
+  i l'aubio), `AUTODETECCIO_OPCIONS` (exemple amb el **host propi**, ja no els
+  directors retirats), `PLAY`, `REFERENCIA_PILES`. Les mencions a CHANGELOG i
+  `AUBIO_TEMPO` es conserven (història).
+
 ### Afegit
 - **Secció «Autoria» al README** (i cua de les notes del Release): autor
   **Pëp** + **reconeixement explícit als agents d'IA** que hi han treballat

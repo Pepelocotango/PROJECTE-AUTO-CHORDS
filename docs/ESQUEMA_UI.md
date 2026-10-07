@@ -2,7 +2,7 @@
 
 > Document de referència de la UI (PyQt5). Noms que fa servir el codi i
 > noms «humans» de cada zona, mides reals i interaccions.
-> **Actualitzat: 2026-10-07 · v0.4.0** (GUI reordenada:
+> **Actualitzat: 2026-10-07 · v0.5.0** (GUI reordenada:
 > timeline al centre, barres d'eines, franja Editor, metrònom, count-in,
 > caixa d'informació, tap tempo i paleta de botons unificada).
 
@@ -14,16 +14,16 @@ tipus assistent ni `QDockWidget` del visor.
 
 ## 0. Finestra principal (`Finestra`, `app/main.py`)
 
-Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
+Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **amplada mínima 1240 px** (perquè les barres no es tallin mai).
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [Obre…] [BPM·compàs][Lliure] BPM:[101][×2][÷2] 🎯[Detecta][TAP] Compàs:[4] │  ← BARRA 1
-│   Offset:[0.0] [📍] ≈[1.1] ☑ Inclou estructura   [Analitza]   [Exporta]     │     (treball)
+│ [Obre…] [BPM·compàs][Lliure] BPM:[101][×2][÷2] ◎Detecta TAP Compàs:[4]     │  ← BARRA 1
+│   Offset:[0.0] 📍 🧭 ≈[1.1]                      [Analitza]   [Exporta]    │     (treball)
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [▶/⏸] [⏹] [−10s] [+10s]  [A⟨] [⟩B] [🔁]  [🔍−] [🔍+] [Tot]  [🔇] [🥁] [▬▬●] │  ← BARRA 2
+│ ▶/⏸ □ ⏪ ⏩ ↤ ↦ ↻  🔍− 🔍+ ⛶  🔇 🥁 ▬▬●▬                                      │  ← BARRA 2
 ├────────────────────────────────────────────────────────────────────────────┤     (transport)
 │                                                                              │
 │                          E L   V I S O R                                    │  ← CENTRAL
@@ -54,7 +54,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 | — | `self.b_compas_auto` | **🧭** detecta el compàs 1 automàticament | `QPushButton` |
 | — | `self.b_tap` | **TAP** (tecla **T**) | `QPushButton` |
 | — | `self.b_offset_cursor` | **📍** → compàs 1 al cursor | `QPushButton` |
-| — | `self.amb_est` | **Inclou estructura** | `QCheckBox` |
+| — | `self.amb_est` | **Inclou estructura** | `QAction` (menú Analitza) |
 | — | `self.tb_loop` · `self.tb_mut` | **🔁 loop** · **🔇 mute** (barra) | `QPushButton` (checkable) |
 | — | `self.b_metro` · `self.vol_metro` | **🥁 metrònom** · volum del clic | `QPushButton` · `QSlider` |
 | — | `self.b_play_tb` | **▶ / ⏸** transport (icona commutable) | `QPushButton` |
@@ -66,8 +66,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (ordre del flux) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · 🎯 Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B → **Inclou estructura** → **Analitza** → **Exporta** |
-| **Treball** (fila 1) | … → **Analitza** · **Exporta** (`Inclou estructura` és una acció del **menú Analitza**) |
+| **Treball** (fila 1) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B → **Analitza** → **Exporta** (`Inclou estructura` és una acció del **menú Analitza**) |
 | **Transport** | **▶/⏸** (play/pausa) · `⏹` · `−10s` · `+10s` · `A⟨` · `⟩B` · `🔁` · `🔍−` · `🔍+` · `Tot` · `🔇` · `🥁` · volum del clic |
 
 ### Menús
@@ -299,7 +298,7 @@ com **`<nom>_convertit.wav`** (es reutilitza si ja és més nou).
 ---
 
 ## 6. Documents relacionats
-- `docs/AUBIO_TEMPO.md` — plugin d'aubio (tempo/beats).
+- `docs/AUBIO_TEMPO.md` — **[històric]** plugin d'aubio (tempo/beats), retirat.
 - `docs/AUTODETECCIO_OPCIONS.md` — motors d'autodetecció, opcions i post-processat.
 - `docs/REVISIO_METRONOM.diff` · `docs/REVISIO_REORG_METRONOM.diff` — diffs
   anotats per a revisió externa.

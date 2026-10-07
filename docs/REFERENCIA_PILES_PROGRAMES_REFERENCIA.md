@@ -3,7 +3,7 @@
 > Data: 2026-10-05 · Estat: referència viva
 
 ## 0. Per què aquest document
-AUTO CHORDS ja funciona amb: Python 3.10+ + PyQt5 + pyqtgraph + numpy<2 + Chordino/Segmentino/Vamp (vegeu README.md).
+AUTO CHORDS ja funciona amb: Python 3.10+ (o el Python portable) + PyQt5 (amb QtSvg) + numpy<2 + Chordino + **plugins QM** via **host Vamp propi** (vegeu README.md).
 Aquest document recull com ho fan REAPER, Audacity, MuseScore, Transcribe! i Sonic Visualiser,
 amb èmfasi en la **pila gràfica/UI**, per decidir què copiar i què evitar.
 
@@ -47,7 +47,7 @@ amb èmfasi en la **pila gràfica/UI**, per decidir què copiar i què evitar.
 ### 2.5 Sonic Visualiser — el patró acadèmic obert (i el nostre proveïdor via Vamp)
 - C++ + Qt6, Meson+Ninja. Deps al `meson.build`: libsndfile, libsamplerate, Rubber Band, FFTW3, bqfft/bqresample/bqaudioio, Sord/Serd (RDF), Cap'n Proto + Piper, liblo (OSC), mad, oggz/fishsound, Opus.
 - I/O: PortAudio + JACK + Pulse + ALSA a Linux, CoreAudio a mac.
-- Plugins: Vamp SDK (`vamp/vamp.h`) per beat/pitch/estructura + LADSPA. Chordino/Segmentino són Vamp: per això AUTO CHORDS els usa via Sonic Annotator.
+- Plugins: **Vamp** per acords/beat/estructura (Chordino + Queen Mary). AUTO CHORDS els fa servir via el **seu propi host** (`vamp_host_local`), no via Sonic Annotator.
 - Lliçó: si cal DSP nou, fer-ho com a plugin Vamp (C++) i cridar-lo des de Python, no reescriure Chordino.
 
 ## 3. Piles gràfiques comparades (el que demana el títol)
@@ -55,11 +55,11 @@ amb èmfasi en la **pila gràfica/UI**, per decidir què copiar i què evitar.
 - Qt Widgets + QML (Audacity 4, MuseScore, Sonic): multiplataforma real, acceleració GPU, temes, QML per panells moderns. Cost: pes + dependències Qt6.
 - wxWidgets (Audacity 3, Transcribe!): natiu per SO, lleuger, ideal 1 dev. Menys vistós que QML.
 - Win32 + SWELL/GDK/Cairo (REAPER): mínim i rapidíssim, però has de mantenir la capa tu.
-- Python PyQt5 + pyqtgraph (AUTO CHORDS actual): prototip ràpid, ona/cursor/navegació sense C++. Prou per Q9400 sense AVX (tkinter/Qt per defecte a MATE sense composite).
-- Regla Q9400: verificar `grep -o avx /proc/cpuinfo` (buit = sense AVX) abans d'instal·lar binaris moderns; preferir Python/Node, Qt5/pyqtgraph, builds SSE4.1.
+- Python PyQt5 + QtSvg (AUTO CHORDS actual): ràpid, ona/cursor/navegació sense C++. Prou per Q9400 sense AVX (tkinter/Qt per defecte a MATE sense composite).
+- Regla Q9400: verificar `grep -o avx /proc/cpuinfo` (buit = sense AVX) abans d'instal·lar binaris moderns; preferir Python/Node, Qt5, builds SSE4.1.
 
 ## 4. Què copiar per AUTO CHORDS
-1. Mantenir Python + PyQt5 + pyqtgraph per visor; C++ només via Vamp/Chordino existents.
+1. Mantenir Python + PyQt5 per visor; C++ només via l'host Vamp propi i els plugins.
 2. Patró Transcribe!: efectes en temps real sense preprocés, drecera de teclat configurable, foot-pedal/script.
 3. Patró Sonic: tot DSP nou com a Vamp + `sonic-annotator` local (ja al repo), no dins `app/`.
 4. Patró Audacity/MuseScore: un sol framework UI (`app/theme.py` ja centralitza) + SQLite si cal projecte en un sol fitxer més endavant.

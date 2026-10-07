@@ -41,11 +41,11 @@ aquest filtre o mor al SIGILL / violació de segment.
 |---|---|---|
 | `wave` stdlib | ✅ fem servir | Zero dependències; millor que `soundfile` |
 | `numpy` 1.26 (`numpy<2`) | ✅ fixat | El 2.x demana x86_64-v2 (SSE4.2) → `RuntimeError` al Q9400 |
-| PyQt5 + pyqtgraph | ✅ fem servir | Rodes amb Qt5; Qt6-GUI/PySide6 demana SSE4.2 |
+| PyQt5 + QtSvg | ✅ fem servir | Rodes amb Qt5; Qt6-GUI/PySide6 demana SSE4.2 |
 | `paplay --raw` (libpulse → PipeWire) | ✅ fem servir | Camí natiu Ubuntu 24 amb mescla; `aplay` (ALSA directe) només de reserva, `ffplay` últim recurs |
 | `QAudioOutput` QtMultimedia | ❌ aparcat | Les rodes SÍ porten plugins (`libqtaudio_alsa.so`); el segfault era format/QBuffer, però `paplay` té stderr visible i zero acoblament Qt — no es reobre sense motiu |
 | `sounddevice` (PortAudio) | ❌ innecessari | `libportaudio.so.2` hi és, però afegiria dependència pip+sistema sense guanyar res |
-| Chordino/Segmentino + `sonic-annotator` (compilats aquí) | ✅ fem servir | L'únic anàlisi Vamp que corre; `chordextract` compila a `.deps/` sense sudo |
+| Chordino + QM (`qm-segmenter`…) via **host propi** | ✅ fem servir | Vegeu `docs/QM_VAMP.md`; el `sonic-annotator` queda com a reserva |
 | **`qm-vamp-plugins`** (Queen Mary) | ✅ fem servir | Compilats del codi font amb `-msse -msse2` (**sense AVX**); `docs/QM_VAMP.md` |
 | **`ffmpeg`/`ffprobe`** del sistema | ✅ fem servir | Import d'altres formats → WAV PCM16; no cal per WAV |
 | `librosa` / `madmom` / `essentia` (pip) | ❌ no provat | El `tempo.py` propi + el `qm-tempotracker` ja cobreixen el BPM (5/5 i 4/5 amb 11 temes reals) |
@@ -105,7 +105,7 @@ La base del projecte és senzilla i molt important: no hauríem de tenir un “a
 4. l’usuari pot corregir acords, afegir o esborrar seccions, i normalitzar l’ordre
 5. cada canvi es valida: no solapaments, no ordre invers, no duplicats lògics
 6. el visor regenerat els clips i les sortides associades
-7. `Finalitza i publica` genera el paquet final per a DAW
+7. `Exporta` genera el paquet final per a DAW
 
 ### Regles de consistència
 
@@ -140,7 +140,7 @@ Aquesta llista recull els temes que no són bloquejos del flux actual, però que
 
 ### 2) Control avançat del processament automàtic
 
-- investigar la configuració real de `Chordino`, `Segmentino` i scripts associats
+- investigar la configuració real de `Chordino` i els plugins QM
 - valorar un panell d’algoritmes amb sensibilitat, llindars i paràmetres d’autogeneració
 - discutir si el model ideal és “l’usuari no toca res” o “l’usuari expert ajusta llindars”
 - definir un mode per defecte estable i un mode avançat opcional
@@ -207,7 +207,7 @@ Aquest projecte és un assemblatge de feina pròpia i de tecnologia de tercers. 
 - agraïments a PyQt5, Qt5 i PyQtGraph per la base d’UI i gràfics
 - agraïments a NumPy per la manipulació eficient de dades d’àudio i de temps
 - agraïments a Chordino, Sonic Annotator i Vamp per la detecció automàtica d’acords
-- agraïments a Segmentino i als plugins de segmentació per la generació d’estructura
+- agraïments als plugins Vamp de Queen Mary per la generació d’estructura
 - agraïments a les llibreries i components del sistema operatiu que fan possible la reproducció i la conversió d’àudio
 - agraïments a totes les persones i equips que han publicat biblioteques, plug-ins, tutorials i solucions que ens han ajudat a construir aquesta app
 
@@ -220,7 +220,7 @@ La nostra feina és construir i integrar, però no és “des de zero” en el s
 | `main.py` | finestra principal, menús, barres, diàleg de flux, `Finestra` |
 | `visor.py` | visor (timeline + llistes + Editor + transport), `Visor` |
 | `timeline.py` | regle, graella, carrils i clips (`QGraphicsView`) |
-| `pipeline.py` | extracció (Chordino/Segmentino/qm), export, normalització, TTL |
+| `pipeline.py` | extracció (Chordino, QM), export, normalització, TTL |
 | `tempo.py` | detecció de BPM (numpy pur, prior de plateau) — `docs/` |
 | `vamp_params.py` | paràmetres dels plugins Vamp (descriptors `.n3`) |
 | `dialegs.py` | diàleg d'opcions d'autodetecció |

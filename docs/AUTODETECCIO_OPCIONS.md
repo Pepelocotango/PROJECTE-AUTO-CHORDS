@@ -19,7 +19,7 @@
 - **nnls-chroma** (Chordino) → `simplechord`, `chordnotes`, `harmonicchange`,
   `loglikelihood`, `nnls-chroma` (chroma/basschroma/bothchroma…), **`tuning`**
 - **segmentino** → `segmentation`
-- **vamp-aubio** (compilat per nosaltres) → `aubiotempo:tempo`/`beats`,
+- **vamp-aubio** (**retirat**) → `aubiotempo:tempo`/`beats`,
   `aubioonset:onsets`, `aubionotes:notes`, `aubiopitch:frequency`,
   `aubiosilence:*`, `aubiomfcc`…
 
@@ -79,7 +79,7 @@ triplica el tempo en temes amb silenci inicial o directes). **Mantenir-lo.**
 
 ---
 
-## 3. Estructura (`Analitza` → Segmentino)
+## 3. Estructura (`Analitza` → `qm-segmenter`)
 
 ### Què dona ara
 `segmentation` → trossos amb etiqueta (`N1`, `B`, `N3`…); mesura real al tema
@@ -88,7 +88,7 @@ com «N1/N3» (novelty) i «B»; després l'app les **reanomena** a A/B/C… amb
 `lletra_lliure()`.
 
 ### Opcions que podríem exposar
-1. **Durada mínima de tros** (paràmetre del Segmentino): evita trossos curts
+1. **Durada mínima de tros** (post-processat; el motor no té paràmetres): evita trossos curts
    d'un compàs que embruten l'estructura.
 2. **Nombre de trossos objectiu**: forçar 4/6/8 seccions (més control).
 3. **Estructura per REPETICIÓ d'acords** (alternativa musical): mirar la
@@ -106,7 +106,7 @@ com «N1/N3» (novelty) i «B»; després l'app les **reanomena** a A/B/C… amb
 | ⭐ alta | **Afinació** (`tuning`) → avisar si no està a A440 | baix |
 | ⭐ mitjana | **BPM amb confiança + ×2/÷2** | baix |
 | mitjana | Caselles «Suavitza acords» (`useHMM`) i «Ignora el baix» (`rollon`) | mitjà |
-| mitjana | **Durada mínima / nombre de trossos** (Segmentino) | mitjà |
+| mitjana | **Durada mínima / nombre de trossos** (qm-segmenter) | mitjà |
 | baixa | **Notes de l'acord** (`chordnotes`) a l'Editor | mitjà |
 | baixa | Estructura per **repetició d'acords** | alt |
 
@@ -144,15 +144,15 @@ fusionar iguals) via `fer_abc(durada_min=, fusiona_iguals=)`.
 
 ```bash
 cd "/home/peplx/0PROJECTES_GitHub/PROJECTE AUTO CHORDS/"
-export VAMP_PATH="$PWD/nnls-chroma-linux64-local:$PWD/segmentino-linux64-local:$PWD/vamp-aubio-linux64-local"
-./sonic-annotator -d "vamp:nnls-chroma:chordino:loglikelihood" -w csv \
-    --csv-one-file /tmp/ll.csv --csv-force --csv-omit-filename "<tema.wav>"
-./sonic-annotator -d "vamp:nnls-chroma:tuning:tuning" -w csv \
-    --csv-one-file /tmp/tun.csv --csv-force --csv-omit-filename "<tema.wav>"
-./sonic-annotator -d "vamp:vamp-aubio:aubiotempo:tempo" -w csv \
-    --csv-one-file /tmp/t.csv --csv-force --csv-omit-filename "<tema.wav>"
-# paràmetres per defecte d'un transform:
-./sonic-annotator -s "vamp:nnls-chroma:chordino:simplechord"
+export VAMP_PATH="$PWD/nnls-chroma-linux64-local:$PWD/qm-vamp-plugins-linux64-local"
+# amb el NOSTRE host (el que fa servir l'app):
+./vamp_host_local --plugin nnls-chroma:chordino:loglikelihood --csv /tmp/ll.csv "<tema.wav>"
+./vamp_host_local --plugin nnls-chroma:tuning:tuning --csv /tmp/tun.csv "<tema.wav>"
+./vamp_host_local --plugin qm-vamp-plugins:qm-tempotracker:tempo --step 512 --block 1024 \
+    --csv /tmp/t.csv "<tema.wav>"
+# (alternativa, reserva) amb el sonic-annotator:
+./sonic-annotator -d "vamp:nnls-chroma:chordino:simplechord" -w csv \
+    --csv-one-file /tmp/ac.csv --csv-force --csv-omit-filename "<tema.wav>"
 # llista de tots els transforms disponibles:
 ./sonic-annotator --list
 ```

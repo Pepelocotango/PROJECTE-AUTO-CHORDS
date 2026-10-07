@@ -2,7 +2,7 @@
 <html lang="ca">
 <head>
 <meta charset="utf-8">
-<title>Auto Chords — Esquema visual de la GUI (v0.4.0)</title>
+<title>Auto Chords — Esquema visual de la GUI (v0.5.0)</title>
 <style>
   :root{
     --ruler-bg:#10131a; --wf-bg:#0f1218; --laneA:#1a1d23; --laneB:#15181d;
@@ -161,13 +161,13 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
     <span class="btn">Obre…</span>
     <span style="color:#9aa6b8">Temps:</span>
     <span class="btn actiu">BPM · compàs</span>
-    <span class="btn">Lliure (hh:mm:ss)</span>
+    <span class="btn">Lliure</span>
     <span style="color:#9aa6b8">BPM:</span><span class="camp">101</span><span class="btn">×2</span><span class="btn">÷2</span>
-    <span class="btn">🎯 Detecta</span><span class="btn">TAP</span>
+    <span class="btn">◎ Detecta</span><span class="btn">TAP</span>
     <span style="color:#9aa6b8">Compàs:</span><span class="camp">4</span>
     <span style="color:#9aa6b8">Offset:</span><span class="camp">0.0</span><span class="btn">📍</span><span class="btn">🧭</span>
     <span style="color:#9aa6b8">≈</span><span class="camp">1.1</span>
-    <span class="chk"><i>✓</i>Inclou estructura</span>
+    <span style="color:#9aa6b8;font-size:10px">(Inclou estructura → menú Analitza)</span>
     <span class="btn pri">Analitza</span>
     <span class="btn">Exporta</span>
   </div>
@@ -320,9 +320,9 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
         [pipeline] 5/5 ABC + wavs d'estructura...<br>
         [pipeline] ABC: 7 trossos, seqüència ABACACA<br>
         [visor] BPM detectat: 101.0<br>
-        FET ✅ — ara pots revisar el visor i fer Finalitza i publica.
+        FET ✅ — ara pots revisar el visor i fer Exporta.
       </div>
-      <div class="info"><b>🎯 Detecta</b><br>Detecta el BPM automàticament amb aubio.</div>
+      <div class="info"><b>◎ Detecta</b><br>Detecta el BPM (motor triable: nostre/qm/consens).</div>
     </div>
   </div>
 
@@ -338,7 +338,7 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
 <tr><th>Ref</th><th>Nom al codi</th><th>Nom a la UI</th><th>Tipus</th></tr>
 <tr><td>—</td><td><code>Finestra</code></td><td>finestra principal</td><td>QMainWindow</td></tr>
 <tr><td>—</td><td><code>b_obre · b_exec · b_export</code></td><td>Obre… … Analitza · Exporta (al final)</td><td>QPushButton (barra 1)</td></tr>
-<tr><td>—</td><td><code>b_mode_bpm/lliure · bpm · bpb · offset · offset_cb · b_detecta · amb_est</code></td><td>selector temps · BPM · Compàs · Offset (s) · ≈ C.B · 🎯 Detecta · Inclou estructura</td><td>barra 1</td></tr>
+<tr><td>—</td><td><code>b_mode_bpm/lliure · bpm · bpb · offset · offset_cb · b_detecta · b_tap · b_compas_auto · b_offset_cursor</code></td><td>selector temps · BPM · Compàs · Offset (s) · ≈ C.B · ◎ Detecta · TAP · 🧭 · 📍 (Inclou estructura és al menú Analitza)</td><td>barra 1</td></tr>
 <tr><td>—</td><td><code>tb_mut · tb_loop · b_metro · vol_metro</code></td><td>🔇 · 🔁 · 🥁 · volum del clic</td><td>barra 2 (transport)</td></tr>
 <tr><td><span class="badge v">1</span></td><td><code>RulerLayer</code></td><td>regle de temps</td><td>QGraphicsItem</td></tr>
 <tr><td><span class="badge v">2</span></td><td><code>WaveformLayer</code></td><td>forma d'ona</td><td>QGraphicsPixmapItem</td></tr>
