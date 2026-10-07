@@ -43,3 +43,6 @@ CODI_concatenat*.txt
 
 # Opcions d'autodeteccio recordades a l'app (locals de cada usuari)
 opcions_detecta.json
+
+# Python/ffmpeg portables (Fase 2-3 de portabilitat; es regeneren)
+portable/

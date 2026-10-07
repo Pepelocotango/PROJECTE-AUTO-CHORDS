@@ -6,6 +6,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.4.0-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Fase 2 de portabilitat — CPython portable**: `python-build-standalone`
+  3.12.15 (build **genèric x86_64**, sense AVX; el `_v2` demanaria SSE4.2)
+  a `portable/python/` amb PyQt5 + numpy<2. `AUTO_CHORDS.sh` **prefereix el
+  Python portable** (i cau al `.venv` o al sistema). Verificat: **els 166
+  tests passen amb el Python portable** i l'app carrega. `portable/` és al
+  `.gitignore` (es regenera). Trets `pyqtgraph` (no s'usava) i `pip`.
+
+### Afegit
 - **Fase 1 de portabilitat — host Vamp propi** (`eines/vamp_host.cpp` →
   `vamp_host_local`, 48 KB): substitueix `sonic-annotator` (que arrossegava
   ~70 llibreries: Qt6/ICU/glib/gnutls). Només depèn de libc/libstdc++ +

@@ -60,6 +60,13 @@ els bloquejos són (a) el **host Vamp** (`sonic-annotator`+Qt6), (b) el
 
 ## 3. Proposta de camí (per fases)
 
+> ✅ **Fase 2 FETA (2026-10-07)**: **CPython portable** a `portable/python/`
+> (`python-build-standalone` 3.12.15, build **genèric x86_64**, sense AVX) amb
+> PyQt5 + numpy<2. `AUTO_CHORDS.sh` el prefereix. **Els 166 tests passen amb
+> aquest Python.** `portable/` és al `.gitignore` (es regenera).
+
+> ✅ **Fase 1 FETA**: host Vamp propi (`vamp_host_local`).
+
 > ✅ **Fase 1 FETA (2026-10-07)**: host Vamp propi (`vamp_host_local`, 48 KB,
 > 13 llibreries en comptes de 73) → `docs/QM_VAMP.md`. Ja no cal
 > `sonic-annotator` (queda de reserva).
