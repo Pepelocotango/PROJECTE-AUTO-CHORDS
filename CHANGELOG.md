@@ -6,6 +6,24 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 ## [0.5.0] — 2026-10-07
 
 ### Afegit
+- **Preparat per compilar un AppImage (i a GitHub Actions)**:
+  - **Icona d'aplicació** (no en teníem): `eines/crea_icona.py` la dibuixa amb
+    Qt (quadrat fosc + forma d'ona de Lucide en blau, coherent amb el tema) a
+    `icona/` en 8 mides.
+  - **`eines/crea_appimage.sh`**: munta l'AppDir (AppRun + `.desktop` +
+    `auto-chords.png` + el paquet portable) i construeix l'AppImage amb
+    `appimagetool`. **Provat: funciona** (l'app arrenca des de l'AppImage i el
+    codi és idèntic al del projecte) i fa **160 MB** (squashfs, comprimit
+    dels 532).
+  - **`.github/workflows/build-appimage.yml`** (manual, com al GEP): deps →
+    icones → **compila l'host Vamp** → portable → verificació → tests →
+    AppImage → `upload-artifact`. `runs-on: ubuntu-22.04` (marca la glibc
+    mínima: aquí es compila `vamp_host_local`; la resta de binaris són antics:
+    Python 2.17, PyQt5 2.17, numpy 2.14, ffmpeg estàtic).
+
+### Canviat
+
+### Afegit
 - **Desfer/refer surten a la caixa d'informació**: en fer `Ctrl+Z`/`Ctrl+Y` es
   mostra **què** s'ha desfet/refer, descrit automàticament comparant els dos
   estats (p. ex. «⟲ DESFER: moure l'acord «Am» (5.00s → 4.00s)»,

@@ -50,3 +50,7 @@ portable/
 # El PAQUET portable construït (va FORA del projecte; per si de cas)
 AUTO_CHORDS_PORTABLE/
 *_PORTABLE/
+
+# AppImage construida i restes (es regeneren)
+*.AppImage
+squashfs-root/

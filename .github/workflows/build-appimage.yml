@@ -1,0 +1,72 @@
+name: Compilar AppImage (Linux)
+
+# Manual (workflow_dispatch), com al GEP. Quan el projecte sigui a GitHub,
+# aquest workflow construeix l'AppImage d'AUTO CHORDS i el puja com a artefacte.
+# Descomenta el bloc `push: tags` quan vulguem que tambe corri en crear un tag.
+on:
+  workflow_dispatch:
+  # push:
+  #   tags: ['v*']
+
+jobs:
+  build-appimage:
+    # Ubuntu 22.04 (NO 24.04): marca la glibc MINIMA de l'AppImage, perque
+    # aqui s'hi COMPILA `vamp_host_local`. Els altres binaris ja son antics:
+    # Python portable 2.17, PyQt5/numpy 2.14-2.17, ffmpeg estatic.
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 1. Checkout del codi
+        uses: actions/checkout@v4
+
+      - name: 2. Dependències del sistema (compilar l'host + libfuse2)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libvamp-hostsdk-dev libsndfile1-dev libfuse2 file
+
+      - name: 3. Icones de la UI (Lucide)
+        run: ./eines/baixa_icones.sh
+
+      - name: "4. Compilar l'host Vamp (glibc del runner = abast de l'AppImage)"
+        run: ./eines/compila_vamp_host.sh
+
+      - name: 5. Python portable + ffmpeg (CPython + PyQt5 + numpy)
+        run: ./eines/crea_portable.sh
+
+      - name: "6. Verificació — l'app importa amb el Python portable"
+        run: |
+          QT_QPA_PLATFORM=offscreen portable/python/bin/python3 -c \
+            "import sys; sys.path.insert(0,'.'); from app import main, visor, icones; print('OK imports')"
+
+      - name: 7. Tests (control de qualitat)
+        run: |
+          QT_QPA_PLATFORM=offscreen portable/python/bin/python3 -m unittest \
+            tests.test_pipeline_export
+
+      - name: 8. Icona de l'aplicació
+        run: portable/python/bin/python3 eines/crea_icona.py
+
+      - name: 9. Construir l'AppImage
+        run: |
+          SANE=$(echo "${GITHUB_REF_NAME:-local}" | tr '/' '_')
+          ./eines/crea_appimage.sh "auto-chords-${SANE}-x86_64.AppImage"
+          ls -la *.AppImage
+
+      - name: 10. Preparar l'artefacte (AppImage + docs)
+        id: prep
+        run: |
+          VER=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+          SANE=$(echo "${GITHUB_REF_NAME:-local}" | tr '/' '_')
+          NOM="AutoChords_v${VER}-${SANE}-build${GITHUB_RUN_NUMBER}-Linux"
+          mkdir -p "$NOM"
+          cp auto-chords-*.AppImage "$NOM/"
+          cp LICENSE README.md CHANGELOG.md ROADMAP.md "$NOM/" 2>/dev/null || true
+          cp -r docs "$NOM/" 2>/dev/null || true
+          echo "nom=$NOM" >> "$GITHUB_OUTPUT"
+
+      - name: 11. Pujar l'artefacte
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prep.outputs.nom }}
+          path: ${{ steps.prep.outputs.nom }}/
+          retention-days: 30
