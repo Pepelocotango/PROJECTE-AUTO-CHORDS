@@ -127,8 +127,8 @@ També hi ha llançador de desktop:
 - PyQt5
 - pyqtgraph
 - numpy < 2
-- dependències locals de Chordino / Segmentino / **qm-vamp-plugins** / Vamp
-  (tots compilats o desats dins el projecte, sense instal·lar res al sistema)
+- dependències locals de **Chordino** (`nnls-chroma`) i **qm-vamp-plugins**
+  (Queen Mary), totes dins el projecte — **sense instal·lar res al sistema**
 - **ffmpeg/ffprobe** (opcional, per importar formats que no siguin WAV)
 
 ## Agraïments i reconeixement a projectes de tercers

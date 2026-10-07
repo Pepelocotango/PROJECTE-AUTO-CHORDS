@@ -8,10 +8,10 @@ Tot en català. Llicència: GPLv3 (vegeu `LICENSE`).
 - Per a l'app: PyQt5 del sistema (`python3-pyqt5`, Qt5).
   ⚠️ Qt6 **no** corre en CPU sense SSE4.2 (com el Q9400): no s'hi pot
   usar PySide6/PyQt6.
-- `sonic-annotator` (al projecte) + **plugins Vamp** a les carpetes
-  `*-local/`: **`nnls-chroma`** (Chordino, acords) · **`segmentino`** ·
-  **`vamp-aubio`** · **`qm-vamp-plugins`** (Queen Mary: tempo/beats/bars/
-  segmenter/key — `docs/QM_VAMP.md`).
+- **plugins Vamp** a les carpetes `*-local/`: **`nnls-chroma`** (Chordino,
+  acords) i **`qm-vamp-plugins`** (Queen Mary: tempo/beats/bars/segmenter/key
+  — `docs/QM_VAMP.md`). El **Segmentino** i l'**aubio** s'han retirat
+  (v0.5): l'estructura la fa el `qm-segmenter` i el BPM el `tempo.py`/`qm`.
 - **`ffmpeg`/`ffprobe`** (al sistema) — opcional, només per importar formats
   que no siguin WAV (`app/ffmpeg.py`).
 

@@ -86,6 +86,15 @@ botó 📍). I els `beats` donen la graella real de pulsacions.
 - ✅ **Motor d'estructura**: **`qm` (qm-segmenter) per defecte**, o
   `segmentino`. Mateix format de sortida → `fer_abc` igual.
 
+## El Segmentino i l'aubio s'han RETIRAT (v0.5)
+
+- **Segmentino** → substituït pel **`qm-segmenter`** (troba repeticions; a
+  més, el Segmentino fallava amb el nostre host Vamp).
+- **aubio** (`vamp-aubio`) → retirat: el seu beat tracker donava BPM erronis
+  (139,7 pel tema de 101). El BPM el fan el `tempo.py` + el `qm-tempotracker`.
+- Així el projecte només depèn de **2 conjunts de plugins**: `nnls-chroma`
+  (Chordino) i `qm-vamp-plugins`.
+
 ## Pendents / idees
 - **Tonalitat** amb `qm-keydetector` (mostrar-la).
 - Afinar el qm-segmenter (conservar les seves etiquetes de repetició).

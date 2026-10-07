@@ -281,8 +281,8 @@ Mary (els d'Audacity/Mixxx), **sense AVX**.
 
 | Pestanya | Motor per defecte | Altre motor |
 |----------|-------------------|-------------|
-| **BPM** | `nostre` (`app/tempo.py`) | `qm`, `aubio`, **`consens`** |
-| **Estructura** | **`qm`** (qm-segmenter) | `segmentino` |
+| **BPM** | `nostre` (`app/tempo.py`) | `qm`, **`consens`** |
+| **Estructura** | **`qm`** (qm-segmenter) — únic motor | — |
 
 El **`🧭`** (i Analitza ▸ «Detecta el compàs 1 automàticament») usa
 `qm-onsetdetector` + `qm-barbeattracker` per posar l'offset sol (al tema de

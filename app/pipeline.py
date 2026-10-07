@@ -17,9 +17,6 @@ SONIC = os.path.join(PROJ_DIR, "sonic-annotator")
 ACORDS_PY = os.path.join(PROJ_DIR, "acords_a_live.py")
 VAMP_DIRS = [
     os.path.join(PROJ_DIR, "nnls-chroma-linux64-local"),
-    os.path.join(PROJ_DIR, "segmentino-linux64-local"),
-    # tempo/beats via aubio (compilat localment; vegeu docs/AUBIO_TEMPO.md)
-    os.path.join(PROJ_DIR, "vamp-aubio-linux64-local"),
     # Queen Mary (qm-tempotracker: beat+tempo, qm-segmenter, qm-keydetector...)
     # Compilat localment amb -msse -msse2 (sense AVX). Vegeu docs/QM_VAMP.md
     os.path.join(PROJ_DIR, "qm-vamp-plugins-linux64-local"),
@@ -85,7 +82,7 @@ def wav_info(path):
 # Transform Vamp per defecte de cada deteccio (vegeu docs/AUTODETECCIO_OPCIONS.md)
 TRANSFORMS = {
     "chords": "vamp:nnls-chroma:chordino:simplechord",
-    "structure": "vamp:segmentino:segmentino:segmentation",
+    "structure": "vamp:qm-vamp-plugins:qm-segmenter:segmentation",
 }
 
 
@@ -152,8 +149,8 @@ def extract_chords(wav_path, out_csv, log, params=None):
              "--csv-omit-filename", wav_path], log)
 
 
-MOTORS_BPM = ("nostre", "qm", "aubio", "consens")
-MOTORS_ESTRUCTURA = ("segmentino", "qm")
+MOTORS_BPM = ("nostre", "qm", "consens")
+MOTORS_ESTRUCTURA = ("qm",)
 
 
 def _qm_valors(transform, wav_path, col=1, timeout=1800):
@@ -199,8 +196,6 @@ def detecta_bpm(wav_path, log, bpm_min=None, bpm_max=None, preferit=None,
     """
     if motor == "qm":
         return detecta_bpm_qm(wav_path, log)
-    if motor == "aubio":
-        return detecta_bpm_aubio(wav_path, log)
     if motor == "consens":
         return _bpm_consens(wav_path, log, bpm_min, bpm_max, preferit)
     kw = {}
@@ -296,55 +291,24 @@ def detecta_compas1(wav_path, log=None):
     return compas
 
 
-def detecta_bpm_aubio(wav_path, log):
-    """[antic] Estima el BPM amb el plugin Vamp d'aubio (beats + mediana).
-
-    Es conserva per referencia/comparacio. El beat tracker d'aubio pot
-    enganxar-se a una subdivision en parts del tema.
-    """
-    import statistics
-    import tempfile
-    tmp = tempfile.mkdtemp(prefix="ac_bpm_")
-    out = os.path.join(tmp, "beats.csv")
-    try:
-        run([SONIC, "-d", "vamp:vamp-aubio:aubiotempo:beats",
-             "-w", "csv", "--csv-one-file", out, "--csv-force",
-             "--csv-omit-filename", wav_path], log)
-        beats = []
-        with open(out, newline="", encoding="utf-8") as f:
-            for fila in csv.reader(f):
-                # agafem l'ultim camp numeric de cada fila (robust a formats)
-                for camp in reversed(fila):
-                    try:
-                        beats.append(float(camp))
-                        break
-                    except (ValueError, TypeError):
-                        continue
-        iv = [b - a for a, b in zip(beats, beats[1:])]
-        iv = [x for x in iv if 0.2 < x < 2.0]     # descarta outliers
-        if len(iv) < 4:
-            log("BPM: pocs beats detectats")
-            return None
-        med = statistics.median(iv)
-        bpm = 60.0 / med if med > 0 else None
-        log(f"BPM detectat: {bpm:.1f} ({len(beats)} pulsacions, "
-            f"interval mediana {med:.3f}s)")
-        return bpm
-    except Exception as e:  # noqa: BLE001
-        log(f"BPM: no s'ha pogut detectar ({e})")
-        return None
-
-
 def extract_segments(wav_path, out_csv, log, params=None, motor="qm"):
-    """Estructura via Segmentino (per defecte) o qm-segmenter.
+    """Estructura via qm-segmenter (unic motor des de v0.5).
 
-    Els dos donen el mateix format (inici, durada, index, etiqueta), aixi que
-    la resta del pipeline (fer_abc) funciona igual.
+    El Segmentino s'ha retirat: el qm-segmenter el substitueix i, a mes, troba
+    les repeticions (A...A). Format (inici, durada, index, etiqueta) -> fer_abc.
     """
     if motor == "qm":
         return run([SONIC, "-d", QM["segments"], "-w", "csv",
                     "--csv-one-file", out_csv, "--csv-force",
                     "--csv-omit-filename", wav_path], log)
+    # (compat) qualsevol altre valor cau al qm
+    return run([SONIC, "-d", QM["segments"], "-w", "csv",
+                "--csv-one-file", out_csv, "--csv-force",
+                "--csv-omit-filename", wav_path], log)
+
+
+def _extract_segments_segmentino(wav_path, out_csv, log, params=None):
+    """[historic] Segmentino. Retirat de la UI; es conserva per referencia."""
     if params:
         import tempfile
         ttl = os.path.join(tempfile.mkdtemp(prefix="ac_ttl_"), "seg.ttl")

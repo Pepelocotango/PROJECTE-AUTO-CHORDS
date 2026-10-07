@@ -230,7 +230,7 @@ class Finestra(QMainWindow):
         self.offset.setToolTip("Offset del compàs 1, en segons.")
         self.b_detecta = QPushButton("🎯 Detecta")
         self.b_detecta.setObjectName("secundari")
-        self.b_detecta.setToolTip("Detecta el BPM automàticament amb aubio.")
+        self.b_detecta.setToolTip("Detecta el BPM automàticament (motor triable).")
         self.b_detecta.clicked.connect(lambda: self._detecta_bpm())
         for camp in (self.bpm, self.bpb, self.offset):
             camp.editingFinished.connect(self._aplica_parametres_temps)

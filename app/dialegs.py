@@ -154,7 +154,6 @@ class DialegOpcions(QDialog):
         c = QComboBox()
         for m, lbl in (("nostre", "Nostre (tempo.py)"),
                        ("qm", "Queen Mary (qm-tempotracker)"),
-                       ("aubio", "aubio (antic)"),
                        ("consens", "Consens (nostre + qm)")):
             c.addItem(lbl, m)
         i = c.findData(d.get("motor", "nostre"))
@@ -244,23 +243,13 @@ class DialegOpcions(QDialog):
         f = QFormLayout(w)
         self._controls["structure"] = {}
         d = val or DEFECTES["structure"]
-        c = QComboBox()
-        for m, lbl in (("qm", "Queen Mary (qm-segmenter)"),
-                       ("segmentino", "Segmentino")):
-            c.addItem(lbl, m)
-        i = c.findData(d.get("motor", "segmentino"))
-        c.setCurrentIndex(i if i >= 0 else 0)
-        c.setToolTip("Motor d'estructura. El qm-segmenter (per defecte) troba "
-                     "les repeticions (A...A); el Segmentino fa blocs més amples.")
-        self._controls["structure"]["motor"] = c
-        f.addRow(QLabel("Motor d'estructura"), c)
         s = _spin(0, 120, 0.5, d.get("durada_min", 0.0), 1)
         self._controls["structure"]["durada_min"] = s
         f.addRow(QLabel("Durada mínima d'una secció (s)"), s)
         c = _checkbox(d.get("fusiona_iguals", True))
         self._controls["structure"]["fusiona_iguals"] = c
         f.addRow(QLabel("Fusiona trossos consecutius iguals"), c)
-        info = QLabel("El Segmentino no té paràmetres ajustables: això "
+        info = QLabel("El qm-segmenter no té paràmetres ajustables: això "
                       "neteja el seu resultat.")
         info.setWordWrap(True)
         info.setStyleSheet("color:#9aa6b8; font-size:11px;")
@@ -282,8 +271,6 @@ class DialegOpcions(QDialog):
                 w.setValue(float(p["defecte"]))
         self._controls["bpm"]["motor"].setCurrentIndex(
             self._controls["bpm"]["motor"].findData("nostre"))
-        self._controls["structure"]["motor"].setCurrentIndex(
-            self._controls["structure"]["motor"].findData("qm"))
         self._controls["structure"]["durada_min"].setValue(0.0)
         self._controls["structure"]["fusiona_iguals"].setChecked(True)
         cl = self._controls["clean"]
@@ -309,7 +296,7 @@ class DialegOpcions(QDialog):
             else:
                 chords[pid] = round(float(w.value()), 3)
         est = {
-            "motor": self._controls["structure"]["motor"].currentData(),
+            "motor": "qm",
             "durada_min": round(float(
                 self._controls["structure"]["durada_min"].value()), 2),
             "fusiona_iguals": bool(

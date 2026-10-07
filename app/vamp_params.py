@@ -17,7 +17,9 @@ from . import pipeline
 # Nom del plugin (dins el .n3) per a cada transform que fem servir.
 PLUGINS = {
     "chords": ("nnls-chroma-linux64-local/nnls-chroma.n3", "chordino"),
-    "structure": ("segmentino-linux64-local/segmentino.n3", "segmentino"),
+    # El qm-segmenter no té paràmetres ajustables (es neteja amb postproc).
+    "structure": ("qm-vamp-plugins-linux64-local/qm-vamp-plugins.n3",
+                  "qm-segmenter"),
 }
 
 

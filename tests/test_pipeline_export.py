@@ -1072,6 +1072,15 @@ class Compas1Tests(unittest.TestCase):
                            ("segments", "qm-segmenter:segmentation")):
             self.assertIn(frag, pipeline.QM[clau])
 
+    def test_plugins_unics_restants(self):
+        # només Chordino i Queen Mary: fora el Segmentino i l'aubio
+        dirs = [d for d in os.listdir(pipeline.PROJ_DIR)
+                if d.endswith("-local")]
+        self.assertIn("nnls-chroma-linux64-local", dirs)
+        self.assertIn("qm-vamp-plugins-linux64-local", dirs)
+        self.assertNotIn("segmentino-linux64-local", dirs)
+        self.assertNotIn("vamp-aubio-linux64-local", dirs)
+
     def test_detecta_compas1_retorna_float_o_none(self):
         import tempfile, wave
         import numpy as np
@@ -1469,19 +1478,20 @@ class DialegOpcionsTests(unittest.TestCase):
         self.assertEqual(b["pref_min"], 85)    # plateau del prior
         self.assertEqual(b["motor"], "nostre")
 
-    def test_motors_estructura(self):
+    def test_estructura_nomes_qm(self):
+        # el Segmentino s'ha retirat: l'estructura sempre va amb qm-segmenter
         d = dialegs.DialegOpcions(None)
-        self.assertEqual(d.opcions()["structure"]["motor"], "qm")   # defecte
-        c = d._controls["structure"]["motor"]
-        c.setCurrentIndex(c.findData("segmentino"))
-        self.assertEqual(d.opcions()["structure"]["motor"], "segmentino")
+        self.assertEqual(d.opcions()["structure"]["motor"], "qm")
+        self.assertEqual(pipeline.MOTORS_ESTRUCTURA, ("qm",))
 
     def test_motors_bpm(self):
         d = dialegs.DialegOpcions(None)
         c = d._controls["bpm"]["motor"]
-        for m in ("nostre", "qm", "aubio", "consens"):
+        for m in ("nostre", "qm", "consens"):
             c.setCurrentIndex(c.findData(m))
             self.assertEqual(d.opcions()["bpm"]["motor"], m)
+        # aubio s'ha retirat
+        self.assertEqual(pipeline.MOTORS_BPM, ("nostre", "qm", "consens"))
 
     def test_restaura_per_defecte(self):
         d = dialegs.DialegOpcions(None)

@@ -3,6 +3,17 @@
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
 Versions amb tag git (`v0.1-punt-control` … `v0.4.0-checkpoint`).
 
+## [No publicat]
+
+### Canviat
+- **Retirats el Segmentino i l'aubio**: l'**estructura** la fa només el
+  **`qm-segmenter`** (l'única cosa que hi havia al diàleg) i el **BPM** el
+  fan el `tempo.py` / `qm-tempotracker` / **consens**. Motius: el Segmentino
+  fallava amb el nostre host Vamp i l'aubio donava BPM erronis (139,7 pel
+  101). El projecte passa a dependre de **2 conjunts de plugins**:
+  `nnls-chroma` (Chordino) i `qm-vamp-plugins`. Combo de motor d'estructura
+  tret del diàleg; opcions `aubio`/`segmentino` eliminades. **166 tests.**
+
 ## [0.4.0] — 2026-10-07
 
 Segona tongada del dia: **coherència del play** (cache de mono, volum/mute en
