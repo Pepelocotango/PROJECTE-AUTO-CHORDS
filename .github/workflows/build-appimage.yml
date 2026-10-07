@@ -1,4 +1,4 @@
-noname: Compilar AppImage (Linux)
+name: Compilar AppImage (Linux)
 
 # Manual (workflow_dispatch), com al GEP. Quan el projecte sigui a GitHub,
 # aquest workflow construeix l'AppImage d'AUTO CHORDS i el puja com a artefacte.
