@@ -6,6 +6,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
 ## [No publicat]
 
 ### Arreglat
+- **Coherència del play (2/2)**:
+  - **Latència baixa** del reproductor (`paplay --latency-msec=100`): el so
+    arrenca abans i el **cursor quadra millor amb el que se sent**.
+  - **No es talla la cua**: al final ja no s'atura pel rellotge de paret
+    (`t >= durada`); s'espera l'**EOF del reproductor** (que va per darrere
+    per la latència). Només es para si el rellotge se'n va >15 s (encallat).
+  - **Avisa si el reproductor mor per error** (abans s'aturava en silenci).
+  - **Volum/mute EN VIU**: el guany l'aplica el **fil d'alimentació** tros a
+    tros (llegint `self.vol`/`self.mut`), així **canviar-los no reinicia** el
+    reproductor ni fa cap punxada. `_mono_bytes()` ara és el mono pur (cacat
+    un sol cop per fitxer). **5 tests nous**.
 - **Coherència del play (1/2)**:
   - **`_mono_bytes()` cachejat**: convertir l'estereo a mono + copiar trigava
     **~450 ms** en temes llargs i es cridava a cada play/seek/reinici

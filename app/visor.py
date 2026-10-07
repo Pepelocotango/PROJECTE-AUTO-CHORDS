@@ -632,8 +632,12 @@ class Visor(QMainWindow):
     def _tria_player(self):
         sr = self.audio["sr"]
         if shutil.which("paplay"):
+            # --latency-msec=100 baixa el buffer del servidor (per defecte en
+            # demana molt mes) -> el so arrenca abans i el cursor de paret
+            # quadra millor amb el que se sent.
             return ("paplay", ["--raw", "--format=s16le",
-                               f"--rate={sr}", "--channels=1"])
+                               f"--rate={sr}", "--channels=1",
+                               "--latency-msec=100"])
         if shutil.which("aplay"):
             return ("aplay", ["--format=S16_LE", f"--rate={sr}",
                               "--channels=1", "-"])
@@ -641,26 +645,20 @@ class Visor(QMainWindow):
                            "-ar", str(sr), "-ac", "1", "-i", "-"])
 
     def _mono_bytes(self):
-        """Mono 16 bits a punt per al reproductor (amb mute/volum aplicats).
+        """Mono 16 bits SENSE guany, cacat (es calcula un sol cop per fitxer).
 
-        CACAT: convertir l'estereo a mono + copiar triga ~450 ms en temes
-        llargs i es cridava a cada play/seek/reinici (congelava la GUI). El
-        resultat només depèn de (mute, volum), així que es guarda i es
-        recalcula només quan aquests canvien.
+        Convertir l'estereo a mono + copiar triga ~450 ms en temes llargs i
+        es cridava a cada play/seek/reinici (congelava la GUI). Ara es guarda.
+        El **volum/mute NO s'apliquen aquí**: els aplica en directe el fil
+        d'alimentació (`_alimenta`), així es poden canviar SENSE reiniciar.
         """
-        clau = (bool(self.mut), round(float(self.vol), 4))
-        if (getattr(self, "_mono_cache", None) is not None
-                and getattr(self, "_mono_cache_clau", None) == clau):
+        if getattr(self, "_mono_cache", None) is not None:
             return self._mono_cache
         mono = np.frombuffer(self.audio["raw"], dtype=np.int16)
         ch = self.audio["canals"]
         if ch > 1:
             mono = mono.reshape(-1, ch).mean(axis=1).astype(np.int16)
-        g = 0.0 if self.mut else self.vol
-        if g != 1.0:
-            mono = np.clip(mono.astype(np.float32) * g, -32768, 32767).astype(np.int16)
         self._mono_cache = mono.tobytes()
-        self._mono_cache_clau = clau
         return self._mono_cache
 
     # transports
@@ -716,11 +714,9 @@ class Visor(QMainWindow):
         self.timeline.zoom_full()
 
     def _canvia_volum(self, v):
+        # S'aplica en directe al fil d'alimentacio (vegeu _alimenta): NO
+        # cal reiniciar el reproductor, aixi canviar el volum no fa cap tall.
         self.vol = v / 100.0
-        if self.sona:  # s'aplica al proper tros (reinicia des d'aquí)
-            pos = self.pos
-            self._atura_proc()
-            self._engega_des_de(pos)
 
     def metro_disponible(self):
         """El metrònom només té sentit amb graella (mode BPM · compàs)."""
@@ -756,10 +752,7 @@ class Visor(QMainWindow):
         if hasattr(self, "b_mut") and self.b_mut.isChecked() != self.mut:
             self.b_mut.setChecked(self.mut)
         self.log(f"mute {'ON' if self.mut else 'OFF'}")
-        if self.sona:
-            pos = self.pos
-            self._atura_proc()
-            self._engega_des_de(pos)
+        # S'aplica en directe al fil d'alimentacio: sense reiniciar.
 
     def commuta_mut(self):
         self.set_mut(not self.mut)
@@ -1432,14 +1425,22 @@ class Visor(QMainWindow):
 
     def _alimenta(self, proc, dades, sess):
         # escriu per trossos; si arriba una sessió nova o el proc mor, plega.
+        # El GUANY (volum/mute) s'aplica AQUI, tros a tros, llegint self.vol/
+        # self.mut cada cop -> es pot canviar volum/mute SENSE reiniciar (el
+        # canvi s'aplica tan aviat com el buffer del servidor es buida).
         try:
             vista = memoryview(dades)
             pas = 65536
             for i in range(0, len(dades), pas):
                 if sess != self._sess or proc.poll() is not None:
                     break
+                tros = vista[i:i + pas]
+                g = 0.0 if self.mut else self.vol
+                if g != 1.0:
+                    a = np.frombuffer(tros, dtype=np.int16).astype(np.float32) * g
+                    tros = np.clip(a, -32768, 32767).astype(np.int16).tobytes()
                 try:
-                    proc.stdin.write(vista[i:i + pas])
+                    proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):
                     break
             try:
@@ -1510,9 +1511,16 @@ class Visor(QMainWindow):
     def _tiquet(self):
         # el cursor avança amb rellotge de paret des de l'inici real
         if self.proc and self.proc.poll() is not None:
-            self.log(f"proc acabat (codi {self.proc.returncode})")
+            codi = self.proc.returncode
             self._mostra_err_player()
-            self.play_stop()  # s'ha acabat el wav
+            if codi not in (0, None):
+                # El reproductor ha mort per error (glitch del servidor, etc.):
+                # ho diem clarament, que abans s'aturava en silenci.
+                self.log(f"⚠️ el reproductor s'ha aturat per un error "
+                         f"(codi {codi}) — el so s'ha tallat")
+            else:
+                self.log("final de la cançó")
+            self.play_stop()
             return
         t = self.t0_pos + (time.monotonic() - self.t0_mono)
         if self.loop_on and self.loop_a is not None and self.loop_b is not None \
@@ -1520,9 +1528,17 @@ class Visor(QMainWindow):
             self.log(f"loop → {self.loop_a:.2f}s")
             self.ves_a(self.loop_a)
             return
-        if t >= self.audio["durada"]:
-            self.play_stop()
-            return
+        fi = float(self.audio["durada"])
+        if t >= fi:
+            # NO aturem pel rellotge de paret: el reproductor te latencia i el
+            # so va per darrere, aixi que aturar aquí tallava la cua. Esperem
+            # que acabi ell (l'EOF de dalt). Nomes parem si el rellotge se'n
+            # va massa lluny -> el reproductor s'ha encallat (xarxa de seguretat).
+            if t >= fi + 15.0:
+                self.log("⚠️ el rellotge va molt mes enlla del final: aturo")
+                self.play_stop()
+                return
+            t = fi
         self.pos = t
         self.timeline.set_position(self.pos, emit=False)
         self.lliscador.setValue(int(t * 100))

@@ -1002,13 +1002,90 @@ class PlayCoherenciaTests(unittest.TestCase):
         self.assertIs(a, b)                 # mateix objecte (cache)
         self.assertLess(dt, 0.01)           # instantani
 
-    def test_mute_invalida_la_cache(self):
+    def test_mono_bytes_no_depen_del_mute(self):
+        # el volum/mute s'apliquen en directe al fil, NO al buffer cacat
         v = self._visor()
         a = v._mono_bytes()
         v.mut = True
-        b = v._mono_bytes()
-        self.assertIsNot(a, b)              # recalculat
-        self.assertNotEqual(a, b)           # silenci (tot zeros) != original
+        self.assertIs(a, v._mono_bytes())
+
+    def test_player_te_latencia_baixa(self):
+        v = self._visor()
+        _pl, args = v._tria_player()
+        if _pl == "paplay":
+            self.assertIn("--latency-msec=100", args)
+
+    def test_alimenta_aplica_el_guany(self):
+        import numpy as np
+
+        class _Buf:
+            def __init__(self):
+                self.dades = bytearray()
+
+            def write(self, b):
+                self.dades += b
+                return len(b)
+
+            def close(self):
+                pass
+
+        class FakeProc:
+            def __init__(self):
+                self.buf = _Buf()
+                self.rc = None
+
+            def poll(self):
+                return self.rc
+
+            @property
+            def stdin(self):
+                return self.buf
+
+        v = self._visor()
+        v._sess = 0
+        tros = v._mono_bytes()[:65536]
+        v.vol = 0.5
+        v.mut = False
+        p1 = FakeProc()
+        v._alimenta(p1, tros, 0)
+        v.vol = 1.0
+        p2 = FakeProc()
+        v._alimenta(p2, tros, 0)
+        a = np.frombuffer(bytes(p1.buf.dades), dtype=np.int16).astype(float)
+        b = np.frombuffer(bytes(p2.buf.dades), dtype=np.int16).astype(float)
+        self.assertGreater(np.abs(b).mean(), 0)
+        self.assertAlmostEqual(np.abs(a).mean() / np.abs(b).mean(), 0.5,
+                               delta=0.05)
+
+    def test_volum_i_mute_no_reinicien(self):
+        v = self._visor()
+        crides = []
+        v._atura_proc = lambda: crides.append("atura")
+        v._engega_des_de = lambda t: crides.append("engega")
+        v.sona = True
+        v._canvia_volum(50)
+        v.set_mut(True)
+        self.assertEqual(crides, [])        # cap reinici
+        self.assertAlmostEqual(v.vol, 0.5, places=3)
+        self.assertTrue(v.mut)
+
+    def test_tiquet_no_talla_la_cua(self):
+        # posicionat just al final, sonant: NO ha d'aturar (espera l'EOF)
+        import time
+        v = self._visor()
+
+        class FakeProc:
+            returncode = None
+
+            def poll(self):
+                return None
+
+        v.proc = FakeProc()
+        v.sona = True
+        v.t0_pos = float(v.audio["durada"])
+        v.t0_mono = time.monotonic()
+        v._tiquet()
+        self.assertTrue(v.sona)             # segueix "sonant"
 
     def test_atura_si_sona(self):
         w = app_main.Finestra()
