@@ -110,3 +110,42 @@ a `.venv/bin/python`, caldria fer-lo apuntar al Python portable).
 - Excloure `.deps/` del paquet portable (198 MB estalviats).
 - `AUTO_CHORDS.sh` que detecti el Python portable si hi és.
 - Documentar el requisit de PipeWire/Pulse + ffmpeg.
+
+
+---
+
+## 6. Flux de treball i cicle de vida (IMPORTANT)
+
+### Regla d'or
+> **El paquet `AUTO_CHORDS_PORTABLE/` NO es toca mai.** És un **artefacte de
+> build**: tot el codi viu al **projecte** (`PROJECTE AUTO CHORDS/`), i el
+> paquet es **regenera** quan cal. Editar-hi res seria feina perduda (la
+> propera regeneració ho esborraria).
+
+### Cicle normal (canviar codi)
+```bash
+cd "PROJECTE AUTO CHORDS"
+# 1) editar el codi, tests, commit
+git add -A && git commit -m "..."
+# 2) regenerar el paquet (germà del projecte)
+./eines/empaqueta_portable.sh          # -> ../AUTO_CHORDS_PORTABLE/
+```
+
+### Dependències del paquet (només cal regenerar-les si falten o s'actualitzen)
+| Eina | Què crea | Quan cal |
+|------|----------|----------|
+| `eines/crea_portable.sh` | `portable/` (CPython + ffmpeg) | 1 cop; o si es vol actualitzar el Python/ffmpeg |
+| `eines/compila_vamp_host.sh` | `vamp_host_local` | 1 cop; o si canvia `eines/vamp_host.cpp` |
+| `eines/empaqueta_portable.sh` | `../AUTO_CHORDS_PORTABLE/` | **cada vegada** que es vol el paquet al dia |
+
+`empaqueta_portable.sh` **comprova** que existeixin `portable/python` i
+`vamp_host_local`, i **refusa** un destí dins del projecte (bucle de còpia).
+
+### Què va al paquet i què no
+| Inclòs | Exclòs |
+|--------|--------|
+| `app/`, `eines/`, `docs/`, `*.md`, `*.py` de l'arrel | `.deps/` (només build) |
+| `nnls-chroma-linux64-local/`, `qm-vamp-plugins-linux64-local/` | `.venv/` (dev/tests) |
+| `vamp_host_local`, `sonic-annotator` (reserva) | `.git/`, `tauri-ui/`, `temp/` |
+| **`portable/`** (Python + ffmpeg) | `__pycache__/`, logs, `opcions_detecta.json` |
+| `AUTO_CHORDS.sh` (llançador), `LLEGEIX-ME.txt` (generat) | el propi paquet (germà) |

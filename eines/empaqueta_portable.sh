@@ -47,5 +47,32 @@ else
     done
 fi
 chmod +x "$DEST/AUTO_CHORDS.sh" "$DEST/vamp_host_local" 2>/dev/null || true
+
+# Nota dins el paquet: NO editar-hi codi.
+cat > "$DEST/LLEGEIX-ME.txt" <<'TXT'
+AUTO CHORDS — PAQUET PORTABLE (generat automaticament)
+======================================================
+
+AQUESTA CARPETA ES UN ARTEFACTE DE BUILD. NO HI EDITIS CODI.
+Qualsevol canvi aquí es perdra a la propera regeneracio.
+
+El codi viu al projecte:
+    ~/0PROJECTES_GitHub/PROJECTE AUTO CHORDS/
+
+Per regenerar aquest paquet:
+    cd "PROJECTE AUTO CHORDS" && ./eines/empaqueta_portable.sh
+
+EXECUTAR L'APP:
+    ./AUTO_CHORDS.sh          (terminal)
+    o doble clic a AUTO_CHORDS.sh (tria "Executa")
+
+REQUISITS per ESCOLTAR: PipeWire o PulseAudio. Sense ells, l'app funciona
+igual (analitzar, editar, exportar); nomes avisa que no pot sonar.
+
+IMPORTAR ALTRES FORMATS (mp3, aif, flac...): ja va inclos (ffmpeg del paquet).
+
+Mes informacio: docs/PORTABILITAT.md dins aquesta carpeta.
+TXT
+
 echo "Fet. Mida: $(du -sh "$DEST" | cut -f1)"
 echo "Per provar:  cd '$DEST' && ./AUTO_CHORDS.sh"
