@@ -371,10 +371,16 @@ class Visor(QMainWindow):
         return float(text.split()[0])
 
     def _omple_llista_ac(self):
+        # Preserva la fila seleccionada: _actualitza_temps() repobla la llista
+        # i, sense aixo, el clear() en perdia la seleccio (bug: clicar una
+        # fila no la deixava ressaltada perque ves_a()->_actualitza_temps()).
+        cur = self.llista_ac.currentRow()
         self.llista_ac.clear()
         for t, c, *_r in self.acords:
             et = self._fmt_compas(t) if self.tempo_fix else f"{t:07.2f}s"
             self.llista_ac.addItem(f"{et}  {c}")
+        if 0 <= cur < self.llista_ac.count():
+            self.llista_ac.setCurrentRow(cur)
 
     def _valida_canvis_acords(self, items):
         if not items:
@@ -1168,6 +1174,7 @@ class Visor(QMainWindow):
         return ordenats
 
     def _actualitza_llista_abc(self):
+        cur = self.llista_ab.currentRow()    # preserva la seleccio (vegeu _omple_llista_ac)
         self.llista_ab.clear()
         for ini, fi, L, fam in self.seccions:
             if self.tempo_fix:
@@ -1177,6 +1184,8 @@ class Visor(QMainWindow):
                 ini_txt = f"{ini:07.2f}s"
                 fi_txt = f"{fi:07.2f}s"
             self.llista_ab.addItem(f"{L} ({fam})  {ini_txt}–{fi_txt}")
+        if 0 <= cur < self.llista_ab.count():
+            self.llista_ab.setCurrentRow(cur)
 
     def _afegeix_seccio(self, ini, fi, lletra=None, fam=None):
         ini = float(ini)

@@ -968,6 +968,60 @@ class OffsetTests(unittest.TestCase):
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
 
 
+class LlistaSeleccioTests(unittest.TestCase):
+    """Clicar una fila de les llistes l'ha de deixar ressaltada.
+
+    Regressio: _actualitza_temps() (cridada per ves_a) repobla les llistes
+    amb clear() i abans en perdia la seleccio.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n4.0,Am\n8.0,G\n")
+        open(os.path.join(ac, "estructura_ABC.csv"), "w").write(
+            "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
+            "0.00,4.00,4.00,A,N,1,1\n4.00,20.00,16.00,B,B,1,1\n")
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        window.bpm.setText("101"); window._aplica_parametres_temps()
+        return window
+
+    def test_clic_acord_deixa_fila_ressaltada(self):
+        w = self._finestra(); v = w.visor_ref
+        v._salt_acord(v.llista_ac.item(1))
+        self.assertEqual(v.llista_ac.currentRow(), 1)
+        self.assertTrue(v.llista_ac.item(1).isSelected())
+        self.assertEqual(v.timeline._sel, ("chord", 1))
+        w.close()
+
+    def test_clic_seccio_deixa_fila_ressaltada(self):
+        w = self._finestra(); v = w.visor_ref
+        v._salt_seccio(v.llista_ab.item(1))
+        self.assertEqual(v.llista_ab.currentRow(), 1)
+        self.assertTrue(v.llista_ab.item(1).isSelected())
+        self.assertEqual(v.timeline._sel, ("section", 1))
+        w.close()
+
+    def test_canvi_bpm_conserva_seleccio(self):
+        w = self._finestra(); v = w.visor_ref
+        v._salt_acord(v.llista_ac.item(1))
+        w.bpm.setText("120"); w._aplica_parametres_temps()
+        self.assertEqual(v.llista_ac.currentRow(), 1)
+        w.close()
+
+
 class OffsetBotoCursorTests(unittest.TestCase):
     """Boto a Offset: llegeix el cursor vermell i hi posa el compas 1."""
 

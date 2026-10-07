@@ -5,6 +5,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Arreglat
+- **Selecció de les llistes**: clicar una fila d'acords o de seccions ara la
+  deixa **ressaltada** (abans el carril sí que quedava seleccionat però la
+  llista no). Causa: `ves_a()` → `_actualitza_temps()` repoblava les llistes
+  amb `clear()` i en perdia la selecció. Ara `_omple_llista_ac` i
+  `_actualitza_llista_abc` **preserven la fila actual** en repoblar, així que
+  la selecció també sobreviu als canvis de BPM/offset/compàs. **3 tests nous**
+  (`LlistaSeleccioTests`).
+
 ### Afegit
 - **Botó `📍` a l'Offset**: llegeix la posició del **cursor vermell** i hi posa
   el **compàs 1** (offset) a l'instant, actualitzant els dos camps
