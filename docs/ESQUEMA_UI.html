@@ -2,7 +2,7 @@
 <html lang="ca">
 <head>
 <meta charset="utf-8">
-<title>Auto Chords — Esquema visual de la GUI (v0.2.2)</title>
+<title>Auto Chords — Esquema visual de la GUI (v0.2.2 + canvis no publicats)</title>
 <style>
   :root{
     --ruler-bg:#10131a; --wf-bg:#0f1218; --laneA:#1a1d23; --laneB:#15181d;
@@ -13,6 +13,7 @@
     --cursor:#ff6b6b; --guide:#ffd166; --scene:#0f0f10;
     --grid-m:#55677f; --grid-b:#3d4c60; --grid-s:#303a48;
     --shell:#20242c; --txt:#e8edf5; --muted:#9aa6b8; --accent:#5b8dd6;
+    --btn-base:#2a2c30; --btn-actiu:#2563eb; --btn-groc:#ffd166; --btn-principal:#ffffff;
   }
   *{box-sizing:border-box}
   body{margin:0;padding:22px;background:#15181d;color:var(--txt);
@@ -38,7 +39,8 @@
     gap:5px;flex-wrap:wrap;border-bottom:1px solid #3a4150;font-size:11.5px}
   .btn{background:#313846;border:1px solid #47505f;color:var(--txt);
     border-radius:5px;padding:4px 9px;font-size:11.5px;font-weight:600;white-space:nowrap}
-  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.pri{background:var(--btn-principal);border-color:#b8bec8;color:#0f0f10;font-weight:700}
+  .btn.actiu{background:var(--btn-actiu);border-color:#1e40af;color:#fff;font-weight:700}
   .btn.on{background:#ffd166;border-color:#ffd166;color:#000}
   .btn.dis{background:#2a2e36;border-color:#3a4150;color:#6b7484}
   .camp{background:#12151b;border:1px solid #3a4150;color:var(--txt);
@@ -158,12 +160,12 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
   <div class="toolbar">
     <span class="btn">Obre…</span>
     <span style="color:#9aa6b8">Temps:</span>
-    <span class="btn on">BPM · compàs</span>
+    <span class="btn actiu">BPM · compàs</span>
     <span class="btn">Lliure (hh:mm:ss)</span>
     <span style="color:#9aa6b8">BPM:</span><span class="camp">101</span>
-    <span class="btn">🎯 Detecta</span>
+    <span class="btn">🎯 Detecta</span><span class="btn">TAP</span>
     <span style="color:#9aa6b8">Compàs:</span><span class="camp">4</span>
-    <span style="color:#9aa6b8">Offset:</span><span class="camp">0.0</span>
+    <span style="color:#9aa6b8">Offset:</span><span class="camp">0.0</span><span class="btn">📍</span>
     <span style="color:#9aa6b8">≈</span><span class="camp">1.1</span>
     <span class="chk"><i>✓</i>Inclou estructura</span>
     <span class="btn pri">Analitza</span>
@@ -172,10 +174,10 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
 
   <!-- BARRA 2: transport -->
   <div class="toolbar">
-    <span class="btn pri">▶ Escolta</span>
-    <span class="btn on">⏹</span>
+    <span class="btn">▶ / ⏸</span>
+    <span class="btn">⏹</span>
     <span class="btn">−10s</span><span class="btn">+10s</span>
-    <span class="btn">A⟨</span><span class="btn">⟩B</span><span class="btn">🔁</span>
+    <span class="btn">A⟨</span><span class="btn">⟩B</span><span class="btn actiu">🔁</span>
     <span class="btn">🔍−</span><span class="btn">🔍+</span><span class="btn">Tot</span>
     <span class="btn on">🔇</span>
     <span class="btn on">🥁</span>
@@ -390,5 +392,18 @@ Mides: <code>RULER_H=26</code> · <code>WAVEFORM_H=170</code> ·
 colors a <code>app/theme.py</code>.
 </p>
 
+  <h2>Paleta dels botons (ences / apagat)</h2>
+  <p class="sub">Els botons commutables mostren l'estat amb el color.</p>
+  <div class="toolbar">
+    <span class="btn">apagat (gris «Obre…»)</span>
+    <span class="btn actiu">actiu (blau)</span>
+    <span class="btn on">mute / metrònom actius (groc)</span>
+    <span class="btn pri">acció principal (blanc: Analitza)</span>
+    <span class="btn dis">deshabilitat</span>
+  </div>
+  <p class="sub">Regla: <code>QPushButton:checked</code> → blau;
+     <code>#metro:checked, #mute:checked</code> → groc.
+     La icona de transport és <b>▶</b> aturat / <b>⏸</b> sonant (sense text).
+     Vegeu <code>app/theme.py</code> (ACTIU / ACTIU_GROC) i <code>docs/ESQUEMA_UI.md</code> §5.1.</p>
 </body>
 </html>

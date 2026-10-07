@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900"
      font-family="system-ui,Segoe UI,Roboto,sans-serif">
-  <title>Auto Chords — Esquema visual de la GUI (v0.2.2)</title>
+  <title>Auto Chords — Esquema visual de la GUI (v0.2.2 + canvis no publicats)</title>
   <desc>Finestra única amb el visor al centre, dues barres d'eines, llistes,
         dock Log+Informacio i barra d'estat. Colors i mides reals.</desc>
   <defs>
@@ -39,8 +39,8 @@
   <rect x="22" y="79" width="66" height="20" rx="5" fill="#313846" stroke="#47505f"/>
   <text x="38" y="93" fill="#e8edf5" font-size="11" font-weight="700">Obre…</text>
   <text x="96" y="93" fill="#9aa6b8" font-size="11">Temps:</text>
-  <rect x="292" y="79" width="90" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
-  <text x="302" y="93" fill="#000" font-size="11" font-weight="700">BPM · compàs</text>
+  <rect x="292" y="79" width="90" height="20" rx="5" fill="#2563eb" stroke="#1e40af"/>
+  <text x="302" y="93" fill="#fff" font-size="11" font-weight="700">BPM · compàs</text>
   <rect x="388" y="79" width="118" height="20" rx="5" fill="#313846" stroke="#47505f"/>
   <text x="398" y="93" fill="#e8edf5" font-size="11" font-weight="700">Lliure (hh:mm:ss)</text>
   <text x="518" y="93" fill="#9aa6b8" font-size="11">BPM:</text>
@@ -68,8 +68,8 @@
   <!-- ============ BARRA 2 (transport) ============ -->
   <rect x="12" y="104" width="1416" height="30" fill="#212630"/>
   <line x1="12" y1="134" x2="1428" y2="134" stroke="#3a4150"/>
-  <rect x="22" y="109" width="88" height="20" rx="5" fill="#5b8dd6" stroke="#5b8dd6"/>
-  <text x="36" y="123" fill="#fff" font-size="11" font-weight="700">▶ Escolta</text>
+  <rect x="22" y="109" width="40" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="38" y="123" fill="#e8edf5" font-size="11" font-weight="700">▶ / ⏸</text>
   <rect x="116" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
   <text x="127" y="123" fill="#000" font-size="11" font-weight="700">⏹</text>
   <rect x="156" y="109" width="48" height="20" rx="5" fill="#313846" stroke="#47505f"/>
@@ -80,8 +80,8 @@
   <text x="278" y="123" fill="#e8edf5" font-size="11" font-weight="700">A⟨</text>
   <rect x="312" y="109" width="40" height="20" rx="5" fill="#313846" stroke="#47505f"/>
   <text x="324" y="123" fill="#e8edf5" font-size="11" font-weight="700">⟩B</text>
-  <rect x="358" y="109" width="40" height="20" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="372" y="123" fill="#e8edf5" font-size="11" font-weight="700">🔁</text>
+  <rect x="358" y="109" width="40" height="20" rx="5" fill="#2563eb" stroke="#1e40af"/>
+  <text x="372" y="123" fill="#fff" font-size="11" font-weight="700">🔁</text>
   <rect x="410" y="109" width="44" height="20" rx="5" fill="#313846" stroke="#47505f"/>
   <text x="420" y="123" fill="#e8edf5" font-size="11" font-weight="700">🔍−</text>
   <rect x="460" y="109" width="44" height="20" rx="5" fill="#313846" stroke="#47505f"/>
@@ -313,6 +313,11 @@
   <rect x="1100" y="736" width="14" height="14" rx="3" fill="#ff6b6b"/><text x="1120" y="748" fill="#9aa6b8" font-size="11">cursor</text>
   <rect x="1170" y="736" width="14" height="14" rx="3" fill="#ffd166"/><text x="1190" y="748" fill="#9aa6b8" font-size="11">loop/guia/metro ON</text>
   <rect x="800" y="758" width="14" height="14" rx="3" fill="#8ab4f8"/><text x="820" y="770" fill="#9aa6b8" font-size="11">ona</text>
-  <text x="800" y="796" fill="#6f7a8c" font-size="10.5">Mides: RULER_H=26 · WAVEFORM_H=170 · LANE_H=54 · TOTAL_H=196 px</text>
+  <text x="800" y="796" fill="#9aa6b8" font-size="11">Paleta botons (estat):</text>
+  <rect x="950" y="785" width="14" height="14" rx="3" fill="#313846" stroke="#47505f"/><text x="970" y="797" fill="#9aa6b8" font-size="11">apagat (gris «Obre…»)</text>
+  <rect x="1120" y="785" width="14" height="14" rx="3" fill="#2563eb"/><text x="1140" y="797" fill="#9aa6b8" font-size="11">actiu (blau)</text>
+  <rect x="800" y="812" width="14" height="14" rx="3" fill="#ffd166"/><text x="820" y="824" fill="#9aa6b8" font-size="11">mute/metrònom actius (groc)</text>
+  <rect x="990" y="812" width="14" height="14" rx="3" fill="#ffffff"/><text x="1010" y="824" fill="#9aa6b8" font-size="11">acció principal (blanc: Analitza)</text>
+  <text x="800" y="842" fill="#6f7a8c" font-size="10.5">Mides: RULER_H=26 · WAVEFORM_H=170 · LANE_H=54 · TOTAL_H=196 px</text>
   <text x="800" y="814" fill="#6f7a8c" font-size="10.5">x = _x_offset + (t − _view_left) × _pps  (coordenades unificades)</text>
 </svg>

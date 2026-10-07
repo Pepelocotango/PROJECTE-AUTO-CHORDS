@@ -2,8 +2,9 @@
 
 > Document de referència de la UI (PyQt5). Noms que fa servir el codi i
 > noms «humans» de cada zona, mides reals i interaccions.
-> **Actualitzat: 2026-10-06 · v0.2.2** (GUI reordenada: timeline al centre,
-> barres d'eines, metrònom, count-in, caixa d'informació).
+> **Actualitzat: 2026-10-07 · v0.2.2 + canvis no publicats** (GUI reordenada:
+> timeline al centre, barres d'eines, franja Editor, metrònom, count-in,
+> caixa d'informació, tap tempo i paleta de botons unificada).
 
 L'app és **una sola finestra** (`Finestra`, `app/main.py`) amb el **visor**
 (`Visor`, `app/visor.py`) **com a widget central**. Ja no hi ha formulari
@@ -19,14 +20,14 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [Obre…] Temps:[BPM·compàs][Lliure] BPM:[101] 🎯[Detecta] Compàs:[4]         │  ← BARRA 1
-│   Offset:[0.0] ≈ [1.1] ☑ Inclou estructura   [Analitza]   [Exporta]        │     (treball)
+│ [Obre…] Temps:[BPM·compàs][Lliure] BPM:[101] 🎯[Detecta] [TAP] Compàs:[4]   │  ← BARRA 1
+│   Offset:[0.0] [📍] ≈[1.1] ☑ Inclou estructura   [Analitza]   [Exporta]     │     (treball)
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [▶ Escolta] [⏹] [−10s] [+10s]  [A⟨] [⟩B] [🔁]  [🔍−] [🔍+] [Tot]  [🔇] [🥁] [▬▬●▬] │  ← BARRA 2
+│ [▶/⏸] [⏹] [−10s] [+10s]  [A⟨] [⟩B] [🔁]  [🔍−] [🔍+] [Tot]  [🔇] [🥁] [▬▬●] │  ← BARRA 2
 ├────────────────────────────────────────────────────────────────────────────┤     (transport)
 │                                                                              │
 │                          E L   V I S O R                                    │  ← CENTRAL
-│   (vegeu §1: regle · ona · carrils · llistes · lliscador)                   │
+│   (vegeu §1: regle · ona · carrils · franja EDITOR · llistes · lliscador)   │
 │                                                                              │
 ├────────────────────────────────────────────────────────────────────────────┤
 │ ┌─ Log · Informació ───────────────────────────────────────────────────────┐ │  ← DOCK (baix)
@@ -44,14 +45,17 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 | ⓪ | `Finestra` | finestra principal | `QMainWindow` |
 | — | `self.offset` · `self.offset_cb` | **dos camps d'offset** (segons · compàs.beat) | `QLineEdit` |
 | — | `self.b_obre` | **Obre…** | `QPushButton` |
-| — | `self.b_exec` | **Analitza** (F5) | `QPushButton` |
+| — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_export` | **Exporta** (Ctrl+E) | `QPushButton` |
-| — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / Lliure** | `QPushButton` (2 estats) |
+| — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / Lliure** | `QPushButton` (checkable) |
 | — | `self.bpm` · `self.bpb` · `self.offset` · `self.offset_cb` | **BPM**, **Compàs**, **Offset (s)**, **≈ C.B** | `QLineEdit` |
-| — | `self.b_detecta` | **🎯 Detecta** | `QPushButton` |
+| — | `self.b_detecta` | **🎯 Detecta** (F5? no; vegeu F5=Analitza) | `QPushButton` |
+| — | `self.b_tap` | **TAP** (tecla **T**) | `QPushButton` |
+| — | `self.b_offset_cursor` | **📍** → compàs 1 al cursor | `QPushButton` |
 | — | `self.amb_est` | **Inclou estructura** | `QCheckBox` |
 | — | `self.tb_loop` · `self.tb_mut` | **🔁 loop** · **🔇 mute** (barra) | `QPushButton` (checkable) |
 | — | `self.b_metro` · `self.vol_metro` | **🥁 metrònom** · volum del clic | `QPushButton` · `QSlider` |
+| — | `self.b_play_tb` | **▶ / ⏸** transport (icona commutable) | `QPushButton` |
 | — | `self.barra` | **barra de progrés** | `QProgressBar` (a la status) |
 | — | `self.log` · `self.info_box` | **log** · **caixa d'informació «live»** | `QTextEdit` ×2 |
 | — | `self.log_dock` | dock **«Log · Informació»** (a baix) | `QDockWidget` |
@@ -60,14 +64,26 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (ordre del flux) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · 🎯 Detecta · Compàs · Offset (s) · ≈ C.B → **Inclou estructura** → **Analitza** → **Exporta** |
-| **Transport** | `▶ Escolta` · `⏹` · `−10s` · `+10s` · `A⟨` · `⟩B` · `🔁` · `🔍−` · `🔍+` · `Tot` · `🔇` · `🥁` · volum del clic |
+| **Treball** (ordre del flux) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · 🎯 Detecta · **TAP** · Compàs · Offset (s) · **📍** · ≈ C.B → **Inclou estructura** → **Analitza** → **Exporta** |
+| **Transport** | **▶/⏸** (play/pausa) · `⏹` · `−10s` · `+10s` · `A⟨` · `⟩B` · `🔁` · `🔍−` · `🔍+` · `Tot` · `🔇` · `🥁` · volum del clic |
+
+### Menús
+
+| Menú | Accions |
+|------|---------|
+| **Fitxer** | Obre… (Ctrl+O) · Exporta (Ctrl+E) · Sortir |
+| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y / Ctrl+Shift+Z) · **Afegeix acord/secció** · **Elimina** (Del) · **Duplica** (Ctrl+D) · **Reanomena** (F2) |
+| **Selecciona** | Acord del cursor · Secció del cursor · **Loop A/B** (Ctrl+[ / Ctrl+]) · Neteja loop |
+| **Visualitza** | Zoom (🔍−/🔍+) · Tot · Metrònom (🥁) |
+| **Analitza** | Detecta BPM (🎯) · Analitza · **Marca el compàs 1 aquí** (📍) |
+| **Ajuda** | Dreceres · Quant a |
 
 > ⚠️ Les **dreceres** viuen a la **finestra principal** (`QShortcut`/`QAction`),
 > mai al visor incrustat (un `QShortcut` dins el visor no s'activa).
-> **Espai** = play/stop · **Ctrl+Z / Ctrl+Y** = desfer/refer · **Del** = eliminar ·
-> **Ctrl+D** = duplicar · **Ctrl+O** = obrir · **Ctrl+E** = exportar ·
-> **Ctrl+1..9** = … (vegeu menús) · **F5** = Analitza.
+> **Espai** = play/stop · **T** = tap tempo · **Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z**
+> = desfer/refer · **Del** = eliminar · **Ctrl+D** = duplicar · **F2** = reanomenar ·
+> **Ctrl+O** = obrir · **Ctrl+E** = exportar · **Ctrl+[ / Ctrl+]** = loop A/B ·
+> **Ctrl+1..9** = menús · **F5** = Analitza.
 
 ---
 
@@ -96,12 +112,17 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 │  ⑦  BANDA LOOP A/B        rectangle groc                               │
 │  ⑧  GUIA DE SNAP          línia que apareix en arrossegar               │
 ├────────────────────────────────────────────────────────────────────────┤
+│  ⑪  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
+│      [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]              │
+│      (sense finestres emergents; Enter = aplica)                       │
+├────────────────────────────────────────────────────────────────────────┤
 │  ⑨  LLISTA ACORDS (llista_ac) │ ⑩ LLISTA SECCIONS (llista_ab)          │
 │     «1.1 N», «8.1 E7»…        │   «A(N) 1.1–10.1»…                     │
-│     clic=salta · doble=edita  │   clic=salta · doble=edita             │
+│     clic=salta (i ressalta)   │   clic=salta (i ressalta)              │
+│     doble=edita (Editor)      │   doble=edita (Editor)                 │
 │     dret=menú contextual      │   dret=menú contextual                 │
 ├────────────────────────────────────────────────────────────────────────┤
-│  ⑫  LLISCADOR ──────●────────  │ 9.4 / 95.1 │ [⏹] │ [volum] │ stats    │
+│  ⑫  LLISCADOR ──────●────────  │ 9.4 / 95.1 │ [🔇] │ [volum] │ stats    │
 │      (posició + estatus del transport; el transport principal és a la  │
 │       barra de la finestra)                                            │
 └────────────────────────────────────────────────────────────────────────┘
@@ -122,12 +143,15 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 | — | `TimelineView` | tot el bloc ①–⑧ | `QGraphicsView` |
 | ⑨ | `self.llista_ac` | **llista d'acords** | `QListWidget` |
 | ⑩ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
+| ⑪ | `ed_icona` · `ed_gran` · `ed_nom` · `ed_fam` · `ed_ini` · `ed_cb` · `ed_aplica` | **franja Editor** | `QLabel`/`QLineEdit`/`QPushButton` |
 | ⑫ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
 
 > 🥁 **El transport principal** (`b_play`, `b_stop`, `b_menys`, `b_mes`, `b_A`,
 > `b_B`, `b_loop`, `b_zm`, `b_zp`, `b_zt`, `b_mut`, `b_metro`, `vol_metro`)
-> viu a la **barra 2 de la finestra** (PAS 5). Quan el visor va incrustat, la
-> seva fila interna s'amaga; el visor **standalone** encara la té.
+> viu a la **barra 2 de la finestra**. Quan el visor va incrustat, la seva fila
+> interna s'amaga; el visor **standalone** encara la té.
+> El visor emet **`playStateChanged(bool)`** perquè la barra de fora actualitzi
+> la icona **▶ / ⏸**.
 
 ---
 
@@ -140,29 +164,37 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 | **Vora dreta ③④** | arrossegar → **mou el final** · `hover` = ↔ |
 | **Vora esquerra ③④** | arrossegar → **mou l'inici** · `hover` = ↔ |
 | **Clic (sense moure)** | **posa el cursor vermell** a l'inici del clip |
-| **Doble-clic ③④ / llistes ⑨⑩** | **editar** (nom + inici) |
+| **Doble-clic ③④ / llistes ⑨⑩** | **selecciona i enfoca l'Editor ⑪** |
+| **Clic llista ⑨⑩** | salta + **ressalta la fila** (i selecciona el clip al carril) |
 | **Zona buida ② + botó dret** | **pan** (desplaçar la vista) |
 | **Botó dret SOBRE un clip** | **menú contextual**: Duplica · Elimina · Reanomena |
 | **Roda ②** | **zoom** (centrat al clip seleccionat) |
 | **Espai** | **play / pausa** |
+| **T** | **tap tempo** |
 | **Delete / Backspace** | **elimina** el clip seleccionat |
 | **Ctrl+D** | **duplica** el clip seleccionat |
+| **F2** | **reanomena** el clip seleccionat |
 | **Ctrl+Z / Ctrl+Y** | **desfer / refer** |
 | **Ratolí sobre un botó/camp** | la **caixa d'informació** (a baix a la dreta) mostra què fa |
 
 ---
 
-## 3. Temps: BPM i offset
+## 3. Temps: BPM, offset i tap tempo
 
 - **BPM** = la velocitat (un cop cada `60/BPM` segons).
 - **Offset** = el segon on cau el **compàs 1** (la fase de la graella).
 - **Dos camps sincronitzats**: `Offset` (segons) i `≈ C.B` (compàs.beat,
   **relatiu a la graella original amb offset = 0** → estable, llegible).
-- **Analitza ▸ «Marca el compàs 1 aquí»** → posa l'offset on és el cursor.
+- **📍 botó** (i **Analitza ▸ «Marca el compàs 1 aquí»**) → llegeix el **cursor
+  vermell** i hi posa l'offset.
 - Abans de l'offset la graella és **negativa** (`-3.1 … -1.3`) = **count-in**
   (i el metrònom també el clica).
 - **🎯 Detecta** només el **BPM** (autocorrelació d'onsets + comb, numpy;
   `app/tempo.py`); **no** toca l'offset.
+- **TAP** (tecla **T**): patró estàndard dels DAWs — guarda els instants dels
+  últims taps, **mitjana dels intervals** → `60/∅`; **reset als 2 s** (LMMS);
+  **descarta intervals fora de 30–300 BPM** (Max/Dobrian). Propaga BPM al regle
+  i al metrònom **sense reengegar l'àudio**. El botó mostra `TAP (n) BPM`.
 
 ## 4. Metrònom 🥁
 
@@ -185,7 +217,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 | `LANE_ACC_TOP_FRAC` | 0.46 | dalt carril acords → y 104,2 |
 | `TOTAL_H` | 196 px | regle + ona |
 
-**Colors** (`app/theme.py`, NO al codi del timeline):
+**Colors del timeline** (`app/theme.py`, NO al codi del timeline):
 
 | Clau | Ús |
 |------|-----|
@@ -197,7 +229,19 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 | `CLIP_SELECTED_BORDER` `#38bdf8` | **seleccionat** (vora cian, 3 px) |
 | `TL_CURSOR` `#ff6b6b` | cursor vermell |
 | `TL_GUIDE` `#ffd166` | guia de snap / loop |
-| `METRO_ACTIU` `#ffd166` | botó/acció del metrònom activat |
+
+### 5.1 Paleta dels botons (estat ences/apagat)
+
+| Estat | Color | Botons |
+|-------|-------|--------|
+| **Base (apagat)** | gris «Obre…» `SURFACE #2a2c30` | **tots** |
+| **Encès** | **blau** `ACTIU #2563eb` (+ vora `#1e40af`) | `🔁 loop`, modes `BPM·compàs`/`Lliure` |
+| **Encès (especial)** | **groc** `ACTIU_GROC #ffd166` | `🔇 mute`, `🥁 metrònom` |
+| **Acció principal** | blanc `#ffffff` | `Analitza` (`#principal`) |
+| **Deshabilitat** | gris apagat `DISABLED #2f3238` | (🥁 en mode Lliure) |
+
+> Regla clau: `QPushButton:checked` → blau; `#metro:checked, #mute:checked` → groc.
+> La icona de transport és **▶** aturat / **⏸** sonant (sense text).
 
 > **Coordenades unificades**: TOTS els elements es posicionen amb
 > `x = _x_offset + (t − _view_left) × _pps` → tot alineat amb zoom i pan.
