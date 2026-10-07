@@ -357,6 +357,106 @@ Aquestes són idees i oportunitats que queden pendents de revisió i que convé 
 
 ### 9) Desplegament a altres SO
 
+> **Anàlisi de viabilitat (2026-10-07).** Conclusió: **viable** fer executables per a
+> **Windows (x64)** i **macOS High Sierra 10.13** com a mínim, **tot a GitHub Actions**
+> (cap build local Win/Mac). **No es signaran** les apps → s'assumeixen les limitacions
+> de Gatekeeper (macOS) i SmartScreen (Windows). El build de **Linux no es toca**.
+
+#### 9.1 — Què s'ha de portar
+
+L'app = capa Python (**PyQt5 + numpy<2**) + **3 peces natives per SO**:
+
+| Peça | Linux (actual) | Windows | macOS 10.13 |
+|------|----------------|---------|-------------|
+| **Host Vamp** (`vamp_host_local`) | C++ `-msse -msse2` lligat a `libvamp-hostsdk` + `libsndfile` | recompilar (MSYS2 mingw-w64 / vcpkg) | recompilar amb `MACOSX_DEPLOYMENT_TARGET=10.13` |
+| **Plugins Vamp** (`nnls-chroma`, `qm-vamp-plugins`) | `.so` | `.dll` | `.dylib` |
+| **ffmpeg** | estàtic a `portable/bin/` | build estàtic `.exe` | build estàtic (evermeet, requereix 10.13) |
+| **Python / PyQt5** | CPython portable + rodes | rodes `win_amd64` | rodes `macosx_10_13` |
+
+La part d'anàlisi (pipeline, CSV, ABC, wavs) és **stdlib pur** → ja és portable.
+
+#### 9.2 — Windows (dificultat baixa-mitjana)
+
+- **Python/PyQt5/numpy:** rodes `win_amd64` estàndard ✅.
+- **Host Vamp:** `mingw-w64-vamp-plugin-sdk` + `mingw-w64-libsndfile` (MSYS2) →
+  `vamp_host_local.exe` estàtic. Alternativa: vcpkg (`vamp-sdk`).
+- **Plugins:** `qm-vamp-plugins` té **binari oficial win64** ✅. ⚠️ El
+  **Chordino/NNLS-Chroma oficial de Windows és 32-bit** → cal **compilar-lo win64**
+  (upstream + mingw-w64) o bé un build comunitari.
+- **ffmpeg:** build estàtic (gyan.dev / BtbN).
+- **Empaquetat:** **PyInstaller `--onedir`** → ZIP portable; `.bat`/`.exe`
+  substitueix `AUTO_CHORDS.sh`.
+- **CI:** `windows-2022`.
+
+#### 9.3 — macOS High Sierra 10.13 (dificultat mitjana)
+
+- ⚠️ **Clau 1 — PyQt5:** el wheel Intel de **`PyQt5 5.15.11` és
+  `macosx_11_0_x86_64`** → **no instal·lable ni executable a 10.13**. Cal
+  **fixar `PyQt5==5.15.10`** (wheel `macosx_10_13_x86_64`). `PyQt5-Qt5 5.15.19`
+  (`10_13`), `numpy 1.26.4` (`10_9`) i `PyQt5-sip` (`10_9_universal2`) ja van bé.
+  Python 3.12 suporta 10.13.
+- ⚠️ **Clau 2 — Runner i target:** `macos-13` **retirat** (04/12/2025); l'últim
+  Intel és **`macos-15-intel`** (fins a tardor 2027). Cal build **thin x86_64**
+  amb **`MACOSX_DEPLOYMENT_TARGET=10.13`** i tots els binaris natius (host +
+  `libvamp-hostsdk` + `libsndfile`) compilats amb aquest mínim — **mai bottles de
+  Homebrew** (pujarien el mínim). Verificable amb
+  `otool -l | grep LC_VERSION_MIN_MACOSX`.
+- **PyInstaller** ja apunta a 10.13 per defecte al bootloader ✅.
+- **Plugins:** `qm-vamp-plugins` macOS oficial **10.7+** ✅; Chordino macOS binari
+  **64-bit Intel** ✅ (verificar `otool`).
+- **ffmpeg:** builds estàtics **evermeet.cx x86_64 requereixen 10.13** → encaixa ✅.
+- **Empaquetat:** PyInstaller `.app` + ZIP (`ditto`). Sense signar → quarantine;
+  l'usuari passa amb **clic-dret → Obrir** o `xattr -dr com.apple.quarantine`.
+
+#### 9.4 — Canvis de codi necessaris (portabilitat)
+
+| Fitxer | Problema | Solució |
+|--------|----------|---------|
+| `app/main.py` | `import fcntl` + `flock` (no existeix a Windows) | import condicional + `msvcrt`/fitxer lock |
+| `app/pipeline.py` (`_vamp_env`) | `VAMP_PATH = ":".join(...)` | `os.pathsep` |
+| `app/pipeline.py` (`VAMP_DIRS`, `HOST`) | rutes `*-linux64-local` i sense `.exe` | mapa per SO |
+| `app/pipeline.py` (`run_acords_py`) | `["python3", …]` (trenca PyInstaller i Windows) | `sys.executable` o crida en procés |
+| `app/visor.py` (`_tria_player`) | `paplay`/`aplay` (només Linux) | preferir `ffplay` del paquet |
+| `app/visor.py` (`os.killpg`, `SIGKILL`, `start_new_session`) | no existeixen a Windows | `CREATE_NEW_PROCESS_GROUP` + `terminate()` |
+| `app/ffmpeg.py` | noms sense `.exe`, `os.access(X_OK)` | `sys.platform` + `.exe` |
+| `app/config.py` | `TEMP_DIR` dins el projecte | carpeta d'usuari a macOS |
+| `AUTO_CHORDS.sh` | bash + `LD_LIBRARY_PATH` | `.bat`/`.exe` |
+
+#### 9.5 — Pla de CI (GitHub Actions)
+
+- **Job Linux:** l'actual (no tocar).
+- **Job Windows** (`windows-2022`): Python x64 → `PyQt5`+`numpy<2` → host amb
+  MSYS2 → qm win64 + Chordino win64 → ffmpeg → `pyinstaller --onedir` → ZIP.
+- **Job macOS** (`macos-15-intel`): `MACOSX_DEPLOYMENT_TARGET=10.13` →
+  **`PyQt5==5.15.10`** → host + SDK/sndfile de font amb mínim 10.13 → qm macOS +
+  Chordino macOS → ffmpeg evermeet → `pyinstaller --windowed` → `.app`+ZIP →
+  verificació `otool`.
+- Els workflows actuals es poden estendre amb aquests dos jobs o bé crear-ne un de
+  release multi-plataforma (draft, sense signar).
+
+#### 9.6 — Riscos
+
+- **EOL del runner Intel** (`macos-15-intel`, tardor 2027): després caldria
+  self-hosted o cross-compilar des d'arm64.
+- No fer servir **Homebrew** per a components de 10.13 (bottles massa nous).
+- **Chordino win64** no oficial → compilar-lo; verificar les dependències de
+  runtime dels `.dll`/`.dylib`.
+- Apps no signades: assumit.
+- Accents/espais a les rutes (Windows).
+
+#### 9.7 — Esforç estimat
+
+| Bloc | Esforç |
+|------|--------|
+| Portabilitat del codi Python (§9.4) | ~1-2 dies |
+| Job + paquet Windows | ~1 dia |
+| Job + paquet macOS 10.13 | ~2-3 dies |
+| Proves reals a Windows i al Mac 10.13.6 | manual (operador) |
+
+**~1 setmana d'agent.** Ordre recomanat: **Windows primer**, després **macOS**.
+
+#### Decisions encara pendents (llistat original)
+
 - revisar compatibilitat de dependències per a Linux, Windows i macOS
 - detectar quines parts del stack són dependents de platforma i quines són universals
 - determinar els punts crítics:
