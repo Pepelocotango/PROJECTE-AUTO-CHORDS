@@ -235,7 +235,7 @@ git tag v0.5.0 -m "..." && git push origin v0.5.0   # -> Release esborrany
   **no es baixen**: `eines/libreries_natives.sh` les **copia del sistema que
   compila** cap a `portable/lib/` (així la glibc mínima queda lligada al build)
 - **`curl`** + **connexió a Internet** (es baixen el Python portable, l'ffmpeg i les icones Lucide)
-- **`appimagetool`** (es baixa sol) + **`libfuse2`**
+- **`appimagetool`** (es baixa sol; duu el runtime **estàtic** a dins → **no** cal `libfuse2`)
 - Els **workflows de GitHub Actions** ho fan tot sols a **`ubuntu-22.04`**
   (aquesta versió fixa la **glibc mínima** de l'AppImage, perquè allà s'hi
   compila l'host). Detall: `docs/PORTABILITAT.md`

@@ -54,8 +54,10 @@ jobs:
           # + els .so/.a de linkatge; arrossega libvamp-hostsdk3v5 i libvamp-sdk2v5.
           # NO existeix cap paquet `libvamp-hostsdk-dev` (abans hi era i feia
           # fallar el job amb exit 100).
+          # NO s'instal·la libfuse2 (vegeu build-appimage.yml): ni l'appimagetool
+          # ni l'AppImage resultant no el necessiten.
           sudo apt-get install -y --no-install-recommends \
-            vamp-plugin-sdk libboost-dev libsndfile1-dev libfuse2 file
+            vamp-plugin-sdk libboost-dev libsndfile1-dev file
 
           # Best effort: libreries del `sonic-annotator` (reserva) perque els
           # 3 tests de TTL tambe puguin correr. Si no hi son, es fan SKIP.

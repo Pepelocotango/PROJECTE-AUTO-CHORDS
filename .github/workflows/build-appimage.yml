@@ -42,15 +42,19 @@ jobs:
           echo "::endgroup::"
 
 
-      - name: 2. Dependències del sistema (compilar l'host + libfuse2)
+      - name: 2. Dependències del sistema (headers de Vamp, boost i libsndfile)
         run: |
           sudo apt-get update
           # `vamp-plugin-sdk` es el paquet que porta els HEADERS de Vamp
           # (/usr/include/vamp-hostsdk) + els .so/.a de linkatge; arrossega
           # libvamp-hostsdk3v5 i libvamp-sdk2v5. NO existeix cap paquet
           # `libvamp-hostsdk-dev` (abans hi era i feia fallar el job).
+          # NO s'instal·la libfuse2: l'appimagetool duu el runtime modern
+          # (type2-runtime) amb libfuse a dins, i l'AppImage resultant tampoc no
+          # el necessita. Verificat construint una AppImage amb libfuse2 i
+          # libfuse3 amagades.
           sudo apt-get install -y --no-install-recommends \
-            vamp-plugin-sdk libboost-dev libsndfile1-dev libfuse2 file
+            vamp-plugin-sdk libboost-dev libsndfile1-dev file
 
           # Best effort: libreries del `sonic-annotator` (reserva) perque els
           # 3 tests de TTL tambe puguin correr. Si no hi son, es fan SKIP.
