@@ -5,6 +5,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
 ## [0.5.0] — 2026-10-07
 
+### Canviat
+- **`.gitignore` blindat** (sense esborrar res del disc): afegides regles
+  preventives per a `temp/`, `.pytest_cache/`, `.ruff_cache/`,
+  `.mypy_cache/`, `.venv*/`, `*.orig`, `*.rej` i `*.AppImage.zsync`.
+  Cobertura verificada: **0 fitxers al disc que no estiguin ni seguits ni
+  ignorats** (el git puja 4,9 MB; el `portable/`, `.venv/` i `.deps/`
+  es queden al PC).
+
 ### Afegit
 - **Preparat per compilar un AppImage (i a GitHub Actions)**:
   - **Icona d'aplicació** (no en teníem): `eines/crea_icona.py` la dibuixa amb

@@ -54,3 +54,19 @@ AUTO_CHORDS_PORTABLE/
 # AppImage construida i restes (es regeneren)
 *.AppImage
 squashfs-root/
+
+# Temp de treball de l'app (log del reproductor, binaris de prova)
+temp/
+
+# Cachés d'eines de test / anàlisi estàtica
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv*/
+
+# Restes de merge/patch
+*.orig
+*.rej
+
+# AppImage: extractes i temporals
+*.AppImage.zsync
