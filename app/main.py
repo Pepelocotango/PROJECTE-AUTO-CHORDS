@@ -369,7 +369,8 @@ class Finestra(QMainWindow):
         barra_transport.setObjectName("barra_transport")
         barra_transport.setMovable(False)
         self._crea_transport(barra_transport)
-        self.addToolBarBreak(Qt.TopToolBarArea)   # el transport, a la seva fila
+        # El transport COMPARTEIX fila amb la barra d'accions (aixi nomes hi ha
+        # 2 files de barres: opcions a dalt, accions+transport a sota).
         self.addToolBar(Qt.TopToolBarArea, barra_transport)
         self.barra_transport = barra_transport
 

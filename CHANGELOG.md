@@ -5,6 +5,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
 ## [0.5.0] — 2026-10-07
 
+### Canviat
+- **Barres d'eines: 3 files → 2**. La barra «Accions» (`Inclou estructura` +
+  `Analitza` + `Exporta`) i la de **Transport** ara **comparteixen fila**
+  (314 + 703 = 1029 px, caben junts). Així: fila 1 = opcions, fila 2 =
+  accions + transport, i **tot visible a ≥1040 px**.
+
 ### Arreglat
 - **Barres d'eines en finestres estretes** (<1400 px): la barra 1 demanava
   **1462 px** i, com que `QToolBar` **no crea cap botó d'extensió** aquí, els
