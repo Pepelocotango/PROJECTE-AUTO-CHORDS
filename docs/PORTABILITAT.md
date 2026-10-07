@@ -60,6 +60,13 @@ els bloquejos són (a) el **host Vamp** (`sonic-annotator`+Qt6), (b) el
 
 ## 3. Proposta de camí (per fases)
 
+> ✅ **Fase 5 FETA (2026-10-07)**: `eines/empaqueta_portable.sh` munta la
+> carpeta portable (excloent `.deps/`, `.venv/`, `.git/`, `temp/`…).
+> **Verificat**: copiat a `/tmp` i executat des d'allà — **els 166 tests
+> passen**, l'app carrega i el **pipeline complet funciona** (acords 54,
+> estructura, compàs 1 = 9,49 s, BPM) i també **l'import d'mp3** amb el
+> ffmpeg del paquet. Mida final: **~526 MB**.
+
 > ✅ **Fase 3 FETA (2026-10-07)**: `ffmpeg` estàtic a `portable/bin/ffmpeg`
 > (només ffmpeg: `ffprobe` no s'usava). `app/ffmpeg.py` el prefereix.
 > **Nota de mida**: el portable real és **~528 MB** (Python 452 + ffmpeg 80),

@@ -5,6 +5,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.4.0-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **Fase 5 de portabilitat — empaquetat**: `eines/empaqueta_portable.sh`
+  munta `AUTO_CHORDS_PORTABLE/` (codi + plugins + host + Python portable +
+  ffmpeg; exclou `.deps/`, `.venv/`, `.git/`, `temp/`, brossa).
+  **Verificat en brut**: copiat a `/tmp` i executat des d'allà → els 166
+  tests passen, l'app carrega, el pipeline complet funciona (acords,
+  estructura, compàs 1 = 9,49 s, BPM) i l'import d'mp3 amb el ffmpeg del
+  paquet. **Mida final ~526 MB.**
+
+### Canviat
+
 ### Canviat
 - **Fase 4 de portabilitat — àudio/requisits**: si no hi ha cap reproductor
   (`paplay`/`aplay`/`ffplay`), l'app **avisa clarament** (cal PipeWire o
