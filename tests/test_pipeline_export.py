@@ -969,6 +969,72 @@ class OffsetTests(unittest.TestCase):
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
 
 
+class TempoOctavaTests(unittest.TestCase):
+    """Ambiguitat d'octava/subdivisio del BPM (cas real: Otis Redding).
+
+    Amb corxera forta, el prior pla antic triava 179,8; el plateau nou
+    ha de triar el TEMPS real (~103,5).
+    """
+
+    SR = 22050
+
+    def _wav(self, td, bpm, dur=40.0, amp_corxera=0.0):
+        import wave
+        n = int(self.SR * dur)
+        a = np.zeros(n, dtype=np.float32)
+        rng = np.random.default_rng(1)
+        beat = 60.0 / bpm
+
+        def clic(t, amp):
+            i = int(t * self.SR)
+            llarg = int(self.SR * 0.02)
+            if i + llarg < n:
+                env = np.exp(-8.0 * np.arange(llarg) / llarg)
+                a[i:i + llarg] += (rng.normal(0, 1, llarg).astype(np.float32)
+                                   * amp * env)
+
+        t = 0.5
+        while t < dur - 0.5:
+            clic(t, 1.0)                     # el temps (fort)
+            if amp_corxera:
+                clic(t + beat / 2, amp_corxera)   # la corxera (mes fluixa)
+            t += beat
+        a = np.clip(a / max(1e-9, np.abs(a).max()) * 30000, -32768,
+                    32767).astype(np.int16)
+        ruta = os.path.join(td, "clics.wav")
+        with wave.open(ruta, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(self.SR)
+            w.writeframes(a.tobytes())
+        return ruta
+
+    def test_prior_plateau(self):
+        from app import tempo
+        self.assertEqual(tempo._prior(120.0), 1.0)
+        self.assertEqual(tempo._prior(80.0), 1.0)
+        self.assertEqual(tempo._prior(160.0), 1.0)
+        self.assertLess(tempo._prior(200.0), 0.95)   # fora: penalitzat
+        self.assertLess(tempo._prior(45.0), 0.95)
+
+    def test_corxera_no_guanya_el_temps(self):
+        import tempfile
+        from app import tempo
+        td = tempfile.mkdtemp()
+        wav = self._wav(td, 103.45, amp_corxera=0.55)
+        b = tempo.detecta_bpm(wav, lambda *a: None)
+        self.assertIsNotNone(b)
+        self.assertAlmostEqual(b, 103.45, delta=6.0)   # no 179/207
+
+    def test_tempo_normal_intacte(self):
+        import tempfile
+        from app import tempo
+        td = tempfile.mkdtemp()
+        for bpm in (70.0, 101.0, 118.0, 138.0):
+            wav = self._wav(td, bpm)
+            b = tempo.detecta_bpm(wav, lambda *a: None)
+            self.assertAlmostEqual(b, bpm, delta=4.0,
+                                   msg=f"esperava {bpm}, vaig rebre {b}")
+
+
 class PlayCoherenciaTests(unittest.TestCase):
     """Coherencia del play: cache de mono + aturar abans de plugins/redibuix."""
 
@@ -1346,7 +1412,7 @@ class DialegOpcionsTests(unittest.TestCase):
         d = dialegs.DialegOpcions(None)
         b = d.opcions()["bpm"]
         self.assertEqual(b["min"], 60)
-        self.assertEqual(b["pref_min"], 90)
+        self.assertEqual(b["pref_min"], 80)    # plateau del prior
 
     def test_restaura_per_defecte(self):
         d = dialegs.DialegOpcions(None)

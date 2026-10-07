@@ -14,11 +14,31 @@ import wave
 
 import numpy as np
 
-# Rang plausible de BPM i biaix cap a la zona típica de cançons.
+# Rang plausible de BPM i «zona còmoda» (plateau del prior).
 BPM_MIN = 60.0
 BPM_MAX = 180.0
-BPM_PREFERIT = (90.0, 180.0)
+# Zona on el prior val 1,0; fora cau suaument. Abans era un biaix pla del
+# +15 % a 90-180, que NO resolia l'ambigüitat d'octava/subdivisió: en un tema
+# de soul amb corxera forta (Otis Redding) guanyava 179,8 en comptes de 103,5.
+BPM_PREFERIT = (80.0, 160.0)
+PRIOR_SIGMA = 0.7     # amplada de la caiguda fora del plateau, en octaves
 HOP_S = 0.01          # resolució temporal de l'envolupant (10 ms)
+
+
+def _prior(bpm, preferit=BPM_PREFERIT):
+    """Pes suau cap a la zona «còmoda» de tempo (plateau + caiguda log2).
+
+    Dins `preferit` val 1,0; fora cau com una gaussiana en escala logarítmica
+    (octaves). Això descarta el doble/subdivisió extrems sense imposar un pic
+    (que trencaria temes lents genuïns, com el de 70 BPM).
+    """
+    if not preferit:
+        return 1.0
+    lo, hi = preferit
+    if lo <= bpm <= hi:
+        return 1.0
+    x = np.log2(lo / bpm) if bpm < lo else np.log2(bpm / hi)
+    return float(np.exp(-0.5 * (x / PRIOR_SIGMA) ** 2))
 
 
 def _envolupant_onsets(wav_path):
@@ -77,8 +97,7 @@ def _comb_bpm(env, hop_s=HOP_S, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
             f = L - i
             v = ac[i] * (1 - f) + ac[i + 1] * f if i + 1 < ac.size else ac[i]
             sc += v / m
-        if preferit and preferit[0] <= bpm <= preferit[1]:
-            sc *= 1.15
+        sc *= _prior(bpm, preferit)
         if best is None or sc > best[0]:
             best = (sc, float(bpm))
     return best[1] if best else None

@@ -6,6 +6,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
 ## [No publicat]
 
 ### Arreglat
+- **BPM: ambigüitat d'octava/subdivisió** (cas real: *Sitting On The Dock Of
+  The Bay*, Otis Redding). El biaix pla antic («+15 % a 90–180») **no** la
+  resolia: amb corxera forta guanyava **179,8** en comptes del temps real
+  **103,5** (que només quedava a un 2 %). Nou **prior de plateau**
+  (`tempo._prior`): val **1,0 dins 80–160 BPM** i cau suaument (gaussiana en
+  log₂, σ=0,7 octaves) fora. Verificat que **no trenca** cap tema conegut:
+  101 · 138 · **70** · 117,8 · 107 · i l'Otis passa a **103,5** ✅. El
+  «rang preferit» del diàleg ara és aquest plateau (80–160). **3 tests nous**
+  (`TempoOctavaTests`), amb un clic-track sintètic que reprodueix el cas.
+
+### Arreglat (anterior)
 - **Coherència del play (2/2)**:
   - **Latència baixa** del reproductor (`paplay --latency-msec=100`): el so
     arrenca abans i el **cursor quadra millor amb el que se sent**.
