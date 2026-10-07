@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Compila l'host Vamp propi (vamp_host_local).
-# Depèn de: libvamp-hostsdk-dev + libsndfile1-dev (headers del sistema o .deps).
+# Depèn de: vamp-plugin-sdk + libsndfile1-dev (headers del sistema o .deps).
 # Flags -msse -msse2: SENSE AVX (Q9400 i altres CPUs antigues).
 set -e
 cd "$(dirname "$0")/.."

@@ -211,7 +211,9 @@ git tag v0.5.0 -m "..." && git push origin v0.5.0   # -> Release esborrany
 
 ### 🏗️ Per construir (AppImage / paquet portable)
 
-- **`g++`** + **`libvamp-hostsdk-dev`** + **`libsndfile1-dev`** (per compilar l'host)
+- **`g++`** + **`vamp-plugin-sdk`** + **`libsndfile1-dev`** (per compilar l'host;
+  `vamp-plugin-sdk` porta els headers de Vamp — `libvamp-hostsdk-dev` **no
+  existeix** com a paquet)
 - **`curl`** + **connexió a Internet** (es baixen el Python portable, l'ffmpeg i les icones Lucide)
 - **`appimagetool`** (es baixa sol) + **`libfuse2`**
 - Els **workflows de GitHub Actions** ho fan tot sols a **`ubuntu-22.04`**

@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-22.04     # marca la glibc minima de l'AppImage
     steps:
       - name: 1. Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 1b. Diagnòstic de l'entorn (versions, glibc, disc)
         run: |
@@ -48,8 +48,12 @@ jobs:
       - name: 2. Dependències del sistema
         run: |
           sudo apt-get update
+          # `vamp-plugin-sdk` porta els HEADERS de Vamp (/usr/include/vamp-hostsdk)
+          # + els .so/.a de linkatge; arrossega libvamp-hostsdk3v5 i libvamp-sdk2v5.
+          # NO existeix cap paquet `libvamp-hostsdk-dev` (abans hi era i feia
+          # fallar el job amb exit 100).
           sudo apt-get install -y --no-install-recommends \
-            libvamp-hostsdk-dev libsndfile1-dev libfuse2 file
+            vamp-plugin-sdk libsndfile1-dev libfuse2 file
 
           # Best effort: libreries del `sonic-annotator` (reserva) perque els
           # 3 tests de TTL tambe puguin correr. Si no hi son, es fan SKIP.
@@ -111,7 +115,7 @@ jobs:
 
       - name: "ZZ2. Pujar els logs de debug (nomes si falla)"
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: debug-logs-${{ github.run_number }}
           if-no-files-found: ignore
