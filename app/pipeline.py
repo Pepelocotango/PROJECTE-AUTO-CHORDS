@@ -5,6 +5,7 @@
 # Tot en català.
 import csv
 import os
+import re
 import subprocess
 import wave
 
@@ -45,23 +46,25 @@ def _vamp_env():
     return env
 
 
-def run(cmd, log, cwd=None, timeout=600):
+def run(cmd, log, cwd=None, timeout=600, silenci=False):
     """Executa una comanda externa. `timeout` evita penjaments indefinits.
 
     Sense timeout, si un subprocés es queda encallat (esperant stdin, un
     dispositiu d'àudio inexistent...) l'app i els tests es penjarien.
     """
-    log("$ " + " ".join(cmd))
+    if not silenci:
+        log("$ " + " ".join(cmd))
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, env=_vamp_env(),
                            cwd=cwd, timeout=timeout)
     except subprocess.TimeoutExpired:
         log(f"  ⏱️ TIMEOUT ({timeout}s): {cmd[0]} no ha respost")
         raise
-    for line in (p.stdout + p.stderr).splitlines():
-        line = line.strip()
-        if line and "Extracting features..." not in line:
-            log("  " + line)
+    if not silenci:
+        for line in (p.stdout + p.stderr).splitlines():
+            line = line.strip()
+            if line and "Extracting features..." not in line:
+                log("  " + line)
     if p.returncode != 0:
         raise RuntimeError(f"ha fallat: {cmd[0]} (codi {p.returncode})")
     return p
@@ -76,10 +79,74 @@ def wav_info(path):
         }
 
 
-def extract_chords(wav_path, out_csv, log):
-    run([SONIC, "-d", "vamp:nnls-chroma:chordino:simplechord",
-         "-w", "csv", "--csv-one-file", out_csv, "--csv-force",
-         "--csv-omit-filename", wav_path], log)
+# Transform Vamp per defecte de cada deteccio (vegeu docs/AUTODETECCIO_OPCIONS.md)
+TRANSFORMS = {
+    "chords": "vamp:nnls-chroma:chordino:simplechord",
+    "structure": "vamp:segmentino:segmentino:segmentation",
+}
+
+
+def escriu_ttl(clau, params, dest, log):
+    """Genera un transform `.ttl` del transform `clau` amb `params` aplicats.
+
+    IMPORTANT: `sonic-annotator -s <id>` NOMES llista una part dels parametres
+    (p. ex. no hi surt `useHMM`), aixi que no podem pedacar el TTL per defecte.
+    El reconstruim: prenem plugin/step/block/output del TTL per defecte i hi
+    afegim un `vamp:parameter_binding` per a CADA parametre del descriptor .n3
+    (amb el valor demanat o el seu defecte).
+    """
+    from app import vamp_params          # import local: evita cicle d'imports
+    base = run([SONIC, "-s", TRANSFORMS[clau]], log, silenci=True).stdout
+
+    def _cap(patro):
+        m = re.search(patro, base)
+        return m.group(1) if m else None
+
+    plugin = _cap(r"vamp:plugin\s+<([^>]*)>")
+    step = _cap(r'vamp:step_size\s+"([^"]*)"')
+    block = _cap(r'vamp:block_size\s+"([^"]*)"')
+    versio = _cap(r'vamp:plugin_version\s+"""(\d+)"""')
+    output = _cap(r"vamp:output\s+<([^>]*)>")
+    if not (plugin and output):
+        raise RuntimeError(f"no puc llegir el transform per defecte de {clau}")
+
+    specs = vamp_params.params_de(clau)
+    triats = {s["id"]: triats_val for s in specs
+              for triats_val in [float((params or {}).get(s["id"], s["defecte"]))]}
+    linies = ['@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .',
+              '@prefix vamp:     <http://purl.org/ontology/vamp/> .',
+              '@prefix :         <#> .',
+              ':transform a vamp:Transform ;',
+              f'    vamp:plugin <{plugin}> ;',
+              f'    vamp:step_size "{step}"^^xsd:int ;',
+              f'    vamp:block_size "{block}"^^xsd:int ;']
+    if versio:
+        linies.append(f'    vamp:plugin_version """{versio}""" ;')
+    for s in specs:
+        linies.append('    vamp:parameter_binding [')
+        linies.append(f'        vamp:parameter [ vamp:identifier "{s["id"]}" ] ;')
+        linies.append(f'        vamp:value "{triats[s["id"]]}"^^xsd:float ;')
+        linies.append('    ] ;')
+    linies.append(f'    vamp:output <{output}> .')
+    with open(dest, "w", encoding="utf-8") as f:
+        f.write("\n".join(linies) + "\n")
+    log(f"  transform {clau}: {len(specs)} paràmetres "
+        f"({sum(1 for s in specs if s['id'] in (params or {}))} ajustats)")
+    return dest
+
+
+def extract_chords(wav_path, out_csv, log, params=None):
+    """Acords via Chordino. Si `params` porta valors, genera un TTL i usa -t."""
+    if params:
+        import tempfile
+        ttl = os.path.join(tempfile.mkdtemp(prefix="ac_ttl_"), "chords.ttl")
+        escriu_ttl("chords", params, ttl, log)
+        run([SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
+             "--csv-force", "--csv-omit-filename", wav_path], log)
+    else:
+        run([SONIC, "-d", TRANSFORMS["chords"],
+             "-w", "csv", "--csv-one-file", out_csv, "--csv-force",
+             "--csv-omit-filename", wav_path], log)
 
 
 def detecta_bpm(wav_path, log):
@@ -131,10 +198,18 @@ def detecta_bpm_aubio(wav_path, log):
         return None
 
 
-def extract_segments(wav_path, out_csv, log):
-    run([SONIC, "-d", "vamp:segmentino:segmentino:segmentation",
-         "-w", "csv", "--csv-one-file", out_csv, "--csv-force",
-         "--csv-omit-filename", wav_path], log)
+def extract_segments(wav_path, out_csv, log, params=None):
+    """Estructura via Segmentino (no té paràmetres; `params` per simetria)."""
+    if params:
+        import tempfile
+        ttl = os.path.join(tempfile.mkdtemp(prefix="ac_ttl_"), "seg.ttl")
+        escriu_ttl("structure", params, ttl, log)
+        run([SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
+             "--csv-force", "--csv-omit-filename", wav_path], log)
+    else:
+        run([SONIC, "-d", TRANSFORMS["structure"],
+             "-w", "csv", "--csv-one-file", out_csv, "--csv-force",
+             "--csv-omit-filename", wav_path], log)
 
 
 def run_acords_py(csv_path, bpm, bpb, offset, workdir, log):

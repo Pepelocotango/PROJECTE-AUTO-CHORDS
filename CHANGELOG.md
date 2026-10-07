@@ -5,6 +5,19 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **Base d'opcions de l'autodetecció** (fases 1+2 de `docs/AUTODETECCIO_OPCIONS.md`):
+  - `app/vamp_params.py`: llegeix els **paràmetres ajustables** dels plugins
+    Vamp des dels seus descriptors **`.n3`** (id, títol, rang, pas, defecte i
+    noms de valor). Chordino: 6 paràmetres; Segmentino: cap.
+  - `app/pipeline.py`: `extract_chords(..., params=)` i `extract_segments(..., params=)`
+    i `escriu_ttl()` → **reconstrueix el transform `.ttl`** amb tots els
+    paràmetres i el passa amb **`sonic-annotator -t`** (en comptes de `-d`).
+    ⚠️ Clau: `sonic-annotator -s` **no llista tots els paràmetres** (no hi surt
+    `useHMM`), per això el TTL es reconstrueix i no es pedaça.
+  - Verificat amb execució real: `useHMM=0, rollon=3` → **57 acords** vs
+    **54** del defecte. **8 tests nous** (`VampParamsTests`, `EscriuTtlTests`).
+
 ### Canviat
 - **Botó de reproducció**: `▶ Escolta` → **botó d'icona** que canvia sol
   (**`▶`** aturat / **`⏸`** sonant), com als DAWs, sense text. El visor emet

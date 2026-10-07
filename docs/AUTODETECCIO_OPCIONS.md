@@ -111,6 +111,18 @@ com «N1/N3» (novelty) i «B»; després l'app les **reanomena** a A/B/C… amb
 
 ---
 
+## 4bis. Com es passen els paràmetres (implementat, fases 1+2)
+
+- **Llegir-los**: `app/vamp_params.py` → llegeix el descriptor **`.n3`** del
+  plugin (id, títol, rang, pas, defecte, value_names).
+- **Passar-los**: `app/pipeline.escriu_ttl(clau, params, dest, log)` →
+  **reconstrueix** un transform `.ttl` amb un `vamp:parameter_binding` per a
+  cada paràmetre (valor demanat o defecte) i `extract_chords(..., params=)` el
+  fa servir amb **`sonic-annotator -t <ttl>`**.
+- ⚠️ **Trampa verificada**: `sonic-annotator -s <id>` **NO llista tots els
+  paràmetres** (p. ex. no hi surt `useHMM`); per això **no** es pot pedaçar el
+  TTL per defecte → cal **reconstruir-lo** amb el descriptor `.n3`.
+
 ## 5. Com es prova (reproduïble)
 
 ```bash

@@ -15,7 +15,7 @@ import numpy as np
 # o avortar en un entorn sense pantalla.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from app import main as app_main, pipeline, theme, visor
+from app import main as app_main, pipeline, theme, vamp_params, visor
 
 # QMessageBox.information/warning/... son MODALS: bloquegen fins que algu
 # clica OK. En un entorn sense pantalla (CI) aixo penja el test per sempre.
@@ -966,6 +966,65 @@ class OffsetTests(unittest.TestCase):
                 base)
         self.assertIsNone(metronom._es_valid(1000.0, 4))
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
+
+
+class VampParamsTests(unittest.TestCase):
+    """Lectura dels parametres dels plugins Vamp (descriptors .n3)."""
+
+    def test_chordino_te_6_parametres_en_ordre(self):
+        ids = [p["id"] for p in vamp_params.params_de("chords")]
+        self.assertEqual(ids, ["useNNLS", "useHMM", "rollon",
+                               "tuningmode", "whitening", "s"])
+
+    def test_rangs_i_defectes(self):
+        ps = {p["id"]: p for p in vamp_params.params_de("chords")}
+        self.assertEqual((ps["useNNLS"]["minim"], ps["useNNLS"]["maxim"],
+                          ps["useNNLS"]["defecte"]), (0.0, 1.0, 1.0))
+        self.assertEqual((ps["rollon"]["minim"], ps["rollon"]["maxim"],
+                          ps["rollon"]["pas"], ps["rollon"]["defecte"]),
+                         (0.0, 5.0, 0.5, 0.0))
+        self.assertEqual(ps["s"]["minim"], 0.5)
+        self.assertEqual(ps["s"]["maxim"], 0.9)
+
+    def test_value_names_tuningmode(self):
+        ps = {p["id"]: p for p in vamp_params.params_de("chords")}
+        self.assertEqual(ps["tuningmode"]["valors"],
+                         ["global tuning", "local tuning"])
+
+    def test_segmentino_sense_parametres(self):
+        self.assertEqual(vamp_params.params_de("structure"), [])
+
+    def test_valors_per_defecte(self):
+        d = vamp_params.valors_per_defecte("chords")
+        self.assertEqual(d["useHMM"], 1.0)
+        self.assertEqual(d["s"], 0.7)
+
+
+class EscriuTtlTests(unittest.TestCase):
+    """Generacio del transform .ttl amb els parametres triats."""
+
+    def _ttl(self, params):
+        import tempfile
+        d = tempfile.mkdtemp()
+        ruta = os.path.join(d, "t.ttl")
+        pipeline.escriu_ttl("chords", params, ruta, lambda *a: None)
+        return open(ruta).read()
+
+    def test_ttl_te_tots_els_parametres(self):
+        s = self._ttl({})
+        for k in ("useNNLS", "useHMM", "rollon", "tuningmode", "whitening", "s"):
+            self.assertIn(f'vamp:identifier "{k}"', s)
+        self.assertIn("vamp:output", s)
+
+    def test_ttl_aplica_els_valors_demanats(self):
+        s = self._ttl({"useHMM": 0, "rollon": 3})
+        self.assertIn('vamp:identifier "useHMM" ] ;\n        vamp:value "0.0"', s)
+        self.assertIn('vamp:identifier "rollon" ] ;\n        vamp:value "3.0"', s)
+        # els no indicats agafen el defecte
+        self.assertIn('vamp:identifier "useNNLS" ] ;\n        vamp:value "1.0"', s)
+
+    def test_ttl_no_es_el_default_quan_canvia(self):
+        self.assertNotEqual(self._ttl({}), self._ttl({"useHMM": 0, "rollon": 3}))
 
 
 class BotoOnOffTests(unittest.TestCase):
