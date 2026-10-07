@@ -6,12 +6,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 ## [0.5.0] — 2026-10-07
 
 ### Afegit
-- **Release automàtic de GitHub** en crear un tag 
-  (): construeix l'AppImage i crea un
-  **Release esborrany** amb títol  i el cos **en
-  català** (generat de la secció del CHANGELOG amb ),
+- **Release automàtic de GitHub** en crear un tag `v*`
+  (`.github/workflows/release.yml`): construeix l'AppImage i crea un
+  **Release esborrany** amb títol `AUTO CHORDS v<versió>` i el cos **en
+  català** (generat de la secció del CHANGELOG amb `eines/notes_release.py`),
   amb l'AppImage adjunta. El publiques tu. (El build manual
-   segueix igual: només .)
+  `build-appimage.yml` segueix igual: només `workflow_dispatch`.)
 
 ### Canviat
 - **`.gitignore` blindat** (sense esborrar res del disc): afegides regles
