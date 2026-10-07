@@ -60,6 +60,12 @@ els bloquejos són (a) el **host Vamp** (`sonic-annotator`+Qt6), (b) el
 
 ## 3. Proposta de camí (per fases)
 
+> ✅ **Fase 3 FETA (2026-10-07)**: `ffmpeg` estàtic a `portable/bin/ffmpeg`
+> (només ffmpeg: `ffprobe` no s'usava). `app/ffmpeg.py` el prefereix.
+> **Nota de mida**: el portable real és **~528 MB** (Python 452 + ffmpeg 80),
+> molt més que l'estimació inicial de ~160 MB — el CPython portable (225 MB),
+> PyQt5/Qt5 (166 MB) i el ffmpeg (80 MB) pesen molt.
+
 > ✅ **Fase 2 FETA (2026-10-07)**: **CPython portable** a `portable/python/`
 > (`python-build-standalone` 3.12.15, build **genèric x86_64**, sense AVX) amb
 > PyQt5 + numpy<2. `AUTO_CHORDS.sh` el prefereix. **Els 166 tests passen amb

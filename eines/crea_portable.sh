@@ -22,4 +22,11 @@ $PY -m pip uninstall -y pip setuptools 2>/dev/null || true
 Q=portable/python/lib/python3.12/site-packages/PyQt5/Qt5
 for d in qml translations qsci; do [ -d "$Q/$d" ] && gio trash "$Q/$d" || true; done
 find portable -name "__pycache__" -type d -exec gio trash {} \; 2>/dev/null || true
+echo "Baixant ffmpeg estàtic (johnvansickle: ~40 MB comprimit)..."
+curl -sL -o /tmp/ff.tar.xz \
+  "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+tar xJf /tmp/ff.tar.xz -C /tmp/
+FFDIR=$(ls -d /tmp/ffmpeg-*-amd64-static | head -1)
+mkdir -p portable/bin
+cp "$FFDIR/ffmpeg" portable/bin/ffmpeg   # només ffmpeg (ffprobe no s'usa)
 echo "Fet. Mida: $(du -sh portable | cut -f1)"

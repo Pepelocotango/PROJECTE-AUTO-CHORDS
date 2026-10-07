@@ -16,8 +16,13 @@ import os
 import subprocess
 import wave
 
-FFMPEG = "ffmpeg"
-FFPROBE = "ffprobe"
+# Els binaris poden ser dins el projecte (portable/bin, fases 2-3 de
+# portabilitat) o al sistema. Es prefereix el local.
+_PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_LOCAL_FFMPEG = os.path.join(_PROJ, "portable", "bin", "ffmpeg")
+_LOCAL_FFPROBE = os.path.join(_PROJ, "portable", "bin", "ffprobe")
+FFMPEG = _LOCAL_FFMPEG if os.access(_LOCAL_FFMPEG, os.X_OK) else "ffmpeg"
+FFPROBE = _LOCAL_FFPROBE if os.access(_LOCAL_FFPROBE, os.X_OK) else "ffprobe"
 SUFIX = "_convertit"
 
 # Extensions d'àudio que acceptem obrir (es converteixen si cal).
@@ -28,13 +33,12 @@ EXTENSIONS = [
 
 
 def disponible():
-    """Hi ha ffmpeg i ffprobe al sistema?"""
-    for eina in (FFMPEG, FFPROBE):
-        try:
-            subprocess.run([eina, "-version"], capture_output=True, timeout=15)
-        except (OSError, subprocess.SubprocessError):
-            return False
-    return True
+    """Hi ha ffmpeg? (ffprobe és OPCIONAL: només el fa servir info())."""
+    try:
+        subprocess.run([FFMPEG, "-version"], capture_output=True, timeout=15)
+        return True
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def extensions():

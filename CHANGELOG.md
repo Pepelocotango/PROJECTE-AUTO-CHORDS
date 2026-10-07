@@ -6,6 +6,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.4.0-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Fase 3 de portabilitat — `ffmpeg` estàtic embegut**: `portable/bin/ffmpeg`
+  (build estàtic de johnvansickle, 80 MB, corre al Q9400). `app/ffmpeg.py`
+  **prefereix el local** i cau al del sistema. Només s'embega `ffmpeg`:
+  **`ffprobe` no s'usa enlloc** (`ffmpeg.info()` no té cap crida) → estalvi de
+  80 MB. Verificat: conversió d'mp3 → WAV PCM16 amb el ffmpeg portable.
+  `eines/crea_portable.sh` actualitzat.
+
+### Afegit
 - **Fase 2 de portabilitat — CPython portable**: `python-build-standalone`
   3.12.15 (build **genèric x86_64**, sense AVX; el `_v2` demanaria SSE4.2)
   a `portable/python/` amb PyQt5 + numpy<2. `AUTO_CHORDS.sh` **prefereix el
