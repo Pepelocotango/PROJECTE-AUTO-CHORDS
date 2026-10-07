@@ -1080,10 +1080,11 @@ class Compas1Tests(unittest.TestCase):
 
     def test_boto_i_accio_existeixen(self):
         w = app_main.Finestra()
-        self.assertEqual(w.b_compas_auto.text(), "🧭")
+        # compas 1 automatic: ara es una ICONA (Lucide compass)
+        self.assertFalse(w.b_compas_auto.icon().isNull())
         self.assertIn("compàs 1", w.b_compas_auto.toolTip().lower())
         # res del que ja hi havia s'ha perdut
-        self.assertEqual(w.b_offset_cursor.text(), "📍")
+        self.assertFalse(w.b_offset_cursor.icon().isNull())   # map-pin
         self.assertEqual(w.b_tap.text(), "TAP")
         self.assertEqual(w.b_bpm_x2.text(), "×2")
         self.assertEqual(w.b_bpm_div2.text(), "÷2")
@@ -1619,13 +1620,15 @@ class BotoOnOffTests(unittest.TestCase):
         return window
 
     def test_play_icona_play_i_pause(self):
+        # Ara son ICONES (Lucide), no text: comprovem el tooltip + la icona.
         w = self._finestra()
-        self.assertEqual(w.b_play_tb.text(), "▶")
+        self.assertFalse(w.b_play_tb.icon().isNull())
+        self.assertIn("Reprodueix", w.b_play_tb.toolTip())
         w._on_play_state(True)
-        self.assertEqual(w.b_play_tb.text(), "⏸")
+        self.assertIn("Atura", w.b_play_tb.toolTip())
+        self.assertFalse(w.b_play_tb.icon().isNull())
         w._on_play_state(False)
-        self.assertEqual(w.b_play_tb.text(), "▶")
-        self.assertNotIn("Escolta", w.b_play_tb.text())
+        self.assertIn("Reprodueix", w.b_play_tb.toolTip())
         w.close()
 
     def test_visor_emet_play_state(self):
@@ -1635,7 +1638,7 @@ class BotoOnOffTests(unittest.TestCase):
         v.sona = True                       # simulem que estaba sonant
         v.play_stop()                       # -> atura i ha d'emetre False
         self.assertIn(False, rebut)
-        self.assertEqual(w.b_play_tb.text(), "▶")
+        self.assertIn("Reprodueix", w.b_play_tb.toolTip())
         w.close()
 
     def test_commutables_son_checkable(self):

@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
 ## [0.5.0] — 2026-10-07
 
+### Canviat
+- **ICONES PROFESSIONALS (Lucide, ISC) en comptes d'emoji**: l'app ja no
+  sembla de joguina. Nou `app/icones.py` (carrega els SVG de `icones/`,
+  els **recoloreix** via QtSvg) i `eines/baixa_icones.sh` (21 icones, 88 KB).
+  Substituïts: 🎯→`target`, 📍→`map-pin`, 🧭→`compass`, 🥁→`drum`,
+  🔁→`repeat-2`, 🔇→`volume-x`, 🔍±→`zoom-in/out`, ▶→`play`, ⏸→`pause`,
+  ⏹→`square`, −10s/+10s→`rewind`/`fast-forward`, A⟨/⟩B→`arrow-*-to-line`,
+  Tot→`maximize`, 🎵/🎼→`music`/`piano`. `×2`/`÷2` eixamplats perquè no es
+  talli el text. Amplada mínima 1240. **166 tests.**
+
 ### Arreglat
 - **El paquet portable ja no porta cap `.gitignore`** (era una còpia per
   accident: `rsync` no l'excloïa i, a més, `--exclude` *protegeix* els

@@ -35,6 +35,7 @@ if APP_DIR not in sys.path:
 import metronom  # noqa: E402
 import pipeline  # noqa: E402
 import theme  # noqa: E402
+import icones  # noqa: E402
 from .timeline import TimelineView  # noqa: E402
 
 # Configuració centralitzada per al directori temporal (configurable)
@@ -241,31 +242,39 @@ class Visor(QMainWindow):
         capa.addWidget(self.inspector, stretch=2)
 
         fila = QHBoxLayout()
-        self.b_play = QPushButton("▶")
+        self.b_play = QPushButton()
+        self.b_play.setIcon(icones.ico("play"))
         self.b_play.setToolTip("Reprodueix / atura (Espai)")
         self.b_play.clicked.connect(self.play_stop)
-        self.b_stop = QPushButton("⏹")
+        self.b_stop = QPushButton()
+        self.b_stop.setIcon(icones.ico("square"))
         self.b_stop.setToolTip("Atura i torna a l'inici")
         self.b_stop.clicked.connect(self.stop_inici)
         self.b_menys = QPushButton("−10s")
         self.b_menys.clicked.connect(lambda: self.ves_a(self.pos - 10))
         self.b_mes = QPushButton("+10s")
         self.b_mes.clicked.connect(lambda: self.ves_a(self.pos + 10))
-        self.b_A = QPushButton("A⟨")
+        self.b_A = QPushButton()
+        self.b_A.setIcon(icones.ico("arrow-left-to-line"))
         self.b_A.setToolTip("Marca inici de loop")
         self.b_A.clicked.connect(self.marca_A)
-        self.b_B = QPushButton("⟩B")
+        self.b_B = QPushButton()
+        self.b_B.setIcon(icones.ico("arrow-right-to-line"))
         self.b_B.setToolTip("Marca fi de loop")
         self.b_B.clicked.connect(self.marca_B)
-        self.b_loop = QPushButton("🔁")
+        self.b_loop = QPushButton()
+        self.b_loop.setIcon(icones.ico("repeat-2"))
         self.b_loop.setCheckable(True)
         self.b_loop.setToolTip("Activa loop A-B")
         self.b_loop.clicked.connect(self.commuta_loop)
-        self.b_zm = QPushButton("🔍−")
+        self.b_zm = QPushButton()
+        self.b_zm.setIcon(icones.ico("zoom-out"))
         self.b_zm.clicked.connect(lambda: self.zoom(2.0))
-        self.b_zp = QPushButton("🔍+")
+        self.b_zp = QPushButton()
+        self.b_zp.setIcon(icones.ico("zoom-in"))
         self.b_zp.clicked.connect(lambda: self.zoom(0.5))
-        self.b_zt = QPushButton("Tot")
+        self.b_zt = QPushButton()
+        self.b_zt.setIcon(icones.ico("maximize"))
         self.b_zt.clicked.connect(self.zoom_tot)
         for b in (self.b_play, self.b_stop, self.b_menys, self.b_mes,
                   self.b_A, self.b_B, self.b_loop,
@@ -284,7 +293,8 @@ class Visor(QMainWindow):
         fila2.addWidget(self.lliscador, stretch=1)
         self.temps = QLabel("00:00 / 00:00")
         fila2.addWidget(self.temps)
-        self.b_mut = QPushButton("🔇")
+        self.b_mut = QPushButton()
+        self.b_mut.setIcon(icones.ico("volume-x"))
         self.b_mut.setObjectName("mute")
         self.b_mut.setCheckable(True)
         self.b_mut.clicked.connect(self.commuta_mut)
@@ -1039,7 +1049,7 @@ class Visor(QMainWindow):
         k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
         if k == "chord" and 0 <= i < len(self.acords):
             t, nom = self.acords[i][0], self.acords[i][1]
-            self.ed_icona.setText("🎵")
+            self.ed_icona.setPixmap(icones.ico("music", 20).pixmap(20, 20))
             self.ed_gran.setText(nom)
             self.ed_nom.setText(nom)
             self.ed_ini.setText(f"{float(t):.2f}")
@@ -1049,7 +1059,7 @@ class Visor(QMainWindow):
                 w.setEnabled(True)
         elif k == "section" and 0 <= i < len(self.seccions):
             ini, fi, lletra, fam = self.seccions[i]
-            self.ed_icona.setText("🎼")
+            self.ed_icona.setPixmap(icones.ico("piano", 20).pixmap(20, 20))
             self.ed_gran.setText(f"{lletra} ({fam})")
             self.ed_nom.setText(lletra)
             self.ed_fam.setText(fam)
@@ -1060,7 +1070,7 @@ class Visor(QMainWindow):
                       self.ed_aplica):
                 w.setEnabled(True)
         else:
-            self.ed_icona.setText("—")
+            self.ed_icona.clear()
             self.ed_gran.setText("Selecciona un acord o una secció")
             for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
                       self.ed_aplica):
@@ -1500,7 +1510,7 @@ class Visor(QMainWindow):
             self.rellotge.stop()
             self.sona = False
             self.timeline.set_follow(False)
-            self.b_play.setText("▶")
+            self.b_play.setIcon(icones.ico("play"))
             self.playStateChanged.emit(False)
         else:
             # Comencem SEMPRE des del cursor visible (no d'un estat antic)
@@ -1511,7 +1521,7 @@ class Visor(QMainWindow):
             self.rellotge.start()
             self.sona = True
             self.timeline.set_follow(True)   # la vista segueix el cursor
-            self.b_play.setText("⏸")
+            self.b_play.setIcon(icones.ico("pause"))
             self.playStateChanged.emit(True)
             self.log("escoltant...")
 

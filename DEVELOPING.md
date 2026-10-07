@@ -228,6 +228,7 @@ La nostra feina és construir i integrar, però no és “des de zero” en el s
 | `ffmpeg.py` | import d'altres formats (conversió a WAV) |
 | `metronom.py` | clic del metrònom mesclat al buffer |
 | `theme.py` | tema centralitzat (colors) |
+| `icones.py` | icones SVG de **Lucide** (ISC) recolorejades (`icones/`, `eines/baixa_icones.sh`) |
 
 Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
 (motors i opcions), `QM_VAMP.md` (Queen Mary), `PLAY.md` (reproducció),

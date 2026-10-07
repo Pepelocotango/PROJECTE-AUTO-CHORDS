@@ -30,6 +30,7 @@ import pipeline  # noqa: E402
 import postproc  # noqa: E402
 import theme  # noqa: E402
 from . import dialegs  # noqa: E402
+from . import icones  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
 
 DEFAULT_LOG_PATH = os.path.join(PROJECT_ROOT, "auto_chords.log")
@@ -159,7 +160,7 @@ class Finestra(QMainWindow):
         self.setWindowTitle("Auto Chords — wav → acords + estructura")
         self.resize(1500, 900)
         # Amplada minima: per sota, les barres d\'eines es tallarien.
-        self.setMinimumWidth(1210)
+        self.setMinimumWidth(1240)
         self.feina = None
         self.logger.info("Finestra inicialitzada")
 
@@ -214,7 +215,9 @@ class Finestra(QMainWindow):
         self.offset.setMaximumWidth(60)
         self.offset.setPlaceholderText("0.0")
         self.offset.setToolTip("Offset del compàs 1, en segons.")
-        self.b_detecta = QPushButton("🎯 Detecta")
+        self.b_detecta = QPushButton(" Detecta")
+        self.b_detecta.setIcon(icones.ico("target"))
+        self.b_detecta.setIconSize(icones.pm_mida(16))
         self.b_detecta.setObjectName("secundari")
         self.b_detecta.setToolTip("Detecta el BPM automàticament (motor triable).")
         self.b_detecta.clicked.connect(lambda: self._detecta_bpm())
@@ -232,7 +235,7 @@ class Finestra(QMainWindow):
         for b, factor, tip in ((self.b_bpm_x2, 2.0, "Dobla el BPM (×2)"),
                                (self.b_bpm_div2, 0.5, "Meitat del BPM (÷2)")):
             b.setObjectName("secundari")
-            b.setMaximumWidth(34)
+            b.setMaximumWidth(46)
             b.setToolTip(tip + "  ·  útil quan la detecció agafa el doble/meitat")
             b.clicked.connect(lambda _=False, f=factor: self._dobla_bpm(f))
             hp.addWidget(b)
@@ -247,13 +250,15 @@ class Finestra(QMainWindow):
         hp.addWidget(self.bpb)
         hp.addWidget(QLabel("Offset:"))
         hp.addWidget(self.offset)                 # segons
-        self.b_offset_cursor = QPushButton("📍")
+        self.b_offset_cursor = QPushButton()
+        self.b_offset_cursor.setIcon(icones.ico("map-pin"))
         self.b_offset_cursor.setObjectName("secundari")
         self.b_offset_cursor.setToolTip(
             "Posa l'offset a la posició del cursor vermell (compàs 1 aquí)")
         self.b_offset_cursor.clicked.connect(self._marca_compas_1)
         hp.addWidget(self.b_offset_cursor)
-        self.b_compas_auto = QPushButton("🧭")
+        self.b_compas_auto = QPushButton()
+        self.b_compas_auto.setIcon(icones.ico("compass"))
         self.b_compas_auto.setObjectName("secundari")
         self.b_compas_auto.setToolTip(
             "Detecta el COMPÀS 1 automàticament (primer downbeat): posa "
@@ -381,7 +386,7 @@ class Finestra(QMainWindow):
     def _on_play_state(self, on):
         """Icona del boto de transport: ▶ aturat / ⏸ sonant."""
         if hasattr(self, "b_play_tb"):
-            self.b_play_tb.setText("⏸" if on else "▶")
+            self.b_play_tb.setIcon(icones.ico("pause" if on else "play", 16))
             self.b_play_tb.setToolTip("Atura  (Espai)" if on
                                       else "Reprodueix  (Espai)")
 
@@ -1015,8 +1020,11 @@ class Finestra(QMainWindow):
             getattr(vr, nom)(*args)
 
     def _crea_transport(self, bar):
-        def boto(text, tip, accio, checkable=False):
-            b = QPushButton(text)
+        def boto(text, tip, accio, checkable=False, icona=None):
+            b = QPushButton("" if icona else text)
+            if icona:
+                b.setIcon(icones.ico(icona, 16))
+                b.setIconSize(icones.pm_mida(16))
             b.setToolTip(tip)
             if checkable:
                 b.setCheckable(True)
@@ -1025,35 +1033,39 @@ class Finestra(QMainWindow):
             return b
 
         self.b_play_tb = boto("▶", "Reprodueix / atura  (Espai)",
-                              lambda: self._acc_visor("play_stop"))
+                              lambda: self._acc_visor("play_stop"),
+                              icona="play")
         boto("⏹", "Atura i torna a l'inici",
-             lambda: self._acc_visor("stop_inici"))
+             lambda: self._acc_visor("stop_inici"), icona="square")
         boto("−10s", "Endarrere 10 s",
-             lambda: self._acc_visor("menys10"))
+             lambda: self._acc_visor("menys10"), icona="rewind")
         boto("+10s", "Endavant 10 s",
-             lambda: self._acc_visor("mes10"))
+             lambda: self._acc_visor("mes10"), icona="fast-forward")
         bar.addSeparator()
         boto("A⟨", "Marca inici de loop (A)",
-             lambda: self._acc_visor("marca_A"))
+             lambda: self._acc_visor("marca_A"), icona="arrow-left-to-line")
         boto("⟩B", "Marca fi de loop (B)",
-             lambda: self._acc_visor("marca_B"))
+             lambda: self._acc_visor("marca_B"), icona="arrow-right-to-line")
         self.tb_loop = boto("🔁", "Activa/desactiva el loop A-B",
-                            lambda: None, checkable=True)
+                            lambda: None, checkable=True, icona="repeat-2")
         self.tb_loop.clicked.connect(
             lambda: self._acc_visor("set_loop", self.tb_loop.isChecked()))
         bar.addSeparator()
-        boto("🔍−", "Allunya el zoom", lambda: self._acc_visor("zoom", 2.0))
-        boto("🔍+", "Apropa el zoom", lambda: self._acc_visor("zoom", 0.5))
+        boto("🔍−", "Allunya el zoom", lambda: self._acc_visor("zoom", 2.0),
+             icona="zoom-out")
+        boto("🔍+", "Apropa el zoom", lambda: self._acc_visor("zoom", 0.5),
+             icona="zoom-in")
         boto("Tot", "Zoom total (veure-ho tot)",
-             lambda: self._acc_visor("zoom_tot"))
+             lambda: self._acc_visor("zoom_tot"), icona="maximize")
         self.tb_mut = boto("🔇", "Silencia / reactiva el so",
-                           lambda: None, checkable=True)
+                           lambda: None, checkable=True, icona="volume-x")
         self.tb_mut.setObjectName("mute")
         self.tb_mut.clicked.connect(
             lambda: self._acc_visor("set_mut", self.tb_mut.isChecked()))
         bar.addSeparator()
         # metrònom: només en mode BPM · compàs (vegeu _actualitza_metro_ui)
-        self.b_metro = QPushButton("🥁")
+        self.b_metro = QPushButton()
+        self.b_metro.setIcon(icones.ico("drum"))
         self.b_metro.setObjectName("metro")
         self.b_metro.setCheckable(True)
         self.b_metro.setToolTip("Metrònom (només en mode BPM · compàs)")
