@@ -123,6 +123,22 @@ com «N1/N3» (novelty) i «B»; després l'app les **reanomena** a A/B/C… amb
   paràmetres** (p. ex. no hi surt `useHMM`); per això **no** es pot pedaçar el
   TTL per defecte → cal **reconstruir-lo** amb el descriptor `.n3`.
 
+## 4ter. Post-processat (implementat, fase 5)
+
+Els motors donen el resultat «cru»; `app/postproc.py` el neteja (funcions
+pures). Controls a la pestanya **Acords** del diàleg:
+
+| Opció | Què fa | Exemple |
+|-------|--------|---------|
+| **Treure el baix** | elimina el baix tallat | `A/E` → `A` |
+| **Reduir a l'acord bàsic** | treu extensions | `Cmaj7` → `C`, `Em6` → `Em`, `Edim7` → `Edim` |
+| **Fusionar iguals seguits** | uneix acords idèntics consecutius | `C` `C` → `C` |
+| **Durada mínima** | elimina acords massa curts (soroll) | Am de 0,2 s → fora |
+| **Encaixar a la graella** | snap al beat/compàs (subdivisions triables) | 1,03 s → 1,00 s |
+
+**Estructura** (pestanya pròpia): `pipeline.filtra_seccions` (durada mínima +
+fusionar iguals) via `fer_abc(durada_min=, fusiona_iguals=)`.
+
 ## 5. Com es prova (reproduïble)
 
 ```bash

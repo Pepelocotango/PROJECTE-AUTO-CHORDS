@@ -180,7 +180,10 @@ class DialegOpcions(QDialog):
                 c = _spin(p["minim"], p["maxim"], p["pas"] or 0.05, def_v)
             self._controls["chords"][pid] = c
             nom = NOMS_CA.get(pid, p["titol"])
-            et = QLabel(f"{nom}\n<small>{pid}</small>")
+            et = QLabel()
+            et.setTextFormat(Qt.RichText)
+            et.setText(f"{nom}<br><span style='color:#9aa6b8;"
+                       f"font-size:10px'>{pid}</span>")
             et.setToolTip(AJUDA_CA.get(pid, ""))
             c.setToolTip(AJUDA_CA.get(pid, ""))
             f.addRow(et, c)

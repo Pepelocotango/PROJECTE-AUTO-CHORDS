@@ -5,6 +5,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Arreglat
+- Les etiquetes del diàleg mostren el nom català + l'`id` petit
+  (abans el `<small>` sortia literal).
+
 ### Afegit
 - **Neteja posterior dels acords** (post-processat, `app/postproc.py`), amb
   controls nous a la pestanya **Acords** del dialeg:
