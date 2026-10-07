@@ -76,7 +76,7 @@ Això ens permet estar oberts a:
 - 🔒 **Sense secrets** al repo (`.secrets/` ignorat per `.gitignore`).
 - 🐧 **Linux prioritari** (AppImage idealment); multi-OS és nice-to-have.
 
-## Estat actual (2026-10-04)
+## Estat actual (2026-10-07 · v0.3.0)
 
 El projecte ja ha passat de prototip funcional a flux de producte útil:
 

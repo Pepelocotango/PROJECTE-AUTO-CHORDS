@@ -2,7 +2,7 @@
 
 > Document de referència de la UI (PyQt5). Noms que fa servir el codi i
 > noms «humans» de cada zona, mides reals i interaccions.
-> **Actualitzat: 2026-10-07 · v0.2.2 + canvis no publicats** (GUI reordenada:
+> **Actualitzat: 2026-10-07 · v0.3.0** (GUI reordenada:
 > timeline al centre, barres d'eines, franja Editor, metrònom, count-in,
 > caixa d'informació, tap tempo i paleta de botons unificada).
 
@@ -20,7 +20,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [Obre…] Temps:[BPM·compàs][Lliure] BPM:[101] 🎯[Detecta] [TAP] Compàs:[4]   │  ← BARRA 1
+│ [Obre…] Temps:[BPM·compàs][Lliure] BPM:[101][×2][÷2] 🎯[Detecta][TAP] Compàs:[4] │  ← BARRA 1
 │   Offset:[0.0] [📍] ≈[1.1] ☑ Inclou estructura   [Analitza]   [Exporta]     │     (treball)
 ├────────────────────────────────────────────────────────────────────────────┤
 │ [▶/⏸] [⏹] [−10s] [+10s]  [A⟨] [⟩B] [🔁]  [🔍−] [🔍+] [Tot]  [🔇] [🥁] [▬▬●] │  ← BARRA 2
@@ -49,7 +49,8 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 | — | `self.b_export` | **Exporta** (Ctrl+E) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / Lliure** | `QPushButton` (checkable) |
 | — | `self.bpm` · `self.bpb` · `self.offset` · `self.offset_cb` | **BPM**, **Compàs**, **Offset (s)**, **≈ C.B** | `QLineEdit` |
-| — | `self.b_detecta` | **🎯 Detecta** (F5? no; vegeu F5=Analitza) | `QPushButton` |
+| — | `self.b_detecta` | **🎯 Detecta** (obre el diàleg de BPM) | `QPushButton` |
+| — | `self.b_bpm_x2` · `self.b_bpm_div2` | **×2 / ÷2** del BPM | `QPushButton` |
 | — | `self.b_tap` | **TAP** (tecla **T**) | `QPushButton` |
 | — | `self.b_offset_cursor` | **📍** → compàs 1 al cursor | `QPushButton` |
 | — | `self.amb_est` | **Inclou estructura** | `QCheckBox` |
@@ -64,7 +65,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (ordre del flux) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · 🎯 Detecta · **TAP** · Compàs · Offset (s) · **📍** · ≈ C.B → **Inclou estructura** → **Analitza** → **Exporta** |
+| **Treball** (ordre del flux) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · 🎯 Detecta · **TAP** · Compàs · Offset (s) · **📍** · ≈ C.B → **Inclou estructura** → **Analitza** → **Exporta** |
 | **Transport** | **▶/⏸** (play/pausa) · `⏹` · `−10s` · `+10s` · `A⟨` · `⟩B` · `🔁` · `🔍−` · `🔍+` · `Tot` · `🔇` · `🥁` · volum del clic |
 
 ### Menús
@@ -248,8 +249,42 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 
 ---
 
+## 7. Opcions d'autodetecció (diàleg) i import
+
+### 7.1 Diàleg d'opcions (`app/dialegs.py`)
+
+En clicar **`🎯 Detecta`** (obre a **BPM**) o **`Analitza`** (obre a **Acords**)
+surt un `QDialog` amb 3 pestanyes + «Restaura per defecte»:
+
+| Pestanya | Controls |
+|----------|----------|
+| **BPM** | rang de cerca (min/max) i rang preferit |
+| **Acords** | els **6 paràmetres del Chordino** (construïts del descriptor `.n3`) + **neteja posterior** |
+| **Estructura** | durada mínima de secció + fusionar trossos iguals |
+
+La pestanya **Acords** es genera **dinàmicament** des de `app/vamp_params.py`
+(checkbox pels 0/1, combo quan el paràmetre té noms, spinbox pels numèrics).
+Els títols són **en català** amb l'`id` del plugin a sota i una **ajuda**
+(tooltip). Es passen al motor amb un transform `.ttl` (`pipeline.escriu_ttl`
++ `sonic-annotator -t`).
+
+**Neteja posterior** (`app/postproc.py`): treure el baix (`A/E`→`A`), reduir
+(`Cmaj7`→`C`), fusionar iguals, durada mínima i encaixar a la graella.
+
+Les opcions es **recorden** a `opcions_detecta.json` (gitignored).
+
+### 7.2 Import de formats (`app/ffmpeg.py`)
+
+`Obre…` accepta **wav, mp3, aif/aiff, flac, m4a, ogg, opus, wma…**. Si el
+fitxer no és **WAV PCM 16 bits**, es converteix automàticament amb
+`ffmpeg -vn -c:a pcm_s16le` i el WAV de treball queda al costat de l'original
+com **`<nom>_convertit.wav`** (es reutilitza si ja és més nou).
+
+---
+
 ## 6. Documents relacionats
 - `docs/AUBIO_TEMPO.md` — plugin d'aubio (tempo/beats).
+- `docs/AUTODETECCIO_OPCIONS.md` — motors d'autodetecció, opcions i post-processat.
 - `docs/REVISIO_METRONOM.diff` · `docs/REVISIO_REORG_METRONOM.diff` — diffs
   anotats per a revisió externa.
 - `README.md` — «Estat actual» de l'app.

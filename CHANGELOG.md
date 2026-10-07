@@ -1,9 +1,14 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
+Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
 
-## [No publicat]
+## [0.3.0] — 2026-10-07
+
+Sessió gran: tap tempo, botó 📍, franja Editor, menús, paleta de botons,
+**diàleg d'opcions d'autodetecció** (BPM/acords/estructura amb els paràmetres
+reals dels plugins Vamp + post-processat), **import d'altres formats amb
+ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
 ### Afegit
 - **Botons `×2` / `÷2` del BPM** a la barra de temps (al costat del camp):

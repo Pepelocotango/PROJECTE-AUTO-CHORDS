@@ -1,8 +1,14 @@
 # PROJECTE AUTO CHORDS
 
-> Aplicació desktop per analitzar una WAV, navegar-ne acords i estructura, corregir-la i exportar clips preparats per a DAW.
+> Aplicació desktop per analitzar un àudio, navegar-ne acords i estructura,
+> corregir-la i exportar clips preparats per a DAW.
 
-## Estat actual (2026-10-06 · v0.2.0)
+> **Novetats v0.3.0:** tap tempo (`TAP`/`T`), botó **📍** (compàs 1 al cursor),
+> botons **×2/÷2** del BPM, **diàleg d'opcions d'autodetecció** (paràmetres
+> reals del Chordino + post-processat), **import d'altres formats amb ffmpeg**
+> i franja **Editor** d'edició directa.
+
+## Estat actual (2026-10-07 · v0.3.0)
 
 L’app està **reorganitzada amb el timeline com a centre de la finestra**
 (estil Audacity/DAW): l’anàlisi és una **acció** sobre el que es veu, no un
@@ -38,10 +44,10 @@ La funcionalitat principal està validada: **69/69 tests OK** (`python -m unitte
 
 ## Flux actual d’ús
 
-1. Obre la WAV
-2. Fes `Processa`
-3. Revisa i edita acords / seccions al visor
-4. Fes `Finalitza i publica`
+1. Obre l'àudio (`Obre…`) — si no és WAV, es converteix sol amb ffmpeg
+2. Ajusta el BPM (🎯 Detecta o TAP) i fes `Analitza` (obre el diàleg d'opcions)
+3. Revisa i edita acords / seccions al visor (franja Editor)
+4. Fes `Exporta`
 
 ## Filosofia i lògica del flux
 
@@ -101,8 +107,15 @@ També hi ha llançador de desktop:
 
 - `app/main.py` — finestra principal i flux d’usuari
 - `app/visor.py` — visor integrat, llistes, navegació, edició manual
-- `app/pipeline.py` — exportació, regeneració, normalització d’acords
-- `app/theme.py` — tema centralitzat gris
+- `app/timeline.py` — regle, graella, carrils i clips (QGraphicsView)
+- `app/pipeline.py` — extracció, exportació, normalització
+- `app/tempo.py` — detecció de BPM (numpy, sense AVX)
+- `app/metronom.py` — clic del metrònom mesclat al buffer
+- `app/vamp_params.py` — paràmetres dels plugins Vamp (descriptors `.n3`)
+- `app/dialegs.py` — diàleg d’opcions d’autodetecció
+- `app/postproc.py` — neteja posterior dels acords
+- `app/ffmpeg.py` — import d’altres formats (conversió a WAV)
+- `app/theme.py` — tema centralitzat
 - `AUTO_CHORDS.sh` — llançador directe
 
 ## Requisits
@@ -112,6 +125,7 @@ També hi ha llançador de desktop:
 - pyqtgraph
 - numpy < 2
 - dependències locals de Chordino / Segmentino / Vamp al sistema
+- **ffmpeg/ffprobe** (opcional, per importar formats que no siguin WAV)
 
 ## Agraïments i reconeixement a projectes de tercers
 
