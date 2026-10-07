@@ -5,6 +5,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Canviat
+- **Barra 1 reordenada segons el FLUX de treball**: ara és
+  `Obre…` → opcions de temps (selector BPM·compàs/Lliure, BPM, 🎯 Detecta,
+  Compàs, Offset, ≈ C.B, Inclou estructura) → `Analitza` → `Exporta`.
+  Abans `Analitza` i `Exporta` eren en una barra a part que quedava ABANS
+  de la de temps i trencava l'ordre natural. Tot en **una sola barra**.
+  Docs (`ESQUEMA_UI.md/.html/.svg`) actualitzats.
+
 ### Documentat
 - **`docs/ESQUEMA_UI.md` · `.html` · `.svg` actualitzats a la vista actual
   (v0.2.2)**: finestra única amb el **visor al centre**, **dues barres
