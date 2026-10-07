@@ -5,6 +5,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Documentat
+- **`docs/ESQUEMA_UI.md` · `.html` · `.svg` actualitzats a la vista actual
+  (v0.2.2)**: finestra única amb el **visor al centre**, **dues barres
+  d'eines** (temps + transport), **dos camps d'offset** sincronitzats
+  (segons · compàs.beat), **metrònom**, **count-in**, llistes sota l'ona i
+  el dock **«Log · Informació»** (log 3/4 + ajuda «live» 1/4). Taules de
+  noms, interaccions, mides i colors al dia.
+
 ### Afegit
 - **Offset amb DOS camps sincronitzats**: `Offset` (segons) i `≈ C.B`
   (compàs.beat). El camp compàs.beat és **relatiu a la graella original

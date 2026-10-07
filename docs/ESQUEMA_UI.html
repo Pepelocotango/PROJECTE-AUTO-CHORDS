@@ -2,479 +2,392 @@
 <html lang="ca">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Auto Chords — Esquema visual de la GUI</title>
+<title>Auto Chords — Esquema visual de la GUI (v0.2.2)</title>
 <style>
   :root{
     --ruler-bg:#10131a; --wf-bg:#0f1218; --laneA:#1a1d23; --laneB:#15181d;
     --divider:#2a2f37; --ruler-text:#c4d0e2; --wave:#8ab4f8;
-    --chord-fill:#2e3844; --chord-active:#dce8ff; --chord-text:#edf3ff;
-    --chord-active-text:#141b22; --chord-border:#b8c7dc;
-    --handle:#5b8dd6; --handle-active:#ffd166; --section-text:#edf3ff;
-    --cursor:#ff6b6b; --guide:#ffd166; --selection:#ffd166;
-    --scene:#0f0f10; --grid-measure:#55677f; --grid-beat:#3d4c60;
-    --grid-sub:#303a48; --shell:#20242c; --shell2:#272c36;
-    --txt:#e8edf5; --muted:#9aa6b8; --accent:#5b8dd6;
+    --clip:#2e3844; --clip-active:#1f5c3d; --clip-active-bd:#4ade80;
+    --clip-bd:#b8c7dc; --sel:#38bdf8; --handle:#5b8dd6;
+    --sec1:#3a4655; --sec2:#475a70; --sec3:#5d6f82; --sec4:#70849a;
+    --cursor:#ff6b6b; --guide:#ffd166; --scene:#0f0f10;
+    --grid-m:#55677f; --grid-b:#3d4c60; --grid-s:#303a48;
+    --shell:#20242c; --txt:#e8edf5; --muted:#9aa6b8; --accent:#5b8dd6;
   }
   *{box-sizing:border-box}
-  body{margin:0;padding:28px;background:#15181d;color:var(--txt);
+  body{margin:0;padding:22px;background:#15181d;color:var(--txt);
        font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  h1{font-size:20px;margin:0 0 4px}
-  h2{font-size:15px;margin:30px 0 10px;color:var(--muted);
-     text-transform:uppercase;letter-spacing:1.5px}
-  .sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+  h1{font-size:19px;margin:0 0 4px}
+  h2{font-size:14px;margin:26px 0 8px;color:var(--muted);
+     text-transform:uppercase;letter-spacing:1.4px}
+  .sub{color:var(--muted);font-size:12.5px;margin:0 0 14px}
   .badge{display:inline-flex;align-items:center;justify-content:center;
-    min-width:19px;height:19px;padding:0 5px;border-radius:50%;
-    background:var(--accent);color:#fff;font-size:11px;font-weight:700;
-    margin-right:6px;vertical-align:middle}
-  .badge.m{background:#b07ad6}
+    min-width:18px;height:18px;padding:0 5px;border-radius:50%;
+    background:var(--accent);color:#fff;font-size:10.5px;font-weight:700;
+    margin-right:5px;vertical-align:middle}
   .badge.v{background:#3fa27a}
 
-  /* ---------- finestra ---------- */
-  .window{background:var(--shell);border:1px solid #3a4150;border-radius:10px;
-          overflow:hidden;box-shadow:0 12px 34px rgba(0,0,0,.45);
-          max-width:1420px;margin:0 auto}
-  .titlebar{background:linear-gradient(#2f3541,#262b34);padding:9px 14px;
-    font-size:13px;font-weight:600;border-bottom:1px solid #3a4150;
-    display:flex;justify-content:space-between;align-items:center}
-  .dots span{display:inline-block;width:11px;height:11px;border-radius:50%;
-    margin-left:6px;background:#555}
-  .body{display:flex;gap:10px;padding:10px;background:#1c2028}
-  .left{flex:0 0 44%;display:flex;flex-direction:column;gap:10px}
-  .dock{flex:1;display:flex;flex-direction:column}
-  .docktitle{background:#2b3140;padding:6px 12px;font-size:12px;font-weight:600;
-    border-radius:7px 7px 0 0;border:1px solid #3a4150;border-bottom:none;
+  .window{background:var(--shell);border:1px solid #3a4150;border-radius:9px;
+    overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.45);max-width:1420px;margin:0 auto}
+  .titlebar{background:linear-gradient(#2f3541,#262b34);padding:7px 12px;
+    font-size:12.5px;font-weight:600;border-bottom:1px solid #3a4150;
     display:flex;justify-content:space-between}
-  .dockbody{flex:1;background:#15181d;border:1px solid #3a4150;
-    border-radius:0 0 7px 7px;padding:10px;display:flex;
-    flex-direction:column;gap:9px}
-
-  .group{border:1px solid #3a4150;border-radius:7px;padding:10px 12px;
-    background:#212630;position:relative}
-  .group>legend, .group .gtitle{font-size:12px;font-weight:700;color:#c6d0de;
-    margin-bottom:9px}
-  .row{display:flex;gap:8px;align-items:center;margin-bottom:7px}
-  .row:last-child{margin-bottom:0}
-  label{font-size:12px;color:var(--muted);min-width:132px}
-  input[type=text]{flex:1;background:#12151b;border:1px solid #3a4150;
-    color:var(--txt);border-radius:5px;padding:6px 8px;font-size:12px}
+  .menubar{background:#262b34;padding:4px 10px;font-size:12.5px;
+    border-bottom:1px solid #3a4150;display:flex;gap:16px}
+  .toolbar{background:#212630;padding:5px 8px;display:flex;align-items:center;
+    gap:5px;flex-wrap:wrap;border-bottom:1px solid #3a4150;font-size:11.5px}
   .btn{background:#313846;border:1px solid #47505f;color:var(--txt);
-    border-radius:5px;padding:6px 12px;font-size:12px;font-weight:600;
-    white-space:nowrap;cursor:default}
-  .btn.sec{background:#262b34}
-  .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
-  .spin{background:#12151b;border:1px solid #3a4150;color:var(--txt);
-    border-radius:5px;padding:5px 8px;font-size:12px;min-width:70px;
-    display:flex;justify-content:space-between;gap:8px}
-  .spin .ar{color:var(--muted);font-size:9px;line-height:9px}
-  .chk{font-size:12px;color:var(--txt);display:flex;gap:7px;align-items:center;
-    margin:6px 0}
-  .box{width:13px;height:13px;border:1px solid #6b7688;border-radius:3px;
-    display:inline-block;flex:0 0 13px}
-  .box.ck{background:var(--accent);border-color:var(--accent);position:relative}
-  .box.ck::after{content:"✓";position:absolute;top:-3px;left:1px;font-size:11px;
-    color:#fff}
-  .info{font-size:11.5px;color:var(--muted);padding:0 2px}
-  .flux{font-size:12px;font-weight:600;color:#dfe3ea;padding:2px}
-  .prog{height:14px;background:#12151b;border:1px solid #3a4150;border-radius:4px;
-    overflow:hidden;margin:9px 0}
-  .prog>i{display:block;height:100%;width:42%;
-    background:linear-gradient(90deg,#3fa27a,#5bd6a0)}
-  .log{background:#0d1015;border:1px solid #3a4150;border-radius:5px;
-    font-family:ui-monospace,monospace;font-size:11px;color:#9fd6b8;
-    padding:8px;height:96px;overflow:hidden;line-height:1.55}
-  .log .warn{color:#e8c07a}
-  .log .err{color:#ff8a8a}
+    border-radius:5px;padding:4px 9px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.on{background:#ffd166;border-color:#ffd166;color:#000}
+  .btn.dis{background:#2a2e36;border-color:#3a4150;color:#6b7484}
+  .camp{background:#12151b;border:1px solid #3a4150;color:var(--txt);
+    border-radius:4px;padding:3px 6px;font-size:11.5px}
+  .chk{font-size:11.5px;display:flex;gap:5px;align-items:center}
+  .chk i{width:12px;height:12px;border:1px solid #6b7688;border-radius:3px;
+    display:inline-block;background:var(--accent);border-color:var(--accent);
+    color:#fff;font-size:10px;line-height:12px;text-align:center;font-style:normal}
 
-  /* ---------- timeline ---------- */
-  .tl{background:var(--scene);border:1px solid #3a4150;border-radius:5px;
-      position:relative;overflow:hidden}
-  .ruler{height:26px;background:var(--ruler-bg);position:relative;
+  /* timeline */
+  .tl{background:var(--scene);position:relative}
+  .ruler{height:24px;background:var(--ruler-bg);position:relative;
     border-bottom:1px solid var(--divider);
     font-family:ui-monospace,monospace;font-size:9px;color:var(--ruler-text)}
-  .ruler .tick{position:absolute;top:12px;border-left:1px solid #39414f;
-    height:8px}
   .ruler .lab{position:absolute;top:2px}
-  .ruler .zoom{position:absolute;right:8px;top:3px;color:var(--wave)}
-  .ruler .loopz{position:absolute;left:16%;width:34%;top:0;height:5px;
-    background:var(--guide);opacity:.85;border-radius:2px}
-  .wf{position:relative;height:170px;background:var(--wf-bg);overflow:hidden}
-  .gridline{position:absolute;top:0;bottom:0;width:1px}
-  .g-measure{background:var(--grid-measure);opacity:.55}
-  .g-beat{background:var(--grid-beat);opacity:.45}
-  .g-sub{background:var(--grid-sub);opacity:.35}
-  .wave-svg{position:absolute;inset:0;width:100%;height:100%}
-  .lane{position:absolute;left:0;right:0;height:54px;background:var(--laneB);
-    opacity:.18;border-top:1px solid var(--divider);
-    border-bottom:1px solid var(--divider)}
-  .lane.sec{border-top:1px solid var(--divider);border-bottom:none}
-  .clip{position:absolute;height:42px;top:6px;border-radius:6px;
-    display:flex;align-items:center;justify-content:center;font-size:12px;
-    font-weight:700;overflow:hidden}
-  .chord{background:var(--chord-fill);border:1px solid var(--chord-border);
-    color:var(--chord-text)}
-  .chord.active{background:var(--chord-active);color:var(--chord-active-text);
-    border-color:var(--chord-active)}
-  .chord.sel{border:2px solid var(--selection)}
-  .handle{position:absolute;top:3px;bottom:3px;width:3px;border-radius:2px;
-    background:var(--handle)}
-  .handle.on{background:var(--handle-active)}
-  .secclip{border:1px solid #5b6879;color:var(--section-text);
-    border-radius:6px}
-  .cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--cursor);
-    z-index:5}
-  .cursorflag{position:absolute;top:0;width:0;height:0;border-left:6px solid transparent;
+  .ruler .loopz{position:absolute;left:20%;width:26%;top:0;height:4px;
+    background:var(--guide);border-radius:2px}
+  .wf{position:relative;height:150px;background:var(--wf-bg);overflow:hidden}
+  .gl{position:absolute;top:0;bottom:0;width:1px}
+  .gm{background:var(--grid-m);opacity:.55}.gb{background:var(--grid-b);opacity:.45}
+  .gs{background:var(--grid-s);opacity:.35}
+  .wave{position:absolute;inset:0;width:100%;height:100%}
+  .lane{position:absolute;left:0;right:0;height:48px;background:var(--laneB);opacity:.18}
+  .clip{position:absolute;height:38px;top:5px;border-radius:5px;display:flex;
+    align-items:center;justify-content:center;font-size:11.5px;font-weight:700;
+    overflow:hidden}
+  .chord{background:var(--clip);border:1px solid var(--clip-bd);color:#edf3ff}
+  .chord.act{background:var(--clip-active);border-color:var(--clip-active-bd);
+    color:#eafff3}
+  .chord.sel{border:3px solid var(--sel)}
+  .secclip{border:1px solid #5b6879;color:#edf3ff}
+  .cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--cursor);z-index:5}
+  .flag{position:absolute;top:0;border-left:6px solid transparent;
     border-right:6px solid transparent;border-top:8px solid var(--cursor);
-    z-index:6;transform:translateX(-6px)}
-  .guide{position:absolute;top:24px;bottom:0;width:1px;
-    background:var(--guide);border-left:1px dashed var(--guide);z-index:4;
-    opacity:.9}
+    transform:translateX(-6px);z-index:6}
+  .guide{position:absolute;top:22px;bottom:0;border-left:1px dashed var(--guide);z-index:4}
 
-  /* ---------- llistes, transport, status ---------- */
-  .mid{display:flex;gap:9px}
+  .mid{display:flex;gap:8px;padding:0 6px}
   .lst{flex:1;background:#12161d;border:1px solid #3a4150;border-radius:5px;
     font-size:11.5px;overflow:hidden}
-  .lst .hd{background:#232936;padding:5px 9px;font-weight:700;font-size:11px;
+  .lst .hd{background:#232936;padding:4px 8px;font-weight:700;font-size:11px;
     border-bottom:1px solid #3a4150;display:flex;justify-content:space-between}
-  .lst .it{padding:3px 9px;display:flex;justify-content:space-between;
-    font-family:ui-monospace,monospace;border-bottom:1px solid #1b2029}
+  .lst .it{padding:2px 8px;display:flex;justify-content:space-between;
+    font-family:ui-monospace,monospace}
   .lst .it.cur{background:#22314a;color:#cfe0ff}
   .lst .it .t{color:var(--muted)}
-  .lst .ft{padding:4px 9px;font-size:10px;color:var(--muted);background:#171b23}
-  .rowbtns{display:flex;gap:5px;flex-wrap:wrap}
-  .tbtn{background:#313846;border:1px solid #47505f;color:var(--txt);
-    border-radius:5px;padding:5px 9px;font-size:11.5px;font-weight:600}
-  .tbtn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
-  .tbtn.tog{background:#262b34}
-  .srow{display:flex;gap:9px;align-items:center;font-size:11.5px}
+  .lst .ft{padding:3px 8px;font-size:10px;color:var(--muted);background:#171b23}
+
+  .srow{display:flex;gap:8px;align-items:center;padding:5px 8px;font-size:11.5px}
   .slider{flex:1;height:5px;background:#12151b;border:1px solid #3a4150;
     border-radius:3px;position:relative}
-  .slider>i{position:absolute;left:0;top:0;bottom:0;width:60%;
-    background:var(--accent);border-radius:3px 0 0 3px}
-  .slider>b{position:absolute;left:58%;top:-5px;width:13px;height:13px;
+  .slider>i{position:absolute;left:0;top:0;bottom:0;width:10%;background:var(--accent)}
+  .slider>b{position:absolute;left:8%;top:-5px;width:13px;height:13px;
     border-radius:50%;background:#dbe4f2;border:2px solid var(--accent)}
   .time{font-family:ui-monospace,monospace;color:var(--ruler-text)}
   .stat{color:var(--muted);margin-left:auto}
 
-  /* ---------- taules ---------- */
-  table{border-collapse:collapse;margin:10px 0;font-size:12.5px;width:100%;
-    max-width:1100px}
-  th,td{border:1px solid #3a4150;padding:6px 10px;text-align:left;
-    vertical-align:top}
+  /* dock log+info */
+  .dock{background:#15181d;border-top:1px solid #3a4150}
+  .docktitle{background:#2b3140;padding:3px 10px;font-size:11px;font-weight:600}
+  .dockbody{display:flex;gap:4px;padding:4px}
+  .log,.info{background:#0d1015;border:1px solid #3a4150;border-radius:4px;
+    font-family:ui-monospace,monospace;font-size:11px;padding:6px;
+    height:120px;overflow:hidden;line-height:1.5}
+  .log{flex:3;color:#9fd6b8}
+  .info{flex:1;color:#cfd8e6}
+  .info b{color:var(--guide)}
+  .statusbar{background:#262b34;border-top:1px solid #3a4150;padding:3px 10px;
+    font-size:11.5px;color:var(--muted);display:flex;gap:10px;align-items:center}
+  .prog{margin-left:auto;width:150px;height:12px;background:#12151b;
+    border:1px solid #3a4150;border-radius:3px;overflow:hidden}
+  .prog>i{display:block;height:100%;width:100%;
+    background:linear-gradient(90deg,#3fa27a,#5bd6a0)}
+
+  table{border-collapse:collapse;margin:10px 0;font-size:12.5px;width:100%;max-width:1150px}
+  th,td{border:1px solid #3a4150;padding:6px 10px;text-align:left;vertical-align:top}
   th{background:#232936;color:#c6d0de}
   code{background:#12151b;padding:1px 5px;border-radius:4px;
     font-family:ui-monospace,monospace;font-size:11.5px;color:#a9c7ff}
-  .note{background:#1e2530;border-left:3px solid var(--accent);padding:10px 14px;
-    border-radius:5px;font-size:12.5px;color:#cbd5e3;margin:14px 0;max-width:1100px}
-  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);
-    margin:10px 0}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:10px 0}
   .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;
     margin-right:5px;vertical-align:-1px}
+  .note{background:#1e2530;border-left:3px solid var(--accent);padding:10px 14px;
+    border-radius:5px;font-size:12.5px;color:#cbd5e3;margin:14px 0;max-width:1150px}
 </style>
 </head>
 <body>
 
 <h1>Auto Chords — Esquema visual de la GUI</h1>
-<p class="sub">PyQt5 · finestra principal (<code>Finestra</code>, <code>app/main.py</code>)
- + visor incrustat (<code>Visor</code>, <code>app/visor.py</code>) · colors i mides reals del codi</p>
+<p class="sub">v0.2.2 · GUI reordenada: <b>timeline al centre</b>, barres d'eines,
+metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
 
 <div class="legend">
   <span><i style="background:#5b8dd6"></i>accent</span>
   <span><i style="background:#2e3844"></i>acord</span>
-  <span><i style="background:#dce8ff"></i>acord actiu</span>
+  <span><i style="background:#1f5c3d"></i>actiu (sona)</span>
+  <span><i style="background:#38bdf8"></i>seleccionat (vora)</span>
   <span><i style="background:#3a4655"></i>secció</span>
   <span><i style="background:#ff6b6b"></i>cursor</span>
-  <span><i style="background:#ffd166"></i>selecció / loop / guia</span>
+  <span><i style="background:#ffd166"></i>loop / guia / metrònom ON</span>
   <span><i style="background:#8ab4f8"></i>ona</span>
 </div>
 
-<!-- ================= FINESTRA PRINCIPAL ================= -->
-<h2>Finestra principal + dock del visor</h2>
+<h2>Finestra (una sola finestra, amb el visor al centre)</h2>
 
 <div class="window">
   <div class="titlebar">
-    <span>Auto Chords — wav → acords + estructura</span>
-    <span class="dots"><span></span><span></span><span></span></span>
+    <span>01 101bpm pep live RE-ESTRUCTURA.wav — Auto Chords</span>
+    <span style="color:#9aa6b8">— ▢ ✕</span>
+  </div>
+  <div class="menubar">
+    <span>Fitxer</span><span>Edita</span><span>Selecciona</span>
+    <span>Visualitza</span><span>Analitza</span><span>Ajuda</span>
   </div>
 
-  <div class="body">
-    <!-- ---------- ESQUERRA ---------- -->
-    <div class="left">
+  <!-- BARRA 1: temps -->
+  <div class="toolbar">
+    <span class="btn">Obre…</span>
+    <span class="btn pri">Analitza</span>
+    <span class="btn">Exporta</span>
+    <span style="color:#9aa6b8">Temps:</span>
+    <span class="btn on">BPM · compàs</span>
+    <span class="btn">Lliure (hh:mm:ss)</span>
+    <span style="color:#9aa6b8">BPM:</span><span class="camp">101</span>
+    <span class="btn">🎯 Detecta</span>
+    <span style="color:#9aa6b8">Compàs:</span><span class="camp">4</span>
+    <span style="color:#9aa6b8">Offset:</span><span class="camp">0.0</span>
+    <span style="color:#9aa6b8">≈</span><span class="camp">1.1</span>
+    <span class="chk"><i>✓</i>Inclou estructura</span>
+  </div>
 
-      <div class="group">
-        <div class="gtitle"><span class="badge m">M1</span>1 · Tria la wav</div>
-        <div class="row">
-          <input type="text" value="/home/peplx/Música/tema.wav" readonly>
-          <span class="btn sec">Tria...</span>
-        </div>
+  <!-- BARRA 2: transport -->
+  <div class="toolbar">
+    <span class="btn pri">▶ Escolta</span>
+    <span class="btn on">⏹</span>
+    <span class="btn">−10s</span><span class="btn">+10s</span>
+    <span class="btn">A⟨</span><span class="btn">⟩B</span><span class="btn">🔁</span>
+    <span class="btn">🔍−</span><span class="btn">🔍+</span><span class="btn">Tot</span>
+    <span class="btn on">🔇</span>
+    <span class="btn on">🥁</span>
+    <div class="slider" style="max-width:90px"><i style="width:60%"></i><b style="left:56%"></b></div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="tl">
+    <div class="ruler">
+      <span class="lab" style="left:2%">1.1</span>
+      <span class="lab" style="left:12%">9.1</span>
+      <span class="lab" style="left:22%">17.1</span>
+      <span class="lab" style="left:32%">25.1</span>
+      <span class="lab" style="left:42%">33.1</span>
+      <span class="lab" style="left:52%">41.1</span>
+      <span class="lab" style="left:62%">49.1</span>
+      <span class="lab" style="left:72%">57.1</span>
+      <span class="lab" style="left:82%">65.1</span>
+      <span class="lab" style="left:92%">73.1</span>
+      <span class="loopz"></span>
+    </div>
+    <div class="wf">
+      <div class="gl gm" style="left:2%"></div><div class="gl gb" style="left:7%"></div>
+      <div class="gl gs" style="left:4.5%"></div><div class="gl gm" style="left:12%"></div>
+      <div class="gl gb" style="left:17%"></div><div class="gl gm" style="left:22%"></div>
+      <div class="gl gb" style="left:27%"></div><div class="gl gm" style="left:32%"></div>
+      <div class="gl gb" style="left:37%"></div><div class="gl gm" style="left:42%"></div>
+      <div class="gl gb" style="left:47%"></div><div class="gl gm" style="left:52%"></div>
+      <div class="gl gb" style="left:57%"></div><div class="gl gm" style="left:62%"></div>
+      <div class="gl gb" style="left:67%"></div><div class="gl gm" style="left:72%"></div>
+      <div class="gl gb" style="left:77%"></div><div class="gl gm" style="left:82%"></div>
+      <div class="gl gb" style="left:87%"></div><div class="gl gm" style="left:92%"></div>
+      <div class="gl gb" style="left:97%"></div>
+      <svg class="wave" viewBox="0 0 1000 150" preserveAspectRatio="none">
+        <path d="M0,75 L8,75 L14,30 L22,110 L30,45 L38,100 L46,55 L54,90 L62,40 L70,115
+                 L78,60 L86,95 L94,35 L102,105 L110,50 L118,100 L126,45 L134,110 L142,55
+                 L150,95 L158,38 L166,120 L174,60 L182,100 L190,45 L198,110 L206,55
+                 L214,95 L222,30 L230,115 L238,60 L246,100 L254,45 L262,110 L270,55
+                 L278,90 L286,35 L294,120 L302,60 L310,100 L318,45 L326,115 L334,55
+                 L342,95 L350,38 L358,118 L366,60 L374,100 L382,45 L390,112 L398,55
+                 L406,95 L414,30 L422,120 L430,60 L438,100 L446,45 L454,110 L462,55
+                 L470,90 L478,35 L486,118 L494,60 L502,100 L510,45 L518,115 L526,55
+                 L534,95 L542,38 L550,120 L558,60 L566,100 L574,45 L582,112 L590,55
+                 L598,95 L606,30 L614,118 L622,60 L630,100 L638,45 L646,110 L654,55
+                 L662,90 L670,35 L678,120 L686,60 L694,100 L702,45 L710,115 L718,55
+                 L726,95 L734,38 L742,118 L750,60 L758,100 L766,45 L774,112 L782,55
+                 L790,95 L798,30 L806,120 L814,60 L822,100 L830,45 L838,110 L846,55
+                 L854,90 L862,35 L870,118 L878,60 L886,100 L894,45 L902,115 L910,55
+                 L918,95 L926,38 L934,120 L942,60 L950,100 L958,45 L966,112 L974,55
+                 L982,95 L990,40 L1000,75 L1000,150 L0,150 Z" fill="#8ab4f8" opacity="0.20"/>
+        <path d="M0,75 L8,75 L14,30 L22,110 L30,45 L38,100 L46,55 L54,90 L62,40 L70,115
+                 L78,60 L86,95 L94,35 L102,105 L110,50 L118,100 L126,45 L134,110 L142,55
+                 L150,95 L158,38 L166,120 L174,60 L182,100 L190,45 L198,110 L206,55
+                 L214,95 L222,30 L230,115 L238,60 L246,100 L254,45 L262,110 L270,55
+                 L278,90 L286,35 L294,120 L302,60 L310,100 L318,45 L326,115 L334,55
+                 L342,95 L350,38 L358,118 L366,60 L374,100 L382,45 L390,112 L398,55
+                 L406,95 L414,30 L422,120 L430,60 L438,100 L446,45 L454,110 L462,55
+                 L470,90 L478,35 L486,118 L494,60 L502,100 L510,45 L518,115 L526,55
+                 L534,95 L542,38 L550,120 L558,60 L566,100 L574,45 L582,112 L590,55
+                 L598,95 L606,30 L614,118 L622,60 L630,100 L638,45 L646,110 L654,55
+                 L662,90 L670,35 L678,120 L686,60 L694,100 L702,45 L710,115 L718,55
+                 L726,95 L734,38 L742,118 L750,60 L758,100 L766,45 L774,112 L782,55
+                 L790,95 L798,30 L806,120 L814,60 L822,100 L830,45 L838,110 L846,55
+                 L854,90 L862,35 L870,118 L878,60 L886,100 L894,45 L902,115 L910,55
+                 L918,95 L926,38 L934,120 L942,60 L950,100 L958,45 L966,112 L974,55
+                 L982,95 L990,40 L1000,75"
+              fill="none" stroke="#8ab4f8" stroke-width="1.2"/>
+      </svg>
+      <div class="lane" style="top:6.8px;background:#1a1d23"></div>
+      <div class="lane" style="top:78.2px;background:#15181d;border-bottom:1px solid #2a2f37"></div>
+
+      <!-- carril estructura -->
+      <div class="clip secclip" style="left:1.5%;width:10%;top:10px;background:#3a4655">A·N</div>
+      <div class="clip secclip" style="left:12%;width:8%;top:10px;background:#475a70">B</div>
+      <div class="clip secclip" style="left:22%;width:12%;top:10px;background:#3a4655">A·N</div>
+      <div class="clip secclip" style="left:36%;width:10%;top:10px;background:#5d6f82">C·A</div>
+      <div class="clip secclip" style="left:48%;width:12%;top:10px;background:#3a4655">A·N</div>
+      <div class="clip secclip" style="left:62%;width:10%;top:10px;background:#5d6f82">C·A</div>
+      <div class="clip secclip" style="left:74%;width:12%;top:10px;background:#3a4655">A·N</div>
+      <div class="clip secclip" style="left:88%;width:10%;top:10px;background:#70849a">B·A</div>
+
+      <!-- carril acords -->
+      <div class="clip chord" style="left:1.5%;width:7%;top:82px">N</div>
+      <div class="clip chord sel" style="left:9.5%;width:6%;top:82px">E7</div>
+      <div class="clip chord" style="left:16.5%;width:7%;top:82px">Em</div>
+      <div class="clip chord" style="left:25%;width:6%;top:82px">E7</div>
+      <div class="clip chord" style="left:33%;width:8%;top:82px">Edim7</div>
+      <div class="clip chord" style="left:43%;width:8%;top:82px">Em6</div>
+      <div class="clip chord" style="left:53%;width:8%;top:82px">A7</div>
+      <div class="clip chord" style="left:63%;width:9%;top:82px">Em7</div>
+      <div class="clip chord" style="left:74%;width:7%;top:82px">E7</div>
+      <div class="clip chord" style="left:83%;width:15%;top:82px">F#dim7/E</div>
+
+      <div class="guide" style="left:63%"></div>
+      <div class="cursor" style="left:11%"></div>
+      <div class="flag" style="left:11%"></div>
+      <div class="cursor" style="left:33%"></div>
+      <div class="flag" style="left:33%"></div>
+    </div>
+  </div>
+
+  <!-- LLISTES -->
+  <div class="mid">
+    <div class="lst">
+      <div class="hd"><span><span class="badge v">9</span>Acords <code>llista_ac</code></span><span>54</span></div>
+      <div class="it"><span>1.1 N</span><span class="t">0.00 s</span></div>
+      <div class="it"><span>8.1 E7</span><span class="t">27.50 s</span></div>
+      <div class="it"><span>9.3 Em</span><span class="t">29.88 s</span></div>
+      <div class="it"><span>10.1 E7</span><span class="t">38.00 s</span></div>
+      <div class="it"><span>12.2 Edim7</span><span class="t">45.00 s</span></div>
+      <div class="ft">clic = salta · doble-clic = edita · dret = menú</div>
+    </div>
+    <div class="lst">
+      <div class="hd"><span><span class="badge v">10</span>Seccions <code>llista_ab</code></span><span>7</span></div>
+      <div class="it cur"><span>A (N)</span><span class="t">1.1–10.1</span></div>
+      <div class="it"><span>B (B)</span><span class="t">10.1–32.4</span></div>
+      <div class="it"><span>A (N)</span><span class="t">32.4–41.2</span></div>
+      <div class="it"><span>C (A)</span><span class="t">41.2–49.2</span></div>
+      <div class="it"><span>A (N)</span><span class="t">49.2–57.3</span></div>
+      <div class="ft">clic = salta · doble-clic = edita · dret = menú</div>
+    </div>
+  </div>
+
+  <!-- LLISCADOR -->
+  <div class="srow">
+    <div class="slider"><i style="width:10%"></i><b style="left:8%"></b></div>
+    <span class="time">9.4 / 95.1</span>
+    <span class="btn on">⏹</span>
+    <div class="slider" style="max-width:90px"><i style="width:70%"></i><b style="left:66%"></b></div>
+    <span class="stat">223.4 s · 54 acords · 7 seccions</span>
+  </div>
+
+  <!-- DOCK LOG + INFORMACIÓ -->
+  <div class="dock">
+    <div class="docktitle">Log · Informació</div>
+    <div class="dockbody">
+      <div class="log">
+        [pipeline] Chordino: 52 acords, 94 compassos<br>
+        [pipeline] 4/5 wavs d'acords...<br>
+        [pipeline] 5/5 ABC + wavs d'estructura...<br>
+        [pipeline] ABC: 7 trossos, seqüència ABACACA<br>
+        [visor] BPM detectat: 101.0<br>
+        FET ✅ — ara pots revisar el visor i fer Finalitza i publica.
       </div>
+      <div class="info"><b>🎯 Detecta</b><br>Detecta el BPM automàticament amb aubio.</div>
+    </div>
+  </div>
 
-      <div class="info"><span class="badge m">M2</span>tema.wav · 20,0 s · 44100 Hz · 1 canal · pics màx 0,84</div>
-      <div class="flux"><span class="badge m">M3</span>Flux: Tria WAV → Processa → Revisa i edita → Finalitza i publica</div>
+  <!-- BARRA D'ESTAT -->
+  <div class="statusbar">
+    <span>223.4 s · 2 canals · 44100 Hz</span>
+    <div class="prog"><i></i></div>
+  </div>
+</div>
 
-      <div class="group">
-        <div class="gtitle"><span class="badge m">M4</span>2 · Paràmetres</div>
-        <div class="row"><label>BPM:</label><span class="spin">120,0 <span class="ar">▲<br>▼</span></span></div>
-        <div class="row"><label>Temps per compàs:</label><span class="spin">4 <span class="ar">▲<br>▼</span></span></div>
-        <div class="row"><label>Offset compàs 1 (s):</label><span class="spin">0,0 <span class="ar">▲<br>▼</span></span></div>
-        <div class="chk"><span class="box"></span>El tema té tempo fix (BPM definit)</div>
-        <div class="chk"><span class="box ck"></span>Inclou estructura (Segmentino → ABC)</div>
-      </div>
-
-      <div class="group">
-        <div class="gtitle"><span class="badge m">M5</span>3 · Analitza i exporta</div>
-        <div class="row">
-          <span class="btn on">Processa</span>
-          <span class="btn sec">Finalitza i publica</span>
-        </div>
-        <div class="prog"><i></i></div>
-        <div class="log">
-          <div>[auto_chords] Finestra inicialitzada</div>
-          <div>[pipeline] Chordino: 5 acords detectats</div>
-          <div>[pipeline] Segmentino: 3 seccions (A B C)</div>
-          <div class="warn">[pipeline] avís: tempo no fix → mode temps reals</div>
-          <div>[visor] wav: tema.wav | 20.0s 44100Hz 1ch</div>
-          <div class="err">[visor] atura: proc acabat (codi 0)</div>
-        </div>
-      </div>
-
-    </div><!-- /left -->
-
-    <!-- ---------- DOCK VISOR ---------- -->
-    <div class="dock">
-      <div class="docktitle">
-        <span><span class="badge v">V</span>Visor</span>
-        <span style="color:#9aa6b8">QDockWidget (mòbil · flotable)</span>
-      </div>
-      <div class="dockbody">
-
-        <!-- timeline -->
-        <div class="tl">
-          <div class="ruler">
-            <span class="lab" style="left:6%">C1 ·1</span>
-            <span class="lab" style="left:28%">C2 ·1</span>
-            <span class="lab" style="left:50%">C3 ·1</span>
-            <span class="lab" style="left:72%">C4 ·1</span>
-            <span class="lab" style="left:90%">C5 ·1</span>
-            <span class="tick" style="left:6%"></span>
-            <span class="tick" style="left:28%"></span>
-            <span class="tick" style="left:50%"></span>
-            <span class="tick" style="left:72%"></span>
-            <span class="tick" style="left:90%"></span>
-            <span class="loopz" title="banda LOOP A/B"></span>
-            <span class="zoom">🔍 zoom</span>
-          </div>
-
-          <div class="wf">
-            <!-- grid -->
-            <div class="gridline g-sub" style="left:3%"></div>
-            <div class="gridline g-sub" style="left:9%"></div>
-            <div class="gridline g-beat" style="left:14%"></div>
-            <div class="gridline g-sub" style="left:20%"></div>
-            <div class="gridline g-measure" style="left:28%"></div>
-            <div class="gridline g-sub" style="left:34%"></div>
-            <div class="gridline g-beat" style="left:40%"></div>
-            <div class="gridline g-sub" style="left:46%"></div>
-            <div class="gridline g-measure" style="left:50%"></div>
-            <div class="gridline g-beat" style="left:63%"></div>
-            <div class="gridline g-measure" style="left:72%"></div>
-            <div class="gridline g-beat" style="left:85%"></div>
-
-            <!-- ona envolupant -->
-            <svg class="wave-svg" viewBox="0 0 1000 170" preserveAspectRatio="none">
-              <path d="M0,85 L10,85 L20,40 L30,120 L40,60 L50,110 L60,70 L70,95
-                       L80,55 L90,125 L100,80 L110,100 L120,45 L130,115 L140,65
-                       L150,105 L160,75 L170,90 L180,35 L190,130 L200,85 L210,85
-                       L220,60 L230,110 L240,70 L250,95 L260,50 L270,120 L280,80
-                       L290,100 L300,65 L310,110 L320,75 L330,90 L340,45 L350,125
-                       L360,85 L370,85 L380,55 L390,115 L400,70 L410,100 L420,60
-                       L430,110 L440,80 L450,95 L460,50 L470,120 L480,85 L490,85
-                       L500,65 L510,105 L520,75 L530,95 L540,55 L550,115 L560,80
-                       L570,100 L580,70 L590,110 L600,60 L610,90 L620,45 L630,125
-                       L640,85 L650,85 L660,60 L670,110 L680,75 L690,100 L700,55
-                       L710,120 L720,85 L730,95 L740,65 L750,105 L760,80 L770,90
-                       L780,50 L790,120 L800,85 L810,85 L820,70 L830,100 L840,75
-                       L850,95 L860,55 L870,115 L880,80 L890,100 L900,65 L910,110
-                       L920,60 L930,90 L940,45 L950,125 L960,85 L970,85 L980,60
-                       L990,100 L1000,85 L1000,170 L0,170 Z"
-                    fill="#8ab4f8" opacity="0.20"/>
-              <path d="M0,85 L10,85 L20,40 L30,120 L40,60 L50,110 L60,70 L70,95
-                       L80,55 L90,125 L100,80 L110,100 L120,45 L130,115 L140,65
-                       L150,105 L160,75 L170,90 L180,35 L190,130 L200,85 L210,85
-                       L220,60 L230,110 L240,70 L250,95 L260,50 L270,120 L280,80
-                       L290,100 L300,65 L310,110 L320,75 L330,90 L340,45 L350,125
-                       L360,85 L370,85 L380,55 L390,115 L400,70 L410,100 L420,60
-                       L430,110 L440,80 L450,95 L460,50 L470,120 L480,85 L490,85
-                       L500,65 L510,105 L520,75 L530,95 L540,55 L550,115 L560,80
-                       L570,100 L580,70 L590,110 L600,60 L610,90 L620,45 L630,125
-                       L640,85 L650,85 L660,60 L670,110 L680,75 L690,100 L700,55
-                       L710,120 L720,85 L730,95 L740,65 L750,105 L760,80 L770,90
-                       L780,50 L790,120 L800,85 L810,85 L820,70 L830,100 L840,75
-                       L850,95 L860,55 L870,115 L880,80 L890,100 L900,65 L910,110
-                       L920,60 L930,90 L940,45 L950,125 L960,85 L970,85 L980,60
-                       L990,100 L1000,85"
-                    fill="none" stroke="#8ab4f8" stroke-width="1.4"/>
-            </svg>
-
-            <!-- fons dels carrils -->
-            <div class="lane" style="top:6.8px;background:#1a1d23"></div>
-            <div class="lane" style="top:78.2px;background:#15181d;border-bottom:1px solid #2a2f37"></div>
-
-            <!-- carril ESTRUCTURA (y 6.8–60.8 dins .wf) -->
-            <div class="clip secclip" style="left:2%;width:26%;top:11px;background:#3a4655">A</div>
-            <div class="clip secclip" style="left:28%;width:22%;top:11px;background:#475a70">B</div>
-            <div class="clip secclip" style="left:50%;width:22%;top:11px;background:#5d6f82">C</div>
-            <div class="clip secclip" style="left:72%;width:26%;top:11px;background:#70849a">D</div>
-
-            <!-- carril ACORDS (y 78.2–132.2) -->
-            <div class="clip chord" style="left:2%;width:13%;top:83px">C
-              <i class="handle" style="left:2px"></i><i class="handle" style="right:2px"></i></div>
-            <div class="clip chord sel" style="left:15.5%;width:12%;top:83px">Am
-              <i class="handle on" style="left:2px"></i><i class="handle on" style="right:2px"></i></div>
-            <div class="clip chord active" style="left:28%;width:14%;top:83px">F
-              <i class="handle" style="left:2px"></i><i class="handle" style="right:2px"></i></div>
-            <div class="clip chord" style="left:42.5%;width:12%;top:83px">G
-              <i class="handle" style="left:2px"></i><i class="handle" style="right:2px"></i></div>
-            <div class="clip chord" style="left:55%;width:13%;top:83px">C
-              <i class="handle" style="left:2px"></i><i class="handle" style="right:2px"></i></div>
-
-            <!-- guia de snap + cursor -->
-            <div class="guide" style="left:42%"></div>
-            <div class="cursor" style="left:34%"></div>
-            <div class="cursorflag" style="left:34%"></div>
-          </div>
-        </div>
-        <!-- /timeline -->
-
-        <div class="legend" style="margin:2px 0 0;font-size:11px">
-          <span><span class="badge v">¹</span>regle</span>
-          <span><span class="badge v">²</span>ona</span>
-          <span><span class="badge v">³</span>carril estructura</span>
-          <span><span class="badge v">⁴</span>carril acords</span>
-          <span><span class="badge v">⁵</span>grid</span>
-          <span><span class="badge v">⁶</span>cursor</span>
-          <span><span class="badge v">⁷</span>loop</span>
-          <span><span class="badge v">⁸</span>guia snap</span>
-        </div>
-
-        <div class="mid">
-          <div class="lst">
-            <div class="hd"><span><span class="badge v">9</span>Acords <code>llista_ac</code></span><span>5</span></div>
-            <div class="it cur"><span>C</span><span class="t">0,00 s</span></div>
-            <div class="it"><span>Am</span><span class="t">3,60 s</span></div>
-            <div class="it"><span>F</span><span class="t">6,20 s</span></div>
-            <div class="it"><span>G</span><span class="t">9,10 s</span></div>
-            <div class="it"><span>C</span><span class="t">12,00 s</span></div>
-            <div class="ft">clic = salta · doble-clic = editar · dret = menú</div>
-          </div>
-          <div class="lst">
-            <div class="hd"><span><span class="badge v">10</span>Seccions <code>llista_ab</code></span><span>4</span></div>
-            <div class="it cur"><span>A</span><span class="t">0,00–5,20</span></div>
-            <div class="it"><span>B</span><span class="t">5,20–9,60</span></div>
-            <div class="it"><span>C</span><span class="t">9,60–14,00</span></div>
-            <div class="it"><span>D</span><span class="t">14,00–20,00</span></div>
-            <div class="ft">clic = salta · doble-clic = editar · dret = menú</div>
-          </div>
-        </div>
-
-        <div class="rowbtns">
-          <span class="badge v">11</span>
-          <span class="tbtn pri">▶ Escolta</span>
-          <span class="tbtn">⏹</span>
-          <span class="tbtn">−10s</span>
-          <span class="tbtn">+10s</span>
-          <span class="tbtn">A⟨</span>
-          <span class="tbtn">⟩B</span>
-          <span class="tbtn tog">🔁 loop</span>
-          <span class="tbtn">🔍−</span>
-          <span class="tbtn">🔍+</span>
-          <span class="tbtn">Tot</span>
-        </div>
-
-        <div class="srow">
-          <div class="slider"><i></i><b></b></div>
-          <span class="time">00:06 / 00:20</span>
-          <span class="tbtn">🔇</span>
-          <div class="slider" style="max-width:90px"><i style="width:70%"></i><b style="left:66%"></b></div>
-          <span class="stat">20,0 s · 5 acords · 4 seccions</span>
-        </div>
-
-        <div class="log" style="height:70px">
-          <div>[visor] desat CSV …/tema_ACORDS/acords.csv</div>
-          <div>[visor] undo: apilada (desfer=1 refer=0)</div>
-          <div>[visor] ABC recalculat (només CSV): edició visual</div>
-          <div>[visor] DESFER fet (desfer=0 refer=1)</div>
-        </div>
-        <div class="legend" style="margin:0;font-size:11px">
-          <span><span class="badge v">12</span>lliscador + temps + mute/volum + stats</span>
-          <span><span class="badge v">13</span>registre (log)</span>
-        </div>
-
-      </div><!-- /dockbody -->
-    </div><!-- /dock -->
-  </div><!-- /body -->
-</div><!-- /window -->
-
-<!-- ================= TAULES ================= -->
 <h2>Noms de les zones</h2>
-
 <table>
 <tr><th>Ref</th><th>Nom al codi</th><th>Nom a la UI</th><th>Tipus</th></tr>
-<tr><td><span class="badge m">M</span></td><td><code>Finestra</code></td><td>finestra principal</td><td>QMainWindow</td></tr>
-<tr><td><span class="badge m">M1</span></td><td><code>g1, wav_edit, b_tria</code></td><td>1 · Tria la wav</td><td>QGroupBox / QLineEdit / QPushButton</td></tr>
-<tr><td><span class="badge m">M2</span></td><td><code>wav_info</code></td><td>info de la WAV</td><td>QLabel</td></tr>
-<tr><td><span class="badge m">M3</span></td><td><code>flux_label</code></td><td>rètol de flux</td><td>QLabel</td></tr>
-<tr><td><span class="badge m">M4</span></td><td><code>g2, bpm, bpb, offset, tempo_fix, amb_est</code></td><td>2 · Paràmetres</td><td>QGroupBox + spins/checks</td></tr>
-<tr><td><span class="badge m">M5</span></td><td><code>g3, b_exec, b_export, barra, log</code></td><td>3 · Analitza i exporta</td><td>QGroupBox + botons/progrés/log</td></tr>
-<tr><td><span class="badge v">V</span></td><td><code>visor_dock, visor_widget</code></td><td>Dock «Visor»</td><td>QDockWidget</td></tr>
-<tr><td><span class="badge v">1</span></td><td><code>_ruler / RulerLayer</code></td><td>regle de temps</td><td>QGraphicsItem</td></tr>
-<tr><td><span class="badge v">2</span></td><td><code>_waveform / WaveformLayer</code></td><td>forma d'ona</td><td>QGraphicsItem</td></tr>
-<tr><td><span class="badge v">3</span></td><td><code>_section_items / SectionItem</code></td><td>carril estructura</td><td>QGraphicsItem</td></tr>
-<tr><td><span class="badge v">4</span></td><td><code>_chord_items / ChordItem</code></td><td>carril acords</td><td>QGraphicsItem</td></tr>
-<tr><td><span class="badge v">5</span></td><td><code>_grid / GridLayer</code></td><td>graella</td><td>QGraphicsItem</td></tr>
+<tr><td>—</td><td><code>Finestra</code></td><td>finestra principal</td><td>QMainWindow</td></tr>
+<tr><td>—</td><td><code>b_obre · b_exec · b_export</code></td><td>Obre… · Analitza · Exporta</td><td>QPushButton (barra 1)</td></tr>
+<tr><td>—</td><td><code>b_mode_bpm/lliure · bpm · bpb · offset · offset_cb · b_detecta · amb_est</code></td><td>selector temps · BPM · Compàs · Offset (s) · ≈ C.B · 🎯 Detecta · Inclou estructura</td><td>barra 1</td></tr>
+<tr><td>—</td><td><code>tb_mut · tb_loop · b_metro · vol_metro</code></td><td>🔇 · 🔁 · 🥁 · volum del clic</td><td>barra 2 (transport)</td></tr>
+<tr><td><span class="badge v">1</span></td><td><code>RulerLayer</code></td><td>regle de temps</td><td>QGraphicsItem</td></tr>
+<tr><td><span class="badge v">2</span></td><td><code>WaveformLayer</code></td><td>forma d'ona</td><td>QGraphicsPixmapItem</td></tr>
+<tr><td><span class="badge v">3</span></td><td><code>SectionItem</code></td><td>carril estructura</td><td>QGraphicsObject</td></tr>
+<tr><td><span class="badge v">4</span></td><td><code>ChordItem</code></td><td>carril acords</td><td>QGraphicsObject</td></tr>
+<tr><td><span class="badge v">5</span></td><td><code>GridLayer</code></td><td>graella</td><td>QGraphicsItem</td></tr>
 <tr><td><span class="badge v">6</span></td><td><code>_cursor</code></td><td>cursor vermell (playhead)</td><td>QGraphicsItem</td></tr>
-<tr><td><span class="badge v">7</span></td><td><code>_loop_item</code></td><td>banda de loop A/B</td><td>QGraphicsRectItem</td></tr>
+<tr><td><span class="badge v">7</span></td><td><code>_loop_item</code></td><td>banda de loop (groga)</td><td>QGraphicsRectItem</td></tr>
 <tr><td><span class="badge v">8</span></td><td><code>_snap_guide</code></td><td>guia de snap</td><td>QGraphicsLineItem</td></tr>
-<tr><td>—</td><td><code>TimelineView</code></td><td>tot el bloc 1–8</td><td>QGraphicsView</td></tr>
 <tr><td><span class="badge v">9</span></td><td><code>llista_ac</code></td><td>llista d'acords</td><td>QListWidget</td></tr>
 <tr><td><span class="badge v">10</span></td><td><code>llista_ab</code></td><td>llista de seccions (ABC)</td><td>QListWidget</td></tr>
-<tr><td><span class="badge v">11</span></td><td><code>b_play, b_stop, b_menys…</code></td><td>transports</td><td>QPushButton ×10</td></tr>
-<tr><td><span class="badge v">12</span></td><td><code>lliscador, temps, b_mut, volum, etiqueta</code></td><td>barra d'estat/temps</td><td>QSlider / QLabel</td></tr>
-<tr><td><span class="badge v">13</span></td><td><code>registre</code></td><td>registre (log)</td><td>QTextEdit</td></tr>
+<tr><td><span class="badge v">12</span></td><td><code>lliscador · temps · etiqueta</code></td><td>lliscador + estatus del transport</td><td>QSlider / QLabel</td></tr>
+<tr><td>—</td><td><code>log</code> · <code>info_box</code></td><td>log (3/4) · informació «live» (1/4)</td><td>QTextEdit ×2 (dock)</td></tr>
+<tr><td>—</td><td><code>log_dock</code></td><td>dock «Log · Informació»</td><td>QDockWidget (a baix)</td></tr>
+<tr><td>—</td><td><code>barra</code></td><td>progrés</td><td>QProgressBar (a la status)</td></tr>
 </table>
 
 <h2>Interaccions</h2>
 <table>
 <tr><th>Zona</th><th>Acció</th></tr>
 <tr><td>Regle 1</td><td>arrossegar → <b>crea loop A/B</b> · clic → salta</td></tr>
-<tr><td>Cos d'item 3 / 4</td><td>arrossegar → <b>mou</b> · <i>hover</i> = ✋ mà oberta</td></tr>
-<tr><td>Vora dreta 3 / 4</td><td>arrossegar → <b>mou el final</b> · <i>hover</i> = ↔</td></tr>
-<tr><td>Vora esquerra 3 / 4</td><td>arrossegar → <b>mou l'inici</b> · <i>hover</i> = ↔</td></tr>
-<tr><td>Clic (sense moure)</td><td><b>posa el cursor vermell</b> a l'inici del clip</td></tr>
+<tr><td>Cos d'item 3 / 4</td><td>arrossegar → <b>mou</b> · <i>hover</i> = ✋</td></tr>
+<tr><td>Vores 3 / 4</td><td>arrossegar → <b>mou inici/final</b> · <i>hover</i> = ↔</td></tr>
+<tr><td>Clic sense moure</td><td><b>posa el cursor vermell</b> a l'inici del clip</td></tr>
 <tr><td>Doble-clic 3/4 o llistes 9/10</td><td><b>editar</b> (nom + inici)</td></tr>
-<tr><td>Zona buida 2 + botó dret</td><td><b>pan</b> (desplaçar la vista)</td></tr>
+<tr><td>Botó dret al buit 2</td><td><b>pan</b></td></tr>
+<tr><td>Botó dret sobre un clip</td><td><b>menú</b>: Duplica · Elimina · Reanomena</td></tr>
 <tr><td>Roda 2</td><td><b>zoom</b> (centrat al clip seleccionat)</td></tr>
-<tr><td>Botó dret llistes 9 / 10</td><td>menú contextual (afegir / eliminar)</td></tr>
 <tr><td>Espai</td><td><b>play / pausa</b></td></tr>
-<tr><td>Ctrl+Z</td><td><b>desfer</b> (només model/CSV; mai les wavs)</td></tr>
-<tr><td>Ctrl+Shift+Z / Ctrl+Y</td><td><b>refer</b></td></tr>
+<tr><td>Delete</td><td><b>elimina</b> el clip seleccionat</td></tr>
+<tr><td>Ctrl+D</td><td><b>duplica</b></td></tr>
+<tr><td>Ctrl+Z / Ctrl+Y</td><td><b>desfer / refer</b></td></tr>
+<tr><td>Ratolí sobre un botó/camp</td><td>la <b>caixa d'informació</b> (baix-dreta) mostra què fa</td></tr>
 </table>
 
 <div class="note">
-<b>Coordenades unificades:</b> TOTS els elements (clips, cursor, grid, regle,
-ona, guia, loop) es posicionen amb
-<code>x = _x_offset + (t − _view_left) × _pps</code> → tot queda alineat amb
-zoom i pan. L'escena és de la mida de la viewport.<br><br>
-<b>Esquema de color dels clips:</b> <i>seleccionat</i> = vora groga gruixuda
-(<code>#ffd166</code>) · <i>actiu</i> (el que sona) = fons clar
-(<code>#dce8ff</code>) · normal = <code>#2e3844</code>. Les seccions fan servir
-una paleta pròpia (<code>#3a4655 → #8996aa</code>).
+<b>Temps: BPM i offset.</b> El <b>BPM</b> és la velocitat; l'<b>offset</b> és el
+segon on cau el <b>compàs 1</b>. Dos camps sincronitzats: <code>Offset</code>
+(segons) i <code>≈ C.B</code> (compàs.beat, <b>relatiu a la graella original,
+offset=0</b> → estable). <b>Analitza ▸ Marca el compàs 1 aquí</b> posa l'offset
+on és el cursor. Abans de l'offset la graella és <b>negativa</b>
+(<code>-3.1 … -1.3</code>) = <b>count-in</b>, i el metrònom també el clica.<br><br>
+<b>Metrònom 🥁</b> — només en mode BPM · compàs; volum propi; el clic es
+mescla al mateix buffer que s'envia al reproductor (sense QTimer → no deriva).
 </div>
 
 <p class="sub">
 Mides: <code>RULER_H=26</code> · <code>WAVEFORM_H=170</code> ·
 <code>LANE_H=54</code> · <code>LANE_SEC_TOP=32,8</code> ·
-<code>LANE_ACC_TOP=104,2</code> · <code>TOTAL_H=196</code> px.
+<code>LANE_ACC_TOP=104,2</code> · <code>TOTAL_H=196</code> px ·
+colors a <code>app/theme.py</code>.
 </p>
 
 </body>

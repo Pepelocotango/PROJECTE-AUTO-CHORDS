@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900"
      font-family="system-ui,Segoe UI,Roboto,sans-serif">
-  <title>Auto Chords — Esquema visual de la GUI (SVG)</title>
-  <desc>Finestra principal (Finestra) + visor incrustat (Visor). Colors i mides reals.</desc>
+  <title>Auto Chords — Esquema visual de la GUI (v0.2.2)</title>
+  <desc>Finestra única amb el visor al centre, dues barres d'eines, llistes,
+        dock Log+Informacio i barra d'estat. Colors i mides reals.</desc>
   <defs>
     <linearGradient id="tb" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2f3541"/><stop offset="1" stop-color="#262b34"/>
@@ -14,236 +15,304 @@
 
   <rect width="1440" height="900" fill="#15181d"/>
 
-  <!-- ======================= FINESTRA ======================= -->
-  <rect x="20" y="20" width="1400" height="860" rx="12" fill="#20242c" stroke="#3a4150"/>
-  <rect x="20" y="20" width="1400" height="44" rx="12" fill="url(#tb)" stroke="#3a4150"/>
-  <rect x="20" y="52" width="1400" height="12" fill="#262b34"/>
-  <text x="38" y="48" fill="#e8edf5" font-size="14" font-weight="700">Auto Chords — wav → acords + estructura</text>
-  <circle cx="1382" cy="42" r="6" fill="#555"/><circle cx="1362" cy="42" r="6" fill="#555"/>
-  <circle cx="1342" cy="42" r="6" fill="#555"/>
+  <!-- ================= FINESTRA ================= -->
+  <rect x="12" y="12" width="1416" height="876" rx="11" fill="#20242c" stroke="#3a4150"/>
+  <!-- titlebar -->
+  <rect x="12" y="12" width="1416" height="40" rx="11" fill="url(#tb)" stroke="#3a4150"/>
+  <rect x="12" y="40" width="1416" height="12" fill="#262b34"/>
+  <text x="28" y="38" fill="#e8edf5" font-size="13" font-weight="700">01 101bpm pep live RE-ESTRUCTURA.wav — Auto Chords</text>
+  <circle cx="1388" cy="32" r="5" fill="#555"/><circle cx="1370" cy="32" r="5" fill="#555"/>
+  <circle cx="1352" cy="32" r="5" fill="#555"/>
+  <!-- menubar -->
+  <rect x="12" y="52" width="1416" height="22" fill="#262b34"/>
+  <text x="26" y="68" fill="#e8edf5" font-size="12">Fitxer</text>
+  <text x="80" y="68" fill="#e8edf5" font-size="12">Edita</text>
+  <text x="134" y="68" fill="#e8edf5" font-size="12">Selecciona</text>
+  <text x="216" y="68" fill="#e8edf5" font-size="12">Visualitza</text>
+  <text x="294" y="68" fill="#e8edf5" font-size="12">Analitza</text>
+  <text x="362" y="68" fill="#e8edf5" font-size="12">Ajuda</text>
+  <line x1="12" y1="74" x2="1428" y2="74" stroke="#3a4150"/>
 
-  <!-- ======================= ESQUERRA ======================= -->
-  <rect x="32" y="76" width="600" height="52" rx="7" fill="#212630" stroke="#3a4150"/>
-  <text x="46" y="97" fill="#c6d0de" font-size="12" font-weight="700">1 · Tria la wav</text>
-  <rect x="46" y="104" width="474" height="18" rx="5" fill="#12151b" stroke="#3a4150"/>
-  <text x="54" y="117" fill="#e8edf5" font-size="11">/home/peplx/Música/tema.wav</text>
-  <rect x="528" y="104" width="90" height="18" rx="5" fill="#262b34" stroke="#47505f"/>
-  <text x="556" y="117" fill="#e8edf5" font-size="11" font-weight="700">Tria...</text>
+  <!-- ============ BARRA 1 (temps) ============ -->
+  <rect x="12" y="74" width="1416" height="30" fill="#212630"/>
+  <line x1="12" y1="104" x2="1428" y2="104" stroke="#3a4150"/>
+  <rect x="22" y="79" width="66" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="38" y="93" fill="#e8edf5" font-size="11" font-weight="700">Obre…</text>
+  <rect x="94" y="79" width="72" height="20" rx="5" fill="#5b8dd6" stroke="#5b8dd6"/>
+  <text x="108" y="93" fill="#fff" font-size="11" font-weight="700">Analitza</text>
+  <rect x="172" y="79" width="66" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="188" y="93" fill="#e8edf5" font-size="11" font-weight="700">Exporta</text>
+  <text x="252" y="93" fill="#9aa6b8" font-size="11">Temps:</text>
+  <rect x="292" y="79" width="90" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <text x="302" y="93" fill="#000" font-size="11" font-weight="700">BPM · compàs</text>
+  <rect x="388" y="79" width="118" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="398" y="93" fill="#e8edf5" font-size="11" font-weight="700">Lliure (hh:mm:ss)</text>
+  <text x="518" y="93" fill="#9aa6b8" font-size="11">BPM:</text>
+  <rect x="550" y="79" width="48" height="20" rx="4" fill="#12151b" stroke="#3a4150"/>
+  <text x="562" y="93" fill="#e8edf5" font-size="11">101</text>
+  <rect x="606" y="79" width="76" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="616" y="93" fill="#e8edf5" font-size="11" font-weight="700">🎯 Detecta</text>
+  <text x="694" y="93" fill="#9aa6b8" font-size="11">Compàs:</text>
+  <rect x="744" y="79" width="36" height="20" rx="4" fill="#12151b" stroke="#3a4150"/>
+  <text x="754" y="93" fill="#e8edf5" font-size="11">4</text>
+  <text x="792" y="93" fill="#9aa6b8" font-size="11">Offset:</text>
+  <rect x="836" y="79" width="52" height="20" rx="4" fill="#12151b" stroke="#3a4150"/>
+  <text x="846" y="93" fill="#e8edf5" font-size="11">0.0</text>
+  <text x="896" y="93" fill="#9aa6b8" font-size="11">≈</text>
+  <rect x="908" y="79" width="44" height="20" rx="4" fill="#12151b" stroke="#3a4150"/>
+  <text x="918" y="93" fill="#e8edf5" font-size="11">1.1</text>
+  <rect x="964" y="81" width="12" height="12" rx="3" fill="#5b8dd6" stroke="#5b8dd6"/>
+  <text x="967" y="91" fill="#fff" font-size="10" font-weight="700">✓</text>
+  <text x="982" y="93" fill="#e8edf5" font-size="11">Inclou estructura</text>
 
-  <text x="38" y="148" fill="#9aa6b8" font-size="11.5">tema.wav · 20,0 s · 44100 Hz · 1 canal · pics màx 0,84</text>
-  <text x="38" y="170" fill="#dfe3ea" font-size="12" font-weight="700">Flux: Tria WAV → Processa → Revisa i edita → Finalitza i publica</text>
+  <!-- ============ BARRA 2 (transport) ============ -->
+  <rect x="12" y="104" width="1416" height="30" fill="#212630"/>
+  <line x1="12" y1="134" x2="1428" y2="134" stroke="#3a4150"/>
+  <rect x="22" y="109" width="88" height="20" rx="5" fill="#5b8dd6" stroke="#5b8dd6"/>
+  <text x="36" y="123" fill="#fff" font-size="11" font-weight="700">▶ Escolta</text>
+  <rect x="116" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <text x="127" y="123" fill="#000" font-size="11" font-weight="700">⏹</text>
+  <rect x="156" y="109" width="48" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="166" y="123" fill="#e8edf5" font-size="11" font-weight="700">−10s</text>
+  <rect x="210" y="109" width="48" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="222" y="123" fill="#e8edf5" font-size="11" font-weight="700">+10s</text>
+  <rect x="266" y="109" width="40" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="278" y="123" fill="#e8edf5" font-size="11" font-weight="700">A⟨</text>
+  <rect x="312" y="109" width="40" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="324" y="123" fill="#e8edf5" font-size="11" font-weight="700">⟩B</text>
+  <rect x="358" y="109" width="40" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="372" y="123" fill="#e8edf5" font-size="11" font-weight="700">🔁</text>
+  <rect x="410" y="109" width="44" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="420" y="123" fill="#e8edf5" font-size="11" font-weight="700">🔍−</text>
+  <rect x="460" y="109" width="44" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="470" y="123" fill="#e8edf5" font-size="11" font-weight="700">🔍+</text>
+  <rect x="510" y="109" width="44" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="522" y="123" fill="#e8edf5" font-size="11" font-weight="700">Tot</text>
+  <rect x="562" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <text x="573" y="123" fill="#000" font-size="11" font-weight="700">🔇</text>
+  <rect x="602" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <text x="613" y="123" fill="#000" font-size="11" font-weight="700">🥁</text>
+  <rect x="646" y="115" width="90" height="8" rx="4" fill="#12151b" stroke="#3a4150"/>
+  <rect x="647" y="116" width="54" height="6" fill="#5b8dd6"/>
+  <circle cx="706" cy="119" r="6" fill="#dbe4f2" stroke="#5b8dd6"/>
 
-  <!-- M4 -->
-  <rect x="32" y="184" width="600" height="136" rx="7" fill="#212630" stroke="#3a4150"/>
-  <text x="46" y="205" fill="#c6d0de" font-size="12" font-weight="700">2 · Paràmetres</text>
-  <text x="46" y="226" fill="#9aa6b8" font-size="11.5">BPM:</text>
-  <text x="46" y="248" fill="#9aa6b8" font-size="11.5">Temps per compàs:</text>
-  <text x="46" y="270" fill="#9aa6b8" font-size="11.5">Offset compàs 1 (s):</text>
-  <rect x="200" y="214" width="80" height="18" rx="5" fill="#12151b" stroke="#3a4150"/>
-  <text x="208" y="227" fill="#e8edf5" font-size="11">120,0</text>
-  <rect x="200" y="236" width="80" height="18" rx="5" fill="#12151b" stroke="#3a4150"/>
-  <text x="208" y="249" fill="#e8edf5" font-size="11">4</text>
-  <rect x="200" y="258" width="80" height="18" rx="5" fill="#12151b" stroke="#3a4150"/>
-  <text x="208" y="271" fill="#e8edf5" font-size="11">0,0</text>
-  <rect x="46" y="284" width="13" height="13" rx="3" fill="none" stroke="#6b7688"/>
-  <text x="66" y="295" fill="#e8edf5" font-size="11.5">El tema té tempo fix (BPM definit)</text>
-  <rect x="46" y="303" width="13" height="13" rx="3" fill="#5b8dd6" stroke="#5b8dd6"/>
-  <text x="52" y="313" fill="#fff" font-size="11" font-weight="700">✓</text>
-  <text x="66" y="314" fill="#e8edf5" font-size="11.5">Inclou estructura (Segmentino → ABC)</text>
-
-  <!-- M5 -->
-  <rect x="32" y="332" width="600" height="180" rx="7" fill="#212630" stroke="#3a4150"/>
-  <text x="46" y="353" fill="#c6d0de" font-size="12" font-weight="700">3 · Analitza i exporta</text>
-  <rect x="46" y="362" width="110" height="24" rx="5" fill="#5b8dd6" stroke="#5b8dd6"/>
-  <text x="70" y="378" fill="#fff" font-size="11.5" font-weight="700">Processa</text>
-  <rect x="164" y="362" width="150" height="24" rx="5" fill="#262b34" stroke="#47505f"/>
-  <text x="182" y="378" fill="#e8edf5" font-size="11.5" font-weight="700">Finalitza i publica</text>
-  <rect x="46" y="396" width="570" height="14" rx="4" fill="#12151b" stroke="#3a4150"/>
-  <rect x="47" y="397" width="239" height="12" rx="3" fill="url(#pg)"/>
-  <rect x="46" y="418" width="570" height="84" rx="5" fill="#0d1015" stroke="#3a4150"/>
-  <text x="56" y="436" fill="#9fd6b8" font-size="10.5" font-family="monospace">[auto_chords] Finestra inicialitzada</text>
-  <text x="56" y="452" fill="#9fd6b8" font-size="10.5" font-family="monospace">[pipeline] Chordino: 5 acords detectats</text>
-  <text x="56" y="468" fill="#9fd6b8" font-size="10.5" font-family="monospace">[pipeline] Segmentino: 3 seccions (A B C)</text>
-  <text x="56" y="484" fill="#e8c07a" font-size="10.5" font-family="monospace">[pipeline] avís: tempo no fix → mode temps reals</text>
-  <text x="56" y="500" fill="#ff8a8a" font-size="10.5" font-family="monospace">[visor] atura: proc acabat (codi 0)</text>
-
-  <!-- ======================= DOCK VISOR ======================= -->
-  <rect x="648" y="76" width="760" height="26" rx="7" fill="#2b3140" stroke="#3a4150"/>
-  <rect x="648" y="94" width="760" height="8" fill="#2b3140"/>
-  <text x="660" y="93" fill="#e8edf5" font-size="12" font-weight="700">Visor</text>
-  <text x="1300" y="93" fill="#9aa6b8" font-size="10.5">QDockWidget (mòbil · flotable)</text>
-  <rect x="648" y="102" width="760" height="766" rx="7" fill="#15181d" stroke="#3a4150"/>
-
-  <!-- TIMELINE -->
-  <rect x="660" y="114" width="736" height="256" rx="5" fill="#0f0f10" stroke="#3a4150"/>
+  <!-- ============ TIMELINE ============ -->
+  <rect x="16" y="138" width="1408" height="212" fill="#0f0f10" stroke="#3a4150"/>
   <!-- ruler -->
-  <rect x="660" y="114" width="736" height="26" fill="#10131a"/>
-  <line x1="660" y1="140" x2="1396" y2="140" stroke="#2a2f37"/>
-  <text x="672" y="128" fill="#c4d0e2" font-size="9" font-family="monospace">C1 ·1</text>
-  <text x="852" y="128" fill="#c4d0e2" font-size="9" font-family="monospace">C2 ·1</text>
-  <text x="1025" y="128" fill="#c4d0e2" font-size="9" font-family="monospace">C3 ·1</text>
-  <text x="1198" y="128" fill="#c4d0e2" font-size="9" font-family="monospace">C4 ·1</text>
-  <text x="1330" y="128" fill="#c4d0e2" font-size="9" font-family="monospace">C5</text>
-  <rect x="678" y="114" width="250" height="5" rx="2" fill="#ffd166" opacity="0.85"/>
-  <text x="1332" y="126" fill="#8ab4f8" font-size="9">🔍 zoom</text>
+  <rect x="16" y="138" width="1408" height="24" fill="#10131a"/>
+  <line x1="16" y1="162" x2="1424" y2="162" stroke="#2a2f37"/>
+  <text x="26" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">1.1</text>
+  <text x="150" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">9.1</text>
+  <text x="274" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">17.1</text>
+  <text x="398" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">25.1</text>
+  <text x="522" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">33.1</text>
+  <text x="646" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">41.1</text>
+  <text x="770" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">49.1</text>
+  <text x="894" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">57.1</text>
+  <text x="1018" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">65.1</text>
+  <text x="1142" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">73.1</text>
+  <text x="1266" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">81.1</text>
+  <rect x="290" y="138" width="360" height="5" rx="2" fill="#ffd166"/>
+  <text x="1330" y="153" fill="#8ab4f8" font-size="9">🔍 zoom</text>
 
-  <!-- waveform -->
-  <rect x="660" y="140" width="736" height="170" fill="#0f1218"/>
-  <!-- grid -->
-  <g stroke-width="1">
-    <line x1="682" y1="140" x2="682" y2="310" stroke="#303a48" opacity="0.35"/>
-    <line x1="726" y1="140" x2="726" y2="310" stroke="#303a48" opacity="0.35"/>
-    <line x1="770" y1="140" x2="770" y2="310" stroke="#3d4c60" opacity="0.45"/>
-    <line x1="814" y1="140" x2="814" y2="310" stroke="#303a48" opacity="0.35"/>
-    <line x1="866" y1="140" x2="866" y2="310" stroke="#55677f" opacity="0.55"/>
-    <line x1="910" y1="140" x2="910" y2="310" stroke="#303a48" opacity="0.35"/>
-    <line x1="954" y1="140" x2="954" y2="310" stroke="#3d4c60" opacity="0.45"/>
-    <line x1="998" y1="140" x2="998" y2="310" stroke="#303a48" opacity="0.35"/>
-    <line x1="1028" y1="140" x2="1028" y2="310" stroke="#55677f" opacity="0.55"/>
-    <line x1="1124" y1="140" x2="1124" y2="310" stroke="#3d4c60" opacity="0.45"/>
-    <line x1="1191" y1="140" x2="1191" y2="310" stroke="#55677f" opacity="0.55"/>
+  <!-- waveform + grid -->
+  <rect x="16" y="162" width="1408" height="170" fill="#0f1218"/>
+  <g opacity="0.5">
+    <line x1="44" y1="162" x2="44" y2="332" stroke="#55677f"/>
+    <line x1="106" y1="162" x2="106" y2="332" stroke="#3d4c60"/>
+    <line x1="168" y1="162" x2="168" y2="332" stroke="#55677f"/>
+    <line x1="230" y1="162" x2="230" y2="332" stroke="#3d4c60"/>
+    <line x1="292" y1="162" x2="292" y2="332" stroke="#55677f"/>
+    <line x1="354" y1="162" x2="354" y2="332" stroke="#3d4c60"/>
+    <line x1="416" y1="162" x2="416" y2="332" stroke="#55677f"/>
+    <line x1="478" y1="162" x2="478" y2="332" stroke="#3d4c60"/>
+    <line x1="540" y1="162" x2="540" y2="332" stroke="#55677f"/>
+    <line x1="602" y1="162" x2="602" y2="332" stroke="#3d4c60"/>
+    <line x1="664" y1="162" x2="664" y2="332" stroke="#55677f"/>
+    <line x1="726" y1="162" x2="726" y2="332" stroke="#3d4c60"/>
+    <line x1="788" y1="162" x2="788" y2="332" stroke="#55677f"/>
+    <line x1="850" y1="162" x2="850" y2="332" stroke="#3d4c60"/>
+    <line x1="912" y1="162" x2="912" y2="332" stroke="#55677f"/>
+    <line x1="974" y1="162" x2="974" y2="332" stroke="#3d4c60"/>
+    <line x1="1036" y1="162" x2="1036" y2="332" stroke="#55677f"/>
+    <line x1="1098" y1="162" x2="1098" y2="332" stroke="#3d4c60"/>
+    <line x1="1160" y1="162" x2="1160" y2="332" stroke="#55677f"/>
+    <line x1="1222" y1="162" x2="1222" y2="332" stroke="#3d4c60"/>
+    <line x1="1284" y1="162" x2="1284" y2="332" stroke="#55677f"/>
+    <line x1="1346" y1="162" x2="1346" y2="332" stroke="#3d4c60"/>
   </g>
-  <!-- envelope (simètric) -->
-  <path d="M660,225 L672,225 L682,190 L700,260 L716,205 L736,255 L756,215 L776,240
-           L796,200 L816,265 L836,225 L856,245 L876,192 L896,258 L916,210 L936,250
-           L956,220 L976,238 L996,185 L1016,268 L1036,225 L1056,225 L1076,205 L1096,255
-           L1116,215 L1136,240 L1156,195 L1176,262 L1196,225 L1216,245 L1236,200 L1256,258
-           L1276,215 L1296,240 L1316,190 L1336,265 L1356,225 L1376,225 L1396,205
-           L1396,225 L1376,225 L1356,265 L1336,190 L1316,240 L1296,215 L1276,258 L1256,200
-           L1236,245 L1216,225 L1196,262 L1176,195 L1156,240 L1136,215 L1116,255 L1096,205
-           L1076,225 L1056,225 L1036,268 L1016,185 L996,238 L976,220 L956,250 L936,210
-           L916,258 L896,192 L876,245 L856,225 L836,265 L816,200 L796,240 L776,215 L756,255
-           L736,205 L716,260 L700,190 L682,225 Z"
-        fill="#8ab4f8" opacity="0.20"/>
-  <path d="M660,225 L672,225 L682,190 L700,260 L716,205 L736,255 L756,215 L776,240
-           L796,200 L816,265 L836,225 L856,245 L876,192 L896,258 L916,210 L936,250
-           L956,220 L976,238 L996,185 L1016,268 L1036,225 L1056,225 L1076,205 L1096,255
-           L1116,215 L1136,240 L1156,195 L1176,262 L1196,225 L1216,245 L1236,200 L1256,258
-           L1276,215 L1296,240 L1316,190 L1336,265 L1356,225 L1376,225 L1396,205"
-        fill="none" stroke="#8ab4f8" stroke-width="1.4"/>
+  <!-- forest wave (simplified) -->
+  <path d="M16,247 L30,247 L42,190 L56,290 L70,205 L84,275 L98,215 L112,265 L126,200
+           L140,295 L154,220 L168,270 L182,195 L196,285 L210,210 L224,280 L238,220
+           L252,260 L266,190 L280,290 L294,220 L308,270 L322,200 L336,285 L350,215
+           L364,275 L378,195 L392,290 L406,220 L420,270 L434,205 L448,280 L462,215
+           L476,265 L490,200 L504,290 L518,220 L532,270 L546,195 L560,285 L574,215
+           L588,265 L602,200 L616,290 L630,220 L644,270 L658,195 L672,285 L686,215
+           L700,265 L714,200 L728,290 L742,220 L756,270 L770,195 L784,285 L798,215
+           L812,265 L826,200 L840,290 L854,220 L868,270 L882,195 L896,285 L910,215
+           L924,265 L938,200 L952,290 L966,220 L980,270 L994,195 L1008,285 L1022,215
+           L1036,265 L1050,200 L1064,290 L1078,220 L1092,270 L1106,195 L1120,285
+           L1134,215 L1148,265 L1162,200 L1176,290 L1190,220 L1204,270 L1218,195
+           L1232,285 L1246,215 L1260,265 L1274,200 L1288,290 L1302,220 L1316,270
+           L1330,205 L1344,275 L1358,215 L1372,265 L1386,200 L1400,280 L1414,225
+           L1414,247 L1400,280 L1386,200 L1372,265 L1358,215 L1344,275 L1330,205
+           L1316,270 L1302,220 L1288,290 L1274,200 L1260,265 L1246,215 L1232,285
+           L1218,195 L1204,270 L1190,220 L1176,290 L1162,200 L1148,265 L1134,215
+           L1120,285 L1106,195 L1092,270 L1078,220 L1064,290 L1050,200 L1036,265
+           L1022,215 L1008,285 L994,195 L980,270 L966,220 L952,290 L938,200 L924,265
+           L910,215 L896,285 L882,195 L868,270 L854,220 L840,290 L826,200 L812,265
+           L798,215 L784,285 L770,195 L756,270 L742,220 L728,290 L714,200 L700,265
+           L686,215 L672,285 L658,195 L644,270 L630,220 L616,290 L602,200 L588,265
+           L574,215 L560,285 L546,195 L532,270 L518,220 L504,290 L490,200 L476,265
+           L462,215 L448,280 L434,205 L420,270 L406,220 L392,290 L378,195 L364,275
+           L350,215 L336,285 L322,200 L308,270 L294,220 L280,290 L266,190 L252,260
+           L238,220 L224,280 L210,210 L196,285 L182,195 L168,270 L154,220 L140,295
+           L126,200 L112,265 L98,215 L84,275 L70,205 L56,290 L42,190 L30,247 L16,247 Z"
+        fill="#8ab4f8" opacity="0.22"/>
 
   <!-- lanes -->
-  <rect x="660" y="146" width="736" height="54" fill="#1a1d23" opacity="0.18"/>
-  <rect x="660" y="218" width="736" height="54" fill="#15181d" opacity="0.18"/>
-  <line x1="660" y1="146" x2="1396" y2="146" stroke="#2a2f37"/>
-  <line x1="660" y1="200" x2="1396" y2="200" stroke="#2a2f37"/>
-  <line x1="660" y1="272" x2="1396" y2="272" stroke="#2a2f37"/>
+  <rect x="16" y="168" width="1408" height="48" fill="#1a1d23" opacity="0.18"/>
+  <rect x="16" y="240" width="1408" height="48" fill="#15181d" opacity="0.18"/>
+  <line x1="16" y1="168" x2="1424" y2="168" stroke="#2a2f37"/>
+  <line x1="16" y1="216" x2="1424" y2="216" stroke="#2a2f37"/>
+  <line x1="16" y1="288" x2="1424" y2="288" stroke="#2a2f37"/>
 
-  <!-- estructura (y 146..200) -->
-  <rect x="674" y="151" width="180" height="42" rx="6" fill="#3a4655" stroke="#5b6879"/>
-  <text x="752" y="177" fill="#edf3ff" font-size="12" font-weight="700" text-anchor="middle">A</text>
-  <rect x="862" y="151" width="150" height="42" rx="6" fill="#475a70" stroke="#5b6879"/>
-  <text x="937" y="177" fill="#edf3ff" font-size="12" font-weight="700" text-anchor="middle">B</text>
-  <rect x="1028" y="151" width="160" height="42" rx="6" fill="#5d6f82" stroke="#5b6879"/>
-  <text x="1108" y="177" fill="#edf3ff" font-size="12" font-weight="700" text-anchor="middle">C</text>
-  <rect x="1191" y="151" width="180" height="42" rx="6" fill="#70849a" stroke="#5b6879"/>
-  <text x="1281" y="177" fill="#edf3ff" font-size="12" font-weight="700" text-anchor="middle">D</text>
+  <!-- estructura lane (y 168..216) -->
+  <rect x="30" y="173" width="120" height="38" rx="5" fill="#3a4655" stroke="#5b6879"/>
+  <text x="84" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
+  <rect x="160" y="173" width="100" height="38" rx="5" fill="#475a70" stroke="#5b6879"/>
+  <text x="210" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">B</text>
+  <rect x="270" y="173" width="140" height="38" rx="5" fill="#3a4655" stroke="#5b6879"/>
+  <text x="340" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
+  <rect x="420" y="173" width="120" height="38" rx="5" fill="#5d6f82" stroke="#5b6879"/>
+  <text x="480" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">C·A</text>
+  <rect x="550" y="173" width="140" height="38" rx="5" fill="#3a4655" stroke="#5b6879"/>
+  <text x="620" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
+  <rect x="700" y="173" width="120" height="38" rx="5" fill="#5d6f82" stroke="#5b6879"/>
+  <text x="760" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">C·A</text>
+  <rect x="830" y="173" width="150" height="38" rx="5" fill="#3a4655" stroke="#5b6879"/>
+  <text x="905" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
+  <rect x="990" y="173" width="130" height="38" rx="5" fill="#70849a" stroke="#5b6879"/>
+  <text x="1055" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">B·A</text>
 
-  <!-- acords (y 218..272) -->
-  <rect x="674" y="223" width="95" height="42" rx="6" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="721" y="249" fill="#edf3ff" font-size="12" font-weight="700" text-anchor="middle">C</text>
-  <rect x="672" y="226" width="3" height="36" rx="2" fill="#5b8dd6"/>
-  <rect x="766" y="226" width="3" height="36" rx="2" fill="#5b8dd6"/>
+  <!-- acords lane (y 240..288) -->
+  <rect x="30" y="245" width="80" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="70" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">N</text>
+  <rect x="116" y="245" width="70" height="38" rx="5" fill="#2e3844" stroke="#38bdf8" stroke-width="3"/>
+  <text x="151" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">E7</text>
+  <rect x="192" y="245" width="80" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="232" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Em</text>
+  <rect x="278" y="245" width="70" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="313" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">E7</text>
+  <rect x="354" y="245" width="90" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="399" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Edim7</text>
+  <rect x="450" y="245" width="90" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="495" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Em6</text>
+  <rect x="546" y="245" width="80" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="586" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A7</text>
+  <rect x="632" y="245" width="100" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="682" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Em7</text>
+  <rect x="738" y="245" width="80" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="778" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">E7</text>
+  <rect x="824" y="245" width="160" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="904" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">F#dim7/E</text>
 
-  <rect x="774" y="223" width="90" height="42" rx="6" fill="#2e3844" stroke="#ffd166" stroke-width="2"/>
-  <text x="819" y="249" fill="#edf3ff" font-size="12" font-weight="700" text-anchor="middle">Am</text>
-  <rect x="779" y="226" width="3" height="36" rx="2" fill="#ffd166"/>
-  <rect x="856" y="226" width="3" height="36" rx="2" fill="#ffd166"/>
+  <!-- guia + cursors -->
+  <line x1="880" y1="176" x2="880" y2="332" stroke="#ffd166" stroke-dasharray="3,3"/>
+  <line x1="190" y1="162" x2="190" y2="332" stroke="#ff6b6b" stroke-width="2"/>
+  <polygon points="184,162 196,162 190,170" fill="#ff6b6b"/>
+  <line x1="470" y1="162" x2="470" y2="332" stroke="#ff6b6b" stroke-width="2"/>
+  <polygon points="464,162 476,162 470,170" fill="#ff6b6b"/>
 
-  <rect x="866" y="223" width="105" height="42" rx="6" fill="#dce8ff" stroke="#dce8ff"/>
-  <text x="918" y="249" fill="#141b22" font-size="12" font-weight="700" text-anchor="middle">F</text>
-  <rect x="871" y="226" width="3" height="36" rx="2" fill="#5b8dd6"/>
-  <rect x="963" y="226" width="3" height="36" rx="2" fill="#5b8dd6"/>
+  <!-- llegenda capes -->
+  <text x="20" y="360" fill="#9aa6b8" font-size="10.5">① regle · ② ona · ③ carril estructura · ④ carril acords · ⑤ grid · ⑥ cursor · ⑦ loop · ⑧ guia snap</text>
 
-  <rect x="976" y="223" width="90" height="42" rx="6" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="1021" y="249" fill="#edf3ff" font-size="12" font-weight="700" text-anchor="middle">G</text>
-  <rect x="1066" y="223" width="96" height="42" rx="6" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="1114" y="249" fill="#edf3ff" font-size="12" font-weight="700" text-anchor="middle">C</text>
+  <!-- ============ LLISTES ============ -->
+  <rect x="16" y="368" width="700" height="112" rx="5" fill="#12161d" stroke="#3a4150"/>
+  <rect x="16" y="368" width="700" height="20" rx="5" fill="#232936"/>
+  <text x="28" y="382" fill="#e8edf5" font-size="11" font-weight="700">⑨ Acords (llista_ac)</text>
+  <text x="690" y="382" fill="#9aa6b8" font-size="11" text-anchor="end">54</text>
+  <text x="28" y="404" fill="#e8edf5" font-size="11" font-family="monospace">1.1 N</text>
+  <text x="300" y="404" fill="#9aa6b8" font-size="11" font-family="monospace">0.00 s</text>
+  <text x="28" y="422" fill="#e8edf5" font-size="11" font-family="monospace">8.1 E7</text>
+  <text x="300" y="422" fill="#9aa6b8" font-size="11" font-family="monospace">27.50 s</text>
+  <text x="28" y="440" fill="#e8edf5" font-size="11" font-family="monospace">9.3 Em</text>
+  <text x="300" y="440" fill="#9aa6b8" font-size="11" font-family="monospace">29.88 s</text>
+  <text x="28" y="458" fill="#e8edf5" font-size="11" font-family="monospace">10.1 E7</text>
+  <text x="300" y="458" fill="#9aa6b8" font-size="11" font-family="monospace">38.00 s</text>
+  <text x="28" y="474" fill="#9aa6b8" font-size="9.5">clic = salta · doble-clic = edita · dret = menú</text>
 
-  <!-- guia + cursor -->
-  <line x1="968" y1="164" x2="968" y2="310" stroke="#ffd166" stroke-dasharray="3,3"/>
-  <line x1="906" y1="140" x2="906" y2="310" stroke="#ff6b6b" stroke-width="2"/>
-  <polygon points="900,140 912,140 906,148" fill="#ff6b6b"/>
+  <rect x="724" y="368" width="700" height="112" rx="5" fill="#12161d" stroke="#3a4150"/>
+  <rect x="724" y="368" width="700" height="20" rx="5" fill="#232936"/>
+  <text x="736" y="382" fill="#e8edf5" font-size="11" font-weight="700">⑩ Seccions (llista_ab)</text>
+  <text x="1412" y="382" fill="#9aa6b8" font-size="11" text-anchor="end">7</text>
+  <rect x="724" y="388" width="700" height="16" fill="#22314a"/>
+  <text x="736" y="400" fill="#cfe0ff" font-size="11" font-family="monospace">A (N)</text>
+  <text x="1300" y="400" fill="#9aa6b8" font-size="11" font-family="monospace">1.1–10.1</text>
+  <text x="736" y="418" fill="#e8edf5" font-size="11" font-family="monospace">B (B)</text>
+  <text x="1300" y="418" fill="#9aa6b8" font-size="11" font-family="monospace">10.1–32.4</text>
+  <text x="736" y="436" fill="#e8edf5" font-size="11" font-family="monospace">A (N)</text>
+  <text x="1300" y="436" fill="#9aa6b8" font-size="11" font-family="monospace">32.4–41.2</text>
+  <text x="736" y="454" fill="#e8edf5" font-size="11" font-family="monospace">C (A)</text>
+  <text x="1300" y="454" fill="#9aa6b8" font-size="11" font-family="monospace">41.2–49.2</text>
+  <text x="736" y="474" fill="#9aa6b8" font-size="9.5">clic = salta · doble-clic = edita · dret = menú</text>
 
-  <!-- llegenda de capes -->
-  <text x="660" y="326" fill="#9aa6b8" font-size="10.5">1 regle · 2 ona · 3 carril estructura · 4 carril acords · 5 grid · 6 cursor · 7 loop · 8 guia snap</text>
+  <!-- ============ LLISCADOR ============ -->
+  <rect x="16" y="492" width="1150" height="6" rx="3" fill="#12151b" stroke="#3a4150"/>
+  <rect x="17" y="493" width="120" height="4" fill="#5b8dd6"/>
+  <circle cx="140" cy="495" r="7" fill="#dbe4f2" stroke="#5b8dd6" stroke-width="2"/>
+  <text x="1190" y="499" fill="#c4d0e2" font-size="11" font-family="monospace">9.4 / 95.1</text>
+  <rect x="1290" y="486" width="36" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <text x="1301" y="500" fill="#000" font-size="11" font-weight="700">⏹</text>
+  <rect x="1336" y="492" width="90" height="6" rx="3" fill="#12151b" stroke="#3a4150"/>
+  <rect x="1337" y="493" width="60" height="4" fill="#5b8dd6"/>
+  <text x="1190" y="520" fill="#9aa6b8" font-size="10.5">⑫ lliscador + estatus (el transport principal és a la barra 2)</text>
 
-  <!-- LLISTES -->
-  <rect x="660" y="336" width="362" height="100" rx="5" fill="#12161d" stroke="#3a4150"/>
-  <rect x="660" y="336" width="362" height="22" rx="5" fill="#232936"/>
-  <text x="672" y="351" fill="#e8edf5" font-size="11" font-weight="700">9 · Acords (llista_ac)</text>
-  <text x="996" y="351" fill="#9aa6b8" font-size="11">5</text>
-  <text x="672" y="374" fill="#cfe0ff" font-size="11" font-family="monospace">C</text><text x="960" y="374" fill="#9aa6b8" font-size="11" font-family="monospace">0,00 s</text>
-  <rect x="660" y="378" width="362" height="16" fill="#22314a"/>
-  <text x="672" y="390" fill="#cfe0ff" font-size="11" font-family="monospace">Am</text><text x="955" y="390" fill="#9aa6b8" font-size="11" font-family="monospace">3,60 s</text>
-  <text x="672" y="406" fill="#e8edf5" font-size="11" font-family="monospace">F</text><text x="955" y="406" fill="#9aa6b8" font-size="11" font-family="monospace">6,20 s</text>
-  <text x="672" y="422" fill="#e8edf5" font-size="11" font-family="monospace">G</text><text x="955" y="422" fill="#9aa6b8" font-size="11" font-family="monospace">9,10 s</text>
-  <text x="672" y="436" fill="#9aa6b8" font-size="9.5">clic = salta · doble-clic = editar · dret = menú</text>
+  <!-- ============ DOCK LOG + INFORMACIÓ ============ -->
+  <rect x="16" y="536" width="1408" height="150" rx="4" fill="#15181d" stroke="#3a4150"/>
+  <rect x="16" y="536" width="1408" height="20" rx="4" fill="#2b3140"/>
+  <text x="28" y="550" fill="#e8edf5" font-size="11" font-weight="700">Log  ·  Informació</text>
+  <!-- log 3/4 -->
+  <rect x="22" y="560" width="1050" height="120" rx="4" fill="#0d1015" stroke="#3a4150"/>
+  <text x="32" y="578" fill="#9fd6b8" font-size="10.5" font-family="monospace">[pipeline] Chordino: 52 acords, 94 compassos</text>
+  <text x="32" y="594" fill="#9fd6b8" font-size="10.5" font-family="monospace">[pipeline] 4/5 wavs d'acords...</text>
+  <text x="32" y="610" fill="#9fd6b8" font-size="10.5" font-family="monospace">[pipeline] 5/5 ABC + wavs d'estructura...</text>
+  <text x="32" y="626" fill="#9fd6b8" font-size="10.5" font-family="monospace">[pipeline] ABC: 7 trossos, seqüència ABACACA</text>
+  <text x="32" y="642" fill="#9fd6b8" font-size="10.5" font-family="monospace">[visor] BPM detectat: 101.0</text>
+  <text x="32" y="658" fill="#e8c07a" font-size="10.5" font-family="monospace">FET ✅ — ara pots revisar el visor i fer Finalitza i publica.</text>
+  <text x="28" y="676" fill="#9aa6b8" font-size="10">log de l'anàlisi (3/4)</text>
+  <!-- info 1/4 -->
+  <rect x="1078" y="560" width="340" height="120" rx="4" fill="#0d1015" stroke="#3a4150"/>
+  <text x="1088" y="582" fill="#ffd166" font-size="11" font-weight="700">🎯 Detecta</text>
+  <text x="1088" y="600" fill="#cfd8e6" font-size="11">Detecta el BPM automàticament amb aubio.</text>
+  <text x="1088" y="622" fill="#9aa6b8" font-size="10">(canvia segons el widget sota el ratolí)</text>
+  <text x="1078" y="676" fill="#9aa6b8" font-size="10">informació «live» (1/4)</text>
 
-  <rect x="1034" y="336" width="362" height="100" rx="5" fill="#12161d" stroke="#3a4150"/>
-  <rect x="1034" y="336" width="362" height="22" rx="5" fill="#232936"/>
-  <text x="1046" y="351" fill="#e8edf5" font-size="11" font-weight="700">10 · Seccions (llista_ab)</text>
-  <text x="1370" y="351" fill="#9aa6b8" font-size="11">4</text>
-  <rect x="1034" y="378" width="362" height="16" fill="#22314a"/>
-  <text x="1046" y="390" fill="#cfe0ff" font-size="11" font-family="monospace">A</text><text x="1320" y="390" fill="#9aa6b8" font-size="11" font-family="monospace">0,00–5,20</text>
-  <text x="1046" y="406" fill="#e8edf5" font-size="11" font-family="monospace">B</text><text x="1320" y="406" fill="#9aa6b8" font-size="11" font-family="monospace">5,20–9,60</text>
-  <text x="1046" y="422" fill="#e8edf5" font-size="11" font-family="monospace">C</text><text x="1320" y="422" fill="#9aa6b8" font-size="11" font-family="monospace">9,60–14,00</text>
-  <text x="1046" y="436" fill="#9aa6b8" font-size="9.5">clic = salta · doble-clic = editar · dret = menú</text>
+  <!-- ============ BARRA D'ESTAT ============ -->
+  <rect x="12" y="862" width="1416" height="26" rx="0" fill="#262b34"/>
+  <text x="26" y="879" fill="#9aa6b8" font-size="11.5">223.4 s · 2 canals · 44100 Hz</text>
+  <rect x="1250" y="867" width="160" height="14" rx="3" fill="#12151b" stroke="#3a4150"/>
+  <rect x="1251" y="868" width="158" height="12" rx="3" fill="url(#pg)"/>
 
-  <!-- TRANSPORT -->
-  <rect x="660" y="450" width="110" height="26" rx="5" fill="#5b8dd6" stroke="#5b8dd6"/>
-  <text x="682" y="467" fill="#fff" font-size="11.5" font-weight="700">▶ Escolta</text>
-  <rect x="778" y="450" width="34" height="26" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="788" y="467" fill="#e8edf5" font-size="11.5" font-weight="700">⏹</text>
-  <rect x="820" y="450" width="48" height="26" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="828" y="467" fill="#e8edf5" font-size="11.5" font-weight="700">−10s</text>
-  <rect x="876" y="450" width="48" height="26" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="884" y="467" fill="#e8edf5" font-size="11.5" font-weight="700">+10s</text>
-  <rect x="932" y="450" width="40" height="26" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="944" y="467" fill="#e8edf5" font-size="11.5" font-weight="700">A⟨</text>
-  <rect x="980" y="450" width="40" height="26" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="992" y="467" fill="#e8edf5" font-size="11.5" font-weight="700">⟩B</text>
-  <rect x="1028" y="450" width="66" height="26" rx="5" fill="#262b34" stroke="#47505f"/>
-  <text x="1038" y="467" fill="#e8edf5" font-size="11.5" font-weight="700">🔁 loop</text>
-  <rect x="1102" y="450" width="44" height="26" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="1112" y="467" fill="#e8edf5" font-size="11.5" font-weight="700">🔍−</text>
-  <rect x="1154" y="450" width="44" height="26" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="1164" y="467" fill="#e8edf5" font-size="11.5" font-weight="700">🔍+</text>
-  <rect x="1206" y="450" width="48" height="26" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="1216" y="467" fill="#e8edf5" font-size="11.5" font-weight="700">Tot</text>
-  <text x="660" y="447" fill="#9aa6b8" font-size="10.5">11 · transports</text>
-
-  <!-- SLIDER ROW -->
-  <rect x="660" y="492" width="330" height="5" rx="3" fill="#12151b" stroke="#3a4150"/>
-  <rect x="661" y="493" width="198" height="3" fill="#5b8dd6"/>
-  <circle cx="858" cy="494" r="7" fill="#dbe4f2" stroke="#5b8dd6" stroke-width="2"/>
-  <text x="1002" y="499" fill="#c4d0e2" font-size="11" font-family="monospace">00:06 / 00:20</text>
-  <rect x="1104" y="486" width="34" height="22" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="1114" y="502" fill="#e8edf5" font-size="11">🔇</text>
-  <rect x="1146" y="492" width="80" height="5" rx="3" fill="#12151b" stroke="#3a4150"/>
-  <rect x="1147" y="493" width="56" height="3" fill="#5b8dd6"/>
-  <text x="1236" y="499" fill="#9aa6b8" font-size="10.5">20,0 s · 5 acords · 4 seccions</text>
-  <text x="660" y="489" fill="#9aa6b8" font-size="10.5">12 · lliscador + temps + mute/volum + stats</text>
-
-  <!-- LOG DEL VISOR -->
-  <rect x="660" y="520" width="736" height="70" rx="5" fill="#0d1015" stroke="#3a4150"/>
-  <text x="670" y="538" fill="#9fd6b8" font-size="10.5" font-family="monospace">[visor] desat CSV …/tema_ACORDS/acords.csv</text>
-  <text x="670" y="554" fill="#9fd6b8" font-size="10.5" font-family="monospace">[visor] undo: apilada (desfer=1 refer=0)</text>
-  <text x="670" y="570" fill="#9fd6b8" font-size="10.5" font-family="monospace">[visor] ABC recalculat (només CSV): edició visual</text>
-  <text x="670" y="586" fill="#9fd6b8" font-size="10.5" font-family="monospace">[visor] DESFER fet (desfer=0 refer=1)</text>
-  <text x="660" y="606" fill="#9aa6b8" font-size="10.5">13 · registre (log)</text>
-
-  <!-- peu -->
-  <text x="660" y="644" fill="#6f7a8c" font-size="10.5">Mides: RULER_H=26 · WAVEFORM_H=170 · LANE_H=54 · LANE_SEC_TOP=32,8 · LANE_ACC_TOP=104,2 · TOTAL_H=196 px</text>
-  <text x="660" y="662" fill="#6f7a8c" font-size="10.5">x = _x_offset + (t − _view_left) × _pps   (coordenades unificades: clips, cursor, grid, regle, ona, guia, loop)</text>
-
-  <!-- caixa de nota -->
-  <rect x="660" y="680" width="736" height="90" rx="6" fill="#1e2530" stroke="#3a4150"/>
-  <rect x="660" y="680" width="3" height="90" fill="#5b8dd6"/>
-  <text x="676" y="700" fill="#cbd5e3" font-size="11">
-    <tspan x="676" dy="0">Seleccionat = vora groga gruixuda (#ffd166) · Actiu (el que sona) = fons clar (#dce8ff) · Normal = #2e3844.</tspan>
-    <tspan x="676" dy="17">Seccions: paleta pròpia #3a4655 → #8996aa. Cursor = #ff6b6b (2 px). Guia/loop = #ffd166.</tspan>
-    <tspan x="676" dy="17">Undo/Redo (Ctrl+Z / Ctrl+Y) treballa NOMÉS sobre el model i el CSV; mai regenera les wavs</tspan>
-    <tspan x="676" dy="16">(aquestes surten només de «Finalitza i publica» / exporta()).</tspan>
+  <!-- ============ DUAL OFFSET (detail) ============ -->
+  <rect x="16" y="700" width="760" height="150" rx="6" fill="#1e2530" stroke="#3a4150"/>
+  <rect x="16" y="700" width="3" height="150" fill="#5b8dd6"/>
+  <text x="34" y="722" fill="#cbd5e3" font-size="12">
+    <tspan x="34" dy="0"><tspan font-weight="700" fill="#ffd166">Temps · BPM i offset:</tspan> BPM = velocitat; offset = segon on cau el compàs 1.</tspan>
+    <tspan x="34" dy="19">Dos camps sincronitzats: Offset (segons) · ≈ C.B (compàs.beat, relatiu a la graella ORIGINAL, offset=0).</tspan>
+    <tspan x="34" dy="19">Analitza ▸ «Marca el compàs 1 aquí» → posa l'offset on és el cursor vermell.</tspan>
+    <tspan x="34" dy="19">Abans de l'offset la graella és NEGATIVA (-3.1 … -1.3) = count-in; el metrònom també el clica.</tspan>
+    <tspan x="34" dy="19">Metrònom 🥁: només en BPM·compàs; volum propi; clic mesclat al buffer (no deriva).</tspan>
   </text>
+
+  <text x="800" y="726" fill="#9aa6b8" font-size="11">Colors a app/theme.py:</text>
+  <rect x="800" y="736" width="14" height="14" rx="3" fill="#2e3844"/><text x="820" y="748" fill="#9aa6b8" font-size="11">acord</text>
+  <rect x="870" y="736" width="14" height="14" rx="3" fill="#1f5c3d"/><text x="890" y="748" fill="#9aa6b8" font-size="11">actiu</text>
+  <rect x="930" y="736" width="14" height="14" rx="3" fill="#38bdf8"/><text x="950" y="748" fill="#9aa6b8" font-size="11">seleccionat</text>
+  <rect x="1030" y="736" width="14" height="14" rx="3" fill="#3a4655"/><text x="1050" y="748" fill="#9aa6b8" font-size="11">secció</text>
+  <rect x="1100" y="736" width="14" height="14" rx="3" fill="#ff6b6b"/><text x="1120" y="748" fill="#9aa6b8" font-size="11">cursor</text>
+  <rect x="1170" y="736" width="14" height="14" rx="3" fill="#ffd166"/><text x="1190" y="748" fill="#9aa6b8" font-size="11">loop/guia/metro ON</text>
+  <rect x="800" y="758" width="14" height="14" rx="3" fill="#8ab4f8"/><text x="820" y="770" fill="#9aa6b8" font-size="11">ona</text>
+  <text x="800" y="796" fill="#6f7a8c" font-size="10.5">Mides: RULER_H=26 · WAVEFORM_H=170 · LANE_H=54 · TOTAL_H=196 px</text>
+  <text x="800" y="814" fill="#6f7a8c" font-size="10.5">x = _x_offset + (t − _view_left) × _pps  (coordenades unificades)</text>
 </svg>
