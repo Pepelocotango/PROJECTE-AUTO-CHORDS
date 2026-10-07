@@ -3,11 +3,12 @@
 > Aplicació desktop per analitzar un àudio, navegar-ne acords i estructura,
 > corregir-la i exportar clips preparats per a DAW.
 
-> **Novetats v0.4.0:** **compàs 1 automàtic** (`🧭`, amb el Queen Mary),
-> **motors d'autodetecció triables** (BPM: nostre/qm/aubio/**consens**;
-> estructura: **qm-segmenter** per defecte), **plugins `qm-vamp-plugins`
-> compilats** (sense AVX), i **coherència del play** (volum/mute en viu, sense
-> congelar la GUI). De v0.3.0: tap tempo (`TAP`/`T`), botó **📍**, **×2/÷2**,
+> **Novetats v0.5.0:** **AppImage autocontinguda** (un sol fitxer executable) +
+> **GitHub Actions** (build manual i Release en tag). **Icones professionals**
+> (Lucide, adéu emoji). **Compàs 1 automàtic** (`🧭`, Queen Mary) i **motors
+> d'autodetecció triables** (BPM: nostre/qm/**consens**; estructura:
+> **qm-segmenter**). **Plugins `qm-vamp-plugins`** compilats (sense AVX) i
+> **coherència del play** (volum/mute en viu). De v0.3.0: tap tempo (`TAP`/`T`), botó **📍**, **×2/÷2**,
 > diàleg d'opcions, **import ffmpeg** i franja **Editor**.
 
 ## Estat actual (2026-10-07 · v0.5.0)
@@ -38,7 +39,7 @@ La funcionalitat principal està validada: **69/69 tests OK** (`python -m unitte
 
 ## Què fa l’app
 
-- analitza una WAV amb Chordino + Segmentino
+- analitza un àudio amb **Chordino** (acords) + **qm-segmenter** (estructura)
 - genera CSVs d’acords i estructura ABC
 - mostra ona, cursor, temps i navegació per la cançó
 - permet corregir acords i editar seccions
@@ -188,10 +189,10 @@ git tag v0.5.0 -m "..." && git push origin v0.5.0   # -> Release esborrany
 Aquest projecte depèn de treballs previs i eines desenvolupades per altres persones i equips. Volem reconèixer-ho explícitament i agrair-ho sincerament:
 
 - Python i la comunitat Python
-- PyQt5 / Qt5 i PyQtGraph per la base de l’interfície i la visualització gràfica
+- PyQt5 / Qt5 (amb QtSvg per a les icones) per la base de l’interfície i la visualització gràfica
 - NumPy pel processament numèric i la manipulació de dades d’àudio
-- Chordino i el sistema Vamp / Sonic Annotator per la detecció automàtica d’acords i estructures
-- Segmentino i la cadena de processament d’estructura/locators
+- **Chordino i els plugins Vamp de Queen Mary** (`qm-vamp-plugins`) per a la detecció de tempos, compassos, acords i estructura
+- les icones **[Lucide](https://lucide.dev)** (llicència ISC) de la interfície
 - les llibreries d’àudio del sistema i els drivers del entorn Linux que permeten la reproducció i la manipulació d’ona
 - les biblioteques i recursos de la comunitat open source que han servit de referência per a la normalització, l’edició i la integració de la app
 
