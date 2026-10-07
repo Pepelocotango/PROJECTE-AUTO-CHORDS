@@ -1388,6 +1388,13 @@ class Visor(QMainWindow):
             dades = metronom.mescla_metronom(
                 dades, self.audio["sr"], t, self.bpm, self.bpb,
                 volum=self.metro_vol, offset=getattr(self, "offset", 0.0))
+        if self.player is None:
+            QMessageBox.information(
+                self, "Reproducció",
+                "No hi ha cap reproductor d'àudio (paplay/aplay/ffplay).\n\n"
+                "Cal **PipeWire** o **PulseAudio** per poder escoltar.\n"
+                "La resta de l'app (analitzar, editar, exportar) funciona igual.")
+            return
         self.log(f"play des de {t:.2f}s ({len(dades)} bytes) amb {self.player}...")
         self.fitxer_err = os.path.join(OPENCODE_DIR, "visor_player.log")
         try:
