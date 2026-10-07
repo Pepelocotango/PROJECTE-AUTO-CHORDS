@@ -131,3 +131,10 @@ Sense aquest ecosistema, aquest projecte no seria possible. Els agraïments i el
 
 GPLv3 — vegeu `LICENSE`.
 Copyright (c) 2026 Pëp <pepelocotango@gmail.com>.
+
+
+## Formats d'àudio acceptats
+
+L'app treballa amb **WAV PCM 16 bits**, però `Obre…` accepta també
+**mp3, aif/aiff, flac, m4a, ogg, opus, wma…** i els converteix
+automàticament amb **ffmpeg** (vegeu `app/ffmpeg.py`).

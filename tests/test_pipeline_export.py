@@ -15,8 +15,8 @@ import numpy as np
 # o avortar en un entorn sense pantalla.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from app import (dialegs, main as app_main, pipeline, postproc, theme,
-                 vamp_params, visor)
+from app import (dialegs, ffmpeg, main as app_main, pipeline, postproc,
+                 theme, vamp_params, visor)
 
 # QMessageBox.information/warning/... son MODALS: bloquegen fins que algu
 # clica OK. En un entorn sense pantalla (CI) aixo penja el test per sempre.
@@ -967,6 +967,65 @@ class OffsetTests(unittest.TestCase):
                 base)
         self.assertIsNone(metronom._es_valid(1000.0, 4))
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
+
+
+class FfmpegTests(unittest.TestCase):
+    """Import d'altres formats d'audio via ffmpeg (conversio a WAV PCM 16)."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not ffmpeg.disponible():
+            raise unittest.SkipTest("ffmpeg no disponible")
+        import tempfile
+        cls._d = tempfile.mkdtemp()
+        cls._src = os.path.join(cls._d, "ton.wav")
+        subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i",
+                        "sine=frequency=440:duration=1", "-c:a", "pcm_s16le",
+                        cls._src], capture_output=True)
+
+    def test_extensions_i_filtre(self):
+        for e in ("wav", "mp3", "aif", "aiff", "flac", "m4a", "ogg"):
+            self.assertIn(e, ffmpeg.extensions())
+        f = ffmpeg.filtre()
+        self.assertIn("*.mp3", f)
+        self.assertIn("*.aif", f)
+
+    def test_es_wav_pcm16(self):
+        self.assertTrue(ffmpeg.es_wav_pcm16(self._src))
+        self.assertFalse(ffmpeg.es_wav_pcm16("/no/existeix.wav"))
+        self.assertFalse(ffmpeg.es_wav_pcm16("/tmp/x.mp3"))
+
+    def test_converteix_mp3(self):
+        mp3 = os.path.join(self._d, "canco.mp3")
+        subprocess.run(["ffmpeg", "-y", "-i", self._src, mp3],
+                       capture_output=True)
+        wav = ffmpeg.converteix_a_wav(mp3)
+        self.assertTrue(wav.endswith("canco_convertit.wav"))
+        self.assertTrue(ffmpeg.es_wav_pcm16(wav))
+        inf = ffmpeg.info(wav)
+        self.assertEqual(inf["mostreig"], 44100)
+        self.assertAlmostEqual(inf["durada"], 1.0, delta=0.1)
+
+    def test_converteix_aiff_i_flac(self):
+        for ext in ("aiff", "flac"):
+            src = os.path.join(self._d, f"pista.{ext}")
+            subprocess.run(["ffmpeg", "-y", "-i", self._src, src],
+                           capture_output=True)
+            wav = ffmpeg.converteix_a_wav(src)
+            self.assertTrue(ffmpeg.es_wav_pcm16(wav))
+
+    def test_wav_ja_bona_no_es_toca(self):
+        self.assertEqual(ffmpeg.converteix_a_wav(self._src), self._src)
+
+    def test_reutilitza_si_es_mes_nou(self):
+        mp3 = os.path.join(self._d, "reut.mp3")
+        subprocess.run(["ffmpeg", "-y", "-i", self._src, mp3],
+                       capture_output=True)
+        wav1 = ffmpeg.converteix_a_wav(mp3)
+        m1 = os.path.getmtime(wav1)
+        wav2 = ffmpeg.converteix_a_wav(mp3)
+        self.assertEqual(wav1, wav2)
+        self.assertEqual(m1, os.path.getmtime(wav2))
 
 
 class PostprocTests(unittest.TestCase):

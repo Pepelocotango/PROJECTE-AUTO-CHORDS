@@ -25,6 +25,7 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(APP_DIR)
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
+import ffmpeg  # noqa: E402
 import pipeline  # noqa: E402
 import postproc  # noqa: E402
 import theme  # noqa: E402
@@ -167,6 +168,7 @@ class Finestra(QMainWindow):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
         self.opcions = dialegs.carrega_opcions()    # ultimes opcions d'autodeteccio
+        self.wav_original = ""                     # si ve d'un format convertit
         self.setWindowTitle("Auto Chords — wav → acords + estructura")
         self.resize(1500, 900)
         self.feina = None
@@ -898,21 +900,46 @@ class Finestra(QMainWindow):
             self.visor_ref = None
             self._mostra_placeholder_visor()
 
+    def _assegura_wav(self, ruta):
+        """Si `ruta` no és un WAV PCM 16 bits, el converteix amb ffmpeg.
+
+        Retorna la ruta del WAV de treball (o `ruta` si ja ho era).
+        """
+        if ffmpeg.es_wav_pcm16(ruta):
+            return ruta
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            self.registra(f"Convertint «{os.path.basename(ruta)}» a WAV "
+                          "(ffmpeg)…")
+            wav = ffmpeg.converteix_a_wav(ruta, self.registra)
+        finally:
+            QApplication.restoreOverrideCursor()
+        return wav
+
     def tria_wav(self):
         ruta, _ = QFileDialog.getOpenFileName(
-            self, "Tria la wav", "", "Àudio WAV (*.wav)")
-        if ruta:
-            self.wav_edit.setText(ruta)
-            try:
-                info = pipeline.wav_info(ruta)
-                self.sortida = self._detecta_sortida_wav(ruta)
-                self.logger.info("WAV seleccionada: %s | info=%s | sortida_detectada=%s", ruta, info, self.sortida)
-                self._actualitza_info_wav(ruta, info)
-                self._carrega_visor(ruta)
-            except Exception as e:  # noqa: BLE001
-                self.logger.exception("WAV no vàlida: %s", ruta)
-                self.wav_info.setText(f"No és una wav vàlida: {e}")
-                self._mostra_placeholder_visor()
+            self, "Tria un àudio", "", ffmpeg.filtre())
+        if not ruta:
+            return
+        self.wav_original = ""
+        try:
+            treball = self._assegura_wav(ruta)
+            if treball != ruta:
+                self.wav_original = os.path.abspath(ruta)
+            self.wav_edit.setText(treball)
+            info = pipeline.wav_info(treball)
+            self.sortida = self._detecta_sortida_wav(treball)
+            self.logger.info("WAV seleccionada: %s | info=%s | sortida_detectada=%s", treball, info, self.sortida)
+            self._actualitza_info_wav(treball, info)
+            if self.wav_original:
+                self.wav_info.setText(
+                    self.wav_info.text() +
+                    f"   ·   convertit de «{os.path.basename(self.wav_original)}»")
+            self._carrega_visor(treball)
+        except Exception as e:  # noqa: BLE001
+            self.logger.exception("Àudio no vàlid: %s", ruta)
+            self.wav_info.setText(f"No s'ha pogut obrir: {e}")
+            self._mostra_placeholder_visor()
 
     def _acc_visor(self, nom, *args):
         """Crida un mètode del visor (o una acció derivada) si n'hi ha."""
@@ -1031,8 +1058,16 @@ class Finestra(QMainWindow):
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
             QMessageBox.warning(self, "Auto Chords",
-                                "Tria una wav vàlida primer.")
+                                "Tria un àudio vàlid primer.")
             return
+        if not ffmpeg.es_wav_pcm16(wav):
+            try:
+                wav = self._assegura_wav(wav)
+                self.wav_edit.setText(wav)
+            except Exception as e:  # noqa: BLE001
+                QMessageBox.critical(self, "Auto Chords",
+                                     f"No s'ha pogut convertir: {e}")
+                return
         if pregunta:
             dlg = dialegs.DialegOpcions(self, tab="acords",
                                         opcions=self.opcions)

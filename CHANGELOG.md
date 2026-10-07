@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **Import d'altres formats d'àudio via ffmpeg** (`app/ffmpeg.py`): `Obre…`
+  ara accepta **wav, mp3, aif/aiff, flac, m4a, ogg, opus, wma…** i, si el
+  fitxer no és **WAV PCM 16 bits**, el **converteix automàticament** amb
+  `ffmpeg -vn -c:a pcm_s16le` (manté mostreig i canals). El WAV de treball es
+  deixa al costat de l'original com **`<nom>_convertit.wav`** i es reutilitza
+  si ja és més nou. El títol indica «convertit de <original>». Sense
+  dependències noves (ffmpeg ja és al sistema). **6 tests nous**
+  (`FfmpegTests`), amb conversió real d'mp3/aiff/flac.
+
 ### Arreglat
 - Les etiquetes del diàleg mostren el nom català + l'`id` petit
   (abans el `<small>` sortia literal).
