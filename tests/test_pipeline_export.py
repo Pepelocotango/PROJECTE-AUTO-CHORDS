@@ -1045,6 +1045,50 @@ class TempoOctavaTests(unittest.TestCase):
                                    msg=f"esperava {bpm}, vaig rebre {b}")
 
 
+class Compas1Tests(unittest.TestCase):
+    """Deteccio automatica del compas 1 (downbeat) amb el Queen Mary."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def test_boto_i_accio_existeixen(self):
+        w = app_main.Finestra()
+        self.assertEqual(w.b_compas_auto.text(), "🧭")
+        self.assertIn("compàs 1", w.b_compas_auto.toolTip().lower())
+        # res del que ja hi havia s'ha perdut
+        self.assertEqual(w.b_offset_cursor.text(), "📍")
+        self.assertEqual(w.b_tap.text(), "TAP")
+        self.assertEqual(w.b_bpm_x2.text(), "×2")
+        self.assertEqual(w.b_bpm_div2.text(), "÷2")
+        w.close()
+
+    def test_transforms_qm_disponibles(self):
+        for clau, frag in (("onsets", "qm-onsetdetector:onsets"),
+                           ("bars", "qm-barbeattracker:bars"),
+                           ("beats", "qm-barbeattracker:beats"),
+                           ("key", "qm-keydetector:key"),
+                           ("segments", "qm-segmenter:segmentation")):
+            self.assertIn(frag, pipeline.QM[clau])
+
+    def test_detecta_compas1_retorna_float_o_none(self):
+        import tempfile, wave
+        import numpy as np
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        sr = 22050
+        a = (np.sin(np.linspace(0, 440 * 2 * np.pi * 8, sr * 8))
+             * 6000).astype(np.int16)
+        with wave.open(wav, "wb") as f:
+            f.setnchannels(1); f.setsampwidth(2); f.setframerate(sr)
+            f.writeframes(a.tobytes())
+        r = pipeline.detecta_compas1(wav, lambda *a: None)
+        self.assertTrue(r is None or isinstance(r, float))
+        if r is not None:
+            self.assertTrue(0.0 <= r <= 8.5)
+
+
 class PlayCoherenciaTests(unittest.TestCase):
     """Coherencia del play: cache de mono + aturar abans de plugins/redibuix."""
 

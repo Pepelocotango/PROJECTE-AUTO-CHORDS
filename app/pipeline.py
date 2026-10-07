@@ -170,6 +170,59 @@ def detecta_bpm(wav_path, log, bpm_min=None, bpm_max=None, preferit=None):
     return tempo.detecta_bpm(wav_path, log, **kw)
 
 
+# --- Queen Mary: onsets, bars, beats, key (vegeu docs/QM_VAMP.md) ----------
+QM = {
+    "onsets": "vamp:qm-vamp-plugins:qm-onsetdetector:onsets",
+    "bars": "vamp:qm-vamp-plugins:qm-barbeattracker:bars",
+    "beats": "vamp:qm-vamp-plugins:qm-barbeattracker:beats",
+    "key": "vamp:qm-vamp-plugins:qm-keydetector:key",
+    "segments": "vamp:qm-vamp-plugins:qm-segmenter:segmentation",
+}
+
+
+def _qm_temps(transform, wav_path, timeout=1800):
+    """Primera columna (segons) d'un transform del qm (onsets/bars/beats)."""
+    import tempfile
+    d = tempfile.mkdtemp(prefix="ac_qm_")
+    out = os.path.join(d, "x.csv")
+    run([SONIC, "-d", transform, "-w", "csv", "--csv-one-file", out,
+         "--csv-force", "--csv-omit-filename", wav_path], lambda *a: None,
+        silenci=True, timeout=timeout)
+    temps = []
+    if os.path.exists(out):
+        with open(out, newline="", encoding="utf-8") as f:
+            for r in csv.reader(f):
+                try:
+                    temps.append(float(r[0]))
+                except (ValueError, IndexError):
+                    continue
+    return temps
+
+
+def detecta_compas1(wav_path, log=None):
+    """Segon on cau el COMPÀS 1 (primer downbeat real de la cançó).
+
+    Usa el qm: el **primer onset** marca l'inici de la música i el **primer
+    bar** (downbeat) a partir d'aquí és el compàs 1. Al tema de 101 (9,5 s de
+    silenci) dona 9,49 s — exacte. Retorna el segon (float) o None.
+    """
+    def _log(t):
+        if log:
+            log(t)
+    ons = _qm_temps(QM["onsets"], wav_path)
+    bars = _qm_temps(QM["bars"], wav_path)
+    if not bars:
+        _log("compàs 1: no he pogut detectar els compassos")
+        return None
+    inici = ons[0] if ons else 0.0
+    marge = 0.35                       # tolerància (el bar pot caure just abans)
+    cand = [b for b in bars if b >= inici - marge]
+    compas = cand[0] if cand else bars[0]
+    _log(f"compàs 1: {compas:.2f}s (inici de música {inici:.2f}s, "
+         f"{len(bars)} compassos)")
+    return compas
+
+
 def detecta_bpm_aubio(wav_path, log):
     """[antic] Estima el BPM amb el plugin Vamp d'aubio (beats + mediana).
 

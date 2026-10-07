@@ -264,6 +264,13 @@ class Finestra(QMainWindow):
             "Posa l'offset a la posició del cursor vermell (compàs 1 aquí)")
         self.b_offset_cursor.clicked.connect(self._marca_compas_1)
         hp.addWidget(self.b_offset_cursor)
+        self.b_compas_auto = QPushButton("🧭")
+        self.b_compas_auto.setObjectName("secundari")
+        self.b_compas_auto.setToolTip(
+            "Detecta el COMPÀS 1 automàticament (primer downbeat): posa "
+            "l'offset on comença la música. Útil per a temes amb silenci inicial.")
+        self.b_compas_auto.clicked.connect(lambda: self._detecta_compas1())
+        hp.addWidget(self.b_compas_auto)
         hp.addWidget(QLabel("≈"))
         self.offset_cb = QLineEdit("1.1")         # el mateix, en compàs.beat
         self.offset_cb.setMaximumWidth(46)
@@ -453,6 +460,8 @@ class Finestra(QMainWindow):
         m = mb.addMenu("&Analitza")
         self._act(m, "Processa el WAV", "F5", lambda: self.executa())
         m.addSeparator()
+        self._act(m, "Detecta el compàs 1 automàticament", None,
+                    lambda: self._detecta_compas1())
         self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
         # --- Ajuda ---
         m = mb.addMenu("A&juda")
@@ -806,6 +815,36 @@ class Finestra(QMainWindow):
         self.offset.setText(f"{off:.2f}")
         self._aplica_parametres_temps()      # propaga + actualitza el camp cb
         self.registra(f"Compàs 1 marcat a {off:.2f}s")
+
+    def _detecta_compas1(self):
+        """Detecta el compàs 1 (primer downbeat) i hi posa l'offset.
+
+        Usa el detector d'onsets + el de compassos del Queen Mary
+        (`pipeline.detecta_compas1`). No toca el BPM.
+        """
+        wav = self.wav_edit.text().strip()
+        if not wav or not os.path.isfile(wav):
+            QMessageBox.warning(self, "Compàs 1", "Primer tria un àudio.")
+            return
+        self._atura_si_sona("detecció del compàs 1")
+        self.registra("Detectant el compàs 1 (downbeat)…")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            seg = pipeline.detecta_compas1(wav, self.registra)
+        except Exception as e:  # noqa: BLE001
+            seg = None
+            self.registra(f"compàs 1: error ({e})")
+        finally:
+            QApplication.restoreOverrideCursor()
+        if seg is None:
+            QMessageBox.information(
+                self, "Compàs 1",
+                "No s'ha pogut detectar el compàs 1.\n"
+                "Pots posar-lo a mà amb el botó 📍 (al cursor).")
+            return
+        self.offset.setText(f"{seg:.2f}")
+        self._aplica_parametres_temps()
+        self.registra(f"Compàs 1 detectat a {seg:.2f}s ✔")
 
     def _aplica_parametres_temps(self):
         """Propaga BPM/compàs/offset al visor. Si sona, reengega perquè el

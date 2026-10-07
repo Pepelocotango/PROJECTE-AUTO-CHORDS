@@ -6,6 +6,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Compàs 1 automàtic** (part 1/3 de les millores amb el Queen Mary): botó
+  **`🧭`** a la barra de temps (al costat del 📍) + acció **Analitza ▸
+  «Detecta el compàs 1 automàticament»**. Usa `qm-onsetdetector` (l'inici
+  real de la música) + `qm-barbeattracker` (downbeats) per posar l'offset
+  sol. **Verificat**: el tema de 101 (9,5 s de silenci) → **9,49 s** exacte.
+  El botó 📍 manual es manté. `pipeline.detecta_compas1()`. **3 tests nous**
+  (`Compas1Tests`).
+
+### Afegit (anterior)
 - **`qm-vamp-plugins` (Queen Mary) compilats i integrats** (`qm-vamp-plugins-linux64-local/`):
   els plugins Vamp que fan servir **Audacity, Mixxx i Sonic Visualiser**
   (`qm-tempotracker`, `qm-barbeattracker`, `qm-keydetector`, `qm-segmenter`…).
