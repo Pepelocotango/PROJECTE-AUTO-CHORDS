@@ -5,6 +5,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.4.0-checkpoint`).
 
 ## [No publicat]
 
+### Canviat
+- **Fase 4 de portabilitat — àudio/requisits**: si no hi ha cap reproductor
+  (`paplay`/`aplay`/`ffplay`), l'app **avisa clarament** (cal PipeWire o
+  PulseAudio per escoltar) i **la resta funciona igual**; abans petava en
+  engegar el play. Documentat a `DEVELOPING.md`.
+
 ### Afegit
 - **Fase 3 de portabilitat — `ffmpeg` estàtic embegut**: `portable/bin/ffmpeg`
   (build estàtic de johnvansickle, 80 MB, corre al Q9400). `app/ffmpeg.py`

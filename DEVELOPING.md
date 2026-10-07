@@ -12,8 +12,12 @@ Tot en català. Llicència: GPLv3 (vegeu `LICENSE`).
   acords) i **`qm-vamp-plugins`** (Queen Mary: tempo/beats/bars/segmenter/key
   — `docs/QM_VAMP.md`). El **Segmentino** i l'**aubio** s'han retirat
   (v0.5): l'estructura la fa el `qm-segmenter` i el BPM el `tempo.py`/`qm`.
-- **`ffmpeg`/`ffprobe`** (al sistema) — opcional, només per importar formats
-  que no siguin WAV (`app/ffmpeg.py`).
+- **`ffmpeg`** — opcional, només per importar formats que no siguin WAV
+  (`app/ffmpeg.py`); s'embega a `portable/bin/ffmpeg` (fase 3).
+- **Àudio**: cal **PipeWire** o **PulseAudio** per ESCOLTAR (reproductor
+  `paplay`, o `aplay`/`ffplay` de reserva). Sense cap d'ells, l'app
+  **funciona igual** (analitzar, editar, exportar); només avisa que no es pot
+  escoltar (`Visor._tria_player`).
 
 ## Entorn aïllat (Ubuntu, sense sudo)
 
