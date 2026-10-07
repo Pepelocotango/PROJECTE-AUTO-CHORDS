@@ -968,6 +968,78 @@ class OffsetTests(unittest.TestCase):
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
 
 
+class TapTempoTests(unittest.TestCase):
+    """Tap tempo (patro estandard: ultims taps -> mitjana -> 60/interval)."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 10)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n")
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        return window
+
+    def _taps_en(self, w, interval, n=5, inici=1000.0):
+        """Simula n taps separats `interval` segons (mock de monotonic)."""
+        from unittest.mock import patch
+        t = inici
+        with patch("app.main.time.monotonic", side_effect=[t + i * interval
+                                                           for i in range(n)]):
+            w._taps = []
+            for _ in range(n):
+                w._tap_tempo()
+        return w
+
+    def test_taps_594ms_donen_101bpm(self):
+        w = self._finestra()
+        self._taps_en(w, 0.594)
+        self.assertAlmostEqual(w._bpm_val(), 101.0, delta=3.0)
+        w.close()
+
+    def test_taps_500ms_donen_120bpm(self):
+        w = self._finestra()
+        self._taps_en(w, 0.5)
+        self.assertAlmostEqual(w._bpm_val(), 120.0, delta=3.0)
+        w.close()
+
+    def test_tap_propaga_al_visor(self):
+        w = self._finestra()
+        self._taps_en(w, 0.5)
+        self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=3.0)
+        w.close()
+
+    def test_reset_per_timeout(self):
+        from unittest.mock import patch
+        w = self._finestra()
+        w._taps = [0.0]
+        with patch("app.main.time.monotonic", return_value=5.0):  # >2s despres
+            w._tap_tempo()
+        self.assertEqual(len(w._taps), 1)      # s'ha reiniciat
+        w.close()
+
+    def test_intervals_absurds_descartats(self):
+        """Un doble-tap accidental (interval <0.2s) s'ignora."""
+        from unittest.mock import patch
+        w = self._finestra()
+        w._taps = [0.0, 0.5, 0.51]   # 3r tap a 10 ms -> absurd
+        with patch("app.main.time.monotonic", return_value=1.0):
+            w._tap_tempo()
+        # els intervals valids son 0.5 i 0.49 -> BPM ~120, no ~2000
+        self.assertLess(w._bpm_val(), 130)
+        w.close()
+
+
 class EditorFranjaTests(unittest.TestCase):
     """Franja Editor: mostra/edita l'element seleccionat sense finestres."""
 

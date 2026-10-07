@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **TAP TEMPO** (botó `TAP` a la barra de temps + tecla **`T`**): per fixar
+  el BPM marcant el pols mentre sona la cançó. Segueix el **patró estàndard
+  dels DAWs** (investigat): guarda els instants dels últims taps, **mitjana
+  dels intervals** → `60/∅`; **reset als 2 s** sense tocar (LMMS); i
+  **descarta intervals fora de 30-300 BPM** (Max/Dobrian) per ignorar
+  dobles-taps i gaps llargs. Propaga el BPM al **regle i al metrònom**
+  **sense reengegar l'àudio** en curs. El botó mostra `TAP (n) BPM`.
+  **5 tests nous** (`TapTempoTests`).
+
 ### Arreglat
 - **Seleccionar des de les LLISTES no actualitzava la franja Editor**:
   `TimelineView.select_clip()` no emetia `clipSelected` (només ho feia

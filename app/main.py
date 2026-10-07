@@ -5,6 +5,7 @@ import fcntl
 import logging
 import os
 import sys
+import time
 import tempfile
 import traceback
 
@@ -214,6 +215,12 @@ class Finestra(QMainWindow):
         hp.addWidget(QLabel("BPM:"))
         hp.addWidget(self.bpm)
         hp.addWidget(self.b_detecta)
+        self.b_tap = QPushButton("TAP")
+        self.b_tap.setObjectName("secundari")
+        self.b_tap.setToolTip("Tap tempo: marca el pols amb clics (o la tecla T). "
+                              "2 s sense tocar = reinicia.")
+        self.b_tap.clicked.connect(self._tap_tempo)
+        hp.addWidget(self.b_tap)
         hp.addWidget(QLabel("Compàs:"))
         hp.addWidget(self.bpb)
         hp.addWidget(QLabel("Offset:"))
@@ -326,6 +333,9 @@ class Finestra(QMainWindow):
         # visor està incrustat i el seu propi QShortcut no s'activaria).
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
         self._sc_play.activated.connect(self._toggle_play)
+        self._taps = []                       # instants dels taps (tap tempo)
+        self._sc_tap = QShortcut(QKeySequence(Qt.Key_T), self)
+        self._sc_tap.activated.connect(self._tap_tempo)
         self._crea_menus()
         for p in (pipeline.SONIC, pipeline.ACORDS_PY,
                   *pipeline.VAMP_DIRS):
@@ -680,6 +690,37 @@ class Finestra(QMainWindow):
             self.tb_loop.setChecked(False)
         vr.timeline.set_loop(None, None)
         self.registra("loop netejat")
+
+    def _tap_tempo(self):
+        """Tap tempo (com als DAWs): intervals dels ultims taps -> BPM.
+
+        Segueix el patro estandard: reset si passa de 2 s (LMMS), mitjana
+        dels ultims intervals i descart dels intervals fora de 30-300 BPM
+        (Max/Dobrian) per ignorar dobles-taps i gaps llargs.
+        """
+        ara = time.monotonic()
+        if self._taps and (ara - self._taps[-1]) > 2.0:
+            self._taps = []                      # reset per timeout (2 s)
+        self._taps.append(ara)
+        if len(self._taps) > 8:
+            self._taps = self._taps[-8:]         # finestra dels ultims 8
+        if len(self._taps) < 2:
+            self.b_tap.setText("TAP (1)")
+            return
+        ivs = [b - a for a, b in zip(self._taps, self._taps[1:])]
+        ivs = [x for x in ivs if 0.2 <= x <= 2.0]   # 30-300 BPM
+        if not ivs:
+            self.b_tap.setText(f"TAP ({len(self._taps)})")
+            return
+        bpm = 60.0 / (sum(ivs) / len(ivs))
+        self.bpm.setText(f"{bpm:.1f}")
+        # propaga al visor (regle + clic) SENSE reengegar l'audio en curs
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.bpm = self._bpm_val()
+            vr._actualitza_temps()
+        self.b_tap.setText(f"TAP ({len(self._taps)}) {bpm:.0f}")
+        self.registra(f"tap tempo: {bpm:.1f} BPM ({len(self._taps)} taps)")
 
     def _marca_compas_1(self):
         """Posa l'offset a la posició del cursor: la graella hi comença.
