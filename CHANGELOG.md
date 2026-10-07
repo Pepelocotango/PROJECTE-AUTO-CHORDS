@@ -6,6 +6,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Botons `×2` / `÷2` del BPM** a la barra de temps (al costat del camp):
+  doblen o fan la meitat del BPM d'un clic, útil quan la detecció agafa el
+  doble o la meitat. Rangs ampliats a **30–400** (abans 40–240) perquè hi
+  càpiguen els dobles de temes ràpids; es propaga al regle + metrònom.
+  **4 tests nous** (`BpmDoblaTests`).
+
+### Afegit
 - **Import d'altres formats d'àudio via ffmpeg** (`app/ffmpeg.py`): `Obre…`
   ara accepta **wav, mp3, aif/aiff, flac, m4a, ogg, opus, wma…** i, si el
   fitxer no és **WAV PCM 16 bits**, el **converteix automàticament** amb

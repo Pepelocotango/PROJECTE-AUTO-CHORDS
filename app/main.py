@@ -238,6 +238,15 @@ class Finestra(QMainWindow):
         hp.setSpacing(6)
         hp.addWidget(QLabel("BPM:"))
         hp.addWidget(self.bpm)
+        self.b_bpm_x2 = QPushButton("×2")
+        self.b_bpm_div2 = QPushButton("÷2")
+        for b, factor, tip in ((self.b_bpm_x2, 2.0, "Dobla el BPM (×2)"),
+                               (self.b_bpm_div2, 0.5, "Meitat del BPM (÷2)")):
+            b.setObjectName("secundari")
+            b.setMaximumWidth(34)
+            b.setToolTip(tip + "  ·  útil quan la detecció agafa el doble/meitat")
+            b.clicked.connect(lambda _=False, f=factor: self._dobla_bpm(f))
+            hp.addWidget(b)
         hp.addWidget(self.b_detecta)
         self.b_tap = QPushButton("TAP")
         self.b_tap.setObjectName("secundari")
@@ -527,7 +536,9 @@ class Finestra(QMainWindow):
         return int(round(v)) if enter else v
 
     def _bpm_val(self):
-        return self._llegeix_num(self.bpm, 120.0, 40, 240)
+        # rang ampli (30-400): els botons ×2/÷2 i el metrònom (BPM_MAX=400)
+        # ho necessiten; abans 40-240 tallava el doble de temes ràpids.
+        return self._llegeix_num(self.bpm, 120.0, 30, 400)
 
     def _bpb_val(self):
         return self._llegeix_num(self.bpb, 4, 2, 12, enter=True)
@@ -737,6 +748,14 @@ class Finestra(QMainWindow):
             self.tb_loop.setChecked(False)
         vr.timeline.set_loop(None, None)
         self.registra("loop netejat")
+
+    def _dobla_bpm(self, factor):
+        """Multiplica (×2) o divideix (÷2) el BPM actual."""
+        b = self._bpm_val() * float(factor)
+        b = max(30.0, min(400.0, b))
+        self.bpm.setText(f"{b:.1f}")
+        self._aplica_parametres_temps()
+        self.registra(f"BPM {'×2' if factor > 1 else '÷2'} → {b:.1f}")
 
     def _tap_tempo(self):
         """Tap tempo (com als DAWs): intervals dels ultims taps -> BPM.

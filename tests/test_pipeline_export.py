@@ -969,6 +969,58 @@ class OffsetTests(unittest.TestCase):
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
 
 
+class BpmDoblaTests(unittest.TestCase):
+    """Botons ×2 / ÷2 del BPM."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 5)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n")
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        return window
+
+    def test_botons_existeixen(self):
+        w = self._finestra()
+        self.assertEqual(w.b_bpm_x2.text(), "×2")
+        self.assertEqual(w.b_bpm_div2.text(), "÷2")
+        w.close()
+
+    def test_dobla_i_meitat(self):
+        w = self._finestra()
+        w.bpm.setText("101.0")
+        w.b_bpm_x2.click()
+        self.assertAlmostEqual(w._bpm_val(), 202.0, places=1)
+        w.b_bpm_div2.click()
+        self.assertAlmostEqual(w._bpm_val(), 101.0, places=1)
+        w.close()
+
+    def test_limits(self):
+        w = self._finestra()
+        w.bpm.setText("300.0"); w.b_bpm_x2.click()
+        self.assertAlmostEqual(w._bpm_val(), 400.0, places=1)
+        w.bpm.setText("50.0"); w.b_bpm_div2.click()
+        self.assertAlmostEqual(w._bpm_val(), 30.0, places=1)
+        w.close()
+
+    def test_propaga_al_visor(self):
+        w = self._finestra()
+        w.bpm.setText("101.0"); w.b_bpm_x2.click()
+        self.assertAlmostEqual(w.visor_ref.bpm, 202.0, places=1)
+        w.close()
+
+
 class FfmpegTests(unittest.TestCase):
     """Import d'altres formats d'audio via ffmpeg (conversio a WAV PCM 16)."""
 
