@@ -33,7 +33,8 @@ curl -sfL -o /tmp/ff.tar.xz \
 tar xJf /tmp/ff.tar.xz -C /tmp/
 FFDIR=$(ls -d /tmp/ffmpeg-*-amd64-static | head -1)
 mkdir -p portable/bin
-cp "$FFDIR/ffmpeg" portable/bin/ffmpeg   # només ffmpeg (ffprobe no s'usa)
+cp "$FFDIR/ffmpeg" portable/bin/ffmpeg   # només ffmpeg: ffprobe NO s'empaqueta
+# (l'app no el fa servir; només ffmpeg.info(), que es degrada a {} sense ffprobe)
 echo "Llibreries natives de l'host Vamp (autoportabilitat)..."
 [ -x vamp_host_local ] || ./eines/compila_vamp_host.sh
 ./eines/libreries_natives.sh

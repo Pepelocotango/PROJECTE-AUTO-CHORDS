@@ -1463,6 +1463,11 @@ class FfmpegTests(unittest.TestCase):
         wav = ffmpeg.converteix_a_wav(mp3)
         self.assertTrue(wav.endswith("canco_convertit.wav"))
         self.assertTrue(ffmpeg.es_wav_pcm16(wav))
+        # `info()` depèn de ffprobe, que NO s'empaqueta (l'app no el fa servir:
+        # fa pipeline.wav_info). Sense ffprobe retorna {} -> no hi ha res a
+        # comprovar aquí; la conversió ja s'ha validat a les línies de dalt.
+        if not shutil.which(ffmpeg.FFPROBE):
+            self.skipTest("ffprobe no disponible (no s'empaqueta)")
         inf = ffmpeg.info(wav)
         self.assertEqual(inf["mostreig"], 44100)
         self.assertAlmostEqual(inf["durada"], 1.0, delta=0.1)
