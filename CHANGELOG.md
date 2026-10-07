@@ -5,6 +5,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **Menús `Edita` i `Selecciona` completats** (reusant la lògica existent):
+  - **Edita**: Afegeix acord… · Afegeix secció… · Elimina element (`Del`) ·
+    Duplica element (`Ctrl+D`) · Reanomena element (`F2`), a més de
+    Desfer/Refer i Paràmetres.
+  - **Selecciona**: Selecciona l'acord/secció del cursor · Marca loop A/B
+    (`Ctrl+[` / `Ctrl+]`) · Neteja el loop · Activa/desactiva loop.
+  - `timeline.set_loop(None, None)` ara **neteja** el loop (abans petava).
+  - **5 tests nous** (`MenuEdicioTests`).
+- **Verificat el doble-clic** d'edició als 4 llocs: **carrils** (acord i
+  estructura) obren l'editor inline ✅; a les **llistes** el senyal
+  `itemDoubleClicked` hi és connectat (`_edita_acord`/`_edita_seccio`) però
+  no s'ha pogut comprovar en entorn headless (limitació de QTest sense
+  ratolí). Les accions del menú cobreixen el cas.
+
 ### Canviat
 - **Barra 1 reordenada segons el FLUX de treball**: ara és
   `Obre…` → opcions de temps (selector BPM·compàs/Lliure, BPM, 🎯 Detecta,

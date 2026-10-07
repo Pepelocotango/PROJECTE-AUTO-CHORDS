@@ -968,6 +968,92 @@ class OffsetTests(unittest.TestCase):
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
 
 
+class MenuEdicioTests(unittest.TestCase):
+    """Accions dels menus Edita i Selecciona (reusen la logica existent)."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n4.0,Am\n8.0,G\n")
+        open(os.path.join(ac, "estructura_ABC.csv"), "w").write(
+            "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
+            "0.00,4.00,4.00,A,N,1,1\n4.00,20.00,16.00,B,B,1,1\n")
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        return window
+
+    def test_selecciona_acord_i_seccio_del_cursor(self):
+        w = self._finestra()
+        v = w.visor_ref
+        v.ves_a(5.0); w._sel_acord_cursor()
+        self.assertEqual(w._clip_seleccionat(), ("chord", 1))
+        v.ves_a(10.0); w._sel_seccio_cursor()
+        self.assertEqual(w._clip_seleccionat(), ("section", 1))
+        w.close()
+
+    def test_duplica_i_elimina_element(self):
+        w = self._finestra()
+        v = w.visor_ref
+        v.ves_a(5.0); w._sel_acord_cursor()
+        n = len(v.acords); w._duplica_element()
+        self.assertEqual(len(v.acords), n + 1)
+        v.undo()
+        v.ves_a(5.0); w._sel_acord_cursor()
+        n = len(v.acords); w._elimina_element()
+        self.assertEqual(len(v.acords), n - 1)
+        w.close()
+
+    def test_afegeix_acord_i_seccio(self):
+        from unittest.mock import patch
+        import PyQt5.QtWidgets as QW
+        w = self._finestra()
+        v = w.visor_ref
+        with patch.object(QW.QInputDialog, "getText", return_value=("F", True)):
+            v.ves_a(6.0); n = len(v.acords); w._afegeix_acord_ui()
+            self.assertEqual(len(v.acords), n + 1)
+            # a 21 s (passada la ultima seccio, que acaba a 20) -> sense solapar
+            v.ves_a(21.0); n = len(v.seccions); w._afegeix_seccio_ui()
+            self.assertEqual(len(v.seccions), n + 1)
+        w.close()
+
+    def test_neteja_loop(self):
+        w = self._finestra()
+        v = w.visor_ref
+        v.loop_a, v.loop_b, v.loop_on = 1.0, 3.0, True
+        w._neteja_loop()
+        self.assertIsNone(v.loop_a)
+        self.assertFalse(v.loop_on)
+        w.close()
+
+    def test_menus_tenen_les_accions(self):
+        w = self._finestra()
+        def accions(nom):
+            for act in w.menuBar().actions():
+                if act.text() == nom:
+                    return [a.text() for a in act.menu().actions()
+                            if not a.isSeparator()]
+            return []
+        e = accions("&Edita")
+        for x in ("Elimina element", "Duplica element", "Reanomena element",
+                  "Afegeix acord…", "Afegeix secció…"):
+            self.assertIn(x, e)
+        s = accions("&Selecciona")
+        for x in ("Selecciona l'acord del cursor", "Neteja el loop"):
+            self.assertIn(x, s)
+        w.close()
+
+
 class TransportBarTests(unittest.TestCase):
     """Els botons de la BARRA de transport (fora del visor) han de fer efecte.
 

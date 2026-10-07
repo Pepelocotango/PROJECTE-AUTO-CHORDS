@@ -13,7 +13,8 @@ from PyQt5.QtGui import QCursor, QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-    QMessageBox, QProgressBar, QPushButton, QShortcut, QSlider, QTextEdit,
+    QInputDialog, QMessageBox, QProgressBar, QPushButton, QShortcut, QSlider,
+    QTextEdit,
     QStackedWidget, QToolBar,
     QVBoxLayout, QWidget,
 )
@@ -363,11 +364,22 @@ class Finestra(QMainWindow):
         self._act(m, "Refer", "Ctrl+Y", self._redo_visor)
         self._act(m, "Refer (alternatiu)", "Ctrl+Shift+Z", self._redo_visor)
         m.addSeparator()
+        self._act(m, "Afegeix acord…", "Ctrl+Shift+A", self._afegeix_acord_ui)
+        self._act(m, "Afegeix secció…", "Ctrl+Shift+S", self._afegeix_seccio_ui)
+        m.addSeparator()
+        self._act(m, "Elimina element", "Del", self._elimina_element)
+        self._act(m, "Duplica element", "Ctrl+D", self._duplica_element)
+        self._act(m, "Reanomena element", "F2", self._renomena_element)
+        m.addSeparator()
         self._act(m, "Paràmetres…", "", self._focus_parametres)
         # --- Selecciona ---
         m = mb.addMenu("&Selecciona")
-        self._act(m, "Marca inici de loop (A)", "", self._marca_A_visor)
-        self._act(m, "Marca fi de loop (B)", "", self._marca_B_visor)
+        self._act(m, "Selecciona l'acord del cursor", "", self._sel_acord_cursor)
+        self._act(m, "Selecciona la secció del cursor", "", self._sel_seccio_cursor)
+        m.addSeparator()
+        self._act(m, "Marca inici de loop (A)", "Ctrl+[", self._marca_A_visor)
+        self._act(m, "Marca fi de loop (B)", "Ctrl+]", self._marca_B_visor)
+        self._act(m, "Neteja el loop", "", self._neteja_loop)
         self._act(m, "Activa/desactiva loop", "", self._loop_visor)
         # --- Visualitza ---
         m = mb.addMenu("&Visualitza")
@@ -554,6 +566,120 @@ class Finestra(QMainWindow):
         html = f"<b>{nom}</b><br>{tip}" if nom else f"<b>{tip}</b>"
         if self.info_box.toHtml() != html:
             self.info_box.setHtml(html)
+
+    # ---- accions d'edició des del menú (reutilitzen la lògica existent) ----
+    def _clip_seleccionat(self):
+        """Retorna (kind, idx) de l'element seleccionat al timeline."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return None, -1
+        for items, kind in ((vr.timeline._chord_items, "chord"),
+                            (vr.timeline._section_items, "section")):
+            for it in items:
+                if getattr(it, "_selected", False):
+                    return kind, getattr(it, "idx", -1)
+        return None, -1
+
+    def _elimina_element(self):
+        kind, idx = self._clip_seleccionat()
+        if kind is None:
+            return
+        vr = self.visor_ref
+        if kind == "chord":
+            vr._elimina_acord_index(idx)
+        else:
+            vr._elimina_seccio_index(idx)
+
+    def _duplica_element(self):
+        kind, idx = self._clip_seleccionat()
+        if kind is None:
+            return
+        vr = self.visor_ref
+        if kind == "chord":
+            vr._duplica_acord_index(idx)
+        else:
+            vr._duplica_seccio_index(idx)
+
+    def _renomena_element(self):
+        kind, idx = self._clip_seleccionat()
+        if kind is None:
+            return
+        tl = self.visor_ref.timeline
+        if kind == "chord":
+            tl.chordEditRequested.emit(idx)
+        else:
+            tl.sectionEditRequested.emit(idx)
+
+    def _afegeix_acord_ui(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        nom, ok = QInputDialog.getText(
+            self, "Afegeix acord", f"Acord a {vr.pos:.2f} s", text="N")
+        if not ok or not nom.strip():
+            return
+        try:
+            vr._afegeix_acord(vr.pos, nom.strip())
+            vr._desa_i_regenera()
+            vr.timeline.set_data(vr.acords, vr.seccions)
+            self.registra(f"afegit acord a {vr.pos:.2f}s: {nom.strip()}")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Auto Chords", f"No s'ha pogut afegir:\n{e}")
+
+    def _afegeix_seccio_ui(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        lletra, ok = QInputDialog.getText(
+            self, "Afegeix secció", f"Lletra a {vr.pos:.2f} s", text="A")
+        if not ok or not lletra.strip():
+            return
+        try:
+            vr._afegeix_seccio(vr.pos, vr.pos + 2.0, lletra.strip()[:1].upper())
+            vr._regenera_abc_des_de_totes_les_seccions("secció afegida")
+            vr.timeline.set_data(vr.acords, vr.seccions)
+            self.registra(f"afegida secció a {vr.pos:.2f}s")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Auto Chords", f"No s'ha pogut afegir:\n{e}")
+
+    def _sel_acord_cursor(self):
+        """Selecciona l'acord que conté la posició del cursor."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None or not vr.acords:
+            return
+        idx = 0
+        for i, a in enumerate(vr.acords):
+            if a[0] <= vr.pos:
+                idx = i
+            else:
+                break
+        vr.timeline.select_clip("chord", idx)
+
+    def _sel_seccio_cursor(self):
+        """Selecciona la secció que conté la posició del cursor."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None or not vr.seccions:
+            return
+        idx = 0
+        for i, s in enumerate(vr.seccions):
+            if s[0] <= vr.pos:
+                idx = i
+            else:
+                break
+        vr.timeline.select_clip("section", idx)
+
+    def _neteja_loop(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        vr.loop_a = vr.loop_b = None
+        vr.loop_on = False
+        if hasattr(vr, "b_loop"):
+            vr.b_loop.setChecked(False)
+        if hasattr(self, "tb_loop"):
+            self.tb_loop.setChecked(False)
+        vr.timeline.set_loop(None, None)
+        self.registra("loop netejat")
 
     def _marca_compas_1(self):
         """Posa l'offset a la posició del cursor: la graella hi comença.

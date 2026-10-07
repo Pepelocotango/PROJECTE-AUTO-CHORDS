@@ -1266,7 +1266,12 @@ class TimelineView(QGraphicsView):
             self._section_items.append(item)
             self._section_by_idx[i] = item
 
-    def set_loop(self, a: float, b: float) -> None:
+    def set_loop(self, a, b) -> None:
+        """Fixa/neteja la banda de loop. a=b=None la treu."""
+        if a is None or b is None:
+            self._loop_a = self._loop_b = None
+            self._update_loop_item()
+            return
         """Defineix la regió de loop A/B (segons) i la dibuixa."""
         self._loop_a = float(a)
         self._loop_b = float(b)
