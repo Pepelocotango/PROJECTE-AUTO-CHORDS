@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (
     QFormLayout, QGroupBox, QLabel, QPushButton, QTabWidget, QVBoxLayout,
 )
 
-from app import tempo, vamp_params
+from app import postproc, tempo, vamp_params
 
 # Traducció al català dels títols dels paràmetres del Chordino (els que dona
 # el plugin son en anglès) + una ajuda curta de quan tocar-los.
@@ -61,6 +61,9 @@ DEFECTES = {
         "pref_min": tempo.BPM_PREFERIT[0], "pref_max": tempo.BPM_PREFERIT[1],
     },
     "structure": {"durada_min": 0.0, "fusiona_iguals": True},
+    # Neteja posterior dels acords (post-processat, app/postproc.py)
+    "clean": {"durada_min": 0.0, "fusiona_iguals": True, "sense_baix": False,
+              "reduir": False, "snap": False, "divisio": 1},
 }
 
 
@@ -186,6 +189,37 @@ class DialegOpcions(QDialog):
         info.setWordWrap(True)
         info.setStyleSheet("color:#9aa6b8; font-size:11px;")
         f.addRow(info)
+
+        # --- Neteja posterior (post-processat, vegeu app/postproc.py) ---
+        self._controls["clean"] = {}
+        net = QGroupBox("Neteja posterior dels acords")
+        fn = QFormLayout(net)
+        dnet = (val or {}).get("_clean", {}) or DEFECTES["clean"]
+        c = _checkbox(dnet.get("sense_baix", False))
+        c.setToolTip("Elimina el baix tallat: A/E → A.")
+        self._controls["clean"]["sense_baix"] = c
+        fn.addRow(QLabel("Treure el baix (A/E → A)"), c)
+        c = _checkbox(dnet.get("reduir", False))
+        c.setToolTip("Redueix a l'acord bàsic: Cmaj7 → C, Em6 → Em.")
+        self._controls["clean"]["reduir"] = c
+        fn.addRow(QLabel("Reduir a l'acord bàsic"), c)
+        c = _checkbox(dnet.get("fusiona_iguals", True))
+        c.setToolTip("Uneix acords consecutius iguals.")
+        self._controls["clean"]["fusiona_iguals"] = c
+        fn.addRow(QLabel("Fusionar acords iguals seguits"), c)
+        s = _spin(0, 30, 0.1, dnet.get("durada_min", 0.0), 2)
+        s.setToolTip("Elimina els acords que duren menys d'aquesta estona.")
+        self._controls["clean"]["durada_min"] = s
+        fn.addRow(QLabel("Durada mínima d'un acord (s)"), s)
+        c = _checkbox(dnet.get("snap", False))
+        c.setToolTip("Mou l'inici de cada acord a la graella (BPM/compàs).")
+        self._controls["clean"]["snap"] = c
+        fn.addRow(QLabel("Encaixar a la graella"), c)
+        s = _spin(1, 4, 1, dnet.get("divisio", 1), 0)
+        s.setToolTip("Subdivisions per temps on encaixar (1 = temps).")
+        self._controls["clean"]["divisio"] = s
+        fn.addRow(QLabel("Subdivisions per temps"), s)
+        f.addRow(net)
         return w
 
     def _tab_estructura(self, val):
@@ -220,6 +254,13 @@ class DialegOpcions(QDialog):
                 w.setValue(float(p["defecte"]))
         self._controls["structure"]["durada_min"].setValue(0.0)
         self._controls["structure"]["fusiona_iguals"].setChecked(True)
+        cl = self._controls["clean"]
+        cl["sense_baix"].setChecked(False)
+        cl["reduir"].setChecked(False)
+        cl["fusiona_iguals"].setChecked(True)
+        cl["durada_min"].setValue(0.0)
+        cl["snap"].setChecked(False)
+        cl["divisio"].setValue(1)
 
     def opcions(self):
         """Retorna les opcions triades, a punt per al pipeline."""
@@ -238,4 +279,13 @@ class DialegOpcions(QDialog):
             "fusiona_iguals": bool(
                 self._controls["structure"]["fusiona_iguals"].isChecked()),
         }
-        return {"bpm": bpm, "chords": chords, "structure": est}
+        cl = self._controls["clean"]
+        clean = {
+            "sense_baix": bool(cl["sense_baix"].isChecked()),
+            "reduir": bool(cl["reduir"].isChecked()),
+            "fusiona_iguals": bool(cl["fusiona_iguals"].isChecked()),
+            "durada_min": round(float(cl["durada_min"].value()), 2),
+            "snap": bool(cl["snap"].isChecked()),
+            "divisio": int(cl["divisio"].value()),
+        }
+        return {"bpm": bpm, "chords": chords, "structure": est, "clean": clean}

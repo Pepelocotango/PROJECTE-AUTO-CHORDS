@@ -15,7 +15,8 @@ import numpy as np
 # o avortar en un entorn sense pantalla.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from app import dialegs, main as app_main, pipeline, theme, vamp_params, visor
+from app import (dialegs, main as app_main, pipeline, postproc, theme,
+                 vamp_params, visor)
 
 # QMessageBox.information/warning/... son MODALS: bloquegen fins que algu
 # clica OK. En un entorn sense pantalla (CI) aixo penja el test per sempre.
@@ -966,6 +967,53 @@ class OffsetTests(unittest.TestCase):
                 base)
         self.assertIsNone(metronom._es_valid(1000.0, 4))
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
+
+
+class PostprocTests(unittest.TestCase):
+    """Post-processat dels acords (app/postproc.py)."""
+
+    def test_treu_baix(self):
+        self.assertEqual(postproc.treu_baix("A/E"), "A")
+        self.assertEqual(postproc.treu_baix("F#dim7/E"), "F#dim7")
+        self.assertEqual(postproc.treu_baix("C"), "C")
+
+    def test_redueix(self):
+        for entrada, esperat in [("Cmaj7", "C"), ("Em6", "Em"), ("A7", "A"),
+                                 ("Edim7", "Edim"), ("C#m", "C#m"),
+                                 ("D6", "D"), ("Am7", "Am"), ("Cmaj9", "C")]:
+            self.assertEqual(postproc.redueix(entrada), esperat)
+
+    def test_fusiona_iguals(self):
+        r = postproc.processa_acords([(0, "C"), (4, "C"), (8, "Am")])
+        self.assertEqual([x[1] for x in r], ["C", "Am"])
+
+    def test_durada_minima(self):
+        # Am dura 0,2 s -> s'elimina
+        r = postproc.processa_acords(
+            [(0, "C"), (8, "Am"), (8.2, "G"), (12, "F")], durada_min=1.0)
+        self.assertNotIn("Am", [x[1] for x in r])
+
+    def test_sense_baix_i_reduir(self):
+        r = postproc.processa_acords([(0, "A/E"), (4, "Cmaj7")],
+                                     sense_baix=True, reduir=True)
+        self.assertEqual([x[1] for x in r], ["A", "C"])
+
+    def test_snap(self):
+        r = postproc.snap_acords([(0.1, "C"), (1.03, "G"), (2.4, "Am")],
+                                 bpm=60, divisio=1)
+        self.assertEqual([round(x[0], 2) for x in r], [0.0, 1.0, 2.0])
+
+    def test_processa_acords_csv(self):
+        import tempfile
+        d = tempfile.mkdtemp()
+        f = os.path.join(d, "a.csv")
+        with open(f, "w") as fh:
+            fh.write("0.0,A/E\n4.0,A\n8.0,Cmaj7\n8.5,G\n12.0,G\n")
+        postproc.processa_acords_csv(f, sense_baix=True, reduir=True,
+                                     durada_min=1.0, fusiona_iguals=True)
+        with open(f) as fh:
+            noms = [r[1] for r in csv.reader(fh)]
+        self.assertEqual(noms, ["A", "G"])
 
 
 class FiltraSeccionsTests(unittest.TestCase):

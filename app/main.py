@@ -26,6 +26,7 @@ PROJECT_ROOT = os.path.dirname(APP_DIR)
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 import pipeline  # noqa: E402
+import postproc  # noqa: E402
 import theme  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
@@ -103,6 +104,19 @@ class Feina(QThread):
             self.log("1/5 extreu acords (Chordino)...")
             pipeline.extract_chords(self.wav, csv_ac, self.log,
                                     params=(self.opcions.get("chords") or None))
+            # Neteja posterior dels acords (opcions del dialeg).
+            cl = self.opcions.get("clean") or {}
+            if cl:
+                self.log("1b/5 neteja dels acords...")
+                postproc.processa_acords_csv(
+                    csv_ac,
+                    durada_min=float(cl.get("durada_min", 0.0)),
+                    fusiona_iguals=bool(cl.get("fusiona_iguals", True)),
+                    sense_baix=bool(cl.get("sense_baix", False)),
+                    reduir=bool(cl.get("reduir", False)),
+                    snap=bool(cl.get("snap", False)),
+                    bpm=self.bpm, bpb=self.bpb, offset=self.offset,
+                    divisio=int(cl.get("divisio", 1)), log=self.log)
             self.progres.emit(35)
             if self.amb_estructura:
                 csv_seg = os.path.join(self.sortida, "segments.csv")

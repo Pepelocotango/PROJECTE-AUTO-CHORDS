@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **Neteja posterior dels acords** (post-processat, `app/postproc.py`), amb
+  controls nous a la pestanya **Acords** del dialeg:
+  - **Treure el baix** (`A/E` → `A`), **Reduir a l'acord bàsic**
+    (`Cmaj7` → `C`, `Em6` → `Em`, `Edim7` → `Edim`), **Fusionar iguals**,
+    **Durada mínima** (treu acords massa curts) i **Encaixar a la graella**
+    (snap al beat/compàs, amb les subdivisions triables).
+  Funcions pures i testeables; s'apliquen al CSV després del Chordino.
+  **7 tests nous** (`PostprocTests`).
+
 ### Canviat
 - **Opcions del Chordino traduïdes al català** al diàleg d'autodetecció, amb
   una **ajuda** per a cada paràmetre (tooltip) i els valors traduïts
