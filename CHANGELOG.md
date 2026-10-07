@@ -9,11 +9,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 - **Botó de reproducció**: `▶ Escolta` → **botó d'icona** que canvia sol
   (**`▶`** aturat / **`⏸`** sonant), com als DAWs, sense text. El visor emet
   `playStateChanged(bool)` i la barra de transport s'hi sincronitza.
-- **Botons commutables amb estat visible**: ara els botons amb estat
-  (**🔁 loop**, **🔇 mute**, **🥁 metrònom** i els de **mode**) es veuen
-  clarament **encesos** (fons verd `#2e7d32` + vora) o **apagats** (gris/blanc).
-  L'estil de la finestra principal **no tenia cap regla `:checked`**, per això
-  mai no es veien actius. El metrònom conserva l'accent groc.
+- **Botons commutables amb estat visible**: la base de **tots** els botons
+  passa a l'estil **«Obre…» (gris)**; els botons amb estat (**🔁 loop**, els
+  de **mode**) s'encenen en **BLAU**, i el **🔇 mute** i el **🥁 metrònom**
+  en **GROC** (`#ffd166`). L'estil de la finestra principal **no tenia cap
+  regla `:checked`**, per això mai no es veien actius. `Analitza` es manté
+  destacat en blanc (`#principal`).
   **5 tests nous** (`BotoOnOffTests`), inclòs un que comprova el color real
   del píxel entre apagat i encès.
 

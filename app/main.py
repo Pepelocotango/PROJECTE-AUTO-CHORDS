@@ -928,6 +928,7 @@ class Finestra(QMainWindow):
              lambda: self._acc_visor("zoom_tot"))
         self.tb_mut = boto("🔇", "Silencia / reactiva el so",
                            lambda: None, checkable=True)
+        self.tb_mut.setObjectName("mute")
         self.tb_mut.clicked.connect(
             lambda: self._acc_visor("set_mut", self.tb_mut.isChecked()))
         bar.addSeparator()

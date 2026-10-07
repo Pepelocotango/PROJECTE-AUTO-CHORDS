@@ -1037,15 +1037,21 @@ class BotoOnOffTests(unittest.TestCase):
             c = img.pixelColor(p.x(), p.y())
             return (c.red(), c.green(), c.blue())
 
+        # apagat = estil "Obre..." (gris)
         apagat = fons(w.tb_loop)
+        self.assertLess(abs(apagat[0] - apagat[1]), 15)
+        self.assertLess(abs(apagat[1] - apagat[2]), 15)
+        # ences = blau
         w.tb_loop.setChecked(True); self._app.processEvents()
         ences = fons(w.tb_loop)
         self.assertNotEqual(apagat, ences)
-        self.assertGreater(ences[1], ences[0] + 25)      # es veu verd
-        # el metronom te accent propi (groc)
-        w.b_metro.setChecked(True); self._app.processEvents()
-        mg = fons(w.b_metro)
-        self.assertGreater(mg[0], 200); self.assertLess(mg[2], 130)
+        self.assertGreater(ences[2], ences[0] + 40)      # blau dominant
+        # mute i metronom s'encenen en groc
+        w.tb_mut.setChecked(True); w.b_metro.setChecked(True)
+        self._app.processEvents()
+        for bot in (w.tb_mut, w.b_metro):
+            g = fons(bot)
+            self.assertGreater(g[0], 200); self.assertLess(g[2], 130)
         w.close()
 
 

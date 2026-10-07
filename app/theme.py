@@ -43,12 +43,16 @@ TL_WAVE_MID = "#2f3640"        # linia central de l'ona
 CLIP_SECTION_BORDER = "#dfe7f5"
 # Metrònom: color de l'estat activat (botó/acció)
 METRO_ACTIU = "#ffd166"
-# Estat ENCES/APAGAT dels botons commutables (play/pause, loop, mute, metro,
-# modes...). 1 sol color per a tots -> es veu d'un cop d'ull que esta actiu.
-ACTIU = "#2e7d32"            # fons del boto ences (verd)
-ACTIU_HOVER = "#388e3c"      # en passar-hi per sobre
-ACTIU_DARK = "#1b5e20"       # vora
+# Estat ENCES/APAGAT dels botons commutables.
+# Base (apagat) = estil "Obre..." (gris). Actiu = BLAU; el mute i el
+# metronom, pero, s'encenen en GROC per distingir-se de la resta.
+ACTIU = "#2563eb"            # blau: boto actiu (loop, modes...)
+ACTIU_HOVER = "#3b82f6"
+ACTIU_DARK = "#1e40af"
 ACTIU_TEXT = "#ffffff"
+ACTIU_GROC = "#ffd166"       # groc: mute i metronom actius
+ACTIU_GROC_DARK = "#b8860b"
+ACTIU_GROC_TEXT = "#1a1a1a"
 CLIP_FILL = "#2e3844"          # clip normal
 CLIP_BORDER = "#b8c7dc"
 CLIP_TEXT = "#edf3ff"
@@ -102,21 +106,30 @@ QTextEdit#log {{
     font-family: monospace;
     font-size: 12px;
 }}
+/* Base de TOTS els botons = estil "Obre..." (gris) */
 QPushButton {{
+    background: {SURFACE};
+    color: {TEXT};
+    border: 1px solid {BORDER};
+    border-radius: 7px;
+    padding: 7px 14px;
+    font-weight: 600;
+}}
+QPushButton:hover {{
+    background: {SURFACE_2};
+}}
+QPushButton:pressed {{
+    background: {BORDER_SOFT};
+}}
+/* Accio principal (Analitza): es queda destacada en blanc */
+QPushButton#principal {{
     background: {PRIMARY_LIGHT};
     color: {BG};
     border: 1px solid {PRIMARY_DARK};
-    border-radius: 7px;
-    padding: 7px 14px;
     font-weight: 700;
 }}
-QPushButton:hover {{
+QPushButton#principal:hover {{
     background: {PRIMARY};
-    color: {BG};
-}}
-QPushButton:pressed {{
-    background: {PRIMARY_DARK};
-    color: {TEXT};
 }}
 QPushButton:disabled {{
     background: {DISABLED};
@@ -132,28 +145,19 @@ QPushButton#secundari {{
 QPushButton#secundari:hover {{
     background: {SURFACE_2};
 }}
-/* --- Botons commutables: ENCES vs APAGAT --- */
+/* --- Botons commutables: APAGAT (gris) vs ENCES (blau/groc) --- */
 QPushButton:checked {{
     background: {ACTIU};
     color: {ACTIU_TEXT};
     border: 2px solid {ACTIU_DARK};
     font-weight: 700;
 }}
-QPushButton:checked:hover {{
-    background: {ACTIU_HOVER};
-}}
-QPushButton:checked:pressed {{
-    background: {ACTIU_DARK};
-}}
-QPushButton#metro:checked {{
-    background: {METRO_ACTIU};
-    color: {BG};
-    border: 2px solid {ACTIU_DARK};
-}}
-QPushButton#secundari:checked {{
-    background: {ACTIU};
-    color: {ACTIU_TEXT};
-    border: 2px solid {ACTIU_DARK};
+QPushButton:checked:hover {{ background: {ACTIU_HOVER}; }}
+QPushButton:checked:pressed {{ background: {ACTIU_DARK}; }}
+QPushButton#metro:checked, QPushButton#mute:checked {{
+    background: {ACTIU_GROC};
+    color: {ACTIU_GROC_TEXT};
+    border: 2px solid {ACTIU_GROC_DARK};
 }}
 QProgressBar {{
     border: 1px solid {BORDER};
@@ -204,8 +208,15 @@ QPushButton {{
 }}
 QPushButton:hover {{ background: {SURFACE_2}; }}
 QPushButton:pressed {{ background: {BORDER_SOFT}; }}
-QPushButton:checked {{ background: {PRIMARY_LIGHT}; color: {BG}; }}
-QPushButton#metro:checked {{ background: {METRO_ACTIU}; color: {BG}; }}
+QPushButton:hover {{ background: {SURFACE_2}; }}
+QPushButton:checked {{
+    background: {ACTIU}; color: {ACTIU_TEXT};
+    border: 2px solid {ACTIU_DARK}; font-weight: 700;
+}}
+QPushButton#metro:checked, QPushButton#mute:checked {{
+    background: {ACTIU_GROC}; color: {ACTIU_GROC_TEXT};
+    border: 2px solid {ACTIU_GROC_DARK};
+}}
 QPushButton:disabled {{ background: {DISABLED}; color: {MUTED}; }}
 QListWidget, QTextEdit, QSlider, QLabel {{
     background: {PANEL};

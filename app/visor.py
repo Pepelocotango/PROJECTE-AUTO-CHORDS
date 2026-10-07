@@ -285,6 +285,7 @@ class Visor(QMainWindow):
         self.temps = QLabel("00:00 / 00:00")
         fila2.addWidget(self.temps)
         self.b_mut = QPushButton("🔇")
+        self.b_mut.setObjectName("mute")
         self.b_mut.setCheckable(True)
         self.b_mut.clicked.connect(self.commuta_mut)
         fila2.addWidget(self.b_mut)
