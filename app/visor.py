@@ -641,6 +641,17 @@ class Visor(QMainWindow):
                            "-ar", str(sr), "-ac", "1", "-i", "-"])
 
     def _mono_bytes(self):
+        """Mono 16 bits a punt per al reproductor (amb mute/volum aplicats).
+
+        CACAT: convertir l'estereo a mono + copiar triga ~450 ms en temes
+        llargs i es cridava a cada play/seek/reinici (congelava la GUI). El
+        resultat només depèn de (mute, volum), així que es guarda i es
+        recalcula només quan aquests canvien.
+        """
+        clau = (bool(self.mut), round(float(self.vol), 4))
+        if (getattr(self, "_mono_cache", None) is not None
+                and getattr(self, "_mono_cache_clau", None) == clau):
+            return self._mono_cache
         mono = np.frombuffer(self.audio["raw"], dtype=np.int16)
         ch = self.audio["canals"]
         if ch > 1:
@@ -648,7 +659,9 @@ class Visor(QMainWindow):
         g = 0.0 if self.mut else self.vol
         if g != 1.0:
             mono = np.clip(mono.astype(np.float32) * g, -32768, 32767).astype(np.int16)
-        return mono.tobytes()
+        self._mono_cache = mono.tobytes()
+        self._mono_cache_clau = clau
+        return self._mono_cache
 
     # transports
     def stop_inici(self):

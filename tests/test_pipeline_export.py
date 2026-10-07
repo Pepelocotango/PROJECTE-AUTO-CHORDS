@@ -969,6 +969,76 @@ class OffsetTests(unittest.TestCase):
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
 
 
+class PlayCoherenciaTests(unittest.TestCase):
+    """Coherencia del play: cache de mono + aturar abans de plugins/redibuix."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+        import tempfile, wave
+        import numpy as np
+        cls._d = tempfile.mkdtemp()
+        cls._wav = os.path.join(cls._d, "t.wav")
+        with wave.open(cls._wav, "wb") as w:
+            w.setnchannels(2); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes((np.sin(np.linspace(0, 440 * 2 * np.pi * 3,
+                                              44100 * 3)) * 8000).astype(
+                np.int16).tobytes() * 2)
+        cls._ac = os.path.join(cls._d, "ACORDS"); os.makedirs(cls._ac)
+        open(os.path.join(cls._ac, "acords.csv"), "w").write("0.0,C\n")
+
+    def _visor(self):
+        return visor.Visor(self._wav, os.path.join(self._ac, "acords.csv"),
+                           None, 120, 4)
+
+    def test_mono_bytes_cachejat(self):
+        v = self._visor()
+        a = v._mono_bytes()
+        import time
+        t0 = time.perf_counter()
+        b = v._mono_bytes()
+        dt = time.perf_counter() - t0
+        self.assertIs(a, b)                 # mateix objecte (cache)
+        self.assertLess(dt, 0.01)           # instantani
+
+    def test_mute_invalida_la_cache(self):
+        v = self._visor()
+        a = v._mono_bytes()
+        v.mut = True
+        b = v._mono_bytes()
+        self.assertIsNot(a, b)              # recalculat
+        self.assertNotEqual(a, b)           # silenci (tot zeros) != original
+
+    def test_atura_si_sona(self):
+        w = app_main.Finestra()
+
+        class Fake:
+            def __init__(self, sona):
+                self.sona = sona
+                self.stops = 0
+
+            def play_stop(self):
+                self.sona = False
+                self.stops += 1
+
+        f = Fake(True); w.visor_ref = f
+        w._atura_si_sona("prova")
+        self.assertFalse(f.sona)
+        self.assertEqual(f.stops, 1)
+        f2 = Fake(False); w.visor_ref = f2
+        w._atura_si_sona("prova")
+        self.assertEqual(f2.stops, 0)       # ja aturat: no fa res
+        w.close()
+
+    def test_sites_que_aturen(self):
+        import inspect
+        for fn in (app_main.Finestra.executa,
+                   app_main.Finestra._detecta_bpm,
+                   app_main.Finestra._carrega_visor):
+            self.assertIn("_atura_si_sona", inspect.getsource(fn))
+
+
 class BpmDoblaTests(unittest.TestCase):
     """Botons ×2 / ÷2 del BPM."""
 

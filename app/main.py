@@ -597,6 +597,7 @@ class Finestra(QMainWindow):
             self.opcions = dlg.opcions()
             dialegs.desa_opcions(self.opcions)
         b = self.opcions.get("bpm", {})
+        self._atura_si_sona("deteccio de BPM")
         self.registra("Detectant el BPM…")
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
@@ -864,6 +865,7 @@ class Finestra(QMainWindow):
         return ""
 
     def _carrega_visor(self, wav):
+        self._atura_si_sona("recarrega del visor")
         if not wav or not os.path.isfile(wav):
             self.logger.warning("No s'ha pogut carregar la WAV: %s", wav)
             self.visor_ref = None
@@ -918,6 +920,14 @@ class Finestra(QMainWindow):
             self.registra(f"Visor ERROR: {traceback.format_exc()}")
             self.visor_ref = None
             self._mostra_placeholder_visor()
+
+    def _atura_si_sona(self, motiu):
+        """Atura el reproductor abans d'una operacio pesada (no te sentit
+        continuar sonant mentre s'analitza o es redibuixa el visor)."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None and getattr(vr, "sona", False):
+            self.registra(f"⏸ aturo el reproductor ({motiu})")
+            vr.play_stop()
 
     def _assegura_wav(self, ruta):
         """Si `ruta` no és un WAV PCM 16 bits, el converteix amb ffmpeg.
@@ -1094,6 +1104,7 @@ class Finestra(QMainWindow):
                 return
             self.opcions = dlg.opcions()
             dialegs.desa_opcions(self.opcions)
+        self._atura_si_sona("analisi amb els plugins")
         base = os.path.splitext(os.path.basename(wav))[0]
         self.sortida = os.path.join(os.path.dirname(wav), base + "_ACORDS")
         self.log.clear()
