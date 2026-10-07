@@ -70,3 +70,8 @@ temp/
 
 # AppImage: extractes i temporals
 *.AppImage.zsync
+
+# Logs de GitHub Actions descarregats (locals; no es commitegen)
+LOGS GITHUB ACTIONS/
+logs_*/
+github-actions-logs/
