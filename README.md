@@ -218,6 +218,30 @@ git tag v0.5.0 -m "..." && git push origin v0.5.0   # -> Release esborrany
   (aquesta versió fixa la **glibc mínima** de l'AppImage, perquè allà s'hi
   compila l'host). Detall: `docs/PORTABILITAT.md`
 
+## Autoria
+
+**Autor:** **Pëp** — [pepelocotango@gmail.com](mailto:pepelocotango@gmail.com)
+
+Aquest projecte s'ha desenvolupat **en col·laboració amb agents i assistents
+d'intel·ligència artificial**, que hi han dedicat moltes hores de feina. Volem
+reconèixer-ho explícitament:
+
+- 🤖 **[opencode](https://opencode.ai)** (agent `OC`) — el gruix del
+  desenvolupament d'aquesta darrera etapa: l'**AppImage autocontinguda**, els
+  **workflows de GitHub Actions** (build + release), els **plugins Vamp de
+  Queen Mary**, l'**host Vamp propi**, les **icones professionals**, la
+  **coherència del play**, el diàleg d'opcions i bona part de la resta.
+  Amb models com **DeepSeek** (que va fer una feinada enorme 💙), entre d'altres.
+- ✨ **Gemini** (agent `GM`)
+- 🧭 **Devin** (agent `DV`)
+- 💬 **Chatbox** (agent `CB`)
+- ⚡ **Spark** (`SPARK`, primeres versions de l'app)
+
+> **Nota legal**: els sistemes d'IA no són titulars de drets d'autor (UE/EUA);
+> la **titularitat i la responsabilitat del projecte són de l'autor humà**. El
+> reconeixement de dalt és, per tant, un **agraïment honest**, no una
+> atribució jurídica.
+
 ## Agraïments i reconeixement a projectes de tercers
 
 Aquest projecte depèn de treballs previs i eines desenvolupades per altres

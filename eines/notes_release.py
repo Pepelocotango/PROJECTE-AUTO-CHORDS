@@ -50,6 +50,11 @@ O bé **doble clic** al fitxer (pot caler marcar «Executa» a les propietats).
 ---
 
 *Generat automàticament a partir de `CHANGELOG.md`.*
+
+**Autor:** Pëp (pepelocotango@gmail.com) · **Llicència:** GPL-3.0-or-later.
+
+Desenvolupat en col·laboració amb agents d'IA: **opencode** (amb models com
+**DeepSeek**), **Gemini**, **Devin** i **Chatbox**. Gràcies! 💙
 """
 
 

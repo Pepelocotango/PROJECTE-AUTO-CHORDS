@@ -6,6 +6,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 ## [0.5.0] — 2026-10-07
 
 ### Afegit
+- **Secció «Autoria» al README** (i cua de les notes del Release): autor
+  **Pëp** + **reconeixement explícit als agents d'IA** que hi han treballat
+  (opencode amb models com **DeepSeek**, Gemini, Devin, Chatbox, Spark), amb
+  una nota legal (la titularitat és de l'autor humà).
+
+### Afegit (anterior)
 - **CI a prova d'errors + logs de debug**:
   - **Diagnòstic** al inici de cada workflow (OS, glibc, g++, Python, disc, RAM).
   - Si **alguna cosa falla**: un pas **`if: failure()`** imprimeix pistes (disc,
