@@ -20,6 +20,9 @@ VAMP_DIRS = [
     os.path.join(PROJ_DIR, "segmentino-linux64-local"),
     # tempo/beats via aubio (compilat localment; vegeu docs/AUBIO_TEMPO.md)
     os.path.join(PROJ_DIR, "vamp-aubio-linux64-local"),
+    # Queen Mary (qm-tempotracker: beat+tempo, qm-segmenter, qm-keydetector...)
+    # Compilat localment amb -msse -msse2 (sense AVX). Vegeu docs/QM_VAMP.md
+    os.path.join(PROJ_DIR, "qm-vamp-plugins-linux64-local"),
 ]
 
 

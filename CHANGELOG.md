@@ -6,6 +6,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **`qm-vamp-plugins` (Queen Mary) compilats i integrats** (`qm-vamp-plugins-linux64-local/`):
+  els plugins Vamp que fan servir **Audacity, Mixxx i Sonic Visualiser**
+  (`qm-tempotracker`, `qm-barbeattracker`, `qm-keydetector`, `qm-segmenter`…).
+  No són als repos d'Ubuntu, així que s'han **compilat del codi font** (GitHub
+  `c4dm/qm-vamp-plugins` + `qm-dsp` + `vamp-plugin-sdk`) amb
+  **`-msse -msse2`** (⚠️ **sense AVX**, verificat pel Q9400). Afegits a
+  `pipeline.VAMP_DIRS`. Comparativa amb 11 temes reals a `docs/QM_VAMP.md`:
+  pel **tempo** el `tempo.py` propi fa **5/5** i el qm **4/5** → es manté el
+  nostre de principal; el qm queda com a motor alternatiu + **beats/bars**
+  (els downbeats permetrien posar el **compàs 1 sol**).
+
+### Afegit (anterior)
 - **`eines/explica_bpm.py`**: genera un gràfic (PNG) que explica com es
   detecta el BPM (envolupant → autocorrelació → puntuació comb → prior), amb
   el cas real. Útil per documentar i per depurar casos difícils.
