@@ -3,6 +3,19 @@
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
 Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
 
+## [No publicat]
+
+### Arreglat
+- **Coherència del play (1/2)**:
+  - **`_mono_bytes()` cachejat**: convertir l'estereo a mono + copiar trigava
+    **~450 ms** en temes llargs i es cridava a cada play/seek/reinici
+    (congelava la GUI). Ara es guarda i només es recalcula si canvien
+    mute/volum → de **468 ms a 0,03 ms**.
+  - **S'atura el reproductor** abans d'operacions pesades: **aplicar els
+    plugins** (`Analitza`, 🎯 `Detecta`) i **recarregar/redibuixar el visor**
+    (`_carrega_visor`). Nou helper `_atura_si_sona(motiu)`. **4 tests nous**
+    (`PlayCoherenciaTests`).
+
 ## [0.3.0] — 2026-10-07
 
 Sessió gran: tap tempo, botó 📍, franja Editor, menús, paleta de botons,
