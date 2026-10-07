@@ -20,7 +20,10 @@
 | **NumPy** | **BSD-3-Clause** | AppImage | https://numpy.org |
 | **libsndfile** (enllaçada) | **LGPL-2.1+** | `vamp_host_local` | https://libsndfile.github.io/libsndfile |
 | **FFmpeg** (build estàtic) | **GPL-3.0** | AppImage (`portable/bin/ffmpeg`) | https://ffmpeg.org |
-| **AppImageKit runtime** | **MIT** | AppImage | https://github.com/AppImage/AppImageKit |
+| **AppImage runtime** (`type2-runtime`, estàtic) | **MIT** | AppImage | https://github.com/AppImage/type2-runtime |
+| **libfuse** (dins el runtime estàtic) | **LGPL-2.1** | AppImage | https://github.com/libfuse/libfuse |
+| **squashfuse** (dins el runtime estàtic) | **BSD-2-Clause** | AppImage | https://github.com/vasi/squashfuse |
+| **musl libc** (dins el runtime estàtic) | **MIT** | AppImage | https://musl.libc.org |
 
 ## Notes d'obligacions
 
@@ -37,6 +40,10 @@
   els avisos de copyright que exigeixen es troben a **`icones/LICENSE`**.
 - **BSD / PSF**: requereixen reproduir l'avís de copyright (als respectius
   paquets/roues).
+- **Runtime de l'AppImage** (`type2-runtime`): és un binari **estàtic** que
+  incrusta **libfuse** (LGPL-2.1), **squashfuse** (BSD-2) i **musl libc**
+  (MIT). Els seus textos de llicència viatgen **dins** el propi runtime
+  (extractables amb `--appimage-extract`).
 
 ## Detall de les icones
 

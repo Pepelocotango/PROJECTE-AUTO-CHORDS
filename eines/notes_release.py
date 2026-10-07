@@ -37,8 +37,9 @@ O bé **doble clic** al fitxer (pot caler marcar «Executa» a les propietats).
 > (a qualsevol escriptori Linux actual). Sense ells l'app funciona igual
 > (analitzar, editar, exportar); només avisa que no pot sonar.
 >
-> ⚠️ Si l'AppImage no arrenca per FUSE, prova:
-> `./AutoChords_*.AppImage --appimage-extract-and-run`
+> ✅ **No cal `libfuse2`**: el runtime de l'AppImage és **estàtic** (ho porta
+> tot a dins). Només cal el suport **FUSE del nucli** (estàndard a tot Linux).
+> Si mai fallés: `./AutoChords_*.AppImage --appimage-extract-and-run`
 
 ---
 

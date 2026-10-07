@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
 ## [0.5.0] — 2026-10-07
 
+### Arreglat
+- **El nostre AppImage NO necessita \**: el runtime incrustat és el
+  **modern estàtic** (\, enllaçat amb musl + libfuse +
+  squashfuse a dins; verificat amb \: «no és un executable dinàmic»).
+  Només cal el suport **FUSE del nucli** (estàndard). L'avís clàssic
+  d'instal·lar \ és per a AppImages amb el runtime **antic**.
+  Docs corregits (README, \); i afegides al
+  \ les llicències del runtime (libfuse LGPL-2.1,
+  squashfuse BSD-2, musl MIT).
+
 ### Afegit
 - **Release automàtic de GitHub** en crear un tag `v*`
   (`.github/workflows/release.yml`): construeix l'AppImage i crea un

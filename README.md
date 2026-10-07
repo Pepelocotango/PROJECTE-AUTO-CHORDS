@@ -140,6 +140,9 @@ L'AppImage embolcalla el paquet portable + un `AppRun` + el `.desktop` + la
 icona, i el comprimeix (squashfs): dels ~530 MB surt un fitxer d'**~160 MB**
 que s'executa a qualsevol **Linux x86_64** sense instal·lar res.
 
+> El runtime incrustat és el modern **estàtic** (`type2-runtime`, enllaçat amb
+> musl i libfuse a dins), així que **no cal instal·lar `libfuse2`**.
+
 ### Construir-lo localment
 ```bash
 eines/crea_appimage.sh          # -> ../AUTO_CHORDS-x86_64.AppImage
@@ -153,8 +156,13 @@ chmod +x AUTO_CHORDS-x86_64.AppImage
 ./AUTO_CHORDS-x86_64.AppImage
 ```
 O **doble clic**. ⚠️ Per **escoltar** cal **PipeWire** o **PulseAudio** (sense
-ells l'app funciona igual, només avisa). Si falla per FUSE:
-`./AUTO_CHORDS-*.AppImage --appimage-extract-and-run`
+ells l'app funciona igual, només avisa).
+
+> ✅ **No cal `libfuse2`**: el runtime incrustat és **estàtic** (porta
+> libfuse + squashfuse + musl a dins) i només depèn del **suport FUSE del
+> kernel**, que tot Linux ja té. (L'avís clàssic d'instal·lar `libfuse2` és
+> per a AppImages construïdes amb el runtime **antic**.) Només si el nucli
+> tingués FUSE desactivat caldria `./AutoChords-*.AppImage --appimage-extract-and-run`.
 
 ### GitHub Actions
 Dos workflows a `.github/workflows/`:
@@ -184,7 +192,7 @@ git tag v0.5.0 -m "..." && git push origin v0.5.0   # -> Release esborrany
 | **CPU** | Qualsevol x86_64 amb **SSE2** · provada en un **Core 2 Quad Q9400** *sense AVX* ✅ |
 | **RAM / disc** | ~1 GB RAM lliure · ~170 MB a disc (l'AppImage és un sol fitxer) |
 | **Per ESCOLTAR** | **PipeWire** o **PulseAudio** (qualsevol escriptori Linux actual). **Opcional**: sense això l'app fa tota la resta (analitzar, editar, exportar), només avisa que no pot sonar |
-| **Per executar l'AppImage** | **FUSE 2** (`libfuse2`). Si no el tens: `./AutoChords-*.AppImage --appimage-extract-and-run` |
+| **Per executar l'AppImage** | **Res especial** ✅ — el runtime va **estàtic** (porta libfuse+squashfuse a dins; només cal el suport **FUSE del kernel**, que és estàndard). Si mai fallés: `./AutoChords-*.AppImage --appimage-extract-and-run` |
 
 > ✨ **No cal instal·lar res més**: ni Python, ni Qt, ni ffmpeg, ni els plugins
 > — tot va **dins** l'AppImage.
