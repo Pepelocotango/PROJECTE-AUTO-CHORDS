@@ -30,6 +30,8 @@ jobs:
     runs-on: ubuntu-22.04     # marca la glibc minima de l'AppImage
     steps:
       - name: 1. Checkout
+        # checkout@v5 i upload-artifact@v6: son les versions que corren en
+        # Node 24 (les @v4 donaven l'avis de deprecacio de Node 20).
         uses: actions/checkout@v5
 
       - name: 1b. Diagnòstic de l'entorn (versions, glibc, disc)
@@ -72,7 +74,7 @@ jobs:
       - name: 6. Tests
         run: |
           QT_QPA_PLATFORM=offscreen portable/python/bin/python3 -m unittest \
-            tests.test_pipeline_export
+            tests.test_pipeline_export tests.test_partitura
 
       - name: 7. Icona de l'aplicació
         run: portable/python/bin/python3 eines/crea_icona.py
