@@ -334,7 +334,8 @@ class Visor(QMainWindow):
 
         # escolta amb reproductor extern (QtMultimedia petava: Violació de
         # segment — les rodes PyQt5 no porten el plugin d'àudio del sistema).
-        # paplay = PipeWire/Pulse natiu; aplay = ALSA; ffplay = últim recurs.
+        # paplay = PipeWire/Pulse natiu; aplay = ALSA. Sense cap dels dos no es
+        # pot escoltar: l'app ho avisa i la resta funciona igual.
         self.proc = None
         self._sess = 0  # generació d'alimentació: invalida fils vells
         self.t0_mono = 0.0
@@ -350,7 +351,7 @@ class Visor(QMainWindow):
                  f"mitjà={a['pics'].mean():.3f}")
         self.log(f"ona: {len(a['pics'])} punts dibuixats | acords={len(self.acords)} "
                  f"seccions={len(self.seccions)}")
-        self.log(f"player: {self.player} {' '.join(self.player_args)}")
+        self.log(f"player: {self.player or 'cap'} {' '.join(self.player_args)}")
         self._undo_init()   # estat inicial = base per a la primera operacio
 
     def _carpeta_acords(self):
@@ -678,6 +679,13 @@ class Visor(QMainWindow):
             pass
 
     def _tria_player(self):
+        """Tria el reproductor extern: `paplay` (PipeWire/Pulse) o `aplay` (ALSA).
+
+        Tots dos són estàndard a qualsevol escriptori Linux (PipeWire o
+        PulseAudio pel primer, ALSA pel segon). Si no n'hi ha cap, retorna
+        `(None, [])` i el visor ho avisa: la resta de l'app (analitzar, editar,
+        exportar) funciona igual.
+        """
         sr = self.audio["sr"]
         if shutil.which("paplay"):
             # --latency-msec=100 baixa el buffer del servidor (per defecte en
@@ -689,8 +697,7 @@ class Visor(QMainWindow):
         if shutil.which("aplay"):
             return ("aplay", ["--format=S16_LE", f"--rate={sr}",
                               "--channels=1", "-"])
-        return ("ffplay", ["-nodisp", "-autoexit", "-f", "s16le",
-                           "-ar", str(sr), "-ac", "1", "-i", "-"])
+        return (None, [])
 
     def _mono_bytes(self):
         """Mono 16 bits SENSE guany, cacat (es calcula un sol cop per fitxer).
@@ -1439,7 +1446,7 @@ class Visor(QMainWindow):
         if self.player is None:
             QMessageBox.information(
                 self, "Reproducció",
-                "No hi ha cap reproductor d'àudio (paplay/aplay/ffplay).\n\n"
+                "No hi ha cap reproductor d'àudio (ni `paplay` ni `aplay`).\n\n"
                 "Cal **PipeWire** o **PulseAudio** per poder escoltar.\n"
                 "La resta de l'app (analitzar, editar, exportar) funciona igual.")
             return

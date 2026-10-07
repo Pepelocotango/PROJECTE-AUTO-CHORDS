@@ -54,7 +54,7 @@ compilam C++) o el **mòdul `vamp` de Python** (menys codi, però cal instal·la
 
 | # | Tasca | Criteri |
 |---|-------|---------|
-| 4.1 | Detecció del reproductor (`paplay`→`pw-play`→`aplay`→`ffplay`) i **missatge clar** si no n'hi ha | l'app avisa en lloc de fallar |
+| 4.1 | Detecció del reproductor (`paplay` → `aplay`) i **missatge clar** si no n'hi ha | l'app avisa en lloc de fallar |
 | 4.2 | Documentar el requisit de **PipeWire/Pulse** al README/DEVELOPING | documentat |
 
 ---

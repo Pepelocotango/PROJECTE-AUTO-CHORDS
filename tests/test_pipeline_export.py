@@ -2520,5 +2520,43 @@ class UndoRedoTests(unittest.TestCase):
         v.close()
 
 
+class TriaPlayerTests(unittest.TestCase):
+    """Selecció del reproductor extern (`Visor._tria_player`).
+
+    L'app fa servir `paplay` (PipeWire/Pulse) i, si no hi és, `aplay` (ALSA).
+    Si no n'hi ha cap, retorna `None` (i el visor ho avisa) en lloc de provar
+    ordres que no existeixen.
+    """
+
+    def _visor_buit(self):
+        v = visor.Visor.__new__(visor.Visor)
+        v.audio = {"sr": 44100}
+        return v
+
+    def test_prefereix_paplay(self):
+        v = self._visor_buit()
+        with patch("app.visor.shutil.which", lambda n: "/usr/bin/" + n):
+            player, args = v._tria_player()
+        self.assertEqual(player, "paplay")
+        self.assertIn("--raw", args)
+        self.assertIn("--latency-msec=100", args)
+        self.assertIn("--rate=44100", args)
+
+    def test_aplay_si_no_hi_ha_paplay(self):
+        v = self._visor_buit()
+        with patch("app.visor.shutil.which",
+                   lambda n: "/usr/bin/aplay" if n == "aplay" else None):
+            player, args = v._tria_player()
+        self.assertEqual(player, "aplay")
+        self.assertIn("--format=S16_LE", args)
+
+    def test_cap_reproductor_retorna_none(self):
+        v = self._visor_buit()
+        with patch("app.visor.shutil.which", lambda n: None):
+            player, args = v._tria_player()
+        self.assertIsNone(player)
+        self.assertEqual(args, [])
+
+
 if __name__ == "__main__":
     unittest.main()

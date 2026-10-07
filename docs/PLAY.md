@@ -15,7 +15,8 @@ WAV (16 bits) ──_mono_bytes()──► mono 16 bits ──_alimenta()──�
 |------|--------|
 | `_mono_bytes()` | converteix l'àudio a **mono 16 bits**, **cacat** (un sol cop per fitxer) |
 | `_alimenta()` | fil que escriu el buffer al pipe de `paplay`, **aplicant-hi el guany** (vol/mute) tros a tros |
-| `paplay` | reproductor (libpulse→PipeWire), `--raw --format=s16le --channels=1 --latency-msec=100` |
+| `paplay` | reproductor **preferit** (libpulse→PipeWire/Pulse), `--raw --format=s16le --channels=1 --latency-msec=100` |
+| `_tria_player()` | tria el reproductor **un sol cop** en obrir el visor: `paplay` si hi és; si no, `aplay` (ALSA directe); si no n'hi ha cap → `None` i l'app **avisa** (la resta funciona igual) |
 | `_tiquet()` | QTimer **50 ms**: mou el cursor, fa el loop A/B i detecta el final/els errors |
 | `_atura_proc()` | mata el **grup** del reproductor (`killpg`) i invalida el fil d'alimentació (`_sess`) |
 | `play_stop()` | alterna play/atura; emet `playStateChanged(bool)` per a la icona ▶/⏸ |

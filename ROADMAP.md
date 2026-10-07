@@ -416,7 +416,7 @@ La part d'anàlisi (pipeline, CSV, ABC, wavs) és **stdlib pur** → ja és port
 | `app/pipeline.py` (`_vamp_env`) | `VAMP_PATH = ":".join(...)` | `os.pathsep` |
 | `app/pipeline.py` (`VAMP_DIRS`, `HOST`) | rutes `*-linux64-local` i sense `.exe` | mapa per SO |
 | `app/pipeline.py` (`run_acords_py`) | `["python3", …]` (trenca PyInstaller i Windows) | `sys.executable` o crida en procés |
-| `app/visor.py` (`_tria_player`) | `paplay`/`aplay` (només Linux) | preferir `ffplay` del paquet |
+  | `app/visor.py` (`_tria_player`) | `paplay`/`aplay` (només Linux) | mapa per SO (Mac `afplay`, Win `ffplay`) |
 | `app/visor.py` (`os.killpg`, `SIGKILL`, `start_new_session`) | no existeixen a Windows | `CREATE_NEW_PROCESS_GROUP` + `terminate()` |
 | `app/ffmpeg.py` | noms sense `.exe`, `os.access(X_OK)` | `sys.platform` + `.exe` |
 | `app/config.py` | `TEMP_DIR` dins el projecte | carpeta d'usuari a macOS |

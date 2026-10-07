@@ -15,7 +15,7 @@ Tot en català. Llicència: GPLv3 (vegeu `LICENSE`).
 - **`ffmpeg`** — opcional, només per importar formats que no siguin WAV
   (`app/ffmpeg.py`); s'embega a `portable/bin/ffmpeg` (fase 3).
 - **Àudio**: cal **PipeWire** o **PulseAudio** per ESCOLTAR (reproductor
-  `paplay`, o `aplay`/`ffplay` de reserva). Sense cap d'ells, l'app
+  `paplay`, o `aplay` d'ALSA de reserva). Sense cap dels dos, l'app
   **funciona igual** (analitzar, editar, exportar); només avisa que no es pot
   escoltar (`Visor._tria_player`).
 
@@ -42,7 +42,7 @@ aquest filtre o mor al SIGILL / violació de segment.
 | `wave` stdlib | ✅ fem servir | Zero dependències; millor que `soundfile` |
 | `numpy` 1.26 (`numpy<2`) | ✅ fixat | El 2.x demana x86_64-v2 (SSE4.2) → `RuntimeError` al Q9400 |
 | PyQt5 + QtSvg | ✅ fem servir | Rodes amb Qt5; Qt6-GUI/PySide6 demana SSE4.2 |
-| `paplay --raw` (libpulse → PipeWire) | ✅ fem servir | Camí natiu Ubuntu 24 amb mescla; `aplay` (ALSA directe) només de reserva, `ffplay` últim recurs |
+| `paplay --raw` (libpulse → PipeWire) | ✅ fem servir | Camí natiu Ubuntu 24 amb mescla; `aplay` (ALSA directe) només de reserva |
 | `QAudioOutput` QtMultimedia | ❌ aparcat | Les rodes SÍ porten plugins (`libqtaudio_alsa.so`); el segfault era format/QBuffer, però `paplay` té stderr visible i zero acoblament Qt — no es reobre sense motiu |
 | `sounddevice` (PortAudio) | ❌ innecessari | `libportaudio.so.2` hi és, però afegiria dependència pip+sistema sense guanyar res |
 | Chordino + QM (`qm-segmenter`…) via **host propi** | ✅ fem servir | Vegeu `docs/QM_VAMP.md`; el `sonic-annotator` queda com a reserva |
