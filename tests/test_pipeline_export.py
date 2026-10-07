@@ -740,6 +740,58 @@ class MetronomTests(unittest.TestCase):
         self.assertEqual(len(self._onsets(self._a_array(out))), 3)
 
 
+class OffsetDosCampsTests(unittest.TestCase):
+    """Offset amb DOS camps sincronitzats: compas.beat <-> segons."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 30)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("9.5,Am\n")
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        window.bpm.setText("101"); window.bpb.setText("4")
+        window._aplica_parametres_temps()
+        return window
+
+    def test_compas_beat_a_segons(self):
+        # a 101 BPM 4/4, compas 5 beat 1 = 16 temps x 0.594 = 9.50 s
+        window = self._finestra()
+        s = window._cb_a_secs("5.1")
+        self.assertAlmostEqual(s, 16 * (60.0 / 101.0), places=4)
+        window.close()
+
+    def test_segons_a_compas_beat(self):
+        window = self._finestra()
+        self.assertEqual(window._secs_a_cb(16 * (60.0 / 101.0)), "5.1")
+        self.assertEqual(window._secs_a_cb(0.0), "1.1")
+        window.close()
+
+    def test_els_dos_camps_queden_sincronitzats(self):
+        window = self._finestra()
+        # escrivim el compas.beat -> el camp de segons s'actualitza
+        window.offset_cb.setText("5.1")
+        window._offset_cb_canviat()
+        self.assertAlmostEqual(window._offset_val(), 16 * (60.0 / 101.0),
+                               places=3)
+        self.assertEqual(window.offset_cb.text(), "5.1")
+        # i el regle posa el compas 1 alla
+        self.assertEqual(
+            __import__("app.timeline", fromlist=["fmt_pos"]).fmt_pos(
+                window._offset_val(), True, 101, 4, window._offset_val()), "1.1")
+        window.close()
+
+
 class OffsetLlistesTests(unittest.TestCase):
     """Les llistes (etiquetes de compas) han de seguir l'offset."""
 

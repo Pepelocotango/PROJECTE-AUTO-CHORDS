@@ -5,6 +5,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **Offset amb DOS camps sincronitzats**: `Offset` (segons) i `≈ C.B`
+  (compàs.beat). El camp compàs.beat és **relatiu a la graella original
+  (offset = 0)** -> el número que hi escrius és el que llegiries al regle
+  amb offset 0. Exemple: a 101 BPM 4/4, `5.1` = 9,50 s. Escriure en un camp
+  actualitza l'altre i la graella. En mode Lliure s'amaga amb la resta de
+  paràmetres. **3 tests nous** (`OffsetDosCampsTests`).
+
 ### Arreglat
 - **Les llistes d'acords/estructura no seguien l'offset**: mostraven
   l'etiqueta de compas calculada amb offset 0 (p. ex. `5.1 Am` per un acord

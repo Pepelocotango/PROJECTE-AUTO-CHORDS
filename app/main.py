@@ -222,8 +222,17 @@ class Finestra(QMainWindow):
         hp.addWidget(self.b_detecta)
         hp.addWidget(QLabel("Compàs:"))
         hp.addWidget(self.bpb)
-        hp.addWidget(QLabel("Offset (s):"))
-        hp.addWidget(self.offset)
+        hp.addWidget(QLabel("Offset:"))
+        hp.addWidget(self.offset)                 # segons
+        hp.addWidget(QLabel("≈"))
+        self.offset_cb = QLineEdit("1.1")         # el mateix, en compàs.beat
+        self.offset_cb.setMaximumWidth(46)
+        self.offset_cb.setPlaceholderText("1.1")
+        self.offset_cb.setToolTip(
+            "Posició del compàs 1 en compàs.beat (graella original, offset=0).\n"
+            "Ex. 5.1 = el compàs 1 va on la graella diu 5.1")
+        hp.addWidget(self.offset_cb)
+        self.offset_cb.editingFinished.connect(self._offset_cb_canviat)
 
         self.amb_est = QCheckBox("Inclou estructura")
         self.amb_est.setChecked(True)
@@ -451,6 +460,37 @@ class Finestra(QMainWindow):
     def _offset_val(self):
         return self._llegeix_num(self.offset, 0.0, 0.0, 60.0)
 
+    def _cb_a_secs(self, text):
+        """'C.B' (compàs.beat) -> segons a la graella ORIGINAL (offset=0)."""
+        import re
+        m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)\s*$", str(text))
+        if not m:
+            return None
+        c, b = int(m.group(1)), int(m.group(2))
+        beat_len = 60.0 / max(self._bpm_val(), 1e-9)
+        n = (c - 1) * max(1, self._bpb_val()) + (b - 1)
+        return max(0.0, min(60.0, n * beat_len))
+
+    def _secs_a_cb(self, t):
+        """Segons -> 'C.B' a la graella ORIGINAL (offset=0)."""
+        beat_len = 60.0 / max(self._bpm_val(), 1e-9)
+        bpb = max(1, self._bpb_val())
+        beats = float(t) / beat_len
+        c = int(beats // bpb) + 1
+        b = int(round(beats % bpb)) + 1
+        if b > bpb:
+            c += 1
+            b = 1
+        return f"{c}.{b}"
+
+    def _offset_cb_canviat(self):
+        """L'usuari ha escrit el camp compàs.beat -> passa-ho a segons."""
+        s = self._cb_a_secs(self.offset_cb.text())
+        if s is None:
+            return
+        self.offset.setText(f"{s:.2f}")
+        self._aplica_parametres_temps()
+
     def _canvia_mode_temps(self, bpm_compas):
         """Canvia entre mode BPM·compàs i mode Lliure (hh:mm:ss)."""
         self._params_temps.setVisible(bool(bpm_compas))
@@ -488,10 +528,8 @@ class Finestra(QMainWindow):
         if vr is None:
             return
         off = float(vr.pos)
-        vr.offset = off
         self.offset.setText(f"{off:.2f}")
-        vr._actualitza_temps()
-        self._reenvia_si_sona()
+        self._aplica_parametres_temps()      # propaga + actualitza el camp cb
         self.registra(f"Compàs 1 marcat a {off:.2f}s")
 
     def _aplica_parametres_temps(self):
@@ -503,6 +541,7 @@ class Finestra(QMainWindow):
         vr.bpm = self._bpm_val()
         vr.bpb = self._bpb_val()
         vr.offset = self._offset_val()
+        self.offset_cb.setText(self._secs_a_cb(vr.offset))
         vr._actualitza_temps()
         self._reenvia_si_sona()
 
