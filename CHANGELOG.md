@@ -5,6 +5,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
 
 ## [No publicat]
 
+### Afegit
+- **`eines/explica_bpm.py`**: genera un gràfic (PNG) que explica com es
+  detecta el BPM (envolupant → autocorrelació → puntuació comb → prior), amb
+  el cas real. Útil per documentar i per depurar casos difícils.
+
 ### Arreglat
 - **BPM: ambigüitat d'octava/subdivisió** (cas real: *Sitting On The Dock Of
   The Bay*, Otis Redding). El biaix pla antic («+15 % a 90–180») **no** la
