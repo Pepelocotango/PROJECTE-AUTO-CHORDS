@@ -6,7 +6,10 @@ set -e
 cd "$(dirname "$0")/.."
 PYV="3.12.15"
 TAG="20261003"
-URL="https://github.com/astral-sh/python-build-standalone/releases/latest/download"
+# URL FIXADA per release (NO `releases/latest/download`): `latest` es mou a cada
+# release nova i, com que el fitxer va fixat per versio+tag, la baixada faria
+# 404 en una compilacio futura. Amb el tag explicit es sempre el mateix fitxer.
+URL="https://github.com/astral-sh/python-build-standalone/releases/download/${TAG}"
 FILE="cpython-${PYV}%2B${TAG}-x86_64-unknown-linux-gnu-install_only.tar.gz"
 
 mkdir -p portable
