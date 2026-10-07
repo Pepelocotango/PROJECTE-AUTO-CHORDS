@@ -69,7 +69,10 @@ jobs:
         run: ./eines/compila_vamp_host.sh
 
       - name: 5. Python portable + ffmpeg
-        run: ./eines/crea_portable.sh
+        run: |
+          ./eines/crea_portable.sh
+          # ffmpeg del paquet al PATH (per als tests i qualsevol eina que el cridi)
+          echo "$PWD/portable/bin" >> "$GITHUB_PATH"
 
       - name: 6. Tests
         run: |

@@ -1439,7 +1439,7 @@ class FfmpegTests(unittest.TestCase):
         import tempfile
         cls._d = tempfile.mkdtemp()
         cls._src = os.path.join(cls._d, "ton.wav")
-        subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i",
+        subprocess.run([ffmpeg.FFMPEG, "-y", "-f", "lavfi", "-i",
                         "sine=frequency=440:duration=1", "-c:a", "pcm_s16le",
                         cls._src], capture_output=True)
 
@@ -1457,7 +1457,7 @@ class FfmpegTests(unittest.TestCase):
 
     def test_converteix_mp3(self):
         mp3 = os.path.join(self._d, "canco.mp3")
-        subprocess.run(["ffmpeg", "-y", "-i", self._src, mp3],
+        subprocess.run([ffmpeg.FFMPEG, "-y", "-i", self._src, mp3],
                        capture_output=True)
         wav = ffmpeg.converteix_a_wav(mp3)
         self.assertTrue(wav.endswith("canco_convertit.wav"))
@@ -1469,7 +1469,7 @@ class FfmpegTests(unittest.TestCase):
     def test_converteix_aiff_i_flac(self):
         for ext in ("aiff", "flac"):
             src = os.path.join(self._d, f"pista.{ext}")
-            subprocess.run(["ffmpeg", "-y", "-i", self._src, src],
+            subprocess.run([ffmpeg.FFMPEG, "-y", "-i", self._src, src],
                            capture_output=True)
             wav = ffmpeg.converteix_a_wav(src)
             self.assertTrue(ffmpeg.es_wav_pcm16(wav))
@@ -1479,7 +1479,7 @@ class FfmpegTests(unittest.TestCase):
 
     def test_reutilitza_si_es_mes_nou(self):
         mp3 = os.path.join(self._d, "reut.mp3")
-        subprocess.run(["ffmpeg", "-y", "-i", self._src, mp3],
+        subprocess.run([ffmpeg.FFMPEG, "-y", "-i", self._src, mp3],
                        capture_output=True)
         wav1 = ffmpeg.converteix_a_wav(mp3)
         m1 = os.path.getmtime(wav1)
