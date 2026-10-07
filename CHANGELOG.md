@@ -5,6 +5,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
 
 ## [No publicat]
 
+### Canviat
+- **L'estructura ara la fa el `qm-segmenter` per defecte** (abans Segmentino).
+  Es va triar perquè **detecta les repeticions** (`A … A … A`) de manera
+  explícita; dona una estructura més fina (~13 trossos al tema de 101 vs 7
+  del Segmentino). Es pot ajustar amb la **durada mínima** (amb 15 s dona 7)
+  o tornar al Segmentino des del diàleg. `extract_segments` i el diàleg
+  passen a tenir `qm` com a defecte; el combo el llista primer.
+
 ### Afegit
 - **Motor de BPM triable i motor d'estructura** (parts 2 i 4/3 amb el
   Queen Mary), al diàleg d'opcions:

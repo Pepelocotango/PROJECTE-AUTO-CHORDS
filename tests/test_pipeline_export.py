@@ -1471,10 +1471,10 @@ class DialegOpcionsTests(unittest.TestCase):
 
     def test_motors_estructura(self):
         d = dialegs.DialegOpcions(None)
-        self.assertEqual(d.opcions()["structure"]["motor"], "segmentino")
+        self.assertEqual(d.opcions()["structure"]["motor"], "qm")   # defecte
         c = d._controls["structure"]["motor"]
-        c.setCurrentIndex(c.findData("qm"))
-        self.assertEqual(d.opcions()["structure"]["motor"], "qm")
+        c.setCurrentIndex(c.findData("segmentino"))
+        self.assertEqual(d.opcions()["structure"]["motor"], "segmentino")
 
     def test_motors_bpm(self):
         d = dialegs.DialegOpcions(None)

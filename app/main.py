@@ -125,7 +125,7 @@ class Feina(QThread):
                 pipeline.extract_segments(
                     self.wav, csv_seg, self.log,
                     motor=(self.opcions.get("structure") or {}).get(
-                        "motor", "segmentino"))
+                        "motor", "qm"))
                 self.progres.emit(60)
             else:
                 csv_seg = None

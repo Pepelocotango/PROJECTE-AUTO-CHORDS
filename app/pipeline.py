@@ -335,7 +335,7 @@ def detecta_bpm_aubio(wav_path, log):
         return None
 
 
-def extract_segments(wav_path, out_csv, log, params=None, motor="segmentino"):
+def extract_segments(wav_path, out_csv, log, params=None, motor="qm"):
     """Estructura via Segmentino (per defecte) o qm-segmenter.
 
     Els dos donen el mateix format (inici, durada, index, etiqueta), aixi que

@@ -61,7 +61,7 @@ DEFECTES = {
         "min": tempo.BPM_MIN, "max": tempo.BPM_MAX,
         "pref_min": tempo.BPM_PREFERIT[0], "pref_max": tempo.BPM_PREFERIT[1],
     },
-    "structure": {"motor": "segmentino", "durada_min": 0.0,
+    "structure": {"motor": "qm", "durada_min": 0.0,
                   "fusiona_iguals": True},
     # Neteja posterior dels acords (post-processat, app/postproc.py)
     "clean": {"durada_min": 0.0, "fusiona_iguals": True, "sense_baix": False,
@@ -245,13 +245,13 @@ class DialegOpcions(QDialog):
         self._controls["structure"] = {}
         d = val or DEFECTES["structure"]
         c = QComboBox()
-        for m, lbl in (("segmentino", "Segmentino"),
-                       ("qm", "Queen Mary (qm-segmenter)")):
+        for m, lbl in (("qm", "Queen Mary (qm-segmenter)"),
+                       ("segmentino", "Segmentino")):
             c.addItem(lbl, m)
         i = c.findData(d.get("motor", "segmentino"))
         c.setCurrentIndex(i if i >= 0 else 0)
-        c.setToolTip("Motor d'estructura. El qm-segmenter troba repeticions "
-                     "(A...A) millor que el Segmentino.")
+        c.setToolTip("Motor d'estructura. El qm-segmenter (per defecte) troba "
+                     "les repeticions (A...A); el Segmentino fa blocs més amples.")
         self._controls["structure"]["motor"] = c
         f.addRow(QLabel("Motor d'estructura"), c)
         s = _spin(0, 120, 0.5, d.get("durada_min", 0.0), 1)
@@ -283,7 +283,7 @@ class DialegOpcions(QDialog):
         self._controls["bpm"]["motor"].setCurrentIndex(
             self._controls["bpm"]["motor"].findData("nostre"))
         self._controls["structure"]["motor"].setCurrentIndex(
-            self._controls["structure"]["motor"].findData("segmentino"))
+            self._controls["structure"]["motor"].findData("qm"))
         self._controls["structure"]["durada_min"].setValue(0.0)
         self._controls["structure"]["fusiona_iguals"].setChecked(True)
         cl = self._controls["clean"]
