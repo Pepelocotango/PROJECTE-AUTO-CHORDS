@@ -1,0 +1,171 @@
+name: Compilar app macOS (High Sierra 10.13+)
+
+# ── Per DEPURAR ────────────────────────────────────────────────────────────
+# · Cada pas imprimeix la seva sortida al log de l'execució.
+# · Si alguna cosa falla, l'última passa ("ZZ") imprimeix pistes i "ZZ2" puja
+#   els logs com a artefacte `debug-logs-<N>`.
+# · Per a MOLT més detall: Settings > Secrets and variables > Actions >
+#   `ACTIONS_STEP_DEBUG` = `true`.
+# ───────────────────────────────────────────────────────────────────────────
+
+# NOMES MANUAL (workflow_dispatch): GitHub > Actions > Run workflow.
+# Construeix l'app de macOS i la deixa com a ARTEFACTE (ZIP). No fa cap push.
+#
+# ⚠️ `macos-15-intel` es l'ULTIM runner Intel de GitHub Actions (fins a
+#    l'agost de 2027). Cal x86_64 perque el desti es High Sierra 10.13.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-15-intel
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "10.13"   # el minim real de l'app
+      PREFIX: ${{ github.workspace }}/.mac-natius
+    steps:
+      - name: 1. Checkout del codi
+        uses: actions/checkout@v5
+
+      - name: 1b. Diagnòstic de l'entorn (versió, SDK, disc)
+        run: |
+          echo "::group::Entorn del runner"
+          sw_vers
+          uname -m
+          clang --version | head -2
+          (xcodebuild -version 2>/dev/null | head -2) || true
+          echo "python: $(python3 --version)"
+          echo "--- disc ---"; df -h .
+          echo "--- SDK mínim que accepta el linker ---"
+          echo 'int main(){return 0;}' > /tmp/t.c
+          clang -mmacosx-version-min=10.13 /tmp/t.c -o /tmp/t && echo "clang accepta -mmacosx-version-min=10.13 OK"
+          otool -l /tmp/t | grep -A3 -E "LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX" | head -5
+          echo "::endgroup::"
+
+      # ── ITERACIÓ 1: rodes (el pin crític és PyQt5==5.15.10) ──────────────
+      - name: 2. Python + rodes (PyQt5 5.15.10 = últim amb wheel 10.13)
+        run: |
+          python3 -m venv .venv-mac
+          . .venv-mac/bin/activate
+          python -m pip install --upgrade pip
+          pip install "PyQt5==5.15.10" "PyQt5-Qt5==5.15.19" "PyQt5_sip" "numpy<2" pyinstaller
+          python - <<'PY'
+          import PyQt5, numpy, sys
+          from PyQt5 import QtCore
+          print("Python:", sys.version.split()[0])
+          print("PyQt5 OK · Qt:", QtCore.QT_VERSION_STR)
+          print("numpy:", numpy.__version__)
+          PY
+          pip show PyQt5 | grep -E "^(Version|Location)"
+
+      # ── ITERACIÓ 2: natius a 10.13 ───────────────────────────────────────
+      - name: 3. libvamp-hostsdk + libsndfile (COMPILATS a 10.13)
+        run: |
+          set -euxo pipefail
+          mkdir -p "$PREFIX"
+          export CFLAGS="-O2 -mmacosx-version-min=10.13"
+          export CXXFLAGS="$CFLAGS"
+          export LDFLAGS="-mmacosx-version-min=10.13"
+          # libsndfile (CMake). Sense codecs externs: l'app nomes llegeix WAV i
+          # les conversions les fa ffmpeg (aixi evitem arrossegar FLAC/vorbis...).
+          git clone --depth 1 https://github.com/libsndfile/libsndfile.git /tmp/libsndfile
+          cmake -S /tmp/libsndfile -B /tmp/libsndfile/build \
+            -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 \
+            -DBUILD_PROGRAMS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF \
+            -DENABLE_EXTERNAL_LIBS=OFF -DENABLE_MPEG=OFF
+          cmake --build /tmp/libsndfile/build -j"$(sysctl -n hw.ncpu)"
+          cmake --install /tmp/libsndfile/build
+          # vamp-plugin-sdk (autotools)
+          git clone --depth 1 https://github.com/c4dm/vamp-plugin-sdk.git /tmp/vamp-sdk
+          cd /tmp/vamp-sdk
+          ./configure --prefix="$PREFIX" --disable-programs
+          make -j"$(sysctl -n hw.ncpu)"
+          make install
+          echo "--- verificació del minim (ha de dir 10.13) ---"
+          for f in "$PREFIX"/lib/libvamp-hostsdk*.dylib "$PREFIX"/lib/libsndfile*.dylib; do
+            echo "== $f"
+            otool -l "$f" | grep -A4 -E "LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX" | grep -E "minos|version" | head -2
+          done
+
+      - name: 4. Host Vamp + plugins (a 10.13)
+        run: |
+          set -euxo pipefail
+          export CPATH="$PREFIX/include"
+          export LIBRARY_PATH="$PREFIX/lib"
+          export MACOSX_DEPLOYMENT_TARGET=10.13
+          ./eines/compila_vamp_host.sh
+          # El script de plugins detecta el SO (branca macOS, feta per OC-2)
+          ./eines/compila_vamp_plugins.sh
+          echo "--- minim del host i dels plugins ---"
+          for f in vamp_host_local *-macos-local/*.dylib; do
+            [ -e "$f" ] || continue
+            echo "== $f"
+            otool -l "$f" | grep -A4 -E "LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX" | grep -E "minos|version" | head -2
+          done
+
+      - name: 5. ffmpeg estàtic (evermeet, requereix 10.13)
+        run: |
+          set -euxo pipefail
+          mkdir -p portable/bin
+          curl -sfL -o /tmp/ffmpeg.zip "https://evermeet.cx/ffmpeg/getrelease/zip"
+          unzip -o -q /tmp/ffmpeg.zip -d /tmp/ffm
+          cp -f /tmp/ffm/ffmpeg portable/bin/ffmpeg
+          chmod +x portable/bin/ffmpeg
+          ./portable/bin/ffmpeg -version | head -1
+
+      # ── ITERACIÓ 3: empaquetat ───────────────────────────────────────────
+      - name: 6. PyInstaller (.app)
+        run: |
+          set -euxo pipefail
+          . .venv-mac/bin/activate
+          pyinstaller --noconfirm --clean --windowed --onedir \
+            --name AUTO_CHORDS \
+            --add-data "app:app" \
+            --add-data "eines:eines" \
+            --add-data "icones:icones" \
+            --add-data "icona:icona" \
+            --add-data "docs:docs" \
+            --add-data "nnls-chroma-macos-local:nnls-chroma-macos-local" \
+            --add-data "qm-vamp-plugins-macos-local:qm-vamp-plugins-macos-local" \
+            --add-data "vamp_host_local:vamp_host_local" \
+            --add-data "portable:portable" \
+            eines/win_launcher.py
+          ls -la dist/
+
+      - name: 7. ZIP (ditto) + verificació de l'executable
+        run: |
+          set -euxo pipefail
+          otool -l "dist/AUTO_CHORDS.app/Contents/MacOS/AUTO_CHORDS" \
+            | grep -A4 -E "LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX" | grep -E "minos|version" | head -2
+          ditto -c -k --sequesterRsrc --keepParent "dist/AUTO_CHORDS.app" "AUTO_CHORDS-macos.zip"
+          ls -la AUTO_CHORDS-macos.zip
+
+      - name: 8. Pujar l'artefacte
+        uses: actions/upload-artifact@v6
+        with:
+          name: AUTO_CHORDS-macos-build${{ github.run_number }}
+          path: AUTO_CHORDS-macos.zip
+          retention-days: 30
+
+      # Si alguna cosa falla, deixa pistes per depurar.
+      - name: "ZZ. Debug si ha fallat"
+        if: failure()
+        run: |
+          echo "::group::Estat en fallar"
+          echo "--- disc ---"; df -h . || true
+          echo "--- fitxers ---"; ls -la | head -40
+          echo "--- arbre de plugins ---"; ls -la *-macos-local/ 2>/dev/null || true
+          echo "--- .mac-natius ---"; find .mac-natius -maxdepth 2 2>/dev/null | head -30 || true
+          echo "--- dist ---"; ls -la dist/ 2>/dev/null || true
+          echo "::endgroup::"
+
+      - name: "ZZ2. Pujar els logs de debug (nomes si falla)"
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: debug-logs-${{ github.run_number }}
+          if-no-files-found: ignore
+          path: |
+            *.log
+            /tmp/*.log
+            build/*/warn-*.txt
