@@ -158,6 +158,8 @@ class Finestra(QMainWindow):
         self.wav_original = ""                     # si ve d'un format convertit
         self.setWindowTitle("Auto Chords — wav → acords + estructura")
         self.resize(1500, 900)
+        # Amplada minima: per sota, les barres d\'eines es tallarien.
+        self.setMinimumWidth(1040)
         self.feina = None
         self.logger.info("Finestra inicialitzada")
 
@@ -189,9 +191,9 @@ class Finestra(QMainWindow):
         self.b_mode_bpm.setCheckable(True)
         self.b_mode_bpm.setChecked(True)
         self.b_mode_bpm.setToolTip("Treballar amb BPM i compassos.")
-        self.b_mode_lliure = QPushButton("Lliure (hh:mm:ss)")
+        self.b_mode_lliure = QPushButton("Lliure")
         self.b_mode_lliure.setCheckable(True)
-        self.b_mode_lliure.setToolTip("Treballar amb temps real (sense compassos).")
+        self.b_mode_lliure.setToolTip("Treballar amb temps real hh:mm:ss (sense compassos).")
         grp_mode = QButtonGroup(self)
         grp_mode.setExclusive(True)
         grp_mode.addButton(self.b_mode_bpm)
@@ -296,19 +298,30 @@ class Finestra(QMainWindow):
         barra.setMovable(False)
         barra.addWidget(b_obre)
         barra.addSeparator()
-        barra.addWidget(QLabel(" Temps: "))
         barra.addWidget(self.b_mode_bpm)
         barra.addWidget(self.b_mode_lliure)
         barra.addSeparator()
         barra.addWidget(self._params_temps)
-        barra.addSeparator()
-        barra.addWidget(self.amb_est)
-        barra.addSeparator()
-        barra.addWidget(self.b_exec)
-        barra.addWidget(self.b_export)
         self.addToolBar(Qt.TopToolBarArea, barra)
         self.barra_principal = barra
         self.barra_temps = barra
+
+        # BARRA D'ACCIONS (la seva pròpia fila): "Inclou estructura",
+        # "Analitza" i "Exporta". Es una fila a part perque en finestres
+        # estretes (<1400 px) aquests botons quedaven TALLATS i, com que
+        # QToolBar no crea cap boto d'extensio aqui, eren INACCESSIBLES.
+        # Aixi queden sempre a la vista.
+        self.addToolBarBreak(Qt.TopToolBarArea)   # que vagi a una fila NOVA
+        barra_acc = QToolBar("Accions")
+        barra_acc.setObjectName("barra_accions")
+        barra_acc.setMovable(False)
+        self.amb_est.setText("Inclou estructura")
+        barra_acc.addWidget(self.amb_est)
+        barra_acc.addSeparator()
+        barra_acc.addWidget(self.b_exec)
+        barra_acc.addWidget(self.b_export)
+        self.addToolBar(Qt.TopToolBarArea, barra_acc)
+        self.barra_accions = barra_acc
 
         # progrés → barra d'estat (permanent)
         self.barra = QProgressBar()

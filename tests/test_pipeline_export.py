@@ -1,5 +1,6 @@
 import csv
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -7,6 +8,30 @@ import unittest
 import wave
 from pathlib import Path
 from unittest.mock import patch
+
+# --- Neteja: la suite creava centenars de tempdirs a /tmp que no s'esborraven
+# (s'acumulaven entre execucions). Interceptem tempfile.mkdtemp i els traiem
+# tots en acabar el modul de tests.
+_TMPDIRS = []
+_MKDTEMP_ORIG = tempfile.mkdtemp
+
+
+def _mkdtemp_tracked(*args, **kwargs):
+    d = _MKDTEMP_ORIG(*args, **kwargs)
+    _TMPDIRS.append(d)
+    return d
+
+
+def setUpModule():
+    _TMPDIRS.clear()
+    tempfile.mkdtemp = _mkdtemp_tracked
+
+
+def tearDownModule():
+    tempfile.mkdtemp = _MKDTEMP_ORIG
+    for d in _TMPDIRS:
+        shutil.rmtree(d, ignore_errors=True)
+    _TMPDIRS.clear()
 
 import numpy as np
 

@@ -5,6 +5,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
 ## [0.5.0] — 2026-10-07
 
+### Arreglat
+- **Barres d'eines en finestres estretes** (<1400 px): la barra 1 demanava
+  **1462 px** i, com que `QToolBar` **no crea cap botó d'extensió** aquí, els
+  botons de la dreta (**Analitza/Exporta**) quedaven **inaccessibles**.
+  Solució: **barra «Accions» pròpia** (fila nova) per a `Inclou estructura` +
+  `Analitza` + `Exporta` (sempre visibles), barra 1 compactada (sense
+  «Temps:», «Lliure» en comptes de «Lliure (hh:mm:ss)») → **1021 px**, i
+  **amplada mínima de finestra 1040**. Verificat: a 1040-1400 px tot hi cap.
+- **La suite de tests ja no deixa tempdirs a `/tmp`**: intercepta
+  `tempfile.mkdtemp` i els esborra tots a `tearDownModule` (abans s'acumulaven
+  centenars per execució).
+
 Tongada de **portabilitat** (5 fases) + retirada de Segmentino/aubio +
 `Analitza`/`Exporta` ben separats. **166 tests.**
 

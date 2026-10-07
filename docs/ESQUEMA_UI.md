@@ -20,7 +20,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [Obre…] Temps:[BPM·compàs][Lliure] BPM:[101][×2][÷2] 🎯[Detecta][TAP] Compàs:[4] │  ← BARRA 1
+│ [Obre…] [BPM·compàs][Lliure] BPM:[101][×2][÷2] 🎯[Detecta][TAP] Compàs:[4] │  ← BARRA 1
 │   Offset:[0.0] [📍] ≈[1.1] ☑ Inclou estructura   [Analitza]   [Exporta]     │     (treball)
 ├────────────────────────────────────────────────────────────────────────────┤
 │ [▶/⏸] [⏹] [−10s] [+10s]  [A⟨] [⟩B] [🔁]  [🔍−] [🔍+] [Tot]  [🔇] [🥁] [▬▬●] │  ← BARRA 2
@@ -67,6 +67,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 | Barra | Contingut |
 |-------|-----------|
 | **Treball** (ordre del flux) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · 🎯 Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B → **Inclou estructura** → **Analitza** → **Exporta** |
+| **Accions** (fila pròpia) | `Inclou estructura` · **Analitza** · **Exporta** (sempre visibles: en finestres estretes aquests quedaven tallats) |
 | **Transport** | **▶/⏸** (play/pausa) · `⏹` · `−10s` · `+10s` · `A⟨` · `⟩B` · `🔁` · `🔍−` · `🔍+` · `Tot` · `🔇` · `🥁` · volum del clic |
 
 ### Menús
