@@ -782,8 +782,9 @@ class OffsetDosCampsTests(unittest.TestCase):
         # escrivim el compas.beat -> el camp de segons s'actualitza
         window.offset_cb.setText("5.1")
         window._offset_cb_canviat()
+        # el camp de segons es desa amb 2 decimals (9.50495 -> 9.50)
         self.assertAlmostEqual(window._offset_val(), 16 * (60.0 / 101.0),
-                               places=3)
+                               places=2)
         self.assertEqual(window.offset_cb.text(), "5.1")
         # i el regle posa el compas 1 alla
         self.assertEqual(
