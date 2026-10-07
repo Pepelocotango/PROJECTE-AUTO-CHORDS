@@ -277,7 +277,7 @@
   <text x="32" y="610" fill="#9fd6b8" font-size="10.5" font-family="monospace">[pipeline] 5/5 ABC + wavs d'estructura...</text>
   <text x="32" y="626" fill="#9fd6b8" font-size="10.5" font-family="monospace">[pipeline] ABC: 7 trossos, seqüència ABACACA</text>
   <text x="32" y="642" fill="#9fd6b8" font-size="10.5" font-family="monospace">[visor] BPM detectat: 101.0</text>
-  <text x="32" y="658" fill="#e8c07a" font-size="10.5" font-family="monospace">FET ✅ — ara pots revisar el visor i fer Finalitza i publica.</text>
+  <text x="32" y="658" fill="#e8c07a" font-size="10.5" font-family="monospace">FET ✅ — ara pots revisar el visor i fer «Exporta».</text>
   <text x="28" y="676" fill="#9aa6b8" font-size="10">log de l'anàlisi (3/4)</text>
   <!-- info 1/4 -->
   <rect x="1078" y="560" width="340" height="120" rx="4" fill="#0d1015" stroke="#3a4150"/>

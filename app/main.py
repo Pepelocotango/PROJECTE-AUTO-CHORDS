@@ -462,7 +462,7 @@ class Finestra(QMainWindow):
         self.a_metro.setToolTip("Clic de metrònom (només en mode BPM · compàs)")
         # --- Analitza ---
         m = mb.addMenu("&Analitza")
-        self._act(m, "Processa el WAV", "F5", lambda: self.executa())
+        self._act(m, "Analitza l'àudio", "F5", lambda: self.executa())
         m.addSeparator()
         self._act(m, "Detecta el compàs 1 automàticament", None,
                     lambda: self._detecta_compas1())
@@ -1206,7 +1206,7 @@ class Finestra(QMainWindow):
         self.b_exec.setEnabled(True)
         if be:
             self.b_export.setEnabled(True)
-            self.registra("FET ✅ — ara pots revisar el visor i fer Finalitza i publica.")
+            self.registra("FET ✅ — ara pots revisar el visor i fer «Exporta».")
             self.barra.setValue(100)
             wav = self.wav_edit.text().strip()
             if wav and os.path.isfile(wav):

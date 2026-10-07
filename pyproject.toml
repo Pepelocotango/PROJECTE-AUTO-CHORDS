@@ -13,7 +13,6 @@ requires-python = ">=3.10"
 # ⚠️ Q9400 sense SSE4.2: numpy<2 obligatori (el 2.x demana x86_64-v2).
 dependencies = [
   "PyQt5>=5.15.9",
-  "pyqtgraph>=0.13",
   "numpy>=1.22,<2",
 ]
 

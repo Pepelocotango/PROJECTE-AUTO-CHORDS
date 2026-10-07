@@ -395,7 +395,7 @@ def _extract_segments_segmentino(wav_path, out_csv, log, params=None):
 
 
 def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
-    """Post-processa les seccions del Segmentino (opcions del dialeg).
+    """Post-processa les seccions (opcions del dialeg; motor qm-segmenter).
 
     - `fusiona_iguals`: uneix trossos consecutius amb la MATEIXA etiqueta
       (p. ex. «B» «B» -> una sola secció), conservant-ne els límits.
