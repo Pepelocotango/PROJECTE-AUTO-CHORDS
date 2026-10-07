@@ -5,6 +5,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
 ## [0.5.0] — 2026-10-07
 
+### Afegit
+- **Release automàtic de GitHub** en crear un tag 
+  (): construeix l'AppImage i crea un
+  **Release esborrany** amb títol  i el cos **en
+  català** (generat de la secció del CHANGELOG amb ),
+  amb l'AppImage adjunta. El publiques tu. (El build manual
+   segueix igual: només .)
+
 ### Canviat
 - **`.gitignore` blindat** (sense esborrar res del disc): afegides regles
   preventives per a `temp/`, `.pytest_cache/`, `.ruff_cache/`,

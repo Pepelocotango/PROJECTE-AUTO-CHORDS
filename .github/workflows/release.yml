@@ -1,0 +1,70 @@
+name: Publicar Release (Linux)
+
+# S'activa NOMES quan puges un tag de versio (p. ex. `git tag v0.5.0`).
+# Construeix l'AppImage i crea un RELEASE de GitHub:
+#   · titol: AUTO CHORDS v<versio>
+#   · cos: en catala, generat de CHANGELOG.md (eines/notes_release.py)
+#   · fitxer: l'AppImage
+# Es crea com a ESBORRANY (draft): el revises i el publiques tu.
+# NO fa cap push al repositori.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write      # necessari per crear el Release
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04     # marca la glibc minima de l'AppImage
+    steps:
+      - name: 1. Checkout
+        uses: actions/checkout@v4
+
+      - name: 2. Dependències del sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libvamp-hostsdk-dev libsndfile1-dev libfuse2 file
+
+      - name: 3. Icones de la UI (Lucide)
+        run: ./eines/baixa_icones.sh
+
+      - name: 4. Compilar l'host Vamp
+        run: ./eines/compila_vamp_host.sh
+
+      - name: 5. Python portable + ffmpeg
+        run: ./eines/crea_portable.sh
+
+      - name: 6. Tests
+        run: |
+          QT_QPA_PLATFORM=offscreen portable/python/bin/python3 -m unittest \
+            tests.test_pipeline_export
+
+      - name: 7. Icona de l'aplicació
+        run: portable/python/bin/python3 eines/crea_icona.py
+
+      - name: 8. Construir l'AppImage
+        run: |
+          SANE=$(echo "${GITHUB_REF_NAME}" | tr '/' '_')
+          ./eines/crea_appimage.sh "AutoChords_${SANE}_x86_64.AppImage"
+          ls -la *.AppImage
+
+      - name: 9. Generar les notes del Release (en català)
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          python3 eines/notes_release.py "$VER" --fitxer NOTES_RELEASE.md
+          head -5 NOTES_RELEASE.md
+
+      - name: 10. Crear el Release (esborrany) amb l'AppImage
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "AUTO CHORDS v${VER}" \
+            --notes-file NOTES_RELEASE.md \
+            --draft \
+            AutoChords_*.AppImage
+          echo "Release esborrany creat. Revisa'l a GitHub > Releases i publica'l."
