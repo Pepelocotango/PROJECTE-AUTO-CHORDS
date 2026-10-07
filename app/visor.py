@@ -7,6 +7,7 @@ import copy
 import atexit
 import csv
 import logging
+import math
 import os
 import re
 import shutil
@@ -292,10 +293,15 @@ class Visor(QMainWindow):
     def _fmt_compas(self, s):
         if not self.tempo_fix:
             return f"{s:07.2f}s"
+        # Mateixa graella que el regle: offset inclos i compassos negatius
+        # (count-in) abans del compas 1.
         beat_len = 60.0 / self.bpm
-        beats = s / beat_len
-        compas = int(beats // self.bpb) + 1
-        beat = int(beats % self.bpb) + 1
+        beats = (s - getattr(self, "offset", 0.0)) / beat_len
+        compas = math.floor(beats / self.bpb) + 1
+        beat = int(round(beats % self.bpb)) + 1
+        if beat > self.bpb:
+            compas += 1
+            beat = 1
         return f"{compas}.{beat}"
 
 
@@ -713,6 +719,10 @@ class Visor(QMainWindow):
         # reengega sense clic des de la posició actual).
         if not self.tempo_fix and getattr(self, "metro_on", False):
             self.set_metro(False)
+        # Les llistes mostren la posicio en compassos -> cal repoblar-les
+        # quan canvia la graella (offset/BPM/compas).
+        self._omple_llista_ac()
+        self._actualitza_llista_abc()
         self.temps.setText(self._fmt_timeline(self.pos))
 
     def _edita_acord_index(self, idx):

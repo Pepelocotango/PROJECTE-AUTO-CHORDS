@@ -740,6 +740,45 @@ class MetronomTests(unittest.TestCase):
         self.assertEqual(len(self._onsets(self._a_array(out))), 3)
 
 
+class OffsetLlistesTests(unittest.TestCase):
+    """Les llistes (etiquetes de compas) han de seguir l'offset."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 30)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("9.5,Am\n12.0,C\n")
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        return window
+
+    def test_llistes_segueixen_l_offset(self):
+        window = self._finestra()
+        v = window.visor_ref
+        window.bpm.setText("101")
+        window._aplica_parametres_temps()
+        # amb offset 0, l'acord de 9.5s surt com a compas 5
+        self.assertTrue(v.llista_ac.item(0).text().startswith("5."))
+        # amb offset 9.5, ha de sortir com a compas 1
+        window.offset.setText("9.50")
+        window._aplica_parametres_temps()
+        self.assertTrue(v.llista_ac.item(0).text().startswith("1.1"),
+                        v.llista_ac.item(0).text())
+        self.assertTrue(v.llista_ac.item(1).text().startswith("2.1"),
+                        v.llista_ac.item(1).text())
+        window.close()
+
+
 class TempoTests(unittest.TestCase):
     """Detecció de BPM (app/tempo.py) — autocorrelacio + comb, numpy pur."""
 

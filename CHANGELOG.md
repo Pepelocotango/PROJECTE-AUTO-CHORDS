@@ -3,6 +3,17 @@
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
 Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
+## [No publicat]
+
+### Arreglat
+- **Les llistes d'acords/estructura no seguien l'offset**: mostraven
+  l'etiqueta de compas calculada amb offset 0 (p. ex. `5.1 Am` per un acord
+  a 9,5 s), mentre el regle ja el tenia en compte. Dues causes: `_fmt_compas`
+  no hi aplicava l'offset, i `_actualitza_temps` no repoblava les llistes en
+  canviar la graella. Ara les dues coses van be (i amb compassos negatius
+  abans del compas 1). **1 test nou** (`OffsetLlistesTests`). Tambe s'ha
+  tornat a importar `math` a `app/visor.py` (calia per `math.floor`).
+
 ## [0.2.2] — 2026-10-06 (tag `v0.2.2-checkpoint`)
 
 ### Afegit
