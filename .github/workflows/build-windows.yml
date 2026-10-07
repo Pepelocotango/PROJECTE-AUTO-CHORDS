@@ -1,0 +1,139 @@
+name: Compilar paquet Windows (x64)
+
+# ── Per DEPURAR ────────────────────────────────────────────────────────────
+# · Cada pas imprimeix la seva sortida al log de l'execució.
+# · Si alguna cosa falla, l'última passa ("ZZ") imprimeix pistes i "ZZ2" puja
+#   els logs com a artefacte `debug-logs-<N>`.
+# · Per a MOLT més detall: Settings > Secrets and variables > Actions >
+#   `ACTIONS_STEP_DEBUG` = `true`.
+# ───────────────────────────────────────────────────────────────────────────
+
+# NOMES MANUAL (workflow_dispatch): GitHub > Actions > Run workflow.
+# Construeix el paquet portable de Windows i el deixa com a ARTEFACTE (ZIP).
+# No fa cap push.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    steps:
+      - name: 1. Checkout del codi
+        uses: actions/checkout@v5
+
+      - name: 1b. Diagnòstic de l'entorn
+        shell: bash
+        run: |
+          echo "::group::Entorn del runner"
+          echo "OS: $RUNNER_OS $RUNNER_ARCH"
+          python --version || true
+          echo "--- disc ---"; df -h . 2>/dev/null | head || true
+          echo "::endgroup::"
+
+      - name: "2. MSYS2 (MINGW64) - toolchain + Vamp + sndfile + boost"
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            git
+            curl
+            unzip
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-vamp-plugin-sdk
+            mingw-w64-x86_64-libsndfile
+            mingw-w64-x86_64-boost
+
+      - name: 3. Compilar host Vamp + plugins .dll (branca Windows del script)
+        shell: msys2 {0}
+        run: |
+          bash eines/compila_vamp_plugins.sh
+
+      - name: 4. Python x64 + rodes (PyQt5 + numpy<2 + PyInstaller)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+
+      - name: 5. Instal·lar dependències Python
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "numpy<2" "PyQt5==5.15.11" "PyQt5-sip" pyinstaller
+
+      - name: 6. ffmpeg estàtic (portable/bin)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force portable/bin | Out-Null
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile ffmpeg.zip
+          Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg_ext -Force
+          $ff = Get-ChildItem -Recurse ffmpeg_ext -Filter ffmpeg.exe | Select-Object -First 1
+          Copy-Item $ff.FullName portable/bin/ffmpeg.exe
+          ./portable/bin/ffmpeg.exe -version | Select-Object -First 1
+
+      - name: 7. Smoke test dels natius (host + plugins, a l'arrel del repo)
+        shell: bash
+        run: python eines/prova_windows.py
+
+      - name: 8. Empaquetar amb PyInstaller (--onedir)
+        shell: bash
+        run: |
+          pyinstaller --noconfirm --clean eines/AutoChords-win.spec
+          ls -la dist/
+
+      - name: 9. Smoke test del PAQUET (natius dins dist/)
+        shell: bash
+        run: python eines/prova_windows.py "dist/AutoChords/_internal"
+
+      - name: 10. Preparar l'artefacte (ZIP)
+        id: prep
+        shell: bash
+        run: |
+          VER=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2 || echo 0)
+          SANE=$(echo "${GITHUB_REF_NAME:-local}" | tr '/' '_')
+          NOM="AutoChords_v${VER}-${SANE}-build${GITHUB_RUN_NUMBER}-Windows"
+          rm -rf ARTEFACTE
+          mkdir -p "ARTEFACTE/$NOM"
+          cp -r dist/AutoChords "ARTEFACTE/$NOM/"
+          cp LICENSE LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md "ARTEFACTE/$NOM/" 2>/dev/null || true
+          cp -r docs "ARTEFACTE/$NOM/" 2>/dev/null || true
+          echo "nom=$NOM" >> "$GITHUB_OUTPUT"
+          echo "Mida del paquet: $(du -sh dist/AutoChords | cut -f1)"
+
+      - name: 11. Pujar l'artefacte
+        # `always()`: tot i que els tests fallin, volem poder baixar el paquet.
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.prep.outputs.nom || format('AutoChords-Windows-build{0}', github.run_number) }}
+          path: ARTEFACTE/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: 12. Tests unitaris (control de qualitat)
+        shell: bash
+        run: |
+          set -o pipefail
+          QT_QPA_PLATFORM=offscreen python -m unittest \
+            tests.test_pipeline_export tests.test_partitura 2>&1 | tee /tmp/tests.log
+
+      - name: "ZZ. Debug si ha fallat"
+        if: failure()
+        shell: bash
+        run: |
+          echo "::group::Estat en fallar"
+          echo "--- dist ---"; ls -la dist 2>/dev/null || true
+          echo "--- plugins ---"; ls -la nnls-chroma-win64-local qm-vamp-plugins-win64-local 2>/dev/null || true
+          echo "--- DLLs de runtime ---"; ls -la portable/win-dlls 2>/dev/null || true
+          echo "--- tests.log ---"; cat /tmp/tests.log 2>/dev/null | tail -80 || true
+          echo "::endgroup::"
+
+      - name: "ZZ2. Pujar els logs de debug (nomes si falla)"
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: debug-logs-${{ github.run_number }}
+          if-no-files-found: ignore
+          path: |
+            /tmp/*.log
+            dist/**/warn-*.txt

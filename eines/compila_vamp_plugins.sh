@@ -1,19 +1,258 @@
 #!/usr/bin/env bash
 # compila_vamp_plugins.sh — Recompila els plugins Vamp (nnls-chroma + qm-vamp-plugins)
-# DES DEL CODI FONT, al MATEIX entorn on es construeix l'AppImage.
+# al MATEIX entorn on es construeix el paquet. DETECTA EL SO TOT SOL (uname):
 #
-# PER QUÈ: els .so precompilats (fets a Ubuntu 24.04 / GCC 13) demanaven
+#   · Linux   -> nnls-chroma-linux64-local/ + qm-vamp-plugins-linux64-local/ (.so)
+#   · Windows -> nnls-chroma-win64-local/  + qm-vamp-plugins-win64-local/  (.dll)
+#                + vamp_host_local.exe   (MSYS2 / MINGW64)
+#   · macOS   -> nnls-chroma-macos-local/  + qm-vamp-plugins-macos-local/  (.dylib)
+#                (target 10.13, x86_64; el host el fa compila_vamp_host.sh)
+#
+# PER QUÈ (Linux): els .so precompilats (fets a Ubuntu 24.04 / GCC 13) demanaven
 # GLIBCXX_3.4.32 i símbols de glibc 2.38 (__isoc23_*) -> no carregaven ni al
 # runner (jammy, GCC 11) ni a un destí Ubuntu 22.04. Compilant-los AQUÍ, queden
 # ancorats a la glibc/GCC del runner (2.35 / GCC 11), l'abast mínim de l'AppImage.
 #
-# REQUISITS (apt): vamp-plugin-sdk libboost-dev libsndfile1-dev
+# REQUISITS Linux (apt): vamp-plugin-sdk libboost-dev libsndfile1-dev
 #   (+ eines: g++ make git curl)
+# REQUISITS Windows (MSYS2 MINGW64): mingw-w64-x86_64-gcc, -vamp-plugin-sdk,
+#   -libsndfile, -boost (+ curl, unzip, binutils)
+# REQUISITS macOS: Xcode CLT (clang), curl + els natius de suport a $PREFIX
+#   (vamp-plugin-sdk: headers a $PREFIX/include/vamp-sdk i libvamp-sdk.a a
+#   $PREFIX/lib; libsndfile només cal per al host). Boost: headers (brew).
+#
 # OPCIONAL (per proves): NNLS_OUT / QM_OUT canvien la carpeta de sortida.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
+
+# ===========================================================================
+#  BRANCA WINDOWS (MSYS2 / MINGW64)
+# ===========================================================================
+compila_windows() {
+    echo "== compila_vamp_plugins.sh: branca WINDOWS (MINGW64) =="
+    PREFIX="${MINGW_PREFIX:-/mingw64}"
+    INC="$PREFIX/include"
+    LIB="$PREFIX/lib"
+    BIN="$PREFIX/bin"
+    NNLS_OUT="${NNLS_OUT:-$ROOT/nnls-chroma-win64-local}"
+    QM_OUT="${QM_OUT:-$ROOT/qm-vamp-plugins-win64-local}"
+    # Clausura de DLLs de runtime (libsndfile + còdecs + runtimes MinGW). PyInstaller
+    # les copia al costat de vamp_host_local.exe (_internal/), on Windows les troba.
+    WIN_DLLS="${WIN_DLLS:-$ROOT/portable/win-dlls}"
+    WORK="$(mktemp -d -t ac_vamp_win.XXXXXX)"
+    trap 'rm -rf "$WORK"' EXIT
+
+    for t in g++ gcc make git curl unzip objdump; do
+        command -v "$t" >/dev/null || { echo "ERROR: falta l'eina '$t'"; exit 1; }
+    done
+    [ -d "$INC/vamp-sdk" ] || {
+        echo "ERROR: falten headers de Vamp ($INC/vamp-sdk). Instal·la 'mingw-w64-x86_64-vamp-plugin-sdk'." >&2
+        exit 1
+    }
+    [ -f "$LIB/libvamp-sdk.a" ] || {
+        echo "ERROR: falta $LIB/libvamp-sdk.a (paquet mingw-w64-x86_64-vamp-plugin-sdk)." >&2
+        exit 1
+    }
+    [ -f "$LIB/libvamp-hostsdk.a" ] || {
+        echo "ERROR: falta $LIB/libvamp-hostsdk.a (paquet mingw-w64-x86_64-vamp-plugin-sdk)." >&2
+        exit 1
+    }
+    [ -d "$INC/boost" ] || {
+        echo "ERROR: falten headers de boost ($INC/boost). Instal·la 'mingw-w64-x86_64-boost'." >&2
+        exit 1
+    }
+
+    mkdir -p "$NNLS_OUT" "$QM_OUT" "$WIN_DLLS"
+
+    # --- 1) nnls-chroma / Chordino (.dll self-contained) -------------------
+    # Receta provada (mingw-w64): compilar les fonts + .def d'export i enllaçar
+    # libgcc/libstdc++ ESTÀTICS -> només KERNEL32/msvcrt com a dependències.
+    echo "== [1/3] nnls-chroma (Chordino) win64 =="
+    (
+        cd codi_font_chordino
+        rm -f ./*.o nnls-chroma.dll
+        FLAGS="-O2 -DNDEBUG -ffast-math -msse -msse2 -I$INC"
+        gcc  $FLAGS -c nnls.c -o nnls.o
+        for f in NNLSBase NNLSChroma Chordino Tuning chromamethods viterbi plugins; do
+            g++ $FLAGS -c "$f.cpp" -o "$f.o"
+        done
+        printf 'EXPORTS\nvampGetPluginDescriptor\n' > nnls-chroma.def
+        g++ -shared -o nnls-chroma.dll ./*.o nnls-chroma.def \
+            -static -static-libgcc -static-libstdc++ \
+            -L"$LIB" -lvamp-sdk -Wl,--enable-stdcall-fixup
+        cp -f nnls-chroma.dll nnls-chroma.cat nnls-chroma.n3 "$NNLS_OUT/"
+    )
+    if ! objdump -p "$NNLS_OUT/nnls-chroma.dll" | grep -q vampGetPluginDescriptor; then
+        echo "ERROR: nnls-chroma.dll no exporta vampGetPluginDescriptor" >&2
+        exit 1
+    fi
+    echo "   -> $NNLS_OUT/nnls-chroma.dll"
+
+    # --- 2) qm-vamp-plugins win64 (binari OFICIAL 1.8.0) -------------------
+    echo "== [2/3] qm-vamp-plugins win64 (binari oficial) =="
+    QM_URL="${QM_URL:-https://code.soundsoftware.ac.uk/attachments/download/2622/qm-vamp-plugins-1.8.0-win64.zip}"
+    if curl -sfL --retry 3 --max-time 300 -o "$WORK/qm.zip" "$QM_URL"; then
+        mkdir -p "$WORK/qmzip"
+        unzip -oq "$WORK/qm.zip" -d "$WORK/qmzip"
+        for ext in dll cat n3; do
+            f="$(find "$WORK/qmzip" -type f -iname "qm-vamp-plugins.$ext" | head -1)"
+            [ -n "$f" ] || { echo "ERROR: falta qm-vamp-plugins.$ext dins el zip" >&2; exit 1; }
+            cp -f "$f" "$QM_OUT/qm-vamp-plugins.$ext"
+        done
+    else
+        echo "   AVÍS: no he pogut baixar el zip oficial; provo el mirall xlights.org" >&2
+        for ext in dll cat n3; do
+            curl -sfL --retry 3 --max-time 120 \
+                -o "$QM_OUT/qm-vamp-plugins.$ext" \
+                "https://xlights.org/downloads/vamp64/qm-vamp-plugins.$ext" || {
+                echo "ERROR: tampoc no he pogut baixar qm-vamp-plugins.$ext" >&2; exit 1; }
+        done
+    fi
+    if ! objdump -f "$QM_OUT/qm-vamp-plugins.dll" | grep -qi "x86-64\|x86_64"; then
+        echo "ERROR: qm-vamp-plugins.dll no sembla de 64 bits" >&2
+        exit 1
+    fi
+    echo "   -> $QM_OUT/qm-vamp-plugins.dll"
+
+    # --- 3) host Vamp propi (vamp_host_local.exe) --------------------------
+    echo "== [3/3] host Vamp (vamp_host_local.exe) =="
+    g++ -O2 -DNDEBUG -msse -msse2 -mfpmath=sse -ftree-vectorize \
+        -I"$INC" -o vamp_host_local.exe eines/vamp_host.cpp \
+        -L"$LIB" -Wl,-Bstatic -lvamp-hostsdk -Wl,-Bdynamic -lsndfile \
+        -static-libgcc -static-libstdc++
+
+    # Clausura de dependències no-sistema del host (recursiva). Només copiem
+    # les DLLs que existeixen al prefix de MinGW; la resta són del sistema.
+    recull_dlls() {
+        local bin="$1" dll
+        for dll in $(objdump -p "$bin" | awk '/DLL Name/ {print $3}'); do
+            [ -f "$WIN_DLLS/$dll" ] && continue
+            if [ -f "$BIN/$dll" ]; then
+                cp -f "$BIN/$dll" "$WIN_DLLS/"
+                recull_dlls "$BIN/$dll"
+            fi
+        done
+    }
+    recull_dlls vamp_host_local.exe
+    # Runtimes MinGW que poden necessitar els plugins (.dll), encara que el host
+    # els porti estàtics.
+    for d in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll; do
+        [ -f "$BIN/$d" ] && cp -f "$BIN/$d" "$WIN_DLLS/"
+    done
+
+    echo "== Fet (Windows) =="
+    ls -la "$NNLS_OUT" "$QM_OUT"
+    echo "   host: $(du -h vamp_host_local.exe | cut -f1)"
+    echo "   DLLs de runtime a $WIN_DLLS:"
+    ls "$WIN_DLLS" | sed 's/^/     /'
+}
+
+# ===========================================================================
+#  BRANCA macOS (Darwin, target 10.13, x86_64)
+#  Els natius de suport (libvamp-hostsdk + libsndfile) els proporciona el
+#  workflow a $PREFIX (CPATH/LIBRARY_PATH). Aquí només fem els PLUGINS: el
+#  host el construeix `eines/compila_vamp_host.sh`.
+# ===========================================================================
+compila_macos() {
+    echo "== compila_vamp_plugins.sh: branca macOS (plugins, target 10.13) =="
+    local DEP="10.13" ARCH="x86_64"
+    export MACOSX_DEPLOYMENT_TARGET="$DEP"
+
+    PREFIX="${PREFIX:-${VAMP_PREFIX:-$ROOT/.mac-natius}}"
+    local VSINC="$PREFIX/include" VSLIB="$PREFIX/lib"
+
+    for t in clang clang++ curl tar; do
+        command -v "$t" >/dev/null || { echo "ERROR: falta l'eina '$t'"; exit 1; }
+    done
+    [ -d "$VSINC/vamp-sdk" ] || {
+        echo "ERROR: falten headers de Vamp ($VSINC/vamp-sdk). El workflow ha de construir vamp-plugin-sdk a \$PREFIX." >&2
+        exit 1
+    }
+    # Preferim el .a (estàtic): enllaçar el .dylib de $PREFIX hi deixaria una
+    # dependència de ruta que no existiria a l'ordinador de l'usuari.
+    local VAMP_SDK_LIB
+    VAMP_SDK_LIB="$(ls "$VSLIB"/libvamp-sdk.a 2>/dev/null | head -1)"
+    [ -n "$VAMP_SDK_LIB" ] || {
+        echo "ERROR: falta $VSLIB/libvamp-sdk.a (cal construir vamp-plugin-sdk amb static)." >&2
+        exit 1
+    }
+
+    # Boost (headers) per al Chordino.
+    local BOOST_INC=""
+    for d in "$VSINC" "$(brew --prefix 2>/dev/null)/include" /usr/local/include /opt/homebrew/include; do
+        [ -n "$d" ] && [ -d "$d/boost" ] && { BOOST_INC="$d"; break; }
+    done
+    if [ -z "$BOOST_INC" ] && command -v brew >/dev/null 2>&1; then
+        echo "   boost no hi és; l'instal·lo (header-only)..."
+        brew install boost >/dev/null 2>&1 || true
+        [ -d "$(brew --prefix)/include/boost" ] && BOOST_INC="$(brew --prefix)/include"
+    fi
+    [ -n "$BOOST_INC" ] && [ -d "$BOOST_INC/boost" ] || {
+        echo "ERROR: falten headers de boost. Fes 'brew install boost'." >&2; exit 1; }
+
+    NNLS_OUT="${NNLS_OUT:-$ROOT/nnls-chroma-macos-local}"
+    QM_OUT="${QM_OUT:-$ROOT/qm-vamp-plugins-macos-local}"
+    WORK="$(mktemp -d -t ac_vamp_mac.XXXXXX)"
+    trap 'rm -rf "$WORK"' EXIT
+    mkdir -p "$NNLS_OUT" "$QM_OUT"
+
+    # --- 1) nnls-chroma / Chordino (.dylib) --------------------------------
+    echo "== [1/2] nnls-chroma (Chordino) macOS =="
+    (
+        cd codi_font_chordino
+        rm -f ./*.o nnls-chroma.dylib
+        FLAGS="-O2 -DNDEBUG -ffast-math -mmacosx-version-min=$DEP -arch $ARCH -I$VSINC -I$BOOST_INC"
+        clang $FLAGS -c nnls.c -o nnls.o
+        for f in NNLSBase NNLSChroma Chordino Tuning chromamethods viterbi plugins; do
+            clang++ $FLAGS -c "$f.cpp" -o "$f.o"
+        done
+        clang++ -dynamiclib -o nnls-chroma.dylib ./*.o \
+            -mmacosx-version-min=$DEP -arch $ARCH \
+            -Wl,-exported_symbols_list,vamp-plugin.list \
+            "$VAMP_SDK_LIB" -framework Accelerate
+        cp -f nnls-chroma.dylib nnls-chroma.cat nnls-chroma.n3 "$NNLS_OUT/"
+    )
+    nm -gU "$NNLS_OUT/nnls-chroma.dylib" 2>/dev/null | grep -q _vampGetPluginDescriptor \
+        || echo "AVÍS: no he pogut confirmar l'export de _vampGetPluginDescriptor" >&2
+    echo "   -> $NNLS_OUT/nnls-chroma.dylib ($(otool -l "$NNLS_OUT/nnls-chroma.dylib" 2>/dev/null | grep -m1 -oE 'minos [0-9.]+' || echo '?'))"
+
+    # --- 2) qm-vamp-plugins macOS (binari OFICIAL 1.8.0, 10.7+) ------------
+    echo "== [2/2] qm-vamp-plugins macOS (binari oficial) =="
+    QM_URL="${QM_URL:-https://code.soundsoftware.ac.uk/attachments/download/2620/qm-vamp-plugins-1.8.0-macos.tar.gz}"
+    curl -sfL --retry 3 --max-time 300 -o "$WORK/qm.tar.gz" "$QM_URL" || {
+        echo "ERROR: no he pogut baixar qm-vamp-plugins macOS ($QM_URL)" >&2; exit 1; }
+    mkdir -p "$WORK/qm"
+    tar xzf "$WORK/qm.tar.gz" -C "$WORK/qm"
+    for ext in dylib cat n3; do
+        f="$(find "$WORK/qm" -type f -iname "qm-vamp-plugins.$ext" | head -1)"
+        [ -n "$f" ] || { echo "ERROR: falta qm-vamp-plugins.$ext" >&2; exit 1; }
+        cp -f "$f" "$QM_OUT/qm-vamp-plugins.$ext"
+    done
+    echo "   -> $QM_OUT/qm-vamp-plugins.dylib"
+
+    echo "== Fet (macOS) =="
+    ls -la "$NNLS_OUT" "$QM_OUT"
+}
+
+# ===========================================================================
+#  DISPATCH per SO
+# ===========================================================================
+case "$(uname -s 2>/dev/null)" in
+    MINGW*|MSYS*|CYGWIN*|Windows_NT)
+        compila_windows
+        exit 0
+        ;;
+    Darwin)
+        compila_macos
+        exit 0
+        ;;
+esac
+
+# ===========================================================================
+#  BRANCA LINUX (comportament de sempre, sense canvis)
+# ===========================================================================
 NNLS_OUT="${NNLS_OUT:-$ROOT/nnls-chroma-linux64-local}"
 QM_OUT="${QM_OUT:-$ROOT/qm-vamp-plugins-linux64-local}"
 WORK="$(mktemp -d -t ac_vamp_plugins.XXXXXX)"
