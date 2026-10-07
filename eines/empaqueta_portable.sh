@@ -40,10 +40,11 @@ if command -v rsync >/dev/null; then
         "$SRC"/ "$DEST"/
 else
     echo "(sense rsync: còpia manual)"
-    for f in app eines docs *-local vamp_host_local sonic-annotator AUTO_CHORDS.sh \
-             AUTO_CHORDS.desktop pyproject.toml LICENSE README.md CHANGELOG.md \
-             ROADMAP.md DEVELOPING.md requirements.txt concatena.py \
-             acords_a_live.py wav_a_wavs.py portable; do
+    for f in app eines docs icones icona *-local vamp_host_local sonic-annotator \
+             AUTO_CHORDS.sh AUTO_CHORDS.desktop pyproject.toml LICENSE \
+             LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md \
+             DEVELOPING.md requirements.txt concatena.py acords_a_live.py \
+             wav_a_wavs.py portable; do
         [ -e "$f" ] && cp -r "$f" "$DEST"/ 2>/dev/null || true
     done
 fi

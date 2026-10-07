@@ -59,7 +59,7 @@ jobs:
           NOM="AutoChords_v${VER}-${SANE}-build${GITHUB_RUN_NUMBER}-Linux"
           mkdir -p "$NOM"
           cp auto-chords-*.AppImage "$NOM/"
-          cp LICENSE README.md CHANGELOG.md ROADMAP.md "$NOM/" 2>/dev/null || true
+          cp LICENSE LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md "$NOM/" 2>/dev/null || true
           cp -r docs "$NOM/" 2>/dev/null || true
           echo "nom=$NOM" >> "$GITHUB_OUTPUT"
 

@@ -212,15 +212,27 @@ git tag v0.5.0 -m "..." && git push origin v0.5.0   # -> Release esborrany
 
 ## Agraïments i reconeixement a projectes de tercers
 
-Aquest projecte depèn de treballs previs i eines desenvolupades per altres persones i equips. Volem reconèixer-ho explícitament i agrair-ho sincerament:
+Aquest projecte depèn de treballs previs i eines desenvolupades per altres
+persones i equips. Volem reconèixer-ho explícitament i agrair-ho sincerament.
+**El detall complet de llicències és a [`LLICENCIES_TERCERS.md`](LLICENCIES_TERCERS.md).**
 
-- Python i la comunitat Python
-- PyQt5 / Qt5 (amb QtSvg per a les icones) per la base de l’interfície i la visualització gràfica
-- NumPy pel processament numèric i la manipulació de dades d’àudio
-- **Chordino i els plugins Vamp de Queen Mary** (`qm-vamp-plugins`) per a la detecció de tempos, compassos, acords i estructura
-- les icones **[Lucide](https://lucide.dev)** (llicència ISC) de la interfície
-- les llibreries d’àudio del sistema i els drivers del entorn Linux que permeten la reproducció i la manipulació d’ona
-- les biblioteques i recursos de la comunitat open source que han servit de referência per a la normalització, l’edició i la integració de la app
+| Component | Llicència | Autoria |
+|-----------|-----------|---------|
+| **[Python](https://www.python.org)** | PSF-2.0 | Python Software Foundation |
+| **[PyQt5](https://riverbankcomputing.com/software/pyqt)** / **[Qt5](https://www.qt.io)** | GPL-3.0 / LGPL-3.0 | Riverbank / The Qt Company |
+| **[NumPy](https://numpy.org)** | BSD-3-Clause | NumPy Developers |
+| **[Chordino / NNLS-Chroma](https://code.soundsoftware.ac.uk/projects/nnls-chroma)** | GPL-2.0+ | Matthias Mauch (C4DM, Queen Mary) |
+| **[QM Vamp Plugins](https://github.com/c4dm/qm-vamp-plugins)** | GPL-2.0+ | Centre for Digital Music (Queen Mary) |
+| **[Vamp Plugin SDK](https://github.com/c4dm/vamp-plugin-sdk)** | MIT / BSD-3 | C4DM |
+| **[Sonic Annotator](https://github.com/sonic-visualiser/sonic-annotator)** | GPL-2.0+ | Chris Cannam / QMUL |
+| **[FFmpeg](https://ffmpeg.org)** | GPL-3.0 | FFmpeg team |
+| **[Lucide](https://lucide.dev)** (icones) | **ISC** (+ MIT de **[Feather](https://feathericons.com)**, © Cole Bemis) | Lucide contributors |
+| **[libsndfile](https://libsndfile.github.io/libsndfile)** | LGPL-2.1+ | Erik de Castro Lopo |
+| **[AppImageKit](https://github.com/AppImage/AppImageKit)** | MIT | AppImage comunitat |
+
+> Les icones de la UI són de **Lucide** (**ISC**); algunes deriven de
+> **Feather** (**MIT**, © 2013-present Cole Bemis). El text complet de totes
+> dues llicències és a [`icones/LICENSE`](icones/LICENSE).
 
 Sense aquest ecosistema, aquest projecte no seria possible. Els agraïments i el reconeixement formal són part de la forma de treball i del respecte que es mereixen les eines i els desenvolupadors que ens han donat base i inspiració.
 
