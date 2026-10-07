@@ -28,6 +28,11 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libvamp-hostsdk-dev libsndfile1-dev libfuse2 file
 
+          # Best effort: libreries del `sonic-annotator` (reserva) perque els
+          # 3 tests de TTL tambe puguin correr. Si no hi son, es fan SKIP.
+          sudo apt-get install -y --no-install-recommends \
+            libqt6core6 libqt6xml6 libqt6network6 libglib2.0-0 || true
+
       - name: 3. Icones de la UI (Lucide)
         run: ./eines/baixa_icones.sh
 

@@ -6,6 +6,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 ## [0.5.0] — 2026-10-07
 
 ### Arreglat
+- **CI robust**: els 3 tests de `EscriuTtlTests` depenien de `sonic-annotator`
+  (que vol Qt6/ICU/glib). Ara es fan **SKIP** (`skipUnless`) si no es pot
+  executar, i els workflows **intenten** instal·lar-ne les llibreries
+  (`libqt6core6 libqt6xml6 libqt6network6 libglib2.0-0`, best-effort). Així la
+  ci no falla mai per aquest motiu. (El pipeline real usa l'host propi;
+  el sonic-annotator és només la reserva.)
 - **El nostre AppImage NO necessita `libfuse2`**: el runtime incrustat és el
   **modern estàtic** (`type2-runtime`, enllaçat amb musl + libfuse +
   squashfuse a dins; verificat amb `ldd`: «no és un executable dinàmic»).

@@ -1673,8 +1673,32 @@ class VampParamsTests(unittest.TestCase):
         self.assertEqual(d["s"], 0.7)
 
 
+def _sonic_ok():
+    """Cert si el `sonic-annotator` es pot executar (les seves llibreries hi son).
+
+    S'usa per FER SKIP dels tests que en depenen quan falta (p. ex. a un
+    runner de CI sense Qt6/ICU/glib). El pipeline real fa servir l'host propi
+    (`vamp_host_local`); el sonic-annotator nome es la reserva.
+    """
+    import subprocess
+    try:
+        p = subprocess.run([pipeline.SONIC, "--version"],
+                           capture_output=True, timeout=30)
+        return p.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+_SONIC_OK = _sonic_ok()
+
+
+@unittest.skipUnless(_SONIC_OK, "sonic-annotator no executable (falten llibreries)")
 class EscriuTtlTests(unittest.TestCase):
-    """Generacio del transform .ttl amb els parametres triats."""
+    """Generacio del transform .ttl amb els parametres triats.
+
+    NOMES amb el sonic-annotator executable: es el que genera el TTL base.
+    El pipeline real fa servir l'host propi (vamp_host_local).
+    """
 
     def _ttl(self, params):
         import tempfile
