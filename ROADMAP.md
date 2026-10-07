@@ -76,7 +76,7 @@ Això ens permet estar oberts a:
 - 🔒 **Sense secrets** al repo (`.secrets/` ignorat per `.gitignore`).
 - 🐧 **Linux prioritari** (AppImage idealment); multi-OS és nice-to-have.
 
-## Estat actual (2026-10-07 · v0.3.0)
+## Estat actual (2026-10-07 · v0.4.0)
 
 El projecte ja ha passat de prototip funcional a flux de producte útil:
 
@@ -93,6 +93,25 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
 - llançament directe des de la carpeta del projecte
 - bloqueig de doble instància per evitar sobreposició d’aplicacions
 - **auditoria de seguretat/estabilitat aplicada**: clamp de temps, tipus d’excepció específics, `_proc_lock`, `safe_filename`, parser CSV robust, validació WAV (sr/ch > 0)
+
+**Novetats v0.3.0–v0.4.0 (2026-10-07):**
+
+- **Autodetecció amb opcions**: diàleg (BPM / Acords / Estructura) amb els
+  **paràmetres reals del Chordino** (llegits dels descriptors `.n3`) i
+  **neteja posterior** dels acords (treure baix, reduir, fusionar, durada
+  mínima, snap a la graella).
+- **Motors triables**: BPM = `nostre` (tempo.py) · `qm` · `aubio` ·
+  **`consens`**; Estructura = **`qm-segmenter`** (per defecte) o Segmentino.
+- **Plugins Queen Mary compilats** (`qm-tempotracker`, `qm-barbeattracker`,
+  `qm-segmenter`, `qm-keydetector`) sense AVX → `docs/QM_VAMP.md`.
+- **Compàs 1 automàtic** (`🧭`): `qm-onsetdetector` + `qm-barbeattracker`.
+- **Import d'altres formats** (mp3, aif, flac, m4a…) via **ffmpeg**.
+- **GUI**: tap tempo (`TAP`/`T`), botó `📍`, `×2`/`÷2` del BPM, franja
+  **Editor**, menús Edita/Selecciona, paleta de botons coherent, icona
+  play/pause.
+- **Coherència del play**: mono cacat, **volum/mute en viu**, latència baixa,
+  sense tallar la cua, avís si el reproductor mor.
+- **165 tests** (abans 82).
 
 La base funcional i el nou visor estan validats. El que queda són millores de polish, estabilització i les funcionalitats pràctiques descrites a l’apartat següent.
 
@@ -196,23 +215,50 @@ sigui un plaer** i no una fricció.
 - Cada feature nova porta **tests** (al manco un test d’smoke i un
   unittest quan sigui possible).
 
+## Fase E — Autodetecció avançada (Queen Mary) ✅ *(v0.4.0)*
+
+- **Plugins compilats** (`qm-vamp-plugins-linux64-local/`): `qm-tempotracker`,
+  `qm-barbeattracker`, `qm-segmenter`, `qm-keydetector` (els d'Audacity /
+  Mixxx / Sonic Visualiser). Compilats de codi font amb `-msse -msse2`
+  (⚠️ **sense AVX**). Detall i comparativa: `docs/QM_VAMP.md`.
+- **Compàs 1 automàtic** (`🧭` + `Analitza ▸ Detecta el compàs 1`).
+- **Motors triables** al diàleg (BPM + estructura).
+- **BPM**: prior de plateau (85–150, σ0,5) que resol l'ambigüitat d'octava
+  (casos reals: Otis 179,8→103,5 · Chemical 66→132 · Jamiroquai 174→87).
+- Eines: `eines/explica_bpm.py` (gràfic).
+
+**Pendent d'aquesta fase:**
+- **`qm-keydetector`** → detectar i mostrar la **tonalitat** del tema.
+- **Beats/bars a la graella**: usar els beats del qm per afinar/auto-ajustar
+  la graella (ara només s'usa el primer downbeat).
+- Afinar el **qm-segmenter** (conservar les seves etiquetes de repetició A…A
+  directament, en lloc de re-letrar).
+
 ## Prioritat de millores restants
 
 ### Alta
-- **barra de menús**: completar les accions pendents i els estats
-  dinàmics (vegeu §10-F)
-- confirmacions d’export més guiades i logs de resultat més rics
-- ajust final del layout i etiquetatge per a usuaris no tècnics
+- **confiança dels acords** (`loglikelihood` del Chordino) → ressaltar a la
+  UI els acords dubtosos perquè l’usuari els revisi (ja tenim l’eina; vegeu
+  `docs/AUTODETECCIO_OPCIONS.md` §2)
+- **tonalitat** (`qm-keydetector`) → mostrar-la (Fase E)
+- **overflow de les barres d’eines** a <1300 px (ara les barres es tallen)
+- **afegir clips des del timeline** (ara només es poden crear des del menú
+  de la llista)
 - packaging més net i docs d’ús final
 
 ### Mitjana
 - ~~historial d’edicions / desfer~~ ✅ **(fet v0.1.5: undo/redo + menú Edita)**
-- opcions de preset de tempo i export
+- ~~diàleg d’opcions de l’autodetecció~~ ✅ **(fet v0.3.0–v0.4.0)**
+- ~~import d’altres formats d’àudio~~ ✅ **(fet v0.3.0: ffmpeg)**
+- **conservar les etiquetes de repetició del qm-segmenter** (Fase E)
+- els **beats** del qm per auto-ajustar la graella (Fase E)
 - validacions visuals addicionals de l’ABC
+- **la suite de tests no esborra els seus `tempdir`** (s’acumulen a `/tmp`)
 
 ### Baixa
 - suport d’altres formats de sortida
-- configuració persistents d’usuari
+- configuració persistents d’usuari (ara només `opcions_detecta.json`)
+- mostrar les **notes de l’acord** (`chordnotes` del Chordino) a l’Editor
 
 ## Àrees de futur: investigar, valorar i discutir
 
@@ -227,6 +273,11 @@ Aquestes són idees i oportunitats que queden pendents de revisió i que convé 
 - garantir que aquesta representació no trenqui el model que ja usa temps en segons com a font de veritat
 
 ### 2) Control del processament automàtic i paràmetres d’algoritme
+
+> ✅ **IMPLEMENTAT (v0.3.0–v0.4.0)**: diàleg d’opcions amb els **6 paràmetres
+> reals del Chordino** (llegits dels `.n3`), **neteja posterior** dels acords,
+> **motors triables** (BPM i estructura) i opcions de BPM/estructura. Vegeu
+> `docs/AUTODETECCIO_OPCIONS.md` i `docs/QM_VAMP.md`.
 
 - revisar si `Chordino`, `Segmentino` i els scripts de suport exposen opcions reals de sensibilitat, llindars, auto-generació o ajust d’algoritme
 - valorar la introducció d’una finestra de configuració avançada per a:

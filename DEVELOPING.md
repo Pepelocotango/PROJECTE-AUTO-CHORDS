@@ -8,8 +8,12 @@ Tot en català. Llicència: GPLv3 (vegeu `LICENSE`).
 - Per a l'app: PyQt5 del sistema (`python3-pyqt5`, Qt5).
   ⚠️ Qt6 **no** corre en CPU sense SSE4.2 (com el Q9400): no s'hi pot
   usar PySide6/PyQt6.
-- `sonic-annotator` + plugin Chordino (`nnls-chroma-linux64-local/`)
-  per al pas `wav → csv`.
+- `sonic-annotator` (al projecte) + **plugins Vamp** a les carpetes
+  `*-local/`: **`nnls-chroma`** (Chordino, acords) · **`segmentino`** ·
+  **`vamp-aubio`** · **`qm-vamp-plugins`** (Queen Mary: tempo/beats/bars/
+  segmenter/key — `docs/QM_VAMP.md`).
+- **`ffmpeg`/`ffprobe`** (al sistema) — opcional, només per importar formats
+  que no siguin WAV (`app/ffmpeg.py`).
 
 ## Entorn aïllat (Ubuntu, sense sudo)
 
@@ -38,6 +42,9 @@ aquest filtre o mor al SIGILL / violació de segment.
 | `QAudioOutput` QtMultimedia | ❌ aparcat | Les rodes SÍ porten plugins (`libqtaudio_alsa.so`); el segfault era format/QBuffer, però `paplay` té stderr visible i zero acoblament Qt — no es reobre sense motiu |
 | `sounddevice` (PortAudio) | ❌ innecessari | `libportaudio.so.2` hi és, però afegiria dependència pip+sistema sense guanyar res |
 | Chordino/Segmentino + `sonic-annotator` (compilats aquí) | ✅ fem servir | L'únic anàlisi Vamp que corre; `chordextract` compila a `.deps/` sense sudo |
+| **`qm-vamp-plugins`** (Queen Mary) | ✅ fem servir | Compilats del codi font amb `-msse -msse2` (**sense AVX**); `docs/QM_VAMP.md` |
+| **`ffmpeg`/`ffprobe`** del sistema | ✅ fem servir | Import d'altres formats → WAV PCM16; no cal per WAV |
+| `librosa` / `madmom` / `essentia` (pip) | ❌ no provat | El `tempo.py` propi + el `qm-tempotracker` ja cobreixen el BPM (5/5 i 4/5 amb 11 temes reals) |
 | `librosa` / `Essentia` | ❌ descartats | `llvmlite`/AVX (SIGILL) i AGPL3 respectivament |
 | `music21` (BSD, pur Python) | 🔶 futur | Per a normalitzar noms d'acords (substitueix el `style()` casolà) |
 
@@ -201,6 +208,26 @@ Aquest projecte és un assemblatge de feina pròpia i de tecnologia de tercers. 
 - agraïments a totes les persones i equips que han publicat biblioteques, plug-ins, tutorials i solucions que ens han ajudat a construir aquesta app
 
 La nostra feina és construir i integrar, però no és “des de zero” en el sentit absolut: hi ha moltes bases creades per altres projectes i persones. Reconèixer-ho és una bona pràctica, un signe de respecte i un acte de transparència técnica.
+
+## Mòduls de l'app (`app/`)
+
+| Mòdul | Responsabilitat |
+|-------|-----------------|
+| `main.py` | finestra principal, menús, barres, diàleg de flux, `Finestra` |
+| `visor.py` | visor (timeline + llistes + Editor + transport), `Visor` |
+| `timeline.py` | regle, graella, carrils i clips (`QGraphicsView`) |
+| `pipeline.py` | extracció (Chordino/Segmentino/qm), export, normalització, TTL |
+| `tempo.py` | detecció de BPM (numpy pur, prior de plateau) — `docs/` |
+| `vamp_params.py` | paràmetres dels plugins Vamp (descriptors `.n3`) |
+| `dialegs.py` | diàleg d'opcions d'autodetecció |
+| `postproc.py` | neteja posterior dels acords |
+| `ffmpeg.py` | import d'altres formats (conversió a WAV) |
+| `metronom.py` | clic del metrònom mesclat al buffer |
+| `theme.py` | tema centralitzat (colors) |
+
+Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
+(motors i opcions), `QM_VAMP.md` (Queen Mary), `PLAY.md` (reproducció),
+`AUBIO_TEMPO.md` (històric).
 
 ## Convencions
 

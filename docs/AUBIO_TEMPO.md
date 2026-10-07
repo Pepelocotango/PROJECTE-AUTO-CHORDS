@@ -1,3 +1,8 @@
+> ⚠️ **OBSOLET per al BPM (2026-10-07)**: el detector d'aubio s'ha
+> substituït per `app/tempo.py` (numpy, molt més encertat) i, com a
+> alternativa, pel `qm-tempotracker` (vegeu `docs/QM_VAMP.md`). Aquest
+> document es conserva com a històric del plugin d'aubio.
+
 # Plugin Vamp d'aubio (tempo i beats) — com es va compilar
 
 > Afegit 2026-10-05. Proporciona **detecció de BPM** i **pulsacions**
