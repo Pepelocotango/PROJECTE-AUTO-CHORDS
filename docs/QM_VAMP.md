@@ -102,6 +102,11 @@ S'ha escrit **`eines/vamp_host.cpp`** → `vamp_host_local` (**48 KB**, **13
 llibreries**: libc/libstdc++ + libvamp-hostsdk + libsndfile), compilat amb
 **`-msse -msse2`** (sense AVX). Compilació: `eines/compila_vamp_host.sh`.
 
+> ✅ **Autoportabilitat** (2026-10-07): les llibreries que demana l'host
+> (`libvamp-hostsdk`, `libsndfile` i els còdecs FLAC/Vorbis/Opus/Ogg/mpg123/
+> LAME) s'**empaqueten** a `portable/lib/` amb `eines/libreries_natives.sh`; al
+> SO només calen `glibc` i `libstdc++/libgcc`. Detall: `docs/PORTABILITAT.md` §0.
+
 **Claus descobertes**:
 1. Els canals s'han de passar **desintercalats** (si no, els acords surten
    completament diferents).

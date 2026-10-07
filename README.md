@@ -3,6 +3,9 @@
 > Aplicació desktop per analitzar un àudio, navegar-ne acords i estructura,
 > corregir-la i exportar clips preparats per a DAW.
 
+> **Repositori:** https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
+> (les versions publicades, com l'**AppImage**, són a *Releases*).
+
 > **Novetats v0.5.0:** **AppImage autocontinguda** (un sol fitxer executable) +
 > **GitHub Actions** (build manual i Release en tag). **Icones professionals**
 > (Lucide, adéu emoji). **Compàs 1 automàtic** (`🧭`, Queen Mary) i **motors
@@ -35,7 +38,7 @@ pas d’assistent.
   estructura (clic per saltar, doble-clic per editar, menú contextual).
 - Compassos de **qualsevol mètrica** (3/4, 6/8, 5/4…), no només 4/4.
 
-La funcionalitat principal està validada: **69/69 tests OK** (`python -m unittest tests.test_pipeline_export`).
+La funcionalitat principal està validada: **173/173 tests OK** (`python -m unittest tests.test_pipeline_export`).
 
 ## Què fa l’app
 
@@ -143,12 +146,25 @@ que s'executa a qualsevol **Linux x86_64** sense instal·lar res.
 > El runtime incrustat és el modern **estàtic** (`type2-runtime`, enllaçat amb
 > musl i libfuse a dins), així que **no cal instal·lar `libfuse2`**.
 
+**És autoportable**: a dins hi van el Python, Qt, ffmpeg, els plugins Vamp
+**i les seves llibreries natives** (`libvamp-hostsdk`, `libsndfile` i els
+còdecs: FLAC, Vorbis, Opus, Ogg, mpg123, LAME). Al sistema host **només** calen
+`glibc` + `libstdc++/libgcc` (que té qualsevol Linux modern), un entorn
+d'escriptori i —per **escoltar**— PipeWire o PulseAudio. Detall exacte:
+`docs/PORTABILITAT.md`.
+
+### Descarregar
+
+Les versions publicades (AppImage) són a
+**https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS** → *Releases*.
+
 ### Construir-lo localment
 ```bash
 eines/crea_appimage.sh          # -> ../AUTO_CHORDS-x86_64.AppImage
 ```
-Requereix haver fet abans: `eines/crea_portable.sh` (Python + ffmpeg) i
-`eines/compila_vamp_host.sh` (l'host Vamp). L'`appimagetool` es baixa sol.
+Requereix haver fet abans: `eines/crea_portable.sh` (Python + ffmpeg + les
+llibreries natives del host Vamp) i `eines/compila_vamp_host.sh` (l'host Vamp).
+L'`appimagetool` es baixa sol.
 
 ### Executar-lo
 ```bash
@@ -189,6 +205,7 @@ git tag v0.5.0 -m "..." && git push origin v0.5.0   # -> Release esborrany
 | Requisit | Detall |
 |----------|--------|
 | **Sistema** | **Linux x86_64** amb **glibc ≥ 2.35** → Ubuntu 22.04+, Debian 12+, Fedora 36+… |
+| **Llibreries natives** | **Cap instal·lació** ✅ — `libvamp-hostsdk`, `libsndfile` i els còdecs (FLAC, Vorbis, Opus, Ogg, mpg123, LAME) van **dins** l'AppImage (`portable/lib/`). Al SO només calen `glibc` + `libstdc++/libgcc` |
 | **CPU** | Qualsevol x86_64 amb **SSE2** · provada en un **Core 2 Quad Q9400** *sense AVX* ✅ |
 | **RAM / disc** | ~1 GB RAM lliure · ~170 MB a disc (l'AppImage és un sol fitxer) |
 | **Per ESCOLTAR** | **PipeWire** o **PulseAudio** (qualsevol escriptori Linux actual). **Opcional**: sense això l'app fa tota la resta (analitzar, editar, exportar), només avisa que no pot sonar |
@@ -214,6 +231,9 @@ git tag v0.5.0 -m "..." && git push origin v0.5.0   # -> Release esborrany
 - **`g++`** + **`vamp-plugin-sdk`** + **`libsndfile1-dev`** (per compilar l'host;
   `vamp-plugin-sdk` porta els headers de Vamp — `libvamp-hostsdk-dev` **no
   existeix** com a paquet)
+- Les **llibreries natives** que fa servir l'host (Vamp, sndfile i els còdecs)
+  **no es baixen**: `eines/libreries_natives.sh` les **copia del sistema que
+  compila** cap a `portable/lib/` (així la glibc mínima queda lligada al build)
 - **`curl`** + **connexió a Internet** (es baixen el Python portable, l'ffmpeg i les icones Lucide)
 - **`appimagetool`** (es baixa sol) + **`libfuse2`**
 - Els **workflows de GitHub Actions** ho fan tot sols a **`ubuntu-22.04`**
@@ -268,6 +288,9 @@ persones i equips. Volem reconèixer-ho explícitament i agrair-ho sincerament.
 | **[FFmpeg](https://ffmpeg.org)** | GPL-3.0 | FFmpeg team |
 | **[Lucide](https://lucide.dev)** (icones) | **ISC** (+ MIT de **[Feather](https://feathericons.com)**, © Cole Bemis) | Lucide contributors |
 | **[libsndfile](https://libsndfile.github.io/libsndfile)** | LGPL-2.1+ | Erik de Castro Lopo |
+| **[libvamp-hostsdk](https://github.com/c4dm/vamp-plugin-sdk)** | MIT / BSD-3 | C4DM |
+| **[libFLAC](https://xiph.org/flac)** · **[libogg](https://xiph.org/ogg)** · **[libvorbis](https://xiph.org/vorbis)** · **[libopus](https://opus-codec.org)** | BSD-3-Clause | Xiph.Org |
+| **[mpg123](https://www.mpg123.de)** · **[LAME](https://lame.sourceforge.io)** | LGPL-2.1 / LGPL-2.0 | mpg123 / LAME project |
 | **[AppImageKit](https://github.com/AppImage/AppImageKit)** | MIT | AppImage comunitat |
 
 > Les icones de la UI són de **Lucide** (**ISC**); algunes deriven de

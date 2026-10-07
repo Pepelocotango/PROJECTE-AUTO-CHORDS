@@ -76,11 +76,21 @@ EXECUTAR L'APP:
     ./AUTO_CHORDS.sh          (terminal)
     o doble clic a AUTO_CHORDS.sh (tria "Executa")
 
-REQUISITS per ESCOLTAR: PipeWire o PulseAudio. Sense ells, l'app funciona
-igual (analitzar, editar, exportar); nomes avisa que no pot sonar.
+REQUISITS MINIMS DEL SISTEMA (tota la resta va INCLOSA al paquet):
+    - Linux x86_64 amb glibc >= 2.35 (Ubuntu 22.04+, Debian 12+, Fedora 36+...)
+    - Un entorn d'escriptori (X11 o Wayland)
+    - Per ESCOLTAR: PipeWire o PulseAudio + `paplay` o `aplay`.
+      Sense ells, l'app funciona igual (analitzar, editar, exportar);
+      nomes avisa que no pot sonar.
+
+Dins el paquet ja hi van: Python + PyQt5 + numpy, ffmpeg, els plugins Vamp i
+les seves llibreries natives (portable/lib/), o sigui que NO cal instal·lar-ne
+cap al sistema.
 
 IMPORTAR ALTRES FORMATS (mp3, aif, flac...): ja va inclos (ffmpeg del paquet).
 
+Codi font i AppImage publicada:
+    https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
 Mes informacio: docs/PORTABILITAT.md dins aquesta carpeta.
 TXT
 

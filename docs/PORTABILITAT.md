@@ -3,8 +3,61 @@
 > **2026-10-07.** Anàlisi (no implementació) de què caldria perquè AUTO CHORDS
 > sigui **autocontingut i portable** (copiar la carpeta i que funcioni, sense
 > instal·lar res). Mides i `ldd` reals del projecte.
+>
+> ⚠️ Les seccions **1–5** són l'**anàlisi inicial** (històrica, es conserva per
+> entendre el raonament). L'estat **actual** és la **secció 0**; el flux de
+> treball és la **secció 6**.
 
-## 1. Estat actual: què és autocontingut i què no
+---
+
+## 0. Estat actual (2026-10-07 · v0.5.0): **AUTOPORTABLE** ✅
+
+**Què va DINS el paquet/AppImage** (res a instal·lar al host):
+
+| Peça | Contingut |
+|------|-----------|
+| `portable/python/` | CPython 3.12 portable + PyQt5 + numpy<2 (build **genèric**, sense AVX) |
+| `portable/bin/ffmpeg` | build **estàtic** (importar mp3/aif/flac/m4a/ogg) |
+| `portable/lib/` | **llibreries natives** de l'host Vamp i dels plugins |
+| `nnls-chroma-linux64-local/` · `qm-vamp-plugins-linux64-local/` | plugins Vamp (Chordino, Queen Mary) |
+| `vamp_host_local` | host Vamp propi (substitueix `sonic-annotator`, que queda de reserva) |
+
+**Llibreries natives empaquetades** — 9 fitxers, ~3,1 MB. Les copia
+`eines/libreries_natives.sh` **del mateix sistema que compila** (al CI,
+`ubuntu-22.04`): no es baixa res i la glibc mínima queda lligada al build.
+
+| Llibreria | Llicència | Per a |
+|---|---|---|
+| `libvamp-hostsdk.so.3` | MIT / BSD-3 | carregar i executar els plugins Vamp |
+| `libsndfile.so.1` | LGPL-2.1+ | llegir els WAV |
+| `libFLAC` · `libogg` · `libvorbis` · `libvorbisenc` · `libopus` | BSD-3 | còdecs de libsndfile |
+| `libmpg123` · `libmp3lame` | LGPL-2.1 / LGPL-2.0 | mp3 |
+
+**Què queda AL SO host** (el mínim absolut):
+
+| Requisit | Detall |
+|----------|--------|
+| **`glibc` ≥ 2.35** | Ubuntu 22.04+ · Debian 12+ · Fedora 36+… (el CI compila a `ubuntu-22.04`, i això fixa el terra de l'AppImage) |
+| **`libstdc++` / `libgcc_s`** | universals; **no** s'empaqueten (vegeu nota) |
+| **Entorn d'escriptori** (X11 o Wayland) | per la GUI |
+| **PipeWire o PulseAudio + `paplay` o `aplay`** | només per **escoltar**; opcional (sense això l'app fa la resta i avisa) |
+| **Suport FUSE del nucli** | per executar l'AppImage (estàndard). Alternativa: `--appimage-extract-and-run` |
+
+> ⚠️ **Per què no s'hi inclouen `libstdc++`/`libgcc`**: el Python portable i Qt
+> els demanen del sistema, i empaquetar-los podria **ombrejar** una versió més
+> nova i trencar Qt. Són presents a qualsevol distro amb glibc ≥ 2.35.
+
+**Repositori (codi i AppImage publicada):**
+**https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS**
+
+**Verificació feta** (2026-10-07): dins un *namespace* de muntatge amb les **9
+llibreries del sistema amagades** (`/dev/null` a sobre) i només `portable/lib`
+disponible, `vamp_host_local` extreu acords (Chordino, 82 línies) i estructura
+(`qm-segmenter`); l'app arrenca i passen **173/173 tests**.
+
+---
+
+## 1. Anàlisi inicial (històrica): què era autocontingut i què no
 
 Projecte: **515 MB**.
 
@@ -134,7 +187,8 @@ git add -A && git commit -m "..."
 ### Dependències del paquet (només cal regenerar-les si falten o s'actualitzen)
 | Eina | Què crea | Quan cal |
 |------|----------|----------|
-| `eines/crea_portable.sh` | `portable/` (CPython + ffmpeg) | 1 cop; o si es vol actualitzar el Python/ffmpeg |
+| `eines/crea_portable.sh` | `portable/` (CPython + ffmpeg + **llibreries natives**) | 1 cop; o si es vol actualitzar el Python/ffmpeg |
+| `eines/libreries_natives.sh` | `portable/lib/` (Vamp + sndfile + còdecs) | la crida sol `crea_portable.sh`; es pot repetir sense risc |
 | `eines/compila_vamp_host.sh` | `vamp_host_local` | 1 cop; o si canvia `eines/vamp_host.cpp` |
 | `eines/empaqueta_portable.sh` | `../AUTO_CHORDS_PORTABLE/` | **cada vegada** que es vol el paquet al dia |
 
@@ -147,5 +201,5 @@ git add -A && git commit -m "..."
 | `app/`, `eines/`, `docs/`, `*.md`, `*.py` de l'arrel | `.deps/` (només build) |
 | `nnls-chroma-linux64-local/`, `qm-vamp-plugins-linux64-local/` | `.venv/` (dev/tests) |
 | `vamp_host_local`, `sonic-annotator` (reserva) | `.git/`, `tauri-ui/`, `temp/` |
-| **`portable/`** (Python + ffmpeg) | `__pycache__/`, logs, `opcions_detecta.json` |
+| **`portable/`** (Python + ffmpeg + **`lib/` amb les llibreries natives**) | `__pycache__/`, logs, `opcions_detecta.json` |
 | `AUTO_CHORDS.sh` (llançador), `LLEGEIX-ME.txt` (generat) | el propi paquet (germà) |

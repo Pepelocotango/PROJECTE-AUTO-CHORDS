@@ -3,6 +3,41 @@
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
 Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 
+## [No publicat]
+
+### Afegit
+- **Autoportabilitat real**: l'AppImage ara **empaqueta les llibreries natives**
+  que necessita l'host Vamp — `libvamp-hostsdk`, `libsndfile` i els còdecs
+  (`libFLAC`, `libogg`, `libvorbis`, `libvorbisenc`, `libopus`, `libmpg123`,
+  `libmp3lame`) — a **`portable/lib/`**, i el llançador les prioritza via
+  `LD_LIBRARY_PATH`. Nou **`eines/libreries_natives.sh`**, que les resol del
+  mateix sistema que compila → **0 descàrregues extra** i glibc coherent.
+  Al SO host només hi queden **`glibc` + `libstdc++/libgcc`** (universals).
+  **Verificat** amb les 9 llibreries del sistema amagades dins un *namespace*
+  de muntatge: acords + estructura OK.
+
+### Arreglat
+- **CI (`.github/workflows/`)**: el job d'AppImage fallava amb
+  `E: Unable to locate package libvamp-hostsdk-dev` — aquest paquet **no
+  existeix** a Ubuntu; el correcte és **`vamp-plugin-sdk`**. Corregit a
+  `build-appimage.yml` **i** a `release.yml` (aquest s'activa amb els tags i
+  hauria fallat igual).
+- **CI**: `actions/checkout@v4` → **`@v5`** i `actions/upload-artifact@v4` →
+  **`@v6`**, que són les que corren en **Node 24** (la v4 donava l'avís de
+  deprecació de Node 20).
+- `.gitignore`: s'ignoren `LOGS GITHUB ACTIONS/` i `logs_*/`.
+
+### Documentació
+- `README.md`: **URL del repositori**, com descarregar l'AppImage i taula de
+  requisits mínims actualitzada (llibreries natives incloses); recompte de
+  tests corregit (173).
+- `docs/PORTABILITAT.md`: nova **secció 0 «Estat actual: autoportable»** amb la
+  llista exacta de llibreries empaquetades i el mínim del SO; l'anàlisi inicial
+  queda marcada com a històrica.
+- `LLICENCIES_TERCERS.md`: afegides les llicències de les **7 llibreries noves**
+  (BSD-3 dels còdecs Xiph; LGPL-2.1/2.0 de mpg123 i mp3lame) + nota de
+  relinkatge.
+
 ## [0.5.0] — 2026-10-07
 
 ### Arreglat
