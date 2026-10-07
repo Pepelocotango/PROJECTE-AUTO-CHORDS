@@ -19,8 +19,8 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [Obre…] [Analitza] [Exporta]  Temps:[BPM·compàs][Lliure]  BPM:[101]        │  ← BARRA 1
-│   🎯[Detecta]  Compàs:[4]  Offset:[0.0] ≈ [1.1]  ☑ Inclou estructura       │     (temps)
+│ [Obre…] Temps:[BPM·compàs][Lliure] BPM:[101] 🎯[Detecta] Compàs:[4]         │  ← BARRA 1
+│   Offset:[0.0] ≈ [1.1] ☑ Inclou estructura   [Analitza]   [Exporta]        │     (treball)
 ├────────────────────────────────────────────────────────────────────────────┤
 │ [▶ Escolta] [⏹] [−10s] [+10s]  [A⟨] [⟩B] [🔁]  [🔍−] [🔍+] [Tot]  [🔇] [🥁] [▬▬●▬] │  ← BARRA 2
 ├────────────────────────────────────────────────────────────────────────────┤     (transport)
@@ -60,7 +60,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900.
 
 | Barra | Contingut |
 |-------|-----------|
-| **Principal / temps** | `Obre…` · `Analitza` · `Exporta` · selector temps · BPM · 🎯 Detecta · Compàs · Offset (s) · ≈ C.B · Inclou estructura |
+| **Treball** (ordre del flux) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · 🎯 Detecta · Compàs · Offset (s) · ≈ C.B → **Inclou estructura** → **Analitza** → **Exporta** |
 | **Transport** | `▶ Escolta` · `⏹` · `−10s` · `+10s` · `A⟨` · `⟩B` · `🔁` · `🔍−` · `🔍+` · `Tot` · `🔇` · `🥁` · volum del clic |
 
 > ⚠️ Les **dreceres** viuen a la **finestra principal** (`QShortcut`/`QAction`),

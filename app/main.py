@@ -8,8 +8,8 @@ import sys
 import tempfile
 import traceback
 
-from PyQt5.QtCore import QThread, Qt, QUrl, pyqtSignal
-from PyQt5.QtGui import QDesktopServices, QKeySequence
+from PyQt5.QtCore import QThread, Qt, QTimer, QUrl, pyqtSignal
+from PyQt5.QtGui import QCursor, QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
     QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
@@ -164,18 +164,11 @@ class Finestra(QMainWindow):
         self.visor_widget = None
         self._mostra_placeholder_visor()
 
-        # barra d'eines principal: Obre (els passos 3/4 hi afegiran Analitza/Exporta)
-        barra_principal = QToolBar("Principal")
-        barra_principal.setObjectName("barra_principal")
-        barra_principal.setMovable(False)
+        # botó «Obre» (l'afegirem a la barra única, en ordre de flux)
         b_obre = QPushButton("Obre…")
         b_obre.setObjectName("secundari")
         b_obre.setToolTip("Obre una WAV (Ctrl+O)")
         b_obre.clicked.connect(self.tria_wav)
-        barra_principal.addWidget(b_obre)
-        barra_principal.addSeparator()
-        self.barra_principal = barra_principal
-        self.addToolBar(Qt.TopToolBarArea, barra_principal)
 
         # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
         #    (abans era un QGroupBox «2 · Temps i paràmetres»)
@@ -244,34 +237,37 @@ class Finestra(QMainWindow):
         self.tempo_fix.setVisible(False)
         self.tempo_fix.toggled.connect(self._canvia_tempo)
 
-        # la barra pròpiament
-        barra_temps = QToolBar("Temps i paràmetres")
-        barra_temps.setObjectName("barra_temps")
-        barra_temps.setMovable(False)
-        barra_temps.addWidget(QLabel(" Temps: "))
-        barra_temps.addWidget(self.b_mode_bpm)
-        barra_temps.addWidget(self.b_mode_lliure)
-        barra_temps.addSeparator()
-        barra_temps.addWidget(self._params_temps)
-        barra_temps.addSeparator()
-        barra_temps.addWidget(self.amb_est)
-        self.addToolBar(Qt.TopToolBarArea, barra_temps)
-        self.barra_temps = barra_temps
-
-        # 3. «Analitza» és una ACCIÓ sobre el que es veu (ja no un pas d'assistent).
+        # 3. «Analitza» i «Exporta» són ACCIONS (no passos d'assistent).
         self.b_exec = QPushButton("Analitza")
         self.b_exec.setObjectName("principal")
         self.b_exec.setToolTip("Extreu acords i estructura de la WAV (F5)")
         self.b_exec.clicked.connect(self.executa)
         self.b_exec.setEnabled(False)          # fins que hi hagi WAV
-        self.barra_principal.addWidget(self.b_exec)
-
-        # «Exporta» és una acció de Fitxer (vegeu el menú); botó a la barra
         self.b_export = QPushButton("Exporta")
         self.b_export.setToolTip("Exporta el paquet final (Ctrl+E)")
         self.b_export.setEnabled(False)       # fins que hi hagi pistes
         self.b_export.clicked.connect(self.exporta)
-        self.barra_principal.addWidget(self.b_export)
+
+        # 1a BARRA: en ORDRE DE FLUX de treball →
+        #   1) Obre  ·  2) opcions de temps  ·  3) Analitza i Exporta (al final)
+        barra = QToolBar("Treball")
+        barra.setObjectName("barra_principal")
+        barra.setMovable(False)
+        barra.addWidget(b_obre)
+        barra.addSeparator()
+        barra.addWidget(QLabel(" Temps: "))
+        barra.addWidget(self.b_mode_bpm)
+        barra.addWidget(self.b_mode_lliure)
+        barra.addSeparator()
+        barra.addWidget(self._params_temps)
+        barra.addSeparator()
+        barra.addWidget(self.amb_est)
+        barra.addSeparator()
+        barra.addWidget(self.b_exec)
+        barra.addWidget(self.b_export)
+        self.addToolBar(Qt.TopToolBarArea, barra)
+        self.barra_principal = barra
+        self.barra_temps = barra
 
         # progrés → barra d'estat (permanent)
         self.barra = QProgressBar()
@@ -283,9 +279,29 @@ class Finestra(QMainWindow):
         self.log = QTextEdit()
         self.log.setObjectName("log")
         self.log.setReadOnly(True)
-        self.log_dock = QDockWidget("Log", self)
+        # Caixa d'informacio «live»: a la dreta del log (1/4 de l'amplada).
+        self.info_box = QTextEdit()
+        self.info_box.setObjectName("info")
+        self.info_box.setReadOnly(True)
+        self.info_box.setMinimumWidth(220)
+        self.info_box.setHtml(
+            "<i>Passa el ratolí per sobre d'un botó, camp o opció i aquí "
+            "veuràs què fa.</i>")
+        _cont_log = QWidget()
+        _hl = QHBoxLayout(_cont_log)
+        _hl.setContentsMargins(0, 0, 0, 0)
+        _hl.setSpacing(4)
+        _hl.addWidget(self.log, stretch=3)
+        _hl.addWidget(self.info_box, stretch=1)
+        self.log_dock = QDockWidget("Log  ·  Informació", self)
         self.log_dock.setObjectName("dock_log")
-        self.log_dock.setWidget(self.log)
+        self.log_dock.setWidget(_cont_log)
+        # Vigilant: cada 250 ms mira el widget sota el ratolí i mostra el seu
+        # tooltip a la caixa d'informacio (com una ajuda «live»).
+        self._info_timer = QTimer(self)
+        self._info_timer.setInterval(250)
+        self._info_timer.timeout.connect(self._actualitza_info_widget)
+        self._info_timer.start()
         self.log_dock.setVisible(True)      # sortida de l'anàlisi, visible
         self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
 
@@ -518,6 +534,26 @@ class Finestra(QMainWindow):
                 self, "Detecta BPM",
                 "No s'ha pogut estimar el BPM.\n"
                 "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
+
+    def _actualitza_info_widget(self):
+        """Mostra a la caixa d'informacio el tooltip del widget sota el ratolí."""
+        try:
+            w = QApplication.widgetAt(QCursor.pos())
+        except Exception:  # noqa: BLE001
+            return
+        if w is None:
+            return
+        # pugem fins a un widget que tingui tooltip (els fills solen no tenir-ne)
+        x = w
+        while x is not None and not x.toolTip():
+            x = x.parentWidget()
+        if x is None:
+            return
+        nom = x.text() if hasattr(x, "text") else ""
+        tip = x.toolTip()
+        html = f"<b>{nom}</b><br>{tip}" if nom else f"<b>{tip}</b>"
+        if self.info_box.toHtml() != html:
+            self.info_box.setHtml(html)
 
     def _marca_compas_1(self):
         """Posa l'offset a la posició del cursor: la graella hi comença.

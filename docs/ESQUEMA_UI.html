@@ -157,8 +157,6 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
   <!-- BARRA 1: temps -->
   <div class="toolbar">
     <span class="btn">Obre…</span>
-    <span class="btn pri">Analitza</span>
-    <span class="btn">Exporta</span>
     <span style="color:#9aa6b8">Temps:</span>
     <span class="btn on">BPM · compàs</span>
     <span class="btn">Lliure (hh:mm:ss)</span>
@@ -168,6 +166,8 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
     <span style="color:#9aa6b8">Offset:</span><span class="camp">0.0</span>
     <span style="color:#9aa6b8">≈</span><span class="camp">1.1</span>
     <span class="chk"><i>✓</i>Inclou estructura</span>
+    <span class="btn pri">Analitza</span>
+    <span class="btn">Exporta</span>
   </div>
 
   <!-- BARRA 2: transport -->
@@ -335,7 +335,7 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
 <table>
 <tr><th>Ref</th><th>Nom al codi</th><th>Nom a la UI</th><th>Tipus</th></tr>
 <tr><td>—</td><td><code>Finestra</code></td><td>finestra principal</td><td>QMainWindow</td></tr>
-<tr><td>—</td><td><code>b_obre · b_exec · b_export</code></td><td>Obre… · Analitza · Exporta</td><td>QPushButton (barra 1)</td></tr>
+<tr><td>—</td><td><code>b_obre · b_exec · b_export</code></td><td>Obre… … Analitza · Exporta (al final)</td><td>QPushButton (barra 1)</td></tr>
 <tr><td>—</td><td><code>b_mode_bpm/lliure · bpm · bpb · offset · offset_cb · b_detecta · amb_est</code></td><td>selector temps · BPM · Compàs · Offset (s) · ≈ C.B · 🎯 Detecta · Inclou estructura</td><td>barra 1</td></tr>
 <tr><td>—</td><td><code>tb_mut · tb_loop · b_metro · vol_metro</code></td><td>🔇 · 🔁 · 🥁 · volum del clic</td><td>barra 2 (transport)</td></tr>
 <tr><td><span class="badge v">1</span></td><td><code>RulerLayer</code></td><td>regle de temps</td><td>QGraphicsItem</td></tr>
