@@ -99,16 +99,23 @@ class Feina(QThread):
         self.missatge.emit(t)
 
     def run(self):
+        """ANALITZA: nomes extreu els CSVs. Les wavs es generen a l'EXPORTAR.
+
+        Disseny (decisio de l'operador): les `wavs_acords/`/`wavs_estructura/`
+        no tenen cap paper en la visualitzacio ni l'edicio; son l'ULTIM pas.
+        Aqui nomes es creen `acords.csv`, `segments.csv` i `estructura_ABC.csv`
+        (els locators/guia i les wavs els fa `pipeline.exporta_total`).
+        """
         try:
             os.makedirs(self.sortida, exist_ok=True)
             csv_ac = os.path.join(self.sortida, "acords.csv")
-            self.log("1/5 extreu acords (Chordino)...")
+            self.log("1/3 extreu acords (Chordino)...")
             pipeline.extract_chords(self.wav, csv_ac, self.log,
                                     params=(self.opcions.get("chords") or None))
             # Neteja posterior dels acords (opcions del dialeg).
             cl = self.opcions.get("clean") or {}
             if cl:
-                self.log("1b/5 neteja dels acords...")
+                self.log("1b/3 neteja dels acords...")
                 postproc.processa_acords_csv(
                     csv_ac,
                     durada_min=float(cl.get("durada_min", 0.0)),
@@ -118,38 +125,17 @@ class Feina(QThread):
                     snap=bool(cl.get("snap", False)),
                     bpm=self.bpm, bpb=self.bpb, offset=self.offset,
                     divisio=int(cl.get("divisio", 1)), log=self.log)
-            self.progres.emit(35)
+            self.progres.emit(50)
+            csv_seg = None
             if self.amb_estructura:
                 csv_seg = os.path.join(self.sortida, "segments.csv")
-                self.log("2/5 extreu estructura (Segmentino)...")
+                self.log("2/3 extreu estructura (qm-segmenter)...")
                 pipeline.extract_segments(
                     self.wav, csv_seg, self.log,
                     motor=(self.opcions.get("structure") or {}).get(
                         "motor", "qm"))
-                self.progres.emit(60)
-            else:
-                csv_seg = None
-            self.progres.emit(65)
-            if self.tempo_fix:
-                self.log("3/5 locators + guia...")
-                loc, _guia = pipeline.run_acords_py(
-                    csv_ac, self.bpm, self.bpb, self.offset, self.sortida,
-                    self.log)
                 self.progres.emit(75)
-                self.log("4/5 wavs d'acords...")
-                pipeline.fer_wavs_acords(
-                    loc, self.bpm, os.path.join(self.sortida, "wavs_acords"),
-                    44100, self.log, self.bpb)
-            else:
-                self.log("3-4/5 segments en segons + wavs...")
-                info = pipeline.wav_info(self.wav)
-                pipeline.fer_wavs_acords_lliures(
-                    csv_ac, info["durada"],
-                    os.path.join(self.sortida, "wavs_acords"), 44100,
-                    self.log)
-            self.progres.emit(88)
-            if csv_seg:
-                self.log("5/5 ABC + wavs d'estructura...")
+                self.log("3/3 ABC (estructura)...")
                 abc = os.path.join(self.sortida, "estructura_ABC.csv")
                 _est = self.opcions.get("structure") or {}
                 pipeline.fer_abc(csv_seg, abc, self.bpm, self.log,
@@ -157,9 +143,7 @@ class Feina(QThread):
                                  offset=self.offset,
                                  durada_min=float(_est.get("durada_min", 0.0)),
                                  fusiona_iguals=bool(_est.get("fusiona_iguals", True)))
-                pipeline.fer_wavs_estructura(
-                    abc, os.path.join(self.sortida, "wavs_estructura"),
-                    44100, self.log)
+            self.log("Analisi feta. Les wavs es generaran en 'Exporta'.")
             self.progres.emit(100)
             self.feta.emit(True, self.sortida)
         except Exception as e:  # noqa: BLE001

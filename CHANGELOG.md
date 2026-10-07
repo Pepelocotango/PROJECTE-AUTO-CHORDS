@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.4.0-checkpoint`).
 
 ## [No publicat]
 
+### Arreglat
+- **`Analitza` ja NO genera les carpetes de wavs** (es feien DUES vegades:
+  també a l'`Exporta`). Restaura el disseny acordat: les `wavs_acords/` i
+  `wavs_estructura/` són **l'últim pas**, i es generen **només amb
+  `Exporta`** (`pipeline.exporta_total`, que també fa els locators i la
+  guia). `Analitza` (la classe `Feina`) ara només crea **`acords.csv`**,
+  **`segments.csv`** i **`estructura_ABC.csv`**. Verificat: després
+  d'analitzar només hi ha els 3 CSVs; després d'exportar hi ha els locators,
+  la guia i les dues carpetes de wavs. **166 tests.**
+
 ### Afegit
 - **Fase 5 de portabilitat — empaquetat**: `eines/empaqueta_portable.sh`
   munta `AUTO_CHORDS_PORTABLE/` (codi + plugins + host + Python portable +
