@@ -176,13 +176,39 @@ git tag v0.5.0 -m "..." && git push origin v0.5.0   # -> Release esborrany
 
 ## Requisits
 
-- **Python 3.10+** + **PyQt5** + **numpy < 2** (QtSvg inclòs a PyQt5)
-  → o, millor, el **Python portable** que ja porta tot això (`portable/`)
+### ✅ Mínims per FER-LA FUNCIONAR (usuari final, amb l'AppImage)
+
+| Requisit | Detall |
+|----------|--------|
+| **Sistema** | **Linux x86_64** amb **glibc ≥ 2.35** → Ubuntu 22.04+, Debian 12+, Fedora 36+… |
+| **CPU** | Qualsevol x86_64 amb **SSE2** · provada en un **Core 2 Quad Q9400** *sense AVX* ✅ |
+| **RAM / disc** | ~1 GB RAM lliure · ~170 MB a disc (l'AppImage és un sol fitxer) |
+| **Per ESCOLTAR** | **PipeWire** o **PulseAudio** (qualsevol escriptori Linux actual). **Opcional**: sense això l'app fa tota la resta (analitzar, editar, exportar), només avisa que no pot sonar |
+| **Per executar l'AppImage** | **FUSE 2** (`libfuse2`). Si no el tens: `./AutoChords-*.AppImage --appimage-extract-and-run` |
+
+> ✨ **No cal instal·lar res més**: ni Python, ni Qt, ni ffmpeg, ni els plugins
+> — tot va **dins** l'AppImage.
+
+### 🛠️ Per executar-la des del codi (desenvolupament)
+
+- **Python 3.10+** + **PyQt5** + **numpy < 2** (el **QtSvg** ve amb PyQt5)
+  → o, més fàcil, el **Python portable** que ja ho porta tot (`portable/`)
 - **Plugins Vamp** dins el projecte: **Chordino** (`nnls-chroma`) i
   **qm-vamp-plugins** (Queen Mary) — **sense instal·lar res al sistema**
 - **Host Vamp propi** (`vamp_host_local`) — substitueix `sonic-annotator`
-- **`ffmpeg`** (opcional, per importar formats que no siguin WAV); s'embega a
-  `portable/bin/ffmpeg`
+- **`ffmpeg`** (opcional, només per importar formats que no siguin WAV):
+  s'embega a `portable/bin/ffmpeg`
+- `numpy < 2` és **obligatori** (numpy 2.x demana x86_64-v2 → falla en CPUs
+  antigues com el Q9400)
+
+### 🏗️ Per construir (AppImage / paquet portable)
+
+- **`g++`** + **`libvamp-hostsdk-dev`** + **`libsndfile1-dev`** (per compilar l'host)
+- **`curl`** + **connexió a Internet** (es baixen el Python portable, l'ffmpeg i les icones Lucide)
+- **`appimagetool`** (es baixa sol) + **`libfuse2`**
+- Els **workflows de GitHub Actions** ho fan tot sols a **`ubuntu-22.04`**
+  (aquesta versió fixa la **glibc mínima** de l'AppImage, perquè allà s'hi
+  compila l'host). Detall: `docs/PORTABILITAT.md`
 
 ## Agraïments i reconeixement a projectes de tercers
 
