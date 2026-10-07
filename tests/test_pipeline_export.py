@@ -1046,6 +1046,18 @@ class EditorFranjaTests(unittest.TestCase):
         self.assertTrue(v.ed_nom.hasFocus() or True)   # focus (best-effort)
         w.close()
 
+    def test_clic_a_les_llistes_actualitza_l_editor(self):
+        """Regressio: el clic a la llista ha d'actualitzar la franja Editor.
+
+        select_clip() abans NO emetia clipSelected, aixi que seleccionar des
+        de la llista no arribava a l'Editor."""
+        w = self._finestra(); v = w.visor_ref
+        v._salt_acord(v.llista_ac.item(1))
+        self.assertEqual(v.ed_gran.text(), "Am")
+        v._salt_seccio(v.llista_ab.item(0))
+        self.assertTrue(v.ed_gran.text().startswith("A"))
+        w.close()
+
     def test_sense_seleccio_esta_buit(self):
         w = self._finestra(); v = w.visor_ref
         v._actualitza_editor()   # cap _ed_kind

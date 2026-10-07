@@ -1342,6 +1342,10 @@ class TimelineView(QGraphicsView):
             it.set_selected(kind == "chord" and getattr(it, "idx", -1) == index)
         for it in self._section_items:
             it.set_selected(kind == "section" and getattr(it, "idx", -1) == index)
+        # Avisem els qui escolten (llistes, franja Editor...) tambe quan la
+        # seleccio ve de fora (clic a la llista, menu, etc.), no nomes del
+        # propi timeline.
+        self.clipSelected.emit(kind, index)
 
     # -- gestió d'events dels items (constraint + propagació) -----------------
     def _on_chord_time_changed(self, idx: int, new_t: float) -> None:

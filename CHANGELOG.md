@@ -5,6 +5,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Arreglat
+- **Seleccionar des de les LLISTES no actualitzava la franja Editor**:
+  `TimelineView.select_clip()` no emetia `clipSelected` (només ho feia
+  `_seek_to`, el clic al propi clip). Ara `select_clip()` **sí que l'emet**
+  (i `_seek_to` no el duplica) → **tots els camins** (llista, carril, menú)
+  actualitzen l'Editor i les llistes. **1 test nou** (regressió).
+
 ### Afegit
 - **Franja «EDITOR»** entre els carrils i les llistes (app/visor.py): mostra
   **en gran** l'element seleccionat (🎵 acord / 🎼 secció) i s'edita
