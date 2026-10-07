@@ -157,6 +157,7 @@ class Finestra(QMainWindow):
         self.logger = logging.getLogger("auto_chords")
         self.opcions = dialegs.carrega_opcions()    # ultimes opcions d'autodeteccio
         self.wav_original = ""                     # si ve d'un format convertit
+        self._info_msg_fins = 0.0                  # missatge transitori info box
         self.setWindowTitle("Auto Chords — wav → acords + estructura")
         self.resize(1500, 900)
         # Amplada minima: per sota, les barres d\'eines es tallarien.
@@ -382,6 +383,14 @@ class Finestra(QMainWindow):
                   *pipeline.VAMP_DIRS):
             if not os.path.exists(p):
                 self.registra(f"AVÍS: no trobo {p}")
+
+    def _missatge_info(self, text):
+        """Mostra un missatge transitori a la caixa d'informacio (no el
+        sobreescriu el ratoli fins passats uns segons)."""
+        import time as _t
+        self.info_box.setHtml(
+            f"<b style='color:{theme.BLAU_INFO}'>{text}</b>")
+        self._info_msg_fins = _t.monotonic() + 4.0
 
     def _on_play_state(self, on):
         """Icona del boto de transport: ▶ aturat / ⏸ sonant."""
@@ -625,6 +634,9 @@ class Finestra(QMainWindow):
 
     def _actualitza_info_widget(self):
         """Mostra a la caixa d'informacio el tooltip del widget sota el ratolí."""
+        import time as _t
+        if _t.monotonic() < getattr(self, "_info_msg_fins", 0.0):
+            return          # hi ha un missatge transitori (desfer/refer...)
         try:
             w = QApplication.widgetAt(QCursor.pos())
         except Exception:  # noqa: BLE001
@@ -805,11 +817,6 @@ class Finestra(QMainWindow):
         # propaga al visor (regle + clic) SENSE reengegar l'audio en curs
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
-            try:
-                vr.playStateChanged.disconnect(self._on_play_state)
-            except (TypeError, AttributeError):
-                pass
-            vr.playStateChanged.connect(self._on_play_state)
             vr.bpm = self._bpm_val()
             vr._actualitza_temps()
         self.b_tap.setText(f"TAP ({len(self._taps)}) {bpm:.0f}")
@@ -949,6 +956,18 @@ class Finestra(QMainWindow):
                 tempo_fix=self.tempo_fix.isChecked(),
             )
             self.visor_ref = visor
+            # connectem els senyals del visor (icona play/pause + missatges
+            # de la caixa d'informacio: desfer/refer...)
+            try:
+                visor.playStateChanged.disconnect(self._on_play_state)
+            except (TypeError, AttributeError):
+                pass
+            visor.playStateChanged.connect(self._on_play_state)
+            try:
+                visor.infoMissatge.disconnect(self._missatge_info)
+            except (TypeError, AttributeError):
+                pass
+            visor.infoMissatge.connect(self._missatge_info)
             self.visor_widget = visor.centralWidget()
             self.visor_widget.setParent(self._stack)
             if self._stack.indexOf(self.visor_widget) < 0:

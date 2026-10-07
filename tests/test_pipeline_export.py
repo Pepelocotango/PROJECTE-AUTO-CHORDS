@@ -1070,6 +1070,66 @@ class TempoOctavaTests(unittest.TestCase):
                                    msg=f"esperava {bpm}, vaig rebre {b}")
 
 
+class UndoInfoTests(unittest.TestCase):
+    """Desfer/refer expliquen el canvi a la caixa d'informacio."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 10)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n4.0,Am\n8.0,G\n")
+        window = app_main.Finestra()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        return window
+
+    def test_desfer_descriu_el_canvi(self):
+        w = self._finestra(); v = w.visor_ref
+        v._undo_marca()
+        v.acords[1] = (5.0, "Am", "5.0")
+        v._undo_commit()
+        v.undo()
+        txt = w.info_box.toPlainText()
+        self.assertIn("DESFER", txt)
+        self.assertIn("Am", txt)
+        self.assertIn("5.00", txt)      # des de 5.00 (on era)
+        w.close()
+
+    def test_refer_descriu_el_canvi(self):
+        w = self._finestra(); v = w.visor_ref
+        v._undo_marca()
+        v.acords[1] = (5.0, "Am", "5.0")
+        v._undo_commit()
+        v.undo()
+        v.redo()
+        txt = w.info_box.toPlainText()
+        self.assertIn("REFER", txt)
+        self.assertIn("Am", txt)
+        w.close()
+
+    def test_info_senyal_connectat(self):
+        w = self._finestra()
+        # si el senyal no esta connectat, aixo no peta pero no mostra res
+        w.visor_ref.infoMissatge.emit("PROVA")
+        self.assertIn("PROVA", w.info_box.toPlainText())
+        w.close()
+
+    def test_playstate_connectat_en_carregar(self):
+        w = self._finestra()
+        w.visor_ref.playStateChanged.emit(True)
+        self.assertIn("Atura", w.b_play_tb.toolTip())
+        w.close()
+
+
 class InfoBoxTests(unittest.TestCase):
     """La caixa d'informacio explica el "ratoli intel·ligent" del timeline."""
 

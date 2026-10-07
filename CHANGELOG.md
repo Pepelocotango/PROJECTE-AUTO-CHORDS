@@ -6,6 +6,20 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 ## [0.5.0] — 2026-10-07
 
 ### Afegit
+- **Desfer/refer surten a la caixa d'informació**: en fer `Ctrl+Z`/`Ctrl+Y` es
+  mostra **què** s'ha desfet/refer, descrit automàticament comparant els dos
+  estats (p. ex. «⟲ DESFER: moure l'acord «Am» (5.00s → 4.00s)»,
+  «reanomenar l'acord…», «afegir/eliminar un acord/secció»). Nou
+  `Visor._descriu_canvi()` + senyal `infoMissatge`; el missatge es veu **4 s**
+  i no el trepitja el ratolí. **4 tests nous** (`UndoInfoTests`).
+
+### Arreglat
+- **Senyal `playStateChanged` no connectat en carregar el visor**: la icona
+  ▶/⏸ **no s'actualitzava** en donar a play (la connexió havia anat a parar
+  per error a `_tap_tempo`). Ara `_carrega_visor` connecta `playStateChanged`
+  **i** `infoMissatge` (i `_tap_tempo` queda net).✨
+
+### Afegit
 - **La caixa d'informació explica el «ratolí intel·ligent» del visor**: abans
   només mostrava el tooltip del *giny* (i el timeline és un sol giny), així
   que sobre el visor no deia res. Ara `TimelineView.info_zona()` retorna

@@ -101,6 +101,8 @@ def llegeix_abc(ruta):
 class Visor(QMainWindow):
     # avisa la barra de fora (icona play/pause) quan canvia l'estat de so
     playStateChanged = pyqtSignal(bool)
+    # missatge per a la caixa d'informacio (desfer/refer, etc.)
+    infoMissatge = pyqtSignal(str)
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
@@ -604,14 +606,45 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"undo: no s'ha pogut desar el CSV: {e}")
 
+    def _descriu_canvi(self, abans, ara):
+        """Descripcio curta del canvi entre dos estats (per a desfer/refer)."""
+        ac0, se0 = abans
+        ac1, se1 = ara
+        if len(ac1) > len(ac0):
+            return f"afegir un acord (ara {len(ac1)})"
+        if len(ac1) < len(ac0):
+            return "eliminar un acord"
+        if len(se1) > len(se0):
+            return f"afegir una secció (ara {len(se1)})"
+        if len(se1) < len(se0):
+            return "eliminar una secció"
+        for (t0, n0, *_), (t1, n1, *_) in zip(ac0, ac1):
+            if n0 != n1:
+                return f"reanomenar l'acord «{n0}» → «{n1}»"
+            if abs(float(t0) - float(t1)) > 1e-6:
+                return (f"moure l'acord «{n1}» "
+                        f"({float(t0):.2f}s → {float(t1):.2f}s)")
+        for (i0, f0, l0, fa0), (i1, f1, l1, fa1) in zip(se0, se1):
+            if l0 != l1 or fa0 != fa1:
+                return f"reanomenar la secció «{l0}» → «{l1}»"
+            if abs(float(i0) - float(i1)) > 1e-6 or abs(float(f0) - float(f1)) > 1e-6:
+                return (f"moure la secció «{l1}» "
+                        f"({float(i0):.2f}s → {float(i1):.2f}s)")
+        return "una edició"
+
     def undo(self):
         self._undo_init()
         self._undo_commit()  # tanca qualsevol operacio oberta
         if not self._undo_stack:
             self.log("DESFER: res a desfer")
+            self.infoMissatge.emit("Desfer: no hi ha res a desfer")
             return
-        self._redo_stack.append(self._estat_edicio())
-        self._aplica_estat(self._undo_stack.pop())
+        abans = self._estat_edicio()
+        desti = self._undo_stack.pop()
+        desc = self._descriu_canvi(abans, desti)   # el que fa el desfer
+        self._redo_stack.append(abans)
+        self._aplica_estat(desti)
+        self.infoMissatge.emit(f"⟲ DESFER: {desc}")
         self._undo_base = self._estat_edicio()
         self._undo_pending = None
         self.log(f"DESFER fet (desfer={len(self._undo_stack)} "
@@ -622,13 +655,18 @@ class Visor(QMainWindow):
         self._undo_commit()
         if not self._redo_stack:
             self.log("REFER: res a refer")
+            self.infoMissatge.emit("Refer: no hi ha res a refer")
             return
-        self._undo_stack.append(self._estat_edicio())
-        self._aplica_estat(self._redo_stack.pop())
+        abans = self._estat_edicio()
+        desti = self._redo_stack.pop()
+        desc = self._descriu_canvi(abans, desti)
+        self._undo_stack.append(abans)
+        self._aplica_estat(desti)
         self._undo_base = self._estat_edicio()
         self._undo_pending = None
         self.log(f"REFER fet (desfer={len(self._undo_stack)} "
                  f"refer={len(self._redo_stack)})")
+        self.infoMissatge.emit(f"⟳ REFER: {desc}")
 
     def log(self, msg):
         print(f"[visor] {msg}", flush=True)

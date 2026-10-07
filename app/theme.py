@@ -43,6 +43,7 @@ TL_WAVE_MID = "#2f3640"        # linia central de l'ona
 CLIP_SECTION_BORDER = "#dfe7f5"
 # Metrònom: color de l'estat activat (botó/acció)
 METRO_ACTIU = "#ffd166"
+BLAU_INFO = "#38bdf8"          # missatges a la caixa d informacio
 # Estat ENCES/APAGAT dels botons commutables.
 # Base (apagat) = estil "Obre..." (gris). Actiu = BLAU; el mute i el
 # metronom, pero, s'encenen en GROC per distingir-se de la resta.
