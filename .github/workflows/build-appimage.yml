@@ -85,8 +85,12 @@ jobs:
 
       - name: 7. Tests (control de qualitat)
         run: |
+          # `set -o pipefail` + `tee`: si un test falla, el pas falla I la sortida
+          # queda a /tmp/tests.log -> el pas ZZ2 la puja com a artefacte (1 fitxer
+          # petit de descarregar, en lloc de tot l'arxiu de logs).
+          set -o pipefail
           QT_QPA_PLATFORM=offscreen portable/python/bin/python3 -m unittest \
-            tests.test_pipeline_export tests.test_partitura
+            tests.test_pipeline_export tests.test_partitura 2>&1 | tee /tmp/tests.log
 
       - name: 8. Icona de l'aplicació
         run: portable/python/bin/python3 eines/crea_icona.py
