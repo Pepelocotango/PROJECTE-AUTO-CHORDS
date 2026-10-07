@@ -26,7 +26,8 @@ i **marques de secció** (cada secció comença línia).
 
       python3 eines/exporta_partitura.py "<carpeta>_ACORDS" \
           [--tema NOM] [--key auto|G|"E minor"] [--wav RUTA] \
-          [--musescore RUTA] [--no-pdf] [--no-mscz] [--timeout SG]
+          [--musescore RUTA] [--no-pdf] [--no-mscz] [--timeout SG] \
+          [--compassos-per-linia N] [--beat-type N]
 
 - **API**:
 

@@ -202,7 +202,7 @@ def _note_xml(units, rest=False):
 
 # --- construcció del MusicXML ----------------------------------------------
 def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
-                        key_fifths=0):
+                        key_fifths=0, new_system_each=None, beat_type=4):
     """Retorna el text MusicXML (partwise) del lead sheet."""
     sec_bar = {bar: let for bar, let in seccions if let}
     fi = max([e[0] + e[2] for e in events] + [0.0])
@@ -226,12 +226,16 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
     for i in range(1, n_bars + 1):
         bs, be = (i - 1) * bpb, i * bpb
         x.append(f'    <measure number="{i}">\n')
-        if i != 1 and i in sec_bar:
+        # Salt de sistema: a l'inici de cada secció i, si es vol, cada N
+        # compassos (per tenir línies regulars, estil lead sheet).
+        if i != 1 and (i in sec_bar or
+                       (new_system_each and (i - 1) % new_system_each == 0)):
             x.append('      <print new-system="yes"/>\n')
         if i == 1:
             x.append("      <attributes><divisions>4</divisions>"
                      f"<key><fifths>{int(key_fifths)}</fifths></key>"
-                     f"<time><beats>{bpb}</beats><beat-type>4</beat-type></time>"
+                     f"<time><beats>{bpb}</beats>"
+                     f"<beat-type>{int(beat_type)}</beat-type></time>"
                      "<clef><sign>G</sign><line>2</line></clef></attributes>\n")
             x.append('      <direction placement="above"><direction-type>'
                      f"<metronome><beat-unit>quarter</beat-unit>"
@@ -382,7 +386,7 @@ def _renderitza(binari, entrada, sortida, log, timeout=300):
 def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
                       titol=None, key_fifths=0, wav=None,
                       genera_pdf=True, genera_mscz=True, musescore=None,
-                      timeout=300):
+                      timeout=300, new_system_each=None, beat_type=4):
     """Genera MusicXML (+ PDF/.mscz amb MuseScore) a `<sortida>/partitura/`.
 
     Retorna un diccionari amb les rutes generades (`musicxml`, `pdf`, `mscz`,
@@ -411,12 +415,15 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
     os.makedirs(dest_dir, exist_ok=True)
 
     xml = construeix_musicxml(events, seccions, bpb=bpb, bpm=bpm,
-                              titol=base, key_fifths=key_fifths)
+                              titol=base, key_fifths=key_fifths,
+                              new_system_each=new_system_each,
+                              beat_type=beat_type)
     ruta_xml = os.path.join(dest_dir, base + ".musicxml")
     with open(ruta_xml, "w", encoding="utf-8") as f:
         f.write(xml)
     log(f"partitura: MusicXML -> {ruta_xml} "
-        f"({len(events)} acords, {bpm:g} BPM, {bpb}/4, {len(seccions)} seccions)")
+        f"({len(events)} acords, {bpm:g} BPM, {bpb}/{beat_type}, "
+        f"{len(seccions)} seccions)")
 
     result = {"musicxml": ruta_xml, "pdf": None, "mscz": None, "base": base}
     if not (genera_pdf or genera_mscz):

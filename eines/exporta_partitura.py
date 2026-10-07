@@ -12,6 +12,8 @@ Opcions:
     --musescore RUTA    Binari/AppImage de MuseScore (si no, es detecta sol)
     --no-pdf / --no-mscz  No renderitzar aquest format
     --timeout SEGONS    Temps màxim per render (per defecte 300)
+    --compassos-per-linia N  Força salt de sistema cada N compassos (línies regulars)
+    --beat-type N       Denominador del compàs al MusicXML (per defecte 4; ex. 8 per 6/8)
 
 Requereix que la carpeta tingui `acords_locators.txt` (mode BPM · compàs).
 """
@@ -36,6 +38,10 @@ def main(argv=None):
     ap.add_argument("--no-pdf", action="store_true")
     ap.add_argument("--no-mscz", action="store_true")
     ap.add_argument("--timeout", type=int, default=300)
+    ap.add_argument("--compassos-per-linia", type=int, default=None,
+                    help="salta de sistema cada N compassos (línies regulars)")
+    ap.add_argument("--beat-type", type=int, default=4,
+                    help="denominador del compàs (4, 8...)")
     a = ap.parse_args(argv)
 
     key_fifths = 0
@@ -50,7 +56,8 @@ def main(argv=None):
     res = partitura.exporta_partitura(
         a.carpeta, log=print, titol=a.tema, key_fifths=key_fifths, wav=a.wav,
         genera_pdf=not a.no_pdf, genera_mscz=not a.no_mscz,
-        musescore=a.musescore, timeout=a.timeout)
+        musescore=a.musescore, timeout=a.timeout,
+        new_system_each=a.compassos_per_linia, beat_type=a.beat_type)
 
     if res.get("error"):
         print(f"AVORTAT: {res['error']}", file=sys.stderr)

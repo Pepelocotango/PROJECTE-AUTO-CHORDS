@@ -104,6 +104,13 @@ class MusicXmlTests(unittest.TestCase):
         # no hi ha d'haver durations incoherents: cada compàs suma 16 unitats
         self.assertIn("<bar-style>light-heavy</bar-style>", xml)
 
+    def test_salt_de_sistema_i_beat_type(self):
+        xml = partitura.construeix_musicxml(
+            self._events(), [(1, "A")], bpb=4, bpm=100.0, titol="X",
+            new_system_each=2, beat_type=8)
+        self.assertIn("<beat-type>8</beat-type>", xml)
+        self.assertIn('new-system="yes"', xml)
+
 
 class ExportaTests(unittest.TestCase):
     def _escriu_font(self, td):
