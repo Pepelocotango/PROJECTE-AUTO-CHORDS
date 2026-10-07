@@ -79,6 +79,70 @@ def wav_info(path):
         }
 
 
+# --- Host Vamp propi (vamp_host_local) ------------------------------------
+# Substitueix `sonic-annotator` (que arrossegava Qt6/ICU/glib). El nostre host
+# nomes depen de libc/libstdc++/sndfile. Vegeu eines/vamp_host.cpp.
+HOST = os.path.join(PROJ_DIR, "vamp_host_local")
+
+# mida de finestra (step, block) per transform: son les que fa servir el
+# sonic-annotator (extretes del seu `-s`). Calen per replicar-ne la resolucio.
+STEPS = {
+    "vamp:nnls-chroma:chordino:simplechord": (2048, 16384),
+    "vamp:nnls-chroma:chordino:loglikelihood": (2048, 16384),
+    "vamp:nnls-chroma:chordino:chordnotes": (2048, 16384),
+    "vamp:qm-vamp-plugins:qm-segmenter:segmentation": (8820, 26460),
+    "vamp:qm-vamp-plugins:qm-tempotracker:tempo": (512, 1024),
+    "vamp:qm-vamp-plugins:qm-tempotracker:beats": (512, 1024),
+    "vamp:qm-vamp-plugins:qm-onsetdetector:onsets": (512, 1024),
+    "vamp:qm-vamp-plugins:qm-barbeattracker:bars": (512, 1024),
+    "vamp:qm-vamp-plugins:qm-barbeattracker:beats": (512, 1024),
+    "vamp:qm-vamp-plugins:qm-keydetector:key": (512, 1024),
+}
+
+
+def usa_host():
+    """Cert si hi ha el nostre host Vamp (preferent al sonic-annotator)."""
+    return os.path.isfile(HOST) and os.access(HOST, os.X_OK)
+
+
+def _cmd_transform(transform, out_csv, wav, params=None):
+    """Comanda per executar un transform: el nostre host, o sonic-annotator."""
+    if usa_host():
+        cmd = [HOST, "--plugin", transform.replace("vamp:", ""),
+               "--csv", out_csv]
+        st = STEPS.get(transform)
+        if st:
+            # Les mides de la taula son per 44100 Hz; els plugins les volen
+            # escalades al mostreig real (p. ex. el barbeattracker vol 256 a
+            # 22050 i 512 a 44100).
+            try:
+                sr = wav_info(wav)["mostreig"]
+            except Exception:  # noqa: BLE001
+                sr = 44100
+            esc = (sr / 44100.0) if sr else 1.0
+            stp = max(1, int(round(st[0] * esc)))
+            blk = max(1, int(round(st[1] * esc)))
+            cmd += ["--step", str(stp), "--block", str(blk)]
+        for k, v in (params or {}).items():
+            cmd += ["--param", f"{k}={v}"]
+        cmd.append(wav)
+        return cmd
+    if params:
+        import tempfile
+        ttl = os.path.join(tempfile.mkdtemp(prefix="ac_ttl_"), "t.ttl")
+        escriu_ttl("chords" if "chordino" in transform else "structure",
+                   params, ttl, lambda *a: None)
+        return [SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
+                "--csv-force", "--csv-omit-filename", wav]
+    return [SONIC, "-d", transform, "-w", "csv", "--csv-one-file", out_csv,
+            "--csv-force", "--csv-omit-filename", wav]
+
+
+def executa_transform(transform, out_csv, wav, log, params=None):
+    """Executa un transform Vamp i desa el CSV."""
+    return run(_cmd_transform(transform, out_csv, wav, params), log)
+
+
 # Transform Vamp per defecte de cada deteccio (vegeu docs/AUTODETECCIO_OPCIONS.md)
 TRANSFORMS = {
     "chords": "vamp:nnls-chroma:chordino:simplechord",
@@ -136,7 +200,10 @@ def escriu_ttl(clau, params, dest, log):
 
 
 def extract_chords(wav_path, out_csv, log, params=None):
-    """Acords via Chordino. Si `params` porta valors, genera un TTL i usa -t."""
+    """Acords via Chordino (host propi; `params` son els parametres .n3)."""
+    if usa_host():
+        return executa_transform(TRANSFORMS["chords"], out_csv, wav_path, log,
+                                 params)
     if params:
         import tempfile
         ttl = os.path.join(tempfile.mkdtemp(prefix="ac_ttl_"), "chords.ttl")
@@ -158,9 +225,7 @@ def _qm_valors(transform, wav_path, col=1, timeout=1800):
     import tempfile
     d = tempfile.mkdtemp(prefix="ac_qm_")
     out = os.path.join(d, "x.csv")
-    run([SONIC, "-d", transform, "-w", "csv", "--csv-one-file", out,
-         "--csv-force", "--csv-omit-filename", wav_path], lambda *a: None,
-        silenci=True, timeout=timeout)
+    executa_transform(transform, out, wav_path, lambda *a: None)
     vals = []
     if os.path.exists(out):
         with open(out, newline="", encoding="utf-8") as f:
@@ -253,9 +318,7 @@ def _qm_temps(transform, wav_path, timeout=1800):
     import tempfile
     d = tempfile.mkdtemp(prefix="ac_qm_")
     out = os.path.join(d, "x.csv")
-    run([SONIC, "-d", transform, "-w", "csv", "--csv-one-file", out,
-         "--csv-force", "--csv-omit-filename", wav_path], lambda *a: None,
-        silenci=True, timeout=timeout)
+    executa_transform(transform, out, wav_path, lambda *a: None)
     temps = []
     if os.path.exists(out):
         with open(out, newline="", encoding="utf-8") as f:
@@ -297,14 +360,7 @@ def extract_segments(wav_path, out_csv, log, params=None, motor="qm"):
     El Segmentino s'ha retirat: el qm-segmenter el substitueix i, a mes, troba
     les repeticions (A...A). Format (inici, durada, index, etiqueta) -> fer_abc.
     """
-    if motor == "qm":
-        return run([SONIC, "-d", QM["segments"], "-w", "csv",
-                    "--csv-one-file", out_csv, "--csv-force",
-                    "--csv-omit-filename", wav_path], log)
-    # (compat) qualsevol altre valor cau al qm
-    return run([SONIC, "-d", QM["segments"], "-w", "csv",
-                "--csv-one-file", out_csv, "--csv-force",
-                "--csv-omit-filename", wav_path], log)
+    return executa_transform(QM["segments"], out_csv, wav_path, log)
 
 
 def _extract_segments_segmentino(wav_path, out_csv, log, params=None):

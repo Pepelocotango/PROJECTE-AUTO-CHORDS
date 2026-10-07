@@ -136,11 +136,15 @@ int main(int argc, char **argv) {
 
     // --- processa (blocs amb solapament step/block) ---
     Plugin::FeatureSet fs;
+    // El plugin vol els canals SEPARATS (no intercalats): desem els blocs.
+    std::vector<std::vector<float> > buf(ch, std::vector<float>(block));
     std::vector<float *> canals(ch);
+    for (int c = 0; c < ch; ++c) canals[c] = buf[c].data();
     sf_count_t pos = 0;
     while (pos + (sf_count_t)block <= n) {
-        for (int c = 0; c < ch; ++c)
-            canals[c] = dades.data() + ((size_t)pos) * ch + c;
+        for (size_t i = 0; i < block; ++i)
+            for (int c = 0; c < ch; ++c)
+                buf[c][i] = dades[((size_t)pos + i) * ch + c];
         RealTime ts = RealTime::frame2RealTime(pos, sr);
         Plugin::FeatureSet f = plug->process(canals.data(), ts);
         for (Plugin::FeatureSet::iterator it = f.begin(); it != f.end(); ++it)
