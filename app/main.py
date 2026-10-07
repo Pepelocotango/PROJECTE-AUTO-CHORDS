@@ -30,11 +30,14 @@ import partitura  # noqa: E402
 import pipeline  # noqa: E402
 import postproc  # noqa: E402
 import theme  # noqa: E402
+from . import config  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
 
-DEFAULT_LOG_PATH = os.path.join(PROJECT_ROOT, "auto_chords.log")
+# Sempre a un directori ESCRIPTIBLE: en una AppImage muntada la carpeta del
+# projecte és de només lectura i escriure-hi el log petava a l'arrencada.
+DEFAULT_LOG_PATH = config.LOG_PATH
 
 
 def _instal·la_captura_excepcions():

@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (
     QFormLayout, QGroupBox, QLabel, QPushButton, QTabWidget, QVBoxLayout,
 )
 
-from app import postproc, tempo, vamp_params
+from app import config, postproc, tempo, vamp_params
 
 # Traducció al català dels títols dels paràmetres del Chordino (els que dona
 # el plugin son en anglès) + una ajuda curta de quan tocar-los.
@@ -48,10 +48,10 @@ VALORS_CA = {
     "local tuning": "afinació local",
 }
 
-# Fitxer on es recorden les últimes opcions (dins el projecte, gitignored).
-FITXER_OPCIONS = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "opcions_detecta.json")
+# Fitxer on es recorden les últimes opcions. Viu a `config.DADES_DIR` (un
+# directori ESCRIPTIBLE: el projecte si ho és, si no l'estat d'usuari) perquè
+# en una AppImage muntada la carpeta del projecte és de només lectura.
+FITXER_OPCIONS = config.OPCIONS_PATH
 
 DEFECTES = {
     # Els valors dels ACORDS son els del descriptor del plugin (buit = defecte).

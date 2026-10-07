@@ -40,8 +40,8 @@ import numpy as np
 # o avortar en un entorn sense pantalla.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from app import (dialegs, ffmpeg, main as app_main, pipeline, postproc,
-                 theme, vamp_params, visor)
+from app import (config, dialegs, ffmpeg, main as app_main, pipeline,
+                 postproc, theme, vamp_params, visor)
 
 # QMessageBox.information/warning/... son MODALS: bloquegen fins que algu
 # clica OK. En un entorn sense pantalla (CI) aixo penja el test per sempre.
@@ -2603,6 +2603,39 @@ class TonalitatAutoTests(unittest.TestCase):
         self.assertEqual(ex.call_args.kwargs["key_fifths"], 1)
         self.assertEqual(ex.call_args.kwargs["wav"], "/tmp/tema.wav")
         self.assertEqual(ex.call_args.kwargs["new_system_each"], 4)
+
+
+class ConfigEscripturaTests(unittest.TestCase):
+    """L'AppImage munta el contingut en NOMÉS LECTURA.
+
+    L'estat de l'app (log, temp, opcions) ha d'anar a un directori ESCRIPTIBLE;
+    si no, l'app peta a l'arrencada amb `OSError [Errno 30] Read-only file
+    system` i no arriba ni a mostrar la finestra (bug del run #5).
+    """
+
+    def test_dades_dir_es_escriptible(self):
+        self.assertTrue(os.access(config.DADES_DIR, os.W_OK))
+
+    def test_log_i_opcions_dins_dades_dir(self):
+        for p in (config.LOG_PATH, config.OPCIONS_PATH):
+            self.assertTrue(p.startswith(config.DADES_DIR), p)
+
+    def test_temp_dir_es_escriptible(self):
+        self.assertTrue(os.access(config.TEMP_DIR, os.W_OK))
+
+    def test_detecta_nomes_lectura(self):
+        # /proc és de només lectura
+        self.assertFalse(config._es_escriptible("/proc"))
+
+    def test_cau_fora_del_projecte_si_aquest_no_es_escriptible(self):
+        with patch.object(config, "PROJECT_ROOT", "/proc"):
+            d = config._dir_de_dades()
+        self.assertNotEqual(d, "/proc")
+        self.assertTrue(os.access(d, os.W_OK))
+
+    def test_main_i_dialegs_apanten_al_config(self):
+        self.assertEqual(app_main.DEFAULT_LOG_PATH, config.LOG_PATH)
+        self.assertEqual(dialegs.FITXER_OPCIONS, config.OPCIONS_PATH)
 
 
 if __name__ == "__main__":
