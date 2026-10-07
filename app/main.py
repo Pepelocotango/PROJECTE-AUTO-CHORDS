@@ -293,6 +293,17 @@ class Finestra(QMainWindow):
             "En exportar, genera tambe un lead sheet de xifrats: MusicXML i, si "
             "hi ha MuseScore, PDF/MSCZ. Nomes en mode BPM · compàs.")
 
+        # "Tonalitat automàtica": calcula l'armadura (fifths) amb el
+        # qm-keydetector abans de generar la partitura. Opcional i per defecte
+        # NO (triga uns segons); només té efecte si «Inclou la partitura» està
+        # marcat.
+        self.tonalitat_auto = QAction("Tonalitat automàtica (qm-keydetector)", self)
+        self.tonalitat_auto.setCheckable(True)
+        self.tonalitat_auto.setChecked(False)
+        self.tonalitat_auto.setToolTip(
+            "Detecta la tonalitat amb el qm-keydetector i posa l'armadura a la "
+            "partitura. Si falla, surt sense armadura (no trenca res).")
+
         # estat `tempo_fix` (ocult): el visor i la resta de codi el consulten
         self.tempo_fix = QCheckBox()
         self.tempo_fix.setChecked(True)
@@ -434,6 +445,7 @@ class Finestra(QMainWindow):
         self._act(m, "Exporta…", "Ctrl+E", self.exporta)
         self._act(m, "Exporta la partitura…", "", self.exporta_partitura_ara)
         m.addAction(self.amb_part)      # Inclou la partitura (commutable)
+        m.addAction(self.tonalitat_auto)  # Tonalitat automàtica (commutable)
         self._act(m, "Obre la carpeta de sortida", "", self.obre_carpeta)
         m.addSeparator()
         self._act(m, "Surt", "Ctrl+Q", self.close)
@@ -1281,10 +1293,17 @@ class Finestra(QMainWindow):
     def _exporta_partitura(self):
         """Genera el lead sheet de xifrats de la carpeta de sortida.
 
-        Es **tolerant**: `app/partitura.py` escriu sempre el MusicXML i, nomes
-        si troba el MuseScore, el PDF/MSCZ. Cap error d'aqui no ha de fer caure
-        l'exportacio normal. Retorna el diccionari de resultats (o None).
+        Es **tolerant**: `app/partitura.py` escriu sempre el MusicXML i, només
+        si troba el MuseScore, el PDF/MSCZ. Cap error d'aquí no ha de fer caure
+        l'exportació normal. Retorna el diccionari de resultats (o None).
+
+        Si l'acció «Tonalitat automàtica» està marcada, calcula l'armadura amb
+        `partitura.detecta_fifths` (qm-keydetector; tolerant: 0 si falla).
         """
+        wav = self.wav_edit.text().strip() or None
+        key_fifths = 0
+        if self.tonalitat_auto.isChecked() and wav:
+            key_fifths = partitura.detecta_fifths(wav, self.registra)
         try:
             res = partitura.exporta_partitura(
                 self.sortida,
@@ -1292,7 +1311,9 @@ class Finestra(QMainWindow):
                 bpm=self._bpm_val(),
                 bpb=self._bpb_val(),
                 offset=self._offset_val(),
-                wav=(self.wav_edit.text().strip() or None),
+                wav=wav,
+                key_fifths=key_fifths,
+                new_system_each=4,     # 4 compassos per línia (lead sheet)
             )
             if res.get("error"):
                 self.registra(f"partitura: sense resultat ({res['error']})")

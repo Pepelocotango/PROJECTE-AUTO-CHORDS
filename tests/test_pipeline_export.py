@@ -2558,5 +2558,46 @@ class TriaPlayerTests(unittest.TestCase):
         self.assertEqual(args, [])
 
 
+class TonalitatAutoTests(unittest.TestCase):
+    """Partitura a la GUI: opció «Tonalitat automàtica» (qm-keydetector).
+
+    Comprovem que l'acció és commutable i per defecte NO, i que el ganxo passa
+    `key_fifths` a `partitura.exporta_partitura` només quan està marcada.
+    """
+
+    def _finestra(self):
+        app_main.QApplication.instance() or app_main.QApplication([])
+        w = app_main.Finestra()
+        w.sortida = "/tmp/sortida_falsa"
+        w.wav_edit.setText("/tmp/tema.wav")
+        return w
+
+    def test_accio_existeix_i_per_defecte_no(self):
+        w = self._finestra()
+        self.assertTrue(w.tonalitat_auto.isCheckable())
+        self.assertFalse(w.tonalitat_auto.isChecked())
+
+    def test_sense_marcar_no_detecta_i_key_fifths_zero(self):
+        w = self._finestra()
+        with patch("app.main.partitura.exporta_partitura",
+                   return_value={"musicxml": "/tmp/x.musicxml"}) as ex, \
+             patch("app.main.partitura.detecta_fifths", return_value=3) as det:
+            w._exporta_partitura()
+        det.assert_not_called()
+        self.assertEqual(ex.call_args.kwargs["key_fifths"], 0)
+
+    def test_marcada_detecta_i_passa_els_fifths(self):
+        w = self._finestra()
+        w.tonalitat_auto.setChecked(True)
+        with patch("app.main.partitura.exporta_partitura",
+                   return_value={"musicxml": "/tmp/x.musicxml"}) as ex, \
+             patch("app.main.partitura.detecta_fifths", return_value=1) as det:
+            w._exporta_partitura()
+        det.assert_called_once()
+        self.assertEqual(ex.call_args.kwargs["key_fifths"], 1)
+        self.assertEqual(ex.call_args.kwargs["wav"], "/tmp/tema.wav")
+        self.assertEqual(ex.call_args.kwargs["new_system_each"], 4)
+
+
 if __name__ == "__main__":
     unittest.main()
