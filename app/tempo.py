@@ -20,8 +20,8 @@ BPM_MAX = 180.0
 # Zona on el prior val 1,0; fora cau suaument. Abans era un biaix pla del
 # +15 % a 90-180, que NO resolia l'ambigüitat d'octava/subdivisió: en un tema
 # de soul amb corxera forta (Otis Redding) guanyava 179,8 en comptes de 103,5.
-BPM_PREFERIT = (80.0, 160.0)
-PRIOR_SIGMA = 0.7     # amplada de la caiguda fora del plateau, en octaves
+BPM_PREFERIT = (85.0, 150.0)
+PRIOR_SIGMA = 0.5     # amplada de la caiguda fora del plateau, en octaves
 HOP_S = 0.01          # resolució temporal de l'envolupant (10 ms)
 
 
@@ -31,6 +31,10 @@ def _prior(bpm, preferit=BPM_PREFERIT):
     Dins `preferit` val 1,0; fora cau com una gaussiana en escala logarítmica
     (octaves). Això descarta el doble/subdivisió extrems sense imposar un pic
     (que trencaria temes lents genuïns, com el de 70 BPM).
+
+    Valors triats amb 11 temes reals (rang 70-138 BPM + casos difícils):
+    85-150 amb sigma 0,5 encerta tots els coneguts (101/138/70/117,8/107/
+    103,5-Otis/132-Chemical) i només mou els genuïnament ambigus.
     """
     if not preferit:
         return 1.0

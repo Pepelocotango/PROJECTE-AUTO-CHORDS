@@ -1009,11 +1009,21 @@ class TempoOctavaTests(unittest.TestCase):
 
     def test_prior_plateau(self):
         from app import tempo
+        lo, hi = tempo.BPM_PREFERIT
         self.assertEqual(tempo._prior(120.0), 1.0)
-        self.assertEqual(tempo._prior(80.0), 1.0)
-        self.assertEqual(tempo._prior(160.0), 1.0)
+        self.assertEqual(tempo._prior(lo), 1.0)
+        self.assertEqual(tempo._prior(hi), 1.0)
         self.assertLess(tempo._prior(200.0), 0.95)   # fora: penalitzat
         self.assertLess(tempo._prior(45.0), 0.95)
+
+    def test_octava_132_no_queda_en_66(self):
+        """Cas Chemical Brothers: 132 real, amb corxera forta a 66."""
+        import tempfile
+        from app import tempo
+        td = tempfile.mkdtemp()
+        wav = self._wav(td, 132.0, amp_corxera=0.55)
+        b = tempo.detecta_bpm(wav, lambda *a: None)
+        self.assertAlmostEqual(b, 132.0, delta=5.0)   # no 66
 
     def test_corxera_no_guanya_el_temps(self):
         import tempfile
@@ -1412,7 +1422,7 @@ class DialegOpcionsTests(unittest.TestCase):
         d = dialegs.DialegOpcions(None)
         b = d.opcions()["bpm"]
         self.assertEqual(b["min"], 60)
-        self.assertEqual(b["pref_min"], 80)    # plateau del prior
+        self.assertEqual(b["pref_min"], 85)    # plateau del prior
 
     def test_restaura_per_defecte(self):
         d = dialegs.DialegOpcions(None)

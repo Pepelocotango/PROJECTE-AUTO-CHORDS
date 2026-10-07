@@ -11,15 +11,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.3.0-checkpoint`).
   el cas real. Útil per documentar i per depurar casos difícils.
 
 ### Arreglat
-- **BPM: ambigüitat d'octava/subdivisió** (cas real: *Sitting On The Dock Of
-  The Bay*, Otis Redding). El biaix pla antic («+15 % a 90–180») **no** la
-  resolia: amb corxera forta guanyava **179,8** en comptes del temps real
-  **103,5** (que només quedava a un 2 %). Nou **prior de plateau**
-  (`tempo._prior`): val **1,0 dins 80–160 BPM** i cau suaument (gaussiana en
-  log₂, σ=0,7 octaves) fora. Verificat que **no trenca** cap tema conegut:
-  101 · 138 · **70** · 117,8 · 107 · i l'Otis passa a **103,5** ✅. El
-  «rang preferit» del diàleg ara és aquest plateau (80–160). **3 tests nous**
-  (`TempoOctavaTests`), amb un clic-track sintètic que reprodueix el cas.
+- **BPM: ambigüitat d'octava/subdivisió** (casos reals). El biaix pla antic
+  («+15 % a 90–180») **no** la resolia: amb corxera/8ens forts guanyava el
+  doble/subdivisió (Otis Redding → 179,8 en comptes de **103,5**; Chemical
+  Brothers → 66 en comptes de **132**). Nou **prior de plateau**
+  (`tempo._prior`): pes **1,0 dins 85–150 BPM** i caiguda gaussiana en log₂
+  (**σ=0,5**) fora. Paràmetres triats amb **11 temes reals**; verificat:
+  101 · 138 · **70** · 117,8 · 107 · **103,5** (Otis) · **132** (Chemical) ·
+  **87** (Jamiroquai) — tots correctes. El «rang preferit» del diàleg és
+  aquest plateau. **4 tests nous** (`TempoOctavaTests`) amb clic-tracks
+  sintètics que reprodueixen els casos.
 
 ### Arreglat (anterior)
 - **Coherència del play (2/2)**:
