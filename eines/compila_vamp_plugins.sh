@@ -46,7 +46,14 @@ SDK="$WORK/vamp-sdk"
 mkdir -p "$SDK"
 ln -sf "$INC_SRC/vamp-sdk" "$SDK/vamp-sdk"
 ln -sf "$INC_SRC/vamp-hostsdk" "$SDK/vamp-hostsdk"
-ln -sf "$LIB_SRC/libvamp-sdk.so" "$SDK/libvamp-sdk.so"
+# libvamp-sdk: pot ser 'libvamp-sdk.so' (paquet dev) o només 'libvamp-sdk.so.N'
+# (runtime) -> agafem el que hi hagi i el symlinkem com a .so per al -l.
+VAMP_LIB="$(ls "$LIB_SRC"/libvamp-sdk.so* 2>/dev/null | head -1)"
+if [ -z "$VAMP_LIB" ]; then
+    echo "ERROR: no trobo libvamp-sdk.so* a $LIB_SRC. Instal·la 'vamp-plugin-sdk'." >&2
+    exit 1
+fi
+ln -sf "$VAMP_LIB" "$SDK/libvamp-sdk.so"
 
 make -C codi_font_chordino -f Makefile.linux clean >/dev/null 2>&1 || true
 # boost: symlink SENSE espais dins $WORK (el path del projecte en pot tenir,
