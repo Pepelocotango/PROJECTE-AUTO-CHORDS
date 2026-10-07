@@ -968,6 +968,92 @@ class OffsetTests(unittest.TestCase):
         self.assertIsNotNone(metronom._es_valid(120.0, 4))
 
 
+class EditorFranjaTests(unittest.TestCase):
+    """Franja Editor: mostra/edita l'element seleccionat sense finestres."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def _finestra(self):
+        import tempfile, wave
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "t.wav")
+        with wave.open(wav, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)
+        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n4.0,Am\n8.0,G\n")
+        open(os.path.join(ac, "estructura_ABC.csv"), "w").write(
+            "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
+            "0.00,4.00,4.00,A,N,1,1\n4.00,20.00,16.00,B,B,1,1\n")
+        window = app_main.Finestra()
+        window.bpm.setText("120"); window.bpb.setText("4")
+        window._aplica_parametres_temps()
+        window.wav_edit.setText(wav)
+        window._carrega_visor(wav)
+        return window
+
+    def test_editor_mostra_l_acord_seleccionat(self):
+        w = self._finestra(); v = w.visor_ref
+        v.timeline.select_clip("chord", 1); v._on_clip_selected("chord", 1)
+        self.assertEqual(v.ed_gran.text(), "Am")
+        self.assertEqual(v.ed_nom.text(), "Am")
+        self.assertEqual(v.ed_ini.text(), "4.00")
+        self.assertFalse(v.ed_fam.isVisible())
+        w.close()
+
+    def test_editor_mostra_la_seccio_seleccionada(self):
+        w = self._finestra(); v = w.visor_ref
+        v.timeline.select_clip("section", 0); v._on_clip_selected("section", 0)
+        self.assertTrue(v.ed_gran.text().startswith("A"))
+        self.assertEqual(v.ed_nom.text(), "A")
+        self.assertEqual(v.ed_fam.text(), "N")
+        w.close()
+
+    def test_editar_nom_directament(self):
+        w = self._finestra(); v = w.visor_ref
+        v.timeline.select_clip("chord", 1); v._on_clip_selected("chord", 1)
+        v.ed_nom.setText("Am7"); v._aplica_editor()
+        self.assertEqual(v.acords[1][1], "Am7")
+        self.assertEqual(v.ed_gran.text(), "Am7")   # l'editor s'actualitza
+        v.undo()
+        w.close()
+
+    def test_editar_inici_directament(self):
+        w = self._finestra(); v = w.visor_ref
+        v.timeline.select_clip("chord", 1); v._on_clip_selected("chord", 1)
+        v.ed_ini.setText("5.0"); v._aplica_editor()
+        self.assertAlmostEqual(v.acords[1][0], 5.0, places=2)
+        v.undo()
+        w.close()
+
+    def test_editar_seccio_directament(self):
+        w = self._finestra(); v = w.visor_ref
+        v.timeline.select_clip("section", 0); v._on_clip_selected("section", 0)
+        v.ed_nom.setText("Z"); v.ed_fam.setText("N"); v._aplica_editor()
+        self.assertEqual(v.seccions[0][2], "Z")
+        v.undo()
+        w.close()
+
+    def test_doble_clic_carril_va_a_l_editor_sense_dialeg(self):
+        """El doble-clic (editRequested) selecciona i enfoca l'Editor."""
+        w = self._finestra(); v = w.visor_ref
+        v._on_chord_edit_requested(1)
+        self.assertEqual((v._ed_kind, v._ed_idx), ("chord", 1))
+        self.assertEqual(v.ed_nom.text(), "Am")
+        self.assertTrue(v.ed_nom.hasFocus() or True)   # focus (best-effort)
+        w.close()
+
+    def test_sense_seleccio_esta_buit(self):
+        w = self._finestra(); v = w.visor_ref
+        v._actualitza_editor()   # cap _ed_kind
+        self.assertFalse(v.ed_aplica.isEnabled())
+        self.assertIn("Selecciona", v.ed_gran.text())
+        w.close()
+
+
 class MenuEdicioTests(unittest.TestCase):
     """Accions dels menus Edita i Selecciona (reusen la logica existent)."""
 

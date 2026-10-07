@@ -24,6 +24,7 @@ from PyQt5.QtWidgets import (
     QApplication, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
     QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QShortcut,
     QSlider, QSplitter, QTextEdit, QVBoxLayout, QWidget,
+    QLineEdit,
 )
 
 import numpy as np
@@ -161,6 +162,54 @@ class Visor(QMainWindow):
 
         capa.addWidget(self.timeline, stretch=4)
 
+        # ---- FRANJA EDITOR: mostra en gran l'element seleccionat i permet
+        #      editar-lo directament (Sense finestres emergents) ----
+        self.editor = QWidget()
+        self.editor.setObjectName("editor")
+        _eh = QHBoxLayout(self.editor)
+        _eh.setContentsMargins(8, 4, 8, 4)
+        _eh.setSpacing(8)
+        self.ed_icona = QLabel("—")
+        self.ed_icona.setObjectName("ed_icona")
+        self.ed_gran = QLabel("Selecciona un acord o una secció")
+        self.ed_gran.setObjectName("ed_gran")
+        _eh.addWidget(self.ed_icona)
+        _eh.addWidget(self.ed_gran)
+        _eh.addSpacing(12)
+        _eh.addWidget(QLabel("Nom:"))
+        self.ed_nom = QLineEdit()
+        self.ed_nom.setMaximumWidth(90)
+        self.ed_nom.setToolTip("Nom de l'acord o lletra de la secció")
+        _eh.addWidget(self.ed_nom)
+        self.ed_fam_lbl = QLabel("Família:")
+        self.ed_fam = QLineEdit()
+        self.ed_fam.setMaximumWidth(50)
+        self.ed_fam.setToolTip("Família de la secció (p. ex. N, A, B)")
+        _eh.addWidget(self.ed_fam_lbl)
+        _eh.addWidget(self.ed_fam)
+        _eh.addWidget(QLabel("Inici (s):"))
+        self.ed_ini = QLineEdit()
+        self.ed_ini.setMaximumWidth(70)
+        self.ed_ini.setToolTip("Inici en segons")
+        _eh.addWidget(self.ed_ini)
+        _eh.addWidget(QLabel("≈"))
+        self.ed_cb = QLineEdit()
+        self.ed_cb.setMaximumWidth(50)
+        self.ed_cb.setToolTip("Inici en compàs.beat (graella original)")
+        _eh.addWidget(self.ed_cb)
+        self.ed_aplica = QPushButton("Aplica")
+        self.ed_aplica.setObjectName("principal")
+        self.ed_aplica.setToolTip("Aplica els canvis (Enter)")
+        self.ed_aplica.clicked.connect(self._aplica_editor)
+        _eh.addWidget(self.ed_aplica)
+        _eh.addStretch(1)
+        for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb):
+            w.returnPressed.connect(self._aplica_editor)
+        capa.addWidget(self.editor)
+        self._ed_kind = None
+        self._ed_idx = -1
+        self._actualitza_editor()
+
         # llistes + controls
         div = QSplitter(Qt.Horizontal)
         self.llista_ac = QListWidget()
@@ -168,14 +217,16 @@ class Visor(QMainWindow):
         self.llista_ac.setToolTip("Clic: salta. Doble-clic: corregeix l'acord.")
         self._omple_llista_ac()
         self.llista_ac.itemClicked.connect(self._salt_acord)
-        self.llista_ac.itemDoubleClicked.connect(self._edita_acord)
+        self.llista_ac.itemDoubleClicked.connect(
+            lambda it: self._focus_editor("chord", self.llista_ac.row(it)))
         self.llista_ac.customContextMenuRequested.connect(self._menu_acord)
         div.addWidget(self.llista_ac)
         self.llista_ab = QListWidget()
         self.llista_ab.setContextMenuPolicy(Qt.CustomContextMenu)
         self._actualitza_llista_abc()
         self.llista_ab.itemClicked.connect(self._salt_seccio)
-        self.llista_ab.itemDoubleClicked.connect(self._edita_seccio)
+        self.llista_ab.itemDoubleClicked.connect(
+            lambda it: self._focus_editor("section", self.llista_ab.row(it)))
         self.llista_ab.customContextMenuRequested.connect(self._menu_seccio)
         div.addWidget(self.llista_ab)
         # Les llistes viuen en un contenidor propi perque la finestra les
@@ -805,13 +856,11 @@ class Visor(QMainWindow):
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
 
     def _on_chord_edit_requested(self, idx):
-        # Doble-clic al ChordItem: edició completa (nom + inici) amb QInputDialog
+        # Doble-clic al ChordItem -> selecciona i enfoca la franja EDITOR
+        # (sense cap finestra emergent).
         if idx < 0 or idx >= len(self.acords):
             return
-        if idx < self.llista_ac.count():
-            item = self.llista_ac.item(idx)
-            if item is not None:
-                self._edita_acord(item)
+        self._focus_editor("chord", idx)
 
     def _on_clip_context_menu(self, kind, idx, pos):
         """Menú contextual (botó dret) sobre un clip del timeline."""
@@ -945,12 +994,10 @@ class Visor(QMainWindow):
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
 
     def _on_section_edit_requested(self, idx):
+        # Doble-clic al SectionItem -> franja EDITOR (sense finestra emergent).
         if idx < 0 or idx >= len(self.seccions):
             return
-        if idx < self.llista_ab.count():
-            item = self.llista_ab.item(idx)
-            if item is not None:
-                self._edita_seccio(item)
+        self._focus_editor("section", idx)
 
     # navegació
     def ves_a(self, t):
@@ -963,11 +1010,129 @@ class Visor(QMainWindow):
             self._engega_des_de(self.pos)
 
     def _on_clip_selected(self, kind, index):
-        """Click a un clip del timeline -> sincronitza la llista de sota."""
+        """Click a un clip del timeline -> sincronitza la llista + l'editor."""
         if kind == "chord" and 0 <= index < self.llista_ac.count():
             self.llista_ac.setCurrentRow(index)
         elif kind == "section" and 0 <= index < self.llista_ab.count():
             self.llista_ab.setCurrentRow(index)
+        self._ed_kind, self._ed_idx = kind, index
+        self._actualitza_editor()
+
+    def _actualitza_editor(self):
+        """Mostra a la franja Editor l'element seleccionat (o el buit)."""
+        k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
+        if k == "chord" and 0 <= i < len(self.acords):
+            t, nom = self.acords[i][0], self.acords[i][1]
+            self.ed_icona.setText("🎵")
+            self.ed_gran.setText(nom)
+            self.ed_nom.setText(nom)
+            self.ed_ini.setText(f"{float(t):.2f}")
+            self.ed_cb.setText(self._secs_a_cb(float(t)))
+            self.ed_fam.setVisible(False); self.ed_fam_lbl.setVisible(False)
+            for w in (self.ed_nom, self.ed_ini, self.ed_cb, self.ed_aplica):
+                w.setEnabled(True)
+        elif k == "section" and 0 <= i < len(self.seccions):
+            ini, fi, lletra, fam = self.seccions[i]
+            self.ed_icona.setText("🎼")
+            self.ed_gran.setText(f"{lletra} ({fam})")
+            self.ed_nom.setText(lletra)
+            self.ed_fam.setText(fam)
+            self.ed_ini.setText(f"{float(ini):.2f}")
+            self.ed_cb.setText(self._secs_a_cb(float(ini)))
+            self.ed_fam.setVisible(True); self.ed_fam_lbl.setVisible(True)
+            for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
+                      self.ed_aplica):
+                w.setEnabled(True)
+        else:
+            self.ed_icona.setText("—")
+            self.ed_gran.setText("Selecciona un acord o una secció")
+            for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
+                      self.ed_aplica):
+                w.setEnabled(False)
+            self.ed_nom.clear(); self.ed_fam.clear()
+            self.ed_ini.clear(); self.ed_cb.clear()
+
+    def _secs_a_cb(self, t):
+        """Segons -> compas.beat (graella original offset=0)."""
+        beat = 60.0 / max(self.bpm, 1e-9)
+        beats = float(t) / beat
+        bpb = max(1, int(self.bpb))
+        c = int(math.floor(beats / bpb)) + 1
+        b = int(round(beats % bpb)) + 1
+        if b > bpb:
+            c += 1; b = 1
+        return f"{c}.{b}"
+
+    def _cb_a_secs(self, text):
+        """compas.beat -> segons (graella original offset=0)."""
+        m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)\s*$", str(text))
+        if not m:
+            return None
+        c, b = int(m.group(1)), int(m.group(2))
+        beat = 60.0 / max(self.bpm, 1e-9)
+        n = (c - 1) * max(1, int(self.bpb)) + (b - 1)
+        return max(0.0, n * beat)
+
+    def _aplica_editor(self):
+        """Aplica els canvis de la franja Editor al model (amb undo)."""
+        k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
+        if k is None or i < 0:
+            return
+        # inici: prioritza el camp de segons; si esta buit, el de compas.beat
+        txt = self.ed_ini.text().strip()
+        if txt:
+            try:
+                ini = float(txt.replace(",", "."))
+            except ValueError:
+                return
+        else:
+            ini = self._cb_a_secs(self.ed_cb.text())
+            if ini is None:
+                return
+        nom = self.ed_nom.text().strip()
+        if k == "chord":
+            if not nom or not (0 <= i < len(self.acords)):
+                return
+            self._undo_marca()
+            nova = list(self.acords)
+            nova[i] = (ini, nom, f"{ini:.9f}")
+            try:
+                self.acords = self._normalitza_acords(nova)
+            except ValueError as e:
+                self.log(f"editor: canvi invalid ({e})")
+                return
+            self._undo_commit()
+            self.timeline.set_data(self.acords, self.seccions)
+            self._desa_i_regenera()
+            self.log(f"editor: acord {i} -> {nom} @ {ini:.2f}s")
+        else:
+            if not (0 <= i < len(self.seccions)):
+                return
+            _ini, fi, _ll, _f = self.seccions[i]
+            lletra = nom or self.seccions[i][2]
+            fam = self.ed_fam.text().strip() or self.seccions[i][3]
+            self._undo_marca()
+            nova = list(self.seccions)
+            nova[i] = (ini, max(ini + 0.05, fi), lletra, fam)
+            try:
+                self.seccions = self._normalitza_seccions(nova)
+            except ValueError as e:
+                self.log(f"editor: canvi invalid ({e})")
+                return
+            self._undo_commit()
+            self.timeline.set_data(self.acords, self.seccions)
+            self._regenera_abc_des_de_totes_les_seccions("editat des de l'editor")
+            self.log(f"editor: seccio {i} -> {lletra} @ {ini:.2f}s")
+        self._actualitza_editor()
+
+    def _focus_editor(self, kind, idx):
+        """Selecciona l'element i enganxa el focus a la franja Editor
+        (en comptes d'obrir cap finestra emergent)."""
+        self._ed_kind, self._ed_idx = kind, idx
+        self.timeline.select_clip(kind, idx)
+        self._actualitza_editor()
+        self.ed_nom.setFocus()
+        self.ed_nom.selectAll()
 
     def _salt_acord(self, item):
         row = self.llista_ac.row(item)

@@ -6,6 +6,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Franja «EDITOR»** entre els carrils i les llistes (app/visor.py): mostra
+  **en gran** l'element seleccionat (🎵 acord / 🎼 secció) i s'edita
+  **directament allà**, **sense cap finestra emergent**. Camps: **Nom**
+  (i **Família** per a secció), **Inici (s)** i **≈ C.B** (compàs.beat,
+  sincronitzats) + botó **Aplica** (o Enter). S'actualitza en canviar la
+  selecció (timeline o llistes) i reutilitza la normalització, l'undo i els
+  invariants. **Els dobles-clics ja NO obren diàleg**: carril i llista
+  **seleccionen i enfoquen l'Editor**. **7 tests nous**
+  (`EditorFranjaTests`). Fix: `import QLineEdit` al visor.
+
+### Afegit (anterior)
 - **Menús `Edita` i `Selecciona` completats** (reusant la lògica existent):
   - **Edita**: Afegeix acord… · Afegeix secció… · Elimina element (`Del`) ·
     Duplica element (`Ctrl+D`) · Reanomena element (`F2`), a més de
