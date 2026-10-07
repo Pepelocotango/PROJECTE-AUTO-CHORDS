@@ -270,7 +270,10 @@ class Finestra(QMainWindow):
         hp.addWidget(self.offset_cb)
         self.offset_cb.editingFinished.connect(self._offset_cb_canviat)
 
-        self.amb_est = QCheckBox("Inclou estructura")
+        # "Inclou estructura": abans era un QCheckBox a la barra d'eines; ara
+        # es una ACCIO commutable al menu Analitza (la funcio es la mateixa).
+        self.amb_est = QAction("Inclou estructura", self)
+        self.amb_est.setCheckable(True)
         self.amb_est.setChecked(True)
         self.amb_est.setToolTip("Genera la jerarquia de seccions i l’ABC de l’estructura del tema.")
 
@@ -315,9 +318,6 @@ class Finestra(QMainWindow):
         barra_acc = QToolBar("Accions")
         barra_acc.setObjectName("barra_accions")
         barra_acc.setMovable(False)
-        self.amb_est.setText("Inclou estructura")
-        barra_acc.addWidget(self.amb_est)
-        barra_acc.addSeparator()
         barra_acc.addWidget(self.b_exec)
         barra_acc.addWidget(self.b_export)
         self.addToolBar(Qt.TopToolBarArea, barra_acc)
@@ -464,6 +464,8 @@ class Finestra(QMainWindow):
         self._act(m, "Detecta el compàs 1 automàticament", None,
                     lambda: self._detecta_compas1())
         self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
+        m.addSeparator()
+        m.addAction(self.amb_est)      # Inclou estructura (commutable)
         # --- Ajuda ---
         m = mb.addMenu("A&juda")
         self._act(m, "Dreceres de teclat", "", self._mostra_dreceres)

@@ -6,6 +6,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 ## [0.5.0] — 2026-10-07
 
 ### Canviat
+- **`Inclou estructura` surt de la barra d'eines** (era un `QCheckBox`) i passa
+  a ser una **acció commutable al menú Analitza** (per defecte marcada). La
+  **funció és la mateixa**; només canvia d'ubicació. La barra «Accions» queda
+  amb `Analitza` + `Exporta` i comparteix fila amb el transport
+  (**2 files**: opcions / accions+transport).
+
+### Canviat
 - **Barres d'eines: 3 files → 2**. La barra «Accions» (`Inclou estructura` +
   `Analitza` + `Exporta`) i la de **Transport** ara **comparteixen fila**
   (314 + 703 = 1029 px, caben junts). Així: fila 1 = opcions, fila 2 =
