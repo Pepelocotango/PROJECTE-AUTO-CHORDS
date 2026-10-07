@@ -5,6 +5,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.2.2-checkpoint`).
 
 ## [No publicat]
 
+### Canviat
+- **Opcions del Chordino traduïdes al català** al diàleg d'autodetecció, amb
+  una **ajuda** per a cada paràmetre (tooltip) i els valors traduïts
+  («afinació global/local»). Completesa **verificada**: el Chordino té
+  exactament aquests **6** paràmetres (cap més) i el Segmentino **cap**; els
+  paràmetres d'aubio només són dels seus plugins (que no fem servir per BPM).
+
 ### Afegit
 - **Diàleg d'opcions d'autodetecció** (fases 3+4 de `AUTODETECCIO_OPCIONS.md`):
   en clicar **`🎯 Detecta`** (obre a la pestanya **BPM**) o **`Analitza`**

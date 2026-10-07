@@ -19,6 +19,35 @@ from PyQt5.QtWidgets import (
 
 from app import tempo, vamp_params
 
+# Traducció al català dels títols dels paràmetres del Chordino (els que dona
+# el plugin son en anglès) + una ajuda curta de quan tocar-los.
+NOMS_CA = {
+    "useNNLS": "Transcripció aproximada (NNLS)",
+    "useHMM": "Suavitzat HMM (Viterbi)",
+    "rollon": "Tall de greus (roll-on espectral)",
+    "tuningmode": "Mode d'afinació",
+    "whitening": "Equalització espectral",
+    "s": "Forma espectral",
+}
+AJUDA_CA = {
+    "useNNLS": "Converteix l'espectre a croma amb NNLS (normalment millor que "
+               "la FFT simple). Deixa'l activat.",
+    "useHMM": "Suavitza els acords amb un model de Markov: menys canvis "
+              "nerviosos. Desactiva'l si vols detectar canvis ràpids.",
+    "rollon": "Emmudeix les freqüències greus abans d'analitzar (0 = no en "
+              "treu cap). Apuja'l si el baix confon els acords.",
+    "tuningmode": "Afinació global (recomanat) o local. Prova la local si el "
+                  "tema està desafinat o és en directe.",
+    "whitening": "Iguala l'espectre abans d'analitzar. Normalment activat.",
+    "s": "Forma espectral (0,5–0,9). Valors alts = més suau.",
+}
+
+# Traducció dels noms de valor (value_names) dels paràmetres.
+VALORS_CA = {
+    "global tuning": "afinació global",
+    "local tuning": "afinació local",
+}
+
 # Fitxer on es recorden les últimes opcions (dins el projecte, gitignored).
 FITXER_OPCIONS = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -47,7 +76,7 @@ def _spin(minim, maxim, pas, valor, decimals=2):
 def _combo(opcions, valor):
     c = QComboBox()
     for i, nom in enumerate(opcions):
-        c.addItem(nom, i)
+        c.addItem(VALORS_CA.get(nom, nom), i)
     c.setCurrentIndex(int(valor))
     return c
 
@@ -147,9 +176,13 @@ class DialegOpcions(QDialog):
             else:
                 c = _spin(p["minim"], p["maxim"], p["pas"] or 0.05, def_v)
             self._controls["chords"][pid] = c
-            f.addRow(QLabel(f"{p['titol']}  ·  {pid}"), c)
-        info = QLabel("Escriviu «durada mínima» a Estructura per a "
-                      "l'estructura; el Segmentino no té paràmetres propis.")
+            nom = NOMS_CA.get(pid, p["titol"])
+            et = QLabel(f"{nom}\n<small>{pid}</small>")
+            et.setToolTip(AJUDA_CA.get(pid, ""))
+            c.setToolTip(AJUDA_CA.get(pid, ""))
+            f.addRow(et, c)
+        info = QLabel("El Segmentino (estructura) no té paràmetres propis: "
+                      "es neteja des de la pestanya Estructura.")
         info.setWordWrap(True)
         info.setStyleSheet("color:#9aa6b8; font-size:11px;")
         f.addRow(info)
