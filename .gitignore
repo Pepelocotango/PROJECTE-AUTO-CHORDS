@@ -46,3 +46,7 @@ opcions_detecta.json
 
 # Python/ffmpeg portables (Fase 2-3 de portabilitat; es regeneren)
 portable/
+
+# El PAQUET portable construït (va FORA del projecte; per si de cas)
+AUTO_CHORDS_PORTABLE/
+*_PORTABLE/

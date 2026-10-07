@@ -10,6 +10,16 @@ cd "$(dirname "$0")/.."
 SRC="$PWD"
 DEST="${1:-$SRC/../AUTO_CHORDS_PORTABLE}"
 
+# Salvaguarda: el destí NO pot ser dins del projecte (bucle de còpia + git).
+DEST="$(realpath -m "$DEST" 2>/dev/null || echo "$DEST")"
+case "$DEST" in
+    "$SRC"|"$SRC"/*)
+        echo "ERROR: el destí no pot ser DINS del projecte ('$SRC')."
+        echo "       Fes-lo servir com a germà: ../AUTO_CHORDS_PORTABLE"
+        exit 1
+        ;;
+esac
+
 if [ ! -d portable/python ]; then
     echo "⚠️  Falta portable/ (Python). Executa abans: eines/crea_portable.sh"
     exit 1
