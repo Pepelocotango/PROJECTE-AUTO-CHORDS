@@ -98,6 +98,8 @@ def llegeix_abc(ruta):
 
 
 class Visor(QMainWindow):
+    # Els `except Exception` d'aquesta classe protegeixen accions de l'usuari:
+    # sempre registren l'error i/o mostren un diàleg, mai l'amaguen.
     # avisa la barra de fora (icona play/pause) quan canvia l'estat de so
     playStateChanged = pyqtSignal(bool)
     # missatge per a la caixa d'informacio (desfer/refer, etc.)
@@ -680,6 +682,7 @@ class Visor(QMainWindow):
             import logging as _lg
             _lg.getLogger("auto_chords").info("VISOR: %s", msg)
         except Exception:  # noqa: BLE001
+            # el logging no ha de fer caure mai el visor (no logem aquí: seria recursiu)
             pass
 
     def _tria_player(self):
@@ -1519,6 +1522,7 @@ class Visor(QMainWindow):
             except (BrokenPipeError, ValueError):
                 pass
         except Exception as e:  # noqa: BLE001
+            # fil d'àudio: cap log (evitar soroll i tocar fils); imprimim si es pot
             try:
                 print(f"[visor] alimenta: {e}", flush=True)
             except (UnicodeEncodeError, OSError, ValueError, AttributeError):

@@ -156,6 +156,8 @@ class Feina(QThread):
 
 
 class Finestra(QMainWindow):
+    # Els `except Exception` d'aquesta classe protegeixen accions de l'usuari:
+    # sempre registren l'error i/o mostren un diàleg, mai l'amaguen.
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
@@ -667,6 +669,7 @@ class Finestra(QMainWindow):
         try:
             w = QApplication.widgetAt(QCursor.pos())
         except Exception:  # noqa: BLE001
+            # timer de hover (hot): fallback silenciós intencionat
             return
         if w is None:
             return
@@ -682,6 +685,7 @@ class Finestra(QMainWindow):
                     if self.info_box.toHtml() != html:
                         self.info_box.setHtml(html)
                 except Exception:  # noqa: BLE001
+                    # timer de hover (hot): fallback silenciós intencionat
                     pass
                 return
         # pugem fins a un widget que tingui tooltip (els fills solen no tenir-ne)
@@ -1180,7 +1184,9 @@ class Finestra(QMainWindow):
         if info is None:
             try:
                 info = pipeline.wav_info(ruta)
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                # fallback esperat (p. ex. un no-WAV): registrem al log de fitxer
+                self.logger.debug("info wav no disponible per %s: %s", ruta, e)
                 info = None
         if info:
             self.wav_info.setText(
