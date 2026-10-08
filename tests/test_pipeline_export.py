@@ -2540,6 +2540,8 @@ class TriaPlayerTests(unittest.TestCase):
         return v
 
     def test_prefereix_paplay(self):
+        if not plataforma.ES_LINUX:
+            self.skipTest("l'ordre paplay/aplay es només del Linux")
         v = self._visor_buit()
         with patch("app.visor.shutil.which", lambda n: "/usr/bin/" + n):
             player, args = v._tria_player()
@@ -2549,12 +2551,23 @@ class TriaPlayerTests(unittest.TestCase):
         self.assertIn("--rate=44100", args)
 
     def test_aplay_si_no_hi_ha_paplay(self):
+        if not plataforma.ES_LINUX:
+            self.skipTest("aplay es només del Linux")
         v = self._visor_buit()
         with patch("app.visor.shutil.which",
                    lambda n: "/usr/bin/aplay" if n == "aplay" else None):
             player, args = v._tria_player()
         self.assertEqual(player, "aplay")
         self.assertIn("--format=S16_LE", args)
+
+    def test_ffplay_a_windows_i_macos(self):
+        if plataforma.ES_LINUX:
+            self.skipTest("al Linux no es fa servir ffplay")
+        v = self._visor_buit()
+        with patch("app.visor.shutil.which", lambda n: "/usr/bin/" + n):
+            player, args = v._tria_player()
+        self.assertEqual(player, "ffplay")
+        self.assertIn("-nodisp", args)
 
     def test_cap_reproductor_retorna_none(self):
         v = self._visor_buit()
