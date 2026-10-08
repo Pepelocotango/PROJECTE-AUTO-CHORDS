@@ -79,3 +79,6 @@ github-actions-logs/
 # carpeta artifacts actions github
 00last_artifacts_githubactions/
 
+# Arxiu local (no es commiteja: coses no necessaries que es volen conservar)
+OLD/
+

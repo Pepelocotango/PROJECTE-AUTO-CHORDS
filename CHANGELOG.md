@@ -28,6 +28,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ### Canviat
 - **Llançadors unificats**: `AUTO_CHORDS.desktop` ara executa **`AUTO_CHORDS.sh`**
   (que tria l'intèrpret: `portable/` → `.venv` → `python3`); retirat `launcher.sh`.
+- **Arxiu local `OLD/`** (gitignorat): s'hi mou el que **no és necessari** però
+  es vol conservar — `sonic-annotator` (reserva; `pipeline.SONIC` hi apunta) i
+  l'estat local `opcions_detecta.json`. `concatena.py` i `empaqueta_portable.sh`
+  l'exclouen.
+- **Texts obsolets** trets («Segmentino» → `qm-segmenter`) a `app/main.py`,
+  `app/dialegs.py`, `app/pipeline.py` i `wav_a_wavs.py`; `dev_reload.py` amb
+  import lazy de `watchdog`; retirat `instal·la_vm_debian.sh` (la VM ja no cal).
 
 ### Arreglat
 - **CI (`.github/workflows/`)**: el job d'AppImage fallava amb

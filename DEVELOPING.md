@@ -74,16 +74,12 @@ python3 acords_a_live.py acords.csv 138 4 [offset_segons]
 .venv/bin/python -m py_compile acords_a_live.py wav_a_wavs.py app/main.py app/pipeline.py app/visor.py
 ```
 
-## VM Debian (execució, no compilació)
+## VM Debian (fora d'abast)
 
-A la VM només calen llibreries d'execució:
-
-```bash
-bash instal·la_vm_debian.sh   # demana 1 pkexec, dins la VM
-```
-
-Nota: aquest repo viu al `/home` de l'host; la VM/Mac no hi accedeix
-directament. Per usar-lo allà, copia la carpeta o deixa-la a l'exFAT.
+La VM Debian **ja no es fa servir per a l'app** (era massa limitada): l'antic
+`instal·la_vm_debian.sh` **s'ha retirat**. Aquest repo viu al `/home` de l'host;
+per usar-lo en un altre sistema, fes servir els **paquets del CI**
+(AppImage de Linux o ZIP de Windows/macOS) o copia la carpeta / deixa-la a l'exFAT.
 
 ## Lògica de producte i flux de treball
 
@@ -243,5 +239,7 @@ Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
 
 - Comentaris i docs en català.
 - Sense secrets ni credencials al repo (ni claus API ni tokens).
-- Els binaris compilats aquí (`sonic-annotator`, `.so`) SÍ es commitegen
-  (són l'eina); les sortides (`*_obsolets/`, `midis_acords/`) no.
+- Els binaris natius de Linux (`*-local/*.so`, `vamp_host_local`) SÍ es
+  commitegen (són l'eina); les sortides (`*_obsolets/`, `midis_acords/`) no.
+- **`OLD/`** (gitignorat) és l'**arxiu local** del que no és necessari però es
+  vol conservar (p. ex. `sonic-annotator`, la reserva). **No es puja al repo.**
