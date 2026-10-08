@@ -44,9 +44,9 @@ compila_windows() {
     WORK="$(mktemp -d -t ac_vamp_win.XXXXXX)"
     trap 'rm -rf "$WORK"' EXIT
 
-    # (make/git no calen a la branca Windows: Chordino es compila directe i el
-    #  qm es baixa com a binari oficial.)
-    for t in g++ gcc curl unzip objdump; do
+    # Cal make+git: el qm-vamp-plugins es compila des de font (+ qm-dsp i
+    # vamp-plugin-sdk que es clonen).
+    for t in g++ gcc make git curl objdump; do
         command -v "$t" >/dev/null || { echo "ERROR: falta l'eina '$t'"; exit 1; }
     done
     [ -d "$INC/vamp-sdk" ] || {
@@ -92,28 +92,35 @@ compila_windows() {
     fi
     echo "   -> $NNLS_OUT/nnls-chroma.dll"
 
-    # --- 2) qm-vamp-plugins win64 (binari OFICIAL 1.8.0) -------------------
-    echo "== [2/3] qm-vamp-plugins win64 (binari oficial) =="
-    QM_URL="${QM_URL:-https://code.soundsoftware.ac.uk/attachments/download/2622/qm-vamp-plugins-1.8.0-win64.zip}"
-    if curl -sfL --retry 3 --max-time 300 -o "$WORK/qm.zip" "$QM_URL"; then
-        mkdir -p "$WORK/qmzip"
-        unzip -oq "$WORK/qm.zip" -d "$WORK/qmzip"
-        for ext in dll cat n3; do
-            f="$(find "$WORK/qmzip" -type f -iname "qm-vamp-plugins.$ext" | head -1)"
-            [ -n "$f" ] || { echo "ERROR: falta qm-vamp-plugins.$ext dins el zip" >&2; exit 1; }
-            cp -f "$f" "$QM_OUT/qm-vamp-plugins.$ext"
-        done
-    else
-        echo "   AVÍS: no he pogut baixar el zip oficial; provo el mirall xlights.org" >&2
-        for ext in dll cat n3; do
-            curl -sfL --retry 3 --max-time 120 \
-                -o "$QM_OUT/qm-vamp-plugins.$ext" \
-                "https://xlights.org/downloads/vamp64/qm-vamp-plugins.$ext" || {
-                echo "ERROR: tampoc no he pogut baixar qm-vamp-plugins.$ext" >&2; exit 1; }
-        done
-    fi
-    if ! objdump -f "$QM_OUT/qm-vamp-plugins.dll" | grep -qi "x86-64\|x86_64"; then
-        echo "ERROR: qm-vamp-plugins.dll no sembla de 64 bits" >&2
+    # --- 2) qm-vamp-plugins (COMPILAT des de font) -------------------------
+    # PER QUÈ NO el binari oficial win64: els que hi ha (oficial/mirrors) depenen
+    # de `libblas.dll`/`liblapack.dll` i, en alguns casos, del runtime **DEBUG**
+    # de MSVC (MSVCP140D/ucrtbased) -> LoadLibrary falla amb error 126
+    # (MOD_NOT_FOUND) i no és empaquetable. Compilant-lo aquí amb els
+    # clapack/cblas INCLOSOS (com al Linux) queda autocontingut: només runtime
+    # MinGW, que ja recollim a portable/win-dlls.
+    echo "== [2/3] qm-vamp-plugins win64 (des de font) =="
+    (
+        cd "$WORK"
+        curl -sL --retry 3 -o qm.tar.gz \
+            https://github.com/c4dm/qm-vamp-plugins/archive/refs/heads/master.tar.gz
+        tar xzf qm.tar.gz
+        cd qm-vamp-plugins-master
+        mkdir -p lib
+        git clone --depth 1 -q https://github.com/c4dm/qm-dsp lib/qm-dsp
+        git clone --depth 1 -q https://github.com/c4dm/vamp-plugin-sdk lib/vamp-plugin-sdk
+        make -C lib/qm-dsp -f build/linux/Makefile.linux64
+        # Enllaç propi per a Windows: res de --version-script (ELF) i .def per
+        # exportar només el símbol que busca el host; runtime MinGW estàtic.
+        printf 'EXPORTS\nvampGetPluginDescriptor\n' > qm-vamp-plugins.def
+        make -f build/linux/Makefile.linux64 PLUGIN_EXT=.dll \
+            LDFLAGS="-shared -static -static-libgcc -static-libstdc++ -lpthread qm-vamp-plugins.def"
+        cp -f qm-vamp-plugins.dll "$QM_OUT/qm-vamp-plugins.dll"
+        [ -f qm-vamp-plugins.cat ] && cp -f qm-vamp-plugins.cat "$QM_OUT/"
+        [ -f qm-vamp-plugins.n3 ] && cp -f qm-vamp-plugins.n3 "$QM_OUT/"
+    )
+    if ! objdump -p "$QM_OUT/qm-vamp-plugins.dll" | grep -q vampGetPluginDescriptor; then
+        echo "ERROR: qm-vamp-plugins.dll no exporta vampGetPluginDescriptor" >&2
         exit 1
     fi
     echo "   -> $QM_OUT/qm-vamp-plugins.dll"

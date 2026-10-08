@@ -44,7 +44,7 @@ jobs:
           # -> "target not found" -> exit 1 (causa del run #1).
           pacman -Sy --noconfirm
           pacman -S --noconfirm --needed \
-            git curl unzip \
+            make git curl unzip \
             mingw-w64-x86_64-gcc \
             mingw-w64-x86_64-vamp-plugin-sdk \
             mingw-w64-x86_64-libsndfile \
