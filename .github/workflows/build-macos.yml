@@ -85,12 +85,19 @@ jobs:
           cd /tmp/vamp-sdk
           ./configure --prefix="$PREFIX" --disable-programs
           # `make` tambe compila `host/vamp-simple-host` (host d'exemple) que NO
-          # necessitem i que pot fallar en enllacar. Amb -k seguim i ens quedem
-          # amb el que sí cal: les LLIBRERIES + els headers (ho comprovem).
+          # necessitem i que pot fallar en enllacar. Pitjor encara: `make install`
+          # NO instal·la res si aquell host falla ("Target 'install' not remade
+          # because of errors"). Per tant NO fem servir `install`: comprovem que
+          # les LLIBRERIES s'han construït i copiem NOSALTRES libs + headers.
           make -j"$(sysctl -n hw.ncpu)" || true
-          make -k install || true
-          [ -f "$PREFIX/lib/libvamp-sdk.a" ] || { echo "ERROR: falta libvamp-sdk.a a $PREFIX/lib"; exit 1; }
-          [ -f "$PREFIX/include/vamp-sdk/Plugin.h" ] || { echo "ERROR: falten headers vamp-sdk a $PREFIX/include"; exit 1; }
+          [ -f libvamp-sdk.a ]      || { echo "ERROR: no s'ha construït libvamp-sdk.a"; exit 1; }
+          [ -f libvamp-hostsdk.a ]  || { echo "ERROR: no s'ha construït libvamp-hostsdk.a"; exit 1; }
+          mkdir -p "$PREFIX/lib" "$PREFIX/include/vamp" \
+                   "$PREFIX/include/vamp-sdk" "$PREFIX/include/vamp-hostsdk"
+          cp -f libvamp-sdk.a libvamp-hostsdk.a "$PREFIX/lib/"
+          cp -f vamp/vamp.h "$PREFIX/include/vamp/" 2>/dev/null || true
+          cp -f vamp-sdk/*.h "$PREFIX/include/vamp-sdk/"
+          cp -f vamp-hostsdk/*.h "$PREFIX/include/vamp-hostsdk/"
           echo "--- verificació del minim (ha de dir 10.13) ---"
           for f in "$PREFIX"/lib/libvamp-hostsdk*.dylib "$PREFIX"/lib/libsndfile*.dylib; do
             echo "== $f"
