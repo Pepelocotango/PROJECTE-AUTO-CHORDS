@@ -1,7 +1,9 @@
 # PROJECTE AUTO CHORDS
 
-> Aplicació desktop per analitzar un àudio, navegar-ne acords i estructura,
-> corregir-la i exportar clips preparats per a DAW.
+> **AUTO CHORDS** analitza un àudio i n'extreu els **acords** i l'**estructura**
+> (motor Chordino + Queen Mary). Els pots **revisar i editar** en un visor
+> estil DAW i **exportar** els clips **WAV** per al Live/Reaper, més la
+> **partitura** (MusicXML/PDF). App d'escriptori **multi-SO** (Linux · Windows · macOS).
 
 > **Repositori:** https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
 > (les versions publicades, com l'**AppImage**, són a *Releases*).
