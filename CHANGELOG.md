@@ -58,6 +58,8 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 - `.gitignore`: s'ignoren `LOGS GITHUB ACTIONS/` i `logs_*/`.
 
 ### Documentació
+- **Deute tècnic (Pas 4 — concatenat)**: `concatena.py` inclou **`tests/`**
+  (47 fitxers · ~594 KB) perquè la revisió externa vegi el comportament esperat.
 - **Deute tècnic (Pas 1 — docs)**: comandament del visor corregit a
   **`python -m app.visor`** (el `python app/visor.py` directe fallava amb
   imports relatius); recompte de tests actualitzat a **210 · OK (1 skip)**;

@@ -7,7 +7,8 @@
 # INCLOU (whitelist), EN ORDRE: primer el CONTEXT (`README.md`, `ROADMAP.md`,
 #   `DEVELOPING.md`), després el CODI: `app/`, `eines/` (scripts de build +
 #   host C++), `.github/workflows/` (CI), les dades de build (`pyproject.toml`,
-#   `requirements.txt`, `instal·la_local.sh`), els llançadors i els scripts CLI.
+#   `requirements.txt`, `instal·la_local.sh`), els llançadors, els scripts CLI i
+#   `tests/` (perquè qui revisi pugui veure el comportament esperat).
 #
 # EXCLOU la resta (no indispensable): CHANGELOG/LLICENCIES, `docs/` detallats,
 #   `tests/`, el codi de tercers (`codi_font_chordino/`), binaris i plugins,
@@ -40,6 +41,8 @@ INCLOU = [
     "acords_a_live.py",     # script del pipeline (CSV -> locators/guia)
     "wav_a_wavs.py",        # CLI wav -> wavs
     "concatena.py",         # aquest mateix script
+    # 5. Els tests (perquè qui revisi el codi pugui veure el comportament)
+    "tests",
 ]
 
 # --- Què NO que hi va (si apareix dins un directori inclòs) ----------------
