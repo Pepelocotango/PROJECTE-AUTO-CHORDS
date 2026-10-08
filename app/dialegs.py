@@ -200,7 +200,7 @@ class DialegOpcions(QDialog):
             et.setToolTip(AJUDA_CA.get(pid, ""))
             c.setToolTip(AJUDA_CA.get(pid, ""))
             f.addRow(et, c)
-        info = QLabel("El Segmentino (estructura) no té paràmetres propis: "
+        info = QLabel("L'estructura (qm-segmenter) no té paràmetres propis: "
                       "es neteja des de la pestanya Estructura.")
         info.setWordWrap(True)
         info.setStyleSheet("color:#9aa6b8; font-size:11px;")

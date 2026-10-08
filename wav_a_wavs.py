@@ -30,7 +30,7 @@ def main():
     ap.add_argument("--sortida", default="",
                     help="carpeta de sortida (defecte: <nom_wav>_ACORDS al costat del wav)")
     ap.add_argument("--sense-estructura", action="store_true",
-                    help="no extreu estructura (Segmentino -> ABC)")
+                    help="no extreu estructura (qm-segmenter -> ABC)")
     ap.add_argument("--tempo-lliure", action="store_true",
                     help="la wav NO té tempo fix: segments en segons, sense graella BPM")
     ap.add_argument("--sr", type=int, default=44100,
@@ -61,7 +61,7 @@ def main():
     csv_seg = None
     if amb_est:
         csv_seg = os.path.join(sortida, "segments.csv")
-        log("2/5 extreu estructura (Segmentino)...")
+        log("2/5 extreu estructura (qm-segmenter)...")
         pipeline.extract_segments(os.path.abspath(a.wav), csv_seg, log)
 
     if tempo_fix:

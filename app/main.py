@@ -561,7 +561,7 @@ class Finestra(QMainWindow):
             "<b>Auto Chords</b><br>"
             "wav → acords + estructura<br><br>"
             "Visor DAW-like (PyQt5).<br>"
-            "Motor: chordino + segmentino (vamp).")
+            "Motor: Chordino (acords) + Queen Mary/qm (estructura) · Vamp.")
 
     def registra(self, t):
         self.logger.info("UI: %s", t)

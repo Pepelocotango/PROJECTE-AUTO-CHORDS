@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # pipeline.py — motor de l'Auto Chords (stdlib + binaris del projecte).
 # Cadena: wav -> csv acords (annotator+Chordino) -> locators/guia ->
-#         wavs_acords (+ segmentino -> ABC -> wavs_estructura, opcional).
+#         wavs_acords (+ qm-segmenter -> ABC -> wavs_estructura, opcional).
 # Tot en català.
 import csv
 import os
@@ -540,7 +540,7 @@ def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
     import re
 
     def familia(lab):
-        # Segmentino etiqueta N1,N4,N6... (mateixa família N) i B,A,C...
+        # El motor d'estructura (qm-segmenter) etiqueta N1,N4,N6... (família N) i B,A,C...
         # Traiem dígits finals i normalitzem: N1->N, n1->N, B->B.
         fam = re.sub(r"\d+$", "", lab.strip()).upper() or lab.strip()
         return fam
