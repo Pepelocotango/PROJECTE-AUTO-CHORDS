@@ -1,7 +1,19 @@
 #!/usr/bin/env python3
-# concatena.py — Genera un únic fitxer amb tot el codi font del projecte.
-# Ús: python3 concatena.py [sortida.txt]
-# Exclou: entorns virtuals, .git, .deps, binaris, plugins i codi C++ de tercers.
+# concatena.py — Genera UN sol fitxer amb NOMÉS el codi/config indispensable del
+# projecte, perquè un altre agent/LLM el pugui ENTENDRE i EXECUTAR.
+#
+# Ús: python3 concatena.py [sortida.txt]   (defecte: CODI_concatenat.txt)
+#
+# INCLOU (whitelist): `app/` (codi), `eines/` (scripts de build + host C++),
+#   `.github/workflows/` (CI), els llançadors, les dades de build
+#   (`pyproject.toml`, `requirements.txt`, `instal·la_local.sh`) i les 2 docs
+#   essencials (`README.md`, `DEVELOPING.md`).
+#
+# EXCLOU la resta (no indispensable per entendre/executar): CHANGELOG/ROADMAP/
+#   LLICENCIES, `docs/` detallats, `tests/`, el codi de tercers
+#   (`codi_font_chordino/`), binaris i plugins, logs, i arxius locals
+#   (`OLD/`, `opcions_detecta.json`, `LOGS GITHUB ACTIONS/`,
+#   `00last_artifacts_githubactions/`, `portable/`, `.venv/`, `.deps/`, `temp/`).
 import os
 import sys
 from datetime import datetime
@@ -10,34 +22,60 @@ ARREL = os.path.dirname(os.path.abspath(__file__))
 SORTIDA = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
     ARREL, "CODI_concatenat.txt")
 
-# Fitxers/dirs exclosos (relatius a l'arrel)
-EXCLOSOS = {
-    ".venv", ".git", ".deps", "temp", "__pycache__", "docs", "OLD",
-    "nnls-chroma-linux64-local", "qm-vamp-plugins-linux64-local",
+# --- Què SÍ que hi va (whitelist, relatiu a l'arrel) -----------------------
+INCLOU = [
+    "app",                  # codi de l'aplicació (Python)
+    "eines",                # scripts de build/empaquetat + host C++ (vamp_host.cpp)
+    ".github/workflows",    # CI (build-appimage / windows / macos / release)
+    "README.md",            # visió general + com executar
+    "DEVELOPING.md",        # setup, entorn i desenvolupament
+    "pyproject.toml",       # paquet + metadades
+    "requirements.txt",     # dependències del venv
+    "instal·la_local.sh",   # setup local (sense sudo)
+    "AUTO_CHORDS.sh",       # llançador
+    "AUTO_CHORDS.desktop",  # drecera d'escriptori
+    "acords_a_live.py",     # script del pipeline (CSV -> locators/guia)
+    "wav_a_wavs.py",        # CLI wav -> wavs
+    "concatena.py",         # aquest mateix script
+]
+
+# --- Què NO que hi va (si apareix dins un directori inclòs) ----------------
+EXCLOSOS_DIRS = {"__pycache__", ".venv", ".git", ".deps", "temp", "OLD", "docs"}
+EXCLOSOS_NOMS = {"opcions_detecta.json", "auto_chords.log"}
+
+# --- Extensions de text que concatenem -------------------------------------
+EXTENSIONS = {
+    ".py", ".sh", ".cpp", ".h", ".c",          # codi
+    ".toml", ".txt", ".cfg", ".ini", ".spec",  # build/config
+    ".yml", ".yaml",                            # CI/workflows
+    ".md",                                      # docs (les 2 de la whitelist)
+    ".desktop", ".json",
 }
-# Extensions de text que sí que concatenem
-EXTENSIONS = {".py", ".sh", ".toml", ".txt", ".md", ".desktop", ".json",
-              ".cfg", ".ini", ".service"}
-# Binaris o generats que no volem
-EXCLOSOS_NOMS = {"CODI_concatenat.txt", "auto_chords.log", "sonic-annotator"}
 
 
-def es_text(ruta):
-    ext = os.path.splitext(ruta)[1].lower()
-    return ext in EXTENSIONS
+def es_text(nom):
+    return os.path.splitext(nom)[1].lower() in EXTENSIONS
 
 
 def recorre():
-    for base, dirs, fitxers in os.walk(ARREL):
-        dirs[:] = sorted(d for d in dirs if d not in EXCLOSOS)
-        rel = os.path.relpath(base, ARREL)
-        for nom in sorted(fitxers):
-            if nom in EXCLOSOS_NOMS or nom.startswith("."):
-                continue
-            ruta = os.path.join(base, nom)
-            if not es_text(ruta):
-                continue
-            yield os.path.normpath(os.path.join(rel, nom)) if rel != "." else nom
+    """Retorna les rutes (relatives) dels fitxers a concatenar, en ordre."""
+    for item in INCLOU:
+        cami = os.path.join(ARREL, item)
+        if os.path.isfile(cami):
+            if es_text(item):
+                yield item
+            continue
+        if not os.path.isdir(cami):
+            continue
+        for base, dirs, fitxers in os.walk(cami):
+            dirs[:] = sorted(d for d in dirs if d not in EXCLOSOS_DIRS)
+            for nom in sorted(fitxers):
+                if nom in EXCLOSOS_NOMS or nom.startswith("."):
+                    continue
+                if not es_text(nom):
+                    continue
+                rel = os.path.relpath(os.path.join(base, nom), ARREL)
+                yield os.path.normpath(rel)
 
 
 def main():
@@ -45,7 +83,7 @@ def main():
     amb_data = datetime.now().strftime("%Y-%m-%d %H:%M")
     with open(SORTIDA, "w", encoding="utf-8") as f:
         f.write("=" * 78 + "\n")
-        f.write("PROJECTE AUTO CHORDS — CODI CONCATENAT\n")
+        f.write("PROJECTE AUTO CHORDS — CODI CONCATENAT (només l'indispensable)\n")
         f.write(f"Generat: {amb_data}\n")
         f.write(f"Fitxers: {len(fitxers)}\n")
         f.write("=" * 78 + "\n\n")

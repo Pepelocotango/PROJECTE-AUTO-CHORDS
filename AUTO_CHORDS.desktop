@@ -1,0 +1,15 @@
+#!/usr/bin/env xdg-open
+# L'Exec NO porta cap ruta absoluta: %k es la ubicacio d'aquest .desktop,
+# aixi si moguem o copiem el projecte a una altra carpeta (o usuari) segueix
+# funcionant. `dirname` dona la carpeta del projecte i s'hi executa
+# AUTO_CHORDS.sh (que ja fa el seu propi cd i tria l'intèrpret: portable/.venv/python3).
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Auto Chords
+Comment=Analitza acords i estructura de WAVs amb una sola app
+Exec=sh -c 'f=%k; f=${f#file://}; cd "$(dirname "$f")" && exec ./AUTO_CHORDS.sh'
+Icon=utilities-terminal
+Terminal=false
+Categories=Audio;AudioVideo;
+StartupNotify=true
