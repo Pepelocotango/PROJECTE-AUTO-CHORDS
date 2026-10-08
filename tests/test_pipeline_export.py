@@ -1,4 +1,5 @@
 import csv
+import logging
 import os
 import shutil
 import subprocess
@@ -67,6 +68,13 @@ class ExportPipelineTests(unittest.TestCase):
             log_path = Path(td) / "auto_chords_test.log"
             app_main.setup_logging(str(log_path))
             self.assertTrue(log_path.exists())
+            # A Windows un FileHandler OBRERT bloqueja l'esborrat del tempdir
+            # (TemporaryDirectory falla al cleanup): cal tancar i treure els
+            # handlers del logger abans de sortir del `with`.
+            _lg = logging.getLogger("auto_chords")
+            for h in list(_lg.handlers):
+                h.close()
+                _lg.removeHandler(h)
 
     def test_main_detects_existing_output_folder_for_wav(self):
         with tempfile.TemporaryDirectory() as td:
