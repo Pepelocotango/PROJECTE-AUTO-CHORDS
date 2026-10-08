@@ -132,15 +132,18 @@ jobs:
         shell: bash
         run: |
           set +e
+          # tests.log a l'ESPai de treball (NO /tmp: a Windows l'artefacte no el troba).
           QT_QPA_PLATFORM=offscreen python -m unittest \
-            tests.test_pipeline_export tests.test_partitura > /tmp/tests.log 2>&1
+            tests.test_pipeline_export tests.test_partitura > tests.log 2>&1
           rc=$?
-          tail -n 50 /tmp/tests.log
           if [ "$rc" -ne 0 ]; then
-            IDS=$(grep -E "^(FAIL|ERROR):" /tmp/tests.log | tr '\n' '|' | tr -s ' ' | cut -c1-1800)
+            cat tests.log
+            IDS=$(grep -E "^(FAIL|ERROR):" tests.log | tr '\n' '|' | tr -s ' ' | cut -c1-1800)
             echo "::error::tests FALLEN (rc=$rc) [llista]: $IDS"
-            CUA=$(tail -n 45 /tmp/tests.log | tr '\n' '~' | tr -s ' ' | cut -c1-1800)
+            CUA=$(tail -n 45 tests.log | tr '\n' '~' | tr -s ' ' | cut -c1-1800)
             echo "::error::tests FALLEN [cua/traceback]: $CUA"
+          else
+            tail -n 5 tests.log
           fi
           exit "$rc"
 
@@ -152,7 +155,7 @@ jobs:
           echo "--- dist ---"; ls -la dist 2>/dev/null || true
           echo "--- plugins ---"; ls -la nnls-chroma-win64-local qm-vamp-plugins-win64-local 2>/dev/null || true
           echo "--- DLLs de runtime ---"; ls -la portable/win-dlls 2>/dev/null || true
-          echo "--- tests.log ---"; cat /tmp/tests.log 2>/dev/null | tail -80 || true
+          echo "--- tests.log ---"; cat tests.log 2>/dev/null | tail -80 || true
           echo "::endgroup::"
 
       - name: "ZZ2. Pujar els logs de debug (nomes si falla)"
@@ -162,5 +165,7 @@ jobs:
           name: debug-logs-${{ github.run_number }}
           if-no-files-found: ignore
           path: |
-            /tmp/*.log
+            tests.log
+            auto_chords.log
+            temp/visor_player.log
             dist/**/warn-*.txt
