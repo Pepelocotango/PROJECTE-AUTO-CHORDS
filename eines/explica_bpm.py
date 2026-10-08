@@ -46,7 +46,7 @@ def linia(p, pts, color, ample=1.4):
 def main():
     wav = sys.argv[1]
     out = sys.argv[2]
-    _app = QApplication(sys.argv)  # ref. viva de QApplication (Qt); no s'usa directament
+    _ = QApplication(sys.argv)  # referència viva de QApplication per a Qt (_ l'ignora pyflakes)
 
     env, sr = tempo._envolupant_onsets(wav)
     bpm = tempo._comb_bpm(env)

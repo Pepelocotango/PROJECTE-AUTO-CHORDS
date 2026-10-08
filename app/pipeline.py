@@ -154,7 +154,6 @@ def executa_transform(transform, out_csv, wav, log, params=None):
     except RuntimeError:
         if "--step" not in cmd:
             raise
-        import tempfile
         cmd2 = _cmd_transform(transform, out_csv, wav, params)
         i = cmd2.index("--step")
         del cmd2[i:i + 4]                 # treu --step N --block M
