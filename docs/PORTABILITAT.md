@@ -4,6 +4,8 @@
 > sigui **autocontingut i portable** (copiar la carpeta i que funcioni, sense
 > instal·lar res). Mides i `ldd` reals del projecte.
 >
+> 👉 **Multi-SO**: vegeu `docs/ESTAT_MULTI_SO.md` (on som amb Windows i macOS).
+>
 > ⚠️ Les seccions **1–5** són l'**anàlisi inicial** (històrica, es conserva per
 > entendre el raonament). L'estat **actual** és la **secció 0**; el flux de
 > treball és la **secció 6**.

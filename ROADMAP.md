@@ -371,6 +371,10 @@ Aquestes són idees i oportunitats que queden pendents de revisió i que convé 
 > (cap build local Win/Mac). **No es signaran** les apps → s'assumeixen les limitacions
 > de Gatekeeper (macOS) i SmartScreen (Windows). El build de **Linux no es toca**.
 
+> **PROGRÉS (2026-10-07):** Linux ✅ (AppImage verificada) · **macOS ✅**
+> (build verd, `.app` de 35 MB) · **Windows 🟢** (el paquet es construeix;
+> pendent un run verd dels tests). Detall i pendents: `docs/ESTAT_MULTI_SO.md`.
+
 #### 9.1 — Què s'ha de portar
 
 L'app = capa Python (**PyQt5 + numpy<2**) + **3 peces natives per SO**:

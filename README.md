@@ -143,6 +143,10 @@ L'AppImage embolcalla el paquet portable + un `AppRun` + el `.desktop` + la
 icona, i el comprimeix (squashfs): dels ~530 MB surt un fitxer d'**~160 MB**
 que s'executa a qualsevol **Linux x86_64** sense instal·lar res.
 
+> **Multi-SO**: a més d'aquesta AppImage de Linux, el CI construeix
+> **Windows (x64)** i **macOS (High Sierra 10.13+)**. Estat, artefactes i
+> pendents: **`docs/ESTAT_MULTI_SO.md`**.
+>
 > El runtime incrustat és el modern **estàtic** (`type2-runtime`, enllaçat amb
 > musl i libfuse a dins), així que **no cal instal·lar `libfuse2`**.
 

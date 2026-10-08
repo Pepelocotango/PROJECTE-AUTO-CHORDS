@@ -6,6 +6,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
 ## [No publicat]
 
 ### Afegit
+- **Multi-SO (Windows i macOS)**: abstracció de plataforma (`app/plataforma.py`),
+  host i plugins **multi-SO** (`eines/compila_vamp_{host,plugins}.sh`, amb
+  dispatch per SO), entry de PyInstaller compartida i **3 workflows de CI**
+  (`build-appimage.yml`, `build-windows.yml`, `build-macos.yml`).
+  **Linux**: AppImage verificada ✅. **macOS**: build verd ✅ (`.app` per a
+  10.13). **Windows**: el paquet es construeix; pendent el run verd dels
+  tests. Estat complet: **`docs/ESTAT_MULTI_SO.md`**.
+
+### Afegit
 - **Autoportabilitat real**: l'AppImage ara **empaqueta les llibreries natives**
   que necessita l'host Vamp — `libvamp-hostsdk`, `libsndfile` i els còdecs
   (`libFLAC`, `libogg`, `libvorbis`, `libvorbisenc`, `libopus`, `libmpg123`,
