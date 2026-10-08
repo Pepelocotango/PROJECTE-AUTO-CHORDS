@@ -4,9 +4,9 @@ Extreu la secció de la versió del `CHANGELOG.md` i la combina amb una
 capçalera i unes instruccions d'instal·lació per a l'AppImage.
 
 Ús:
-    .venv/bin/python eines/notes_release.py 0.5.0            -> stdout
-    .venv/bin/python eines/notes_release.py 0.5.0 > notes.md
-    .venv/bin/python eines/notes_release.py v0.5.0 --fitxer notes.md
+    .venv/bin/python eines/notes_release.py 0.5.1            -> stdout
+    .venv/bin/python eines/notes_release.py 0.5.1 > notes.md
+    .venv/bin/python eines/notes_release.py v0.5.1 --fitxer notes.md
 """
 
 import os
@@ -66,7 +66,7 @@ def _seccio_changelog(versio):
         return ""
     with open(CHANGELOG, encoding="utf-8") as f:
         text = f.read()
-    # ## [0.5.0] — data   ... fins a la següent ## [
+    # ## [0.5.1] — data   ... fins a la següent ## [
     patro = re.compile(
         r"^##\s+\[" + re.escape(versio) + r"\][^\n]*\n(.*?)(?=^##\s+\[|\Z)",
         re.M | re.S)

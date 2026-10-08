@@ -298,8 +298,8 @@ com **`<nom>_convertit.wav`** (es reutilitza si ja és més nou).
 ---
 
 ## 6. Documents relacionats
+- `docs/ESQUEMA_UI.html` i `docs/ESQUEMA_UI.svg` — aquest mateix esquema en
+  **HTML** i **vectorial** (mateix colorit i mides del codi).
 - `docs/AUBIO_TEMPO.md` — **[històric]** plugin d'aubio (tempo/beats), retirat.
 - `docs/AUTODETECCIO_OPCIONS.md` — motors d'autodetecció, opcions i post-processat.
-- `docs/REVISIO_METRONOM.diff` · `docs/REVISIO_REORG_METRONOM.diff` — diffs
-  anotats per a revisió externa.
 - `README.md` — «Estat actual» de l'app.

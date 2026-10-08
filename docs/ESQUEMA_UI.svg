@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900"
      font-family="system-ui,Segoe UI,Roboto,sans-serif">
-  <title>Auto Chords — Esquema visual de la GUI (v0.5.0)</title>
+  <title>Auto Chords — Esquema visual de la GUI (v0.5.1)</title>
   <desc>Finestra única amb el visor al centre, dues barres d'eines, llistes,
         dock Log+Informacio i barra d'estat. Colors i mides reals.</desc>
   <defs>

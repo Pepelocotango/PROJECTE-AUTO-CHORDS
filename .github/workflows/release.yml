@@ -10,7 +10,7 @@ name: Publicar Release (Linux)
 # ───────────────────────────────────────────────────────────────────────────
 
 
-# S'activa NOMES quan puges un tag de versio (p. ex. `git tag v0.5.0`).
+# S'activa NOMES quan puges un tag de versio (p. ex. `git tag v0.5.1`).
 # Construeix l'AppImage i crea un RELEASE de GitHub:
 #   · titol: AUTO CHORDS v<versio>
 #   · cos: en catala, generat de CHANGELOG.md (eines/notes_release.py)
