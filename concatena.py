@@ -4,16 +4,16 @@
 #
 # Ús: python3 concatena.py [sortida.txt]   (defecte: CODI_concatenat.txt)
 #
-# INCLOU (whitelist): `app/` (codi), `eines/` (scripts de build + host C++),
-#   `.github/workflows/` (CI), els llançadors, les dades de build
-#   (`pyproject.toml`, `requirements.txt`, `instal·la_local.sh`) i les 2 docs
-#   essencials (`README.md`, `DEVELOPING.md`).
+# INCLOU (whitelist), EN ORDRE: primer el CONTEXT (`README.md`, `ROADMAP.md`,
+#   `DEVELOPING.md`), després el CODI: `app/`, `eines/` (scripts de build +
+#   host C++), `.github/workflows/` (CI), les dades de build (`pyproject.toml`,
+#   `requirements.txt`, `instal·la_local.sh`), els llançadors i els scripts CLI.
 #
-# EXCLOU la resta (no indispensable per entendre/executar): CHANGELOG/ROADMAP/
-#   LLICENCIES, `docs/` detallats, `tests/`, el codi de tercers
-#   (`codi_font_chordino/`), binaris i plugins, logs, i arxius locals
-#   (`OLD/`, `opcions_detecta.json`, `LOGS GITHUB ACTIONS/`,
-#   `00last_artifacts_githubactions/`, `portable/`, `.venv/`, `.deps/`, `temp/`).
+# EXCLOU la resta (no indispensable): CHANGELOG/LLICENCIES, `docs/` detallats,
+#   `tests/`, el codi de tercers (`codi_font_chordino/`), binaris i plugins,
+#   logs, i arxius locals (`OLD/`, `opcions_detecta.json`,
+#   `LOGS GITHUB ACTIONS/`, `00last_artifacts_githubactions/`, `portable/`,
+#   `.venv/`, `.deps/`, `temp/`).
 import os
 import sys
 from datetime import datetime
@@ -24,11 +24,14 @@ SORTIDA = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
 
 # --- Què SÍ que hi va (whitelist, relatiu a l'arrel) -----------------------
 INCLOU = [
+    # 1-3. Context del producte (perquè un LLM entengui QUÈ és i cap on va)
+    "README.md",            # visió general + com executar
+    "ROADMAP.md",           # full de ruta (abast, fases, futur)
+    "DEVELOPING.md",        # setup, entorn i desenvolupament
+    # 4+. El codi i la resta
     "app",                  # codi de l'aplicació (Python)
     "eines",                # scripts de build/empaquetat + host C++ (vamp_host.cpp)
     ".github/workflows",    # CI (build-appimage / windows / macos / release)
-    "README.md",            # visió general + com executar
-    "DEVELOPING.md",        # setup, entorn i desenvolupament
     "pyproject.toml",       # paquet + metadades
     "requirements.txt",     # dependències del venv
     "instal·la_local.sh",   # setup local (sense sudo)
