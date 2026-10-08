@@ -43,7 +43,7 @@ pas d’assistent.
   estructura (clic per saltar, doble-clic per editar, menú contextual).
 - Compassos de **qualsevol mètrica** (3/4, 6/8, 5/4…), no només 4/4.
 
-La funcionalitat principal està validada: **173/173 tests OK** (`python -m unittest tests.test_pipeline_export`).
+La funcionalitat principal està validada: **210 tests · OK (1 skip)** (`python -m unittest tests.test_pipeline_export tests.test_partitura`).
 
 ## Què fa l’app
 
@@ -64,7 +64,6 @@ La funcionalitat principal està validada: **173/173 tests OK** (`python -m unit
 ## Filosofia i lògica del flux
 
 La idea central del projecte no és tenir “múltiples eines ocultes”, sinó una sola aplicació amb un flux clar i un model de dades coherent:
-
 
 ### Semàntica del flux
 
@@ -92,7 +91,7 @@ Aquest és el criteri que ha acabat definint la base de l’app: una app única,
 
 ```bash
 export AUTO_CHORDS_TEMP=/home/user/tmp_auto_chords
-python3 app/visor.py tema.wav
+python -m app.visor tema.wav
 ```
 
 ## Llançament

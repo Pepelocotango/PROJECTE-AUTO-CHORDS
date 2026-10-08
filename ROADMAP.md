@@ -157,7 +157,7 @@ La base funcional i el nou visor estan validats. El que queda són millores de p
 - llançador directe (`AUTO_CHORDS.sh` / `AUTO_CHORDS.desktop`)
 - sorteix sense dependre de terminal ni de múltiples finestres
 
-## Fase D — Interacció DAW-like ⏳ *(properà)*
+## Fase D — Interacció DAW-like ✅ *(D.1 FET 2026-10-06; D.2/D.3 en curs)*
 
 Aquesta fase és **el “kit de la qüestió”** del projecte: fer que el visor
 interactiu sigui tan usable i natural com un DAW modern treballant amb
@@ -168,7 +168,7 @@ sigui un plaer** i no una fricció.
 **sempre acaba o comença el següent** — és a dir, el final d’un element
 és l’inici del veí (propagació de constraint en temps real).
 
-### D.1 — Crítiques (sense elles el visor no és usable)
+### D.1 — Crítiques ✅ *(FET 2026-10-06)*
 
 > ✅ **FET (2026-10-06)**: clic a un clip mou el cursor · `Delete` elimina
 > l'element seleccionat (amb undo) · `Ctrl+D` duplica (repartint la durada,
@@ -178,19 +178,18 @@ sigui un plaer** i no una fricció.
 > un **metrònom** (🥁, només mode BPM · compàs, volum propi) i la **GUI
 > reorganitzada** amb el timeline al centre.
 
-- **Click a un clip → mou cursor de play allà** (l’acció més bàsica d’un
-  DAW que actualment **no funciona**).
-- **Selecció persistent visual** — l’element seleccionat canvia de color
-  clarament (vora groga o color de fons diferent).
-- **Duplicar acord/estructura** — `Ctrl+D` o menú contextual; el duplicat
-  s’insereix immediatament al costat i propaga el constraint.
-- **Eliminar amb tecla `Delete`** (a més del menú contextual existent).
-- **Línia guia de snap més visible** durant el drag — color groc discontínu
-  que marqui on caurà el temps resultant.
+- ✅ **Click a un clip → mou cursor de play allà**.
+- ✅ **Selecció persistent visual** — seleccionat vs actiu amb colors propis (`app/theme.py`).
+- ✅ **Duplicar acord/estructura** — `Ctrl+D` o menú contextual (propaga el constraint).
+- ✅ **Eliminar amb tecla `Delete`** (a més del menú contextual existent).
+- **Línia guia de snap més visible** durant el drag (pendent de polir).
 - **Feedback visual quan s’arrossega** — el cursor canvia segons la zona
-  (ja implementat parcialment) + highlight dels veins afectats.
+  (parcialment fet) + highlight dels veïns afectats.
 
 ### D.2 — Importants (per semblar un DAW de veritat)
+
+> ✅ **Ja fet**: **Undo/Redo** (`Ctrl+Z`/`Ctrl+Y`, des de v0.1.5) i **`Ctrl+D`**
+> duplicar. Pendent: multi-selecció, `Ctrl+C/V/X`, scroll-drag i indicador de mode.
 
 - **Multi-selecció** amb `Ctrl+click` (afegir) i `Shift+click` (rang), i
   poder moure/duplicar/eliminar el grup.

@@ -48,6 +48,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 - `.gitignore`: s'ignoren `LOGS GITHUB ACTIONS/` i `logs_*/`.
 
 ### Documentació
+- **Deute tècnic (Pas 1 — docs)**: comandament del visor corregit a
+  **`python -m app.visor`** (el `python app/visor.py` directe fallava amb
+  imports relatius); recompte de tests actualitzat a **210 · OK (1 skip)**;
+  `ROADMAP` **Fase D → D.1 marcada com a feta**; neteja d'espais al README.
 - **Revisió 1 a 1 de tota la documentació a l'estat v0.5.1 (BETA)**: README,
   ROADMAP, CHANGELOG, DEVELOPING, `docs/ESQUEMA_UI.{md,html,svg}`,
   `docs/ESTAT_MULTI_SO`, `docs/PORTABILITAT*`, `docs/PLANIFICACIO_MACOS`,

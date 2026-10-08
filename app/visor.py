@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # visor.py — Visor navegable (ona + acords + estructura + escolta + edició).
 # Tot en català. Dependències aïllades: PyQt5 + numpy<2 (Q9400).
-# Ús: .venv/bin/python app/visor.py tema.wav [--acords acords.csv] [--abc estructura_ABC.csv] [--bpm 138] [--bpb 4]
+# Ús: .venv/bin/python -m app.visor tema.wav [--acords acords.csv] [--abc estructura_ABC.csv] [--bpm 138] [--bpb 4]
 import argparse
 import copy
 import atexit
