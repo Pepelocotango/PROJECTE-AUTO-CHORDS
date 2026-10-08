@@ -75,3 +75,7 @@ temp/
 LOGS GITHUB ACTIONS/
 logs_*/
 github-actions-logs/
+
+# carpeta artifacts actions github
+00last_artifacts_githubactions/
+
