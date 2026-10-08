@@ -177,7 +177,7 @@ compila_macos() {
     PREFIX="${PREFIX:-${VAMP_PREFIX:-$ROOT/.mac-natius}}"
     local VSINC="$PREFIX/include" VSLIB="$PREFIX/lib"
 
-    for t in clang clang++ curl tar; do
+    for t in clang clang++ make git curl tar; do
         command -v "$t" >/dev/null || { echo "ERROR: falta l'eina '$t'"; exit 1; }
     done
     [ -d "$VSINC/vamp-sdk" ] || {
@@ -232,19 +232,35 @@ compila_macos() {
         || echo "AVÍS: no he pogut confirmar l'export de _vampGetPluginDescriptor" >&2
     echo "   -> $NNLS_OUT/nnls-chroma.dylib ($(otool -l "$NNLS_OUT/nnls-chroma.dylib" 2>/dev/null | grep -m1 -oE 'minos [0-9.]+' || echo '?'))"
 
-    # --- 2) qm-vamp-plugins macOS (binari OFICIAL 1.8.0, 10.7+) ------------
-    echo "== [2/2] qm-vamp-plugins macOS (binari oficial) =="
-    QM_URL="${QM_URL:-https://code.soundsoftware.ac.uk/attachments/download/2620/qm-vamp-plugins-1.8.0-macos.tar.gz}"
-    curl -sfL --retry 3 --max-time 300 -o "$WORK/qm.tar.gz" "$QM_URL" || {
-        echo "ERROR: no he pogut baixar qm-vamp-plugins macOS ($QM_URL)" >&2; exit 1; }
-    mkdir -p "$WORK/qm"
-    tar xzf "$WORK/qm.tar.gz" -C "$WORK/qm"
-    for ext in dylib cat n3; do
-        f="$(find "$WORK/qm" -type f -iname "qm-vamp-plugins.$ext" | head -1)"
-        [ -n "$f" ] || { echo "ERROR: falta qm-vamp-plugins.$ext" >&2; exit 1; }
-        cp -f "$f" "$QM_OUT/qm-vamp-plugins.$ext"
-    done
-    echo "   -> $QM_OUT/qm-vamp-plugins.dylib"
+    # --- 2) qm-vamp-plugins (COMPILAT des de font, target 10.13) -----------
+    # PER QUÈ NO el binari oficial: code.soundsoftware.ac.uk és inaccessible
+    # (com diu docs/QM_VAMP.md) -> no es pot baixar. Compilant-lo aquí amb els
+    # clapack/cblas INCLOSOS (com a Linux/Windows) queda autocontingut.
+    echo "== [2/2] qm-vamp-plugins macOS (des de font) =="
+    OSXARCH="-mmacosx-version-min=$DEP -arch $ARCH -stdlib=libc++"
+    (
+        cd "$WORK"
+        curl -sL --retry 3 -o qm.tar.gz \
+            https://github.com/c4dm/qm-vamp-plugins/archive/refs/heads/master.tar.gz
+        tar xzf qm.tar.gz
+        cd qm-vamp-plugins-master
+        mkdir -p lib
+        git clone --depth 1 -q https://github.com/c4dm/qm-dsp lib/qm-dsp
+        git clone --depth 1 -q https://github.com/c4dm/vamp-plugin-sdk lib/vamp-plugin-sdk
+        MCXX="clang++ -D_USE_MATH_DEFINES"; MCC="clang -D_USE_MATH_DEFINES"
+        make -C lib/qm-dsp -f build/osx/Makefile.osx ARCHFLAGS="$OSXARCH" \
+            CXX="$MCXX" CC="$MCC"
+        # Enllaç propi: res de ../vamp-plugin-sdk (les fonts SDK ja es compilen
+        # dins el plugin) i exported_symbols_list del nostre .list.
+        make -f build/osx/Makefile.osx ARCHFLAGS="$OSXARCH" CXX="$MCXX" CC="$MCC" \
+            LDFLAGS="-dynamiclib $OSXARCH -lpthread -framework Accelerate -Wl,-exported_symbols_list,vamp-plugin.list"
+        cp -f qm-vamp-plugins.dylib "$QM_OUT/qm-vamp-plugins.dylib"
+        [ -f qm-vamp-plugins.cat ] && cp -f qm-vamp-plugins.cat "$QM_OUT/"
+        [ -f qm-vamp-plugins.n3 ] && cp -f qm-vamp-plugins.n3 "$QM_OUT/"
+    )
+    nm -gU "$QM_OUT/qm-vamp-plugins.dylib" 2>/dev/null | grep -q _vampGetPluginDescriptor \
+        || echo "AVÍS: no he pogut confirmar l'export de _vampGetPluginDescriptor" >&2
+    echo "   -> $QM_OUT/qm-vamp-plugins.dylib ($(otool -l "$QM_OUT/qm-vamp-plugins.dylib" 2>/dev/null | grep -m1 -oE 'minos [0-9.]+' || echo '?'))"
 
     echo "== Fet (macOS) =="
     ls -la "$NNLS_OUT" "$QM_OUT"
