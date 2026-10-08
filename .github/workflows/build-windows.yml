@@ -148,8 +148,9 @@ jobs:
             cat tests.log
             IDS=$(grep -E "^(FAIL|ERROR):" tests.log | tr '\n' '|' | tr -s ' ' | cut -c1-1800)
             echo "::error::tests FALLEN (rc=$rc) [llista]: $IDS"
-            CUA=$(tail -n 45 tests.log | tr '\n' '~' | tr -s ' ' | cut -c1-1800)
-            echo "::error::tests FALLEN [cua/traceback]: $CUA"
+            # Ultim bloc de traça (unittest separa els blocs amb una línia de =).
+            CUA=$(awk 'BEGIN{RS="=======+"} END{print $0}' tests.log | tr '\n' '~' | tr -s ' ' | cut -c1-2500)
+            echo "::error::tests FALLEN [ultima traça]: $CUA"
           else
             tail -n 5 tests.log
           fi
