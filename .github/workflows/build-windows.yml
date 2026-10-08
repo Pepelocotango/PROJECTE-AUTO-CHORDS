@@ -137,11 +137,12 @@ jobs:
           rc=$?
           tail -n 50 /tmp/tests.log
           if [ "$rc" -ne 0 ]; then
-            ERR=$(grep -E "^(FAIL|ERROR):" /tmp/tests.log | tr '\n' ' ' | tr -s ' ' | cut -c1-800)
-            [ -z "$ERR" ] && ERR=$(tail -n 25 /tmp/tests.log | tr '\n' ' ' | tr -s ' ' | cut -c1-800)
-            echo "::error::tests FALLEN (rc=$rc): $ERR"
-            exit "$rc"
+            IDS=$(grep -E "^(FAIL|ERROR):" /tmp/tests.log | tr '\n' '|' | tr -s ' ' | cut -c1-1800)
+            echo "::error::tests FALLEN (rc=$rc) [llista]: $IDS"
+            CUA=$(tail -n 45 /tmp/tests.log | tr '\n' '~' | tr -s ' ' | cut -c1-1800)
+            echo "::error::tests FALLEN [cua/traceback]: $CUA"
           fi
+          exit "$rc"
 
       - name: "ZZ. Debug si ha fallat"
         if: failure()
