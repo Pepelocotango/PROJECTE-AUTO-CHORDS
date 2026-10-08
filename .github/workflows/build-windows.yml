@@ -131,9 +131,17 @@ jobs:
       - name: 12. Tests unitaris (control de qualitat)
         shell: bash
         run: |
-          set -o pipefail
+          set +e
           QT_QPA_PLATFORM=offscreen python -m unittest \
-            tests.test_pipeline_export tests.test_partitura 2>&1 | tee /tmp/tests.log
+            tests.test_pipeline_export tests.test_partitura > /tmp/tests.log 2>&1
+          rc=$?
+          tail -n 50 /tmp/tests.log
+          if [ "$rc" -ne 0 ]; then
+            ERR=$(grep -E "^(FAIL|ERROR):" /tmp/tests.log | tr '\n' ' ' | tr -s ' ' | cut -c1-800)
+            [ -z "$ERR" ] && ERR=$(tail -n 25 /tmp/tests.log | tr '\n' ' ' | tr -s ' ' | cut -c1-800)
+            echo "::error::tests FALLEN (rc=$rc): $ERR"
+            exit "$rc"
+          fi
 
       - name: "ZZ. Debug si ha fallat"
         if: failure()
