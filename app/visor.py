@@ -4,14 +4,12 @@
 # Ús: .venv/bin/python -m app.visor tema.wav [--acords acords.csv] [--abc estructura_ABC.csv] [--bpm 138] [--bpb 4]
 import argparse
 import copy
-import atexit
 import csv
 import logging
 import math
 import os
 import re
 import shutil
-import signal
 import subprocess
 import sys
 import threading
@@ -19,7 +17,7 @@ import time
 import wave
 
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal
-from PyQt5.QtGui import QCloseEvent, QKeySequence
+from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import (
     QApplication, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
     QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QShortcut,
@@ -1720,14 +1718,13 @@ def main():
     ap.add_argument("--bpm", type=float, default=138.0)
     ap.add_argument("--bpb", type=int, default=4)
     a = ap.parse_args()
+    app = QApplication(sys.argv)
     if not a.wav:
-        app0 = QApplication(sys.argv)
         wav, _ = QFileDialog.getOpenFileName(None, "Tria la wav", "",
                                              "Àudio WAV (*.wav)")
         if not wav:
             sys.exit(0)
         a.wav = wav
-    app = QApplication(sys.argv)
     app.setStyle("Fusion")
     v = Visor(os.path.abspath(a.wav), a.acords or None, a.abc or None,
               a.bpm, a.bpb)

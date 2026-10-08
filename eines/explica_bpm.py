@@ -5,7 +5,6 @@
 """
 import os
 import sys
-import wave
 
 import numpy as np
 from PyQt5.QtCore import QPointF, QRectF, Qt
@@ -47,7 +46,7 @@ def linia(p, pts, color, ample=1.4):
 def main():
     wav = sys.argv[1]
     out = sys.argv[2]
-    _app = QApplication(sys.argv)
+    _app = QApplication(sys.argv)  # ref. viva de QApplication (Qt); no s'usa directament
 
     env, sr = tempo._envolupant_onsets(wav)
     bpm = tempo._comb_bpm(env)
@@ -82,7 +81,7 @@ def main():
     # ---- 2) zoom + periode ----
     y2 = y + h + 20
     panell(p, x, y2, w, h, "2. Zoom (2 s) amb el PERÍODE detectat",
-           f"cada línia verda = un temps del BPM detectat")
+           "cada línia verda = un temps del BPM detectat")
     z = e[200:400]
     pts = [(x + 4 + (w - 8) * i / max(1, len(z) - 1), y2 + h - 6 - (h - 40) * max(0, v))
            for i, v in enumerate(z)]

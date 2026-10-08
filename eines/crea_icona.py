@@ -11,8 +11,8 @@ import os
 import sys
 
 from PyQt5.QtCore import QRectF, Qt
-from PyQt5.QtGui import (QBrush, QColor, QFont, QImage, QLinearGradient,
-                         QPainter, QPen, QPixmap)
+from PyQt5.QtGui import (QBrush, QColor, QImage, QLinearGradient,
+                         QPainter, QPen)
 from PyQt5.QtSvg import QSvgRenderer
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -67,7 +67,7 @@ def main():
     import shutil
     shutil.copy(os.path.join(DESTI, "auto-chords-512.png"),
                 os.path.join(DESTI, "auto-chords.png"))
-    print(f"  ✓ auto-chords.png (=512)")
+    print("  ✓ auto-chords.png (=512)")
     print(f"fet: {len(MIDES) + 1} fitxers a icona/")
 
 

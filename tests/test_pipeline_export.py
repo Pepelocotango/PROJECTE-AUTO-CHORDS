@@ -319,6 +319,7 @@ class ExportPipelineTests(unittest.TestCase):
         app.quit()
 
     def test_embedded_visor_close_does_not_quit_app(self):
+        from PyQt5.QtGui import QCloseEvent
         app = visor.QApplication.instance() or visor.QApplication([])
         v = visor.Visor.__new__(visor.Visor)
         visor.QMainWindow.__init__(v)
@@ -327,7 +328,7 @@ class ExportPipelineTests(unittest.TestCase):
         v._atura_proc = lambda: None
         v.log = lambda *args, **kwargs: None
         with patch.object(visor.QApplication.instance(), "quit") as quit_mock:
-            v.closeEvent(visor.QCloseEvent())
+            v.closeEvent(QCloseEvent())
         quit_mock.assert_not_called()
         app.quit()
 

@@ -37,6 +37,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   import lazy de `watchdog`; retirat `instal·la_vm_debian.sh` (la VM ja no cal).
 
 ### Arreglat
+- **Deute tècnic (Pas 2 — imports/variables)**: `pyflakes` net a `app/` i `eines/`;
+  trets els imports/variables morts (`os`, `postproc`, `atexit`, `signal`,
+  `QCloseEvent`, `QFormLayout`, `QGroupBox`, `QCursor`, `QPainterPath`, `QFont`,
+  `QPixmap`, `wave`) i f-strings sense placeholders; `QCloseEvent` ja no s'exporta
+  des d'`app.visor` (el test l'importa directament de `PyQt5.QtGui`).
 - **CI (`.github/workflows/`)**: el job d'AppImage fallava amb
   `E: Unable to locate package libvamp-hostsdk-dev` — aquest paquet **no
   existeix** a Ubuntu; el correcte és **`vamp-plugin-sdk`**. Corregit a

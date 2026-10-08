@@ -12,7 +12,7 @@ from PyQt5.QtCore import QThread, Qt, QTimer, QUrl, pyqtSignal
 from PyQt5.QtGui import QCursor, QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
-    QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
+    QHBoxLayout, QLabel, QLineEdit, QMainWindow,
     QInputDialog, QMessageBox, QProgressBar, QPushButton, QShortcut, QSlider,
     QDialog,
     QTextEdit,

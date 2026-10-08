@@ -9,7 +9,6 @@ Tot en català.
 """
 
 import json
-import os
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
@@ -17,7 +16,7 @@ from PyQt5.QtWidgets import (
     QFormLayout, QGroupBox, QLabel, QPushButton, QTabWidget, QVBoxLayout,
 )
 
-from app import config, postproc, tempo, vamp_params
+from app import config, tempo, vamp_params
 
 # Traducció al català dels títols dels paràmetres del Chordino (els que dona
 # el plugin son en anglès) + una ajuda curta de quan tocar-los.
