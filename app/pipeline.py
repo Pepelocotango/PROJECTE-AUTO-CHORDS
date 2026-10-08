@@ -13,7 +13,7 @@ from app import plataforma, tempo
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJ_DIR = os.path.dirname(APP_DIR)
-SONIC = os.path.join(PROJ_DIR, "sonic-annotator")
+SONIC = os.path.join(PROJ_DIR, "OLD", "sonic-annotator")   # arxivat (reserva)
 ACORDS_PY = os.path.join(PROJ_DIR, "acords_a_live.py")
 # Directoris dels plugins Vamp SEGONS EL SO (vegeu `app/plataforma.py`):
 #   Linux   -> nnls-chroma-linux64-local + qm-vamp-plugins-linux64-local

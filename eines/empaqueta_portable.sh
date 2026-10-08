@@ -36,11 +36,11 @@ if command -v rsync >/dev/null; then
         --exclude 'tauri-ui/' --exclude '.pytest_cache/' \
         --exclude 'auto_chords.log' --exclude 'opcions_detecta.json' \
         --exclude 'CODI_concatenat.txt' --exclude '.gitignore' \
-        --exclude '.git*' --exclude 'LLEGEIX-ME.txt' \
+        --exclude '.git*' --exclude 'LLEGEIX-ME.txt' --exclude 'OLD/' \
         "$SRC"/ "$DEST"/
 else
     echo "(sense rsync: còpia manual)"
-    for f in app eines docs icones icona *-local vamp_host_local sonic-annotator \
+    for f in app eines docs icones icona *-local vamp_host_local \
              AUTO_CHORDS.sh AUTO_CHORDS.desktop pyproject.toml LICENSE \
              LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md \
              DEVELOPING.md requirements.txt concatena.py acords_a_live.py \

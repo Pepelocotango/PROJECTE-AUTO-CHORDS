@@ -12,7 +12,7 @@ SORTIDA = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
 
 # Fitxers/dirs exclosos (relatius a l'arrel)
 EXCLOSOS = {
-    ".venv", ".git", ".deps", "temp", "__pycache__", "docs",
+    ".venv", ".git", ".deps", "temp", "__pycache__", "docs", "OLD",
     "nnls-chroma-linux64-local", "qm-vamp-plugins-linux64-local",
 }
 # Extensions de text que sí que concatenem
