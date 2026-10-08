@@ -25,6 +25,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   **Verificat** amb les 9 llibreries del sistema amagades dins un *namespace*
   de muntatge: acords + estructura OK.
 
+### Canviat
+- **Llançadors unificats**: `AUTO_CHORDS.desktop` ara executa **`AUTO_CHORDS.sh`**
+  (que tria l'intèrpret: `portable/` → `.venv` → `python3`); retirat `launcher.sh`.
+
 ### Arreglat
 - **CI (`.github/workflows/`)**: el job d'AppImage fallava amb
   `E: Unable to locate package libvamp-hostsdk-dev` — aquest paquet **no
@@ -37,6 +41,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 - `.gitignore`: s'ignoren `LOGS GITHUB ACTIONS/` i `logs_*/`.
 
 ### Documentació
+- **Revisió 1 a 1 de tota la documentació a l'estat v0.5.1 (BETA)**: README,
+  ROADMAP, CHANGELOG, DEVELOPING, `docs/ESQUEMA_UI.{md,html,svg}`,
+  `docs/ESTAT_MULTI_SO`, `docs/PORTABILITAT*`, `docs/PLANIFICACIO_MACOS`,
+  `docs/QM_VAMP`… (Windows/macOS verds; trets aubio/segmentino; `v0.5.0`→`v0.5.1`).
 - `README.md`: **URL del repositori**, com descarregar l'AppImage i taula de
   requisits mínims actualitzada (llibreries natives incloses); recompte de
   tests corregit (173).
