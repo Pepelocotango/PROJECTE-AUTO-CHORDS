@@ -93,8 +93,13 @@ jobs:
           export CPATH="$PREFIX/include"
           export LIBRARY_PATH="$PREFIX/lib"
           export MACOSX_DEPLOYMENT_TARGET=10.13
+          export CXX=clang++
+          # Boost: només calen els HEADERS (el Chordino no enllaça cap .dylib de
+          # boost, així que no puja el mínim). La branca macOS del script també el busca.
+          brew install boost || brew upgrade boost || true
+          # El host (multi-SO: a macOS sense -ldl i amb otool en lloc de ldd)
           ./eines/compila_vamp_host.sh
-          # El script de plugins detecta el SO (branca macOS, feta per OC-2)
+          # Els plugins (el script detecta el SO sol: branca macOS d'OC-2)
           ./eines/compila_vamp_plugins.sh
           echo "--- minim del host i dels plugins ---"
           for f in vamp_host_local *-macos-local/*.dylib; do
@@ -127,9 +132,10 @@ jobs:
             --add-data "docs:docs" \
             --add-data "nnls-chroma-macos-local:nnls-chroma-macos-local" \
             --add-data "qm-vamp-plugins-macos-local:qm-vamp-plugins-macos-local" \
-            --add-data "vamp_host_local:vamp_host_local" \
+            --add-data "vamp_host_local:." \
             --add-data "portable:portable" \
-            eines/win_launcher.py
+            --add-data "acords_a_live.py:." \
+            eines/launcher_pyinstaller.py
           ls -la dist/
 
       - name: 7. ZIP (ditto) + verificació de l'executable
