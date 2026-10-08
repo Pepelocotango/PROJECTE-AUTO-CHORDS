@@ -1,9 +1,10 @@
 # Portabilitat a Windows (x64)
 
-> **2026-10-07 — Fase 1 del pla multi-SO.** Documenta com es construeix el
-> paquet portable de **Windows x64** de l'AUTO CHORDS, amb **tots els natius a
-> dins** (host Vamp, plugins, ffmpeg) i **sense instal·lar res** al sistema
-> (només cal Windows 10/11 x64). Vegeu també `ROADMAP.md` §9.
+> **2026-10-08 · v0.5.1.** Documenta com es construeix el paquet portable de
+> **Windows x64** de l'AUTO CHORDS, amb **tots els natius a dins** (host Vamp,
+> plugins, ffmpeg) i **sense instal·lar res** al sistema (només cal Windows
+> 10/11 x64). **Build VERD al CI** (run #12, `653ca98`). Vegeu `ROADMAP.md` §9 i
+> `docs/ESTAT_MULTI_SO.md`.
 
 ## 1. Què es construeix
 
@@ -15,7 +16,7 @@ i, a dins, tot el que l'app necessita:
 | GUI + pipeline | PyInstaller (Python 3.12 + PyQt5 + `numpy<2`) | `AutoChords.exe` + `_internal/` |
 | Host Vamp propi | compilat amb **MSYS2 / MINGW64** | `_internal/vamp_host_local.exe` |
 | Chordino (nnls-chroma) | **compilat** des de `codi_font_chordino/` (mingw-w64) | `_internal/nnls-chroma-win64-local/` |
-| Queen Mary | **binari oficial 1.8.0 win64** | `_internal/qm-vamp-plugins-win64-local/` |
+| Queen Mary | **compilat des de font** (`c4dm/qm-vamp-plugins` + `qm-dsp` + `vamp-plugin-sdk`, mingw-w64) | `_internal/qm-vamp-plugins-win64-local/` |
 | `libsndfile` + còdecs + runtimes MinGW | clausura de dependències del host | `_internal/*.dll` |
 | ffmpeg estàtic | gyan.dev (release-essentials) | `_internal/portable/bin/ffmpeg.exe` |
 
@@ -45,9 +46,12 @@ El script **detecta el SO** amb `uname -s` i té tres branques (`Linux`,
    `KERNEL32.dll`/`msvcrt.dll`). Receta provada (mingw-w64) que evita el
    `Makefile.mingw` original, que amb `--retain-symbols-file` i el guió baix
    del símbol (32-bit) deixaria el `.dll` sense exports en 64-bit.
-2. **Queen Mary** — baixa el **binari oficial win64** (Redmine id 2622) i, si
-   falla, cau al mirall `xlights.org/downloads/vamp64/`. Es verifica que sigui
-   de 64 bits.
+2. **Queen Mary** — **es compila des de font** (`c4dm/qm-vamp-plugins` + `qm-dsp`
+   + `vamp-plugin-sdk`) amb els clapack/cblas **inclosos**. ⚠️ El **binari
+   oficial win64 no servia**: depenia de `libblas.dll`/`liblapack.dll` **i del
+   runtime DEBUG de MSVC** → `LoadLibrary` fallava amb `error code 126`.
+   Cal `-D_USE_MATH_DEFINES` (el Makefile compila amb `-std=c++98` i a MinGW
+   `M_PI` no es defineix).
 3. **Host** — compila `eines/vamp_host.cpp` enllaçant `libvamp-hostsdk` estàtic
    i `libsndfile` dinàmic, i recull **recursivament** les DLLs no-sistema
    (`objdump -p` → `DLL Name`) a `portable/win-dlls/` (gitignored).

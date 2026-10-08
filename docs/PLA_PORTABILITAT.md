@@ -85,9 +85,10 @@ no calen per executar).
 - ⚠️ **Q9400 sense AVX**: `python-build-standalone` i les rodes han de ser SSE.
 - ⚠️ **Vamp SDK**: els headers són a `.deps/usr/include` (caldrà copiar-los al repo de build).
 - ⚠️ **Cap regressió**: a cada fase, **165/165 tests**.
-- ⚠️ **Windows/macOS**: fora d'abast d'aquest pla (GUI portable, però els `.so` i l'àudio són per SO).
+- ✅ **Windows/macOS (SUPERAT, v0.5.1)**: fora d'abast d'aquest pla **original**,
+  però ja coberts pel desplegament multi-SO → `docs/ESTAT_MULTI_SO.md`.
 
 ## No-objectius (per ara)
 - Instal·ladors natius (.deb/.exe/.dmg).
-- Execució a Windows/macOS.
+- ~~Execució a Windows/macOS~~ → **FET (v0.5.1)**: build verd (ZIP x64 + `.app` 10.13).
 - Empaquetar el daemon d'àudio.

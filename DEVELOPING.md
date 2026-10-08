@@ -182,7 +182,11 @@ Aquesta llista recull els temes que no són bloquejos del flux actual, però que
 - preparar packaging, instal·ladors o bundles per a un sistema real
 - pensar en versions, canvis, rollback i validació d’instal·lació
 
-### 9) Desplegament a altres SO
+### 9) Desplegament a altres SO — ✅ FET (v0.5.1)
+
+> **Fet (v0.5.1)**: `app/plataforma.py` separa la “glue” per SO i el CI
+> construeix **Windows x64** i **macOS 10.13+** (a més de la Linux AppImage).
+> Detall: `docs/ESTAT_MULTI_SO.md`.
 
 - comprovar compatibilitats de Qt, Python i plugins en Linux, Windows i macOS
 - separar la part “núcleo del producte” de la part “platform-specific glue”

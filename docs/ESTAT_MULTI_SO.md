@@ -1,17 +1,20 @@
 # Estat multi-SO — on som i què queda pendent
 
-> **2026-10-07.** Foto del desplegament a **Linux, Windows i macOS**, amb els
-> artefactes reals i els pendents. Complementa `ROADMAP.md` §9 (viabilitat),
-> `docs/PORTABILITAT.md` (Linux), `docs/PORTABILITAT_WINDOWS.md` i
-> `docs/PLANIFICACIO_MACOS.md`.
+> **2026-10-08 · v0.5.1 (BETA).** Foto del desplegament a **Linux, Windows i
+> macOS**: **els 3 builds del CI són VERDS**. Complementa `ROADMAP.md` §9
+> (viabilitat), `docs/PORTABILITAT.md` (Linux), `docs/PORTABILITAT_WINDOWS.md`
+> i `docs/PLANIFICACIO_MACOS.md`.
 
 ## Resum
 
 | SO | Objectiu | Estat | Artefacte del CI |
 |----|----------|-------|------------------|
-| **🐧 Linux** | AppImage x86_64 | ✅ **FET i verificat** | `AutoChords_v0.5.0-main-build6-Linux` (**161,4 MB**) |
-| **🍎 macOS** | `.app` per a **High Sierra 10.13+** (Intel) | ✅ **BUILD FET** (run #6 verd) | `AUTO_CHORDS-macos-build6` (**35,2 MB**, .app dins ZIP) |
-| **🪟 Windows** | ZIP portable x64 | 🟢 **gairebé**: el paquet es construeix sencer; falta un run amb el darrer fix | (encara cap run verd) |
+| **🐧 Linux** | AppImage x86_64 | ✅ **VERD i verificat** | `AutoChords_v0.5.0-main-build6-Linux` (**161,4 MB**; ZIP que conté l'AppImage) |
+| **🪟 Windows** | ZIP portable x64 | ✅ **VERD** (run #12, `653ca98`) | `AutoChords_v0.5.0-main-build12-Windows` (**95,3 MB**) |
+| **🍎 macOS** | `.app` per a **High Sierra 10.13+** (Intel) | ✅ **VERD** (run #6, `ce344f7`) | `AUTO_CHORDS-macos-build6` (**35,2 MB**, `.app` dins ZIP) |
+
+> ⚠️ Els noms dels artefactes porten **`v0.5.0`** perquè es van construir
+> **abans** del bump a **v0.5.1**; una execució nova els anomenarà `v0.5.1`.
 
 ## Detall per plataforma
 
@@ -22,9 +25,9 @@
   `~/.local/state/auto-chords/`, **210/210 tests dins el paquet**, host+plugins
   del paquet OK sobre un WAV real, i **export de partitura** (MusicXML+PDF+MSCZ).
 - Workflows: `build-appimage.yml` (manual) i `release.yml` (tags `v*`).
-- **Pendent**: llançar `release.yml` amb un tag (`v0.5.0`) per crear el Release.
+- **Pendent**: llançar `release.yml` amb un tag (`v0.5.1`) per crear el Release.
 
-### 🍎 macOS — el build ja és verd ✅ (amb un forat a tapar)
+### 🍎 macOS — build VERD ✅ (falta etapa de tests)
 
 - Runner **`macos-15-intel`** (l'últim Intel de GitHub Actions; disponible fins a
   l'agost de 2027).
@@ -45,7 +48,7 @@
   3. Signatura/notarització: **descartades** (l'usuari obre amb clic-dret ▸ Obrir
      o `xattr -dr com.apple.quarantine`).
 
-### 🪟 Windows — el paquet es construeix; falta el run verd 🟢
+### 🪟 Windows — VERD ✅
 
 - Runner `windows-2022`; host i plugins amb **MSYS2/MINGW64**.
 - **`qm-vamp-plugins` compilat des de font**: el binari oficial win64 depèn de
@@ -53,9 +56,9 @@
 - `portable/win-dlls` (runtime MinGW) al `PATH` de l'etapa de tests **i** copiat
   al costat del host (evita `0xC0000135` = `STATUS_DLL_NOT_FOUND`).
 - `ffmpeg` estàtic + **PyInstaller `--onedir`** + ZIP.
-- Workflow: `build-windows.yml` (manual).
-- **PENDENT**: llançar un run amb el **darrer fix** (`653ca98`) — l'últim error
-  era un `print()` amb emojis en consola cp1252 (`UnicodeEncodeError`).
+- Workflow: `build-windows.yml` (manual; **corre els tests**).
+- ✅ **Run #12 (`653ca98`) VERD**: l'últim error del CI era un `print()` amb
+  emojis en consola cp1252 (`UnicodeEncodeError`), resolt (`653ca98`).
 
 ## Els problemes trobats i resolts (per ordre)
 

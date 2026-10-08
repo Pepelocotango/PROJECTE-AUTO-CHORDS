@@ -1,8 +1,13 @@
 # Planificació: app de macOS (High Sierra 10.13+)
 
-> **2026-10-07.** Pla per construir AUTO CHORDS per a **macOS x86_64** amb
-> **mínim High Sierra 10.13**, tot a **GitHub Actions** (cap build local Mac).
-> Complementa `ROADMAP.md` §9 (viabilitat) i `docs/PORTABILITAT.md` (Linux).
+> **2026-10-07 · actualitzat 2026-10-08.** Pla per construir AUTO CHORDS per a
+> **macOS x86_64** amb **mínim High Sierra 10.13**, tot a **GitHub Actions**
+> (cap build local Mac). Complementa `ROADMAP.md` §9 (viabilitat) i
+> `docs/PORTABILITAT.md` (Linux).
+>
+> ✅ **ESTAT (2026-10-08)**: build **VERD** al CI (run #6, `ce344f7`); `.app`
+> dins ZIP. **Falta una etapa de tests** al workflow (avui només valida el
+> build). Detall: `docs/ESTAT_MULTI_SO.md`.
 
 ## 1. Objectiu i abast
 

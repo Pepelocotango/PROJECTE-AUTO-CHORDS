@@ -12,7 +12,7 @@
 
 ---
 
-## 0. Estat actual (2026-10-07 · v0.5.0): **AUTOPORTABLE** ✅
+## 0. Estat actual (2026-10-08 · v0.5.1): **AUTOPORTABLE** ✅
 
 **Què va DINS el paquet/AppImage** (res a instal·lar al host):
 
@@ -108,10 +108,11 @@ els bloquejos són (a) el **host Vamp** (`sonic-annotator`+Qt6), (b) el
 
 ### E) Altres SO (Windows/macOS)
 - La **GUI (PyQt5) és portable**; el codi Python també.
-- Però: **els plugins Vamp s'han de recompilar per a cada SO** (o empaquetar els
-  binaris ja publicats: `nnls-chroma`, `segmentino`, `qm-vamp-plugins` en tenen
-  per a Win/Mac) i l'àudio/ffmpeg canvien.
-- **Esforç: alt.** No bloqueja el Linux portable.
+- **FET (v0.5.1)** ✅: Windows i macOS tenen el seu propi build a GitHub Actions,
+  amb els plugins Vamp **compilats al runner** (`nnls-chroma`, `qm-vamp-plugins`;
+  el `segmentino` s'ha retirat) i `ffmpeg` estàtic per SO. Detall:
+  `docs/ESTAT_MULTI_SO.md`, `docs/PORTABILITAT_WINDOWS.md` i
+  `docs/PLANIFICACIO_MACOS.md`.
 
 ## 3. Proposta de camí (per fases)
 

@@ -80,11 +80,10 @@ botó 📍). I els `beats` donen la graella real de pulsacions.
 - ✅ **Compàs 1 automàtic** (`🧭` + Analitza ▸ …): `qm-onsetdetector` (primer
   onset = inici de música) + `qm-barbeattracker:bars` (downbeat més proper).
   Al tema de 101 → **9,49 s** (silenci de 9,5 s). `pipeline.detecta_compas1`.
-- ✅ **Motor de BPM triable** (diàleg): `nostre` (defecte) · `qm` · `aubio` ·
+- ✅ **Motor de BPM triable** (diàleg): `nostre` (defecte) · `qm` ·
   **`consens`** (si coincideixen, confiança alta; si no, guanya el nostre i
   avisa). `pipeline.detecta_bpm(..., motor=)` i `detecta_bpm_qm()`.
-- ✅ **Motor d'estructura**: **`qm` (qm-segmenter) per defecte**, o
-  `segmentino`. Mateix format de sortida → `fer_abc` igual.
+- ✅ **Motor d'estructura**: **`qm` (`qm-segmenter`)** — únic motor des de v0.5.
 
 ## El Segmentino i l'aubio s'han RETIRAT (v0.5)
 

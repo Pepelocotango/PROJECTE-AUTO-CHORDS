@@ -1,20 +1,20 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control` … `v0.5.0-checkpoint`).
+Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`).
 
-## [No publicat]
-
-### Afegit
-- **Multi-SO (Windows i macOS)**: abstracció de plataforma (`app/plataforma.py`),
-  host i plugins **multi-SO** (`eines/compila_vamp_{host,plugins}.sh`, amb
-  dispatch per SO), entry de PyInstaller compartida i **3 workflows de CI**
-  (`build-appimage.yml`, `build-windows.yml`, `build-macos.yml`).
-  **Linux**: AppImage verificada ✅. **macOS**: build verd ✅ (`.app` per a
-  10.13). **Windows**: el paquet es construeix; pendent el run verd dels
-  tests. Estat complet: **`docs/ESTAT_MULTI_SO.md`**.
+## [0.5.1] — 2026-10-08 (BETA)
 
 ### Afegit
+- **Multi-SO (Linux + Windows + macOS): els 3 builds del CI VERDS** —
+  abstracció de plataforma (`app/plataforma.py`), host i plugins **multi-SO**
+  (`eines/compila_vamp_{host,plugins}.sh`, dispatch per SO), entry de
+  PyInstaller compartida (`eines/launcher_pyinstaller.py`) i **3 workflows de
+  CI** (`build-appimage.yml`, `build-windows.yml`, `build-macos.yml`). El host
+  i els plugins es compilen **al runner** de cada SO; **`qm-vamp-plugins` es
+  compila des de font** a Windows i macOS (els binaris oficials no carregaven
+  o no es podien baixar). Artefactes: **Linux AppImage**, **Windows ZIP x64** i
+  **macOS ZIP (10.13)**. Estat complet: **`docs/ESTAT_MULTI_SO.md`**.
 - **Autoportabilitat real**: l'AppImage ara **empaqueta les llibreries natives**
   que necessita l'host Vamp — `libvamp-hostsdk`, `libsndfile` i els còdecs
   (`libFLAC`, `libogg`, `libvorbis`, `libvorbisenc`, `libopus`, `libmpg123`,

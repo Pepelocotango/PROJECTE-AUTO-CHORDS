@@ -2,7 +2,7 @@
 
 > Document de referència de la UI (PyQt5). Noms que fa servir el codi i
 > noms «humans» de cada zona, mides reals i interaccions.
-> **Actualitzat: 2026-10-07 · v0.5.0** (GUI reordenada:
+> **Actualitzat: 2026-10-08 · v0.5.1** (GUI reordenada:
 > timeline al centre, barres d'eines, franja Editor, metrònom, count-in,
 > caixa d'informació, tap tempo i paleta de botons unificada).
 

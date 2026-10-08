@@ -74,9 +74,9 @@ Això ens permet estar oberts a:
   Electron recent, Qt6) **no funcionaran**. Cal verificar la compatibilitat
   ABANS d’escollir una tecnologia.
 - 🔒 **Sense secrets** al repo (`.secrets/` ignorat per `.gitignore`).
-- 🐧 **Linux prioritari** (AppImage idealment); multi-OS és nice-to-have.
+- 🐧 **Linux** prioritari (AppImage) i, com a producte, **multi-SO**: Windows x64 + macOS 10.13+.
 
-## Estat actual (2026-10-07 · v0.5.0)
+## Estat actual (2026-10-08 · v0.5.1)
 
 El projecte ja ha passat de prototip funcional a flux de producte útil:
 
@@ -94,8 +94,11 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
 - bloqueig de doble instància per evitar sobreposició d’aplicacions
 - **auditoria de seguretat/estabilitat aplicada**: clamp de temps, tipus d’excepció específics, `_proc_lock`, `safe_filename`, parser CSV robust, validació WAV (sr/ch > 0)
 
-**Novetats v0.3.0–v0.5.0 (2026-10-07):**
+**Novetats v0.3.0–v0.5.1 (2026-10-08):**
 
+- **Multi-SO (v0.5.1)**: **Windows x64** i **macOS 10.13+** (Intel) via GitHub
+  Actions — host i plugins **compilats al runner** de cada SO; **els 3 builds
+  verds**. Detall: `docs/ESTAT_MULTI_SO.md`.
 - **Autocontingut i portable**: **AppImage** (~160 MB, runtime estàtic → sense
   `libfuse2`), **host Vamp propi**, **CPython portable** (sense AVX) i ffmpeg
   estàtic. **GitHub Actions**: build manual + Release automàtic en tag.
@@ -371,9 +374,9 @@ Aquestes són idees i oportunitats que queden pendents de revisió i que convé 
 > (cap build local Win/Mac). **No es signaran** les apps → s'assumeixen les limitacions
 > de Gatekeeper (macOS) i SmartScreen (Windows). El build de **Linux no es toca**.
 
-> **PROGRÉS (2026-10-07):** Linux ✅ (AppImage verificada) · **macOS ✅**
-> (build verd, `.app` de 35 MB) · **Windows 🟢** (el paquet es construeix;
-> pendent un run verd dels tests). Detall i pendents: `docs/ESTAT_MULTI_SO.md`.
+> **PROGRÉS (2026-10-08):** **els 3 builds del CI són VERDS** — Linux ✅
+> (AppImage verificada) · **Windows ✅** (ZIP portable x64) · **macOS ✅**
+> (`.app` per a 10.13). Detall, artefactes i pendents: `docs/ESTAT_MULTI_SO.md`.
 
 #### 9.1 — Què s'ha de portar
 
