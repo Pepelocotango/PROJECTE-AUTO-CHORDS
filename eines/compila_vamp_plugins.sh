@@ -109,11 +109,16 @@ compila_windows() {
         mkdir -p lib
         git clone --depth 1 -q https://github.com/c4dm/qm-dsp lib/qm-dsp
         git clone --depth 1 -q https://github.com/c4dm/vamp-plugin-sdk lib/vamp-plugin-sdk
-        make -C lib/qm-dsp -f build/linux/Makefile.linux64
+        # -D_USE_MATH_DEFINES: el Makefile compila amb -std=c++98 (ANSI
+        # estricte) i a MinGW M_PI no es defineix -> error a
+        # base/KaiserWindow.h:76. El passem via CXX/CC (sobreescriu el `?=` del
+        # Makefile sense perdre cap altra bandera; al Linux no cal).
+        MCXX="g++ -D_USE_MATH_DEFINES"; MCC="gcc -D_USE_MATH_DEFINES"
+        make -C lib/qm-dsp -f build/linux/Makefile.linux64 CXX="$MCXX" CC="$MCC"
         # Enllaç propi per a Windows: res de --version-script (ELF) i .def per
         # exportar només el símbol que busca el host; runtime MinGW estàtic.
         printf 'EXPORTS\nvampGetPluginDescriptor\n' > qm-vamp-plugins.def
-        make -f build/linux/Makefile.linux64 PLUGIN_EXT=.dll \
+        make -f build/linux/Makefile.linux64 PLUGIN_EXT=.dll CXX="$MCXX" CC="$MCC" \
             LDFLAGS="-shared -static -static-libgcc -static-libstdc++ -lpthread qm-vamp-plugins.def"
         cp -f qm-vamp-plugins.dll "$QM_OUT/qm-vamp-plugins.dll"
         [ -f qm-vamp-plugins.cat ] && cp -f qm-vamp-plugins.cat "$QM_OUT/"
