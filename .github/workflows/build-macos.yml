@@ -62,9 +62,14 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p "$PREFIX"
-          export CFLAGS="-O2 -mmacosx-version-min=10.13"
+          # OJO: cal passar -I/-L de $PREFIX tambe al build del vamp-plugin-sdk,
+          # perque el seu `make install` compila `host/vamp-simple-host` (un host
+          # d'exemple) que fa `#include <sndfile.h>` -> sense -I$PREFIX/include
+          # peta amb "fatal error: 'sndfile.h' file not found".
+          export CFLAGS="-O2 -mmacosx-version-min=10.13 -I$PREFIX/include"
           export CXXFLAGS="$CFLAGS"
-          export LDFLAGS="-mmacosx-version-min=10.13"
+          export CPPFLAGS="-I$PREFIX/include"
+          export LDFLAGS="-L$PREFIX/lib -mmacosx-version-min=10.13"
           # libsndfile (CMake). Sense codecs externs: l'app nomes llegeix WAV i
           # les conversions les fa ffmpeg (aixi evitem arrossegar FLAC/vorbis...).
           git clone --depth 1 https://github.com/libsndfile/libsndfile.git /tmp/libsndfile
