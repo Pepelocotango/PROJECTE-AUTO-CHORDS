@@ -10,7 +10,7 @@ def style(c):                     # Cmaj7->CMaj7, Am->A-, Em7->E-7
     c = re.sub(r'^([A-G][#b]?)maj', r'\1Maj', c)
     return re.sub(r'^([A-G][#b]?)m(?!aj|Aj)', r'\1-', c)
 
-rows = [(float(t), c.strip()) for t, c in csv.reader(open(src))]
+rows = [(float(t), c.strip()) for t, c in csv.reader(open(src, encoding="utf-8"))]
 segs, last, end = [], -1, 0
 for t, c in rows:
     p = max(0, round((t - offset) / step))
@@ -26,7 +26,7 @@ end = max(end, segs[-1][0] + slots_bar)
 def pos(p):                        # posició estil Live: compàs.temps.setzena
     return "%d.%d.%d" % (p // slots_bar + 1, (p % slots_bar) // 2 + 1, 1 + 2 * (p % 2))
 
-with open('acords_locators.txt', 'w') as f:
+with open('acords_locators.txt', 'w', encoding="utf-8") as f:
     f.write("posició (compàs.temps.setzena)   acord   durada(temps)\n")
     for i, (p, c) in enumerate(segs):
         q = segs[i + 1][0] if i + 1 < len(segs) else end
@@ -42,7 +42,7 @@ for b in range(nb):
         if p < hi and q > lo:
             items.append('<span class="%s">%s</span>' % ('' if p >= lo else 'k', html.escape(c)))
     cells.append('<div class="b"><i>%d</i>%s</div>' % (b + 1, ' '.join(items)))
-open('guia_acords.html', 'w').write("""<!doctype html><meta charset="utf-8"><title>Guia d'acords</title>
+open('guia_acords.html', 'w', encoding="utf-8").write("""<!doctype html><meta charset="utf-8"><title>Guia d'acords</title>
 <style>body{font:20px system-ui;margin:20px;background:#fff;color:#111}
 .g{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid #999;border-left:1px solid #999}
 .b{position:relative;min-height:56px;padding:22px 8px 6px;border-right:1px solid #999;border-bottom:1px solid #999;font-weight:600}
