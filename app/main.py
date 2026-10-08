@@ -1353,6 +1353,14 @@ class Finestra(QMainWindow):
 
 
 def main():
+    # A Windows la consola sol ser cp1252 i els missatges porten emojis i
+    # fletxes: sense això un simple print() peta amb UnicodeEncodeError
+    # (trobat al CI amb test_exporta_includes_both_acord_and_structure_wavs).
+    for _flux in (sys.stdout, sys.stderr):
+        try:
+            _flux.reconfigure(errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
     logger = setup_logging(DEFAULT_LOG_PATH)
     logger.info("Inici de l'aplicació | argv=%s cwd=%s", sys.argv, os.getcwd())
 

@@ -671,7 +671,12 @@ class Visor(QMainWindow):
         self.infoMissatge.emit(f"⟳ REFER: {desc}")
 
     def log(self, msg):
-        print(f"[visor] {msg}", flush=True)
+        # La consola pot ser cp1252 (Windows) o no existir (app empaquetada
+        # --windowed): un emoji no ha de fer caure mai res.
+        try:
+            print(f"[visor] {msg}", flush=True)
+        except (UnicodeEncodeError, OSError, ValueError, AttributeError):
+            pass
         self.registre.append(msg)
         try:
             import logging as _lg
@@ -1516,7 +1521,10 @@ class Visor(QMainWindow):
             except (BrokenPipeError, ValueError):
                 pass
         except Exception as e:  # noqa: BLE001
-            print(f"[visor] alimenta: {e}", flush=True)
+            try:
+                print(f"[visor] alimenta: {e}", flush=True)
+            except (UnicodeEncodeError, OSError, ValueError, AttributeError):
+                pass
 
     def _mostra_err_player(self):
         try:
