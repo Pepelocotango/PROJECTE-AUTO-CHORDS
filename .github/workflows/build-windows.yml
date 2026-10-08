@@ -132,6 +132,14 @@ jobs:
         shell: bash
         run: |
           set +e
+          # El host (vamp_host_local.exe) depèn de libsndfile + còdecs, que a
+          # l'arrel viuen a portable/win-dlls. La smoke test els posa al seu env;
+          # aquí cal al PATH (si no: STATUS_DLL_NOT_FOUND 0xC0000135, el que
+          # feia fallar test_detecta_compas1).
+          export PATH="$PWD/portable/win-dlls:$PATH"
+          # Belt-and-suspenders: còpia les DLLs al costat del host (repo root),
+          # que és el directori que Windows busca primer per a les dependències.
+          cp -f portable/win-dlls/*.dll . 2>/dev/null || true
           # tests.log a l'ESPai de treball (NO /tmp: a Windows l'artefacte no el troba).
           QT_QPA_PLATFORM=offscreen python -m unittest \
             tests.test_pipeline_export tests.test_partitura > tests.log 2>&1
