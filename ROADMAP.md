@@ -120,9 +120,30 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
   play/pause.
 - **Coherència del play**: mono cacat, **volum/mute en viu**, latència baixa,
   sense tallar la cua, avís si el reproductor mor.
-- **165 tests** (abans 82).
+- **210 tests** (OK, 1 skip) — abans 82.
 
 La base funcional i el nou visor estan validats. El que queda són millores de polish, estabilització i les funcionalitats pràctiques descrites a l’apartat següent.
+
+### Deute tècnic tancat (2026-10-08)
+
+- **Docs al dia**: el visor standalone es documenta com **`python -m app.visor`**
+  (el `python app/visor.py` directe fallava per imports relatius); recompte de
+  tests actualitzat; `ROADMAP` Fase D → D.1 ✅.
+- **`pyflakes` net** a `app/` i `eines/` (imports/variables morts trets).
+- **Excepcions** de `app/visor.py` i `app/main.py` revisades (cap canvi de
+  comportament; política documentada; fallbacks calents anotats).
+- **`concatena.py`** inclou `tests/` (47 fitxers · ~594 KB).
+
+### Pendents (2026-10-08)
+
+- **Proves manuals** (operador): `./AUTO_CHORDS.sh` (obrir WAV → Analitza →
+  editar acord → Exporta); `python -m app.visor <wav>` (standalone); **metrònom**
+  amb offset posat amb 📍 o 🧭.
+- **Tag de retorn** `v0.5.2-deute` (⚠️ `release.yml` s’activa amb tags `v*`;
+  alternativa: tag sense `v`).
+- **Re-provar els builds** de Windows i macOS a GitHub Actions.
+- **Fase D.2** (multi-selecció, copiar/enganxar): **partir `timeline.py`** abans
+  de tocar-lo (≈1.777 línies).
 
 ## Fase A — Visor navegable ✅
 
