@@ -56,7 +56,16 @@ jobs:
       - name: 3. Compilar host Vamp + plugins .dll (branca Windows del script)
         shell: msys2 {0}
         run: |
-          bash eines/compila_vamp_plugins.sh
+          set +e
+          bash eines/compila_vamp_plugins.sh > /tmp/vamp_build.log 2>&1
+          rc=$?
+          cat /tmp/vamp_build.log
+          if [ "$rc" -ne 0 ]; then
+            # Cua de l'error a una anotacio (llegible per API sense auth).
+            ERR=$(tail -n 20 /tmp/vamp_build.log | tr '\n' ' ' | tr -s ' ' | cut -c1-800)
+            echo "::error::compila_vamp_plugins (rc=$rc): $ERR"
+            exit "$rc"
+          fi
 
       - name: 4. Python x64 + rodes (PyQt5 + numpy<2 + PyInstaller)
         uses: actions/setup-python@v5
