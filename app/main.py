@@ -1185,8 +1185,8 @@ class Finestra(QMainWindow):
             try:
                 info = pipeline.wav_info(ruta)
             except Exception as e:  # noqa: BLE001
-                # fallback esperat (p. ex. un no-WAV): registrem al log de fitxer
-                self.logger.debug("info wav no disponible per %s: %s", ruta, e)
+                # error real i poc freqüent (WAV il·legible): warning al log de fitxer
+                self.logger.warning("no es pot llegir la info del WAV %s: %s", ruta, e)
                 info = None
         if info:
             self.wav_info.setText(
