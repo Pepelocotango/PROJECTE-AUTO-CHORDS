@@ -44,7 +44,9 @@ compila_windows() {
     WORK="$(mktemp -d -t ac_vamp_win.XXXXXX)"
     trap 'rm -rf "$WORK"' EXIT
 
-    for t in g++ gcc make git curl unzip objdump; do
+    # (make/git no calen a la branca Windows: Chordino es compila directe i el
+    #  qm es baixa com a binari oficial.)
+    for t in g++ gcc curl unzip objdump; do
         command -v "$t" >/dev/null || { echo "ERROR: falta l'eina '$t'"; exit 1; }
     done
     [ -d "$INC/vamp-sdk" ] || {

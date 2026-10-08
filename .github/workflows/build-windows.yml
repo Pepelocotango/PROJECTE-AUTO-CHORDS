@@ -30,19 +30,28 @@ jobs:
           echo "--- disc ---"; df -h . 2>/dev/null | head || true
           echo "::endgroup::"
 
-      - name: "2. MSYS2 (MINGW64) - toolchain + Vamp + sndfile + boost"
+      - name: 2. MSYS2 (MINGW64) - entorn base
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: false
-          install: >-
-            git
-            curl
-            unzip
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-vamp-plugin-sdk
-            mingw-w64-x86_64-libsndfile
+
+      - name: "2b. Paquets MSYS2 (refrescant la BD primer)"
+        shell: msys2 {0}
+        run: |
+          # ⚠️ CAL refrescar la BD: amb `update: false` i la imatge del runner,
+          # pacman NO trobava paquets nous com mingw-w64-x86_64-vamp-plugin-sdk
+          # -> "target not found" -> exit 1 (causa del run #1).
+          pacman -Sy --noconfirm
+          pacman -S --noconfirm --needed \
+            git curl unzip \
+            mingw-w64-x86_64-gcc \
+            mingw-w64-x86_64-vamp-plugin-sdk \
+            mingw-w64-x86_64-libsndfile \
             mingw-w64-x86_64-boost
+          echo "--- versions ---"
+          g++ --version | head -1
+          pacman -Q mingw-w64-x86_64-vamp-plugin-sdk mingw-w64-x86_64-libsndfile
 
       - name: 3. Compilar host Vamp + plugins .dll (branca Windows del script)
         shell: msys2 {0}
