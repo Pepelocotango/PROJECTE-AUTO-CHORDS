@@ -51,6 +51,16 @@ for _m in ("information", "warning", "critical", "question", "about"):
         setattr(visor.QMessageBox, _m, staticmethod(lambda *a, **k: None))
 
 
+def _escriu_fitxer(ruta, text):
+    """Escriu un fitxer TANCANT-LO de seguida.
+
+    A Windows un fitxer obert sense tancar pot bloquejar la lectura posterior
+    (i les dades poden no estar a disc). Era la causa d'errors intermitents.
+    """
+    with open(ruta, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
 class ExportPipelineTests(unittest.TestCase):
     def test_setup_logging_creates_log_file(self):
         with tempfile.TemporaryDirectory() as td:
@@ -782,7 +792,7 @@ class OffsetDosCampsTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 30)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("9.5,Am\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "9.5,Am\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -835,7 +845,7 @@ class OffsetLlistesTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 30)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("9.5,Am\n12.0,C\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "9.5,Am\n12.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -1086,7 +1096,7 @@ class UndoInfoTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 10)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n4.0,Am\n8.0,G\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -1146,8 +1156,8 @@ class InfoBoxTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n8.0,G\n")
-        open(os.path.join(ac, "estructura_ABC.csv"), "w").write(
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n8.0,G\n")
+        _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.0,8.0,8.0,A,N,1,1\n")
         window = app_main.Finestra()
@@ -1248,8 +1258,7 @@ class PlayCoherenciaTests(unittest.TestCase):
                                               44100 * 3)) * 8000).astype(
                 np.int16).tobytes() * 2)
         cls._ac = os.path.join(cls._d, "ACORDS"); os.makedirs(cls._ac)
-        open(os.path.join(cls._ac, "acords.csv"), "w").write("0.0,C\n")
-
+        _escriu_fitxer(os.path.join(cls._ac, "acords.csv"), "0.0,C\n")
     def _visor(self):
         return visor.Visor(self._wav, os.path.join(self._ac, "acords.csv"),
                            None, 120, 4)
@@ -1394,7 +1403,7 @@ class BpmDoblaTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 5)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -1749,7 +1758,7 @@ class BotoOnOffTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 10)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -1839,8 +1848,8 @@ class LlistaSeleccioTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n4.0,Am\n8.0,G\n")
-        open(os.path.join(ac, "estructura_ABC.csv"), "w").write(
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
+        _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.00,4.00,4.00,A,N,1,1\n4.00,20.00,16.00,B,B,1,1\n")
         window = app_main.Finestra()
@@ -1889,7 +1898,7 @@ class OffsetBotoCursorTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -1926,7 +1935,7 @@ class TapTempoTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 10)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -1998,8 +2007,8 @@ class EditorFranjaTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n4.0,Am\n8.0,G\n")
-        open(os.path.join(ac, "estructura_ABC.csv"), "w").write(
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
+        _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.00,4.00,4.00,A,N,1,1\n4.00,20.00,16.00,B,B,1,1\n")
         window = app_main.Finestra()
@@ -2096,8 +2105,8 @@ class MenuEdicioTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
-        open(os.path.join(ac, "acords.csv"), "w").write("0.0,C\n4.0,Am\n8.0,G\n")
-        open(os.path.join(ac, "estructura_ABC.csv"), "w").write(
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
+        _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.00,4.00,4.00,A,N,1,1\n4.00,20.00,16.00,B,B,1,1\n")
         window = app_main.Finestra()
@@ -2303,7 +2312,7 @@ class ContextMenuTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 2)
         ac = os.path.join(td, "acords.csv")
-        open(ac, "w").write("0.0,C\n2.0,Am\n")
+        _escriu_fitxer(ac, "0.0,C\n2.0,Am\n")
         return visor.Visor(wav, ac, None, 120, 4, False)
 
     def _captura(self, v, kind, idx):
@@ -2637,10 +2646,14 @@ class ConfigEscripturaTests(unittest.TestCase):
         self.assertTrue(os.access(config.TEMP_DIR, os.W_OK))
 
     def test_detecta_nomes_lectura(self):
+        if not plataforma.ES_LINUX:
+            self.skipTest("/proc només existeix al Linux")
         # /proc és de només lectura
         self.assertFalse(config._es_escriptible("/proc"))
 
     def test_cau_fora_del_projecte_si_aquest_no_es_escriptible(self):
+        if not plataforma.ES_LINUX:
+            self.skipTest("cal un camí de només lectura; /proc és només del Linux")
         with patch.object(config, "PROJECT_ROOT", "/proc"):
             d = config._dir_de_dades()
         self.assertNotEqual(d, "/proc")
