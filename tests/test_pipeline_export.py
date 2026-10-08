@@ -549,9 +549,9 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
             w.setsampwidth(2)
             w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
-        with open(os.path.join(sortida, "acords.csv"), "w") as f:
+        with open(os.path.join(sortida, "acords.csv"), "w", encoding="utf-8") as f:
             f.write("0.0,C\n2.0,Am\n4.5,F\n7.0,G\n10.0,C\n")
-        with open(os.path.join(sortida, "estructura_ABC.csv"), "w") as f:
+        with open(os.path.join(sortida, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
             f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
             f.write("0.0,5.0,5.0,A,A,1.1,5.1\n")
             f.write("5.0,10.0,5.0,B,B,5.1,10.1\n")
@@ -1541,11 +1541,11 @@ class PostprocTests(unittest.TestCase):
         import tempfile
         d = tempfile.mkdtemp()
         f = os.path.join(d, "a.csv")
-        with open(f, "w") as fh:
+        with open(f, "w", encoding="utf-8") as fh:
             fh.write("0.0,A/E\n4.0,A\n8.0,Cmaj7\n8.5,G\n12.0,G\n")
         postproc.processa_acords_csv(f, sense_baix=True, reduir=True,
                                      durada_min=1.0, fusiona_iguals=True)
-        with open(f) as fh:
+        with open(f, encoding="utf-8") as fh:
             noms = [r[1] for r in csv.reader(fh)]
         self.assertEqual(noms, ["A", "G"])
 
@@ -1720,7 +1720,7 @@ class EscriuTtlTests(unittest.TestCase):
         d = tempfile.mkdtemp()
         ruta = os.path.join(d, "t.ttl")
         pipeline.escriu_ttl("chords", params, ruta, lambda *a: None)
-        return open(ruta).read()
+        return open(ruta, encoding="utf-8").read()
 
     def test_ttl_te_tots_els_parametres(self):
         s = self._ttl({})
@@ -2390,7 +2390,7 @@ class FormatCsvTests(unittest.TestCase):
             (0.0, "C", "0.000000000"),
             (16.439727891, "E7", "16.439727891"),
         ])
-        files = open(ruta).read().strip().splitlines()
+        files = open(ruta, encoding="utf-8").read().strip().splitlines()
         self.assertEqual(files[0], "0.00,C")
         self.assertEqual(files[1], "16.44,E7")
         for linia in files:
@@ -2405,7 +2405,7 @@ class FormatCsvTests(unittest.TestCase):
         ruta = os.path.join(td, "estructura_ABC.csv")
         pipeline.desa_abc_csv(ruta, [(0.0, 21.362, "A", "N")], 101.0,
                               lambda m: None)
-        files = open(ruta).read().strip().splitlines()
+        files = open(ruta, encoding="utf-8").read().strip().splitlines()
         self.assertEqual(files[0].split(",")[:3], ["inici_s", "fi_s", "durada_s"])
         self.assertEqual(files[1].split(",")[:3], ["0.00", "21.36", "21.36"])
 
@@ -2444,9 +2444,9 @@ class UndoRedoTests(unittest.TestCase):
             w.setsampwidth(2)
             w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
-        with open(os.path.join(sortida, "acords.csv"), "w") as f:
+        with open(os.path.join(sortida, "acords.csv"), "w", encoding="utf-8") as f:
             f.write("0.0,C\n2.0,Am\n4.5,F\n7.0,G\n10.0,C\n")
-        with open(os.path.join(sortida, "estructura_ABC.csv"), "w") as f:
+        with open(os.path.join(sortida, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
             f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
             f.write("0.0,5.0,5.0,A,A,1.1,5.1\n")
             f.write("5.0,10.0,5.0,B,B,5.1,10.1\n")
