@@ -12,25 +12,32 @@ import sys
 import time
 from pathlib import Path
 
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
-
 ROOT = Path(__file__).resolve().parent
 APP_DIR = ROOT / "app"
 
 
-class AppRestartHandler(FileSystemEventHandler):
-    def __init__(self, launcher):
-        self.launcher = launcher
+def _crea_handler(launcher):
+    """Handler de `watchdog` (import LAZY: només cal quan s'usa --watch).
 
-    def on_any_event(self, event):
-        if event.is_directory:
-            return
-        if not event.src_path.endswith(".py"):
-            return
-        path = Path(event.src_path)
-        if path.is_relative_to(ROOT):
-            self.launcher.restart()
+    Així `dev_reload.py` funciona sense tenir `watchdog` instal·lat si no
+    es demana l'auto-reload.
+    """
+    from watchdog.events import FileSystemEventHandler
+
+    class AppRestartHandler(FileSystemEventHandler):
+        def __init__(self, launcher):
+            self.launcher = launcher
+
+        def on_any_event(self, event):
+            if event.is_directory:
+                return
+            if not event.src_path.endswith(".py"):
+                return
+            path = Path(event.src_path)
+            if path.is_relative_to(ROOT):
+                self.launcher.restart()
+
+    return AppRestartHandler(launcher)
 
 
 class AppLauncher:
@@ -87,7 +94,12 @@ def main():
     launcher = AppLauncher()
 
     if args.watch:
-        handler = AppRestartHandler(launcher)
+        try:
+            from watchdog.observers import Observer
+        except ImportError:
+            sys.exit("[dev] falta el paquet 'watchdog' per a --watch: "
+                     "pip install watchdog")
+        handler = _crea_handler(launcher)
         observer = Observer()
         for path in (ROOT / "app",):
             observer.schedule(handler, str(path), recursive=True)

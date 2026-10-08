@@ -4,3 +4,7 @@
 # ⚠️ Q9400 sense SSE4.2: numpy<2 obligatori (numpy 2.x demana x86_64-v2).
 PyQt5>=5.15.9
 numpy>=1.22,<2
+
+# (Només dev/opcional) auto-reload de dev_reload.py --watch. El fitxer
+# detecta si hi és i, si no, avisa; no cal per fer anar l'app.
+# watchdog
