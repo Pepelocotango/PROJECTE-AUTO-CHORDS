@@ -262,26 +262,28 @@ class RulerLayer(QGraphicsItem):
                     p.drawLine(QPointF(x, self._height - 4),
                                QPointF(x, self._height - 1))
                 t += sub
-        # ticks principals + etiquetes
+        # ticks principals + etiquetes (AMB l'offset, com el GridLayer: si no,
+        # les etiquetes queden desplaçades respecte de les linies del grid)
         step, color, _w = levels[-1]
         font = QFont("Sans Serif", 8)
         p.setFont(font)
         fm = QFontMetricsF(font)
-        t = math.floor(self._view_left / step) * step
+        t = off + math.floor((self._view_left - off) / step) * step
         if t < 0:
-            t = 0.0
+            t = off
         last_label_x = -1e9
         while t <= self._view_right + 1e-9:
-            x = (t - self._view_left) * self._pps
-            p.setPen(QPen(QColor(color), 1))
-            p.drawLine(QPointF(x, self._height - 8),
-                       QPointF(x, self._height - 1))
-            lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb, off)
-            wlab = fm.width(lab)
-            if x - wlab / 2 > last_label_x:
-                p.setPen(QPen(QColor(RULER_TEXT), 1))
-                p.drawText(QPointF(x - wlab / 2, self._height - 11), lab)
-                last_label_x = x + wlab / 2
+            if t >= 0:
+                x = (t - self._view_left) * self._pps
+                p.setPen(QPen(QColor(color), 1))
+                p.drawLine(QPointF(x, self._height - 8),
+                           QPointF(x, self._height - 1))
+                lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb, off)
+                wlab = fm.width(lab)
+                if x - wlab / 2 > last_label_x:
+                    p.setPen(QPen(QColor(RULER_TEXT), 1))
+                    p.drawText(QPointF(x - wlab / 2, self._height - 11), lab)
+                    last_label_x = x + wlab / 2
             t += step
 
         # Indicador de MODE (fix a la dreta del regle): '120 BPM . 4/4' o
