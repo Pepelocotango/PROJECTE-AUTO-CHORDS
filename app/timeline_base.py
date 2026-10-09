@@ -141,18 +141,24 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
 
 
 def grid_levels(tempo_fix, bpm, bpb, span):
-    """Retorna [(step_s, color, width), ...] de menys a més important."""
+    """Retorna [(step_s, color, width), ...] de menys a més important.
+
+    `color` és un valor de color REAL (ja resolt des de `theme`), llest per
+    passar-lo directament a `QColor(...)`. (Abans eren strings literals
+    "theme.TL_GRID_*" -> `QColor` els considerava invàlids i les línies del
+    grid sortien negres.)
+    """
     if tempo_fix:
         beat = 60.0 / max(float(bpm), 1e-9)
         measure = beat * max(int(bpb), 1)
-        levels = [(measure, "theme.TL_GRID_MEASURE", 1)]
+        levels = [(measure, theme.TL_GRID_MEASURE, 1)]
         if span <= measure * 16:
-            levels.insert(0, (beat, "theme.TL_GRID_BEAT", 1))
+            levels.insert(0, (beat, theme.TL_GRID_BEAT, 1))
         if span <= beat * 8:
-            levels.insert(0, (beat / 2.0, "theme.TL_GRID_SUB", 1))
+            levels.insert(0, (beat / 2.0, theme.TL_GRID_SUB, 1))
         return levels
     step = _best_step_free(span)
-    levels = [(step, "theme.TL_GRID_MEASURE", 1)]
+    levels = [(step, theme.TL_GRID_MEASURE, 1)]
     if span <= 30.0:
-        levels.insert(0, (step / 5.0, "theme.TL_GRID_SUB", 1))
+        levels.insert(0, (step / 5.0, theme.TL_GRID_SUB, 1))
     return levels

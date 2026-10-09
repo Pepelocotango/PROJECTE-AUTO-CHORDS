@@ -227,6 +227,16 @@ class RulerLayer(QGraphicsItem):
         self._offset = float(offset)
         self.update()
 
+    def mode_label(self) -> str:
+        """Text de l'indicador de mode del regle.
+
+        Amb tempo: '120 BPM . 4/4' (BPM i pulsacions per compas). Sense tempo
+        (mode lliure): 'Lliure'.
+        """
+        if self._tempo_fix:
+            return f"{self._bpm:.0f} BPM \u00b7 {self._bpb}/4"
+        return "Lliure"
+
     def paint(self, painter, option, widget=None):
         p = painter
         p.setRenderHint(QPainter.Antialiasing, False)
@@ -273,6 +283,20 @@ class RulerLayer(QGraphicsItem):
                 p.drawText(QPointF(x - wlab / 2, self._height - 11), lab)
                 last_label_x = x + wlab / 2
             t += step
+
+        # Indicador de MODE (fix a la dreta del regle): '120 BPM . 4/4' o
+        # 'Lliure'. Va al final perque quedi per sobre de les etiquetes.
+        etq = self.mode_label()
+        font_b = QFont("Sans Serif", 8, QFont.Bold)
+        p.setFont(font_b)
+        fmb = QFontMetricsF(font_b)
+        wb = fmb.width(etq) + 12.0
+        xb = rect.width() - wb - 4.0
+        if xb > 2.0:
+            p.fillRect(QRectF(xb, 3, wb, self._height - 8),
+                       QColor(theme.TL_WAVE_MID))
+            p.setPen(QPen(QColor(RULER_TEXT), 1))
+            p.drawText(QPointF(xb + 6.0, self._height - 7), etq)
 
 
 # -----------------------------------------------------------------------------

@@ -581,6 +581,41 @@ class TimelineConstraintTests(unittest.TestCase):
         self.assertEqual(view.selected_keys(), set())
 
 
+    def test_ruler_mode_label_tempo_i_lliure(self):
+        """L'indicador de mode del regle: 'N BPM . P/4' amb tempo, 'Lliure' sense."""
+        from app.timeline_layers import RulerLayer
+        r = RulerLayer(400, 26, 60.0, 0.0, 0.0, 10.0, True, 120.0, 4)
+        self.assertEqual(r.mode_label(), "120 BPM \u00b7 4/4")
+        r.update_mode(False, 120.0, 4)
+        self.assertEqual(r.mode_label(), "Lliure")
+        r.update_mode(True, 90.0, 3)
+        self.assertEqual(r.mode_label(), "90 BPM \u00b7 3/4")
+
+    def test_ruler_paint_no_peta(self):
+        """El paint del regle (amb l'indicador de mode) no ha de petar mai."""
+        from PyQt5.QtGui import QImage, QPainter
+        from app.timeline_layers import RulerLayer
+        r = RulerLayer(400, 26, 60.0, 0.0, 0.0, 10.0, True, 120.0, 4)
+        img = QImage(400, 26, QImage.Format_ARGB32)
+        img.fill(0)
+        p = QPainter(img)
+        try:
+            r.paint(p, None, None)
+        finally:
+            p.end()
+
+    def test_grid_levels_colors_valids(self):
+        """Els colors de grid_levels han de ser REALS (QColor valid), no strings."""
+        from PyQt5.QtGui import QColor
+        from app.timeline_base import grid_levels
+        casos = ((True, 120.0, 4, 10.0), (True, 90.0, 3, 200.0),
+                 (False, 120.0, 4, 10.0), (False, 120.0, 4, 100.0))
+        for tf, bpm, bpb, span in casos:
+            for _step, color, _w in grid_levels(tf, bpm, bpb, span):
+                self.assertTrue(QColor(color).isValid(),
+                                f"color invalid a grid_levels: {color!r}")
+
+
 class VisorTimelineIntegrationTests(unittest.TestCase):
     """Tests d'integració Visor ↔ TimelineView."""
 
