@@ -30,8 +30,8 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   **invàlid**. Ara retorna els colors **reals** de `theme`.
 
 ### Proves
-- **224 tests** · OK (1 skip) — +14 respecte de la v0.5.1 (multi-selecció,
-  `Ctrl+C/V/X`, `Ctrl+D` de grup, indicador de mode i colors del grid).
+- **227 tests** · OK (1 skip) — +17 respecte de la v0.5.1 (multi-selecció,
+  `Ctrl+C/V/X`, `Ctrl+D` i **moure** el grup, indicador de mode i colors del grid).
 - **CI multi-SO re-verificat** amb tot el codi de D.2: **Linux AppImage #8**,
   **Windows #14** i **macOS #8** (amb pas de tests) — tots **VERDS**.
 

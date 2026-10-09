@@ -179,8 +179,10 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 | **Roda ②** | **zoom** (centrat al clip seleccionat) |
 | **Espai** | **play / pausa** |
 | **T** | **tap tempo** |
-| **Delete / Backspace** | **elimina** el clip seleccionat |
-| **Ctrl+D** | **duplica** el clip seleccionat |
+| **Ctrl+clic / Shift+clic** | **multi-selecció**: afegeix/treu del grup · **rang** |
+| **Delete / Backspace** | **elimina** el clip o tota la **selecció** (grup) |
+| **Ctrl+D** | **duplica** el clip o **tot el grup** seleccionat |
+| **Ctrl+C / Ctrl+X / Ctrl+V** | **copiar / retallar / enganxar** la selecció al cursor |
 | **F2** | **reanomena** el clip seleccionat |
 | **Ctrl+Z / Ctrl+Y** | **desfer / refer** |
 | **Ratolí sobre un botó/camp** | la **caixa d'informació** (a baix a la dreta) mostra què fa |

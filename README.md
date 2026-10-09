@@ -47,7 +47,7 @@ pas d’assistent.
   estructura (clic per saltar, doble-clic per editar, menú contextual).
 - Compassos de **qualsevol mètrica** (3/4, 6/8, 5/4…), no només 4/4.
 
-La funcionalitat principal està validada: **224 tests · OK (1 skip)** (`python -m unittest tests.test_pipeline_export tests.test_partitura`).
+La funcionalitat principal està validada: **227 tests · OK (1 skip)** (`python -m unittest tests.test_pipeline_export tests.test_partitura`).
 
 ## Què fa l’app
 
