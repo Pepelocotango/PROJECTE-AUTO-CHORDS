@@ -3,14 +3,16 @@
 Aplicació d'escriptori per **analitzar un àudio, navegar-ne els acords i
 l'estructura, corregir-los i exportar clips preparats per al DAW**.
 
-Aquesta versió inclou l'**AppImage autocontinguda** per a Linux x86_64
-(no cal instal·lar Python, ni Qt, ni res: només executar-la).
+Aquesta versió inclou els paquets per a **Linux, Windows i macOS** — no cal
+instal·lar Python, ni Qt, ni res.
 
-### 📥 Com executar l'AppImage
+### 📥 Com executar-ho
+
+**🐧 Linux (AppImage)** — el fitxer `AutoChords_*_x86_64.AppImage`:
 
 ```bash
-chmod +x AutoChords_*.AppImage
-./AutoChords_*.AppImage
+chmod +x AutoChords_*_x86_64.AppImage
+./AutoChords_*_x86_64.AppImage
 ```
 
 O bé **doble clic** al fitxer (pot caler marcar «Executa» a les propietats).
@@ -22,6 +24,13 @@ O bé **doble clic** al fitxer (pot caler marcar «Executa» a les propietats).
 > ✅ **No cal `libfuse2`**: el runtime de l'AppImage és **estàtic** (ho porta
 > tot a dins). Només cal el suport **FUSE del nucli** (estàndard a tot Linux).
 > Si mai fallés: `./AutoChords_*.AppImage --appimage-extract-and-run`
+
+**🪟 Windows (x64)** — descomprimeix el ZIP i executa **`AutoChords.exe`**
+(si SmartScreen avisa: *Més informació ▸ Executa igualment*).
+
+**🍎 macOS (High Sierra 10.13+)** — descomprimeix el ZIP i obre
+**`AUTO_CHORDS.app`** (clic dret ▸ **Obre**; el Gatekeeper està OFF, però el
+primer cop cal confirmar-ho).
 
 ---
 

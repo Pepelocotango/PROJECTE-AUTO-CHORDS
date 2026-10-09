@@ -89,7 +89,7 @@ jobs:
           mkdir -p out
           TAG="${{ steps.tag.outputs.tag }}"
           if [ -d dist/linux ]; then
-            find dist/linux -name '*.AppImage' -exec cp {} out/ \;
+            find dist/linux -name '*.AppImage' -exec cp {} "out/AutoChords_${TAG}_x86_64.AppImage" \;
           fi
           if [ -d dist/windows ]; then
             wdir=$(find dist/windows -mindepth 1 -maxdepth 1 -type d | head -1)
@@ -115,8 +115,11 @@ jobs:
           # IDEMPOTENT: si el Release ja existeix, no el tornem a crear; nomes
           # hi adjuntem/actualitzem els fitxers (--clobber sobreescriu).
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "El Release $TAG ja existeix: hi adjunto/actualitzo els paquets."
+            echo "El Release $TAG ja existeix: hi actualitzo paquets + notes."
             gh release upload "$TAG" out/* --clobber
+            gh release edit "$TAG" \
+              --title "AUTO CHORDS ${TAG}" \
+              --notes-file NOTES_RELEASE.md
           else
             gh release create "$TAG" \
               --title "AUTO CHORDS ${TAG}" \
