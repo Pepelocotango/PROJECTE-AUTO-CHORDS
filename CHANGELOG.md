@@ -32,6 +32,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 - **CI — workflow agregador** `build-all.yml`: executa els 3 builds (Linux +
   Windows + macOS) **en paral·lel** amb un sol clic. Els 3 workflows de build
   són ara *reusable* (`workflow_call`), sense perdre el disparador manual.
+- **CI — Release (drecera manual) amb els 3 SO**: `release.yml` ara és
+  **manual** i **no compila**: agafa els **últims artefactes verds** de
+  Linux/Windows/macOS de GitHub Actions i crea l'esborrany amb **els 3 paquets**
+  adjunts (abans només l'AppImage de Linux, i s'activava amb el tag).
 
 ### Arreglat
 - **Línies del grid pintades de negre**: `grid_levels()` retornava els *strings*

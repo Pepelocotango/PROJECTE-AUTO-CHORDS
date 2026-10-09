@@ -30,9 +30,11 @@
   els 3 builds en **paral·lel**) i `release.yml` (tags `v*`).
 - ✅ **Release #1 VERD** (tag **`v0.5.1_CHECKPOINT_3_so_ARTIFACTS`** = `e895fa6`);
   `release.yml` s'activa amb tags `v*`.
-- **`release.yml` idempotent** (2026-10-09): si el Release **ja existeix** (creat
-  publicant-lo des de la web, que també crea el tag), **no** el torna a crear:
-  només hi **adjunta l'AppImage** (`gh release upload --clobber`).
+- **`release.yml` — drecera manual amb els 3 SO** (2026-10-09): **manual**
+  (workflow_dispatch). **No compila res**: busca l'última execució **VERDA** de
+  cada build, en baixa els artefactes de GitHub Actions i crea l'esborrany amb
+  **els 3 paquets** adjunts (AppImage + ZIP Windows + ZIP macOS). És
+  **idempotent** (si el Release ja existeix, només hi adjunta/actualitza).
 
 ### 🍎 macOS — VERD amb etapa de tests ✅
 

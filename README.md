@@ -204,7 +204,7 @@ Quatre workflows a `.github/workflows/`:
 | **`build-appimage.yml`** | **només manual** (GitHub ▸ Actions ▸ Run workflow) | Construeix l'AppImage de **Linux** i la deixa com a **artefacte** descarregable |
 | **`build-windows.yml`** | **només manual** | Construeix el paquet portable de **Windows x64** (MSYS2 + PyInstaller `--onedir`) i el deixa com a **artefacte** (ZIP) |
 | **`build-macos.yml`** | **només manual** | Construeix el **`.app` de macOS 10.13+** (Intel; PyInstaller) i el deixa com a **artefacte** (ZIP) |
-| **`release.yml`** | en **pujar un tag `v*`** | Construeix l'AppImage i crea un **Release (esborrany)** amb títol `AUTO CHORDS v<versió>`, el cos **en català** (de `CHANGELOG.md` via `eines/notes_release.py`) i l'AppImage adjunta |
+| **`release.yml`** | **només manual** | **Drecera**: agafa els **últims artefactes verds** de Linux/Windows/macOS **directament de GitHub Actions** i crea un **Release (esborrany)** amb títol `AUTO CHORDS v<versió>`, el cos **en català** (`eines/notes_release.py`) i els **3 fitxers** adjunts |
 
 ```bash
 git tag v0.5.2 -m "..." && git push origin v0.5.2   # -> Release esborrany

@@ -1,149 +1,136 @@
-name: Publicar Release (Linux)
+name: Publicar Release (ultims artefactes verds dels 3 SO)
+run-name: "Publicar Release ${{ inputs.tag || 'auto' }}"
 
-# ── Per DEPURAR ────────────────────────────────────────────────────────────
-# · Cada pas imprimeix la seva sortida al log de l'execució.
-# · Si alguna cosa falla, l'última passa ("ZZ") imprimeix pistes (disc, fitxers,
-#   logs) i "ZZ2" puja els logs com a artefacte `debug-logs-<N>`.
-# · Per a MOLT més detall: a GitHub > Settings > Secrets and variables >
-#   Actions, crea la variable `ACTIONS_STEP_DEBUG` = `true` (modes verbose).
-# · Els scripts (`eines/*.sh`) tenen `set -e` i el seu propi `echo` de progrés.
-# ───────────────────────────────────────────────────────────────────────────
-
-
-# S'activa NOMES quan puges un tag de versio (p. ex. `git tag v0.5.1`).
-# Construeix l'AppImage i crea un RELEASE de GitHub:
-#   · titol: AUTO CHORDS v<versio>
-#   · cos: en catala, generat de CHANGELOG.md (eines/notes_release.py)
-#   · fitxer: l'AppImage
-# Es crea com a ESBORRANY (draft): el revises i el publiques tu.
-# NO fa cap push al repositori.
+# ── DRECERA MANUAL «INTEL·LIGENT» ──────────────────────────────────────────
+# NO compila res. Detecta QUÈ HI HA i ho aprofita:
+#   1) per a cada SO, busca l'ULTIMA execucio VERDA del seu build,
+#   2) en baixa l'artefacte directament de GitHub Actions,
+#   3) deixa un RESUM (a la pagina de l'execucio) de quina execucio ha agafat,
+#   4) crea un RELEASE ESBORRANY amb els paquets que HA TROBAT.
+#
+# Si un SO no te cap build verd, l'OMET i avisa (no peta), sempre que n'hi hagi
+# almenys un. Si no n'hi ha cap, aleshores sí que atura.
+#
+# NOMES MANUAL (workflow_dispatch). El tag: si el deixes buit, es calcula com
+# `v<versio de pyproject.toml>`.
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag/versio del Release (p. ex. v0.5.2). Buit = v<versio de pyproject.toml>"
+        required: false
+        default: ""
 
 permissions:
-  contents: write      # necessari per crear el Release
+  contents: write      # crear el Release
+  actions: read        # llegir execucions i baixar artefactes
 
 jobs:
   release:
-    runs-on: ubuntu-22.04     # marca la glibc minima de l'AppImage
+    runs-on: ubuntu-22.04
     steps:
-      - name: 1. Checkout
-        # checkout@v5 i upload-artifact@v6: son les versions que corren en
-        # Node 24 (les @v4 donaven l'avis de deprecacio de Node 20).
+      - name: 1. Checkout (per a les notes)
         uses: actions/checkout@v5
 
-      - name: 1b. Diagnòstic de l'entorn (versions, glibc, disc)
+      - name: 2. Determinar el tag
+        id: tag
         run: |
-          echo "::group::Entorn del runner"
-          uname -a
-          (lsb_release -a 2>/dev/null) || cat /etc/os-release
-          echo "glibc: $(ldd --version | head -1)"
-          echo "g++:   $(g++ --version | head -1)"
-          echo "python del sistema: $(python3 --version)"
-          echo "--- disc ---"; df -h . /tmp
-          echo "--- memoria ---"; free -h || true
-          echo "::endgroup::"
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            VER=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+            TAG="v${VER}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "ver=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "Tag del Release: $TAG"
 
-
-      - name: 2. Dependències del sistema
-        run: |
-          sudo apt-get update
-          # `vamp-plugin-sdk` porta els HEADERS de Vamp (/usr/include/vamp-hostsdk)
-          # + els .so/.a de linkatge; arrossega libvamp-hostsdk3v5 i libvamp-sdk2v5.
-          # NO existeix cap paquet `libvamp-hostsdk-dev` (abans hi era i feia
-          # fallar el job amb exit 100).
-          # NO s'instal·la libfuse2 (vegeu build-appimage.yml): ni l'appimagetool
-          # ni l'AppImage resultant no el necessiten.
-          sudo apt-get install -y --no-install-recommends \
-            vamp-plugin-sdk libboost-dev libsndfile1-dev file
-
-          # Best effort: libreries del `sonic-annotator` (reserva) perque els
-          # 3 tests de TTL tambe puguin correr. Si no hi son, es fan SKIP.
-          sudo apt-get install -y --no-install-recommends \
-            libqt6core6 libqt6xml6 libqt6network6 libglib2.0-0 || true
-
-      - name: 3. Icones de la UI (Lucide)
-        run: ./eines/baixa_icones.sh
-
-      - name: 4. Compilar l'host Vamp
-        run: |
-          ./eines/compila_vamp_host.sh
-          # Els plugins Vamp s'han de compilar AQUI (jammy/GCC 11): els .so del
-          # repo son fets a 24.04 (GCC 13) i demanaven GLIBCXX_3.4.32 i glibc
-          # 2.38 -> no carregaven ni al runner ni a un desti Ubuntu 22.04.
-          ./eines/compila_vamp_plugins.sh
-
-      - name: 5. Python portable + ffmpeg
-        run: |
-          ./eines/crea_portable.sh
-          # ffmpeg del paquet al PATH (per als tests i qualsevol eina que el cridi)
-          echo "$PWD/portable/bin" >> "$GITHUB_PATH"
-
-      - name: 6. Tests
-        run: |
-          # `set -o pipefail` + `tee`: si un test falla, el pas falla I la sortida
-          # queda a /tmp/tests.log -> el pas ZZ2 la puja com a artefacte.
-          set -o pipefail
-          QT_QPA_PLATFORM=offscreen portable/python/bin/python3 -m unittest \
-            tests.test_pipeline_export tests.test_partitura 2>&1 | tee /tmp/tests.log
-
-      - name: 7. Icona de l'aplicació
-        run: portable/python/bin/python3 eines/crea_icona.py
-
-      - name: 8. Construir l'AppImage
-        run: |
-          SANE=$(echo "${GITHUB_REF_NAME}" | tr '/' '_')
-          ./eines/crea_appimage.sh "AutoChords_${SANE}_x86_64.AppImage"
-          ls -la *.AppImage
-
-      - name: 9. Generar les notes del Release (en català)
-        run: |
-          VER="${GITHUB_REF_NAME#v}"
-          python3 eines/notes_release.py "$VER" --fitxer NOTES_RELEASE.md
-          head -5 NOTES_RELEASE.md
-
-      - name: 10. Crear el Release (esborrany) amb l'AppImage
+      - name: 3. Detectar i baixar els ultims artefactes VERDS de cada SO
+        id: art
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VER="${GITHUB_REF_NAME#v}"
-          # IDEMPOTENT: si el Release JA existeix (p. ex. creat publicant-lo
-          # des de la web, que tambe crea el tag), NO tornem a crear-lo: nomes
-          # hi adjuntem l'AppImage (--clobber sobreescriu si hi era).
-          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            echo "El Release ${GITHUB_REF_NAME} ja existeix: hi adjunto l'AppImage."
-            gh release upload "${GITHUB_REF_NAME}" AutoChords_*.AppImage --clobber
+          set -euo pipefail
+          mkdir -p dist
+          TROBATS=0
+          {
+            echo "## Artifactes agafats"
+            echo ""
+            echo "| SO | Execucio | Data | Commit |"
+            echo "|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          declare -A WF=( [linux]=build-appimage [windows]=build-windows [macos]=build-macos )
+          for so in linux windows macos; do
+            wf="${WF[$so]}"
+            info=$(gh run list --workflow "${wf}.yml" --status success --limit 1 \
+                     --json databaseId,runNumber,createdAt,headSha \
+                     --jq '.[0] | select(. != null) | "\(.databaseId) \(.runNumber) \(.createdAt) \(.headSha[0:7])"')
+            if [ -z "$info" ] || [ "$info" = "null" ]; then
+              echo "::warning::No hi ha cap execucio VERDA de ${wf}.yml -> s'omet ${so}"
+              echo "| ${so} | **cap (omès)** | - | - |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            read -r rid rnum rdate rsha <<< "$info"
+            echo "::notice::${so}: agafo l'artefacte de ${wf} run #${rnum} (${rdate}, ${rsha})"
+            gh run download "$rid" --dir "dist/${so}"
+            echo "| ${so} | #${rnum} | ${rdate} | \`${rsha}\` |" >> "$GITHUB_STEP_SUMMARY"
+            TROBATS=$((TROBATS+1))
+          done
+          echo "trobats=${TROBATS}" >> "$GITHUB_OUTPUT"
+          if [ "$TROBATS" = "0" ]; then
+            echo "::error::No hi ha cap artefacte verd (ni Linux, ni Windows, ni macOS) -> no es pot fer el Release."
+            exit 1
+          fi
+          echo "--- contingut baixat ---"
+          find dist -maxdepth 3 | head -60
+
+      - name: 4. Preparar els fitxers del Release (nomes els SO trobats)
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          TAG="${{ steps.tag.outputs.tag }}"
+          if [ -d dist/linux ]; then
+            find dist/linux -name '*.AppImage' -exec cp {} out/ \;
+          fi
+          if [ -d dist/windows ]; then
+            wdir=$(find dist/windows -mindepth 1 -maxdepth 1 -type d | head -1)
+            ( cd "$wdir" && zip -r -q "$GITHUB_WORKSPACE/out/${TAG}-Windows.zip" . )
+          fi
+          if [ -d dist/macos ]; then
+            mz=$(find dist/macos -name '*.zip' | head -1)
+            cp "$mz" "out/${TAG}-macos.zip"
+          fi
+          echo "--- fitxers del Release ---"
+          ls -la out/
+
+      - name: 5. Generar les notes del Release (en catala)
+        run: |
+          python3 eines/notes_release.py "${{ steps.tag.outputs.ver }}" --fitxer NOTES_RELEASE.md
+          head -5 NOTES_RELEASE.md
+
+      - name: 6. Crear el Release (esborrany) amb els paquets disponibles
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          # IDEMPOTENT: si el Release ja existeix, no el tornem a crear; nomes
+          # hi adjuntem/actualitzem els fitxers (--clobber sobreescriu).
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "El Release $TAG ja existeix: hi adjunto/actualitzo els paquets."
+            gh release upload "$TAG" out/* --clobber
           else
-            gh release create "${GITHUB_REF_NAME}" \
-              --title "AUTO CHORDS v${VER}" \
+            gh release create "$TAG" \
+              --title "AUTO CHORDS ${TAG}" \
               --notes-file NOTES_RELEASE.md \
               --draft \
-              AutoChords_*.AppImage
+              out/*
             echo "Release esborrany creat. Revisa'l a GitHub > Releases i publica'l."
           fi
 
-      # Si alguna cosa falla, deixa pistes per depurar (logs + estat).
       - name: "ZZ. Debug si ha fallat"
         if: failure()
         run: |
           echo "::group::Estat en fallar"
-          echo "--- disc ---"; df -h . /tmp || true
-          echo "--- fitxers de build ---"; ls -la | head -40
-          echo "--- /tmp ---"; ls -la /tmp | head -40
-          echo "--- log de l'app ---"; cat auto_chords.log 2>/dev/null | tail -50 || true
-          echo "--- log del reproductor ---"; cat temp/visor_player.log 2>/dev/null || true
+          ls -la || true
+          find dist -maxdepth 3 2>/dev/null | head -60 || true
+          ls -la out 2>/dev/null || true
           echo "::endgroup::"
-
-      - name: "ZZ2. Pujar els logs de debug (nomes si falla)"
-        if: failure()
-        uses: actions/upload-artifact@v6
-        with:
-          name: debug-logs-${{ github.run_number }}
-          if-no-files-found: ignore
-          path: |
-            auto_chords.log
-            /tmp/*.log
-            /tmp/ac_*
-            /tmp/opencode/*.log
