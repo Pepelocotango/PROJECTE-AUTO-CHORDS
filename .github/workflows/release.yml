@@ -109,12 +109,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VER="${GITHUB_REF_NAME#v}"
-          gh release create "${GITHUB_REF_NAME}" \
-            --title "AUTO CHORDS v${VER}" \
-            --notes-file NOTES_RELEASE.md \
-            --draft \
-            AutoChords_*.AppImage
-          echo "Release esborrany creat. Revisa'l a GitHub > Releases i publica'l."
+          # IDEMPOTENT: si el Release JA existeix (p. ex. creat publicant-lo
+          # des de la web, que tambe crea el tag), NO tornem a crear-lo: nomes
+          # hi adjuntem l'AppImage (--clobber sobreescriu si hi era).
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "El Release ${GITHUB_REF_NAME} ja existeix: hi adjunto l'AppImage."
+            gh release upload "${GITHUB_REF_NAME}" AutoChords_*.AppImage --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              --title "AUTO CHORDS v${VER}" \
+              --notes-file NOTES_RELEASE.md \
+              --draft \
+              AutoChords_*.AppImage
+            echo "Release esborrany creat. Revisa'l a GitHub > Releases i publica'l."
+          fi
 
       # Si alguna cosa falla, deixa pistes per depurar (logs + estat).
       - name: "ZZ. Debug si ha fallat"
