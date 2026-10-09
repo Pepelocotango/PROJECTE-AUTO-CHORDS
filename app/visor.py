@@ -158,6 +158,7 @@ class Visor(QMainWindow):
         self.timeline.sectionDeleteRequested.connect(self._elimina_seccio_index)
         self.timeline.sectionDuplicateRequested.connect(self._duplica_seccio_index)
         self.timeline.multiDeleteRequested.connect(self._elimina_seleccio)
+        self.timeline.pasteRequested.connect(self._enganxa_seleccio)
         self.timeline.clipContextMenuRequested.connect(
             self._on_clip_context_menu)
         self.timeline.sectionEditRequested.connect(self._on_section_edit_requested)
@@ -1088,6 +1089,80 @@ class Visor(QMainWindow):
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor",
                                 f"No s'ha pogut eliminar:\n{e}")
+
+    def _seccio_que_conte(self, t):
+        """Índex de la secció que conté el temps t (o -1)."""
+        for i, (ini, fi, *_r) in enumerate(self.seccions):
+            if float(ini) <= t < float(fi):
+                return i
+        return -1
+
+    def _enganxa_seleccio(self, buf, at):
+        """Enganxa el buffer intern del timeline al temps `at` (Ctrl+V).
+
+        - Acords: s'insereixen als temps `at + rel` i es revalida l'ordre
+          estricte (si xoca amb un acord existent, no es fa cap canvi).
+        - Seccions: el bloc s'insereix dins la secció que conté `at`, que es
+          parteix en tres; si el bloc no hi cap, no es fa cap canvi.
+        Tot plegat és una sola operació d'undo."""
+        if not isinstance(buf, dict):
+            return
+        at = float(at)
+        chords = list(buf.get("chords") or [])
+        sections = list(buf.get("sections") or [])
+        if not chords and not sections:
+            return
+        durada = float(self.audio["durada"])
+        nou_ac = [(at + float(rel), str(name)) for (rel, name) in chords
+                  if 0.0 <= at + float(rel) <= durada]
+        noves_sec = self.seccions
+        n_sec = 0
+        if sections:
+            rel0 = float(sections[0][0])
+            final = max(float(fi) for (_i, fi, _l, _f) in sections)
+            span = final - rel0
+            idx = self._seccio_que_conte(at)
+            if idx < 0:
+                self.log("enganxa: el cursor no és dins cap secció")
+            elif at + span > float(self.seccions[idx][1]) + 1e-9:
+                self.log("enganxa: el bloc de seccions no hi cap a la secció")
+            else:
+                ini_s, fi_s, L_s, fam_s = self.seccions[idx]
+                bloc = [(at + (float(i) - rel0), at + (float(f) - rel0),
+                         str(l), str(fam)) for (i, f, l, fam) in sections]
+                cand = (self.seccions[:idx]
+                        + [(ini_s, at, L_s, fam_s)]
+                        + bloc
+                        + [(at + span, fi_s, L_s, fam_s)])
+                noves_sec = [s for s in cand
+                             if float(s[1]) - float(s[0]) > 1e-9]
+                n_sec = len(bloc)
+        # -- validació sense efectes (si xoca, no es toca res) --
+        try:
+            cand_ac = self._valida_canvis_acords(self.acords + nou_ac)
+            if n_sec:
+                noves_sec = self._valida_canvis_seccions(noves_sec)
+        except ValueError as e:
+            self.log(f"enganxa: canvi invalid, no s'ha fet res ({e})")
+            return
+        if not nou_ac and not n_sec:
+            return
+        self._undo_marca()
+        self.acords = cand_ac
+        if n_sec:
+            self.seccions = noves_sec
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            if nou_ac:
+                self._desa_i_regenera()
+            if n_sec:
+                self._regenera_abc_des_de_totes_les_seccions("enganxat")
+            self.log(f"enganxat a {at:.2f}s: {len(nou_ac)} acords, "
+                     f"{n_sec} seccions")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+            QMessageBox.warning(self, "Visor", f"No s'ha pogut enganxar:\n{e}")
 
     def _on_section_moved(self, idx, ini, fi):
         self._undo_marca()

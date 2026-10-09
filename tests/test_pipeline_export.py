@@ -679,6 +679,76 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         self.assertEqual(len(v.acords), n)
         v.close()
 
+    def test_ctrl_c_i_ctrl_v_enganxa_acord(self):
+        """Ctrl+C + Ctrl+V: enganxa l'acord copiat al cursor (amb undo)."""
+        from PyQt5.QtGui import QKeyEvent
+        from PyQt5.QtCore import QEvent, Qt
+        v, _ = self._make_visor_with_data()
+        n = len(v.acords)
+        v.timeline.select_clip("chord", 0)     # C @ 0.0
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_C, Qt.ControlModifier))
+        self.assertTrue(v.timeline.has_clipboard())
+        v.timeline.set_position(6.0, emit=False)
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_V, Qt.ControlModifier))
+        self.assertEqual(len(v.acords), n + 1)
+        temps = [round(float(t), 1) for (t, *_r) in v.acords]
+        self.assertIn(6.0, temps)
+        v.undo()
+        self.assertEqual(len(v.acords), n)
+        v.close()
+
+    def test_ctrl_x_retalla_la_seleccio(self):
+        """Ctrl+X: copia al buffer i esborra la selecció (amb undo)."""
+        from PyQt5.QtGui import QKeyEvent
+        from PyQt5.QtCore import QEvent, Qt
+        v, _ = self._make_visor_with_data()
+        n = len(v.acords)
+        v.timeline.select_clip("chord", 1)
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_X, Qt.ControlModifier))
+        self.assertEqual(len(v.acords), n - 1)
+        self.assertTrue(v.timeline.has_clipboard())
+        v.undo()
+        self.assertEqual(len(v.acords), n)
+        v.close()
+
+    def test_ctrl_v_enganxa_seccio_parteix_la_contenidora(self):
+        """Ctrl+V de seccions: insereix el bloc i parteix la contenidora."""
+        from PyQt5.QtGui import QKeyEvent
+        from PyQt5.QtCore import QEvent, Qt
+        v, _ = self._make_visor_with_data()
+        n = len(v.seccions)                    # 3: A 0-5, B 5-10, C 10-20
+        v.timeline.select_clip("section", 1)   # B 5-10 (span 5)
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_C, Qt.ControlModifier))
+        v.timeline.set_position(12.0, emit=False)   # dins C 10-20
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_V, Qt.ControlModifier))
+        self.assertEqual(len(v.seccions), n + 2)   # 10-12 C + 12-17 B + 17-20 C
+        for i in range(len(v.seccions) - 1):
+            self.assertLessEqual(v.seccions[i][1], v.seccions[i + 1][0] + 1e-9)
+        v.undo()
+        self.assertEqual(len(v.seccions), n)
+        v.close()
+
+    def test_ctrl_v_seccio_no_hi_cap_no_canvia_res(self):
+        """Si el bloc de seccions no cap a la contenidora, no es toca res."""
+        from PyQt5.QtGui import QKeyEvent
+        from PyQt5.QtCore import QEvent, Qt
+        v, _ = self._make_visor_with_data()
+        n = len(v.seccions)
+        v.timeline.select_clip("section", 0)   # A 0-5 (span 5)
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_C, Qt.ControlModifier))
+        v.timeline.set_position(6.0, emit=False)   # dins B 5-10: 6+5=11 > 10
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_V, Qt.ControlModifier))
+        self.assertEqual(len(v.seccions), n)
+        self.assertEqual(len(v._undo_stack), 0)
+        v.close()
+
     def test_ctrl_d_duplica_acord_a_mig_cami(self):
         """Ctrl+D sobre un acord: s'insereix després, a mig camí (invariants)."""
         from PyQt5.QtGui import QKeyEvent

@@ -119,6 +119,7 @@ class TimelineView(QGraphicsView):
     clipContextMenuRequested = pyqtSignal(str, int, QPoint)  # (kind, idx, pos)
     sectionEditRequested = pyqtSignal(int)
     multiDeleteRequested = pyqtSignal(list)  # [(kind, idx), ...] multi-selecció
+    pasteRequested = pyqtSignal(dict, float)  # (buffer intern, temps d'enganxar)
 
     def info_zona(self, pos_vista) -> str:
         """Text d'ajuda per a la caixa d'informacio, segons on es el ratoli.
@@ -182,6 +183,7 @@ class TimelineView(QGraphicsView):
         self._follow = False       # seguir el cursor durant el play
         self._sel = ("", -1)      # clip seleccionat (kind, index)
         self._multi: set = set()   # multi-selecció: {(kind, index), ...}
+        self._clipboard: dict = {}  # buffer intern copiar/retallar (D.2)
         self._loop_item = None     # banda de loop A/B
         self._loop_a = None
         self._loop_b = None
@@ -541,7 +543,10 @@ class TimelineView(QGraphicsView):
             self._multi.add(key)
             self._sel = key
         self._sync_selection_visual()
-        self.clipSelected.emit(kind, index)
+        # Emetem sempre el nou `_sel` (no el clip clicat): si l'hem tret, la
+        # franja Editor ha de mostrar el clip actiu que queda (o buidar-se).
+        nkind, nidx = self._sel
+        self.clipSelected.emit(nkind, nidx)
 
     def extend_selection(self, kind: str, index: int) -> None:
         """Shift+clic: selecciona el rang entre l'àncora i el clip clicat.
@@ -558,6 +563,64 @@ class TimelineView(QGraphicsView):
         self._sel = (kind, index)
         self._sync_selection_visual()
         self.clipSelected.emit(kind, index)
+
+    # -- buffer intern copiar/retallar/enganxar (D.2.b) -----------------------
+    def has_clipboard(self) -> bool:
+        """Hi ha alguna cosa al buffer intern de copiar/enganxar?"""
+        return bool(self._clipboard)
+
+    def copy_selection(self) -> None:
+        """Copia la selecció al buffer intern, relativa al clip més antic.
+
+        Els acords es guarden com (t_relatiu, nom) i les seccions com
+        (ini_rel, fi_rel, lletra, família); `offset` és el temps absolut més
+        antic per poder enganxar la peça sencera amb un sol desplaçament."""
+        keys = self.selected_keys()
+        if not keys:
+            return
+        chords, sections = [], []
+        for kind, idx in keys:
+            if kind == "chord" and 0 <= idx < len(self._acords):
+                chords.append((float(self._acords[idx][0]),
+                               str(self._acords[idx][1])))
+            elif kind == "section" and 0 <= idx < len(self._seccions):
+                ini, fi, lletra, fam = self._seccions[idx]
+                sections.append((float(ini), float(fi), str(lletra), str(fam)))
+        if not chords and not sections:
+            return
+        chords.sort(key=lambda x: x[0])
+        sections.sort(key=lambda x: x[0])
+        t0 = min([c[0] for c in chords] + [s[0] for s in sections])
+        self._clipboard = {
+            "offset": t0,
+            "chords": [(t - t0, name) for (t, name) in chords],
+            "sections": [(ini - t0, fi - t0, ll, fam)
+                         for (ini, fi, ll, fam) in sections],
+        }
+
+    def _delete_selection(self) -> None:
+        """Esborra la selecció (1 clip -> senyal individual; >1 -> batch)."""
+        multi = self.selected_keys()
+        if len(multi) > 1:
+            self.multiDeleteRequested.emit(sorted(multi))
+            return
+        for items, sig in ((self._chord_items, self.chordDeleteRequested),
+                           (self._section_items, self.sectionDeleteRequested)):
+            for it in items:
+                if getattr(it, "_selected", False):
+                    sig.emit(getattr(it, "idx", -1))
+                    return
+
+    def cut_selection(self) -> None:
+        """Retalla: copia al buffer intern i esborra la selecció."""
+        self.copy_selection()
+        self._delete_selection()
+
+    def paste_at_cursor(self) -> None:
+        """Enganxa el buffer intern al cursor (la inserció la fa el visor)."""
+        if not self._clipboard:
+            return
+        self.pasteRequested.emit(dict(self._clipboard), float(self._pos_t))
 
     # -- gestió d'events dels items (constraint + propagació) -----------------
     def _on_chord_time_changed(self, idx: int, new_t: float) -> None:
@@ -936,36 +999,43 @@ class TimelineView(QGraphicsView):
         super().mouseReleaseEvent(event)
 
     def keyPressEvent(self, event) -> None:
+        mods = event.modifiers()
         if event.key() == Qt.Key_Space:
             self.playRequested.emit()
             event.accept()
             return
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
-            # Esborra el clip SELECCIONAT. Els items no reben tecles (no son
+            # Esborra la selecció. Els items no reben tecles (no son
             # focusables), per tant ho gestionem aquí, que si tenim el focus.
-            multi = self.selected_keys()
-            if len(multi) > 1:
-                # Eliminació de grup: el visor la resol d'una sola vegada
-                # (un únic estat d'undo) amb la llista (kind, idx).
-                self.multiDeleteRequested.emit(sorted(multi))
+            if self.selected_keys():
+                self._delete_selection()
                 event.accept()
                 return
-            for items, sig in ((self._chord_items, self.chordDeleteRequested),
-                               (self._section_items, self.sectionDeleteRequested)):
-                for it in items:
-                    if getattr(it, "_selected", False):
-                        sig.emit(getattr(it, "idx", -1))
-                        event.accept()
-                        return
-        if (event.modifiers() & Qt.ControlModifier) and event.key() == Qt.Key_D:
-            # Ctrl+D: duplica el clip seleccionat
-            for items, sig in ((self._chord_items, self.chordDuplicateRequested),
-                               (self._section_items, self.sectionDuplicateRequested)):
-                for it in items:
-                    if getattr(it, "_selected", False):
-                        sig.emit(getattr(it, "idx", -1))
-                        event.accept()
-                        return
+        if mods & Qt.ControlModifier:
+            # Dreceres estàndard de DAW: copy/cut/paste (+ duplicar)
+            if event.key() == Qt.Key_C:
+                self.copy_selection()
+                event.accept()
+                return
+            if event.key() == Qt.Key_X:
+                self.cut_selection()
+                event.accept()
+                return
+            if event.key() == Qt.Key_V:
+                self.paste_at_cursor()
+                event.accept()
+                return
+            if event.key() == Qt.Key_D:
+                # Ctrl+D: duplica el clip seleccionat (individual, de moment)
+                for items, sig in ((self._chord_items,
+                                    self.chordDuplicateRequested),
+                                   (self._section_items,
+                                    self.sectionDuplicateRequested)):
+                    for it in items:
+                        if getattr(it, "_selected", False):
+                            sig.emit(getattr(it, "idx", -1))
+                            event.accept()
+                            return
         super().keyPressEvent(event)
 
     def leaveEvent(self, event) -> None:
