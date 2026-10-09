@@ -177,6 +177,16 @@ class ExportPipelineTests(unittest.TestCase):
         )
         self.assertIn("APP_IMPORT_OK", proc.stdout)
 
+    def test_versio_app_coincideix_amb_pyproject(self):
+        """app.__version__ ha de coincidir amb 'version' de pyproject.toml."""
+        import re
+        import app
+        root = Path(__file__).resolve().parents[1]
+        text = (root / "pyproject.toml").read_text(encoding="utf-8")
+        m = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M)
+        self.assertIsNotNone(m, "no s'ha trobat 'version' a pyproject.toml")
+        self.assertEqual(app.__version__, m.group(1))
+
     def test_section_split_and_merge(self):
         base = [(0.0, 4.0, "A", "A"), (4.0, 8.0, "B", "B")]
         split = pipeline.parteix_seccio(base, 0, 2.0)

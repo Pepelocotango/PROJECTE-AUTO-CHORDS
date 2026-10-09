@@ -34,6 +34,7 @@ from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402
 from . import plataforma  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
+from . import __version__  # noqa: E402  (versió mostrada al «Quant a»)
 
 # Sempre a un directori ESCRIPTIBLE: en una AppImage muntada la carpeta del
 # projecte és de només lectura i escriure-hi el log petava a l'arrencada.
@@ -561,6 +562,7 @@ class Finestra(QMainWindow):
     def _quant_a(self):
         QMessageBox.about(self, "Quant a Auto Chords",
             "<b>Auto Chords</b><br>"
+            f"Versió <b>{__version__}</b><br>"
             "wav → acords + estructura<br><br>"
             "Visor DAW-like (PyQt5).<br>"
             "Motor: Chordino (acords) + Queen Mary/qm (estructura) · Vamp.")

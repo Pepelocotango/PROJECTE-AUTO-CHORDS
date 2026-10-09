@@ -20,6 +20,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   - **Moure el grup**: arrossegar un clip seleccionat mou **tota la selecció**.
   - **Indicador de MODE** al regle: badge fix a la dreta amb `120 BPM · 4/4`
     (mode tempo) o `Lliure` (mode sense BPM). `RulerLayer.mode_label()`.
+- **GUI — «Quant a»**: el diàleg **Quant a Auto Chords** ara mostra la
+  **versió** de l'app (`app.__version__`), sincronitzada amb `pyproject.toml`
+  per un test.
 - **Refactor intern**: `timeline.py` **partit** en 4 mòduls (`timeline.py` 1774 →
   **898** línies + `timeline_items.py` + `timeline_layers.py` + `timeline_base.py`),
   preparant la Fase D.2. Els símbols públics es re-exporten via `__all__`.
@@ -30,7 +33,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   **invàlid**. Ara retorna els colors **reals** de `theme`.
 
 ### Proves
-- **227 tests** · OK (1 skip) — +17 respecte de la v0.5.1 (multi-selecció,
+- **228 tests** · OK (1 skip) — +18 respecte de la v0.5.1 (multi-selecció,
   `Ctrl+C/V/X`, `Ctrl+D` i **moure** el grup, indicador de mode i colors del grid).
 - **CI multi-SO re-verificat** amb tot el codi de D.2: **Linux AppImage #8**,
   **Windows #14** i **macOS #8** (amb pas de tests) — tots **VERDS**.
