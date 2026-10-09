@@ -41,7 +41,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   (`tests.test_pipeline_export` + `tests.test_partitura`, amb anotació `::error::`);
   era l'únic dels 3 workflows que no validava els tests.
 - **Deute tècnic (Pas 3 — excepcions)**: revisats els `except Exception` de
-  `app/visor.py` (24) i `app/main.py` (12) **sense canvi de comportament**;
+  **tot el projecte** (`app/visor.py` ×24, `app/main.py` ×12, i
+  `app/partitura.py`, `app/plataforma.py`, `app/pipeline.py`, `app/tempo.py`,
+  `dev_reload.py`, `wav_a_wavs.py`) **sense canvi de comportament**;
   documentada la política a cada classe; anotats els fallbacks silenciosos de
   codi calent (timer de hover, fil d'àudio); la lectura de WAV fallida (fallback
   esperat) ara va al **log de fitxer** a nivell debug.

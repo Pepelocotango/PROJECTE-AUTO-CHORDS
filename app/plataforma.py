@@ -96,6 +96,7 @@ def mata_grup(proc, forcat=False):
         try:
             proc.terminate()
         except Exception:  # noqa: BLE001
+            # best-effort (neteja en tancar): silenciós intencionat
             pass
         return
     sig = signal.SIGKILL if forcat else signal.SIGTERM
@@ -105,6 +106,7 @@ def mata_grup(proc, forcat=False):
         try:
             (proc.kill if forcat else proc.terminate)()
         except Exception:  # noqa: BLE001
+            # best-effort: el procés ja pot haver mort; silenciós intencionat
             pass
 
 
@@ -146,4 +148,5 @@ def desbloqueja(fitxer):
             import fcntl
             fcntl.flock(fitxer.fileno(), fcntl.LOCK_UN)
     except Exception:  # noqa: BLE001
+        # alliberar el lock és best-effort; silenciós intencionat
         pass

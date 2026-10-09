@@ -65,6 +65,7 @@ class AppLauncher:
                 self.process.terminate()
                 self.process.wait(timeout=5)
             except Exception:
+                # si terminate no funciona, kill (best-effort); no canvia el flux
                 self.process.kill()
                 self.process.wait(timeout=5)
         self.process = None

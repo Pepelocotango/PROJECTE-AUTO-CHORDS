@@ -121,6 +121,7 @@ def _cmd_transform(transform, out_csv, wav, params=None):
             try:
                 sr = wav_info(wav)["mostreig"]
             except Exception:  # noqa: BLE001
+                # fallback: si no puc llegir el mostreig, assumeixo 44100
                 sr = 44100
             esc = (sr / 44100.0) if sr else 1.0
             stp = max(1, int(round(st[0] * esc)))
