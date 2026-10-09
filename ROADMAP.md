@@ -76,7 +76,7 @@ Això ens permet estar oberts a:
 - 🔒 **Sense secrets** al repo (`.secrets/` ignorat per `.gitignore`).
 - 🐧 **Linux** prioritari (AppImage) i, com a producte, **multi-SO**: Windows x64 + macOS 10.13+.
 
-## Estat actual (2026-10-08 · v0.5.1)
+## Estat actual (2026-10-09 · v0.5.2)
 
 El projecte ja ha passat de prototip funcional a flux de producte útil:
 
@@ -94,8 +94,12 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
 - bloqueig de doble instància per evitar sobreposició d’aplicacions
 - **auditoria de seguretat/estabilitat aplicada**: clamp de temps, tipus d’excepció específics, `_proc_lock`, `safe_filename`, parser CSV robust, validació WAV (sr/ch > 0)
 
-**Novetats v0.3.0–v0.5.1 (2026-10-08):**
+**Novetats v0.3.0–v0.5.2 (2026-10-09):**
 
+- **Fase D.2 — edició DAW-like (v0.5.2)**: **multi-selecció** (`Ctrl`/`Shift`+clic),
+  **porta-retalls intern** (`Ctrl+C/V/X`), **duplicar** i **moure** el grup,
+  **indicador de MODE** al regle i **loop A/B amb snap**; `timeline.py` partit
+  en 4 mòduls. Detall: `CHANGELOG` [0.5.2].
 - **Multi-SO (v0.5.1)**: **Windows x64** i **macOS 10.13+** (Intel) via GitHub
   Actions — host i plugins **compilats al runner** de cada SO; **els 3 builds
   verds**. Detall: `docs/ESTAT_MULTI_SO.md`.
@@ -120,7 +124,7 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
   play/pause.
 - **Coherència del play**: mono cacat, **volum/mute en viu**, latència baixa,
   sense tallar la cua, avís si el reproductor mor.
-- **210 tests** (OK, 1 skip) — abans 82.
+- **231 tests** (OK, 1 skip) — abans 82.
 
 La base funcional i el nou visor estan validats. El que queda són millores de polish, estabilització i les funcionalitats pràctiques descrites a l’apartat següent.
 

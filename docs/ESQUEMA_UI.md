@@ -2,7 +2,7 @@
 
 > Document de referència de la UI (PyQt5). Noms que fa servir el codi i
 > noms «humans» de cada zona, mides reals i interaccions.
-> **Actualitzat: 2026-10-08 · v0.5.1** (GUI reordenada:
+> **Actualitzat: 2026-10-09 · v0.5.2** (GUI reordenada:
 > timeline al centre, barres d'eines, franja Editor, metrònom, count-in,
 > caixa d'informació, tap tempo i paleta de botons unificada).
 
@@ -167,7 +167,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 
 | Zona on cliques | Acció |
 |-----------------|-------|
-| **Regle ①** | arrossegar → **crea loop A/B** · clic → salta |
+| **Regle ①** | arrossegar → **crea loop A/B** (amb **snap** a la graella) · clic → salta |
 | **Cos d'item ③④** | arrossegar → **mou** · `hover` = ✋ mà oberta |
 | **Vora dreta ③④** | arrossegar → **mou el final** · `hover` = ↔ |
 | **Vora esquerra ③④** | arrossegar → **mou l'inici** · `hover` = ↔ |

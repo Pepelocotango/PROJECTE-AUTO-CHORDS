@@ -1,9 +1,9 @@
 # Portabilitat a Windows (x64)
 
-> **2026-10-08 · v0.5.1.** Documenta com es construeix el paquet portable de
+> **2026-10-09 · v0.5.2.** Documenta com es construeix el paquet portable de
 > **Windows x64** de l'AUTO CHORDS, amb **tots els natius a dins** (host Vamp,
 > plugins, ffmpeg) i **sense instal·lar res** al sistema (només cal Windows
-> 10/11 x64). **Build VERD al CI** (run #12, `653ca98`). Vegeu `ROADMAP.md` §9 i
+> 10/11 x64). **Build VERD al CI** (run #14, `08bbfc7`). Vegeu `ROADMAP.md` §9 i
 > `docs/ESTAT_MULTI_SO.md`.
 
 ## 1. Què es construeix

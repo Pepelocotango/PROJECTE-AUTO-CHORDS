@@ -1,6 +1,6 @@
 # Reproducció (play) — arquitectura i coherència
 
-> **2026-10-08 · v0.5.1.** Com sona l'àudio a l'app i per què està fet així.
+> **2026-10-09 · v0.5.2.** Com sona l'àudio a l'app i per què està fet així.
 > Codi: `app/visor.py` (`_engega_des_de`, `_alimenta`, `_atura_proc`,
 > `_tiquet`, `play_stop`, `_mono_bytes`).
 

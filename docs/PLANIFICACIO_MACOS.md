@@ -5,7 +5,7 @@
 > (cap build local Mac). Complementa `ROADMAP.md` §9 (viabilitat) i
 > `docs/PORTABILITAT.md` (Linux).
 >
-> ✅ **ESTAT (2026-10-08)**: build **VERD** al CI (run #6, `ce344f7`); `.app`
+> ✅ **ESTAT (2026-10-09)**: build **VERD** al CI (run #8, `08bbfc7`); `.app`
 > dins ZIP. **Falta una etapa de tests** al workflow (avui només valida el
 > build). Detall: `docs/ESTAT_MULTI_SO.md`.
 

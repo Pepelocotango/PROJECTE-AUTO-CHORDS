@@ -29,6 +29,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 - **Refactor intern**: `timeline.py` **partit** en 4 mòduls (`timeline.py` 1774 →
   **898** línies + `timeline_items.py` + `timeline_layers.py` + `timeline_base.py`),
   preparant la Fase D.2. Els símbols públics es re-exporten via `__all__`.
+- **CI — workflow agregador** `build-all.yml`: executa els 3 builds (Linux +
+  Windows + macOS) **en paral·lel** amb un sol clic. Els 3 workflows de build
+  són ara *reusable* (`workflow_call`), sense perdre el disparador manual.
 
 ### Arreglat
 - **Línies del grid pintades de negre**: `grid_levels()` retornava els *strings*

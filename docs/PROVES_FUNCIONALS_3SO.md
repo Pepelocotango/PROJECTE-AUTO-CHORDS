@@ -7,6 +7,10 @@
 >
 > **Objectiu**: comprovar que l'app **arrenca, analitza, edita i exporta** en un
 > sistema real. És l'únic pendent que no es pot verificar des del CI.
+>
+> 💡 **Per generar els 3 paquets alhora**: llança el workflow **`build-all.yml`**
+> (Actions ▸ «Compilar els 3 SO (Linux + Windows + macOS)» ▸ *Run workflow*) —
+> executa els 3 builds **en paral·lel**.
 
 ## 🐧 Linux (AppImage) — es pot provar des d'aquest host
 

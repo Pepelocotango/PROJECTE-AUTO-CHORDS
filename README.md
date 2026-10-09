@@ -8,7 +8,10 @@
 > **Repositori:** https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
 > (les versions publicades, com l'**AppImage**, són a *Releases*).
 
-> **Novetats v0.5.1 (BETA):** **multi-SO** — a més de l'**AppImage de Linux**,
+> **Novetats v0.5.2 (BETA):** **edició DAW-like completa al visor**
+> (multi-selecció, copiar/retallar/enganxar, duplicar i **moure** el grup,
+> indicador de MODE i **loop A/B amb snap**) i **partició interna** del
+> timeline en 4 mòduls. **v0.5.1:** **multi-SO** — a més de l'**AppImage de Linux**,
 > el CI construeix i empaqueta **Windows x64** i **macOS 10.13+** (host i
 > plugins compilats al runner; `qm-vamp-plugins` des de font). **AppImage
 > autocontinguda** (un sol fitxer executable) i **GitHub Actions** (builds
@@ -19,7 +22,7 @@
 > (`TAP`/`T`), botó **📍**, **×2/÷2**, diàleg d'opcions, **import ffmpeg** i
 > franja **Editor**.
 
-## Estat actual (2026-10-08 · v0.5.1 BETA)
+## Estat actual (2026-10-09 · v0.5.2 BETA)
 
 L’app està **reorganitzada amb el timeline com a centre de la finestra**
 (estil Audacity/DAW): l’anàlisi és una **acció** sobre el que es veu, no un
@@ -193,17 +196,18 @@ ells l'app funciona igual, només avisa).
 > tingués FUSE desactivat caldria `./AutoChords-*.AppImage --appimage-extract-and-run`.
 
 ### GitHub Actions
-Tres workflows a `.github/workflows/`:
+Quatre workflows a `.github/workflows/`:
 
 | Workflow | Quan s'activa | Què fa |
 |----------|---------------|--------|
+| **`build-all.yml`** | **només manual** | **Agregador**: executa els 3 builds (Linux + Windows + macOS) **en paral·lel**; cada un deixa el seu artefacte |
 | **`build-appimage.yml`** | **només manual** (GitHub ▸ Actions ▸ Run workflow) | Construeix l'AppImage de **Linux** i la deixa com a **artefacte** descarregable |
 | **`build-windows.yml`** | **només manual** | Construeix el paquet portable de **Windows x64** (MSYS2 + PyInstaller `--onedir`) i el deixa com a **artefacte** (ZIP) |
 | **`build-macos.yml`** | **només manual** | Construeix el **`.app` de macOS 10.13+** (Intel; PyInstaller) i el deixa com a **artefacte** (ZIP) |
 | **`release.yml`** | en **pujar un tag `v*`** | Construeix l'AppImage i crea un **Release (esborrany)** amb títol `AUTO CHORDS v<versió>`, el cos **en català** (de `CHANGELOG.md` via `eines/notes_release.py`) i l'AppImage adjunta |
 
 ```bash
-git tag v0.5.1 -m "..." && git push origin v0.5.1   # -> Release esborrany
+git tag v0.5.2 -m "..." && git push origin v0.5.2   # -> Release esborrany
 ```
 > El Release es crea com a **esborrany**: el revises a GitHub ▸ Releases i el
 > publiques tu. Cap workflow fa `git push` al repositori.

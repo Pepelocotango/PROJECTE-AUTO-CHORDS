@@ -1,6 +1,6 @@
 # Estat multi-SO — on som i què queda pendent
 
-> **2026-10-08 · v0.5.1 (BETA).** Foto del desplegament a **Linux, Windows i
+> **2026-10-09 · v0.5.2 (BETA).** Foto del desplegament a **Linux, Windows i
 > macOS**: **els 3 builds del CI són VERDS**. Complementa `ROADMAP.md` §9
 > (viabilitat), `docs/PORTABILITAT.md` (Linux), `docs/PORTABILITAT_WINDOWS.md`
 > i `docs/PLANIFICACIO_MACOS.md`.
@@ -24,11 +24,15 @@
 
 - **AppImage autocontinguda** (runtime estàtic → **no cal `libfuse2`**).
 - **Verificada de soca-rel**: arrenca muntada (GUI real, 0 errors), l'estat va a
-  `~/.local/state/auto-chords/`, **227/227 tests dins el paquet**, host+plugins
+  `~/.local/state/auto-chords/`, **231/231 tests dins el paquet**, host+plugins
   del paquet OK sobre un WAV real, i **export de partitura** (MusicXML+PDF+MSCZ).
-- Workflows: `build-appimage.yml` (manual) i `release.yml` (tags `v*`).
+- Workflows: `build-appimage.yml` (manual), **`build-all.yml`** (agregador: executa
+  els 3 builds en **paral·lel**) i `release.yml` (tags `v*`).
 - ✅ **Release #1 VERD** (tag **`v0.5.1_CHECKPOINT_3_so_ARTIFACTS`** = `e895fa6`);
   `release.yml` s'activa amb tags `v*`.
+- **`release.yml` idempotent** (2026-10-09): si el Release **ja existeix** (creat
+  publicant-lo des de la web, que també crea el tag), **no** el torna a crear:
+  només hi **adjunta l'AppImage** (`gh release upload --clobber`).
 
 ### 🍎 macOS — VERD amb etapa de tests ✅
 
@@ -93,10 +97,10 @@
 
 ```bash
 # Linux (AppImage) — descarregar de GitHub > Actions o del Release
-chmod +x AutoChords-*.AppImage && ./AutoChords-*.AppImage
+chmod +x *.AppImage && ./*.AppImage
 
 # macOS — provar al Hackintosh (10.13)
-unzip AUTO_CHORDS-macos-build6.zip
+unzip AUTO_CHORDS-macos-build8.zip
 # clic-dret ▸ Obrir (o: xattr -dr com.apple.quarantine AUTO_CHORDS.app)
 
 # Windows — descomprimir el ZIP i executar AUTO_CHORDS.exe
@@ -111,4 +115,5 @@ unzip AUTO_CHORDS-macos-build6.zip
 | `eines/compila_vamp_plugins.sh` | Plugins, **dispatch per SO** (Linux/Windows/macOS) |
 | `eines/launcher_pyinstaller.py` | Entry de PyInstaller (Win i macOS) |
 | `.github/workflows/build-{appimage,windows,macos}.yml` | Els 3 builds |
+| `.github/workflows/build-all.yml` | **Agregador**: els executa tots 3 en paral·lel |
 | `docs/PORTABILITAT_WINDOWS.md`, `docs/PLANIFICACIO_MACOS.md` | Detall per SO |
