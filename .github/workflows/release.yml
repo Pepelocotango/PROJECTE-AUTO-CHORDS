@@ -62,8 +62,8 @@ jobs:
           for so in linux windows macos; do
             wf="${WF[$so]}"
             info=$(gh run list --workflow "${wf}.yml" --status success --limit 1 \
-                     --json databaseId,runNumber,createdAt,headSha \
-                     --jq '.[0] | select(. != null) | "\(.databaseId) \(.runNumber) \(.createdAt) \(.headSha[0:7])"')
+                     --json databaseId,number,createdAt,headSha \
+                     --jq '.[0] | select(. != null) | "\(.databaseId) \(.number) \(.createdAt) \(.headSha[0:7])"')
             if [ -z "$info" ] || [ "$info" = "null" ]; then
               echo "::warning::No hi ha cap execucio VERDA de ${wf}.yml -> s'omet ${so}"
               echo "| ${so} | **cap (omès)** | - | - |" >> "$GITHUB_STEP_SUMMARY"
