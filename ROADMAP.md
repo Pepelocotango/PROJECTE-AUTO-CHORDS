@@ -230,6 +230,25 @@ sigui un plaer** i no una fricció.
   d’un cop.
 - **Accel·leradors personalitzables** per l’usuari avançat.
 
+### Coherència del snap — loop A/B i cursor *(pendent · per decidir)*
+
+> 🔍 **Revisió de codi (2026-10-09, OC-3)** — `app/timeline.py`. Dins el visor
+> hi conviuen **dos comportaments**: els **clips** (acords/estructures) SÍ que
+> fan snap a la graella, però el **loop A/B** i el **cursor/playhead** són
+> **lliures**.
+
+- **Loop A/B sense snap.** La selecció al regle (`mousePressEvent` /
+  `mouseMoveEvent`, ~línies 1036-1043 / 1088-1094 de `timeline.py`) i els
+  botons A/B (`marca_A` / `marca_B`, `app/visor.py`) fan servir el temps
+  continu de `_x_to_time()` → **no criden mai `snap_time`**.
+- **Cursor sense snap.** `set_position()` (~297-305) no arrodoneix mai: totes
+  les vies (clic al fons, lliscador, `±10 s`, editar l’etiqueta de posició) hi
+  posen temps continu. Única excepció: clicar un clip situa el cursor al seu
+  inici (snap *al clip*, no a la graella).
+- **A decidir.** Si ha de ser **snap a graella** (coherent amb els clips i amb
+  l’exportació, respectant l’**offset**) o bé **lliure** per a navegació fina
+  — o una opció **commutable** per a tots dos.
+
 ### Notes d’implementació
 
 - Tot canvi de la Fase D **ha de preservar**:
