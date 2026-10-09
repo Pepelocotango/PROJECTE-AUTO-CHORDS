@@ -9,12 +9,14 @@
 
 | SO | Objectiu | Estat | Artefacte del CI |
 |----|----------|-------|------------------|
-| **🐧 Linux** | AppImage x86_64 | ✅ **VERD i verificat** | `AutoChords_v0.5.0-main-build6-Linux` (**161,4 MB**; ZIP que conté l'AppImage) |
-| **🪟 Windows** | ZIP portable x64 | ✅ **VERD** (run #12, `653ca98`) | `AutoChords_v0.5.0-main-build12-Windows` (**95,3 MB**) |
-| **🍎 macOS** | `.app` per a **High Sierra 10.13+** (Intel) | ✅ **VERD** (run #6, `ce344f7`) | `AUTO_CHORDS-macos-build6` (**35,2 MB**, `.app` dins ZIP) |
+| **🐧 Linux** | AppImage x86_64 | ✅ **VERD i verificat** (run #8, `08bbfc7`) | `AutoChords_v0.5.1-main-build8-Linux` (ZIP que conté l'AppImage `auto-chords-*-x86_64.AppImage`) |
+| **🪟 Windows** | ZIP portable x64 | ✅ **VERD amb tests** (run #14, `08bbfc7`) | `AutoChords_v0.5.1-main-build14-Windows` (**~95 MB**) |
+| **🍎 macOS** | `.app` per a **High Sierra 10.13+** (Intel) | ✅ **VERD amb tests** (run #8, `08bbfc7`) | `AUTO_CHORDS-macos-build8` (**~35 MB**, `.app` dins ZIP) |
 
-> ⚠️ Els noms dels artefactes porten **`v0.5.0`** perquè es van construir
-> **abans** del bump a **v0.5.1**; una execució nova els anomenarà `v0.5.1`.
+> ⚠️ Els noms dels artefactes porten la versió del **`pyproject.toml`** en el
+> moment de construir-los (`v0.5.1`); amb el bump a **v0.5.2** (2026-10-09), una
+> execució nova els anomenarà `v0.5.2`. Els 3 runs **#8 / #14 / #8** validen tot
+> el codi de la Fase D.2 (`08bbfc7`).
 
 ## Detall per plataforma
 
@@ -22,7 +24,7 @@
 
 - **AppImage autocontinguda** (runtime estàtic → **no cal `libfuse2`**).
 - **Verificada de soca-rel**: arrenca muntada (GUI real, 0 errors), l'estat va a
-  `~/.local/state/auto-chords/`, **210/210 tests dins el paquet**, host+plugins
+  `~/.local/state/auto-chords/`, **227/227 tests dins el paquet**, host+plugins
   del paquet OK sobre un WAV real, i **export de partitura** (MusicXML+PDF+MSCZ).
 - Workflows: `build-appimage.yml` (manual) i `release.yml` (tags `v*`).
 - ✅ **Release #1 VERD** (tag **`v0.5.1_CHECKPOINT_3_so_ARTIFACTS`** = `e895fa6`);
