@@ -63,71 +63,101 @@ MIN_SEC_LEN_S = 0.05     # durada mínima d'una secció
 # -----------------------------------------------------------------------------
 # Utilitats de temps i snap
 # -----------------------------------------------------------------------------
-def _best_step_free(span_s: float) -> float:
-    """Pas de snap per a mode lliure (sense tempo)."""
-    if span_s <= 5.0:
-        return 0.1
-    if span_s <= 20.0:
-        return 0.5
-    if span_s <= 60.0:
-        return 1.0
-    if span_s <= 300.0:
-        return 5.0
-    return 10.0
+# Llindars en PIXELS (com els DAWs): un nivell de grid es dibuixa si el seu
+# espaiat en px hi arriba; l'etiqueta del regle només es posa si hi cap.
+MIN_LINE_PX = 8.0
+MIN_LABEL_PX = 45.0
 
 
-def _best_step_tempo(span_s: float, bpm: float, bpb: int) -> float:
-    """Pas de snap per a mode tempo_fix."""
-    beat = 60.0 / max(bpm, 1e-9)
-    measure = beat * max(bpb, 1)
-    if span_s <= beat * 4:
-        return beat / 2.0      # corxera
-    if span_s <= measure * 2:
-        return beat            # beat
-    return measure             # compàs
+def _divisions(tempo_fix, bpm, bpb):
+    """Llista de divisions (step_s, kind) de GRUIXUT a FI.
+
+    kind: 'bar' (nivell gran), 'beat' (temps), 'sub' (subdivisió).
+    """
+    if tempo_fix:
+        beat = 60.0 / max(float(bpm), 1e-9)
+        measure = beat * max(int(bpb), 1)
+        return [(measure, "bar"), (beat, "beat"),
+                (beat / 2.0, "sub"), (beat / 4.0, "sub")]
+    return [(600.0, "bar"), (300.0, "bar"), (60.0, "bar"), (30.0, "bar"),
+            (10.0, "bar"), (5.0, "bar"), (2.0, "bar"), (1.0, "bar"),
+            (0.5, "sub"), (0.2, "sub"), (0.1, "sub"), (0.05, "sub"),
+            (0.02, "sub")]
+
+
+def snap_step(tempo_fix, bpm, bpb, pps):
+    """Divisió de snap/grid: la més fina que hi cap (px >= MIN_LINE_PX)."""
+    pps = max(float(pps), 1e-9)
+    divs = _divisions(tempo_fix, bpm, bpb)
+    fit = [s for (s, _k) in divs if s * pps >= MIN_LINE_PX]
+    return fit[-1] if fit else divs[-1][0]
+
+
+def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
+              min_label_px=MIN_LABEL_PX):
+    """Pla ÚNIC de grid (font de veritat per a grid, regle i snap).
+
+    Es decideix segons el **zoom en píxels** (com els DAWs), no per segons:
+      - 'snap':  divisió de snap = la més fina que hi cap (px >= min_line_px).
+      - 'lines': [(step, kind), ...] de gruixut a fi: el nivell gran més gruixut
+                 **encara visible** (px <= view_px) + un de mig + el snap.
+      - 'label': nivell de les etiquetes = el més gruixut que hi cap
+                 (px >= min_label_px).
+    """
+    pps = max(float(pps), 1e-9)
+    divs = _divisions(tempo_fix, bpm, bpb)
+    fit = [(s, k) for (s, k) in divs if s * pps >= min_line_px]
+    if not fit:
+        snap, snap_k = divs[-1]
+        return {"snap": snap, "lines": [(snap, snap_k)], "label": divs[0][0]}
+    snap, snap_k = fit[-1]
+    majors = [x for x in fit if x[0] * pps <= view_px] or [fit[0]]
+    major = majors[0]
+    lines = [major]
+    if len(fit) >= 3:
+        gm = math.sqrt(major[0] * snap)
+        mid = min(fit, key=lambda x: abs(math.log(x[0] / gm)))
+        if abs(mid[0] - major[0]) > 1e-9 and abs(mid[0] - snap) > 1e-9:
+            lines.append(mid)
+    if abs(lines[-1][0] - snap) > 1e-9:
+        lines.append((snap, snap_k))
+    # label: el més gruixut VISIBLE que hi cap (min_label <= px <= view_px)
+    cands = [s for (s, _k) in divs if min_label_px <= s * pps <= view_px]
+    lab = cands[0] if cands else major[0]
+    return {"snap": snap, "lines": lines, "label": lab}
 
 
 def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
-              view_span: float, offset: float = 0.0) -> float:
-    """Arrodoneix t al pas de snap adequat segons el zoom (view_span).
+              pps: float, offset: float = 0.0) -> float:
+    """Arrodoneix t a la divisió de grid actual (que depèn del zoom, en px).
 
-    Amb BPM: mai no s'arrodoneix al compàs sencer (massa gruixut) — com a
-    màxim a un temps; segons el zoom, es va a corxera o setzena.
-    Sense BPM: 0,1 s (o més fi si el zoom és molt proper).
+    Fa servir el MATEIX `grid_plan` que el grid i el regle → sempre quadren.
     """
-    off = float(offset)
-    if tempo_fix:
-        beat = 60.0 / max(float(bpm), 1e-9)
-        if view_span <= beat * 8:
-            step = beat / 4.0      # setzena
-        elif view_span <= beat * 32:
-            step = beat / 2.0      # corxera
-        else:
-            step = beat            # temps (mai compàs)
-    else:
-        if view_span <= 2.0:
-            step = 0.02
-        elif view_span <= 5.0:
-            step = 0.05
-        elif view_span <= 20.0:
-            step = 0.1
-        elif view_span <= 60.0:
-            step = 0.5
-        else:
-            step = 1.0
+    step = snap_step(tempo_fix, bpm, bpb, pps)
     if step <= 0:
         return t
+    off = float(offset)
     return round((t - off) / step) * step + off
 
 
 def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
-            offset: float = 0.0) -> str:
-    """Formata t per al ruler o status: '12.3s' o '3.2' (compàs.beat).
+            offset: float = 0.0, step=None) -> str:
+    """Formata t per al regle: 'm:ss[.d]' (temps) o 'compàs.beat' (tempo).
 
     `offset` = segon on cau el compàs 1 (la graella hi comença).
+    `step` = pas de l'etiqueta; en mode temps, si és < 1 s s'hi afegeix un
+    decimal (m:ss.d), com fan els DAWs.
     """
     if not tempo_fix:
-        return f"{t:.1f}s"
+        neg = t < -1e-9
+        tt = abs(float(t))
+        m = int(tt // 60)
+        s = tt - m * 60
+        if step is not None and step < 1.0:
+            txt = f"{m}:{s:04.1f}"              # m:ss.d
+        else:
+            txt = f"{m}:{int(round(s)):02d}"    # m:ss
+        return ("-" if neg else "") + txt
     beat = 60.0 / max(bpm, 1e-9)
     # Sense clampar: abans de l'offset (el compàs 1) la graella és NEGATIVA
     # -> el silenci inicial es llegeix com un compte enrere (-1, -2...).
@@ -140,25 +170,14 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
     return f"{compas}.{beat_idx}"
 
 
-def grid_levels(tempo_fix, bpm, bpb, span):
-    """Retorna [(step_s, color, width), ...] de menys a més important.
+def grid_levels(tempo_fix, bpm, bpb, pps, view_px):
+    """[(step_s, color, width), ...] de menys a més important (GridLayer).
 
-    `color` és un valor de color REAL (ja resolt des de `theme`), llest per
-    passar-lo directament a `QColor(...)`. (Abans eren strings literals
-    "theme.TL_GRID_*" -> `QColor` els considerava invàlids i les línies del
-    grid sortien negres.)
+    `color` és un valor de color REAL (resolt de `theme`). Deriva del **pla
+    únic** (`grid_plan`), així el grid i el regle sempre coincideixen.
     """
-    if tempo_fix:
-        beat = 60.0 / max(float(bpm), 1e-9)
-        measure = beat * max(int(bpb), 1)
-        levels = [(measure, theme.TL_GRID_MEASURE, 1)]
-        if span <= measure * 16:
-            levels.insert(0, (beat, theme.TL_GRID_BEAT, 1))
-        if span <= beat * 8:
-            levels.insert(0, (beat / 2.0, theme.TL_GRID_SUB, 1))
-        return levels
-    step = _best_step_free(span)
-    levels = [(step, theme.TL_GRID_MEASURE, 1)]
-    if span <= 30.0:
-        levels.insert(0, (step / 5.0, theme.TL_GRID_SUB, 1))
-    return levels
+    col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
+           "sub": theme.TL_GRID_SUB}
+    plan = grid_plan(tempo_fix, bpm, bpb, pps, view_px)
+    # de fi a gruixut, perquè els nivells gruixuts es pintin al damunt
+    return [(s, col[k], 1) for (s, k) in reversed(plan["lines"])]

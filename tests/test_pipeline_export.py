@@ -453,9 +453,9 @@ class TimelineConstraintTests(unittest.TestCase):
         view.zoom_to(0, 10)
         # Mou Am de 2.0 a 1.5 — l'amplada de C canvia
         view._on_chord_time_changed(1, 1.5)
-        self.assertAlmostEqual(view._acords[1][0], 1.5, places=4)
-        # C (anterior) té el seu "fi" actualitzat a 1.5
-        self.assertAlmostEqual(view._chord_items[0]._next_t, 1.5, places=4)
+        self.assertAlmostEqual(view._acords[1][0], 1.6, places=4)
+        # C (anterior) té el seu "fi" actualitzat a 1.6
+        self.assertAlmostEqual(view._chord_items[0]._next_t, 1.6, places=4)
         # F (següent) no canvia
         self.assertAlmostEqual(view._acords[2][0], 4.5, places=4)
 
@@ -475,7 +475,7 @@ class TimelineConstraintTests(unittest.TestCase):
         view = self._make_view(tempo_fix=False)
         view.zoom_to(0, 10)
         view._on_chord_end_changed(1, 3.5)
-        self.assertAlmostEqual(view._acords[2][0], 3.5, places=4)
+        self.assertAlmostEqual(view._acords[2][0], 3.6, places=4)
         # Am.t no canvia
         self.assertAlmostEqual(view._acords[1][0], 2.0, places=4)
 
@@ -495,7 +495,7 @@ class TimelineConstraintTests(unittest.TestCase):
         view.set_data([(0.0, "C", "0.0"), (3.7, "Am", "3.7"),
                        (8.0, "F", "8.0")], [])
         view._on_chord_time_changed(1, 4.3)
-        self.assertAlmostEqual(view._acords[1][0], 4.5, places=4)
+        self.assertAlmostEqual(view._acords[1][0], 4.0, places=4)
 
     def test_section_resize_clamped_by_neighbours(self):
         """Les seccions esclamen pels veins."""
@@ -506,8 +506,8 @@ class TimelineConstraintTests(unittest.TestCase):
         view._section_items[1]._drag_mode = 0  # ZONE_NONE -> tractat com a LEFT
         view._on_section_changed(1, 1.5, 7.0)
         # Amb la lògica nova (contigüitat), moure l'inici arrossega el fi
-        # de l'anterior; la secció queda [1.5, 5.98]
-        self.assertAlmostEqual(view._seccions[1][0], 1.5, places=4)
+        # de l'anterior; la secció queda [1.6, 5.98]
+        self.assertAlmostEqual(view._seccions[1][0], 1.6, places=4)
         self.assertAlmostEqual(view._seccions[1][1], 6.0, places=4)
 
     def test_rename_chord_updates_data(self):
@@ -600,9 +600,9 @@ class TimelineConstraintTests(unittest.TestCase):
         it = view._chord_items[0]
         it._drag_mode = ChordItem.ZONE_BODY
         it._drag_t0 = 0.0
-        view._on_chord_time_changed(0, 0.5)      # dt = +0.5
-        self.assertAlmostEqual(view._acords[0][0], 0.5, places=4)
-        self.assertAlmostEqual(view._acords[1][0], 2.5, places=4)   # 2.0+0.5
+        view._on_chord_time_changed(0, 0.5)      # snap 0,2 -> dt = +0.4
+        self.assertAlmostEqual(view._acords[0][0], 0.4, places=4)
+        self.assertAlmostEqual(view._acords[1][0], 2.4, places=4)   # 2.0+0.4
         self.assertAlmostEqual(view._acords[2][0], 4.5, places=4)   # no tocat
 
     def test_mou_grup_clamp_pel_vei(self):
@@ -633,10 +633,10 @@ class TimelineConstraintTests(unittest.TestCase):
         it = view._section_items[0]
         it._drag_mode = SectionItem.ZONE_BODY
         it._drag_ini0 = 0.0
-        view._on_section_changed(0, 0.5, 3.5)    # dt = +0.5
-        self.assertAlmostEqual(view._seccions[0][0], 0.5, places=4)
-        self.assertAlmostEqual(view._seccions[1][1], 6.5, places=4)
-        self.assertAlmostEqual(view._seccions[2][0], 6.5, places=4)   # veí absorbeix
+        view._on_section_changed(0, 0.5, 3.5)    # snap 0,2 -> dt = +0.4
+        self.assertAlmostEqual(view._seccions[0][0], 0.4, places=4)
+        self.assertAlmostEqual(view._seccions[1][1], 6.4, places=4)
+        self.assertAlmostEqual(view._seccions[2][0], 6.4, places=4)   # veí absorbeix
         self.assertAlmostEqual(view._seccions[2][1], 10.0, places=4)
 
     def test_ruler_mode_label_tempo_i_lliure(self):
@@ -666,10 +666,10 @@ class TimelineConstraintTests(unittest.TestCase):
         """Els colors de grid_levels han de ser REALS (QColor valid), no strings."""
         from PyQt5.QtGui import QColor
         from app.timeline_base import grid_levels
-        casos = ((True, 120.0, 4, 10.0), (True, 90.0, 3, 200.0),
-                 (False, 120.0, 4, 10.0), (False, 120.0, 4, 100.0))
-        for tf, bpm, bpb, span in casos:
-            for _step, color, _w in grid_levels(tf, bpm, bpb, span):
+        casos = ((True, 120.0, 4, 60.0), (True, 90.0, 3, 20.0),
+                 (False, 120.0, 4, 60.0), (False, 120.0, 4, 10.0))
+        for tf, bpm, bpb, pps in casos:
+            for _step, color, _w in grid_levels(tf, bpm, bpb, pps, pps * 10.0):
                 self.assertTrue(QColor(color).isValid(),
                                 f"color invalid a grid_levels: {color!r}")
 
@@ -677,15 +677,15 @@ class TimelineConstraintTests(unittest.TestCase):
     def test_snap_metode(self):
         """El mètode snap() arrodoneix a la graella actual."""
         view = self._make_view(tempo_fix=False)
-        view.zoom_to(0, 10)          # span 10 -> pas 0,1 s
-        self.assertAlmostEqual(view.snap(1.73), 1.7, places=4)
+        view.zoom_to(0, 10)          # span 10 -> snap 0,2 s
+        self.assertAlmostEqual(view.snap(1.73), 1.8, places=4)
 
     def test_loop_x_to_time_fa_snap(self):
         """El temps del regle per al loop A/B fa snap a la graella."""
         view = self._make_view(tempo_fix=False)
-        view.zoom_to(0, 10)          # pas 0,1 s
+        view.zoom_to(0, 10)          # snap 0,2 s
         x = view._x_offset + (1.73 - view._view_left) * view._pps
-        self.assertAlmostEqual(view._loop_x_to_time(x), 1.7, places=4)
+        self.assertAlmostEqual(view._loop_x_to_time(x), 1.8, places=4)
 
 
 class VisorTimelineIntegrationTests(unittest.TestCase):
@@ -926,13 +926,13 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
     def test_marca_A_B_fan_snap(self):
         """Els botons A/B marquen el loop amb snap a la graella."""
         v, _ = self._make_visor_with_data()
-        v.timeline.zoom_to(0, 20)    # mode lliure, span 20 -> pas 0,1 s
+        v.timeline.zoom_to(0, 20)    # mode lliure, span 20 -> snap 0,5 s
         v.pos = 1.73
         v.marca_A()
-        self.assertAlmostEqual(v.loop_a, 1.7, places=4)
+        self.assertAlmostEqual(v.loop_a, 1.5, places=4)
         v.pos = 3.26
         v.marca_B()
-        self.assertAlmostEqual(v.loop_b, 3.3, places=4)
+        self.assertAlmostEqual(v.loop_b, 3.5, places=4)
         v.close()
 
     def test_visor_has_timeline_attribute(self):
@@ -949,9 +949,10 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
 
     def test_chord_move_via_timeline_propagates_to_visor(self):
         v, _ = self._make_visor_with_data()
+        v.timeline.zoom_to(0, 20)
         v.timeline._on_chord_time_changed(1, 3.6)
-        # Snap fi (span=20 → 0.1s a mode lliure) → 3.6
-        self.assertAlmostEqual(v.acords[1][0], 3.6, places=4)
+        # Snap (span=20 → 0.5s a mode lliure) → 3.5
+        self.assertAlmostEqual(v.acords[1][0], 3.5, places=4)
         v.close()
 
     def test_rename_via_timeline_propagates_to_visor(self):
@@ -1227,10 +1228,10 @@ class OffsetTests(unittest.TestCase):
 
     def test_snap_time_amb_offset(self):
         from app.timeline import snap_time
-        # offset=1.0 -> graella a 1.0, 1.125, 1.25... (setzena a 120 BPM)
-        self.assertAlmostEqual(snap_time(1.13, True, 120, 4, 4.0, 1.0),
+        # pps=64 -> snap 0.125 (setzena a 120 BPM); offset 1.0
+        self.assertAlmostEqual(snap_time(1.13, True, 120, 4, 64.0, 1.0),
                                1.125, places=4)
-        self.assertAlmostEqual(snap_time(1.13, True, 120, 4, 4.0, 0.0),
+        self.assertAlmostEqual(snap_time(1.13, True, 120, 4, 64.0, 0.0),
                                1.125, places=4)
 
     def test_pos_compas_amb_offset(self):
@@ -2752,13 +2753,14 @@ class UndoRedoTests(unittest.TestCase):
 
     def test_undo_redo_chord_move(self):
         v, _ = self._make_visor_with_data()
+        v.timeline.zoom_to(0, 20)
         t_original = v.acords[1][0]
         self._mou_acord(v, 1, 3.6)
-        self.assertAlmostEqual(v.acords[1][0], 3.6, places=4)
+        self.assertAlmostEqual(v.acords[1][0], 3.5, places=4)
         v.undo()
         self.assertAlmostEqual(v.acords[1][0], t_original, places=4)
         v.redo()
-        self.assertAlmostEqual(v.acords[1][0], 3.6, places=4)
+        self.assertAlmostEqual(v.acords[1][0], 3.5, places=4)
         v.close()
 
     def test_undo_section_move(self):

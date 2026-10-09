@@ -32,7 +32,7 @@ from app.timeline_base import (   # noqa: E402
     LANE_DIVIDER,
     RULER_BG, RULER_TEXT,
     WF_BG, WF_ENV, WF_GAIN, WF_MID,
-    fmt_pos, grid_levels,
+    fmt_pos, grid_levels, grid_plan,
 )
 
 
@@ -166,10 +166,10 @@ class GridLayer(QGraphicsItem):
     def paint(self, painter, option, widget=None):
         p = painter
         p.setRenderHint(QPainter.Antialiasing, False)
-        span = max(self._view_right - self._view_left, 1e-6)
         off = getattr(self, "_offset", 0.0)
+        view_px = max(self._view_right - self._view_left, 1e-6) * self._pps
         for step, color, width in grid_levels(self._tempo_fix, self._bpm,
-                                              self._bpb, span):
+                                              self._bpb, self._pps, view_px):
             if step <= 1e-9:
                 continue
             p.setPen(QPen(QColor(color), width))
@@ -246,13 +246,16 @@ class RulerLayer(QGraphicsItem):
         p.setPen(QPen(QColor(theme.TL_WAVE_MID), 1))
         p.drawLine(QPointF(0, self._height - 1),
                    QPointF(rect.width(), self._height - 1))
-        span = max(self._view_right - self._view_left, 1e-6)
-        levels = grid_levels(self._tempo_fix, self._bpm, self._bpb, span)
-        # ticks dels nivells secundaris
-        for sub, subcolor, _w in levels[:-1]:
-            if sub <= 1e-9:
+        view_px = max(self._view_right - self._view_left, 1e-6) * self._pps
+        plan = grid_plan(self._tempo_fix, self._bpm, self._bpb, self._pps,
+                         view_px)
+        col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
+               "sub": theme.TL_GRID_SUB}
+        # ticks dels nivells secundaris (els més fins que el d'etiqueta)
+        for (sub, kind) in plan["lines"]:
+            if sub <= 1e-9 or sub >= plan["label"] - 1e-9:
                 continue
-            p.setPen(QPen(QColor(subcolor), 1))
+            p.setPen(QPen(QColor(col[kind]), 1))
             t = off + math.floor((self._view_left - off) / sub) * sub
             if t < 0:
                 t = off
@@ -264,7 +267,7 @@ class RulerLayer(QGraphicsItem):
                 t += sub
         # ticks principals + etiquetes (AMB l'offset, com el GridLayer: si no,
         # les etiquetes queden desplaçades respecte de les linies del grid)
-        step, color, _w = levels[-1]
+        step = plan["label"]
         font = QFont("Sans Serif", 8)
         p.setFont(font)
         fm = QFontMetricsF(font)
@@ -275,10 +278,10 @@ class RulerLayer(QGraphicsItem):
         while t <= self._view_right + 1e-9:
             if t >= 0:
                 x = (t - self._view_left) * self._pps
-                p.setPen(QPen(QColor(color), 1))
+                p.setPen(QPen(QColor(theme.TL_GRID_MEASURE), 1))
                 p.drawLine(QPointF(x, self._height - 8),
                            QPointF(x, self._height - 1))
-                lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb, off)
+                lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb, off, step)
                 wlab = fm.width(lab)
                 if x - wlab / 2 > last_label_x:
                     p.setPen(QPen(QColor(RULER_TEXT), 1))

@@ -36,6 +36,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   **manual** i **no compila**: agafa els **últims artefactes verds** de
   Linux/Windows/macOS de GitHub Actions i crea l'esborrany amb **els 3 paquets**
   adjunts (abans només l'AppImage de Linux, i s'activava amb el tag).
+- **Grid, regle i snap UNIFICATS i adaptatius al zoom** (estil DAW): una sola
+  font (`grid_plan`) amb **llindars en píxels** (`MIN_LINE_PX`/`MIN_LABEL_PX`)
+  decideix les línies del grid, les del regle i el **snap** (que ara **segueix
+  el grid**). El regle mostra **`m:ss`** en mode lliure (abans `X.Xs`) i
+  `compàs.temps` en mode tempo, amb el format i la densitat segons el zoom.
 
 ### Arreglat
 - **Línies del grid pintades de negre**: `grid_levels()` retornava els *strings*

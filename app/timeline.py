@@ -477,8 +477,7 @@ class TimelineView(QGraphicsView):
 
     def snap(self, t: float) -> float:
         """Arrodoneix `t` a la graella de snap actual (BPM/offset o segons)."""
-        span = self._view_right - self._view_left
-        return snap_time(t, self._tempo_fix, self._bpm, self._bpb, span,
+        return snap_time(t, self._tempo_fix, self._bpm, self._bpb, self._pps,
                          getattr(self, "_offset", 0.0))
 
     def _loop_x_to_time(self, x: float) -> float:
@@ -658,8 +657,7 @@ class TimelineView(QGraphicsView):
         next_t = self._acords[idx + 1][0] if idx + 1 < len(self._acords) \
             else self._durada
         # snap
-        span = self._view_right - self._view_left
-        new_t_s = snap_time(new_t, self._tempo_fix, self._bpm, self._bpb, span,
+        new_t_s = snap_time(new_t, self._tempo_fix, self._bpm, self._bpb, self._pps,
                           getattr(self, '_offset', 0.0))
         # limita entre prev_t + MIN_GAP_S i next_t - MIN_GAP_S
         new_t_s = max(prev_t + MIN_GAP_S, min(next_t - MIN_GAP_S, new_t_s))
@@ -699,9 +697,8 @@ class TimelineView(QGraphicsView):
         #                si no, self._durada
         max_end = (self._acords[idx + 2][0] - MIN_GAP_S
                    if idx + 2 < len(self._acords) else self._durada)
-        span = self._view_right - self._view_left
         new_t_s = snap_time(new_next_t, self._tempo_fix, self._bpm, self._bpb,
-                            span, getattr(self, "_offset", 0.0))
+                            self._pps, getattr(self, "_offset", 0.0))
         new_t_s = max(old_t + MIN_GAP_S, min(max_end, new_t_s))
         self._show_guide_at(new_t_s)
         # si hi ha següent, actualitza'l
@@ -730,8 +727,7 @@ class TimelineView(QGraphicsView):
         carril perquè els clips contigus es tornin a pintar bé."""
         item = self._chord_items[idx]
         t0 = float(getattr(item, "_drag_t0", self._acords[idx][0]))
-        span = self._view_right - self._view_left
-        t_snap = snap_time(new_t, self._tempo_fix, self._bpm, self._bpb, span,
+        t_snap = snap_time(new_t, self._tempo_fix, self._bpm, self._bpb, self._pps,
                            getattr(self, "_offset", 0.0))
         dt = t_snap - t0
         selset = set(sel)
@@ -789,7 +785,6 @@ class TimelineView(QGraphicsView):
                 self._move_section_group(idx, sel, new_ini)
                 return
         ini_o, fi_o, lletra, familia = self._seccions[idx]
-        span = self._view_right - self._view_left
         zone = self._section_items[idx]._drag_mode
         n = len(self._seccions)
 
@@ -803,7 +798,7 @@ class TimelineView(QGraphicsView):
             # Mou el FI -> és l'inici de la següent
             max_end = (self._seccions[idx + 2][0] - MIN_GAP_S
                        if idx + 2 < n else self._durada)
-            nt = snap_time(new_fi, self._tempo_fix, self._bpm, self._bpb, span,
+            nt = snap_time(new_fi, self._tempo_fix, self._bpm, self._bpb, self._pps,
                       getattr(self, '_offset', 0.0))
             nt = max(ini_o + MIN_SEC_LEN_S, min(max_end, nt))
             self._seccions[idx] = (ini_o, nt, lletra, familia)
@@ -819,7 +814,7 @@ class TimelineView(QGraphicsView):
         if zone == SectionItem.ZONE_BODY:
             # Desplaça la secció sencera (inici i fi junts) — com l'acord
             dur = fi_o - ini_o
-            nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, span,
+            nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, self._pps,
                       getattr(self, '_offset', 0.0))
             lo = prev_ini(idx) + MIN_GAP_S
             # El fi propi (nt+dur) passa a ser l'inici del següent; per tant
@@ -848,7 +843,7 @@ class TimelineView(QGraphicsView):
 
         lo = prev_ini(idx) + MIN_GAP_S
         hi = fi_o - MIN_SEC_LEN_S
-        nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, span,
+        nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, self._pps,
                       getattr(self, '_offset', 0.0))
         nt = max(lo, min(hi, nt))
         self._seccions[idx] = (nt, fi_o, lletra, familia)
@@ -872,8 +867,7 @@ class TimelineView(QGraphicsView):
             return
         item = self._section_items[idx]
         ini0 = float(getattr(item, "_drag_ini0", self._seccions[idx][0]))
-        span = self._view_right - self._view_left
-        ini_s = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, span,
+        ini_s = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, self._pps,
                           getattr(self, "_offset", 0.0))
         dt = ini_s - ini0
         first_ini = float(self._seccions[first][0])
