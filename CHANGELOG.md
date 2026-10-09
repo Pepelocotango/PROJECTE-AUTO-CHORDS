@@ -3,6 +3,38 @@
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
 Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`).
 
+## [0.5.2] — 2026-10-09 (BETA)
+
+### Afegit
+- **Fase D.2 — edició DAW-like al timeline**:
+  - **Multi-selecció**: **Ctrl+clic** afegeix/treu un clip de la selecció;
+    **Shift+clic** selecciona el rang entre l'àncora i el clip clicat (dins del
+    mateix carril). Clic al fons = neteja la selecció.
+  - **Eliminació de grup**: `Delete` esborra tota la selecció en **una sola
+    operació d'undo**.
+  - **Porta-retalls intern**: **`Ctrl+C`** (copiar), **`Ctrl+X`** (retallar) i
+    **`Ctrl+V`** (enganxar al cursor). Els acords es guarden **relatius al clip
+    més antic**, així l'enganxat preserva l'espaiat intern; l'operació **valida
+    abans d'aplicar** (si xoca, no toca res) i és un **únic undo**.
+  - **`Ctrl+D` de grup**: duplica tots els clips seleccionats d'una vegada.
+  - **Moure el grup**: arrossegar un clip seleccionat mou **tota la selecció**.
+  - **Indicador de MODE** al regle: badge fix a la dreta amb `120 BPM · 4/4`
+    (mode tempo) o `Lliure` (mode sense BPM). `RulerLayer.mode_label()`.
+- **Refactor intern**: `timeline.py` **partit** en 4 mòduls (`timeline.py` 1774 →
+  **898** línies + `timeline_items.py` + `timeline_layers.py` + `timeline_base.py`),
+  preparant la Fase D.2. Els símbols públics es re-exporten via `__all__`.
+
+### Arreglat
+- **Línies del grid pintades de negre**: `grid_levels()` retornava els *strings*
+  literals `"theme.TL_GRID_*"` i els consumidors feien `QColor(string)` → color
+  **invàlid**. Ara retorna els colors **reals** de `theme`.
+
+### Proves
+- **224 tests** · OK (1 skip) — +14 respecte de la v0.5.1 (multi-selecció,
+  `Ctrl+C/V/X`, `Ctrl+D` de grup, indicador de mode i colors del grid).
+- **CI multi-SO re-verificat** amb tot el codi de D.2: **Linux AppImage #8**,
+  **Windows #14** i **macOS #8** (amb pas de tests) — tots **VERDS**.
+
 ## [0.5.1] — 2026-10-08 (BETA)
 
 ### Afegit

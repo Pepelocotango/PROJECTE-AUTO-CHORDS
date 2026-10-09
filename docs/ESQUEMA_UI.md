@@ -74,7 +74,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 | Menú | Accions |
 |------|---------|
 | **Fitxer** | Obre… (Ctrl+O) · Exporta (Ctrl+E) · Sortir |
-| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y / Ctrl+Shift+Z) · **Afegeix acord/secció** · **Elimina** (Del) · **Duplica** (Ctrl+D) · **Reanomena** (F2) |
+| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y / Ctrl+Shift+Z) · **Afegeix acord/secció** · **Elimina** (Del) · **Duplica** (Ctrl+D) · **Reanomena** (F2) · **Copiar/Retallar/Enganxar** (Ctrl+C / Ctrl+X / Ctrl+V) |
 | **Selecciona** | Acord del cursor · Secció del cursor · **Loop A/B** (Ctrl+[ / Ctrl+]) · Neteja loop |
 | **Visualitza** | Zoom (🔍−/🔍+) · Tot · Metrònom (🥁) |
 | **Analitza** | Detecta BPM (🎯) · Analitza · **Marca el compàs 1 aquí** (📍) |
@@ -86,6 +86,12 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 > = desfer/refer · **Del** = eliminar · **Ctrl+D** = duplicar · **F2** = reanomenar ·
 > **Ctrl+O** = obrir · **Ctrl+E** = exportar · **Ctrl+[ / Ctrl+]** = loop A/B ·
 > **Ctrl+1..9** = menús · **F5** = Analitza.
+>
+> **Multi-selecció (timeline)**: **Ctrl+clic** afegeix/treu un clip ·
+> **Shift+clic** = rang · **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V**
+> = copiar/retallar/enganxar al cursor · **Ctrl+D** = duplicar el grup ·
+> **arrossegar** un clip seleccionat = moure el grup. El regle mostra el
+> **mode** (`120 BPM · 4/4` o `Lliure`).
 
 ---
 

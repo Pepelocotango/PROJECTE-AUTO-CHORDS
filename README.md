@@ -39,11 +39,15 @@ pas d’assistent.
 - **Exporta…** (`Ctrl+E`) a Fitxer; desactivat fins que hi ha resultat.
 - **Edició al timeline**: desfer/refer (`Ctrl+Z`/`Ctrl+Y`), `Delete`, `Ctrl+D`
   (duplica) i **menú contextual** (botó dret). Mai toca els WAVs generats.
+- **Multi-selecció i porta-retalls**: `Ctrl+clic` (afegir/treure) i `Shift+clic`
+  (rang); `Ctrl+C`/`Ctrl+X`/`Ctrl+V` (copiar/retallar/enganxar al cursor) i
+  `Ctrl+D` per duplicar **tot el grup**; arrossegar un clip seleccionat mou el
+  grup sencer. El regle mostra el **mode** (`120 BPM · 4/4` o `Lliure`).
 - **Inspector** (**Visualitza ▸ Mostra l’inspector**): llistes d’acords i
   estructura (clic per saltar, doble-clic per editar, menú contextual).
 - Compassos de **qualsevol mètrica** (3/4, 6/8, 5/4…), no només 4/4.
 
-La funcionalitat principal està validada: **210 tests · OK (1 skip)** (`python -m unittest tests.test_pipeline_export tests.test_partitura`).
+La funcionalitat principal està validada: **224 tests · OK (1 skip)** (`python -m unittest tests.test_pipeline_export tests.test_partitura`).
 
 ## Què fa l’app
 
