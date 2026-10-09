@@ -178,7 +178,7 @@ La base funcional i el nou visor estan validats. El que queda són millores de p
 - llançador directe (`AUTO_CHORDS.sh` / `AUTO_CHORDS.desktop`)
 - sorteix sense dependre de terminal ni de múltiples finestres
 
-## Fase D — Interacció DAW-like ✅ *(D.1 FET 2026-10-06; D.2/D.3 en curs)*
+## Fase D — Interacció DAW-like ✅ *(D.1 FET 2026-10-06; D.2 FET 2026-10-09; D.3 en curs)*
 
 Aquesta fase és **el “kit de la qüestió”** del projecte: fer que el visor
 interactiu sigui tan usable i natural com un DAW modern treballant amb
@@ -207,20 +207,25 @@ sigui un plaer** i no una fricció.
 - **Feedback visual quan s’arrossega** — el cursor canvia segons la zona
   (parcialment fet) + highlight dels veïns afectats.
 
-### D.2 — Importants (per semblar un DAW de veritat)
+### D.2 — Importants ✅ *(FET 2026-10-09)*
 
-> ✅ **Ja fet**: **Undo/Redo** (`Ctrl+Z`/`Ctrl+Y`, des de v0.1.5) i **`Ctrl+D`**
-> duplicar. Pendent: multi-selecció, `Ctrl+C/V/X`, scroll-drag i indicador de mode.
+> ✅ **FET (2026-10-09)**: **multi-selecció** (`Ctrl+clic` afegir/treure,
+> `Shift+clic` rang) · **eliminar el grup** (un sol undo) · **porta-retalls intern**
+> (`Ctrl+C`/`Ctrl+X`/`Ctrl+V`, valida abans d'aplicar) · **`Ctrl+D` de grup** ·
+> **moure el grup** (arrossegar un clip seleccionat) · **indicador de MODE** al
+> regle (`120 BPM · 4/4` / `Lliure`). Detall: `CHANGELOG` [0.5.2] i
+> `docs/ESQUEMA_UI.*`. L'**Undo/Redo** ja hi era (v0.1.5).
 
-- **Multi-selecció** amb `Ctrl+click` (afegir) i `Shift+click` (rang), i
+- ✅ **Multi-selecció** amb `Ctrl+click` (afegir) i `Shift+click` (rang), i
   poder moure/duplicar/eliminar el grup.
-- **Dreceres de teclat estàndard**: `Ctrl+C/V/X` (copy/cut/paste),
+- ✅ **Dreceres de teclat estàndard**: `Ctrl+C/V/X` (copy/cut/paste),
   `Ctrl+D` (duplicar), `Ctrl+Z/Y` (desfer/refer), `Delete` (eliminar),
   `Space` (play/pause), `Enter` (editar).
-- **Undo/Redo** amb stack d’accions (cobreix qualsevol modificació manual).
-- **Scroll drag amb mouse** per desplaçar-se horitzontalment quan el
-  cursor agafa la forma de “mà” (com Reaper).
-- **Indicador visual del mode actiu** (BPM/compàs vs segons) al ruler.
+- ✅ **Undo/Redo** amb stack d’accions (cobreix qualsevol modificació manual).
+- ⏳ **Scroll drag amb mouse** per desplaçar-se horitzontalment quan el
+  cursor agafa la forma de “mà” (com Reaper) — el **pan amb botó dret** ja hi
+  és; falta el mode “mà” (resta menor).
+- ✅ **Indicador visual del mode actiu** (BPM/compàs vs segons) al ruler.
 
 ### D.3 — Nice-to-have (quan la D.1 i D.2 estiguin consolidades)
 
