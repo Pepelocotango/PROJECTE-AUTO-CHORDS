@@ -118,6 +118,7 @@ class TimelineView(QGraphicsView):
     sectionDuplicateRequested = pyqtSignal(int)
     clipContextMenuRequested = pyqtSignal(str, int, QPoint)  # (kind, idx, pos)
     sectionEditRequested = pyqtSignal(int)
+    multiDeleteRequested = pyqtSignal(list)  # [(kind, idx), ...] multi-selecció
 
     def info_zona(self, pos_vista) -> str:
         """Text d'ajuda per a la caixa d'informacio, segons on es el ratoli.
@@ -180,6 +181,7 @@ class TimelineView(QGraphicsView):
         self._pos_t = 0.0          # temps del cursor (font de veritat)
         self._follow = False       # seguir el cursor durant el play
         self._sel = ("", -1)      # clip seleccionat (kind, index)
+        self._multi: set = set()   # multi-selecció: {(kind, index), ...}
         self._loop_item = None     # banda de loop A/B
         self._loop_a = None
         self._loop_b = None
@@ -250,6 +252,10 @@ class TimelineView(QGraphicsView):
     def set_data(self, acords: Sequence, seccions: Sequence) -> None:
         self._acords = list(acords) or []
         self._seccions = list(seccions) or []
+        # Els índexs canvien amb les dades noves: la multi-selecció antiga
+        # queda òrfena, per tant la buidem (els items es reconstrueixen).
+        self._multi = set()
+        self._sel = ("", -1)
         self._rebuild_chord_items()
         self._rebuild_section_items()
 
@@ -499,14 +505,58 @@ class TimelineView(QGraphicsView):
 
     def select_clip(self, kind: str, index: int) -> None:
         """Marca visualment el clip seleccionat (i desmarca la resta)."""
-        self._sel = (kind, index)
-        for it in self._chord_items:
-            it.set_selected(kind == "chord" and getattr(it, "idx", -1) == index)
-        for it in self._section_items:
-            it.set_selected(kind == "section" and getattr(it, "idx", -1) == index)
+        self._sel = (kind, index) if kind else ("", -1)
+        self._multi = {(kind, index)} if kind else set()
+        self._sync_selection_visual()
         # Avisem els qui escolten (llistes, franja Editor...) tambe quan la
         # seleccio ve de fora (clic a la llista, menu, etc.), no nomes del
         # propi timeline.
+        self.clipSelected.emit(kind, index)
+
+    def _sync_selection_visual(self) -> None:
+        """Pinta la vora de selecció a tots els items de `self._multi`."""
+        for it in self._chord_items:
+            it.set_selected(("chord", getattr(it, "idx", -1)) in self._multi)
+        for it in self._section_items:
+            it.set_selected(("section", getattr(it, "idx", -1)) in self._multi)
+
+    def selected_keys(self) -> set:
+        """Conjunt de (kind, idx) actualment seleccionats (multi-selecció)."""
+        return set(self._multi)
+
+    def clear_selection(self) -> None:
+        """Buida la selecció (i ho notifica amb un clip buit)."""
+        self._sel = ("", -1)
+        self._multi = set()
+        self._sync_selection_visual()
+        self.clipSelected.emit("", -1)
+
+    def toggle_selection(self, kind: str, index: int) -> None:
+        """Ctrl+clic: afegeix o treu el clip de la selecció múltiple."""
+        key = (kind, index)
+        if key in self._multi:
+            self._multi.discard(key)
+            self._sel = next(iter(self._multi), ("", -1))
+        else:
+            self._multi.add(key)
+            self._sel = key
+        self._sync_selection_visual()
+        self.clipSelected.emit(kind, index)
+
+    def extend_selection(self, kind: str, index: int) -> None:
+        """Shift+clic: selecciona el rang entre l'àncora i el clip clicat.
+
+        L'àncora és el darrer clip seleccionat (`self._sel`) i el rang només
+        s'aplica dins del mateix carril (acords o seccions). Sense ànora,
+        equival a una selecció simple."""
+        akind, aidx = self._sel
+        if akind != kind or aidx < 0:
+            self.select_clip(kind, index)
+            return
+        lo, hi = sorted((aidx, index))
+        self._multi = {(kind, i) for i in range(lo, hi + 1)}
+        self._sel = (kind, index)
+        self._sync_selection_visual()
         self.clipSelected.emit(kind, index)
 
     # -- gestió d'events dels items (constraint + propagació) -----------------
@@ -816,14 +866,31 @@ class TimelineView(QGraphicsView):
                 return
             it = self.itemAt(event.pos())
             if isinstance(it, (ChordItem, SectionItem)):
+                kind = "chord" if isinstance(it, ChordItem) else "section"
+                idx = getattr(it, "idx", -1)
+                mods = event.modifiers()
+                # Ctrl+clic = afegir/treure de la multi-selecció; Shift+clic =
+                # estendre el rang. En tots dos casos NO s'inicia cap drag.
+                if mods & Qt.ControlModifier:
+                    self.setFocus()
+                    self.toggle_selection(kind, idx)
+                    event.accept()
+                    return
+                if mods & Qt.ShiftModifier:
+                    self.setFocus()
+                    self.extend_selection(kind, idx)
+                    event.accept()
+                    return
                 super().mousePressEvent(event)
                 return
-            # Click al fons -> mou el cursor
+            # Click al fons -> mou el cursor i buida la selecció múltiple
             try:
                 pos = event.position() if hasattr(event, "position") else event.pos()
                 scene_pt = self.mapToScene(pos)
                 t = max(0.0, min(self._durada, self._x_to_time(scene_pt.x())))
                 self.set_position(t)
+                if self._multi:
+                    self.clear_selection()
                 self._hide_guide()
                 event.accept()
             except (TypeError, ValueError):
@@ -876,6 +943,13 @@ class TimelineView(QGraphicsView):
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             # Esborra el clip SELECCIONAT. Els items no reben tecles (no son
             # focusables), per tant ho gestionem aquí, que si tenim el focus.
+            multi = self.selected_keys()
+            if len(multi) > 1:
+                # Eliminació de grup: el visor la resol d'una sola vegada
+                # (un únic estat d'undo) amb la llista (kind, idx).
+                self.multiDeleteRequested.emit(sorted(multi))
+                event.accept()
+                return
             for items, sig in ((self._chord_items, self.chordDeleteRequested),
                                (self._section_items, self.sectionDeleteRequested)):
                 for it in items:

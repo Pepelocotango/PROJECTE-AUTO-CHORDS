@@ -538,6 +538,48 @@ class TimelineConstraintTests(unittest.TestCase):
         self.assertTrue(view._chord_items[1]._active)
         self.assertFalse(view._chord_items[0]._active)
 
+    def test_multi_selection_toggle_i_rang(self):
+        """Ctrl+clic afegeix/treu; Shift+clic selecciona el rang sencer."""
+        view = self._make_view(tempo_fix=False)
+        view.toggle_selection("chord", 0)
+        view.toggle_selection("chord", 2)   # Ctrl-clic: afegeix
+        self.assertEqual(view.selected_keys(), {("chord", 0), ("chord", 2)})
+        self.assertTrue(view._chord_items[0]._selected)
+        self.assertTrue(view._chord_items[2]._selected)
+        self.assertFalse(view._chord_items[1]._selected)
+        # Shift-clic des de l'àncora (2) fins a 3 → rang {2, 3}
+        view.extend_selection("chord", 3)
+        self.assertEqual(view.selected_keys(), {("chord", 2), ("chord", 3)})
+        # Ctrl-clic sobre un de ja seleccionat el treu
+        view.toggle_selection("chord", 2)
+        self.assertEqual(view.selected_keys(), {("chord", 3)})
+
+    def test_select_clip_resseteja_la_multi_seleccio(self):
+        """Una selecció simple (des de llista/menu) buida la multi-selecció."""
+        view = self._make_view(tempo_fix=False)
+        view.toggle_selection("chord", 0)
+        view.toggle_selection("chord", 1)
+        view.select_clip("chord", 2)
+        self.assertEqual(view.selected_keys(), {("chord", 2)})
+        self.assertFalse(view._chord_items[0]._selected)
+
+    def test_clear_selection_buida(self):
+        """clear_selection deixa el conjunt buit i desmarca els items."""
+        view = self._make_view(tempo_fix=False)
+        view.select_clip("chord", 1)
+        view.toggle_selection("chord", 2)
+        view.clear_selection()
+        self.assertEqual(view.selected_keys(), set())
+        self.assertFalse(any(it._selected for it in view._chord_items))
+
+    def test_set_data_buida_la_multi_seleccio(self):
+        """set_data (re-render amb índexs nous) no deixa selecció òrfena."""
+        view = self._make_view(tempo_fix=False)
+        view.toggle_selection("chord", 0)
+        view.toggle_selection("chord", 1)
+        view.set_data([(0.0, "C", "0.0"), (1.0, "D", "1.0")], [])
+        self.assertEqual(view.selected_keys(), set())
+
 
 class VisorTimelineIntegrationTests(unittest.TestCase):
     """Tests d'integració Visor ↔ TimelineView."""
@@ -618,6 +660,23 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         self.assertAlmostEqual(v.seccions[0][1], fi_alliberada, places=3)
         v.undo()
         self.assertEqual(len(v.seccions), n)
+        v.close()
+
+    def test_delete_de_grup_esborra_els_seleccionats(self):
+        """Delete amb multi-selecció esborra tots els clips d'una sola vegada."""
+        from PyQt5.QtGui import QKeyEvent
+        from PyQt5.QtCore import QEvent, Qt
+        v, _ = self._make_visor_with_data()
+        n = len(v.acords)
+        v.timeline.toggle_selection("chord", 1)
+        v.timeline.toggle_selection("chord", 3)
+        self.assertEqual(len(v.timeline.selected_keys()), 2)
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_Delete, Qt.NoModifier))
+        self.assertEqual(len(v.acords), n - 2)
+        self.assertEqual(len(v._undo_stack), 1)   # una sola operació d'undo
+        v.undo()
+        self.assertEqual(len(v.acords), n)
         v.close()
 
     def test_ctrl_d_duplica_acord_a_mig_cami(self):

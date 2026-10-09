@@ -157,6 +157,7 @@ class Visor(QMainWindow):
         self.timeline.sectionRenamed.connect(self._on_section_renamed)
         self.timeline.sectionDeleteRequested.connect(self._elimina_seccio_index)
         self.timeline.sectionDuplicateRequested.connect(self._duplica_seccio_index)
+        self.timeline.multiDeleteRequested.connect(self._elimina_seleccio)
         self.timeline.clipContextMenuRequested.connect(
             self._on_clip_context_menu)
         self.timeline.sectionEditRequested.connect(self._on_section_edit_requested)
@@ -1050,6 +1051,39 @@ class Visor(QMainWindow):
         try:
             self._regenera_abc_des_de_totes_les_seccions("secció eliminada")
             self.log(f"eliminada secció {idx}")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+            QMessageBox.warning(self, "Visor",
+                                f"No s'ha pogut eliminar:\n{e}")
+
+    def _elimina_seleccio(self, keys):
+        """Elimina tots els clips de la multi-selecció en una sola operació.
+
+        Rep la llista [(kind, idx), ...] del TimelineView i resol l'esborrat
+        d'una vegada: una única marca d'undo, esborrats en ordre descendent
+        (perquè els índexs no es desplacin) i un sol `set_data` + regen."""
+        keys = list(keys or [])
+        idx_ac = sorted({int(i) for k, i in keys if k == "chord"}, reverse=True)
+        idx_sec = sorted({int(i) for k, i in keys if k == "section"}, reverse=True)
+        idx_ac = [i for i in idx_ac if 0 <= i < len(self.acords)]
+        idx_sec = [i for i in idx_sec if 0 <= i < len(self.seccions)]
+        if not idx_ac and not idx_sec:
+            return
+        self._undo_marca()
+        for i in idx_ac:
+            self._elimina_acord(i)
+        for i in idx_sec:
+            self._elimina_seccio(i)
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            if idx_ac:
+                self._desa_i_regenera()
+            if idx_sec:
+                self._regenera_abc_des_de_totes_les_seccions(
+                    "selecció eliminada")
+            self.log(f"eliminada la selecció "
+                     f"({len(idx_ac)} acords, {len(idx_sec)} seccions)")
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor",
