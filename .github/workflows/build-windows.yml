@@ -35,6 +35,9 @@ jobs:
         with:
           msystem: MINGW64
           update: false
+          # MINGW64 està "deprecated" (MSYS2 recomana UCRT64/CLANG64); ho
+          # reconeixem per silenciar l'avís (migrar és canvi de toolchain → fora d'abast).
+          suppress-deprecation-warnings: msystem-mingw64
 
       - name: "2b. Paquets MSYS2 (refrescant la BD primer)"
         shell: msys2 {0}
@@ -68,7 +71,7 @@ jobs:
           fi
 
       - name: 4. Python x64 + rodes (PyQt5 + numpy<2 + PyInstaller)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           architecture: x64
