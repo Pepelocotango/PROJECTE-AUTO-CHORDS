@@ -120,6 +120,7 @@ class TimelineView(QGraphicsView):
     sectionEditRequested = pyqtSignal(int)
     multiDeleteRequested = pyqtSignal(list)  # [(kind, idx), ...] multi-selecció
     pasteRequested = pyqtSignal(dict, float)  # (buffer intern, temps d'enganxar)
+    groupDuplicateRequested = pyqtSignal(list)  # [(kind, idx), ...] duplicar grup
 
     def info_zona(self, pos_vista) -> str:
         """Text d'ajuda per a la caixa d'informacio, segons on es el ratoli.
@@ -1026,7 +1027,13 @@ class TimelineView(QGraphicsView):
                 event.accept()
                 return
             if event.key() == Qt.Key_D:
-                # Ctrl+D: duplica el clip seleccionat (individual, de moment)
+                # Ctrl+D: duplica el clip seleccionat; amb multi-selecció,
+                # duplica el GRUP sencer (el visor ho resol amb un sol undo).
+                keys = self.selected_keys()
+                if len(keys) > 1:
+                    self.groupDuplicateRequested.emit(sorted(keys))
+                    event.accept()
+                    return
                 for items, sig in ((self._chord_items,
                                     self.chordDuplicateRequested),
                                    (self._section_items,

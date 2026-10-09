@@ -784,6 +784,38 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         self.assertEqual(len(v.seccions), n)
         v.close()
 
+    def test_ctrl_d_duplica_el_grup_d_acords(self):
+        """Ctrl+D amb multi-selecció duplica tots els acords (una sola undo)."""
+        from PyQt5.QtGui import QKeyEvent
+        from PyQt5.QtCore import QEvent, Qt
+        v, _ = self._make_visor_with_data()
+        n = len(v.acords)
+        v.timeline.toggle_selection("chord", 0)
+        v.timeline.toggle_selection("chord", 1)
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_D, Qt.ControlModifier))
+        self.assertEqual(len(v.acords), n + 2)
+        self.assertEqual(len(v._undo_stack), 1)
+        v.undo()
+        self.assertEqual(len(v.acords), n)
+        v.close()
+
+    def test_ctrl_d_duplica_les_seccions_seleccionades(self):
+        """Ctrl+D amb multi-selecció de seccions: totes es parteixen (una undo)."""
+        from PyQt5.QtGui import QKeyEvent
+        from PyQt5.QtCore import QEvent, Qt
+        v, _ = self._make_visor_with_data()
+        n = len(v.seccions)
+        v.timeline.toggle_selection("section", 0)
+        v.timeline.toggle_selection("section", 1)
+        v.timeline.keyPressEvent(
+            QKeyEvent(QEvent.KeyPress, Qt.Key_D, Qt.ControlModifier))
+        self.assertEqual(len(v.seccions), n + 2)
+        self.assertEqual(len(v._undo_stack), 1)
+        v.undo()
+        self.assertEqual(len(v.seccions), n)
+        v.close()
+
     def test_visor_has_timeline_attribute(self):
         v, _ = self._make_visor_with_data()
         self.assertTrue(hasattr(v, "timeline"))

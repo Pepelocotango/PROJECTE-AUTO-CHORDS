@@ -159,6 +159,7 @@ class Visor(QMainWindow):
         self.timeline.sectionDuplicateRequested.connect(self._duplica_seccio_index)
         self.timeline.multiDeleteRequested.connect(self._elimina_seleccio)
         self.timeline.pasteRequested.connect(self._enganxa_seleccio)
+        self.timeline.groupDuplicateRequested.connect(self._duplica_seleccio)
         self.timeline.clipContextMenuRequested.connect(
             self._on_clip_context_menu)
         self.timeline.sectionEditRequested.connect(self._on_section_edit_requested)
@@ -1025,6 +1026,61 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
 
+    def _duplica_seleccio(self, keys):
+        """Duplica tots els clips de la multi-selecció en una sola operació.
+
+        Acords: el duplicat va a mig camí del següent (com el Ctrl+D
+        individual). Seccions: es parteixen en dues meitats. Es calcula sobre
+        còpies candidates i es valida ABANS de tocar el model; els inserts es
+        fan en ordre descendent perquè els índexs no es desplacin."""
+        keys = list(keys or [])
+        idx_ac = sorted({int(i) for k, i in keys if k == "chord"}, reverse=True)
+        idx_sec = sorted({int(i) for k, i in keys if k == "section"}, reverse=True)
+        idx_ac = [i for i in idx_ac if 0 <= i < len(self.acords)]
+        idx_sec = [i for i in idx_sec if 0 <= i < len(self.seccions)]
+        if not idx_ac and not idx_sec:
+            return
+        cand_ac = list(self.acords)
+        for i in idx_ac:
+            t, nom = float(cand_ac[i][0]), cand_ac[i][1]
+            seguent = (float(cand_ac[i + 1][0]) if i + 1 < len(cand_ac)
+                       else float(self.audio["durada"]))
+            nou_t = (t + seguent) / 2.0
+            if nou_t - t >= 0.02:
+                cand_ac.insert(i + 1, (nou_t, nom, f"{nou_t:.9f}"))
+        cand_sec = list(self.seccions)
+        for i in idx_sec:
+            ini, fi, L, fam = cand_sec[i]
+            ini, fi = float(ini), float(fi)
+            mig = (ini + fi) / 2.0
+            if mig - ini >= 0.05 and fi - mig >= 0.05:
+                cand_sec[i] = (ini, mig, L, fam)
+                cand_sec.insert(i + 1, (mig, fi, L, fam))
+        try:
+            cand_ac = self._valida_canvis_acords(cand_ac)
+            if idx_sec:
+                cand_sec = self._valida_canvis_seccions(cand_sec)
+        except ValueError as e:
+            self.log(f"duplica selecció: canvi invalid, no s'ha fet res ({e})")
+            return
+        self._undo_marca()
+        self.acords = cand_ac
+        if idx_sec:
+            self.seccions = cand_sec
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            if idx_ac:
+                self._desa_i_regenera()
+            if idx_sec:
+                self._regenera_abc_des_de_totes_les_seccions(
+                    "selecció duplicada")
+            self.log(f"duplicada la selecció "
+                     f"({len(idx_ac)} acords, {len(idx_sec)} seccions)")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+            QMessageBox.warning(self, "Visor", f"No s'ha pogut duplicar:\n{e}")
+
     def _elimina_acord_index(self, idx):
         if idx < 0 or idx >= len(self.acords):
             return
@@ -1113,8 +1169,16 @@ class Visor(QMainWindow):
         if not chords and not sections:
             return
         durada = float(self.audio["durada"])
-        nou_ac = [(at + float(rel), str(name)) for (rel, name) in chords
-                  if 0.0 <= at + float(rel) <= durada]
+        nou_ac, descartats = [], 0
+        for (rel, name) in chords:
+            t = at + float(rel)
+            if 0.0 <= t <= durada:
+                nou_ac.append((t, str(name)))
+            else:
+                descartats += 1
+        if descartats:
+            self.log(f"enganxa: {descartats} acord(s) fora de "
+                     f"[0, {durada:.2f}] descartats")
         noves_sec = self.seccions
         n_sec = 0
         if sections:
