@@ -1,0 +1,29 @@
+name: Compilar els 3 SO (Linux + Windows + macOS)
+
+# ── AGREGADOR ──────────────────────────────────────────────────────────────
+# Un sol workflow que executa els 3 builds de compilacio A LA VEGADA.
+# Els crida com a "reusable workflows" (uses: ./.github/workflows/...) i, com
+# que son jobs germans, GitHub els llança EN PARAL·LEL (no cal res mes).
+#
+# NOMES MANUAL (workflow_dispatch): GitHub > Actions > "Compilar els 3 SO" >
+# "Run workflow". Cada build deixa el seu artefacte com sempre (Linux AppImage,
+# Windows ZIP, macOS ZIP). No fa cap push ni cap Release.
+#
+# NOTA: perque puguin ser cridats, els 3 workflows tenen tambe `workflow_call:`
+# al seu bloc `on:` (a mes de `workflow_dispatch:`).
+# ───────────────────────────────────────────────────────────────────────────
+on:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    name: Linux (AppImage)
+    uses: ./.github/workflows/build-appimage.yml
+
+  windows:
+    name: Windows (ZIP portable x64)
+    uses: ./.github/workflows/build-windows.yml
+
+  macos:
+    name: macOS (High Sierra 10.13+)
+    uses: ./.github/workflows/build-macos.yml

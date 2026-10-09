@@ -12,7 +12,8 @@ name: Compilar paquet Windows (x64)
 # Construeix el paquet portable de Windows i el deixa com a ARTEFACTE (ZIP).
 # No fa cap push.
 on:
-  workflow_dispatch:
+  workflow_dispatch:      # manual (Actions > Run workflow)
+  workflow_call:          # tambe cridable pel workflow agregador (build-all.yml)
 
 jobs:
   build-windows:

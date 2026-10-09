@@ -15,7 +15,8 @@ name: Compilar AppImage (Linux)
 # Construeix l'AppImage i el deixa com a ARTEFACTE descarregable. No fa cap push
 # al repositori ni cap Release.
 on:
-  workflow_dispatch:
+  workflow_dispatch:      # manual (Actions > Run workflow)
+  workflow_call:          # tambe cridable pel workflow agregador (build-all.yml)
 
 jobs:
   build-appimage:

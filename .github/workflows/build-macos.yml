@@ -14,7 +14,8 @@ name: Compilar app macOS (High Sierra 10.13+)
 # ⚠️ `macos-15-intel` es l'ULTIM runner Intel de GitHub Actions (fins a
 #    l'agost de 2027). Cal x86_64 perque el desti es High Sierra 10.13.
 on:
-  workflow_dispatch:
+  workflow_dispatch:      # manual (Actions > Run workflow)
+  workflow_call:          # tambe cridable pel workflow agregador (build-all.yml)
 
 jobs:
   build-macos:
