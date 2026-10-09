@@ -580,6 +580,54 @@ class TimelineConstraintTests(unittest.TestCase):
         view.set_data([(0.0, "C", "0.0"), (1.0, "D", "1.0")], [])
         self.assertEqual(view.selected_keys(), set())
 
+    def test_mou_grup_d_acords(self):
+        """Arrossegar el cos d'un acord seleccionat mou tot el grup."""
+        from app.timeline_items import ChordItem
+        view = self._make_view(tempo_fix=False)
+        view.zoom_to(0, 10)
+        view.toggle_selection("chord", 0)
+        view.toggle_selection("chord", 1)
+        it = view._chord_items[0]
+        it._drag_mode = ChordItem.ZONE_BODY
+        it._drag_t0 = 0.0
+        view._on_chord_time_changed(0, 0.5)      # dt = +0.5
+        self.assertAlmostEqual(view._acords[0][0], 0.5, places=4)
+        self.assertAlmostEqual(view._acords[1][0], 2.5, places=4)   # 2.0+0.5
+        self.assertAlmostEqual(view._acords[2][0], 4.5, places=4)   # no tocat
+
+    def test_mou_grup_clamp_pel_vei(self):
+        """El grup no pot ultrapassar el veí NO seleccionat."""
+        from app.timeline_items import ChordItem
+        view = self._make_view(tempo_fix=False)
+        view.zoom_to(0, 10)
+        view.toggle_selection("chord", 0)
+        view.toggle_selection("chord", 1)
+        it = view._chord_items[1]
+        it._drag_mode = ChordItem.ZONE_BODY
+        it._drag_t0 = 2.0
+        view._on_chord_time_changed(1, 100.0)    # intent d'anar molt a la dreta
+        self.assertLessEqual(view._acords[1][0], 4.5 - 0.02 + 1e-6)
+        # tots dos s'han mogut el mateix delta
+        self.assertAlmostEqual(view._acords[1][0] - 2.0,
+                               view._acords[0][0] - 0.0, places=4)
+
+    def test_mou_grup_de_seccions(self):
+        """Arrossegar el cos d'una secció seleccionada mou el bloc contigu."""
+        from app.timeline_items import SectionItem
+        view = self._make_view(durada=10.0, tempo_fix=False)
+        view.set_data([], [(0.0, 3.0, "A", "A"),
+                           (3.0, 6.0, "B", "B"),
+                           (6.0, 10.0, "C", "C")])
+        view.toggle_selection("section", 0)
+        view.toggle_selection("section", 1)
+        it = view._section_items[0]
+        it._drag_mode = SectionItem.ZONE_BODY
+        it._drag_ini0 = 0.0
+        view._on_section_changed(0, 0.5, 3.5)    # dt = +0.5
+        self.assertAlmostEqual(view._seccions[0][0], 0.5, places=4)
+        self.assertAlmostEqual(view._seccions[1][1], 6.5, places=4)
+        self.assertAlmostEqual(view._seccions[2][0], 6.5, places=4)   # veí absorbeix
+        self.assertAlmostEqual(view._seccions[2][1], 10.0, places=4)
 
     def test_ruler_mode_label_tempo_i_lliure(self):
         """L'indicador de mode del regle: 'N BPM . P/4' amb tempo, 'Lliure' sense."""

@@ -628,6 +628,16 @@ class TimelineView(QGraphicsView):
         """Mou l'inici de l'acord idx a new_t (amb snap + constraint)."""
         if idx < 0 or idx >= len(self._acords):
             return
+        # Moviment de GRUP: si l'acord arrossegat (pel cos) forma part d'una
+        # multi-selecció d'acords, movem TOTS els seleccionats amb el mateix
+        # delta (els extrems de les nanses segueixen redimensionant un sol clip).
+        if (len(self._multi) > 1
+                and getattr(self._chord_items[idx], "_drag_mode", None)
+                == ChordItem.ZONE_BODY):
+            sel = sorted(i for (k, i) in self._multi if k == "chord")
+            if len(sel) > 1 and idx in sel:
+                self._move_chord_group(idx, sel, new_t)
+                return
         old_t, name, *_r = self._acords[idx]
         # veïns
         prev_t = self._acords[idx - 1][0] if idx - 1 >= 0 else 0.0
@@ -659,6 +669,14 @@ class TimelineView(QGraphicsView):
         """Mou el final de l'acord idx (= inici del següent) a new_next_t."""
         if idx < 0 or idx >= len(self._acords):
             return
+        # En un moviment de grup (cos) el final el resol _move_chord_group;
+        # aquí no hem de redimensionar el clip ni moure el veí.
+        if (len(self._multi) > 1
+                and getattr(self._chord_items[idx], "_drag_mode", None)
+                == ChordItem.ZONE_BODY):
+            sel = sorted(i for (k, i) in self._multi if k == "chord")
+            if len(sel) > 1 and idx in sel:
+                return
         old_t, name, *_r = self._acords[idx]
         # el final de l'acord idx és igual a l'inici de idx+1 (o durada total)
         # limita:
@@ -689,6 +707,47 @@ class TimelineView(QGraphicsView):
             # ignora el canvi (l'últim hi no té "final" editable per re-validar).
             pass
 
+    def _move_chord_group(self, idx: int, sel: list, new_t: float) -> None:
+        """Mou tots els acords de `sel` amb el mateix delta que el clip `idx`.
+
+        El delta es calcula respecte la posició a l'inici del drag i es limita
+        perquè cap acord seleccionat ultrapassi el veí NO seleccionat més
+        proper (esquerra/dreta). Es recalcula l'amplada (next_t) de tot el
+        carril perquè els clips contigus es tornin a pintar bé."""
+        item = self._chord_items[idx]
+        t0 = float(getattr(item, "_drag_t0", self._acords[idx][0]))
+        span = self._view_right - self._view_left
+        t_snap = snap_time(new_t, self._tempo_fix, self._bpm, self._bpb, span,
+                           getattr(self, "_offset", 0.0))
+        dt = t_snap - t0
+        selset = set(sel)
+        dt_lo, dt_hi = -1e18, 1e18
+        for i in sel:
+            p = i - 1
+            while p >= 0 and p in selset:
+                p -= 1
+            n = i + 1
+            while n < len(self._acords) and n in selset:
+                n += 1
+            lo = (self._acords[p][0] if p >= 0 else 0.0) + MIN_GAP_S
+            hi = (self._acords[n][0] if n < len(self._acords)
+                  else self._durada) - MIN_GAP_S
+            t_i = self._acords[i][0]
+            dt_lo = max(dt_lo, lo - t_i)
+            dt_hi = min(dt_hi, hi - t_i)
+        dt = 0.0 if dt_lo > dt_hi else max(dt_lo, min(dt_hi, dt))
+        for i in sel:
+            t_i = self._acords[i][0] + dt
+            self._acords[i] = (t_i, self._acords[i][1], f"{t_i:.9f}")
+            self._chord_items[i].set_time(t_i)
+        # re-sincronitza l'amplada (next_t = inici del següent) de tot el carril
+        for i in range(len(self._acords)):
+            nxt = (self._acords[i + 1][0] if i + 1 < len(self._acords)
+                   else self._durada)
+            self._chord_items[i].set_next_t(nxt)
+        self._show_guide_at(self._acords[idx][0])
+        self.chordTimeMoved.emit(idx, self._acords[idx][0])
+
     def _on_chord_edit(self, idx: int) -> None:
         """Doble-clic: obre el RenameEditor inline."""
         item = self._chord_by_idx.get(idx)
@@ -707,6 +766,14 @@ class TimelineView(QGraphicsView):
         """
         if idx < 0 or idx >= len(self._seccions):
             return
+        # Moviment de GRUP de seccions (arrossegant el cos d'una de seleccionada)
+        if (len(self._multi) > 1
+                and getattr(self._section_items[idx], "_drag_mode", None)
+                == SectionItem.ZONE_BODY):
+            sel = sorted(i for (k, i) in self._multi if k == "section")
+            if len(sel) > 1 and idx in sel:
+                self._move_section_group(idx, sel, new_ini)
+                return
         ini_o, fi_o, lletra, familia = self._seccions[idx]
         span = self._view_right - self._view_left
         zone = self._section_items[idx]._drag_mode
@@ -778,6 +845,52 @@ class TimelineView(QGraphicsView):
             self._section_items[idx - 1].set_fi(nt)
         self._show_guide_at(nt)
         self.sectionMoved.emit(idx, nt, fi_o)
+
+    def _move_section_group(self, idx: int, sel: list, new_ini: float) -> None:
+        """Mou totes les seccions de `sel` amb el mateix delta que `idx`.
+
+        Només per a blocs CONTIGUS (el cas natural de Shift+clic). El delta es
+        limita perquè les seccions veïnes NO seleccionades (que absorbeixen el
+        desplaçament, com en el moviment individual) no baixin de la mida
+        mínima. Els extrems dels veïns s'ajusten per mantenir la contigüitat."""
+        first, last = sel[0], sel[-1]
+        if sel != list(range(first, last + 1)):
+            return
+        item = self._section_items[idx]
+        ini0 = float(getattr(item, "_drag_ini0", self._seccions[idx][0]))
+        span = self._view_right - self._view_left
+        ini_s = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, span,
+                          getattr(self, "_offset", 0.0))
+        dt = ini_s - ini0
+        first_ini = float(self._seccions[first][0])
+        last_fi = float(self._seccions[last][1])
+        if first - 1 >= 0:
+            dt_lo = (float(self._seccions[first - 1][0]) + MIN_SEC_LEN_S
+                     - first_ini)
+        else:
+            dt_lo = -first_ini
+        if last + 1 < len(self._seccions):
+            dt_hi = (float(self._seccions[last + 1][1]) - MIN_SEC_LEN_S
+                     - last_fi)
+        else:
+            dt_hi = self._durada - last_fi
+        dt = 0.0 if dt_lo > dt_hi else max(dt_lo, min(dt_hi, dt))
+        for i in sel:
+            ini_i, fi_i, L, fam = self._seccions[i]
+            self._seccions[i] = (ini_i + dt, fi_i + dt, L, fam)
+            self._section_items[i].set_ini(ini_i + dt)
+            self._section_items[i].set_fi(fi_i + dt)
+        if first - 1 >= 0:
+            p = self._seccions[first - 1]
+            self._seccions[first - 1] = (p[0], first_ini + dt, p[2], p[3])
+            self._section_items[first - 1].set_fi(first_ini + dt)
+        if last + 1 < len(self._seccions):
+            n = self._seccions[last + 1]
+            self._seccions[last + 1] = (last_fi + dt, n[1], n[2], n[3])
+            self._section_items[last + 1].set_ini(last_fi + dt)
+        self._show_guide_at(self._seccions[idx][0])
+        self.sectionMoved.emit(idx, self._seccions[idx][0],
+                               self._seccions[idx][1])
 
     def _on_section_edit(self, idx: int) -> None:
         item = self._section_by_idx.get(idx)
