@@ -11,9 +11,11 @@
 ## 🐧 Linux (AppImage) — es pot provar des d'aquest host
 
 ```bash
-# al directori on hagis descomprimit el ZIP de Linux:
-chmod +x AutoChords_*-Linux*.AppImage
-./AutoChords_*-Linux*.AppImage
+# al directori on hagis descomprimit el ZIP de Linux.
+# L'AppImage de dins es diu auto-chords-<sane>-x86_64.AppImage
+# (el ZIP es diu AutoChords_v<ver>-<sane>-build<N>-Linux.zip):
+chmod +x auto-chords-*-x86_64.AppImage
+./auto-chords-*-x86_64.AppImage
 ```
 
 - **No cal instal·lar res** (runtime estàtic; tampoc `libfuse2`).
