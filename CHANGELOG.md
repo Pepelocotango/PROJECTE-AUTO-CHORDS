@@ -37,6 +37,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   import lazy de `watchdog`; retirat `instal·la_vm_debian.sh` (la VM ja no cal).
 
 ### Arreglat
+- **CI macOS**: `build-macos.yml` ara **corre la suite de tests**
+  (`tests.test_pipeline_export` + `tests.test_partitura`, amb anotació `::error::`);
+  era l'únic dels 3 workflows que no validava els tests.
 - **Deute tècnic (Pas 3 — excepcions)**: revisats els `except Exception` de
   `app/visor.py` (24) i `app/main.py` (12) **sense canvi de comportament**;
   documentada la política a cada classe; anotats els fallbacks silenciosos de

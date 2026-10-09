@@ -141,6 +141,24 @@ jobs:
           chmod +x portable/bin/ffmpeg
           ./portable/bin/ffmpeg -version | head -1
 
+      - name: "5b. Tests unitaris (control de qualitat)"
+        run: |
+          set +e
+          # tests.log a l'espai de treball (no /tmp): així el puja l'artefacte ZZ2.
+          QT_QPA_PLATFORM=offscreen .venv-mac/bin/python -m unittest \
+            tests.test_pipeline_export tests.test_partitura > tests.log 2>&1
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            cat tests.log
+            IDS=$(grep -E "^(FAIL|ERROR):" tests.log | tr '\n' '|' | tr -s ' ' | cut -c1-1800)
+            echo "::error::tests FALLEN (rc=$rc) [llista]: $IDS"
+            CUA=$(awk 'BEGIN{RS="=======+"} END{print $0}' tests.log | tr '\n' '~' | tr -s ' ' | cut -c1-1800)
+            echo "::error::tests FALLEN [ultima traça]: $CUA"
+          else
+            tail -n 5 tests.log
+          fi
+          exit "$rc"
+
       # ── ITERACIÓ 3: empaquetat ───────────────────────────────────────────
       - name: 6. PyInstaller (.app)
         run: |
