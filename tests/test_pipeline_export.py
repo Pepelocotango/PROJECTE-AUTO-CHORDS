@@ -674,6 +674,20 @@ class TimelineConstraintTests(unittest.TestCase):
                                 f"color invalid a grid_levels: {color!r}")
 
 
+    def test_snap_metode(self):
+        """El mètode snap() arrodoneix a la graella actual."""
+        view = self._make_view(tempo_fix=False)
+        view.zoom_to(0, 10)          # span 10 -> pas 0,1 s
+        self.assertAlmostEqual(view.snap(1.73), 1.7, places=4)
+
+    def test_loop_x_to_time_fa_snap(self):
+        """El temps del regle per al loop A/B fa snap a la graella."""
+        view = self._make_view(tempo_fix=False)
+        view.zoom_to(0, 10)          # pas 0,1 s
+        x = view._x_offset + (1.73 - view._view_left) * view._pps
+        self.assertAlmostEqual(view._loop_x_to_time(x), 1.7, places=4)
+
+
 class VisorTimelineIntegrationTests(unittest.TestCase):
     """Tests d'integració Visor ↔ TimelineView."""
 
@@ -907,6 +921,18 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         self.assertEqual(len(v._undo_stack), 1)
         v.undo()
         self.assertEqual(len(v.seccions), n)
+        v.close()
+
+    def test_marca_A_B_fan_snap(self):
+        """Els botons A/B marquen el loop amb snap a la graella."""
+        v, _ = self._make_visor_with_data()
+        v.timeline.zoom_to(0, 20)    # mode lliure, span 20 -> pas 0,1 s
+        v.pos = 1.73
+        v.marca_A()
+        self.assertAlmostEqual(v.loop_a, 1.7, places=4)
+        v.pos = 3.26
+        v.marca_B()
+        self.assertAlmostEqual(v.loop_b, 3.3, places=4)
         v.close()
 
     def test_visor_has_timeline_attribute(self):

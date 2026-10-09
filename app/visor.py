@@ -740,13 +740,13 @@ class Visor(QMainWindow):
         self.log("stop → inici")
 
     def marca_A(self):
-        self.loop_a = self.pos
+        self.loop_a = self.timeline.snap(self.pos)
         self.log(f"loop A = {self.loop_a:.2f}s")
         if self.loop_b is not None:
             self.timeline.set_loop(self.loop_a, self.loop_b)
 
     def marca_B(self):
-        self.loop_b = self.pos
+        self.loop_b = self.timeline.snap(self.pos)
         self.log(f"loop B = {self.loop_b:.2f}s")
         if self.loop_a is not None:
             self.timeline.set_loop(self.loop_a, self.loop_b)

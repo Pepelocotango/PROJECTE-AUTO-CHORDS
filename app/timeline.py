@@ -475,6 +475,20 @@ class TimelineView(QGraphicsView):
         """De x de la vista a temps (coords relatives a la vista)."""
         return self._view_left + (x - self._x_offset) / max(self._pps, 1e-9)
 
+    def snap(self, t: float) -> float:
+        """Arrodoneix `t` a la graella de snap actual (BPM/offset o segons)."""
+        span = self._view_right - self._view_left
+        return snap_time(t, self._tempo_fix, self._bpm, self._bpb, span,
+                         getattr(self, "_offset", 0.0))
+
+    def _loop_x_to_time(self, x: float) -> float:
+        """Temps del regle per a un x d'escena, amb SNAP a la graella.
+
+        S'usa per a la selecció de loop A/B: el loop **sí** que fa snap (com
+        els clips). El cursor/playhead continua sent lliure."""
+        t = self._x_to_time(x)
+        return max(0.0, min(self._durada, self.snap(t)))
+
     def selected_center(self) -> Optional[float]:
         """Centre temporal del clip seleccionat (o None)."""
         kind, idx = getattr(self, "_sel", ("", -1))
@@ -1034,7 +1048,7 @@ class TimelineView(QGraphicsView):
             # Click al regle (a dalt) -> comença una selecció de loop A/B
             sp = self.mapToScene(event.pos())
             if sp.y() < RULER_H:
-                t = max(0.0, min(self._durada, self._x_to_time(sp.x())))
+                t = self._loop_x_to_time(sp.x())
                 self._loop_drag = True
                 self._loop_a = t
                 self._loop_b = t
@@ -1087,7 +1101,7 @@ class TimelineView(QGraphicsView):
             return
         if getattr(self, "_loop_drag", False):
             sp = self.mapToScene(event.pos())
-            t = max(0.0, min(self._durada, self._x_to_time(sp.x())))
+            t = self._loop_x_to_time(sp.x())
             self._loop_a, self._loop_b = min(self._loop_a, t), max(self._loop_a, t)
             self._update_loop_item()
             event.accept()

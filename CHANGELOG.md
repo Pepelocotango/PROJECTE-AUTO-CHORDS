@@ -20,6 +20,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   - **Moure el grup**: arrossegar un clip seleccionat mou **tota la selecció**.
   - **Indicador de MODE** al regle: badge fix a la dreta amb `120 BPM · 4/4`
     (mode tempo) o `Lliure` (mode sense BPM). `RulerLayer.mode_label()`.
+  - **Loop A/B amb SNAP**: la selecció de loop al regle (arrossegar) i els
+    botons A/B (`Ctrl+[`/`Ctrl+]`) ara **arrodoneixen a la graella**, com els
+    clips. El cursor/playhead continua sent **lliure**.
 - **GUI — «Quant a»**: el diàleg **Quant a Auto Chords** ara mostra la
   **versió** de l'app (`app.__version__`), sincronitzada amb `pyproject.toml`
   per un test.
@@ -33,8 +36,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   **invàlid**. Ara retorna els colors **reals** de `theme`.
 
 ### Proves
-- **228 tests** · OK (1 skip) — +18 respecte de la v0.5.1 (multi-selecció,
-  `Ctrl+C/V/X`, `Ctrl+D` i **moure** el grup, indicador de mode i colors del grid).
+- **231 tests** · OK (1 skip) — +21 respecte de la v0.5.1 (multi-selecció,
+  `Ctrl+C/V/X`, `Ctrl+D` i **moure** el grup, indicador de mode, **loop A/B amb
+  snap** i colors del grid).
 - **CI multi-SO re-verificat** amb tot el codi de D.2: **Linux AppImage #8**,
   **Windows #14** i **macOS #8** (amb pas de tests) — tots **VERDS**.
 
