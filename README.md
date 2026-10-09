@@ -196,7 +196,7 @@ ells l'app funciona igual, només avisa).
 > tingués FUSE desactivat caldria `./AutoChords-*.AppImage --appimage-extract-and-run`.
 
 ### GitHub Actions
-Quatre workflows a `.github/workflows/`:
+Cinc workflows a `.github/workflows/` (tots d'execució **manual**):
 
 | Workflow | Quan s'activa | Què fa |
 |----------|---------------|--------|
@@ -206,11 +206,12 @@ Quatre workflows a `.github/workflows/`:
 | **`build-macos.yml`** | **només manual** | Construeix el **`.app` de macOS 10.13+** (Intel; PyInstaller) i el deixa com a **artefacte** (ZIP) |
 | **`release.yml`** | **només manual** | **Drecera**: agafa els **últims artefactes verds** de Linux/Windows/macOS **directament de GitHub Actions** i crea un **Release (esborrany)** amb títol `AUTO CHORDS v<versió>`, el cos **en català** (`eines/notes_release.py`) i els **3 fitxers** adjunts |
 
-```bash
-git tag v0.5.2 -m "..." && git push origin v0.5.2   # -> Release esborrany
-```
-> El Release es crea com a **esborrany**: el revises a GitHub ▸ Releases i el
-> publiques tu. Cap workflow fa `git push` al repositori.
+> **Tot manual**: cap workflow s'activa sol (ni amb tags). Per fer un **Release**:
+> llança **`release.yml`** a mà (agafa els últims artefactes verds dels 3 SO i crea
+> un **esborrany** que revises a GitHub ▸ Releases i publiques tu). Cap workflow fa
+> `git push` al repositori.
+>
+> **Com funciona cada workflow (detall): `docs/CI_WORKFLOWS.md`.**
 
 > ⚠️ Els runners són `ubuntu-22.04` (no 24.04): allà s'hi **compila
 > `vamp_host_local`**, i la seva glibc marca l'abast mínim de l'AppImage.

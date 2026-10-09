@@ -2,7 +2,8 @@
 
 > **2026-10-09 · v0.5.2 (BETA).** Foto del desplegament a **Linux, Windows i
 > macOS**: **els 3 builds del CI són VERDS**. Complementa `ROADMAP.md` §9
-> (viabilitat), `docs/PORTABILITAT.md` (Linux), `docs/PORTABILITAT_WINDOWS.md`
+> (viabilitat), `docs/CI_WORKFLOWS.md` (els 5 workflows de CI),
+> `docs/PORTABILITAT.md` (Linux), `docs/PORTABILITAT_WINDOWS.md`
 > i `docs/PLANIFICACIO_MACOS.md`.
 
 ## Resum
