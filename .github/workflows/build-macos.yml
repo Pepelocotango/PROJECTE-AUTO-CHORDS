@@ -232,6 +232,26 @@ jobs:
       - name: 6c. Smoke test — l'app arrenca (headless)
         run: bash eines/smoke_macos.sh "dist/AUTO_CHORDS.app"
 
+      # Si el smoke falla, recompila amb --console per veure el traceback real
+      # d'import (l'.app --windowed se'l menja) i l'executa headless.
+      - name: "6d. Debug — variant --console per veure el traceback (nomes si el smoke falla)"
+        if: failure()
+        run: |
+          set +e
+          . .venv-mac/bin/activate
+          pyinstaller --noconfirm --clean --onedir --console --name AC_console \
+            --add-data "app:app" --add-data "eines:eines" --add-data "icones:icones" \
+            --add-data "icona:icona" --add-data "docs:docs" \
+            --add-data "nnls-chroma-macos-local:nnls-chroma-macos-local" \
+            --add-data "qm-vamp-plugins-macos-local:qm-vamp-plugins-macos-local" \
+            --add-data "vamp_host_local:." --add-data "portable:portable" \
+            --add-data "acords_a_live.py:." \
+            eines/launcher_pyinstaller.py >/dev/null 2>&1
+          echo "--- execucio de la variant --console ---"
+          AUTO_CHORDS_SMOKE=1 QT_QPA_PLATFORM=offscreen \
+            ./dist/AC_console/AC_console 2>&1 | tail -60
+          echo "(fi variant console)"
+
       - name: 7. ZIP (ditto) + verificació de l'executable
         run: |
           set -euxo pipefail

@@ -28,6 +28,13 @@ PLUGS="$(find "$APP" -type d -name platforms 2>/dev/null | head -1)"
 log "platforms dir: ${PLUGS:-<cap>}"
 [ -n "$PLUGS" ] && log "$(ls "$PLUGS" 2>/dev/null)"
 
+log "--- warn de PyInstaller (moduls/data que falten) ---"
+cat build/*/warn-*.txt 2>/dev/null | grep -iE "pyqt|qt5|qtcore|sip|numpy|missing" | head -30 | sed 's/^/  | /' || true
+log "--- arbre del bundle (directoris, maxdepth 4) ---"
+find "$APP" -maxdepth 4 -type d 2>/dev/null | head -50 | sed 's/^/  | /'
+log "--- Contents/MacOS ---"; ls "$APP/Contents/MacOS" 2>/dev/null | sed 's/^/  | /'
+log "--- Contents/Frameworks (primeres 30) ---"; ls "$APP/Contents/Frameworks" 2>/dev/null | head -30 | sed 's/^/  | /'
+
 # Intenta arrencar l'app amb una plataforma Qt. Retorna 0 si arrenca bé.
 try() {
   plat="$1"
