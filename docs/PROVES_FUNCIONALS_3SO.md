@@ -42,7 +42,7 @@ chmod +x auto-chords-*-x86_64.AppImage
    ```bash
    xattr -dr com.apple.quarantine AUTO_CHORDS.app
    ```
-4. L'estat va a **`~/Library/Application Support/auto-chords/`**.
+4. L'estat (i el **log**) va a **`~/.local/state/auto-chords/`** (l'`auto_chords.log` és aquí; **no** pas a `~/Library/Application Support/…`).
 
 ## ✅ Checklist comuna (5 minuts)
 
