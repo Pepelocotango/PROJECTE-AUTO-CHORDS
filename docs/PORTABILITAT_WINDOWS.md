@@ -90,8 +90,9 @@ mode congelat això reobriria la GUI. `launcher_pyinstaller.py` detecta el cas
 
 * **Windows 10/11 x64**. L'app **no es signa** → SmartScreen pot avisar
   («More info» > «Run anyway»).
-* La reproducció d'àudio fa servir **`ffplay`** (del paquet) perquè
-  `paplay`/`aplay` són de Linux (`app/plataforma.py`).
+* La reproducció d'àudio fa servir el **motor natiu** `sounddevice`/PortAudio
+  (**WASAPI**, amb fallback DirectSound→MME) — vegeu `app/audio_out.py` i
+  `docs/MOTOR_AUDIO_SO.md`. No cal cap binari extern.
 * MuseScore (PDF/MSCZ de la partitura) és **opcional**: si l'usuari el té
   instal·lat, es genera el PDF; si no, sempre queda el MusicXML.
 

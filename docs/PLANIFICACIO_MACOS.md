@@ -114,4 +114,4 @@ S'ha de comprovar per a: `vamp_host_local`, els `.dylib` dels plugins,
 | `.github/workflows/build-macos.yml` | **NOU** (aquest treball) |
 | `docs/PLANIFICACIO_MACOS.md` | **NOU** (aquest document) |
 | `eines/compila_vamp_plugins.sh` | **modificat per OC-2** (dispatch per SO; s'hi afegeix la branca macOS) |
-| `app/plataforma.py` | ja preveu els noms `*-macos-local` i `ffplay` ✅ |
+| `app/plataforma.py` | ja preveu els noms `*-macos-local` i el **motor d'àudio natiu** ✅ |
