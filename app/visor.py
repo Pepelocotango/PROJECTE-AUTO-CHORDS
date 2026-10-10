@@ -10,7 +10,6 @@ import math
 import os
 import re
 import shutil
-import subprocess
 import sys
 import threading
 import time
@@ -39,6 +38,7 @@ from .timeline import TimelineView  # noqa: E402
 # Configuració centralitzada per al directori temporal (configurable)
 from .config import TEMP_DIR as OPENCODE_DIR
 from . import plataforma  # noqa: E402
+from . import audio_out  # noqa: E402
 
 VISOR_STYLESHEET = theme.visor_stylesheet()
 
@@ -689,13 +689,16 @@ class Visor(QMainWindow):
             pass
 
     def _tria_player(self):
-        """Tria el reproductor extern segons el SO (vegeu `app/plataforma.py`).
+        """Tria el motor de reproducció segons el SO (vegeu `app/plataforma.py`).
 
-        Linux: `paplay` (PipeWire/Pulse) o `aplay` (ALSA) — els de qualsevol
-        escriptori. Windows i macOS: `ffplay` (el portem empaquetat i accepta
-        PCM per stdin). Si no n'hi ha cap, retorna `(None, [])` i el visor ho
-        avisa: la resta de l'app (analitzar, editar, exportar) funciona igual.
+        macOS i Windows: **motor natiu** (`sounddevice`/PortAudio → CoreAudio a
+        macOS, MME a Windows) **dins el procés** → no cal cap binari extern.
+        Linux: reproductor extern `paplay` (PipeWire/Pulse) o `aplay` (ALSA) —
+        els de qualsevol escriptori. Si no n'hi ha cap, retorna `(None, [])` i el
+        visor ho avisa (missatge segons el SO); la resta de l'app funciona igual.
         """
+        if plataforma.usa_audio_natiu():
+            return (audio_out.NOM_NATIU, [])
         sr = self.audio["sr"]
         for nom in plataforma.candidats_reproductor():
             if not shutil.which(nom):
@@ -710,8 +713,6 @@ class Visor(QMainWindow):
             if nom == "aplay":
                 return ("aplay", ["--format=S16_LE", f"--rate={sr}",
                                   "--channels=1", "-"])
-            return ("ffplay", ["-nodisp", "-autoexit", "-f", "s16le",
-                               "-ar", str(sr), "-ac", "1", "-i", "-"])
         return (None, [])
 
     def _mono_bytes(self):
@@ -1629,11 +1630,8 @@ class Visor(QMainWindow):
                 dades, self.audio["sr"], t, self.bpm, self.bpb,
                 volum=self.metro_vol, offset=getattr(self, "offset", 0.0))
         if self.player is None:
-            QMessageBox.information(
-                self, "Reproducció",
-                "No hi ha cap reproductor d'àudio (ni `paplay` ni `aplay`).\n\n"
-                "Cal **PipeWire** o **PulseAudio** per poder escoltar.\n"
-                "La resta de l'app (analitzar, editar, exportar) funciona igual.")
+            QMessageBox.information(self, "Reproducció",
+                                    plataforma.missatge_sense_audio())
             return
         self.log(f"play des de {t:.2f}s ({len(dades)} bytes) amb {self.player}...")
         self.fitxer_err = os.path.join(OPENCODE_DIR, "visor_player.log")
@@ -1646,15 +1644,12 @@ class Visor(QMainWindow):
                     "no s'ha pogut crear el directori temporal %s: %s",
                     OPENCODE_DIR, e)
             with open(self.fitxer_err, "wb") as ferr:
-                # start_new_session: el player queda en grup propi → el podem
-                # matar sencer (ell + fills) encara que la finestra mori.
-                self.proc = subprocess.Popen([self.player, *self.player_args],
-                                             stdin=subprocess.PIPE,
-                                             stdout=subprocess.DEVNULL,
-                                             stderr=ferr,
-                                             **plataforma.kwargs_nou_grup())
-                # L'escriptura va en fil propi: el pipe només empassa al
-                # ritme del so i un write() sencer congelaria la GUI.
+                # Motor de reproducció: extern (Linux: paplay/aplay) o natiu
+                # (mac/win: sounddevice/CoreAudio-MME). Vegeu app/audio_out.py.
+                self.proc = audio_out.crea_motor(
+                    self.player, self.player_args, self.audio["sr"], ferr)
+                # L'escriptura va en fil propi: tant el pipe com el stream només
+                # empassen al ritme del so i un write() sencer congelaria la GUI.
                 sess = self._sess
                 fil = threading.Thread(target=self._alimenta,
                                        args=(self.proc, dades, sess),
@@ -1663,12 +1658,12 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR engegar {self.player}: {e}")
             QMessageBox.warning(self, "Visor",
-                                f"No puc engegar {self.player}: {e}")
+                                f"No puc engegar el reproductor: {e}")
             self.proc = None
             return
         self.t0_mono = time.monotonic()
         self.t0_pos = t
-        self.log(f"proc {self.player} pid={self.proc.pid} en marxa")
+        self.log(f"{self.player} pid={self.proc.pid} en marxa")
 
     def _alimenta(self, proc, dades, sess):
         # escriu per trossos; si arriba una sessió nova o el proc mor, plega.
@@ -1713,23 +1708,14 @@ class Visor(QMainWindow):
             self.log(f"no puc llegir stderr: {e}")
 
     def _atura_proc(self):
-        # invalida el fil d'alimentació i mata el grup sencer: res no queda sonant.
+        # invalida el fil d'alimentació i atura el motor: res no queda sonant.
         self._sess += 1
         with self._proc_lock:
             proc = self.proc
             self.proc = None
             if proc is None:
                 return
-        plataforma.mata_grup(proc)                 # SIGTERM (o terminate a Windows)
-        try:
-            proc.wait(timeout=2)
-        except (subprocess.TimeoutExpired, OSError):
-            plataforma.mata_grup(proc, forcat=True)    # SIGKILL
-        # Re-collirem el zombie per no contaminar la taula de processos
-        try:
-            proc.wait(timeout=1)
-        except (subprocess.TimeoutExpired, OSError):
-            pass
+        proc.atura()
 
     def play_stop(self):
         if self.sona:

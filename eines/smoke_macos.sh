@@ -28,6 +28,16 @@ PLUGS="$(find "$APP" -type d -name platforms 2>/dev/null | head -1)"
 log "platforms dir: ${PLUGS:-<cap>}"
 [ -n "$PLUGS" ] && log "$(ls "$PLUGS" 2>/dev/null)"
 
+# Motor d'àudio natiu: el bundle HA de portar PortAudio (sounddevice), si no
+# l'app al Mac no tindria so (el hook hook-sounddevice.py l'ha de recollir).
+PA="$(find "$APP" -name 'libportaudio*' 2>/dev/null | head -1)"
+log "PortAudio al bundle: ${PA:-<NO TROBAT>}"
+if [ -z "$PA" ]; then
+  log "  ::error:: El bundle NO porta PortAudio (sounddevice) -> l'àudio no funcionaria"
+  echo "::error::El bundle de macOS no porta PortAudio (sounddevice); l'àudio no funcionaria."
+  exit 1
+fi
+
 log "--- warn de PyInstaller (moduls/data que falten) ---"
 cat build/*/warn-*.txt 2>/dev/null | grep -iE "pyqt|qt5|qtcore|sip|numpy|missing" | head -30 | sed 's/^/  | /' || true
 log "--- arbre del bundle (directoris, maxdepth 4) ---"

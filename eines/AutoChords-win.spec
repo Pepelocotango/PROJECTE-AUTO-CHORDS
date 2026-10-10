@@ -39,7 +39,10 @@ hiddenimports = [
     'ffmpeg', 'partitura', 'pipeline', 'postproc', 'theme', 'metronom', 'icones',
     # Paquet app (per si l'anàlisi estàtica no els veu tots).
     'app', 'app.main', 'app.visor', 'app.timeline', 'app.dialegs',
-    'app.vamp_params', 'app.plataforma',
+    'app.vamp_params', 'app.plataforma', 'app.audio_out',
+    # Motor d'àudio natiu (PortAudio/WASAPI-DirectSound-MME). El hook
+    # hook-sounddevice.py n'empaqueta la llibreria PortAudio.
+    'sounddevice',
 ]
 
 a = Analysis(

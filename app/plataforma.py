@@ -69,15 +69,36 @@ def congelat():
 
 # --- Reproductor d'àudio ----------------------------------------------------
 def candidats_reproductor():
-    """Ordre de reproductors externs segons el SO.
+    """Reproductors EXTERNS per `stdin` (només Linux; vegeu `usa_audio_natiu`).
 
     Linux: `paplay` (PipeWire/Pulse) i `aplay` (ALSA) — els de qualsevol
-    escriptori. Windows i macOS: `ffplay` (el portem empaquetat i sí que accepta
-    PCM per stdin; `afplay` del macOS no ho fa).
+    escriptori. A macOS/Windows **no** es fa servir cap procés extern: el motor
+    natiu (`app/audio_out.py`, sobre PortAudio) reprodueix dins el procés.
     """
     if ES_WINDOWS or ES_MAC:
-        return ("ffplay",)
+        return ()
     return ("paplay", "aplay")
+
+
+def usa_audio_natiu():
+    """Cert si cal el motor d'àudio natiu (PortAudio/`sounddevice`).
+
+    macOS (**CoreAudio**) i Windows (**MME**, el back-end més compatible, amb
+    fallback DirectSound/WASAPI/ASIO). A Linux es manté el reproductor extern de
+    sempre (`paplay`/`aplay`) — no es toca.
+    """
+    return ES_WINDOWS or ES_MAC
+
+
+def missatge_sense_audio():
+    """Missatge d'error (segons el SO) quan no es pot obrir cap sortida d'àudio."""
+    if ES_WINDOWS or ES_MAC:
+        return ("No he pogut obrir la sortida d'àudio del sistema.\n\n"
+                "Comprova que l'equip tingui una sortida d'àudio activa.\n"
+                "La resta de l'app (analitzar, editar, exportar) funciona igual.")
+    return ("No hi ha cap reproductor d'àudio (ni `paplay` ni `aplay`).\n\n"
+            "Cal **PipeWire** o **PulseAudio** per poder escoltar.\n"
+            "La resta de l'app (analitzar, editar, exportar) funciona igual.")
 
 
 # --- Grups de processos (matar el reproductor sencer) -----------------------

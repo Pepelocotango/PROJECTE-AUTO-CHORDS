@@ -56,13 +56,16 @@ jobs:
           python3 -m venv .venv-mac
           . .venv-mac/bin/activate
           python -m pip install --upgrade pip
-          pip install "PyQt5==5.15.10" "PyQt5-Qt5==5.15.19" "PyQt5_sip" "numpy<2" pyinstaller
+          pip install "PyQt5==5.15.10" "PyQt5-Qt5==5.15.19" "PyQt5_sip" "numpy<2" sounddevice pyinstaller
           python - <<'PY'
           import PyQt5, numpy, sys
           from PyQt5 import QtCore
+          import sounddevice  # motor d'àudio natiu (PortAudio: CoreAudio)
           print("Python:", sys.version.split()[0])
           print("PyQt5 OK · Qt:", QtCore.QT_VERSION_STR)
           print("numpy:", numpy.__version__)
+          print("sounddevice:", sounddevice.__version__,
+                "PortAudio:", sounddevice.get_portaudio_version()[1])
           PY
           pip show PyQt5 | grep -E "^(Version|Location)"
 
@@ -212,6 +215,7 @@ jobs:
             --hidden-import app.timeline_items --hidden-import app.timeline_layers \
             --hidden-import app.dialegs --hidden-import app.vamp_params \
             --hidden-import app.plataforma --hidden-import app.config \
+            --hidden-import app.audio_out --hidden-import sounddevice \
             --hidden-import ffmpeg --hidden-import partitura --hidden-import pipeline \
             --hidden-import postproc --hidden-import theme --hidden-import metronom \
             --add-data "app:app" \
@@ -257,6 +261,7 @@ jobs:
           pyinstaller --noconfirm --clean --onedir --console --name AC_console \
             --paths . --paths app \
             --hidden-import app --hidden-import app.main --hidden-import app.visor \
+            --hidden-import app.audio_out --hidden-import sounddevice \
             --add-data "app:app" --add-data "eines:eines" --add-data "icones:icones" \
             --add-data "icona:icona" --add-data "docs:docs" \
             --add-data "nnls-chroma-macos-local:nnls-chroma-macos-local" \

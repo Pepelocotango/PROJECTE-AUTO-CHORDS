@@ -16,6 +16,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   `PyQt5/Qt5/plugins/platforms`.
 
 ### Afegit
+- **Àudio a macOS i Windows: motor natiu** (`app/audio_out.py` + `sounddevice`).
+  L'app reprodueix **dins el procés** amb **PortAudio**: **CoreAudio** a macOS i
+  **WASAPI** a Windows (amb fallback DirectSound → MME → WDM-KS; ASIO només si
+  l'usuari el té). Abans es buscava un reproductor extern (`ffplay`) que **mai
+  no s'empaquetava** → a macOS sortia un missatge d'error **de Linux** i no
+  sonava. **Linux no es toca** (segueix amb `paplay`/`aplay`). El missatge
+  d'error ara és **segons el SO** (`plataforma.missatge_sense_audio()`).
 - **Empaquetat de macOS: `.dmg` a més del `.zip`** (`build-macos.yml`): el
   workflow ara genera un **DMG** (`hdiutil`, HFS+ comprimit) amb l'`.app` + un
   enllaç a `/Applications`, el **munta i en verifica el contingut**, i el puja
