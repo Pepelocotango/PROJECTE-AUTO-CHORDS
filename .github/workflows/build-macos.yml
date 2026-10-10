@@ -42,6 +42,14 @@ jobs:
           otool -l /tmp/t | grep -A3 -E "LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX" | head -5
           echo "::endgroup::"
 
+      # ── Python 3.12 (compatible amb 10.13): el Python del runner (3.14) te
+      #    minos 15.0 → el paquet NO arrenca a High Sierra. Amb setup-python
+      #    3.12 agafem una build més antiga; el guard 2b ho verifica. ────────
+      - name: 1c. Python 3.12 (el paquet ha d'arrencar a 10.13)
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
       # ── ITERACIÓ 1: rodes (el pin crític és PyQt5==5.15.10) ──────────────
       - name: 2. Python + rodes (PyQt5 5.15.10 = últim amb wheel 10.13)
         run: |
@@ -57,6 +65,32 @@ jobs:
           print("numpy:", numpy.__version__)
           PY
           pip show PyQt5 | grep -E "^(Version|Location)"
+
+      - name: 2b. GUARD — el Python ha de servir per a High Sierra 10.13
+        run: |
+          . .venv-mac/bin/activate
+          PYEXE="$(python -c 'import sys;print(sys.executable)')"
+          echo "Python: $PYEXE"
+          otool -l "$PYEXE" | grep -A3 -E "LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX" | head -8
+          python - <<'PY'
+          import re, subprocess, sys
+          out = subprocess.run(["otool", "-l", sys.executable],
+                               capture_output=True, text=True).stdout
+          mb = re.search(r"LC_BUILD_VERSION.*?minos\s+([0-9.]+)", out, re.S)
+          mv = re.search(r"LC_VERSION_MIN_MACOSX.*?version\s+([0-9.]+)", out, re.S)
+          v = mb.group(1) if mb else (mv.group(1) if mv else "?")
+          print("minos del Python:", v)
+          try:
+              maj = float(".".join(v.split(".")[:2]))
+          except ValueError:
+              print(f"::error::No s'ha pogut determinar el minos del Python ({v})")
+              sys.exit(1)
+          if maj > 10.13:
+              print(f"::error::El Python te minos {v} (> 10.13): l'app NO "
+                    "arrencara a High Sierra")
+              sys.exit(1)
+          print("OK: Python compatible amb 10.13")
+          PY
 
       # ── ITERACIÓ 2: natius a 10.13 ───────────────────────────────────────
       - name: 3. libvamp-hostsdk + libsndfile (COMPILATS a 10.13)
