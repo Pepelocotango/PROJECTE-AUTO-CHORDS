@@ -33,16 +33,22 @@ chmod +x auto-chords-*-x86_64.AppImage
 3. Si Windows SmartScreen avisa: *Més informació ▸ Executa igualment*.
 4. L'estat va a **`%LOCALAPPDATA%\auto-chords\`** (o la carpeta de l'usuari).
 
-## 🍎 macOS High Sierra 10.13 (ZIP amb `.app`)
+## 🍎 macOS High Sierra 10.13 (DMG o ZIP amb `.app`)
 
-1. Descomprimeix el ZIP → surt un **`AUTO_CHORDS.app`**.
+1. **DMG** (recomanat): obre **`AUTO_CHORDS-macos.dmg`** i arrossega
+   **`AUTO_CHORDS.app`** a la carpeta **Applications**. (O bé descomprimeix el
+   ZIP → surt un **`AUTO_CHORDS.app`**.)
 2. **Clic dret ▸ Obre** (el Gatekeeper del sistema està OFF, però el primer cop
    cal confirmar-ho).
 3. Si diu que l'app és *malmesa*, treu la marca de quarantena:
    ```bash
    xattr -dr com.apple.quarantine AUTO_CHORDS.app
    ```
-4. L'estat (i el **log**) va a **`~/.local/state/auto-chords/`** (l'`auto_chords.log` és aquí; **no** pas a `~/Library/Application Support/…`).
+4. L'estat (i el **log**) va al **primer lloc escriptible**: si la `.app` es pot
+   escriure, **dins la mateixa `.app`** (`Contents/Frameworks/auto_chords.log`);
+   si no (p. ex. app en **quarantena**/translació), a
+   **`~/.local/state/auto-chords/auto_chords.log`**. (No pas a
+   `~/Library/Application Support/…`.)
 
 ## ✅ Checklist comuna (5 minuts)
 

@@ -12,7 +12,7 @@
 |---|---|---|---|
 | **`build-appimage.yml`** | build (Linux) | AppImage x86_64 autocontinguda | **artefacte** (carpeta amb l'AppImage + docs) |
 | **`build-windows.yml`** | build (Windows) | paquet portable x64 (MSYS2 + PyInstaller `--onedir`) | **artefacte** (carpeta amb el paquet + docs) |
-| **`build-macos.yml`** | build (macOS) | `.app` per a High Sierra 10.13+ (Intel) | **artefacte** (`AUTO_CHORDS-macos.zip`) |
+| **`build-macos.yml`** | build (macOS) | `.app` per a High Sierra 10.13+ (Intel) | **artefacte** (`AUTO_CHORDS-macos.zip` **+ `.dmg`**) |
 | **`build-all.yml`** | agregador | executa els 3 builds **en paral·lel** | els 3 artefactes alhora |
 | **`release.yml`** | release | agafa els **últims artefactes verds** dels 3 SO | **Release esborrany** amb els 3 paquets |
 
@@ -34,7 +34,12 @@ els logs de debug.
   Compila els natius, fa PyInstaller `--onedir` i prepara el ZIP portable.
 - **`build-macos.yml`** — runner **`macos-15-intel`** (l'últim Intel de GitHub
   Actions; disponible fins a l'agost de 2027). Compila els natius **des de font** a
-  10.13 i fa el `.app` + `ditto` → ZIP.
+  10.13, fa el `.app` amb PyInstaller i aleshores: (6b) **verifica el `minos`
+  de TOTS els Mach-O del bundle** (fatia x86_64 ≤ 10.13, amb
+  `eines/verifica_minos_macos.py`), (6c) **smoke test** — executa l'`.app`
+  empaquetada en mode headless (`offscreen`) i comprova que arrenca de debò —,
+  (7) `.zip` (`ditto`) i (7b) **`.dmg`** (`hdiutil`, amb l'`.app` + enllaç a
+  `/Applications`, muntat i verificat). Puja **ZIP + DMG** com a artefacte.
 
 > Els 3 tenen **`workflow_call`** a més de `workflow_dispatch`: això els fa
 > *reusable* (es poden cridar des d'altres workflows). Ho aprofita **`build-all.yml`**.

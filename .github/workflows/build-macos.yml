@@ -214,6 +214,51 @@ jobs:
             eines/launcher_pyinstaller.py
           ls -la dist/
 
+      # ── 6b: cap binari del bundle pot declarar un minos > 10.13 ──────────
+      # Comprova TOTS els Mach-O (Python.framework, frameworks de Qt, *.so de
+      # numpy/sip, l'executable, els natius, ffmpeg…) només la fatia x86_64.
+      # El tag de la roda NO garanteix el minos real; aquest pas sí.
+      - name: 6b. Verificació exhaustiva del minos de tot el bundle (x86_64 ≤ 10.13)
+        run: |
+          set -euxo pipefail
+          . .venv-mac/bin/activate
+          python eines/verifica_minos_macos.py --max 10.13 --arch x86_64 \
+            "dist/AUTO_CHORDS.app"
+
+      # ── 6c: smoke test — l'app EMPAQUETADA ha d'arrencar de debò ─────────
+      # Sense GUI (QT_QPA_PLATFORM=offscreen): valida dyld, els plugins de Qt
+      # i les dades. Amb AUTO_CHORDS_SMOKE=1 l'app confirma al log que la
+      # finestra s'ha creat i surt sola (codi 0).
+      - name: 6c. Smoke test — l'app arrenca (headless)
+        run: |
+          set -euxo pipefail
+          export QT_QPA_PLATFORM=offscreen
+          export AUTO_CHORDS_SMOKE=1
+          export AUTO_CHORDS_TEMP="$(mktemp -d)/ac-temp"
+          BIN="dist/AUTO_CHORDS.app/Contents/MacOS/AUTO_CHORDS"
+          OUT="$(mktemp -d)/smoke.out"
+          set +e
+          "$BIN" > "$OUT" 2>&1
+          rc=$?
+          set -e
+          echo "--- sortida de l'app (rc=$rc) ---"; cat "$OUT"
+          AC_LOG="$(find dist "$HOME/.local/state/auto-chords" \
+                    -name auto_chords.log 2>/dev/null | head -1)"
+          if [ -n "$AC_LOG" ]; then
+            echo "--- $AC_LOG ---"; tail -25 "$AC_LOG"
+            # Treu el log del bundle perquè no acabi dins del ZIP/DMG.
+            mv -f "$AC_LOG" "$(mktemp -d)/auto_chords.log"
+          fi
+          if [ "$rc" != "0" ]; then
+            echo "::error::Smoke test FALLIT: l'app ha sortit amb rc=$rc (ha petat a l'arrencada)"
+            exit 1
+          fi
+          if [ -z "$AC_LOG" ] || ! grep -q "SMOKE: finestra principal creada" "$AC_LOG" 2>/dev/null; then
+            echo "::error::Smoke test FALLIT: no s'ha confirmat la creació de la finestra principal"
+            exit 1
+          fi
+          echo "OK: l'app empaquetada arrenca correctament"
+
       - name: 7. ZIP (ditto) + verificació de l'executable
         run: |
           set -euxo pipefail
@@ -222,11 +267,35 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "dist/AUTO_CHORDS.app" "AUTO_CHORDS-macos.zip"
           ls -la AUTO_CHORDS-macos.zip
 
-      - name: 8. Pujar l'artefacte
+      # ── 7b: DMG (l'instal·lador típic de macOS) ──────────────────────────
+      # Conté l'.app + un enllaç a /Applications. HFS+ (no APFS) per màxima
+      # compatibilitat amb High Sierra; UDZO = comprimit.
+      - name: 7b. DMG (hdiutil) — instal·lador amb l'.app + enllaç a /Applications
+        run: |
+          set -euxo pipefail
+          STAGE="$(mktemp -d)/dmg"
+          mkdir -p "$STAGE"
+          cp -R "dist/AUTO_CHORDS.app" "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname "AUTO CHORDS" -srcfolder "$STAGE" \
+            -ov -format UDZO -fs HFS+ "AUTO_CHORDS-macos.dmg"
+          echo "--- munto i verifico el DMG ---"
+          MNT="$(mktemp -d)/mnt"
+          mkdir -p "$MNT"
+          hdiutil attach "AUTO_CHORDS-macos.dmg" -nobrowse -mountpoint "$MNT"
+          ls -la "$MNT/"
+          test -d "$MNT/AUTO_CHORDS.app" || { echo "::error::el DMG no conté l'.app"; exit 1; }
+          test -L "$MNT/Applications"   || { echo "::error::el DMG no conté l'enllaç a /Applications"; exit 1; }
+          hdiutil detach "$MNT"
+          ls -la AUTO_CHORDS-macos.dmg
+
+      - name: 8. Pujar l'artefacte (ZIP + DMG)
         uses: actions/upload-artifact@v6
         with:
           name: AUTO_CHORDS-macos-build${{ github.run_number }}
-          path: AUTO_CHORDS-macos.zip
+          path: |
+            AUTO_CHORDS-macos.zip
+            AUTO_CHORDS-macos.dmg
           retention-days: 30
 
       # Si alguna cosa falla, deixa pistes per depurar.

@@ -5,16 +5,18 @@
 > (cap build local Mac). Complementa `ROADMAP.md` §9 (viabilitat) i
 > `docs/PORTABILITAT.md` (Linux).
 >
-> ✅ **ESTAT (2026-10-09)**: build **VERD** al CI (run #8, `08bbfc7`); `.app`
-> dins ZIP. **Falta una etapa de tests** al workflow (avui només valida el
-> build). Detall: `docs/ESTAT_MULTI_SO.md`.
+> ✅ **ESTAT (2026-10-10)**: build **VERD** al CI (run #8, `08bbfc7`; run #9,
+> `8064a2f`, amb **Python 3.12**, que és el que fa que l'`.app` pugui arrencar a
+> 10.13). El workflow ja inclou **etapa de tests**, **verificació exhaustiva del
+> `minos`** del bundle (6b), **smoke test** de l'`.app` (6c) i **DMG** (7b).
+> Detall: `docs/ESTAT_MULTI_SO.md`.
 
 ## 1. Objectiu i abast
 
 | | |
 |---|---|
 | **Destí** | macOS **10.13 High Sierra o superior**, **Intel x86_64** |
-| **Format** | `AUTO_CHORDS.app` (PyInstaller `--windowed`) dins un **ZIP** (`ditto`) |
+| **Format** | `AUTO_CHORDS.app` (PyInstaller `--windowed`) dins un **ZIP** (`ditto`) **i un DMG** (`hdiutil`, amb l'`.app` + enllaç a `/Applications`) |
 | **Signatura** | **No** (sense developer ID) → Gatekeeper: l'usuari obre amb **clic-dret ▸ Obrir** o `xattr -dr com.apple.quarantine` |
 | **Host de build** | GitHub Actions, runner **`macos-15-intel`** |
 
@@ -70,6 +72,19 @@ otool -l <binari> | grep -A3 LC_BUILD_VERSION | grep minos      # -> minos 10.13
 S'ha de comprovar per a: `vamp_host_local`, els `.dylib` dels plugins,
 `libvamp-hostsdk`, `libsndfile` i l'executable de l'.app.
 
+> **Ara és automàtic (2026-10-10)**: el pas **6b** de `build-macos.yml` comprova
+> el `minos` de **TOTS** els Mach-O de `dist/AUTO_CHORDS.app` (Python, frameworks
+> de Qt, `*.so` de numpy/sip, l'executable, els natius, ffmpeg…) — **només la
+> fatia x86_64** — amb `eines/verifica_minos_macos.py`, i **falla el build** si
+> algun supera 10.13. ⚠️ El tag de la roda (*`macosx_10_9`*, *`macosx_10_13`*) NO
+> garanteix el `minos` real del binari; i en binaris `universal2` cal mirar la
+> fatia **x86_64** (l'arm64 sol ser 11.0 i no afecta High Sierra Intel).
+>
+> A més, el pas **6c** fa un **smoke test**: executa l'`.app` empaquetada en mode
+> headless (`QT_QPA_PLATFORM=offscreen`, `AUTO_CHORDS_SMOKE=1`) i comprova que
+> **arrenca de debò** (dyld, plugins de Qt, dades) i que la finestra principal es
+> crea — sense necessitar cap Mac.
+
 ## 6. Riscos i punts oberts
 
 | Risc | Nota |
@@ -87,7 +102,8 @@ S'ha de comprovar per a: `vamp_host_local`, els `.dylib` dels plugins,
    instal·la i importa.
 2. **Iteració 2** — natius: `libvamp-hostsdk` + `libsndfile` + el host + els
    plugins, amb `otool` verificant `minos 10.13`.
-3. **Iteració 3** — empaquetat PyInstaller + ZIP + artefacte.
+3. **Iteració 3** — empaquetat PyInstaller + **ZIP + DMG** + verificació de
+   `minos` (6b) + smoke test (6c) + artefacte.
 4. **Iteració 4** — prova real: l'operador arrenca el **Hackintosh (sdb)** i
    obre l'.app; els agents no hi tenen accés directe.
 

@@ -1418,6 +1418,12 @@ def main():
     app.setStyleSheet(FOSC)
     w = Finestra()
     w.show()
+    # Smoke test del CI (AUTO_CHORDS_SMOKE=1): la finestra s'ha creat i mostrat
+    # → ho deixem al log i sortim sols. Permet validar que l'app EMPAQUETADA
+    # arrenca de debò (dyld, plugins de Qt, dades…) sense necessitar GUI.
+    if os.environ.get("AUTO_CHORDS_SMOKE") == "1":
+        logger.info("SMOKE: finestra principal creada correctament")
+        QTimer.singleShot(1500, app.quit)
     try:
         sys.exit(app.exec_())
     finally:

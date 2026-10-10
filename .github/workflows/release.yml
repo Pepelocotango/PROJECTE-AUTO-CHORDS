@@ -97,7 +97,13 @@ jobs:
           fi
           if [ -d dist/macos ]; then
             mz=$(find dist/macos -name '*.zip' | head -1)
-            cp "$mz" "out/${TAG}-macos.zip"
+            [ -n "$mz" ] && cp "$mz" "out/${TAG}-macos.zip"
+            md=$(find dist/macos -name '*.dmg' | head -1)
+            if [ -n "$md" ]; then
+              cp "$md" "out/${TAG}-macos.dmg"
+            else
+              echo "::warning::No s'ha trobat cap .dmg a l'artefacte de macOS (build antic?)"
+            fi
           fi
           echo "--- fitxers del Release ---"
           ls -la out/

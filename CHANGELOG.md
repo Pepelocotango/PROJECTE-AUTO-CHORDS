@@ -3,6 +3,27 @@
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
 Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`).
 
+## [Unreleased]
+
+### Afegit
+- **Empaquetat de macOS: `.dmg` a més del `.zip`** (`build-macos.yml`): el
+  workflow ara genera un **DMG** (`hdiutil`, HFS+ comprimit) amb l'`.app` + un
+  enllaç a `/Applications`, el **munta i en verifica el contingut**, i el puja
+  com a artefacte (i al Release). Ja no cal fabricar l'instal·lador a mà.
+- **Smoke test de l'`.app` al CI** (`build-macos.yml` pas 6c): després de
+  construir, el CI **executa l'app empaquetada** en mode headless
+  (`QT_QPA_PLATFORM=offscreen`, `AUTO_CHORDS_SMOKE=1`) i comprova que **arrenca
+  de debò** (dyld, plugins de Qt, dades) i que la finestra principal es crea.
+- **Verificació exhaustiva del `minos` del bundle** (`build-macos.yml` pas 6b +
+  eina nova `eines/verifica_minos_macos.py`): comprova el `minos` de **TOTS**
+  els Mach-O de l'`.app` (Python, frameworks de Qt, `*.so` de numpy/sip,
+  l'executable, els natius, ffmpeg…) — **només la fatia x86_64** — i **falla**
+  si algun supera **10.13**. Funciona sense `otool` (parser propi).
+
+### Canviat
+- `app/main.py`: nou mode **`AUTO_CHORDS_SMOKE=1`** (per al CI) que confirma al
+  log la creació de la finestra principal i surt sol (codi 0).
+
 ## [0.5.2] — 2026-10-09 (BETA)
 
 ### Afegit
