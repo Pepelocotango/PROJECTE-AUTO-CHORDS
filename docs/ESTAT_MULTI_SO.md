@@ -31,11 +31,12 @@
   els 3 builds en **paral·lel**) i `release.yml` (tags `v*`).
 - ✅ **Release #1 VERD** (tag **`v0.5.1_CHECKPOINT_3_so_ARTIFACTS`** = `e895fa6`);
   `release.yml` s'activa amb tags `v*`.
-- **`release.yml` — drecera manual amb els 3 SO** (2026-10-09): **manual**
+- **`release.yml` — drecera manual amb els 3 SO** (2026-10-10): **manual**
   (workflow_dispatch). **No compila res**: busca l'última execució **VERDA** de
-  cada build, en baixa els artefactes de GitHub Actions i crea l'esborrany amb
-  **els 3 paquets** adjunts (AppImage + ZIP Windows + ZIP macOS). És
-  **idempotent** (si el Release ja existeix, només hi adjunta/actualitza).
+  `build-all` (els 3 SO) o, si no, de cada build; en baixa els artefactes de
+  GitHub Actions i crea el **Release PUBLICAT** (i el tag) amb **els 3 paquets**
+  adjunts (AppImage + ZIP Windows + ZIP macOS **+ DMG macOS**). És
+  **idempotent** (si existeix, hi adjunta/actualitza i el **publica**).
 
 ### 🍎 macOS — VERD amb etapa de tests ✅
 

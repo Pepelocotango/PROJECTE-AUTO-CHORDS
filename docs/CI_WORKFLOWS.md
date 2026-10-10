@@ -14,7 +14,7 @@
 | **`build-windows.yml`** | build (Windows) | paquet portable x64 (MSYS2 + PyInstaller `--onedir`) | **artefacte** (carpeta amb el paquet + docs) |
 | **`build-macos.yml`** | build (macOS) | `.app` per a High Sierra 10.13+ (Intel) | **artefacte** (`AUTO_CHORDS-macos.zip` **+ `.dmg`**) |
 | **`build-all.yml`** | agregador | executa els 3 builds **en paral·lel** | els 3 artefactes alhora |
-| **`release.yml`** | release | agafa els **últims artefactes verds** dels 3 SO | **Release esborrany** amb els 3 paquets |
+| **`release.yml`** | release | agafa els **últims artefactes verds** (build-all o per build) | **Release PUBLICAT** amb els 3 paquets (+ tag) |
 
 > **Artefacte vs Release**: un *artefacte* és un fitxer temporal (~90 dies) i privat
 > que queda a la pàgina de l'execució (Actions ▸ execució ▸ *Artifacts*). Un *Release*
@@ -54,10 +54,12 @@ paral·lel**. Un sol clic i tens els **3 artefactes alhora**, a la mateixa execu
 
 **Manual i «intel·ligent»** — **no compila res**. Quan el llances:
 
-1. Per a **cada SO**, busca l'**última execució VERDA** del seu build.
+1. Busca l'**última execució VERDA** de l'agregador **`build-all`** (els 3 SO
+   alhora) i, si no n'hi ha cap, l'**última verda de cada build** solt.
 2. En baixa l'**artefacte directament de GitHub Actions**.
-3. Deixa un **resum** a la pàgina de l'execució (taula: SO · run# · data · commit).
-4. Crea un **Release ESBORRANY** amb els paquets que ha trobat.
+3. Deixa un **resum** a la pàgina de l'execució.
+4. Crea el **Release PUBLICAT** (i el **tag**) amb els paquets que ha trobat.
+   Si el Release ja existia com a esborrany, el **publica** (`--draft=false`).
 
 Detalls:
 - **Tag/versió**: si el poses com a *input*, l'usa; si el deixes buit, el calcula
@@ -73,8 +75,8 @@ Detalls:
 ## Flux típic
 
 1. **`build-all.yml`** (o els 3 builds) → espera que surtin **verds**.
-2. **`release.yml`** → crea l'**esborrany** amb els 3 paquets.
-3. Revisa'l a GitHub ▸ **Releases** i clica **Publish release**.
+2. **`release.yml`** → **publica** el Release (amb els 3 paquets + el tag).
+3. Fet: el Release ja és públic a GitHub ▸ **Releases**.
 
 ## Notes tècniques
 

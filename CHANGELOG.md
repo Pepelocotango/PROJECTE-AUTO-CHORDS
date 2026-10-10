@@ -40,6 +40,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   si algun supera **10.13**. Funciona sense `otool` (parser propi).
 
 ### Canviat
+- **Release `release.yml`**: ara **publica directament** (abans deixava un
+  esborrany per aprovar a mà), **aprofita l'agregador `build-all`** (els builds
+  *reusable* no queden registrats com a execucions pròpies) i **crea el tag**
+  `v<versió>`. Idempotent: si el Release ja existeix, l'actualitza i el publica.
 - `app/main.py`: nou mode **`AUTO_CHORDS_SMOKE=1`** (per al CI) que confirma al
   log la creació de la finestra principal i surt sol (codi 0).
 - **Release**: els fitxers adjunts porten ara **versió + número de build** de

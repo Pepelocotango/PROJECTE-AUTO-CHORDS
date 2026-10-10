@@ -3,10 +3,11 @@ run-name: "Publicar Release ${{ inputs.tag || 'auto' }}"
 
 # ── DRECERA MANUAL «INTEL·LIGENT» ──────────────────────────────────────────
 # NO compila res. Detecta QUÈ HI HA i ho aprofita:
-#   1) per a cada SO, busca l'ULTIMA execucio VERDA del seu build,
-#   2) en baixa l'artefacte directament de GitHub Actions,
-#   3) deixa un RESUM (a la pagina de l'execucio) de quina execucio ha agafat,
-#   4) crea un RELEASE ESBORRANY amb els paquets que HA TROBAT.
+#   1) busca l'ULTIMA execucio VERDA de l'agregador `build-all` (els 3 SO alhora)
+#      i, si no n'hi ha, l'ultima verda de cada build solt,
+#   2) en baixa els artefactes directament de GitHub Actions,
+#   3) deixa un RESUM (a la pagina de l'execucio) d'on els ha agafat,
+#   4) crea el RELEASE **PUBLICAT** amb els paquets que HA TROBAT (i crea el tag).
 #
 # Si un SO no te cap build verd, l'OMET i avisa (no peta), sempre que n'hi hagi
 # almenys un. Si no n'hi ha cap, aleshores sí que atura.
@@ -148,26 +149,28 @@ jobs:
           python3 eines/notes_release.py "${{ steps.tag.outputs.ver }}" --fitxer NOTES_RELEASE.md
           head -5 NOTES_RELEASE.md
 
-      - name: 6. Crear el Release (esborrany) amb els paquets disponibles
+      - name: 6. Crear el Release PUBLICAT amb els paquets disponibles
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           # IDEMPOTENT: si el Release ja existeix, no el tornem a crear; nomes
-          # hi adjuntem/actualitzem els fitxers (--clobber sobreescriu).
+          # hi adjuntem/actualitzem els fitxers (--clobber sobreescriu) i el
+          # PUBLIQUEM si encara era esborrany (--draft=false).
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "El Release $TAG ja existeix: hi actualitzo paquets + notes."
+            echo "El Release $TAG ja existeix: hi actualitzo paquets + notes + el publico."
             gh release upload "$TAG" out/* --clobber
             gh release edit "$TAG" \
+              --draft=false \
               --title "AUTO CHORDS ${TAG}" \
               --notes-file NOTES_RELEASE.md
+            echo "Release ${TAG} PUBLICAT."
           else
             gh release create "$TAG" \
               --title "AUTO CHORDS ${TAG}" \
               --notes-file NOTES_RELEASE.md \
-              --draft \
               out/*
-            echo "Release esborrany creat. Revisa'l a GitHub > Releases i publica'l."
+            echo "Release ${TAG} PUBLICAT (ja no queda com a esborrany)."
           fi
 
       - name: "ZZ. Debug si ha fallat"
