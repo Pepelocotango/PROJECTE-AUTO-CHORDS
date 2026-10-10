@@ -1226,6 +1226,62 @@ class OffsetTests(unittest.TestCase):
         self.assertEqual(fmt_pos(2.0, True, 120, 4, 1.0), "1.3")
         self.assertEqual(fmt_pos(2.0, True, 120, 4, 0.0), "2.1")
 
+    def test_fmt_pos_amb_subdivisio_adaptativa(self):
+        from app.timeline import fmt_pos
+        # amb zoom prou gran, el regle mostra compàs.temps.subdivisió, com en DAW
+        self.assertEqual(fmt_pos(0.0, True, 120, 4, 0.0, step=0.25), "1.1.1")
+        self.assertEqual(fmt_pos(0.25, True, 120, 4, 0.0, step=0.25), "1.1.2")
+        self.assertEqual(fmt_pos(0.75, True, 120, 4, 0.0, step=0.25), "1.2.2")
+
+    def test_compas_manual_accepta_fraccio(self):
+        from app.main import Finestra
+        app = visor.QApplication.instance() or visor.QApplication([])
+        w = Finestra()
+        self.assertEqual(w._parse_compas("3/4"), (3, 4))
+        self.assertEqual(w._parse_compas("6/8"), (6, 8))
+        self.assertEqual(w._parse_compas("4"), (4, 4))
+        w.close()
+
+    def test_is_bar_start_label_detecta_compassos_inici(self):
+        from app.timeline_base import is_bar_start_label
+        self.assertTrue(is_bar_start_label("1.1"))
+        self.assertTrue(is_bar_start_label("2.1"))
+        self.assertTrue(is_bar_start_label("1.1.1"))
+        self.assertFalse(is_bar_start_label("1.2"))
+        self.assertFalse(is_bar_start_label("1:00"))
+
+    def test_zoom_amb_roda_centra_cursor_vermell_si_no_hi_ha_seleccio(self):
+        from app.timeline import TimelineView
+        app = visor.QApplication.instance() or visor.QApplication([])
+        view = TimelineView({"durada": 30.0, "mono": np.zeros(1, dtype=np.float32)},
+                            [], [], 120.0, 4, True)
+        view.set_position(8.0)
+        view._view_left, view._view_right = 0.0, 30.0
+        captured = {}
+
+        def fake_center_on(t, ampl):
+            captured["t"] = t
+            captured["ampl"] = ampl
+            view._view_left = max(0.0, t - ampl / 2.0)
+            view._view_right = min(30.0, view._view_left + ampl)
+
+        view._center_on = fake_center_on
+
+        class FakeEvent:
+            def angleDelta(self):
+                return type("D", (), {"y": lambda self: 120})()
+
+            def modifiers(self):
+                return 0
+
+            def accept(self):
+                pass
+
+        view.wheelEvent(FakeEvent())
+        self.assertEqual(captured["t"], 8.0)
+        self.assertGreater(captured["ampl"], 0.0)
+        app.quit()
+
     def test_snap_time_amb_offset(self):
         from app.timeline import snap_time
         # pps=64 -> snap 0.125 (setzena a 120 BPM); offset 1.0

@@ -143,11 +143,11 @@ def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
 
 def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
             offset: float = 0.0, step=None) -> str:
-    """Formata t per al regle: 'm:ss[.d]' (temps) o 'compàs.beat' (tempo).
+    """Formata t per al regle: 'm:ss[.d]' (temps) o 'compàs.beat[.subdivisió]' (tempo).
 
     `offset` = segon on cau el compàs 1 (la graella hi comença).
-    `step` = pas de l'etiqueta; en mode temps, si és < 1 s s'hi afegeix un
-    decimal (m:ss.d), com fan els DAWs.
+    `step` = pas de l'etiqueta. Quan és més fi que el beat, es mostra el 3r
+    camp (`compàs.beat.subdivisió`), com en DAWs professionals.
     """
     if not tempo_fix:
         neg = t < -1e-9
@@ -164,11 +164,33 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
     # -> el silenci inicial es llegeix com un compte enrere (-1, -2...).
     beats = (t - float(offset)) / beat
     compas = math.floor(beats / bpb) + 1
-    beat_idx = int(round(beats % bpb)) + 1
+    beat_idx = int(math.floor(beats % bpb)) + 1
     if beat_idx > bpb:
         compas += 1
         beat_idx = 1
+    if step is not None and step > 0 and step < beat - 1e-9:
+        divs = max(1, int(round(beat / step)))
+        phase = beats - math.floor(beats)
+        if phase < 0:
+            phase += 1.0
+        sub_idx = int(math.floor(phase * divs)) + 1
+        if sub_idx > divs:
+            sub_idx = divs
+        return f"{compas}.{beat_idx}.{sub_idx}"
     return f"{compas}.{beat_idx}"
+
+
+def is_bar_start_label(label: str) -> bool:
+    """True per a etiquetes de l'inici de compàs, p.e. '1.1', '2.1', '1.1.1'."""
+    if label is None:
+        return False
+    text = str(label).strip()
+    if not text or ":" in text or "." not in text:
+        return False
+    try:
+        return int(text.split(".")[-1]) == 1
+    except ValueError:
+        return False
 
 
 def grid_levels(tempo_fix, bpm, bpb, pps, view_px):

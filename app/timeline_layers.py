@@ -32,7 +32,7 @@ from app.timeline_base import (   # noqa: E402
     LANE_DIVIDER,
     RULER_BG, RULER_TEXT,
     WF_BG, WF_ENV, WF_GAIN, WF_MID,
-    fmt_pos, grid_levels, grid_plan,
+    fmt_pos, grid_levels, grid_plan, is_bar_start_label,
 )
 
 
@@ -137,6 +137,7 @@ class GridLayer(QGraphicsItem):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
+        self._beat_type = 4
         self._top = float(top)
         self.setZValue(-6)
         self.setPos(self._x_offset, self._top)
@@ -156,10 +157,11 @@ class GridLayer(QGraphicsItem):
         self.setPos(self._x_offset, self._top)
         self.update()
 
-    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0):
+    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0, beat_type=4):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
+        self._beat_type = int(beat_type or 4)
         self._offset = float(offset)
         self.update()
 
@@ -200,6 +202,7 @@ class RulerLayer(QGraphicsItem):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
+        self._beat_type = 4
         self._top = float(top)
         self.setZValue(-4)
         self.setPos(self._x_offset, self._top)
@@ -220,21 +223,22 @@ class RulerLayer(QGraphicsItem):
         self.setPos(self._x_offset, self._top)
         self.update()
 
-    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0):
+    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0, beat_type=4):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
+        self._beat_type = int(beat_type or 4)
         self._offset = float(offset)
         self.update()
 
     def mode_label(self) -> str:
         """Text de l'indicador de mode del regle.
 
-        Amb tempo: '120 BPM . 4/4' (BPM i pulsacions per compas). Sense tempo
+        Amb tempo: '120 BPM · 3/4' / '120 BPM · 6/8' (BPM i compàs). Sense tempo
         (mode lliure): 'Lliure'.
         """
         if self._tempo_fix:
-            return f"{self._bpm:.0f} BPM \u00b7 {self._bpb}/4"
+            return f"{self._bpm:.0f} BPM \u00b7 {self._bpb}/{self._beat_type}"
         return "Lliure"
 
     def paint(self, painter, option, widget=None):
@@ -282,9 +286,19 @@ class RulerLayer(QGraphicsItem):
                 p.drawLine(QPointF(x, self._height - 8),
                            QPointF(x, self._height - 1))
                 lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb, off, step)
+                is_bar = is_bar_start_label(lab)
+                label_font = QFont("Sans Serif", 9 if is_bar else 8,
+                                   QFont.Bold if is_bar else QFont.Normal)
+                p.setFont(label_font)
+                fm = QFontMetricsF(label_font)
                 wlab = fm.width(lab)
                 if x - wlab / 2 > last_label_x:
-                    p.setPen(QPen(QColor(RULER_TEXT), 1))
+                    if is_bar:
+                        bg = QColor(theme.TL_GRID_MEASURE)
+                        bg.setAlpha(90)
+                        p.fillRect(QRectF(x - wlab / 2 - 3, self._height - 18,
+                                          wlab + 6, 13), bg)
+                    p.setPen(QPen(QColor(theme.TL_GRID_MEASURE if is_bar else RULER_TEXT), 1))
                     p.drawText(QPointF(x - wlab / 2, self._height - 11), lab)
                     last_label_x = x + wlab / 2
             t += step

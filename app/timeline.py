@@ -263,15 +263,16 @@ class TimelineView(QGraphicsView):
         self._rebuild_section_items()
 
     def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
-                       offset: float = 0.0) -> None:
+                       offset: float = 0.0, beat_type: int = 4) -> None:
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
+        self._beat_type = int(beat_type or 4)
         self._offset = float(offset)
         self._ruler.update_mode(self._tempo_fix, self._bpm, self._bpb,
-                                self._offset)
+                                self._offset, self._beat_type)
         self._grid.update_mode(self._tempo_fix, self._bpm, self._bpb,
-                               self._offset)
+                               self._offset, self._beat_type)
         self.update()
 
     def set_follow(self, enabled: bool) -> None:
@@ -992,8 +993,9 @@ class TimelineView(QGraphicsView):
             self._set_view_range(new_l, new_r)
             event.accept()
             return
-        # Clip seleccionat? -> centrem la vista al seu centre.
-        # Si no, el zoom es centra al punt on apunta el cursor.
+        # Si hi ha un clip seleccionat, centrem la vista al seu centre.
+        # Si no, el zoom ha de quedar centrat al cursor vermell (playhead), no
+        # al punt del ratolí.
         centre = self.selected_center()
         ampl = max((self._view_right - self._view_left) *
                    (0.85 if delta > 0 else (1.0 / 0.85)), 0.3)
@@ -1001,15 +1003,7 @@ class TimelineView(QGraphicsView):
             self._center_on(centre, ampl)
             event.accept()
             return
-        l, r = self._view_left, self._view_right
-        try:
-            x = event.position().x()
-        except AttributeError:
-            x = float(event.pos().x())
-        ample_vp = max(self.viewport().width() - LEFT_PAD - RIGHT_PAD, 1)
-        frac = max(0.0, min(1.0, (x - LEFT_PAD) / ample_vp))
-        t_cursor = l + frac * (r - l)
-        self._center_on(t_cursor, ampl)
+        self._center_on(self._pos_t, ampl)
         event.accept()
 
     def mousePressEvent(self, event) -> None:

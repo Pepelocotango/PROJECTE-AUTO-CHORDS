@@ -216,9 +216,9 @@ class Finestra(QMainWindow):
         self.bpm.setPlaceholderText("120.0")
         self.bpm.setToolTip("BPM del tema. Entrada manual (text).")
         self.bpb = QLineEdit("4")
-        self.bpb.setMaximumWidth(40)
-        self.bpb.setPlaceholderText("4")
-        self.bpb.setToolTip("Temps per compàs (p. ex. 4).")
+        self.bpb.setMaximumWidth(60)
+        self.bpb.setPlaceholderText("4/4")
+        self.bpb.setToolTip("Compàs manual: 4/4, 3/4, 6/8, etc.")
         self.offset = QLineEdit("0.0")
         self.offset.setMaximumWidth(60)
         self.offset.setPlaceholderText("0.0")
@@ -573,6 +573,31 @@ class Finestra(QMainWindow):
 
     # ---- lectura manual dels camps de text ----
     @staticmethod
+    def _parse_compas(text, defecte_num=4, defecte_den=4):
+        """Accepta '4', '4/4', '3/4', '6/8' i retorna (num, den)."""
+        s = str(text).strip()
+        if not s:
+            return defecte_num, defecte_den
+        if "/" in s:
+            parts = s.split("/", 1)
+            try:
+                numer = int(float(parts[0].strip().replace(",", ".")))
+                den = int(float(parts[1].strip().replace(",", ".")))
+            except ValueError:
+                return defecte_num, defecte_den
+            if numer <= 0:
+                numer = defecte_num
+            if den <= 0:
+                den = defecte_den
+            return numer, den
+        try:
+            v = float(s.replace(",", "."))
+        except ValueError:
+            return defecte_num, defecte_den
+        v = max(1, int(round(v)))
+        return v, defecte_den
+
+    @staticmethod
     def _llegeix_num(w, defecte, minim, maxim, enter=False):
         try:
             v = float(str(w.text()).replace(",", ".").strip())
@@ -587,7 +612,12 @@ class Finestra(QMainWindow):
         return self._llegeix_num(self.bpm, 120.0, 30, 400)
 
     def _bpb_val(self):
-        return self._llegeix_num(self.bpb, 4, 2, 12, enter=True)
+        num, _den = self._parse_compas(self.bpb.text(), defecte_num=4, defecte_den=4)
+        return max(1, min(12, int(num)))
+
+    def _beat_type_val(self):
+        _num, den = self._parse_compas(self.bpb.text(), defecte_num=4, defecte_den=4)
+        return max(1, min(16, int(den)))
 
     def _offset_val(self):
         return self._llegeix_num(self.offset, 0.0, 0.0, 60.0)
@@ -906,6 +936,7 @@ class Finestra(QMainWindow):
             return
         vr.bpm = self._bpm_val()
         vr.bpb = self._bpb_val()
+        vr.beat_type = self._beat_type_val()
         vr.offset = self._offset_val()
         self.offset_cb.setText(self._secs_a_cb(vr.offset))
         vr._actualitza_temps()
@@ -927,9 +958,11 @@ class Finestra(QMainWindow):
             self.visor_ref.tempo_fix = bool(fix)
             self.visor_ref.bpm = self._bpm_val()
             self.visor_ref.bpb = self._bpb_val()
+            self.visor_ref.beat_type = self._beat_type_val()
             self.visor_ref._actualitza_temps()
             self.visor_ref.timeline.set_tempo_mode(
-                bool(fix), self._bpm_val(), self._bpb_val())
+                bool(fix), self._bpm_val(), self._bpb_val(),
+                self._offset_val(), self._beat_type_val())
 
     def _mostra_placeholder_visor(self):
         cont = QWidget()
