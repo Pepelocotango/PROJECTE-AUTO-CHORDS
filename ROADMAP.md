@@ -257,6 +257,55 @@ sigui un plaer** i no una fricció.
 - **A decidir.** Si el **cursor** ha de fer snap també (coherent amb els clips)
   o quedar-se **lliure** per a navegació fina — o una opció **commutable**.
 
+### Graella, PPQ i formats de temps — possibles millores *(per valorar)*
+
+> 🧭 **Nota tècnica (2026-10-10)** — detall a `docs/GRAELLA_PPQ_TEMPS.md`. Fixa
+> com l'app mesura, mostra i quantitza el temps i quines opcions de **graella** i
+> **resolució (PPQ)** es podrien oferir.
+> **Decisió actual: NO adoptar el PPQ ara** (l'app és d'àudio; les posicions són
+> **segons** i no hi ha MIDI).
+
+**Els 3 eixos (no barrejar-los mai):**
+
+| Eix | Què és | Magnitud |
+|---|---|---|
+| **PPQ (resolució)** | unitat atòmica interna (ticks per negra) | enter (480–3840) |
+| **Graella** | sobre quines posicions s'imanta i es dibuixa | subdivisió del temps |
+| **Tempo + compàs** | conversió musical ↔ absolut (s/mostres) | variable |
+
+**Per què el PPQ no encaixa ara:** AUTO CHORDS és una app d'**àudio** — els acords
+i les seccions són **trossos de temps de l'àudio** (segons/mostres, de l'anàlisi),
+i el grid (bpm/offset) és una **vista**. El PPQ és útil sobretot per a **(a)**
+subdivisions exactes (tresets/puntets) i **(b)** **export MIDI** (que aquí encara
+no existeix). Guardar les durades en ticks voldria dir **quantitzar** temps
+d'àudio → pèrdua de precisió.
+
+**Millores que SÍ que valen la pena (ordre suggerit):**
+
+1. **Modes de graella** al `grid_plan` (que ja és font única de grid/regle/snap):
+   `straight` · **`triplet`** · **`dotted`** · `swing` · `custom (p:q)`.
+   - Pas en segons: `straight = beat·4/N`, `triplet = straight·2/3`,
+     `dotted = straight·3/2`; `swing` desplaça la 2a subdivisió.
+   - Selector de mode a la UI. *(No cal PPQ: els tresets/puntets funcionen bé en
+     segons perquè el snap es calcula per operació, sense acumular.)*
+2. **Display complet** `compàs.temps.tick` (ara tenim `compàs.temps`, sense el 3r
+   camp).
+3. **Si algun dia es fa export MIDI** (SMF): convertir **segons→ticks** en aquell
+   moment amb `ticks_per_beat = 960` (múltiple de 3 i 5 → cobreix tresets i
+   quintets). No cal canviar el model d'emmagatzematge.
+4. **Tempo map / rampes** (BPM variable): si mai es vol, `beat↔segons` requereix
+   **integrar** `60/BPM` tram a tram (no regla de tres).
+
+**Trampes a evitar** (de la nota): PPQ **potència de 2** (tresets impossibles) ·
+`float` per a posicions si mai es guarden musicals · confondre **grid** (vista)
+amb **PPQ** (emmagatzematge) · assumir BPM constant amb tempo map · noms de
+figures (treset de corxera ≠ treset de semicorxera) · setets/quintets exigeixen
+factor 5/7 al PPQ · canvi de compàs (la llargada varia) · `int64` per a PPQ alt.
+
+> 📌 **Estat: no implementat** — anotat com a possibles millores. La graella
+> actual (`grid_plan`, adaptativa al zoom, amb offset i compassos negatius) es
+> manté.
+
 ### Notes d’implementació
 
 - Tot canvi de la Fase D **ha de preservar**:
