@@ -23,6 +23,7 @@ Gràcies a això, el fil d'alimentació del visor (`_alimenta`) no canvia: nomé
 escriu trossos de PCM, i el motor els reprodueix.
 """
 import subprocess
+import threading
 
 import numpy as np
 
@@ -86,13 +87,24 @@ class MotorStream:
 
     `close()` **drena** el buffer pendent (l'usuari sent la cua fins al final);
     `atura()` el talla immediatament.
+
+    ⚠️ **Teardown idempotent i serialitzat (un lock)**: PortAudio/CoreAudio pega
+    (EXC_BAD_ACCESS dins `CloseStream` → `AudioComponentInstanceDispose`) si es
+    tanca el MATEIX stream dues vegades o des de dos fils alhora — que és el que
+    passava (el fil d'alimentació crida `stdin.close()` en acabar i el d'UI crida
+    `atura()` en aturar/seek). Aquí: el flag `_tancat` + posar `self.stream=None`
+    fan que el segon tancament sigui un no-res, i el lock serialitza tot.
     """
+
+    _PAS = 8192  # mostres per `write()`: trossos curts perquè `atura` respongui
 
     def __init__(self, sr):
         import sounddevice as sd      # import tardà: només a mac/win
 
         self._sd = sd
         self.sr = int(sr)
+        self._lock = threading.Lock()
+        self._tancat = False
         self._fi = False
         self._err = False
         self._rc = None
@@ -101,21 +113,22 @@ class MotorStream:
         # Prova els host APIs en ordre de preferència fins que un obri.
         ultim = None
         for dev in _dispositius_candidats(sd):
+            st = None
             try:
-                self.stream = sd.OutputStream(
+                st = sd.OutputStream(
                     samplerate=self.sr, channels=1, dtype="int16",
                     device=dev, latency="high")
-                self.stream.start()
+                st.start()
+                self.stream = st
                 self._device = dev
                 return
             except Exception as e:  # noqa: BLE001
                 ultim = e
                 try:
-                    if self.stream is not None:
-                        self.stream.close()
+                    if st is not None:
+                        st.close()
                 except Exception:  # noqa: BLE001
                     pass
-                self.stream = None
         self._err = True
         self._rc = 1
         raise RuntimeError(f"no s'ha pogut obrir cap sortida d'àudio: {ultim}")
@@ -126,30 +139,43 @@ class MotorStream:
         return self
 
     def write(self, dades):
-        if self.stream is None or self._err or self._fi:
-            raise ValueError("stream d'àudio tancat")
-        try:
-            self.stream.write(np.frombuffer(dades, dtype=np.int16))
-        except Exception as e:  # noqa: BLE001
-            self._err = True
-            self._rc = 1
-            raise ValueError(str(e)) from e
+        a = np.frombuffer(dades, dtype=np.int16)
+        for i in range(0, len(a), self._PAS):
+            with self._lock:
+                if self._tancat or self.stream is None:
+                    raise ValueError("stream d'àudio tancat")
+                try:
+                    self.stream.write(a[i:i + self._PAS])
+                except Exception as e:  # noqa: BLE001
+                    self._err = True
+                    self._rc = 1
+                    raise ValueError(str(e)) from e
 
     def close(self):
+        self._tanca(drena=True)
+
+    def atura(self):
+        self._tanca(drena=False)
+
+    def _tanca(self, drena):
+        # agafem la referència i marquem tancat SOTA el lock (ràpid); les
+        # crides a PortAudio (stop/close) es fan fora, però mai en paral·lel.
+        with self._lock:
+            if self._tancat or self.stream is None:
+                self._fi = True
+                return
+            self._tancat = True
+            st = self.stream
+            self.stream = None
         try:
-            if self.stream is not None and not self._err:
-                self.stream.stop()      # drena el buffer pendent
+            if drena and not self._err:
+                st.stop()               # drena el buffer pendent
         except Exception:  # noqa: BLE001
             pass
-        finally:
-            self._abaixa()
-
-    def _abaixa(self):
-        if self.stream is not None:
-            try:
-                self.stream.close()
-            except Exception:  # noqa: BLE001
-                pass
+        try:
+            st.close()
+        except Exception:  # noqa: BLE001
+            pass
         self._fi = True
 
     def poll(self):
@@ -166,15 +192,6 @@ class MotorStream:
     @property
     def pid(self):
         return None
-
-    def atura(self):
-        try:
-            if self.stream is not None and not self._err:
-                self.stream.abort()     # talla JA
-        except Exception:  # noqa: BLE001
-            pass
-        finally:
-            self._abaixa()
 
 
 # Ordre de host APIs preferit per SO, del més «modern/professional» al més

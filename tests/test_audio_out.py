@@ -6,6 +6,7 @@ de procés (`MotorProc`, paplay/aplay).
 """
 import os
 import sys
+import threading
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -53,6 +54,57 @@ class TestMotorProc(unittest.TestCase):
     def test_motorstream_no_s_usa_a_linux(self):
         # A Linux mai no es tria el motor natiu; la classe hi és igualment.
         self.assertTrue(callable(getattr(audio_out, "MotorStream", None)))
+
+
+class _FakeStream:
+    """Stream fals per provar el teardown sense PortAudio."""
+
+    def __init__(self):
+        self.stops = 0
+        self.closes = 0
+
+    def stop(self):
+        self.stops += 1
+
+    def close(self):
+        self.closes += 1
+
+
+class TestMotorStreamTeardown(unittest.TestCase):
+    """El teardown natiu ha de ser IDEMPOTENT (causa del crash a macOS:
+    `Pa_CloseStream` cridat 2 cops → EXC_BAD_ACCESS)."""
+
+    def _motor(self):
+        m = audio_out.MotorStream.__new__(audio_out.MotorStream)
+        m._lock = threading.Lock()
+        m._tancat = False
+        m._fi = False
+        m._err = False
+        m._rc = None
+        m.sr = 44100
+        m._device = None
+        m.stream = _FakeStream()
+        return m
+
+    def test_tanca_idempotent(self):
+        m = self._motor()
+        st = m.stream
+        m.close()          # drena (stop + close)
+        m.atura()          # 2n tancament -> NO ha de tocar el stream
+        m.close()          # 3r -> tampoc
+        self.assertEqual(st.stops, 1)
+        self.assertEqual(st.closes, 1)
+        self.assertIsNone(m.stream)
+        self.assertTrue(m._fi)
+        self.assertEqual(m.poll(), 0)
+
+    def test_atura_no_drena(self):
+        m = self._motor()
+        st = m.stream
+        m.atura()
+        self.assertEqual(st.stops, 0)   # atura talla, no drena
+        self.assertEqual(st.closes, 1)
+        self.assertEqual(m.poll(), 0)
 
 
 if __name__ == "__main__":

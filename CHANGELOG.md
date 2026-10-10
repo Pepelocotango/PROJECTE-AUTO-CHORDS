@@ -5,6 +5,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+### Corregit
+- **macOS: l'app petava en aturar/canviar** (`EXC_BAD_ACCESS` a
+  `AudioToolbox`/`Pa_CloseStream`). El motor natiu podia tancar el **mateix
+  stream** de PortAudio **dues vegades o des de dos fils alhora** (el fil
+  d'alimentació en acabar crida `stdin.close()` i el d'UI crida `atura()` en
+  aturar/seek) → disposar un component CoreAudio ja disposat. `MotorStream` ara
+  té el teardown **idempotent i serialitzat** (flag `_tancat` + `threading.Lock`)
+  i escriu en **trossos curts** perquè `atura` respongui de pressa.
+
 ## [0.6.0] — 2026-10-10 (BETA)
 
 ### Corregit
