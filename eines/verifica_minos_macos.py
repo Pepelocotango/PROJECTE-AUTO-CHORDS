@@ -132,8 +132,9 @@ def main(argv=None):
             print(f"  {v:>10}  {f}")
 
     if dolents:
+        llista = " | ".join(f"{v} {f}" for f, v in dolents)
         print(f"\n::error:: {len(dolents)} binaris amb minos > {args.max} "
-              f"({args.arch}):")
+              f"({args.arch}): {llista}")
         for f, v in dolents:
             print(f"   {v}  {f}")
         return 1

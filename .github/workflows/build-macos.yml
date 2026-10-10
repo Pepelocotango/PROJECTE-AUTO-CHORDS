@@ -56,7 +56,10 @@ jobs:
           python3 -m venv .venv-mac
           . .venv-mac/bin/activate
           python -m pip install --upgrade pip
-          pip install "PyQt5==5.15.10" "PyQt5-Qt5==5.15.19" "PyQt5_sip" "numpy<2" sounddevice pyinstaller
+          # ⚠️ cffi PINNAT: cffi 2.1.x només publica roda macosx_10_15 (minos
+          # 10.15) i el runner (macOS 15) l'agafaria → l'app NO arrencaria a High
+          # Sierra. La 2.0.0 sí que té roda macosx_10_13. (El pas 6b ho vigila.)
+          pip install "PyQt5==5.15.10" "PyQt5-Qt5==5.15.19" "PyQt5_sip" "numpy<2" "sounddevice" "cffi==2.0.0" pyinstaller
           python - <<'PY'
           import PyQt5, numpy, sys
           from PyQt5 import QtCore
