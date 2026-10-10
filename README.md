@@ -32,10 +32,13 @@ pas d’assistent.
   timeline **de seguida**, amb les pistes Acords/Estructura buides.
 - **Barra de menús**: Fitxer · Edita · Selecciona · Visualitza · Analitza · Ajuda.
 - **Barra de temps** fina: mode **BPM · compàs** / **Lliure (hh:mm:ss)**,
-  BPM, botons **×2/÷2**, **🎯 Detecta** (motor triable), **TAP**, compàs,
-  Offset amb **📍** (cursor) i **🧭** (automàtic) i «Inclou estructura».
+  BPM, botons **×2/÷2**, **🎯 Detecta** (motor triable), **TAP**, compàs
+  en format **`x/x`** (`4`, `4/4`, `6/8`, etc.), Offset amb **📍** (cursor) i
+  **🧭** (automàtic) i «Inclou estructura».
 - **Barra de transport** pròpia: play/stop, −10s/+10s, loop A/B, zoom i mute
-  (`Espai` = play/stop).
+  (`Espai` = play/stop). La roda del ratolí fa **zoom centrat al cursor vermell**
+  quan no hi ha cap clip seleccionat, i segueix sent coherent amb el clip
+  seleccionat quan n’hi ha un.
 - **Metrònom** 🥁 (només en mode BPM · compàs), amb **volum propi** (60 %).
 - **Analitza** (`F5`): progrés a la **barra d’estat**; el **log** és un tauler
   plegable a baix (**Visualitza ▸ Mostra el log**).

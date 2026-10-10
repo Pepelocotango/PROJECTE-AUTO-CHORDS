@@ -49,6 +49,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 - **Línies del grid pintades de negre**: `grid_levels()` retornava els *strings*
   literals `"theme.TL_GRID_*"` i els consumidors feien `QColor(string)` → color
   **invàlid**. Ara retorna els colors **reals** de `theme`.
+- **Zoom de la roda centrat al cursor vermell**: quan no hi ha selecció, el
+  zoom ja se centra al **playhead** (cursor vermell) en lloc del punter del
+  ratolí. El comportament amb clips seleccionats es manté coherent.
+- **Compàs manual `x/x`**: el camp de compàs accepta `4`, `4/4`, `3/4`, `6/8`,
+  etc., i el denominador es propaga al regle i a la graella sense trencar la
+  lògica de snap/offset.
+- **Labels d’inici de compàs destacades**: `1.1`, `2.1`, `3.1`... apareixen
+  ressaltats en negreta i amb color de mesura per emular millor l’estil DAW.
 
 ### Proves
 - **231 tests** · OK (1 skip) — +21 respecte de la v0.5.1 (multi-selecció,
