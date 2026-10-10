@@ -41,6 +41,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   decideix les línies del grid, les del regle i el **snap** (que ara **segueix
   el grid**). El regle mostra **`m:ss`** en mode lliure (abans `X.Xs`) i
   `compàs.temps` en mode tempo, amb el format i la densitat segons el zoom.
+- **Regle — etiquetes més denses**: el nivell de les etiquetes ara és el **més
+  fi que hi cap** (abans era el més gruixut visible) → surten **cada 2-4 línies
+  de graella** segons el zoom (abans 4-60), sense solapar-se.
 
 ### Arreglat
 - **Línies del grid pintades de negre**: `grid_levels()` retornava els *strings*

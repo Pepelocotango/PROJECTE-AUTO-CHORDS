@@ -66,7 +66,7 @@ MIN_SEC_LEN_S = 0.05     # durada mínima d'una secció
 # Llindars en PIXELS (com els DAWs): un nivell de grid es dibuixa si el seu
 # espaiat en px hi arriba; l'etiqueta del regle només es posa si hi cap.
 MIN_LINE_PX = 8.0
-MIN_LABEL_PX = 45.0
+MIN_LABEL_PX = 30.0
 
 
 def _divisions(tempo_fix, bpm, bpb):
@@ -121,9 +121,10 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
             lines.append(mid)
     if abs(lines[-1][0] - snap) > 1e-9:
         lines.append((snap, snap_k))
-    # label: el més gruixut VISIBLE que hi cap (min_label <= px <= view_px)
-    cands = [s for (s, _k) in divs if min_label_px <= s * pps <= view_px]
-    lab = cands[0] if cands else major[0]
+    # label: el MÉS FI que hi cap (densitat MÀXIMA sense solapar). El regle,
+    # a més, salta les etiquetes que no hi caben segons l'amplada del text.
+    cands = [s for (s, _k) in divs if s * pps >= min_label_px]
+    lab = cands[-1] if cands else major[0]
     return {"snap": snap, "lines": lines, "label": lab}
 
 
