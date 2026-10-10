@@ -230,39 +230,7 @@ jobs:
       # i les dades. Amb AUTO_CHORDS_SMOKE=1 l'app confirma al log que la
       # finestra s'ha creat i surt sola (codi 0).
       - name: 6c. Smoke test — l'app arrenca (headless)
-        run: |
-          set -euo pipefail
-          export AUTO_CHORDS_SMOKE=1
-          export AUTO_CHORDS_TEMP="$(mktemp -d)/ac-temp"
-          BIN="dist/AUTO_CHORDS.app/Contents/MacOS/AUTO_CHORDS"
-          PLUGS="$(find dist/AUTO_CHORDS.app -type d -name platforms 2>/dev/null | head -1)"
-          echo "--- plugins de plataforma al bundle: ${PLUGS:-<cap>} ---"
-          ls -la "$PLUGS" 2>/dev/null || echo "(NO s'ha trobat cap dir 'platforms')"
-
-          OK=0; ERR=""
-          for plat in offscreen minimal __default__; do
-            out="$(mktemp -d)/smoke.out"
-            if [ "$plat" = "__default__" ]; then unset QT_QPA_PLATFORM || true
-            else export QT_QPA_PLATFORM="$plat"; fi
-            echo "=== intent QT_QPA_PLATFORM=${plat} ==="
-            set +e; timeout 60 "$BIN" > "$out" 2>&1; rc=$?; set -e
-            echo "rc=$rc"; tail -25 "$out"
-            AC_LOG="$(find dist "$HOME/.local/state/auto-chords" \
-                      -name auto_chords.log 2>/dev/null | head -1)"
-            if [ -n "$AC_LOG" ]; then echo "--- log ($plat) ---"; tail -20 "$AC_LOG"; fi
-            if [ "$rc" = "0" ] && [ -n "$AC_LOG" ] \
-               && grep -q "SMOKE: finestra principal creada" "$AC_LOG" 2>/dev/null; then
-              echo "OK: l'app arrenca amb QT_QPA_PLATFORM=$plat"
-              # Treu el log del bundle perque no acabi dins del ZIP/DMG.
-              mv -f "$AC_LOG" "$(mktemp -d)/auto_chords.log" 2>/dev/null || true
-              OK=1; break
-            fi
-            ERR="$ERR | [$plat rc=$rc] $(tail -c 500 "$out" | tr '\n' '~')"
-          done
-          if [ "$OK" != "1" ]; then
-            echo "::error::Smoke FALLIT (cap plataforma Qt ha arrencat).$ERR"
-            exit 1
-          fi
+        run: bash eines/smoke_macos.sh "dist/AUTO_CHORDS.app"
 
       - name: 7. ZIP (ditto) + verificació de l'executable
         run: |
@@ -323,5 +291,6 @@ jobs:
           if-no-files-found: ignore
           path: |
             *.log
+            smoke_diag.txt
             /tmp/*.log
             build/*/warn-*.txt
