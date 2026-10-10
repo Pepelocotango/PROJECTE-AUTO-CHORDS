@@ -28,6 +28,7 @@ import csv
 import glob
 import os
 import re
+import shutil
 import subprocess
 from xml.sax.saxutils import escape
 
@@ -321,21 +322,40 @@ def detecta_fifths(wav, log=None):
 def musescore_bin():
     """Retorna el binari/AppImage de MuseScore, o None.
 
-    Ordre: `$AUTO_CHORDS_MUSESCORE` -> PATH -> AppImages de `~/Applications`
-    (es prefereix 4.6.x, l'última que corre al Q9400 sense SSE4.2).
+    Ordre: `$AUTO_CHORDS_MUSESCORE` -> `PATH` -> ubicacions típiques **per SO**:
+    Linux (`~/Applications/*.AppImage`), **macOS** (`/Applications/MuseScore*.app`)
+    i **Windows** (`Program Files\\MuseScore *`). Es prefereix 4.6.x (l'última que
+    corre al Q9400 sense SSE4.2).
     """
     env = os.environ.get("AUTO_CHORDS_MUSESCORE")
     if env:
         return env
+    # `shutil.which` (no `os.popen("command -v …")`: a Windows no hi ha `command`).
     for c in ("mscore", "mscore3", "mscore4", "musescore", "musescore4",
-              "MuseScore4"):
-        p = os.popen(f"command -v {c} 2>/dev/null").read().strip()
+              "MuseScore4", "MuseScore4.exe", "MuseScore3.exe"):
+        p = shutil.which(c)
         if p:
             return p
-    for pat in ("~/Applications/MuseScore*4.6*.AppImage",
-                "~/Applications/MuseScore*.AppImage",
-                "~/Applications/musescore*.AppImage",
-                "~/MuseScore*.AppImage"):
+    patrons = [
+        # Linux (AppImages)
+        "~/Applications/MuseScore*4.6*.AppImage",
+        "~/Applications/MuseScore*.AppImage",
+        "~/Applications/musescore*.AppImage",
+        "~/MuseScore*.AppImage",
+        # macOS (.app)
+        "/Applications/MuseScore*.app/Contents/MacOS/mscore",
+        "/Applications/MuseScore*.app/Contents/MacOS/MuseScore*",
+        "~/Applications/MuseScore*.app/Contents/MacOS/mscore",
+        "~/Applications/MuseScore*.app/Contents/MacOS/MuseScore*",
+        # Windows
+        "C:/Program Files/MuseScore */bin/MuseScore*.exe",
+        "C:/Program Files (x86)/MuseScore */bin/MuseScore*.exe",
+    ]
+    loc = os.environ.get("LOCALAPPDATA")
+    if loc:
+        patrons.append(os.path.join(loc, "Programs", "MuseScore *", "bin",
+                                    "MuseScore*.exe"))
+    for pat in patrons:
         trobat = sorted(glob.glob(os.path.expanduser(pat)))
         if trobat:
             return trobat[0]

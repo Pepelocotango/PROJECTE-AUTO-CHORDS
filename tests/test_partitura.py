@@ -7,6 +7,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from app import partitura
 
@@ -167,6 +168,29 @@ class EntornTests(unittest.TestCase):
         self.assertEqual(partitura.fifths_de_to("G major"), 1)
         self.assertEqual(partitura.fifths_de_to("E minor"), 1)
         self.assertEqual(partitura.fifths_de_to("Em"), 1)
+
+
+class TestMuseScore(unittest.TestCase):
+    """Descobriment del binari de MuseScore (ha de funcionar a tots els SO)."""
+
+    def test_env_te_prioritat(self):
+        with mock.patch.dict(os.environ, {"AUTO_CHORDS_MUSESCORE": "/tmp/msc"}):
+            self.assertEqual(partitura.musescore_bin(), "/tmp/msc")
+
+    def test_no_peta_si_no_hi_es(self):
+        env = {k: v for k, v in os.environ.items()
+               if k != "AUTO_CHORDS_MUSESCORE"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            partitura.musescore_bin()      # None o binari real: no ha de petar
+
+    def test_troba_binari_per_glob(self):
+        env = {k: v for k, v in os.environ.items()
+               if k != "AUTO_CHORDS_MUSESCORE"}
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("app.partitura.shutil.which", return_value=None), \
+                mock.patch("app.partitura.glob.glob",
+                           side_effect=lambda p, **k: ["/X"] if "MuseScore" in p else []):
+            self.assertEqual(partitura.musescore_bin(), "/X")
 
 
 if __name__ == "__main__":
