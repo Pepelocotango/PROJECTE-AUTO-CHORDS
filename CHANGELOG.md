@@ -14,6 +14,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   té el teardown **idempotent i serialitzat** (flag `_tancat` + `threading.Lock`)
   i escriu en **trossos curts** perquè `atura` respongui de pressa.
 
+### Canviat
+- **Tests per caçar bugs ABANS de compilar**: nova bateria
+  `tests/test_audio_out.py` que cobreix els camins que **només s'executen a
+  macOS/Windows** fent servir un **`sounddevice` FALS** + simulant el SO —
+  obertura amb **fallback de host API**, escriptura per trossos, **teardown
+  idempotent**, **concurrència** `close`/`atura` (el bug del crash) i la capa
+  `plataforma`. I els **3 CI** ara corren **TOTA** la suite
+  (`python -m unittest discover -s tests`), no només 2 mòduls.
+
 ## [0.6.0] — 2026-10-10 (BETA)
 
 ### Corregit
