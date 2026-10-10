@@ -2883,11 +2883,12 @@ class UndoRedoTests(unittest.TestCase):
 
 
 class TriaPlayerTests(unittest.TestCase):
-    """Selecció del reproductor extern (`Visor._tria_player`).
+    """Selecció del motor de reproducció (`Visor._tria_player`).
 
-    L'app fa servir `paplay` (PipeWire/Pulse) i, si no hi és, `aplay` (ALSA).
-    Si no n'hi ha cap, retorna `None` (i el visor ho avisa) en lloc de provar
-    ordres que no existeixen.
+    macOS/Windows: motor **natiu** `sounddevice` (PortAudio → CoreAudio/WASAPI).
+    Linux: `paplay` (PipeWire/Pulse) i, si no hi és, `aplay` (ALSA); si no n'hi
+    ha cap, retorna `None` (i el visor ho avisa) en lloc de provar ordres que no
+    existeixen.
     """
 
     def _visor_buit(self):
@@ -2916,16 +2917,17 @@ class TriaPlayerTests(unittest.TestCase):
         self.assertEqual(player, "aplay")
         self.assertIn("--format=S16_LE", args)
 
-    def test_ffplay_a_windows_i_macos(self):
+    def test_natiu_a_windows_i_macos(self):
         if plataforma.ES_LINUX:
-            self.skipTest("al Linux no es fa servir ffplay")
+            self.skipTest("al Linux no es fa servir el motor natiu")
         v = self._visor_buit()
-        with patch("app.visor.shutil.which", lambda n: "/usr/bin/" + n):
-            player, args = v._tria_player()
-        self.assertEqual(player, "ffplay")
-        self.assertIn("-nodisp", args)
+        player, args = v._tria_player()
+        self.assertEqual(player, "sounddevice")   # motor natiu (PortAudio)
+        self.assertEqual(args, [])
 
     def test_cap_reproductor_retorna_none(self):
+        if not plataforma.ES_LINUX:
+            self.skipTest("a mac/win sempre hi ha el motor natiu (sounddevice)")
         v = self._visor_buit()
         with patch("app.visor.shutil.which", lambda n: None):
             player, args = v._tria_player()
@@ -3036,7 +3038,7 @@ class PlataformaTests(unittest.TestCase):
         if plataforma.ES_LINUX:
             self.assertEqual(c, ("paplay", "aplay"))
         else:
-            self.assertEqual(c, ("ffplay",))
+            self.assertEqual(c, ())   # mac/win: motor natiu (sounddevice), res extern
 
     def test_dirs_plugins(self):
         d = [os.path.basename(x) for x in plataforma.dirs_plugins("/tmp")]
