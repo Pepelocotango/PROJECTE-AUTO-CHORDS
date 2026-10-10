@@ -1423,6 +1423,25 @@ def main():
     # arrenca de debò (dyld, plugins de Qt, dades…) sense necessitar GUI.
     if os.environ.get("AUTO_CHORDS_SMOKE") == "1":
         logger.info("SMOKE: finestra principal creada correctament")
+        # Comprovació del MOTOR D'ÀUDIO dins l'app EMPAQUETADA (mac/win): que
+        # `sounddevice`/PortAudio es pugui IMPORTAR i carregar de debò (no només
+        # que el fitxer hi sigui). Si falla, ho diem ben clar al log.
+        if plataforma.usa_audio_natiu():
+            try:
+                import sounddevice as sd      # carrega PortAudio (cffi)
+                try:
+                    pv = sd.get_portaudio_version()[1]
+                except Exception:  # noqa: BLE001
+                    pv = "?"
+                try:
+                    nd = len(sd.query_devices())   # pot ser 0 en headless: no és error
+                except Exception:  # noqa: BLE001
+                    nd = -1
+                logger.info("SMOKE: audio OK — sounddevice %s · PortAudio %s · "
+                            "%d dispositius", sd.__version__, pv, nd)
+            except Exception as e:  # noqa: BLE001
+                logger.error("SMOKE: AUDIO ERROR — no s'ha pogut carregar "
+                             "sounddevice/PortAudio: %s", e)
         QTimer.singleShot(1500, app.quit)
     try:
         sys.exit(app.exec_())

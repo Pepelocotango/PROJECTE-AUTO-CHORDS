@@ -280,5 +280,39 @@ class TestPlataforma(unittest.TestCase):
         self.assertEqual(plataforma.path_env_vamp(["/a", "/b"]), "/a" + os.pathsep + "/b")
 
 
+class TestReengegaComElVisor(unittest.TestCase):
+    """Reprodueix el camí EXACTE que petava a macOS: amb l'àudio sonant, canviar
+    el BPM/compàs crida `_reenvia_si_sona` → `_atura_proc()` del motor vell +
+    `_engega_des_de()` (motor nou), **mentre el fil d'alimentació vell encara
+    tancava**. El motor vell s'ha de tancar UN sol cop."""
+
+    def test_atura_i_reengega_amb_fil_vell_escrivint(self):
+        fake = FakeSD()
+        vell = _motor(fake=fake)
+        st_vell = vell._fake.creats[0]
+
+        aturat = threading.Event()
+
+        def alimenta():                     # com `visor._alimenta`
+            while not aturat.is_set():
+                try:
+                    vell.write(b"\x00\x00" * 512)
+                except ValueError:
+                    return                  # tancat: plega
+
+        fil = threading.Thread(target=alimenta, daemon=True)
+        fil.start()
+
+        vell.atura()                        # _reenvia_si_sona: atura el vell
+        nou = _motor(fake=fake)             # ...i n'obre un de nou
+        aturat.set()
+        fil.join(timeout=5)
+
+        self.assertEqual(st_vell.closes, 1, "el motor vell s'ha tancat més d'un cop!")
+        self.assertIsNotNone(nou.stream)
+        self.assertEqual(nou._fake.creats[-1].closes, 0)
+        self.assertIsNone(nou.poll())
+
+
 if __name__ == "__main__":
     unittest.main()

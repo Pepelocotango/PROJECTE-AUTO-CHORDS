@@ -88,7 +88,9 @@ try() {
     | tail -20 | sed 's/^/  | /' || true
 
   if [ "$rc" = "0" ] && [ -n "$aclog" ] \
-     && grep -q "SMOKE: finestra principal creada" "$aclog" 2>/dev/null; then
+     && grep -q "SMOKE: finestra principal creada" "$aclog" 2>/dev/null \
+     && grep -q "SMOKE: audio OK" "$aclog" 2>/dev/null \
+     && ! grep -q "SMOKE: AUDIO ERROR" "$aclog" 2>/dev/null; then
     return 0
   fi
   return 1
