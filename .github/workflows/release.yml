@@ -70,6 +70,7 @@ jobs:
               continue
             fi
             read -r rid rnum rdate rsha <<< "$info"
+            echo "${so}_n=${rnum}" >> "$GITHUB_OUTPUT"
             echo "::notice::${so}: agafo l'artefacte de ${wf} run #${rnum} (${rdate}, ${rsha})"
             gh run download "$rid" --dir "dist/${so}"
             echo "| ${so} | #${rnum} | ${rdate} | \`${rsha}\` |" >> "$GITHUB_STEP_SUMMARY"
@@ -88,19 +89,28 @@ jobs:
           set -euo pipefail
           mkdir -p out
           TAG="${{ steps.tag.outputs.tag }}"
+          # El nom del fitxer del Release porta VERSIO + numero de BUILD (l'execucio
+          # VERDA de la qual s'ha agafat cada SO), com els artefactes. Sense el
+          # numero, dos Releases amb el mateix tag semblarien idèntics.
+          LN="${{ steps.art.outputs.linux_n }}"
+          WN="${{ steps.art.outputs.windows_n }}"
+          MN="${{ steps.art.outputs.macos_n }}"
+          B_L=""; if [ -n "$LN" ]; then B_L="_build${LN}"; fi
+          B_W=""; if [ -n "$WN" ]; then B_W="_build${WN}"; fi
+          B_M=""; if [ -n "$MN" ]; then B_M="_build${MN}"; fi
           if [ -d dist/linux ]; then
-            find dist/linux -name '*.AppImage' -exec cp {} "out/AutoChords_${TAG}_x86_64.AppImage" \;
+            find dist/linux -name '*.AppImage' -exec cp {} "out/AutoChords_${TAG}${B_L}_x86_64.AppImage" \;
           fi
           if [ -d dist/windows ]; then
             wdir=$(find dist/windows -mindepth 1 -maxdepth 1 -type d | head -1)
-            ( cd "$wdir" && zip -r -q "$GITHUB_WORKSPACE/out/${TAG}-Windows.zip" . )
+            ( cd "$wdir" && zip -r -q "$GITHUB_WORKSPACE/out/AutoChords_${TAG}${B_W}_Windows.zip" . )
           fi
           if [ -d dist/macos ]; then
             mz=$(find dist/macos -name '*.zip' | head -1)
-            [ -n "$mz" ] && cp "$mz" "out/${TAG}-macos.zip"
+            [ -n "$mz" ] && cp "$mz" "out/AutoChords_${TAG}${B_M}_macos.zip"
             md=$(find dist/macos -name '*.dmg' | head -1)
             if [ -n "$md" ]; then
-              cp "$md" "out/${TAG}-macos.dmg"
+              cp "$md" "out/AutoChords_${TAG}${B_M}_macos.dmg"
             else
               echo "::warning::No s'ha trobat cap .dmg a l'artefacte de macOS (build antic?)"
             fi

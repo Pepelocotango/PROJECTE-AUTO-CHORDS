@@ -33,6 +33,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ### Canviat
 - `app/main.py`: nou mode **`AUTO_CHORDS_SMOKE=1`** (per al CI) que confirma al
   log la creació de la finestra principal i surt sol (codi 0).
+- **Release**: els fitxers adjunts porten ara **versió + número de build** de
+  l'execució verda d'origen — `AutoChords_<tag>_build<NN>_<so>.<ext>`
+  (p. ex. `AutoChords_v0.5.2_build14_macos.dmg`) — igual que els artefactes
+  (abans es renombraven a `<tag>-<so>` i es perdia el número de build).
 
 ## [0.5.2] — 2026-10-09 (BETA)
 
