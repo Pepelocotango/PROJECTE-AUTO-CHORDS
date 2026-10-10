@@ -5,11 +5,11 @@
 > (cap build local Mac). Complementa `ROADMAP.md` §9 (viabilitat) i
 > `docs/PORTABILITAT.md` (Linux).
 >
-> ✅ **ESTAT (2026-10-10)**: build **VERD** al CI (run #8, `08bbfc7`; run #9,
-> `8064a2f`, amb **Python 3.12**, que és el que fa que l'`.app` pugui arrencar a
-> 10.13). El workflow ja inclou **etapa de tests**, **verificació exhaustiva del
-> `minos`** del bundle (6b), **smoke test** de l'`.app` (6c) i **DMG** (7b).
-> Detall: `docs/ESTAT_MULTI_SO.md`.
+> ✅ **ESTAT (2026-10-10)**: build **VERD** al CI: **run #14 (`3c7f441`)** — amb
+> **Python 3.12** (el 3.14 del runner no arrencava a 10.13) i el fix que fa que
+> PyInstaller empaqueti **PyQt5** (`--paths . --paths app`). El workflow inclou
+> **etapa de tests**, **verificació exhaustiva del `minos`** (6b), **smoke test**
+> de l'`.app` (6c) i **DMG** (7b). Detall: `docs/ESTAT_MULTI_SO.md`.
 
 ## 1. Objectiu i abast
 

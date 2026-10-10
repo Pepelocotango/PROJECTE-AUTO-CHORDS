@@ -12,7 +12,7 @@
 |----|----------|-------|------------------|
 | **🐧 Linux** | AppImage x86_64 | ✅ **VERD i verificat** (run #8, `08bbfc7`) | `AutoChords_v0.5.1-main-build8-Linux` (ZIP que conté l'AppImage `auto-chords-*-x86_64.AppImage`) |
 | **🪟 Windows** | ZIP portable x64 | ✅ **VERD amb tests** (run #14, `08bbfc7`) | `AutoChords_v0.5.1-main-build14-Windows` (**~95 MB**) |
-| **🍎 macOS** | `.app` per a **High Sierra 10.13+** (Intel) + **`.dmg`** | ✅ **VERD** (run #9, `8064a2f`, Python 3.12) | `AUTO_CHORDS-macos-build<NN>` (`.app` dins ZIP **+ `.dmg`**) |
+| **🍎 macOS** | `.app` per a **High Sierra 10.13+** (Intel) + **`.dmg`** | ✅ **VERD** (run #14, `3c7f441`; smoke test OK) | `AUTO_CHORDS-macos-build14` (`.app` dins ZIP **+ `.dmg`**) |
 
 > ⚠️ Els noms dels artefactes porten la versió del **`pyproject.toml`** en el
 > moment de construir-los (`v0.5.1`); amb el bump a **v0.5.2** (2026-10-09), una
@@ -48,15 +48,23 @@
   macOS **no es pot baixar** (`code.soundsoftware.ac.uk` està inaccessible), o
   sigui que es compila (qm-dsp + vamp-plugin-sdk).
 - `ffmpeg` estàtic (evermeet, requereix 10.13) + **PyInstaller `.app`** + ZIP
-  (`ditto`).
+  (`ditto`) + **DMG** (`hdiutil`).
 - Workflow: `build-macos.yml` (manual). Etapes noves (2026-10-10): **6b**
   verificació exhaustiva del `minos` de TOT el bundle (x86_64 ≤ 10.13, amb
   `eines/verifica_minos_macos.py`), **6c** **smoke test** de l'`.app`
-  empaquetada (headless, `AUTO_CHORDS_SMOKE=1`) i **7b** **DMG** (`hdiutil`).
-- ✅ **Fix crític (10-10)**: el Python del runner (**3.14**) tenia `minos 15.0`
-  → l'`.app` **no arrencava** a High Sierra (`PYI-ERROR: cannot load 'Python'`).
+  empaquetada (headless, `AUTO_CHORDS_SMOKE=1`; script `eines/smoke_macos.sh`) i
+  **7b** **DMG** (`hdiutil`, muntat i verificat).
+- ✅ **Fix 1 (10-10)**: el Python del runner (**3.14**) tenia `minos 15.0` →
+  l'`.app` **no arrencava** a High Sierra (`PYI-ERROR: cannot load 'Python'`).
   Ara s'usa **Python 3.12** + un **guard** que falla el build si el `minos` del
-  Python és > 10.13 (`c7ed61a`). **Run #9 (`8064a2f`) VERD**.
+  Python és > 10.13 (`c7ed61a`).
+- ✅ **Fix 2 (10-10) — l'arrel del «no funciona»**: l'app congelada petava amb
+  **`ModuleNotFoundError: No module named 'PyQt5'`**. PyInstaller **no resolia
+  `app.main`** (el launcher l'importa **dins d'una funció** i l'entry és a
+  `eines/`) → **no empaquetava PyQt5** (ni el directori `platforms` de Qt).
+  **Fix**: `--paths . --paths app` + `--hidden-import` (igual que el `.spec` de
+  Windows) (`3c7f441`). Detectat gràcies al **smoke test** del CI.
+- ✅ **Run #14 (`3c7f441`) VERD** — amb tots els passos nous (minos, smoke, DMG).
 - **Artefacte**: `AUTO_CHORDS-macos.zip` **+ `AUTO_CHORDS-macos.dmg`**.
 - **PENDENT**:
   1. ✅ **FET**: etapa de tests afegida al workflow (`e7f6695`); runs **#7 i #8
