@@ -14,7 +14,8 @@ FILE="cpython-${PYV}%2B${TAG}-x86_64-unknown-linux-gnu-install_only.tar.gz"
 
 mkdir -p portable
 echo "Baixant el CPython portable..."
-curl -sfL -o /tmp/pyport.tar.gz "$URL/$FILE" || {
+# --retry: el CDN de GitHub pot fer una fallada transitòria.
+curl -sfL --retry 5 --retry-delay 3 --retry-all-errors -o /tmp/pyport.tar.gz "$URL/$FILE" || {
     echo "ERROR: no he pogut baixar el CPython portable ($URL/$FILE)" >&2; exit 1; }
 tar xzf /tmp/pyport.tar.gz -C portable/
 PY=./portable/python/bin/python3
@@ -27,7 +28,8 @@ Q=portable/python/lib/python3.12/site-packages/PyQt5/Qt5
 for d in qml translations qsci; do [ -d "$Q/$d" ] && gio trash "$Q/$d" || true; done
 find portable -name "__pycache__" -type d -exec gio trash {} \; 2>/dev/null || true
 echo "Baixant ffmpeg estàtic (johnvansickle: ~40 MB comprimit)..."
-curl -sfL -o /tmp/ff.tar.xz \
+# johnvansickle és un servidor únic i de vegades va lent/falla: reintents.
+curl -sfL --retry 6 --retry-delay 5 --retry-all-errors -o /tmp/ff.tar.xz \
   "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" || {
     echo "ERROR: no he pogut baixar ffmpeg" >&2; exit 1; }
 tar xJf /tmp/ff.tar.xz -C /tmp/

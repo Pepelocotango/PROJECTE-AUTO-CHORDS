@@ -44,7 +44,7 @@ jobs:
           echo "ver=${TAG#v}" >> "$GITHUB_OUTPUT"
           echo "Tag del Release: $TAG"
 
-      - name: 3. Detectar i baixar els ultims artefactes VERDS de cada SO
+      - name: 3. Detectar i baixar els artefactes VERDS (build-all o builds solts)
         id: art
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,30 +55,46 @@ jobs:
           {
             echo "## Artifactes agafats"
             echo ""
-            echo "| SO | Execucio | Data | Commit |"
-            echo "|---|---|---|---|"
+            echo "| Origen | Execucio | Data |"
+            echo "|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
-          declare -A WF=( [linux]=build-appimage [windows]=build-windows [macos]=build-macos )
-          for so in linux windows macos; do
-            wf="${WF[$so]}"
-            info=$(gh run list --workflow "${wf}.yml" --status success --limit 1 \
-                     --json databaseId,number,createdAt,headSha \
-                     --jq '.[0] | select(. != null) | "\(.databaseId) \(.number) \(.createdAt) \(.headSha[0:7])"')
-            if [ -z "$info" ] || [ "$info" = "null" ]; then
-              echo "::warning::No hi ha cap execucio VERDA de ${wf}.yml -> s'omet ${so}"
-              echo "| ${so} | **cap (omès)** | - | - |" >> "$GITHUB_STEP_SUMMARY"
-              continue
-            fi
-            read -r rid rnum rdate rsha <<< "$info"
-            echo "${so}_n=${rnum}" >> "$GITHUB_OUTPUT"
-            echo "::notice::${so}: agafo l'artefacte de ${wf} run #${rnum} (${rdate}, ${rsha})"
-            gh run download "$rid" --dir "dist/${so}"
-            echo "| ${so} | #${rnum} | ${rdate} | \`${rsha}\` |" >> "$GITHUB_STEP_SUMMARY"
-            TROBATS=$((TROBATS+1))
-          done
+          # (a) L'agregador 'build-all' te els 3 SO en una sola execucio. Els
+          #     builds reusable NO queden registrats com a execucions pròpies,
+          #     així que aquest és el camí preferent. (b) Si no n'hi ha cap de
+          #     verda, busquem l'última execucio verda de cada build solt.
+          BA=$(gh run list --workflow build-all.yml --status success --limit 1 \
+                 --json databaseId,number,createdAt \
+                 --jq '.[0] | select(. != null) | "\(.databaseId) \(.number) \(.createdAt)"' || true)
+          if [ -n "${BA:-}" ] && [ "$BA" != "null" ]; then
+            read -r brid bnum bdate <<< "$BA"
+            echo "::notice::build-all run #${bnum} (${bdate}) VERD -> en baixo els 3 artefactes"
+            gh run download "$brid" --dir dist
+            echo "| build-all | #${bnum} | ${bdate} |" >> "$GITHUB_STEP_SUMMARY"
+            echo "buildall_n=${bnum}" >> "$GITHUB_OUTPUT"
+            TROBATS=3
+          else
+            declare -A WF=( [linux]=build-appimage [windows]=build-windows [macos]=build-macos )
+            for so in linux windows macos; do
+              wf="${WF[$so]}"
+              info=$(gh run list --workflow "${wf}.yml" --status success --limit 1 \
+                       --json databaseId,number,createdAt,headSha \
+                       --jq '.[0] | select(. != null) | "\(.databaseId) \(.number) \(.createdAt) \(.headSha[0:7])"')
+              if [ -z "$info" ] || [ "$info" = "null" ]; then
+                echo "::warning::No hi ha cap execucio VERDA de ${wf}.yml -> s'omet ${so}"
+                echo "| ${wf} | cap (omès) | - |" >> "$GITHUB_STEP_SUMMARY"
+                continue
+              fi
+              read -r rid rnum rdate rsha <<< "$info"
+              echo "${so}_n=${rnum}" >> "$GITHUB_OUTPUT"
+              echo "::notice::${so}: artefacte de ${wf} run #${rnum} (${rdate}, ${rsha})"
+              gh run download "$rid" --dir "dist/${so}"
+              echo "| ${wf} | #${rnum} | ${rdate} |" >> "$GITHUB_STEP_SUMMARY"
+              TROBATS=$((TROBATS+1))
+            done
+          fi
           echo "trobats=${TROBATS}" >> "$GITHUB_OUTPUT"
           if [ "$TROBATS" = "0" ]; then
-            echo "::error::No hi ha cap artefacte verd (ni Linux, ni Windows, ni macOS) -> no es pot fer el Release."
+            echo "::error::No hi ha cap artefacte verd (ni build-all ni builds solts) -> no es pot fer el Release."
             exit 1
           fi
           echo "--- contingut baixat ---"
@@ -89,31 +105,40 @@ jobs:
           set -euo pipefail
           mkdir -p out
           TAG="${{ steps.tag.outputs.tag }}"
-          # El nom del fitxer del Release porta VERSIO + numero de BUILD (l'execucio
-          # VERDA de la qual s'ha agafat cada SO), com els artefactes. Sense el
-          # numero, dos Releases amb el mateix tag semblarien idèntics.
+          # El nom del fitxer del Release porta VERSIO + numero de BUILD, com els
+          # artefactes. Amb build-all no hi ha numero per SO: el deduïm del nom de
+          # l'artefacte (porta '-build<NN>') i, si no, del run de build-all.
+          BALL="${{ steps.art.outputs.buildall_n }}"
           LN="${{ steps.art.outputs.linux_n }}"
           WN="${{ steps.art.outputs.windows_n }}"
           MN="${{ steps.art.outputs.macos_n }}"
+          n_art() {  # $1 = patró del directori de l'artefacte
+            local d; d=$(find dist -maxdepth 2 -type d -name "$1" 2>/dev/null | head -1)
+            if [ -n "$d" ]; then basename "$d" | sed -n 's/.*build\([0-9][0-9]*\).*/\1/p'; fi
+          }
+          if [ -z "$LN" ]; then LN="$(n_art '*Linux*')"; fi
+          if [ -z "$WN" ]; then WN="$(n_art '*Windows*')"; fi
+          if [ -z "$MN" ]; then MN="$(n_art '*macos*')"; fi
+          if [ -z "$LN" ]; then LN="$BALL"; fi
+          if [ -z "$WN" ]; then WN="$BALL"; fi
+          if [ -z "$MN" ]; then MN="$BALL"; fi
           B_L=""; if [ -n "$LN" ]; then B_L="_build${LN}"; fi
           B_W=""; if [ -n "$WN" ]; then B_W="_build${WN}"; fi
           B_M=""; if [ -n "$MN" ]; then B_M="_build${MN}"; fi
-          if [ -d dist/linux ]; then
-            find dist/linux -name '*.AppImage' -exec cp {} "out/AutoChords_${TAG}${B_L}_x86_64.AppImage" \;
-          fi
-          if [ -d dist/windows ]; then
-            wdir=$(find dist/windows -mindepth 1 -maxdepth 1 -type d | head -1)
-            ( cd "$wdir" && zip -r -q "$GITHUB_WORKSPACE/out/AutoChords_${TAG}${B_W}_Windows.zip" . )
-          fi
-          if [ -d dist/macos ]; then
-            mz=$(find dist/macos -name '*.zip' | head -1)
-            [ -n "$mz" ] && cp "$mz" "out/AutoChords_${TAG}${B_M}_macos.zip"
-            md=$(find dist/macos -name '*.dmg' | head -1)
-            if [ -n "$md" ]; then
-              cp "$md" "out/AutoChords_${TAG}${B_M}_macos.dmg"
-            else
-              echo "::warning::No s'ha trobat cap .dmg a l'artefacte de macOS (build antic?)"
-            fi
+          # Linux: l'AppImage
+          app=$(find dist -name '*.AppImage' | head -1)
+          if [ -n "$app" ]; then cp "$app" "out/AutoChords_${TAG}${B_L}_x86_64.AppImage"; fi
+          # Windows: la carpeta de l'artefacte (conte AutoChords.exe + docs)
+          wdir=$(find dist -maxdepth 2 -type d -name '*Windows*' | head -1)
+          if [ -n "$wdir" ]; then ( cd "$wdir" && zip -r -q "$GITHUB_WORKSPACE/out/AutoChords_${TAG}${B_W}_Windows.zip" . ); fi
+          # macOS: ZIP + DMG
+          mz=$(find dist -iname '*.zip' | grep -i macos | head -1)
+          if [ -n "$mz" ]; then cp "$mz" "out/AutoChords_${TAG}${B_M}_macos.zip"; fi
+          md=$(find dist -iname '*.dmg' | head -1)
+          if [ -n "$md" ]; then
+            cp "$md" "out/AutoChords_${TAG}${B_M}_macos.dmg"
+          else
+            echo "::warning::No s'ha trobat cap .dmg a l'artefacte de macOS (build antic?)"
           fi
           echo "--- fitxers del Release ---"
           ls -la out/
