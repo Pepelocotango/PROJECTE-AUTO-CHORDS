@@ -199,8 +199,21 @@ jobs:
         run: |
           set -euxo pipefail
           . .venv-mac/bin/activate
+          # ⚠️ CLAU: el launcher fa `from app.main import ...` DINS d'una funció
+          # i l'entry és a eines/. Sense `--paths . --paths app`, PyInstaller NO
+          # resol `app.main`, NO veu els seus imports i NO empaqueta PyQt5
+          # (l'app congelada peta amb "No module named 'PyQt5'"). Ho fa el spec
+          # de Windows (pathex=ROOT) però aquí era a faltar.
           pyinstaller --noconfirm --clean --windowed --onedir \
             --name AUTO_CHORDS \
+            --paths . --paths app \
+            --hidden-import app --hidden-import app.main --hidden-import app.visor \
+            --hidden-import app.timeline --hidden-import app.timeline_base \
+            --hidden-import app.timeline_items --hidden-import app.timeline_layers \
+            --hidden-import app.dialegs --hidden-import app.vamp_params \
+            --hidden-import app.plataforma --hidden-import app.config \
+            --hidden-import ffmpeg --hidden-import partitura --hidden-import pipeline \
+            --hidden-import postproc --hidden-import theme --hidden-import metronom \
             --add-data "app:app" \
             --add-data "eines:eines" \
             --add-data "icones:icones" \
@@ -213,6 +226,8 @@ jobs:
             --add-data "acords_a_live.py:." \
             eines/launcher_pyinstaller.py
           ls -la dist/
+          echo "--- PyQt5 al bundle? ---"
+          find "dist/AUTO_CHORDS.app" -iname "QtCore*" -o -iname "platforms" -type d 2>/dev/null | head
 
       # ── 6b: cap binari del bundle pot declarar un minos > 10.13 ──────────
       # Comprova TOTS els Mach-O (Python.framework, frameworks de Qt, *.so de
@@ -240,6 +255,8 @@ jobs:
           set +e
           . .venv-mac/bin/activate
           pyinstaller --noconfirm --clean --onedir --console --name AC_console \
+            --paths . --paths app \
+            --hidden-import app --hidden-import app.main --hidden-import app.visor \
             --add-data "app:app" --add-data "eines:eines" --add-data "icones:icones" \
             --add-data "icona:icona" --add-data "docs:docs" \
             --add-data "nnls-chroma-macos-local:nnls-chroma-macos-local" \

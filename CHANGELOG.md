@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+### Corregit
+- **macOS: l'`.app` no arrencava** (`ModuleNotFoundError: No module named
+  'PyQt5'`). El build de macOS no passava `--paths` a PyInstaller; com que el
+  launcher fa `from app.main import …` **dins d'una funció** i l'entry és a
+  `eines/`, PyInstaller **no resolia `app.main`** ni veia els seus imports, i
+  **no empaquetava PyQt5** (ni el directori `platforms` de Qt). Ara s'hi afegeix
+  **`--paths . --paths app`** i els **`--hidden-import`** (igual que el `.spec` de
+  Windows, que ja ho tenia). Verificat: amb `--paths` PyInstaller recull
+  `PyQt5/Qt5/plugins/platforms`.
+
 ### Afegit
 - **Empaquetat de macOS: `.dmg` a més del `.zip`** (`build-macos.yml`): el
   workflow ara genera un **DMG** (`hdiutil`, HFS+ comprimit) amb l'`.app` + un
