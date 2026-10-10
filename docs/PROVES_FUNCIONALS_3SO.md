@@ -1,4 +1,4 @@
-# Proves funcionals dels 3 paquets (v0.5.2)
+# Proves funcionals dels 3 paquets (v0.6.0)
 
 > Guia ràpida per validar els **3 artefactes del CI** als **3 sistemes**.
 > Els ZIP descarregats són a **`00last_artifacts_githubactions/`** (i a

@@ -1,10 +1,10 @@
 # Estat multi-SO — on som i què queda pendent
 
-> **2026-10-09 · v0.5.2 (BETA).** Foto del desplegament a **Linux, Windows i
+> **2026-10-10 · v0.6.0 (BETA).** Foto del desplegament a **Linux, Windows i
 > macOS**: **els 3 builds del CI són VERDS**. Complementa `ROADMAP.md` §9
 > (viabilitat), `docs/CI_WORKFLOWS.md` (els 5 workflows de CI),
-> `docs/PORTABILITAT.md` (Linux), `docs/PORTABILITAT_WINDOWS.md`
-> i `docs/PLANIFICACIO_MACOS.md`.
+> `docs/PORTABILITAT.md` (Linux), `docs/PORTABILITAT_WINDOWS.md`,
+> `docs/PLANIFICACIO_MACOS.md` i `docs/MOTOR_AUDIO_SO.md` (àudio per SO).
 
 ## Resum
 

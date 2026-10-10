@@ -5,6 +5,8 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-10-10 (BETA)
+
 ### Corregit
 - **macOS: l'`.app` no arrencava** (`ModuleNotFoundError: No module named
   'PyQt5'`). El build de macOS no passava `--paths` a PyInstaller; com que el

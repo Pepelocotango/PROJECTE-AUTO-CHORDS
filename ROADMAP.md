@@ -76,7 +76,7 @@ Això ens permet estar oberts a:
 - 🔒 **Sense secrets** al repo (`.secrets/` ignorat per `.gitignore`).
 - 🐧 **Linux** prioritari (AppImage) i, com a producte, **multi-SO**: Windows x64 + macOS 10.13+.
 
-## Estat actual (2026-10-09 · v0.5.2)
+## Estat actual (2026-10-10 · v0.6.0)
 
 El projecte ja ha passat de prototip funcional a flux de producte útil:
 
@@ -94,8 +94,13 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
 - bloqueig de doble instància per evitar sobreposició d’aplicacions
 - **auditoria de seguretat/estabilitat aplicada**: clamp de temps, tipus d’excepció específics, `_proc_lock`, `safe_filename`, parser CSV robust, validació WAV (sr/ch > 0)
 
-**Novetats v0.3.0–v0.5.2 (2026-10-09):**
+**Novetats v0.3.0–v0.6.0 (2026-10-10):**
 
+- **Embalatge i àudio (v0.6.0)**: **DMG de macOS** (a més del ZIP) i **motor
+  d'àudio natiu** a macOS/Windows (`sounddevice`/PortAudio → **CoreAudio** i
+  **WASAPI**; **Linux intacte**). CI de macOS amb **smoke test** de l'`.app` i
+  **verificació exhaustiva del `minos`** (≤ 10.13). Detall: `CHANGELOG` [0.6.0]
+  i `docs/MOTOR_AUDIO_SO.md`.
 - **Fase D.2 — edició DAW-like (v0.5.2)**: **multi-selecció** (`Ctrl`/`Shift`+clic),
   **porta-retalls intern** (`Ctrl+C/V/X`), **duplicar** i **moure** el grup,
   **indicador de MODE** al regle i **loop A/B amb snap**; `timeline.py` partit
