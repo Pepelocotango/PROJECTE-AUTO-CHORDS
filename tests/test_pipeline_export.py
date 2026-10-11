@@ -3084,5 +3084,27 @@ class PlataformaTests(unittest.TestCase):
         self.assertNotEqual(plataforma.python_actual(), "python3")
 
 
+class MissatgePartituraTests(unittest.TestCase):
+    """L'exportació de partitura ha de deixar BEN CLAR que el PDF (i el MSCZ)
+    depenen de **MuseScore** instal·lat (petició de l'operador)."""
+
+    def _buida(self):
+        return app_main.Finestra.__new__(app_main.Finestra)
+
+    def test_amb_pdf_no_avisa(self):
+        m = self._buida()._missatge_partitura(
+            {"musicxml": "/x.musicxml", "pdf": "/x.pdf", "mscz": "/x.mscz"})
+        self.assertIn("MusicXML", m)
+        self.assertIn("PDF", m)
+        self.assertNotIn("NO s'han generat", m)
+
+    def test_sense_pdf_avisa_de_musescore(self):
+        m = self._buida()._missatge_partitura(
+            {"musicxml": "/x.musicxml", "pdf": None, "mscz": None})
+        self.assertIn("MusicXML", m)
+        self.assertIn("MuseScore", m)
+        self.assertIn("NO s'han generat", m)
+
+
 if __name__ == "__main__":
     unittest.main()

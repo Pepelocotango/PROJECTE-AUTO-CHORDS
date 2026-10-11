@@ -296,8 +296,10 @@ class Finestra(QMainWindow):
         self.amb_part.setCheckable(True)
         self.amb_part.setChecked(False)
         self.amb_part.setToolTip(
-            "En exportar, genera tambe un lead sheet de xifrats: MusicXML i, si "
-            "hi ha MuseScore, PDF/MSCZ. Nomes en mode BPM · compàs.")
+            "En exportar, genera també un lead sheet de xifrats. El MusicXML "
+            "es genera SEMPRE (sense dependències). El PDF i el MSCZ NOMÉS es "
+            "poden fer si tens MuseScore instal·lat (l'app no l'inclou). "
+            "Només en mode BPM · compàs.")
 
         # "Tonalitat automàtica": calcula l'armadura (fifths) amb el
         # qm-keydetector abans de generar la partitura. Opcional i per defecte
@@ -452,7 +454,10 @@ class Finestra(QMainWindow):
         self._act(m, "Obre WAV…", "Ctrl+O", self.tria_wav)
         m.addSeparator()
         self._act(m, "Exporta…", "Ctrl+E", self.exporta)
-        self._act(m, "Exporta la partitura…", "", self.exporta_partitura_ara)
+        a_part = self._act(m, "Exporta la partitura…", "",
+                           self.exporta_partitura_ara)
+        a_part.setStatusTip("Genera la partitura (xifrat). El MusicXML sempre; "
+                            "el PDF i el MSCZ NOMÉS si hi ha MuseScore instal·lat.")
         m.addAction(self.amb_part)      # Inclou la partitura (commutable)
         m.addAction(self.tonalitat_auto)  # Tonalitat automàtica (commutable)
         self._act(m, "Obre la carpeta de sortida", "", self.obre_carpeta)
@@ -1325,12 +1330,15 @@ class Finestra(QMainWindow):
                 tempo_fix=self.tempo_fix.isChecked(),
                 amb_estructura=amb_estructura,
             )
+            res_part = None
             if self.amb_part.isChecked():
-                self._exporta_partitura()
+                res_part = self._exporta_partitura()
             self.registra("Exportació feta ✅")
-            QMessageBox.information(
-                self, "Auto Chords",
-                f"Exportació feta a:\n{self.sortida}")
+            msg = f"Exportació feta a:\n{self.sortida}"
+            if res_part is not None and not res_part.get("pdf"):
+                msg += ("\n\n⚠️ La partitura s'ha generat NOMÉS en MusicXML: el "
+                        "PDF necessita MuseScore instal·lat.")
+            QMessageBox.information(self, "Auto Chords", msg)
             self.obre_carpeta()
         except Exception as e:  # noqa: BLE001
             self.registra(f"exporta ERROR: {e}")
@@ -1369,6 +1377,27 @@ class Finestra(QMainWindow):
             self.registra(f"partitura ERROR: {e}")
             return None
 
+    def _missatge_partitura(self, res):
+        """Text clar de què s'ha generat a la partitura, deixant palès que el
+        PDF i el MSCZ depenen de **MuseScore** instal·lat (l'app no l'inclou)."""
+        fets = ["MusicXML"]
+        if res.get("pdf"):
+            fets.append("PDF")
+        if res.get("mscz"):
+            fets.append("MSCZ")
+        linies = ["S'ha generat: " + " + ".join(fets) + " ✓"]
+        for clau, etiqueta in (("musicxml", "MusicXML"), ("pdf", "PDF"),
+                               ("mscz", "MSCZ")):
+            if res.get(clau):
+                linies.append(f"{etiqueta}: {res[clau]}")
+        if not res.get("pdf"):
+            linies += ["",
+                       "⚠️ El PDF (i el MSCZ) NO s'han generat: la partitura en "
+                       "PDF necessita MuseScore instal·lat.",
+                       "Pots obrir el MusicXML amb el MuseScore que tinguis, o "
+                       "instal·lar-lo (o definir la variable AUTO_CHORDS_MUSESCORE)."]
+        return "\n".join(linies)
+
     def exporta_partitura_ara(self):
         """Accio de menu: genera NOMES la partitura de la sortida actual."""
         if not self.sortida:
@@ -1383,9 +1412,8 @@ class Finestra(QMainWindow):
                 "Cal haver exportat abans, en mode BPM · compàs "
                 "(hi ha d'haver acords_locators.txt). Detall al log.")
             return
-        ruta = res.get("musicxml") or res.get("pdf") or self.sortida
         QMessageBox.information(self, "Auto Chords",
-                                f"Partitura generada:\n{ruta}")
+                                self._missatge_partitura(res))
         self.obre_carpeta()
 
     def obre_carpeta(self):
