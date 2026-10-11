@@ -5,6 +5,8 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-10-11 (BETA)
+
 ### Corregit
 - **macOS: l'app petava en aturar/canviar** (`EXC_BAD_ACCESS` a
   `AudioToolbox`/`Pa_CloseStream`). El motor natiu podia tancar el **mateix
@@ -13,6 +15,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   aturar/seek) → disposar un component CoreAudio ja disposat. `MotorStream` ara
   té el teardown **idempotent i serialitzat** (flag `_tancat` + `threading.Lock`)
   i escriu en **trossos curts** perquè `atura` respongui de pressa.
+- **MuseScore no es trobava a macOS ni a Windows** (`musescore_bin`): només
+  mirava el `PATH` i AppImages de Linux, i usava `os.popen("command -v …")` (que
+  a Windows **no existeix**) → el PDF/MSCZ no es generaven mai fora de Linux. Ara
+  fa servir `shutil.which` + rutes de **macOS** (`/Applications/MuseScore*.app`)
+  i **Windows** (`Program Files\MuseScore *`).
 
 ### Canviat
 - **Tests per caçar bugs ABANS de compilar**: nova bateria

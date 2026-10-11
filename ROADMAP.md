@@ -76,7 +76,7 @@ Això ens permet estar oberts a:
 - 🔒 **Sense secrets** al repo (`.secrets/` ignorat per `.gitignore`).
 - 🐧 **Linux** prioritari (AppImage) i, com a producte, **multi-SO**: Windows x64 + macOS 10.13+.
 
-## Estat actual (2026-10-10 · v0.6.0)
+## Estat actual (2026-10-11 · v0.6.1)
 
 El projecte ja ha passat de prototip funcional a flux de producte útil:
 
@@ -94,8 +94,11 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
 - bloqueig de doble instància per evitar sobreposició d’aplicacions
 - **auditoria de seguretat/estabilitat aplicada**: clamp de temps, tipus d’excepció específics, `_proc_lock`, `safe_filename`, parser CSV robust, validació WAV (sr/ch > 0)
 
-**Novetats v0.3.0–v0.6.0 (2026-10-10):**
+**Novetats v0.3.0–v0.6.1 (2026-10-11):**
 
+- **Estabilitat (v0.6.1)**: arreglat un **crash de macOS** (doble tancament
+  del motor d'àudio) + **MuseScore** trobat també a **macOS/Windows**; i els 3
+  CI ara corren **tota** la suite.
 - **Embalatge i àudio (v0.6.0)**: **DMG de macOS** (a més del ZIP) i **motor
   d'àudio natiu** a macOS/Windows (`sounddevice`/PortAudio → **CoreAudio** i
   **WASAPI**; **Linux intacte**). CI de macOS amb **smoke test** de l'`.app` i
