@@ -3,12 +3,14 @@
 > AUTO CHORDS és **GPL-3.0-or-later** (vegeu `LICENSE`). Els components de
 > tercers que **distribuïm** (dins el repositori o dins l'AppImage) i les
 > seves llicències són els següents. Totes són **compatibles** amb la GPLv3.
-> Última revisió: **2026-10-07**.
+> Última revisió: **2026-10-11**.
 
 ## Resum
 
 | Component | Llicència | On va | Enllaç |
 |-----------|-----------|-------|--------|
+| **sounddevice / PortAudio** (àudio macOS/Windows) | **MIT** | Paquets macOS/Windows (`app/audio_out.py`) | https://python-sounddevice.readthedocs.io |
+| **CFFI** (dependència de sounddevice) | **MIT** | Paquets macOS/Windows | https://cffi.readthedocs.io |
 | **Lucide** (icones de la UI) | **ISC** + **MIT** (les derivades de Feather) | `icones/` (repo + AppImage) | https://lucide.dev |
 | **Chordino / NNLS-Chroma** (Matthias Mauch, C4DM) | **GPL-2.0+** | `nnls-chroma-linux64-local/` | https://code.soundsoftware.ac.uk/projects/nnls-chroma |
 | **QM Vamp Plugins** (Queen Mary) | **GPL-2.0+** | `qm-vamp-plugins-linux64-local/` | https://github.com/c4dm/qm-vamp-plugins |

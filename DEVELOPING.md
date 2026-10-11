@@ -14,10 +14,10 @@ Tot en català. Llicència: GPLv3 (vegeu `LICENSE`).
   (v0.5): l'estructura la fa el `qm-segmenter` i el BPM el `tempo.py`/`qm`.
 - **`ffmpeg`** — opcional, només per importar formats que no siguin WAV
   (`app/ffmpeg.py`); s'embega a `portable/bin/ffmpeg` (fase 3).
-- **Àudio**: cal **PipeWire** o **PulseAudio** per ESCOLTAR (reproductor
-  `paplay`, o `aplay` d'ALSA de reserva). Sense cap dels dos, l'app
-  **funciona igual** (analitzar, editar, exportar); només avisa que no es pot
-  escoltar (`Visor._tria_player`).
+- **Àudio**: a Linux cal **PipeWire** o **PulseAudio** per ESCOLTAR (reproductor
+  `paplay`, o `aplay` d'ALSA de reserva). A macOS i Windows l'app reprodueix
+  directament dins el procés mitjançant el motor natiu d'àudio (`app/audio_out.py`
+  sobre PortAudio / `sounddevice` — CoreAudio a macOS i WASAPI a Windows).
 
 ## Entorn aïllat (Ubuntu, sense sudo)
 
@@ -44,7 +44,7 @@ aquest filtre o mor al SIGILL / violació de segment.
 | PyQt5 + QtSvg | ✅ fem servir | Rodes amb Qt5; Qt6-GUI/PySide6 demana SSE4.2 |
 | `paplay --raw` (libpulse → PipeWire) | ✅ fem servir | Camí natiu Ubuntu 24 amb mescla; `aplay` (ALSA directe) només de reserva |
 | `QAudioOutput` QtMultimedia | ❌ aparcat | Les rodes SÍ porten plugins (`libqtaudio_alsa.so`); el segfault era format/QBuffer, però `paplay` té stderr visible i zero acoblament Qt — no es reobre sense motiu |
-| `sounddevice` (PortAudio) | ❌ innecessari | `libportaudio.so.2` hi és, però afegiria dependència pip+sistema sense guanyar res |
+| `sounddevice` (PortAudio) | ✅ fem servir a macOS/Win | Motor natiu d'àudio (`app/audio_out.py`) per a CoreAudio (macOS) i WASAPI/MME (Windows). A Linux es manté `paplay`. |
 | Chordino + QM (`qm-segmenter`…) via **host propi** | ✅ fem servir | Vegeu `docs/QM_VAMP.md`; el `sonic-annotator` queda com a reserva |
 | **`qm-vamp-plugins`** (Queen Mary) | ✅ fem servir | Compilats del codi font amb `-msse -msse2` (**sense AVX**); `docs/QM_VAMP.md` |
 | **`ffmpeg`/`ffprobe`** del sistema | ✅ fem servir | Import d'altres formats → WAV PCM16; no cal per WAV |
@@ -219,8 +219,14 @@ La nostra feina és construir i integrar, però no és “des de zero” en el s
 |-------|-----------------|
 | `main.py` | finestra principal, menús, barres, diàleg de flux, `Finestra` |
 | `visor.py` | visor (timeline + llistes + Editor + transport), `Visor` |
-| `timeline.py` | regle, graella, carrils i clips (`QGraphicsView`) |
+| `timeline.py` | orquestrador del timeline i re-exportacions publics |
+| `timeline_base.py` | vista base i escena de QGraphicsView (`TimelineView`, `TimelineScene`) |
+| `timeline_items.py` | clips d'acords i seccions (`ChordItem`, `SectionItem`) |
+| `timeline_layers.py` | capes visuals del regle, graella i forma d'ona (`RulerLayer`, `GridLayer`, `WaveformLayer`) |
 | `pipeline.py` | extracció (Chordino, QM), export, normalització, TTL |
+| `audio_out.py` | motor d'àudio natiu (PortAudio / sounddevice / CoreAudio / WASAPI) |
+| `plataforma.py` | abstracció multi-SO (Linux / Windows / macOS) |
+| `config.py` | configuració centralitzada de la aplicació |
 | `tempo.py` | detecció de BPM (numpy pur, prior de plateau) — `docs/` |
 | `vamp_params.py` | paràmetres dels plugins Vamp (descriptors `.n3`) |
 | `dialegs.py` | diàleg d'opcions d'autodetecció |

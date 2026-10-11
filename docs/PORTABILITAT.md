@@ -12,7 +12,7 @@
 
 ---
 
-## 0. Estat actual (2026-10-09 · v0.5.2): **AUTOPORTABLE** ✅
+## 0. Estat actual (2026-10-11 · v0.6.1): **AUTOPORTABLE** ✅
 
 **Què va DINS el paquet/AppImage** (res a instal·lar al host):
 
@@ -55,7 +55,7 @@
 **Verificació feta** (2026-10-07): dins un *namespace* de muntatge amb les **9
 llibreries del sistema amagades** (`/dev/null` a sobre) i només `portable/lib`
 disponible, `vamp_host_local` extreu acords (Chordino, 82 línies) i estructura
-(`qm-segmenter`); l'app arrenca i passen **173/173 tests**.
+(`qm-segmenter`); l'app arrenca i passen **252 tests**.
 
 ---
 

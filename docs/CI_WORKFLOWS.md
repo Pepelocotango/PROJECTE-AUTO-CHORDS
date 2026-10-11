@@ -1,6 +1,6 @@
 # CI — els workflows de GitHub Actions
 
-> **2026-10-09 · v0.5.2.** Com funcionen els **5 workflows** de `.github/workflows/`.
+> **2026-10-11 · v0.6.1.** Com funcionen els **5 workflows** de `.github/workflows/`.
 >
 > **Tots són d'execució MANUAL** (`workflow_dispatch`): cap s'activa sol (ni amb
 > tags, ni amb push). Els llances des de GitHub ▸ **Actions** ▸ tries el workflow
@@ -24,7 +24,7 @@
 
 Cada un construeix el paquet del seu SO i el deixa com a **artefacte**. Tots tres
 comparteixen l'esquelet: checkout → entorn → compilar els natius Vamp → Python
-portable/roda → **tests** → empaquetar → **pujar l'artefacte** → (si falla) pujar
+portable/roda → **tests (suite completa: `python -m unittest discover -s tests`)** → empaquetar → **pujar l'artefacte** → (si falla) pujar
 els logs de debug.
 
 - **`build-appimage.yml`** — runner **`ubuntu-22.04`** (marca la glibc mínima de

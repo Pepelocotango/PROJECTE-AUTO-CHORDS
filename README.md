@@ -8,21 +8,16 @@
 > **Repositori:** https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
 > (les versions publicades, com l'**AppImage**, són a *Releases*).
 
-> **Novetats v0.5.2 (BETA):** **edició DAW-like completa al visor**
-> (multi-selecció, copiar/retallar/enganxar, duplicar i **moure** el grup,
-> indicador de MODE i **loop A/B amb snap**) i **partició interna** del
-> timeline en 4 mòduls. **v0.5.1:** **multi-SO** — a més de l'**AppImage de Linux**,
-> el CI construeix i empaqueta **Windows x64** i **macOS 10.13+** (host i
-> plugins compilats al runner; `qm-vamp-plugins` des de font). **AppImage
-> autocontinguda** (un sol fitxer executable) i **GitHub Actions** (builds
-> manuals + Release en tag). **Icones professionals** (Lucide). **Compàs 1
-> automàtic** (`🧭`, Queen Mary) i **motors d'autodetecció triables** (BPM:
-> nostre/qm/**consens**; estructura: **qm-segmenter**). `qm-vamp-plugins`
-> (sense AVX) i **coherència del play**. De v0.3.0: tap tempo
-> (`TAP`/`T`), botó **📍**, **×2/÷2**, diàleg d'opcions, **import ffmpeg** i
-> franja **Editor**.
+> **Novetats v0.6.1 (BETA):** **estabilitat d'àudio a macOS** (teardown idempotent
+> i serialitzat a `audio_out.py` que evita crashes `EXC_BAD_ACCESS`),
+> **suport de MuseScore a macOS i Windows** per a exportació de partitures en PDF/MSCZ,
+> i **suite completa de tests (252 tests)** executant-se als 3 workflows del CI.
+> **v0.6.0:** **motor d'àudio natiu multi-SO** (`sounddevice`/PortAudio sobre CoreAudio
+> a macOS i WASAPI a Windows), **generació de DMG a macOS**, **smoke test** de l'`.app`
+> i **verificació exhaustiva de `minos`** (≤ 10.13). **v0.5.2:** **edició DAW-like completa**
+> (multi-selecció, copiar/retallar/enganxar, duplicar i moure grup) i refactorització del timeline.
 
-## Estat actual (2026-10-09 · v0.5.2 BETA)
+## Estat actual (2026-10-11 · v0.6.1 BETA)
 
 L’app està **reorganitzada amb el timeline com a centre de la finestra**
 (estil Audacity/DAW): l’anàlisi és una **acció** sobre el que es veu, no un
@@ -53,7 +48,7 @@ pas d’assistent.
   estructura (clic per saltar, doble-clic per editar, menú contextual).
 - Compassos de **qualsevol mètrica** (3/4, 6/8, 5/4…), no només 4/4.
 
-La funcionalitat principal està validada: **231 tests · OK (1 skip)** (`python -m unittest tests.test_pipeline_export tests.test_partitura`).
+La funcionalitat principal està validada: **252 tests · OK (1 skip)** (`python -m unittest discover -s tests`).
 
 ## Què fa l’app
 
@@ -128,13 +123,20 @@ També hi ha llançador de desktop:
 
 - `app/main.py` — finestra principal i flux d’usuari
 - `app/visor.py` — visor integrat, llistes, navegació, edició manual
-- `app/timeline.py` — regle, graella, carrils i clips (QGraphicsView)
+- `app/timeline.py` — orquestrador del timeline i re-exportacions
+- `app/timeline_base.py` — vista base i escena de QGraphicsView
+- `app/timeline_items.py` — clips d'acords i seccions (items gràfics)
+- `app/timeline_layers.py` — capes de regle, graella i forma d'ona
 - `app/pipeline.py` — extracció, exportació, normalització
+- `app/audio_out.py` — motor d'àudio natiu (PortAudio / sounddevice / CoreAudio / WASAPI)
+- `app/plataforma.py` — abstracció multi-SO (Linux / Windows / macOS)
+- `app/config.py` — configuració centralitzada de la aplicació
 - `app/tempo.py` — detecció de BPM (numpy, sense AVX)
 - `app/metronom.py` — clic del metrònom mesclat al buffer
 - `app/vamp_params.py` — paràmetres dels plugins Vamp (descriptors `.n3`)
 - `app/dialegs.py` — diàleg d’opcions d’autodetecció
 - `app/postproc.py` — neteja posterior dels acords
+- `app/partitura.py` — export de partitura (MusicXML / PDF / MSCZ)
 - `app/ffmpeg.py` — import d’altres formats (conversió a WAV)
 - `app/theme.py` — tema centralitzat
 - `eines/vamp_host.cpp` — **host Vamp propi** (`vamp_host_local`), sense Qt6
