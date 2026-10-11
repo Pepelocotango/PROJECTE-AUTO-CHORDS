@@ -5,6 +5,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+### Corregit
+- **AVÍS confús en arrencar l'app congelada** (`AVÍS: no trobo …/OLD/
+  sonic-annotator`): l'autocomprovació d'inici buscava la **reserva llegat**
+  `OLD/sonic-annotator`, que **no s'empaqueta mai** (l'app fa servir
+  `vamp_host_local`). Ja no s'avisa d'aquell fitxer (es manté com a *fallback*
+  intern a `pipeline.py`).
+
 ## [0.6.1] — 2026-10-11 (BETA)
 
 ### Corregit

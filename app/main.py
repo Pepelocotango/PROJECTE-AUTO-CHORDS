@@ -406,8 +406,11 @@ class Finestra(QMainWindow):
         self._sc_tap = QShortcut(QKeySequence(Qt.Key_T), self)
         self._sc_tap.activated.connect(self._tap_tempo)
         self._crea_menus()
-        for p in (pipeline.SONIC, pipeline.ACORDS_PY,
-                  *pipeline.VAMP_DIRS):
+        # Autocomprovació dels fitxers que l'app NECESSITA per analitzar. NO hi
+        # posem `pipeline.SONIC` (`OLD/sonic-annotator`): és una **reserva
+        # llegat** que no s'empaqueta mai (l'app fa servir `vamp_host_local`), i
+        # avisar-ne confonia en arrencar l'app congelada (mac/win/AppImage).
+        for p in (pipeline.ACORDS_PY, *pipeline.VAMP_DIRS):
             if not os.path.exists(p):
                 self.registra(f"AVÍS: no trobo {p}")
 
