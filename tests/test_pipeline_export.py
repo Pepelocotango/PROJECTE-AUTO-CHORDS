@@ -3122,6 +3122,16 @@ class BotonsExportTests(unittest.TestCase):
         # el tooltip de la partitura ha d'esmentar MuseScore
         self.assertIn("MuseScore", w.b_export_part.toolTip())
 
+    def test_transport_te_zoom_seleccio(self):
+        """El transport de la finestra ha de tenir el botó de zoom a la selecció
+        (el del visor s'amaga quan va incrustat)."""
+        self._app = app_main.QApplication.instance() or app_main.QApplication([])
+        w = app_main.Finestra()
+        tips = [b.toolTip() for b in
+                w.barra_transport.findChildren(app_main.QPushButton)]
+        self.assertTrue(any("selecci" in t.lower() for t in tips),
+                        "falta el botó de zoom a la selecció al transport")
+
 
 class ZoomSeleccioTests(unittest.TestCase):
     """`rang_seleccio()` del timeline (base del «zoom a la selecció»)."""

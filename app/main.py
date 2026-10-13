@@ -1182,6 +1182,8 @@ class Finestra(QMainWindow):
              icona="zoom-in")
         boto("Tot", "Zoom total (veure-ho tot)",
              lambda: self._acc_visor("zoom_tot"), icona="maximize")
+        boto("", "Zoom a la selecció (ajusta la vista als clips seleccionats)",
+             lambda: self._acc_visor("zoom_seleccio"), icona="focus")
         self.tb_mut = boto("🔇", "Silencia / reactiva el so",
                            lambda: None, checkable=True, icona="volume-x")
         self.tb_mut.setObjectName("mute")
