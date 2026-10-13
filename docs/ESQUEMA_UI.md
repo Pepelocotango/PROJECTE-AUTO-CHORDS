@@ -161,7 +161,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 
 > 🥁 **El transport principal** (`b_play`, `b_stop`, `b_menys`, `b_mes`, `b_A`,
 > `b_B`, `b_loop`, `b_zm`, `b_zp`, `b_zt`, `b_zs`, `b_mut`, `b_metro`, `vol_metro`)
-> viu a la **barra 2 de la finestra**. Quan el visor va incrustat, la seva fila
+> viu a la **barra de Transport** de la finestra (3a fila). Quan el visor va incrustat, la seva fila
 > interna s'amaga; el visor **standalone** encara la té.
 > El visor emet **`playStateChanged(bool)`** perquè la barra de fora actualitzi
 > la icona **▶ / ⏸**.
