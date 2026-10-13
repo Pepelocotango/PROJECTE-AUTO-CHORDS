@@ -4,19 +4,14 @@
 # demanaria SSE4.2 i faria SIGILL al Q9400).
 set -e
 cd "$(dirname "$0")/.."
-PYV="3.12.15"
-TAG="20261003"
-# URL FIXADA per release (NO `releases/latest/download`): `latest` es mou a cada
-# release nova i, com que el fitxer va fixat per versio+tag, la baixada faria
-# 404 en una compilacio futura. Amb el tag explicit es sempre el mateix fitxer.
-URL="https://github.com/astral-sh/python-build-standalone/releases/download/${TAG}"
-FILE="cpython-${PYV}%2B${TAG}-x86_64-unknown-linux-gnu-install_only.tar.gz"
+# Versions fixades del projecte (URL + versió + SHA256 de cada baixada).
+. eines/deps_fixades.env
 
 mkdir -p portable
-echo "Baixant el CPython portable..."
-# --retry: el CDN de GitHub pot fer una fallada transitòria.
-curl -sfL --retry 5 --retry-delay 3 --retry-all-errors -o /tmp/pyport.tar.gz "$URL/$FILE" || {
-    echo "ERROR: no he pogut baixar el CPython portable ($URL/$FILE)" >&2; exit 1; }
+echo "Baixant el CPython portable ${PYBS_PYV} (tag ${PYBS_TAG}, verificat)..."
+# Baixada VERIFICADA amb SHA256 (eines/baixa_verificat.py): si el hash no
+# quadra, peta i NO deixa cap fitxer a mitges.
+python3 eines/baixa_verificat.py "$PYBS_URL" "$PYBS_SHA256" /tmp/pyport.tar.gz
 tar xzf /tmp/pyport.tar.gz -C portable/
 PY=./portable/python/bin/python3
 echo "Instal·lant PyQt5 + numpy<2..."
@@ -27,11 +22,8 @@ $PY -m pip uninstall -y pip setuptools 2>/dev/null || true
 Q=portable/python/lib/python3.12/site-packages/PyQt5/Qt5
 for d in qml translations qsci; do [ -d "$Q/$d" ] && gio trash "$Q/$d" || true; done
 find portable -name "__pycache__" -type d -exec gio trash {} \; 2>/dev/null || true
-echo "Baixant ffmpeg estàtic (johnvansickle: ~40 MB comprimit)..."
-# johnvansickle és un servidor únic i de vegades va lent/falla: reintents.
-curl -sfL --retry 6 --retry-delay 5 --retry-all-errors -o /tmp/ff.tar.xz \
-  "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" || {
-    echo "ERROR: no he pogut baixar ffmpeg" >&2; exit 1; }
+echo "Baixant ffmpeg estàtic ${FFMPEG_LINUX_VER} (johnvansickle, verificat)..."
+python3 eines/baixa_verificat.py "$FFMPEG_LINUX_URL" "$FFMPEG_LINUX_SHA256" /tmp/ff.tar.xz
 tar xJf /tmp/ff.tar.xz -C /tmp/
 FFDIR=$(ls -d /tmp/ffmpeg-*-amd64-static | head -1)
 mkdir -p portable/bin

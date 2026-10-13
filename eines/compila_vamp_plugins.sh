@@ -27,6 +27,21 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
 
+# Versions fixades del projecte (el COMMIT dels repos que es compilen).
+. eines/deps_fixades.env
+
+# Baixa el codi font d'un repo FIXANT el commit, i el VERIFICA amb rev-parse.
+clona_commit() {   # $1=URL  $2=commit  $3=desti
+    git clone -q "$1" "$3"
+    git -C "$3" checkout -q "$2"
+    local got
+    got="$(git -C "$3" rev-parse HEAD)"
+    if [ "$got" != "$2" ]; then
+        echo "ERROR: $3: commit $got != fixat $2" >&2
+        return 1
+    fi
+}
+
 # ===========================================================================
 #  BRANCA WINDOWS (MSYS2 / MINGW64)
 # ===========================================================================
@@ -102,13 +117,13 @@ compila_windows() {
     echo "== [2/3] qm-vamp-plugins win64 (des de font) =="
     (
         cd "$WORK"
-        curl -sL --retry 3 -o qm.tar.gz \
-            https://github.com/c4dm/qm-vamp-plugins/archive/refs/heads/master.tar.gz
+        curl -sfL --proto '=https' --tlsv1.2 -o qm.tar.gz \
+            "https://github.com/c4dm/qm-vamp-plugins/archive/${QM_VAMP_PLUGINS_COMMIT}.tar.gz"
         tar xzf qm.tar.gz
-        cd qm-vamp-plugins-master
+        cd "qm-vamp-plugins-${QM_VAMP_PLUGINS_COMMIT}"
         mkdir -p lib
-        git clone --depth 1 -q https://github.com/c4dm/qm-dsp lib/qm-dsp
-        git clone --depth 1 -q https://github.com/c4dm/vamp-plugin-sdk lib/vamp-plugin-sdk
+        clona_commit https://github.com/c4dm/qm-dsp "$QM_DSP_COMMIT" lib/qm-dsp
+        clona_commit https://github.com/c4dm/vamp-plugin-sdk "$VAMP_PLUGIN_SDK_COMMIT" lib/vamp-plugin-sdk
         # -D_USE_MATH_DEFINES: el Makefile compila amb -std=c++98 (ANSI
         # estricte) i a MinGW M_PI no es defineix -> error a
         # base/KaiserWindow.h:76. El passem via CXX/CC (sobreescriu el `?=` del
@@ -240,13 +255,13 @@ compila_macos() {
     OSXARCH="-mmacosx-version-min=$DEP -arch $ARCH -stdlib=libc++"
     (
         cd "$WORK"
-        curl -sL --retry 3 -o qm.tar.gz \
-            https://github.com/c4dm/qm-vamp-plugins/archive/refs/heads/master.tar.gz
+        curl -sfL --proto '=https' --tlsv1.2 -o qm.tar.gz \
+            "https://github.com/c4dm/qm-vamp-plugins/archive/${QM_VAMP_PLUGINS_COMMIT}.tar.gz"
         tar xzf qm.tar.gz
-        cd qm-vamp-plugins-master
+        cd "qm-vamp-plugins-${QM_VAMP_PLUGINS_COMMIT}"
         mkdir -p lib
-        git clone --depth 1 -q https://github.com/c4dm/qm-dsp lib/qm-dsp
-        git clone --depth 1 -q https://github.com/c4dm/vamp-plugin-sdk lib/vamp-plugin-sdk
+        clona_commit https://github.com/c4dm/qm-dsp "$QM_DSP_COMMIT" lib/qm-dsp
+        clona_commit https://github.com/c4dm/vamp-plugin-sdk "$VAMP_PLUGIN_SDK_COMMIT" lib/vamp-plugin-sdk
         MCXX="clang++ -D_USE_MATH_DEFINES"; MCC="clang -D_USE_MATH_DEFINES"
         make -C lib/qm-dsp -f build/osx/Makefile.osx ARCHFLAGS="$OSXARCH" \
             CXX="$MCXX" CC="$MCC"
@@ -340,10 +355,10 @@ echo "   -> $NNLS_OUT/nnls-chroma.so"
 # ===== 2) qm-vamp-plugins (Queen Mary) =====
 echo "== [2/2] qm-vamp-plugins (Queen Mary) =="
 cd "$WORK"
-curl -sL -o qm.tar.gz \
-    https://github.com/c4dm/qm-vamp-plugins/archive/refs/heads/master.tar.gz
+curl -sfL --proto '=https' --tlsv1.2 -o qm.tar.gz \
+    "https://github.com/c4dm/qm-vamp-plugins/archive/${QM_VAMP_PLUGINS_COMMIT}.tar.gz"
 tar xzf qm.tar.gz
-cd qm-vamp-plugins-master
+cd "qm-vamp-plugins-${QM_VAMP_PLUGINS_COMMIT}"
 mkdir -p lib
 git clone --depth 1 -q https://github.com/c4dm/qm-dsp lib/qm-dsp
 git clone --depth 1 -q https://github.com/c4dm/vamp-plugin-sdk lib/vamp-plugin-sdk

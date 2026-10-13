@@ -4,7 +4,9 @@
 # recoloreixen a app/icones.py.
 set -e
 cd "$(dirname "$0")/.."
-BASE="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons"
+# Versions fixades del projecte (tag de Lucide).
+. eines/deps_fixades.env
+BASE="https://raw.githubusercontent.com/lucide-icons/lucide/${LUCIDE_TAG}/icons"
 mkdir -p icones
 NOMES="play pause square repeat-2 volume-x metronome target map-pin compass \
 audio-lines zoom-in zoom-out rewind fast-forward maximize focus \
@@ -14,7 +16,8 @@ for n in $NOMES; do
     # Baixem a un temporal i NOMES el substituim si ha anat bé: així, si la xarxa
     # falla, es conserva la icona que ja hi havia al repo (abans esborrava el
     # fitxer i deixava el projecte sense icones).
-    if curl -sfL -o "$tmp" "$BASE/$n.svg"; then
+    # `-f` (falla amb errors HTTP) + `--proto '=https'` (mai baixada en clar).
+    if curl -sfL --proto '=https' --tlsv1.2 -o "$tmp" "$BASE/$n.svg"; then
         mv -f "$tmp" "icones/$n.svg"
         echo "  ✓ $n"
     else

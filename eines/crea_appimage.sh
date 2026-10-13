@@ -10,6 +10,8 @@
 set -eo pipefail
 cd "$(dirname "$0")/.."
 PROJ="$PWD"
+# Versions fixades del projecte (URL + SHA256 d'appimagetool).
+. eines/deps_fixades.env
 DESTI="${1:-$PROJ/../AUTO_CHORDS-x86_64.AppImage}"
 
 # --- comprovacions ---
@@ -17,13 +19,13 @@ DESTI="${1:-$PROJ/../AUTO_CHORDS-x86_64.AppImage}"
 [ -x vamp_host_local ] || { echo "⚠️  falta vamp_host_local -> eines/compila_vamp_host.sh"; exit 1; }
 [ -f icona/auto-chords.png ] || .venv/bin/python eines/crea_icona.py
 
-# --- appimagetool (es baixa un cop) ---
+# --- appimagetool (es baixa un cop, amb VERSIO FIXADA i SHA256 verificat) ---
 TOOL="$PROJ/portable/bin/appimagetool"
 if [ ! -x "$TOOL" ]; then
-    echo "Baixant appimagetool..."
+    echo "Baixant appimagetool ${APPIMAGETOOL_VER} (verificat)..."
     mkdir -p "$PROJ/portable/bin"
-    curl -sfL -o "$TOOL" \
-      "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+    python3 "$PROJ/eines/baixa_verificat.py" "$APPIMAGETOOL_URL" \
+        "$APPIMAGETOOL_SHA256" "$TOOL"
     chmod +x "$TOOL"
 fi
 

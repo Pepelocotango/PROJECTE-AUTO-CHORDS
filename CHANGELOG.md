@@ -49,6 +49,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   tot el que es baixa (CPython portable, ffmpeg de Linux/macOS/Windows,
   appimagetool, icones Lucide) i el **commit** dels repositoris que es
   compilen.
+- **Scripts de build amb baixades VERIFICADES**: `crea_portable.sh`,
+  `crea_appimage.sh`, `baixa_icones.sh` i `compila_vamp_plugins.sh` ja no baixen
+  res directament — fan servir **`eines/baixa_verificat.py`** amb les variables
+  de **`eines/deps_fixades.env`**. Cap URL «mòbil» (`continuous`, `getrelease`,
+  `master`, `-release-`) i tot `curl` amb `-f` i `--proto '=https'`. Els
+  repositoris que es compilen es fixen per **commit** i es verifiquen amb
+  `git rev-parse` (`clona_commit`).
 
 ### Canviat
 - **Les carpetes que genera l'app porten ara un PREFIX**: `AUTOCHORDS_<nom>`
