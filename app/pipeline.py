@@ -871,14 +871,30 @@ def fer_wavs_acords(locators_txt, bpm, dest_dir, sr, log, bpb=4):
 
 
 def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
-                 tempo_fix=True, amb_estructura=True, total_s=None):
-    """Exporta el flux complet a partir dels CSVs ja generats.
+                 tempo_fix=True, amb_estructura=True, total_s=None,
+                 acords=None, seccions=None):
+    """Exporta el flux complet.
+
+    Si es passen `acords`/`seccions` (el **model VIU** del visor), s'usen ELLS
+    per sobre dels CSV del disc: es re-escriuen els CSV (acords + estructura)
+    ja **normalitzats** amb l'invariant de COBERTURA, de manera que l'export
+    **no perd les edicions manuals** (finals de secció, capçalera «N», etc.).
+    Si no es passen, es comporta exactament com abans (llegeix els CSV).
 
     Retorna un diccionari amb les rutes finals (csv + carpetes).
     """
     sortida = os.path.abspath(sortida)
     os.makedirs(sortida, exist_ok=True)
     csv_ac = os.path.abspath(csv_ac)
+    # (A)+(B) Si ens donen el MODEL, mana ell: normalitzem la cobertura i
+    # re-escrivim el CSV d'acords ABANS de comprovar-lo/fer-lo servir.
+    if acords is not None or seccions is not None:
+        acords_n, seccions_n = normalitza_cobertura(
+            acords or [], seccions or [], total_s or 0.0, log=log)
+        if acords is not None:
+            desa_acords_csv(csv_ac, acords_n)
+        if seccions is not None:
+            seccions = seccions_n
     if not os.path.isfile(csv_ac):
         raise FileNotFoundError(f"No trobo acords.csv: {csv_ac}")
 
@@ -907,15 +923,23 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         result["n_acords_wavs"] = fer_wavs_acords_lliures(
             csv_ac, total_s, dest, sr, log)
 
-    if amb_estructura and csv_seg:
-        csv_seg = os.path.abspath(csv_seg)
-        if not os.path.isfile(csv_seg):
-            raise FileNotFoundError(f"No trobo segments.csv: {csv_seg}")
+    if amb_estructura and (seccions is not None or csv_seg):
         abc = os.path.join(sortida, "estructura_ABC.csv")
-        result["segments_csv"] = csv_seg
         result["abc_csv"] = abc
-        fer_abc(csv_seg, abc, bpm, log, lliure=not tempo_fix, bpb=bpb,
-                offset=offset, durada=total_s)
+        if seccions is not None:
+            # (A) Seccions DEL MODEL (edició en viu): NO es reconstrueix l'ABC
+            # des de `segments.csv` (que és el resultat CRU de l'anàlisi), sinó
+            # del model editat → les edicions de seccions no es perden.
+            desa_abc_csv(abc, seccions, bpm, log, lliure=not tempo_fix,
+                         bpb=bpb, offset=offset)
+            result["segments_csv"] = None
+        else:
+            csv_seg = os.path.abspath(csv_seg)
+            if not os.path.isfile(csv_seg):
+                raise FileNotFoundError(f"No trobo segments.csv: {csv_seg}")
+            result["segments_csv"] = csv_seg
+            fer_abc(csv_seg, abc, bpm, log, lliure=not tempo_fix, bpb=bpb,
+                    offset=offset, durada=total_s)
         dest_abc = os.path.join(sortida, "wavs_estructura")
         neteja_wavs(dest_abc)
         result["n_estructura_wavs"] = fer_wavs_estructura(

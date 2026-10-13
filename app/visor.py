@@ -547,16 +547,50 @@ class Visor(QMainWindow):
         self.log(f"acord {t:.2f}s: {vell} → {nou_nom} @ {nou_t:.2f}s "
                  f"(csv + {nwavs} wavs_acords)")
 
+    def _normalitza_cobertura(self):
+        """Aplica l'INVARIANT de COBERTURA (regla d'or #4) al model VIU.
+
+        Els clips (acords I estructura) han de cobrir **tota** la WAV
+        (0 → durada): si el 1r element no arrenca a 0 s'hi afegeix una «N» a 0,
+        i l'última secció s'acota a la durada. (Sense això, eliminar el 1r
+        acord deixava un forat al visor i al CSV.)
+
+        Retorna `True` si el model ha canviat (perquè qui cridi refresqui).
+        """
+        a0 = list(self.acords)
+        s0 = list(self.seccions)
+        self.acords, self.seccions = pipeline.normalitza_cobertura(
+            self.acords, self.seccions,
+            float(self.audio.get("durada", 0.0)), log=self.log)
+        return self.acords != a0 or self.seccions != s0
+
     def _desa_i_regenera(self):
-        """Desa NOMÉS el CSV (l'edició és sobre text).
+        """Desa NOMÉS els CSV (l'edició és sobre text).
 
         Les wavs són l'ÚLTIM pas: es generen explícitament amb `exporta()`
         quan tot està revisat i editat. Mai a cada edició.
+
+        ⚠️ Abans de desar aplica l'**INVARIANT de COBERTURA** (regla d'or #4):
+        així el CSV del disc mai no queda amb forats ni sense la «N» de
+        capçalera, passi el que passi amb l'edició en viu. Si el model ha
+        canviat, refresca el timeline i les llistes perquè el visor hi quadri.
         """
+        if self._normalitza_cobertura():
+            self.timeline.set_data(self.acords, self.seccions)
+            self._omple_llista_ac()
+            self._actualitza_llista_abc()
         sortida = self._carpeta_acords()
         os.makedirs(sortida, exist_ok=True)
         self.csv_acords = os.path.join(sortida, "acords.csv")
         pipeline.desa_acords_csv(self.csv_acords, self.acords)
+        # L'estructura també (així el CSV de seccions del disc queda normalitzat).
+        try:
+            pipeline.desa_abc_csv(os.path.join(sortida, "estructura_ABC.csv"),
+                                  self.seccions, self.bpm, self.log,
+                                  lliure=not self.tempo_fix, bpb=self.bpb,
+                                  offset=getattr(self, "offset", 0.0))
+        except Exception as e:  # noqa: BLE001
+            self.log(f"desat ABC ERROR: {e}")
         self.log(f"desat CSV {self.csv_acords}")
         return 0
 

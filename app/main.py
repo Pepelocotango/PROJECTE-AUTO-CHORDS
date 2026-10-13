@@ -364,6 +364,30 @@ class Finestra(QMainWindow):
         barra_accions.addWidget(self.b_exec)
         barra_accions.addWidget(self.b_export)
         barra_accions.addWidget(self.b_export_part)
+        # Botons afegits (petició de l'operador): obrir la carpeta de sortida
+        # (just després d'exportar) i desfer/refer (d'ús constant).
+        barra_accions.addSeparator()
+        self.b_obre_carpeta = QPushButton("Obre la carpeta de sortida")
+        self.b_obre_carpeta.setObjectName("secundari")
+        self.b_obre_carpeta.setToolTip(
+            "Obre la carpeta on es desen els WAV's exportats")
+        self.b_obre_carpeta.clicked.connect(self.obre_carpeta)
+        barra_accions.addWidget(self.b_obre_carpeta)
+        barra_accions.addSeparator()
+        self.b_desfer = QPushButton()
+        self.b_desfer.setObjectName("secundari")
+        self.b_desfer.setIcon(icones.ico("undo-2", 16))
+        self.b_desfer.setIconSize(icones.pm_mida(16))
+        self.b_desfer.setToolTip("Desfer  (Ctrl+Z)")
+        self.b_desfer.clicked.connect(self._undo_visor)
+        barra_accions.addWidget(self.b_desfer)
+        self.b_refer = QPushButton()
+        self.b_refer.setObjectName("secundari")
+        self.b_refer.setIcon(icones.ico("redo-2", 16))
+        self.b_refer.setIconSize(icones.pm_mida(16))
+        self.b_refer.setToolTip("Refer  (Ctrl+Y)")
+        self.b_refer.clicked.connect(self._redo_visor)
+        barra_accions.addWidget(self.b_refer)
         # `addToolBarBreak` força una FILA NOVA (sense això Qt posa les dues
         # barres en la mateixa línia si hi caben).
         self.addToolBarBreak(Qt.TopToolBarArea)
@@ -1180,6 +1204,9 @@ class Finestra(QMainWindow):
                             lambda: None, checkable=True, icona="repeat-2")
         self.tb_loop.clicked.connect(
             lambda: self._acc_visor("set_loop", self.tb_loop.isChecked()))
+        # Neteja el loop (treu A i B), al costat del botó del loop.
+        self.tb_neteja_loop = boto("", "Neteja el loop (treu A i B)",
+                                   self._neteja_loop, icona="x")
         bar.addSeparator()
         boto("🔍−", "Allunya el zoom", lambda: self._acc_visor("zoom", 2.0),
              icona="zoom-out")
@@ -1381,7 +1408,15 @@ class Finestra(QMainWindow):
                 "Encara no hi ha CSVs generats. Fes 'Executa' primer.")
             return
 
-        amb_estructura = self.amb_est.isChecked() and os.path.isfile(csv_seg)
+        # (A) Si hi ha visor, l'export usa el MODEL VIU (no els CSV del disc):
+        # així no es perden les edicions manuals de seccions (ni la cobertura).
+        vr = getattr(self, "visor_ref", None)
+        acords_model = list(vr.acords) if vr is not None else None
+        seccions_model = list(vr.seccions) if vr is not None else None
+        total_s = (float(vr.audio.get("durada", 0.0))
+                   if vr is not None else None)
+        amb_estructura = self.amb_est.isChecked() and (
+            seccions_model is not None or os.path.isfile(csv_seg))
         try:
             self.registra(f"Exportant a: {self.sortida}")
             pipeline.exporta_total(
@@ -1395,6 +1430,9 @@ class Finestra(QMainWindow):
                 log=self.registra,
                 tempo_fix=self.tempo_fix.isChecked(),
                 amb_estructura=amb_estructura,
+                acords=acords_model,
+                seccions=seccions_model,
+                total_s=total_s,
             )
             res_part = None
             if self.amb_part.isChecked():

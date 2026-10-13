@@ -1007,8 +1007,13 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v, _ = self._make_visor_with_data()
         n_antes = len(v.acords)
         v._elimina_acord_index(0)
-        self.assertEqual(len(v.acords), n_antes - 1)
-        self.assertEqual(len(v.timeline._chord_items), n_antes - 1)
+        # (Regla d'or #4 · cobertura) En eliminar el 1r clip (a 0), la
+        # normalització hi torna a posar la «N» a 0 → el recompte es manté;
+        # el que importa és que el TIMELINE quadri amb el model i arrenqui a 0.
+        self.assertEqual(len(v.timeline._chord_items), len(v.acords))
+        self.assertAlmostEqual(float(v.acords[0][0]), 0.0)
+        self.assertEqual(v.acords[0][1], "N")
+        self.assertLessEqual(len(v.acords), n_antes)      # no creix mai
         v.close()
 
 
