@@ -121,7 +121,7 @@ jobs:
             discover -s tests 2>&1 | tee /tmp/tests.log
 
       - name: "7b. Python 3.12 del runner (per a la cobertura)"
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: '3.12'
 
