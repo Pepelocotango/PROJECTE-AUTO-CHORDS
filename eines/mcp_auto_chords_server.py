@@ -111,7 +111,13 @@ _TOOLS = [
      "`desa: true` també queden guardades. `ac_get_options` les llista.",
      {"opcions": {"type": "object"}, "desa": {"type": "boolean"}}),
     ("ac_export_wav", "export_wav",
-     "Exporta el paquet de WAV's per al DAW (síncrona; pot trigar).", {}),
+     "Exporta el paquet de WAV's per al DAW (síncrona; pot trigar). "
+     "`partitura` (opcional) força si s'hi inclou la partitura, sense canviar "
+     "la marca de l'app.",
+     {"partitura": {"type": "boolean"}}),
+    ("ac_export_partitura", "export_partitura",
+     "Genera la PARTITURA de la sortida actual: MusicXML sempre; PDF i MSCZ "
+     "NOMÉS si hi ha MuseScore instal·lat. No obre cap finestra.", {}),
     ("ac_set_tempo", "set_tempo",
      "Fixa BPM, compàs (bpb) i/o offset (segons) i ho aplica al visor.",
      {"bpm": {"type": "number"}, "bpb": {"type": "integer"},

@@ -544,11 +544,43 @@ def _op_export_wav(ctx, params):
     """
     w = ctx.window
     w.ultim_avis = ""                 # per retornar NOMÉS l'avís d'aquest export
-    w.exporta()
+    # `partitura` (opcional): força que s'hi inclogui (o no) en AQUESTA
+    # exportació, sense canviar la marca de l'app (es restaura sempre).
+    marca = None
+    if params.get("partitura") is not None:
+        marca = w.amb_part.isChecked()
+        w.amb_part.setChecked(bool(params["partitura"]))
+    try:
+        w.exporta()
+    finally:
+        if marca is not None:
+            w.amb_part.setChecked(marca)
     r = {"ok": True, "sortida": getattr(w, "sortida", "") or ""}
     if getattr(w, "ultim_avis", ""):
         r["avis"] = w.ultim_avis
     return r
+
+
+def _op_export_partitura(ctx, params):
+    """Genera la PARTITURA (MusicXML sempre; PDF/MSCZ si hi ha MuseScore).
+
+    Treballa sobre la carpeta de sortida actual i **no obre cap finestra ni
+    carpeta**: retorna els camins generats. Cal haver exportat abans (hi ha
+    d'haver `acords_locators.txt`).
+    """
+    w = ctx.window
+    if not getattr(w, "sortida", ""):
+        raise BridgeError("Cal exportar primer: no hi ha carpeta de resultats.")
+    res = w._exporta_partitura()
+    if not res or res.get("error"):
+        detall = ((res or {}).get("error")
+                  or "cal haver exportat abans, en mode BPM · compàs")
+        raise BridgeError(f"No s'ha pogut generar la partitura: {detall}")
+    return {"ok": True,
+            "musicxml": res.get("musicxml"),
+            "pdf": res.get("pdf"),
+            "mscz": res.get("mscz"),
+            "missatge": w._missatge_partitura(res)}
 
 
 # ── A7: accions de l'app que faltaven al pont ────────────────────────────────
@@ -679,6 +711,7 @@ OPERACIONS = {
     "analyze": _op_analyze,
     "get_options": _op_get_options,
     "export_wav": _op_export_wav,
+    "export_partitura": _op_export_partitura,
     "set_tempo": _op_set_tempo,
 }
 
