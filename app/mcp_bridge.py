@@ -39,6 +39,7 @@ import time
 from PyQt5.QtCore import QObject, QTimer
 
 from . import __version__ as APP_VERSION
+from . import dialegs
 from . import pipeline
 
 logger = logging.getLogger("auto_chords")
@@ -466,13 +467,72 @@ def _op_open_wav(ctx, params):
     return _op_status(ctx, {})
 
 
+def _valida_opcions(noves):
+    """Valida les opcions d'anàlisi que arriben per l'MCP (A6).
+
+    Rebutja seccions o claus que no existeixin: si no, una errada d'escriptura
+    s'ignoraria en silenci i l'agent creuria que ha canviat alguna cosa.
+    """
+    if not isinstance(noves, dict):
+        raise BridgeError("`opcions` ha de ser un diccionari "
+                          "(seccions: chords, bpm, structure, clean).")
+    for seccio, valors in noves.items():
+        if seccio not in dialegs.DEFECTES:
+            raise BridgeError(
+                f"Secció d'opcions desconeguda: {seccio!r} "
+                f"(vàlides: {', '.join(sorted(dialegs.DEFECTES))}).")
+        if not isinstance(valors, dict):
+            raise BridgeError(f"`opcions[{seccio}]` ha de ser un diccionari.")
+        desconegudes = [k for k in valors if k not in dialegs.DEFECTES[seccio]]
+        if desconegudes:
+            raise BridgeError(
+                f"Claus desconegudes a `opcions[{seccio}]`: "
+                f"{', '.join(sorted(desconegudes))} (vàlides: "
+                f"{', '.join(sorted(dialegs.DEFECTES[seccio]))}).")
+    return True
+
+
+def _fusiona_opcions(base, noves):
+    """Fusiona opcions per SECCIONS: només canvia el que s'hi passa."""
+    res = copy.deepcopy(base) if isinstance(base, dict) else {}
+    for seccio, valors in (noves or {}).items():
+        if isinstance(valors, dict) and isinstance(res.get(seccio), dict):
+            res[seccio] = {**res[seccio], **valors}
+        else:
+            res[seccio] = copy.deepcopy(valors)
+    return res
+
+
+def _op_get_options(ctx, params):
+    """Retorna les opcions d'anàlisi ACTUALS i els valors per defecte (A6)."""
+    w = ctx.window
+    return {"opcions": copy.deepcopy(getattr(w, "opcions", {})),
+            "defectes": copy.deepcopy(dialegs.DEFECTES)}
+
+
 def _op_analyze(ctx, params):
-    """Llança l'anàlisi amb les opcions ja desades (sense diàleg)."""
+    """Llança l'anàlisi amb les opcions JA desades (sense diàleg).
+
+    `opcions` (opcional): diccionari per canviar-ne seccions o claus concretes
+    per a AQUESTA anàlisi (p. ex. `{"chords": {"s": 0.5}}`); amb `desa: true`
+    també queden guardades com les opcions de l'app (com si l'usuari hagués
+    acceptat el diàleg). Sense `opcions`, es comporta com abans.
+    """
     w = ctx.window
     if not (w.wav_edit.text().strip() and os.path.isfile(w.wav_edit.text().strip())):
         raise BridgeError("Cal un àudio obert abans d'analitzar.")
+    noves = params.get("opcions")
+    if noves is not None:
+        _valida_opcions(noves)
+        w.opcions = _fusiona_opcions(getattr(w, "opcions", {}), noves)
+        if params.get("desa"):
+            try:
+                dialegs.desa_opcions(w.opcions)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("mcp_bridge: no s'han pogut desar les opcions: %s", e)
     w.executa(pregunta=False)      # asíncron: arrenca la feina en un QThread
     return {"iniciat": True,
+            "opcions": copy.deepcopy(getattr(w, "opcions", {})),
             "missatge": "anàlisi en marxa; consulta ac_status per seguir-ne l'estat"}
 
 
@@ -617,6 +677,7 @@ OPERACIONS = {
     "undo_list": _op_undo_list,
     "open_wav": _op_open_wav,
     "analyze": _op_analyze,
+    "get_options": _op_get_options,
     "export_wav": _op_export_wav,
     "set_tempo": _op_set_tempo,
 }

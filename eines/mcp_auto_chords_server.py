@@ -102,9 +102,14 @@ _TOOLS = [
     ("ac_open_wav", "open_wav",
      "Obre un fitxer d'àudio pel camí absolut (converteix a WAV si cal).",
      {"path": {"type": "string"}}),
+    ("ac_get_options", "get_options",
+     "Retorna les opcions d'anàlisi ACTUALS i els valors per defecte.", {}),
     ("ac_analyze", "analyze",
-     "Llança l'anàlisi (acords+estructura) amb les opcions ja desades, sense "
-     "diàleg. És asíncrona: consulta ac_status per seguir-la.", {}),
+     "Llança l'anàlisi (acords+estructura) sense diàleg. És asíncrona: "
+     "consulta ac_status per seguir-la. `opcions` (opcional) canvia seccions o "
+     "claus per a aquesta anàlisi (chords, bpm, structure, clean); amb "
+     "`desa: true` també queden guardades. `ac_get_options` les llista.",
+     {"opcions": {"type": "object"}, "desa": {"type": "boolean"}}),
     ("ac_export_wav", "export_wav",
      "Exporta el paquet de WAV's per al DAW (síncrona; pot trigar).", {}),
     ("ac_set_tempo", "set_tempo",

@@ -191,7 +191,8 @@ class TestRegistre(unittest.TestCase):
             "add_section", "rename_section", "move_section", "delete_section",
             "undo", "redo", "seek", "play", "pause", "stop",
             "mark_loop_a", "mark_loop_b", "set_loop", "set_mut", "zoom",
-            "undo_list", "open_wav", "analyze", "export_wav", "set_tempo",
+            "undo_list", "open_wav", "analyze", "get_options", "export_wav",
+            "set_tempo",
             # A7: accions de l'app que faltaven al pont.
             "set_metro", "set_key_detect", "detect_downbeat", "mark_downbeat",
             "open_output_folder", "select_clip", "toggle_selection",
