@@ -23,11 +23,9 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(APP_DIR)
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
-import ffmpeg  # noqa: E402
-import partitura  # noqa: E402
-import pipeline  # noqa: E402
-import postproc  # noqa: E402
-import theme  # noqa: E402
+# UN SOL objecte per mòdul (vegeu visor.py): els imports crus creaven objectes
+# diferents dels que veuen la resta de mòduls i els tests.
+from . import ffmpeg, partitura, pipeline, postproc, theme  # noqa: F401
 from . import config  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402

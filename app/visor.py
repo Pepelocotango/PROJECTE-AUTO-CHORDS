@@ -30,9 +30,12 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 import metronom  # noqa: E402
-import pipeline  # noqa: E402
-import theme  # noqa: E402
-import icones  # noqa: E402
+# UN SOL objecte per mòdul: els imports crus (`import pipeline`) creaven un
+# objecte DIFERENT del que veuen main.py i els tests → estat divergent i
+# monkey-patching que no funciona (ho va caçar `test_imports_unificats`).
+# Forma d'execució suportada: `python -m app.visor` (el directe ja demana
+# l'arrel al sys.path per altres imports relatius d'aquest fitxer).
+from . import icones, pipeline, theme  # noqa: F401
 from .timeline import TimelineView  # noqa: E402
 
 # Configuració centralitzada per al directori temporal (configurable)
@@ -1521,10 +1524,25 @@ class Visor(QMainWindow):
         n = (c - 1) * max(1, int(self.bpb)) + (b - 1)
         return max(0.0, n * beat)
 
+    def avis_editor(self, text):
+        """Avís de la franja Editor: al log I a la caixa d'informació.
+
+        MAI en silenci: abans, sis camins de `_aplica_editor` tornaven sense dir
+        res i el botó «Aplica» semblava no fer res (OC-6/394).
+        """
+        self.log(f"editor: {text}")
+        self.infoMissatge.emit(text)
+
     def _aplica_editor(self):
-        """Aplica els canvis de la franja Editor al model (amb undo)."""
+        """Aplica els canvis de la franja Editor al model (amb undo).
+
+        Tots els camins que NO apliquen donen feedback visible (`avis_editor`):
+        un botó que no fa res i no diu per què és un defecte.
+        """
         k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
         if k is None or i < 0:
+            self.avis_editor("Selecciona un acord o una secció (clic al clip) "
+                             "abans d'aplicar.")
             return
         # inici: prioritza el camp de segons; si esta buit, el de compas.beat
         txt = self.ed_ini.text().strip()
@@ -1532,18 +1550,23 @@ class Visor(QMainWindow):
             try:
                 ini = float(txt.replace(",", "."))
             except ValueError:
+                self.avis_editor(f"L'inici «{txt}» no és un número vàlid.")
                 return
         else:
             ini = self._cb_a_secs(self.ed_cb.text())
             if ini is None:
+                self.avis_editor(f"El compàs «{self.ed_cb.text()}» no és vàlid.")
                 return
         nom = self.ed_nom.text().strip()
         if k == "chord":
             if not nom or not (0 <= i < len(self.acords)):
+                self.avis_editor("Cal un nom, i l'acord ha d'existir (potser "
+                                 "l'has esborrat).")
                 return
             # Mateix sanejat que l'alta i l'export (coherència nom CSV ↔ WAV).
             nom = pipeline.saneja_nom_acord(nom)
             if not nom:
+                self.avis_editor("El nom de l'acord no és vàlid.")
                 return
             # Si l'inici NO s'ha tocat, conserva el valor INTERN de precisió
             # completa: l'editor només en mostra 2 decimals i re-escriure'l
@@ -1556,7 +1579,7 @@ class Visor(QMainWindow):
             try:
                 self.acords = self._normalitza_acords(nova)
             except ValueError as e:
-                self.log(f"editor: canvi invalid ({e})")
+                self.avis_editor(f"canvi invalid ({e})")
                 return
             self._undo_commit()
             self.timeline.set_data(self.acords, self.seccions)
@@ -1564,6 +1587,8 @@ class Visor(QMainWindow):
             self.log(f"editor: acord {i} -> {nom} @ {ini:.2f}s")
         else:
             if not (0 <= i < len(self.seccions)):
+                self.avis_editor("Aquesta secció ja no existeix (potser l'has "
+                                 "esborrada).")
                 return
             _ini, fi, _ll, _f = self.seccions[i]
             # (mateix motiu que als acords) si l'inici no s'ha tocat, conserva
@@ -1581,7 +1606,7 @@ class Visor(QMainWindow):
                 nova = self._contiguitat_seccions(nova, i)
                 self.seccions = self._normalitza_seccions(nova)
             except ValueError as e:
-                self.log(f"editor: canvi invalid ({e})")
+                self.avis_editor(f"canvi invalid ({e})")
                 return
             self._undo_commit()
             self.timeline.set_data(self.acords, self.seccions)
