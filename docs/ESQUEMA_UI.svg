@@ -315,6 +315,7 @@
     <tspan x="34" dy="19">Analitza ▸ «Marca el compàs 1 aquí» → posa l'offset on és el cursor vermell.</tspan>
     <tspan x="34" dy="19">Abans de l'offset la graella és NEGATIVA (-3.1 … -1.3) = count-in; el metrònom també el clica.</tspan>
     <tspan x="34" dy="19">Metrònom 🥁: només en BPM·compàs; volum propi; clic mesclat al buffer (no deriva).</tspan>
+    <tspan x="34" dy="19"><tspan font-weight="700" fill="#ffd166">Loop A/B:</tspan> arrossega el regle (①) per crear-ne; les vores de la banda (⑦, ±6 px) mouen A/B; el cos mou el loop sencer.</tspan>
   </text>
 
   <text x="800" y="726" fill="#9aa6b8" font-size="11">Colors a app/theme.py:</text>

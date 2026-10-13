@@ -14,7 +14,7 @@ tipus assistent ni `QDockWidget` del visor.
 
 ## 0. Finestra principal (`Finestra`, `app/main.py`)
 
-Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **amplada mínima 1240 px** (perquè les barres no es tallin mai).
+Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inicial: «**Auto Chords — wav → acords + estructura**») · mida per defecte 1500×900, **amplada mínima 1240 px** (perquè les barres no es tallin mai).
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
@@ -46,7 +46,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 |-----|-----------------|-----------------|-------|
 | ⓪ | `Finestra` | finestra principal | `QMainWindow` |
 | — | `self.offset` · `self.offset_cb` | **dos camps d'offset** (segons · compàs.beat) | `QLineEdit` |
-| — | `self.b_obre` | **Obre…** | `QPushButton` |
+| — | `b_obre` (local) | **Obre…** | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |
 | — | `self.b_export_part` | **Exporta partitura** (MusicXML; PDF/MSCZ si hi ha MuseScore) | `QPushButton` |
@@ -151,7 +151,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 | ④ | `ChordItem` / `self._chord_items` | **carril acords** | `QGraphicsObject` |
 | ⑤ | `GridLayer` / `self._grid` | **graella** | `QGraphicsItem` |
 | ⑥ | `self._cursor` | **cursor vermell** (playhead) | `QGraphicsItem` |
-| ⑦ | `self._loop_item` | **banda de loop** A/B | `QGraphicsRectItem` |
+| ⑦ | `self._loop_item` | **banda de loop** A/B (arrossegable: vores mouen A/B, cos mou el loop sencer) | `QGraphicsRectItem` |
 | ⑧ | `self._snap_guide` | **guia de snap** | `QGraphicsLineItem` |
 | — | `TimelineView` | tot el bloc ①–⑧ | `QGraphicsView` |
 | ⑨ | `self.llista_ac` | **llista d'acords** | `QListWidget` |
@@ -172,7 +172,10 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 
 | Zona on cliques | Acció |
 |-----------------|-------|
-| **Regle ①** | arrossegar → **crea loop A/B** (amb **snap** a la graella) · clic → salta |
+| **Regle ① (zona buida)** | arrossegar → **crea un loop A/B** nou (amb **snap** a la graella) · clic → salta |
+| **Banda loop ⑦ — vora esquerra** | arrossegar → **mou A** (inici) · cursor ↔ · tolerància ±6 px (`LOOP_GRAB_PX`) |
+| **Banda loop ⑦ — vora dreta** | arrossegar → **mou B** (fi) · cursor ↔ |
+| **Banda loop ⑦ — cos** | arrossegar → **mou el loop sencer** (manté la durada) · cursor ✥ |
 | **Cos d'item ③④** | arrossegar → **mou** · `hover` = ✋ mà oberta |
 | **Vora dreta ③④** | arrossegar → **mou el final** · `hover` = ↔ |
 | **Vora esquerra ③④** | arrossegar → **mou l'inici** · `hover` = ↔ |
@@ -221,7 +224,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 
 ---
 
-## 5. Mides i constants (`app/timeline.py`)
+## 5. Mides i constants (`app/timeline_base.py`)
 
 | Constant | Valor | Significat |
 |----------|-------|-----------|
