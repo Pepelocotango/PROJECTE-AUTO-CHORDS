@@ -48,17 +48,18 @@ jobs:
           fi
           echo "inventari al dia ✔"
 
+  # ⚠️ En un job amb `uses:` (workflow reusable) NOMÉS es permeten les claus:
+  # name, uses, with, secrets, strategy, needs, if, concurrency, permissions.
+  # `timeout-minutes` NO hi val → GitHub invalida TOT el fitxer. Els timeouts
+  # viuen DINS de cada build-*.yml (que és on es fan els passos).
   linux:
     name: Linux (AppImage)
     uses: ./.github/workflows/build-appimage.yml
-    timeout-minutes: 60
 
   windows:
     name: Windows (ZIP portable x64)
     uses: ./.github/workflows/build-windows.yml
-    timeout-minutes: 60
 
   macos:
     name: macOS (High Sierra 10.13+)
     uses: ./.github/workflows/build-macos.yml
-    timeout-minutes: 90
