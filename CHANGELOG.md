@@ -56,6 +56,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   `master`, `-release-`) i tot `curl` amb `-f` i `--proto '=https'`. Els
   repositoris que es compilen es fixen per **commit** i es verifiquen amb
   `git rev-parse` (`clona_commit`).
+- **GitHub Actions endurit** (un commit per workflow): totes les accions es
+  fixen per **SHA de commit**, amb la versió en comentari
+  (`checkout@fbc6f399… # v5`, `setup-python@ece7cb06… # v6`,
+  `upload-artifact@b7c566a7… # v6`, `msys2/setup-msys2@ec48f7c5… # v2`);
+  **`permissions: contents: read`** a tots els workflows i **`contents: write`
+  només al job que crea el Release**; **`persist-credentials: false`** a tots
+  els `checkout`. El ffmpeg de **macOS** (evermeet) i el de **Windows** (gyan)
+  passen a URL amb **versió explícita + SHA256** verificat amb
+  `baixa_verificat.py`, i els repositoris que es compilen (libsndfile,
+  vamp-plugin-sdk) es fixen per **commit**.
 
 ### Canviat
 - **Les carpetes que genera l'app porten ara un PREFIX**: `AUTOCHORDS_<nom>`
