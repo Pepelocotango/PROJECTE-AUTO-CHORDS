@@ -1369,6 +1369,11 @@ class Visor(QMainWindow):
         if k == "chord":
             if not nom or not (0 <= i < len(self.acords)):
                 return
+            # Si l'inici NO s'ha tocat, conserva el valor INTERN de precisió
+            # completa: l'editor només en mostra 2 decimals i re-escriure'l
+            # arrodonit podria fer que l'acord "xoqui" amb el veí.
+            if abs(ini - float(self.acords[i][0])) <= 0.005:
+                ini = float(self.acords[i][0])
             self._undo_marca()
             nova = list(self.acords)
             nova[i] = (ini, nom, f"{ini:.9f}")
@@ -1385,6 +1390,11 @@ class Visor(QMainWindow):
             if not (0 <= i < len(self.seccions)):
                 return
             _ini, fi, _ll, _f = self.seccions[i]
+            # (mateix motiu que als acords) si l'inici no s'ha tocat, conserva
+            # la precisió completa -> evita falsos solapaments amb la secció
+            # anterior, que acaba EXACTAMENT aquí.
+            if abs(ini - _ini) <= 0.005:
+                ini = _ini
             lletra = nom or self.seccions[i][2]
             fam = self.ed_fam.text().strip() or self.seccions[i][3]
             self._undo_marca()
