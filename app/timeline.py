@@ -45,9 +45,10 @@ from app import theme      # noqa: E402  (paleta centralitzada)
 # tots els noms per mantenir la compatibilitat (from app.timeline import ...).
 from app.timeline_base import (   # noqa: E402,F401
     CHORD_ACTIVE_FILL, CURSOR_COLOR, GUIDE_COLOR, LANE_ACC_TOP, LANE_BG_A,
-    LANE_BG_B, LANE_H, LANE_SEC_TOP, LEFT_PAD, MIN_GAP_S, MIN_SEC_LEN_S,
-    PIXELS_PER_SECOND_DEFAULT, RIGHT_PAD, RULER_H, SELECTION_COLOR, TOTAL_H,
-    WAVEFORM_H, fmt_pos, grid_levels, snap_time,
+    LANE_BG_B, LANE_H, LANE_SEC_TOP, LEFT_PAD, LOOP_GRAB_PX, MIN_GAP_S,
+    MIN_SEC_LEN_S, PIXELS_PER_SECOND_DEFAULT, RIGHT_PAD, RULER_H,
+    SELECTION_COLOR, TOTAL_H, WAVEFORM_H, fmt_pos, grid_levels,
+    loop_after_drag, snap_time,
 )
 
 
@@ -188,7 +189,13 @@ class TimelineView(QGraphicsView):
         self._loop_item = None     # banda de loop A/B
         self._loop_a = None
         self._loop_b = None
-        self._loop_drag = False
+        self._loop_drag = False    # creant un loop nou (arrossegant el regle)
+        # Manipulació del loop DES DEL REGLE: 'a'/'b' = moure una vora, 'move'
+        # = desplaçar-lo sencer. (La banda del canvas no és interactiva.)
+        self._loop_mode = None
+        self._loop_a0 = None       # A/B de partida de l'arrossegada
+        self._loop_b0 = None
+        self._loop_t0 = None       # temps on va començar (per a 'move')
 
         # escena
         self._scene = QGraphicsScene(self)
@@ -466,6 +473,37 @@ class TimelineView(QGraphicsView):
         self._loop_item.setRect(0, 0, max(1.0, x1 - x0), self._total_h)
         self._loop_item.setPos(x0, 0)
         self._loop_item.setVisible(True)
+
+    def _loop_px(self, t: float) -> float:
+        """Coordenada x d'escena per a un temps (per a la hit-test del loop)."""
+        return self._x_offset + (t - self._view_left) * self._pps
+
+    def _loop_mode_at(self, x: float):
+        """Què farà un clic al regle segons l'x (o None = crear loop nou).
+
+        'a'/'b' = vores (dins de ±LOOP_GRAB_PX) → redimensionar; 'move' = dins
+        del loop → desplaçar-lo; None = fora → començar un loop nou.
+        """
+        if self._loop_a is None or self._loop_b is None:
+            return None
+        xa = self._loop_px(self._loop_a)
+        xb = self._loop_px(self._loop_b)
+        if abs(x - xa) <= LOOP_GRAB_PX:
+            return "a"
+        if abs(x - xb) <= LOOP_GRAB_PX:
+            return "b"
+        if xa < x < xb:
+            return "move"
+        return None
+
+    def _cursor_regle(self, x: float):
+        """Cursor de feedback sobre el regle (vores = ↔, cos = ✥)."""
+        m = self._loop_mode_at(x)
+        if m in ("a", "b"):
+            return Qt.SizeHorCursor
+        if m == "move":
+            return Qt.SizeAllCursor
+        return Qt.ArrowCursor
 
     def _emit_edit_finished(self) -> None:
         """Fi de drag -> amaga la guia i reporta."""
@@ -1065,11 +1103,19 @@ class TimelineView(QGraphicsView):
             # Click al regle (a dalt) -> comença una selecció de loop A/B
             sp = self.mapToScene(event.pos())
             if sp.y() < RULER_H:
-                t = self._loop_x_to_time(sp.x())
-                self._loop_drag = True
-                self._loop_a = t
-                self._loop_b = t
-                self._update_loop_item()
+                # Al regle: vora del loop → redimensionar (A/B); dins → moure'l;
+                # fora → crear-ne un de nou (com sempre).
+                mode = self._loop_mode_at(sp.x())
+                if mode is None:
+                    t = self._loop_x_to_time(sp.x())
+                    self._loop_drag = True
+                    self._loop_a = t
+                    self._loop_b = t
+                    self._update_loop_item()
+                else:
+                    self._loop_mode = mode
+                    self._loop_a0, self._loop_b0 = self._loop_a, self._loop_b
+                    self._loop_t0 = self._loop_x_to_time(sp.x())
                 event.accept()
                 return
             it = self.itemAt(event.pos())
@@ -1123,12 +1169,37 @@ class TimelineView(QGraphicsView):
             self._update_loop_item()
             event.accept()
             return
+        if getattr(self, "_loop_mode", None):
+            # Moure una vora ('a'/'b') o el loop sencer ('move'), amb snap.
+            sp = self.mapToScene(event.pos())
+            t = self._loop_x_to_time(sp.x())
+            self._loop_a, self._loop_b = loop_after_drag(
+                self._loop_mode, t, self._loop_t0, self._loop_a0,
+                self._loop_b0, self._durada)
+            self._update_loop_item()
+            event.accept()
+            return
+        # Feedback de cursor sobre el regle (només si no arrosseguem res).
+        if not (getattr(self, "_loop_drag", False)
+                or getattr(self, "_pan_drag", False)):
+            sp = self.mapToScene(event.pos())
+            self.viewport().setCursor(
+                self._cursor_regle(sp.x()) if sp.y() < RULER_H
+                else Qt.ArrowCursor)
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.RightButton and getattr(self, "_pan_drag", False):
             self._pan_drag = False
             self.viewport().setCursor(Qt.ArrowCursor)
+            event.accept()
+            return
+        if getattr(self, "_loop_mode", None):
+            self._loop_mode = None
+            self._loop_a0 = self._loop_b0 = self._loop_t0 = None
+            if (self._loop_a is not None and self._loop_b is not None
+                    and self._loop_b - self._loop_a > 1e-9):
+                self.loopChanged.emit(self._loop_a, self._loop_b)
             event.accept()
             return
         if getattr(self, "_loop_drag", False):

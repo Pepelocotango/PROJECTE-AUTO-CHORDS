@@ -148,6 +148,38 @@ def grid_positions(view_left, view_right, step, offset=0.0, tol=1e-9):
         t = float(offset) + k * step
 
 
+# Tolerància (en píxels) per agafar les vores del loop A/B al regle.
+LOOP_GRAB_PX = 6.0
+
+
+def loop_after_drag(mode, t, t0, a0, b0, durada, min_len=0.05):
+    """Nou interval (A, B) del loop després d'arrossegar al regle.
+
+    - ``'a'``: mou el costat **A** (l'inici del loop); B no canvia.
+    - ``'b'``: mou el costat **B** (el final); A no canvia.
+    - ``'move'``: desplaça el loop **sencer** (manté la durada).
+
+    ``t`` = temps actual (ja amb snap); ``t0`` = temps on va començar
+    l'arrossegada (només per a ``'move'``). El resultat queda sempre dins de
+    ``[0, durada]`` amb ``A < B`` (separació mínima ``min_len``).
+    """
+    a0 = float(a0)
+    b0 = float(b0)
+    durada = float(durada)
+    if mode == "a":
+        a = max(0.0, min(float(t), b0 - min_len))
+        return (a, b0)
+    if mode == "b":
+        b = min(durada, max(float(t), a0 + min_len))
+        return (a0, b)
+    if mode == "move":
+        length = b0 - a0
+        na = a0 + (float(t) - float(t0))
+        na = max(0.0, min(durada - length, na))
+        return (na, na + length)
+    return (a0, b0)
+
+
 def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
               pps: float, offset: float = 0.0) -> float:
     """Arrodoneix t a la divisió de grid actual (que depèn del zoom, en px).
