@@ -1,0 +1,29 @@
+# Dependabot — manteniment AUTOMÀTIC de dependències.
+# Vegeu docs/AUDITORIA_PRODUCCIO.md (B.1/B.2/D.4).
+#
+# Els workflows del CI són MANUALS (workflow_dispatch), així que una PR de
+# Dependabot NO dispara cap build: després de fusionar-ne una, cal llançar
+# `build-all` a mà per validar-la (vegeu docs/CI_WORKFLOWS.md).
+#
+# Dependabot NOMÉS obre PRs (no toca res sol).
+version: 2
+updates:
+  # Accions de GitHub Actions (estan fixades per SHA → cal mantenir-les al dia).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # Dependències Python (requirements.txt / requirements-build.txt).
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      # ⚠️ El Q9400 NO té AVX/SSE4.2: numpy 2.x demana x86_64-v2 → SIGILL.
+      # numpy DEU quedar-se a 1.26.4 (`tests/test_requirements.py` ho vigila).
+      - dependency-name: "numpy"
+      # PyQt6 tampoc (trencaria High Sierra 10.13).
+      - dependency-name: "PyQt6"

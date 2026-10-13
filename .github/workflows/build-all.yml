@@ -19,15 +19,23 @@ on:
 permissions:
   contents: read
 
+# (A.7/B.4) No solapar agregadors: si se'n llança un mentre corre un altre, espera.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   linux:
     name: Linux (AppImage)
     uses: ./.github/workflows/build-appimage.yml
+    timeout-minutes: 60
 
   windows:
     name: Windows (ZIP portable x64)
     uses: ./.github/workflows/build-windows.yml
+    timeout-minutes: 60
 
   macos:
     name: macOS (High Sierra 10.13+)
     uses: ./.github/workflows/build-macos.yml
+    timeout-minutes: 90

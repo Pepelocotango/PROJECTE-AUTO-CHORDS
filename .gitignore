@@ -86,3 +86,6 @@ OLD/
 # es guarden amb el seu SHA256 com a nom i es reutilitzen entre builds.
 .baixades/
 
+# Carpeta temporal per a agents i usuari: no s'ha de versionar.
+XX TEMP FILES USUARI/
+

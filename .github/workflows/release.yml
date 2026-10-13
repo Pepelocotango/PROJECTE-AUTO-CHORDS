@@ -27,9 +27,15 @@ on:
 permissions:
   contents: read
 
+# (A.7/B.4) Un Release alhora.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     permissions:
       contents: write    # NOMES aquest job crea el Release
       actions: read      # llegir execucions i baixar artefactes
@@ -43,6 +49,8 @@ jobs:
 
       - name: 2. Determinar el tag
         id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ inputs.tag }}"
           if [ -z "$TAG" ]; then
@@ -52,6 +60,15 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "ver=${TAG#v}" >> "$GITHUB_OUTPUT"
           echo "Tag del Release: $TAG"
+          # (A.6) Si el tag/Release JA existeix, avisar ben clar: el flux és
+          # idempotent (s'hi actualitzaran els paquets), però NO hauria de passar
+          # desapercebut que es re-publica una versió existent.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::warning::El Release '$TAG' JA existeix → s'actualitzarà (idempotent). Comprova la versió de pyproject.toml."
+          fi
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::warning::Ja hi ha un TAG '$TAG' al repositori."
+          fi
 
       - name: 3. Detectar i baixar els artefactes VERDS (build-all o builds solts)
         id: art

@@ -23,12 +23,19 @@ on:
 permissions:
   contents: read
 
+# (A.7/B.4) No solapar execucions del mateix workflow: si se'n llança una mentre
+# una altra corre, la nova ESPERA (no es cancel·la res).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-appimage:
     # Ubuntu 22.04 (NO 24.04): marca la glibc MINIMA de l'AppImage, perque
     # aqui s'hi COMPILA `vamp_host_local`. Els altres binaris ja son antics:
     # Python portable 2.17, PyQt5/numpy 2.14-2.17, ffmpeg estatic.
     runs-on: ubuntu-22.04
+    timeout-minutes: 60          # (B.4) límit d'execució
     steps:
       - name: 1. Checkout del codi
         # Les accions es fixen per SHA (amb la versio en comentari): un tag es
@@ -119,6 +126,24 @@ jobs:
           ./eines/crea_appimage.sh "auto-chords-${SANE}-x86_64.AppImage"
           ls -la *.AppImage
 
+      - name: "9b. Smoke test de l'AppImage (headless)"
+        # (A.4) Que l'AppImage ARRENQUI de debò (no només que els imports i els
+        # tests passin): s'extreu (sense FUSE) i s'executa amb AUTO_CHORDS_SMOKE=1
+        # → la finestra es crea i l'app surt sola (vegeu app/main.py). El missatge
+        # «SMOKE: finestra principal creada correctament» va a stderr.
+        run: |
+          set -euo pipefail
+          APP=$(ls auto-chords-*.AppImage | head -1)
+          chmod +x "$APP"
+          ./"$APP" --appimage-extract >/dev/null 2>&1
+          LOG="$(mktemp)"
+          AUTO_CHORDS_SMOKE=1 QT_QPA_PLATFORM=offscreen \
+            timeout 120 ./squashfs-root/AppRun > "$LOG" 2>&1 || true
+          echo "--- sortida del smoke ---"; tail -n 25 "$LOG"
+          grep -q "SMOKE: finestra principal creada correctament" "$LOG" \
+            || { echo "::error::l'AppImage NO ha superat el smoke test"; exit 1; }
+          echo "smoke OK: l'AppImage arrenca"
+
       - name: 10. Empaquetar (tar.gz canònic — AppImage + docs)
         # Estàndard de Linux per a un binari autocontingut: un tarball `.tar.gz`
         # amb l'executable (l'AppImage) + els docs. Nom canònic:
@@ -136,6 +161,12 @@ jobs:
           tar -C paquet -czf "${NOM}.tar.gz" .
           rm -rf paquet
           ls -la "${NOM}.tar.gz"
+          # (A.3) Verificació de CONTINGUT: l'executable + els docs obligatoris.
+          echo "--- contingut del .tar.gz ---"; tar -tzf "${NOM}.tar.gz"
+          for f in "AutoChords-${VER}-x86_64.AppImage" README.md LICENSE; do
+            tar -tzf "${NOM}.tar.gz" | grep -q "/${f}$" \
+              || { echo "::error::falta '${f}' al paquet ${NOM}.tar.gz"; exit 1; }
+          done
           echo "nom=$NOM" >> "$GITHUB_OUTPUT"
 
       - name: 11. Pujar l'artefacte

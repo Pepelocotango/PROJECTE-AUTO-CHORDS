@@ -14,9 +14,11 @@ echo "Baixant el CPython portable ${PYBS_PYV} (tag ${PYBS_TAG}, verificat)..."
 python3 eines/baixa_verificat.py "$PYBS_URL" "$PYBS_SHA256" /tmp/pyport.tar.gz
 tar xzf /tmp/pyport.tar.gz -C portable/
 PY=./portable/python/bin/python3
-echo "Instal·lant PyQt5 + numpy<2..."
-$PY -m pip install --no-cache-dir --quiet "numpy<2" "PyQt5==5.15.11" \
-    "PyQt5-Qt5==5.15.19" "PyQt5_sip"
+echo "Instal·lant dependències (pins de requirements.txt)..."
+# Font ÚNICA de pins: requirements.txt → builds reproduïbles i alineats amb
+# l'inventari. (Abans anaven specs soltes i `PyQt5_sip` sense pin.)
+# Vegeu docs/AUDITORIA_PRODUCCIO.md A.2/D.1.
+$PY -m pip install --no-cache-dir --quiet -r requirements.txt
 echo "Retocant (treure qml/translations/pip: no s'usen)..."
 $PY -m pip uninstall -y pip setuptools 2>/dev/null || true
 Q=portable/python/lib/python3.12/site-packages/PyQt5/Qt5

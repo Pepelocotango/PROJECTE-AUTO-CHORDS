@@ -22,9 +22,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-macos:
     runs-on: macos-15-intel
+    timeout-minutes: 90          # (B.4) compila els natius des de font
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.13"   # el minim real de l'app
       PREFIX: ${{ github.workspace }}/.mac-natius
@@ -77,7 +82,10 @@ jobs:
           # ⚠️ cffi PINNAT: cffi 2.1.x només publica roda macosx_10_15 (minos
           # 10.15) i el runner (macOS 15) l'agafaria → l'app NO arrencaria a High
           # Sierra. La 2.0.0 sí que té roda macosx_10_13. (El pas 6b ho vigila.)
-          pip install "PyQt5==5.15.10" "PyQt5-Qt5==5.15.19" "PyQt5_sip" "numpy<2" "sounddevice" "cffi==2.0.0" pyinstaller
+          # Font ÚNICA de versions: requirements-build.txt (runtime + PyInstaller
+          # fixat). El marcador de PyQt5 fa servir la 5.15.10 a macOS (High
+          # Sierra). Vegeu docs/AUDITORIA_PRODUCCIO.md A.2/D.1.
+          pip install -r requirements-build.txt
           python - <<'PY'
           import PyQt5, numpy, sys
           from PyQt5 import QtCore
