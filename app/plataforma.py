@@ -220,6 +220,12 @@ def bloqueja_instancia_unica(fitxer):
         fitxer.seek(0)
         fitxer.write("0")
         fitxer.flush()
+        # ⚠️ TORNAR a fer seek(0) DESPRÉS d'escriure: `write()` deixa la posició
+        # del fitxer a 1, i `msvcrt.locking(..., 1)` bloqueja el byte a la
+        # POSICIÓ ACTUAL. Sense aquest seek, bloquejaríem l'offset 1 mentre
+        # `desbloqueja()` allibera el 0 → el lock quedaria penjat i una segona
+        # instància no el detectaria (2a instància acceptada per error).
+        fitxer.seek(0)
         try:
             msvcrt.locking(fitxer.fileno(), msvcrt.LK_NBLCK, 1)
             return True

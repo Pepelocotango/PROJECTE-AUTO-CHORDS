@@ -3544,12 +3544,17 @@ class CarpetaSortidaTests(unittest.TestCase):
         self.assertEqual(pipeline.PREFIX_SORTIDA, "AUTOCHORDS_")
 
     def test_nom_derivat(self):
-        self.assertEqual(pipeline.carpeta_sortida("/musica/Tema.wav"),
-                         "/musica/AUTOCHORDS_Tema")
+        # Independents de plataforma: amb `os.path.join` (a Windows ntpath fa
+        # servir '\') en lloc de rutes '/' hardcodejades.
+        wav = os.path.join(os.sep, "musica", "Tema.wav")
+        self.assertEqual(pipeline.carpeta_sortida(wav),
+                         os.path.join(os.sep, "musica", "AUTOCHORDS_Tema"))
 
     def test_al_costat_de_la_wav(self):
-        self.assertEqual(pipeline.carpeta_sortida("/a/b/La meva cançó.mp3"),
-                         "/a/b/AUTOCHORDS_La meva cançó")
+        wav = os.path.join(os.sep, "a", "b", "La meva cançó.mp3")
+        self.assertEqual(pipeline.carpeta_sortida(wav),
+                         os.path.join(os.sep, "a", "b",
+                                      "AUTOCHORDS_La meva cançó"))
 
     def test_sense_directori(self):
         self.assertEqual(pipeline.carpeta_sortida("Tema.wav"),
