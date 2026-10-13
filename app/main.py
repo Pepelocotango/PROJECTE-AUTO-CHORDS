@@ -467,6 +467,22 @@ class Finestra(QMainWindow):
         for p in (pipeline.ACORDS_PY, *pipeline.VAMP_DIRS):
             if not os.path.exists(p):
                 self.registra(f"AVÍS: no trobo {p}")
+        # A9: ffmpeg és imprescindible per OBRIR qualsevol format que no sigui
+        # WAV PCM 16 bits (mp3, flac, m4a, ogg…). Si no hi és, l'obertura
+        # fallaria tard i amb un error críptic → millor saber-ho d'entrada.
+        if not ffmpeg.disponible():
+            self.registra("AVÍS: no trobo ffmpeg — només podré obrir WAV PCM "
+                          "16 bits (mp3/flac/m4a/ogg… no)")
+
+    def _filtre_audio(self):
+        """Filtre del diàleg d'obertura (A9).
+
+        Sense ffmpeg, oferir mp3/flac/m4a/ogg seria enganyós (fallarien en
+        triar-los): en aquest cas el filtre només mostra WAV.
+        """
+        if ffmpeg.disponible():
+            return ffmpeg.filtre()
+        return "WAV PCM (*.wav);;Tots els fitxers (*)"
 
     def _missatge_info(self, text):
         """Mostra un missatge transitori a la caixa d'informacio (no el
@@ -1307,7 +1323,7 @@ class Finestra(QMainWindow):
 
     def tria_wav(self):
         ruta, _ = QFileDialog.getOpenFileName(
-            self, "Tria un àudio", "", ffmpeg.filtre())
+            self, "Tria un àudio", "", self._filtre_audio())
         if not ruta:
             return
         self.wav_original = ""

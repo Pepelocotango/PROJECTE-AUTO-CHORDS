@@ -111,6 +111,30 @@ _TOOLS = [
      "Fixa BPM, compàs (bpb) i/o offset (segons) i ho aplica al visor.",
      {"bpm": {"type": "number"}, "bpb": {"type": "integer"},
       "offset_s": {"type": "number"}}),
+    # A7: accions de l'app que faltaven al pont.
+    ("ac_set_metro", "set_metro",
+     "Activa/desactiva el metrònom (només té sentit en mode BPM · compàs).",
+     {"on": {"type": "boolean"}}),
+    ("ac_set_key_detect", "set_key_detect",
+     "Activa/desactiva la detecció de tonalitat (qm-keydetector) per a la "
+     "partitura: amb ella, l'armadura es posa sola.",
+     {"on": {"type": "boolean"}}),
+    ("ac_detect_downbeat", "detect_downbeat",
+     "Detecta automàticament el compàs 1 (downbeat) de la cançó.", {}),
+    ("ac_mark_downbeat", "mark_downbeat",
+     "Marca el compàs 1 al cursor.", {}),
+    ("ac_open_output_folder", "open_output_folder",
+     "Obre la carpeta de sortida amb el gestor de fitxers del sistema.", {}),
+    ("ac_select_clip", "select_clip",
+     "Selecciona un clip (kind: chord|section, index); substitueix la selecció.",
+     {"kind": {"type": "string"}, "index": {"type": "integer"}}),
+    ("ac_toggle_selection", "toggle_selection",
+     "Afegeix/treu un clip de la selecció múltiple (com Ctrl+clic).",
+     {"kind": {"type": "string"}, "index": {"type": "integer"}}),
+    ("ac_clear_selection", "clear_selection", "Buida la selecció de clips.", {}),
+    ("ac_select_at_cursor", "select_at_cursor",
+     "Selecciona el clip que conté el cursor (kind: chord|section).",
+     {"kind": {"type": "string"}}),
 ]
 
 _OP_PER_TOOL = {nom: op for (nom, op, _d, _s) in _TOOLS}

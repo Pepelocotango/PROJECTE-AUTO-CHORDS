@@ -491,6 +491,81 @@ def _op_export_wav(ctx, params):
     return r
 
 
+# ── A7: accions de l'app que faltaven al pont ────────────────────────────────
+def _op_set_metro(ctx, params):
+    """Activa/desactiva el metrònom (sincronitza botó, acció de menú i visor)."""
+    on = bool(params.get("on"))
+    ctx.window._toggle_metro(on)
+    return {"metronom": bool(getattr(ctx.visor, "metro_on", False))}
+
+
+def _op_set_key_detect(ctx, params):
+    """Activa/desactiva la detecció de tonalitat (qm-keydetector) de la partitura."""
+    on = bool(params.get("on"))
+    ctx.window.tonalitat_auto.setChecked(on)
+    return {"tonalitat_automatica": on}
+
+
+def _op_detect_downbeat(ctx, params):
+    """Detecta automàticament el compàs 1 (downbeat) de la cançó."""
+    ctx.window._detecta_compas1()
+    return _op_status(ctx, {})
+
+
+def _op_mark_downbeat(ctx, params):
+    """Marca el compàs 1 al cursor."""
+    ctx.window._marca_compas_1()
+    return _op_status(ctx, {})
+
+
+def _op_open_output_folder(ctx, params):
+    """Obre la carpeta de sortida amb el gestor de fitxers del sistema."""
+    ctx.window.obre_carpeta()
+    return {"ok": True, "sortida": getattr(ctx.window, "sortida", "") or ""}
+
+
+def _op_select_clip(ctx, params):
+    """Selecciona un clip (`kind`: chord|section, `index`); substitueix la selecció."""
+    vr = _requereix_visor(ctx)
+    kind = str(params.get("kind") or params.get("tipus") or "chord").lower()
+    if kind not in ("chord", "section"):
+        raise BridgeError("kind ha de ser 'chord' o 'section'.")
+    idx = int(_num(params, "index", enter=True))
+    vr.timeline.select_clip(kind, idx)
+    return _op_selection(ctx, {})
+
+
+def _op_toggle_selection(ctx, params):
+    """Afegeix/treu un clip de la selecció múltiple (com Ctrl+clic)."""
+    vr = _requereix_visor(ctx)
+    kind = str(params.get("kind") or params.get("tipus") or "chord").lower()
+    if kind not in ("chord", "section"):
+        raise BridgeError("kind ha de ser 'chord' o 'section'.")
+    idx = int(_num(params, "index", enter=True))
+    vr.timeline.toggle_selection(kind, idx)
+    return _op_selection(ctx, {})
+
+
+def _op_clear_selection(ctx, params):
+    """Buida la selecció de clips."""
+    vr = _requereix_visor(ctx)
+    vr.timeline.clear_selection()
+    return _op_selection(ctx, {})
+
+
+def _op_select_at_cursor(ctx, params):
+    """Selecciona el clip que CONTÉ el cursor (`kind`: chord|section)."""
+    _requereix_visor(ctx)          # cal un visor carregat (a qui seleccionar)
+    kind = str(params.get("kind") or params.get("tipus") or "chord").lower()
+    if kind == "section":
+        ctx.window._sel_seccio_cursor()
+    elif kind == "chord":
+        ctx.window._sel_acord_cursor()
+    else:
+        raise BridgeError("kind ha de ser 'chord' o 'section'.")
+    return _op_selection(ctx, {})
+
+
 def _op_set_tempo(ctx, params):
     w = ctx.window
     if "bpm" in params and params["bpm"] is not None:
@@ -517,6 +592,16 @@ OPERACIONS = {
     "add_section": _op_add_section,
     "rename_section": _op_rename_section,
     "move_section": _op_move_section,
+    # A7: accions de l'app que faltaven al pont.
+    "set_metro": _op_set_metro,
+    "set_key_detect": _op_set_key_detect,
+    "detect_downbeat": _op_detect_downbeat,
+    "mark_downbeat": _op_mark_downbeat,
+    "open_output_folder": _op_open_output_folder,
+    "select_clip": _op_select_clip,
+    "toggle_selection": _op_toggle_selection,
+    "clear_selection": _op_clear_selection,
+    "select_at_cursor": _op_select_at_cursor,
     "delete_section": _op_delete_section,
     "undo": _op_undo,
     "redo": _op_redo,
@@ -588,12 +673,75 @@ class PontMCP(QObject):
                                      daemon=True)
         self._fil.start()
         self._timer.start()
+        # Vigilància de l'endpoint: si un actor extern (una eina de neteja, un
+        # `git clean`, un altre procés…) l'esborra mentre l'app és viva, el
+        # servidor MCP no s'hi podria connectar → el reescrivim de seguida.
+        self._timer_endpoint = QTimer(self.window)
+        self._timer_endpoint.timeout.connect(self._revisa_endpoint)
+        self._timer_endpoint.start(15000)
         logger.info("mcp_bridge: pont actiu a 127.0.0.1:%s (port+testimoni a %s)",
                     self._port, ENDPOINT_PATH)
         print(f"[mcp_bridge] pont MCP actiu a 127.0.0.1:{self._port}", flush=True)
 
     # -- endpoint ----------------------------------------------------------
+    def _endpoint_viu_d_algu_altre(self):
+        """Pid de l'endpoint SI existeix i el seu procés és VIU i no som nosaltres.
+
+        És la protecció clau: un segon procés (una prova, una eina, una app
+        fantasma) no pot deixar l'app viva SENSE endpoint.
+        """
+        try:
+            with open(ENDPOINT_PATH, encoding="utf-8") as f:
+                dades = json.load(f)
+        except (OSError, ValueError):
+            return None
+        pid = dades.get("pid")
+        if not isinstance(pid, int) or pid == os.getpid():
+            return None
+        try:
+            os.kill(pid, 0)          # senyal 0: només comprova que existeixi
+        except ProcessLookupError:
+            return None              # mort: el podem reciclar
+        except PermissionError:
+            pass                     # viu (d'un altre usuari)
+        except OSError:
+            return None
+        return pid
+
+    def _revisa_endpoint(self):
+        """Reescriu l'endpoint si ha desaparegut mentre l'app és viva.
+
+        Un actor extern (una eina de neteja, un `git clean`, un altre procés…)
+        el pot esborrar: aleshores el servidor MCP ja no s'hi pot connectar i
+        l'app queda «sense pont» tot i tenir el socket viu. Aquí ho detectem i
+        el tornem a escriure de seguida.
+        """
+        if not self._actiu:
+            return
+        if self._endpoint_viu_d_algu_altre() is not None:
+            return
+        try:
+            with open(ENDPOINT_PATH, encoding="utf-8") as f:
+                dades = json.load(f)
+            if (dades.get("pid") == os.getpid()
+                    and dades.get("port") == self._port):
+                return               # hi és i és nostre: tot bé
+        except (OSError, ValueError):
+            pass
+        logger.warning("mcp_bridge: l'endpoint %s havia desaparegut → el "
+                       "reescric", ENDPOINT_PATH)
+        self._escriu_endpoint()
+
     def _escriu_endpoint(self):
+        # MAI sobreescriure l'endpoint d'un altre procés VIU (vegeu
+        # `_endpoint_viu_d_algu_altre`): si el pid és mort, sí que el reciclem.
+        viu = self._endpoint_viu_d_algu_altre()
+        if viu is not None:
+            logger.error(
+                "mcp_bridge: NO sobreescric %s — pertany a un altre procés VIU "
+                "(pid %s). Si és una app fantasma, tanca-la; aquest pont quedarà "
+                "sense endpoint.", ENDPOINT_PATH, viu)
+            return False
         dades = {
             "port": self._port,
             "token": self._token,
@@ -630,10 +778,13 @@ class PontMCP(QObject):
         if not self._actiu:
             return
         self._actiu = False
-        try:
-            self._timer.stop()
-        except Exception:  # noqa: BLE001
-            pass
+        for nom in ("_timer", "_timer_endpoint"):
+            t = getattr(self, nom, None)
+            try:
+                if t is not None:
+                    t.stop()
+            except Exception:  # noqa: BLE001
+                pass
         if self._srv is not None:
             try:
                 self._srv.close()

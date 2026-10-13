@@ -72,13 +72,19 @@ class TestAvisAmbPont(_Base):
         self.assertEqual(vist["box"].windowModality(), Qt.NonModal)
 
     def test_activa_pont_marca_mcp_actiu(self):
+        """⚠️ Cal redirigir ENDPOINT_PATH: si no, la prova escriuria (i en
+        tancar-se esborraria) l'endpoint REAL de l'app viva → MCP inutilitzable.
+        Va passar de veritat (OC-6/378): aquest test n'era la causa."""
         w = _finestra()
         self.assertFalse(w.mcp_actiu)
-        pont = mcp_bridge.activa_pont(w)
-        self.assertTrue(w.mcp_actiu,
-                        "activar el pont ha de desactivar els modals")
-        if pont is not None:
-            pont.tanca()
+        tmp = tempfile.mkdtemp()
+        with patch.object(mcp_bridge, "ENDPOINT_PATH",
+                          os.path.join(tmp, "mcp_bridge.json")):
+            pont = mcp_bridge.activa_pont(w)
+            self.assertTrue(w.mcp_actiu,
+                            "activar el pont ha de desactivar els modals")
+            if pont is not None:
+                pont.tanca()
 
 
 class TestExportMCPNoBloqueja(_Base):
