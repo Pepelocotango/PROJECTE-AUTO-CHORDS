@@ -3271,6 +3271,80 @@ class PlataformaTests(unittest.TestCase):
         self.assertNotEqual(plataforma.python_actual(), "python3")
 
 
+class InstanciaUnicaTests(unittest.TestCase):
+    """Bloqueig d'instància única PER USUARI (Pas 2).
+
+    Cada test s'executa en un `XDG_RUNTIME_DIR` temporal propi (aïllat), que és
+    el primer candidat de `plataforma.dir_instancia()` al Linux/macOS.
+    """
+
+    def setUp(self):
+        self._dir = tempfile.mkdtemp()
+        self._xdg = os.environ.get("XDG_RUNTIME_DIR")
+        os.environ["XDG_RUNTIME_DIR"] = self._dir
+
+    def tearDown(self):
+        if self._xdg is None:
+            os.environ.pop("XDG_RUNTIME_DIR", None)
+        else:
+            os.environ["XDG_RUNTIME_DIR"] = self._xdg
+        shutil.rmtree(self._dir, ignore_errors=True)
+
+    def test_segona_instancia_rebutjada(self):
+        f1 = plataforma.obre_fitxer_instancia()
+        self.assertIsNotNone(f1)
+        self.assertTrue(plataforma.bloqueja_instancia_unica(f1))
+        f2 = plataforma.obre_fitxer_instancia()
+        self.assertIsNotNone(f2)
+        self.assertFalse(plataforma.bloqueja_instancia_unica(f2))
+        # En alliberar el primer, el segon ja el pot agafar.
+        plataforma.desbloqueja(f1)
+        self.assertTrue(plataforma.bloqueja_instancia_unica(f2))
+        plataforma.desbloqueja(f2)
+        f1.close()
+        f2.close()
+
+    @unittest.skipIf(plataforma.ES_WINDOWS, "permisos POSIX")
+    def test_permisos_0600(self):
+        f = plataforma.obre_fitxer_instancia()
+        self.assertIsNotNone(f)
+        mode = os.stat(plataforma.fitxer_instancia()).st_mode & 0o777
+        self.assertEqual(mode, 0o600)
+        f.close()
+
+    @unittest.skipIf(plataforma.ES_WINDOWS, "O_NOFOLLOW/symlink no aplicable")
+    def test_no_segueix_symlink(self):
+        path = plataforma.fitxer_instancia()
+        victima = os.path.join(self._dir, "victima.txt")
+        with open(victima, "w", encoding="utf-8") as v:
+            v.write("no tocar")
+        os.symlink(victima, path)
+        # O_NOFOLLOW: no s'obre el destí de l'enllaç.
+        self.assertIsNone(plataforma.obre_fitxer_instancia())
+        with open(victima, encoding="utf-8") as v:
+            self.assertEqual(v.read(), "no tocar")
+
+    def test_arrenca_amb_fitxer_d_una_sessio_anterior(self):
+        # El fitxer ja hi és (sense bloqueig): s'ha de poder obrir i bloquejar.
+        with open(plataforma.fitxer_instancia(), "w", encoding="utf-8") as p:
+            p.write("")
+        f = plataforma.obre_fitxer_instancia()
+        self.assertIsNotNone(f)
+        self.assertTrue(plataforma.bloqueja_instancia_unica(f))
+        plataforma.desbloqueja(f)
+        f.close()
+
+    def test_nom_amb_usuari_i_no_global(self):
+        n = os.path.basename(plataforma.fitxer_instancia())
+        self.assertTrue(n.startswith("auto_chords_single_instance_"))
+        self.assertNotEqual(n, "auto_chords_single_instance.lock")
+        self.assertIn(plataforma._sufix_usuari(), n)
+
+    def test_sense_xdg_usa_el_dir_d_estat(self):
+        os.environ.pop("XDG_RUNTIME_DIR", None)
+        self.assertEqual(plataforma.dir_instancia(), config.DADES_DIR)
+
+
 class MissatgePartituraTests(unittest.TestCase):
     """L'exportació de partitura ha de deixar BEN CLAR que el PDF (i el MSCZ)
     depenen de **MuseScore** instal·lat (petició de l'operador)."""

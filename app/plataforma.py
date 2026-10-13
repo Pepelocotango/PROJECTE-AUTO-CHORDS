@@ -9,6 +9,7 @@ import os
 import signal
 import subprocess
 import sys
+import tempfile
 
 ES_WINDOWS = sys.platform.startswith("win")
 ES_MAC = sys.platform == "darwin"
@@ -132,6 +133,82 @@ def mata_grup(proc, forcat=False):
 
 
 # --- Instància única --------------------------------------------------------
+def _sufix_usuari():
+    """Identificador curt de l'usuari (uid + nom) per al fitxer de bloqueig.
+
+    El bloqueig ha de ser PER USUARI: en una màquina compartida, un usuari no
+    ha de poder bloquejar-ne un altre.
+    """
+    try:
+        uid = str(os.getuid())          # POSIX; a Windows no hi és
+    except AttributeError:
+        uid = ""
+    try:
+        import getpass
+        usuari = getpass.getuser() or ""
+    except Exception:  # noqa: BLE001
+        usuari = ""
+    # El nom d'usuari forma part del NOM DEL FITXER (no és una ruta de
+    # l'usuari): en traiem els caràcters que complicarien el nom.
+    usuari = "".join(c for c in usuari if c.isalnum() or c in "-_.")
+    return "_".join(p for p in (uid, usuari) if p) or "usuari"
+
+
+def dir_instancia():
+    """Directori PER USUARI i escriptible per al bloqueig d'instància única.
+
+    Linux: `XDG_RUNTIME_DIR` (per usuari, 0700 i efímer) si existeix i s'hi pot
+    escriure; si no, el directori d'estat de `config.py` (també per usuari).
+    Així NO fem servir un `/tmp` compartit amb un nom global.
+    """
+    xdg = os.getenv("XDG_RUNTIME_DIR")
+    if xdg and os.path.isdir(xdg) and os.access(xdg, os.W_OK):
+        return xdg
+    try:
+        from app import config
+        d = config.DADES_DIR
+    except Exception:  # noqa: BLE001
+        d = tempfile.gettempdir()
+    try:
+        os.makedirs(d, exist_ok=True)
+    except OSError:
+        pass
+    return d
+
+
+def fitxer_instancia():
+    """Ruta del fitxer de bloqueig d'instància única (per usuari)."""
+    return os.path.join(
+        dir_instancia(), f"auto_chords_single_instance_{_sufix_usuari()}.lock")
+
+
+def obre_fitxer_instancia():
+    """Obre (o crea) el fitxer de bloqueig d'instància única. `None` si no pot.
+
+    Linux/macOS: `os.open` amb `O_RDWR|O_CREAT|O_NOFOLLOW` i mode `0o600` → no
+    segueix enllaços simbòlics i només el propietari hi pot accedir. Windows:
+    `os.open` + `msvcrt.locking` (allà `O_NOFOLLOW` no existeix).
+
+    No esborra el fitxer si ja existeix (pot ser d'una sessió anterior): només
+    l'obre. El bloqueig el gestiona `bloqueja_instancia_unica`.
+    """
+    path = fitxer_instancia()
+    if ES_WINDOWS:
+        flags, mode = os.O_RDWR | os.O_CREAT, "r+"
+    else:
+        flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+        mode = "a+"
+    try:
+        fd = os.open(path, flags, 0o600)
+    except OSError:
+        return None
+    try:
+        return os.fdopen(fd, mode, encoding="utf-8")
+    except OSError:
+        os.close(fd)
+        return None
+
+
 def bloqueja_instancia_unica(fitxer):
     """Bloqueig NO bloquejant sobre `fitxer`. True si l'hem obtingut.
 

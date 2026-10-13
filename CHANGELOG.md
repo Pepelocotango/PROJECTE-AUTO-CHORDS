@@ -14,6 +14,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   comencessin amb `-`), sense filtrar-ne cap caràcter. Si un ffmpeg molt vell no
   entén `-protocol_whitelist`, es reintenta sense l'opció i es registra al log
   (mai es trenca l'obertura d'àudio).
+- **Bloqueig d'instància única per usuari i segur**: el fitxer de bloqueig ja
+  no viu a un `/tmp` compartit amb un nom global (on un usuari podia bloquejar
+  un altre) sinó a **`XDG_RUNTIME_DIR`** (o el directori d'estat de
+  `config.py`), amb l'**uid/nom d'usuari al nom**. S'obre amb
+  `os.open(O_RDWR|O_CREAT|O_NOFOLLOW, 0o600)` → **no segueix enllaços
+  simbòlics** i només el propietari hi accedeix. En sortir **només s'allibera
+  el bloqueig**, no s'esborra el fitxer (evita una carrera entre instàncies).
+  Windows manté `msvcrt.locking`.
 
 ### Afegit
 - **`docs/REGLES_DE_LA_APP.md`**: totes les **regles d'or (invariants)** de l'app

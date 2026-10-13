@@ -5,7 +5,6 @@ import logging
 import os
 import sys
 import time
-import tempfile
 import traceback
 
 from PyQt5.QtCore import QThread, Qt, QTimer, QUrl, pyqtSignal
@@ -1466,8 +1465,13 @@ def main():
     logger = setup_logging(DEFAULT_LOG_PATH)
     logger.info("Inici de l'aplicació | argv=%s cwd=%s", sys.argv, os.getcwd())
 
-    lock_path = os.path.join(tempfile.gettempdir(), "auto_chords_single_instance.lock")
-    lock_file = open(lock_path, "w", encoding="utf-8")
+    lock_file = plataforma.obre_fitxer_instancia()
+    if lock_file is None:
+        logger.warning("No s'ha pogut crear el fitxer de bloqueig d'instància "
+                       "única; s'aborta.")
+        print("[main] No s'ha pogut crear el bloqueig d'instància única; "
+              "s'aborta.", file=sys.stderr)
+        return 1
     if not plataforma.bloqueja_instancia_unica(lock_file):
         logger.warning("Ja hi ha una instància d'Auto Chords en execució; s'aborta la segona.")
         print("[main] Auto Chords ja està en execució; no es permet iniciar-ne una segona instància.", file=sys.stderr)
@@ -1508,12 +1512,11 @@ def main():
         sys.exit(app.exec_())
     finally:
         logger.info("Sortida de l'aplicació")
+        # Només alliberem el bloqueig: NO esborrem el fitxer (esborrar-lo
+        # podria crear una carrera entre instàncies: una altra instància
+        # podria obrir el fitxer nou mentre aquesta encara el té bloquejat).
         plataforma.desbloqueja(lock_file)
         lock_file.close()
-        try:
-            os.unlink(lock_path)
-        except FileNotFoundError:
-            pass
 
 
 if __name__ == "__main__":
