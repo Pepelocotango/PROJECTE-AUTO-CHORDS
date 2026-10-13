@@ -89,3 +89,9 @@ OLD/
 # Carpeta temporal per a agents i usuari: no s'ha de versionar.
 XX TEMP FILES USUARI/
 
+# Mesura de cobertura (coverage.py): sortides locals, es regeneren.
+.coverage
+.coverage.*
+htmlcov/
+.cov-env/
+

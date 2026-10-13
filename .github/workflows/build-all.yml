@@ -25,6 +25,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  inventari:
+    # (Bloc 3 · D.5) Que `docs/COMPONENTS_I_VERSIONS.md` estigui AL DIA: es
+    # regenera (és determinista, només mira fitxers del repo) i, si difereix
+    # del que hi ha commitejat, el job peta → cal córrer
+    # `python3 eines/genera_inventari.py` i commitejar-lo.
+    name: Inventari al dia (COMPONENTS_I_VERSIONS.md)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout del codi
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+      - name: Regenerar i comprovar
+        run: |
+          set -euo pipefail
+          python3 eines/genera_inventari.py
+          if ! git diff --exit-code -- docs/COMPONENTS_I_VERSIONS.md; then
+            echo "::error::docs/COMPONENTS_I_VERSIONS.md està DESACTUALITZAT: corre 'python3 eines/genera_inventari.py' i commiteja'l."
+            exit 1
+          fi
+          echo "inventari al dia ✔"
+
   linux:
     name: Linux (AppImage)
     uses: ./.github/workflows/build-appimage.yml

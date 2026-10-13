@@ -229,8 +229,8 @@ jobs:
           # tests.log a l'espai de treball (no /tmp): així el puja l'artefacte ZZ2.
           # TOTA la suite (discover): inclou tests del motor d'àudio i de plataforma
           # que simulen mac/win amb mocks -> caça bugs abans de provar al Mac.
-          QT_QPA_PLATFORM=offscreen .venv-mac/bin/python -m unittest \
-            discover -s tests > tests.log 2>&1
+          QT_QPA_PLATFORM=offscreen .venv-mac/bin/python -m coverage run \
+            --source=app -m unittest discover -s tests > tests.log 2>&1
           rc=$?
           if [ "$rc" -ne 0 ]; then
             cat tests.log
@@ -240,6 +240,8 @@ jobs:
             echo "::error::tests FALLEN [ultima traça]: $CUA"
           else
             tail -n 5 tests.log
+            # (Bloc 3) Llindar de COBERTURA (mesura real al CI).
+            .venv-mac/bin/python -m coverage report --fail-under=65 || rc=$?
           fi
           exit "$rc"
 

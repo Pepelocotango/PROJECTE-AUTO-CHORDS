@@ -117,6 +117,23 @@ jobs:
           QT_QPA_PLATFORM=offscreen portable/python/bin/python3 -m unittest \
             discover -s tests 2>&1 | tee /tmp/tests.log
 
+      - name: "7b. Python 3.12 del runner (per a la cobertura)"
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: '3.12'
+
+      - name: "7c. Cobertura de la suite (llindar 65%)"
+        # (Bloc 3) Mesura real de cobertura + llindar, en un entorn propi
+        # (Python 3.12 + requirements-build) per NO tocar el `portable/`
+        # (que només ha de portar els pins de runtime).
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -r requirements-build.txt
+          QT_QPA_PLATFORM=offscreen python -m coverage run --source=app \
+            -m unittest discover -s tests
+          python -m coverage report --fail-under=65
+
       - name: 8. Icona de l'aplicació
         run: portable/python/bin/python3 eines/crea_icona.py
 

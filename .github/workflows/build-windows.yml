@@ -183,8 +183,8 @@ jobs:
           cp -f portable/win-dlls/*.dll . 2>/dev/null || true
           # tests.log a l'ESPai de treball (NO /tmp: a Windows l'artefacte no el troba).
           # TOTA la suite (discover): inclou els tests del motor d'àudio/plataforma.
-          QT_QPA_PLATFORM=offscreen python -m unittest \
-            discover -s tests > tests.log 2>&1
+          QT_QPA_PLATFORM=offscreen python -m coverage run --source=app -m \
+            unittest discover -s tests > tests.log 2>&1
           rc=$?
           if [ "$rc" -ne 0 ]; then
             cat tests.log
@@ -195,6 +195,8 @@ jobs:
             echo "::error::tests FALLEN [ultima traça]: $CUA"
           else
             tail -n 5 tests.log
+            # (Bloc 3) Llindar de COBERTURA (mesura real al CI).
+            python -m coverage report --fail-under=65 || rc=$?
           fi
           exit "$rc"
 

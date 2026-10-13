@@ -12,3 +12,5 @@
 # Vegeu `docs/AUDITORIA_PRODUCCIO.md` (A.2/D.1).
 -r requirements.txt
 pyinstaller==6.22.3
+# Mesura de cobertura de la suite al CI (llindar a build-* i build-all).
+coverage==7.16.2
