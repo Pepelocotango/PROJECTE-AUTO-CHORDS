@@ -83,7 +83,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | Menú | Accions |
 |------|---------|
 | **Fitxer** | Obre WAV… (Ctrl+O) · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Tonalitat automàtica (qm-keydetector) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
-| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Paràmetres… |
+| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix la secció al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Metrònom |
 | **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Inclou estructura |
@@ -101,6 +101,13 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 > = copiar/retallar/enganxar al cursor · **Ctrl+D** = duplicar el grup ·
 > **arrossegar** un clip seleccionat = moure el grup. El regle mostra el
 > **mode** (`120 BPM · 4/4` o `Lliure`).
+
+### ✅ P1 (A1–A3) — **IMPLEMENTAT** (pendent de commit/validació)
+
+> Al **codi** ja hi és (sense commitejar; es validarà i commitarà aviat):
+> - ✅ **A1 — Desfer/Refer del temps i del loop**: `undo`/`redo` ara també cobreix **BPM, compàs, offset** i el **loop A-B** (nou estat de temps), no només acords/seccions.
+> - ✅ **A2 — Partir una secció — FET**: acció **Edita ▸ Parteix la secció al cursor…** i entrada **«Parteix la secció…»** al menú contextual de la secció (s'activa només si el clic és en una secció i el cursor hi cau a dins). Parteix la secció que conté el cursor en dues: la meitat esquerra conserva lletra i família i la nova rep la lletra que es tria (per defecte, la mateixa). És la manera natural d'afegir secció en un model **saturat** (les seccions cobreixen tota la WAV, regla #4).
+> - ✅ **A3 — Dreceres completes — FET**: el diàleg **Ajuda ▸ Dreceres de teclat** ara **dedueix totes les dreceres dels menús reals** (abans només en llistava 6).
 
 ---
 

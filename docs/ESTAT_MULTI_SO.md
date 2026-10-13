@@ -104,9 +104,14 @@
 
 ## Pendent real
 
-> 🎯 **Únic pendent**: la **revisió funcional** dels 3 paquets en un sistema real
-> (Linux ja es va verificar a fons; **Windows i macOS cal provar-los** des dels
-> sistemes respectius — els agents no hi tenen accés directe).
+> 🎯 **Dos pendents** (13-10):
+> 1. **Revalidar el CI**: els passos nous (smoke de l'AppImage, verificació de
+>    contingut, `concurrency`/`timeout`, Dependabot, builds reproducibles) i els
+>    **fixos de Windows** encara **no han corregut** en una execució verda — cal
+>    llançar `build-all` i confirmar el verd.
+> 2. **Validació funcional real** dels 3 paquets: Linux ja es va verificar a fons;
+>    **Windows i macOS cal provar-los** des dels sistemes respectius (els agents no
+>    hi tenen accés directe).
 > Guia pas a pas: **`docs/PROVES_FUNCIONALS_3SO.md`** (arrencada, checklist de
 > 5 minuts i què mirar si falla).
 

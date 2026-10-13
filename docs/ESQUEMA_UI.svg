@@ -240,6 +240,7 @@
 
   <!-- llegenda capes -->
   <text x="20" y="360" fill="#9aa6b8" font-size="10.5">① regle · ② ona · ③ carril estructura · ④ carril acords · ⑤ grid · ⑥ cursor · ⑦ loop · ⑧ guia snap · <tspan fill="#ffb26b" font-weight="700">🔗 ③④ clips ENCADENATS: cada clip comença on acaba l'anterior; 1r a 0 i últim a la durada (regles 2 i 4)</tspan></text>
+  <text x="20" y="376" fill="#ffb26b" font-size="10.5" font-weight="700">✅ P1 (A1–A3) IMPLEMENTAT (pendent de commit): A1 desfer/refer de BPM/offset/loop · A2 «Parteix la secció al cursor…» · A3 el diàleg de dreceres en llista TOTES</text>
 
   <!-- ============ LLISTES ============ -->
   <rect x="16" y="368" width="700" height="112" rx="5" fill="#12161d" stroke="#3a4150"/>

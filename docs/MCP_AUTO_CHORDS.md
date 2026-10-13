@@ -69,6 +69,8 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 - Si una edició trenca la **lògica temporal** (inici duplicat/invertit, etc.),
   es **rebutja sencera** amb un error clar; l'estat no canvia.
 
+> ✅ **Reanomenament sanejat** (implementat, pendent de commit): els noms d'acord es **sanegen** de manera canònica — `pipeline.saneja_nom_acord()` (el mateix que fa l'export) — a **tots** els camins, **MCP inclòs** (`ac_rename_chord`). Així el nom del **model** i el del **CSV** sempre coincideixen i no hi entren caràcters invàlids. Noms habituals intactes (`C#m7`, `N`; `Am/G` → `Am-G`).
+
 ## Verificació manual (sense opencode)
 
 ```bash
@@ -107,3 +109,21 @@ Tests automàtics (logica del pont + protocol, amb dobles i sense GUI):
 - `AUTO_CHORDS_MCP.sh` — llançador d'escriptori amb pont.
 - `tests/test_mcp_bridge.py` — tests.
 - `docs/MCP_AUTO_CHORDS.md` — aquest document.
+
+---
+
+## ⏳ Pendent — P2 (A4–A9): **EN IMPLEMENTACIÓ**
+
+> ⚠️ **Encara NO són al codi.** P2 està **aprovat i en curs per OC-4**; aquesta
+> documentació queda **preparada** i es finalitzarà (noms d'eines/paràmetres exactes)
+> quan es commiti — es verificarà amb **OC-4** abans de donar-la per bona.
+
+- **A4 — Partitura des de l'MCP i amb els WAVs**: que l'**export** (i l'MCP) incloguin també la **partitura** (MusicXML/PDF/MSCZ), no només l'acció de menú.
+- **A5 — `ac_export_wav` amb progrés**: avui l'export és **síncrona** i no informa del progrés; es preveu **retornar progrés/estat** per no semblar “penjada”.
+- **A6 — `ac_analyze` amb opcions**: avui només fa servir les opcions **ja desades**; es preveu poder-hi **passar opcions** (BPM/acords/estructura).
+- **A7 — Més camps/eines MCP**: exposar al pont el que el menú ja té i l'MCP no: **tonalitat**, **metrònom**, **marca el compàs 1**, **carpeta de sortida** i **multi-selecció**.
+- **A8 — MCP OFF + instància única**: el MCP és **OFF per defecte** i l'app és d'**instància única** → **no conviu** amb una altra app oberta. Cal documentar **com conviure-hi**: tancar l'altra instància o arrencar directament amb `./AUTO_CHORDS_MCP.sh`.
+- **A9 — Autocomprovació amb `ffmpeg`**: l'autocomprovació d'arrencada comprova els Vamp i `ACORDS_PY`; **afegir-hi `ffmpeg`** (opcional, només per importar formats no-WAV).
+
+> 📌 Quan OC-4 ho commiteji: moure aquests punts a les seccions corresponents
+> (§«Eines exposades» per A4–A7, §«Com s'activa» per A8) i treure aquesta secció.

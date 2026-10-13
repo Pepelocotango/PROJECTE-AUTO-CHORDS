@@ -6,7 +6,7 @@
 > **partitura** (MusicXML/PDF). App d'escriptori **multi-SO** (Linux · Windows · macOS).
 
 > **Repositori:** https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
-> (les versions publicades, com l'**AppImage**, són a *Releases*).
+> (les versions publicades —Linux `.tar.gz` amb l'**AppImage**, Windows `.zip`, macOS `.dmg`— són a *Releases*).
 
 > **Novetats v0.6.2 (BETA):** **botons nous** a la barra («Exporta WAV's»,
 > «Exporta partitura», «Zoom selecció») i la partitura deixa clar que el PDF
@@ -30,12 +30,14 @@ pas d’assistent.
 - **Barra de menús**: Fitxer · Edita · Selecciona · Visualitza · Analitza · Ajuda.
 - **Barra de temps** fina: mode **BPM · compàs** / **Lliure (hh:mm:ss)**,
   BPM, botons **×2/÷2**, **🎯 Detecta** (motor triable), **TAP**, compàs
-  en format **`x/x`** (`4`, `4/4`, `6/8`, etc.), Offset amb **📍** (cursor) i
-  **🧭** (automàtic) i «Inclou estructura».
-- **Barra de transport** pròpia: play/stop, −10s/+10s, loop A/B, zoom i mute
-  (`Espai` = play/stop). La roda del ratolí fa **zoom centrat al cursor vermell**
-  quan no hi ha cap clip seleccionat, i segueix sent coherent amb el clip
-  seleccionat quan n’hi ha un.
+  en format **`x/x`** (`4`, `4/4`, `6/8`, etc.) i Offset amb **📍** (cursor) i
+  **🧭** (automàtic). (**«Inclou estructura»** és una acció del menú **Analitza**.)
+- **Barra de transport** pròpia: play/stop, −10s/+10s, loop A/B, **neteja del loop**
+  (icona `x`), zoom i mute (`Espai` = play/stop). La roda del ratolí fa **zoom centrat
+  al cursor vermell** quan no hi ha cap clip seleccionat, i segueix sent coherent amb
+  el clip seleccionat quan n’hi ha un.
+- **Barra d'Accions** (sota la de temps): **Analitza**, **Exporta WAV's**, **Exporta
+  partitura**, **Desfer**/**Refer** (icones `undo-2`/`redo-2`) i **Obre la carpeta de sortida**.
 - **Metrònom** 🥁 (només en mode BPM · compàs), amb **volum propi** (60 %).
 - **Analitza** (`F5`): progrés a la **barra d’estat**; el **log** és un tauler
   plegable a baix (**Visualitza ▸ Mostra el log**).
@@ -46,11 +48,23 @@ pas d’assistent.
   (rang); `Ctrl+C`/`Ctrl+X`/`Ctrl+V` (copiar/retallar/enganxar al cursor) i
   `Ctrl+D` per duplicar **tot el grup**; arrossegar un clip seleccionat mou el
   grup sencer. El regle mostra el **mode** (`120 BPM · 4/4` o `Lliure`).
-- **Inspector** (**Visualitza ▸ Mostra l’inspector**): llistes d’acords i
-  estructura (clic per saltar, doble-clic per editar, menú contextual).
+- **Llistes** d’acords (⑨) i estructura (⑩) **a sota de l’ona**: clic per saltar,
+  doble-clic per editar, botó dret = menú contextual. (El panell **Log · Informació**,
+  a baix, s’amaga/mostra amb **Visualitza ▸ Mostra el log**.)
 - Compassos de **qualsevol mètrica** (3/4, 6/8, 5/4…), no només 4/4.
 
 La funcionalitat principal està validada: **tota la suite · OK (1 skip)** (`python -m unittest discover -s tests`).
+
+## ✅ Implementat (pendent de commit) + ⏳ En preparació
+
+> **P1 (A1–A3) — ja és al CODI** (sense commitejar; es validarà i commitarà aviat):
+> - **A1** — **desfer/refer** també per a **BPM, compàs, offset i loop A-B**.
+> - **A2** — **Edita ▸ «Parteix la secció al cursor…»**: partir una secció (manera natural d'afegir-ne en un model saturat per la cobertura).
+> - **A3** — el diàleg **Ajuda ▸ Dreceres de teclat** ara llista **totes** les dreceres reals.
+>
+> **P2 (A4–A9) — EN IMPLEMENTACIÓ** (encara NO disponible). Detall: `docs/MCP_AUTO_CHORDS.md`:
+> A4 partitura des de l'MCP/amb els WAVs · A5 progrés d'export · A6 `ac_analyze` amb opcions ·
+> A7 més eines · A8 convivència OFF/instància única · A9 autocomprovació amb `ffmpeg`.
 
 ## Què fa l’app
 
@@ -92,9 +106,10 @@ Aquest és el criteri que ha acabat definint la base de l’app: una app única,
 
 ## Configuració
 
-- La carpeta temporal per defecte és `temp/` a l’arrel del projecte.
-- Es pot sobreescriure amb la variable d’entorn **`AUTO_CHORDS_TEMP`**
-  (camí absolut o relatiu), útil per a fluxos de treball personalitzats:
+- L'estat (**temp**, log, opcions) va a un **directori d'estat escriptible**:
+  `~/.local/state/auto-chords/` (hi ha `temp/` a dins). Mai dins el paquet (regla d'or #10).
+- El directori temporal es pot sobreescriure amb la variable d'entorn
+  **`AUTO_CHORDS_TEMP`** (camí absolut o relatiu), útil per a fluxos personalitzats:
 
 ```bash
 export AUTO_CHORDS_TEMP=/home/user/tmp_auto_chords
@@ -123,11 +138,9 @@ O directament amb:
 ./AUTO_CHORDS.sh
 ```
 
-També hi ha llançador de desktop:
-
-```bash
-./AUTO_CHORDS.desktop
-```
+També hi ha un **llançador d'escriptori** (`AUTO_CHORDS.desktop`): fes-hi **doble-clic**,
+o instal·la'l al menú d'aplicacions amb `bash instal·la_local.sh`. (Un `.desktop` **no**
+s'executa com un programa des del terminal (`./AUTO_CHORDS.desktop` no funciona).)
 
 ## Estructura clau
 
@@ -159,6 +172,13 @@ També hi ha llançador de desktop:
 - `portable/` — Python + ffmpeg portables (entrada de build, gitignorat)
 - `AUTO_CHORDS.sh` — llançador (prefereix el Python portable)
 
+## Documentació
+
+Índex complet de documents: **`docs/README.md`** — esquema de la GUI, **regles d'or**,
+portabilitat (Linux/Windows/macOS), CI/CD, seguretat, autodetecció, auditoria…
+Destaquen: **`docs/REGLES_DE_LA_APP.md`** (invariants), **`docs/ESQUEMA_UI.md`** i
+**`docs/CI_WORKFLOWS.md`**.
+
 ## Paquet portable (autocontingut)
 
 ```bash
@@ -175,8 +195,9 @@ icona, i el comprimeix (squashfs): dels ~530 MB surt un fitxer d'**~160 MB**
 que s'executa a qualsevol **Linux x86_64** sense instal·lar res.
 
 > **Multi-SO**: a més d'aquesta AppImage de Linux, el CI construeix i empaqueta
-> **Windows (x64)** i **macOS (High Sierra 10.13+)**. **Els 3 builds surten
-> VERDS**; estat i artefactes: **`docs/ESTAT_MULTI_SO.md`**.
+> **Windows (x64)** i **macOS (High Sierra 10.13+)**. Els 3 builds **han estat verds**;
+> l'**últim `build-all` verd és el #4** (`98aa58e`) i després hi ha hagut fixos de CI
+> **pendents de revalidar**. Estat i artefactes: **`docs/ESTAT_MULTI_SO.md`**.
 >
 > El runtime incrustat és el modern **estàtic** (`type2-runtime`, enllaçat amb
 > musl i libfuse a dins), així que **no cal instal·lar `libfuse2`**.
@@ -190,8 +211,9 @@ d'escriptori i —per **escoltar**— PipeWire o PulseAudio. Detall exacte:
 
 ### Descarregar
 
-Les versions publicades (AppImage) són a
-**https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS** → *Releases*.
+Les versions publicades són a
+**https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS** → *Releases*:
+**Linux** `.tar.gz` (AppImage + docs) · **Windows** `.zip` · **macOS** `.dmg`.
 
 ### Construir-lo localment
 ```bash
@@ -221,15 +243,15 @@ Cinc workflows a `.github/workflows/` (tots d'execució **manual**):
 | Workflow | Quan s'activa | Què fa |
 |----------|---------------|--------|
 | **`build-all.yml`** | **només manual** | **Agregador**: executa els 3 builds (Linux + Windows + macOS) **en paral·lel**; cada un deixa el seu artefacte |
-| **`build-appimage.yml`** | **només manual** (GitHub ▸ Actions ▸ Run workflow) | Construeix l'AppImage de **Linux** i la deixa com a **artefacte** descarregable |
+| **`build-appimage.yml`** | **només manual** (GitHub ▸ Actions ▸ Run workflow) | Construeix l'AppImage de **Linux** i l'empaqueta en un **`.tar.gz`** (AppImage + docs) com a **artefacte** descarregable |
 | **`build-windows.yml`** | **només manual** | Construeix el paquet portable de **Windows x64** (MSYS2 + PyInstaller `--onedir`) i el deixa com a **artefacte** (ZIP) |
-| **`build-macos.yml`** | **només manual** | Construeix el **`.app` de macOS 10.13+** (Intel; PyInstaller) i el deixa com a **artefacte** (ZIP) |
-| **`release.yml`** | **només manual** | **Drecera**: agafa els **últims artefactes verds** de Linux/Windows/macOS **directament de GitHub Actions** i crea un **Release (esborrany)** amb títol `AUTO CHORDS v<versió>`, el cos **en català** (`eines/notes_release.py`) i els **3 fitxers** adjunts |
+| **`build-macos.yml`** | **només manual** | Construeix el **`.app` de macOS 10.13+** (Intel; PyInstaller) i el deixa com a **artefacte** (DMG) |
+| **`release.yml`** | **només manual** | **Drecera**: agafa els **últims artefactes verds** de Linux/Windows/macOS **directament de GitHub Actions** i crea un **Release PUBLICAT** (no esborrany) amb títol `AUTO CHORDS v<versió>`, el cos **en català** (`eines/notes_release.py`) i els **3 paquets** adjunts |
 
 > **Tot manual**: cap workflow s'activa sol (ni amb tags). Per fer un **Release**:
-> llança **`release.yml`** a mà (agafa els últims artefactes verds dels 3 SO i crea
-> un **esborrany** que revises a GitHub ▸ Releases i publiques tu). Cap workflow fa
-> `git push` al repositori.
+> llança **`release.yml`** a mà — agafa els últims artefactes verds dels 3 SO i crea
+> el **Release PUBLICAT** (`gh release create`, sense `--draft`) a GitHub ▸ Releases.
+> Cap workflow fa `git push` al repositori.
 >
 > **Com funciona cada workflow (detall): `docs/CI_WORKFLOWS.md`.**
 

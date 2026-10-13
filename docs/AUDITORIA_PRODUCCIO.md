@@ -106,7 +106,7 @@ D.3 · D.5. Artefacte local detectat: `.coverage` (untracked) → valorar `.giti
 | 1.3 | **`requirements.txt` sense `--require-hashes`** (documentat com a pendent). | `requirements.txt:28-36` | ⚠️ Acceptat; la protecció actual és el pin `==` + el test guarda. Anotat. |
 | 1.4 | **`pyproject.toml` amb rangs** (`PyQt5>=5.15.9`, `numpy>=1.22,<2`) ≠ els pins exactes de `requirements.txt`: instal·lant via `pip install .` es podria arrossegar una PyQt5 més nova. | `pyproject.toml:14-17` | 🔧 Alinear amb els pins de `requirements.txt`. |
 | 1.5 | **`XX TEMP FILES USUARI/` parcialment versionat** (`NOTES_RELEASE_v0.5.2.md`) i amb una subcarpeta (`errors auto chords mac`) **no** gitignorada → risc de filtrar notes/errors locals a l'historial. | `git ls-files "XX TEMP FILES USUARI"` | 🔧 Afegir a `.gitignore` + `git rm --cached`. |
-| 1.6 | **4 `except Exception: pass` silenciosos** (àudio i MCP): l'error no arriba a l'usuari. El propi `docs/PLAY.md` ho reconeix com a pendent. | `app/audio_out.py:130-131,173-174,177-178` · `app/mcp_bridge.py:454` | 🔧/🕳️ Mostrar avís visible (ja està al «Pendent» de `PLAY.md`). |
+| 1.6 | **`except Exception: pass` silenciosos** (àudio i MCP): l'error no arribava a l'usuari. | `app/audio_out.py` · `app/mcp_bridge.py:454` | ✅ **FET** (`aac8b26`): avís **VISIBLE** quan mor el motor d'àudio + fora els `except` silenciosos; `docs/PLAY.md` ja ho marca FET. |
 | 1.7 | `eines/deps_fixades.env` versionat amb extensió `.env`: **no és un secret** (URL+SHA), però el patró `.env` s'associa a secrets i pot confondre eines/scanners. | `eines/deps_fixades.env` | ⚠️ Menor; valorar renombrar (p. ex. `eines/deps_fixades.sh`). |
 
 ## 2. UX + instal·lació local
@@ -382,24 +382,26 @@ límit** (runners) i la **validació en maquinari real**.
 
 **D'OC-6 (auditoria d'app/UX/docs/seguretat):**
 
-1. `LICENSE` → text complet de la GPLv3 (o `COPYING`). · **1.1**
-2. Unificar la llicència a `GPL-3.0-or-later` (pyproject/README/etc.). · **1.2**
-3. `instal·la_local.sh`: numeració `/6` + instal·lar el `.desktop` al menú + tolerància a `apt-get download`. · **2.1/2.2/2.4**
-4. `pyproject.toml`: `dependencies` alineades amb els pins de `requirements.txt`. · **1.4 / D.2**
-5. `.gitignore`: excloure `XX TEMP FILES USUARI/` (+ `git rm --cached`). · **1.5**
-6. Avís visible quan el motor d'àudio mor (fora els `except Exception: pass` silenciosos). · **1.6 / 4.3**
-7. (Opcional) `coverage` + llindar al CI. · **4.1 / B.3**
+1. `LICENSE` → text complet de la GPLv3 (o `COPYING`). · **1.1** · ✅ **FET** (`4f6c8bb`)
+2. Unificar la llicència a `GPL-3.0-or-later` (pyproject/README/etc.). · **1.2** · ✅ **FET** (`4f6c8bb`)
+3. `instal·la_local.sh`: numeració `/6` + instal·lar el `.desktop` al menú + tolerància a `apt-get download`. · **2.1/2.2/2.4** · ✅ **FET** (`4f6c8bb`)
+4. `pyproject.toml`: `dependencies` alineades amb els pins de `requirements.txt`. · **1.4 / D.2** · ✅ **FET** (`4f6c8bb`)
+5. `.gitignore`: excloure `XX TEMP FILES USUARI/` (+ `git rm --cached`). · **1.5** · ✅ **FET** (`4f6c8bb`)
+6. Avís visible quan el motor d'àudio mor (fora els `except Exception: pass` silenciosos). · **1.6 / 4.3** · ✅ **FET** (`aac8b26`)
+7. `coverage` + llindar al CI. · **4.1 / B.3** · ✅ **FET** (`77f7e45`, llindar 65 %)
 
 **D'OC-5 (empaquetat/CI/portabilitat/versions):** _prioritat alta/mitjana/baixa_
 
-- [ ] `build-{appimage,windows,macos}.yml` — instal·lar des de `requirements.txt` + **pin** de `pyinstaller`. · **A.2/D.1** · **alta**
-- [ ] `build-windows.yml` — executar els tests **abans** de pujar l'artefacte. · **A.5** · **mitjana** _(rebaixat; vegeu l'esmena OC-6/306)_
-- [ ] `build-appimage.yml` — **smoke test** de l'AppImage (headless). · **A.4** · **mitjana**
-- [ ] `build-{appimage,windows}.yml` — verificar el **contingut** del `.tar.gz`/`.zip`. · **A.3** · **mitjana**
-- [ ] `.github/` — `concurrency` + `timeout-minutes`. · **A.7/B.4** · **baixa**
-- [ ] `.github/dependabot.yml` — `github-actions` + `pip`. · **B.2/D.4** · **mitjana**
-- [ ] (Opcional) SBOM + atestació de proveniència. · **A.8** · **baixa**
-- [ ] (Opcional) CI que regeneri `COMPONENTS_I_VERSIONS.md` i comprovi `git diff`. · **D.5** · **baixa**
+- [x] `build-{appimage,windows,macos}.yml` — instal·lar des de `requirements.txt` + **pin** de `pyinstaller`. · **A.2/D.1** · ✅ `4f6c8bb`
+- [x] `build-windows.yml` — executar els tests **abans** de pujar l'artefacte. · **A.5** · ✅ `4f6c8bb` _(rebaixat; vegeu l'esmena OC-6/306)_
+- [x] `build-appimage.yml` — **smoke test** de l'AppImage (headless). · **A.4** · ✅ `4f6c8bb`
+- [x] `build-{appimage,windows}.yml` — verificar el **contingut** del `.tar.gz`/`.zip`. · **A.3** · ✅ `4f6c8bb`
+- [x] `.github/` — `concurrency` + `timeout-minutes`. · **A.7/B.4** · ✅ `4f6c8bb`
+- [x] `.github/dependabot.yml` — `github-actions` + `pip`. · **B.2/D.4** · ✅ `4f6c8bb`
+- [x] CI que regeneri `COMPONENTS_I_VERSIONS.md` i comprovi `git diff`. · **D.5** · ✅ `77f7e45`
+- [ ] _(Opcional, **no fet**)_ SBOM + atestació de proveniència. · **A.8** · **baixa**
+
+> ✅ **13-10:** tots els ítems **no opcionals** d'aquesta llista estan **FETS** (commits `4f6c8bb`/`77f7e45`/`aac8b26`); només queda obert l'opcional **A.8 (SBOM/atestació)**.
 
 # ✅ Bugs de producció (13-10) — trobats i arreglats
 
@@ -436,8 +438,17 @@ Detectats durant la **validació funcional**; tots amb causa, fix, test i commit
   **i** `estructura_ABC.csv` ja **normalitzats**.
 - **Test**: `tests/test_cobertura_viu.py` (4 casos).
 
-> ✅ Els 3 estan arreglats, amb **tests de regressió**, i documentats a
-> `docs/REGLES_DE_LA_APP.md` (§«S'ha de complir SEMPRE» + evidència). Suite: **415 OK (1 skip)**.
+### B4. (GREU) Xocs d'inici dins la resolució del CSV
+- **Símptoma**: dos acords amb inicis **molt propers** que, arrodonits al **CSV** (2 decimals), **coincidien** de fila → CSV ambigu i WAVs de durada 0 a l'export.
+- **Causa**: la resolució del CSV (2 decimals) no garantia files úniques.
+- **Fix**: exigir una **distància mínima** entre inicis (en lloc de tocar `TEMPS_DEC`) + detecció de xocs amb missatge clar. Test: `tests/test_xocs_inici_csv.py` (10).
+
+### B5. Reanomenament sense sanejar (noms d'acord)
+- **Símptoma**: el nom d'un acord es podia escriure amb caràcters **no vàlids** per al fitxer (des de l'MCP o l'editor) i podia **divergir** del nom a l'export.
+- **Causa**: el sanejat era **parcial** (només a l'alta d'acord).
+- **Fix**: helper canònic **`pipeline.saneja_nom_acord()`** (embolcalla `safe_filename`) aplicat als **4 camins** (MCP `rename_chord`, editor, renom inline, alta). Noms habituals intactes (`C#m7`, `N`; `Am/G`→`Am-G`). Test: `tests/test_rename_sanejat.py` (6).
+
+> ✅ **Tots** els bugs d'aquesta secció estan arreglats, amb **tests de regressió**; els d'ordre/cobertura estan documentats a `docs/REGLES_DE_LA_APP.md`. Suite **468 OK (1 skip)**.
 
 > Generat per **OC-6** (2026-10-13) sobre el commit `75c8f31`. Coordinació via
 > `LOG_DIALEGS_AGENTS.txt` (`OC-6/303`+). **Seccions duplicades consolidades per OC-5**
