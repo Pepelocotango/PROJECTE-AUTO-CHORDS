@@ -451,8 +451,8 @@ def _op_open_wav(ctx, params):
     w.sortida = w._detecta_sortida_wav(treball)
     try:
         w._actualitza_info_wav(treball, info)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning("mcp_bridge: no s'ha pogut actualitzar la info del WAV: %s", e)
     w._carrega_visor(treball)
     return _op_status(ctx, {})
 

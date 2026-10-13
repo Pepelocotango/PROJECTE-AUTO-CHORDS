@@ -1635,6 +1635,7 @@ class Visor(QMainWindow):
 
     # escolta
     def _engega_des_de(self, t):
+        self._avis_audio_fet = False       # nou play → tornar a poder avisar
         self._atura_proc()
         # Clamp per seguretat (validació prèvia pot ser absent en alguns
         # camins; evitem índex negatiu o inici més enllà de les dades).
@@ -1749,11 +1750,10 @@ class Visor(QMainWindow):
             except (BrokenPipeError, ValueError):
                 pass
         except Exception as e:  # noqa: BLE001
-            # fil d'àudio: cap log (evitar soroll i tocar fils); imprimim si es pot
-            try:
-                print(f"[visor] alimenta: {e}", flush=True)
-            except (UnicodeEncodeError, OSError, ValueError, AttributeError):
-                pass
+            # Fil d'àudio: l'error NO ha de quedar en silenci (AUDITORIA 1.6).
+            # `logging` és thread-safe → es pot cridar des d'aquí sense tocar Qt.
+            logging.getLogger("auto_chords").warning(
+                "visor: el fil d'alimentació d'àudio ha fallat: %s", e)
 
     def _mostra_err_player(self):
         try:
@@ -1804,10 +1804,16 @@ class Visor(QMainWindow):
             codi = self.proc.returncode
             self._mostra_err_player()
             if codi not in (0, None):
-                # El reproductor ha mort per error (glitch del servidor, etc.):
-                # ho diem clarament, que abans s'aturava en silenci.
-                self.log(f"⚠️ el reproductor s'ha aturat per un error "
-                         f"(codi {codi}) — el so s'ha tallat")
+                # El reproductor ha mort per error (glitch del servidor...).
+                # AVÍS VISIBLE a més del log (AUDITORIA_PRODUCCIO 1.6 · PLAY.md
+                # «Pendent»), un sol cop per reproducció (`_avis_audio_fet` es
+                # reinicia a `_engega_des_de`).
+                msg = (f"El motor d'àudio s'ha aturat per un error (codi {codi}); "
+                       "el so s'ha tallat.")
+                self.log(f"⚠️ {msg}")
+                if not getattr(self, "_avis_audio_fet", False):
+                    self._avis_audio_fet = True
+                    self.infoMissatge.emit(f"⚠️ {msg} — detalls al registre")
             else:
                 self.log("final de la cançó")
             self.play_stop()

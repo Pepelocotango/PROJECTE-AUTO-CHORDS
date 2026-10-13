@@ -22,12 +22,17 @@ sobre el `subprocess.Popen`:
 Gràcies a això, el fil d'alimentació del visor (`_alimenta`) no canvia: només
 escriu trossos de PCM, i el motor els reprodueix.
 """
+import logging
 import subprocess
 import threading
 
 import numpy as np
 
 from app import plataforma
+
+# Els errors d'àudio NO han de quedar en silenci (AUDITORIA_PRODUCCIO 1.6/4.3):
+# es registren al log de l'app (filename + stderr) en comtes de `pass`.
+logger = logging.getLogger("auto_chords")
 
 # Nom del «player» que indica el motor natiu (sounddevice).
 NOM_NATIU = "sounddevice"
@@ -127,8 +132,9 @@ class MotorStream:
                 try:
                     if st is not None:
                         st.close()
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as e2:  # noqa: BLE001
+                    logger.debug("audio_out: no s'ha pogut tancar el stream "
+                                 "de prova (%s): %s", dev, e2)
         self._err = True
         self._rc = 1
         raise RuntimeError(f"no s'ha pogut obrir cap sortida d'àudio: {ultim}")
@@ -170,12 +176,12 @@ class MotorStream:
         try:
             if drena and not self._err:
                 st.stop()               # drena el buffer pendent
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as e:  # noqa: BLE001
+            logger.warning("audio_out: aturar el stream ha fallat: %s", e)
         try:
             st.close()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as e:  # noqa: BLE001
+            logger.warning("audio_out: tancar el stream ha fallat: %s", e)
         self._fi = True
 
     def poll(self):
