@@ -36,6 +36,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   **desambigüen amb un sufix** (`_2`, `_3`…) — els noms únics **no canvien
   mai**. Els noms d'acord habituals (`C`, `C#m7`, `N`, `Am/G`→`Am-G`…) queden
   **idèntics** (hi ha un test «daurat»).
+- **Directoris temporals de l'app: es netegen sempre**: els `ac_ttl_`/`ac_qm_`/
+  `ac_key_` que crea l'anàlisi (transform `.ttl`, valors del qm, tonalitat) ja
+  no s'acumulen a `/tmp`: s'esborren en un `finally` (també si peta) amb
+  `pipeline.esborra_tmp()`, que **només** esborra directoris amb aquests
+  prefixos propis.
 
 ### Canviat
 - **Les carpetes que genera l'app porten ara un PREFIX**: `AUTOCHORDS_<nom>`

@@ -6,7 +6,9 @@
 import csv
 import os
 import re
+import shutil
 import subprocess
+import tempfile
 import wave
 
 from app import plataforma, tempo
@@ -100,6 +102,24 @@ def carpeta_sortida(wav):
     return os.path.join(os.path.dirname(wav), PREFIX_SORTIDA + base)
 
 
+# Prefixos dels directoris temporals que crea l'app (per netejar-los sempre).
+PREFIXOS_TMP = ("ac_ttl_", "ac_qm_", "ac_key_")
+
+
+def esborra_tmp(dirs):
+    """Esborra directoris temporals creats per l'app (mai llança).
+
+    Només esborra els que comencen per un dels prefixos propis: així, passi el
+    que passi, no es pot esborrar una ruta arbitrària.
+    """
+    for d in dirs or ():
+        try:
+            if os.path.basename(str(d).rstrip("/\\")).startswith(PREFIXOS_TMP):
+                shutil.rmtree(d, ignore_errors=True)
+        except OSError:
+            pass
+
+
 def _vamp_env():
     env = dict(os.environ)
     env["VAMP_PATH"] = plataforma.path_env_vamp(VAMP_DIRS)
@@ -169,8 +189,12 @@ def usa_host():
     return os.path.isfile(HOST) and os.access(HOST, os.X_OK)
 
 
-def _cmd_transform(transform, out_csv, wav, params=None):
-    """Comanda per executar un transform: el nostre host, o sonic-annotator."""
+def _cmd_transform(transform, out_csv, wav, params=None, tmp=None):
+    """Comanda per executar un transform: el nostre host, o sonic-annotator.
+
+    Si cal un `.ttl` temporal, el seu directori s'apunta a `tmp` (una llista)
+    perquè qui crida el pugui esborrar quan la comanda ja s'hagi executat.
+    """
     if usa_host():
         cmd = [HOST, "--plugin", transform.replace("vamp:", ""),
                "--csv", out_csv]
@@ -193,8 +217,10 @@ def _cmd_transform(transform, out_csv, wav, params=None):
         cmd.append(wav)
         return cmd
     if params:
-        import tempfile
-        ttl = os.path.join(tempfile.mkdtemp(prefix="ac_ttl_"), "t.ttl")
+        d = tempfile.mkdtemp(prefix="ac_ttl_")
+        if tmp is not None:
+            tmp.append(d)      # el ttl ha de viure fins que corri la comanda
+        ttl = os.path.join(d, "t.ttl")
         escriu_ttl("chords" if "chordino" in transform else "structure",
                    params, ttl, lambda *a: None)
         return [SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
@@ -209,19 +235,25 @@ def executa_transform(transform, out_csv, wav, log, params=None):
     Primer amb el step/block de la taula (fidelitat amb el sonic-annotator);
     si el plugin els refusa (depenen del mostreig), reintenta amb els seus
     valors preferits (sempre funcionen).
+
+    Els `.ttl` temporals s'esborren SEMPRE en sortir (també si peta).
     """
-    cmd = _cmd_transform(transform, out_csv, wav, params)
+    tmp = []
     try:
-        return run(cmd, log)
-    except RuntimeError:
-        if "--step" not in cmd:
-            raise
-        cmd2 = _cmd_transform(transform, out_csv, wav, params)
-        i = cmd2.index("--step")
-        del cmd2[i:i + 4]                 # treu --step N --block M
-        if log:
-            log("  (step/block de la taula refusats; uso els del plugin)")
-        return run(cmd2, log)
+        cmd = _cmd_transform(transform, out_csv, wav, params, tmp)
+        try:
+            return run(cmd, log)
+        except RuntimeError:
+            if "--step" not in cmd:
+                raise
+            cmd2 = _cmd_transform(transform, out_csv, wav, params, tmp)
+            i = cmd2.index("--step")
+            del cmd2[i:i + 4]                 # treu --step N --block M
+            if log:
+                log("  (step/block de la taula refusats; uso els del plugin)")
+            return run(cmd2, log)
+    finally:
+        esborra_tmp(tmp)
 
 
 # Transform Vamp per defecte de cada deteccio (vegeu docs/AUTODETECCIO_OPCIONS.md)
@@ -286,11 +318,14 @@ def extract_chords(wav_path, out_csv, log, params=None):
         return executa_transform(TRANSFORMS["chords"], out_csv, wav_path, log,
                                  params)
     if params:
-        import tempfile
-        ttl = os.path.join(tempfile.mkdtemp(prefix="ac_ttl_"), "chords.ttl")
-        escriu_ttl("chords", params, ttl, log)
-        run([SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
-             "--csv-force", "--csv-omit-filename", wav_path], log)
+        d = tempfile.mkdtemp(prefix="ac_ttl_")
+        try:
+            ttl = os.path.join(d, "chords.ttl")
+            escriu_ttl("chords", params, ttl, log)
+            run([SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
+                 "--csv-force", "--csv-omit-filename", wav_path], log)
+        finally:
+            esborra_tmp([d])
     else:
         run([SONIC, "-d", TRANSFORMS["chords"],
              "-w", "csv", "--csv-one-file", out_csv, "--csv-force",
@@ -303,19 +338,21 @@ MOTORS_ESTRUCTURA = ("qm",)
 
 def _qm_valors(transform, wav_path, col=1, timeout=1800):
     """Valors numerics d'una columna d'un transform del qm."""
-    import tempfile
     d = tempfile.mkdtemp(prefix="ac_qm_")
-    out = os.path.join(d, "x.csv")
-    executa_transform(transform, out, wav_path, lambda *a: None)
-    vals = []
-    if os.path.exists(out):
-        with open(out, newline="", encoding="utf-8") as f:
-            for r in csv.reader(f):
-                try:
-                    vals.append(float(r[col]))
-                except (ValueError, IndexError):
-                    continue
-    return vals
+    try:
+        out = os.path.join(d, "x.csv")
+        executa_transform(transform, out, wav_path, lambda *a: None)
+        vals = []
+        if os.path.exists(out):
+            with open(out, newline="", encoding="utf-8") as f:
+                for r in csv.reader(f):
+                    try:
+                        vals.append(float(r[col]))
+                    except (ValueError, IndexError):
+                        continue
+        return vals
+    finally:
+        esborra_tmp([d])
 
 
 def detecta_bpm_qm(wav_path, log=None):
@@ -399,19 +436,21 @@ def _qm_temps(transform, wav_path, timeout=1800, log=None):
 
     `log` (opcional) rep la sortida del host; si no es passa, es descarta.
     """
-    import tempfile
     d = tempfile.mkdtemp(prefix="ac_qm_")
-    out = os.path.join(d, "x.csv")
-    executa_transform(transform, out, wav_path, log or (lambda *a: None))
-    temps = []
-    if os.path.exists(out):
-        with open(out, newline="", encoding="utf-8") as f:
-            for r in csv.reader(f):
-                try:
-                    temps.append(float(r[0]))
-                except (ValueError, IndexError):
-                    continue
-    return temps
+    try:
+        out = os.path.join(d, "x.csv")
+        executa_transform(transform, out, wav_path, log or (lambda *a: None))
+        temps = []
+        if os.path.exists(out):
+            with open(out, newline="", encoding="utf-8") as f:
+                for r in csv.reader(f):
+                    try:
+                        temps.append(float(r[0]))
+                    except (ValueError, IndexError):
+                        continue
+        return temps
+    finally:
+        esborra_tmp([d])
 
 
 def detecta_compas1(wav_path, log=None):
@@ -450,11 +489,14 @@ def extract_segments(wav_path, out_csv, log, params=None, motor="qm"):
 def _extract_segments_segmentino(wav_path, out_csv, log, params=None):
     """[historic] Segmentino. Retirat de la UI; es conserva per referencia."""
     if params:
-        import tempfile
-        ttl = os.path.join(tempfile.mkdtemp(prefix="ac_ttl_"), "seg.ttl")
-        escriu_ttl("structure", params, ttl, log)
-        run([SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
-             "--csv-force", "--csv-omit-filename", wav_path], log)
+        d = tempfile.mkdtemp(prefix="ac_ttl_")
+        try:
+            ttl = os.path.join(d, "seg.ttl")
+            escriu_ttl("structure", params, ttl, log)
+            run([SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
+                 "--csv-force", "--csv-omit-filename", wav_path], log)
+        finally:
+            esborra_tmp([d])
     else:
         run([SONIC, "-d", TRANSFORMS["structure"],
              "-w", "csv", "--csv-one-file", out_csv, "--csv-force",

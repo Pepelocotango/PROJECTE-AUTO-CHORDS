@@ -305,6 +305,7 @@ def detecta_fifths(wav, log=None):
     retorna 0 (= sense armadura) sense interrompre l'exportació.
     """
     log = _log_std(log)
+    d = None
     try:
         from app import pipeline
         import tempfile
@@ -321,6 +322,10 @@ def detecta_fifths(wav, log=None):
                         return fifths_de_to(t)
     except Exception as e:  # noqa: BLE001
         log(f"partitura: no he pogut detectar la tonalitat ({e})")
+    finally:
+        # El directori temporal és nostre: s'esborra sempre (també si peta).
+        if d:
+            shutil.rmtree(d, ignore_errors=True)
     return 0
 
 

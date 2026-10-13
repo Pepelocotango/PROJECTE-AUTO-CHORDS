@@ -3557,5 +3557,85 @@ class CarpetaSortidaTests(unittest.TestCase):
                          "AUTOCHORDS_Tema")
 
 
+class TemporalsTests(unittest.TestCase):
+    """Els directoris temporals de l'app no s'han de quedar mai (Pas 5)."""
+
+    @staticmethod
+    def _dirs_ac():
+        try:
+            noms = os.listdir(tempfile.gettempdir())
+        except OSError:
+            return set()
+        return {n for n in noms if n.startswith(pipeline.PREFIXOS_TMP)}
+
+    def test_esborra_tmp_nomes_els_prefixos_propis(self):
+        d = tempfile.mkdtemp(prefix="ac_qm_")
+        altre = tempfile.mkdtemp(prefix="no_nostre_")
+        try:
+            pipeline.esborra_tmp([d, altre])
+            self.assertFalse(os.path.exists(d))        # el nostre: fora
+            self.assertTrue(os.path.exists(altre))     # aliè: intacte
+        finally:
+            shutil.rmtree(altre, ignore_errors=True)
+
+    def test_qm_valors_neteja(self):
+        abans = self._dirs_ac()
+
+        def _fake(transform, out, wav, log):
+            with open(out, "w", encoding="utf-8") as f:
+                f.write("x,120\n")
+
+        with patch.object(pipeline, "executa_transform", _fake):
+            vals = pipeline._qm_valors("t", "/tmp/x.wav")
+        self.assertEqual(vals, [120.0])
+        self.assertEqual(self._dirs_ac() - abans, set())
+
+    def test_qm_valors_neteja_si_peta(self):
+        abans = self._dirs_ac()
+
+        def _peta(*a, **k):
+            raise RuntimeError("boom")
+
+        with patch.object(pipeline, "executa_transform", _peta):
+            with self.assertRaises(RuntimeError):
+                pipeline._qm_valors("t", "/tmp/x.wav")
+        self.assertEqual(self._dirs_ac() - abans, set())
+
+    def test_executa_transform_neteja_el_ttl(self):
+        abans = self._dirs_ac()
+        with patch.object(pipeline, "usa_host", lambda: False), \
+                patch.object(pipeline, "escriu_ttl", lambda *a, **k: None), \
+                patch.object(pipeline, "run", lambda *a, **k: None):
+            pipeline.executa_transform("vamp:x", "/tmp/o.csv", "/tmp/x.wav",
+                                       None, params={"s": 0.7})
+        self.assertEqual(self._dirs_ac() - abans, set())
+
+    def test_executa_transform_neteja_el_ttl_si_peta(self):
+        abans = self._dirs_ac()
+
+        def _peta(*a, **k):
+            raise RuntimeError("boom")
+
+        with patch.object(pipeline, "usa_host", lambda: False), \
+                patch.object(pipeline, "escriu_ttl", lambda *a, **k: None), \
+                patch.object(pipeline, "run", _peta):
+            with self.assertRaises(RuntimeError):
+                pipeline.executa_transform("vamp:x", "/tmp/o.csv", "/tmp/x.wav",
+                                           None, params={"s": 0.7})
+        self.assertEqual(self._dirs_ac() - abans, set())
+
+    def test_detecta_fifths_neteja(self):
+        from app import partitura as _part
+        abans = self._dirs_ac()
+
+        def _fake(transform, out, wav, log):
+            with open(out, "w", encoding="utf-8") as f:
+                f.write("G major\n")
+
+        with patch.object(pipeline, "executa_transform", _fake):
+            self.assertEqual(_part.detecta_fifths("/tmp/x.wav"), 1)
+        self.assertEqual(self._dirs_ac() - abans, set())
+
+
 if __name__ == "__main__":
     unittest.main()
