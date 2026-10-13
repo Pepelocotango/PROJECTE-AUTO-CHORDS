@@ -10,11 +10,28 @@
 
 | Workflow | Tipus | Què fa | Sortida |
 |---|---|---|---|
-| **`build-appimage.yml`** | build (Linux) | AppImage x86_64 autocontinguda | **artefacte** (carpeta amb l'AppImage + docs) |
-| **`build-windows.yml`** | build (Windows) | paquet portable x64 (MSYS2 + PyInstaller `--onedir`) | **artefacte** (carpeta amb el paquet + docs) |
-| **`build-macos.yml`** | build (macOS) | `.app` per a High Sierra 10.13+ (Intel) | **artefacte** (`AUTO_CHORDS-macos.zip` **+ `.dmg`**) |
+| **`build-appimage.yml`** | build (Linux) | AppImage x86_64 autocontinguda | **artefacte** `.tar.gz` (AppImage + docs) |
+| **`build-windows.yml`** | build (Windows) | paquet portable x64 (MSYS2 + PyInstaller `--onedir`) | **artefacte** `.zip` (`.exe` + `_internal/` + docs) |
+| **`build-macos.yml`** | build (macOS) | `.app` per a High Sierra 10.13+ (Intel) | **artefacte** `.dmg` (`.app` + docs) |
 | **`build-all.yml`** | agregador | executa els 3 builds **en paral·lel** | els 3 artefactes alhora |
-| **`release.yml`** | release | agafa els **últims artefactes verds** (build-all o per build) | **Release PUBLICAT** amb els 3 paquets (+ tag) |
+| **`release.yml`** | release | agafa els **últims artefactes verds** (build-all o per build) | **Release PUBLICAT** amb **1 paquet per SO** (+ tag) |
+
+## Noms i formats (canònics per SO)
+
+El CI i el Release fan servir el **mateix patró**: **un sol paquet per SO** amb
+**l'executable + els docs a dins**.
+
+| SO | Fitxer | Format | Contingut |
+|---|---|---|---|
+| 🐧 **Linux** | `AutoChords-<versió>-build<NN>-linux-x86_64.tar.gz` | **`.tar.gz`** (tarball binari) | `AutoChords-<versió>-x86_64.AppImage` + docs |
+| 🪟 **Windows** | `AutoChords-<versió>-build<NN>-win-x64.zip` | **`.zip`** (portable) | `AutoChords.exe` + `_internal/` + docs (a l'arrel) |
+| 🍎 **macOS** | `AutoChords-<versió>-build<NN>-macos-x86_64.dmg` | **`.dmg`** (UDZO) | `AUTO_CHORDS.app` + enllaç a `/Applications` + docs |
+
+- Al **CI** el nom porta la versió del `pyproject.toml`; al **Release** es
+  re-escriu amb la **versió del tag**. El **número de build** (`<NN>` = número
+  d'execució de GitHub) es manté sempre.
+- Docs inclosos: `README.md`, `CHANGELOG.md`, `ROADMAP.md`, `LICENSE`,
+  `LLICENCIES_TERCERS.md` i `docs/`.
 
 > **Artefacte vs Release**: un *artefacte* és un fitxer temporal (~90 dies) i privat
 > que queda a la pàgina de l'execució (Actions ▸ execució ▸ *Artifacts*). Un *Release*
@@ -29,17 +46,23 @@ els logs de debug.
 
 - **`build-appimage.yml`** — runner **`ubuntu-22.04`** (marca la glibc mínima de
   l'AppImage). Compila l'host Vamp + plugins, munta el CPython portable + ffmpeg,
-  corre els tests i construeix l'**AppImage** (`auto-chords-<sane>-x86_64.AppImage`).
+  corre els tests i construeix l'**AppImage**, que s'empaqueta en un **`.tar.gz`**
+  (`AutoChords-<versió>-build<NN>-linux-x86_64.tar.gz`) amb l'AppImage
+  (`AutoChords-<versió>-x86_64.AppImage`) i els docs a dins.
 - **`build-windows.yml`** — runner **`windows-2022`**, amb **MSYS2/MINGW64**.
-  Compila els natius, fa PyInstaller `--onedir` i prepara el ZIP portable.
+  Compila els natius, fa PyInstaller `--onedir` i prepara el **`.zip` portable**
+  (`AutoChords-<versió>-build<NN>-win-x64.zip`) amb `AutoChords.exe` (+ `_internal/`)
+  i els docs **a l'arrel** (sense carpetes del CI a dins).
 - **`build-macos.yml`** — runner **`macos-15-intel`** (l'últim Intel de GitHub
   Actions; disponible fins a l'agost de 2027). Compila els natius **des de font** a
   10.13, fa el `.app` amb PyInstaller i aleshores: (6b) **verifica el `minos`
   de TOTS els Mach-O del bundle** (fatia x86_64 ≤ 10.13, amb
   `eines/verifica_minos_macos.py`), (6c) **smoke test** — executa l'`.app`
   empaquetada en mode headless (`offscreen`) i comprova que arrenca de debò —,
-  (7) `.zip` (`ditto`) i (7b) **`.dmg`** (`hdiutil`, amb l'`.app` + enllaç a
-  `/Applications`, muntat i verificat). Puja **ZIP + DMG** com a artefacte.
+  (7) un `.zip` (`ditto`) de comprovació (no es publica) i (7b) el **`.dmg`**
+  (`AutoChords-<versió>-build<NN>-macos-x86_64.dmg`, `hdiutil`, amb l'`.app`, un
+  enllaç a `/Applications` i els docs; muntat i verificat). L'artefacte és
+  **només el `.dmg`**.
 
 > Els 3 tenen **`workflow_call`** a més de `workflow_dispatch`: això els fa
 > *reusable* (es poden cridar des d'altres workflows). Ho aprofita **`build-all.yml`**.

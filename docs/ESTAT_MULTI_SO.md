@@ -10,9 +10,9 @@
 
 | SO | Objectiu | Estat | Artefacte del CI |
 |----|----------|-------|------------------|
-| **🐧 Linux** | AppImage x86_64 | ✅ **VERD i verificat** | `AutoChords_v<versió>-…-build<NN>-Linux` (ZIP que conté l'AppImage `auto-chords-*-x86_64.AppImage`) |
-| **🪟 Windows** | ZIP portable x64 | ✅ **VERD amb tests** | `AutoChords_v<versió>-…-build<NN>-Windows` (**~95 MB**) |
-| **🍎 macOS** | `.app` per a **High Sierra 10.13+** (Intel) + **`.dmg`** | ✅ **VERD** (smoke test OK) | `AUTO_CHORDS-macos-build<NN>` (`.app` dins ZIP **+ `.dmg`**) |
+| **🐧 Linux** | `tar.gz` amb l'AppImage x86_64 | ✅ **VERD i verificat** | **`.tar.gz`** `AutoChords-<versió>-build<NN>-linux-x86_64` (AppImage + docs) |
+| **🪟 Windows** | `.zip` portable x64 | ✅ **VERD amb tests** | **`.zip`** `AutoChords-<versió>-build<NN>-win-x64` (`.exe` + `_internal/` + docs; ~95 MB) |
+| **🍎 macOS** | `.dmg` amb l'`.app` per a **High Sierra 10.13+** (Intel) | ✅ **VERD** (smoke test OK) | **`.dmg`** `AutoChords-<versió>-build<NN>-macos-x86_64` (`.app` + enllaç a /Applications + docs) |
 
 > ⚠️ Els noms dels artefactes porten la **versió del `pyproject.toml`** del
 > moment de construir-los i el **número de l'execució** (`<NN>`). Els darrers
@@ -66,7 +66,7 @@
   **Fix**: `--paths . --paths app` + `--hidden-import` (igual que el `.spec` de
   Windows) (`3c7f441`). Detectat gràcies al **smoke test** del CI.
 - ✅ **Run #14 (`3c7f441`) VERD** — amb tots els passos nous (minos, smoke, DMG).
-- **Artefacte**: `AUTO_CHORDS-macos.zip` **+ `AUTO_CHORDS-macos.dmg`**.
+- **Artefacte**: el **`.dmg`** (`AutoChords-<versió>-build<NN>-macos-x86_64.dmg`).
 - **PENDENT**:
   1. ✅ **FET**: etapa de tests afegida al workflow (`e7f6695`); runs **#7 i #8
      VERDS amb els tests dins** (suite completa + anotació `::error::`).
@@ -118,14 +118,14 @@
 ## Com provar-ho (operador)
 
 ```bash
-# Linux (AppImage) — descarregar de GitHub > Actions o del Release
-chmod +x *.AppImage && ./*.AppImage
+# Linux — descarregar de GitHub > Releases i extreure el tar.gz
+tar -xzf AutoChords-*_linux-x86_64.tar.gz
+chmod +x AutoChords-*_x86_64.AppImage && ./AutoChords-*_x86_64.AppImage
 
-# macOS — provar al Hackintosh (10.13)
-unzip AUTO_CHORDS-macos-build8.zip
+# macOS — obrir el .dmg al Hackintosh (10.13) i arrossegar l'app a Applications
 # clic-dret ▸ Obrir (o: xattr -dr com.apple.quarantine AUTO_CHORDS.app)
 
-# Windows — descomprimir el ZIP i executar AUTO_CHORDS.exe
+# Windows — descomprimir el ZIP i executar AutoChords.exe
 ```
 
 ## Fitxers clau

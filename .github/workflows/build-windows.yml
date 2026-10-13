@@ -129,28 +129,38 @@ jobs:
         shell: bash
         run: python eines/prova_windows.py "dist/AutoChords/_internal"
 
-      - name: 10. Preparar l'artefacte (ZIP)
+      - name: 10. Empaquetar (ZIP canònic — AutoChords.exe + docs a l'arrel)
+        # Estàndard de Windows per a un paquet PORTABLE: un `.zip` amb
+        # l'executable (`AutoChords.exe` + `_internal/`) i els docs a l'arrel
+        # (res de carpetes amb el nom de l'artefacte a dins). Nom canònic:
+        #   AutoChords-<versió>-build<NN>-win-x64.zip
         id: prep
         shell: bash
         run: |
           VER=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2 || echo 0)
-          SANE=$(echo "${GITHUB_REF_NAME:-local}" | tr '/' '_')
-          NOM="AutoChords_v${VER}-${SANE}-build${GITHUB_RUN_NUMBER}-Windows"
-          rm -rf ARTEFACTE
-          mkdir -p "ARTEFACTE/$NOM"
-          cp -r dist/AutoChords "ARTEFACTE/$NOM/"
-          cp LICENSE LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md "ARTEFACTE/$NOM/" 2>/dev/null || true
-          cp -r docs "ARTEFACTE/$NOM/" 2>/dev/null || true
+          NOM="AutoChords-${VER}-build${GITHUB_RUN_NUMBER}-win-x64"
+          rm -rf paquet && mkdir -p paquet
+          cp -r dist/AutoChords/. paquet/
+          cp LICENSE LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md paquet/ 2>/dev/null || true
+          cp -r docs paquet/ 2>/dev/null || true
+          rm -f "${NOM}.zip"
+          if command -v 7z >/dev/null 2>&1; then
+            ( cd paquet && 7z a -tzip -mx=9 "../${NOM}.zip" . >/dev/null )
+          else
+            powershell -NoProfile -Command \
+              "Compress-Archive -Path 'paquet/*' -DestinationPath '${NOM}.zip' -Force"
+          fi
+          rm -rf paquet
+          ls -la "${NOM}.zip"
           echo "nom=$NOM" >> "$GITHUB_OUTPUT"
-          echo "Mida del paquet: $(du -sh dist/AutoChords | cut -f1)"
 
       - name: 11. Pujar l'artefacte
         # `always()`: tot i que els tests fallin, volem poder baixar el paquet.
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6
         with:
-          name: ${{ steps.prep.outputs.nom || format('AutoChords-Windows-build{0}', github.run_number) }}
-          path: ARTEFACTE/
+          name: ${{ steps.prep.outputs.nom || format('AutoChords-win-build{0}', github.run_number) }}
+          path: ${{ steps.prep.outputs.nom }}.zip
           if-no-files-found: warn
           retention-days: 30
 

@@ -119,23 +119,30 @@ jobs:
           ./eines/crea_appimage.sh "auto-chords-${SANE}-x86_64.AppImage"
           ls -la *.AppImage
 
-      - name: 10. Preparar l'artefacte (AppImage + docs)
+      - name: 10. Empaquetar (tar.gz canònic — AppImage + docs)
+        # Estàndard de Linux per a un binari autocontingut: un tarball `.tar.gz`
+        # amb l'executable (l'AppImage) + els docs. Nom canònic:
+        #   AutoChords-<versió>-build<NN>-linux-x86_64.tar.gz
         id: prep
         run: |
           VER=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
-          SANE=$(echo "${GITHUB_REF_NAME:-local}" | tr '/' '_')
-          NOM="AutoChords_v${VER}-${SANE}-build${GITHUB_RUN_NUMBER}-Linux"
-          mkdir -p "$NOM"
-          cp auto-chords-*.AppImage "$NOM/"
-          cp LICENSE LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md "$NOM/" 2>/dev/null || true
-          cp -r docs "$NOM/" 2>/dev/null || true
+          NOM="AutoChords-${VER}-build${GITHUB_RUN_NUMBER}-linux-x86_64"
+          APP="AutoChords-${VER}-x86_64.AppImage"     # nom canònic d'AppImage
+          rm -rf paquet && mkdir -p paquet
+          cp auto-chords-*.AppImage "paquet/${APP}"
+          chmod +x "paquet/${APP}"
+          cp LICENSE LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md paquet/ 2>/dev/null || true
+          cp -r docs paquet/ 2>/dev/null || true
+          tar -C paquet -czf "${NOM}.tar.gz" .
+          rm -rf paquet
+          ls -la "${NOM}.tar.gz"
           echo "nom=$NOM" >> "$GITHUB_OUTPUT"
 
       - name: 11. Pujar l'artefacte
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6
         with:
           name: ${{ steps.prep.outputs.nom }}
-          path: ${{ steps.prep.outputs.nom }}/
+          path: ${{ steps.prep.outputs.nom }}.tar.gz
           retention-days: 30
 
       # Si alguna cosa falla, deixa pistes per depurar (logs + estat).

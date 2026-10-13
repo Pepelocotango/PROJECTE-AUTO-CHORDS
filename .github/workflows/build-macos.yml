@@ -325,32 +325,41 @@ jobs:
       # ── 7b: DMG (l'instal·lador típic de macOS) ──────────────────────────
       # Conté l'.app + un enllaç a /Applications. HFS+ (no APFS) per màxima
       # compatibilitat amb High Sierra; UDZO = comprimit.
-      - name: 7b. DMG (hdiutil) — instal·lador amb l'.app + enllaç a /Applications
+      - name: 7b. DMG (hdiutil) — .app + enllaç a /Applications + docs
+        # Estàndard d'Apple: un `.dmg` (UDZO = comprimit) amb l'`.app`, un
+        # enllaç a /Applications per arrossegar-hi, i els docs a dins. És l'ÚNIC
+        # paquet que es publica per a macOS. Nom canònic:
+        #   AutoChords-<versió>-build<NN>-macos-x86_64.dmg
+        id: dmg
         run: |
           set -euxo pipefail
+          VER=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+          NOM="AutoChords-${VER}-build${GITHUB_RUN_NUMBER}-macos-x86_64"
           STAGE="$(mktemp -d)/dmg"
           mkdir -p "$STAGE"
           cp -R "dist/AUTO_CHORDS.app" "$STAGE/"
           ln -s /Applications "$STAGE/Applications"
+          cp LICENSE LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md "$STAGE/" 2>/dev/null || true
+          mkdir -p "$STAGE/docs"
+          cp -R docs/. "$STAGE/docs/" 2>/dev/null || true
           hdiutil create -volname "AUTO CHORDS" -srcfolder "$STAGE" \
-            -ov -format UDZO -fs HFS+ "AUTO_CHORDS-macos.dmg"
+            -ov -format UDZO -fs HFS+ "${NOM}.dmg"
           echo "--- munto i verifico el DMG ---"
           MNT="$(mktemp -d)/mnt"
           mkdir -p "$MNT"
-          hdiutil attach "AUTO_CHORDS-macos.dmg" -nobrowse -mountpoint "$MNT"
+          hdiutil attach "${NOM}.dmg" -nobrowse -mountpoint "$MNT"
           ls -la "$MNT/"
           test -d "$MNT/AUTO_CHORDS.app" || { echo "::error::el DMG no conté l'.app"; exit 1; }
           test -L "$MNT/Applications"   || { echo "::error::el DMG no conté l'enllaç a /Applications"; exit 1; }
           hdiutil detach "$MNT"
-          ls -la AUTO_CHORDS-macos.dmg
+          ls -la "${NOM}.dmg"
+          echo "nom=$NOM" >> "$GITHUB_OUTPUT"
 
-      - name: 8. Pujar l'artefacte (ZIP + DMG)
+      - name: 8. Pujar l'artefacte (DMG)
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6
         with:
-          name: AUTO_CHORDS-macos-build${{ github.run_number }}
-          path: |
-            AUTO_CHORDS-macos.zip
-            AUTO_CHORDS-macos.dmg
+          name: ${{ steps.dmg.outputs.nom }}
+          path: ${{ steps.dmg.outputs.nom }}.dmg
           retention-days: 30
 
       # Si alguna cosa falla, deixa pistes per depurar.

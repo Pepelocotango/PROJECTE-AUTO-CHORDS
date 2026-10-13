@@ -26,14 +26,15 @@ instal·lar Python, ni Qt, ni res.
 
 ### 📥 Com executar-ho
 
-**🐧 Linux (AppImage)** — el fitxer `AutoChords_*_x86_64.AppImage`:
+**🐧 Linux** — el fitxer `AutoChords-*_linux-x86_64.tar.gz`:
 
 ```bash
-chmod +x AutoChords_*_x86_64.AppImage
-./AutoChords_*_x86_64.AppImage
+tar -xzf AutoChords-*_linux-x86_64.tar.gz
+chmod +x AutoChords-*_x86_64.AppImage
+./AutoChords-*_x86_64.AppImage
 ```
 
-O bé **doble clic** al fitxer (pot caler marcar «Executa» a les propietats).
+O bé **doble clic** a l'AppImage (pot caler marcar «Executa» a les propietats).
 
 > ⚠️ **Requisit d'àudio per ESCOLTAR**: cal **PipeWire** o **PulseAudio**
 > (a qualsevol escriptori Linux actual). Sense ells l'app funciona igual
@@ -43,12 +44,14 @@ O bé **doble clic** al fitxer (pot caler marcar «Executa» a les propietats).
 > tot a dins). Només cal el suport **FUSE del nucli** (estàndard a tot Linux).
 > Si mai fallés: `./AutoChords_*.AppImage --appimage-extract-and-run`
 
-**🪟 Windows (x64)** — descomprimeix el ZIP i executa **`AutoChords.exe`**
-(si SmartScreen avisa: *Més informació ▸ Executa igualment*).
+**🪟 Windows (x64)** — el fitxer `AutoChords-*_win-x64.zip`: descomprimeix-lo i
+executa **`AutoChords.exe`** (si SmartScreen avisa: *Més informació ▸ Executa
+igualment*).
 
-**🍎 macOS (High Sierra 10.13+)** — descomprimeix el ZIP i obre
-**`AUTO_CHORDS.app`** (clic dret ▸ **Obre**; el Gatekeeper està OFF, però el
-primer cop cal confirmar-ho).
+**🍎 macOS (High Sierra 10.13+)** — obre el fitxer `AutoChords-*.dmg` i
+arrossega **`AUTO_CHORDS.app`** a *Applications* (o obre-la des del DMG amb
+clic dret ▸ **Obre**; el Gatekeeper està OFF, però el primer cop cal
+confirmar-ho).
 
 ---
 
