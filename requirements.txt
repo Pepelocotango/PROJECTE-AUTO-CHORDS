@@ -23,7 +23,7 @@ numpy==1.26.4
 # Motor d'àudio natiu a macOS/Windows (`sounddevice` → PortAudio). A Linux no
 # s'usa (hi ha `paplay`/`aplay`), però instal·lar-lo no fa mal.
 sounddevice==0.5.6
-cffi==2.0.0
+cffi==2.1.1
 
 # (Només dev/opcional) auto-reload de dev_reload.py --watch. El fitxer
 # detecta si hi és i, si no, avisa; no cal per fer anar l'app.
