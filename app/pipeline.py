@@ -586,7 +586,17 @@ def normalitza_cobertura(acords, seccions, durada, log=None):
         if log:
             log(f"cobertura: capçalera N als acords (1r acord a "
                 f"{float(acords[1][0]):.2f} s)")
-    # Seccions: capçalera N + últim fi acotat a la durada.
+    # Seccions: capçalera N + forats interns + dins de la durada.
+    if seccions and durada > 0:
+        # (a) Una secció no pot SORTIR de la WAV: si arrenca més enllà, no hi
+        #     és (fora); si el seu fi passa de la durada, s'hi acota.
+        dins = [(s[0], min(float(s[1]), durada), s[2], s[3]) for s in seccions
+                if float(s[0]) < durada - TOL_TEMPS]
+        if len(dins) != len(seccions):
+            if log:
+                log(f"cobertura: {len(seccions) - len(dins)} secció(ns) que "
+                    f"arrencaven fora de la WAV (>= {durada:.2f} s) eliminades")
+        seccions = dins
     if seccions:
         if float(seccions[0][0]) > 1e-9:
             seccions.insert(0, (0.0, float(seccions[0][0]), "N", "N"))

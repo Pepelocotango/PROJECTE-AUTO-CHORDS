@@ -139,7 +139,7 @@ class Visor(QMainWindow):
         # (0 → durada): 1r a 0 (capçalera «N» si cal) i últim a la durada.
         _a0, _s0 = list(self.acords), list(self.seccions)
         self.acords, self.seccions = pipeline.normalitza_cobertura(
-            self.acords, self.seccions, float(self.audio.get("durada", 0.0)),
+            self.acords, self.seccions, self._durada_wav(),
             log=self.log)
         # Si la normalització ha canviat el model (forats interns, capçalera
         # «N», últim fi acotat…), el CSV DEL DISC s'ha de normalitzar JA: abans
@@ -425,7 +425,7 @@ class Visor(QMainWindow):
     def _valida_canvis_acords(self, items):
         if not items:
             return []
-        durada = float(self.audio.get("durada", 0.0))
+        durada = self._durada_wav()
         ordenats = sorted(items, key=lambda x: float(x[0]))
         prev_t = None
         for item in ordenats:
@@ -564,6 +564,15 @@ class Visor(QMainWindow):
         self.log(f"acord {t:.2f}s: {vell} → {nou_nom} @ {nou_t:.2f}s "
                  f"(csv + {nwavs} wavs_acords)")
 
+    def _durada_wav(self):
+        """Durada de la WAV en segons (0.0 si no se sap).
+
+        Va per `self.__dict__` A POSTA: hi ha tests que construeixen el Visor
+        amb `__new__` sense `__init__`, i PyQt peta (`super-class __init__()…
+        was never called`) en consultar-hi atributs que no existeixen.
+        """
+        return float((self.__dict__.get("audio") or {}).get("durada", 0.0) or 0.0)
+
     def _normalitza_cobertura(self):
         """Aplica l'INVARIANT de COBERTURA (regla d'or #4) al model VIU.
 
@@ -578,7 +587,7 @@ class Visor(QMainWindow):
         s0 = list(self.seccions)
         self.acords, self.seccions = pipeline.normalitza_cobertura(
             self.acords, self.seccions,
-            float(self.audio.get("durada", 0.0)), log=self.log)
+            self._durada_wav(), log=self.log)
         return self.acords != a0 or self.seccions != s0
 
     def _desa_i_regenera(self):
@@ -1496,7 +1505,7 @@ class Visor(QMainWindow):
     def _valida_canvis_seccions(self, items):
         if not items:
             return []
-        durada = float(self.audio.get("durada", 0.0))
+        durada = self._durada_wav()
         ordenats = sorted(items, key=lambda x: float(x[0]))
         prev_fi = -1e-9
         for item in ordenats:

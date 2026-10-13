@@ -380,7 +380,10 @@ class ExportPipelineTests(unittest.TestCase):
         v = visor.Visor.__new__(visor.Visor)
         visor.QMainWindow.__init__(v)
         v.acords = [(0.0, "C", "0.0"), (2.0, "Am", "2.0")]
-        v.seccions = [(0.0, 2.0, "A", "A"), (2.0, 4.0, "B", "B")]
+        # Es deixa un tros LLIURE (3–4 s) per poder-hi afegir una secció: amb
+        # el topall superior de temps, una secció fora de la WAV (p. ex. 4–6 s
+        # en una WAV de 4 s) ja no s'accepta (trencava la cobertura, regla #4).
+        v.seccions = [(0.0, 2.0, "A", "A"), (2.0, 3.0, "B", "B")]
         v.bpm = 120.0
         v.bpb = 4
         v.offset = 0.0
@@ -396,7 +399,7 @@ class ExportPipelineTests(unittest.TestCase):
         self.assertEqual(len(v.acords), 2)
         self.assertEqual(v.acords[1][1], "Am")
 
-        v._afegeix_seccio(4.0, 6.0, "C", "C")
+        v._afegeix_seccio(3.0, 4.0, "C", "C")
         self.assertEqual(len(v.seccions), 3)
         self.assertEqual(v.seccions[2][2], "C")
 
@@ -2680,9 +2683,18 @@ class MenuEdicioTests(unittest.TestCase):
         with patch.object(QW.QInputDialog, "getText", return_value=("F", True)):
             v.ves_a(6.0); n = len(v.acords); w._afegeix_acord_ui()
             self.assertEqual(len(v.acords), n + 1)
-            # a 21 s (passada la ultima seccio, que acaba a 20) -> sense solapar
-            v.ves_a(21.0); n = len(v.seccions); w._afegeix_seccio_ui()
-            self.assertEqual(len(v.seccions), n + 1)
+            # a 21 s en una WAV de 20 s JA NO s'accepta (topall superior de
+            # temps: fora de la WAV no hi ha àudio i l'invariant #4 no es
+            # podria complir). Abans s'hi afegia i trencava la cobertura.
+            v.ves_a(21.0); n = len(v.seccions)
+            w._afegeix_seccio_ui()
+            self.assertEqual(len(v.seccions), n)
+            # Amb espai lliure (cap secció), l'add sí que funciona.
+            v.seccions = []
+            v.ves_a(6.0)
+            w._afegeix_seccio_ui()
+            self.assertEqual(len(v.seccions), 1)
+            self.assertAlmostEqual(float(v.seccions[0][0]), 6.0, places=2)
         w.close()
 
     def test_neteja_loop(self):
