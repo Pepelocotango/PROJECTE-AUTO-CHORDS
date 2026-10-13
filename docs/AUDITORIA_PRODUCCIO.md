@@ -401,11 +401,43 @@ límit** (runners) i la **validació en maquinari real**.
 - [ ] (Opcional) SBOM + atestació de proveniència. · **A.8** · **baixa**
 - [ ] (Opcional) CI que regeneri `COMPONENTS_I_VERSIONS.md` i comprovi `git diff`. · **D.5** · **baixa**
 
-**NOUS — bugs de producció de la bateria d'edició (`OC-6/332-334`, 2026-10-13):**
+# ✅ Bugs de producció (13-10) — trobats i arreglats
 
-- [ ] `app/main.py` + `pipeline`: l'**exportació** ha d'usar les **seccions del MODEL** (no `segments.csv`, la sortida crua del qm-segmenter) → avui les **edicions de seccions es perden** a l'export. · **alta**
-- [ ] `app/visor.py` + `app/mcp_bridge.py`: reaplicar **`pipeline.normalitza_cobertura()`** **després de cada mutació** (GUI i MCP) + re-normalitzar l'export d'acords → avui la **COBERTURA (regla #4) no es compleix en edició en viu** (el 1r clip deixa de ser a 0; es veu al visor i al CSV). · **alta**
-- [ ] **Tests de regressió**: eliminar el 1r/últim clip → el 1r torna a **0** i l'últim a la **durada** (al model **i** al CSV); export amb seccions editades → **es conserven**. · **alta**
+Detectats durant la **validació funcional**; tots amb causa, fix, test i commit.
+
+### B1. (GREU) No es podia reanomenar cap secció que no fos la primera — `c46c7d6`
+- **Símptoma**: canviar el nom de qualsevol secció d'estructura que no fos la 1a fallava
+  (log de l'app: «Les seccions no poden solapar-se ni invertir-se…»).
+- **Causa**: l'**editor** mostra l'inici amb **2 decimals** i, en aplicar, el re-escrivia
+  arrodonit (16,63 en lloc de 16,633663): la 2a secció quedava uns ms **abans** del final
+  de la 1a → la validació la rebutjava. La 1a funcionava perquè no té res al davant.
+- **Fix** (`app/visor.py`, `_aplica_editor`): si l'inici **no s'ha tocat** (dins ±0,005 s)
+  es conserva el valor **intern de precisió completa**; mateix criteri als **acords**.
+- **Test**: `tests/test_editor_renom.py` (3 casos).
+
+### B2. (GREU) L'exportació perdia les edicions de seccions — `85704ed` (A)
+- **Símptoma**: editar seccions (reanomenar/moure/esborrar) i **exportar** →
+  `estructura_ABC.csv` i `wavs_estructura/` **tornaven a les originals**. (Els acords sí.)
+- **Causa**: `main.exporta` passava a `pipeline.exporta_total` el `segments.csv` **cru** de
+  l'anàlisi i en **regenerava** l'estructura, ignorant el model (`self.seccions`).
+- **Fix** (retrocompatible): `exporta_total(..., acords=None, seccions=None)` — si s'hi
+  passen, **mana el MODEL** (l'ABC es genera de les seccions del model); sense ells,
+  comportament idèntic a abans. `main.exporta` hi passa el model del visor.
+- **Test**: `tests/test_cobertura_viu.py` (l'export usa el model i **no** `segments.csv`;
+  re-normalitza; sense model = com abans).
+
+### B3. (regla d'or #4) La cobertura no s'aplicava a les edicions en viu — `85704ed` (B)
+- **Símptoma**: eliminar el **1r acord** deixava un forat al principi (0,00→0,30), visible
+  **al visor i al CSV**.
+- **Causa**: `normalitza_cobertura()` només s'aplicava a l'anàlisi, en carregar el visor i
+  en exportar l'ABC — **no** després d'editar (ni GUI ni MCP).
+- **Fix**: nou `Visor._normalitza_cobertura()` (que crida `pipeline.normalitza_cobertura`),
+  aplicat a `_desa_i_regenera` **abans** de desar → refresca el visor i desa `acords.csv`
+  **i** `estructura_ABC.csv` ja **normalitzats**.
+- **Test**: `tests/test_cobertura_viu.py` (4 casos).
+
+> ✅ Els 3 estan arreglats, amb **tests de regressió**, i documentats a
+> `docs/REGLES_DE_LA_APP.md` (§«S'ha de complir SEMPRE» + evidència). Suite: **415 OK (1 skip)**.
 
 > Generat per **OC-6** (2026-10-13) sobre el commit `75c8f31`. Coordinació via
 > `LOG_DIALEGS_AGENTS.txt` (`OC-6/303`+). **Seccions duplicades consolidades per OC-5**
