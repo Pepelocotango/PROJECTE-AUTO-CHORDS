@@ -74,6 +74,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   `requirements.txt`, `pyproject.toml` i els workflows). `--require-hashes`
   queda **pendent** (calen els hashos de totes les rodes de les 3 plataformes);
   les instruccions són dins del mateix `requirements.txt`.
+- **Memòria cau de les baixades (no baixar dues vegades)**: `baixa_verificat.py`
+  desa cada fitxer verificat a **`.baixades/<sha256>`** (gitignorada) i el
+  reutilitza; al CI, **`actions/cache`** conserva aquesta carpeta entre
+  execucions (clau: SO + hash de `deps_fixades.env`). `--sense-cache` ho
+  desactiva. Els fitxers **no** es guarden al repositori (GitHub rebutja
+  > 100 MB; el ffmpeg de Windows en fa 114) — vegeu `docs/SEGURETAT.md`.
 
 ### Canviat
 - **Les carpetes que genera l'app porten ara un PREFIX**: `AUTOCHORDS_<nom>`

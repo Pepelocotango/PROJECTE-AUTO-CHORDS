@@ -97,6 +97,20 @@ l'usuari.
 5. Comprova que el build segueix funcionant. A **macOS**, a més, que es manté el
    mínim **10.13**: `eines/verifica_minos_macos.py`.
 
+### Memòria cau (no baixar dues vegades)
+
+- `baixa_verificat.py` desa cada fitxer verificat a **`.baixades/<sha256>`**
+  (carpeta **gitignorada**; es pot canviar amb `$AUTO_CHORDS_BAIXADES`). La
+  propera vegada **no es baixa**: es copia (i es torna a comprovar el hash).
+  `--sense-cache` ho desactiva.
+- Al **CI**, `actions/cache` conserva `.baixades` entre execucions (clau:
+  `deps-<SO>-<hash de deps_fixades.env>`) → les baixades es fan **un cop per
+  versió i plataforma**, no a cada build.
+- Per què **no** es guarden al repositori: GitHub **rebutja fitxers > 100 MB**
+  (el ffmpeg de Windows ja en fa 114), l'historial de git no oblida mai (cada
+  versió afegiria una còpia sencera) i un binari al repo s'hauria de confiar
+  cegament — en canvi, un hash verificat no.
+
 ### Què no s'ha de fer
 
 - **No** baixar res amb `curl`/`Invoke-WebRequest` directament als scripts: cal

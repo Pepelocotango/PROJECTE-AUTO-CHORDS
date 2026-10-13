@@ -82,3 +82,7 @@ github-actions-logs/
 # Arxiu local (no es commiteja: coses no necessaries que es volen conservar)
 OLD/
 
+# Memòria cau de baixades verificades (eines/baixa_verificat.py): els fitxers
+# es guarden amb el seu SHA256 com a nom i es reutilitzen entre builds.
+.baixades/
+

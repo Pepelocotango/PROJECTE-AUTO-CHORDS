@@ -69,6 +69,10 @@ class BaixaVerificatTests(unittest.TestCase):
         self._espera = BV.ESPERA
         BV.REINTENTS = 1
         BV.ESPERA = 0
+        # Memòria cau AÏLLADA (que no toqui la del projecte).
+        self._cache = tempfile.mkdtemp()
+        self._env = os.environ.get(BV.CACHE_ENV)
+        os.environ[BV.CACHE_ENV] = self._cache
         self._d = tempfile.mkdtemp()
         self._cos = b"contingut de prova\n" * 20
         self._sha = hashlib.sha256(self._cos).hexdigest()
@@ -77,8 +81,13 @@ class BaixaVerificatTests(unittest.TestCase):
     def tearDown(self):
         BV.REINTENTS = self._reintents
         BV.ESPERA = self._espera
+        if self._env is None:
+            os.environ.pop(BV.CACHE_ENV, None)
+        else:
+            os.environ[BV.CACHE_ENV] = self._env
         self.srv.tanca()
         shutil.rmtree(self._d, ignore_errors=True)
+        shutil.rmtree(self._cache, ignore_errors=True)
 
     def _desti(self):
         return os.path.join(self._d, "f.bin")
@@ -133,6 +142,65 @@ class BaixaVerificatTests(unittest.TestCase):
                       self._sha, desti])
         self.assertEqual(rc, 0)
         self.assertTrue(os.path.isfile(desti))
+
+
+class MemoriaCauTests(unittest.TestCase):
+    """Memòria cau de baixades (A+B): no es baixa dues vegades el mateix."""
+
+    def setUp(self):
+        self._reintents, self._espera = BV.REINTENTS, BV.ESPERA
+        self._usa = BV.USA_CACHE
+        BV.REINTENTS, BV.ESPERA, BV.USA_CACHE = 1, 0, True
+        self._d = tempfile.mkdtemp()
+        self._cache = tempfile.mkdtemp()
+        self._env = os.environ.get(BV.CACHE_ENV)
+        os.environ[BV.CACHE_ENV] = self._cache
+        self._cos = b"memoria cau\n" * 5
+        self._sha = hashlib.sha256(self._cos).hexdigest()
+        self.srv = _Servidor({"/f.bin": self._cos})
+
+    def tearDown(self):
+        BV.REINTENTS, BV.ESPERA, BV.USA_CACHE = (self._reintents, self._espera,
+                                                 self._usa)
+        if self._env is None:
+            os.environ.pop(BV.CACHE_ENV, None)
+        else:
+            os.environ[BV.CACHE_ENV] = self._env
+        self.srv.tanca()
+        shutil.rmtree(self._d, ignore_errors=True)
+        shutil.rmtree(self._cache, ignore_errors=True)
+
+    def _desa(self, cami):
+        return os.path.join(self._d, cami)
+
+    def test_segona_baixada_usa_la_cache(self):
+        self.assertEqual(BV.main(["baixa_verificat.py", self.srv.url("/f.bin"),
+                                  self._sha, self._desa("a.bin")]), 0)
+        self.assertTrue(os.path.isfile(os.path.join(self._cache, self._sha)))
+        # Ara el servidor no serveix RES: si intentés baixar, petaria.
+        self.srv.tanca()
+        self.srv = _Servidor({})
+        self.assertEqual(BV.main(["baixa_verificat.py", self.srv.url("/f.bin"),
+                                  self._sha, self._desa("b.bin")]), 0)
+        with open(self._desa("b.bin"), "rb") as f:
+            self.assertEqual(f.read(), self._cos)
+
+    def test_cache_corrupta_es_ignora_i_es_repara(self):
+        with open(os.path.join(self._cache, self._sha), "wb") as f:
+            f.write(b"corrupte")
+        self.assertEqual(BV.main(["baixa_verificat.py", self.srv.url("/f.bin"),
+                                  self._sha, self._desa("c.bin")]), 0)
+        with open(self._desa("c.bin"), "rb") as f:
+            self.assertEqual(f.read(), self._cos)     # s'ha tornat a baixar
+        # i la còpia de la cache ha quedat reparada
+        with open(os.path.join(self._cache, self._sha), "rb") as f:
+            self.assertEqual(f.read(), self._cos)
+
+    def test_sense_cache_no_desa_res(self):
+        self.assertEqual(BV.main(["baixa_verificat.py", "--sense-cache",
+                                  self.srv.url("/f.bin"), self._sha,
+                                  self._desa("d.bin")]), 0)
+        self.assertFalse(os.path.isfile(os.path.join(self._cache, self._sha)))
 
 
 class DepsFixadesTests(unittest.TestCase):
