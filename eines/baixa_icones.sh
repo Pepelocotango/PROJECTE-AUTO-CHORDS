@@ -10,7 +10,8 @@ BASE="https://raw.githubusercontent.com/lucide-icons/lucide/${LUCIDE_TAG}/icons"
 mkdir -p icones
 NOMES="play pause square repeat-2 volume-x metronome target map-pin compass \
 zoom-in zoom-out rewind fast-forward maximize focus \
-arrow-left-to-line arrow-right-to-line music piano circle-gauge mic settings"
+arrow-left-to-line arrow-right-to-line music piano circle-gauge mic settings \
+undo-2 redo-2 x"
 for n in $NOMES; do
     tmp="$(mktemp)"
     # Baixem a un temporal i NOMES el substituim si ha anat bé: així, si la xarxa

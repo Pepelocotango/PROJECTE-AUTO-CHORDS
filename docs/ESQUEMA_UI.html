@@ -10,10 +10,10 @@
     --clip:#2e3844; --clip-active:#1f5c3d; --clip-active-bd:#4ade80;
     --clip-bd:#b8c7dc; --sel:#38bdf8; --handle:#5b8dd6;
     --sec1:#3a4655; --sec2:#475a70; --sec3:#5d6f82; --sec4:#70849a;
-    --cursor:#ff6b6b; --guide:#ffd166; --scene:#0f0f10;
+    --cursor:#ff6b6b; --guide:#ffb26b; --scene:#0f0f10;
     --grid-m:#55677f; --grid-b:#3d4c60; --grid-s:#303a48;
     --shell:#20242c; --txt:#e8edf5; --muted:#9aa6b8; --accent:#5b8dd6;
-    --btn-base:#2a2c30; --btn-actiu:#2563eb; --btn-groc:#ffd166; --btn-principal:#ffffff;
+    --btn-base:#2a2c30; --btn-actiu:#2563eb; --btn-groc:#ffb26b; --btn-principal:#ffffff;
   }
   *{box-sizing:border-box}
   body{margin:0;padding:22px;background:#15181d;color:var(--txt);
@@ -41,7 +41,7 @@
     border-radius:5px;padding:4px 9px;font-size:11.5px;font-weight:600;white-space:nowrap}
   .btn.pri{background:var(--btn-principal);border-color:#b8bec8;color:#0f0f10;font-weight:700}
   .btn.actiu{background:var(--btn-actiu);border-color:#1e40af;color:#fff;font-weight:700}
-  .btn.on{background:#ffd166;border-color:#ffd166;color:#000}
+  .btn.on{background:#ffb26b;border-color:#ffb26b;color:#000}
   .btn.dis{background:#2a2e36;border-color:#3a4150;color:#6b7484}
   .camp{background:#12151b;border:1px solid #3a4150;color:var(--txt);
     border-radius:4px;padding:3px 6px;font-size:11.5px}
@@ -140,7 +140,7 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
   <span><i style="background:#38bdf8"></i>seleccionat (vora)</span>
   <span><i style="background:#3a4655"></i>secció</span>
   <span><i style="background:#ff6b6b"></i>cursor</span>
-  <span><i style="background:#ffd166"></i>loop / guia / metrònom ON</span>
+  <span><i style="background:#ffb26b"></i>loop / guia / metrònom ON</span>
   <span><i style="background:#8ab4f8"></i>ona</span>
 </div>
 
@@ -253,27 +253,27 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
       <div class="lane" style="top:6.8px;background:#1a1d23"></div>
       <div class="lane" style="top:78.2px;background:#15181d;border-bottom:1px solid #2a2f37"></div>
 
-      <!-- carril estructura -->
-      <div class="clip secclip" style="left:1.5%;width:10%;top:10px;background:#3a4655">A·N</div>
-      <div class="clip secclip" style="left:12%;width:8%;top:10px;background:#475a70">B</div>
-      <div class="clip secclip" style="left:22%;width:12%;top:10px;background:#3a4655">A·N</div>
-      <div class="clip secclip" style="left:36%;width:10%;top:10px;background:#5d6f82">C·A</div>
-      <div class="clip secclip" style="left:48%;width:12%;top:10px;background:#3a4655">A·N</div>
-      <div class="clip secclip" style="left:62%;width:10%;top:10px;background:#5d6f82">C·A</div>
-      <div class="clip secclip" style="left:74%;width:12%;top:10px;background:#3a4655">A·N</div>
-      <div class="clip secclip" style="left:88%;width:10%;top:10px;background:#70849a">B·A</div>
+      <!-- carril estructura — clips ENCADENATS (cada clip acaba on comença el següent) -->
+      <div class="clip secclip" style="left:1.5%;width:10.5%;top:10px;background:#3a4655;border-radius:0">A·N</div>
+      <div class="clip secclip" style="left:12%;width:10%;top:10px;background:#475a70;border-radius:0">B</div>
+      <div class="clip secclip" style="left:22%;width:14%;top:10px;background:#3a4655;border-radius:0">A·N</div>
+      <div class="clip secclip" style="left:36%;width:12%;top:10px;background:#5d6f82;border-radius:0">C·A</div>
+      <div class="clip secclip" style="left:48%;width:14%;top:10px;background:#3a4655;border-radius:0">A·N</div>
+      <div class="clip secclip" style="left:62%;width:12%;top:10px;background:#5d6f82;border-radius:0">C·A</div>
+      <div class="clip secclip" style="left:74%;width:14%;top:10px;background:#3a4655;border-radius:0">A·N</div>
+      <div class="clip secclip" style="left:88%;width:10.5%;top:10px;background:#70849a;border-radius:0">B·A</div>
 
-      <!-- carril acords -->
-      <div class="clip chord" style="left:1.5%;width:7%;top:82px">N</div>
-      <div class="clip chord sel" style="left:9.5%;width:6%;top:82px">E7</div>
-      <div class="clip chord" style="left:16.5%;width:7%;top:82px">Em</div>
-      <div class="clip chord" style="left:25%;width:6%;top:82px">E7</div>
-      <div class="clip chord" style="left:33%;width:8%;top:82px">Edim7</div>
-      <div class="clip chord" style="left:43%;width:8%;top:82px">Em6</div>
-      <div class="clip chord" style="left:53%;width:8%;top:82px">A7</div>
-      <div class="clip chord" style="left:63%;width:9%;top:82px">Em7</div>
-      <div class="clip chord" style="left:74%;width:7%;top:82px">E7</div>
-      <div class="clip chord" style="left:83%;width:15%;top:82px">F#dim7/E</div>
+      <!-- carril acords — clips ENCADENATS -->
+      <div class="clip chord" style="left:1.5%;width:8%;top:82px;border-radius:0">N</div>
+      <div class="clip chord sel" style="left:9.5%;width:7%;top:82px;border-radius:0">E7</div>
+      <div class="clip chord" style="left:16.5%;width:8.5%;top:82px;border-radius:0">Em</div>
+      <div class="clip chord" style="left:25%;width:8%;top:82px;border-radius:0">E7</div>
+      <div class="clip chord" style="left:33%;width:10%;top:82px;border-radius:0">Edim7</div>
+      <div class="clip chord" style="left:43%;width:10%;top:82px;border-radius:0">Em6</div>
+      <div class="clip chord" style="left:53%;width:10%;top:82px;border-radius:0">A7</div>
+      <div class="clip chord" style="left:63%;width:11%;top:82px;border-radius:0">Em7</div>
+      <div class="clip chord" style="left:74%;width:9%;top:82px;border-radius:0">E7</div>
+      <div class="clip chord" style="left:83%;width:15.5%;top:82px;border-radius:0">F#dim7/E</div>
 
       <div class="guide" style="left:63%"></div>
       <div class="cursor" style="left:11%"></div>
@@ -281,6 +281,15 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
       <div class="cursor" style="left:33%"></div>
       <div class="flag" style="left:33%"></div>
     </div>
+  </div>
+
+  <div class="note">
+    <b>🔗 Clips ENCADENATS</b> (regles <b>2</b> i <b>4</b> de
+    <code>docs/REGLES_DE_LA_APP.md</code>): els carrils d'<b>estructura</b> (③) i
+    d'<b>acords</b> (④) van <b>en cadena</b> — cada clip comença <b>exactament</b> on
+    acaba l'anterior (sense forats ni encavalcaments), el <b>primer</b> arrenca a
+    <b>0</b> i l'<b>últim</b> arriba a la <b>durada</b> de la WAV. La suma dels clips
+    cobreix <b>tota</b> la durada (en qualsevol mode i amb o sense snap).
   </div>
 
   <!-- LLISTES -->
@@ -407,12 +416,12 @@ colors a <code>app/theme.py</code>.
   <div class="toolbar">
     <span class="btn">apagat (gris «Obre…»)</span>
     <span class="btn actiu">actiu (blau)</span>
-    <span class="btn on">mute / metrònom actius (groc)</span>
+    <span class="btn on">mute / metrònom actius (taronja suau)</span>
     <span class="btn pri">acció principal (blanc: Analitza)</span>
     <span class="btn dis">deshabilitat</span>
   </div>
   <p class="sub">Regla: <code>QPushButton:checked</code> → blau;
-     <code>#metro:checked, #mute:checked</code> → groc.
+     <code>#metro:checked, #mute:checked</code> → taronja suau.
      La icona de transport és <b>▶</b> aturat / <b>⏸</b> sonant (sense text).
      Vegeu <code>app/theme.py</code> (ACTIU / ACTIU_GROC) i <code>docs/ESQUEMA_UI.md</code> §5.1.</p>
 </body>

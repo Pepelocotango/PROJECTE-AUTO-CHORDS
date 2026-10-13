@@ -74,7 +74,7 @@
   <line x1="12" y1="134" x2="1428" y2="134" stroke="#3a4150"/>
   <rect x="22" y="109" width="40" height="20" rx="5" fill="#313846" stroke="#47505f"/>
   <text x="38" y="123" fill="#e8edf5" font-size="11" font-weight="700">▶ / ⏸</text>
-  <rect x="116" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <rect x="116" y="109" width="34" height="20" rx="5" fill="#ffb26b" stroke="#ffb26b"/>
   <text x="127" y="123" fill="#000" font-size="11" font-weight="700">⏹</text>
   <rect x="156" y="109" width="48" height="20" rx="5" fill="#313846" stroke="#47505f"/>
   <text x="166" y="123" fill="#e8edf5" font-size="11" font-weight="700">−10s</text>
@@ -100,9 +100,9 @@
     <path d="M594 124.5v1a1.5 1.5 0 0 1-1.5 1.5h-1"/>
     <path d="M572.5 127h-1a1.5 1.5 0 0 1-1.5-1.5v-1"/>
   </g>
-  <rect x="610" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <rect x="610" y="109" width="34" height="20" rx="5" fill="#ffb26b" stroke="#ffb26b"/>
   <text x="621" y="123" fill="#000" font-size="11" font-weight="700">🔇</text>
-  <rect x="650" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <rect x="650" y="109" width="34" height="20" rx="5" fill="#ffb26b" stroke="#ffb26b"/>
   <text x="661" y="123" fill="#000" font-size="11" font-weight="700">🥁</text>
   <rect x="694" y="115" width="90" height="8" rx="4" fill="#12151b" stroke="#3a4150"/>
   <rect x="695" y="116" width="54" height="6" fill="#5b8dd6"/>
@@ -124,7 +124,7 @@
   <text x="1018" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">65.1</text>
   <text x="1142" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">73.1</text>
   <text x="1266" y="154" fill="#c4d0e2" font-size="9" font-family="monospace">81.1</text>
-  <rect x="290" y="138" width="360" height="5" rx="2" fill="#ffd166"/>
+  <rect x="290" y="138" width="360" height="5" rx="2" fill="#ffb26b"/>
   <text x="1330" y="153" fill="#8ab4f8" font-size="9">🔍 zoom</text>
 
   <!-- waveform + grid -->
@@ -190,54 +190,56 @@
   <line x1="16" y1="288" x2="1424" y2="288" stroke="#2a2f37"/>
 
   <!-- estructura lane (y 168..216) -->
-  <rect x="30" y="173" width="120" height="38" rx="5" fill="#3a4655" stroke="#5b6879"/>
-  <text x="84" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
-  <rect x="160" y="173" width="100" height="38" rx="5" fill="#475a70" stroke="#5b6879"/>
-  <text x="210" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">B</text>
-  <rect x="270" y="173" width="140" height="38" rx="5" fill="#3a4655" stroke="#5b6879"/>
-  <text x="340" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
-  <rect x="420" y="173" width="120" height="38" rx="5" fill="#5d6f82" stroke="#5b6879"/>
-  <text x="480" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">C·A</text>
-  <rect x="550" y="173" width="140" height="38" rx="5" fill="#3a4655" stroke="#5b6879"/>
-  <text x="620" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
-  <rect x="700" y="173" width="120" height="38" rx="5" fill="#5d6f82" stroke="#5b6879"/>
-  <text x="760" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">C·A</text>
-  <rect x="830" y="173" width="150" height="38" rx="5" fill="#3a4655" stroke="#5b6879"/>
-  <text x="905" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
-  <rect x="990" y="173" width="130" height="38" rx="5" fill="#70849a" stroke="#5b6879"/>
+  <!-- estructura lane — clips ENCADENATS (cada clip acaba on comença el següent) -->
+  <rect x="30" y="173" width="130" height="38" fill="#3a4655" stroke="#5b6879"/>
+  <text x="95" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
+  <rect x="160" y="173" width="110" height="38" fill="#475a70" stroke="#5b6879"/>
+  <text x="215" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">B</text>
+  <rect x="270" y="173" width="150" height="38" fill="#3a4655" stroke="#5b6879"/>
+  <text x="345" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
+  <rect x="420" y="173" width="130" height="38" fill="#5d6f82" stroke="#5b6879"/>
+  <text x="485" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">C·A</text>
+  <rect x="550" y="173" width="150" height="38" fill="#3a4655" stroke="#5b6879"/>
+  <text x="625" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
+  <rect x="700" y="173" width="130" height="38" fill="#5d6f82" stroke="#5b6879"/>
+  <text x="765" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">C·A</text>
+  <rect x="830" y="173" width="160" height="38" fill="#3a4655" stroke="#5b6879"/>
+  <text x="910" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A·N</text>
+  <rect x="990" y="173" width="130" height="38" fill="#70849a" stroke="#5b6879"/>
   <text x="1055" y="196" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">B·A</text>
 
   <!-- acords lane (y 240..288) -->
-  <rect x="30" y="245" width="80" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="70" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">N</text>
-  <rect x="116" y="245" width="70" height="38" rx="5" fill="#2e3844" stroke="#38bdf8" stroke-width="3"/>
-  <text x="151" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">E7</text>
-  <rect x="192" y="245" width="80" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="232" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Em</text>
-  <rect x="278" y="245" width="70" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="313" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">E7</text>
-  <rect x="354" y="245" width="90" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="399" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Edim7</text>
-  <rect x="450" y="245" width="90" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="495" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Em6</text>
-  <rect x="546" y="245" width="80" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="586" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A7</text>
-  <rect x="632" y="245" width="100" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="682" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Em7</text>
-  <rect x="738" y="245" width="80" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
-  <text x="778" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">E7</text>
-  <rect x="824" y="245" width="160" height="38" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
+  <!-- acords lane (y 240..288) — clips ENCADENATS -->
+  <rect x="30" y="245" width="86" height="38" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="73" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">N</text>
+  <rect x="116" y="245" width="76" height="38" fill="#2e3844" stroke="#38bdf8" stroke-width="3"/>
+  <text x="154" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">E7</text>
+  <rect x="192" y="245" width="86" height="38" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="235" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Em</text>
+  <rect x="278" y="245" width="76" height="38" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="316" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">E7</text>
+  <rect x="354" y="245" width="96" height="38" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="402" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Edim7</text>
+  <rect x="450" y="245" width="96" height="38" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="498" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Em6</text>
+  <rect x="546" y="245" width="86" height="38" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="589" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">A7</text>
+  <rect x="632" y="245" width="106" height="38" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="685" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">Em7</text>
+  <rect x="738" y="245" width="86" height="38" fill="#2e3844" stroke="#b8c7dc"/>
+  <text x="781" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">E7</text>
+  <rect x="824" y="245" width="160" height="38" fill="#2e3844" stroke="#b8c7dc"/>
   <text x="904" y="268" fill="#edf3ff" font-size="11" font-weight="700" text-anchor="middle">F#dim7/E</text>
 
   <!-- guia + cursors -->
-  <line x1="880" y1="176" x2="880" y2="332" stroke="#ffd166" stroke-dasharray="3,3"/>
+  <line x1="880" y1="176" x2="880" y2="332" stroke="#ffb26b" stroke-dasharray="3,3"/>
   <line x1="190" y1="162" x2="190" y2="332" stroke="#ff6b6b" stroke-width="2"/>
   <polygon points="184,162 196,162 190,170" fill="#ff6b6b"/>
   <line x1="470" y1="162" x2="470" y2="332" stroke="#ff6b6b" stroke-width="2"/>
   <polygon points="464,162 476,162 470,170" fill="#ff6b6b"/>
 
   <!-- llegenda capes -->
-  <text x="20" y="360" fill="#9aa6b8" font-size="10.5">① regle · ② ona · ③ carril estructura · ④ carril acords · ⑤ grid · ⑥ cursor · ⑦ loop · ⑧ guia snap</text>
+  <text x="20" y="360" fill="#9aa6b8" font-size="10.5">① regle · ② ona · ③ carril estructura · ④ carril acords · ⑤ grid · ⑥ cursor · ⑦ loop · ⑧ guia snap · <tspan fill="#ffb26b" font-weight="700">🔗 ③④ clips ENCADENATS: cada clip comença on acaba l'anterior; 1r a 0 i últim a la durada (regles 2 i 4)</tspan></text>
 
   <!-- ============ LLISTES ============ -->
   <rect x="16" y="368" width="700" height="112" rx="5" fill="#12161d" stroke="#3a4150"/>
@@ -274,7 +276,7 @@
   <rect x="17" y="493" width="120" height="4" fill="#5b8dd6"/>
   <circle cx="140" cy="495" r="7" fill="#dbe4f2" stroke="#5b8dd6" stroke-width="2"/>
   <text x="1190" y="499" fill="#c4d0e2" font-size="11" font-family="monospace">9.4 / 95.1</text>
-  <rect x="1290" y="486" width="36" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <rect x="1290" y="486" width="36" height="20" rx="5" fill="#ffb26b" stroke="#ffb26b"/>
   <text x="1301" y="500" fill="#000" font-size="11" font-weight="700">⏹</text>
   <rect x="1336" y="492" width="90" height="6" rx="3" fill="#12151b" stroke="#3a4150"/>
   <rect x="1337" y="493" width="60" height="4" fill="#5b8dd6"/>
@@ -295,7 +297,7 @@
   <text x="28" y="676" fill="#9aa6b8" font-size="10">log de l'anàlisi (3/4)</text>
   <!-- info 1/4 -->
   <rect x="1078" y="560" width="340" height="120" rx="4" fill="#0d1015" stroke="#3a4150"/>
-  <text x="1088" y="582" fill="#ffd166" font-size="11" font-weight="700">◎ Detecta</text>
+  <text x="1088" y="582" fill="#ffb26b" font-size="11" font-weight="700">◎ Detecta</text>
   <text x="1088" y="600" fill="#cfd8e6" font-size="11">Detecta el BPM (motor triable).</text>
   <text x="1088" y="622" fill="#9aa6b8" font-size="10">(canvia segons el widget sota el ratolí)</text>
   <text x="1078" y="676" fill="#9aa6b8" font-size="10">informació «live» (1/4)</text>
@@ -310,12 +312,12 @@
   <rect x="16" y="700" width="760" height="150" rx="6" fill="#1e2530" stroke="#3a4150"/>
   <rect x="16" y="700" width="3" height="150" fill="#5b8dd6"/>
   <text x="34" y="722" fill="#cbd5e3" font-size="12">
-    <tspan x="34" dy="0"><tspan font-weight="700" fill="#ffd166">Temps · BPM i offset:</tspan> BPM = velocitat; offset = segon on cau el compàs 1.</tspan>
+    <tspan x="34" dy="0"><tspan font-weight="700" fill="#ffb26b">Temps · BPM i offset:</tspan> BPM = velocitat; offset = segon on cau el compàs 1.</tspan>
     <tspan x="34" dy="19">Dos camps sincronitzats: Offset (segons) · ≈ C.B (compàs.beat, relatiu a la graella ORIGINAL, offset=0).</tspan>
     <tspan x="34" dy="19">Analitza ▸ «Marca el compàs 1 aquí» → posa l'offset on és el cursor vermell.</tspan>
     <tspan x="34" dy="19">Abans de l'offset la graella és NEGATIVA (-3.1 … -1.3) = count-in; el metrònom també el clica.</tspan>
     <tspan x="34" dy="19">Metrònom 🥁: només en BPM·compàs; volum propi; clic mesclat al buffer (no deriva).</tspan>
-    <tspan x="34" dy="19"><tspan font-weight="700" fill="#ffd166">Loop A/B:</tspan> arrossega el regle (①) per crear-ne; les vores de la banda (⑦, ±6 px) mouen A/B; el cos mou el loop sencer.</tspan>
+    <tspan x="34" dy="19"><tspan font-weight="700" fill="#ffb26b">Loop A/B:</tspan> arrossega el regle (①) per crear-ne; les vores de la banda (⑦, ±6 px) mouen A/B; el cos mou el loop sencer.</tspan>
   </text>
 
   <text x="800" y="726" fill="#9aa6b8" font-size="11">Colors a app/theme.py:</text>
@@ -324,12 +326,12 @@
   <rect x="930" y="736" width="14" height="14" rx="3" fill="#38bdf8"/><text x="950" y="748" fill="#9aa6b8" font-size="11">seleccionat</text>
   <rect x="1030" y="736" width="14" height="14" rx="3" fill="#3a4655"/><text x="1050" y="748" fill="#9aa6b8" font-size="11">secció</text>
   <rect x="1100" y="736" width="14" height="14" rx="3" fill="#ff6b6b"/><text x="1120" y="748" fill="#9aa6b8" font-size="11">cursor</text>
-  <rect x="1170" y="736" width="14" height="14" rx="3" fill="#ffd166"/><text x="1190" y="748" fill="#9aa6b8" font-size="11">loop/guia/metro ON</text>
+  <rect x="1170" y="736" width="14" height="14" rx="3" fill="#ffb26b"/><text x="1190" y="748" fill="#9aa6b8" font-size="11">loop/guia/metro ON</text>
   <rect x="800" y="758" width="14" height="14" rx="3" fill="#8ab4f8"/><text x="820" y="770" fill="#9aa6b8" font-size="11">ona</text>
   <text x="800" y="796" fill="#9aa6b8" font-size="11">Paleta botons (estat):</text>
   <rect x="950" y="785" width="14" height="14" rx="3" fill="#313846" stroke="#47505f"/><text x="970" y="797" fill="#9aa6b8" font-size="11">apagat (gris «Obre…»)</text>
   <rect x="1120" y="785" width="14" height="14" rx="3" fill="#2563eb"/><text x="1140" y="797" fill="#9aa6b8" font-size="11">actiu (blau)</text>
-  <rect x="800" y="812" width="14" height="14" rx="3" fill="#ffd166"/><text x="820" y="824" fill="#9aa6b8" font-size="11">mute/metrònom actius (groc)</text>
+  <rect x="800" y="812" width="14" height="14" rx="3" fill="#ffb26b"/><text x="820" y="824" fill="#9aa6b8" font-size="11">mute/metrònom actius (taronja suau)</text>
   <rect x="990" y="812" width="14" height="14" rx="3" fill="#ffffff"/><text x="1010" y="824" fill="#9aa6b8" font-size="11">acció principal (blanc: Analitza)</text>
   <text x="800" y="842" fill="#6f7a8c" font-size="10.5">Mides: RULER_H=26 · WAVEFORM_H=170 · LANE_H=54 · TOTAL_H=196 px</text>
   <text x="800" y="814" fill="#6f7a8c" font-size="10.5">x = _x_offset + (t − _view_left) × _pps  (coordenades unificades)</text>

@@ -401,6 +401,12 @@ límit** (runners) i la **validació en maquinari real**.
 - [ ] (Opcional) SBOM + atestació de proveniència. · **A.8** · **baixa**
 - [ ] (Opcional) CI que regeneri `COMPONENTS_I_VERSIONS.md` i comprovi `git diff`. · **D.5** · **baixa**
 
+**NOUS — bugs de producció de la bateria d'edició (`OC-6/332-334`, 2026-10-13):**
+
+- [ ] `app/main.py` + `pipeline`: l'**exportació** ha d'usar les **seccions del MODEL** (no `segments.csv`, la sortida crua del qm-segmenter) → avui les **edicions de seccions es perden** a l'export. · **alta**
+- [ ] `app/visor.py` + `app/mcp_bridge.py`: reaplicar **`pipeline.normalitza_cobertura()`** **després de cada mutació** (GUI i MCP) + re-normalitzar l'export d'acords → avui la **COBERTURA (regla #4) no es compleix en edició en viu** (el 1r clip deixa de ser a 0; es veu al visor i al CSV). · **alta**
+- [ ] **Tests de regressió**: eliminar el 1r/últim clip → el 1r torna a **0** i l'últim a la **durada** (al model **i** al CSV); export amb seccions editades → **es conserven**. · **alta**
+
 > Generat per **OC-6** (2026-10-13) sobre el commit `75c8f31`. Coordinació via
 > `LOG_DIALEGS_AGENTS.txt` (`OC-6/303`+). **Seccions duplicades consolidades per OC-5**
 > el 13-10 (petició de l'operador): «Correccions fetes» i «Arreglos de CODI/CI → OC-4»

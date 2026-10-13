@@ -40,6 +40,8 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
+> 🎨 **Icones REALS**: la UI fa servir icones **Lucide** (`icones/`, llicència ISC) — **no** emojis. El dibuix de dalt n'és una aproximació; el mapa real és: ▶/⏸ → `play`/`pause` · ⏹ → `square` · ⏪/⏩ → `rewind`/`fast-forward` · `A⟨`/`⟩B` → `arrow-left-to-line`/`arrow-right-to-line` · 🔁 → `repeat-2` · (neteja el loop) → `x` · 🔍−/🔍+ → `zoom-out`/`zoom-in` · ⛶ → `maximize` · ⊙ → `focus` · 🔇 → `volume-x` · 🥁 → `metronome` · 🎯 → `target` · 📍 → `map-pin` · 🧭 → `compass` · (Desfer/Refer) → `undo-2`/`redo-2` · 🎵/🎼 (Editor) → `music`/`piano`.
+
 ### Noms (codi ↔ UI) — finestra principal
 
 | Ref | Nom al **codi** | Nom a la **UI** | Tipus |
@@ -50,18 +52,20 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |
 | — | `self.b_export_part` | **Exporta partitura** (MusicXML; PDF/MSCZ si hi ha MuseScore) | `QPushButton` |
+| — | `self.b_desfer` · `self.b_refer` | **Desfer** · **Refer** (icones `undo-2` / `redo-2`) | `QPushButton` |
+| — | `self.b_obre_carpeta` | **Obre la carpeta de sortida** | `QPushButton` |
 | — | (al transport; `self.b_zs` al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / Lliure** | `QPushButton` (checkable) |
 | — | `self.bpm` · `self.bpb` · `self.offset` · `self.offset_cb` | **BPM**, **Compàs**, **Offset (s)**, **≈ C.B** | `QLineEdit` |
-| — | `self.b_detecta` | **🎯 Detecta** (obre el diàleg de BPM) | `QPushButton` |
+| — | `self.b_detecta` | **Detecta** (icona `target`) → obre el diàleg de BPM | `QPushButton` |
 | — | `self.b_bpm_x2` · `self.b_bpm_div2` | **×2 / ÷2** del BPM | `QPushButton` |
-| — | `self.b_compas_auto` | **🧭** detecta el compàs 1 automàticament | `QPushButton` |
+| — | `self.b_compas_auto` | **Detecta el compàs 1** (icona `compass`) | `QPushButton` |
 | — | `self.b_tap` | **TAP** (tecla **T**) | `QPushButton` |
-| — | `self.b_offset_cursor` | **📍** → compàs 1 al cursor | `QPushButton` |
+| — | `self.b_offset_cursor` | **Marca el compàs 1 aquí** (icona `map-pin`) → al cursor | `QPushButton` |
 | — | `self.amb_est` | **Inclou estructura** | `QAction` (menú Analitza) |
-| — | `self.tb_loop` · `self.tb_mut` | **🔁 loop** · **🔇 mute** (barra) | `QPushButton` (checkable) |
-| — | `self.b_metro` · `self.vol_metro` | **🥁 metrònom** · volum del clic | `QPushButton` · `QSlider` |
-| — | `self.b_play_tb` | **▶ / ⏸** transport (icona commutable) | `QPushButton` |
+| — | `self.tb_loop` · `self.tb_neteja_loop` · `self.tb_mut` | **loop** (icona `repeat-2`) · **neteja el loop** (icona `x`) · **mute** (icona `volume-x`) | `QPushButton` |
+| — | `self.b_metro` · `self.vol_metro` | **metrònom** (icona `metronome`) · volum del clic | `QPushButton` · `QSlider` |
+| — | `self.b_play_tb` | **play / pause** transport (icones `play` / `pause`) | `QPushButton` |
 | — | `self.barra` | **barra de progrés** | `QProgressBar` (a la status) |
 | — | `self.log` · `self.info_box` | **log** · **caixa d'informació «live»** | `QTextEdit` ×2 |
 | — | `self.log_dock` | dock **«Log · Informació»** (a baix) | `QDockWidget` |
@@ -71,8 +75,8 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | Barra | Contingut |
 |-------|-----------|
 | **Treball** (barra 1, fila 1) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B (`Inclou estructura` és una acció del **menú Analitza**) |
-| **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** |
-| **Transport** | **▶/⏸** (play/pausa) · `⏹` · `−10s` · `+10s` · `A⟨` · `⟩B` · `🔁` · `🔍−` · `🔍+` · `Tot` · **`⊙` (zoom a la selecció)** · `🔇` · `🥁` · volum del clic |
+| **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) · **Obre la carpeta de sortida** |
+| **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · `metronome` · volum del clic |
 
 ### Menús
 
@@ -122,7 +126,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 │                                                                        │
 │  ⑤  GRID (GridLayer)      línies de compàs/beat/subdivisió             │
 │  ⑥  CURSOR VERMELL        playhead (línia vertical)                    │
-│  ⑦  BANDA LOOP A/B        rectangle groc                               │
+│  ⑦  BANDA LOOP A/B        rectangle taronja                            │
 │  ⑧  GUIA DE SNAP          línia que apareix en arrossegar               │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑪  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
@@ -140,6 +144,8 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 │       barra de la finestra)                                            │
 └────────────────────────────────────────────────────────────────────────┘
 ```
+
+> 🔗 **Clips ENCADENATS** (regles **2** i **4** de `docs/REGLES_DE_LA_APP.md`): els clips d'**estructura** i d'**acords** van **en cadena** — cada clip comença **exactament** on acaba l'anterior (sense forats ni encavalcaments), el **primer** arrenca a **0** i l'**últim** arriba a la **durada** de la WAV. La suma dels clips cobreix **tota** la durada (en qualsevol mode i amb o sense snap). Al dibuix, els clips es mostren **en contacte**, formant una cadena contínua.
 
 ### Noms (codi ↔ UI) — visor
 
@@ -246,7 +252,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | `CLIP_ACTIVE_FILL` `#1f5c3d` | **actiu** (el que sona) |
 | `CLIP_SELECTED_BORDER` `#38bdf8` | **seleccionat** (vora cian, 3 px) |
 | `TL_CURSOR` `#ff6b6b` | cursor vermell |
-| `TL_GUIDE` `#ffd166` | guia de snap / loop |
+| `TL_GUIDE` `#ffb26b` | guia de snap / loop (taronja suau) |
 
 ### 5.1 Paleta dels botons (estat ences/apagat)
 
@@ -254,12 +260,12 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 |-------|-------|--------|
 | **Base (apagat)** | gris «Obre…» `SURFACE #2a2c30` | **tots** |
 | **Encès** | **blau** `ACTIU #2563eb` (+ vora `#1e40af`) | `🔁 loop`, modes `BPM·compàs`/`Lliure` |
-| **Encès (especial)** | **groc** `ACTIU_GROC #ffd166` | `🔇 mute`, `🥁 metrònom` |
+| **Encès (especial)** | **taronja suau** `ACTIU_GROC #ffb26b` (vora `#b36a2a`) | `mute` (icona `volume-x`), `metrònom` (icona `metronome`) |
 | **Acció principal** | blanc `#ffffff` | `Analitza` (`#principal`) |
 | **Deshabilitat** | gris apagat `DISABLED #2f3238` | (🥁 en mode Lliure) |
 
-> Regla clau: `QPushButton:checked` → blau; `#metro:checked, #mute:checked` → groc.
-> La icona de transport és **▶** aturat / **⏸** sonant (sense text).
+> Regla clau: `QPushButton:checked` → blau; `#metro:checked, #mute:checked` → taronja suau.
+> La icona de transport és **`play`** aturat / **`pause`** sonant (sense text).
 
 > **Coordenades unificades**: TOTS els elements es posicionen amb
 > `x = _x_offset + (t − _view_left) × _pps` → tot alineat amb zoom i pan.
