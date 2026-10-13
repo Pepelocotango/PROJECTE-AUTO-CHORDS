@@ -1262,6 +1262,42 @@ class Finestra(QMainWindow):
                 f"{info['durada']:.1f} s · {info['canals']} canals · "
                 f"{info['mostreig']} Hz")
 
+    def _hi_ha_resultats(self):
+        """Cert si ja hi ha un resultat d'anàlisi carregat al visor.
+
+        Serveix per decidir si cal avisar que tornar a analitzar el
+        sobreescriurà (i, amb ell, les edicions manuals de l'usuari).
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return False
+        return bool(getattr(vr, "acords", None)
+                    or getattr(vr, "seccions", None))
+
+    def _confirma_reanalisi(self):
+        """Avís de sobreescriptura abans de re-analitzar.
+
+        Retorna True per continuar i False per cancel·lar. Només pregunta si
+        HI HA resultats a perdre: en la primera anàlisi d'un WAV nou no molesta.
+        """
+        if not self._hi_ha_resultats():
+            return True
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("Tornar a analitzar")
+        box.setText(
+            "Tornar a analitzar <b>sobreescriurà els acords i l'estructura "
+            "actuals</b>, incloent-hi les <b>edicions manuals</b> que hagis "
+            "fet (moure, renombrar o eliminar acords, retallar seccions…).")
+        box.setInformativeText(
+            "Aquesta acció <b>no es pot desfer</b>: els fitxers de la carpeta "
+            "de sortida es tornaran a generar.")
+        b_go = box.addButton("Continua i descarta", QMessageBox.DestructiveRole)
+        b_no = box.addButton("Cancel·la", QMessageBox.RejectRole)
+        box.setDefaultButton(b_no)
+        box.exec_()
+        return box.clickedButton() is b_go
+
     def executa(self, pregunta=True):
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
@@ -1283,6 +1319,10 @@ class Finestra(QMainWindow):
                 return
             self.opcions = dlg.opcions()
             dialegs.desa_opcions(self.opcions)
+            # AVÍS OBLIGATORI: re-analitzar re-escriu els acords/estructura (i
+            # les edicions manuals) i reinicia el desfer → no es recupera.
+            if not self._confirma_reanalisi():
+                return
         self._atura_si_sona("analisi amb els plugins")
         base = os.path.splitext(os.path.basename(wav))[0]
         self.sortida = os.path.join(os.path.dirname(wav), base + "_ACORDS")
