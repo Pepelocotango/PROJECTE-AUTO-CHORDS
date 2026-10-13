@@ -318,16 +318,27 @@ class Finestra(QMainWindow):
         self.tempo_fix.setVisible(False)
         self.tempo_fix.toggled.connect(self._canvia_tempo)
 
-        # 3. «Analitza» i «Exporta» són ACCIONS (no passos d'assistent).
+        # 3. «Analitza», «Exporta WAV's» i «Exporta partitura» són ACCIONS.
         self.b_exec = QPushButton("Analitza")
         self.b_exec.setObjectName("principal")
         self.b_exec.setToolTip("Extreu acords i estructura de la WAV (F5)")
         self.b_exec.clicked.connect(lambda: self.executa())
         self.b_exec.setEnabled(False)          # fins que hi hagi WAV
-        self.b_export = QPushButton("Exporta")
-        self.b_export.setToolTip("Exporta el paquet final (Ctrl+E)")
+        self.b_export = QPushButton("Exporta WAV's")
+        self.b_export.setToolTip("Exporta el paquet final de WAV's (Ctrl+E)")
         self.b_export.setEnabled(False)       # fins que hi hagi pistes
         self.b_export.clicked.connect(self.exporta)
+        self.b_export_part = QPushButton("Exporta partitura")
+        self.b_export_part.setToolTip(
+            "Genera la partitura (xifrat). El MusicXML es genera SEMPRE; el "
+            "PDF i el MSCZ NOMÉS si tens MuseScore instal·lat.")
+        self.b_export_part.setEnabled(False)  # fins que hi hagi resultats
+        self.b_export_part.clicked.connect(self.exporta_partitura_ara)
+        self.b_zoom_sel = QPushButton("Zoom selecció")
+        self.b_zoom_sel.setToolTip(
+            "Ajusta la vista del timeline perquè es vegi TOTA la selecció "
+            "(Ctrl/Shift+clic per seleccionar clips).")
+        self.b_zoom_sel.clicked.connect(self._zoom_seleccio)
 
         # 1a BARRA: en ORDRE DE FLUX de treball →
         #   1) Obre  ·  2) opcions de temps  ·  3) Analitza i Exporta (al final)
@@ -343,6 +354,8 @@ class Finestra(QMainWindow):
         barra.addSeparator()
         barra.addWidget(self.b_exec)
         barra.addWidget(self.b_export)
+        barra.addWidget(self.b_export_part)
+        barra.addWidget(self.b_zoom_sel)
         self.addToolBar(Qt.TopToolBarArea, barra)
         self.barra_principal = barra
         self.barra_temps = barra
@@ -400,6 +413,7 @@ class Finestra(QMainWindow):
 
         self.sortida = ""
         self.b_export.setEnabled(False)
+        self.b_export_part.setEnabled(False)
         # Drecera: espai = play/pausa (a la finestra principal, perquè el
         # visor està incrustat i el seu propi QShortcut no s'activaria).
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
@@ -453,7 +467,7 @@ class Finestra(QMainWindow):
         m = mb.addMenu("&Fitxer")
         self._act(m, "Obre WAV…", "Ctrl+O", self.tria_wav)
         m.addSeparator()
-        self._act(m, "Exporta…", "Ctrl+E", self.exporta)
+        self._act(m, "Exporta WAV's…", "Ctrl+E", self.exporta)
         a_part = self._act(m, "Exporta la partitura…", "",
                            self.exporta_partitura_ara)
         a_part.setStatusTip("Genera la partitura (xifrat). El MusicXML sempre; "
@@ -1265,6 +1279,7 @@ class Finestra(QMainWindow):
         self.registra(f"Sortida: {self.sortida}")
         self.b_exec.setEnabled(False)
         self.b_export.setEnabled(False)
+        self.b_export_part.setEnabled(False)
         self.feina = Feina(wav, self.sortida, self._bpm_val(),
                            self._bpb_val(), self._offset_val(),
                            self.amb_est.isChecked(),
@@ -1282,13 +1297,15 @@ class Finestra(QMainWindow):
         self.b_exec.setEnabled(True)
         if be:
             self.b_export.setEnabled(True)
-            self.registra("FET ✅ — ara pots revisar el visor i fer «Exporta».")
+            self.b_export_part.setEnabled(True)
+            self.registra("FET ✅ — ara pots revisar el visor i fer «Exporta WAV's».")
             self.barra.setValue(100)
             wav = self.wav_edit.text().strip()
             if wav and os.path.isfile(wav):
                 self._carrega_visor(wav)
         else:
             self.b_export.setEnabled(False)
+            self.b_export_part.setEnabled(False)
             self.registra(f"ERROR: {dada}")
             self.log_dock.setVisible(True)    # en cas d'error, obrim el log
             QMessageBox.critical(self, "Auto Chords", dada)
@@ -1344,6 +1361,19 @@ class Finestra(QMainWindow):
             self.registra(f"exporta ERROR: {e}")
             QMessageBox.critical(self, "Auto Chords",
                                  f"No s'ha pogut exportar:\n{e}")
+
+    def _zoom_seleccio(self):
+        """Ajusta el visor perquè es vegi TOTA la selecció del timeline."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.registra("Zoom selecció: primer cal obrir/analitzar (el visor).")
+            return
+        if not vr.timeline.selected_keys():
+            self.registra("Zoom selecció: no hi ha cap clip seleccionat "
+                          "(fes Ctrl/Shift+clic al timeline).")
+            return
+        vr.timeline.zoom_selection()
+        self.registra("Zoom a la selecció ✅")
 
     def _exporta_partitura(self):
         """Genera el lead sheet de xifrats de la carpeta de sortida.

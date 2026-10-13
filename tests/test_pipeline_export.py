@@ -264,14 +264,16 @@ class ExportPipelineTests(unittest.TestCase):
 
     def test_main_window_te_les_accions_analitza_i_exporta(self):
         """Reorg GUI (pas 3): «Processa» passa a dir-se «Analitza» i
-        «Finalitza i publica» → «Exporta» (ara són accions, no passos
-        d'assistent)."""
+        «Finalitza i publica» → «Exporta WAV's» (ara són accions, no passos
+        d'assistent). També hi ha «Exporta partitura» i «Zoom selecció»."""
         app = app_main.QApplication.instance() or app_main.QApplication([])
         window = app_main.Finestra()
         self.assertTrue(hasattr(window, "b_exec"))
         self.assertTrue(hasattr(window, "b_export"))
         self.assertEqual(window.b_exec.text(), "Analitza")
-        self.assertEqual(window.b_export.text(), "Exporta")
+        self.assertEqual(window.b_export.text(), "Exporta WAV's")
+        self.assertTrue(hasattr(window, "b_export_part"))
+        self.assertTrue(hasattr(window, "b_zoom_sel"))
         app.quit()
 
     def test_metro_desactivat_en_mode_lliure(self):
@@ -3104,6 +3106,52 @@ class MissatgePartituraTests(unittest.TestCase):
         self.assertIn("MusicXML", m)
         self.assertIn("MuseScore", m)
         self.assertIn("NO s'han generat", m)
+
+
+class BotonsExportTests(unittest.TestCase):
+    """La barra ha de tenir «Exporta WAV's» i «Exporta partitura» (petició de
+    l'operador), i el segon deshabilitat fins que hi hagi resultats."""
+
+    def test_etiquetes_i_estat(self):
+        # cal mantenir la referència a la QApplication (si no, el GC la mata)
+        self._app = app_main.QApplication.instance() or app_main.QApplication([])
+        w = app_main.Finestra()
+        self.assertIn("WAV", w.b_export.text())
+        self.assertEqual(w.b_export_part.text(), "Exporta partitura")
+        self.assertFalse(w.b_export_part.isEnabled())
+        # el tooltip de la partitura ha d'esmentar MuseScore
+        self.assertIn("MuseScore", w.b_export_part.toolTip())
+
+
+class ZoomSeleccioTests(unittest.TestCase):
+    """`rang_seleccio()` del timeline (base del «zoom a la selecció»)."""
+
+    def _tl(self, multi, chords=(), sections=()):
+        from app import timeline as tl
+        t = tl.TimelineView.__new__(tl.TimelineView)
+        t._multi = set(multi)
+        t._chord_items = list(chords)
+        t._section_items = list(sections)
+        return t
+
+    def test_sense_seleccio_retorna_none(self):
+        self.assertIsNone(self._tl(set()).rang_seleccio())
+
+    def test_rang_amb_acords(self):
+        from types import SimpleNamespace as NS
+        ch = [NS(t=1.0, _next_t=2.0), NS(t=5.0, _next_t=6.0)]
+        t = self._tl({("chord", 0), ("chord", 1)}, chords=ch)
+        self.assertEqual(t.rang_seleccio(), (1.0, 6.0))
+
+    def test_rang_amb_seccions(self):
+        from types import SimpleNamespace as NS
+        se = [NS(ini=10.0, fi=20.0)]
+        t = self._tl({("section", 0)}, sections=se)
+        self.assertEqual(t.rang_seleccio(), (10.0, 20.0))
+
+    def test_ignora_index_fora_de_rang(self):
+        t = self._tl({("chord", 9)})
+        self.assertIsNone(t.rang_seleccio())
 
 
 if __name__ == "__main__":

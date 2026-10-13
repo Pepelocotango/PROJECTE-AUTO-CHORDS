@@ -500,6 +500,35 @@ class TimelineView(QGraphicsView):
             return (it.ini + it.fi) / 2.0
         return None
 
+    def rang_seleccio(self):
+        """Rang temporal `(inici, fi)` de TOTS els clips seleccionats, o `None`.
+
+        Serveix per al **«zoom a la selecció»**. Els acords usen `t`/`_next_t`;
+        les seccions, `ini`/`fi`.
+        """
+        t0s, t1s = [], []
+        for kind, idx in getattr(self, "_multi", set()):
+            if kind == "chord" and 0 <= idx < len(self._chord_items):
+                it = self._chord_items[idx]
+                t0s.append(it.t)
+                t1s.append(it._next_t)
+            elif kind == "section" and 0 <= idx < len(self._section_items):
+                it = self._section_items[idx]
+                t0s.append(it.ini)
+                t1s.append(it.fi)
+        if not t0s:
+            return None
+        return (min(t0s), max(t1s))
+
+    def zoom_selection(self) -> None:
+        """Ajusta la vista perquè es vegi TOTA la selecció (amb un petit marge)."""
+        r = self.rang_seleccio()
+        if r is None:
+            return
+        lo, hi = r
+        marge = max(0.5, (hi - lo) * 0.05)
+        self._set_view_range(max(0.0, lo - marge), min(self._durada, hi + marge))
+
     def _center_on(self, centre: float, ampl: float) -> None:
         """Situa la vista centrada a `centre` amb amplada `ampl` (segons)."""
         ampl = max(ampl, 0.3)
