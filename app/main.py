@@ -341,7 +341,9 @@ class Finestra(QMainWindow):
         self.b_export_part = QPushButton("Exporta partitura")
         self.b_export_part.setToolTip(
             "Genera la partitura (xifrat). El MusicXML es genera SEMPRE; el "
-            "PDF i el MSCZ NOMÉS si tens MuseScore instal·lat.")
+            "PDF i el MSCZ NOMÉS si tens MuseScore instal·lat.\n"
+            "Fes «Analitza» primer: mentre no hi hagi resultats el botó queda "
+            "apagat (i un clic en un botó apagat no fa res).")
         self.b_export_part.setEnabled(False)  # fins que hi hagi resultats
         self.b_export_part.clicked.connect(self.exporta_partitura_ara)
 

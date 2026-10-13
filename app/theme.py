@@ -20,7 +20,7 @@ PRIMARY_LIGHT = "#ffffff"
 ACCENT = "#dfe3ea"
 WARNING = "#dfe3ea"
 DANGER = "#dfe3ea"
-DISABLED = "#2f3238"
+DISABLED = "#1e2024"
 
 # --- Timeline i clips -------------------------------------------------------
 # ACTIU  = el clip que SONA (segueix el cursor)  -> fons tenyit suau.
