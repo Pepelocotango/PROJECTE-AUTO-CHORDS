@@ -1,5 +1,9 @@
 # Planificació: app de macOS (High Sierra 10.13+)
 
+> ## ✅ [FET — el pla ja s'ha executat]
+> El build de macOS funciona al CI (`.dmg`); estat vigent: **`docs/ESTAT_MULTI_SO.md`**.
+> Es conserva pel **detall** (sense AVX, `minos` 10.13, natius des de font, DMG…).
+
 > **2026-10-07 · actualitzat 2026-10-08.** Pla per construir AUTO CHORDS per a
 > **macOS x86_64** amb **mínim High Sierra 10.13**, tot a **GitHub Actions**
 > (cap build local Mac). Complementa `ROADMAP.md` §9 (viabilitat) i

@@ -110,9 +110,12 @@ VAMP_PATH="nnls-chroma-linux64-local:segmentino-linux64-local:vamp-aubio-linux64
 # → vamp:vamp-aubio:aubiotempo:tempo
 ```
 
-## Pendent (proper pas)
+## Pendent
 
-- **Integrar a la GUI**: en carregar una WAV, cridar el transform `beats`,
-  calcular el BPM i **omplir automàticament** el camp «BPM» (i,
-  opcionalment, l'«Offset compàs 1» amb la primera pulsació).
-- Valorar `qm-bartracker` (compassos) si cal afinar l'offset.
+> ⚠️ **[OBSOLET]**: aquests «pendents» ja **no apliquen** — el detector d'aubio es va
+> retirar. El BPM el calcula **`app/tempo.py`** (numpy) i el **`qm-tempotracker`**;
+> el compàs 1, el **`qm-onsetdetector` + `qm-barbeattracker`** (vegeu
+> `docs/QM_VAMP.md` i `docs/AUTODETECCIO_OPCIONS.md`).
+
+- ~~Integrar a la GUI~~ → **fet** amb `app/tempo.py`.
+- ~~Valorar `qm-bartracker`~~ → **fet** amb `qm-barbeattracker`.

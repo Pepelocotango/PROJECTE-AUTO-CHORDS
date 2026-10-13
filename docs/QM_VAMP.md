@@ -119,5 +119,5 @@ llibreries**: libc/libstdc++ + libvamp-hostsdk + libsndfile), compilat amb
 el `qm-barbeattracker`. El `sonic-annotator` es conserva com a **reserva**.
 
 ## Pendents / idees
-- **Tonalitat** amb `qm-keydetector` (mostrar-la).
-- Afinar el qm-segmenter (conservar les seves etiquetes de repetició).
+- ✅ **Tonalitat** amb `qm-keydetector` → **FET**: acció **«Tonalitat automàtica (qm-keydetector)»** al menú **Fitxer** (posa l'armadura a la partitura; `app/partitura.detecta_fifths`).
+- Afinar el `qm-segmenter` (conservar les seves etiquetes de repetició).

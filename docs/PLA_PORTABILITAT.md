@@ -1,9 +1,14 @@
 # PLA DE PORTABILITAT — fer AUTO CHORDS autocontingut
 
+> ## ✅ [COMPLETAT] — 2026-10-13
+> Aquest **pla per fases** ja s'ha **executat**: l'app és autocontinguda als **3 SO**.
+> L'estat vigent és a **`docs/ESTAT_MULTI_SO.md`** (i `docs/CI_WORKFLOWS.md`). El
+> document es conserva com a **històric del procés**.
+
 > **2026-10-07.** Pla de treball per fases (decisió de l'operador: **es volen
 > totes**). Basat en `docs/PORTABILITAT.md` (anàlisi amb mides i `ldd` reals).
 > **Regla**: una fase = un o més commits, amb tests; res trencat en acabar cada
-> fase (els 165 tests han de seguir verds).
+> fase (llavors, 165 tests; ara la suite és de **415**).
 
 ## Objectiu final
 Una carpeta d'**~160 MB** que es copia a qualsevol **Linux x86_64 modern**

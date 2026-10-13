@@ -1,5 +1,9 @@
 # Portabilitat: fer l'app autocontinguda
 
+> ## ℹ️ [ANÀLISI — JA IMPLEMENTAT]
+> Aquesta és l'**anàlisi original** (mides i `ldd`); la implementació ja és feta.
+> Estat vigent: **`docs/ESTAT_MULTI_SO.md`** · detall de CI: `docs/CI_WORKFLOWS.md`.
+
 > **2026-10-07.** Anàlisi (no implementació) de què caldria perquè AUTO CHORDS
 > sigui **autocontingut i portable** (copiar la carpeta i que funcioni, sense
 > instal·lar res). Mides i `ldd` reals del projecte.
