@@ -704,6 +704,10 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 
 ### Notes sobre la implementació
 
+> 🔴 **Les regles d'or (invariants) de l'app són totes a
+> `docs/REGLES_DE_LA_APP.md`** — llegiu-les abans de tocar codi. Cap canvi no
+> les pot trencar.
+
 - **Cap canvi trenca la invarianta** actual (`prev.fi == curr.t` per a
   acords; ordre estricte sense solapaments per a tothom).
 - **Invariant de COBERTURA** (regla d'or): la **suma dels clips d'acords = la

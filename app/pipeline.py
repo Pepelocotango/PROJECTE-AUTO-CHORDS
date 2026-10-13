@@ -481,11 +481,15 @@ def normalitza_cobertura(acords, seccions, durada, log=None):
     return acords, seccions
 
 
-def run_acords_py(csv_path, bpm, bpb, offset, workdir, log):
+def run_acords_py(csv_path, bpm, bpb, offset, workdir, log, durada=None):
     # `sys.executable` (mai un `python3` fix): trencava a Windows i amb
     # PyInstaller. Vegeu `app/plataforma.py`.
-    run([plataforma.python_actual(), ACORDS_PY, csv_path, str(bpm), str(bpb),
-         str(offset)], log, cwd=workdir)
+    args = [plataforma.python_actual(), ACORDS_PY, csv_path, str(bpm),
+            str(bpb), str(offset)]
+    if durada:
+        # INVARIANT de COBERTURA: l'últim acord ha d'arribar a la durada.
+        args.append(str(float(durada)))
+    run(args, log, cwd=workdir)
     # el py escriu al directori de treball
     return (os.path.join(workdir, "acords_locators.txt"),
             os.path.join(workdir, "guia_acords.html"))
@@ -775,7 +779,8 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
 
     result = {"acords_csv": csv_ac, "sortida": sortida}
     if tempo_fix:
-        loc, guia = run_acords_py(csv_ac, bpm, bpb, offset, sortida, log)
+        loc, guia = run_acords_py(csv_ac, bpm, bpb, offset, sortida, log,
+                                  durada=total_s)
         result["locators_txt"] = loc
         result["guia_html"] = guia
         dest = os.path.join(sortida, "wavs_acords")

@@ -2,6 +2,9 @@
 
 Tot en català. Llicència: GPLv3 (vegeu `LICENSE`).
 
+> 🔴 **ABANS DE TOCAR CODI**: les **regles d'or (invariants)** de l'app són totes
+> a **`docs/REGLES_DE_LA_APP.md`**. Cap canvi no les pot trencar.
+
 ## Requisits
 
 - Python 3.10+ (stdlib; sense pip per al pipeline). Coincideix amb `requires-python` del `pyproject.toml`.

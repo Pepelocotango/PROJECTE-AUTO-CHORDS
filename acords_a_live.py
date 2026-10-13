@@ -3,6 +3,7 @@
 import csv, re, sys, html
 src, bpm, bpb = sys.argv[1], float(sys.argv[2]), int(sys.argv[3])
 offset = float(sys.argv[4]) if len(sys.argv) > 4 else 0.0   # segons on cau el compàs 1
+durada = float(sys.argv[5]) if len(sys.argv) > 5 else 0.0   # durada de la WAV (cobertura)
 step = 60.0 / bpm / 2            # graella = mig temps (corxera)
 slots_bar = bpb * 2
 
@@ -22,6 +23,9 @@ for t, c in rows:
 if not segs:
     sys.exit("cap acord detectat al csv (tot N): revisa la wav o l'extracció Chordino")
 end = max(end, segs[-1][0] + slots_bar)
+if durada > 0:
+    # INVARIANT de COBERTURA: l'últim acord arriba a la durada de la WAV.
+    end = max(end, round((durada - offset) / step))
 
 def pos(p):                        # posició estil Live: compàs.temps.setzena
     return "%d.%d.%d" % (p // slots_bar + 1, (p % slots_bar) // 2 + 1, 1 + 2 * (p % 2))

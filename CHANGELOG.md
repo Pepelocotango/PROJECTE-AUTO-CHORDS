@@ -5,6 +5,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+### Afegit
+- **`docs/REGLES_DE_LA_APP.md`**: totes les **regles d'or (invariants)** de l'app
+  en un sol lloc, **numerades** (1–10) amb la seva validació al codi i tests.
+  Enllaçat des del `ROADMAP` i el `DEVELOPING`.
+
 ### Corregit
 - **Invariant de COBERTURA dels clips** (regla d'or): la **suma dels clips
   d'acords = la durada de la WAV** i la **suma dels clips d'estructura = la
@@ -13,7 +18,8 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   acord podia quedar desplaçat (p. ex. 0.17 s amb el snap) i l'última secció no
   arribava al final de la WAV. Ho garanteix `pipeline.normalitza_cobertura()`,
   aplicat en **carregar el visor** i en l'**export** (CSV/ABC + wavs), per als 2
-  modes i amb o sense snap.
+  modes i amb o sense snap. També l'**export dels acords**: l'últim clip arriba a
+  la durada (`acords_a_live.py` rep la durada).
 
 ## [0.6.2] — 2026-10-13 (BETA)
 
