@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 930" width="1440" height="930"
      font-family="system-ui,Segoe UI,Roboto,sans-serif">
   <title>Auto Chords — Esquema visual de la GUI (v0.6.2)</title>
   <desc>Finestra única amb el visor al centre, dues barres d'eines, llistes,
@@ -13,10 +13,10 @@
     </linearGradient>
   </defs>
 
-  <rect width="1440" height="900" fill="#15181d"/>
+  <rect width="1440" height="930" fill="#15181d"/>
 
   <!-- ================= FINESTRA ================= -->
-  <rect x="12" y="12" width="1416" height="876" rx="11" fill="#20242c" stroke="#3a4150"/>
+  <rect x="12" y="12" width="1416" height="906" rx="11" fill="#20242c" stroke="#3a4150"/>
   <!-- titlebar -->
   <rect x="12" y="12" width="1416" height="40" rx="11" fill="url(#tb)" stroke="#3a4150"/>
   <rect x="12" y="40" width="1416" height="12" fill="#262b34"/>
@@ -57,15 +57,18 @@
   <text x="896" y="93" fill="#9aa6b8" font-size="11">≈</text>
   <rect x="908" y="79" width="44" height="20" rx="4" fill="#12151b" stroke="#3a4150"/>
   <text x="918" y="93" fill="#e8edf5" font-size="11">1.1</text>
-  <rect x="1000" y="79" width="72" height="20" rx="5" fill="#5b8dd6" stroke="#5b8dd6"/>
-  <text x="1014" y="93" fill="#fff" font-size="11" font-weight="700">Analitza</text>
-  <rect x="1078" y="79" width="86" height="20" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="1088" y="93" fill="#e8edf5" font-size="11" font-weight="700">Exporta WAV's</text>
-  <rect x="1170" y="79" width="104" height="20" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="1180" y="93" fill="#e8edf5" font-size="11" font-weight="700">Exporta partitura</text>
-  <rect x="1280" y="79" width="92" height="20" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="1290" y="93" fill="#e8edf5" font-size="11" font-weight="700">Zoom selecció</text>
 
+  <!-- ============ BARRA 1b (accions) ============ -->
+  <rect x="12" y="104" width="1416" height="30" fill="#1b2029"/>
+  <line x1="12" y1="134" x2="1428" y2="134" stroke="#3a4150"/>
+  <rect x="22" y="109" width="72" height="20" rx="5" fill="#5b8dd6" stroke="#5b8dd6"/>
+  <text x="36" y="123" fill="#fff" font-size="11" font-weight="700">Analitza</text>
+  <rect x="104" y="109" width="86" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="114" y="123" fill="#e8edf5" font-size="11" font-weight="700">Exporta WAV's</text>
+  <rect x="200" y="109" width="104" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="210" y="123" fill="#e8edf5" font-size="11" font-weight="700">Exporta partitura</text>
+
+  <g transform="translate(0, 30)">
   <!-- ============ BARRA 2 (transport) ============ -->
   <rect x="12" y="104" width="1416" height="30" fill="#212630"/>
   <line x1="12" y1="134" x2="1428" y2="134" stroke="#3a4150"/>
@@ -89,13 +92,21 @@
   <text x="470" y="123" fill="#e8edf5" font-size="11" font-weight="700">🔍+</text>
   <rect x="510" y="109" width="44" height="20" rx="5" fill="#313846" stroke="#47505f"/>
   <text x="522" y="123" fill="#e8edf5" font-size="11" font-weight="700">Tot</text>
-  <rect x="562" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
-  <text x="573" y="123" fill="#000" font-size="11" font-weight="700">🔇</text>
-  <rect x="602" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
-  <text x="613" y="123" fill="#000" font-size="11" font-weight="700">🥁</text>
-  <rect x="646" y="115" width="90" height="8" rx="4" fill="#12151b" stroke="#3a4150"/>
-  <rect x="647" y="116" width="54" height="6" fill="#5b8dd6"/>
-  <circle cx="706" cy="119" r="6" fill="#dbe4f2" stroke="#5b8dd6"/>
+  <rect x="560" y="109" width="44" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <g stroke="#e8edf5" stroke-width="1.4" fill="none" stroke-linecap="round">
+    <circle cx="582" cy="119" r="2.6"/>
+    <path d="M570 113.5v-1a1.5 1.5 0 0 1 1.5-1.5h1"/>
+    <path d="M591.5 111h1a1.5 1.5 0 0 1 1.5 1.5v1"/>
+    <path d="M594 124.5v1a1.5 1.5 0 0 1-1.5 1.5h-1"/>
+    <path d="M572.5 127h-1a1.5 1.5 0 0 1-1.5-1.5v-1"/>
+  </g>
+  <rect x="610" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <text x="621" y="123" fill="#000" font-size="11" font-weight="700">🔇</text>
+  <rect x="650" y="109" width="34" height="20" rx="5" fill="#ffd166" stroke="#ffd166"/>
+  <text x="661" y="123" fill="#000" font-size="11" font-weight="700">🥁</text>
+  <rect x="694" y="115" width="90" height="8" rx="4" fill="#12151b" stroke="#3a4150"/>
+  <rect x="695" y="116" width="54" height="6" fill="#5b8dd6"/>
+  <circle cx="754" cy="119" r="6" fill="#dbe4f2" stroke="#5b8dd6"/>
 
   <!-- ============ TIMELINE ============ -->
   <rect x="16" y="138" width="1408" height="212" fill="#0f0f10" stroke="#3a4150"/>
@@ -321,4 +332,5 @@
   <rect x="990" y="812" width="14" height="14" rx="3" fill="#ffffff"/><text x="1010" y="824" fill="#9aa6b8" font-size="11">acció principal (blanc: Analitza)</text>
   <text x="800" y="842" fill="#6f7a8c" font-size="10.5">Mides: RULER_H=26 · WAVEFORM_H=170 · LANE_H=54 · TOTAL_H=196 px</text>
   <text x="800" y="814" fill="#6f7a8c" font-size="10.5">x = _x_offset + (t − _view_left) × _pps  (coordenades unificades)</text>
+  </g>
 </svg>
