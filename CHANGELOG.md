@@ -22,6 +22,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   `vamp_host_local`). Ja no s'avisa d'aquell fitxer (es manté com a *fallback*
   intern a `pipeline.py`).
 
+### Canviat
+- **Barra d'eines en 2 files**: la fila **Treball** (Obre…, opcions de temps) i
+  una fila nova **Accions** amb **Analitza · Exporta WAV's · Exporta partitura**.
+- **Zoom a la selecció**: ara és un **botó d'icona** (`focus`, sense text) al
+  visor, just al costat de **Zoom tot** (`maximize`).
+
 ## [0.6.1] — 2026-10-11 (BETA)
 
 ### Corregit

@@ -334,11 +334,6 @@ class Finestra(QMainWindow):
             "PDF i el MSCZ NOMÉS si tens MuseScore instal·lat.")
         self.b_export_part.setEnabled(False)  # fins que hi hagi resultats
         self.b_export_part.clicked.connect(self.exporta_partitura_ara)
-        self.b_zoom_sel = QPushButton("Zoom selecció")
-        self.b_zoom_sel.setToolTip(
-            "Ajusta la vista del timeline perquè es vegi TOTA la selecció "
-            "(Ctrl/Shift+clic per seleccionar clips).")
-        self.b_zoom_sel.clicked.connect(self._zoom_seleccio)
 
         # 1a BARRA: en ORDRE DE FLUX de treball →
         #   1) Obre  ·  2) opcions de temps  ·  3) Analitza i Exporta (al final)
@@ -352,13 +347,19 @@ class Finestra(QMainWindow):
         barra.addSeparator()
         barra.addWidget(self._params_temps)
         barra.addSeparator()
-        barra.addWidget(self.b_exec)
-        barra.addWidget(self.b_export)
-        barra.addWidget(self.b_export_part)
-        barra.addWidget(self.b_zoom_sel)
         self.addToolBar(Qt.TopToolBarArea, barra)
         self.barra_principal = barra
         self.barra_temps = barra
+
+        # 1b. SEGONA FILA de la barra 1: les ACCIONS (Analitza + exportacions).
+        barra_accions = QToolBar("Accions")
+        barra_accions.setObjectName("barra_accions")
+        barra_accions.setMovable(False)
+        barra_accions.addWidget(self.b_exec)
+        barra_accions.addWidget(self.b_export)
+        barra_accions.addWidget(self.b_export_part)
+        self.addToolBar(Qt.TopToolBarArea, barra_accions)
+        self.barra_accions = barra_accions
 
         # progrés → barra d'estat (permanent)
         self.barra = QProgressBar()
@@ -1361,19 +1362,6 @@ class Finestra(QMainWindow):
             self.registra(f"exporta ERROR: {e}")
             QMessageBox.critical(self, "Auto Chords",
                                  f"No s'ha pogut exportar:\n{e}")
-
-    def _zoom_seleccio(self):
-        """Ajusta el visor perquè es vegi TOTA la selecció del timeline."""
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            self.registra("Zoom selecció: primer cal obrir/analitzar (el visor).")
-            return
-        if not vr.timeline.selected_keys():
-            self.registra("Zoom selecció: no hi ha cap clip seleccionat "
-                          "(fes Ctrl/Shift+clic al timeline).")
-            return
-        vr.timeline.zoom_selection()
-        self.registra("Zoom a la selecció ✅")
 
     def _exporta_partitura(self):
         """Genera el lead sheet de xifrats de la carpeta de sortida.

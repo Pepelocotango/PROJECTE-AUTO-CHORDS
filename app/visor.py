@@ -281,10 +281,15 @@ class Visor(QMainWindow):
         self.b_zp.clicked.connect(lambda: self.zoom(0.5))
         self.b_zt = QPushButton()
         self.b_zt.setIcon(icones.ico("maximize"))
+        self.b_zt.setToolTip("Zoom: veure tot el tema")
         self.b_zt.clicked.connect(self.zoom_tot)
+        self.b_zs = QPushButton()
+        self.b_zs.setIcon(icones.ico("focus"))
+        self.b_zs.setToolTip("Zoom a la SELECCIÓ (ajusta la vista als clips seleccionats)")
+        self.b_zs.clicked.connect(self.zoom_seleccio)
         for b in (self.b_play, self.b_stop, self.b_menys, self.b_mes,
                   self.b_A, self.b_B, self.b_loop,
-                  self.b_zm, self.b_zp, self.b_zt):
+                  self.b_zm, self.b_zp, self.b_zt, self.b_zs):
             fila.addWidget(b)
         # Encaixem la fila en un contenidor per poder-la AMAGAR quan el visor
         # va incrustat (aleshores el transport viu a la barra de la finestra).
@@ -783,6 +788,15 @@ class Visor(QMainWindow):
 
     def zoom_tot(self):
         self.timeline.zoom_full()
+
+    def zoom_seleccio(self):
+        """Ajusta la vista del timeline perquè es vegi tota la selecció."""
+        if not self.timeline.selected_keys():
+            self.log("Zoom selecció: no hi ha cap clip seleccionat "
+                     "(fes Ctrl/Shift+clic al timeline).")
+            return
+        self.timeline.zoom_selection()
+        self.log("Zoom a la selecció ✅")
 
     def _canvia_volum(self, v):
         # S'aplica en directe al fil d'alimentacio (vegeu _alimenta): NO

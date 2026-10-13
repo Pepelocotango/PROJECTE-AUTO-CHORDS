@@ -273,7 +273,7 @@ class ExportPipelineTests(unittest.TestCase):
         self.assertEqual(window.b_exec.text(), "Analitza")
         self.assertEqual(window.b_export.text(), "Exporta WAV's")
         self.assertTrue(hasattr(window, "b_export_part"))
-        self.assertTrue(hasattr(window, "b_zoom_sel"))
+        self.assertTrue(hasattr(window, "barra_accions"))   # 2a fila de la barra 1
         app.quit()
 
     def test_metro_desactivat_en_mode_lliure(self):
@@ -3152,6 +3152,10 @@ class ZoomSeleccioTests(unittest.TestCase):
     def test_ignora_index_fora_de_rang(self):
         t = self._tl({("chord", 9)})
         self.assertIsNone(t.rang_seleccio())
+
+    def test_visor_te_zoom_seleccio(self):
+        from app import visor
+        self.assertTrue(callable(getattr(visor.Visor, "zoom_seleccio", None)))
 
 
 if __name__ == "__main__":
