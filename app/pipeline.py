@@ -540,6 +540,11 @@ def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
     return [tuple(x) for x in s]
 
 
+# Tolerància compartida per als temps (evita falsos positius per coma flotant).
+# La fan servir la normalització de cobertura i els validadors del visor.
+TOL_TEMPS = 1e-6
+
+
 def normalitza_cobertura(acords, seccions, durada, log=None):
     """Garanteix l'**INVARIANT de COBERTURA** (regla d'or de l'app):
 
@@ -554,12 +559,25 @@ def normalitza_cobertura(acords, seccions, durada, log=None):
       timeline/export la fixen a `durada`.)
     - **Seccions** `[(ini, fi, lletra, família), …]`: si la primera comença > 0
       s'hi insereix una **«N» a 0**; i el `fi` de l'última **s'acota a `durada`**.
+    - **Forats interns de les seccions**: si una secció no arrenca on acaba
+      l'anterior (`prev.fi != curr.ini`, regla d'or #2) el forat es **tapa amb
+      una secció «N»** (una regió sense etiqueta, com la capçalera) → la suma
+      de durades torna a ser exactament la de la WAV.
 
     Retorna `(acords, seccions)` normalitzats (llistes noves; no muta les d'entrada).
     """
     durada = float(durada or 0.0)
     acords = [tuple(a) for a in (acords or [])]
     seccions = [tuple(s) for s in (seccions or [])]
+    # Acords FORA de la WAV (t >= durada): allà no hi ha àudio i deixarien un
+    # clip de durada <= 0 (l'invariant #4 no es podria complir) → s'eliminen.
+    if durada > 0:
+        dins = [a for a in acords if float(a[0]) < durada - TOL_TEMPS]
+        if len(dins) != len(acords):
+            if log:
+                log(f"cobertura: {len(acords) - len(dins)} acord(s) fora de la "
+                    f"WAV (>= {durada:.2f} s) eliminats")
+            acords = dins
     # Acords: capçalera N si el 1r no arrenca a 0.
     if acords and float(acords[0][0]) > 1e-9:
         # conserva els camps extra (p. ex. `tsrc`), posant-los a 0.
@@ -575,6 +593,20 @@ def normalitza_cobertura(acords, seccions, durada, log=None):
             if log:
                 log(f"cobertura: capçalera N a l'estructura (1a secció a "
                     f"{float(seccions[1][0]):.2f} s)")
+        # Forats INTERNS (regla d'or #2: el fi d'una secció == inici de la
+        # següent): es tapen amb una secció «N» (regió sense etiqueta). Sense
+        # això, moure una secció cap endavant deixava un forat que l'app
+        # acceptava i la suma de durades ja no quadrava amb la WAV (#4).
+        farcit = []
+        for s in seccions:
+            if farcit and float(s[0]) > float(farcit[-1][1]) + 1e-9:
+                forat = (float(farcit[-1][1]), float(s[0]), "N", "N")
+                farcit.append(forat)
+                if log:
+                    log(f"cobertura: forat intern {forat[0]:.2f}–{forat[1]:.2f} s "
+                        f"tapat amb «N»")
+            farcit.append(s)
+        seccions = farcit
         if durada > 0 and float(seccions[-1][1]) < durada - 1e-9:
             ini, _fi, L, fam = seccions[-1]
             seccions[-1] = (ini, durada, L, fam)

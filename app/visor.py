@@ -102,6 +102,10 @@ class Visor(QMainWindow):
     # sempre registren l'error i/o mostren un diàleg, mai l'amaguen.
     # avisa la barra de fora (icona play/pause) quan canvia l'estat de so
     playStateChanged = pyqtSignal(bool)
+    # avisa la barra de fora (botó 🔁) quan canvia l'estat del loop A-B: el loop
+    # es pot activar SENSE tocar el botó (arrossegant el regle) → sense això el
+    # botó quedava desactivat mentre el play ja feia loop.
+    loopStateChanged = pyqtSignal(bool)
     # missatge per a la caixa d'informacio (desfer/refer, etc.)
     infoMissatge = pyqtSignal(str)
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True):
@@ -133,9 +137,15 @@ class Visor(QMainWindow):
         self.seccions = llegeix_abc(abc) if abc else []
         # INVARIANT de COBERTURA (regla d'or): els clips cobreixen TOTA la WAV
         # (0 → durada): 1r a 0 (capçalera «N» si cal) i últim a la durada.
+        _a0, _s0 = list(self.acords), list(self.seccions)
         self.acords, self.seccions = pipeline.normalitza_cobertura(
             self.acords, self.seccions, float(self.audio.get("durada", 0.0)),
             log=self.log)
+        # Si la normalització ha canviat el model (forats interns, capçalera
+        # «N», últim fi acotat…), el CSV DEL DISC s'ha de normalitzar JA: abans
+        # hi quedava el defecte fins a la 1a edició o export.
+        if self.acords != _a0 or self.seccions != _s0:
+            self._desa_csvs_base()
         self.pos = 0.0  # segons
 
         arrel = QWidget()
@@ -415,12 +425,19 @@ class Visor(QMainWindow):
     def _valida_canvis_acords(self, items):
         if not items:
             return []
+        durada = float(self.audio.get("durada", 0.0))
         ordenats = sorted(items, key=lambda x: float(x[0]))
         prev_t = None
         for item in ordenats:
             t = float(item[0])
             if t < 0:
                 raise ValueError(f"L'acord {item[1]} té un inici negatiu ({t:.2f}s)")
+            # TOPALL superior: un acord al final de la WAV (o més enllà)
+            # quedaria amb durada <= 0 i trencaria l'invariant de cobertura (#4).
+            if durada > 0 and t >= durada - pipeline.TOL_TEMPS:
+                raise ValueError(
+                    f"L'acord {item[1]} no cap dins de la WAV ({t:.2f}s; la WAV "
+                    f"fa {durada:.2f}s)")
             if prev_t is not None and t <= prev_t + 1e-9:
                 raise ValueError(
                     "Els acords no poden compartir ni invertir el seu inici. "
@@ -579,6 +596,15 @@ class Visor(QMainWindow):
             self.timeline.set_data(self.acords, self.seccions)
             self._omple_llista_ac()
             self._actualitza_llista_abc()
+        self._desa_csvs_base()
+        return 0
+
+    def _desa_csvs_base(self):
+        """Desa els CSV d'acords i d'estructura (SENSE tocar la UI).
+
+        Es pot cridar ABANS que existeixi el timeline (normalització en
+        carregar) i és el que fa servir `_desa_i_regenera`.
+        """
         sortida = self._carpeta_acords()
         os.makedirs(sortida, exist_ok=True)
         self.csv_acords = os.path.join(sortida, "acords.csv")
@@ -592,7 +618,6 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"desat ABC ERROR: {e}")
         self.log(f"desat CSV {self.csv_acords}")
-        return 0
 
     # ---------- Undo/Redo: NOMÉS el model d'edició ----------
     # Mai toca les wavs generades (aquestes són l'últim pas, via exporta()).
@@ -805,6 +830,9 @@ class Visor(QMainWindow):
             self.loop_on = False
         if hasattr(self, "b_loop") and self.b_loop.isChecked() != self.loop_on:
             self.b_loop.setChecked(self.loop_on)
+        # Sincronitza el botó 🔁 de fora amb l'estat REAL (pot haver-se revertit
+        # a OFF si faltaven A i B).
+        self.loopStateChanged.emit(self.loop_on)
         self.log(f"loop {'ON' if self.loop_on else 'OFF'}")
         self._pinta_loop()
 
@@ -982,6 +1010,9 @@ class Visor(QMainWindow):
         self.loop_on = True
         if hasattr(self, "b_loop"):
             self.b_loop.setChecked(True)
+        # El botó 🔁 de la barra de fora ha de reflectir-ho (abans quedava
+        # desactivat mentre el play ja feia loop).
+        self.loopStateChanged.emit(True)
         self.log(f"loop A={a:.2f}s B={b:.2f}s")
 
     def _on_chord_renamed(self, idx, new_name):
@@ -1435,6 +1466,8 @@ class Visor(QMainWindow):
             nova = list(self.seccions)
             nova[i] = (ini, max(ini + 0.05, fi), lletra, fam)
             try:
+                # Manté la contigüitat (#2) com el drag del timeline/MCP.
+                nova = self._contiguitat_seccions(nova, i)
                 self.seccions = self._normalitza_seccions(nova)
             except ValueError as e:
                 self.log(f"editor: canvi invalid ({e})")
@@ -1463,6 +1496,7 @@ class Visor(QMainWindow):
     def _valida_canvis_seccions(self, items):
         if not items:
             return []
+        durada = float(self.audio.get("durada", 0.0))
         ordenats = sorted(items, key=lambda x: float(x[0]))
         prev_fi = -1e-9
         for item in ordenats:
@@ -1472,6 +1506,11 @@ class Visor(QMainWindow):
                 raise ValueError(f"La secció {item[2]} té temps negatius ({ini:.2f}s–{fi:.2f}s)")
             if fi <= ini:
                 raise ValueError(f"La secció {item[2]} té una durada no vàlida ({ini:.2f}s–{fi:.2f}s)")
+            # TOPALL superior: cap secció pot sortir de la WAV (#4).
+            if durada > 0 and fi > durada + pipeline.TOL_TEMPS:
+                raise ValueError(
+                    f"La secció {item[2]} surt de la WAV ({fi:.2f}s; la WAV fa "
+                    f"{durada:.2f}s)")
             if ini < prev_fi - 1e-9:
                 raise ValueError(
                     "Les seccions no poden solapar-se ni invertir-se. "
@@ -1479,6 +1518,63 @@ class Visor(QMainWindow):
                 )
             prev_fi = fi
         return ordenats
+
+    # Durada mínima d'una secció en moure'n una vora (evita seccions nul·les).
+    MIN_SECCIO_S = 0.05
+
+    def _contiguitat_seccions(self, items, idx):
+        """Manté l'INVARIANT de CONTIGÜITAT (regla d'or #2) en moure `idx`.
+
+        El `fi` de la secció anterior i l'`ini` de la següent segueixen les
+        vores noves de la secció moguda (mateixa lògica que el drag del
+        timeline i que `_elimina_seccio`): així no apareixen forats interns ni
+        solapaments. Rebutja (`ValueError`) si algun veí quedaria sense marge.
+        """
+        items = list(items)
+        ini, fi, L, _F = items[idx]
+        if fi - ini < self.MIN_SECCIO_S:
+            raise ValueError(
+                f"La secció {L} quedaria massa curta ({ini:.2f}s–{fi:.2f}s)")
+        if idx - 1 >= 0:
+            pi, _pf, pl, pfam = items[idx - 1]
+            if ini - pi < self.MIN_SECCIO_S:
+                raise ValueError(
+                    f"La secció {pl} quedaria massa curta: el nou inici "
+                    f"({ini:.2f}s) no deixa marge")
+            items[idx - 1] = (pi, ini, pl, pfam)
+        if idx + 1 < len(items):
+            _ni, nf, nl, nfam = items[idx + 1]
+            if nf - fi < self.MIN_SECCIO_S:
+                raise ValueError(
+                    f"La secció {nl} quedaria massa curta: el nou fi "
+                    f"({fi:.2f}s) no deixa marge")
+            items[idx + 1] = (fi, nf, nl, nfam)
+        return items
+
+    def mou_seccio(self, idx, ini, fi):
+        """Mou/redimensiona la secció `idx` a (`ini`,`fi`) mantenint la contigüitat.
+
+        Camí CANÒNIC del moviment de seccions (MCP i editor): el veí anterior
+        estén/arronsa el seu `fi` fins al nou inici, i el següent fa el mateix
+        amb el seu `ini`. Sense això quedava un forat intern que l'app acceptava
+        (la suma de durades ja no quadrava amb la WAV).
+
+        NO fa undo ni desa: els qui criden (bridge/editor) ja ho fan, com la
+        resta de mutacions del model. Retorna `False` si l'índex no existeix.
+        """
+        if not (0 <= idx < len(self.seccions)):
+            return False
+        ini, fi = float(ini), float(fi)
+        nova = list(self.seccions)
+        _i, _f, L, F = nova[idx]
+        nova[idx] = (ini, fi, L, F)
+        nova = self._contiguitat_seccions(nova, idx)
+        self.seccions = self._normalitza_seccions(nova)
+        if hasattr(self, "timeline"):
+            self.timeline.set_data(self.acords, self.seccions)
+        if hasattr(self, "llista_ab"):
+            self._actualitza_llista_abc()
+        return True
 
     def _normalitza_seccions(self, items=None):
         items = self.seccions if items is None else items

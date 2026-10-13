@@ -479,6 +479,17 @@ class Finestra(QMainWindow):
             self.b_play_tb.setToolTip("Atura  (Espai)" if on
                                       else "Reprodueix  (Espai)")
 
+    def _on_loop_state(self, on):
+        """Sincronitza el botó 🔁 del transport amb l'estat REAL del loop.
+
+        El loop es pot activar SENSE tocar el botó (arrossegant el regle per
+        crear un rang A-B) → sense això el botó quedava desactivat mentre el
+        play ja feia loop (incoherent). Cobreix també la neteja i el revert
+        (si faltaven A/B).
+        """
+        if hasattr(self, "tb_loop"):
+            self.tb_loop.setChecked(bool(on))
+
     def _toggle_play(self):
         """Espai → play/pausa del visor, si n'hi ha."""
         vr = getattr(self, "visor_ref", None)
@@ -1089,6 +1100,12 @@ class Finestra(QMainWindow):
             except (TypeError, AttributeError):
                 pass
             visor.infoMissatge.connect(self._missatge_info)
+            try:
+                visor.loopStateChanged.disconnect(self._on_loop_state)
+            except (TypeError, AttributeError):
+                pass
+            visor.loopStateChanged.connect(self._on_loop_state)
+            self._on_loop_state(getattr(visor, "loop_on", False))
             self.visor_widget = visor.centralWidget()
             self.visor_widget.setParent(self._stack)
             if self._stack.indexOf(self.visor_widget) < 0:

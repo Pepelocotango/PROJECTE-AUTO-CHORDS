@@ -328,10 +328,11 @@ def _op_move_section(ctx, params):
     def mut(vr):
         if idx < 0 or idx >= len(vr.seccions):
             raise BridgeError(f"Índex de secció fora de rang: {idx}")
-        _i, _f, L, F = vr.seccions[idx]
-        nova = list(vr.seccions)
-        nova[idx] = (float(ini), float(fi), L, F)
-        vr.seccions = nova
+        # `mou_seccio` manté l'INVARIANT de CONTIGÜITAT (#2): el veí anterior
+        # estén el seu fi fins al nou inici i el següent mou el seu inici al
+        # nou fi. Abans s'escrivia la secció tal qual → forat intern acceptat.
+        if not vr.mou_seccio(idx, ini, fi):
+            raise BridgeError(f"Índex de secció fora de rang: {idx}")
 
     return _aplica(ctx, mut)
 
