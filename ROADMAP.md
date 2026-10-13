@@ -4,7 +4,7 @@
 > **editar visualment** els acords i l'estructura com si fos una pista, i
 > n'exporta el resultat com a **clips d'àudio llestos per arrossegar a
 > qualsevol DAW** (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools,
-> Cubase…). Tot en català. Llicència: GPLv3.
+> Cubase…). Tot en català. Llicència: GPL-3.0-or-later (GPLv3 o posterior).
 
 ## Filosofia — Per què clips WAV silenciosos?
 

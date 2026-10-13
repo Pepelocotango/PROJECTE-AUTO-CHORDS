@@ -5,6 +5,10 @@
 > **Tots són d'execució MANUAL** (`workflow_dispatch`): cap s'activa sol (ni amb
 > tags, ni amb push). Els llances des de GitHub ▸ **Actions** ▸ tries el workflow
 > ▸ **Run workflow**. Cap workflow fa `git push` al repositori.
+>
+> _(Actualitzat 13-10 amb l'enduriment de l'auditoria de producció: builds
+> reproduïbles, `concurrency`/`timeout`, Dependabot, verificació de contingut i
+> smoke tests — vegeu §4.)_
 
 ## Resum
 
@@ -33,26 +37,36 @@ El CI i el Release fan servir el **mateix patró**: **un sol paquet per SO** amb
 - Docs inclosos: `README.md`, `CHANGELOG.md`, `ROADMAP.md`, `LICENSE`,
   `LLICENCIES_TERCERS.md` i `docs/`.
 
-> **Artefacte vs Release**: un *artefacte* és un fitxer temporal (~90 dies) i privat
-> que queda a la pàgina de l'execució (Actions ▸ execució ▸ *Artifacts*). Un *Release*
-> és la pàgina **pública permanent** (GitHub ▸ Releases).
+> **Artefacte vs Release**: un *artefacte* és un fitxer temporal i privat que queda a
+> la pàgina de l'execució (Actions ▸ execució ▸ *Artifacts*). **El projecte els guarda
+> 30 dies** (`retention-days: 30` als 3 builds) → per tant, passats 30 dies cal tornar
+> a compilar abans de poder fer un Release. Un *Release* és la pàgina **pública
+> permanent** (GitHub ▸ Releases).
 
 ## 1. Els 3 builds (`build-{appimage,windows,macos}.yml`)
 
 Cada un construeix el paquet del seu SO i el deixa com a **artefacte**. Tots tres
-comparteixen l'esquelet: checkout → entorn → compilar els natius Vamp → Python
-portable/roda → **tests (suite completa: `python -m unittest discover -s tests`)** → empaquetar → **pujar l'artefacte** → (si falla) pujar
-els logs de debug.
+comparteixen l'esquelet: checkout → cau de baixades → entorn → compilar els natius
+Vamp → Python (dependències **des de `requirements-build.txt`**, amb pins `==`) →
+**tests (suite completa: `python -m unittest discover -s tests`)** → empaquetar →
+**verificar el contingut del paquet** → **smoke test del paquet** → **pujar
+l'artefacte** → (si falla) pujar els logs de debug. Els 5 workflows tenen
+**`concurrency`** (no se solapen) i **`timeout-minutes`** (límits d'execució).
 
 - **`build-appimage.yml`** — runner **`ubuntu-22.04`** (marca la glibc mínima de
   l'AppImage). Compila l'host Vamp + plugins, munta el CPython portable + ffmpeg,
-  corre els tests i construeix l'**AppImage**, que s'empaqueta en un **`.tar.gz`**
-  (`AutoChords-<versió>-build<NN>-linux-x86_64.tar.gz`) amb l'AppImage
-  (`AutoChords-<versió>-x86_64.AppImage`) i els docs a dins.
+  corre els tests, construeix l'**AppImage** i en fa un **smoke test** (pas **9b**:
+  `--appimage-extract` + execució headless amb `AUTO_CHORDS_SMOKE=1`). S'empaqueta
+  en un **`.tar.gz`** (`AutoChords-<versió>-build<NN>-linux-x86_64.tar.gz`) amb
+  l'AppImage (`AutoChords-<versió>-x86_64.AppImage`) i els docs, i es **verifica el
+  contingut** (pas 10: hi han de ser l'AppImage, `README.md` i `LICENSE`).
 - **`build-windows.yml`** — runner **`windows-2022`**, amb **MSYS2/MINGW64**.
   Compila els natius, fa PyInstaller `--onedir` i prepara el **`.zip` portable**
   (`AutoChords-<versió>-build<NN>-win-x64.zip`) amb `AutoChords.exe` (+ `_internal/`)
-  i els docs **a l'arrel** (sense carpetes del CI a dins).
+  i els docs **a l'arrel** (sense carpetes del CI a dins). **Verifica el contingut**
+  del `.zip` (pas 10: hi han de ser `AutoChords.exe`, `README.md` i `LICENSE`) i els
+  **tests van ABANS de pujar l'artefacte** (11 → 12, **sense** `if: always()`): no es
+  pot descarregar un paquet que no ha passat la suite.
 - **`build-macos.yml`** — runner **`macos-15-intel`** (l'últim Intel de GitHub
   Actions; disponible fins a l'agost de 2027). Compila els natius **des de font** a
   10.13, fa el `.app` amb PyInstaller i aleshores: (6b) **verifica el `minos`
@@ -71,7 +85,8 @@ els logs de debug.
 
 **Manual.** Crida els 3 builds com a **jobs germans** → GitHub els llança **en
 paral·lel**. Un sol clic i tens els **3 artefactes alhora**, a la mateixa execució.
-(No fa res més: no crea cap Release.)
+(No fa res més: no crea cap Release.) Té **`concurrency`** (si se'n llança un mentre
+corre un altre, espera — no se solapen) i **`timeout-minutes`** per job (60/60/90).
 
 ## 3. El release (`release.yml`)
 
@@ -94,6 +109,27 @@ Detalls:
 - El nom de l'execució és dinàmic (`run-name`): **«Publicar Release <tag>»**.
 - Permisos del token: `contents: write` (crear el Release) + `actions: read` (baixar
   artefactes d'altres execucions).
+- **`concurrency`** (un Release alhora) i **`timeout-minutes: 30`**.
+- **Avis de tag existent** (A.6): si el tag/Release ja existeix, surt un
+  `::warning::` (el flux segueix sent idempotent) → ajuda a detectar que s'ha
+  oblidat pujar la versió de `pyproject.toml`.
+
+## 4. Reproduïbilitat i manteniment
+
+- **Builds reproduïbles**: les dependències Python dels builds (Windows i macOS)
+  s'instal·len des de **`requirements-build.txt`** (`-r requirements.txt` +
+  `pyinstaller==6.22.3`), tot amb pins `==`. Abans s'instal·laven amb specs soltes
+  (`numpy<2`, `PyQt5-sip`, `sounddevice` i `pyinstaller` **sense pin**) → podien
+  derivar entre execucions.
+- **Manteniment automàtic**: **`.github/dependabot.yml`** obre PRs setmanals per a
+  `github-actions` i `pip` (amb `numpy` i `PyQt6` **ignorats**: el Q9400 no té
+  AVX/SSE4.2 i High Sierra 10.13). Com que els workflows són **manuals**, una PR de
+  Dependabot **no dispara cap build**: després de fusionar-ne una, cal llançar
+  `build-all` a mà per validar-la.
+- **Verificació de contingut**: cada build comprova que el paquet contingui
+  l'executable i els docs obligatoris **abans** de pujar-lo.
+- **Smoke tests**: Linux (9b, AppImage headless) i macOS (6c, `.app` headless) fan
+  **arrencar el paquet de debò**; Windows comprova el contingut del `.zip`.
 
 ## Flux típic
 

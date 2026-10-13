@@ -72,5 +72,7 @@ Verificat així: volum/mute **sense cap event stop/play**; STOP únic al final
 (6,10 s per una wav de 6,00 s, cursor a 6,00 s → cua sencera).
 
 ## Pendent
-- Mostrar un avís visible (no només log) si el motor mor per error.
+- ✅ **FET (2026-10-13, `aac8b26`)**: l'**avís és VISIBLE** (no només al log) quan el
+  motor d'àudio mor per error — un sol cop per reproducció (`_avis_audio_fet`); vegeu
+  `docs/AUDITORIA_PRODUCCIO.md` (1.6).
 - Valorar `pw-play` (PipeWire natiu) com a alternativa a `paplay` a Linux.

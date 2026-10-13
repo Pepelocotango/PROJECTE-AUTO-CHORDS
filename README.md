@@ -109,6 +109,14 @@ Des de la carpeta del projecte:
 python -m app.main
 ```
 
+Si **no tens PyQt5 al sistema**, crea abans un entorn aïllat **sense `sudo`**
+(mateix flux que a `DEVELOPING.md`):
+
+```bash
+bash instal·la_local.sh        # crea .venv/ + PyQt5 + .deps/ (headers)
+.venv/bin/python app/main.py
+```
+
 O directament amb:
 
 ```bash
@@ -142,7 +150,12 @@ També hi ha llançador de desktop:
 - `app/ffmpeg.py` — import d’altres formats (conversió a WAV)
 - `app/theme.py` — tema centralitzat
 - `eines/vamp_host.cpp` — **host Vamp propi** (`vamp_host_local`), sense Qt6
-- `eines/` — `crea_portable.sh`, `compila_vamp_host.sh`, `empaqueta_portable.sh`
+- `eines/` — build i cadena de subministrament: `crea_portable.sh`,
+  `compila_vamp_host.sh`, `compila_vamp_plugins.sh`, `empaqueta_portable.sh`,
+  `crea_appimage.sh`, `libreries_natives.sh`; **descàrregues verificades**
+  (`baixa_verificat.py` + `deps_fixades.env`); packaging (`AutoChords-win.spec`,
+  `launcher_pyinstaller.py`, `crea_icona.py`); release (`notes_release.py`) i
+  inventari (`genera_inventari.py`)
 - `portable/` — Python + ffmpeg portables (entrada de build, gitignorat)
 - `AUTO_CHORDS.sh` — llançador (prefereix el Python portable)
 
@@ -327,7 +340,7 @@ Sense aquest ecosistema, aquest projecte no seria possible. Els agraïments i el
 
 ## Llicència
 
-GPLv3 — vegeu `LICENSE`.
+GPL-3.0-or-later (GPLv3 o posterior) — vegeu `LICENSE`.
 Copyright (c) 2026 Pëp <pepelocotango@gmail.com>.
 
 

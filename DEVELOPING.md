@@ -1,6 +1,6 @@
 # Desenvolupament — PROJECTE AUTO CHORDS
 
-Tot en català. Llicència: GPLv3 (vegeu `LICENSE`).
+Tot en català. Llicència: GPL-3.0-or-later (vegeu `LICENSE`).
 
 > 🔴 **ABANS DE TOCAR CODI**: les **regles d'or (invariants)** de l'app són totes
 > a **`docs/REGLES_DE_LA_APP.md`**. Cap canvi no les pot trencar.
@@ -156,7 +156,13 @@ Aquesta llista recull els temes que no són bloquejos del flux actual, però que
 - revisar si cal mostrar diferents escales o si una sola vista és suficient
 - decidir si el cursor de temps s’ha de sincronitzar amb la posició de reproducció i amb la selecció de segments
 
-### 5) Auditoria de seguretat
+### 5) Auditoria de seguretat — ✅ FET (2026-10-13)
+
+> **Fet (v0.6.2+)**: enduriment de seguretat de l'app i de la cadena de
+> subministrament (10 punts: ffmpeg/ffprobe, instància única, pont MCP,
+> `safe_filename`, temporals, `baixa_verificat.py`+`deps_fixades.env`, accions
+> de GitHub per SHA, pins, inventari). Detall: `docs/SEGURETAT.md` +
+> `SECURITY.md`; auditoria de producció: `docs/AUDITORIA_PRODUCCIO.md`.
 
 - revisar tots els punts d’entrada de fitxers i subprocessos
 - validar que no hi hagi execucions no controlades ni paths vulnerables
@@ -207,7 +213,7 @@ Aquesta llista és una guia de futur, no una promesa de feina immediata.
 Aquest projecte és un assemblatge de feina pròpia i de tecnologia de tercers. És important deixar-ho escrit explícitament:
 
 - agraïments al projecte Python i a la seva comunitat
-- agraïments a PyQt5, Qt5 i PyQtGraph per la base d’UI i gràfics
+- agraïments a PyQt5 i Qt5 per la base d’UI i gràfics
 - agraïments a NumPy per la manipulació eficient de dades d’àudio i de temps
 - agraïments a Chordino, Sonic Annotator i Vamp per la detecció automàtica d’acords
 - agraïments als plugins Vamp de Queen Mary per la generació d’estructura

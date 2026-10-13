@@ -19,6 +19,16 @@
 > builds verds: **`build-all` #4** (`98aa58e`), amb la **suite completa** de
 > tests a cada runner.
 
+> 🔧 **Enduriment del CI (13-10, `4f6c8bb`)**: builds **reproduïbles**
+> (`requirements-build.txt` amb pins + `pyinstaller==6.22.3`), **verificació de
+> contingut** de cada paquet, **smoke test de l'AppImage** (Linux), tests **abans**
+> de l'upload a Windows, `concurrency`+`timeout` als 5 workflows i **Dependabot**.
+> Detall: `docs/CI_WORKFLOWS.md` §4.
+>
+> ⚠️ **Pendent de validar**: aquests passos nous **encara no han corregut** en una
+> execució verda — el darrer `build-all` verd és el **#4** (`98aa58e`). Cal llançar
+> `build-all` per confirmar-los.
+
 ## Detall per plataforma
 
 ### 🐧 Linux — complet ✅
@@ -28,14 +38,16 @@
   `~/.local/state/auto-chords/`, **tota la suite de tests dins el paquet**, host+plugins
   del paquet OK sobre un WAV real, i **export de partitura** (MusicXML+PDF+MSCZ).
 - Workflows: `build-appimage.yml` (manual), **`build-all.yml`** (agregador: executa
-  els 3 builds en **paral·lel**) i `release.yml` (tags `v*`).
-- ✅ **Release #1 VERD** (tag **`v0.5.1_CHECKPOINT_3_so_ARTIFACTS`** = `e895fa6`);
-  `release.yml` s'activa amb tags `v*`.
+  els 3 builds en **paral·lel**) i `release.yml` (**manual**).
+- ✅ **Release #1 VERD** (tag **`v0.5.1_CHECKPOINT_3_so_ARTIFACTS`** = `e895fa6`).
+  _(Corregit 13-10 [OC-5]: `release.yml` JA NO s'activa amb tags `v*` — ara és
+  exclusivament **manual** (`workflow_dispatch`); vegeu `docs/CI_WORKFLOWS.md`.)_
 - **`release.yml` — drecera manual amb els 3 SO** (2026-10-10): **manual**
   (workflow_dispatch). **No compila res**: busca l'última execució **VERDA** de
   `build-all` (els 3 SO) o, si no, de cada build; en baixa els artefactes de
   GitHub Actions i crea el **Release PUBLICAT** (i el tag) amb **els 3 paquets**
-  adjunts (AppImage + ZIP Windows + ZIP macOS **+ DMG macOS**). És
+  adjunts (**`.tar.gz`** Linux + **`.zip`** Windows + **`.dmg`** macOS — noms
+  canònics `AutoChords-<versió>-build<NN>-<so>`). És
   **idempotent** (si existeix, hi adjunta/actualitza i el **publica**).
 
 ### 🍎 macOS — VERD amb etapa de tests ✅
@@ -118,14 +130,14 @@
 ## Com provar-ho (operador)
 
 ```bash
-# Linux — descarregar de GitHub > Releases i extreure el tar.gz
-tar -xzf AutoChords-*_linux-x86_64.tar.gz
-chmod +x AutoChords-*_x86_64.AppImage && ./AutoChords-*_x86_64.AppImage
+# Linux — descarregar de GitHub > Releases i extreure el paquet .tar.gz
+tar -xzf AutoChords-*-linux-x86_64.tar.gz
+chmod +x AutoChords-*-x86_64.AppImage && ./AutoChords-*-x86_64.AppImage
 
 # macOS — obrir el .dmg al Hackintosh (10.13) i arrossegar l'app a Applications
 # clic-dret ▸ Obrir (o: xattr -dr com.apple.quarantine AUTO_CHORDS.app)
 
-# Windows — descomprimir el ZIP i executar AutoChords.exe
+# Windows — descomprimir el paquet .zip i executar AutoChords.exe
 ```
 
 ## Fitxers clau
