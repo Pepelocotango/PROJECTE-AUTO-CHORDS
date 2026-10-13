@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+## [0.6.2] — 2026-10-13 (BETA)
+
+### Afegit
+- **Botons nous a la barra principal**: **«Exporta WAV's»** (abans «Exporta»),
+  **«Exporta partitura»** (genera el MusicXML i, si hi ha MuseScore, el PDF/MSCZ)
+  i **«Zoom selecció»** (ajusta la vista del timeline a tota la selecció).
+- **UI: queda clar que el PDF de la partitura depèn de MuseScore**: `statusTip`
+  al menú i als botons, i el missatge de resultat diu què s'ha generat i, si no
+  hi ha PDF, que cal **MuseScore** instal·lat.
+
 ### Corregit
 - **AVÍS confús en arrencar l'app congelada** (`AVÍS: no trobo …/OLD/
   sonic-annotator`): l'autocomprovació d'inici buscava la **reserva llegat**

@@ -8,7 +8,9 @@
 > **Repositori:** https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
 > (les versions publicades, com l'**AppImage**, són a *Releases*).
 
-> **Novetats v0.6.1 (BETA):** **estabilitat d'àudio a macOS** (teardown idempotent
+> **Novetats v0.6.2 (BETA):** **botons nous** a la barra («Exporta WAV's»,
+> «Exporta partitura», «Zoom selecció») i la partitura deixa clar que el PDF
+> necessita **MuseScore** instal·lat. **v0.6.1:** **estabilitat d'àudio a macOS** (teardown idempotent
 > i serialitzat a `audio_out.py` que evita crashes `EXC_BAD_ACCESS`),
 > **suport de MuseScore a macOS i Windows** per a exportació de partitures en PDF/MSCZ,
 > i **suite completa de tests (265 tests)** executant-se als 3 workflows del CI.
@@ -17,7 +19,7 @@
 > i **verificació exhaustiva de `minos`** (≤ 10.13). **v0.5.2:** **edició DAW-like completa**
 > (multi-selecció, copiar/retallar/enganxar, duplicar i moure grup) i refactorització del timeline.
 
-## Estat actual (2026-10-11 · v0.6.1 BETA)
+## Estat actual (2026-10-13 · v0.6.2 BETA)
 
 L’app està **reorganitzada amb el timeline com a centre de la finestra**
 (estil Audacity/DAW): l’anàlisi és una **acció** sobre el que es veu, no un

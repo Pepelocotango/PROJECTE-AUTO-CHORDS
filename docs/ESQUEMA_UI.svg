@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900"
      font-family="system-ui,Segoe UI,Roboto,sans-serif">
-  <title>Auto Chords — Esquema visual de la GUI (v0.5.2)</title>
+  <title>Auto Chords — Esquema visual de la GUI (v0.6.2)</title>
   <desc>Finestra única amb el visor al centre, dues barres d'eines, llistes,
         dock Log+Informacio i barra d'estat. Colors i mides reals.</desc>
   <defs>
@@ -57,11 +57,14 @@
   <text x="896" y="93" fill="#9aa6b8" font-size="11">≈</text>
   <rect x="908" y="79" width="44" height="20" rx="4" fill="#12151b" stroke="#3a4150"/>
   <text x="918" y="93" fill="#e8edf5" font-size="11">1.1</text>
-  <text x="964" y="93" fill="#9aa6b8" font-size="10">(Inclou estructura → menú Analitza)</text>
-  <rect x="1104" y="79" width="72" height="20" rx="5" fill="#5b8dd6" stroke="#5b8dd6"/>
-  <text x="1118" y="93" fill="#fff" font-size="11" font-weight="700">Analitza</text>
-  <rect x="1182" y="79" width="66" height="20" rx="5" fill="#313846" stroke="#47505f"/>
-  <text x="1198" y="93" fill="#e8edf5" font-size="11" font-weight="700">Exporta</text>
+  <rect x="1000" y="79" width="72" height="20" rx="5" fill="#5b8dd6" stroke="#5b8dd6"/>
+  <text x="1014" y="93" fill="#fff" font-size="11" font-weight="700">Analitza</text>
+  <rect x="1078" y="79" width="86" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="1088" y="93" fill="#e8edf5" font-size="11" font-weight="700">Exporta WAV's</text>
+  <rect x="1170" y="79" width="104" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="1180" y="93" fill="#e8edf5" font-size="11" font-weight="700">Exporta partitura</text>
+  <rect x="1280" y="79" width="92" height="20" rx="5" fill="#313846" stroke="#47505f"/>
+  <text x="1290" y="93" fill="#e8edf5" font-size="11" font-weight="700">Zoom selecció</text>
 
   <!-- ============ BARRA 2 (transport) ============ -->
   <rect x="12" y="104" width="1416" height="30" fill="#212630"/>
@@ -277,7 +280,7 @@
   <text x="32" y="610" fill="#9fd6b8" font-size="10.5" font-family="monospace">[pipeline] 5/5 ABC + wavs d'estructura...</text>
   <text x="32" y="626" fill="#9fd6b8" font-size="10.5" font-family="monospace">[pipeline] ABC: 7 trossos, seqüència ABACACA</text>
   <text x="32" y="642" fill="#9fd6b8" font-size="10.5" font-family="monospace">[visor] BPM detectat: 101.0</text>
-  <text x="32" y="658" fill="#e8c07a" font-size="10.5" font-family="monospace">FET ✅ — ara pots revisar el visor i fer «Exporta».</text>
+  <text x="32" y="658" fill="#e8c07a" font-size="10.5" font-family="monospace">FET ✅ — ara pots revisar el visor i fer «Exporta WAV's».</text>
   <text x="28" y="676" fill="#9aa6b8" font-size="10">log de l'anàlisi (3/4)</text>
   <!-- info 1/4 -->
   <rect x="1078" y="560" width="340" height="120" rx="4" fill="#0d1015" stroke="#3a4150"/>

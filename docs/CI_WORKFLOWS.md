@@ -1,6 +1,6 @@
 # CI — els workflows de GitHub Actions
 
-> **2026-10-11 · v0.6.1.** Com funcionen els **5 workflows** de `.github/workflows/`.
+> **2026-10-13 · v0.6.2.** Com funcionen els **5 workflows** de `.github/workflows/`.
 >
 > **Tots són d'execució MANUAL** (`workflow_dispatch`): cap s'activa sol (ni amb
 > tags, ni amb push). Els llances des de GitHub ▸ **Actions** ▸ tries el workflow

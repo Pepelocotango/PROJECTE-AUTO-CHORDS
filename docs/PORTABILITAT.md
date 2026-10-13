@@ -12,7 +12,7 @@
 
 ---
 
-## 0. Estat actual (2026-10-11 · v0.6.1): **AUTOPORTABLE** ✅
+## 0. Estat actual (2026-10-13 · v0.6.2): **AUTOPORTABLE** ✅
 
 **Què va DINS el paquet/AppImage** (res a instal·lar al host):
 
