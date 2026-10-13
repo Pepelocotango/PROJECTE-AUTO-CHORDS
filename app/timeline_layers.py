@@ -14,7 +14,6 @@ de `timeline.py` per alleugerir-lo:
 
 Tot en català. Sense dependències noves.
 """
-import math
 from typing import Optional
 
 import numpy as np
@@ -32,7 +31,7 @@ from app.timeline_base import (   # noqa: E402
     LANE_DIVIDER,
     RULER_BG, RULER_TEXT,
     WF_BG, WF_ENV, WF_GAIN, WF_MID,
-    fmt_pos, grid_levels, grid_plan, is_bar_start_label,
+    fmt_pos, grid_levels, grid_plan, grid_positions, is_bar_start_label,
 )
 
 
@@ -175,14 +174,11 @@ class GridLayer(QGraphicsItem):
             if step <= 1e-9:
                 continue
             p.setPen(QPen(QColor(color), width))
-            t = off + math.floor((self._view_left - off) / step) * step
-            if t < 0:
-                t = off
-            while t <= self._view_right + 1e-9:
+            # posicions per índex (sense acumular → sense deriva de coma flotant)
+            for t in grid_positions(self._view_left, self._view_right, step, off):
                 if t >= 0:
                     x = (t - self._view_left) * self._pps
                     p.drawLine(QPointF(x, 0), QPointF(x, self._height))
-                t += step
 
 
 # -----------------------------------------------------------------------------
@@ -260,26 +256,21 @@ class RulerLayer(QGraphicsItem):
             if sub <= 1e-9 or sub >= plan["label"] - 1e-9:
                 continue
             p.setPen(QPen(QColor(col[kind]), 1))
-            t = off + math.floor((self._view_left - off) / sub) * sub
-            if t < 0:
-                t = off
-            while t <= self._view_right + 1e-9:
+            for t in grid_positions(self._view_left, self._view_right, sub, off):
                 if t >= 0:
                     x = (t - self._view_left) * self._pps
                     p.drawLine(QPointF(x, self._height - 4),
                                QPointF(x, self._height - 1))
-                t += sub
         # ticks principals + etiquetes (AMB l'offset, com el GridLayer: si no,
         # les etiquetes queden desplaçades respecte de les linies del grid)
         step = plan["label"]
         font = QFont("Sans Serif", 8)
         p.setFont(font)
         fm = QFontMetricsF(font)
-        t = off + math.floor((self._view_left - off) / step) * step
-        if t < 0:
-            t = off
         last_label_x = -1e9
-        while t <= self._view_right + 1e-9:
+        # posicions per índex (sense acumular → les etiquetes d'inici de compàs
+        # ja no deriven a «(N-1).4»)
+        for t in grid_positions(self._view_left, self._view_right, step, off):
             if t >= 0:
                 x = (t - self._view_left) * self._pps
                 p.setPen(QPen(QColor(theme.TL_GRID_MEASURE), 1))
@@ -301,7 +292,6 @@ class RulerLayer(QGraphicsItem):
                     p.setPen(QPen(QColor(theme.TL_GRID_MEASURE if is_bar else RULER_TEXT), 1))
                     p.drawText(QPointF(x - wlab / 2, self._height - 11), lab)
                     last_label_x = x + wlab / 2
-            t += step
 
         # Indicador de MODE (fix a la dreta del regle): '120 BPM . 4/4' o
         # 'Lliure'. Va al final perque quedi per sobre de les etiquetes.

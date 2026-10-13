@@ -128,6 +128,26 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
     return {"snap": snap, "lines": lines, "label": lab}
 
 
+def grid_positions(view_left, view_right, step, offset=0.0, tol=1e-9):
+    """Genera les posicions de graella ``t = offset + k*step`` dins de la vista.
+
+    Cada posició es calcula a partir de l'**índex enter** ``k`` — MAI acumulant
+    ``t += step``. Amb acumulació, l'error de coma flotant es va sumant i, al
+    regle/grid, els inicis de compàs acabaven sortint com «(N-1).4» en lloc de
+    «N.1» (i les línies, desplaçades).
+
+    S'usa idènticament al regle i al grid → quadren sempre.
+    """
+    if step is None or step <= tol:
+        return
+    k = math.floor((view_left - float(offset)) / step)
+    t = float(offset) + k * step
+    while t <= view_right + tol:
+        yield t
+        k += 1
+        t = float(offset) + k * step
+
+
 def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
               pps: float, offset: float = 0.0) -> float:
     """Arrodoneix t a la divisió de grid actual (que depèn del zoom, en px).
@@ -162,7 +182,10 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
     beat = 60.0 / max(bpm, 1e-9)
     # Sense clampar: abans de l'offset (el compàs 1) la graella és NEGATIVA
     # -> el silenci inicial es llegeix com un compte enrere (-1, -2...).
-    beats = (t - float(offset)) / beat
+    # `round(...,6)` neteja el soroll de coma flotant (ex. 27.999999999999996):
+    # sense això, una posició d'INICI de compàs faria `floor(beats % bpb) ==
+    # bpb-1` i l'etiqueta sortiria com «7.4» en lloc de «8.1» (bug del regle).
+    beats = round((t - float(offset)) / beat, 6)
     compas = math.floor(beats / bpb) + 1
     beat_idx = int(math.floor(beats % bpb)) + 1
     if beat_idx > bpb:
