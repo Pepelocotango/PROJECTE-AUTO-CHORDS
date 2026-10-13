@@ -41,6 +41,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   no s'acumulen a `/tmp`: s'esborren en un `finally` (també si peta) amb
   `pipeline.esborra_tmp()`, que **només** esborra directoris amb aquests
   prefixos propis.
+- **Baixada verificada de dependències**: eina nova
+  **`eines/baixa_verificat.py`** (només biblioteca estàndard, Python ≥ 3.8 del
+  sistema): baixa per **HTTPS**, amb reintents i timeout, i **comprova el
+  SHA256**; si no quadra → error, codi de sortida ≠ 0 i **no deixa cap fitxer a
+  mitges**. Fitxer nou **`eines/deps_fixades.env`** amb URL + versió + SHA256 de
+  tot el que es baixa (CPython portable, ffmpeg de Linux/macOS/Windows,
+  appimagetool, icones Lucide) i el **commit** dels repositoris que es
+  compilen.
 
 ### Canviat
 - **Les carpetes que genera l'app porten ara un PREFIX**: `AUTOCHORDS_<nom>`
