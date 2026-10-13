@@ -358,6 +358,9 @@ class Finestra(QMainWindow):
         barra_accions.addWidget(self.b_exec)
         barra_accions.addWidget(self.b_export)
         barra_accions.addWidget(self.b_export_part)
+        # `addToolBarBreak` força una FILA NOVA (sense això Qt posa les dues
+        # barres en la mateixa línia si hi caben).
+        self.addToolBarBreak(Qt.TopToolBarArea)
         self.addToolBar(Qt.TopToolBarArea, barra_accions)
         self.barra_accions = barra_accions
 
@@ -407,7 +410,7 @@ class Finestra(QMainWindow):
         barra_transport.setObjectName("barra_transport")
         barra_transport.setMovable(False)
         self._crea_transport(barra_transport)
-        # 2 files: fila 1 = opcions + Analitza/Exporta; fila 2 = transport.
+        # Barra de TRANSPORT: una fila pròpia (fila 3).
         self.addToolBarBreak(Qt.TopToolBarArea)
         self.addToolBar(Qt.TopToolBarArea, barra_transport)
         self.barra_transport = barra_transport
