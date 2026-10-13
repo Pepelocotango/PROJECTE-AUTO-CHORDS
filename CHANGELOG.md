@@ -80,6 +80,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   execucions (clau: SO + hash de `deps_fixades.env`). `--sense-cache` ho
   desactiva. Els fitxers **no** es guarden al repositori (GitHub rebutja
   > 100 MB; el ffmpeg de Windows en fa 114) — vegeu `docs/SEGURETAT.md`.
+- **`SHA256SUMS.txt` als Releases**: en publicar una versió, el workflow
+  `release.yml` genera la «petjada» (SHA256) de **tots** els paquets i l'adjunta
+  al Release → qui baixa un paquet pot comprovar que és exactament el publicat
+  (`sha256sum -c SHA256SUMS.txt`).
 
 ### Canviat
 - **Les carpetes que genera l'app porten ara un PREFIX**: `AUTOCHORDS_<nom>`
@@ -98,6 +102,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   seguretat** (app + cadena de subministrament) i de **com es manté**
   (actualitzar una versió amb `baixa_verificat.py`, què no s'ha de fer).
   Enllaçat des del `DEVELOPING.md`.
+- **`SECURITY.md`** (arrel): com informar d'un problema de seguretat (contacte
+  del `README`), què es considera un problema i la política d'actualitzar les
+  llibreries natives a cada versió.
+- **`eines/genera_inventari.py`** (només lectura) → **`docs/COMPONENTS_I_VERSIONS.md`**:
+  què porta l'app a dins i **quina versió** de cada component (Python, PyQt5,
+  numpy, sounddevice, ffmpeg + les seves llibreries internes i de tercers,
+  appimagetool, plugins Vamp i els seus commits), per poder vigilar avisos de
+  seguretat. Es regenera amb `python3 eines/genera_inventari.py`.
 
 ### Corregit
 - **Invariant de COBERTURA dels clips** (regla d'or): la **suma dels clips
