@@ -206,7 +206,7 @@ jobs:
       - name: 12. Pujar l'artefacte (només si els tests han passat)
         # Sense `if: always()`: si els tests fallen, el job acaba abans i no
         # s'hi puja cap paquet (A.5).
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: ${{ steps.prep.outputs.nom || format('AutoChords-win-build{0}', github.run_number) }}
           path: ${{ steps.prep.outputs.nom }}.zip
@@ -226,7 +226,7 @@ jobs:
 
       - name: "ZZ2. Pujar els logs de debug (nomes si falla)"
         if: failure()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: debug-logs-${{ github.run_number }}
           if-no-files-found: ignore
