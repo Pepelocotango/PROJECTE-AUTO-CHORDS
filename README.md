@@ -13,7 +13,7 @@
 > necessita **MuseScore** instal·lat. **v0.6.1:** **estabilitat d'àudio a macOS** (teardown idempotent
 > i serialitzat a `audio_out.py` que evita crashes `EXC_BAD_ACCESS`),
 > **suport de MuseScore a macOS i Windows** per a exportació de partitures en PDF/MSCZ,
-> i **suite completa de tests (265 tests)** executant-se als 3 workflows del CI.
+> i **suite completa de tests** executant-se als 3 workflows del CI.
 > **v0.6.0:** **motor d'àudio natiu multi-SO** (`sounddevice`/PortAudio sobre CoreAudio
 > a macOS i WASAPI a Windows), **generació de DMG a macOS**, **smoke test** de l'`.app`
 > i **verificació exhaustiva de `minos`** (≤ 10.13). **v0.5.2:** **edició DAW-like completa**
@@ -50,7 +50,7 @@ pas d’assistent.
   estructura (clic per saltar, doble-clic per editar, menú contextual).
 - Compassos de **qualsevol mètrica** (3/4, 6/8, 5/4…), no només 4/4.
 
-La funcionalitat principal està validada: **265 tests · OK (1 skip)** (`python -m unittest discover -s tests`).
+La funcionalitat principal està validada: **tota la suite · OK (1 skip)** (`python -m unittest discover -s tests`).
 
 ## Què fa l’app
 
