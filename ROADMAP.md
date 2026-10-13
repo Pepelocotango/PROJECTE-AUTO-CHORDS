@@ -89,7 +89,7 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
 - **zoom** amb Ctrl+Roda (centrat al cursor) i **pan** amb Roda sola
 - procés d’anàlisi amb una sola acció clara (`Analitza`, F5)
 - revisió i edició d’acords i seccions des del visor
-- export final separat i explícit (`Exporta`, Ctrl+E)
+- export final separat i explícit (`Exporta WAV's`, Ctrl+E)
 - llançament directe des de la carpeta del projecte
 - bloqueig de doble instància per evitar sobreposició d’aplicacions
 - **auditoria de seguretat/estabilitat aplicada**: clamp de temps, tipus d’excepció específics, `_proc_lock`, `safe_filename`, parser CSV robust, validació WAV (sr/ch > 0)
@@ -149,7 +149,7 @@ La base funcional i el nou visor estan validats. El que queda són millores de p
 ### Pendents (2026-10-08)
 
 - **Proves manuals** (operador): `./AUTO_CHORDS.sh` (obrir WAV → Analitza →
-  editar acord → Exporta); `python -m app.visor <wav>` (standalone); **metrònom**
+  editar acord → Exporta WAV's); `python -m app.visor <wav>` (standalone); **metrònom**
   amb offset posat amb 📍 o 🧭.
 - **Tag de retorn** `v0.5.2-deute` (⚠️ `release.yml` s’activa amb tags `v*`;
   alternativa: tag sense `v`).

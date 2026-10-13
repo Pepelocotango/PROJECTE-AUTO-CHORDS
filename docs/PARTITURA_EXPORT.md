@@ -37,7 +37,7 @@ i **marques de secció** (cada secció comença línia).
 
 - **App** (menú **Fitxer**):
   - **«Inclou la partitura (xifrat)»** (commutable, per defecte **NO**): en fer
-    «Exporta», genera també el lead sheet.
+    «Exporta WAV's», genera també el lead sheet.
   - **«Exporta la partitura…»**: genera només la partitura de la sortida actual.
   - **«Tonalitat automàtica (qm-keydetector)»** (per defecte **NO**): calcula
     l'armadura amb `detecta_fifths` (triga uns segons).

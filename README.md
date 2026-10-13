@@ -39,7 +39,7 @@ pas d’assistent.
 - **Metrònom** 🥁 (només en mode BPM · compàs), amb **volum propi** (60 %).
 - **Analitza** (`F5`): progrés a la **barra d’estat**; el **log** és un tauler
   plegable a baix (**Visualitza ▸ Mostra el log**).
-- **Exporta…** (`Ctrl+E`) a Fitxer; desactivat fins que hi ha resultat.
+- **Exporta WAV's…** (`Ctrl+E`) a Fitxer; desactivat fins que hi ha resultat.
 - **Edició al timeline**: desfer/refer (`Ctrl+Z`/`Ctrl+Y`), `Delete`, `Ctrl+D`
   (duplica) i **menú contextual** (botó dret). Mai toca els WAVs generats.
 - **Multi-selecció i porta-retalls**: `Ctrl+clic` (afegir/treure) i `Shift+clic`
@@ -66,7 +66,7 @@ La funcionalitat principal està validada: **tota la suite · OK (1 skip)** (`py
 1. Obre l'àudio (`Obre…`) — si no és WAV, es converteix sol amb ffmpeg
 2. Ajusta el BPM (🎯 Detecta o TAP) i fes `Analitza` (obre el diàleg d'opcions)
 3. Revisa i edita acords / seccions al visor (franja Editor)
-4. Fes `Exporta`
+4. Fes `Exporta WAV's`
 
 ## Filosofia i lògica del flux
 

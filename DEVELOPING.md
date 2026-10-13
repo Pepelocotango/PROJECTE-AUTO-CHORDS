@@ -101,7 +101,7 @@ La base del projecte és senzilla i molt important: no hauríem de tenir un “a
 4. l’usuari pot corregir acords, afegir o esborrar seccions, i normalitzar l’ordre
 5. cada canvi es valida: no solapaments, no ordre invers, no duplicats lògics
 6. el visor regenerat els clips i les sortides associades
-7. `Exporta` genera el paquet final per a DAW
+7. `Exporta WAV's` genera el paquet final per a DAW
 
 ### Regles de consistència
 
