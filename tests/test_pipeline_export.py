@@ -1702,14 +1702,13 @@ class PlayCoherenciaTests(unittest.TestCase):
 
         v = self._visor()
         v._sess = 0
-        tros = v._mono_bytes()[:65536]
         v.vol = 0.5
         v.mut = False
         p1 = FakeProc()
-        v._alimenta(p1, tros, 0)
+        v._alimenta(p1, 0.0, 0)     # API nova: (proc, temps_inici, sessió)
         v.vol = 1.0
         p2 = FakeProc()
-        v._alimenta(p2, tros, 0)
+        v._alimenta(p2, 0.0, 0)
         a = np.frombuffer(bytes(p1.buf.dades), dtype=np.int16).astype(float)
         b = np.frombuffer(bytes(p2.buf.dades), dtype=np.int16).astype(float)
         self.assertGreater(np.abs(b).mean(), 0)

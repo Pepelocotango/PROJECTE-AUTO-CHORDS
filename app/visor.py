@@ -1639,20 +1639,15 @@ class Visor(QMainWindow):
         # Clamp per seguretat (validació prèvia pot ser absent en alguns
         # camins; evitem índex negatiu o inici més enllà de les dades).
         t = max(0.0, min(float(t), float(self.audio["durada"])))
-        inici = int(t * self.audio["sr"]) * 2  # 16 bits mono
-        dades = self._mono_bytes()[inici:]
-        # Metrònom: els clics es MESCLEN al buffer que s'envia al reproductor
-        # (només des d'aquí endavant → funciona des de qualsevol posició i
-        # amb el loop A/B). El mute/volum de la cançó no els afecta.
-        if self.metro_on and self.metro_vol > 0:
-            dades = metronom.mescla_metronom(
-                dades, self.audio["sr"], t, self.bpm, self.bpb,
-                volum=self.metro_vol, offset=getattr(self, "offset", 0.0))
+        # El PCM NO es pre-construieix aquí: el fil d'alimentació el genera
+        # tros a tros (i, si hi ha loop, en fa la volta TOT SOL sense reiniciar
+        # el reproductor → sense el tall a cada volta). El metrònom també es
+        # mescla per tros, dins el feeder.
         if self.player is None:
             QMessageBox.information(self, "Reproducció",
                                     plataforma.missatge_sense_audio())
             return
-        self.log(f"play des de {t:.2f}s ({len(dades)} bytes) amb {self.player}...")
+        self.log(f"play des de {t:.2f}s amb {self.player}...")
         self.fitxer_err = os.path.join(OPENCODE_DIR, "visor_player.log")
         try:
             # Assegura que el directori temporal del projecte existeix
@@ -1671,7 +1666,7 @@ class Visor(QMainWindow):
                 # empassen al ritme del so i un write() sencer congelaria la GUI.
                 sess = self._sess
                 fil = threading.Thread(target=self._alimenta,
-                                       args=(self.proc, dades, sess),
+                                       args=(self.proc, t, sess),
                                        daemon=True)
                 fil.start()
         except Exception as e:  # noqa: BLE001
@@ -1684,25 +1679,70 @@ class Visor(QMainWindow):
         self.t0_pos = t
         self.log(f"{self.player} pid={self.proc.pid} en marxa")
 
-    def _alimenta(self, proc, dades, sess):
-        # escriu per trossos; si arriba una sessió nova o el proc mor, plega.
-        # El GUANY (volum/mute) s'aplica AQUI, tros a tros, llegint self.vol/
-        # self.mut cada cop -> es pot canviar volum/mute SENSE reiniciar (el
-        # canvi s'aplica tan aviat com el buffer del servidor es buida).
+    # Durada del micro-fade anti-clic als extrems del loop (segons).
+    FADE_LOOP_S = 0.004
+
+    def _alimenta(self, proc, t_inici, sess):
+        """Genera el PCM tros a tros i l'envia al reproductor.
+
+        - **Sense reiniciar el reproductor**: si hi ha loop A/B actiu, en fa la
+          VOLTA aquí mateix (dins el flux continu) → **no hi ha tall a cada
+          volta** (abans es matava el reproductor i se n'engegava un altre).
+        - El **guany** (volum/mute) i el **metrònom** s'apliquen per tros,
+          llegint l'estat viu → es poden canviar sense reiniciar.
+        - Als extrems del loop s'aplica un **micro-fade** (~4 ms) perquè la
+          costura B→A no faci clic.
+        """
         try:
-            vista = memoryview(dades)
-            pas = 65536
-            for i in range(0, len(dades), pas):
+            mono = memoryview(self._mono_bytes())
+            sr = int(self.audio["sr"])
+            n_mostres = len(mono) // 2
+            pas = 32768  # mostres per tros
+            fade = max(1, int(self.FADE_LOOP_S * sr))
+            pos = int(max(0.0, min(float(t_inici),
+                                   float(self.audio["durada"]))) * sr)
+            while True:
                 if sess != self._sess or proc.poll() is not None:
                     break
-                tros = vista[i:i + pas]
+                bucle = (self.loop_on and self.loop_a is not None
+                         and self.loop_b is not None)
+                a = b = 0
+                if bucle:
+                    a = int(self.loop_a * sr)
+                    b = int(self.loop_b * sr)
+                    if b - a < 2:
+                        bucle = False
+                    elif pos < a or pos >= b:
+                        pos = a
+                fi = min(b if bucle else n_mostres, pos + pas)
+                if fi <= pos:
+                    break
+                tros = bytes(mono[pos * 2:fi * 2])
                 g = 0.0 if self.mut else self.vol
-                if g != 1.0:
-                    a = np.frombuffer(tros, dtype=np.int16).astype(np.float32) * g
-                    tros = np.clip(a, -32768, 32767).astype(np.int16).tobytes()
+                if bucle or g != 1.0:
+                    x = np.frombuffer(tros, dtype=np.int16).astype(np.float32)
+                    if bucle:
+                        idx = np.arange(pos - a, fi - a, dtype=np.float32)
+                        env = np.minimum(np.minimum(1.0, idx / fade),
+                                         np.minimum(1.0,
+                                                    (b - a - 1 - idx) / fade))
+                        x = x * (g * env)
+                    else:
+                        x = x * g
+                    tros = np.clip(x, -32768, 32767).astype(np.int16).tobytes()
+                if self.metro_on and self.metro_vol > 0:
+                    tros = metronom.mescla_metronom(
+                        tros, sr, pos / float(sr), self.bpm, self.bpb,
+                        volum=self.metro_vol,
+                        offset=getattr(self, "offset", 0.0))
                 try:
                     proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):
+                    break
+                pos = fi
+                if bucle and pos >= b:
+                    pos = a
+                elif not bucle and pos >= n_mostres:
                     break
             try:
                 proc.stdin.close()
@@ -1773,11 +1813,16 @@ class Visor(QMainWindow):
             self.play_stop()
             return
         t = self.t0_pos + (time.monotonic() - self.t0_mono)
-        if self.loop_on and self.loop_a is not None and self.loop_b is not None \
-                and t >= self.loop_b:
-            self.log(f"loop → {self.loop_a:.2f}s")
-            self.ves_a(self.loop_a)
-            return
+        if self.loop_on and self.loop_a is not None and self.loop_b is not None:
+            dur = self.loop_b - self.loop_a
+            if dur > 0.05 and t >= self.loop_b:
+                # L'ÀUDIO ja ha fet la volta TOT SOL (el feeder, en continu,
+                # sense reiniciar el reproductor → sense tall). Aquí només
+                # movem el cursor VISUAL i re-ancorem el rellotge perquè no
+                # derivi respecte a cada volta.
+                t = self.loop_a + ((t - self.loop_a) % dur)
+                self.t0_pos = t
+                self.t0_mono = time.monotonic()
         fi = float(self.audio["durada"])
         if t >= fi:
             # NO aturem pel rellotge de paret: el reproductor te latencia i el
