@@ -30,6 +30,7 @@ INCLOU = [
     "ROADMAP.md",           # full de ruta (abast, fases, futur)
     "DEVELOPING.md",        # setup, entorn i desenvolupament
     "docs/REGLES_DE_LA_APP.md",  # ⚠️ regles d'or (invariants) — IMPRESCINDIBLE
+    "docs/MCP_AUTO_CHORDS.md",   # connector MCP (pont TCP dins l'app viva)
     # 4+. El codi i la resta
     "app",                  # codi de l'aplicació (Python)
     "eines",                # scripts de build/empaquetat + host C++ (vamp_host.cpp)
@@ -38,6 +39,7 @@ INCLOU = [
     "requirements.txt",     # dependències del venv
     "instal·la_local.sh",   # setup local (sense sudo)
     "AUTO_CHORDS.sh",       # llançador
+    "AUTO_CHORDS_MCP.sh",   # llançador de l'app amb el pont MCP actiu
     "AUTO_CHORDS.desktop",  # drecera d'escriptori
     "acords_a_live.py",     # script del pipeline (CSV -> locators/guia)
     "wav_a_wavs.py",        # CLI wav -> wavs
