@@ -9,7 +9,9 @@ Type=Application
 Name=Auto Chords
 Comment=Analitza acords i estructura de WAVs amb una sola app
 Exec=sh -c 'f=%k; f=${f#file://}; cd "$(dirname "$f")" && exec ./AUTO_CHORDS.sh'
-Icon=utilities-terminal
+# Icon=nom -> cal la icona al tema d'icones; instal·la_local.sh la copia a
+# ~/.local/share/icons/hicolor/512x512/apps/auto-chords.png
+Icon=auto-chords
 Terminal=false
 Categories=Audio;AudioVideo;
 StartupNotify=true

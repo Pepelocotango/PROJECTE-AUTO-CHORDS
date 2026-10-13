@@ -1518,6 +1518,7 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     app.setStyleSheet(FOSC)
+    app.setWindowIcon(icones.icona_app())
     w = Finestra()
     w.show()
     # Smoke test del CI (AUTO_CHORDS_SMOKE=1): la finestra s'ha creat i mostrat

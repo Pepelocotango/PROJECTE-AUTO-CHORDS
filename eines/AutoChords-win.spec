@@ -11,6 +11,7 @@
 #   · qm-vamp-plugins-win64-local/             (idem)
 #   · portable/win-dlls/*.dll                  (idem; clausura de runtime)
 #   · portable/bin/ffmpeg.exe                  (baixat al workflow)
+#   · icona/auto-chords.ico                    (generat: python eines/crea_icona.py)
 #
 # Nota: l'entry és eines/launcher_pyinstaller.py (no app/main.py), perquè resol
 # el subprocés `acords_a_live.py` en mode congelat. Vegeu aquell fitxer.
@@ -22,6 +23,7 @@ datas = [
     (os.path.join(ROOT, 'acords_a_live.py'), '.'),
     (os.path.join(ROOT, 'vamp_host_local.exe'), '.'),
     (os.path.join(ROOT, 'icones'), 'icones'),
+    (os.path.join(ROOT, 'icona'), 'icona'),
     (os.path.join(ROOT, 'nnls-chroma-win64-local'), 'nnls-chroma-win64-local'),
     (os.path.join(ROOT, 'qm-vamp-plugins-win64-local'), 'qm-vamp-plugins-win64-local'),
     (os.path.join(ROOT, 'portable', 'bin', 'ffmpeg.exe'), os.path.join('portable', 'bin')),
@@ -74,6 +76,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='AutoChords',
+    icon=os.path.join(ROOT, 'icona', 'auto-chords.ico'),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

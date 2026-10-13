@@ -1901,6 +1901,7 @@ def main():
     ap.add_argument("--bpb", type=int, default=4)
     a = ap.parse_args()
     app = QApplication(sys.argv)
+    app.setWindowIcon(icones.icona_app())
     if not a.wav:
         wav, _ = QFileDialog.getOpenFileName(None, "Tria la wav", "",
                                              "Àudio WAV (*.wav)")

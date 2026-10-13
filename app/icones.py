@@ -16,8 +16,8 @@ from PyQt5.QtCore import QByteArray, QSize, Qt
 from PyQt5.QtGui import QIcon, QPainter, QPixmap
 from PyQt5.QtSvg import QSvgRenderer
 
-_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                    "icones")
+_ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_DIR = os.path.join(_ARREL, "icones")
 
 # Color per defecte: el text de la UI (clar sobre fons fosc).
 TEXT = "#f3f4f6"
@@ -74,3 +74,16 @@ def icona_boto(boto, nom, mida=18, color=TEXT):
 
 def pm_mida(mida):
     return QSize(int(mida), int(mida))
+
+
+def icona_app():
+    """QIcon del logo de l'aplicació (barra de títol / llançador).
+
+    El logo es genera a `icona/` (vegeu eines/crea_icona.py). Si no hi és,
+    retorna un QIcon buit: l'app no ha de petar mai per una icona que falti.
+    """
+    for nom in ("auto-chords.png", "auto-chords-256.png", "auto-chords-128.png"):
+        ruta = os.path.join(_ARREL, "icona", nom)
+        if os.path.isfile(ruta):
+            return QIcon(ruta)
+    return QIcon()

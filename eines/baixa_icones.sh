@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 BASE="https://raw.githubusercontent.com/lucide-icons/lucide/${LUCIDE_TAG}/icons"
 mkdir -p icones
 NOMES="play pause square repeat-2 volume-x metronome target map-pin compass \
-audio-lines zoom-in zoom-out rewind fast-forward maximize focus \
+zoom-in zoom-out rewind fast-forward maximize focus \
 arrow-left-to-line arrow-right-to-line music piano circle-gauge mic settings"
 for n in $NOMES; do
     tmp="$(mktemp)"

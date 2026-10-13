@@ -60,6 +60,18 @@ else
   echo "chordextract: pendent headers (.deps incomplet, sense xarxa apt?)"
 fi
 
+echo "== 6/6 icona d'escriptori (opcional, sense sudo) =="
+if [ -f icona/auto-chords.png ]; then
+  ICONDIR="$HOME/.local/share/icons/hicolor/512x512/apps"
+  mkdir -p "$ICONDIR"
+  cp -f icona/auto-chords.png "$ICONDIR/auto-chords.png"
+  command -v gtk-update-icon-cache >/dev/null 2>&1 && \
+    gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" >/dev/null 2>&1 || true
+  echo "icona instal·lada: $ICONDIR/auto-chords.png (per al .desktop)"
+else
+  echo "AVÍS: no trobo icona/auto-chords.png (genera-la: .venv/bin/python eines/crea_icona.py)"
+fi
+
 echo ""
 echo "FET ✅ — sense tocar el sistema. Obre amb:"
 echo "  .venv/bin/python app/main.py"
