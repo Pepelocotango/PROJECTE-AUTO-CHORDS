@@ -40,20 +40,38 @@ def _vars_deps():
 
 
 def _pins_requirements():
-    """{nom: versió} dels pins exactes de `requirements.txt` (font única Python)."""
-    d = {}
+    """{nom: versió} dels pins exactes de `requirements.txt` (font única Python).
+
+    Algun paquet té **diversos pins amb marcadors** (per plataforma), p. ex.
+    `PyQt5-Qt5==5.15.2; sys_platform == "win32"` i
+    `PyQt5-Qt5==5.15.19; sys_platform != "win32"`. Ens quedem amb el **cas
+    general** (el marcador amb `!=`, o el pin sense marcador), que és el que
+    descriu la resta de sistemes.
+    """
     ruta = os.path.join(ARREL, "requirements.txt")
     if not os.path.isfile(ruta):
-        return d
+        return {}
+    linies = []
     with open(ruta, encoding="utf-8") as f:
         for ln in f:
             ln = ln.split("#", 1)[0].strip()
             if not ln or "==" not in ln:
                 continue
             nom, _, resta = ln.partition("==")
-            ver = resta.split(";")[0].strip().split(",")[0].strip()
-            d.setdefault(nom.strip().lower(), ver)
-    return d
+            parts = resta.split(";", 1)
+            ver = parts[0].strip().split(",")[0].strip()
+            marcador = parts[1].strip() if len(parts) > 1 else ""
+            linies.append((nom.strip().lower(), ver, marcador))
+
+    def _general(marcador):
+        # «cas general»: sense marcador, o un `!=` (descriu la majoria de SO).
+        return marcador == "" or "!=" in marcador
+
+    d = {}
+    for nom, ver, marcador in linies:
+        if nom not in d or (_general(marcador) and not _general(d[nom][1])):
+            d[nom] = (ver, marcador)
+    return {k: v[0] for k, v in d.items()}
 
 
 def _plugins():
