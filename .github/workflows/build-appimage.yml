@@ -38,6 +38,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: 1a. Memòria cau de les baixades verificades
+        # `eines/baixa_verificat.py` desa cada fitxer a `.baixades/<sha256>`;
+        # aquí es conserva entre execucions. La clau inclou el SO i el contingut
+        # de `deps_fixades.env`: si canvia una versió, la cau es renova tota.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: .baixades
+          key: deps-${{ runner.os }}-${{ hashFiles('eines/deps_fixades.env') }}
+
       - name: 1b. Diagnòstic de l'entorn (versions, glibc, disc)
         run: |
           echo "::group::Entorn del runner"
