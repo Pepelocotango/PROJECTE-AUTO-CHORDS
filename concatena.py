@@ -29,6 +29,7 @@ INCLOU = [
     "README.md",            # visió general + com executar
     "ROADMAP.md",           # full de ruta (abast, fases, futur)
     "DEVELOPING.md",        # setup, entorn i desenvolupament
+    "docs/REGLES_DE_LA_APP.md",  # ⚠️ regles d'or (invariants) — IMPRESCINDIBLE
     # 4+. El codi i la resta
     "app",                  # codi de l'aplicació (Python)
     "eines",                # scripts de build/empaquetat + host C++ (vamp_host.cpp)

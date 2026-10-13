@@ -162,6 +162,37 @@ class ExportPipelineTests(unittest.TestCase):
             self.assertTrue((base / "wavs_acords").is_dir())
             self.assertTrue((base / "wavs_estructura").is_dir())
 
+    def test_cobertura_export(self):
+        """REGLA 4: la suma dels WAVs exportats (acords i estructura) = la durada."""
+        import wave
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td) / "tema_ACORDS"
+            base.mkdir(parents=True)
+            csv_ac = base / "acords.csv"
+            csv_seg = base / "segments.csv"
+            with csv_ac.open("w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                w.writerow(["1.5", "C"])          # 1r acord NO a 0 -> capçalera N
+                w.writerow(["5.0", "G"])
+            with csv_seg.open("w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                w.writerow(["0.0", "3.0", "0", "N1"])
+                w.writerow(["3.0", "7.0", "1", "A"])   # últim fi < durada
+            pipeline.exporta_total(
+                csv_ac=str(csv_ac), csv_seg=str(csv_seg), sortida=str(base),
+                bpm=120.0, bpb=4, offset=0.0, sr=44100, log=lambda m: None,
+                tempo_fix=True, amb_estructura=True, total_s=10.0)
+
+            def suma(carpeta):
+                tot = 0.0
+                for p in (base / carpeta).glob("*.wav"):
+                    with wave.open(str(p), "rb") as w:
+                        tot += w.getnframes() / w.getframerate()
+                return tot
+
+            self.assertAlmostEqual(suma("wavs_acords"), 10.0, places=1)
+            self.assertAlmostEqual(suma("wavs_estructura"), 10.0, places=1)
+
     def test_app_main_imports_as_module(self):
         root = Path(__file__).resolve().parents[1]
         code = (
