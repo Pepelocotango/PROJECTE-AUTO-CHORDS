@@ -22,16 +22,24 @@ on:
         required: false
         default: ""
 
+# Per defecte NOMES lectura: l'escriptura queda limitada al job que crea el
+# Release (minim privilegi).
 permissions:
-  contents: write      # crear el Release
-  actions: read        # llegir execucions i baixar artefactes
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write    # NOMES aquest job crea el Release
+      actions: read      # llegir execucions i baixar artefactes
     steps:
       - name: 1. Checkout (per a les notes)
-        uses: actions/checkout@v5
+        # Les accions es fixen per SHA (amb la versio en comentari): un tag es
+        # pot moure, un SHA no.
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
 
       - name: 2. Determinar el tag
         id: tag
