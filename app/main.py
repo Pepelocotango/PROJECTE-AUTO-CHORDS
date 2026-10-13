@@ -115,6 +115,11 @@ class Feina(QThread):
         try:
             os.makedirs(self.sortida, exist_ok=True)
             csv_ac = os.path.join(self.sortida, "acords.csv")
+            # Durada de la WAV → invariant de cobertura dels clips (0 → durada).
+            try:
+                durada_wav = float(pipeline.wav_info(self.wav)["durada"])
+            except Exception:  # noqa: BLE001
+                durada_wav = None
             self.log("1/3 extreu acords (Chordino)...")
             pipeline.extract_chords(self.wav, csv_ac, self.log,
                                     params=(self.opcions.get("chords") or None))
@@ -130,7 +135,8 @@ class Feina(QThread):
                     reduir=bool(cl.get("reduir", False)),
                     snap=bool(cl.get("snap", False)),
                     bpm=self.bpm, bpb=self.bpb, offset=self.offset,
-                    divisio=int(cl.get("divisio", 1)), log=self.log)
+                    divisio=int(cl.get("divisio", 1)), log=self.log,
+                    durada=durada_wav)
             self.progres.emit(50)
             csv_seg = None
             if self.amb_estructura:
@@ -148,7 +154,8 @@ class Feina(QThread):
                                  lliure=not self.tempo_fix, bpb=self.bpb,
                                  offset=self.offset,
                                  durada_min=float(_est.get("durada_min", 0.0)),
-                                 fusiona_iguals=bool(_est.get("fusiona_iguals", True)))
+                                 fusiona_iguals=bool(_est.get("fusiona_iguals", True)),
+                                 durada=durada_wav)
             self.log("Analisi feta. Les wavs es generaran en 'Exporta'.")
             self.progres.emit(100)
             self.feta.emit(True, self.sortida)

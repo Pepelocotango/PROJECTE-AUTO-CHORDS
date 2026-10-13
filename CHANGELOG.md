@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+### Corregit
+- **Invariant de COBERTURA dels clips** (regla d'or): la **suma dels clips
+  d'acords = la durada de la WAV** i la **suma dels clips d'estructura = la
+  durada** — el 1r clip arrenca a **0** (s'hi afegeix una **capçalera «N»** si el
+  detectat comença més enllà) i l'últim arriba a la **durada**. Abans, el 1r
+  acord podia quedar desplaçat (p. ex. 0.17 s amb el snap) i l'última secció no
+  arribava al final de la WAV. Ho garanteix `pipeline.normalitza_cobertura()`,
+  aplicat en **carregar el visor** i en l'**export** (CSV/ABC + wavs), per als 2
+  modes i amb o sense snap.
+
 ## [0.6.2] — 2026-10-13 (BETA)
 
 ### Afegit

@@ -131,6 +131,11 @@ class Visor(QMainWindow):
             acords = self.csv_acords
         self.acords = llegeix_acords(acords) if acords else []
         self.seccions = llegeix_abc(abc) if abc else []
+        # INVARIANT de COBERTURA (regla d'or): els clips cobreixen TOTA la WAV
+        # (0 → durada): 1r a 0 (capçalera «N» si cal) i últim a la durada.
+        self.acords, self.seccions = pipeline.normalitza_cobertura(
+            self.acords, self.seccions, float(self.audio.get("durada", 0.0)),
+            log=self.log)
         self.pos = 0.0  # segons
 
         arrel = QWidget()
@@ -685,7 +690,8 @@ class Visor(QMainWindow):
             print(f"[visor] {msg}", flush=True)
         except (UnicodeEncodeError, OSError, ValueError, AttributeError):
             pass
-        self.registre.append(msg)
+        if hasattr(self, "registre"):     # pot cridar-se abans de crear-lo
+            self.registre.append(msg)
         try:
             import logging as _lg
             _lg.getLogger("auto_chords").info("VISOR: %s", msg)

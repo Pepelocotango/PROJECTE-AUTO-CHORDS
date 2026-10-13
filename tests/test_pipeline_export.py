@@ -1148,15 +1148,19 @@ class OffsetLlistesTests(unittest.TestCase):
         v = window.visor_ref
         window.bpm.setText("101")
         window._aplica_parametres_temps()
-        # amb offset 0, l'acord de 9.5s surt com a compas 5
-        self.assertTrue(v.llista_ac.item(0).text().startswith("5."))
+        # INVARIANT de cobertura: el 1r element és la capçalera «N» a 0s.
+        self.assertTrue(v.llista_ac.item(0).text().endswith("N"),
+                        v.llista_ac.item(0).text())
+        # amb offset 0, l'acord de 9.5s (ara l'element 1) surt com a compas 5
+        self.assertTrue(v.llista_ac.item(1).text().startswith("5."),
+                        v.llista_ac.item(1).text())
         # amb offset 9.5, ha de sortir com a compas 1
         window.offset.setText("9.50")
         window._aplica_parametres_temps()
-        self.assertTrue(v.llista_ac.item(0).text().startswith("1.1"),
-                        v.llista_ac.item(0).text())
-        self.assertTrue(v.llista_ac.item(1).text().startswith("2.1"),
+        self.assertTrue(v.llista_ac.item(1).text().startswith("1.1"),
                         v.llista_ac.item(1).text())
+        self.assertTrue(v.llista_ac.item(2).text().startswith("2.1"),
+                        v.llista_ac.item(2).text())
         window.close()
 
 
@@ -1512,6 +1516,11 @@ class InfoBoxTests(unittest.TestCase):
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
         return window
+
+    def test_cobertura_seccio_a_la_durada(self):
+        """L'última secció s'acota a la durada de la WAV (regla d'or)."""
+        w = self._finestra()          # WAV 20s, ABC amb una secció 0–8
+        self.assertAlmostEqual(w.visor_ref.seccions[-1][1], 20.0)
 
     def test_zona_regle(self):
         from PyQt5.QtCore import QPoint
@@ -3166,6 +3175,42 @@ class ZoomSeleccioTests(unittest.TestCase):
     def test_visor_te_zoom_seleccio(self):
         from app import visor
         self.assertTrue(callable(getattr(visor.Visor, "zoom_seleccio", None)))
+
+
+class CoberturaTests(unittest.TestCase):
+    """INVARIANT de cobertura (regla d'or): la suma dels clips (acords i
+    estructura) = la durada de la WAV → 1r a 0 (capçalera «N») i últim a la
+    durada, en qualsevol mode."""
+
+    def test_capcalera_n_acords(self):
+        ac, _ = pipeline.normalitza_cobertura([(1.5, "C", "1.5")], [], 10.0)
+        self.assertEqual(ac[0], (0.0, "N", "0.000000000"))
+        self.assertEqual(ac[1][0], 1.5)
+
+    def test_sense_capcalera_si_comenca_a_0(self):
+        ac, _ = pipeline.normalitza_cobertura([(0.0, "C", "0.0")], [], 10.0)
+        self.assertEqual(len(ac), 1)
+
+    def test_ultima_seccio_acotada_a_la_durada(self):
+        _, se = pipeline.normalitza_cobertura([], [(0.0, 8.0, "A", "N")], 20.0)
+        self.assertEqual(se[-1][1], 20.0)
+
+    def test_seccions_capcalera_n(self):
+        _, se = pipeline.normalitza_cobertura([], [(2.0, 5.0, "A", "N")], 20.0)
+        self.assertEqual(se[0], (0.0, 2.0, "N", "N"))
+
+    def test_cobertura_total_seccions(self):
+        _, se = pipeline.normalitza_cobertura(
+            [], [(0.0, 3.0, "A", "N"), (3.0, 8.0, "B", "N")], 10.0)
+        suma = sum(fi - ini for ini, fi, *_ in se)
+        self.assertAlmostEqual(suma, 10.0)
+
+    def test_cobertura_total_acords(self):
+        ac, _ = pipeline.normalitza_cobertura(
+            [(1.5, "C", "1.5"), (5.0, "G", "5.0")], [], 10.0)
+        # el 1r clip arrenca a 0 i l'últim acaba a la durada (implicit)
+        self.assertEqual(ac[0][0], 0.0)
+        self.assertEqual(ac[-1][0], 5.0)
 
 
 if __name__ == "__main__":

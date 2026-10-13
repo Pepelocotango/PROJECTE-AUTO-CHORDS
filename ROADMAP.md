@@ -706,6 +706,12 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 
 - **Cap canvi trenca la invarianta** actual (`prev.fi == curr.t` per a
   acords; ordre estricte sense solapaments per a tothom).
+- **Invariant de COBERTURA** (regla d'or): la **suma dels clips d'acords = la
+  durada de la WAV** i la **suma dels clips d'estructura = la durada**, en
+  qualsevol mode (**Lliure** o **BPM · compàs**) i amb o sense **snap** → el 1r
+  clip a **0** (capçalera «N» si cal) i l'últim a la **durada**. Ho garanteix
+  `pipeline.normalitza_cobertura()` (aplicat en carregar el visor i en exportar;
+  la regla **mana sobre el snap**, que només quantitza els límits interiors).
 - **Totes les noves funcionalitats han de mantenir el principi d’una sola
   font de veritat**: el backend (`app.pipeline`) continua sent l’única
   font de dades; la UI (`app.visor` + `app.timeline`) en reflecteix l’estat.

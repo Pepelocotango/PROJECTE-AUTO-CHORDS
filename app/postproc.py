@@ -89,7 +89,7 @@ def snap_acords(acords, bpm, bpb=4, offset=0.0, divisio=1):
 def processa_acords_csv(ruta, durada_min=0.0, fusiona_iguals=True,
                         sense_baix=False, reduir=False,
                         snap=False, bpm=None, bpb=4, offset=0.0, divisio=1,
-                        log=None):
+                        log=None, durada=None):
     """Llegeix un CSV (temps, acord), el neteja i el reescriu al mateix lloc."""
     with open(ruta, encoding="utf-8") as f:
         items = []
@@ -106,6 +106,10 @@ def processa_acords_csv(ruta, durada_min=0.0, fusiona_iguals=True,
                             sense_baix=sense_baix, reduir=reduir)
     if snap and bpm:
         items = snap_acords(items, bpm, bpb, offset, divisio)
+    # INVARIANT de COBERTURA: els acords cobreixen tota la WAV (0 → durada).
+    if durada:
+        from app import pipeline           # import local: evita cicle d'imports
+        items, _ = pipeline.normalitza_cobertura(items, [], durada, log=log)
     tmp = ruta + ".tmp"
     with open(tmp, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)

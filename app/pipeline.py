@@ -437,6 +437,50 @@ def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
     return [tuple(x) for x in s]
 
 
+def normalitza_cobertura(acords, seccions, durada, log=None):
+    """Garanteix l'**INVARIANT de COBERTURA** (regla d'or de l'app):
+
+        suma(clips d'acords)     == durada de la WAV
+        suma(clips d'estructura) == durada de la WAV
+
+    És a dir, els clips cobreixen **tota** la WAV (0 → durada), en qualsevol
+    mode (Lliure o BPM·compàs) i amb o sense snap.
+
+    - **Acords** `[(t, nom, tsrc), …]`: si el primer comença > 0 s'hi insereix
+      una **«N» a 0** (capçalera). (La durada de l'últim acord és implícita: el
+      timeline/export la fixen a `durada`.)
+    - **Seccions** `[(ini, fi, lletra, família), …]`: si la primera comença > 0
+      s'hi insereix una **«N» a 0**; i el `fi` de l'última **s'acota a `durada`**.
+
+    Retorna `(acords, seccions)` normalitzats (llistes noves; no muta les d'entrada).
+    """
+    durada = float(durada or 0.0)
+    acords = [tuple(a) for a in (acords or [])]
+    seccions = [tuple(s) for s in (seccions or [])]
+    # Acords: capçalera N si el 1r no arrenca a 0.
+    if acords and float(acords[0][0]) > 1e-9:
+        # conserva els camps extra (p. ex. `tsrc`), posant-los a 0.
+        extra = tuple("0.000000000" for _ in acords[0][2:])
+        acords.insert(0, (0.0, "N") + extra)
+        if log:
+            log(f"cobertura: capçalera N als acords (1r acord a "
+                f"{float(acords[1][0]):.2f} s)")
+    # Seccions: capçalera N + últim fi acotat a la durada.
+    if seccions:
+        if float(seccions[0][0]) > 1e-9:
+            seccions.insert(0, (0.0, float(seccions[0][0]), "N", "N"))
+            if log:
+                log(f"cobertura: capçalera N a l'estructura (1a secció a "
+                    f"{float(seccions[1][0]):.2f} s)")
+        if durada > 0 and float(seccions[-1][1]) < durada - 1e-9:
+            ini, _fi, L, fam = seccions[-1]
+            seccions[-1] = (ini, durada, L, fam)
+            if log:
+                log(f"cobertura: última secció acotada a la durada "
+                    f"({durada:.2f} s)")
+    return acords, seccions
+
+
 def run_acords_py(csv_path, bpm, bpb, offset, workdir, log):
     # `sys.executable` (mai un `python3` fix): trencava a Windows i amb
     # PyInstaller. Vegeu `app/plataforma.py`.
@@ -536,7 +580,7 @@ def regenera_wavs_estructura(abc_csv, sortida, sr, log):
 
 
 def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
-            durada_min=0.0, fusiona_iguals=True):
+            durada_min=0.0, fusiona_iguals=True, durada=None):
     import re
 
     def familia(lab):
@@ -571,6 +615,8 @@ def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
             k += 1
         L = lletres[fam]
         rows.append((ini, fi, L, fam))
+    # INVARIANT de COBERTURA: les seccions cobreixen tota la WAV (0 → durada).
+    _, rows = normalitza_cobertura([], rows, durada, log=log)
     desa_abc_csv(abc_csv, rows, bpm, log, lliure=lliure, bpb=bpb, offset=offset)
     seq = seq_abc(rows)
     rep = ", ".join(f"{L}×{seq.count(L)}" for L in sorted(set(seq)))
@@ -759,7 +805,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         result["segments_csv"] = csv_seg
         result["abc_csv"] = abc
         fer_abc(csv_seg, abc, bpm, log, lliure=not tempo_fix, bpb=bpb,
-                offset=offset)
+                offset=offset, durada=total_s)
         dest_abc = os.path.join(sortida, "wavs_estructura")
         neteja_wavs(dest_abc)
         result["n_estructura_wavs"] = fer_wavs_estructura(
