@@ -157,6 +157,16 @@ jobs:
           python3 eines/notes_release.py "${{ steps.tag.outputs.ver }}" --fitxer NOTES_RELEASE.md
           head -5 NOTES_RELEASE.md
 
+      - name: 5b. Generar SHA256SUMS.txt (la «petjada» dels paquets)
+        run: |
+          set -euo pipefail
+          # Qui baixa un paquet pot comprovar que es EXACTAMENT el que hem
+          # publicat:  sha256sum -c SHA256SUMS.txt
+          cd out
+          find . -type f ! -name 'SHA256SUMS.txt' -print0 \
+            | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt
+          echo "--- SHA256SUMS.txt ---"; cat SHA256SUMS.txt
+
       - name: 6. Crear el Release PUBLICAT amb els paquets disponibles
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
