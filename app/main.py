@@ -171,6 +171,10 @@ class Finestra(QMainWindow):
         self.opcions = dialegs.carrega_opcions()    # ultimes opcions d'autodeteccio
         self.wav_original = ""                     # si ve d'un format convertit
         self._info_msg_fins = 0.0                  # missatge transitori info box
+        # Pont MCP actiu? → cap avís pot ser MODAL (encallaria el pont) i el
+        # darrer avís queda a `ultim_avis` per retornar-lo a l'agent.
+        self.mcp_actiu = False
+        self.ultim_avis = ""
         self.setWindowTitle("Auto Chords — wav → acords + estructura")
         self.resize(1500, 900)
         # Amplada minima: per sota, les barres d\'eines es tallarien.
@@ -692,6 +696,46 @@ class Finestra(QMainWindow):
         ]))
         return grups
 
+    # ---------- Avisos (mai modals si el pont MCP és actiu) -------------------
+    def avisa(self, titol, text):
+        """Avis d'advertència. Vegeu `_avis`."""
+        return self._avis(titol, text, "warning")
+
+    def avisa_info(self, titol, text):
+        """Avis informatiu. Vegeu `_avis`."""
+        return self._avis(titol, text, "information")
+
+    def avisa_crit(self, titol, text):
+        """Avis crític. Vegeu `_avis`."""
+        return self._avis(titol, text, "critical")
+
+    def _avis(self, titol, text, tipus):
+        """Mostra un avís SENSE poder encallar el pont MCP.
+
+        Amb el pont actiu, un `QMessageBox` MODAL deixa el pont bloquejat fins
+        que algú el tanca: l'agent que ha disparat l'acció (exportar, analitzar)
+        no rebria mai la resposta i es quedaria penjat. En aquest cas s'ensenya
+        **no modal**, s'auto-tanca al cap de 10 s i el text queda a
+        `self.ultim_avis` perquè el pont el pugui retornar a l'agent. Sense
+        pont, el comportament és exactament l'de sempre (modal).
+        """
+        text = str(text)
+        self.ultim_avis = text
+        if not getattr(self, "mcp_actiu", False):
+            return getattr(QMessageBox, tipus)(self, titol, text)
+        self.logger.warning("avís (pont MCP actiu, sense modal): %s", text)
+        try:
+            self.registra(f"AVÍS: {text}")
+        except Exception:  # noqa: BLE001
+            pass
+        box = QMessageBox(getattr(QMessageBox, tipus.capitalize()), titol, text,
+                          QMessageBox.Ok, self)
+        box.setWindowModality(Qt.NonModal)
+        box.setAttribute(Qt.WA_DeleteOnClose, True)
+        box.show()
+        QTimer.singleShot(10000, box.close)
+        return None
+
     def _text_dreceres(self):
         """El diàleg de dreceres en HTML (separat per poder-lo testar)."""
         blocs = []
@@ -807,7 +851,7 @@ class Finestra(QMainWindow):
         """Obre el dialeg d'opcions de BPM i detecta (l'usuari pot editar-lo)."""
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
-            QMessageBox.warning(self, "Detecta BPM",
+            self.avisa("Detecta BPM",
                                 "Primer tria una WAV.")
             return
         if pregunta:
@@ -832,8 +876,8 @@ class Finestra(QMainWindow):
             self.bpm.setText(f"{bpm:.1f}")
             self.registra(f"BPM detectat: {bpm:.1f} (pots editar-lo)")
         else:
-            QMessageBox.information(
-                self, "Detecta BPM",
+            self.avisa_info(
+                "Detecta BPM",
                 "No s'ha pogut estimar el BPM.\n"
                 "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
 
@@ -1079,7 +1123,7 @@ class Finestra(QMainWindow):
         """
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
-            QMessageBox.warning(self, "Compàs 1", "Primer tria un àudio.")
+            self.avisa("Compàs 1", "Primer tria un àudio.")
             return
         self._atura_si_sona("detecció del compàs 1")
         self.registra("Detectant el compàs 1 (downbeat)…")
@@ -1092,8 +1136,8 @@ class Finestra(QMainWindow):
         finally:
             QApplication.restoreOverrideCursor()
         if seg is None:
-            QMessageBox.information(
-                self, "Compàs 1",
+            self.avisa_info(
+                "Compàs 1",
                 "No s'ha pogut detectar el compàs 1.\n"
                 "Pots posar-lo a mà amb el botó 📍 (al cursor).")
             return
@@ -1452,7 +1496,7 @@ class Finestra(QMainWindow):
     def executa(self, pregunta=True):
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
-            QMessageBox.warning(self, "Auto Chords",
+            self.avisa("Auto Chords",
                                 "Tria un àudio vàlid primer.")
             return
         if not ffmpeg.es_wav_pcm16(wav):
@@ -1460,7 +1504,7 @@ class Finestra(QMainWindow):
                 wav = self._assegura_wav(wav)
                 self.wav_edit.setText(wav)
             except Exception as e:  # noqa: BLE001
-                QMessageBox.critical(self, "Auto Chords",
+                self.avisa_crit("Auto Chords",
                                      f"No s'ha pogut convertir: {e}")
                 return
         if pregunta:
@@ -1510,13 +1554,13 @@ class Finestra(QMainWindow):
             self.b_export_part.setEnabled(False)
             self.registra(f"ERROR: {dada}")
             self.log_dock.setVisible(True)    # en cas d'error, obrim el log
-            QMessageBox.critical(self, "Auto Chords", dada)
+            self.avisa_crit("Auto Chords", dada)
 
     def exporta(self):
         wav = self.wav_edit.text().strip()
         if not self.sortida:
             if not wav or not os.path.isfile(wav):
-                QMessageBox.warning(self, "Auto Chords",
+                self.avisa("Auto Chords",
                                     "Tria una wav vàlida abans d'exportar.")
                 return
             self.sortida = pipeline.carpeta_sortida(wav)
@@ -1525,11 +1569,11 @@ class Finestra(QMainWindow):
         csv_seg = os.path.join(self.sortida, "segments.csv")
         if not os.path.isfile(csv_ac):
             if not wav or not os.path.isfile(wav):
-                QMessageBox.warning(self, "Auto Chords",
+                self.avisa("Auto Chords",
                                     "No hi ha CSVs d'exportació. Fes 'Executa' primer.")
                 return
-            QMessageBox.information(
-                self, "Auto Chords",
+            self.avisa_info(
+                "Auto Chords",
                 "Encara no hi ha CSVs generats. Fes 'Executa' primer.")
             return
 
@@ -1567,11 +1611,11 @@ class Finestra(QMainWindow):
             if res_part is not None and not res_part.get("pdf"):
                 msg += ("\n\n⚠️ La partitura s'ha generat NOMÉS en MusicXML: el "
                         "PDF necessita MuseScore instal·lat.")
-            QMessageBox.information(self, "Auto Chords", msg)
+            self.avisa_info("Auto Chords", msg)
             self.obre_carpeta()
         except Exception as e:  # noqa: BLE001
             self.registra(f"exporta ERROR: {e}")
-            QMessageBox.critical(self, "Auto Chords",
+            self.avisa_crit("Auto Chords",
                                  f"No s'ha pogut exportar:\n{e}")
 
     def _exporta_partitura(self):
@@ -1630,18 +1674,18 @@ class Finestra(QMainWindow):
     def exporta_partitura_ara(self):
         """Accio de menu: genera NOMES la partitura de la sortida actual."""
         if not self.sortida:
-            QMessageBox.warning(self, "Auto Chords",
+            self.avisa("Auto Chords",
                                 "Exporta primer (cal la carpeta de resultats).")
             return
         res = self._exporta_partitura()
         if not res or res.get("error"):
-            QMessageBox.warning(
-                self, "Auto Chords",
+            self.avisa(
+                "Auto Chords",
                 "No s'ha pogut generar la partitura.\n"
                 "Cal haver exportat abans, en mode BPM · compàs "
                 "(hi ha d'haver acords_locators.txt). Detall al log.")
             return
-        QMessageBox.information(self, "Auto Chords",
+        self.avisa_info("Auto Chords",
                                 self._missatge_partitura(res))
         self.obre_carpeta()
 
@@ -1649,7 +1693,7 @@ class Finestra(QMainWindow):
         if self.sortida and os.path.isdir(self.sortida):
             QDesktopServices.openUrl(QUrl.fromLocalFile(self.sortida))
         else:
-            QMessageBox.information(self, "Auto Chords",
+            self.avisa_info("Auto Chords",
                                     "Encara no hi ha cap resultat.")
 
 

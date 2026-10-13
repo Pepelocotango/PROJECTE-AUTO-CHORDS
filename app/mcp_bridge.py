@@ -119,6 +119,9 @@ def _op_status(ctx, params):
         "app": {"versio": APP_VERSION, "titol": w.windowTitle()},
         "audio": None,
         "missatge": "",
+        # Darrer avís que l'app ha hagut de donar amb el pont actiu (llavors NO
+        # és modal, perquè no encalli el pont): així l'agent el pot veure.
+        "avis": getattr(w, "ultim_avis", ""),
     }
     if vr is None:
         estat["missatge"] = "cap àudio obert (obre'n un per començar)"
@@ -474,10 +477,18 @@ def _op_analyze(ctx, params):
 
 
 def _op_export_wav(ctx, params):
-    """Exporta el paquet de WAV's (síncron). Pot trigar segons el tema."""
+    """Exporta el paquet de WAV's (síncron). Pot trigar segons el tema.
+
+    ⚠️ L'export pot voler avisar l'usuari: amb el pont actiu aquests avisos són
+    NO modals (un modal encallaria el pont) i el text es retorna aquí.
+    """
     w = ctx.window
+    w.ultim_avis = ""                 # per retornar NOMÉS l'avís d'aquest export
     w.exporta()
-    return {"ok": True, "sortida": getattr(w, "sortida", "") or ""}
+    r = {"ok": True, "sortida": getattr(w, "sortida", "") or ""}
+    if getattr(w, "ultim_avis", ""):
+        r["avis"] = w.ultim_avis
+    return r
 
 
 def _op_set_tempo(ctx, params):
@@ -745,6 +756,10 @@ def activa_pont(window):
     """
     pont = PontMCP(window)
     window._mcp_pont = pont
+    # Amb el pont actiu, CAP avís de l'app pot ser MODAL: deixaria el pont
+    # encallat fins que algú el tanqués (l'agent no rebria mai la resposta).
+    # Vegeu `main.Finestra._avis`.
+    window.mcp_actiu = True
     try:
         from PyQt5.QtWidgets import QApplication
         app = QApplication.instance()
