@@ -1,6 +1,6 @@
 # Motor d'àudio per SO — què fem servir i què fan els programes «pro»
 
-> **2026-10-10.** Respon a: «estem fent servir els motors d'àudio adequats a cada
+> **2026-10-11 · v0.6.1.** Respon a: «estem fent servir els motors d'àudio adequats a cada
 > SO com ho fan DAWs, VLC…?». Complementa `app/audio_out.py` i `app/plataforma.py`.
 
 ## Resum
@@ -15,6 +15,7 @@
 - L'única API «de debò» és **CoreAudio** (AudioToolbox/AVFoundation). `afplay` n'és un simple embolcall.
 - PortAudio (`sounddevice`) **fa servir CoreAudio** → és correcte i és el que fan Ableton, Logic, Reaper, VLC…
 - No cal res especial (ni ASIO ni exclusiu: CoreAudio ja és de baixa latència).
+- **v0.6.1:** `MotorStream` utilitza teardown **idempotent i serialitzat** (`_tancat` + `threading.Lock`) per evitar crashes (`EXC_BAD_ACCESS` a CoreAudio) quan es tanca l'stream de PortAudio des de diferents fils.
 
 ## Windows — ordre de qualitat/latència (PortAudio exposoa les mateixes APIs)
 | API | Latència | Qui la fa servir |

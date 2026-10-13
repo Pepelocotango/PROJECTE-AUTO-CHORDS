@@ -48,7 +48,9 @@ i **marques de secció** (cada secció comença línia).
 - **MuseScore 4.6.x funciona**; **4.7+ NO** en CPU sense SSE4.2 — el Qt6 de
   MuseScore 4.7 exigeix **SSE4.2 + POPCNT** i el Q9400 no els té.
 - El binari es detecta amb la variable **`AUTO_CHORDS_MUSESCORE`** o
-  automàticament (`PATH` i AppImages de `~/Applications`, preferint 4.6.x).
+  automàticament via `shutil.which` i cercant en rutes estàndard per SO
+  (Linux: `PATH` i AppImages a `~/Applications`; macOS: `/Applications/MuseScore*.app`;
+  Windows: `Program Files\MuseScore *`).
 - **Sense MuseScore**: s'escriu només el MusicXML i s'avisa — **no trenca**
   l'exportació normal.
 
