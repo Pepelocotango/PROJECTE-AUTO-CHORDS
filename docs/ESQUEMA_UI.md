@@ -50,7 +50,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |
 | — | `self.b_export_part` | **Exporta partitura** (MusicXML; PDF/MSCZ si hi ha MuseScore) | `QPushButton` |
-| — | `self.b_zoom_sel` | **Zoom selecció** (ajusta la vista a la selecció del timeline) | `QPushButton` |
+| — | `self.b_zs` (al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / Lliure** | `QPushButton` (checkable) |
 | — | `self.bpm` · `self.bpb` · `self.offset` · `self.offset_cb` | **BPM**, **Compàs**, **Offset (s)**, **≈ C.B** | `QLineEdit` |
 | — | `self.b_detecta` | **🎯 Detecta** (obre el diàleg de BPM) | `QPushButton` |
