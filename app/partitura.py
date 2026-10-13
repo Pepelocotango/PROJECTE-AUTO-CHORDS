@@ -55,10 +55,16 @@ def safe_filename(nom, fallback="X"):
     return (s or fallback)[:64]
 
 
+# Prefix de les carpetes que genera l'app. La font única és
+# `pipeline.PREFIX_SORTIDA`; aquí el repetim perquè aquest mòdul no importa res
+# del projecte (un test comprova que tots dos valors coincideixen).
+_PREFIX_SORTIDA = "AUTOCHORDS_"
+
+
 def _base_de_sortida(sortida):
     b = os.path.basename(os.path.abspath(sortida).rstrip("/"))
-    if b.endswith("_ACORDS"):
-        b = b[:-len("_ACORDS")]
+    if b.startswith(_PREFIX_SORTIDA):
+        b = b[len(_PREFIX_SORTIDA):]
     return safe_filename(b or "partitura")
 
 

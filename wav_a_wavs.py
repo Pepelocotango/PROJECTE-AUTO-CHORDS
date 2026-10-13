@@ -28,7 +28,7 @@ def main():
     ap.add_argument("offset", type=float, nargs="?", default=0.0,
                     help="segons on cau el compàs 1 (defecte 0)")
     ap.add_argument("--sortida", default="",
-                    help="carpeta de sortida (defecte: <nom_wav>_ACORDS al costat del wav)")
+                    help="carpeta de sortida (defecte: AUTOCHORDS_<nom_wav> al costat del wav)")
     ap.add_argument("--sense-estructura", action="store_true",
                     help="no extreu estructura (qm-segmenter -> ABC)")
     ap.add_argument("--tempo-lliure", action="store_true",
@@ -46,8 +46,7 @@ def main():
     except Exception as e:  # noqa: BLE001
         sys.exit(f"No és una wav vàlida: {e}")
 
-    base = os.path.splitext(os.path.basename(a.wav))[0]
-    sortida = a.sortida or os.path.join(os.path.dirname(a.wav), base + "_ACORDS")
+    sortida = a.sortida or pipeline.carpeta_sortida(a.wav)
     os.makedirs(sortida, exist_ok=True)
     log(f"Sortida: {sortida}")
 

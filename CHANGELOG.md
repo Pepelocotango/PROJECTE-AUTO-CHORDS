@@ -37,6 +37,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   mai**. Els noms d'acord habituals (`C`, `C#m7`, `N`, `Am/G`→`Am-G`…) queden
   **idèntics** (hi ha un test «daurat»).
 
+### Canviat
+- **Les carpetes que genera l'app porten ara un PREFIX**: `AUTOCHORDS_<nom>`
+  (abans `<nom>_ACORDS`). P. ex. `Tema.wav` → **`AUTOCHORDS_Tema/`**. Així totes
+  les carpetes de l'app queden juntes i al davant quan s'ordena el directori de
+  la cançó. El nom surt d'una **font única** (`pipeline.carpeta_sortida`), que
+  fan servir l'anàlisi, el visor i `wav_a_wavs.py`; el títol per defecte de la
+  partitura surt del prefix. **Sense retrocompatibilitat** amb carpetes
+  `_ACORDS` existents (decisió de l'operador): les velles no es detectaran.
+
 ### Afegit
 - **`docs/REGLES_DE_LA_APP.md`**: totes les **regles d'or (invariants)** de l'app
   en un sol lloc, **numerades** (1–10) amb la seva validació al codi i tests.

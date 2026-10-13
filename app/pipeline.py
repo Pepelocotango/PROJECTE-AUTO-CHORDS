@@ -84,6 +84,22 @@ def safe_filename(name, fallback="X", usats=None):
     return s
 
 
+# Prefix de les carpetes que genera l'app al costat del WAV. És PREFIX (no
+# sufix) perquè totes les carpetes de l'app quedin juntes i al davant quan
+# s'ordena el directori on hi ha la cançó.
+PREFIX_SORTIDA = "AUTOCHORDS_"
+
+
+def carpeta_sortida(wav):
+    """Carpeta de resultats que l'app crea al costat de `wav`.
+
+    Nom: `AUTOCHORDS_<nom-de-la-wav>` (p. ex. `Tema.wav` → `AUTOCHORDS_Tema`).
+    Font única del nom: la fan servir main.py, visor.py i wav_a_wavs.py.
+    """
+    base = os.path.splitext(os.path.basename(wav))[0]
+    return os.path.join(os.path.dirname(wav), PREFIX_SORTIDA + base)
+
+
 def _vamp_env():
     env = dict(os.environ)
     env["VAMP_PATH"] = plataforma.path_env_vamp(VAMP_DIRS)

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""CLI: genera una partitura (xifrat) a partir d'una carpeta `*_ACORDS/`.
+"""CLI: genera una partitura (xifrat) a partir d'una carpeta `AUTOCHORDS_*/`.
 
 Ús:
-    python3 eines/exporta_partitura.py "<carpeta_fins_a>/Tema_ACORDS" [opcions]
+    python3 eines/exporta_partitura.py "<carpeta_fins_a>/AUTOCHORDS_Tema" [opcions]
 
 Opcions:
     --tema NOM          Nom base dels fitxers (per defecte: nom de la carpeta)
@@ -30,7 +30,7 @@ from app import partitura  # noqa: E402
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Exporta una partitura xifrada.")
-    ap.add_argument("carpeta", help="carpeta *_ACORDS amb els resultats")
+    ap.add_argument("carpeta", help="carpeta AUTOCHORDS_* amb els resultats")
     ap.add_argument("--tema", default=None)
     ap.add_argument("--key", default="C", help="auto | tonic (G, F, 'E minor'…)")
     ap.add_argument("--wav", default=None)

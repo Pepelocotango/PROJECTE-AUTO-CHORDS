@@ -84,7 +84,7 @@ class ExportPipelineTests(unittest.TestCase):
                 w.setsampwidth(2)
                 w.setframerate(44100)
                 w.writeframes(b"\x00\x00" * 1000)
-            out = Path(td) / "tema_ACORDS"
+            out = Path(td) / "AUTOCHORDS_tema"
             out.mkdir()
             (out / "acords.csv").write_text("0.0,C\n", encoding="utf-8")
             (out / "estructura_ABC.csv").write_text(
@@ -128,7 +128,7 @@ class ExportPipelineTests(unittest.TestCase):
 
     def test_exporta_total_generates_expected_outputs(self):
         with tempfile.TemporaryDirectory() as td:
-            base = Path(td) / "tema_ACORDS"
+            base = Path(td) / "AUTOCHORDS_tema"
             csv_ac = base / "acords.csv"
             csv_seg = base / "segments.csv"
             abc = base / "estructura_ABC.csv"
@@ -166,7 +166,7 @@ class ExportPipelineTests(unittest.TestCase):
         """REGLA 4: la suma dels WAVs exportats (acords i estructura) = la durada."""
         import wave
         with tempfile.TemporaryDirectory() as td:
-            base = Path(td) / "tema_ACORDS"
+            base = Path(td) / "AUTOCHORDS_tema"
             base.mkdir(parents=True)
             csv_ac = base / "acords.csv"
             csv_seg = base / "segments.csv"
@@ -245,7 +245,7 @@ class ExportPipelineTests(unittest.TestCase):
                 wv_w.setsampwidth(2)
                 wv_w.setframerate(44100)
                 wv_w.writeframes(b"\x00\x00" * 44100 * 2)
-            out = Path(td) / "tema_ACORDS"
+            out = Path(td) / "AUTOCHORDS_tema"
             out.mkdir()
             (out / "acords.csv").write_text("0.0,C\n", encoding="utf-8")
             (out / "estructura_ABC.csv").write_text(
@@ -410,21 +410,21 @@ class ExportPipelineTests(unittest.TestCase):
         window = app_main.Finestra()
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
-            (base / "tema_ACORDS").mkdir()
-            (base / "tema_ACORDS" / "acords.csv").write_text(
+            (base / "AUTOCHORDS_tema").mkdir()
+            (base / "AUTOCHORDS_tema" / "acords.csv").write_text(
                 "0.0,C\n2.0,Am\n", encoding="utf-8"
             )
-            (base / "tema_ACORDS" / "segments.csv").write_text(
+            (base / "AUTOCHORDS_tema" / "segments.csv").write_text(
                 "0.0,2.0,0,N1\n2.0,4.0,1,A\n", encoding="utf-8"
             )
-            window.sortida = str(base / "tema_ACORDS")
+            window.sortida = str(base / "AUTOCHORDS_tema")
             window.wav_edit.setText(str(base / "tema.wav"))
             with patch.object(app_main.pipeline, "exporta_total") as exporta:
                 with patch.object(app_main.QDesktopServices, "openUrl"):
                     window.exporta()
 
         exporta.assert_called_once()
-        self.assertEqual(exporta.call_args.kwargs["sortida"], str(base / "tema_ACORDS"))
+        self.assertEqual(exporta.call_args.kwargs["sortida"], str(base / "AUTOCHORDS_tema"))
         app.quit()
 
     def test_visor_normalizes_interval_order_for_chords_and_sections(self):
@@ -733,7 +733,7 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         import os
         td = tempfile.mkdtemp()
         wav_path = os.path.join(td, "tema.wav")
-        sortida = os.path.join(td, "tema_ACORDS")
+        sortida = os.path.join(td, "AUTOCHORDS_tema")
         os.makedirs(sortida)
         with wave.open(wav_path, "wb") as w:
             w.setnchannels(1)
@@ -1114,7 +1114,7 @@ class OffsetDosCampsTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 30)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "9.5,Am\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
@@ -1167,7 +1167,7 @@ class OffsetLlistesTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 30)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "9.5,Am\n12.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
@@ -1478,7 +1478,7 @@ class UndoInfoTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 10)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
@@ -1538,7 +1538,7 @@ class InfoBoxTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n8.0,G\n")
         _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
@@ -1790,7 +1790,7 @@ class BpmDoblaTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 5)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
@@ -2290,7 +2290,7 @@ class BotoOnOffTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 10)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
@@ -2380,7 +2380,7 @@ class LlistaSeleccioTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
         _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
@@ -2430,7 +2430,7 @@ class OffsetBotoCursorTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
@@ -2467,7 +2467,7 @@ class TapTempoTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 10)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
@@ -2539,7 +2539,7 @@ class EditorFranjaTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
         _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
@@ -2637,7 +2637,7 @@ class MenuEdicioTests(unittest.TestCase):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
-        ac = os.path.join(td, "t_ACORDS"); os.makedirs(ac)
+        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
         _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
         _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
@@ -2970,7 +2970,7 @@ class UndoRedoTests(unittest.TestCase):
     def _make_visor_with_data(self):
         td = tempfile.mkdtemp()
         wav_path = os.path.join(td, "tema.wav")
-        sortida = os.path.join(td, "tema_ACORDS")
+        sortida = os.path.join(td, "AUTOCHORDS_tema")
         os.makedirs(sortida)
         with wave.open(wav_path, "wb") as w:
             w.setnchannels(1)
@@ -3536,6 +3536,25 @@ class SafeFilenameTests(unittest.TestCase):
         noms = os.listdir(d)
         self.assertIn("1-1-1_2-1-1_A.wav", noms)
         self.assertIn("3-1-1_4-1-1_A_2.wav", noms)
+
+
+class CarpetaSortidaTests(unittest.TestCase):
+    """Nom de la carpeta de resultats: PREFIX `AUTOCHORDS_` (font única)."""
+
+    def test_prefix_i_no_sufix(self):
+        self.assertEqual(pipeline.PREFIX_SORTIDA, "AUTOCHORDS_")
+
+    def test_nom_derivat(self):
+        self.assertEqual(pipeline.carpeta_sortida("/musica/Tema.wav"),
+                         "/musica/AUTOCHORDS_Tema")
+
+    def test_al_costat_de_la_wav(self):
+        self.assertEqual(pipeline.carpeta_sortida("/a/b/La meva cançó.mp3"),
+                         "/a/b/AUTOCHORDS_La meva cançó")
+
+    def test_sense_directori(self):
+        self.assertEqual(pipeline.carpeta_sortida("Tema.wav"),
+                         "AUTOCHORDS_Tema")
 
 
 if __name__ == "__main__":

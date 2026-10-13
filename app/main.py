@@ -1014,8 +1014,7 @@ class Finestra(QMainWindow):
     def _detecta_sortida_wav(self, wav):
         if not wav or not os.path.isfile(wav):
             return ""
-        base = os.path.splitext(os.path.basename(wav))[0]
-        sortida = os.path.join(os.path.dirname(wav), base + "_ACORDS")
+        sortida = pipeline.carpeta_sortida(wav)
         if os.path.isdir(sortida):
             return sortida
         return ""
@@ -1324,8 +1323,7 @@ class Finestra(QMainWindow):
             if not self._confirma_reanalisi():
                 return
         self._atura_si_sona("analisi amb els plugins")
-        base = os.path.splitext(os.path.basename(wav))[0]
-        self.sortida = os.path.join(os.path.dirname(wav), base + "_ACORDS")
+        self.sortida = pipeline.carpeta_sortida(wav)
         self.log.clear()
         self.barra.setValue(0)
         self.registra(f"Sortida: {self.sortida}")
@@ -1369,8 +1367,7 @@ class Finestra(QMainWindow):
                 QMessageBox.warning(self, "Auto Chords",
                                     "Tria una wav vàlida abans d'exportar.")
                 return
-            base = os.path.splitext(os.path.basename(wav))[0]
-            self.sortida = os.path.join(os.path.dirname(wav), base + "_ACORDS")
+            self.sortida = pipeline.carpeta_sortida(wav)
 
         csv_ac = os.path.join(self.sortida, "acords.csv")
         csv_seg = os.path.join(self.sortida, "segments.csv")

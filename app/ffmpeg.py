@@ -6,7 +6,7 @@ treballem amb el WAV resultant.
 
 El WAV convertit es deixa **al costat de l'original** com `<nom>_convertit.wav`
 (i es reutilitza si ja és més nou que l'original). Així el pipeline hi pot
-escriure la carpeta `<nom>_ACORDS` al costat.
+escriure la carpeta `AUTOCHORDS_<nom>` al costat.
 
 Tot en català.
 """

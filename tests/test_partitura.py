@@ -115,7 +115,7 @@ class MusicXmlTests(unittest.TestCase):
 
 class ExportaTests(unittest.TestCase):
     def _escriu_font(self, td):
-        d = Path(td) / "Tema_ACORDS"
+        d = Path(td) / "AUTOCHORDS_Tema"
         d.mkdir()
         (d / "acords_locators.txt").write_text(
             "posició (compàs.temps.setzena)   acord   durada(temps)\n"
@@ -191,6 +191,23 @@ class TestMuseScore(unittest.TestCase):
                 mock.patch("app.partitura.glob.glob",
                            side_effect=lambda p, **k: ["/X"] if "MuseScore" in p else []):
             self.assertEqual(partitura.musescore_bin(), "/X")
+
+
+class BaseDeSortidaTests(unittest.TestCase):
+    """Títol per defecte derivat del nom de la carpeta (prefix AUTOCHORDS_)."""
+
+    def test_prefix_coincideix_amb_pipeline(self):
+        # El mòdul partitura no importa el projecte: el prefix s'hi repeteix i
+        # aquest test evita que els dos valors divergeixin.
+        from app import pipeline
+        self.assertEqual(partitura._PREFIX_SORTIDA, pipeline.PREFIX_SORTIDA)
+
+    def test_treu_el_prefix(self):
+        self.assertEqual(partitura._base_de_sortida("/musica/AUTOCHORDS_Tema"),
+                         "Tema")
+
+    def test_sense_prefix_es_queda_igual(self):
+        self.assertEqual(partitura._base_de_sortida("/musica/Altres"), "Altres")
 
 
 if __name__ == "__main__":

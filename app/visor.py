@@ -369,8 +369,7 @@ class Visor(QMainWindow):
         self._undo_init()   # estat inicial = base per a la primera operacio
 
     def _carpeta_acords(self):
-        base = os.path.splitext(os.path.basename(self.wav_path))[0]
-        return os.path.join(os.path.dirname(self.wav_path), base + "_ACORDS")
+        return pipeline.carpeta_sortida(self.wav_path)
 
     def _fmt_compas(self, s):
         if not self.tempo_fix:
