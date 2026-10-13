@@ -1891,6 +1891,151 @@ class FfmpegTests(unittest.TestCase):
         self.assertEqual(m1, os.path.getmtime(wav2))
 
 
+class _FakeProc:
+    """Resultat fals de subprocess.run."""
+
+    def __init__(self, returncode=0, stdout="", stderr=""):
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+class _FakeSubprocess:
+    """Doble del mòdul `subprocess` (només `run`), amb registre de crides.
+
+    S'instal·la amb `patch.object(ffmpeg, "subprocess", fake)` perquè NO toca
+    el `subprocess` global (que comparteixen la resta de tests).
+    """
+
+    SubprocessError = subprocess.SubprocessError
+    TimeoutExpired = subprocess.TimeoutExpired
+
+    def __init__(self, results):
+        self._results = list(results)
+        self.calls = []
+
+    def run(self, cmd, **kwargs):
+        self.calls.append(list(cmd))
+        return self._results.pop(0)
+
+
+class FfmpegSeguretatTests(unittest.TestCase):
+    """Opcions de seguretat d'ffmpeg (Pas 1): -nostdin + -protocol_whitelist."""
+
+    def test_opcions_entrada_abans_de_i(self):
+        cmd = ffmpeg._cmd_converteix("/tmp/ton.wav", "/tmp/out.wav")
+        i = cmd.index("-i")
+        self.assertIn("-nostdin", cmd)
+        self.assertLess(cmd.index("-nostdin"), i)
+        self.assertLess(cmd.index("-protocol_whitelist"), i)
+        self.assertEqual(cmd[cmd.index("-protocol_whitelist") + 1], "file,pipe")
+        # -y (sobreescriure) també abans de -i, com abans.
+        self.assertLess(cmd.index("-y"), i)
+
+    def test_info_porta_opcions(self):
+        cmd = ffmpeg._cmd_info("/tmp/ton.wav")
+        self.assertIn("-nostdin", cmd)
+        self.assertIn("file,pipe", cmd)
+        self.assertEqual(cmd[-1], os.path.abspath("/tmp/ton.wav"))
+
+    def test_rutes_estranyes_no_es_filtren(self):
+        # Espais, accents, '#', '&', cometes i unicode: la ruta ha d'arribar
+        # VERBATIM (només feta absoluta), sense filtrar cap caràcter.
+        ruta = "/tmp/01 Cançó d'en 'Pau' & cia #2 (ü) ç.mp3"
+        cmd = ffmpeg._cmd_converteix(ruta, "/tmp/sortida amb espais.wav")
+        self.assertEqual(cmd[cmd.index("-i") + 1], os.path.abspath(ruta))
+        self.assertEqual(cmd[-1], os.path.abspath("/tmp/sortida amb espais.wav"))
+
+    def test_ruta_relativa_es_fa_absoluta(self):
+        self.assertEqual(ffmpeg._ruta_arg("ton.wav"),
+                         os.path.join(os.getcwd(), "ton.wav"))
+
+    def test_no_opcio(self):
+        self.assertEqual(ffmpeg._no_opcio("-rara.wav"),
+                         os.path.join(".", "-rara.wav"))
+        self.assertEqual(ffmpeg._no_opcio("normal.wav"), "normal.wav")
+
+    def test_treu_opcions(self):
+        cmd = ["ffmpeg", "-nostdin", "-protocol_whitelist", "file,pipe",
+               "-y", "-i", "x"]
+        self.assertEqual(ffmpeg._treu_opcions(cmd, {"-protocol_whitelist"}),
+                         ["ffmpeg", "-nostdin", "-y", "-i", "x"])
+        self.assertEqual(ffmpeg._treu_opcions(cmd, {"-nostdin"}),
+                         ["ffmpeg", "-protocol_whitelist", "file,pipe",
+                          "-y", "-i", "x"])
+        self.assertEqual(ffmpeg._treu_opcions(cmd, set()), cmd)
+
+    def test_opcions_a_treure(self):
+        # ffmpeg vell: "Unrecognized option 'protocol_whitelist'."
+        self.assertEqual(
+            ffmpeg._opcions_a_treure(
+                "Unrecognized option 'protocol_whitelist'."),
+            {"-protocol_whitelist"})
+        # ffprobe: "... for option 'nostdin': Option not found"
+        self.assertEqual(
+            ffmpeg._opcions_a_treure(
+                "Failed to set value '-protocol_whitelist' for option "
+                "'nostdin': Option not found"),
+            {"-nostdin"})
+        # Altres errors no treuen res.
+        self.assertEqual(ffmpeg._opcions_a_treure(""), set())
+        self.assertEqual(
+            ffmpeg._opcions_a_treure("Error while decoding stream #0:0"), set())
+
+    def test_fallback_ffmpeg_vell(self):
+        # ffmpeg vell: treu -protocol_whitelist i manté -nostdin.
+        fake = _FakeSubprocess([
+            _FakeProc(1, stderr="Unrecognized option 'protocol_whitelist'."),
+            _FakeProc(0, stdout="ok"),
+        ])
+        logs = []
+        with patch.object(ffmpeg, "subprocess", fake):
+            p = ffmpeg._executa(["ffmpeg", "-nostdin", "-protocol_whitelist",
+                                 "file,pipe", "-i", "x"], 10, log=logs.append)
+        self.assertEqual(p.returncode, 0)
+        self.assertEqual(len(fake.calls), 2)
+        self.assertIn("-protocol_whitelist", fake.calls[0])
+        self.assertNotIn("-protocol_whitelist", fake.calls[1])
+        self.assertIn("-nostdin", fake.calls[1])          # es manté
+        self.assertTrue(logs and "no entén" in logs[0])
+
+    def test_fallback_ffprobe_sense_nostdin(self):
+        # ffprobe no té -nostdin: es treu i es manté -protocol_whitelist.
+        fake = _FakeSubprocess([
+            _FakeProc(1, stderr="Failed to set value '-protocol_whitelist' "
+                                "for option 'nostdin': Option not found"),
+            _FakeProc(0, stdout="{}"),
+        ])
+        with patch.object(ffmpeg, "subprocess", fake):
+            p = ffmpeg._executa(["ffprobe", "-nostdin",
+                                 "-protocol_whitelist", "file,pipe", "x"], 10)
+        self.assertEqual(p.returncode, 0)
+        self.assertEqual(len(fake.calls), 2)
+        self.assertNotIn("-nostdin", fake.calls[1])
+        self.assertIn("-protocol_whitelist", fake.calls[1])
+
+    def test_fallback_no_salva_altres_errors(self):
+        fake = _FakeSubprocess([_FakeProc(1, stderr="Invalid data found")])
+        with patch.object(ffmpeg, "subprocess", fake):
+            p = ffmpeg._executa(["ffmpeg", "-i", "x"], 10)
+        self.assertEqual(p.returncode, 1)
+        self.assertEqual(len(fake.calls), 1)              # no reintenta
+
+    def test_wav_pcm16_no_crida_ffmpeg(self):
+        # Un WAV PCM 16 ja bo es retorna tal qual SENSE cridar ffmpeg.
+        fake = _FakeSubprocess([])                        # si es cridés, petaria
+        d = tempfile.mkdtemp()
+        src = os.path.join(d, "bo.wav")
+        with wave.open(src, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 100)
+        with patch.object(ffmpeg, "subprocess", fake):
+            self.assertEqual(ffmpeg.converteix_a_wav(src), src)
+        self.assertEqual(fake.calls, [])
+
+
 class PostprocTests(unittest.TestCase):
     """Post-processat dels acords (app/postproc.py)."""
 
@@ -2011,7 +2156,7 @@ class DialegOpcionsTests(unittest.TestCase):
         b = d.opcions()["bpm"]
         self.assertEqual(b["min"], 60)
         self.assertEqual(b["pref_min"], 85)    # plateau del prior
-        self.assertEqual(b["motor"], "nostre")
+        self.assertEqual(b["motor"], "consens")   # defecte revisat 13-10
 
     def test_estructura_nomes_qm(self):
         # el Segmentino s'ha retirat: l'estructura sempre va amb qm-segmenter
@@ -2035,7 +2180,7 @@ class DialegOpcionsTests(unittest.TestCase):
         d._restaura()
         op = d.opcions()
         self.assertEqual(op["chords"]["useHMM"], 1)
-        self.assertEqual(op["structure"]["durada_min"], 0.0)
+        self.assertEqual(op["structure"]["durada_min"], 2.0)   # defecte revisat 13-10
 
     def test_desa_i_carrega(self):
         op = dialegs.carrega_opcions()

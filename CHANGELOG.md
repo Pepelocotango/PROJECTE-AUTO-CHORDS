@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+### Seguretat
+- **Import d'àudio (ffmpeg/ffprobe) endurit**: les comandes d'`info()` i
+  `converteix_a_wav()` porten ara **`-nostdin`** i **`-protocol_whitelist
+  file,pipe`** abans de l'entrada, perquè un fitxer disfressat (playlist
+  HLS/concat, subtítol…) no pugui fer que ffmpeg llegeixi altres fitxers ni faci
+  peticions de xarxa. Les rutes es passen sempre **absolutes** (i amb `./` si
+  comencessin amb `-`), sense filtrar-ne cap caràcter. Si un ffmpeg molt vell no
+  entén `-protocol_whitelist`, es reintenta sense l'opció i es registra al log
+  (mai es trenca l'obertura d'àudio).
+
 ### Afegit
 - **`docs/REGLES_DE_LA_APP.md`**: totes les **regles d'or (invariants)** de l'app
   en un sol lloc, **numerades** (1–10) amb la seva validació al codi i tests.
