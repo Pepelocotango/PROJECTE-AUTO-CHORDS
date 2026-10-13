@@ -55,7 +55,7 @@
 **Verificació feta** (2026-10-07): dins un *namespace* de muntatge amb les **9
 llibreries del sistema amagades** (`/dev/null` a sobre) i només `portable/lib`
 disponible, `vamp_host_local` extreu acords (Chordino, 82 línies) i estructura
-(`qm-segmenter`); l'app arrenca i passen **252 tests**.
+(`qm-segmenter`); l'app arrenca i passen **265 tests**.
 
 ---
 

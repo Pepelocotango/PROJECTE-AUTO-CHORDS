@@ -132,7 +132,7 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
   play/pause.
 - **Coherència del play**: mono cacat, **volum/mute en viu**, latència baixa,
   sense tallar la cua, avís si el reproductor mor.
-- **252 tests** (OK, 1 skip) — suite completa executant-se als 3 CI.
+- **265 tests** (OK, 1 skip) — suite completa executant-se als 3 CI.
 
 La base funcional i el nou visor estan validats. El que queda són millores de polish, estabilització i les funcionalitats pràctiques descrites a l’apartat següent.
 

@@ -25,7 +25,7 @@
 
 - **AppImage autocontinguda** (runtime estàtic → **no cal `libfuse2`**).
 - **Verificada de soca-rel**: arrenca muntada (GUI real, 0 errors), l'estat va a
-  `~/.local/state/auto-chords/`, **252 tests (suite completa) dins el paquet**, host+plugins
+  `~/.local/state/auto-chords/`, **265 tests (suite completa) dins el paquet**, host+plugins
   del paquet OK sobre un WAV real, i **export de partitura** (MusicXML+PDF+MSCZ).
 - Workflows: `build-appimage.yml` (manual), **`build-all.yml`** (agregador: executa
   els 3 builds en **paral·lel**) i `release.yml` (tags `v*`).
