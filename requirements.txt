@@ -15,7 +15,7 @@ PyQt5==5.15.10; sys_platform == "darwin"
 # ⚠️ PyQt5-Qt5 també va PER PLATAFORMA: a PyPI, la 5.15.19 NOMÉS publica rodes
 # `macosx_10_13_x86_64` i `manylinux2014` → **NO n'hi ha per a Windows** i el
 # `pip install` del CI de Windows peta. L'última amb roda Windows és la 5.15.2.
-PyQt5-Qt5==5.15.2; sys_platform == "win32"
+PyQt5-Qt5==5.15.19; sys_platform == "win32"
 PyQt5-Qt5==5.15.19; sys_platform != "win32"
 PyQt5_sip==12.19.0
 numpy==1.26.4

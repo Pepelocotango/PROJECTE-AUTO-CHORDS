@@ -18,7 +18,7 @@ dependencies = [
   "PyQt5==5.15.11; sys_platform != 'darwin'",
   "PyQt5==5.15.10; sys_platform == 'darwin'",
   # ⚠️ PyQt5-Qt5 per plataforma: la 5.15.19 no té roda Windows (l'última és 5.15.2).
-  "PyQt5-Qt5==5.15.2; sys_platform == 'win32'",
+  "PyQt5-Qt5==5.15.19; sys_platform == 'win32'",
   "PyQt5-Qt5==5.15.19; sys_platform != 'win32'",
   "PyQt5_sip==12.19.0",
   "sounddevice==0.5.6",
