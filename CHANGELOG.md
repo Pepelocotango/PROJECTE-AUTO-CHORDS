@@ -63,6 +63,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 - **`docs/REGLES_DE_LA_APP.md`**: totes les **regles d'or (invariants)** de l'app
   en un sol lloc, **numerades** (1–10) amb la seva validació al codi i tests.
   Enllaçat des del `ROADMAP` i el `DEVELOPING`.
+- **`docs/SEGURETAT.md`**: resum per a mantenidors de tot l'**enduriment de
+  seguretat** (app + cadena de subministrament) i de **com es manté**
+  (actualitzar una versió amb `baixa_verificat.py`, què no s'ha de fer).
+  Enllaçat des del `DEVELOPING.md`.
 
 ### Corregit
 - **Invariant de COBERTURA dels clips** (regla d'or): la **suma dels clips

@@ -242,7 +242,8 @@ La nostra feina és construir i integrar, però no és “des de zero” en el s
 
 Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
 (motors i opcions), `QM_VAMP.md` (Queen Mary), `PLAY.md` (reproducció),
-`PARTITURA_EXPORT.md` (partitura/MuseScore), `AUBIO_TEMPO.md` (històric).
+`PARTITURA_EXPORT.md` (partitura/MuseScore), `AUBIO_TEMPO.md` (històric),
+`SEGURETAT.md` (**què s'ha endurit i com es manté**).
 
 ## Convencions
 
