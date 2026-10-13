@@ -15,6 +15,10 @@ name: Compilar els 3 SO (Linux + Windows + macOS)
 on:
   workflow_dispatch:
 
+# Els workflows NOMES llegeixen el repositori (no hi escriuen mai).
+permissions:
+  contents: read
+
 jobs:
   linux:
     name: Linux (AppImage)
