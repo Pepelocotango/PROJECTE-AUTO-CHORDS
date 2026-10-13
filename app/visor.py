@@ -427,7 +427,7 @@ class Visor(QMainWindow):
             return []
         durada = self._durada_wav()
         ordenats = sorted(items, key=lambda x: float(x[0]))
-        prev_t = None
+        prev_t, prev_nom = None, None
         for item in ordenats:
             t = float(item[0])
             if t < 0:
@@ -438,12 +438,24 @@ class Visor(QMainWindow):
                 raise ValueError(
                     f"L'acord {item[1]} no cap dins de la WAV ({t:.2f}s; la WAV "
                     f"fa {durada:.2f}s)")
-            if prev_t is not None and t <= prev_t + 1e-9:
-                raise ValueError(
-                    "Els acords no poden compartir ni invertir el seu inici. "
-                    "L'ordre ha de ser estricte i sense solapaments."
-                )
-            prev_t = t
+            if prev_t is not None:
+                if t <= prev_t + 1e-9:
+                    raise ValueError(
+                        "Els acords no poden compartir ni invertir el seu inici. "
+                        "L'ordre ha de ser estricte i sense solapaments."
+                    )
+                # Resolució del CSV: dos inicis a menys de 10 ms cauen a la
+                # MATEIXA fila del CSV (2 decimals) i el primer quedaria amb un
+                # clip de durada ~0 a l'export (trenca #1/#2 a nivell de CSV).
+                if t - prev_t < pipeline.RESOLUCIO_CSV - 1e-9:
+                    raise ValueError(
+                        f"Els acords {prev_nom} ({prev_t:.3f}s) i {item[1]} "
+                        f"({t:.3f}s) estan a menys de "
+                        f"{pipeline.RESOLUCIO_CSV * 1000:.0f} ms: al CSV "
+                        f"({pipeline.TEMPS_DEC} decimals) quedarien al mateix "
+                        f"instant i un clip tindria durada 0."
+                    )
+            prev_t, prev_nom = t, item[1]
         return ordenats
 
     def _normalitza_acords(self, items=None):
@@ -456,7 +468,9 @@ class Visor(QMainWindow):
     def _afegeix_acord(self, t, nom):
         if nom is None:
             nom = "N"
-        nom = str(nom).strip().replace(os.sep, "-").replace("\\", "-")
+        # Sanejat canònic (el mateix que l'export i el rename): separadors i
+        # reservats de Windows passen a "-"; els noms habituals no canvien.
+        nom = pipeline.saneja_nom_acord(nom)
         if not nom:
             return False
         item = (float(t), nom, f"{float(t):.9f}")
@@ -628,17 +642,60 @@ class Visor(QMainWindow):
             self.log(f"desat ABC ERROR: {e}")
         self.log(f"desat CSV {self.csv_acords}")
 
-    # ---------- Undo/Redo: NOMÉS el model d'edició ----------
+    # ---------- Undo/Redo: el MODEL d'edició + la GRAELLA i el LOOP ----------
     # Mai toca les wavs generades (aquestes són l'últim pas, via exporta()).
     def _estat_edicio(self):
+        """(acords, seccions) — el MODEL. El fa servir també el pont MCP."""
         return (copy.deepcopy(list(self.acords)),
                 copy.deepcopy(list(self.seccions)))
+
+    def _estat_temps(self):
+        """Estat de la GRAELLA (BPM/compàs/offset) i del LOOP A-B.
+
+        A1: desfer/refer també ha de tornar enrere aquests canvis (abans només
+        el model, i canviar el BPM era irreversible).
+        """
+        return {
+            "bpm": float(getattr(self, "bpm", 120.0)),
+            "bpb": int(getattr(self, "bpb", 4)),
+            "beat_type": int(getattr(self, "beat_type", 4)),
+            "offset": float(getattr(self, "offset", 0.0)),
+            "tempo_fix": bool(getattr(self, "tempo_fix", True)),
+            "loop_a": getattr(self, "loop_a", None),
+            "loop_b": getattr(self, "loop_b", None),
+            "loop_on": bool(getattr(self, "loop_on", False)),
+        }
+
+    def _estat_complet(self):
+        """Estat apilable pel desfer/refer: `(acords, seccions, temps)`."""
+        return self._estat_edicio() + (self._estat_temps(),)
+
+    def _aplica_temps(self, temps):
+        """Restaura la graella/loop desats (i refresca la UI si ja existeix)."""
+        for k in ("bpm", "bpb", "beat_type", "offset", "tempo_fix"):
+            if temps.get(k) is not None:
+                setattr(self, k, temps[k])
+        self.loop_a, self.loop_b = temps.get("loop_a"), temps.get("loop_b")
+        self.loop_on = bool(temps.get("loop_on", False))
+        if hasattr(self, "timeline"):
+            try:
+                self._actualitza_temps()
+            except Exception as e:  # noqa: BLE001
+                self.log(f"desfer: no s'ha pogut refrescar la graella: {e}")
+            try:
+                self.timeline.set_loop(self.loop_a, self.loop_b)
+            except Exception as e:  # noqa: BLE001
+                self.log(f"desfer: no s'ha pogut refrescar el loop: {e}")
+        # El botó 🔁 de la finestra ha de reflectir-ho.
+        self.loopStateChanged.emit(self.loop_on)
+        if hasattr(self, "_pinta_loop"):
+            self._pinta_loop()
 
     def _undo_init(self):
         if not hasattr(self, "_undo_stack"):
             self._undo_stack = []
             self._redo_stack = []
-            self._undo_base = self._estat_edicio()
+            self._undo_base = self._estat_complet()
             self._undo_pending = None
 
     def _undo_touch_base(self):
@@ -648,13 +705,13 @@ class Visor(QMainWindow):
         pendent, aixi mai queda obsoleta (analisi, carrega, edicions fetes
         per camins que no passen per _undo_marca)."""
         if getattr(self, "_undo_pending", None) is None:
-            self._undo_base = self._estat_edicio()
+            self._undo_base = self._estat_complet()
 
     def _undo_reset(self):
         """Neteja l'historial (nou document / nova analisi)."""
         self._undo_stack = []
         self._redo_stack = []
-        self._undo_base = self._estat_edicio()
+        self._undo_base = self._estat_complet()
         self._undo_pending = None
 
     def _undo_marca(self):
@@ -666,7 +723,7 @@ class Visor(QMainWindow):
     def _undo_commit(self):
         """Tanca l'operació d'edició i l'apila si hi ha hagut canvi."""
         self._undo_init()
-        ara = self._estat_edicio()
+        ara = self._estat_complet()
         canvi = self._undo_pending is not None and ara != self._undo_pending
         if canvi:
             self._undo_stack.append(self._undo_pending)
@@ -677,10 +734,11 @@ class Visor(QMainWindow):
         self._undo_pending = None
 
     def _aplica_estat(self, estat):
-        acords, seccions = estat
+        acords, seccions, temps = estat
         self.acords = copy.deepcopy(acords)
         self.seccions = copy.deepcopy(seccions)
         self.timeline.set_data(self.acords, self.seccions)
+        self._aplica_temps(temps)
         self._omple_llista_ac()
         self._actualitza_llista_abc()
         try:
@@ -690,8 +748,10 @@ class Visor(QMainWindow):
 
     def _descriu_canvi(self, abans, ara):
         """Descripcio curta del canvi entre dos estats (per a desfer/refer)."""
-        ac0, se0 = abans
-        ac1, se1 = ara
+        # Ull: els bucles de sota fan servir t0/t1 per als temps dels clips, així
+        # que els temps globals van amb un altre nom (tp0/tp1).
+        ac0, se0, tp0 = abans
+        ac1, se1, tp1 = ara
         if len(ac1) > len(ac0):
             return f"afegir un acord (ara {len(ac1)})"
         if len(ac1) < len(ac0):
@@ -712,6 +772,20 @@ class Visor(QMainWindow):
             if abs(float(i0) - float(i1)) > 1e-6 or abs(float(f0) - float(f1)) > 1e-6:
                 return (f"moure la secció «{l1}» "
                         f"({float(i0):.2f}s → {float(i1):.2f}s)")
+        # A1: canvis de GRAELLA o de LOOP (que no toquen el model).
+        if tp0.get("bpm") != tp1.get("bpm"):
+            return f"canviar el BPM ({tp0['bpm']:g} → {tp1['bpm']:g})"
+        if (tp0.get("bpb") != tp1.get("bpb")
+                or tp0.get("beat_type") != tp1.get("beat_type")):
+            return "canviar el compàs"
+        if tp0.get("offset") != tp1.get("offset"):
+            return (f"canviar l'offset ({tp0['offset']:.2f}s → "
+                    f"{tp1['offset']:.2f}s)")
+        if tp0.get("tempo_fix") != tp1.get("tempo_fix"):
+            return "canviar el mode de temps (BPM·compàs / Lliure)"
+        if ((tp0.get("loop_on"), tp0.get("loop_a"), tp0.get("loop_b"))
+                != (tp1.get("loop_on"), tp1.get("loop_a"), tp1.get("loop_b"))):
+            return "canviar el loop A-B"
         return "una edició"
 
     def undo(self):
@@ -721,13 +795,13 @@ class Visor(QMainWindow):
             self.log("DESFER: res a desfer")
             self.infoMissatge.emit("Desfer: no hi ha res a desfer")
             return
-        abans = self._estat_edicio()
+        abans = self._estat_complet()
         desti = self._undo_stack.pop()
         desc = self._descriu_canvi(abans, desti)   # el que fa el desfer
         self._redo_stack.append(abans)
         self._aplica_estat(desti)
         self.infoMissatge.emit(f"⟲ DESFER: {desc}")
-        self._undo_base = self._estat_edicio()
+        self._undo_base = self._estat_complet()
         self._undo_pending = None
         self.log(f"DESFER fet (desfer={len(self._undo_stack)} "
                  f"refer={len(self._redo_stack)})")
@@ -739,12 +813,12 @@ class Visor(QMainWindow):
             self.log("REFER: res a refer")
             self.infoMissatge.emit("Refer: no hi ha res a refer")
             return
-        abans = self._estat_edicio()
+        abans = self._estat_complet()
         desti = self._redo_stack.pop()
         desc = self._descriu_canvi(abans, desti)
         self._undo_stack.append(abans)
         self._aplica_estat(desti)
-        self._undo_base = self._estat_edicio()
+        self._undo_base = self._estat_complet()
         self._undo_pending = None
         self.log(f"REFER fet (desfer={len(self._undo_stack)} "
                  f"refer={len(self._redo_stack)})")
@@ -819,19 +893,24 @@ class Visor(QMainWindow):
         self.log("stop → inici")
 
     def marca_A(self):
+        self._undo_marca()
         self.loop_a = self.timeline.snap(self.pos)
         self.log(f"loop A = {self.loop_a:.2f}s")
         if self.loop_b is not None:
             self.timeline.set_loop(self.loop_a, self.loop_b)
+        self._undo_commit()
 
     def marca_B(self):
+        self._undo_marca()
         self.loop_b = self.timeline.snap(self.pos)
         self.log(f"loop B = {self.loop_b:.2f}s")
         if self.loop_a is not None:
             self.timeline.set_loop(self.loop_a, self.loop_b)
+        self._undo_commit()
 
     def set_loop(self, on):
         """Fixa l'estat del loop A-B (les barres de fora NO toquen b_loop)."""
+        self._undo_marca()          # A1: el loop també és desfer/fer
         self.loop_on = bool(on)
         if self.loop_on and (self.loop_a is None or self.loop_b is None
                              or self.loop_b <= self.loop_a):
@@ -844,6 +923,7 @@ class Visor(QMainWindow):
         self.loopStateChanged.emit(self.loop_on)
         self.log(f"loop {'ON' if self.loop_on else 'OFF'}")
         self._pinta_loop()
+        self._undo_commit()
 
     def commuta_loop(self):
         self.set_loop(not self.loop_on)
@@ -1014,7 +1094,8 @@ class Visor(QMainWindow):
             self.log(f"desat ERROR: {e}")
 
     def _on_loop_changed(self, a, b):
-        """Loop A/B seleccionat al regle del timeline."""
+        """Loop A/B seleccionat al regle del timeline (1 cop per arrossegada)."""
+        self._undo_marca()          # A1: el loop també és desfer/fer
         self.loop_a, self.loop_b = float(a), float(b)
         self.loop_on = True
         if hasattr(self, "b_loop"):
@@ -1023,10 +1104,20 @@ class Visor(QMainWindow):
         # desactivat mentre el play ja feia loop).
         self.loopStateChanged.emit(True)
         self.log(f"loop A={a:.2f}s B={b:.2f}s")
+        self._undo_commit()
 
     def _on_chord_renamed(self, idx, new_name):
         self._undo_marca()
         self._sync_timeline_acords()
+        # El renom INLINE del timeline arriba amb el text cru: s'ha de sanejar
+        # amb el mateix criteri que l'alta i l'export (si canvia, es corregeix
+        # al model I al timeline perquè no divergeixin).
+        net = pipeline.saneja_nom_acord(new_name)
+        if net and 0 <= idx < len(self.acords) and self.acords[idx][1] != net:
+            nova = list(self.acords)
+            nova[idx] = (nova[idx][0], net, nova[idx][2])
+            self.acords = nova
+            self.timeline.set_data(self.acords, self.seccions)
         self._undo_commit()
         try:
             self._desa_i_regenera()
@@ -1050,9 +1141,14 @@ class Visor(QMainWindow):
         a_del = menu.addAction("Elimina")
         menu.addSeparator()
         a_ren = menu.addAction("Reanomena")
+        menu.addSeparator()
+        # A2: partir una secció pel cursor (en un model saturat és l'única
+        # manera d'afegir-ne una de nova).
+        a_part = menu.addAction("Parteix la secció…")
         # desactivats si no hi ha cap clip seleccionat
         for a in (a_dup, a_del, a_ren):
             a.setEnabled(te_clip)
+        a_part.setEnabled(te_clip and kind == "section")
         accio = menu.exec_(pos)
         if accio is None or not te_clip:
             return
@@ -1070,6 +1166,8 @@ class Visor(QMainWindow):
             # reutilitza el rename inline existent
             self.timeline.chordEditRequested.emit(idx) if kind == "chord" \
                 else self.timeline.sectionEditRequested.emit(idx)
+        elif accio == a_part:
+            self._parteix_seccio_dialog(idx)
 
     def _duplica_acord_index(self, idx):
         """Duplica l'acord idx: s'insereix JUST DESPRES i es reparteix la
@@ -1443,6 +1541,10 @@ class Visor(QMainWindow):
         if k == "chord":
             if not nom or not (0 <= i < len(self.acords)):
                 return
+            # Mateix sanejat que l'alta i l'export (coherència nom CSV ↔ WAV).
+            nom = pipeline.saneja_nom_acord(nom)
+            if not nom:
+                return
             # Si l'inici NO s'ha tocat, conserva el valor INTERN de precisió
             # completa: l'editor només en mostra 2 decimals i re-escriure'l
             # arrodonit podria fer que l'acord "xoqui" amb el veí.
@@ -1619,6 +1721,75 @@ class Visor(QMainWindow):
         self.seccions = self._normalitza_seccions(self.seccions + [item])
         if hasattr(self, "llista_ab"):
             self._actualitza_llista_abc()
+        return True
+
+    def parteix_seccio(self, idx, t, lletra=None, fam=None):
+        """Parteix la secció `idx` pel temps `t` (A2).
+
+        En un model SATURAT —les seccions cobreixen tota la WAV, regla d'or #4—
+        no hi ha cap forat on afegir-ne una de nova: «afegir» una secció vol dir
+        **partir** la que hi ha. La meitat esquerra conserva lletra i família; la
+        dreta rep la lletra nova (per defecte la MATEIXA: és la mateixa part
+        musical, i el model admet lletres repetides).
+
+        Retorna l'índex de la secció NOVA, o `False` si `t` no cau a dins (o si
+        alguna de les dues meitats quedaria més curta que `MIN_SECCIO_S`).
+        """
+        if not (0 <= idx < len(self.seccions)):
+            return False
+        t = float(t)
+        ini, fi, L, F = self.seccions[idx]
+        ini, fi = float(ini), float(fi)
+        if not (ini + self.MIN_SECCIO_S <= t <= fi - self.MIN_SECCIO_S):
+            self.log(f"partir: {t:.2f}s no cau dins la secció {L} "
+                     f"({ini:.2f}s–{fi:.2f}s)")
+            return False
+        L2 = (str(lletra).strip() if lletra else L) or L
+        F2 = (str(fam).strip() if fam else (F or L2)) or L2
+        self._undo_marca()
+        nova = list(self.seccions)
+        nova[idx] = (ini, t, L, F)
+        nova.insert(idx + 1, (t, fi, L2, F2))
+        try:
+            self.seccions = self._normalitza_seccions(nova)
+        except ValueError as e:
+            self.log(f"partir: canvi invalid ({e})")
+            return False
+        self._undo_commit()
+        if hasattr(self, "timeline"):
+            self.timeline.set_data(self.acords, self.seccions)
+        if hasattr(self, "llista_ab"):
+            self._actualitza_llista_abc()
+        return idx + 1
+
+    def _parteix_seccio_dialog(self, idx):
+        """Parteix la secció `idx` pel CURSOR, preguntant la lletra nova (A2)."""
+        if not (0 <= idx < len(self.seccions)):
+            return False
+        ini, fi, L, _F = self.seccions[idx]
+        ini, fi = float(ini), float(fi)
+        if not (ini + self.MIN_SECCIO_S <= self.pos <= fi - self.MIN_SECCIO_S):
+            self.log(f"partir: el cursor ({self.pos:.2f}s) no cau dins la "
+                     f"secció {L} ({ini:.2f}s–{fi:.2f}s)")
+            QMessageBox.information(
+                self, "Parteix la secció",
+                f"Posa el cursor DINS la secció «{L}» ({ini:.2f}–{fi:.2f} s) "
+                "al punt on vols el tall.")
+            return False
+        nova, ok = QInputDialog.getText(
+            self, "Parteix la secció",
+            f"Parteix «{L}» a {self.pos:.2f} s.\nLletra de la part nova:",
+            text=L)
+        if not ok:
+            return False
+        if not self.parteix_seccio(idx, self.pos, nova):
+            return False
+        try:
+            self._regenera_abc_des_de_totes_les_seccions(
+                f"secció {L} partida a {self.pos:.2f}s")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+            QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
         return True
 
     def _elimina_seccio(self, idx):

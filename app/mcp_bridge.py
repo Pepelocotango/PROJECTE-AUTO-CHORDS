@@ -250,6 +250,11 @@ def _op_rename_chord(ctx, params):
     nom = str(params.get("acord") or params.get("nom") or "").strip()
     if not nom:
         raise BridgeError("Cal un nom d'acord.")
+    # Mateix sanejat que l'alta i l'export (separadors, reservats de Windows…):
+    # si no, el nom del CSV i el del WAV exportat podien divergir.
+    nom = pipeline.saneja_nom_acord(nom)
+    if not nom:
+        raise BridgeError("El nom de l'acord no és vàlid.")
 
     def mut(vr):
         if idx < 0 or idx >= len(vr.acords):

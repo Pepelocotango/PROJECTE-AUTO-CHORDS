@@ -86,6 +86,18 @@ def safe_filename(name, fallback="X", usats=None):
     return s
 
 
+def saneja_nom_acord(nom):
+    """Nom d'acord net per al MODEL i el CSV (mai per a una ruta de fitxer).
+
+    És el MATEIX criteri que `safe_filename` (el que fa servir l'export per al
+    nom del WAV): així el nom del clip i el del fitxer exportat sempre
+    coincideixen. Els noms habituals (`C`, `C#m7`, `N`, `Am/G` → `Am-G`) NO
+    canvien; els separadors i els reservats de Windows (`/ \\ : * ? " < > |`)
+    passen a `-`. Retorna "" si el nom és (o queda) buit — qui cridi decideix.
+    """
+    return safe_filename(str(nom).strip(), fallback="")
+
+
 # Prefix de les carpetes que genera l'app al costat del WAV. És PREFIX (no
 # sufix) perquè totes les carpetes de l'app quedin juntes i al davant quan
 # s'ordena el directori on hi ha la cançó.
@@ -569,15 +581,31 @@ def normalitza_cobertura(acords, seccions, durada, log=None):
     durada = float(durada or 0.0)
     acords = [tuple(a) for a in (acords or [])]
     seccions = [tuple(s) for s in (seccions or [])]
-    # Acords FORA de la WAV (t >= durada): allà no hi ha àudio i deixarien un
-    # clip de durada <= 0 (l'invariant #4 no es podria complir) → s'eliminen.
+    # Acords: la veritat és el que quedarà AL CSV (arrodonit a `TEMPS_DEC`).
+    #   (a) els que cauen FORA de la WAV (arrodonits) no tenen àudio → fora;
+    #   (b) dos acords que arrodoneixin al MATEIX instant deixarien un clip de
+    #       durada 0 a l'export (xocs d'inici dins la resolució del CSV) → es
+    #       conserva el primer.
     if durada > 0:
-        dins = [a for a in acords if float(a[0]) < durada - TOL_TEMPS]
-        if len(dins) != len(acords):
-            if log:
-                log(f"cobertura: {len(acords) - len(dins)} acord(s) fora de la "
-                    f"WAV (>= {durada:.2f} s) eliminats")
-            acords = dins
+        net, vists, fora, xocs = [], set(), 0, 0
+        for a in acords:
+            t_arrod = round(float(a[0]), TEMPS_DEC)
+            if t_arrod >= durada - TOL_TEMPS:
+                fora += 1
+                continue
+            if t_arrod in vists:
+                xocs += 1
+                if log:
+                    log(f"cobertura: acord {a[1]} a {float(a[0]):.3f} s eliminat "
+                        f"(xoca amb un altre a {t_arrod:.2f} s al CSV)")
+                continue
+            vists.add(t_arrod)
+            net.append(a)
+        if fora and log:
+            log(f"cobertura: {fora} acord(s) fora de la WAV "
+                f"(arrodonits >= {durada:.2f} s) eliminats")
+        if fora or xocs:
+            acords = net
     # Acords: capçalera N si el 1r no arrenca a 0.
     if acords and float(acords[0][0]) > 1e-9:
         # conserva els camps extra (p. ex. `tsrc`), posant-los a 0.
@@ -862,6 +890,12 @@ def fer_wavs_acords_lliures(csv_path, total_s, dest_dir, sr, log):
     usats = set()          # desambigua noms d'acord que quedin iguals
     for ini, fi, chord in segments_lliures(csv_path, total_s, log):
         frames = int(round((fi - ini) * sr))
+        if frames <= 0:
+            # Mai escriure un WAV de durada 0 (un xoc d'inicis a la resolució
+            # del CSV, o un acord a tocar del final, el produiria).
+            log(f"wavs_acords: segment {ini:.2f}–{fi:.2f}s ({chord}) de durada "
+                f"0 → s'omet")
+            continue
         fn = (f"{ini:07.2f}s_{fi:07.2f}s_"
               f"{safe_filename(chord, fallback='N', usats=usats)}.wav")
         with wave.open(os.path.join(dest_dir, fn), "wb") as w:
@@ -993,6 +1027,11 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
 # Resolució temporal unificada dels CSV: 10 ms (2 decimals) — opció (b).
 # Abans: acords.csv guardava 9 decimals i estructura_ABC.csv 2 → incoherent.
 TEMPS_DEC = 2
+# Distància MÍNIMA entre dos temps del CSV perquè els seus arrodoniments siguin
+# DIFERENTS. Amb menys, dues files cauen al mateix instant del CSV → un clip de
+# durada 0 a l'export (i la suma de durades ja no quadra). Vegeu `visor` (els
+# validadors el fan complir) i `normalitza_cobertura` (el repara en carregar).
+RESOLUCIO_CSV = 10.0 ** -TEMPS_DEC
 
 
 def desa_acords_csv(ruta, items):
@@ -1038,6 +1077,11 @@ def fer_wavs_estructura(abc_csv, dest_dir, sr, log):
                   f"{r['compas_fi'].replace('.', '-')}_"
                   f"{safe_filename(r['lletra'], fallback='X', usats=usats)}")
             frames = int(round(float(r["durada_s"]) * sr))
+            if frames <= 0:
+                # Mateix motiu que als acords: mai un WAV de durada 0.
+                log(f"wavs_estructura: secció {r.get('lletra', '?')} de durada "
+                    f"0 → s'omet")
+                continue
             with wave.open(os.path.join(dest_dir, nm + ".wav"), "wb") as w:
                 w.setnchannels(1)
                 w.setsampwidth(2)

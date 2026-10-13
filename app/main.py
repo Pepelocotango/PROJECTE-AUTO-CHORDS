@@ -530,6 +530,9 @@ class Finestra(QMainWindow):
         m.addSeparator()
         self._act(m, "Afegeix acord…", "Ctrl+Shift+A", self._afegeix_acord_ui)
         self._act(m, "Afegeix secció…", "Ctrl+Shift+S", self._afegeix_seccio_ui)
+        # A2: en un model saturat (les seccions cobreixen tota la WAV) no hi ha
+        # forat per afegir-ne: cal PARTIR la que hi ha al cursor.
+        self._act(m, "Parteix la secció al cursor…", "", self._parteix_seccio_ui)
         m.addSeparator()
         self._act(m, "Elimina element", "Del", self._elimina_element)
         self._act(m, "Duplica element", "Ctrl+D", self._duplica_element)
@@ -571,10 +574,47 @@ class Finestra(QMainWindow):
         self._act(m, "Dreceres de teclat", "", self._mostra_dreceres)
         self._act(m, "Quant a Auto Chords", "", self._quant_a)
 
+    def _sincronitza_temps_del_visor(self):
+        """Refresca els camps de temps/loop de la barra des del visor.
+
+        Cal després de desfer/refer: l'undo pot haver restaurat BPM, compàs,
+        offset, mode o el loop A-B (A1). Només reescriu el text si el valor
+        difereix, per no reformatejar el que l'usuari hi ha escrit.
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        # El compàs viu al camp `bpb` («4» o «4/4»): el numerador és `vr.bpb` i
+        # el denominador `vr.beat_type` (no hi ha camp propi per al denominador).
+        num, den = getattr(vr, "bpb", None), getattr(vr, "beat_type", None)
+        compas = None
+        if num is not None:
+            compas = str(int(num)) if (den is None or int(den) == 4) \
+                else f"{int(num)}/{int(den)}"
+        for camp, valor, text in ((self.bpm, getattr(vr, "bpm", None), None),
+                                  (self.bpb, num, compas),
+                                  (self.offset, getattr(vr, "offset", None),
+                                   None)):
+            if valor is None:
+                continue
+            try:
+                igual = abs(float(camp.text().replace(",", "."))
+                            - float(valor)) <= 1e-9
+            except (TypeError, ValueError):
+                igual = False
+            if not igual:
+                camp.setText(text if text is not None else f"{float(valor):g}")
+        try:
+            self.offset_cb.setText(self._secs_a_cb(float(getattr(vr, "offset", 0.0))))
+        except (TypeError, ValueError, AttributeError):
+            pass
+        self._on_loop_state(getattr(vr, "loop_on", False))
+
     def _undo_visor(self):
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
             vr.undo()
+            self._sincronitza_temps_del_visor()
         else:
             self.registra("Edita: no hi ha visor carregat")
 
@@ -582,6 +622,7 @@ class Finestra(QMainWindow):
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
             vr.redo()
+            self._sincronitza_temps_del_visor()
         else:
             self.registra("Edita: no hi ha visor carregat")
 
@@ -613,18 +654,54 @@ class Finestra(QMainWindow):
     def _focus_parametres(self):
         self.bpm.setFocus()
 
+    def _dreceres(self):
+        """TOTES les dreceres, en grups (A3).
+
+        Les de **menú** es llegeixen dels menús REALS (així el diàleg no pot
+        quedar desfasat mai: si s'hi afegeix una drecera, hi surt sola); les que
+        NO són de menú (teclat del visor i gestos de ratolí) van llistades aquí
+        a mà, que és l'únic lloc on viuen.
+        """
+        grups = []
+        for accio in self.menuBar().actions():
+            menu = accio.menu()
+            if menu is None:
+                continue
+            parells = []
+            for a in menu.actions():
+                if a.isSeparator() or a.menu() is not None:
+                    continue
+                drecera = a.shortcut().toString()
+                if drecera:
+                    parells.append((a.text().replace("&", ""), drecera))
+            if parells:
+                grups.append((accio.text().replace("&", ""), parells))
+        grups.append(("Altres (teclat del visor i ratolí)", [
+            ("play / pausa", "Espai"),
+            ("TAP del temps (tap tempo)", "T"),
+            ("copiar / retallar / enganxar al cursor",
+             "Ctrl+C / Ctrl+X / Ctrl+V"),
+            ("moure un clip (tot el grup si està seleccionat)",
+             "Arrossega un clip"),
+            ("zoom", "Roda del ratolí"),
+            ("desplaçar (pan)", "Botó dret arrossegant"),
+            ("crear / editar el loop A-B", "Arrossega sobre el regle"),
+            ("posa el cursor a l'inici del clip", "Clic a un clip"),
+            ("afegir / treure de la selecció", "Ctrl+clic"),
+            ("rang de selecció", "Shift+clic"),
+        ]))
+        return grups
+
+    def _text_dreceres(self):
+        """El diàleg de dreceres en HTML (separat per poder-lo testar)."""
+        blocs = []
+        for grup, parells in self._dreceres():
+            blocs.append(f"<b>{grup}</b><br>" + "<br>".join(
+                f"{text} — {drecera}" for text, drecera in parells))
+        return "<br><br>".join(blocs)
+
     def _mostra_dreceres(self):
-        QMessageBox.information(self, "Dreceres de teclat",
-            "<b>Reproducció</b><br>"
-            "Espai — play / pausa<br><br>"
-            "<b>Edició</b><br>"
-            "Ctrl+Z — desfer<br>"
-            "Ctrl+Y / Ctrl+Shift+Z — refer<br><br>"
-            "<b>Visor</b><br>"
-            "Roda del ratolí — zoom<br>"
-            "Botó dret arrossegant — desplaçar (pan)<br>"
-            "Arrossega sobre el regle — loop A/B<br>"
-            "Clic a un clip — posa el cursor al seu inici")
+        QMessageBox.information(self, "Dreceres de teclat", self._text_dreceres())
 
     def _quant_a(self):
         QMessageBox.about(self, "Quant a Auto Chords",
@@ -842,6 +919,29 @@ class Finestra(QMainWindow):
         else:
             tl.sectionEditRequested.emit(idx)
 
+    def _idx_seccio_del_cursor(self):
+        """Índex de la secció que CONTÉ el cursor (o `None`). A2."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None or not vr.seccions:
+            return None
+        for i, s in enumerate(vr.seccions):
+            if float(s[0]) <= float(vr.pos) < float(s[1]):
+                return i
+        return None
+
+    def _parteix_seccio_ui(self):
+        """Parteix la secció que conté el cursor pel punt del cursor (A2)."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.registra("Parteix: no hi ha visor carregat")
+            return
+        idx = self._idx_seccio_del_cursor()
+        if idx is None:
+            self.registra("Parteix: el cursor no és dins cap secció")
+            return
+        if vr._parteix_seccio_dialog(idx):
+            self.registra(f"secció partida a {vr.pos:.2f} s")
+
     def _afegeix_acord_ui(self):
         vr = getattr(self, "visor_ref", None)
         if vr is None:
@@ -851,9 +951,11 @@ class Finestra(QMainWindow):
         if not ok or not nom.strip():
             return
         try:
+            vr._undo_marca()      # A1: l'alta des del MENÚ també és desfer/fer
             vr._afegeix_acord(vr.pos, nom.strip())
             vr._desa_i_regenera()
             vr.timeline.set_data(vr.acords, vr.seccions)
+            vr._undo_commit()
             self.registra(f"afegit acord a {vr.pos:.2f}s: {nom.strip()}")
         except Exception as e:  # noqa: BLE001
             QMessageBox.warning(self, "Auto Chords", f"No s'ha pogut afegir:\n{e}")
@@ -867,9 +969,11 @@ class Finestra(QMainWindow):
         if not ok or not lletra.strip():
             return
         try:
+            vr._undo_marca()      # A1: l'alta des del MENÚ també és desfer/fer
             vr._afegeix_seccio(vr.pos, vr.pos + 2.0, lletra.strip()[:1].upper())
             vr._regenera_abc_des_de_totes_les_seccions("secció afegida")
             vr.timeline.set_data(vr.acords, vr.seccions)
+            vr._undo_commit()
             self.registra(f"afegida secció a {vr.pos:.2f}s")
         except Exception as e:  # noqa: BLE001
             QMessageBox.warning(self, "Auto Chords", f"No s'ha pogut afegir:\n{e}")
@@ -904,6 +1008,7 @@ class Finestra(QMainWindow):
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             return
+        vr._undo_marca()          # A1: el loop també és desfer/fer
         vr.loop_a = vr.loop_b = None
         vr.loop_on = False
         if hasattr(vr, "b_loop"):
@@ -912,6 +1017,7 @@ class Finestra(QMainWindow):
             self.tb_loop.setChecked(False)
         vr.timeline.set_loop(None, None)
         self.registra("loop netejat")
+        vr._undo_commit()
 
     def _dobla_bpm(self, factor):
         """Multiplica (×2) o divideix (÷2) el BPM actual."""
@@ -1001,6 +1107,7 @@ class Finestra(QMainWindow):
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             return
+        vr._undo_marca()          # A1: el BPM/compàs/offset també és desfer/fer
         vr.bpm = self._bpm_val()
         vr.bpb = self._bpb_val()
         vr.beat_type = self._beat_type_val()
@@ -1008,6 +1115,7 @@ class Finestra(QMainWindow):
         self.offset_cb.setText(self._secs_a_cb(vr.offset))
         vr._actualitza_temps()
         self._reenvia_si_sona()
+        vr._undo_commit()
 
     def _reenvia_si_sona(self):
         """En canviar BPM/compàs amb la reproducció en marxa, reengega perquè
