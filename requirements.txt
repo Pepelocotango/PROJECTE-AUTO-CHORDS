@@ -17,7 +17,7 @@ PyQt5==5.15.10; sys_platform == "darwin"
 # `pip install` del CI de Windows peta. L'última amb roda Windows és la 5.15.2.
 PyQt5-Qt5==5.15.2; sys_platform == "win32"
 PyQt5-Qt5==5.15.19; sys_platform != "win32"
-PyQt5_sip==12.19.0
+PyQt5_sip==12.20.0
 numpy==1.26.4
 
 # Motor d'àudio natiu a macOS/Windows (`sounddevice` → PortAudio). A Linux no
