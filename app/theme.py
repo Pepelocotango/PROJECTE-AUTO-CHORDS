@@ -35,14 +35,14 @@ TL_WAVEFORM = "#8ab4f8"
 TL_CURSOR = "#ff6b6b"
 TL_RULER_BG = "#10131a"
 TL_SCENE_BG = "#0f0f10"
-TL_GUIDE = "#ffd166"           # guia de snap / loop A-B
+TL_GUIDE = "#ffb26b"           # guia de snap / loop A-B (taronja suau)
 TL_GRID_MEASURE = "#55677f"    # linia de compas
 TL_GRID_BEAT = "#3d4c60"       # linia de temps
 TL_GRID_SUB = "#303a48"        # subdivisio
 TL_WAVE_MID = "#2f3640"        # linia central de l'ona
 CLIP_SECTION_BORDER = "#dfe7f5"
 # Metrònom: color de l'estat activat (botó/acció)
-METRO_ACTIU = "#ffd166"
+METRO_ACTIU = "#ffb26b"
 BLAU_INFO = "#38bdf8"          # missatges a la caixa d informacio
 # Estat ENCES/APAGAT dels botons commutables.
 # Base (apagat) = estil "Obre..." (gris). Actiu = BLAU; el mute i el
@@ -51,8 +51,9 @@ ACTIU = "#2563eb"            # blau: boto actiu (loop, modes...)
 ACTIU_HOVER = "#3b82f6"
 ACTIU_DARK = "#1e40af"
 ACTIU_TEXT = "#ffffff"
-ACTIU_GROC = "#ffd166"       # groc: mute i metronom actius
-ACTIU_GROC_DARK = "#b8860b"
+# (Els noms diuen «GROC» per història: el color ara és un TARONJA SUAU.)
+ACTIU_GROC = "#ffb26b"       # taronja suau: mute i metronom actius
+ACTIU_GROC_DARK = "#b36a2a"  # vora del mateix to
 ACTIU_GROC_TEXT = "#1a1a1a"
 CLIP_FILL = "#2e3844"          # clip normal
 CLIP_BORDER = "#b8c7dc"

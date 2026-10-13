@@ -464,8 +464,9 @@ class TimelineView(QGraphicsView):
             return
         if self._loop_item is None:
             self._loop_item = QGraphicsRectItem()
-            self._loop_item.setBrush(QBrush(QColor(255, 209, 102, 40)))
-            self._loop_item.setPen(QPen(QColor(255, 209, 102, 200), 1))
+            # Taronja suau (abans groc #ffd166): mateix to que `theme.TL_GUIDE`.
+            self._loop_item.setBrush(QBrush(QColor(255, 178, 107, 40)))
+            self._loop_item.setPen(QPen(QColor(255, 178, 107, 200), 1))
             self._loop_item.setZValue(-3)
             self._scene.addItem(self._loop_item)
         x0 = self._x_offset + (self._loop_a - self._view_left) * self._pps

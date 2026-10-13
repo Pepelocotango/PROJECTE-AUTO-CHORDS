@@ -23,9 +23,9 @@ _DIR = os.path.join(_ARREL, "icones")
 TEXT = "#f3f4f6"
 MUTED = "#a7acb5"
 # Colors d'estat (coincideixen amb app/theme.py).
-ACTIU = "#ffffff"       # damunt del blau/groc quan el botó està encès
+ACTIU = "#ffffff"       # damunt del blau/taronja quan el botó està encès
 BLAU = "#38bdf8"
-GROC = "#ffd166"
+GROC = "#ffb26b"        # (nom històric: ara és un TARONJA SUAU, com theme.py)
 VERMELL = "#ff6b6b"
 
 _CACHE = {}
