@@ -217,16 +217,12 @@ def bloqueja_instancia_unica(fitxer):
     """
     if ES_WINDOWS:
         import msvcrt
-        fitxer.seek(0)
-        fitxer.write("0")
-        fitxer.flush()
-        # ⚠️ TORNAR a fer seek(0) DESPRÉS d'escriure: `write()` deixa la posició
-        # del fitxer a 1, i `msvcrt.locking(..., 1)` bloqueja el byte a la
-        # POSICIÓ ACTUAL. Sense aquest seek, bloquejaríem l'offset 1 mentre
-        # `desbloqueja()` allibera el 0 → el lock quedaria penjat i una segona
-        # instància no el detectaria (2a instància acceptada per error).
-        fitxer.seek(0)
+        # ⚠️ El seek/write/flush van DINS el try: a Windows, ESCRIURE en una
+        # regió ja bloquejada LLANÇA OSError (no torna False) → si quedés fora,
+        # la 2a instància petaria en lloc de ser rebutjada. I el seek(0) final
+        # fa que el locking bloquegi l'offset 0 (coherent amb `desbloqueja`).
         try:
+            fitxer.seek(0); fitxer.write("0"); fitxer.flush(); fitxer.seek(0)
             msvcrt.locking(fitxer.fileno(), msvcrt.LK_NBLCK, 1)
             return True
         except OSError:
