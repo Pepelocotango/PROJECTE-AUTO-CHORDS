@@ -66,6 +66,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   passen a URL amb **versió explícita + SHA256** verificat amb
   `baixa_verificat.py`, i els repositoris que es compilen (libsndfile,
   vamp-plugin-sdk) es fixen per **commit**.
+- **Dependències Python fixades i vigilades**: `requirements.txt` passa a pins
+  **exactes** — `PyQt5==5.15.11` (i `==5.15.10` a macOS 10.13, amb marcador de
+  plataforma), `PyQt5-Qt5==5.15.19`, `PyQt5_sip==12.19.0`, `numpy==1.26.4`,
+  `sounddevice==0.5.6`, `cffi==2.0.0`. Nou test **`tests/test_requirements.py`**
+  que **peta** si algú introdueix `numpy>=2` o `PyQt6` (ho mira a
+  `requirements.txt`, `pyproject.toml` i els workflows). `--require-hashes`
+  queda **pendent** (calen els hashos de totes les rodes de les 3 plataformes);
+  les instruccions són dins del mateix `requirements.txt`.
 
 ### Canviat
 - **Les carpetes que genera l'app porten ara un PREFIX**: `AUTOCHORDS_<nom>`

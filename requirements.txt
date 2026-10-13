@@ -2,9 +2,35 @@
 # El pipeline (acords_a_live.py, pipeline.py) és stdlib pur.
 # GUI: PyQt5 (rodes amb Qt5 + QtSvg inclòs).
 # ⚠️ Q9400 sense SSE4.2: numpy<2 obligatori (numpy 2.x demana x86_64-v2).
-PyQt5>=5.15.9
-numpy>=1.22,<2
+#
+# TOTES les versions van FIXADES amb `==`: són les que resolen i funcionen ara.
+# NO s'ha de pujar cap versió sense comprovar-ho (vegeu `docs/SEGURETAT.md`).
+# Hi ha un test que peta si algú hi introdueix `numpy>=2` o `PyQt6`:
+# `tests/test_requirements.py`.
+# ⚠️ PyQt5 depèn de la plataforma: a macOS High Sierra (10.13) ha de ser
+# **5.15.10** (la 5.15.11 ja no publica roda per a 10.13). Per això va amb
+# marcadors; la resta de sistemes fan servir la 5.15.11.
+PyQt5==5.15.11; sys_platform != "darwin"
+PyQt5==5.15.10; sys_platform == "darwin"
+PyQt5-Qt5==5.15.19
+PyQt5_sip==12.19.0
+numpy==1.26.4
+
+# Motor d'àudio natiu a macOS/Windows (`sounddevice` → PortAudio). A Linux no
+# s'usa (hi ha `paplay`/`aplay`), però instal·lar-lo no fa mal.
+sounddevice==0.5.6
+cffi==2.0.0
 
 # (Només dev/opcional) auto-reload de dev_reload.py --watch. El fitxer
 # detecta si hi és i, si no, avisa; no cal per fer anar l'app.
-# watchdog
+# watchdog==6.0.0
+
+# ── PENDENT: `--require-hashes` ─────────────────────────────────────────────
+# NO s'activa `--require-hashes` perquè caldrien els SHA256 de TOTS els wheels
+# de TOTES les plataformes (Linux x86_64, macOS 10.13 x86_64, Windows x64) i
+# encara no els tenim. Com fer-ho (sense canviar cap versió):
+#   1. A cada plataforma:  pip download -r requirements.txt --only-binary :all: -d wheels/
+#   2. Per cada roda:      pip hash wheels/*.whl     (o `sha256sum`)
+#   3. Afegir a cada línia:  --hash=sha256:<hash1> --hash=sha256:<hash2> ...
+#   4. Activar `--require-hashes` a les instal·lacions dels workflows.
+# Mentrestant, la protecció és el pin `==` + el test que vigila numpy/PyQt.
