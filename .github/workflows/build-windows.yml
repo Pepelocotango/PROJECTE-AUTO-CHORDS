@@ -20,8 +20,11 @@ on:
 permissions:
   contents: read
 
+# ⚠️ Grup LITERAL, NO `${{ github.workflow }}`: aquest workflow també es crida amb
+# `workflow_call` (des de build-all) i allà `github.workflow` és el nom del
+# CALLER → caller i cridat compartirien grup → DEADLOCK i cancel·lació.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: build-windows-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

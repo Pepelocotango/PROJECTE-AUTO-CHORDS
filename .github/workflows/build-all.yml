@@ -20,8 +20,11 @@ permissions:
   contents: read
 
 # (A.7/B.4) No solapar agregadors: si se'n llança un mentre corre un altre, espera.
+# ⚠️ El grup és LITERAL, NO `${{ github.workflow }}`: en un workflow CRIDAT amb
+# `workflow_call`, `github.workflow` resol al nom del CALLER → caller i cridats
+# compartirien grup → GitHub detecta DEADLOCK i cancel·la l'execució.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: build-all-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

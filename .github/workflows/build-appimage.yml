@@ -25,8 +25,11 @@ permissions:
 
 # (A.7/B.4) No solapar execucions del mateix workflow: si se'n llança una mentre
 # una altra corre, la nova ESPERA (no es cancel·la res).
+# ⚠️ Grup LITERAL, NO `${{ github.workflow }}`: aquest workflow també es crida amb
+# `workflow_call` (des de build-all) i allà `github.workflow` és el nom del
+# CALLER → caller i cridat compartirien grup → DEADLOCK i cancel·lació.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: build-appimage-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

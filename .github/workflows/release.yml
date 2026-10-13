@@ -28,8 +28,10 @@ permissions:
   contents: read
 
 # (A.7/B.4) Un Release alhora.
+# ⚠️ Grup LITERAL, NO `${{ github.workflow }}` (per coherència amb la resta i
+# per no dependre de com es resolgui en workflows cridats).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
