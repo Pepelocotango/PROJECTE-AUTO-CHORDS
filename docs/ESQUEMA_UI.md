@@ -21,7 +21,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 │  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú
 ├────────────────────────────────────────────────────────────────────────────┤
 │ [Obre…] [BPM·compàs][Lliure] BPM:[101][×2][÷2] ◎Detecta TAP Compàs:[4]     │  ← BARRA 1
-│   Offset:[0.0] 📍 🧭 ≈[1.1]                      [Analitza]   [Exporta]    │     (treball)
+│   Offset:[0.0] 📍 🧭 ≈[1.1]                      [Analitza] [Exporta WAV's] [Exporta partitura] [Zoom sel.]    │     (treball)
 ├────────────────────────────────────────────────────────────────────────────┤
 │ ▶/⏸ □ ⏪ ⏩ ↤ ↦ ↻  🔍− 🔍+ ⛶  🔇 🥁 ▬▬●▬                                      │  ← BARRA 2
 ├────────────────────────────────────────────────────────────────────────────┤     (transport)
@@ -46,7 +46,9 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 | — | `self.offset` · `self.offset_cb` | **dos camps d'offset** (segons · compàs.beat) | `QLineEdit` |
 | — | `self.b_obre` | **Obre…** | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
-| — | `self.b_export` | **Exporta** (Ctrl+E) | `QPushButton` |
+| — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |
+| — | `self.b_export_part` | **Exporta partitura** (MusicXML; PDF/MSCZ si hi ha MuseScore) | `QPushButton` |
+| — | `self.b_zoom_sel` | **Zoom selecció** (ajusta la vista a la selecció del timeline) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / Lliure** | `QPushButton` (checkable) |
 | — | `self.bpm` · `self.bpb` · `self.offset` · `self.offset_cb` | **BPM**, **Compàs**, **Offset (s)**, **≈ C.B** | `QLineEdit` |
 | — | `self.b_detecta` | **🎯 Detecta** (obre el diàleg de BPM) | `QPushButton` |
@@ -66,14 +68,14 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (fila 1) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B → **Analitza** → **Exporta** (`Inclou estructura` és una acció del **menú Analitza**) |
+| **Treball** (fila 1) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B → **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Zoom selecció** (`Inclou estructura` és una acció del **menú Analitza**) |
 | **Transport** | **▶/⏸** (play/pausa) · `⏹` · `−10s` · `+10s` · `A⟨` · `⟩B` · `🔁` · `🔍−` · `🔍+` · `Tot` · `🔇` · `🥁` · volum del clic |
 
 ### Menús
 
 | Menú | Accions |
 |------|---------|
-| **Fitxer** | Obre… (Ctrl+O) · Exporta (Ctrl+E) · Sortir |
+| **Fitxer** | Obre… (Ctrl+O) · Exporta WAV's (Ctrl+E) · Exporta la partitura… · Sortir |
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y / Ctrl+Shift+Z) · **Afegeix acord/secció** · **Elimina** (Del) · **Duplica** (Ctrl+D) · **Reanomena** (F2) · **Copiar/Retallar/Enganxar** (Ctrl+C / Ctrl+X / Ctrl+V) |
 | **Selecciona** | Acord del cursor · Secció del cursor · **Loop A/B** (Ctrl+[ / Ctrl+]) · Neteja loop |
 | **Visualitza** | Zoom (🔍−/🔍+) · Tot · Metrònom (🥁) |
