@@ -9,9 +9,15 @@ La prova real d'extrem a extrem (app oberta amb `AUTO_CHORDS_MCP.sh`) es fa a
 mà; vegeu `docs/MCP_AUTO_CHORDS.md`.
 """
 import importlib.util
+import json
 import os
+import shutil
+import socket
 import sys
+import tempfile
+import threading
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -358,6 +364,141 @@ class TestServidor(unittest.TestCase):
                 self.srv.crida_pont("status", {})
         finally:
             self.srv.ENDPOINT_PATH = antic
+
+
+# ── Pont amb SOCKET real (Pas 3: testimoni, límits i connexió bona) ──────────
+class TestPontSocket(unittest.TestCase):
+    """Pont MCP amb un socket TCP de debò (`127.0.0.1`).
+
+    ⚠️ Aquests tests creen una `QApplication` (offscreen) i un `PontMCP` real:
+    la cua cap al fil de Qt es buida amb el `QTimer`, que aquí fem avançar amb
+    `processEvents()`.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PyQt5.QtWidgets import QApplication, QWidget
+        cls.QApplication = QApplication
+        cls.QWidget = QWidget
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._pat = patch.object(
+            mcp_bridge, "ENDPOINT_PATH",
+            os.path.join(self._tmp, "mcp_bridge.json"))
+        self._pat.start()
+        self.w = self.QWidget()
+        self.pont = mcp_bridge.PontMCP(self.w)
+        self.assertTrue(self.pont._actiu, "el pont no s'ha pogut obrir")
+        self._obertes = []
+
+    def tearDown(self):
+        for s in self._obertes:
+            try:
+                s.close()
+            except OSError:
+                pass
+        self.pont.tanca()
+        self._pat.stop()
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _connecta(self):
+        s = socket.create_connection(("127.0.0.1", self.pont._port), timeout=5)
+        self._obertes.append(s)
+        return s
+
+    def _enviar(self, s, obj):
+        s.sendall((json.dumps(obj) + "\n").encode("utf-8"))
+
+    def _llegeix_linia(self, s, amb_qt=False):
+        """Llegeix una línia del socket; amb `amb_qt`, fa avançar el fil de Qt."""
+        caixa = {}
+
+        def _fil():
+            buf = b""
+            try:
+                s.settimeout(15)
+                while b"\n" not in buf:
+                    troç = s.recv(65536)
+                    if not troç:
+                        break
+                    buf += troç
+            except OSError as e:  # noqa: BLE001
+                caixa["err"] = e
+                return
+            if buf:
+                caixa["linia"] = buf.split(b"\n", 1)[0]
+
+        t = threading.Thread(target=_fil)
+        t.start()
+        while t.is_alive():
+            if amb_qt:
+                self.app.processEvents()
+            t.join(0.01)
+        if "linia" not in caixa:
+            self.fail(f"sense resposta del pont: {caixa.get('err')}")
+        return json.loads(caixa["linia"])
+
+    # --- els casos que demanava l'operador ----------------------------------
+    def test_testimoni_invalid(self):
+        s = self._connecta()
+        self._enviar(s, {"token": "dolent", "op": "ping"})
+        r = self._llegeix_linia(s)
+        self.assertFalse(r["ok"])
+        self.assertIn("testimoni", r["error"])
+
+    def test_linia_sobredimensionada(self):
+        # El valor REAL del límit es comprova a `test_constants`; aquí el patem
+        # a un valor petit perquè el test sigui ràpid i determinista (sense
+        # arriscar un RST mentre encara s'envia).
+        with patch.object(mcp_bridge, "MAX_LINIA", 1024):
+            s = self._connecta()
+            s.sendall(b"x" * 2048)          # sense cap salt de línia
+            r = self._llegeix_linia(s)
+        self.assertFalse(r["ok"])
+        self.assertIn("massa llarga", r["error"])
+
+    def test_connexio_legitima(self):
+        s = self._connecta()
+        self._enviar(s, {"token": self.pont._token, "op": "ping", "params": {}})
+        r = self._llegeix_linia(s, amb_qt=True)
+        self.assertTrue(r["ok"], r)
+        self.assertTrue(r["result"]["pong"])
+
+    # --- límits -------------------------------------------------------------
+    def test_limit_de_connexions(self):
+        # Ocupa tots els llocs i comprova que la connexió de més es rebutja
+        # (determinista: no depèn de córrer 9 sockets de debò).
+        for _ in range(mcp_bridge.MAX_CONNEXIONS):
+            self.assertTrue(self.pont._sem.acquire(blocking=False))
+        try:
+            s = self._connecta()
+            r = self._llegeix_linia(s)
+        finally:
+            for _ in range(mcp_bridge.MAX_CONNEXIONS):
+                self.pont._sem.release()
+        self.assertFalse(r["ok"])
+        self.assertIn("massa connexions", r["error"])
+
+    def test_constants(self):
+        self.assertEqual(mcp_bridge.MAX_LINIA, 1024 * 1024)     # 1 MiB
+        self.assertEqual(mcp_bridge.MAX_CONNEXIONS, 8)
+
+    @unittest.skipIf(sys.platform.startswith("win"), "permisos POSIX")
+    def test_endpoint_0600(self):
+        mode = os.stat(mcp_bridge.ENDPOINT_PATH).st_mode & 0o777
+        self.assertEqual(mode, 0o600)
+
+    def test_open_wav_no_restingeix_rutes(self):
+        # Invariant 1: `ac_open_wav` NO ha de limitar la ruta. Amb un fitxer
+        # inexistent ha de dir que no el troba (no pas que la ruta no valgui).
+        from app.mcp_bridge import BridgeError
+        with self.assertRaises(BridgeError) as cm:
+            mcp_bridge._op_open_wav(
+                _ctx(None), {"path": "/tmp/estrany amb espais & 'ü' #1.wav"})
+        self.assertIn("No trobo", str(cm.exception))
 
 
 if __name__ == "__main__":

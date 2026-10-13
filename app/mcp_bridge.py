@@ -55,6 +55,13 @@ ENDPOINT_PATH = (os.environ.get("AUTO_CHORDS_MCP_ENDPOINT")
 # Port fix opcional; per defecte s'agafa un port lliure a l'atzar (127.0.0.1).
 PORT_DEMANAT = int(os.environ.get("AUTO_CHORDS_MCP_PORT") or 0)
 TIMEOUT_ESPERA = float(os.environ.get("AUTO_CHORDS_MCP_TIMEOUT") or 120.0)
+# Límit de longitud d'una línia del protocol (es comprova ABANS de processar-
+# la): evita que un client maliciós o espellifat faci créixer el buffer sense
+# límit. Si se supera, es respon error i es tanca la connexió.
+MAX_LINIA = 1024 * 1024          # 1 MiB
+# Connexions simultànies màximes (cada connexió és un fil): les de més enllà
+# es rebutgen netament.
+MAX_CONNEXIONS = 8
 
 
 class BridgeError(Exception):
@@ -537,6 +544,8 @@ class PontMCP(QObject):
         self._srv = None
         self._fil = None
         self._actiu = False
+        # Nombre de connexions simultànies permeses (una = un fil).
+        self._sem = threading.Semaphore(MAX_CONNEXIONS)
 
         # Timer al fil principal: buida la cua i executa les operacions.
         self._timer = QTimer(self)
@@ -579,7 +588,13 @@ class PontMCP(QObject):
         try:
             os.makedirs(os.path.dirname(ENDPOINT_PATH), exist_ok=True)
             tmp = ENDPOINT_PATH + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
+            # 0600: el fitxer porta el TESTIMONI; només el propietari l'ha de
+            # poder llegir. `os.open` amb mode + `os.replace` (atòmic): el mode
+            # del temporal es conserva en substituir el definitiu.
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            flags |= getattr(os, "O_NOFOLLOW", 0)
+            fd = os.open(tmp, flags, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump(dades, f)
             os.replace(tmp, ENDPOINT_PATH)
         except OSError as e:
@@ -617,7 +632,25 @@ class PontMCP(QObject):
                 conn, _ = self._srv.accept()
             except OSError:
                 break
+            # Límit de connexions simultànies: si ja n'hi ha prou, es rebutja
+            # la nova netament (sense crear-hi fil).
+            if not self._sem.acquire(blocking=False):
+                self._respon_error(conn, "massa connexions simultànies")
+                try:
+                    conn.close()
+                except OSError:
+                    pass
+                continue
             threading.Thread(target=self._atent, args=(conn,), daemon=True).start()
+
+    @staticmethod
+    def _respon_error(conn, missatge):
+        """Envia un error pel socket (best-effort; mai llança)."""
+        try:
+            conn.sendall((json.dumps({"ok": False, "error": missatge},
+                                     ensure_ascii=False) + "\n").encode("utf-8"))
+        except OSError:
+            pass
 
     def _atent(self, conn):
         try:
@@ -633,11 +666,20 @@ class PontMCP(QObject):
                 buffer += troç
                 while b"\n" in buffer:
                     linia, buffer = buffer.split(b"\n", 1)
+                    # Límit ABANS de processar la línia.
+                    if len(linia) > MAX_LINIA:
+                        self._respon_error(conn, "línia massa llarga")
+                        return
                     if not linia.strip():
                         continue
                     resposta = self._processa_linia(linia)
                     conn.sendall((json.dumps(resposta, ensure_ascii=False) + "\n")
                                  .encode("utf-8"))
+                # Sense cap salt de línia i el que hi ha ja passa del màxim:
+                # no pot ser una línia vàlida → error i fora.
+                if len(buffer) > MAX_LINIA:
+                    self._respon_error(conn, "línia massa llarga")
+                    return
         except OSError as e:
             logger.debug("mcp_bridge: connexió tancada: %s", e)
         finally:
@@ -645,6 +687,7 @@ class PontMCP(QObject):
                 conn.close()
             except OSError:
                 pass
+            self._sem.release()
 
     def _processa_linia(self, linia):
         try:
@@ -653,6 +696,9 @@ class PontMCP(QObject):
             return {"ok": False, "error": f"json invàlid: {e}"}
         if not isinstance(msg, dict):
             return {"ok": False, "error": "esperava un objecte JSON"}
+        # El TESTIMONI es valida ABANS de qualsevol altra feina (abans de mirar
+        # l'operació i abans de posar res a la cua), amb comparació en temps
+        # constant.
         if not secrets.compare_digest(str(msg.get("token", "")), self._token):
             return {"ok": False, "error": "testimoni invàlid"}
         op = msg.get("op")

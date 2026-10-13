@@ -22,6 +22,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   simbòlics** i només el propietari hi accedeix. En sortir **només s'allibera
   el bloqueig**, no s'esborra el fitxer (evita una carrera entre instàncies).
   Windows manté `msvcrt.locking`.
+- **Pont MCP endurit**: el fitxer d'acord `temp/mcp_bridge.json` (que porta el
+  **testimoni**) es crea amb **permisos `0600`** (`os.open` amb mode +
+  `os.replace`). El socket té **límit de longitud de línia (1 MiB)** — es
+  respon error i es tanca la connexió **abans de processar-la** — i **límit de
+  connexions simultànies (8)**; el **testimoni es valida abans de qualsevol
+  altra feina**. `ac_open_wav` segueix acceptant **qualsevol ruta** (invariant 1).
 
 ### Afegit
 - **`docs/REGLES_DE_LA_APP.md`**: totes les **regles d'or (invariants)** de l'app
