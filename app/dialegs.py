@@ -52,19 +52,24 @@ VALORS_CA = {
 # en una AppImage muntada la carpeta del projecte és de només lectura.
 FITXER_OPCIONS = config.OPCIONS_PATH
 
+# Valors per defecte de fàbrica del diàleg d'autodetecció. Revisats i fixats
+# amb l'operador (2026-10-13). Són els que es mostren la primera vegada i els
+# que restaura el botó «Restaura per defecte».
 DEFECTES = {
-    # Els valors dels ACORDS son els del descriptor del plugin (buit = defecte).
-    "chords": {},
+    # ACORDS: coincideixen amb els defectes del descriptor del Chordino, però
+    # els fixem explícitament perquè siguin estables (no depenen del plugin).
+    "chords": {"useNNLS": 1, "useHMM": 1, "rollon": 0.0, "tuningmode": 0,
+               "whitening": 1.0, "s": 0.7},
     "bpm": {
-        "motor": "nostre",
+        "motor": "consens",
         "min": tempo.BPM_MIN, "max": tempo.BPM_MAX,
         "pref_min": tempo.BPM_PREFERIT[0], "pref_max": tempo.BPM_PREFERIT[1],
     },
-    "structure": {"motor": "qm", "durada_min": 0.0,
+    "structure": {"motor": "qm", "durada_min": 2.0,
                   "fusiona_iguals": True},
     # Neteja posterior dels acords (post-processat, app/postproc.py)
-    "clean": {"durada_min": 0.0, "fusiona_iguals": True, "sense_baix": False,
-              "reduir": False, "snap": False, "divisio": 1},
+    "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
+              "reduir": False, "snap": True, "divisio": 2},
 }
 
 
@@ -257,28 +262,40 @@ class DialegOpcions(QDialog):
 
     # -- resultat ----------------------------------------------------------
     def _restaura(self):
+        """Torna TOTS els controls als valors de fàbrica (`DEFECTES`).
+
+        Abans hi havia valors escrits a mà aquí que podien quedar
+        desincronitzats; ara llegeix sempre de `DEFECTES` (font única).
+        """
         for clau, w in self._controls["bpm"].items():
-            if clau != "motor":
+            if clau == "motor":
+                idx = w.findData(DEFECTES["bpm"]["motor"])
+                w.setCurrentIndex(idx if idx >= 0 else 0)
+            else:
                 w.setValue(float(DEFECTES["bpm"][clau]))
         for p in vamp_params.params_de("chords"):
-            w = self._controls["chords"][p["id"]]
+            pid = p["id"]
+            valor = DEFECTES["chords"].get(pid, p["defecte"])
+            w = self._controls["chords"][pid]
             if isinstance(w, QCheckBox):
-                w.setChecked(bool(p["defecte"]))
+                w.setChecked(bool(valor))
             elif isinstance(w, QComboBox):
-                w.setCurrentIndex(int(p["defecte"]))
+                w.setCurrentIndex(int(valor))
             else:
-                w.setValue(float(p["defecte"]))
-        self._controls["bpm"]["motor"].setCurrentIndex(
-            self._controls["bpm"]["motor"].findData("nostre"))
-        self._controls["structure"]["durada_min"].setValue(0.0)
-        self._controls["structure"]["fusiona_iguals"].setChecked(True)
+                w.setValue(float(valor))
+        est = DEFECTES["structure"]
+        self._controls["structure"]["durada_min"].setValue(
+            float(est["durada_min"]))
+        self._controls["structure"]["fusiona_iguals"].setChecked(
+            bool(est["fusiona_iguals"]))
         cl = self._controls["clean"]
-        cl["sense_baix"].setChecked(False)
-        cl["reduir"].setChecked(False)
-        cl["fusiona_iguals"].setChecked(True)
-        cl["durada_min"].setValue(0.0)
-        cl["snap"].setChecked(False)
-        cl["divisio"].setValue(1)
+        dc = DEFECTES["clean"]
+        cl["sense_baix"].setChecked(bool(dc["sense_baix"]))
+        cl["reduir"].setChecked(bool(dc["reduir"]))
+        cl["fusiona_iguals"].setChecked(bool(dc["fusiona_iguals"]))
+        cl["durada_min"].setValue(float(dc["durada_min"]))
+        cl["snap"].setChecked(bool(dc["snap"]))
+        cl["divisio"].setValue(float(dc["divisio"]))
 
     def opcions(self):
         """Retorna les opcions triades, a punt per al pipeline."""
