@@ -57,13 +57,13 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 |---|---|---|---|
 | `ac_ping` | `ac_add_chord` (t_s, acord) | `ac_seek` (t_s) | `ac_open_wav` (path) |
 | `ac_status` | `ac_rename_chord` (index, acord) | `ac_play` / `ac_pause` / `ac_stop` | `ac_analyze` |
-| `ac_list_chords` | `ac_move_chord` (index, t_s) | `ac_mark_loop_a` / `ac_mark_loop_b` | `ac_export_wav` |
-| `ac_list_sections` | `ac_delete_chord` (index) | `ac_set_loop` (on) | `ac_set_tempo` (bpm, bpb, offset_s) |
+| `ac_list_chords` | `ac_move_chord` (index, t_s) | `ac_mark_loop_a` / `ac_mark_loop_b` | `ac_export_wav` (partitura?) · `ac_export_partitura` |
+| `ac_list_sections` | `ac_delete_chord` (index) | `ac_set_loop` (on) | `ac_set_tempo` (bpm, bpb, offset_s) · `ac_get_options` |
 | `ac_selection` | `ac_add_section` (ini_s, fi_s, lletra, familia) | `ac_set_mut` (on) | `ac_set_metro` (on) |
 | `ac_undo_list` | `ac_rename_section` / `ac_move_section` / `ac_delete_section` | `ac_zoom` (mode) | `ac_set_key_detect` (on) |
 | | `ac_undo` / `ac_redo` | `ac_select_clip` (kind, index) · `ac_toggle_selection` (kind, index) · `ac_clear_selection` · `ac_select_at_cursor` (kind) | `ac_detect_downbeat` · `ac_mark_downbeat` · `ac_open_output_folder` |
 
-> **38 eines** en total. Les de l'última fila (metrònom, tonalitat automàtica,
+> **40 eines** en total. Les de l'última fila (metrònom, tonalitat automàtica,
 > compàs 1, carpeta de sortida i selecció/multi-selecció) es van afegir per
 > **A7**, perquè eren funcions de l'app sense cap eina equivalent.
 
