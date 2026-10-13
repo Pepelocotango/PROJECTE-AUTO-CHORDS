@@ -28,6 +28,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   respon error i es tanca la connexió **abans de processar-la** — i **límit de
   connexions simultànies (8)**; el **testimoni es valida abans de qualsevol
   altra feina**. `ac_open_wav` segueix acceptant **qualsevol ruta** (invariant 1).
+- **Noms de fitxer segurs a Windows (`pipeline.safe_filename`)**: a més dels
+  separadors de camí i els caràcters de control, ara substitueix els
+  **caràcters reservats a Windows** (`: * ? " < > |`), treu el **punt o espai
+  final** i evita els **noms reservats** (`CON`, `PRN`, `AUX`, `NUL`,
+  `COM0-9`, `LPT0-9`). Si dos noms queden iguals després de netejar/truncar es
+  **desambigüen amb un sufix** (`_2`, `_3`…) — els noms únics **no canvien
+  mai**. Els noms d'acord habituals (`C`, `C#m7`, `N`, `Am/G`→`Am-G`…) queden
+  **idèntics** (hi ha un test «daurat»).
 
 ### Afegit
 - **`docs/REGLES_DE_LA_APP.md`**: totes les **regles d'or (invariants)** de l'app

@@ -22,21 +22,66 @@ ACORDS_PY = os.path.join(PROJ_DIR, "acords_a_live.py")
 VAMP_DIRS = plataforma.dirs_plugins(PROJ_DIR)
 
 
-def safe_filename(name, fallback="X"):
+# Noms reservats de Windows: no poden ser el nom (ni l'arrel) d'un fitxer.
+_RESERVATS_WINDOWS = frozenset(
+    ["CON", "PRN", "AUX", "NUL"]
+    + [f"COM{i}" for i in range(0, 10)]
+    + [f"LPT{i}" for i in range(0, 10)])
+
+
+def _desambigua(nom, usats):
+    """Torna `nom` únic dins `usats` (hi afegeix `_2`, `_3`… NOMÉS si cal).
+
+    Els noms que no xoquen es queden exactament igual.
+    """
+    if nom not in usats:
+        usats.add(nom)
+        return nom
+    i = 2
+    while True:
+        sufix = f"_{i}"
+        unic = nom[:64 - len(sufix)] + sufix
+        if unic not in usats:
+            break
+        i += 1
+    usats.add(unic)
+    return unic
+
+
+def safe_filename(name, fallback="X", usats=None):
     """Retorna un nom segur per usar com a part d un filename.
 
     - Substitueix separadors de path (/ i os.sep) per -
     - Treu caracters de control (\0, \n, \r, \t)
+    - Substitueix els caracters reservats a Windows (: * ? " < > |) per -
+    - Treu punt o espai FINAL (Windows no els accepta)
+    - Evita els noms reservats de Windows (CON, PRN, AUX, NUL, COM0-9, LPT0-9)
     - Retorna fallback si el resultat es buit
     - Trunca a 64 caracters per evitar toxicitat
+    - Si es passa `usats` (un set), desambigua amb un sufix (_2, _3...) quan el
+      nom ja hi es; els noms unics NO canvien mai
+
+    Els noms habituals d'acord (C, C#m7, N, Am/G->Am-G...) NO canvien.
     """
     s = str(name).strip()
     s = s.replace(os.sep, "-").replace("/", "-").replace("\\", "-")
     s = s.replace("\0", "").replace("\n", "").replace("\r", "").replace("\t", "")
+    # Caracters reservats a Windows. Els evitem SEMPRE (tambe a Linux/macOS)
+    # perque el mateix projecte doni els MATEIXOS noms a tots els sistemes.
+    for c in ': * ? " < > |':
+        s = s.replace(c, "-")
     s = s.strip()
+    s = s.rstrip(". ")          # Windows: ni punt ni espai al final
     if not s:
         s = fallback
-    return s[:64]
+    s = s[:64].rstrip(". ")     # truncar pot deixar un punt/espai final
+    if not s:
+        s = fallback
+    if s.upper() in _RESERVATS_WINDOWS:
+        s = s + "_"
+    if usats is not None:
+        s = _desambigua(s, usats)
+    return s
 
 
 def _vamp_env():
@@ -714,10 +759,11 @@ def segments_lliures(csv_path, total_s, log):
 def fer_wavs_acords_lliures(csv_path, total_s, dest_dir, sr, log):
     os.makedirs(dest_dir, exist_ok=True)
     n = 0
+    usats = set()          # desambigua noms d'acord que quedin iguals
     for ini, fi, chord in segments_lliures(csv_path, total_s, log):
         frames = int(round((fi - ini) * sr))
         fn = (f"{ini:07.2f}s_{fi:07.2f}s_"
-              f"{safe_filename(chord, fallback='N')}.wav")
+              f"{safe_filename(chord, fallback='N', usats=usats)}.wav")
         with wave.open(os.path.join(dest_dir, fn), "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
@@ -745,6 +791,7 @@ def fer_wavs_acords(locators_txt, bpm, dest_dir, sr, log, bpb=4):
 
     n = 0
     primer = True
+    usats = set()          # desambigua noms d'acord que quedin iguals
     with open(locators_txt, encoding="utf-8") as f:
         for line in f.read().splitlines()[1:]:
             if not line.strip():
@@ -758,7 +805,7 @@ def fer_wavs_acords(locators_txt, bpm, dest_dir, sr, log, bpb=4):
                     n += 1
                     log(f"capçalera N: {cap:.2f} temps")
                 primer = False
-            fn = f"{pos_.replace('.', '-')}_{safe_filename(chord, fallback='N')}.wav"
+            fn = f"{pos_.replace('.', '-')}_{safe_filename(chord, fallback='N', usats=usats)}.wav"
             escriu(fn, float(dur))
             n += 1
     log(f"wavs_acords: {n}")
@@ -860,11 +907,12 @@ def regenera_wavs_acords(csv_path, sortida, bpm, bpb, offset, total_s, sr, log,
 def fer_wavs_estructura(abc_csv, dest_dir, sr, log):
     os.makedirs(dest_dir, exist_ok=True)
     n = 0
+    usats = set()          # desambigua etiquetes de secció que quedin iguals
     with open(abc_csv, encoding="utf-8") as f:
         for r in csv.DictReader(f):
             nm = (f"{r['compas_ini'].replace('.', '-')}_"
                   f"{r['compas_fi'].replace('.', '-')}_"
-                  f"{safe_filename(r['lletra'], fallback='X')}")
+                  f"{safe_filename(r['lletra'], fallback='X', usats=usats)}")
             frames = int(round(float(r["durada_s"]) * sr))
             with wave.open(os.path.join(dest_dir, nm + ".wav"), "wb") as w:
                 w.setnchannels(1)

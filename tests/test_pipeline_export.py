@@ -3463,5 +3463,80 @@ class CoberturaTests(unittest.TestCase):
         self.assertEqual(ac[-1][0], 5.0)
 
 
+class SafeFilenameTests(unittest.TestCase):
+    """`pipeline.safe_filename` (Pas 4): noms segurs a Windows, sense regressions."""
+
+    # 🏆 TEST DAURAT: noms d'acord HABITUALS — han de donar EXACTAMENT el mateix
+    # que abans d'endurir la funció (reservats de Windows, punt/espai final i
+    # desambiguació NO els toquen).
+    DAURAT = [
+        ("C", "C"), ("N", "N"), ("C#", "C#"), ("C#m7", "C#m7"),
+        ("Cmaj7", "Cmaj7"), ("Csus4", "Csus4"), ("Am", "Am"),
+        ("Am/G", "Am-G"), ("G/B", "G-B"), ("Bb", "Bb"), ("A#", "A#"),
+        ("F#dim7", "F#dim7"), ("Dm7", "Dm7"), ("G7", "G7"),
+        ("Bbmaj7", "Bbmaj7"), ("A7sus4", "A7sus4"), ("C/G", "C-G"),
+    ]
+
+    def test_daurat_noms_habituals(self):
+        for entrada, esperat in self.DAURAT:
+            self.assertEqual(pipeline.safe_filename(entrada), esperat,
+                             f"ha canviat el nom de {entrada!r}")
+
+    def test_separadors_i_truncament(self):
+        self.assertEqual(pipeline.safe_filename("a/b"), "a-b")
+        self.assertEqual(pipeline.safe_filename("a" + os.sep + "b"), "a-b")
+        self.assertEqual(len(pipeline.safe_filename("x" * 200)), 64)
+
+    def test_buit_usa_fallback(self):
+        self.assertEqual(pipeline.safe_filename("", fallback="N"), "N")
+        self.assertEqual(pipeline.safe_filename("   ", fallback="N"), "N")
+
+    def test_caracters_reservats_windows(self):
+        self.assertEqual(pipeline.safe_filename('a:b*c?d"e<f>g|h'),
+                         "a-b-c-d-e-f-g-h")
+
+    def test_punt_i_espai_final(self):
+        self.assertEqual(pipeline.safe_filename("trailing. "), "trailing")
+        self.assertEqual(pipeline.safe_filename("punts..."), "punts")
+
+    def test_noms_reservats_windows(self):
+        for n in ("CON", "PRN", "AUX", "NUL", "COM1", "COM9", "LPT1", "LPT9"):
+            self.assertEqual(pipeline.safe_filename(n), n + "_")
+        self.assertEqual(pipeline.safe_filename("con"), "con_")
+        self.assertEqual(pipeline.safe_filename("NUL."), "NUL_")
+        # els que només hi COMENCEN no es toquen
+        self.assertEqual(pipeline.safe_filename("CONX"), "CONX")
+        self.assertEqual(pipeline.safe_filename("COM10"), "COM10")
+
+    def test_desambigua_nomes_si_xoca(self):
+        u = set()
+        self.assertEqual(pipeline.safe_filename("C:maj7", usats=u), "C-maj7")
+        self.assertEqual(pipeline.safe_filename("C*maj7", usats=u), "C-maj7_2")
+        self.assertEqual(pipeline.safe_filename("C:maj7", usats=u), "C-maj7_3")
+        # un nom que no xoca NO es toca mai
+        self.assertEqual(pipeline.safe_filename("G7", usats=u), "G7")
+
+    def test_desambigua_respecta_64(self):
+        u = set()
+        llarg = "y" * 64
+        self.assertEqual(len(pipeline.safe_filename(llarg, usats=u)), 64)
+        self.assertEqual(len(pipeline.safe_filename(llarg, usats=u)), 64)
+
+    def test_wavs_estructura_desambigua(self):
+        # Integració: dues seccions que netegen al MATEIX nom → sufix.
+        d = tempfile.mkdtemp()
+        csvp = os.path.join(d, "estructura_ABC.csv")
+        with open(csvp, "w", encoding="utf-8", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["compas_ini", "compas_fi", "lletra", "durada_s"])
+            w.writerow(["1.1.1", "2.1.1", "A", "1.0"])
+            w.writerow(["3.1.1", "4.1.1", "A.", "1.0"])   # neteja -> "A"
+        n = pipeline.fer_wavs_estructura(csvp, d, 8000, lambda *_: None)
+        self.assertEqual(n, 2)
+        noms = os.listdir(d)
+        self.assertIn("1-1-1_2-1-1_A.wav", noms)
+        self.assertIn("3-1-1_4-1-1_A_2.wav", noms)
+
+
 if __name__ == "__main__":
     unittest.main()
