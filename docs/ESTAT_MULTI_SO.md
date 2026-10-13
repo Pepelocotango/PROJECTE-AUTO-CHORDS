@@ -10,14 +10,14 @@
 
 | SO | Objectiu | Estat | Artefacte del CI |
 |----|----------|-------|------------------|
-| **🐧 Linux** | AppImage x86_64 | ✅ **VERD i verificat** (run #8, `08bbfc7`) | `AutoChords_v0.5.1-main-build8-Linux` (ZIP que conté l'AppImage `auto-chords-*-x86_64.AppImage`) |
-| **🪟 Windows** | ZIP portable x64 | ✅ **VERD amb tests** (run #14, `08bbfc7`) | `AutoChords_v0.5.1-main-build14-Windows` (**~95 MB**) |
-| **🍎 macOS** | `.app` per a **High Sierra 10.13+** (Intel) + **`.dmg`** | ✅ **VERD** (run #14, `3c7f441`; smoke test OK) | `AUTO_CHORDS-macos-build14` (`.app` dins ZIP **+ `.dmg`**) |
+| **🐧 Linux** | AppImage x86_64 | ✅ **VERD i verificat** | `AutoChords_v<versió>-…-build<NN>-Linux` (ZIP que conté l'AppImage `auto-chords-*-x86_64.AppImage`) |
+| **🪟 Windows** | ZIP portable x64 | ✅ **VERD amb tests** | `AutoChords_v<versió>-…-build<NN>-Windows` (**~95 MB**) |
+| **🍎 macOS** | `.app` per a **High Sierra 10.13+** (Intel) + **`.dmg`** | ✅ **VERD** (smoke test OK) | `AUTO_CHORDS-macos-build<NN>` (`.app` dins ZIP **+ `.dmg`**) |
 
-> ⚠️ Els noms dels artefactes porten la versió del **`pyproject.toml`** en el
-> moment de construir-los (`v0.5.1`); amb el bump a **v0.5.2** (2026-10-09), una
-> execució nova els anomenarà `v0.5.2`. Els 3 runs **#8 / #14 / #8** validen tot
-> el codi de la Fase D.2 (`08bbfc7`).
+> ⚠️ Els noms dels artefactes porten la **versió del `pyproject.toml`** del
+> moment de construir-los i el **número de l'execució** (`<NN>`). Els darrers
+> builds verds: **`build-all` #4** (`98aa58e`), amb la **suite completa** de
+> tests a cada runner.
 
 ## Detall per plataforma
 
