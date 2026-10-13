@@ -50,7 +50,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |
 | — | `self.b_export_part` | **Exporta partitura** (MusicXML; PDF/MSCZ si hi ha MuseScore) | `QPushButton` |
-| — | `self.b_zs` (al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
+| — | (al transport; `self.b_zs` al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / Lliure** | `QPushButton` (checkable) |
 | — | `self.bpm` · `self.bpb` · `self.offset` · `self.offset_cb` | **BPM**, **Compàs**, **Offset (s)**, **≈ C.B** | `QLineEdit` |
 | — | `self.b_detecta` | **🎯 Detecta** (obre el diàleg de BPM) | `QPushButton` |
@@ -78,19 +78,19 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 
 | Menú | Accions |
 |------|---------|
-| **Fitxer** | Obre… (Ctrl+O) · Exporta WAV's (Ctrl+E) · Exporta la partitura… · Sortir |
-| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y / Ctrl+Shift+Z) · **Afegeix acord/secció** · **Elimina** (Del) · **Duplica** (Ctrl+D) · **Reanomena** (F2) · **Copiar/Retallar/Enganxar** (Ctrl+C / Ctrl+X / Ctrl+V) |
-| **Selecciona** | Acord del cursor · Secció del cursor · **Loop A/B** (Ctrl+[ / Ctrl+]) · Neteja loop |
-| **Visualitza** | Zoom (🔍−/🔍+) · Tot · Metrònom (🥁) |
-| **Analitza** | Detecta BPM (🎯) · Analitza · **Marca el compàs 1 aquí** (📍) |
-| **Ajuda** | Dreceres · Quant a |
+| **Fitxer** | Obre WAV… (Ctrl+O) · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Tonalitat automàtica (qm-keydetector) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
+| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Paràmetres… |
+| **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop |
+| **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Metrònom |
+| **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Inclou estructura |
+| **Ajuda** | Dreceres de teclat · Quant a Auto Chords |
 
 > ⚠️ Les **dreceres** viuen a la **finestra principal** (`QShortcut`/`QAction`),
 > mai al visor incrustat (un `QShortcut` dins el visor no s'activa).
 > **Espai** = play/stop · **T** = tap tempo · **Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z**
 > = desfer/refer · **Del** = eliminar · **Ctrl+D** = duplicar · **F2** = reanomenar ·
 > **Ctrl+O** = obrir · **Ctrl+E** = exportar · **Ctrl+[ / Ctrl+]** = loop A/B ·
-> **Ctrl+1..9** = menús · **F5** = Analitza.
+> **F5** = Analitza · **Ctrl++ / Ctrl+− / Ctrl+0** = zoom +/− / total.
 >
 > **Multi-selecció (timeline)**: **Ctrl+clic** afegeix/treu un clip ·
 > **Shift+clic** = rang · **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V**
@@ -160,7 +160,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» · mida per defecte 1500×900, **am
 | ⑫ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
 
 > 🥁 **El transport principal** (`b_play`, `b_stop`, `b_menys`, `b_mes`, `b_A`,
-> `b_B`, `b_loop`, `b_zm`, `b_zp`, `b_zt`, `b_mut`, `b_metro`, `vol_metro`)
+> `b_B`, `b_loop`, `b_zm`, `b_zp`, `b_zt`, `b_zs`, `b_mut`, `b_metro`, `vol_metro`)
 > viu a la **barra 2 de la finestra**. Quan el visor va incrustat, la seva fila
 > interna s'amaga; el visor **standalone** encara la té.
 > El visor emet **`playStateChanged(bool)`** perquè la barra de fora actualitzi
