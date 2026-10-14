@@ -74,9 +74,31 @@ def setup_logging(log_path=None):
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
     _instal·la_captura_excepcions()
+    _instal·la_faulthandler(log_file)
 
     logger.info("Auto Chords startup | log=%s", log_file)
     return logger
+
+
+# Referència global al fitxer del faulthandler: si es perdés, el fd es tancaria.
+_FAULTHANDLER_FILE = None
+
+
+def _instal·la_faulthandler(log_file):
+    """Activa `faulthandler` cap al MATEIX log de l'app.
+
+    Un crash NADIU (SIGSEGV/SIGABRT/SIGFPE, p. ex. dins de Qt o PortAudio) NO
+    passa per les excepcions de Python: sense això, l'app mor sense cap traça.
+    Amb això, el log (que l'usuari pot enviar) inclou el traceback Python i tots
+    els fils actius. Cost: 3 línies; cap efecte si falla.
+    """
+    global _FAULTHANDLER_FILE
+    try:
+        import faulthandler
+        _FAULTHANDLER_FILE = open(log_file, "a", encoding="utf-8", buffering=1)
+        faulthandler.enable(file=_FAULTHANDLER_FILE, all_threads=True)
+    except Exception:  # noqa: BLE001
+        _FAULTHANDLER_FILE = None
 
 
 FOSC = theme.app_stylesheet()
@@ -630,7 +652,17 @@ class Finestra(QMainWindow):
         # --- Ajuda ---
         m = mb.addMenu("A&juda")
         self._act(m, "Dreceres de teclat", "", self._mostra_dreceres)
+        self._act(m, "Obre la carpeta del registre", "",
+                  self.obre_carpeta_registre)
         self._act(m, "Quant a Auto Chords", "", self._quant_a)
+
+    def obre_carpeta_registre(self):
+        """Obre la carpeta on viu el log de l'app (per reportar errors de beta)."""
+        d = os.path.dirname(config.LOG_PATH) or "."
+        if os.path.isdir(d):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(d))
+        else:
+            self.avisa_info("Auto Chords", f"No trobo la carpeta del registre:\n{d}")
 
     def _sincronitza_temps_del_visor(self):
         """Refresca els camps de temps/loop de la barra des del visor.
