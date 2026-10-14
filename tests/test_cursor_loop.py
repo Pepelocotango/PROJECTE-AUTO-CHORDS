@@ -193,11 +193,14 @@ class TestLoopActivatSonant(_Base):
     def test_activar_loop_amb_cursor_dins_no_mou(self):
         """Si el cursor ja és dins el bucle, el só arrenca allà: no es mou res."""
         v = _visor()
-        self._arrenca(v)
-        v.ves_a(2.5)                          # cursor dins el futur bucle
+        # Estat «sonant» fixat a mà: així el test NO depèn del camí
+        # seek-mentre-sona (que en un entorn ràpid pot no reengegar el motor).
+        v.sona = True
+        v.pos = v.t0_pos = 2.5
         v.loop_a, v.loop_b = 2.0, 3.0
         v.set_loop(True)
-        self.assertAlmostEqual(v.t0_pos, 2.5, places=6)
+        self.assertAlmostEqual(v.t0_pos, 2.5, places=6,
+                               msg="amb el cursor dins el bucle, no s'ha de moure")
 
     def test_activar_loop_parat_no_mou_el_cursor(self):
         """Amb el transport aturat, activar el loop no ha de moure el cursor."""
