@@ -58,7 +58,7 @@ chmod +x AutoChords-*-x86_64.AppImage
 - [ ] **Timeline**: arrossega un acord (ha de fer **snap** a la graella).
 - [ ] **Multi-selecció**: `Ctrl+clic` afegeix un clip; `Shift+clic` fa el rang.
 - [ ] **Duplicar el grup**: `Ctrl+D` amb 2+ clips seleccionats.
-- [ ] **Copiar/enganxar**: `Ctrl+C`, mou el cursor, `Ctrl+V` (enganxa al cursor).
+- [ ] **Copiar/enganxar**: `Ctrl+C`, `Ctrl+V` → **sobreescriu** el tram (regla #4: la cançó no pot créixer); si no mous el cursor, enganxa just **després** del bloc copiat.
 - [ ] **Moure el grup**: arrossega un clip seleccionat (es mou tota la selecció).
 - [ ] **Indicador de mode**: el regle mostra `120 BPM · 4/4` o `Lliure`.
 - [ ] **Desfer**: `Ctrl+Z` desfà l'última operació (de grup, d'una sola vegada).

@@ -93,8 +93,7 @@ visualització. Tota operació d'un tipus ho ha de ser per a l'altre, i pel
   l'estructura.
 
 → Validació: `app/visor.py` + `app/pipeline.py` (joc d'operacions simètric) ·
-test `tests/test_regla11_paritat.py` — **pendent d'implementar** (regla nova:
-en fila, com les 1–10, amb validació + test).
+test `tests/test_regla11_paritat.py` — **✅ FET** (verd; en fila amb les regles 1–10).
 
 ---
 
@@ -126,5 +125,4 @@ Aquests dos casos reals són el motiu del §«S'ha de complir SEMPRE» de dalt:
 ---
 
 > 📌 **En afegir una regla nova**: numera-la aquí, afegeix-ne la validació al
-> codi i un test que la comprovi (les regles **1, 2, 4, 7, 8** ja en tenen;
-> la **11** és nova i encara **no** té validació ni test — pendent d'implementar).
+> codi i un test que la comprovi (les regles **1, 2, 4, 7, 8 i 11** ja en tenen).

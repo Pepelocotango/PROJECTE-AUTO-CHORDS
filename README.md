@@ -13,7 +13,7 @@ fitxer**— llestos per **arrossegar-los ordenats en una sola pista a qualsevol 
 també la **partitura de xifrats** (MusicXML; PDF/MSCZ si tens MuseScore).
 
 > **Novetats de la v0.7.0 (BETA)** — exportació **asíncrona** amb progrés ·
-> **40 eines per a agents** (MCP) · **desat atòmic** dels CSV (mai un fitxer a mitges) ·
+> **50 eines per a agents** (MCP) · **desat atòmic** dels CSV (mai un fitxer a mitges) ·
 > **desfer/refer complet** (BPM, compàs, offset i loop) · **parteix una secció** ·
 > **cursor del loop alineat amb el so**. Historial complet: [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -59,8 +59,9 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 - **Timeline estil DAW**: ona, regle, cursor, zoom; mode **BPM · compàs** o **Lliure (hh:mm:ss)**; metrònom; loop A/B.
 - **Edició completa**: moure/partir/duplicar acords i seccions, **multi-selecció** (`Ctrl`/`Shift+clic`), **copiar/retallar/enganxar**, **desfer/refer** (`Ctrl+Z`/`Ctrl+Y`).
 - **Exporta clips WAV silenciosos** ordenats i nomenats per acord/secció → els arrossegues al teu DAW i hi tens l'harmonia marcada.
+- **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: [`docs/PROJECTES.md`](docs/PROJECTES.md).
 - **Partitura de xifrats**: MusicXML sempre; PDF/MSCZ amb MuseScore.
-- **Agents IA (MCP)**: l'app viva es pot controlar amb **40 eines** (analitzar, exportar, moure acords, etc.) des d'un agent compatible amb *Model Context Protocol*. Detall: [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md).
+- **Agents IA (MCP)**: l'app viva es pot controlar amb **50 eines** (analitzar, exportar, moure acords, etc.) des d'un agent compatible amb *Model Context Protocol*. Detall: [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md).
 - La interfície (menús, barres, dreceres) és a [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md).
 
 ## 💻 Requisits
@@ -94,8 +95,9 @@ procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i **[`docs/PORTABILITAT.md`]
 | [`DEVELOPING.md`](DEVELOPING.md) | Entorn, eines, flux de treball i com construir-ho |
 | [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md) | **Invariants** del producte («s'ha de complir sempre») |
 | [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md) | Esquema de la interfície (menús, barres, dreceres) |
+| [`docs/PROJECTES.md`](docs/PROJECTES.md) | **Projectes autocontinguts** («com un DAW»): `.acproj`, «Desa com», autosave/backups i recuperació |
 | [`docs/PORTABILITAT.md`](docs/PORTABILITAT.md) | Com es construeixen i què porten els 3 paquets |
-| [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md) | El pont **MCP** i les seves 40 eines |
+| [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md) | El pont **MCP** i les seves 50 eines |
 | [`docs/CI_WORKFLOWS.md`](docs/CI_WORKFLOWS.md) | Els workflows de GitHub Actions (build + release) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de versions |
 

@@ -1,6 +1,6 @@
 # Índex de la documentació (`docs/`)
 
-> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-10-13.**
+> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-10-15.**
 > L'estat *actual* del projecte és a **`../README.md`** i **`../ROADMAP.md`**;
 > aquí hi ha el **detall temàtic**. Els documents marcats **[HISTÒRIC]** o
 > **[COMPLETAT]** es conserven com a referència, però ja **no** descriuen el
@@ -21,6 +21,7 @@
 |---|---|
 | `REGLES_DE_LA_APP.md` | Regles d'or: ordre estricte, contigüitat, cobertura total… |
 | `ESQUEMA_UI.md` · `ESQUEMA_UI.html` · `ESQUEMA_UI.svg` | Esquema de la GUI (3 formats). |
+| `PROJECTES.md` 🚧 | **Projectes autocontinguts** («com un DAW»): `.acproj`, `audio/` copiat, «Desa com»… (en desenvolupament). |
 | `PLAY.md` | Com sona l'àudio a l'app i per què està fet així. |
 | `MOTOR_AUDIO_SO.md` | Motors d'àudio per SO (Linux/macOS/Windows). |
 | `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps (nota tècnica). |
@@ -33,17 +34,13 @@
 |---|---|
 | `AUTODETECCIO_OPCIONS.md` | Motors d'autodetecció (BPM/acords/estructura) i opcions. |
 | `QM_VAMP.md` | Plugins QM Vamp (Queen Mary) compilats localment. |
-| `AUBIO_TEMPO.md` **[HISTÒRIC]** | Plugin d'aubio (tempo/beats), **retirat** — substituït per `app/tempo.py`. |
 
 ## Portabilitat i compilació (3 SO)
 
 | Doc | Què explica |
 |---|---|
 | `ESTAT_MULTI_SO.md` | 🎯 **Foto actual** del desplegament a Linux/Windows/macOS. |
-| `PORTABILITAT.md` **[ANÀLISI]** | Anàlisi original de què calia per ser autocontingut. |
-| `PLA_PORTABILITAT.md` **[COMPLETAT]** | Pla per fases (2026-10-07) — ja executat. |
 | `PORTABILITAT_WINDOWS.md` | Com es construeix el paquet portable de Windows. |
-| `PLANIFICACIO_MACOS.md` **[FET]** | Pla per a macOS High Sierra 10.13+ — ja executat. |
 | `PROVES_FUNCIONALS_3SO.md` | Com validar els 3 paquets en un sistema real. |
 
 ## CI/CD, versions i seguretat
@@ -65,6 +62,15 @@
 | Doc | Què explica |
 |---|---|
 | `REFERENCIA_PILES_PROGRAMES_REFERENCIA.md` | Piles tecnològiques/gràfiques d'altres programes (REAPER, Audacity…). |
+
+## Arxiu — documents superats (es conserven com a referència)
+
+| Doc | Què explica |
+|---|---|
+| `AUBIO_TEMPO.md` **[HISTÒRIC]** | Plugin d'aubio (tempo/beats), **retirat** — substituït per `app/tempo.py`. |
+| `PORTABILITAT.md` **[ANÀLISI]** | Anàlisi original de què calia per ser autocontingut (ja fet). |
+| `PLA_PORTABILITAT.md` **[COMPLETAT]** | Pla per fases (2026-10-07) — ja executat. |
+| `PLANIFICACIO_MACOS.md` **[FET]** | Pla per a macOS High Sierra 10.13+ — ja executat. |
 
 ---
 

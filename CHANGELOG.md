@@ -6,6 +6,24 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Troba i reemplaça global** (`c806b3f`): `Edita ▸ Troba i reemplaça…` (**`Ctrl+H`**)
+  substitueix **totes** les aparicions exactes d'un **xifrat** (acords) o d'una **etiqueta**
+  (estructura) a tot el tema, en **una sola operació de desfer** i **sense canviar cap temps**
+  (regles d'or intactes). Diàleg amb camp, «troba» i «reemplaça per»; si no en troba cap, no fa
+  res. Test: `tests/test_troba_reemplaca.py` (5).
+- **Renom en bloc + selecció persistent** (`b7a6cb5`): `F2` sobre una selecció del
+  **mateix tipus** reanomena **tots** els clips de cop (N acords → un nom · M seccions →
+  una lletra); una selecció **mixta** no es renombra. Després d'editar/reanomenar, el clip
+  queda **seleccionat** (timeline + llista + franja Editor) i les llistes es refresquen a
+  l'instant (regla d'or #11). Test: `tests/test_rename_seleccio.py` (6).
+- **Projectes autocontinguts («com un DAW»)** (`app/projecte.py` + GUI): en obrir un
+  WAV, l'app pot crear una **carpeta que ho conté tot** — el document **`.acproj`**
+  (JSON), una **còpia de l'àudio** a `audio/`, els CSVs a l'arrel i `backup/`. GUI:
+  **Obre projecte** (`Ctrl+Shift+O`), **Obre recent**, **Desa** (`Ctrl+S`),
+  **Desa com** (`Ctrl+Shift+S`), **Desa una còpia**, **Reverteix**; títol amb `*` si hi
+  ha canvis. **Autosave** a `backup/` cada 60 s (rotació de 10) i **marcador de sessió**
+  amb **recuperació** a l'arrencada si l'app va caure. Migració d'`AUTOCHORDS_<nom>/`
+  velles. Detall: `docs/PROJECTES.md`.
 - **Regla d'or #11 — paritat d'edició acords ↔ estructura** (els clips d'acord
   tenen ara **exactament les mateixes eines** que els de secció). Backend nou
   **`pipeline.parteix_acord()`** i **`pipeline.fusiona_acords()`** (mirall de
@@ -20,6 +38,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   **`tests/test_regla11_paritat.py`**. `AGENTS.md` passa a 11 regles.
 
 ### Canviat
+- **Copiar/enganxar amb model SOBREESCRIURE** (regla d'or #4): `Ctrl+C`/`Ctrl+X`/`Ctrl+V`
+  ja **no insereixen** clips (la cançó no pot créixer) — l'enganxat **substitueix** el tram
+  de la mateixa durada que el bloc copiat. L'àncora és el **cursor**; si no l'has mogut,
+  enganxa just **després** del bloc copiat. Retalla si sobrepassa el final, actua només
+  sobre els carrils presents (acords / estructura / tots dos) i deixa **seleccionat** el
+  bloc enganxat (una sola operació de desfer). Test: `tests/test_copiar_enganxar.py` (7).
 - **`SectionItem` amb el mateix tracte que `ChordItem`**: ara emet `dragStarted`
   i fixa el cursor de gest (redimensionar/moure) igual que els acords.
 - **«Partir» uniforme**: el «Partir secció aquí» del menú de la llista parteix

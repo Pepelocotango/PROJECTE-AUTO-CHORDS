@@ -92,20 +92,21 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 > ⚠️ Les **dreceres** viuen a la **finestra principal** (`QShortcut`/`QAction`),
 > mai al visor incrustat (un `QShortcut` dins el visor no s'activa).
 > **Espai** = play/stop · **T** = tap tempo · **Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z**
-> = desfer/refer · **Del** = eliminar · **Ctrl+D** = duplicar · **F2** = reanomenar ·
+> = desfer/refer · **Del** = eliminar · **Ctrl+D** = duplicar · **F2** = reanomenar (clip o **grup del mateix tipus**) ·
 > **Ctrl+O** = obrir WAV · **Ctrl+Shift+O** = obrir projecte · **Ctrl+S** = desar ·
 > **Ctrl+Shift+S** = desar com · **Ctrl+E** = exportar · **Ctrl+[ / Ctrl+]** = loop A/B ·
 > **F5** = Analitza · **Ctrl++ / Ctrl+− / Ctrl+0** = zoom +/− / total.
 >
 > **Multi-selecció (timeline)**: **Ctrl+clic** afegeix/treu un clip ·
 > **Shift+clic** = rang · **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V**
-> = copiar/retallar/enganxar al cursor · **Ctrl+D** = duplicar el grup ·
+> = copiar/retallar/enganxar la selecció **sobreescrivint** el tram (regla d'or #4: la
+> cançó no pot créixer) · **Ctrl+D** = duplicar el grup ·
 > **arrossegar** un clip seleccionat = moure el grup. El regle mostra el
 > **mode** (`120 BPM · 4/4` o `Lliure`).
 
-### ✅ P1 (A1–A3) — **IMPLEMENTAT** (pendent de commit/validació)
+### ✅ P1 (A1–A3) — **IMPLEMENTAT i COMMITEJAT** (v0.7.0)
 
-> Al **codi** ja hi és (sense commitejar; es validarà i commitarà aviat):
+> Al **codi** ja hi és (committejat; suite verda):
 > - ✅ **A1 — Desfer/Refer del temps i del loop**: `undo`/`redo` ara també cobreix **BPM, compàs, offset** i el **loop A-B** (nou estat de temps), no només acords/seccions.
 > - ✅ **A2 — Partir una secció — FET**: acció **Edita ▸ Parteix la secció al cursor…** i entrada **«Parteix la secció…»** al menú contextual de la secció (s'activa només si el clic és en una secció i el cursor hi cau a dins). Parteix la secció que conté el cursor en dues: la meitat esquerra conserva lletra i família i la nova rep la lletra que es tria (per defecte, la mateixa). És la manera natural d'afegir secció en un model **saturat** (les seccions cobreixen tota la WAV, regla #4).
 > - ✅ **Regla d'or #11 — paritat acords ↔ estructura**: els acords tenen ara les **mateixes eines** que les seccions — **Edita ▸ Parteix l'acord al cursor…**, **«Parteix l'acord…»** al menú contextual del clip i **menú de la llista d'acords** amb *Afegeix/Partir/Fusionar amb anterior/Fusionar amb següent/Elimina* (idèntic al de les seccions). El tall deixa l'esquerra amb el nom i el clip nou (dreta) amb el nom triat (per defecte, el mateix). Darrere: `pipeline.parteix_acord`/`fusiona_acords` i `visor.parteix_acord`/`fusiona_acord` (mirall dels de secció).
@@ -205,9 +206,10 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | **Ctrl+clic / Shift+clic** | **multi-selecció**: afegeix/treu del grup · **rang** |
 | **Delete / Backspace** | **elimina** el clip o tota la **selecció** (grup) |
 | **Ctrl+D** | **duplica** el clip o **tot el grup** seleccionat |
-| **Ctrl+C / Ctrl+X / Ctrl+V** | **copiar / retallar / enganxar** la selecció al cursor |
-| **F2** | **reanomena** el clip seleccionat |
+| **Ctrl+C / Ctrl+X / Ctrl+V** | **copiar / retallar / enganxar** la selecció — l'enganxat **sobreescriu** el tram (regla #4: la cançó no pot créixer); si no mous el cursor, enganxa just **després** del bloc i deixa el bloc enganxat **seleccionat** |
+| **F2** | **reanomena** el clip seleccionat, o **tot el grup** si són del mateix tipus (N acords → un nom · M seccions → una lletra); una selecció **mixta** no es renombra, i el clip editat queda **seleccionat** |
 | **Ctrl+Z / Ctrl+Y** | **desfer / refer** |
+| **Ctrl+H** | **troba i reemplaça** xifrats (acords) o etiquetes (estructura) a **tot el tema**; una sola operació de desfer i **no canvia cap temps** |
 | **Ratolí sobre un botó/camp** | la **caixa d'informació** (a baix a la dreta) mostra què fa |
 
 ---

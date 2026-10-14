@@ -262,7 +262,8 @@ Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
 
 ## Estructura del codi (mapa ràpid)
 
-- `app/main.py` — finestra principal i flux d'usuari
+- `app/main.py` — finestra principal i flux d'usuari (inclou la gestió de **projectes**)
+- `app/projecte.py` — **projectes autocontinguts** («com un DAW»): carpeta `.acproj` + `audio/` copiat + `backup/` (vegeu `docs/PROJECTES.md`)
 - `app/visor.py` — visor integrat, llistes, navegació, edició manual
 - `app/timeline.py` · `timeline_base.py` · `timeline_items.py` · `timeline_layers.py` — el timeline (orquestrador, vista, clips, regle/graella/ona)
 - `app/pipeline.py` — extracció, exportació i normalització

@@ -9,6 +9,10 @@
 > - **Regla:** cap fitxer de codi tocat; verificat amb `git status` (només `.md`).
 > - **Estat final (2026-10-13):** blocs 1–2 de codi (OC-4) i l'ítem **1.6** aplicats ·
 >   **HEAD `aac8b26`** — vegeu **«ESTAT FINAL»** més avall.
+> - **Posterior (2026-10-14):** el projecte ha avançat fins a la **v0.7.0** (HEAD `2988574`:
+>   **projectes autocontinguts** + **regla d'or #11**) — aquesta auditoria segueix essent
+>   **vàlida pel seu abast**; el **codi nou** es documenta a `docs/PROJECTES.md`,
+>   `docs/REGLES_DE_LA_APP.md` §11 i `docs/ESQUEMA_UI.md`.
 
 ## Com llegir-ho
 

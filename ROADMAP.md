@@ -148,6 +148,12 @@ La base funcional i el nou visor estan validats. El que queda són millores de p
 
 ### Pendents (2026-10-08)
 
+> ⚠️ **Nota (14-10-2026):** secció del **08-10**, **superada** per la feina posterior:
+> el **tag `v0.5.2-deute`** ja no cal (hi ha la **v0.7.0** amb els **3 paquets**), la
+> **Fase D.2** (multi-selecció + copiar/enganxar) és **FETA** i el **`timeline.py`**
+> ja s'ha **partit** (1.777 → **1.293** línies). Els **pendents vius** són a
+> `docs/ESTAT_MULTI_SO.md` §«Pendent real» i `docs/MCP_AUTO_CHORDS.md` §«Pendent».
+
 - **Proves manuals** (operador): `./AUTO_CHORDS.sh` (obrir WAV → Analitza →
   editar acord → Exporta WAV's); `python -m app.visor <wav>` (standalone); **metrònom**
   amb offset posat amb 📍 o 🧭.
@@ -598,8 +604,10 @@ descartant-se — cap està planificada per data.
 
 ### A) Productivitat *(idees no cobertes per Fase D)*
 
-- 🔍 **Cerca i reemplaça d’acords** (ex. canviar tots els `C` per `Cm`
-  arreu, amb preview abans d’aplicar).
+- ✅ **FET (15-10, `c806b3f`)** — 🔍 **Cerca i reemplaça** d'acords **i** d'etiquetes
+  d'estructura (`Edita ▸ Troba i reemplaça…`, **`Ctrl+H`**): substitueix **totes** les
+  aparicions exactes a tot el tema, en **una sola operació de desfer** i **sense tocar
+  cap temps**. *(La idea original demanava «preview»; s'ha resolt amb el recompte final.)*
 - 📋 **Còpia / enganxa** d’acords o seccions individuals (amb un buffer
   intern, no cal OS clipboard).
 - 🕐 **Recent files** (llista dels últims 5–10 WAVs processats).
@@ -684,8 +692,8 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 
 - **Fitxer**: Desar `Ctrl+S` · Desar com… · Recent files · Nou projecte.
 - **Edita**: Afegeix acord… · Afegeix secció… · Elimina element seleccionat ·
-  Reanomena · Duplica · Copia/enganxa · 🔍 Cerca i reemplaça d’acords
-  (vegeu §10-A).
+  Reanomena · Duplica · Copia/enganxa · ✅ Cerca i reemplaça
+  (fet, vegeu §10-A).
 - **Selecciona**: Selecciona tot `Ctrl+A` · Tots els acords · Totes les
   seccions · Inverteix selecció · Neteja loop.
 - **Visualitza**: toggles ☑ **Mostra regle** · ☑ **Mostra graella** ·
@@ -777,21 +785,141 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 - **Marcadors/seccions** i export de **cue-sheets**.
 - **Suport de vídeo** (treure'n l'àudio) via `ffmpeg`.
 
-### g) MCP — paritat d'edició de clips (*partir* / *fusionar*) — APARCAT
-- El pont MCP ja és **simètric per tipus** (acords i estructura tenen el mateix
-  joc: `ac_list/add/rename/move/delete`), però **no exposa** *partir* ni
-  *fusionar* per a **cap** dels dos — operacions que sí que hi són a la GUI
-  (regla d'or **#11**).
-- **Aparcat** (decisió de l'operador, 2026-10-14): afegir 4 eines
-  **`ac_split_chord` · `ac_merge_chord` · `ac_split_section` · `ac_merge_section`**
-  perquè GUI i MCP ofereixin el mateix joc. Canviaria el comptador d'eines
-  (40 → 44) i toca `docs/MCP_AUTO_CHORDS.md`; quan es faci, amb test al
-  `test_mcp_bridge`.
-- **Criteri del moment**: primer **centrar-se en l'app**; el MCP queda per a més
-  endavant.
+### g) MCP — paritat d'edició de clips (*partir* / *fusionar*) — ✅ FET
+- ✅ **FET (2026-10-15)**: el pont exposa **`ac_parteix_acord` · `ac_fusiona_acord` ·
+  `ac_parteix_seccio` · `ac_fusiona_seccio`** (noms finals, en català com la resta
+  del pont) → GUI i MCP ofereixen **el mateix joc** (regla d'or **#11**).
+- **De passada**, s'han cobert les funcions de **projectes** que també eren només
+  GUI: `ac_crea_projecte` · `ac_obre_projecte` · `ac_desa_projecte` · `ac_desa_com` ·
+  `ac_fes_backup` · `ac_recents`.
+- **Comptador**: **40 → 50 eines**; `docs/MCP_AUTO_CHORDS.md`, `README.md` i
+  `AGENTS.md` actualitzats. Tests: `tests/test_mcp_bridge.py` (+20) i **prova en
+  viu** pel protocol MCP real. Darrere: `app/mcp_bridge.py` (`_op_*` + `OPERACIONS`)
+  i `eines/mcp_auto_chords_server.py` (`_TOOLS`).
 
 > 🧭 **Criteri**: cap d'aquestes pot trencar les **regles d'or**
 > (`docs/REGLES_DE_LA_APP.md`); si en xoca alguna, es canvia **la funcionalitat**, no la regla.
+
+## 12) Idees «DAW professional» — brainstorm ampliat (2026-10-14, OC-5)
+
+> Idees **noves** (no cobertes per §10/§11) per acostar AUTO CHORDS a l'experiència
+> d'un **DAW professional** (Reaper/Live/Logic). Cap és planificada; cap no pot
+> trencar les **regles d'or** (§«Notes sobre la implementació»).
+
+### A) Edició fina — el «feel» de DAW
+- **Nudge amb teclat** — `←`/`→` mouen el clip seleccionat **un pas de graella**
+  (`Shift` = més fi; `Alt+←/→` = estirar/encongir un pas). És el gest més habitual
+  d'un DAW per ajustar sense ratolí.
+- **Graella configurable** — triar la **divisió** (1/4 · 1/8 · 1/16 · tresets) i un
+  **interruptor de snap** ràpid al regle; avui el snap és sempre a la subdivisió.
+- **Ripple edit explícit** — commutador visible: en moure/inserir, la resta
+  **s'arrossega** (manté la cobertura, regla #4) o **no**; fer palès què fa el model.
+- **Historial d'undo/redo** — a més de Desfer/Refer, una **llista de passos**
+  («Mou acord Am → 12,4 s», «Parteix secció B»), amb salt directe al pas.
+
+### B) Navegació i vista
+- **Auto-scroll (playhead follow)** — durant el play, el timeline **segueix el
+  cursor** amb scroll suau; i **zoom a la selecció/loop**.
+- **Mini-mapa (overview)** — franja fina amb **tota la cançó** de cop, per saltar
+  i seleccionar trams ràpid (com l'overview de Reaper).
+- **Zoom vertical de l'ona** — alçada/amplitud independent del zoom horitzontal
+  (per veure atacs i silencis).
+- **Carrils amagables i alçada ajustable** — mostrar/amagar i deformar l'alçada de
+  cada carril (avui fixa).
+
+### C) Marques i rang
+- **Marcadors amb nom** — punts marcats («solo», «pont»…) + **llista** per saltar-hi
+  (`Tab` = següent) i export **cue-sheet** *(extensió de §11-f)*.
+- **Selecció de rang temporal** — arrossegar el regle fixa un **rang**; les accions
+  (exporta, copia, elimina) s'hi poden **limitar** (com el *time selection*).
+
+### D) So i anàlisi
+- **Tempo map** — més d'un canvi de **BPM** (cançons que acceleren/retarden) i
+  **compassos variables** (4/4 → 3/4), amb la graella redibuixada.
+- **Loudness (LUFS) + espectrograma** — mesurar i veure el so carregat abans d'exportar.
+- **Analitzar en lot** — una carpeta sencera de WAVs → **informe** (BPM, tonalitat,
+  acords) sense obrir-les una a una.
+
+### E) Musical (ajuda a l'usuari)
+- **Tonalitat → paleta d'acords** — mostrar l'escala i **suggerir acords** diatònics
+  (verd/vermell) + **selector** (arrel/qualitat/baix) en lloc d'escriure text.
+- **Confiança de la detecció** — pintar l'acord amb **opacitat segons la confiança**
+  del detector (saber què revisar primer).
+- **Notes/anotacions per clip** — camp lliure per clip («revisar», «dubtós»).
+
+### F) UX de producte
+- **Arrossega-i-deixa-anar** un WAV/`.acproj` **damunt la finestra** per obrir-lo.
+- **Pantalla d'inici** — en arrencar sense arguments: **Recents** (WAV + projectes),
+  «Nou», «Obre…» (com un DAW).
+- **Accessibilitat** — navegació completa amb teclat + etiquetes per a lectors de pantalla.
+
+### G) Àudio de clips — edició no destructiva
+- **Guany per clip** — `+ Gain` a cada clip (sense tocar la WAV mare) → s'aplica a l'export.
+- **Fades amb nanses** — triangles a les cantonades del clip per fade in/out, i
+  **crossfade** arrossegant un clip sobre el veí *(extensió de §11-b)*.
+- **Snap a zero-crossings** — els talls cauen a un creuament de zero (evita el «clic» al tall/export).
+
+### H) Configuració «pro» (com un DAW madur)
+- **Editor de dreceres** — reassignar qualsevol tecla i **desar perfils**.
+- **Modificadors de ratolí** — què fa `Arrossega` / `Alt+Arrossega` / `Shift+Arrossega`
+  (moure · copiar · esborrar el clip), personalitzable.
+- **Workspaces (screensets)** — desar/recuperar disposicions de panells (edició, anàlisi)
+  i **panells flotants/acoblables** + pantalla completa.
+- **Preferències completes** — motor d'àudio, autosave, graella per defecte, tema.
+
+### I) Flux de treball
+- **Copiar/enganxar entre projectes** — buffer persistent entre sessions.
+- **«Repeteix l'última acció»** (`Ctrl+R`, com Reaper) — repetir el darrer moviment/partit.
+- **Plantilles de projecte** — crear un `.acproj` amb graella i valors prefixats.
+- **Presets d'export** — «per a Live», «per a Logic»… amb noms i carpeta coneguts *(vegeu §11-f)*.
+
+### J) Vista pro
+- **Gestor central de marques/regions** — una taula amb totes les marques i regions per
+  editar, saltar-hi i exportar *(extensió de la idea C)*.
+- **Peu d'estat** — motor d'àudio, taxa de mostreig, format, CPU i autosave sempre visibles.
+- **Tema clar/fosc** — amb opció de seguir el tema del sistema.
+
+### K) Navegació ràpida «de DAW»
+- **Paleta de comandes** (`Ctrl+K`) — escriure el nom d'una acció i executar-la
+  (descobriment total + velocitat de teclat, sense recordar dreceres).
+- **Rellotge gran (big clock)** — el temps actual en **gran** (compàs.beat o min:seg),
+  útil en gravar o assajar; clic per canviar de format.
+- **Snap a esdeveniments** — a més de la graella, encaixar als **extrems dels clips**
+  veïns i al **cursor** (com els «snap targets» dels DAW).
+
+### L) Explorador multimèdia integrat
+- **Navegador de fitxers** dins l'app (arbre de carpetes + audició ràpida) per trobar el
+  WAV o el `.acproj` sense sortir; arrossegar-lo a la finestra per obrir-lo *(lliga amb F)*.
+
+### M) Cua de render (batch)
+- **Cua de treballs**: afegir diversos projectes o rangs i exportar-los **tots** d'un cop
+  (noms i formats prefixats) — com el *Render Queue* d'un DAW.
+
+### N) Entrada d'acords (ajuda musical)
+- **Teclat a pantalla / MIDI** — tocar l'acord i que s'escrigui el xifrat, o triar
+  **arrel/qualitat/baix** amb botons, en lloc d'escriure'l a mà.
+
+### O) Generar un projecte de DAW (el «pont» definitiu)
+- **Exportar una sessió** (`.rpp` de REAPER, `.als` de Live, `logicx`…) amb els clips
+  **ja col·locats a la graella** (tempo, posicions, noms): obrir-la i ja estar llest —
+  estalvia l'arrossegament manual. És el que més valora un usuari multi-DAW.
+  *(Lliga amb §11-f «plantilles d'export per DAW» i l'skill `live9-to-reaper`.)*
+
+### P) Documents amb pestanyes
+- **Diverses cançons obertes alhora** (pestanyes), amb desfer/estat independents, per
+  comparar dues versions del mateix tema.
+
+### Q) Navegador de còpies (autosave/backups)
+- **Veure i restaurar** les còpies de `backup/` des de la GUI (amb data i resum) i
+  comparar-les amb l'actual — la recuperació d'un DAW, però visible.
+
+### R) A/B de dues anàlisis
+- **Comparar** dues anàlisis del mateix tema (detectors o paràmetres diferents) amb un
+  commutador, i decidir quina es queda.
+
+> 🧭 Prioritat suggerida: **A** (edició fina) i **B** (navegació) donen el màxim
+> «seny de DAW» per cost baix; **D** (tempo map) i **E** (paleta d'acords) són les
+> de més valor musical i més cost.
 
 ## Criteri de producte actualitzat
 
