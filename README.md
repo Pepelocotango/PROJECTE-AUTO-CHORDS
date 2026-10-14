@@ -1,94 +1,34 @@
 # PROJECTE AUTO CHORDS
 
-> **AUTO CHORDS** analitza un àudio (**WAV, MP3, FLAC** i **16 formats més**) i n'extreu els
-> **acords** i l'**estructura** (motor Chordino + Queen Mary). Els pots **revisar i editar**
-> en un visor estil DAW i **exportar** el resultat com a **clips WAV silenciosos** (un per
-> acord/secció, amb el **nom de l'acord** al fitxer) per **arrencar-los a qualsevol DAW**
-> (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…). També pot generar la
-> **partitura** (MusicXML; PDF/MSCZ **només si tens MuseScore**). App d'escriptori **multi-SO**
-> (Linux · Windows · macOS).
+<p align="center">
+  <img src="icona/auto-chords-512.png" width="170" alt="AUTO CHORDS">
+</p>
 
-> **Repositori:** https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
-> (les versions publicades —Linux `.tar.gz` amb l'**AppImage**, Windows `.zip`, macOS `.dmg`— són a *Releases*).
+**AUTO CHORDS** és una aplicació d'escriptori (**Linux · Windows · macOS**) que
+**analitza una cançó i n'extreu els acords i l'estructura**. Els pots **revisar i
+editar** en un visor d'estil DAW i **exportar el resultat com a clips WAV
+silenciosos** —un per **acord** i un per **secció**, amb **el nom de l'acord al
+fitxer**— llestos per **arrossegar-los ordenats en una sola pista a qualsevol DAW**
+(Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…). Opcionalment genera
+també la **partitura de xifrats** (MusicXML; PDF/MSCZ si tens MuseScore).
 
-> **Novetats v0.7.0 (BETA):** **exportació asíncrona** amb progrés · **partitura per MCP** i eines MCP **29→40** · **desat atòmic** dels CSV i **traça de crashes nadius** (`crash_nadiu.log`) · **desfer/refer complet**, **parteix una secció** i **dreceres completes** · **cursor del loop** alineat amb el so. **v0.6.2:** **botons nous** a la barra («Exporta WAV's»,
-> «Exporta partitura», «Zoom selecció») i la partitura deixa clar que el PDF
-> necessita **MuseScore** instal·lat. **v0.6.1:** **estabilitat d'àudio a macOS** (teardown idempotent
-> i serialitzat a `audio_out.py` que evita crashes `EXC_BAD_ACCESS`),
-> **suport de MuseScore a macOS i Windows** per a exportació de partitures en PDF/MSCZ,
-> i **suite completa de tests** executant-se als 3 workflows del CI.
-> **v0.6.0:** **motor d'àudio natiu multi-SO** (`sounddevice`/PortAudio sobre CoreAudio
-> a macOS i WASAPI a Windows), **generació de DMG a macOS**, **smoke test** de l'`.app`
-> i **verificació exhaustiva de `minos`** (≤ 10.13). **v0.5.2:** **edició DAW-like completa**
-> (multi-selecció, copiar/retallar/enganxar, duplicar i moure grup) i refactorització del timeline.
+> **Novetats de la v0.7.0 (BETA)** — exportació **asíncrona** amb progrés ·
+> **40 eines per a agents** (MCP) · **desat atòmic** dels CSV (mai un fitxer a mitges) ·
+> **desfer/refer complet** (BPM, compàs, offset i loop) · **parteix una secció** ·
+> **cursor del loop alineat amb el so**. Historial complet: [`CHANGELOG.md`](CHANGELOG.md).
 
-## Estat actual (2026-10-14 · v0.7.0 BETA)
+<p align="center">
+  <img src="icona/captura.png" alt="El visor d'AUTO CHORDS: el timeline amb l'ona, els acords (C, G, F, G) i les seccions (A, B: intro, tornada, final), el regle amb el BPM i el compàs, les llistes i el transport">
+</p>
 
-L’app està **reorganitzada amb el timeline com a centre de la finestra**
-(estil Audacity/DAW): l’anàlisi és una **acció** sobre el que es veu, no un
-pas d’assistent.
+👉 **Portal de projectes:** [pepelocotango.github.io](https://pepelocotango.github.io)
 
-- En obrir un àudio (**Fitxer ▸ Obre…**, `Ctrl+O`) es mostren l’ona i el
-  timeline **de seguida**, amb les pistes Acords/Estructura buides.
-- **Barra de menús**: Fitxer · Edita · Selecciona · Visualitza · Analitza · Ajuda.
-- **Barra de temps** fina: mode **BPM · compàs** / **Lliure (hh:mm:ss)**,
-  BPM, botons **×2/÷2**, **🎯 Detecta** (motor triable), **TAP**, compàs
-  en format **`x/x`** (`4`, `4/4`, `6/8`, etc.) i Offset amb **📍** (cursor) i
-  **🧭** (automàtic). (**«Inclou estructura»** és una acció del menú **Analitza**.)
-- **Barra de transport** pròpia: play/stop, −10s/+10s, loop A/B, **neteja del loop**
-  (icona `x`), zoom i mute (`Espai` = play/stop). La roda del ratolí fa **zoom centrat
-  al cursor vermell** quan no hi ha cap clip seleccionat, i segueix sent coherent amb
-  el clip seleccionat quan n’hi ha un.
-- **Barra d'Accions** (sota la de temps): **Analitza**, **Exporta WAV's**, **Exporta
-  partitura**, **Desfer**/**Refer** (icones `undo-2`/`redo-2`) i **Obre la carpeta de sortida**.
-- **Metrònom** 🥁 (només en mode BPM · compàs), amb **volum propi** (60 %).
-- **Analitza** (`F5`): progrés a la **barra d’estat**; el **log** és un tauler
-  plegable a baix (**Visualitza ▸ Mostra el log**).
-- **Exporta WAV's…** (`Ctrl+E`) a Fitxer; desactivat fins que hi ha resultat.
-- **Edició al timeline**: desfer/refer (`Ctrl+Z`/`Ctrl+Y`), `Delete`, `Ctrl+D`
-  (duplica) i **menú contextual** (botó dret). Mai toca els WAVs generats.
-- **Multi-selecció i porta-retalls**: `Ctrl+clic` (afegir/treure) i `Shift+clic`
-  (rang); `Ctrl+C`/`Ctrl+X`/`Ctrl+V` (copiar/retallar/enganxar al cursor) i
-  `Ctrl+D` per duplicar **tot el grup**; arrossegar un clip seleccionat mou el
-  grup sencer. El regle mostra el **mode** (`120 BPM · 4/4` o `Lliure`).
-- **Llistes** d’acords (⑨) i estructura (⑩) **a sota de l’ona**: clic per saltar,
-  doble-clic per editar, botó dret = menú contextual. (El panell **Log · Informació**,
-  a baix, s’amaga/mostra amb **Visualitza ▸ Mostra el log**.)
-- Compassos de **qualsevol mètrica** (3/4, 6/8, 5/4…), no només 4/4.
+---
 
-La funcionalitat principal està validada: **tota la suite · OK (1 skip)** (`python -m unittest discover -s tests`).
+## 📥 Descarrega i instal·la
 
-## ✅ Ja al codi — pendent de publicar
-
-> **P1 (A1–A3) + P2 (A4–A9) + robustesa** ja són al codi (validats i verificats). Detall: `docs/ESQUEMA_UI.md` i `docs/MCP_AUTO_CHORDS.md`.
-> - **A1** — **desfer/refer** també per a **BPM, compàs, offset i loop A-B**.
-> - **A2** — **Edita ▸ «Parteix la secció al cursor…»**: partir una secció (manera natural d'afegir-ne en un model saturat per la cobertura).
-> - **A3** — el diàleg **Ajuda ▸ Dreceres de teclat** llista **totes** les dreceres reals.
-> - **A4–A9 (MCP, 40 eines)** — partitura (`ac_export_partitura` + `partitura` a l'export) · export **asíncron** (`async:true`, progrés a `ac_status`) · `ac_get_options` · eines noves (tonalitat/metrònom/compàs 1/carpeta/**multi-selecció**) · convivència OFF/instància única · autocomprovació amb `ffmpeg`.
-> - **Robustesa** — **desat atòmic** dels CSV · **faulthandler** (traca de crashes nadius → `crash_nadiu.log`) · **avís de fitxer llarg** (>45 min) · **Ajuda ▸ Obre la carpeta del registre**.
-
-## Què fa l’app
-
-- **Importa àudio** i n'extreu acords amb **Chordino** i estructura amb **qm-segmenter**. Accepta **WAV** i, convertint-los amb `ffmpeg`, **MP3, FLAC, AIFF, M4A/AAC, OGG, Opus, WMA** i més (**19 formats**; vegeu §«Formats d'àudio acceptats»).
-- Genera els **CSV** d’acords i l’**estructura ABC**.
-- Mostra **ona, cursor, regle i temps**, i permet navegar per la cançó.
-- Permet **corregir acords** i **editar seccions**.
-- **Exporta clips WAV silenciosos**: un fitxer per **acord** (i per **secció**), **anomenat amb l'acord** (p. ex. `01.00s_05.50s_Cmaj7.wav`) → els **arrossegues a qualsevol DAW** (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…). *Són clips de referència (silenciosos) perquè el nom i la posició marquin l'harmonia; el so el poses tu.*
-- Opcionalment, **partitura de xifrats**: **MusicXML sempre**; **PDF i MSCZ només si tens MuseScore** instal·lat.
-- **Regenera els clips** en funció dels canvis manuals i ho **exporta tot en una sola acció**.
-
-## Flux actual d’ús
-
-1. Obre l'àudio (`Obre…`) — si no és WAV, es converteix sol amb ffmpeg
-2. Ajusta el BPM (🎯 Detecta o TAP) i fes `Analitza` (obre el diàleg d'opcions)
-3. Revisa i edita acords / seccions al visor (franja Editor)
-4. Fes `Exporta WAV's`
-
-## Instal·lació (els 3 SO)
-
-> Descarrega el paquet del teu sistema des de **Releases** →
-> https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS/releases
-> (noms: `AutoChords-<versió>-build<NN>-linux-x86_64.tar.gz` · `…-win-x64.zip` · `…-macos-x86_64.dmg`)
+Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS/releases)**
+(els noms són `AutoChords-<versió>-build<NN>-linux-x86_64.tar.gz` · `…-win-x64.zip` · `…-macos-x86_64.dmg`).
 
 | SO | Paquet | Com s'instal·la |
 |----|--------|-----------------|
@@ -96,227 +36,81 @@ La funcionalitat principal està validada: **tota la suite · OK (1 skip)** (`py
 | 🪟 **Windows 10/11** (x64) | **`.zip`** portable | Descomprimeix en una carpeta i executa **`AutoChords.exe`**. Si SmartScreen avisa: *Més informació ▸ Executa igualment*. **No cal instal·lar res** (runtime a dins). |
 | 🍎 **macOS** (10.13 High Sierra o +) | **`.dmg`** | Obre el `.dmg` i arrossega **`AUTO_CHORDS.app`** a **Applications**. Al primer cop: **clic dret ▸ Obre** (o `xattr -dr com.apple.quarantine AUTO_CHORDS.app`). |
 
-> 🎧 **Per ESCOLTAR**: a **Linux** cal **PipeWire** o **PulseAudio**; a **Windows/macOS** l'àudio va amb el sistema (PortAudio). Sense àudio, l'app fa tota la resta (analitzar, editar, exportar) — només avisa que no pot sonar.
-> 🎼 **Partitura**: **MusicXML sempre**; **PDF i MSCZ només si tens MuseScore** instal·lat (en aquest maquinari, **MuseScore 4.6.x**; el 4.7+ no hi va).
-> 📄 Guia de validació pas a pas (checklist de 5 minuts): `docs/PROVES_FUNCIONALS_3SO.md`.
-
-## Filosofia i lògica del flux
-
-La idea central del projecte no és tenir “múltiples eines ocultes”, sinó una sola aplicació amb un flux clar i un model de dades coherent:
-
-### Semàntica del flux
-
-- els intervals tenen inici i fi; el fi no s’edita de manera independent perquè es deriva del següent inici o de la durada total
-- “N” és un valor de chord vàlid, no una excepció especial
-- el sistema accepta acords i seccions ordenats de manera estricta: no solapaments, no inversions de temps, no duplicats de start
-- la normalització ordena els elements abans de salvar-los i la validació rebutja canvis lògicament invàlids
-
-### Per què aquest model
-
-Perquè permet que el producte sigui coherent i predictible:
-
-- l’usuari sempre editant la mateixa font de dades
-- el visor reflecteix el que realment es guardarà
-- els exports són reproduïbles i no depenen d’una “modalitat temporal” distinta
-- el codi no es descontrola amb dades inconsistents ni amb dos models de temps barrejats
-
-Aquest és el criteri que ha acabat definint la base de l’app: una app única, un flux únic i una representació temporal única en el backend.
-
-## Configuració
-
-- L'estat (**temp**, log, opcions) va a un **directori d'estat escriptible**:
-  `~/.local/state/auto-chords/` (hi ha `temp/` a dins). Mai dins el paquet (regla d'or #10).
-- El directori temporal es pot sobreescriure amb la variable d'entorn
-  **`AUTO_CHORDS_TEMP`** (camí absolut o relatiu), útil per a fluxos personalitzats:
-
-```bash
-export AUTO_CHORDS_TEMP=/home/user/tmp_auto_chords
-python -m app.visor tema.wav
-```
-
-## Llançament
-
-Des de la carpeta del projecte:
-
-```bash
-python -m app.main
-```
-
-Si **no tens PyQt5 al sistema**, crea abans un entorn aïllat **sense `sudo`**
-(mateix flux que a `DEVELOPING.md`):
-
-```bash
-bash instal·la_local.sh        # crea .venv/ + PyQt5 + .deps/ (headers)
-.venv/bin/python app/main.py
-```
-
-O directament amb:
-
-```bash
-./AUTO_CHORDS.sh
-```
-
-També hi ha un **llançador d'escriptori** (`AUTO_CHORDS.desktop`): fes-hi **doble-clic**,
-o instal·la'l al menú d'aplicacions amb `bash instal·la_local.sh`. (Un `.desktop` **no**
-s'executa com un programa des del terminal (`./AUTO_CHORDS.desktop` no funciona).)
-
-## Estructura clau
-
-- `app/main.py` — finestra principal i flux d’usuari
-- `app/visor.py` — visor integrat, llistes, navegació, edició manual
-- `app/timeline.py` — orquestrador del timeline i re-exportacions
-- `app/timeline_base.py` — vista base i escena de QGraphicsView
-- `app/timeline_items.py` — clips d'acords i seccions (items gràfics)
-- `app/timeline_layers.py` — capes de regle, graella i forma d'ona
-- `app/pipeline.py` — extracció, exportació, normalització
-- `app/audio_out.py` — motor d'àudio natiu (PortAudio / sounddevice / CoreAudio / WASAPI)
-- `app/plataforma.py` — abstracció multi-SO (Linux / Windows / macOS)
-- `app/config.py` — configuració centralitzada de la aplicació
-- `app/tempo.py` — detecció de BPM (numpy, sense AVX)
-- `app/metronom.py` — clic del metrònom mesclat al buffer
-- `app/vamp_params.py` — paràmetres dels plugins Vamp (descriptors `.n3`)
-- `app/dialegs.py` — diàleg d’opcions d’autodetecció
-- `app/postproc.py` — neteja posterior dels acords
-- `app/partitura.py` — export de partitura (MusicXML / PDF / MSCZ)
-- `app/ffmpeg.py` — import d’altres formats (conversió a WAV)
-- `app/theme.py` — tema centralitzat
-- `eines/vamp_host.cpp` — **host Vamp propi** (`vamp_host_local`), sense Qt6
-- `eines/` — build i cadena de subministrament: `crea_portable.sh`,
-  `compila_vamp_host.sh`, `compila_vamp_plugins.sh`, `empaqueta_portable.sh`,
-  `crea_appimage.sh`, `libreries_natives.sh`; **descàrregues verificades**
-  (`baixa_verificat.py` + `deps_fixades.env`); packaging (`AutoChords-win.spec`,
-  `launcher_pyinstaller.py`, `crea_icona.py`); release (`notes_release.py`) i
-  inventari (`genera_inventari.py`)
-- `portable/` — Python + ffmpeg portables (entrada de build, gitignorat)
-- `AUTO_CHORDS.sh` — llançador (prefereix el Python portable)
-
-## Documentació
-
-Índex complet de documents: **`docs/README.md`** — esquema de la GUI, **regles d'or**,
-portabilitat (Linux/Windows/macOS), CI/CD, seguretat, autodetecció, auditoria…
-Destaquen: **`docs/REGLES_DE_LA_APP.md`** (invariants), **`docs/ESQUEMA_UI.md`** i
-**`docs/CI_WORKFLOWS.md`**.
-
-## Paquet portable (autocontingut)
-
-```bash
-eines/empaqueta_portable.sh      # -> ../AUTO_CHORDS_PORTABLE/
-cd ../AUTO_CHORDS_PORTABLE && ./AUTO_CHORDS.sh
-```
-El paquet **no s'edita mai** (és un artefacte de build): el codi viu aquí i es
-regenera. Detall: `docs/PORTABILITAT.md`.
-
-## AppImage (un sol fitxer executable)
-
-L'AppImage embolcalla el paquet portable + un `AppRun` + el `.desktop` + la
-icona, i el comprimeix (squashfs): dels ~530 MB surt un fitxer d'**~160 MB**
-que s'executa a qualsevol **Linux x86_64** sense instal·lar res.
-
-> **Multi-SO**: a més d'aquesta AppImage de Linux, el CI construeix i empaqueta
-> **Windows (x64)** i **macOS (High Sierra 10.13+)**. Els 3 builds **han estat verds**;
-> l'**últim `build-all` verd és el #4** (`98aa58e`) i després hi ha hagut fixos de CI
-> **pendents de revalidar**. Estat i artefactes: **`docs/ESTAT_MULTI_SO.md`**.
+> 🎧 **Per ESCOLTAR**: a **Linux** cal **PipeWire** o **PulseAudio**; a **Windows/macOS**
+> l'àudio va amb el sistema (PortAudio). Sense àudio, l'app fa tota la resta (analitzar,
+> editar, exportar) — només avisa que no pot sonar.
 >
-> El runtime incrustat és el modern **estàtic** (`type2-runtime`, enllaçat amb
-> musl i libfuse a dins), així que **no cal instal·lar `libfuse2`**.
-
-**És autoportable**: a dins hi van el Python, Qt, ffmpeg, els plugins Vamp
-**i les seves llibreries natives** (`libvamp-hostsdk`, `libsndfile` i els
-còdecs: FLAC, Vorbis, Opus, Ogg, mpg123, LAME). Al sistema host **només** calen
-`glibc` + `libstdc++/libgcc` (que té qualsevol Linux modern), un entorn
-d'escriptori i —per **escoltar**— PipeWire o PulseAudio. Detall exacte:
-`docs/PORTABILITAT.md`.
-
-### Descarregar
-
-Les versions publicades són a
-**https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS** → *Releases*:
-**Linux** `.tar.gz` (AppImage + docs) · **Windows** `.zip` · **macOS** `.dmg`.
-
-### Construir-lo localment
-```bash
-eines/crea_appimage.sh          # -> ../AUTO_CHORDS-x86_64.AppImage
-```
-Requereix haver fet abans: `eines/crea_portable.sh` (Python + ffmpeg + les
-llibreries natives del host Vamp) i `eines/compila_vamp_host.sh` (l'host Vamp).
-L'`appimagetool` es baixa sol.
-
-### Executar-lo
-```bash
-chmod +x AUTO_CHORDS-x86_64.AppImage
-./AUTO_CHORDS-x86_64.AppImage
-```
-O **doble clic**. ⚠️ Per **escoltar** cal **PipeWire** o **PulseAudio** (sense
-ells l'app funciona igual, només avisa).
-
-> ✅ **No cal `libfuse2`**: el runtime incrustat és **estàtic** (porta
-> libfuse + squashfuse + musl a dins) i només depèn del **suport FUSE del
-> kernel**, que tot Linux ja té. (L'avís clàssic d'instal·lar `libfuse2` és
-> per a AppImages construïdes amb el runtime **antic**.) Només si el nucli
-> tingués FUSE desactivat caldria `./AutoChords-*.AppImage --appimage-extract-and-run`.
-
-### GitHub Actions
-Cinc workflows a `.github/workflows/` (tots d'execució **manual**):
-
-| Workflow | Quan s'activa | Què fa |
-|----------|---------------|--------|
-| **`build-all.yml`** | **només manual** | **Agregador**: executa els 3 builds (Linux + Windows + macOS) **en paral·lel**; cada un deixa el seu artefacte |
-| **`build-appimage.yml`** | **només manual** (GitHub ▸ Actions ▸ Run workflow) | Construeix l'AppImage de **Linux** i l'empaqueta en un **`.tar.gz`** (AppImage + docs) com a **artefacte** descarregable |
-| **`build-windows.yml`** | **només manual** | Construeix el paquet portable de **Windows x64** (MSYS2 + PyInstaller `--onedir`) i el deixa com a **artefacte** (ZIP) |
-| **`build-macos.yml`** | **només manual** | Construeix el **`.app` de macOS 10.13+** (Intel; PyInstaller) i el deixa com a **artefacte** (DMG) |
-| **`release.yml`** | **només manual** | **Drecera**: agafa els **últims artefactes verds** de Linux/Windows/macOS **directament de GitHub Actions** i crea un **Release PUBLICAT** (no esborrany) amb títol `AUTO CHORDS v<versió>`, el cos **en català** (`eines/notes_release.py`) i els **3 paquets** adjunts |
-
-> **Tot manual**: cap workflow s'activa sol (ni amb tags). Per fer un **Release**:
-> llança **`release.yml`** a mà — agafa els últims artefactes verds dels 3 SO i crea
-> el **Release PUBLICAT** (`gh release create`, sense `--draft`) a GitHub ▸ Releases.
-> Cap workflow fa `git push` al repositori.
+> 🎼 **Partitura**: **MusicXML sempre**; **PDF i MSCZ només si tens [MuseScore](https://musescore.org)**
+> instal·lat (en aquest projecte s'ha provat amb **MuseScore 4.6.x**; el 4.7+ no hi va).
 >
-> **Com funciona cada workflow (detall): `docs/CI_WORKFLOWS.md`.**
+> 📄 **Guia de validació pas a pas** (checklist de 5 min): [`docs/PROVES_FUNCIONALS_3SO.md`](docs/PROVES_FUNCIONALS_3SO.md).
 
-> ⚠️ Els runners són `ubuntu-22.04` (no 24.04): allà s'hi **compila
-> `vamp_host_local`**, i la seva glibc marca l'abast mínim de l'AppImage.
-> Detall: `docs/PORTABILITAT.md`.
+## 🚀 Ús en 4 passos
 
-## Requisits
+1. **Obre l'àudio** (`Fitxer ▸ Obre…`, `Ctrl+O`) — si no és WAV, es converteix sol amb **ffmpeg**.
+2. **Ajusta el temps** (BPM amb **🎯 Detecta** o **TAP**) i fes **Analitza** (`F5`, obre el diàleg d'opcions).
+3. **Revisa i edita** els acords i les seccions al visor (timeline estil DAW, llistes, franja Editor).
+4. **`Exporta WAV's…`** (`Ctrl+E`) — i, si vols, **`Exporta partitura`**.
 
-### ✅ Mínims (usuari final — els 3 paquets)
+## 🎛️ Què fa
 
-| SO | Sistema | CPU | RAM / disc | Llibreries | Compressió |
-|----|---------|-----|-----------|-----------|-----------|
-| 🐧 **Linux** | **x86_64** amb **glibc ≥ 2.35** (Ubuntu 22.04+, Debian 12+, Fedora 36+…) | x86_64 amb **SSE2** | ~1 GB RAM · ~170 MB | **Cap** — tot a dins (només `glibc` + `libstdc++/libgcc`). Per escoltar: **PipeWire/PulseAudio** | `.tar.gz` (runtime estàtic: **no cal `libfuse2`**) |
+- **Importa** WAV, MP3, FLAC i **16 formats més** (vegeu [§ Formats](#-formats-dàudio-acceptats)) convertint-los amb `ffmpeg`.
+- **Analitza** els acords amb **Chordino** (NNLS-Chroma) i l'estructura amb **qm-segmenter** (Queen Mary), tots dos **dins l'app** (Vamp).
+- **Timeline estil DAW**: ona, regle, cursor, zoom; mode **BPM · compàs** o **Lliure (hh:mm:ss)**; metrònom; loop A/B.
+- **Edició completa**: moure/partir/duplicar acords i seccions, **multi-selecció** (`Ctrl`/`Shift+clic`), **copiar/retallar/enganxar**, **desfer/refer** (`Ctrl+Z`/`Ctrl+Y`).
+- **Exporta clips WAV silenciosos** ordenats i nomenats per acord/secció → els arrossegues al teu DAW i hi tens l'harmonia marcada.
+- **Partitura de xifrats**: MusicXML sempre; PDF/MSCZ amb MuseScore.
+- **Agents IA (MCP)**: l'app viva es pot controlar amb **40 eines** (analitzar, exportar, moure acords, etc.) des d'un agent compatible amb *Model Context Protocol*. Detall: [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md).
+- La interfície (menús, barres, dreceres) és a [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md).
+
+## 💻 Requisits
+
+### ✅ Usuari final (els 3 paquets)
+
+| SO | Sistema | CPU | RAM / disc | Llibreries | Paquet |
+|----|---------|-----|-----------|-----------|--------|
+| 🐧 **Linux** | **x86_64** amb **glibc ≥ 2.35** (Ubuntu 22.04+, Debian 12+, Fedora 36+…) | x86_64 amb **SSE2** | ~1 GB RAM · ~170 MB | **Cap** — tot a dins. Per escoltar: **PipeWire/PulseAudio** | `.tar.gz` (runtime estàtic: **no cal `libfuse2`**) |
 | 🪟 **Windows** | **10 o 11 x64** | x86_64 amb **SSE2** | ~1 GB RAM · ~170 MB | **Cap** (runtime a dins) | `.zip` portable |
 | 🍎 **macOS** | **10.13 High Sierra o posterior** (Intel x86_64) | x86_64 amb **SSE2** | ~1 GB RAM · ~180 MB | **Cap** (frameworks a dins) | `.dmg` |
 
 > ✨ **No cal instal·lar res més**: ni Python, ni Qt, ni ffmpeg, ni els plugins — tot va **dins** el paquet.
-> 💡 **CPU antiga**: provada en un **Core 2 Quad Q9400 sense AVX** ✅ (per això `numpy<2` és obligatori, i el `minos` de macOS es fixa a 10.13).
+> 💡 **CPU antiga**: provada en un **Core 2 Quad Q9400 sense AVX** ✅ (per això `numpy < 2` és obligatori i el `minos` de macOS es fixa a 10.13).
+> ⚠️ **Fitxers llargs**: el visor carrega **tot el PCM a memòria** (≈3× la mida del fitxer; una hora ≈ 2 GB). A partir de **45 min** l'app t'ho avisa pel log.
 
-### 🛠️ Per executar-la des del codi (desenvolupament)
+### 🛠️ Des del codi (desenvolupament)
 
-- **Python 3.10+** + **PyQt5** + **numpy < 2** (el **QtSvg** ve amb PyQt5)
-  → o, més fàcil, el **Python portable** que ja ho porta tot (`portable/`)
-- **Plugins Vamp** dins el projecte: **Chordino** (`nnls-chroma`) i
-  **qm-vamp-plugins** (Queen Mary) — **sense instal·lar res al sistema**
-- **Host Vamp propi** (`vamp_host_local`) — substitueix `sonic-annotator`
-- **`ffmpeg`** (opcional, només per importar formats que no siguin WAV):
-  s'embega a `portable/bin/ffmpeg`
-- `numpy < 2` és **obligatori** (numpy 2.x demana x86_64-v2 → falla en CPUs
-  antigues com el Q9400)
+- **Python 3.10+** + **PyQt5** + **numpy < 2** → o, més fàcil: `bash instal·la_local.sh` (crea `.venv/` + les dependències, **sense `sudo`**) i `./AUTO_CHORDS.sh`.
+- **Host Vamp propi** (`eines/vamp_host.cpp`, compilat a `vamp_host_local`) + els **plugins Vamp** dins el projecte (Chordino i Queen Mary).
+- **`ffmpeg`** (opcional, només per importar formats que no siguin WAV).
 
-### 🏗️ Per construir (AppImage / paquet portable)
+Els requisits de **build** (compilador, SDK, llibreries natives, `appimagetool`) i tot el
+procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i **[`docs/PORTABILITAT.md`](docs/PORTABILITAT.md)**.
 
-- **`g++`** + **`vamp-plugin-sdk`** + **`libsndfile1-dev`** (per compilar l'host;
-  `vamp-plugin-sdk` porta els headers de Vamp — `libvamp-hostsdk-dev` **no
-  existeix** com a paquet)
-- Les **llibreries natives** que fa servir l'host (Vamp, sndfile i els còdecs)
-  **no es baixen**: `eines/libreries_natives.sh` les **copia del sistema que
-  compila** cap a `portable/lib/` (així la glibc mínima queda lligada al build)
-- **`curl`** + **connexió a Internet** (es baixen el Python portable, l'ffmpeg i les icones Lucide)
-- **`appimagetool`** (es baixa sol; duu el runtime **estàtic** a dins → **no** cal `libfuse2`)
-- Els **workflows de GitHub Actions** ho fan tot sols a **`ubuntu-22.04`**
-  (aquesta versió fixa la **glibc mínima** de l'AppImage, perquè allà s'hi
-  compila l'host). Detall: `docs/PORTABILITAT.md`
+## 📚 Documentació
 
-## Autoria
+| Document | Què hi trobaràs |
+|---|---|
+| [`docs/README.md`](docs/README.md) | **Índex complet** de tota la documentació |
+| [`DEVELOPING.md`](DEVELOPING.md) | Entorn, eines, flux de treball i com construir-ho |
+| [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md) | **Invariants** del producte («s'ha de complir sempre») |
+| [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md) | Esquema de la interfície (menús, barres, dreceres) |
+| [`docs/PORTABILITAT.md`](docs/PORTABILITAT.md) | Com es construeixen i què porten els 3 paquets |
+| [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md) | El pont **MCP** i les seves 40 eines |
+| [`docs/CI_WORKFLOWS.md`](docs/CI_WORKFLOWS.md) | Els workflows de GitHub Actions (build + release) |
+| [`CHANGELOG.md`](CHANGELOG.md) | Historial de versions |
+
+## 🎼 Formats d'àudio acceptats
+
+L'app treballa amb **WAV PCM 16 bits** internament, però `Obre…` accepta **19 formats**
+i els converteix automàticament amb **ffmpeg** (vegeu `app/ffmpeg.py`):
+
+`WAV` · `MP3` · `AIFF`/`AIF`/`AIFC` · `FLAC` · `M4A` · `AAC` · `OGG`/`OGA` · `Opus` ·
+`WMA` · `MP2` · `CAF` · `W64` · `AU` · `WV` · `APE` · `ALAC`
+
+El WAV de treball queda al costat de l'original com **`<nom>_convertit.wav`**
+(es reutilitza si ja és més nou que l'original).
+
+## 👤 Autoria
 
 **Autor:** **Pëp** — [pepelocotango@gmail.com](mailto:pepelocotango@gmail.com)
 
@@ -324,33 +118,25 @@ Aquest projecte s'ha desenvolupat **en col·laboració amb agents i assistents
 d'intel·ligència artificial**, que hi han dedicat moltes hores de feina. Volem
 reconèixer-ho explícitament:
 
-- 🤖 **[opencode](https://opencode.ai)** (agent `OC`) — el gruix del
-  desenvolupament d'aquesta darrera etapa: l'**AppImage autocontinguda**, els
-  **workflows de GitHub Actions** (build + release), els **plugins Vamp de
-  Queen Mary**, l'**host Vamp propi**, les **icones professionals**, la
-  **coherència del play**, el diàleg d'opcions i bona part de la resta.
-  Amb models com **DeepSeek** (que va fer una feinada enorme 💙), **Claude**,
-  **Gemini**, entre d'altres.
-- 🧠 **[Claude](https://claude.ai)** (Anthropic) — també hi ha ajudat
-- ✨ **[Gemini](https://gemini.google.com)** i
-  **[Google AI Studio](https://aistudio.google.com)** (agent `GM`)
-- 🧭 **Devin** (agent `DV`)
-- 💬 **[Chatbox](https://chatboxai.app)** (agent `CB`)
-- 🛠️ **[VS Code](https://code.visualstudio.com)** amb
-  **[GitHub Copilot](https://github.com/features/copilot)** (agent `VS`)
-- 🌊 **[Windsurf](https://windsurf.com)** amb el model **SWE** (agent `WS`)
-- ⚡ **Spark** (`SPARK`, primeres versions de l'app)
+- 🤖 **[opencode](https://opencode.ai)** (agent `OC`) — el gruix del desenvolupament
+  d'aquesta darrera etapa: l'**AppImage autocontinguda**, els **workflows de GitHub
+  Actions** (build + release), els **plugins Vamp de Queen Mary**, l'**host Vamp propi**,
+  les **icones professionals**, la coherència del play i bona part de la resta. Amb
+  models com **DeepSeek** (que va fer una feinada enorme 💙), **Claude** i **Gemini**.
+- 🧠 **[Claude](https://claude.ai)** (Anthropic) — també hi ha ajudat.
+- ✨ **[Gemini](https://gemini.google.com)** i **[Google AI Studio](https://aistudio.google.com)** (agent `GM`)
+- 🧭 **Devin** (agent `DV`) · 💬 **[Chatbox](https://chatboxai.app)** (agent `CB`)
+- 🛠️ **[VS Code](https://code.visualstudio.com)** amb **[GitHub Copilot](https://github.com/features/copilot)** (agent `VS`)
+- 🌊 **[Windsurf](https://windsurf.com)** amb el model **SWE** (agent `WS`) · ⚡ **Spark** (`SPARK`, primeres versions)
 
-> **Nota legal**: els sistemes d'IA no són titulars de drets d'autor (UE/EUA);
-> la **titularitat i la responsabilitat del projecte són de l'autor humà**. El
-> reconeixement de dalt és, per tant, un **agraïment honest**, no una
-> atribució jurídica.
+> **Nota legal**: els sistemes d'IA no són titulars de drets d'autor (UE/EUA); la
+> **titularitat i la responsabilitat del projecte són de l'autor humà**. El
+> reconeixement de dalt és, per tant, un **agraïment honest**, no una atribució jurídica.
 
-## Agraïments i reconeixement a projectes de tercers
+## 📜 Agraïments i llicències de tercers
 
-Aquest projecte depèn de treballs previs i eines desenvolupades per altres
-persones i equips. Volem reconèixer-ho explícitament i agrair-ho sincerament.
-**El detall complet de llicències és a [`LLICENCIES_TERCERS.md`](LLICENCIES_TERCERS.md).**
+Aquest projecte depèn de treballs previs d'altres persones i equips. **El detall
+complet de llicències és a [`LLICENCIES_TERCERS.md`](LLICENCIES_TERCERS.md).**
 
 | Component | Llicència | Autoria |
 |-----------|-----------|---------|
@@ -369,28 +155,15 @@ persones i equips. Volem reconèixer-ho explícitament i agrair-ho sincerament.
 | **[mpg123](https://www.mpg123.de)** · **[LAME](https://lame.sourceforge.io)** | LGPL-2.1 / LGPL-2.0 | mpg123 / LAME project |
 | **[AppImageKit](https://github.com/AppImage/AppImageKit)** | MIT | AppImage comunitat |
 
-> Les icones de la UI són de **Lucide** (**ISC**); algunes deriven de
-> **Feather** (**MIT**, © 2013-present Cole Bemis). El text complet de totes
-> dues llicències és a [`icones/LICENSE`](icones/LICENSE).
+> Les icones de la UI són de **Lucide** (**ISC**); algunes deriven de **Feather**
+> (**MIT**, © 2013-present Cole Bemis). El text complet de totes dues llicències és a
+> [`icones/LICENSE`](icones/LICENSE).
 
-Sense aquest ecosistema, aquest projecte no seria possible. Els agraïments i el reconeixement formal són part de la forma de treball i del respecte que es mereixen les eines i els desenvolupadors que ens han donat base i inspiració.
+Sense aquest ecosistema, aquest projecte no seria possible. Els agraïments i el
+reconeixement formal són part de la forma de treball i del respecte que es mereixen
+les eines i els desenvolupadors que ens han donat base i inspiració.
 
 ## Llicència
 
-GPL-3.0-or-later (GPLv3 o posterior) — vegeu `LICENSE`.
+**GPL-3.0-or-later** (GPLv3 o posterior) — vegeu [`LICENSE`](LICENSE).
 Copyright (c) 2026 Pëp <pepelocotango@gmail.com>.
-
-
-## Formats d'àudio acceptats
-
-L'app treballa amb **WAV PCM 16 bits** internament, però `Obre…` accepta **19 formats**
-i els converteix automàticament amb **ffmpeg** (vegeu `app/ffmpeg.py`):
-
-`WAV` · `MP3` · `AIFF`/`AIF`/`AIFC` · `FLAC` · `M4A` · `AAC` · `OGG`/`OGA` · `Opus` ·
-`WMA` · `MP2` · `CAF` · `W64` · `AU` · `WV` · `APE` · `ALAC`
-
-El WAV de treball queda al costat de l'original com **`<nom>_convertit.wav`** (es reutilitza si ja és més nou que l'original).
-
----
-**Visita el portal de projectes:** [https://pepelocotango.github.io](https://pepelocotango.github.io)
----

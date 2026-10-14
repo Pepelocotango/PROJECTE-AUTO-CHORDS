@@ -259,3 +259,62 @@ Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
   commitegen (són l'eina); les sortides (`*_obsolets/`, `midis_acords/`) no.
 - **`OLD/`** (gitignorat) és l'**arxiu local** del que no és necessari però es
   vol conservar (p. ex. `sonic-annotator`, la reserva). **No es puja al repo.**
+
+## Estructura del codi (mapa ràpid)
+
+- `app/main.py` — finestra principal i flux d'usuari
+- `app/visor.py` — visor integrat, llistes, navegació, edició manual
+- `app/timeline.py` · `timeline_base.py` · `timeline_items.py` · `timeline_layers.py` — el timeline (orquestrador, vista, clips, regle/graella/ona)
+- `app/pipeline.py` — extracció, exportació i normalització
+- `app/audio_out.py` — motor d'àudio natiu (PortAudio / sounddevice / CoreAudio / WASAPI)
+- `app/plataforma.py` — abstracció multi-SO (Linux / Windows / macOS)
+- `app/tempo.py` — detecció de BPM (numpy, sense AVX)
+- `app/metronom.py` · `partitura.py` · `ffmpeg.py` · `vamp_params.py` · `postproc.py` · `dialegs.py` · `config.py` · `theme.py`
+- `eines/vamp_host.cpp` — **host Vamp propi** (`vamp_host_local`), sense Qt6
+- `eines/` — build i cadena de subministrament: `crea_portable.sh`, `compila_vamp_host.sh`, `compila_vamp_plugins.sh`, `empaqueta_portable.sh`, `crea_appimage.sh`, `libreries_natives.sh`; descàrregues verificades (`baixa_verificat.py` + `deps_fixades.env`); packaging (`AutoChords-win.spec`, `launcher_pyinstaller.py`, `crea_icona.py`); release (`notes_release.py`) i inventari (`genera_inventari.py`)
+- `portable/` — Python + ffmpeg portables (entrada de build, gitignorat)
+- `AUTO_CHORDS.sh` — llançador (prefereix el Python portable)
+
+## Configuració
+
+- L'estat (**temp**, log, opcions) va a un **directori d'estat escriptible**: `~/.local/state/auto-chords/` (amb `temp/` a dins). **Mai** dins el paquet.
+- El directori temporal es pot sobreescriure amb la variable `AUTO_CHORDS_TEMP`:
+
+```bash
+export AUTO_CHORDS_TEMP=/home/user/tmp_auto_chords
+python -m app.visor tema.wav
+```
+
+## Paquet portable (autocontingut)
+
+```bash
+eines/empaqueta_portable.sh      # -> ../AUTO_CHORDS_PORTABLE/
+cd ../AUTO_CHORDS_PORTABLE && ./AUTO_CHORDS.sh
+```
+El paquet **no s'edita mai** (és un artefacte de build): el codi viu al repo i es regenera. Detall: `docs/PORTABILITAT.md`.
+
+## AppImage
+
+L'AppImage embolcalla el paquet portable + un `AppRun` + el `.desktop` + la icona i el comprimeix (squashfs): dels ~530 MB surt un fitxer d'**~160 MB** que s'executa a qualsevol **Linux x86_64** sense instal·lar res.
+
+```bash
+eines/crea_appimage.sh           # -> ../AUTO_CHORDS-x86_64.AppImage
+```
+Requereix haver fet abans `eines/crea_portable.sh` i `eines/compila_vamp_host.sh`; l'`appimagetool` es baixa sol.
+
+> El runtime incrustat és el modern **estàtic** (`type2-runtime`, amb libfuse+squashfuse+musl a dins): **no cal `libfuse2`** al sistema (només el suport FUSE del kernel). Si el nucli tingués FUSE desactivat: `./AutoChords-*.AppImage --appimage-extract-and-run`.
+
+## GitHub Actions (CI)
+
+Cinc workflows a `.github/workflows/` (tots d'**execució manual**):
+
+| Workflow | Què fa |
+|----------|--------|
+| **`build-all.yml`** | **Agregador**: executa els 3 builds (Linux + Windows + macOS) en paral·lel |
+| **`build-appimage.yml`** | Construeix l'AppImage de **Linux** i l'empaqueta en un `.tar.gz` |
+| **`build-windows.yml`** | Construeix el paquet portable de **Windows x64** (MSYS2 + PyInstaller `--onedir`) → `.zip` |
+| **`build-macos.yml`** | Construeix l'`.app` de **macOS 10.13+** (Intel) → `.dmg` |
+| **`release.yml`** | Agafa els **últims artefactes verds** dels 3 SO i crea/actualitza el **Release** (idempotent) amb les notes en català i el `SHA256SUMS.txt` |
+
+> Cap workflow fa `git push` ni s'activa sol. Els paquets només porten `README.md` + `LICENSE` + `LLICENCIES_TERCERS.md`. Detall: `docs/CI_WORKFLOWS.md`.
+> ⚠️ Els runners de Linux són `ubuntu-22.04` (allà s'hi compila `vamp_host_local`; la glibc marca l'abast mínim de l'AppImage). Detall: `docs/PORTABILITAT.md`.
