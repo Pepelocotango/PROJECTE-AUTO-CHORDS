@@ -81,6 +81,36 @@ def setup_logging(log_path=None):
 FOSC = theme.app_stylesheet()
 
 
+class FeinaExporta(QThread):
+    """Exporta el paquet de WAV's en un FIL (A5).
+
+    L'export pot trigar (una WAV per acord/secció): fet al fil de la UI,
+    congelava la finestra i —si venia d'una crida MCP— deixava el pont sense
+    resposta fins al final. Aquí el progrés arriba per senyal (segur entre
+    fils) i el pont pot retornar de seguida.
+    """
+    missatge = pyqtSignal(str)
+    progres = pyqtSignal(int)
+    feta = pyqtSignal(bool, str)
+
+    def __init__(self, kwargs):
+        super().__init__()
+        self._kwargs = kwargs
+
+    def log(self, t):
+        self.missatge.emit(t)
+
+    def run(self):
+        try:
+            self.progres.emit(10)
+            pipeline.exporta_total(log=self.log, **self._kwargs)
+            self.progres.emit(100)
+            self.feta.emit(True, "")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR a l'exportar: {e}")
+            self.feta.emit(False, str(e))
+
+
 class Feina(QThread):
     missatge = pyqtSignal(str)
     progres = pyqtSignal(int)
@@ -173,6 +203,10 @@ class Finestra(QMainWindow):
         # darrer avís queda a `ultim_avis` per retornar-lo a l'agent.
         self.mcp_actiu = False
         self.ultim_avis = ""
+        # A5: export asíncron (progrés llegible des de l'MCP a `ac_status`).
+        self.exportant = False
+        self.exporta_iniciat = 0.0
+        self.feina_export = None
         self.setWindowTitle("Auto Chords — wav → acords + estructura")
         self.resize(1500, 900)
         # Amplada minima: per sota, les barres d\'eines es tallarien.
@@ -1572,13 +1606,19 @@ class Finestra(QMainWindow):
             self.log_dock.setVisible(True)    # en cas d'error, obrim el log
             self.avisa_crit("Auto Chords", dada)
 
-    def exporta(self):
+    def _prepara_export(self):
+        """Valida i calcula els arguments de l'export (NOMÉS al fil de UI).
+
+        Retorna el diccionari de kwargs per a `pipeline.exporta_total`, o
+        `None` si no es pot exportar (i ja ha avisat). Els widgets es llegeixen
+        AQUÍ perquè el fil de l'export (A5) no els pot tocar.
+        """
         wav = self.wav_edit.text().strip()
         if not self.sortida:
             if not wav or not os.path.isfile(wav):
                 self.avisa("Auto Chords",
-                                    "Tria una wav vàlida abans d'exportar.")
-                return
+                           "Tria una wav vàlida abans d'exportar.")
+                return None
             self.sortida = pipeline.carpeta_sortida(wav)
 
         csv_ac = os.path.join(self.sortida, "acords.csv")
@@ -1586,12 +1626,12 @@ class Finestra(QMainWindow):
         if not os.path.isfile(csv_ac):
             if not wav or not os.path.isfile(wav):
                 self.avisa("Auto Chords",
-                                    "No hi ha CSVs d'exportació. Fes 'Executa' primer.")
-                return
+                           "No hi ha CSVs d'exportació. Fes 'Executa' primer.")
+                return None
             self.avisa_info(
                 "Auto Chords",
                 "Encara no hi ha CSVs generats. Fes 'Executa' primer.")
-            return
+            return None
 
         # (A) Si hi ha visor, l'export usa el MODEL VIU (no els CSV del disc):
         # així no es perden les edicions manuals de seccions (ni la cobertura).
@@ -1602,37 +1642,78 @@ class Finestra(QMainWindow):
                    if vr is not None else None)
         amb_estructura = self.amb_est.isChecked() and (
             seccions_model is not None or os.path.isfile(csv_seg))
+        return dict(
+            csv_ac=csv_ac,
+            csv_seg=csv_seg if amb_estructura else None,
+            sortida=self.sortida,
+            bpm=self._bpm_val(),
+            bpb=self._bpb_val(),
+            offset=self._offset_val(),
+            sr=44100,
+            tempo_fix=self.tempo_fix.isChecked(),
+            amb_estructura=amb_estructura,
+            acords=acords_model,
+            seccions=seccions_model,
+            total_s=total_s,
+        )
+
+    def _exporta_acabada(self, res_part=None):
+        """Missatges de final d'exportació (compartit pel camí síncron i el fil)."""
+        self.registra("Exportació feta ✅")
+        msg = f"Exportació feta a:\n{self.sortida}"
+        if res_part is not None and not res_part.get("pdf"):
+            msg += ("\n\n⚠️ La partitura s'ha generat NOMÉS en MusicXML: el "
+                    "PDF necessita MuseScore instal·lat.")
+        self.avisa_info("Auto Chords", msg)
+        self.obre_carpeta()
+
+    def exporta(self):
+        """Exporta de forma SÍNCRONA (la UI espera). Vegeu `exporta_async`."""
+        kwargs = self._prepara_export()
+        if kwargs is None:
+            return
         try:
             self.registra(f"Exportant a: {self.sortida}")
-            pipeline.exporta_total(
-                csv_ac=csv_ac,
-                csv_seg=csv_seg if amb_estructura else None,
-                sortida=self.sortida,
-                bpm=self._bpm_val(),
-                bpb=self._bpb_val(),
-                offset=self._offset_val(),
-                sr=44100,
-                log=self.registra,
-                tempo_fix=self.tempo_fix.isChecked(),
-                amb_estructura=amb_estructura,
-                acords=acords_model,
-                seccions=seccions_model,
-                total_s=total_s,
-            )
-            res_part = None
-            if self.amb_part.isChecked():
-                res_part = self._exporta_partitura()
-            self.registra("Exportació feta ✅")
-            msg = f"Exportació feta a:\n{self.sortida}"
-            if res_part is not None and not res_part.get("pdf"):
-                msg += ("\n\n⚠️ La partitura s'ha generat NOMÉS en MusicXML: el "
-                        "PDF necessita MuseScore instal·lat.")
-            self.avisa_info("Auto Chords", msg)
-            self.obre_carpeta()
+            pipeline.exporta_total(log=self.registra, **kwargs)
+            res_part = self._exporta_partitura() if self.amb_part.isChecked() else None
+            self._exporta_acabada(res_part)
         except Exception as e:  # noqa: BLE001
             self.registra(f"exporta ERROR: {e}")
             self.avisa_crit("Auto Chords",
-                                 f"No s'ha pogut exportar:\n{e}")
+                            f"No s'ha pogut exportar:\n{e}")
+
+    def exporta_async(self):
+        """Exporta en un FIL (A5). Retorna True si ha arrencat.
+
+        La partitura (si la marca hi és) es fa DESPRÉS, al fil de la UI, quan el
+        fil acaba. El progrés es veu a la barra i a `self.exportant` (que l'MCP
+        llegeix a `ac_status`).
+        """
+        fe = getattr(self, "feina_export", None)
+        if fe is not None and fe.isRunning():
+            return False
+        kwargs = self._prepara_export()
+        if kwargs is None:
+            return False
+        self.registra(f"Exportant a: {self.sortida}")
+        self.exportant = True
+        self.exporta_iniciat = time.time()
+        self.barra.setValue(0)
+        self.feina_export = FeinaExporta(kwargs)
+        self.feina_export.missatge.connect(self.registra)
+        self.feina_export.progres.connect(self.barra.setValue)
+        self.feina_export.feta.connect(self._exporta_async_feta)
+        self.feina_export.start()
+        return True
+
+    def _exporta_async_feta(self, ok, error):
+        self.exportant = False
+        if not ok:
+            self.registra(f"exporta ERROR: {error}")
+            self.avisa_crit("Auto Chords", f"No s'ha pogut exportar:\n{error}")
+            return
+        res_part = self._exporta_partitura() if self.amb_part.isChecked() else None
+        self._exporta_acabada(res_part)
 
     def _exporta_partitura(self):
         """Genera el lead sheet de xifrats de la carpeta de sortida.

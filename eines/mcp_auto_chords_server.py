@@ -113,8 +113,9 @@ _TOOLS = [
     ("ac_export_wav", "export_wav",
      "Exporta el paquet de WAV's per al DAW (síncrona; pot trigar). "
      "`partitura` (opcional) força si s'hi inclou la partitura, sense canviar "
-     "la marca de l'app.",
-     {"partitura": {"type": "boolean"}}),
+     "la marca de l'app. `async: true` l'arrenca en un fil i torna de seguida "
+     "(progrés a ac_status).",
+     {"partitura": {"type": "boolean"}, "async": {"type": "boolean"}}),
     ("ac_export_partitura", "export_partitura",
      "Genera la PARTITURA de la sortida actual: MusicXML sempre; PDF i MSCZ "
      "NOMÉS si hi ha MuseScore instal·lat. No obre cap finestra.", {}),

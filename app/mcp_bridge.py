@@ -123,6 +123,9 @@ def _op_status(ctx, params):
         # Darrer avís que l'app ha hagut de donar amb el pont actiu (llavors NO
         # és modal, perquè no encalli el pont): així l'agent el pot veure.
         "avis": getattr(w, "ultim_avis", ""),
+        # A5: export en curs (asíncron) → l'agent sap que s'està fent feina.
+        "exportant": bool(getattr(w, "exportant", False)),
+        "exporta_iniciat": float(getattr(w, "exporta_iniciat", 0.0) or 0.0),
     }
     if vr is None:
         estat["missatge"] = "cap àudio obert (obre'n un per començar)"
@@ -537,12 +540,23 @@ def _op_analyze(ctx, params):
 
 
 def _op_export_wav(ctx, params):
-    """Exporta el paquet de WAV's (síncron). Pot trigar segons el tema.
+    """Exporta el paquet de WAV's. Pot trigar segons el tema.
+
+    `async: true` (A5) → arrenca l'export en un FIL i retorna de seguida; el
+    progrés es consulta a `ac_status` (`exportant`). Per defecte és síncrona.
 
     ⚠️ L'export pot voler avisar l'usuari: amb el pont actiu aquests avisos són
     NO modals (un modal encallaria el pont) i el text es retorna aquí.
     """
     w = ctx.window
+    if params.get("async"):
+        if not w.exporta_async():
+            raise BridgeError("No s'ha pogut arrencar l'exportació "
+                              "(cal una WAV i els CSVs: fes 'Analitza' primer).")
+        return {"ok": True, "iniciat": True,
+                "sortida": getattr(w, "sortida", "") or "",
+                "missatge": "exportació en marxa; consulta ac_status "
+                            "(camp «exportant») per seguir-la"}
     w.ultim_avis = ""                 # per retornar NOMÉS l'avís d'aquest export
     # `partitura` (opcional): força que s'hi inclogui (o no) en AQUESTA
     # exportació, sense canviar la marca de l'app (es restaura sempre).
