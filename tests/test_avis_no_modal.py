@@ -59,12 +59,17 @@ class _Base(unittest.TestCase):
         self.addCleanup(p.stop)
 
     def tearDown(self):
-        # Destrucció ORDENADA (closeEvent) abans que el GC les tombi.
-        while _VIVES:
-            w = _VIVES.pop()
-            w.close()
-            w.deleteLater()
-        self._app.processEvents()
+        # Destrucció ORDENADA (closeEvent) + flush FORÇAT (DeferredDelete + GC):
+        # `deleteLater()` sol no n'hi ha prou sense event loop (Qt 5).
+        try:
+            import _qt_neteja
+        except ImportError:      # 'python -m unittest tests.test_x' (tests/ no al path)
+            import os as _os, sys as _sys
+            _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+            import _qt_neteja
+        ws = _VIVES[:]
+        _VIVES.clear()
+        _qt_neteja.tanca_i_destrueix(*ws)
 
 
 class TestAvisSensePont(_Base):
@@ -132,6 +137,18 @@ class TestExportMCPNoBloqueja(_Base):
         r = mcp_bridge._op_status(mcp_bridge._Context(w), {})
         self.assertEqual(r.get("avis"), "avís de prova")
 
+
+
+def tearDownModule():
+    # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
+    # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
+    try:
+        import _qt_neteja
+    except ImportError:      # 'python -m unittest tests.test_x' (tests/ no al path)
+        import os, sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import _qt_neteja
+    _qt_neteja.processa_esborrats()
 
 if __name__ == "__main__":
     unittest.main()

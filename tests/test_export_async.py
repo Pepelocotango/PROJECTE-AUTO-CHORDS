@@ -118,5 +118,17 @@ class TestExportAsyncMCP(_Base):
         w.close()
 
 
+
+def tearDownModule():
+    # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
+    # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
+    try:
+        import _qt_neteja
+    except ImportError:      # 'python -m unittest tests.test_x' (tests/ no al path)
+        import os, sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import _qt_neteja
+    _qt_neteja.processa_esborrats()
+
 if __name__ == "__main__":
     unittest.main()
