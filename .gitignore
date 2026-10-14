@@ -95,3 +95,12 @@ XX TEMP FILES USUARI/
 htmlcov/
 .cov-env/
 
+# Fitxers locals d'agents d'IA: són locals de cada entorn i NO es versionen.
+AGENTS.md
+CLAUDE.md
+.cursorrules
+.cursor/
+.windsurf/
+.aider*
+.continue/
+
