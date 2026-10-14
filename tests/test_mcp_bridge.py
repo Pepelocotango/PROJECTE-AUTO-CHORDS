@@ -243,6 +243,18 @@ class _FakeVisor:
         self._regenera_abc_des_de_totes_les_seccions(f"secció {idx} fusionada")
         return True
 
+    def regularitza_des_de_cru(self, nivell="auto", modul_compassos=0):
+        """Fake del mode fàcil: deixa un acord cada 2,0 s (120 BPM)."""
+        dur = float(self.audio["durada"])
+        pas = 2.0
+        n = max(1, int(dur // pas))
+        self._undo_marca()
+        self.acords = self._normalitza_acords(
+            [(i * pas, f"C{i % 4}", f"{i * pas:.9f}") for i in range(n)])
+        self._undo_commit()
+        self.desa_cops += 1
+        return len(self.acords)
+
 
 class _FakeEdit:
     """QLineEdit mínim (només el que fa servir el pont)."""
@@ -333,6 +345,8 @@ class TestRegistre(unittest.TestCase):
             "crea_projecte", "obre_projecte", "desa_projecte", "desa_com",
             "fes_backup", "recents", "parteix_acord", "fusiona_acord",
             "parteix_seccio", "fusiona_seccio",
+            # Mode fàcil (graella) — 2026-10-15.
+            "regularitza",
         }
         self.assertEqual(set(mcp_bridge.OPERACIONS), esperades)
 
@@ -494,6 +508,41 @@ class TestParitatEdicio(unittest.TestCase):
         vr = _FakeVisor()
         mcp_bridge._op_fusiona_seccio(_ctx(vr), {"index": 0})
         self.assertEqual(len(vr.seccions), 1)
+
+
+class TestModeFacil(unittest.TestCase):
+    """Mode fàcil (graella / ritme harmònic) a través del pont MCP."""
+
+    def test_regularitza(self):
+        vr = _FakeVisor()
+        r = mcp_bridge._op_regularitza(_ctx(vr), {"nivell": "compas"})
+        self.assertEqual(r["model"]["n_chords"], len(vr.acords))
+        self.assertTrue(vr._undo_stack)          # hi ha un pas per desfer
+        self.assertGreaterEqual(vr.desa_cops, 1)
+
+    def test_regularitza_auto_per_defecte(self):
+        vr = _FakeVisor()
+        mcp_bridge._op_regularitza(_ctx(vr), {})
+        self.assertGreaterEqual(len(vr.acords), 1)
+
+    def test_regularitza_nivell_invalid(self):
+        from app.mcp_bridge import BridgeError
+        vr = _FakeVisor()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_regularitza(_ctx(vr), {"nivell": "setmana"})
+
+    def test_regularitza_modul_negatiu(self):
+        from app.mcp_bridge import BridgeError
+        vr = _FakeVisor()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_regularitza(_ctx(vr), {"modul_compassos": -1})
+
+    def test_regularitza_sense_resultat(self):
+        from app.mcp_bridge import BridgeError
+        vr = _FakeVisor()
+        vr.regularitza_des_de_cru = lambda *a, **k: 0
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_regularitza(_ctx(vr), {})
 
 
 class TestProjectes(unittest.TestCase):

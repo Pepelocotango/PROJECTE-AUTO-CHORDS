@@ -51,7 +51,7 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 3. Fet: l'agent ja veu les eines `ac_*`. En acabar, torna a `"enabled": false` i
    reinicia (estalvia context).
 
-## Eines exposades (50)
+## Eines exposades (51)
 
 | Lectura | Acció (model) | Transport / vista | Finestra |
 |---|---|---|---|
@@ -63,7 +63,7 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 | `ac_undo_list` | `ac_rename_section` / `ac_move_section` / `ac_delete_section` | `ac_zoom` (mode) | `ac_set_key_detect` (on) |
 | | `ac_undo` / `ac_redo` | `ac_select_clip` (kind, index) · `ac_toggle_selection` (kind, index) · `ac_clear_selection` · `ac_select_at_cursor` (kind) | `ac_detect_downbeat` · `ac_mark_downbeat` · `ac_open_output_folder` |
 
-> **50 eines** en total. Les de l'última fila (metrònom, tonalitat automàtica,
+> **51 eines** en total. Les de l'última fila (metrònom, tonalitat automàtica,
 > compàs 1, carpeta de sortida i selecció/multi-selecció) es van afegir per
 > **A7**, perquè eren funcions de l'app sense cap eina equivalent.
 
@@ -81,6 +81,7 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 | `ac_fusiona_acord` (`index`, `amb`?) | Fusiona l'acord amb el veí (`seguent`\|`anterior`). |
 | `ac_parteix_seccio` (`index`, `t_s`, `lletra`?, `familia`?) | Parteix la secció `index` pel temps `t_s`. |
 | `ac_fusiona_seccio` (`index`, `amb`?) | Fusiona la secció amb el veí (`seguent`\|`anterior`). |
+| `ac_regularitza` (`nivell`?, `modul_compassos`?) | **Mode fàcil**: re-regularitza els acords de l'**anàlisi crua** a la graella (ritme harmònic `auto`\|`compas`\|`mig`\|`temps`); `modul_compassos` encaixa també els talls de secció a blocs. |
 
 > ⚠️ Les eines de **projecte** **no obren cap diàleg**: la ruta és un paràmetre i,
 > si falta o no existeix, l'eina retorna un **error clar** (mai encalla l'agent).
@@ -145,7 +146,7 @@ Tests automàtics (logica del pont + protocol, amb dobles i sense GUI):
 
 ## ✅ P2 (A4–A9) — **IMPLEMENTAT i verificat** (14-10-2026)
 
-> ✅ Ja és al codi; **50 eines**. Verificat amb **gates funcionals MCP** (OC-7/405-406).
+> ✅ Ja és al codi; **51 eines**. Verificat amb **gates funcionals MCP** (OC-7/405-406).
 
 - **A4 — Partitura des de l'MCP**: eina nova **`ac_export_partitura`** (MusicXML + PDF + MSCZ si hi ha MuseScore) i **`ac_export_wav`** amb el paràmetre **`partitura`** (força si s'hi inclou, sense canviar la marca de l'app). ✅
 - **A5 — `ac_export_wav` asíncrona**: paràmetre **`async: true`** → torna de seguida; el progrés es consulta a **`ac_status`** (`exportant` / `exporta_iniciat`). ✅
@@ -159,7 +160,7 @@ Tests automàtics (logica del pont + protocol, amb dobles i sense GUI):
 ## ✅ Funcions noves cobertes (2026-10-15)
 
 > ✅ **FET**: les funcions que abans eren **només GUI** ja tenen eines `ac_*`
-> (vegeu «Projectes autocontinguts i paritat d'edició #11», més amunt). **50 eines**.
+> (vegeu «Projectes autocontinguts i paritat d'edició #11», més amunt). **51 eines**.
 
 - **Projectes autocontinguts** (vegeu `docs/PROJECTES.md`): `ac_crea_projecte`,
   `ac_obre_projecte`, `ac_desa_projecte`, `ac_desa_com`, `ac_fes_backup` i
@@ -169,6 +170,6 @@ Tests automàtics (logica del pont + protocol, amb dobles i sense GUI):
   `ac_fusiona_acord`, `ac_parteix_seccio` i `ac_fusiona_seccio` — la GUI i l'MCP
   ofereixen **el mateix joc** d'operacions.
 
-> ✅ Verificat: **50 eines** a `--tools`, coherència pont↔servidor al test
+> ✅ Verificat: **51 eines** a `--tools`, coherència pont↔servidor al test
 > `test_mapa_eines_coincideix_amb_pont`, i **prova en viu pel protocol MCP real**
 > (initialize + tools/list + 25 crides amb un WAV i un projecte de prova).

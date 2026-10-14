@@ -179,6 +179,12 @@ _TOOLS = [
     ("ac_fusiona_seccio", "fusiona_seccio",
      "Fusiona la secció `index` amb el veí (`amb`: seguent | anterior).",
      {"index": {"type": "integer"}, "amb": {"type": "string"}}),
+    ("ac_regularitza", "regularitza",
+     "Mode fàcil: re-regularitza els acords de l'anàlisi crua a la graella "
+     "(ritme harmònic). `nivell`: auto|compas|mig|temps; `modul_compassos`: "
+     "encaixa també els talls de secció a blocs d'aquest nombre de compassos "
+     "(0 = no tocar-les).",
+     {"nivell": {"type": "string"}, "modul_compassos": {"type": "integer"}}),
 ]
 
 _OP_PER_TOOL = {nom: op for (nom, op, _d, _s) in _TOOLS}

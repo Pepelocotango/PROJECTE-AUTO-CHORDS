@@ -927,6 +927,27 @@ def _op_fusiona_seccio(ctx, params):
     return _op_status(ctx, {})
 
 
+def _op_regularitza(ctx, params):
+    """Mode fàcil: re-regularitza els acords de l'anàlisi CRUA a la graella."""
+    vr = _requereix_visor(ctx)
+    nivell = params.get("nivell") or params.get("ritme") or "auto"
+    if nivell not in ("auto", "compas", "mig", "temps"):
+        raise BridgeError(
+            "«nivell» ha de ser 'auto', 'compas', 'mig' o 'temps'.")
+    modul = int(_num(params, "modul_compassos", "modul", default=0, enter=True))
+    if modul < 0:
+        raise BridgeError("«modul_compassos» no pot ser negatiu.")
+    try:
+        n = vr.regularitza_des_de_cru(nivell, modul_compassos=modul)
+    except Exception as e:  # noqa: BLE001
+        raise BridgeError(f"No s'ha pogut regularitzar: {e}") from e
+    if not n:
+        raise BridgeError(
+            "No hi ha res a regularitzar (cal un tema amb acords; si vols la "
+            "capa crua, una anàlisi prèvia del tema).")
+    return _op_status(ctx, {})
+
+
 # Registre d'operacions (nom → funció). L'MCP les exposa via `eines/..._server.py`.
 OPERACIONS = {
     "ping": _op_ping,
@@ -981,6 +1002,7 @@ OPERACIONS = {
     "fusiona_acord": _op_fusiona_acord,
     "parteix_seccio": _op_parteix_seccio,
     "fusiona_seccio": _op_fusiona_seccio,
+    "regularitza": _op_regularitza,
 }
 
 
