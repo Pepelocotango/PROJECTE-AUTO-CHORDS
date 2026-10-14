@@ -1104,10 +1104,20 @@ class Finestra(QMainWindow):
             vr._duplica_seccio_index(idx)
 
     def _renomena_element(self):
+        vr = self.visor_ref
+        if vr is None:
+            return
+        keys = vr.timeline.selected_keys()
+        kinds = {k for k, _i in keys}
+        # >1 clip del MATEIX tipus → renom EN BLOC. (Una selecció mixta no té
+        # sentit per renombrar —«pomes i peres»—; és per operacions de bloc.)
+        if len(keys) > 1 and len(kinds) == 1:
+            vr.renomena_seleccio()
+            return
         kind, idx = self._clip_seleccionat()
         if kind is None:
             return
-        tl = self.visor_ref.timeline
+        tl = vr.timeline
         if kind == "chord":
             tl.chordEditRequested.emit(idx)
         else:

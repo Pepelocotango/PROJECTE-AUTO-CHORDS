@@ -1187,6 +1187,7 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
+        self._refresca_post_edicio("chord", idx)
 
     def _on_chord_edit_requested(self, idx):
         # Doble-clic al ChordItem -> selecciona i enfoca la franja EDITOR
@@ -1564,6 +1565,86 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
+        self._refresca_post_edicio("section", idx)
+
+    def renomena_seleccio(self):
+        """Reanomena EN BLOC una selecció d'un SOL tipus (acords O seccions).
+
+        Una selecció **mixta** (acords + seccions) NO és coherent per renombrar
+        (és per eliminar/copiar/enganxar/duplicar/moure en bloc) → no fa res.
+        Tot en una sola operació de desfer; al final queda seleccionat el bloc.
+        """
+        keys = self.timeline.selected_keys()
+        idx_ac = sorted({i for k, i in keys
+                         if k == "chord" and 0 <= i < len(self.acords)})
+        idx_sec = sorted({i for k, i in keys
+                          if k == "section" and 0 <= i < len(self.seccions)})
+        if idx_ac and idx_sec:
+            self.log("reanomena en bloc: selecció mixta (no coherent)")
+            return False
+        if idx_ac:
+            if len(idx_ac) < 2:
+                return False
+            text, ok = QInputDialog.getText(
+                self, "Reanomena acords",
+                f"Nom nou per a {len(idx_ac)} acords:",
+                text=self.acords[idx_ac[0]][1])
+            if not ok:
+                return False
+            nom = pipeline.saneja_nom_acord(text)
+            if not nom:
+                self.log("reanomena en bloc: nom invalid")
+                return False
+            self._undo_marca()
+            nova = list(self.acords)
+            for i in idx_ac:
+                nova[i] = (nova[i][0], nom, nova[i][2])
+            try:
+                self.acords = self._valida_canvis_acords(nova)
+            except ValueError as e:
+                self.log(f"reanomena en bloc: {e}")
+                return False
+            self._undo_commit()
+            self.timeline.set_data(self.acords, self.seccions)
+            try:
+                self._desa_i_regenera()
+            except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
+            self.timeline.select_multi({("chord", i) for i in idx_ac})
+            self._omple_llista_ac()
+            self.log(f"reanomenats {len(idx_ac)} acords → {nom}")
+            return True
+        if idx_sec:
+            if len(idx_sec) < 2:
+                return False
+            text, ok = QInputDialog.getText(
+                self, "Reanomena seccions",
+                f"Lletra nova per a {len(idx_sec)} seccions:",
+                text=self.seccions[idx_sec[0]][2])
+            if not ok:
+                return False
+            lletra = (text or "").strip() or self.seccions[idx_sec[0]][2]
+            self._undo_marca()
+            nova = list(self.seccions)
+            for i in idx_sec:
+                ini, fi, _l, _f = nova[i]
+                nova[i] = (ini, fi, lletra, lletra)
+            try:
+                self.seccions = self._valida_canvis_seccions(nova)
+            except ValueError as e:
+                self.log(f"reanomena en bloc: {e}")
+                return False
+            self._undo_commit()
+            self.timeline.set_data(self.acords, self.seccions)
+            try:
+                self._regenera_abc_des_de_totes_les_seccions("bloc reanomenat")
+            except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
+            self.timeline.select_multi({("section", i) for i in idx_sec})
+            self._actualitza_llista_abc()
+            self.log(f"reanomenades {len(idx_sec)} seccions → {lletra}")
+            return True
+        return False
 
     def _on_section_edit_requested(self, idx):
         # Doble-clic al SectionItem -> franja EDITOR (sense finestra emergent).
@@ -1589,6 +1670,17 @@ class Visor(QMainWindow):
             self.llista_ab.setCurrentRow(index)
         self._ed_kind, self._ed_idx = kind, index
         self._actualitza_editor()
+
+    def _refresca_post_edicio(self, kind, idx):
+        """Manté el clip editat SELECCIONAT i refresca les llistes a l'instant.
+
+        Com un DAW: editar/renombrar no ha de perdre la selecció ni deixar la
+        llista vella fins a tocar una altra cosa. Regla d'or #11: mateix tracte
+        per a acords i seccions."""
+        self._omple_llista_ac()
+        self._actualitza_llista_abc()
+        if hasattr(self, "timeline") and 0 <= idx:
+            self.timeline.select_multi({(kind, idx)})
 
     def _actualitza_editor(self):
         """Mostra a la franja Editor l'element seleccionat (o el buit)."""
@@ -1706,6 +1798,9 @@ class Visor(QMainWindow):
             self.timeline.set_data(self.acords, self.seccions)
             self._desa_i_regenera()
             self.log(f"editor: acord {i} -> {nom} @ {ini:.2f}s")
+            # Si s'ha mogut l'inici, l'acord pot haver canviat de fila → re-localitza.
+            i = next((j for j, a in enumerate(self.acords)
+                      if abs(float(a[0]) - ini) <= 1e-6 and a[1] == nom), i)
         else:
             if not (0 <= i < len(self.seccions)):
                 self.avis_editor("Aquesta secció ja no existeix (potser l'has "
@@ -1733,7 +1828,9 @@ class Visor(QMainWindow):
             self.timeline.set_data(self.acords, self.seccions)
             self._regenera_abc_des_de_totes_les_seccions("editat des de l'editor")
             self.log(f"editor: seccio {i} -> {lletra} @ {ini:.2f}s")
-        self._actualitza_editor()
+            i = next((j for j, s in enumerate(self.seccions)
+                      if abs(float(s[0]) - ini) <= 1e-6 and s[2] == lletra), i)
+        self._refresca_post_edicio(k, i)
 
     def _focus_editor(self, kind, idx):
         """Selecciona l'element i enganxa el focus a la franja Editor
