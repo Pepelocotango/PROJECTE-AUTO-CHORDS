@@ -233,9 +233,7 @@ class ExportPipelineTests(unittest.TestCase):
 
     def test_exporta_includes_both_acord_and_structure_wavs(self):
         # Test d'integració: el Visor complet amb TimelineView exporta bé
-        import os
         from app.timeline import TimelineView
-        import numpy as np
 
         app = visor.QApplication.instance() or visor.QApplication([])
         with tempfile.TemporaryDirectory() as td:
@@ -1295,7 +1293,7 @@ class OffsetTests(unittest.TestCase):
 
     def test_compas_manual_accepta_fraccio(self):
         from app.main import Finestra
-        app = visor.QApplication.instance() or visor.QApplication([])
+        visor.QApplication.instance() or visor.QApplication([])
         w = Finestra()
         self.assertEqual(w._parse_compas("3/4"), (3, 4))
         self.assertEqual(w._parse_compas("6/8"), (6, 8))
