@@ -782,13 +782,32 @@ class Finestra(QMainWindow):
             self.registra(f"AVÍS: {text}")
         except Exception:  # noqa: BLE001
             pass
+        # Un sol avís no modal alhora: tanquem l'anterior (evita acumular
+        # finestres fill que després es destrueixen amb la Finestra).
+        self._tanca_avis_box()
         box = QMessageBox(getattr(QMessageBox, tipus.capitalize()), titol, text,
                           QMessageBox.Ok, self)
         box.setWindowModality(Qt.NonModal)
         box.setAttribute(Qt.WA_DeleteOnClose, True)
+        self._avis_box = box   # (sense destroyed.connect: era un parany de GC)
         box.show()
-        QTimer.singleShot(10000, box.close)
+        # El timer és FILL del box: mor amb ell (abans, `QTimer.singleShot`
+        # sobre `box.close` podia disparar-se amb el box/la finestra ja destruïts).
+        t = QTimer(box)
+        t.setSingleShot(True)
+        t.timeout.connect(box.close)
+        t.start(10000)
         return None
+
+    def _tanca_avis_box(self):
+        box = getattr(self, "_avis_box", None)
+        self._avis_box = None
+        if box is None:
+            return
+        try:
+            box.close()
+        except RuntimeError:      # ja destruït per C++ (WA_DeleteOnClose)
+            pass
 
     def _text_dreceres(self):
         """El diàleg de dreceres en HTML (separat per poder-lo testar)."""
@@ -1832,6 +1851,35 @@ class Finestra(QMainWindow):
         self.avisa_info("Auto Chords",
                                 self._missatge_partitura(res))
         self.obre_carpeta()
+
+    def closeEvent(self, ev):
+        """Neteja ordenada abans que Qt destrueixi la finestra.
+
+        Sense això, es destruïa la Finestra amb fils vius (`FeinaExporta`), el
+        reproductor del visor sonant, el pont MCP obert i un avís no modal fill
+        visible: destrucció en ordre arbitrari = risc d'access violation.
+        """
+        fe = getattr(self, "feina_export", None)
+        try:
+            if fe is not None and fe.isRunning():
+                fe.wait(10000)
+        except RuntimeError:
+            pass
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            try:
+                vr.rellotge.stop()
+                vr._atura_proc()
+            except (RuntimeError, AttributeError):
+                pass
+        pont = getattr(self, "_mcp_pont", None)
+        if pont is not None:
+            try:
+                pont.tanca()
+            except Exception:  # noqa: BLE001
+                pass
+        self._tanca_avis_box()
+        super().closeEvent(ev)
 
     def obre_carpeta(self):
         if self.sortida and os.path.isdir(self.sortida):

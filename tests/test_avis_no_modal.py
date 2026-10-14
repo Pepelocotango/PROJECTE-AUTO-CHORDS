@@ -26,6 +26,9 @@ from PyQt5.QtCore import Qt  # noqa: E402
 
 from app import mcp_bridge  # noqa: E402
 from app import main as app_main  # noqa: E402
+from app import pipeline  # noqa: E402
+
+_VIVES = []     # finestres creades pel test: es tanquen al tearDown
 
 
 def _finestra():
@@ -39,6 +42,7 @@ def _finestra():
     f = app_main.Finestra()
     f.wav_edit.setText(wav)
     f._carrega_visor(wav)
+    _VIVES.append(f)
     return f
 
 
@@ -46,6 +50,21 @@ class _Base(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls._app = QW.QApplication.instance() or QW.QApplication([])
+
+    def setUp(self):
+        # Cap test ensenya un QMessageBox de veritat (els que volen veure'l
+        # el sobreescriuen amb el seu propi patch).
+        p = patch.object(QW.QMessageBox, "show", lambda self: None)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def tearDown(self):
+        # Destrucció ORDENADA (closeEvent) abans que el GC les tombi.
+        while _VIVES:
+            w = _VIVES.pop()
+            w.close()
+            w.deleteLater()
+        self._app.processEvents()
 
 
 class TestAvisSensePont(_Base):
@@ -94,9 +113,14 @@ class TestExportMCPNoBloqueja(_Base):
         w = _finestra()
         w.mcp_actiu = True
         ctx = mcp_bridge._Context(w)
+        # Guard: aquest test espera la sortida ANTICIPADA (sense CSVs); si algun
+        # dia fes un export real, que peti de forma clara i no al SO.
         with patch.object(QW.QMessageBox, "warning") as modal, \
-                patch.object(QW.QMessageBox, "show", lambda self: None):
+                patch.object(pipeline, "exporta_total",
+                             side_effect=AssertionError("export real!")), \
+                patch.object(w, "obre_carpeta") as obre:
             r = mcp_bridge._op_export_wav(ctx, {})
+        self.assertFalse(obre.called, "no ha d'obrir cap carpeta")
         self.assertFalse(modal.called, "no pot haver-hi modal amb el pont")
         self.assertTrue(r.get("ok"))
         self.assertIn("avis", r, "l'avís hauria d'arribar a l'agent")
