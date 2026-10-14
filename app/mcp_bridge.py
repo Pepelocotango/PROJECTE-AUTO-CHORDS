@@ -569,7 +569,12 @@ def _op_export_wav(ctx, params):
     finally:
         if marca is not None:
             w.amb_part.setChecked(marca)
-    r = {"ok": True, "sortida": getattr(w, "sortida", "") or ""}
+    # Si l'export ha fallat, `ok` ha de ser FALSE (abans deia `true` sempre,
+    # també quan fallava: l'agent creia que s'havia exportat).
+    err = getattr(w, "exporta_error", "")
+    r = {"ok": not err, "sortida": getattr(w, "sortida", "") or ""}
+    if err:
+        r["error"] = err
     if getattr(w, "ultim_avis", ""):
         r["avis"] = w.ultim_avis
     return r

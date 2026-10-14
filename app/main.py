@@ -204,6 +204,9 @@ class Finestra(QMainWindow):
         self.mcp_actiu = False
         self.ultim_avis = ""
         # A5: export asíncron (progrés llegible des de l'MCP a `ac_status`).
+        # `exporta_error`: motiu de l'últim export fallit ("" = cap) → l'MCP el
+        # pot retornar amb `ok: false` en comptes de dir que tot ha anat bé.
+        self.exporta_error = ""
         self.exportant = False
         self.exporta_iniciat = 0.0
         self.feina_export = None
@@ -1672,12 +1675,14 @@ class Finestra(QMainWindow):
         kwargs = self._prepara_export()
         if kwargs is None:
             return
+        self.exporta_error = ""
         try:
             self.registra(f"Exportant a: {self.sortida}")
             pipeline.exporta_total(log=self.registra, **kwargs)
             res_part = self._exporta_partitura() if self.amb_part.isChecked() else None
             self._exporta_acabada(res_part)
         except Exception as e:  # noqa: BLE001
+            self.exporta_error = str(e)
             self.registra(f"exporta ERROR: {e}")
             self.avisa_crit("Auto Chords",
                             f"No s'ha pogut exportar:\n{e}")
@@ -1696,6 +1701,7 @@ class Finestra(QMainWindow):
         if kwargs is None:
             return False
         self.registra(f"Exportant a: {self.sortida}")
+        self.exporta_error = ""
         self.exportant = True
         self.exporta_iniciat = time.time()
         self.barra.setValue(0)
@@ -1709,6 +1715,7 @@ class Finestra(QMainWindow):
     def _exporta_async_feta(self, ok, error):
         self.exportant = False
         if not ok:
+            self.exporta_error = error
             self.registra(f"exporta ERROR: {error}")
             self.avisa_crit("Auto Chords", f"No s'ha pogut exportar:\n{error}")
             return
