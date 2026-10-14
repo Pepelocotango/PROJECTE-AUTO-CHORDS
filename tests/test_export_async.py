@@ -49,6 +49,15 @@ class _Base(unittest.TestCase):
     def setUpClass(cls):
         cls._app = QW.QApplication.instance() or QW.QApplication([])
 
+    def setUp(self):
+        # Cap test no ha d'ensenyar un QMessageBox REAL: amb el pont MCP actiu
+        # l'avís és NO modal i, a Windows, mostrar-lo des del context del test fa
+        # «access violation» (crash natiu: vist al CI, run #14, a main._avis →
+        # box.show()). Mateix remei que `test_avis_no_modal`.
+        p = patch.object(QW.QMessageBox, "show", lambda self: None)
+        p.start()
+        self.addCleanup(p.stop)
+
     def ctx(self, w):
         return mcp_bridge._Context(w)
 

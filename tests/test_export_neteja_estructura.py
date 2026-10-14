@@ -53,6 +53,13 @@ class TestNetejaEstructura(unittest.TestCase):
     def setUpClass(cls):
         cls._app = QW.QApplication.instance() or QW.QApplication([])
 
+    def setUp(self):
+        # Cap QMessageBox REAL: mostrar-lo amb el pont MCP actiu fa «access
+        # violation» a Windows (crash natiu; CI run #14). Vegeu test_avis_no_modal.
+        p = patch.object(QW.QMessageBox, "show", lambda self: None)
+        p.start()
+        self.addCleanup(p.stop)
+
     def test_amb_la_marca_off_es_netegen(self):
         w, s = _finestra(amb_estructura=False)
         with patch.object(pipeline, "exporta_total", return_value={}), \

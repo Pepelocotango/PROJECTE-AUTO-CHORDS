@@ -46,6 +46,13 @@ class TestOkFalsEnFallar(unittest.TestCase):
     def setUpClass(cls):
         cls._app = QW.QApplication.instance() or QW.QApplication([])
 
+    def setUp(self):
+        # Cap QMessageBox REAL: mostrar-lo amb el pont MCP actiu fa «access
+        # violation» a Windows (crash natiu; CI run #14). Vegeu test_avis_no_modal.
+        p = patch.object(QW.QMessageBox, "show", lambda self: None)
+        p.start()
+        self.addCleanup(p.stop)
+
     def test_export_que_falla_retorna_ok_false(self):
         w = _finestra()
         with patch.object(pipeline, "exporta_total",
