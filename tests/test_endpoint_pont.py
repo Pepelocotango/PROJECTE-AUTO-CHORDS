@@ -49,16 +49,21 @@ class _Base(unittest.TestCase):
 
 class TestProteccioEscriptura(_Base):
     def test_no_sobreescriu_l_endpoint_d_un_altre_proces_viu(self):
-        # pid 1 (init) sempre és viu i no és nostre
+        # Un procés VIU que no és nostre: el PARE (getppid). Abans s'usava el
+        # pid 1, que a Linux/init sempre hi és però a Windows NO existeix (i
+        # allà `os.kill` no és una sonda) → el test fallava només a Windows.
+        alien = os.getppid()
+        if alien <= 0 or alien == os.getpid():
+            self.skipTest("sense un procés pare vàlid per fer d'aliè")
         with open(self.path, "w", encoding="utf-8") as f:
-            json.dump({"port": 9999, "token": "aliena", "pid": 1}, f)
+            json.dump({"port": 9999, "token": "aliena", "pid": alien}, f)
         w = QW.QWidget()
         p = mcp_bridge.PontMCP(w)
         try:
             d = self._dades()
-            self.assertEqual(d["pid"], 1, "ha sobreescrit un endpoint aliè viu!")
+            self.assertEqual(d["pid"], alien, "ha sobreescrit un endpoint aliè viu!")
             self.assertEqual(d["token"], "aliena")
-            self.assertEqual(p._endpoint_viu_d_algu_altre(), 1)
+            self.assertEqual(p._endpoint_viu_d_algu_altre(), alien)
             # I en tancar-se NO se l'ha d'endur (no és seu).
             p.tanca()
             self.assertTrue(os.path.isfile(self.path),

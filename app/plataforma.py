@@ -250,3 +250,47 @@ def desbloqueja(fitxer):
     except Exception:  # noqa: BLE001
         # alliberar el lock és best-effort; silenciós intencionat
         pass
+
+
+def proces_viu(pid):
+    """Cert si `pid` és un procés VIU (cross-platform).
+
+    ⚠️ A **Windows**, `os.kill(pid, 0)` **NO és una sonda**: acaba cridant
+    `TerminateProcess` (podria MATAR el procés!) i, per a un pid inexistent,
+    llança `OSError` → es confonia amb «mort». Per això, allà es consulta amb
+    `OpenProcess` + `GetExitCodeProcess` (només lectura, mai mata res).
+    """
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    if not ES_WINDOWS:
+        try:
+            os.kill(pid, 0)          # senyal 0: només comprova que existeixi
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True              # existeix (d'un altre usuari)
+        except OSError:
+            return False
+    try:
+        import ctypes
+        from ctypes import wintypes
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        STILL_ACTIVE = 259
+        k = ctypes.windll.kernel32
+        h = k.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not h:
+            return False
+        try:
+            codi = wintypes.DWORD()
+            if not k.GetExitCodeProcess(h, ctypes.byref(codi)):
+                return False
+            return codi.value == STILL_ACTIVE
+        finally:
+            k.CloseHandle(h)
+    except Exception:  # noqa: BLE001
+        return False

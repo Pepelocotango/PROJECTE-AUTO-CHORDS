@@ -41,6 +41,7 @@ from PyQt5.QtCore import QObject, QTimer
 from . import __version__ as APP_VERSION
 from . import dialegs
 from . import pipeline
+from . import plataforma
 
 logger = logging.getLogger("auto_chords")
 
@@ -828,14 +829,11 @@ class PontMCP(QObject):
         pid = dades.get("pid")
         if not isinstance(pid, int) or pid == os.getpid():
             return None
-        try:
-            os.kill(pid, 0)          # senyal 0: només comprova que existeixi
-        except ProcessLookupError:
+        # `plataforma.proces_viu` en comptes d'`os.kill(pid, 0)`: a Windows el
+        # kill no és una sonda (acaba en `TerminateProcess`: podria MATAR el
+        # procés aliè i, si no hi és, llança OSError → «mort» fals).
+        if not plataforma.proces_viu(pid):
             return None              # mort: el podem reciclar
-        except PermissionError:
-            pass                     # viu (d'un altre usuari)
-        except OSError:
-            return None
         return pid
 
     def _revisa_endpoint(self):
