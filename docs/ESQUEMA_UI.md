@@ -82,8 +82,8 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 
 | Menú | Accions |
 |------|---------|
-| **Fitxer** | Obre WAV… (Ctrl+O) · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Tonalitat automàtica (qm-keydetector) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
-| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix la secció al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Paràmetres… |
+| **Fitxer** | Obre WAV… (Ctrl+O) · Obre projecte… (Ctrl+Shift+O) · Obre recent… · Desa (Ctrl+S) · Desa com… (Ctrl+Shift+S) · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Tonalitat automàtica (qm-keydetector) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
+| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix l'acord al cursor… · Parteix la secció al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Metrònom |
 | **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Inclou estructura |
@@ -93,7 +93,8 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 > mai al visor incrustat (un `QShortcut` dins el visor no s'activa).
 > **Espai** = play/stop · **T** = tap tempo · **Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z**
 > = desfer/refer · **Del** = eliminar · **Ctrl+D** = duplicar · **F2** = reanomenar ·
-> **Ctrl+O** = obrir · **Ctrl+E** = exportar · **Ctrl+[ / Ctrl+]** = loop A/B ·
+> **Ctrl+O** = obrir WAV · **Ctrl+Shift+O** = obrir projecte · **Ctrl+S** = desar ·
+> **Ctrl+Shift+S** = desar com · **Ctrl+E** = exportar · **Ctrl+[ / Ctrl+]** = loop A/B ·
 > **F5** = Analitza · **Ctrl++ / Ctrl+− / Ctrl+0** = zoom +/− / total.
 >
 > **Multi-selecció (timeline)**: **Ctrl+clic** afegeix/treu un clip ·
@@ -107,6 +108,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 > Al **codi** ja hi és (sense commitejar; es validarà i commitarà aviat):
 > - ✅ **A1 — Desfer/Refer del temps i del loop**: `undo`/`redo` ara també cobreix **BPM, compàs, offset** i el **loop A-B** (nou estat de temps), no només acords/seccions.
 > - ✅ **A2 — Partir una secció — FET**: acció **Edita ▸ Parteix la secció al cursor…** i entrada **«Parteix la secció…»** al menú contextual de la secció (s'activa només si el clic és en una secció i el cursor hi cau a dins). Parteix la secció que conté el cursor en dues: la meitat esquerra conserva lletra i família i la nova rep la lletra que es tria (per defecte, la mateixa). És la manera natural d'afegir secció en un model **saturat** (les seccions cobreixen tota la WAV, regla #4).
+> - ✅ **Regla d'or #11 — paritat acords ↔ estructura**: els acords tenen ara les **mateixes eines** que les seccions — **Edita ▸ Parteix l'acord al cursor…**, **«Parteix l'acord…»** al menú contextual del clip i **menú de la llista d'acords** amb *Afegeix/Partir/Fusionar amb anterior/Fusionar amb següent/Elimina* (idèntic al de les seccions). El tall deixa l'esquerra amb el nom i el clip nou (dreta) amb el nom triat (per defecte, el mateix). Darrere: `pipeline.parteix_acord`/`fusiona_acords` i `visor.parteix_acord`/`fusiona_acord` (mirall dels de secció).
 > - ✅ **A3 — Dreceres completes — FET**: el diàleg **Ajuda ▸ Dreceres de teclat** ara **dedueix totes les dreceres dels menús reals** (abans només en llistava 6).
 
 ---

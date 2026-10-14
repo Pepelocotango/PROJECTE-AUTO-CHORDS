@@ -5,6 +5,27 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+### Afegit
+- **Regla d'or #11 — paritat d'edició acords ↔ estructura** (els clips d'acord
+  tenen ara **exactament les mateixes eines** que els de secció). Backend nou
+  **`pipeline.parteix_acord()`** i **`pipeline.fusiona_acords()`** (mirall de
+  `parteix_seccio()`/`fusiona_seccions()`); al visor **`parteix_acord()`**,
+  **`fusiona_acord()`** i **`fusiona_seccio()`** (amb desfer/refer). Nous punts
+  d'usuari: **Edita ▸ Parteix l'acord al cursor…**, entrada **«Parteix l'acord…»**
+  al menú contextual del clip (la de secció ja hi era) i el **menú de la llista
+  d'acords** alineat amb el de seccions (*Afegeix · Partir · Fusionar amb
+  anterior · Fusionar amb següent · Elimina*). El tall deixa l'esquerra amb el nom
+  i el clip nou (dreta) amb el nom triat (per defecte, el mateix). Regla
+  documentada a `docs/REGLES_DE_LA_APP.md` (§11) i blindada amb el test
+  **`tests/test_regla11_paritat.py`**. `AGENTS.md` passa a 11 regles.
+
+### Canviat
+- **`SectionItem` amb el mateix tracte que `ChordItem`**: ara emet `dragStarted`
+  i fixa el cursor de gest (redimensionar/moure) igual que els acords.
+- **«Partir» uniforme**: el «Partir secció aquí» del menú de la llista parteix
+  ara pel **cursor** (com la resta de punts de partir), en lloc de demanar el
+  temps per número — mateix tracte que els acords.
+
 ## [0.7.0] — 2026-10-14 (BETA)
 
 ### Seguretat

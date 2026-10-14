@@ -25,8 +25,8 @@ _VIVES = []
 
 
 def _wav(segons=1):
-    fd, ruta = tempfile.mkstemp(suffix=".wav")
-    os.close(fd)
+    d = tempfile.mkdtemp()          # dir únic per a cada WAV (evita xocs)
+    ruta = os.path.join(d, "tema.wav")
     with wave.open(ruta, "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
@@ -46,7 +46,14 @@ class _Base(unittest.TestCase):
     def setUpClass(cls):
         cls._app = QW.QApplication.instance() or QW.QApplication([])
 
+    def setUp(self):
+        # Aïlla els «recents» (no escriure al DADES_DIR real del repo).
+        self.td = tempfile.mkdtemp()
+        self._p = patch.object(app_main.config, "DADES_DIR", self.td)
+        self._p.start()
+
     def tearDown(self):
+        self._p.stop()
         try:
             import _qt_neteja
         except ImportError:      # 'python -m unittest tests.test_x' (tests/ no al path)
@@ -60,8 +67,13 @@ class _Base(unittest.TestCase):
 
 class TestCanviWavReiniciaTempo(_Base):
     def _obre(self, f, ruta):
+        # «Obre WAV» ara crea un projecte: cal patxegar TAMBÉ el diàleg de
+        # destinació (per defecte, una carpeta al costat del WAV).
+        desti = os.path.join(os.path.dirname(ruta), "AUTOCHORDS_prova.acproj")
         with patch.object(QFileDialog, "getOpenFileName",
-                          return_value=(ruta, "")):
+                          return_value=(ruta, "")), \
+                patch.object(QFileDialog, "getSaveFileName",
+                             return_value=(desti, "")):
             f.tria_wav()
 
     def test_bpm_reiniciat_en_carregar_un_wav_nou(self):

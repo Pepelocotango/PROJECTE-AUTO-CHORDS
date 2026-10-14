@@ -2,6 +2,7 @@
 # main.py — Auto Chords (PyQt5/Qt5: l'únic Qt que corre al Q9400) —
 #           wav -> acords + estructura -> carpetes. Tot en català.
 import faulthandler
+import json
 import logging
 import os
 import shutil
@@ -32,6 +33,7 @@ from . import config  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402
 from . import plataforma  # noqa: E402
+from . import projecte  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
 from . import __version__  # noqa: E402  (versió mostrada al «Quant a»)
 
@@ -239,6 +241,10 @@ class Finestra(QMainWindow):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
         self.opcions = dialegs.carrega_opcions()    # ultimes opcions d'autodeteccio
+        # PROJECTE (carpeta autocontinguda): el document viu + «canvis sense desar».
+        self.projecte = None
+        self.dirty = False
+        self.recents = self._carrega_recents()
         self.wav_original = ""                     # si ve d'un format convertit
         self._info_msg_fins = 0.0                  # missatge transitori info box
         # Pont MCP actiu? → cap avís pot ser MODAL (encallaria el pont) i el
@@ -252,7 +258,7 @@ class Finestra(QMainWindow):
         self.exportant = False
         self.exporta_iniciat = 0.0
         self.feina_export = None
-        self.setWindowTitle("Auto Chords — wav → acords + estructura")
+        self.setWindowTitle("Auto Chords")
         self.resize(1500, 900)
         # Amplada minima: per sota, les barres d\'eines es tallarien.
         self.setMinimumWidth(1240)
@@ -318,6 +324,7 @@ class Finestra(QMainWindow):
         self.b_detecta.clicked.connect(lambda: self._detecta_bpm())
         for camp in (self.bpm, self.bpb, self.offset):
             camp.editingFinished.connect(self._aplica_parametres_temps)
+            camp.editingFinished.connect(self._marca_dirty)
 
         self._params_temps = QWidget()      # s'amaga sencer en mode Lliure
         hp = QHBoxLayout(self._params_temps)
@@ -404,6 +411,7 @@ class Finestra(QMainWindow):
         self.tempo_fix.setChecked(True)
         self.tempo_fix.setVisible(False)
         self.tempo_fix.toggled.connect(self._canvia_tempo)
+        self.tempo_fix.toggled.connect(self._marca_dirty)
 
         # 3. «Analitza», «Exporta WAV's» i «Exporta partitura» són ACCIONS.
         self.b_exec = QPushButton("Analitza")
@@ -610,6 +618,13 @@ class Finestra(QMainWindow):
         # --- Fitxer ---
         m = mb.addMenu("&Fitxer")
         self._act(m, "Obre WAV…", "Ctrl+O", self.tria_wav)
+        self._act(m, "Obre projecte…", "Ctrl+Shift+O", self._obre_projecte)
+        self._act(m, "Obre recent…", "", self._obre_recent)
+        m.addSeparator()
+        self._act(m, "Desa", "Ctrl+S", self._desa_projecte)
+        self._act(m, "Desa com…", "Ctrl+Shift+S", self._desa_projecte_com)
+        self._act(m, "Desa una còpia…", "", self._desa_copia)
+        self._act(m, "Reverteix", "", self._reverteix)
         m.addSeparator()
         self._act(m, "Exporta WAV's…", "Ctrl+E", self.exporta)
         a_part = self._act(m, "Exporta la partitura…", "",
@@ -629,8 +644,10 @@ class Finestra(QMainWindow):
         m.addSeparator()
         self._act(m, "Afegeix acord…", "Ctrl+Shift+A", self._afegeix_acord_ui)
         self._act(m, "Afegeix secció…", "Ctrl+Shift+S", self._afegeix_seccio_ui)
-        # A2: en un model saturat (les seccions cobreixen tota la WAV) no hi ha
-        # forat per afegir-ne: cal PARTIR la que hi ha al cursor.
+        # A2 + regla d'or #11: en un model saturat (els clips cobreixen tota la
+        # WAV) no hi ha forat per afegir-ne: cal PARTIR el clip que hi ha al
+        # cursor — MATEIXA acció per a acord i secció.
+        self._act(m, "Parteix l'acord al cursor…", "", self._parteix_acord_ui)
         self._act(m, "Parteix la secció al cursor…", "", self._parteix_seccio_ui)
         m.addSeparator()
         self._act(m, "Elimina element", "Del", self._elimina_element)
@@ -992,6 +1009,7 @@ class Finestra(QMainWindow):
                 return
             self.opcions = dlg.opcions()
             dialegs.desa_opcions(self.opcions)
+            self._marca_dirty()
         b = self.opcions.get("bpm", {})
         self._atura_si_sona("deteccio de BPM")
         self.registra("Detectant el BPM…")
@@ -1094,6 +1112,32 @@ class Finestra(QMainWindow):
             tl.chordEditRequested.emit(idx)
         else:
             tl.sectionEditRequested.emit(idx)
+
+    def _idx_acord_del_cursor(self):
+        """Índex de l'acord que CONTÉ el cursor (o `None`). Regla d'or #11."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None or not vr.acords:
+            return None
+        idx = None
+        for i, a in enumerate(vr.acords):
+            if float(a[0]) <= float(vr.pos):
+                idx = i
+            else:
+                break
+        return idx
+
+    def _parteix_acord_ui(self):
+        """Parteix l'acord que conté el cursor pel punt del cursor (regla #11)."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.registra("Parteix: no hi ha visor carregat")
+            return
+        idx = self._idx_acord_del_cursor()
+        if idx is None:
+            self.registra("Parteix: el cursor no és dins cap acord")
+            return
+        if vr._parteix_acord_dialog(idx):
+            self.registra(f"acord partit a {vr.pos:.2f} s")
 
     def _idx_seccio_del_cursor(self):
         """Índex de la secció que CONTÉ el cursor (o `None`). A2."""
@@ -1437,38 +1481,371 @@ class Finestra(QMainWindow):
             QApplication.restoreOverrideCursor()
         return wav
 
+    # ── Gestió de projectes (carpeta autocontinguda, com un DAW) ────────────
+    RECENTS_MAX = 8
+
+    def _recents_path(self):
+        return os.path.join(config.DADES_DIR, "recents.json")
+
+    def _carrega_recents(self):
+        try:
+            with open(self._recents_path(), encoding="utf-8") as f:
+                d = json.load(f)
+            return [str(x) for x in d if isinstance(x, str)][:self.RECENTS_MAX]
+        except (OSError, ValueError):
+            return []
+
+    def _guarda_recents(self):
+        try:
+            pipeline.escriu_atomic(
+                self._recents_path(),
+                lambda f: json.dump(self.recents, f, ensure_ascii=False,
+                                    indent=2))
+        except OSError:
+            pass
+
+    def _afegeix_recent(self, ruta_acproj):
+        ruta_acproj = os.path.abspath(ruta_acproj)
+        self.recents = ([ruta_acproj]
+                        + [r for r in self.recents if r != ruta_acproj])
+        self.recents = self.recents[:self.RECENTS_MAX]
+        self._guarda_recents()
+
+    def _actualitza_titol(self):
+        base = (f"{self.projecte.nom} — Auto Chords" if self.projecte is not None
+                else "Auto Chords")
+        self.setWindowTitle(base + (" *" if self.dirty else ""))
+
+    def _marca_dirty(self, *_):
+        if not self.dirty:
+            self.dirty = True
+            self._actualitza_titol()
+
+    def _te_canvis(self):
+        return bool(self.dirty)
+
+    def _confirma_descartar(self):
+        """Prompt Desar/Descarta/Cancel·lar. True = podem continuar."""
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("Canvis sense desar")
+        box.setText("El projecte té canvis sense desar.")
+        box.setInformativeText("Vols desar-los abans de continuar?")
+        b_desa = box.addButton("Desa", QMessageBox.AcceptRole)
+        box.addButton("Descarta", QMessageBox.DestructiveRole)
+        b_canc = box.addButton("Cancel·la", QMessageBox.RejectRole)
+        box.setDefaultButton(b_desa)
+        box.exec_()
+        clic = box.clickedButton()
+        if clic is None or clic is b_canc:
+            return False
+        if clic is b_desa:
+            self._desa_projecte()
+        return True
+
+    def _pot_descartar(self):
+        return (not self._te_canvis()) or self._confirma_descartar()
+
+    def _dades_projecte(self):
+        return {
+            "tempo": {"bpm": self._bpm_val(), "bpb": self._bpb_val(),
+                      "offset": self._offset_val(),
+                      "fix": self.tempo_fix.isChecked(),
+                      "compas": self.bpb.text().strip()},
+            "opcions": self.opcions,
+        }
+
+    def _demana_ubicacio_projecte(self, base_dir, nom_suggerit, titol):
+        """Pregunta ON crear/desar el projecte. Retorna la carpeta (o `None`).
+
+        `base_dir` = carpeta on s'obre el diàleg; `nom_suggerit` = nom sense
+        extensió. El resultat és la CARPETA del projecte (la que conté el
+        `.acproj`), perquè un projecte és una carpeta autocontinguda.
+        """
+        suggerit = os.path.join(base_dir,
+                                str(nom_suggerit).strip() + projecte.EXT)
+        ruta, _ = QFileDialog.getSaveFileName(
+            self, titol, suggerit, "Projecte AUTO CHORDS (*.acproj)")
+        if not ruta:
+            return None
+        if not ruta.endswith(projecte.EXT):
+            ruta += projecte.EXT
+        nom = os.path.splitext(os.path.basename(ruta))[0]
+        return os.path.join(os.path.dirname(ruta), nom)
+
+    def _activa_projecte(self, p):
+        """Carrega un projecte a la finestra (àudio, tempo, visor, títol)."""
+        self._atura_si_sona("canvi de projecte")
+        self.projecte = p
+        self.sortida = p.carpeta
+        wav = p.ruta_audio()
+        self.wav_original = ""
+        self.wav_edit.setText(wav)
+        tempo = p.dades.get("tempo") or {}
+        self.bpm.setText(f"{float(tempo.get('bpm', 120.0)):.1f}")
+        compas = tempo.get("compas")
+        self.bpb.setText(str(compas) if compas
+                         else str(int(tempo.get("bpb", 4))))
+        self.offset.setText(f"{float(tempo.get('offset', 0.0)):.2f}")
+        self.tempo_fix.setChecked(bool(tempo.get("fix", False)))
+        if isinstance(p.dades.get("opcions"), dict) and p.dades["opcions"]:
+            self.opcions = p.dades["opcions"]
+        if not p.audio_present():
+            self.avisa("Auto Chords", f"Falta l'àudio del projecte:\n{wav}")
+        if wav and os.path.isfile(wav):
+            try:
+                self._actualitza_info_wav(wav)
+            except Exception:  # noqa: BLE001
+                pass
+            self._carrega_visor(wav)
+        self.dirty = False
+        self._actualitza_titol()
+        self._afegeix_recent(p.ruta_acproj)
+        self.registra(f"Projecte obert: {p.carpeta}")
+        self._engega_autosave()
+        self._marca_sessio()
+
+    def _obre_ruta_projecte(self, ruta):
+        if not self._pot_descartar():
+            return
+        try:
+            p = projecte.Projecte.obre(ruta)
+        except projecte.ProjecteError as e:
+            self.avisa("Auto Chords", f"No s'ha pogut obrir el projecte:\n{e}")
+            return
+        self._activa_projecte(p)
+
+    def _obre_projecte(self):
+        if not self._pot_descartar():
+            return
+        ruta, _ = QFileDialog.getOpenFileName(
+            self, "Obre un projecte", "", "Projecte AUTO CHORDS (*.acproj)")
+        if ruta:
+            self._obre_ruta_projecte(ruta)
+
+    def _obre_recent(self):
+        self.recents = [r for r in self.recents if os.path.isfile(r)]
+        if not self.recents:
+            self.avisa_info("Auto Chords", "No hi ha projectes recents.")
+            return
+        etiqueta, ok = QInputDialog.getItem(
+            self, "Projectes recents", "Obre un projecte recent:",
+            self.recents, 0, False)
+        if ok and etiqueta:
+            self._obre_ruta_projecte(etiqueta)
+
+    def _desa_projecte(self):
+        if self.projecte is None:
+            self.avisa_info("Auto Chords", "No hi ha cap projecte obert.")
+            return
+        self._refresca_dades_projecte()
+        try:
+            self.projecte.desa()
+        except OSError as e:
+            self.avisa("Auto Chords", f"No s'ha pogut desar:\n{e}")
+            return
+        self.dirty = False
+        self._actualitza_titol()
+        self._afegeix_recent(self.projecte.ruta_acproj)
+        self.registra(f"Projecte desat: {self.projecte.ruta_acproj}")
+
+    def _desa_projecte_com(self):
+        if self.projecte is None:
+            self.avisa_info("Auto Chords", "No hi ha cap projecte obert.")
+            return
+        desti = self._demana_ubicacio_projecte(
+            os.path.dirname(self.projecte.carpeta), self.projecte.nom,
+            "Desa el projecte com")
+        if not desti:
+            return
+        if os.path.abspath(desti) == self.projecte.carpeta:
+            self._desa_projecte()          # mateix lloc → «Desa» normal
+            return
+        self._refresca_dades_projecte()
+        self.projecte.desa()
+        try:
+            nou = self.projecte.duplica(desti)
+        except (projecte.ProjecteError, OSError) as e:
+            self.avisa("Auto Chords", f"No s'ha pogut desar com:\n{e}")
+            return
+        self.projecte = nou
+        self.sortida = nou.carpeta
+        self.dirty = False
+        self._actualitza_titol()
+        self._afegeix_recent(nou.ruta_acproj)
+        self.registra(f"Projecte desat com: {nou.carpeta}")
+
+    def _desa_copia(self):
+        """Desa una CÒPIA sense canviar el projecte actiu."""
+        if self.projecte is None:
+            self.avisa_info("Auto Chords", "No hi ha cap projecte obert.")
+            return
+        desti = self._demana_ubicacio_projecte(
+            os.path.dirname(self.projecte.carpeta),
+            self.projecte.nom + "_còpia", "Desa una còpia a")
+        if not desti:
+            return
+        self._refresca_dades_projecte()
+        self.projecte.desa()
+        try:
+            self.projecte.duplica(desti)
+        except (projecte.ProjecteError, OSError) as e:
+            self.avisa("Auto Chords", f"No s'ha pogut desar la còpia:\n{e}")
+            return
+        self.registra(f"Còpia desada a: {desti}")
+
+    def _reverteix(self):
+        """Torna el projecte a l'últim estat desat."""
+        if self.projecte is None:
+            self.avisa_info("Auto Chords", "No hi ha cap projecte obert.")
+            return
+        if self._te_canvis() and not self._confirma_descartar():
+            return
+        try:
+            p = projecte.Projecte.obre(self.projecte.ruta_acproj)
+        except projecte.ProjecteError as e:
+            self.avisa("Auto Chords", f"No s'ha pogut revertir:\n{e}")
+            return
+        self._activa_projecte(p)
+        self.registra("Projecte reverit a l'últim desat.")
+
+    # -- Autosave + sessió (recuperació després d'un tancament brusc) --------
+    AUTOSAVE_MS = 60000
+
+    def _refresca_dades_projecte(self):
+        """Passa el tempo/opcions dels widgets al document en memòria."""
+        if self.projecte is None:
+            return
+        d = self._dades_projecte()
+        self.projecte.dades["tempo"] = d["tempo"]
+        self.projecte.dades["opcions"] = d["opcions"]
+
+    def _engega_autosave(self):
+        if getattr(self, "_autosave", None) is None:
+            self._autosave = QTimer(self)
+            self._autosave.setInterval(self.AUTOSAVE_MS)
+            self._autosave.timeout.connect(self._fes_autosave)
+        self._autosave.start()
+
+    def _fes_autosave(self):
+        """Còpia de seguretat periòdica a `backup/` (només si hi ha canvis)."""
+        if self.projecte is None or not self.dirty:
+            return
+        try:
+            self._refresca_dades_projecte()
+            self.projecte.fes_backup()
+            self.registra("autosave: còpia de seguretat creada")
+        except OSError as e:
+            self.registra(f"autosave ERROR: {e}")
+
+    def _sessio_path(self):
+        return os.path.join(config.DADES_DIR, "sessio.json")
+
+    def _marca_sessio(self):
+        """Marca que hi ha una sessió oberta (per detectar un crash)."""
+        if self.projecte is None:
+            return
+        try:
+            pipeline.escriu_atomic(self._sessio_path(), lambda f: json.dump(
+                {"acproj": self.projecte.ruta_acproj, "pid": os.getpid(),
+                 "inic": time.strftime("%Y-%m-%dT%H:%M:%S")},
+                f, ensure_ascii=False, indent=2))
+        except OSError:
+            pass
+
+    def _neteja_sessio(self):
+        try:
+            os.remove(self._sessio_path())
+        except OSError:
+            pass
+
+    def _sessio_pendent(self):
+        """`acproj` de la sessió inacabada (i neteja el marcador), o `None`."""
+        try:
+            with open(self._sessio_path(), encoding="utf-8") as f:
+                s = json.load(f)
+        except (OSError, ValueError):
+            return None
+        acproj = s.get("acproj") if isinstance(s, dict) else None
+        self._neteja_sessio()          # no ho tornis a oferir
+        if not acproj or not os.path.isfile(acproj):
+            return None
+        return acproj
+
+    def _comprova_recuperacio(self):
+        """A l'arrencada: si la sessió anterior no es va tancar bé, ofereix-la.
+
+        Es crida NOMÉS des de l'entrada real de l'app (`main()`), mai des de
+        `Finestra.__init__` — així els tests no disparen cap diàleg.
+        """
+        acproj = self._sessio_pendent()
+        if not acproj:
+            return
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Information)
+        box.setWindowTitle("Recupera la sessió")
+        box.setText("Sembla que l'app es va tancar inesperadament.")
+        box.setInformativeText(f"Vols reobrir el darrer projecte?\n{acproj}")
+        b_ok = box.addButton("Reobre", QMessageBox.AcceptRole)
+        box.addButton("Descarta", QMessageBox.RejectRole)
+        box.setDefaultButton(b_ok)
+        box.exec_()
+        if box.clickedButton() is b_ok:
+            self._obre_ruta_projecte(acproj)
+
     def tria_wav(self):
         ruta, _ = QFileDialog.getOpenFileName(
             self, "Tria un àudio", "", self._filtre_audio())
         if not ruta:
             return
+        self._obri_des_de_wav(ruta)
+
+    def _obri_des_de_wav(self, ruta):
+        """Crea un projecte AUTOCONTINGUT a partir d'un WAV (preguntant ON)."""
+        if not self._pot_descartar():
+            return
         self.wav_original = ""
         try:
             treball = self._assegura_wav(ruta)
-            if treball != ruta:
-                self.wav_original = os.path.abspath(ruta)
-            self.wav_edit.setText(treball)
-            info = pipeline.wav_info(treball)
-            self.sortida = self._detecta_sortida_wav(treball)
-            self.logger.info("WAV seleccionada: %s | info=%s | sortida_detectada=%s", treball, info, self.sortida)
-            self._actualitza_info_wav(treball, info)
-            if self.wav_original:
-                self.wav_info.setText(
-                    self.wav_info.text() +
-                    f"   ·   convertit de «{os.path.basename(self.wav_original)}»")
-            # Un WAV NOU no ha d'heretar el BPM del tema anterior (troballa
-            # OC-6/415: «el BPM persistia en canviar WAV», i el tema nou sortia
-            # amb el tempo vell). Es torna al valor per defecte i es registra;
-            # l'usuari el pot detectar o posar a mà.
-            if self.bpm.text().strip() not in ("", "120.0", "120"):
-                self.registra("WAV nou → BPM reiniciat a 120.0 "
-                              "(detecta'l o posa'l a mà)")
-                self.bpm.setText("120.0")
-            self._carrega_visor(treball)
         except Exception as e:  # noqa: BLE001
             self.logger.exception("Àudio no vàlid: %s", ruta)
             self.wav_info.setText(f"No s'ha pogut obrir: {e}")
             self._mostra_placeholder_visor()
+            return
+        if treball != ruta:
+            self.wav_original = os.path.abspath(ruta)
+        # Pregunta ON crear el projecte (per defecte, al costat del WAV).
+        base = os.path.splitext(os.path.basename(treball))[0]
+        desti = self._demana_ubicacio_projecte(
+            os.path.dirname(treball), pipeline.PREFIX_SORTIDA + base,
+            "Crea el projecte")
+        if not desti:
+            return
+        # Un WAV NOU no ha d'heretar el BPM del tema anterior (OC-6/415).
+        if self.bpm.text().strip() not in ("", "120.0", "120"):
+            self.registra("WAV nou → BPM reiniciat a 120.0 "
+                          "(detecta'l o posa'l a mà)")
+            self.bpm.setText("120.0")
+        # Migració: si hi ha una AUTOCHORDS_<nom>/ vella al costat del WAV,
+        # n'importem els CSVs (i, si el destí és la mateixa carpeta, in situ).
+        antic = projecte.carpeta_autochords(treball)
+        ca = os.path.join(antic, projecte.NOM_CSV_ACORDS) if antic else None
+        sa = os.path.join(antic, projecte.NOM_CSV_ESTRUCTURA) if antic else None
+        in_situ = bool(antic) and os.path.abspath(desti) == os.path.abspath(antic)
+        try:
+            p = projecte.Projecte.crea(
+                desti, treball, nom=os.path.basename(desti),
+                bpm=self._bpm_val(), bpb=self._bpb_val(),
+                offset=self._offset_val(), fix=self.tempo_fix.isChecked(),
+                opcions=self.opcions, compas=self.bpb.text().strip(),
+                csv_acords=ca if ca and os.path.isfile(ca) else None,
+                csv_estructura=sa if sa and os.path.isfile(sa) else None,
+                permet_existent=in_situ)
+        except (projecte.ProjecteError, OSError) as e:
+            self.avisa("Auto Chords", f"No s'ha pogut crear el projecte:\n{e}")
+            return
+        self._activa_projecte(p)
+        self.registra(f"Projecte creat a: {desti}")
 
     def _acc_visor(self, nom, *args):
         """Crida un mètode del visor (o una acció derivada) si n'hi ha."""
@@ -1582,9 +1959,7 @@ class Finestra(QMainWindow):
             self.a_metro.setToolTip("Clic de metrònom")
 
     def _actualitza_info_wav(self, ruta, info=None):
-        """Nom del fitxer al títol i la info (durada/Hz) a la barra d'estat."""
-        nom = os.path.basename(ruta)
-        self.setWindowTitle(f"{nom} — Auto Chords")
+        """Info (durada/Hz) a la barra d'estat. El títol el duu `_actualitza_titol`."""
         if info is None:
             try:
                 info = pipeline.wav_info(ruta)
@@ -1654,12 +2029,16 @@ class Finestra(QMainWindow):
                 return
             self.opcions = dlg.opcions()
             dialegs.desa_opcions(self.opcions)
+            self._marca_dirty()
             # AVÍS OBLIGATORI: re-analitzar re-escriu els acords/estructura (i
             # les edicions manuals) i reinicia el desfer → no es recupera.
             if not self._confirma_reanalisi():
                 return
         self._atura_si_sona("analisi amb els plugins")
-        self.sortida = pipeline.carpeta_sortida(wav)
+        if self.projecte is not None:
+            self.sortida = self.projecte.carpeta
+        else:
+            self.sortida = pipeline.carpeta_sortida(wav)
         self.log.clear()
         self.barra.setValue(0)
         self.registra(f"Sortida: {self.sortida}")
@@ -1918,6 +2297,9 @@ class Finestra(QMainWindow):
         reproductor del visor sonant, el pont MCP obert i un avís no modal fill
         visible: destrucció en ordre arbitrari = risc d'access violation.
         """
+        if not self._pot_descartar():
+            ev.ignore()
+            return
         fe = getattr(self, "feina_export", None)
         try:
             if fe is not None and fe.isRunning():
@@ -1938,6 +2320,7 @@ class Finestra(QMainWindow):
             except Exception:  # noqa: BLE001
                 pass
         self._tanca_avis_box()
+        self._neteja_sessio()          # tancament NET: ja no cal recuperar
         super().closeEvent(ev)
 
     def obre_carpeta(self):
@@ -2005,6 +2388,8 @@ def main():
                 logger.error("SMOKE: AUDIO ERROR — no s'ha pogut carregar "
                              "sounddevice/PortAudio: %s", e)
         QTimer.singleShot(1500, app.quit)
+    else:
+        w._comprova_recuperacio()
     try:
         sys.exit(app.exec_())
     finally:

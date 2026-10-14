@@ -480,11 +480,16 @@ def _op_open_wav(ctx, params):
     w.wav_edit.setText(treball)
     info = pipeline.wav_info(treball)
     w.sortida = w._detecta_sortida_wav(treball)
+    # Un WAV obert per MCP NO crea projecte (encara): no heretis el projecte
+    # vell → l'estat (títol/desat) ha de quedar coherent amb el WAV obert.
+    w.projecte = None
+    w.dirty = False
     try:
         w._actualitza_info_wav(treball, info)
     except Exception as e:  # noqa: BLE001
         logger.warning("mcp_bridge: no s'ha pogut actualitzar la info del WAV: %s", e)
     w._carrega_visor(treball)
+    w._actualitza_titol()
     return _op_status(ctx, {})
 
 

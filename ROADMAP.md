@@ -718,6 +718,13 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
   visor, CSV i exportació; **no només** en carregar el visor i en exportar — vegeu
   `docs/REGLES_DE_LA_APP.md` §«S'ha de complir SEMPRE» i l'evidència OC-6/332-334).
   La regla **mana sobre el snap**, que només quantitza els límits interiors.
+- **Regla d'or #11 — paritat d'edició (acords ↔ estructura)**: **implementada a
+  l'app** (GUI + backend) el **2026-10-14**: `pipeline.parteix_acord` i
+  `pipeline.fusiona_acords`, `visor.parteix_acord`/`fusiona_acord`/`fusiona_seccio`,
+  els menús de llista i el menú contextual del clip **simètrics**, i `SectionItem`
+  amb el mateix tracte (`dragStarted` + cursor) que `ChordItem`. Test:
+  `tests/test_regla11_paritat.py`. La part **MCP** (exposar *partir*/*fusionar*)
+  queda **aparcada** — vegeu **§11-g**.
 - **Totes les noves funcionalitats han de mantenir el principi d’una sola
   font de veritat**: el backend (`app.pipeline`) continua sent l’única
   font de dades; la UI (`app.visor` + `app.timeline`) en reflecteix l’estat.
@@ -769,6 +776,19 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 - **CLI/headless**: `auto-chords analitza tema.wav` per automatitzar cues.
 - **Marcadors/seccions** i export de **cue-sheets**.
 - **Suport de vídeo** (treure'n l'àudio) via `ffmpeg`.
+
+### g) MCP — paritat d'edició de clips (*partir* / *fusionar*) — APARCAT
+- El pont MCP ja és **simètric per tipus** (acords i estructura tenen el mateix
+  joc: `ac_list/add/rename/move/delete`), però **no exposa** *partir* ni
+  *fusionar* per a **cap** dels dos — operacions que sí que hi són a la GUI
+  (regla d'or **#11**).
+- **Aparcat** (decisió de l'operador, 2026-10-14): afegir 4 eines
+  **`ac_split_chord` · `ac_merge_chord` · `ac_split_section` · `ac_merge_section`**
+  perquè GUI i MCP ofereixin el mateix joc. Canviaria el comptador d'eines
+  (40 → 44) i toca `docs/MCP_AUTO_CHORDS.md`; quan es faci, amb test al
+  `test_mcp_bridge`.
+- **Criteri del moment**: primer **centrar-se en l'app**; el MCP queda per a més
+  endavant.
 
 > 🧭 **Criteri**: cap d'aquestes pot trencar les **regles d'or**
 > (`docs/REGLES_DE_LA_APP.md`); si en xoca alguna, es canvia **la funcionalitat**, no la regla.

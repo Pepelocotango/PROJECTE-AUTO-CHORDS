@@ -44,6 +44,12 @@ CODI_concatenat*.txt
 # Opcions d'autodeteccio recordades a l'app (locals de cada usuari)
 opcions_detecta.json
 
+# Projectes oberts recentment (estat local de cada usuari)
+recents.json
+
+# Marcador de sessió oberta (per a la recuperació després d'un crash)
+sessio.json
+
 # Python/ffmpeg portables (Fase 2-3 de portabilitat; es regeneren)
 portable/
 

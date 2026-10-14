@@ -702,6 +702,56 @@ def lletra_lliure(seccions):
     return f"X{k}"
 
 
+def parteix_acord(acords, i, talla, nom=None, marge=0.05):
+    """Parteix l'acord `i` pel temps `talla` (regla d'or #11: **mateixa eina**
+    que `parteix_seccio` per a l'estructura).
+
+    Com que la durada d'un acord es **deriva** del següent (#3), «partir-lo» vol
+    dir **inserir** un clip nou a `talla`: el tros de l'esquerra conserva el nom
+    i acaba a `talla`; el de la dreta (clip NOU) comença a `talla` amb el nom que
+    es triï (per defecte, el MATEIX — és la mateixa harmonia).
+
+    Retorna la llista nova d'acords (no muta l'entrada). Peta `ValueError` si
+    l'índex no existeix, si és l'últim acord (sense durada pròpia) o si el tall
+    no cau prou endins.
+    """
+    if i < 0 or i >= len(acords):
+        raise ValueError("índex d'acord inexistent")
+    t = float(acords[i][0])
+    if i + 1 >= len(acords):
+        raise ValueError("no es pot partir l'últim acord (durada fins al final)")
+    fi = float(acords[i + 1][0])
+    talla = float(talla)
+    if not (t + marge < talla < fi - marge):
+        raise ValueError(
+            f"el tall ({talla:.2f}s) ha de caure dins {t:.2f}–{fi:.2f}s")
+    nom = saneja_nom_acord(nom) if nom else acords[i][1]
+    nom = nom or acords[i][1]
+    nou = (talla, nom, f"{talla:.9f}")
+    return list(acords[:i + 1]) + [nou] + list(acords[i + 1:])
+
+
+def fusiona_acords(acords, i, amb="seguent"):
+    """Fusiona l'acord `i` amb el veí (regla d'or #11: mirall de
+    `fusiona_seccions`).
+
+    El clip que queda a l'**esquerra** conserva la seva harmonia: `seguent`
+    esborra `i+1` (l'acord `i` s'estén); `anterior` esborra `i` (el previ
+    s'estén fins on arribava `i`). Retorna la llista nova (no muta l'entrada).
+    """
+    if not acords or i < 0 or i >= len(acords):
+        raise ValueError("índex d'acord inexistent")
+    if amb == "anterior":
+        if i == 0:
+            raise ValueError("no hi ha acord anterior")
+        i = i - 1
+    elif amb != "seguent":
+        raise ValueError("amb ha de ser 'seguent' o 'anterior'")
+    if i >= len(acords) - 1:
+        raise ValueError("no hi ha acord següent")
+    return list(acords[:i + 1]) + list(acords[i + 2:])
+
+
 def parteix_seccio(seccions, i, talla, marge=0.05):
     # Un tros → dos. La primera meitat conserva lletra; la segona en pren una de nova.
     if i < 0 or i >= len(seccions):

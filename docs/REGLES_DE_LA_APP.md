@@ -71,6 +71,31 @@ Tot el que sigui natiu es compila per a **macOS 10.13+** i **sense AVX**
 El **log / opcions / temp** van sempre a un directori **escriptible** — mai dins
 un paquet de només lectura (AppImage, `.app` en quarantena). → `app/config.py`.
 
+## 11. Paritat d'edició i tracte visual (acords ↔ estructura)
+
+Els clips d'**acords** i d'**estructura** són iguals davant l'edició i la
+visualització. Tota operació d'un tipus ho ha de ser per a l'altre, i pel
+**mateix camí d'usuari**.
+
+- **Joc d'operacions idèntic**: afegir · eliminar · duplicar · reanomenar
+  (inline i Editor) · moure · redimensionar · partir · fusionar amb
+  anterior/seguent · desfer/refer.
+- **Gest i affordances idèntics**: nanses laterals, cursor de hover, senyal
+  d'inici de gest (`dragStarted`), ressaltat de selecció, ordre relatiu (z),
+  doble-clic → Editor i edició inline del nom.
+- **Propi de cada tipus (NO s'iguala)**: el model de dades (acord `(t, nom)`
+  amb final derivat; secció `(ini, fi, lletra, família)`), el camp «Família»
+  de l'Editor (només secció) i el **color/carri** del timeline (distinció de
+  tipus).
+- **Semàntica de les operacions**: *partir* un acord = dos trossos amb el
+  mateix nom (el de la part nova és editable, per defecte heretat);
+  *fusionar* acords = en queda l'harmonia de l'esquerre. Mateix patró que
+  l'estructura.
+
+→ Validació: `app/visor.py` + `app/pipeline.py` (joc d'operacions simètric) ·
+test `tests/test_regla11_paritat.py` — **pendent d'implementar** (regla nova:
+en fila, com les 1–10, amb validació + test).
+
 ---
 
 ## 📌 Evidència: 2 bugs de producció (`OC-6/332-334`, 2026-10-13)
@@ -101,4 +126,5 @@ Aquests dos casos reals són el motiu del §«S'ha de complir SEMPRE» de dalt:
 ---
 
 > 📌 **En afegir una regla nova**: numera-la aquí, afegeix-ne la validació al
-> codi i un test que la comprovi (les regles **1, 2, 4, 7, 8** ja en tenen).
+> codi i un test que la comprovi (les regles **1, 2, 4, 7, 8** ja en tenen;
+> la **11** és nova i encara **no** té validació ni test — pendent d'implementar).

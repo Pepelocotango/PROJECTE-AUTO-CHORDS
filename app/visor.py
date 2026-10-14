@@ -507,13 +507,21 @@ class Visor(QMainWindow):
         return True
 
     def _menu_acord(self, pos):
+        # Regla d'or #11: MATEIX joc d'accions que el menú de les seccions.
         if not hasattr(self, "llista_ac"):
             return
         idx = self.llista_ac.indexAt(pos).row()
         menu = QMenu(self)
         afegir = menu.addAction("Afegeix acord aquí")
-        if idx >= 0:
-            esborrar = menu.addAction("Elimina acord")
+        partir = menu.addAction("Partir acord aquí")
+        fusionar_prev = menu.addAction("Fusionar amb anterior")
+        fusionar_next = menu.addAction("Fusionar amb següent")
+        eliminar = menu.addAction("Elimina acord")
+        te = 0 <= idx < len(self.acords)
+        partir.setEnabled(te and idx + 1 < len(self.acords))
+        fusionar_prev.setEnabled(te and idx > 0)
+        fusionar_next.setEnabled(te and idx + 1 < len(self.acords))
+        eliminar.setEnabled(te)
         accio = menu.exec_(self.llista_ac.mapToGlobal(pos))
         if accio is None:
             return
@@ -522,15 +530,21 @@ class Visor(QMainWindow):
                                             f"Acord a {self.pos:.2f} s", text="N")
             if not ok:
                 return
-            self._afegeix_acord(self.pos, nou)
             try:
+                self._afegeix_acord(self.pos, nou)
                 self._desa_i_regenera()
                 self.log(f"afegit acord a {self.pos:.2f}s: {nou}")
             except Exception as e:  # noqa: BLE001
                 self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut afegir l'acord:\n{e}")
-        elif idx >= 0 and accio == esborrar:
+        elif accio == partir:
+            self._parteix_acord_dialog(idx)
+        elif accio == fusionar_prev:
+            self.fusiona_acord(idx, "anterior")
+        elif accio == fusionar_next:
+            self.fusiona_acord(idx, "seguent")
+        elif accio == eliminar:
             try:
                 self._elimina_acord(idx)
                 self._desa_i_regenera()
@@ -1190,13 +1204,14 @@ class Visor(QMainWindow):
         menu.addSeparator()
         a_ren = menu.addAction("Reanomena")
         menu.addSeparator()
-        # A2: partir una secció pel cursor (en un model saturat és l'única
-        # manera d'afegir-ne una de nova).
-        a_part = menu.addAction("Parteix la secció…")
+        # A2 + regla d'or #11: partir pel cursor (en un model saturat és l'única
+        # manera d'afegir-ne un de nou). Mateixa eina per a acord I secció.
+        a_part = menu.addAction(
+            "Parteix la secció…" if kind == "section" else "Parteix l'acord…")
         # desactivats si no hi ha cap clip seleccionat
         for a in (a_dup, a_del, a_ren):
             a.setEnabled(te_clip)
-        a_part.setEnabled(te_clip and kind == "section")
+        a_part.setEnabled(te_clip)
         accio = menu.exec_(pos)
         if accio is None or not te_clip:
             return
@@ -1215,7 +1230,10 @@ class Visor(QMainWindow):
             self.timeline.chordEditRequested.emit(idx) if kind == "chord" \
                 else self.timeline.sectionEditRequested.emit(idx)
         elif accio == a_part:
-            self._parteix_seccio_dialog(idx)
+            if kind == "chord":
+                self._parteix_acord_dialog(idx)
+            else:
+                self._parteix_seccio_dialog(idx)
 
     def _duplica_acord_index(self, idx):
         """Duplica l'acord idx: s'insereix JUST DESPRES i es reparteix la
@@ -1703,6 +1721,9 @@ class Visor(QMainWindow):
     # Durada mínima d'una secció en moure'n una vora (evita seccions nul·les).
     MIN_SECCIO_S = 0.05
 
+    # Durada mínima d'un acord en partir-lo (regla d'or #11; mirall de la secció).
+    MIN_ACORD_S = 0.05
+
     def _contiguitat_seccions(self, items, idx):
         """Manté l'INVARIANT de CONTIGÜITAT (regla d'or #2) en moure `idx`.
 
@@ -1793,6 +1814,74 @@ class Visor(QMainWindow):
             self._actualitza_llista_abc()
         return True
 
+    def parteix_acord(self, idx, t, nom=None):
+        """Parteix l'acord `idx` pel temps `t` (regla d'or #11).
+
+        Mirall de `parteix_seccio`: l'acord de l'esquerra conserva el nom i acaba
+        a `t`; el clip NOU (a la dreta) comença a `t` amb el nom triat (per
+        defecte, el MATEIX). Retorna l'índex del clip nou, o `False` si `t` no
+        cau a dins (o si l'índex és l'últim acord, sense durada pròpia).
+        """
+        if not (0 <= idx < len(self.acords)):
+            return False
+        if idx + 1 >= len(self.acords):
+            return False
+        t = float(t)
+        t0 = float(self.acords[idx][0])
+        fi = float(self.acords[idx + 1][0])
+        if not (t0 + self.MIN_ACORD_S <= t <= fi - self.MIN_ACORD_S):
+            self.log(f"partir: {t:.2f}s no cau dins l'acord "
+                     f"{self.acords[idx][1]} ({t0:.2f}s–{fi:.2f}s)")
+            return False
+        self._undo_marca()
+        try:
+            nova = pipeline.parteix_acord(self.acords, idx, t, nom)
+            self.acords = self._normalitza_acords(nova)
+        except ValueError as e:
+            self.log(f"partir: canvi invalid ({e})")
+            return False
+        self._undo_commit()
+        if hasattr(self, "timeline"):
+            self.timeline.set_data(self.acords, self.seccions)
+        self._omple_llista_ac()
+        return idx + 1
+
+    def _parteix_acord_dialog(self, idx):
+        """Parteix l'acord `idx` pel CURSOR, preguntant el nom nou (regla #11)."""
+        if not (0 <= idx < len(self.acords)):
+            return False
+        t0 = float(self.acords[idx][0])
+        nom = self.acords[idx][1]
+        if idx + 1 >= len(self.acords):
+            QMessageBox.information(
+                self, "Parteix l'acord",
+                "L'últim acord no es pot partir: la seva durada arriba al final "
+                "de la WAV.")
+            return False
+        fi = float(self.acords[idx + 1][0])
+        if not (t0 + self.MIN_ACORD_S <= self.pos <= fi - self.MIN_ACORD_S):
+            self.log(f"partir: el cursor ({self.pos:.2f}s) no cau dins l'acord "
+                     f"{nom} ({t0:.2f}s–{fi:.2f}s)")
+            QMessageBox.information(
+                self, "Parteix l'acord",
+                f"Posa el cursor DINS l'acord «{nom}» ({t0:.2f}–{fi:.2f} s) "
+                "al punt on vols el tall.")
+            return False
+        nou, ok = QInputDialog.getText(
+            self, "Parteix l'acord",
+            f"Parteix «{nom}» a {self.pos:.2f} s.\nNom de la part nova:",
+            text=nom)
+        if not ok:
+            return False
+        if not self.parteix_acord(idx, self.pos, nou):
+            return False
+        try:
+            self._desa_i_regenera()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+            QMessageBox.warning(self, "Visor", f"No s'ha pogut desar:\n{e}")
+        return True
+
     def parteix_seccio(self, idx, t, lletra=None, fam=None):
         """Parteix la secció `idx` pel temps `t` (A2).
 
@@ -1862,6 +1951,57 @@ class Visor(QMainWindow):
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
         return True
 
+    def fusiona_acord(self, idx, amb="seguent"):
+        """Fusiona l'acord `idx` amb el veí (regla d'or #11).
+
+        Mirall de `fusiona_seccio`: el clip que queda a l'esquerra conserva la
+        seva harmonia. Retorna `True` si s'ha fet el canvi.
+        """
+        if not (0 <= idx < len(self.acords)):
+            return False
+        self._undo_marca()
+        try:
+            self.acords = self._normalitza_acords(
+                pipeline.fusiona_acords(self.acords, idx, amb=amb))
+        except ValueError as e:
+            self.log(f"fusiona acord: {e}")
+            return False
+        self._undo_commit()
+        if hasattr(self, "timeline"):
+            self.timeline.set_data(self.acords, self.seccions)
+        self._omple_llista_ac()
+        try:
+            self._desa_i_regenera()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+        return True
+
+    def fusiona_seccio(self, idx, amb="seguent"):
+        """Fusiona la secció `idx` amb el veí (regla d'or #11).
+
+        Mirall de `fusiona_acord`: el clip que queda a l'esquerra conserva lletra
+        i família. Retorna `True` si s'ha fet el canvi.
+        """
+        if not (0 <= idx < len(self.seccions)):
+            return False
+        self._undo_marca()
+        try:
+            self.seccions = self._normalitza_seccions(
+                pipeline.fusiona_seccions(self.seccions, idx, amb=amb))
+        except ValueError as e:
+            self.log(f"fusiona secció: {e}")
+            return False
+        self._undo_commit()
+        if hasattr(self, "timeline"):
+            self.timeline.set_data(self.acords, self.seccions)
+        self._actualitza_llista_abc()
+        try:
+            self._regenera_abc_des_de_totes_les_seccions(
+                f"secció {idx} fusionada amb {amb}")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+        return True
+
     def _elimina_seccio(self, idx):
         if idx < 0 or idx >= len(self.seccions):
             return False
@@ -1886,18 +2026,21 @@ class Visor(QMainWindow):
         self.ves_a(self._parse_pos_label(item.text()))
 
     def _menu_seccio(self, pos):
+        # Regla d'or #11: MATEIX joc d'accions que el menú dels acords.
         if not self.seccions:
             return
         idx = self.llista_ab.indexAt(pos).row()
-        if idx < 0:
-            return
-        ini, fi, _L, _fam = self.seccions[idx]
         menu = QMenu(self)
         afegir = menu.addAction("Afegeix secció aquí")
         partir = menu.addAction("Partir secció aquí")
         fusionar_prev = menu.addAction("Fusionar amb anterior")
         fusionar_next = menu.addAction("Fusionar amb següent")
         eliminar = menu.addAction("Elimina secció")
+        te = 0 <= idx < len(self.seccions)
+        partir.setEnabled(te and idx + 1 < len(self.seccions))
+        fusionar_prev.setEnabled(te and idx > 0)
+        fusionar_next.setEnabled(te and idx + 1 < len(self.seccions))
+        eliminar.setEnabled(te)
         accio = menu.exec_(self.llista_ab.mapToGlobal(pos))
         if accio is None:
             return
@@ -1918,40 +2061,11 @@ class Visor(QMainWindow):
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut afegir la secció:\n{e}")
         elif accio == partir:
-            frac = (ini + fi) / 2.0
-            nou, ok = QInputDialog.getDouble(
-                self, "Partir secció",
-                f"Tall en segons ({ini:.2f}–{fi:.2f})",
-                frac, 0.0, fi - ini, 3)
-            if not ok:
-                return
-            try:
-                self.seccions = pipeline.parteix_seccio(self.seccions, idx, nou)
-                self._actualitza_llista_abc()
-                self._regenera_abc_des_de_totes_les_seccions(
-                    f"secció partida a {nou:.2f}s")
-            except Exception as e:  # noqa: BLE001
-                self.log(f"ERROR: {e}")
-                QMessageBox.warning(self, "Visor",
-                                    f"No s'ha pogut partir la secció:\n{e}")
+            self._parteix_seccio_dialog(idx)
         elif accio == fusionar_prev:
-            try:
-                self.seccions = pipeline.fusiona_seccions(self.seccions, idx, amb="anterior")
-                self._actualitza_llista_abc()
-                self._regenera_abc_des_de_totes_les_seccions("seccions fusionades amb anterior")
-            except Exception as e:  # noqa: BLE001
-                self.log(f"ERROR: {e}")
-                QMessageBox.warning(self, "Visor",
-                                    f"No s'ha pogut fusionar amb anterior:\n{e}")
+            self.fusiona_seccio(idx, "anterior")
         elif accio == fusionar_next:
-            try:
-                self.seccions = pipeline.fusiona_seccions(self.seccions, idx, amb="seguent")
-                self._actualitza_llista_abc()
-                self._regenera_abc_des_de_totes_les_seccions("seccions fusionades amb següent")
-            except Exception as e:  # noqa: BLE001
-                self.log(f"ERROR: {e}")
-                QMessageBox.warning(self, "Visor",
-                                    f"No s'ha pogut fusionar amb següent:\n{e}")
+            self.fusiona_seccio(idx, "seguent")
         elif accio == eliminar:
             try:
                 self._elimina_seccio(idx)

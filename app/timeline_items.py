@@ -401,7 +401,14 @@ class SectionItem(QGraphicsObject):
         self._drag_ini0 = self.ini
         self._drag_fi0 = self.fi
         self._drag_moved = False
+        # Regla d'or #11: MATEIX tracte que el ChordItem — cursor segons la zona
+        # i senyal d'inici de gest (perquè desfer/refer capturi l'estat ABANS).
+        if z in (self.ZONE_LEFT, self.ZONE_RIGHT):
+            self.setCursor(Qt.SizeHorCursor)
+        elif z == self.ZONE_BODY:
+            self.setCursor(Qt.ClosedHandCursor)
         if z != self.ZONE_NONE:
+            self.dragStarted.emit()   # captura l'estat ABANS de cap canvi
             event.accept()
         else:
             super().mousePressEvent(event)
