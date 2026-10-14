@@ -1,9 +1,12 @@
 # PROJECTE AUTO CHORDS
 
-> **AUTO CHORDS** analitza un àudio i n'extreu els **acords** i l'**estructura**
-> (motor Chordino + Queen Mary). Els pots **revisar i editar** en un visor
-> estil DAW i **exportar** els clips **WAV** per al Live/Reaper, més la
-> **partitura** (MusicXML/PDF). App d'escriptori **multi-SO** (Linux · Windows · macOS).
+> **AUTO CHORDS** analitza un àudio (**WAV, MP3, FLAC** i **16 formats més**) i n'extreu els
+> **acords** i l'**estructura** (motor Chordino + Queen Mary). Els pots **revisar i editar**
+> en un visor estil DAW i **exportar** el resultat com a **clips WAV silenciosos** (un per
+> acord/secció, amb el **nom de l'acord** al fitxer) per **arrencar-los a qualsevol DAW**
+> (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…). També pot generar la
+> **partitura** (MusicXML; PDF/MSCZ **només si tens MuseScore**). App d'escriptori **multi-SO**
+> (Linux · Windows · macOS).
 
 > **Repositori:** https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
 > (les versions publicades —Linux `.tar.gz` amb l'**AppImage**, Windows `.zip`, macOS `.dmg`— són a *Releases*).
@@ -66,12 +69,13 @@ La funcionalitat principal està validada: **tota la suite · OK (1 skip)** (`py
 
 ## Què fa l’app
 
-- analitza un àudio amb **Chordino** (acords) + **qm-segmenter** (estructura)
-- genera CSVs d’acords i estructura ABC
-- mostra ona, cursor, temps i navegació per la cançó
-- permet corregir acords i editar seccions
-- regenera els clips produïts en funció dels canvis manuals
-- exporta el paquet final per a DAW en una sola acció final
+- **Importa àudio** i n'extreu acords amb **Chordino** i estructura amb **qm-segmenter**. Accepta **WAV** i, convertint-los amb `ffmpeg`, **MP3, FLAC, AIFF, M4A/AAC, OGG, Opus, WMA** i més (**19 formats**; vegeu §«Formats d'àudio acceptats»).
+- Genera els **CSV** d’acords i l’**estructura ABC**.
+- Mostra **ona, cursor, regle i temps**, i permet navegar per la cançó.
+- Permet **corregir acords** i **editar seccions**.
+- **Exporta clips WAV silenciosos**: un fitxer per **acord** (i per **secció**), **anomenat amb l'acord** (p. ex. `01.00s_05.50s_Cmaj7.wav`) → els **arrossegues a qualsevol DAW** (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…). *Són clips de referència (silenciosos) perquè el nom i la posició marquin l'harmonia; el so el poses tu.*
+- Opcionalment, **partitura de xifrats**: **MusicXML sempre**; **PDF i MSCZ només si tens MuseScore** instal·lat.
+- **Regenera els clips** en funció dels canvis manuals i ho **exporta tot en una sola acció**.
 
 ## Flux actual d’ús
 
@@ -79,6 +83,22 @@ La funcionalitat principal està validada: **tota la suite · OK (1 skip)** (`py
 2. Ajusta el BPM (🎯 Detecta o TAP) i fes `Analitza` (obre el diàleg d'opcions)
 3. Revisa i edita acords / seccions al visor (franja Editor)
 4. Fes `Exporta WAV's`
+
+## Instal·lació (els 3 SO)
+
+> Descarrega el paquet del teu sistema des de **Releases** →
+> https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS/releases
+> (noms: `AutoChords-<versió>-build<NN>-linux-x86_64.tar.gz` · `…-win-x64.zip` · `…-macos-x86_64.dmg`)
+
+| SO | Paquet | Com s'instal·la |
+|----|--------|-----------------|
+| 🐧 **Linux** (x86_64) | **`.tar.gz`** (conté l'**AppImage**) | `tar -xzf AutoChords-*-linux-x86_64.tar.gz` → `chmod +x AutoChords-*.AppImage` → `./AutoChords-*.AppImage` (o **doble clic**). **No cal instal·lar res** (ni Python, ni `libfuse2`). |
+| 🪟 **Windows 10/11** (x64) | **`.zip`** portable | Descomprimeix en una carpeta i executa **`AutoChords.exe`**. Si SmartScreen avisa: *Més informació ▸ Executa igualment*. **No cal instal·lar res** (runtime a dins). |
+| 🍎 **macOS** (10.13 High Sierra o +) | **`.dmg`** | Obre el `.dmg` i arrossega **`AUTO_CHORDS.app`** a **Applications**. Al primer cop: **clic dret ▸ Obre** (o `xattr -dr com.apple.quarantine AUTO_CHORDS.app`). |
+
+> 🎧 **Per ESCOLTAR**: a **Linux** cal **PipeWire** o **PulseAudio**; a **Windows/macOS** l'àudio va amb el sistema (PortAudio). Sense àudio, l'app fa tota la resta (analitzar, editar, exportar) — només avisa que no pot sonar.
+> 🎼 **Partitura**: **MusicXML sempre**; **PDF i MSCZ només si tens MuseScore** instal·lat (en aquest maquinari, **MuseScore 4.6.x**; el 4.7+ no hi va).
+> 📄 Guia de validació pas a pas (checklist de 5 minuts): `docs/PROVES_FUNCIONALS_3SO.md`.
 
 ## Filosofia i lògica del flux
 
@@ -259,19 +279,16 @@ Cinc workflows a `.github/workflows/` (tots d'execució **manual**):
 
 ## Requisits
 
-### ✅ Mínims per FER-LA FUNCIONAR (usuari final, amb l'AppImage)
+### ✅ Mínims (usuari final — els 3 paquets)
 
-| Requisit | Detall |
-|----------|--------|
-| **Sistema** | **Linux x86_64** amb **glibc ≥ 2.35** → Ubuntu 22.04+, Debian 12+, Fedora 36+… |
-| **Llibreries natives** | **Cap instal·lació** ✅ — `libvamp-hostsdk`, `libsndfile` i els còdecs (FLAC, Vorbis, Opus, Ogg, mpg123, LAME) van **dins** l'AppImage (`portable/lib/`). Al SO només calen `glibc` + `libstdc++/libgcc` |
-| **CPU** | Qualsevol x86_64 amb **SSE2** · provada en un **Core 2 Quad Q9400** *sense AVX* ✅ |
-| **RAM / disc** | ~1 GB RAM lliure per a temes curts · ~170 MB a disc (l'AppImage és un sol fitxer). ⚠️ **Fitxers llargs**: el visor carrega **tot el PCM a memòria** (≈ **3× la mida del fitxer**; una hora ≈ **2 GB**); a partir de **45 min** l'app ho avisa pel panell del log. |
-| **Per ESCOLTAR** | **PipeWire** o **PulseAudio** (qualsevol escriptori Linux actual). **Opcional**: sense això l'app fa tota la resta (analitzar, editar, exportar), només avisa que no pot sonar |
-| **Per executar l'AppImage** | **Res especial** ✅ — el runtime va **estàtic** (porta libfuse+squashfuse a dins; només cal el suport **FUSE del kernel**, que és estàndard). Si mai fallés: `./AutoChords-*.AppImage --appimage-extract-and-run` |
+| SO | Sistema | CPU | RAM / disc | Llibreries | Compressió |
+|----|---------|-----|-----------|-----------|-----------|
+| 🐧 **Linux** | **x86_64** amb **glibc ≥ 2.35** (Ubuntu 22.04+, Debian 12+, Fedora 36+…) | x86_64 amb **SSE2** | ~1 GB RAM · ~170 MB | **Cap** — tot a dins (només `glibc` + `libstdc++/libgcc`). Per escoltar: **PipeWire/PulseAudio** | `.tar.gz` (runtime estàtic: **no cal `libfuse2`**) |
+| 🪟 **Windows** | **10 o 11 x64** | x86_64 amb **SSE2** | ~1 GB RAM · ~170 MB | **Cap** (runtime a dins) | `.zip` portable |
+| 🍎 **macOS** | **10.13 High Sierra o posterior** (Intel x86_64) | x86_64 amb **SSE2** | ~1 GB RAM · ~180 MB | **Cap** (frameworks a dins) | `.dmg` |
 
-> ✨ **No cal instal·lar res més**: ni Python, ni Qt, ni ffmpeg, ni els plugins
-> — tot va **dins** l'AppImage.
+> ✨ **No cal instal·lar res més**: ni Python, ni Qt, ni ffmpeg, ni els plugins — tot va **dins** el paquet.
+> 💡 **CPU antiga**: provada en un **Core 2 Quad Q9400 sense AVX** ✅ (per això `numpy<2` és obligatori, i el `minos` de macOS es fixa a 10.13).
 
 ### 🛠️ Per executar-la des del codi (desenvolupament)
 
@@ -366,9 +383,13 @@ Copyright (c) 2026 Pëp <pepelocotango@gmail.com>.
 
 ## Formats d'àudio acceptats
 
-L'app treballa amb **WAV PCM 16 bits**, però `Obre…` accepta també
-**mp3, aif/aiff, flac, m4a, ogg, opus, wma…** i els converteix
-automàticament amb **ffmpeg** (vegeu `app/ffmpeg.py`).
+L'app treballa amb **WAV PCM 16 bits** internament, però `Obre…` accepta **19 formats**
+i els converteix automàticament amb **ffmpeg** (vegeu `app/ffmpeg.py`):
+
+`WAV` · `MP3` · `AIFF`/`AIF`/`AIFC` · `FLAC` · `M4A` · `AAC` · `OGG`/`OGA` · `Opus` ·
+`WMA` · `MP2` · `CAF` · `W64` · `AU` · `WV` · `APE` · `ALAC`
+
+El WAV de treball queda al costat de l'original com **`<nom>_convertit.wav`** (es reutilitza si ja és més nou que l'original).
 
 ---
 **Visita el portal de projectes:** [https://pepelocotango.github.io](https://pepelocotango.github.io)

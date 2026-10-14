@@ -726,6 +726,53 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
   `_on_chord_*`, `_on_section_*`) en lloc d’afegir-ne de nous quan sigui
   possible.
 
+## 11) Idees de futur — brainstorm (2026-10-14)
+
+> **Funcionalitats futures** (a part de les ja existents). Encara **no** planificades:
+> es valoraran i prioritzaran més endavant. *(Idees de l'operador + derivades.)*
+
+### a) Conversor universal d'àudio (aprofitant l'`ffmpeg` intern)
+- **Exportar en qualsevol format**: MP3, FLAC, OGG/Opus, M4A/AAC i WAV a qualsevol
+  mostreig/profunditat (16/24/32-bit) — l'`ffmpeg` ja viatja **dins** l'app.
+- **Conversió en lot** (una carpeta sencera), **normalització de volum** (LUFS),
+  **remostreig** (44.1↔48↔96 kHz) i mono/stereo.
+- **Retall a l'export** (només un tros: per punts o per secció/acord).
+- Casos d'ús: treure un MP3 d'una demo, passar una WAV de 96k a 44.1, tallar una cua,
+  preparar un MP3 per escoltar.
+
+### b) Edició de l'àudio carregat (tallar / escurçar / expandir + còpia)
+- **Tallar** (trim) l'àudio original: treure silenci inicial/final, marcar in/out.
+- **Escurçar/expandir**: allargar un tros (loop dins d'un acord), ajustar durades.
+- **Sempre sobre una CÒPIA**: **mai** modificar l'original → es desa `<nom>_editat.wav`.
+- **Fade in/out** i **crossfade** entre seccions.
+- Integrat amb el model (regles d'or: cobertura/contigüitat) i amb l'export.
+
+### c) Millores de botons / UI
+- Estats visuals més clars (actiu/desactivat/inhabilitat) i tooltips/`aria` revisats.
+- **Barra de transport configurable** (quins botons es veuen).
+- Agrupacions i **dreceres** noves; revisió d'icones.
+- Botons d'**export amb opcions** (format, retall…) → petit diàleg.
+
+### d) Multilingüe
+- **i18n** de la UI (català per defecte; anglès…): `gettext`/`QTranslator`.
+- Traduir menús, diàlegs i missatges (els **noms de fitxer** i les dreceres es mantenen).
+- Opció de tenir **docs en anglès** (com a mínim el `README`).
+
+### e) Export MIDI
+- **MIDI** amb els acords/seccions: com a **notes** o com a **marcadors**
+  (meta-events `marker`/`text`), per importar a qualsevol DAW.
+- **Mapa de tempo/timesig** al MIDI (la graella que ja tenim).
+- Opcions: només canvis d'acord, o notes mantingudes; xifrat vs notes.
+
+### f) Altres (brainstorm lliure)
+- **Plantilles d'export** per DAW (Reaper/Live/Logic) amb nom i estructura coneguts.
+- **CLI/headless**: `auto-chords analitza tema.wav` per automatitzar cues.
+- **Marcadors/seccions** i export de **cue-sheets**.
+- **Suport de vídeo** (treure'n l'àudio) via `ffmpeg`.
+
+> 🧭 **Criteri**: cap d'aquestes pot trencar les **regles d'or**
+> (`docs/REGLES_DE_LA_APP.md`); si en xoca alguna, es canvia **la funcionalitat**, no la regla.
+
 ## Criteri de producte actualitzat
 
 La projecta es considera funcionalment preparada per a l’ús del flux principal quan:
