@@ -42,7 +42,7 @@ Els ítems de **documentació** (1.2, 2.3, 3.1–3.3) s'han aplicat als `.md`.
 | OC-5 A.5 | Windows: **tests abans** de l'upload | ✅ FET |
 | OC-5 A.6 | Avís de **tag existent** al Release | ✅ FET |
 | OC-5 A.7 / B.4 | `concurrency` + `timeout-minutes` (5 workflows) | ✅ FET |
-| OC-5 B.1 / B.2 / D.4 | **Dependabot** (`github-actions` + `pip`) | ✅ FET |
+| OC-5 B.1 / B.2 / D.4 | **Dependabot** (`github-actions` + `pip`) | ⛔ **RETIRAT** (14-10-2026, decisió de l'operador → dependències/accions s'actualitzen **a mà** amb validació al CI; vegeu `docs/CI_WORKFLOWS.md`) |
 
 **Encara oberts (no bloquejants):** 1.3 `--require-hashes` · 1.7 renombrar `deps_fixades.env`
 (opcional) · 3.4 índex de `docs/` · 4.1 `coverage` + llindar al CI · 4.2 tests de GUI ·

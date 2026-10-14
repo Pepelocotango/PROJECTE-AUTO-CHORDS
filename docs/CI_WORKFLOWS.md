@@ -7,8 +7,14 @@
 > ▸ **Run workflow**. Cap workflow fa `git push` al repositori.
 >
 > _(Actualitzat 13-10 amb l'enduriment de l'auditoria de producció: builds
-> reproduïbles, `concurrency`/`timeout`, Dependabot, verificació de contingut i
+> reproduïbles, `concurrency`/`timeout`, verificació de contingut i
 > smoke tests — vegeu §4.)_
+>
+> _(14-10-2026: **retirat Dependabot** per decisió de l'operador — els pins són
+> **deliberats** per compatibilitat (Q9400 sense AVX, macOS 10.13, roda de Windows)
+> i Dependabot obria PRs perjudicials (p. ex. `pyqt5-qt5` 5.15.19 trencaria
+> Windows; `cffi` 2.1.1 trencaria macOS 10.13). Les dependències i les accions
+> s'actualitzen **a mà**, amb validació al CI.)_
 
 ## Resum
 
