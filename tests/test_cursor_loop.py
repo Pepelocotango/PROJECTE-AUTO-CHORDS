@@ -172,6 +172,42 @@ class TestCursorAmbLoop(_Base):
         self.assertAlmostEqual(float(v.timeline.get_position()), 2.0, places=6)
 
 
+class TestLoopActivatSonant(_Base):
+    def test_activar_loop_sonant_alinea_cursor_i_so(self):
+        """BUG (operador): donar `play` SENSE loop i ACTIVAR el loop mentre sona.
+
+        El feeder llegeix `loop_on` en VIU i, si la posició de generació queda
+        fora del bucle, hi salta (`pos = a`) → el só va a `loop_a`. Però
+        `set_loop()` no tocava el cursor → el cursor seguia on era.
+        """
+        v = _visor()
+        self._arrenca(v)                      # play sense loop (des del principi)
+        self.assertTrue(v.sona)
+        v.loop_a, v.loop_b = 2.0, 3.0
+        v.set_loop(True)                      # ← el cas de l'operador
+        self.assertAlmostEqual(v.t0_pos, 2.0, places=6,
+                               msg="el cursor ha d'anar on el só (loop_a)")
+        self.assertAlmostEqual(v.pos, 2.0, places=6)
+        self.assertAlmostEqual(float(v.timeline.get_position()), 2.0, places=6)
+
+    def test_activar_loop_amb_cursor_dins_no_mou(self):
+        """Si el cursor ja és dins el bucle, el só arrenca allà: no es mou res."""
+        v = _visor()
+        self._arrenca(v)
+        v.ves_a(2.5)                          # cursor dins el futur bucle
+        v.loop_a, v.loop_b = 2.0, 3.0
+        v.set_loop(True)
+        self.assertAlmostEqual(v.t0_pos, 2.5, places=6)
+
+    def test_activar_loop_parat_no_mou_el_cursor(self):
+        """Amb el transport aturat, activar el loop no ha de moure el cursor."""
+        v = _visor()
+        v.ves_a(5.0)
+        v.loop_a, v.loop_b = 2.0, 3.0
+        v.set_loop(True)
+        self.assertAlmostEqual(v.pos, 5.0, places=6)
+
+
 def tearDownModule():
     try:
         import _qt_neteja

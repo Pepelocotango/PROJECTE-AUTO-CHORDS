@@ -914,6 +914,8 @@ class Visor(QMainWindow):
         self.log(f"loop A = {self.loop_a:.2f}s")
         if self.loop_b is not None:
             self.timeline.set_loop(self.loop_a, self.loop_b)
+        if self.loop_on and getattr(self, "sona", False):
+            self._alinea_cursor_loop(self.pos)   # moure A sonant: re-alinea
         self._undo_commit()
 
     def marca_B(self):
@@ -922,6 +924,8 @@ class Visor(QMainWindow):
         self.log(f"loop B = {self.loop_b:.2f}s")
         if self.loop_a is not None:
             self.timeline.set_loop(self.loop_a, self.loop_b)
+        if self.loop_on and getattr(self, "sona", False):
+            self._alinea_cursor_loop(self.pos)   # moure B sonant: re-alinea
         self._undo_commit()
 
     def set_loop(self, on):
@@ -934,6 +938,11 @@ class Visor(QMainWindow):
             self.loop_on = False
         if hasattr(self, "b_loop") and self.b_loop.isChecked() != self.loop_on:
             self.b_loop.setChecked(self.loop_on)
+        if self.loop_on and getattr(self, "sona", False):
+            # Activar el loop MENTRES sona: el só hi salta tot sol (el feeder
+            # llegeix `loop_on` en viu) → el cursor s'hi ha de posar també, o
+            # queden desalineats («el que sona no és on el cursor és»).
+            self._alinea_cursor_loop(self.pos)
         # Sincronitza el botó 🔁 de fora amb l'estat REAL (pot haver-se revertit
         # a OFF si faltaven A i B).
         self.loopStateChanged.emit(self.loop_on)
@@ -943,6 +952,29 @@ class Visor(QMainWindow):
 
     def commuta_loop(self):
         self.set_loop(not self.loop_on)
+
+    def _alinea_cursor_loop(self, t):
+        """Alinea el CURSOR amb el só quan hi ha loop A/B actiu.
+
+        `_alimenta` fa el salt pel seu compte («si el punt de generació queda
+        fora del bucle, arrenca a `loop_a`»); aquest mètode fa el MATEIX amb la
+        visualització: si `t` és FORA de `[loop_a, loop_b)`, el retorna muntat a
+        `loop_a` i hi mou el cursor a l'instant (posició + timeline + lliscador +
+        etiqueta de temps). Si el transport sona, re-ancora el rellotge perquè
+        la visualització no derivi respecte al só. Retorna el `t` efectiu.
+        """
+        if (self.loop_on and self.loop_a is not None
+                and self.loop_b is not None and self.loop_b > self.loop_a
+                and not (self.loop_a <= t < self.loop_b)):
+            t = float(self.loop_a)
+            self.pos = t
+            self.timeline.set_position(t, emit=False)
+            self.lliscador.setValue(int(t * 100))
+            self.temps.setText(self._fmt_timeline(t))
+            if getattr(self, "sona", False):
+                self.t0_pos = t
+                self.t0_mono = time.monotonic()
+        return t
 
     def _pinta_loop(self):
         """El loop el dibuixa el mateix TimelineView."""
@@ -2007,19 +2039,9 @@ class Visor(QMainWindow):
                                     plataforma.missatge_sense_audio())
             return
         # AMB LOOP A/B ACTIU, el só arrenca SEMPRE a `loop_a` si el punt demanat
-        # queda FORA del bucle: `_alimenta` hi salta tot sol
-        # (`if pos < a or pos >= b: pos = a`). Cal fer-hi el MATEIX, o el
-        # cursor vermell queda DESALINEAT del só (s'escoltava el bucle però el
-        # cursor es quedava on era, fins a atrapa `loop_b`). El cursor hi va JA,
-        # sense esperar el primer tic del rellotge.
-        if (self.loop_on and self.loop_a is not None
-                and self.loop_b is not None and self.loop_b > self.loop_a
-                and not (self.loop_a <= t < self.loop_b)):
-            t = float(self.loop_a)
-            self.pos = t
-            self.timeline.set_position(t, emit=False)
-            self.lliscador.setValue(int(t * 100))
-            self.temps.setText(self._fmt_timeline(t))
+        # queda FORA del bucle: `_alimenta` hi salta tot sol. El cursor ha de
+        # fer el MATEIX (vegeu `_alinea_cursor_loop`), o queden desalineats.
+        t = self._alinea_cursor_loop(t)
         self.log(f"play des de {t:.2f}s amb {self.player}...")
         self.fitxer_err = os.path.join(OPENCODE_DIR, "visor_player.log")
         try:
