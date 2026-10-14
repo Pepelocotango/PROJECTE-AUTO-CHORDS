@@ -1646,6 +1646,63 @@ class Visor(QMainWindow):
             return True
         return False
 
+    def troba_i_reemplaca(self, camp, troba, reemplaca):
+        """Substitueix TOTES les aparicions EXACTES d'un xifrat (acords) o d'una
+        etiqueta (estructura) al tema. Retorna quants n'ha canviat (0 = cap).
+
+        No canvia cap temps → les regles d'or (ordre/contigüitat/cobertura) queden
+        intactes. Una sola operació de desfer.
+        """
+        troba = str(troba or "").strip()
+        reemplaca = str(reemplaca or "").strip()
+        if not troba or not reemplaca:
+            return 0
+        if camp == "estructura":
+            lista, n = [], 0
+            for (ini, fi, lletra, fam) in self.seccions:
+                if str(lletra) == troba:
+                    n += 1
+                    fam = reemplaca if str(fam) == troba else fam
+                    lletra = reemplaca
+                lista.append((ini, fi, lletra, fam))
+            if not n:
+                return 0
+            self._undo_marca()
+            self.seccions = self._valida_canvis_seccions(lista)
+            self._undo_commit()
+            self.timeline.set_data(self.acords, self.seccions)
+            try:
+                self._regenera_abc_des_de_totes_les_seccions(
+                    f"substitució estructura: {troba}→{reemplaca}")
+            except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
+            self._actualitza_llista_abc()
+            self.log(f"substitució estructura: «{troba}» → «{reemplaca}» ({n})")
+            return n
+        # acords
+        nou = pipeline.saneja_nom_acord(reemplaca)
+        if not nou:
+            return 0
+        lista, n = [], 0
+        for (t, nom, *rest) in self.acords:
+            if str(nom) == troba:
+                n += 1
+                nom = nou
+            lista.append((t, nom, *rest))
+        if not n:
+            return 0
+        self._undo_marca()
+        self.acords = self._valida_canvis_acords(lista)
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            self._desa_i_regenera()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+        self._omple_llista_ac()
+        self.log(f"substitució acords: «{troba}» → «{nou}» ({n})")
+        return n
+
     def _on_section_edit_requested(self, idx):
         # Doble-clic al SectionItem -> franja EDITOR (sense finestra emergent).
         if idx < 0 or idx >= len(self.seccions):

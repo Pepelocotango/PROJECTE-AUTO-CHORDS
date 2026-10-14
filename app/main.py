@@ -653,6 +653,7 @@ class Finestra(QMainWindow):
         self._act(m, "Elimina element", "Del", self._elimina_element)
         self._act(m, "Duplica element", "Ctrl+D", self._duplica_element)
         self._act(m, "Reanomena element", "F2", self._renomena_element)
+        self._act(m, "Troba i reemplaça…", "Ctrl+H", self._troba_i_reemplaca_ui)
         m.addSeparator()
         self._act(m, "Paràmetres…", "", self._focus_parametres)
         # --- Selecciona ---
@@ -1102,6 +1103,27 @@ class Finestra(QMainWindow):
             vr._duplica_acord_index(idx)
         else:
             vr._duplica_seccio_index(idx)
+
+    def _troba_i_reemplaca_ui(self):
+        """Troba i reemplaça xifrats (acords) o etiquetes (estructura) a tot el tema."""
+        vr = self.visor_ref
+        if vr is None:
+            self.avisa_info("Auto Chords", "No hi ha cap tema obert.")
+            return
+        dlg = dialegs.DialegTrobaReemplaca(self)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        troba, reemplaca = dlg.troba(), dlg.reemplaca()
+        if not troba or not reemplaca:
+            self.avisa_info("Auto Chords",
+                            "Cal omplir «Troba» i «Reemplaça per».")
+            return
+        n = vr.troba_i_reemplaca(dlg.camp(), troba, reemplaca)
+        if n:
+            self.registra(f"substituïts {n} elements: «{troba}» → «{reemplaca}»")
+        else:
+            self.avisa_info("Auto Chords",
+                            f"No s'ha trobat cap «{troba}» per substituir.")
 
     def _renomena_element(self):
         vr = self.visor_ref
