@@ -2006,6 +2006,20 @@ class Visor(QMainWindow):
             QMessageBox.information(self, "Reproducció",
                                     plataforma.missatge_sense_audio())
             return
+        # AMB LOOP A/B ACTIU, el só arrenca SEMPRE a `loop_a` si el punt demanat
+        # queda FORA del bucle: `_alimenta` hi salta tot sol
+        # (`if pos < a or pos >= b: pos = a`). Cal fer-hi el MATEIX, o el
+        # cursor vermell queda DESALINEAT del só (s'escoltava el bucle però el
+        # cursor es quedava on era, fins a atrapa `loop_b`). El cursor hi va JA,
+        # sense esperar el primer tic del rellotge.
+        if (self.loop_on and self.loop_a is not None
+                and self.loop_b is not None and self.loop_b > self.loop_a
+                and not (self.loop_a <= t < self.loop_b)):
+            t = float(self.loop_a)
+            self.pos = t
+            self.timeline.set_position(t, emit=False)
+            self.lliscador.setValue(int(t * 100))
+            self.temps.setText(self._fmt_timeline(t))
         self.log(f"play des de {t:.2f}s amb {self.player}...")
         self.fitxer_err = os.path.join(OPENCODE_DIR, "visor_player.log")
         try:
