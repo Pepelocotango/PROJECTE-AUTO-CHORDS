@@ -94,9 +94,16 @@ Tests automàtics (logica del pont + protocol, amb dobles i sense GUI):
 
 1. **Qt no és thread-safe**: mai tocar widgets/model des del fil del socket.
    Tota operació passa pel `QTimer` del fil principal (el pont ja ho fa així).
-2. **Diàlegs modals**: `ac_analyze` va **sense diàleg** (`pregunta=False`).
-   `ac_export_wav` és síncrona; si surt un `QMessageBox` (error), el pont espera
-   que es tanqui (i el client rep temps d'espera). No és habitual en un flux bo.
+2. **Diàlegs modals**: cap crida MCP obre diàlegs modals (l'app els fa **no
+   modals** amb el pont actiu i el text viatja a la resposta: `avis`).
+   `ac_export_wav` té **`async: true`** per no bloquejar (progrés a `ac_status`).
+   ⚠️ **LIMITACIÓ ACCEPTADA** (decisió de l'operador, 14-10-2026): el **confirm
+   de re-anàlisi** («Continua i descarta / Cancel·la») és **modal** i **retorna
+   una decisió**; fer-lo no-modal voldria un flux asíncron (no es fa). **No
+   afecta cap crida MCP** (el pont hi passa `pregunta=False`): només passaria si
+   un **humà** deixa el diàleg obert **i** algú crida l'MCP → el pont espera fins
+   que es tanqui (acotat pel **timeout de 120 s**). Si mai molesta, afegir-hi un
+   timeout que el tanqui com a *Cancel·la* és una opció.
 3. **Instància única**: no pots tenir l'app oberta "normal" i la "amb pont"
    alhora; cal tancar-ne una.
 4. **Endpoint obsolet**: si l'app peta, `temp/mcp_bridge.json` queda vell; el
