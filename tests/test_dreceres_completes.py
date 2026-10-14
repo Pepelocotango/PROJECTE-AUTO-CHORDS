@@ -69,6 +69,18 @@ class TestDreceresCompletes(unittest.TestCase):
                   "Ctrl+[", "Ctrl+]"):
             self.assertIn(d, text, f"encara falta «{d}»")
 
+    def test_amb_el_pont_actiu_es_no_modal(self):
+        """(3) Amb el pont MCP actiu, el diàleg de dreceres NO pot ser modal
+        (encallaria el pont fins que algú el tanqués)."""
+        from unittest.mock import patch
+        import PyQt5.QtWidgets as QW
+        w = _finestra()
+        w.mcp_actiu = True
+        with patch.object(QW.QMessageBox, "information") as modal, \
+                patch.object(QW.QMessageBox, "show", lambda self: None):
+            w._mostra_dreceres()
+        self.assertFalse(modal.called, "amb el pont no pot haver-hi modal")
+
     def test_el_dialeg_no_peta(self):
         from unittest.mock import patch
         import PyQt5.QtWidgets as QW

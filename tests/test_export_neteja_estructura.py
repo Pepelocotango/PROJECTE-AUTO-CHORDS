@@ -1,0 +1,79 @@
+"""(2) Amb «Inclou estructura» OFF, les restes d'un export anterior s'han de netejar.
+
+Si no, a la carpeta de sortida hi quedaven `estructura_ABC.csv` i
+`wavs_estructura/` d'un export amb la marca ON i semblava que l'export actual
+hagués inclòs l'estructura.
+"""
+import os
+import sys
+import tempfile
+import unittest
+import wave
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+from unittest.mock import patch  # noqa: E402
+
+import PyQt5.QtWidgets as QW  # noqa: E402
+
+from app import main as app_main  # noqa: E402
+from app import pipeline  # noqa: E402
+
+
+def _finestra(amb_estructura):
+    td = tempfile.mkdtemp()
+    wav = os.path.join(td, "t.wav")
+    with wave.open(wav, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(44100)
+        w.writeframes(b"\x00\x00" * 44100 * 3)
+    s = pipeline.carpeta_sortida(wav)
+    os.makedirs(s, exist_ok=True)
+    with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
+        f.write("0.0,C\n2.0,Am\n")
+    # restes d'un export ANTERIOR amb estructura
+    with open(os.path.join(s, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
+        f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
+    os.makedirs(os.path.join(s, "wavs_estructura"), exist_ok=True)
+    with open(os.path.join(s, "wavs_estructura", "vella.wav"), "wb") as f:
+        f.write(b"RIFF")
+    w = app_main.Finestra()
+    w.wav_edit.setText(wav)
+    w._carrega_visor(wav)
+    w.mcp_actiu = True
+    w.amb_est.setChecked(amb_estructura)
+    w._sortida = s
+    return w, s
+
+
+class TestNetejaEstructura(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QW.QApplication.instance() or QW.QApplication([])
+
+    def test_amb_la_marca_off_es_netegen(self):
+        w, s = _finestra(amb_estructura=False)
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"):
+            w.exporta()
+        self.assertFalse(os.path.isfile(os.path.join(s, "estructura_ABC.csv")),
+                         "el CSV d'estructura vell hi és")
+        self.assertFalse(os.path.isdir(os.path.join(s, "wavs_estructura")),
+                         "la carpeta de wavs d'estructura vella hi és")
+        self.assertIn("netejat de la sortida", w.log.toPlainText())
+        w.close()
+
+    def test_amb_la_marca_on_es_respecten(self):
+        w, s = _finestra(amb_estructura=True)
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"):
+            w.exporta()
+        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")))
+        self.assertTrue(os.path.isdir(os.path.join(s, "wavs_estructura")))
+        w.close()
+
+
+if __name__ == "__main__":
+    unittest.main()

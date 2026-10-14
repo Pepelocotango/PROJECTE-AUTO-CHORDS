@@ -3,6 +3,7 @@
 #           wav -> acords + estructura -> carpetes. Tot en català.
 import logging
 import os
+import shutil
 import sys
 import time
 import traceback
@@ -798,15 +799,23 @@ class Finestra(QMainWindow):
         return "<br><br>".join(blocs)
 
     def _mostra_dreceres(self):
+        # (3) Amb el pont MCP actiu, un modal encallaria el pont: no-modal.
+        if getattr(self, "mcp_actiu", False):
+            return self._avis("Dreceres de teclat", self._text_dreceres(),
+                              "information")
         QMessageBox.information(self, "Dreceres de teclat", self._text_dreceres())
 
     def _quant_a(self):
-        QMessageBox.about(self, "Quant a Auto Chords",
+        text = (
             "<b>Auto Chords</b><br>"
             f"Versió <b>{__version__}</b><br>"
             "wav → acords + estructura<br><br>"
             "Visor DAW-like (PyQt5).<br>"
             "Motor: Chordino (acords) + Queen Mary/qm (estructura) · Vamp.")
+        # (3) Amb el pont MCP actiu, no-modal (un modal encallaria el pont).
+        if getattr(self, "mcp_actiu", False):
+            return self._avis("Quant a Auto Chords", text, "information")
+        QMessageBox.about(self, "Quant a Auto Chords", text)
 
     def registra(self, t):
         self.logger.info("UI: %s", t)
@@ -1645,6 +1654,11 @@ class Finestra(QMainWindow):
                    if vr is not None else None)
         amb_estructura = self.amb_est.isChecked() and (
             seccions_model is not None or os.path.isfile(csv_seg))
+        # (2) Amb «Inclou estructura» OFF, les restes d'un export ANTERIOR
+        # (estructura_ABC.csv i/o wavs_estructura/) es quedaven a la carpeta i
+        # semblava que s'hagués exportat estructura → es netegen aquí.
+        if not amb_estructura:
+            self._neteja_estructura_vella(self.sortida)
         return dict(
             csv_ac=csv_ac,
             csv_seg=csv_seg if amb_estructura else None,
@@ -1659,6 +1673,32 @@ class Finestra(QMainWindow):
             seccions=seccions_model,
             total_s=total_s,
         )
+
+    def _neteja_estructura_vella(self, sortida):
+        """Treu les restes d'estructura quan l'export NO n'inclou (2).
+
+        Si no, a la carpeta de sortida hi quedaven `estructura_ABC.csv` i
+        `wavs_estructura/` d'un export anterior amb la marca ON, i semblava que
+        l'export actual hagués inclòs l'estructura.
+        """
+        csv_abc = os.path.join(sortida, "estructura_ABC.csv")
+        wavs = os.path.join(sortida, "wavs_estructura")
+        fets = []
+        if os.path.isfile(csv_abc):
+            try:
+                os.remove(csv_abc)
+                fets.append("estructura_ABC.csv")
+            except OSError as e:
+                self.registra(f"AVÍS: no he pogut treure {csv_abc}: {e}")
+        if os.path.isdir(wavs):
+            try:
+                shutil.rmtree(wavs)
+                fets.append("wavs_estructura/")
+            except OSError as e:
+                self.registra(f"AVÍS: no he pogut treure {wavs}: {e}")
+        if fets:
+            self.registra("«Inclou estructura» OFF → netejat de la sortida: "
+                          + ", ".join(fets))
 
     def _exporta_acabada(self, res_part=None):
         """Missatges de final d'exportació (compartit pel camí síncron i el fil)."""
