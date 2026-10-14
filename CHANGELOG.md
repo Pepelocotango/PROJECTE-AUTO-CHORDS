@@ -94,6 +94,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   partitura surt del prefix. **Sense retrocompatibilitat** amb carpetes
   `_ACORDS` existents (decisió de l'operador): les velles no es detectaran.
 
+- **Export de WAVs asíncron**: `ac_export_wav` amb `async:true` torna de seguida i el
+  progrés es consulta a `ac_status` (`exportant`/`exporta_iniciat`).
+- **«Dreceres de teclat» i «Quant a»** són **no-modals** amb el pont MCP actiu.
+- **Manteniment — A MÀ: Dependabot RETIRAT** (decisió de l'operador). Els pins són
+  **deliberats** (Q9400 sense AVX, macOS 10.13, roda Windows) i Dependabot obria PRs
+  perjudicials; les actualitzacions es fan a mà amb validació al CI.
+
 ### Afegit
 - **`docs/REGLES_DE_LA_APP.md`**: totes les **regles d'or (invariants)** de l'app
   en un sol lloc, **numerades** (1–10) amb la seva validació al codi i tests.
@@ -111,6 +118,26 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   appimagetool, plugins Vamp i els seus commits), per poder vigilar avisos de
   seguretat. Es regenera amb `python3 eines/genera_inventari.py`.
 
+- **Edició — desfer/refer complet**: `undo`/`redo` ara també cobreix **BPM, compàs,
+  offset i loop A-B** (abans només acords i seccions).
+- **Edita ▸ «Parteix la secció al cursor…»**: **partir** una secció en dues — l'única
+  manera d'afegir-ne en un model **saturat** per la cobertura (regla #4). També al
+  menú contextual de la secció.
+- **Diàleg de dreceres COMPLET**: **Ajuda ▸ Dreceres de teclat** ara **dedueix totes**
+  les dreceres dels menús reals (abans només en llistava 6).
+- **Pont MCP — de 29 a 40 eines**: `ac_export_partitura` (+ paràmetre `partitura` a
+  `ac_export_wav`), `ac_get_options`, `ac_set_key_detect` (tonalitat), `ac_set_metro`
+  (metrònom), `ac_detect_downbeat`/`ac_mark_downbeat` (compàs 1),
+  `ac_open_output_folder` i **multi-selecció** (`ac_select_clip`,
+  `ac_toggle_selection`, `ac_clear_selection`, `ac_select_at_cursor`);
+  **export asíncron** (`async:true` amb progrés a `ac_status`) i **autocomprovació
+  amb `ffmpeg`**.
+- **Robustesa**: **desat atòmic** dels CSV (`pipeline.escriu_atomic`: temporal +
+  `fsync` + `os.replace` → mai queda un CSV truncat); **`faulthandler`** (traca dels
+  crashes nadius → `crash_nadiu.log`, amb detecció del crash anterior);
+  **avís de fitxer llarg** (>45 min, no bloquejant); **Ajuda ▸ Obre la carpeta del
+  registre**.
+
 ### Corregit
 - **Invariant de COBERTURA dels clips** (regla d'or): la **suma dels clips
   d'acords = la durada de la WAV** i la **suma dels clips d'estructura = la
@@ -122,6 +149,20 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   modes i amb o sense snap. També l'**export dels acords**: l'últim clip arriba a
   la durada (`acords_a_live.py` rep la durada).
 
+- **Reanomenament de seccions d'estructura**: no es podia canviar el nom de cap
+  secció que no fos la primera — l'editor reaplicava l'inici arrodonit a 2 decimals i
+  la 2a «solapava» la 1a. Si l'inici no s'ha tocat, es conserva la **precisió interna**.
+- **L'exportació perdia les edicions de seccions**: ara surt del **MODEL**
+  (`exporta_total(acords=, seccions=)`), no del `segments.csv` cru.
+- **Cobertura (regla d'or #4) en edició en viu**: s'aplica **després de cada mutació**
+  (GUI **i** MCP) i es desen els CSV **normalitzats**.
+- **Forat intern en moure una secció** i **topall superior de temps** (rebutjat amb
+  error clar; reparat en carregar).
+- **Xocs d'inici dins la resolució del CSV**: distància mínima + detecció; l'export mai
+  escriu clips de durada 0. **Reanomenament sanejat** canònic
+  (`pipeline.saneja_nom_acord`) als 4 camins.
+- **Cursor vermell desalineat amb el LOOP A/B**: en fer **play** i en **activar el
+  loop sonant** (cursor i timeline sincronitzats amb el so).
 ## [0.6.2] — 2026-10-13 (BETA)
 
 ### Afegit
