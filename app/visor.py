@@ -47,6 +47,11 @@ VISOR_STYLESHEET = theme.visor_stylesheet()
 
 N_BUCKETS = 2000  # pics precalculats: obrir 250 s és instantani
 
+# A partir de quant avisem que el fitxer és MOLT llarg: el visor carrega el PCM
+# sencer a memòria (`raw` + la còpia `mono`) → ~3× la mida del fitxer (prova
+# real: 1 h ≈ 2 GB de pic; als 8 GB va, però 2 h+ potser no).
+LLARG_MIN_S = 45 * 60
+
 
 def llegeix_wav(ruta):
     with wave.open(ruta, "rb") as w:
@@ -358,6 +363,14 @@ class Visor(QMainWindow):
         self.registre.setMaximumHeight(110)
         self.registre.setStyleSheet("font-family: monospace; font-size: 11px;")
         capa.addWidget(self.registre)
+        # AVÍS (no bloquejant, al panell) si el fitxer és MOLT llarg: el PCM
+        # sencer viu a memòria (`raw` + `mono`) ≈ 3× la mida del fitxer
+        # (prova real: 1 h ≈ 2 GB de pic).
+        _dur = float(self.audio.get("durada", 0.0) or 0.0)
+        if _dur > LLARG_MIN_S:
+            self.log(f"⚠️ fitxer MOLT LLARG ({_dur/60:.0f} min): l'app carrega "
+                     f"tot el PCM a memòria (~{_dur * 44100 * 2 * 2 * 3 / 1e9:.1f} "
+                     "GB) i pot anar lenta")
 
         # escolta amb reproductor extern (QtMultimedia petava: Violació de
         # segment — les rodes PyQt5 no porten el plugin d'àudio del sistema).
