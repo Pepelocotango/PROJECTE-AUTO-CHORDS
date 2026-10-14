@@ -268,7 +268,7 @@ Cinc workflows a `.github/workflows/` (tots d'execució **manual**):
 | **Sistema** | **Linux x86_64** amb **glibc ≥ 2.35** → Ubuntu 22.04+, Debian 12+, Fedora 36+… |
 | **Llibreries natives** | **Cap instal·lació** ✅ — `libvamp-hostsdk`, `libsndfile` i els còdecs (FLAC, Vorbis, Opus, Ogg, mpg123, LAME) van **dins** l'AppImage (`portable/lib/`). Al SO només calen `glibc` + `libstdc++/libgcc` |
 | **CPU** | Qualsevol x86_64 amb **SSE2** · provada en un **Core 2 Quad Q9400** *sense AVX* ✅ |
-| **RAM / disc** | ~1 GB RAM lliure · ~170 MB a disc (l'AppImage és un sol fitxer) |
+| **RAM / disc** | ~1 GB RAM lliure per a temes curts · ~170 MB a disc (l'AppImage és un sol fitxer). ⚠️ **Fitxers llargs**: el visor carrega **tot el PCM a memòria** (≈ **3× la mida del fitxer**; una hora ≈ **2 GB**); a partir de **45 min** l'app ho avisa pel panell del log. |
 | **Per ESCOLTAR** | **PipeWire** o **PulseAudio** (qualsevol escriptori Linux actual). **Opcional**: sense això l'app fa tota la resta (analitzar, editar, exportar), només avisa que no pot sonar |
 | **Per executar l'AppImage** | **Res especial** ✅ — el runtime va **estàtic** (porta libfuse+squashfuse a dins; només cal el suport **FUSE del kernel**, que és estàndard). Si mai fallés: `./AutoChords-*.AppImage --appimage-extract-and-run` |
 

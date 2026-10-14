@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # main.py — Auto Chords (PyQt5/Qt5: l'únic Qt que corre al Q9400) —
 #           wav -> acords + estructura -> carpetes. Tot en català.
+import faulthandler
 import logging
 import os
 import shutil
@@ -74,34 +75,52 @@ def setup_logging(log_path=None):
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
     _instal·la_captura_excepcions()
-    _instal·la_faulthandler(log_file)
 
     logger.info("Auto Chords startup | log=%s", log_file)
     return logger
 
 
-# Referència global al fitxer del faulthandler: si es perdés, el fd es tancaria.
-_FAULTHANDLER_FILE = None
-
-
-def _instal·la_faulthandler(log_file):
-    """Activa `faulthandler` cap al MATEIX log de l'app.
-
-    Un crash NADIU (SIGSEGV/SIGABRT/SIGFPE, p. ex. dins de Qt o PortAudio) NO
-    passa per les excepcions de Python: sense això, l'app mor sense cap traça.
-    Amb això, el log (que l'usuari pot enviar) inclou el traceback Python i tots
-    els fils actius. Cost: 3 línies; cap efecte si falla.
-    """
-    global _FAULTHANDLER_FILE
-    try:
-        import faulthandler
-        _FAULTHANDLER_FILE = open(log_file, "a", encoding="utf-8", buffering=1)
-        faulthandler.enable(file=_FAULTHANDLER_FILE, all_threads=True)
-    except Exception:  # noqa: BLE001
-        _FAULTHANDLER_FILE = None
-
-
 FOSC = theme.app_stylesheet()
+
+# El fitxer del faulthandler ha de viure TOT el procés (faulthandler no el tanca
+# ni en guarda cap referència: si el GC el tanqués, el crash no deixaria res).
+_FH_FITXER = None
+
+
+def activa_faulthandler(log_path, logger=None):
+    """Deixa la traça dels crashes NADIUS (SIGSEGV / access violation) a disc.
+
+    Un segfault de Qt/PortAudio mata el procés sense passar per `excepthook` ni
+    pel log: sense això, un informe de beta és «s'ha tancat sol». Escriu a
+    `crash_nadiu.log` (al costat del log de l'app). Cal un FITXER propi: en un
+    `.exe` sense consola `sys.stderr` és `None` i `faulthandler.enable()` pelat
+    petaria. Si l'execució anterior va deixar una traça, es desa com a
+    `crash_nadiu.log.anterior` i s'avisa al log (en sortida normal el fitxer
+    queda buit, així que no hi ha falsos positius). Retorna la ruta o `None`.
+    """
+    global _FH_FITXER
+    ruta = os.path.join(os.path.dirname(os.path.abspath(log_path)),
+                        "crash_nadiu.log")
+    try:
+        if os.path.isfile(ruta) and os.path.getsize(ruta) > 0:
+            anterior = ruta + ".anterior"
+            os.replace(ruta, anterior)
+            if logger is not None:
+                logger.warning("L'execució anterior va acabar amb un crash "
+                               "nadiu; traça desada a %s", anterior)
+        nou = open(ruta, "w", encoding="utf-8")
+        faulthandler.enable(file=nou, all_threads=True)
+    except (OSError, RuntimeError, ValueError) as e:
+        if logger is not None:
+            logger.warning("faulthandler no activat: %s", e)
+        return None
+    vell, _FH_FITXER = _FH_FITXER, nou
+    if vell is not None:
+        try:
+            vell.close()
+        except OSError:
+            pass
+    return ruta
 
 
 class FeinaExporta(QThread):
@@ -1932,6 +1951,7 @@ def main():
             pass
     logger = setup_logging(DEFAULT_LOG_PATH)
     logger.info("Inici de l'aplicació | argv=%s cwd=%s", sys.argv, os.getcwd())
+    activa_faulthandler(DEFAULT_LOG_PATH, logger)
 
     lock_file = plataforma.obre_fitxer_instancia()
     if lock_file is None:

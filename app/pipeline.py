@@ -9,6 +9,8 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
+import time
 import wave
 
 from app import plataforma, tempo
@@ -733,8 +735,7 @@ def fusiona_seccions(seccions, i, amb="seguent"):
 
 
 def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0):
-    os.makedirs(os.path.dirname(os.path.abspath(ruta)) or ".", exist_ok=True)
-    with open(ruta, "w", newline="", encoding="utf-8") as f:
+    def _escriu(f):
         w = csv.writer(f)
         w.writerow(["inici_s", "fi_s", "durada_s", "lletra", "família",
                     "compas_ini", "compas_fi"])
@@ -745,6 +746,7 @@ def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0):
                         f"{float(dur):.{TEMPS_DEC}f}", L, fam,
                         pos_compas(ini, bpm, bpb, lliure, offset),
                         pos_compas(fi, bpm, bpb, lliure, offset)])
+    escriu_atomic(ruta, _escriu)
     seq = seq_abc(seccions)
     log(f"ABC: {len(seccions)} trossos, seqüència {seq}")
     return seccions
@@ -1034,18 +1036,54 @@ TEMPS_DEC = 2
 RESOLUCIO_CSV = 10.0 ** -TEMPS_DEC
 
 
+def escriu_atomic(ruta, escriu):
+    """Escriu `ruta` de forma ATÒMICA: fitxer temporal + fsync + `os.replace`.
+
+    Els CSV d'acords i d'estructura són la FEINA de l'usuari i es reescriuen a
+    cada edició. Amb `open(ruta, "w")` el fitxer es trunca ABANS d'escriure: un
+    crash, un kill o un tall de corrent enmig deixava un CSV buit o a mitges i
+    es perdia tot. Aquí o queda la versió anterior sencera o la nova sencera.
+
+    `escriu(f)` rep el fitxer de text obert (utf-8, `newline=""`). A Windows,
+    `os.replace` pot fallar un instant si un antivirus o l'Explorer tenen el
+    destí obert: es reintenta unes quantes vegades abans de donar l'error.
+    """
+    ruta = os.path.abspath(ruta)
+    os.makedirs(os.path.dirname(ruta) or ".", exist_ok=True)
+    tmp = f"{ruta}.{os.getpid()}.{threading.get_ident()}.tmp"
+    try:
+        with open(tmp, "w", newline="", encoding="utf-8") as f:
+            escriu(f)
+            f.flush()
+            os.fsync(f.fileno())
+        for intent in range(6):
+            try:
+                os.replace(tmp, ruta)
+                return
+            except PermissionError:
+                if intent == 5:
+                    raise
+                time.sleep(0.05 * (intent + 1))
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def desa_acords_csv(ruta, items):
     """Desa (temps, acord) amb el temps arrodonit a TEMPS_DEC decimals.
 
     S'ha unificat la resolució amb estructura_ABC.csv (10 ms) perquè els
     límits de secció i els temps d'acord siguin coherents.
     """
-    os.makedirs(os.path.dirname(os.path.abspath(ruta)) or ".", exist_ok=True)
-    with open(ruta, "w", newline="", encoding="utf-8") as f:
+    def _escriu(f):
         w = csv.writer(f)
         for it in items:
             t, c = it[0], it[1]
             w.writerow([f"{float(t):.{TEMPS_DEC}f}", c])
+    escriu_atomic(ruta, _escriu)
 
 
 def neteja_wavs(dest_dir):
