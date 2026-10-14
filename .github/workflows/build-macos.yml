@@ -355,6 +355,9 @@ jobs:
           # llicències (obligatòries). El CHANGELOG/ROADMAP i tot `docs/` són
           # documentació de desenvolupament: no s'empaqueten.
           cp LICENSE LLICENCIES_TERCERS.md README.md "$STAGE/" 2>/dev/null || true
+          # Les 2 imatges que el README referencia (perquè es vegi bé al DMG).
+          mkdir -p "$STAGE/icona"
+          cp icona/auto-chords-512.png icona/captura.png "$STAGE/icona/" 2>/dev/null || true
           hdiutil create -volname "AUTO CHORDS" -srcfolder "$STAGE" \
             -ov -format UDZO -fs HFS+ "${NOM}.dmg"
           echo "--- munto i verifico el DMG ---"

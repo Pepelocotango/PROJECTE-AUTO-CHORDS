@@ -181,6 +181,9 @@ jobs:
           # OBLIGATORIS). El CHANGELOG/ROADMAP i tot `docs/` són documentació
           # de desenvolupament: no s'empaqueten.
           cp LICENSE LLICENCIES_TERCERS.md README.md paquet/ 2>/dev/null || true
+          # Les 2 imatges que el README referencia (perquè es vegi bé al paquet).
+          mkdir -p paquet/icona
+          cp icona/auto-chords-512.png icona/captura.png paquet/icona/ 2>/dev/null || true
           tar -C paquet -czf "${NOM}.tar.gz" .
           rm -rf paquet
           ls -la "${NOM}.tar.gz"
