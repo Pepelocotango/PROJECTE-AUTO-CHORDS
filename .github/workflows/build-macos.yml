@@ -274,7 +274,6 @@ jobs:
             --add-data "eines:eines" \
             --add-data "icones:icones" \
             --add-data "icona:icona" \
-            --add-data "docs:docs" \
             --add-data "nnls-chroma-macos-local:nnls-chroma-macos-local" \
             --add-data "qm-vamp-plugins-macos-local:qm-vamp-plugins-macos-local" \
             --add-data "vamp_host_local:." \
@@ -316,7 +315,7 @@ jobs:
             --hidden-import app --hidden-import app.main --hidden-import app.visor \
             --hidden-import app.audio_out --hidden-import sounddevice \
             --add-data "app:app" --add-data "eines:eines" --add-data "icones:icones" \
-            --add-data "icona:icona" --add-data "docs:docs" \
+            --add-data "icona:icona" \
             --add-data "nnls-chroma-macos-local:nnls-chroma-macos-local" \
             --add-data "qm-vamp-plugins-macos-local:qm-vamp-plugins-macos-local" \
             --add-data "vamp_host_local:." --add-data "portable:portable" \
@@ -338,7 +337,7 @@ jobs:
       # ── 7b: DMG (l'instal·lador típic de macOS) ──────────────────────────
       # Conté l'.app + un enllaç a /Applications. HFS+ (no APFS) per màxima
       # compatibilitat amb High Sierra; UDZO = comprimit.
-      - name: 7b. DMG (hdiutil) — .app + enllaç a /Applications + docs
+      - name: 7b. DMG (hdiutil) — .app + enllaç a /Applications + README/llicències
         # Estàndard d'Apple: un `.dmg` (UDZO = comprimit) amb l'`.app`, un
         # enllaç a /Applications per arrossegar-hi, i els docs a dins. És l'ÚNIC
         # paquet que es publica per a macOS. Nom canònic:
@@ -352,9 +351,10 @@ jobs:
           mkdir -p "$STAGE"
           cp -R "dist/AUTO_CHORDS.app" "$STAGE/"
           ln -s /Applications "$STAGE/Applications"
-          cp LICENSE LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md "$STAGE/" 2>/dev/null || true
-          mkdir -p "$STAGE/docs"
-          cp -R docs/. "$STAGE/docs/" 2>/dev/null || true
+          # Al DMG NOMÉS hi va l'imprescindible per a l'usuari: el README i les
+          # llicències (obligatòries). El CHANGELOG/ROADMAP i tot `docs/` són
+          # documentació de desenvolupament: no s'empaqueten.
+          cp LICENSE LLICENCIES_TERCERS.md README.md "$STAGE/" 2>/dev/null || true
           hdiutil create -volname "AUTO CHORDS" -srcfolder "$STAGE" \
             -ov -format UDZO -fs HFS+ "${NOM}.dmg"
           echo "--- munto i verifico el DMG ---"

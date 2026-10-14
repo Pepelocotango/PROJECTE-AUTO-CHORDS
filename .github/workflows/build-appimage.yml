@@ -164,7 +164,7 @@ jobs:
             || { echo "::error::l'AppImage NO ha superat el smoke test"; exit 1; }
           echo "smoke OK: l'AppImage arrenca"
 
-      - name: 10. Empaquetar (tar.gz canònic — AppImage + docs)
+      - name: 10. Empaquetar (tar.gz canònic — AppImage + README/llicències)
         # Estàndard de Linux per a un binari autocontingut: un tarball `.tar.gz`
         # amb l'executable (l'AppImage) + els docs. Nom canònic:
         #   AutoChords-<versió>-build<NN>-linux-x86_64.tar.gz
@@ -176,8 +176,11 @@ jobs:
           rm -rf paquet && mkdir -p paquet
           cp auto-chords-*.AppImage "paquet/${APP}"
           chmod +x "paquet/${APP}"
-          cp LICENSE LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md paquet/ 2>/dev/null || true
-          cp -r docs paquet/ 2>/dev/null || true
+          # Al paquet NOMÉS hi va l'imprescindible per a l'usuari: el README i
+          # les llicències (la del programa + els avisos de tercers, que són
+          # OBLIGATORIS). El CHANGELOG/ROADMAP i tot `docs/` són documentació
+          # de desenvolupament: no s'empaqueten.
+          cp LICENSE LLICENCIES_TERCERS.md README.md paquet/ 2>/dev/null || true
           tar -C paquet -czf "${NOM}.tar.gz" .
           rm -rf paquet
           ls -la "${NOM}.tar.gz"

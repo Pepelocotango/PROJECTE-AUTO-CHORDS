@@ -140,7 +140,7 @@ jobs:
         shell: bash
         run: python eines/prova_windows.py "dist/AutoChords/_internal"
 
-      - name: 10. Empaquetar (ZIP canònic — AutoChords.exe + docs a l'arrel)
+      - name: 10. Empaquetar (ZIP canònic — AutoChords.exe + README/llicències a l'arrel)
         # Estàndard de Windows per a un paquet PORTABLE: un `.zip` amb
         # l'executable (`AutoChords.exe` + `_internal/`) i els docs a l'arrel
         # (res de carpetes amb el nom de l'artefacte a dins). Nom canònic:
@@ -152,8 +152,11 @@ jobs:
           NOM="AutoChords-${VER}-build${GITHUB_RUN_NUMBER}-win-x64"
           rm -rf paquet && mkdir -p paquet
           cp -r dist/AutoChords/. paquet/
-          cp LICENSE LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md paquet/ 2>/dev/null || true
-          cp -r docs paquet/ 2>/dev/null || true
+          # Al paquet NOMÉS hi va l'imprescindible per a l'usuari: el README i
+          # les llicències (la del programa + els avisos de tercers, que són
+          # OBLIGATORIS). El CHANGELOG/ROADMAP i tot `docs/` són documentació
+          # de desenvolupament: no s'empaqueten.
+          cp LICENSE LLICENCIES_TERCERS.md README.md paquet/ 2>/dev/null || true
           rm -f "${NOM}.zip"
           if command -v 7z >/dev/null 2>&1; then
             ( cd paquet && 7z a -tzip -mx=9 "../${NOM}.zip" . >/dev/null )
