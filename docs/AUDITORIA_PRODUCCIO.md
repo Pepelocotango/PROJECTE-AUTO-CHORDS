@@ -4,7 +4,7 @@
 > feta en paral·lel per **OC-5** i **OC-6** amb permís de l'operador **només per a
 > documentació** (zero codi).
 >
-> - **Commit base:** `75c8f31` (main) · **Versió:** 0.6.2 (BETA) + `CHANGELOG [Unreleased]`
+> - **Commit base:** `75c8f31` (main) · **Versió:** 0.7.0 (BETA) + `CHANGELOG [Unreleased]`
 > - **Data:** 2026-10-13
 > - **Regla:** cap fitxer de codi tocat; verificat amb `git status` (només `.md`).
 > - **Estat final (2026-10-13):** blocs 1–2 de codi (OC-4) i l'ítem **1.6** aplicats ·

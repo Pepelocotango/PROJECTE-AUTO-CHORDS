@@ -1,6 +1,6 @@
 # Motor d'àudio per SO — què fem servir i què fan els programes «pro»
 
-> **2026-10-13 · v0.6.2.** Respon a: «estem fent servir els motors d'àudio adequats a cada
+> **2026-10-14 · v0.7.0.** Respon a: «estem fent servir els motors d'àudio adequats a cada
 > SO com ho fan DAWs, VLC…?». Complementa `app/audio_out.py` i `app/plataforma.py`.
 
 ## Resum

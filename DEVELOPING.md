@@ -158,7 +158,7 @@ Aquesta llista recull els temes que no són bloquejos del flux actual, però que
 
 ### 5) Auditoria de seguretat — ✅ FET (2026-10-13)
 
-> **Fet (v0.6.2+)**: enduriment de seguretat de l'app i de la cadena de
+> **Fet (v0.7.0+)**: enduriment de seguretat de l'app i de la cadena de
 > subministrament (10 punts: ffmpeg/ffprobe, instància única, pont MCP,
 > `safe_filename`, temporals, `baixa_verificat.py`+`deps_fixades.env`, accions
 > de GitHub per SHA, pins, inventari). Detall: `docs/SEGURETAT.md` +

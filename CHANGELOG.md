@@ -5,6 +5,8 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-10-14 (BETA)
+
 ### Seguretat
 - **Import d'àudio (ffmpeg/ffprobe) endurit**: les comandes d'`info()` i
   `converteix_a_wav()` porten ara **`-nostdin`** i **`-protocol_whitelist

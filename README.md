@@ -8,7 +8,7 @@
 > **Repositori:** https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
 > (les versions publicades —Linux `.tar.gz` amb l'**AppImage**, Windows `.zip`, macOS `.dmg`— són a *Releases*).
 
-> **Novetats v0.6.2 (BETA):** **botons nous** a la barra («Exporta WAV's»,
+> **Novetats v0.7.0 (BETA):** **exportació asíncrona** amb progrés · **partitura per MCP** i eines MCP **29→40** · **desat atòmic** dels CSV i **traça de crashes nadius** (`crash_nadiu.log`) · **desfer/refer complet**, **parteix una secció** i **dreceres completes** · **cursor del loop** alineat amb el so. **v0.6.2:** **botons nous** a la barra («Exporta WAV's»,
 > «Exporta partitura», «Zoom selecció») i la partitura deixa clar que el PDF
 > necessita **MuseScore** instal·lat. **v0.6.1:** **estabilitat d'àudio a macOS** (teardown idempotent
 > i serialitzat a `audio_out.py` que evita crashes `EXC_BAD_ACCESS`),
@@ -19,7 +19,7 @@
 > i **verificació exhaustiva de `minos`** (≤ 10.13). **v0.5.2:** **edició DAW-like completa**
 > (multi-selecció, copiar/retallar/enganxar, duplicar i moure grup) i refactorització del timeline.
 
-## Estat actual (2026-10-13 · v0.6.2 BETA)
+## Estat actual (2026-10-14 · v0.7.0 BETA)
 
 L’app està **reorganitzada amb el timeline com a centre de la finestra**
 (estil Audacity/DAW): l’anàlisi és una **acció** sobre el que es veu, no un
