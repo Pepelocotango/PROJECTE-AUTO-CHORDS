@@ -22,6 +22,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import mcp_bridge  # noqa: E402
+from app import projecte  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -168,11 +169,142 @@ class _FakeVisor:
             est = self._redo_stack.pop()
             self.acords, self.seccions = est
 
+    # -- partir / fusionar (paritat d'edició #11) ------------------------
+    MIN = 1e-3
+
+    def parteix_acord(self, idx, t, nom=None):
+        if not (0 <= idx < len(self.acords)) or idx + 1 >= len(self.acords):
+            return False
+        t = float(t)
+        t0 = float(self.acords[idx][0])
+        fi = float(self.acords[idx + 1][0])
+        if not (t0 + self.MIN <= t <= fi - self.MIN):
+            return False
+        self._undo_marca()
+        nom = (str(nom).strip() if nom else self.acords[idx][1]) or self.acords[idx][1]
+        nova = list(self.acords)
+        nova[idx] = (t0, self.acords[idx][1], self.acords[idx][2])
+        nova.insert(idx + 1, (t, nom, f"{t:.9f}"))
+        self.acords = self._normalitza_acords(nova)
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        self._omple_llista_ac()
+        return idx + 1
+
+    def fusiona_acord(self, idx, amb="seguent"):
+        if not (0 <= idx < len(self.acords)):
+            return False
+        j = idx + 1 if amb == "seguent" else idx - 1
+        if not (0 <= j < len(self.acords)):
+            return False
+        self._undo_marca()
+        nova = list(self.acords)
+        del nova[j]
+        self.acords = self._normalitza_acords(nova)
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        self._omple_llista_ac()
+        self._desa_i_regenera()
+        return True
+
+    def parteix_seccio(self, idx, t, lletra=None, fam=None):
+        if not (0 <= idx < len(self.seccions)):
+            return False
+        t = float(t)
+        ini, fi, L, F = self.seccions[idx]
+        ini, fi = float(ini), float(fi)
+        if not (ini + self.MIN <= t <= fi - self.MIN):
+            return False
+        self._undo_marca()
+        L2 = (str(lletra).strip() if lletra else L) or L
+        F2 = (str(fam).strip() if fam else (F or L2)) or L2
+        nova = list(self.seccions)
+        nova[idx] = (ini, t, L, F)
+        nova.insert(idx + 1, (t, fi, L2, F2))
+        self.seccions = self._normalitza_seccions(nova)
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        self._actualitza_llista_abc()
+        return idx + 1
+
+    def fusiona_seccio(self, idx, amb="seguent"):
+        if not (0 <= idx < len(self.seccions)):
+            return False
+        j = idx + 1 if amb == "seguent" else idx - 1
+        if not (0 <= j < len(self.seccions)):
+            return False
+        self._undo_marca()
+        nova = list(self.seccions)
+        del nova[j]
+        self.seccions = self._normalitza_seccions(nova)
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        self._actualitza_llista_abc()
+        self._regenera_abc_des_de_totes_les_seccions(f"secció {idx} fusionada")
+        return True
+
+
+class _FakeEdit:
+    """QLineEdit mínim (només el que fa servir el pont)."""
+
+    def __init__(self, text=""):
+        self._t = text
+
+    def text(self):
+        return self._t
+
+    def setText(self, t):
+        self._t = str(t)
+
+
+class _FakeCheck:
+    """QCheckBox mínim."""
+
+    def __init__(self, on=False):
+        self._on = on
+
+    def isChecked(self):
+        return self._on
+
 
 class _FakeWindow:
     def __init__(self, visor=None):
         self.visor_ref = visor
         self.sortida = "/tmp/out"
+        # Estat de projecte (per a les ops de projectes).
+        self.projecte = None
+        self.recents = []
+        self.dirty = False
+        self.titols = 0
+        self.activats = []
+        # Widgets mínims (per a `crea_projecte`).
+        self.wav_edit = _FakeEdit("")
+        self.bpb = _FakeEdit("4")
+        self.tempo_fix = _FakeCheck(True)
+        self.opcions = {}
+
+    def _bpm_val(self):
+        return 120.0
+
+    def _bpb_val(self):
+        return 4
+
+    def _offset_val(self):
+        return 0.0
+
+    def _activa_projecte(self, p):
+        self.projecte = p
+        self.activats.append(p.carpeta)
+
+    def _refresca_dades_projecte(self):
+        pass
+
+    def _actualitza_titol(self):
+        self.titols += 1
+
+    def _afegeix_recent(self, ruta):
+        if ruta not in self.recents:
+            self.recents.append(ruta)
 
     def windowTitle(self):
         return "Auto Chords — prova"
@@ -197,6 +329,10 @@ class TestRegistre(unittest.TestCase):
             "set_metro", "set_key_detect", "detect_downbeat", "mark_downbeat",
             "open_output_folder", "select_clip", "toggle_selection",
             "clear_selection", "select_at_cursor",
+            # Projectes autocontinguts + paritat d'edició #11 (2026-10-15).
+            "crea_projecte", "obre_projecte", "desa_projecte", "desa_com",
+            "fes_backup", "recents", "parteix_acord", "fusiona_acord",
+            "parteix_seccio", "fusiona_seccio",
         }
         self.assertEqual(set(mcp_bridge.OPERACIONS), esperades)
 
@@ -303,6 +439,161 @@ def _carrega_servidor():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+class TestParitatEdicio(unittest.TestCase):
+    """Partir / fusionar (regla d'or #11) a través del pont MCP."""
+
+    def test_parteix_acord(self):
+        vr = _FakeVisor()
+        r = mcp_bridge._op_parteix_acord(_ctx(vr), {"index": 1, "t_s": 6.0})
+        self.assertEqual(len(vr.acords), 4)
+        self.assertEqual(r["model"]["n_chords"], 4)
+        self.assertTrue(vr._undo_stack)          # hi ha un pas per desfer
+
+    def test_parteix_acord_temps_fora_es_error(self):
+        from app.mcp_bridge import BridgeError
+        vr = _FakeVisor()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_parteix_acord(_ctx(vr), {"index": 1, "t_s": 3.9})
+        self.assertEqual(len(vr.acords), 3)      # estat intacte
+
+    def test_parteix_acord_nom_nova_part(self):
+        vr = _FakeVisor()
+        mcp_bridge._op_parteix_acord(
+            _ctx(vr), {"index": 1, "t_s": 6.0, "nom": "Am"})
+        self.assertEqual(vr.acords[2][1], "Am")
+
+    def test_fusiona_acord(self):
+        vr = _FakeVisor()
+        r = mcp_bridge._op_fusiona_acord(_ctx(vr), {"index": 1})
+        self.assertEqual(len(vr.acords), 2)
+        self.assertEqual(r["model"]["n_chords"], 2)
+
+    def test_fusiona_acord_amb_invalid(self):
+        from app.mcp_bridge import BridgeError
+        vr = _FakeVisor()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_fusiona_acord(_ctx(vr), {"index": 1, "amb": "dalt"})
+
+    def test_parteix_seccio(self):
+        vr = _FakeVisor()
+        r = mcp_bridge._op_parteix_seccio(_ctx(vr), {"index": 0, "t_s": 8.0})
+        self.assertEqual(len(vr.seccions), 3)
+        self.assertEqual(r["model"]["n_sections"], 3)
+        self.assertGreaterEqual(vr.abc_cops, 1)
+
+    def test_parteix_seccio_temps_fora_es_error(self):
+        from app.mcp_bridge import BridgeError
+        vr = _FakeVisor()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_parteix_seccio(_ctx(vr), {"index": 0, "t_s": 0.0})
+        self.assertEqual(len(vr.seccions), 2)
+
+    def test_fusiona_seccio(self):
+        vr = _FakeVisor()
+        mcp_bridge._op_fusiona_seccio(_ctx(vr), {"index": 0})
+        self.assertEqual(len(vr.seccions), 1)
+
+
+class TestProjectes(unittest.TestCase):
+    """Eines de projecte (`.acproj`) a través del pont MCP."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="acproj_")
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.wav = os.path.join(self.tmp, "tema.wav")
+        with open(self.wav, "wb") as f:
+            f.write(b"RIFF....WAVEfmt ")   # WAV fals: només cal que existeixi
+        self.p = projecte.Projecte.crea(
+            os.path.join(self.tmp, "ElMeuProjecte"), self.wav, nom="ElMeuProjecte")
+
+    def _win(self):
+        w = _FakeWindow()
+        w.projecte = self.p
+        return w
+
+    def test_crea_projecte(self):
+        w = _FakeWindow()
+        w.wav_edit.setText(self.wav)
+        desti = os.path.join(self.tmp, "NOU")
+        mcp_bridge._op_crea_projecte(mcp_bridge._Context(w), {"path": desti})
+        self.assertIsNotNone(w.projecte)
+        self.assertTrue(os.path.isfile(w.projecte.ruta_acproj))
+        self.assertTrue(w.projecte.audio_present())
+
+    def test_crea_projecte_sense_ruta(self):
+        from app.mcp_bridge import BridgeError
+        w = _FakeWindow()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_crea_projecte(mcp_bridge._Context(w), {})
+
+    def test_crea_projecte_sense_wav(self):
+        from app.mcp_bridge import BridgeError
+        w = _FakeWindow()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_crea_projecte(
+                mcp_bridge._Context(w), {"path": os.path.join(self.tmp, "X")})
+
+    def test_obre_projecte(self):
+        w = _FakeWindow()
+        mcp_bridge._op_obre_projecte(
+            mcp_bridge._Context(w), {"path": self.p.ruta_acproj})
+        self.assertIsNotNone(w.projecte)
+        self.assertEqual(w.projecte.nom, "ElMeuProjecte")
+        self.assertTrue(w.activats)              # s'ha activat a la finestra
+
+    def test_obre_projecte_inexistent(self):
+        from app.mcp_bridge import BridgeError
+        w = _FakeWindow()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_obre_projecte(
+                mcp_bridge._Context(w), {"path": os.path.join(self.tmp, "no.acproj")})
+
+    def test_obre_projecte_sense_ruta(self):
+        from app.mcp_bridge import BridgeError
+        w = _FakeWindow()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_obre_projecte(mcp_bridge._Context(w), {})
+
+    def test_desa_projecte(self):
+        w = self._win()
+        mcp_bridge._op_desa_projecte(mcp_bridge._Context(w), {})
+        self.assertFalse(w.dirty)
+        self.assertIn(self.p.ruta_acproj, w.recents)
+
+    def test_desa_projecte_sense_projecte(self):
+        from app.mcp_bridge import BridgeError
+        w = _FakeWindow()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_desa_projecte(mcp_bridge._Context(w), {})
+
+    def test_desa_com(self):
+        w = self._win()
+        desti = os.path.join(self.tmp, "COPIA")
+        mcp_bridge._op_desa_com(mcp_bridge._Context(w), {"path": desti})
+        self.assertEqual(os.path.abspath(w.projecte.carpeta), os.path.abspath(desti))
+        self.assertTrue(os.path.isfile(w.projecte.ruta_acproj))
+
+    def test_desa_com_sense_ruta(self):
+        from app.mcp_bridge import BridgeError
+        w = self._win()
+        with self.assertRaises(BridgeError):
+            mcp_bridge._op_desa_com(mcp_bridge._Context(w), {})
+
+    def test_fes_backup(self):
+        w = self._win()
+        r = mcp_bridge._op_fes_backup(mcp_bridge._Context(w), {})
+        self.assertTrue(r["ok"])
+        self.assertTrue(os.path.isdir(r["backup"]))
+        self.assertIn(r["backup"], r["backups"])
+
+    def test_recents_filtra_inexistents(self):
+        w = _FakeWindow()
+        w.recents = [self.p.ruta_acproj,
+                     os.path.join(self.tmp, "noexisteix.acproj")]
+        r = mcp_bridge._op_recents(mcp_bridge._Context(w), {})
+        self.assertEqual(r["recents"], [self.p.ruta_acproj])
 
 
 class TestServidor(unittest.TestCase):

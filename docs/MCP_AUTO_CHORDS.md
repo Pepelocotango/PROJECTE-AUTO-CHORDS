@@ -51,7 +51,7 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 3. Fet: l'agent ja veu les eines `ac_*`. En acabar, torna a `"enabled": false` i
    reinicia (estalvia context).
 
-## Eines exposades (40)
+## Eines exposades (50)
 
 | Lectura | Acció (model) | Transport / vista | Finestra |
 |---|---|---|---|
@@ -63,9 +63,29 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 | `ac_undo_list` | `ac_rename_section` / `ac_move_section` / `ac_delete_section` | `ac_zoom` (mode) | `ac_set_key_detect` (on) |
 | | `ac_undo` / `ac_redo` | `ac_select_clip` (kind, index) · `ac_toggle_selection` (kind, index) · `ac_clear_selection` · `ac_select_at_cursor` (kind) | `ac_detect_downbeat` · `ac_mark_downbeat` · `ac_open_output_folder` |
 
-> **40 eines** en total. Les de l'última fila (metrònom, tonalitat automàtica,
+> **50 eines** en total. Les de l'última fila (metrònom, tonalitat automàtica,
 > compàs 1, carpeta de sortida i selecció/multi-selecció) es van afegir per
 > **A7**, perquè eren funcions de l'app sense cap eina equivalent.
+
+### Projectes autocontinguts i paritat d'edició #11 (2026-10-15)
+
+| Eina | Què fa |
+|---|---|
+| `ac_crea_projecte` (`path`, `wav`?) | Crea un `.acproj` a `path` a partir d'un WAV (el paràmetre o el WAV obert). |
+| `ac_obre_projecte` (`path`) | Obre un projecte `.acproj` (o la seva carpeta). |
+| `ac_desa_projecte` | Desa el projecte obert al seu lloc (document + CSVs). |
+| `ac_desa_com` (`path`) | Desa una **còpia** del projecte a una carpeta nova. |
+| `ac_fes_backup` | Còpia versionada a `backup/<data-hora>/` (rotació de 10). |
+| `ac_recents` | Llista els projectes recents que encara existeixen. |
+| `ac_parteix_acord` (`index`, `t_s`, `nom`?) | Parteix l'acord `index` pel temps `t_s` (regla #11). |
+| `ac_fusiona_acord` (`index`, `amb`?) | Fusiona l'acord amb el veí (`seguent`\|`anterior`). |
+| `ac_parteix_seccio` (`index`, `t_s`, `lletra`?, `familia`?) | Parteix la secció `index` pel temps `t_s`. |
+| `ac_fusiona_seccio` (`index`, `amb`?) | Fusiona la secció amb el veí (`seguent`\|`anterior`). |
+
+> ⚠️ Les eines de **projecte** **no obren cap diàleg**: la ruta és un paràmetre i,
+> si falta o no existeix, l'eina retorna un **error clar** (mai encalla l'agent).
+> L'**últim acord** no es pot partir (la seva durada arriba al final de la WAV):
+> cal afegir-ne un abans, com a la GUI.
 
 - Les **edicions** passen per la **mateixa transacció d'undo** que la GUI
   (`_undo_marca`/`_undo_commit`) i **desen el CSV** + regeneren l'ABC: pots
@@ -125,7 +145,7 @@ Tests automàtics (logica del pont + protocol, amb dobles i sense GUI):
 
 ## ✅ P2 (A4–A9) — **IMPLEMENTAT i verificat** (14-10-2026)
 
-> ✅ Ja és al codi; **40 eines**. Verificat amb **gates funcionals MCP** (OC-7/405-406).
+> ✅ Ja és al codi; **50 eines**. Verificat amb **gates funcionals MCP** (OC-7/405-406).
 
 - **A4 — Partitura des de l'MCP**: eina nova **`ac_export_partitura`** (MusicXML + PDF + MSCZ si hi ha MuseScore) i **`ac_export_wav`** amb el paràmetre **`partitura`** (força si s'hi inclou, sense canviar la marca de l'app). ✅
 - **A5 — `ac_export_wav` asíncrona**: paràmetre **`async: true`** → torna de seguida; el progrés es consulta a **`ac_status`** (`exportant` / `exporta_iniciat`). ✅
@@ -133,3 +153,22 @@ Tests automàtics (logica del pont + protocol, amb dobles i sense GUI):
 - **A7 — Més eines**: **`ac_set_key_detect`** (tonalitat), **`ac_set_metro`** (metrònom), **`ac_detect_downbeat` / `ac_mark_downbeat`** (compàs 1), **`ac_open_output_folder`**, i **multi-selecció** (`ac_select_clip`, `ac_toggle_selection`, `ac_clear_selection`, `ac_select_at_cursor`). ✅
 - **A8 — MCP OFF + instància única**: el MCP és **OFF per defecte** i l'app és d'**instància única** → **tanqueu l'altra instància** o arrenqueu directament amb **`./AUTO_CHORDS_MCP.sh`**. ✅
 - **A9 — Autocomprovació amb `ffmpeg`**: l'autocomprovació d'arrencada ara **avisa si no troba `ffmpeg`** (només podrà obrir WAV PCM). ✅
+
+---
+
+## ✅ Funcions noves cobertes (2026-10-15)
+
+> ✅ **FET**: les funcions que abans eren **només GUI** ja tenen eines `ac_*`
+> (vegeu «Projectes autocontinguts i paritat d'edició #11», més amunt). **50 eines**.
+
+- **Projectes autocontinguts** (vegeu `docs/PROJECTES.md`): `ac_crea_projecte`,
+  `ac_obre_projecte`, `ac_desa_projecte`, `ac_desa_com`, `ac_fes_backup` i
+  `ac_recents`. *(La **recuperació de sessió** continua sent automàtica a l'arrencada
+  de l'app — no cal eina.)*
+- **Paritat d'edició #11** (`docs/REGLES_DE_LA_APP.md` §11): `ac_parteix_acord`,
+  `ac_fusiona_acord`, `ac_parteix_seccio` i `ac_fusiona_seccio` — la GUI i l'MCP
+  ofereixen **el mateix joc** d'operacions.
+
+> ✅ Verificat: **50 eines** a `--tools`, coherència pont↔servidor al test
+> `test_mapa_eines_coincideix_amb_pont`, i **prova en viu pel protocol MCP real**
+> (initialize + tools/list + 25 crides amb un WAV i un projecte de prova).

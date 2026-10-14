@@ -147,6 +147,38 @@ _TOOLS = [
     ("ac_select_at_cursor", "select_at_cursor",
      "Selecciona el clip que conté el cursor (kind: chord|section).",
      {"kind": {"type": "string"}}),
+    # Projectes autocontinguts (`.acproj`) — 2026-10-15.
+    ("ac_crea_projecte", "crea_projecte",
+     "Crea un projecte autocontingut `.acproj` a partir d'un WAV (paràmetre "
+     "`wav`, o el WAV obert).",
+     {"path": {"type": "string"}, "wav": {"type": "string"}}),
+    ("ac_obre_projecte", "obre_projecte",
+     "Obre un projecte autocontingut `.acproj` (o la seva carpeta) per ruta.",
+     {"path": {"type": "string"}}),
+    ("ac_desa_projecte", "desa_projecte",
+     "Desa el projecte obert al seu lloc (document + CSVs).", {}),
+    ("ac_desa_com", "desa_com",
+     "Desa una CÒPIA del projecte a una carpeta nova (ruta obligatòria).",
+     {"path": {"type": "string"}}),
+    ("ac_fes_backup", "fes_backup",
+     "Fa una còpia versionada del projecte a `backup/<data-hora>/`.", {}),
+    ("ac_recents", "recents",
+     "Llista els projectes recents que encara existeixen.", {}),
+    # Paritat d'edició #11: partir / fusionar (acords i seccions) — 2026-10-15.
+    ("ac_parteix_acord", "parteix_acord",
+     "Parteix l'acord `index` pel temps `t_s` (nom opcional per a la part nova).",
+     {"index": {"type": "integer"}, "t_s": {"type": "number"},
+      "nom": {"type": "string"}}),
+    ("ac_fusiona_acord", "fusiona_acord",
+     "Fusiona l'acord `index` amb el veí (`amb`: seguent | anterior).",
+     {"index": {"type": "integer"}, "amb": {"type": "string"}}),
+    ("ac_parteix_seccio", "parteix_seccio",
+     "Parteix la secció `index` pel temps `t_s` (lletra/família opcionals).",
+     {"index": {"type": "integer"}, "t_s": {"type": "number"},
+      "lletra": {"type": "string"}, "familia": {"type": "string"}}),
+    ("ac_fusiona_seccio", "fusiona_seccio",
+     "Fusiona la secció `index` amb el veí (`amb`: seguent | anterior).",
+     {"index": {"type": "integer"}, "amb": {"type": "string"}}),
 ]
 
 _OP_PER_TOOL = {nom: op for (nom, op, _d, _s) in _TOOLS}

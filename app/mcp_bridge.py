@@ -42,6 +42,7 @@ from . import __version__ as APP_VERSION
 from . import dialegs
 from . import pipeline
 from . import plataforma
+from . import projecte
 
 logger = logging.getLogger("auto_chords")
 
@@ -712,6 +713,220 @@ def _op_set_tempo(ctx, params):
     return _op_status(ctx, {})
 
 
+# ── Projectes autocontinguts (`.acproj`) ─────────────────────────────────────
+def _projecte_actual(w):
+    """Retorna el projecte obert o un error clar (mai un diàleg)."""
+    p = getattr(w, "projecte", None)
+    if p is None:
+        raise BridgeError(
+            "No hi ha cap projecte obert: obre'n un (`obre_projecte`) o desa'n "
+            "un primer des de la GUI.")
+    return p
+
+
+def _op_obre_projecte(ctx, params):
+    """Obre un projecte `.acproj` (o la seva carpeta) per ruta."""
+    w = ctx.window
+    ruta = params.get("path") or params.get("ruta") or params.get("acproj")
+    if not ruta:
+        raise BridgeError("Cal indicar la ruta del projecte (paràmetre «path»).")
+    ruta = os.path.abspath(str(ruta))
+    if not os.path.exists(ruta):
+        raise BridgeError(f"No trobo el projecte: {ruta!r}")
+    try:
+        p = projecte.Projecte.obre(ruta)
+    except projecte.ProjecteError as e:
+        raise BridgeError(f"No s'ha pogut obrir el projecte: {e}") from e
+    if not p.audio_present():
+        raise BridgeError(f"Falta l'àudio del projecte: {p.ruta_audio()}")
+    w._activa_projecte(p)
+    return _op_status(ctx, {})
+
+
+def _op_crea_projecte(ctx, params):
+    """Crea un projecte AUTOCONTINGUT a partir d'un WAV (el paràmetre o l'obert).
+
+    És l'equivalent MCP de «Crea el projecte» de la GUI (`_obri_des_de_wav`):
+    copia l'àudio a `audio/`, migra els CSVs d'una `AUTOCHORDS_<nom>/` vella si
+    n'hi ha, i escriu el `.acproj`.
+    """
+    w = ctx.window
+    desti = params.get("path") or params.get("carpeta") or params.get("desti")
+    if not desti:
+        raise BridgeError(
+            "Cal indicar la carpeta on crear el projecte (paràmetre «path»).")
+    desti = os.path.abspath(str(desti))
+    wav = params.get("wav") or params.get("audio")
+    if not wav:
+        ed = getattr(w, "wav_edit", None)
+        wav = ed.text().strip() if (ed is not None and hasattr(ed, "text")) else ""
+    if not wav or not os.path.isfile(str(wav)):
+        raise BridgeError(
+            f"No trobo l'àudio per al projecte: {wav!r} (obre'n un amb "
+            "`open_wav` o passa «wav»).")
+    wav = os.path.abspath(str(wav))
+
+    def _val(nom, defecte):
+        f = getattr(w, nom, None)
+        try:
+            return f() if callable(f) else defecte
+        except Exception:  # noqa: BLE001
+            return defecte
+
+    fix = False
+    tf = getattr(w, "tempo_fix", None)
+    if tf is not None and hasattr(tf, "isChecked"):
+        fix = bool(tf.isChecked())
+    compas = ""
+    bp = getattr(w, "bpb", None)
+    if bp is not None and hasattr(bp, "text"):
+        compas = bp.text().strip()
+    # Migració: si hi ha una AUTOCHORDS_<nom>/ vella al costat del WAV.
+    antic = projecte.carpeta_autochords(wav)
+    ca = os.path.join(antic, projecte.NOM_CSV_ACORDS) if antic else None
+    sa = os.path.join(antic, projecte.NOM_CSV_ESTRUCTURA) if antic else None
+    in_situ = bool(antic) and desti == os.path.abspath(antic)
+    try:
+        p = projecte.Projecte.crea(
+            desti, wav, nom=os.path.basename(desti),
+            bpm=_val("_bpm_val", 120.0), bpb=_val("_bpb_val", 4),
+            offset=_val("_offset_val", 0.0), fix=fix,
+            opcions=getattr(w, "opcions", None), compas=compas,
+            csv_acords=ca if ca and os.path.isfile(ca) else None,
+            csv_estructura=sa if sa and os.path.isfile(sa) else None,
+            permet_existent=in_situ)
+    except (projecte.ProjecteError, OSError) as e:
+        raise BridgeError(f"No s'ha pogut crear el projecte: {e}") from e
+    w._activa_projecte(p)
+    return _op_status(ctx, {})
+
+
+def _op_desa_projecte(ctx, params):
+    """Desa el projecte obert al seu lloc."""
+    w = ctx.window
+    p = _projecte_actual(w)
+    w._refresca_dades_projecte()
+    try:
+        p.desa()
+    except OSError as e:
+        raise BridgeError(f"No s'ha pogut desar el projecte: {e}") from e
+    w.dirty = False
+    w._actualitza_titol()
+    w._afegeix_recent(p.ruta_acproj)
+    return _op_status(ctx, {})
+
+
+def _op_desa_com(ctx, params):
+    """Desa una CÒPIA del projecte a una carpeta nova (ruta obligatòria)."""
+    w = ctx.window
+    p = _projecte_actual(w)
+    desti = params.get("path") or params.get("carpeta") or params.get("desti")
+    if not desti:
+        raise BridgeError("Cal indicar la carpeta de destí (paràmetre «path»).")
+    desti = os.path.abspath(str(desti))
+    if desti == os.path.abspath(p.carpeta):
+        return _op_desa_projecte(ctx, {})   # mateix lloc → «Desa» normal
+    w._refresca_dades_projecte()
+    try:
+        p.desa()
+        nou = p.duplica(desti)
+    except (projecte.ProjecteError, OSError) as e:
+        raise BridgeError(f"No s'ha pogut desar com: {e}") from e
+    w.projecte = nou
+    w.sortida = nou.carpeta
+    w.dirty = False
+    w._actualitza_titol()
+    w._afegeix_recent(nou.ruta_acproj)
+    return _op_status(ctx, {})
+
+
+def _op_fes_backup(ctx, params):
+    """Fa una còpia versionada del projecte (`backup/<data-hora>/`)."""
+    w = ctx.window
+    p = _projecte_actual(w)
+    w._refresca_dades_projecte()
+    try:
+        dest = p.fes_backup()
+    except (projecte.ProjecteError, OSError) as e:
+        raise BridgeError(f"No s'ha pogut fer la còpia: {e}") from e
+    try:
+        copies = [str(b) for b in p.backups()]
+    except Exception:  # noqa: BLE001
+        copies = []
+    return {"ok": True, "backup": str(dest), "backups": copies}
+
+
+def _op_recents(ctx, params):
+    """Llista els projectes recents que encara existeixen."""
+    w = ctx.window
+    recents = [r for r in (getattr(w, "recents", None) or [])
+               if os.path.isfile(r)]
+    return {"recents": recents}
+
+
+# ── Paritat d'edició #11: partir / fusionar (acords i seccions) ──────────────
+def _op_parteix_acord(ctx, params):
+    """Parteix l'acord `index` pel temps `t_s` (nom opcional per a la part nova)."""
+    vr = _requereix_visor(ctx)
+    idx = _num(params, "index", enter=True)
+    t = _num(params, "t_s", "t", enter=True)
+    nom = params.get("nom") or params.get("acord")
+    nou = vr.parteix_acord(idx, float(t), nom)
+    if nou is False:
+        raise BridgeError(
+            f"No s'ha pogut partir l'acord {idx} a {t}s (l'índex ha d'existir, "
+            "no ser l'últim i el temps ha de caure a dins).")
+    try:
+        vr._desa_i_regenera()
+    except Exception as e:  # noqa: BLE001
+        raise BridgeError(f"Acord partit, però no s'ha pogut desar: {e}") from e
+    return _op_status(ctx, {})
+
+
+def _op_fusiona_acord(ctx, params):
+    """Fusiona l'acord `index` amb el veí (`amb`: seguent | anterior)."""
+    vr = _requereix_visor(ctx)
+    idx = _num(params, "index", enter=True)
+    amb = params.get("amb") or "seguent"
+    if amb not in ("seguent", "anterior"):
+        raise BridgeError("«amb» ha de ser 'seguent' o 'anterior'.")
+    if not vr.fusiona_acord(idx, amb=amb):
+        raise BridgeError(f"No s'ha pogut fusionar l'acord {idx} amb el {amb}.")
+    return _op_status(ctx, {})
+
+
+def _op_parteix_seccio(ctx, params):
+    """Parteix la secció `index` pel temps `t_s` (lletra/família opcionals)."""
+    vr = _requereix_visor(ctx)
+    idx = _num(params, "index", enter=True)
+    t = _num(params, "t_s", "t", enter=True)
+    lletra = params.get("lletra") or params.get("nom")
+    fam = params.get("familia") or params.get("fam")
+    nou = vr.parteix_seccio(idx, float(t), lletra, fam)
+    if nou is False:
+        raise BridgeError(
+            f"No s'ha pogut partir la secció {idx} a {t}s (l'índex ha d'existir, "
+            "no ser l'última i el temps ha de caure a dins).")
+    try:
+        vr._regenera_abc_des_de_totes_les_seccions(
+            f"secció {idx} partida a {float(t):.2f}s")
+    except Exception as e:  # noqa: BLE001
+        raise BridgeError(f"Secció partida, però no s'ha pogut regenerar: {e}") from e
+    return _op_status(ctx, {})
+
+
+def _op_fusiona_seccio(ctx, params):
+    """Fusiona la secció `index` amb el veí (`amb`: seguent | anterior)."""
+    vr = _requereix_visor(ctx)
+    idx = _num(params, "index", enter=True)
+    amb = params.get("amb") or "seguent"
+    if amb not in ("seguent", "anterior"):
+        raise BridgeError("«amb» ha de ser 'seguent' o 'anterior'.")
+    if not vr.fusiona_seccio(idx, amb=amb):
+        raise BridgeError(f"No s'ha pogut fusionar la secció {idx} amb el {amb}.")
+    return _op_status(ctx, {})
+
+
 # Registre d'operacions (nom → funció). L'MCP les exposa via `eines/..._server.py`.
 OPERACIONS = {
     "ping": _op_ping,
@@ -755,6 +970,17 @@ OPERACIONS = {
     "export_wav": _op_export_wav,
     "export_partitura": _op_export_partitura,
     "set_tempo": _op_set_tempo,
+    # Projectes autocontinguts + paritat d'edició #11 (2026-10-15).
+    "crea_projecte": _op_crea_projecte,
+    "obre_projecte": _op_obre_projecte,
+    "desa_projecte": _op_desa_projecte,
+    "desa_com": _op_desa_com,
+    "fes_backup": _op_fes_backup,
+    "recents": _op_recents,
+    "parteix_acord": _op_parteix_acord,
+    "fusiona_acord": _op_fusiona_acord,
+    "parteix_seccio": _op_parteix_seccio,
+    "fusiona_seccio": _op_fusiona_seccio,
 }
 
 
