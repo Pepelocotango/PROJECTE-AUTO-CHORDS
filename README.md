@@ -55,16 +55,14 @@ pas d’assistent.
 
 La funcionalitat principal està validada: **tota la suite · OK (1 skip)** (`python -m unittest discover -s tests`).
 
-## ✅ Implementat (pendent de commit) + ⏳ En preparació
+## ✅ Ja al codi — pendent de publicar
 
-> **P1 (A1–A3) — ja és al CODI** (sense commitejar; es validarà i commitarà aviat):
+> **P1 (A1–A3) + P2 (A4–A9) + robustesa** ja són al codi (validats i verificats). Detall: `docs/ESQUEMA_UI.md` i `docs/MCP_AUTO_CHORDS.md`.
 > - **A1** — **desfer/refer** també per a **BPM, compàs, offset i loop A-B**.
 > - **A2** — **Edita ▸ «Parteix la secció al cursor…»**: partir una secció (manera natural d'afegir-ne en un model saturat per la cobertura).
-> - **A3** — el diàleg **Ajuda ▸ Dreceres de teclat** ara llista **totes** les dreceres reals.
->
-> **P2 (A4–A9) — EN IMPLEMENTACIÓ** (encara NO disponible). Detall: `docs/MCP_AUTO_CHORDS.md`:
-> A4 partitura des de l'MCP/amb els WAVs · A5 progrés d'export · A6 `ac_analyze` amb opcions ·
-> A7 més eines · A8 convivència OFF/instància única · A9 autocomprovació amb `ffmpeg`.
+> - **A3** — el diàleg **Ajuda ▸ Dreceres de teclat** llista **totes** les dreceres reals.
+> - **A4–A9 (MCP, 40 eines)** — partitura (`ac_export_partitura` + `partitura` a l'export) · export **asíncron** (`async:true`, progrés a `ac_status`) · `ac_get_options` · eines noves (tonalitat/metrònom/compàs 1/carpeta/**multi-selecció**) · convivència OFF/instància única · autocomprovació amb `ffmpeg`.
+> - **Robustesa** — **desat atòmic** dels CSV · **faulthandler** (traca de crashes nadius → `crash_nadiu.log`) · **avís de fitxer llarg** (>45 min) · **Ajuda ▸ Obre la carpeta del registre**.
 
 ## Què fa l’app
 

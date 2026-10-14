@@ -22,7 +22,7 @@
 > 🔧 **Enduriment del CI (13-10, `4f6c8bb`)**: builds **reproduïbles**
 > (`requirements-build.txt` amb pins + `pyinstaller==6.22.3`), **verificació de
 > contingut** de cada paquet, **smoke test de l'AppImage** (Linux), tests **abans**
-> de l'upload a Windows, `concurrency`+`timeout` als 5 workflows i **Dependabot**.
+> de l'upload a Windows, `concurrency`+`timeout` als 5 workflows i Dependabot (**retirat el 14-10**; a mà).
 > Detall: `docs/CI_WORKFLOWS.md` §4.
 >
 > ⚠️ **Pendent de validar**: aquests passos nous **encara no han corregut** en una
@@ -106,7 +106,7 @@
 
 > 🎯 **Dos pendents** (13-10):
 > 1. **Revalidar el CI**: els passos nous (smoke de l'AppImage, verificació de
->    contingut, `concurrency`/`timeout`, Dependabot, builds reproducibles) i els
+>    contingut, `concurrency`/`timeout`, builds reproducibles) i els
 >    **fixos de Windows** encara **no han corregut** en una execució verda — cal
 >    llançar `build-all` i confirmar el verd.
 > 2. **Validació funcional real** dels 3 paquets: Linux ja es va verificar a fons;

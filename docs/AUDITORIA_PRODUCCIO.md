@@ -256,8 +256,8 @@ subministrament fixada per SHA256); els riscos són sobretot **d'operació**.
 
 | # | Problema | Evidència | Acció |
 |---|---|---|---|
-| B.1 | **Accions fixades per SHA sense actualització automàtica** → envelliran; quan GitHub retiri el runtime (Node), caldrà moure-les a mà. | `uses: …@<sha>  # v5/v6/v2` | 🔧 Dependabot (`github-actions`) |
-| B.2 | **Sense Dependabot ni revisió programada de dependències**, tot i tenir `COMPONENTS_I_VERSIONS.md`. | `.github/` sense `dependabot.yml` | 🔧 Crear `.github/dependabot.yml` |
+| B.1 | **Accions fixades per SHA sense actualització automàtica** → envelliran quan GitHub retiri el runtime. _(14-10: **Dependabot RETIRAT** per decisió de l'operador; actualització **a mà** amb validació al CI.)_ | `uses: …@<sha>  # v5/v6/v2` | ℹ️ Assumit (a mà) |
+| B.2 | **Revisió de dependències** _(14-10: **Dependabot RETIRAT**: els pins són deliberats per compatibilitat —Q9400 sense AVX, macOS 10.13, roda Windows— i Dependabot obria PRs perjudicials; s'actualitza **a mà**)._ | — | ℹ️ Assumit (a mà) |
 | B.3 | **Sense cobertura** al CI (compartit amb OC-6 §4.1). | `grep coverage .github/` → res | 🔧/🕳️ `coverage` + llindar |
 | B.4 | **Sense `timeout-minutes`** → una execució encallada pot arribar al límit per defecte. | `grep timeout .github/` → res | 🔧 `timeout-minutes` raonable |
 | B.5 | `build-appimage.yml` instal·la `libqt6*` «best effort» (`\|\| true`) només per al TTL dels tests → depèn de paquets que poden desaparèixer. | `build-appimage.yml:79-80` | ⚠️ Menor; documentar |
@@ -309,7 +309,7 @@ límit** (runners) i la **validació en maquinari real**.
 | D.1 | **Els pins de `requirements.txt` no s'apliquen al CI** (vegeu A.2): l'inventari i el pin divergeixen. Ex.: `PyQt5_sip` **12.20.0** al portable vs **12.19.0** a `requirements.txt`. | `COMPONENTS_I_VERSIONS.md:80` vs `requirements.txt:16` | 🔧 Vegeu A.2 |
 | D.2 | `pyproject.toml` amb **rangs** ≠ pins (compartit amb OC-6 §1.4). | `pyproject.toml:14-17` | 🔧 Vegeu OC-6 |
 | D.3 | **Sense `--require-hashes`** (compartit amb OC-6 §1.3). | `requirements.txt:28-36` | 🕳️ Pendent |
-| D.4 | **Sense revisió de CVE automatitzada** (Dependabot/audit). | — | 🔧 Vegeu B.2 |
+| D.4 | **Revisió de CVE** _(14-10: Dependabot retirat; revisió **manual** via `docs/COMPONENTS_I_VERSIONS.md`)._ | — | ℹ️ Assumit (manual) |
 | D.5 | `COMPONENTS_I_VERSIONS.md` es regenera **a mà**; cap CI comprova que estigui al dia. | `eines/genera_inventari.py` | 🔧 Pas de CI: regenerar + `git diff --exit-code` |
 
 ### 📝 Esmenes (revisió creuada d'OC-6/306)
@@ -361,7 +361,7 @@ límit** (runners) i la **validació en maquinari real**.
 - ✅ **BLOC 1 fet i verificat** — A.2 `requirements-build.txt` (`-r requirements.txt` +
   `pyinstaller==6.22.3`, usat pels builds de Windows i macOS) · A.5 tests **abans** de
   l'upload a Windows · A.7/B.4 `concurrency` + `timeout-minutes` als **5** workflows ·
-  B.2 `.github/dependabot.yml` (amb `numpy` i `PyQt6` ignorats) · 1.1 `LICENSE` = GPLv3
+  B.2 manteniment **a mà** (Dependabot **retirat** el 14-10) · 1.1 `LICENSE` = GPLv3
   complet (674 l.) · 1.4/D.2 `pyproject` amb pins · 1.5 `.gitignore` `XX TEMP FILES USUARI/` ·
   2.1/2.2 `instal·la_local.sh` numeració `/6` + `.desktop` a `~/.local/share/applications`.
 - ✅ **BLOC 2 fet i verificat** (`4f6c8bb`) — A.3 verificació de **contingut** del `.tar.gz`
@@ -397,7 +397,7 @@ límit** (runners) i la **validació en maquinari real**.
 - [x] `build-appimage.yml` — **smoke test** de l'AppImage (headless). · **A.4** · ✅ `4f6c8bb`
 - [x] `build-{appimage,windows}.yml` — verificar el **contingut** del `.tar.gz`/`.zip`. · **A.3** · ✅ `4f6c8bb`
 - [x] `.github/` — `concurrency` + `timeout-minutes`. · **A.7/B.4** · ✅ `4f6c8bb`
-- [x] `.github/dependabot.yml` — `github-actions` + `pip`. · **B.2/D.4** · ✅ `4f6c8bb`
+- [x] ~~`.github/dependabot.yml`~~ — **Dependabot RETIRAT** (14-10, decisió de l'operador; manteniment **a mà** amb validació al CI). · **B.2/D.4** · ⛔
 - [x] CI que regeneri `COMPONENTS_I_VERSIONS.md` i comprovi `git diff`. · **D.5** · ✅ `77f7e45`
 - [ ] _(Opcional, **no fet**)_ SBOM + atestació de proveniència. · **A.8** · **baixa**
 

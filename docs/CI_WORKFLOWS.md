@@ -127,11 +127,12 @@ Detalls:
   `pyinstaller==6.22.3`), tot amb pins `==`. Abans s'instal·laven amb specs soltes
   (`numpy<2`, `PyQt5-sip`, `sounddevice` i `pyinstaller` **sense pin**) → podien
   derivar entre execucions.
-- **Manteniment automàtic**: **`.github/dependabot.yml`** obre PRs setmanals per a
-  `github-actions` i `pip` (amb `numpy` i `PyQt6` **ignorats**: el Q9400 no té
-  AVX/SSE4.2 i High Sierra 10.13). Com que els workflows són **manuals**, una PR de
-  Dependabot **no dispara cap build**: després de fusionar-ne una, cal llançar
-  `build-all` a mà per validar-la.
+- **Manteniment — A MÀ** (14-10-2026): **Dependabot RETIRAT** per decisió de
+  l'operador. Els pins (`requirements*.txt`, `pyproject.toml` i les accions) són
+  **deliberats** per compatibilitat (Q9400 sense AVX, macOS 10.13, roda Windows) i
+  Dependabot obria PRs **perjudicials** (p. ex. `pyqt5-qt5` 5.15.19 trencaria
+  Windows; `cffi` 2.1.1 trencaria macOS 10.13). Les actualitzacions es fan **a mà,
+  amb validació al CI**.
 - **Verificació de contingut**: cada build comprova que el paquet contingui
   l'executable i els docs obligatoris **abans** de pujar-lo.
 - **Smoke tests**: Linux (9b, AppImage headless) i macOS (6c, `.app` headless) fan
