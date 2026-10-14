@@ -23,7 +23,7 @@ ESPERATS = {
                "whitening": 1.0, "s": 0.7},
     "structure": {"motor": "qm", "durada_min": 2.0, "fusiona_iguals": True},
     "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
-              "reduir": False, "snap": True, "divisio": 2},
+              "reduir": False, "snap": True, "divisio": 2, "ritme": "off"},
 }
 
 

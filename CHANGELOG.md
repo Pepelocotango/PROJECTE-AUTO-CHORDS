@@ -6,6 +6,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Graella musical («mode fàcil») + capa d'anàlisi crua** (`app/graella.py`, **NOU**):
+  - **`analisi/` (capa crua, evidència)**: l'anàlisi de Chordino i de l'estructura es desa
+    **sense netejar** (`chords_raw.csv`, `segments_raw.csv`, `meta.json`) i **no es toca
+    mai** (ni l'edició, ni el mode fàcil, ni els canvis de BPM/compàs/mode) → es pot
+    **reintrepretar**.
+  - **Mode fàcil** (`Analitza ▸ Mode fàcil: re-regularitza a la graella…`): encaixa els
+    canvis d'acord a la **graella** (ritme harmònic: `auto`/`compàs`/`mig`/`temps`) i, si
+    cal, els talls de **secció** a **blocs** (mòdul de compassos). Una sola operació de
+    desfer; la **cobertura (#4)** es manté. També s'aplica en **analitzar**.
+  - **Presets d'estil** (14: Pop/Blues/Bulería/Swing…) al diàleg de mode fàcil.
+  - **Inferència automàtica** del nivell de ritme harmònic i del cicle de blocs.
+  - Eina MCP **`ac_regularitza`** (mode fàcil) → **51 eines** (vegeu `docs/MCP_AUTO_CHORDS.md`).
+- **Fix — els CSV/export van al PROJECTE**: `visor._carpeta_acords()` ara usa la carpeta de
+  sortida del projecte (abans la derivava del WAV, que viu a `<projecte>/audio/`).
+  Test: `tests/test_projectes_gui.py`.
 - **Troba i reemplaça global** (`c806b3f`): `Edita ▸ Troba i reemplaça…` (**`Ctrl+H`**)
   substitueix **totes** les aparicions exactes d'un **xifrat** (acords) o d'una **etiqueta**
   (estructura) a tot el tema, en **una sola operació de desfer** i **sense canviar cap temps**

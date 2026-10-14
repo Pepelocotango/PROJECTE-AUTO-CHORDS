@@ -84,6 +84,8 @@ class TestObreWavCreaProjecte(_Base):
         self.assertEqual(p.carpeta, os.path.join(os.path.dirname(wav), "Projecte1"))
         self.assertTrue(os.path.isfile(p.ruta_audio()), "àudio copiat a dins")
         self.assertEqual(f.sortida, p.carpeta)
+        self.assertEqual(f.visor_ref._carpeta_acords(), p.carpeta,
+                         "el visor ha de desar els CSV al PROJECTE, no dins audio/")
         self.assertIsNotNone(f.visor_ref, "s'hauria d'haver carregat el visor")
         self.assertIn("Projecte1", f.windowTitle())
         self.assertFalse(f.dirty)

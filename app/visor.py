@@ -35,7 +35,7 @@ import metronom  # noqa: E402
 # monkey-patching que no funciona (ho va caçar `test_imports_unificats`).
 # Forma d'execució suportada: `python -m app.visor` (el directe ja demana
 # l'arrel al sys.path per altres imports relatius d'aquest fitxer).
-from . import icones, pipeline, theme  # noqa: F401
+from . import graella, icones, pipeline, theme  # noqa: F401
 from .timeline import TimelineView  # noqa: E402
 
 # Configuració centralitzada per al directori temporal (configurable)
@@ -395,7 +395,10 @@ class Visor(QMainWindow):
         self._undo_init()   # estat inicial = base per a la primera operacio
 
     def _carpeta_acords(self):
-        return pipeline.carpeta_sortida(self.wav_path)
+        # El PROJECTE mana: si sabem la carpeta de sortida (projecte
+        # autocontingut), és allà on van els CSV/export. Si no, es deriva del
+        # WAV (comportament de llegat / visor standalone).
+        return getattr(self, "sortida", "") or pipeline.carpeta_sortida(self.wav_path)
 
     def _fmt_compas(self, s):
         if not self.tempo_fix:
@@ -1702,6 +1705,75 @@ class Visor(QMainWindow):
         self._omple_llista_ac()
         self.log(f"substitució acords: «{troba}» → «{nou}» ({n})")
         return n
+
+    def regularitza_des_de_cru(self, nivell="auto", modul_compassos=0):
+        """Mode fàcil: re-deriva els acords de l'ANÀLISI CRUA sobre la graella.
+
+        `nivell`: "auto" | "compas" | "mig" | "temps" → **un acord per cel·la**
+        (ritme harmònic). Si `modul_compassos` > 0, també **encaixa els talls de
+        secció** a múltiples d'aquell nombre de compassos (blocs 4/8/16…).
+
+        **No toca la capa crua** (`analisi/`). Una sola operació de desfer.
+        Retorna quants acords ha deixat (0 = res a fer).
+        """
+        durada = float(self.audio["durada"])
+        cru = os.path.join(pipeline.carpeta_analisi(self._carpeta_acords()),
+                           pipeline.NOM_CRU_ACORDS)
+        items = []
+        if os.path.isfile(cru):
+            try:
+                with open(cru, encoding="utf-8") as f:
+                    for fila in csv.reader(f):
+                        if not fila or fila[0].startswith("posici"):
+                            continue
+                        try:
+                            items.append((float(fila[0]), fila[1].strip()))
+                        except (ValueError, IndexError):
+                            continue
+            except OSError:
+                items = []
+        if not items:
+            items = [(float(a[0]), str(a[1])) for a in self.acords]
+        bpm, bpb, off = self.bpm, self.bpb, self.offset
+        if nivell in (None, "auto"):
+            nivell = graella.infereix_nivell(items, bpm, bpb, off, durada,
+                                             log=self.log)
+        nou = graella.regularitza_acords(items, bpm, bpb, off,
+                                         nivell or "compas", durada,
+                                         log=self.log)
+        nous_acords = []
+        if nou:
+            c, _ = pipeline.normalitza_cobertura(nou, [], durada, log=self.log)
+            # Manté el 3r camp (precisió interna) com la resta del model.
+            nous_acords = [(float(t), str(n), f"{float(t):.9f}") for (t, n) in c]
+        noves_sec = self.seccions
+        if modul_compassos and self.seccions:
+            noves_sec = graella.regularitza_seccions(
+                self.seccions, bpm, bpb, off, durada, modul_compassos,
+                log=self.log)
+        canvi_ac = bool(nous_acords)
+        canvi_sec = modul_compassos and noves_sec != self.seccions
+        if not canvi_ac and not canvi_sec:
+            return 0
+        self._undo_marca()
+        if canvi_ac:
+            self.acords = self._valida_canvis_acords(nous_acords)
+        if canvi_sec:
+            self.seccions = self._valida_canvis_seccions(noves_sec)
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            if canvi_ac:
+                self._desa_i_regenera()
+            if canvi_sec:
+                self._regenera_abc_des_de_totes_les_seccions("mode fàcil")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+        self._omple_llista_ac()
+        self._actualitza_llista_abc()
+        self.log(f"mode fàcil: {len(self.acords)} acords, {len(self.seccions)} "
+                 f"seccions (ritme harmònic «{nivell}»)")
+        return len(self.acords)
 
     def _on_section_edit_requested(self, idx):
         # Doble-clic al SectionItem -> franja EDITOR (sense finestra emergent).

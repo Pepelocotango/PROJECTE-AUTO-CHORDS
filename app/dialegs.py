@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from app import config, tempo, vamp_params
+from app import config, graella, tempo, vamp_params
 
 # Traducció al català dels títols dels paràmetres del Chordino (els que dona
 # el plugin son en anglès) + una ajuda curta de quan tocar-los.
@@ -70,7 +70,7 @@ DEFECTES = {
                   "fusiona_iguals": True},
     # Neteja posterior dels acords (post-processat, app/postproc.py)
     "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
-              "reduir": False, "snap": True, "divisio": 2},
+              "reduir": False, "snap": True, "divisio": 2, "ritme": "off"},
 }
 
 
@@ -229,9 +229,10 @@ class DialegOpcions(QDialog):
         self._controls["clean"]["fusiona_iguals"] = c
         fn.addRow(QLabel("Fusionar acords iguals seguits"), c)
         s = _spin(0, 30, 0.1, dnet.get("durada_min", 0.0), 2)
-        s.setToolTip("Elimina els acords que duren menys d'aquesta estona.")
+        s.setToolTip("Elimina els canvis d'acord que duren menys d'aquesta "
+                     "estona, en TEMPS (es converteix a segons amb el BPM).")
         self._controls["clean"]["durada_min"] = s
-        fn.addRow(QLabel("Durada mínima d'un acord (s)"), s)
+        fn.addRow(QLabel("Durada mínima d'un acord (temps)"), s)
         c = _checkbox(dnet.get("snap", False))
         c.setToolTip("Mou l'inici de cada acord a la graella (BPM/compàs).")
         self._controls["clean"]["snap"] = c
@@ -240,6 +241,17 @@ class DialegOpcions(QDialog):
         s.setToolTip("Subdivisions per temps on encaixar (1 = temps).")
         self._controls["clean"]["divisio"] = s
         fn.addRow(QLabel("Subdivisions per temps"), s)
+        cb = QComboBox()
+        for clau in ("off", "auto", "compas", "mig", "temps"):
+            cb.addItem("Desactivat" if clau == "off"
+                       else graella.ETIQUETES[clau], clau)
+        i = cb.findData(dnet.get("ritme", "off"))
+        if i >= 0:
+            cb.setCurrentIndex(i)
+        cb.setToolTip("Mode fàcil: re-deriva els acords de l'anàlisi CRUA a la "
+                      "graella (un acord per cel·la) en analitzar.")
+        self._controls["clean"]["ritme"] = cb
+        fn.addRow(QLabel("Ritme harmònic (mode fàcil)"), cb)
         f.addRow(net)
         return w
 
@@ -250,7 +262,7 @@ class DialegOpcions(QDialog):
         d = val or DEFECTES["structure"]
         s = _spin(0, 120, 0.5, d.get("durada_min", 0.0), 1)
         self._controls["structure"]["durada_min"] = s
-        f.addRow(QLabel("Durada mínima d'una secció (s)"), s)
+        f.addRow(QLabel("Durada mínima d'una secció (compassos)"), s)
         c = _checkbox(d.get("fusiona_iguals", True))
         self._controls["structure"]["fusiona_iguals"] = c
         f.addRow(QLabel("Fusiona trossos consecutius iguals"), c)
@@ -297,6 +309,8 @@ class DialegOpcions(QDialog):
         cl["durada_min"].setValue(float(dc["durada_min"]))
         cl["snap"].setChecked(bool(dc["snap"]))
         cl["divisio"].setValue(float(dc["divisio"]))
+        cl["ritme"].setCurrentIndex(max(0, cl["ritme"].findData(
+            dc.get("ritme", "off"))))
 
     def opcions(self):
         """Retorna les opcions triades, a punt per al pipeline."""
@@ -327,6 +341,7 @@ class DialegOpcions(QDialog):
             "durada_min": round(float(cl["durada_min"].value()), 2),
             "snap": bool(cl["snap"].isChecked()),
             "divisio": int(cl["divisio"].value()),
+            "ritme": cl["ritme"].currentData(),
         }
         return {"bpm": bpm, "chords": chords, "structure": est, "clean": clean}
 
@@ -369,3 +384,62 @@ class DialegTrobaReemplaca(QDialog):
 
     def reemplaca(self):
         return self.ed_reemplaca.text().strip()
+
+
+class DialegModeFacil(QDialog):
+    """Mode fàcil: preset d'estil + ritme harmònic + mòdul d'estructura."""
+
+    def __init__(self, parent=None, preset="auto"):
+        super().__init__(parent)
+        self.setWindowTitle("Mode fàcil")
+        self.setMinimumWidth(430)
+        lay = QVBoxLayout(self)
+        form = QFormLayout()
+        self.cb_preset = QComboBox()
+        for clau, p in graella.PRESETS.items():
+            self.cb_preset.addItem(p["etiqueta"], clau)
+        if preset in graella.PRESETS:
+            self.cb_preset.setCurrentIndex(list(graella.PRESETS).index(preset))
+        self.cb_ritme = QComboBox()
+        for clau in ("auto", "compas", "mig", "temps"):
+            self.cb_ritme.addItem(graella.ETIQUETES[clau], clau)
+        self.cb_modul = QComboBox()
+        for v, et in ((0, "No tocar-ne els talls"), (1, "1 compàs"),
+                      (2, "2 compassos"), (4, "4 compassos (blocs)"),
+                      (8, "8 compassos"), (12, "12 compassos (blues)")):
+            self.cb_modul.addItem(et, v)
+        form.addRow("Preset d'estil:", self.cb_preset)
+        form.addRow("Ritme harmònic:", self.cb_ritme)
+        form.addRow("Estructura en blocs de:", self.cb_modul)
+        lay.addLayout(form)
+        avis = QLabel("Re-deriva els acords de l'anàlisi CRUA, els encaixa al "
+                      "ritme harmònic i ajusta els talls de secció als blocs. "
+                      "Tot és editable i es pot desfer.")
+        avis.setWordWrap(True)
+        lay.addWidget(avis)
+        botons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        botons.accepted.connect(self.accept)
+        botons.rejected.connect(self.reject)
+        lay.addWidget(botons)
+        self.cb_preset.currentIndexChanged.connect(self._aplica_preset)
+        self._aplica_preset()
+
+    def _aplica_preset(self):
+        p = graella.PRESETS.get(self.cb_preset.currentData())
+        if not p:
+            return
+        i = self.cb_ritme.findData(p.get("ritme", "auto"))
+        if i >= 0:
+            self.cb_ritme.setCurrentIndex(i)
+        j = self.cb_modul.findData(int(p.get("modul", 4)))
+        if j >= 0:
+            self.cb_modul.setCurrentIndex(j)
+
+    def preset(self):
+        return self.cb_preset.currentData()
+
+    def ritme(self):
+        return self.cb_ritme.currentData()
+
+    def modul(self):
+        return int(self.cb_modul.currentData())

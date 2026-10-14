@@ -116,6 +116,20 @@ def carpeta_sortida(wav):
     return os.path.join(os.path.dirname(wav), PREFIX_SORTIDA + base)
 
 
+# Subcarpeta de la SORTIDA on es desa l'ANÀLISI CRUA (evidència, només lectura):
+# NO la toquen l'edició, ni el mode fàcil, ni els canvis de compàs/BPM/mode.
+# És el «primer autoanàlisi» que es pot reintrepretar amb la graella.
+NOM_ANALISI = "analisi"
+NOM_CRU_ACORDS = "chords_raw.csv"
+NOM_CRU_SEGMENTS = "segments_raw.csv"
+NOM_ANALISI_META = "meta.json"
+
+
+def carpeta_analisi(sortida):
+    """Carpeta de l'anàlisi crua (`analisi/`) dins la sortida del tema."""
+    return os.path.join(sortida, NOM_ANALISI)
+
+
 # Prefixos dels directoris temporals que crea l'app (per netejar-los sempre).
 PREFIXOS_TMP = ("ac_ttl_", "ac_qm_", "ac_key_")
 
@@ -1120,6 +1134,38 @@ def escriu_atomic(ruta, escriu):
         except OSError:
             pass
         raise
+
+
+def regularitza_acords_csv(csv_cru, csv_desti, bpm, bpb, offset, ritme, durada,
+                           log=None):
+    """Mode fàcil: del cru al MODEL regularitzat a la graella.
+
+    `ritme`: "auto" | "compas" | "mig" | "temps". Converteix la decisió musical
+    (cada quants **temps** canvia l'acord) en segons amb el BPM. Aplica la
+    cobertura (#4). **No toca `csv_cru`.** Retorna la llista d'acords o `None`.
+    """
+    from app import graella                    # import local: evita cicles
+    items = []
+    try:
+        with open(csv_cru, encoding="utf-8") as f:
+            for fila in csv.reader(f):
+                if not fila or fila[0].startswith("posici"):
+                    continue
+                try:
+                    items.append((float(fila[0]), fila[1].strip()))
+                except (ValueError, IndexError):
+                    continue
+    except OSError:
+        return None
+    if not items:
+        return None
+    if ritme in (None, "auto"):
+        ritme = graella.infereix_nivell(items, bpm, bpb, offset, durada, log=log)
+    res = graella.regularitza_acords(items, bpm, bpb, offset,
+                                     ritme or "compas", durada, log=log)
+    acords, _ = normalitza_cobertura(res, [], durada, log=log)
+    desa_acords_csv(csv_desti, [(float(t), str(n)) for (t, n) in acords])
+    return acords
 
 
 def desa_acords_csv(ruta, items):

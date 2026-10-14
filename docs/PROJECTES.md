@@ -16,6 +16,10 @@ La meva cançó/                 ← la carpeta del projecte (portable)
 ├── audio/ tema.wav            ← CÒPIA de l'àudio (mai depèn de fora)
 ├── acords.csv                 ← el model (font de veritat)
 ├── estructura_ABC.csv         ← el model (font de veritat)
+├── analisi/                   ← ANÀLISI CRUA (evidència, MAI es toca):
+│   ├── chords_raw.csv         ←    sortida de Chordino, sense netejar
+│   ├── segments_raw.csv       ←    sortida del segmentador d'estructura
+│   └── meta.json              ←    WAV, durada, BPM/compàs/offset i opcions
 ├── wavs_acords/ …             ← exports (els crea `pipeline.exporta_total`)
 └── backup/ <data-hora>/ …     ← còpies versionades (autosave / rotació)
 ```

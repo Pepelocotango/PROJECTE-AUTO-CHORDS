@@ -28,7 +28,7 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 # UN SOL objecte per mòdul (vegeu visor.py): els imports crus creaven objectes
 # diferents dels que veuen la resta de mòduls i els tests.
-from . import ffmpeg, partitura, pipeline, postproc, theme  # noqa: F401
+from . import ffmpeg, graella, partitura, pipeline, postproc, theme  # noqa: F401
 from . import config  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402
@@ -194,13 +194,26 @@ class Feina(QThread):
             self.log("1/3 extreu acords (Chordino)...")
             pipeline.extract_chords(self.wav, csv_ac, self.log,
                                     params=(self.opcions.get("chords") or None))
+            # CAPA CRUA: desa el resultat de Chordino ABANS de netejar-lo. És
+            # l'evidència de l'anàlisi i NO es toca mai (ni l'edició, ni el mode
+            # fàcil, ni els canvis de compàs/BPM/mode).
+            ana = pipeline.carpeta_analisi(self.sortida)
+            try:
+                os.makedirs(ana, exist_ok=True)
+                if os.path.isfile(csv_ac):
+                    shutil.copy2(csv_ac, os.path.join(
+                        ana, pipeline.NOM_CRU_ACORDS))
+            except OSError as e:  # noqa: BLE001
+                self.log(f"no s'ha pogut desar l'anàlisi crua dels acords: {e}")
             # Neteja posterior dels acords (opcions del dialeg).
             cl = self.opcions.get("clean") or {}
+            beat = (60.0 / float(self.bpm)) if self.bpm else 0.0
             if cl:
                 self.log("1b/3 neteja dels acords...")
                 postproc.processa_acords_csv(
                     csv_ac,
-                    durada_min=float(cl.get("durada_min", 0.0)),
+                    # `durada_min` s'expressa en TEMPS → a segons amb el BPM
+                    durada_min=float(cl.get("durada_min", 0.0)) * beat,
                     fusiona_iguals=bool(cl.get("fusiona_iguals", True)),
                     sense_baix=bool(cl.get("sense_baix", False)),
                     reduir=bool(cl.get("reduir", False)),
@@ -208,6 +221,18 @@ class Feina(QThread):
                     bpm=self.bpm, bpb=self.bpb, offset=self.offset,
                     divisio=int(cl.get("divisio", 1)), log=self.log,
                     durada=durada_wav)
+            # Mode fàcil: si està activat, re-regularitza els acords de l'anàlisi CRUA.
+            ritme = str(cl.get("ritme") or "off")
+            if ritme and ritme != "off":
+                self.log("1c/3 mode fàcil (ritme harmònic)...")
+                try:
+                    raw = os.path.join(ana, pipeline.NOM_CRU_ACORDS)
+                    if os.path.isfile(raw):
+                        pipeline.regularitza_acords_csv(
+                            raw, csv_ac, self.bpm, self.bpb, self.offset,
+                            ritme, durada_wav, log=self.log)
+                except Exception as e:  # noqa: BLE001
+                    self.log(f"mode fàcil ERROR: {e}")
             self.progres.emit(50)
             csv_seg = None
             if self.amb_estructura:
@@ -217,16 +242,37 @@ class Feina(QThread):
                     self.wav, csv_seg, self.log,
                     motor=(self.opcions.get("structure") or {}).get(
                         "motor", "qm"))
+                try:
+                    if os.path.isfile(csv_seg):
+                        shutil.copy2(csv_seg, os.path.join(
+                            ana, pipeline.NOM_CRU_SEGMENTS))
+                except OSError:
+                    pass
                 self.progres.emit(75)
                 self.log("3/3 ABC (estructura)...")
                 abc = os.path.join(self.sortida, "estructura_ABC.csv")
                 _est = self.opcions.get("structure") or {}
+                compas = beat * max(1, int(self.bpb or 4))
                 pipeline.fer_abc(csv_seg, abc, self.bpm, self.log,
                                  lliure=not self.tempo_fix, bpb=self.bpb,
                                  offset=self.offset,
-                                 durada_min=float(_est.get("durada_min", 0.0)),
+                                 # `durada_min` s'expressa en COMPASSOS → a segons
+                                 durada_min=float(_est.get("durada_min", 0.0)) * compas,
                                  fusiona_iguals=bool(_est.get("fusiona_iguals", True)),
                                  durada=durada_wav)
+            try:
+                os.makedirs(ana, exist_ok=True)
+                with open(os.path.join(ana, pipeline.NOM_ANALISI_META), "w",
+                          encoding="utf-8") as f:
+                    json.dump({"wav": self.wav, "durada": durada_wav,
+                               "bpm": self.bpm, "bpb": self.bpb,
+                               "offset": self.offset,
+                               "tempo_fix": self.tempo_fix,
+                               "opcions": self.opcions,
+                               "data": time.strftime("%Y-%m-%dT%H:%M:%S")},
+                              f, ensure_ascii=False, indent=2)
+            except OSError as e:  # noqa: BLE001
+                self.log(f"no s'ha pogut desar la meta de l'anàlisi: {e}")
             self.log("Analisi feta. Les wavs es generaran en 'Exporta'.")
             self.progres.emit(100)
             self.feta.emit(True, self.sortida)
@@ -684,6 +730,8 @@ class Finestra(QMainWindow):
         self._act(m, "Detecta el compàs 1 automàticament", None,
                     lambda: self._detecta_compas1())
         self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
+        self._act(m, "Mode fàcil: re-regularitza a la graella…", "",
+                  self._mode_facil_ui)
         m.addSeparator()
         m.addAction(self.amb_est)      # Inclou estructura (commutable)
         # --- Ajuda ---
@@ -1125,6 +1173,27 @@ class Finestra(QMainWindow):
             self.avisa_info("Auto Chords",
                             f"No s'ha trobat cap «{troba}» per substituir.")
 
+    def _mode_facil_ui(self):
+        """Mode fàcil: preset d'estil + ritme harmònic + mòdul → regularitza."""
+        vr = self.visor_ref
+        if vr is None or not vr.acords:
+            self.avisa_info("Auto Chords", "Analitza un tema primer.")
+            return
+        dlg = dialegs.DialegModeFacil(self)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        p = graella.PRESETS.get(dlg.preset()) or {}
+        bpb = int(p.get("bpb") or self._bpb_val())
+        den = int(p.get("den") or 4)
+        nou = f"{bpb}/{den}" if den != 4 else str(bpb)
+        if self.bpb.text().strip() != nou:
+            self.bpb.setText(nou)
+            self._aplica_parametres_temps()
+        n = vr.regularitza_des_de_cru(dlg.ritme(), modul_compassos=dlg.modul())
+        if n:
+            self.registra(f"mode fàcil: {n} acords a la graella "
+                          f"({p.get('etiqueta', '')})")
+
     def _renomena_element(self):
         vr = self.visor_ref
         if vr is None:
@@ -1448,6 +1517,9 @@ class Finestra(QMainWindow):
                 tempo_fix=self.tempo_fix.isChecked(),
             )
             self.visor_ref = visor
+            # El visor ha de desar els CSV/export a la carpeta de sortida del
+            # PROJECTE (no derivar-la del WAV, que viu a <projecte>/audio/).
+            visor.sortida = self.sortida or pipeline.carpeta_sortida(wav)
             # connectem els senyals del visor (icona play/pause + missatges
             # de la caixa d'informacio: desfer/refer...)
             try:
