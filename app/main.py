@@ -1456,6 +1456,14 @@ class Finestra(QMainWindow):
                 self.wav_info.setText(
                     self.wav_info.text() +
                     f"   ·   convertit de «{os.path.basename(self.wav_original)}»")
+            # Un WAV NOU no ha d'heretar el BPM del tema anterior (troballa
+            # OC-6/415: «el BPM persistia en canviar WAV», i el tema nou sortia
+            # amb el tempo vell). Es torna al valor per defecte i es registra;
+            # l'usuari el pot detectar o posar a mà.
+            if self.bpm.text().strip() not in ("", "120.0", "120"):
+                self.registra("WAV nou → BPM reiniciat a 120.0 "
+                              "(detecta'l o posa'l a mà)")
+                self.bpm.setText("120.0")
             self._carrega_visor(treball)
         except Exception as e:  # noqa: BLE001
             self.logger.exception("Àudio no vàlid: %s", ruta)

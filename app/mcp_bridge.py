@@ -112,6 +112,22 @@ def _op_ping(ctx, params):
     return {"pong": True, "pont": PONT_VERSION, "app": APP_VERSION}
 
 
+def _pren_avis(w):
+    """Retorna el darrer avís de l'app **una vegada** i el neteja.
+
+    Sense això, `ultim_avis` només s'escrivia i mai no s'esborrava: un agent que
+    consultés `ac_status` més tard veuria un avís VELL com si fos nou (troballa
+    OC-6/415: «avís persistent»). L'agent ha de llegir-lo just després de
+    l'acció que l'ha produït.
+    """
+    txt = getattr(w, "ultim_avis", "")
+    try:
+        w.ultim_avis = ""
+    except (AttributeError, RuntimeError):
+        pass
+    return txt
+
+
 def _op_status(ctx, params):
     w = ctx.window
     vr = ctx.visor
@@ -121,8 +137,9 @@ def _op_status(ctx, params):
         "audio": None,
         "missatge": "",
         # Darrer avís que l'app ha hagut de donar amb el pont actiu (llavors NO
-        # és modal, perquè no encalli el pont): així l'agent el pot veure.
-        "avis": getattr(w, "ultim_avis", ""),
+        # és modal, perquè no encalli el pont): així l'agent el pot veure. Es
+        # retorna UN COP i es neteja (si no, seria «persistent»; OC-6/415).
+        "avis": _pren_avis(w),
         # A5: export en curs (asíncron) → l'agent sap que s'està fent feina.
         "exportant": bool(getattr(w, "exportant", False)),
         "exporta_iniciat": float(getattr(w, "exporta_iniciat", 0.0) or 0.0),
@@ -576,7 +593,7 @@ def _op_export_wav(ctx, params):
     if err:
         r["error"] = err
     if getattr(w, "ultim_avis", ""):
-        r["avis"] = w.ultim_avis
+        r["avis"] = _pren_avis(w)
     return r
 
 

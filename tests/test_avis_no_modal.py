@@ -137,6 +137,17 @@ class TestExportMCPNoBloqueja(_Base):
         r = mcp_bridge._op_status(mcp_bridge._Context(w), {})
         self.assertEqual(r.get("avis"), "avís de prova")
 
+    def test_el_status_consumeix_lavis(self):
+        """L'avís es retorna UN COP: si no, seria «persistent» (OC-6/415)."""
+        w = _finestra()
+        w.mcp_actiu = True
+        w.avisa("Títol", "avís de prova")
+        ctx = mcp_bridge._Context(w)
+        self.assertEqual(mcp_bridge._op_status(ctx, {}).get("avis"),
+                         "avís de prova")
+        self.assertEqual(mcp_bridge._op_status(ctx, {}).get("avis", ""), "",
+                         "un avís vell no es pot repetir a cada status")
+
 
 
 def tearDownModule():
