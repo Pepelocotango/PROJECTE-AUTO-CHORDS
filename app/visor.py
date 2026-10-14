@@ -1404,87 +1404,145 @@ class Visor(QMainWindow):
             QMessageBox.warning(self, "Visor",
                                 f"No s'ha pogut eliminar:\n{e}")
 
-    def _seccio_que_conte(self, t):
-        """Índex de la secció que conté el temps t (o -1)."""
-        for i, (ini, fi, *_r) in enumerate(self.seccions):
-            if float(ini) <= t < float(fi):
-                return i
-        return -1
-
     def _enganxa_seleccio(self, buf, at):
-        """Enganxa el buffer intern del timeline al temps `at` (Ctrl+V).
+        """Enganxa el porta-retalls INTERN **sobreescrivint** una regió (Ctrl+V).
 
-        - Acords: s'insereixen als temps `at + rel` i es revalida l'ordre
-          estricte (si xoca amb un acord existent, no es fa cap canvi).
-        - Seccions: el bloc s'insereix dins la secció que conté `at`, que es
-          parteix en tres; si el bloc no hi cap, no es fa cap canvi.
-        Tot plegat és una sola operació d'undo."""
+        Regla d'or #4: els clips cobreixen SEMPRE tota la WAV i la cançó no pot
+        créixer → l'enganxat NO insereix: el bloc copiat **substitueix** el tram
+        `[T, T+L]` de cada carril present (les vores es tallen i s'acoblen). Si
+        el bloc sobrepassa el final, es **retalla**.
+
+        Àncora `T`: el cursor; si el cursor NO s'ha mogut des de la còpia, el
+        **final del bloc copiat** (enganxar just després). Tot en una sola
+        operació de desfer, i després es deixa seleccionat el bloc enganxat.
+        """
         if not isinstance(buf, dict):
             return
-        at = float(at)
         chords = list(buf.get("chords") or [])
         sections = list(buf.get("sections") or [])
         if not chords and not sections:
             return
         durada = float(self.audio["durada"])
-        nou_ac, descartats = [], 0
-        for (rel, name) in chords:
-            t = at + float(rel)
-            if 0.0 <= t <= durada:
-                nou_ac.append((t, str(name)))
-            else:
-                descartats += 1
-        if descartats:
-            self.log(f"enganxa: {descartats} acord(s) fora de "
-                     f"[0, {durada:.2f}] descartats")
-        noves_sec = self.seccions
-        n_sec = 0
-        if sections:
-            rel0 = float(sections[0][0])
-            final = max(float(fi) for (_i, fi, _l, _f) in sections)
-            span = final - rel0
-            idx = self._seccio_que_conte(at)
-            if idx < 0:
-                self.log("enganxa: el cursor no és dins cap secció")
-            elif at + span > float(self.seccions[idx][1]) + 1e-9:
-                self.log("enganxa: el bloc de seccions no hi cap a la secció")
-            else:
-                ini_s, fi_s, L_s, fam_s = self.seccions[idx]
-                bloc = [(at + (float(i) - rel0), at + (float(f) - rel0),
-                         str(l), str(fam)) for (i, f, l, fam) in sections]
-                cand = (self.seccions[:idx]
-                        + [(ini_s, at, L_s, fam_s)]
-                        + bloc
-                        + [(at + span, fi_s, L_s, fam_s)])
-                noves_sec = [s for s in cand
-                             if float(s[1]) - float(s[0]) > 1e-9]
-                n_sec = len(bloc)
-        # -- validació sense efectes (si xoca, no es toca res) --
+        rel = 1e-6
+        # -- àncora --
+        T = float(at)
+        cc, bf = buf.get("cursor_copy"), buf.get("bloc_fi")
+        if cc is not None and bf is not None and abs(T - float(cc)) <= 1e-6:
+            T = float(bf)
+        T = max(0.0, min(T, durada))
+        # -- reconstrucció per carril (sobreescriptura) --
+        nous_acords = (self._bloc_sobre_acords(
+            self.acords, chords, float(buf.get("chord_len") or 0.0), T,
+            durada, rel) if chords else None)
+        noves_seccions = (self._bloc_sobre_seccions(
+            self.seccions, sections, float(buf.get("section_len") or 0.0), T,
+            durada, rel) if sections else None)
+        # -- validació sense efectes (no assigna res) --
         try:
-            cand_ac = self._valida_canvis_acords(self.acords + nou_ac)
-            if n_sec:
-                noves_sec = self._valida_canvis_seccions(noves_sec)
+            cand_ac = (self._valida_canvis_acords(nous_acords)
+                       if nous_acords is not None else list(self.acords))
+            cand_sec = (self._valida_canvis_seccions(noves_seccions)
+                        if noves_seccions is not None else list(self.seccions))
         except ValueError as e:
             self.log(f"enganxa: canvi invalid, no s'ha fet res ({e})")
             return
-        if not nou_ac and not n_sec:
+        if cand_ac == self.acords and cand_sec == self.seccions:
+            self.log("enganxa: res a fer")
             return
         self._undo_marca()
         self.acords = cand_ac
-        if n_sec:
-            self.seccions = noves_sec
+        if noves_seccions is not None:
+            self.seccions = cand_sec
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
-            if nou_ac:
+            if chords:
                 self._desa_i_regenera()
-            if n_sec:
+            if sections:
                 self._regenera_abc_des_de_totes_les_seccions("enganxat")
-            self.log(f"enganxat a {at:.2f}s: {len(nou_ac)} acords, "
-                     f"{n_sec} seccions")
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut enganxar:\n{e}")
+        self._selecciona_bloc_enganxat(T, chords, sections, rel)
+        self.log(f"enganxat a {T:.2f}s (sobreescrivint): {len(chords)} "
+                 f"acord(s), {len(sections)} secció(ns)")
+
+    def _bloc_sobre_acords(self, acords, bloc, llargada, T, durada, rel):
+        """Nova llista d'acords amb el bloc sobreescrit dins `[T, T+llargada]`.
+
+        Els acords són marques (inici) amb final **derivat**: es mantenen les
+        marques anteriors a `T`, s'hi posen les del bloc i s'assegura una marca a
+        `T+llargada` (amb el nom del clip que hi havia) perquè l'últim acord
+        copiat acabi exactament allà.
+        """
+        Te = min(T + float(llargada), durada)
+        punts = []
+        for (r, name) in bloc:
+            t = T + float(r)
+            if t < durada - rel:
+                punts.append((t, str(name), f"{t:.9f}"))
+        if not punts:
+            return list(acords)
+        # marca de tancament a Te
+        marca = None
+        for a in acords:
+            if abs(float(a[0]) - Te) <= rel:
+                marca = a
+                break
+        if marca is None and Te < durada - rel:
+            after = None
+            for a in acords:
+                if float(a[0]) <= Te - rel:
+                    after = a
+                else:
+                    break
+            marca = (Te, str(after[1]) if after else punts[-1][1],
+                     f"{Te:.9f}")
+        nou = [a for a in acords if float(a[0]) < T - rel]
+        nou += punts
+        if marca is not None:
+            nou.append(marca)
+        nou += [a for a in acords if float(a[0]) > Te + rel]
+        return nou
+
+    def _bloc_sobre_seccions(self, seccions, bloc, llargada, T, durada, rel):
+        """Nova llista de seccions amb el bloc sobreescrit dins `[T, T+llargada]`."""
+        Te = min(T + float(llargada), durada)
+        nou = []
+        for (ini, fi, ll, fam) in seccions:
+            ini, fi = float(ini), float(fi)
+            if fi <= T + rel or ini >= Te - rel:
+                nou.append((ini, fi, ll, fam))
+                continue
+            if ini < T - rel:              # part esquerra
+                nou.append((ini, T, ll, fam))
+            if fi > Te + rel:              # part dreta
+                nou.append((Te, fi, ll, fam))
+        for (ri, rf, ll, fam) in bloc:
+            ini = T + float(ri)
+            fi = min(T + float(rf), Te)
+            if ini < durada - rel and fi - ini > rel:
+                nou.append((ini, fi, str(ll), str(fam)))
+        nou.sort(key=lambda s: float(s[0]))
+        return [s for s in nou if float(s[1]) - float(s[0]) > rel]
+
+    def _selecciona_bloc_enganxat(self, T, chords, sections, rel):
+        """Deixa seleccionat el bloc acabat d'enganxar (acords i/o seccions)."""
+        keys = set()
+        for (r, _n) in chords:
+            t = T + float(r)
+            for i, a in enumerate(self.acords):
+                if abs(float(a[0]) - t) <= rel:
+                    keys.add(("chord", i))
+                    break
+        for (ri, _rf, _l, _f) in sections:
+            ini = T + float(ri)
+            for i, s in enumerate(self.seccions):
+                if abs(float(s[0]) - ini) <= rel:
+                    keys.add(("section", i))
+                    break
+        if keys and hasattr(self, "timeline"):
+            self.timeline.select_multi(keys)
 
     def _on_section_moved(self, idx, ini, fi):
         self._undo_marca()

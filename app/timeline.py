@@ -616,6 +616,17 @@ class TimelineView(QGraphicsView):
         self._sync_selection_visual()
         self.clipSelected.emit("", -1)
 
+    def select_multi(self, keys) -> None:
+        """Fixa la multi-selecció a `keys` (conjunt de (kind, idx)).
+
+        El fa servir el visor després d'enganxar, per deixar seleccionat el bloc
+        enganxat."""
+        self._multi = {(k, int(i)) for (k, i) in keys}
+        self._sel = next(iter(sorted(self._multi)), ("", -1))
+        self._sync_selection_visual()
+        k, i = self._sel
+        self.clipSelected.emit(k, i)
+
     def toggle_selection(self, kind: str, index: int) -> None:
         """Ctrl+clic: afegeix o treu el clip de la selecció múltiple."""
         key = (kind, index)
@@ -655,17 +666,24 @@ class TimelineView(QGraphicsView):
     def copy_selection(self) -> None:
         """Copia la selecció al buffer intern, relativa al clip més antic.
 
-        Els acords es guarden com (t_relatiu, nom) i les seccions com
-        (ini_rel, fi_rel, lletra, família); `offset` és el temps absolut més
-        antic per poder enganxar la peça sencera amb un sol desplaçament."""
+        Guarda, per carril, les llistes relatives **i la llargada del bloc**
+        (`chord_len`/`section_len`), més `bloc_fi` (final de la selecció = inici
+        del primer clip NO seleccionat, que és l'àncora per defecte si el cursor
+        no s'ha mogut) i `cursor_copy`. Així l'enganxat pot **sobreescriure** una
+        regió (regla d'or #4: la suma de clips ha de ser sempre la durada de la
+        WAV; la cançó no pot créixer)."""
         keys = self.selected_keys()
         if not keys:
             return
-        chords, sections = [], []
-        for kind, idx in keys:
+        durada = float(self._durada)
+        chords, chord_fis, sections = [], [], []
+        for kind, idx in sorted(keys, key=lambda k: (k[0], k[1])):
             if kind == "chord" and 0 <= idx < len(self._acords):
-                chords.append((float(self._acords[idx][0]),
-                               str(self._acords[idx][1])))
+                t = float(self._acords[idx][0])
+                fi = (float(self._acords[idx + 1][0])
+                      if idx + 1 < len(self._acords) else durada)
+                chords.append((t, str(self._acords[idx][1])))
+                chord_fis.append(fi)
             elif kind == "section" and 0 <= idx < len(self._seccions):
                 ini, fi, lletra, fam = self._seccions[idx]
                 sections.append((float(ini), float(fi), str(lletra), str(fam)))
@@ -673,12 +691,22 @@ class TimelineView(QGraphicsView):
             return
         chords.sort(key=lambda x: x[0])
         sections.sort(key=lambda x: x[0])
-        t0 = min([c[0] for c in chords] + [s[0] for s in sections])
+        # Cada carril es normalitza al SEU propi inici: així, en una selecció
+        # mixta, els dos blocs s'enganxen a partir del cursor sense deixar forats.
+        inici_ac = chords[0][0] if chords else 0.0
+        inici_sec = sections[0][0] if sections else 0.0
+        inici = min([c[0] for c in chords] + [s[0] for s in sections])
+        bloc_fi = max(chord_fis + [s[1] for s in sections])
         self._clipboard = {
-            "offset": t0,
-            "chords": [(t - t0, name) for (t, name) in chords],
-            "sections": [(ini - t0, fi - t0, ll, fam)
+            "offset": inici,
+            "chords": [(t - inici_ac, name) for (t, name) in chords],
+            "chord_len": (max(chord_fis) - inici_ac) if chord_fis else 0.0,
+            "sections": [(ini - inici_sec, fi - inici_sec, ll, fam)
                          for (ini, fi, ll, fam) in sections],
+            "section_len": ((max(s[1] for s in sections) - inici_sec)
+                            if sections else 0.0),
+            "bloc_fi": bloc_fi,
+            "cursor_copy": float(self._pos_t),
         }
 
     def _delete_selection(self) -> None:

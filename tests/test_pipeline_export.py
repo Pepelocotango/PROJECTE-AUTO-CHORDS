@@ -857,8 +857,11 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         self.assertEqual(len(v.acords), n)
         v.close()
 
-    def test_ctrl_v_enganxa_seccio_parteix_la_contenidora(self):
-        """Ctrl+V de seccions: insereix el bloc i parteix la contenidora."""
+    def test_ctrl_v_enganxa_seccio_sobreescriu(self):
+        """Ctrl+V de seccions: el bloc substitueix la regió (sobreescriptura).
+
+        A 0-5, B 5-10, C 10-20; copiem B (5-10) i enganxem a 12 → C es talla i
+        queda A 0-5 · B 5-10 · C 10-12 · B 12-17 · C 17-20."""
         from PyQt5.QtGui import QKeyEvent
         from PyQt5.QtCore import QEvent, Qt
         v, _ = self._make_visor_with_data()
@@ -869,27 +872,39 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v.timeline.set_position(12.0, emit=False)   # dins C 10-20
         v.timeline.keyPressEvent(
             QKeyEvent(QEvent.KeyPress, Qt.Key_V, Qt.ControlModifier))
-        self.assertEqual(len(v.seccions), n + 2)   # 10-12 C + 12-17 B + 17-20 C
+        self.assertEqual(len(v.seccions), n + 2)   # 10-12 C · 12-17 B · 17-20 C
         for i in range(len(v.seccions) - 1):
             self.assertLessEqual(v.seccions[i][1], v.seccions[i + 1][0] + 1e-9)
         v.undo()
         self.assertEqual(len(v.seccions), n)
         v.close()
 
-    def test_ctrl_v_seccio_no_hi_cap_no_canvia_res(self):
-        """Si el bloc de seccions no cap a la contenidora, no es toca res."""
+    def test_ctrl_v_seccio_sobreescriu_la_regio(self):
+        """Ctrl+V de seccions: SOBREESCRIU [cursor, cursor+span] amb el bloc.
+
+        Model «com un DAW» (regla #4): el bloc no s'hi «insereix», substitueix
+        la regió; les vores es tallen i s'acoblen, i la suma segueix sent la
+        durada de la WAV."""
         from PyQt5.QtGui import QKeyEvent
         from PyQt5.QtCore import QEvent, Qt
         v, _ = self._make_visor_with_data()
-        n = len(v.seccions)
-        v.timeline.select_clip("section", 0)   # A 0-5 (span 5)
+        n = len(v.seccions)                        # 3: A 0-5, B 5-10, C 10-20
+        v.timeline.select_clip("section", 0)       # A 0-5 (span 5)
         v.timeline.keyPressEvent(
             QKeyEvent(QEvent.KeyPress, Qt.Key_C, Qt.ControlModifier))
-        v.timeline.set_position(6.0, emit=False)   # dins B 5-10: 6+5=11 > 10
+        v.timeline.set_position(6.0, emit=False)   # dins B 5-10
         v.timeline.keyPressEvent(
             QKeyEvent(QEvent.KeyPress, Qt.Key_V, Qt.ControlModifier))
+        # A 0-5 · B 5-6 · A 6-11 · C 11-20
+        self.assertEqual(len(v.seccions), n + 1)
+        self.assertEqual([s[2] for s in v.seccions], ["A", "B", "A", "C"])
+        for i in range(len(v.seccions) - 1):
+            self.assertAlmostEqual(float(v.seccions[i][1]),
+                                   float(v.seccions[i + 1][0]), places=6)
+        self.assertAlmostEqual(float(v.seccions[-1][1]), 20.0, places=6)
+        self.assertEqual(len(v._undo_stack), 1)    # una sola operació
+        v.undo()
         self.assertEqual(len(v.seccions), n)
-        self.assertEqual(len(v._undo_stack), 0)
         v.close()
 
     def test_ctrl_d_duplica_acord_a_mig_cami(self):
