@@ -163,6 +163,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   (`pipeline.saneja_nom_acord`) als 4 camins.
 - **Cursor vermell desalineat amb el LOOP A/B**: en fer **play** i en **activar el
   loop sonant** (cursor i timeline sincronitzats amb el so).
+- **El BPM s'heretava en canviar de WAV**: `tria_wav()` ara torna el camp de BPM al
+  valor per defecte (120.0) i ho registra; abans el tema nou sortia analitzat amb el
+  tempo del tema anterior.
+- **Avís «persistent» pel pont MCP**: `ac_status` i l'export retornen el darrer avís
+  **UN SOL COP** i el netegen (`mcp_bridge._pren_avis`); abans un agent podia veure
+  un avís vell com si fos nou.
 ## [0.6.2] — 2026-10-13 (BETA)
 
 ### Afegit
