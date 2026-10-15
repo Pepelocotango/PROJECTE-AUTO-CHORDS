@@ -974,6 +974,19 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
   canviar la selecció; opcionalment, **audició de la inversió/baix** (`A-/G`).
 - **A vigilar**: el motor d'àudio d'aquest PC (sense AVX), baixa latència i que
   **no interfereixi** amb la reproducció de la cançó.
+- **Com ho faríem (investigat 15-10, OC-8)** — **cap dependència nova**:
+  - Les apps «pro» (MsyChords, InstaChord, Chordbot, Chordjam…) fan totes el mateix:
+    **xifrat → graus → notes MIDI → sintetitzador intern** (i sovint també un
+    **arpegi/strum**).
+  - **Ja ho tenim**: `app/audio_out.py` (motor **unificat** a 3 SO: Linux
+    `paplay`/`aplay`, mac/win `sounddevice`/PortAudio) i **`numpy`** (com fa
+    `app/metronom.py`, sinusoide + envolupant «sense pops»).
+  - **Pla**: mòdul pur **`app/acord_audio.py`** — `notes_del_tipus(arrel, graus)`
+    (intervals **derivats de la mateixa `xifrat.TAULA_TIPUS`** → font única) +
+    `genera_acord`/`genera_arpegi` (to lleuger + envolupant). El botó **▶ Escoltar**
+    del panell sonaria **arpegi (per separat) + bloc (alhora)** amb un **motor
+    efímer** (no interfereix amb la cançó). Tot dins `try/except` → si l'àudio
+    falla, **avís clar**, mai un crash.
 
 ### 14.3 Revisar Copiar/Enganxa (per què de vegades no «fa el que s'espera»)
 - **Objectiu**: auditar copiar / retallar / enganxar (clips **i** loop) i
