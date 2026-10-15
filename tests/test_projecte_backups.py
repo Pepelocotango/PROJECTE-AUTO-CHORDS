@@ -96,6 +96,19 @@ class TestBackups(unittest.TestCase):
         p = self._projecte()
         self.assertEqual(p.backups(), [])        # encara no s'ha fet cap backup
 
+    def test_molts_backups_dins_el_mateix_segon(self):
+        """La rotació ha de quedar-se els MÉS NOUS, ni que comparteixin segon."""
+        p = self._projecte()
+        creats = [p.fes_backup(max_backups=10) for _ in range(15)]
+        queden = p.backups()
+        self.assertEqual(len(queden), 10)
+        # noms ÚNICS (no es reutilitza cap nom esborrat)
+        noms = [os.path.basename(b) for b in queden]
+        self.assertEqual(len(set(noms)), len(noms))
+        # els 10 més NOUS (els 10 darrers creats) són els que queden
+        esperats = {os.path.abspath(c) for c in creats[-10:]}
+        self.assertEqual({os.path.abspath(b) for b in queden}, esperats)
+
 
 # ── Sessió + autosave (GUI) ──────────────────────────────────────────────────
 class _BaseGUI(unittest.TestCase):

@@ -47,7 +47,10 @@ def _ara():
 
 
 def _timestamp():
-    return datetime.now().strftime("%Y%m%d-%H%M%S")
+    # Amb MICROSEGONS: noms únics i que ORDENEN cronològicament encara que es
+    # facin moltes còpies dins el mateix segon (abans, el sufix «-2/-3…» feia
+    # que l'ordre lexicogràfic fos incorrecte a partir de «-10»).
+    return datetime.now().strftime("%Y%m%d-%H%M%S-%f")
 
 
 def _acproj_de_carpeta(carpeta):

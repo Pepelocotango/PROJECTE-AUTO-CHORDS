@@ -76,6 +76,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **Backups — noms únics i ordre correcte**: el segell dels backups ara porta
+  **microsegons** (`YYYYMMDD-HHMMSS-ffffff`). Abans, quan se'n feien molts dins el
+  mateix segon, el sufix `-2/-3…` trencava l'ordre **lexicogràfic** a partir de
+  `-10` → la rotació podia quedar-se les còpies equivocades. Test:
+  `test_projecte_backups` (molts backups dins el mateix segon).
 - **Projectes — no sobreescriure un projecte existent**: `Projecte.crea()` ara
   **peta** si la carpeta de destí ja té un `.acproj` (abans el podia sobreescriure
   i perdre el document —tempo/vista—, sobretot en la migració *in situ*). Tests
