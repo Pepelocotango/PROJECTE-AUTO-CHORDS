@@ -64,7 +64,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | — | `self.b_offset_cursor` | **Marca el compàs 1 aquí** (icona `map-pin`) → al cursor | `QPushButton` |
 | — | `self.amb_est` | **Inclou estructura** | `QAction` (menú Analitza) |
 | — | `self.tb_loop` · `self.tb_neteja_loop` · `self.tb_mut` | **loop** (icona `repeat-2`) · **neteja el loop** (icona `x`) · **mute** (icona `volume-x`) | `QPushButton` |
-| — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió**: Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · Treset (1/12) | `QPushButton` (checkable) · `QComboBox` |
+| — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió**: Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · Treset (1/12) · **1 compàs · 4 · 8 · 16 compassos** | `QPushButton` (checkable) · `QComboBox` |
 | — | `self.b_metro` · `self.vol_metro` | **metrònom** (icona `metronome`) · volum del clic | `QPushButton` · `QSlider` |
 | — | `self.b_play_tb` | **play / pause** transport (icones `play` / `pause`) | `QPushButton` |
 | — | `self.barra` | **barra de progrés** | `QProgressBar` (a la status) |
@@ -84,7 +84,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | Menú | Accions |
 |------|---------|
 | **Fitxer** | Obre WAV… (Ctrl+O) · Obre projecte… (Ctrl+Shift+O) · Obre recent… · Desa (Ctrl+S) · Desa com… (Ctrl+Shift+S) · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Tonalitat automàtica (qm-keydetector) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
-| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix l'acord al cursor… · Parteix la secció al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
+| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix l'acord al cursor… · Parteix la secció al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Metrònom |
 | **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Mode fàcil: re-regularitza a la graella… · Inclou estructura |

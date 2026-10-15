@@ -688,6 +688,10 @@ class Finestra(QMainWindow):
         self._act(m, "Refer", "Ctrl+Y", self._redo_visor)
         self._act(m, "Refer (alternatiu)", "Ctrl+Shift+Z", self._redo_visor)
         m.addSeparator()
+        self._act(m, "Retalla", "Ctrl+X", self._retalla_clips)
+        self._act(m, "Copia", "Ctrl+C", self._copia_clips)
+        self._act(m, "Enganxa", "Ctrl+V", self._enganxa_clips)
+        m.addSeparator()
         self._act(m, "Afegeix acord…", "Ctrl+Shift+A", self._afegeix_acord_ui)
         self._act(m, "Afegeix secció…", "Ctrl+Shift+S", self._afegeix_seccio_ui)
         # A2 + regla d'or #11: en un model saturat (els clips cobreixen tota la
@@ -1194,6 +1198,21 @@ class Finestra(QMainWindow):
             self.registra(f"mode fàcil: {n} acords a la graella "
                           f"({p.get('etiqueta', '')})")
 
+    def _copia_clips(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.timeline.copy_selection()
+
+    def _retalla_clips(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.timeline.cut_selection()
+
+    def _enganxa_clips(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.timeline.paste_at_cursor()
+
     def _renomena_element(self):
         vr = self.visor_ref
         if vr is None:
@@ -1520,6 +1539,7 @@ class Finestra(QMainWindow):
             # El visor ha de desar els CSV/export a la carpeta de sortida del
             # PROJECTE (no derivar-la del WAV, que viu a <projecte>/audio/).
             visor.sortida = self.sortida or pipeline.carpeta_sortida(wav)
+            visor.canvis.connect(self._marca_dirty)   # edicions → projecte «brut»
             if hasattr(self, "tb_snap"):
                 self._canvia_snap()   # reaplica snap/divisió escollits
             # connectem els senyals del visor (icona play/pause + missatges
@@ -1631,12 +1651,19 @@ class Finestra(QMainWindow):
         return bool(self.dirty)
 
     def _confirma_descartar(self):
-        """Prompt Desar/Descarta/Cancel·lar. True = podem continuar."""
+        """Prompt Desa/Descarta/Cancel·la. True = podem continuar.
+
+        Si es tria «Desa» i el desat FALLA, es retorna False (no es continua:
+        mai tancar/sobreescriure perdent feina).
+        """
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Warning)
         box.setWindowTitle("Canvis sense desar")
-        box.setText("El projecte té canvis sense desar.")
-        box.setInformativeText("Vols desar-los abans de continuar?")
+        box.setText("El projecte té canvis sense desar. Vols desar-los abans "
+                    "de continuar?")
+        box.setInformativeText(
+            "La cançó (acords i estructura) es desa automàticament; el que no "
+            "es desa són els ajustos del projecte (tempo, compàs, mode, vista).")
         b_desa = box.addButton("Desa", QMessageBox.AcceptRole)
         box.addButton("Descarta", QMessageBox.DestructiveRole)
         b_canc = box.addButton("Cancel·la", QMessageBox.RejectRole)
@@ -1646,7 +1673,7 @@ class Finestra(QMainWindow):
         if clic is None or clic is b_canc:
             return False
         if clic is b_desa:
-            self._desa_projecte()
+            return self._desa_projecte()      # False si el desat ha fallat
         return True
 
     def _pot_descartar(self):
@@ -1741,19 +1768,21 @@ class Finestra(QMainWindow):
             self._obre_ruta_projecte(etiqueta)
 
     def _desa_projecte(self):
+        """Desa el projecte. Retorna True si s'ha desat (False si ha fallat)."""
         if self.projecte is None:
             self.avisa_info("Auto Chords", "No hi ha cap projecte obert.")
-            return
+            return False
         self._refresca_dades_projecte()
         try:
             self.projecte.desa()
         except OSError as e:
             self.avisa("Auto Chords", f"No s'ha pogut desar:\n{e}")
-            return
+            return False
         self.dirty = False
         self._actualitza_titol()
         self._afegeix_recent(self.projecte.ruta_acproj)
         self.registra(f"Projecte desat: {self.projecte.ruta_acproj}")
+        return True
 
     def _desa_projecte_com(self):
         if self.projecte is None:
@@ -2039,7 +2068,10 @@ class Finestra(QMainWindow):
         for et, val in (("Auto (zoom)", ""), ("Negra (1/4)", "negra"),
                         ("Corxera (1/8)", "corxera"),
                         ("Semicorxera (1/16)", "semicorxera"),
-                        ("Fusa (1/32)", "fusa"), ("Treset (1/12)", "treset")):
+                        ("Fusa (1/32)", "fusa"), ("Treset (1/12)", "treset"),
+                        ("1 compàs", "compas1"), ("4 compassos", "compas4"),
+                        ("8 compassos", "compas8"),
+                        ("16 compassos", "compas16")):
             self.cb_graella.addItem(et, val)
         self.cb_graella.currentIndexChanged.connect(self._canvia_snap)
         bar.addWidget(self.cb_graella)

@@ -116,6 +116,7 @@ class Visor(QMainWindow):
     loopStateChanged = pyqtSignal(bool)
     # missatge per a la caixa d'informacio (desfer/refer, etc.)
     infoMissatge = pyqtSignal(str)
+    canvis = pyqtSignal()      # el model (acords/seccions) ha canviat per edició
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
@@ -658,6 +659,7 @@ class Visor(QMainWindow):
             self._omple_llista_ac()
             self._actualitza_llista_abc()
         self._desa_csvs_base()
+        self.canvis.emit()   # edició del model → el projecte queda «brut»
         return 0
 
     def _desa_csvs_base(self):
@@ -1217,12 +1219,19 @@ class Visor(QMainWindow):
         # manera d'afegir-ne un de nou). Mateixa eina per a acord I secció.
         a_part = menu.addAction(
             "Parteix la secció…" if kind == "section" else "Parteix l'acord…")
+        menu.addSeparator()
+        a_ret = menu.addAction("Retalla")
+        a_cop = menu.addAction("Copia")
+        a_eng = menu.addAction("Enganxa")
         # desactivats si no hi ha cap clip seleccionat
         for a in (a_dup, a_del, a_ren):
             a.setEnabled(te_clip)
         a_part.setEnabled(te_clip)
+        a_ret.setEnabled(te_clip)
+        a_cop.setEnabled(te_clip)
+        a_eng.setEnabled(self.timeline.has_clipboard())
         accio = menu.exec_(pos)
-        if accio is None or not te_clip:
+        if accio is None:
             return
         if accio == a_dup:
             if kind == "chord":
@@ -1243,6 +1252,12 @@ class Visor(QMainWindow):
                 self._parteix_acord_dialog(idx)
             else:
                 self._parteix_seccio_dialog(idx)
+        elif accio == a_ret:
+            self.timeline.cut_selection()
+        elif accio == a_cop:
+            self.timeline.copy_selection()
+        elif accio == a_eng:
+            self.timeline.paste_at_cursor()
 
     def _duplica_acord_index(self, idx):
         """Duplica l'acord idx: s'insereix JUST DESPRES i es reparteix la
@@ -2371,6 +2386,7 @@ class Visor(QMainWindow):
         pipeline.desa_abc_csv(abc, self.seccions, self.bpm, self.log,
                               lliure=not self.tempo_fix, bpb=self.bpb,
                               offset=getattr(self, "offset", 0.0))
+        self.canvis.emit()   # l'estructura ha canviat → el projecte queda «brut»
         self.log(f"ABC recalculat (només CSV): {msg}")
 
     def _edita_seccio(self, item):

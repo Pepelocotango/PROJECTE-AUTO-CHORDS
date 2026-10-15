@@ -710,6 +710,9 @@ class TimelineView(QGraphicsView):
             "bloc_fi": bloc_fi,
             "cursor_copy": float(self._pos_t),
         }
+        # El cursor va al FINAL del bloc copiat (= inici del 1r clip NO
+        # seleccionat) perquè «Enganxa» hi pega just a continuació.
+        self.set_position(float(bloc_fi))
 
     def _delete_selection(self) -> None:
         """Esborra la selecció (1 clip -> senyal individual; >1 -> batch)."""
@@ -1250,7 +1253,7 @@ class TimelineView(QGraphicsView):
         """Pas de snap: la divisió triada (BPM·compàs) o la de zoom (auto)."""
         if self._snap_div_nom:
             s = graella.divisio_segons(self._snap_div_nom, self._bpm,
-                                       self._tempo_fix)
+                                       self._tempo_fix, self._bpb)
             if s > 0:
                 return s
         return snap_step(self._tempo_fix, self._bpm, self._bpb, self._pps)

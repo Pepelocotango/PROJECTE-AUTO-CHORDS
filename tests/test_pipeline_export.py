@@ -2895,13 +2895,13 @@ class ContextMenuTests(unittest.TestCase):
         return capt.get("accions", [])
 
     def test_menu_te_les_accions(self):
-        """(A2 + regla #11) El menú contextual té les 4 accions; «Parteix…» és
-        ACTIVA sobre un clip, amb el text propi del tipus (acord/secció)."""
+        """(A2 + regla #11) El menú contextual té les accions esperades; «Parteix…»
+        és ACTIVA sobre un clip, amb el text propi del tipus (acord/secció)."""
         v = self._visor()
         accions = self._captura(v, "chord", 1)
         self.assertEqual([x[0] for x in accions],
                          ["Duplica", "Elimina", "Reanomena",
-                          "Parteix l'acord…"])
+                          "Parteix l'acord…", "Retalla", "Copia", "Enganxa"])
         self.assertTrue(accions[3][1], "sobre un acord ha d'estar activa")
         accions_sec = self._captura(v, "section", 0)
         self.assertEqual(accions_sec[3][0], "Parteix la secció…")

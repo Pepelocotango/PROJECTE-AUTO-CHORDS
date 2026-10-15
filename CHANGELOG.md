@@ -6,6 +6,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Menú «Retalla / Copia / Enganxa»** (`Ctrl+X` / `Ctrl+C` / `Ctrl+V`) a **Edita** (i
+  al **menú contextual del clip**): les mateixes operacions que la barra/teclat, ara
+  també **descobertes al menú**. En copiar, el **cursor va al final del bloc** perquè
+  «Enganxa» hi pegui just a continuació.
+- **Tancament intel·ligent**: en tancar, l'app detecta els **canvis** (els ajustos
+  del projecte **i** les edicions de la cançó) i **només** avisa si n'hi ha, oferint
+  **Desa / Descarta / Cancel·la**; **mai tanca** si el desat falla. Test:
+  `tests/test_tancament.py` (7).
+- **Graella en compassos**: el desplegable de snap (barra Transport) afegeix
+  **1 compàs · 4 · 8 · 16 compassos** (a més d'Auto (zoom) i les subdivisions Negra/
+  Corxera/Semicorxera/Fusa/Treset); depèn del **compàs** (a 120 BPM 4/4, 1 compàs =
+  2 s; en 3/4, 1,5 s). El **snap i el nudge** segueixen la divisió triada.
 - **Graella configurable + interruptor de snap** (barra d'eines): un botó **Snap**
   (activat/desactivat) i un selector de **divisió** (Auto (zoom) · Negra 1/4 ·
   Corxera 1/8 · Semicorxera 1/16 · Fusa 1/32 · Treset 1/12) que fixa on encaixen

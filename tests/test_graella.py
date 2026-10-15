@@ -125,6 +125,15 @@ class TestGraella(unittest.TestCase):
         self.assertEqual(
             graella.regularitza_seccions(sec, 120, 4, 0.0, 10.0, 4), sec)
 
+    def test_divisio_segons_compassos(self):
+        # 120 BPM, 4/4 → compàs = 2 s
+        self.assertAlmostEqual(graella.divisio_segons("compas1", 120, True, 4), 2.0)
+        self.assertAlmostEqual(graella.divisio_segons("compas4", 120, True, 4), 8.0)
+        self.assertAlmostEqual(graella.divisio_segons("compas8", 120, True, 4), 16.0)
+        self.assertAlmostEqual(graella.divisio_segons("compas16", 120, True, 4), 32.0)
+        # depèn del compàs: 3/4 → compàs 1,5 s
+        self.assertAlmostEqual(graella.divisio_segons("compas1", 120, True, 3), 1.5)
+
     def test_divisio_segons_lliure(self):
         self.assertEqual(graella.divisio_segons("corxera", 120, False), 0.0)
         self.assertAlmostEqual(graella.divisio_segons("corxera", 120, True), 0.25)

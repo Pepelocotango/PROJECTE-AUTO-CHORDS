@@ -82,6 +82,16 @@ class TestSobreescriureAcords(_Base):
         self.assertEqual(_noms_acords(v), ["C", "Am", "F", "G", "C"])
         v.close()
 
+    def test_copia_mou_el_cursor_al_final_del_bloc(self):
+        """En copiar, el cursor va a l'inici del 1r clip NO seleccionat."""
+        v = _visor()
+        v.ves_a(0.0)
+        v.timeline.select_clip("chord", 0)
+        v.timeline.extend_selection("chord", 1)     # bloc {0,1} = C, Am
+        v.timeline.copy_selection()
+        self.assertAlmostEqual(float(v.timeline.get_position()), 4.5, places=6)
+        v.close()
+
     def test_ancora_per_defecte_es_el_final_del_bloc(self):
         """Si el cursor NO s'ha mogut des de la còpia, s'enganxa just després."""
         v = _visor()

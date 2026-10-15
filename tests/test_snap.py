@@ -90,6 +90,15 @@ class TestSnap(_Base):
         self.assertAlmostEqual(float(v.acords[1][0]), 2.0 + pas, places=6)
         v.close()
 
+    def test_divisio_en_compassos(self):
+        v = _visor()                                   # 120 BPM, 4/4 → compàs 2 s
+        for divisio, esperat in (("compas1", 2.0), ("compas4", 8.0),
+                                 ("compas8", 16.0), ("compas16", 32.0)):
+            v.timeline.set_snap(on=True, divisio=divisio)
+            self.assertAlmostEqual(v.timeline._pas_nudge(), esperat, places=6,
+                                   msg=divisio)
+        v.close()
+
     def test_visor_reenvia_set_snap(self):
         v = _visor()
         v.set_snap(on=False, divisio="negra")
