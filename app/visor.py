@@ -2096,6 +2096,17 @@ class Visor(QMainWindow):
                       if abs(float(s[0]) - ini) <= 1e-6 and s[2] == lletra), i)
         self._refresca_post_edicio(k, i)
 
+    def posa_nom_editor(self, nom):
+        """Posa `nom` a la casella «Nom» de la franja Editor (**sense aplicar**).
+
+        El fa servir el panell «Tipus d'acord»: clicar un tipus només **omple**
+        la casella; l'usuari decideix quan prem «Aplica» (o Enter).
+        """
+        self.ed_nom.setText(str(nom or ""))
+        self.ed_nom.setFocus()
+        self.ed_nom.selectAll()
+        self.avis_editor(f"tipus d'acord: «{nom}» llest per aplicar")
+
     def _focus_editor(self, kind, idx):
         """Selecciona l'element i enganxa el focus a la franja Editor
         (en comptes d'obrir cap finestra emergent)."""

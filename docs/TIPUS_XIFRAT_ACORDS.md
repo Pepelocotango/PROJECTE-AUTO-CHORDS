@@ -9,6 +9,20 @@
 > `tests/test_doc_xifrat.py`): si s'hi afegeix un tipus al codi i no aquí, la
 > suite peta.
 
+## Panell «Tipus d'acord» (a l'app)
+
+A l'esquerra de la finestra hi ha el panell **Tipus d'acord** (dock
+**desacoplable**; menú *Visualitza ▸ Mostra els tipus d'acord*): escrius
+l'**Arrel** i el **Baix** (camps de text lliure) i **cliques un tipus** de la
+llista → el xifrat canònic va a la casella **«Nom»** de l'editor (només
+l'omple; tu prems *Aplica*). Sense arrel, s'hi escriu només el tipus
+(`Maj7`) i tu l'acabes.
+
+La llista surt de **`xifrat.TAULA_TIPUS`** (62 files, de menys a més complex,
+amb els **alternatius** i els **graus** de cada tipus). Maqueta aprovada:
+`PANELL_TIPUS_ACORD_mockup.svg` / `.png`. El botó **▶ Escoltar** hi és com a
+plaçaholder (funció futura amb MIDI; ara desactivat).
+
 ## Com funciona (en 20 segons)
 
 1. **Al model** el xifrat es desa sempre en **forma canònica** (menor `-`,

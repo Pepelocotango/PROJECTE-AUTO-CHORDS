@@ -120,9 +120,14 @@
   <rect x="272" y="204" width="8" height="140" rx="4" fill="#3a3d42"/>
 
   <!-- peu del panell -->
-  <text x="44" y="652" fill="#9aa4b2" font-size="10">▼ clic → s'escriu a la casella «Nom»</text>
-  <rect x="44" y="660" width="246" height="16" rx="3" fill="#0f1013" stroke="#2e333a"/>
-  <text x="52" y="672" fill="#8ad3a5" font-size="11" font-family="ui-monospace,Menlo,Consolas,monospace">AbMaj7/Db</text>
+  <text x="44" y="650" fill="#9aa4b2" font-size="10">▼ clic → s'escriu a la casella «Nom»</text>
+  <rect x="44" y="656" width="150" height="18" rx="3" fill="#0f1013" stroke="#2e333a"/>
+  <text x="52" y="670" fill="#8ad3a5" font-size="11" font-family="ui-monospace,Menlo,Consolas,monospace">AbMaj7/Db</text>
+  <!-- botó ESCOLTAR: plaçaholder per a la futura funció MIDI (desactivat) -->
+  <rect x="200" y="656" width="90" height="18" rx="4" fill="#17191d" stroke="#33383f"/>
+  <path d="M210 662 L218 665 L210 668 Z" fill="#5a6169"/>
+  <text x="224" y="670" fill="#5a6169" font-size="10">Escoltar</text>
+  <text x="44" y="684" fill="#5f6772" font-size="9">▶ MIDI · futura (ara desactivat)</text>
 
   <!-- ═══════════════ VISOR ═══════════════ -->
   <rect x="316" y="120" width="692" height="568" rx="6" fill="#0f1218" stroke="#2a2c30"/>
@@ -215,9 +220,9 @@
   <rect x="900" y="819" width="70" height="10" rx="3" fill="#2563eb"/>
 
   <!-- ═══════════════ LLEGENDA ═══════════════ -->
-  <rect x="1040" y="20" width="380" height="820" rx="10" fill="#14161a" stroke="#2e333a"/>
+  <rect x="1040" y="20" width="380" height="852" rx="10" fill="#14161a" stroke="#2e333a"/>
   <text x="1064" y="52" fill="#edf3ff" font-size="17" font-weight="700">Panell «Tipus d'acord»</text>
-  <text x="1064" y="74" fill="#8fa0b5" font-size="12">Mockup v3 · tipus + variants (sense espais) + graus (sense parèntesis)</text>
+  <text x="1064" y="74" fill="#8fa0b5" font-size="12">Mockup v5 · tipus·alternatius + graus · botó Escoltar (futur MIDI)</text>
   <line x1="1064" y1="88" x2="1396" y2="88" stroke="#2e333a"/>
 
   <text x="1064" y="114" fill="#ffb26b" font-size="13" font-weight="700">Cada fila de la llista</text>
@@ -264,8 +269,9 @@
   </g>
 
   <line x1="1064" y1="772" x2="1396" y2="772" stroke="#2e333a"/>
-  <rect x="1064" y="786" width="14" height="14" rx="3" fill="#2563eb"/>
-  <text x="1086" y="797" fill="#dbe2ec" font-size="11">fila seleccionada</text>
-  <rect x="1064" y="808" width="14" height="14" rx="3" fill="#101216" stroke="#ffb26b" stroke-width="2"/>
-  <text x="1086" y="819" fill="#dbe2ec" font-size="11">casella «Nom» que s'omple</text>
+  <text x="1064" y="796" fill="#ffb26b" font-size="13" font-weight="700">Botó «▶ Escoltar»</text>
+  <text x="1064" y="818" fill="#dbe2ec" font-size="11.5">Plaçaholder per a una funció FUTURA (MIDI):</text>
+  <text x="1064" y="835" fill="#8fa0b5" font-size="11">sentir els graus del xifrat per separat i alhora.</text>
+  <rect x="1064" y="848" width="14" height="14" rx="3" fill="#2563eb"/>
+  <text x="1086" y="859" fill="#dbe2ec" font-size="11">fila seleccionada · casella «Nom» amb vora taronja</text>
 </svg>

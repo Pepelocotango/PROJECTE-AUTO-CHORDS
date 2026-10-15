@@ -32,6 +32,7 @@ from . import ffmpeg, graella, partitura, pipeline, postproc, theme  # noqa: F40
 from . import config  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402
+from . import panell_xifrat  # noqa: E402
 from . import plataforma  # noqa: E402
 from . import projecte  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
@@ -583,6 +584,18 @@ class Finestra(QMainWindow):
         self.log_dock.setVisible(True)      # sortida de l'anàlisi, visible
         self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
 
+        # 4b. PANELL «TIPUS D'ACORD» (esquerra, DESACOPLABLE): construeix un
+        #     xifrat clicant (arrel + tipus + baix) i l'escriu a la casella
+        #     «Nom» de l'editor. Clicar un tipus MAI aplica res: ho fa
+        #     l'usuari amb «Aplica».
+        self.panell_xifrat = panell_xifrat.PanellXifrat(self)
+        self.dock_xifrat = QDockWidget("Tipus d'acord", self)
+        self.dock_xifrat.setObjectName("dock_xifrat")
+        self.dock_xifrat.setWidget(self.panell_xifrat)
+        self.dock_xifrat.setMinimumWidth(250)
+        self.panell_xifrat.tipusTriat.connect(self._posa_nom_editor)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_xifrat)
+
         # (L'inspector lateral s'ha retirat: les llistes tornen sota l'ona,
         #  dins el visor, que és on tenen l'espai natural.)
 
@@ -741,6 +754,8 @@ class Finestra(QMainWindow):
         # (El visor és ara el widget central: ja no cal «Mostra el visor»)
         m.addAction(self.log_dock.toggleViewAction())
         self.log_dock.toggleViewAction().setText("Mostra el log")
+        m.addAction(self.dock_xifrat.toggleViewAction())
+        self.dock_xifrat.toggleViewAction().setText("Mostra els tipus d'acord")
         m.addSeparator()
         self.a_metro = self._act(m, "Metrònom", "", self._toggle_metro, checkable=True)
         self.a_metro.setToolTip("Clic de metrònom (només en mode BPM · compàs)")
@@ -1685,6 +1700,18 @@ class Finestra(QMainWindow):
                                            or getattr(vr, "seccions", None))
         self.b_export.setEnabled(te_model)
         self.b_export_part.setEnabled(te_model)
+
+    def _posa_nom_editor(self, nom):
+        """El panell «Tipus d'acord» vol escriure `nom` a la casella de l'editor.
+
+        Només l'omple (el visor també hi posa el focus); **no aplica** res.
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa_info("Auto Chords", "Obre un tema i tria un acord abans "
+                                           "de fer servir el panell dels tipus.")
+            return
+        vr.posa_nom_editor(nom)
 
     def _atura_si_sona(self, motiu):
         """Atura el reproductor abans d'una operacio pesada (no te sentit

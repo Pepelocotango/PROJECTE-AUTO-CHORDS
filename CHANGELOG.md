@@ -6,6 +6,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Panell «Tipus d'acord»** (dock desacoplable a l'esquerra; *Visualitza ▸
+  Mostra els tipus d'acord*): construeix un xifrat **clicant** — **Arrel** i
+  **Baix** (text lliure) + una **llista de 62 tipus** (de menys a més complex;
+  cada fila duu els **alternatius** i els **graus**). **Clicar un tipus només
+  omple** la casella «Nom» de l'editor (no aplica res: ho fa l'usuari amb
+  «Aplica»). Font única: `xifrat.TAULA_TIPUS` + `xifrat.composa()`. El botó
+  **▶ Escoltar** va **desactivat** (plaçaholder de la futura funció **MIDI**,
+  §14.2 del `ROADMAP`). Test: `tests/test_panell_xifrat.py`. Doc:
+  `docs/TIPUS_XIFRAT_ACORDS.md` + mockup aprovat (`PANELL_TIPUS_ACORD_mockup.*`).
 - **Xifrat canònic ampliat a (gairebé) tots els tipus d'acord** (`app/xifrat.py`):
   **taula de tipus → `<kind>` MusicXML + graus** (`TIPUS`) i **extensions/alteracions
   via `<degree>`** (`#5`, `b9`, `#9`, `#11`, `13`, `add9`, `no5`, `#5b9`…).

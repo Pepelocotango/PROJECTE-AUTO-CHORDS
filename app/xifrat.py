@@ -285,6 +285,95 @@ def resta_qualitat(qual) -> str:
     return "" if _nomes_alteracions(q) else q
 
 
+# Taula de PRESENTACIÓ del panell «Tipus d'acord» (i del doc): ORDENADA de
+# menys a més complex (bàsic → intermedi → avançat → extres). Cada entrada:
+#   (etiqueta de la llista, qualitat canònica, noms alternatius, graus)
+# Els GRAUS són els de la referència de l'operador («acords i tensions»),
+# sense els parèntesis dels opcionals i separats per comes.
+TAULA_TIPUS = (
+    # ── Bàsic ─────────────────────────────────────────────────────────────
+    ("maj", "", "M·Maj·Δ", "1,3,5"),
+    ("m", "-", "mi·min·-", "1,b3,5"),
+    ("dim", "dim", "o·°", "1,b3,b5"),
+    ("7", "7", "", "1,3,5,b7"),
+    ("m7", "-7", "mi7·min7·-7", "1,b3,5,b7"),
+    ("m7b5", "-7b5", "ø·ø7·-7b5", "1,b3,b5,b7"),
+    ("maj7", "Maj7", "M7·Ma7·Δ7", "1,3,5,7"),
+    # ── Intermedi ─────────────────────────────────────────────────────────
+    ("majb5", "Majb5", "", "1,3,b5"),
+    ("5", "5", "", "1,5"),
+    ("sus2", "sus2", "", "1,2,5"),
+    ("sus4", "sus4", "sus", "1,4,5"),
+    ("+", "aug", "aug", "1,3,#5"),
+    ("6", "6", "", "1,3,5,6"),
+    ("add9", "add9", "", "1,3,5,9"),
+    ("m6", "-6", "mi6·min6·-6", "1,b3,5,6"),
+    ("madd9", "-add9", "m(add9)", "1,b3,5,9"),
+    ("dim7", "dim7", "o7·°7", "1,b3,b5,bb7"),
+    ("7sus4", "7sus4", "7sus", "1,4,5,b7"),
+    ("7b5", "7b5", "", "1,3,b5,b7"),
+    ("7#5", "7#5", "+7·aug7", "1,3,#5,b7"),
+    ("m(maj7)", "-Maj7", "mMaj7·mM7·mΔ7", "1,b3,5,7"),
+    ("6/9", "6add9", "69", "1,3,5,6,9"),
+    ("m6/9", "-6add9", "m69", "1,b3,5,6,9"),
+    ("7b9", "7b9", "", "1,3,5,b7,b9"),
+    ("7#9", "7#9", "", "1,3,5,b7,#9"),
+    ("m7b9", "-7b9", "", "1,b3,5,b7,b9"),
+    ("9", "9", "", "1,3,5,b7,9"),
+    ("9b5", "9b5", "", "1,3,b5,b7,9"),
+    ("9#5", "9#5", "", "1,3,#5,b7,9"),
+    ("m9", "-9", "mi9·min9·-9", "1,b3,5,b7,9"),
+    ("maj9", "Maj9", "M9·Ma9·Δ9", "1,3,5,7,9"),
+    ("11", "11", "", "1,3,5,b7,9,11"),
+    ("m11", "-11", "min11", "1,b3,5,b7,9,11"),
+    ("maj11", "Maj11", "", "1,3,5,7,9,11"),
+    ("13", "13", "", "1,3,5,b7,9,13"),
+    ("m13", "-13", "", "1,b3,5,b7,9,13"),
+    ("maj13", "Maj13", "M13", "1,3,5,7,9,13"),
+    # ── Avançat ───────────────────────────────────────────────────────────
+    ("maj7b5", "Maj7b5", "", "1,3,b5,7"),
+    ("maj7#5", "Maj7#5", "", "1,3,#5,7"),
+    ("7b5b9", "7b5b9", "", "1,3,b5,b7,b9"),
+    ("7#5b9", "7#5b9", "", "1,3,#5,b7,b9"),
+    ("7#5#9", "7#5#9", "", "1,3,#5,b7,#9"),
+    ("7add11", "7add11", "", "1,3,5,b7,11"),
+    ("7#11", "7#11", "", "1,3,5,b7,#11"),
+    ("m7b5b9", "-7b5b9", "", "1,b3,b5,b7,b9"),
+    ("m7add11", "-7add11", "", "1,b3,5,b7,11"),
+    ("maj7#11", "Maj7#11", "", "1,3,5,7,#11"),
+    ("m9b5", "-9b5", "", "1,b3,b5,b7,9"),
+    ("m(maj9)", "-Maj9", "mMaj9·mM9", "1,b3,5,7,9"),
+    ("maj9#5", "Maj9#5", "", "1,3,#5,7,9"),
+    ("9#11", "9#11", "", "1,3,5,b7,9,#11"),
+    ("maj9#11", "Maj9#11", "", "1,3,5,7,9,#11"),
+    ("11b9", "11b9", "", "1,3,5,b7,b9,11"),
+    ("13b5b9", "13b5b9", "", "1,3,b5,b7,b9,13"),
+    ("13b9", "13b9", "", "1,3,5,b7,b9,13"),
+    ("13#9", "13#9", "", "1,3,5,b7,#9,13"),
+    ("13#11", "13#11", "", "1,3,5,b7,9,#11,13"),
+    # ── Extres (fora de la referència «acords i tensions») ────────────────
+    ("no3", "no3", "", "1,5"),
+    ("no5", "no5", "", "1,3"),
+    ("add6", "add6", "", "1,3,5,6"),
+    ("add11", "add11", "", "1,3,5,11"),
+    ("7alt", "7alt", "alt", "1,3,b7,+alt"),
+)
+
+
+def composa(arrel, qualitat, baix="") -> str:
+    """Xifrat canònic a partir d'arrel + qualitat + baix (panell «Tipus d'acord»).
+
+    Qualsevol dels tres pot anar buit: sense arrel queda **només la qualitat**
+    (l'usuari hi afegeix l'arrel després) i sense baix, un acord normal.
+    """
+    a = " ".join(str(arrel or "").split())
+    b = " ".join(str(baix or "").split())
+    text = (a + str(qualitat or "")) if a else str(qualitat or "")
+    if b:
+        text += "/" + b
+    return normalitza_xifrat(text)
+
+
 def normalitza_xifrat(nom) -> str:
     """Xifrat en la forma canònica de l'app.
 
@@ -300,7 +389,17 @@ def normalitza_xifrat(nom) -> str:
     base, baix = parteix_baix(s)
     pa = parteix_arrel(base)
     if pa is None:
-        return s                      # no comença per nota → es deixa tal qual
+        # Pot ser NOMÉS una qualitat (`Maj7`, `m7b5`…): el panell de tipus ho
+        # permet i l'usuari hi afegeix l'arrel després. Si no canvia res, es
+        # retorna tal qual (l'app no inventa).
+        q2 = normalitza_qualitat(base)
+        if q2 and q2 != base.strip():
+            if baix:
+                pb2 = parteix_arrel(baix)
+                if pb2 is not None:
+                    q2 += "/" + pb2[0]
+            return q2
+        return s
     arrel, qual = pa
     out = arrel + normalitza_qualitat(qual)
     if baix:
