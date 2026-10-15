@@ -938,8 +938,11 @@ class Visor(QMainWindow):
                                   "--channels=1", "-"])
         return (None, [])
 
-    def toca_notes(self, notes, sr=None):
+    def toca_notes(self, notes, sr=None, preset=None):
         """Toca una llista de notes MIDI (audició d'un tipus d'acord).
+
+        `preset` tria el timbre (vegeu `acord_audio.PRESETS`; per defecte, el
+        piano elèctric Rhodes).
 
         Genera un **piano elèctric** sintetitzat (`acord_audio`: arpegi + bloc)
         i el reprodueix amb el MATEIX motor de sempre, en un **motor efímer**
@@ -950,26 +953,37 @@ class Visor(QMainWindow):
         if not notes:
             return False
         sr = int(sr or (self.audio or {}).get("sr") or 44100)
+        # La síntesi (piano: parcials × cordes) pot trigar unes dècimes i
+        # congelaria la interfície: es fa en un FIL, i el clic respon de
+        # seguida. L'àudio el toca el mateix motor de sempre.
+        if not hasattr(self, "_escoltes_fils"):
+            self._escoltes_fils = []
+        th = threading.Thread(target=self._escolta_al_fil,
+                              args=(notes, sr, preset), daemon=True)
+        th.start()
+        self._escoltes_fils.append(th)
+        self.log(f"escolta: {len(notes)} notes ({sr} Hz, {preset or acord_audio.PRESET_DEFECTE})")
+        return True
+
+    def _escolta_al_fil(self, notes, sr, preset):
+        """Síntesi + reproducció de l'escolta (s'executa en un fil)."""
         try:
-            pcm = acord_audio.pcm_escolta(notes, sr)
+            pcm = acord_audio.pcm_escolta(notes, sr, preset=preset)
         except Exception as e:  # noqa: BLE001
             self.log(f"escolta ERROR (síntesi): {e}")
-            return False
+            return
         player, args = self._tria_player()
         if player is None:
             self.log("escolta: no hi ha cap reproductor d'àudio disponible")
-            return False
+            return
         self._neteja_escoltes()
         try:
             proc = audio_out.crea_motor(player, args, sr, subprocess.DEVNULL)
             proc.stdin.write(pcm)
             proc.stdin.close()          # el motor acaba la cua i surt sol
             self._escoltes.append(proc)
-            self.log(f"escolta: {len(notes)} notes ({sr} Hz, e-piano)")
-            return True
         except Exception as e:  # noqa: BLE001
             self.log(f"escolta ERROR: {e}")
-            return False
 
     def _neteja_escoltes(self):
         """Treu els motors d'escolta ja acabats (evita processos zombis)."""

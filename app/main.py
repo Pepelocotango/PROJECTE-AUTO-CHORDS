@@ -1716,7 +1716,7 @@ class Finestra(QMainWindow):
             return
         vr.posa_nom_editor(nom)
 
-    def _escolta_notes(self, notes):
+    def _escolta_notes(self, notes, preset=""):
         """Audició d'un tipus d'acord (e-piano) demanada pel panell.
 
         Ho toca el visor amb un motor efímer (`Visor.toca_notes`): no toca la
@@ -1727,7 +1727,7 @@ class Finestra(QMainWindow):
             self.avisa_info("Tipus d'acord",
                             "Obre un tema abans d'escoltar l'acord.")
             return
-        if not vr.toca_notes(notes):
+        if not vr.toca_notes(notes, preset=preset or None):
             self.avisa("Tipus d'acord",
                        "No s'ha pogut reproduir l'àudio (mira el log).")
 

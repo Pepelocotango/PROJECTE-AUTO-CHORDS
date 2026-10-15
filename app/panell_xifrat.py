@@ -15,7 +15,8 @@ from __future__ import annotations
 
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont
-from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QListWidget,
+from PyQt5.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QLineEdit,
+                             QListWidget,
                              QListWidgetItem, QPushButton, QStyle,
                              QStyledItemDelegate, QVBoxLayout, QWidget)
 
@@ -71,7 +72,7 @@ class PanellXifrat(QWidget):
     """El contingut del dock. Emet `tipusTriat` amb el xifrat canònic."""
 
     tipusTriat = pyqtSignal(str)
-    escoltarDemandat = pyqtSignal(list)   # notes MIDI a fer sonar (e-piano)
+    escoltarDemandat = pyqtSignal(list, str)   # (notes MIDI, timbre)
     avis = pyqtSignal(str)                # missatge per a l'usuari
 
     def __init__(self, parent=None):
@@ -121,13 +122,22 @@ class PanellXifrat(QWidget):
         self.previsio.setObjectName("previsio_xifrat")
         self.previsio.setToolTip("Com quedarà el nom de l'acord.")
         peu.addWidget(self.previsio, stretch=1)
-        self.b_escoltar = QPushButton("▶ Escoltar")
+        self.b_escoltar = QPushButton("▶")
         self.b_escoltar.setObjectName("secundari")
-        self.b_escoltar.setToolTip("Escolta el tipus d'acord triat (piano "
-                                   "elèctric): primer els graus per separat "
-                                   "i després tots alhora.")
+        self.b_escoltar.setMaximumWidth(34)
+        self.b_escoltar.setToolTip("Escolta el tipus d'acord triat amb el "
+                                   "timbre escollit: primer els graus per "
+                                   "separat i després tots alhora.")
         self.b_escoltar.clicked.connect(self._escolta)
         peu.addWidget(self.b_escoltar)
+        self.cb_timbre = QComboBox()
+        self.cb_timbre.setToolTip("Timbre de l'escolta (família piano).")
+        for clau, nom in acord_audio.PRESETS:
+            self.cb_timbre.addItem(nom, clau)
+        i = self.cb_timbre.findData(acord_audio.PRESET_DEFECTE)
+        if i >= 0:
+            self.cb_timbre.setCurrentIndex(i)
+        peu.addWidget(self.cb_timbre)
         capa.addLayout(peu)
 
         # connexions
@@ -180,4 +190,4 @@ class PanellXifrat(QWidget):
             self.avis.emit(f"No he pogut calcular les notes de «{arrel}» "
                            "(revisa l'arrel).")
             return
-        self.escoltarDemandat.emit(notes)
+        self.escoltarDemandat.emit(notes, self.cb_timbre.currentData() or '')

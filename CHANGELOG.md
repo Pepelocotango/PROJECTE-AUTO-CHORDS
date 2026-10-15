@@ -6,6 +6,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **8 timbres de piano al «▶» del panell «Tipus d'acord»**: el botó d'escolta és
+  ara **només la icona ▶** i al costat hi ha un **desplegable de timbre** amb **8
+  presets de família piano** (referència **General MIDI 1-8**): *Piano de cua ·
+  Piano brillant · Piano elèctric de cua · Honky-tonk · **E-piano Rhodes** (defecte)
+  · E-piano FM (DX7) · Wurlitzer · Piano de joguina*. Síntesi `numpy` (additiva
+  inharmònica per als pianos + FM amb les regles clàssiques per als e-pianos). Al
+  **Q9400** la síntesi (sobretot els pianos acústics, ~24 ones/nota) va en un
+  **fil** amb `float32` → **la UI no es congela** (el so arriba ~0,2 s als e-pianos
+  i ~1 s als acústics).
 - **▶ Escoltar al panell «Tipus d'acord» (audició amb piano elèctric)**: el botó
   ja és **actiu** — sent l'acord triat (arrel + tipus) amb un **e-piano FM estil
   Rhodes** sintetitzat (`app/acord_audio.py`, **NOU**: `numpy` pur, **cap

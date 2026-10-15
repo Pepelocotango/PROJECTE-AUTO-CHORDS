@@ -146,7 +146,7 @@ class TestPanell(_Base):
                   if p.llista.item(i).text() == "maj7")
         p._on_clic(it)
         caps = []
-        p.escoltarDemandat.connect(lambda n: caps.append(n))
+        p.escoltarDemandat.connect(lambda n, t: caps.append(n))
         p._escolta()
         self.assertEqual(caps, [[56, 60, 63, 67]])   # Ab3 C4 Eb4 G4
 
@@ -185,6 +185,8 @@ class TestPanell(_Base):
         with patch.object(vr, "_tria_player", return_value=("paplay", [])), \
                 patch.object(audio_out, "crea_motor", return_value=motor):
             self.assertTrue(vr.toca_notes([48, 52, 55, 59]))
+            for th in list(getattr(vr, "_escoltes_fils", [])):
+                th.join(10)                 # la síntesi va en un fil
         self.assertTrue(escrits, "ha d'escriure el PCM al motor")
         self.assertGreater(len(escrits[0]), 10000, "PCM massa curt")
         self.assertTrue(motor.tancat, "ha de tancar stdin (el motor acaba sol)")
