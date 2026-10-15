@@ -2356,8 +2356,9 @@ class Finestra(QMainWindow):
         amb_estructura = self.amb_est.isChecked() and (
             seccions_model is not None or os.path.isfile(csv_seg))
         # (2) Amb «Inclou estructura» OFF, les restes d'un export ANTERIOR
-        # (estructura_ABC.csv i/o wavs_estructura/) es quedaven a la carpeta i
-        # semblava que s'hagués exportat estructura → es netegen aquí.
+        # (`wavs_estructura/`) quedaven a la carpeta i semblava que l'export
+        # actual hagués inclòs estructura → s'ofereix treure-les (amb
+        # confirmació). El MODEL (`estructura_ABC.csv`) NO es toca mai.
         if not amb_estructura:
             self._neteja_estructura_vella(self.sortida)
         return dict(
@@ -2376,30 +2377,51 @@ class Finestra(QMainWindow):
         )
 
     def _neteja_estructura_vella(self, sortida):
-        """Treu les restes d'estructura quan l'export NO n'inclou (2).
+        """Treu les restes d'un export ANTERIOR quan l'actual NO inclou estructura.
 
-        Si no, a la carpeta de sortida hi quedaven `estructura_ABC.csv` i
-        `wavs_estructura/` d'un export anterior amb la marca ON, i semblava que
-        l'export actual hagués inclòs l'estructura.
+        **(a) MAI toca el MODEL del projecte** (`estructura_ABC.csv`): la marca
+        «Inclou estructura» decideix què s'**exporta**, no què es **conserva**.
+        Només s'ofereix treure els **derivats de l'export** (`wavs_estructura/`).
+
+        **(c) Sempre amb confirmació**: (1) només es pregunta si hi ha restes a
+        treure; (2) amb el pont MCP actiu no s'esborra mai res (evita encallar
+        el pont amb un diàleg modal — vegeu `test_avis_no_modal`).
         """
-        csv_abc = os.path.join(sortida, "estructura_ABC.csv")
         wavs = os.path.join(sortida, "wavs_estructura")
-        fets = []
-        if os.path.isfile(csv_abc):
-            try:
-                os.remove(csv_abc)
-                fets.append("estructura_ABC.csv")
-            except OSError as e:
-                self.registra(f"AVÍS: no he pogut treure {csv_abc}: {e}")
-        if os.path.isdir(wavs):
-            try:
-                shutil.rmtree(wavs)
-                fets.append("wavs_estructura/")
-            except OSError as e:
-                self.registra(f"AVÍS: no he pogut treure {wavs}: {e}")
-        if fets:
-            self.registra("«Inclou estructura» OFF → netejat de la sortida: "
-                          + ", ".join(fets))
+        if not os.path.isdir(wavs):
+            return
+        if not self._ho_confirma(
+                "Exporta sense estructura",
+                "Aquest export no inclou l'estructura.\n\n"
+                "El MODEL del projecte (estructura_ABC.csv) es conserva SEMPRE.\n"
+                "Només es poden treure els WAVs de l'export anterior "
+                "(wavs_estructura/).\n\nVols treure'ls?",
+                "Treu-los"):
+            self.registra("estructura: es conserven els derivats de l'export "
+                          "anterior (wavs_estructura/)")
+            return
+        try:
+            shutil.rmtree(wavs)
+            self.registra("«Inclou estructura» OFF → tret l'export anterior: "
+                          "wavs_estructura/ (el model estructura_ABC.csv es "
+                          "conserva)")
+        except OSError as e:
+            self.registra(f"AVÍS: no he pogut treure {wavs}: {e}")
+
+    def _ho_confirma(self, titol, text, boto_si):
+        """Demana confirmació (Sí/No). Amb el pont MCP actiu respon **No** i no
+        mostra cap diàleg modal (no s'ha d'encallar el pont; cf. `_avis`)."""
+        if getattr(self, "mcp_actiu", False):
+            return False
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle(titol)
+        box.setText(text)
+        b_si = box.addButton(boto_si, QMessageBox.DestructiveRole)
+        b_no = box.addButton("Cancel·la", QMessageBox.RejectRole)
+        box.setDefaultButton(b_no)
+        box.exec_()
+        return box.clickedButton() is b_si
 
     def _exporta_acabada(self, res_part=None):
         """Missatges de final d'exportació (compartit pel camí síncron i el fil)."""

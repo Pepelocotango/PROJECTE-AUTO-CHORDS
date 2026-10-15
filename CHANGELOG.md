@@ -127,6 +127,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **Exportar «sense estructura» ja NO esborra el MODEL**: `_neteja_estructura_vella`
+  ja **no toca `estructura_ABC.csv`** (el model del projecte) — la marca «Inclou
+  estructura» decideix què s'**exporta**, no què es **conserva**. Només s'ofereix
+  treure els **derivats de l'export anterior** (`wavs_estructura/`) i **sempre amb
+  confirmació** (nou `_ho_confirma`, amb «Cancel·la» per defecte); amb el **pont MCP
+  actiu** no s'esborra mai res ni es mostra cap diàleg modal. Test:
+  `tests/test_export_neteja_estructura.py` (3).
 - **Loop — la frontera B ja no s'endú el clip següent**: el loop fa servir un
   interval **semi-obert `[A, B)`** (`keys_dins_rang(..., inclou_fi=False)`); abans un
   clip que comença **exactament** a `loop_b` hi entrava de més. El `Shift+clic` es

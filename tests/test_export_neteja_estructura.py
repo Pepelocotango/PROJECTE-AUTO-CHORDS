@@ -1,8 +1,8 @@
-"""(2) Amb «Inclou estructura» OFF, les restes d'un export anterior s'han de netejar.
+"""(2) Amb «Inclou estructura» OFF: el MODEL mai s'esborra.
 
-Si no, a la carpeta de sortida hi quedaven `estructura_ABC.csv` i
-`wavs_estructura/` d'un export amb la marca ON i semblava que l'export actual
-hagués inclòs l'estructura.
+`estructura_ABC.csv` és el MODEL del projecte i **no es toca mai** (la marca
+decideix què s'EXPORTA, no què es conserva). Només s'ofereixen treure les restes
+de l'export anterior (`wavs_estructura/`), i **sempre amb confirmació**.
 """
 import os
 import sys
@@ -60,16 +60,38 @@ class TestNetejaEstructura(unittest.TestCase):
         p.start()
         self.addCleanup(p.stop)
 
-    def test_amb_la_marca_off_es_netegen(self):
+    def test_amb_la_marca_off_es_netegen_els_wavs_pero_MAI_el_model(self):
         w, s = _finestra(amb_estructura=False)
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"), \
+                patch.object(type(w), "_ho_confirma", return_value=True):
+            w.exporta()
+        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")),
+                        "el MODEL de l'estructura NO s'ha d'esborrar mai")
+        self.assertFalse(os.path.isdir(os.path.join(s, "wavs_estructura")),
+                         "la carpeta de wavs d'estructura vella hi és")
+        self.assertIn("tret l'export anterior", w.log.toPlainText())
+        w.close()
+
+    def test_amb_la_marca_off_sense_confirmacio_no_esborra_res(self):
+        w, s = _finestra(amb_estructura=False)
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"), \
+                patch.object(type(w), "_ho_confirma", return_value=False):
+            w.exporta()
+        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")))
+        self.assertTrue(os.path.isdir(os.path.join(s, "wavs_estructura")))
+        self.assertIn("es conserven els derivats", w.log.toPlainText())
+        w.close()
+
+    def test_amb_pont_mcp_actiu_no_esborra_mai_res(self):
+        """Amb el pont MCP actiu no es mostra cap diàleg ni s'esborra res."""
+        w, s = _finestra(amb_estructura=False)   # mcp_actiu=True dins _finestra
         with patch.object(pipeline, "exporta_total", return_value={}), \
                 patch.object(w, "obre_carpeta"):
             w.exporta()
-        self.assertFalse(os.path.isfile(os.path.join(s, "estructura_ABC.csv")),
-                         "el CSV d'estructura vell hi és")
-        self.assertFalse(os.path.isdir(os.path.join(s, "wavs_estructura")),
-                         "la carpeta de wavs d'estructura vella hi és")
-        self.assertIn("netejat de la sortida", w.log.toPlainText())
+        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")))
+        self.assertTrue(os.path.isdir(os.path.join(s, "wavs_estructura")))
         w.close()
 
     def test_amb_la_marca_on_es_respecten(self):
