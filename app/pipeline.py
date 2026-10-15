@@ -597,6 +597,12 @@ def normalitza_cobertura(acords, seccions, durada, log=None):
     durada = float(durada or 0.0)
     acords = [tuple(a) for a in (acords or [])]
     seccions = [tuple(s) for s in (seccions or [])]
+    # Regla d'or #1 (ordre estricte): aquesta funció és la XARXA DE SEGURETAT
+    # dels 4 camins (edició en viu, visor, CSV i export), així que reordenem
+    # aquí. El visor ja ho valida, però un CSV editat a mà no hi passa. El
+    # `sort` és ESTABLE: davant d'instants repetits, es conserva el primer.
+    acords.sort(key=lambda a: float(a[0]))
+    seccions.sort(key=lambda s: float(s[0]))
     # Acords: la veritat és el que quedarà AL CSV (arrodonit a `TEMPS_DEC`).
     #   (a) els que cauen FORA de la WAV (arrodonits) no tenen àudio → fora;
     #   (b) dos acords que arrodoneixin al MATEIX instant deixarien un clip de

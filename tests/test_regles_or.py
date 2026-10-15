@@ -125,20 +125,25 @@ class TestRegla8TempsValids(_Base):
 class TestRegla1OrdreEstricte(_Base):
     """Regla 1: els clips sempre ordenats per temps d'inici (sense inversions).
 
-    ⚠️ **GAP CONEGUT** (2026-10-15, OC-5): l'ordre el garanteix el **visor**
-    (`_valida_canvis_acords` → `sorted`), però **no** el backend
-    (`pipeline.normalitza_cobertura`, la «xarxa de seguretat» que s'aplica als
-    **4 camins**: edició en viu, visor, CSV i export). Un CSV editat a mà amb les
-    files desordenades arribaria a l'export sense reordenar. **Reportat a OC-8**;
-    quan es blindi al backend, el test d'`expectedFailure` passarà a verd.
+    ✅ **BLINDADA AL BACKEND** (2026-10-15, OC-5): `pipeline.normalitza_cobertura`
+    —la «xarxa de seguretat» que s'aplica als **4 camins** (edició en viu, visor,
+    CSV i export)— ara **reordena** els acords i les seccions. Abans l'ordre
+    només el garantia el visor, i un CSV editat a mà hauria arribat a l'export
+    desordenat (gap detectat per aquest test).
     """
 
-    @unittest.expectedFailure
-    def test_el_backend_hauria_d_ordenar(self):
+    def test_el_backend_ordena(self):
         acords, _ = pipeline.normalitza_cobertura(
             [(4.0, "C", "4.0"), (2.0, "Am", "2.0")], [], 6.0)
         ts = [a[0] for a in acords]
         self.assertEqual(ts, sorted(ts), "els acords han d'anar ordenats")
+        self.assertEqual(ts[0], 0.0, "el 1r acord ha d'arrencar a 0 (capçalera N)")
+
+    def test_el_backend_ordena_seccions(self):
+        _, ss = pipeline.normalitza_cobertura(
+            [], [(5.0, 10.0, "B", "B"), (0.0, 5.0, "A", "A")], 10.0)
+        inis = [s[0] for s in ss]
+        self.assertEqual(inis, sorted(inis), "les seccions han d'anar ordenades")
 
     def test_el_visor_valida_i_ordena(self):
         v = _visor()
