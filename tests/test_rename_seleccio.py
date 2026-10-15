@@ -68,11 +68,11 @@ class TestEditorManteSeleccio(_Base):
         v.ves_a(7.0)
         v.timeline.select_clip("chord", 3)
         self._aplica(v, "chord", 3, "Gmaj7", "7.00")
-        self.assertEqual(v.acords[3][1], "Gmaj7")
+        self.assertEqual(v.acords[3][1], "GMaj7")
         self.assertEqual(v.timeline.selected_keys(), {("chord", 3)},
                          "el clip editat ha de quedar seleccionat")
         self.assertEqual(v.llista_ac.currentRow(), 3)
-        self.assertIn("Gmaj7", v.llista_ac.currentItem().text(),
+        self.assertIn("GMaj7", v.llista_ac.currentItem().text(),
                       "la llista s'ha d'actualitzar a l'instant")
         self.assertAlmostEqual(v.pos, 7.0, places=6,
                                msg="editar no ha de moure el cursor")
@@ -100,7 +100,7 @@ class TestRenomEnBloc(_Base):
         with patch.object(QInputDialog, "getText",
                           return_value=("Am", True)):
             self.assertTrue(v.renomena_seleccio())
-        self.assertEqual([a[1] for a in v.acords[:3]], ["Am", "Am", "Am"])
+        self.assertEqual([a[1] for a in v.acords[:3]], ["A-", "A-", "A-"])
         self.assertEqual(v.timeline.selected_keys(),
                          {("chord", 0), ("chord", 1), ("chord", 2)})
         self.assertEqual(len(v._undo_stack), 1)     # una sola operació

@@ -6,6 +6,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Notació canònica del xifrat (`app/xifrat.py`, font ÚNICA)**: l'app desa
+  **sempre** els acords en una **forma canònica** (decisió de l'operador,
+  «opció 3», 2026-10-15). Entén el que escrigui l'usuari i ho deixa bé: menor
+  `-` (`Am`/`Amin`/`ami` → `A-`), major sense marca (`Cmaj`/`CM`/`CΔ` → `C`),
+  `Maj7`/`-7`/`-Maj7`, `dim`/`dim7`/`aug`, `-7b5` (`Bø` → `B-7b5`),
+  `sus2`/`sus4`, `6`/`-6`, `9`/`11`/`13`, i baix amb `/` (`Am/G` → `A-/G`;
+  `C6/9` **no** és un baix). `pipeline.saneja_nom_acord` hi **delega** → tots
+  els camins d'entrada (editor, renombrar, renom en bloc, alta, **MCP**,
+  troba-i-reemplaça) queden en canònic. Doc: `docs/NOTACIO_XIFRAT.md`.
+  Test: `tests/test_xifrat.py` (5).
 - **Caixa d'informació amb rotatori de dreceres i consells**: quan el ratolí
   **no** és sobre cap botó, camp o zona amb informació, la caixa (a baix a la
   dreta) ja no queda morta — hi gira un **panell de consells + les dreceres REALS**
@@ -111,6 +121,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   **`tests/test_regla11_paritat.py`**. `AGENTS.md` passa a 11 regles.
 
 ### Canviat
+- **S'ha acabat la divergència de noms CSV ↔ fitxer exportat**: com que el
+  MODEL ja ve en notació **canònica** (`app/xifrat.py`), `acords_a_live.py`
+  **deixa de reescriure** els noms (tret l'antic `style()`) i viatgen
+  **verbatim** → el nom del WAV exportat i el del CSV **coincideixen**
+  (`A-`, `A7_G.wav`).
+- **`/` (acord amb baix) als noms de FITXER → `_`, mai `-`**: `safe_filename`
+  (pipeline i partitura) passa `/` i els separadors de path a `_`, perquè al
+  xifrat el `-` vol dir «menor» (`A7/G` → `A7_G.wav`; abans hauria xocat amb
+  `A7-G`).
 - **«Obre…» → «Obre àudio»**: el botó de la barra i l'acció de menú (*Fitxer ▸
   Obre àudio…*, `Ctrl+O`) ara diuen el que fan de debò — obren
   **wav/mp3/aiff/flac/m4a/ogg/opus/wma**, no només WAV.
@@ -127,6 +146,19 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **Partitura amb acords VELLS**: `_exporta_partitura` ara **regenera**
+  `acords_locators.txt` si és més vell que `acords.csv` (els locators són un
+  **derivat** del model; si s'editava el model després de l'últim export de
+  WAVs, la partitura llegia locators antics). Nou `_assegura_locators()`.
+- **Partitura (MusicXML) — MuseScore no duplica l'arrel**: el `<kind text="…">`
+  de fallback porta **només el sufix** de la qualitat (el root ja s'escriu a
+  part) → s'ha acabat el «AA-maj7».
+- **«Exporta WAV's»/«Exporta partitura» s'activen en OBRIR un projecte**: abans
+  només s'activaven al final d'una **anàlisi** → obrir un projecte (amb els CSV
+  ja fets) les deixava apagades i no feien res. Nou `_habilita_export()`.
+- **El visor desa els CSV a la carpeta del PROJECTE des del primer moment**:
+  `Visor.__init__` accepta `sortida` i `main` l'hi passa → no es crea cap còpia
+  estranya `AUTOCHORDS_…/` dins `audio/`.
 - **Exportar «sense estructura» ja NO esborra el MODEL**: `_neteja_estructura_vella`
   ja **no toca `estructura_ABC.csv`** (el model del projecte) — la marca «Inclou
   estructura» decideix què s'**exporta**, no què es **conserva**. Només s'ofereix

@@ -32,6 +32,8 @@ import shutil
 import subprocess
 from xml.sax.saxutils import escape
 
+from app import xifrat           # notació del xifrat (sense deps del projecte)
+
 __all__ = [
     "exporta_partitura", "construeix_musicxml", "harmony_xml",
     "llegeix_locators", "llegeix_seccions", "parse_pos",
@@ -49,8 +51,12 @@ def _log_std(log):
 
 def safe_filename(nom, fallback="X"):
     s = str(nom).strip()
-    for ch in (os.sep, "/", "\\", "\0", "\n", "\r", "\t"):
-        s = s.replace(ch, "-")
+    # `/` (acord amb baix) i els separadors de path → `_`, MAI `-` (al xifrat
+    # el `-` vol dir «menor»). Control chars: fora.
+    for ch in (os.sep, "/", "\\"):
+        s = s.replace(ch, "_")
+    for ch in ("\0", "\n", "\r", "\t"):
+        s = s.replace(ch, "")
     s = s.strip()
     return (s or fallback)[:64]
 
@@ -128,53 +134,56 @@ def llegeix_bpm_bpb_de_guia(ruta):
 
 
 # --- xifrat -> <harmony> MusicXML -----------------------------------------
-_RE_ROOT = re.compile(r"^([A-G])([#b]?)(.*)$")
 _ALT = {"#": 1, "b": -1, "": 0}
 
-# qualitat (del xifrat d'Auto Chords) -> <kind> de MusicXML
+# Qualitat (JA CANÒNICA, vegeu `app/xifrat.py`) -> <kind> de MusicXML.
+# Si una qualitat no hi és, s'escriu `<kind text="…">other</kind>` amb NOMÉS
+# el sufix (el root ja s'escriu a part; amb el nom sencer MuseScore el duplicava
+# → «AA-maj7»).
 KIND = {
-    "": "major", "Maj": "major", "maj": "major", "M": "major",
-    "-": "minor", "m": "minor", "min": "minor",
+    "": "major",
+    "-": "minor",
+    "dim": "diminished", "aug": "augmented", "5": "power",
     "7": "dominant",
-    "Maj7": "major-seventh", "maj7": "major-seventh", "M7": "major-seventh",
-    "-7": "minor-seventh", "m7": "minor-seventh", "min7": "minor-seventh",
-    "-Maj7": "major-minor", "mMaj7": "major-minor", "minmaj7": "major-minor",
-    "dim": "diminished", "dim7": "diminished-seventh",
-    "hdim7": "half-diminished", "m7b5": "half-diminished", "ø7": "half-diminished",
-    "aug": "augmented", "aug7": "augmented-seventh", "+": "augmented",
-    "sus4": "suspended-fourth", "sus": "suspended-fourth",
-    "sus2": "suspended-second",
-    "6": "major-sixth", "-6": "minor-sixth", "m6": "minor-sixth",
-    "9": "dominant-ninth", "Maj9": "major-ninth", "maj9": "major-ninth",
-    "-9": "minor-ninth", "m9": "minor-ninth", "min9": "minor-ninth",
-    "11": "dominant-11th", "13": "dominant-13th",
-    "add9": "major-ninth", "5": "power",
+    "Maj7": "major-seventh", "-7": "minor-seventh",
+    "-Maj7": "major-minor",
+    "dim7": "diminished-seventh", "-7b5": "half-diminished",
+    "aug7": "augmented-seventh",
+    "6": "major-sixth", "-6": "minor-sixth",
+    "9": "dominant-ninth", "Maj9": "major-ninth", "-9": "minor-ninth",
+    "11": "dominant-11th", "Maj11": "major-11th", "-11": "minor-11th",
+    "13": "dominant-13th", "Maj13": "major-13th", "-13": "minor-13th",
+    "sus4": "suspended-fourth", "sus2": "suspended-second",
+    "add9": "major-ninth",
 }
 
 
 def harmony_xml(chord):
     """Bloc `<harmony>` per a un xifrat (o '' si no és un acord)."""
-    if not chord or chord == "N":
+    if not chord or xifrat.es_cap_acord(chord):
         return ""
-    base, _, bass = chord.partition("/")
-    m = _RE_ROOT.match(base)
-    if not m:
+    xif = xifrat.normalitza_xifrat(chord)          # forma canònica
+    base, bass = xifrat.parteix_baix(xif)
+    pa = xifrat.parteix_arrel(base)
+    if pa is None:
         return ""
-    step, alt, qual = m.groups()
+    root, qual = pa
+    step, alt = root[0], root[1:]
     kind = KIND.get(qual)
-    if kind is None:                          # qualitat no reconeguda -> literal
-        kind, txt = "other", f' text="{escape(chord)}"'
+    if kind is None:                          # qualitat no estàndard
+        kind, txt = "other", f' text="{escape(qual)}"'
     else:
         txt = ""
     alter = f"<root-alter>{_ALT.get(alt, 0)}</root-alter>" if alt else ""
     out = (f"      <harmony><root><root-step>{step}</root-step>{alter}</root>"
            f"<kind{txt}>{kind}</kind>")
     if bass:
-        bm = _RE_ROOT.match(bass)
-        if bm:
-            balt = (f"<bass-alter>{_ALT.get(bm.group(2), 0)}</bass-alter>"
-                    if bm.group(2) else "")
-            out += f"<bass><bass-step>{bm.group(1)}</bass-step>{balt}</bass>"
+        pb = xifrat.parteix_arrel(bass)
+        if pb is not None:
+            bstep, balt = pb[0][0], pb[0][1:]
+            balter = (f"<bass-alter>{_ALT.get(balt, 0)}</bass-alter>"
+                      if balt else "")
+            out += f"<bass><bass-step>{bstep}</bass-step>{balter}</bass>"
     return out + "</harmony>\n"
 
 

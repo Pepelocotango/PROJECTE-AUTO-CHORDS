@@ -23,6 +23,7 @@
 | `ESQUEMA_UI.md` · `ESQUEMA_UI.html` · `ESQUEMA_UI.svg` | Esquema de la GUI (3 formats). |
 | `PROJECTES.md` 🚧 | **Projectes autocontinguts** («com un DAW»): `.acproj`, `audio/` copiat, «Desa com»… (en desenvolupament). |
 | `FLUX_DE_DADES.md` | **Flux de dades**: capa **CRUA** (`analisi/`, immutable) vs **MODEL** editable; què toca cada operació. |
+| `NOTACIO_XIFRAT.md` | **Notació del xifrat**: la forma canònica (`Am`→`A-`), variants que entén i on s'aplica. |
 | `PLAY.md` | Com sona l'àudio a l'app i per què està fet així. |
 | `MOTOR_AUDIO_SO.md` | Motors d'àudio per SO (Linux/macOS/Windows). |
 | `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps (nota tècnica). |

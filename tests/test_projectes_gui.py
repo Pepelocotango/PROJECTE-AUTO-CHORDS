@@ -227,6 +227,50 @@ class TestRecents(_Base):
                         "els recents s'han de persistir")
 
 
+class TestObrirProjecteHabilitaExport(_Base):
+    def test_obrir_projecte_amb_model_activa_les_exportacions(self):
+        """Obrir un projecte amb model ha de deixar disponibles les exportacions.
+
+        Bug: «Exporta WAV's»/«Exporta partitura» només s'activaven al final
+        d'una ANÀLISI → obrir un projecte els deixava apagats i no es podia
+        exportar sense tornar a analitzar (cosa que descarta les edicions).
+        """
+        wav = _wav()
+        p = projecte.Projecte.crea(os.path.join(os.path.dirname(wav), "P"),
+                                   wav, bpm=120.0)
+        with open(p.ruta_csv_acords(), "w", encoding="utf-8") as fh:
+            fh.write("0.0,C\n2.0,G\n")
+        f = _finestra()
+        f.avisa = lambda *a, **k: None
+        self.assertFalse(f.b_export.isEnabled(), "abans d'obrir, apagat")
+        f._activa_projecte(projecte.Projecte.obre(p.ruta_acproj))
+        self.assertTrue(f.b_export.isEnabled(),
+                        "amb projecte obert l'export ha d'estar activa")
+        self.assertTrue(f.b_export_part.isEnabled())
+
+    def test_obrir_projecte_no_deixa_copia_dins_audio(self):
+        """El visor desa a la carpeta del PROJECTE, mai dins `<projecte>/audio/`.
+
+        Bug: el constructor del visor no sabia la carpeta de sortida i, quan la
+        normalització (regla d'or #4) canviava el model, desava una còpia a la
+        carpeta derivada del WAV (`audio/AUTOCHORDS_…/`).
+        """
+        wav = _wav()
+        p = projecte.Projecte.crea(os.path.join(os.path.dirname(wav), "P"),
+                                   wav, bpm=120.0)
+        with open(p.ruta_csv_acords(), "w", encoding="utf-8") as fh:
+            fh.write("1.0,C\n")          # 1r acord NO a 0 → força normalització
+        f = _finestra()
+        f.avisa = lambda *a, **k: None
+        f._activa_projecte(projecte.Projecte.obre(p.ruta_acproj))
+        audio = os.path.join(p.carpeta, "audio")
+        self.assertEqual(sorted(os.listdir(audio)),
+                         [os.path.basename(p.ruta_audio())],
+                         "audio/ només ha de contenir l'àudio")
+        with open(p.ruta_csv_acords(), encoding="utf-8") as fh:
+            self.assertIn("N", fh.read(), "el CSV del projecte s'ha normalitzat")
+
+
 def tearDownModule():
     try:
         import _qt_neteja

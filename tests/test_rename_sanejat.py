@@ -1,12 +1,14 @@
-"""Regressió: el REANOMENAT d'acord no sanejava el nom.
+"""Regressió: el sanejat del nom d'acord (tots els camins) i el símbol musical.
 
-`visor._afegeix_acord` ja netejava el nom (separadors de ruta), però el rename
-—pel MCP (`ac_rename_chord`) i per l'editor de la GUI— hi passava el text CRU:
-`"A/B:C*D"` arribava tal qual al CSV. L'EXPORT sí que saneja el nom de fitxer
-(`safe_filename`), així que el nom del CSVs i el del WAV podien divergir.
+`visor._afegeix_acord` ja netejava el nom, però el rename —pel MCP
+(`ac_rename_chord`) i per l'editor de la GUI— hi passava el text CRU.
 
-Ara tots els camins fan servir el MATEIX sanejat canònic
-(`pipeline.saneja_nom_acord`) — el mateix que l'export.
+CANVI DE CRITERI (2026-10-15): el xifrat és **notació musical** i es conserva
+tal qual (`/` per a l'acord amb baix, `-` de menor, `#`, `b`…). Només es
+netejen caràcters de control i espais sobrers. La seguretat per als noms de
+FITXER la garanteix `pipeline.safe_filename`, que l'export aplica pel seu
+compte (`A7/G` → `A7_G.wav`). Abans el sanejat del MODEL també tocava `/`, i
+això impedia escriure acords amb baix.
 """
 import csv
 import os
@@ -24,8 +26,8 @@ from app import mcp_bridge, pipeline  # noqa: E402
 from app import visor as visor_mod  # noqa: E402
 
 DUR = 40.0
-BRUT = "A/B:C*D"
-NET = "A-B-C-D"
+BRUT = "  A7/G  "        # espais sobrers → es netegen
+NET = "A7/G"             # però el SÍMBOL es conserva (baix amb `/` inclòs)
 
 
 def _visor():
@@ -71,9 +73,16 @@ class _FinestraFalsa:
 
 
 class TestSanejatCanonic(_Base):
-    def test_noms_habituals_no_canvien(self):
-        for brut, net in [("C", "C"), ("C#m7", "C#m7"), ("N", "N"),
-                          ("Am/G", "Am-G"), ("  C  ", "C")]:
+    def test_forma_canonica(self):
+        """Tots els camins desen en la MATEIXA notació canònica d'acord.
+
+        Menor `-`, major sense marca, `Maj7`, `-7`, `-7b5`… (`app/xifrat.py`).
+        """
+        for brut, net in [("C", "C"), ("C#m7", "C#-7"), ("N", "N"),
+                          ("Am/G", "A-/G"), ("A-7/G", "A-7/G"),
+                          ("Amaj7", "AMaj7"), ("Bø", "B-7b5"),
+                          ("Cmaj", "C"), ("F#dim7", "F#dim7"),
+                          ("  C  ", "C")]:
             self.assertEqual(pipeline.saneja_nom_acord(brut), net, brut)
 
     def test_nom_buit(self):
@@ -108,13 +117,13 @@ class TestRenameEditor(_Base):
 class TestRenameInlineTimeline(_Base):
     def test_renom_inline_saneja(self):
         v = _visor()
-        v._on_chord_renamed(0, "A/B")
-        self.assertEqual(v.acords[0][1], "A-B")
+        v._on_chord_renamed(0, "  A/B  ")
+        self.assertEqual(v.acords[0][1], "A/B")     # símbol conservat, espais fora
 
-    def test_renom_inline_normal_no_canvia(self):
+    def test_renom_inline_normal_es_canonicalitza(self):
         v = _visor()
         v._on_chord_renamed(0, "C#m7")
-        self.assertEqual(v.acords[0][1], "C#m7")
+        self.assertEqual(v.acords[0][1], "C#-7")    # notació canònica
 
 
 class TestAltaCoherent(_Base):

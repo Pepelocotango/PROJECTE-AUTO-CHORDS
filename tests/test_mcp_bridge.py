@@ -413,7 +413,8 @@ class TestEdicio(unittest.TestCase):
     def test_rename_i_move_chord(self):
         vr = _FakeVisor()
         mcp_bridge._op_rename_chord(_ctx(vr), {"index": 1, "acord": "Cmaj"})
-        self.assertEqual(vr.acords[1][1], "Cmaj")
+        # el MODEL es desa en notació canònica: `Cmaj` → `C` (tríada major)
+        self.assertEqual(vr.acords[1][1], "C")
         mcp_bridge._op_move_chord(_ctx(vr), {"index": 1, "t_s": 5.0})
         self.assertEqual(vr.acords[1][0], 5.0)
 

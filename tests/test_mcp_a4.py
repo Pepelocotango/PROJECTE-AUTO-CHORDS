@@ -20,6 +20,7 @@ import PyQt5.QtWidgets as QW  # noqa: E402
 
 from app import main as app_main  # noqa: E402
 from app import mcp_bridge  # noqa: E402
+from app import pipeline  # noqa: E402
 
 
 def _finestra():
@@ -57,6 +58,33 @@ class TestExportPartitura(_Base):
         w.sortida = tempfile.mkdtemp()
         with self.assertRaises(mcp_bridge.BridgeError):
             mcp_bridge._op_export_partitura(self.ctx(w), {})
+
+    def test_locators_vells_es_regeneren(self):
+        """Bug: exportar NOMÉS la partitura reutilitzava els locators VELLS.
+
+        La partitura es construeix a partir de `acords_locators.txt`, que és un
+        DERIVAT del model. Si el CSV s'ha editat després de l'últim export de
+        WAVs, els locators del disc són vells i la partitura sortia amb els
+        acords antics.
+        """
+        w = _finestra()
+        sortida = pipeline.carpeta_sortida(w.wav_edit.text().strip())
+        w.sortida = sortida
+        os.makedirs(sortida, exist_ok=True)
+        csv_ac = os.path.join(sortida, "acords.csv")
+        with open(csv_ac, "w", encoding="utf-8") as f:
+            f.write("0.0,C\n")
+        loc = os.path.join(sortida, "acords_locators.txt")
+        with open(loc, "w", encoding="utf-8") as f:
+            f.write("posició acord durada\n")
+        os.utime(loc, (os.path.getmtime(csv_ac) - 60,) * 2)   # locators VELLS
+        with patch.object(pipeline, "run_acords_py") as m:
+            self.assertTrue(w._assegura_locators())
+            m.assert_called_once()
+        os.utime(loc, None)          # com si s'haguessin reescrit
+        with patch.object(pipeline, "run_acords_py") as m2:
+            self.assertTrue(w._assegura_locators())
+            m2.assert_not_called()   # ja estan al dia → no es toca res
 
     def test_retorna_els_camins_generats(self):
         w = _finestra()

@@ -62,9 +62,39 @@ class HarmonyTests(unittest.TestCase):
         self.assertIn("<kind>major</kind>", w)
         self.assertIn("<bass-step>D</bass-step>", w)
 
+    def test_xifrat_jazz_amb_baix(self):
+        """Els xifrats de jazz (menor amb `-`, maj7, 6a) amb baix `/nota`.
+
+        Regressió: `A-maj7/G#` sortia com a `<root>A</root>` + un `<kind
+        text="A-maj7-G#">` → MuseScore duplicava el nom («AA-maj7-G#»).
+        """
+        w = partitura.harmony_xml("A-7/G")
+        self.assertIn("<kind>minor-seventh</kind>", w)
+        self.assertIn("<bass-step>G</bass-step>", w)
+        w = partitura.harmony_xml("A-6/F#")
+        self.assertIn("<kind>minor-sixth</kind>", w)
+        self.assertIn("<bass-step>F</bass-step>", w)
+        self.assertIn("<bass-alter>1</bass-alter>", w)
+        w = partitura.harmony_xml("A-maj7/G#")
+        self.assertIn("<kind>major-minor</kind>", w)
+        self.assertIn("<bass-step>G</bass-step>", w)
+        w = partitura.harmony_xml("A7/G")
+        self.assertIn("<kind>dominant</kind>", w)
+        self.assertIn("<bass-step>G</bass-step>", w)
+
+    def test_la_barra_de_6_9_no_es_un_baix(self):
+        """`C6/9` porta barra però NO és un acord amb baix."""
+        w = partitura.harmony_xml("C6/9")
+        self.assertNotIn("<bass>", w)
+        self.assertIn('text="6/9"', w)
+
     def test_no_acord_i_qualitat_desconeguda(self):
         self.assertEqual(partitura.harmony_xml("N"), "")
-        self.assertIn('text="Cxyz"', partitura.harmony_xml("Cxyz"))
+        self.assertEqual(partitura.harmony_xml("N.C."), "")
+        # Qualitat desconeguda: el `text` porta NOMÉS el sufix (el root ja
+        # s'escriu a part) → MuseScore no duplica el nom.
+        self.assertIn('text="xyz"', partitura.harmony_xml("Cxyz"))
+        self.assertNotIn('text="Cxyz"', partitura.harmony_xml("Cxyz"))
 
 
 class DuradesTests(unittest.TestCase):

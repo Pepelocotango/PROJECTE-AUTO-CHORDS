@@ -95,7 +95,7 @@ class TestEditorFeedback(unittest.TestCase):
         v.ed_nom.setText("Gmaj7")
         v.ed_ini.setText("4.00")
         v._aplica_editor()
-        self.assertEqual(v.acords[1][1], "Gmaj7", "hauria d'haver aplicat")
+        self.assertEqual(v.acords[1][1], "GMaj7", "hauria d'haver aplicat")
         self.assertEqual(v._missatges, [], "el camí bo no ha d'avisar")
 
 

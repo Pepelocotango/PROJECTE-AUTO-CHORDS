@@ -1616,6 +1616,10 @@ class Finestra(QMainWindow):
                 self._bpm_val(),
                 self._bpb_val(),
                 tempo_fix=self.tempo_fix.isChecked(),
+                # La carpeta de sortida del PROJECTE va al constructor: així
+                # el visor no desa mai cap CSV a `audio/…` (carpeta derivada
+                # del WAV).
+                sortida=self.sortida or pipeline.carpeta_sortida(wav),
             )
             self.visor_ref = visor
             # El visor ha de desar els CSV/export a la carpeta de sortida del
@@ -1649,6 +1653,11 @@ class Finestra(QMainWindow):
             self._stack.setCurrentWidget(self.visor_widget)
             self.visor_widget.show()
             self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
+            # Si el visor ja porta MODEL (projecte obert, o anàlisi feta), les
+            # exportacions també han d'estar disponibles. Abans només
+            # s'activaven al final d'una ANÀLISI → OBRIR UN PROJECTE deixava
+            # «Exporta WAV's»/«Exporta partitura» apagats i no feien res.
+            self._habilita_export()
             self._actualitza_metro_ui()
             if hasattr(visor, "cont_transport"):
                 # el transport viu a la barra de la finestra
@@ -1664,6 +1673,18 @@ class Finestra(QMainWindow):
             self.registra(f"Visor ERROR: {traceback.format_exc()}")
             self.visor_ref = None
             self._mostra_placeholder_visor()
+
+    def _habilita_export(self):
+        """Activa «Exporta WAV's»/«Exporta partitura» si el visor té MODEL.
+
+        El model pot venir d'una anàlisi d'aquesta sessió **o** d'un projecte
+        obert (els CSV ja hi són) → en tots dos casos s'ha de poder exportar.
+        """
+        vr = getattr(self, "visor_ref", None)
+        te_model = vr is not None and bool(getattr(vr, "acords", None)
+                                           or getattr(vr, "seccions", None))
+        self.b_export.setEnabled(te_model)
+        self.b_export_part.setEnabled(te_model)
 
     def _atura_si_sona(self, motiu):
         """Atura el reproductor abans d'una operacio pesada (no te sentit
@@ -2506,6 +2527,37 @@ class Finestra(QMainWindow):
         res_part = self._exporta_partitura() if self.amb_part.isChecked() else None
         self._exporta_acabada(res_part)
 
+    def _assegura_locators(self):
+        """Regenera `acords_locators.txt` si és MÉS VELL que el model.
+
+        La partitura es construeix a partir dels **locators**, que són un
+        DERIVAT del CSV (els fa `acords_a_live.py`). Si s'ha editat el model
+        després de l'últim export de WAVs, els locators del disc són VELLS i la
+        partitura sortia amb els acords antics (bug real, 2026-10-15).
+        """
+        sortida = self.sortida or ""
+        csv_ac = os.path.join(sortida, "acords.csv")
+        loc = os.path.join(sortida, "acords_locators.txt")
+        if not (sortida and os.path.isfile(csv_ac) and os.path.isfile(loc)):
+            return False            # sense locators, `partitura` ja avisa
+        try:
+            if os.path.getmtime(loc) >= os.path.getmtime(csv_ac):
+                return True         # ja estan al dia
+        except OSError:
+            pass
+        vr = getattr(self, "visor_ref", None)
+        try:
+            pipeline.run_acords_py(
+                csv_ac, self._bpm_val(), self._bpb_val(), self._offset_val(),
+                sortida, self.registra,
+                durada=(vr.audio["durada"] if vr is not None else None))
+            self.registra("partitura: locators regenerats (el model havia "
+                          "canviat des de l'últim export de WAVs)")
+            return True
+        except Exception as e:  # noqa: BLE001
+            self.registra(f"AVÍS: no he pogut regenerar els locators: {e}")
+            return False
+
     def _exporta_partitura(self):
         """Genera el lead sheet de xifrats de la carpeta de sortida.
 
@@ -2521,6 +2573,8 @@ class Finestra(QMainWindow):
         if self.tonalitat_auto.isChecked() and wav:
             key_fifths = partitura.detecta_fifths(wav, self.registra)
         try:
+            # Els locators són un derivat del model: si és vell, es regenera.
+            self._assegura_locators()
             res = partitura.exporta_partitura(
                 self.sortida,
                 log=self.registra,

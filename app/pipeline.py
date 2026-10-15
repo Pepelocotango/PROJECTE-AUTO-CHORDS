@@ -13,7 +13,7 @@ import threading
 import time
 import wave
 
-from app import plataforma, tempo
+from app import plataforma, tempo, xifrat
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJ_DIR = os.path.dirname(APP_DIR)
@@ -55,7 +55,8 @@ def _desambigua(nom, usats):
 def safe_filename(name, fallback="X", usats=None):
     """Retorna un nom segur per usar com a part d un filename.
 
-    - Substitueix separadors de path (/ i os.sep) per -
+    - Substitueix separadors de path (/ i os.sep) per _ (MAI per -, que al
+      xifrat vol dir «menor»: `A7/G` → `A7_G`)
     - Treu caracters de control (\0, \n, \r, \t)
     - Substitueix els caracters reservats a Windows (: * ? " < > |) per -
     - Treu punt o espai FINAL (Windows no els accepta)
@@ -65,10 +66,12 @@ def safe_filename(name, fallback="X", usats=None):
     - Si es passa `usats` (un set), desambigua amb un sufix (_2, _3...) quan el
       nom ja hi es; els noms unics NO canvien mai
 
-    Els noms habituals d'acord (C, C#m7, N, Am/G->Am-G...) NO canvien.
+    Els noms habituals d'acord (C, C#m7, N, Am/G→Am_G...) NO canvien.
     """
     s = str(name).strip()
-    s = s.replace(os.sep, "-").replace("/", "-").replace("\\", "-")
+    # El separador de l'acord amb baix (`/`) i el de path passen a `_`: NO a
+    # `-`, perquè al xifrat el `-` vol dir «menor» (`A-7` ≠ `A7/G`).
+    s = s.replace(os.sep, "_").replace("/", "_").replace("\\", "_")
     s = s.replace("\0", "").replace("\n", "").replace("\r", "").replace("\t", "")
     # Caracters reservats a Windows. Els evitem SEMPRE (tambe a Linux/macOS)
     # perque el mateix projecte doni els MATEIXOS noms a tots els sistemes.
@@ -89,15 +92,18 @@ def safe_filename(name, fallback="X", usats=None):
 
 
 def saneja_nom_acord(nom):
-    """Nom d'acord net per al MODEL i el CSV (mai per a una ruta de fitxer).
+    """Nom d'acord net per al MODEL i el CSV, en la **notació canònica** de l'app.
 
-    És el MATEIX criteri que `safe_filename` (el que fa servir l'export per al
-    nom del WAV): així el nom del clip i el del fitxer exportat sempre
-    coincideixen. Els noms habituals (`C`, `C#m7`, `N`, `Am/G` → `Am-G`) NO
-    canvien; els separadors i els reservats de Windows (`/ \\ : * ? " < > |`)
-    passen a `-`. Retorna "" si el nom és (o queda) buit — qui cridi decideix.
+    Delega a `app.xifrat`: entén les variants que escrigui l'usuari (menor
+    `m`/`mi`/`min`/`-`, major `M`/`Ma`/`maj`/`Δ`, `°`/`o`/`dim`, `+`, `ø`…) i
+    deixa el xifrat en la forma canònica (`Am` → `A-`, `Cmaj7` → `CMaj7`,
+    `Bø` → `B-7b5`). El baix amb `/` es conserva (`A7/G` → `A7/G`).
+
+    La seguretat per als noms de FITXER la garanteix `safe_filename`, que
+    l'export aplica pel seu compte. Retorna "" si el nom queda buit — qui cridi
+    decideix què fer.
     """
-    return safe_filename(str(nom).strip(), fallback="")
+    return xifrat.normalitza_xifrat(nom)
 
 
 # Prefix de les carpetes que genera l'app al costat del WAV. És PREFIX (no

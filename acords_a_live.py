@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # Ús: python3 acords_a_live.py acords_csv.csv 138 2   (BPM, temps per compàs)
-import csv, re, sys, html
+import csv, sys, html
 src, bpm, bpb = sys.argv[1], float(sys.argv[2]), int(sys.argv[3])
 offset = float(sys.argv[4]) if len(sys.argv) > 4 else 0.0   # segons on cau el compàs 1
 durada = float(sys.argv[5]) if len(sys.argv) > 5 else 0.0   # durada de la WAV (cobertura)
 step = 60.0 / bpm / 2            # graella = mig temps (corxera)
 slots_bar = bpb * 2
 
-def style(c):                     # Cmaj7->CMaj7, Am->A-, Em7->E-7
-    c = re.sub(r'^([A-G][#b]?)maj', r'\1Maj', c)
-    return re.sub(r'^([A-G][#b]?)m(?!aj|Aj)', r'\1-', c)
-
+# NOTA: el nom de l'acord es desa TAL QUAL (el model ja ve en notació canònica
+# — vegeu `app/xifrat.py`). Abans hi havia un `style()` que reescrivia
+# `Am`→`A-`/`Cmaj7`→`CMaj7` aquí; ara la normalització és al MODEL, no a
+# l'export, i així el CSV i els fitxers exportats coincideixen.
 rows = [(float(t), c.strip()) for t, c in csv.reader(open(src, encoding="utf-8"))]
 segs, last, end = [], -1, 0
 for t, c in rows:
@@ -18,8 +18,8 @@ for t, c in rows:
     if c == 'N':
         end = p; continue
     if p <= last: p = last + 1     # evita col·lisions després d'arrodonir
-    if segs and segs[-1][1] == style(c): continue
-    segs.append((p, style(c))); last = p
+    if segs and segs[-1][1] == c: continue
+    segs.append((p, c)); last = p
 if not segs:
     sys.exit("cap acord detectat al csv (tot N): revisa la wav o l'extracció Chordino")
 end = max(end, segs[-1][0] + slots_bar)

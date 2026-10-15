@@ -126,7 +126,7 @@ class TestRenomMultiple(_Base):
             v._ed_kind, v._ed_idx = "chord", 0          # actiu = acords
             v.ed_nom.setText("Dm")
             v._aplica_editor()
-            self.assertEqual([a[1] for a in v.acords[:3]], ["Dm", "Dm", "F"])
+            self.assertEqual([a[1] for a in v.acords[:3]], ["D-", "D-", "F"])
             self.assertEqual([s[2] for s in v.seccions], ["A", "B", "C"])
         finally:
             v.close()

@@ -117,7 +117,7 @@ class Visor(QMainWindow):
     # missatge per a la caixa d'informacio (desfer/refer, etc.)
     infoMissatge = pyqtSignal(str)
     canvis = pyqtSignal()      # el model (acords/seccions) ha canviat per edició
-    def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True):
+    def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True, sortida=None):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
         self._embedded = False
@@ -126,6 +126,11 @@ class Visor(QMainWindow):
         self.setWindowTitle("Auto Chords — visor")
         self.resize(900, 600)
         self.wav_path = wav
+        # Carpeta de sortida (projecte autocontingut) DES DEL PRINCIPI: el
+        # constructor pot desar CSV normalitzats (vegeu més avall) i, sense
+        # això, anaven a la carpeta derivada del WAV
+        # (`<projecte>/audio/AUTOCHORDS_…/`) → còpia estranya dins `audio/`.
+        self.sortida = sortida or pipeline.carpeta_sortida(wav)
         self.bpm, self.bpb = bpm, bpb
         self.offset = 0.0
         self.tempo_fix = bool(tempo_fix)

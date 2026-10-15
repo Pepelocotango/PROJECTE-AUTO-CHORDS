@@ -1007,8 +1007,8 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
     def test_rename_via_timeline_propagates_to_visor(self):
         v, _ = self._make_visor_with_data()
         v.timeline._commit_rename("chord", 2, v.timeline._chord_items[2],
-                                  "Fmaj7")
-        self.assertEqual(v.acords[2][1], "Fmaj7")
+                                  "FMaj7")
+        self.assertEqual(v.acords[2][1], "FMaj7")
         v.close()
 
     def test_section_move_via_timeline_propagates_to_visor(self):
@@ -2592,8 +2592,8 @@ class EditorFranjaTests(unittest.TestCase):
         w = self._finestra(); v = w.visor_ref
         v.timeline.select_clip("chord", 1); v._on_clip_selected("chord", 1)
         v.ed_nom.setText("Am7"); v._aplica_editor()
-        self.assertEqual(v.acords[1][1], "Am7")
-        self.assertEqual(v.ed_gran.text(), "Am7")   # l'editor s'actualitza
+        self.assertEqual(v.acords[1][1], "A-7")     # notació canònica
+        self.assertEqual(v.ed_gran.text(), "A-7")   # l'editor s'actualitza
         v.undo()
         w.close()
 
@@ -3058,12 +3058,12 @@ class UndoRedoTests(unittest.TestCase):
         nom0 = v.acords[2][1]
         # flux real: el timeline canvia el nom i emet chordRenamed
         v.timeline._commit_rename("chord", 2, v.timeline._chord_items[2],
-                                  "Fmaj7")
-        self.assertEqual(v.acords[2][1], "Fmaj7")
+                                  "FMaj7")
+        self.assertEqual(v.acords[2][1], "FMaj7")
         v.undo()
         self.assertEqual(v.acords[2][1], nom0)
         v.redo()
-        self.assertEqual(v.acords[2][1], "Fmaj7")
+        self.assertEqual(v.acords[2][1], "FMaj7")
         v.close()
 
     def test_undo_restores_timeline_items(self):
@@ -3502,15 +3502,16 @@ class CoberturaTests(unittest.TestCase):
 class SafeFilenameTests(unittest.TestCase):
     """`pipeline.safe_filename` (Pas 4): noms segurs a Windows, sense regressions."""
 
-    # 🏆 TEST DAURAT: noms d'acord HABITUALS — han de donar EXACTAMENT el mateix
-    # que abans d'endurir la funció (reservats de Windows, punt/espai final i
-    # desambiguació NO els toquen).
+    # 🏆 TEST DAURAT: noms d'acord HABITUALS. Nota: el separador de l'acord amb
+    # baix (`/`) passa a **`_`** i NO a `-`, perquè al xifrat el `-` vol dir
+    # «menor» (`A-7` ≠ `A7`): així `A7/G` → `A7_G.wav` no es confon amb res.
     DAURAT = [
         ("C", "C"), ("N", "N"), ("C#", "C#"), ("C#m7", "C#m7"),
         ("Cmaj7", "Cmaj7"), ("Csus4", "Csus4"), ("Am", "Am"),
-        ("Am/G", "Am-G"), ("G/B", "G-B"), ("Bb", "Bb"), ("A#", "A#"),
+        ("Am/G", "Am_G"), ("G/B", "G_B"), ("Bb", "Bb"), ("A#", "A#"),
         ("F#dim7", "F#dim7"), ("Dm7", "Dm7"), ("G7", "G7"),
-        ("Bbmaj7", "Bbmaj7"), ("A7sus4", "A7sus4"), ("C/G", "C-G"),
+        ("Bbmaj7", "Bbmaj7"), ("A7sus4", "A7sus4"), ("C/G", "C_G"),
+        ("A-7", "A-7"), ("A-maj7/G#", "A-maj7_G#"), ("A7/G", "A7_G"),
     ]
 
     def test_daurat_noms_habituals(self):
@@ -3519,8 +3520,8 @@ class SafeFilenameTests(unittest.TestCase):
                              f"ha canviat el nom de {entrada!r}")
 
     def test_separadors_i_truncament(self):
-        self.assertEqual(pipeline.safe_filename("a/b"), "a-b")
-        self.assertEqual(pipeline.safe_filename("a" + os.sep + "b"), "a-b")
+        self.assertEqual(pipeline.safe_filename("a/b"), "a_b")
+        self.assertEqual(pipeline.safe_filename("a" + os.sep + "b"), "a_b")
         self.assertEqual(len(pipeline.safe_filename("x" * 200)), 64)
 
     def test_buit_usa_fallback(self):
