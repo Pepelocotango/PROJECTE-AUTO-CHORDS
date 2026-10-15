@@ -6,6 +6,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Nudge amb teclat** (`←`/`→`): mou la **vora esquerra** (l'inici) del clip seleccionat
+  **un pas de graella** (la mateixa divisió que el snap); **`Alt+←/→`** mou la **vora
+  dreta** (estirar/encongir). Per a les **seccions**, mou la **frontera** amb la veïna.
+  Una sola operació de desfer; sense selecció no fa res; les regles d'or es mantenen
+  (només es mou una frontera → ordre i contigüitat intactes). Test: `tests/test_nudge.py` (6).
 - **Graella musical («mode fàcil») + capa d'anàlisi crua** (`app/graella.py`, **NOU**):
   - **`analisi/` (capa crua, evidència)**: l'anàlisi de Chordino i de l'estructura es desa
     **sense netejar** (`chords_raw.csv`, `segments_raw.csv`, `meta.json`) i **no es toca

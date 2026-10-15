@@ -48,7 +48,7 @@ from app.timeline_base import (   # noqa: E402,F401
     LANE_BG_B, LANE_H, LANE_SEC_TOP, LEFT_PAD, LOOP_GRAB_PX, MIN_GAP_S,
     MIN_SEC_LEN_S, PIXELS_PER_SECOND_DEFAULT, RIGHT_PAD, RULER_H,
     SELECTION_COLOR, TOTAL_H, WAVEFORM_H, fmt_pos, grid_levels,
-    loop_after_drag, snap_time,
+    loop_after_drag, snap_step, snap_time,
 )
 
 
@@ -1243,10 +1243,66 @@ class TimelineView(QGraphicsView):
             return
         super().mouseReleaseEvent(event)
 
+    def _pas_nudge(self) -> float:
+        """Pas del nudge = la DIVISIÓ de graella vigent (la mateixa que el snap)."""
+        step = snap_step(self._tempo_fix, self._bpm, self._bpb, self._pps)
+        return step if step and step > 0 else 0.1
+
+    def _nudge(self, direccio: int, estira: bool, pas: float) -> None:
+        """Mou la frontera del clip seleccionat `pas` (nudge amb ←/→).
+
+        - Per defecte: la **vora esquerra** (l'inici del clip). Per als acords és
+          l'inici propi; per a les seccions, la frontera amb l'anterior (o sigui,
+          el fi de la secció prèvia).
+        - `estira=True` (Alt): la **vora dreta** (el fi = inici del següent).
+        Una sola operació de desfer (editStarted/editFinished). Respecta les
+        regles d'or (només mou una frontera → ordre i contigüitat intactes).
+        """
+        kind, idx = self._sel
+        self.editStarted.emit()
+        fet = False
+        if kind == "chord" and 0 <= idx < len(self._acords):
+            if estira:
+                if idx + 1 < len(self._acords):
+                    self._on_chord_end_changed(
+                        idx, float(self._acords[idx + 1][0]) + direccio * pas)
+                    fet = True
+            else:
+                self._on_chord_time_changed(
+                    idx, float(self._acords[idx][0]) + direccio * pas)
+                fet = True
+        elif kind == "section" and 0 <= idx < len(self._seccions):
+            if estira:
+                self._nudge_vora_seccio(
+                    idx, float(self._seccions[idx][1]) + direccio * pas)
+                fet = True
+            elif idx > 0:
+                self._nudge_vora_seccio(
+                    idx - 1, float(self._seccions[idx - 1][1]) + direccio * pas)
+                fet = True
+        if fet:
+            self._emit_edit_finished()
+
+    def _nudge_vora_seccio(self, j: int, nou_fi: float) -> None:
+        """Mou el FI de la secció `j` (= inici de la següent) amb la lògica de vora."""
+        it = self._section_items[j]
+        previ = getattr(it, "_drag_mode", SectionItem.ZONE_NONE)
+        it._drag_mode = SectionItem.ZONE_RIGHT
+        try:
+            self._on_section_changed(j, float(self._seccions[j][0]), nou_fi)
+        finally:
+            it._drag_mode = previ
+
     def keyPressEvent(self, event) -> None:
         mods = event.modifiers()
         if event.key() == Qt.Key_Space:
             self.playRequested.emit()
+            event.accept()
+            return
+        if (event.key() in (Qt.Key_Left, Qt.Key_Right) and self._sel[0]
+                and not (mods & Qt.ControlModifier)):
+            self._nudge(-1 if event.key() == Qt.Key_Left else 1,
+                        bool(mods & Qt.AltModifier), self._pas_nudge())
             event.accept()
             return
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):

@@ -93,6 +93,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 > mai al visor incrustat (un `QShortcut` dins el visor no s'activa).
 > **Espai** = play/stop · **T** = tap tempo · **Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z**
 > = desfer/refer · **Del** = eliminar · **Ctrl+D** = duplicar · **F2** = reanomenar (clip o **grup del mateix tipus**) ·
+> **←/→** = **nudge** un pas de graella (**Alt+←/→** = vora dreta) ·
 > **Ctrl+O** = obrir WAV · **Ctrl+Shift+O** = obrir projecte · **Ctrl+S** = desar ·
 > **Ctrl+Shift+S** = desar com · **Ctrl+E** = exportar · **Ctrl+[ / Ctrl+]** = loop A/B ·
 > **F5** = Analitza · **Ctrl++ / Ctrl+− / Ctrl+0** = zoom +/− / total.
@@ -210,6 +211,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | **F2** | **reanomena** el clip seleccionat, o **tot el grup** si són del mateix tipus (N acords → un nom · M seccions → una lletra); una selecció **mixta** no es renombra, i el clip editat queda **seleccionat** |
 | **Ctrl+Z / Ctrl+Y** | **desfer / refer** |
 | **Ctrl+H** | **troba i reemplaça** xifrats (acords) o etiquetes (estructura) a **tot el tema**; una sola operació de desfer i **no canvia cap temps** |
+| **← / →** | **nudge**: mou la **vora esquerra** (l'inici) del clip seleccionat **un pas de graella**; **Alt+←/→** mou la **vora dreta** (estirar/encongir). Una sola operació de desfer; sense selecció no fa res. |
 | **Ratolí sobre un botó/camp** | la **caixa d'informació** (a baix a la dreta) mostra què fa |
 
 ---
