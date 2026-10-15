@@ -251,30 +251,95 @@ class Projecte:
         return [os.path.join(d, x) for x in noms]
 
     def fes_backup(self, max_backups=MAX_BACKUPS):
-        """Còpia versionada dins `backup/<data-hora>/` (document + CSVs).
+        """Còpia versionada dins `backup/<data-hora>/`.
 
-        Usa l'**estat viu** del projecte (`self.dades`, encara que no s'hagi
-        «desat»), de manera que una recuperació no perd el tempo/opcions/edició
-        recents. Rota perquè només quedin `max_backups` (les més noves).
-        Retorna la carpeta creada.
+        Guarda el **document** (`.acproj` amb l'estat viu) + els **fitxers
+        importants** (CSV d'acords/estructura/segments i locators) + la carpeta
+        **`analisi/`** (l'anàlisi crua). **NO** copia l'àudio (`audio/`) ni els
+        exports (`wavs_*`, `partitura/`), que es deriven i són grossos.
+
+        **No duplica** si el contingut no ha canviat des de l'última còpia.
+        Rota perquè només quedin `max_backups` (les més noves).
+        Retorna la carpeta creada, o `None` si no calia (sense canvis).
         """
+        fits, dirs = self._materials_backup()
+        sign = self._signatura(fits, dirs)
+        ultims = self.backups()
+        if ultims:
+            try:
+                with open(os.path.join(ultims[-1], ".signatura"),
+                          encoding="utf-8") as f:
+                    if f.read().strip() == sign:
+                        return None          # cap canvi → cap còpia nova
+            except OSError:
+                pass
         dest = os.path.join(self.dir_backup(), _timestamp())
-        # Si ja existeix una còpia en el mateix segon, hi afegeix un sufix.
         k = 2
         while os.path.exists(dest):
             dest = os.path.join(self.dir_backup(), f"{_timestamp()}-{k}")
             k += 1
         os.makedirs(dest, exist_ok=True)
+        # document (estat viu, encara que no s'hagi «desat»)
         ap = os.path.join(dest, os.path.basename(self.ruta_acproj))
         pipeline.escriu_atomic(
             ap, lambda f: json.dump(self.dades, f, ensure_ascii=False,
                                     indent=2, sort_keys=True))
-        for nom in (NOM_CSV_ACORDS, NOM_CSV_ESTRUCTURA):
-            origen = os.path.join(self.carpeta, nom)
+        for n in fits:
+            if n == os.path.basename(self.ruta_acproj):
+                continue
+            origen = os.path.join(self.carpeta, n)
             if os.path.isfile(origen):
-                shutil.copy2(origen, os.path.join(dest, nom))
+                shutil.copy2(origen, os.path.join(dest, n))
+        for d in dirs:
+            origen = os.path.join(self.carpeta, d)
+            if os.path.isdir(origen):
+                shutil.copytree(origen, os.path.join(dest, d))
+        with open(os.path.join(dest, ".signatura"), "w", encoding="utf-8") as f:
+            f.write(sign)
         self._rota_backups(max_backups)
         return dest
+
+    # Fitxers del projecte que es guarden a cada còpia (model + anàlisi crua).
+    _FITXERS_BACKUP = (NOM_CSV_ACORDS, NOM_CSV_ESTRUCTURA, "segments.csv",
+                       "acords_locators.txt")
+
+    def _materials_backup(self):
+        """(noms de fitxers, carpetes) del projecte que es guarden a una còpia."""
+        fits = [os.path.basename(self.ruta_acproj)]
+        for n in self._FITXERS_BACKUP:
+            if os.path.isfile(os.path.join(self.carpeta, n)):
+                fits.append(n)
+        dirs = []
+        an = getattr(pipeline, "NOM_ANALISI", "analisi")
+        if os.path.isdir(os.path.join(self.carpeta, an)):
+            dirs.append(an)
+        return fits, dirs
+
+    def _signatura(self, fits, dirs):
+        """Empremta del contingut que es copia (per no duplicar còpies iguals)."""
+        import hashlib
+        h = hashlib.sha256()
+        base = {k: v for k, v in self.dades.items() if k != "desat"}
+        h.update(json.dumps(base, ensure_ascii=False, sort_keys=True).encode())
+        for n in sorted(fits):
+            if n == os.path.basename(self.ruta_acproj):
+                continue                     # ja inclòs a `dades`
+            try:
+                with open(os.path.join(self.carpeta, n), "rb") as f:
+                    h.update(f.read())
+            except OSError:
+                pass
+        for d in sorted(dirs):
+            for arrel, _dd, ff in os.walk(os.path.join(self.carpeta, d)):
+                for fit in sorted(ff):
+                    p = os.path.join(arrel, fit)
+                    try:
+                        with open(p, "rb") as f:
+                            h.update(os.path.relpath(p, self.carpeta).encode())
+                            h.update(f.read())
+                    except OSError:
+                        pass
+        return h.hexdigest()
 
     def _rota_backups(self, max_backups):
         if not max_backups or max_backups <= 0:

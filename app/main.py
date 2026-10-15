@@ -1863,13 +1863,15 @@ class Finestra(QMainWindow):
         self._autosave.start()
 
     def _fes_autosave(self):
-        """Còpia de seguretat periòdica a `backup/` (només si hi ha canvis)."""
+        """Còpia de seguretat periòdica a `backup/` (només si hi ha canvis NOUS)."""
         if self.projecte is None or not self.dirty:
             return
         try:
             self._refresca_dades_projecte()
-            self.projecte.fes_backup()
-            self.registra("autosave: còpia de seguretat creada")
+            dest = self.projecte.fes_backup()
+            if dest:
+                self.registra(f"autosave: còpia creada "
+                              f"({len(self.projecte.backups())} guardades)")
         except OSError as e:
             self.registra(f"autosave ERROR: {e}")
 

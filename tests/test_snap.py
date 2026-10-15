@@ -99,6 +99,32 @@ class TestSnap(_Base):
                                    msg=divisio)
         v.close()
 
+    def test_cursor_segueix_snap(self):
+        """Amb snap actiu, el cursor s'encaixa a la graella (en clicar/moure'l)."""
+        v = _visor()
+        v.timeline.set_snap(on=True, divisio="compas1")   # 2 s
+        v.timeline.set_position(3.3)                      # → cel·la més propera
+        self.assertAlmostEqual(v.timeline.get_position(), 4.0, places=6)
+        # snap=False (reproducció/looop) → posició exacta
+        v.timeline.set_position(3.3, snap=False)
+        self.assertAlmostEqual(v.timeline.get_position(), 3.3, places=6)
+        v.close()
+
+    def test_cursor_snap_off_no_encaixa(self):
+        v = _visor()
+        v.timeline.set_snap(on=False)
+        v.timeline.set_position(3.3)
+        self.assertAlmostEqual(v.timeline.get_position(), 3.3, places=6)
+        v.close()
+
+    def test_ves_a_es_una_cerca_exacta(self):
+        """Les cerques programàtiques (barra/llistes/MCP) NO s'encaixen."""
+        v = _visor()
+        v.timeline.set_snap(on=True, divisio="compas1")
+        v.ves_a(3.3)
+        self.assertAlmostEqual(v.pos, 3.3, places=6)
+        v.close()
+
     def test_visor_reenvia_set_snap(self):
         v = _visor()
         v.set_snap(on=False, divisio="negra")

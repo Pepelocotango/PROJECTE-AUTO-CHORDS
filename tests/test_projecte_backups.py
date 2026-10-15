@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import QFileDialog  # noqa: E402
 
 from app import config  # noqa: E402
 from app import main as app_main  # noqa: E402
+from app import pipeline  # noqa: E402
 from app import projecte  # noqa: E402
 
 _VIVES = []
@@ -61,15 +62,41 @@ class TestBackups(unittest.TestCase):
         wav = _wav()
         return projecte.Projecte.crea(os.path.join(self.td, "P"), wav, bpm=120.0)
 
-    def test_fes_backup_crea_document_i_csvs(self):
+    def test_fes_backup_guarda_document_model_i_crua(self):
         p = self._projecte()
         with open(p.ruta_csv_acords(), "w", encoding="utf-8") as f:
             f.write("0.0,C\n1.0,Am\n")
+        with open(p.ruta_csv_estructura(), "w", encoding="utf-8") as f:
+            f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
+            f.write("0.0,5.0,5.0,A,A,1.1,1.5\n")
+        with open(os.path.join(p.carpeta, "segments.csv"), "w",
+                  encoding="utf-8") as f:
+            f.write("0.0,5.0,0,A\n")
+        with open(os.path.join(p.carpeta, "acords_locators.txt"), "w",
+                  encoding="utf-8") as f:
+            f.write("posicio acord duracio\n1-1-1 C 1\n")
+        ana = os.path.join(p.carpeta, pipeline.NOM_ANALISI)
+        os.makedirs(ana, exist_ok=True)
+        with open(os.path.join(ana, pipeline.NOM_CRU_ACORDS), "w",
+                  encoding="utf-8") as f:
+            f.write("0.0,C\n")
         dest = p.fes_backup()
-        self.assertTrue(os.path.isfile(
-            os.path.join(dest, os.path.basename(p.ruta_acproj))))
-        self.assertTrue(os.path.isfile(os.path.join(dest, "acords.csv")))
+        for nom in (os.path.basename(p.ruta_acproj), "acords.csv",
+                    "estructura_ABC.csv", "segments.csv",
+                    "acords_locators.txt"):
+            self.assertTrue(os.path.isfile(os.path.join(dest, nom)), nom)
+        self.assertTrue(os.path.isfile(os.path.join(
+            dest, pipeline.NOM_ANALISI, pipeline.NOM_CRU_ACORDS)))
         self.assertEqual(len(p.backups()), 1)
+
+    def test_no_duplica_si_no_canvia(self):
+        p = self._projecte()
+        self.assertIsNotNone(p.fes_backup())
+        self.assertIsNone(p.fes_backup(), "sense canvis no ha de duplicar")
+        self.assertEqual(len(p.backups()), 1)
+        p.dades["tempo"]["bpm"] = 140.0
+        self.assertIsNotNone(p.fes_backup(), "amb canvi sí que en fa una altra")
+        self.assertEqual(len(p.backups()), 2)
 
     def test_backup_captura_l_estat_viu(self):
         p = self._projecte()
@@ -82,13 +109,15 @@ class TestBackups(unittest.TestCase):
 
     def test_rota_backups(self):
         p = self._projecte()
-        for _ in range(5):
+        for k in range(5):
+            p.dades["tempo"]["bpm"] = 120.0 + k
             p.fes_backup(max_backups=3)
         self.assertEqual(len(p.backups()), 3)
 
     def test_rota_backups_zero_no_rota(self):
         p = self._projecte()
-        for _ in range(3):
+        for k in range(3):
+            p.dades["tempo"]["bpm"] = 120.0 + k
             p.fes_backup(max_backups=0)          # 0 = no esborrar res
         self.assertEqual(len(p.backups()), 3)
 
@@ -99,7 +128,10 @@ class TestBackups(unittest.TestCase):
     def test_molts_backups_dins_el_mateix_segon(self):
         """La rotació ha de quedar-se els MÉS NOUS, ni que comparteixin segon."""
         p = self._projecte()
-        creats = [p.fes_backup(max_backups=10) for _ in range(15)]
+        creats = []
+        for k in range(15):
+            p.dades["tempo"]["bpm"] = 100.0 + k      # distints → cada un compta
+            creats.append(p.fes_backup(max_backups=10))
         queden = p.backups()
         self.assertEqual(len(queden), 10)
         # noms ÚNICS (no es reutilitza cap nom esborrat)

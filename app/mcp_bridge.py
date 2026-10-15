@@ -853,7 +853,8 @@ def _op_fes_backup(ctx, params):
         copies = [str(b) for b in p.backups()]
     except Exception:  # noqa: BLE001
         copies = []
-    return {"ok": True, "backup": str(dest), "backups": copies}
+    return {"ok": True, "backup": (str(dest) if dest else None),
+            "canviat": dest is not None, "backups": copies}
 
 
 def _op_recents(ctx, params):

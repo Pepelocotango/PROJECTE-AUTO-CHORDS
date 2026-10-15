@@ -992,7 +992,7 @@ class Visor(QMainWindow):
                 and not (self.loop_a <= t < self.loop_b)):
             t = float(self.loop_a)
             self.pos = t
-            self.timeline.set_position(t, emit=False)
+            self.timeline.set_position(t, emit=False, snap=False)
             self.lliscador.setValue(int(t * 100))
             self.temps.setText(self._fmt_timeline(t))
             if getattr(self, "sona", False):
@@ -1803,8 +1803,10 @@ class Visor(QMainWindow):
 
     # navegació
     def ves_a(self, t):
+        # Cerca PROGRAMÀTICA (barra lliscant, llistes, MCP): posició EXACTA.
+        # El snap del cursor s'aplica als clics DIRECTES al timeline.
         self.pos = max(0.0, min(float(t), self.audio["durada"]))
-        self.timeline.set_position(self.pos, emit=False)
+        self.timeline.set_position(self.pos, emit=False, snap=False)
         self.lliscador.setValue(int(self.pos * 100))
         self._actualitza_temps()
         if self.sona:
@@ -2654,7 +2656,7 @@ class Visor(QMainWindow):
                 return
             t = fi
         self.pos = t
-        self.timeline.set_position(self.pos, emit=False)
+        self.timeline.set_position(self.pos, emit=False, snap=False)
         self.lliscador.setValue(int(t * 100))
         self._actualitza_temps()
         self._ressalta(t)

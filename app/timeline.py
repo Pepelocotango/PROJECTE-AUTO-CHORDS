@@ -305,8 +305,15 @@ class TimelineView(QGraphicsView):
             new_r = new_l + span
         self._set_view_range(new_l, new_r)
 
-    def set_position(self, t: float, emit: bool = True) -> None:
-        t = max(0.0, min(float(t), self._durada))
+    def set_position(self, t: float, emit: bool = True, snap=None) -> None:
+        t = float(t)
+        # Amb el snap actiu, el cursor SEGUEIX la graella (com un DAW). Els
+        # camins de reproducció/alineació del loop hi passen `snap=False`.
+        if snap is None:
+            snap = self._snap_on
+        if snap:
+            t = self._snap(t)
+        t = max(0.0, min(t, self._durada))
         self._pos_t = t
         self._cursor.set_time(t, self._pps, self._x_offset, self._view_left)
         self._highlight_active(t)
@@ -712,7 +719,7 @@ class TimelineView(QGraphicsView):
         }
         # El cursor va al FINAL del bloc copiat (= inici del 1r clip NO
         # seleccionat) perquè «Enganxa» hi pega just a continuació.
-        self.set_position(float(bloc_fi))
+        self.set_position(float(bloc_fi), snap=False)
 
     def _delete_selection(self) -> None:
         """Esborra la selecció (1 clip -> senyal individual; >1 -> batch)."""

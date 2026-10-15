@@ -53,9 +53,12 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
 ## Backups i recuperació (fase 3)
 
 - **Autosave**: un `QTimer` cada **60 s** (`AUTOSAVE_MS`) fa una **còpia versionada**
-  a **`backup/<data-hora>/`** (el `.acproj` + els 2 CSVs) — **només si hi ha canvis**.
-- `Projecte.fes_backup()` usa l'**estat viu** (no cal haver «desat») → una recuperació
-  **no perd** el tempo/opcions/edició recents.
+  a **`backup/<data-hora>/`** — **només si hi ha canvis NOUS**.
+- **Què copia** `Projecte.fes_backup()`: el **document** (`.acproj` amb l'**estat viu**)
+  + els **fitxers importants** (CSVs d'acords/estructura/segments i locators) + la
+  carpeta **`analisi/`** (l'anàlisi crua). **NO** copia l'àudio (`audio/`) ni els
+  exports (`wavs_*`, `partitura/`), que es **deriven** i són grossos. **No duplica**
+  si el contingut no ha canviat des de l'última còpia.
 - **Rotació**: es guarden les **10** còpies més noves (`MAX_BACKUPS`).
 - **Sessió / crash**: `sessio.json` (a `~/.local/state/auto-chords/`) s'escriu amb un
   projecte obert i es **neteja al tancament net**; si l'app va **caure**, a l'arrencada

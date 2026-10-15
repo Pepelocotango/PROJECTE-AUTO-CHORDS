@@ -6,6 +6,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Cursor amb snap (com un DAW)**: amb el snap actiu, el **cursor segueix la
+  graella** en clicar-lo/moure'l al timeline; els **moviments programàtics** (barra
+  lliscant, llistes, reproducció, alineació del loop i **MCP**) mantenen la posició
+  **exacta**.
+- **Backups més complets i lleugers**: `fes_backup()` ara guarda el **document**
+  (`.acproj` amb l'**estat viu**) + els **fitxers importants** (CSVs d'acords/
+  estructura/segments i locators) + la carpeta **`analisi/`** (l'anàlisi crua);
+  **NO** copia l'àudio ni els exports (derivats i grossos) i **no duplica** si el
+  contingut no ha canviat des de l'última còpia. L'autosave ho registra al log.
 - **Menú «Retalla / Copia / Enganxa»** (`Ctrl+X` / `Ctrl+C` / `Ctrl+V`) a **Edita** (i
   al **menú contextual del clip**): les mateixes operacions que la barra/teclat, ara
   també **descobertes al menú**. En copiar, el **cursor va al final del bloc** perquè
