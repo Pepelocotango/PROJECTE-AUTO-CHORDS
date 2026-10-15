@@ -67,8 +67,9 @@ class _Base(unittest.TestCase):
 class TestSobreescriureAcords(_Base):
     def test_bloc_d_acords_sobreescriu_la_regio(self):
         v = _visor()
-        v.timeline.select_clip("chord", 0)
-        v.timeline.extend_selection("chord", 1)   # Shift: rang {0,1} → C, Am
+        # Selecció NOMÉS d'acords (el Shift+clic ara abraça també les seccions;
+        # aquí volem provar l'engaxament del bloc d'acords tot sol).
+        v.timeline.select_multi({("chord", 0), ("chord", 1)})  # C, Am
         self._copia(v)
         v.timeline.set_position(6.0, emit=False)  # cursor MOGUT → T=6
         v.timeline.paste_at_cursor()
@@ -86,8 +87,7 @@ class TestSobreescriureAcords(_Base):
         """En copiar, el cursor va a l'inici del 1r clip NO seleccionat."""
         v = _visor()
         v.ves_a(0.0)
-        v.timeline.select_clip("chord", 0)
-        v.timeline.extend_selection("chord", 1)     # bloc {0,1} = C, Am
+        v.timeline.select_multi({("chord", 0), ("chord", 1)})  # bloc C, Am
         v.timeline.copy_selection()
         self.assertAlmostEqual(float(v.timeline.get_position()), 4.5, places=6)
         v.close()

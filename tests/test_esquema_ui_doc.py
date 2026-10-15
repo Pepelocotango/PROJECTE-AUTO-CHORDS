@@ -40,6 +40,14 @@ class EsquemaUiDocTests(unittest.TestCase):
             self.assertIn(tb.windowTitle(), self.doc,
                           f"la barra «{tb.windowTitle()}» no surt a la doc")
 
+    def test_botons_obre_audio_i_mode_facil(self):
+        """La barra ha de tenir «Obre àudio» i «Mode fàcil» (botó a l'app)."""
+        texts = [b.text()
+                 for b in self.w.barra_principal.findChildren(QPushButton)]
+        self.assertIn("Obre àudio", texts)
+        self.assertIn("Mode fàcil", texts)
+        self.assertIsNotNone(getattr(self.w, "b_mode_facil", None))
+
     def test_accions_de_menu_documentades(self):
         """Cada acció real de menú ha d'aparèixer a la doc."""
         faltes = []

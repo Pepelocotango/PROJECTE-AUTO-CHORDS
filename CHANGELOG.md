@@ -6,6 +6,24 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Selecció per rang (`Shift+clic`) a les DUES pistes, per TEMPS**: el rang ja no
+  compta índexs d'un sol carril — s'inclouen **tots els acords i totes les seccions**
+  l'inici dels quals cau dins el rang. Així es pot agafar «2 estructures + 20 acords»
+  de cop per copiar/retallar/enganxar/esborrar/renombrar en bloc. Test:
+  `tests/test_seleccio_creuada.py`.
+- **Banda del loop — doble-clic i botó dret**: **doble-clic** dins la banda del loop
+  selecciona **tot el que hi ha a dins** (acords I seccions) i deixa el **cursor al
+  final** del loop (a punt per enganxar-hi just després); **botó dret** obre un menú
+  amb *Copia/Retalla tot el que hi ha dins el loop* i *Enganxa al cursor*. Test:
+  `tests/test_loop_copia.py`.
+- **Botó «Mode fàcil» a la barra principal** (al costat de BPM/compàs): obre el mateix
+  diàleg que *Analitza ▸ Mode fàcil…* en un clic.
+- **Renom en bloc amb selecció MIXTA (tipus actiu, opció A)**: amb acords + seccions
+  seleccionats, `F2`/«Aplica» renombra **només els del tipus del clip actiu** (abans no
+  feia res). Els menús de les llistes mostren **«Reanomena N acords/seccions…»** i el
+  botó **«Aplica»** de l'editor aplica el camp **Nom** a **tots els seleccionats del
+  tipus actiu** (estil fulla de càlcul); l'inici NO s'aplica en bloc. Tests:
+  `test_rename_seleccio.py`.
 - **La vista segueix el cursor (mantenint el zoom)**: en seleccionar una fila de les
   **llistes** (acords o estructura), el timeline fa **pan** perquè el cursor quedi
   visible — només si surt de la zona còmoda i **sense canviar el zoom**.
@@ -87,6 +105,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   **`tests/test_regla11_paritat.py`**. `AGENTS.md` passa a 11 regles.
 
 ### Canviat
+- **«Obre…» → «Obre àudio»**: el botó de la barra i l'acció de menú (*Fitxer ▸
+  Obre àudio…*, `Ctrl+O`) ara diuen el que fan de debò — obren
+  **wav/mp3/aiff/flac/m4a/ogg/opus/wma**, no només WAV.
 - **Copiar/enganxar amb model SOBREESCRIURE** (regla d'or #4): `Ctrl+C`/`Ctrl+X`/`Ctrl+V`
   ja **no insereixen** clips (la cançó no pot créixer) — l'enganxat **substitueix** el tram
   de la mateixa durada que el bloc copiat. L'àncora és el **cursor**; si no l'has mogut,
@@ -100,6 +121,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **Loop — la frontera B ja no s'endú el clip següent**: el loop fa servir un
+  interval **semi-obert `[A, B)`** (`keys_dins_rang(..., inclou_fi=False)`); abans un
+  clip que comença **exactament** a `loop_b` hi entrava de més. El `Shift+clic` es
+  manté **inclusiu** (el clip on cliques sí que hi ha d'entrar). Test:
+  `tests/test_loop_copia.py`.
 - **Reconstruir el timeline ja no perd el ZOOM**: en reconstruir els items (desfer,
   editar, reanomenar, enganxar…), ara s'hi aplica la **vista actual** (`view_left`)
   — abans es pintaven com si no hi hagués zoom i el clip **«saltava» fora de vista**.

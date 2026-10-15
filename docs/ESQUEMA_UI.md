@@ -20,7 +20,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [Obre…] [BPM·compàs][Lliure] BPM:[101][×2][÷2] ◎Detecta TAP Compàs:[4]     │  ← BARRA 1a
+│ [Obre àudio] [BPM·compàs][Lliure] BPM:[101][×2][÷2] ◎Detecta TAP Compàs:[4]     │  ← BARRA 1a
 │   Offset:[0.0] 📍 🧭 ≈[1.1]                                                 │     (treball)
 ├────────────────────────────────────────────────────────────────────────────┤
 │ [Analitza] [Exporta WAV's] [Exporta partitura]                              │  ← BARRA 1b
@@ -48,7 +48,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 |-----|-----------------|-----------------|-------|
 | ⓪ | `Finestra` | finestra principal | `QMainWindow` |
 | — | `self.offset` · `self.offset_cb` | **dos camps d'offset** (segons · compàs.beat) | `QLineEdit` |
-| — | `b_obre` (local) | **Obre…** | `QPushButton` |
+| — | `b_obre` (local) | **Obre àudio** | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |
 | — | `self.b_export_part` | **Exporta partitura** (MusicXML; PDF/MSCZ si hi ha MuseScore) | `QPushButton` |
@@ -75,7 +75,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (barra 1, fila 1) | `Obre…` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B (`Inclou estructura` és una acció del **menú Analitza**) |
+| **Treball** (barra 1, fila 1) | `Obre àudio` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B · **[Mode fàcil]** (`Inclou estructura` és una acció del **menú Analitza**) |
 | **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) · **Obre la carpeta de sortida** |
 | **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · `metronome` · volum del clic |
 
@@ -83,7 +83,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 
 | Menú | Accions |
 |------|---------|
-| **Fitxer** | Obre WAV… (Ctrl+O) · Obre projecte… (Ctrl+Shift+O) · Obre recent… · Desa (Ctrl+S) · Desa com… (Ctrl+Shift+S) · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Tonalitat automàtica (qm-keydetector) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
+| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… (Ctrl+Shift+O) · Obre recent… · Desa (Ctrl+S) · Desa com… (Ctrl+Shift+S) · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Tonalitat automàtica (qm-keydetector) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix l'acord al cursor… · Parteix la secció al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Metrònom |
@@ -100,7 +100,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 > **F5** = Analitza · **Ctrl++ / Ctrl+− / Ctrl+0** = zoom +/− / total.
 >
 > **Multi-selecció (timeline)**: **Ctrl+clic** afegeix/treu un clip ·
-> **Shift+clic** = rang · **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V**
+> **Shift+clic** = rang **per temps, a les 2 pistes** (acords + seccions) · **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V**
 > = copiar/retallar/enganxar la selecció **sobreescrivint** el tram (regla d'or #4: la
 > cançó no pot créixer) · **Ctrl+D** = duplicar el grup ·
 > **arrossegar** un clip seleccionat = moure el grup. El regle mostra el
@@ -194,6 +194,8 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | **Banda loop ⑦ — vora esquerra** | arrossegar → **mou A** (inici) · cursor ↔ · tolerància ±6 px (`LOOP_GRAB_PX`) |
 | **Banda loop ⑦ — vora dreta** | arrossegar → **mou B** (fi) · cursor ↔ |
 | **Banda loop ⑦ — cos** | arrossegar → **mou el loop sencer** (manté la durada) · cursor ✥ |
+| **Banda loop ⑦ — doble-clic** | **selecciona TOT el que hi ha dins** (acords I seccions) i posa el cursor al **final del loop** → a punt per copiar (Ctrl+C) i enganxar |
+| **Banda loop ⑦ — botó dret** | **menú**: Copia/Retalla tot el que hi ha dins el loop · Enganxa al cursor |
 | **Cos d'item ③④** | arrossegar → **mou** · `hover` = ✋ mà oberta |
 | **Vora dreta ③④** | arrossegar → **mou el final** · `hover` = ↔ |
 | **Vora esquerra ③④** | arrossegar → **mou l'inici** · `hover` = ↔ |
@@ -205,11 +207,12 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | **Roda ②** | **zoom** (centrat al clip seleccionat) |
 | **Espai** | **play / pausa** |
 | **T** | **tap tempo** |
-| **Ctrl+clic / Shift+clic** | **multi-selecció**: afegeix/treu del grup · **rang** |
+| **Ctrl+clic / Shift+clic** | **multi-selecció**: afegeix/treu del grup · **rang** (Shift = per temps, abraça **acords I seccions**) |
 | **Delete / Backspace** | **elimina** el clip o tota la **selecció** (grup) |
 | **Ctrl+D** | **duplica** el clip o **tot el grup** seleccionat |
 | **Ctrl+C / Ctrl+X / Ctrl+V** | **copiar / retallar / enganxar** la selecció — l'enganxat **sobreescriu** el tram (regla #4: la cançó no pot créixer); si no mous el cursor, enganxa just **després** del bloc i deixa el bloc enganxat **seleccionat** |
-| **F2** | **reanomena** el clip seleccionat, o **tot el grup** si són del mateix tipus (N acords → un nom · M seccions → una lletra); una selecció **mixta** no es renombra, i el clip editat queda **seleccionat** |
+| **F2** | **reanomena** el clip seleccionat, o **tot el grup del tipus actiu** (N acords → un nom · M seccions → una lletra); amb selecció **mixta** es renombren només els del tipus del clip actiu (opció A), i el bloc queda **seleccionat** |
+| **Editor ⑪ + «Aplica»** | amb **multi-selecció**, el camp **Nom** s'aplica a **tots els seleccionats del tipus actiu** (estil fulla de càlcul); l'inici NO s'aplica en bloc |
 | **Ctrl+Z / Ctrl+Y** | **desfer / refer** |
 | **Ctrl+H** | **troba i reemplaça** xifrats (acords) o etiquetes (estructura) a **tot el tema**; una sola operació de desfer i **no canvia cap temps** |
 | **← / →** | **nudge**: mou la **vora esquerra** (l'inici) del clip seleccionat **un pas de graella**; **Alt+←/→** mou la **vora dreta** (estirar/encongir). Una sola operació de desfer; sense selecció no fa res. |
@@ -272,7 +275,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 
 | Estat | Color | Botons |
 |-------|-------|--------|
-| **Base (apagat)** | gris «Obre…» `SURFACE #2a2c30` | **tots** |
+| **Base (apagat)** | gris «Obre àudio» `SURFACE #2a2c30` | **tots** |
 | **Encès** | **blau** `ACTIU #2563eb` (+ vora `#1e40af`) | `🔁 loop`, modes `BPM·compàs`/`Lliure` |
 | **Encès (especial)** | **taronja suau** `ACTIU_GROC #ffb26b` (vora `#b36a2a`) | `mute` (icona `volume-x`), `metrònom` (icona `metronome`) |
 | **Acció principal** | blanc `#ffffff` | `Analitza` (`#principal`) |
@@ -326,7 +329,7 @@ El **`🧭`** (i Analitza ▸ «Detecta el compàs 1 automàticament») usa
 
 ### 7.3 Import de formats (`app/ffmpeg.py`)
 
-`Obre…` accepta **wav, mp3, aif/aiff, flac, m4a, ogg, opus, wma…**. Si el
+`Obre àudio` accepta **wav, mp3, aif/aiff, flac, m4a, ogg, opus, wma…**. Si el
 fitxer no és **WAV PCM 16 bits**, es converteix automàticament amb
 `ffmpeg -vn -c:a pcm_s16le` i el WAV de treball queda al costat de l'original
 com **`<nom>_convertit.wav`** (es reutilitza si ja és més nou).

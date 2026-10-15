@@ -186,6 +186,9 @@ class Visor(QMainWindow):
         self.timeline.groupDuplicateRequested.connect(self._duplica_seleccio)
         self.timeline.clipContextMenuRequested.connect(
             self._on_clip_context_menu)
+        self.timeline.loopContextMenuRequested.connect(
+            self._on_loop_context_menu)
+        self.timeline.loopDoubleClicked.connect(self.selecciona_bloc_del_loop)
         self.timeline.sectionEditRequested.connect(self._on_section_edit_requested)
         # Dreceres de teclat: espai = play/pausa
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
@@ -526,11 +529,16 @@ class Visor(QMainWindow):
         fusionar_prev = menu.addAction("Fusionar amb anterior")
         fusionar_next = menu.addAction("Fusionar amb següent")
         eliminar = menu.addAction("Elimina acord")
+        n_sel = len({i for (k, i) in self.timeline.selected_keys()
+                     if k == "chord"})
+        reanomena = menu.addAction(
+            f"Reanomena {n_sel} acords…" if n_sel >= 2 else "Reanomena acord…")
         te = 0 <= idx < len(self.acords)
         partir.setEnabled(te and idx + 1 < len(self.acords))
         fusionar_prev.setEnabled(te and idx > 0)
         fusionar_next.setEnabled(te and idx + 1 < len(self.acords))
         eliminar.setEnabled(te)
+        reanomena.setEnabled(te or n_sel >= 1)
         accio = menu.exec_(self.llista_ac.mapToGlobal(pos))
         if accio is None:
             return
@@ -562,6 +570,12 @@ class Visor(QMainWindow):
                 self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut eliminar l'acord:\n{e}")
+        elif accio == reanomena:
+            # >1 seleccionat → renom en bloc; si no, edita el clip del clic.
+            if n_sel >= 2:
+                self.renomena_seleccio()
+            elif te:
+                self._focus_editor("chord", idx)
 
     def _edita_acord(self, item):
         fila = self.llista_ac.row(item)
@@ -1244,9 +1258,15 @@ class Visor(QMainWindow):
             else:
                 self._elimina_seccio_index(idx)
         elif accio == a_ren:
-            # reutilitza el rename inline existent
-            self.timeline.chordEditRequested.emit(idx) if kind == "chord" \
-                else self.timeline.sectionEditRequested.emit(idx)
+            # >1 seleccionat del mateix tipus → renom en bloc; si no, inline.
+            n_same = len({i for (k, i) in self.timeline.selected_keys()
+                          if k == kind})
+            if n_same >= 2:
+                self.renomena_seleccio()
+            elif kind == "chord":
+                self.timeline.chordEditRequested.emit(idx)
+            else:
+                self.timeline.sectionEditRequested.emit(idx)
         elif accio == a_part:
             if kind == "chord":
                 self._parteix_acord_dialog(idx)
@@ -1256,6 +1276,54 @@ class Visor(QMainWindow):
             self.timeline.cut_selection()
         elif accio == a_cop:
             self.timeline.copy_selection()
+        elif accio == a_eng:
+            self.timeline.paste_at_cursor()
+
+    def selecciona_bloc_del_loop(self):
+        """Selecciona TOT el que hi ha dins el loop A/B i posa el cursor al final.
+
+        Retorna quants clips s'han seleccionat (0 si no hi ha loop o és buit).
+        És el pas previ de «Copia/Retalla el loop» i deixa el cursor al final
+        perquè l'Enganxa següent hi caigui just després.
+        """
+        a, b = self.loop_a, self.loop_b
+        if a is None or b is None or float(b) - float(a) <= 1e-9:
+            self.log("loop: no hi ha cap loop definit (marca A i B al regle)")
+            return 0
+        keys = self.timeline.keys_dins_rang(float(a), float(b), inclou_fi=False)
+        if not keys:
+            self.log("loop: no hi ha cap clip dins del loop")
+            return 0
+        self.timeline.select_multi(keys)
+        self.ves_a(float(b))          # cursor al FINAL del loop
+        self.log(f"loop {float(a):.2f}–{float(b):.2f}s: {len(keys)} clip(s) "
+                 f"seleccionats; cursor al final → ja pots enganxar")
+        return len(keys)
+
+    def _on_loop_context_menu(self, pos):
+        """Botó dret dins de la banda del loop → copiar/retallar/enganxar el bloc."""
+        if (self.loop_a is None or self.loop_b is None
+                or float(self.loop_b) - float(self.loop_a) <= 1e-9):
+            return
+        menu = QMenu(self)
+        a_cop = menu.addAction("Copia tot el que hi ha dins el loop")
+        a_ret = menu.addAction("Retalla tot el que hi ha dins el loop")
+        menu.addSeparator()
+        a_eng = menu.addAction("Enganxa al cursor")
+        a_eng.setEnabled(self.timeline.has_clipboard())
+        accio = menu.exec_(pos)
+        if accio is None:
+            return
+        if accio in (a_cop, a_ret):
+            if not self.selecciona_bloc_del_loop():
+                return
+            if accio == a_cop:
+                self.timeline.copy_selection()
+            else:
+                self.timeline.cut_selection()
+            # copy/cut mouen el cursor al final del BLOC; el volem al final del
+            # LOOP, perquè «Enganxa» hi caigui just després.
+            self.ves_a(float(self.loop_b))
         elif accio == a_eng:
             self.timeline.paste_at_cursor()
 
@@ -1590,84 +1658,109 @@ class Visor(QMainWindow):
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
         self._refresca_post_edicio("section", idx)
 
-    def renomena_seleccio(self):
-        """Reanomena EN BLOC una selecció d'un SOL tipus (acords O seccions).
+    def _clips_per_renombrar(self):
+        """(kind, índexs) del TIPUS ACTIU dins la selecció; `(None, [])` si no.
 
-        Una selecció **mixta** (acords + seccions) NO és coherent per renombrar
-        (és per eliminar/copiar/enganxar/duplicar/moure en bloc) → no fa res.
-        Tot en una sola operació de desfer; al final queda seleccionat el bloc.
+        Amb selecció **mixta** (acords + seccions) es renombren NOMÉS els del
+        tipus del clip actiu (opció acordada): dins un full de càlcul tampoc no
+        es barreja en una sola acció el contingut de files de tipus diferent.
+        El clip «actiu» és el darrer seleccionat (`timeline._sel`).
         """
         keys = self.timeline.selected_keys()
-        idx_ac = sorted({i for k, i in keys
-                         if k == "chord" and 0 <= i < len(self.acords)})
-        idx_sec = sorted({i for k, i in keys
-                          if k == "section" and 0 <= i < len(self.seccions)})
-        if idx_ac and idx_sec:
-            self.log("reanomena en bloc: selecció mixta (no coherent)")
+        if not keys:
+            return None, []
+        akind, _aidx = getattr(self.timeline, "_sel", ("", -1))
+        kinds = {k for (k, _i) in keys}
+        if akind not in kinds:
+            if len(kinds) != 1:
+                return None, []
+            akind = next(iter(kinds))
+        idxs = sorted({i for (k, i) in keys
+                       if k == akind and 0 <= i < len(
+                           self.acords if akind == "chord" else self.seccions)})
+        return akind, idxs
+
+    def renomena_seleccio(self):
+        """Reanomena EN BLOC la selecció del **tipus actiu** (acords O seccions).
+
+        Amb selecció mixta es renombren només els del tipus actiu (opció A).
+        Tot en una sola operació de desfer; al final queda seleccionat el bloc.
+        """
+        kind, idxs = self._clips_per_renombrar()
+        if not idxs:
+            self.log("reanomena en bloc: no hi ha res seleccionat")
             return False
-        if idx_ac:
-            if len(idx_ac) < 2:
-                return False
+        if kind == "chord":
             text, ok = QInputDialog.getText(
                 self, "Reanomena acords",
-                f"Nom nou per a {len(idx_ac)} acords:",
-                text=self.acords[idx_ac[0]][1])
+                f"Nom nou per a {len(idxs)} acord(s):",
+                text=self.acords[idxs[0]][1])
             if not ok:
                 return False
-            nom = pipeline.saneja_nom_acord(text)
-            if not nom:
-                self.log("reanomena en bloc: nom invalid")
-                return False
-            self._undo_marca()
-            nova = list(self.acords)
-            for i in idx_ac:
-                nova[i] = (nova[i][0], nom, nova[i][2])
-            try:
-                self.acords = self._valida_canvis_acords(nova)
-            except ValueError as e:
-                self.log(f"reanomena en bloc: {e}")
-                return False
-            self._undo_commit()
-            self.timeline.set_data(self.acords, self.seccions)
-            try:
-                self._desa_i_regenera()
-            except Exception as e:  # noqa: BLE001
-                self.log(f"ERROR: {e}")
-            self.timeline.select_multi({("chord", i) for i in idx_ac})
-            self._omple_llista_ac()
-            self.log(f"reanomenats {len(idx_ac)} acords → {nom}")
-            return True
-        if idx_sec:
-            if len(idx_sec) < 2:
-                return False
-            text, ok = QInputDialog.getText(
-                self, "Reanomena seccions",
-                f"Lletra nova per a {len(idx_sec)} seccions:",
-                text=self.seccions[idx_sec[0]][2])
-            if not ok:
-                return False
-            lletra = (text or "").strip() or self.seccions[idx_sec[0]][2]
-            self._undo_marca()
-            nova = list(self.seccions)
-            for i in idx_sec:
-                ini, fi, _l, _f = nova[i]
-                nova[i] = (ini, fi, lletra, lletra)
-            try:
-                self.seccions = self._valida_canvis_seccions(nova)
-            except ValueError as e:
-                self.log(f"reanomena en bloc: {e}")
-                return False
-            self._undo_commit()
-            self.timeline.set_data(self.acords, self.seccions)
-            try:
-                self._regenera_abc_des_de_totes_les_seccions("bloc reanomenat")
-            except Exception as e:  # noqa: BLE001
-                self.log(f"ERROR: {e}")
-            self.timeline.select_multi({("section", i) for i in idx_sec})
-            self._actualitza_llista_abc()
-            self.log(f"reanomenades {len(idx_sec)} seccions → {lletra}")
-            return True
-        return False
+            return self._renomena_acords(idxs, text)
+        text, ok = QInputDialog.getText(
+            self, "Reanomena seccions",
+            f"Lletra nova per a {len(idxs)} secció(ns):",
+            text=self.seccions[idxs[0]][2])
+        if not ok:
+            return False
+        return self._renomena_seccions(idxs, text)
+
+    def _renomena_acords(self, idxs, nom):
+        """Reanomena els acords `idxs` a `nom` (1 sola op. de desfer). True si OK."""
+        idxs = sorted({i for i in idxs if 0 <= i < len(self.acords)})
+        nom = pipeline.saneja_nom_acord(nom)
+        if not idxs or not nom:
+            self.log("reanomena acords: res a fer (nom o selecció buits)")
+            return False
+        self._undo_marca()
+        nova = list(self.acords)
+        for i in idxs:
+            nova[i] = (nova[i][0], nom, nova[i][2])
+        try:
+            self.acords = self._valida_canvis_acords(nova)
+        except ValueError as e:
+            self.log(f"reanomena acords: {e}")
+            return False
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            self._desa_i_regenera()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+        self.timeline.select_multi({("chord", i) for i in idxs})
+        self._omple_llista_ac()
+        self.log(f"reanomenats {len(idxs)} acord(s) → {nom}")
+        return True
+
+    def _renomena_seccions(self, idxs, lletra):
+        """Reanomena les seccions `idxs`: lletra i família passen a `lletra`."""
+        idxs = sorted({i for i in idxs if 0 <= i < len(self.seccions)})
+        if not idxs:
+            self.log("reanomena seccions: res a fer")
+            return False
+        lletra = (str(lletra) if lletra is not None else "").strip() \
+            or self.seccions[idxs[0]][2]
+        self._undo_marca()
+        nova = list(self.seccions)
+        for i in idxs:
+            ini, fi, _l, _f = nova[i]
+            nova[i] = (ini, fi, lletra, lletra)
+        try:
+            self.seccions = self._valida_canvis_seccions(nova)
+        except ValueError as e:
+            self.log(f"reanomena seccions: {e}")
+            return False
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            self._regenera_abc_des_de_totes_les_seccions("bloc reanomenat")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+        self.timeline.select_multi({("section", i) for i in idxs})
+        self._actualitza_llista_abc()
+        self.log(f"reanomenades {len(idxs)} secció(ns) → {lletra}")
+        return True
 
     def troba_i_reemplaca(self, camp, troba, reemplaca):
         """Substitueix TOTES les aparicions EXACTES d'un xifrat (acords) o d'una
@@ -1907,6 +2000,21 @@ class Visor(QMainWindow):
         if k is None or i < 0:
             self.avis_editor("Selecciona un acord o una secció (clic al clip) "
                              "abans d'aplicar.")
+            return
+        # Multi-selecció del MATEIX tipus → renom EN BLOC (estil fulla de càlcul):
+        # el camp Nom s'aplica a TOTS els seleccionats del tipus actiu. L'INICI
+        # NO s'aplica en bloc (no s'han d'apilar tots els clips al mateix instant).
+        _n = len(self.acords) if k == "chord" else len(self.seccions)
+        idxs = sorted({j for (kk, j) in self.timeline.selected_keys()
+                       if kk == k and 0 <= j < _n})
+        if len(idxs) >= 2:
+            nom = self.ed_nom.text().strip()
+            if k == "chord":
+                if not self._renomena_acords(idxs, nom):
+                    self.avis_editor("Renom en bloc: nom o canvi no vàlid.")
+            else:
+                if not self._renomena_seccions(idxs, nom or self.seccions[i][2]):
+                    self.avis_editor("Renom en bloc: lletra o canvi no vàlid.")
             return
         # inici: prioritza el camp de segons; si esta buit, el de compas.beat
         txt = self.ed_ini.text().strip()
@@ -2346,11 +2454,16 @@ class Visor(QMainWindow):
         fusionar_prev = menu.addAction("Fusionar amb anterior")
         fusionar_next = menu.addAction("Fusionar amb següent")
         eliminar = menu.addAction("Elimina secció")
+        n_sel = len({i for (k, i) in self.timeline.selected_keys()
+                     if k == "section"})
+        reanomena = menu.addAction(
+            f"Reanomena {n_sel} seccions…" if n_sel >= 2 else "Reanomena secció…")
         te = 0 <= idx < len(self.seccions)
         partir.setEnabled(te and idx + 1 < len(self.seccions))
         fusionar_prev.setEnabled(te and idx > 0)
         fusionar_next.setEnabled(te and idx + 1 < len(self.seccions))
         eliminar.setEnabled(te)
+        reanomena.setEnabled(te or n_sel >= 1)
         accio = menu.exec_(self.llista_ab.mapToGlobal(pos))
         if accio is None:
             return
@@ -2384,6 +2497,12 @@ class Visor(QMainWindow):
                 self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut eliminar la secció:\n{e}")
+        elif accio == reanomena:
+            # >1 seleccionat → renom en bloc; si no, edita la secció del clic.
+            if n_sel >= 2:
+                self.renomena_seleccio()
+            elif te:
+                self._focus_editor("section", idx)
 
     def _regenera_abc_des_de_totes_les_seccions(self, msg):
         sortida = self._carpeta_acords()

@@ -1,9 +1,11 @@
 """Renombrar/editar: mantenir la selecció i refrescar la llista a l'instant,
-i RENOM EN BLOC d'una selecció d'un sol tipus (la mixta no es renombra).
+i RENOM EN BLOC de la selecció del TIPUS ACTIU (amb selecció mixta es
+renombren només els del tipus del clip actiu, opció A).
 
 Com un DAW: editar no ha de perdre la selecció ni deixar la llista vella (regla
 d'or #11: mateix tracte acords↔estructura). La selecció mixta serveix per a
-operacions de BLOC (eliminar/copiar/enganxar/duplicar/moure), no per renombrar.
+operacions de BLOC (eliminar/copiar/enganxar/duplicar/moure) i per renombrar el
+tipus actiu.
 """
 import os
 import sys
@@ -118,14 +120,17 @@ class TestRenomEnBloc(_Base):
                          {("section", 1), ("section", 2)})
         v.close()
 
-    def test_seleccio_mixta_no_es_renombra(self):
+    def test_seleccio_mixta_renombra_el_tipus_actiu(self):
+        """Opció A: amb selecció mixta es renombren NOMÉS els del tipus actiu."""
         v = _visor()
         v.timeline.select_clip("chord", 0)
-        v.timeline.toggle_selection("section", 0)   # mixta
-        self.assertFalse(v.renomena_seleccio())
-        self.assertEqual(v.acords[0][1], "C")       # intacte
-        self.assertEqual(v.seccions[0][2], "A")
-        self.assertEqual(len(v._undo_stack), 0)
+        v.timeline.toggle_selection("section", 0)   # mixta; actiu = section 0
+        with patch.object(QInputDialog, "getText", return_value=("R", True)):
+            self.assertTrue(v.renomena_seleccio())
+        self.assertEqual(v.seccions[0][2], "R")     # la secció sí
+        self.assertEqual([a[1] for a in v.acords],
+                         ["C", "Am", "F", "G", "C"])  # els acords, intactes
+        self.assertEqual(len(v._undo_stack), 1)
         v.close()
 
 

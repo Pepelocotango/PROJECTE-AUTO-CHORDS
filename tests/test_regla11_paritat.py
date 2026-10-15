@@ -190,7 +190,7 @@ class TestMenusParitat(_Base):
         se = self._amb_fila(v._menu_seccio)
         self.assertEqual(len(ac), len(se),
                          f"jocs d'accions diferents: {ac} vs {se}")
-        self.assertEqual(len(ac), 5)
+        self.assertEqual(len(ac), 6)
         # Mateixa estructura (activació) i mateixa paraula de tipus a cada posició.
         self.assertEqual([e for _t, e in ac], [e for _t, e in se])
         self.assertIn("acord", ac[1][0].lower())

@@ -119,6 +119,8 @@ class TimelineView(QGraphicsView):
     sectionDeleteRequested = pyqtSignal(int)
     sectionDuplicateRequested = pyqtSignal(int)
     clipContextMenuRequested = pyqtSignal(str, int, QPoint)  # (kind, idx, pos)
+    loopContextMenuRequested = pyqtSignal(QPoint)  # botó dret dins del loop
+    loopDoubleClicked = pyqtSignal()   # doble-clic dins del loop (a dalt)
     sectionEditRequested = pyqtSignal(int)
     multiDeleteRequested = pyqtSignal(list)  # [(kind, idx), ...] multi-selecció
     pasteRequested = pyqtSignal(dict, float)  # (buffer intern, temps d'enganxar)
@@ -676,21 +678,63 @@ class TimelineView(QGraphicsView):
         nkind, nidx = self._sel
         self.clipSelected.emit(nkind, nidx)
 
-    def extend_selection(self, kind: str, index: int) -> None:
-        """Shift+clic: selecciona el rang entre l'àncora i el clip clicat.
+    def _temps_item(self, kind: str, idx: int):
+        """Temps d'inici del clip (kind, idx), o `None` si no existeix."""
+        if kind == "chord" and 0 <= idx < len(self._acords):
+            return float(self._acords[idx][0])
+        if kind == "section" and 0 <= idx < len(self._seccions):
+            return float(self._seccions[idx][0])
+        return None
 
-        L'àncora és el darrer clip seleccionat (`self._sel`) i el rang només
-        s'aplica dins del mateix carril (acords o seccions). Sense ànora,
-        equival a una selecció simple."""
+    def extend_selection(self, kind: str, index: int) -> None:
+        """Shift+clic: selecciona el RANG de clips entre l'àncora i el clicat.
+
+        El rang es calcula per TEMPS (no per índex) i abraça **les dues pistes**:
+        s'hi inclouen tots els acords i totes les seccions l'inici dels quals
+        cau dins del rang. Així es pot agafar, per exemple, «2 estructures +
+        20 acords» de cop per copiar, enganxar, esborrar o renombrar en bloc.
+        Sense àncora vàlida equival a una selecció simple.
+        """
         akind, aidx = self._sel
-        if akind != kind or aidx < 0:
+        t_anc = self._temps_item(akind, aidx)
+        t_clic = self._temps_item(kind, index)
+        if t_anc is None or t_clic is None:
             self.select_clip(kind, index)
             return
-        lo, hi = sorted((aidx, index))
-        self._multi = {(kind, i) for i in range(lo, hi + 1)}
+        keys = self.keys_dins_rang(t_anc, t_clic)
+        if not keys:
+            keys = {(kind, index)}
+        self._multi = keys
         self._sel = (kind, index)
         self._sync_selection_visual()
         self.clipSelected.emit(kind, index)
+
+    def keys_dins_rang(self, lo: float, hi: float, inclou_fi: bool = True) -> set:
+        """Clips (acords i seccions) l'INICI dels quals cau dins `[lo, hi]`.
+
+        Rang per TEMPS que abraça les dues pistes (Shift+clic i loop A/B).
+
+        `inclou_fi=False` → interval **semi-obert** `[lo, hi)`: un clip que
+        comenci EXACTAMENT a `hi` NO s'hi compta. És el que vol el loop (acaba
+        a `hi`; el clip d'allà ja és fora); el Shift+clic, en canvi, ha
+        d'incloure el clip clicat → `inclou_fi=True` (per defecte).
+        """
+        lo, hi = sorted((float(lo), float(hi)))
+        tol = 1e-6            # «mateix instant» (la resolució del CSV és 10 ms)
+
+        def _dins(t):
+            if t < lo - tol:
+                return False
+            return (t <= hi + tol) if inclou_fi else (t < hi - tol)
+
+        keys = set()
+        for i, ac in enumerate(self._acords):
+            if _dins(float(ac[0])):
+                keys.add(("chord", i))
+        for i, sec in enumerate(self._seccions):
+            if _dins(float(sec[0])):
+                keys.add(("section", i))
+        return keys
 
     # -- buffer intern copiar/retallar/enganxar (D.2.b) -----------------------
     def has_clipboard(self) -> bool:
@@ -1147,6 +1191,17 @@ class TimelineView(QGraphicsView):
                 self.clipContextMenuRequested.emit(kind, idx, gp)
                 event.accept()
                 return
+            # Botó dret DINS la banda del loop (i sense cap clip a sota) → menú
+            # del loop (copiar/retallar/enganxar tot el que hi ha a dins).
+            sp = self.mapToScene(event.pos())
+            t = self._x_to_time(sp.x())
+            if (self._loop_a is not None and self._loop_b is not None
+                    and self._loop_a - 1e-9 <= t <= self._loop_b + 1e-9):
+                gp = event.globalPos() if hasattr(event, "globalPos") \
+                    else self.mapToGlobal(event.pos())
+                self.loopContextMenuRequested.emit(gp)
+                event.accept()
+                return
             # Botó dret arrossegat = scroll horitzontal (pan)
             self._pan_drag = True
             self._pan_x0 = event.pos().x()
@@ -1210,6 +1265,22 @@ class TimelineView(QGraphicsView):
                 super().mousePressEvent(event)
         else:
             super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        """Doble-clic DINS la banda del loop (i sense cap clip a sota) →
+        selecciona TOT el que hi ha a dins (acords I seccions)."""
+        if event.button() == Qt.LeftButton:
+            it = self.itemAt(event.pos())
+            sp = self.mapToScene(event.pos())
+            t = self._x_to_time(sp.x())
+            dins = (self._loop_a is not None and self._loop_b is not None
+                    and self._loop_a - 1e-9 <= t <= self._loop_b + 1e-9)
+            if dins and not isinstance(it, (ChordItem, SectionItem)):
+                self.setFocus()
+                self.loopDoubleClicked.emit()
+                event.accept()
+                return
+        super().mouseDoubleClickEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
         if getattr(self, "_pan_drag", False):

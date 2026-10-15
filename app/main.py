@@ -328,9 +328,9 @@ class Finestra(QMainWindow):
         self._mostra_placeholder_visor()
 
         # botó «Obre» (l'afegirem a la barra única, en ordre de flux)
-        b_obre = QPushButton("Obre…")
+        b_obre = QPushButton("Obre àudio")
         b_obre.setObjectName("secundari")
-        b_obre.setToolTip("Obre una WAV (Ctrl+O)")
+        b_obre.setToolTip("Obre un àudio: WAV/MP3/FLAC/AIFF… (Ctrl+O)")
         b_obre.clicked.connect(self.tria_wav)
 
         # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
@@ -489,6 +489,16 @@ class Finestra(QMainWindow):
         barra.addWidget(self.b_mode_lliure)
         barra.addSeparator()
         barra.addWidget(self._params_temps)
+        barra.addSeparator()
+        # «Mode fàcil» també a la barra (abans només era al menú Analitza):
+        # acció d'un clic que regularitza els acords a la graella.
+        self.b_mode_facil = QPushButton("Mode fàcil")
+        self.b_mode_facil.setObjectName("secundari")
+        self.b_mode_facil.setToolTip(
+            "Mode fàcil: regularitza els acords a la graella "
+            "(estil + ritme harmònic).")
+        self.b_mode_facil.clicked.connect(self._mode_facil_ui)
+        barra.addWidget(self.b_mode_facil)
         barra.addSeparator()
         self.addToolBar(Qt.TopToolBarArea, barra)
         self.barra_principal = barra
@@ -663,7 +673,7 @@ class Finestra(QMainWindow):
         mb = self.menuBar()
         # --- Fitxer ---
         m = mb.addMenu("&Fitxer")
-        self._act(m, "Obre WAV…", "Ctrl+O", self.tria_wav)
+        self._act(m, "Obre àudio…", "Ctrl+O", self.tria_wav)
         self._act(m, "Obre projecte…", "Ctrl+Shift+O", self._obre_projecte)
         self._act(m, "Obre recent…", "", self._obre_recent)
         m.addSeparator()
@@ -1218,10 +1228,9 @@ class Finestra(QMainWindow):
         if vr is None:
             return
         keys = vr.timeline.selected_keys()
-        kinds = {k for k, _i in keys}
-        # >1 clip del MATEIX tipus → renom EN BLOC. (Una selecció mixta no té
-        # sentit per renombrar —«pomes i peres»—; és per operacions de bloc.)
-        if len(keys) > 1 and len(kinds) == 1:
+        # >1 clip seleccionat → renom EN BLOC del tipus ACTIU. Amb selecció
+        # mixta es renombren NOMÉS els del tipus del clip actiu (opció A).
+        if len(keys) > 1:
             vr.renomena_seleccio()
             return
         kind, idx = self._clip_seleccionat()
