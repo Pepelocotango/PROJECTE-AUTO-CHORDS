@@ -86,7 +86,51 @@ class HarmonyTests(unittest.TestCase):
         """`C6/9` porta barra però NO és un acord amb baix."""
         w = partitura.harmony_xml("C6/9")
         self.assertNotIn("<bass>", w)
-        self.assertIn('text="6/9"', w)
+        self.assertIn("<kind>major-sixth</kind>", w)   # 6a amb la 9a afegida
+        self.assertIn("<degree-value>9</degree-value>", w)
+
+    def test_acord_complexe_amb_tensions_i_baix(self):
+        """`Ab69(#11,#13)/Db`: root + kind + els 3 `<degree>` + baix."""
+        w = partitura.harmony_xml("Ab69(#11,#13)/Db")
+        self.assertIn("<root-step>A</root-step>", w)
+        self.assertIn("<root-alter>-1</root-alter>", w)
+        self.assertIn("<kind>major-sixth</kind>", w)      # 6a
+        for v in ("9", "11", "13"):                        # 9 afegida + #11 + #13
+            self.assertIn(f"<degree-value>{v}</degree-value>", w)
+        self.assertIn("<degree-alter>1</degree-alter>", w)  # sostinguts
+        self.assertIn("<bass-step>D</bass-step>", w)
+        self.assertIn("<bass-alter>-1</bass-alter>", w)
+
+    def test_alteracions_dobles_al_root_i_al_baix(self):
+        """`##`/`bb` → `<root-alter>±2</root-alter>` (i el baix igual)."""
+        w = partitura.harmony_xml("C##m7")
+        self.assertIn("<root-alter>2</root-alter>", w)
+        self.assertIn("<kind>minor-seventh</kind>", w)
+        w = partitura.harmony_xml("Gbbmaj7")
+        self.assertIn("<root-alter>-2</root-alter>", w)
+        w = partitura.harmony_xml("C##/Dbb")
+        self.assertIn("<root-alter>2</root-alter>", w)
+        self.assertIn("<bass-alter>-2</bass-alter>", w)
+
+    def test_qualitat_no_estandard_conserva_el_text(self):
+        """`C7alt`: el `kind` base + el símbol sencer al `text` (no es perd)."""
+        w = partitura.harmony_xml("C7alt")
+        self.assertIn("<kind text=\"7alt\">dominant</kind>", w)
+
+    def test_no_grau(self):
+        """`noN` (sense la 5a, etc.) → `<degree-type>subtract</degree-type>`."""
+        w = partitura.harmony_xml("Cmaj7no5")
+        self.assertIn("<kind>major-seventh</kind>", w)
+        self.assertIn("<degree-value>5</degree-value>", w)
+        self.assertIn("<degree-type>subtract</degree-type>", w)
+
+    def test_altered_amb_degrees(self):
+        w = partitura.harmony_xml("C7b9#11")
+        self.assertIn("<kind>dominant</kind>", w)
+        self.assertIn("<degree-value>9</degree-value>", w)
+        self.assertIn("<degree-alter>-1</degree-alter>", w)
+        self.assertIn("<degree-value>11</degree-value>", w)
+        self.assertIn("<degree-type>alter</degree-type>", w)
 
     def test_no_acord_i_qualitat_desconeguda(self):
         self.assertEqual(partitura.harmony_xml("N"), "")

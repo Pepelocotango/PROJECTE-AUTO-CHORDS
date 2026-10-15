@@ -27,6 +27,7 @@
 | `PLAY.md` | Com sona l'àudio a l'app i per què està fet així. |
 | `MOTOR_AUDIO_SO.md` | Motors d'àudio per SO (Linux/macOS/Windows). |
 | `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps (nota tècnica). |
+| `TIPUS_XIFRAT_ACORDS.md` | **Tipus de xifrat d'acords**: variants de sintaxi, graus i `<kind>` MusicXML (MuseScore). |
 | `PARTITURA_EXPORT.md` | Exportació de partitura (xifrat: MusicXML/PDF/MSCZ). |
 | `MCP_AUTO_CHORDS.md` | Pont MCP perquè un agent controli l'app viva. |
 

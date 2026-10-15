@@ -134,32 +134,24 @@ def llegeix_bpm_bpb_de_guia(ruta):
 
 
 # --- xifrat -> <harmony> MusicXML -----------------------------------------
-_ALT = {"#": 1, "b": -1, "": 0}
+_ALT = {"#": 1, "b": -1, "##": 2, "bb": -2, "": 0}
 
-# Qualitat (JA CANÒNICA, vegeu `app/xifrat.py`) -> <kind> de MusicXML.
-# Si una qualitat no hi és, s'escriu `<kind text="…">other</kind>` amb NOMÉS
-# el sufix (el root ja s'escriu a part; amb el nom sencer MuseScore el duplicava
-# → «AA-maj7»).
-KIND = {
-    "": "major",
-    "-": "minor",
-    "dim": "diminished", "aug": "augmented", "5": "power",
-    "7": "dominant",
-    "Maj7": "major-seventh", "-7": "minor-seventh",
-    "-Maj7": "major-minor",
-    "dim7": "diminished-seventh", "-7b5": "half-diminished",
-    "aug7": "augmented-seventh",
-    "6": "major-sixth", "-6": "minor-sixth",
-    "9": "dominant-ninth", "Maj9": "major-ninth", "-9": "minor-ninth",
-    "11": "dominant-11th", "Maj11": "major-11th", "-11": "minor-11th",
-    "13": "dominant-13th", "Maj13": "major-13th", "-13": "minor-13th",
-    "sus4": "suspended-fourth", "sus2": "suspended-second",
-    "add9": "major-ninth",
-}
+
+def _degree_xml(valor, alter, tipus):
+    """Un `<degree>` de MusicXML (9, −1, alter → la 9a bemollitzada)."""
+    return (f"<degree><degree-value>{valor}</degree-value>"
+            f"<degree-alter>{alter}</degree-alter>"
+            f"<degree-type>{tipus}</degree-type></degree>")
 
 
 def harmony_xml(chord):
-    """Bloc `<harmony>` per a un xifrat (o '' si no és un acord)."""
+    """Bloc `<harmony>` per a un xifrat (o '' si no és un acord).
+
+    Escriu el `<kind>` base **i els `<degree>`** de les alteracions/extensions
+    (segons la taula de tipus de `app/xifrat.py`) → MuseScore ho mostra **i ho
+    reprodueix** bé. Si la qualitat no es reconeix, cau a `other` amb el sufix
+    com a `text` (mai el nom sencer: el root ja s'escriu a part).
+    """
     if not chord or xifrat.es_cap_acord(chord):
         return ""
     xif = xifrat.normalitza_xifrat(chord)          # forma canònica
@@ -169,14 +161,20 @@ def harmony_xml(chord):
         return ""
     root, qual = pa
     step, alt = root[0], root[1:]
-    kind = KIND.get(qual)
+    kind, gr = xifrat.kind_i_graus(qual)
     if kind is None:                          # qualitat no estàndard
-        kind, txt = "other", f' text="{escape(qual)}"'
+        kind, txt, gr = "other", f' text="{escape(qual)}"', ()
+    elif xifrat.resta_qualitat(qual):
+        # El `kind` només és la BASE però hi ha un tros no estàndard (p. ex.
+        # `7alt`): es conserva el símbol sencer al `text` per no perdre'l.
+        txt = f' text="{escape(qual)}"'
     else:
         txt = ""
     alter = f"<root-alter>{_ALT.get(alt, 0)}</root-alter>" if alt else ""
     out = (f"      <harmony><root><root-step>{step}</root-step>{alter}</root>"
            f"<kind{txt}>{kind}</kind>")
+    for (valor, galt, tipus) in gr:
+        out += _degree_xml(valor, galt, tipus)
     if bass:
         pb = xifrat.parteix_arrel(bass)
         if pb is not None:

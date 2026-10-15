@@ -6,6 +6,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Xifrat canònic ampliat a (gairebé) tots els tipus d'acord** (`app/xifrat.py`):
+  **taula de tipus → `<kind>` MusicXML + graus** (`TIPUS`) i **extensions/alteracions
+  via `<degree>`** (`#5`, `b9`, `#9`, `#11`, `13`, `add9`, `no5`, `#5b9`…).
+  Entén i canonitza: **dobles alteracions** (`C##`/`Cbb`/`Cx` → `±2`), `6/9` → `6add9`,
+  `m(maj7)` → `-Maj7`, `#11`/`add9` sense arrel base → **tríada major**, i conserva el
+  que no és estàndard (`7alt`). `partitura.harmony_xml` ara **escriu els `<degree>`** →
+  MuseScore ho **mostra i ho reprodueix** bé. **2 bugs reals arreglats**: les **dobles
+  alteracions** donaven `±1`, i **`C7alt` perdia l'`alt`**. Tests: `test_xifrat` i
+  `test_partitura`.
 - **Notació canònica del xifrat (`app/xifrat.py`, font ÚNICA)**: l'app desa
   **sempre** els acords en una **forma canònica** (decisió de l'operador,
   «opció 3», 2026-10-15). Entén el que escrigui l'usuari i ho deixa bé: menor

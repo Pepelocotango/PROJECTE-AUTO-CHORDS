@@ -37,6 +37,9 @@ coincideix i MuseScore ho entén igual.
 | **Suspès** | `sus4` / `sus2` | `sus` (= sus4) |
 | **Sexta** | `6` / `-6` | `m6` |
 | **Extensions** | `9` / `11` / `13` (i `Maj…`/`-…`) | `maj9`, `m9`, `add9`… |
+| **Graus afegits/trets** | `add9`, `no5` | `9` / `#11` (com a `<degree>` a MusicXML) |
+| **Dobles alteracions** | `##` / `bb` | `x` (= doble sostingut) |
+| **6/9** | `6add9` | `6/9` |
 | **Baix (inversió)** | `/` | `A7/G` (però **`C6/9` NO és baix**) |
 | **Sense acord** | `N` | `NC`, `N.C.`, buit |
 
@@ -49,7 +52,8 @@ anotacions rares no es trenquen).
 Am · Amin · ami   →  A-          Am7 · Amin7  →  A-7
 Amaj7 · AM7 · CΔ7 →  AMaj7/CMaj7 Bø · Bm7b5   →  B-7b5
 Cmaj · CM · CΔ    →  C           F#o7         →  F#dim7
-Am/G              →  A-/G        C6/9         →  C6/9  (no és baix)
+Am/G              →  A-/G        C6/9 · C69    →  C6add9  (no és baix)
+C##7 · Cx7        →  C##7        C7alt         →  C7alt  (l'«alt» es conserva)
 N · NC · N.C.     →  N           «solo» / «H7» →  intactes
 ```
 
@@ -60,7 +64,7 @@ N · NC · N.C.     →  N           «solo» / «H7» →  intactes
 | **Model / CSV** | `pipeline.saneja_nom_acord()` → `xifrat.normalitza_xifrat()` (ho fan servir editor, renombrar, renom **en bloc**, alta, **MCP** i troba-i-reemplaça) |
 | **Noms de fitxer** de l'export | `pipeline.safe_filename()` / `partitura.safe_filename()`: `/` i separadors de path → **`_`** (mai `-`, que vol dir «menor») → `A7/G` → `A7_G.wav` |
 | **Export de WAVs** | `acords_a_live.py`: **sense** `style()` → els noms viatgen **verbatim** |
-| **Partitura (MusicXML)** | `partitura.harmony_xml()`: usa la forma canònica i, si la qualitat no és estàndard, escriu `<kind text="…">other</kind>` amb **només el sufix** |
+| **Partitura (MusicXML)** | `partitura.harmony_xml()`: usa la forma canònica (taula `xifrat.TIPUS`) i escriu el `<kind>` base **+ els `<degree>`** de les alteracions/extensions (`#5`, `b9`, `add9`, `no5`…) → **MuseScore ho mostra i ho reprodueix**. Si una qualitat no es reconeix, cau a `<kind text="…">other</kind>` amb **només el sufix** (el root ja s'escriu a part). |
 
 ## 5. Conseqüències pràctiques
 
