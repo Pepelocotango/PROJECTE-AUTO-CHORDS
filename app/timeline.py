@@ -50,6 +50,7 @@ from app.timeline_base import (   # noqa: E402,F401
     SELECTION_COLOR, TOTAL_H, WAVEFORM_H, fmt_pos, grid_levels,
     loop_after_drag, snap_step, snap_time,
 )
+from app import graella  # noqa: E402
 
 
 # -----------------------------------------------------------------------------
@@ -182,6 +183,8 @@ class TimelineView(QGraphicsView):
         self._section_by_idx: dict = {}
         self._guide_line: Optional[QGraphicsLineItem] = None
         self._pos_t = 0.0          # temps del cursor (font de veritat)
+        self._snap_on = True       # interruptor de snap
+        self._snap_div_nom = ""    # "" = automàtic (zoom); o "corxera"…
         self._follow = False       # seguir el cursor durant el play
         self._sel = ("", -1)      # clip seleccionat (kind, index)
         self._multi: set = set()   # multi-selecció: {(kind, index), ...}
@@ -517,8 +520,7 @@ class TimelineView(QGraphicsView):
 
     def snap(self, t: float) -> float:
         """Arrodoneix `t` a la graella de snap actual (BPM/offset o segons)."""
-        return snap_time(t, self._tempo_fix, self._bpm, self._bpb, self._pps,
-                         getattr(self, "_offset", 0.0))
+        return self._snap(t)
 
     def _loop_x_to_time(self, x: float) -> float:
         """Temps del regle per a un x d'escena, amb SNAP a la graella.
@@ -754,8 +756,7 @@ class TimelineView(QGraphicsView):
         next_t = self._acords[idx + 1][0] if idx + 1 < len(self._acords) \
             else self._durada
         # snap
-        new_t_s = snap_time(new_t, self._tempo_fix, self._bpm, self._bpb, self._pps,
-                          getattr(self, '_offset', 0.0))
+        new_t_s = self._snap(new_t)
         # limita entre prev_t + MIN_GAP_S i next_t - MIN_GAP_S
         new_t_s = max(prev_t + MIN_GAP_S, min(next_t - MIN_GAP_S, new_t_s))
         self._show_guide_at(new_t_s)
@@ -794,8 +795,7 @@ class TimelineView(QGraphicsView):
         #                si no, self._durada
         max_end = (self._acords[idx + 2][0] - MIN_GAP_S
                    if idx + 2 < len(self._acords) else self._durada)
-        new_t_s = snap_time(new_next_t, self._tempo_fix, self._bpm, self._bpb,
-                            self._pps, getattr(self, "_offset", 0.0))
+        new_t_s = self._snap(new_next_t)
         new_t_s = max(old_t + MIN_GAP_S, min(max_end, new_t_s))
         self._show_guide_at(new_t_s)
         # si hi ha següent, actualitza'l
@@ -824,8 +824,7 @@ class TimelineView(QGraphicsView):
         carril perquè els clips contigus es tornin a pintar bé."""
         item = self._chord_items[idx]
         t0 = float(getattr(item, "_drag_t0", self._acords[idx][0]))
-        t_snap = snap_time(new_t, self._tempo_fix, self._bpm, self._bpb, self._pps,
-                           getattr(self, "_offset", 0.0))
+        t_snap = self._snap(new_t)
         dt = t_snap - t0
         selset = set(sel)
         dt_lo, dt_hi = -1e18, 1e18
@@ -895,8 +894,7 @@ class TimelineView(QGraphicsView):
             # Mou el FI -> és l'inici de la següent
             max_end = (self._seccions[idx + 2][0] - MIN_GAP_S
                        if idx + 2 < n else self._durada)
-            nt = snap_time(new_fi, self._tempo_fix, self._bpm, self._bpb, self._pps,
-                      getattr(self, '_offset', 0.0))
+            nt = self._snap(new_fi)
             nt = max(ini_o + MIN_SEC_LEN_S, min(max_end, nt))
             self._seccions[idx] = (ini_o, nt, lletra, familia)
             self._section_items[idx].set_fi(nt)
@@ -911,8 +909,7 @@ class TimelineView(QGraphicsView):
         if zone == SectionItem.ZONE_BODY:
             # Desplaça la secció sencera (inici i fi junts) — com l'acord
             dur = fi_o - ini_o
-            nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, self._pps,
-                      getattr(self, '_offset', 0.0))
+            nt = self._snap(new_ini)
             lo = prev_ini(idx) + MIN_GAP_S
             # El fi propi (nt+dur) passa a ser l'inici del següent; per tant
             # el límit cap endavant és el FINAL del següent (= inici del
@@ -940,8 +937,7 @@ class TimelineView(QGraphicsView):
 
         lo = prev_ini(idx) + MIN_GAP_S
         hi = fi_o - MIN_SEC_LEN_S
-        nt = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, self._pps,
-                      getattr(self, '_offset', 0.0))
+        nt = self._snap(new_ini)
         nt = max(lo, min(hi, nt))
         self._seccions[idx] = (nt, fi_o, lletra, familia)
         self._section_items[idx].set_ini(nt)
@@ -964,8 +960,7 @@ class TimelineView(QGraphicsView):
             return
         item = self._section_items[idx]
         ini0 = float(getattr(item, "_drag_ini0", self._seccions[idx][0]))
-        ini_s = snap_time(new_ini, self._tempo_fix, self._bpm, self._bpb, self._pps,
-                          getattr(self, "_offset", 0.0))
+        ini_s = self._snap(new_ini)
         dt = ini_s - ini0
         first_ini = float(self._seccions[first][0])
         last_fi = float(self._seccions[last][1])
@@ -1243,9 +1238,36 @@ class TimelineView(QGraphicsView):
             return
         super().mouseReleaseEvent(event)
 
+    def set_snap(self, on=None, divisio=None) -> None:
+        """Configura el snap: `on` (interruptor) i `divisio` (nom de la graella)."""
+        if on is not None:
+            self._snap_on = bool(on)
+        if divisio is not None:
+            self._snap_div_nom = str(divisio)
+        self.update()
+
+    def _snap_step(self) -> float:
+        """Pas de snap: la divisió triada (BPM·compàs) o la de zoom (auto)."""
+        if self._snap_div_nom:
+            s = graella.divisio_segons(self._snap_div_nom, self._bpm,
+                                       self._tempo_fix)
+            if s > 0:
+                return s
+        return snap_step(self._tempo_fix, self._bpm, self._bpb, self._pps)
+
+    def _snap(self, t: float) -> float:
+        """Encaixa `t` a la graella (o el deixa tal qual si el snap és OFF)."""
+        if not self._snap_on:
+            return float(t)
+        step = self._snap_step()
+        if step <= 0:
+            return float(t)
+        off = getattr(self, "_offset", 0.0)
+        return round((float(t) - off) / step) * step + off
+
     def _pas_nudge(self) -> float:
         """Pas del nudge = la DIVISIÓ de graella vigent (la mateixa que el snap)."""
-        step = snap_step(self._tempo_fix, self._bpm, self._bpb, self._pps)
+        step = self._snap_step()
         return step if step and step > 0 else 0.1
 
     def _nudge(self, direccio: int, estira: bool, pas: float) -> None:

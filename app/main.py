@@ -14,7 +14,7 @@ from PyQt5.QtCore import QThread, Qt, QTimer, QUrl, pyqtSignal
 from PyQt5.QtGui import QCursor, QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
-    QHBoxLayout, QLabel, QLineEdit, QMainWindow,
+    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QComboBox,
     QInputDialog, QMessageBox, QProgressBar, QPushButton, QShortcut, QSlider,
     QDialog,
     QTextEdit,
@@ -1520,6 +1520,8 @@ class Finestra(QMainWindow):
             # El visor ha de desar els CSV/export a la carpeta de sortida del
             # PROJECTE (no derivar-la del WAV, que viu a <projecte>/audio/).
             visor.sortida = self.sortida or pipeline.carpeta_sortida(wav)
+            if hasattr(self, "tb_snap"):
+                self._canvia_snap()   # reaplica snap/divisió escollits
             # connectem els senyals del visor (icona play/pause + missatges
             # de la caixa d'informacio: desfer/refer...)
             try:
@@ -2027,6 +2029,28 @@ class Finestra(QMainWindow):
         self.vol_metro.setToolTip("Volum del clic del metrònom (%)")
         self.vol_metro.valueChanged.connect(self._canvia_vol_metro)
         bar.addWidget(self.vol_metro)
+        bar.addSeparator()
+        # Graella configurable: interruptor de snap + divisió (habilita el nudge fi).
+        self.tb_snap = boto("Snap", "Interruptor de snap (encaixar a la graella)",
+                            self._canvia_snap, checkable=True)
+        self.tb_snap.setChecked(True)
+        self.cb_graella = QComboBox()
+        self.cb_graella.setToolTip("Divisió de la graella (on encaixa el snap)")
+        for et, val in (("Auto (zoom)", ""), ("Negra (1/4)", "negra"),
+                        ("Corxera (1/8)", "corxera"),
+                        ("Semicorxera (1/16)", "semicorxera"),
+                        ("Fusa (1/32)", "fusa"), ("Treset (1/12)", "treset")):
+            self.cb_graella.addItem(et, val)
+        self.cb_graella.currentIndexChanged.connect(self._canvia_snap)
+        bar.addWidget(self.cb_graella)
+
+    def _canvia_snap(self):
+        """Aplica l'interruptor de snap + la divisió de graella al visor."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None or not hasattr(self, "tb_snap"):
+            return
+        vr.set_snap(on=self.tb_snap.isChecked(),
+                    divisio=self.cb_graella.currentData() or "")
 
     def _toggle_metro(self, on=None):
         """Activa/desactiva el metrònom (sincronitza botó i acció)."""

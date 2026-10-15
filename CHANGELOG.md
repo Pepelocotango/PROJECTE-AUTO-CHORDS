@@ -6,6 +6,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Graella configurable + interruptor de snap** (barra d'eines): un botó **Snap**
+  (activat/desactivat) i un selector de **divisió** (Auto (zoom) · Negra 1/4 ·
+  Corxera 1/8 · Semicorxera 1/16 · Fusa 1/32 · Treset 1/12) que fixa on encaixen
+  els clips **i el pas del nudge** (`←`/`→`). En mode **Lliure** el snap va lligat
+  al zoom. Test: `tests/test_snap.py` (6).
 - **Nudge amb teclat** (`←`/`→`): mou la **vora esquerra** (l'inici) del clip seleccionat
   **un pas de graella** (la mateixa divisió que el snap); **`Alt+←/→`** mou la **vora
   dreta** (estirar/encongir). Per a les **seccions**, mou la **frontera** amb la veïna.

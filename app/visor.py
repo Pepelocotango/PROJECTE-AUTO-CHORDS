@@ -400,6 +400,11 @@ class Visor(QMainWindow):
         # WAV (comportament de llegat / visor standalone).
         return getattr(self, "sortida", "") or pipeline.carpeta_sortida(self.wav_path)
 
+    def set_snap(self, on=None, divisio=None):
+        """Snap de la graella: interruptor (`on`) i divisió (`divisio`, nom)."""
+        if hasattr(self, "timeline"):
+            self.timeline.set_snap(on=on, divisio=divisio)
+
     def _fmt_compas(self, s):
         if not self.tempo_fix:
             return f"{s:07.2f}s"

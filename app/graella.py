@@ -72,6 +72,30 @@ def beat_segons(bpm):
     return 60.0 / bpm if bpm > 0 else 0.0
 
 
+# Divisions de la graella (nom → fracció de temps). «negra» = el temps.
+DIVISIONS = {
+    "negra": 1.0,         # 1/4
+    "corxera": 0.5,       # 1/8
+    "semicorxera": 0.25,  # 1/16
+    "fusa": 0.125,        # 1/32
+    "treset": 1.0 / 3.0,  # treset de negra
+}
+
+
+def divisio_segons(nom, bpm, tempo_fix):
+    """Segons per cel·la segons la divisió triada (0 = automàtic/zoom).
+
+    Només té sentit en mode **BPM·compàs** (en mode Lliure es retorna 0 → el
+    snap lligat al zoom mana).
+    """
+    if not tempo_fix:
+        return 0.0
+    frac = DIVISIONS.get(nom)
+    if not frac:
+        return 0.0
+    return beat_segons(bpm) * frac
+
+
 def nivell_segons(nivell, bpm, bpb):
     """Segons per «cel·la» del nivell donat (`compas` / `mig` / `temps`)."""
     beat = beat_segons(bpm)

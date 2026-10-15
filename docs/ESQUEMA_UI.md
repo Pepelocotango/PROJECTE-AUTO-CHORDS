@@ -64,6 +64,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | — | `self.b_offset_cursor` | **Marca el compàs 1 aquí** (icona `map-pin`) → al cursor | `QPushButton` |
 | — | `self.amb_est` | **Inclou estructura** | `QAction` (menú Analitza) |
 | — | `self.tb_loop` · `self.tb_neteja_loop` · `self.tb_mut` | **loop** (icona `repeat-2`) · **neteja el loop** (icona `x`) · **mute** (icona `volume-x`) | `QPushButton` |
+| — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió**: Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · Treset (1/12) | `QPushButton` (checkable) · `QComboBox` |
 | — | `self.b_metro` · `self.vol_metro` | **metrònom** (icona `metronome`) · volum del clic | `QPushButton` · `QSlider` |
 | — | `self.b_play_tb` | **play / pause** transport (icones `play` / `pause`) | `QPushButton` |
 | — | `self.barra` | **barra de progrés** | `QProgressBar` (a la status) |
