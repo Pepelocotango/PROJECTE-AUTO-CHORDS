@@ -151,5 +151,6 @@ Columnes: **Tipus** (forma canònica) · **Variants acceptades** · **Graus**
   `app/pipeline.py` (`saneja_nom_acord`, `safe_filename`).
 - Tests: `tests/test_xifrat.py` · `tests/test_partitura.py` ·
   `tests/test_doc_xifrat.py` (aquest fitxer).
-- Vegeu també: [`FLUX_DE_DADES.md`](FLUX_DE_DADES.md) ·
+- Vegeu també: [`NOTACIO_XIFRAT.md`](NOTACIO_XIFRAT.md) (**les regles** de la
+  forma canònica i on s'aplica) · [`FLUX_DE_DADES.md`](FLUX_DE_DADES.md) ·
   [`PARTITURA_EXPORT.md`](PARTITURA_EXPORT.md).
