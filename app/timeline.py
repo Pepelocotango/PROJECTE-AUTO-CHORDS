@@ -427,6 +427,10 @@ class TimelineView(QGraphicsView):
                 lambda idx=i: self._on_chord_edit(idx))
             item.deleteRequested.connect(
                 lambda idx=i: self.chordDeleteRequested.emit(idx))
+            # FIX: el constructor fixa `view_left=0` → cal aplicar-hi la VISTA
+            # ACTUAL, si no els items reconstruïts (undo/editar/renombrar/paste)
+            # es pinten com si no hi hagués zoom i el clip «salta» fora de vista.
+            item.set_pps(self._pps, self._x_offset, self._view_left)
             self._scene.addItem(item)
             self._chord_items.append(item)
             self._chord_by_idx[i] = item
@@ -451,6 +455,8 @@ class TimelineView(QGraphicsView):
                 lambda idx=i: self._on_section_edit(idx))
             item.deleteRequested.connect(
                 lambda idx=i: self.sectionDeleteRequested.emit(idx))
+            # (mateix FIX que als acords: la vista ACTUAL, no view_left=0)
+            item.set_pps(self._pps, self._x_offset, self._view_left)
             self._scene.addItem(item)
             self._section_items.append(item)
             self._section_by_idx[i] = item
@@ -576,6 +582,25 @@ class TimelineView(QGraphicsView):
         lo, hi = r
         marge = max(0.5, (hi - lo) * 0.05)
         self._set_view_range(max(0.0, lo - marge), min(self._durada, hi + marge))
+
+    def ensure_cursor_visible(self, landing: float = 0.15) -> None:
+        """Desplaça la vista (pan) perquè el cursor vermell quedi visible,
+        MANTENINT el ZOOM actual (no el canvia).
+
+        Si el cursor ja és dins de la zona còmoda no fa res. Si se surt (com el
+        seek des de les llistes: un salt lluny), desplaça la vista perquè hi
+        entri pel ~`landing` des de l'esquerra (mateixa idea que el seguiment
+        de la reproducció, `_follow_cursor`).
+        """
+        span = self._view_right - self._view_left
+        if span <= 0:
+            return
+        frac = (self._pos_t - self._view_left) / span
+        if 0.0 <= frac <= 0.85:
+            return
+        new_l = max(0.0, min(self._pos_t - span * landing,
+                             max(0.0, self._durada - span)))
+        self._set_view_range(new_l, new_l + span)
 
     def _center_on(self, centre: float, ampl: float) -> None:
         """Situa la vista centrada a `centre` amb amplada `ampl` (segons)."""

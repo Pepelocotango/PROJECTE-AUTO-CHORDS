@@ -1997,6 +1997,8 @@ class Visor(QMainWindow):
         if row >= 0:
             self.timeline.select_clip("chord", row)
         self.ves_a(self._parse_pos_label(item.text()))
+        # Desplaça la vista cap al cursor NOMÉS si cal (manté el zoom).
+        self.timeline.ensure_cursor_visible()
 
     def _valida_canvis_seccions(self, items):
         if not items:
@@ -2330,6 +2332,8 @@ class Visor(QMainWindow):
         if row >= 0:
             self.timeline.select_clip("section", row)
         self.ves_a(self._parse_pos_label(item.text()))
+        # Desplaça la vista cap al cursor NOMÉS si cal (manté el zoom).
+        self.timeline.ensure_cursor_visible()
 
     def _menu_seccio(self, pos):
         # Regla d'or #11: MATEIX joc d'accions que el menú dels acords.

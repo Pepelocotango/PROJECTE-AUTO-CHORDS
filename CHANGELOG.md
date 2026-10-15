@@ -6,6 +6,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **La vista segueix el cursor (mantenint el zoom)**: en seleccionar una fila de les
+  **llistes** (acords o estructura), el timeline fa **pan** perquè el cursor quedi
+  visible — només si surt de la zona còmoda i **sense canviar el zoom**.
 - **Cursor amb snap (com un DAW)**: amb el snap actiu, el **cursor segueix la
   graella** en clicar-lo/moure'l al timeline; els **moviments programàtics** (barra
   lliscant, llistes, reproducció, alineació del loop i **MCP**) mantenen la posició
@@ -97,6 +100,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **Reconstruir el timeline ja no perd el ZOOM**: en reconstruir els items (desfer,
+  editar, reanomenar, enganxar…), ara s'hi aplica la **vista actual** (`view_left`)
+  — abans es pintaven com si no hi hagués zoom i el clip **«saltava» fora de vista**.
+  Tests: `tests/test_zoom_rebuild.py` (2).
 - **Backups — noms únics i ordre correcte**: el segell dels backups ara porta
   **microsegons** (`YYYYMMDD-HHMMSS-ffffff`). Abans, quan se'n feien molts dins el
   mateix segon, el sufix `-2/-3…` trencava l'ordre **lexicogràfic** a partir de
