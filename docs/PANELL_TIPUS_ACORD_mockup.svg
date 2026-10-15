@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900"
      font-family="system-ui,Segoe UI,Roboto,sans-serif">
-  <title>Auto Chords — Mockup v2: panell «Tipus d'acord» (tipus + variants + graus)</title>
+  <title>Auto Chords — Mockup v3: panell «Tipus d'acord» (tipus + variants + graus)</title>
   <desc>Cada fila: el tipus + els noms alternatius (a la dreta) i els GRAUS (a sota).
         Clicar un tipus NOMÉS omple la casella «Nom» de l'editor (no aplica).</desc>
   <rect width="1440" height="900" fill="#0b0c0e"/>
@@ -67,61 +67,61 @@
   <!-- fila 1 · maj -->
   <rect x="42" y="203" width="236" height="36" fill="#1b1f26"/>
   <text x="50" y="219" fill="#edf3ff" font-size="12" font-weight="700">maj</text>
-  <text x="272" y="219" fill="#7fd1a0" font-size="9" text-anchor="end">M · Maj · Δ</text>
-  <text x="50" y="232" fill="#7d8794" font-size="9">(1) 3 (5)</text>
+  <text x="272" y="219" fill="#7fd1a0" font-size="9" text-anchor="end">M·Maj·Δ</text>
+  <text x="50" y="232" fill="#7d8794" font-size="9">1,3,5</text>
 
   <!-- fila 2 · m -->
   <text x="50" y="255" fill="#edf3ff" font-size="12" font-weight="700">m</text>
-  <text x="272" y="255" fill="#7fd1a0" font-size="9" text-anchor="end">mi · min · -</text>
-  <text x="50" y="268" fill="#7d8794" font-size="9">(1) b3 (5)</text>
+  <text x="272" y="255" fill="#7fd1a0" font-size="9" text-anchor="end">mi·min·-</text>
+  <text x="50" y="268" fill="#7d8794" font-size="9">1,b3,5</text>
   <line x1="46" y1="271" x2="274" y2="271" stroke="#1c2027"/>
 
   <!-- fila 3 · dim -->
   <text x="50" y="291" fill="#edf3ff" font-size="12" font-weight="700">dim</text>
-  <text x="272" y="291" fill="#7fd1a0" font-size="9" text-anchor="end">o · °</text>
-  <text x="50" y="304" fill="#7d8794" font-size="9">(1) b3 b5</text>
+  <text x="272" y="291" fill="#7fd1a0" font-size="9" text-anchor="end">o·°</text>
+  <text x="50" y="304" fill="#7d8794" font-size="9">1,b3,b5</text>
   <line x1="46" y1="307" x2="274" y2="307" stroke="#1c2027"/>
 
   <!-- fila 4 · 7 -->
   <text x="50" y="327" fill="#edf3ff" font-size="12" font-weight="700">7</text>
-  <text x="50" y="340" fill="#7d8794" font-size="9">(1) 3 (5) b7</text>
+  <text x="50" y="340" fill="#7d8794" font-size="9">1,3,5,b7</text>
   <line x1="46" y1="343" x2="274" y2="343" stroke="#1c2027"/>
 
   <!-- fila 5 · m7 -->
   <text x="50" y="363" fill="#edf3ff" font-size="12" font-weight="700">m7</text>
-  <text x="272" y="363" fill="#7fd1a0" font-size="9" text-anchor="end">mi7 · min7 · -7</text>
-  <text x="50" y="376" fill="#7d8794" font-size="9">(1) b3 (5) b7</text>
+  <text x="272" y="363" fill="#7fd1a0" font-size="9" text-anchor="end">mi7·min7·-7</text>
+  <text x="50" y="376" fill="#7d8794" font-size="9">1,b3,5,b7</text>
   <line x1="46" y1="379" x2="274" y2="379" stroke="#1c2027"/>
 
   <!-- fila 6 · m7b5 -->
   <text x="50" y="399" fill="#edf3ff" font-size="12" font-weight="700">m7b5</text>
-  <text x="272" y="399" fill="#7fd1a0" font-size="9" text-anchor="end">ø · ø7 · -7b5</text>
-  <text x="50" y="412" fill="#7d8794" font-size="9">(1) b3 b5 b7</text>
+  <text x="272" y="399" fill="#7fd1a0" font-size="9" text-anchor="end">ø·ø7·-7b5</text>
+  <text x="50" y="412" fill="#7d8794" font-size="9">1,b3,b5,b7</text>
   <line x1="46" y1="415" x2="274" y2="415" stroke="#1c2027"/>
 
   <!-- fila 7 · maj7  (SELECCIONADA) -->
   <rect x="42" y="419" width="236" height="36" fill="#2563eb"/>
   <text x="50" y="435" fill="#ffffff" font-size="12" font-weight="700">maj7</text>
-  <text x="272" y="435" fill="#d6f5e3" font-size="9" text-anchor="end">M7 · Ma7 · Δ7</text>
-  <text x="50" y="448" fill="#cfe0ff" font-size="9">(1) 3 (5) 7</text>
+  <text x="272" y="435" fill="#d6f5e3" font-size="9" text-anchor="end">M7·Ma7·Δ7</text>
+  <text x="50" y="448" fill="#cfe0ff" font-size="9">1,3,5,7</text>
 
   <!-- resta de files (segueix la llista) -->
   <text x="50" y="471" fill="#edf3ff" font-size="12" font-weight="700">majb5</text>
-  <text x="50" y="484" fill="#7d8794" font-size="9">(1) 3 b5</text>
+  <text x="50" y="484" fill="#7d8794" font-size="9">1,3,b5</text>
   <line x1="46" y1="487" x2="274" y2="487" stroke="#1c2027"/>
   <text x="50" y="507" fill="#edf3ff" font-size="12" font-weight="700">5</text>
-  <text x="50" y="520" fill="#7d8794" font-size="9">1 5</text>
+  <text x="50" y="520" fill="#7d8794" font-size="9">1,5</text>
   <line x1="46" y1="523" x2="274" y2="523" stroke="#1c2027"/>
   <text x="50" y="543" fill="#edf3ff" font-size="12" font-weight="700">sus2</text>
-  <text x="50" y="556" fill="#7d8794" font-size="9">(1) 2 (5)</text>
+  <text x="50" y="556" fill="#7d8794" font-size="9">1,2,5</text>
   <line x1="46" y1="559" x2="274" y2="559" stroke="#1c2027"/>
   <text x="50" y="579" fill="#edf3ff" font-size="12" font-weight="700">sus4</text>
   <text x="272" y="579" fill="#7fd1a0" font-size="9" text-anchor="end">sus</text>
-  <text x="50" y="592" fill="#7d8794" font-size="9">(1) 4 (5)</text>
+  <text x="50" y="592" fill="#7d8794" font-size="9">1,4,5</text>
   <line x1="46" y1="595" x2="274" y2="595" stroke="#1c2027"/>
   <text x="50" y="615" fill="#edf3ff" font-size="12" font-weight="700">+</text>
   <text x="272" y="615" fill="#7fd1a0" font-size="9" text-anchor="end">aug</text>
-  <text x="50" y="628" fill="#7d8794" font-size="9">(1) 3 #5</text>
+  <text x="50" y="628" fill="#7d8794" font-size="9">1,3,#5</text>
 
   <!-- barra de desplaçament -->
   <rect x="272" y="204" width="8" height="428" rx="4" fill="#1a1c20"/>
@@ -225,18 +225,18 @@
   <!-- ═══════════════ LLEGENDA ═══════════════ -->
   <rect x="1040" y="20" width="380" height="820" rx="10" fill="#14161a" stroke="#2e333a"/>
   <text x="1064" y="52" fill="#edf3ff" font-size="17" font-weight="700">Panell «Tipus d'acord»</text>
-  <text x="1064" y="74" fill="#8fa0b5" font-size="12">Mockup v2 · cada tipus amb variants + graus</text>
+  <text x="1064" y="74" fill="#8fa0b5" font-size="12">Mockup v3 · tipus + variants (sense espais) + graus (sense parèntesis)</text>
   <line x1="1064" y1="88" x2="1396" y2="88" stroke="#2e333a"/>
 
   <text x="1064" y="114" fill="#ffb26b" font-size="13" font-weight="700">Cada fila de la llista</text>
   <rect x="1064" y="126" width="316" height="34" rx="4" fill="#101216" stroke="#2e333a"/>
   <rect x="1066" y="128" width="312" height="30" fill="#1b1f26"/>
   <text x="1074" y="143" fill="#edf3ff" font-size="12" font-weight="700">maj7</text>
-  <text x="1370" y="143" fill="#7fd1a0" font-size="9" text-anchor="end">M7 · Ma7 · Δ7</text>
-  <text x="1074" y="155" fill="#7d8794" font-size="9">(1) 3 (5) 7</text>
+  <text x="1370" y="143" fill="#7fd1a0" font-size="9" text-anchor="end">M7·Ma7·Δ7</text>
+  <text x="1074" y="155" fill="#7d8794" font-size="9">1,3,5,7</text>
   <text x="1064" y="178" fill="#dbe2ec" font-size="11.5">
     <tspan fill="#7fd1a0">verd</tspan> = noms alternatius · <tspan fill="#7d8794">gris</tspan> = graus</text>
-  <text x="1064" y="196" fill="#8fa0b5" font-size="11">Els ( ) volen dir que el grau és OPCIONAL.</text>
+  <text x="1064" y="196" fill="#8fa0b5" font-size="11">Sense parèntesis: els graus, separats per comes.</text>
   <text x="1064" y="214" fill="#8fa0b5" font-size="11">El símbol Δ (= triangle) es pot copiar del panell.</text>
 
   <line x1="1064" y1="228" x2="1396" y2="228" stroke="#2e333a"/>
