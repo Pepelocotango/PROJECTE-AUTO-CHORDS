@@ -69,7 +69,11 @@ def _clic_prompt(f, etiqueta):
     QMessageBox.exec_ = lambda self: 0
     QMessageBox.clickedButton = lambda self: capt.get(etiqueta)
     try:
-        return f._confirma_descartar()
+        # Als tests la plataforma és `offscreen` i l'app HI SALTA els diàlegs a
+        # posta (un modal fa «access violation» a Windows; vegeu `_interactiu`).
+        # Aquí simulem un entorn interactiu per provar la lògica del prompt.
+        with patch.object(f, "_interactiu", return_value=True):
+            return f._confirma_descartar()
     finally:
         QMessageBox.addButton, QMessageBox.exec_, QMessageBox.clickedButton = (
             o_add, o_exec, o_cb)
@@ -151,6 +155,17 @@ class TestTancamentIntel·ligent(_Base):
             _tanca(f)
         p.assert_not_called()                   # net → cap prompt
         self.assertFalse(f.isVisible())
+
+    def test_offscreen_no_obre_cap_dialeg_modal(self):
+        """A la plataforma `offscreen` (tests i CI) les confirmacions NO han
+        d'obrir cap `QMessageBox` modal: a Windows fa «access violation» (el
+        crash que va tombar el CI). Han de respondre amb el valor segur."""
+        f = _finestra_amb_projecte()
+        f._marca_dirty()
+        with patch.object(QMessageBox, "exec_") as m:
+            self.assertTrue(f._pot_descartar())     # continua sense preguntar
+            m.assert_not_called()
+        _tanca(f)
 
 
 def tearDownModule():

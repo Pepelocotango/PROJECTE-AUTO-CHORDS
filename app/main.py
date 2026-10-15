@@ -1732,12 +1732,28 @@ class Finestra(QMainWindow):
     def _te_canvis(self):
         return bool(self.dirty)
 
+    def _interactiu(self):
+        """Hi ha un usuari que pugui respondre un diàleg modal?
+
+        Amb la plataforma Qt **`offscreen`** (tests i CI sense pantalla) NO n'hi
+        ha: un `QMessageBox` modal s'encallaria — i a Windows, directament, fa
+        **«access violation»** (crash natiu; vegeu `tests/test_avis_no_modal.py`).
+        En aquest cas les confirmacions responen amb el valor **segur** i ho
+        deixen al log, en comptes d'obrir un diàleg.
+        """
+        app = QApplication.instance()
+        return app is not None and app.platformName() != "offscreen"
+
     def _confirma_descartar(self):
         """Prompt Desa/Descarta/Cancel·la. True = podem continuar.
 
         Si es tria «Desa» i el desat FALLA, es retorna False (no es continua:
         mai tancar/sobreescriure perdent feina).
         """
+        if not self._interactiu():
+            self.registra("sense sessió interactiva (offscreen): es continua "
+                          "(la cançó —acords i estructura— ja és al CSV)")
+            return True
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Warning)
         box.setWindowTitle("Canvis sense desar")
@@ -2236,6 +2252,10 @@ class Finestra(QMainWindow):
         """
         if not self._hi_ha_resultats():
             return True
+        if not self._interactiu():
+            self.registra("sense sessió interactiva (offscreen): es continua "
+                          "amb la reanàlisi")
+            return True
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Warning)
         box.setWindowTitle("Tornar a analitzar")
@@ -2409,9 +2429,10 @@ class Finestra(QMainWindow):
             self.registra(f"AVÍS: no he pogut treure {wavs}: {e}")
 
     def _ho_confirma(self, titol, text, boto_si):
-        """Demana confirmació (Sí/No). Amb el pont MCP actiu respon **No** i no
-        mostra cap diàleg modal (no s'ha d'encallar el pont; cf. `_avis`)."""
-        if getattr(self, "mcp_actiu", False):
+        """Demana confirmació (Sí/No). Amb el pont MCP actiu (o sense sessió
+        interactiva, `offscreen`) respon **No** i no mostra cap diàleg modal
+        (no s'ha d'encallar el pont ni petar el CI; cf. `_avis`/`_interactiu`)."""
+        if getattr(self, "mcp_actiu", False) or not self._interactiu():
             return False
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Question)
