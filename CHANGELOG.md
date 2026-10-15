@@ -6,6 +6,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Treballar SENSE analitzar (roadmap §14.1)**: en carregar un àudio, si el model
+  és buit es crea el **punt de partida editable** (`pipeline.model_inicial()`):
+  **1 clip d'acords** (`N`, «sense acord») + **1 clip d'estructura** (`A`) que
+  cobreixen **tota la cançó**, i es **desen els CSV** (perquè l'export es pugui fer
+  de seguida). Conseqüència: l'**anàlisi (Chordino/qm) passa a ser OPCIONAL**, mai
+  un requisit previ; sense anàlisi **no es crea** la capa crua (`analisi/`).
+  Test: `tests/test_sense_analisi.py` (8).
+- **Xifrat — parèntesis i més tipus**: `7(9,13)` → `7add9add13`, `7(b9)` → `7b9`
+  (abans els graus s'«engrunaven»); s'accepten les paraules senceres
+  `major`/`minor`; i s'afegeixen tipus (`7sus2`, `9sus4`, `13sus4`, `add2`,
+  `-add2`, `-add4`, `-(b6)`, `7#9b5`, `7#9#5`, `7(9,13)`, `7b13`, `7#9b13`,
+  `maj7#5#11`, `maj7(9/11/13)`, `-9+7`…).
 - **Panell «Tipus d'acord»** (dock desacoplable a l'esquerra; *Visualitza ▸
   Mostra els tipus d'acord*): construeix un xifrat **clicant** — **Arrel** i
   **Baix** (text lliure) + una **llista de 62 tipus** (de menys a més complex;
@@ -164,6 +176,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **Export amb el pont MCP actiu**: ja **no obre el gestor de fitxers** a
+  l'escriptori (l'agent que ha demanat l'export no necessita finestres; abans,
+  5 exports amb l'MCP = 5 finestres obertes).
+- **Xifrat — `Cmajor`/`Cminor` (paraules senceres)**: abans es tallaven malament
+  (`Cmajor` → …`Majdimr`); ara s'entenen com a major/menor.
 - **Partitura amb acords VELLS**: `_exporta_partitura` ara **regenera**
   `acords_locators.txt` si és més vell que `acords.csv` (els locators són un
   **derivat** del model; si s'editava el model després de l'últim export de

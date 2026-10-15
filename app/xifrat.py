@@ -83,6 +83,7 @@ def parteix_arrel(base):
 # --- forma canònica de la qualitat ----------------------------------------
 # Prefixos «de paraula» (es comparen en minúscules) — el més llarg primer!
 _PREFIXOS = (
+    ("major", "Maj"), ("minor", "-"),        # les paraules senceres (chart/anglès)
     ("min", "-"), ("mi", "-"), ("maj", "Maj"),
     ("dim", "dim"), ("aug", "aug"),
     ("sus4", "sus4"), ("sus2", "sus2"), ("sus", "sus4"),
@@ -112,6 +113,23 @@ _RE_PAREN_QUAL = re.compile(r"\((maj|Maj|MAJ|M)(\d*)\)")
 _SINONIM = {"69": "6add9", "6/9": "6add9"}
 
 
+def _converteix_parentesis(q) -> str:
+    """Els parèntesis d'alteracions: `(9,13)` → `add9add13`; `(b9)` → `b9`.
+
+    Un grau SOLT dins els parèntesis és un **afegitó** (`(9)` = `add9`): sense
+    això els dígits s'engrunaven (`7(9,13)` → `7913`) i es perdien.
+    """
+    def _sub(m):
+        trossos = []
+        for t in re.split(r"[,/]", m.group(1)):
+            t = t.strip()
+            if not t:
+                continue
+            trossos.append(("add" + t) if t.isdigit() else t)
+        return "".join(trossos)
+    return re.sub(r"\(([^)]*)\)", _sub, q)
+
+
 def normalitza_qualitat(q) -> str:
     """Forma canònica de la qualitat d'un xifrat (o la cua tal qual si no es reconeix)."""
     q = str(q or "").strip()
@@ -119,8 +137,8 @@ def normalitza_qualitat(q) -> str:
         return ""
     # `m(maj7)`/`min(maj9)` → `mmaj7`/`minmaj9` (continuen pel camí normal)
     q = _RE_PAREN_QUAL.sub(lambda m: m.group(1) + m.group(2), q)
-    # `7(#11)` / `69(#11,#13)` → `7#11` / `6add9#11#13`
-    q = q.replace("(", "").replace(")", "").replace(",", "").replace(" ", "")
+    # `7(#11)` / `69(#11,#13)` / `7(9,13)` → `7#11` / `6add9#11#13` / `7add9add13`
+    q = _converteix_parentesis(q).replace(",", "").replace(" ", "")
     # `69`/`6/9` → `6add9` (també amb alteracions al darrere: `69#11` → `6add9#11`)
     for sin, can in _SINONIM.items():
         if q.startswith(sin):
@@ -166,6 +184,10 @@ TIPUS = {
     "Maj7": ("major-seventh", ()),
     "dim7": ("diminished-seventh", ()),
     "7sus4": ("suspended-fourth", ((7, -1, "add"),)),
+    "7sus2": ("suspended-second", ((7, -1, "add"),)),
+    "9sus4": ("suspended-fourth", ((7, -1, "add"), (9, 0, "add"))),
+    "13sus4": ("suspended-fourth", ((7, -1, "add"), (9, 0, "add"),
+                                    (13, 0, "add"))),
     "7b5": ("dominant", ((5, -1, "alter"),)),
     "7#5": ("augmented-seventh", ()),
     "aug7": ("augmented-seventh", ()),
@@ -304,6 +326,10 @@ TAULA_TIPUS = (
     ("5", "5", "", "1,5"),
     ("sus2", "sus2", "", "1,2,5"),
     ("sus4", "sus4", "sus", "1,4,5"),
+    ("add2", "add2", "2", "1,2,3,5"),
+    ("-add2", "-add2", "", "1,2,b3,5"),
+    ("-add4", "-add4", "", "1,b3,4,5"),
+    ("-(b6)", "-b6", "mb6", "1,b3,5,b6"),
     ("+", "aug", "aug", "1,3,#5"),
     ("6", "6", "", "1,3,5,6"),
     ("add9", "add9", "", "1,3,5,9"),
@@ -311,6 +337,9 @@ TAULA_TIPUS = (
     ("madd9", "-add9", "m(add9)", "1,b3,5,9"),
     ("dim7", "dim7", "o7·°7", "1,b3,b5,bb7"),
     ("7sus4", "7sus4", "7sus", "1,4,5,b7"),
+    ("7sus2", "7sus2", "", "1,2,5,b7"),
+    ("9sus4", "9sus4", "", "1,4,5,b7,9"),
+    ("13sus4", "13sus4", "", "1,4,5,b7,9,13"),
     ("7b5", "7b5", "", "1,3,b5,b7"),
     ("7#5", "7#5", "+7·aug7", "1,3,#5,b7"),
     ("m(maj7)", "-Maj7", "mMaj7·mM7·mΔ7", "1,b3,5,7"),
@@ -351,6 +380,17 @@ TAULA_TIPUS = (
     ("13b9", "13b9", "", "1,3,5,b7,b9,13"),
     ("13#9", "13#9", "", "1,3,5,b7,#9,13"),
     ("13#11", "13#11", "", "1,3,5,b7,9,#11,13"),
+    ("7#9b5", "7#9b5", "", "1,3,b5,b7,#9"),
+    ("7#9#5", "7#9#5", "", "1,3,#5,b7,#9"),
+    ("7(9,13)", "7add9add13", "7(9,13)", "1,3,5,b7,9,13"),
+    ("7b13", "7b13", "", "1,3,5,b7,b13"),
+    ("7#9b13", "7#9b13", "", "1,3,5,b7,#9,b13"),
+    ("maj7#5#11", "Maj7#5#11", "", "1,3,#5,7,#11"),
+    ("maj7(9)", "Maj7add9", "maj7(9)", "1,3,5,7,9"),
+    ("maj7(11)", "Maj7add11", "maj7(11)", "1,3,5,7,11"),
+    ("maj7(13)", "Maj7add13", "maj7(13)", "1,3,5,7,13"),
+    ("maj7(9,13)", "Maj7add9add13", "maj7(9,13)", "1,3,5,7,9,13"),
+    ("-9+7", "-9+7", "-9(maj7)", "1,b3,5,7,9"),
     # ── Extres (fora de la referència «acords i tensions») ────────────────
     ("no3", "no3", "", "1,5"),
     ("no5", "no5", "", "1,3"),

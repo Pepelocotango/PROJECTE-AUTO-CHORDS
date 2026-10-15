@@ -101,12 +101,15 @@ class ExportPipelineTests(unittest.TestCase):
             self.assertGreater(window.visor_ref.llista_ac.count(), 0)
             app.quit()
 
-    def test_obre_wav_mostra_timeline_buit_abans_d_analitzar(self):
-        """Reorg GUI (pas 2): obrir una WAV mostra l'ona i el timeline DE
-        SEGUIDA, encara que no s'hagi analitzat (pistes buides).
+    def test_obre_wav_mostra_el_model_inicial_abans_d_analitzar(self):
+        """Reorg GUI (pas 2) + roadmap §14.1: obrir una WAV mostra l'ona i el
+        timeline DE SEGUIDA, encara que no s'hagi analitzat — i el model neix
+        amb **1 clip d'acords i 1 d'estructura** que cobreixen tota la cançó
+        (punt de partida editable; l'anàlisi és opcional).
 
         Abans (comportament d'assistent) es mostrava un placeholder fins que
-        hi havia CSV. Ara el visor s'obre sempre amb la WAV."""
+        hi havia CSV."""
+        
         with tempfile.TemporaryDirectory() as td:
             wav = Path(td) / "tema.wav"
             with wave.open(str(wav), "wb") as w:
@@ -120,8 +123,9 @@ class ExportPipelineTests(unittest.TestCase):
             window.sortida = ""
             window._carrega_visor(str(wav))
             self.assertIsNotNone(window.visor_ref)
-            self.assertEqual(len(window.visor_ref.acords), 0)
-            self.assertEqual(len(window.visor_ref.seccions), 0)
+            self.assertEqual(len(window.visor_ref.acords), 1)
+            self.assertEqual(len(window.visor_ref.seccions), 1)
+            self.assertEqual(window.visor_ref.acords[0][1], "N")
             self.assertIsNotNone(window.visor_widget)
             self.assertFalse(hasattr(window, "visor_dock"))
             app.quit()

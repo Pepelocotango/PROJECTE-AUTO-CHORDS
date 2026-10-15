@@ -155,6 +155,28 @@ class TestGraus(unittest.TestCase):
         self.assertEqual(xifrat.resta_qualitat("Maj7"), "")
         self.assertEqual(xifrat.resta_qualitat("xyz"), "xyz")
 
+    def test_paraules_i_parentesis(self):
+        """`major`/`minor` senceres i els graus entre parèntesis.
+
+        Regressió (graella «Create The Music»): `Cmajor` feia `CMajdimr` i
+        `C7(9,13)` feia `C7913` (els graus s'engrunaven i es perdien).
+        """
+        for brut, net in [("Cmajor", "C"), ("CMajor", "C"),
+                          ("Cminor", "C-"), ("CMinor", "C-"),
+                          ("C7(9,13)", "C7add9add13"),
+                          ("Cmaj7(9)", "CMaj7add9"),
+                          ("Cmaj7(13)", "CMaj7add13"),
+                          ("Cmaj7(#11)", "CMaj7#11"),
+                          ("C7(#9,b5)", "C7#9b5"),
+                          ("C7sus2", "C7sus2"), ("C9sus4", "C9sus4"),
+                          ("C13sus4", "C13sus4")]:
+            self.assertEqual(xifrat.normalitza_xifrat(brut), net, brut)
+
+    def test_els_graus_dels_parentesis_no_sengrunen(self):
+        k, g = xifrat.kind_i_graus("7add9add13")
+        self.assertEqual(k, "dominant")
+        self.assertEqual(list(g), [(9, 0, "add"), (13, 0, "add")])
+
     def test_alteracions_no_son_acords(self):
         """Text que no és un xifrat NO s'ha de reconèixer (ni amb `no5`)."""
         for t in ("Cxyz", "solo", "veus", "X"):

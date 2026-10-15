@@ -579,6 +579,21 @@ def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
 TOL_TEMPS = 1e-6
 
 
+def model_inicial(durada, log=None):
+    """Model MÍNIM per treballar **sense anàlisi** (roadmap §14.1).
+
+    Un sol clip d'acords (marca «N» = sense acord) i un de sol d'estructura
+    que cobreixen **tota la cançó**: el punt de partida editable (a partir
+    d'aquí, partir/afegir/moure/renombrar). Regla d'or **#4**: els clips han
+    de cobrir `[0, durada]`.
+    """
+    dur = max(0.0, float(durada or 0.0))
+    if log:
+        log(f"model inicial (sense anàlisi): 1 acord «N» i 1 secció de 0 a "
+            f"{dur:.2f}s")
+    return ([(0.0, "N", f"{0.0:.9f}")], [(0.0, dur, "A", "A")])
+
+
 def normalitza_cobertura(acords, seccions, durada, log=None):
     """Garanteix l'**INVARIANT de COBERTURA** (regla d'or de l'app):
 

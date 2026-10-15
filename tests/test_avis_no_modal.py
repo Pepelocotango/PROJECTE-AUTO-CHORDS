@@ -118,11 +118,11 @@ class TestExportMCPNoBloqueja(_Base):
         w = _finestra()
         w.mcp_actiu = True
         ctx = mcp_bridge._Context(w)
-        # Guard: aquest test espera la sortida ANTICIPADA (sense CSVs); si algun
-        # dia fes un export real, que peti de forma clara i no al SO.
+        # Roadmap §14.1: en obrir la WAV el model ja neix amb 1 acord + 1
+        # secció, així que l'export SÍ que s'executa (el simulem). El que
+        # guarda aquest test és que la crida MCP TORNA i no obre res.
         with patch.object(QW.QMessageBox, "warning") as modal, \
-                patch.object(pipeline, "exporta_total",
-                             side_effect=AssertionError("export real!")), \
+                patch.object(pipeline, "exporta_total", return_value={}), \
                 patch.object(w, "obre_carpeta") as obre:
             r = mcp_bridge._op_export_wav(ctx, {})
         self.assertFalse(obre.called, "no ha d'obrir cap carpeta")

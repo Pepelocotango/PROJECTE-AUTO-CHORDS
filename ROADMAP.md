@@ -951,7 +951,12 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 > Idees que l'operador vol tenir presents com a **properes línies de treball**.
 > Cap no ha de trencar les **regles d'or** (cobertura, ordre, contigüitat…).
 
-### 14.1 Treballar SENSE analitzar (edició total pel usuari)
+### 14.1 Treballar SENSE analitzar (edició total pel usuari) ✅ FET (2026-10-15)
+> **Implementat.** En carregar un àudio, si el model és buit es crea el punt de
+> partida editable (`pipeline.model_inicial()`): **1 clip d'acords** (`N`) +
+> **1 clip d'estructura** (`A`) que cobreixen tota la cançó, i es desen els CSV.
+> L'**anàlisi passa a ser opcional** (no es crea `analisi/` si no analitzes).
+> Test: `tests/test_sense_analisi.py` (8). Detall: `MEMORIA.md` 15-10.
 - **Objectiu**: poder fer servir l'app **sense dependre de l'anàlisi** — el usuari
   vol poder **crear i editar-ho tot a mà** (acords i estructura).
 - **Primer pas**: en **carregar un àudio**, crear automàticament **un sol clip

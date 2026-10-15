@@ -60,6 +60,10 @@ Columnes: **Tipus** (forma canònica) · **Variants acceptades** · **Graus**
 | `C5` | `C5` | 1 5 | `power` |
 | `Csus2` | `Csus2` | (1) 2 (5) | `suspended-second` |
 | `Csus4` | `Csus4` `Csus` | (1) 4 (5) | `suspended-fourth` |
+| `Cadd2` | `Cadd2` `C2` | (1) 2 3 (5) | `major` + `(2,0,add)` |
+| `C-add2` | `Cmadd2` `C-add2` | (1) 2 b3 (5) | `minor` + `(2,0,add)` |
+| `C-add4` | `Cmadd4` `C-add4` | (1) 4 b3 (5) | `minor` + `(4,0,add)` |
+| `C-(b6)` | `Cmb6` `C-(b6)` | (1) b3 (5) b6 | `minor` + `(6,-1,alter)` |
 | `Caug` | `Caug` `C+` | (1) 3 #5 | `augmented` |
 | `C6` | `C6` | (1) 3 (5) 6 | `major-sixth` |
 | `Cadd9` | `Cadd9` | (1) 3 (5) 9 | `major` + `(9,0,add)` |
@@ -67,6 +71,9 @@ Columnes: **Tipus** (forma canònica) · **Variants acceptades** · **Graus**
 | `C-add9` | `Cmadd9` `Cm(add9)` `C-add9` | (1) b3 (5) 9 | `minor` + `(9,0,add)` |
 | `Cdim7` | `Cdim7` `C°7` `Co7` | (1) b3 b5 bb7 | `diminished-seventh` |
 | `C7sus4` | `C7sus4` `C7sus` | (1) 4 (5) b7 | `suspended-fourth` + `(7,-1,add)` |
+| `C7sus2` | `C7sus2` | (1) 2 (5) b7 | `suspended-second` + `(7,-1,add)` |
+| `C9sus4` | `C9sus4` | (1) 4 (5) b7 9 | `suspended-fourth` + `(7,-1)` `(9,0,add)` |
+| `C13sus4` | `C13sus4` | (1) 4 (5) b7 9 13 | `suspended-fourth` + `(7,-1)` `(9,0)` `(13,0,add)` |
 | `C7b5` | `C7b5` | (1) 3 b5 b7 | `dominant` + `(5,-1,alter)` |
 | `C7#5` | `C7#5` `Caug7` `C+7` | (1) 3 #5 b7 | `augmented-seventh` |
 | `C-Maj7` | `Cm(maj7)` `CmMaj7` `CmM7` `CmΔ7` `C-Maj7` | (1) b3 (5) 7 | `major-minor` |
@@ -111,6 +118,17 @@ Columnes: **Tipus** (forma canònica) · **Variants acceptades** · **Graus**
 | `C13b9` | `C13b9` | (1) 3 (5) (b7) b9 13 | `dominant-13th` + `(9,-1,alter)` |
 | `C13#9` | `C13#9` | (1) 3 (5) (b7) #9 13 | `dominant-13th` + `(9,+1,alter)` |
 | `C13#11` | `C13#11` | (1) (3) (5) (b7) 9 #11 13 | `dominant-13th` + `(11,+1,alter)` |
+| `C7#9b5` | `C7(#9,b5)` `C7#9b5` | (1) 3 b5 b7 #9 | `dominant` + `(5,-1)` `(9,+1)` |
+| `C7#9#5` | `C7(#9,#5)` `C7#9#5` | (1) 3 #5 b7 #9 | `dominant` + `(5,+1)` `(9,+1)` |
+| `C7add9add13` | `C7(9,13)` | (1) 3 (5) b7 9 13 | `dominant` + `(9,0,add)` `(13,0,add)` |
+| `C7b13` | `C7(b13)` | (1) 3 (5) b7 b13 | `dominant` + `(13,-1,alter)` |
+| `C7#9b13` | `C7(#9,b13)` | (1) 3 (5) b7 #9 b13 | `dominant` + `(9,+1)` `(13,-1)` |
+| `CMaj7#5#11` | `Cmaj7(#5,#11)` | (1) 3 #5 7 #11 | `major-seventh` + `(5,+1)` `(11,+1)` |
+| `CMaj7add9` | `Cmaj7(9)` | (1) 3 (5) 7 9 | `major-seventh` + `(9,0,add)` |
+| `CMaj7add11` | `Cmaj7(11)` | (1) 3 (5) 7 11 | `major-seventh` + `(11,0,add)` |
+| `CMaj7add13` | `Cmaj7(13)` | (1) 3 (5) 7 13 | `major-seventh` + `(13,0,add)` |
+| `CMaj7add9add13` | `Cmaj7(9,13)` | (1) 3 (5) 7 9 13 | `major-seventh` + `(9,0)` `(13,0,add)` |
+| `C-9+7` | `Cm9(maj7)` `C-9+7` | (1) b3 (5) 7 9 | `major-minor` + `(9,0,add)` |
 
 > Les columnes `<kind> + (…)` volen dir: `kind` base **més** un `<degree>`
 > amb *(valor, alteració, tipus)*. Exemple: `CMajb5` →

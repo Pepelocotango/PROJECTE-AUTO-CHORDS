@@ -2500,7 +2500,10 @@ class Finestra(QMainWindow):
             msg += ("\n\n⚠️ La partitura s'ha generat NOMÉS en MusicXML: el "
                     "PDF necessita MuseScore instal·lat.")
         self.avisa_info("Auto Chords", msg)
-        self.obre_carpeta()
+        # Amb el pont MCP actiu NO s'obre el gestor de fitxers: l'agent que ha
+        # demanat l'export no necessita finestres a l'escriptori de l'usuari.
+        if not getattr(self, "mcp_actiu", False):
+            self.obre_carpeta()
 
     def exporta(self):
         """Exporta de forma SÍNCRONA (la UI espera). Vegeu `exporta_async`."""
@@ -2656,7 +2659,8 @@ class Finestra(QMainWindow):
             return
         self.avisa_info("Auto Chords",
                                 self._missatge_partitura(res))
-        self.obre_carpeta()
+        if not getattr(self, "mcp_actiu", False):    # cf. `_exporta_acabada`
+            self.obre_carpeta()
 
     def closeEvent(self, ev):
         """Neteja ordenada abans que Qt destrueixi la finestra.

@@ -149,6 +149,15 @@ class Visor(QMainWindow):
             acords = self.csv_acords
         self.acords = llegeix_acords(acords) if acords else []
         self.seccions = llegeix_abc(abc) if abc else []
+        # Roadmap §14.1 — «treballar SENSE analitzar»: si el model ve BUIT (cap
+        # anàlisi encara), es crea el punt de partida editable: **1 clip
+        # d'acords i 1 d'estructura** que cobreixen tota la cançó. L'anàlisi
+        # (Chordino/qm) passa a ser OPCIONAL, mai un requisit previ.
+        nou_model = False
+        if not self.acords and not self.seccions:
+            self.acords, self.seccions = pipeline.model_inicial(
+                self._durada_wav(), log=self.log)
+            nou_model = True
         # INVARIANT de COBERTURA (regla d'or): els clips cobreixen TOTA la WAV
         # (0 → durada): 1r a 0 (capçalera «N» si cal) i últim a la durada.
         _a0, _s0 = list(self.acords), list(self.seccions)
@@ -157,8 +166,9 @@ class Visor(QMainWindow):
             log=self.log)
         # Si la normalització ha canviat el model (forats interns, capçalera
         # «N», últim fi acotat…), el CSV DEL DISC s'ha de normalitzar JA: abans
-        # hi quedava el defecte fins a la 1a edició o export.
-        if self.acords != _a0 or self.seccions != _s0:
+        # hi quedava el defecte fins a la 1a edició o export. I si el model és
+        # NOU (sense anàlisi), s'ha de desar igualment.
+        if nou_model or self.acords != _a0 or self.seccions != _s0:
             self._desa_csvs_base()
         self.pos = 0.0  # segons
 
