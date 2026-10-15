@@ -921,6 +921,31 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 > «seny de DAW» per cost baix; **D** (tempo map) i **E** (paleta d'acords) són les
 > de més valor musical i més cost.
 
+## 13) Decisions pendents i validació a reprendre (2026-10-15)
+
+> Estat de la tongada de **validació** (prioritat 1 de l'operador): **feta i tancada**
+> el 15-10 — **738 tests OK** (1 skip), **prova MCP en viu 57/57**, i **6 fixes reals**.
+> Aquí queden les coses que **NO** s'han tancat perquè depenen de l'operador o de
+> reprendre la feina.
+
+### ⚠️ Decisió de producte pendent (operador)
+- 🔎 **Divergència de noms a l'export**: l'export aplica **`style()`** al nom del
+  fitxer → el nom del **WAV pot diferir** del nom al **CSV** (`Am` → `A-.wav`).
+  Està **documentat** com a NOTA a `tests/test_export_limits.py` (test
+  `test_nom_wav_usa_style`) i a `CHANGELOG.md`. **Pendent**: decidir si és el
+  comportament **desitjat** o si cal **alinear** el nom del WAV amb el del CSV.
+
+### 🔁 Validació a reprendre (només si l'operador ho demana)
+- **MCP**: casos d'error de les eines noves (`parteix`/`fusiona` acord i secció,
+  `regularitza`, i les de projectes).
+- **Model**: mode **Lliure** vs **BPM** amb temps **negatius** i `offset`.
+- **Anàlisi**: amb un **WAV molt curt** o un **CSV buit**.
+- **Mode fàcil**: amb **seccions** (blocs) en casos rars.
+
+### 🚚 Publicació (en espera, per ordre de l'operador)
+- **`push`**: tot és **local** (projecte + context).
+- **Compilacions / CI**: `build-all` en espera.
+
 ## Criteri de producte actualitzat
 
 La projecta es considera funcionalment preparada per a l’ús del flux principal quan:
