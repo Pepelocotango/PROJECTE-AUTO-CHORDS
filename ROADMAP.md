@@ -946,6 +946,49 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 - **`push`**: tot és **local** (projecte + context).
 - **Compilacions / CI**: `build-all` en espera.
 
+## 14) Funcionalitats futures proposades (2026-10-15, operador)
+
+> Idees que l'operador vol tenir presents com a **properes línies de treball**.
+> Cap no ha de trencar les **regles d'or** (cobertura, ordre, contigüitat…).
+
+### 14.1 Treballar SENSE analitzar (edició total pel usuari)
+- **Objectiu**: poder fer servir l'app **sense dependre de l'anàlisi** — el usuari
+  vol poder **crear i editar-ho tot a mà** (acords i estructura).
+- **Primer pas**: en **carregar un àudio**, crear automàticament **un sol clip
+  d'acords** i **un sol clip d'estructura** que cobreixin tota la cançó, com a punt
+  de partida editable; a partir d'aquí, partir / afegir / moure / renombrar.
+- **Conseqüència**: l'**anàlisi** (Chordino/qm) passa a ser **opcional**
+  («Analitza» quan ho vulguis), **no un requisit previ**.
+- **A vigilar**: regla d'or **#4** (cobertura total) — el clip únic ha de cobrir la
+  durada de l'àudio; i que **sense anàlisi** no calgui la capa crua (`analisi/`).
+
+### 14.2 MIDI per escoltar els acords (panell de tipus d'acord)
+- **Objectiu**: **sentir** l'acord mentre es tria/edita al **panell de tipus
+  d'acord** (el que s'ha dissenyat a `docs/PANELL_TIPUS_ACORD_mockup.*`).
+- **Què cal**: reproduir l'acord (MIDI o to intern) en **clicar una fila** o en
+  canviar la selecció; opcionalment, **audició de la inversió/baix** (`A-/G`).
+- **A vigilar**: el motor d'àudio d'aquest PC (sense AVX), baixa latència i que
+  **no interfereixi** amb la reproducció de la cançó.
+
+### 14.3 Revisar Copiar/Enganxa (per què de vegades no «fa el que s'espera»)
+- **Objectiu**: auditar copiar / retallar / enganxar (clips **i** loop) i
+  **explicitar** el comportament esperat: regla d'or **#4** — l'enganxat
+  **sobreescriu** el tram i la cançó **no creix**; l'àncora és el **cursor**; i què
+  passa **si no mous el cursor** (s'enganxa just després del bloc).
+- **Què cal**: reproduir amb **tests** els casos que «no funcionen com s'espera»,
+  trobar la causa (índexs, arrodoniments, **selecció mixta**, cobertura) i/o
+  **aclarir la UX** (missatge a la caixa d'informació amb **què farà** l'enganxat).
+
+### 14.4 Backups — revisar com funcionen i poder-ne seleccionar des de l'app
+- **Objectiu**: revisar el funcionament dels **backups** (quan es fan, què guarden,
+  rotació) i afegir una manera de **triar/restaurar una còpia des de la mateixa app**
+  (llista de còpies amb **data-hora** → previsualitzar i restaurar).
+- **Què cal**: UI de selecció + restauració (amb **confirmació** i seguretat — una
+  operació clara, mai destructiva), i mostrar **què conté** cada còpia (document
+  `.acproj` + CSV + `analisi/`).
+- **Relacionat**: `docs/PROJECTES.md` (autosave, rotació de 10) i
+  `Projecte.fes_backup`.
+
 ## Criteri de producte actualitzat
 
 La projecta es considera funcionalment preparada per a l’ús del flux principal quan:
