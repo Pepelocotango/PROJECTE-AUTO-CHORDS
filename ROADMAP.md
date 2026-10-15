@@ -989,6 +989,18 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 - **Relacionat**: `docs/PROJECTES.md` (autosave, rotació de 10) i
   `Projecte.fes_backup`.
 
+### 14.5 Aprofitar l'espai quan s'amaga el «Log · Informació»
+- **Observació**: en **amagar** el dock **«Log · Informació»** (a baix), la
+  finestra **no reaprofita** l'espai → queda una **franja buida**.
+- **Objectiu**: que l'espai alliberat vagi a les **llistes d'acords i
+  estructura** (i al timeline), de manera que el visor **creixi** i s'aprofiti
+  tota l'alçada disponible.
+- **Què cal**: fer que el visor (amb les seves llistes) sigui el **widget
+  central expansible** quan el dock està ocult; comprovar-ho amb el dock
+  **visible / ocult** (i en tornar-lo a mostrar, que tot recuperi la mida).
+- **A vigilar**: que el redimensionament no descol·loqui el transport ni la
+  barra; cap canvi al model (només presentació).
+
 ## Criteri de producte actualitzat
 
 La projecta es considera funcionalment preparada per a l’ús del flux principal quan:
