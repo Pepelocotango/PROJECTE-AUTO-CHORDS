@@ -66,19 +66,16 @@
 
   <!-- fila 1 · maj -->
   <rect x="42" y="203" width="236" height="36" fill="#1b1f26"/>
-  <text x="50" y="219" fill="#edf3ff" font-size="12" font-weight="700">maj</text>
-  <text x="272" y="219" fill="#7fd1a0" font-size="9" text-anchor="end">M·Maj·Δ</text>
+  <text x="50" y="219" font-size="12"><tspan fill="#edf3ff" font-weight="700">maj</tspan><tspan fill="#7fd1a0" font-size="10">·M·Maj·Δ</tspan></text>
   <text x="50" y="232" fill="#7d8794" font-size="9">1,3,5</text>
 
   <!-- fila 2 · m -->
-  <text x="50" y="255" fill="#edf3ff" font-size="12" font-weight="700">m</text>
-  <text x="272" y="255" fill="#7fd1a0" font-size="9" text-anchor="end">mi·min·-</text>
+  <text x="50" y="255" font-size="12"><tspan fill="#edf3ff" font-weight="700">m</tspan><tspan fill="#7fd1a0" font-size="10">·mi·min·-</tspan></text>
   <text x="50" y="268" fill="#7d8794" font-size="9">1,b3,5</text>
   <line x1="46" y1="271" x2="274" y2="271" stroke="#1c2027"/>
 
   <!-- fila 3 · dim -->
-  <text x="50" y="291" fill="#edf3ff" font-size="12" font-weight="700">dim</text>
-  <text x="272" y="291" fill="#7fd1a0" font-size="9" text-anchor="end">o·°</text>
+  <text x="50" y="291" font-size="12"><tspan fill="#edf3ff" font-weight="700">dim</tspan><tspan fill="#7fd1a0" font-size="10">·o·°</tspan></text>
   <text x="50" y="304" fill="#7d8794" font-size="9">1,b3,b5</text>
   <line x1="46" y1="307" x2="274" y2="307" stroke="#1c2027"/>
 
@@ -88,21 +85,18 @@
   <line x1="46" y1="343" x2="274" y2="343" stroke="#1c2027"/>
 
   <!-- fila 5 · m7 -->
-  <text x="50" y="363" fill="#edf3ff" font-size="12" font-weight="700">m7</text>
-  <text x="272" y="363" fill="#7fd1a0" font-size="9" text-anchor="end">mi7·min7·-7</text>
+  <text x="50" y="363" font-size="12"><tspan fill="#edf3ff" font-weight="700">m7</tspan><tspan fill="#7fd1a0" font-size="10">·mi7·min7·-7</tspan></text>
   <text x="50" y="376" fill="#7d8794" font-size="9">1,b3,5,b7</text>
   <line x1="46" y1="379" x2="274" y2="379" stroke="#1c2027"/>
 
   <!-- fila 6 · m7b5 -->
-  <text x="50" y="399" fill="#edf3ff" font-size="12" font-weight="700">m7b5</text>
-  <text x="272" y="399" fill="#7fd1a0" font-size="9" text-anchor="end">ø·ø7·-7b5</text>
+  <text x="50" y="399" font-size="12"><tspan fill="#edf3ff" font-weight="700">m7b5</tspan><tspan fill="#7fd1a0" font-size="10">·ø·ø7·-7b5</tspan></text>
   <text x="50" y="412" fill="#7d8794" font-size="9">1,b3,b5,b7</text>
   <line x1="46" y1="415" x2="274" y2="415" stroke="#1c2027"/>
 
   <!-- fila 7 · maj7  (SELECCIONADA) -->
   <rect x="42" y="419" width="236" height="36" fill="#2563eb"/>
-  <text x="50" y="435" fill="#ffffff" font-size="12" font-weight="700">maj7</text>
-  <text x="272" y="435" fill="#d6f5e3" font-size="9" text-anchor="end">M7·Ma7·Δ7</text>
+  <text x="50" y="435" font-size="12"><tspan fill="#ffffff" font-weight="700">maj7</tspan><tspan fill="#d6f5e3" font-size="10">·M7·Ma7·Δ7</tspan></text>
   <text x="50" y="448" fill="#cfe0ff" font-size="9">1,3,5,7</text>
 
   <!-- resta de files (segueix la llista) -->
@@ -115,12 +109,10 @@
   <text x="50" y="543" fill="#edf3ff" font-size="12" font-weight="700">sus2</text>
   <text x="50" y="556" fill="#7d8794" font-size="9">1,2,5</text>
   <line x1="46" y1="559" x2="274" y2="559" stroke="#1c2027"/>
-  <text x="50" y="579" fill="#edf3ff" font-size="12" font-weight="700">sus4</text>
-  <text x="272" y="579" fill="#7fd1a0" font-size="9" text-anchor="end">sus</text>
+  <text x="50" y="579" font-size="12"><tspan fill="#edf3ff" font-weight="700">sus4</tspan><tspan fill="#7fd1a0" font-size="10">·sus</tspan></text>
   <text x="50" y="592" fill="#7d8794" font-size="9">1,4,5</text>
   <line x1="46" y1="595" x2="274" y2="595" stroke="#1c2027"/>
-  <text x="50" y="615" fill="#edf3ff" font-size="12" font-weight="700">+</text>
-  <text x="272" y="615" fill="#7fd1a0" font-size="9" text-anchor="end">aug</text>
+  <text x="50" y="615" font-size="12"><tspan fill="#edf3ff" font-weight="700">+</tspan><tspan fill="#7fd1a0" font-size="10">·aug</tspan></text>
   <text x="50" y="628" fill="#7d8794" font-size="9">1,3,#5</text>
 
   <!-- barra de desplaçament -->
@@ -231,8 +223,7 @@
   <text x="1064" y="114" fill="#ffb26b" font-size="13" font-weight="700">Cada fila de la llista</text>
   <rect x="1064" y="126" width="316" height="34" rx="4" fill="#101216" stroke="#2e333a"/>
   <rect x="1066" y="128" width="312" height="30" fill="#1b1f26"/>
-  <text x="1074" y="143" fill="#edf3ff" font-size="12" font-weight="700">maj7</text>
-  <text x="1370" y="143" fill="#7fd1a0" font-size="9" text-anchor="end">M7·Ma7·Δ7</text>
+  <text x="1074" y="143" font-size="12"><tspan fill="#edf3ff" font-weight="700">maj7</tspan><tspan fill="#7fd1a0" font-size="10">·M7·Ma7·Δ7</tspan></text>
   <text x="1074" y="155" fill="#7d8794" font-size="9">1,3,5,7</text>
   <text x="1064" y="178" fill="#dbe2ec" font-size="11.5">
     <tspan fill="#7fd1a0">verd</tspan> = noms alternatius · <tspan fill="#7d8794">gris</tspan> = graus</text>
