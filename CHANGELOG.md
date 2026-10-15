@@ -70,6 +70,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   ara pel **cursor** (com la resta de punts de partir), en lloc de demanar el
   temps per número — mateix tracte que els acords.
 
+### Corregit
+- **Regla d'or #1 blindada al backend**: `pipeline.normalitza_cobertura` ara
+  **reordena** els acords i les seccions per temps d'inici (abans l'ordre només el
+  garantia el visor → un CSV editat a mà podia exportar-se desordenat).
+- **MCP — `ac_parteix_acord`/`ac_parteix_seccio`**: `t_s` es llegia com a **enter**
+  i **truncava** el temps (`0.5 → 0`); ara és float. Trobat pel harness en viu
+  (`eines/prova_mcp_completa.py`).
+
 ## [0.7.0] — 2026-10-14 (BETA)
 
 ### Seguretat

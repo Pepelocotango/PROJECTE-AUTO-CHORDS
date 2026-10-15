@@ -6,7 +6,8 @@
 > regla, es canvia **la funcionalitat**, no la regla (tret de decisió explícita
 > de l'operador, que s'ha de documentar aquí **i** al `CHANGELOG`).
 >
-> Cada regla té la seva **validació** al codi i un **test** que la comprova.
+> Cada regla té la seva **validació** al codi i un **test** que la comprova
+> (les 11: vegeu la nota del final).
 > Referenciades a `ROADMAP.md` (§Notes d'implementació) i `DEVELOPING.md`.
 >
 > ## ‼️ S'HA DE COMPLIR **SEMPRE** — a TOTS els punts
@@ -125,4 +126,6 @@ Aquests dos casos reals són el motiu del §«S'ha de complir SEMPRE» de dalt:
 ---
 
 > 📌 **En afegir una regla nova**: numera-la aquí, afegeix-ne la validació al
-> codi i un test que la comprovi (les regles **1, 2, 4, 7, 8 i 11** ja en tenen).
+> codi i un test que la comprovi. **Les 11 regles ja tenen el seu test**:
+> `tests/test_regles_or.py` (1, 3, 5, 6, 7, 8 i 10) · `test_seccions_contigues` (2)
+> · `test_cobertura_viu` (4) · `test_requirements` (9) · `test_regla11_paritat` (11).
