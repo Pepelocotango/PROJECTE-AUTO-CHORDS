@@ -96,6 +96,7 @@ procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i **[`docs/PORTABILITAT.md`]
 | [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md) | **Invariants** del producte («s'ha de complir sempre») |
 | [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md) | Esquema de la interfície (menús, barres, dreceres) |
 | [`docs/PROJECTES.md`](docs/PROJECTES.md) | **Projectes autocontinguts** («com un DAW»): `.acproj`, «Desa com», autosave/backups i recuperació |
+| [`docs/FLUX_DE_DADES.md`](docs/FLUX_DE_DADES.md) | **Flux de dades**: capa crua (`analisi/`, immutable) vs model editable; per què editar o el mode fàcil no destrueix l'anàlisi |
 | [`docs/PORTABILITAT.md`](docs/PORTABILITAT.md) | Com es construeixen i què porten els 3 paquets |
 | [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md) | El pont **MCP** i les seves 51 eines |
 | [`docs/CI_WORKFLOWS.md`](docs/CI_WORKFLOWS.md) | Els workflows de GitHub Actions (build + release) |
