@@ -111,6 +111,16 @@ Tests automàtics (logica del pont + protocol, amb dobles i sense GUI):
 .venv/bin/python -m unittest discover -s tests -p "test_mcp_bridge.py"
 ```
 
+**Prova completa EN VIU** (protocol MCP real; requereix l'app oberta amb `AUTO_CHORDS_MCP.sh`):
+```bash
+# WAV de prova (qualsevol WAV) i carpeta temporal del projecte:
+AC_PROVA_WAV=/tmp/ac_prova.wav AC_PROVA_PROJ=/tmp/ac_prova_proj \
+  .venv/bin/python eines/prova_mcp_completa.py
+```
+Cobreix **57 comprovacions**: handshake, estat, transport, model (acords i
+seccions), selecció, opcions, paritat #11 (partir/fusionar), mode fàcil i
+projectes. Usa l'`AUTO_CHORDS_MCP_ENDPOINT` de l'app oberta.
+
 ## Trampes i regles (no repetir)
 
 1. **Qt no és thread-safe**: mai tocar widgets/model des del fil del socket.
