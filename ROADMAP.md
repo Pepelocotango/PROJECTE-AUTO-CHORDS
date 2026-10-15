@@ -967,7 +967,11 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 - **A vigilar**: regla d'or **#4** (cobertura total) — el clip únic ha de cobrir la
   durada de l'àudio; i que **sense anàlisi** no calgui la capa crua (`analisi/`).
 
-### 14.2 MIDI per escoltar els acords (panell de tipus d'acord)
+### 14.2 MIDI per escoltar els acords (panell de tipus d'acord) ✅ FET (2026-10-15)
+> **Implementat** com a **audició interna**: `app/acord_audio.py` (NOU, numpy pur)
+> sintetitza un **e-piano FM estil Rhodes** i el botó **▶ Escoltar** del panell
+> toca **arpegi + bloc** amb un **motor efímer**. No és sortida **MIDI estàndard**
+> (si mai es vol alimentar un DAW, es pot afegir). Test: `tests/test_acord_audio.py`.
 - **Objectiu**: **sentir** l'acord mentre es tria/edita al **panell de tipus
   d'acord** (el que s'ha dissenyat a `docs/PANELL_TIPUS_ACORD_mockup.*`).
 - **Què cal**: reproduir l'acord (MIDI o to intern) en **clicar una fila** o en

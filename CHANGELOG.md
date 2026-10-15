@@ -6,6 +6,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **▶ Escoltar al panell «Tipus d'acord» (audició amb piano elèctric)**: el botó
+  ja és **actiu** — sent l'acord triat (arrel + tipus) amb un **e-piano FM estil
+  Rhodes** sintetitzat (`app/acord_audio.py`, **NOU**: `numpy` pur, **cap
+  dependència nova**). Cada pulsació toca **primer els graus per separat (arpegi)
+  i després tots alhora**, amb un **motor efímer** (no toca la reproducció de la
+  cançó) i tot dins `try/except` (si l'àudio falla, avís clar; mai un crash). Els
+  intervals surten de la mateixa `xifrat.TAULA_TIPUS`. Tests: `tests/test_acord_audio.py`
+  + `test_panell_xifrat`.
 - **Treballar SENSE analitzar (roadmap §14.1)**: en carregar un àudio, si el model
   és buit es crea el **punt de partida editable** (`pipeline.model_inicial()`):
   **1 clip d'acords** (`N`, «sense acord») + **1 clip d'estructura** (`A`) que

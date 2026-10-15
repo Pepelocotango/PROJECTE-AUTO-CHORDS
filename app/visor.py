@@ -10,6 +10,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -36,6 +37,7 @@ import metronom  # noqa: E402
 # Forma d'execució suportada: `python -m app.visor` (el directe ja demana
 # l'arrel al sys.path per altres imports relatius d'aquest fitxer).
 from . import graella, icones, pipeline, theme  # noqa: F401
+from . import acord_audio  # noqa: E402
 from .timeline import TimelineView  # noqa: E402
 
 # Configuració centralitzada per al directori temporal (configurable)
@@ -935,6 +937,52 @@ class Visor(QMainWindow):
                 return ("aplay", ["--format=S16_LE", f"--rate={sr}",
                                   "--channels=1", "-"])
         return (None, [])
+
+    def toca_notes(self, notes, sr=None):
+        """Toca una llista de notes MIDI (audició d'un tipus d'acord).
+
+        Genera un **piano elèctric** sintetitzat (`acord_audio`: arpegi + bloc)
+        i el reprodueix amb el MATEIX motor de sempre, en un **motor efímer**
+        d'un sol ús → no toca el reproductor de la cançó. Retorna True si s'ha
+        pogut engegar (mai aixeca: qualsevol error va al log).
+        """
+        notes = list(notes or [])
+        if not notes:
+            return False
+        sr = int(sr or (self.audio or {}).get("sr") or 44100)
+        try:
+            pcm = acord_audio.pcm_escolta(notes, sr)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"escolta ERROR (síntesi): {e}")
+            return False
+        player, args = self._tria_player()
+        if player is None:
+            self.log("escolta: no hi ha cap reproductor d'àudio disponible")
+            return False
+        self._neteja_escoltes()
+        try:
+            proc = audio_out.crea_motor(player, args, sr, subprocess.DEVNULL)
+            proc.stdin.write(pcm)
+            proc.stdin.close()          # el motor acaba la cua i surt sol
+            self._escoltes.append(proc)
+            self.log(f"escolta: {len(notes)} notes ({sr} Hz, e-piano)")
+            return True
+        except Exception as e:  # noqa: BLE001
+            self.log(f"escolta ERROR: {e}")
+            return False
+
+    def _neteja_escoltes(self):
+        """Treu els motors d'escolta ja acabats (evita processos zombis)."""
+        vius = []
+        for p in getattr(self, "_escoltes", []):
+            try:
+                if p.poll() is None:
+                    vius.append(p)
+                else:
+                    p.atura()
+            except Exception:  # noqa: BLE001
+                pass
+        self._escoltes = vius
 
     def _mono_bytes(self):
         """Mono 16 bits SENSE guany, cacat (es calcula un sol cop per fitxer).

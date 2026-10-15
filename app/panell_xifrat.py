@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QListWidget,
                              QListWidgetItem, QPushButton, QStyle,
                              QStyledItemDelegate, QVBoxLayout, QWidget)
 
-from app import theme, xifrat
+from app import acord_audio, theme, xifrat
 
 # Colors (theme, amb els del mockup aprovat)
 C_TIPUS = theme.TEXT
@@ -71,11 +71,14 @@ class PanellXifrat(QWidget):
     """El contingut del dock. Emet `tipusTriat` amb el xifrat canònic."""
 
     tipusTriat = pyqtSignal(str)
+    escoltarDemandat = pyqtSignal(list)   # notes MIDI a fer sonar (e-piano)
+    avis = pyqtSignal(str)                # missatge per a l'usuari
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._qualitat = ""
         self._etiqueta = ""
+        self._graus = ""
         capa = QVBoxLayout(self)
         capa.setContentsMargins(8, 8, 8, 8)
         capa.setSpacing(6)
@@ -120,9 +123,10 @@ class PanellXifrat(QWidget):
         peu.addWidget(self.previsio, stretch=1)
         self.b_escoltar = QPushButton("▶ Escoltar")
         self.b_escoltar.setObjectName("secundari")
-        self.b_escoltar.setEnabled(False)          # futura funció MIDI
-        self.b_escoltar.setToolTip("Properament: sentir els graus del xifrat "
-                                   "per separat i alhora (MIDI).")
+        self.b_escoltar.setToolTip("Escolta el tipus d'acord triat (piano "
+                                   "elèctric): primer els graus per separat "
+                                   "i després tots alhora.")
+        self.b_escoltar.clicked.connect(self._escolta)
         peu.addWidget(self.b_escoltar)
         capa.addLayout(peu)
 
@@ -154,11 +158,26 @@ class PanellXifrat(QWidget):
 
     def _on_clic(self, item):
         etiqueta, _alts, _graus = item.data(Qt.UserRole)
-        # la qualitat canònica de la fila
-        for e, qual, _a, _g in xifrat.TAULA_TIPUS:
+        # la qualitat + els graus canònics de la fila
+        for e, qual, _a, graus in xifrat.TAULA_TIPUS:
             if e == etiqueta:
-                self._qualitat, self._etiqueta = qual, etiqueta
+                self._qualitat, self._etiqueta, self._graus = (
+                    qual, etiqueta, graus)
                 break
         self._actualitza_previsio()
         # Només EMPLENA (mai aplica): el visor ho posa a la casella «Nom».
         self.tipusTriat.emit(self.xifrat_actual() or etiqueta)
+
+    def _escolta(self):
+        """▶ Escoltar: notes del tipus (+ baix si n'hi ha) → `escoltarDemandat`."""
+        arrel = self.arrel.text().strip()
+        if not arrel or (not self._qualitat and not self._etiqueta):
+            self.avis.emit("Tria l'arrel i un tipus d'acord per escoltar-lo.")
+            return
+        notes = acord_audio.notes_amb_baix(arrel, self._graus,
+                                           self.baix.text())
+        if not notes:
+            self.avis.emit(f"No he pogut calcular les notes de «{arrel}» "
+                           "(revisa l'arrel).")
+            return
+        self.escoltarDemandat.emit(notes)

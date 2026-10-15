@@ -20,8 +20,10 @@ l'omple; tu prems *Aplica*). Sense arrel, s'hi escriu només el tipus
 
 La llista surt de **`xifrat.TAULA_TIPUS`** (62 files, de menys a més complex,
 amb els **alternatius** i els **graus** de cada tipus). Maqueta aprovada:
-`PANELL_TIPUS_ACORD_mockup.svg` / `.png`. El botó **▶ Escoltar** hi és com a
-plaçaholder (funció futura amb MIDI; ara desactivat).
+`PANELL_TIPUS_ACORD_mockup.svg` / `.png`. El botó **▶ Escoltar** (ja **actiu**)
+sent l'acord amb un **e-piano elèctric** sintetitzat (`app/acord_audio.py`):
+**primer l'arpegi** (els graus per separat) **i després el bloc** (tots alhora),
+amb un motor efímer que no interfereix amb la cançó.
 
 ## Com funciona (en 20 segons)
 

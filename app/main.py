@@ -594,6 +594,9 @@ class Finestra(QMainWindow):
         self.dock_xifrat.setWidget(self.panell_xifrat)
         self.dock_xifrat.setMinimumWidth(250)
         self.panell_xifrat.tipusTriat.connect(self._posa_nom_editor)
+        self.panell_xifrat.escoltarDemandat.connect(self._escolta_notes)
+        self.panell_xifrat.avis.connect(
+            lambda t: self.avisa_info("Tipus d'acord", t))
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_xifrat)
 
         # (L'inspector lateral s'ha retirat: les llistes tornen sota l'ona,
@@ -1712,6 +1715,21 @@ class Finestra(QMainWindow):
                                            "de fer servir el panell dels tipus.")
             return
         vr.posa_nom_editor(nom)
+
+    def _escolta_notes(self, notes):
+        """Audició d'un tipus d'acord (e-piano) demanada pel panell.
+
+        Ho toca el visor amb un motor efímer (`Visor.toca_notes`): no toca la
+        reproducció de la cançó i mai aixeca (si l'àudio falla, s'avisa).
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa_info("Tipus d'acord",
+                            "Obre un tema abans d'escoltar l'acord.")
+            return
+        if not vr.toca_notes(notes):
+            self.avisa("Tipus d'acord",
+                       "No s'ha pogut reproduir l'àudio (mira el log).")
 
     def _atura_si_sona(self, motiu):
         """Atura el reproductor abans d'una operacio pesada (no te sentit

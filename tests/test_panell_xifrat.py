@@ -6,7 +6,8 @@ Comportament acordat amb l'operador (mockup aprovat):
   els **graus** a sota (dades de `xifrat.TAULA_TIPUS`).
 - **Clicar un tipus NOMÉS omple** la casella «Nom» de l'editor: mai aplica.
 - **Sense arrel** → s'hi escriu només el tipus (`Maj7`) i l'usuari l'acaba.
-- Botó **▶ Escoltar** present però **desactivat** (plaçaholder per al MIDI).
+- Botó **▶ Escoltar**: toca el tipus triat (piano elèctric sintetitzat:
+  arpegi + bloc) via `escoltarDemandat` → `Visor.toca_notes`.
 """
 import os
 import sys
@@ -20,7 +21,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt5.QtWidgets import QDockWidget, QMenu  # noqa: E402
 
 from app import main as app_main  # noqa: E402
-from app import xifrat  # noqa: E402
+from app import audio_out, xifrat  # noqa: E402
 
 _VIVES = []
 
@@ -111,8 +112,8 @@ class TestPanell(_Base):
         w = self._finestra(amb_visor=False)
         p = w.panell_xifrat
         self.assertEqual(p.llista.count(), len(xifrat.TAULA_TIPUS))
-        self.assertFalse(p.b_escoltar.isEnabled(),
-                         "el botó Escoltar és un plaçaholder (MIDI futur)")
+        self.assertTrue(p.b_escoltar.isEnabled(),
+                        "el botó ▶ Escoltar ja ha de funcionar (e-piano)")
 
     def test_clicar_un_tipus_omple_la_casella_nom(self):
         w = self._finestra()
@@ -135,6 +136,62 @@ class TestPanell(_Base):
                   if p.llista.item(i).text() == "maj7")
         p._on_clic(it)
         self.assertEqual(w.visor_ref.ed_nom.text(), "Maj7")
+
+    def test_escoltar_emet_les_notes(self):
+        """▶ Escoltar ha d'emetre les notes MIDI del tipus triat."""
+        w = self._finestra(amb_visor=False)
+        p = w.panell_xifrat
+        p.arrel.setText("Ab")
+        it = next(p.llista.item(i) for i in range(p.llista.count())
+                  if p.llista.item(i).text() == "maj7")
+        p._on_clic(it)
+        caps = []
+        p.escoltarDemandat.connect(lambda n: caps.append(n))
+        p._escolta()
+        self.assertEqual(caps, [[56, 60, 63, 67]])   # Ab3 C4 Eb4 G4
+
+    def test_escoltar_sense_arrel_avisa(self):
+        w = self._finestra(amb_visor=False)
+        p = w.panell_xifrat
+        avisos = []
+        p.avis.connect(lambda t: avisos.append(t))
+        p._escolta()
+        self.assertTrue(avisos, "sense arrel ha d'avisar")
+
+    def test_toca_notes_usa_el_motor(self):
+        """`Visor.toca_notes` ha d'usar el motor d'àudio (aquí, simulat)."""
+        w = self._finestra()
+        vr = w.visor_ref
+        escrits = []
+
+        class _MotorFals:
+            def __init__(self):
+                self.stdin = self
+                self.tancat = False
+            def write(self, dades):
+                escrits.append(dades)
+                return len(dades)
+            def close(self):
+                self.tancat = True
+            def poll(self):
+                return 0
+            def atura(self):
+                pass
+
+        motor = _MotorFals()
+        # patregem tria_player (per SO) i el motor → no sona res, però es
+        # verifica tot el camí: notes → PCM → motor → escriptura + tancament
+        from unittest.mock import patch
+        with patch.object(vr, "_tria_player", return_value=("paplay", [])), \
+                patch.object(audio_out, "crea_motor", return_value=motor):
+            self.assertTrue(vr.toca_notes([48, 52, 55, 59]))
+        self.assertTrue(escrits, "ha d'escriure el PCM al motor")
+        self.assertGreater(len(escrits[0]), 10000, "PCM massa curt")
+        self.assertTrue(motor.tancat, "ha de tancar stdin (el motor acaba sol)")
+
+    def test_toca_notes_sense_notes(self):
+        w = self._finestra()
+        self.assertFalse(w.visor_ref.toca_notes([]))
 
     def test_sense_visor_avisa_i_no_peta(self):
         w = self._finestra(amb_visor=False)
