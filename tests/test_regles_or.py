@@ -1,8 +1,10 @@
 """Regressió de les REGLES D'OR que encara no tenien test propi.
 
-`docs/REGLES_DE_LA_APP.md` diu que les regles **1, 2, 4, 7, 8** ja en tenen;
-aquí blindem les que no: **3** (durades derivades), **5** (una sola font de
-veritat), **6** (les WAVs només via `exporta()`) i **8** (temps vàlids).
+`docs/REGLES_DE_LA_APP.md` diu que les regles **2, 4, 8, 9 i 11** ja en tenen;
+aquí blindem les que no: **1** (ordre estricte — amb un gap conegut al backend,
+vegeu el test), **3** (durades derivades), **5** (una sola font de veritat),
+**6** (les WAVs només via `exporta()`), **7** (instància única), **8** (temps
+vàlids) i **10** (estat en un directori escriptible).
 """
 import csv
 import os
@@ -14,7 +16,7 @@ import wave
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from app import pipeline, visor as visor_mod  # noqa: E402
+from app import config, pipeline, plataforma, visor as visor_mod  # noqa: E402
 
 
 def _visor(dur=10.0):
@@ -118,6 +120,79 @@ class TestRegla8TempsValids(_Base):
         with self.assertRaises(ValueError):
             v._valida_canvis_seccions([(5.0, 5.0, "A", "A")])
 
+
+
+class TestRegla1OrdreEstricte(_Base):
+    """Regla 1: els clips sempre ordenats per temps d'inici (sense inversions).
+
+    ⚠️ **GAP CONEGUT** (2026-10-15, OC-5): l'ordre el garanteix el **visor**
+    (`_valida_canvis_acords` → `sorted`), però **no** el backend
+    (`pipeline.normalitza_cobertura`, la «xarxa de seguretat» que s'aplica als
+    **4 camins**: edició en viu, visor, CSV i export). Un CSV editat a mà amb les
+    files desordenades arribaria a l'export sense reordenar. **Reportat a OC-8**;
+    quan es blindi al backend, el test d'`expectedFailure` passarà a verd.
+    """
+
+    @unittest.expectedFailure
+    def test_el_backend_hauria_d_ordenar(self):
+        acords, _ = pipeline.normalitza_cobertura(
+            [(4.0, "C", "4.0"), (2.0, "Am", "2.0")], [], 6.0)
+        ts = [a[0] for a in acords]
+        self.assertEqual(ts, sorted(ts), "els acords han d'anar ordenats")
+
+    def test_el_visor_valida_i_ordena(self):
+        v = _visor()
+        ordenats = v._valida_canvis_acords(
+            [(5.0, "F", "5.0"), (1.0, "C", "1.0")])
+        self.assertEqual([a[0] for a in ordenats], [1.0, 5.0],
+                         "el visor ha d'ordenar")
+        with self.assertRaises(ValueError):
+            v._valida_canvis_acords([(2.0, "C", "2.0"), (2.0, "G", "2.0")])
+
+
+class TestRegla7InstanciaUnica(unittest.TestCase):
+    """Regla 7: una sola instància per usuari (bloqueig no bloquejant)."""
+
+    def test_la_segona_instancia_es_rebutjada(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "lock")
+            f1 = open(path, "a+")
+            f2 = open(path, "a+")
+            try:
+                self.assertTrue(plataforma.bloqueja_instancia_unica(f1),
+                                "la 1a instància ha de poder bloquejar")
+                self.assertFalse(plataforma.bloqueja_instancia_unica(f2),
+                                 "la 2a instància ha de ser rebutjada")
+            finally:
+                plataforma.desbloqueja(f1)
+                f1.close()
+                f2.close()
+
+    def test_en_alliberar_es_pot_tornar_a_bloquejar(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "lock")
+            f1 = open(path, "a+")
+            self.assertTrue(plataforma.bloqueja_instancia_unica(f1))
+            plataforma.desbloqueja(f1)
+            f2 = open(path, "a+")
+            try:
+                self.assertTrue(plataforma.bloqueja_instancia_unica(f2),
+                                "en alliberar, una altra instància hi ha d'entrar")
+            finally:
+                plataforma.desbloqueja(f2)
+                f1.close()
+                f2.close()
+
+
+class TestRegla10EstatEscriptible(unittest.TestCase):
+    """Regla 10: l'estat viu en un directori ESCRIPTIBLE (mai un de només lectura)."""
+
+    def test_el_directori_de_dades_es_escriptible(self):
+        d = config.DADES_DIR
+        self.assertTrue(os.path.isdir(d), f"ha d'existir: {d}")
+        self.assertTrue(os.access(d, os.W_OK), f"ha de ser escriptible: {d}")
+        self.assertTrue(config.LOG_PATH.startswith(d))
+        self.assertTrue(config.OPCIONS_PATH.startswith(d))
 
 
 def tearDownModule():
