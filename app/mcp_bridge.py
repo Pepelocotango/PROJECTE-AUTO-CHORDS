@@ -869,7 +869,7 @@ def _op_parteix_acord(ctx, params):
     """Parteix l'acord `index` pel temps `t_s` (nom opcional per a la part nova)."""
     vr = _requereix_visor(ctx)
     idx = _num(params, "index", enter=True)
-    t = _num(params, "t_s", "t", enter=True)
+    t = _num(params, "t_s", "t")          # float: admet fraccions de segon
     nom = params.get("nom") or params.get("acord")
     nou = vr.parteix_acord(idx, float(t), nom)
     if nou is False:
@@ -899,7 +899,7 @@ def _op_parteix_seccio(ctx, params):
     """Parteix la secció `index` pel temps `t_s` (lletra/família opcionals)."""
     vr = _requereix_visor(ctx)
     idx = _num(params, "index", enter=True)
-    t = _num(params, "t_s", "t", enter=True)
+    t = _num(params, "t_s", "t")          # float: admet fraccions de segon
     lletra = params.get("lletra") or params.get("nom")
     fam = params.get("familia") or params.get("fam")
     nou = vr.parteix_seccio(idx, float(t), lletra, fam)

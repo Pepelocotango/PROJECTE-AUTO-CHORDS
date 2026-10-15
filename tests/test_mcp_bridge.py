@@ -478,6 +478,19 @@ class TestParitatEdicio(unittest.TestCase):
             _ctx(vr), {"index": 1, "t_s": 6.0, "nom": "Am"})
         self.assertEqual(vr.acords[2][1], "Am")
 
+    def test_parteix_acord_accepta_fraccions_de_segon(self):
+        # Regressió (2026-10-15): `t_s` ha de ser FLOAT. Abans es passava
+        # `enter=True` a `_num` i el temps es TRUNCAVA a enter (0.5 -> 0).
+        vr = _FakeVisor()
+        mcp_bridge._op_parteix_acord(_ctx(vr), {"index": 1, "t_s": 6.5})
+        self.assertEqual(len(vr.acords), 4)
+        self.assertEqual(float(vr.acords[2][0]), 6.5)
+
+    def test_parteix_seccio_accepta_fraccions_de_segon(self):
+        vr = _FakeVisor()
+        mcp_bridge._op_parteix_seccio(_ctx(vr), {"index": 0, "t_s": 7.5})
+        self.assertEqual(float(vr.seccions[1][0]), 7.5)
+
     def test_fusiona_acord(self):
         vr = _FakeVisor()
         r = mcp_bridge._op_fusiona_acord(_ctx(vr), {"index": 1})
