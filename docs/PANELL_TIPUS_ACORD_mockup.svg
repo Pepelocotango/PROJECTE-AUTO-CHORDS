@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900"
      font-family="system-ui,Segoe UI,Roboto,sans-serif">
-  <title>Auto Chords — Mockup: panell «Tipus d'acord» (esquerra, desacoplable)</title>
-  <desc>Proposta visual del panell de tipus d'acord. Colors reals de l'app (theme.py).
+  <title>Auto Chords — Mockup v2: panell «Tipus d'acord» (tipus + variants + graus)</title>
+  <desc>Cada fila: el tipus + els noms alternatius (a la dreta) i els GRAUS (a sota).
         Clicar un tipus NOMÉS omple la casella «Nom» de l'editor (no aplica).</desc>
   <rect width="1440" height="900" fill="#0b0c0e"/>
 
   <!-- ═══════════════ FINESTRA ═══════════════ -->
   <rect x="20" y="20" width="1000" height="820" rx="10" fill="#0f0f10" stroke="#3a3d42"/>
-  <!-- barra de menús -->
   <rect x="20" y="20" width="1000" height="26" rx="10" fill="#1a1c20"/>
   <rect x="20" y="36" width="1000" height="10" fill="#1a1c20"/>
   <text x="36" y="38" fill="#c9d2e0" font-size="12">Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda</text>
-  <!-- barra 1 -->
   <rect x="20" y="46" width="1000" height="32" fill="#22242a"/>
   <rect x="32" y="52" width="86" height="20" rx="4" fill="#2a2c30" stroke="#4a4f57"/>
   <text x="75" y="66" fill="#e6ecf5" font-size="11" text-anchor="middle">Obre àudio</text>
@@ -35,8 +33,6 @@
   <text x="740" y="66" fill="#e6ecf5" font-size="11" text-anchor="middle">Mode fàcil</text>
   <rect x="850" y="52" width="80" height="20" rx="4" fill="#2a2c30" stroke="#4a4f57"/>
   <text x="890" y="66" fill="#e6ecf5" font-size="11" text-anchor="middle">Mostra el log</text>
-
-  <!-- barra 2 (accions) -->
   <rect x="20" y="78" width="1000" height="32" fill="#1c1e23"/>
   <rect x="32" y="84" width="76" height="20" rx="4" fill="#2a2c30" stroke="#4a4f57"/>
   <text x="70" y="98" fill="#e6ecf5" font-size="11" text-anchor="middle">Analitza</text>
@@ -48,15 +44,14 @@
   <text x="418" y="98" fill="#e6ecf5" font-size="11" text-anchor="middle">Obre la carpeta de sortida</text>
   <text x="510" y="98" fill="#9aa4b2" font-size="12">↶   ↷</text>
 
-  <!-- ═══════════════ PANELL NOU (esquerra, desacoplable) ═══════════════ -->
+  <!-- ═══════════════ PANELL NOU ═══════════════ -->
   <rect x="34" y="120" width="268" height="568" rx="6" fill="#17181c" stroke="#2563eb" stroke-width="2"/>
-  <!-- barra de títol del dock -->
   <rect x="34" y="120" width="268" height="24" rx="6" fill="#22242a"/>
   <rect x="34" y="136" width="268" height="8" fill="#22242a"/>
   <text x="44" y="136" fill="#e6ecf5" font-size="11" font-weight="600">Tipus d'acord</text>
   <text x="272" y="136" fill="#7d8794" font-size="11">⤢ ✕</text>
 
-  <!-- fila 1: arrel + baix (text lliure) -->
+  <!-- fila 1: arrel + baix -->
   <text x="44" y="166" fill="#9aa4b2" font-size="11">Arrel</text>
   <rect x="84" y="154" width="66" height="20" rx="4" fill="#0f1013" stroke="#4a4f57"/>
   <text x="96" y="168" fill="#eafff3" font-size="12" font-weight="600">Ab</text>
@@ -66,48 +61,79 @@
   <text x="44" y="188" fill="#6d7683" font-size="10">text lliure · pots deixar-los buits</text>
   <line x1="40" y1="196" x2="296" y2="196" stroke="#2a2c30"/>
 
-  <!-- llista de tipus (plana, de menys a més complex) -->
-  <rect x="40" y="202" width="240" height="440" rx="4" fill="#101216" stroke="#2e333a"/>
-  <!-- files -->
-  <g font-size="11">
-    <rect x="42" y="204" width="236" height="18" fill="#2563eb"/>
-    <text x="52" y="217" fill="#ffffff" font-weight="600">maj</text>
-    <text x="42" y="235" fill="#dbe2ec" font-size="11">   m</text>
-    <text x="42" y="253" fill="#dbe2ec">   dim</text>
-    <text x="42" y="271" fill="#dbe2ec">   7</text>
-    <text x="42" y="289" fill="#dbe2ec">   m7</text>
-    <text x="42" y="307" fill="#dbe2ec">   m7b5</text>
-    <text x="42" y="325" fill="#dbe2ec">   maj7</text>
-    <text x="42" y="343" fill="#dbe2ec">   majb5</text>
-    <text x="42" y="361" fill="#dbe2ec">   5</text>
-    <text x="42" y="379" fill="#dbe2ec">   sus2</text>
-    <text x="42" y="397" fill="#dbe2ec">   sus4</text>
-    <text x="42" y="415" fill="#dbe2ec">   +</text>
-    <text x="42" y="433" fill="#dbe2ec">   6</text>
-    <text x="42" y="451" fill="#dbe2ec">   add9</text>
-    <text x="42" y="469" fill="#dbe2ec">   m6</text>
-    <text x="42" y="487" fill="#dbe2ec">   madd9</text>
-    <text x="42" y="505" fill="#dbe2ec">   dim7</text>
-    <text x="42" y="523" fill="#dbe2ec">   7sus4</text>
-    <text x="42" y="541" fill="#dbe2ec">   7b5</text>
-    <text x="42" y="559" fill="#dbe2ec">   7#5</text>
-    <text x="42" y="577" fill="#dbe2ec">   m(maj7)</text>
-    <text x="42" y="595" fill="#dbe2ec">   6/9</text>
-    <text x="42" y="613" fill="#dbe2ec">   7b9</text>
-    <text x="42" y="631" fill="#dbe2ec">   …   (fins als avançats)</text>
-  </g>
+  <!-- llista de tipus: tipus + variants (dreta) + graus (sota) -->
+  <rect x="40" y="202" width="240" height="432" rx="4" fill="#101216" stroke="#2e333a"/>
+
+  <!-- fila 1 · maj -->
+  <rect x="42" y="203" width="236" height="36" fill="#1b1f26"/>
+  <text x="50" y="219" fill="#edf3ff" font-size="12" font-weight="700">maj</text>
+  <text x="272" y="219" fill="#7fd1a0" font-size="9" text-anchor="end">M · Maj · Δ</text>
+  <text x="50" y="232" fill="#7d8794" font-size="9">(1) 3 (5)</text>
+
+  <!-- fila 2 · m -->
+  <text x="50" y="255" fill="#edf3ff" font-size="12" font-weight="700">m</text>
+  <text x="272" y="255" fill="#7fd1a0" font-size="9" text-anchor="end">mi · min · -</text>
+  <text x="50" y="268" fill="#7d8794" font-size="9">(1) b3 (5)</text>
+  <line x1="46" y1="271" x2="274" y2="271" stroke="#1c2027"/>
+
+  <!-- fila 3 · dim -->
+  <text x="50" y="291" fill="#edf3ff" font-size="12" font-weight="700">dim</text>
+  <text x="272" y="291" fill="#7fd1a0" font-size="9" text-anchor="end">o · °</text>
+  <text x="50" y="304" fill="#7d8794" font-size="9">(1) b3 b5</text>
+  <line x1="46" y1="307" x2="274" y2="307" stroke="#1c2027"/>
+
+  <!-- fila 4 · 7 -->
+  <text x="50" y="327" fill="#edf3ff" font-size="12" font-weight="700">7</text>
+  <text x="50" y="340" fill="#7d8794" font-size="9">(1) 3 (5) b7</text>
+  <line x1="46" y1="343" x2="274" y2="343" stroke="#1c2027"/>
+
+  <!-- fila 5 · m7 -->
+  <text x="50" y="363" fill="#edf3ff" font-size="12" font-weight="700">m7</text>
+  <text x="272" y="363" fill="#7fd1a0" font-size="9" text-anchor="end">mi7 · min7 · -7</text>
+  <text x="50" y="376" fill="#7d8794" font-size="9">(1) b3 (5) b7</text>
+  <line x1="46" y1="379" x2="274" y2="379" stroke="#1c2027"/>
+
+  <!-- fila 6 · m7b5 -->
+  <text x="50" y="399" fill="#edf3ff" font-size="12" font-weight="700">m7b5</text>
+  <text x="272" y="399" fill="#7fd1a0" font-size="9" text-anchor="end">ø · ø7 · -7b5</text>
+  <text x="50" y="412" fill="#7d8794" font-size="9">(1) b3 b5 b7</text>
+  <line x1="46" y1="415" x2="274" y2="415" stroke="#1c2027"/>
+
+  <!-- fila 7 · maj7  (SELECCIONADA) -->
+  <rect x="42" y="419" width="236" height="36" fill="#2563eb"/>
+  <text x="50" y="435" fill="#ffffff" font-size="12" font-weight="700">maj7</text>
+  <text x="272" y="435" fill="#d6f5e3" font-size="9" text-anchor="end">M7 · Ma7 · Δ7</text>
+  <text x="50" y="448" fill="#cfe0ff" font-size="9">(1) 3 (5) 7</text>
+
+  <!-- resta de files (segueix la llista) -->
+  <text x="50" y="471" fill="#edf3ff" font-size="12" font-weight="700">majb5</text>
+  <text x="50" y="484" fill="#7d8794" font-size="9">(1) 3 b5</text>
+  <line x1="46" y1="487" x2="274" y2="487" stroke="#1c2027"/>
+  <text x="50" y="507" fill="#edf3ff" font-size="12" font-weight="700">5</text>
+  <text x="50" y="520" fill="#7d8794" font-size="9">1 5</text>
+  <line x1="46" y1="523" x2="274" y2="523" stroke="#1c2027"/>
+  <text x="50" y="543" fill="#edf3ff" font-size="12" font-weight="700">sus2</text>
+  <text x="50" y="556" fill="#7d8794" font-size="9">(1) 2 (5)</text>
+  <line x1="46" y1="559" x2="274" y2="559" stroke="#1c2027"/>
+  <text x="50" y="579" fill="#edf3ff" font-size="12" font-weight="700">sus4</text>
+  <text x="272" y="579" fill="#7fd1a0" font-size="9" text-anchor="end">sus</text>
+  <text x="50" y="592" fill="#7d8794" font-size="9">(1) 4 (5)</text>
+  <line x1="46" y1="595" x2="274" y2="595" stroke="#1c2027"/>
+  <text x="50" y="615" fill="#edf3ff" font-size="12" font-weight="700">+</text>
+  <text x="272" y="615" fill="#7fd1a0" font-size="9" text-anchor="end">aug</text>
+  <text x="50" y="628" fill="#7d8794" font-size="9">(1) 3 #5</text>
+
   <!-- barra de desplaçament -->
-  <rect x="270" y="204" width="8" height="440" rx="4" fill="#1a1c20"/>
-  <rect x="270" y="204" width="8" height="150" rx="4" fill="#3a3d42"/>
+  <rect x="272" y="204" width="8" height="428" rx="4" fill="#1a1c20"/>
+  <rect x="272" y="204" width="8" height="140" rx="4" fill="#3a3d42"/>
 
   <!-- peu del panell -->
-  <text x="44" y="660" fill="#9aa4b2" font-size="10">▼ clic → s'escriu a la casella «Nom»</text>
-  <rect x="44" y="668" width="246" height="14" rx="3" fill="#0f1013" stroke="#2e333a"/>
-  <text x="52" y="679" fill="#8ad3a5" font-size="10" font-family="ui-monospace,Menlo,Consolas,monospace">Ab6add9/Db</text>
+  <text x="44" y="652" fill="#9aa4b2" font-size="10">▼ clic → s'escriu a la casella «Nom»</text>
+  <rect x="44" y="660" width="246" height="16" rx="3" fill="#0f1013" stroke="#2e333a"/>
+  <text x="52" y="672" fill="#8ad3a5" font-size="11" font-family="ui-monospace,Menlo,Consolas,monospace">AbMaj7/Db</text>
 
-  <!-- ═══════════════ VISOR (centre) ═══════════════ -->
+  <!-- ═══════════════ VISOR ═══════════════ -->
   <rect x="316" y="120" width="692" height="568" rx="6" fill="#0f1218" stroke="#2a2c30"/>
-  <!-- regle amb loop A-B -->
   <rect x="316" y="120" width="692" height="26" fill="#151a22"/>
   <rect x="392" y="120" width="330" height="26" fill="#ffb26b" opacity="0.22"/>
   <rect x="392" y="120" width="330" height="26" fill="none" stroke="#ffb26b" opacity="0.55"/>
@@ -120,14 +146,10 @@
   <text x="940" y="138" fill="#7d8794" font-size="10">30</text>
   <text x="420" y="136" fill="#ffb26b" font-size="9">A</text>
   <text x="714" y="136" fill="#ffb26b" font-size="9">B</text>
-
-  <!-- ona -->
   <rect x="316" y="146" width="692" height="54" fill="#12161c"/>
   <path d="M320 173 L360 168 L400 176 L440 166 L480 178 L520 167 L560 175 L600 168 L640 177
            L680 167 L720 176 L760 169 L800 177 L840 168 L880 175 L920 167 L960 178 L1000 170"
         stroke="#3d5470" stroke-width="1" fill="none"/>
-
-  <!-- carril acords -->
   <rect x="316" y="202" width="692" height="62" fill="#141821"/>
   <g font-size="11" font-weight="600">
     <rect x="320" y="212" width="60" height="42" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
@@ -143,10 +165,7 @@
     <rect x="792" y="212" width="80" height="42" rx="5" fill="#2e3844" stroke="#b8c7dc"/>
     <text x="832" y="238" fill="#edf3ff" text-anchor="middle">A-</text>
   </g>
-  <!-- cursor -->
   <line x1="646" y1="146" x2="646" y2="620" stroke="#ff4d4d" stroke-width="2"/>
-
-  <!-- carril estructures -->
   <rect x="316" y="268" width="692" height="46" fill="#141821"/>
   <rect x="320" y="276" width="180" height="30" rx="5" fill="#3a4655" stroke="#dfe7f5"/>
   <text x="410" y="296" fill="#edf3ff" font-size="10" text-anchor="middle">INTRO · B</text>
@@ -164,13 +183,12 @@
   <rect x="472" y="338" width="54" height="20" rx="4" fill="#0f1013" stroke="#4a4f57"/>
   <text x="499" y="352" fill="#e6ecf5" font-size="11" text-anchor="middle">10.29</text>
   <text x="536" y="352" fill="#8fa0b5" font-size="11">Nom</text>
-  <rect x="566" y="336" width="108" height="24" rx="4" fill="#0f1013" stroke="#ffb26b" stroke-width="2"/>
-  <text x="574" y="353" fill="#eafff3" font-size="12" font-weight="600">Ab6add9/Db</text>
-  <rect x="684" y="337" width="60" height="22" rx="4" fill="#2563eb"/>
-  <text x="714" y="352" fill="#fff" font-size="11" text-anchor="middle">Aplica</text>
+  <rect x="566" y="336" width="112" height="24" rx="4" fill="#0f1013" stroke="#ffb26b" stroke-width="2"/>
+  <text x="574" y="353" fill="#eafff3" font-size="12" font-weight="600">AbMaj7/Db</text>
+  <rect x="688" y="337" width="60" height="22" rx="4" fill="#2563eb"/>
+  <text x="718" y="352" fill="#fff" font-size="11" text-anchor="middle">Aplica</text>
   <text x="760" y="352" fill="#6d7683" font-size="10">← aquí arriba el tipus clicat</text>
 
-  <!-- llistes (Inspector) -->
   <rect x="316" y="382" width="340" height="230" rx="4" fill="#12151a" stroke="#232830"/>
   <text x="326" y="398" fill="#7d8794" font-size="10">Acords</text>
   <g font-size="11" fill="#cbd5e1">
@@ -192,15 +210,12 @@
     <text x="678" y="448">15.1.1  MELO GT</text>
   </g>
 
-  <!-- dock Log · Informació -->
   <rect x="34" y="694" width="974" height="112" rx="6" fill="#12151a" stroke="#2a2c30"/>
   <rect x="34" y="694" width="974" height="22" rx="6" fill="#22242a"/>
   <text x="44" y="709" fill="#e6ecf5" font-size="11" font-weight="600">Log  ·  Informació</text>
   <text x="44" y="734" fill="#9aa4b2" font-size="10" font-family="ui-monospace,Menlo,Consolas,monospace">[VISOR] desat CSV …/AUTOCHORDS_03/acords.csv</text>
-  <text x="44" y="750" fill="#9aa4b2" font-size="10" font-family="ui-monospace,Menlo,Consolas,monospace">[VISOR] reanomenats 3 acord(s) → A-7/G</text>
-  <text x="44" y="766" fill="#8ad3a5" font-size="10" font-family="ui-monospace,Menlo,Consolas,monospace">[UI] editor: acord 4 → Ab6add9/Db @ 10.29s</text>
-
-  <!-- barra d'estat -->
+  <text x="44" y="750" fill="#9aa4b2" font-size="10" font-family="ui-monospace,Menlo,Consolas,monospace">[VISOR] reanomenat 1 acord → AbMaj7/Db</text>
+  <text x="44" y="766" fill="#8ad3a5" font-size="10" font-family="ui-monospace,Menlo,Consolas,monospace">[UI] editor: acord 5 → AbMaj7/Db @ 10.29s</text>
   <rect x="20" y="812" width="1000" height="28" rx="10" fill="#1a1c20"/>
   <rect x="20" y="812" width="1000" height="12" fill="#1a1c20"/>
   <text x="36" y="831" fill="#9aa4b2" font-size="11">Llest</text>
@@ -210,52 +225,56 @@
   <!-- ═══════════════ LLEGENDA ═══════════════ -->
   <rect x="1040" y="20" width="380" height="820" rx="10" fill="#14161a" stroke="#2e333a"/>
   <text x="1064" y="52" fill="#edf3ff" font-size="17" font-weight="700">Panell «Tipus d'acord»</text>
-  <text x="1064" y="74" fill="#8fa0b5" font-size="12">Mockup · per aprovar abans del codi</text>
+  <text x="1064" y="74" fill="#8fa0b5" font-size="12">Mockup v2 · cada tipus amb variants + graus</text>
   <line x1="1064" y1="88" x2="1396" y2="88" stroke="#2e333a"/>
 
-  <text x="1064" y="116" fill="#ffb26b" font-size="13" font-weight="700">Com funciona</text>
+  <text x="1064" y="114" fill="#ffb26b" font-size="13" font-weight="700">Cada fila de la llista</text>
+  <rect x="1064" y="126" width="316" height="34" rx="4" fill="#101216" stroke="#2e333a"/>
+  <rect x="1066" y="128" width="312" height="30" fill="#1b1f26"/>
+  <text x="1074" y="143" fill="#edf3ff" font-size="12" font-weight="700">maj7</text>
+  <text x="1370" y="143" fill="#7fd1a0" font-size="9" text-anchor="end">M7 · Ma7 · Δ7</text>
+  <text x="1074" y="155" fill="#7d8794" font-size="9">(1) 3 (5) 7</text>
+  <text x="1064" y="178" fill="#dbe2ec" font-size="11.5">
+    <tspan fill="#7fd1a0">verd</tspan> = noms alternatius · <tspan fill="#7d8794">gris</tspan> = graus</text>
+  <text x="1064" y="196" fill="#8fa0b5" font-size="11">Els ( ) volen dir que el grau és OPCIONAL.</text>
+  <text x="1064" y="214" fill="#8fa0b5" font-size="11">El símbol Δ (= triangle) es pot copiar del panell.</text>
+
+  <line x1="1064" y1="228" x2="1396" y2="228" stroke="#2e333a"/>
+  <text x="1064" y="254" fill="#ffb26b" font-size="13" font-weight="700">Com funciona</text>
   <g font-size="12.5" fill="#dbe2ec">
-    <text x="1064" y="142">1. Escriu l'<tspan font-weight="700">Arrel</tspan> i, si vols, el <tspan font-weight="700">Baix</tspan>.</text>
-    <text x="1078" y="160" fill="#8fa0b5" font-size="11">(text lliure — pots deixar-los buits)</text>
-    <text x="1064" y="186">2. Clica el <tspan font-weight="700">tipus</tspan> a la llista.</text>
-    <text x="1078" y="204" fill="#8fa0b5" font-size="11">(plana, de menys a més complex)</text>
-    <text x="1064" y="230">3. El nom apareix a la casella <tspan font-weight="700">«Nom»</tspan></text>
-    <text x="1078" y="248" fill="#8fa0b5" font-size="11">de l'editor (finestra taronja).</text>
-    <text x="1064" y="274">4. Prem <tspan font-weight="700">«Aplica»</tspan> (o Enter) quan vulguis.</text>
+    <text x="1064" y="280">1. Escriu l'<tspan font-weight="700">Arrel</tspan> i, si vols, el <tspan font-weight="700">Baix</tspan>.</text>
+    <text x="1078" y="298" fill="#8fa0b5" font-size="11">(text lliure — pots deixar-los buits)</text>
+    <text x="1064" y="324">2. Clica el <tspan font-weight="700">tipus</tspan> a la llista.</text>
+    <text x="1078" y="342" fill="#8fa0b5" font-size="11">(plana, de menys a més complex)</text>
+    <text x="1064" y="368">3. El nom apareix a la casella <tspan font-weight="700">«Nom»</tspan></text>
+    <text x="1078" y="386" fill="#8fa0b5" font-size="11">de l'editor (finestra taronja).</text>
+    <text x="1064" y="412">4. Prem <tspan font-weight="700">«Aplica»</tspan> (o Enter) quan vulguis.</text>
   </g>
 
-  <line x1="1064" y1="294" x2="1396" y2="294" stroke="#2e333a"/>
-  <text x="1064" y="320" fill="#ffb26b" font-size="13" font-weight="700">Comportament (les teves 5 respostes)</text>
+  <line x1="1064" y1="432" x2="1396" y2="432" stroke="#2e333a"/>
+  <text x="1064" y="458" fill="#ffb26b" font-size="13" font-weight="700">Comportament (les teves 5 respostes)</text>
   <g font-size="12" fill="#dbe2ec">
-    <text x="1064" y="346">• Clicar un tipus <tspan font-weight="700">NOMÉS omple</tspan> la casella.</text>
-    <text x="1078" y="363" fill="#8fa0b5" font-size="11">No aplica res — tu prems Aplica.</text>
-    <text x="1064" y="387">• La llista mostra <tspan font-weight="700">només el tipus</tspan>.</text>
-    <text x="1064" y="411">• Arrel i Baix són <tspan font-weight="700">camps de text lliures</tspan>.</text>
-    <text x="1064" y="435">• <tspan font-weight="700">Sense arrel</tspan> → la casella rep només el</text>
-    <text x="1078" y="452" fill="#8fa0b5" font-size="11">tipus (p. ex. «Maj7») i tu l'acabes.</text>
-    <text x="1064" y="476">• Amb arrel i baix → composa i canonicalitza:</text>
-    <text x="1078" y="494" fill="#8ad3a5" font-size="11" font-family="ui-monospace,Menlo,Consolas,monospace">Ab + 6/9 + Db → Ab6add9/Db</text>
+    <text x="1064" y="482">• Clicar un tipus <tspan font-weight="700">NOMÉS omple</tspan> la casella.</text>
+    <text x="1064" y="506">• La llista mostra <tspan font-weight="700">només el tipus</tspan>.</text>
+    <text x="1064" y="530">• Arrel i Baix són <tspan font-weight="700">camps de text lliures</tspan>.</text>
+    <text x="1064" y="554">• <tspan font-weight="700">Sense arrel</tspan> → la casella rep només el</text>
+    <text x="1078" y="571" fill="#8fa0b5" font-size="11">tipus (p. ex. «maj7») i tu l'acabes.</text>
+    <text x="1064" y="595">• Amb arrel i baix → composa i canonicalitza:</text>
+    <text x="1078" y="613" fill="#8ad3a5" font-size="11" font-family="ui-monospace,Menlo,Consolas,monospace">Ab + maj7 + Db → AbMaj7/Db</text>
   </g>
 
-  <line x1="1064" y1="514" x2="1396" y2="514" stroke="#2e333a"/>
-  <text x="1064" y="540" fill="#ffb26b" font-size="13" font-weight="700">Detalls d'ubicació</text>
+  <line x1="1064" y1="632" x2="1396" y2="632" stroke="#2e333a"/>
+  <text x="1064" y="658" fill="#ffb26b" font-size="13" font-weight="700">Ubicació i detalls</text>
   <g font-size="12" fill="#dbe2ec">
-    <text x="1064" y="566">• Panell <tspan font-weight="700">vertical a l'ESQUERRA</tspan>, com una</text>
-    <text x="1078" y="583" fill="#8fa0b5" font-size="11">caixa tipus Log/Informació.</text>
-    <text x="1064" y="607">• <tspan font-weight="700">Desacoplable</tspan> (es pot treure com a</text>
-    <text x="1078" y="624" fill="#8fa0b5" font-size="11">finestra flotant) i ocultable.</text>
-    <text x="1064" y="648">• Entrada al menú <tspan font-weight="700">Visualitza</tspan>:</text>
-    <text x="1078" y="665" fill="#8fa0b5" font-size="11">«Mostra els tipus d'acord».</text>
-    <text x="1064" y="689">• Tipus de la <tspan font-weight="700">font única</tspan> <tspan font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11">xifrat.TIPUS</tspan>:</text>
-    <text x="1078" y="706" fill="#8fa0b5" font-size="11">si s'hi afegeix un tipus, hi surt sol.</text>
+    <text x="1064" y="682">• Panell <tspan font-weight="700">vertical a l'ESQUERRA</tspan> (com el log).</text>
+    <text x="1064" y="706">• <tspan font-weight="700">Desacoplable</tspan> (finestra flotant) i ocultable.</text>
+    <text x="1064" y="730">• Menú <tspan font-weight="700">Visualitza</tspan>: «Mostra els tipus d'acord».</text>
+    <text x="1064" y="754">• Tipus de la <tspan font-weight="700">font única</tspan> <tspan font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11">xifrat.TIPUS</tspan>.</text>
   </g>
 
-  <line x1="1064" y1="726" x2="1396" y2="726" stroke="#2e333a"/>
-  <text x="1064" y="752" fill="#8fa0b5" font-size="11">Llegenda de color:</text>
-  <rect x="1064" y="762" width="14" height="14" rx="3" fill="#2563eb"/>
-  <text x="1086" y="773" fill="#dbe2ec" font-size="11">fila del tipus seleccionat</text>
-  <rect x="1064" y="784" width="14" height="14" rx="3" fill="#0f1013" stroke="#ffb26b" stroke-width="2"/>
-  <text x="1086" y="795" fill="#dbe2ec" font-size="11">casella «Nom» que s'omple</text>
-  <rect x="1064" y="806" width="14" height="14" rx="3" fill="#17181c" stroke="#2563eb" stroke-width="2"/>
-  <text x="1086" y="817" fill="#dbe2ec" font-size="11">panell nou (desacoplable)</text>
+  <line x1="1064" y1="772" x2="1396" y2="772" stroke="#2e333a"/>
+  <rect x="1064" y="786" width="14" height="14" rx="3" fill="#2563eb"/>
+  <text x="1086" y="797" fill="#dbe2ec" font-size="11">fila seleccionada</text>
+  <rect x="1064" y="808" width="14" height="14" rx="3" fill="#101216" stroke="#ffb26b" stroke-width="2"/>
+  <text x="1086" y="819" fill="#dbe2ec" font-size="11">casella «Nom» que s'omple</text>
 </svg>
