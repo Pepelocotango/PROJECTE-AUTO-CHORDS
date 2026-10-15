@@ -97,10 +97,37 @@ class TestGraella(unittest.TestCase):
         self.assertEqual([round(s[0], 3) for s in res], [0.0, 8.0])
         self.assertAlmostEqual(res[-1][1], 22.0)
         self.assertEqual(res[-1][2], "C")            # el bloc del final és C
-        # cobertura i contigüitat
         self.assertAlmostEqual(res[0][0], 0.0)
         for i in range(len(res) - 1):
             self.assertAlmostEqual(res[i][1], res[i + 1][0], places=6)
+
+    # ── Casos límit (validació) ──────────────────────────────────────────────
+    def test_regularitza_acords_durada_zero(self):
+        cru = [(0.0, "C"), (2.0, "G")]
+        self.assertEqual(graella.regularitza_acords(cru, 120, 4, 0.0, "compas",
+                                                    0.0), cru)
+
+    def test_regularitza_acords_buit(self):
+        self.assertEqual(graella.regularitza_acords([], 120, 4, 0.0, "compas",
+                                                    8.0), [])
+
+    def test_infereix_nivell_pocs_items(self):
+        self.assertEqual(graella.infereix_nivell([], 120, 4, 0.0, 8.0), "compas")
+        self.assertEqual(graella.infereix_nivell([(0.0, "C")], 120, 4, 0.0, 8.0),
+                         "compas")
+
+    def test_infereix_cicle_poques_barres(self):
+        self.assertIsNone(graella.infereix_cicle_compassos(
+            [(0.0, "C"), (2.0, "G")], 120, 4, 0.0, 4.0))
+
+    def test_regularitza_seccions_una_de_sola(self):
+        sec = [(0.0, 10.0, "A", "A")]
+        self.assertEqual(
+            graella.regularitza_seccions(sec, 120, 4, 0.0, 10.0, 4), sec)
+
+    def test_divisio_segons_lliure(self):
+        self.assertEqual(graella.divisio_segons("corxera", 120, False), 0.0)
+        self.assertAlmostEqual(graella.divisio_segons("corxera", 120, True), 0.25)
 
 
 def _visor(raw=None, bpm=120.0, bpb=4):

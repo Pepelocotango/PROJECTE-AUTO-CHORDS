@@ -1281,29 +1281,35 @@ class TimelineView(QGraphicsView):
         regles d'or (només mou una frontera → ordre i contigüitat intactes).
         """
         kind, idx = self._sel
+        # Decideix si hi ha acció ABANS de marcar l'undo: si no, NO s'emet
+        # editStarted (evitem deixar una marca d'undo penjada).
+        if kind == "chord":
+            if not (0 <= idx < len(self._acords)):
+                return
+            if estira and idx + 1 >= len(self._acords):
+                return
+        elif kind == "section":
+            if not (0 <= idx < len(self._seccions)):
+                return
+            if not estira and idx <= 0:
+                return
+        else:
+            return
         self.editStarted.emit()
-        fet = False
-        if kind == "chord" and 0 <= idx < len(self._acords):
+        if kind == "chord":
             if estira:
-                if idx + 1 < len(self._acords):
-                    self._on_chord_end_changed(
-                        idx, float(self._acords[idx + 1][0]) + direccio * pas)
-                    fet = True
+                self._on_chord_end_changed(
+                    idx, float(self._acords[idx + 1][0]) + direccio * pas)
             else:
                 self._on_chord_time_changed(
                     idx, float(self._acords[idx][0]) + direccio * pas)
-                fet = True
-        elif kind == "section" and 0 <= idx < len(self._seccions):
-            if estira:
-                self._nudge_vora_seccio(
-                    idx, float(self._seccions[idx][1]) + direccio * pas)
-                fet = True
-            elif idx > 0:
-                self._nudge_vora_seccio(
-                    idx - 1, float(self._seccions[idx - 1][1]) + direccio * pas)
-                fet = True
-        if fet:
-            self._emit_edit_finished()
+        elif estira:
+            self._nudge_vora_seccio(
+                idx, float(self._seccions[idx][1]) + direccio * pas)
+        else:
+            self._nudge_vora_seccio(
+                idx - 1, float(self._seccions[idx - 1][1]) + direccio * pas)
+        self._emit_edit_finished()
 
     def _nudge_vora_seccio(self, j: int, nou_fi: float) -> None:
         """Mou el FI de la secció `j` (= inici de la següent) amb la lògica de vora."""

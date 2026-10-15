@@ -106,6 +106,28 @@ class TestSobreescriureAcords(_Base):
 
 
 class TestSobreescriureSeccions(_Base):
+    def test_enganxa_seccions_retalla_al_final(self):
+        v = _visor()
+        v.timeline.select_clip("section", 0)          # A 0-5 (span 5)
+        v.timeline.copy_selection()
+        v.timeline.set_position(18.0, emit=False)     # 18+5 = 23 > 20 → retall
+        v.timeline.paste_at_cursor()
+        self.assertAlmostEqual(float(v.seccions[-1][0]), 18.0, places=6)
+        self.assertAlmostEqual(float(v.seccions[-1][1]), 20.0, places=6)
+        self.assertEqual(v.seccions[-1][2], "A")
+        v.close()
+
+    def test_copia_nomes_acords_no_toca_seccions(self):
+        v = _visor()
+        v.timeline.select_clip("chord", 0)
+        v.timeline.copy_selection()
+        sec_abans = [tuple(s) for s in v.seccions]
+        v.timeline.set_position(6.0, emit=False)
+        v.timeline.paste_at_cursor()
+        self.assertEqual([tuple(s) for s in v.seccions], sec_abans,
+                         "copiar només acords no ha de tocar l'estructura")
+        v.close()
+
     def test_selecciona_el_bloc_enganxat(self):
         v = _visor()
         v.timeline.select_clip("section", 1)      # B 5-10 (span 5)

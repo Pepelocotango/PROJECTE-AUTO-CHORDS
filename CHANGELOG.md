@@ -76,6 +76,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **Nudge — marca d'undo penjada**: quan el nudge no pot fer res (l'últim acord
+  cap a la dreta, la 1a secció cap a l'esquerra, índex fora de rang…), ara **no
+  s'emet `editStarted`** → no queda una marca d'undo de més. Tests de casos límit
+  afegits (`test_nudge` +3, `test_copiar_enganxar` +1, `test_graella` +casos límit).
 - **Regla d'or #1 blindada al backend**: `pipeline.normalitza_cobertura` ara
   **reordena** els acords i les seccions per temps d'inici (abans l'ordre només el
   garantia el visor → un CSV editat a mà podia exportar-se desordenat).

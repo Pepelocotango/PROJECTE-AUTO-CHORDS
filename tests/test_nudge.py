@@ -105,6 +105,26 @@ class TestNudge(_Base):
         self.assertAlmostEqual(float(v.seccions[0][0]), 0.0, places=6)
         v.close()
 
+    def test_nudge_seccio_primera_no_deixa_marca_penjada(self):
+        """Nudgejar la 1a secció cap a l'esquerra no pot: no ha de deixar undo."""
+        v = _visor()
+        v.timeline.select_clip("section", 0)
+        abans = [round(float(s[0]), 6) for s in v.seccions]
+        v.timeline.keyPressEvent(_key(Qt.Key_Left))
+        self.assertEqual([round(float(s[0]), 6) for s in v.seccions], abans)
+        self.assertIsNone(getattr(v, "_undo_pending", None),
+                          "no pot quedar una marca d'undo penjada")
+        v.close()
+
+    def test_estirar_ultim_acord_no_deixa_marca_penjada(self):
+        v = _visor()
+        v.timeline.select_clip("chord", len(v.acords) - 1)   # últim: no té fi
+        abans = [round(float(a[0]), 6) for a in v.acords]
+        v.timeline.keyPressEvent(_key(Qt.Key_Right, Qt.AltModifier))
+        self.assertEqual([round(float(a[0]), 6) for a in v.acords], abans)
+        self.assertIsNone(getattr(v, "_undo_pending", None))
+        v.close()
+
     def test_sense_seleccio_no_canvia_res(self):
         v = _visor()
         abans = [round(float(a[0]), 6) for a in v.acords]
