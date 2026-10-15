@@ -1019,6 +1019,39 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 - **A vigilar**: que el redimensionament no descol·loqui el transport ni la
   barra; cap canvi al model (només presentació).
 
+### 14.6 Afinador (tuner) de guitarra
+- **Objectiu**: un **afinador** dins l'app, aprofitant la **entrada d'àudio** (p. ex.
+  la Scarlett): captar el so de la corda → **detecció de to** → mostrar la **nota**
+  i la **desviació en cents**, amb una referència visual (agulla/LED).
+- **Què cal**: capturar l'entrada, calcular el to fonamental (pitch), comparar amb
+  l'afinació (estàndard **EADGBE** i, opcionalment, alternatives); suport
+  **natural / tempered** (a la carpeta `documentacio_per_treball/` de
+  `Gt_ALL_Chords_app` hi ha l'`afinacion natural-temperat.jpg`).
+- **A vigilar**: **CPU/latència** (Q9400 sense AVX) i que **no xoqui** amb la
+  reproducció; reutilitzar el motor d'`app/audio_out.py`.
+
+### 14.7 Incorporar i millorar `Gt_ALL_Chords_app` («Creador d'Acords de Guitarra»)
+- **Què és**: app d'escriptori **Electron + HTML/JS vanilla**
+  (`~/0PROJECTES_GitHub/Gt_ALL_Chords_app`): **diapasó interactiu**, **identificador
+  d'acords** (a partir de les posicions), **filtres de digitacions**, **centre
+  d'estudi**, **cercle de quintes**, **diccionari flamenc**, **escala cromàtica**,
+  **presets** i **funció tonal**. És **estable** (v1.0.0) però **dormit** des del
+  24-06.
+- **Objectiu**: **incorporar** aquestes funcionalitats a AUTO CHORDS (o
+  integrar-hi l'app) i **millorar-les** amb el que ja tenim: **xifrat canònic**,
+  **panell de tipus d'acord**, graella `xifrat.TAULA_TIPUS`, projectes, MCP i
+  export/partitura.
+- **Sinergies clares**: el **diapasó** ↔ triar/visualitzar la **digitació** dels
+  acords del tema; el **diccionari/filtres** ↔ el **panell de tipus**; el **cercle
+  de quintes** ↔ tonalitat/armadura de la partitura; el **centre d'estudi** ↔
+  pràctica amb el tema carregat.
+- ⚠️ **Llicència (CRÍTIC)**: `Gt_ALL_Chords_app` és **Polyform Noncommercial
+  1.0.0** i AUTO CHORDS és **GPL-3.0** → **no es pot copiar codi directament**;
+  cal **reimplementar** les idees (o consensuar-ho amb el propietari), i respectar
+  la **no-comercialitat**.
+- **A vigilar**: abast **gran** → fer-ho per **fases** (diapasó → identificador →
+  filtres → estudi…), i sense trencar les **regles d'or**.
+
 ## Criteri de producte actualitzat
 
 La projecta es considera funcionalment preparada per a l’ús del flux principal quan:
