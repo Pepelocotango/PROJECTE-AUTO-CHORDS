@@ -6,6 +6,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Caixa d'informació amb rotatori de dreceres i consells**: quan el ratolí
+  **no** és sobre cap botó, camp o zona amb informació, la caixa (a baix a la
+  dreta) ja no queda morta — hi gira un **panell de consells + les dreceres REALS**
+  (llegides dels menús, agrupades com al diàleg d'ajuda), canviant cada ~8 s. Si
+  el ratolí és sobre la mateixa caixa, **no rota** (no canvia mentre es llegeix).
+  Test: `tests/test_info_box_consells.py`.
 - **Selecció per rang (`Shift+clic`) a les DUES pistes, per TEMPS**: el rang ja no
   compta índexs d'un sol carril — s'inclouen **tots els acords i totes les seccions**
   l'inici dels quals cau dins el rang. Així es pot agafar «2 estructures + 20 acords»

@@ -574,6 +574,12 @@ class Finestra(QMainWindow):
         self._info_timer.setInterval(250)
         self._info_timer.timeout.connect(self._actualitza_info_widget)
         self._info_timer.start()
+        # Estat del rotatori de la caixa d'informacio: quan el ratoli no es
+        # sobre res amb informacio, s'hi mostren els panells de dreceres i
+        # consells (`_info_panells`), rotant cada ~8 s.
+        self._info_html_actual = None
+        self._info_panell = 0
+        self._info_panell_t = 0.0
         self.log_dock.setVisible(True)      # sortida de l'anàlisi, visible
         self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
 
@@ -633,6 +639,7 @@ class Finestra(QMainWindow):
         import time as _t
         self.info_box.setHtml(
             f"<b style='color:{theme.BLAU_INFO}'>{text}</b>")
+        self._info_html_actual = None   # força reescriure quan passi el temps
         self._info_msg_fins = _t.monotonic() + 4.0
 
     def _on_play_state(self, on):
@@ -1095,7 +1102,12 @@ class Finestra(QMainWindow):
                 "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
 
     def _actualitza_info_widget(self):
-        """Mostra a la caixa d'informacio el tooltip del widget sota el ratolí."""
+        """Mostra a la caixa d'informacio la info del que hi ha sota el ratoli.
+
+        Si el ratoli es sobre un boto, un camp o una zona del visor amb
+        informacio → l'explica. Si NO es sobre res amb info → passa al
+        **rotatori de dreceres i consells** (`_info_panells`).
+        """
         import time as _t
         if _t.monotonic() < getattr(self, "_info_msg_fins", 0.0):
             return          # hi ha un missatge transitori (desfer/refer...)
@@ -1104,34 +1116,95 @@ class Finestra(QMainWindow):
         except Exception:  # noqa: BLE001
             # timer de hover (hot): fallback silenciós intencionat
             return
-        if w is None:
-            return
-        # El VISOR (timeline) es un sol giny: li demanem la zona del ratoli
-        # (el seu "ratoli intel·ligent") per explicar quina accio hi faria.
-        vr = getattr(self, "visor_ref", None)
-        if vr is not None:
-            tv = getattr(vr, "timeline", None)
-            if tv is not None and (w is tv or w is tv.viewport()):
-                try:
-                    pos = tv.viewport().mapFromGlobal(QCursor.pos())
-                    html = f"<b>{tv.info_zona(pos)}</b>"
-                    if self.info_box.toHtml() != html:
-                        self.info_box.setHtml(html)
-                except Exception:  # noqa: BLE001
-                    # timer de hover (hot): fallback silenciós intencionat
-                    pass
-                return
-        # pugem fins a un widget que tingui tooltip (els fills solen no tenir-ne)
-        x = w
-        while x is not None and not x.toolTip():
-            x = x.parentWidget()
-        if x is None:
-            return
-        nom = x.text() if hasattr(x, "text") else ""
-        tip = x.toolTip()
-        html = f"<b>{nom}</b><br>{tip}" if nom else f"<b>{tip}</b>"
-        if self.info_box.toHtml() != html:
+        html = None
+        if w is not None:
+            # El VISOR (timeline) es un sol giny: li demanem la zona del ratoli
+            # (el seu "ratoli intel·ligent") per explicar quina accio hi faria.
+            vr = getattr(self, "visor_ref", None)
+            if vr is not None:
+                tv = getattr(vr, "timeline", None)
+                if tv is not None and (w is tv or w is tv.viewport()):
+                    try:
+                        pos = tv.viewport().mapFromGlobal(QCursor.pos())
+                        zona = tv.info_zona(pos)
+                        if zona:
+                            html = f"<b>{zona}</b>"
+                    except Exception:  # noqa: BLE001
+                        # timer de hover (hot): fallback silenciós intencionat
+                        pass
+            if html is None:
+                # pugem fins a un widget que tingui tooltip (els fills solen no
+                # tenir-ne)
+                x = w
+                while x is not None and not x.toolTip():
+                    x = x.parentWidget()
+                if x is not None:
+                    nom = x.text() if hasattr(x, "text") else ""
+                    tip = x.toolTip()
+                    html = f"<b>{nom}</b><br>{tip}" if nom else f"<b>{tip}</b>"
+        if html is None:
+            # Fora de qualsevol giny amb info → rotatori. Si el ratoli es sobre
+            # la MATEIXA caixa, no rotem (que no canviï mentre es llegeix).
+            html = self._info_defecte_html(_t.monotonic(),
+                                           rota=(w is not self.info_box))
+        if html:
+            self._posa_info(html)
+
+    def _posa_info(self, html):
+        """Escriu la caixa d'informacio nomes si el contingut ha canviat.
+
+        Comparar amb el darrer HTML escrit (i no amb `toHtml()`, que el
+        normalitza) evita reescriure-la a cada tic del timer: si no, el
+        desplaçament de la caixa es reiniciaria sense parar.
+        """
+        if html != getattr(self, "_info_html_actual", None):
+            self._info_html_actual = html
             self.info_box.setHtml(html)
+
+    def _info_panells(self):
+        """Panells de la caixa d'informacio per defecte: consells + dreceres.
+
+        El primer es un grapat de consells; la resta son les dreceres REALS
+        agrupades com al dialeg d'ajuda (es llegeixen dels menus → mai queden
+        desfasades). Es el que es mostra quan el ratoli no es sobre res amb
+        informacio.
+        """
+        panells = [("Consells rapids", [
+            ("Arrossega sobre el regle per crear un LOOP A-B", ""),
+            ("Doble-clic dins el loop → selecciona tot el que hi ha a dins", ""),
+            ("Shift+clic = rang per temps (acords I seccions)", ""),
+            ("F2 → reanomena el clip o tot el grup del tipus actiu", ""),
+            ("Ctrl+S desa el projecte (document + CSVs + backups)", ""),
+        ])]
+        try:
+            panells.extend(self._dreceres())
+        except Exception:  # noqa: BLE001
+            # La caixa d'informacio es un extra: mai ha de fer petar la GUI.
+            pass
+        return panells
+
+    def _info_defecte_html(self, ara, rota=True):
+        """HTML del panell actual de dreceres/consells (rotant cada ~8 s)."""
+        panells = self._info_panells()
+        if not panells:
+            return None
+        n = len(panells)
+        t0 = getattr(self, "_info_panell_t", 0.0)
+        if t0 <= 0.0:
+            self._info_panell_t = ara          # primera vegada: sense rotar
+        elif rota and ara - t0 >= 8.0:
+            self._info_panell = (getattr(self, "_info_panell", 0) + 1) % n
+            self._info_panell_t = ara
+        i = getattr(self, "_info_panell", 0) % n
+        titol, parells = panells[i]
+        files = []
+        for text, dr in parells:
+            files.append(f"{text} · <b>{dr}</b>" if dr else text)
+        cap = (f"<b style='color:{theme.BLAU_INFO}'>Dreceres i consells</b> "
+               f"<span style='color:{theme.MUTED}'>({i + 1}/{n})</span>")
+        peu = ("<br><br><i style='color:%s'>Passa el ratolí per sobre d'un "
+               "botó, camp o opció i aquí veuràs què fa.</i>" % theme.MUTED)
+        return cap + f"<br><b>{titol}</b><br>" + "<br>".join(files) + peu
 
     # ---- accions d'edició des del menú (reutilitzen la lògica existent) ----
     def _clip_seleccionat(self):
