@@ -86,6 +86,16 @@ class TestBackups(unittest.TestCase):
             p.fes_backup(max_backups=3)
         self.assertEqual(len(p.backups()), 3)
 
+    def test_rota_backups_zero_no_rota(self):
+        p = self._projecte()
+        for _ in range(3):
+            p.fes_backup(max_backups=0)          # 0 = no esborrar res
+        self.assertEqual(len(p.backups()), 3)
+
+    def test_backups_sense_carpeta(self):
+        p = self._projecte()
+        self.assertEqual(p.backups(), [])        # encara no s'ha fet cap backup
+
 
 # ── Sessió + autosave (GUI) ──────────────────────────────────────────────────
 class _BaseGUI(unittest.TestCase):

@@ -76,6 +76,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **Projectes — no sobreescriure un projecte existent**: `Projecte.crea()` ara
+  **peta** si la carpeta de destí ja té un `.acproj` (abans el podia sobreescriure
+  i perdre el document —tempo/vista—, sobretot en la migració *in situ*). Tests
+  de casos límit a `test_projecte` i `test_projecte_backups` (inclòs
+  `max_backups=0` = no rotar). I **`tests/test_graella_bpm.py`** (NOU): la
+  regularització a **BPM extrems**, els guards de BPM 0 i el mode fàcil a BPM
+  baix/alt amb offset (comprovant la cobertura #4).
 - **Nudge — marca d'undo penjada**: quan el nudge no pot fer res (l'últim acord
   cap a la dreta, la 1a secció cap a l'esquerra, índex fora de rang…), ara **no
   s'emet `editStarted`** → no queda una marca d'undo de més. Tests de casos límit

@@ -135,6 +135,10 @@ class Projecte:
         if not wav_origen or not os.path.isfile(wav_origen):
             raise ProjecteError(f"l'àudio no existeix: {wav_origen!r}")
         carpeta = os.path.abspath(carpeta)
+        # MAI sobreescriure un projecte existent (té `.acproj`): perdria el
+        # document (tempo/vista). Especialment en migració in situ.
+        if _acproj_de_carpeta(carpeta) is not None:
+            raise ProjecteError(f"ja hi ha un projecte a {carpeta!r}")
         if not permet_existent and os.path.isdir(carpeta) and os.listdir(carpeta):
             raise ProjecteError(
                 f"la carpeta {carpeta!r} ja té contingut i no és buida")

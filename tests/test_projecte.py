@@ -122,6 +122,23 @@ class TestObreDesa(BaseProjecte):
         with self.assertRaises(projecte.ProjecteError):
             projecte.Projecte.obre(p.carpeta)
 
+    # ── Casos límit (validació) ──────────────────────────────────────────────
+    def test_obre_amb_dos_acproj_peta(self):
+        p = self._projecte("DOS")
+        with open(os.path.join(p.carpeta, "altre.acproj"), "w",
+                  encoding="utf-8") as f:
+            f.write("{}")
+        with self.assertRaises(projecte.ProjecteError):
+            projecte.Projecte.obre(p.carpeta)
+
+    def test_no_sobreescriu_projecte_existent(self):
+        wav = os.path.join(self.td, "tema.wav")
+        _wav(wav)
+        carp = os.path.join(self.td, "P")
+        projecte.Projecte.crea(carp, wav)
+        with self.assertRaises(projecte.ProjecteError):
+            projecte.Projecte.crea(carp, wav)
+
     def test_no_es_projecte(self):
         self.assertFalse(projecte.es_projecte(os.path.join(self.td, "res")))
         wav = os.path.join(self.td, "sol.wav")
