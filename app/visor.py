@@ -1598,7 +1598,19 @@ class Visor(QMainWindow):
         cc, bf = buf.get("cursor_copy"), buf.get("bloc_fi")
         if cc is not None and bf is not None and abs(T - float(cc)) <= 1e-6:
             T = float(bf)
+        # Si el snap està actiu al timeline, l'àncora d'enganxat T i tots els punts del bloc
+        # s'ajusten estrictament a la graella.
+        if hasattr(self, "timeline") and self.timeline._snap_on:
+            T = self.timeline.snap(T)
         T = max(0.0, min(T, durada))
+
+        # Ajusta les posicions del bloc si el snap està actiu
+        if hasattr(self, "timeline") and self.timeline._snap_on:
+            chords = [(self.timeline.snap(T + float(r)) - T, name) for (r, name) in chords]
+            sections = [(self.timeline.snap(T + float(ri)) - T,
+                         self.timeline.snap(T + float(rf)) - T,
+                         ll, fam) for (ri, rf, ll, fam) in sections]
+
         # -- reconstrucció per carril (sobreescriptura) --
         nous_acords = (self._bloc_sobre_acords(
             self.acords, chords, float(buf.get("chord_len") or 0.0), T,
