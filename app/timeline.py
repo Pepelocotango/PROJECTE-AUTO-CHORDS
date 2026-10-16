@@ -108,6 +108,7 @@ class TimelineView(QGraphicsView):
     editFinished = pyqtSignal()           # fi d'un drag (cal persistir)
     loopChanged = pyqtSignal(float, float)  # nou loop A/B (segons)
     playRequested = pyqtSignal()          # espai premut
+    escapePressed = pyqtSignal()          # Esc (el resol el visor, per ordre)
     chordTimeMoved = pyqtSignal(int, float)
     chordEndMoved = pyqtSignal(int, float)
     chordRenamed = pyqtSignal(int, str)
@@ -1649,6 +1650,12 @@ class TimelineView(QGraphicsView):
 
     def keyPressEvent(self, event) -> None:
         mods = event.modifiers()
+        if event.key() == Qt.Key_Escape:
+            # Esc: el resol el VISOR, per ordre — (1) el RANG en curs, (2) el
+            # LOOP, (3) la SELECCIÓ. Si no es compleix cap, no fa res.
+            self.escapePressed.emit()
+            event.accept()
+            return
         if event.key() == Qt.Key_Space:
             self.playRequested.emit()
             event.accept()

@@ -250,6 +250,67 @@ class TestAltArrossegaCopia(_Base):
         v.close()
 
 
+class TestEscape(_Base):
+    """`Esc`, per ordre: (1) anul·la el RANG en curs, (2) anul·la el LOOP a mig
+    marcar, (3) desactiva el LOOP, (4) buida la SELECCIÓ. Si no es compleix cap
+    d'aquestes, no fa res (ni toca el loop ni la selecció)."""
+
+    @staticmethod
+    def _esc(tl):
+        from PyQt5.QtCore import QEvent
+        from PyQt5.QtGui import QKeyEvent
+        tl.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Escape,
+                                   Qt.NoModifier))
+
+    def test_ordre_de_prioritats(self):
+        v = _visor()
+        tl = v.timeline
+        # (1) RANG en curs
+        tl.set_tool("marc")
+        x, y = _x_vista(tl, 5.0), _y_vista(tl, LANE_ACC_TOP + 2)
+        tl.mousePressEvent(_ev(QEvent.MouseButtonPress, x, y))
+        self.assertIsNotNone(tl._marquee)
+        self._esc(tl)
+        self.assertIsNone(tl._marquee)
+        # (3) LOOP actiu → es desactiva (cal que el VISOR tingui A i B:
+        # és ell qui mana el playback, i els rep pel senyal `loopChanged`)
+        tl.loopChanged.emit(1.0, 3.0)
+        v.set_loop(True)
+        self.assertTrue(v.loop_on)
+        self._esc(tl)
+        self.assertFalse(v.loop_on)
+        # (4) SELECCIÓ → es buida
+        tl.select_clip("chord", 1)
+        self.assertTrue(tl.selected_keys())
+        self._esc(tl)
+        self.assertEqual(tl.selected_keys(), set())
+        v.close()
+
+    def test_loop_a_mig_marcar_es_descarta(self):
+        v = _visor()
+        tl = v.timeline
+        tl._loop_a, tl._loop_b = 2.0, 4.0      # loop previ
+        tl._loop_a0, tl._loop_b0 = 2.0, 4.0
+        tl._loop_drag = True                   # ...i n'estem marcant un altre
+        tl._loop_a, tl._loop_b = 2.0, 7.0
+        self._esc(tl)
+        self.assertFalse(tl._loop_drag)
+        self.assertEqual((tl._loop_a, tl._loop_b), (2.0, 4.0))   # com era
+        v.close()
+
+    def test_sense_res_no_toca_res(self):
+        v = _visor()
+        tl = v.timeline
+        # hi ha loop marcat però DESACTIVAT, i cap selecció: Esc no hi ha de fer
+        # res (no ha de desactivar res ni esborrar el loop només per existir)
+        tl._loop_a, tl._loop_b = 2.0, 4.0
+        self._esc(tl)
+        self.assertEqual((tl._loop_a, tl._loop_b), (2.0, 4.0))
+        self.assertEqual(tl.selected_keys(), set())
+        self.assertFalse(getattr(v, "loop_on", False))
+        v.close()
+
+
 class TestDreceraEina(_Base):
     """La tecla `E` commuta l'eina (TOGGLE, no on/off) i per defecte sempre
     s'arrenca en «intel·ligent»."""

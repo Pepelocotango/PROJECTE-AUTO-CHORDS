@@ -188,6 +188,7 @@ class Visor(QMainWindow):
         self.timeline.editStarted.connect(self._on_edit_started)
         self.timeline.editFinished.connect(self._on_edit_finished)
         self.timeline.loopChanged.connect(self._on_loop_changed)
+        self.timeline.escapePressed.connect(self._on_escape_pressed)
         self.timeline.chordTimeMoved.connect(self._on_chord_time_moved)
         self.timeline.chordEndMoved.connect(self._on_chord_end_moved)
         self.timeline.chordRenamed.connect(self._on_chord_renamed)
@@ -1070,6 +1071,37 @@ class Visor(QMainWindow):
         if self.loop_on and getattr(self, "sona", False):
             self._alinea_cursor_loop(self.pos)   # moure B sonant: re-alinea
         self._undo_commit()
+
+    def _on_escape_pressed(self):
+        """Esc al timeline, per ordre: (1) anul·la el **RANG en curs**, (2)
+        **desactiva el loop**, (3) **buida la selecció**. Si no es compleix cap
+        de les tres coses, NO fa res (ni ho diu)."""
+        tl = self.timeline
+        if getattr(tl, "_marquee", None) is not None:      # 1) rang en curs
+            tl._marquee = None
+            tl._marquee_ctrl = False
+            tl.viewport().update()
+            self.log("Esc: rang anul·lat")
+            return
+        if (getattr(tl, "_loop_drag", False)
+                or getattr(tl, "_loop_mode", None)):       # 2) loop a mig fer
+            # S'estava marcant/editant el loop amb el regle: es descarta i
+            # es torna a com era abans de començar el gest.
+            tl._loop_drag = False
+            tl._loop_mode = None
+            tl._loop_a, tl._loop_b = tl._loop_a0, tl._loop_b0
+            tl._loop_a0 = tl._loop_b0 = tl._loop_t0 = None
+            tl._update_loop_item()
+            self.log("Esc: loop anul·lat (no s'ha acabat de marcar)")
+            return
+        if getattr(self, "loop_on", False):                # 3) loop actiu
+            self.set_loop(False)
+            self.log("Esc: loop desactivat")
+            return
+        if tl.selected_keys() or tl._sel[0]:               # 3) selecció
+            tl.clear_selection()
+            self.log("Esc: selecció buidada")
+            return
 
     def set_loop(self, on):
         """Fixa l'estat del loop A-B (les barres de fora NO toquen b_loop)."""
