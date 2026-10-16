@@ -6,6 +6,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **`Esc` polivalent** (com als DAWs, per **ordre de prioritat**): anul·la (1) el
+  **rang** en curs (`Ctrl`+arrossegar o l'eina «marc»), (2) un **loop a mig
+  marcar** (el descarta i el **restaura** tal com era), (3) el **loop actiu** (el
+  desactiva i **treu la caixa groga** del timeline) i (4) la **selecció**; si no
+  hi ha res d'això, **no fa res**. Manté el que ja feia (cancel·la el
+  **reanomenament inline** i **tanca diàlegs** — que tenen **prioritat**). El
+  **timeline** emet `escapePressed` i el **visor** el resol (`_on_escape_pressed`)
+  → cap estat duplicat. L'`Esc` surt ara també a les **combinacions de l'ajuda** i
+  a la **caixa d'informació**. Tests: `test_eina_marc` (+5). Commits: `9533b9c`,
+  `c08ebb8`.
 - **Generador de les vistes de l'esquema de la UI** (`eines/genera_esquema_ui.py`):
   amb **una font única** (`docs/ESQUEMA_UI.md`) ara s'**auto-generen**
   `docs/ESQUEMA_UI.html` i `docs/ESQUEMA_UI.svg` → **mai més desfasades**.
