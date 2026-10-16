@@ -1,6 +1,6 @@
 """Regressió de les REGLES D'OR que encara no tenien test propi.
 
-`docs/REGLES_DE_LA_APP.md` diu que les regles **2, 4, 8, 9 i 11** ja en tenen;
+`docs/REGLES_DE_LA_APP.md` diu que les regles **2, 4, 9 i 11** ja en tenen;
 aquí blindem les que no: **1** (ordre estricte — amb un gap conegut al backend,
 vegeu el test), **3** (durades derivades), **5** (una sola font de veritat),
 **6** (les WAVs només via `exporta()`), **7** (instància única), **8** (temps

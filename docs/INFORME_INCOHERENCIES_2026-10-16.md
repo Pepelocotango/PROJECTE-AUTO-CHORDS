@@ -315,3 +315,78 @@ només s'usa **com a reserva** si falta el host (`pipeline.py:263-271`).
   els 🟡 són d'envelliment/etiquetes.
 - Les referències dins `CHANGELOG.md` i `docs/archive/` a fitxers moguts **no** es
   compten com a error (són història; `ROADMAP_HISTORIA.md:745` ho documenta).
+
+---
+
+## 6. ESTAT de les correccions (16-10-2026, vespre)
+
+Aplicades pel commit **`bcd253d`** («Docs: incoherencies de l'informe 16-10
+corregides…») i per les correccions següents d'OC-5 (aquesta tongada).
+
+| # | Troballa | Estat |
+|---|----------|:-----:|
+| 1 | Refs a docs arxivats (PORTABILITAT, PLANIFICACIO_MACOS, AUBIO_TEMPO, MOTOR_AUDIO_SO, AUDITORIA_PRODUCCIO) | ✅ resolt |
+| 2 | Tests 633/857 → **871** | ✅ resolt (AGENTS + ROADMAP) |
+| 3 | Panell de tipus 62 → **80** | ✅ resolt (ROADMAP, TIPUS_XIFRAT, CHANGELOG) |
+| 4 | Tag `v0.7.1` sense bump | ⏳ **decisió de l'operador** (no es pot «arreglar» des de docs) |
+| 5 | Línies `main.py`/`visor.py` | ✅ resolt (ROADMAP **i** ROADMAP_HISTORIA) |
+| 6 | Contingut dels paquets (`CI_WORKFLOWS`) | ✅ resolt |
+| 7 | Projectes MCP (`PROJECTES` deia «pendent») | ✅ resolt |
+| 8 | `CHANGELOG` ▶ contradictori | ✅ resolt |
+| 9 | `Am-G` → `Am_G` | ✅ resolt (MCP, SEGURETAT i entrada històrica) |
+| 10 | «Obre WAV…» → «Obre àudio…» | ✅ resolt |
+| 11 | aubio com a font de BPM «actual» | ✅ resolt |
+| 12 | Chordino descrit via `sonic-annotator -t` | ✅ resolt (ara `--param` + fallback) |
+| 13 | Docstring de `test_regles_or` (8 duplicada) | ✅ resolt |
+| 14 | Data de capçalera d'`ESQUEMA_UI` | ✅ resolt (vistes regenerades) |
+| 15 | Errata «tecnolítica» (títol + 3 usos) | ✅ resolt |
+| — | `AGENTS.md` apuntava a «xifres vives al README» (el README no en té) | ✅ resolt |
+
+> ⚠️ Els recomptes (**tests**, **tipus**, **línies**) **tornaran a envellir**. Convindria
+> que **OC-8** afegeixi un **test d'auditoria** que els validi (com `test_doc_xifrat`
+> fa amb el xifrat) o que els generi el CI, perquè no depenguin de la memòria.
+
+---
+
+## 7. Bugs, seguretat i higiene — per a **OC-8**
+
+No són de documentació; els ha de valorar **OC-8** (codi).
+
+### 7.1 🟠 `app/projecte.py` — path traversal via `.acproj` (enduriment)
+
+`Projecte.ruta_audio()` (`projecte.py:110-112`) i `Projecte.ruta_acproj`
+(`projecte.py:104-105`) fan `os.path.join(self.carpeta, …)` amb camps **del JSON**
+(`audio`, `nom`) **sense validar**. Amb un `.acproj` no fiable:
+
+- `"audio": "../../../../etc/passwd"` (o una ruta **absoluta**) → `ruta_audio()`
+  apunta **fora** del projecte (contradiu la garantia «cap ruta absoluta cap a fora»
+  de `docs/PROJECTES.md` / `projecte.py:17`).
+- `"nom": "../../evil"` → `Projecte.desa()` (`projecte.py:200-209`) escriuria el
+  `.acproj` **fora** de la carpeta del projecte.
+
+**Impacte:** baix-mitjà (cal obrir un projecte manipulat; **sense execució de codi**).
+**Proposta:** a `obre()`/`_migra()`, sanejar `audio` i `nom` (rebutjar `..`,
+separadors de path i rutes absolutes) i comprovar que `os.path.realpath` quedi
+**dins** `self.carpeta`. Afegir test de regressió.
+
+### 7.2 🟡 Higiene de tests: `/tmp` acumulat
+
+`ROADMAP.md` §7 ja ho apunta («~2,4 GB per tongada»), però a la màquina auditada hi ha
+**6.766 carpetes `tmp*` i 8,9 GB** a `/tmp` (acumulació de corredes). Els fixtures no
+esborren el seu `tempdir`. **Proposta (OC-8):** helper únic de neteja
+(`addCleanup(shutil.rmtree, …)` o `tempfile.TemporaryDirectory` sempre).
+
+### 7.3 🟡 Suite intermitent
+
+En **5 corredes** de la suite, **1** va acabar `FAILED (failures=1)` i **4** `OK
+(skipped=1)`; la fallada **no es va poder reproduir** ni identificar (no es va capturar
+el nom). Coincidí amb edició concurrent del repo. **Proposta:** vigilar-ho; si torna a
+passar, capturar el nom del test (possible relació amb el punt 7.2).
+
+### 7.4 ℹ️ `app/config.py` — directori d'estat (matís, no bug)
+
+`_dir_de_dades()` prefereix **`PROJECT_ROOT`** (la carpeta de l'app/repo) abans de
+`~/.local/state/auto-chords`. És **intencionat** (autocontenció del paquet), però els
+docs (README/PROVES/PROJECTES) diuen que l'estat va a `~/.local/state/…` — cert només
+quan la carpeta de l'app és de només lectura (p. ex. l'AppImage). No cal canviar codi;
+només, si es vol, matisar-ho en un doc.

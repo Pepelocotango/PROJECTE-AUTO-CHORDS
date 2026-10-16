@@ -72,7 +72,7 @@ Això ens permet estar oberts a:
 - **HTML/web (PWA)** — només si no calgui la integració amb el sistema.
 - **Altres** — qualsevol que ens doni la millor experiència d’usuari.
 
-> La tria tecnolítica **és intercanviable** mentre es preservi:
+> La tria tecnològica **és intercanviable** mentre es preservi:
 > - El **core** (pipeline.py i la integració amb `sonic-annotator`).
 > - La **invariant de dades** (ordre estrictes, no solapaments, durades
 >    derivades).
@@ -338,7 +338,7 @@ factor 5/7 al PPQ · canvi de compàs (la llargada varia) · `int64` per a PPQ a
   - El **principi d’una sola font de veritat** (`app.pipeline` continua
     sent el backend; el visor en reflecteix l’estat).
   - La **regla d’or** del final = inici del següent (constraint live).
-- Si la base tecnolítica canvia (veure §“Obertura tecnolítica”), les
+- Si la base tecnològica canvia (veure §“Obertura tecnològica”), les
   funcionalitats de la Fase D s’han de **reimplementar** sobre la nova
   plataforma — però els **principis romanen**.
 - Cada feature nova porta **tests** (al manco un test d’smoke i un
@@ -661,7 +661,7 @@ explorar però **no es prioritzaran** mentre la solució actual funcioni:
 - 📦 **Plantilles d’export** configurables (quins formats inclou el paquet
   final per defecte).
 
-> 💡 Si en el futur canviem la base tecnolítica i trobem una manera
+> 💡 Si en el futur canviem la base tecnològica i trobem una manera
 > trivial d’afegir aquests exports, es poden recuperar d’aquesta llista.
 
 ### E) Altres
@@ -1138,7 +1138,7 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 
 ## 16) Refactorització de `main.py` en mòduls dedicats (FUTUR — 2026-10-16)
 
-> **Estat**: `app/main.py` té **2.942 línies** i la classe `Finestra` acumula
+> **Estat**: `app/main.py` té **3.043 línies** i la classe `Finestra` acumula
 > **138 mètodes** («god object»). **Avui està prou organitzat i funciona** (suite
 > verda) → **NO és urgent**; queda **anotat per a una futura versió**, amb calma
 > i **per fases**. Decisió de l'operador (16-10): deixar-ho com està de moment.
@@ -1165,7 +1165,7 @@ resta del projecte: `xifrat`, `partitura`, `projecte`, `acord_audio`…):
   veu exactament igual** → els **25 fitxers de test** que instancien `Finestra`
   i criden `w._…` **NO canvien**.
 - **Un grup per commit**: bloc → **suite verda** → pyflakes → commit local.
-  `main.py` baixaria de ~2.942 a ~**1.500/1.700** línies.
+  `main.py` baixaria de ~3.043 a ~**1.500/1.700** línies.
 
 ### 16.3 Cost i riscos
 - **Temps**: ~1-3 h per grup; **tot, 2-4 dies** fets per blocs (no cal de cop).
@@ -1174,7 +1174,7 @@ resta del projecte: `xifrat`, `partitura`, `projecte`, `acord_audio`…):
   tests usen l'**API interna** de `Finestra` (es mantindria).
 - **Regla del projecte**: **un sol escriptor per fitxer** → fer-ho amb **OC-8
   aturat** o clarament coordinats.
-- **`visor.py`** (3.029 línies) tindria un tractament semblant si mai calgués.
+- **`visor.py`** (3.097 línies) tindria un tractament semblant si mai calgués.
 
 > **1a extracció recomanada (prova de concepte)**: la **caixa d'informació**
 > (autocontinguda i ja fresca).

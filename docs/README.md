@@ -53,6 +53,12 @@
 | `COMPONENTS_I_VERSIONS.md` | Inventari de components i versions (per vigilar CVE). |
 | `SEGURETAT.md` · `../SECURITY.md` | Enduriment de seguretat i canal de report. |
 
+## Auditoria
+
+| Doc | Què explica |
+|---|---|
+| `INFORME_INCOHERENCIES_2026-10-16.md` | **Auditoria de coherència** (docs + codi): incoherències, bugs i seguretat detectats. |
+
 ## Arxiu — superats o de referència (`archive/`)
 
 | Doc | Què explica |

@@ -5,6 +5,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
 
 ## [Unreleased]
 
+### Documentació
+- **Auditoria de coherència (16-10-2026, `docs/INFORME_INCOHERENCIES_2026-10-16.md`)**:
+  corregides **12 referències** a documents arxivats (ara `docs/archive/…`), xifres
+  desfasades (**871 tests**, **80 tipus** d'acord, línies de `main.py`/`visor.py`),
+  i contradiccions (`CI_WORKFLOWS` vs el contingut real dels paquets, `PROJECTES`
+  vs l'MCP de projectes, botó **▶ Escoltar**, `Am/G`→`Am_G`, «Obre àudio», aubio
+  retirat, paràmetres del Chordino via host propi `--param`). Vistes `ESQUEMA_UI`
+  regenerades. *(Detall: l'informe; commits `bcd253d` + correccions següents.)*
+
 ### Afegit
 - **`Esc` polivalent** (com als DAWs, per **ordre de prioritat**): anul·la (1) el
   **rang** en curs (`Ctrl`+arrossegar o l'eina «marc»), (2) un **loop a mig
@@ -361,7 +370,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   final** i evita els **noms reservats** (`CON`, `PRN`, `AUX`, `NUL`,
   `COM0-9`, `LPT0-9`). Si dos noms queden iguals després de netejar/truncar es
   **desambigüen amb un sufix** (`_2`, `_3`…) — els noms únics **no canvien
-  mai**. Els noms d'acord habituals (`C`, `C#m7`, `N`, `Am/G`→`Am-G`…) queden
+  mai**. Els noms d'acord habituals (`C`, `C#m7`, `N`, `Am/G`→`Am_G`…) queden
   **idèntics** (hi ha un test «daurat»).
 - **Directoris temporals de l'app: es netegen sempre**: els `ac_ttl_`/`ac_qm_`/
   `ac_key_` que crea l'anàlisi (transform `.ttl`, valors del qm, tonalitat) ja
