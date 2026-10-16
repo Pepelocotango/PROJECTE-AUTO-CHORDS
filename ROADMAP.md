@@ -167,10 +167,12 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ### Export i partitura
 - **Export MIDI** (acords/seccions com a notes o marcadors + **mapa de
-  tempo/timesig**) — i, si cal, el **PPQ** en aquell moment (ara **no** s'adopta).
+  tempo/timesig**); el **PPQ/ticks** només caldria en aquest cas.
 - **Generar un projecte de DAW** (`.rpp` de REAPER, `.als` de Live…) amb els
   clips **ja col·locats a la graella** (el «pont» definitiu per a multi-DAW).
 - **Plantilles d'export per DAW** (Reaper/Live/Logic) amb noms i carpeta coneguts.
+- **Export alternatiu**: **PDF de l'ona+acords**, **Markdown/HTML**,
+  **Lyrics+Chords** i **plantilles de paquet** configurables.
 - **CSV intel·ligible**, **ABC/LilyPond** i **imatges resumides** de partitura.
 - **Cua de render (batch)**: exportar diversos projectes/rangs d'un cop.
 
@@ -208,22 +210,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 7. NO HO FAREM (Won't) — descartat, amb motiu
-
-- **Export a PDF de l'ona+acords, Markdown/HTML i Lyrics+Chords** — la solució
-  de **clips WAV** ja cobreix el cas d'ús; **no es prioritzen**.
-- **Adoptar PPQ/ticks** com a model — l'app és d'**àudio** (les posicions són
-  **segons**); es faria **només** si mai hi ha export MIDI (llavors, conversió
-  puntual).
-- **Signar** les apps (Windows/macOS) — s'assumeixen Gatekeeper/SmartScreen
-  (certificats de pagament, fora d'abast).
-- **Empaquetar amb Electron/Tauri** ara — PyQt5 funciona i el Q9400 limita
-  alternatives; queda obert **només** com a arquitectura (vegeu el §«Obertura
-  tecnològica» a l'arxiu).
-
----
-
-## 8. Deute tècnic
+## 7. Deute tècnic
 
 - **Refactor de `app/main.py`** (2.942 línies, `Finestra` = 138 mètodes) en
   mòduls dedicats → **mixins**, per fases. **No urgent** (decisió de l'operador,
@@ -235,7 +222,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 9. Fites i història
+## 8. Fites i història
 
 - **Fases A–E ✅** — A: visor navegable · B: edició/correcció · C: flux producte ·
   D: interacció DAW-like (D.1/D.2 ✅, D.3 nice-to-have) · E: autodetecció
