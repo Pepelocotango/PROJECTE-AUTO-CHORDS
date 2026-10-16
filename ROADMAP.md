@@ -122,7 +122,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   (suggerir diatònics).
 
 ### Could
-- **`Alt`+arrossegar també per a les seccions** (paritat d'edició #11 amb els acords).
+- **`Ctrl+Shift`+arrossegar també per a les seccions** (paritat d'edició #11 amb els acords).
 - **Afegeix clips des del timeline** (ara només des del menú de la llista).
 - **Overflow de barres d'eines** a < 1300 px (avui es tallen).
 - **Beats/bars del qm** per **auto-ajustar la graella** (ara només el 1r downbeat)
@@ -231,7 +231,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Multi-SO ✅** — fulla de ruta Windows/macOS (v0.5.1–v0.6.0) → **els 3 builds
   verds** i **release v0.7.0 (BETA)** amb els 3 paquets.
 - **Xifrat canònic + panell de tipus + audició · eina del timeline
-  (intel·ligent/marc, tecla `E`) · `Alt`+arrossegar = duplicar · treballar
+  (intel·ligent/marc, tecla `E`) · `Ctrl+Shift`+arrossegar = duplicar · treballar
   sense analitzar** — 15–16/10/2026.
 - **Detall complet** de tot això (i els brainstorms originals §10–§12, l'anàlisi
   multi-SO, la nota de graella/PPQ, la d'obertura tecnològica i les notes

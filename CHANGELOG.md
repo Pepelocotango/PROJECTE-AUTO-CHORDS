@@ -6,31 +6,35 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
-- **`Alt`+arrossegar un clip = duplicar-lo** (la convenció més universal dels
-  DAWs): el clip viatja i **a l'origen hi torna una marca amb el mateix nom** →
-  mous una còpia. Una sola operació de desfer; com que el model són marques, la
-  **cobertura (#4)** es manté sola. Sense `Alt`, el gest segueix movent el clip.
+- **`Ctrl+Shift`+arrossegar un clip = duplicar-lo** (l'**única** manera): el clip
+  viatja i **a l'origen hi torna una marca amb el mateix nom** → mous una còpia.
+  Una sola operació de desfer; com que el model són marques, la **cobertura (#4)**
+  es manté sola. Sense modificador, el gest segueix movent el clip. *(L'`Alt`+arrossegar
+  es va **retirar**: dues maneres de fer el mateix només generen dubtes, i a Linux
+  l'`Alt` no hi funciona. L'`Alt` només queda per a `Alt+←/→`, que és el nudge de
+  la vora dreta — una altra cosa.)*
 - **Tecla `E` = commuta l'eina del timeline** (intel·ligent ⇄ **marc**): és un
   *toggle* (comparteix estat amb el botó de la barra i l'acció del menú) i
   **sempre s'arrenca en «intel·ligent»**.
 - **Totes les combinacions de ratolí/teclat, a la caixa d'informació i a l'ajuda**:
   reescrit el grup «Ratolí i tecles del visor» de `_dreceres()` (font **única** →
-  alimenta el rotatori de la caixa **i** el diàleg *Ajuda ▸ Dreceres*), amb les
-  **20 combinacions** (clic · Ctrl+clic · Shift+clic · Ctrl+Shift+clic · cos ·
-  **Alt+arrossegar = duplicar** · vores · marquee · **E** · fons · doble-clic
-  loop · regle · botó dret · roda · Espai · T · Ctrl+C/X/V · Ctrl+Shift+V ·
-  ←/→ · Ctrl+Z/Y · F2 · Del). Test: `tests/test_eina_marc.py` (12 → 16).
+  alimenta el rotatori de la caixa **i** el diàleg *Ajuda ▸ Dreceres*): clic ·
+  `Ctrl`+clic · `Shift`+clic (rang, **sempre del carril del clip**) · cos del clip ·
+  **`Ctrl+Shift`+arrossegar = duplicar** · vores · **marquee** (`Ctrl`+arrossegar) ·
+  **`E`** · fons · doble-clic loop · regle · botó dret · roda · Espai · `T` ·
+  `Ctrl+C`/`X`/`V` · `Ctrl+Shift+V` · `←`/`→` · `Ctrl+Z`/`Y` · `F2` · `Del`.
+  Test: `tests/test_eina_marc.py` (12 → 16).
 - **Eina del timeline** (commutador a la barra **i** al menú *Selecciona*):
   - **«intel·ligent»** (per defecte): la d'ara — cos del clip = **moure**, vora =
-    **redimensionar**, regla = **loop**, `Shift+clic` = **rang**, `Ctrl+clic` =
-    afegir/treure.
+    **redimensionar**, regla = **loop**, `Shift+clic` = **rang** (del carril del
+    clip), `Ctrl+clic` = afegir/treure.
   - **«marc»** (rubber-band): arrossegar **no mou cap clip**; dibuixa un
     **rectangle** (que desapareix en deixar anar) → queda seleccionat tot el que
     **hi sona a dins**, i **només de les pistes que cobreixi** (marc damunt dels
-    acords = només acords).
-- **«Selecció creuada»** (menú *Selecciona*): ara **desactivada per defecte** — el
-  `Shift+clic` es queda al carril del clip clicat; activada, torna a abraçar
-  **acords I seccions**. Test: `tests/test_eina_marc.py` (12).
+    acords = només acords). `Ctrl`+arrossegar també fa un marquee temporal.
+- *(Retirada la «**selecció creuada**»: el `Shift+clic` és **sempre** del carril del
+  clip clicat; per agafar clips de **les dues pistes**, el **marquee**. Dues maneres
+  de fer el mateix s'han eliminat.)*
 - **8 timbres de piano al «▶» del panell «Tipus d'acord»**: el botó d'escolta és
   ara **només la icona ▶** i al costat hi ha un **desplegable de timbre** amb **8
   presets de família piano** (referència **General MIDI 1-8**): *Piano de cua ·
@@ -227,9 +231,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 
 ### Corregit
 - **L'ajuda no inventa tecles**: deia **`Ctrl+Shift+clic`** per al «rang a les 2
-  pistes», i **aquesta combinació NO existeix al codi** (la **selecció creuada** és
-  una **opció del menú** *Selecciona*). Ara ho diu bé, tant a la **caixa
-  d'informació** com al **diàleg d'Ajuda** (font única `_dreceres()`).
+  pistes», i **aquesta combinació NO existia al codi** (la «selecció creuada» era
+  una **opció del menú** — que després **s'ha retirat del tot**, vegeu «Afegit»).
+  Ara l'ajuda ho diu bé, tant a la **caixa d'informació** com al **diàleg d'Ajuda**
+  (font única `_dreceres()`).
 - **Copiar/enganxar ja no falla «en silenci» (bug real de l'operador)**: quan el
   bloc acabat **exactament** en una marca del model i el *snap* el movia ~2 ms, la
   validació (≥ 10 ms) **rebutjava l'enganxat SENCER** i només ho deia al log →
