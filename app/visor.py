@@ -1663,6 +1663,11 @@ class Visor(QMainWindow):
         for i in idx_sec:
             self._elimina_seccio(i)
         self._undo_commit()
+        # INVARIANT #4 INSTANTANI: si l'esborrat ha deixat el model sense acords
+        # (o sense estructura), s'hi torna a posar la marca canònica a 0 («N» /
+        # «A»). Abans això només passava quan l'autosave desava, i mentrestant el
+        # model quedava invàlid (0 clips): report de l'operador, 17-10-2026.
+        self._normalitza_cobertura()
         self.timeline.set_data(self.acords, self.seccions)
         try:
             if idx_ac:
