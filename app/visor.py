@@ -528,9 +528,9 @@ class Visor(QMainWindow):
         return True
 
     def _on_chord_copia(self, t_original, nom):
-        """Alt+arrossegar un clip: el clip viatja i **a l'ORIGEN hi torna una
-        còpia** amb el mateix nom (convenció universal dels DAWs: Alt+drag =
-        duplicar un clip).
+        """`Ctrl+Shift`+arrossegar un clip d'acord: el clip viatja i **a
+        l'ORIGEN hi torna una còpia** amb el mateix nom (duplicar, com als
+        DAWs). ⚠️ Pendent: el mateix gest per a les SECCIONS (paritat #11).
 
         El model d'aquesta app són MARQUES, i el gest ja ha mogut la marca: per
         tant n'hi ha prou de tornar-ne a posar una a l'instant original. La
@@ -544,7 +544,7 @@ class Visor(QMainWindow):
                 return
             self._normalitza_cobertura()
         except Exception as e:  # noqa: BLE001
-            self.log(f"Alt+arrossegat: no s'ha pogut deixar la còpia ({e})")
+            self.log(f"Ctrl+Shift+arrossegat: no s'ha pogut deixar la còpia ({e})")
             return
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
@@ -552,7 +552,7 @@ class Visor(QMainWindow):
             self._desa_i_regenera()
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
-        self.log(f"Alt+arrossegat: còpia «{nom}» a {t:.2f}s")
+        self.log(f"Ctrl+Shift+arrossegat: còpia «{nom}» a {t:.2f}s")
 
     def _elimina_acord(self, idx):
         if idx is None:
