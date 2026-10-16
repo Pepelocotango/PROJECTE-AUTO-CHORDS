@@ -230,6 +230,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **El clic a la caixa d'informació no responia**: un `QTextEdit` és una
+  `QAbstractScrollArea` → rep els clics al seu **viewport**, no al widget; el
+  filtre d'esdeveniments només era al widget. Ara es filtra **també el viewport**
+  → el **clic per pausar/avançar** el rotatori funciona. *(Bug de la «caixa
+  d'informació» de la tongada.)*
 - **L'ajuda no inventa tecles**: deia **`Ctrl+Shift+clic`** per al «rang a les 2
   pistes», i **aquesta combinació NO existia al codi** (la «selecció creuada» era
   una **opció del menú** — que després **s'ha retirat del tot**, vegeu «Afegit»).

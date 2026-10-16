@@ -608,6 +608,10 @@ class Finestra(QMainWindow):
         # El clic dins la caixa (QTextEdit de nomes lectura) el capturem amb un
         # filtre d'esdeveniments → pausar/avançar el rotatori.
         self.info_box.installEventFilter(self)
+        # ⚠️ Un QTextEdit és una QAbstractScrollArea: els clics els rep el seu
+        # **viewport**, no el widget → cal filtrar-los tots dos. Sense això, la
+        # caixa semblava no respondre a cap clic (reportat per l'operador).
+        self.info_box.viewport().installEventFilter(self)
         self.info_box.setCursor(Qt.PointingHandCursor)
         self.log_dock.setVisible(True)      # sortida de l'anàlisi, visible
         self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
@@ -1192,7 +1196,9 @@ class Finestra(QMainWindow):
         La caixa es de nomes lectura, pero els clics hi arriben; els fem servir
         per **pausar** el rotatori i **passar de pantalla** sense esperar.
         """
-        if (obj is getattr(self, "info_box", None)
+        caixa = getattr(self, "info_box", None)
+        if (caixa is not None
+                and obj in (caixa, caixa.viewport())
                 and ev.type() == QEvent.MouseButtonPress):
             self._clic_info_box()
             return True         # el clic no ha de moure el cursor de text
