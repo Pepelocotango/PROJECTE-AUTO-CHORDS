@@ -951,8 +951,8 @@ class Finestra(QMainWindow):
             ("seleccionar un clip", "Clic a un clip"),
             ("afegir / treure un clip de la selecció (disjunt)", "Ctrl+clic"),
             ("rang de clips del MATEIX carril", "Shift+clic"),
-            ("rang a les 2 pistes", "Ctrl+Shift+clic (opció al menú "
-                                    "Selecciona ▸ Selecció creuada)"),
+            ("rang a les 2 pistes (acords I seccions)",
+             "no té tecles: s'activa a Selecciona ▸ Selecció creuada"),
             ("moure un clip (tot el grup si està seleccionat)",
              "Arrossega el cos del clip"),
             ("DUPLICAR-LO: l'original es queda a lloc", "Alt+arrossega el cos"),
