@@ -349,9 +349,11 @@ class Finestra(QMainWindow):
         self.b_mode_bpm.setCheckable(True)
         self.b_mode_bpm.setChecked(True)
         self.b_mode_bpm.setToolTip("Treballar amb BPM i compassos.")
-        self.b_mode_lliure = QPushButton("Lliure")
+        self.b_mode_lliure = QPushButton("hh:mm:ss")
         self.b_mode_lliure.setCheckable(True)
-        self.b_mode_lliure.setToolTip("Treballar amb temps real hh:mm:ss (sense compassos).")
+        self.b_mode_lliure.setToolTip(
+            "Treballar amb temps real (hh:mm:ss, sense compassos): per a "
+            "material lliure o rubato, on la graella musical no encaixa.")
         grp_mode = QButtonGroup(self)
         grp_mode.setExclusive(True)
         grp_mode.addButton(self.b_mode_bpm)
@@ -509,21 +511,8 @@ class Finestra(QMainWindow):
             "(estil + ritme harmònic).")
         self.b_mode_facil.clicked.connect(self._mode_facil_ui)
         barra.addWidget(self.b_mode_facil)
-        # Commutador d'EINA del timeline: «intel·ligent» (per defecte; la fletxa
-        # s'adapta al que hi ha sota) o «marc» (arrossegar dibuixa un rectangle
-        # de selecció i no mou clips).
-        self.b_eina = QPushButton("Eina: intel·ligent")
-        self.b_eina.setObjectName("secundari")
-        self.b_eina.setCheckable(True)
-        self.b_eina.setChecked(False)          # intel·ligent = per defecte
-        self.b_eina.setToolTip(
-            "Eina del timeline (també al menú Selecciona):\n"
-            "· intel·ligent: la fletxa s'adapta (mou/redimensiona clips, "
-            "Shift+clic = rang, regla = loop).\n"
-            "· marc: arrossega per dibuixar un rectangle i queda seleccionat "
-            "tot el que hi SONA a dins (només les pistes que cobreixi).")
-        self.b_eina.toggled.connect(self._canvia_eina)
-        barra.addWidget(self.b_eina)
+        # (El commutador d'EINA del timeline viu a la barra de transport, just
+        #  darrere del snap i la seva divisió — vegeu la resta d'aquest mètode.)
         barra.addSeparator()
         self.addToolBar(Qt.TopToolBarArea, barra)
         self.barra_principal = barra
@@ -1362,7 +1351,7 @@ class Finestra(QMainWindow):
         except Exception:  # noqa: BLE001
             pass
         if str(tool).startswith("marc"):
-            return ("Eina del timeline: MARC", [
+            return ("Eina del timeline: SELECCIÓ", [
                 ("Arrossega pel timeline per DIBUIXAR un rectangle", ""),
                 ("Selecciona el que hi SONA a dins, i només de les pistes "
                  "que cobreixi", ""),
@@ -1498,7 +1487,7 @@ class Finestra(QMainWindow):
         if (getattr(self, "a_eina_marc", None) is not None
                 and self.a_eina_marc.isChecked() != marc):
             self.a_eina_marc.setChecked(marc)       # propaga via `triggered`
-        self.b_eina.setText("Eina: marc" if marc else "Eina: intel·ligent")
+        self.b_eina.setText("Eina: selecció" if marc else "Eina: intel·ligent")
         self._replica_eina()
         self.registra("eina del timeline: "
                       + ("marc (rubber-band)" if marc else "intel·ligent"))
@@ -2460,6 +2449,24 @@ class Finestra(QMainWindow):
             self.cb_graella.addItem(et, val)
         self.cb_graella.currentIndexChanged.connect(self._canvia_snap)
         bar.addWidget(self.cb_graella)
+        bar.addSeparator()
+        # Commutador d'EINA del timeline: «intel·ligent» (per defecte; la fletxa
+        # s'adapta al que hi ha sota) o «marc» (arrossegar dibuixa un rectangle
+        # de selecció i no mou clips). Viu aquí, darrere del snap, perquè és on
+        # es decideix com respon el ratolí a la graella.
+        self.b_eina = QPushButton("Eina: intel·ligent")
+        self.b_eina.setObjectName("secundari")
+        self.b_eina.setCheckable(True)
+        self.b_eina.setChecked(False)          # intel·ligent = per defecte
+        self.b_eina.setToolTip(
+            "Eina del timeline (també al menú Selecciona i amb la tecla E):\n"
+            "· intel·ligent: la fletxa s'adapta (mou/redimensiona clips, "
+            "Shift+clic = rang, regla = loop).\n"
+            "· selecció: arrossega per dibuixar un rectangle i queda "
+            "seleccionat "
+            "tot el que hi SONA a dins (només les pistes que cobreixi).")
+        self.b_eina.toggled.connect(self._canvia_eina)
+        bar.addWidget(self.b_eina)
 
     def _canvia_snap(self):
         """Aplica l'interruptor de snap + la divisió de graella al visor."""

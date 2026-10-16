@@ -60,7 +60,7 @@ class TestInfoBoxConsells(unittest.TestCase):
         w = _finestra()
         w.visor_ref.timeline.set_tool("marc")
         t_marc, _p = w._panell_eina()
-        self.assertIn("MARC", t_marc)
+        self.assertIn("SELECCIÓ", t_marc)
         w.visor_ref.timeline.set_tool("intel·ligent")
         t_int, _p = w._panell_eina()
         self.assertIn("intel·ligent", t_int)

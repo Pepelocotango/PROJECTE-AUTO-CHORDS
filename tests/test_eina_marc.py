@@ -262,7 +262,7 @@ class TestDreceraEina(_Base):
             self.assertEqual(w.b_eina.text(), "Eina: intel·ligent")
             w._toggle_eina_tecla()
             self.assertTrue(w.b_eina.isChecked())    # 1a → marc
-            self.assertEqual(w.b_eina.text(), "Eina: marc")
+            self.assertEqual(w.b_eina.text(), "Eina: selecció")
             w._toggle_eina_tecla()
             self.assertFalse(w.b_eina.isChecked())   # 2a → intel·ligent
             self.assertEqual(w.b_eina.text(), "Eina: intel·ligent")
