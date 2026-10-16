@@ -130,7 +130,7 @@
 <body>
 
 <h1>Auto Chords — Esquema visual de la GUI</h1>
-<p class="sub">v0.7.0 · GUI reordenada: <b>timeline al centre</b>, barres d'eines,
+<p class="sub">v0.7.0 (2026-10-16) · GUI reordenada: <b>timeline al centre</b>, barres d'eines,
 metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
 
 <div class="legend">
@@ -356,10 +356,10 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
 <table>
 <tr><th>Ref</th><th>Nom al codi</th><th>Nom a la UI</th><th>Tipus</th></tr>
 <tr><td>—</td><td><code>Finestra</code></td><td>finestra principal</td><td>QMainWindow</td></tr>
-<tr><td>—</td><td><code>b_obre · b_exec · b_export · b_export_part</code></td><td>Obre… (barra 1 fila 1) · Analitza · Exporta WAV's · Exporta partitura (barra 1 fila 2)</td><td>QPushButton</td></tr>
+<tr><td>—</td><td><code>b_obre · b_exec · b_export · b_export_part</code></td><td>Obre àudio (barra 1 fila 1) · Analitza · Exporta WAV's · Exporta partitura (barra 1 fila 2)</td><td>QPushButton</td></tr>
 <tr><td>—</td><td><code>b_zs</code> (al transport; i al visor)</td><td>Zoom a la selecció (icona <code>focus</code>, sense text)</td><td>QPushButton</td></tr>
-<tr><td>—</td><td><code>b_mode_bpm/lliure · bpm · bpb · offset · offset_cb · b_detecta · b_tap · b_compas_auto · b_offset_cursor</code></td><td>selector temps · BPM · Compàs · Offset (s) · ≈ C.B · ◎ Detecta · TAP · 🧭 · 📍 (Inclou estructura és al menú Analitza)</td><td>barra 1</td></tr>
-<tr><td>—</td><td><code>tb_mut · tb_loop · b_metro · vol_metro</code></td><td>🔇 · 🔁 · 🥁 · volum del clic</td><td>barra 2 (transport)</td></tr>
+<tr><td>—</td><td><code>b_mode_bpm/lliure · bpm · bpb · offset · offset_cb · b_detecta · b_tap · b_compas_auto · b_offset_cursor</code></td><td>selector temps · BPM · Compàs · Offset (s) · ≈ C.B · ◎ Detecta · TAP · 🧭 · 📍 · <b>Mode fàcil</b> (Inclou estructura és al menú Analitza)</td><td>barra 1</td></tr>
+<tr><td>—</td><td><code>tb_mut · tb_loop · b_metro · vol_metro</code></td><td>🔇 · 🔁 · 🥁 · volum del clic · <b>Snap</b> + divisió de graella · <b>Eina</b> (intel·ligent/marc)</td><td>barra 2 (transport)</td></tr>
 <tr><td><span class="badge v">1</span></td><td><code>RulerLayer</code></td><td>regle de temps</td><td>QGraphicsItem</td></tr>
 <tr><td><span class="badge v">2</span></td><td><code>WaveformLayer</code></td><td>forma d'ona</td><td>QGraphicsPixmapItem</td></tr>
 <tr><td><span class="badge v">3</span></td><td><code>SectionItem</code></td><td>carril estructura</td><td>QGraphicsObject</td></tr>
@@ -385,7 +385,10 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
 <tr><td>Cos d'item 3 / 4</td><td>arrossegar → <b>mou</b> (si el clip és en una multi-selecció, mou <b>tot el grup</b>) · <i>hover</i> = ✋</td></tr>
 <tr><td>Vores 3 / 4</td><td>arrossegar → <b>mou inici/final</b> · <i>hover</i> = ↔</td></tr>
 <tr><td>Clic sense moure</td><td><b>posa el cursor vermell</b> a l'inici del clip</td></tr>
-<tr><td>Ctrl+clic / Shift+clic</td><td><b>multi-selecció</b>: afegeix/treu del grup · <b>rang</b></td></tr>
+<tr><td>Ctrl+clic / Shift+clic</td><td><b>multi-selecció</b>: afegeix/treu del grup · <b>rang</b> (sempre del carril del clip)</td></tr>
+<tr><td>Ctrl+arrossega / Eina «marc»</td><td><b>marquee</b>: selecciona el que hi sona a dins (les 2 pistes de cop)</td></tr>
+<tr><td>Ctrl+Shift+arrossega</td><td><b>duplica</b> el clip</td></tr>
+<tr><td>Tecla <b>E</b></td><td>commuta l'<b>eina</b> (intel·ligent ⇄ marc)</td></tr>
 <tr><td>Doble-clic 3/4 o llistes 9/10</td><td><b>editar</b> (nom + inici)</td></tr>
 <tr><td>Botó dret al buit 2</td><td><b>pan</b></td></tr>
 <tr><td>Botó dret sobre un clip</td><td><b>menú</b>: Duplica · Elimina · Reanomena</td></tr>
@@ -395,8 +398,8 @@ metrònom, count-in i caixa d'informació · colors i mides reals del codi</p>
 <tr><td>Ctrl+D</td><td><b>duplica</b> el clip o <b>tot el grup</b> seleccionat</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td><b>copiar / retallar / enganxar</b> la selecció al cursor</td></tr>
 <tr><td>Ctrl+Z / Ctrl+Y</td><td><b>desfer / refer</b></td></tr>
-<tr><td>Regle</td><td>badge de <b>mode</b>: <code>120 BPM · 4/4</code> o <code>Lliure</code></td></tr>
-<tr><td>Ratolí sobre un botó/camp</td><td>la <b>caixa d'informació</b> (baix-dreta) mostra què fa</td></tr>
+<tr><td>Regle</td><td>badge de <b>mode</b>: <code>120 BPM · 4/4</code> o <code>m:seg</code></td></tr>
+<tr><td>Ratolí sobre un botó/camp</td><td>la <b>caixa d'informació</b> (baix-dreta) mostra què fa; si no, gira un <b>rotatori</b> de dreceres (<b>clic</b> → atura/passa de pàgina)</td></tr>
 </table>
 
 <div class="note">
