@@ -66,14 +66,14 @@
 |---|---|
 | `REFERENCIA_PILES_PROGRAMES_REFERENCIA.md` | Piles tecnològiques/gràfiques d'altres programes (REAPER, Audacity…). |
 
-## Arxiu — documents superats (es conserven com a referència)
+## Arxiu — documents superats (es conserven a `archive/` com a referència)
 
 | Doc | Què explica |
 |---|---|
-| `AUBIO_TEMPO.md` **[HISTÒRIC]** | Plugin d'aubio (tempo/beats), **retirat** — substituït per `app/tempo.py`. |
-| `PORTABILITAT.md` **[ANÀLISI]** | Anàlisi original de què calia per ser autocontingut (ja fet). |
-| `PLA_PORTABILITAT.md` **[COMPLETAT]** | Pla per fases (2026-10-07) — ja executat. |
-| `PLANIFICACIO_MACOS.md` **[FET]** | Pla per a macOS High Sierra 10.13+ — ja executat. |
+| `archive/AUBIO_TEMPO.md` **[HISTÒRIC]** | Plugin d'aubio (tempo/beats), **retirat** — substituït per `app/tempo.py`. |
+| `archive/PORTABILITAT.md` **[ANÀLISI]** | Anàlisi original de què calia per ser autocontingut (ja fet). |
+| `archive/PLA_PORTABILITAT.md` **[COMPLETAT]** | Pla per fases (2026-10-07) — ja executat. |
+| `archive/PLANIFICACIO_MACOS.md` **[FET]** | Pla per a macOS High Sierra 10.13+ — ja executat. |
 
 ---
 

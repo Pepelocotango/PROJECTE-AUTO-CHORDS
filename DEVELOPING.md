@@ -248,7 +248,7 @@ La nostra feina és construir i integrar, però no és “des de zero” en el s
 
 Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
 (motors i opcions), `QM_VAMP.md` (Queen Mary), `PLAY.md` (reproducció),
-`PARTITURA_EXPORT.md` (partitura/MuseScore), `AUBIO_TEMPO.md` (històric),
+`PARTITURA_EXPORT.md` (partitura/MuseScore), `archive/AUBIO_TEMPO.md` (històric),
 `SEGURETAT.md` (**què s'ha endurit i com es manté**).
 
 ## Convencions
@@ -292,7 +292,7 @@ python -m app.visor tema.wav
 eines/empaqueta_portable.sh      # -> ../AUTO_CHORDS_PORTABLE/
 cd ../AUTO_CHORDS_PORTABLE && ./AUTO_CHORDS.sh
 ```
-El paquet **no s'edita mai** (és un artefacte de build): el codi viu al repo i es regenera. Detall: `docs/PORTABILITAT.md`.
+El paquet **no s'edita mai** (és un artefacte de build): el codi viu al repo i es regenera. Detall: `docs/ESTAT_MULTI_SO.md` (i `docs/archive/PORTABILITAT.md`).
 
 ## AppImage
 
@@ -318,4 +318,4 @@ Cinc workflows a `.github/workflows/` (tots d'**execució manual**):
 | **`release.yml`** | Agafa els **últims artefactes verds** dels 3 SO i crea/actualitza el **Release** (idempotent) amb les notes en català i el `SHA256SUMS.txt` |
 
 > Cap workflow fa `git push` ni s'activa sol. Els paquets només porten `README.md` + `LICENSE` + `LLICENCIES_TERCERS.md`. Detall: `docs/CI_WORKFLOWS.md`.
-> ⚠️ Els runners de Linux són `ubuntu-22.04` (allà s'hi compila `vamp_host_local`; la glibc marca l'abast mínim de l'AppImage). Detall: `docs/PORTABILITAT.md`.
+> ⚠️ Els runners de Linux són `ubuntu-22.04` (allà s'hi compila `vamp_host_local`; la glibc marca l'abast mínim de l'AppImage). Detall: `docs/ESTAT_MULTI_SO.md`.
