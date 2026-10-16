@@ -10,7 +10,7 @@ import sys
 import time
 import traceback
 
-from PyQt5.QtCore import QThread, Qt, QTimer, QUrl, pyqtSignal
+from PyQt5.QtCore import QEvent, QThread, Qt, QTimer, QUrl, pyqtSignal
 from PyQt5.QtGui import QCursor, QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
@@ -41,6 +41,12 @@ from . import __version__  # noqa: E402  (versió mostrada al «Quant a»)
 # Sempre a un directori ESCRIPTIBLE: en una AppImage muntada la carpeta del
 # projecte és de només lectura i escriure-hi el log petava a l'arrencada.
 DEFAULT_LOG_PATH = config.LOG_PATH
+
+# Caixa d'informacio (a baix, a la dreta del log): quan el ratoli no es sobre
+# res amb info, hi gira el rotatori de consells i dreceres. Cada quan canvia de
+# «pantalla», i quanta estona es queda aturada després d'un clic a la caixa.
+_INFO_ROTACIO_S = 14.0      # segons per «pantalla» (abans 8: poc per llegir)
+_INFO_PAUSA_S = 30.0        # clic a la caixa → el rotatori es para aquest temps
 
 
 def _instal·la_captura_excepcions():
@@ -591,11 +597,18 @@ class Finestra(QMainWindow):
         self._info_timer.timeout.connect(self._actualitza_info_widget)
         self._info_timer.start()
         # Estat del rotatori de la caixa d'informacio: quan el ratoli no es
-        # sobre res amb informacio, s'hi mostren els panells de dreceres i
-        # consells (`_info_panells`), rotant cada ~8 s.
+        # sobre res amb informacio, s'hi mostren els panells de consells i
+        # dreceres (`_info_panells`), rotant cada `_INFO_ROTACIO_S`. Un CLIC a
+        # la caixa el PARA (`_INFO_PAUSA_S`) i el clic següent avança de
+        # «pantalla» (vegeu `_clic_info_box`).
         self._info_html_actual = None
         self._info_panell = 0
         self._info_panell_t = 0.0
+        self._info_pausa_fins = 0.0
+        # El clic dins la caixa (QTextEdit de nomes lectura) el capturem amb un
+        # filtre d'esdeveniments → pausar/avançar el rotatori.
+        self.info_box.installEventFilter(self)
+        self.info_box.setCursor(Qt.PointingHandCursor)
         self.log_dock.setVisible(True)      # sortida de l'anàlisi, visible
         self.addDockWidget(Qt.BottomDockWidgetArea, self.log_dock)
 
@@ -665,11 +678,17 @@ class Finestra(QMainWindow):
         return "WAV PCM (*.wav);;Tots els fitxers (*)"
 
     def _missatge_info(self, text):
-        """Mostra un missatge transitori a la caixa d'informacio (no el
-        sobreescriu el ratoli fins passats uns segons)."""
+        """Missatge TRANSITORI a la caixa d'informacio (desfer/refer, avisos).
+
+        Te un format propi (banner blau) per distingir-lo del **rotatori** de
+        consells i dreceres, que es mostra quan no hi ha res a dir.
+        """
         import time as _t
+        cap = (f"<b style='color:{theme.BLAU_INFO}'>● Missatge</b> "
+               f"<span style='color:{theme.MUTED}'>· torna al rotatori aviat"
+               "</span>")
         self.info_box.setHtml(
-            f"<b style='color:{theme.BLAU_INFO}'>{text}</b>")
+            cap + f"<br><b style='color:{theme.BLAU_INFO}'>{text}</b>")
         self._info_html_actual = None   # força reescriure quan passi el temps
         self._info_msg_fins = _t.monotonic() + 4.0
 
@@ -1152,6 +1171,34 @@ class Finestra(QMainWindow):
                 "No s'ha pogut estimar el BPM.\n"
                 "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
 
+    def eventFilter(self, obj, ev):
+        """Filtre d'esdeveniments: un CLIC dins la caixa d'informacio.
+
+        La caixa es de nomes lectura, pero els clics hi arriben; els fem servir
+        per **pausar** el rotatori i **passar de pantalla** sense esperar.
+        """
+        if (obj is getattr(self, "info_box", None)
+                and ev.type() == QEvent.MouseButtonPress):
+            self._clic_info_box()
+            return True         # el clic no ha de moure el cursor de text
+        return super().eventFilter(obj, ev)
+
+    def _clic_info_box(self):
+        """Clic a la caixa: 1r → PARA el rotatori (dura mes); seguents → avancen.
+
+        Cada clic tambe **allarga** la pausa `_INFO_PAUSA_S`, de manera que es
+        pot llegir al ritme de cadascu: clic per aturar, clic per passar de
+        pagina. Passada la pausa, el rotatori es torna a moure sol.
+        """
+        import time as _t
+        ara = _t.monotonic()
+        if ara < getattr(self, "_info_pausa_fins", 0.0):
+            # Ja estava pausat (per un clic anterior) → avanca una «pantalla».
+            self._info_panell = getattr(self, "_info_panell", 0) + 1
+            self._info_panell_t = ara
+        self._info_pausa_fins = ara + _INFO_PAUSA_S
+        self._actualitza_info_widget()
+
     def _actualitza_info_widget(self):
         """Mostra a la caixa d'informacio la info del que hi ha sota el ratoli.
 
@@ -1215,17 +1262,18 @@ class Finestra(QMainWindow):
     def _info_panells(self):
         """Panells de la caixa d'informacio per defecte: consells + dreceres.
 
-        El primer es un grapat de consells; la resta son les dreceres REALS
+        El **primer** s'adapta a l'**eina vigent del timeline** (marc vs
+        intel·ligent); el segon son consells; la resta, les dreceres REALS
         agrupades com al dialeg d'ajuda (es llegeixen dels menus → mai queden
         desfasades). Es el que es mostra quan el ratoli no es sobre res amb
         informacio.
         """
-        panells = [("Consells rapids", [
-            ("Arrossega sobre el regle per crear un LOOP A-B", ""),
+        panells = [self._panell_eina(), ("Consells rapids", [
             ("Doble-clic dins el loop → selecciona tot el que hi ha a dins", ""),
-            ("Shift+clic = rang per temps (acords I seccions)", ""),
+            ("Copia/Enganxa: l'enganxat SOBREESCRIU el tram (la cançó no creix)", ""),
+            ("Ctrl+Shift+V → enganxa SENSE snap (quan el snap no t'encaixa)", ""),
             ("F2 → reanomena el clip o tot el grup del tipus actiu", ""),
-            ("Ctrl+S desa el projecte (document + CSVs + backups)", ""),
+            ("← / → → mou el clip un pas de graella (Alt = la vora dreta)", ""),
         ])]
         try:
             panells.extend(self._dreceres())
@@ -1234,16 +1282,47 @@ class Finestra(QMainWindow):
             pass
         return panells
 
+    def _panell_eina(self):
+        """Panell que **segueix l'eina vigent** del timeline (marc/intel·ligent)."""
+        tool = "intel·ligent"
+        try:
+            tv = getattr(getattr(self, "visor_ref", None), "timeline", None)
+            if tv is not None:
+                tool = tv.tool()
+        except Exception:  # noqa: BLE001
+            pass
+        if str(tool).startswith("marc"):
+            return ("Eina del timeline: MARC", [
+                ("Arrossega pel timeline per DIBUIXAR un rectangle", ""),
+                ("Selecciona el que hi SONA a dins, i només de les pistes "
+                 "que cobreixi", ""),
+                ("No mou cap clip; el rectangle desapareix en deixar anar", ""),
+                ("Botó «Eina» a la barra (o Selecciona) per canviar d'eina", ""),
+            ])
+        return ("Eina del timeline: intel·ligent", [
+            ("La fletxa s'adapta al que toques (no cal triar res)", ""),
+            ("Cos del clip = MOURE · vores del clip = redimensionar", ""),
+            ("Regle = crea el LOOP A-B · roda = zoom", ""),
+            ("Shift+clic = rang · Ctrl+clic = afegir/treure de la selecció", ""),
+            ("Botó «Eina» a la barra (o Selecciona) per passar a «marc»", ""),
+        ])
+
     def _info_defecte_html(self, ara, rota=True):
-        """HTML del panell actual de dreceres/consells (rotant cada ~8 s)."""
+        """HTML del panell actual de dreceres/consells (rotant cada ~14 s).
+
+        `rota=False` congela el panell (ratoli sobre la caixa). I si hi ha una
+        **pausa per clic** vigent (`_info_pausa_fins`), tampoc no rota.
+        """
         panells = self._info_panells()
         if not panells:
             return None
         n = len(panells)
+        if ara < getattr(self, "_info_pausa_fins", 0.0):
+            rota = False        # pausat per un clic a la caixa
         t0 = getattr(self, "_info_panell_t", 0.0)
         if t0 <= 0.0:
             self._info_panell_t = ara          # primera vegada: sense rotar
-        elif rota and ara - t0 >= 8.0:
+        elif rota and ara - t0 >= _INFO_ROTACIO_S:
             self._info_panell = (getattr(self, "_info_panell", 0) + 1) % n
             self._info_panell_t = ara
         i = getattr(self, "_info_panell", 0) % n
@@ -1253,8 +1332,8 @@ class Finestra(QMainWindow):
             files.append(f"{text} · <b>{dr}</b>" if dr else text)
         cap = (f"<b style='color:{theme.BLAU_INFO}'>Dreceres i consells</b> "
                f"<span style='color:{theme.MUTED}'>({i + 1}/{n})</span>")
-        peu = ("<br><br><i style='color:%s'>Passa el ratolí per sobre d'un "
-               "botó, camp o opció i aquí veuràs què fa.</i>" % theme.MUTED)
+        peu = ("<br><br><i style='color:%s'>Ratolí per un botó → què fa · "
+               "<b>clic aquí</b> → atura i passa de pàgina.</i>" % theme.MUTED)
         return cap + f"<br><b>{titol}</b><br>" + "<br>".join(files) + peu
 
     # ---- accions d'edició des del menú (reutilitzen la lògica existent) ----

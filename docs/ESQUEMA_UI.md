@@ -230,7 +230,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | **Ctrl+Z / Ctrl+Y** | **desfer / refer** |
 | **Ctrl+H** | **troba i reemplaça** xifrats (acords) o etiquetes (estructura) a **tot el tema**; una sola operació de desfer i **no canvia cap temps** |
 | **← / →** | **nudge**: mou la **vora esquerra** (l'inici) del clip seleccionat **un pas de graella**; **Alt+←/→** mou la **vora dreta** (estirar/encongir). Una sola operació de desfer; sense selecció no fa res. |
-| **Ratolí sobre un botó/camp** | la **caixa d'informació** (a baix a la dreta) mostra què fa; si el ratolí **no** és sobre res amb info, hi gira un **rotatori de dreceres i consells** (cada ~8 s: consells + les dreceres reals agrupades) |
+| **Ratolí sobre un botó/camp** | la **caixa d'informació** (a baix a la dreta) mostra què fa; si el ratolí **no** és sobre res amb info, hi gira un **rotatori de consells i dreceres** (cada **14 s**; el 1r panell segueix l'**eina vigent**). **Clic a la caixa** → la **para** (30 s) i el clic **següent avança** de «pantalla»; un **missatge transitori** (desfer/refer…) hi surt amb **format propi** |
 
 ---
 

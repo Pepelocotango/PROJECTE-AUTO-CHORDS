@@ -179,6 +179,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   **`tests/test_regla11_paritat.py`**. `AGENTS.md` passa a 11 regles.
 
 ### Canviat
+- **Caixa d'informació millorada (llegir-la al teu ritme)**: el **rotatori** ara
+  gira cada **14 s** (abans 8, massa ràpid), el **1r panell s'adapta a l'eina
+  vigent** del timeline («marc» vs «intel·ligent») i hi ha **més consells**
+  (copiar/enganxar sobreescriu, `Ctrl+Shift+V`, nudge…). Un **clic a la caixa**
+  la **PARA** (`_INFO_PAUSA_S` = 30 s) i el clic **següent avança** de «pantalla»;
+  si no cliques, es torna a moure sol. El **missatge transitori** (desfer/refer…)
+  té **format propi** (banner) per no confondre's amb el rotatori.
+  Test: `tests/test_info_box_consells.py` (8).
 - **S'ha acabat la divergència de noms CSV ↔ fitxer exportat**: com que el
   MODEL ja ve en notació **canònica** (`app/xifrat.py`), `acords_a_live.py`
   **deixa de reescriure** els noms (tret l'antic `style()`) i viatgen
