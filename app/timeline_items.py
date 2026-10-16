@@ -48,6 +48,7 @@ class ChordItem(QGraphicsObject):
 
     timeChanged = pyqtSignal(float)          # self.t ha canviat
     endTimeChanged = pyqtSignal(float)       # self.next_t ha canviat (el del següent)
+    copiaRequested = pyqtSignal(float)       # Alt+drag: deixar còpia a l'origen
     renameRequested = pyqtSignal(str)         # usuari ha escrit nom nou
     deleteRequested = pyqtSignal()
     editRequested = pyqtSignal()
@@ -189,6 +190,9 @@ class ChordItem(QGraphicsObject):
         elif z == self.ZONE_BODY:
             self.setCursor(Qt.ClosedHandCursor)
         if z != self.ZONE_NONE:
+            # Alt+arrossegar el COS = duplicar: el clip viatja i a l'ORIGEN en
+            # queda una còpia (convenció universal dels DAWs: Alt+drag = copy).
+            # Ho resol el TimelineView (que coneix el model i la marca original).
             self.dragStarted.emit()   # captura l'estat ABANS de cap canvi
             event.accept()
         else:

@@ -193,6 +193,7 @@ class Visor(QMainWindow):
         self.timeline.chordRenamed.connect(self._on_chord_renamed)
         self.timeline.chordDeleteRequested.connect(self._elimina_acord_index)
         self.timeline.chordDuplicateRequested.connect(self._duplica_acord_index)
+        self.timeline.chordCopyRequested.connect(self._on_chord_copia)
         self.timeline.chordEditRequested.connect(self._on_chord_edit_requested)
         self.timeline.sectionMoved.connect(self._on_section_moved)
         self.timeline.sectionRenamed.connect(self._on_section_renamed)
@@ -524,6 +525,33 @@ class Visor(QMainWindow):
         if hasattr(self, "llista_ac"):
             self._omple_llista_ac()
         return True
+
+    def _on_chord_copia(self, t_original, nom):
+        """Alt+arrossegar un clip: el clip viatja i **a l'ORIGEN hi torna una
+        còpia** amb el mateix nom (convenció universal dels DAWs: Alt+drag =
+        duplicar un clip).
+
+        El model d'aquesta app són MARQUES, i el gest ja ha mogut la marca: per
+        tant n'hi ha prou de tornar-ne a posar una a l'instant original. La
+        cobertura de tota la cançó (regla d'or #4) es manté sola.
+        """
+        durada = float(self.audio["durada"])
+        t = max(0.0, min(float(t_original), durada))
+        self._undo_marca()
+        try:
+            if not self._afegeix_acord(t, str(nom)):
+                return
+            self._normalitza_cobertura()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"Alt+arrossegat: no s'ha pogut deixar la còpia ({e})")
+            return
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            self._desa_i_regenera()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+        self.log(f"Alt+arrossegat: còpia «{nom}» a {t:.2f}s")
 
     def _elimina_acord(self, idx):
         if idx is None:

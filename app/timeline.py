@@ -31,8 +31,8 @@ import numpy as np
 from PyQt5.QtCore import QPoint, QPointF, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QPainter, QPen
 from PyQt5.QtWidgets import (
-    QGraphicsItem, QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene,
-    QGraphicsView, QWidget,
+    QApplication, QGraphicsItem, QGraphicsLineItem, QGraphicsRectItem,
+    QGraphicsScene, QGraphicsView, QWidget,
 )
 
 from app import theme      # noqa: E402  (paleta centralitzada)
@@ -113,6 +113,10 @@ class TimelineView(QGraphicsView):
     chordRenamed = pyqtSignal(int, str)
     chordDeleteRequested = pyqtSignal(int)
     chordDuplicateRequested = pyqtSignal(int)
+    # Alt+arrossegar un clip d'acord: el clip viatja i a l'ORIGEN en queda una
+    # còpia (convenció universal dels DAWs: Alt+drag = duplicar). Payload:
+    # (instant ORIGINAL on s'ha de deixar la còpia, nom de l'acord).
+    chordCopyRequested = pyqtSignal(float, str)
     chordEditRequested = pyqtSignal(int)
     sectionMoved = pyqtSignal(int, float, float)
     sectionRenamed = pyqtSignal(int, str, str)
@@ -199,6 +203,8 @@ class TimelineView(QGraphicsView):
         # es queda al carril del clip clicat. El creuat és una opció de menú.
         self._sel_creuada = False
         self._marquee = None       # rectangle en curs: [x0,y0,x1,y1] de la vista
+        # Alt+arrossegament en curs: (idx, t original) per deixar-hi la còpia.
+        self._alt_copia = None
         self._loop_item = None     # banda de loop A/B
         self._loop_a = None
         self._loop_b = None
@@ -533,9 +539,19 @@ class TimelineView(QGraphicsView):
         return Qt.ArrowCursor
 
     def _emit_edit_finished(self) -> None:
-        """Fi de drag -> amaga la guia i reporta."""
+        """Fi de drag -> amaga la guia i reporta.
+
+        Si el gest era un **Alt+arrossegament** d'un acord, el clip s'ha mogut i
+        ara cal deixar-ne una **còpia a l'origen** (Alt+drag = duplicar, la
+        convenció dels DAWs). S'emet DESPRÉS de `editFinished` perquè el moviment
+        ja estigui consolidat: així la còpia és una segona operació neta.
+        """
         self._hide_guide()
         self.editFinished.emit()
+        if self._alt_copia is not None:
+            t0, nom = self._alt_copia
+            self._alt_copia = None
+            self.chordCopyRequested.emit(float(t0), str(nom))
 
     def _x_to_time(self, x: float) -> float:
         """De x de la vista a temps (coords relatives a la vista)."""
@@ -966,6 +982,12 @@ class TimelineView(QGraphicsView):
         """Mou l'inici de l'acord idx a new_t (amb snap + constraint)."""
         if idx < 0 or idx >= len(self._acords):
             return
+        # Alt+arrossegar = duplicar: capturem l'instant ORIGINAL (abans del
+        # primer moviment). El `_emit_edit_finished` deixarà la còpia allà.
+        if self._alt_copia is None and (
+                QApplication.keyboardModifiers() & Qt.AltModifier):
+            self._alt_copia = (float(self._acords[idx][0]),
+                               str(self._acords[idx][1]))
         # Moviment de GRUP: si l'acord arrossegat (pel cos) forma part d'una
         # multi-selecció d'acords, movem TOTS els seleccionats amb el mateix
         # delta (els extrems de les nanses segueixen redimensionant un sol clip).

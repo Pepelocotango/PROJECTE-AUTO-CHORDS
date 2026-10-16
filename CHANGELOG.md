@@ -6,6 +6,20 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **`Alt`+arrossegar un clip = duplicar-lo** (la convenció més universal dels
+  DAWs): el clip viatja i **a l'origen hi torna una marca amb el mateix nom** →
+  mous una còpia. Una sola operació de desfer; com que el model són marques, la
+  **cobertura (#4)** es manté sola. Sense `Alt`, el gest segueix movent el clip.
+- **Tecla `E` = commuta l'eina del timeline** (intel·ligent ⇄ **marc**): és un
+  *toggle* (comparteix estat amb el botó de la barra i l'acció del menú) i
+  **sempre s'arrenca en «intel·ligent»**.
+- **Totes les combinacions de ratolí/teclat, a la caixa d'informació i a l'ajuda**:
+  reescrit el grup «Ratolí i tecles del visor» de `_dreceres()` (font **única** →
+  alimenta el rotatori de la caixa **i** el diàleg *Ajuda ▸ Dreceres*), amb les
+  **20 combinacions** (clic · Ctrl+clic · Shift+clic · Ctrl+Shift+clic · cos ·
+  **Alt+arrossegar = duplicar** · vores · marquee · **E** · fons · doble-clic
+  loop · regle · botó dret · roda · Espai · T · Ctrl+C/X/V · Ctrl+Shift+V ·
+  ←/→ · Ctrl+Z/Y · F2 · Del). Test: `tests/test_eina_marc.py` (12 → 16).
 - **Eina del timeline** (commutador a la barra **i** al menú *Selecciona*):
   - **«intel·ligent»** (per defecte): la d'ara — cos del clip = **moure**, vora =
     **redimensionar**, regla = **loop**, `Shift+clic` = **rang**, `Ctrl+clic` =

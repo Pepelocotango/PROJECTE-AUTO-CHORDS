@@ -651,6 +651,11 @@ class Finestra(QMainWindow):
         self._sc_play.activated.connect(self._toggle_play)
         self._taps = []                       # instants dels taps (tap tempo)
         self._sc_tap = QShortcut(QKeySequence(Qt.Key_T), self)
+        # `E`: commuta l'EINA del timeline (intel·ligent ⇄ marc). És un TOGGLE:
+        # cada pulsació canvia d'estat; per defecte sempre s'arrenca en
+        # intel·ligent (no hi ha estat «off»).
+        self._sc_eina = QShortcut(QKeySequence(Qt.Key_E), self)
+        self._sc_eina.activated.connect(self._toggle_eina_tecla)
         self._sc_tap.activated.connect(self._tap_tempo)
         self._crea_menus()
         # Autocomprovació dels fitxers que l'app NECESSITA per analitzar. NO hi
@@ -942,19 +947,34 @@ class Finestra(QMainWindow):
                     parells.append((a.text().replace("&", ""), drecera))
             if parells:
                 grups.append((accio.text().replace("&", ""), parells))
-        grups.append(("Altres (teclat del visor i ratolí)", [
+        grups.append(("Ratolí i tecles del visor (combinacions)", [
+            ("seleccionar un clip", "Clic a un clip"),
+            ("afegir / treure un clip de la selecció (disjunt)", "Ctrl+clic"),
+            ("rang de clips del MATEIX carril", "Shift+clic"),
+            ("rang a les 2 pistes", "Ctrl+Shift+clic (opció al menú "
+                                    "Selecciona ▸ Selecció creuada)"),
+            ("moure un clip (tot el grup si està seleccionat)",
+             "Arrossega el cos del clip"),
+            ("DUPLICAR-LO: l'original es queda a lloc", "Alt+arrossega el cos"),
+            ("redimensionar (inici / final)", "Arrossega una vora"),
+            ("rectangle de selecció (marquee)", "Eina marc ▸ arrossega"),
+            ("canviar d'eina del timeline (intel·ligent ⇄ marc)", "E"),
+            ("cursor al punt clicat / buidar la selecció", "Clic al fons"),
+            ("seleccionar TOT el que hi ha dins el loop", "Doble-clic al loop"),
+            ("marcar / editar el loop A-B", "Arrossega sobre el regle"),
+            ("menú d'accions del clip", "Botó dret a un clip"),
+            ("desplaçar la vista (pan)", "Botó dret arrossegant"),
+            ("zoom", "Roda del ratolí"),
             ("play / pausa", "Espai"),
             ("TAP del temps (tap tempo)", "T"),
             ("copiar / retallar / enganxar al cursor",
              "Ctrl+C / Ctrl+X / Ctrl+V"),
-            ("moure un clip (tot el grup si està seleccionat)",
-             "Arrossega un clip"),
-            ("zoom", "Roda del ratolí"),
-            ("desplaçar (pan)", "Botó dret arrossegant"),
-            ("crear / editar el loop A-B", "Arrossega sobre el regle"),
-            ("posa el cursor a l'inici del clip", "Clic a un clip"),
-            ("afegir / treure de la selecció", "Ctrl+clic"),
-            ("rang de selecció", "Shift+clic"),
+            ("enganxar SALTANT-SE el snap", "Ctrl+Shift+V"),
+            ("moure un clip un pas de graella (Alt = vora dreta)",
+             "← / →"),
+            ("desfer / refer", "Ctrl+Z / Ctrl+Y"),
+            ("reanomenar (clip o grup del tipus actiu)", "F2"),
+            ("esborrar la selecció", "Del"),
         ]))
         return grups
 
@@ -1439,6 +1459,15 @@ class Finestra(QMainWindow):
         """El menú «Selecciona» i el botó de la barra comparteixen estat."""
         if self.b_eina.isChecked() != bool(activat):
             self.b_eina.setChecked(bool(activat))   # dispara `_canvia_eina`
+
+    def _toggle_eina_tecla(self):
+        """Drecera `E`: commuta l'eina del timeline (intel·ligent ⇄ marc).
+
+        És un **toggle** (no un on/off): cada pulsació canvia d'estat, i per
+        defecte sempre s'arrenca en «intel·ligent».
+        """
+        if hasattr(self, "b_eina"):
+            self.b_eina.setChecked(not self.b_eina.isChecked())
 
     def _canvia_creuada(self, activat):
         self._replica_eina()

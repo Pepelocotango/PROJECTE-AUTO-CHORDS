@@ -216,6 +216,72 @@ class TestMarcSeleccio(_Base):
         v.close()
 
 
+class TestAltArrossegaCopia(_Base):
+    """Alt+arrossegar un clip d'acord = duplicar-lo: el clip viatja i a
+    l'ORIGEN hi torna una còpia amb el mateix nom (convenció dels DAWs)."""
+
+    def _gest(self, v, idx, desti):
+        """Simula el gest: el clip es mou; després `_emit_edit_finished`."""
+        tl = v.timeline
+        tl.select_clip("chord", idx)
+        tl._on_chord_time_changed(idx, desti)     # el moviment
+        return tl
+
+    def test_alt_deixa_copia_a_l_origen(self):
+        v = _visor()
+        tl = self._gest(v, 2, 6.0)                # F: 4.5 → 6.0
+        tl._alt_copia = (4.5, "F")                # com si l'Alt fos premut
+        tl._emit_edit_finished()
+        times = [round(float(t), 3) for t, *_r in v.acords]
+        self.assertIn(6.0, times)                 # el clip mogut
+        self.assertIn(4.5, times)                 # ...i la còpia a l'origen
+        copia = [a for a in v.acords if abs(float(a[0]) - 4.5) < 1e-6][0]
+        self.assertEqual(copia[1], "F")           # mateix nom
+        self.assertEqual(len(v.acords), 6)        # s'ha afegit una marca
+        v.close()
+
+    def test_sense_alt_no_deixa_cap_copia(self):
+        v = _visor()
+        tl = self._gest(v, 2, 6.0)
+        self.assertIsNone(tl._alt_copia)          # sense Alt no s'ha capturat
+        tl._emit_edit_finished()
+        times = [round(float(t), 3) for t, *_r in v.acords]
+        self.assertIn(6.0, times)
+        self.assertNotIn(4.5, times)              # moviment normal
+        self.assertEqual(len(v.acords), 5)
+        v.close()
+
+    def test_la_copia_es_desfà(self):
+        v = _visor()
+        tl = self._gest(v, 2, 6.0)
+        tl._alt_copia = (4.5, "F")
+        tl._emit_edit_finished()
+        self.assertIn(4.5, [round(float(t), 3) for t, *_r in v.acords])
+        v.undo()                                  # desfer la còpia
+        self.assertNotIn(4.5, [round(float(t), 3) for t, *_r in v.acords])
+        v.close()
+
+
+class TestDreceraEina(_Base):
+    """La tecla `E` commuta l'eina (TOGGLE, no on/off) i per defecte sempre
+    s'arrenca en «intel·ligent»."""
+
+    def test_e_es_un_toggle(self):
+        from app import main as app_main
+        w = app_main.Finestra()
+        try:
+            self.assertFalse(w.b_eina.isChecked())   # defecte: intel·ligent
+            self.assertEqual(w.b_eina.text(), "Eina: intel·ligent")
+            w._toggle_eina_tecla()
+            self.assertTrue(w.b_eina.isChecked())    # 1a → marc
+            self.assertEqual(w.b_eina.text(), "Eina: marc")
+            w._toggle_eina_tecla()
+            self.assertFalse(w.b_eina.isChecked())   # 2a → intel·ligent
+            self.assertEqual(w.b_eina.text(), "Eina: intel·ligent")
+        finally:
+            w.close()
+
+
 def tearDownModule():
     try:
         import _qt_neteja

@@ -103,6 +103,16 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
   el rang de `Shift+clic` es queda al **carril del clip clicat**; activada,
   abraça acords I seccions («2 estructures + N acords» de cop).
 - La **selecció no entra a la pila de desfer** (com abans).
+- **Tecla `E`**: commuta l'eina (**toggle**, no on/off). Per defecte sempre
+  s'arrenca en «intel·ligent».
+- **`Alt`+arrossegar el cos d'un clip d'acord = duplicar-lo**: el clip viatja i
+  a l'**origen hi torna una còpia** amb el mateix nom (l'original es queda a
+  lloc). És la convenció universal dels DAWs per copiar (`Alt`/`Option`+drag a
+  Studio One, Reason, Pro Tools i Live-mac). *Pendent: el mateix gest per a les
+  seccions (avui l'`Alt`+arrossegar una secció la mou normalment).*
+- La caixa d'informació (**`_info_panells`** → `_dreceres()`) llista **totes**
+  les combinacions de tecles i de ratolí (també les del diàleg *Ajuda ▸
+  Dreceres de teclat*: una sola font).
 
 > ⚠️ Les **dreceres** viuen a la **finestra principal** (`QShortcut`/`QAction`),
 > mai al visor incrustat (un `QShortcut` dins el visor no s'activa).
