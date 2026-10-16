@@ -366,7 +366,7 @@ class Finestra(QMainWindow):
         self.bpm.setMaximumWidth(70)
         self.bpm.setPlaceholderText("120.0")
         self.bpm.setToolTip("BPM del tema. Entrada manual (text).")
-        self.bpb = QLineEdit("4")
+        self.bpb = QLineEdit("4/4")
         self.bpb.setMaximumWidth(60)
         self.bpb.setPlaceholderText("4/4")
         self.bpb.setToolTip("Compàs manual: 4/4, 3/4, 6/8, etc.")
@@ -1473,7 +1473,7 @@ class Finestra(QMainWindow):
         p = graella.PRESETS.get(dlg.preset()) or {}
         bpb = int(p.get("bpb") or self._bpb_val())
         den = int(p.get("den") or 4)
-        nou = f"{bpb}/{den}" if den != 4 else str(bpb)
+        nou = f"{bpb}/{den}"      # sempre en format complet (4/4, no «4»)
         if self.bpb.text().strip() != nou:
             self.bpb.setText(nou)
             self._aplica_parametres_temps()
@@ -2101,8 +2101,10 @@ class Finestra(QMainWindow):
         tempo = p.dades.get("tempo") or {}
         self.bpm.setText(f"{float(tempo.get('bpm', 120.0)):.1f}")
         compas = tempo.get("compas")
+        # Format COMPLET (4/4, no «4»): un «4» sol sembla el compàs denormalitzat
+        # i confon; el parser accepta els dos, però el camp sempre el mostra bé.
         self.bpb.setText(str(compas) if compas
-                         else str(int(tempo.get("bpb", 4))))
+                         else f"{int(tempo.get('bpb', 4))}/4")
         self.offset.setText(f"{float(tempo.get('offset', 0.0)):.2f}")
         self.tempo_fix.setChecked(bool(tempo.get("fix", False)))
         if isinstance(p.dades.get("opcions"), dict) and p.dades["opcions"]:
