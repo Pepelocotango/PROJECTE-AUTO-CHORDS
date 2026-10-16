@@ -58,6 +58,10 @@ SELECTION_COLOR = theme.CLIP_SELECTED_BORDER
 PIXELS_PER_SECOND_DEFAULT = 60.0
 MIN_GAP_S = 0.02         # gap mínim entre inicis d'acords
 MIN_SEC_LEN_S = 0.05     # durada mínima d'una secció
+# Tolerància (en PÍXELS, per tant depèn del zoom) per enganxar una edició a una
+# MARCA del model. És el «snap distance» dels DAWs (Reaper), i el que fa que
+# l'snap als events sigui visual i no un valor de temps fix.
+SNAP_MARCA_PX = 10.0
 
 
 # -----------------------------------------------------------------------------

@@ -199,6 +199,102 @@ class TestCasosBuits(_Base):
         v.close()
 
 
+# ---------------------------------------------------------------------------
+# Regressió del cas real (operador, 16-10-2026): «faig Ctrl+C i Ctrl+V i no
+# funciona». El bloc d'acords 13.25→18.00 acaba EXACTAMENT a la marca següent
+# (l'A de 18.500). La graella musical arrodonia l'àncora a 18.5019, la marca
+# 18.500 sobrevivia a 1,9 ms de la nova i la validació (≥ 10 ms) rebuixava
+# l'enganxat SENCER — i només ho deia al log (cap avís a pantalla).
+# ---------------------------------------------------------------------------
+ACORDS_OTIS = ("0.0,N\n13.25,Bbmaj7\n13.50,B\n15.75,C\n17.25,B/C#\n"
+               "17.50,Bbmaj7\n18.00,Bbmaj7\n18.50,A\n20.50,G\n22.50,B\n"
+               "25.25,C\n")
+SECCIONS_OTIS = ("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
+                 "0.0,15.0,15.0,A,A,1.1,7.1\n"
+                 "15.0,30.0,15.0,B,B,7.1,14.1\n")
+
+
+def _visor_otis():
+    """Visor amb la graella del projecte d'Otis (el snap mou la vora ~2 ms)."""
+    td = tempfile.mkdtemp()
+    wav_path = os.path.join(td, "otis.wav")
+    sortida = os.path.join(td, "AUTOCHORDS_otis")
+    os.makedirs(sortida)
+    with wave.open(wav_path, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(44100)
+        w.writeframes(b"\x00\x00" * 44100 * 30)
+    ca = os.path.join(sortida, "acords.csv")
+    with open(ca, "w", encoding="utf-8") as f:
+        f.write(ACORDS_OTIS)
+    sa = os.path.join(sortida, "estructura_ABC.csv")
+    with open(sa, "w", encoding="utf-8") as f:
+        f.write(SECCIONS_OTIS)
+    v = visor_mod.Visor(wav_path, ca, sa, bpm=105.315, bpb=4, tempo_fix=True)
+    v.td, v.sortida = td, sortida
+    v.offset = 1.98
+    v.timeline._offset = 1.98
+    v.timeline._bpm, v.timeline._bpb = 105.315, 4
+    v.timeline._tempo_fix = True
+    v.timeline.set_snap(on=True, divisio="negra")
+    return v
+
+
+class TestAncoraDeMarca(_Base):
+    """Prioritat de l'àncora: 1r EVENTS (marques del model), 2n graella."""
+
+    def test_la_graella_mou_la_vora_del_bloc(self):
+        v = _visor_otis()
+        # la marca és a 18.500 i la graella musical hi arrodoneix ~2 ms més enllà
+        self.assertAlmostEqual(v.timeline.snap(18.5), 18.5019, places=3)
+        v.close()
+
+    def test_la_marca_manda(self):
+        v = _visor_otis()
+        self.assertAlmostEqual(v.timeline.snap_a_marca(18.5), 18.5, places=9)
+        self.assertAlmostEqual(v.timeline.snap_a_marca(15.0), 15.0, places=9)
+        self.assertIsNone(v.timeline.snap_a_marca(11.0))   # lluny de totes
+        v.close()
+
+
+class TestEnganxatALaVoraDelBloc(_Base):
+    """Regressió: enganxar un bloc que acaba a la marca següent ha de funcionar."""
+
+    def _selecciona_bloc(self, v):
+        # acords 13.25 · 13.50 · 15.75 · 17.25 · 17.50 · 18.00
+        v.timeline.select_multi({("chord", i) for i in range(1, 7)})
+
+    def test_enganxa_i_substitueix_la_regio(self):
+        v = _visor_otis()
+        self._selecciona_bloc(v)
+        self._copia(v)
+        # la còpia deixa el cursor al final del bloc (= la marca 18.500)
+        self.assertAlmostEqual(v.timeline._pos_t, 18.5, places=6)
+        v.timeline.paste_at_cursor()
+        self.assertEqual(_temps_acords(v), [
+            0.0, 13.25, 13.5, 15.75, 17.25, 17.5, 18.0,
+            18.5, 18.75, 21.0, 22.5, 22.75, 23.25, 23.75, 25.25])
+        self.assertEqual(_noms_acords(v), [
+            "N", "Bbmaj7", "B", "C", "B/C#", "Bbmaj7", "Bbmaj7",
+            "Bbmaj7", "B", "C", "B/C#", "Bbmaj7", "Bbmaj7", "B", "C"])
+        # CAP marca a menys de 10 ms: era exactament la col·lisió que ho trencava
+        for a, b in zip(v.acords, v.acords[1:]):
+            self.assertGreaterEqual(float(b[0]) - float(a[0]), 0.01 - 1e-9)
+        v.close()
+
+    def test_rebuig_en_silenci_ja_no_existeix(self):
+        """Un rebuig ha de sortir a pantalla (abans només anava al log)."""
+        v = _visor_otis()
+        avisos = []
+        v.infoMissatge.connect(avisos.append)
+        v._enganxa_seleccio({"chords": [(0.0, "X"), (0.002, "Y")],
+                             "chord_len": 1.0, "bloc_fi": 18.5}, 18.5)
+        self.assertTrue(avisos, "el rebuig hauria d'avisar a pantalla")
+        self.assertIn("Enganxat no fet", avisos[0])
+        v.close()
+
+
 def tearDownModule():
     try:
         import _qt_neteja

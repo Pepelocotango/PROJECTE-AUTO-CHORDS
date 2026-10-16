@@ -1056,6 +1056,54 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
 - **A vigilar**: abast **gran** → fer-ho per **fases** (diapasó → identificador →
   filtres → estudi…), i sense trencar les **regles d'or**.
 
+## 15) Edició a la graella — convencions dels DAWs professionals (2026-10-16)
+
+> **Origen**: bug real de l'operador («faig Ctrl+C i Ctrl+V i no funciona»). El
+> bloc 13.25→18.00 acaba EXACTAMENT a la marca següent (l'A de 18.500 s); el
+> snap de la graella musical movia l'àncora a 18.502, l'A sobrevivia a 1,9 ms de
+> la nova i la validació (≥ 10 ms) rebuixava l'enganxat **sencer** — i només ho
+> deia al log, o sigui que a pantalla «no passava res».
+>
+> **Investigació** (Cubase 15, Reaper, Pro Tools, Logic, Final Cut, Premiere,
+> Resolve): les convencions són clares i el disseny de l'app s'hi ha alineat.
+
+### 15.0 FET (2026-10-16)
+- **(3) L'àncora fa snap primer als EVENTS**: si el cursor cau a prop d'una
+  **marca del model** (vora de clip) s'usa el SEU instant **exacte**; la graella
+  musical només si no hi ha cap marca a prop. Tolerància **en píxels**
+  (`SNAP_MARCA_PX = 10.0`, com el «snap distance» del Reaper) → depèn del zoom.
+  Nous: `Timeline.snap_a_marca()` i `Timeline.marques_temps()`.
+- **(4) El bloc viatja RÍGID**: les posicions relatives copiades no s'arrodoneixen
+  (equivalent al `Grid Relative` del Cubase / «snap relative to grid» del Reaper
+  per als ítems que ja porten offset): arrodonir cada element deformava
+  l'espaiat intern del bloc.
+- **(6) Mai en silenci**: un rebuig d'enganxat (o un «res a canviar») surt **a
+  pantalla** via `avis_editor` (caixa d'informació), no només al log; i
+  **`Ctrl+Shift+V` se salta el snap** (patró «hold N» del Final Cut / Shift de
+  l'Avid MediaCentral).
+- **Tests**: `tests/test_copiar_enganxar.py::TestAncoraDeMarca` i
+  `TestEnganxatALaVoraDelBloc` (regressió amb la geometria exacta del cas real;
+  **verificat que fallen amb el codi anterior**). Suite: **842 tests OK**.
+
+### 15.1 Pendents d'UX (investigats, NO implementats)
+- **(1) Fonts de snap commutables**: dues caselles independents, com el Reaper
+  («snap a events/marques» i «snap a la graella», per separat) i el `Snap Type`
+  múltiple del Cubase (`Grid` · `Grid Relative` · `Events` · `Cursor` ·
+  combinacions).
+- **(2) Tolerància de snap configurable** (avui fixa a 10 px) i valorar adaptar
+  la **resolució de la graella al zoom** (`Adapt to Zoom` del Cubase).
+- **(5) `Ctrl+C` no hauria de moure el cursor**: cap DAW ho fa. Substituir el
+  «mou el cursor al final del bloc copiat» per un comandament **a part**
+  («duplica just darrere») i deixar el `Ctrl+V` lligat al cursor tal com estigui.
+- **(7) Mode «sense graella»**: snap **només a les marques** per a cançons
+  rubato (equivalent al regle en *Seconds* del Cubase, on la graella passa a
+  1/10/100 ms). Útil quan el BPM detectat no quadra amb tota la peça.
+- **(8) Indicador visual del punt d'ancoratge**: la línia vertical que apareix
+  al Premiere en moure/enganxar («a vertical line will appear to indicate the
+  adjusted alignment»), per veure a què s'ha enganxat.
+- **(9) Opcional**: eines MCP `ac_copia` / `ac_retalla` / `ac_enganxa` perquè un
+  agent pugui fer aquestes operacions (avui el pont només té les de selecció).
+
 ## Criteri de producte actualitzat
 
 La projecta es considera funcionalment preparada per a l’ús del flux principal quan:

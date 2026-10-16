@@ -1584,6 +1584,18 @@ class Visor(QMainWindow):
         Àncora `T`: el cursor; si el cursor NO s'ha mogut des de la còpia, el
         **final del bloc copiat** (enganxar just després). Tot en una sola
         operació de desfer, i després es deixa seleccionat el bloc enganxat.
+
+        Snap de l'àncora, amb la prioritat dels DAWs professionals (Cubase
+        `Snap Type`: Events · Grid · Cursor):
+          1. **Events**: si el cursor cau a prop d'una marca del model (vora de
+             clip), s'usa el SEU instant exacte. Imprescindible aquí perquè les
+             marques vénen de l'anàlisi i NO són a la graella musical: arrodonir
+             la vora que s'ha de substituir la deixava a 2 ms i la validació
+             (≥ 10 ms) rebuixava l'operació sencera.
+          2. **Graella** (BPM/offset) si no hi ha cap marca a prop.
+          `Shift` (Ctrl+Shift+V) se salta el snap, com el «hold N» del Final Cut.
+        El bloc viatja **rígid** (com `Grid Relative` del Cubase): no s'arrodoneix
+        cada element, per no deformar l'espaiat intern de la còpia.
         """
         if not isinstance(buf, dict):
             return
@@ -1593,23 +1605,26 @@ class Visor(QMainWindow):
             return
         durada = float(self.audio["durada"])
         rel = 1e-6
-        # -- àncora --
+        # -- àncora (prioritat dels DAWs: EVENTS → graella) --
         T = float(at)
         cc, bf = buf.get("cursor_copy"), buf.get("bloc_fi")
         if cc is not None and bf is not None and abs(T - float(cc)) <= 1e-6:
             T = float(bf)
-        # Si el snap està actiu al timeline, l'àncora d'enganxat T i tots els punts del bloc
-        # s'ajusten estrictament a la graella.
-        if hasattr(self, "timeline") and self.timeline._snap_on:
-            T = self.timeline.snap(T)
+        salta_snap = bool(QApplication.keyboardModifiers() & Qt.ShiftModifier)
+        if (hasattr(self, "timeline") and self.timeline._snap_on
+                and not salta_snap):
+            # 1r) EVENTS: marca del model a prop → el seu instant EXACTE
+            marca = self.timeline.snap_a_marca(T)
+            if marca is not None:
+                T = float(marca)
+            else:
+                # 2n) graella musical (BPM/offset)
+                T = self.timeline.snap(T)
         T = max(0.0, min(T, durada))
-
-        # Ajusta les posicions del bloc si el snap està actiu
-        if hasattr(self, "timeline") and self.timeline._snap_on:
-            chords = [(self.timeline.snap(T + float(r)) - T, name) for (r, name) in chords]
-            sections = [(self.timeline.snap(T + float(ri)) - T,
-                         self.timeline.snap(T + float(rf)) - T,
-                         ll, fam) for (ri, rf, ll, fam) in sections]
+        # El bloc viatja RÍGID: les posicions relatives copiades NO s'arrodoneixen
+        # (equivalent al `Grid Relative` del Cubase o al «snap relative to grid»
+        # del Reaper per als ítems que ja porten offset). Arrodonir cada element
+        # deformava l'espaiat intern del bloc sense que ningú ho hagués demanat.
 
         # -- reconstrucció per carril (sobreescriptura) --
         nous_acords = (self._bloc_sobre_acords(
@@ -1626,9 +1641,12 @@ class Visor(QMainWindow):
                         if noves_seccions is not None else list(self.seccions))
         except ValueError as e:
             self.log(f"enganxa: canvi invalid, no s'ha fet res ({e})")
+            self.avis_editor(f"Enganxat no fet: {e}")
             return
         if cand_ac == self.acords and cand_sec == self.seccions:
             self.log("enganxa: res a fer")
+            self.avis_editor("Enganxat: res a canviar (el bloc coincideix "
+                             "amb el model actual).")
             return
         self._undo_marca()
         self.acords = cand_ac

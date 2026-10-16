@@ -47,7 +47,7 @@ from app.timeline_base import (   # noqa: E402,F401
     CHORD_ACTIVE_FILL, CURSOR_COLOR, GUIDE_COLOR, LANE_ACC_TOP, LANE_BG_A,
     LANE_BG_B, LANE_H, LANE_SEC_TOP, LEFT_PAD, LOOP_GRAB_PX, MIN_GAP_S,
     MIN_SEC_LEN_S, PIXELS_PER_SECOND_DEFAULT, RIGHT_PAD, RULER_H,
-    SELECTION_COLOR, TOTAL_H, WAVEFORM_H, fmt_pos, grid_levels,
+    SELECTION_COLOR, SNAP_MARCA_PX, TOTAL_H, WAVEFORM_H, fmt_pos, grid_levels,
     loop_after_drag, snap_step, snap_time,
 )
 from app import graella  # noqa: E402
@@ -536,6 +536,42 @@ class TimelineView(QGraphicsView):
     def snap(self, t: float) -> float:
         """Arrodoneix `t` a la graella de snap actual (BPM/offset o segons)."""
         return self._snap(t)
+
+    def marques_temps(self) -> List[float]:
+        """Instants de les MARQUES del model (= vores de clip).
+
+        Un acord és una marca d'inici; una secció té inici I final. Són els
+        «events» o «edit points» de la terminologia dels DAWs.
+        """
+        marks = [float(a[0]) for a in self._acords]
+        for s in self._seccions:
+            marks.append(float(s[0]))
+            marks.append(float(s[1]))
+        return marks
+
+    def snap_a_marca(self, t: float) -> Optional[float]:
+        """Àncora d'edició: si `t` cau a prop d'una MARCA del model, torna
+        l'instant EXACTE d'aquella marca; si no, `None`.
+
+        És el snap als *events* dels DAWs professionals (Cubase `Snap Type:
+        Events`, Reaper «snap media items/markers»). Cal perquè les marques del
+        model VÉNEN DE L'ANÀLISI i no cauen a la graella musical: arrodonir-les
+        a la graella les mou uns mil·lisegons i, en una edició que substitueix
+        una regió, deixa la vora que s'havia de substituir a 2 ms de la nova i
+        la validació (≥ 10 ms) rebutja l'operació sencera.
+
+        La tolerància és en PÍXELS (depèn del zoom), com el «snap distance» del
+        Reaper: a dins es veu clar, i a fora no s'hi enganxa res.
+        """
+        if not self._acords and not self._seccions:
+            return None
+        tol = SNAP_MARCA_PX / max(1.0, float(self._pps))
+        millor, dist = None, None
+        for m in self.marques_temps():
+            d = abs(m - float(t))
+            if d <= tol and (dist is None or d < dist):
+                millor, dist = m, d
+        return millor
 
     def _loop_x_to_time(self, x: float) -> float:
         """Temps del regle per a un x d'escena, amb SNAP a la graella.

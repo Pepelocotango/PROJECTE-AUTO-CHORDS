@@ -193,6 +193,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **Copiar/enganxar ja no falla «en silenci» (bug real de l'operador)**: quan el
+  bloc acabat **exactament** en una marca del model i el *snap* el movia ~2 ms, la
+  validació (≥ 10 ms) **rebutjava l'enganxat SENCER** i només ho deia al log →
+  a pantalla «no passava res». Ara, amb les convencions dels DAWs professionals
+  (Cubase/Reaper/Pro Tools/Logic/Final Cut):
+  (1) l'**àncora fa snap primer als EVENTS** (marques = vores de clip; el seu
+  instant **exacte**) i la **graella musical** només si no hi ha cap marca a prop;
+  (2) el bloc viatja **RÍGID** (no s'arrodoneix cada element — evita deformar
+  l'espaiat intern; `Grid Relative` del Cubase);
+  (3) un rebuig (o un «res a canviar») surt **a pantalla** (`avis_editor`), no
+  només al log; i (4) **`Ctrl+Shift+V` se salta el snap** (`hold N` del Final Cut).
+  Nous: `Timeline.snap_a_marca()` / `marques_temps()` i `SNAP_MARCA_PX = 10`
+  (tolerància **en píxels** → depèn del zoom, com el «snap distance» del Reaper).
+  Doc: `ROADMAP` **§15** (convencions de DAW). Test: `tests/test_copiar_enganxar.py`
+  (+4; **verificat que fallen amb el codi anterior**).
 - **Export amb el pont MCP actiu**: ja **no obre el gestor de fitxers** a
   l'escriptori (l'agent que ha demanat l'export no necessita finestres; abans,
   5 exports amb l'MCP = 5 finestres obertes).
