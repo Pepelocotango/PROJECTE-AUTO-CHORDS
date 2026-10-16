@@ -29,6 +29,11 @@ fi
 echo "Empaquetant a: $DEST"
 mkdir -p "$DEST"
 # còpia selectiva (rsync si hi és, si no cp)
+#
+# DECISIÓ (operador, 16-10-2026): la funció MCP és eina de **DEV** — viu al codi
+# i a git, però NO viatja a les compilacions (portable/AppImage). Per això
+# s'exclouen el llançador MCP i el seu servidor. L'AppImage també se'n beneficia
+# perquè ell mateix crida aquest script.
 if command -v rsync >/dev/null; then
     rsync -a --delete \
         --exclude '.deps/' --exclude '.venv/' --exclude '.git/' \
@@ -37,10 +42,11 @@ if command -v rsync >/dev/null; then
         --exclude 'auto_chords.log' --exclude 'opcions_detecta.json' \
         --exclude 'CODI_concatenat.txt' --exclude '.gitignore' \
         --exclude '.git*' --exclude 'LLEGEIX-ME.txt' --exclude 'OLD/' \
+        --exclude 'AUTO_CHORDS_MCP.sh' --exclude 'eines/mcp_auto_chords*' \
         "$SRC"/ "$DEST"/
 else
     echo "(sense rsync: còpia manual)"
-    for f in app eines docs icones icona *-local vamp_host_local \
+    for f in app docs icones icona *-local vamp_host_local \
              AUTO_CHORDS.sh AUTO_CHORDS.desktop pyproject.toml LICENSE \
              LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md \
              DEVELOPING.md requirements.txt concatena.py acords_a_live.py \
@@ -49,6 +55,15 @@ else
             cp -r "$f" "$DEST"/ || { echo "ERROR copiant $f" >&2; exit 1; }
         fi
     done
+    # `eines/` SENSE la part de MCP (mateixa decisió que el rsync de dalt)
+    if [ -d eines ]; then
+        mkdir -p "$DEST/eines"
+        for f in eines/*; do
+            case "$f" in *mcp_auto_chords*) continue ;; esac
+            cp -r "$f" "$DEST/eines"/ \
+                || { echo "ERROR copiant $f" >&2; exit 1; }
+        done
+    fi
 fi
 chmod +x "$DEST/AUTO_CHORDS.sh" "$DEST/vamp_host_local" 2>/dev/null || true
 
