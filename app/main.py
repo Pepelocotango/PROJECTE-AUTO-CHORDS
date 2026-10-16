@@ -507,8 +507,10 @@ class Finestra(QMainWindow):
         self.b_mode_facil = QPushButton("Mode fàcil")
         self.b_mode_facil.setObjectName("secundari")
         self.b_mode_facil.setToolTip(
-            "Mode fàcil: regularitza els acords a la graella "
-            "(estil + ritme harmònic).")
+            "Mode fàcil: re-regularitza els acords a la graella (ritme "
+            "harmònic). Treballa sobre l'ANÀLISI CRUA (`analisi/`), per això "
+            "depèn d'«Analitza»: sense anàlisi no hi ha res a re-regularitzar. "
+            "Es pot desfer i repetir amb un altre nivell.")
         self.b_mode_facil.clicked.connect(self._mode_facil_ui)
         barra.addWidget(self.b_mode_facil)
         # (El commutador d'EINA del timeline viu a la barra de transport, just
@@ -1333,6 +1335,16 @@ class Finestra(QMainWindow):
                 ("Zoom", "Roda del ratolí"),
                 ("Zoom + / − / total", "Ctrl++ / Ctrl+− / Ctrl+0"),
                 ("Menú del clip (o pan arrossegant)", "Botó dret"),
+            ]),
+            ("Mode fàcil: què fa i per què va amb «Analitza»", [
+                ("Posa els acords a la GRAELLA: els arrodoneix al compàs i al "
+                 "temps (ritme harmònic net)", ""),
+                ("Treballa sobre l'ANÀLISI CRUA (carpeta `analisi/`), no sobre "
+                 "el model que veus", ""),
+                ("Per això depèn d'«Analitza»: sense anàlisi no hi ha res a "
+                 "re-regularitzar", ""),
+                ("No toca l'anàlisi crua: pots desfer (Ctrl+Z) i tornar-hi "
+                 "amb un altre nivell", ""),
             ]),
             ("Per què l'enganxat sobreescriu", [
                 ("Els clips cobreixen SEMPRE tota la WAV (regla d'or #4)", ""),
