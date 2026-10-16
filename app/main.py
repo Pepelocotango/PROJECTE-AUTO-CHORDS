@@ -1433,6 +1433,15 @@ class Finestra(QMainWindow):
         if kind is None:
             return
         vr = self.visor_ref
+        # MULTI-SELECCIÓ: amb més d'un clip seleccionat s'esborren TOTS. Abans
+        # aquest camí (la drecera `Del` de la finestra, que s'executa ABANS que
+        # el `keyPressEvent` del timeline) només esborrava el clip «actiu», i
+        # per això d'una selecció de 49 clips queia només el primer (bug
+        # reportat per l'operador, 17-10-2026).
+        keys = vr.timeline.selected_keys()
+        if len(keys) > 1:
+            vr._elimina_seleccio(sorted(keys))
+            return
         if kind == "chord":
             vr._elimina_acord_index(idx)
         else:
