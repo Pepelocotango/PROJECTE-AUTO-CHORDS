@@ -131,11 +131,12 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 > **F5** = Analitza · **Ctrl++ / Ctrl+− / Ctrl+0** = zoom +/− / total.
 >
 > **Multi-selecció (timeline)**: **Ctrl+clic** afegeix/treu un clip ·
-> **Shift+clic** = rang **per temps, a les 2 pistes** (acords + seccions) · **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V**
+> **Shift+clic** = rang **per temps, sempre del carril del clip clicat** (per agafar
+> clips de **les dues pistes**, el **marquee**: `Ctrl`+arrossega o l'eina «marc») · **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V**
 > = copiar/retallar/enganxar la selecció **sobreescrivint** el tram (regla d'or #4: la
 > cançó no pot créixer) · **Ctrl+D** = duplicar el grup ·
 > **arrossegar** un clip seleccionat = moure el grup. El regle mostra el
-> **mode** (`120 BPM · 4/4` o `Lliure`).
+> **mode** (`120 BPM · 4/4` o `hh:mm:ss`).
 
 ### ✅ P1 (A1–A3) — **IMPLEMENTAT i COMMITEJAT** (v0.7.0)
 
@@ -238,7 +239,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | **Roda ②** | **zoom** (centrat al clip seleccionat) |
 | **Espai** | **play / pausa** |
 | **T** | **tap tempo** |
-| **Ctrl+clic / Shift+clic** | **multi-selecció**: afegeix/treu del grup · **rang** (Shift = per temps, abraça **acords I seccions**) |
+| **Ctrl+clic / Shift+clic** | **multi-selecció**: afegeix/treu del grup · **rang** (Shift = per temps, **sempre del carril**; per les 2 pistes, el **marquee**) |
 | **Delete / Backspace** | **elimina** el clip o tota la **selecció** (grup) |
 | **Ctrl+D** | **duplica** el clip o **tot el grup** seleccionat |
 | **Ctrl+C / Ctrl+X / Ctrl+V** | **copiar / retallar / enganxar** la selecció — l'enganxat **sobreescriu** el tram (regla #4: la cançó no pot créixer); si no mous el cursor, enganxa just **després** del bloc i deixa el bloc enganxat **seleccionat** |
