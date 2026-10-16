@@ -1,6 +1,6 @@
 # Projectes d'AUTO CHORDS — carpeta autocontinguda («com un DAW»)
 
-> 🚧 **EN DESENVOLUPAMENT** (`2026-10-14`, OC-8). Codi: **`app/projecte.py`** + la
+> ✅ **FET** (2026-10-14, OC-8; refinat després). Codi: **`app/projecte.py`** + la
 > **GUI** a `app/main.py`. Tests: `tests/test_projecte.py`,
 > `test_projectes_gui.py`, `test_projecte_backups.py`, `test_regla11_paritat.py`.
 > Regla de producte: **«com un DAW»** — un projecte ho conté tot i **no depèn de res

@@ -162,7 +162,7 @@ Aquesta llista recull els temes que no són bloquejos del flux actual, però que
 > subministrament (10 punts: ffmpeg/ffprobe, instància única, pont MCP,
 > `safe_filename`, temporals, `baixa_verificat.py`+`deps_fixades.env`, accions
 > de GitHub per SHA, pins, inventari). Detall: `docs/SEGURETAT.md` +
-> `SECURITY.md`; auditoria de producció: `docs/AUDITORIA_PRODUCCIO.md`.
+> `SECURITY.md`; auditoria de producció: `docs/archive/AUDITORIA_PRODUCCIO.md`.
 
 - revisar tots els punts d’entrada de fitxers i subprocessos
 - validar que no hi hagi execucions no controlades ni paths vulnerables
@@ -247,7 +247,7 @@ La nostra feina és construir i integrar, però no és “des de zero” en el s
 | `icones.py` | icones SVG de **Lucide** (ISC) recolorejades (`icones/`, `eines/baixa_icones.sh`) |
 
 Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
-(motors i opcions), `QM_VAMP.md` (Queen Mary), `PLAY.md` (reproducció),
+(motors i opcions), `QM_VAMP.md` (Queen Mary), `AUDIO.md` (reproducció),
 `PARTITURA_EXPORT.md` (partitura/MuseScore), `archive/AUBIO_TEMPO.md` (històric),
 `SEGURETAT.md` (**què s'ha endurit i com es manté**).
 

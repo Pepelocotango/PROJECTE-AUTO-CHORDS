@@ -20,7 +20,7 @@ l'omple; tu prems *Aplica*). Sense arrel, s'hi escriu només el tipus
 
 La llista surt de **`xifrat.TAULA_TIPUS`** (62 files, de menys a més complex,
 amb els **alternatius** i els **graus** de cada tipus). Maqueta aprovada:
-`PANELL_TIPUS_ACORD_mockup.svg` / `.png`. El botó **▶** (només icona; ja **actiu**)
+`archive/PANELL_TIPUS_ACORD_mockup.svg` / `.png`. El botó **▶** (només icona; ja **actiu**)
 sent l'acord amb el **timbre** triat al **desplegable** del costat (**8 presets de
 família piano**, `app/acord_audio.py`; per defecte **E-piano Rhodes**): **primer
 l'arpegi** (els graus per separat) **i després el bloc** (tots alhora), amb un

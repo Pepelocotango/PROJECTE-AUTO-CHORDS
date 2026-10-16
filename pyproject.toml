@@ -12,7 +12,7 @@ authors = [{ name = "Pëp", email = "pepelocotango@gmail.com" }]
 requires-python = ">=3.10"
 # ⚠️ Q9400 sense SSE4.2: numpy<2 obligatori (el 2.x demana x86_64-v2 → SIGILL).
 # MATEIXOS PINS que `requirements.txt` (font única de versions; builds
-# reproduïbles). Vegeu docs/AUDITORIA_PRODUCCIO.md D.2.
+# reproduïbles). Vegeu docs/archive/AUDITORIA_PRODUCCIO.md D.2.
 dependencies = [
   "numpy==1.26.4",
   "PyQt5==5.15.11; sys_platform != 'darwin'",

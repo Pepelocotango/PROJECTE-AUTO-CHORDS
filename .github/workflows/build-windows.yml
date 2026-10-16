@@ -109,7 +109,7 @@ jobs:
           python -m pip install --upgrade pip
           # Font ÚNICA de versions: requirements-build.txt (runtime + PyInstaller
           # fixat). Abans s'instal·lava amb specs soltes i `pyinstaller` sense pin
-          # → builds NO reproduïbles. Vegeu docs/AUDITORIA_PRODUCCIO.md A.2/D.1.
+          # → builds NO reproduïbles. Vegeu docs/archive/AUDITORIA_PRODUCCIO.md A.2/D.1.
           python -m pip install -r requirements-build.txt
 
       - name: 6. ffmpeg estàtic (portable/bin), versió fixada i SHA256 verificat

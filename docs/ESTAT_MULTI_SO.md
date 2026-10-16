@@ -4,7 +4,7 @@
 > macOS**: **els 3 builds del CI són VERDS**. Complementa `ROADMAP_HISTORIA.md` §9
 > (viabilitat), `docs/CI_WORKFLOWS.md` (els 5 workflows de CI),
 > `docs/PORTABILITAT.md` (Linux), `docs/PORTABILITAT_WINDOWS.md`,
-> `docs/PLANIFICACIO_MACOS.md` i `docs/MOTOR_AUDIO_SO.md` (àudio per SO).
+> `docs/archive/PLANIFICACIO_MACOS.md` i `docs/AUDIO.md` (àudio per SO).
 
 ## Resum
 
@@ -155,4 +155,4 @@ chmod +x AutoChords-*-x86_64.AppImage && ./AutoChords-*-x86_64.AppImage
 | `eines/launcher_pyinstaller.py` | Entry de PyInstaller (Win i macOS) |
 | `.github/workflows/build-{appimage,windows,macos}.yml` | Els 3 builds |
 | `.github/workflows/build-all.yml` | **Agregador**: els executa tots 3 en paral·lel |
-| `docs/PORTABILITAT_WINDOWS.md`, `docs/PLANIFICACIO_MACOS.md` | Detall per SO |
+| `docs/PORTABILITAT_WINDOWS.md`, `docs/archive/PLANIFICACIO_MACOS.md` | Detall per SO |

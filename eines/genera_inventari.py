@@ -6,7 +6,7 @@ repositori** (`requirements.txt`, `eines/deps_fixades.env` i els globs dels
 plugins), MAI l'entorn local (venv, `portable/`). Així el document es pot
 **regenerar al CI i comprovar-lo amb `git diff --exit-code`** (si algú canvia
 una versió i no regenera el document, el CI peta). Vegeu
-`docs/AUDITORIA_PRODUCCIO.md` (D.5).
+`docs/archive/AUDITORIA_PRODUCCIO.md` (D.5).
 
 ⚠️ Conseqüència: si canvies una versió a `requirements.txt` o a
 `deps_fixades.env`, HAS de tornar a córrer aquest script i commitejar el .md.

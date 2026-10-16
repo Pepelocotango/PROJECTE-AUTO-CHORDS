@@ -93,7 +93,7 @@ mode congelat això reobriria la GUI. `launcher_pyinstaller.py` detecta el cas
   («More info» > «Run anyway»).
 * La reproducció d'àudio fa servir el **motor natiu** `sounddevice`/PortAudio
   (**WASAPI**, amb fallback DirectSound→MME) — vegeu `app/audio_out.py` i
-  `docs/MOTOR_AUDIO_SO.md`. No cal cap binari extern.
+  `docs/AUDIO.md`. No cal cap binari extern.
 * MuseScore (PDF/MSCZ de la partitura) és **opcional**: si l'usuari el té
   instal·lat, es genera el PDF; si no, sempre queda el MusicXML.
 

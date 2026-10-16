@@ -1,7 +1,7 @@
 """Tests: AVÍS VISIBLE quan el motor d'àudio mor.
 
-Cobreix l'arreglament de `docs/AUDITORIA_PRODUCCIO.md` 1.6/4.3 i el «Pendent» de
-`docs/PLAY.md`: que un error del reproductor NO quedi només al log, sinó que
+Cobreix l'arreglament de `docs/archive/AUDITORIA_PRODUCCIO.md` 1.6/4.3 i el «Pendent» de
+`docs/AUDIO.md`: que un error del reproductor NO quedi només al log, sinó que
 l'usuari en rebi un avís (senyal `infoMissatge` → caixa d'informació).
 """
 import os

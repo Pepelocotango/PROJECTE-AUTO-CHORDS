@@ -2890,7 +2890,7 @@ class Visor(QMainWindow):
             self._mostra_err_player()
             if codi not in (0, None):
                 # El reproductor ha mort per error (glitch del servidor...).
-                # AVÍS VISIBLE a més del log (AUDITORIA_PRODUCCIO 1.6 · PLAY.md
+                # AVÍS VISIBLE a més del log (AUDITORIA_PRODUCCIO 1.6 · AUDIO.md
                 # «Pendent»), un sol cop per reproducció (`_avis_audio_fet` es
                 # reinicia a `_engega_des_de`).
                 msg = (f"El motor d'àudio s'ha aturat per un error (codi {codi}); "

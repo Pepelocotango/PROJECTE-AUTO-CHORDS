@@ -17,7 +17,7 @@ PY=./portable/python/bin/python3
 echo "Instal·lant dependències (pins de requirements.txt)..."
 # Font ÚNICA de pins: requirements.txt → builds reproduïbles i alineats amb
 # l'inventari. (Abans anaven specs soltes i `PyQt5_sip` sense pin.)
-# Vegeu docs/AUDITORIA_PRODUCCIO.md A.2/D.1.
+# Vegeu docs/archive/AUDITORIA_PRODUCCIO.md A.2/D.1.
 $PY -m pip install --no-cache-dir --quiet -r requirements.txt
 echo "Retocant (treure qml/translations/pip: no s'usen)..."
 $PY -m pip uninstall -y pip setuptools 2>/dev/null || true

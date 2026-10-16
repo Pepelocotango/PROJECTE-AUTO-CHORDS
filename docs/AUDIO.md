@@ -1,10 +1,11 @@
-# Reproducció (play) — arquitectura i coherència
+# Àudio — reproducció (play) i motors per SO
 
-> **2026-10-14 · v0.7.0.** Com sona l'àudio a l'app i per què està fet així.
+> **2026-10-16 · v0.7.0** *(fusió de `PLAY.md` + `MOTOR_AUDIO_SO.md`).* Com sona
+> l'àudio a l'app, per què està fet així i quin **motor** fa servir a cada SO.
 > Codi: `app/audio_out.py` (motors) i `app/visor.py` (`_engega_des_de`,
 > `_alimenta`, `_atura_proc`, `_tiquet`, `play_stop`, `_mono_bytes`).
 
-## Cadena
+## 1. Cadena
 
 ```
 WAV (16 bits) ──_mono_bytes()──► mono 16 bits ──_alimenta()──► MOTOR ──► altaveus
@@ -29,7 +30,7 @@ mac/win ─► MotorStream  ─► PortAudio (sounddevice) ─► CoreAudio / WA
 | `_atura_proc()` | atura el motor (`motor.atura()`) i invalida el fil d'alimentació (`_sess`) |
 | `play_stop()` | alterna play/atura; emet `playStateChanged(bool)` per a la icona ▶/⏸ |
 
-## Decisions clau (i per què)
+## 2. Decisions clau (i per què)
 
 1. **El cursor va amb rellotge de paret** (`t0_pos + monotonic − t0_mono`), no
    amb la posició del motor (que no la reporta). Per això es baixa la
@@ -50,9 +51,39 @@ mac/win ─► MotorStream  ─► PortAudio (sounddevice) ─► CoreAudio / WA
    s'aturava en silenci.
 7. **Per què PortAudio i no un binari**: `afplay` (macOS) llegeix fitxers, no
    `stdin`; i `ffplay` s'hauria d'empaquetar a cada build. PortAudio és **una
-   sola API** per a CoreAudio/WASAPI/ASIO. Vegeu `docs/MOTOR_AUDIO_SO.md`.
+   sola API** per a CoreAudio/WASAPI/ASIO.
 
-## Estats / invariants
+## 3. Motors per SO (què fem servir i què fan els programes «pro»)
+
+| SO | Què fem servir | API nativa de sota | Què fan DAWs / VLC |
+|----|----------------|--------------------|--------------------|
+| **macOS** | `sounddevice` (PortAudio), dins el procés | **CoreAudio** | CoreAudio (tothom; és l'única via) |
+| **Windows** | `sounddevice` (PortAudio), **WASAPI primer** | **WASAPI** (compartit) | WASAPI (VLC/foobar); ASIO o WASAPI-exclusiu als DAWs |
+| **Linux** | `paplay` / `aplay` (procés extern) | PulseAudio/PipeWire / ALSA | JACK/PipeWire-JACK (DAWs); Pulse/ALSA (la resta) |
+
+### macOS
+- L'única API «de debò» és **CoreAudio** (AudioToolbox/AVFoundation). `afplay` n'és un simple embolcall.
+- PortAudio (`sounddevice`) **fa servir CoreAudio** → és correcte i és el que fan Ableton, Logic, Reaper, VLC…
+- No cal res especial (ni ASIO ni exclusiu: CoreAudio ja és de baixa latència).
+- **v0.6.1:** `MotorStream` utilitza teardown **idempotent i serialitzat** (`_tancat` + `threading.Lock`) per evitar crashes (`EXC_BAD_ACCESS` a CoreAudio) quan es tanca l'stream de PortAudio des de diferents fils.
+
+### Windows — ordre de qualitat/latència (PortAudio exposa les mateixes APIs)
+| API | Latència | Qui la fa servir |
+|---|---|---|
+| **ASIO** | molt baixa | DAWs amb interfaç «pro» (driver propi) |
+| **WASAPI exclusiu** | baixa | DAWs «in the box» |
+| **WASAPI compartit** | mitjana | **VLC, foobar2000, navegadors, jocs → el nostre cas** |
+| DirectSound | mitjana | llegat (pre-Vista) |
+| **MME** | alta | **màxima compatibilitat**, llegat |
+| WDM-KS | molt baixa | rar (accés directe al nucli) |
+- Triem **WASAPI compartit primer**, amb fallback **DirectSound → MME → WDM-KS** i, si no, el dispositiu per defecte. **Alineat amb VLC/foobar2000**.
+- **No** auto-triem ASIO (necessita el driver del dispositiu i accés **exclusiu** → no coexisteix amb altres apps). Es podria oferir com a opció avançada per a interfaços pro.
+
+### Linux
+- **No es toca**: es manté `paplay` (Pulse) / `aplay` (ALSA), que ja funciona.
+- Els DAWs a Linux fan **JACK / PipeWire-JACK** (PortAudio també ho pot fer servir), però no és el nostre cas.
+
+## 4. Estats / invariants
 
 - `self.sona` ∈ {True, False} — només `play_stop()` el canvia.
 - `self.proc` — el **motor** viu (o `None`). `_atura_proc()` sempre el deixa a `None`.
@@ -60,7 +91,7 @@ mac/win ─► MotorStream  ─► PortAudio (sounddevice) ─► CoreAudio / WA
 - `self.mut` / `self.vol` — el guany; els llegeix `_alimenta` a cada tros.
 - Tornar a engegar (`_engega_des_de`) **sempre** crida `_atura_proc()` abans.
 
-## Com provar-ho sense fer soroll (Linux)
+## 5. Com provar-ho sense fer soroll (Linux)
 
 Amb un **null sink** de PipeWire:
 ```bash
@@ -71,8 +102,15 @@ pactl unload-module $MOD
 Verificat així: volum/mute **sense cap event stop/play**; STOP únic al final
 (6,10 s per una wav de 6,00 s, cursor a 6,00 s → cua sencera).
 
-## Pendent
-- ✅ **FET (2026-10-13, `aac8b26`)**: l'**avís és VISIBLE** (no només al log) quan el
-  motor d'àudio mor per error — un sol cop per reproducció (`_avis_audio_fet`); vegeu
-  `docs/AUDITORIA_PRODUCCIO.md` (1.6).
+## 6. Pendent
+
 - Valorar `pw-play` (PipeWire natiu) com a alternativa a `paplay` a Linux.
+- **ASIO** a Windows com a possible opció avançada per a interfícies «pro».
+
+> ✅ **FET (2026-10-13, `aac8b26`)**: l'**avís és VISIBLE** (no només al log) quan
+> el motor d'àudio mor per error — un sol cop per reproducció (`_avis_audio_fet`).
+
+> 💡 **Resum**: **macOS** → CoreAudio (via PortAudio) ✅ · **Windows** → WASAPI
+> compartit (via PortAudio, fallback MME/DirectSound) ✅ · **Linux** → intacte ✅.
+> PortAudio és **exactament** la capa que fa servir molt programari madur; no
+> inventem res: triem, per a cada SO, el mateix host API que els referents.

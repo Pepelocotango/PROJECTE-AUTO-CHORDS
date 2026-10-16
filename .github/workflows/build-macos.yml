@@ -87,7 +87,7 @@ jobs:
           # Sierra. La 2.0.0 sí que té roda macosx_10_13. (El pas 6b ho vigila.)
           # Font ÚNICA de versions: requirements-build.txt (runtime + PyInstaller
           # fixat). El marcador de PyQt5 fa servir la 5.15.10 a macOS (High
-          # Sierra). Vegeu docs/AUDITORIA_PRODUCCIO.md A.2/D.1.
+          # Sierra). Vegeu docs/archive/AUDITORIA_PRODUCCIO.md A.2/D.1.
           pip install -r requirements-build.txt
           python - <<'PY'
           import PyQt5, numpy, sys
