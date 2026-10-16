@@ -965,6 +965,7 @@ class Finestra(QMainWindow):
             ("enganxar SALTANT-SE el snap", "Ctrl+Shift+V"),
             ("moure un clip un pas de graella (Alt = vora dreta)",
              "← / →"),
+            ("cancel·lar: rang en curs · loop · selecció", "Esc"),
             ("desfer / refer", "Ctrl+Z / Ctrl+Y"),
             ("reanomenar (clip o grup del tipus actiu)", "F2"),
             ("esborrar la selecció", "Del"),
@@ -1325,6 +1326,13 @@ class Finestra(QMainWindow):
                 ("Play / aturar", "Espai"),
                 ("TAP del temps (tap tempo)", "T"),
                 ("Canviar d'eina del timeline (intel·ligent ⇄ marc)", "E"),
+            ]),
+            ("Tecla Esc (cancel·lar)", [
+                ("Rang en curs (rectangle) → l'anul·la", "Esc"),
+                ("Loop a mig marcar → el descarta", "Esc"),
+                ("Loop actiu → el desactiva i ESBORRA (fora la caixa groga)",
+                 "Esc"),
+                ("Alguna cosa seleccionada → la buida", "Esc"),
             ]),
             ("Editar i desfer", [
                 ("Desfer / refer", "Ctrl+Z / Ctrl+Y"),

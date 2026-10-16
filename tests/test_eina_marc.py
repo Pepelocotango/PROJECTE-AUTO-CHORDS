@@ -298,15 +298,27 @@ class TestEscape(_Base):
         self.assertEqual((tl._loop_a, tl._loop_b), (2.0, 4.0))   # com era
         v.close()
 
-    def test_sense_res_no_toca_res(self):
+    def test_loop_marcat_es_treu(self):
+        """Amb el loop marcat (encara que estigui aturat), Esc ha de fer fora
+        la caixa groga: si no, quedaria pintada i semblaria que el loop hi és."""
         v = _visor()
         tl = v.timeline
-        # hi ha loop marcat però DESACTIVAT, i cap selecció: Esc no hi ha de fer
-        # res (no ha de desactivar res ni esborrar el loop només per existir)
+        # marcat al regle (el timeline guarda A/B; el senyal només va cap al visor)
         tl._loop_a, tl._loop_b = 2.0, 4.0
+        tl._update_loop_item()
+        tl.loopChanged.emit(2.0, 4.0)
         self._esc(tl)
-        self.assertEqual((tl._loop_a, tl._loop_b), (2.0, 4.0))
+        self.assertIsNone(tl._loop_a)
+        self.assertIsNone(tl._loop_b)
+        self.assertFalse(getattr(v, "loop_on", False))
+        v.close()
+
+    def test_sense_res_no_toca_la_seleccio(self):
+        v = _visor()
+        tl = v.timeline
+        self._esc(tl)                          # res a fer
         self.assertEqual(tl.selected_keys(), set())
+        self.assertIsNone(tl._loop_a)
         self.assertFalse(getattr(v, "loop_on", False))
         v.close()
 

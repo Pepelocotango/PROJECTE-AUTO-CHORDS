@@ -1094,9 +1094,16 @@ class Visor(QMainWindow):
             tl._update_loop_item()
             self.log("Esc: loop anul·lat (no s'ha acabat de marcar)")
             return
-        if getattr(self, "loop_on", False):                # 3) loop actiu
+        if (getattr(self, "loop_on", False)
+                or tl._loop_a is not None or tl._loop_b is not None):
+            # 3) LOOP: es desactiva I s'ESBORRA — la caixa groga del timeline
+            # ha de desaparèixer (si només aturéssim el playback, quedaria
+            # pintada i semblaria que el loop encara hi és).
             self.set_loop(False)
-            self.log("Esc: loop desactivat")
+            tl._loop_a = tl._loop_b = None
+            tl._update_loop_item()
+            self.loop_a = self.loop_b = None
+            self.log("Esc: loop fora (desactivat i esborrat)")
             return
         if tl.selected_keys() or tl._sel[0]:               # 3) selecció
             tl.clear_selection()
