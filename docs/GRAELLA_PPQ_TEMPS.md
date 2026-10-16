@@ -28,7 +28,7 @@ el BPM són "vistes" calculades a sobre.
   (count-in).
 - Export a Live: `acords_a_live.py` fa servir `step = 60.0 / bpm / 2`
   (corxera); `app/pipeline.py` idem.
-- BPM: `app/tempo.py` (numpy) / `qm-tempotracker` / plugin aubio.
+- BPM: `app/tempo.py` (numpy) / `qm-tempotracker` (l'aubio està **retirat**).
 
 👉 **Implicació:** avui les subdivisions viuen en **segons**. Afegir una capa
 de **ticks (PPQ)** fa el sistema exacte (sense arrodoniment acumulat), habilita

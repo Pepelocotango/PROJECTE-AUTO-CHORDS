@@ -56,7 +56,7 @@ universal, i és la **raó de ser** d'aquest projecte:
 de cap DAW concret. Live, Reaper, Logic, Bitwig, Studio One, Pro Tools,
 Cubase, GarageBand — tots consumeixen WAVs amb nom.
 
-## Obertura tecnolítica
+## Obertura tecnològica
 
 El **core del projecte** (detecció amb Chordino + qm-segmenter, validació
 temporal, export WAVs amb noms intel·ligents) és estable i **independent
@@ -113,7 +113,7 @@ El projecte ja ha passat de prototip funcional a flux de producte útil:
   d'àudio natiu** a macOS/Windows (`sounddevice`/PortAudio → **CoreAudio** i
   **WASAPI**; **Linux intacte**). CI de macOS amb **smoke test** de l'`.app` i
   **verificació exhaustiva del `minos`** (≤ 10.13). Detall: `CHANGELOG` [0.6.0]
-  i `docs/MOTOR_AUDIO_SO.md`.
+  i `docs/AUDIO.md`.
 - **Fase D.2 — edició DAW-like (v0.5.2)**: **multi-selecció** (`Ctrl`/`Shift`+clic),
   **porta-retalls intern** (`Ctrl+C/V/X`), **duplicar** i **moure** el grup,
   **indicador de MODE** al regle i **loop A/B amb snap**; `timeline.py` partit

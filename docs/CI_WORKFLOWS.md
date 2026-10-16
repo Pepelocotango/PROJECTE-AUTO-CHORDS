@@ -40,8 +40,9 @@ El CI i el Release fan servir el **mateix patró**: **un sol paquet per SO** amb
 - Al **CI** el nom porta la versió del `pyproject.toml`; al **Release** es
   re-escriu amb la **versió del tag**. El **número de build** (`<NN>` = número
   d'execució de GitHub) es manté sempre.
-- Docs inclosos: `README.md`, `CHANGELOG.md`, `ROADMAP.md`, `LICENSE`,
-  `LLICENCIES_TERCERS.md` i `docs/`.
+- Docs inclosos: `README.md`, `LICENSE` i `LLICENCIES_TERCERS.md` (a més de les
+  **2 imatges del README**). El `CHANGELOG`, el `ROADMAP` i tot `docs/` **NO** s'hi
+  posen (són documentació; els workflows ho confirmen).
 
 > **Artefacte vs Release**: un *artefacte* és un fitxer temporal i privat que queda a
 > la pàgina de l'execució (Actions ▸ execució ▸ *Artifacts*). **El projecte els guarda
@@ -149,6 +150,6 @@ Detalls:
 - Runners: **`ubuntu-22.04`** (no 24.04: allà es compila `vamp_host_local` i la seva
   glibc marca l'abast mínim de l'AppImage), **`windows-2022`** i **`macos-15-intel`**.
 - Els workflows viuen a `.github/workflows/`; els scripts de build a `eines/`.
-- Detall per SO: `docs/ESTAT_MULTI_SO.md`, `docs/PORTABILITAT.md`,
-  `docs/PORTABILITAT_WINDOWS.md`, `docs/PLANIFICACIO_MACOS.md`.
+- Detall per SO: `docs/ESTAT_MULTI_SO.md`, `docs/archive/PORTABILITAT.md`,
+  `docs/PORTABILITAT_WINDOWS.md`, `docs/archive/PLANIFICACIO_MACOS.md`.
 - Proves funcionals dels paquets: `docs/PROVES_FUNCIONALS_3SO.md`.

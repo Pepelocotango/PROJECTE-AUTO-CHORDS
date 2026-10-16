@@ -47,7 +47,7 @@
   font és als enllaços de sobre.
 - **Llibreries natives empaquetades a `portable/lib/`**: es copien **sense
   modificar** dels paquets de la distribució que compila (vegeu
-  `eines/libreries_natives.sh` i `docs/PORTABILITAT.md`); no se'n canvia cap
+  `eines/libreries_natives.sh` i `docs/archive/PORTABILITAT.md`); no se'n canvia cap
   byte ni es fa enllaç estàtic, així que la LGPL queda satisfeta amb la
   substitució del `.so`.
 - **ISC (Lucide) i MIT (Feather)**: el text **complet** de les llicències i

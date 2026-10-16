@@ -66,7 +66,7 @@ Cap temps **negatiu** ni cap durada **≤ 0**.
 ## 9. Portabilitat
 Tot el que sigui natiu es compila per a **macOS 10.13+** i **sense AVX**
 (el Q9400): cap binari del paquet pot superar **`minos 10.13`** ni requerir AVX.
-→ `PLANIFICACIO_MACOS.md` · verificat al CI (`eines/verifica_minos_macos.py`).
+→ `archive/PLANIFICACIO_MACOS.md` · verificat al CI (`eines/verifica_minos_macos.py`).
 
 ## 10. Estat en un directori escriptible
 El **log / opcions / temp** van sempre a un directori **escriptible** — mai dins

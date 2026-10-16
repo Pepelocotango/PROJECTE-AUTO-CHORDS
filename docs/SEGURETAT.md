@@ -57,7 +57,7 @@ l'usuari.
   **mateixos noms a tots els SO**.
 - Si dos noms queden iguals després de netejar/truncar, es **desambigüen amb un
   sufix** (`_2`, `_3`…). **Els noms únics no canvien mai.**
-- Els noms d'acord habituals (`C`, `C#m7`, `N`, `Am/G`→`Am-G`…) són **idèntics**
+- Els noms d'acord habituals (`C`, `C#m7`, `N`, `Am/G`→`Am_G`…) són **idèntics**
   (hi ha un **test «daurat»**).
 - Tests: `SafeFilenameTests`.
 

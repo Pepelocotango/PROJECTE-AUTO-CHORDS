@@ -1,7 +1,7 @@
 # QM Vamp Plugins (Queen Mary) — compilats localment
 
 > **2026-10-07.** Compilats i integrats a l'app. Vegeu també
-> `docs/AUTODETECCIO_OPCIONS.md` i `docs/AUBIO_TEMPO.md`.
+> `docs/AUTODETECCIO_OPCIONS.md` i `docs/archive/AUBIO_TEMPO.md`.
 
 ## Què és
 
@@ -104,7 +104,7 @@ llibreries**: libc/libstdc++ + libvamp-hostsdk + libsndfile), compilat amb
 > ✅ **Autoportabilitat** (2026-10-07): les llibreries que demana l'host
 > (`libvamp-hostsdk`, `libsndfile` i els còdecs FLAC/Vorbis/Opus/Ogg/mpg123/
 > LAME) s'**empaqueten** a `portable/lib/` amb `eines/libreries_natives.sh`; al
-> SO només calen `glibc` i `libstdc++/libgcc`. Detall: `docs/PORTABILITAT.md` §0.
+> SO només calen `glibc` i `libstdc++/libgcc`. Detall: `docs/archive/PORTABILITAT.md` §0.
 
 **Claus descobertes**:
 1. Els canals s'han de passar **desintercalats** (si no, els acords surten

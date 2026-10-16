@@ -39,7 +39,7 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
 
 | Acció | Drecera | Què fa |
 |---|---|---|
-| **Obre WAV…** | `Ctrl+O` | Obre un àudio (com sempre). |
+| **Obre àudio…** | `Ctrl+O` | Obre un àudio (com sempre). |
 | **Obre projecte…** | `Ctrl+Shift+O` | Obre una carpeta de projecte (`.acproj`). |
 | **Obre recent…** | — | **Recents** (fins a 8) — `recents.json` a `~/.local/state/auto-chords/`. |
 | **Desa** | `Ctrl+S` | Desa el `.acproj` (atòmic). |
@@ -84,9 +84,9 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
 
 ## Pendents
 
-- **(MCP) exposar els projectes al pont**: obrir/desar/desar com/backup/recents →
-  **encara NO hi és** (ara només GUI). Detall: `docs/MCP_AUTO_CHORDS.md`
-  §«Pendent — funcions noves NO cobertes per l'MCP».
+- **(MCP) exposar els projectes al pont** ✅ **FET (2026-10-15)**: `ac_crea_projecte`,
+  `ac_obre_projecte`, `ac_desa_projecte`, `ac_desa_com`, `ac_fes_backup`, `ac_recents`.
+  Detall: `docs/MCP_AUTO_CHORDS.md` §«Funcions noves cobertes».
 - Migracions de `format` < actual (`_migra`, camp a camp).
 - (opcional) UI per **recuperar una còpia** concreta de `backup/` des de la GUI.
 

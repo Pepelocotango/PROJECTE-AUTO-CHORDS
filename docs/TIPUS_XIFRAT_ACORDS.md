@@ -18,7 +18,7 @@ llista → el xifrat canònic va a la casella **«Nom»** de l'editor (només
 l'omple; tu prems *Aplica*). Sense arrel, s'hi escriu només el tipus
 (`Maj7`) i tu l'acabes.
 
-La llista surt de **`xifrat.TAULA_TIPUS`** (62 files, de menys a més complex,
+La llista surt de **`xifrat.TAULA_TIPUS`** (80 files, de menys a més complex,
 amb els **alternatius** i els **graus** de cada tipus). Maqueta aprovada:
 `archive/PANELL_TIPUS_ACORD_mockup.svg` / `.png`. El botó **▶** (només icona; ja **actiu**)
 sent l'acord amb el **timbre** triat al **desplegable** del costat (**8 presets de

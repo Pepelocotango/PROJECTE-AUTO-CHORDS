@@ -5,7 +5,7 @@
 > WAV** llestos per arrossegar a qualsevol DAW. Tot en català ·
 > **GPL-3.0-or-later**.
 >
-> **v0.7.0** · Estat: **flux de producte estable i multi-SO** · Suite: **857
+> **v0.7.0** · Estat: **flux de producte estable i multi-SO** · Suite: **871
 > tests OK** (1 skip) · pyflakes net.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
@@ -55,7 +55,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   **eina del timeline** (intel·ligent / **marc**), **mode fàcil** (regularitza a
   la graella).
 - **Xifrat** — **notació canònica** (font única `app/xifrat.py`), **panell de
-  tipus d'acord** (62 tipus) amb **audició** (e-piano, **8 timbres**).
+  tipus d'acord** (80 tipus) amb **audició** (e-piano, **8 timbres**).
 - **Projectes** — autocontinguts (`.acproj` + `audio/` + CSVs + `backup/`),
   autosave i recuperació de sessió.
 - **Export** — paquet de WAVs per DAW + **partitura** (MusicXML sempre;
@@ -213,13 +213,13 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ## 7. Deute tècnic
 
-- **Refactor de `app/main.py`** (2.942 línies, `Finestra` = 138 mètodes) en
+- **Refactor de `app/main.py`** (3.043 línies, `Finestra` = 138 mètodes) en
   mòduls dedicats → **mixins**, per fases. **No urgent** (decisió de l'operador,
   16-10). ✅ *Ben organitzat de moment*; l'històric del disseny és a l'arxiu.
   *(1a extracció proposada: la caixa d'informació.)*
 - **Higiene dels tests**: els fixtures no esborren la seva carpeta temporal
   (acumulen a `/tmp`) → `addCleanup(shutil.rmtree, …)` o un helper comú.
-- **`app/visor.py`** (3.029 línies) tindria un tractament semblant si mai calgués.
+- **`app/visor.py`** (3.097 línies) tindria un tractament semblant si mai calgués.
 
 ---
 

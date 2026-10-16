@@ -94,7 +94,7 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 - Si una edició trenca la **lògica temporal** (inici duplicat/invertit, etc.),
   es **rebutja sencera** amb un error clar; l'estat no canvia.
 
-> ✅ **Reanomenament sanejat** (IMPLEMENTAT): els noms d'acord es **sanegen** de manera canònica — `pipeline.saneja_nom_acord()` (el mateix que fa l'export) — a **tots** els camins, **MCP inclòs** (`ac_rename_chord`). Així el nom del **model** i el del **CSV** sempre coincideixen i no hi entren caràcters invàlids. Noms habituals intactes (`C#m7`, `N`; `Am/G` → `Am-G`).
+> ✅ **Reanomenament sanejat** (IMPLEMENTAT): els noms d'acord es **sanegen** de manera canònica — `pipeline.saneja_nom_acord()` (el mateix que fa l'export) — a **tots** els camins, **MCP inclòs** (`ac_rename_chord`). Així el nom del **model** i el del **CSV** sempre coincideixen i no hi entren caràcters invàlids. Noms habituals intactes (`C#m7`, `N`; `Am/G` → `Am_G`).
 
 ## Verificació manual (sense opencode)
 

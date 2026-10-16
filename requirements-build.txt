@@ -9,7 +9,7 @@
 #
 # `pyinstaller==6.22.3` és la versió que els CI resolien (sense pin) el
 # 2026-10-13; fixar-la evita que un build futur canviï de comportament sol.
-# Vegeu `docs/AUDITORIA_PRODUCCIO.md` (A.2/D.1).
+# Vegeu `docs/archive/AUDITORIA_PRODUCCIO.md` (A.2/D.1).
 -r requirements.txt
 pyinstaller==6.22.3
 # Mesura de cobertura de la suite al CI (llindar a build-* i build-all).

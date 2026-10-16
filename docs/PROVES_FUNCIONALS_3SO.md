@@ -54,7 +54,7 @@ chmod +x AutoChords-*-x86_64.AppImage
 ## ✅ Checklist comuna (5 minuts)
 
 - [ ] **Arrenca**: surt la finestra principal sense errors.
-- [ ] **Obre un WAV** (`Fitxer ▸ Obre WAV…`, `Ctrl+O`) i prem **`F5`** (Analitza).
+- [ ] **Obre un àudio** (`Fitxer ▸ Obre àudio…`, `Ctrl+O`) i prem **`F5`** (Analitza).
 - [ ] **Timeline**: arrossega un acord (ha de fer **snap** a la graella).
 - [ ] **Multi-selecció**: `Ctrl+clic` afegeix un clip; `Shift+clic` fa el rang.
 - [ ] **Duplicar el grup**: `Ctrl+D` amb 2+ clips seleccionats.

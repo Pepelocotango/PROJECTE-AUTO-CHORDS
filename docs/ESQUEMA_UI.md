@@ -2,7 +2,7 @@
 
 > Document de referència de la UI (PyQt5). Noms que fa servir el codi i
 > noms «humans» de cada zona, mides reals i interaccions.
-> **Actualitzat: 2026-10-14 · v0.7.0** (GUI reordenada:
+> **Actualitzat: 2026-10-16 · v0.7.0** (GUI reordenada:
 > timeline al centre, barres d'eines, franja Editor, metrònom, count-in,
 > caixa d'informació, tap tempo i paleta de botons unificada).
 
@@ -375,6 +375,6 @@ com **`<nom>_convertit.wav`** (es reutilitza si ja és més nou).
   **`python3 eines/genera_esquema_ui.py`** (**no editar-los a mà**; el test
   `tests/test_esquema_ui_gen.py` ho blinda → si edites aquest `.md`, regenera'ls).
   L'**art manual** original es conserva a `ESQUEMA_UI_manual.svg`/`.html`.
-- `docs/AUBIO_TEMPO.md` — **[històric]** plugin d'aubio (tempo/beats), retirat.
+- `docs/archive/AUBIO_TEMPO.md` — **[històric]** plugin d'aubio (tempo/beats), retirat.
 - `docs/AUTODETECCIO_OPCIONS.md` — motors d'autodetecció, opcions i post-processat.
 - `README.md` — «Estat actual» de l'app.
