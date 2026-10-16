@@ -1,11 +1,10 @@
-"""Selecció creuada (Shift+clic per TEMPS a les dues pistes) + renom en bloc
-estil fulla de càlcul (opció A: amb selecció mixta, només el tipus actiu).
+"""Rang de selecció per TEMPS (Shift+clic) + renom en bloc estil fulla de càlcul
+(opció A: amb selecció mixta, només el tipus actiu).
 
-- `extend_selection`: el rang abraça acords I seccions (l'inici dels quals cau
-  dins del rang), per poder copiar/enganxar/esborrar «2 estructures + N acords».
-  ⚠️ Des del 16-10-2026 això és una **opció** (`set_seleccio_creuada`, menú
-  Selecciona) **desactivada per defecte**: per defecte el rang es queda al
-  carril del clip clicat. Aquests tests l'activen expressament.
+- `extend_selection`: el rang es calcula per temps i es queda SEMPRE al carril
+  del clip clicat. (La «selecció creuada» es va retirar el 16-10-2026: per
+  agafar clips de les dues pistes de cop es fa servir el **marquee**,
+  Ctrl+arrossegant o amb l'eina «marc».)
 - `_renomena_acords`/`_renomena_seccions`: renom de molts elements de cop, i
   el camp Nom + «Aplica» de l'editor també ho fa amb una multi-selecció.
 Regla d'or #11: mateix tracte acords↔estructura.
@@ -59,30 +58,27 @@ class _Base(unittest.TestCase):
         cls._app = visor_mod.QApplication.instance() or visor_mod.QApplication([])
 
 
-class TestSeleccioCreuada(_Base):
-    def test_shift_de_chord_a_chord_abraça_seccions(self):
+class TestRangDUnCarril(_Base):
+    def test_shift_de_chord_a_chord_nomes_acords(self):
         v = _visor()
         try:
             tl = v.timeline
-            tl.set_seleccio_creuada(True)        # opció (per defecte OFF)
             tl.select_clip("chord", 0)
             tl.extend_selection("chord", 3)      # rang [0.0, 7.0]
+            # NOMÉS el carril dels acords (el creuat es va retirar)
             self.assertEqual(tl.selected_keys(), {
-                ("chord", 0), ("chord", 1), ("chord", 2), ("chord", 3),
-                ("section", 0), ("section", 1)})   # A(0) i B(5) hi cauen
+                ("chord", 0), ("chord", 1), ("chord", 2), ("chord", 3)})
         finally:
             v.close()
 
-    def test_shift_de_section_a_section_abraça_acords(self):
+    def test_shift_de_section_a_section_nomes_seccions(self):
         v = _visor()
         try:
             tl = v.timeline
-            tl.set_seleccio_creuada(True)        # opció (per defecte OFF)
             tl.select_clip("section", 1)
             tl.extend_selection("section", 2)    # rang [5.0, 10.0]
-            self.assertEqual(tl.selected_keys(), {
-                ("section", 1), ("section", 2),
-                ("chord", 3), ("chord", 4)})       # 7.0 i 10.0 hi cauen
+            self.assertEqual(tl.selected_keys(),
+                             {("section", 1), ("section", 2)})
         finally:
             v.close()
 

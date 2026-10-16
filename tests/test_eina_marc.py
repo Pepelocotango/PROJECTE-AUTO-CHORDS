@@ -96,10 +96,9 @@ class _Base(unittest.TestCase):
 
 
 class TestEinaPerDefecte(_Base):
-    def test_eina_intel_ligent_i_creuada_apagada(self):
+    def test_eina_intel_ligent_per_defecte(self):
         v = _visor()
         self.assertEqual(v.timeline.tool(), "intel·ligent")
-        self.assertFalse(v.timeline.seleccio_creuada())
         v.close()
 
     def test_rang_d_acords_no_toca_les_seccions(self):
@@ -118,17 +117,6 @@ class TestEinaPerDefecte(_Base):
         self.assertEqual(v.timeline.selected_keys(),
                          {("section", 0), ("section", 1)})
         v.close()
-
-    def test_creuada_activada_abraça_les_dues(self):
-        v = _visor()
-        v.timeline.set_seleccio_creuada(True)
-        v.timeline.select_clip("chord", 0)
-        v.timeline.extend_selection("chord", 2)
-        keys = v.timeline.selected_keys()
-        self.assertIn(("section", 0), keys)         # A (0-5)
-        self.assertIn(("chord", 2), keys)           # F (4.5)
-        v.close()
-
 
 class TestMarcSeleccio(_Base):
     def test_marc_agafa_el_que_sona_i_no_el_que_nomes_toca(self):

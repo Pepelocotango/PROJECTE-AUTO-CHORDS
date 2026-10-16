@@ -797,14 +797,9 @@ class Finestra(QMainWindow):
             "Arrossegar pel timeline dibuixa un rectangle: queda seleccionat "
             "tot el que hi SONA a dins, i només de les pistes que cobreixi. "
             "El rectangle desapareix en deixar anar.")
-        self.a_creuada = self._act(
-            m, "Selecció creuada (rang a les 2 pistes)", "",
-            self._canvia_creuada, checkable=True)
-        self.a_creuada.setChecked(False)       # DESACTIVAT per defecte
-        self.a_creuada.setToolTip(
-            "Amb això DESACTIVAT (per defecte), el rang de Shift+clic es queda "
-            "al carril del clip on cliques. Activat, abraça acords I seccions "
-            "(«2 estructures + N acords» de cop).")
+        # (No hi ha opció de «selecció creuada»: el rang de Shift+clic és sempre
+        # del carril clicat, i per agafar clips de les dues pistes es fa servir
+        # el marquee — Ctrl+arrossega o l'eina «marc».)
         # --- Visualitza ---
         m = mb.addMenu("&Visualitza")
         self._act(m, "Zoom +", "Ctrl++", lambda: self._zoom_visor(0.5))
@@ -951,13 +946,13 @@ class Finestra(QMainWindow):
             ("seleccionar un clip", "Clic a un clip"),
             ("afegir / treure un clip de la selecció (disjunt)", "Ctrl+clic"),
             ("rang de clips del MATEIX carril", "Shift+clic"),
-            ("rang a les 2 pistes (acords I seccions)",
-             "no té tecles: s'activa a Selecciona ▸ Selecció creuada"),
             ("moure un clip (tot el grup si està seleccionat)",
              "Arrossega el cos del clip"),
-            ("DUPLICAR-LO: l'original es queda a lloc", "Alt+arrossega el cos"),
+            ("DUPLICAR-LO: l'original es queda a lloc",
+             "Ctrl+Shift+arrossega el cos"),
             ("redimensionar (inici / final)", "Arrossega una vora"),
-            ("rectangle de selecció (marquee)", "Eina marc ▸ arrossega"),
+            ("rectangle de selecció (marquee)",
+             "Ctrl+arrossega (temporal) o Eina marc ▸ arrossega"),
             ("canviar d'eina del timeline (intel·ligent ⇄ marc)", "E"),
             ("cursor al punt clicat / buidar la selecció", "Clic al fons"),
             ("seleccionar TOT el que hi ha dins el loop", "Doble-clic al loop"),
@@ -1440,9 +1435,7 @@ class Finestra(QMainWindow):
         marc = bool(getattr(self, "b_eina", None) is not None
                     and self.b_eina.isChecked())
         vr.timeline.set_tool("marc" if marc else "intel·ligent")
-        vr.timeline.set_seleccio_creuada(
-            bool(getattr(self, "a_creuada", None) is not None
-                 and self.a_creuada.isChecked()))
+
 
     def _canvia_eina(self, activat):
         """Commutador d'eina del timeline: intel·ligent ⇄ marc."""
@@ -1468,11 +1461,6 @@ class Finestra(QMainWindow):
         """
         if hasattr(self, "b_eina"):
             self.b_eina.setChecked(not self.b_eina.isChecked())
-
-    def _canvia_creuada(self, activat):
-        self._replica_eina()
-        self.registra("selecció creuada (rang a les 2 pistes): "
-                      + ("ON" if activat else "OFF"))
 
     def _copia_clips(self):
         vr = getattr(self, "visor_ref", None)

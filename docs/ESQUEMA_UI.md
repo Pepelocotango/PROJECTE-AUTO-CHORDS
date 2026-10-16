@@ -85,7 +85,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 |------|---------|
 | **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… (Ctrl+Shift+O) · Obre recent… · Desa (Ctrl+S) · Desa com… (Ctrl+Shift+S) · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Tonalitat automàtica (qm-keydetector) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix l'acord al cursor… · Parteix la secció al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
-| **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) · Selecció creuada (rang a les 2 pistes) |
+| **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
 | **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Mode fàcil: re-regularitza a la graella… · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
@@ -99,17 +99,24 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
   els clips que **HI SONEN** a dins — només de les pistes que el rectangle
   cobreixi, de manera que un marc només damunt dels acords agafa només acords.
   (Convenció dels DAWs: `Snap Type` del Cubase, marquee de Logic/Reaper.)
-- **Selecció creuada** (menú Selecciona): **desactivada per defecte**. Apagada,
-  el rang de `Shift+clic` es queda al **carril del clip clicat**; activada,
-  abraça acords I seccions («2 estructures + N acords» de cop).
+- **`Ctrl`+arrossegar = marquee TEMPORAL**: fa la funció de l'eina «marc» sense
+  canviar d'eina; en deixar anar, tot torna a **intel·ligent** (és la convenció
+  de l'Studio One: *«[Ctrl] in arrangement temporarily switches Tools»*). Si el
+  gest és un clic sense arrossegar, es resol com a **`Ctrl`+clic = toggle**, que
+  continua funcionant igual. `Ctrl+Shift`+arrossegar té prioritat (és duplicar).
+- El **rang de `Shift+clic`** és sempre del **carril del clip clicat**. Per
+  agafar clips de les **dues pistes** de cop, el **marquee**: `Ctrl`+arrossega
+  (temporal) o l'eina «marc» (permanent).
 - La **selecció no entra a la pila de desfer** (com abans).
 - **Tecla `E`**: commuta l'eina (**toggle**, no on/off). Per defecte sempre
   s'arrenca en «intel·ligent».
-- **`Alt`+arrossegar el cos d'un clip d'acord = duplicar-lo**: el clip viatja i
-  a l'**origen hi torna una còpia** amb el mateix nom (l'original es queda a
-  lloc). És la convenció universal dels DAWs per copiar (`Alt`/`Option`+drag a
-  Studio One, Reason, Pro Tools i Live-mac). *Pendent: el mateix gest per a les
-  seccions (avui l'`Alt`+arrossegar una secció la mou normalment).*
+- **`Ctrl+Shift`+arrossegar el cos d'un clip d'acord = duplicar-lo**: el clip
+  viatja i a l'**origen hi torna una còpia** amb el mateix nom (l'original es
+  queda a lloc). És l'**única** drecera de duplicar: `Alt`+arrossegar **no** s'hi
+  fa servir perquè a Linux el gestor de finestres se l'emporta per moure la
+  finestra (MATE: `<Alt>`; GNOME: `<Super>`) i `Ctrl+Shift` és lliure als 3
+  sistemes. *Pendent: el mateix gest per a les seccions (avui arrossegar una
+  secció la mou).*
 - La caixa d'informació (**`_info_panells`** → `_dreceres()`) llista **totes**
   les combinacions de tecles i de ratolí (també les del diàleg *Ajuda ▸
   Dreceres de teclat*: una sola font).

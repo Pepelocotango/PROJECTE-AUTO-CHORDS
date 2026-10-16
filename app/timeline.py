@@ -199,10 +199,13 @@ class TimelineView(QGraphicsView):
         # que hi ha sota: mou, redimensiona, loop…) o «marc» (arrossegar dibuixa
         # un rectangle de selecció i NO mou clips, com el marquee dels DAWs).
         self._tool = "intel·ligent"
-        # Rang de Shift+clic a les DUES pistes: DESACTIVAT per defecte → el rang
-        # es queda al carril del clip clicat. El creuat és una opció de menú.
-        self._sel_creuada = False
+        # (El rang de Shift+clic és SEMPRE del carril del clip clicat: per agafar
+        # clips de les dues pistes es fa servir el marquee, Ctrl+arrossegant.)
         self._marquee = None       # rectangle en curs: [x0,y0,x1,y1] de la vista
+        # El rectangle ve d'un Ctrl+arrossegament TEMPORAL (no de l'eina «marc»):
+        # si és minúscul (un clic) es resol com a toggle, i en deixar anar tot
+        # torna a l'eina intel·ligent.
+        self._marquee_ctrl = False
         # Alt+arrossegament en curs: (idx, t original) per deixar-hi la còpia.
         self._alt_copia = None
         self._loop_item = None     # banda de loop A/B
@@ -749,11 +752,10 @@ class TimelineView(QGraphicsView):
     def extend_selection(self, kind: str, index: int) -> None:
         """Shift+clic: selecciona el RANG de clips entre l'àncora i el clicat.
 
-        El rang es calcula per TEMPS (no per índex). Amb la **selecció creuada
-        DESACTIVADA** (per defecte) es queda al **carril del clip clicat**;
-        activada, abraça les dues pistes (tots els acords i totes les seccions
-        l'inici dels quals cau dins del rang), per agafar de cop «2 estructures
-        + 20 acords». Sense àncora vàlida equival a una selecció simple.
+        El rang es calcula per TEMPS (no per índex) i es queda SEMPRE al
+        **carril del clip clicat**. Per agafar clips de les dues pistes de cop
+        es fa servir el **marquee** (Ctrl+arrossegant, o l'eina «marc»).
+        Sense àncora vàlida equival a una selecció simple.
         """
         akind, aidx = self._sel
         t_anc = self._temps_item(akind, aidx)
@@ -762,8 +764,7 @@ class TimelineView(QGraphicsView):
             self.select_clip(kind, index)
             return
         keys = self.keys_dins_rang(t_anc, t_clic)
-        if not self._sel_creuada:
-            keys = {k for k in keys if k[0] == kind}
+        keys = {k for k in keys if k[0] == kind}
         if not keys:
             keys = {(kind, index)}
         self._multi = keys
@@ -842,21 +843,30 @@ class TimelineView(QGraphicsView):
         """Eina vigent: «intel·ligent» o «marc»."""
         return self._tool
 
-    def set_seleccio_creuada(self, on: bool) -> None:
-        """Rang de Shift+clic a les DUES pistes (per defecte NO: un carril)."""
-        self._sel_creuada = bool(on)
+    def _inicia_marc(self, event, temporal: bool = False) -> None:
+        """Comença el rectangle de selecció (eina «marc» o Ctrl+arrossegament)."""
+        p = (event.position() if hasattr(event, "position") else event.pos())
+        self._marquee = [float(p.x()), float(p.y()), float(p.x()), float(p.y())]
+        self._marquee_ctrl = bool(
+            temporal and (event.modifiers() & Qt.ControlModifier))
+        self.viewport().update()
 
-    def seleccio_creuada(self) -> bool:
-        """El rang de Shift+clic abraça les dues pistes?"""
-        return bool(self._sel_creuada)
-
-    def _marc_o_clic(self, x0, y0, x1, y1) -> None:
+    def _marc_o_clic(self, x0, y0, x1, y1, ctrl: bool = False) -> None:
         """Tanca el rectangle: selecciona el que HI SONA a dins.
 
         Un arrossegament minúscul es tracta com un clic (mou el cursor i buida
         la selecció) perquè l'usuari no es quedi amb una selecció fantasma.
         """
         if abs(x1 - x0) < 3.0 and abs(y1 - y0) < 3.0:
+            if ctrl:
+                # Ctrl+CLIC (sense arrossegar) = afegir/treure de la selecció:
+                # la via temporal no ha de trencar el toggle de sempre.
+                it = self.itemAt(QPoint(int(x0), int(y0)))
+                if isinstance(it, (ChordItem, SectionItem)):
+                    kind = ("chord" if isinstance(it, ChordItem)
+                            else "section")
+                    self.toggle_selection(kind, getattr(it, "idx", -1))
+                    return
             sp = self.mapToScene(QPoint(int(x0), int(y0)))
             t = max(0.0, min(self._durada, self._x_to_time(sp.x())))
             self.set_position(t)
@@ -982,10 +992,13 @@ class TimelineView(QGraphicsView):
         """Mou l'inici de l'acord idx a new_t (amb snap + constraint)."""
         if idx < 0 or idx >= len(self._acords):
             return
-        # Alt+arrossegar = duplicar: capturem l'instant ORIGINAL (abans del
+        # Arrossegar per DUPLICAR: capturem l'instant ORIGINAL (abans del
         # primer moviment). El `_emit_edit_finished` deixarà la còpia allà.
+        # Només **Ctrl+Shift**: és l'única combinació lliure als 3 sistemes
+        # (a Linux el gestor de finestres s'emporta Alt —MATE— i Super —GNOME—).
+        mods = QApplication.keyboardModifiers()
         if self._alt_copia is None and (
-                QApplication.keyboardModifiers() & Qt.AltModifier):
+                mods & Qt.ControlModifier and mods & Qt.ShiftModifier):
             self._alt_copia = (float(self._acords[idx][0]),
                                str(self._acords[idx][1]))
         # Moviment de GRUP: si l'acord arrossegat (pel cos) forma part d'una
@@ -1401,6 +1414,17 @@ class TimelineView(QGraphicsView):
                     self._loop_t0 = self._loop_x_to_time(sp.x())
                 event.accept()
                 return
+            # Ctrl+arrossegar = fer el MARC **temporalment** (a tot arreu de les
+            # pistes). En deixar anar, tot torna a l'eina intel·ligent; i si el
+            # gest és un clic (rectangle minúscul) es resol com a toggle.
+            # (Ctrl+Shift té prioritat: és el d'DUPLICAR i va per un altre camí.)
+            mods_ara = event.modifiers()
+            if (mods_ara & Qt.ControlModifier
+                    and not (mods_ara & Qt.ShiftModifier)):
+                self.setFocus()
+                self._inicia_marc(event, temporal=True)
+                event.accept()
+                return
             # Eina «marc»: el drag NO mou clips → dibuixa el rectangle de
             # selecció (rubber-band). Pot arrencar a qualsevol punt de les
             # pistes, també damunt d'un clip (com el marquee dels DAWs).
@@ -1418,14 +1442,13 @@ class TimelineView(QGraphicsView):
                 kind = "chord" if isinstance(it, ChordItem) else "section"
                 idx = getattr(it, "idx", -1)
                 mods = event.modifiers()
-                # Ctrl+clic = afegir/treure de la multi-selecció; Shift+clic =
-                # estendre el rang. En tots dos casos NO s'inicia cap drag.
-                if mods & Qt.ControlModifier:
+                # Aquí només hi arriben: Shift+clic (rang) i Ctrl+Shift
+                # (duplicar arrossegant). El Ctrl sol ja s'ha resolt abans com a
+                # MARC temporal, i el Ctrl+Shift cau a `super()` perquè l'item
+                # iniciï l'arrossegament de la còpia.
+                if mods & Qt.ControlModifier and mods & Qt.ShiftModifier:
                     self.setFocus()
-                    self.toggle_selection(kind, idx)
-                    event.accept()
-                    return
-                if mods & Qt.ShiftModifier:
+                elif mods & Qt.ShiftModifier:
                     self.setFocus()
                     self.extend_selection(kind, idx)
                     event.accept()
@@ -1509,9 +1532,11 @@ class TimelineView(QGraphicsView):
     def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.LeftButton and self._marquee is not None:
             x0, y0, x1, y1 = self._marquee
+            ctrl = self._marquee_ctrl
             self._marquee = None          # el rectangle desapareix en deixar anar
+            self._marquee_ctrl = False    # ...i tot torna a l'eina intel·ligent
             self.viewport().update()
-            self._marc_o_clic(x0, y0, x1, y1)
+            self._marc_o_clic(x0, y0, x1, y1, ctrl=ctrl)
             event.accept()
             return
         if event.button() == Qt.RightButton and getattr(self, "_pan_drag", False):
