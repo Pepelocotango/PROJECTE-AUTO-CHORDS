@@ -1126,6 +1126,49 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
   registri `addCleanup(shutil.rmtree, v.td, ignore_errors=True)` (o un helper
   comú `_qt_neteja`), i així la suite es neteja sola sense `rm` manual.
 
+## 16) Refactorització de `main.py` en mòduls dedicats (FUTUR — 2026-10-16)
+
+> **Estat**: `app/main.py` té **2.942 línies** i la classe `Finestra` acumula
+> **138 mètodes** («god object»). **Avui està prou organitzat i funciona** (suite
+> verda) → **NO és urgent**; queda **anotat per a una futura versió**, amb calma
+> i **per fases**. Decisió de l'operador (16-10): deixar-ho com està de moment.
+
+### 16.1 Què es faria
+Partir les responsabilitats de `Finestra` en **mòduls petits i dedicats** (com la
+resta del projecte: `xifrat`, `partitura`, `projecte`, `acord_audio`…):
+
+| Grup | Mètodes / estat | Mòdul proposat |
+|---|---|---|
+| **Info box** (rotatori, clic, `eventFilter`) | `_missatge_info`, `_actualitza_info_widget`, `_posa_info`, `_info_panells`, `_panell_eina`, `_info_defecte_html`, `_clic_info_box` | `app/info_box.py` |
+| **Log** | `self.log`, `registra` | `app/log_panel.py` |
+| **Avisos** (no-modals amb pont MCP actiu) | `avisa*`, `_avis`, `_tanca_avis_box` | `app/avisos.py` |
+| **Dreceres** | `_dreceres`, `_text_dreceres`, `_mostra_dreceres` | `app/dreceres.py` |
+| **Projectes** (obrir/desar/backups/sessió/recents) | ~25 mètodes | `app/projecte_ui.py` |
+| **Export** | `exporta*`, `_prepara_export`, `_ho_confirma`, `_exporta_partitura`, `_assegura_locators` | `app/export_ui.py` |
+| **Anàlisi** | `Feina`, `FeinaExporta`, `executa`, `acabada` | `app/feina.py` |
+| **Temps/BPM** | `_bpm_val`, `_parse_compas`, `_canvia_tempo`, tap tempo | `app/temps_ui.py` |
+| **Barres d'eines/transport · menús** | construcció de la GUI | `app/barres.py`, `app/menus.py` |
+
+### 16.2 Com (l'estratègia amb menys risc)
+- **Mixins** (`InfoBoxMixin`, `AvisosMixin`, `DreceresMixin`, `ProjecteMixin`…)
+  i la classe final `Finestra(InfoBoxMixin, AvisosMixin, …)`: **des de fora es
+  veu exactament igual** → els **25 fitxers de test** que instancien `Finestra`
+  i criden `w._…` **NO canvien**.
+- **Un grup per commit**: bloc → **suite verda** → pyflakes → commit local.
+  `main.py` baixaria de ~2.942 a ~**1.500/1.700** línies.
+
+### 16.3 Cost i riscos
+- **Temps**: ~1-3 h per grup; **tot, 2-4 dies** fets per blocs (no cal de cop).
+- **Risc**: **baix-mig** si es fa fasejat; **alt** si es fa «de cop».
+- **Fricció**: l'**estat compartit** a `self` (amb mixins no es toca) i que molts
+  tests usen l'**API interna** de `Finestra` (es mantindria).
+- **Regla del projecte**: **un sol escriptor per fitxer** → fer-ho amb **OC-8
+  aturat** o clarament coordinats.
+- **`visor.py`** (3.029 línies) tindria un tractament semblant si mai calgués.
+
+> **1a extracció recomanada (prova de concepte)**: la **caixa d'informació**
+> (autocontinguda i ja fresca).
+
 ## Criteri de producte actualitzat
 
 La projecta es considera funcionalment preparada per a l’ús del flux principal quan:
