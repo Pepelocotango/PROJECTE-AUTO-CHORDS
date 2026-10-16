@@ -1598,7 +1598,19 @@ class Visor(QMainWindow):
         cc, bf = buf.get("cursor_copy"), buf.get("bloc_fi")
         if cc is not None and bf is not None and abs(T - float(cc)) <= 1e-6:
             T = float(bf)
+        # Si el snap està actiu al timeline, l'àncora d'enganxat T i tots els punts del bloc
+        # s'ajusten estrictament a la graella.
+        if hasattr(self, "timeline") and self.timeline._snap_on:
+            T = self.timeline.snap(T)
         T = max(0.0, min(T, durada))
+
+        # Ajusta les posicions del bloc si el snap està actiu
+        if hasattr(self, "timeline") and self.timeline._snap_on:
+            chords = [(self.timeline.snap(T + float(r)) - T, name) for (r, name) in chords]
+            sections = [(self.timeline.snap(T + float(ri)) - T,
+                         self.timeline.snap(T + float(rf)) - T,
+                         ll, fam) for (ri, rf, ll, fam) in sections]
+
         # -- reconstrucció per carril (sobreescriptura) --
         nous_acords = (self._bloc_sobre_acords(
             self.acords, chords, float(buf.get("chord_len") or 0.0), T,
@@ -1622,17 +1634,17 @@ class Visor(QMainWindow):
         self.acords = cand_ac
         if noves_seccions is not None:
             self.seccions = cand_sec
+        self._normalitza_cobertura()
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
-            if chords:
-                self._desa_i_regenera()
+            self._desa_i_regenera()
             if sections:
                 self._regenera_abc_des_de_totes_les_seccions("enganxat")
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut enganxar:\n{e}")
-        self._selecciona_bloc_enganxat(T, chords, sections, rel)
+        self._selecciona_bloc_enganxat(T, chords, sections, tol=0.02)
         self.log(f"enganxat a {T:.2f}s (sobreescrivint): {len(chords)} "
                  f"acord(s), {len(sections)} secció(ns)")
 
@@ -1670,7 +1682,8 @@ class Visor(QMainWindow):
         nou = [a for a in acords if float(a[0]) < T - rel]
         nou += punts
         if marca is not None:
-            nou.append(marca)
+            if float(marca[0]) > float(punts[-1][0]) + pipeline.RESOLUCIO_CSV - 1e-6:
+                nou.append(marca)
         nou += [a for a in acords if float(a[0]) > Te + rel]
         return nou
 
@@ -1695,19 +1708,19 @@ class Visor(QMainWindow):
         nou.sort(key=lambda s: float(s[0]))
         return [s for s in nou if float(s[1]) - float(s[0]) > rel]
 
-    def _selecciona_bloc_enganxat(self, T, chords, sections, rel):
+    def _selecciona_bloc_enganxat(self, T, chords, sections, tol=0.02):
         """Deixa seleccionat el bloc acabat d'enganxar (acords i/o seccions)."""
         keys = set()
         for (r, _n) in chords:
             t = T + float(r)
             for i, a in enumerate(self.acords):
-                if abs(float(a[0]) - t) <= rel:
+                if abs(float(a[0]) - t) <= tol:
                     keys.add(("chord", i))
                     break
         for (ri, _rf, _l, _f) in sections:
             ini = T + float(ri)
             for i, s in enumerate(self.seccions):
-                if abs(float(s[0]) - ini) <= rel:
+                if abs(float(s[0]) - ini) <= tol:
                     keys.add(("section", i))
                     break
         if keys and hasattr(self, "timeline"):

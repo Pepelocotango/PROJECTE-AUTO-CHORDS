@@ -94,6 +94,12 @@ int main(int argc, char **argv) {
     int sr = info.samplerate;
     int ch = info.channels;
     sf_count_t n = info.frames;
+    if (sr <= 0 || ch <= 0 || n <= 0) {
+        fprintf(stderr, "àudio buit o invàlid (sr=%d, ch=%d, frames=%ld)\n",
+                sr, ch, (long)n);
+        sf_close(sf);
+        return 1;
+    }
     std::vector<float> dades((size_t)n * ch);
     sf_readf_float(sf, dades.data(), n);
     sf_close(sf);

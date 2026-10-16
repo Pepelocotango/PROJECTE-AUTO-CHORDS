@@ -144,12 +144,22 @@ def esborra_tmp(dirs):
     """Esborra directoris temporals creats per l'app (mai llança).
 
     Només esborra els que comencen per un dels prefixos propis: així, passi el
-    que passi, no es pot esborrar una ruta arbitrària.
+    que passi, no es pot esborrar una ruta arbitrària. Aplica reintents breus
+    per resistir bloquejos temporals de fitxers a Windows.
     """
     for d in dirs or ():
         try:
-            if os.path.basename(str(d).rstrip("/\\")).startswith(PREFIXOS_TMP):
-                shutil.rmtree(d, ignore_errors=True)
+            p = str(d).rstrip("/\\")
+            if os.path.basename(p).startswith(PREFIXOS_TMP):
+                for intent in range(5):
+                    try:
+                        shutil.rmtree(p, ignore_errors=False)
+                        break
+                    except OSError:
+                        if intent == 4:
+                            shutil.rmtree(p, ignore_errors=True)
+                        else:
+                            time.sleep(0.05 * (intent + 1))
         except OSError:
             pass
 

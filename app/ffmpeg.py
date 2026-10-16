@@ -192,6 +192,9 @@ def converteix_a_wav(ruta, log=None, dest=None):
     Retorna la ruta del WAV. Si ja n'hi ha un de més nou, el reutilitza.
     Si `ruta` ja és WAV PCM 16 bits, la torna tal qual.
     """
+    if not ruta or not os.path.isfile(str(ruta)):
+        raise ValueError(f"Fitxer d'àudio no trobat o no vàlid: {ruta!r}")
+
     def _log(t):
         if log:
             log(t)
