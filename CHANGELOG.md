@@ -11,8 +11,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   `docs/ESQUEMA_UI.html` i `docs/ESQUEMA_UI.svg` → **mai més desfasades**.
   Ús: `python3 eines/genera_esquema_ui.py` (o `--check`, que només comprova).
   Un **test** (`tests/test_esquema_ui_gen.py`) peta si algú deixa les vistes
-  velles → **sempre al dia**. *(L'SVG passa a ser un esquema **regenerable** amb
-  el dibuix del `.md`; l'art manual anterior s'ha retirat.)*
+  velles → **sempre al dia**. *(L'SVG generat és un esquema **regenerable**; l'**art
+  manual** original es conserva a **`docs/ESQUEMA_UI_manual.svg`/`.html`** — no s'ha
+  perdut gens.)*
 - **`Ctrl+Shift`+arrossegar un clip = duplicar-lo** (l'**única** manera): el clip
   viatja i **a l'origen hi torna una marca amb el mateix nom** → mous una còpia.
   Una sola operació de desfer; com que el model són marques, la **cobertura (#4)**
