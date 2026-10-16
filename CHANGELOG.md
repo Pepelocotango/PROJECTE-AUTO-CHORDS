@@ -226,6 +226,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
   temps per número — mateix tracte que els acords.
 
 ### Corregit
+- **L'ajuda no inventa tecles**: deia **`Ctrl+Shift+clic`** per al «rang a les 2
+  pistes», i **aquesta combinació NO existeix al codi** (la **selecció creuada** és
+  una **opció del menú** *Selecciona*). Ara ho diu bé, tant a la **caixa
+  d'informació** com al **diàleg d'Ajuda** (font única `_dreceres()`).
 - **Copiar/enganxar ja no falla «en silenci» (bug real de l'operador)**: quan el
   bloc acabat **exactament** en una marca del model i el *snap* el movia ~2 ms, la
   validació (≥ 10 ms) **rebutjava l'enganxat SENCER** i només ho deia al log →
