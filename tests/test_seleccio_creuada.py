@@ -3,6 +3,9 @@ estil fulla de càlcul (opció A: amb selecció mixta, només el tipus actiu).
 
 - `extend_selection`: el rang abraça acords I seccions (l'inici dels quals cau
   dins del rang), per poder copiar/enganxar/esborrar «2 estructures + N acords».
+  ⚠️ Des del 16-10-2026 això és una **opció** (`set_seleccio_creuada`, menú
+  Selecciona) **desactivada per defecte**: per defecte el rang es queda al
+  carril del clip clicat. Aquests tests l'activen expressament.
 - `_renomena_acords`/`_renomena_seccions`: renom de molts elements de cop, i
   el camp Nom + «Aplica» de l'editor també ho fa amb una multi-selecció.
 Regla d'or #11: mateix tracte acords↔estructura.
@@ -61,6 +64,7 @@ class TestSeleccioCreuada(_Base):
         v = _visor()
         try:
             tl = v.timeline
+            tl.set_seleccio_creuada(True)        # opció (per defecte OFF)
             tl.select_clip("chord", 0)
             tl.extend_selection("chord", 3)      # rang [0.0, 7.0]
             self.assertEqual(tl.selected_keys(), {
@@ -73,6 +77,7 @@ class TestSeleccioCreuada(_Base):
         v = _visor()
         try:
             tl = v.timeline
+            tl.set_seleccio_creuada(True)        # opció (per defecte OFF)
             tl.select_clip("section", 1)
             tl.extend_selection("section", 2)    # rang [5.0, 10.0]
             self.assertEqual(tl.selected_keys(), {

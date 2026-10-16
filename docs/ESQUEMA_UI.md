@@ -75,7 +75,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (barra 1, fila 1) | `Obre àudio` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B · **[Mode fàcil]** (`Inclou estructura` és una acció del **menú Analitza**) |
+| **Treball** (barra 1, fila 1) | `Obre àudio` → **selector temps** (BPM·compàs/Lliure) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B · **[Mode fàcil]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc») (`Inclou estructura` és una acció del **menú Analitza**) |
 | **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) · **Obre la carpeta de sortida** |
 | **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · `metronome` · volum del clic |
 
@@ -85,10 +85,24 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 |------|---------|
 | **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… (Ctrl+Shift+O) · Obre recent… · Desa (Ctrl+S) · Desa com… (Ctrl+Shift+S) · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Tonalitat automàtica (qm-keydetector) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix l'acord al cursor… · Parteix la secció al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
-| **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop |
+| **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) · Selecció creuada (rang a les 2 pistes) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
 | **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Mode fàcil: re-regularitza a la graella… · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
+
+### Eina del timeline i abast del rang
+
+- **Eina «intel·ligent»** (per defecte): la fletxa s'adapta al que hi ha sota —
+  el cos d'un clip el mou, la vora el redimensiona, el regle fa el loop.
+- **Eina «marc»**: arrossegar **no mou cap clip**; es dibuixa un **rectangle**
+  (rubber-band) que **desapareix en deixar anar**, i queden seleccionats tots
+  els clips que **HI SONEN** a dins — només de les pistes que el rectangle
+  cobreixi, de manera que un marc només damunt dels acords agafa només acords.
+  (Convenció dels DAWs: `Snap Type` del Cubase, marquee de Logic/Reaper.)
+- **Selecció creuada** (menú Selecciona): **desactivada per defecte**. Apagada,
+  el rang de `Shift+clic` es queda al **carril del clip clicat**; activada,
+  abraça acords I seccions («2 estructures + N acords» de cop).
+- La **selecció no entra a la pila de desfer** (com abans).
 
 > ⚠️ Les **dreceres** viuen a la **finestra principal** (`QShortcut`/`QAction`),
 > mai al visor incrustat (un `QShortcut` dins el visor no s'activa).

@@ -28,7 +28,7 @@ Tot en català. Sense dependències noves (PyQt5.QtWidgets + numpy).
 from typing import List, Optional, Sequence
 
 import numpy as np
-from PyQt5.QtCore import QPoint, QPointF, Qt, pyqtSignal
+from PyQt5.QtCore import QPoint, QPointF, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QPainter, QPen
 from PyQt5.QtWidgets import (
     QGraphicsItem, QGraphicsLineItem, QGraphicsRectItem, QGraphicsScene,
@@ -191,6 +191,14 @@ class TimelineView(QGraphicsView):
         self._sel = ("", -1)      # clip seleccionat (kind, index)
         self._multi: set = set()   # multi-selecció: {(kind, index), ...}
         self._clipboard: dict = {}  # buffer intern copiar/retallar (D.2)
+        # Eina del timeline: «intel·ligent» (per defecte; la fletxa s'adapta al
+        # que hi ha sota: mou, redimensiona, loop…) o «marc» (arrossegar dibuixa
+        # un rectangle de selecció i NO mou clips, com el marquee dels DAWs).
+        self._tool = "intel·ligent"
+        # Rang de Shift+clic a les DUES pistes: DESACTIVAT per defecte → el rang
+        # es queda al carril del clip clicat. El creuat és una opció de menú.
+        self._sel_creuada = False
+        self._marquee = None       # rectangle en curs: [x0,y0,x1,y1] de la vista
         self._loop_item = None     # banda de loop A/B
         self._loop_a = None
         self._loop_b = None
@@ -725,11 +733,11 @@ class TimelineView(QGraphicsView):
     def extend_selection(self, kind: str, index: int) -> None:
         """Shift+clic: selecciona el RANG de clips entre l'àncora i el clicat.
 
-        El rang es calcula per TEMPS (no per índex) i abraça **les dues pistes**:
-        s'hi inclouen tots els acords i totes les seccions l'inici dels quals
-        cau dins del rang. Així es pot agafar, per exemple, «2 estructures +
-        20 acords» de cop per copiar, enganxar, esborrar o renombrar en bloc.
-        Sense àncora vàlida equival a una selecció simple.
+        El rang es calcula per TEMPS (no per índex). Amb la **selecció creuada
+        DESACTIVADA** (per defecte) es queda al **carril del clip clicat**;
+        activada, abraça les dues pistes (tots els acords i totes les seccions
+        l'inici dels quals cau dins del rang), per agafar de cop «2 estructures
+        + 20 acords». Sense àncora vàlida equival a una selecció simple.
         """
         akind, aidx = self._sel
         t_anc = self._temps_item(akind, aidx)
@@ -738,6 +746,8 @@ class TimelineView(QGraphicsView):
             self.select_clip(kind, index)
             return
         keys = self.keys_dins_rang(t_anc, t_clic)
+        if not self._sel_creuada:
+            keys = {k for k in keys if k[0] == kind}
         if not keys:
             keys = {(kind, index)}
         self._multi = keys
@@ -771,6 +781,107 @@ class TimelineView(QGraphicsView):
             if _dins(float(sec[0])):
                 keys.add(("section", i))
         return keys
+
+    def keys_dins_marc(self, t0: float, t1: float, chords: bool = True,
+                       sections: bool = True) -> set:
+        """Clips que **SONEN** dins la finestra `[t0, t1]` (marquee/rubber-band).
+
+        A diferència de `keys_dins_rang` (que mira els INICIS dels clips), aquí
+        mana el **SOLAPAMENT**: un clip que comença abans de `t0` però hi sona a
+        dins també hi entra — és el que fa el marquee dels DAWs.
+
+        `chords`/`sections` decideixen quines pistes participen: el rectangle
+        només agafa les pistes que cobreix verticalment, i així un marc només
+        damunt dels acords agafa **només acords**.
+        """
+        t0, t1 = sorted((float(t0), float(t1)))
+        durada = float(self._durada)
+        tol = 1e-6
+        keys = set()
+        if chords:
+            for i, a in enumerate(self._acords):
+                ini = float(a[0])
+                fi = (float(self._acords[i + 1][0])
+                      if i + 1 < len(self._acords) else durada)
+                if fi > t0 + tol and ini < t1 - tol:
+                    keys.add(("chord", i))
+        if sections:
+            for i, s in enumerate(self._seccions):
+                ini, fi = float(s[0]), float(s[1])
+                if fi > t0 + tol and ini < t1 - tol:
+                    keys.add(("section", i))
+        return keys
+
+    # -- eina del timeline (fletxa intel·ligent / marc de selecció) -----------
+    def set_tool(self, nom: str) -> None:
+        """Eina del timeline: «intel·ligent» (per defecte) o «marc»."""
+        n = str(nom or "").strip().lower()
+        self._tool = "marc" if n.startswith("marc") else "intel·ligent"
+        self._marquee = None
+        self.viewport().setCursor(
+            Qt.CrossCursor if self._tool == "marc" else Qt.ArrowCursor)
+        self.viewport().update()
+
+    def tool(self) -> str:
+        """Eina vigent: «intel·ligent» o «marc»."""
+        return self._tool
+
+    def set_seleccio_creuada(self, on: bool) -> None:
+        """Rang de Shift+clic a les DUES pistes (per defecte NO: un carril)."""
+        self._sel_creuada = bool(on)
+
+    def seleccio_creuada(self) -> bool:
+        """El rang de Shift+clic abraça les dues pistes?"""
+        return bool(self._sel_creuada)
+
+    def _marc_o_clic(self, x0, y0, x1, y1) -> None:
+        """Tanca el rectangle: selecciona el que HI SONA a dins.
+
+        Un arrossegament minúscul es tracta com un clic (mou el cursor i buida
+        la selecció) perquè l'usuari no es quedi amb una selecció fantasma.
+        """
+        if abs(x1 - x0) < 3.0 and abs(y1 - y0) < 3.0:
+            sp = self.mapToScene(QPoint(int(x0), int(y0)))
+            t = max(0.0, min(self._durada, self._x_to_time(sp.x())))
+            self.set_position(t)
+            if self._multi:
+                self.clear_selection()
+            return
+        p0 = self.mapToScene(QPoint(int(min(x0, x1)), int(min(y0, y1))))
+        p1 = self.mapToScene(QPoint(int(max(x0, x1)), int(max(y0, y1))))
+        t0, t1 = sorted((self._x_to_time(p0.x()), self._x_to_time(p1.x())))
+        y0s, y1s = sorted((p0.y(), p1.y()))
+        cobra_acc = (y1s > LANE_ACC_TOP) and (y0s < LANE_ACC_TOP + LANE_H)
+        cobra_sec = (y1s > LANE_SEC_TOP) and (y0s < LANE_SEC_TOP + LANE_H)
+        keys = self.keys_dins_marc(t0, t1, chords=cobra_acc, sections=cobra_sec)
+        if not keys:
+            self.clear_selection()
+            return
+        self._multi = set(keys)
+        self._sel = next(iter(sorted(self._multi)), ("", -1))
+        self._sync_selection_visual()
+        k, i = self._sel
+        self.clipSelected.emit(k, i)
+
+    def drawForeground(self, painter, rect) -> None:
+        """Rectangle del marquee: es veu NOMÉS mentre s'arrossega.
+
+        En deixar anar el botó desapareix: el rectangle era una guia visual, la
+        selecció queda feta als clips.
+        """
+        if self._marquee is None:
+            return
+        x0, y0, x1, y1 = self._marquee
+        p0 = self.mapToScene(QPoint(int(min(x0, x1)), int(min(y0, y1))))
+        p1 = self.mapToScene(QPoint(int(max(x0, x1)), int(max(y0, y1))))
+        r = QRectF(p0, p1).normalized()
+        pen = QPen(QColor(theme.TL_CURSOR))
+        pen.setStyle(Qt.DashLine)
+        painter.setPen(pen)
+        farc = QColor(theme.TL_CURSOR)
+        farc.setAlpha(48)
+        painter.setBrush(QBrush(farc))
+        painter.drawRect(r)
 
     # -- buffer intern copiar/retallar/enganxar (D.2.b) -----------------------
     def has_clipboard(self) -> bool:
@@ -1268,6 +1379,18 @@ class TimelineView(QGraphicsView):
                     self._loop_t0 = self._loop_x_to_time(sp.x())
                 event.accept()
                 return
+            # Eina «marc»: el drag NO mou clips → dibuixa el rectangle de
+            # selecció (rubber-band). Pot arrencar a qualsevol punt de les
+            # pistes, també damunt d'un clip (com el marquee dels DAWs).
+            if self._tool == "marc":
+                p = (event.position() if hasattr(event, "position")
+                     else event.pos())
+                self._marquee = [float(p.x()), float(p.y()),
+                                 float(p.x()), float(p.y())]
+                self.viewport().update()
+                self.setFocus()
+                event.accept()
+                return
             it = self.itemAt(event.pos())
             if isinstance(it, (ChordItem, SectionItem)):
                 kind = "chord" if isinstance(it, ChordItem) else "section"
@@ -1328,6 +1451,13 @@ class TimelineView(QGraphicsView):
             self._set_view_range(new_l, new_l + span)
             event.accept()
             return
+        if self._marquee is not None:
+            p = (event.position() if hasattr(event, "position")
+                 else event.pos())
+            self._marquee[2], self._marquee[3] = float(p.x()), float(p.y())
+            self.viewport().update()
+            event.accept()
+            return
         if getattr(self, "_loop_drag", False):
             sp = self.mapToScene(event.pos())
             t = self._loop_x_to_time(sp.x())
@@ -1355,6 +1485,13 @@ class TimelineView(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.LeftButton and self._marquee is not None:
+            x0, y0, x1, y1 = self._marquee
+            self._marquee = None          # el rectangle desapareix en deixar anar
+            self.viewport().update()
+            self._marc_o_clic(x0, y0, x1, y1)
+            event.accept()
+            return
         if event.button() == Qt.RightButton and getattr(self, "_pan_drag", False):
             self._pan_drag = False
             self.viewport().setCursor(Qt.ArrowCursor)

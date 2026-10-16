@@ -6,6 +6,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.5.1_CHECKPOINT_3_so_ARTIFACTS`
 ## [Unreleased]
 
 ### Afegit
+- **Eina del timeline** (commutador a la barra **i** al menú *Selecciona*):
+  - **«intel·ligent»** (per defecte): la d'ara — cos del clip = **moure**, vora =
+    **redimensionar**, regla = **loop**, `Shift+clic` = **rang**, `Ctrl+clic` =
+    afegir/treure.
+  - **«marc»** (rubber-band): arrossegar **no mou cap clip**; dibuixa un
+    **rectangle** (que desapareix en deixar anar) → queda seleccionat tot el que
+    **hi sona a dins**, i **només de les pistes que cobreixi** (marc damunt dels
+    acords = només acords).
+- **«Selecció creuada»** (menú *Selecciona*): ara **desactivada per defecte** — el
+  `Shift+clic` es queda al carril del clip clicat; activada, torna a abraçar
+  **acords I seccions**. Test: `tests/test_eina_marc.py` (12).
 - **8 timbres de piano al «▶» del panell «Tipus d'acord»**: el botó d'escolta és
   ara **només la icona ▶** i al costat hi ha un **desplegable de timbre** amb **8
   presets de família piano** (referència **General MIDI 1-8**): *Piano de cua ·

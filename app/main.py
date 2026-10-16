@@ -500,6 +500,21 @@ class Finestra(QMainWindow):
             "(estil + ritme harmònic).")
         self.b_mode_facil.clicked.connect(self._mode_facil_ui)
         barra.addWidget(self.b_mode_facil)
+        # Commutador d'EINA del timeline: «intel·ligent» (per defecte; la fletxa
+        # s'adapta al que hi ha sota) o «marc» (arrossegar dibuixa un rectangle
+        # de selecció i no mou clips).
+        self.b_eina = QPushButton("Eina: intel·ligent")
+        self.b_eina.setObjectName("secundari")
+        self.b_eina.setCheckable(True)
+        self.b_eina.setChecked(False)          # intel·ligent = per defecte
+        self.b_eina.setToolTip(
+            "Eina del timeline (també al menú Selecciona):\n"
+            "· intel·ligent: la fletxa s'adapta (mou/redimensiona clips, "
+            "Shift+clic = rang, regla = loop).\n"
+            "· marc: arrossega per dibuixar un rectangle i queda seleccionat "
+            "tot el que hi SONA a dins (només les pistes que cobreixi).")
+        self.b_eina.toggled.connect(self._canvia_eina)
+        barra.addWidget(self.b_eina)
         barra.addSeparator()
         self.addToolBar(Qt.TopToolBarArea, barra)
         self.barra_principal = barra
@@ -748,6 +763,24 @@ class Finestra(QMainWindow):
         self._act(m, "Marca fi de loop (B)", "Ctrl+]", self._marca_B_visor)
         self._act(m, "Neteja el loop", "", self._neteja_loop)
         self._act(m, "Activa/desactiva loop", "", self._loop_visor)
+        m.addSeparator()
+        # Eina del timeline i abast del rang (vegeu `timeline.set_tool`,
+        # `keys_dins_marc` i `extend_selection`).
+        self.a_eina_marc = self._act(
+            m, "Eina de marc (rubber-band)", "", self._toggle_eina_marc,
+            checkable=True)
+        self.a_eina_marc.setToolTip(
+            "Arrossegar pel timeline dibuixa un rectangle: queda seleccionat "
+            "tot el que hi SONA a dins, i només de les pistes que cobreixi. "
+            "El rectangle desapareix en deixar anar.")
+        self.a_creuada = self._act(
+            m, "Selecció creuada (rang a les 2 pistes)", "",
+            self._canvia_creuada, checkable=True)
+        self.a_creuada.setChecked(False)       # DESACTIVAT per defecte
+        self.a_creuada.setToolTip(
+            "Amb això DESACTIVAT (per defecte), el rang de Shift+clic es queda "
+            "al carril del clip on cliques. Activat, abraça acords I seccions "
+            "(«2 estructures + N acords» de cop).")
         # --- Visualitza ---
         m = mb.addMenu("&Visualitza")
         self._act(m, "Zoom +", "Ctrl++", lambda: self._zoom_visor(0.5))
@@ -1299,6 +1332,40 @@ class Finestra(QMainWindow):
             self.registra(f"mode fàcil: {n} acords a la graella "
                           f"({p.get('etiqueta', '')})")
 
+    # -- eina del timeline + abast del rang ----------------------------------
+    def _replica_eina(self):
+        """Aplica al visor les opcions vigents d'eina i d'abast del rang."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        marc = bool(getattr(self, "b_eina", None) is not None
+                    and self.b_eina.isChecked())
+        vr.timeline.set_tool("marc" if marc else "intel·ligent")
+        vr.timeline.set_seleccio_creuada(
+            bool(getattr(self, "a_creuada", None) is not None
+                 and self.a_creuada.isChecked()))
+
+    def _canvia_eina(self, activat):
+        """Commutador d'eina del timeline: intel·ligent ⇄ marc."""
+        marc = bool(activat)
+        if (getattr(self, "a_eina_marc", None) is not None
+                and self.a_eina_marc.isChecked() != marc):
+            self.a_eina_marc.setChecked(marc)       # propaga via `triggered`
+        self.b_eina.setText("Eina: marc" if marc else "Eina: intel·ligent")
+        self._replica_eina()
+        self.registra("eina del timeline: "
+                      + ("marc (rubber-band)" if marc else "intel·ligent"))
+
+    def _toggle_eina_marc(self, activat):
+        """El menú «Selecciona» i el botó de la barra comparteixen estat."""
+        if self.b_eina.isChecked() != bool(activat):
+            self.b_eina.setChecked(bool(activat))   # dispara `_canvia_eina`
+
+    def _canvia_creuada(self, activat):
+        self._replica_eina()
+        self.registra("selecció creuada (rang a les 2 pistes): "
+                      + ("ON" if activat else "OFF"))
+
     def _copia_clips(self):
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
@@ -1646,6 +1713,7 @@ class Finestra(QMainWindow):
             visor.canvis.connect(self._marca_dirty)   # edicions → projecte «brut»
             if hasattr(self, "tb_snap"):
                 self._canvia_snap()   # reaplica snap/divisió escollits
+            self._replica_eina()      # reaplica eina + abast del rang
             # connectem els senyals del visor (icona play/pause + missatges
             # de la caixa d'informacio: desfer/refer...)
             try:

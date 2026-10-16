@@ -1085,6 +1085,23 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
   `TestEnganxatALaVoraDelBloc` (regressió amb la geometria exacta del cas real;
   **verificat que fallen amb el codi anterior**). Suite: **842 tests OK**.
 
+### 15.0b FET (2026-10-16) — eina del timeline + marquee (petició de l'operador)
+- **Commutador d'eina** (botó a la barra `[Eina: intel·ligent]` + acció al menú
+  Selecciona): **«intel·ligent»** (per defecte; la fletxa contextual d'abans:
+  mou/redimensiona clips, regla = loop, Shift+clic = rang) o **«marc»**.
+- **Eina «marc»** (marquee/rubber-band, com els DAWs): arrossegar **no mou cap
+  clip**; es dibuixa un rectangle que **desapareix en deixar anar**
+  (`TimelineView.drawForeground`) i queden seleccionats els clips que **HI
+  SONEN** a dins — solapament, no només inicis (`TimelineView.keys_dins_marc`)
+  — i **només de les pistes que el rectangle cobreix**: un marc damunt dels
+  acords agafa només acords. Un arrossegament minúscul es tracta com un clic i
+  la selecció **no** entra a la pila de desfer.
+- **Selecció creuada DESACTIVADA per defecte** (menú Selecciona): el rang de
+  `Shift+clic` es queda al **carril del clip clicat**; activada, torna a abraçar
+  les dues pistes com abans (`extend_selection` + `set_seleccio_creuada`).
+- **Tests**: `tests/test_eina_marc.py` (**12**) · suite **854 tests OK** · i
+  `docs/ESQUEMA_UI.md` actualitzat (el test d'auditoria GUI↔doc ho exigeix).
+
 ### 15.1 Pendents d'UX (investigats, NO implementats)
 - **(1) Fonts de snap commutables**: dues caselles independents, com el Reaper
   («snap a events/marques» i «snap a la graella», per separat) i el `Snap Type`
@@ -1103,6 +1120,11 @@ que les dreceres han de viure com a `QAction` de la **finestra principal**.
   adjusted alignment»), per veure a què s'ha enganxat.
 - **(9) Opcional**: eines MCP `ac_copia` / `ac_retalla` / `ac_enganxa` perquè un
   agent pugui fer aquestes operacions (avui el pont només té les de selecció).
+- **(10) Higiene dels tests (16-10-2026)**: els fixtures (`_visor()` →
+  `tempfile.mkdtemp()`) **no esborren mai** la seva carpeta temporal: en una
+  tongada de feina la suite deixa **~2,4 GB** a `/tmp`. Solució: que cada test
+  registri `addCleanup(shutil.rmtree, v.td, ignore_errors=True)` (o un helper
+  comú `_qt_neteja`), i així la suite es neteja sola sense `rm` manual.
 
 ## Criteri de producte actualitzat
 
