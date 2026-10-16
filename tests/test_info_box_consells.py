@@ -40,15 +40,20 @@ class TestInfoBoxConsells(unittest.TestCase):
     def setUpClass(cls):
         cls._app = app_main.QApplication.instance() or app_main.QApplication([])
 
-    def test_panells_inclouen_eina_consells_i_dreceres(self):
+    def test_panells_son_curts_i_ben_agrupats(self):
         w = _finestra()
         panells = w._info_panells()
-        # 1r = eina del timeline; 2n = consells; la resta = dreceres reals.
-        self.assertGreaterEqual(len(panells), 3)
+        # 1r = eina del timeline; la resta = pantalles CURTES per tema
+        # (16-10-2026: abans eren 2 pantalles llarguíssimes —dreceres de menú i
+        # combinacions de ratolí— que en 8-14 s no es podien llegir).
+        self.assertGreaterEqual(len(panells), 10)
         self.assertTrue(panells[0][0].startswith("Eina del timeline"))
         titols = [t for t, _p in panells]
-        self.assertIn("Consells rapids", titols)
-        self.assertIn("Fitxer", titols)
+        for esperat in ("Seleccionar clips", "Duplicar un clip", "Loop A-B",
+                        "Copiar, retallar i enganxar"):
+            self.assertIn(esperat, titols)
+        for t, parells in panells:
+            self.assertLessEqual(len(parells), 5, f"«{t}» massa llarga")
         w.close()
 
     def test_panell_eina_segueix_l_eina_vigent(self):
@@ -61,7 +66,7 @@ class TestInfoBoxConsells(unittest.TestCase):
         self.assertIn("intel·ligent", t_int)
         w.close()
 
-    def test_html_per_defecte_porta_dreceres_reals(self):
+    def test_html_per_defecte_apunta_a_les_dreceres_de_menus(self):
         w = _finestra()
         n = len(w._info_panells())
         vist = ""
@@ -69,9 +74,40 @@ class TestInfoBoxConsells(unittest.TestCase):
             w._info_panell = i
             vist += w._info_defecte_html(1.0, rota=False) or ""
         self.assertIn("Dreceres i consells", vist)
-        self.assertIn("Ctrl+O", vist)      # Fitxer ▸ Obre àudio
-        self.assertIn("Ctrl+Z", vist)      # Edita ▸ Desfer
-        self.assertIn("F5", vist)          # Analitza l'àudio
+        # Les dreceres de MENÚ ja no omplen el rotatori (eren una pantalla
+        # llarguíssima): hi ha una pantalla que diu on són, i allà hi són
+        # totes (una sola font: `_dreceres()` → diàleg Ajuda).
+        self.assertIn("Ajuda ▸ Dreceres de teclat", vist)
+        self.assertNotIn("Ctrl+O", vist)
+        self.assertIn("Ctrl+O", w._text_dreceres())      # Fitxer ▸ Obre àudio
+        self.assertIn("Ctrl+Z", w._text_dreceres())      # Edita ▸ Desfer
+        self.assertIn("F5", w._text_dreceres())          # Analitza l'àudio
+        w.close()
+
+    def test_clic_a_la_caixa_para_i_avanca(self):
+        """El clic HA d'arribar a la caixa (bug real, 16-10-2026).
+
+        Un `QTextEdit` és una `QAbstractScrollArea`: els clics els rep el seu
+        **viewport**, no el widget. Amb el filtre instal·lat només al QTextEdit,
+        el clic no arribava mai i la caixa semblava morta.
+        """
+        from PyQt5.QtCore import QEvent, QPoint, Qt
+        from PyQt5.QtGui import QMouseEvent
+        w = _finestra()
+        ev = QMouseEvent(QEvent.MouseButtonPress, QPoint(5, 5),
+                         Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        # 1) el clic de debò va al VIEWPORT → ha de quedar interceptat i pausar
+        w._info_pausa_fins = 0.0
+        self.assertTrue(w.eventFilter(w.info_box.viewport(), ev))
+        self.assertGreater(w._info_pausa_fins, 0.0)
+        # 2) segon clic → avança de pantalla
+        w._info_panell = 0
+        w.eventFilter(w.info_box.viewport(), ev)
+        self.assertEqual(w._info_panell, 1)
+        # 3) i el widget també hi és (per si algun tema canvia el mapeig)
+        w._info_pausa_fins = 0.0
+        self.assertTrue(w.eventFilter(w.info_box, ev))
+        self.assertGreater(w._info_pausa_fins, 0.0)
         w.close()
 
     def test_rota_segons_el_interval_configurat(self):

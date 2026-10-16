@@ -45,7 +45,10 @@ DEFAULT_LOG_PATH = config.LOG_PATH
 # Caixa d'informacio (a baix, a la dreta del log): quan el ratoli no es sobre
 # res amb info, hi gira el rotatori de consells i dreceres. Cada quan canvia de
 # «pantalla», i quanta estona es queda aturada després d'un clic a la caixa.
-_INFO_ROTACIO_S = 14.0      # segons per «pantalla» (abans 8: poc per llegir)
+# 8 s per «pantalla»: les pantalles ara són CURTES (3-4 línies) i moltes, així
+# que el cicle sencer es veu abans. (Abans: 8 s amb pantalles llarguíssimes →
+# no es llegien; després 14 s → el cicle no s'acabava mai.)
+_INFO_ROTACIO_S = 8.0
 _INFO_PAUSA_S = 30.0        # clic a la caixa → el rotatori es para aquest temps
 
 
@@ -1283,25 +1286,71 @@ class Finestra(QMainWindow):
     def _info_panells(self):
         """Panells de la caixa d'informacio per defecte: consells + dreceres.
 
-        El **primer** s'adapta a l'**eina vigent del timeline** (marc vs
-        intel·ligent); el segon son consells; la resta, les dreceres REALS
-        agrupades com al dialeg d'ajuda (es llegeixen dels menus → mai queden
-        desfasades). Es el que es mostra quan el ratoli no es sobre res amb
-        informacio.
+        Cada pantalla és **curta** (3-4 línies) i agrupada per **quan la
+        necessites** (seleccionar, moure, copiar, loop, transport…), no per
+        «la llista sencera de dreceres». El **primer** panell s'adapta a l'eina
+        vigent del timeline. Les dreceres **dels menús** no hi surten: viuen
+        senceres al dialeg **Ajuda ▸ Dreceres de teclat** (una sola font,
+        `_dreceres()`), i l'últim panell ho recorda.
         """
-        panells = [self._panell_eina(), ("Consells rapids", [
-            ("Doble-clic dins el loop → selecciona tot el que hi ha a dins", ""),
-            ("Copia/Enganxa: l'enganxat SOBREESCRIU el tram (la cançó no creix)", ""),
-            ("Ctrl+Shift+V → enganxa SENSE snap (quan el snap no t'encaixa)", ""),
-            ("F2 → reanomena el clip o tot el grup del tipus actiu", ""),
-            ("← / → → mou el clip un pas de graella (Alt = la vora dreta)", ""),
-        ])]
-        try:
-            panells.extend(self._dreceres())
-        except Exception:  # noqa: BLE001
-            # La caixa d'informacio es un extra: mai ha de fer petar la GUI.
-            pass
-        return panells
+        return [
+            self._panell_eina(),
+            ("Seleccionar clips", [
+                ("Un clip", "Clic"),
+                ("Afegir/treure un clip (disjunt)", "Ctrl+clic"),
+                ("Rang del carril del clip clicat", "Shift+clic"),
+                ("Rectangle: el que HI SONA a dins", "Ctrl+arrossega"),
+            ]),
+            ("El rectangle (marquee)", [
+                ("Agafa els clips que SONEN a dins, no només els que hi "
+                 "comencen", ""),
+                ("Només de les pistes que cobreix (si no toca les seccions, "
+                 "no les agafa)", ""),
+                ("Es temporal: Ctrl+arrossega · o fix: Eina marc", ""),
+            ]),
+            ("Duplicar un clip", [
+                ("El clip viatja i a l'origen en queda una còpia (mateix nom)",
+                 "Ctrl+Shift+arrossega el cos"),
+                ("Duplicar l'element seleccionat", "Ctrl+D"),
+            ]),
+            ("Moure i redimensionar", [
+                ("Moure (tot el grup si està seleccionat)",
+                 "Arrossega el cos del clip"),
+                ("Moure l'inici o el final", "Arrossega una vora"),
+                ("Un pas de graella", "← / →"),
+                ("La vora DRETA un pas de graella", "Alt+← / Alt+→"),
+            ]),
+            ("Copiar, retallar i enganxar", [
+                ("Al cursor", "Ctrl+C / Ctrl+X / Ctrl+V"),
+                ("L'enganxat SUBSTITUEIX el tram: la cançó no creix mai", ""),
+                ("Enganxar saltant-se el snap", "Ctrl+Shift+V"),
+            ]),
+            ("Loop A-B", [
+                ("Crear-lo o editar-lo", "Arrossega sobre el regle"),
+                ("Marcar l'inici / el final al cursor", "Ctrl+[ / Ctrl+]"),
+                ("Seleccionar TOT el que hi ha a dins", "Doble-clic al loop"),
+            ]),
+            ("Transport", [
+                ("Play / aturar", "Espai"),
+                ("TAP del temps (tap tempo)", "T"),
+                ("Canviar d'eina del timeline (intel·ligent ⇄ marc)", "E"),
+            ]),
+            ("Editar i desfer", [
+                ("Desfer / refer", "Ctrl+Z / Ctrl+Y"),
+                ("Reanomenar (clip o grup del tipus actiu)", "F2"),
+                ("Esborrar la selecció", "Del"),
+            ]),
+            ("Zoom i navegació", [
+                ("Zoom", "Roda del ratolí"),
+                ("Zoom + / − / total", "Ctrl++ / Ctrl+− / Ctrl+0"),
+                ("Menú del clip (o pan arrossegant)", "Botó dret"),
+            ]),
+            ("Per què l'enganxat sobreescriu", [
+                ("Els clips cobreixen SEMPRE tota la WAV (regla d'or #4)", ""),
+                ("Per això copiar/enganxar és com una cinta: substitueix", ""),
+                ("Totes les dreceres dels menús: Ajuda ▸ Dreceres de teclat", ""),
+            ]),
+        ]
 
     def _panell_eina(self):
         """Panell que **segueix l'eina vigent** del timeline (marc/intel·ligent)."""
