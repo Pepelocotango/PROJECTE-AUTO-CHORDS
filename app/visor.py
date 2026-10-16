@@ -543,7 +543,8 @@ class Visor(QMainWindow):
         if llargada <= 1e-6:
             return
         bloc = [(0.0, llargada, str(lletra), str(familia))]
-        self._undo_marca()
+        # (Sense desfer propi: s'aplega al de l'arrossegament → un sol Ctrl+Z
+        # desfà el gest sencer. Paritat amb els acords.)
         try:
             noves = self._bloc_sobre_seccions(self.seccions, bloc, llargada,
                                               ini0, durada, 1e-6)
@@ -552,7 +553,6 @@ class Visor(QMainWindow):
             self.log(f"Ctrl+Shift+arrossegat (secció): no s'ha fet res ({e})")
             return
         self.seccions = cand
-        self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
             self._desa_i_regenera()
@@ -566,7 +566,7 @@ class Visor(QMainWindow):
     def _on_chord_copia(self, t_original, nom):
         """`Ctrl+Shift`+arrossegar un clip d'acord: el clip viatja i **a
         l'ORIGEN hi torna una còpia** amb el mateix nom (duplicar, com als
-        DAWs). ⚠️ Pendent: el mateix gest per a les SECCIONS (paritat #11).
+        DAWs). Les seccions tenen el mateix gest (`_on_section_copia`).
 
         El model d'aquesta app són MARQUES, i el gest ja ha mogut la marca: per
         tant n'hi ha prou de tornar-ne a posar una a l'instant original. La
@@ -574,7 +574,9 @@ class Visor(QMainWindow):
         """
         durada = float(self.audio["durada"])
         t = max(0.0, min(float(t_original), durada))
-        self._undo_marca()
+        # (Sense `_undo_marca`/`_undo_commit` propis: la còpia s'apleguen a
+        # l'operació de desfer del mateix arrossegament, de manera que UN sol
+        # Ctrl+Z desfà el gest sencer.)
         try:
             if not self._afegeix_acord(t, str(nom)):
                 return
@@ -582,7 +584,6 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"Ctrl+Shift+arrossegat: no s'ha pogut deixar la còpia ({e})")
             return
-        self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
             self._desa_i_regenera()

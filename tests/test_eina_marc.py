@@ -239,14 +239,18 @@ class TestAltArrossegaCopia(_Base):
         self.assertEqual(len(v.acords), 5)
         v.close()
 
-    def test_la_copia_es_desfà(self):
+    def test_un_sol_desfer_desfà_tot_el_gest(self):
+        """Des del 16-10-2026 la còpia NO té desfer propi: s'aplega al de
+        l'arrossegament, així que un sol Ctrl+Z reverteix el gest sencer."""
         v = _visor()
         tl = self._gest(v, 2, 6.0)
         tl._alt_copia = (4.5, "F")
         tl._emit_edit_finished()
-        self.assertIn(4.5, [round(float(t), 3) for t, *_r in v.acords])
-        v.undo()                                  # desfer la còpia
-        self.assertNotIn(4.5, [round(float(t), 3) for t, *_r in v.acords])
+        self.assertIn(6.0, [round(float(t), 3) for t, *_r in v.acords])
+        v.undo()                                  # UN sol desfer = tot el gest
+        trams = [round(float(t), 3) for t, *_r in v.acords]
+        self.assertNotIn(6.0, trams)              # el clip mogut, fora
+        self.assertIn(4.5, trams)                 # l'original, com era
         v.close()
 
 
