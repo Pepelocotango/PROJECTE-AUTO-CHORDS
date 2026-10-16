@@ -1448,10 +1448,18 @@ class Finestra(QMainWindow):
             vr._elimina_seccio_index(idx)
 
     def _duplica_element(self):
+        vr = self.visor_ref
+        if vr is None:
+            return
+        # MULTI-SELECCIÓ: amb més d'un clip seleccionat es dupliquen TOTS
+        # (mateix cas que la `Del`; auditats tots els handlers el 17-10-2026).
+        keys = vr.timeline.selected_keys()
+        if len(keys) > 1:
+            vr._duplica_seleccio(sorted(keys))
+            return
         kind, idx = self._clip_seleccionat()
         if kind is None:
             return
-        vr = self.visor_ref
         if kind == "chord":
             vr._duplica_acord_index(idx)
         else:
