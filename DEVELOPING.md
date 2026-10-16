@@ -272,7 +272,7 @@ Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
 - `app/tempo.py` — detecció de BPM (numpy, sense AVX)
 - `app/metronom.py` · `partitura.py` · `ffmpeg.py` · `vamp_params.py` · `postproc.py` · `dialegs.py` · `config.py` · `theme.py`
 - `eines/vamp_host.cpp` — **host Vamp propi** (`vamp_host_local`), sense Qt6
-- `eines/` — build i cadena de subministrament: `crea_portable.sh`, `compila_vamp_host.sh`, `compila_vamp_plugins.sh`, `empaqueta_portable.sh`, `crea_appimage.sh`, `libreries_natives.sh`; descàrregues verificades (`baixa_verificat.py` + `deps_fixades.env`); packaging (`AutoChords-win.spec`, `launcher_pyinstaller.py`, `crea_icona.py`); release (`notes_release.py`) i inventari (`genera_inventari.py`)
+- `eines/` — build i cadena de subministrament: `crea_portable.sh`, `compila_vamp_host.sh`, `compila_vamp_plugins.sh`, `empaqueta_portable.sh`, `crea_appimage.sh`, `libreries_natives.sh`; descàrregues verificades (`baixa_verificat.py` + `deps_fixades.env`); packaging (`AutoChords-win.spec`, `launcher_pyinstaller.py`, `crea_icona.py`); release (`notes_release.py`) i inventari (`genera_inventari.py`); **vistes de l'esquema de la UI** (`genera_esquema_ui.py`: `.md` → `docs/ESQUEMA_UI.html`/`.svg`)
 - `portable/` — Python + ffmpeg portables (entrada de build, gitignorat)
 - `AUTO_CHORDS.sh` — llançador (prefereix el Python portable)
 
