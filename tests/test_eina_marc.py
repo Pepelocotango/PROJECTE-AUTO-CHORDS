@@ -250,6 +250,39 @@ class TestAltArrossegaCopia(_Base):
         v.close()
 
 
+class TestCopiaSeccio(_Base):
+    """`Ctrl+Shift`+arrossegar una **SECCIÓ**: la secció viatja i a l'ORIGEN hi
+    torna una còpia (mateixa lletra/família) sobre el mateix tram. Paritat #11
+    amb els acords (que ja ho feien)."""
+
+    def test_copia_de_seccio_a_l_origen(self):
+        v = _visor()
+        tl = v.timeline
+        # com si s'arrossegués la secció B (5-10) fins a 8-13
+        tl._copia_sec = (5.0, 10.0, "B", "B")
+        tl._on_section_changed(1, 8.0, 13.0)          # el moviment
+        tl._emit_edit_finished()                      # ...i la còpia a l'origen
+        trams = [(round(float(s[0]), 3), round(float(s[1]), 3), str(s[2]))
+                 for s in v.seccions]
+        copia = [t for t in trams if abs(t[0] - 5.0) < 1e-6 and t[2] == "B"]
+        self.assertTrue(copia, f"no hi ha còpia a l'origen: {trams}")
+        self.assertAlmostEqual(copia[0][1], 10.0, places=3)
+        # la cançó segueix coberta de dalt a baix (regla d'or #4)
+        self.assertAlmostEqual(trams[0][0], 0.0, places=6)
+        self.assertAlmostEqual(trams[-1][1], 20.0, places=3)
+        v.close()
+
+    def test_sense_ctrl_shift_no_copia(self):
+        v = _visor()
+        tl = v.timeline
+        tl._on_section_changed(1, 8.0, 13.0)          # moviment normal
+        tl._emit_edit_finished()
+        trams = [(round(float(s[0]), 3), str(s[2])) for s in v.seccions]
+        self.assertFalse([t for t in trams
+                          if abs(t[0] - 5.0) < 1e-6 and t[1] == "B"])
+        v.close()
+
+
 class TestEscape(_Base):
     """`Esc`, per ordre: (1) anul·la el RANG en curs, (2) anul·la el LOOP a mig
     marcar, (3) desactiva el LOOP, (4) buida la SELECCIÓ. Si no es compleix cap

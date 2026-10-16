@@ -123,6 +123,10 @@ class TimelineView(QGraphicsView):
     sectionRenamed = pyqtSignal(int, str, str)
     sectionDeleteRequested = pyqtSignal(int)
     sectionDuplicateRequested = pyqtSignal(int)
+    # Ctrl+Shift+arrossegar una SECCIÓ: viatja i a l'ORIGEN hi torna una còpia
+    # (mateixa lletra i família) sobre el mateix tram. Payload:
+    # (ini, fi, lletra, família) de la secció original.
+    sectionCopyRequested = pyqtSignal(float, float, str, str)
     clipContextMenuRequested = pyqtSignal(str, int, QPoint)  # (kind, idx, pos)
     loopContextMenuRequested = pyqtSignal(QPoint)  # botó dret dins del loop
     loopDoubleClicked = pyqtSignal()   # doble-clic dins del loop (a dalt)
@@ -209,6 +213,8 @@ class TimelineView(QGraphicsView):
         self._marquee_ctrl = False
         # Alt+arrossegament en curs: (idx, t original) per deixar-hi la còpia.
         self._alt_copia = None
+        # El mateix per a les SECCIONS: (ini, fi, lletra, família) originals.
+        self._copia_sec = None
         self._loop_item = None     # banda de loop A/B
         self._loop_a = None
         self._loop_b = None
@@ -556,6 +562,11 @@ class TimelineView(QGraphicsView):
             t0, nom = self._alt_copia
             self._alt_copia = None
             self.chordCopyRequested.emit(float(t0), str(nom))
+        if self._copia_sec is not None:
+            ini, fi, ll, fam = self._copia_sec
+            self._copia_sec = None
+            self.sectionCopyRequested.emit(float(ini), float(fi), str(ll),
+                                           str(fam))
 
     def _x_to_time(self, x: float) -> float:
         """De x de la vista a temps (coords relatives a la vista)."""
@@ -1134,6 +1145,13 @@ class TimelineView(QGraphicsView):
         """
         if idx < 0 or idx >= len(self._seccions):
             return
+        # Ctrl+Shift+arrossegar = duplicar: capturem la secció ORIGINAL (abans
+        # del primer moviment). El `_emit_edit_finished` hi deixarà la còpia.
+        mods = QApplication.keyboardModifiers()
+        if self._copia_sec is None and (
+                mods & Qt.ControlModifier and mods & Qt.ShiftModifier):
+            s = self._seccions[idx]
+            self._copia_sec = (float(s[0]), float(s[1]), str(s[2]), str(s[3]))
         # Moviment de GRUP de seccions (arrossegant el cos d'una de seleccionada)
         if (len(self._multi) > 1
                 and getattr(self._section_items[idx], "_drag_mode", None)

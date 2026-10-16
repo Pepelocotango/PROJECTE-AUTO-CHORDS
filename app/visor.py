@@ -200,6 +200,7 @@ class Visor(QMainWindow):
         self.timeline.sectionRenamed.connect(self._on_section_renamed)
         self.timeline.sectionDeleteRequested.connect(self._elimina_seccio_index)
         self.timeline.sectionDuplicateRequested.connect(self._duplica_seccio_index)
+        self.timeline.sectionCopyRequested.connect(self._on_section_copia)
         self.timeline.multiDeleteRequested.connect(self._elimina_seleccio)
         self.timeline.pasteRequested.connect(self._enganxa_seleccio)
         self.timeline.groupDuplicateRequested.connect(self._duplica_seleccio)
@@ -526,6 +527,41 @@ class Visor(QMainWindow):
         if hasattr(self, "llista_ac"):
             self._omple_llista_ac()
         return True
+
+    def _on_section_copia(self, ini, fi, lletra, familia):
+        """`Ctrl+Shift`+arrossegar una **secció**: la secció viatja i a l'ORIGEN
+        hi torna una còpia amb la **mateixa lletra i família**, sobre el mateix
+        tram. (Paritat #11 amb els acords.)
+
+        Les seccions cobreixen tota la cançó, així que la còpia **sobreviu** el
+        tram: les vores es tallen i s'acoblen — la mateixa operació que fa un
+        enganxament de secció (`_bloc_sobre_seccions`), reaprofitada.
+        """
+        durada = float(self.audio["durada"])
+        ini0 = max(0.0, min(float(ini), durada))
+        llargada = max(0.0, min(float(fi), durada) - ini0)
+        if llargada <= 1e-6:
+            return
+        bloc = [(0.0, llargada, str(lletra), str(familia))]
+        self._undo_marca()
+        try:
+            noves = self._bloc_sobre_seccions(self.seccions, bloc, llargada,
+                                              ini0, durada, 1e-6)
+            cand = self._valida_canvis_seccions(noves)
+        except ValueError as e:
+            self.log(f"Ctrl+Shift+arrossegat (secció): no s'ha fet res ({e})")
+            return
+        self.seccions = cand
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            self._desa_i_regenera()
+            self._regenera_abc_des_de_totes_les_seccions(
+                "secció duplicada (Ctrl+Shift+arrossegar)")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+        self.log(f"Ctrl+Shift+arrossegat (secció): còpia «{lletra}» a "
+                 f"{ini0:.2f}s")
 
     def _on_chord_copia(self, t_original, nom):
         """`Ctrl+Shift`+arrossegar un clip d'acord: el clip viatja i **a
