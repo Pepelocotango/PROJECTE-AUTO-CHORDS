@@ -3,7 +3,7 @@
 Objectiu: que la resta del codi no hagi de saber a quin SO corre. **Al Linux no
 canvia res** del comportament actual (els valors que retorna són els d'abans).
 
-Vegeu `ROADMAP.md` secció 9 (desplegament a altres SO).
+Vegeu `ROADMAP_HISTORIA.md` §9 (desplegament a altres SO).
 """
 import os
 import signal

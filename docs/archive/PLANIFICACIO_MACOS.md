@@ -6,7 +6,7 @@
 
 > **2026-10-07 · actualitzat 2026-10-08.** Pla per construir AUTO CHORDS per a
 > **macOS x86_64** amb **mínim High Sierra 10.13**, tot a **GitHub Actions**
-> (cap build local Mac). Complementa `ROADMAP.md` §9 (viabilitat) i
+> (cap build local Mac). Complementa `ROADMAP_HISTORIA.md` §9 (viabilitat) i
 > `docs/PORTABILITAT.md` (Linux).
 >
 > ✅ **ESTAT (2026-10-10)**: build **VERD** al CI: **run #14 (`3c7f441`)** — amb

@@ -8,7 +8,7 @@
 >
 > Cada regla té la seva **validació** al codi i un **test** que la comprova
 > (les 11: vegeu la nota del final).
-> Referenciades a `ROADMAP.md` (§Notes d'implementació) i `DEVELOPING.md`.
+> Referenciades a `ROADMAP_HISTORIA.md` (§Notes d'implementació) i `DEVELOPING.md`.
 >
 > ## ‼️ S'HA DE COMPLIR **SEMPRE** — a TOTS els punts
 > Les regles **no** són una comprovació «de tant en tant»: s'han de complir en
