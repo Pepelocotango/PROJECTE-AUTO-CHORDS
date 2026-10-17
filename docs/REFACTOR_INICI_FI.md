@@ -39,9 +39,12 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
 
 ## Pla per fases (suite verda a cada fase)
 
-1. **S1 — Tipus i normalització únics**: `pipeline.Clip` + `normalitza_clips()` (un sol
-   lloc per als invariants i els forats), amb adaptadors des del model actual. Cap
-   canvi de comportament; la suite ha de quedar **verda sense tocar tests**.
+1. **S1 — Tipus i normalització únics** ✅ **FET (2026-10-17)**: `pipeline.Clip`
+   (`ini`, `fi`, `payload`) + `clips_d_acords` / `acords_de_clips` /
+   `clips_de_seccions` / `seccions_de_clips` + `normalitza_clips(...)`. Cap canvi
+   de comportament: la suite passa **sense tocar cap test** i un test nou
+   (`tests/test_clips_unificats.py`) demostra l'**equivalència exacta** amb
+   `normalitza_cobertura` sobre el corpus dels dos tipus.
 2. **S2 — Una sola operació per acció**: `mou_bloc`, `redimensiona`, `parteix`,
    `fusiona`, `elimina`, `duplica` passen a **una única implementació** que serveix
    acords i estructura.

@@ -12,6 +12,7 @@ import tempfile
 import threading
 import time
 import wave
+from collections import namedtuple
 
 from app import plataforma, tempo, xifrat
 
@@ -587,6 +588,110 @@ def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
 # Tolerància compartida per als temps (evita falsos positius per coma flotant).
 # La fan servir la normalització de cobertura i els validadors del visor.
 TOL_TEMPS = 1e-6
+
+
+# --- Model unificat de CLIPS (refactor «inici+fi») -------------------------
+# Un SOL tipus per a acords i estructura: `Clip(ini, fi, payload)`, on el
+# `payload` és tot el que no és temps:
+#   · acords:     `(nom, tsrc)` — p. ex. `("Am", "16.153846154")`;
+#   · estructura: `(lletra, família)` — p. ex. `("A", "A")`.
+# La font única de veritat és la CADENA DE FRONTERES: el `fi` se'n deriva i, per
+# tant, no pot quedar mai incoherent. Contracte i pla: docs/REFACTOR_INICI_FI.md.
+Clip = namedtuple("Clip", ("ini", "fi", "payload"))
+
+
+def clips_d_acords(acords, durada):
+    """Acords (marques `(t, nom, tsrc)`) → `Clip` amb el `fi` derivat.
+
+    El `fi` d'un acord és l'`ini` del següent; el de l'últim, la `durada`.
+    """
+    durada = float(durada or 0.0)
+    out = []
+    for i, a in enumerate(acords or ()):
+        fi = float(acords[i + 1][0]) if i + 1 < len(acords) else durada
+        out.append(Clip(float(a[0]), fi, tuple(a[1:])))
+    return out
+
+
+def acords_de_clips(clips):
+    """`Clip` → acords (marques `(t, nom, tsrc)`): només la frontera d'inici."""
+    return [(float(c.ini),) + tuple(c.payload) for c in clips]
+
+
+def clips_de_seccions(seccions):
+    """Seccions `(ini, fi, lletra, família)` → `Clip` (el `fi` ja hi és)."""
+    return [Clip(float(s[0]), float(s[1]), tuple(s[2:])) for s in (seccions or ())]
+
+
+def seccions_de_clips(clips):
+    """`Clip` → seccions `(ini, fi, lletra, família)`."""
+    return [(float(c.ini), float(c.fi)) + tuple(c.payload) for c in clips]
+
+
+def normalitza_clips(clips, durada, forat, arrodoneix=False, deriva_fi=False,
+                     log=None):
+    """XARXA DE SEGURETAT única dels invariants #1, #2 i #4 (model de clips).
+
+    - **#1 ordre estricte**: clips ordenats per `ini` (`sort` estable).
+    - **#2 contigüitat**: la frontera entre dos clips és una de sola → si dos
+      clips es trepitgen, el primer s'acota a l'`ini` del segon; si hi ha un
+      forat, es tapa amb un clip de payload `forat`.
+    - **#4 cobertura**: si el primer no arrenca a 0 s'hi posa una capçalera
+      `forat`, i el `fi` de l'últim s'acota a `durada`.
+
+    Paràmetres de variant (les dues cares del model actual):
+    - `forat`: payload del clip de farciment — `(SENSE_ACORD, "0.000000000")`
+      per als acords i `(SENSE_SECCIO, SENSE_SECCIO)` per a l'estructura.
+    - `arrodoneix`: aplica la resolució del CSV (`TEMPS_DEC`, 10 ms) als descarts
+      i als xocs d'inici (es conserva el primer).
+    - `deriva_fi`: el `fi` es **deriva** de la cadena (semàntica de marques). Si
+      és fals es respecta el `fi` d'entrada (semàntica d'intervals: els forats
+      són reals i es tapen amb `forat`).
+
+    Retorna una llista NOVA de `Clip`; no muta l'entrada.
+    """
+    durada = float(durada or 0.0)
+    net, vists = [], set()
+    for c in clips or ():
+        ini, fi = float(c.ini), float(c.fi)
+        if durada > 0:
+            ref = round(ini, TEMPS_DEC) if arrodoneix else ini
+            if ref >= durada - TOL_TEMPS:
+                continue                  # arrenca (o arrodonit) fora: no hi és
+            fi = min(fi, durada)          # cap clip no surt de la WAV
+        if arrodoneix:
+            clau = round(ini, TEMPS_DEC)
+            if clau in vists:
+                if log:
+                    log(f"cobertura: clip a {ini:.3f} s eliminat (xoca al CSV "
+                        f"amb un altre a {clau:.2f} s)")
+                continue
+            vists.add(clau)
+        net.append(Clip(ini, fi, tuple(c.payload)))
+    net.sort(key=lambda c: c.ini)
+    if deriva_fi:
+        net = [Clip(c.ini, net[i + 1].ini if i + 1 < len(net) else durada,
+                    c.payload) for i, c in enumerate(net)]
+    out = []
+    for c in net:
+        if out:
+            prev = out[-1]
+            if c.ini < prev.fi - TOL_TEMPS:
+                out[-1] = Clip(prev.ini, c.ini, prev.payload)    # es trepitgen
+            elif c.ini > prev.fi + TOL_TEMPS:
+                out.append(Clip(prev.fi, c.ini, tuple(forat)))   # forat
+                if log:
+                    log(f"cobertura: forat {prev.fi:.2f}–{c.ini:.2f} s tapat "
+                        f"amb «{forat[0]}»")
+        out.append(c)
+    if out and out[0].ini > 1e-9:
+        out.insert(0, Clip(0.0, out[0].ini, tuple(forat)))
+        if log:
+            log(f"cobertura: capçalera «{forat[0]}» a 0 ({out[1].ini:.2f} s)")
+    if out and durada > 0 and out[-1].fi < durada - 1e-9:
+        ult = out[-1]
+        out[-1] = Clip(ult.ini, durada, ult.payload)
+    return out
 
 
 def model_inicial(durada, log=None):
