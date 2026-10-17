@@ -1330,50 +1330,6 @@ class TimelineView(QGraphicsView):
         self._show_guide_at(nt)
         self.sectionMoved.emit(idx, nt, fi_o)
 
-    def _move_section_group(self, idx: int, sel: list, new_ini: float) -> None:
-        """Mou totes les seccions de `sel` amb el mateix delta que `idx`.
-
-        Només per a blocs CONTIGUS (el cas natural de Shift+clic). El delta es
-        limita perquè les seccions veïnes NO seleccionades (que absorbeixen el
-        desplaçament, com en el moviment individual) no baixin de la mida
-        mínima. Els extrems dels veïns s'ajusten per mantenir la contigüitat."""
-        first, last = sel[0], sel[-1]
-        if sel != list(range(first, last + 1)):
-            return
-        item = self._section_items[idx]
-        ini0 = float(getattr(item, "_drag_ini0", self._seccions[idx][0]))
-        ini_s = self._snap(new_ini)
-        dt = ini_s - ini0
-        first_ini = float(self._seccions[first][0])
-        last_fi = float(self._seccions[last][1])
-        if first - 1 >= 0:
-            dt_lo = (float(self._seccions[first - 1][0]) + MIN_SEC_LEN_S
-                     - first_ini)
-        else:
-            dt_lo = -first_ini
-        if last + 1 < len(self._seccions):
-            dt_hi = (float(self._seccions[last + 1][1]) - MIN_SEC_LEN_S
-                     - last_fi)
-        else:
-            dt_hi = self._durada - last_fi
-        dt = 0.0 if dt_lo > dt_hi else max(dt_lo, min(dt_hi, dt))
-        for i in sel:
-            ini_i, fi_i, L, fam = self._seccions[i]
-            self._seccions[i] = (ini_i + dt, fi_i + dt, L, fam)
-            self._section_items[i].set_ini(ini_i + dt)
-            self._section_items[i].set_fi(fi_i + dt)
-        if first - 1 >= 0:
-            p = self._seccions[first - 1]
-            self._seccions[first - 1] = (p[0], first_ini + dt, p[2], p[3])
-            self._section_items[first - 1].set_fi(first_ini + dt)
-        if last + 1 < len(self._seccions):
-            n = self._seccions[last + 1]
-            self._seccions[last + 1] = (last_fi + dt, n[1], n[2], n[3])
-            self._section_items[last + 1].set_ini(last_fi + dt)
-        self._show_guide_at(self._seccions[idx][0])
-        self.sectionMoved.emit(idx, self._seccions[idx][0],
-                               self._seccions[idx][1])
-
     def _on_section_edit(self, idx: int) -> None:
         item = self._section_by_idx.get(idx)
         if item is None:
