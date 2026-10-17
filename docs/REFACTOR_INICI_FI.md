@@ -57,8 +57,12 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
    (`ZONE_LEFT`/`ZONE_RIGHT`) enganxades a `redimensiona_clips`; **`filtra_seccions`**
    reabsorbit al model de clips (equivalència exacta verificada sobre 20.000
    casos) i **MCP d'`elimina`/`duplica`** alineat als nuclis.
-3. **S3 — CSV `inici,fi` als dos**: escriptors i lectors (seccions ja ho fan; acords
-   passa a `inici,fi,acord`), sense cap camí de compatibilitat.
+3. ✅ **FET — S3 — CSV `inici,fi` als dos**: `acords.csv` passa a `inici,fi,acord`
+   (escriptors `desa_acords_csv`/`postproc.processa_acords_csv` i **tots els
+   lectors del model**: `visor.llegeix_acords`, `pipeline.segments_lliures`/
+   `exporta_total`, `acords_a_live.py`), **sense retrocompatibilitat**. El `fi`
+   es re-deriva sempre. Els **crus** d'anàlisi (`chords_raw.csv` / Chordino)
+   queden en 2 columnes (són immutables).
 4. **S4 — Visor**: el model en memòria passa a clips amb `ini`+`fi` (vores ZONE_LEFT/
    ZONE_RIGHT incloses) i s'elimina el despatx `kind` duplicat.
 5. **S5 — Exports i derivats**: WAVs, ABC, partitura, MusicXML, guia DAW
@@ -127,16 +131,11 @@ Conseqüències per a **S2**:
 
 ## Següent (pendent del refactor, en ordre)
 
-1. **S3 — CSV `inici,fi` als dos**: escriptors i lectors (`acords.csv` passa a
-   `inici,fi,acord`), **sense retrocompatibilitat**. El `fi` es re-deriva sempre.
-   És una **escombrada**: toca `pipeline.desa_acords_csv`, `visor.llegeix_acords`,
-   `pipeline.segments_lliures`/`exporta_total`, `acords_a_live.py` i els fixtures
-   de ~40 fitxers de test.
-2. **S4 — visor**: el model en memòria passa a clips `ini`+`fi`; fora el
+1. **S4 — visor**: el model en memòria passa a clips `ini`+`fi`; fora el
    despatx `kind` duplicat.
-3. **S5 — exports i derivats**: WAVs, ABC, partitura, MusicXML, `acords_a_live.py`
+2. **S5 — exports i derivats**: WAVs, ABC, partitura, MusicXML, `acords_a_live.py`
    i les eines MCP al nou model.
-4. **S6 — neteja**: codi mort, helpers sense ús, docs i CHANGELOG.
+3. **S6 — neteja**: codi mort, helpers sense ús, docs i CHANGELOG.
 
 **Nuclis ja fets** (no duplicar-los mai): `normalitza_clips`, `redimensiona_clips`,
 `mou_bloc_clips`, `parteix_clips`, `fusiona_clips`, `elimina_clips`,
