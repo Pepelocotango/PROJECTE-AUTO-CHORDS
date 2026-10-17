@@ -1116,6 +1116,81 @@ def fusiona_seccions(seccions, i, amb="seguent"):
         clips_de_seccions(seccions), i, amb, etiqueta="secció"))
 
 
+def elimina_clips(clips, idx, durada, forat):
+    """Nucli únic d'ESBORRAR un clip (§6.4: l'anterior s'estira; sense veí, forat).
+
+    El clip `idx` s'esborra i l'**anterior s'estira** per tapar el forat (mateixa
+    lògica que l'origen d'un moviment, §6.3). Si NO hi ha anterior (el clip 0),
+    el forat el tapa el **normalitzador** amb `forat` (`N`/`-`) sense moure cap
+    altre clip (important: esborrar la «N» de capçalera no ha de desplaçar l'acord
+    següent). Si el carril queda **buit**, hi va el clip canònic `forat` de 0 a
+    `durada` (regla d'or #4). Retorna clips NOUS; no muta l'entrada.
+    """
+    out = [Clip(c.ini, c.fi, c.payload) for c in (clips or ())]
+    if not (0 <= idx < len(out)):
+        return out
+    c = out.pop(idx)
+    if idx > 0 and out:
+        p = out[idx - 1]
+        out[idx - 1] = Clip(p.ini, c.fi, p.payload)
+    out = normalitza_clips(out, durada, forat)
+    if not out:
+        out = [Clip(0.0, float(durada or c.fi), tuple(forat))]
+    return out
+
+
+def elimina_acord(acords, idx, durada):
+    """Esborra l'acord `idx` (wrapper del nucli unificat `elimina_clips`; #11)."""
+    return acords_de_clips(elimina_clips(
+        clips_d_acords(acords, durada), idx, durada, FORAT_ACORD))
+
+
+def elimina_seccio(seccions, idx, durada):
+    """Esborra la secció `idx` (mateix nucli que els acords; #11)."""
+    return seccions_de_clips(elimina_clips(
+        clips_de_seccions(seccions), idx, durada, FORAT_SECCIO))
+
+
+def duplica_clips(clips, idx, marge=0.05):
+    """Nucli únic de DUPLICAR un clip: es **parteix pel mig** en dos d'iguals.
+
+    El duplicat conserva el `payload` i, entre els dos, la durada total (com el
+    `Ctrl+D` de l'app: la meitat per a cadascun). Si no hi ha prou marge (< 2×
+    `marge`), no es fa res. Retorna clips NOUS; no muta l'entrada.
+    """
+    out = [Clip(c.ini, c.fi, c.payload) for c in (clips or ())]
+    if not (0 <= idx < len(out)):
+        return out
+    c = out[idx]
+    mig = (c.ini + c.fi) / 2.0
+    if mig - c.ini < marge or c.fi - mig < marge:
+        return out
+    return (list(out[:idx]) + [Clip(c.ini, mig, c.payload),
+                               Clip(mig, c.fi, c.payload)] + list(out[idx + 1:]))
+
+
+def duplica_acord(acords, idx, durada, marge=0.02):
+    """Duplica l'acord `idx` (wrapper de `duplica_clips`; #11).
+
+    El 2n tros (el nou) pren el seu inici com a `tsrc` (temps font), com fan la
+    resta de marques noves; l'original conserva el seu.
+    """
+    clips = clips_d_acords(acords, durada)
+    nou = duplica_clips(clips, idx, marge)
+    if len(nou) == len(clips) + 1:
+        s = nou[idx + 1]
+        p = tuple(s.payload)
+        nou = list(nou)
+        nou[idx + 1] = Clip(s.ini, s.fi, (p[0], f"{s.ini:.9f}") + p[2:])
+    return acords_de_clips(nou)
+
+
+def duplica_seccio(seccions, idx, marge=0.05):
+    """Duplica la secció `idx` (mateix nucli que els acords; #11)."""
+    return seccions_de_clips(duplica_clips(
+        clips_de_seccions(seccions), idx, marge))
+
+
 def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0):
     def _escriu(f):
         w = csv.writer(f)

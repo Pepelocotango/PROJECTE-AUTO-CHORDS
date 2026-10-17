@@ -596,7 +596,10 @@ class Visor(QMainWindow):
             idx = getattr(self, "llista_ac", None).currentRow() if hasattr(self, "llista_ac") else -1
         if idx < 0 or idx >= len(self.acords):
             return False
-        del self.acords[idx]
+        # Nucli únic `pipeline.elimina_acords` (§6.4): l'anterior s'estira; sense
+        # anterior, hi va la «N»; si queda buit, la «N» canònica a 0.
+        self.acords = pipeline.elimina_acord(
+            self.acords, idx, self._durada_wav())
         if hasattr(self, "llista_ac"):
             self._omple_llista_ac()
         return True
@@ -1509,22 +1512,21 @@ class Visor(QMainWindow):
             self.timeline.paste_at_cursor()
 
     def _duplica_acord_index(self, idx):
-        """Duplica l'acord idx: s'insereix JUST DESPRES i es reparteix la
+        """Duplica l'acord idx: es parteix pel mig (nucli únic `duplica_acord`).
 
-        durada — el duplicat va a mig camí entre l'original i el següent
-        (així no cal desplaçar res i es mantenen les invariants)."""
+        El duplicat va JUST DESPRÉS i comparteix la durada de l'original (la
+        meitat per a cadascun), així no cal desplaçar res i es mantenen els
+        invariants. Regla d'or #11: mateix nucli que les seccions."""
         if idx < 0 or idx >= len(self.acords):
             return
-        t, nom = self.acords[idx][0], self.acords[idx][1]
-        seguent = (self.acords[idx + 1][0] if idx + 1 < len(self.acords)
-                   else self.audio["durada"])
-        nou_t = (t + seguent) / 2.0
-        if nou_t - t < 0.02:          # massa poc espai per un duplicat
+        cand = pipeline.duplica_acord(self.acords, idx,
+                                      float(self.audio["durada"]))
+        if cand == list(self.acords):
             self.log(f"no es pot duplicar l'acord {idx}: no hi ha espai")
             return
+        nou_t = float(cand[idx + 1][0])
         self._undo_marca()
-        self.acords.insert(idx + 1, (nou_t, nom, f"{nou_t:.9f}"))
-        self.acords = self._normalitza_acords(self.acords)
+        self.acords = self._normalitza_acords(cand)
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
@@ -1534,20 +1536,19 @@ class Visor(QMainWindow):
             self.log(f"ERROR: {e}")
 
     def _duplica_seccio_index(self, idx):
-        """Duplica la seccio idx: es parteix en dues (la meitat per a cada una).
+        """Duplica la secció idx: es parteix en dues (nucli únic `duplica_seccio`).
 
-        El duplicat va JUST DESPRES i comparteix la durada de l'original,
-        sense desplaçar els seguents (manté les invariants)."""
+        El duplicat va JUST DESPRÉS i comparteix la durada de l'original (la
+        meitat per a cadascun), sense desplaçar els següents (manté els
+        invariants). Regla d'or #11: mateix nucli que els acords."""
         if idx < 0 or idx >= len(self.seccions):
             return
-        ini, fi, L, fam = self.seccions[idx]
-        mig = (ini + fi) / 2.0
-        if mig - ini < 0.05 or fi - mig < 0.05:
+        cand = pipeline.duplica_seccio(self.seccions, idx)
+        if cand == list(self.seccions):
             self.log(f"no es pot duplicar la secció {idx}: és massa curta")
             return
         self._undo_marca()
-        self.seccions[idx] = (ini, mig, L, fam)
-        self.seccions.insert(idx + 1, (mig, fi, L, fam))
+        self.seccions = cand
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
@@ -1573,20 +1574,11 @@ class Visor(QMainWindow):
             return
         cand_ac = list(self.acords)
         for i in idx_ac:
-            t, nom = float(cand_ac[i][0]), cand_ac[i][1]
-            seguent = (float(cand_ac[i + 1][0]) if i + 1 < len(cand_ac)
-                       else float(self.audio["durada"]))
-            nou_t = (t + seguent) / 2.0
-            if nou_t - t >= 0.02:
-                cand_ac.insert(i + 1, (nou_t, nom, f"{nou_t:.9f}"))
+            cand_ac = pipeline.duplica_acord(
+                cand_ac, i, float(self.audio["durada"]))
         cand_sec = list(self.seccions)
         for i in idx_sec:
-            ini, fi, L, fam = cand_sec[i]
-            ini, fi = float(ini), float(fi)
-            mig = (ini + fi) / 2.0
-            if mig - ini >= 0.05 and fi - mig >= 0.05:
-                cand_sec[i] = (ini, mig, L, fam)
-                cand_sec.insert(i + 1, (mig, fi, L, fam))
+            cand_sec = pipeline.duplica_seccio(cand_sec, i)
         try:
             cand_ac = self._valida_canvis_acords(cand_ac)
             if idx_sec:
@@ -2649,16 +2641,10 @@ class Visor(QMainWindow):
     def _elimina_seccio(self, idx):
         if idx < 0 or idx >= len(self.seccions):
             return False
-        ini, fi, _L, _fam = self.seccions[idx]
-        del self.seccions[idx]
-        # Invariant: el fi d'una seccio = inici de la seguent. En treure'n una,
-        # el vei ocupa l'espai buit (el previ s'esten, o el seguent comenca abans).
-        if idx - 1 >= 0:
-            pi, _pf, pl, pfam = self.seccions[idx - 1]
-            self.seccions[idx - 1] = (pi, fi, pl, pfam)
-        elif idx < len(self.seccions):
-            _ni, nf, nl, nfam = self.seccions[idx]
-            self.seccions[idx] = (ini, nf, nl, nfam)
+        # Nucli únic `pipeline.elimina_seccio` (§6.4): mateix tracte que els
+        # acords (#11); l'anterior s'estira i, sense anterior, hi va el «-».
+        self.seccions = pipeline.elimina_seccio(
+            self.seccions, idx, self._durada_wav())
         if hasattr(self, "llista_ab"):
             self._actualitza_llista_abc()
         return True
