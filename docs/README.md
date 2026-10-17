@@ -31,7 +31,8 @@
 | `MCP_AUTO_CHORDS.md` | Pont MCP perquè un agent controli l'app viva. |
 | `EDICIO_OPERACIONS.md` | **Taula única** de totes les formes d'edició: operació × **GUI** × **MCP** × paritat acords/estructura (**#11**) × estat (FET/pendent). El test `test_edicio_operacions_doc.py` la manté al dia. |
 | `AUTOPROMPT_REFACTOR.md` | 🤖 **Autoprompt** per continuar el refactor en una conversa nova (context, fet, pendents i trampes). |
-| `REFACTOR_INICI_FI.md` | 🏗️ **Refactor de base** (en curs, tag `refactor-inici-fi`): model únic de clips amb **inici+fi** per a acords i estructura. Contracte i pla per fases. |
+| `REFACTOR_INICI_FI.md` | 🏗️ **Refactor de base** (ACABAT, tags `refactor-fi-fet` → `refactor-pendents-fets`): model únic de clips amb **inici+fi** per a acords i estructura. Contracte i pla per fases. |
+| `PLA_TEMPO_COMPAS.md` | 🎚️ **Pla del mapa de tempo i compàs** variables (com als DAWs): model, fases i estat. Fase 1 (motor `app/tempo_map.py`) FET. |
 
 ## Autodetecció (motors i opcions)
 
