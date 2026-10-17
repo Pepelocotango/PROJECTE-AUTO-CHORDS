@@ -1,8 +1,8 @@
 # Refactor de base: model únic de clips amb **inici + fi**
 
-> **ESTAT ACTUAL (2026-10-17) — tag `refactor-s1-s3-fets` → S4 FET**
-> - ✅ **S1 FET** · ✅ **S2 FET** · ✅ **S3 FET** · ✅ **S4 FET**
-> - ⏳ **S5 PENDENT** (exports i derivats) · ⏳ **S6 PENDENT** (neteja final)
+> **ESTAT ACTUAL (2026-10-17) — tag `refactor-s4-fet` → S5 FET**
+> - ✅ **S1** · ✅ **S2** · ✅ **S3** · ✅ **S4** · ✅ **S5**
+> - ⏳ **S6 PENDENT** (neteja: wrappers de marques + ponts S4, docs, CHANGELOG)
 >
 > **Punt de partida**: taguejat `refactor-inici-fi` (decisió de l'operador, 17-10-2026).
 > **Abast**: es refactoritza TOT el model de dades i tot el codi d'edició que hi toca.
@@ -74,9 +74,17 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
    (`_valida_canvis_acords`, `_normalitza_cobertura`) sobre clips; les operacions
    del visor van pels nuclis de clips; i **fora el despatx `kind` duplicat**
    (`Visor._aplica_carril`). Ponts `pipeline.nom_d_acord` / `_acords_a_clips`.
-5. **S5 — Exports i derivats**: WAVs, ABC, partitura, MusicXML, guia DAW
-   (`acords_a_live.py`) i MCP al nou model.
-6. **S6 — Neteja**: fora codi mort i helpers que ja no calguin; docs i CHANGELOG.
+5. ✅ **FET — S5 — Exports i derivats**: els WAVs (`fer_wavs_acords`,
+   `fer_wavs_estructura`), l'ABC, la partitura/MusicXML i la guia DAW
+   (`acords_a_live.py`) consumeixen l'artefacte exportat o el CSV `inici,fi,acord`
+   i funciona amb el model de clips; `exporta_total` normalitza explícitament els
+   clips (`clips_de_model` + `normalitza_clips`); l'MCP ja edita clips (S4).
+   Suite sencera verda (incloent-hi els tests d'export i partitura).
+6. ⏳ **S6 — Neteja**: fora codi mort i helpers que ja no calguin (wrappers de
+   **marques** `parteix_acord`/`fusiona_acords`/`mou_bloc_acords`/`redimensiona_
+   acord`/`elimina_acord`/`duplica_acord` + `clips_d_acords`/`acords_de_clips`,
+   un cop migrats els tests als nuclis de clips; ponts S4 `nom_d_acord`/
+   `clips_de_model` si es poden eliminar); docs i `CHANGELOG`.
 
 ## Nota
 

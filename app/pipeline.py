@@ -635,6 +635,25 @@ def nom_d_acord(it):
     return it[1]
 
 
+def clips_de_model(items, durada=0.0):
+    """Normalitza una llista d'acords (clips `Clip` o marques `(t, nom[, tsrc])`) a clips.
+
+    Pont (S4): el model viu ja són clips; les **marques** encara hi arriben des
+    del camí de l'anàlisi o de crides directes. El `fi` d'una marca es deriva
+    (inici del següent; l'últim, `durada`). No muta l'entrada.
+    """
+    items = list(items or [])
+    durada = float(durada or 0.0)
+    out = []
+    for i, a in enumerate(items):
+        if isinstance(a, Clip):
+            out.append(a)
+        else:
+            fi = (float(items[i + 1][0]) if i + 1 < len(items) else durada)
+            out.append(Clip(float(a[0]), fi, tuple(a[1:])))
+    return out
+
+
 def clips_de_seccions(seccions):
     """Seccions `(ini, fi, lletra, família)` → `Clip` (el `fi` ja hi és)."""
     return [Clip(float(s[0]), float(s[1]), tuple(s[2:])) for s in (seccions or ())]
@@ -1445,12 +1464,14 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
     # (A)+(B) Si ens donen el MODEL, mana ell: normalitzem la cobertura i
     # re-escrivim el CSV d'acords ABANS de comprovar-lo/fer-lo servir.
     if acords is not None or seccions is not None:
-        acords_n, seccions_n = normalitza_cobertura(
-            acords or [], seccions or [], total_s or 0.0, log=log)
+        durada = float(total_s or 0.0)
         if acords is not None:
-            desa_acords_csv(csv_ac, acords_n, total_s or 0.0)
+            clips = normalitza_clips(
+                clips_de_model(acords, durada), durada, FORAT_ACORD,
+                arrodoneix=True, deriva_fi=True, log=log)
+            desa_acords_csv(csv_ac, clips, durada)
         if seccions is not None:
-            seccions = seccions_n
+            _, seccions = normalitza_cobertura([], seccions, durada, log=log)
     if not os.path.isfile(csv_ac):
         raise FileNotFoundError(f"No trobo acords.csv: {csv_ac}")
 

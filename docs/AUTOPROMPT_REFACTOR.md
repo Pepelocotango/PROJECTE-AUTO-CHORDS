@@ -72,16 +72,16 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests
 ```
 
 Estat en deixar aquest autoprompt: **944 tests OK** (1 skip), **pyflakes net**,
-arbre net. **S1–S4 FETS** (tag `refactor-s1-s3-fets` = abans de S4).
+arbre net. **S1–S5 FETS** (tags `refactor-s1-s3-fets` i `refactor-s4-fet`).
 
 ## Pendent (en ordre)
 
-1. **S5 — exports i derivats**: revisar que WAVs, ABC, partitura, MusicXML, la
-   guia DAW (`acords_a_live.py`) i les eines MCP treballin ja amb el model de
-   clips; netejar els ponts S4 que quedin (`pipeline.nom_d_acord`,
-   `timeline._acords_a_clips`, branques «visor amb marques» de l'MCP).
-2. **S6 — neteja final**: codi mort, helpers sense ús (`clips_d_acords`/
-   `acords_de_clips` si ja no calen, wrappers de marques), `CHANGELOG` i docs.
+1. **S6 — neteja final**: migrar els tests que encara usen els **wrappers de
+   marques** (`parteix_acord`, `fusiona_acords`, `mou_bloc_acords`,
+   `redimensiona_acord`, `elimina_acord`, `duplica_acord`) als nuclis de clips i
+   eliminar-los, amb `clips_d_acords`/`acords_de_clips`; revisar els ponts S4
+   (`pipeline.nom_d_acord`, `pipeline.clips_de_model`, `timeline._acords_a_clips`,
+   branques «visor amb marques» de l'MCP). `CHANGELOG` i docs.
 
 ## Trampes conegudes
 

@@ -766,12 +766,9 @@ class Visor(QMainWindow):
         a0 = list(self.acords)
         s0 = list(self.seccions)
         d = self._durada_wav()
-        acords = [a if isinstance(a, pipeline.Clip)
-                  else pipeline.Clip(float(a[0]), 0.0, tuple(a[1:]))
-                  for a in self.acords]
         self.acords = pipeline.normalitza_clips(
-            acords, d, pipeline.FORAT_ACORD, arrodoneix=True,
-            deriva_fi=True, log=self.log)
+            pipeline.clips_de_model(self.acords, d), d, pipeline.FORAT_ACORD,
+            arrodoneix=True, deriva_fi=True, log=self.log)
         _, self.seccions = pipeline.normalitza_cobertura(
             [], self.seccions, d, log=self.log)
         return self.acords != a0 or self.seccions != s0

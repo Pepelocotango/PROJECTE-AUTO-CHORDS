@@ -87,15 +87,7 @@ from app.timeline_items import (   # noqa: E402,F401
 # -----------------------------------------------------------------------------
 def _acords_a_clips(acords, durada):
     """Converteix el model d'acords a **clips** (S4); accepta marques (pont)."""
-    acords = list(acords or [])
-    out = []
-    for i, a in enumerate(acords):
-        if isinstance(a, pipeline.Clip):
-            out.append(a)
-        else:
-            fi = float(acords[i + 1][0]) if i + 1 < len(acords) else durada
-            out.append(pipeline.Clip(float(a[0]), fi, tuple(a[1:])))
-    return out
+    return pipeline.clips_de_model(acords, durada)
 
 
 class TimelineView(QGraphicsView):
