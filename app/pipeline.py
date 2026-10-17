@@ -551,38 +551,43 @@ def _extract_segments_segmentino(wav_path, out_csv, log, params=None):
 def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
     """Post-processa les seccions (opcions del dialeg; motor qm-segmenter).
 
+    Reabsorbit al MODEL DE CLIPS (#11): no manté cap llista paral·lela.
+
     - `fusiona_iguals`: uneix trossos consecutius amb la MATEIXA etiqueta
       (p. ex. «B» «B» -> una sola secció), conservant-ne els límits.
     - `durada_min`: fusiona els trossos més curts que aquesta durada amb el
-      veí (el de l'esquerra; el primer, amb el de la dreta).
+      veí (el de l'esquerra, que conserva la seva etiqueta; el primer, amb el
+      de la dreta) — el nucli `fusiona_clips`.
 
     Manté l'invariant: intervals ordenats i contigus (prev.fi == curr.ini).
     """
     if not seccions:
         return []
-    s = [list(x) for x in seccions]
+    clips = clips_de_seccions(seccions)
     if fusiona_iguals:
         out = []
-        for it in s:
-            if out and out[-1][2] == it[2]:
-                out[-1][1] = it[1]            # esten el fi del mateix grup
+        for c in clips:
+            if out and out[-1].payload[0] == c.payload[0]:
+                out[-1] = Clip(out[-1].ini, c.fi, out[-1].payload)
             else:
-                out.append(it)
-        s = out
-    if durada_min and durada_min > 0 and len(s) > 1:
+                out.append(c)
+        clips = out
+    if durada_min and durada_min > 0 and len(clips) > 1:
         i = 0
-        while i < len(s) and len(s) > 1:
-            if (s[i][1] - s[i][0]) < durada_min:
+        while i < len(clips) and len(clips) > 1:
+            c = clips[i]
+            if (c.fi - c.ini) < durada_min:
                 if i > 0:
-                    s[i - 1][1] = s[i][1]
-                    del s[i]
+                    clips = fusiona_clips(clips, i, "anterior")
                     i = max(0, i - 1)
                 else:
-                    s[1][0] = s[0][0]
-                    del s[0]
+                    # El primer s'ajunta amb el següent (mana el següent).
+                    clips = ([Clip(clips[0].ini, clips[1].fi, clips[1].payload)]
+                             + clips[2:])
+                    i = 0
             else:
                 i += 1
-    return [tuple(x) for x in s]
+    return seccions_de_clips(clips)
 
 
 # Tolerància compartida per als temps (evita falsos positius per coma flotant).

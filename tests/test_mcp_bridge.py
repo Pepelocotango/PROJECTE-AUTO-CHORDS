@@ -426,8 +426,12 @@ class TestEdicio(unittest.TestCase):
 
     def test_delete_chord(self):
         vr = _FakeVisor()
-        mcp_bridge._op_delete_chord(_ctx(vr), {"index": 0})
+        # S'esborra un acord REAL (el del mig). Esborrar l'índex 0 (la «N» de
+        # capçalera) el núcli el torna a tapar amb la «N» (cobertura #4, §6.4),
+        # o sigui que no en canvia el recompte.
+        mcp_bridge._op_delete_chord(_ctx(vr), {"index": 1})
         self.assertEqual(len(vr.acords), 2)
+        self.assertEqual([a[1] for a in vr.acords], ["N", "G"])
 
     def test_delete_chord_fora_rang(self):
         from app.mcp_bridge import BridgeError
@@ -440,8 +444,11 @@ class TestEdicio(unittest.TestCase):
         mcp_bridge._op_add_section(_ctx(vr), {"ini_s": 40.0, "fi_s": 60.0,
                                               "lletra": "C", "familia": "C"})
         self.assertEqual(len(vr.seccions), 3)
-        mcp_bridge._op_delete_section(_ctx(vr), {"index": 0})
+        # S'esborra una secció REAL (la del mig): el nucli §6.4 fa que
+        # l'anterior s'estiri. (Esborrar la 0 deixaria un forat «-» davant.)
+        mcp_bridge._op_delete_section(_ctx(vr), {"index": 1})
         self.assertEqual(len(vr.seccions), 2)
+        self.assertEqual([s[2] for s in vr.seccions], ["A", "C"])
 
     def test_undo_redo(self):
         vr = _FakeVisor()

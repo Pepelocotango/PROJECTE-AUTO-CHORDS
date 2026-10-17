@@ -306,13 +306,19 @@ def _op_move_chord(ctx, params):
     return _aplica(ctx, mut)
 
 
+def _durada_de(vr):
+    """Durada de la WAV del visor (0.0 si no se sap)."""
+    return float((getattr(vr, "audio", None) or {}).get("durada", 0.0) or 0.0)
+
+
 def _op_delete_chord(ctx, params):
     idx = _num(params, "index", enter=True)
 
     def mut(vr):
         if idx < 0 or idx >= len(vr.acords):
             raise BridgeError(f"Índex d'acord fora de rang: {idx}")
-        del vr.acords[idx]
+        # Nucli únic (§6.4/#11): mateixa semàntica que la GUI del visor.
+        vr.acords = pipeline.elimina_acord(vr.acords, idx, _durada_de(vr))
 
     return _aplica(ctx, mut)
 
@@ -374,7 +380,8 @@ def _op_delete_section(ctx, params):
     def mut(vr):
         if idx < 0 or idx >= len(vr.seccions):
             raise BridgeError(f"Índex de secció fora de rang: {idx}")
-        del vr.seccions[idx]
+        # Nucli únic (§6.4/#11): mateixa semàntica que la GUI del visor.
+        vr.seccions = pipeline.elimina_seccio(vr.seccions, idx, _durada_de(vr))
 
     return _aplica(ctx, mut)
 
