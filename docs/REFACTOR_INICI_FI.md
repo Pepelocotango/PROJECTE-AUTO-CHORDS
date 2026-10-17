@@ -63,8 +63,14 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
    `exporta_total`, `acords_a_live.py`), **sense retrocompatibilitat**. El `fi`
    es re-deriva sempre. Els **crus** d'anàlisi (`chords_raw.csv` / Chordino)
    queden en 2 columnes (són immutables).
-4. **S4 — Visor**: el model en memòria passa a clips amb `ini`+`fi` (vores ZONE_LEFT/
-   ZONE_RIGHT incloses) i s'elimina el despatx `kind` duplicat.
+4. 🔄 **EN CURS — S4 — Visor**: el model en memòria passa a clips amb `ini`+`fi`
+   i s'elimina el despatx `kind` duplicat. **Fet**: *fora el despatx `kind`
+   duplicat* — nucli únic `Visor._aplica_carril` (els handlers d'eliminar/duplicar
+   d'acords i estructura s'hi passen). **Falta**: el canvi de **representació**
+   (`acords`: marques `(t, nom, tsrc)` → `Clip(ini, fi, payload)`), que toca
+   ~40 punts de `visor.py`, ~25 de `timeline.py`, la validació/normalització del
+   visor i ~34 asserts de test que llegeixen el nom per `[1]` — i té canvis de
+   semàntica (p.ex. «afegir acord» passa d'inserir una marca a **partir** el clip).
 5. **S5 — Exports i derivats**: WAVs, ABC, partitura, MusicXML, guia DAW
    (`acords_a_live.py`) i MCP al nou model.
 6. **S6 — Neteja**: fora codi mort i helpers que ja no calguin; docs i CHANGELOG.
