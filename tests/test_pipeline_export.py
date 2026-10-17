@@ -661,13 +661,16 @@ class TimelineConstraintTests(unittest.TestCase):
         it._drag_t0 = 2.0
         view._on_chord_time_changed(1, 100.0)    # intent d'anar molt a la dreta
         view._emit_edit_finished()
-        # el bloc [C,Am] va fins al final; F i G queden a sota -> eliminats
-        self.assertAlmostEqual(view._acords[0][0], 5.5, places=4)
-        self.assertAlmostEqual(view._acords[1][0], 7.5, places=4)
-        self.assertEqual(len(view._acords), 2)
-        # tots dos s'han mogut el mateix delta (durada del bloc preservada)
-        self.assertAlmostEqual(view._acords[1][0] - 2.0,
-                               view._acords[0][0] - 0.0, places=4)
+        # el bloc [C,Am] va fins al final; F (que hi cau parcialment) es talla
+        # a [4.5,5.5) i G (sota el bloc) s'elimina
+        self.assertEqual(len(view._acords), 3)
+        self.assertEqual(view._acords[0][1], "F")
+        self.assertAlmostEqual(view._acords[0][0], 4.5, places=4)
+        self.assertAlmostEqual(view._acords[1][0], 5.5, places=4)   # C
+        self.assertAlmostEqual(view._acords[2][0], 7.5, places=4)   # Am
+        # el bloc s'ha mogut el mateix delta (durada del bloc preservada)
+        self.assertAlmostEqual(view._acords[2][0] - 2.0,
+                               view._acords[1][0] - 0.0, places=4)
 
     def test_mou_grup_de_seccions(self):
         """Arrossegar el cos d'una secció seleccionada mou el bloc contigu."""
@@ -682,10 +685,11 @@ class TimelineConstraintTests(unittest.TestCase):
         it._drag_mode = SectionItem.ZONE_BODY
         it._drag_ini0 = 0.0
         view._on_section_changed(0, 0.5, 3.5)    # snap 0,2 -> dt = +0.4
-        self.assertAlmostEqual(view._seccions[0][0], 0.4, places=4)
-        self.assertAlmostEqual(view._seccions[1][1], 6.4, places=4)
-        self.assertAlmostEqual(view._seccions[2][0], 6.4, places=4)   # veí absorbeix
-        self.assertAlmostEqual(view._seccions[2][1], 10.0, places=4)
+        view._emit_edit_finished()               # el destí es resol al release
+        self.assertEqual([(s[2], round(float(s[0]), 3), round(float(s[1]), 3))
+                          for s in view._seccions],
+                         [("-", 0.0, 0.4), ("A", 0.4, 3.4),
+                          ("B", 3.4, 6.4), ("C", 6.4, 10.0)])
 
     def test_ruler_mode_label_tempo_i_lliure(self):
         """L'indicador de mode del regle: 'N BPM . P/4' amb tempo, 'Lliure' sense."""

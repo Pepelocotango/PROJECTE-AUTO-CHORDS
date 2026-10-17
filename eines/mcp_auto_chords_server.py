@@ -222,11 +222,12 @@ _TOOLS = [
      {"direccio": {"type": "string"}, "estira": {"type": "boolean"},
       "pas": {"type": "number"}}),
     ("ac_mou_bloc", "mou_bloc",
-     "Mou un BLOC d'acords preservant-ne la durada (l'arrossegament de clips): "
-     "el bloc és [first..last] o la selecció contigua d'acords; `dt_s` pot ser "
-     "negatiu. Al destí, el que queda a sota es talla o s'elimina.",
+     "Mou un BLOC preservant-ne la durada (l'arrossegament de clips): el bloc "
+     "és [first..last] o la selecció contigua; `dt_s` pot ser negatiu. Al "
+     "destí, el que queda a sota es talla o s'elimina. Val per a acords i "
+     "seccions (`kind`: chord|section).",
      {"dt_s": {"type": "number"}, "first": {"type": "integer"},
-      "last": {"type": "integer"}}),
+      "last": {"type": "integer"}, "kind": {"type": "string"}}),
     ("ac_troba_i_reemplaca", "troba_i_reemplaca",
      "Troba i reemplaça TOTES les aparicions exactes d'un xifrat o etiqueta al "
      "tema. `camp`: acords|estructura.",

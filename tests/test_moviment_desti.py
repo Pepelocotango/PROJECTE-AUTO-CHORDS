@@ -84,17 +84,49 @@ class TestMouBlocAcords(unittest.TestCase):
             self.assertAlmostEqual(d[i2 + 1] - d[i1], 4.0, places=6,
                                    msg=f"durada del bloc amb dt={dt}")
 
-    def test_endavant_talla_l_inici_i_elimina_el_final(self):
-        """§6.3 endavant: el clip de sota perd el cap; si el final cau dins, fora.
+    def test_endavant_talla_el_que_queda_sota(self):
+        """§6.3 endavant: el bloc tapa el seu tram nou; el que hi cau a sota es
+        talla i el que en queda fora es conserva.
 
-        Bloc [Am] (2 s) +3 → [5,7):  F (final 6, dins del bloc) S'ELIMINA;
-        G (final 8, més enllà) SE LI TALLA L'INICI → queda [7,8).
+        Bloc [Am] (2 s) +3 → [5,7):  G (inici 6, sota el bloc) perd el cap
+        → queda [7,8);  F (que acabava a 6) perd la cua → queda [4,5).
         """
         nou = pipeline.mou_bloc_acords(BASE, 1, 1, +3.0, DURADA)
         self.assertEqual(_clips(nou),
-                         [("C", 0.0, 5.0), ("Am", 5.0, 7.0),
+                         [("C", 0.0, 4.0), ("F", 4.0, 5.0), ("Am", 5.0, 7.0),
                           ("G", 7.0, 8.0), ("Em", 8.0, 10.0)])
-        self.assertNotIn("F", _noms(nou))
+
+    def test_endavant_llarg_no_toca_els_clips_del_mig(self):
+        """🐞 Regressió (17-10-2026): un salt LLARG no s'ha de menjar els clips
+        que queden entre l'origen i el destí — només s'ha de tapar el tram nou
+        del bloc.
+
+        El bloc [C] va de [0,2) a [5,7):  Am i F es queden QUIETS;  G (que cau
+        sota el bloc) s'elimina;  la marca de 7 (material de sota) s'hi afegeix
+        per preservar la durada.
+        """
+        nou = pipeline.mou_bloc_acords(BASE, 0, 0, +5.0, DURADA)
+        self.assertEqual(_clips(nou),
+                         [("Am", 2.0, 4.0), ("F", 4.0, 5.0), ("C", 5.0, 7.0),
+                          ("G", 7.0, 8.0), ("Em", 8.0, 10.0)])
+        self.assertEqual([n for _t, n in _parells(nou)],
+                         ["Am", "F", "C", "G", "Em"])
+
+    def test_endarrere_llarg_no_esborra_els_clips_del_mig(self):
+        """Mirall endarrere: un salt llarg cap enrere tampoc no esborra res.
+
+        Bloc [G] de [6,8) a [1,3):  Am (sota el bloc) s'elimina;  C i F es
+        queden (F s'estira fins al buit que deixa el bloc). El bloc conserva
+        la seva durada (2 s).
+        """
+        nou = pipeline.mou_bloc_acords(BASE, 3, 3, -5.0, DURADA)
+        noms = _noms(nou)
+        self.assertIn("C", noms)
+        self.assertIn("F", noms)
+        self.assertIn("G", noms)
+        self.assertNotIn("Am", noms)          # sota el bloc → fora
+        d, i = _times(nou), noms.index("G")
+        self.assertAlmostEqual(d[i + 1] - d[i], 2.0, places=6)
 
     def test_endarrere_talla_el_final_i_elimina_el_principi(self):
         """§6.3 endarrere: el clip de sota perd la cua; si l'inici cau dins, fora.
@@ -242,6 +274,62 @@ class TestGestMoviment(_BaseGest):
         self.assertEqual(items, [(0.0, "C"), (4.0, "Am"), (6.0, "F"),
                                  (8.0, "Em")])
         v.close()
+
+
+# --------------------------------------------------------------------------
+# Paritat d'edició #11: la MATEIXA regla per a l'estructura (§6.3)
+# --------------------------------------------------------------------------
+SECCIONS_BASE = [(0.0, 16.15, "A", "A"), (16.15, 31.97, "B", "B"),
+                 (31.97, 48.0, "C", "C"), (48.0, 68.0, "D", "D"),
+                 (68.0, 90.0, "E", "E"), (90.0, 112.0, "F", "F"),
+                 (112.0, 128.0, "G", "G"), (128.0, 165.7339, "H", "H")]
+DURADA_S = 165.7339
+
+
+class TestMouBlocSeccions(unittest.TestCase):
+    """`pipeline.mou_bloc_seccions`: mateixa regla que `mou_bloc_acords` (#11)."""
+
+    def _taula(self, seccions):
+        return [(s[2], round(float(s[0]), 3), round(float(s[1]), 3))
+                for s in seccions]
+
+    def _contigu_i_cobert(self, seccions):
+        if abs(float(seccions[0][0])) > 1e-6:
+            return False
+        if abs(float(seccions[-1][1]) - DURADA_S) > 1e-6:
+            return False
+        return all(abs(float(x[1]) - float(y[0])) < 1e-6
+                   for x, y in zip(seccions, seccions[1:]))
+
+    def test_cas_operador_A_al_compas_29(self):
+        """La secció A [0,16.15) al compàs 29.1 (64,615385 s): conserva la
+        durada, el forat de l'origen queda en «-» i el destí es talla (D i E)."""
+        nou = pipeline.mou_bloc_seccions(SECCIONS_BASE, 0, 0, 64.615385,
+                                         DURADA_S)
+        self.assertEqual(self._taula(nou),
+                         [("-", 0.0, 16.15), ("B", 16.15, 31.97),
+                          ("C", 31.97, 48.0), ("D", 48.0, 64.615),
+                          ("A", 64.615, 80.765), ("E", 80.765, 90.0),
+                          ("F", 90.0, 112.0), ("G", 112.0, 128.0),
+                          ("H", 128.0, 165.734)])
+        self.assertTrue(self._contigu_i_cobert(nou))
+
+    def test_conserva_la_durada_i_no_toca_el_mig(self):
+        """Bloc [E,F] −10 s: E i F conserven els seus 22 s; D i G queden tallats
+        (no es perd cap secció)."""
+        nou = pipeline.mou_bloc_seccions(SECCIONS_BASE, 4, 5, -10.0, DURADA_S)
+        L = {s[2]: (float(s[0]), float(s[1])) for s in nou}
+        self.assertAlmostEqual(L["E"][1] - L["E"][0], 22.0, places=6)
+        self.assertAlmostEqual(L["F"][1] - L["F"][0], 22.0, places=6)
+        self.assertEqual(set(L), {"A", "B", "C", "D", "E", "F", "G", "H"})
+        self.assertAlmostEqual(L["D"][1], 58.0, places=6)    # tallat
+        self.assertAlmostEqual(L["G"][0], 102.0, places=6)   # s'estira al forat
+        self.assertTrue(self._contigu_i_cobert(nou))
+
+    def test_no_surt_de_la_wav(self):
+        for dt in (-999.0, +999.0):
+            nou = pipeline.mou_bloc_seccions(SECCIONS_BASE, 2, 3, dt, DURADA_S)
+            self.assertTrue(self._contigu_i_cobert(nou))
 
 
 if __name__ == "__main__":   # pragma: no cover

@@ -841,11 +841,13 @@ def mou_bloc_acords(acords, first, last, dt, durada, log=None):
     cap tros). Mai es refusa l'operació per la regla d'or #4.
 
     El model són **MARQUES**: el clip `i` va de `t_i` a `t_{i+1}` (i l'últim,
-    fins a `durada`). L'**origen** el tanca el veí: endavant, l'anterior
-    s'estira fins a l'inici nou; endarrere, el posterior s'estira fins al final
-    nou. Si el bloc queda a la vora, el tros que cap operació tapi es converteix
-    en `N` a la normalització (``normalitza_cobertura``), com a la resta de
-    l'app.
+    fins a `durada`). El bloc només **tapa** el seu nou tram `[a', b')`: el que
+    cau a sota es talla o s'elimina, però **els clips que queden entre l'origen
+    i el destí NO es toquen** (es queden quiets i la cobertura la manté el
+    mateix model de marques). L'**origen** el tanca el veí: endavant,
+    l'anterior s'estira fins a l'inici nou; endarrere, el posterior s'estira
+    fins al final nou. Si el bloc queda a la vora, el tros que cap operació tapi
+    es converteix en `N` a la normalització (``normalitza_cobertura``).
 
     Retorna una llista NOVA d'acords (no muta l'entrada). Si el bloc no
     existeix, la durada és nul·la o el delta és ~0, torna la llista original.
@@ -875,32 +877,33 @@ def mou_bloc_acords(acords, first, last, dt, durada, log=None):
         return any(abs(float(x[0]) - float(t)) <= TOL for x in resta)
 
     if dt > 0:
-        # ENDAVANT: el forat de l'origen [a, a2) l'absorbeix l'anterior
-        # (s'estira fins a a2) → fora les marques que hi caiguin.
-        resta = [x for x in resta
-                 if not (a - TOL <= float(x[0]) <= a2 - TOL)]
-        # DESTÍ (a2, b2): el que cau a sota es talla/elimina → fora les seves
-        # marques (el veí anterior les hi ha absorbides o el bloc les tapa).
+        # ENDAVANT. El bloc TAPA [a2, b2): fora les marques que hi cauen a
+        # dins (clips coberts del tot) i la de la vora esquerra a2 (mana el
+        # bloc, «l'últim editat»). La RESTA no es toca: els clips que quedin
+        # entre l'origen i el destí es queden quiets i la cobertura es manté
+        # sola (abans s'esborraven → es perdien clips que no hi tocaven).
         resta = [x for x in resta
                  if not (a2 + TOL < float(x[0]) < b2 - TOL)]
-        # El bloc mana a la seva vora esquerra (l'últim editat).
         resta = [x for x in resta if abs(float(x[0]) - a2) > TOL]
-        # Per preservar la DURADA del bloc, cal una marca a b2 amb el nom del
+        # Preservar la DURADA del bloc: cal una marca a b2 amb el nom del
         # material que queda A SOTA (el que hi havia sonant a b2).
         if b2 < durada - TOL and not _hi_ha_marca(b2):
             resta.append(_marca_nova(b2, _nom_a(acords, b2), acords[0]))
     else:
-        # ENDARRERE: el forat de l'origen (b2, b] l'absorbeix el posterior
-        # (s'estira fins a b2) → fora les marques de la cua.
-        resta = [x for x in resta
-                 if not (b2 + TOL < float(x[0]) <= b + TOL)]
-        # DESTÍ, igual que endavant.
+        # ENDARRERE. Destí, igual que endavant (fora el que hi cau a dins i la
+        # vora esquerra).
         resta = [x for x in resta
                  if not (a2 + TOL < float(x[0]) < b2 - TOL)]
         resta = [x for x in resta if abs(float(x[0]) - a2) > TOL]
-        # El posterior (el clip de després del bloc) s'estira fins a b2.
-        if last + 1 < n and not _hi_ha_marca(b2):
-            resta.append(_marca_nova(b2, acords[last + 1][1], acords[0]))
+        # El POSTERIOR (el clip de després del bloc) s'estira fins a b2 per
+        # tapar el buit que deixa el bloc. Si el tram (b2, b) ja té marques
+        # (clips que no són del bloc), es queden on són i només s'hi afegeix la
+        # marca del final; si no, la marca del posterior S'HI MOU (cas net).
+        if last + 1 < n:
+            if not any(b2 + TOL < float(x[0]) < b - TOL for x in resta):
+                resta = [x for x in resta if abs(float(x[0]) - b) > TOL]
+            if not _hi_ha_marca(b2):
+                resta.append(_marca_nova(b2, acords[last + 1][1], acords[0]))
 
     nou = [_desplaca_marca(x, dt) for x in bloc] + resta
     # `sort` estable: davant d'un instant compartit, el bloc (que hi va primer)
@@ -909,6 +912,76 @@ def mou_bloc_acords(acords, first, last, dt, durada, log=None):
     if log and len(nou) != n:
         log(f"moviment: bloc {first}-{last} → {a2:.2f}-{b2:.2f}s "
             f"({n - len(nou):+d} marques)")
+    return nou
+
+
+SENSE_SECCIO = "-"      # §6.1: forat explícit d'estructura («sense secció»)
+
+
+def mou_bloc_seccions(seccions, first, last, dt, durada, log=None):
+    """DESTÍ del moviment d'un BLOC de seccions (paritat d'edició #11, §6.3).
+
+    Mateixa regla que :func:`mou_bloc_acords`: el bloc **conserva la seva
+    durada**, **tapa** el seu tram nou (el que hi cau a sota es talla o
+    s'elimina) i **no toca** les seccions que queden entre l'origen i el destí.
+    L'**origen** el tanca el veí (endavant, l'anterior; endarrere, la següent) i,
+    si no n'hi ha cap, el forat es converteix en una secció **«-»** (§6.1).
+
+    Les seccions són explícites `(ini, fi, lletra, família)`; el resultat torna a
+    ser **contigu** (sense forats) i ordenat. Retorna una llista NOVA.
+    """
+    seccions = [tuple(s) for s in (seccions or [])]
+    n = len(seccions)
+    durada = float(durada or 0.0)
+    if not (0 <= first <= last < n) or abs(float(dt)) < 1e-9:
+        return seccions
+    a = float(seccions[first][0])
+    b = float(seccions[last][1])
+    if b - a <= 1e-9:
+        return seccions
+    dt = max(-a, min(durada - b, float(dt)))
+    if abs(dt) < 1e-9:
+        return seccions
+    a2, b2 = a + dt, b + dt
+    TOL = 1e-6
+    bloc = [(float(s[0]) + dt, float(s[1]) + dt, s[2], s[3])
+            for s in seccions[first:last + 1]]
+    # DESTÍ: el bloc tapa [a2, b2) → de cada altra secció en sobreviu només el
+    # tros de fora (o cap; si en surten dos, queden partides amb la mateixa lletra).
+    resta = []
+    for s in seccions[:first] + seccions[last + 1:]:
+        ini, fi = float(s[0]), float(s[1])
+        if fi <= a2 + TOL or ini >= b2 - TOL:
+            resta.append(s)
+            continue
+        if ini < a2 - TOL:
+            resta.append((ini, a2, s[2], s[3]))
+        if fi > b2 + TOL:
+            resta.append((b2, fi, s[2], s[3]))
+    # ORIGEN: el veí tanca el forat [a, min(a2,b)) / [max(b2,a), b).
+    if dt > 0:
+        fi_vei = min(a2, b)
+        tapades = False
+        for i, s in enumerate(resta):
+            if (float(s[0]) < a - TOL and abs(float(s[1]) - a) <= TOL):
+                resta[i] = (float(s[0]), fi_vei, s[2], s[3])
+                tapades = True
+        if not tapades:
+            resta.append((0.0, fi_vei, SENSE_SECCIO, SENSE_SECCIO))
+    else:
+        ini_vei = max(b2, a)
+        tapades = False
+        for i, s in enumerate(resta):
+            if abs(float(s[0]) - b) <= TOL:
+                resta[i] = (ini_vei, float(s[1]), s[2], s[3])
+                tapades = True
+        if not tapades:
+            resta.append((ini_vei, durada, SENSE_SECCIO, SENSE_SECCIO))
+    nou = bloc + resta
+    nou.sort(key=lambda s: float(s[0]))
+    if log and len(nou) != n:
+        log(f"moviment (estructura): bloc {first}-{last} → {a2:.2f}-{b2:.2f}s "
+            f"({len(nou) - n:+d} seccions)")
     return nou
 
 

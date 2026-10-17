@@ -1105,32 +1105,39 @@ def _op_nudge(ctx, params):
 
 
 def _op_mou_bloc(ctx, params):
-    """Mou un BLOC d'acords preservant-ne la durada (DESTÍ del moviment, §6.3).
+    """Mou un BLOC preservant-ne la durada (DESTÍ del moviment, §6.3).
 
-    El bloc és `[first..last]` (índexs d'acords) o, si no es donen, la
-    **selecció contigua** d'acords. `dt_s` és el desplaçament (pot ser negatiu);
-    al destí, el que queda a sota es talla o s'elimina («mana l'últim editat») i
-    l'origen el tanca el veí.
+    Val per a **acords** i **seccions** (paritat d'edició #11). El bloc és
+    `[first..last]` o, si no es donen, la **selecció contigua** del tipus.
+    `dt_s` és el desplaçament (pot ser negatiu); al destí, el que queda a sota
+    es talla o s'elimina («mana l'últim editat») i l'origen el tanca el veí
+    (els forats d'estructura → «-», §6.1).
     """
     vr = _requereix_visor(ctx)
+    kind = _kind_opt(params) or "chord"
+    magatzem = "acords" if kind == "chord" else "seccions"
     dt = _num(params, "dt_s", "dt", "delta")
     if params.get("first") is not None and params.get("last") is not None:
         first = int(_num(params, "first", enter=True))
         last = int(_num(params, "last", enter=True))
     else:
-        idxs = sorted(i for k, i in vr.timeline.selected_keys() if k == "chord")
+        idxs = sorted(i for k, i in vr.timeline.selected_keys() if k == kind)
         if not idxs:
-            raise BridgeError("Cal «first»/«last» o bé una selecció d'acords.")
+            raise BridgeError("Cal «first»/«last» o bé una selecció contigua.")
         first, last = idxs[0], idxs[-1]
         if idxs != list(range(first, last + 1)):
-            raise BridgeError("La selecció ha de ser un bloc CONTIGU d'acords.")
+            raise BridgeError("La selecció ha de ser un bloc CONTIGU.")
 
     def mut(vr2):
-        if not (0 <= first <= last < len(vr2.acords)):
-            raise BridgeError(f"Bloc d'acords fora de rang: {first}-{last}.")
+        base = list(getattr(vr2, magatzem))
+        if not (0 <= first <= last < len(base)):
+            raise BridgeError(f"Bloc fora de rang: {first}-{last}.")
         durada = float((getattr(vr2, "audio", {}) or {}).get("durada", 0.0) or 0.0)
-        vr2.acords = pipeline.mou_bloc_acords(
-            list(vr2.acords), first, last, float(dt), durada)
+        if kind == "chord":
+            nou = pipeline.mou_bloc_acords(base, first, last, float(dt), durada)
+        else:
+            nou = pipeline.mou_bloc_seccions(base, first, last, float(dt), durada)
+        setattr(vr2, magatzem, [tuple(x) for x in nou])
 
     return _aplica(ctx, mut)
 

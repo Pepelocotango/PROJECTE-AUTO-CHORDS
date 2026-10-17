@@ -1008,14 +1008,14 @@ class TimelineView(QGraphicsView):
         self.pasteRequested.emit(dict(self._clipboard), float(self._pos_t))
 
     # -- gestió d'events dels items (constraint + propagació) -----------------
-    def _bloc_del_gest(self, idx: int):
-        """Bloc **consecutiu** d'acords que arrossega el gest, amb `idx`.
+    def _bloc_del_gest(self, idx: int, kind: str = "chord"):
+        """Bloc **consecutiu** de clips del tipus `kind` que arrossega el gest.
 
-        El gest mou el cos d'un clip d'acord; si forma part d'una
-        multi-selecció d'acords contigua, el bloc és tot el que queda a cada
-        banda (mateixa durada, §6.3). Els índexs llunyans o trencats no entren al
-        bloc (només la correguda que conté `idx`)."""
-        sel = sorted(i for (k, i) in self._multi if k == "chord")
+        El gest mou el cos d'un clip; si forma part d'una multi-selecció
+        contigua del seu tipus, el bloc és tot el que queda a cada banda
+        (mateixa durada, §6.3). Els índexs llunyans o trencats no entren al bloc
+        (només la correguda que conté `idx`)."""
+        sel = sorted(i for (k, i) in self._multi if k == kind)
         if idx not in sel:
             return idx, idx
         first = idx
@@ -1062,22 +1062,58 @@ class TimelineView(QGraphicsView):
             self._chord_items[g["first"] - 1].set_next_t(a2)
         self._show_guide_at(a2)
 
+    def _on_section_body_drag(self, idx: int, new_ini: float,
+                              new_fi: float) -> None:
+        """Arrossegar el COS d'una secció = moure el BLOC (§6.3, paritat #11).
+
+        Mirall de `_on_chord_body_drag`: el DESTÍ es resol al final del gest
+        (`_tanca_bloc`), que pot tallar/eliminar seccions i fer forats («-»)."""
+        g = self._bloc_gest
+        if (g is None or g.get("kind") != "section"
+                or g.get("idx") != idx):
+            first, last = self._bloc_del_gest(idx, "section")
+            g = {"kind": "section", "first": first, "last": last, "idx": idx,
+                 "t0": float(self._seccions[idx][0]), "dt": 0.0,
+                 "items0": [tuple(s) for s in self._seccions]}
+            self._bloc_gest = g
+        a0 = float(g["items0"][g["first"]][0])
+        b0 = float(g["items0"][g["last"]][1])
+        dt = self._snap(new_ini) - float(g["items0"][idx][0])
+        dt = max(-a0, min(self._durada - b0, dt))
+        g["dt"] = dt
+        for i in range(g["first"], g["last"] + 1):
+            s = g["items0"][i]
+            self._section_items[i].set_ini(float(s[0]) + dt)
+            self._section_items[i].set_fi(float(s[1]) + dt)
+        self._show_guide_at(a0 + dt)
+
     def _tanca_bloc(self) -> None:
         """Resol el DESTÍ del moviment del bloc en acabar el gest (§6.3).
 
-        Fixa `self._acords` amb `mou_bloc_acords` (sense tocar els items: el
-        re-render es fa després, fora de l'event de l'item que s'acaba de
-        deixar anar). El Visor llegirà el model ja resolt a `editFinished`."""
+        Val per a **acords** i **seccions** (paritat d'edició #11). Fixa el
+        model (`mou_bloc_acords` / `mou_bloc_seccions`) sense tocar els items: el
+        re-render es fa després, fora de l'event de l'item que s'acaba de deixar
+        anar. El Visor llegirà el model ja resolt a `editFinished`."""
         g = self._bloc_gest
         self._bloc_gest = None
         if not g:
             return
         if abs(float(g.get("dt", 0.0))) < 1e-9:
             return
-        nou = pipeline.mou_bloc_acords(g["acords0"], g["first"], g["last"],
-                                       g["dt"], self._durada)
-        if nou != list(self._acords):
-            self._acords = [tuple(a) for a in nou]
+        canviat = False
+        if g.get("kind") == "section":
+            nou = pipeline.mou_bloc_seccions(
+                g["items0"], g["first"], g["last"], g["dt"], self._durada)
+            if nou != [tuple(s) for s in self._seccions]:
+                self._seccions = [tuple(s) for s in nou]
+                canviat = True
+        else:
+            nou = pipeline.mou_bloc_acords(g["acords0"], g["first"], g["last"],
+                                           g["dt"], self._durada)
+            if nou != list(self._acords):
+                self._acords = [tuple(a) for a in nou]
+                canviat = True
+        if canviat:
             # El re-render (set_data reconstrueix items) es fa al següent cicle
             # de l'esdeveniment: estem dins del release de l'item que s'ha
             # deixat anar i esborrar-lo aquí mateix no és segur.
@@ -1245,14 +1281,8 @@ class TimelineView(QGraphicsView):
                 mods & Qt.ControlModifier and mods & Qt.ShiftModifier):
             s = self._seccions[idx]
             self._copia_sec = (float(s[0]), float(s[1]), str(s[2]), str(s[3]))
-        # Moviment de GRUP de seccions (arrossegant el cos d'una de seleccionada)
-        if (len(self._multi) > 1
-                and getattr(self._section_items[idx], "_drag_mode", None)
-                == SectionItem.ZONE_BODY):
-            sel = sorted(i for (k, i) in self._multi if k == "section")
-            if len(sel) > 1 and idx in sel:
-                self._move_section_group(idx, sel, new_ini)
-                return
+        # Moviment de BLOC de seccions: l'arrossega `_on_section_body_drag`
+        # (paritat #11 amb els acords; abans ho feia `_move_section_group`).
         ini_o, fi_o, lletra, familia = self._seccions[idx]
         zone = self._section_items[idx]._drag_mode
         n = len(self._seccions)
@@ -1280,30 +1310,9 @@ class TimelineView(QGraphicsView):
             return
 
         if zone == SectionItem.ZONE_BODY:
-            # Desplaça la secció sencera (inici i fi junts) — com l'acord
-            dur = fi_o - ini_o
-            nt = self._snap(new_ini)
-            lo = prev_ini(idx) + MIN_GAP_S
-            # El fi propi (nt+dur) passa a ser l'inici del següent; per tant
-            # el límit cap endavant és el FINAL del següent (= inici del
-            # següent-següent, o la durada total).
-            seguent_fi = (self._seccions[idx + 2][0] if idx + 2 < n
-                          else self._durada)
-            hi = max(lo, seguent_fi - dur - MIN_GAP_S)
-            nt = max(lo, min(hi, nt))
-            self._seccions[idx] = (nt, nt + dur, lletra, familia)
-            self._section_items[idx].set_ini(nt)
-            self._section_items[idx].set_fi(nt + dur)
-            if idx - 1 >= 0:
-                p = self._seccions[idx - 1]
-                self._seccions[idx - 1] = (p[0], nt, p[2], p[3])
-                self._section_items[idx - 1].set_fi(nt)
-            if idx + 1 < n:
-                x = self._seccions[idx + 1]
-                self._seccions[idx + 1] = (nt + dur, x[1], x[2], x[3])
-                self._section_items[idx + 1].set_ini(nt + dur)
-            self._show_guide_at(nt)
-            self.sectionMoved.emit(idx, nt, nt + dur)
+            # Arrossegar el COS = moure el BLOC (paritat d'edició #11 amb els
+            # acords): el gest es resol sencer al `release` (`_tanca_bloc`).
+            self._on_section_body_drag(idx, new_ini, new_fi)
             return
 
         # LEFT / NONE: mou l'INICI (i el fi de l'anterior)
