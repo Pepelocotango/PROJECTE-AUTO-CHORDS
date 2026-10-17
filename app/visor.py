@@ -1601,13 +1601,14 @@ class Visor(QMainWindow):
         invariants. Regla d'or #11: mateix nucli que les seccions."""
         if idx < 0 or idx >= len(self.acords):
             return
-        cand = pipeline.duplica_clips(self.acords, idx, marge=0.02)
+        cand = pipeline.duplica_bloc_clips(
+            self.acords, idx, idx, float(self.acords[idx].fi),
+            self._durada_wav(), pipeline.FORAT_ACORD)
         if cand == list(self.acords):
-            self.log(f"no es pot duplicar l'acord {idx}: no hi ha espai")
+            self.log(f"no es pot duplicar l'acord {idx}: no hi ha lloc")
             return
-        nou_t = float(cand[idx + 1][0])
         self._aplica_carril("chord", lambda _L: cand,
-                            f"duplicat acord {idx} a {nou_t:.2f}s")
+                            f"duplicat acord {idx} (després, sobreescrivint)")
 
     def _duplica_seccio_index(self, idx):
         """Duplica la secció idx: es parteix en dues (nucli únic `duplica_seccio`).
@@ -1617,20 +1618,21 @@ class Visor(QMainWindow):
         invariants). Regla d'or #11: mateix nucli que els acords."""
         if idx < 0 or idx >= len(self.seccions):
             return
-        cand = pipeline.duplica_seccio(self.seccions, idx)
+        cand = pipeline.duplica_bloc_seccions(
+            self.seccions, idx, idx, float(self.seccions[idx][1]),
+            self._durada_wav())
         if cand == list(self.seccions):
-            self.log(f"no es pot duplicar la secció {idx}: és massa curta")
+            self.log(f"no es pot duplicar la secció {idx}: no hi ha lloc")
             return
         self._aplica_carril("section", lambda _L: cand,
-                            f"secció {idx} duplicada")
+                            f"secció {idx} duplicada (després, sobreescrivint)")
 
     def _duplica_seleccio(self, keys):
         """Duplica tots els clips de la multi-selecció en una sola operació.
 
-        Acords: el duplicat va a mig camí del següent (com el Ctrl+D
-        individual). Seccions: es parteixen en dues meitats. Es calcula sobre
-        còpies candidates i es valida ABANS de tocar el model; els inserts es
-        fan en ordre descendent perquè els índexs no es desplacin."""
+        La còpia del bloc va DESPRÉS i **sobreescriu** el tram que ocupa (§2,
+        §6.3/#11). Es calcula sobre còpies candidates i es valida ABANS de tocar
+        el model."""
         keys = list(keys or [])
         idx_ac = sorted({int(i) for k, i in keys if k == "chord"}, reverse=True)
         idx_sec = sorted({int(i) for k, i in keys if k == "section"}, reverse=True)
@@ -1638,12 +1640,17 @@ class Visor(QMainWindow):
         idx_sec = [i for i in idx_sec if 0 <= i < len(self.seccions)]
         if not idx_ac and not idx_sec:
             return
+        durada = self._durada_wav()
         cand_ac = list(self.acords)
-        for i in idx_ac:
-            cand_ac = pipeline.duplica_clips(cand_ac, i, marge=0.02)
+        if idx_ac:
+            cand_ac = pipeline.duplica_bloc_clips(
+                cand_ac, min(idx_ac), max(idx_ac),
+                float(cand_ac[max(idx_ac)].fi), durada, pipeline.FORAT_ACORD)
         cand_sec = list(self.seccions)
-        for i in idx_sec:
-            cand_sec = pipeline.duplica_seccio(cand_sec, i)
+        if idx_sec:
+            cand_sec = pipeline.duplica_bloc_seccions(
+                cand_sec, min(idx_sec), max(idx_sec),
+                float(cand_sec[max(idx_sec)][1]), durada)
         try:
             cand_ac = self._valida_canvis_acords(cand_ac)
             if idx_sec:

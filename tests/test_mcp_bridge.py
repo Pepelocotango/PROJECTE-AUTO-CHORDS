@@ -22,6 +22,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import mcp_bridge  # noqa: E402
+from app import pipeline  # noqa: E402
 from app import projecte  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -62,8 +63,10 @@ class _FakeVisor:
         self.audio = {"durada": 120.0, "sr": 44100, "canals": 2}
         self.csv_acords = "/tmp/out/acords.csv"
         self.bpm, self.bpb, self.offset, self.tempo_fix = 120.0, 4, 0.0, True
-        self.acords = [(0.0, "N", "0.000000000"), (4.0, "C", "4.000000000"),
-                       (8.0, "G", "8.000000000")]
+        self.acords = [
+            pipeline.Clip(0.0, 4.0, ("N", "0.000000000")),
+            pipeline.Clip(4.0, 8.0, ("C", "4.000000000")),
+            pipeline.Clip(8.0, 120.0, ("G", "8.000000000"))]
         self.seccions = [(0.0, 16.0, "A", "A"), (16.0, 40.0, "B", "B")]
         self.pos = 0.0
         self.sona = False
@@ -99,6 +102,7 @@ class _FakeVisor:
 
     def _normalitza_acords(self, items=None):
         items = self.acords if items is None else items
+        durada = float(self.audio["durada"])
         ordenats = sorted(items, key=lambda x: float(x[0]))
         prev = None
         for it in ordenats:
@@ -108,9 +112,15 @@ class _FakeVisor:
             if prev is not None and t <= prev + 1e-9:
                 raise ValueError("inici duplicat/ invertit")
             prev = t
+        out = []
+        for i, a in enumerate(ordenats):
+            fi = (float(ordenats[i + 1][0]) if i + 1 < len(ordenats)
+                  else durada)
+            p = a.payload if isinstance(a, pipeline.Clip) else tuple(a[1:])
+            out.append(pipeline.Clip(float(a[0]), fi, tuple(p)))
         if isinstance(items, list):
-            self.acords = ordenats
-        return ordenats
+            self.acords = out
+        return out
 
     def _normalitza_seccions(self, items=None):
         items = self.seccions if items is None else items
@@ -181,11 +191,12 @@ class _FakeVisor:
         if not (t0 + self.MIN <= t <= fi - self.MIN):
             return False
         self._undo_marca()
-        nom = (str(nom).strip() if nom else self.acords[idx][1]) or self.acords[idx][1]
-        nova = list(self.acords)
-        nova[idx] = (t0, self.acords[idx][1], self.acords[idx][2])
-        nova.insert(idx + 1, (t, nom, f"{t:.9f}"))
-        self.acords = self._normalitza_acords(nova)
+        vell = pipeline.nom_d_acord(self.acords[idx])
+        nom = (str(nom).strip() if nom else vell) or vell
+        nou = pipeline.parteix_clips(list(self.acords), idx, t,
+                                     nou_payload=(nom, f"{t:.9f}"),
+                                     marge=self.MIN)
+        self.acords = self._normalitza_acords(list(nou))
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         self._omple_llista_ac()
@@ -198,9 +209,9 @@ class _FakeVisor:
         if not (0 <= j < len(self.acords)):
             return False
         self._undo_marca()
-        nova = list(self.acords)
-        del nova[j]
-        self.acords = self._normalitza_acords(nova)
+        nou = pipeline.fusiona_clips(list(self.acords), idx, amb,
+                                     etiqueta="acord")
+        self.acords = self._normalitza_acords(list(nou))
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         self._omple_llista_ac()
@@ -349,7 +360,8 @@ class TestRegistre(unittest.TestCase):
             "regularitza",
             # Paritat d'ACCIONS amb la GUI — 2026-10-17.
             "copia_seleccio", "retalla_seleccio", "enganxa_seleccio",
-            "esborra_seleccio", "duplica_seleccio", "renomena_seleccio",
+            "esborra_seleccio", "duplica_seleccio", "duplica_a",
+            "renomena_seleccio",
             "selecciona_rang", "selecciona_loop", "nudge", "mou_bloc",
             "troba_i_reemplaca", "reverteix", "neteja_loop", "set_eina",
             "set_inclou_estructura", "set_inclou_partitura",
@@ -420,7 +432,7 @@ class TestEdicio(unittest.TestCase):
         vr = _FakeVisor()
         mcp_bridge._op_rename_chord(_ctx(vr), {"index": 1, "acord": "Cmaj"})
         # el MODEL es desa en notació canònica: `Cmaj` → `C` (tríada major)
-        self.assertEqual(vr.acords[1][1], "C")
+        self.assertEqual(vr.acords[1][2][0], "C")
         mcp_bridge._op_move_chord(_ctx(vr), {"index": 1, "t_s": 5.0})
         self.assertEqual(vr.acords[1][0], 5.0)
 
@@ -431,7 +443,7 @@ class TestEdicio(unittest.TestCase):
         # o sigui que no en canvia el recompte.
         mcp_bridge._op_delete_chord(_ctx(vr), {"index": 1})
         self.assertEqual(len(vr.acords), 2)
-        self.assertEqual([a[1] for a in vr.acords], ["N", "G"])
+        self.assertEqual([a[2][0] for a in vr.acords], ["N", "G"])
 
     def test_delete_chord_fora_rang(self):
         from app.mcp_bridge import BridgeError
@@ -490,7 +502,7 @@ class TestParitatEdicio(unittest.TestCase):
         vr = _FakeVisor()
         mcp_bridge._op_parteix_acord(
             _ctx(vr), {"index": 1, "t_s": 6.0, "nom": "Am"})
-        self.assertEqual(vr.acords[2][1], "Am")
+        self.assertEqual(vr.acords[2][2][0], "Am")
 
     def test_parteix_acord_accepta_fraccions_de_segon(self):
         # Regressió (2026-10-15): `t_s` ha de ser FLOAT. Abans es passava

@@ -879,37 +879,35 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         self.assertEqual(len(v.seccions), n)
         v.close()
 
-    def test_ctrl_d_duplica_acord_a_mig_cami(self):
-        """Ctrl+D sobre un acord: s'insereix després, a mig camí (invariants)."""
+    def test_ctrl_d_duplica_acord_despres_sobreescrivint(self):
+        """Ctrl+D sobre un acord: la còpia va DESPRÉS i sobreescriu el tram (§2)."""
         from PyQt5.QtGui import QKeyEvent
         from PyQt5.QtCore import QEvent, Qt
         v, _ = self._make_visor_with_data()
         n = len(v.acords)
-        t0, t1 = v.acords[0][0], v.acords[1][0]
+        fi0 = float(v.acords[0].fi)          # on comença la còpia
         v.timeline.select_clip("chord", 0)
         v.timeline.keyPressEvent(
             QKeyEvent(QEvent.KeyPress, Qt.Key_D, Qt.ControlModifier))
-        self.assertEqual(len(v.acords), n + 1)
-        self.assertAlmostEqual(v.acords[1][0], (t0 + t1) / 2.0, places=3)
+        self.assertGreater(len(v.acords), n)
+        self.assertAlmostEqual(float(v.acords[1][0]), fi0, places=3)
         self.assertEqual(v.acords[1][2][0], v.acords[0][2][0])   # mateix nom
         v.undo()
         self.assertEqual(len(v.acords), n)
         v.close()
 
-    def test_ctrl_d_duplica_seccio_partint_la_durada(self):
-        """Ctrl+D sobre una secció: es parteix en dues meitats."""
+    def test_ctrl_d_duplica_seccio_despres_sobreescrivint(self):
+        """Ctrl+D sobre una secció: la còpia va DESPRÉS i sobreescriu (§2)."""
         from PyQt5.QtGui import QKeyEvent
         from PyQt5.QtCore import QEvent, Qt
         v, _ = self._make_visor_with_data()
         n = len(v.seccions)
-        ini, fi = v.seccions[0][0], v.seccions[0][1]
+        fi0 = float(v.seccions[0][1])        # on comença la còpia
         v.timeline.select_clip("section", 0)
         v.timeline.keyPressEvent(
             QKeyEvent(QEvent.KeyPress, Qt.Key_D, Qt.ControlModifier))
-        self.assertEqual(len(v.seccions), n + 1)
-        mig = (ini + fi) / 2.0
-        self.assertAlmostEqual(v.seccions[0][1], mig, places=3)
-        self.assertAlmostEqual(v.seccions[1][0], mig, places=3)
+        self.assertAlmostEqual(float(v.seccions[1][0]), fi0, places=3)
+        self.assertEqual(v.seccions[1][2], v.seccions[0][2])   # mateixa lletra
         v.undo()
         self.assertEqual(len(v.seccions), n)
         v.close()
@@ -924,7 +922,9 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v.timeline.toggle_selection("chord", 1)
         v.timeline.keyPressEvent(
             QKeyEvent(QEvent.KeyPress, Qt.Key_D, Qt.ControlModifier))
-        self.assertEqual(len(v.acords), n + 2)
+        self.assertEqual([a[2][0] for a in v.acords[:4]],
+                         ["C", "Am", "C", "Am"])   # la còpia del bloc va després
+        self.assertGreater(len(v.acords), n)
         self.assertEqual(len(v._undo_stack), 1)
         v.undo()
         self.assertEqual(len(v.acords), n)
@@ -940,7 +940,8 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v.timeline.toggle_selection("section", 1)
         v.timeline.keyPressEvent(
             QKeyEvent(QEvent.KeyPress, Qt.Key_D, Qt.ControlModifier))
-        self.assertEqual(len(v.seccions), n + 2)
+        self.assertEqual([sec[2] for sec in v.seccions], ["A", "B", "A", "B"])
+        self.assertGreater(len(v.seccions), n)
         self.assertEqual(len(v._undo_stack), 1)
         v.undo()
         self.assertEqual(len(v.seccions), n)

@@ -1210,6 +1210,50 @@ def duplica_seccio(seccions, idx, marge=0.05):
         clips_de_seccions(seccions), idx, marge))
 
 
+def duplica_bloc_clips(clips, first, last, desti, durada, forat):
+    """Nucli de DUPLICAR un BLOC a un DESTÍ (sobreescrivint, §6.3/#11).
+
+    La còpia del bloc `[first..last]` (que conserva la durada i l'espaiat intern,
+    com el `Grid Relative` del Cubase) es col·loca a `desti`; el material que hi
+    cau **a sota** es **talla** o **s'elimina** (§6.3) i **l'original es queda
+    intacte** (a diferència de MOURE). El destí s'acota a `[0, durada)`.
+
+    Amb `desti = fi del bloc` és el `Ctrl+D` («el duplicat va després del clip i
+    sobreescriu el tram que ocupa», PLA_EDICIO_LLIURE §2). Retorna clips NOUS.
+    """
+    out = [Clip(c.ini, c.fi, c.payload) for c in (clips or ())]
+    n = len(out)
+    durada = float(durada or 0.0)
+    if not (0 <= first <= last < n):
+        return out
+    a, b = float(out[first].ini), float(out[last].fi)
+    llarg = b - a
+    if llarg <= 1e-9:
+        return out
+    desti = max(0.0, min(float(desti or 0.0), max(0.0, durada - llarg)))
+    ini2, fi2 = desti, desti + llarg
+    copies = [Clip(c.ini - a + ini2, c.fi - a + ini2, c.payload)
+              for c in out[first:last + 1]]
+    resta = []
+    for x in out:
+        if x.fi <= ini2 + TOL_TEMPS or x.ini >= fi2 - TOL_TEMPS:
+            resta.append(x)                       # fora del destí: intacte
+            continue
+        if x.ini < ini2 - TOL_TEMPS:
+            resta.append(Clip(x.ini, ini2, x.payload))      # se'n talla la cua
+        if x.fi > fi2 + TOL_TEMPS:
+            resta.append(Clip(fi2, x.fi, x.payload))        # se'n talla el cap
+    nou = resta + copies
+    nou.sort(key=lambda c: c.ini)                 # sort estable: mana la còpia
+    return normalitza_clips(nou, durada, forat)
+
+
+def duplica_bloc_seccions(seccions, first, last, desti, durada):
+    """Duplica un bloc de seccions a `desti` (mateix nucli que els acords, #11)."""
+    return seccions_de_clips(duplica_bloc_clips(
+        clips_de_seccions(seccions), first, last, desti, durada, FORAT_SECCIO))
+
+
 def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0):
     def _escriu(f):
         w = csv.writer(f)

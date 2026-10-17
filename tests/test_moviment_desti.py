@@ -279,6 +279,17 @@ class TestGestMoviment(_BaseGest):
                                  (8.0, "Em")])
         v.close()
 
+    def test_vores_lliures_estira_i_elimina_el_seguent(self):
+        """Vores LLIURES (§6.6): estirar el fi d'un acord per damunt del veí
+        l'elimina o el talla (§6.3), en comptes d'aturar-se a la seva vora."""
+        v = self._visor()          # C[0,2) Am[2,4) F[4,6) G[6,8) Em[8,10)
+        tl = v.timeline
+        tl._on_chord_end_changed(0, 5.0)      # C fins a 5 → Am eliminat, F tallat
+        self._app.processEvents()
+        self.assertEqual(_parells(v.acords),
+                         [(0.0, "C"), (5.0, "F"), (6.0, "G"), (8.0, "Em")])
+        v.close()
+
 
 # --------------------------------------------------------------------------
 # Paritat d'edició #11: la MATEIXA regla per a l'estructura (§6.3)

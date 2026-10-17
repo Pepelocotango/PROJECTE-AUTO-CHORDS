@@ -169,8 +169,9 @@ refusa l'operació** per la regla #4.
      darrere/`-` els posa `normalitza_cobertura` al final de l'operació.
      Tests: `tests/test_moviment_desti.py` (2 exemples de l'operador + vores +
      tall/eliminació + clamp + gest/desfer) i `test_mou_grup_*` actualitzats.
-   - ⏳ **Pendent del mateix punt: el REDIMENSIONAT** (les vores del clip lliures,
-     amb `N` al costat) — ara les vores segueixen vivint del veí.
+   - ✅ **FET — el REDIMENSIONAT**: les vores del gest són **LLIURES** (només el
+     límit de la WAV); estirar **talla/elimina** el veí (§6.3) i, on cap veí no
+     tanca el buit, hi va el **`N`/`-`** del normalitzador.
 2. **Esborrar**: treure el guard de l'últim (que els dos camins facin el mateix)
 3. **Duplicar/enganxar**: ja sobreescriuen; alinear amb 6.3
 4. **Seccions**: mateixa lògica, amb `-` per als forats

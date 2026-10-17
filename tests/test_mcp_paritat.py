@@ -128,10 +128,11 @@ class TestSeleccioEdicio(_Base):
 
     def test_duplica_seleccio(self):
         w = self._finestra()
-        n0 = len(w.visor_ref.acords)
         self._selecciona(w, ("chord", 1))
         mcp_bridge._op_duplica_seleccio(_ctx(w), {})
-        self.assertEqual(len(w.visor_ref.acords), n0 + 1)
+        # La còpia va DESPRÉS i sobreescriu (§2): el recompte pot no créixer.
+        self.assertEqual([n for _t, n in self._acords(w)],
+                         ["C", "Am", "Am", "G", "Em"])
         w.close()
 
     def test_renomena_seleccio(self):

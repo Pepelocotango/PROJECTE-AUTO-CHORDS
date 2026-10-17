@@ -202,6 +202,11 @@ _TOOLS = [
     ("ac_duplica_seleccio", "duplica_seleccio",
      "Duplica els clips seleccionats (Ctrl+D). `kind` opcional (chord|section).",
      {"kind": {"type": "string"}}),
+    ("ac_duplica_a", "duplica_a",
+     "Duplica el bloc seleccionat a un DESTÍ `t_s`, sobreescrivint-lo (§6.3) — "
+     "el gest `Ctrl+Shift`+arrossegar: l'original es queda i la còpia va al "
+     "destí. `kind` opcional (chord|section).",
+     {"t_s": {"type": "number"}, "kind": {"type": "string"}}),
     ("ac_renomena_seleccio", "renomena_seleccio",
      "Reanomena de cop tots els clips seleccionats del mateix tipus (F2 en "
      "bloc). `nom` és el nom nou; `kind` opcional si la selecció és homogènia.",

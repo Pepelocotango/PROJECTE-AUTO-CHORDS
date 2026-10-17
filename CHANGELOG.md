@@ -25,6 +25,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
     fora el despatx per tipus (`Visor._aplica_carril`).
   - **S5** — exports i derivats (WAVs, ABC, partitura/MusicXML, guia DAW, eines
     MCP) amb el nou model. Suite verda: 942 → **944 tests**.
+- **Edició: duplicar i vores lliures (§2/§6.3/§6.6)**
+  - **Duplicar** (`Ctrl+D` i `ac_duplica_seleccio`): la còpia va **després** del
+    clip i **sobreescriu** el tram que ocupa (§2) — abans es partia pel mig. Nucli
+    nou `duplica_bloc_clips` (+ `duplica_bloc_seccions`).
+  - **Duplicar arrossegant per MCP**: eina nova **`ac_duplica_a`** (`t_s`), el gest
+    `Ctrl+Shift`+arrossegar (l'original es queda; la còpia va al destí).
+  - **Vores LLIURES** (§6.6): el gest de vores ja no s'atura al veí; estirar
+    **talla/elimina** el material de sota (§6.3) i, on cap veí no tanca el buit,
+    hi va el `N`/`-`.
+  - Neteja: fora els «ponts» de l'MCP pel visor de proves amb **marques** (ja és de
+    clips).
 
 ### Documentació
 - **Auditoria de coherència (16-10-2026, `docs/INFORME_INCOHERENCIES_2026-10-16.md`)**:

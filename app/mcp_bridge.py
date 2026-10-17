@@ -333,11 +333,8 @@ def _op_delete_chord(ctx, params):
         if idx < 0 or idx >= len(vr.acords):
             raise BridgeError(f"Índex d'acord fora de rang: {idx}")
         # Nucli únic (§6.4/#11): mateixa semàntica que la GUI del visor.
-        if vr.acords and isinstance(vr.acords[0], pipeline.Clip):
-            vr.acords = pipeline.elimina_clips(
-                vr.acords, idx, _durada_de(vr), pipeline.FORAT_ACORD)
-        else:                              # pont: visor amb marques (tests)
-            del vr.acords[idx]
+        vr.acords = pipeline.elimina_clips(
+            vr.acords, idx, _durada_de(vr), pipeline.FORAT_ACORD)
 
     return _aplica(ctx, mut)
 
@@ -1110,6 +1107,48 @@ def _op_selecciona_loop(ctx, params):
     return _op_selection(ctx, {})
 
 
+def _op_duplica_a(ctx, params):
+    """Duplica el bloc seleccionat a un DESTÍ (`t_s`), sobreescrivint-lo (§6.3).
+
+    És l'equivalent MCP del gest **`Ctrl+Shift`+arrossegar**: l'original es
+    queda i la **còpia va al destí**, que es talla/elimina segons §6.3. `kind`
+    (chord|section) limita la duplicació a una pista.
+    """
+    t = _num(params, "t_s", "t")
+    kind = str(params.get("kind") or "").strip().lower()
+
+    def mut(vr):
+        durada = _durada_de(vr)
+        kinds = ([kind] if kind in ("chord", "section")
+                 else ["chord", "section"])
+        tocat = False
+        for k in kinds:
+            magatzem = "acords" if k == "chord" else "seccions"
+            base = list(getattr(vr, magatzem))
+            idxs = sorted(i for kk, i in vr.timeline.selected_keys()
+                          if kk == k)
+            if not idxs:
+                continue
+            first, last = idxs[0], idxs[-1]
+            if not (0 <= first <= last < len(base)):
+                continue
+            if k == "chord":
+                nou = pipeline.duplica_bloc_clips(
+                    base, first, last, float(t), durada,
+                    pipeline.FORAT_ACORD)
+            else:
+                nou = pipeline.duplica_bloc_seccions(
+                    base, first, last, float(t), durada)
+            if nou != base:
+                setattr(vr, magatzem, nou)
+                tocat = True
+        if not tocat:
+            raise BridgeError("No hi ha res a duplicar (cal una selecció i "
+                              "espai al destí).")
+
+    return _aplica(ctx, mut)
+
+
 def _op_nudge(ctx, params):
     """Nudge d'una frontera del clip seleccionat (←/→; `estira` = Alt+←/→)."""
     vr = _requereix_visor(ctx)
@@ -1160,12 +1199,8 @@ def _op_mou_bloc(ctx, params):
             raise BridgeError(f"Bloc fora de rang: {first}-{last}.")
         durada = float((getattr(vr2, "audio", {}) or {}).get("durada", 0.0) or 0.0)
         if kind == "chord":
-            if base and isinstance(base[0], pipeline.Clip):
-                setattr(vr2, magatzem, pipeline.mou_bloc_clips(
-                    base, first, last, float(dt), durada, pipeline.FORAT_ACORD))
-            else:                          # pont: visor amb marques (tests)
-                setattr(vr2, magatzem, pipeline.mou_bloc_acords(
-                    base, first, last, float(dt), durada))
+            setattr(vr2, magatzem, pipeline.mou_bloc_clips(
+                base, first, last, float(dt), durada, pipeline.FORAT_ACORD))
         else:
             setattr(vr2, magatzem, pipeline.mou_bloc_seccions(
                 base, first, last, float(dt), durada))
@@ -1297,6 +1332,7 @@ OPERACIONS = {
     "enganxa_seleccio": _op_enganxa_seleccio,
     "esborra_seleccio": _op_esborra_seleccio,
     "duplica_seleccio": _op_duplica_seleccio,
+    "duplica_a": _op_duplica_a,
     "renomena_seleccio": _op_renomena_seleccio,
     "selecciona_rang": _op_selecciona_rang,
     "selecciona_loop": _op_selecciona_loop,

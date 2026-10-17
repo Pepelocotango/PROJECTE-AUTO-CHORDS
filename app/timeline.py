@@ -1165,30 +1165,23 @@ class TimelineView(QGraphicsView):
                 self._move_chord_group(idx, sel, new_t)
                 return
         old_t = float(self._acords[idx][0])
-        # veïns
-        prev_t = self._acords[idx - 1][0] if idx - 1 >= 0 else 0.0
-        next_t = self._acords[idx + 1][0] if idx + 1 < len(self._acords) \
-            else self._durada
-        # snap
-        new_t_s = self._snap(new_t)
-        # limita entre prev_t + MIN_GAP_S i next_t - MIN_GAP_S
-        new_t_s = max(prev_t + MIN_GAP_S, min(next_t - MIN_GAP_S, new_t_s))
-        self._show_guide_at(new_t_s)
-        # si el new_t és igual a prev_t + MIN_GAP_S o next_t - MIN_GAP_S,
-        # no propaguem (ja estava limitat). Però sí actualitzem l'item.
+        # Vores LLIURES (§6.6): el tall/eliminació del veí el resol
+        # `redimensiona_clips` (§6.3); només cal que el clip no quede buit.
+        new_t_s = max(0.0, min(float(self._acords[idx].fi) - MIN_GAP_S,
+                               self._durada, self._snap(new_t)))
         if abs(new_t_s - old_t) < 1e-9:
             return
-        # Nucli únic de la VORA (S2a): mateix `redimensiona_clips` que les
-        # seccions (#11). El valor `new_t_s` ja ve encaixat i limitat.
+        self._show_guide_at(new_t_s)
+        n_abans = len(self._acords)
         self._acords = list(pipeline.redimensiona_clips(
             self._acords, idx, "ini", new_t_s, self._durada,
             pipeline.FORAT_ACORD))
-        # El propi clip: canvia l'inici
-        self._chord_items[idx].set_time(new_t_s)
-        # El clip ANTERIOR: el seu fi = aquest inici (contigüitat)
-        if idx - 1 >= 0:
-            self._chord_items[idx - 1].set_next_t(new_t_s)
-        # El clip següent NO canvia (el seu inici segueix igual)
+        if len(self._acords) != n_abans:      # ha tallat/eliminat un veí
+            QTimer.singleShot(0, self._refresca_items)
+        else:
+            self._chord_items[idx].set_time(new_t_s)
+            if idx - 1 >= 0:
+                self._chord_items[idx - 1].set_next_t(new_t_s)
         self.chordTimeMoved.emit(idx, new_t_s)
 
     def _on_chord_end_changed(self, idx: int, new_next_t: float) -> None:
@@ -1202,33 +1195,27 @@ class TimelineView(QGraphicsView):
                 == ChordItem.ZONE_BODY):
             return
         old_t = float(self._acords[idx][0])
-        # el final de l'acord idx és igual a l'inici de idx+1 (o durada total)
-        # limita:
-        #   - per sota: old_t + MIN_GAP_S (no pot ser més petit que l'inici)
-        #   - per sobre: si hi ha idx+2, (idx+2).t - MIN_GAP_S;
-        #                si no, self._durada
-        max_end = (self._acords[idx + 2][0] - MIN_GAP_S
-                   if idx + 2 < len(self._acords) else self._durada)
-        new_t_s = self._snap(new_next_t)
-        new_t_s = max(old_t + MIN_GAP_S, min(max_end, new_t_s))
+        # Vores LLIURES (§6.6): només cal no invertir ni sortir de la WAV; el
+        # tall/eliminació del que hi ha a sota el resol `redimensiona_clips`.
+        new_t_s = max(old_t + MIN_GAP_S,
+                      min(self._durada, self._snap(new_next_t)))
         self._show_guide_at(new_t_s)
-        # si hi ha següent, actualitza'l
         if idx + 1 < len(self._acords):
             n_old_t = float(self._acords[idx + 1][0])
             if abs(new_t_s - n_old_t) < 1e-9:
                 return
-            # Nucli únic de la VORA (S2a), el mateix que fa les seccions (#11).
+            n_abans = len(self._acords)
             self._acords = list(pipeline.redimensiona_clips(
                 self._acords, idx, "fi", new_t_s, self._durada,
                 pipeline.FORAT_ACORD))
-            # El propi clip: canvia el seu fi
-            self._chord_items[idx].set_next_t(new_t_s)
-            # El clip següent: canvia el seu inici (i el seu fi NO)
-            self._chord_items[idx + 1].set_time(new_t_s)
+            if len(self._acords) != n_abans:  # ha tallat/eliminat un veí
+                QTimer.singleShot(0, self._refresca_items)
+            else:
+                self._chord_items[idx].set_next_t(new_t_s)
+                self._chord_items[idx + 1].set_time(new_t_s)
             self.chordEndMoved.emit(idx, new_t_s)
         else:
-            # no hi ha següent: el final és la durada total. No podem moure'l.
-            # ignora el canvi (l'últim hi no té "final" editable per re-validar).
+            # no hi ha següent: el final és la durada total (no s'edita).
             pass
 
     def _move_chord_group(self, idx: int, sel: list, new_t: float) -> None:
@@ -1309,17 +1296,18 @@ class TimelineView(QGraphicsView):
             return self._seccions[i + 1][0] if i + 1 < n else self._durada
 
         if zone == SectionItem.ZONE_RIGHT:
-            # Mou el FI -> és l'inici de la següent
-            max_end = (self._seccions[idx + 2][0] - MIN_GAP_S
-                       if idx + 2 < n else self._durada)
-            nt = self._snap(new_fi)
-            nt = max(ini_o + MIN_SEC_LEN_S, min(max_end, nt))
-            # Nucli únic de la VORA (S2a): `redimensiona_clips` (#11).
+            # Mou el FI -> és l'inici de la següent (vora LLIURE, §6.6)
+            nt = max(ini_o + MIN_SEC_LEN_S,
+                     min(self._durada, self._snap(new_fi)))
+            n_abans = len(self._seccions)
             self._seccions = [tuple(s) for s in pipeline.redimensiona_seccio(
                 self._seccions, idx, "fi", nt, self._durada)]
-            self._section_items[idx].set_fi(nt)
-            if idx + 1 < n:
-                self._section_items[idx + 1].set_ini(nt)
+            if len(self._seccions) != n_abans:
+                QTimer.singleShot(0, self._refresca_items)
+            else:
+                self._section_items[idx].set_fi(nt)
+                if idx + 1 < n:
+                    self._section_items[idx + 1].set_ini(nt)
             self._show_guide_at(nt)
             self.sectionMoved.emit(idx, ini_o, nt)
             return
@@ -1332,16 +1320,17 @@ class TimelineView(QGraphicsView):
 
         # LEFT / NONE: mou l'INICI (i el fi de l'anterior)
 
-        lo = prev_ini(idx) + MIN_GAP_S
-        hi = fi_o - MIN_SEC_LEN_S
-        nt = self._snap(new_ini)
-        nt = max(lo, min(hi, nt))
-        # Nucli únic de la VORA (S2a): `redimensiona_clips` (#11).
+        # Vora LLIURE (§6.6): només límit [0, fi-MIN]; el veí el resol el nucli.
+        nt = max(0.0, min(fi_o - MIN_SEC_LEN_S, self._snap(new_ini)))
+        n_abans = len(self._seccions)
         self._seccions = [tuple(s) for s in pipeline.redimensiona_seccio(
             self._seccions, idx, "ini", nt, self._durada)]
-        self._section_items[idx].set_ini(nt)
-        if idx - 1 >= 0:
-            self._section_items[idx - 1].set_fi(nt)
+        if len(self._seccions) != n_abans:
+            QTimer.singleShot(0, self._refresca_items)
+        else:
+            self._section_items[idx].set_ini(nt)
+            if idx - 1 >= 0:
+                self._section_items[idx - 1].set_fi(nt)
         self._show_guide_at(nt)
         self.sectionMoved.emit(idx, nt, fi_o)
 

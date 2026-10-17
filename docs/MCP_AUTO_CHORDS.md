@@ -51,7 +51,7 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 3. Fet: l'agent ja veu les eines `ac_*`. En acabar, torna a `"enabled": false` i
    reinicia (estalvia context).
 
-## Eines exposades (67)
+## Eines exposades (68)
 
 | Lectura | Acció (model) | Transport / vista | Finestra |
 |---|---|---|---|
@@ -63,11 +63,11 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 | `ac_undo_list` | `ac_rename_section` / `ac_move_section` / `ac_delete_section` | `ac_zoom` (mode) | `ac_set_key_detect` (on) |
 | | `ac_undo` / `ac_redo` | `ac_select_clip` (kind, index) · `ac_toggle_selection` (kind, index) · `ac_clear_selection` · `ac_select_at_cursor` (kind) | `ac_detect_downbeat` · `ac_mark_downbeat` · `ac_open_output_folder` |
 
-> **67 eines** en total. Les de l'última fila (metrònom, tonalitat automàtica,
+> **68 eines** en total. Les de l'última fila (metrònom, tonalitat automàtica,
 > compàs 1, carpeta de sortida i selecció/multi-selecció) es van afegir per
 > **A7**, perquè eren funcions de l'app sense cap eina equivalent.
 
-### Paritat d'ACCIONS amb la GUI (2026-10-17) — 16 eines noves
+### Paritat d'ACCIONS amb la GUI (2026-10-17) — 17 eines noves
 
 > **Criteri**: tot el que l'usuari pot **fer** des de la GUI, l'agent també ho
 > ha de poder fer per eines. Cap eina obre diàlegs (tot arriba per paràmetre o
@@ -80,7 +80,8 @@ opencode ──stdio (JSON-RPC/MCP)──► eines/mcp_auto_chords_server.py   (
 | `ac_retalla_seleccio` | Retalla: copia i esborra la selecció (Ctrl+X). |
 | `ac_enganxa_seleccio` (`t_s`?) | Enganxa al cursor (Ctrl+V), **sobreescrivint** el tram; `t_s` mou el cursor abans. |
 | `ac_esborra_seleccio` (`kind`?) | Esborra els clips seleccionats (tecla Del), d'un tipus o tots. |
-| `ac_duplica_seleccio` (`kind`?) | Duplica els clips seleccionats (Ctrl+D). |
+| `ac_duplica_seleccio` (`kind`?) | Duplica els clips seleccionats (Ctrl+D): la còpia va **després** i sobreescriu el tram (§2). |
+| `ac_duplica_a` (`t_s`, `kind`?) | Duplica el bloc seleccionat a un **destí** (sobreescrivint, §6.3) — el gest `Ctrl+Shift`+arrossegar. |
 | `ac_renomena_seleccio` (`nom`, `kind`?) | Reanomena **en bloc** la selecció del tipus (F2 amb multi). |
 | `ac_selecciona_rang` (`t0`, `t1`, `kind`?) | Selecció per **rang de temps** (Shift+clic; sense `kind`, les dues pistes). |
 | `ac_selecciona_loop` | Selecciona tot el que hi ha dins el **loop A/B** (cursor al final). |

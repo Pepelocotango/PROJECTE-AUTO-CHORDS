@@ -151,19 +151,20 @@ Conseqüències per a **S2**:
 
 ## Següent (pendent del refactor, en ordre)
 
-**(BUIT) — el refactor «inici+fi» està tancat (S1–S6, tag `refactor-fi-fet`).**
+**(BUIT) — el refactor «inici+fi» està tancat (S1–S6, tag `refactor-fi-fet`) i els
+pendents derivats, resolts:**
+- ✅ **Duplicar** passa a «la còpia va DESPRÉS i sobreescriu el tram» (§2/§6.3,
+  nucli `duplica_bloc_clips`).
+- ✅ **Duplicar arrossegant per MCP**: eina nova `ac_duplica_a` (destí explícit).
+- ✅ **Vores «lliures»** (§6.6): tret el clamp; el redimensionat talla/elimina el
+  veí (§6.3) i, sense veí, hi va el `N`/`-`.
+- ✅ **Ponts S4 de l'MCP**: fora (el visor de proves ja és de clips).
 
 Pendents **fora del refactor** (no en formen part):
-- **Duplicar i §6.3**: `duplica_clips` parteix el clip pel mig (convenció de l'app);
-  «alinear el destí amb §6.3» (que la còpia sobreescrigui una regió com l'enganxat)
-  queda com a decisió de disseny.
-- **Duplicar arrossegant per MCP** (`Ctrl+Shift`+arrossegar): gest FET a la GUI, sense
-  eina MCP.
-- **Vores «lliures»** (§6.6 del PLA_EDICIO_LLIURE): el gest ja va pel nucli
-  `redimensiona_clips`, però es manté el **clamp** (les vores «viuen del veí»); treure
-  el clamp perquè el redimensionat talli/elimini veïns és una extensió de comportament.
-- Altres (no del refactor): cursors per definir (`AUTO_PROMPT_CONTINUACIO`), bump del
-  tag `v0.7.1`, i les proves funcionals manuals dels 3 SO.
+- **Cursors** per definir (`AUTO_PROMPT_CONTINUACIO`).
+- **Bump del tag `v0.7.1`** (decisió de l'operador).
+- **Proves funcionals manuals** dels 3 SO (`PROVES_FUNCIONALS_3SO`): l'únic que el
+  CI no pot verificar.
 
 **Nuclis ja fets** (no duplicar-los mai): `normalitza_clips`, `redimensiona_clips`,
 `mou_bloc_clips`, `parteix_clips`, `fusiona_clips`, `elimina_clips`,
