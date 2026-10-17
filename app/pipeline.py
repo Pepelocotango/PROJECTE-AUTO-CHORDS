@@ -1039,54 +1039,79 @@ def redimensiona_acord(acords, idx, vora, t, durada, log=None):
 
     `vora`: `"ini"` (esquerra) o `"fi"` (dreta). Retorna una llista NOVA.
     """
-    acords = [tuple(a) for a in (acords or [])]
-    n = len(acords)
+    return acords_de_clips(redimensiona_clips(
+        clips_d_acords(acords, durada), idx, vora, t, durada, FORAT_ACORD, log))
+
+
+# --- Operacions úniques sobre CLIPS (S2): una sola implementació -------------
+FORAT_ACORD = (SENSE_ACORD, "0.000000000")
+FORAT_SECCIO = (SENSE_SECCIO, SENSE_SECCIO)
+
+
+def redimensiona_clips(clips, idx, vora, t, durada, forat, log=None):
+    """ESTIRAR/ENCONGIR una VORA d'un clip (regla §6.3, la mateixa que MOURE).
+
+    El clip editat **mana** al seu tram nou: el que queda **a sota** es **talla**
+    o **s'elimina**. **Encongir** deixa un buit que tanca el **veí** (a la dreta
+    el següent; a l'esquerra l'anterior); si **no hi ha veí** (primer o últim
+    clip) el buit queda perquè `normalitza_clips` hi posi el `forat`.
+
+    `vora`: `"ini"` (esquerra) o `"fi"` (dreta). Retorna una llista NOVA.
+    """
+    out = [Clip(c.ini, c.fi, c.payload) for c in clips or ()]
     durada = float(durada or 0.0)
-    if not (0 <= idx < n) or abs(float(t)) < 1e-12:
-        return acords
+    if not (0 <= idx < len(out)) or abs(float(t)) < 1e-12:
+        return out
     t = max(0.0, min(durada, float(t)))
-    TOL, MIN = 1e-6, 0.02
-    left = str(vora).strip().lower() in ("ini", "inici", "esquerra", "left")
-    t_i = float(acords[idx][0])
-    t_fi = float(acords[idx + 1][0]) if idx + 1 < n else durada
+    esq = str(vora).strip().lower() in ("ini", "inici", "esquerra", "left")
+    c = out[idx]
+    if not esq:
+        if abs(t - c.fi) < TOL_TEMPS or (t < c.fi and t - c.ini < 0.02):
+            return out                      # no canvia res (o queda massa curt)
+        if t > c.fi:                        # ESTIRAR cap a la dreta
+            nous = [Clip(c.ini, t, c.payload)]
+            for i, x in enumerate(out):
+                if i == idx:
+                    continue
+                if x.ini >= c.fi - TOL_TEMPS and x.fi <= t + TOL_TEMPS:
+                    continue                # cobert del tot → s'elimina
+                if x.ini < t - TOL_TEMPS and x.fi > t + TOL_TEMPS:
+                    x = Clip(t, x.fi, x.payload)    # contenia t → es talla
+                nous.append(x)
+            nous.sort(key=lambda z: z.ini)
+            return normalitza_clips(nous, durada, forat)
+        if idx + 1 >= len(out):             # últim clip: el buit → `forat`
+            return normalitza_clips(out + [Clip(t, c.fi, tuple(forat))],
+                                    durada, forat)
+        out[idx] = Clip(c.ini, t, c.payload)
+        s = out[idx + 1]
+        out[idx + 1] = Clip(t, s.fi, s.payload)     # el següent s'estira
+        return normalitza_clips(out, durada, forat)
+    if t < c.ini:                           # ESTIRAR cap a l'esquerra
+        nous = [Clip(t, c.fi, c.payload)]
+        for i, x in enumerate(out):
+            if i == idx:
+                continue
+            if x.ini >= t - TOL_TEMPS and x.fi <= c.ini + TOL_TEMPS:
+                continue                    # cobert del tot → s'elimina
+            if x.ini < t - TOL_TEMPS and x.fi > t + TOL_TEMPS:
+                x = Clip(x.ini, t, x.payload)   # contenia t → es talla
+            nous.append(x)
+        nous.sort(key=lambda z: z.ini)
+        return normalitza_clips(nous, durada, forat)
+    if c.fi - t < 0.02:
+        return out                          # no canvia res (queda massa curt)
+    if idx > 0:                             # l'anterior s'estira endavant
+        p = out[idx - 1]
+        out[idx - 1] = Clip(p.ini, t, p.payload)
+    out[idx] = Clip(t, c.fi, c.payload)
+    return normalitza_clips(out, durada, forat)
 
-    def _sens_marca(temps):
-        return any(abs(float(x[0]) - temps) <= TOL for x in acords)
 
-    if not left:
-        if abs(t - t_fi) < TOL:
-            return acords
-        if t > t_fi:                       # ESTIRAR cap a la dreta
-            resta = [x for x in acords
-                     if not (t_fi + TOL < float(x[0]) < t - TOL)]
-            resta = [x for x in resta if abs(float(x[0]) - t_fi) > TOL]
-            if t < durada - TOL and not _sens_marca(t):
-                resta.append(_marca_nova(t, _nom_a(acords, t), acords[0]))
-            resta.sort(key=lambda x: float(x[0]))
-            return resta
-        if t - t_i < MIN:                  # ENCONGIR per la dreta
-            return acords
-        if idx + 1 >= n:                   # últim clip: el buit → «N»
-            nova = list(acords) + [_marca_nova(t, SENSE_ACORD, acords[0])]
-            nova.sort(key=lambda x: float(x[0]))
-            return nova
-        nova = list(acords)                # el següent s'estira enrere
-        s = nova[idx + 1]
-        nova[idx + 1] = (t, s[1]) + tuple(s[2:])
-        return nova
-    if t < t_i:                            # ESTIRAR cap a l'esquerra
-        # El clip editat mana a [t, t_i): fora les marques que hi cauen (els
-        # clips coberts del tot i la pròpia, que es reubica a `t`).
-        resta = [x for i, x in enumerate(acords)
-                 if i != idx and not (t - TOL <= float(x[0]) <= t_i + TOL)]
-        nova = [(t, acords[idx][1]) + tuple(acords[idx][2:])] + resta
-        nova.sort(key=lambda x: float(x[0]))
-        return nova
-    if t_fi - t < MIN:                     # ENCONGIR per l'esquerra
-        return acords
-    nova = list(acords)                    # l'anterior s'estira endavant
-    nova[idx] = (t, acords[idx][1]) + tuple(acords[idx][2:])
-    return nova
+def redimensiona_seccio(seccions, idx, vora, t, durada, log=None):
+    """Vora d'una SECCIÓ: mateixa regla i mateix nucli que els acords (#11)."""
+    return seccions_de_clips(redimensiona_clips(
+        clips_de_seccions(seccions), idx, vora, t, durada, FORAT_SECCIO, log))
 
 
 def mou_bloc_seccions(seccions, first, last, dt, durada, log=None):

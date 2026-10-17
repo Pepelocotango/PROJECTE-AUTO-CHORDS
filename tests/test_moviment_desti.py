@@ -388,5 +388,61 @@ class TestRedimensionaAcord(unittest.TestCase):
                          [tuple(a) for a in BASE])
 
 
+# --------------------------------------------------------------------------
+# Vores de l'ESTRUCTURA (paritat #11: mateix nucli que els acords)
+# --------------------------------------------------------------------------
+SECC = [(0.0, 2.0, "A", "A"), (2.0, 4.0, "B", "B"), (4.0, 6.0, "C", "C"),
+        (6.0, 8.0, "D", "D"), (8.0, 10.0, "E", "E")]
+
+
+class TestRedimensionaSeccio(unittest.TestCase):
+    """`pipeline.redimensiona_seccio`: la mateixa regla §6.3 que els acords."""
+
+    def test_estirar_dreta_es_menja_el_de_sota(self):
+        """A (0→2) fins a 5: B queda eliminada i C tallada."""
+        nou = pipeline.redimensiona_seccio(SECC, 0, "fi", 5.0, 10.0)
+        self.assertEqual(nou, [(0.0, 5.0, "A", "A"), (5.0, 6.0, "C", "C"),
+                              (6.0, 8.0, "D", "D"), (8.0, 10.0, "E", "E")])
+
+    def test_encongir_dreta_estira_el_seguent(self):
+        nou = pipeline.redimensiona_seccio(SECC, 0, "fi", 1.5, 10.0)
+        self.assertEqual(nou, [(0.0, 1.5, "A", "A"), (1.5, 4.0, "B", "B"),
+                              (4.0, 6.0, "C", "C"), (6.0, 8.0, "D", "D"),
+                              (8.0, 10.0, "E", "E")])
+
+    def test_estirar_esquerra_es_menja_el_del_davant(self):
+        """E (8→10) fins a 5: D eliminada, C escurçada i B intacta."""
+        nou = pipeline.redimensiona_seccio(SECC, 4, "ini", 5.0, 10.0)
+        self.assertEqual(nou, [(0.0, 2.0, "A", "A"), (2.0, 4.0, "B", "B"),
+                              (4.0, 5.0, "C", "C"), (5.0, 10.0, "E", "E")])
+
+    def test_encongir_esquerra_estira_l_anterior(self):
+        nou = pipeline.redimensiona_seccio(SECC, 4, "ini", 9.0, 10.0)
+        self.assertEqual(nou[-2:], [(6.0, 9.0, "D", "D"), (9.0, 10.0, "E", "E")])
+
+    def test_primer_encongit_deixa_forat_amb_guio(self):
+        """La 1a secció encongida: el forat [0,t) → «-» (normalitzat)."""
+        nou = pipeline.redimensiona_seccio(SECC, 0, "ini", 1.0, 10.0)
+        self.assertEqual(nou[0], (0.0, 1.0, "-", "-"))
+        self.assertEqual(nou[1], (1.0, 2.0, "A", "A"))
+
+    def test_ultim_encongit_deixa_forat_amb_guio(self):
+        nou = pipeline.redimensiona_seccio(SECC, 4, "fi", 9.0, 10.0)
+        self.assertEqual(nou[-2:], [(8.0, 9.0, "E", "E"), (9.0, 10.0, "-", "-")])
+
+    def test_resultat_sempre_contigu_i_cobert(self):
+        for idx, vora, t in ((0, "fi", 5.0), (0, "ini", 1.0), (2, "fi", 7.0),
+                             (4, "ini", 3.0), (1, "fi", 3.0), (3, "ini", 5.0)):
+            nou = pipeline.redimensiona_seccio(SECC, idx, vora, t, 10.0)
+            self.assertAlmostEqual(nou[0][0], 0.0, msg=f"{idx}/{vora}/{t}")
+            self.assertAlmostEqual(nou[-1][1], 10.0, msg=f"{idx}/{vora}/{t}")
+            for a, b in zip(nou, nou[1:]):
+                self.assertAlmostEqual(a[1], b[0], msg=f"{idx}/{vora}/{t}")
+
+    def test_cap_moviment_si_no_canvia_res(self):
+        self.assertEqual(pipeline.redimensiona_seccio(SECC, 2, "fi", 6.0, 10.0),
+                         SECC)
+
+
 if __name__ == "__main__":   # pragma: no cover
     unittest.main()
