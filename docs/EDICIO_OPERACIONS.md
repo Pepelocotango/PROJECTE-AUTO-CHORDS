@@ -30,7 +30,7 @@
 | 1 | **Afegir** un clip | menú *Edita ▸ Afegeix acord/secció…* · menú contextual · *Afegeix…* a la llista | `ac_add_chord`, `ac_add_section` | ✓ | ✓ | **FET** |
 | 2 | **Partir** (dividir) | menú contextual ▸ *Parteix l'acord/secció…* (pel cursor) | `ac_parteix_acord`, `ac_parteix_seccio` | ✓ | ✓ | **FET** |
 | 3 | **Fusionar** | menú contextual ▸ *Fusionar amb anterior/seguent* | `ac_fusiona_acord`, `ac_fusiona_seccio` | ✓ | ✓ | **FET** |
-| 4 | **Eliminar** un clip | `Del` · menú contextual ▸ *Elimina* · llista | `ac_delete_chord`, `ac_delete_section` | ✓ | ✓ | **FET** |
+| 4 | **Eliminar** un clip | `Del` · menú contextual ▸ *Elimina* · llista | `ac_delete_chord`, `ac_delete_section` | ✓ | ✓ | **FET**: nucli únic `elimina_clips` (§6.4) — mateix camí a la GUI i a l'MCP |
 | 5 | **Eliminar la SELECCIÓ** | `Del` amb multi-selecció | `ac_esborra_seleccio` | ✓ | ✓ | **FET** |
 | 6 | **Eliminar-ho TOT** → `N`/`-` a 0 | `Del` de tot | `ac_esborra_seleccio` | ✓ | ✓ | **FET** |
 | 7 | **Reanomenar** | `F2` · doble clic (inline) · llista | `ac_rename_chord`, `ac_rename_section` | ✓ | ✓ | **FET** |

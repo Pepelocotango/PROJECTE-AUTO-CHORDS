@@ -31,19 +31,16 @@ sempre** de la cadena de fronteres. Tots dos CSV escriuran **`inici,fi`**.
 | `e5bc2c7` | **S2 (graella)** — `graella.regularitza_clips` (nucli únic) + wrappers `regularitza_acords`/`regularitza_seccions` |
 | `6dad9c1` | **S2 (elimina+duplica)** — `elimina_clips` (§6.4) i `duplica_clips` + wrappers + handlers del visor |
 | `dbd924e` | **S2 (vores)** — el gest del visor (`ZONE_LEFT`/`ZONE_RIGHT`) i el nudge van pel nucli `redimensiona_clips` |
+| `70fad9d` | **S2 (cua)** — `filtra_seccions` reabsorbit al model de clips + MCP `delete_chord`/`delete_section` als nuclis |
 | `1785067` · `a1ae05e` · `0dbe3e7` | neteja (3 funcions mortes, 2 tests obsolets) i docs al dia |
 
 Els nuclis d'operació viuen a **`app/pipeline.py`** (tipus i normalitzador ~l. 590-730,
-nuclis ~l. 863-1200) i la regularització de graella a **`app/graella.py`**
-(`regularitza_clips`).
-
-Tot és a **`app/pipeline.py`**: tipus i normalitzador (~l. 590-730), nuclis
-d'operació i wrappers (~l. 863-1200). La regularització de graella és a
-**`app/graella.py`** (`regularitza_clips` + els dos wrappers).
+nuclis ~l. 863-1210) i la regularització de graella a **`app/graella.py`**
+(`regularitza_clips` + els dos wrappers).
 
 **Conseqüència**: les 4 famílies que estaven duplicades —**vores, moure, partir,
 fusionar**— i les operacions **elimina/duplica/regularitza** ja tenen **un sol
-nucli**; la paritat #11 hi és estructural.
+nucli**; la paritat #11 hi és estructural. **S2 = FET.**
 
 ## Regles del projecte (no negociables)
 
@@ -76,19 +73,17 @@ arbre net.
 
 ## Pendent (en ordre)
 
-1. **S2 (cua)** — reabsorbir `filtra_seccions` (mateix tipus d'operació); i
-   alinear el MCP d'`elimina`/`duplica` (`_op_delete_chord`/`_op_delete_section`
-   fan `del` cru) als nuclis `elimina_clips`/`duplica_clips`.
-2. **S3 — CSV `inici,fi` als dos**: escriptors **i tots els lectors alhora**
-   (`pipeline.desa_acords_csv` ~l. 1565, `visor.llegeix_acords` ~l. 80,
-   `pipeline.segments_lliures`/`exporta_total` ~l. 1330/1450, `acords_a_live.py`);
-   el `fi` es re-deriva. És una **escombrada**: fes-la sencera en una tongada i
-   verifica la suite (toca els fixtures d'`acords.csv` de ~40 fitxers de test).
-3. **S4** — visor: el model en memòria passa a clips `ini`+`fi`; fora el despatx
+1. **S3 — CSV `inici,fi` als dos**: escriptors **i tots els lectors alhora**
+   (`pipeline.desa_acords_csv` ~l. 1580, `visor.llegeix_acords` ~l. 80,
+   `pipeline.segments_lliures`/`exporta_total` ~l. 1330/1450,
+   `postproc.processa_acords_csv`, `acords_a_live.py`); el `fi` es re-deriva. És
+   una **escombrada**: fes-la sencera en una tongada i verifica la suite (toca els
+   fixtures d'`acords.csv` de ~40 fitxers de test; la sonda va fer fallar 106 tests).
+2. **S4** — visor: el model en memòria passa a clips `ini`+`fi`; fora el despatx
    `kind` duplicat.
-4. **S5** — exports i derivats: WAVs, ABC, partitura, MusicXML, guia DAW i les
+3. **S5** — exports i derivats: WAVs, ABC, partitura, MusicXML, guia DAW i les
    eines MCP al nou model.
-5. **S6** — neteja final: codi mort, helpers sense ús, `CHANGELOG` i docs.
+4. **S6** — neteja final: codi mort, helpers sense ús, `CHANGELOG` i docs.
 
 ## Trampes conegudes
 
