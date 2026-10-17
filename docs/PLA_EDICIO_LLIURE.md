@@ -115,3 +115,56 @@ per operació, ja es fa), **`set_data`** del timeline i **`_desa_i_regenera`**
    de continuar passant sense canvis.
 5. **Rendiment**: la normalització extra a cada operació és barata (llistes
    curtes), però cal mesurar-ho en temes grans.
+
+---
+
+## 6. ESPECIFICACIÓ TANCADA (decisions de l'operador, 17-10-2026)
+
+### 6.1 Símbols
+- **`"-"` = «sense secció»** (forat explícit d'estructura).
+- **`"N"` = «sense acord»** (silenci explícit d'acords).
+
+### 6.2 Regla general: **mana l'últim editat**
+Quan una operació deixa clips solapats, el clip **que acabes de tocar o crear**
+guanya; el que queda **a sota** es **talla o s'elimina** segons 6.3. **Mai es
+refusa l'operació** per la regla #4.
+
+### 6.3 Moviment d'un bloc (1 o més clips consecutius, MATEIXA DURADA)
+
+**Endavant** (el bloc va més tard)
+- **Origen**: l'anterior **s'estira** fins a l'**inici del primer clip de la
+  selecció** (tapa el forat que deixa el bloc).
+- **Destí**: el que queda solapat a sota:
+  - **se li talla l'inici** (perd el cap que cau dins del bloc);
+  - **s'elimina** si el seu **final** cau dins o més enllà del bloc (no en queda cap tros).
+
+**Endarrere** (el bloc va més d'hora)
+- **Origen**: el **posterior s'estira** fins al **final de la selecció**.
+- **Destí**: el que queda solapat a sota:
+  - **se li talla el final** (perd la cua que cau dins del bloc);
+  - **s'elimina** si el seu **inici** cau dins o més enllà del bloc.
+
+### 6.4 Esborrar (1 o més clips) → opció **(a)**
+- **L'anterior s'estira** i tapa el forat (mateixa lògica que l'origen d'un
+  moviment). **No** es converteix en `N`, excepte si el model queda **sense cap
+  clip**: llavors es posa el clip canònic (`N` a 0 / `A` de 0 a la durada).
+
+### 6.5 Conseqüència per al codi
+- **L'origen** d'un moviment **ja fa el que volem** (el model de marques estira
+  el veí tot sol) → no s'hi ha de fer res.
+- **El que cal implementar és el DESTÍ**: preservar la durada del bloc mogut i
+  **tallar/eliminar** el que cau a sota. Avui la marca moguda s'estira fins a la
+  marca següent i, per tant, **no es preserva la durada**.
+- **L'esborrar** ja compleix (el veí s'estira): només cal **treure el guard** que
+  refusa l'últim clip i cridar la normalització (ja es fa, `e131837`).
+- **`N` i `-`** queden per al cas degenerat i per als forats que cap operació tapi.
+
+### 6.6 Ordre d'implementació revisat
+1. **Destí del moviment/redimensionat** (preservar durada + tallar/eliminar) ← el gruix
+2. **Esborrar**: treure el guard de l'últim (que els dos camins facin el mateix)
+3. **Duplicar/enganxar**: ja sobreescriuen; alinear amb 6.3
+4. **Seccions**: mateixa lògica, amb `-` per als forats
+5. **Consumidors**: guia Live/partitura · **export que normalitza** · MCP (esborrar/duplicar la selecció)
+
+> **Decisions tancades**: símbol `-` · mana l'últim editat · esborrar = (a)
+> l'anterior s'estira · mateixa lògica per a totes les operacions.
