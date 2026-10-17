@@ -332,5 +332,61 @@ class TestMouBlocSeccions(unittest.TestCase):
             self.assertTrue(self._contigu_i_cobert(nou))
 
 
+# --------------------------------------------------------------------------
+# Estirar/encongir les VORES (mateixa lògica que moure, §6.3)
+# --------------------------------------------------------------------------
+class TestRedimensionaAcord(unittest.TestCase):
+    """`pipeline.redimensiona_acord`: el clip editat mana; el de sota es talla o
+    s'elimina; el buit el tanca el veí o, si no n'hi ha, hi va «N»."""
+
+    def test_estirar_dreta_es_menja_el_de_sota(self):
+        """C (0→2) fins a 5: Am i F queden coberts → Am eliminat, F tallat."""
+        nou = pipeline.redimensiona_acord(BASE, 0, "fi", 5.0, DURADA)
+        self.assertEqual(_clips(nou),
+                         [("C", 0.0, 5.0), ("F", 5.0, 6.0), ("G", 6.0, 8.0),
+                          ("Em", 8.0, 10.0)])
+
+    def test_encongir_dreta_estira_el_seguent(self):
+        """C fins a 1,5: el següent (Am) s'estira enrere."""
+        nou = pipeline.redimensiona_acord(BASE, 0, "fi", 1.5, DURADA)
+        self.assertEqual(_clips(nou)[:2], [("C", 0.0, 1.5), ("Am", 1.5, 4.0)])
+
+    def test_estirar_esquerra_es_menja_el_del_davant(self):
+        """Em (8→10) fins a 5: G queda cobert i F escurçat."""
+        nou = pipeline.redimensiona_acord(BASE, 4, "ini", 5.0, DURADA)
+        self.assertEqual(_clips(nou),
+                         [("C", 0.0, 2.0), ("Am", 2.0, 4.0), ("F", 4.0, 5.0),
+                          ("Em", 5.0, 10.0)])
+
+    def test_encongir_esquerra_estira_l_anterior(self):
+        """Em fins a 9: G s'estira fins a 9."""
+        nou = pipeline.redimensiona_acord(BASE, 4, "ini", 9.0, DURADA)
+        self.assertEqual(_clips(nou)[-2:], [("G", 6.0, 9.0), ("Em", 9.0, 10.0)])
+
+    def test_primer_clip_encongit_deixa_forat_amb_N(self):
+        """El 1r clip encongit per l'esquerra: el forat [0,t) → «N» (normalitzant)."""
+        nou = pipeline.redimensiona_acord(BASE, 0, "ini", 1.0, DURADA)
+        net, _ = pipeline.normalitza_cobertura(nou, [], DURADA)
+        self.assertEqual(_parells(net)[0], (0.0, "N"))
+        self.assertEqual(_clips(net)[1], ("C", 1.0, 2.0))
+
+    def test_ultim_clip_encongit_deixa_forat_amb_N(self):
+        """El darrer clip encongit per la dreta: el buit [t, durada) → «N»."""
+        nou = pipeline.redimensiona_acord(BASE, 4, "fi", 9.0, DURADA)
+        self.assertEqual(_clips(nou)[-2:], [("Em", 8.0, 9.0), ("N", 9.0, 10.0)])
+
+    def test_moure_el_darrer_bloc_deixa_N(self):
+        """Regressió: moure enrere el darrer bloc no ha d'allargar el clip; el
+        buit que queda → «N»."""
+        nou = pipeline.mou_bloc_acords(BASE, 4, 4, -2.0, DURADA)
+        self.assertEqual(_clips(nou),
+                         [("C", 0.0, 2.0), ("Am", 2.0, 4.0), ("F", 4.0, 6.0),
+                          ("Em", 6.0, 8.0), ("N", 8.0, 10.0)])
+
+    def test_cap_moviment_si_no_canvia_res(self):
+        self.assertEqual(pipeline.redimensiona_acord(BASE, 2, "fi", 6.0, DURADA),
+                         [tuple(a) for a in BASE])
+
+
 if __name__ == "__main__":   # pragma: no cover
     unittest.main()

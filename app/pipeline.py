@@ -906,6 +906,9 @@ def mou_bloc_acords(acords, first, last, dt, durada, log=None):
                 resta = [x for x in resta if abs(float(x[0]) - b) > TOL]
             if not _hi_ha_marca(b2):
                 resta.append(_marca_nova(b2, acords[last + 1][1], acords[0]))
+        elif b2 < durada - TOL and not _hi_ha_marca(b2):
+            # El bloc és l'últim: no hi ha posterior que tapi el buit → «N».
+            resta.append(_marca_nova(b2, SENSE_ACORD, acords[0]))
 
     nou = [_desplaca_marca(x, dt) for x in bloc] + resta
     # `sort` estable: davant d'un instant compartit, el bloc (que hi va primer)
@@ -918,6 +921,67 @@ def mou_bloc_acords(acords, first, last, dt, durada, log=None):
 
 
 SENSE_SECCIO = "-"      # §6.1: forat explícit d'estructura («sense secció»)
+SENSE_ACORD = "N"       # §6.1: forat explícit d'acords («sense acord»)
+
+
+def redimensiona_acord(acords, idx, vora, t, durada, log=None):
+    """ESTIRAR/ENCONGIR una vora d'un acord (mateixa lògica que MOURE, §6.3).
+
+    El clip editat **mana** al seu tram nou: el que queda **a sota** es **talla**
+    o **s'elimina**. **Encongir** deixa un buit que tanca el **veí** (a la dreta,
+    el següent; a l'esquerra, l'anterior); si **no hi ha veí** (primer o últim
+    clip), el buit queda perquè `normalitza_cobertura` hi posi **`N`**.
+
+    `vora`: `"ini"` (esquerra) o `"fi"` (dreta). Retorna una llista NOVA.
+    """
+    acords = [tuple(a) for a in (acords or [])]
+    n = len(acords)
+    durada = float(durada or 0.0)
+    if not (0 <= idx < n) or abs(float(t)) < 1e-12:
+        return acords
+    t = max(0.0, min(durada, float(t)))
+    TOL, MIN = 1e-6, 0.02
+    left = str(vora).strip().lower() in ("ini", "inici", "esquerra", "left")
+    t_i = float(acords[idx][0])
+    t_fi = float(acords[idx + 1][0]) if idx + 1 < n else durada
+
+    def _sens_marca(temps):
+        return any(abs(float(x[0]) - temps) <= TOL for x in acords)
+
+    if not left:
+        if abs(t - t_fi) < TOL:
+            return acords
+        if t > t_fi:                       # ESTIRAR cap a la dreta
+            resta = [x for x in acords
+                     if not (t_fi + TOL < float(x[0]) < t - TOL)]
+            resta = [x for x in resta if abs(float(x[0]) - t_fi) > TOL]
+            if t < durada - TOL and not _sens_marca(t):
+                resta.append(_marca_nova(t, _nom_a(acords, t), acords[0]))
+            resta.sort(key=lambda x: float(x[0]))
+            return resta
+        if t - t_i < MIN:                  # ENCONGIR per la dreta
+            return acords
+        if idx + 1 >= n:                   # últim clip: el buit → «N»
+            nova = list(acords) + [_marca_nova(t, SENSE_ACORD, acords[0])]
+            nova.sort(key=lambda x: float(x[0]))
+            return nova
+        nova = list(acords)                # el següent s'estira enrere
+        s = nova[idx + 1]
+        nova[idx + 1] = (t, s[1]) + tuple(s[2:])
+        return nova
+    if t < t_i:                            # ESTIRAR cap a l'esquerra
+        # El clip editat mana a [t, t_i): fora les marques que hi cauen (els
+        # clips coberts del tot i la pròpia, que es reubica a `t`).
+        resta = [x for i, x in enumerate(acords)
+                 if i != idx and not (t - TOL <= float(x[0]) <= t_i + TOL)]
+        nova = [(t, acords[idx][1]) + tuple(acords[idx][2:])] + resta
+        nova.sort(key=lambda x: float(x[0]))
+        return nova
+    if t_fi - t < MIN:                     # ENCONGIR per l'esquerra
+        return acords
+    nova = list(acords)                    # l'anterior s'estira endavant
+    nova[idx] = (t, acords[idx][1]) + tuple(acords[idx][2:])
+    return nova
 
 
 def mou_bloc_seccions(seccions, first, last, dt, durada, log=None):
