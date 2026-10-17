@@ -39,8 +39,8 @@
 | 10 | **Moure un clip / BLOC** | arrossegar el **cos** (guard `Ctrl+Shift` = duplicar) | `ac_mou_bloc` (`kind`) | ✓ | ✓ | **FET** (§6.3) |
 | 11 | **Moure una marca** (fi = inici del següent) | — | `ac_move_chord`, `ac_move_section` | ✓ | ✓ | **FET** (camí de la vora) |
 | 12 | **Nudge** (moure una frontera) | `←` / `→` · `Alt+←`/`→` (vora dreta) | `ac_nudge` (`direccio`, `estira`, `pas`) | ✓ | ✓ | **FET** |
-| 13 | **Redimensionar (vores lliures)** | arrossegar la **vora** del clip | `ac_nudge(estira)` | ✓ | ✓ | 🔄 **EN CURS**: nucli únic FET (`redimensiona_clips` + `redimensiona_acord`/`redimensiona_seccio`, S2a); falta enganxar-ho al gest del visor i a `ac_nudge(estira)` |
-| 14 | **Duplicar** | `Ctrl+D` | `ac_duplica_seleccio` | ✓ | ✓ | **FET** · alinear el destí amb §6.3 = ⏳ |
+| 13 | **Redimensionar (vores lliures)** | arrossegar la **vora** del clip | `ac_nudge(estira)` | ✓ | ✓ | **FET**: nucli únic (`redimensiona_clips` + `redimensiona_acord`/`redimensiona_seccio`) i el gest del visor (vores `ZONE_LEFT`/`ZONE_RIGHT`) hi enganxat |
+| 14 | **Duplicar** | `Ctrl+D` | `ac_duplica_seleccio` | ✓ | ✓ | **FET**: nucli únic `duplica_clips` (§ partida pel mig) · alinear el destí amb §6.3 = ⏳ |
 | 15 | **Duplicar arrossegant** | `Ctrl+Shift`+arrossegar (a l'origen hi torna una còpia) | — | ✓ | ✓ | GUI **FET** · MCP ⏳ |
 | 16 | **Copiar / Retallar / Enganxar** | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` (`Ctrl+Shift+V` = sense snap) | `ac_copia_seleccio`, `ac_retalla_seleccio`, `ac_enganxa_seleccio` | ✓ | ✓ | **FET** (sobreescriu el tram) |
 | 17 | **Copiar/retallar el LOOP** | doble clic al regle · menú contextual de la banda | `ac_selecciona_loop` + les de copiar/retallar | ✓ | ✓ | **FET** (composable) |

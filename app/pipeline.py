@@ -989,7 +989,8 @@ def redimensiona_clips(clips, idx, vora, t, durada, forat, log=None):
     esq = str(vora).strip().lower() in ("ini", "inici", "esquerra", "left")
     c = out[idx]
     if not esq:
-        if abs(t - c.fi) < TOL_TEMPS or (t < c.fi and t - c.ini < 0.02):
+        if (abs(t - c.fi) < TOL_TEMPS
+                or (t < c.fi and t - c.ini < 0.02 - TOL_TEMPS)):
             return out                      # no canvia res (o queda massa curt)
         if t > c.fi:                        # ESTIRAR cap a la dreta
             nous = [Clip(c.ini, t, c.payload)]
@@ -1022,7 +1023,7 @@ def redimensiona_clips(clips, idx, vora, t, durada, forat, log=None):
             nous.append(x)
         nous.sort(key=lambda z: z.ini)
         return normalitza_clips(nous, durada, forat)
-    if c.fi - t < 0.02:
+    if c.fi - t < 0.02 - TOL_TEMPS:
         return out                          # no canvia res (queda massa curt)
     if idx > 0:                             # l'anterior s'estira endavant
         p = out[idx - 1]

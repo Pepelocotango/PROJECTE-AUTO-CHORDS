@@ -1154,7 +1154,7 @@ class TimelineView(QGraphicsView):
             if len(sel) > 1 and idx in sel:
                 self._move_chord_group(idx, sel, new_t)
                 return
-        old_t, name, *_r = self._acords[idx]
+        old_t = float(self._acords[idx][0])
         # veïns
         prev_t = self._acords[idx - 1][0] if idx - 1 >= 0 else 0.0
         next_t = self._acords[idx + 1][0] if idx + 1 < len(self._acords) \
@@ -1168,9 +1168,10 @@ class TimelineView(QGraphicsView):
         # no propaguem (ja estava limitat). Però sí actualitzem l'item.
         if abs(new_t_s - old_t) < 1e-9:
             return
-        self._acords[idx] = (new_t_s, name,
-                             f"{new_t_s:.9f}" if len(self._acords[idx]) > 2
-                             else f"{new_t_s:.9f}")
+        # Nucli únic de la VORA (S2a): mateix `redimensiona_clips` que les
+        # seccions (#11). El valor `new_t_s` ja ve encaixat i limitat.
+        self._acords = [tuple(a) for a in pipeline.redimensiona_acord(
+            self._acords, idx, "ini", new_t_s, self._durada)]
         # El propi clip: canvia l'inici
         self._chord_items[idx].set_time(new_t_s)
         # El clip ANTERIOR: el seu fi = aquest inici (contigüitat)
@@ -1202,11 +1203,12 @@ class TimelineView(QGraphicsView):
         self._show_guide_at(new_t_s)
         # si hi ha següent, actualitza'l
         if idx + 1 < len(self._acords):
-            n_old_t, n_name, *_r2 = self._acords[idx + 1]
+            n_old_t = float(self._acords[idx + 1][0])
             if abs(new_t_s - n_old_t) < 1e-9:
                 return
-            self._acords[idx + 1] = (new_t_s, n_name,
-                                      f"{new_t_s:.9f}")
+            # Nucli únic de la VORA (S2a), el mateix que fa les seccions (#11).
+            self._acords = [tuple(a) for a in pipeline.redimensiona_acord(
+                self._acords, idx, "fi", new_t_s, self._durada)]
             # El propi clip: canvia el seu fi
             self._chord_items[idx].set_next_t(new_t_s)
             # El clip següent: canvia el seu inici (i el seu fi NO)
@@ -1299,11 +1301,11 @@ class TimelineView(QGraphicsView):
                        if idx + 2 < n else self._durada)
             nt = self._snap(new_fi)
             nt = max(ini_o + MIN_SEC_LEN_S, min(max_end, nt))
-            self._seccions[idx] = (ini_o, nt, lletra, familia)
+            # Nucli únic de la VORA (S2a): `redimensiona_clips` (#11).
+            self._seccions = [tuple(s) for s in pipeline.redimensiona_seccio(
+                self._seccions, idx, "fi", nt, self._durada)]
             self._section_items[idx].set_fi(nt)
             if idx + 1 < n:
-                nx = self._seccions[idx + 1]
-                self._seccions[idx + 1] = (nt, nx[1], nx[2], nx[3])
                 self._section_items[idx + 1].set_ini(nt)
             self._show_guide_at(nt)
             self.sectionMoved.emit(idx, ini_o, nt)
@@ -1321,11 +1323,11 @@ class TimelineView(QGraphicsView):
         hi = fi_o - MIN_SEC_LEN_S
         nt = self._snap(new_ini)
         nt = max(lo, min(hi, nt))
-        self._seccions[idx] = (nt, fi_o, lletra, familia)
+        # Nucli únic de la VORA (S2a): `redimensiona_clips` (#11).
+        self._seccions = [tuple(s) for s in pipeline.redimensiona_seccio(
+            self._seccions, idx, "ini", nt, self._durada)]
         self._section_items[idx].set_ini(nt)
         if idx - 1 >= 0:
-            p = self._seccions[idx - 1]
-            self._seccions[idx - 1] = (p[0], nt, p[2], p[3])
             self._section_items[idx - 1].set_fi(nt)
         self._show_guide_at(nt)
         self.sectionMoved.emit(idx, nt, fi_o)
