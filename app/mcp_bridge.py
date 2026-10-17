@@ -182,8 +182,9 @@ def _op_status(ctx, params):
 def _op_list_chords(ctx, params):
     vr = _requereix_visor(ctx)
     return {"chords": [
-        {"index": i, "t_s": round(float(t), 4), "acord": str(c)}
-        for i, (t, c, *_r) in enumerate(vr.acords)
+        {"index": i, "t_s": round(float(a[0]), 4),
+         "acord": str(pipeline.nom_d_acord(a))}
+        for i, a in enumerate(vr.acords)
     ]}
 
 
@@ -286,7 +287,7 @@ def _op_rename_chord(ctx, params):
         if idx < 0 or idx >= len(vr.acords):
             raise BridgeError(f"Índex d'acord fora de rang: {idx}")
         nova = list(vr.acords)
-        nova[idx] = (nova[idx][0], nom, nova[idx][2])
+        nova[idx] = _acord_amb_nom(nova[idx], nom)
         vr.acords = nova
 
     return _aplica(ctx, mut)
@@ -300,10 +301,24 @@ def _op_move_chord(ctx, params):
         if idx < 0 or idx >= len(vr.acords):
             raise BridgeError(f"Índex d'acord fora de rang: {idx}")
         nova = list(vr.acords)
-        nova[idx] = (float(t), nova[idx][1], f"{float(t):.9f}")
+        nova[idx] = _acord_amb_ini(nova[idx], t)
         vr.acords = nova
 
     return _aplica(ctx, mut)
+
+
+def _acord_amb_ini(a, t):
+    """`a` amb l'inici `t` (clips o marques; pont S4)."""
+    if isinstance(a, pipeline.Clip):
+        return pipeline.Clip(float(t), float(a[1]), a[2])
+    return (float(t),) + tuple(a[1:])
+
+
+def _acord_amb_nom(a, nom):
+    """`a` amb el nom `nom` (clips o marques; pont S4)."""
+    if isinstance(a, pipeline.Clip):
+        return pipeline.Clip(a[0], a[1], (nom,) + tuple(a[2][1:]))
+    return (a[0], nom) + tuple(a[2:])
 
 
 def _durada_de(vr):
@@ -318,7 +333,11 @@ def _op_delete_chord(ctx, params):
         if idx < 0 or idx >= len(vr.acords):
             raise BridgeError(f"Índex d'acord fora de rang: {idx}")
         # Nucli únic (§6.4/#11): mateixa semàntica que la GUI del visor.
-        vr.acords = pipeline.elimina_acord(vr.acords, idx, _durada_de(vr))
+        if vr.acords and isinstance(vr.acords[0], pipeline.Clip):
+            vr.acords = pipeline.elimina_clips(
+                vr.acords, idx, _durada_de(vr), pipeline.FORAT_ACORD)
+        else:                              # pont: visor amb marques (tests)
+            del vr.acords[idx]
 
     return _aplica(ctx, mut)
 
@@ -1141,10 +1160,15 @@ def _op_mou_bloc(ctx, params):
             raise BridgeError(f"Bloc fora de rang: {first}-{last}.")
         durada = float((getattr(vr2, "audio", {}) or {}).get("durada", 0.0) or 0.0)
         if kind == "chord":
-            nou = pipeline.mou_bloc_acords(base, first, last, float(dt), durada)
+            if base and isinstance(base[0], pipeline.Clip):
+                setattr(vr2, magatzem, pipeline.mou_bloc_clips(
+                    base, first, last, float(dt), durada, pipeline.FORAT_ACORD))
+            else:                          # pont: visor amb marques (tests)
+                setattr(vr2, magatzem, pipeline.mou_bloc_acords(
+                    base, first, last, float(dt), durada))
         else:
-            nou = pipeline.mou_bloc_seccions(base, first, last, float(dt), durada)
-        setattr(vr2, magatzem, [tuple(x) for x in nou])
+            setattr(vr2, magatzem, pipeline.mou_bloc_seccions(
+                base, first, last, float(dt), durada))
 
     return _aplica(ctx, mut)
 

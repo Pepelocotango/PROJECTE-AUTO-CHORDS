@@ -51,7 +51,7 @@ def _temps_acords(v):
 
 
 def _noms_acords(v):
-    return [a[1] for a in v.acords]
+    return [a[2][0] for a in v.acords]
 
 
 class _Base(unittest.TestCase):

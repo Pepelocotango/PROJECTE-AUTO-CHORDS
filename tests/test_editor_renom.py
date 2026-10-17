@@ -85,15 +85,16 @@ class TestEditorRenom(unittest.TestCase):
         # l'arrodoniment de l'editor. Han de distar >= 10 ms (resolució del
         # CSV): abans eren 7.13/7.134567 (4,6 ms) i arrodonien a la MATEIXA
         # fila «7.13» → col·lisió que el bug #5 ara rebutja.
-        v.acords = [(0.0, "N", "0.000000000"),
-                    (7.13, "A", "7.130000000"),
-                    (7.144567, "E-7", "7.144567000")]
+        v.acords = v._valida_canvis_acords([
+            (0.0, "N", "0.000000000"),
+            (7.13, "A", "7.130000000"),
+            (7.144567, "E-7", "7.144567000")])
         v.timeline.set_data(v.acords, v.seccions)
         v._ed_kind, v._ed_idx = "chord", 2
         v.ed_nom.setText("E7")
         v.ed_ini.setText("7.14")                 # arrodonit del valor real
         v._aplica_editor()
-        self.assertEqual(v.acords[2][1], "E7",
+        self.assertEqual(v.acords[2][2][0], "E7",
                          "no s'ha pogut reanomenar l'acord")
         self.assertAlmostEqual(float(v.acords[2][0]), 7.144567, places=5)
 

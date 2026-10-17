@@ -156,7 +156,7 @@ class TestCamiMCP(_Base):
 class TestCarregaAmbTempsFora(_Base):
     def test_acords_fora_de_la_wav_s_eliminen_i_el_disc_queda_net(self):
         v = _visor(acords=((0.0, "C"), (4.0, "G"), (250.0, "X")))
-        self.assertNotIn("X", [a[1] for a in v.acords])
+        self.assertNotIn("X", [a[2][0] for a in v.acords])
         self.assertAlmostEqual(max(float(a[0]) for a in v.acords), 4.0, places=6)
         self.assertNotIn("X", [nom for _t, nom in _llegeix_acords(v.csv_acords)])
 

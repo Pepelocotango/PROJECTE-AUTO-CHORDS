@@ -45,15 +45,16 @@ def _noms(acords):
 
 
 def _parells(acords, durada=DURADA):
-    return [(round(float(a[0]), 3), a[1]) for a in acords]
+    return [(round(float(a[0]), 3), pipeline.nom_d_acord(a)) for a in acords]
 
 
 def _clips(acords, durada=DURADA):
     """[(nom, inici, fi), …] — els clips són les marques consecutives."""
     out = []
-    for i, (t, nom, *_r) in enumerate(acords):
+    for i, a in enumerate(acords):
         fi = float(acords[i + 1][0]) if i + 1 < len(acords) else durada
-        out.append((nom, round(float(t), 3), round(float(fi), 3)))
+        out.append((pipeline.nom_d_acord(a), round(float(a[0]), 3),
+                    round(float(fi), 3)))
     return out
 
 

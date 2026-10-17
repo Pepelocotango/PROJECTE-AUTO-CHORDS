@@ -623,6 +623,18 @@ def acords_de_clips(clips):
     return [(float(c.ini),) + tuple(c.payload) for c in clips]
 
 
+def nom_d_acord(it):
+    """Nom d'un clip d'acord (`Clip(ini, fi, payload)`) o d'una marca `(t, nom[, tsrc])`.
+
+    Pont mentre el model viu passa de **marques** a **clips** (S4): permet
+    accedir al nom sense dependre de la forma de l'element.
+    """
+    if isinstance(it, Clip):
+        p = it.payload
+        return p[0] if isinstance(p, tuple) else p
+    return it[1]
+
+
 def clips_de_seccions(seccions):
     """Seccions `(ini, fi, lletra, família)` → `Clip` (el `fi` ja hi és)."""
     return [Clip(float(s[0]), float(s[1]), tuple(s[2:])) for s in (seccions or ())]
@@ -711,7 +723,7 @@ def model_inicial(durada, log=None):
     if log:
         log(f"model inicial (sense anàlisi): 1 acord «N» i 1 secció de 0 a "
             f"{dur:.2f}s")
-    return ([(0.0, "N", f"{0.0:.9f}")], [(0.0, dur, "A", "A")])
+    return ([Clip(0.0, dur, FORAT_ACORD)], [(0.0, dur, "A", "A")])
 
 
 def normalitza_cobertura(acords, seccions, durada, log=None):
@@ -1571,20 +1583,28 @@ def regularitza_acords_csv(csv_cru, csv_desti, bpm, bpb, offset, ritme, durada,
 
 
 def desa_acords_csv(ruta, items, durada=0.0):
-    """Desa el model d'acords com a CLIPS: `inici,fi,acord` (S3).
+    """Desa el model d'acords com a CLIPS: `inici,fi,acord` (S3+S4).
 
-    El `fi` és el **derivat** de la cadena de fronteres: l'inici del següent
-    clip i, per a l'últim, la `durada` de la WAV. Els temps van arrodonits a
-    `TEMPS_DEC` decimals (10 ms), la mateixa resolució que `estructura_ABC.csv`.
+    Accepta **clips** `(ini, fi, payload)` (el model del visor) o **marques**
+    `(t, nom[, tsrc])` (el camí de l'anàlisi); en tots dos casos n'escriu el nom.
+    El `fi` d'una marca es deriva (inici del següent; l'últim, la `durada`). Els
+    temps van arrodonits a `TEMPS_DEC` (10 ms), com `estructura_ABC.csv`.
     """
     items = [tuple(it) for it in items]
     durada = float(durada or 0.0)
 
+    def _nom(payload):
+        return payload[0] if isinstance(payload, tuple) else payload
+
     def _escriu(f):
         w = csv.writer(f)
         for i, it in enumerate(items):
-            t, c = float(it[0]), it[1]
-            fi = float(items[i + 1][0]) if i + 1 < len(items) else durada
+            t = float(it[0])
+            if isinstance(it[1], (int, float)):     # CLIP (ini, fi, payload)
+                fi, c = float(it[1]), _nom(it[2])
+            else:                                    # MARCA (t, nom[, tsrc])
+                c = _nom(it[1])
+                fi = float(items[i + 1][0]) if i + 1 < len(items) else durada
             w.writerow([f"{t:.{TEMPS_DEC}f}", f"{fi:.{TEMPS_DEC}f}", c])
     escriu_atomic(ruta, _escriu)
 

@@ -101,7 +101,7 @@ class TestXocsResolucioCSV(_Base):
         with self.assertRaises(mcp_bridge.BridgeError):
             mcp_bridge._op_add_chord(ctx, {"t_s": XOC_T, "acord": "DUP"})
         # i el model no ha quedat tocat
-        self.assertNotIn("DUP", [a[1] for a in v.acords])
+        self.assertNotIn("DUP", [a[2][0] for a in v.acords])
 
     def test_el_csv_no_te_mai_temps_duplicats_ni_clips_buits(self):
         v = _visor()
@@ -121,7 +121,7 @@ class TestXocsResolucioCSV(_Base):
     def test_repara_un_csv_que_ja_venia_xocat(self):
         """Si el CSV ja portava el xoc (versió antiga), en carregar es neteja."""
         v = _visor(acords=((0.0, "C"), (E7_T, "E7"), (XOC_T, "DUP")))
-        noms = [a[1] for a in v.acords]
+        noms = [a[2][0] for a in v.acords]
         self.assertNotIn("DUP", noms)
         self.assertIn("E7", noms)
         self.assertEqual(noms, ["C", "E7"])

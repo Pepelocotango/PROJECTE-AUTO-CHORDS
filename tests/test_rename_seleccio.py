@@ -68,7 +68,7 @@ class TestEditorManteSeleccio(_Base):
         v.ves_a(7.0)
         v.timeline.select_clip("chord", 3)
         self._aplica(v, "chord", 3, "Gmaj7", "7.00")
-        self.assertEqual(v.acords[3][1], "GMaj7")
+        self.assertEqual(v.acords[3][2][0], "GMaj7")
         self.assertEqual(v.timeline.selected_keys(), {("chord", 3)},
                          "el clip editat ha de quedar seleccionat")
         self.assertEqual(v.llista_ac.currentRow(), 3)
@@ -100,12 +100,12 @@ class TestRenomEnBloc(_Base):
         with patch.object(QInputDialog, "getText",
                           return_value=("Am", True)):
             self.assertTrue(v.renomena_seleccio())
-        self.assertEqual([a[1] for a in v.acords[:3]], ["A-", "A-", "A-"])
+        self.assertEqual([a[2][0] for a in v.acords[:3]], ["A-", "A-", "A-"])
         self.assertEqual(v.timeline.selected_keys(),
                          {("chord", 0), ("chord", 1), ("chord", 2)})
         self.assertEqual(len(v._undo_stack), 1)     # una sola operació
         v.undo()
-        self.assertEqual([a[1] for a in v.acords[:3]], ["C", "Am", "F"])
+        self.assertEqual([a[2][0] for a in v.acords[:3]], ["C", "Am", "F"])
         v.close()
 
     def test_seccions_en_bloc(self):
@@ -128,7 +128,7 @@ class TestRenomEnBloc(_Base):
         with patch.object(QInputDialog, "getText", return_value=("R", True)):
             self.assertTrue(v.renomena_seleccio())
         self.assertEqual(v.seccions[0][2], "R")     # la secció sí
-        self.assertEqual([a[1] for a in v.acords],
+        self.assertEqual([a[2][0] for a in v.acords],
                          ["C", "Am", "F", "G", "C"])  # els acords, intactes
         self.assertEqual(len(v._undo_stack), 1)
         v.close()
@@ -142,7 +142,7 @@ class TestRenomInlineManteSeleccio(_Base):
         # flux faithful: el timeline ja té el nom nou quan arriba el senyal
         v.timeline._acords[3] = (7.0, "G7", "7.0")
         v.timeline.chordRenamed.emit(3, "G7")
-        self.assertEqual(v.acords[3][1], "G7")
+        self.assertEqual(v.acords[3][2][0], "G7")
         self.assertEqual(v.timeline.selected_keys(), {("chord", 3)})
         self.assertIn("G7", v.llista_ac.currentItem().text())
         v.close()

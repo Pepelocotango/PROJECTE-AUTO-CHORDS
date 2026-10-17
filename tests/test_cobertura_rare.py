@@ -105,7 +105,7 @@ class TestCoberturaRare(_Base):
         v.ed_ini.setText("1.00")
         v.ed_cb.setText("")
         v._aplica_editor()                           # mou el 1r acord a 1,0 s
-        self.assertEqual(v.acords[0][1], "N")        # cobertura: «N» a 0
+        self.assertEqual(v.acords[0][2][0], "N")        # cobertura: «N» a 0
         self.assertAlmostEqual(float(v.acords[0][0]), 0.0, places=6)
         v.close()
 

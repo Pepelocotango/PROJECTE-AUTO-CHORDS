@@ -77,9 +77,15 @@ def llegeix_wav(ruta):
             "mono": mono, "temps": temps, "pics": pics}
 
 
+def nom_acord(it):
+    """Nom d'un clip d'acord (`Clip(ini, fi, payload)`) o d'una marca `(t, nom[, tsrc])`."""
+    return pipeline.nom_d_acord(it)
+
+
 def llegeix_acords(ruta):
-    # Model d'acords com a CLIPS: `inici,fi,acord`. El model del visor són
-    # MARQUES (inici + nom): el `fi` de la columna 2 es re-deriva de la cadena.
+    # Model d'acords com a CLIPS `inici,fi,acord` (S3+S4). El `fi` de la columna
+    # 2 és el de la cadena de fronteres (es re-deriva a la normalització); el
+    # `payload` duu (nom, tsrc).
     items = []
     with open(ruta, encoding="utf-8") as f:
         for fila in csv.reader(f):
@@ -87,7 +93,9 @@ def llegeix_acords(ruta):
                     or fila[0].startswith("inici"):
                 continue
             try:
-                items.append((float(fila[0]), fila[2].strip(), fila[0]))
+                items.append(pipeline.Clip(
+                    float(fila[0]), float(fila[1]),
+                    (fila[2].strip(), fila[0])))
             except ValueError:
                 # linia malmesa al CSV: no la podem parsejar. Abans
                 # s'ignorava en silenci (perdua de dades invisible).
@@ -163,10 +171,13 @@ class Visor(QMainWindow):
             nou_model = True
         # INVARIANT de COBERTURA (regla d'or): els clips cobreixen TOTA la WAV
         # (0 → durada): 1r a 0 (capçalera «N» si cal) i últim a la durada.
+        # Els ACORDS ara són **clips** (S4): es normalitzen amb `normalitza_clips`.
         _a0, _s0 = list(self.acords), list(self.seccions)
-        self.acords, self.seccions = pipeline.normalitza_cobertura(
-            self.acords, self.seccions, self._durada_wav(),
-            log=self.log)
+        self.acords = pipeline.normalitza_clips(
+            self.acords, self._durada_wav(), pipeline.FORAT_ACORD,
+            arrodoneix=True, deriva_fi=True, log=self.log)
+        _, self.seccions = pipeline.normalitza_cobertura(
+            [], self.seccions, self._durada_wav(), log=self.log)
         # Si la normalització ha canviat el model (forats interns, capçalera
         # «N», últim fi acotat…), el CSV DEL DISC s'ha de normalitzar JA: abans
         # hi quedava el defecte fins a la 1a edició o export. I si el model és
@@ -465,27 +476,38 @@ class Visor(QMainWindow):
         # fila no la deixava ressaltada perque ves_a()->_actualitza_temps()).
         cur = self.llista_ac.currentRow()
         self.llista_ac.clear()
-        for t, c, *_r in self.acords:
+        for _a in self.acords:
+            t, c = float(_a[0]), nom_acord(_a)
             et = self._fmt_compas(t) if self.tempo_fix else f"{t:07.2f}s"
             self.llista_ac.addItem(f"{et}  {c}")
         if 0 <= cur < self.llista_ac.count():
             self.llista_ac.setCurrentRow(cur)
 
     def _valida_canvis_acords(self, items):
+        """Valida i DERIVA el `fi` dels clips d'acord (S4).
+
+        Mateixes regles que abans (ordre estricte per inici, sense duplicats ni
+        xocs a la resolució del CSV, dins de la WAV), ara sobre clips: accepta
+        clips `Clip(ini, fi, payload)` o marques `(t, nom[, tsrc])` i retorna
+        clips amb el `fi` re-derivat de la cadena de fronteres.
+        """
         if not items:
             return []
         durada = self._durada_wav()
         ordenats = sorted(items, key=lambda x: float(x[0]))
+        n = len(ordenats)
+        out = []
         prev_t, prev_nom = None, None
-        for item in ordenats:
+        for i, item in enumerate(ordenats):
             t = float(item[0])
+            nom = nom_acord(item)
             if t < 0:
-                raise ValueError(f"L'acord {item[1]} té un inici negatiu ({t:.2f}s)")
+                raise ValueError(f"L'acord {nom} té un inici negatiu ({t:.2f}s)")
             # TOPALL superior: un acord al final de la WAV (o més enllà)
             # quedaria amb durada <= 0 i trencaria l'invariant de cobertura (#4).
             if durada > 0 and t >= durada - pipeline.TOL_TEMPS:
                 raise ValueError(
-                    f"L'acord {item[1]} no cap dins de la WAV ({t:.2f}s; la WAV "
+                    f"L'acord {nom} no cap dins de la WAV ({t:.2f}s; la WAV "
                     f"fa {durada:.2f}s)")
             if prev_t is not None:
                 if t <= prev_t + 1e-9:
@@ -498,14 +520,18 @@ class Visor(QMainWindow):
                 # clip de durada ~0 a l'export (trenca #1/#2 a nivell de CSV).
                 if t - prev_t < pipeline.RESOLUCIO_CSV - 1e-9:
                     raise ValueError(
-                        f"Els acords {prev_nom} ({prev_t:.3f}s) i {item[1]} "
+                        f"Els acords {prev_nom} ({prev_t:.3f}s) i {nom} "
                         f"({t:.3f}s) estan a menys de "
                         f"{pipeline.RESOLUCIO_CSV * 1000:.0f} ms: al CSV "
                         f"({pipeline.TEMPS_DEC} decimals) quedarien al mateix "
                         f"instant i un clip tindria durada 0."
                     )
-            prev_t, prev_nom = t, item[1]
-        return ordenats
+            prev_t, prev_nom = t, nom
+            fi = float(ordenats[i + 1][0]) if i + 1 < n else durada
+            payload = (tuple(item.payload) if isinstance(item, pipeline.Clip)
+                       else tuple(item[1:]))
+            out.append(pipeline.Clip(t, fi, payload))
+        return out
 
     def _normalitza_acords(self, items=None):
         items = self.acords if items is None else items
@@ -599,8 +625,8 @@ class Visor(QMainWindow):
             return False
         # Nucli únic `pipeline.elimina_acords` (§6.4): l'anterior s'estira; sense
         # anterior, hi va la «N»; si queda buit, la «N» canònica a 0.
-        self.acords = pipeline.elimina_acord(
-            self.acords, idx, self._durada_wav())
+        self.acords = pipeline.elimina_clips(
+            self.acords, idx, self._durada_wav(), pipeline.FORAT_ACORD)
         if hasattr(self, "llista_ac"):
             self._omple_llista_ac()
         return True
@@ -668,7 +694,7 @@ class Visor(QMainWindow):
         fila = self.llista_ac.row(item)
         if fila < 0 or fila >= len(self.acords):
             return
-        t, vell = self.acords[fila][0], self.acords[fila][1]
+        t, vell = float(self.acords[fila][0]), nom_acord(self.acords[fila])
         nou_nom, ok_nom = QInputDialog.getText(
             self, "Corregeix l'acord",
             f"Nom de l'acord a {t:.2f} s (actual: {vell})",
@@ -732,16 +758,22 @@ class Visor(QMainWindow):
 
         Els clips (acords I estructura) han de cobrir **tota** la WAV
         (0 → durada): si el 1r element no arrenca a 0 s'hi afegeix una «N» a 0,
-        i l'última secció s'acota a la durada. (Sense això, eliminar el 1r
-        acord deixava un forat al visor i al CSV.)
+        i l'últim s'acota a la durada. Els acords ara són **clips** (S4), així
+        que es normalitzen amb `normalitza_clips` (fi re-derivat de la cadena).
 
         Retorna `True` si el model ha canviat (perquè qui cridi refresqui).
         """
         a0 = list(self.acords)
         s0 = list(self.seccions)
-        self.acords, self.seccions = pipeline.normalitza_cobertura(
-            self.acords, self.seccions,
-            self._durada_wav(), log=self.log)
+        d = self._durada_wav()
+        acords = [a if isinstance(a, pipeline.Clip)
+                  else pipeline.Clip(float(a[0]), 0.0, tuple(a[1:]))
+                  for a in self.acords]
+        self.acords = pipeline.normalitza_clips(
+            acords, d, pipeline.FORAT_ACORD, arrodoneix=True,
+            deriva_fi=True, log=self.log)
+        _, self.seccions = pipeline.normalitza_cobertura(
+            [], self.seccions, d, log=self.log)
         return self.acords != a0 or self.seccions != s0
 
     def _desa_i_regenera(self):
@@ -902,12 +934,13 @@ class Visor(QMainWindow):
             return f"afegir una secció (ara {len(se1)})"
         if len(se1) < len(se0):
             return "eliminar una secció"
-        for (t0, n0, *_), (t1, n1, *_) in zip(ac0, ac1):
-            if n0 != n1:
-                return f"reanomenar l'acord «{n0}» → «{n1}»"
-            if abs(float(t0) - float(t1)) > 1e-6:
-                return (f"moure l'acord «{n1}» "
-                        f"({float(t0):.2f}s → {float(t1):.2f}s)")
+        for a0, a1 in zip(ac0, ac1):
+            if nom_acord(a0) != nom_acord(a1):
+                return (f"reanomenar l'acord «{nom_acord(a0)}» → "
+                        f"«{nom_acord(a1)}»")
+            if abs(float(a0[0]) - float(a1[0])) > 1e-6:
+                return (f"moure l'acord «{nom_acord(a1)}» "
+                        f"({float(a0[0]):.2f}s → {float(a1[0]):.2f}s)")
         for (i0, f0, l0, fa0), (i1, f1, l1, fa1) in zip(se0, se1):
             if l0 != l1 or fa0 != fa1:
                 return f"reanomenar la secció «{l0}» → «{l1}»"
@@ -1385,9 +1418,11 @@ class Visor(QMainWindow):
         # amb el mateix criteri que l'alta i l'export (si canvia, es corregeix
         # al model I al timeline perquè no divergeixin).
         net = pipeline.saneja_nom_acord(new_name)
-        if net and 0 <= idx < len(self.acords) and self.acords[idx][1] != net:
+        if net and 0 <= idx < len(self.acords) and nom_acord(self.acords[idx]) != net:
             nova = list(self.acords)
-            nova[idx] = (nova[idx][0], net, nova[idx][2])
+            _a = nova[idx]
+            nova[idx] = pipeline.Clip(
+                float(_a[0]), float(_a[1]), (net,) + tuple(_a[2][1:]))
             self.acords = nova
             self.timeline.set_data(self.acords, self.seccions)
         self._undo_commit()
@@ -1569,8 +1604,7 @@ class Visor(QMainWindow):
         invariants. Regla d'or #11: mateix nucli que les seccions."""
         if idx < 0 or idx >= len(self.acords):
             return
-        cand = pipeline.duplica_acord(self.acords, idx,
-                                      float(self.audio["durada"]))
+        cand = pipeline.duplica_clips(self.acords, idx, marge=0.02)
         if cand == list(self.acords):
             self.log(f"no es pot duplicar l'acord {idx}: no hi ha espai")
             return
@@ -1609,8 +1643,7 @@ class Visor(QMainWindow):
             return
         cand_ac = list(self.acords)
         for i in idx_ac:
-            cand_ac = pipeline.duplica_acord(
-                cand_ac, i, float(self.audio["durada"]))
+            cand_ac = pipeline.duplica_clips(cand_ac, i, marge=0.02)
         cand_sec = list(self.seccions)
         for i in idx_sec:
             cand_sec = pipeline.duplica_seccio(cand_sec, i)
@@ -1644,7 +1677,8 @@ class Visor(QMainWindow):
             return
         self._aplica_carril(
             "chord",
-            lambda L: pipeline.elimina_acord(L, idx, self._durada_wav()),
+            lambda L: pipeline.elimina_clips(L, idx, self._durada_wav(),
+                                             pipeline.FORAT_ACORD),
             f"eliminat acord {idx}", "No s'ha pogut eliminar:")
 
     def _elimina_seccio_index(self, idx):
@@ -1815,7 +1849,7 @@ class Visor(QMainWindow):
                     after = a
                 else:
                     break
-            marca = (Te, str(after[1]) if after else punts[-1][1],
+            marca = (Te, str(nom_acord(after)) if after else punts[-1][1],
                      f"{Te:.9f}")
         nou = [a for a in acords if float(a[0]) < T - rel]
         nou += punts
@@ -1922,7 +1956,7 @@ class Visor(QMainWindow):
             text, ok = QInputDialog.getText(
                 self, "Reanomena acords",
                 f"Nom nou per a {len(idxs)} acord(s):",
-                text=self.acords[idxs[0]][1])
+                text=nom_acord(self.acords[idxs[0]]))
             if not ok:
                 return False
             return self._renomena_acords(idxs, text)
@@ -1944,7 +1978,9 @@ class Visor(QMainWindow):
         self._undo_marca()
         nova = list(self.acords)
         for i in idxs:
-            nova[i] = (nova[i][0], nom, nova[i][2])
+            _a = nova[i]
+            nova[i] = pipeline.Clip(float(_a[0]), float(_a[1]),
+                                    (nom,) + tuple(_a[2][1:]))
         try:
             self.acords = self._valida_canvis_acords(nova)
         except ValueError as e:
@@ -2028,11 +2064,12 @@ class Visor(QMainWindow):
         if not nou:
             return 0
         lista, n = [], 0
-        for (t, nom, *rest) in self.acords:
+        for _a in self.acords:
+            t, nom = float(_a[0]), nom_acord(_a)
             if str(nom) == troba:
                 n += 1
                 nom = nou
-            lista.append((t, nom, *rest))
+            lista.append((t, nom, f"{t:.9f}"))
         if not n:
             return 0
         self._undo_marca()
@@ -2074,7 +2111,7 @@ class Visor(QMainWindow):
             except OSError:
                 items = []
         if not items:
-            items = [(float(a[0]), str(a[1])) for a in self.acords]
+            items = [(float(a[0]), str(nom_acord(a))) for a in self.acords]
         bpm, bpb, off = self.bpm, self.bpb, self.offset
         if nivell in (None, "auto"):
             nivell = graella.infereix_nivell(items, bpm, bpb, off, durada,
@@ -2158,7 +2195,7 @@ class Visor(QMainWindow):
         """Mostra a la franja Editor l'element seleccionat (o el buit)."""
         k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
         if k == "chord" and 0 <= i < len(self.acords):
-            t, nom = self.acords[i][0], self.acords[i][1]
+            t, nom = float(self.acords[i][0]), nom_acord(self.acords[i])
             self.ed_icona.setPixmap(icones.ico("music", 20).pixmap(20, 20))
             self.ed_gran.setText(nom)
             self.ed_nom.setText(nom)
@@ -2275,7 +2312,9 @@ class Visor(QMainWindow):
                 ini = float(self.acords[i][0])
             self._undo_marca()
             nova = list(self.acords)
-            nova[i] = (ini, nom, f"{ini:.9f}")
+            _a = nova[i]
+            nova[i] = pipeline.Clip(ini, float(_a[1]),
+                                    (nom,) + tuple(_a[2][1:]))
             try:
                 self.acords = self._normalitza_acords(nova)
             except ValueError as e:
@@ -2287,7 +2326,8 @@ class Visor(QMainWindow):
             self.log(f"editor: acord {i} -> {nom} @ {ini:.2f}s")
             # Si s'ha mogut l'inici, l'acord pot haver canviat de fila → re-localitza.
             i = next((j for j, a in enumerate(self.acords)
-                      if abs(float(a[0]) - ini) <= 1e-6 and a[1] == nom), i)
+                      if abs(float(a[0]) - ini) <= 1e-6
+                      and nom_acord(a) == nom), i)
         else:
             if not (0 <= i < len(self.seccions)):
                 self.avis_editor("Aquesta secció ja no existeix (potser l'has "
@@ -2486,11 +2526,14 @@ class Visor(QMainWindow):
         fi = float(self.acords[idx + 1][0])
         if not (t0 + self.MIN_ACORD_S <= t <= fi - self.MIN_ACORD_S):
             self.log(f"partir: {t:.2f}s no cau dins l'acord "
-                     f"{self.acords[idx][1]} ({t0:.2f}s–{fi:.2f}s)")
+                     f"{nom_acord(self.acords[idx])} ({t0:.2f}s–{fi:.2f}s)")
             return False
         self._undo_marca()
+        if nom is None:
+            nom = nom_acord(self.acords[idx])
         try:
-            nova = pipeline.parteix_acord(self.acords, idx, t, nom)
+            nova = pipeline.parteix_clips(
+                self.acords, idx, t, nou_payload=(nom, f"{t:.9f}"))
             self.acords = self._normalitza_acords(nova)
         except ValueError as e:
             self.log(f"partir: canvi invalid ({e})")
@@ -2506,7 +2549,7 @@ class Visor(QMainWindow):
         if not (0 <= idx < len(self.acords)):
             return False
         t0 = float(self.acords[idx][0])
-        nom = self.acords[idx][1]
+        nom = nom_acord(self.acords[idx])
         if idx + 1 >= len(self.acords):
             QMessageBox.information(
                 self, "Parteix l'acord",
@@ -2617,7 +2660,7 @@ class Visor(QMainWindow):
         self._undo_marca()
         try:
             self.acords = self._normalitza_acords(
-                pipeline.fusiona_acords(self.acords, idx, amb=amb))
+                pipeline.fusiona_clips(self.acords, idx, amb))
         except ValueError as e:
             self.log(f"fusiona acord: {e}")
             return False

@@ -78,7 +78,7 @@ class TestRegla5FontDeVeritat(_Base):
         self.assertEqual(len(files), len(v.acords))
         for fila, model in zip(files, v.acords):
             self.assertAlmostEqual(float(fila[0]), float(model[0]), places=2)
-            self.assertEqual(fila[2], model[1])
+            self.assertEqual(fila[2], model[2][0])
 
 
 class TestRegla6WavsNomesViaExporta(_Base):

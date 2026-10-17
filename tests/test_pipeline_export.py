@@ -125,7 +125,7 @@ class ExportPipelineTests(unittest.TestCase):
             self.assertIsNotNone(window.visor_ref)
             self.assertEqual(len(window.visor_ref.acords), 1)
             self.assertEqual(len(window.visor_ref.seccions), 1)
-            self.assertEqual(window.visor_ref.acords[0][1], "N")
+            self.assertEqual(window.visor_ref.acords[0][2][0], "N")
             self.assertIsNotNone(window.visor_widget)
             self.assertFalse(hasattr(window, "visor_dock"))
             app.quit()
@@ -395,11 +395,11 @@ class ExportPipelineTests(unittest.TestCase):
 
         v._afegeix_acord(1.0, "G")
         self.assertEqual(len(v.acords), 3)
-        self.assertEqual(v.acords[1][1], "G")
+        self.assertEqual(v.acords[1][2][0], "G")
 
         v._elimina_acord(1)
         self.assertEqual(len(v.acords), 2)
-        self.assertEqual(v.acords[1][1], "Am")
+        self.assertEqual(v.acords[1][2][0], "Am")
 
         v._afegeix_seccio(3.0, 4.0, "C", "C")
         self.assertEqual(len(v.seccions), 3)
@@ -552,7 +552,7 @@ class TimelineConstraintTests(unittest.TestCase):
         """Rename inline programatic actualitza self.acords."""
         view = self._make_view(tempo_fix=False)
         view._commit_rename("chord", 1, view._chord_items[1], "Am7")
-        self.assertEqual(view._acords[1][1], "Am7")
+        self.assertEqual(view._acords[1][2][0], "Am7")
         self.assertEqual(view._chord_items[1].name, "Am7")
 
     def test_rename_section_updates_data(self):
@@ -891,7 +891,7 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
             QKeyEvent(QEvent.KeyPress, Qt.Key_D, Qt.ControlModifier))
         self.assertEqual(len(v.acords), n + 1)
         self.assertAlmostEqual(v.acords[1][0], (t0 + t1) / 2.0, places=3)
-        self.assertEqual(v.acords[1][1], v.acords[0][1])   # mateix nom
+        self.assertEqual(v.acords[1][2][0], v.acords[0][2][0])   # mateix nom
         v.undo()
         self.assertEqual(len(v.acords), n)
         v.close()
@@ -982,7 +982,7 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v, _ = self._make_visor_with_data()
         v.timeline._commit_rename("chord", 2, v.timeline._chord_items[2],
                                   "FMaj7")
-        self.assertEqual(v.acords[2][1], "FMaj7")
+        self.assertEqual(v.acords[2][2][0], "FMaj7")
         v.close()
 
     def test_section_move_via_timeline_propagates_to_visor(self):
@@ -1002,7 +1002,7 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         # el que importa és que el TIMELINE quadri amb el model i arrenqui a 0.
         self.assertEqual(len(v.timeline._chord_items), len(v.acords))
         self.assertAlmostEqual(float(v.acords[0][0]), 0.0)
-        self.assertEqual(v.acords[0][1], "N")
+        self.assertEqual(v.acords[0][2][0], "N")
         self.assertLessEqual(len(v.acords), n_antes)      # no creix mai
         v.close()
 
@@ -1483,7 +1483,8 @@ class UndoInfoTests(unittest.TestCase):
     def test_desfer_descriu_el_canvi(self):
         w = self._finestra(); v = w.visor_ref
         v._undo_marca()
-        v.acords[1] = (5.0, "Am", "5.0")
+        _ant = v.acords[1]
+        v.acords[1] = pipeline.Clip(5.0, float(_ant[1]), _ant[2])
         v._undo_commit()
         v.undo()
         txt = w.info_box.toPlainText()
@@ -1495,7 +1496,8 @@ class UndoInfoTests(unittest.TestCase):
     def test_refer_descriu_el_canvi(self):
         w = self._finestra(); v = w.visor_ref
         v._undo_marca()
-        v.acords[1] = (5.0, "Am", "5.0")
+        _ant = v.acords[1]
+        v.acords[1] = pipeline.Clip(5.0, float(_ant[1]), _ant[2])
         v._undo_commit()
         v.undo()
         v.redo()
@@ -2566,7 +2568,7 @@ class EditorFranjaTests(unittest.TestCase):
         w = self._finestra(); v = w.visor_ref
         v.timeline.select_clip("chord", 1); v._on_clip_selected("chord", 1)
         v.ed_nom.setText("Am7"); v._aplica_editor()
-        self.assertEqual(v.acords[1][1], "A-7")     # notació canònica
+        self.assertEqual(v.acords[1][2][0], "A-7")     # notació canònica
         self.assertEqual(v.ed_gran.text(), "A-7")   # l'editor s'actualitza
         v.undo()
         w.close()
@@ -3029,15 +3031,15 @@ class UndoRedoTests(unittest.TestCase):
 
     def test_undo_covers_rename(self):
         v, _ = self._make_visor_with_data()
-        nom0 = v.acords[2][1]
+        nom0 = v.acords[2][2][0]
         # flux real: el timeline canvia el nom i emet chordRenamed
         v.timeline._commit_rename("chord", 2, v.timeline._chord_items[2],
                                   "FMaj7")
-        self.assertEqual(v.acords[2][1], "FMaj7")
+        self.assertEqual(v.acords[2][2][0], "FMaj7")
         v.undo()
-        self.assertEqual(v.acords[2][1], nom0)
+        self.assertEqual(v.acords[2][2][0], nom0)
         v.redo()
-        self.assertEqual(v.acords[2][1], "FMaj7")
+        self.assertEqual(v.acords[2][2][0], "FMaj7")
         v.close()
 
     def test_undo_restores_timeline_items(self):

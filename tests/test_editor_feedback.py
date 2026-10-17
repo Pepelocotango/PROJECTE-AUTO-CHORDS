@@ -61,7 +61,7 @@ class TestEditorFeedback(unittest.TestCase):
         v._aplica_editor()
         self.assertTrue(any("número" in m for m in v._missatges),
                         f"hauria d'avisar: {v._missatges}")
-        self.assertEqual(v.acords[1][1], "Am", "no s'ha d'haver aplicat res")
+        self.assertEqual(v.acords[1][2][0], "Am", "no s'ha d'haver aplicat res")
 
     def test_nom_buit_avisa(self):
         v = _visor()
@@ -95,7 +95,7 @@ class TestEditorFeedback(unittest.TestCase):
         v.ed_nom.setText("Gmaj7")
         v.ed_ini.setText("4.00")
         v._aplica_editor()
-        self.assertEqual(v.acords[1][1], "GMaj7", "hauria d'haver aplicat")
+        self.assertEqual(v.acords[1][2][0], "GMaj7", "hauria d'haver aplicat")
         self.assertEqual(v._missatges, [], "el camí bo no ha d'avisar")
 
 

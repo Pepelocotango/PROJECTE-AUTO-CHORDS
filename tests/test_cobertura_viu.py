@@ -66,13 +66,13 @@ class TestCoberturaViu(unittest.TestCase):
         v = self._visor()
         # en carregar, el visor ja normalitza la cobertura → «N» a 0.
         self.assertAlmostEqual(float(v.acords[0][0]), 0.0)
-        self.assertEqual(v.acords[0][1], "N")
+        self.assertEqual(v.acords[0][2][0], "N")
         self.assertEqual(len(v.acords), 3)          # N(0) · C(0.5) · G(1.5)
         # (B) Eliminar el 1r acord → ha de tornar a aparèixer la «N» a 0.
         v._elimina_acord(0)
         v._desa_i_regenera()
         self.assertAlmostEqual(float(v.acords[0][0]), 0.0)
-        self.assertEqual(v.acords[0][1], "N")
+        self.assertEqual(v.acords[0][2][0], "N")
         with open(v.csv_acords, encoding="utf-8") as f:
             primera = f.readline().strip()
         cols = primera.split(",")

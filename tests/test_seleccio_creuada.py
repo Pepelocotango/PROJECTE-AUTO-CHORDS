@@ -93,8 +93,8 @@ class TestRangDUnCarril(_Base):
             b = [s[2] for s in v.seccions].count("B")
             tl.paste_at_cursor()
             # acords: el bloc F(4.5), G(7.0) s'enganxa a 10.0 → 10 F, 12.5 G
-            self.assertEqual(v.acords[4][1], "F")
-            self.assertEqual(v.acords[5][1], "G")
+            self.assertEqual(v.acords[4][2][0], "F")
+            self.assertEqual(v.acords[5][2][0], "G")
             # estructura: la secció B s'ha sobreescrit al tram nou
             self.assertEqual([s[2] for s in v.seccions].count("B"), b + 1)
         finally:
@@ -110,11 +110,11 @@ class TestRenomMultiple(_Base):
             v._ed_kind, v._ed_idx = "chord", 0
             v.ed_nom.setText("G")
             v._aplica_editor()
-            self.assertEqual([a[1] for a in v.acords],
+            self.assertEqual([a[2][0] for a in v.acords],
                              ["G", "Am", "G", "G", "G"])
             self.assertEqual(len(v._undo_stack), 1)      # una sola operació
             v.undo()
-            self.assertEqual([a[1] for a in v.acords],
+            self.assertEqual([a[2][0] for a in v.acords],
                              ["C", "Am", "F", "G", "C"])
         finally:
             v.close()
@@ -127,7 +127,7 @@ class TestRenomMultiple(_Base):
             v._ed_kind, v._ed_idx = "chord", 0          # actiu = acords
             v.ed_nom.setText("Dm")
             v._aplica_editor()
-            self.assertEqual([a[1] for a in v.acords[:3]], ["D-", "D-", "F"])
+            self.assertEqual([a[2][0] for a in v.acords[:3]], ["D-", "D-", "F"])
             self.assertEqual([s[2] for s in v.seccions], ["A", "B", "C"])
         finally:
             v.close()

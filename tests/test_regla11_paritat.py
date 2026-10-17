@@ -133,8 +133,8 @@ class TestVisorParitat(_Base):
         n0 = len(v.acords)
         self.assertEqual(v.parteix_acord(0, 4.0), 1)
         self.assertEqual(n0 + 1, len(v.acords))
-        self.assertEqual(v.acords[0][1], "C")
-        self.assertEqual(v.acords[1][1], "C")
+        self.assertEqual(v.acords[0][2][0], "C")
+        self.assertEqual(v.acords[1][2][0], "C")
         self.assertAlmostEqual(float(v.acords[1][0]), 4.0, places=6)
         # cobertura (#4): els acords segueixen cobrint tota la WAV de 0 a DUR
         self.assertAlmostEqual(float(v.acords[0][0]), 0.0, places=6)
@@ -146,7 +146,7 @@ class TestVisorParitat(_Base):
         n0 = len(v.acords)
         self.assertTrue(v.fusiona_acord(0, "seguent"))
         self.assertEqual(len(v.acords), n0 - 1)
-        self.assertEqual(v.acords[0][1], "C")
+        self.assertEqual(v.acords[0][2][0], "C")
         v.undo()
         self.assertEqual(len(v.acords), n0)
 

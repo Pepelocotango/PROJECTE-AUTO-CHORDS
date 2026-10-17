@@ -94,7 +94,7 @@ class TestRenameMCP(_Base):
         v = _visor()
         ctx = mcp_bridge._Context(_FinestraFalsa(v))
         mcp_bridge._op_rename_chord(ctx, {"index": 1, "acord": BRUT})
-        self.assertEqual(v.acords[1][1], NET)
+        self.assertEqual(v.acords[1][2][0], NET)
         self.assertEqual(_csv_acords(v)[1][1], NET)   # i al CSV del disc
 
     def test_nom_que_queda_buit_es_rebutja(self):
@@ -111,26 +111,26 @@ class TestRenameEditor(_Base):
         v.ed_ini.setText("4.0")
         v.ed_nom.setText(BRUT)
         v._aplica_editor()
-        self.assertEqual(v.acords[1][1], NET)
+        self.assertEqual(v.acords[1][2][0], NET)
 
 
 class TestRenameInlineTimeline(_Base):
     def test_renom_inline_saneja(self):
         v = _visor()
         v._on_chord_renamed(0, "  A/B  ")
-        self.assertEqual(v.acords[0][1], "A/B")     # símbol conservat, espais fora
+        self.assertEqual(v.acords[0][2][0], "A/B")     # símbol conservat, espais fora
 
     def test_renom_inline_normal_es_canonicalitza(self):
         v = _visor()
         v._on_chord_renamed(0, "C#m7")
-        self.assertEqual(v.acords[0][1], "C#-7")    # notació canònica
+        self.assertEqual(v.acords[0][2][0], "C#-7")    # notació canònica
 
 
 class TestAltaCoherent(_Base):
     def test_afegeix_acord_usa_el_mateix_sanejat(self):
         v = _visor()
         self.assertTrue(v._afegeix_acord(10.0, BRUT))
-        nou = [a[1] for a in v.acords if abs(float(a[0]) - 10.0) < 1e-6]
+        nou = [a[2][0] for a in v.acords if abs(float(a[0]) - 10.0) < 1e-6]
         self.assertEqual(nou, [NET])
 
 

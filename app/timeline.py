@@ -85,6 +85,19 @@ from app.timeline_items import (   # noqa: E402,F401
 # -----------------------------------------------------------------------------
 # TimelineView — la vista QGraphicsView principal
 # -----------------------------------------------------------------------------
+def _acords_a_clips(acords, durada):
+    """Converteix el model d'acords a **clips** (S4); accepta marques (pont)."""
+    acords = list(acords or [])
+    out = []
+    for i, a in enumerate(acords):
+        if isinstance(a, pipeline.Clip):
+            out.append(a)
+        else:
+            fi = float(acords[i + 1][0]) if i + 1 < len(acords) else durada
+            out.append(pipeline.Clip(float(a[0]), fi, tuple(a[1:])))
+    return out
+
+
 class TimelineView(QGraphicsView):
     """Vista amb ona + ruler + 2 carrils (acords + estructura).
 
@@ -187,7 +200,7 @@ class TimelineView(QGraphicsView):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
-        self._acords = list(acords) or []
+        self._acords = _acords_a_clips(acords, self._durada)
         self._seccions = list(seccions) or []
         self._chord_items: List[ChordItem] = []
         self._section_items: List[SectionItem] = []
@@ -295,7 +308,9 @@ class TimelineView(QGraphicsView):
 
     # -- API pública ----------------------------------------------------------
     def set_data(self, acords: Sequence, seccions: Sequence) -> None:
-        self._acords = list(acords) or []
+        # El model d'acords són **clips** (S4). Acceptem també **marques**
+        # `(t, nom[, tsrc])` (pont per a crides directes/tests): s'hi deriva el fi.
+        self._acords = _acords_a_clips(acords, self._durada)
         self._seccions = list(seccions) or []
         # Els índexs canvien amb les dades noves: la multi-selecció antiga
         # queda òrfena, per tant la buidem (els items es reconstrueixen).
@@ -442,7 +457,9 @@ class TimelineView(QGraphicsView):
         self._chord_items.clear()
         self._chord_by_idx.clear()
         n = len(self._acords)
-        for i, (t, name, *_r) in enumerate(self._acords):
+        for i in range(n):
+            _c = self._acords[i]
+            t, name = _c[0], pipeline.nom_d_acord(_c)
             next_t = self._acords[i + 1][0] if i + 1 < n else self._durada
             item = ChordItem(i, float(t), str(name), float(next_t),
                              self._pps, self._x_offset,
@@ -953,7 +970,7 @@ class TimelineView(QGraphicsView):
                 t = float(self._acords[idx][0])
                 fi = (float(self._acords[idx + 1][0])
                       if idx + 1 < len(self._acords) else durada)
-                chords.append((t, str(self._acords[idx][1])))
+                chords.append((t, str(pipeline.nom_d_acord(self._acords[idx]))))
                 chord_fis.append(fi)
             elif kind == "section" and 0 <= idx < len(self._seccions):
                 ini, fi, lletra, fam = self._seccions[idx]
@@ -1043,7 +1060,7 @@ class TimelineView(QGraphicsView):
                 "first": first, "last": last, "idx": idx,
                 "t0": float(self._acords[idx][0]),
                 "dt": 0.0,
-                "acords0": [tuple(a) for a in self._acords],
+                "acords0": list(self._acords),
             }
             self._bloc_gest = g
         t0 = float(getattr(item, "_drag_t0", g["t0"]))
@@ -1108,10 +1125,11 @@ class TimelineView(QGraphicsView):
                 self._seccions = [tuple(s) for s in nou]
                 canviat = True
         else:
-            nou = pipeline.mou_bloc_acords(g["acords0"], g["first"], g["last"],
-                                           g["dt"], self._durada)
+            nou = pipeline.mou_bloc_clips(g["acords0"], g["first"], g["last"],
+                                          g["dt"], self._durada,
+                                          pipeline.FORAT_ACORD)
             if nou != list(self._acords):
-                self._acords = [tuple(a) for a in nou]
+                self._acords = list(nou)
                 canviat = True
         if canviat:
             # El re-render (set_data reconstrueix items) es fa al següent cicle
@@ -1121,8 +1139,8 @@ class TimelineView(QGraphicsView):
 
     def _refresca_items(self) -> None:
         """Re-render del timeline amb el MODEL actual (items reconstruïts)."""
-        dades_a = [tuple(a) for a in self._acords]
-        dades_s = [tuple(s) for s in self._seccions]
+        dades_a = list(self._acords)
+        dades_s = list(self._seccions)
         self.set_data(dades_a, dades_s)
 
     def _on_chord_time_changed(self, idx: int, new_t: float) -> None:
@@ -1137,7 +1155,7 @@ class TimelineView(QGraphicsView):
         if self._alt_copia is None and (
                 mods & Qt.ControlModifier and mods & Qt.ShiftModifier):
             self._alt_copia = (float(self._acords[idx][0]),
-                               str(self._acords[idx][1]))
+                               str(pipeline.nom_d_acord(self._acords[idx])))
         # MOVIMENT d'un bloc (arrossegar el cos): §6.3. El gest de DUPLICAR
         # (Ctrl+Shift) encara va pel camí antic (es reubicarà a la fase 4).
         if (self._alt_copia is None
@@ -1170,8 +1188,9 @@ class TimelineView(QGraphicsView):
             return
         # Nucli únic de la VORA (S2a): mateix `redimensiona_clips` que les
         # seccions (#11). El valor `new_t_s` ja ve encaixat i limitat.
-        self._acords = [tuple(a) for a in pipeline.redimensiona_acord(
-            self._acords, idx, "ini", new_t_s, self._durada)]
+        self._acords = list(pipeline.redimensiona_clips(
+            self._acords, idx, "ini", new_t_s, self._durada,
+            pipeline.FORAT_ACORD))
         # El propi clip: canvia l'inici
         self._chord_items[idx].set_time(new_t_s)
         # El clip ANTERIOR: el seu fi = aquest inici (contigüitat)
@@ -1190,7 +1209,7 @@ class TimelineView(QGraphicsView):
                 and getattr(self._chord_items[idx], "_drag_mode", None)
                 == ChordItem.ZONE_BODY):
             return
-        old_t, name, *_r = self._acords[idx]
+        old_t = float(self._acords[idx][0])
         # el final de l'acord idx és igual a l'inici de idx+1 (o durada total)
         # limita:
         #   - per sota: old_t + MIN_GAP_S (no pot ser més petit que l'inici)
@@ -1207,8 +1226,9 @@ class TimelineView(QGraphicsView):
             if abs(new_t_s - n_old_t) < 1e-9:
                 return
             # Nucli únic de la VORA (S2a), el mateix que fa les seccions (#11).
-            self._acords = [tuple(a) for a in pipeline.redimensiona_acord(
-                self._acords, idx, "fi", new_t_s, self._durada)]
+            self._acords = list(pipeline.redimensiona_clips(
+                self._acords, idx, "fi", new_t_s, self._durada,
+                pipeline.FORAT_ACORD))
             # El propi clip: canvia el seu fi
             self._chord_items[idx].set_next_t(new_t_s)
             # El clip següent: canvia el seu inici (i el seu fi NO)
@@ -1248,7 +1268,8 @@ class TimelineView(QGraphicsView):
         dt = 0.0 if dt_lo > dt_hi else max(dt_lo, min(dt_hi, dt))
         for i in sel:
             t_i = self._acords[i][0] + dt
-            self._acords[i] = (t_i, self._acords[i][1], f"{t_i:.9f}")
+            self._acords[i] = pipeline.Clip(
+                t_i, float(self._acords[i][1]), self._acords[i][2])
             self._chord_items[i].set_time(t_i)
         # re-sincronitza l'amplada (next_t = inici del següent) de tot el carril
         for i in range(len(self._acords)):
@@ -1365,10 +1386,9 @@ class TimelineView(QGraphicsView):
         if not text:
             return
         if kind == "chord":
-            t, old, *_r = self._acords[idx]
-            self._acords[idx] = (t, text,
-                                 f"{t:.9f}" if len(self._acords[idx]) > 2
-                                 else f"{t:.9f}")
+            _c = self._acords[idx]
+            self._acords[idx] = pipeline.Clip(
+                float(_c[0]), float(_c[1]), (text,) + tuple(_c[2][1:]))
             item.name = text
             item.update()
             self.chordRenamed.emit(idx, text)

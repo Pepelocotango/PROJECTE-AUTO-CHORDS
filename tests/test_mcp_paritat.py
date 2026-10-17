@@ -76,7 +76,7 @@ class _Base(unittest.TestCase):
 
     # -- helpers -------------------------------------------------------------
     def _acords(self, w):
-        return [(round(float(t), 3), n) for t, n, *_r in w.visor_ref.acords]
+        return [(round(float(a[0]), 3), a[2][0]) for a in w.visor_ref.acords]
 
     def _selecciona(self, w, *keys):
         w.visor_ref.timeline.select_multi({(k, i) for (k, i) in keys})

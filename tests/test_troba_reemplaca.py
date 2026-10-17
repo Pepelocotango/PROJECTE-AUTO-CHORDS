@@ -51,17 +51,17 @@ class TestTrobaReemplaca(_Base):
         v = _visor()
         n = v.troba_i_reemplaca("acords", "Cmaj7", "C9")
         self.assertEqual(n, 2)
-        self.assertEqual([a[1] for a in v.acords], ["C9", "Am", "C9", "G"])
+        self.assertEqual([a[2][0] for a in v.acords], ["C9", "Am", "C9", "G"])
         self.assertEqual(len(v._undo_stack), 1)
         v.undo()
-        self.assertEqual([a[1] for a in v.acords], ["Cmaj7", "Am", "Cmaj7", "G"])
+        self.assertEqual([a[2][0] for a in v.acords], ["Cmaj7", "Am", "Cmaj7", "G"])
         v.close()
 
     def test_exacte_no_toca_parcials(self):
         v = _visor()
         n = v.troba_i_reemplaca("acords", "A", "X")   # "Am" NO és "A"
         self.assertEqual(n, 0)
-        self.assertEqual([a[1] for a in v.acords], ["Cmaj7", "Am", "Cmaj7", "G"])
+        self.assertEqual([a[2][0] for a in v.acords], ["Cmaj7", "Am", "Cmaj7", "G"])
         self.assertEqual(len(v._undo_stack), 0)
         v.close()
 

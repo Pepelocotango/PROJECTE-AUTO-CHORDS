@@ -197,7 +197,7 @@ class TestModeFacilVisor(unittest.TestCase):
         self.assertGreater(n, 0)
         self.assertEqual([round(float(t), 2) for (t, *_r) in v.acords],
                          [0.0, 2.0, 4.0, 6.0])
-        self.assertEqual([a[1] for a in v.acords], ["C", "G", "Am", "F"])
+        self.assertEqual([a[2][0] for a in v.acords], ["C", "G", "Am", "F"])
         # cobertura (#4): 0 → durada
         self.assertAlmostEqual(float(v.acords[0][0]), 0.0, places=6)
         self.assertEqual(len(v._undo_stack), 1)
@@ -206,7 +206,7 @@ class TestModeFacilVisor(unittest.TestCase):
     def test_auto_infereix_compas(self):
         v = _visor(raw=[(0.0, "C"), (2.0, "G"), (4.0, "Am"), (6.0, "F")])
         v.regularitza_des_de_cru("auto")
-        self.assertEqual([a[1] for a in v.acords], ["C", "G", "Am", "F"])
+        self.assertEqual([a[2][0] for a in v.acords], ["C", "G", "Am", "F"])
         v.close()
 
     def test_la_capa_crua_no_es_toca(self):

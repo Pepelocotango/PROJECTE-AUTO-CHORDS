@@ -127,7 +127,7 @@ class TestPanell(_Base):
         self.assertEqual(w.visor_ref.ed_nom.text(), "AbMaj7/Db")
         # NO s'ha aplicat res al model (cal «Aplica»)
         self.assertNotIn("AbMaj7/Db",
-                          [a[1] for a in w.visor_ref.acords])
+                          [a[2][0] for a in w.visor_ref.acords])
 
     def test_sense_arrel_escriu_nomes_el_tipus(self):
         w = self._finestra()

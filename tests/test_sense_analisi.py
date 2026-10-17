@@ -76,7 +76,7 @@ class TestSenseAnalisi(_Base):
         vr = w.visor_ref
         self.assertEqual(len(vr.acords), 1, "1 clip d'acords")
         self.assertEqual(len(vr.seccions), 1, "1 clip d'estructura")
-        self.assertEqual(vr.acords[0][1], "N")
+        self.assertEqual(vr.acords[0][2][0], "N")
         self.assertEqual(vr.seccions[0][2], "A")
 
     def test_cobertura_total(self):
@@ -105,7 +105,7 @@ class TestSenseAnalisi(_Base):
         w, _p = self._finestra_amb_projecte(amb_csv=False)
         vr = w.visor_ref
         self.assertTrue(vr._afegeix_acord(6.0, "C"))
-        noms = [a[1] for a in vr.acords]
+        noms = [a[2][0] for a in vr.acords]
         self.assertIn("C", noms)
         vr._normalitza_cobertura()      # (no cal que canviï res)
         self.assertEqual(float(vr.acords[0][0]), 0.0)      # el 1r a 0
@@ -116,14 +116,14 @@ class TestSenseAnalisi(_Base):
         """Un projecte que JA té model (anàlisi feta) no s'ha de modificar."""
         w, _p = self._finestra_amb_projecte(amb_csv=True)
         vr = w.visor_ref
-        self.assertEqual([a[1] for a in vr.acords], ["C", "G"])
+        self.assertEqual([a[2][0] for a in vr.acords], ["C", "G"])
         self.assertEqual(len(vr.seccions), 1)
 
 
 class TestModelInicial(unittest.TestCase):
     def test_helper(self):
         ac, sec = pipeline.model_inicial(7.5)
-        self.assertEqual(ac, [(0.0, "N", "0.000000000")])
+        self.assertEqual(ac, [pipeline.Clip(0.0, 7.5, ("N", "0.000000000"))])
         self.assertEqual(sec, [(0.0, 7.5, "A", "A")])
 
     def test_durada_zero_no_peta(self):

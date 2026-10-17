@@ -224,7 +224,7 @@ class TestAltArrossegaCopia(_Base):
         self.assertIn(6.0, times)                 # el clip mogut
         self.assertIn(4.5, times)                 # ...i la còpia a l'origen
         copia = [a for a in v.acords if abs(float(a[0]) - 4.5) < 1e-6][0]
-        self.assertEqual(copia[1], "F")           # mateix nom
+        self.assertEqual(copia[2][0], "F")        # mateix nom
         self.assertEqual(len(v.acords), 6)        # s'ha afegit una marca
         v.close()
 
