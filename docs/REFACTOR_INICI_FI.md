@@ -61,6 +61,31 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
 Aquest fitxer és el contracte del refactor: si una fase obliga a canviar-lo, es
 documenta aquí el perquè abans de seguir.
 
+## Conducta canònica de MOURE un bloc (decisió de l'operador, 2026-10-17)
+
+Regla §6.3, sense matisos: el bloc editat **mana**; el material que queda **a
+sota** es **talla** si només queda cobert **en part**, i **s'elimina** si queda
+**sobrepassat** del tot. El bloc **conserva la seva durada**; l'**origen** el
+tanca el **veí** i, si no n'hi ha cap, el forat el posa el **normalitzador**
+(`N` / `-`) — un sol lloc, mai l'operació.
+
+**Cas de referència** (cançó `C[0,2) Am[2,4) F[4,6) G[6,8) Em[8,10)`): l'usuari
+arrossega el clip **G** 3 s enrere (comença a 3 s). El bloc nou `[3,5)` **talla**
+el `F` (que arriba a 6 s: **no** queda sobrepassat):
+
+- ✅ **canònic**: `C[0,2) Am[2,3) G[3,5) F[5,6) Em[6,10)`
+- ❌ conducta vella dels **acords** (marques): `… G[3,5) Em[5,10)` — el tros de
+  `F` es **renombra** `Em` → pèrdua d'informació (i l'export etiqueta malament
+  aquell tros).
+
+Conseqüències per a **S2**:
+
+1. El nucli únic és el d'**intervals** (`mou_bloc_clips`): clips amb `ini`+`fi`.
+2. Els tests del moviment d'acords que fixaven la conducta vella s'**arreglen**,
+   documentant-ho com a **correcció** d'aquest cas de referència.
+3. El forat de l'origen **no** el posa l'operació: el posa el normalitzador
+   unificat (`normalitza_clips` / `normalitza_cobertura`).
+
 ---
 
 ## Impacte en l'autoanàlisi (analitzat 2026-10-17)
