@@ -50,7 +50,7 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
    que serveix acords i estructura. **Fets**: S2a — vores (`redimensiona_clips`,
    `redimensiona_acord`, `redimensiona_seccio`); S2b — moure (`mou_bloc_clips`,
    `mou_bloc_acords`, `mou_bloc_seccions`, amb la **correcció §6.3**: el tros
-   tallat conserva el nom). **Falta**: `parteix` / `fusiona` i reabsorbir
+   tallat conserva el nom). **Fets**: S2c — partir/fusionar (`parteix_clips`, `fusiona_clips` i wrappers). **Falta**: `elimina` / `duplica` i reabsorbir
    `filtra_seccions` i les `graella.regularitza_*`.
 3. **S3 — CSV `inici,fi` als dos**: escriptors i lectors (seccions ja ho fan; acords
    passa a `inici,fi,acord`), sense cap camí de compatibilitat.

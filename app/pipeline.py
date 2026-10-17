@@ -860,54 +860,55 @@ def lletra_lliure(seccions):
     return f"X{k}"
 
 
+def parteix_clips(clips, i, talla, nou_payload=None, marge=0.05,
+                  etiqueta="clip"):
+    """Parteix el clip `i` pel temps `talla` (implementació única, #11)."""
+    if i < 0 or i >= len(clips):
+        raise ValueError(f"índex de {etiqueta} inexistent")
+    c = clips[i]
+    talla = float(talla)
+    if not (c.ini + marge < talla < c.fi - marge):
+        raise ValueError(f"el tall ({talla:.2f}s) ha de caure dins "
+                         f"{c.ini:.2f}–{c.fi:.2f}s")
+    esq = Clip(c.ini, talla, c.payload)
+    dreta = Clip(talla, c.fi, c.payload if nou_payload is None else nou_payload)
+    return list(clips[:i]) + [esq, dreta] + list(clips[i + 1:])
+
+
+def fusiona_clips(clips, i, amb="seguent", etiqueta="clip"):
+    """Fusiona el clip `i` amb el veí: el de l'esquerra s'estén (un sol nucli)."""
+    n = len(clips)
+    if n == 0 or i < 0 or i >= n:
+        raise ValueError(f"índex de {etiqueta} inexistent")
+    if amb == "anterior":
+        if i == 0:
+            raise ValueError(f"no hi ha {etiqueta} anterior")
+        i -= 1
+    elif amb != "seguent":
+        raise ValueError("amb ha de ser 'seguent' o 'anterior'")
+    if i >= n - 1:
+        raise ValueError(f"no hi ha {etiqueta} següent")
+    a, b = clips[i], clips[i + 1]
+    return list(clips[:i]) + [Clip(a.ini, b.fi, a.payload)] + list(clips[i + 2:])
+
+
 def parteix_acord(acords, i, talla, nom=None, marge=0.05):
-    """Parteix l'acord `i` pel temps `talla` (regla d'or #11: **mateixa eina**
-    que `parteix_seccio` per a l'estructura).
-
-    Com que la durada d'un acord es **deriva** del següent (#3), «partir-lo» vol
-    dir **inserir** un clip nou a `talla`: el tros de l'esquerra conserva el nom
-    i acaba a `talla`; el de la dreta (clip NOU) comença a `talla` amb el nom que
-    es triï (per defecte, el MATEIX — és la mateixa harmonia).
-
-    Retorna la llista nova d'acords (no muta l'entrada). Peta `ValueError` si
-    l'índex no existeix, si és l'últim acord (sense durada pròpia) o si el tall
-    no cau prou endins.
-    """
+    """Parteix l'acord `i` (wrapper del nucli unificat `parteix_clips`; #11)."""
     if i < 0 or i >= len(acords):
         raise ValueError("índex d'acord inexistent")
-    t = float(acords[i][0])
     if i + 1 >= len(acords):
         raise ValueError("no es pot partir l'últim acord (durada fins al final)")
-    fi = float(acords[i + 1][0])
-    talla = float(talla)
-    if not (t + marge < talla < fi - marge):
-        raise ValueError(
-            f"el tall ({talla:.2f}s) ha de caure dins {t:.2f}–{fi:.2f}s")
-    nom = saneja_nom_acord(nom) if nom else acords[i][1]
-    nom = nom or acords[i][1]
-    nou = (talla, nom, f"{talla:.9f}")
-    return list(acords[:i + 1]) + [nou] + list(acords[i + 1:])
+    nom = (saneja_nom_acord(nom) if nom else "") or acords[i][1]
+    payload = (nom, f"{float(talla):.9f}")
+    cl = parteix_clips(clips_d_acords(acords, 0.0), i, talla,
+                       nou_payload=payload, marge=marge, etiqueta="acord")
+    return [(float(c.ini),) + tuple(c.payload) for c in cl]
 
 
 def fusiona_acords(acords, i, amb="seguent"):
-    """Fusiona l'acord `i` amb el veí (regla d'or #11: mirall de
-    `fusiona_seccions`).
-
-    El clip que queda a l'**esquerra** conserva la seva harmonia: `seguent`
-    esborra `i+1` (l'acord `i` s'estén); `anterior` esborra `i` (el previ
-    s'estén fins on arribava `i`). Retorna la llista nova (no muta l'entrada).
-    """
-    if not acords or i < 0 or i >= len(acords):
-        raise ValueError("índex d'acord inexistent")
-    if amb == "anterior":
-        if i == 0:
-            raise ValueError("no hi ha acord anterior")
-        i = i - 1
-    elif amb != "seguent":
-        raise ValueError("amb ha de ser 'seguent' o 'anterior'")
-    if i >= len(acords) - 1:
-        raise ValueError("no hi ha acord següent")
-    return list(acords[:i + 1]) + list(acords[i + 2:])
+    """Fusiona l'acord `i` amb el veí (wrapper de `fusiona_clips`; #11)."""
+    cl = fusiona_clips(clips_d_acords(acords, 0.0), i, amb, etiqueta="acord")
+    return [(float(c.ini),) + tuple(c.payload) for c in cl]
 
 
 def mou_bloc_acords(acords, first, last, dt, durada, log=None):
@@ -1104,35 +1105,15 @@ def mou_bloc_seccions(seccions, first, last, dt, durada, log=None):
 
 
 def parteix_seccio(seccions, i, talla, marge=0.05):
-    # Un tros → dos. La primera meitat conserva lletra; la segona en pren una de nova.
-    if i < 0 or i >= len(seccions):
-        raise ValueError("índex de secció inexistent")
-    ini, fi, L, fam = seccions[i]
-    talla = float(talla)
-    if not (ini + marge < talla < fi - marge):
-        raise ValueError(
-            f"el tall ({talla:.2f}s) ha de caure dins {ini:.2f}–{fi:.2f}s")
-    nova = lletra_lliure(seccions)
-    a = (ini, talla, L, fam)
-    b = (talla, fi, nova, nova)
-    return list(seccions[:i]) + [a, b] + list(seccions[i + 1:])
+    """Parteix la secció `i` (mateix nucli que els acords, #11)."""
+    return seccions_de_clips(parteix_clips(
+        clips_de_seccions(seccions), i, talla, marge=marge, etiqueta="secció"))
 
 
 def fusiona_seccions(seccions, i, amb="seguent"):
-    # Fusiona i amb el veí. Conserva lletra i família del que queda a l'esquerra.
-    if not seccions or i < 0 or i >= len(seccions):
-        raise ValueError("índex de secció inexistent")
-    if amb == "anterior":
-        if i == 0:
-            raise ValueError("no hi ha secció anterior")
-        i = i - 1
-    elif amb != "seguent":
-        raise ValueError("amb ha de ser 'seguent' o 'anterior'")
-    if i >= len(seccions) - 1:
-        raise ValueError("no hi ha secció següent")
-    a, b = seccions[i], seccions[i + 1]
-    nou = (a[0], b[1], a[2], a[3])
-    return list(seccions[:i]) + [nou] + list(seccions[i + 2:])
+    """Fusiona la secció `i` amb el veí (mateix nucli que els acords, #11)."""
+    return seccions_de_clips(fusiona_clips(
+        clips_de_seccions(seccions), i, amb, etiqueta="secció"))
 
 
 def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0):
