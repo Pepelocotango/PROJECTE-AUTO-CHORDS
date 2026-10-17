@@ -1,7 +1,14 @@
 # Refactor de base: model únic de clips amb **inici + fi**
 
-> **Estat**: PUNT DE PARTIDA (taguejat `refactor-inici-fi`). Decisió de l'operador, 17-10-2026.
+> **ESTAT ACTUAL (2026-10-17) — tag `refactor-s1-s3-fets`**
+> - ✅ **S1 FET** · ✅ **S2 FET** · ✅ **S3 FET**
+> - 🔄 **S4 EN CURS**: feta la part *«fora el despatx `kind` duplicat»*; **falta
+>   el pas 2 (la representació**: `self.acords` marques → `Clip`).
+> - ⏳ **S5 PENDENT** · ⏳ **S6 PENDENT**
+>
+> **Punt de partida**: taguejat `refactor-inici-fi` (decisió de l'operador, 17-10-2026).
 > **Abast**: es refactoritza TOT el model de dades i tot el codi d'edició que hi toca.
+> Detall de commits i del següent pas: `docs/AUTOPROMPT_REFACTOR.md`.
 
 ## Per què
 

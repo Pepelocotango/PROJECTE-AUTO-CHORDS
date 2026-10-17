@@ -33,6 +33,7 @@ sempre** de la cadena de fronteres. Tots dos CSV escriuran **`inici,fi`**.
 | `dbd924e` | **S2 (vores)** — el gest del visor (`ZONE_LEFT`/`ZONE_RIGHT`) i el nudge van pel nucli `redimensiona_clips` |
 | `70fad9d` | **S2 (cua)** — `filtra_seccions` reabsorbit al model de clips + MCP `delete_chord`/`delete_section` als nuclis |
 | `897d944` | **S3** — CSV del model a `inici,fi,acord` (escriptors + tots els lectors; crus d'anàlisi intactes) |
+| `bded753` | **S4 (pas 1)** — fora el despatx `kind` duplicat: nucli únic `Visor._aplica_carril` |
 | `1785067` · `a1ae05e` · `0dbe3e7` | neteja (3 funcions mortes, 2 tests obsolets) i docs al dia |
 
 Els nuclis d'operació viuen a **`app/pipeline.py`** (tipus i normalitzador ~l. 590-730,
@@ -69,14 +70,18 @@ cd "/home/peplx/0PROJECTES_GitHub/PROJECTE AUTO CHORDS"
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests
 ```
 
-Estat en deixar aquest autoprompt: **942 tests OK** (1 skip), **pyflakes net**,
-arbre net.
+Estat en deixar aquest autoprompt: **944 tests OK** (1 skip), **pyflakes net**,
+arbre net, tag **`refactor-s1-s3-fets`**.
 
 ## Pendent (en ordre)
 
-1. **S4** — visor: el model en memòria passa a clips `ini`+`fi`; fora el despatx
-   `kind` duplicat. (El CSV ja és `inici,fi,acord`; el model del visor encara són
-   marques.)
+1. **S4 (pas 2)** — **la representació**: `self.acords` passa de **marques**
+   `(t, nom, tsrc)` a **clips** `pipeline.Clip(ini, fi, payload)`. Ja feta la part
+   *fora el despatx `kind` duplicat* (`Visor._aplica_carril`). Abast: ~40 punts de
+   `app/visor.py`, ~25 de `app/timeline.py`, la validació/normalització del visor
+   (`_valida_canvis_acords`, `_normalitza_acords`, `_normalitza_cobertura`) i el
+   límit d'export (`exporta_total` rep el model); ~34 asserts de test que llegeixen
+   el nom per `[1]`. **Canvis de semàntica**: «afegeix acord a t» → partir el clip.
 2. **S5** — exports i derivats: WAVs, ABC, partitura, MusicXML, guia DAW i les
    eines MCP al nou model.
 3. **S6** — neteja final: codi mort, helpers sense ús, `CHANGELOG` i docs.
