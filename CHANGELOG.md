@@ -5,6 +5,27 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
 
 ## [Unreleased]
 
+### Canviat
+- **Refactor «inici+fi» del model de dades (S1–S5; tags `refactor-inici-fi` →
+  `refactor-s1-s3-fets` → `refactor-s4-fet` → `refactor-s5-fet`)**: acords i
+  estructura passen a compartir **un sol model de clips** `Clip(ini, fi, payload)`
+  (abans: acords com a *marques* i estructura com a *intervals*), cosa que fa la
+  paritat **#11** (*mateixes eines i comportament*) **estructural** en comptes de
+  vigilada amb tests.
+  - **S2** — una sola implementació per acció: `redimensiona_clips`,
+    `mou_bloc_clips`, `parteix_clips`, `fusiona_clips`, `elimina_clips` (§6.4:
+    l'anterior s'estira; sense veí, forat), `duplica_clips` i
+    `graella.regularitza_clips` (+ wrappers dels dos tipus); el gest de vores del
+    visor i el nudge hi passen; `filtra_seccions` reabsorbit (equivalència
+    verificada sobre 20.000 casos).
+  - **S3** — el CSV del model passa a **`inici,fi,acord`** (escriptors + tots els
+    lectors alhora; sense retrocompatibilitat). Els crus d'anàlisi
+    (`chords_raw.csv`/Chordino) queden en 2 columnes.
+  - **S4** — el model **en memòria** del visor (i del timeline) també són clips;
+    fora el despatx per tipus (`Visor._aplica_carril`).
+  - **S5** — exports i derivats (WAVs, ABC, partitura/MusicXML, guia DAW, eines
+    MCP) amb el nou model. Suite verda: 942 → **944 tests**.
+
 ### Documentació
 - **Auditoria de coherència (16-10-2026, `docs/INFORME_INCOHERENCIES_2026-10-16.md`)**:
   corregides **12 referències** a documents arxivats (ara `docs/archive/…`), xifres

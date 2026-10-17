@@ -1,8 +1,9 @@
 # Refactor de base: model únic de clips amb **inici + fi**
 
-> **ESTAT ACTUAL (2026-10-17) — tag `refactor-s4-fet` → S5 FET**
-> - ✅ **S1** · ✅ **S2** · ✅ **S3** · ✅ **S4** · ✅ **S5**
-> - ⏳ **S6 PENDENT** (neteja: wrappers de marques + ponts S4, docs, CHANGELOG)
+> **ESTAT ACTUAL (2026-10-17) — REFACTOR ACABAT (tags `refactor-inici-fi` →
+> `refactor-s1-s3-fets` → `refactor-s4-fet` → `refactor-s5-fet` → `refactor-fi-fet`)**
+> - ✅ **S1** · ✅ **S2** · ✅ **S3** · ✅ **S4** · ✅ **S5** · ✅ **S6**
+> - Suite verda: **944 tests OK** (1 skip), pyflakes net.
 >
 > **Punt de partida**: taguejat `refactor-inici-fi` (decisió de l'operador, 17-10-2026).
 > **Abast**: es refactoritza TOT el model de dades i tot el codi d'edició que hi toca.
@@ -80,11 +81,13 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
    i funciona amb el model de clips; `exporta_total` normalitza explícitament els
    clips (`clips_de_model` + `normalitza_clips`); l'MCP ja edita clips (S4).
    Suite sencera verda (incloent-hi els tests d'export i partitura).
-6. ⏳ **S6 — Neteja**: fora codi mort i helpers que ja no calguin (wrappers de
-   **marques** `parteix_acord`/`fusiona_acords`/`mou_bloc_acords`/`redimensiona_
-   acord`/`elimina_acord`/`duplica_acord` + `clips_d_acords`/`acords_de_clips`,
-   un cop migrats els tests als nuclis de clips; ponts S4 `nom_d_acord`/
-   `clips_de_model` si es poden eliminar); docs i `CHANGELOG`.
+6. ✅ **FET — S6 — Neteja**: fora el codi mort real (`pipeline.lletra_lliure` i
+   el wrapper de marques `pipeline.elimina_acord`, sense ús); `CHANGELOG` i docs
+   al dia. **Decisió**: es **mantenen** els wrappers de **marques** que queden
+   (`parteix_acord`, `fusiona_acords`, `mou_bloc_acords`, `redimensiona_acord`,
+   `duplica_acord` i els de secció) com a **API pura provada** que converteix
+   marques↔clips: el model viu és 100% clips, així que no constitueixen un segon
+   model sinó utilitats per a crides amb marques.
 
 ## Nota
 

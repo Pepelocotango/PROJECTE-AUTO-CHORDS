@@ -72,16 +72,14 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests
 ```
 
 Estat en deixar aquest autoprompt: **944 tests OK** (1 skip), **pyflakes net**,
-arbre net. **S1–S5 FETS** (tags `refactor-s1-s3-fets` i `refactor-s4-fet`).
+arbre net. **REFACTOR «inici+fi» ACABAT (S1–S6 FETS)**, tag `refactor-fi-fet`.
 
-## Pendent (en ordre)
+## Pendent
 
-1. **S6 — neteja final**: migrar els tests que encara usen els **wrappers de
-   marques** (`parteix_acord`, `fusiona_acords`, `mou_bloc_acords`,
-   `redimensiona_acord`, `elimina_acord`, `duplica_acord`) als nuclis de clips i
-   eliminar-los, amb `clips_d_acords`/`acords_de_clips`; revisar els ponts S4
-   (`pipeline.nom_d_acord`, `pipeline.clips_de_model`, `timeline._acords_a_clips`,
-   branques «visor amb marques» de l'MCP). `CHANGELOG` i docs.
+(BUIT) — el refactor està tancat. Els wrappers de **marques** que queden
+(`parteix_acord`, `fusiona_acords`, `mou_bloc_acords`, `redimensiona_acord`,
+`duplica_acord` + els de secció) es mantenen com a **API pura provada**
+(vegeu `docs/REFACTOR_INICI_FI.md` §S6).
 
 ## Trampes conegudes
 

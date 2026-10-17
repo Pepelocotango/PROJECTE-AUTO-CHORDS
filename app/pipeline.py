@@ -884,18 +884,6 @@ def seq_abc(seccions):
     return "".join(s[2] for s in seccions)
 
 
-def lletra_lliure(seccions):
-    usades = {s[2] for s in seccions}
-    abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    for L in abc:
-        if L not in usades:
-            return L
-    k = 0
-    while f"X{k}" in usades:
-        k += 1
-    return f"X{k}"
-
-
 def parteix_clips(clips, i, talla, nou_payload=None, marge=0.05,
                   etiqueta="clip"):
     """Parteix el clip `i` pel temps `talla` (implementació única, #11)."""
@@ -1174,12 +1162,6 @@ def elimina_clips(clips, idx, durada, forat):
     if not out:
         out = [Clip(0.0, float(durada or c.fi), tuple(forat))]
     return out
-
-
-def elimina_acord(acords, idx, durada):
-    """Esborra l'acord `idx` (wrapper del nucli unificat `elimina_clips`; #11)."""
-    return acords_de_clips(elimina_clips(
-        clips_d_acords(acords, durada), idx, durada, FORAT_ACORD))
 
 
 def elimina_seccio(seccions, idx, durada):
