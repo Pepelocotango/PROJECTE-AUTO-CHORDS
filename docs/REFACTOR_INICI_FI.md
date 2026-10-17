@@ -50,8 +50,12 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
    que serveix acords i estructura. **Fets**: S2a — vores (`redimensiona_clips`,
    `redimensiona_acord`, `redimensiona_seccio`); S2b — moure (`mou_bloc_clips`,
    `mou_bloc_acords`, `mou_bloc_seccions`, amb la **correcció §6.3**: el tros
-   tallat conserva el nom). **Fets**: S2c — partir/fusionar (`parteix_clips`, `fusiona_clips` i wrappers). **Falta**: `elimina` / `duplica` i reabsorbir
-   `filtra_seccions` i les `graella.regularitza_*`.
+   tallat conserva el nom); S2c — partir/fusionar (`parteix_clips`, `fusiona_clips`
+   i wrappers); **elimina/duplica** (`elimina_clips`/`duplica_clips` + wrappers i
+   handlers del visor, §6.4); **graella** (`regularitza_clips` = nucli únic de
+   `regularitza_acords`/`regularitza_seccions`); **vores del gest** del visor
+   (`ZONE_LEFT`/`ZONE_RIGHT`) enganxades a `redimensiona_clips`. **Falta**:
+   reabsorbir `filtra_seccions`; i el MCP d'`elimina`/`duplica` (avui `del` cru).
 3. **S3 — CSV `inici,fi` als dos**: escriptors i lectors (seccions ja ho fan; acords
    passa a `inici,fi,acord`), sense cap camí de compatibilitat.
 4. **S4 — Visor**: el model en memòria passa a clips amb `ini`+`fi` (vores ZONE_LEFT/
@@ -122,17 +126,20 @@ Conseqüències per a **S2**:
 
 ## Següent (pendent del refactor, en ordre)
 
-1. **S2 (falta)**: `elimina` / `duplica` (viuen al visor i a l'MCP) cap a nucli
-   únic; i reabsorbir `filtra_seccions` i les `graella.regularitza_*` (són el
-   mateix tipus d'operació).
+1. **S2 (falta)**: reabsorbir `filtra_seccions` (mateix tipus d'operació); i
+   alinear el MCP d'`elimina`/`duplica` (`_op_delete_*` avui fa `del` cru) als
+   nuclis `elimina_clips`/`duplica_clips`.
 2. **S3 — CSV `inici,fi` als dos**: escriptors i lectors (`acords.csv` passa a
    `inici,fi,acord`), **sense retrocompatibilitat**. El `fi` es re-deriva sempre.
-3. **S4 — visor**: el model en memòria passa a clips `ini`+`fi`; el gest de les
-   vores (`ZONE_LEFT`/`ZONE_RIGHT`) enganxat a `redimensiona_clips`; fora el
+   És una **escombrada**: toca `pipeline.desa_acords_csv`, `visor.llegeix_acords`,
+   `pipeline.segments_lliures`/`exporta_total`, `acords_a_live.py` i els fixtures
+   de ~40 fitxers de test.
+3. **S4 — visor**: el model en memòria passa a clips `ini`+`fi`; fora el
    despatx `kind` duplicat.
 4. **S5 — exports i derivats**: WAVs, ABC, partitura, MusicXML, `acords_a_live.py`
    i les eines MCP al nou model.
 5. **S6 — neteja**: codi mort, helpers sense ús, docs i CHANGELOG.
 
 **Nuclis ja fets** (no duplicar-los mai): `normalitza_clips`, `redimensiona_clips`,
-`mou_bloc_clips`, `parteix_clips`, `fusiona_clips` + els wrappers dels dos tipus.
+`mou_bloc_clips`, `parteix_clips`, `fusiona_clips`, `elimina_clips`,
+`duplica_clips` (+ els wrappers dels dos tipus) i `graella.regularitza_clips`.
