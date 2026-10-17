@@ -629,7 +629,8 @@ class TimelineConstraintTests(unittest.TestCase):
         self.assertEqual(view.selected_keys(), set())
 
     def test_mou_grup_d_acords(self):
-        """Arrossegar el cos d'un acord seleccionat mou tot el grup."""
+        """Arrossegar el cos d'un acord seleccionat mou tot el bloc (§6.3):
+        es preserva la durada i el veí de sota es retalla."""
         from app.timeline_items import ChordItem
         view = self._make_view(tempo_fix=False)
         view.zoom_to(0, 10)
@@ -639,12 +640,17 @@ class TimelineConstraintTests(unittest.TestCase):
         it._drag_mode = ChordItem.ZONE_BODY
         it._drag_t0 = 0.0
         view._on_chord_time_changed(0, 0.5)      # snap 0,2 -> dt = +0.4
+        view._emit_edit_finished()               # el destí es resol al release
         self.assertAlmostEqual(view._acords[0][0], 0.4, places=4)
         self.assertAlmostEqual(view._acords[1][0], 2.4, places=4)   # 2.0+0.4
-        self.assertAlmostEqual(view._acords[2][0], 4.5, places=4)   # no tocat
+        # F (4.5) cau a sota del bloc [0.4, 4.9) -> se li talla l'inici
+        self.assertAlmostEqual(view._acords[2][0], 4.9, places=4)
+        self.assertEqual(view._acords[2][1], "F")
+        self.assertAlmostEqual(view._acords[3][0], 7.0, places=4)   # G intacte
 
-    def test_mou_grup_clamp_pel_vei(self):
-        """El grup no pot ultrapassar el veí NO seleccionat."""
+    def test_mou_grup_sobreescriu_el_vei(self):
+        """El bloc ja no va limitat pel veí NO seleccionat: el sobreescriu
+        (abans quedava frenat). «Mana l'últim editat» (§6.2)."""
         from app.timeline_items import ChordItem
         view = self._make_view(tempo_fix=False)
         view.zoom_to(0, 10)
@@ -654,8 +660,12 @@ class TimelineConstraintTests(unittest.TestCase):
         it._drag_mode = ChordItem.ZONE_BODY
         it._drag_t0 = 2.0
         view._on_chord_time_changed(1, 100.0)    # intent d'anar molt a la dreta
-        self.assertLessEqual(view._acords[1][0], 4.5 - 0.02 + 1e-6)
-        # tots dos s'han mogut el mateix delta
+        view._emit_edit_finished()
+        # el bloc [C,Am] va fins al final; F i G queden a sota -> eliminats
+        self.assertAlmostEqual(view._acords[0][0], 5.5, places=4)
+        self.assertAlmostEqual(view._acords[1][0], 7.5, places=4)
+        self.assertEqual(len(view._acords), 2)
+        # tots dos s'han mogut el mateix delta (durada del bloc preservada)
         self.assertAlmostEqual(view._acords[1][0] - 2.0,
                                view._acords[0][0] - 0.0, places=4)
 

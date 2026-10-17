@@ -28,7 +28,7 @@ Tot en català. Sense dependències noves (PyQt5.QtWidgets + numpy).
 from typing import List, Optional, Sequence
 
 import numpy as np
-from PyQt5.QtCore import QPoint, QPointF, QRectF, Qt, pyqtSignal
+from PyQt5.QtCore import QPoint, QPointF, QRectF, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QPainter, QPen
 from PyQt5.QtWidgets import (
     QApplication, QGraphicsItem, QGraphicsLineItem, QGraphicsRectItem,
@@ -51,6 +51,7 @@ from app.timeline_base import (   # noqa: E402,F401
     loop_after_drag, snap_step, snap_time,
 )
 from app import graella  # noqa: E402
+from app import pipeline  # noqa: E402  (DESTÍ del moviment d'un bloc, §6.3)
 
 
 # -----------------------------------------------------------------------------
@@ -215,6 +216,11 @@ class TimelineView(QGraphicsView):
         self._alt_copia = None
         # El mateix per a les SECCIONS: (ini, fi, lletra, família) originals.
         self._copia_sec = None
+        # Moviment d'un BLOC d'acords en curs (PLA_EDICIO_LLIURE §6.3): dict
+        # {first, last, idx, t0, dt, acords0}. El DESTÍ (tallar/eliminar) es
+        # resol sencer al final del gest (`_tanca_bloc`), perquè pot esborrar
+        # marques i cal reconstruir el timeline.
+        self._bloc_gest = None
         self._loop_item = None     # banda de loop A/B
         self._loop_a = None
         self._loop_b = None
@@ -295,6 +301,7 @@ class TimelineView(QGraphicsView):
         # queda òrfena, per tant la buidem (els items es reconstrueixen).
         self._multi = set()
         self._sel = ("", -1)
+        self._bloc_gest = None      # el gest de moviment no sobreviu a un re-render
         self._rebuild_chord_items()
         self._rebuild_section_items()
 
@@ -557,6 +564,7 @@ class TimelineView(QGraphicsView):
         ja estigui consolidat: així la còpia és una segona operació neta.
         """
         self._hide_guide()
+        self._tanca_bloc()          # DESTÍ del moviment del bloc (§6.3)
         self.editFinished.emit()
         if self._alt_copia is not None:
             t0, nom = self._alt_copia
@@ -1000,6 +1008,87 @@ class TimelineView(QGraphicsView):
         self.pasteRequested.emit(dict(self._clipboard), float(self._pos_t))
 
     # -- gestió d'events dels items (constraint + propagació) -----------------
+    def _bloc_del_gest(self, idx: int):
+        """Bloc **consecutiu** d'acords que arrossega el gest, amb `idx`.
+
+        El gest mou el cos d'un clip d'acord; si forma part d'una
+        multi-selecció d'acords contigua, el bloc és tot el que queda a cada
+        banda (mateixa durada, §6.3). Els índexs llunyans o trencats no entren al
+        bloc (només la correguda que conté `idx`)."""
+        sel = sorted(i for (k, i) in self._multi if k == "chord")
+        if idx not in sel:
+            return idx, idx
+        first = idx
+        while first - 1 in sel:
+            first -= 1
+        last = idx
+        while last + 1 in sel:
+            last += 1
+        return first, last
+
+    def _on_chord_body_drag(self, idx: int, new_t: float) -> None:
+        """Arrossegar el COS d'un clip d'acord = moure el BLOC (§6.3).
+
+        El destí pot **tallar/eliminar** marques de sota i, per tant, l'operació
+        es resol SENCERA al final del gest (`_tanca_bloc`). Mentre dura el gest
+        només es mostra un **avançament visual**: NO es toca el MODEL (`_acords`),
+        perquè reconstruir els items des de dins de l'event de l'item que
+        s'arrossega és invàlid (i perquè el bloc pot canviar de nombre de
+        marques)."""
+        item = self._chord_items[idx]
+        g = self._bloc_gest
+        if g is None or g.get("idx") != idx:
+            first, last = self._bloc_del_gest(idx)
+            g = {
+                "first": first, "last": last, "idx": idx,
+                "t0": float(self._acords[idx][0]),
+                "dt": 0.0,
+                "acords0": [tuple(a) for a in self._acords],
+            }
+            self._bloc_gest = g
+        t0 = float(getattr(item, "_drag_t0", g["t0"]))
+        a0 = float(g["acords0"][g["first"]][0])
+        b0 = (float(g["acords0"][g["last"] + 1][0])
+              if g["last"] + 1 < len(g["acords0"]) else self._durada)
+        dt = self._snap(new_t) - t0
+        dt = max(-a0, min(self._durada - b0, dt))
+        g["dt"] = dt
+        a2, b2 = a0 + dt, b0 + dt
+        for i in range(g["first"], g["last"] + 1):
+            self._chord_items[i].set_time(float(g["acords0"][i][0]) + dt)
+        if g["last"] + 1 < len(self._chord_items):
+            self._chord_items[g["last"]].set_next_t(b2)
+        if g["first"] - 1 >= 0:
+            self._chord_items[g["first"] - 1].set_next_t(a2)
+        self._show_guide_at(a2)
+
+    def _tanca_bloc(self) -> None:
+        """Resol el DESTÍ del moviment del bloc en acabar el gest (§6.3).
+
+        Fixa `self._acords` amb `mou_bloc_acords` (sense tocar els items: el
+        re-render es fa després, fora de l'event de l'item que s'acaba de
+        deixar anar). El Visor llegirà el model ja resolt a `editFinished`."""
+        g = self._bloc_gest
+        self._bloc_gest = None
+        if not g:
+            return
+        if abs(float(g.get("dt", 0.0))) < 1e-9:
+            return
+        nou = pipeline.mou_bloc_acords(g["acords0"], g["first"], g["last"],
+                                       g["dt"], self._durada)
+        if nou != list(self._acords):
+            self._acords = [tuple(a) for a in nou]
+            # El re-render (set_data reconstrueix items) es fa al següent cicle
+            # de l'esdeveniment: estem dins del release de l'item que s'ha
+            # deixat anar i esborrar-lo aquí mateix no és segur.
+            QTimer.singleShot(0, self._refresca_items)
+
+    def _refresca_items(self) -> None:
+        """Re-render del timeline amb el MODEL actual (items reconstruïts)."""
+        dades_a = [tuple(a) for a in self._acords]
+        dades_s = [tuple(s) for s in self._seccions]
+        self.set_data(dades_a, dades_s)
+
     def _on_chord_time_changed(self, idx: int, new_t: float) -> None:
         """Mou l'inici de l'acord idx a new_t (amb snap + constraint)."""
         if idx < 0 or idx >= len(self._acords):
@@ -1013,10 +1102,16 @@ class TimelineView(QGraphicsView):
                 mods & Qt.ControlModifier and mods & Qt.ShiftModifier):
             self._alt_copia = (float(self._acords[idx][0]),
                                str(self._acords[idx][1]))
-        # Moviment de GRUP: si l'acord arrossegat (pel cos) forma part d'una
-        # multi-selecció d'acords, movem TOTS els seleccionats amb el mateix
-        # delta (els extrems de les nanses segueixen redimensionant un sol clip).
-        if (len(self._multi) > 1
+        # MOVIMENT d'un bloc (arrossegar el cos): §6.3. El gest de DUPLICAR
+        # (Ctrl+Shift) encara va pel camí antic (es reubicarà a la fase 4).
+        if (self._alt_copia is None
+                and getattr(self._chord_items[idx], "_drag_mode", None)
+                == ChordItem.ZONE_BODY):
+            self._on_chord_body_drag(idx, new_t)
+            return
+        # El gest de DUPLICAR (Ctrl+Shift) encara va pel camí de GRUP antic
+        # (es reubicarà a la fase 4 del pla); aquí es conserva tal qual.
+        if (self._alt_copia is not None and len(self._multi) > 1
                 and getattr(self._chord_items[idx], "_drag_mode", None)
                 == ChordItem.ZONE_BODY):
             sel = sorted(i for (k, i) in self._multi if k == "chord")
@@ -1052,14 +1147,12 @@ class TimelineView(QGraphicsView):
         """Mou el final de l'acord idx (= inici del següent) a new_next_t."""
         if idx < 0 or idx >= len(self._acords):
             return
-        # En un moviment de grup (cos) el final el resol _move_chord_group;
-        # aquí no hem de redimensionar el clip ni moure el veí.
-        if (len(self._multi) > 1
+        # En un moviment de BLOC (cos) ho resol `_on_chord_body_drag` +
+        # `_tanca_bloc`; aquí no s'ha de moure res.
+        if (self._alt_copia is None
                 and getattr(self._chord_items[idx], "_drag_mode", None)
                 == ChordItem.ZONE_BODY):
-            sel = sorted(i for (k, i) in self._multi if k == "chord")
-            if len(sel) > 1 and idx in sel:
-                return
+            return
         old_t, name, *_r = self._acords[idx]
         # el final de l'acord idx és igual a l'inici de idx+1 (o durada total)
         # limita:
