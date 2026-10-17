@@ -34,6 +34,7 @@ sempre** de la cadena de fronteres. Tots dos CSV escriuran **`inici,fi`**.
 | `70fad9d` | **S2 (cua)** — `filtra_seccions` reabsorbit al model de clips + MCP `delete_chord`/`delete_section` als nuclis |
 | `897d944` | **S3** — CSV del model a `inici,fi,acord` (escriptors + tots els lectors; crus d'anàlisi intactes) |
 | `bded753` | **S4 (pas 1)** — fora el despatx `kind` duplicat: nucli únic `Visor._aplica_carril` |
+| `30916e2` | **S4 (pas 2)** — el model en memòria del visor passa a **clips** (`Clip(ini, fi, payload)`) |
 | `1785067` · `a1ae05e` · `0dbe3e7` | neteja (3 funcions mortes, 2 tests obsolets) i docs al dia |
 
 Els nuclis d'operació viuen a **`app/pipeline.py`** (tipus i normalitzador ~l. 590-730,
@@ -71,20 +72,16 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests
 ```
 
 Estat en deixar aquest autoprompt: **944 tests OK** (1 skip), **pyflakes net**,
-arbre net, tag **`refactor-s1-s3-fets`**.
+arbre net. **S1–S4 FETS** (tag `refactor-s1-s3-fets` = abans de S4).
 
 ## Pendent (en ordre)
 
-1. **S4 (pas 2)** — **la representació**: `self.acords` passa de **marques**
-   `(t, nom, tsrc)` a **clips** `pipeline.Clip(ini, fi, payload)`. Ja feta la part
-   *fora el despatx `kind` duplicat* (`Visor._aplica_carril`). Abast: ~40 punts de
-   `app/visor.py`, ~25 de `app/timeline.py`, la validació/normalització del visor
-   (`_valida_canvis_acords`, `_normalitza_acords`, `_normalitza_cobertura`) i el
-   límit d'export (`exporta_total` rep el model); ~34 asserts de test que llegeixen
-   el nom per `[1]`. **Canvis de semàntica**: «afegeix acord a t» → partir el clip.
-2. **S5** — exports i derivats: WAVs, ABC, partitura, MusicXML, guia DAW i les
-   eines MCP al nou model.
-3. **S6** — neteja final: codi mort, helpers sense ús, `CHANGELOG` i docs.
+1. **S5 — exports i derivats**: revisar que WAVs, ABC, partitura, MusicXML, la
+   guia DAW (`acords_a_live.py`) i les eines MCP treballin ja amb el model de
+   clips; netejar els ponts S4 que quedin (`pipeline.nom_d_acord`,
+   `timeline._acords_a_clips`, branques «visor amb marques» de l'MCP).
+2. **S6 — neteja final**: codi mort, helpers sense ús (`clips_d_acords`/
+   `acords_de_clips` si ja no calen, wrappers de marques), `CHANGELOG` i docs.
 
 ## Trampes conegudes
 

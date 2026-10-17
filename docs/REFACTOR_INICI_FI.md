@@ -1,10 +1,8 @@
 # Refactor de base: model únic de clips amb **inici + fi**
 
-> **ESTAT ACTUAL (2026-10-17) — tag `refactor-s1-s3-fets`**
-> - ✅ **S1 FET** · ✅ **S2 FET** · ✅ **S3 FET**
-> - 🔄 **S4 EN CURS**: feta la part *«fora el despatx `kind` duplicat»*; **falta
->   el pas 2 (la representació**: `self.acords` marques → `Clip`).
-> - ⏳ **S5 PENDENT** · ⏳ **S6 PENDENT**
+> **ESTAT ACTUAL (2026-10-17) — tag `refactor-s1-s3-fets` → S4 FET**
+> - ✅ **S1 FET** · ✅ **S2 FET** · ✅ **S3 FET** · ✅ **S4 FET**
+> - ⏳ **S5 PENDENT** (exports i derivats) · ⏳ **S6 PENDENT** (neteja final)
 >
 > **Punt de partida**: taguejat `refactor-inici-fi` (decisió de l'operador, 17-10-2026).
 > **Abast**: es refactoritza TOT el model de dades i tot el codi d'edició que hi toca.
@@ -70,14 +68,12 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
    `exporta_total`, `acords_a_live.py`), **sense retrocompatibilitat**. El `fi`
    es re-deriva sempre. Els **crus** d'anàlisi (`chords_raw.csv` / Chordino)
    queden en 2 columnes (són immutables).
-4. 🔄 **EN CURS — S4 — Visor**: el model en memòria passa a clips amb `ini`+`fi`
-   i s'elimina el despatx `kind` duplicat. **Fet**: *fora el despatx `kind`
-   duplicat* — nucli únic `Visor._aplica_carril` (els handlers d'eliminar/duplicar
-   d'acords i estructura s'hi passen). **Falta**: el canvi de **representació**
-   (`acords`: marques `(t, nom, tsrc)` → `Clip(ini, fi, payload)`), que toca
-   ~40 punts de `visor.py`, ~25 de `timeline.py`, la validació/normalització del
-   visor i ~34 asserts de test que llegeixen el nom per `[1]` — i té canvis de
-   semàntica (p.ex. «afegir acord» passa d'inserir una marca a **partir** el clip).
+4. ✅ **FET — S4 — Visor**: el model en memòria del visor (i del timeline) passa
+   a clips `Clip(ini, fi, payload)` (el mateix model que l'estructura i el CSV,
+   #11); `llegeix_acords`/`model_inicial` donen clips; validació i normalització
+   (`_valida_canvis_acords`, `_normalitza_cobertura`) sobre clips; les operacions
+   del visor van pels nuclis de clips; i **fora el despatx `kind` duplicat**
+   (`Visor._aplica_carril`). Ponts `pipeline.nom_d_acord` / `_acords_a_clips`.
 5. **S5 — Exports i derivats**: WAVs, ABC, partitura, MusicXML, guia DAW
    (`acords_a_live.py`) i MCP al nou model.
 6. **S6 — Neteja**: fora codi mort i helpers que ja no calguin; docs i CHANGELOG.
@@ -144,11 +140,11 @@ Conseqüències per a **S2**:
 
 ## Següent (pendent del refactor, en ordre)
 
-1. **S4 — visor**: el model en memòria passa a clips `ini`+`fi`; fora el
-   despatx `kind` duplicat.
-2. **S5 — exports i derivats**: WAVs, ABC, partitura, MusicXML, `acords_a_live.py`
-   i les eines MCP al nou model.
-3. **S6 — neteja**: codi mort, helpers sense ús, docs i CHANGELOG.
+1. **S5 — exports i derivats**: revisar que WAVs, ABC, partitura, MusicXML, la
+   guia DAW (`acords_a_live.py`) i les eines MCP treballin ja amb el model de
+   clips (des de S3 el CSV és `inici,fi,acord` i l'MCP ja edita clips); netejar
+   els ponts que quedin.
+2. **S6 — neteja**: codi mort, helpers sense ús, docs i CHANGELOG.
 
 **Nuclis ja fets** (no duplicar-los mai): `normalitza_clips`, `redimensiona_clips`,
 `mou_bloc_clips`, `parteix_clips`, `fusiona_clips`, `elimina_clips`,
