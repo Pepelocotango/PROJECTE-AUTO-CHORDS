@@ -1513,6 +1513,54 @@ class Visor(QMainWindow):
         elif accio == a_eng:
             self.timeline.paste_at_cursor()
 
+    # --- nucli comú dels canvis d'un CARRIL (acords / estructura) -----------
+    def _aplica_carril(self, kind, mut, missatge="", avisa=None):
+        """Nucli ÚNIC dels canvis d'un carril (acords «chord» / estructura «section»).
+
+        `mut(llista)` rep una còpia de la llista del carril i en retorna la nova
+        (o `None` si no s'ha de fer res). Valida amb el validador del carril, fa
+        UNA sola marca d'undo, assigna, refresca el timeline i la llista del
+        carril, i desa (acords → CSV + wavs_acords; estructura → ABC). Un sol
+        lloc per als despatxos que abans duplicaven acords i estructura (regla
+        d'or #11). Retorna True si el canvi s'ha aplicat.
+        """
+        actual = self.acords if kind == "chord" else self.seccions
+        nou = mut(list(actual))
+        if nou is None:
+            return False
+        valida = (self._valida_canvis_acords if kind == "chord"
+                  else self._valida_canvis_seccions)
+        try:
+            ordenat = valida(nou)
+        except ValueError as e:
+            self.log(f"{missatge or 'canvi'}: rebutjat ({e})")
+            return False
+        self._undo_marca()
+        if kind == "chord":
+            self.acords = ordenat
+            if hasattr(self, "llista_ac"):
+                self._omple_llista_ac()
+        else:
+            self.seccions = ordenat
+            if hasattr(self, "llista_ab"):
+                self._actualitza_llista_abc()
+        self._undo_commit()
+        self.timeline.set_data(self.acords, self.seccions)
+        try:
+            if kind == "chord":
+                self._desa_i_regenera()
+            else:
+                self._regenera_abc_des_de_totes_les_seccions(
+                    missatge or "canvi d'estructura")
+            if missatge:
+                self.log(missatge)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+            if avisa:
+                QMessageBox.warning(self, "Visor", f"{avisa}\n{e}")
+            return False
+        return True
+
     def _duplica_acord_index(self, idx):
         """Duplica l'acord idx: es parteix pel mig (nucli únic `duplica_acord`).
 
@@ -1527,15 +1575,8 @@ class Visor(QMainWindow):
             self.log(f"no es pot duplicar l'acord {idx}: no hi ha espai")
             return
         nou_t = float(cand[idx + 1][0])
-        self._undo_marca()
-        self.acords = self._normalitza_acords(cand)
-        self._undo_commit()
-        self.timeline.set_data(self.acords, self.seccions)
-        try:
-            self._desa_i_regenera()
-            self.log(f"duplicat acord {idx} a {nou_t:.2f}s")
-        except Exception as e:  # noqa: BLE001
-            self.log(f"ERROR: {e}")
+        self._aplica_carril("chord", lambda _L: cand,
+                            f"duplicat acord {idx} a {nou_t:.2f}s")
 
     def _duplica_seccio_index(self, idx):
         """Duplica la secció idx: es parteix en dues (nucli únic `duplica_seccio`).
@@ -1549,16 +1590,8 @@ class Visor(QMainWindow):
         if cand == list(self.seccions):
             self.log(f"no es pot duplicar la secció {idx}: és massa curta")
             return
-        self._undo_marca()
-        self.seccions = cand
-        self._undo_commit()
-        self.timeline.set_data(self.acords, self.seccions)
-        try:
-            self._regenera_abc_des_de_totes_les_seccions(
-                f"secció {idx} duplicada")
-            self.log(f"duplicada secció {idx}")
-        except Exception as e:  # noqa: BLE001
-            self.log(f"ERROR: {e}")
+        self._aplica_carril("section", lambda _L: cand,
+                            f"secció {idx} duplicada")
 
     def _duplica_seleccio(self, keys):
         """Duplica tots els clips de la multi-selecció en una sola operació.
@@ -1609,34 +1642,18 @@ class Visor(QMainWindow):
     def _elimina_acord_index(self, idx):
         if idx < 0 or idx >= len(self.acords):
             return
-        self._undo_marca()
-        if not self._elimina_acord(idx):
-            return
-        self._undo_commit()
-        self.timeline.set_data(self.acords, self.seccions)
-        try:
-            self._desa_i_regenera()
-            self.log(f"eliminat acord {idx}")
-        except Exception as e:  # noqa: BLE001
-            self.log(f"ERROR: {e}")
-            QMessageBox.warning(self, "Visor",
-                                f"No s'ha pogut eliminar:\n{e}")
+        self._aplica_carril(
+            "chord",
+            lambda L: pipeline.elimina_acord(L, idx, self._durada_wav()),
+            f"eliminat acord {idx}", "No s'ha pogut eliminar:")
 
     def _elimina_seccio_index(self, idx):
         if idx < 0 or idx >= len(self.seccions):
             return
-        self._undo_marca()
-        if not self._elimina_seccio(idx):
-            return
-        self._undo_commit()
-        self.timeline.set_data(self.acords, self.seccions)
-        try:
-            self._regenera_abc_des_de_totes_les_seccions("secció eliminada")
-            self.log(f"eliminada secció {idx}")
-        except Exception as e:  # noqa: BLE001
-            self.log(f"ERROR: {e}")
-            QMessageBox.warning(self, "Visor",
-                                f"No s'ha pogut eliminar:\n{e}")
+        self._aplica_carril(
+            "section",
+            lambda L: pipeline.elimina_seccio(L, idx, self._durada_wav()),
+            f"eliminada secció {idx}", "No s'ha pogut eliminar:")
 
     def _elimina_seleccio(self, keys):
         """Elimina tots els clips de la multi-selecció en una sola operació.
