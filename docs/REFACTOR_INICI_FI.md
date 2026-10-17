@@ -57,3 +57,34 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
 
 Aquest fitxer és el contracte del refactor: si una fase obliga a canviar-lo, es
 documenta aquí el perquè abans de seguir.
+
+---
+
+## Impacte en l'autoanàlisi (analitzat 2026-10-17)
+
+**Conclusió: impacte BAIX i en positiu — l'autoanàlisi JA treballa amb intervals.**
+
+1. **La capa CRUA no es toca** (`analisi/chords_raw.csv`, `analisi/segments_raw.csv`,
+   `meta.json`): és la sortida dels plugins (Vamp host → CSV `inici, durada, …`) i és
+   immutable per disseny. **Zero impacte** a: els plugins, `STEPS`, `executa_transform`,
+   el host propi, temps/BPM (`tempo.py`), compàs 1, onsets/bars/beats — són temps
+   escalars o intervals crus.
+2. **Acords** (el cas que millora): avui `chords_raw.csv` (inici+durada) s'ha de
+   **col·lapsar a marques** (`pipeline.regularitza_acords_csv` → `graella.regularitza_acords`
+   → `postproc.processa_acords`), **es perd el `fi` del motor** i es re-deriva. Amb el
+   model unificat la conversió passa a ser **1:1** (interval cru → `Clip`) i el fi real
+   es conserva.
+3. **Estructura**: `pipeline.fer_abc` + `graella.regularitza_seccions` +
+   `pipeline.filtra_seccions` **ja** treballen amb intervals `[ini, fi, etiqueta]` i ja
+   mantenen la contigüitat (`prev.fi == curr.ini`) → s'hi acoblen directament.
+4. **Duplicació que desapareixerà**: `filtra_seccions(durada_min, fusiona_iguals)` i les
+   `graella.regularitza_*` són el mateix tipus d'operació que les edicions del model →
+   passaran a les operacions úniques de **S2** (no caldrà mantenir-ne dues versions).
+5. **Semàntica a preservar** (criteri d'èxit de S1-S3): **el resultat visible de
+   l'anàlisi no pot canviar**. L'adaptador ha de mantenir el comportament actual: els
+   forats de la sortida crua s'absorbeixen al veí i els `N` del motor queden `N`.
+6. **Punt únic de conversió**: `inici+durada → fi` en un sol helper.
+7. **On impacta de veritat**: els tests que fixen el **format del MODEL** (marques) i els
+   CSV del MODEL / `.acproj` (S3), i el MCP (S5). Els tests del parser i del postproc
+   (funcions pures sobre llistes) **no s'han de tocar**.
+
