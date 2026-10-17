@@ -821,6 +821,8 @@ class Finestra(QMainWindow):
         self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
         self._act(m, "Mode fàcil: re-regularitza a la graella…", "",
                   self._mode_facil_ui)
+        self._act(m, "Mapa de tempo i compàs…", "",
+                  self._tempo_mapa_ui)
         m.addSeparator()
         m.addAction(self.amb_est)      # Inclou estructura (commutable)
         # --- Ajuda ---
@@ -1485,6 +1487,26 @@ class Finestra(QMainWindow):
         else:
             self.avisa_info("Auto Chords",
                             f"No s'ha trobat cap «{troba}» per substituir.")
+
+    def _tempo_mapa_ui(self):
+        """Mapa de tempo i compàs: canvis de BPM/compàs al llarg del tema."""
+        vr = self.visor_ref
+        if vr is None:
+            self.avisa_info("Auto Chords", "Obre un tema primer.")
+            return
+        den0 = int(getattr(vr, "beat_type", 4) or 4)
+        trams = getattr(vr, "tempo_trams", None) or [
+            (0.0, vr._durada_wav(), float(vr.bpm), int(vr.bpb), den0)]
+        dlg = dialegs.DialegTempoMapa(self, trams, vr._durada_wav())
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        if not vr.aplica_tempo_trams(dlg.trams()):
+            self.avisa_info("Auto Chords", "El mapa no és vàlid.")
+            return
+        self.bpm.setText(f"{float(vr.bpm):g}")
+        self.bpb.setText(f"{int(vr.bpb)}/{int(getattr(vr, 'beat_type', 4) or 4)}")
+        self._aplica_parametres_temps()
+        self.registra(f"mapa de tempo/compàs: {len(vr.tempo_trams)} tros(s)")
 
     def _mode_facil_ui(self):
         """Mode fàcil: preset d'estil + ritme harmònic + mòdul → regularitza."""

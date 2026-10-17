@@ -13,11 +13,11 @@ import json
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
-    QFormLayout, QGroupBox, QLabel, QLineEdit, QPushButton, QTabWidget,
-    QVBoxLayout,
+    QFormLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
+    QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout,
 )
 
-from app import config, graella, tempo, vamp_params
+from app import config, graella, tempo, tempo_map, vamp_params
 
 # Traducció al català dels títols dels paràmetres del Chordino (els que dona
 # el plugin son en anglès) + una ajuda curta de quan tocar-los.
@@ -443,3 +443,108 @@ class DialegModeFacil(QDialog):
 
     def modul(self):
         return int(self.cb_modul.currentData())
+
+
+class DialegTempoMapa(QDialog):
+    """Editor del mapa de **tempo i compàs** (canvis al llarg del tema).
+
+    Cada fila és un tros que val fins a la següent: «Des de (s)», «BPM» i
+    «Compàs» (`num/den`). La primera fila («Des de 0 s») és el valor inicial.
+    """
+
+    def __init__(self, parent=None, trams=None, durada=0.0):
+        super().__init__(parent)
+        self.setWindowTitle("Mapa de tempo i compàs")
+        self.setMinimumWidth(470)
+        self._durada = float(durada or 0.0)
+        self._trams = tempo_map.normalitza_trams(list(trams or []),
+                                                 self._durada)
+        lay = QVBoxLayout(self)
+        avis = QLabel(
+            "El tempo i el compàs poden **canviar** al llarg del tema (com un "
+            "DAW). Cada fila val fins a la següent; la primera («Des de 0 s») "
+            "és el valor inicial.")
+        avis.setWordWrap(True)
+        lay.addWidget(avis)
+        self.taula = QTableWidget(0, 3)
+        self.taula.setHorizontalHeaderLabels(["Des de (s)", "BPM", "Compàs"])
+        self.taula.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        lay.addWidget(self.taula)
+        fila = QHBoxLayout()
+        b_add = QPushButton("Afegeix un canvi")
+        b_del = QPushButton("Elimina")
+        b_add.clicked.connect(self._afegeix)
+        b_del.clicked.connect(self._elimina)
+        fila.addWidget(b_add)
+        fila.addWidget(b_del)
+        fila.addStretch(1)
+        lay.addLayout(fila)
+        botons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        botons.accepted.connect(self.accept)
+        botons.rejected.connect(self.reject)
+        lay.addWidget(botons)
+        self._omple()
+
+    # -- taula <-> trossos ----------------------------------------------
+    def _omple(self):
+        self.taula.setRowCount(0)
+        for i, s in enumerate(self._trams):
+            r = self.taula.rowCount()
+            self.taula.insertRow(r)
+            it0 = QTableWidgetItem("0.00" if i == 0 else f"{float(s[0]):.2f}")
+            if i == 0:
+                it0.setFlags(Qt.ItemIsEnabled)      # el valor inicial: fix
+            self.taula.setItem(r, 0, it0)
+            self.taula.setItem(r, 1, QTableWidgetItem(f"{float(s[2]):g}"))
+            self.taula.setItem(r, 2,
+                               QTableWidgetItem(f"{int(s[3])}/{int(s[4])}"))
+
+    def _sync(self):
+        """Llegeix la taula cap a `self._trams` (encara per normalitzar)."""
+        out = []
+        for r in range(self.taula.rowCount()):
+            def _t(c, d):
+                it = self.taula.item(r, c)
+                return ((it.text().strip() if it else "") or d)
+            try:
+                ini = 0.0 if r == 0 else float(_t("0", "0").replace(",", "."))
+                bpm = float(_t("1", "120").replace(",", "."))
+            except ValueError:
+                continue
+            comp = _t("2", "4/4").replace(" ", "")
+            num, den = 4, 4
+            if "/" in comp:
+                try:
+                    a, b = comp.split("/", 1)
+                    num, den = int(a), int(b)
+                except ValueError:
+                    num, den = 4, 4
+            if bpm <= 0 or num <= 0 or den <= 0:
+                continue
+            out.append((ini, ini, bpm, num, den))
+        if out:
+            self._trams = out
+
+    def _afegeix(self):
+        self._sync()
+        t = 0.0
+        if self._trams:
+            s = self._trams[-1]
+            t = (float(s[0]) + float(s[1])) / 2.0
+        self._trams = tempo_map.normalitza_trams(
+            tempo_map.afegeix_tall(self._trams, t), self._durada)
+        self._omple()
+
+    def _elimina(self):
+        r = self.taula.currentRow()
+        if r <= 0:                               # no es toca el valor inicial
+            return
+        self._sync()
+        self._trams = tempo_map.normalitza_trams(
+            tempo_map.elimina_tall(self._trams, r), self._durada)
+        self._omple()
+
+    def trams(self):
+        """Els trossos editats (`(ini, fi, bpm, num, den)`, contigus)."""
+        self._sync()
+        return tempo_map.normalitza_trams(self._trams, self._durada)

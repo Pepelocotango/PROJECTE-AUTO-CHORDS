@@ -391,3 +391,54 @@ class TempoMap:
         """Llista de trossos per a diagnòstic/log."""
         return [(s.ini, s.fi, s.bpm, "%d/%d" % (s.num, s.den))
                 for s in self._trams]
+
+
+# --- edició del mapa (utilitats pures per a la GUI) ------------------------
+def normalitza_trams(trams, durada):
+    """Ordena i fa **contigus** els trossos, cobrint `[0, durada]`.
+
+    Cada tros és `(ini, fi, bpm, num, den)`; el `fi` es **re-deriva** de l'inici
+    del següent (o de `durada` per a l'últim). Descarta inicis repetits o fora
+    del tema. No muta l'entrada.
+    """
+    durada = float(durada or 0.0)
+    net, vists = [], set()
+    for t in sorted(trams or (), key=lambda x: float(x[0])):
+        ini = float(t[0])
+        if durada > 0 and ini >= durada - TOL:
+            continue
+        clau = round(ini, 6)
+        if clau in vists:
+            continue
+        vists.add(clau)
+        net.append((ini, float(t[2]), int(t[3]), int(t[4])))
+    if not net:
+        return []
+    out = []
+    for i, t in enumerate(net):
+        fi = net[i + 1][0] if i + 1 < len(net) else durada
+        out.append((t[0], fi, t[1], t[2], t[3]))
+    if out[0][0] > TOL:
+        out.insert(0, (0.0, out[0][0], out[0][2], out[0][3], out[0][4]))
+    return out
+
+
+def afegeix_tall(trams, t):
+    """Insereix una frontera nova a `t`, heretant el tempo/compàs del tros que hi ha.
+
+    Retorna la llista de trossos amb el nou (encara per normalitzar).
+    """
+    t = float(t)
+    trams = list(trams or [])
+    for s in trams:
+        if float(s[0]) - TOL <= t <= float(s[1]) + TOL:
+            return trams + [(t, t, float(s[2]), int(s[3]), int(s[4]))]
+    return trams + [(t, t, 120.0, 4, 4)]
+
+
+def elimina_tall(trams, idx):
+    """Treu el tros `idx` del mapa (el veí anterior n'ocupa l'espai)."""
+    trams = list(trams or [])
+    if 0 <= idx < len(trams):
+        return trams[:idx] + trams[idx + 1:]
+    return trams

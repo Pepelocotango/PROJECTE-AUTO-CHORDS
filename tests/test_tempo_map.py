@@ -220,5 +220,39 @@ class TestGraellaAmbMapa(unittest.TestCase):
             self.tb.grid_plan(True, 120, 4, 60.0, 800.0))
 
 
+class TestEdicioMapa(unittest.TestCase):
+    """Utilitats pures d'edició del mapa (les del diàleg)."""
+
+    def test_normalitza_contigu(self):
+        from app import tempo_map as tmm
+        trams = tmm.normalitza_trams(
+            [(2.0, 2.0, 90.0, 3, 4), (0.0, 0.0, 120.0, 4, 4)], 10.0)
+        self.assertEqual(trams, [(0.0, 2.0, 120.0, 4, 4),
+                                 (2.0, 10.0, 90.0, 3, 4)])
+
+    def test_normalitza_capcalera(self):
+        from app import tempo_map as tmm
+        trams = tmm.normalitza_trams([(3.0, 3.0, 90.0, 3, 4)], 10.0)
+        self.assertEqual(trams[0], (0.0, 3.0, 90.0, 3, 4))   # arrenca a 0
+
+    def test_afegeix_i_elimina(self):
+        from app import tempo_map as tmm
+        base = [(0.0, 10.0, 120.0, 4, 4)]
+        nou = tmm.normalitza_trams(tmm.afegeix_tall(base, 4.0), 10.0)
+        self.assertEqual(len(nou), 2)
+        self.assertEqual(nou[1][0], 4.0)
+        self.assertEqual(nou[1][2], 120.0)          # hereta el tempo del tros
+        self.assertEqual(
+            tmm.normalitza_trams(tmm.elimina_tall(nou, 1), 10.0),
+            [(0.0, 10.0, 120.0, 4, 4)])
+
+    def test_dialog_trams_round_trip(self):
+        from app import tempo_map as tmm
+        trams = [(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 90.0, 3, 4)]
+        tm = TempoMap(tmm.normalitza_trams(trams, 8.0))
+        self.assertEqual(tm.label(0.0), "1.1.1")
+        self.assertEqual(tm.signatura(5.0), (3, 4))
+
+
 if __name__ == "__main__":
     unittest.main()

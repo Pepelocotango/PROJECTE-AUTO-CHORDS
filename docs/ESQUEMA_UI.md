@@ -87,7 +87,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix l'acord al cursor… · Parteix la secció al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Mode fàcil: re-regularitza a la graella… · Inclou estructura |
+| **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Mode fàcil: re-regularitza a la graella… · Mapa de tempo i compàs… · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Eina del timeline i abast del rang

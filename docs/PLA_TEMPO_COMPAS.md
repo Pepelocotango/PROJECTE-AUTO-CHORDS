@@ -42,8 +42,12 @@ en mode «BPM·compàs».
    (`es_constant()` → codi d'abans, tros per tros) → cap regressió; amb mapa
    variable, la graella/regle i el snap són **musicals**.
    (`pipeline.pos_compas` encara és constant; es farà a la fase 5.)
-4. ⏳ **UI**: pista de **Tempo** i de **Compàs** al timeline (marcador + vores
-   §6.3); els camps del transport passen a ser el **valor inicial**.
+4. ✅ **FET — UI (primera versió)**: `DialegTempoMapa` (taula de trossos:
+   «Des de (s)», BPM, compàs; afegir/treure) obert des d'*Analitza ▸ Mapa de
+   tempo i compàs…*; `Visor.aplica_tempo_trams` normalitza (contigu, cobreix
+   la WAV), actualitza el transport amb el **valor inicial** i desa. Al
+   **regle** es dibuixen **marcadors** de canvi (BPM · compàs).
+   ⏳ **Pendent (4b)**: pista pròpia al timeline amb vores §6.3 editables.
 5. ⏳ **Exports/derivats** (`acords_a_live.py`, partitura, **MusicXML** —que ja
    suporta `<sound tempo>` i `<time>` per compàs—) i, si es vol, **inferència**
    automàtica a partir de les pistes `beat`/`bar`/`onsets`.
@@ -56,6 +60,7 @@ en mode «BPM·compàs».
 - Què fa el **mode fàcil** quan hi ha mapa (regularitza amb el tempo local).
 
 ## Estat
-- **Fases 1, 2 i 3 FETES** (motor + persistència + graella/regle/snap).
+- **Fases 1, 2, 3 i 4 FETES** (motor + persistència + graella/regle/snap
+  + diàleg d'edició i marcadors al regle).
 - L'app es comporta igual que abans (BPM·compàs constant = un sol tros → la
   via uniforme de sempre); el mapa variable ja funciona a l'engine i a la UI.

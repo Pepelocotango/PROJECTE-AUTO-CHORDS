@@ -304,6 +304,24 @@ class RulerLayer(QGraphicsItem):
                     p.drawText(QPointF(x - wlab / 2, self._height - 11), lab)
                     last_label_x = x + wlab / 2
 
+        # CANVIS de tempo/compàs (com la «tempo track» d'un DAW): un marcador a
+        # cada frontera del mapa, amb el valor nou.
+        mapa = getattr(self, "_mapa", None)
+        if mapa is not None and not mapa.es_constant():
+            font_m = QFont("Sans Serif", 7, QFont.Bold)
+            p.setFont(font_m)
+            for s in mapa.trams:
+                if s.ini <= self._view_left - 1e-9 or \
+                        s.ini > self._view_right + 1e-9:
+                    continue
+                x = (s.ini - self._view_left) * self._pps
+                pen = QPen(QColor(theme.TL_GRID_MEASURE), 2)
+                p.setPen(pen)
+                p.drawLine(QPointF(x, 0), QPointF(x, self._height - 1))
+                txt = f"{s.bpm:g} · {s.num}/{s.den}"
+                p.setPen(QPen(QColor(RULER_TEXT), 1))
+                p.drawText(QPointF(x + 3, 9), txt)
+
         # Indicador de MODE (fix a la dreta del regle): '120 BPM . 4/4' o
         # 'Lliure'. Va al final perque quedi per sobre de les etiquetes.
         etq = self.mode_label()

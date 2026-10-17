@@ -807,14 +807,46 @@ class Visor(QMainWindow):
         """
         from app.tempo_map import TempoMap
         trams = list(self.tempo_trams or [])
+        d = self._durada_wav()
+        den = int(getattr(self, "beat_type", 4) or 4)
         if len(trams) <= 1:
-            # Un sol tros = el cas constant d'avui → se sincronitza amb el
-            # BPM·compàs vigent; amb més trossos, es respecta el mapa.
-            trams = [(0.0, self._durada_wav(), float(self.bpm),
-                      int(self.bpb), 4)]
-            self.tempo_trams = trams
+            # Un sol tros = el cas constant d'avui.
+            trams = [(0.0, d, float(self.bpm), int(self.bpb), den)]
+        else:
+            # El tram 0 és el VALOR INICIAL (el transport mana).
+            t0 = trams[0]
+            trams[0] = (float(t0[0]), float(t0[1]), float(self.bpm),
+                        int(self.bpb), den)
+        self.tempo_trams = trams
         self.tempo_map = TempoMap(trams, offset=getattr(self, "offset", 0.0))
         return self.tempo_map
+
+    def aplica_tempo_trams(self, trams):
+        """Aplica un mapa de tempo/compàs nou (des del diàleg).
+
+        Normalitza (contigu, cobreix la WAV), actualitza el **transport** amb el
+        valor inicial, reconstrueix el mapa, refresca el timeline i desa. Retorna
+        `True` si s'ha aplicat.
+        """
+        from app.tempo_map import normalitza_trams
+        nous = normalitza_trams(trams, self._durada_wav())
+        if not nous:
+            return False
+        self.bpm = float(nous[0][2])
+        self.bpb = int(nous[0][3])
+        self.beat_type = int(nous[0][4])
+        self.tempo_trams = nous
+        self._refresca_tempo_map()
+        if hasattr(self, "timeline"):
+            self.timeline.set_tempo_mode(
+                self.tempo_fix, self.bpm, self.bpb,
+                getattr(self, "offset", 0.0), mapa=self.tempo_map)
+        try:
+            pipeline.desa_tempo_map(self._carpeta_acords(), self.tempo_trams)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"desa mapa tempo/compàs ERROR: {e}")
+        self.log(f"mapa de tempo/compàs: {len(nous)} tros(s)")
+        return True
 
     def _desa_csvs_base(self):
         """Desa els CSV d'acords i d'estructura (SENSE tocar la UI).
@@ -839,7 +871,8 @@ class Visor(QMainWindow):
         # BPM·compàs actual (zero canvi visible); amb més trossos, es respecta.
         if len(self.tempo_trams) <= 1:
             self.tempo_trams = [(0.0, self._durada_wav(), float(self.bpm),
-                                 int(self.bpb), 4)]
+                                 int(self.bpb),
+                                 int(getattr(self, "beat_type", 4) or 4))]
         try:
             pipeline.desa_tempo_map(sortida, self.tempo_trams)
         except Exception as e:  # noqa: BLE001

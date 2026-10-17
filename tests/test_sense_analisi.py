@@ -71,6 +71,20 @@ class _Base(unittest.TestCase):
 
 
 class TestSenseAnalisi(_Base):
+    def test_mapa_tempo_compas(self):
+        """Fase 4: `aplica_tempo_trams` (des del diàleg) actualitza el model,
+        el mapa i el disc."""
+        w, p = self._finestra_amb_projecte()
+        vr = w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams(
+            [(0.0, 2.0, 120.0, 4, 4), (2.0, 4.0, 90.0, 3, 4)]))
+        self.assertEqual(len(vr.tempo_trams), 2)
+        self.assertEqual(vr.tempo_map.label(0.0), "1.1.1")
+        self.assertEqual(vr.tempo_map.signatura(3.0), (3, 4))
+        tempo = pipeline.llegeix_tempo_csv(os.path.join(p.carpeta, "tempo.csv"))
+        self.assertEqual(len(tempo), 2)
+        self.assertAlmostEqual(float(tempo[1][2]), 90.0)
+
     def test_audio_nou_neix_amb_1_acord_i_1_seccio(self):
         w, _p = self._finestra_amb_projecte(amb_csv=False)
         vr = w.visor_ref
