@@ -959,70 +959,20 @@ def mou_bloc_acords(acords, first, last, dt, durada, log=None):
     Retorna una llista NOVA d'acords (no muta l'entrada). Si el bloc no
     existeix, la durada és nul·la o el delta és ~0, torna la llista original.
     """
-    acords = [tuple(a) for a in (acords or [])]
-    n = len(acords)
-    durada = float(durada or 0.0)
-    if not (0 <= first <= last < n):
-        return acords
-    dt = float(dt)
-    if abs(dt) < 1e-9:
-        return acords
-    a = float(acords[first][0])
-    b = float(acords[last + 1][0]) if last + 1 < n else durada
-    if b - a <= 1e-9:
-        return acords
-    # El bloc no pot sortir de la WAV (la durada del bloc és seva): 0 ≤ a' i b' ≤ durada.
-    dt = max(-a, min(durada - b, dt))
-    if abs(dt) < 1e-9:
-        return acords
-    a2, b2 = a + dt, b + dt
-    TOL = 1e-6
-    bloc = acords[first:last + 1]
-    resta = acords[:first] + acords[last + 1:]
-
-    def _hi_ha_marca(t):
-        return any(abs(float(x[0]) - float(t)) <= TOL for x in resta)
-
-    if dt > 0:
-        # ENDAVANT. El bloc TAPA [a2, b2): fora les marques que hi cauen a
-        # dins (clips coberts del tot) i la de la vora esquerra a2 (mana el
-        # bloc, «l'últim editat»). La RESTA no es toca: els clips que quedin
-        # entre l'origen i el destí es queden quiets i la cobertura es manté
-        # sola (abans s'esborraven → es perdien clips que no hi tocaven).
-        resta = [x for x in resta
-                 if not (a2 + TOL < float(x[0]) < b2 - TOL)]
-        resta = [x for x in resta if abs(float(x[0]) - a2) > TOL]
-        # Preservar la DURADA del bloc: cal una marca a b2 amb el nom del
-        # material que queda A SOTA (el que hi havia sonant a b2).
-        if b2 < durada - TOL and not _hi_ha_marca(b2):
-            resta.append(_marca_nova(b2, _nom_a(acords, b2), acords[0]))
-    else:
-        # ENDARRERE. Destí, igual que endavant (fora el que hi cau a dins i la
-        # vora esquerra).
-        resta = [x for x in resta
-                 if not (a2 + TOL < float(x[0]) < b2 - TOL)]
-        resta = [x for x in resta if abs(float(x[0]) - a2) > TOL]
-        # El POSTERIOR (el clip de després del bloc) s'estira fins a b2 per
-        # tapar el buit que deixa el bloc. Si el tram (b2, b) ja té marques
-        # (clips que no són del bloc), es queden on són i només s'hi afegeix la
-        # marca del final; si no, la marca del posterior S'HI MOU (cas net).
-        if last + 1 < n:
-            if not any(b2 + TOL < float(x[0]) < b - TOL for x in resta):
-                resta = [x for x in resta if abs(float(x[0]) - b) > TOL]
-            if not _hi_ha_marca(b2):
-                resta.append(_marca_nova(b2, acords[last + 1][1], acords[0]))
-        elif b2 < durada - TOL and not _hi_ha_marca(b2):
-            # El bloc és l'últim: no hi ha posterior que tapi el buit → «N».
-            resta.append(_marca_nova(b2, SENSE_ACORD, acords[0]))
-
-    nou = [_desplaca_marca(x, dt) for x in bloc] + resta
-    # `sort` estable: davant d'un instant compartit, el bloc (que hi va primer)
-    # conserva la seva marca → «mana l'últim editat».
-    nou.sort(key=lambda x: float(x[0]))
-    if log and len(nou) != n:
-        log(f"moviment: bloc {first}-{last} → {a2:.2f}-{b2:.2f}s "
-            f"({n - len(nou):+d} marques)")
-    return nou
+    clips = mou_bloc_clips(clips_d_acords(acords, durada), first, last, dt,
+                           durada, FORAT_ACORD, log)
+    # `tsrc` (temps font): el d'un acord que NO s'ha mogut es conserva; el d'un
+    # de mogut o nou passa a ser el seu temps.
+    orig = {(round(float(a[0]), 6), a[1]): tuple(a) for a in (acords or ())}
+    res = []
+    for c in clips:
+        t = float(c.ini)
+        vell = orig.get((round(t, 6), c.payload[0]))
+        if vell is not None:
+            res.append((t,) + vell[1:])
+        else:
+            res.append((t, c.payload[0], f"{t:.9f}") + tuple(c.payload[2:]))
+    return res
 
 
 SENSE_SECCIO = "-"      # §6.1: forat explícit d'estructura («sense secció»)
@@ -1114,6 +1064,57 @@ def redimensiona_seccio(seccions, idx, vora, t, durada, log=None):
         clips_de_seccions(seccions), idx, vora, t, durada, FORAT_SECCIO, log))
 
 
+def mou_bloc_clips(clips, first, last, dt, durada, forat, log=None):
+    """Moviment d'un BLOC de clips (§6.3; implementació única).
+
+    El bloc **conserva la durada** i **tapa** `[a', b')`: el material de sota es
+    **TALLA** (si només queda cobert en part → en sobreviu el tros de fora, amb
+    el seu nom) o **S'ELIMINA** (si queda sobrepassat del tot). L'**origen** el
+    tanca el veí; si no n'hi ha cap, hi va el `forat`. Retorna clips NOUS.
+    """
+    out = [Clip(c.ini, c.fi, c.payload) for c in clips or ()]
+    n = len(out)
+    durada = float(durada or 0.0)
+    if not (0 <= first <= last < n) or abs(float(dt)) < 1e-9:
+        return out
+    a, b = out[first].ini, out[last].fi
+    if b - a <= 1e-9:
+        return out
+    dt = max(-a, min(durada - b, float(dt)))     # el bloc no surt de la WAV
+    if abs(dt) < 1e-9:
+        return out
+    a2, b2 = a + dt, b + dt
+    bloc = [Clip(c.ini + dt, c.fi + dt, c.payload) for c in out[first:last + 1]]
+    resta = []
+    for c in out[:first] + out[last + 1:]:
+        if c.fi <= a2 + TOL_TEMPS or c.ini >= b2 - TOL_TEMPS:
+            resta.append(c)                      # fora del tram nou: intacte
+            continue
+        if c.ini < a2 - TOL_TEMPS:
+            resta.append(Clip(c.ini, a2, c.payload))    # se'n talla la cua
+        if c.fi > b2 + TOL_TEMPS:
+            resta.append(Clip(b2, c.fi, c.payload))     # se'n talla el principi
+    if dt > 0:                                   # l'anterior tanca l'origen
+        fi_vei, tapades = min(a2, b), False
+        for i, c in enumerate(resta):
+            if c.ini < a - TOL_TEMPS and abs(c.fi - a) <= TOL_TEMPS:
+                resta[i], tapades = Clip(c.ini, fi_vei, c.payload), True
+        if not tapades:
+            resta.append(Clip(0.0, fi_vei, tuple(forat)))
+    else:                                        # el següent tanca l'origen
+        ini_vei, tapades = max(b2, a), False
+        for i, c in enumerate(resta):
+            if abs(c.ini - b) <= TOL_TEMPS:
+                resta[i], tapades = Clip(ini_vei, c.fi, c.payload), True
+        if not tapades and b2 < durada - TOL_TEMPS:
+            resta.append(Clip(ini_vei, durada, tuple(forat)))
+    nou = bloc + resta
+    nou.sort(key=lambda c: c.ini)                # sort estable: mana el bloc
+    if log and len(nou) != n:
+        log(f"moviment: bloc {first}-{last} → {a2:.2f}-{b2:.2f}s")
+    return nou
+
+
 def mou_bloc_seccions(seccions, first, last, dt, durada, log=None):
     """DESTÍ del moviment d'un BLOC de seccions (paritat d'edició #11, §6.3).
 
@@ -1126,59 +1127,8 @@ def mou_bloc_seccions(seccions, first, last, dt, durada, log=None):
     Les seccions són explícites `(ini, fi, lletra, família)`; el resultat torna a
     ser **contigu** (sense forats) i ordenat. Retorna una llista NOVA.
     """
-    seccions = [tuple(s) for s in (seccions or [])]
-    n = len(seccions)
-    durada = float(durada or 0.0)
-    if not (0 <= first <= last < n) or abs(float(dt)) < 1e-9:
-        return seccions
-    a = float(seccions[first][0])
-    b = float(seccions[last][1])
-    if b - a <= 1e-9:
-        return seccions
-    dt = max(-a, min(durada - b, float(dt)))
-    if abs(dt) < 1e-9:
-        return seccions
-    a2, b2 = a + dt, b + dt
-    TOL = 1e-6
-    bloc = [(float(s[0]) + dt, float(s[1]) + dt, s[2], s[3])
-            for s in seccions[first:last + 1]]
-    # DESTÍ: el bloc tapa [a2, b2) → de cada altra secció en sobreviu només el
-    # tros de fora (o cap; si en surten dos, queden partides amb la mateixa lletra).
-    resta = []
-    for s in seccions[:first] + seccions[last + 1:]:
-        ini, fi = float(s[0]), float(s[1])
-        if fi <= a2 + TOL or ini >= b2 - TOL:
-            resta.append(s)
-            continue
-        if ini < a2 - TOL:
-            resta.append((ini, a2, s[2], s[3]))
-        if fi > b2 + TOL:
-            resta.append((b2, fi, s[2], s[3]))
-    # ORIGEN: el veí tanca el forat [a, min(a2,b)) / [max(b2,a), b).
-    if dt > 0:
-        fi_vei = min(a2, b)
-        tapades = False
-        for i, s in enumerate(resta):
-            if (float(s[0]) < a - TOL and abs(float(s[1]) - a) <= TOL):
-                resta[i] = (float(s[0]), fi_vei, s[2], s[3])
-                tapades = True
-        if not tapades:
-            resta.append((0.0, fi_vei, SENSE_SECCIO, SENSE_SECCIO))
-    else:
-        ini_vei = max(b2, a)
-        tapades = False
-        for i, s in enumerate(resta):
-            if abs(float(s[0]) - b) <= TOL:
-                resta[i] = (ini_vei, float(s[1]), s[2], s[3])
-                tapades = True
-        if not tapades:
-            resta.append((ini_vei, durada, SENSE_SECCIO, SENSE_SECCIO))
-    nou = bloc + resta
-    nou.sort(key=lambda s: float(s[0]))
-    if log and len(nou) != n:
-        log(f"moviment (estructura): bloc {first}-{last} → {a2:.2f}-{b2:.2f}s "
-            f"({len(nou) - n:+d} seccions)")
-    return nou
+    return seccions_de_clips(mou_bloc_clips(
+        clips_de_seccions(seccions), first, last, dt, durada, FORAT_SECCIO, log))
 
 
 def parteix_seccio(seccions, i, talla, marge=0.05):

@@ -106,25 +106,26 @@ class TestMouBlocAcords(unittest.TestCase):
         per preservar la durada.
         """
         nou = pipeline.mou_bloc_acords(BASE, 0, 0, +5.0, DURADA)
+        # 🔄 canònic (17-10): l'origen [0,2) no té veí anterior → hi va la «N».
         self.assertEqual(_clips(nou),
-                         [("Am", 2.0, 4.0), ("F", 4.0, 5.0), ("C", 5.0, 7.0),
-                          ("G", 7.0, 8.0), ("Em", 8.0, 10.0)])
+                         [("N", 0.0, 2.0), ("Am", 2.0, 4.0), ("F", 4.0, 5.0),
+                          ("C", 5.0, 7.0), ("G", 7.0, 8.0), ("Em", 8.0, 10.0)])
         self.assertEqual([n for _t, n in _parells(nou)],
-                         ["Am", "F", "C", "G", "Em"])
+                         ["N", "Am", "F", "C", "G", "Em"])
 
     def test_endarrere_llarg_no_esborra_els_clips_del_mig(self):
         """Mirall endarrere: un salt llarg cap enrere tampoc no esborra res.
 
-        Bloc [G] de [6,8) a [1,3):  Am (sota el bloc) s'elimina;  C i F es
-        queden (F s'estira fins al buit que deixa el bloc). El bloc conserva
-        la seva durada (2 s).
+        Bloc [G] de [6,8) a [1,3):  C es talla ([0,1));  Am també es TALLA
+        ([3,4): només quedava cobert en part → conserva el nom);  Em tanca
+        l'origen ([6,10)). El bloc conserva la seva durada (2 s).
         """
         nou = pipeline.mou_bloc_acords(BASE, 3, 3, -5.0, DURADA)
         noms = _noms(nou)
-        self.assertIn("C", noms)
-        self.assertIn("F", noms)
-        self.assertIn("G", noms)
-        self.assertNotIn("Am", noms)          # sota el bloc → fora
+        self.assertEqual(_clips(nou),
+                         [("C", 0.0, 1.0), ("G", 1.0, 3.0), ("Am", 3.0, 4.0),
+                          ("F", 4.0, 6.0), ("Em", 6.0, 10.0)])
+        self.assertIn("Am", noms)          # 🔄 canònic: es talla, no s'esborra
         d, i = _times(nou), noms.index("G")
         self.assertAlmostEqual(d[i + 1] - d[i], 2.0, places=6)
 
@@ -132,13 +133,14 @@ class TestMouBlocAcords(unittest.TestCase):
         """§6.3 endarrere: el clip de sota perd la cua; si l'inici cau dins, fora.
 
         Bloc [G] (2 s) −3 → [3,5):  Am (final 4, cau dins) SE LI TALLA EL FINAL
-        → [2,3);  F (inici 4, dins del bloc) S'ELIMINA.
+        → [2,3);  F NO queda sobrepassat → es TALLA i conserva el nom → [5,6).
         """
         nou = pipeline.mou_bloc_acords(BASE, 3, 3, -3.0, DURADA)
+        # 🔄 CAS DE REFERÈNCIA (corregit 17-10: abans el F s'absorbia dins l'Em).
         self.assertEqual(_clips(nou),
-                         [("C", 0.0, 2.0), ("Am", 2.0, 3.0),
-                          ("G", 3.0, 5.0), ("Em", 5.0, 10.0)])
-        self.assertNotIn("F", _noms(nou))
+                         [("C", 0.0, 2.0), ("Am", 2.0, 3.0), ("G", 3.0, 5.0),
+                          ("F", 5.0, 6.0), ("Em", 6.0, 10.0)])
+        self.assertEqual(_times(nou)[_noms(nou).index("F")], 5.0)
 
     def test_endavant_tapa_amb_el_vei_anterior(self):
         """L'origen el tanca l'anterior (s'estira fins a l'inici nou)."""
@@ -159,8 +161,9 @@ class TestMouBlocAcords(unittest.TestCase):
         """Si el bloc és el 1r i va endavant, el forat [0,a') no té veí: es
         queda perquè `normalitza_cobertura` hi posi la «N» (§6.1)."""
         nou = pipeline.mou_bloc_acords(BASE, 0, 0, +1.0, DURADA)
-        self.assertEqual(round(float(nou[0][0]), 3), 1.0)
-        self.assertEqual(_noms(nou)[0], "C")
+        self.assertEqual(_parells(nou)[0], (0.0, "N"))   # 🔄 ho posa l'operació
+        self.assertEqual(_noms(nou)[1], "C")
+        self.assertEqual(round(float(nou[1][0]), 3), 1.0)
         # la normalització hi afegeix la N de capçalera:
         net, _ = pipeline.normalitza_cobertura(nou, [], DURADA)
         self.assertEqual(_parells(net)[0], (0.0, "N"))

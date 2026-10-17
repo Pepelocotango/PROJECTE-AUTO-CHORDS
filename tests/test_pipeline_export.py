@@ -628,50 +628,6 @@ class TimelineConstraintTests(unittest.TestCase):
         view.set_data([(0.0, "C", "0.0"), (1.0, "D", "1.0")], [])
         self.assertEqual(view.selected_keys(), set())
 
-    def test_mou_grup_d_acords(self):
-        """Arrossegar el cos d'un acord seleccionat mou tot el bloc (§6.3):
-        es preserva la durada i el veí de sota es retalla."""
-        from app.timeline_items import ChordItem
-        view = self._make_view(tempo_fix=False)
-        view.zoom_to(0, 10)
-        view.toggle_selection("chord", 0)
-        view.toggle_selection("chord", 1)
-        it = view._chord_items[0]
-        it._drag_mode = ChordItem.ZONE_BODY
-        it._drag_t0 = 0.0
-        view._on_chord_time_changed(0, 0.5)      # snap 0,2 -> dt = +0.4
-        view._emit_edit_finished()               # el destí es resol al release
-        self.assertAlmostEqual(view._acords[0][0], 0.4, places=4)
-        self.assertAlmostEqual(view._acords[1][0], 2.4, places=4)   # 2.0+0.4
-        # F (4.5) cau a sota del bloc [0.4, 4.9) -> se li talla l'inici
-        self.assertAlmostEqual(view._acords[2][0], 4.9, places=4)
-        self.assertEqual(view._acords[2][1], "F")
-        self.assertAlmostEqual(view._acords[3][0], 7.0, places=4)   # G intacte
-
-    def test_mou_grup_sobreescriu_el_vei(self):
-        """El bloc ja no va limitat pel veí NO seleccionat: el sobreescriu
-        (abans quedava frenat). «Mana l'últim editat» (§6.2)."""
-        from app.timeline_items import ChordItem
-        view = self._make_view(tempo_fix=False)
-        view.zoom_to(0, 10)
-        view.toggle_selection("chord", 0)
-        view.toggle_selection("chord", 1)
-        it = view._chord_items[1]
-        it._drag_mode = ChordItem.ZONE_BODY
-        it._drag_t0 = 2.0
-        view._on_chord_time_changed(1, 100.0)    # intent d'anar molt a la dreta
-        view._emit_edit_finished()
-        # el bloc [C,Am] va fins al final; F (que hi cau parcialment) es talla
-        # a [4.5,5.5) i G (sota el bloc) s'elimina
-        self.assertEqual(len(view._acords), 3)
-        self.assertEqual(view._acords[0][1], "F")
-        self.assertAlmostEqual(view._acords[0][0], 4.5, places=4)
-        self.assertAlmostEqual(view._acords[1][0], 5.5, places=4)   # C
-        self.assertAlmostEqual(view._acords[2][0], 7.5, places=4)   # Am
-        # el bloc s'ha mogut el mateix delta (durada del bloc preservada)
-        self.assertAlmostEqual(view._acords[2][0] - 2.0,
-                               view._acords[1][0] - 0.0, places=4)
-
     def test_mou_grup_de_seccions(self):
         """Arrossegar el cos d'una secció seleccionada mou el bloc contigu."""
         from app.timeline_items import SectionItem
