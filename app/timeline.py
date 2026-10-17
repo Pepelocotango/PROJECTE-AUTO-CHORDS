@@ -1133,7 +1133,12 @@ class TimelineView(QGraphicsView):
         """Re-render del timeline amb el MODEL actual (items reconstruïts)."""
         dades_a = list(self._acords)
         dades_s = list(self._seccions)
-        self.set_data(dades_a, dades_s)
+        try:
+            self.set_data(dades_a, dades_s)
+        except RuntimeError:
+            # L'escena ja s'ha destruït (el visor s'ha tancat entre el gest i el
+            # `QTimer.singleShot`): no hi ha res a repintar.
+            return
 
     def _on_chord_time_changed(self, idx: int, new_t: float) -> None:
         """Mou l'inici de l'acord idx a new_t (amb snap + constraint)."""

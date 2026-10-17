@@ -178,6 +178,12 @@ class Visor(QMainWindow):
             arrodoneix=True, deriva_fi=True, log=self.log)
         _, self.seccions = pipeline.normalitza_cobertura(
             [], self.seccions, self._durada_wav(), log=self.log)
+        # Mapa de TEMPO i COMPÀS (fase 2): dels CSVs del projecte o, si no n'hi
+        # ha, un **sol tros** amb el BPM·compàs actual (zero canvi visible).
+        self.tempo_trams = pipeline.llegeix_tempo_map(
+            self._carpeta_acords(), self.bpm, self.bpb, 4, self._durada_wav())
+        self.tempo_map = None
+        self._refresca_tempo_map()
         # Si la normalització ha canviat el model (forats interns, capçalera
         # «N», últim fi acotat…), el CSV DEL DISC s'ha de normalitzar JA: abans
         # hi quedava el defecte fins a la 1a edició o export. I si el model és
@@ -792,6 +798,22 @@ class Visor(QMainWindow):
         self.canvis.emit()   # edició del model → el projecte queda «brut»
         return 0
 
+    def _refresca_tempo_map(self):
+        """(Re)construeix `self.tempo_map` a partir de `self.tempo_trams`.
+
+        El mapa és la font del tempo/compàs variables (fase 2: només persistència;
+        la graella encara fa servir `self.bpm`/`self.bpb`). Sense trossos, se'n
+        crea un de sol amb el BPM·compàs actual.
+        """
+        from app.tempo_map import TempoMap
+        trams = list(self.tempo_trams or [])
+        if not trams:
+            trams = [(0.0, self._durada_wav(), float(self.bpm),
+                      int(self.bpb), 4)]
+            self.tempo_trams = trams
+        self.tempo_map = TempoMap(trams, offset=getattr(self, "offset", 0.0))
+        return self.tempo_map
+
     def _desa_csvs_base(self):
         """Desa els CSV d'acords i d'estructura (SENSE tocar la UI).
 
@@ -811,6 +833,15 @@ class Visor(QMainWindow):
                                   offset=getattr(self, "offset", 0.0))
         except Exception as e:  # noqa: BLE001
             self.log(f"desat ABC ERROR: {e}")
+        # Mapa de tempo/compàs (fase 2): un sol tros → se sincronitza amb el
+        # BPM·compàs actual (zero canvi visible); amb més trossos, es respecta.
+        if len(self.tempo_trams) <= 1:
+            self.tempo_trams = [(0.0, self._durada_wav(), float(self.bpm),
+                                 int(self.bpb), 4)]
+        try:
+            pipeline.desa_tempo_map(sortida, self.tempo_trams)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"desat tempo/compàs ERROR: {e}")
         self.log(f"desat CSV {self.csv_acords}")
 
     # ---------- Undo/Redo: el MODEL d'edició + la GRAELLA i el LOOP ----------

@@ -1656,6 +1656,96 @@ def desa_acords_csv(ruta, items, durada=0.0):
     escriu_atomic(ruta, _escriu)
 
 
+# --- Mapa de TEMPO i COMPÀS (fase 2: persistència) -------------------------
+# Dos fitxers, com les dues pistes d'un DAW (tempo track / signature track):
+#   tempo.csv   →  inici,fi,bpm
+#   compas.csv  →  inici,fi,num,den
+# Els trossos són alineats (les mateixes fronteres), així no es desincronitzen.
+NOM_CSV_TEMPO = "tempo.csv"
+NOM_CSV_COMPAS = "compas.csv"
+
+
+def desa_tempo_csv(ruta, trams):
+    """Desa el mapa de tempo com a `inici,fi,bpm` (resolució `TEMPS_DEC`)."""
+    def _escriu(f):
+        w = csv.writer(f)
+        for s in trams:
+            w.writerow([f"{float(s[0]):.{TEMPS_DEC}f}",
+                        f"{float(s[1]):.{TEMPS_DEC}f}",
+                        f"{float(s[2]):g}"])
+    escriu_atomic(ruta, _escriu)
+
+
+def desa_compas_csv(ruta, trams):
+    """Desa el mapa de compàs com a `inici,fi,num,den`.
+
+    `trams` són els del mapa: `(ini, fi, bpm, num, den)` (només s'escriuen
+    `ini, fi, num, den`), o també `(ini, fi, num, den)`.
+    """
+    def _escriu(f):
+        w = csv.writer(f)
+        for s in trams:
+            w.writerow([f"{float(s[0]):.{TEMPS_DEC}f}",
+                        f"{float(s[1]):.{TEMPS_DEC}f}",
+                        f"{int(s[-2])}", f"{int(s[-1])}"])
+    escriu_atomic(ruta, _escriu)
+
+
+def llegeix_tempo_csv(ruta):
+    """`inici,fi,bpm` → `[(ini, fi, bpm), …]` (buit si no hi és o és dolent)."""
+    out = []
+    if not ruta or not os.path.isfile(ruta):
+        return out
+    with open(ruta, encoding="utf-8") as f:
+        for fila in csv.reader(f):
+            if len(fila) < 3 or fila[0].startswith("inici"):
+                continue
+            try:
+                out.append((float(fila[0]), float(fila[1]), float(fila[2])))
+            except ValueError:
+                continue
+    return out
+
+
+def llegeix_compas_csv(ruta):
+    """`inici,fi,num,den` → `[(ini, fi, num, den), …]` (buit si no hi és)."""
+    out = []
+    if not ruta or not os.path.isfile(ruta):
+        return out
+    with open(ruta, encoding="utf-8") as f:
+        for fila in csv.reader(f):
+            if len(fila) < 4 or fila[0].startswith("inici"):
+                continue
+            try:
+                out.append((float(fila[0]), float(fila[1]),
+                            int(round(float(fila[2]))),
+                            int(round(float(fila[3])))))
+            except ValueError:
+                continue
+    return out
+
+
+def desa_tempo_map(carpeta, trams):
+    """Desa els dos mapes (tempo + compàs) d'una carpeta de projecte."""
+    os.makedirs(carpeta, exist_ok=True)
+    desa_tempo_csv(os.path.join(carpeta, NOM_CSV_TEMPO), trams)
+    desa_compas_csv(os.path.join(carpeta, NOM_CSV_COMPAS), trams)
+
+
+def llegeix_tempo_map(carpeta, bpm, num, den, durada):
+    """Trossos del mapa d'una carpeta; si no hi ha fitxers, un sol tros
+    (`bpm`, `num/den`) que cobreix `[0, durada)` — el cas constant d'avui."""
+    tempo = llegeix_tempo_csv(os.path.join(carpeta or "", NOM_CSV_TEMPO))
+    compas = llegeix_compas_csv(os.path.join(carpeta or "", NOM_CSV_COMPAS))
+    if not tempo or not compas:
+        return [(0.0, float(durada or 0.0), float(bpm), int(num), int(den))]
+    trams = []
+    for t, c in zip(tempo, compas):
+        trams.append((float(t[0]), float(t[1]), float(t[2]),
+                      int(c[2]), int(c[3])))
+    return trams or [(0.0, float(durada or 0.0), float(bpm), int(num), int(den))]
+
+
 def neteja_wavs(dest_dir):
     if not os.path.isdir(dest_dir):
         return

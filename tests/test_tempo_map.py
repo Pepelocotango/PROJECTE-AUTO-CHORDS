@@ -143,5 +143,33 @@ class TestSnapIConversions(unittest.TestCase):
         self.assertAlmostEqual(tm.t_de_pos(3, 2), 4.5)
 
 
+class TestPersistencia(unittest.TestCase):
+    """Fase 2: `tempo.csv` (`inici,fi,bpm`) i `compas.csv` (`inici,fi,num,den`)."""
+
+    def test_round_trip(self):
+        import tempfile
+        td = tempfile.mkdtemp()
+        trams = [(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 90.0, 3, 4)]
+        pipeline.desa_tempo_map(td, trams)
+        self.assertTrue(os.path.isfile(os.path.join(td, "tempo.csv")))
+        self.assertTrue(os.path.isfile(os.path.join(td, "compas.csv")))
+        self.assertEqual(pipeline.llegeix_tempo_map(td, 120, 4, 4, 8.0), trams)
+
+    def test_sense_fitxers_es_constant(self):
+        import tempfile
+        td = tempfile.mkdtemp()                    # carpeta buida
+        self.assertEqual(pipeline.llegeix_tempo_map(td, 100.0, 3, 4, 20.0),
+                         [(0.0, 20.0, 100.0, 3, 4)])
+
+    def test_tempo_csv_format(self):
+        import tempfile
+        td = tempfile.mkdtemp()
+        ruta = os.path.join(td, "tempo.csv")
+        pipeline.desa_tempo_csv(ruta, [(0.0, 2.5, 105.315, 4, 4)])
+        with open(ruta, encoding="utf-8") as f:
+            linia = f.read().strip()
+        self.assertEqual(linia, "0.00,2.50,105.315")
+
+
 if __name__ == "__main__":
     unittest.main()

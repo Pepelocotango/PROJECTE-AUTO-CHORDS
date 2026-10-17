@@ -92,7 +92,8 @@ class TestSenseAnalisi(_Base):
         w, p = self._finestra_amb_projecte(amb_csv=False)
         self.assertTrue(w.b_export.isEnabled(), "es pot exportar sense analitzar")
         self.assertTrue(w.b_export_part.isEnabled())
-        for nom in ("acords.csv", "estructura_ABC.csv"):
+        for nom in ("acords.csv", "estructura_ABC.csv", "tempo.csv",
+                    "compas.csv"):
             self.assertTrue(os.path.isfile(os.path.join(p.carpeta, nom)), nom)
 
     def test_sense_analisi_no_cal_la_capa_crua(self):

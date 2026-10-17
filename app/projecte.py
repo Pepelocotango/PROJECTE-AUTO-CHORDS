@@ -301,7 +301,8 @@ class Projecte:
 
     # Fitxers del projecte que es guarden a cada còpia (model + anàlisi crua).
     _FITXERS_BACKUP = (NOM_CSV_ACORDS, NOM_CSV_ESTRUCTURA, "segments.csv",
-                       "acords_locators.txt")
+                       "acords_locators.txt",
+                       pipeline.NOM_CSV_TEMPO, pipeline.NOM_CSV_COMPAS)
 
     def _materials_backup(self):
         """(noms de fitxers, carpetes) del projecte que es guarden a una còpia."""

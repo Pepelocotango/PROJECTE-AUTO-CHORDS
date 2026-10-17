@@ -29,8 +29,12 @@ en mode «BPM·compàs».
    `bpm(t)` / `signatura(t)`, `snap(t, divisió)` i `des_de_maps(tempo, compàs)`.
    Tests: `tests/test_tempo_map.py` (16; inclou l'**equivalència** amb
    `pipeline.pos_compas` al cas constant i el compàs correcte 6/8).
-2. ⏳ **Persistència**: `tempo.csv` (`inici,fi,bpm`) i `compas.csv`
-   (`inici,fi,num,den`) + `.acproj`, amb lectors/escriptors alhora (patró S3).
+2. ✅ **FET — Persistència**: `tempo.csv` (`inici,fi,bpm`) i `compas.csv`
+   (`inici,fi,num,den`) a la carpeta del projecte i a les còpies de seguretat
+   (`.acproj` ja porta `tempo: {bpm,bpb,offset}`). Lectors/escriptors alhora
+   (`pipeline.desa_tempo_map`/`llegeix_tempo_map`); el visor carrega el mapa
+   (o un **sol tros** amb el BPM·compàs actual → zero canvi visible) i el desa
+   a cada edició.
 3. ⏳ **Graella i regle**: `timeline_base`/layers i `pipeline.pos_compas`
    mapa-conscients.
 4. ⏳ **UI**: pista de **Tempo** i de **Compàs** al timeline (marcador + vores
@@ -47,4 +51,5 @@ en mode «BPM·compàs».
 - Què fa el **mode fàcil** quan hi ha mapa (regularitza amb el tempo local).
 
 ## Estat
-- **Fase 1 FET** (motor + tests). La resta de l'app, intacta.
+- **Fases 1 i 2 FETES** (motor + persistència; suite verda).
+- L'app es comporta igual que abans (BPM·compàs constant = un sol tros).
