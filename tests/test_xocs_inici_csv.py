@@ -50,7 +50,7 @@ def _visor(acords=((0.0, "C"), (E7_T, "E7"))):
     ca = os.path.join(sortida, "acords.csv")
     with open(ca, "w", encoding="utf-8") as f:
         for t, nom in acords:
-            f.write(f"{t},{nom}\n")
+            f.write(f"{t},{t + 1},{nom}\n")
     sa = os.path.join(sortida, "estructura_ABC.csv")
     with open(sa, "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
@@ -137,7 +137,7 @@ class TestExportMaiEscriuClipsBuits(_Base):
         td = tempfile.mkdtemp()
         cs = os.path.join(td, "acords.csv")
         with open(cs, "w", encoding="utf-8") as f:
-            f.write("0.00,C\n5.00,E7\n5.00,DUP\n")
+            f.write("0.00,5.00,C\n5.00,5.00,E7\n5.00,5.00,DUP\n")
         dest = os.path.join(td, "wavs")
         pipeline.fer_wavs_acords_lliures(cs, 10.0, dest, 44100,
                                         lambda _m: None)

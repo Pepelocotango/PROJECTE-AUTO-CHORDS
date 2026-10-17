@@ -11,7 +11,9 @@ slots_bar = bpb * 2
 # — vegeu `app/xifrat.py`). Abans hi havia un `style()` que reescrivia
 # `Am`→`A-`/`Cmaj7`→`CMaj7` aquí; ara la normalització és al MODEL, no a
 # l'export, i així el CSV i els fitxers exportats coincideixen.
-rows = [(float(t), c.strip()) for t, c in csv.reader(open(src, encoding="utf-8"))]
+rows = [(float(r[0]), r[2].strip())
+        for r in csv.reader(open(src, encoding="utf-8"))
+        if len(r) >= 3 and not r[0].startswith("inici")]
 segs, last, end = [], -1, 0
 for t, c in rows:
     p = max(0, round((t - offset) / step))

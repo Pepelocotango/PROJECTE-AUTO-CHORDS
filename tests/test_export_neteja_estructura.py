@@ -32,7 +32,7 @@ def _finestra(amb_estructura):
     s = pipeline.carpeta_sortida(wav)
     os.makedirs(s, exist_ok=True)
     with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
-        f.write("0.0,C\n2.0,Am\n")
+        f.write("0.0,2.0,C\n2.0,4.0,Am\n")
     # restes d'un export ANTERIOR amb estructura
     with open(os.path.join(s, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")

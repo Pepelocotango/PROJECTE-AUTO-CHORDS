@@ -183,7 +183,7 @@ class TestMigracioAutochords(BaseProjecte):
         carp = pipeline.carpeta_sortida(wav)      # AUTOCHORDS_tema/
         os.makedirs(carp, exist_ok=True)
         with open(os.path.join(carp, "acords.csv"), "w", encoding="utf-8") as f:
-            f.write("0.0,C\n1.0,Am\n")
+            f.write("0.0,1.0,C\n1.0,5.0,Am\n")
         with open(os.path.join(carp, "estructura_ABC.csv"), "w",
                   encoding="utf-8") as f:
             f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")

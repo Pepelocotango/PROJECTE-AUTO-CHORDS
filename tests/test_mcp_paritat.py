@@ -24,7 +24,7 @@ from app import mcp_bridge  # noqa: E402
 
 DURADA_S = 10
 # C[0,2) Am[2,4) F[4,6) G[6,8) Em[8,10)
-ACORDS = "0.0,C\n2.0,Am\n4.0,F\n6.0,G\n8.0,Em\n"
+ACORDS = "0.0,2.0,C\n2.0,4.0,Am\n4.0,6.0,F\n6.0,8.0,G\n8.0,10.0,Em\n"
 SECCIONS = ("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.0,4.0,4.0,A,A,1.1,5.1\n"
             "4.0,8.0,4.0,B,B,5.1,9.1\n"

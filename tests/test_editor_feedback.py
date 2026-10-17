@@ -30,7 +30,7 @@ def _visor():
     os.makedirs(s, exist_ok=True)
     ca = os.path.join(s, "acords.csv")
     with open(ca, "w", encoding="utf-8") as f:
-        f.write("0.0,C\n4.0,Am\n")
+        f.write("0.0,4.0,C\n4.0,20.0,Am\n")
     sa = os.path.join(s, "estructura_ABC.csv")
     with open(sa, "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"

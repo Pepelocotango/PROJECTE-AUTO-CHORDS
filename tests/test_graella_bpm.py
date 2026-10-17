@@ -49,6 +49,18 @@ class TestGraellaBpmExtrems(unittest.TestCase):
                          "compas")
 
 
+def _model_csv(cru):
+    """Cru `t,acord` -> format del MODEL `inici,fi,acord` (S3)."""
+    files = [ln for ln in cru.strip().splitlines() if ln.strip()]
+    ts = [float(ln.split(",")[0]) for ln in files]
+    out = []
+    for i, ln in enumerate(files):
+        t, nom = ln.split(",", 1)
+        fi = ts[i + 1] if i + 1 < len(ts) else ts[-1] + 1.0
+        out.append(f"{t},{fi},{nom}")
+    return "\n".join(out) + "\n"
+
+
 def _visor(bpm, bpb, tempo_fix, acords, durada):
     td = tempfile.mkdtemp()
     wav = os.path.join(td, "tema.wav")
@@ -61,7 +73,7 @@ def _visor(bpm, bpb, tempo_fix, acords, durada):
         w.writeframes(b"\x00\x00" * int(44100 * durada))
     ca = os.path.join(out, "acords.csv")
     with open(ca, "w", encoding="utf-8") as f:
-        f.write(acords)
+        f.write(_model_csv(acords))
     v = visor_mod.Visor(wav, ca, None, bpm=bpm, bpb=bpb, tempo_fix=tempo_fix)
     v.td, v.sortida = td, out
     # capa crua

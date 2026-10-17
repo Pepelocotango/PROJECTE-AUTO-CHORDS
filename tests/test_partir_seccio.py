@@ -52,7 +52,7 @@ def _visor(seccions=None):
     os.makedirs(sortida, exist_ok=True)
     ca = os.path.join(sortida, "acords.csv")
     with open(ca, "w", encoding="utf-8") as f:
-        f.write("0.0,C\n4.0,Am\n")
+        f.write("0.0,4.0,C\n4.0,10.0,Am\n")
     sa = os.path.join(sortida, "estructura_ABC.csv")
     with open(sa, "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
@@ -70,7 +70,7 @@ def _finestra():
     ac = os.path.join(td, "AUTOCHORDS_t")
     os.makedirs(ac)
     with open(os.path.join(ac, "acords.csv"), "w", encoding="utf-8") as f:
-        f.write("0.0,C\n4.0,Am\n")
+        f.write("0.0,4.0,C\n4.0,10.0,Am\n")
     with open(os.path.join(ac, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
         for ini, fi, L, fam in SECCIONS:

@@ -39,7 +39,7 @@ class _Base(unittest.TestCase):
         ca = os.path.join(out, "acords.csv")
         with open(ca, "w", encoding="utf-8") as f:
             for k in range(n_ac):
-                f.write(f"{k:.2f},{patrons[k % 4]}\n")
+                f.write(f"{k:.2f},{k + 1:.2f},{patrons[k % 4]}\n")
         sa = os.path.join(out, "estructura_ABC.csv")
         with open(sa, "w", encoding="utf-8") as f:
             f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")

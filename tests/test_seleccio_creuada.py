@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import QListWidget, QMenu  # noqa: E402
 from app import visor as visor_mod  # noqa: E402
 
 # acords: 0 C · 2 Am · 4.5 F · 7 G · 10 C   |   seccions: A 0-5 · B 5-10 · C 10-20
-ACORDS = "0.0,C\n2.0,Am\n4.5,F\n7.0,G\n10.0,C\n"
+ACORDS = "0.0,2.0,C\n2.0,4.5,Am\n4.5,7.0,F\n7.0,10.0,G\n10.0,20.0,C\n"
 SECCIONS = ("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.0,5.0,5.0,A,A,1.1,5.1\n"
             "5.0,10.0,5.0,B,B,5.1,10.1\n"

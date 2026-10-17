@@ -1332,10 +1332,13 @@ def style(c):
 def segments_lliures(csv_path, total_s, log):
     # com acords_a_live.py però en segons, sense graella: N s'absorbeix,
     # repetits seguits es fusionen, capçalera N si cal.
+    # El CSV del model és `inici,fi,acord` (S3): el fi es re-deriva.
     segs = []
     with open(csv_path, encoding="utf-8") as f:
-        for t, c in csv.reader(f):
-            t, c = float(t), c.strip()
+        for row in csv.reader(f):
+            if len(row) < 3 or row[0].startswith("inici"):
+                continue
+            t, c = float(row[0]), row[2].strip()
             if c == "N" or (segs and segs[-1][1] == style(c)):
                 continue
             segs.append([t, style(c)])
@@ -1433,7 +1436,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         acords_n, seccions_n = normalitza_cobertura(
             acords or [], seccions or [], total_s or 0.0, log=log)
         if acords is not None:
-            desa_acords_csv(csv_ac, acords_n)
+            desa_acords_csv(csv_ac, acords_n, total_s or 0.0)
         if seccions is not None:
             seccions = seccions_n
     if not os.path.isfile(csv_ac):
@@ -1453,7 +1456,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
             total_s = 0.0
             with open(csv_ac, encoding="utf-8") as f:
                 for row in csv.reader(f):
-                    if not row or row[0].startswith("posici"):
+                    if not row or row[0].startswith(("posici", "inici")):
                         continue
                     try:
                         total_s = max(total_s, float(row[0]))
@@ -1563,21 +1566,26 @@ def regularitza_acords_csv(csv_cru, csv_desti, bpm, bpb, offset, ritme, durada,
     res = graella.regularitza_acords(items, bpm, bpb, offset,
                                      ritme or "compas", durada, log=log)
     acords, _ = normalitza_cobertura(res, [], durada, log=log)
-    desa_acords_csv(csv_desti, [(float(t), str(n)) for (t, n) in acords])
+    desa_acords_csv(csv_desti, [(float(t), str(n)) for (t, n) in acords], durada)
     return acords
 
 
-def desa_acords_csv(ruta, items):
-    """Desa (temps, acord) amb el temps arrodonit a TEMPS_DEC decimals.
+def desa_acords_csv(ruta, items, durada=0.0):
+    """Desa el model d'acords com a CLIPS: `inici,fi,acord` (S3).
 
-    S'ha unificat la resolució amb estructura_ABC.csv (10 ms) perquè els
-    límits de secció i els temps d'acord siguin coherents.
+    El `fi` és el **derivat** de la cadena de fronteres: l'inici del següent
+    clip i, per a l'últim, la `durada` de la WAV. Els temps van arrodonits a
+    `TEMPS_DEC` decimals (10 ms), la mateixa resolució que `estructura_ABC.csv`.
     """
+    items = [tuple(it) for it in items]
+    durada = float(durada or 0.0)
+
     def _escriu(f):
         w = csv.writer(f)
-        for it in items:
-            t, c = it[0], it[1]
-            w.writerow([f"{float(t):.{TEMPS_DEC}f}", c])
+        for i, it in enumerate(items):
+            t, c = float(it[0]), it[1]
+            fi = float(items[i + 1][0]) if i + 1 < len(items) else durada
+            w.writerow([f"{t:.{TEMPS_DEC}f}", f"{fi:.{TEMPS_DEC}f}", c])
     escriu_atomic(ruta, _escriu)
 
 

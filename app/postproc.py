@@ -16,7 +16,6 @@ Tot són funcions pures (llistes -> llistes), fàcils de provar.
 """
 
 import csv
-import os
 import re
 
 _RE_BAIX = re.compile(r"/[A-G][#b]?$")
@@ -107,15 +106,11 @@ def processa_acords_csv(ruta, durada_min=0.0, fusiona_iguals=True,
     if snap and bpm:
         items = snap_acords(items, bpm, bpb, offset, divisio)
     # INVARIANT de COBERTURA: els acords cobreixen tota la WAV (0 → durada).
+    from app import pipeline           # import local: evita cicle d'imports
     if durada:
-        from app import pipeline           # import local: evita cicle d'imports
         items, _ = pipeline.normalitza_cobertura(items, [], durada, log=log)
-    tmp = ruta + ".tmp"
-    with open(tmp, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        for it in items:
-            w.writerow([f"{float(it[0]):.9f}", it[1]])
-    os.replace(tmp, ruta)
+    # El MODEL sempre s'escriu com a clips `inici,fi,acord` (S3).
+    pipeline.desa_acords_csv(ruta, items, durada)
     if log and len(items) != n_abans:
         log(f"  neteja d'acords: {n_abans} -> {len(items)}")
     return items

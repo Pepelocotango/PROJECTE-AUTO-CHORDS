@@ -86,7 +86,7 @@ class ExportPipelineTests(unittest.TestCase):
                 w.writeframes(b"\x00\x00" * 1000)
             out = Path(td) / "AUTOCHORDS_tema"
             out.mkdir()
-            (out / "acords.csv").write_text("0.0,C\n", encoding="utf-8")
+            (out / "acords.csv").write_text("0.0,2.0,C\n", encoding="utf-8")
             (out / "estructura_ABC.csv").write_text(
                 "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n0.0,2.0,2.0,A,N,1.1.1,2.1.1\n",
                 encoding="utf-8",
@@ -140,8 +140,8 @@ class ExportPipelineTests(unittest.TestCase):
 
             with csv_ac.open("w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
-                writer.writerow(["0.0", "C"])
-                writer.writerow(["2.0", "Am"])
+                writer.writerow(["0.0", "2.0", "C"])
+                writer.writerow(["2.0", "4.0", "Am"])
 
             with csv_seg.open("w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
@@ -176,8 +176,8 @@ class ExportPipelineTests(unittest.TestCase):
             csv_seg = base / "segments.csv"
             with csv_ac.open("w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)
-                w.writerow(["1.5", "C"])          # 1r acord NO a 0 -> capçalera N
-                w.writerow(["5.0", "G"])
+                w.writerow(["1.5", "5.0", "C"])    # 1r acord NO a 0 -> capçalera N
+                w.writerow(["5.0", "10.0", "G"])
             with csv_seg.open("w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)
                 w.writerow(["0.0", "3.0", "0", "N1"])
@@ -249,7 +249,7 @@ class ExportPipelineTests(unittest.TestCase):
                 wv_w.writeframes(b"\x00\x00" * 44100 * 2)
             out = Path(td) / "AUTOCHORDS_tema"
             out.mkdir()
-            (out / "acords.csv").write_text("0.0,C\n", encoding="utf-8")
+            (out / "acords.csv").write_text("0.0,2.0,C\n", encoding="utf-8")
             (out / "estructura_ABC.csv").write_text(
                 "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
                 "0.0,2.0,2.0,A,N,1.1,2.1\n",
@@ -417,7 +417,7 @@ class ExportPipelineTests(unittest.TestCase):
             base = Path(td)
             (base / "AUTOCHORDS_tema").mkdir()
             (base / "AUTOCHORDS_tema" / "acords.csv").write_text(
-                "0.0,C\n2.0,Am\n", encoding="utf-8"
+                "0.0,2.0,C\n2.0,4.0,Am\n", encoding="utf-8"
             )
             (base / "AUTOCHORDS_tema" / "segments.csv").write_text(
                 "0.0,2.0,0,N1\n2.0,4.0,1,A\n", encoding="utf-8"
@@ -716,7 +716,7 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
             w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         with open(os.path.join(sortida, "acords.csv"), "w", encoding="utf-8") as f:
-            f.write("0.0,C\n2.0,Am\n4.5,F\n7.0,G\n10.0,C\n")
+            f.write("0.0,2.0,C\n2.0,4.5,Am\n4.5,7.0,F\n7.0,10.0,G\n10.0,20.0,C\n")
         with open(os.path.join(sortida, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
             f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
             f.write("0.0,5.0,5.0,A,A,1.1,5.1\n")
@@ -1110,7 +1110,7 @@ class OffsetDosCampsTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 30)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "9.5,Am\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "9.5,15.0,Am\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -1163,7 +1163,7 @@ class OffsetLlistesTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 30)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "9.5,Am\n12.0,C\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "9.5,12.0,Am\n12.0,15.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -1474,7 +1474,7 @@ class UndoInfoTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 10)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,4.0,C\n4.0,8.0,Am\n8.0,12.0,G\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -1534,7 +1534,7 @@ class InfoBoxTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n8.0,G\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,8.0,C\n8.0,16.0,G\n")
         _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.0,8.0,8.0,A,N,1,1\n")
@@ -1641,7 +1641,7 @@ class PlayCoherenciaTests(unittest.TestCase):
                                               44100 * 3)) * 8000).astype(
                 np.int16).tobytes() * 2)
         cls._ac = os.path.join(cls._d, "ACORDS"); os.makedirs(cls._ac)
-        _escriu_fitxer(os.path.join(cls._ac, "acords.csv"), "0.0,C\n")
+        _escriu_fitxer(os.path.join(cls._ac, "acords.csv"), "0.0,4.0,C\n")
     def _visor(self):
         return visor.Visor(self._wav, os.path.join(self._ac, "acords.csv"),
                            None, 120, 4)
@@ -1785,7 +1785,7 @@ class BpmDoblaTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 5)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,4.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -2073,7 +2073,7 @@ class PostprocTests(unittest.TestCase):
         postproc.processa_acords_csv(f, sense_baix=True, reduir=True,
                                      durada_min=1.0, fusiona_iguals=True)
         with open(f, encoding="utf-8") as fh:
-            noms = [r[1] for r in csv.reader(fh)]
+            noms = [r[2] for r in csv.reader(fh)]
         self.assertEqual(noms, ["A", "G"])
 
 
@@ -2285,7 +2285,7 @@ class BotoOnOffTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 10)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,4.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -2375,7 +2375,7 @@ class LlistaSeleccioTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,4.0,C\n4.0,8.0,Am\n8.0,12.0,G\n")
         _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.00,4.00,4.00,A,N,1,1\n4.00,20.00,16.00,B,B,1,1\n")
@@ -2425,7 +2425,7 @@ class OffsetBotoCursorTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,4.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -2462,7 +2462,7 @@ class TapTempoTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 10)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,4.0,C\n")
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
@@ -2534,7 +2534,7 @@ class EditorFranjaTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,4.0,C\n4.0,8.0,Am\n8.0,12.0,G\n")
         _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.00,4.00,4.00,A,N,1,1\n4.00,20.00,16.00,B,B,1,1\n")
@@ -2632,7 +2632,7 @@ class MenuEdicioTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,C\n4.0,Am\n8.0,G\n")
+        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,4.0,C\n4.0,8.0,Am\n8.0,12.0,G\n")
         _escriu_fitxer(os.path.join(ac, "estructura_ABC.csv"),
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.00,4.00,4.00,A,N,1,1\n4.00,20.00,16.00,B,B,1,1\n")
@@ -2848,7 +2848,7 @@ class ContextMenuTests(unittest.TestCase):
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 2)
         ac = os.path.join(td, "acords.csv")
-        _escriu_fitxer(ac, "0.0,C\n2.0,Am\n")
+        _escriu_fitxer(ac, "0.0,2.0,C\n2.0,4.0,Am\n")
         return visor.Visor(wav, ac, None, 120, 4, False)
 
     def _captura(self, v, kind, idx):
@@ -2934,12 +2934,12 @@ class FormatCsvTests(unittest.TestCase):
             (16.439727891, "E7", "16.439727891"),
         ])
         files = open(ruta, encoding="utf-8").read().strip().splitlines()
-        self.assertEqual(files[0], "0.00,C")
-        self.assertEqual(files[1], "16.44,E7")
+        self.assertEqual(files[0], "0.00,16.44,C")
+        self.assertEqual(files[1], "16.44,0.00,E7")   # durada=0 -> fi 0
         for linia in files:
-            t = linia.split(",")[0]
-            self.assertLessEqual(len(t.split(".")[1]), 2,
-                                 f"mes de 2 decimals: {linia}")
+            for cell in linia.split(",")[:2]:
+                self.assertLessEqual(len(cell.split(".")[1]), 2,
+                                     f"mes de 2 decimals: {linia}")
 
     def test_abc_csv_te_2_decimals(self):
         import tempfile
@@ -2988,7 +2988,7 @@ class UndoRedoTests(unittest.TestCase):
             w.setframerate(44100)
             w.writeframes(b"\x00\x00" * 44100 * 20)
         with open(os.path.join(sortida, "acords.csv"), "w", encoding="utf-8") as f:
-            f.write("0.0,C\n2.0,Am\n4.5,F\n7.0,G\n10.0,C\n")
+            f.write("0.0,2.0,C\n2.0,4.5,Am\n4.5,7.0,F\n7.0,10.0,G\n10.0,20.0,C\n")
         with open(os.path.join(sortida, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
             f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
             f.write("0.0,5.0,5.0,A,A,1.1,5.1\n")

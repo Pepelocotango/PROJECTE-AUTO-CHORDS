@@ -34,7 +34,7 @@ def _csv_acords(ruta, items):
     with open(ruta, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         for t, c in items:
-            w.writerow([f"{float(t):.9f}", c])
+            w.writerow([f"{float(t):.9f}", f"{float(t):.9f}", c])
 
 
 def _csv_segments(ruta, seccions):
@@ -75,7 +75,9 @@ class TestCoberturaViu(unittest.TestCase):
         self.assertEqual(v.acords[0][1], "N")
         with open(v.csv_acords, encoding="utf-8") as f:
             primera = f.readline().strip()
-        self.assertTrue(primera.startswith("0.00,N"), primera)
+        cols = primera.split(",")
+        self.assertEqual(cols[0], "0.00")
+        self.assertEqual(cols[2], "N")
 
     def test_export_usa_el_model_no_el_csv_vell(self):
         v = self._visor(seccions=[(0.0, 3.0, "A", "A")])
@@ -112,7 +114,9 @@ class TestCoberturaViu(unittest.TestCase):
             acords=[(0.5, "C", "0.5")], seccions=None)
         with open(ca, encoding="utf-8") as f:
             primera = f.readline().strip()
-        self.assertTrue(primera.startswith("0.00,N"), primera)
+        cols = primera.split(",")
+        self.assertEqual(cols[0], "0.00")
+        self.assertEqual(cols[2], "N")
 
     def test_export_sense_model_segueix_llegint_el_csv(self):
         # Retrocompatibilitat: sense `acords`/`seccions` es llegeix el CSV (com abans).

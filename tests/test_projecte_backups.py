@@ -65,7 +65,7 @@ class TestBackups(unittest.TestCase):
     def test_fes_backup_guarda_document_model_i_crua(self):
         p = self._projecte()
         with open(p.ruta_csv_acords(), "w", encoding="utf-8") as f:
-            f.write("0.0,C\n1.0,Am\n")
+            f.write("0.0,1.0,C\n1.0,5.0,Am\n")
         with open(p.ruta_csv_estructura(), "w", encoding="utf-8") as f:
             f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
             f.write("0.0,5.0,5.0,A,A,1.1,1.5\n")

@@ -35,7 +35,7 @@ def _csv_ac(ruta, items):
     with open(ruta, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         for t, c in items:
-            w.writerow([f"{float(t):.9f}", c])
+            w.writerow([f"{float(t):.9f}", f"{float(t):.9f}", c])
 
 
 def _cs_seg(ruta, seccions):

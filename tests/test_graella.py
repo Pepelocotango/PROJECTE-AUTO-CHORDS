@@ -170,7 +170,7 @@ def _visor(raw=None, bpm=120.0, bpb=4):
     ca = os.path.join(out, "acords.csv")
     sa = os.path.join(out, "estructura_ABC.csv")
     with open(ca, "w", encoding="utf-8") as f:
-        f.write("0.0,C\n2.0,G\n4.0,Am\n6.0,F\n")
+        f.write("0.0,2.0,C\n2.0,4.0,G\n4.0,6.0,Am\n6.0,8.0,F\n")
     with open(sa, "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
                 "0.0,8.0,8.0,A,A,1.1,5.1\n")

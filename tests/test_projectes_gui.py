@@ -239,7 +239,7 @@ class TestObrirProjecteHabilitaExport(_Base):
         p = projecte.Projecte.crea(os.path.join(os.path.dirname(wav), "P"),
                                    wav, bpm=120.0)
         with open(p.ruta_csv_acords(), "w", encoding="utf-8") as fh:
-            fh.write("0.0,C\n2.0,G\n")
+            fh.write("0.0,2.0,C\n2.0,4.0,G\n")
         f = _finestra()
         f.avisa = lambda *a, **k: None
         self.assertFalse(f.b_export.isEnabled(), "abans d'obrir, apagat")
@@ -259,7 +259,7 @@ class TestObrirProjecteHabilitaExport(_Base):
         p = projecte.Projecte.crea(os.path.join(os.path.dirname(wav), "P"),
                                    wav, bpm=120.0)
         with open(p.ruta_csv_acords(), "w", encoding="utf-8") as fh:
-            fh.write("1.0,C\n")          # 1r acord NO a 0 → força normalització
+            fh.write("1.0,5.0,C\n")          # 1r acord NO a 0 → força normalització
         f = _finestra()
         f.avisa = lambda *a, **k: None
         f._activa_projecte(projecte.Projecte.obre(p.ruta_acproj))

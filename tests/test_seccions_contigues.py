@@ -74,7 +74,7 @@ def _visor(seccions=None):
     os.makedirs(sortida, exist_ok=True)
     ca = os.path.join(sortida, "acords.csv")
     with open(ca, "w", encoding="utf-8") as f:
-        f.write("0.0,C\n")
+        f.write("0.0,10.0,C\n")
     sa = os.path.join(sortida, "estructura_ABC.csv")
     _escriu_abc(sa, SECCIONS if seccions is None else seccions)
     v = visor_mod.Visor(wav, ca, sa, 120.0, 4, True)

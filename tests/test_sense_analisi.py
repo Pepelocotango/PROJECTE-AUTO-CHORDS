@@ -46,7 +46,7 @@ class _Base(unittest.TestCase):
                                    wav, bpm=120.0)
         if amb_csv:
             with open(p.ruta_csv_acords(), "w", encoding="utf-8") as f:
-                f.write("0.0,C\n4.0,G\n")
+                f.write("0.0,4.0,C\n4.0,4.0,G\n")
             with open(os.path.join(p.carpeta, "estructura_ABC.csv"), "w",
                       encoding="utf-8") as f:
                 f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,"

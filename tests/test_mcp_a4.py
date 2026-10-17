@@ -73,7 +73,7 @@ class TestExportPartitura(_Base):
         os.makedirs(sortida, exist_ok=True)
         csv_ac = os.path.join(sortida, "acords.csv")
         with open(csv_ac, "w", encoding="utf-8") as f:
-            f.write("0.0,C\n")
+            f.write("0.0,4.0,C\n")
         loc = os.path.join(sortida, "acords_locators.txt")
         with open(loc, "w", encoding="utf-8") as f:
             f.write("posició acord durada\n")

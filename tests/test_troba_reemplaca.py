@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from app import visor as visor_mod  # noqa: E402
 
-ACORDS = "0.0,Cmaj7\n2.0,Am\n4.0,Cmaj7\n6.0,G\n"
+ACORDS = "0.0,2.0,Cmaj7\n2.0,4.0,Am\n4.0,6.0,Cmaj7\n6.0,8.0,G\n"
 SECCIONS = ("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.0,4.0,4.0,A,A,1.1,4.1\n"
             "4.0,8.0,4.0,D,D,4.1,8.1\n")

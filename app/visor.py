@@ -78,21 +78,22 @@ def llegeix_wav(ruta):
 
 
 def llegeix_acords(ruta):
-    # csv Chordino (temps,acord) o locators (posició acord durada) — tots dos valen
+    # Model d'acords com a CLIPS: `inici,fi,acord`. El model del visor són
+    # MARQUES (inici + nom): el `fi` de la columna 2 es re-deriva de la cadena.
     items = []
     with open(ruta, encoding="utf-8") as f:
         for fila in csv.reader(f):
-            if not fila or fila[0].startswith("posici"):
+            if len(fila) < 3 or fila[0].startswith("posici") \
+                    or fila[0].startswith("inici"):
                 continue
-            if len(fila) == 2:
-                try:
-                    items.append((float(fila[0]), fila[1].strip(), fila[0]))
-                except ValueError:
-                    # linia malmesa al CSV: no la podem parsejar. Abans
-                    # s'ignorava en silenci (perdua de dades invisible).
-                    logging.getLogger("auto_chords").warning(
-                        "acords: linia ignorada (no numerica): %r", fila)
-                    continue
+            try:
+                items.append((float(fila[0]), fila[2].strip(), fila[0]))
+            except ValueError:
+                # linia malmesa al CSV: no la podem parsejar. Abans
+                # s'ignorava en silenci (perdua de dades invisible).
+                logging.getLogger("auto_chords").warning(
+                    "acords: linia ignorada (no numerica): %r", fila)
+                continue
     return items
 
 
@@ -771,7 +772,8 @@ class Visor(QMainWindow):
         sortida = self._carpeta_acords()
         os.makedirs(sortida, exist_ok=True)
         self.csv_acords = os.path.join(sortida, "acords.csv")
-        pipeline.desa_acords_csv(self.csv_acords, self.acords)
+        pipeline.desa_acords_csv(self.csv_acords, self.acords,
+                                 self._durada_wav())
         # L'estructura també (així el CSV de seccions del disc queda normalitzat).
         try:
             pipeline.desa_abc_csv(os.path.join(sortida, "estructura_ABC.csv"),
@@ -3027,7 +3029,8 @@ class Visor(QMainWindow):
         sortida = self._carpeta_acords()
         os.makedirs(sortida, exist_ok=True)
         self.csv_acords = os.path.join(sortida, "acords.csv")
-        pipeline.desa_acords_csv(self.csv_acords, self.acords)
+        pipeline.desa_acords_csv(self.csv_acords, self.acords,
+                                 self._durada_wav())
         self.log(f"exporta → {sortida}")
         try:
             if self.seccions:

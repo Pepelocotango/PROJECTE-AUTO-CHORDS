@@ -29,7 +29,7 @@ def _finestra():
     ac = os.path.join(td, "AUTOCHORDS_t")
     os.makedirs(ac)
     with open(os.path.join(ac, "acords.csv"), "w", encoding="utf-8") as f:
-        f.write("0.0,C\n4.0,Am\n")
+        f.write("0.0,4.0,C\n4.0,30.0,Am\n")
     with open(os.path.join(ac, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
                 "0.00,15.00,15.00,A,A,1,1\n15.00,30.00,15.00,B,B,1,1\n")

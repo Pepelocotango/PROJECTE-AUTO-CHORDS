@@ -42,7 +42,7 @@ def _visor():
     os.makedirs(sortida, exist_ok=True)
     ca = os.path.join(sortida, "acords.csv")
     with open(ca, "w", encoding="utf-8") as f:
-        f.write("0.0,C\n4.0,Am\n")
+        f.write("0.0,4.0,C\n4.0,15.0,Am\n")
     sa = os.path.join(sortida, "estructura_ABC.csv")
     with open(sa, "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
@@ -54,7 +54,7 @@ def _visor():
 
 def _csv_acords(v):
     with open(v.csv_acords, encoding="utf-8") as f:
-        return [(float(r[0]), r[1]) for r in csv.reader(f) if r]
+        return [(float(r[0]), r[2]) for r in csv.reader(f) if r]
 
 
 class _Base(unittest.TestCase):

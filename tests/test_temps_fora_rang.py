@@ -60,7 +60,7 @@ def _visor(acords=((0.0, "C"), (4.0, "G")), seccions=None):
     ca = os.path.join(sortida, "acords.csv")
     with open(ca, "w", encoding="utf-8") as f:
         for t, nom in acords:
-            f.write(f"{t},{nom}\n")
+            f.write(f"{t},{t + 1},{nom}\n")
     if not acords:
         f_empty = open(ca, "w", encoding="utf-8")
         f_empty.close()

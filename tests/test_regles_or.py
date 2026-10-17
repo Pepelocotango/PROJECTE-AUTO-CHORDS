@@ -32,7 +32,7 @@ def _visor(dur=10.0):
     os.makedirs(sortida, exist_ok=True)
     ca = os.path.join(sortida, "acords.csv")
     with open(ca, "w", encoding="utf-8") as f:
-        f.write("0.0,C\n2.0,Am\n5.0,F\n")
+        f.write("0.0,2.0,C\n2.0,5.0,Am\n5.0,10.0,F\n")
     sa = os.path.join(sortida, "estructura_ABC.csv")
     with open(sa, "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
@@ -78,7 +78,7 @@ class TestRegla5FontDeVeritat(_Base):
         self.assertEqual(len(files), len(v.acords))
         for fila, model in zip(files, v.acords):
             self.assertAlmostEqual(float(fila[0]), float(model[0]), places=2)
-            self.assertEqual(fila[1], model[1])
+            self.assertEqual(fila[2], model[1])
 
 
 class TestRegla6WavsNomesViaExporta(_Base):

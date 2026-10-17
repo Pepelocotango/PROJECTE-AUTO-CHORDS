@@ -48,7 +48,7 @@ def _visor():
     ca = os.path.join(sortida, "acords.csv")
     with open(ca, "w", encoding="utf-8") as f:
         for t, nom, _src in ACORDS:
-            f.write(f"{t},{nom}\n")
+            f.write(f"{t},{t + 1},{nom}\n")
     sa = os.path.join(sortida, "estructura_ABC.csv")
     with open(sa, "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")

@@ -18,7 +18,7 @@ from app import visor as visor_mod  # noqa: E402
 
 # acords: 0 C · 2 Am · 4.5 F · 7 G · 10 C   |   durada 20 s
 # seccions: A 0-5 · B 5-10 · C 10-20
-ACORDS = "0.0,C\n2.0,Am\n4.5,F\n7.0,G\n10.0,C\n"
+ACORDS = "0.0,2.0,C\n2.0,4.5,Am\n4.5,7.0,F\n7.0,10.0,G\n10.0,20.0,C\n"
 SECCIONS = ("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.0,5.0,5.0,A,A,1.1,5.1\n"
             "5.0,10.0,5.0,B,B,5.1,10.1\n"
@@ -206,9 +206,9 @@ class TestCasosBuits(_Base):
 # 18.500 sobrevivia a 1,9 ms de la nova i la validació (≥ 10 ms) rebuixava
 # l'enganxat SENCER — i només ho deia al log (cap avís a pantalla).
 # ---------------------------------------------------------------------------
-ACORDS_OTIS = ("0.0,N\n13.25,Bbmaj7\n13.50,B\n15.75,C\n17.25,B/C#\n"
-               "17.50,Bbmaj7\n18.00,Bbmaj7\n18.50,A\n20.50,G\n22.50,B\n"
-               "25.25,C\n")
+ACORDS_OTIS = ("0.0,13.25,N\n13.25,13.50,Bbmaj7\n13.50,15.75,B\n15.75,17.25,C\n"
+               "17.25,17.50,B/C#\n17.50,18.00,Bbmaj7\n18.00,18.50,Bbmaj7\n18.50,20.50,A\n"
+               "20.50,22.50,G\n22.50,25.25,B\n25.25,30.00,C\n")
 SECCIONS_OTIS = ("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
                  "0.0,15.0,15.0,A,A,1.1,7.1\n"
                  "15.0,30.0,15.0,B,B,7.1,14.1\n")

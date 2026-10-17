@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from app import visor as visor_mod  # noqa: E402
 
-ACORDS = "0.0,C\n2.0,G\n4.0,Am\n"
+ACORDS = "0.0,2.0,C\n2.0,4.0,G\n4.0,20.0,Am\n"
 
 
 def _snapshot(v):

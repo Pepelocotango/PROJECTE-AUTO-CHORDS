@@ -30,7 +30,7 @@ DURADA = 10.0
 # C · Am · F · G · Em   (un clip de 2 s a 0, 2, 4, 6 i 8)
 BASE = [(0.0, "C", "0"), (2.0, "Am", "0"), (4.0, "F", "0"),
         (6.0, "G", "0"), (8.0, "Em", "0")]
-ACORDS = "0.0,C\n2.0,Am\n4.0,F\n6.0,G\n8.0,Em\n"
+ACORDS = "0.0,2.0,C\n2.0,4.0,Am\n4.0,6.0,F\n6.0,8.0,G\n8.0,10.0,Em\n"
 SECCIONS = ("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.0,5.0,5.0,A,A,1.1,5.1\n"
             "5.0,10.0,5.0,B,B,5.1,10.1\n")
