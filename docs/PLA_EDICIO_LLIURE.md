@@ -161,6 +161,16 @@ refusa l'operació** per la regla #4.
 
 ### 6.6 Ordre d'implementació revisat
 1. **Destí del moviment/redimensionat** (preservar durada + tallar/eliminar) ← el gruix
+   - ✅ **FET (17-10-2026) — el MOVIMENT.** Funció pura `pipeline.mou_bloc_acords`
+     (preserva la durada del bloc i, al destí, talla/elimina el que queda a sota;
+     tapa l'origen amb el veí). Al timeline: `_on_chord_body_drag` (avançament
+     visual sense tocar el model) + `_tanca_bloc` (resol el gest al `release`, que
+     pot canviar el nombre de marques → re-render diferit amb `QTimer`). L'`N` de
+     darrere/`-` els posa `normalitza_cobertura` al final de l'operació.
+     Tests: `tests/test_moviment_desti.py` (2 exemples de l'operador + vores +
+     tall/eliminació + clamp + gest/desfer) i `test_mou_grup_*` actualitzats.
+   - ⏳ **Pendent del mateix punt: el REDIMENSIONAT** (les vores del clip lliures,
+     amb `N` al costat) — ara les vores segueixen vivint del veí.
 2. **Esborrar**: treure el guard de l'últim (que els dos camins facin el mateix)
 3. **Duplicar/enganxar**: ja sobreescriuen; alinear amb 6.3
 4. **Seccions**: mateixa lògica, amb `-` per als forats

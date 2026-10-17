@@ -117,6 +117,13 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
   finestra (MATE: `<Alt>`; GNOME: `<Super>`) i `Ctrl+Shift` és lliure als 3
   sistemes. *Pendent: el mateix gest per a les seccions (avui arrossegar una
   secció la mou).*
+- **Arrossegar el COS d'un clip = moure el BLOC** (`PLA_EDICIO_LLIURE` §6.3): el
+  clip (o el bloc **contigu** seleccionat) es mou **preservant la seva durada** i,
+  al **destí**, el que queda **a sota** es **talla** (se'n conserva el tros de
+  fora) o **s'elimina** (si no en queda cap tros) — «**mana l'últim editat**».
+  L'**origen** el tanca el veí: **endavant**, l'anterior s'estira fins a l'inici
+  nou; **endarrere**, el posterior fins al final nou. El gest **ja no va limitat**
+  pels veïns. *(Pendent: les VORES del clip lliures amb `N` al costat.)*
 - La caixa d'informació (**`_info_panells`** → `_dreceres()`) llista **totes**
   les combinacions de tecles i de ratolí (també les del diàleg *Ajuda ▸
   Dreceres de teclat*: una sola font).

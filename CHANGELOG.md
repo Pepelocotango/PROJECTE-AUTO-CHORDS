@@ -15,6 +15,19 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   regenerades. *(Detall: l'informe; commits `bcd253d` + correccions següents.)*
 
 ### Afegit
+- **MCP: paritat d'ACCIONS amb la GUI — 16 eines noves (51 → 67)**
+  (`app/mcp_bridge.py` + `eines/mcp_auto_chords_server.py`). L'MCP ja pot fer
+  tot el que fa l'usuari: **porta-retalls** (`ac_copia_seleccio`,
+  `ac_retalla_seleccio`, `ac_enganxa_seleccio` amb `t_s` opcional),
+  **selecció/edició en bloc** (`ac_esborra_seleccio`, `ac_duplica_seleccio`,
+  `ac_renomena_seleccio`, `ac_selecciona_rang`, `ac_selecciona_loop`),
+  **edició fina** (`ac_nudge`, `ac_mou_bloc` — el DESTÍ del moviment §6.3,
+  `ac_troba_i_reemplaca`) i **estat/vista/opcions** (`ac_reverteix` sense
+  confirmació modal, `ac_neteja_loop`, `ac_set_eina`,
+  `ac_set_inclou_estructura`, `ac_set_inclou_partitura`). Cap eina obre
+  diàlegs; totes passen per les mateixes transaccions d'undo/desat que la GUI.
+  Exclusions a propòsit: Sortir, docks de vista i «Paràmetres…». Tests:
+  `tests/test_mcp_paritat.py` (22) + registre ampliat a `test_mcp_bridge`.
 - **`Esc` polivalent** (com als DAWs, per **ordre de prioritat**): anul·la (1) el
   **rang** en curs (`Ctrl`+arrossegar o l'eina «marc»), (2) un **loop a mig
   marcar** (el descarta i el **restaura** tal com era), (3) el **loop actiu** (el
@@ -224,6 +237,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   **`tests/test_regla11_paritat.py`**. `AGENTS.md` passa a 11 regles.
 
 ### Canviat
+- **Moviment d'un BLOC d'acords: destí amb tall/eliminació** (`PLA_EDICIO_LLIURE` §6.3):
+  en arrossegar el **cos** d'un clip (sol o dins d'una multi-selecció contigua) el
+  bloc es mou **preservant la seva durada** i, al **destí**, el que queda **a sota**
+  es **talla** (se'n conserva el tros de fora) o **s'elimina** (si no en queda cap
+  tros) — «**mana l'últim editat**». L'**origen** el tanca el veí: endavant, el clip
+  anterior s'estira fins a l'inici nou; endarrere, el posterior fins al final nou. El
+  gest ja **no va limitat** pels veïns. Nova funció pura `pipeline.mou_bloc_acords`
+  (el gest la resol **al release**, perquè pot eliminar marques i cal re-renderitzar);
+  el model de MARQUES fa que l'origen es tapi tot sol. Tests: `tests/test_moviment_desti.py`
+  (16) + `test_mou_grup_*` actualitzats.
 - **Caixa d'informació millorada (llegir-la al teu ritme)**: el **rotatori** ara
   gira cada **14 s** (abans 8, massa ràpid), el **1r panell s'adapta a l'eina
   vigent** del timeline («marc» vs «intel·ligent») i hi ha **més consells**

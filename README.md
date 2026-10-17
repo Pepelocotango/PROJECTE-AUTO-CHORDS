@@ -13,7 +13,7 @@ fitxer**— llestos per **arrossegar-los ordenats en una sola pista a qualsevol 
 també la **partitura de xifrats** (MusicXML; PDF/MSCZ si tens MuseScore).
 
 > **Novetats de la v0.7.0 (BETA)** — exportació **asíncrona** amb progrés ·
-> **51 eines per a agents** (MCP) · **desat atòmic** dels CSV (mai un fitxer a mitges) ·
+> **67 eines per a agents** (MCP) · **desat atòmic** dels CSV (mai un fitxer a mitges) ·
 > **desfer/refer complet** (BPM, compàs, offset i loop) · **parteix una secció** ·
 > **cursor del loop alineat amb el so**. Historial complet: [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -61,7 +61,7 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 - **Exporta clips WAV silenciosos** ordenats i nomenats per acord/secció → els arrossegues al teu DAW i hi tens l'harmonia marcada.
 - **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: [`docs/PROJECTES.md`](docs/PROJECTES.md).
 - **Partitura de xifrats**: MusicXML sempre; PDF/MSCZ amb MuseScore.
-- **Agents IA (MCP)**: l'app viva es pot controlar amb **51 eines** (analitzar, exportar, moure acords, etc.) des d'un agent compatible amb *Model Context Protocol*. Detall: [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md).
+- **Agents IA (MCP)**: l'app viva es pot controlar amb **67 eines** (analitzar, exportar, moure acords, etc.) des d'un agent compatible amb *Model Context Protocol*. Detall: [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md).
 - La interfície (menús, barres, dreceres) és a [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md).
 
 ## 💻 Requisits
@@ -100,7 +100,7 @@ procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i **[`docs/ESTAT_MULTI_SO.md
 | [`docs/NOTACIO_XIFRAT.md`](docs/NOTACIO_XIFRAT.md) | **Notació del xifrat**: la **forma canònica** (`Am`→`A-`, `Cmaj7`→`CMaj7`, `Bø`→`B-7b5`) i on s'aplica (model, noms de fitxer, partitura) |
 | [`docs/TIPUS_XIFRAT_ACORDS.md`](docs/TIPUS_XIFRAT_ACORDS.md) | **Catàleg de tipus d'acord**: variants de sintaxi, graus i `<kind>` MusicXML (per nivells + extres) |
 | [`docs/ESTAT_MULTI_SO.md`](docs/ESTAT_MULTI_SO.md) | Com es construeixen i l'estat dels 3 paquets (Linux/Windows/macOS) |
-| [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md) | El pont **MCP** i les seves 51 eines |
+| [`docs/MCP_AUTO_CHORDS.md`](docs/MCP_AUTO_CHORDS.md) | El pont **MCP** i les seves 67 eines |
 | [`docs/CI_WORKFLOWS.md`](docs/CI_WORKFLOWS.md) | Els workflows de GitHub Actions (build + release) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de versions |
 
