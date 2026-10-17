@@ -2241,11 +2241,17 @@ class Finestra(QMainWindow):
         self.registra(f"Còpia desada a: {desti}")
 
     def _reverteix(self):
-        """Torna el projecte a l'últim estat desat."""
+        """Torna el projecte a l'últim estat desat.
+
+        Amb el pont MCP actiu NO es demana confirmació (un diàleg modal deixaria
+        l'agent penjat): l'acció s'ha demanat explícitament i el descart és el
+        seu significat.
+        """
         if self.projecte is None:
             self.avisa_info("Auto Chords", "No hi ha cap projecte obert.")
             return
-        if self._te_canvis() and not self._confirma_descartar():
+        if (self._te_canvis() and not getattr(self, "mcp_actiu", False)
+                and not self._confirma_descartar()):
             return
         try:
             p = projecte.Projecte.obre(self.projecte.ruta_acproj)

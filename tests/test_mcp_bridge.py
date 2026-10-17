@@ -347,6 +347,12 @@ class TestRegistre(unittest.TestCase):
             "parteix_seccio", "fusiona_seccio",
             # Mode fàcil (graella) — 2026-10-15.
             "regularitza",
+            # Paritat d'ACCIONS amb la GUI — 2026-10-17.
+            "copia_seleccio", "retalla_seleccio", "enganxa_seleccio",
+            "esborra_seleccio", "duplica_seleccio", "renomena_seleccio",
+            "selecciona_rang", "selecciona_loop", "nudge", "mou_bloc",
+            "troba_i_reemplaca", "reverteix", "neteja_loop", "set_eina",
+            "set_inclou_estructura", "set_inclou_partitura",
         }
         self.assertEqual(set(mcp_bridge.OPERACIONS), esperades)
 

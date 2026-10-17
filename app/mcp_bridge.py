@@ -949,6 +949,253 @@ def _op_regularitza(ctx, params):
     return _op_status(ctx, {})
 
 
+# ── Paritat d'ACCIONS amb la GUI (2026-10-17) ────────────────────────────────
+# Totes les accions d'EDICIÓ/de vista que l'usuari té a la GUI i que encara no
+# tenien eina `ac_*`. Cap obre diàlegs: reben els paràmetres (noms, temps) o fan
+# servir l'estat vigent (selecció, cursor, porta-retalls intern). Les edicions
+# passen per les MATEIXES transaccions d'undo/desat que la GUI.
+def _kind_opt(params):
+    """`kind` opcional del paràmetre → 'chord' | 'section' | None."""
+    k = str(params.get("kind") or params.get("tipus") or "").strip().lower()
+    if k in ("chord", "acord", "acords"):
+        return "chord"
+    if k in ("section", "seccio", "secció", "seccions", "estructura"):
+        return "section"
+    if k:
+        raise BridgeError("«kind» ha de ser 'chord' o 'section'.")
+    return None
+
+
+def _sel_teclat(vr, kind=None):
+    """Clips del timeline actualment seleccionats (filtrats per `kind`)."""
+    keys = set(vr.timeline.selected_keys())
+    if kind:
+        keys = {k for k in keys if k[0] == kind}
+    return keys
+
+
+def _op_copia_seleccio(ctx, params):
+    """Copia la selecció al porta-retalls INTERN (Ctrl+C)."""
+    vr = _requereix_visor(ctx)
+    keys = _sel_teclat(vr)
+    if not keys:
+        raise BridgeError("No hi ha cap clip seleccionat per copiar.")
+    vr.timeline.copy_selection()
+    return {"ok": True, "copiats": len(keys),
+            "porta_retalls": bool(vr.timeline.has_clipboard())}
+
+
+def _op_retalla_seleccio(ctx, params):
+    """Retalla la selecció (Ctrl+X): la copia al porta-retalls i l'esborra."""
+    vr = _requereix_visor(ctx)
+    keys = _sel_teclat(vr)
+    if not keys:
+        raise BridgeError("No hi ha cap clip seleccionat per retallar.")
+    vr.timeline.cut_selection()
+    return _op_status(ctx, {})
+
+
+def _op_enganxa_seleccio(ctx, params):
+    """Enganxa el porta-retalls intern al cursor (Ctrl+V).
+
+    `t_s` (opcional) mou el cursor abans d'enganxar; sense paràmetre, enganxa
+    on hi ha el cursor. L'enganxat **sobreescriu** el tram (regla d'or #4).
+    """
+    vr = _requereix_visor(ctx)
+    if not vr.timeline.has_clipboard():
+        raise BridgeError(
+            "El porta-retalls intern és buit (cal copiar o retallar abans).")
+    if params.get("t_s") is not None:
+        vr.timeline.set_position(float(_num(params, "t_s", "t")))
+    vr.timeline.paste_at_cursor()
+    return _op_status(ctx, {})
+
+
+def _op_esborra_seleccio(ctx, params):
+    """Elimina els clips seleccionats al timeline (tecla Del)."""
+    vr = _requereix_visor(ctx)
+    keys = _sel_teclat(vr, _kind_opt(params))
+    if not keys:
+        raise BridgeError("No hi ha cap clip seleccionat per esborrar.")
+    vr._elimina_seleccio(sorted(keys))
+    return _op_status(ctx, {})
+
+
+def _op_duplica_seleccio(ctx, params):
+    """Duplica els clips seleccionats (Ctrl+D)."""
+    vr = _requereix_visor(ctx)
+    keys = _sel_teclat(vr, _kind_opt(params))
+    if not keys:
+        raise BridgeError("No hi ha cap clip seleccionat per duplicar.")
+    vr._duplica_seleccio(sorted(keys))
+    return _op_status(ctx, {})
+
+
+def _op_renomena_seleccio(ctx, params):
+    """Reanomena de cop tots els clips seleccionats del mateix tipus (F2 en bloc).
+
+    «kind» és opcional si la selecció és d'un sol tipus; «nom» és obligatori.
+    """
+    vr = _requereix_visor(ctx)
+    nom = str(params.get("nom") or params.get("acord")
+              or params.get("lletra") or "").strip()
+    if not nom:
+        raise BridgeError("Cal el nom nou («nom»).")
+    kind = _kind_opt(params)
+    if kind is None:
+        tipus = {k for k, _i in vr.timeline.selected_keys() if k}
+        if len(tipus) != 1:
+            raise BridgeError(
+                "Amb selecció mixta cal dir «kind» (chord|section).")
+        kind = tipus.pop()
+    idxs = sorted(i for _k, i in _sel_teclat(vr, kind))
+    if not idxs:
+        raise BridgeError(f"No hi ha cap clip de tipus «{kind}» seleccionat.")
+    ok = (vr._renomena_acords(idxs, nom) if kind == "chord"
+          else vr._renomena_seccions(idxs, nom))
+    if not ok:
+        raise BridgeError(f"No s'han pogut reanomenar els «{kind}» seleccionats.")
+    return _op_status(ctx, {})
+
+
+def _op_selecciona_rang(ctx, params):
+    """Selecciona els clips l'inici dels quals cau dins `[t0, t1]` (rang de Shift+clic).
+
+    Sense «kind» s'agafen les dues pistes (com el marquee); amb «kind», només
+    la demanada.
+    """
+    vr = _requereix_visor(ctx)
+    t0 = _num(params, "t0", "ini", "des")
+    t1 = _num(params, "t1", "fi", "fins")
+    kind = _kind_opt(params)
+    keys = vr.timeline.keys_dins_rang(float(t0), float(t1), inclou_fi=True)
+    if kind:
+        keys = {k for k in keys if k[0] == kind}
+    vr.timeline.select_multi(keys)
+    return _op_selection(ctx, {})
+
+
+def _op_selecciona_loop(ctx, params):
+    """Selecciona tot el que hi ha dins el loop A/B (deixa el cursor al final)."""
+    vr = _requereix_visor(ctx)
+    n = vr.selecciona_bloc_del_loop()
+    if not n:
+        raise BridgeError("No hi ha cap loop A/B amb clips a dins.")
+    return _op_selection(ctx, {})
+
+
+def _op_nudge(ctx, params):
+    """Nudge d'una frontera del clip seleccionat (←/→; `estira` = Alt+←/→)."""
+    vr = _requereix_visor(ctx)
+    kind, idx = vr.timeline._sel
+    if not kind or idx < 0:
+        raise BridgeError("Cal tenir un clip seleccionat per fer nudge.")
+    d = params.get("direccio", params.get("dir", "dreta"))
+    if isinstance(d, str):
+        d = -1 if d.strip().lower() in (
+            "esquerra", "prev", "anterior", "-1", "-") else 1
+    direccio = -1 if float(d) < 0 else 1
+    estira = _bool(params, "estira", False)
+    pas = params.get("pas")
+    pas = (float(pas) if pas not in (None, "") else vr.timeline._pas_nudge())
+    if pas <= 0:
+        raise BridgeError("«pas» ha de ser positiu (segons).")
+    vr.timeline._nudge(direccio, estira, pas)
+    return _op_status(ctx, {})
+
+
+def _op_mou_bloc(ctx, params):
+    """Mou un BLOC d'acords preservant-ne la durada (DESTÍ del moviment, §6.3).
+
+    El bloc és `[first..last]` (índexs d'acords) o, si no es donen, la
+    **selecció contigua** d'acords. `dt_s` és el desplaçament (pot ser negatiu);
+    al destí, el que queda a sota es talla o s'elimina («mana l'últim editat») i
+    l'origen el tanca el veí.
+    """
+    vr = _requereix_visor(ctx)
+    dt = _num(params, "dt_s", "dt", "delta")
+    if params.get("first") is not None and params.get("last") is not None:
+        first = int(_num(params, "first", enter=True))
+        last = int(_num(params, "last", enter=True))
+    else:
+        idxs = sorted(i for k, i in vr.timeline.selected_keys() if k == "chord")
+        if not idxs:
+            raise BridgeError("Cal «first»/«last» o bé una selecció d'acords.")
+        first, last = idxs[0], idxs[-1]
+        if idxs != list(range(first, last + 1)):
+            raise BridgeError("La selecció ha de ser un bloc CONTIGU d'acords.")
+
+    def mut(vr2):
+        if not (0 <= first <= last < len(vr2.acords)):
+            raise BridgeError(f"Bloc d'acords fora de rang: {first}-{last}.")
+        durada = float((getattr(vr2, "audio", {}) or {}).get("durada", 0.0) or 0.0)
+        vr2.acords = pipeline.mou_bloc_acords(
+            list(vr2.acords), first, last, float(dt), durada)
+
+    return _aplica(ctx, mut)
+
+
+def _op_troba_i_reemplaca(ctx, params):
+    """Troba i reemplaça xifrats (acords) o etiquetes (estructura) a tot el tema."""
+    vr = _requereix_visor(ctx)
+    camp = str(params.get("camp") or params.get("on") or "acords").strip().lower()
+    if camp in ("estructura", "section", "seccio", "secció", "seccions"):
+        camp = "estructura"
+    else:
+        camp = "acords"
+    troba = str(params.get("troba") or params.get("cerca") or "").strip()
+    reemplaca = str(params.get("reemplaca") or params.get("nous") or "").strip()
+    if not troba or not reemplaca:
+        raise BridgeError("Calen «troba» i «reemplaca» (no buits).")
+    n = vr.troba_i_reemplaca(camp, troba, reemplaca)
+    return {"ok": bool(n), "substituits": int(n or 0), "camp": camp,
+            **_op_status(ctx, {})}
+
+
+def _op_reverteix(ctx, params):
+    """Torna el projecte a l'últim estat desat (Reverteix, sense cap diàleg)."""
+    ctx.window._reverteix()
+    return _op_status(ctx, {})
+
+
+def _op_neteja_loop(ctx, params):
+    """Desactiva i esborra el loop A/B («Neteja el loop»)."""
+    ctx.window._neteja_loop()
+    return _op_status(ctx, {})
+
+
+def _op_set_eina(ctx, params):
+    """Tria l'eina del timeline: `intel·ligent` (per defecte) o `marc`."""
+    mode = str(params.get("mode") or params.get("eina") or "").strip().lower()
+    if mode in ("marc", "seleccio", "selecció", "rubber", "rubber-band",
+                "marquee"):
+        marc = True
+    elif mode in ("intel·ligent", "inteligent", "smart", "fletxa", "link"):
+        marc = False
+    else:
+        raise BridgeError("«mode» ha de ser 'intel·ligent' o 'marc'.")
+    btn = getattr(ctx.window, "b_eina", None)
+    if btn is None:
+        raise BridgeError("La finestra no té el commutador d'eina del timeline.")
+    # El botó és la font de veritat: `setChecked` dispara `_canvia_eina` (toggled).
+    btn.setChecked(marc)
+    return {"eina": "marc" if bool(btn.isChecked()) else "intel·ligent"}
+
+
+def _op_set_inclou_estructura(ctx, params):
+    """Marca/desmarca «Inclou estructura» (afecta l'anàlisi i l'export)."""
+    on = _bool(params, "on", True)
+    ctx.window.amb_est.setChecked(on)
+    return {"inclou_estructura": bool(ctx.window.amb_est.isChecked())}
+
+
+def _op_set_inclou_partitura(ctx, params):
+    """Marca/desmarca «Inclou la partitura» (afecta l'export de WAVs)."""
+    on = _bool(params, "on", True)
+    ctx.window.amb_part.setChecked(on)
+    return {"inclou_partitura": bool(ctx.window.amb_part.isChecked())}
+
+
 # Registre d'operacions (nom → funció). L'MCP les exposa via `eines/..._server.py`.
 OPERACIONS = {
     "ping": _op_ping,
@@ -1004,6 +1251,25 @@ OPERACIONS = {
     "parteix_seccio": _op_parteix_seccio,
     "fusiona_seccio": _op_fusiona_seccio,
     "regularitza": _op_regularitza,
+    # Paritat d'ACCIONS amb la GUI (2026-10-17): el que l'usuari pot fer, l'MCP
+    # també (porta-retalls, duplicar/esborrar/reanomenar la selecció, rang i
+    # loop, nudge, moure un bloc, troba i reemplaça, revertir, eina i opcions).
+    "copia_seleccio": _op_copia_seleccio,
+    "retalla_seleccio": _op_retalla_seleccio,
+    "enganxa_seleccio": _op_enganxa_seleccio,
+    "esborra_seleccio": _op_esborra_seleccio,
+    "duplica_seleccio": _op_duplica_seleccio,
+    "renomena_seleccio": _op_renomena_seleccio,
+    "selecciona_rang": _op_selecciona_rang,
+    "selecciona_loop": _op_selecciona_loop,
+    "nudge": _op_nudge,
+    "mou_bloc": _op_mou_bloc,
+    "troba_i_reemplaca": _op_troba_i_reemplaca,
+    "reverteix": _op_reverteix,
+    "neteja_loop": _op_neteja_loop,
+    "set_eina": _op_set_eina,
+    "set_inclou_estructura": _op_set_inclou_estructura,
+    "set_inclou_partitura": _op_set_inclou_partitura,
 }
 
 

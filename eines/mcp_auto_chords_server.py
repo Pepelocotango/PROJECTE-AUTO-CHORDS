@@ -185,6 +185,68 @@ _TOOLS = [
      "encaixa també els talls de secció a blocs d'aquest nombre de compassos "
      "(0 = no tocar-les).",
      {"nivell": {"type": "string"}, "modul_compassos": {"type": "integer"}}),
+    # Paritat d'ACCIONS amb la GUI (2026-10-17) — portal-retalls i selecció.
+    ("ac_copia_seleccio", "copia_seleccio",
+     "Copia la selecció al porta-retalls INTERN (Ctrl+C).", {}),
+    ("ac_retalla_seleccio", "retalla_seleccio",
+     "Retalla la selecció: la copia i l'esborra (Ctrl+X).", {}),
+    ("ac_enganxa_seleccio", "enganxa_seleccio",
+     "Enganxa el porta-retalls intern al cursor (Ctrl+V), SOBREESCRIVINT el "
+     "tram (regla d'or #4: la cançó no pot créixer). `t_s` (opcional) mou el "
+     "cursor abans d'enganxar.",
+     {"t_s": {"type": "number"}}),
+    ("ac_esborra_seleccio", "esborra_seleccio",
+     "Elimina els clips seleccionats al timeline (tecla Del). `kind` opcional "
+     "(chord|section) per esborrar només un tipus.",
+     {"kind": {"type": "string"}}),
+    ("ac_duplica_seleccio", "duplica_seleccio",
+     "Duplica els clips seleccionats (Ctrl+D). `kind` opcional (chord|section).",
+     {"kind": {"type": "string"}}),
+    ("ac_renomena_seleccio", "renomena_seleccio",
+     "Reanomena de cop tots els clips seleccionats del mateix tipus (F2 en "
+     "bloc). `nom` és el nom nou; `kind` opcional si la selecció és homogènia.",
+     {"nom": {"type": "string"}, "kind": {"type": "string"}}),
+    ("ac_selecciona_rang", "selecciona_rang",
+     "Selecciona els clips l'inici dels quals cau dins [t0, t1] (rang de "
+     "Shift+clic). Sense `kind` s'agafen les dues pistes, com el marquee.",
+     {"t0": {"type": "number"}, "t1": {"type": "number"},
+      "kind": {"type": "string"}}),
+    ("ac_selecciona_loop", "selecciona_loop",
+     "Selecciona tot el que hi ha dins el loop A/B i deixa el cursor al final "
+     "(pas previ de copiar/retallar el loop).", {}),
+    # Paritat d'ACCIONS — edició fina.
+    ("ac_nudge", "nudge",
+     "Nudge d'una frontera del clip seleccionat (com les fletxes ←/→). "
+     "`direccio`: esquerra|dreta (o -1|1). `estira: true` mou la vora dreta "
+     "(= Alt+←/→). `pas` opcional (segons; defecte = la divisió de graella).",
+     {"direccio": {"type": "string"}, "estira": {"type": "boolean"},
+      "pas": {"type": "number"}}),
+    ("ac_mou_bloc", "mou_bloc",
+     "Mou un BLOC d'acords preservant-ne la durada (l'arrossegament de clips): "
+     "el bloc és [first..last] o la selecció contigua d'acords; `dt_s` pot ser "
+     "negatiu. Al destí, el que queda a sota es talla o s'elimina.",
+     {"dt_s": {"type": "number"}, "first": {"type": "integer"},
+      "last": {"type": "integer"}}),
+    ("ac_troba_i_reemplaca", "troba_i_reemplaca",
+     "Troba i reemplaça TOTES les aparicions exactes d'un xifrat o etiqueta al "
+     "tema. `camp`: acords|estructura.",
+     {"camp": {"type": "string"}, "troba": {"type": "string"},
+      "reemplaca": {"type": "string"}}),
+    # Paritat d'ACCIONS — estat, vista i opcions.
+    ("ac_reverteix", "reverteix",
+     "Torna el projecte a l'últim estat desat (Reverteix), sense cap diàleg.",
+     {}),
+    ("ac_neteja_loop", "neteja_loop",
+     "Desactiva i esborra el loop A/B («Neteja el loop»).", {}),
+    ("ac_set_eina", "set_eina",
+     "Tria l'eina del timeline. `mode`: intel·ligent (per defecte) o marc.",
+     {"mode": {"type": "string"}}),
+    ("ac_set_inclou_estructura", "set_inclou_estructura",
+     "Marca/desmarca «Inclou estructura» (afecta l'anàlisi i l'export).",
+     {"on": {"type": "boolean"}}),
+    ("ac_set_inclou_partitura", "set_inclou_partitura",
+     "Marca/desmarca «Inclou la partitura (xifrat)» (afecta l'export de WAVs).",
+     {"on": {"type": "boolean"}}),
 ]
 
 _OP_PER_TOOL = {nom: op for (nom, op, _d, _s) in _TOOLS}
