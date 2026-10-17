@@ -120,3 +120,19 @@ Conseqüències per a **S2**:
    CSV del MODEL / `.acproj` (S3), i el MCP (S5). Els tests del parser i del postproc
    (funcions pures sobre llistes) **no s'han de tocar**.
 
+## Següent (pendent del refactor, en ordre)
+
+1. **S2 (falta)**: `elimina` / `duplica` (viuen al visor i a l'MCP) cap a nucli
+   únic; i reabsorbir `filtra_seccions` i les `graella.regularitza_*` (són el
+   mateix tipus d'operació).
+2. **S3 — CSV `inici,fi` als dos**: escriptors i lectors (`acords.csv` passa a
+   `inici,fi,acord`), **sense retrocompatibilitat**. El `fi` es re-deriva sempre.
+3. **S4 — visor**: el model en memòria passa a clips `ini`+`fi`; el gest de les
+   vores (`ZONE_LEFT`/`ZONE_RIGHT`) enganxat a `redimensiona_clips`; fora el
+   despatx `kind` duplicat.
+4. **S5 — exports i derivats**: WAVs, ABC, partitura, MusicXML, `acords_a_live.py`
+   i les eines MCP al nou model.
+5. **S6 — neteja**: codi mort, helpers sense ús, docs i CHANGELOG.
+
+**Nuclis ja fets** (no duplicar-los mai): `normalitza_clips`, `redimensiona_clips`,
+`mou_bloc_clips`, `parteix_clips`, `fusiona_clips` + els wrappers dels dos tipus.
