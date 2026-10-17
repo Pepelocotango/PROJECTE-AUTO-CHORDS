@@ -124,26 +124,26 @@ class TestMoureSeccioManteContiguitat(_Base):
         self.assertTrue(_contigues(s), "el CSV del disc té un forat intern")
         self.assertAlmostEqual(_suma(s), DUR, places=3)
 
-    def test_moure_el_primer_obre_capcalera_N(self):
-        """Moure el 1r clip cap endavant no crea forat: s'hi posa una «N»."""
+    def test_moure_el_primer_obre_capcalera_sense_seccio(self):
+        """Moure el 1r clip cap endavant no crea forat: s'hi posa una «-»."""
         v = _visor()
         self.assertTrue(v.mou_seccio(0, 2.0, 10.0))
         v._desa_i_regenera()
         self.assertTrue(_contigues(v.seccions))
         self.assertAlmostEqual(_suma(v.seccions), DUR, places=6)
-        self.assertEqual(v.seccions[0][2], "N")
+        self.assertEqual(v.seccions[0][2], "-")
         self.assertTrue(_contigues(_llegeix_abc(v.abc_csv)))
 
     def test_xarxa_de_seguretat_si_un_cami_oblida_la_contiguitat(self):
         """Doble protecció: encara que una mutació crua deixi un forat, en
-        desar el model queda normalitzat (amb «N» al forat) i el CSV net."""
+        desar el model queda normalitzat (amb «-» al forat) i el CSV net."""
         v = _visor()
         v.seccions[2] = (25.0, 30.0, "C", "C")     # mutació a pèl (vella manera)
         self.assertFalse(_contigues(v.seccions))
         v._desa_i_regenera()                        # → invariant de cobertura
         self.assertTrue(_contigues(v.seccions))
         self.assertAlmostEqual(_suma(v.seccions), DUR, places=6)
-        self.assertEqual([s[2] for s in v.seccions], ["A", "B", "N", "C", "D"])
+        self.assertEqual([s[2] for s in v.seccions], ["A", "B", "-", "C", "D"])
         self.assertTrue(_contigues(_llegeix_abc(v.abc_csv)))
 
     def test_rebutja_si_un_vei_queda_sense_marge(self):
@@ -189,10 +189,10 @@ class TestCarregaCSVAmbForat(_Base):
     def test_el_model_i_el_disc_queden_normalitzats_en_carregar(self):
         # CSV "antic"/dolent: A 0–10 i B 12–40 → forat de 10 a 12 s
         v = _visor(seccions=[(0.0, 10.0, "A", "A"), (12.0, 40.0, "B", "B")])
-        # El MODEL queda contigu (amb una «N» que tapa el forat)
+        # El MODEL queda contigu (amb una «-» que tapa el forat)
         self.assertTrue(_contigues(v.seccions))
         self.assertAlmostEqual(_suma(v.seccions), DUR, places=6)
-        self.assertIn("N", [s[2] for s in v.seccions])
+        self.assertIn("-", [s[2] for s in v.seccions])
         # ... I el CSV DEL DISC ja s'ha reescrit (abans calia editar/exportar)
         s = _llegeix_abc(v.abc_csv)
         self.assertTrue(_contigues(s), "el CSV del disc encara té el forat")

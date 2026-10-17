@@ -237,6 +237,23 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   **`tests/test_regla11_paritat.py`**. `AGENTS.md` passa a 11 regles.
 
 ### Canviat
+- **Moviment de bloc: CORREGIT + paritat d'estructura (regla d'or #11)**. El bloc
+  només **tapa el seu tram nou** `[a',b')`: abans s'esborraven TOTS els clips que
+  quedaven entre l'origen i el destí (es perdien clips que no hi tocaven). Ara el
+  que hi ha entremig es queda quiet i la cobertura la manté el model de marques.
+  I l'**estructura** es comporta **exactament igual** que els acords:
+  `pipeline.mou_bloc_seccions` (nov), arrossegar el **cos** d'una secció al visor
+  (`_on_section_body_drag` + `_tanca_bloc`) i `ac_mou_bloc` amb **`kind`**
+  (`chord`|`section`). Tests: els 2 casos de salt llarg (acords i estructura) i el
+  cas de la secció A al compàs 29.1.
+- **El símbol dels forats d'estructura és ara `-` a TOT ARREU** (§6.1): també a
+  `normalitza_cobertura` (capçalera i forats interns), que encara hi posava `N`
+  (el símbol dels acords). Amb això no conviuen dos símbols per al mateix concepte
+  i el que genera un moviment i el que genera la normalització són idèntics.
+  Tests: `test_seccions_capcalera_sense_seccio`,
+  `test_moure_el_primer_obre_capcalera_sense_seccio` i 2 més actualitzats.
+- **Neteja de codi mort**: fora `TimelineView._move_section_group` (el moviment de
+  blocs de seccions ja el fa `_on_section_body_drag` + `_tanca_bloc`, §6.3).
 - **Moviment d'un BLOC d'acords: destí amb tall/eliminació** (`PLA_EDICIO_LLIURE` §6.3):
   en arrossegar el **cos** d'un clip (sol o dins d'una multi-selecció contigua) el
   bloc es mou **preservant la seva durada** i, al **destí**, el que queda **a sota**

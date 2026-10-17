@@ -105,10 +105,11 @@
 ## 8. Pendent (resum)
 
 1. **Redimensionat amb vores lliures** (#13) — per a acords i estructura (paritat).
-2. **`-` a tota l'estructura**: `normalitza_cobertura` encara fa servir **`N`** per a la
-   capçalera i els forats interns de secció → conviuen `-` (moviments) i `N` (§6.1 diu `-`).
-3. **Duplicar**: alinear el destí amb **§6.3** (#14) i exposar el gest de **duplicar
+2. **Duplicar**: alinear el destí amb **§6.3** (#14) i exposar el gest de **duplicar
    arrossegant** a l'MCP (#15).
-4. **Seccions**: la resta de la Fase 5 del pla (vores lliures, `-` als forats que cap
-   operació tapi).
-5. **Codi mort**: `TimelineView._move_section_group` (ja no s'usa).
+3. **Seccions**: resta de la Fase 5 del pla (vores lliures).
+
+> ✅ **Fet el 17-10-2026**: el **moviment de bloc** (§6.3, #10) amb el destí; la
+> **paritat d'estructura** (`mou_bloc_seccions`, gest del visor i `ac_mou_bloc` amb
+> `kind`); el símbol **`-`** a **tota** l'estructura (també a `normalitza_cobertura`);
+> i la neteja del codi mort (`_move_section_group`).

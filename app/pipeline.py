@@ -680,22 +680,24 @@ def normalitza_cobertura(acords, seccions, durada, log=None):
         seccions = dins
     if seccions:
         if float(seccions[0][0]) > 1e-9:
-            seccions.insert(0, (0.0, float(seccions[0][0]), "N", "N"))
+            seccions.insert(0, (0.0, float(seccions[0][0]),
+                                SENSE_SECCIO, SENSE_SECCIO))
             if log:
-                log(f"cobertura: capçalera N a l'estructura (1a secció a "
-                    f"{float(seccions[1][0]):.2f} s)")
+                log(f"cobertura: capçalera «{SENSE_SECCIO}» a l'estructura "
+                    f"(1a secció a {float(seccions[1][0]):.2f} s)")
         # Forats INTERNS (regla d'or #2: el fi d'una secció == inici de la
-        # següent): es tapen amb una secció «N» (regió sense etiqueta). Sense
+        # següent): es tapen amb una secció «-» (§6.1: sense secció). Sense
         # això, moure una secció cap endavant deixava un forat que l'app
         # acceptava i la suma de durades ja no quadrava amb la WAV (#4).
         farcit = []
         for s in seccions:
             if farcit and float(s[0]) > float(farcit[-1][1]) + 1e-9:
-                forat = (float(farcit[-1][1]), float(s[0]), "N", "N")
+                forat = (float(farcit[-1][1]), float(s[0]),
+                         SENSE_SECCIO, SENSE_SECCIO)
                 farcit.append(forat)
                 if log:
                     log(f"cobertura: forat intern {forat[0]:.2f}–{forat[1]:.2f} s "
-                        f"tapat amb «N»")
+                        f"tapat amb «{SENSE_SECCIO}»")
             farcit.append(s)
         seccions = farcit
         if durada > 0 and float(seccions[-1][1]) < durada - 1e-9:

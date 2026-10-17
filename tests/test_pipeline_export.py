@@ -3499,9 +3499,9 @@ class CoberturaTests(unittest.TestCase):
         _, se = pipeline.normalitza_cobertura([], [(0.0, 8.0, "A", "N")], 20.0)
         self.assertEqual(se[-1][1], 20.0)
 
-    def test_seccions_capcalera_n(self):
+    def test_seccions_capcalera_sense_seccio(self):
         _, se = pipeline.normalitza_cobertura([], [(2.0, 5.0, "A", "N")], 20.0)
-        self.assertEqual(se[0], (0.0, 2.0, "N", "N"))
+        self.assertEqual(se[0], (0.0, 2.0, "-", "-"))
 
     def test_cobertura_total_seccions(self):
         _, se = pipeline.normalitza_cobertura(
