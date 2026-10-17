@@ -45,9 +45,13 @@ segments amb inici i fi, però el model editable de l'app es va quedar a mitges.
    de comportament: la suite passa **sense tocar cap test** i un test nou
    (`tests/test_clips_unificats.py`) demostra l'**equivalència exacta** amb
    `normalitza_cobertura` sobre el corpus dels dos tipus.
-2. **S2 — Una sola operació per acció**: `mou_bloc`, `redimensiona`, `parteix`,
-   `fusiona`, `elimina`, `duplica` passen a **una única implementació** que serveix
-   acords i estructura.
+2. 🔄 **EN CURS — S2 «una sola operació per acció»**: `mou_bloc`, `redimensiona`,
+   `parteix`, `fusiona`, `elimina`, `duplica` passen a **una única implementació**
+   que serveix acords i estructura. **Fets**: S2a — vores (`redimensiona_clips`,
+   `redimensiona_acord`, `redimensiona_seccio`); S2b — moure (`mou_bloc_clips`,
+   `mou_bloc_acords`, `mou_bloc_seccions`, amb la **correcció §6.3**: el tros
+   tallat conserva el nom). **Falta**: `parteix` / `fusiona` i reabsorbir
+   `filtra_seccions` i les `graella.regularitza_*`.
 3. **S3 — CSV `inici,fi` als dos**: escriptors i lectors (seccions ja ho fan; acords
    passa a `inici,fi,acord`), sense cap camí de compatibilitat.
 4. **S4 — Visor**: el model en memòria passa a clips amb `ini`+`fi` (vores ZONE_LEFT/

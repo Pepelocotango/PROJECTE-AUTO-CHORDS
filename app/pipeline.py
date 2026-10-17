@@ -910,34 +910,6 @@ def fusiona_acords(acords, i, amb="seguent"):
     return list(acords[:i + 1]) + list(acords[i + 2:])
 
 
-def _desplaca_marca(a, dt):
-    """Marca `a` desplaçada `dt` segons (conserva el nom i els camps extra)."""
-    t = float(a[0]) + float(dt)
-    camps = list(a)
-    camps[0] = t
-    if len(camps) > 2:
-        camps[2] = f"{t:.9f}"
-    return tuple(camps)
-
-
-def _marca_nova(t, nom, ref):
-    """Marca nova a `t` amb `nom`, amb la MATEIXA forma que `ref`."""
-    t = float(t)
-    extra = (f"{t:.9f}",) + tuple(ref[3:]) if len(ref) > 2 else ()
-    return (t, str(nom)) + extra
-
-
-def _nom_a(acords, t):
-    """Nom del clip que **sona** a `t` (l'última marca ≤ t; «N» si no n'hi ha)."""
-    nom = "N"
-    for a in acords:
-        if float(a[0]) <= float(t) + 1e-9:
-            nom = a[1]
-        else:
-            break
-    return nom
-
-
 def mou_bloc_acords(acords, first, last, dt, durada, log=None):
     """DESTÍ del moviment d'un BLOC d'acords (PLA_EDICIO_LLIURE §6.3).
 
