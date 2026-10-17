@@ -149,6 +149,58 @@ class TempoMap:
         s = self.tram(t)
         return (s.num, s.den)
 
+    def es_constant(self):
+        """True si tots els trossos comparteixen tempo i compàs.
+
+        És el **punt de sortida ràpid**: quan el mapa és constant, tota l'app pot
+        fer servir la seua via uniforme de sempre (idèntica) i el mapa només
+        serveix per a la persistència.
+        """
+        if not self._trams:
+            return True
+        s0 = self._trams[0]
+        return all(abs(s.bpm - s0.bpm) < 1e-9 and s.num == s0.num
+                   and s.den == s0.den for s in self._trams)
+
+    def durations(self, t):
+        """`(compàs_s, temps_s, mitja_negra_s)` de durada a l'instant `t`."""
+        s = self.tram(t)
+        beat = _beat_quarters(s.den) * 60.0 / s.bpm
+        return (_bar_quarters(s.num, s.den) * 60.0 / s.bpm, beat, beat / 2.0)
+
+    def grid_lines(self, t0, t1, kind="bar", n=1):
+        """Temps de les línies de graella de `kind` dins `[t0, t1]` (mapa-aware).
+
+        `kind`: `"bar"` (cada `n` compassos), `"beat"` (temps) o `"sub"`
+        (mitja negra). Les línies són **musicals** (bar/beat), per tant el seu
+        espaiat en segons varia amb el mapa.
+        """
+        t0, t1 = float(t0), float(t1)
+        talls = self._talls_de_compas()
+        out = []
+        if kind == "bar":
+            pas = max(1, int(n))
+            for k, tall in enumerate(talls):
+                if k % pas == 0 and t0 - TOL <= tall[1] <= t1 + TOL:
+                    out.append(tall[1])
+            return out
+        frac = 0.5 if kind == "sub" else 1.0
+        for k, (q_bar, _t_bar, num, den) in enumerate(talls):
+            q_fi = talls[k + 1][0] if k + 1 < len(talls) else None
+            pas_q = _beat_quarters(den) * frac
+            j = 0
+            while j < 100000:
+                q = q_bar + j * pas_q
+                if q_fi is not None and q >= q_fi - TOL:
+                    break        # la frontera és del compàs següent
+                t = self.t_de_quarters(q)
+                if t > t1 + TOL:
+                    return out
+                if t >= t0 - TOL:
+                    out.append(t)
+                j += 1
+        return out
+
     # ── conversió temps ↔ negres (integració) ───────────────────────────────
     def _quarters_entre(self, a, b):
         """Negres entre dos instants (signe); fora del mapa s'extrapola."""

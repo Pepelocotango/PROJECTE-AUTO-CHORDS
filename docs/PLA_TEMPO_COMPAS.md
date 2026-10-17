@@ -35,8 +35,13 @@ en mode «BPM·compàs».
    (`pipeline.desa_tempo_map`/`llegeix_tempo_map`); el visor carrega el mapa
    (o un **sol tros** amb el BPM·compàs actual → zero canvi visible) i el desa
    a cada edició.
-3. ⏳ **Graella i regle**: `timeline_base`/layers i `pipeline.pos_compas`
-   mapa-conscients.
+3. ✅ **FET — Graella i regle**: `timeline_base` (`fmt_pos`, `snap_time`,
+   `grid_plan`, `grid_positions`, `grid_levels`, `_divisions`) i les capes
+   (regle i grid) accepten un `mapa` opcional; `TempoMap` guanya
+   `es_constant`, `durations` i `grid_lines`. **Via constant intacta**
+   (`es_constant()` → codi d'abans, tros per tros) → cap regressió; amb mapa
+   variable, la graella/regle i el snap són **musicals**.
+   (`pipeline.pos_compas` encara és constant; es farà a la fase 5.)
 4. ⏳ **UI**: pista de **Tempo** i de **Compàs** al timeline (marcador + vores
    §6.3); els camps del transport passen a ser el **valor inicial**.
 5. ⏳ **Exports/derivats** (`acords_a_live.py`, partitura, **MusicXML** —que ja
@@ -51,5 +56,6 @@ en mode «BPM·compàs».
 - Què fa el **mode fàcil** quan hi ha mapa (regularitza amb el tempo local).
 
 ## Estat
-- **Fases 1 i 2 FETES** (motor + persistència; suite verda).
-- L'app es comporta igual que abans (BPM·compàs constant = un sol tros).
+- **Fases 1, 2 i 3 FETES** (motor + persistència + graella/regle/snap).
+- L'app es comporta igual que abans (BPM·compàs constant = un sol tros → la
+  via uniforme de sempre); el mapa variable ja funciona a l'engine i a la UI.

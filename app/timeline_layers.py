@@ -137,6 +137,7 @@ class GridLayer(QGraphicsItem):
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self._beat_type = 4
+        self._mapa = None
         self._top = float(top)
         self.setZValue(-6)
         self.setPos(self._x_offset, self._top)
@@ -156,12 +157,14 @@ class GridLayer(QGraphicsItem):
         self.setPos(self._x_offset, self._top)
         self.update()
 
-    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0, beat_type=4):
+    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0, beat_type=4,
+                    mapa=None):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self._beat_type = int(beat_type or 4)
         self._offset = float(offset)
+        self._mapa = mapa
         self.update()
 
     def paint(self, painter, option, widget=None):
@@ -170,12 +173,14 @@ class GridLayer(QGraphicsItem):
         off = getattr(self, "_offset", 0.0)
         view_px = max(self._view_right - self._view_left, 1e-6) * self._pps
         for step, color, width in grid_levels(self._tempo_fix, self._bpm,
-                                              self._bpb, self._pps, view_px):
+                                              self._bpb, self._pps, view_px,
+                                              mapa=self._mapa):
             if step <= 1e-9:
                 continue
             p.setPen(QPen(QColor(color), width))
             # posicions per índex (sense acumular → sense deriva de coma flotant)
-            for t in grid_positions(self._view_left, self._view_right, step, off):
+            for t in grid_positions(self._view_left, self._view_right, step, off,
+                                    mapa=self._mapa):
                 if t >= 0:
                     x = (t - self._view_left) * self._pps
                     p.drawLine(QPointF(x, 0), QPointF(x, self._height))
@@ -199,6 +204,7 @@ class RulerLayer(QGraphicsItem):
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self._beat_type = 4
+        self._mapa = None
         self._top = float(top)
         self.setZValue(-4)
         self.setPos(self._x_offset, self._top)
@@ -219,12 +225,14 @@ class RulerLayer(QGraphicsItem):
         self.setPos(self._x_offset, self._top)
         self.update()
 
-    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0, beat_type=4):
+    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0, beat_type=4,
+                    mapa=None):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self._beat_type = int(beat_type or 4)
         self._offset = float(offset)
+        self._mapa = mapa
         self.update()
 
     def mode_label(self) -> str:
@@ -248,7 +256,7 @@ class RulerLayer(QGraphicsItem):
                    QPointF(rect.width(), self._height - 1))
         view_px = max(self._view_right - self._view_left, 1e-6) * self._pps
         plan = grid_plan(self._tempo_fix, self._bpm, self._bpb, self._pps,
-                         view_px)
+                         view_px, mapa=self._mapa)
         col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
                "sub": theme.TL_GRID_SUB}
         # ticks dels nivells secundaris (els més fins que el d'etiqueta)
@@ -256,7 +264,8 @@ class RulerLayer(QGraphicsItem):
             if sub <= 1e-9 or sub >= plan["label"] - 1e-9:
                 continue
             p.setPen(QPen(QColor(col[kind]), 1))
-            for t in grid_positions(self._view_left, self._view_right, sub, off):
+            for t in grid_positions(self._view_left, self._view_right, sub, off,
+                                    mapa=self._mapa):
                 if t >= 0:
                     x = (t - self._view_left) * self._pps
                     p.drawLine(QPointF(x, self._height - 4),
@@ -270,13 +279,15 @@ class RulerLayer(QGraphicsItem):
         last_label_x = -1e9
         # posicions per índex (sense acumular → les etiquetes d'inici de compàs
         # ja no deriven a «(N-1).4»)
-        for t in grid_positions(self._view_left, self._view_right, step, off):
+        for t in grid_positions(self._view_left, self._view_right, step, off,
+                                mapa=self._mapa):
             if t >= 0:
                 x = (t - self._view_left) * self._pps
                 p.setPen(QPen(QColor(theme.TL_GRID_MEASURE), 1))
                 p.drawLine(QPointF(x, self._height - 8),
                            QPointF(x, self._height - 1))
-                lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb, off, step)
+                lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb, off,
+                              step, mapa=self._mapa)
                 is_bar = is_bar_start_label(lab)
                 label_font = QFont("Sans Serif", 9 if is_bar else 8,
                                    QFont.Bold if is_bar else QFont.Normal)

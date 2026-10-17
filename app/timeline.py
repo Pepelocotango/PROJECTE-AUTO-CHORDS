@@ -192,6 +192,7 @@ class TimelineView(QGraphicsView):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
+        self._mapa = None      # mapa de tempo/compàs (fase 3; None = uniforme)
         self._acords = _acords_a_clips(acords, self._durada)
         self._seccions = list(seccions) or []
         self._chord_items: List[ChordItem] = []
@@ -313,16 +314,18 @@ class TimelineView(QGraphicsView):
         self._rebuild_section_items()
 
     def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
-                       offset: float = 0.0, beat_type: int = 4) -> None:
+                       offset: float = 0.0, beat_type: int = 4,
+                       mapa=None) -> None:
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self._beat_type = int(beat_type or 4)
         self._offset = float(offset)
+        self._mapa = mapa
         self._ruler.update_mode(self._tempo_fix, self._bpm, self._bpb,
-                                self._offset, self._beat_type)
+                                self._offset, self._beat_type, mapa)
         self._grid.update_mode(self._tempo_fix, self._bpm, self._bpb,
-                               self._offset, self._beat_type)
+                               self._offset, self._beat_type, mapa)
         self.update()
 
     def set_follow(self, enabled: bool) -> None:
@@ -1664,16 +1667,21 @@ class TimelineView(QGraphicsView):
                                        self._tempo_fix, self._bpb)
             if s > 0:
                 return s
-        return snap_step(self._tempo_fix, self._bpm, self._bpb, self._pps)
+        return snap_step(self._tempo_fix, self._bpm, self._bpb, self._pps,
+                         mapa=getattr(self, "_mapa", None))
 
     def _snap(self, t: float) -> float:
         """Encaixa `t` a la graella (o el deixa tal qual si el snap és OFF)."""
         if not self._snap_on:
             return float(t)
+        off = getattr(self, "_offset", 0.0)
+        mapa = getattr(self, "_mapa", None)
+        if mapa is not None and not mapa.es_constant():
+            return snap_time(float(t), self._tempo_fix, self._bpm, self._bpb,
+                             self._pps, off, mapa=mapa)
         step = self._snap_step()
         if step <= 0:
             return float(t)
-        off = getattr(self, "_offset", 0.0)
         return round((float(t) - off) / step) * step + off
 
     def _pas_nudge(self) -> float:

@@ -73,12 +73,19 @@ MIN_LINE_PX = 8.0
 MIN_LABEL_PX = 30.0
 
 
-def _divisions(tempo_fix, bpm, bpb):
+def _divisions(tempo_fix, bpm, bpb, mapa=None):
     """Llista de divisions (step_s, kind) de GRUIXUT a FI.
 
     kind: 'bar' (nivell gran), 'beat' (temps), 'sub' (subdivisió).
+    Amb un `mapa` de tempo/compàs **variable**, les durades són les del mapa
+    (representatives, per decidir el nivell pel zoom); si és constant, la via
+    de sempre (idèntica).
     """
     if tempo_fix:
+        if mapa is not None and not mapa.es_constant():
+            bar, beat, _sub = mapa.durations(mapa.offset)
+            return [(bar, "bar"), (beat, "beat"),
+                    (beat / 2.0, "sub"), (beat / 4.0, "sub")]
         beat = 60.0 / max(float(bpm), 1e-9)
         measure = beat * max(int(bpb), 1)
         return [(measure, "bar"), (beat, "beat"),
@@ -89,16 +96,16 @@ def _divisions(tempo_fix, bpm, bpb):
             (0.02, "sub")]
 
 
-def snap_step(tempo_fix, bpm, bpb, pps):
+def snap_step(tempo_fix, bpm, bpb, pps, mapa=None):
     """Divisió de snap/grid: la més fina que hi cap (px >= MIN_LINE_PX)."""
     pps = max(float(pps), 1e-9)
-    divs = _divisions(tempo_fix, bpm, bpb)
+    divs = _divisions(tempo_fix, bpm, bpb, mapa)
     fit = [s for (s, _k) in divs if s * pps >= MIN_LINE_PX]
     return fit[-1] if fit else divs[-1][0]
 
 
 def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
-              min_label_px=MIN_LABEL_PX):
+              min_label_px=MIN_LABEL_PX, mapa=None):
     """Pla ÚNIC de grid (font de veritat per a grid, regle i snap).
 
     Es decideix segons el **zoom en píxels** (com els DAWs), no per segons:
@@ -109,7 +116,7 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
                  (px >= min_label_px).
     """
     pps = max(float(pps), 1e-9)
-    divs = _divisions(tempo_fix, bpm, bpb)
+    divs = _divisions(tempo_fix, bpm, bpb, mapa)
     fit = [(s, k) for (s, k) in divs if s * pps >= min_line_px]
     if not fit:
         snap, snap_k = divs[-1]
@@ -132,7 +139,8 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
     return {"snap": snap, "lines": lines, "label": lab}
 
 
-def grid_positions(view_left, view_right, step, offset=0.0, tol=1e-9):
+def grid_positions(view_left, view_right, step, offset=0.0, tol=1e-9,
+                   mapa=None, kind=None):
     """Genera les posicions de graella ``t = offset + k*step`` dins de la vista.
 
     Cada posició es calcula a partir de l'**índex enter** ``k`` — MAI acumulant
@@ -142,6 +150,20 @@ def grid_positions(view_left, view_right, step, offset=0.0, tol=1e-9):
 
     S'usa idènticament al regle i al grid → quadren sempre.
     """
+    if mapa is not None and kind is None and not mapa.es_constant():
+        # Dedueix el nivell musical del `step` (per a les capes que no el saben).
+        bar_s, beat_s, _s = mapa.durations(float(view_left))
+        if step is not None and step >= bar_s - 1e-9:
+            kind = "bar"
+        elif step is not None and step >= beat_s - 1e-9:
+            kind = "beat"
+        else:
+            kind = "sub"
+    if mapa is not None and kind is not None and not mapa.es_constant():
+        # Graella MUSICAL del mapa (l'espaiat varia amb el tempo/compàs).
+        for t in mapa.grid_lines(float(view_left), float(view_right), kind):
+            yield t
+        return
     if step is None or step <= tol:
         return
     k = math.floor((view_left - float(offset)) / step)
@@ -185,11 +207,23 @@ def loop_after_drag(mode, t, t0, a0, b0, durada, min_len=0.05):
 
 
 def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
-              pps: float, offset: float = 0.0) -> float:
+              pps: float, offset: float = 0.0, mapa=None) -> float:
     """Arrodoneix t a la divisió de grid actual (que depèn del zoom, en px).
 
     Fa servir el MATEIX `grid_plan` que el grid i el regle → sempre quadren.
     """
+    if mapa is not None and not mapa.es_constant():
+        bar_s, beat_s, sub_s = mapa.durations(t)
+        step = snap_step(tempo_fix, bpm, bpb, pps, mapa)
+        if step <= 0:
+            return t
+        if step >= bar_s - 1e-9:
+            return mapa.snap(t, ("bars", 1))
+        if step >= beat_s - 1e-9:
+            return mapa.snap(t, ("beat", 1.0))
+        if step >= sub_s - 1e-9:
+            return mapa.snap(t, ("beat", 0.5))
+        return mapa.snap(t, ("beat", 0.25))
     step = snap_step(tempo_fix, bpm, bpb, pps)
     if step <= 0:
         return t
@@ -198,7 +232,7 @@ def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
 
 
 def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
-            offset: float = 0.0, step=None) -> str:
+            offset: float = 0.0, step=None, mapa=None) -> str:
     """Formata t per al regle: 'm:ss[.d]' (temps) o 'compàs.beat[.subdivisió]' (tempo).
 
     `offset` = segon on cau el compàs 1 (la graella hi comença).
@@ -215,6 +249,12 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
         else:
             txt = f"{m}:{int(round(s)):02d}"    # m:ss
         return ("-" if neg else "") + txt
+    if mapa is not None and not mapa.es_constant():
+        c, b, sub = mapa.pos(t)
+        _bar_s, beat_s, _sub_s = mapa.durations(t)
+        if step is not None and 0 < step < beat_s - 1e-9:
+            return f"{c}.{b}.{sub}"
+        return f"{c}.{b}"
     beat = 60.0 / max(bpm, 1e-9)
     # Sense clampar: abans de l'offset (el compàs 1) la graella és NEGATIVA
     # -> el silenci inicial es llegeix com un compte enrere (-1, -2...).
@@ -252,7 +292,7 @@ def is_bar_start_label(label: str) -> bool:
         return False
 
 
-def grid_levels(tempo_fix, bpm, bpb, pps, view_px):
+def grid_levels(tempo_fix, bpm, bpb, pps, view_px, mapa=None):
     """[(step_s, color, width), ...] de menys a més important (GridLayer).
 
     `color` és un valor de color REAL (resolt de `theme`). Deriva del **pla
@@ -260,6 +300,6 @@ def grid_levels(tempo_fix, bpm, bpb, pps, view_px):
     """
     col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
            "sub": theme.TL_GRID_SUB}
-    plan = grid_plan(tempo_fix, bpm, bpb, pps, view_px)
+    plan = grid_plan(tempo_fix, bpm, bpb, pps, view_px, mapa=mapa)
     # de fi a gruixut, perquè els nivells gruixuts es pintin al damunt
     return [(s, col[k], 1) for (s, k) in reversed(plan["lines"])]

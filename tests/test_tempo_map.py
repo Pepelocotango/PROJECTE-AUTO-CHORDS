@@ -171,5 +171,54 @@ class TestPersistencia(unittest.TestCase):
         self.assertEqual(linia, "0.00,2.50,105.315")
 
 
+class TestGraellaAmbMapa(unittest.TestCase):
+    """Fase 3: la graella/regle/snap amb un mapa **variable**.
+
+    4/4 a 120 BPM [0,4) i 3/4 a 60 BPM [4,8): els compassos fan 2 s i 3 s.
+    """
+
+    def setUp(self):
+        from app import timeline_base as tb
+        self.tb = tb
+        self.mapa = TempoMap([(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 60.0, 3, 4)])
+
+    def test_grid_lines_bar(self):
+        self.assertEqual(
+            [round(t, 3) for t in self.mapa.grid_lines(0.0, 8.0, "bar")],
+            [0.0, 2.0, 4.0, 7.0])
+
+    def test_grid_lines_beat(self):
+        self.assertEqual(
+            [round(t, 3) for t in self.mapa.grid_lines(0.0, 5.0, "beat")],
+            [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0])
+
+    def test_fmt_pos_mapa(self):
+        f = self.tb.fmt_pos
+        self.assertEqual(f(0.0, True, 120, 4, 0.0, mapa=self.mapa), "1.1")
+        self.assertEqual(f(2.0, True, 120, 4, 0.0, mapa=self.mapa), "2.1")
+        self.assertEqual(f(4.0, True, 120, 4, 0.0, mapa=self.mapa), "3.1")
+
+    def test_snap_mapa(self):
+        st = self.tb.snap_time
+        self.assertAlmostEqual(st(1.7, True, 120, 4, 60.0, 0.0,
+                                  mapa=self.mapa), 1.75)
+        self.assertAlmostEqual(st(4.1, True, 120, 4, 60.0, 0.0,
+                                  mapa=self.mapa), 4.0)
+
+    def test_constant_identic(self):
+        """Amb un mapa constant, la via del mapa és IDÈNTICA a la uniforme."""
+        const = TempoMap.constant(120, 4, 4, durada=10.0)
+        for t in (0.0, 0.25, 1.7, 3.9, 7.05):
+            self.assertEqual(
+                self.tb.fmt_pos(t, True, 120, 4, 0.0, mapa=const),
+                self.tb.fmt_pos(t, True, 120, 4, 0.0))
+
+    def test_plan_constant_identic(self):
+        const = TempoMap.constant(120, 4, 4, durada=10.0)
+        self.assertEqual(
+            self.tb.grid_plan(True, 120, 4, 60.0, 800.0, mapa=const),
+            self.tb.grid_plan(True, 120, 4, 60.0, 800.0))
+
+
 if __name__ == "__main__":
     unittest.main()

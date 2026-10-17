@@ -807,7 +807,9 @@ class Visor(QMainWindow):
         """
         from app.tempo_map import TempoMap
         trams = list(self.tempo_trams or [])
-        if not trams:
+        if len(trams) <= 1:
+            # Un sol tros = el cas constant d'avui → se sincronitza amb el
+            # BPM·compàs vigent; amb més trossos, es respecta el mapa.
             trams = [(0.0, self._durada_wav(), float(self.bpm),
                       int(self.bpb), 4)]
             self.tempo_trams = trams
@@ -1354,8 +1356,10 @@ class Visor(QMainWindow):
         return f"{compas}.{beat_idx} / {total_compas}.{total_beat_idx}"
 
     def _actualitza_temps(self):
+        self._refresca_tempo_map()
         self.timeline.set_tempo_mode(self.tempo_fix, self.bpm, self.bpb,
-                                     getattr(self, "offset", 0.0))
+                                     getattr(self, "offset", 0.0),
+                                     mapa=self.tempo_map)
         # En mode Lliure el metrònom no té sentit: l'apaguem (i si sona,
         # reengega sense clic des de la posició actual).
         if not self.tempo_fix and getattr(self, "metro_on", False):
