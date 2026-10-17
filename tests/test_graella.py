@@ -101,6 +101,24 @@ class TestGraella(unittest.TestCase):
         for i in range(len(res) - 1):
             self.assertAlmostEqual(res[i][1], res[i + 1][0], places=6)
 
+    def test_regularitza_clips_nucli_unic(self):
+        # El nucli únic treballa sobre clips `(ini, fi, payload)`.
+        clips = [(0.0, 0.2, ("C",)), (0.2, 2.0, ("X",)), (2.0, 4.0, ("G",))]
+        out = graella.regularitza_clips(clips, 2.0, 0.0, 4.0)
+        self.assertEqual([c[0] for c in out], [0.0, 2.0])
+        self.assertEqual([c[2] for c in out], [("X",), ("G",)])  # X domina
+
+    def test_regularitza_seccions_segueix_el_nucli_dominant(self):
+        # El tram resolt [16,22) el domina la secció C[10,20) (4 s) i NO la D
+        # [20,22) (2 s): el nucli mira la COBERTURA del tram, no només qui hi
+        # encaixa l'inici. Paritat estructural #11 amb els acords.
+        sec = [(0.0, 5.0, "A", "A"), (5.0, 10.0, "B", "B"),
+               (10.0, 20.0, "C", "C"), (20.0, 22.0, "D", "D")]
+        res = graella.regularitza_seccions(sec, 120, 4, 0.0, 22.0,
+                                           modul_compassos=4)
+        self.assertEqual([(s[0], s[2]) for s in res],
+                         [(0.0, "A"), (8.0, "C"), (16.0, "C")])
+
     # ── Casos límit (validació) ──────────────────────────────────────────────
     def test_regularitza_acords_durada_zero(self):
         cru = [(0.0, "C"), (2.0, "G")]
