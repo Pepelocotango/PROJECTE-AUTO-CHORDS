@@ -1,6 +1,6 @@
 # Índex de la documentació (`docs/`)
 
-> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-10-16.**
+> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-10-17.**
 > L'estat *actual* del projecte és a **`../README.md`** i **`../ROADMAP.md`**;
 > aquí hi ha el **detall temàtic**. Els documents d'**`archive/`** (marcats
 > **[HISTÒRIC]**, **[ANÀLISI]** o **[COMPLETAT]**) es conserven com a referència,
@@ -30,6 +30,7 @@
 | `PARTITURA_EXPORT.md` | Exportació de partitura (xifrat: MusicXML/PDF/MSCZ). |
 | `MCP_AUTO_CHORDS.md` | Pont MCP perquè un agent controli l'app viva. |
 | `EDICIO_OPERACIONS.md` | **Taula única** de totes les formes d'edició: operació × **GUI** × **MCP** × paritat acords/estructura (**#11**) × estat (FET/pendent). El test `test_edicio_operacions_doc.py` la manté al dia. |
+| `REFACTOR_INICI_FI.md` | 🏗️ **Refactor de base** (en curs, tag `refactor-inici-fi`): model únic de clips amb **inici+fi** per a acords i estructura. Contracte i pla per fases. |
 
 ## Autodetecció (motors i opcions)
 
