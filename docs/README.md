@@ -29,6 +29,7 @@
 | `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps (nota tècnica). |
 | `PARTITURA_EXPORT.md` | Exportació de partitura (xifrat: MusicXML/PDF/MSCZ). |
 | `MCP_AUTO_CHORDS.md` | Pont MCP perquè un agent controli l'app viva. |
+| `EDICIO_OPERACIONS.md` | **Taula única** de totes les formes d'edició: operació × **GUI** × **MCP** × paritat acords/estructura (**#11**) × estat (FET/pendent). El test `test_edicio_operacions_doc.py` la manté al dia. |
 
 ## Autodetecció (motors i opcions)
 
