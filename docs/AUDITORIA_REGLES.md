@@ -213,6 +213,21 @@ deixaven passar valors impossibles:
 
 Test nou: `tests/test_regles_or.py` › `test_les_xarxes_de_seguretat_tambe_ho_arreglen`.
 
+## Ronda 18 — tests que fan *skip*: cap d'obsolet
+
+Revisats **tots** els punts on la suite pot saltar-se proves
+(`skipTest`/`skipIf`/`skipUnless`, 15 llocs): **tots són condicionals d'entorn i
+documentats**, cap test obsolet ni mort:
+
+- **Plataforma**: motor d'àudio natiu (mac/win), `flock` i permisos POSIX,
+  `/proc`, `O_NOFOLLOW`, `aplay`/`paplay`… (a cada SO corre el seu).
+- **Eines de sistema**: `ffprobe` (no s'empaqueta) i `sonic-annotator`
+  (`_SONIC_OK`, la reserva).
+- En **aquest** entorn només se'n salta **1**: `test_natiu_a_windows_i_macos`
+  («al Linux no es fa servir el motor natiu»), que és el que toca.
+- `EscriuTtlTests` (només amb `sonic-annotator` executable) **sí que corre
+  aquí**: `_SONIC_OK = True`.
+
 ## 🏁 Cobertura de la prova de mutació — LES 11 REGLES, verificades
 
 Cada regla té almenys **una mutació feta i detectada** pels tests (una mutació =
