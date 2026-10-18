@@ -39,6 +39,7 @@ import metronom  # noqa: E402
 from . import graella, icones, pipeline, theme  # noqa: F401
 from . import acord_audio  # noqa: E402
 from . import dialegs  # noqa: E402
+from . import tempo_map  # noqa: E402
 from .timeline import TimelineView  # noqa: E402
 
 # Configuració centralitzada per al directori temporal (configurable)
@@ -1847,15 +1848,22 @@ class Visor(QMainWindow):
         keys = list(keys or [])
         idx_ac = sorted({int(i) for k, i in keys if k == "chord"}, reverse=True)
         idx_sec = sorted({int(i) for k, i in keys if k == "section"}, reverse=True)
+        idx_tp = sorted({int(i) for k, i in keys if k == "tempo"}, reverse=True)
         idx_ac = [i for i in idx_ac if 0 <= i < len(self.acords)]
         idx_sec = [i for i in idx_sec if 0 <= i < len(self.seccions)]
-        if not idx_ac and not idx_sec:
+        idx_tp = [i for i in idx_tp if 0 < i < len(self.tempo_trams or [])]
+        if not idx_ac and not idx_sec and not idx_tp:
             return
         self._undo_marca()
         for i in idx_ac:
             self._elimina_acord(i)
         for i in idx_sec:
             self._elimina_seccio(i)
+        if idx_tp:
+            trams = list(self.tempo_trams or [])
+            for i in idx_tp:
+                trams = tempo_map.elimina_tall(trams, i)
+            self.aplica_tempo_trams(trams)
         self._undo_commit()
         # INVARIANT #4 INSTANTANI: si l'esborrat ha deixat el model sense acords
         # (o sense estructura), s'hi torna a posar la marca canònica a 0 («N» /
