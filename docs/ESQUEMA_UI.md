@@ -2,9 +2,10 @@
 
 > Document de referència de la UI (PyQt5). Noms que fa servir el codi i
 > noms «humans» de cada zona, mides reals i interaccions.
-> **Actualitzat: 2026-10-16 · v0.7.0** (GUI reordenada:
-> timeline al centre, barres d'eines, franja Editor, metrònom, count-in,
-> caixa d'informació, tap tempo i paleta de botons unificada).
+> **Actualitzat: 2026-10-18 · v0.7.0** (GUI reordenada:
+> timeline al centre, barres d'eines, **pista de BPM/compàs**, franja Editor,
+> metrònom, count-in, caixa d'informació, tap tempo, panell **Tipus d'acord**
+> i paleta de botons unificada).
 
 L'app és **una sola finestra** (`Finestra`, `app/main.py`) amb el **visor**
 (`Visor`, `app/visor.py`) **com a widget central**. Ja no hi ha formulari
@@ -14,7 +15,7 @@ tipus assistent ni `QDockWidget` del visor.
 
 ## 0. Finestra principal (`Finestra`, `app/main.py`)
 
-Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inicial: «**Auto Chords — wav → acords + estructura**») · mida per defecte 1500×900, **amplada mínima 1240 px** (perquè les barres no es tallin mai).
+Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» quan hi ha un projecte obert; s'hi afig ` *` si hi ha canvis sense desar (`_actualitza_titol`) · mida per defecte 1500×900, **amplada mínima 1240 px** (perquè les barres no es tallin mai).
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
@@ -40,6 +41,8 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
+> 📐 **Docks** (desacoplables i ocultables des de *Visualitza*): a l'**esquerra**, el panell **Tipus d'acord** (`dock_xifrat`, `app/panell_xifrat.py`: paleta d'arrel + baix + **62 tipus**, ▶ Escoltar i selector de timbre); a **baix**, el dock **Log · Informació** (`log_dock`). El transport i les accions són **barres d'eines** (no movibles), no docks.
+>
 > 🎨 **Icones REALS**: la UI fa servir icones **Lucide** (`icones/`, llicència ISC) — **no** emojis. El dibuix de dalt n'és una aproximació; el mapa real és: ▶/⏸ → `play`/`pause` · ⏹ → `square` · ⏪/⏩ → `rewind`/`fast-forward` · `A⟨`/`⟩B` → `arrow-left-to-line`/`arrow-right-to-line` · 🔁 → `repeat-2` · (neteja el loop) → `x` · 🔍−/🔍+ → `zoom-out`/`zoom-in` · ⛶ → `maximize` · ⊙ → `focus` · 🔇 → `volume-x` · 🥁 → `metronome` · 🎯 → `target` · 📍 → `map-pin` · 🧭 → `compass` · (Desfer/Refer) → `undo-2`/`redo-2` · 🎵/🎼 (Editor) → `music`/`piano`.
 
 ### Noms (codi ↔ UI) — finestra principal
@@ -62,7 +65,11 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | — | `self.b_compas_auto` | **Detecta el compàs 1** (icona `compass`) | `QPushButton` |
 | — | `self.b_tap` | **TAP** (tecla **T**) | `QPushButton` |
 | — | `self.b_offset_cursor` | **Marca el compàs 1 aquí** (icona `map-pin`) → al cursor | `QPushButton` |
-| — | `self.amb_est` | **Inclou estructura** | `QAction` (menú Analitza) |
+| — | `self.amb_est` · `self.a_metro` · `self.a_eina_marc` | **Inclou estructura** · **Metrònom** · **Eina de marc** | `QAction` (checkable, menús) |
+| — | `self.amb_part` · `self.tonalitat_auto` | **Inclou la partitura (xifrat)** · **Tonalitat automàtica** | `QAction` (checkable, menú Fitxer) |
+| — | `self.b_mode_facil` · `self.b_eina` | **Mode fàcil** · **Eina: intel·ligent / Eina: marc** | `QPushButton` (el 2n, checkable) |
+| — | `self._params_temps` | contenidor dels **paràmetres de temps** (BPM · ×2/÷2 · Detecta · TAP · Compàs · Offset · ≈ C.B) | `QWidget` |
+| — | `self.panell_xifrat` · `self.dock_xifrat` | **panell «Tipus d'acord»** (arrel · baix · 62 tipus · ▶ Escoltar · timbre) | `PanellXifrat` en un `QDockWidget` |
 | — | `self.tb_loop` · `self.tb_neteja_loop` · `self.tb_mut` | **loop** (icona `repeat-2`) · **neteja el loop** (icona `x`) · **mute** (icona `volume-x`) | `QPushButton` |
 | — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió**: Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · Treset (1/12) · **1 compàs · 4 · 8 · 16 compassos** | `QPushButton` (checkable) · `QComboBox` |
 | — | `self.b_metro` · `self.vol_metro` | **metrònom** (icona `metronome`) · volum del clic | `QPushButton` · `QSlider` |
@@ -76,7 +83,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | Barra | Contingut |
 |-------|-----------|
 | **Treball** (barra 1, fila 1) | `Obre àudio` → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B · **[Mode fàcil]** (`Inclou estructura` és una acció del **menú Analitza**) |
-| **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) · **Obre la carpeta de sortida** |
+| **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Obre la carpeta de sortida** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) |
 | **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · `metronome` · volum del clic · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
 ### Menús
@@ -167,31 +174,35 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 ├────────────────────────────────────────────────────────────────────────┤
 │  ②  FORMA D'ONA           (WaveformLayer)   fons #0f1218               │
 │                                                                        │
-│        ③  CARRIL ESTRUCTURA  (SectionItem)   y 32,8–86,8 · 54 px       │
+│  ③  PISTA BPM/COMPÀS      (TempoLayer)      y 29–54   · 25 px          │
+│         ┌────────────┐┌───────────┐   trams «120 · 4/4»… (només en     │
+│         │ 120 · 4/4  ││  98 · 4/4 │   mode BPM · compàs; a Lliure,     │
+│         └────────────┘└───────────┘   buida). clic sel. · doble edit.  │
+│        ④  CARRIL ESTRUCTURA  (SectionItem)   y 60–111  · 51 px         │
 │           ┌──────┐┌──────┐┌──────────┐   (semitransparent)             │
 │           │ A·N  ││  B   ││   C·A    │                                 │
 │           └──────┘└──────┘└──────────┘                                 │
-│        ④  CARRIL ACORDS      (ChordItem)     y 104,2–158,2 · 54 px     │
+│        ⑤  CARRIL ACORDS      (ChordItem)     y 117–168 · 51 px         │
 │           ┌────┐┌─────┐┌──────┐┌────┐                                   │
 │           │ N  ││ E7  ││  Em7 ││ F  │    (semitransparent)             │
 │           └────┘└─────┘└──────┘└────┘                                   │
 │                                                                        │
-│  ⑤  GRID (GridLayer)      línies de compàs/beat/subdivisió             │
-│  ⑥  CURSOR VERMELL        playhead (línia vertical)                    │
-│  ⑦  BANDA LOOP A/B        rectangle taronja                            │
-│  ⑧  GUIA DE SNAP          línia que apareix en arrossegar               │
+│  ⑥  GRID (GridLayer)      línies de compàs/beat/subdivisió             │
+│  ⑦  CURSOR VERMELL        playhead (línia vertical)                    │
+│  ⑧  BANDA LOOP A/B        rectangle taronja                            │
+│  ⑨  GUIA DE SNAP          línia que apareix en arrossegar               │
 ├────────────────────────────────────────────────────────────────────────┤
-│  ⑪  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
+│  ⑫  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
 │      [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]              │
 │      (sense finestres emergents; Enter = aplica)                       │
 ├────────────────────────────────────────────────────────────────────────┤
-│  ⑨  LLISTA ACORDS (llista_ac) │ ⑩ LLISTA SECCIONS (llista_ab)          │
+│  ⑩  LLISTA ACORDS (llista_ac) │ ⑪ LLISTA SECCIONS (llista_ab)          │
 │     «1.1 N», «8.1 E7»…        │   «A(N) 1.1–10.1»…                     │
 │     clic=salta (i ressalta)   │   clic=salta (i ressalta)              │
 │     doble=edita (Editor)      │   doble=edita (Editor)                 │
 │     dret=menú contextual      │   dret=menú contextual                 │
 ├────────────────────────────────────────────────────────────────────────┤
-│  ⑫  LLISCADOR ──────●────────  │ 9.4 / 95.1 │ [🔇] │ [volum] │ stats    │
+│  ⑬  LLISCADOR ──────●────────  │ 9.4 / 95.1 │ [🔇] │ [volum] │ stats    │
 │      (posició + estatus del transport; el transport principal és a la  │
 │       barra de la finestra)                                            │
 └────────────────────────────────────────────────────────────────────────┘
@@ -205,17 +216,18 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 |-----|-----------------|-----------------|-------|
 | ① | `RulerLayer` / `self._ruler` | **regle de temps** | `QGraphicsItem` |
 | ② | `WaveformLayer` / `self._waveform` | **forma d'ona** | `QGraphicsPixmapItem` |
-| ③ | `SectionItem` / `self._section_items` | **carril estructura** | `QGraphicsObject` |
-| ④ | `ChordItem` / `self._chord_items` | **carril acords** | `QGraphicsObject` |
-| ⑤ | `GridLayer` / `self._grid` | **graella** | `QGraphicsItem` |
-| ⑥ | `self._cursor` | **cursor vermell** (playhead) | `QGraphicsItem` |
-| ⑦ | `self._loop_item` | **banda de loop** A/B (arrossegable: vores mouen A/B, cos mou el loop sencer) | `QGraphicsRectItem` |
-| ⑧ | `self._snap_guide` | **guia de snap** | `QGraphicsLineItem` |
-| — | `TimelineView` | tot el bloc ①–⑧ | `QGraphicsView` |
-| ⑨ | `self.llista_ac` | **llista d'acords** | `QListWidget` |
-| ⑩ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
-| ⑪ | `ed_icona` · `ed_gran` · `ed_nom` · `ed_fam` · `ed_ini` · `ed_cb` · `ed_aplica` | **franja Editor** | `QLabel`/`QLineEdit`/`QPushButton` |
-| ⑫ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
+| ③ | `TempoLayer` / `self._tempo_lane` | **pista de BPM/compàs** (trams de tempo; només en mode BPM · compàs) | `QGraphicsObject` |
+| ④ | `SectionItem` / `self._section_items` | **carril estructura** | `QGraphicsObject` |
+| ⑤ | `ChordItem` / `self._chord_items` | **carril acords** | `QGraphicsObject` |
+| ⑥ | `GridLayer` / `self._grid` | **graella** | `QGraphicsItem` |
+| ⑦ | `self._cursor` | **cursor vermell** (playhead) | `QGraphicsItem` |
+| ⑧ | `self._loop_item` | **banda de loop** A/B (arrossegable: vores mouen A/B, cos mou el loop sencer) | `QGraphicsRectItem` |
+| ⑨ | `self._snap_guide` | **guia de snap** | `QGraphicsLineItem` |
+| — | `TimelineView` | tot el bloc ①–⑨ | `QGraphicsView` |
+| ⑩ | `self.llista_ac` | **llista d'acords** | `QListWidget` |
+| ⑪ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
+| ⑫ | `ed_icona` · `ed_gran` · `ed_nom` · `ed_fam` · `ed_ini` · `ed_cb` · `ed_aplica` | **franja Editor** | `QLabel`/`QLineEdit`/`QPushButton` |
+| ⑬ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
 
 > 🥁 **El transport principal** (`b_play`, `b_stop`, `b_menys`, `b_mes`, `b_A`,
 > `b_B`, `b_loop`, `b_zm`, `b_zp`, `b_zt`, `b_zs`, `b_mut`, `b_metro`, `vol_metro`)
@@ -231,19 +243,23 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | Zona on cliques | Acció |
 |-----------------|-------|
 | **Regle ① (zona buida)** | arrossegar → **crea un loop A/B** nou (amb **snap** a la graella) · clic → salta |
-| **Banda loop ⑦ — vora esquerra** | arrossegar → **mou A** (inici) · cursor ↔ · tolerància ±6 px (`LOOP_GRAB_PX`) |
-| **Banda loop ⑦ — vora dreta** | arrossegar → **mou B** (fi) · cursor ↔ |
-| **Banda loop ⑦ — cos** | arrossegar → **mou el loop sencer** (manté la durada) · cursor ✥ |
-| **Banda loop ⑦ — doble-clic** | **selecciona TOT el que hi ha dins** (acords I seccions) i posa el cursor al **final del loop** → a punt per copiar (Ctrl+C) i enganxar |
-| **Banda loop ⑦ — botó dret** | **menú**: Copia/Retalla tot el que hi ha dins el loop · Enganxa al cursor |
-| **Cos d'item ③④** | arrossegar → **mou** · `hover` = ✋ mà oberta |
-| **Vora dreta ③④** | arrossegar → **mou el final** · `hover` = ↔ |
-| **Vora esquerra ③④** | arrossegar → **mou l'inici** · `hover` = ↔ |
+| **Banda loop ⑧ — vora esquerra** | arrossegar → **mou A** (inici) · cursor ↔ · tolerància ±6 px (`LOOP_GRAB_PX`) |
+| **Banda loop ⑧ — vora dreta** | arrossegar → **mou B** (fi) · cursor ↔ |
+| **Banda loop ⑧ — cos** | arrossegar → **mou el loop sencer** (manté la durada) · cursor ✥ |
+| **Banda loop ⑧ — doble-clic** | **selecciona TOT el que hi ha dins** (acords I seccions) i posa el cursor al **final del loop** → a punt per copiar (Ctrl+C) i enganxar |
+| **Banda loop ⑧ — botó dret** | **menú**: Copia/Retalla tot el que hi ha dins el loop · Enganxa al cursor |
+| **Cos d'item ④⑤** | arrossegar → **mou** · `hover` = ✋ mà oberta |
+| **Vora dreta ④⑤** | arrossegar → **mou el final** · `hover` = ↔ |
+| **Vora esquerra ④⑤** | arrossegar → **mou l'inici** · `hover` = ↔ |
 | **Clic (sense moure)** | **posa el cursor vermell** a l'inici del clip |
-| **Doble-clic ③④ / llistes ⑨⑩** | **selecciona i enfoca l'Editor ⑪** |
-| **Clic llista ⑨⑩** | salta + **ressalta la fila** (i selecciona el clip al carril) |
+| **Doble-clic ④⑤ / llistes ⑩⑪** | **selecciona i enfoca l'Editor ⑫** |
+| **Clic llista ⑩⑪** | salta + **ressalta la fila** (i selecciona el clip al carril) |
 | **Zona buida ② + botó dret** | **pan** (desplaçar la vista) |
 | **Botó dret SOBRE un clip** | **menú contextual**: Duplica · Elimina · Reanomena |
+| **Pista de tempo ③ — clic** | **selecciona** el tram de tempo/compàs i hi porta el cursor |
+| **Pista de tempo ③ — doble-clic** | **diàleg** per editar-ne el valor (`_on_tempo_edit`) |
+| **Pista de tempo ③ — vores** | arrossegar → **mou on canvia** el tempo (`_on_tempo_mogut`; ±5 px i cursor ↔ com als clips — regla #11) |
+| **Pista de tempo ③ — botó dret** | **menú**: Reanomena (BPM/compàs)… · Elimina (només si hi ha més d'un tram) · Parteix aquest tros aquí · Afegeix un canvi aquí |
 | **Roda ②** | **zoom** (centrat al clip seleccionat) |
 | **Espai** | **play / pausa** |
 | **T** | **tap tempo** |
@@ -252,7 +268,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | **Ctrl+D** | **duplica** el clip o **tot el grup** seleccionat |
 | **Ctrl+C / Ctrl+X / Ctrl+V** | **copiar / retallar / enganxar** la selecció — l'enganxat **sobreescriu** el tram (regla #4: la cançó no pot créixer); si no mous el cursor, enganxa just **després** del bloc i deixa el bloc enganxat **seleccionat** |
 | **F2** | **reanomena** el clip seleccionat, o **tot el grup del tipus actiu** (N acords → un nom · M seccions → una lletra); amb selecció **mixta** es renombren només els del tipus del clip actiu (opció A), i el bloc queda **seleccionat** |
-| **Editor ⑪ + «Aplica»** | amb **multi-selecció**, el camp **Nom** s'aplica a **tots els seleccionats del tipus actiu** (estil fulla de càlcul); l'inici NO s'aplica en bloc |
+| **Editor ⑫ + «Aplica»** | amb **multi-selecció**, el camp **Nom** s'aplica a **tots els seleccionats del tipus actiu** (estil fulla de càlcul); l'inici NO s'aplica en bloc |
 | **Ctrl+Z / Ctrl+Y** | **desfer / refer** |
 | **Ctrl+H** | **troba i reemplaça** xifrats (acords) o etiquetes (estructura) a **tot el tema**; una sola operació de desfer i **no canvia cap temps** |
 | **← / →** | **nudge**: mou la **vora esquerra** (l'inici) del clip seleccionat **un pas de graella**; **Alt+←/→** mou la **vora dreta** (estirar/encongir). Una sola operació de desfer; sense selecció no fa res. |
@@ -297,9 +313,11 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 |----------|-------|-----------|
 | `RULER_H` | 26 px | alçada del regle |
 | `WAVEFORM_H` | 170 px | alçada de la pista d'ona |
-| `LANE_H_FRAC` | 0.32 | alçada dels carrils = 54 px |
-| `LANE_SEC_TOP_FRAC` | 0.04 | dalt carril estructura → y 32,8 |
-| `LANE_ACC_TOP_FRAC` | 0.46 | dalt carril acords → y 104,2 |
+| `LANE_H_FRAC` | 0.30 | alçada dels carrils d'estructura i acords = **51 px** (`LANE_H`) |
+| `LANE_TEMPO_H` | 25 px | alçada de la pista de BPM/compàs (`LANE_H // 2`) |
+| `LANE_TEMPO_TOP` | 29 | dalt de la pista de tempo (regla + 2 % de l'ona) |
+| `LANE_SEC_TOP` | 60 | dalt del carril estructura (tempo + 4 % de l'ona) |
+| `LANE_ACC_TOP` | 117 | dalt del carril acords (estructura + 4 % de l'ona) |
 | `TOTAL_H` | 196 px | regle + ona |
 
 **Colors del timeline** (`app/theme.py`, NO al codi del timeline):
@@ -323,7 +341,7 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 | **Encès** | **blau** `ACTIU #2563eb` (+ vora `#1e40af`) | `🔁 loop`, modes `BPM·compàs`/`Lliure` |
 | **Encès (especial)** | **taronja suau** `ACTIU_GROC #ffb26b` (vora `#b36a2a`) | `mute` (icona `volume-x`), `metrònom` (icona `metronome`) |
 | **Acció principal** | blanc `#ffffff` | `Analitza` (`#principal`) |
-| **Deshabilitat** | gris apagat `DISABLED #2f3238` | (🥁 en mode Lliure) |
+| **Deshabilitat** | gris apagat `DISABLED #1e2024` | (🥁 en mode Lliure) |
 
 > Regla clau: `QPushButton:checked` → blau; `#metro:checked, #mute:checked` → taronja suau.
 > La icona de transport és **`play`** aturat / **`pause`** sonant (sense text).
@@ -333,9 +351,9 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 
 ---
 
-## 7. Opcions d'autodetecció (diàleg) i import
+## 6. Opcions d'autodetecció (diàleg) i import
 
-### 7.1 Diàleg d'opcions (`app/dialegs.py`)
+### 6.1 Diàleg d'opcions (`app/dialegs.py`)
 
 En clicar **`🎯 Detecta`** (obre a **BPM**) o **`Analitza`** (obre a **Acords**)
 surt un `QDialog` amb 3 pestanyes + «Restaura per defecte»:
@@ -357,7 +375,7 @@ Els títols són **en català** amb l'`id` del plugin a sota i una **ajuda**
 
 Les opcions es **recorden** a `opcions_detecta.json` (gitignored).
 
-### 7.2 Motors d'autodetecció (Queen Mary)
+### 6.2 Motors d'autodetecció (Queen Mary)
 
 `docs/QM_VAMP.md`: s'han **compilat** els plugins **`qm-vamp-plugins`** de Queen
 Mary (els d'Audacity/Mixxx), **sense AVX**.
@@ -371,7 +389,7 @@ El **`🧭`** (i Analitza ▸ «Detecta el compàs 1 automàticament») usa
 `qm-onsetdetector` + `qm-barbeattracker` per posar l'offset sol (al tema de
 101 dona 9,49 s).
 
-### 7.3 Import de formats (`app/ffmpeg.py`)
+### 6.3 Import de formats (`app/ffmpeg.py`)
 
 `Obre àudio` accepta **wav, mp3, aif/aiff, flac, m4a, ogg, opus, wma…**. Si el
 fitxer no és **WAV PCM 16 bits**, es converteix automàticament amb
@@ -380,7 +398,7 @@ com **`<nom>_convertit.wav`** (es reutilitza si ja és més nou).
 
 ---
 
-## 6. Documents relacionats
+## 7. Documents relacionats
 - `docs/ESQUEMA_UI.html` i `docs/ESQUEMA_UI.svg` — aquest mateix esquema en
   **HTML** i **vectorial**, **GENERATS** d'aquest `.md` amb
   **`python3 eines/genera_esquema_ui.py`** (**no editar-los a mà**; el test
