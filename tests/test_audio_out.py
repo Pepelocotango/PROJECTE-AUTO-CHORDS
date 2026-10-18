@@ -284,10 +284,14 @@ class TestPlataforma(unittest.TestCase):
 
 
 class TestReengegaComElVisor(unittest.TestCase):
-    """Reprodueix el camí EXACTE que petava a macOS: amb l'àudio sonant, canviar
-    el BPM/compàs crida `_reenvia_si_sona` → `_atura_proc()` del motor vell +
-    `_engega_des_de()` (motor nou), **mentre el fil d'alimentació vell encara
-    tancava**. El motor vell s'ha de tancar UN sol cop."""
+    """El camí que petava a macOS (i que encara passa en bussejar/saltar):
+    `_atura_proc()` del motor vell + `_engega_des_de()` (motor nou), **mentre el
+    fil d'alimentació vell encara tancava**. El motor vell s'ha de tancar UN sol
+    cop.
+
+    (El canvi de BPM/compàs JA NO reengega res — el fil llig la graella a cada
+    tros; vegeu `test_canviar_bpm_mentre_sona_no_talla_l_audio`. El reinici viu
+    encara a `ves_a()`, que és un salt demanat per l'usuari.)"""
 
     def test_atura_i_reengega_amb_fil_vell_escrivint(self):
         fake = FakeSD()
@@ -306,7 +310,7 @@ class TestReengegaComElVisor(unittest.TestCase):
         fil = threading.Thread(target=alimenta, daemon=True)
         fil.start()
 
-        vell.atura()                        # _reenvia_si_sona: atura el vell
+        vell.atura()                        # com al salt: atura el vell
         nou = _motor(fake=fake)             # ...i n'obre un de nou
         aturat.set()
         fil.join(timeout=5)

@@ -413,6 +413,40 @@ class ExportPipelineTests(unittest.TestCase):
         self.assertEqual(v.seccions[1][2], "B")
         app.quit()
 
+    def test_canviar_bpm_mentre_sona_no_talla_l_audio(self):
+        """Canviar BPM/compàs/offset amb l'àudio sonant NO ha de reiniciar-lo.
+
+        El fil d'alimentació llig `bpm`/`bpb`/`offset` (i el mapa de tempo) a
+        cada tros, així que el metrònom segueix la graella nova a l'instant.
+        Abans es reiniciava el reproductor i se sentia un micro-tall (mateix
+        defecte que el commutador del metrònom; reportat per l'operador).
+        """
+        import wave
+        # `Finestra()` necessita una QApplication viva (i la referència ha de
+        # viure: si no, es destruiria de seguida).
+        app = app_main.QApplication.instance() or app_main.QApplication([])
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "t.wav")
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(44100)
+                w.writeframes(b"\x00\x00" * 44100 * 3)
+            window = app_main.Finestra()
+            window.wav_edit.setText(wav)
+            window._carrega_visor(wav)
+            v = window.visor_ref
+            self.assertIsNotNone(v, "cal un visor carregat per a aquesta prova")
+            v.sona = True
+            crides = []
+            v._atura_proc = lambda: crides.append("atura")
+            v._engega_des_de = lambda t: crides.append("engega")
+            window._aplica_parametres_temps()
+            app.processEvents()          # deixa la UI processar els canvis
+            self.assertEqual(crides, [], "no ha de reiniciar el reproductor")
+            v.sona = False
+            window.close()
+
     def test_main_window_export_calls_pipeline_export(self):
         app = app_main.QApplication.instance() or app_main.QApplication([])
         window = app_main.Finestra()

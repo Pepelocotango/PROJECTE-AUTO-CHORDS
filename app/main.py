@@ -1874,8 +1874,14 @@ class Finestra(QMainWindow):
         self.registra(f"Compàs 1 detectat a {seg:.2f}s ✔")
 
     def _aplica_parametres_temps(self):
-        """Propaga BPM/compàs/offset al visor. Si sona, reengega perquè el
-        metrònom segueixi la nova graella des de la posició actual."""
+        """Propaga BPM/compàs/offset al visor — **sense tallar l'àudio**.
+
+        NO cal reengegar res: el fil d'alimentació llig `bpm`/`bpb`/`offset` (i
+        el mapa de tempo) a **cada tros**, així que el metrònom segueix la
+        graella nova a l'instant. Abans es reiniciava el reproductor i se sentia
+        un **micro-tall** en canviar el BPM/compàs mentre sonava (mateix defecte
+        que el commutador del metrònom; reportat per l'operador, 18-10-2026).
+        """
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             return
@@ -1886,17 +1892,7 @@ class Finestra(QMainWindow):
         vr.offset = self._offset_val()
         self.offset_cb.setText(self._secs_a_cb(vr.offset))
         vr._actualitza_temps()
-        self._reenvia_si_sona()
         vr._undo_commit()
-
-    def _reenvia_si_sona(self):
-        """En canviar BPM/compàs amb la reproducció en marxa, reengega perquè
-        el metrònom segueixi la nova graella des de la posició actual."""
-        vr = getattr(self, "visor_ref", None)
-        if vr is not None and getattr(vr, "sona", False):
-            pos = vr.pos
-            vr._atura_proc()
-            vr._engega_des_de(pos)
 
     def _canvia_tempo(self, fix):
         for w in (self.bpm, self.bpb, self.offset):
