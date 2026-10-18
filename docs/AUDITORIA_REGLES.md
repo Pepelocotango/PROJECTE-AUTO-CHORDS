@@ -41,7 +41,7 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 8 | Temps vàlids | `visor._valida_canvis_*` **+** les xarxes de seguretat (`normalitza_cobertura`, `normalitza_trams`) | `test_regles_or.TestRegla8TempsValids` | ✅ auditat (Ronda 1: 2 forats arreglats) |
 | 9 | Portabilitat i maquinari (3 SO, sense AVX) | CI (`eines/verifica_minos_macos.py`) · build genèric (`-msse -msse2`, sense AVX) · `tests/test_requirements.py` (pins) · **NOU `GuardAvxTests`** (flags dels scripts de build) | `test_requirements` | ✅ auditat (Ronda 8: + guard d'AVX als scripts) |
 | 10 | Estat en directori escriptible | `app/config.py` (prova d'escriptura real: projecte → XDG → temporal) | `test_regles_or` · `test_pipeline_export` (cas no escrivible) | ✅ auditat a fons (Ronda 15) |
-| 11 | Paritat d'edició i tracte visual | el joc simètric a `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` · pont MCP (`app/mcp_bridge.py`) | `test_regla11_paritat` · `test_mcp_paritat` · `test_eina_marc` | ✅ auditada (Ronda 10: incloses les operacions MIxtes de les 3 famílies i el desfer/refer) |
+| 11 | Paritat d'edició i tracte visual | el joc simètric a `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` · pont MCP (`app/mcp_bridge.py`) | `test_regla11_paritat` · `test_mcp_paritat` · `test_eina_marc` · `test_mcp_schemas` · `test_timeline_items` | ✅ auditada (Ronda 10: incloses les operacions MIxtes de les 3 famílies i el desfer/refer) |
 | 12 | Paritat d'exportació (paquet complet) | `pipeline.exporta_total(..., mapa_tempo=)` → `mapa_tempo/` | `test_regla12_export` | ✅ **IMPLEMENTADA I PROVADA** (Ronda 21; ordre de l'operador) |
 
 ## Trobades i fixes (el més nou a dalt)
@@ -371,6 +371,56 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 35 — zones dels clips: hit-test del gest i paritat d'affordances (#11)
+
+`_zone_at(x)` decideix si l'arrossegament mou una **vora** o el **cos** del clip,
+però cap test l'exercitava directament: els tests que hi havia posaven
+`_drag_mode` **a mà** (auditoria 18-10-2026).
+
+- ➕ **NOU `tests/test_timeline_items.py`** (3 proves): les vores i el cos
+  **reals** dels dos tipus de clip (`NONE` fora, `LEFT` a la nansa esquerra,
+  `RIGHT` a la dreta, `BODY` al mig); **paritat d'affordances (#11)** —
+  `ChordItem` i `SectionItem` tenen la **mateixa** amplada de nansa i els
+  **mateixos** codis de zona; i el llindar de la nansa és **exactament**
+  `HANDLE_W` px (ni un més).
+
+Commit `0ac3074` · suite 1088 OK (1 skip).
+
+## Ronda 34 — guard: paritat entre l'esquema i el pont de les 74 eines MCP
+
+Si l'esquema d'una eina MCP oferix un paràmetre que la funció del pont **no llig
+mai**, l'agent el passa i **s'ignora en silenci** — pitjor que una errada: creu
+que ha fet una cosa i no l'ha feta. I a l'inrevés: un paràmetre que el pont
+necessita i que l'esquema no declara fa que l'eina **pete sempre**.
+
+- ➕ **NOU `tests/test_mcp_schemas.py`** (3 proves) que ho comprova
+  **estàticament** sobre el codi font del pont: cada eina té la seua `_op_<op>`
+  (si falta, peta); l'esquema i el pont parlen dels **mateixos** paràmetres
+  (incloent-hi les ajudes que lliguen sense nom literal, com `_kind_opt`); totes
+  tenen descripció i esquema d'objecte.
+- Verificat: les **74** eines ja estaven en paritat (els 5 avisos inicials eren
+  **falsos positius** de `_kind_opt`). Prova de mutació: un paràmetre fantasma o
+  una `_op_` renombrada fan petar el guard.
+
+Commit `d15e6d8` · suite 1085 OK (1 skip).
+
+## Ronda 33 — guard de les icones: totes les que el codi demana hi són
+
+Una icona que no existeix **no peta**: `icones.ico()` torna una pixmap buida i el
+botó queda **sense dibuix**, en silenci; només es nota mirant la finestra.
+
+- ➕ **NOU `tests/test_icones.py`** (4 proves): totes les icones que el codi
+  demana **literalment** (`icones.ico(...)`, `icona="..."`, `icona_boto(...)`)
+  existeixen com a SVG; `disponible()` mira el fitxer de debò; la icona de l'app i
+  el recoloreig (`ico()`) no ixen buits.
+- Verificat: les **12** icones usades hi són totes.
+- Vist (NO tocat): a `icones/` hi ha **13 SVGs** que el codi no referencia
+  (arrow-left-to-line, circle-gauge, fast-forward, map-pin, mic, redo-2,
+  repeat-2, settings, undo-2, volume-x, zoom-in, zoom-out…); poden ser del
+  **panell lateral retirat**. Ho decideix l'operador.
+
+Commit `a42eb83` · suite 1082 OK (1 skip).
+
 ## Ronda 32 — guard: `bash -n` de tots els scripts de shell (12/12 nets)
 
 Una errada de sintaxi en un `.sh` **no peta enlloc** fins que el CI (o
@@ -450,8 +500,11 @@ Commits `d124e6f`, `8f1afda` i `583379a` · suite 1077 OK (1 skip).
 
 ## Ronda 29 — mutació: menús i `postproc`/`vamp_params` + un test feble (mutació 22)
 
-- **Cobertura dels wrappers de menú**: verificada, **cap forat** (tota acció de
-  menú té el seu camí).
+- **Cobertura dels wrappers de menú**: verificada, **cap forat**. Recompte
+  (confirmat per l'auditor el 18-10-2026): **47 accions de menú**, de les quals
+  **24** no tenen cap referència directa als tests — però totes són **wrappers
+  fins** de lògica que ja està provada (el forat seria que un wrapper tinguera
+  lògica pròpia sense test; no n'hi ha cap).
 - **Prova de mutació a `app/postproc.py` i `app/vamp_params.py`**: detectada. ✅
 - 🐞 **Test feble (mutació 22)**: el test de les zones de `TempoLayer` (Ronda 26)
   **no distingia les dues vores**: en traure la comprovació d'`ini` de `_zona`,
@@ -627,6 +680,8 @@ mateix WAV (tres acords C · F · G) i s'han comparat:
 6. **R11** — repàs camí a camí (GUI ↔ MCP ↔ porta-retalls ↔ undo) de les 3
    famílies.
 7. **Neteja** de codi i tests obsolets que es vagen trobant pel camí.
+   ⏳ Pendent de **decisió de l'operador**: els **13 SVGs** de `icones/` que el
+   codi no referencia (Ronda 33) — esborrar-los o són del panell lateral retirat.
 8. **R12** — quan l'agent a càrrec la implemente, auditar-la ací (no tocar-la).
 
 > 📌 **En tancar una ronda**: actualitza aquest mapa (l'✅/⏳ de cada regla) i
