@@ -7,9 +7,13 @@ import argparse
 import os
 import sys
 
-APP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app")
-sys.path.insert(0, APP_DIR)
-import pipeline  # noqa: E402
+# `pipeline` viu DINS el paquet `app` (i fa imports relatius): cal importar-lo
+# com a `app.pipeline`, no com a mòdul solt. Abans feia `import pipeline` amb
+# `app/` al `sys.path` i petava amb «attempted relative import with no known
+# parent package» (auditoria 18-10-2026).
+ARREL = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ARREL)
+from app import pipeline  # noqa: E402
 
 
 def log(msg):

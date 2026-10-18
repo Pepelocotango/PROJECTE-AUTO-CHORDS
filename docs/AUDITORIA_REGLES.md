@@ -371,6 +371,29 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 23 — scripts d'arrel: DOS que petaven de bon començament
+
+Smoke dels scripts d'arrel (el mateix patró que `explica_bpm`/`acords_a_live`):
+
+| Script | Estat |
+|---|---|
+| `concatena.py` | ✅ funciona (149 fitxers · 42k línies · 1,7 MB). Totes les
+  entrades de la whitelist **existeixen** (cap referència morta). |
+| `dev_reload.py` | ✅ `--help` i arrancada correctes. |
+| `wav_a_wavs.py` | 🐞 **PETA** amb `--help` i amb tot: feia `import pipeline`
+  amb `app/` al `sys.path`, però el mòdul viu DINS el paquet `app` des del
+  refactor → «attempted relative import with no known parent package». Ara fa
+  `from app import pipeline` i corre de cap a cap (el flux arriba a generar la
+  guia; amb àudio sintètic pobre el propi script avisa que Chordino ha donat
+  tot «N», que és el seu guard). |
+| `eines/explica_bpm.py` | 🐞 **encara petava sense arguments** (`IndexError`):
+  el fix de la Ronda 19 era per al cas `BPM = None`. Ara té guard d'ús. |
+
+➕ **NOU `tests/test_scripts_smoke.py`** (4 proves): executa de debò
+`wav_a_wavs.py --help`, `acords_a_live.py` sense args, `eines/explica_bpm.py`
+sense args i `dev_reload.py --help`, i comprova que **cap** trau `Traceback`.
+Hauria atrapat tots dos bugs d'aquestes rondes.
+
 ## Ronda 22 — els DOS motors d'anàlisi, comparats en viu
 
 L'app té dos camins per als transforms Vamp: el **host propi**

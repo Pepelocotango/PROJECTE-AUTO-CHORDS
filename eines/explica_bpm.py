@@ -44,6 +44,10 @@ def linia(p, pts, color, ample=1.4):
 
 
 def main():
+    if len(sys.argv) < 3:
+        # Sense arguments petava amb IndexError (auditoria 18-10-2026).
+        print('Ús: explica_bpm.py <wav> <sortida.png>', file=sys.stderr)
+        raise SystemExit(2)
     wav = sys.argv[1]
     out = sys.argv[2]
     _ = QApplication(sys.argv)  # referència viva de QApplication per a Qt (_ l'ignora pyflakes)
