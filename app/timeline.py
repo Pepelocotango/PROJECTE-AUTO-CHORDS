@@ -1582,6 +1582,7 @@ class TimelineView(QGraphicsView):
                 self.set_position(t)
                 if self._multi:
                     self.clear_selection()
+                self._tempo_lane.deselecciona()
                 self._hide_guide()
                 event.accept()
             except (TypeError, ValueError):

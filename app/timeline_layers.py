@@ -28,8 +28,8 @@ from PyQt5.QtWidgets import (
 
 from app import theme      # noqa: E402  (paleta centralitzada)
 from app.timeline_base import (   # noqa: E402
-    CHORD_HANDLE, CURSOR_COLOR, LANE_DIVIDER,
-    RULER_BG, RULER_TEXT, SECTION_FILLS, SECTION_TEXT,
+    CHORD_HANDLE, CHORD_HANDLE_ACTIVE, CURSOR_COLOR, LANE_DIVIDER,
+    RULER_BG, RULER_TEXT, SECTION_FILLS, SECTION_TEXT, SELECTION_COLOR,
     WF_BG, WF_ENV, WF_GAIN, WF_MID,
     fmt_pos, grid_levels, grid_plan, grid_positions, is_bar_start_label,
 )
@@ -410,6 +410,7 @@ class TempoLayer(QGraphicsObject):
         self._top = float(top)
         self._press = None
         self._t_guia = None
+        self._sel = -1          # bloc seleccionat (resaltat)
         self.setZValue(2)
         self.setPos(self._x_offset, self._top)
         self.setAcceptHoverEvents(True)
@@ -427,6 +428,12 @@ class TempoLayer(QGraphicsObject):
         self.prepareGeometryChange()
         self.setPos(self._x_offset, self._top)
         self.update()
+
+    def deselecciona(self):
+        """Treu el resaltat del bloc de BPM/compàs (clic al fons)."""
+        if self._sel != -1:
+            self._sel = -1
+            self.update()
 
     def set_mapa(self, mapa, actiu=True):
         """`mapa` = el TempoMap; `actiu` = mode BPM·compàs (si no, pista buida)."""
@@ -484,7 +491,11 @@ class TempoLayer(QGraphicsObject):
                 i, self._view_left + ev.pos().x() / max(self._pps, 1e-9))
             ev.accept()
             return
-        self._press = (self._zona(ev.pos().x()), ev.pos().x())
+        i, z = self._zona(ev.pos().x())
+        if i != self._sel:
+            self._sel = i
+            self.update()
+        self._press = ((i, z), ev.pos().x())
         ev.accept()
 
     def mouseMoveEvent(self, ev):
@@ -499,6 +510,12 @@ class TempoLayer(QGraphicsObject):
             self.update()
         ev.accept()
 
+    def mouseDoubleClickEvent(self, ev):
+        i, _z = self._zona(ev.pos().x())
+        if i >= 0:
+            self.tramClicked.emit(i)
+        ev.accept()
+
     def mouseReleaseEvent(self, ev):
         p = self._press
         self._press = None
@@ -510,8 +527,6 @@ class TempoLayer(QGraphicsObject):
         if guia is not None and i >= 0 and (z in ("ini", "fi")
                                             or (z == "cos" and i > 0)):
             self.tramMoved.emit(i, "ini" if z == "cos" else z, float(guia))
-        elif i >= 0:
-            self.tramClicked.emit(i)
         ev.accept()
 
     # -- pintura --------------------------------------------------------
@@ -524,7 +539,7 @@ class TempoLayer(QGraphicsObject):
         p.fillRect(rect, QColor(theme.TL_LANE_BG_B))
         fills = [QColor(c) for c in SECTION_FILLS]
         font = QFont("Sans Serif", 9, QFont.Bold)
-        for s in self._mapa.trams:
+        for i, s in enumerate(self._mapa.trams):
             x0 = (s.ini - self._view_left) * self._pps
             x1 = (s.fi - self._view_left) * self._pps
             if x1 < 0 or x0 > rect.width():
@@ -532,14 +547,20 @@ class TempoLayer(QGraphicsObject):
             x0, x1 = max(0.0, x0), min(rect.width(), x1)
             # Mateix tracte visual que les SECCIONS (bloc arrodonit + nanses
             # + text centrat), pero en mitja alcada.
+            sel = (i == self._sel)
             fill = QColor(fills[hash("tempo") % len(fills)])
-            fill.setAlpha(180)
+            fill.setAlpha(180)                 # semitransparent, com les altres
+            if sel:
+                fill = fill.lighter(140)       # resaltat de selecció
             p.setBrush(QBrush(fill))
-            p.setPen(QPen(QColor(theme.CLIP_SECTION_BORDER), 1))
+            p.setPen(QPen(QColor(SELECTION_COLOR if sel
+                                 else theme.CLIP_SECTION_BORDER),
+                          2 if sel else 1))
             bx = QRectF(x0 + 1, 1, max(2.0, x1 - x0 - 2), self._height - 3)
             p.drawRoundedRect(bx, 5, 5)
             if bx.width() > 20:
-                p.setPen(QPen(QColor(CHORD_HANDLE), 2))
+                p.setPen(QPen(QColor(CHORD_HANDLE_ACTIVE if sel
+                                     else CHORD_HANDLE), 2))
                 p.drawLine(QPointF(x0 + 4, 4), QPointF(x0 + 4, self._height - 6))
                 p.drawLine(QPointF(x1 - 4, 4), QPointF(x1 - 4, self._height - 6))
             p.setPen(QPen(QColor(SECTION_TEXT), 1))
