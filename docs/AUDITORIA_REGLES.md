@@ -35,7 +35,7 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 2 | Contigüitat | `pipeline.filtra_seccions` · els normalitzadors dels 3 tipus (`prev.fi == curr.ini`) · `normalitza_cobertura` (encaixaments) · lectors | `test_seccions_contigues` · `test_regles_or` | ✅ auditada (Rondes 4 i 7: mapa, càrrega i encavalcaments) |
 | 3 | Durades derivades | el `fi` del `Clip` **no mana**: es re-deriva de la frontera (cadena d'inis) | `test_regles_or.TestRegla3DuradesDerivades` | ✅ auditat |
 | 4 | Cobertura total | `pipeline.normalitza_cobertura()` (acords + seccions) · `tempo_map.normalitza_trams(trams, durada)` (mapa) · **punt únic**: `visor._refresca_tempo_map` | `test_cobertura_viu` · `test_regles_or` | ✅ auditada (Ronda 3: el mapa es re-normalitza SEMPRE que es construeix) |
-| 5 | Una sola font de veritat | `pipeline` + `tempo_map` (2 backends); la còpia del visor mai no mana | `test_regles_or.TestRegla5FontDeVeritat` | ✅ auditada (Ronda 5: les 36 mutacions del visor passen pels validators/normalitzadors o preserven els invariants) |
+| 5 | Una sola font de veritat | `pipeline` + `tempo_map` (2 backends); la còpia del visor mai no mana | `test_regles_or.TestRegla5FontDeVeritat` · `test_metronom` | ✅ auditada (Ronda 5: les 36 mutacions del visor passen pels validators/normalitzadors o preserven els invariants) |
 | 6 | WAVs només via `exporta_total()` | `pipeline.exporta_total` / `regenera_wavs_*` | `test_regles_or.TestRegla6WavsNomesViaExporta` | ✅ auditada (Ronda 3: els 6 cridadors són tots camins d'exportació; la UI delega) |
 | 7 | Instància única | `plataforma.bloqueja_instancia_unica` (flock / `msvcrt.locking`) | `test_regles_or` · `test_lock_windows` | ✅ auditat a fons (Ronda 15) |
 | 8 | Temps vàlids | `visor._valida_canvis_*` **+** les xarxes de seguretat (`normalitza_cobertura`, `normalitza_trams`) | `test_regles_or.TestRegla8TempsValids` | ✅ auditat (Ronda 1: 2 forats arreglats) |
@@ -370,6 +370,48 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   (`TestCtrlShiftArrossegaCopia`) i els noms dels tests. Cap canvi de
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
+
+## Ronda 37 — guard de les tecles del timeline: `Space` i `Esc` no les mirava ningú
+
+Les dreceres del timeline es proven totes **indirectament** (el nudge pel seu
+efecte, el porta-retalls pel resultat), però les que només **EMETEN un senyal**
+no les mirava ningú: si un refactor se les menjava, la suite quedava **verda** i
+el teclat deixava de funcionar (auditoria 18-10-2026).
+
+- ➕ **NOU `tests/test_timeline_tecles.py`** (5 proves): `Space` emet
+  `playRequested` (amb el reproductor desconnectat: res d'àudio als tests) i
+  `Esc` emet `escapePressed`; `Del` i les fletxes **sense selecció** no peten ni
+  toquen el model; `Ctrl+C/X/V` sense selecció tampoc.
+
+Commit `1249f77` · suite 1098 OK (1 skip).
+
+## Ronda 36 — el metrònom no escoltava el mapa de tempo + l'única secció (troballes d'OC-13)
+
+Tres troballes de la passada de **tests i proves MCP d'OC-13** (l'agent de tests
+de l'equip de 3), ateses el 18-10-2026:
+
+1. 🐞 **`app.metronom` no escoltava el mapa de tempo (regla #5: el mapa és la
+   font)**: el feeder li passava sempre `self.bpm` **fix** → a partir del primer
+   canvi de tempo els clics s'anaven desalineant. Ara `mescla_metronom` accepta
+   `mapa=` i, amb un mapa variable, posa els clics als **temps del mapa** i
+   l'accent al primer de cada compàs; amb mapa constant fa exactament el camí de
+   sempre. ➕ **NOU `tests/test_metronom.py`** (5 proves): volum 0, clics cada
+   temps, accent del compàs i el cas **120 → 60 BPM** (0 0,5 1 1,5 2 3 4 5), que
+   amb el BPM fix eixiria malament.
+2. 🐞 **`ac_move_section` sobre l'ÚNICA secció era un no-op silenciós**: el canvi
+   s'aplicava i el normalitzador de cobertura el desfeia, però l'agent rebia
+   **OK** (pitjor que una errada). Ara `visor.mou_seccio` **dona una errada
+   clara** (regla #4: l'única secció ha de cobrir tota la WAV); cobreix també el
+   camí de l'editor.
+3. 🔧 **`eines/prova_mcp_completa.py`**: esperava `Am7` i l'app desa el xifrat
+   **canònic** `A-7` (`docs/NOTACIO_XIFRAT.md`) → l'expectativa era desfasada i
+   l'app era la correcta. Arreglada l'eina (era el **1 KO** de la seua passada).
+
+Commit `558cf27` · suite 1093 OK (1 skip).
+
+> Context de la passada d'OC-13 (18-10-2026): suite **1085 OK** (1 skip) al HEAD
+> `d15e6d8`, **ordre aleatori** OK i **pyflakes** net; i una passada pròpia per
+> les **74 eines MCP**: **92 OK / 0 KO / 1 saltat** (74/74 exercitades).
 
 ## Ronda 35 — zones dels clips: hit-test del gest i paritat d'affordances (#11)
 
