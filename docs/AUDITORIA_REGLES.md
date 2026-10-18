@@ -27,6 +27,11 @@ Per a **cada regla** es comproven tres coses, en aquest ordre:
 
 El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 
+> ⚠️ **Suite que falla sense reproduir-se**: abans de buscar-hi un bug, mira si
+> **un altre agent està editant el repo**. Amb edició concurrent (3 agents,
+> 18-10-2026) la suite pot fallar per fitxers que canvien a mig córrer: passada
+> dues vegades seguides amb l'arbre quiet, i mires (Ronda 48).
+
 ## Mapa regla → validació → test
 
 | # | Regla | Validació al codi | Test | Estat |
@@ -370,6 +375,23 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   (`TestCtrlShiftArrossegaCopia`) i els noms dels tests. Cap canvi de
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
+
+## Ronda 48 — la fallada esporàdica de la suite és EDICIÓ CONCURRENT (no cap bug) + mutació de les proves noves
+
+- 🔍 **La fallada esporàdica** que apareixia de tant en tant **no és cap bug del
+  codi**: és **edició concurrent** del repo — ja ho deia l'informe d'incoherències
+  (§7.3) i avui hi ha **3 agents** treballant-hi alhora. Qui corre la suite mentre
+  un altre edita/canvia fitxers veu una fallada que **no es reprodueix**. Prova:
+  **4 passades seguides OK** al llarg del dia amb l'arbre estable.
+- 🧬 **Prova de mutació** de les proves noves d'aquesta tongada — **3/3 detectades**:
+
+  | Mutació (trencar-ho a posta) | Test que peta |
+  |---|---|
+  | treure el **mapa** del metrònom | `tests/test_metronom.py` |
+  | treure el **no-op d'identitat** de `mou_seccio` (R43) | `tests/test_seccions_contigues.py` |
+  | treure el **log d'error** de l'anàlisi (`Feina`, R41) | `tests/test_fil_analisi.py` |
+
+**Sense commit** (només verificació) · suite tota verda (1 skip) · pyflakes net.
 
 ## Ronda 44 — canviar el BPM/compàs/offset mentre SONA també tallava l'àudio (germà de la R42)
 
