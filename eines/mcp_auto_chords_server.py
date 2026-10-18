@@ -120,9 +120,25 @@ _TOOLS = [
      "Genera la PARTITURA de la sortida actual: MusicXML sempre; PDF i MSCZ "
      "NOMÉS si hi ha MuseScore instal·lat. No obre cap finestra.", {}),
     ("ac_set_tempo", "set_tempo",
-     "Fixa BPM, compàs (bpb) i/o offset (segons) i ho aplica al visor.",
+     "Fixa BPM, compàs (bpb) i/o offset (segons) i ho aplica al visor "
+     "(és el valor GLOBAL de la barra; per als canvis del mapa, vegeu "
+     "`ac_list_tempo` i les eines de tall).",
      {"bpm": {"type": "number"}, "bpb": {"type": "integer"},
       "offset_s": {"type": "number"}}),
+    ("ac_list_tempo", "list_tempo",
+     "Llista els TRAMS del mapa de BPM/compàs (índex, inici, fi, BPM, compàs).",
+     {}),
+    ("ac_afegeix_tall", "afegeix_tall",
+     "Obre una frontera nova al mapa de tempo/compàs al temps `t_s` (un canvi "
+     "de BPM/compàs; hereta el valor del tram on cau).",
+     {"t_s": {"type": "number"}}),
+    ("ac_elimina_tall", "elimina_tall",
+     "Elimina el tram `index` del mapa (el veí n'ocupa l'espai).",
+     {"index": {"type": "integer"}}),
+    ("ac_mou_tall", "mou_tall",
+     "Mou la frontera del tram `index` a `t_s`; `vora` = ini (per defecte) | fi.",
+     {"index": {"type": "integer"}, "t_s": {"type": "number"},
+      "vora": {"type": "string"}}),
     # A7: accions de l'app que faltaven al pont.
     ("ac_set_metro", "set_metro",
      "Activa/desactiva el metrònom (només té sentit en mode BPM · compàs).",

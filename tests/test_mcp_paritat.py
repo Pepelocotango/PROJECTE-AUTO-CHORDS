@@ -82,6 +82,47 @@ class _Base(unittest.TestCase):
         w.visor_ref.timeline.select_multi({(k, i) for (k, i) in keys})
 
 
+class TestMapaTempo(_Base):
+    """Eines MCP del MAPA de BPM/compàs (el mirall del que fa la GUI)."""
+
+    def test_list_tempo(self):
+        w = self._finestra()
+        w.visor_ref.aplica_tempo_trams([(0.0, 4.0, 120.0, 4, 4),
+                                        (4.0, DURADA_S, 90.0, 3, 4)])
+        r = mcp_bridge._op_list_tempo(_ctx(w), {})
+        self.assertEqual(len(r["trams"]), 2)
+        self.assertEqual(r["trams"][1]["bpm"], 90.0)
+        self.assertEqual(r["trams"][1]["bpb"], 3)
+        w.close()
+
+    def test_afegeix_i_elimina_tall(self):
+        w = self._finestra()
+        w.visor_ref.aplica_tempo_trams([(0.0, DURADA_S, 120.0, 4, 4)])
+        mcp_bridge._op_afegeix_tall(_ctx(w), {"t_s": 4.0})
+        self.assertEqual(len(w.visor_ref.tempo_trams), 2)
+        self.assertAlmostEqual(float(w.visor_ref.tempo_trams[1][0]), 4.0,
+                               places=3)
+        mcp_bridge._op_elimina_tall(_ctx(w), {"index": 1})
+        self.assertEqual(len(w.visor_ref.tempo_trams), 1)
+        w.close()
+
+    def test_elimina_l_unic_tram_dona_error(self):
+        w = self._finestra()
+        w.visor_ref.aplica_tempo_trams([(0.0, DURADA_S, 120.0, 4, 4)])
+        with self.assertRaises(mcp_bridge.BridgeError):
+            mcp_bridge._op_elimina_tall(_ctx(w), {"index": 0})
+        w.close()
+
+    def test_mou_tall(self):
+        w = self._finestra()
+        w.visor_ref.aplica_tempo_trams([(0.0, 4.0, 120.0, 4, 4),
+                                        (4.0, DURADA_S, 90.0, 3, 4)])
+        mcp_bridge._op_mou_tall(_ctx(w), {"index": 1, "t_s": 6.0})
+        self.assertAlmostEqual(float(w.visor_ref.tempo_trams[0][1]), 6.0,
+                               places=3)
+        w.close()
+
+
 class TestPortaRetalls(_Base):
     def test_copiar_i_enganxar_sobreescriu(self):
         w = self._finestra()

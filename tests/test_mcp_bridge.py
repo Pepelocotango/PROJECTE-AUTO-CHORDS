@@ -365,6 +365,8 @@ class TestRegistre(unittest.TestCase):
             "selecciona_rang", "selecciona_loop", "nudge", "mou_bloc",
             "troba_i_reemplaca", "reverteix", "neteja_loop", "set_eina",
             "set_inclou_estructura", "set_inclou_partitura",
+            # Mapa de tempo/compàs (trams) — 2026-10-18.
+            "list_tempo", "afegeix_tall", "elimina_tall", "mou_tall",
         }
         self.assertEqual(set(mcp_bridge.OPERACIONS), esperades)
 

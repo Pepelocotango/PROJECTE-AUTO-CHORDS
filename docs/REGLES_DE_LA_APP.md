@@ -33,14 +33,16 @@ Els clips (**acords**, **seccions** i **trams de BPM/compàs**) estan
 ## 2. Contigüitat
 Cada clip comença **exactament** on acaba l'anterior: `prev.fi == curr.ini`, per a
 **les tres** famílies (acords, seccions i trams de BPM/compàs), amb el model
-unificat `Clip(ini, fi, payload)` — sense forats ni encavalcaments. Els **trams
-de BPM/compàs** compleixen el mateix (del primer a 0 fins a l'últim a la durada).
+unificat `Clip(ini, fi, payload)` — sense forats ni encavalcaments. (Els **extrems**
+0 ↔ durada són competència de la regla 4.)
 → `timeline.py` · `pipeline.filtra_seccions` · `tempo_map.normalitza_trams`
 (contracte: `docs/REFACTOR_INICI_FI.md`).
 
 ## 3. Durades derivades
 La durada d'un clip **no s'emmagatzema**: es **deriva** (l'inici del següent, o
-la durada de la WAV per a l'últim).
+la durada de la WAV per a l'últim). El model `Clip(ini, fi, payload)` **sí** que
+té un camp `fi`, però **no és la dada que mana**: sempre es torna a derivar de la
+frontera (l'`ini` del següent) — la **cadena de fronteres** és la font de veritat.
 
 ## 4. Cobertura total
 **La suma dels clips d'acords = la durada de la WAV**, **la suma dels clips
@@ -54,12 +56,17 @@ cada mutació al visor i al MCP), al **visor**, al **CSV** que es desa i en
 **exportar** (CSV/ABC + wavs) — **no només** «en carregar el visor i en exportar».
 
 ## 5. Una sola font de veritat
-El **backend** (`app.pipeline`) és l'única font de dades; la UI (`app.visor` +
-`app.timeline`) **en reflecteix** l'estat.
+El model viu al **backend**, no a la UI. Hi ha **dos backends**: `app.pipeline`
+(acords i estructura) i `app.tempo_map` (trams de BPM/compàs). La UI
+(`app.visor` + `app.timeline`) **en reflecteix** l'estat: en guarda una còpia
+(`self.acords`/`self.seccions` i `self.tempo_trams`/`self.tempo_map`), però
+**aquesta còpia mai no mana** — tota mutació passa abans per les funcions de
+`pipeline`/`tempo_map`, i el visor només n'aplica el resultat.
 
-## 6. Les WAVs només via `exporta()`
-L'edició **mai** toca les WAVs generades; només s'escriuen en **exportar**
-(`pipeline.exporta_total`). «Mai toca els WAVs generats.»
+## 6. Les WAVs només via `pipeline.exporta_total()`
+L'edició **mai** toca les WAVs generades; només s'escriuen en **exportar**, des
+del backend `pipeline.exporta_total(...)`. La UI hi delega via els mètodes
+`exporta()` (`app.visor` / `app.main`). «Mai toca els WAVs generats.»
 
 ## 7. Instància única
 No poden córrer **dues instàncies** de l'app alhora (un lock a `tempfile`).
@@ -95,10 +102,10 @@ ser per als altres, i pel **mateix camí d'usuari**.
   de gest (`dragStarted`), ressaltat de selecció, ordre relatiu (z),
   doble-clic/menú contextual → editar, **menú contextual amb la mateixa
   estructura i redacció**, i **mateixa transparència** del carri.
-- **Propi de cada tipus (NO s'iguala)**: el model de dades (acord `(t, nom)`
-  amb final derivat; secció `(ini, fi, lletra, família)`; tram de BPM/compàs
-  `(ini, fi, bpm, compàs)`), el camp «Família» de l'Editor (només secció),
-  l'edició **inline** i «Reanomena en bloc» (només acord/secció) i el
+- **Propi de cada tipus (NO s'iguala)**: el **payload** (acord i estructura són
+  `Clip(ini, fi, payload)` — acord `(nom, tsrc)`, secció `(lletra, família)` — i el
+  tram és `Tram(ini, fi, bpm, num, den)`), el camp «Família» de l'Editor (només
+  secció), l'edició **inline** i «Reanomena en bloc» (només acord/secció) i el
   **color/carri** del timeline (distinció de tipus).
 - **Semàntica de les operacions**: *partir* un acord = dos trossos amb el
   mateix nom (el de la part nova és editable, per defecte heretat);

@@ -32,20 +32,20 @@
 | 1 | **Afegir** un clip | menú *Edita ▸ Afegeix acord/secció…* · menú contextual · *Afegeix…* a la llista | `ac_add_chord`, `ac_add_section` | ✓ | ✓ | ✓ | **FET** |
 | 2 | **Partir** (dividir) | menú contextual ▸ *Parteix l'acord/secció…* (pel cursor) · **«Partir per la meitat»** (dues meitats iguals) als menús de la llista i del clip | `ac_parteix_acord`, `ac_parteix_seccio` | ✓ | ✓ | ✓ | **FET**: «per la meitat» = `parteix_per_la_meitat` (centre exacte; l'MCP ho fa passant el `t` del mig) |
 | 3 | **Fusionar** | menú contextual ▸ *Fusionar amb anterior/seguent* | `ac_fusiona_acord`, `ac_fusiona_seccio` | ✓ | ✓ | ✓ | **FET**: als trams de BPM/compàs es fa amb **«Elimina»** (el veïnatge s'uneix) |
-| 4 | **Eliminar** un clip | `Del` · menú contextual ▸ *Elimina* · llista | `ac_delete_chord`, `ac_delete_section` | ✓ | ✓ | ✓ | **FET**: nucli únic `elimina_clips` (§6.4) — mateix camí a la GUI i a l'MCP |
+| 4 | **Eliminar** un clip | `Del` · menú contextual ▸ *Elimina* · llista | `ac_delete_chord`, `ac_delete_section`, `ac_elimina_tall` | ✓ | ✓ | ✓ | **FET**: nucli únic `elimina_clips` (§6.4) — mateix camí a la GUI i a l'MCP |
 | 5 | **Eliminar la SELECCIÓ** | `Del` amb multi-selecció | `ac_esborra_seleccio` | ✓ | ✓ | ✓ | **FET** |
 | 6 | **Eliminar-ho TOT** → `N`/`-` a 0 | `Del` de tot | `ac_esborra_seleccio` | ✓ | ✓ | — | **FET** |
 | 7 | **Reanomenar** | `F2` · doble clic (inline) · llista | `ac_rename_chord`, `ac_rename_section` | ✓ | ✓ | ✓ | **FET** |
 | 8 | **Reanomenar en bloc** | `F2` amb multi-selecció | `ac_renomena_seleccio` | ✓ | ✓ | — | **FET** |
 | 9 | **Trobar i reemplaçar** | `Ctrl+H` | `ac_troba_i_reemplaca` | ✓ | ✓ | — | **FET** |
 | 10 | **Moure un clip / BLOC** | arrossegar el **cos** (guard `Ctrl+Shift` = duplicar) | `ac_mou_bloc` (`kind`) | ✓ | ✓ | ✓ | **FET** (§6.3) |
-| 11 | **Moure una marca** (fi = inici del següent) | — | `ac_move_chord`, `ac_move_section` | ✓ | ✓ | — | **FET** (camí de la vora) |
-| 12 | **Nudge** (moure una frontera) | `←` / `→` · `Alt+←`/`→` (vora dreta) | `ac_nudge` (`direccio`, `estira`, `pas`) | ✓ | ✓ | — | **FET** |
+| 11 | **Moure una marca** (fi = inici del següent) | — | `ac_move_chord`, `ac_move_section`, `ac_mou_tall` | ✓ | ✓ | ✓ | **FET** (camí de la vora · MCP `ac_mou_tall`) |
+| 12 | **Nudge** (moure una frontera) | `←` / `→` · `Alt+←`/`→` (vora dreta) | `ac_nudge` (`direccio`, `estira`, `pas`) | ✓ | ✓ | ✓ | **FET** (`←`/`→` mou la frontera del tram; `Alt` la de la dreta) |
 | 13 | **Redimensionar (vores lliures)** | arrossegar la **vora** del clip | `ac_nudge(estira)` | ✓ | ✓ | ✓ | **FET**: nucli únic (`redimensiona_clips` + `redimensiona_acord`/`redimensiona_seccio`) i el gest del visor hi enganxat · vores **LLIURES** (§6.6): estirar talla/elimina el veí |
-| 14 | **Duplicar** | `Ctrl+D` | `ac_duplica_seleccio` | ✓ | ✓ | — | **FET**: nucli únic `duplica_bloc_clips` (§2: la còpia va DESPRÉS i sobreescriu el tram, §6.3) |
-| 15 | **Duplicar arrossegant** | `Ctrl+Shift`+arrossegar (a l'origen hi torna una còpia) | `ac_duplica_a` | ✓ | ✓ | — | **FET** (GUI + MCP) |
-| 16 | **Copiar / Retallar / Enganxar** | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` (`Ctrl+Shift+V` = sense snap) | `ac_copia_seleccio`, `ac_retalla_seleccio`, `ac_enganxa_seleccio` | ✓ | ✓ | — | **FET** (sobreescriu el tram) |
-| 17 | **Copiar/retallar el LOOP** | doble clic al regle · menú contextual de la banda | `ac_selecciona_loop` + les de copiar/retallar | ✓ | ✓ | — | **FET** (composable) |
+| 14 | **Duplicar** | `Ctrl+D` | `ac_duplica_seleccio` | ✓ | ✓ | ✓ | **FET**: nucli únic `duplica_bloc_clips` (§2: la còpia va DESPRÉS i sobreescriu el tram, §6.3) |
+| 15 | **Duplicar arrossegant** | `Ctrl+Shift`+arrossegar (a l'origen hi torna una còpia) | `ac_duplica_a` | ✓ | ✓ | — | **FET** (GUI + MCP). Als trams de BPM/compàs **no hi ha aquest gest**: l'arrossegar del cos hi mou el punt de canvi; es duplica amb `Ctrl+D` (#14) o copiar/enganxar (#16) |
+| 16 | **Copiar / Retallar / Enganxar** | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` (`Ctrl+Shift+V` = sense snap) | `ac_copia_seleccio`, `ac_retalla_seleccio`, `ac_enganxa_seleccio` | ✓ | ✓ | ✓ | **FET** (sobreescriu el tram; als trams obre les fronteres i hi canvia el BPM/compàs) |
+| 17 | **Copiar/retallar el LOOP** | doble clic al regle · menú contextual de la banda | `ac_selecciona_loop` + les de copiar/retallar | ✓ | ✓ | ✓ | **FET** (composable; la selecció del LOOP ja inclou els trams) |
 | 18 | **Mode fàcil** (re-regularitzar) | *Analitza ▸ Mode fàcil…* | `ac_regularitza` | ✓ | — | — | **FET** |
 
 ## 3. Selecció i vista
@@ -55,8 +55,8 @@
 | 19 | **Seleccionar un clip** | clic · `ac_select_clip` | `ac_select_clip` | ✓ | ✓ | ✓ | **FET** |
 | 20 | **Multi-selecció (toggle)** | `Ctrl`+clic | `ac_toggle_selection` | ✓ | ✓ | ✓ | **FET**: també a la pista de BPM/compàs (`Ctrl`+clic) i per MCP |
 | 21 | **Rang** | `Shift`+clic · `Ctrl`+arrossegar (marquee) | `ac_selecciona_rang` | ✓ | ✓ | ✓ | **FET** (trams inclosos; la **selecció del loop** encara és només acords+estructura) |
-| 22 | **Seleccionar el del cursor** | clic + cursor | `ac_select_at_cursor` | ✓ | ✓ | — | **FET** |
-| 23 | **Seleccionar el LOOP** | doble clic a la banda | `ac_selecciona_loop` | ✓ | ✓ | — | **FET** |
+| 22 | **Seleccionar el del cursor** | clic + cursor | `ac_select_at_cursor` | ✓ | ✓ | ✓ | **FET** (`kind: tempo` al MCP i al menú) |
+| 23 | **Seleccionar el LOOP** | doble clic a la banda | `ac_selecciona_loop` | ✓ | ✓ | ✓ | **FET** (la selecció del LOOP inclou els trams) |
 | 24 | **Buida la selecció** | `Esc` | `ac_clear_selection` | ✓ | ✓ | ✓ | **FET** |
 | 25 | **Consultar la selecció / cursor** | — | `ac_selection` | ✓ | ✓ | ✓ | **FET** |
 | 26 | **Eina del timeline** (intel·ligent/marc) | tecla `E` · menú *Selecciona* · botó | `ac_set_eina` | ✓ | ✓ | ✓ | **FET** |
@@ -78,13 +78,13 @@
 |---|---|---|---|---|
 | 33 | **Desfer / Refer** | `Ctrl+Z` · `Ctrl+Y` · `Ctrl+Shift+Z` | `ac_undo`, `ac_redo`, `ac_undo_list` | **FET** |
 | 34 | **Estat complet de l'app** | — | `ac_status`, `ac_ping` | **FET** |
-| 35 | **Llistar el model** | llistes del visor | `ac_list_chords`, `ac_list_sections` | **FET** |
+| 35 | **Llistar el model** | llistes del visor | `ac_list_chords`, `ac_list_sections`, `ac_list_tempo` | **FET** |
 
 ## 6. Tempo, anàlisi i opcions
 
 | # | Operació | GUI | MCP | Estat |
 |---|---|---|---|---|
-| 36 | **Tempo · compàs · offset** | camps de la barra | `ac_set_tempo` | **FET** |
+| 36 | **Tempo · compàs · offset** | camps de la barra | `ac_set_tempo` (global) · `ac_afegeix_tall`, `ac_mou_tall` (mapa) | **FET** |
 | 37 | **Analitzar** (acords + estructura) | `F5` · *Analitza* | `ac_analyze` | **FET** |
 | 38 | **Opcions d'anàlisi** | *Paràmetres…* · *Inclou estructura* | `ac_get_options`, `ac_set_inclou_estructura` | **FET** |
 | 39 | **Compàs 1** (detectar / marcar) | *Analitza ▸* | `ac_detect_downbeat`, `ac_mark_downbeat` | **FET** |
@@ -106,24 +106,32 @@
 
 ## 8. Pendent (resum)
 
-### Pista de BPM/compàs (trams del mapa de tempo)
+### Pista de BPM/compàs (trams del mapa de tempo) — ✅ COMPLERTA
 
-La pista ja és editable i comparteix amb les altres el joc bàsic: **afegir/
-partir** (obrir un *tall*), **eliminar** (amb els veïns unint-se), **moure**
-(el cos mou la frontera), **redimensionar** (les vores), **desfer/refer**,
-**selecció** (`Esc`, `ac_selection`, `Ctrl`+clic, `Shift`+clic i **marquee**)
-i **partir per la meitat** (si escau).
-Encara **NO** hi és (files marcades amb `—` a les taules de dalt):
+La pista comparteix amb acords i estructura **tot** el joc d'edició:
+**afegir/partir** (obrir un *tall*), **partir per la meitat**, **eliminar**
+(amb els veïns unint-se), **moure** (el cos mou el punt de canvi; les vores, les
+fronteres), **redimensionar**, **nudge** (`←`/`→` i `Alt`), **desfer/refer**,
+**selecció** (`Esc`, `ac_selection`, `Ctrl`+clic, `Shift`+clic, **marquee** i
+**LOOP**), **porta-retalls** (`Ctrl+C/X/V`), **duplicar** (`Ctrl+D`) i
+**MCP** (`ac_list_tempo`, `ac_afegeix_tall`, `ac_elimina_tall`, `ac_mou_tall`,
+`ac_select_at_cursor` amb `kind: tempo`; `ac_set_tempo` és el BPM/compàs
+**global** de la barra).
 
-- **Copiar/retallar/enganxar** i **duplicar** un tram (el porta-retalls del
-  timeline encara és només de clips: no té representació per al mapa).
-- **Selecció del LOOP** (`selecciona_bloc_del_loop`): entra acords i
-  estructura, però no els trams — perquè el LOOP s'usa per copiar i el
-  porta-retalls no els sap enganxar (si s'hi afegeixen trams, després
-  «Retalla el loop» els esborraria sense poder-los tornar).
-- **Nudge** amb `←`/`→` i «moure una marca».
-- **MCP**: cap eina del mapa (només `ac_set_tempo`, que és el BPM/compàs
-  **global** de la barra).
+Les files amb `—` a la columna **BPM/comp.** són **exclusions deliberades**, no
+pendents:
+
+- **#6 Eliminar-ho TOT**: el mapa **no pot quedar buit** (ha de cobrir sempre
+  `0..durada`); l'equivalent és deixar-hi un sol tram.
+- **#8 Reanomenar en bloc**: el contingut d'un tram és numèric (BPM + compàs) i
+  s'edita amb el diàleg/MCP; no hi ha noms inline.
+- **#9 Trobar i reemplaçar**: idem — no hi ha text on buscar (es fa tram a tram
+  o amb les eines del mapa).
+- **#15 Duplicar arrossegant**: aquest gest, a la pista, ja el té pres el cos
+  del tram (**mou el punt de canvi**); duplicar es fa amb `Ctrl+D` o el
+  porta-retalls.
+- **#18 Mode fàcil**: re-regularitza el **ritme harmònic** dels acords (i les
+  seccions); no toca el mapa de tempo.
 
 1. **Redimensionat amb vores lliures** (#13) — nucli únic FET (S2a: `redimensiona_clips`); falta el gest del visor i l'MCP.
 2. **Duplicar**: alinear el destí amb **§6.3** (#14) i exposar el gest de **duplicar

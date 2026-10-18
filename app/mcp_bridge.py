@@ -41,6 +41,7 @@ from PyQt5.QtCore import QObject, QTimer
 from . import __version__ as APP_VERSION
 from . import dialegs
 from . import pipeline
+from . import tempo_map
 from . import plataforma
 from . import projecte
 
@@ -726,6 +727,92 @@ def _op_select_at_cursor(ctx, params):
     return _op_selection(ctx, {})
 
 
+def _aplica_tempo(ctx, mut):
+    """Mutació del MAPA de BPM/compàs, dins una transacció de desfer i desada.
+
+    El mapa ha de quedar sempre vàlid (`normalitza_trams`: contigu i cobrint
+    `[0, durada]`); si la mutació el deixa buit o el trenca, es descarta tota i
+    es retorna un error clar sense tocar res.
+    """
+    vr = _requereix_visor(ctx)
+    abans = copy.deepcopy(list(vr.tempo_trams or []))
+    vr._undo_marca()
+    try:
+        mut(vr)
+        nous = tempo_map.normalitza_trams(list(vr.tempo_trams or []),
+                                          vr._durada_wav())
+        if not nous:
+            raise BridgeError("El mapa de tempo/compàs no pot quedar buit.")
+        vr.aplica_tempo_trams(nous)
+    except BridgeError:
+        vr.tempo_trams = abans
+        vr._refresca_tempo_map()
+        raise
+    except ValueError as e:
+        vr.tempo_trams = abans
+        vr._refresca_tempo_map()
+        raise BridgeError(f"Canvi rebutjat (mapa de tempo/compàs): {e}") from e
+    vr._undo_commit()
+    return _op_status(ctx, {})
+
+
+def _op_list_tempo(ctx, params):
+    """Llista els TRAMS del mapa de tempo/compàs (índex, inici, fi, BPM, compàs)."""
+    vr = _requereix_visor(ctx)
+    return {
+        "mode": "bpm_compas" if getattr(vr, "tempo_fix", True) else "lliure",
+        "trams": [
+            {"index": i, "ini_s": round(float(t[0]), 4),
+             "fi_s": round(float(t[1]), 4), "bpm": round(float(t[2]), 4),
+             "bpb": int(t[3]), "beat_type": int(t[4])}
+            for i, t in enumerate(vr.tempo_trams or [])
+        ],
+    }
+
+
+def _op_afegeix_tall(ctx, params):
+    """Obre una frontera nova al mapa (un canvi de BPM/compàs) al temps `t_s`."""
+    t = _num(params, "t_s", "t")
+
+    def mut(vr):
+        vr.tempo_trams = tempo_map.afegeix_tall(
+            list(vr.tempo_trams or []), float(t))
+
+    return _aplica_tempo(ctx, mut)
+
+
+def _op_elimina_tall(ctx, params):
+    """Elimina el tram `index` del mapa (el veí n'ocupa l'espai)."""
+    idx = _num(params, "index", "idx", enter=True)
+
+    def mut(vr):
+        trams = list(vr.tempo_trams or [])
+        if len(trams) <= 1:
+            raise BridgeError(
+                "El mapa de tempo/compàs ha de tenir com a mínim 1 tram.")
+        if not 0 <= idx < len(trams):
+            raise BridgeError(f"Índex de tram fora de rang: {idx}")
+        vr.tempo_trams = tempo_map.elimina_tall(trams, idx)
+
+    return _aplica_tempo(ctx, mut)
+
+
+def _op_mou_tall(ctx, params):
+    """Mou la frontera del tram `index` a `t_s` (`vora`: ini|fi, per defecte ini)."""
+    idx = _num(params, "index", "idx", enter=True)
+    t = _num(params, "t_s", "t")
+    vora = str(params.get("vora") or params.get("costa") or "ini").lower()
+
+    def mut(vr):
+        trams = list(vr.tempo_trams or [])
+        if not 0 <= idx < len(trams):
+            raise BridgeError(f"Índex de tram fora de rang: {idx}")
+        vr._on_tempo_mogut(idx, "fi" if vora.startswith("f") else "ini",
+                           float(t))
+
+    return _aplica_tempo(ctx, mut)
+
+
 def _op_set_tempo(ctx, params):
     w = ctx.window
     if "bpm" in params and params["bpm"] is not None:
@@ -1314,6 +1401,11 @@ OPERACIONS = {
     "export_wav": _op_export_wav,
     "export_partitura": _op_export_partitura,
     "set_tempo": _op_set_tempo,
+    # Mapa de tempo/compàs (trams): mirall de l'edició de la GUI.
+    "list_tempo": _op_list_tempo,
+    "afegeix_tall": _op_afegeix_tall,
+    "elimina_tall": _op_elimina_tall,
+    "mou_tall": _op_mou_tall,
     # Projectes autocontinguts + paritat d'edició #11 (2026-10-15).
     "crea_projecte": _op_crea_projecte,
     "obre_projecte": _op_obre_projecte,
