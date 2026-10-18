@@ -17,6 +17,7 @@ import atexit
 import os
 import shutil
 import tempfile
+import time
 
 _creats = set()
 _mkdtemp = tempfile.mkdtemp
@@ -70,4 +71,39 @@ def esborra():
     _creats.clear()
 
 
+def escombra_residus(hores=12):
+    """Treu els temporals VELLS que han deixat tongades mortes (kill/crash).
+
+    Una tongada que mor a mitges (SIGKILL, tancament de sessio, crash) no pot
+    executar l'`atexit`, aixi que deixa el seu directori. Aixo ho recull.
+
+    Seguretat: nomes mira el patro `tmp*` **del temporal del sistema**,
+    **propietat de l'usuari** i **mes vell que `hores`** — una tongada en curs
+    (meua o d'un company) te els temporals JOVES i no se li toca res.
+    """
+    try:
+        arrel = tempfile.gettempdir()
+        ara = time.time()
+        for nom in os.listdir(arrel):
+            if not nom.startswith("tmp"):
+                continue
+            ruta = os.path.join(arrel, nom)
+            try:
+                st = os.stat(ruta)
+                if st.st_uid != os.getuid():
+                    continue
+                if st.st_mtime >= ara - hores * 3600:
+                    continue
+                if os.path.isdir(ruta):
+                    shutil.rmtree(ruta, ignore_errors=True)
+                else:
+                    os.remove(ruta)
+            except OSError:
+                pass
+    except OSError:
+        pass
+
+
+# A l'INICI de la tongada, escombra el que hagen deixat les tongades mortes.
+escombra_residus()
 atexit.register(esborra)
