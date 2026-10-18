@@ -85,6 +85,18 @@ class TestSenseAnalisi(_Base):
         self.assertEqual(len(tempo), 2)
         self.assertAlmostEqual(float(tempo[1][2]), 90.0)
 
+    def test_mou_la_frontera_del_mapa(self):
+        """Fase 4b: arrossegar una vora de la pista de BPM/compàs mou on canvia."""
+        w, p = self._finestra_amb_projecte()
+        vr = w.visor_ref
+        vr.aplica_tempo_trams([(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 90.0, 3, 4)])
+        vr._on_tempo_mogut(1, "ini", 6.0)          # frontera 4 s -> 6 s
+        self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 6.0, places=2)
+        self.assertAlmostEqual(float(vr.tempo_trams[0][1]), 6.0, places=2)
+        vr._on_tempo_mogut(0, "fi", 3.0)           # frontera 6 s -> 3 s
+        self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 3.0, places=2)
+        self.assertEqual(vr.tempo_map.signatura(4.0), (3, 4))
+
     def test_audio_nou_neix_amb_1_acord_i_1_seccio(self):
         w, _p = self._finestra_amb_projecte(amb_csv=False)
         vr = w.visor_ref

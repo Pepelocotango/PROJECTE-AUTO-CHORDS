@@ -47,10 +47,12 @@ en mode «BPM·compàs».
    tempo i compàs…*; `Visor.aplica_tempo_trams` normalitza (contigu, cobreix
    la WAV), actualitza el transport amb el **valor inicial** i desa. Al
    **regle** es dibuixen **marcadors** de canvi (BPM · compàs).
-   ✅ **4b FET**: pista pròpia al timeline (`TempoLayer`, a baix de tot) amb
-   un bloc per tros i el seu valor (`BPM num/den`); només es dibuixa amb
-   mapa **variable**. (L'edició continua al diàleg; les vores §6.3 al
-   timeline queden com a refinament.)
+   ✅ **4b FET**: **3 pistes** al timeline (BPM/compàs · estructura · acords);
+   la de BPM/compàs amb **mitja alçada**, només visible en mode **BPM·compàs**
+   i amb mapa variable. És **EDITABLE**: clic a un bloc → diàleg `BPM`/`compàs`
+   (`DialegTramTempo`); arrossegar una **vora** → mou on canvia; **botó dret** →
+   afegir/editar/eliminar (`afegeix_tall`/`elimina_tall`). Tot alimenta el
+   mateix mapa (una sola font).
 5. ✅ **FET — Exports/derivats**: `pipeline.pos_compas` (etiquetes de l'ABC i
    del CSV d'estructura) i la guia DAW (`acords_a_live.py`, que llegeix el
    mapa) són mapa-conscients; el **MusicXML** emet els canvis de **tempo**

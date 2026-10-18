@@ -136,6 +136,11 @@ class TimelineView(QGraphicsView):
     # (mateixa lletra i família) sobre el mateix tram. Payload:
     # (ini, fi, lletra, família) de la secció original.
     sectionCopyRequested = pyqtSignal(float, float, str, str)
+    # Pista de BPM/compàs (fase 4b editable): clic a un bloc, vora arrossegada
+    # i botó dret (índex del bloc; -1 = fora).
+    tempoEditRequested = pyqtSignal(int)
+    tempoChangeMoved = pyqtSignal(int, str, float)
+    tempoMenuRequested = pyqtSignal(int, float)
     clipContextMenuRequested = pyqtSignal(str, int, QPoint)  # (kind, idx, pos)
     loopContextMenuRequested = pyqtSignal(QPoint)  # botó dret dins del loop
     loopDoubleClicked = pyqtSignal()   # doble-clic dins del loop (a dalt)
@@ -292,6 +297,9 @@ class TimelineView(QGraphicsView):
                                       self._x_offset, self._view_left,
                                       self._view_right, LANE_TEMPO_TOP)
         self._scene.addItem(self._tempo_lane)
+        self._tempo_lane.tramClicked.connect(self.tempoEditRequested.emit)
+        self._tempo_lane.tramMoved.connect(self.tempoChangeMoved.emit)
+        self._tempo_lane.menuRequested.connect(self.tempoMenuRequested.emit)
 
         # cursor
         self._cursor = CursorLine(0, TOTAL_H - 2)
@@ -335,7 +343,7 @@ class TimelineView(QGraphicsView):
                                 self._offset, self._beat_type, mapa)
         self._grid.update_mode(self._tempo_fix, self._bpm, self._bpb,
                                self._offset, self._beat_type, mapa)
-        self._tempo_lane.set_mapa(mapa)
+        self._tempo_lane.set_mapa(mapa, self._tempo_fix)
         self.update()
 
     def set_follow(self, enabled: bool) -> None:

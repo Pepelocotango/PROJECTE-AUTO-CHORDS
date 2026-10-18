@@ -17,12 +17,13 @@ Tot en català. Sense dependències noves.
 from typing import Optional
 
 import numpy as np
-from PyQt5.QtCore import QLineF, QPointF, QRectF
+from PyQt5.QtCore import QLineF, QPointF, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import (
     QBrush, QColor, QFont, QFontMetricsF, QImage, QPainter, QPen, QPixmap,
 )
 from PyQt5.QtWidgets import (
-    QGraphicsItem, QGraphicsLineItem, QGraphicsPixmapItem, QGraphicsRectItem,
+    QGraphicsItem, QGraphicsLineItem, QGraphicsObject, QGraphicsPixmapItem,
+    QGraphicsRectItem,
 )
 
 from app import theme      # noqa: E402  (paleta centralitzada)
@@ -383,13 +384,19 @@ class CursorLine(QGraphicsLineItem):
 # -----------------------------------------------------------------------------
 # TempoLayer — la pista de TEMPO i COMPÀS (blocs de cada tros del mapa)
 # -----------------------------------------------------------------------------
-class TempoLayer(QGraphicsItem):
-    """Pista (llegidora) del **mapa de tempo i compàs**: un bloc per tros.
+class TempoLayer(QGraphicsObject):
+    """Pista EDITABLE del mapa de **BPM/compàs** (un bloc per tros del mapa).
 
-    Només es dibuixa si el mapa és **variable** (si és constant, la pista queda
-    buida i tot es comporta com abans). L'edició es fa amb el diàleg *Mapa de
-    tempo i compàs…*; aquí es veuen els trams i els seus valors.
+    Només es mostra en mode **BPM·compàs** i amb mapa **variable** (amb un sol
+    tros no hi ha res a editar; tot es comporta com abans). Els gestos són els
+    mateixos que a la resta de pistes: **clic** a un bloc → diàleg per al BPM i
+    el compàs; **arrossegar una vora** → on canvia el tempo (el veí s'ajusta);
+    **botó dret** → menú (afegir/eliminar).
     """
+
+    tramClicked = pyqtSignal(int)          # clic a un bloc (índex)
+    tramMoved = pyqtSignal(int, str, float)   # vora soltada (índex, vora, t)
+    menuRequested = pyqtSignal(int, float)    # botó dret (índex; -1=fora, t)
 
     def __init__(self, height, pps, x_offset, view_left, view_right, top=0,
                  parent=None):
@@ -400,9 +407,14 @@ class TempoLayer(QGraphicsItem):
         self._view_left = float(view_left)
         self._view_right = float(view_right)
         self._mapa = None
+        self._actiu = True
         self._top = float(top)
+        self._press = None
+        self._t_guia = None
         self.setZValue(2)
         self.setPos(self._x_offset, self._top)
+        self.setAcceptHoverEvents(True)
+        self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
 
     def boundingRect(self):
         return QRectF(0, 0, max(1.0, (self._view_right - self._view_left) *
@@ -417,20 +429,97 @@ class TempoLayer(QGraphicsItem):
         self.setPos(self._x_offset, self._top)
         self.update()
 
-    def set_mapa(self, mapa):
+    def set_mapa(self, mapa, actiu=True):
+        """`mapa` = el TempoMap; `actiu` = mode BPM·compàs (si no, pista buida)."""
         self._mapa = mapa
+        self._actiu = bool(actiu)
         self.update()
 
+    # -- geometria/hit-test ---------------------------------------------
+    def _visible(self):
+        return (self._actiu and self._mapa is not None
+                and not self._mapa.es_constant())
+
+    def _idx_a(self, x):
+        """Índex del bloc a la x de l'item, o -1."""
+        if not self._visible():
+            return -1
+        for i, s in enumerate(self._mapa.trams):
+            x0 = (s.ini - self._view_left) * self._pps
+            x1 = (s.fi - self._view_left) * self._pps
+            if x0 - 2 <= x <= x1 + 2:
+                return i
+        return -1
+
+    def _zona(self, x):
+        """(índex, zona) — zona ∈ {ini, fi, cos, None}."""
+        i = self._idx_a(x)
+        if i < 0:
+            return -1, None
+        n = len(self._mapa.trams)
+        s = self._mapa.trams[i]
+        x0 = (s.ini - self._view_left) * self._pps
+        x1 = (s.fi - self._view_left) * self._pps
+        if i > 0 and x <= x0 + 5:
+            return i, "ini"
+        if i + 1 < n and x >= x1 - 5:
+            return i, "fi"
+        return i, "cos"
+
+    # -- esdeveniments --------------------------------------------------
+    def hoverMoveEvent(self, ev):
+        _i, z = self._zona(ev.pos().x())
+        if z in ("ini", "fi"):
+            self.setCursor(Qt.SizeHorCursor)
+        elif z == "cos":
+            self.setCursor(Qt.PointingHandCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
+        super().hoverMoveEvent(ev)
+
+    def mousePressEvent(self, ev):
+        if ev.button() == Qt.RightButton:
+            i, _z = self._zona(ev.pos().x())
+            self.menuRequested.emit(
+                i, self._view_left + ev.pos().x() / max(self._pps, 1e-9))
+            ev.accept()
+            return
+        self._press = (self._zona(ev.pos().x()), ev.pos().x())
+        ev.accept()
+
+    def mouseMoveEvent(self, ev):
+        if self._press is None:
+            return
+        (i, z), x0 = self._press
+        if z in ("ini", "fi") and abs(ev.pos().x() - x0) > 3:
+            self._t_guia = self._view_left + ev.pos().x() / max(self._pps, 1e-9)
+            self.update()
+        ev.accept()
+
+    def mouseReleaseEvent(self, ev):
+        p = self._press
+        self._press = None
+        guia, self._t_guia = self._t_guia, None
+        self.update()
+        if p is None:
+            return
+        (i, z), _x0 = p
+        if guia is not None and i >= 0 and z in ("ini", "fi"):
+            self.tramMoved.emit(i, z, float(guia))
+        elif i >= 0:
+            self.tramClicked.emit(i)
+        ev.accept()
+
+    # -- pintura --------------------------------------------------------
     def paint(self, painter, option, widget=None):
-        mapa = self._mapa
-        if mapa is None or mapa.es_constant():
+        if not self._visible():
             return
         p = painter
         p.setRenderHint(QPainter.Antialiasing, False)
         rect = self.boundingRect()
         p.fillRect(rect, QColor(theme.TL_LANE_BG_B))
         p.setFont(QFont("Sans Serif", 8, QFont.Bold))
-        for s in mapa.trams:
+        for s in self._mapa.trams:
             x0 = (s.ini - self._view_left) * self._pps
             x1 = (s.fi - self._view_left) * self._pps
             if x1 < 0 or x0 > rect.width():
@@ -443,3 +532,8 @@ class TempoLayer(QGraphicsItem):
             p.setPen(QPen(QColor(RULER_TEXT), 1))
             p.drawText(QPointF(x0 + 4, self._height - 5),
                        f"{s.bpm:g}  {s.num}/{s.den}")
+        if self._t_guia is not None:
+            xg = (self._t_guia - self._view_left) * self._pps
+            p.setPen(QPen(QColor(theme.TL_GUIDE if hasattr(theme, "TL_GUIDE")
+                                 else RULER_TEXT), 1))
+            p.drawLine(QPointF(xg, 0), QPointF(xg, self._height))

@@ -17,9 +17,9 @@ import time
 import wave
 
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal
-from PyQt5.QtGui import QKeySequence
+from PyQt5.QtGui import QCursor, QKeySequence
 from PyQt5.QtWidgets import (
-    QApplication, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
+    QApplication, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
     QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QShortcut,
     QSlider, QSplitter, QTextEdit, QVBoxLayout, QWidget,
     QLineEdit,
@@ -38,6 +38,7 @@ import metronom  # noqa: E402
 # l'arrel al sys.path per altres imports relatius d'aquest fitxer).
 from . import graella, icones, pipeline, theme  # noqa: F401
 from . import acord_audio  # noqa: E402
+from . import dialegs  # noqa: E402
 from .timeline import TimelineView  # noqa: E402
 
 # Configuració centralitzada per al directori temporal (configurable)
@@ -224,6 +225,10 @@ class Visor(QMainWindow):
         self.timeline.groupDuplicateRequested.connect(self._duplica_seleccio)
         self.timeline.clipContextMenuRequested.connect(
             self._on_clip_context_menu)
+        # Pista de BPM/compàs (editable)
+        self.timeline.tempoEditRequested.connect(self._on_tempo_edit)
+        self.timeline.tempoChangeMoved.connect(self._on_tempo_mogut)
+        self.timeline.tempoMenuRequested.connect(self._on_tempo_menu)
         self.timeline.loopContextMenuRequested.connect(
             self._on_loop_context_menu)
         self.timeline.loopDoubleClicked.connect(self.selecciona_bloc_del_loop)
@@ -847,6 +852,69 @@ class Visor(QMainWindow):
             self.log(f"desa mapa tempo/compàs ERROR: {e}")
         self.log(f"mapa de tempo/compàs: {len(nous)} tros(s)")
         return True
+
+    def _on_tempo_edit(self, idx):
+        """Clic a un bloc de BPM/compàs → diàleg per editar-ne el valor."""
+        trams = list(self.tempo_trams or [])
+        if not (0 <= idx < len(trams)):
+            return
+        s = trams[idx]
+        try:
+            lbl = self.tempo_map.label(s[0]).split(".")[0]
+        except Exception:  # noqa: BLE001
+            lbl = None
+        dlg = dialegs.DialegTramTempo(self, inici=s[0], bpm=s[2], num=s[3],
+                                      den=s[4], inicial=(idx == 0),
+                                      text_inici=lbl)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        bpm, num, den = dlg.valors()
+        nou = list(trams)
+        nou[idx] = (s[0], s[1], bpm, num, den)
+        self.aplica_tempo_trams(nou)
+
+    def _on_tempo_mogut(self, idx, vora, t):
+        """Vora d'un bloc de BPM/compàs arrossegada → mou on canvia."""
+        trams = list(self.tempo_trams or [])
+        if not (0 <= idx < len(trams)):
+            return
+        t = max(0.0, min(self._durada_wav(), float(t)))
+        s = trams[idx]
+        if vora == "ini":
+            if idx == 0 or t >= s[1] - 0.02:
+                return
+            p = trams[idx - 1]
+            nou = list(trams)
+            nou[idx - 1] = (p[0], t, p[2], p[3], p[4])
+            nou[idx] = (t, s[1], s[2], s[3], s[4])
+        else:
+            if idx + 1 >= len(trams) or t <= s[0] + 0.02:
+                return
+            n = trams[idx + 1]
+            nou = list(trams)
+            nou[idx] = (s[0], t, s[2], s[3], s[4])
+            nou[idx + 1] = (t, n[1], n[2], n[3], n[4])
+        self.aplica_tempo_trams(nou)
+
+    def _on_tempo_menu(self, idx, t):
+        """Menú contextual de la pista de BPM/compàs."""
+        from app import tempo_map as tm
+        menu = QMenu(self)
+        a_add = menu.addAction("Afegeix un canvi de BPM/compàs aquí")
+        a_edit = menu.addAction("Edita…")
+        a_del = menu.addAction("Elimina aquest canvi")
+        a_edit.setEnabled(idx >= 0)
+        a_del.setEnabled(idx > 0)
+        acc = menu.exec_(QCursor.pos())
+        if acc is None:
+            return
+        trams = list(self.tempo_trams or [])
+        if acc == a_add:
+            self.aplica_tempo_trams(tm.afegeix_tall(trams, float(t)))
+        elif acc == a_edit and idx >= 0:
+            self._on_tempo_edit(idx)
+        elif acc == a_del and idx > 0:
+            self.aplica_tempo_trams(tm.elimina_tall(trams, idx))
 
     def _desa_csvs_base(self):
         """Desa els CSV d'acords i d'estructura (SENSE tocar la UI).

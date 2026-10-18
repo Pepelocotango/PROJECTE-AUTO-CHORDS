@@ -22,17 +22,17 @@ RULER_H = 26            # alçada del regle de temps (a dalt)
 WAVEFORM_H = 170        # alçada de la pista d'ona
 LEFT_PAD = 12           # marge intern a l'esquerra
 RIGHT_PAD = 12          # marge intern a la dreta
-# Els 2 carrils (estructura + acords) van SOBREPOSATS a l'ona, en
-# fraccions de WAVEFORM_H — estil DAW amb lanes semitransparents.
-LANE_H_FRAC = 0.32
-LANE_SEC_TOP_FRAC = 0.04
-LANE_ACC_TOP_FRAC = 0.46
+# Els 3 carrils (BPM/compàs + estructura + acords) van SOBREPOSATS a l'ona, en
+# fraccions de WAVEFORM_H — estil DAW amb lanes semitransparents. La pista de
+# **BPM/compàs** és **mitja alçada** (la resta, igual) i només es mostra en mode
+# BPM·compàs.
+LANE_H_FRAC = 0.30
 LANE_H = int(WAVEFORM_H * LANE_H_FRAC)
-LANE_SEC_TOP = RULER_H + WAVEFORM_H * LANE_SEC_TOP_FRAC
-LANE_ACC_TOP = RULER_H + WAVEFORM_H * LANE_ACC_TOP_FRAC
+LANE_TEMPO_H = max(16, LANE_H // 2)         # pista de BPM/compàs: mitja alçada
+LANE_TEMPO_TOP = RULER_H + int(WAVEFORM_H * 0.02)
+LANE_SEC_TOP = LANE_TEMPO_TOP + LANE_TEMPO_H + int(WAVEFORM_H * 0.04)
+LANE_ACC_TOP = LANE_SEC_TOP + LANE_H + int(WAVEFORM_H * 0.04)
 TOTAL_H = RULER_H + WAVEFORM_H
-LANE_TEMPO_H = 20                       # pista de tempo/compàs (a baix)
-LANE_TEMPO_TOP = TOTAL_H - LANE_TEMPO_H
 RULER_BG = theme.TL_RULER_BG
 # Colors de l'ona (BGRA — ordre de memòria de QImage.Format_RGB32)
 WF_BG = (0x1c, 0x15, 0x10)   # fons #10151c

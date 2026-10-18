@@ -548,3 +548,51 @@ class DialegTempoMapa(QDialog):
         """Els trossos editats (`(ini, fi, bpm, num, den)`, contigus)."""
         self._sync()
         return tempo_map.normalitza_trams(self._trams, self._durada)
+
+
+class DialegTramTempo(QDialog):
+    """Edita un **tros** del mapa: BPM i compàs (on comença es mostra)."""
+
+    def __init__(self, parent=None, inici=0.0, bpm=120.0, num=4, den=4,
+                 inicial=False, text_inici=None):
+        super().__init__(parent)
+        self.setWindowTitle("BPM i compàs")
+        self.setMinimumWidth(330)
+        lay = QVBoxLayout(self)
+        if inicial:
+            cap = "Valor inicial (compàs 1)."
+        else:
+            cap = f"Comença a {float(inici):.2f} s"
+            if text_inici:
+                cap += f" (compàs {text_inici})"
+        avis = QLabel(cap)
+        avis.setWordWrap(True)
+        lay.addWidget(avis)
+        form = QFormLayout()
+        self.sp_bpm = QDoubleSpinBox()
+        self.sp_bpm.setRange(1.0, 1000.0)
+        self.sp_bpm.setDecimals(3)
+        self.sp_bpm.setValue(float(bpm))
+        self.ed_compas = QLineEdit(f"{int(num)}/{int(den)}")
+        self.ed_compas.setPlaceholderText("4/4")
+        form.addRow("BPM:", self.sp_bpm)
+        form.addRow("Compàs:", self.ed_compas)
+        lay.addLayout(form)
+        botons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        botons.accepted.connect(self.accept)
+        botons.rejected.connect(self.reject)
+        lay.addWidget(botons)
+
+    def valors(self):
+        """`(bpm, num, den)`; el compàs s'escriu «num/den» (o «num»)."""
+        num, den = 4, 4
+        txt = (self.ed_compas.text() or "").strip().replace(" ", "")
+        if "/" in txt:
+            try:
+                a, b = txt.split("/", 1)
+                num, den = int(a), int(b)
+            except ValueError:
+                num, den = 4, 4
+        elif txt.isdigit():
+            num = int(txt)
+        return (float(self.sp_bpm.value()), max(1, num), max(1, den))
