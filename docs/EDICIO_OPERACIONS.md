@@ -100,7 +100,7 @@
 | 44 | **Recents** | *Fitxer ▸ Obre recent…* | `ac_recents` | **FET** |
 | 45 | **Revertir** | *Fitxer ▸ Reverteix* | `ac_reverteix` | **FET** (sense confirm modal amb el pont) |
 | 46 | **Còpia versionada (backup)** | automàtic (autosave) | `ac_fes_backup` | **FET** |
-| 47 | **Exportar WAVs** | `Ctrl+E` | `ac_export_wav` (`partitura`, `async`) | **FET** |
+| 47 | **Exportar WAVs** | `Ctrl+E` | `ac_export_wav` (`partitura`, `async`) | **FET** — el paquet hi porta les **tres parts** (regla #12): `acords.csv`+`wavs_acords/`, `estructura_ABC.csv`+`wavs_estructura/` i **`mapa_tempo/`** (tempo+compàs) |
 | 48 | **Exportar la partitura** | *Fitxer ▸ Exporta la partitura…* | `ac_export_partitura` | **FET** |
 | 49 | **Obrir la carpeta de sortida** | *Fitxer ▸ Obre la carpeta de sortida* | `ac_open_output_folder` | **FET** |
 

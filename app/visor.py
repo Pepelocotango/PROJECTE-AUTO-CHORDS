@@ -3294,7 +3294,8 @@ class Visor(QMainWindow):
                 pipeline.exporta_total(self.csv_acords, seg_csv if amb_est else None,
                                        sortida, self.bpm, self.bpb, self.offset,
                                        44100, self.log, tempo_fix=self.tempo_fix,
-                                       amb_estructura=amb_est)
+                                       amb_estructura=amb_est,
+                                       mapa_tempo=list(self.tempo_trams or []))
             self.log(f"exporta FET: {sortida}")
             QMessageBox.information(self, "Visor",
                                     f"Exportació feta a:\n{sortida}")

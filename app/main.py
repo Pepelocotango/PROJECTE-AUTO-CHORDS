@@ -2791,6 +2791,8 @@ class Finestra(QMainWindow):
         seccions_model = list(vr.seccions) if vr is not None else None
         total_s = (float(vr.audio.get("durada", 0.0))
                    if vr is not None else None)
+        # Regla d'or #12: el mapa de BPM/compàs del model viu també s'exporta.
+        mapa_model = list(vr.tempo_trams) if vr is not None else None
         amb_estructura = self.amb_est.isChecked() and (
             seccions_model is not None or os.path.isfile(csv_seg))
         # (2) Amb «Inclou estructura» OFF, les restes d'un export ANTERIOR
@@ -2812,6 +2814,7 @@ class Finestra(QMainWindow):
             acords=acords_model,
             seccions=seccions_model,
             total_s=total_s,
+            mapa_tempo=mapa_model,
         )
 
     def _neteja_estructura_vella(self, sortida):

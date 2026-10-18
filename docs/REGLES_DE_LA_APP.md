@@ -7,7 +7,7 @@
 > de l'operador, que s'ha de documentar aquí **i** al `CHANGELOG`).
 >
 > Cada regla té la seva **validació** al codi i un **test** que la comprova
-> (les 1–11; la 12 és pendent d'implementació: vegeu la nota del final).
+> (les 1–12, totes amb el seu test).
 > Referenciades a `ROADMAP_HISTORIA.md` (§Notes d'implementació) i `DEVELOPING.md`.
 >
 > ## ‼️ S'HA DE COMPLIR **SEMPRE** — a TOTS els punts
@@ -136,13 +136,13 @@ la selecció (verd; en fila amb les regles 1–10). La **paritat d'exportació**
 **regla 12**.
 
 ## 12. Paritat a l'exportació (paquet complet)
-El paquet exportat tracta els **tres** tipus igual, cadascun amb la seva **carpeta
-pròpia**: acords (`acords.csv` + `wavs_acords/`) · estructura
-(`estructura_ABC.csv` + `wavs_estructura/`) · **mapa de tempo/compàs** (els seus
-CSV, en carpeta pròpia).
-⏳ **Pendent d'implementació** (2026-10-18): `pipeline.exporta_total()` exporta
-acords i estructura, però encara **no** el mapa de tempo/compàs. La implementació
-es farà a part (agent a càrrec).
+El paquet exportat tracta els **tres** tipus igual, cadascun amb la seva part:
+acords (`acords.csv` + `wavs_acords/`) · estructura (`estructura_ABC.csv` +
+`wavs_estructura/`) · **mapa de tempo/compàs** (**carpeta pròpia** `mapa_tempo/`
+amb `tempo.csv` i `compas.csv`).
+→ `pipeline.exporta_total(..., mapa_tempo=)` — rep el mapa del **model viu** (com
+`acords`/`seccions`); si no se li passa, el paquet queda exactament com era.
+test `tests/test_regla12_export.py` — **✅ FET (2026-10-18)**.
 
 ---
 
@@ -176,5 +176,6 @@ Aquests dos casos reals són el motiu del §«S'ha de complir SEMPRE» de dalt:
 > 📌 **En afegir una regla nova**: numera-la aquí, afegeix-ne la validació al
 > codi i un test que la comprovi. **Les regles 1–11 ja tenen el seu test**:
 > `tests/test_regles_or.py` (1, 3, 5, 6, 7, 8 i 10) · `test_seccions_contigues` (2)
-> · `test_cobertura_viu` (4) · `test_requirements` (9) · `test_regla11_paritat` (11).
-> La **12** (paritat d'exportació) encara **no té test**: ⏳ pendent d'implementació.
+> · `test_cobertura_viu` (4) · `test_requirements` (9) · `test_regla11_paritat` (11)
+> · `test_regla12_export` (12).
+> La **12** (paritat d'exportació) té el seu test: `tests/test_regla12_export.py`.

@@ -1533,7 +1533,7 @@ def fer_wavs_acords(locators_txt, bpm, dest_dir, sr, log, bpb=4):
 
 def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
                  tempo_fix=True, amb_estructura=True, total_s=None,
-                 acords=None, seccions=None):
+                 acords=None, seccions=None, mapa_tempo=None):
     """Exporta el flux complet.
 
     Si es passen `acords`/`seccions` (el **model VIU** del visor), s'usen ELLS
@@ -1541,6 +1541,12 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
     ja **normalitzats** amb l'invariant de COBERTURA, de manera que l'export
     **no perd les edicions manuals** (finals de secció, capçalera «N», etc.).
     Si no es passen, es comporta exactament com abans (llegeix els CSV).
+
+    `mapa_tempo` = els trossos del mapa de BPM/compàs del **model viu**. Amb ell,
+    el paquet exportat tracta els **tres tipus igual** (regla d'or #12): a més
+    d'`acords.csv` + `wavs_acords/` i `estructura_ABC.csv` + `wavs_estructura/`,
+    el mapa té la seva **carpeta pròpia** `mapa_tempo/` amb `tempo.csv` i
+    `compas.csv` (els seus derivats, igual que els altres dos).
 
     Retorna un diccionari amb les rutes finals (csv + carpetes).
     """
@@ -1607,6 +1613,18 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         neteja_wavs(dest_abc)
         result["n_estructura_wavs"] = fer_wavs_estructura(
             abc, dest_abc, sr, log)
+
+    # Regla d'or #12 (paritat a l'exportació): el mapa de BPM/compàs també surt
+    # al paquet, amb la seva carpeta pròpia, com els altres dos tipus.
+    if mapa_tempo:
+        trams = [tuple(t) for t in mapa_tempo]
+        dest_mapa = os.path.join(sortida, "mapa_tempo")
+        desa_tempo_map(dest_mapa, trams)
+        result["mapa_tempo_dir"] = dest_mapa
+        result["n_mapa_trams"] = len(trams)
+        if log:
+            log(f"mapa de tempo/compàs exportat: {len(trams)} tram(s) a "
+                f"{dest_mapa}")
 
     return result
 
