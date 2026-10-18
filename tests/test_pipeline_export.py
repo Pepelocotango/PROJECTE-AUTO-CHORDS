@@ -670,6 +670,25 @@ class TimelineConstraintTests(unittest.TestCase):
         finally:
             p.end()
 
+    def test_tempo_lane_paint_no_peta(self):
+        """El paint de la pista de tempo/compàs no ha de petar mai."""
+        from PyQt5.QtGui import QImage, QPainter
+        from app.timeline_layers import TempoLayer
+        from app.tempo_map import TempoMap
+        tl = TempoLayer(20, 60.0, 12.0, 0.0, 10.0, 100.0)
+        img = QImage(600, 20, QImage.Format_ARGB32)
+        img.fill(0)
+        p = QPainter(img)
+        try:
+            tl.paint(p, None, None)              # sense mapa: pista buida
+            tl.set_mapa(TempoMap([(0.0, 4.0, 120.0, 4, 4),
+                                  (4.0, 8.0, 60.0, 3, 4)]))
+            tl.paint(p, None, None)              # amb mapa variable
+            tl.set_mapa(TempoMap.constant(120, 4, 4, durada=8.0))
+            tl.paint(p, None, None)              # constant: buida
+        finally:
+            p.end()
+
     def test_grid_levels_colors_valids(self):
         """Els colors de grid_levels han de ser REALS (QColor valid), no strings."""
         from PyQt5.QtGui import QColor

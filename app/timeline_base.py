@@ -31,6 +31,8 @@ LANE_H = int(WAVEFORM_H * LANE_H_FRAC)
 LANE_SEC_TOP = RULER_H + WAVEFORM_H * LANE_SEC_TOP_FRAC
 LANE_ACC_TOP = RULER_H + WAVEFORM_H * LANE_ACC_TOP_FRAC
 TOTAL_H = RULER_H + WAVEFORM_H
+LANE_TEMPO_H = 20                       # pista de tempo/compàs (a baix)
+LANE_TEMPO_TOP = TOTAL_H - LANE_TEMPO_H
 RULER_BG = theme.TL_RULER_BG
 # Colors de l'ona (BGRA — ordre de memòria de QImage.Format_RGB32)
 WF_BG = (0x1c, 0x15, 0x10)   # fons #10151c

@@ -378,3 +378,68 @@ class CursorLine(QGraphicsLineItem):
         line.setP1(QPointF(line.p1().x(), y_top))
         line.setP2(QPointF(line.p2().x(), y_bottom))
         self.setLine(line)
+
+
+# -----------------------------------------------------------------------------
+# TempoLayer — la pista de TEMPO i COMPÀS (blocs de cada tros del mapa)
+# -----------------------------------------------------------------------------
+class TempoLayer(QGraphicsItem):
+    """Pista (llegidora) del **mapa de tempo i compàs**: un bloc per tros.
+
+    Només es dibuixa si el mapa és **variable** (si és constant, la pista queda
+    buida i tot es comporta com abans). L'edició es fa amb el diàleg *Mapa de
+    tempo i compàs…*; aquí es veuen els trams i els seus valors.
+    """
+
+    def __init__(self, height, pps, x_offset, view_left, view_right, top=0,
+                 parent=None):
+        super().__init__(parent)
+        self._height = int(height)
+        self._pps = float(pps)
+        self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
+        self._view_right = float(view_right)
+        self._mapa = None
+        self._top = float(top)
+        self.setZValue(2)
+        self.setPos(self._x_offset, self._top)
+
+    def boundingRect(self):
+        return QRectF(0, 0, max(1.0, (self._view_right - self._view_left) *
+                                self._pps), self._height)
+
+    def update_geometry(self, pps, x_offset, view_left, view_right):
+        self._pps = float(pps)
+        self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
+        self._view_right = float(view_right)
+        self.prepareGeometryChange()
+        self.setPos(self._x_offset, self._top)
+        self.update()
+
+    def set_mapa(self, mapa):
+        self._mapa = mapa
+        self.update()
+
+    def paint(self, painter, option, widget=None):
+        mapa = self._mapa
+        if mapa is None or mapa.es_constant():
+            return
+        p = painter
+        p.setRenderHint(QPainter.Antialiasing, False)
+        rect = self.boundingRect()
+        p.fillRect(rect, QColor(theme.TL_LANE_BG_B))
+        p.setFont(QFont("Sans Serif", 8, QFont.Bold))
+        for s in mapa.trams:
+            x0 = (s.ini - self._view_left) * self._pps
+            x1 = (s.fi - self._view_left) * self._pps
+            if x1 < 0 or x0 > rect.width():
+                continue
+            x0, x1 = max(0.0, x0), min(rect.width(), x1)
+            p.fillRect(QRectF(x0, 1, max(1.0, x1 - x0), self._height - 2),
+                       QColor(theme.TL_LANE_BG_A))
+            p.setPen(QPen(QColor(theme.TL_GRID_MEASURE), 1))
+            p.drawLine(QPointF(x0, 0), QPointF(x0, self._height))
+            p.setPen(QPen(QColor(RULER_TEXT), 1))
+            p.drawText(QPointF(x0 + 4, self._height - 5),
+                       f"{s.bpm:g}  {s.num}/{s.den}")

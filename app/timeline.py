@@ -45,7 +45,8 @@ from app import theme      # noqa: E402  (paleta centralitzada)
 # tots els noms per mantenir la compatibilitat (from app.timeline import ...).
 from app.timeline_base import (   # noqa: E402,F401
     CHORD_ACTIVE_FILL, CURSOR_COLOR, GUIDE_COLOR, LANE_ACC_TOP, LANE_BG_A,
-    LANE_BG_B, LANE_H, LANE_SEC_TOP, LEFT_PAD, LOOP_GRAB_PX, MIN_GAP_S,
+    LANE_BG_B, LANE_H, LANE_SEC_TOP, LANE_TEMPO_H, LANE_TEMPO_TOP,
+    LEFT_PAD, LOOP_GRAB_PX, MIN_GAP_S,
     MIN_SEC_LEN_S, PIXELS_PER_SECOND_DEFAULT, RIGHT_PAD, RULER_H,
     SELECTION_COLOR, SNAP_MARCA_PX, TOTAL_H, WAVEFORM_H, fmt_pos, grid_levels,
     loop_after_drag, snap_step, snap_time,
@@ -59,7 +60,8 @@ from app import pipeline  # noqa: E402  (DESTÍ del moviment d'un bloc, §6.3)
 # -----------------------------------------------------------------------------
 # Es re-exporten per mantenir la compatibilitat (from app.timeline import ...).
 from app.timeline_layers import (   # noqa: E402,F401
-    CursorLine, GridLayer, LaneBackground, RulerLayer, WaveformLayer,
+    CursorLine, GridLayer, LaneBackground, RulerLayer, TempoLayer,
+    WaveformLayer,
 )
 
 # API pública del mòdul (inclou els re-exports per compatibilitat amb codi i
@@ -68,6 +70,7 @@ from app.timeline_layers import (   # noqa: E402,F401
 __all__ = [
     "TimelineView", "ChordItem", "SectionItem", "RenameEditor",
     "WaveformLayer", "GridLayer", "RulerLayer", "LaneBackground", "CursorLine",
+    "TempoLayer",
     "fmt_pos", "snap_time", "grid_levels", "CURSOR_COLOR",
     "CHORD_ACTIVE_FILL", "SELECTION_COLOR",
 ]
@@ -284,6 +287,12 @@ class TimelineView(QGraphicsView):
                                  self._tempo_fix, self._bpm, self._bpb, top=0)
         self._scene.addItem(self._ruler)
 
+        # pista de TEMPO i COMPÀS (blocs; només amb mapa variable)
+        self._tempo_lane = TempoLayer(LANE_TEMPO_H, self._pps,
+                                      self._x_offset, self._view_left,
+                                      self._view_right, LANE_TEMPO_TOP)
+        self._scene.addItem(self._tempo_lane)
+
         # cursor
         self._cursor = CursorLine(0, TOTAL_H - 2)
         self._scene.addItem(self._cursor)
@@ -326,6 +335,7 @@ class TimelineView(QGraphicsView):
                                 self._offset, self._beat_type, mapa)
         self._grid.update_mode(self._tempo_fix, self._bpm, self._bpb,
                                self._offset, self._beat_type, mapa)
+        self._tempo_lane.set_mapa(mapa)
         self.update()
 
     def set_follow(self, enabled: bool) -> None:
@@ -404,6 +414,8 @@ class TimelineView(QGraphicsView):
                                    self._view_left, self._view_right)
         self._waveform.update_geometry(self._pps, self._x_offset,
                                        self._view_left, self._view_right)
+        self._tempo_lane.update_geometry(self._pps, self._x_offset,
+                                         self._view_left, self._view_right)
         for it in self._chord_items:
             it.set_pps(self._pps, self._x_offset, self._view_left)
         for it in self._section_items:
