@@ -213,6 +213,17 @@ deixaven passar valors impossibles:
 
 Test nou: `tests/test_regles_or.py` › `test_les_xarxes_de_seguretat_tambe_ho_arreglen`.
 
+## Ronda 13 — l'informe d'incoherències: propostes obertes, RESOLTES
+
+- L'`INFORME_INCOHERENCIES_2026-10-16.md` tenia un punt obert (7.4): deia que els
+  docs afirmaven que l'estat va sempre a `~/.local/state/auto-chords`, mentre que
+  `app/config.py` prefereix la **carpeta del projecte**. Comprovat contra el codi
+  (`DADES_DIR` = primer escrivible de projecte → XDG → temporal, i
+  `recents.json`/`sessio.json` en pengen) i arreglat: `docs/PROJECTES.md` ja ho
+  diu bé, i el que diu `PROVES_FUNCIONALS_3SO.md` es queda perquè parla del cas
+  **AppImage** i de la **quarantena** del `.app` (on la carpeta del paquet no és
+  escrivible). El punt queda marcat com a ✅ RESOLT dins l'informe.
+
 ## Ronda 11 — restes de funcionalitats RETIRADES
 
 - 🧹 **`_alt_copia`** era el nom del gest **`Alt`+arrossegar**, retirat el
