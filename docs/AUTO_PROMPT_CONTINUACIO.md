@@ -53,5 +53,6 @@ normalitzat + MCP (esborrar/duplicar la selecció).
 - MCP (`AUTO_CHORDS_MCP.sh`): ~50 eines `ac_*`; **no hi ha** esborrar/duplicar la
   selecció. Per confirmar estats: `ac_status`, `ac_selection`, `ac_list_chords`,
   `ac_list_sections`.
-- **Cursors** (pendent): l'operador va rebutjar el disseny proposat; definir-ne
-  un altre amb ell abans de tocar res.
+- **Cursors** (TANCAT, decisió de l'operador 18-10-2026): **es queden com estan**
+  (↔ a les vores, ✋ al cos, ✊ mentre s'arrossega, copiar amb Ctrl+Shift, + al
+  fons en mode marc). No es canvia res.
