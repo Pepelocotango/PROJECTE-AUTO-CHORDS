@@ -29,7 +29,7 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 2 | Contigüitat | `pipeline.filtra_seccions` · els normalitzadors dels 3 tipus (`prev.fi == curr.ini`) · lectors (`llegeix_acords` / `llegeix_abc`) | `test_seccions_contigues` · `test_regles_or` | ✅ auditada (Ronda 4: mapa + càrrega dels 3 tipus) |
 | 3 | Durades derivades | el `fi` del `Clip` **no mana**: es re-deriva de la frontera (cadena d'inis) | `test_regles_or.TestRegla3DuradesDerivades` | ✅ auditat |
 | 4 | Cobertura total | `pipeline.normalitza_cobertura()` (acords + seccions) · `tempo_map.normalitza_trams(trams, durada)` (mapa) · **punt únic**: `visor._refresca_tempo_map` | `test_cobertura_viu` · `test_regles_or` | ✅ auditada (Ronda 3: el mapa es re-normalitza SEMPRE que es construeix) |
-| 5 | Una sola font de veritat | `pipeline` + `tempo_map` (2 backends); la còpia del visor mai no mana | `test_regles_or.TestRegla5FontDeVeritat` | ⏳ pendent de repàs (buscar mutacions de la UI que no passin pel backend) |
+| 5 | Una sola font de veritat | `pipeline` + `tempo_map` (2 backends); la còpia del visor mai no mana | `test_regles_or.TestRegla5FontDeVeritat` | ✅ auditada (Ronda 5: les 36 mutacions del visor passen pels validators/normalitzadors o preserven els invariants) |
 | 6 | WAVs només via `exporta_total()` | `pipeline.exporta_total` / `regenera_wavs_*` | `test_regles_or.TestRegla6WavsNomesViaExporta` | ✅ auditada (Ronda 3: els 6 cridadors són tots camins d'exportació; la UI delega) |
 | 7 | Instància única | `plataforma.bloqueja_instancia_unica` | `test_regles_or.TestRegla7InstanciaUnica` | ✅ auditat |
 | 8 | Temps vàlids | `visor._valida_canvis_*` **+** les xarxes de seguretat (`normalitza_cobertura`, `normalitza_trams`) | `test_regles_or.TestRegla8TempsValids` | ✅ auditat (Ronda 1: 2 forats arreglats) |
@@ -39,6 +39,16 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
 
 ## Trobades i fixes (el més nou a dalt)
+
+### 2026-10-18 · Ronda 5 — R5 (una sola font de veritat): cap mutació fora del backend
+
+Repàs de les **36** assignacions a `self.acords` / `self.seccions` del visor, una
+a una: totes passen per `_valida_canvis_*`, `_normalitza_*` o les funcions de
+`pipeline` (les poques que assignen directament —`_aplica_estat` de l'undo, el
+renom inline— treballen sobre estats ja validats o preserven els invariants:
+el renom inline sanea el nom amb `pipeline.saneja_nom_acord`, conserva el
+`Clip` i **marca l'undo**). Cap camí de la UI escriu WAVs ni es salta el
+backend. ✅
 
 ### 2026-10-18 · Ronda 4 — R2 a la càrrega + neteja de codi mort
 
