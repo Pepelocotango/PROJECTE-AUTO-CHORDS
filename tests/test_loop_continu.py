@@ -97,6 +97,37 @@ class TestLoopContinu(unittest.TestCase):
         #     llarg de zeros.
         self.assertLessEqual(_max_run_zeros(data), 2)
 
+    def test_loop_degenerat_no_encalla(self):
+        """Un loop de menys de 2 mostres es descarta i sona fins al final.
+
+        És la xarxa del fil d'alimentació (`if b - a < 2: bucle = False`): sense
+        ella, un loop marcat massa curt (o amb A i B al mateix instant) podria
+        deixar la reproducció donant voltes infinitesimalment.
+        """
+        sr = 1000
+        doble = _Doble(np.full(2000, 1000, dtype=np.int16), sr,
+                       loop=(0.5, 0.5000))          # 0 mostres de loop
+        proc = _FakeProc(50000)
+        Visor._alimenta(doble, proc, 0.5, 0)
+        data = np.frombuffer(bytes(proc.stdin.buf), dtype=np.int16)
+        # Ha sonat DES de la posició fins al FINAL, sense cap volta: 0,5 s
+        # (mostra 500) → 2,0 s (mostra 2000) = 1500 mostres exactes.
+        self.assertEqual(data.size, 1500,
+                         "ha de sonar fins al final, sense fer cap volta")
+
+    def test_loop_que_acaba_a_la_durada(self):
+        """Un loop amb B exactament a la durada fa voltes sense tall."""
+        sr = 1000
+        doble = _Doble(np.full(2000, 1000, dtype=np.int16), sr,
+                       loop=(0.5, 2.0))             # B = final de l'àudio
+        proc = _FakeProc(6000)
+        Visor._alimenta(doble, proc, 0.5, 0)
+        data = np.frombuffer(bytes(proc.stdin.buf), dtype=np.int16)
+        self.assertGreater(data.size, 2000, "ha de fer més d'una volta")
+        self.assertEqual(int(data.max()), 1000, "el cos del loop sona ple")
+        self.assertLessEqual(_max_run_zeros(data), 2,
+                             "sense blocs de silenci (no hi ha tall)")
+
     def test_loop_canvi_en_calell(self):
         # Si A/B canvien a mig flux, el feeder ho agafa a la volta següent.
         doble = _Doble(np.full(2000, 1000, dtype=np.int16), 1000,
