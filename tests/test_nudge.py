@@ -125,6 +125,55 @@ class TestNudge(_Base):
         self.assertIsNone(getattr(v, "_undo_pending", None))
         v.close()
 
+    def test_tram_tempo_nudge_la_frontera(self):
+        """← / → mouen la frontera del tram de BPM/compàs seleccionat (#11)."""
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
+                              (10.0, 20.0, 90.0, 3, 4)])
+        pas = v.timeline._pas_nudge()
+        v.timeline.select_clip("tempo", 1)
+        v.timeline.keyPressEvent(_key(Qt.Key_Right))
+        self.assertAlmostEqual(float(v.tempo_trams[1][0]) - 10.0, pas,
+                               places=6)
+        self.assertAlmostEqual(float(v.tempo_trams[0][0]), 0.0, places=6)
+        # Alt+→ (estira) mou la frontera DRETA del tram
+        v.timeline.keyPressEvent(_key(Qt.Key_Right, Qt.AltModifier))
+        self.assertAlmostEqual(float(v.tempo_trams[1][1]), 20.0, places=6)
+        v.close()
+
+    def test_tram_tempo_edicio_es_desfeu(self):
+        """Les edicions del mapa de BPM/compàs són desferibles (abans no!)."""
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
+                              (10.0, 20.0, 90.0, 3, 4)])
+        abans = [(round(float(t[0]), 6), round(float(t[1]), 6), t[2])
+                 for t in v.tempo_trams]
+        v.timeline.select_clip("tempo", 1)
+        v.timeline.keyPressEvent(_key(Qt.Key_Right))
+        self.assertNotEqual([round(float(t[0]), 6) for t in v.tempo_trams],
+                            [a[0] for a in abans])
+        v.undo()
+        self.assertEqual(
+            [(round(float(t[0]), 6), round(float(t[1]), 6), t[2])
+             for t in v.tempo_trams], abans)
+        v.close()
+
+    def test_tram_tempo_extrems_son_immobils(self):
+        """El 1r tram comença a la WAV i l'últim hi acaba: no s'hi pot nudgejar."""
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
+                              (10.0, 20.0, 90.0, 3, 4)])
+        abans = [(float(t[0]), float(t[1])) for t in v.tempo_trams]
+        v.timeline.select_clip("tempo", 0)
+        v.timeline.keyPressEvent(_key(Qt.Key_Left))           # 1r: no pot
+        v.timeline.select_clip("tempo", 1)
+        v.timeline.keyPressEvent(_key(Qt.Key_Right, Qt.AltModifier))
+        self.assertEqual([(float(t[0]), float(t[1])) for t in v.tempo_trams],
+                         abans)
+        self.assertIsNone(getattr(v, "_undo_pending", None),
+                          "no pot quedar una marca d'undo penjada")
+        v.close()
+
     def test_sense_seleccio_no_canvia_res(self):
         v = _visor()
         abans = [round(float(a[0]), 6) for a in v.acords]

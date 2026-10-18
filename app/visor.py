@@ -855,6 +855,10 @@ class Visor(QMainWindow):
             pipeline.desa_tempo_map(self._carpeta_acords(), self.tempo_trams)
         except Exception as e:  # noqa: BLE001
             self.log(f"desa mapa tempo/compàs ERROR: {e}")
+        # Si el canvi ve de FORA d'una operacio (carrega, analisi, el dialeg
+        # del mapa...), la base del desfer s'ha de quedar al dia; si ve de
+        # dins d'una operacio oberta, no fa res.
+        self._undo_touch_base()
         self.log(f"mapa de tempo/compàs: {len(nous)} tros(s)")
         return True
 
@@ -874,9 +878,11 @@ class Visor(QMainWindow):
         if dlg.exec_() != QDialog.Accepted:
             return
         bpm, num, den = dlg.valors()
+        self._undo_marca()
         nou = list(trams)
         nou[idx] = (s[0], s[1], bpm, num, den)
         self.aplica_tempo_trams(nou)
+        self._undo_commit()
 
     def _on_tempo_mogut(self, idx, vora, t):
         """Vora d'un bloc de BPM/compàs arrossegada → mou on canvia."""
@@ -919,6 +925,7 @@ class Visor(QMainWindow):
         acc = menu.exec_(QCursor.pos())
         if acc is None:
             return
+        self._undo_marca()
         trams = list(self.tempo_trams or [])
         if acc == a_add or acc == a_part:
             # «Afegeix» i «Parteix aquí» són la mateixa operació al mapa (una
@@ -928,6 +935,10 @@ class Visor(QMainWindow):
             self._on_tempo_edit(idx)
         elif acc == a_del and idx >= 0 and len(trams) > 1:
             self.aplica_tempo_trams(tm.elimina_tall(trams, idx))
+        else:
+            self._undo_pending = None      # res fet: no hi ha res a desfer
+            return
+        self._undo_commit()
 
     def _desa_csvs_base(self):
         """Desa els CSV d'acords i d'estructura (SENSE tocar la UI).
@@ -983,6 +994,9 @@ class Visor(QMainWindow):
             "loop_a": getattr(self, "loop_a", None),
             "loop_b": getattr(self, "loop_b", None),
             "loop_on": bool(getattr(self, "loop_on", False)),
+            # El MAPA de tempo/compas tambe es desfeu (abans no: editar
+            # els trams era irreversible i el Ctrl+Z no els tornava).
+            "tempo_trams": copy.deepcopy(list(self.tempo_trams or [])),
         }
 
     def _estat_complet(self):
@@ -994,6 +1008,16 @@ class Visor(QMainWindow):
         for k in ("bpm", "bpb", "beat_type", "offset", "tempo_fix"):
             if temps.get(k) is not None:
                 setattr(self, k, temps[k])
+        tt = temps.get("tempo_trams")
+        if tt is not None:
+            self.tempo_trams = copy.deepcopy(list(tt))
+            try:
+                self._refresca_tempo_map()
+                if self.tempo_trams:
+                    pipeline.desa_tempo_map(self._carpeta_acords(),
+                                            self.tempo_trams)
+            except Exception as e:  # noqa: BLE001
+                self.log(f"tempo/compas: no s'ha pogut restaurar el mapa: {e}")
         self.loop_a, self.loop_b = temps.get("loop_a"), temps.get("loop_b")
         self.loop_on = bool(temps.get("loop_on", False))
         if hasattr(self, "timeline"):

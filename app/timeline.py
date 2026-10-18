@@ -1603,7 +1603,13 @@ class TimelineView(QGraphicsView):
             it = self.itemAt(event.pos())
             if isinstance(it, TempoLayer):
                 # Pista de BPM/compas (eina intel·ligent): l'escena la gestiona.
+                # Si el gest mourà una frontera del mapa, l'emboliquem com UNA
+                # sola operacio de desfer (editStarted/editFinished).
                 self.setFocus()
+                ti, _tz = self._tempo_lane._zona(event.pos().x())
+                if ti >= 0:
+                    self._tempo_gest = True
+                    self.editStarted.emit()
                 super().mousePressEvent(event)
                 return
             if isinstance(it, (ChordItem, SectionItem)):
@@ -1734,6 +1740,9 @@ class TimelineView(QGraphicsView):
                 self._update_loop_item()
             event.accept()
             return
+        if getattr(self, "_tempo_gest", False):
+            self._tempo_gest = False
+            self.editFinished.emit()
         super().mouseReleaseEvent(event)
 
     def set_snap(self, on=None, divisio=None) -> None:
@@ -1796,6 +1805,16 @@ class TimelineView(QGraphicsView):
                 return
             if not estira and idx <= 0:
                 return
+        elif kind == "tempo":
+            tr = self._trams_tempo()
+            if not (0 <= idx < len(tr)):
+                return
+            # El 1r tram comença a la WAV i l'últim hi acaba: només es pot
+            # moure la frontera INTERIOR (la de la vora triada).
+            if not estira and idx <= 0:
+                return
+            if estira and idx + 1 >= len(tr):
+                return
         else:
             return
         self.editStarted.emit()
@@ -1806,6 +1825,13 @@ class TimelineView(QGraphicsView):
             else:
                 self._on_chord_time_changed(
                     idx, float(self._acords[idx][0]) + direccio * pas)
+        elif kind == "tempo":
+            if estira:      # vora dreta = frontera amb el tram següent
+                self.tempoChangeMoved.emit(
+                    idx, "fi", float(tr[idx][1]) + direccio * pas)
+            else:           # vora esquerra = frontera amb l'anterior
+                self.tempoChangeMoved.emit(
+                    idx, "ini", float(tr[idx][0]) + direccio * pas)
         elif estira:
             self._nudge_vora_seccio(
                 idx, float(self._seccions[idx][1]) + direccio * pas)
