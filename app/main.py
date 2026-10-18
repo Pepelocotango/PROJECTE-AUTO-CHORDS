@@ -781,6 +781,8 @@ class Finestra(QMainWindow):
         m = mb.addMenu("&Selecciona")
         self._act(m, "Selecciona l'acord del cursor", "", self._sel_acord_cursor)
         self._act(m, "Selecciona la secció del cursor", "", self._sel_seccio_cursor)
+        self._act(m, "Selecciona el tram de tempo/compàs del cursor", "",
+                  self._sel_tram_cursor)
         m.addSeparator()
         self._act(m, "Marca inici de loop (A)", "Ctrl+[", self._marca_A_visor)
         self._act(m, "Marca fi de loop (B)", "Ctrl+]", self._marca_B_visor)
@@ -1724,6 +1726,23 @@ class Finestra(QMainWindow):
             else:
                 break
         vr.timeline.select_clip("chord", idx)
+
+    def _sel_tram_cursor(self):
+        """Selecciona el tram de BPM/compàs que conté la posició del cursor."""
+        vr = getattr(self, "visor_ref", None)
+        trams = getattr(vr, "tempo_trams", None) if vr is not None else None
+        if not trams:
+            return False
+        idx = -1
+        for i, t in enumerate(trams):
+            if float(t[0]) <= vr.pos:
+                idx = i
+            else:
+                break
+        if idx < 0:
+            return False
+        vr.timeline.select_clip("tempo", idx)
+        return True
 
     def _sel_seccio_cursor(self):
         """Selecciona la secció que conté la posició del cursor."""

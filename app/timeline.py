@@ -297,8 +297,7 @@ class TimelineView(QGraphicsView):
                                       self._x_offset, self._view_left,
                                       self._view_right, LANE_TEMPO_TOP)
         self._scene.addItem(self._tempo_lane)
-        self._tempo_lane.tramSelected.connect(
-            lambda i: self.select_clip('tempo', i))
+        self._tempo_lane.tramSelected.connect(self._on_tempo_selected)
         self._tempo_lane.tramClicked.connect(self.tempoEditRequested.emit)
         self._tempo_lane.tramMoved.connect(self.tempoChangeMoved.emit)
         self._tempo_lane.menuRequested.connect(self.tempoMenuRequested.emit)
@@ -751,6 +750,15 @@ class TimelineView(QGraphicsView):
         # propi timeline.
         self.clipSelected.emit(kind, index)
 
+    def _on_tempo_selected(self, idx: int) -> None:
+        """Clic a la pista de BPM/compàs: selecciona (amb `Ctrl`, toggle)."""
+        if idx is None or idx < 0:
+            return
+        if QApplication.keyboardModifiers() & Qt.ControlModifier:
+            self.toggle_selection("tempo", idx)
+        else:
+            self.select_clip("tempo", idx)
+
     def _sync_selection_visual(self) -> None:
         """Pinta la vora de selecció a tots els items de `self._multi`."""
         for it in self._chord_items:
@@ -803,6 +811,10 @@ class TimelineView(QGraphicsView):
             return float(self._acords[idx][0])
         if kind == "section" and 0 <= idx < len(self._seccions):
             return float(self._seccions[idx][0])
+        if kind == "tempo":
+            tr = self._trams_tempo()
+            if 0 <= idx < len(tr):
+                return float(tr[idx][0])
         return None
 
     def extend_selection(self, kind: str, index: int) -> None:
@@ -819,7 +831,7 @@ class TimelineView(QGraphicsView):
         if t_anc is None or t_clic is None:
             self.select_clip(kind, index)
             return
-        keys = self.keys_dins_rang(t_anc, t_clic)
+        keys = self.keys_dins_rang(t_anc, t_clic, tempo=(kind == "tempo"))
         keys = {k for k in keys if k[0] == kind}
         if not keys:
             keys = {(kind, index)}
@@ -828,7 +840,17 @@ class TimelineView(QGraphicsView):
         self._sync_selection_visual()
         self.clipSelected.emit(kind, index)
 
-    def keys_dins_rang(self, lo: float, hi: float, inclou_fi: bool = True) -> set:
+    def _trams_tempo(self) -> list:
+        """Trossos del mapa de BPM/compàs com a tuples `(ini, fi, bpm, num, den)`.
+
+        Buit si la pista no està activa (mode lliure o sense mapa). És la font
+        de la selecció per **rang** i pel **marquee** (i de `_temps_item`).
+        """
+        mapa = getattr(self, "_mapa", None)
+        return [tuple(t) for t in mapa.trams] if mapa is not None else []
+
+    def keys_dins_rang(self, lo: float, hi: float, inclou_fi: bool = True,
+                       tempo: bool = False) -> set:
         """Clips (acords i seccions) l'INICI dels quals cau dins `[lo, hi]`.
 
         Rang per TEMPS que abraça les dues pistes (Shift+clic i loop A/B).
@@ -853,10 +875,14 @@ class TimelineView(QGraphicsView):
         for i, sec in enumerate(self._seccions):
             if _dins(float(sec[0])):
                 keys.add(("section", i))
+        if tempo:              # trams de BPM/compàs (només si els demanen)
+            for i, tr in enumerate(self._trams_tempo()):
+                if _dins(float(tr[0])):
+                    keys.add(("tempo", i))
         return keys
 
     def keys_dins_marc(self, t0: float, t1: float, chords: bool = True,
-                       sections: bool = True) -> set:
+                       sections: bool = True, tempo: bool = True) -> set:
         """Clips que **SONEN** dins la finestra `[t0, t1]` (marquee/rubber-band).
 
         A diferència de `keys_dins_rang` (que mira els INICIS dels clips), aquí
@@ -883,6 +909,11 @@ class TimelineView(QGraphicsView):
                 ini, fi = float(s[0]), float(s[1])
                 if fi > t0 + tol and ini < t1 - tol:
                     keys.add(("section", i))
+        if tempo:
+            for i, tr in enumerate(self._trams_tempo()):
+                ini, fi = float(tr[0]), float(tr[1])
+                if fi > t0 + tol and ini < t1 - tol:
+                    keys.add(("tempo", i))
         return keys
 
     # -- eina del timeline (fletxa intel·ligent / marc de selecció) -----------
@@ -935,7 +966,10 @@ class TimelineView(QGraphicsView):
         y0s, y1s = sorted((p0.y(), p1.y()))
         cobra_acc = (y1s > LANE_ACC_TOP) and (y0s < LANE_ACC_TOP + LANE_H)
         cobra_sec = (y1s > LANE_SEC_TOP) and (y0s < LANE_SEC_TOP + LANE_H)
-        keys = self.keys_dins_marc(t0, t1, chords=cobra_acc, sections=cobra_sec)
+        cobra_tmp = ((y1s > LANE_TEMPO_TOP)
+                     and (y0s < LANE_TEMPO_TOP + LANE_TEMPO_H))
+        keys = self.keys_dins_marc(t0, t1, chords=cobra_acc,
+                                   sections=cobra_sec, tempo=cobra_tmp)
         if not keys:
             self.clear_selection()
             return

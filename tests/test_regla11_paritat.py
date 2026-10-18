@@ -159,6 +159,32 @@ class TestVisorParitat(_Base):
         v.undo()
         self.assertEqual(len(v.acords), n0)
 
+    def test_la_pista_de_tempo_entra_a_la_seleccio(self):
+        """Els trams de BPM/compàs es seleccionen com la resta de clips (#11)."""
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 6.0, 120.0, 4, 4), (6.0, DUR, 90.0, 3, 4)])
+        tl = v.timeline
+        trams = tl._trams_tempo()
+        self.assertEqual([(t[0], t[1]) for t in trams],
+                         [(0.0, 6.0), (6.0, DUR)])
+        # marquee (solapament): un marc de 10 a 12 cau dins del 2n tram
+        keys = tl.keys_dins_marc(10.0, 12.0, chords=False, sections=False)
+        self.assertEqual(keys, {("tempo", 1)})
+        # un marc dels 2 trams els agafa tots dos
+        keys = tl.keys_dins_marc(0.0, DUR, chords=False, sections=False)
+        self.assertEqual(keys, {("tempo", 0), ("tempo", 1)})
+        # rang (Shift+clic): es queda al carril dels trams
+        tl.select_clip("tempo", 0)
+        tl.extend_selection("tempo", 1)
+        self.assertEqual(tl.selected_keys(), {("tempo", 0), ("tempo", 1)})
+        # Ctrl+clic = toggle (afegeix/treu)
+        tl.toggle_selection("tempo", 0)
+        self.assertEqual(tl.selected_keys(), {("tempo", 1)})
+        # ... i el Ctrl+clic sobre un ACORD no arrossega cap tram
+        tl.select_clip("chord", 0)
+        tl.extend_selection("chord", 1)
+        self.assertFalse([k for k in tl.selected_keys() if k[0] == "tempo"])
+
     def test_partir_per_la_meitat_acord_i_seccio(self):
         """«Partir per la meitat» = dues meitats exactes, als DOS tipus (#11)."""
         v = _visor()

@@ -712,15 +712,17 @@ def _op_clear_selection(ctx, params):
 
 
 def _op_select_at_cursor(ctx, params):
-    """Selecciona el clip que CONTÉ el cursor (`kind`: chord|section)."""
+    """Selecciona el clip que CONTÉ el cursor (`kind`: chord|section|tempo)."""
     _requereix_visor(ctx)          # cal un visor carregat (a qui seleccionar)
     kind = str(params.get("kind") or params.get("tipus") or "chord").lower()
     if kind == "section":
         ctx.window._sel_seccio_cursor()
     elif kind == "chord":
         ctx.window._sel_acord_cursor()
+    elif kind in ("tempo", "bpm", "compas"):
+        ctx.window._sel_tram_cursor()
     else:
-        raise BridgeError("kind ha de ser 'chord' o 'section'.")
+        raise BridgeError("kind ha de ser 'chord', 'section' o 'tempo'.")
     return _op_selection(ctx, {})
 
 
