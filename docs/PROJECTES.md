@@ -82,7 +82,7 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
 - **Còpia/duplicat segurs** («Desa com») i **recuperació** davant d'un crash.
 - Base per a un futur **format de projecte estable**.
 
-## Pendents
+## Estat
 
 - **(MCP) exposar els projectes al pont** ✅ **FET (2026-10-15)**: `ac_crea_projecte`,
   `ac_obre_projecte`, `ac_desa_projecte`, `ac_desa_com`, `ac_fes_backup`, `ac_recents`.

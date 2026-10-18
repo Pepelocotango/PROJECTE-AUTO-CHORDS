@@ -25,9 +25,10 @@
 > de l'upload a Windows, `concurrency`+`timeout` als 5 workflows i Dependabot (**retirat el 14-10**; a mà).
 > Detall: `docs/CI_WORKFLOWS.md` §4.
 >
-> ⚠️ **Pendent de validar**: aquests passos nous **encara no han corregut** en una
-> execució verda — el darrer `build-all` verd és el **#4** (`98aa58e`). Cal llançar
-> `build-all` per confirmar-los.
+> ⚠️ **Pendent de validar (operador)**: el **`build-all` agregat** no s'ha tornat
+> a llançar des del **#4** (`98aa58e`) tot i que els fluxos per plataforma sí que
+> han anat verds després (run **#14** a macOS, `3c7f441`). Confirmar-ho demana una
+> execució al **remot**: els agents no hi tenen accés i l'app no s'hi empeny.
 
 ## Detall per plataforma
 
