@@ -899,17 +899,25 @@ class Visor(QMainWindow):
     def _on_tempo_menu(self, idx, t):
         """Menú contextual de la pista de BPM/compàs."""
         from app import tempo_map as tm
+        # Mateixa estructura/redacció que el menú dels CLIPS (regla d'or #11).
+        te = idx >= 0
         menu = QMenu(self)
-        a_add = menu.addAction("Afegeix un canvi de BPM/compàs aquí")
-        a_edit = menu.addAction("Edita…")
-        a_del = menu.addAction("Elimina aquest canvi")
-        a_edit.setEnabled(idx >= 0)
+        a_edit = menu.addAction("Reanomena (BPM/compàs)…")
+        a_del = menu.addAction("Elimina")
+        menu.addSeparator()
+        a_part = menu.addAction("Parteix aquest tros aquí")
+        menu.addSeparator()
+        a_add = menu.addAction("Afegeix un canvi aquí")
+        a_edit.setEnabled(te)
         a_del.setEnabled(idx > 0)
+        a_part.setEnabled(te)
         acc = menu.exec_(QCursor.pos())
         if acc is None:
             return
         trams = list(self.tempo_trams or [])
-        if acc == a_add:
+        if acc == a_add or acc == a_part:
+            # «Afegeix» i «Parteix aquí» són la mateixa operació al mapa (una
+            # frontera nova al punt); «Parteix» la posa dins del tros clicat.
             self.aplica_tempo_trams(tm.afegeix_tall(trams, float(t)))
         elif acc == a_edit and idx >= 0:
             self._on_tempo_edit(idx)
@@ -2318,6 +2326,8 @@ class Visor(QMainWindow):
             self.llista_ac.setCurrentRow(index)
         elif kind == "section" and 0 <= index < self.llista_ab.count():
             self.llista_ab.setCurrentRow(index)
+        elif kind == "tempo":
+            return                          # la pista de BPM/compàs no té editor
         self._ed_kind, self._ed_idx = kind, index
         self._actualitza_editor()
 

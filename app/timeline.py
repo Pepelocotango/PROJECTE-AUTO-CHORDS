@@ -297,6 +297,8 @@ class TimelineView(QGraphicsView):
                                       self._x_offset, self._view_left,
                                       self._view_right, LANE_TEMPO_TOP)
         self._scene.addItem(self._tempo_lane)
+        self._tempo_lane.tramSelected.connect(
+            lambda i: self.select_clip('tempo', i))
         self._tempo_lane.tramClicked.connect(self.tempoEditRequested.emit)
         self._tempo_lane.tramMoved.connect(self.tempoChangeMoved.emit)
         self._tempo_lane.menuRequested.connect(self.tempoMenuRequested.emit)
@@ -755,6 +757,8 @@ class TimelineView(QGraphicsView):
             it.set_selected(("chord", getattr(it, "idx", -1)) in self._multi)
         for it in self._section_items:
             it.set_selected(("section", getattr(it, "idx", -1)) in self._multi)
+        self._tempo_lane.select(
+            next((i for (k, i) in self._multi if k == "tempo"), -1))
 
     def selected_keys(self) -> set:
         """Conjunt de (kind, idx) actualment seleccionats (multi-selecció)."""

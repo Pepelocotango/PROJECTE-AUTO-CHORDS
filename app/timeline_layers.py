@@ -393,7 +393,8 @@ class TempoLayer(QGraphicsObject):
     **botó dret** → menú (afegir/eliminar).
     """
 
-    tramClicked = pyqtSignal(int)          # clic a un bloc (índex)
+    tramSelected = pyqtSignal(int)         # selecció d'un bloc (índex)
+    tramClicked = pyqtSignal(int)          # doble-clic a un bloc (índex)
     tramMoved = pyqtSignal(int, str, float)   # vora soltada (índex, vora, t)
     menuRequested = pyqtSignal(int, float)    # botó dret (índex; -1=fora, t)
 
@@ -428,6 +429,12 @@ class TempoLayer(QGraphicsObject):
         self.prepareGeometryChange()
         self.setPos(self._x_offset, self._top)
         self.update()
+
+    def select(self, idx):
+        """Marca el bloc `idx` com a seleccionat (o -1 per a cap)."""
+        if idx != self._sel:
+            self._sel = idx
+            self.update()
 
     def deselecciona(self):
         """Treu el resaltat del bloc de BPM/compàs (clic al fons)."""
@@ -494,9 +501,7 @@ class TempoLayer(QGraphicsObject):
             ev.accept()
             return
         i, z = self._zona(ev.pos().x())
-        if i != self._sel:
-            self._sel = i
-            self.update()
+        self.tramSelected.emit(i)          # la selecció la mana el timeline
         if z in ("ini", "fi"):
             self.setCursor(Qt.SizeHorCursor)
         elif z == "cos":
