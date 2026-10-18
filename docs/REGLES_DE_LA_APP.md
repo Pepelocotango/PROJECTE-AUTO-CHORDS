@@ -67,6 +67,7 @@ El model viu al **backend**, no a la UI. Hi ha **dos backends**: `app.pipeline`
 L'edició **mai** toca les WAVs generades; només s'escriuen en **exportar**, des
 del backend `pipeline.exporta_total(...)`. La UI hi delega via els mètodes
 `exporta()` (`app.visor` / `app.main`). «Mai toca els WAVs generats.»
+→ Paritat d'exportació dels **3 carrils**: vegeu la **regla 11**.
 
 ## 7. Instància única
 No poden córrer **dues instàncies** de l'app alhora (un lock a `tempfile`).
@@ -112,6 +113,11 @@ ser per als altres, i pel **mateix camí d'usuari**.
   *fusionar* acords = en queda l'harmonia de l'esquerre. Mateix patró que
   l'estructura. *Partir* un tram de BPM/compàs = dos trams amb el mateix
   BPM i compàs (el de la dreta és editable).
+- **Paritat a l'exportació**: el paquet exportat tracta els **tres** tipus igual,
+  cadascun amb la seva **carpeta pròpia**: acords (`acords.csv` + `wavs_acords/`) ·
+  estructura (`estructura_ABC.csv` + `wavs_estructura/`) · **mapa de tempo/compàs**
+  (els seus CSV, en carpeta pròpia). ⏳ **Pendent d'implementació** (2026-10-18):
+  avui el mapa de tempo/compàs encara **no** surt al paquet exportat.
 
 → Validació: `app/visor.py` + `app/pipeline.py` (joc d'operacions simètric) ·
 test `tests/test_regla11_paritat.py` — **✅ FET** (verd; en fila amb les regles 1–10).

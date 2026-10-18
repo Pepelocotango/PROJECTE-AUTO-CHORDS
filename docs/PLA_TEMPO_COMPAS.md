@@ -71,6 +71,10 @@ en mode «BPM·compàs».
 - **Fases 1-5 i 4b FETES** (motor, persistència, graella/regle/snap,
   diàleg d'edició + marcadors, exports/derivats amb compàs al MusicXML i
   inferència automàtica, i **pista al timeline**).
-- **Pendent (refinament)**: vores §6.3 editables a la pista del timeline.
+- ✅ **FET (18-10-2026)** — la pista del timeline queda **completa**: a més de
+  les vores i el cos editables (§6.3), hi ha **nudge** `←`/`→`+`Alt`,
+  **desfer/refer** del mapa, **selecció** (rang, marquee, LOOP, `Ctrl`+clic),
+  **porta-retalls** (`Ctrl+C/X/V`), **duplicar** (`Ctrl+D`) i **eines MCP**
+  (`ac_list_tempo`, `ac_afegeix_tall`, `ac_elimina_tall`, `ac_mou_tall`).
 - L'app es comporta igual que abans (BPM·compàs constant = un sol tros → la
   via uniforme de sempre); el mapa variable ja funciona a l'engine i a la UI.
