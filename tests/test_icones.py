@@ -30,10 +30,12 @@ def _usades():
     for p in glob.glob(os.path.join(ARREL, "app", "*.py")):
         with open(p, encoding="utf-8") as f:
             src = f.read()
-        noms |= set(re.findall(r'icones\.ico\("([a-z0-9_]+)"', src))
-        noms |= set(re.findall(r'\bicona\s*=\s*"([a-z0-9_]+)"', src))
+        # Noms amb guions compten: `arrow-left-to-line` etc. (el primer
+        # detector no els veia i donava falsos «innecessaris»).
+        noms |= set(re.findall(r'icones\.ico\("([a-z0-9\-]+)"', src))
+        noms |= set(re.findall(r'\bicona\s*=\s*"([a-z0-9\-]+)"', src))
         noms |= set(re.findall(
-            r'icones\.icona_boto\([^,]+,\s*"([a-z0-9_]+)"', src))
+            r'icones\.icona_boto\([^,]+,\s*"([a-z0-9\-]+)"', src))
     return noms
 
 
@@ -59,6 +61,20 @@ class TestIcones(unittest.TestCase):
         """La icona de la finestra (barra de tasques) també ha d'haver-hi."""
         pm = icones.icona_app()
         self.assertFalse(pm.isNull(), "la icona de l'app ix buida")
+
+    def test_no_hi_ha_icones_innecessaries(self):
+        """Cap SVG del disc sense referència al codi.
+
+        Una icona que no s'usa és pes mort que ningú no gosa esborrar: n'hi
+        havia tres (`circle-gauge`, `mic`, `settings`, 18-10-2026) i s'han
+        tret. Si mai cal, `eines/baixa_icones.sh` les torna a baixar
+        afegint-les a la seua llista.
+        """
+        al_disc = {os.path.basename(x)[:-4]
+                   for x in glob.glob(os.path.join(ARREL, "icones", "*.svg"))}
+        sobren = sorted(al_disc - _usades())
+        self.assertEqual(sobren, [],
+                         f"icones sense cap referencia al codi: {sobren}")
 
     def test_les_icones_tenen_paleta_de_recoloreig(self):
         """`ico()` recoloreix l'SVG: un color invàlid no ha de fer-la buida."""
