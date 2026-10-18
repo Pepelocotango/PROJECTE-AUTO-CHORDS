@@ -2832,28 +2832,38 @@ class MetroVisorTests(unittest.TestCase):
         self.assertAlmostEqual(v.metro_vol, 0.0)
         v.close()
 
-    def test_commuta_metro_reinicia_des_de_la_posicio_si_sona(self):
+    def test_commuta_metro_NO_talla_l_audio(self):
+        """El metrònom no pot tallar la reproducció en commutar-lo.
+
+        El fil d'alimentació llig `metro_on` a cada tros, així que el canvi
+        s'aplica a l'instant. Abans es reiniciava el reproductor i se sentia un
+        micro-tall a l'àudio a cada commutació (reportat per l'operador,
+        18-10-2026). Mateixa pauta que el volum i el mute.
+        """
         v = self._visor()
         v.sona = True
         v.pos = 1.5
-        crides = {}
-        v._atura_proc = lambda: crides.__setitem__("atura", True)
-        v._engega_des_de = lambda t: crides.__setitem__("des_de", t)
+        crides = []
+        v._atura_proc = lambda: crides.append("atura")
+        v._engega_des_de = lambda t: crides.append("engega")
         v.commuta_metro()
-        self.assertTrue(crides.get("atura"))
-        self.assertAlmostEqual(crides.get("des_de"), 1.5)
+        self.assertTrue(v.metro_on, "ha de quedar activat")
+        self.assertEqual(crides, [], "no ha de reiniciar el reproductor")
+        v.commuta_metro()
+        self.assertFalse(v.metro_on)
+        self.assertEqual(crides, [], "ni en desactivar-lo")
         v.close()
 
-    def test_canvia_vol_metro_reinicia_si_sona(self):
+    def test_canvia_vol_metro_NO_talla_l_audio(self):
         v = self._visor()
         v.sona = True
         v.pos = 0.7
-        crides = {}
-        v._atura_proc = lambda: crides.__setitem__("atura", True)
-        v._engega_des_de = lambda t: crides.__setitem__("des_de", t)
+        crides = []
+        v._atura_proc = lambda: crides.append("atura")
+        v._engega_des_de = lambda t: crides.append("engega")
         v._canvia_vol_metro(40)
-        self.assertTrue(crides.get("atura"))
-        self.assertAlmostEqual(crides.get("des_de"), 0.7)
+        self.assertAlmostEqual(v.metro_vol, 0.4, places=3)
+        self.assertEqual(crides, [], "no ha de reiniciar el reproductor")
         v.close()
 
 

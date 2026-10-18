@@ -1397,28 +1397,31 @@ class Visor(QMainWindow):
         return bool(self.tempo_fix)
 
     def set_metro(self, on):
-        """Fixa l'estat del metrònom. Si sona, reinicia des de la posició."""
+        """Fixa l'estat del metrònom — **sense tallar la reproducció**.
+
+        El fil d'alimentació llig `metro_on`/`metro_vol` a **cada tros**, igual
+        que fa amb el volum i el mute: el canvi s'aplica a l'instant. Abans es
+        reiniciava el reproductor (`_atura_proc` + `_engega_des_de`) i se sentia
+        un **micro-tall** a l'àudio cada cop que es posava o treia el metrònom
+        (reportat per l'operador, 18-10-2026). El reinici era un vestigi de quan
+        el clic es pre-mesclava a la memòria.
+        """
         on = bool(on)
         if on == self.metro_on:
             return
         self.metro_on = on
         self.log(f"metrònom {'ON' if self.metro_on else 'OFF'}")
-        if self.sona:
-            pos = self.pos
-            self._atura_proc()
-            self._engega_des_de(pos)
 
     def commuta_metro(self):
-        """Activa/desactiva el metrònom. Si sona, reinicia des de la posició."""
+        """Activa/desactiva el metrònom (sense tallar la reproducció)."""
         self.set_metro(not self.metro_on)
 
     def _canvia_vol_metro(self, v):
-        """Volum del clic (0-100). Si sona, reinicia des de la posició."""
+        """Volum del clic (0-100) — **sense tallar la reproducció**.
+
+        Mateix motiu que `set_metro`: el fil ho llig a cada tros.
+        """
         self.metro_vol = max(0.0, min(1.0, v / 100.0))
-        if self.sona:
-            pos = self.pos
-            self._atura_proc()
-            self._engega_des_de(pos)
 
     def set_mut(self, on):
         """Fixa el mute (les barres de fora NO toquen b_mut)."""
