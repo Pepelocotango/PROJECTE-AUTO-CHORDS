@@ -357,7 +357,10 @@ def _migra(dades, ap):
         raise ProjecteError(
             f"el projecte {ap!r} és d'una versió més nova (format {fmt} > "
             f"{FORMAT}); actualitza l'app")
-    # (futur: migracions fmt < FORMAT, camp a camp)
+    # fmt 0 = projectes desats abans que existira el camp `format`: els seus
+    # camps son els mateixos de la versio 1, aixi que no cal canviar-ne cap.
+    # Quan hi hagi un FORMAT 2, aquí hi van les migracions camp a camp (i el
+    # test que les cobreix).
     dades["format"] = FORMAT
     return dades
 

@@ -87,8 +87,15 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
 - **(MCP) exposar els projectes al pont** ✅ **FET (2026-10-15)**: `ac_crea_projecte`,
   `ac_obre_projecte`, `ac_desa_projecte`, `ac_desa_com`, `ac_fes_backup`, `ac_recents`.
   Detall: `docs/MCP_AUTO_CHORDS.md` §«Funcions noves cobertes».
-- Migracions de `format` < actual (`_migra`, camp a camp).
-- (opcional) UI per **recuperar una còpia** concreta de `backup/` des de la GUI.
+- ~~Migracions de `format` < actual~~ → ✅ **FET**: `_migra` accepta qualsevol
+  `format` anterior (el 0 = projectes sense el camp), migra camp a camp quan
+  calgui i **rebutja** els projectes d'un format MÉS NOU amb un error clar;
+  proveït a `tests/test_projecte.py` (`format` 0 i 99).
+
+### Idees (no són pendents)
+
+- UI per **recuperar una còpia** concreta de `backup/` des de la GUI (avui les
+  còpies ja es fan totes i es poden recuperar a mà des del gestor de fitxers).
 
 > ⚠️ Cap canvi d'aquest feature no pot trencar les **regles d'or**
 > (`docs/REGLES_DE_LA_APP.md`).

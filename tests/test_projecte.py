@@ -115,6 +115,16 @@ class TestObreDesa(BaseProjecte):
         sobres = [f for f in os.listdir(p.carpeta) if f.endswith(".tmp")]
         self.assertEqual(sobres, [], f"no han de quedar temporals: {sobres}")
 
+    def test_format_antic_es_migra(self):
+        """Un projecte sense `format` (versió 0) s'obre i queda al format viu."""
+        td = tempfile.mkdtemp()
+        ap = os.path.join(td, "vell.acproj")
+        with open(ap, "w", encoding="utf-8") as f:
+            json.dump({"nom": "VELL", "tempo": {"bpm": 120, "bpb": 4}}, f)
+        p = projecte.Projecte.obre(ap)
+        self.assertEqual(p.dades["format"], projecte.FORMAT)
+        self.assertEqual(p.dades["nom"], "VELL")
+
     def test_format_mes_nou_peta(self):
         p = self._projecte("FUT")
         with open(p.ruta_acproj, "w", encoding="utf-8") as f:

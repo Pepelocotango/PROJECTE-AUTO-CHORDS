@@ -63,12 +63,22 @@ en mode «BPM·compàs».
    (`tempo_map.infereix_trams_beat`, accio «Detecta el mapa de tempo (per
    beats)…» del menu Analitza i l'eina MCP `ac_detecta_tempo_mapa`).
 
-## Decisions obertes
-- **Rampes de tempo** lineals (sí/no i a quines fases).
-- **Denominador** al compàs: l'app avui el mostra (`beat_type`) però la graella
-  és de negres; el mapa ja el tracta correctament.
-- **Offset** dins d'un tros (el motor ja l'ancora al compàs 1).
-- Què fa el **mode fàcil** quan hi ha mapa (regularitza amb el tempo local).
+## Decisions preses (no són pendents)
+- **Rampes de tempo lineals**: NO s'implementen. El mapa és de **trams
+  discrets** (un BPM per tram) i el motor n'és coherent a tots els punts; les
+  rampes queden com a **idea futura**, sense res a mig fer.
+- **Denominador del compàs**: el `beat_type` es mostra i s'exporta (`<beat-type>`
+  del MusicXML) i el mapa calcula cada compàs amb `num·4/den`; la
+  **graella/quantització del timeline és de negres** (la unitat del MusicXML i
+  la que fan servir els DAW per defecte) — simplificació **deliberada**.
+- **Offset dins d'un tros**: no se suporta. El motor **ancora l'origen al
+  compàs 1** (`mapa.offset`) i tots els trams hereten aquesta numeració.
+- **Mode fàcil amb un mapa**: regularitza el ritme harmònic amb el **BPM/compàs
+  de la barra** (amb mapa, el del PRIMER tram) — una sola graella per a tot el
+  tema. És una **limitació coneguda**: en temes amb canvis de tempo forts, si
+  cal precisió, treballa en mode constant (un sol tram). *(Idea futura:
+  regularitzar amb la graella LOCAL de cada tram; avui el nucli
+  `graella.regularitza_clips` treballa amb un pas fix.)*
 
 ## Estat
 - **Fases 1-5 i 4b FETES** (motor, persistència, graella/regle/snap,
