@@ -42,7 +42,7 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 9 | Portabilitat i maquinari (3 SO, sense AVX) | CI (`eines/verifica_minos_macos.py`) · build genèric (`-msse -msse2`, sense AVX) · `tests/test_requirements.py` (pins) · **NOU `GuardAvxTests`** (flags dels scripts de build) | `test_requirements` | ✅ auditat (Ronda 8: + guard d'AVX als scripts) |
 | 10 | Estat en directori escriptible | `app/config.py` (prova d'escriptura real: projecte → XDG → temporal) | `test_regles_or` · `test_pipeline_export` (cas no escrivible) | ✅ auditat a fons (Ronda 15) |
 | 11 | Paritat d'edició i tracte visual | el joc simètric a `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` · pont MCP (`app/mcp_bridge.py`) | `test_regla11_paritat` · `test_mcp_paritat` · `test_eina_marc` | ✅ auditada (Ronda 10: incloses les operacions MIxtes de les 3 famílies i el desfer/refer) |
-| 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
+| 12 | Paritat d'exportació (paquet complet) | `pipeline.exporta_total(..., mapa_tempo=)` → `mapa_tempo/` | `test_regla12_export` | ✅ **IMPLEMENTADA I PROVADA** (Ronda 21; ordre de l'operador) |
 
 ## Trobades i fixes (el més nou a dalt)
 
@@ -212,6 +212,28 @@ deixaven passar valors impossibles:
   s'eliminen si són **senceres** abans de la WAV.
 
 Test nou: `tests/test_regles_or.py` › `test_les_xarxes_de_seguretat_tambe_ho_arreglen`.
+
+## Ronda 21 — REGLA 12 IMPLEMENTADA (era l'única sense compliment)
+
+Ordre de l'operador: «la regla 12 també implementa-la tu» (fins ara estava
+marcada com a pendent assignada a part; l'altre agent només n'havia escrit el
+text).
+
+- `pipeline.exporta_total(..., mapa_tempo=)`: rep els trossos del mapa del
+  **model viu** (com `acords`/`seccions`) i els desa a la seva **carpeta
+  pròpia** `mapa_tempo/` (`tempo.csv` + `compas.csv`). Cridadors: la finestra
+  (`_prepara_export` → fil de l'export) i el visor autònom.
+  Sense mapa, el paquet queda **exactament** com era.
+- El paquet queda paritari: `acords.csv` + `wavs_acords/` ·
+  `estructura_ABC.csv` + `wavs_estructura/` · `mapa_tempo/` (tempo + compàs).
+- NOU `tests/test_regla12_export.py` (4 proves) i `REGLES_DE_LA_APP.md` §12
+  passa de «pendent» a ✅ FET (la capçalera i la nota final també).
+- **Prova de mutació (2)**: treure l'export del mapa → 3 proves peten; desar-hi
+  valors fixos → 2 peten; posar el mapa a l'arrel en lloc de la seva carpeta →
+  3 peten.
+- ⚠️ **Lliçó apresa**: el primer intent de mutació va fer `git checkout --`
+  sobre `pipeline.py` amb la feina **sense commitejar** i se la va endur. Ara
+  la regla del mètode és: **commit abans de mutar**.
 
 ## Ronda 20 — `acords_a_live.py`: no s'executava MAI als tests
 
