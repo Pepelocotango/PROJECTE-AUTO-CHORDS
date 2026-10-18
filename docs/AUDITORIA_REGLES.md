@@ -371,6 +371,22 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 22 — els DOS motors d'anàlisi, comparats en viu
+
+L'app té dos camins per als transforms Vamp: el **host propi**
+(`vamp_host_local`, el preferent) i la **reserva** `OLD/sonic-annotator` (si el
+host no hi és, p. ex. arrencant des de codi font). Amb la reserva *executable*
+en aquesta màquina (`_SONIC_OK = True`), s'han corregut **tots dos** sobre el
+mateix WAV (tres acords C · F · G) i s'han comparat:
+
+- **Etiquetes d'acord: IDÈNTIQUES** (el que importa per a l'app): `C`, `F`, `G`
+  amb el mateix nombre de files (5).
+- **Marques de temps**: iguals fins a **1e-6 s** excepte el **primer onset**
+  (`0,232` amb el host vs `0,046` amb el sonic). És el comportament dels
+  plugins Vamp amb el primer bloc: el host hi passa el `--step`/`--block` de la
+  taula (escalat al mostreig) i el sonic fa servir les preferències del plugin.
+  No és cap defecte del codi ni afecta les etiquetes.
+
 ## Verificacions sense canvi (queda constància)
 
 - **R7 a fons (Ronda 15)**: el bloqueig d'instància única és un **`flock`/
