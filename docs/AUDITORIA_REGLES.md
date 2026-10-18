@@ -371,6 +371,55 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 43 — `mou_seccio`: el moviment d'IDENTITAT torna a ser un no-op legítim (trobat per OC-13)
+
+Troballa d'**OC-13** (Passada A): amb **una sola secció**, `ac_move_section` a les
+**mateixes** coordenades també rebia l'error del guard de la **regla #4**, i
+`prova_mcp_completa` en donava **KO**. Decisió **(a)**: ubicar una secció **on ja
+és** no és cap error.
+
+- 🔧 `visor.mou_seccio`: si les coordenades demanades **són les actuals**, torna
+  `True` sense tocar res, **abans** del guard de la secció única. Un moviment **de
+  debò** (que trencaria la cobertura) **segueix** donant l'error clar.
+- ➕ Test nou a `tests/test_seccions_contigues.py`: identitat → OK · moviment real
+  → error · model intacte.
+
+Commit `44276ce` · suite tota verda (1 skip) · només codi. (Tanca el punt 10 de la cua.)
+
+## Ronda 42 — el metrònom tallava l'àudio en commutar-lo (micro-tall reportat per l'operador)
+
+L'operador: *«al posar o treure el metrònom sembla que pares l'àudio per
+mil·lisegons»*. Era **cert**: `set_metro` i `_canvia_vol_metro` feien
+`_atura_proc()` + `_engega_des_de(pos)` a **cada** canvi, és a dir **reiniciaven**
+el reproductor — i d'ací el tall.
+
+- El reinici era **innecessari**: el fil d'alimentació llig `metro_on`/`metro_vol`
+  a **cada tros**, igual que ja feia amb el **volum** i el **mute** (que no
+  reinicien mai).
+- 🔧 Tret el reinici de les dues funcions (docstrings al dia).
+- Tests reescrits amb dents: `test_commuta_metro_NO_talla_l_audio` (ni en activar
+  ni en desactivar) i `test_canvia_vol_metro_NO_talla_l_audio`. **`ves_a()` MANTÉ
+  el reinici**: allò és un salt **demanat** per l'usuari, no un canvi d'estat de fons.
+
+Commit `fc6eac2` · suite tota verda (1 skip) · `app/visor.py` + tests.
+
+## Ronda 41 — fil d'anàlisi (`main.Feina`): l'error no arribava al REGISTRE + proves del fil
+
+`Feina` (**el fil d'«Executa»**) no el tocava cap test, i és justament on un error
+del pipeline ha d'arribar a la UI **sense penjar res**.
+
+- 🐞 **Inconsistència arreglada**: `Feina` avisava de l'error per `feta(False, ...)`
+  però **no el deixava al registre** — el seu germà `FeinaExporta` **sí** que hi
+  posa «ERROR a l'exportar: …». Ara `Feina` també hi fa «ERROR a l'anàlisi: …».
+- ➕ `tests/test_fil_analisi.py` (2 proves, cridant `run()` al fil principal =
+  determinista): (1) l'error arriba a `feta(False, motiu)` **i** queda al registre,
+  i l'anàlisi va dient per on va pel **text** («1/3…» — el contracte real: `Feina`
+  **no** emet progrés numèric, a diferència de `FeinaExporta`); (2) l'anàlisi
+  **real** acaba bé (`feta(True, sortida)`), deixa `acords.csv` i crea la **capa
+  CRUA** (`analisi/`), i se salta net si no hi ha el host Vamp.
+
+Commit `3bccf84` · suite tota verda (1 skip) · `app/main.py` + `tests/`.
+
 ## Ronda 40 — higiene dels tests: cap temporal queda pel disc (57 GB acumulats)
 
 Troballa **de l'operador** (el disc va arribar al **97%**): `unittest discover`
@@ -775,7 +824,13 @@ L'**evidència externa** de cada ronda: les passades independents de l'agent de
 - El KO nou **no és un bug de l'app**: l'eina de proves fa un **moviment
   d'identitat** (mateixes coordenades) i l'app el refusa per la **#4**, que és el
   comportament correcte; l'**expectativa** de l'eina queda desfasada. Decisió
-  portada a la **cua** (Ronda 40).
+  portada a la **cua** (Ronda 40). → ✅ **RESOLT a la Ronda 43** (`44276ce`): la
+  identitat torna a ser **no-op legítim**.
+- **Passada B** (demanada, `OC-11/492`): ha de verificar la **higiene dels
+  temporals** (`c5fa572`: 0 residus a `/tmp` per tongada, que la Passada A no va
+  poder comprovar perquè és anterior) i re-executar `prova_mcp_completa.py` amb la
+  Ronda 43 (l'hauria de tornar **54 OK / 0 KO**). ⏳ Pendent d'aterrar → s'afegirà
+  la fila.
 
 ## Cua (properes rondes)
 
@@ -799,10 +854,9 @@ L'**evidència externa** de cada ronda: les passades independents de l'agent de
    `docs/AUTO_PROMPT_CONTINUACIO.md` — **eliminat el 18-10-2026** per decisió de
    l'operador; era l'**únic** lloc que en parlava. Si encara es reprodueix:
    test que el reproduïsca + fix.
-10. **Per a OC-11** — decidir si el **moviment d'identitat** d'una sola secció
-    (mateixes coordenades) ha de ser un **no-op permès** o **refusat** per la #4;
-    si es refusa, actualitzar `eines/prova_mcp_completa.py` (esperar l'error clar,
-    o partir la secció abans de moure-la).
+10. ~~**Moviment d'identitat de `mou_seccio`**~~ → ✅ **RESOLT** (decisió (a), Ronda 43):
+    ubicar una secció on ja és **no és un error** (no-op); un moviment de debò
+    segueix refusat per la #4.
 
 > 📌 **En tancar una ronda**: actualitza aquest mapa (l'✅/⏳ de cada regla) i
 > apunta-hi les trobades amb el seu fix i test.
