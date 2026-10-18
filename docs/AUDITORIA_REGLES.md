@@ -371,6 +371,77 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 44 — canviar el BPM/compàs/offset mentre SONA també tallava l'àudio (germà de la R42)
+
+Seguint el fil del micro-tall del metrònom (R42), OC-11 va **auditar TOTS** els
+llocs on l'app atura i reengega el reproductor: n'hi havia **un altre**
+d'innecessari.
+
+- 🐞 `main._aplica_parametres_temps` (canviar **BPM/compàs/offset**) cridava
+  `_reenvia_si_sona()` → `_atura_proc()` + `_engega_des_de(pos)` a **cada** canvi:
+  **micro-tall** cada vegada que es toca el tempo mentre sona (i, a macOS, una
+  doble-tancada del motor vell).
+- El reinici era **innecessari**: el fil d'alimentació llig `bpm`/`bpb`/`offset`
+  **i** el mapa a **cada tros** → el metrònom segueix la graella nova a l'instant.
+- 🔧 Eliminat el mètode `_reenvia_si_sona` (ja no el crida ningú). **`ves_a()`
+  MANTÉ el reinici**: allò és un salt **demanat** per l'usuari (clic a la
+  barra/regle), no un canvi d'estat de fons — la mateixa doctrina que R42.
+- ➕ `test_canviar_bpm_mentre_sona_no_talla_l_audio` (finestra real + visor
+  carregat, espiant `_atura_proc`/`_engega_des_de`); actualitzat el comentari del
+  test germà `TestReengegaComElVisor` (segueix validant que el motor vell es tanca
+  **un sol cop**, ara pel camí del salt).
+
+Commit `6c5d9af` · suite tota verda (1 skip) · `app/main.py` + tests.
+
+## Ronda 45 — fil d'àudio: els dos extrems del LOOP
+
+Continuant la revisió del so en situacions rares (mateix fil que R42/R44),
+faltaven dos casos extrems del **loop** al fil d'alimentació:
+
+- ➕ `test_loop_degenerat_no_encalla`: un loop de **menys de 2 mostres** (A i B al
+  mateix instant, o un tros minúscul) es **descarta** i l'àudio sona fins al final
+  — la xarxa `if b - a < 2: bucle = False`; sense ella, la reproducció podia
+  quedar donant voltes infinitesimalment.
+- ➕ `test_loop_que_acaba_a_la_durada`: amb **B exactament a la durada**, el loop
+  fa voltes **sense cap tall** (el cos sona ple, sense blocs de zeros; només el
+  micro-fade d'extrems).
+
+Commit `7294bec` · suite tota verda (1 skip) · `tests/test_loop_contin.py` (només tests).
+
+## Ronda 46 — higiene dels tests, 2a part: dos fitxers que se saltaven l'esborrat (forat de la R40)
+
+La R40 va injectar `tests/_temporals.py` als fitxers de test, però el detector
+«ja el té?» mirava si el text contenia «_temporals»… i dos fitxers la tenien
+**només** dins el nom d'un test (`…_no_deixa_temporals`) → es van quedar **sense
+l'import** i els seus temporals no s'esborraven: `tests/test_projecte.py` i
+`tests/test_desat_atomic.py`.
+
+- 🔧 Arreglats (import + `_ = _temporals`, com la resta).
+- ✅ Verificació **fitxer a fitxer**: els **89** mòduls de test, comptant `/tmp`
+  abans i després de cadascun → **cap** deixa temporals; la tongada completa, tampoc.
+- ➕ 2a part (idea d'**OC-13**): `escombra_residus(hores=12)` a `tests/_temporals.py`,
+  cridat **en importar** — treu els residus que deixen les tongades **mortes** a
+  mitges (SIGKILL, tancament de sessió, crash: on `atexit` no pot córrer).
+  Seguretat: només el patró `tmp*` del temporal del sistema, **propietat de
+  l'usuari** i de **més de 12 h** → una tongada en curs (pròpia o d'un company) té
+  els temporals **joves** i no se li toca res. Provat amb **327** temporals vius
+  d'altres agents: cap tocat.
+
+Commits `fceb6a9` + `8e612f1` · suite tota verda (1 skip) · `tests/_temporals.py` + 2 tests (només tests).
+
+## Ronda 47 — guard local: `docs/COMPONENTS_I_VERSIONS.md` ha d'estar al dia ABANS de pujar
+
+El CI ja comprova que la llista de components estiga al dia, però això vol dir
+**descobrir el desfasament després d'haver pujat**. Guard nou, en local:
+
+- ➕ `tests/test_inventari_al_dia.py`: fa servir la funció **pura** `construeix()`
+  d'`eines/genera_inventari.py` i **no escriu cap fitxer** (el document és d'OC-12
+  i un test no l'ha de tocar); segon cas: comprova que `construeix()` **no tinga
+  efectes** (el document queda igual).
+- ✅ Verificat en crear-lo: el document **està al dia** (genera exactament el mateix).
+
+Commit `96baf87` · suite tota verda (1 skip) · `tests/test_inventari_al_dia.py`.
+
 ## Ronda 43 — `mou_seccio`: el moviment d'IDENTITAT torna a ser un no-op legítim (trobat per OC-13)
 
 Troballa d'**OC-13** (Passada A): amb **una sola secció**, `ac_move_section` a les
@@ -431,6 +502,7 @@ tongades d'OC-11 i OC-13 s'hi van acumular **57 GB**.
   el que es crea i ho **esborra en plegar** el procés (`atexit`). Cap canvi de
   comportament dels tests: només recull el que ells ja no volen.
 - Importat pels **90 fitxers de test** (dues línies al costat del `sys.path.insert`).
+  ⚠️ **+ 2a part**: el detector va deixar-ne **2** sense l'import, i s'ha corregit a la **Ronda 46**.
 - ✅ **Verificat**: una tongada completa deixa **0** elements nous a `/tmp`
   (abans ~1.000).
 - Les **42.023 carpetes + 1.787 WAVs** acumulats (57 GB) van a la **paperera**;
