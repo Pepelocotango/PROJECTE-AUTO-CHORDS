@@ -56,9 +56,12 @@ en mode «BPM·compàs».
 5. ✅ **FET — Exports/derivats**: `pipeline.pos_compas` (etiquetes de l'ABC i
    del CSV d'estructura) i la guia DAW (`acords_a_live.py`, que llegeix el
    mapa) són mapa-conscients; el **MusicXML** emet els canvis de **tempo**
-   (`<sound tempo>`) al compàs on cauen. ⏳ **Pendent**: els canvis de
-   **compàs** al MusicXML (cal refer la generació de compassos) i la
-   **inferència** automàtica del mapa des de `beat`/`bar`/`onsets`.
+   (`<sound tempo>`) al compàs on cauen, i els canvis de **compàs** amb
+   `<attributes><time>` a cada compassos amb signatura nova
+   (`mapa.compassos_beats()`); verificat 18-10-2026: 4/4 → 3/4 surten tots dos.
+   La **inferència** automàtica del mapa des dels `beat` detectats tambe hi es
+   (`tempo_map.infereix_trams_beat`, accio «Detecta el mapa de tempo (per
+   beats)…» del menu Analitza i l'eina MCP `ac_detecta_tempo_mapa`).
 
 ## Decisions obertes
 - **Rampes de tempo** lineals (sí/no i a quines fases).

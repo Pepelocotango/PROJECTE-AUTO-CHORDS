@@ -113,6 +113,17 @@ class TestMapaTempo(_Base):
             mcp_bridge._op_elimina_tall(_ctx(w), {"index": 0})
         w.close()
 
+    def test_detecta_tempo_mapa_no_obre_dialegs(self):
+        """L'eina d'inferir el mapa existeix i, sense àudio, aixeca (no dialoga)."""
+        w = self._finestra()
+        self.assertIn("detecta_tempo_mapa", mcp_bridge.OPERACIONS)
+        # Amb el WAV de la finestra, la detecció pot trigar: proven nomes que
+        # l'operacio hi es i que els errors surten com a BridgeError.
+        w.wav_edit.setText("")
+        with self.assertRaises(mcp_bridge.BridgeError):
+            mcp_bridge._op_detecta_tempo_mapa(_ctx(w), {})
+        w.close()
+
     def test_mou_tall(self):
         w = self._finestra()
         w.visor_ref.aplica_tempo_trams([(0.0, 4.0, 120.0, 4, 4),

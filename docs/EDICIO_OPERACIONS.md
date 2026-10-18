@@ -84,7 +84,7 @@
 
 | # | Operació | GUI | MCP | Estat |
 |---|---|---|---|---|
-| 36 | **Tempo · compàs · offset** | camps de la barra | `ac_set_tempo` (global) · `ac_afegeix_tall`, `ac_mou_tall` (mapa) | **FET** |
+| 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | `ac_set_tempo` (global) · `ac_afegeix_tall`, `ac_elimina_tall`, `ac_mou_tall`, `ac_list_tempo` (mapa) · `ac_detecta_tempo_mapa` (inferir) | **FET** |
 | 37 | **Analitzar** (acords + estructura) | `F5` · *Analitza* | `ac_analyze` | **FET** |
 | 38 | **Opcions d'anàlisi** | *Paràmetres…* · *Inclou estructura* | `ac_get_options`, `ac_set_inclou_estructura` | **FET** |
 | 39 | **Compàs 1** (detectar / marcar) | *Analitza ▸* | `ac_detect_downbeat`, `ac_mark_downbeat` | **FET** |

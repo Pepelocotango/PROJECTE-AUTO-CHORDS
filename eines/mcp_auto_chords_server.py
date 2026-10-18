@@ -125,6 +125,10 @@ _TOOLS = [
      "`ac_list_tempo` i les eines de tall).",
      {"bpm": {"type": "number"}, "bpb": {"type": "integer"},
       "offset_s": {"type": "number"}}),
+    ("ac_detecta_tempo_mapa", "detecta_tempo_mapa",
+     "Infereix el mapa de BPM/compàs a partir dels temps (beats) de l'àudio "
+     "(pot trigar). No obre cap finestra.",
+     {}),
     ("ac_list_tempo", "list_tempo",
      "Llista els TRAMS del mapa de BPM/compàs (índex, inici, fi, BPM, compàs).",
      {}),

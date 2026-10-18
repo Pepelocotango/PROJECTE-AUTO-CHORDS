@@ -756,6 +756,19 @@ def _aplica_tempo(ctx, mut):
     return _op_status(ctx, {})
 
 
+def _op_detecta_tempo_mapa(ctx, params):
+    """Infereix el mapa de BPM/compàs a partir dels temps (beats) de l'àudio.
+
+    Pot trigar (fa córrer la detecció de beats sobre el WAV). No obre diàlegs.
+    """
+    _requereix_visor(ctx)
+    try:
+        n = ctx.window.detecta_tempo_mapa(avis=False)
+    except Exception as e:  # noqa: BLE001
+        raise BridgeError(f"No s'ha pogut detectar el mapa de tempo: {e}") from e
+    return {"trams_inferits": int(n or 0), "estat": _op_status(ctx, {})}
+
+
 def _op_list_tempo(ctx, params):
     """Llista els TRAMS del mapa de tempo/compàs (índex, inici, fi, BPM, compàs)."""
     vr = _requereix_visor(ctx)
@@ -1403,6 +1416,7 @@ OPERACIONS = {
     "set_tempo": _op_set_tempo,
     # Mapa de tempo/compàs (trams): mirall de l'edició de la GUI.
     "list_tempo": _op_list_tempo,
+    "detecta_tempo_mapa": _op_detecta_tempo_mapa,
     "afegeix_tall": _op_afegeix_tall,
     "elimina_tall": _op_elimina_tall,
     "mou_tall": _op_mou_tall,

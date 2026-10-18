@@ -1513,30 +1513,45 @@ class Finestra(QMainWindow):
         self._aplica_parametres_temps()
         self.registra(f"mapa de tempo/compàs: {len(vr.tempo_trams)} tros(s)")
 
-    def _detecta_tempo_mapa(self):
-        """Inferir el mapa de tempo a partir dels temps (beats) detectats."""
+    def detecta_tempo_mapa(self, avis=True):
+        """Inferir el mapa de tempo a partir dels temps (beats) detectats.
+
+        NUCLI (sense diàlegs). Retorna el nombre de trams inferits (0 si el
+        tempo és constant o si no s'ha pogut). Amb `avis=False` (pont MCP) els
+        problemes van per **excepció**: cap finestra emergent.
+        """
         vr = self.visor_ref
         wav = self.wav_edit.text().strip()
         if vr is None or not wav:
+            if not avis:
+                raise RuntimeError("Cal obrir un tema primer.")
             self.avisa_info("Auto Chords", "Obre un tema primer.")
-            return
+            return 0
         try:
             temps = pipeline.detecta_beats(wav, log=self.registra)
         except Exception as e:  # noqa: BLE001
+            if not avis:
+                raise
             self.avisa_info("Auto Chords",
                             f"No s'han pogut detectar els temps: {e}")
-            return
+            return 0
         self.registra(f"detecta tempo: {len(temps)} temps trobats")
         trams = tempo_map.infereix_trams_beat(
             temps, vr._durada_wav(), int(vr.bpb),
             int(getattr(vr, "beat_type", 4) or 4))
         if len(trams) <= 1:
             self.registra("detecta tempo: és constant (cap canvi)")
-            return
+            return 0
         if vr.aplica_tempo_trams(trams):
             self.bpm.setText(f"{float(vr.bpm):g}")
             self._aplica_parametres_temps()
             self.registra(f"mapa de tempo inferit: {len(trams)} tros(s)")
+            return len(trams)
+        return 0
+
+    def _detecta_tempo_mapa(self):
+        """Acció de menú: infereix el mapa i avisa per pantalla si cal."""
+        self.detecta_tempo_mapa(avis=True)
 
     def _mode_facil_ui(self):
         """Mode fàcil: preset d'estil + ritme harmònic + mòdul → regularitza."""
