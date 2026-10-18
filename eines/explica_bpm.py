@@ -50,6 +50,14 @@ def main():
 
     env, sr = tempo._envolupant_onsets(wav)
     bpm = tempo._comb_bpm(env)
+    # `_comb_bpm` retorna None a propòsit quan no hi ha prou senyal o no té
+    # periodicitat (l'app també ho preveu): aquest script explica COM es troba
+    # un BPM, així que amb un àudio sense BPM el que toca és dir-ho clar i
+    # plegar, no petar amb un TypeError dins del dibuix (auditoria 18-10-2026).
+    if bpm is None:
+        print(f"No s'ha pogut detectar cap BPM a «{os.path.basename(wav)}» "
+              f"(senyal massa curt o sense periodicitat clara).")
+        raise SystemExit(1)
     ac = np.correlate(env, env, "full")[env.size - 1:]
     ac = ac / ac[0] if ac[0] > 0 else ac
 

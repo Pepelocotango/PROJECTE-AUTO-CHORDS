@@ -213,6 +213,19 @@ deixaven passar valors impossibles:
 
 Test nou: `tests/test_regles_or.py` › `test_les_xarxes_de_seguretat_tambe_ho_arreglen`.
 
+## Ronda 19 — camí `eines/`: un script que petava
+
+- **Tots els scripts de `eines/` estan referenciats** (CI, docs o codi): res
+  orfe. Revisat script a script què els crida.
+- 🐞 **`eines/explica_bpm.py` petava** (`TypeError`) quan la detecció de BPM
+  retorna `None` — que `tempo._comb_bpm` fa **a propòsit** quan el senyal és
+  massa curt o no té periodicitat (i que l'app ja preveu: vegeu
+  `test_detecta_bpm_silenci_retorna_none`). El script intentava formatar `None`
+  (`f"{bpm:.1f}"`) i sortia un *traceback*.
+  → ara, si no hi ha BPM, diu un **missatge clar** i plega amb codi 1. Provat
+  amb un àudio degenerat (missatge net, sense traça) **i** amb un ritme real de
+  120 BPM (detecta `120.0 BPM` i genera el PNG de 129 KB).
+
 ## Ronda 18 — tests que fan *skip*: cap d'obsolet
 
 Revisats **tots** els punts on la suite pot saltar-se proves
