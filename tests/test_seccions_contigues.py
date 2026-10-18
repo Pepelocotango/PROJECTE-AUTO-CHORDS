@@ -172,6 +172,21 @@ class TestMoureSeccioManteContiguitat(_Base):
         self.assertTrue(_contigues(b))
         self.assertAlmostEqual(_suma(b), DUR, places=6)
 
+    def test_ubicar_l_unica_seccio_on_ja_es_no_es_cap_error(self):
+        """Un moviment d'IDENTITAT no és un moviment (trobat per OC-13).
+
+        `ac_move_section` a les mateixes coordenades ha de respondre OK (ubicar
+        una cosa on ja és no és cap error), pero moure-la de debò sí que s'ha de
+        refusar: només hi ha una secció i ha de cobrir tota la WAV (regla #4).
+        """
+        v = _visor()
+        v.seccions = [(0.0, DUR, "A", "A")]
+        self.assertTrue(v.mou_seccio(0, 0.0, DUR), "identitat -> OK")
+        with self.assertRaises(ValueError):
+            v.mou_seccio(0, 2.0, DUR)      # això sí que trencaria la cobertura
+        self.assertEqual([(float(s[0]), float(s[1]), s[2]) for s in v.seccions],
+                         [(0.0, DUR, "A")], "i el model no s'ha tocat")
+
     def test_rebutja_si_un_vei_queda_sense_marge(self):
         v = _visor()
         with self.assertRaises(ValueError):

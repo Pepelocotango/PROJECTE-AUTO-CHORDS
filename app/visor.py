@@ -2659,15 +2659,23 @@ class Visor(QMainWindow):
         """
         if not (0 <= idx < len(self.seccions)):
             return False
+        ini, fi = float(ini), float(fi)
+        # Un «moviment» a les MATEIXES coordenades és un no-op LEGÍTIM (ubicar la
+        # secció on ja és no és cap error) i es resol abans del guard de la
+        # secció única: si no, una crida d'identitat rebria un error que no toca
+        # (trobat per OC-13, 18-10-2026).
+        actual = self.seccions[idx]
+        if (abs(ini - float(actual[0])) <= 1e-6
+                and abs(fi - float(actual[1])) <= 1e-6):
+            return True
         # Amb una sola secció no hi ha res a moure: ha de cobrir tota la WAV
         # (regla d'or #4). Abans s'aplicava el canvi i el normalitzador de
         # cobertura el desfeia en silenci — l'usuari/agent veia "OK" i res no
-        # canviava (trobat per OC-13, 18-10-2026).
+        # canviava.
         if len(self.seccions) <= 1:
             raise ValueError(
                 "És l'única secció: ha de cobrir tota la WAV (regla #4) i no "
                 "es pot moure. Parteix-la primer si vols editar-ne un tros.")
-        ini, fi = float(ini), float(fi)
         nova = list(self.seccions)
         _i, _f, L, F = nova[idx]
         nova[idx] = (ini, fi, L, F)
