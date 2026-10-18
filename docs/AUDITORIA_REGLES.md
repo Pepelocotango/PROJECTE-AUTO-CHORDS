@@ -376,6 +376,30 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 51 — paritat de menús a les 3 pistes + un bug REAL: «Afegeix secció aquí» petava sempre
+
+- **#11 a la pista ③**: el botó dret del carril de **BPM/compàs** tenia un joc
+  reduït; ara té **el mateix joc i el mateix ordre** que els clips (④ estructura i
+  ⑤ acords): **Afegeix … aquí** · Duplica · Elimina · Reanomena · Parteix · Partir
+  per la meitat · Retalla · Copia · Enganxa. L'únic afegit propi és **«Afegeix un
+  canvi aquí»** (l'«afegir» d'eixa pista) i el porta-retalls és el **mateix** del
+  timeline (`kind = "tempo"`). El **botó dret també SELECCIONA** el tram, com els
+  clips.
+- 🐞 **BUG REAL** (trobat de pas): **«Afegeix secció aquí» petava SEMPRE** dins la
+  cançó, als **tres** llocs (llista, menú contextual i menú principal
+  `Ctrl+Shift+S`): creava una secció de **2 s** que `_valida_canvis_seccions`
+  rebutjava **sempre** per solapament. La semàntica correcta en un model
+  **saturat** (#4) no és *inserir*, sinó **obrir un clip nou**: acord = **marca**
+  nova; secció = **partir-la**. Ara hi ha **un únic camí**
+  (`visor._afegeix_a_la_posicio`) per als tres llocs.
+- ➕ **11** tests nous a `tests/test_regla11_paritat.py` + **2** a
+  `tests/test_timeline_layers.py`; **mutació 3/3**.
+- 📄 **Docs actualitzats** (rol OC-12): `docs/ESQUEMA_UI.md` §2 (les dues files
+  dels menús + nota d'«Afegeix … aquí») i `docs/EDICIO_OPERACIONS.md` (§1 i files
+  #1/#2/#14), amb les vistes `.html`/`.svg` regenerades.
+
+Commit `cc50e5e` · suite 1115 → **1126 OK** (1 skip) · pyflakes net · `app/visor.py` + `app/timeline*.py` + tests.
+
 ## Ronda 50 — el carril de BPM/compàs desapareixia en tornar a BPM (reportat en viu per l'operador)
 
 L'operador ho va veure **en viu**: el carril de **BPM/compàs** desapareixia (i la

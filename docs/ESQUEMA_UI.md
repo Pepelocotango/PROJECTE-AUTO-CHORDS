@@ -255,11 +255,11 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Doble-clic ④⑤ / llistes ⑩⑪** | **selecciona i enfoca l'Editor ⑫** |
 | **Clic llista ⑩⑪** | salta + **ressalta la fila** (i selecciona el clip al carril) |
 | **Zona buida ② + botó dret** | **pan** (desplaçar la vista) |
-| **Botó dret SOBRE un clip** | **menú contextual**: Duplica · Elimina · Reanomena |
+| **Botó dret SOBRE un clip** | **selecciona** el clip i obri el **menú contextual** — **el mateix joc a les 3 pistes** (regla #11): **Afegeix acord/secció aquí** · Duplica · Elimina · Reanomena · Parteix l'acord/la secció… · Partir per la meitat · Retalla · Copia · Enganxa |
 | **Pista de tempo ③ — clic** | **selecciona** el tram de tempo/compàs i hi porta el cursor |
 | **Pista de tempo ③ — doble-clic** | **diàleg** per editar-ne el valor (`_on_tempo_edit`) |
 | **Pista de tempo ③ — vores** | arrossegar → **mou on canvia** el tempo (`_on_tempo_mogut`; ±5 px i cursor ↔ com als clips — regla #11) |
-| **Pista de tempo ③ — botó dret** | **menú**: Reanomena (BPM/compàs)… · Elimina (només si hi ha més d'un tram) · Parteix aquest tros aquí · Afegeix un canvi aquí |
+| **Pista de tempo ③ — botó dret** | **selecciona** el tram i obri **el mateix joc de menú que els clips** (regla #11): **Afegeix un canvi aquí** (el seu «afegir» propi) · Duplica (només si hi ha lloc després) · Elimina (només si hi ha més d'un tram) · Reanomena (BPM/compàs)… · Parteix aquest tros aquí · Partir per la meitat · Retalla · Copia · Enganxa |
 | **Roda ②** | **zoom** (centrat al clip seleccionat) |
 | **Espai** | **play / pausa** |
 | **T** | **tap tempo** |
@@ -274,6 +274,13 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **← / →** | **nudge**: mou la **vora esquerra** (l'inici) del clip seleccionat **un pas de graella**; **Alt+←/→** mou la **vora dreta** (estirar/encongir). Una sola operació de desfer; sense selecció no fa res. |
 | **Ratolí sobre un botó/camp** | la **caixa d'informació** (a baix a la dreta) mostra què fa; si el ratolí **no** és sobre res amb info, hi gira un **rotatori de consells i dreceres** (cada **14 s**; el 1r panell segueix l'**eina vigent**). **Clic a la caixa** → la **para** (30 s) i el clic **següent avança** de «pantalla»; un **missatge transitori** (desfer/refer…) hi surt amb **format propi** |
 | **Esc** | **anul·la**, per ordre de prioritat: (1) el **rang** en curs (`Ctrl`+arrossegar o eina «marc») · (2) un **loop a mig marcar** (el descarta i el restaura) · (3) el **loop actiu** (el desactiva i **treu la caixa groga** del timeline) · (4) **buida la selecció**; si no hi ha res d'això, no fa res. Manté el que ja feia: **cancel·la el reanomenament inline** i **tanca diàlegs** (aquests tenen prioritat) |
+
+> ⚠️ **«Afegeix … aquí»** (el menú de les 3 pistes i la llista): els clips cobreixen
+> **tota** la WAV (regla #4), així que **afegir no és inserir** un tros nou, sinó
+> **obrir un clip nou** en eixe instant — **acord** = una **marca** nova (l'anterior
+> s'hi acaba); **secció** = **partir** la secció que conté l'instant (la meitat
+> dreta rep la lletra/família). Un **únic camí** (`visor._afegeix_a_la_posicio()`)
+> per a la llista i el timeline. Detall: `docs/EDICIO_OPERACIONS.md` §1.
 
 ---
 
