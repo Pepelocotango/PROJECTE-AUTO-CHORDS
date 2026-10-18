@@ -67,5 +67,29 @@ class TestScriptsArrelSmoke(unittest.TestCase):
         self.assertIn("usage", p.stdout.lower())
 
 
+class TestScriptsShSintaxi(unittest.TestCase):
+    """`bash -n` de TOTS els scripts de shell del projecte.
+
+    Una errada de sintaxi en un `.sh` no peta enlloc fins que el CI (o
+    l'operador) el llança — i aleshores el build sencer cau. És una comprovació
+    de mil·lisegons que estalvia una tongada de CI (auditoria 18-10-2026; els
+    12 scripts estaven bé).
+    """
+
+    def test_la_sintaxi_dels_scripts(self):
+        import glob
+        import shutil
+        if not shutil.which("bash"):
+            self.skipTest("sense bash (p. ex. un runner sense MSYS2)")
+        scripts = sorted(glob.glob(os.path.join(ARREL, "*.sh"))
+                         + glob.glob(os.path.join(ARREL, "eines", "*.sh")))
+        self.assertGreaterEqual(len(scripts), 5, "no he trobat els scripts")
+        for s in scripts:
+            p = subprocess.run(["bash", "-n", s], capture_output=True,
+                               text=True, timeout=60)
+            self.assertEqual(p.returncode, 0,
+                             f"sintaxi de {os.path.basename(s)}:\n{p.stderr}")
+
+
 if __name__ == "__main__":
     unittest.main()
