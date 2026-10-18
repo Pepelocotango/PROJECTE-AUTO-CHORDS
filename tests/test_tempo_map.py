@@ -155,6 +155,25 @@ class TestPersistencia(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(td, "compas.csv")))
         self.assertEqual(pipeline.llegeix_tempo_map(td, 120, 4, 4, 8.0), trams)
 
+    def test_csv_editat_a_ma_entra_normalitzat(self):
+        """Els CSVs del mapa poden estar editats a mà: el que ix de la CARREGA
+        és el model, i ha de complir les regles 1, 2, 4 i 8.
+
+        Auditoria 18-10-2026: `llegeix_tempo_map` retornava els trams tal qual,
+        així que un forat (tram que no arrenca a 0), un inici negatiu o un bpm
+        o compàs impossibles entraven a l'app.
+        """
+        import tempfile
+        td = tempfile.mkdtemp()
+        with open(os.path.join(td, "tempo.csv"), "w", encoding="utf-8") as f:
+            f.write("ini_s,fi_s,bpm\n4.0,10.0,90\n-2.0,20.0,0\n")
+        with open(os.path.join(td, "compas.csv"), "w", encoding="utf-8") as f:
+            f.write("ini_s,fi_s,beats,beat_type\n4.0,10.0,3,4\n-2.0,20.0,0,0\n")
+        trams = pipeline.llegeix_tempo_map(td, 120.0, 4, 4, 30.0)
+        self.assertEqual(trams[0][0], 0.0)                    # comença a 0
+        self.assertEqual(trams, [(0.0, 4.0, 120.0, 4, 4),      # valors valids
+                                 (4.0, 30.0, 90.0, 3, 4)])     # i acaba a la WAV
+
     def test_sense_fitxers_es_constant(self):
         import tempfile
         td = tempfile.mkdtemp()                    # carpeta buida

@@ -25,10 +25,10 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 
 | # | Regla | Validació al codi | Test | Estat |
 |---|---|---|---|---|
-| 1 | Ordre estricte | `visor._valida_canvis_acords` / `_valida_canvis_seccions` · `pipeline.normalitza_cobertura` (reordena) · `tempo_map.normalitza_trams` (ordena i deduplica) | `test_regles_or.TestRegla1OrdreEstricte` · `test_tempo_map` | 🟡 auditada als 3 nuclis; **falta** el camí de càrrega |
-| 2 | Contigüitat | `pipeline.filtra_seccions` · els normalitzadors dels 3 tipus (`prev.fi == curr.ini`) | `test_seccions_contigues` | ⏳ pendent de repàs a fons |
+| 1 | Ordre estricte | `visor._valida_canvis_acords` / `_valida_canvis_seccions` · `pipeline.normalitza_cobertura` (reordena) · `tempo_map.normalitza_trams` (ordena i deduplica) | `test_regles_or.TestRegla1OrdreEstricte` · `test_tempo_map` | ✅ auditada als 3 nuclis i a la càrrega (Ronda 2) |
+| 2 | Contigüitat | `pipeline.filtra_seccions` · els normalitzadors dels 3 tipus (`prev.fi == curr.ini`) | `test_seccions_contigues` | 🟡 auditada al mapa (Ronda 2); **falta** el repàs complet dels 3 tipus |
 | 3 | Durades derivades | el `fi` del `Clip` **no mana**: es re-deriva de la frontera (cadena d'inis) | `test_regles_or.TestRegla3DuradesDerivades` | ✅ auditat |
-| 4 | Cobertura total | `pipeline.normalitza_cobertura()` (acords + seccions) · `tempo_map.normalitza_trams(trams, durada)` (mapa) | `test_cobertura_viu` | 🟡 auditada; **falta** comprovar que el mapa es re-normalitza després de **cada** mutació |
+| 4 | Cobertura total | `pipeline.normalitza_cobertura()` (acords + seccions) · `tempo_map.normalitza_trams(trams, durada)` (mapa) | `test_cobertura_viu` | 🟡 auditada; **falta** comprovar-ho després de cada mutació del mapa (undo/porta-retalls/MCP) |
 | 5 | Una sola font de veritat | `pipeline` + `tempo_map` (2 backends); la còpia del visor mai no mana | `test_regles_or.TestRegla5FontDeVeritat` | ⏳ pendent de repàs (buscar mutacions de la UI que no passin pel backend) |
 | 6 | WAVs només via `exporta_total()` | `pipeline.exporta_total` / `regenera_wavs_*` | `test_regles_or.TestRegla6WavsNomesViaExporta` | 🟡 auditada; **falta** recórrer tots els cridadors de `regenera_wavs_*` |
 | 7 | Instància única | `plataforma.bloqueja_instancia_unica` | `test_regles_or.TestRegla7InstanciaUnica` | ✅ auditat |
@@ -39,6 +39,19 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
 
 ## Trobades i fixes (el més nou a dalt)
+
+### 2026-10-18 · Ronda 2 — Regles 1/2/4 al CAMÍ DE CÀRREGA del mapa
+
+- 🐞 `pipeline.llegeix_tempo_map` retornava els trams **tal com són als CSVs**
+  (`tempo.csv` + `compas.csv`). Com que aquests fitxers es poden editar a
+  mà, hi podia entrar un mapa amb **forat** (un tram que no arrenca a 0),
+  un inici **negatiu** o un `bpm`/compàs **impossibles**, i a més la còpia
+  `self.tempo_trams` quedava diferent de l'objecte `TempoMap` (regla 5).
+  → la càrrega ara passa el resultat per `tempo_map.normalitza_trams` amb
+  la durada de la WAV: ordre (#1), contigüitat (#2), cobertura 0→durada
+  (#4) i valors vàlids (#8).
+
+Test nou: `test_tempo_map.TestPersistencia.test_csv_editat_a_ma_entra_normalitzat`.
 
 ### 2026-10-18 · Ronda 1 — Regla 8 als normalitzadors (2 forats reals)
 

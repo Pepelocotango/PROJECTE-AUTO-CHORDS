@@ -7,6 +7,8 @@ import csv
 import os
 import re
 import shutil
+
+from . import tempo_map
 import subprocess
 import tempfile
 import threading
@@ -1774,7 +1776,13 @@ def llegeix_tempo_map(carpeta, bpm, num, den, durada):
     for t, c in zip(tempo, compas):
         trams.append((float(t[0]), float(t[1]), float(t[2]),
                       int(c[2]), int(c[3])))
-    return trams or [(0.0, float(durada or 0.0), float(bpm), int(num), int(den))]
+    if not trams:
+        return [(0.0, float(durada or 0.0), float(bpm), int(num), int(den))]
+    # Els CSVs poden haver estat editats a mà: el que ix d'ací és el MODEL, i
+    # ha de complir les regles 1, 2, 4 i 8 (ordre, contigüitat, cobertura de
+    # 0 a la durada i valors vàlids). Es normalitza AQUÍ, que és la porta
+    # d'entrada, igual que fa `normalitza_cobertura` amb els acords.
+    return tempo_map.normalitza_trams(trams, durada)
 
 
 def neteja_wavs(dest_dir):
