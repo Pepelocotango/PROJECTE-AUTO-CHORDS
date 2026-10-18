@@ -371,6 +371,103 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 30 — `app/dialegs.py` (616 línies) no tenia CAP test: 2 bugs reals
+
+Els diàlegs sempre es **bypassaven** (patch de `QMessageBox`/`QInputDialog` o
+cridant la lògica del visor). El primer test que els exercita de debò ha destapat
+**dos bugs de veritat**, tots dos al diàleg «Mapa de tempo i compàs…»:
+
+1. 🐞 **`_sync()` petava**: cridava `self.taula.item(...)` amb el número de
+   **columna com a string** (`_t("0","0")`, `_t("1","120")`, `_t("2","4/4")`) →
+   `TypeError` que el `try` **no** capturava (només agafava
+   `ValueError`/`IndexError`) → el diàleg **petava** en afegir/eliminar un tram o
+   en prémer OK. Ara són `int`.
+2. 🐞 **El botó «+» no feia res**: `_afegeix()` calculava el punt mig del darrer
+   tram sobre el que deixa `_sync()` (`(ini, ini, …)`, amb el `fi` encara per
+   derivar) → el mig queia damunt la mateixa frontera, `afegeix_tall` hi posava
+   un tall que el normalitzador descartava → cap efecte. Ara normalitza abans de
+   calcular el mig.
+
+➕ **NOU `tests/test_dialegs.py`** (13 proves): `DialegTramTempo.valors()`
+(compàs «num/den» i «num», invàlids, mai zero, el BPM del camp) i
+`DialegTempoMapa` (compàs → segons amb el tempo del tram correcte,
+afegir/eliminar i que el mapa que entrega siga **sempre vàlid**: regles
+#1/#2/#4). Commit `d124e6f` · suite 1058 OK (1 skip).
+
+## Ronda 29 — mutació: menús i `postproc`/`vamp_params` + un test feble (mutació 22)
+
+- **Cobertura dels wrappers de menú**: verificada, **cap forat** (tota acció de
+  menú té el seu camí).
+- **Prova de mutació a `app/postproc.py` i `app/vamp_params.py`**: detectada. ✅
+- 🐞 **Test feble (mutació 22)**: el test de les zones de `TempoLayer` (Ronda 26)
+  **no distingia les dues vores**: en traure la comprovació d'`ini` de `_zona`,
+  la frontera retornava el «fi» del tram anterior, i el test ho acceptava perquè
+  les dues respostes són el mateix punt de canvi. Ara la comprovació d'`ini` es
+  fa al **tram 2** (x=603), on el tram anterior no pot respondre «fi» → amb la
+  mutació hi peta.
+
+Commit `c86fd2b` (només el test endurit; la resta de la ronda va ser verificació
+sense canvi de codi).
+
+## Ronda 28 — proves directes de les funcions pures de la graella (`timeline_base`)
+
+`snap_step` tenia **ZERO** referències als tests i la resta de funcions pures
+d'`app/timeline_base.py` (el pla de graella, les posicions, els nivells) només
+s'exercitaven **indirectament** des del `TimelineView`.
+
+➕ **NOU `tests/test_timeline_base.py`** (12 proves) que fixen els **contractes**
+(no els números d'un zoom concret):
+
+- **`snap_step`**: la divisió triada complix la seua invariant
+  (`step*pps >= MIN_LINE_PX`) i amb més zoom **mai** no engruixeix; amb mapa
+  variable les durades són les del tram de l'offset.
+- **`grid_plan`**: el seu `snap` coincidix amb `snap_step` (**font única**), les
+  línies van de gruixut a fi i inclouen el snap, i l'etiqueta és la més fina que
+  hi cap (amb el *fallback* documentat).
+- **`grid_levels`**: deriva del pla (mateixos passos, en ordre invers).
+- **`grid_positions`**: és un **generador**, dona `offset + k*step` per **índex**
+  (mai acumulant — era el bug del regle amb «(N−1).4») i els extrems són
+  inclusius.
+
+Commit `c4eab57` · suite 1045 OK (1 skip).
+
+## Ronda 27 — eina nova `eines/ordre_aleatori.py` (dependències d'ordre a la suite)
+
+`unittest discover` corre els tests en un ordre **fix** (alfabètic): si algun test
+depenguera de l'estat que en deixa un altre (una `QApplication`, un tempdir, una
+opció desada…), la suite passaria sempre i el problema només eixiria en canviar
+d'ordre. L'informe d'incoherències (punt **7.3**) citava una fallada no
+reproduïda que podia ser això.
+
+➕ **NOU `eines/ordre_aleatori.py [seed] [--llista]`**: descobrix tota la suite,
+la barreja amb la llavor donada i l'executa; si falla, diu **quin** test i amb
+quina llavor (reproduïble). Amb `--llista` només mostra l'ordre (per provar
+l'eina mateixa).
+
+- **Provat amb dues llavors (1 i 7)**: 1032 tests OK a totes dues → **cap
+  dependència d'ordre**.
+- Guard de smoke afegit a `tests/test_scripts_smoke.py`.
+
+Commit `c0b3e4c` · suite 1033 OK (1 skip).
+
+## Ronda 26 — pista de BPM/compàs: proves pròpies de les zones i del cursor
+
+`TempoLayer._zona()` és el **cor** del gest de la pista (decidix si
+l'arrossegament mou una vora o el punt de canvi, i amb ell què passa amb els
+veïns) i **no tenia cap prova pròpia**: la suite l'exercitava només pel `paint` i
+a través del `TimelineView`.
+
+- **Extreta la lògica del cursor** a `TempoLayer._cursor_de_zona(z)` (funció
+  pura, **idèntica a la d'acords i estructura**: regla #11). PyQt5 no deixa
+  fabricar un event de *hover*, així que així la paritat del cursor també es pot
+  provar.
+- ➕ **NOU `tests/test_timeline_layers.py`** (6 proves): vores i cos de cada
+  bloc, que els **extrems** no tenen vora arrossegable (el mapa sempre comença a
+  0 i acaba a la durada), fora del mapa, capa inactiva, cursor per zona i la
+  selecció/deselecció de la capa.
+
+Commit `63ed60b` · suite 1032 OK (1 skip).
+
 ## Ronda 25 — guards amb dents + arxivar el que ja és històric
 
 - **Prova de mutació dels guards nous** (3): tornar a trencar
