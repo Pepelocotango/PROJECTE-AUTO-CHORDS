@@ -611,7 +611,7 @@ TOL_TEMPS = 1e-6
 #   · acords:     `(nom, tsrc)` — p. ex. `("Am", "16.153846154")`;
 #   · estructura: `(lletra, família)` — p. ex. `("A", "A")`.
 # La font única de veritat és la CADENA DE FRONTERES: el `fi` se'n deriva i, per
-# tant, no pot quedar mai incoherent. Contracte i pla: docs/REFACTOR_INICI_FI.md.
+# tant, no pot quedar mai incoherent. Contracte i pla: docs/archive/REFACTOR_INICI_FI.md.
 Clip = namedtuple("Clip", ("ini", "fi", "payload"))
 
 

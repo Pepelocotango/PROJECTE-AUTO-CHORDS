@@ -1,7 +1,10 @@
 # AUTODETECCIÓ: què tenim i què podem oferir
 
-> Exploració dels motors d'autodetecció (BPM, acords, estructura) de
-> **2026-10-07**. Mesures reals amb `/home/peplx/Escriptori/WAVS_PROVA/`.
+> 📦 **[HISTÒRIC · 2026-10-07]** Exploració dels motors d'autodetecció feta
+> **abans** d'integrar-los. La **referència viva** és ara `QM_VAMP.md` (plugins) i
+> **`ESQUEMA_UI.md` §6** (opcions del diàleg i motors actius). Es conserva pels
+> **mesuraments reals** amb `/home/peplx/Escriptori/WAVS_PROVA/` i pel rastre de
+> per què es va triar cada motor.
 
 ---
 

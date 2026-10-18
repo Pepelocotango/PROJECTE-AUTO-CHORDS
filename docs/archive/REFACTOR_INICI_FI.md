@@ -1,13 +1,18 @@
 # Refactor de base: model únic de clips amb **inici + fi**
 
-> **ESTAT ACTUAL (2026-10-17) — REFACTOR ACABAT (tags `refactor-inici-fi` →
+> 📦 **[COMPLETAT · arxivat 2026-10-18]** Document **històric**: descriu el
+> **refactor inici+fi**, **acabat** el 17-10-2026 (tags `refactor-inici-fi` →
+> `refactor-s1-s3-fets` → `refactor-s4-fet` → `refactor-s5-fet` → `refactor-fi-fet`).
+> Es conserva com a **contracte de referència** (el codi viu el compleix) i pel
+> pla per fases. L'estat actual és a **`../ROADMAP.md`** i **`../README.md`**.
+>
+> **ESTAT EN TANCAR-LO (2026-10-17) — REFACTOR ACABAT (tags `refactor-inici-fi` →
 > `refactor-s1-s3-fets` → `refactor-s4-fet` → `refactor-s5-fet` → `refactor-fi-fet`)**
 > - ✅ **S1** · ✅ **S2** · ✅ **S3** · ✅ **S4** · ✅ **S5** · ✅ **S6**
-> - Suite verda: **944 tests OK** (1 skip), pyflakes net.
+> - Suite verda (evidència datada, 17-10-2026): **944 tests OK** (1 skip), pyflakes net.
 >
 > **Punt de partida**: taguejat `refactor-inici-fi` (decisió de l'operador, 17-10-2026).
 > **Abast**: es refactoritza TOT el model de dades i tot el codi d'edició que hi toca.
-> Detall de commits i del següent pas: `docs/AUTOPROMPT_REFACTOR.md`.
 
 ## Per què
 

@@ -37,7 +37,7 @@ Cada clip comença **exactament** on acaba l'anterior: `prev.fi == curr.ini`, pe
 unificat `Clip(ini, fi, payload)` — sense forats ni encavalcaments. (Els **extrems**
 0 ↔ durada són competència de la regla 4.)
 → `timeline.py` · `pipeline.filtra_seccions` · `tempo_map.normalitza_trams`
-(contracte: `docs/REFACTOR_INICI_FI.md`).
+(contracte: `docs/archive/REFACTOR_INICI_FI.md`).
 
 ## 3. Durades derivades
 La durada d'un clip **no s'emmagatzema**: es **deriva** (l'inici del següent, o

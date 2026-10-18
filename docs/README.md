@@ -1,6 +1,6 @@
 # Índex de la documentació (`docs/`)
 
-> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-10-17.**
+> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-10-18.**
 > L'estat *actual* del projecte és a **`../README.md`** i **`../ROADMAP.md`**;
 > aquí hi ha el **detall temàtic**. Els documents d'**`archive/`** (marcats
 > **[HISTÒRIC]**, **[ANÀLISI]** o **[COMPLETAT]**) es conserven com a referència,
@@ -31,15 +31,22 @@
 | `PARTITURA_EXPORT.md` | Exportació de partitura (xifrat: MusicXML/PDF/MSCZ). |
 | `MCP_AUTO_CHORDS.md` | Pont MCP perquè un agent controli l'app viva. |
 | `EDICIO_OPERACIONS.md` | **Taula única** de totes les formes d'edició: operació × **GUI** × **MCP** × paritat acords/estructura (**#11**) × estat (FET/pendent). El test `test_edicio_operacions_doc.py` la manté al dia. |
-| `AUTOPROMPT_REFACTOR.md` | 🤖 **Autoprompt** per continuar el refactor en una conversa nova (context, fet, pendents i trampes). |
-| `REFACTOR_INICI_FI.md` | 🏗️ **Refactor de base** (ACABAT, tags `refactor-fi-fet` → `refactor-pendents-fets`): model únic de clips amb **inici+fi** per a acords i estructura. Contracte i pla per fases. |
-| `PLA_TEMPO_COMPAS.md` | 🎚️ **Pla del mapa de tempo i compàs** variables (com als DAWs): model, fases i estat. Fase 1 (motor `app/tempo_map.py`) FET. |
+
+## Plans i refactors **en curs**
+
+| Doc | Què explica |
+|---|---|
+| `PLA_TEMPO_COMPAS.md` | 🎚️ **Pla del mapa de tempo i compàs** variables (com als DAWs): model, fases i estat. Fase 1 (motor `app/tempo_map.py`) **FETA**. |
+| `PLA_EDICIO_LLIURE.md` | ✂️ **Pla de l'edició lliure**: la regla #4 passa de grilló a **contracte posterior** a cada operació (§6 = especificació tancada de l'operador). |
+
+> Els refactors **acabats** viuen a `archive/` (p. ex. `REFACTOR_INICI_FI.md`):
+> es conserven com a contracte i rastre, però ja no descriuen estat viu.
 
 ## Autodetecció (motors i opcions)
 
 | Doc | Què explica |
 |---|---|
-| `AUTODETECCIO_OPCIONS.md` | Motors d'autodetecció (BPM/acords/estructura) i opcions. |
+| `AUTODETECCIO_OPCIONS.md` **[HISTÒRIC]** | Exploració de motors d'autodetecció i **mesuraments reals** del 07-10-2026 (superada per `QM_VAMP.md` i `ESQUEMA_UI.md` §6). |
 | `QM_VAMP.md` | Plugins QM Vamp (Queen Mary) compilats localment. |
 
 ## Portabilitat i compilació (3 SO)
@@ -68,6 +75,7 @@
 
 | Doc | Què explica |
 |---|---|
+| `archive/REFACTOR_INICI_FI.md` **[COMPLETAT]** | 🏗️ Refactor de base **inici+fi** (model únic de clips amb `ini`+`fi` per a acords i estructura): contracte i pla per fases. **Acabat** el 17-10-2026 (`refactor-fi-fet`). |
 | `archive/AUDITORIA_PRODUCCIO.md` **[HISTÒRIC]** | Auditoria de producció (OC-5+OC-6, 10-2026): estat i bugs trobats/arreglats. |
 | `archive/REFERENCIA_PILES_PROGRAMES_REFERENCIA.md` **[REFERÈNCIA]** | Piles tecnològiques/gràfiques d'altres programes (REAPER, Audacity…). |
 | `archive/PANELL_TIPUS_ACORD_mockup.svg` · `.png` **[DISSENY]** | Maqueta **aprovada** del panell de tipus d'acord (ja implementat). |

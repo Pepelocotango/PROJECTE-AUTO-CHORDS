@@ -91,6 +91,16 @@ esborra en plegar el procés (`atexit`). Abans una tongada deixava ~1.000 carpet
 i ~1,3 GB, i se n'hi van acumular **57 GB** (disc al 97%). **Si afegeixes un test
 nou, importa'l també** (dues línies al costat del `sys.path.insert`).
 
+## Trampes conegudes (provar canvis)
+
+- **Si hi ha una app viva, porta el codi vell en memòria**: cal **reiniciar-la**
+  perquè els canvis del disc hi entren.
+- **Eines MCP noves**: es criden pel **servidor**, no pel llistat de la sessió →
+  `.venv/bin/python eines/mcp_auto_chords_server.py --call <ac_tool> --args '{...}'`.
+- **Missatges en català dins comandes `bash`** amb accents o *backticks*: fes
+  servir **heredocs** (`python3 - <<'PY' … PY`), no `-c "..."` (els *backticks*
+  es substitueixen i mutilen el text).
+
 ## VM Debian (fora d'abast)
 
 La VM Debian **ja no es fa servir per a l'app** (era massa limitada): l'antic

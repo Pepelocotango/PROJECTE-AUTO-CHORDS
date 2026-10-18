@@ -1,4 +1,4 @@
-"""Model unificat de clips (inici+fi) — refactor S1 (docs/REFACTOR_INICI_FI.md).
+"""Model unificat de clips (inici+fi) — refactor S1 (docs/archive/REFACTOR_INICI_FI.md).
 
 Criteri d'èxit de S1: **cap canvi de comportament**. Les funcions noves han de
 reproduir EXACTAMENT el que fa avui `pipeline.normalitza_cobertura` (que no es
