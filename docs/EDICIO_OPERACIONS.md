@@ -104,7 +104,13 @@
 | 48 | **Exportar la partitura** | *Fitxer ▸ Exporta la partitura…* | `ac_export_partitura` | **FET** |
 | 49 | **Obrir la carpeta de sortida** | *Fitxer ▸ Obre la carpeta de sortida* | `ac_open_output_folder` | **FET** |
 
-## 8. Pendent (resum)
+## 8. Estat i exclusions (resum)
+
+> ✅ **Cap pendent obert** (18-10-2026). Els tres ítems que hi havia aquí
+> (vores lliures #13, duplicar #14/#15 i la «Fase 5» de les seccions) estaven
+> **fets** i s'han verificat un per un abans de treure'ls: el gest del visor i
+> l'MCP de redimensionar, el duplicat amb el destí de §6.3 i les vores lliures
+> de les seccions (les dues bandes, també l'última).
 
 ### Pista de BPM/compàs (trams del mapa de tempo) — ✅ COMPLERTA
 

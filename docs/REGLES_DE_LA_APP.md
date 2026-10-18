@@ -7,7 +7,7 @@
 > de l'operador, que s'ha de documentar aquí **i** al `CHANGELOG`).
 >
 > Cada regla té la seva **validació** al codi i un **test** que la comprova
-> (les 11: vegeu la nota del final).
+> (les 1–11; la 12 és pendent d'implementació: vegeu la nota del final).
 > Referenciades a `ROADMAP_HISTORIA.md` (§Notes d'implementació) i `DEVELOPING.md`.
 >
 > ## ‼️ S'HA DE COMPLIR **SEMPRE** — a TOTS els punts
@@ -67,7 +67,7 @@ El model viu al **backend**, no a la UI. Hi ha **dos backends**: `app.pipeline`
 L'edició **mai** toca les WAVs generades; només s'escriuen en **exportar**, des
 del backend `pipeline.exporta_total(...)`. La UI hi delega via els mètodes
 `exporta()` (`app.visor` / `app.main`). «Mai toca els WAVs generats.»
-→ Paritat d'exportació dels **3 carrils**: vegeu la **regla 11**.
+→ Paritat d'exportació dels **3 carrils**: vegeu la **regla 12**.
 
 ## 7. Instància única
 No poden córrer **dues instàncies** de l'app alhora (un lock a `tempfile`).
@@ -76,14 +76,25 @@ No poden córrer **dues instàncies** de l'app alhora (un lock a `tempfile`).
 ## 8. Temps vàlids
 Cap temps **negatiu** ni cap durada **≤ 0**.
 
-## 9. Portabilitat
-Tot el que sigui natiu es compila per a **macOS 10.13+** i **sense AVX**
-(el Q9400): cap binari del paquet pot superar **`minos 10.13`** ni requerir AVX.
-→ `archive/PLANIFICACIO_MACOS.md` · verificat al CI (`eines/verifica_minos_macos.py`).
+## 9. Portabilitat i maquinari objectiu
+L'app ha de córrer als **3 SO** — **Linux** (AppImage x86_64, compilat a Ubuntu
+22.04) · **Windows** (portable x64, Win10) · **macOS** (`.app` per a **10.13 High
+Sierra+**, Intel) — i amb el **maquinari mínim objectiu** (**sense AVX**): cap
+binari ni dependència del paquet no pot requerir **AVX** ni superar
+**`minos 10.13`**.
+→ **`minos`**: verificat al CI (`eines/verifica_minos_macos.py`, pas 6b). →
+**AVX**: garantit pel build (CPython portable **genèric**, host VAMP `-msse -msse2`,
+`numpy` **1.x**) i `tests/test_requirements.py`. Vegeu `docs/ESTAT_MULTI_SO.md`.
 
 ## 10. Estat en un directori escriptible
 El **log / opcions / temp** van sempre a un directori **escriptible** — mai dins
-un paquet de només lectura (AppImage, `.app` en quarantena). → `app/config.py`.
+un paquet de només lectura. El cas es dona als **3 SO**: **Linux** (l'AppImage es
+munta **només lectura**) · **Windows** (el `.zip` portable pot estar en una carpeta
+sense permís d'escriptura, p. ex. `Program Files`) · **macOS** (l'`.app` pot estar
+**en quarantena**).
+→ `app/config.py` tria `DADES_DIR` amb una **prova d'escriptura real** (carpeta del
+projecte → `$XDG_STATE_HOME`/`~/.local/state` → temp del sistema); d'allà en surten
+`LOG_PATH`, `OPCIONS_PATH` i `TEMP_DIR` (`AUTO_CHORDS_TEMP` mana sobre el temporal).
 
 ## 11. Paritat d'edició i tracte visual (acords ↔ estructura ↔ BPM/compàs)
 
@@ -92,9 +103,8 @@ iguals davant l'edició i la visualització. Tota operació d'un tipus ho ha de
 ser per als altres, i pel **mateix camí d'usuari**.
 
 - **Joc d'operacions comú**: afegir · eliminar · partir (pel cursor · **per la
-  meitat**) · moure ·
-  redimensionar · desfer/refer. Reanomenar i duplicar/fusionar són comuns a
-  **acords i estructura**; als **trams de BPM/compàs** el contingut és
+  meitat**) · moure · redimensionar · desfer/refer. Reanomenar i duplicar/fusionar
+  són comuns a **acords i estructura**; als **trams de BPM/compàs** el contingut és
   numèric (BPM + compàs) i s'edita amb el mateix diàleg per a tots ells, i
   «afegir» i «partir» hi són el **mateix gest** (obrir un **tall** nou:
   `tempo_map.afegeix_tall`), mentre que «eliminar» **fusióna els veïns**.
@@ -108,19 +118,30 @@ ser per als altres, i pel **mateix camí d'usuari**.
   tram és `Tram(ini, fi, bpm, num, den)`), el camp «Família» de l'Editor (només
   secció), l'edició **inline** i «Reanomena en bloc» (només acord/secció) i el
   **color/carri** del timeline (distinció de tipus).
+- **Diferències legítimes del carril de BPM/compàs** (NO són manca de paritat):
+  la seva **alçada** és **mitja** (`timeline_base.LANE_TEMPO_H`) i el contingut
+  s'edita **només amb diàleg emergent** (`DialegTramTempo`), mentre que
+  acords/seccions tenen la **franja EDITORA integrada**, l'edició **inline** al
+  timeline i el «Reanomena en bloc».
 - **Semàntica de les operacions**: *partir* un acord = dos trossos amb el
   mateix nom (el de la part nova és editable, per defecte heretat);
   *fusionar* acords = en queda l'harmonia de l'esquerre. Mateix patró que
   l'estructura. *Partir* un tram de BPM/compàs = dos trams amb el mateix
   BPM i compàs (el de la dreta és editable).
-- **Paritat a l'exportació**: el paquet exportat tracta els **tres** tipus igual,
-  cadascun amb la seva **carpeta pròpia**: acords (`acords.csv` + `wavs_acords/`) ·
-  estructura (`estructura_ABC.csv` + `wavs_estructura/`) · **mapa de tempo/compàs**
-  (els seus CSV, en carpeta pròpia). ⏳ **Pendent d'implementació** (2026-10-18):
-  avui el mapa de tempo/compàs encara **no** surt al paquet exportat.
 
 → Validació: `app/visor.py` + `app/pipeline.py` (joc d'operacions simètric) ·
-test `tests/test_regla11_paritat.py` — **✅ FET** (verd; en fila amb les regles 1–10).
+test `tests/test_regla11_paritat.py` — **✅ FET** per a l'edició, el tracte visual i
+la selecció (verd; en fila amb les regles 1–10). La **paritat d'exportació** és la
+**regla 12**.
+
+## 12. Paritat a l'exportació (paquet complet)
+El paquet exportat tracta els **tres** tipus igual, cadascun amb la seva **carpeta
+pròpia**: acords (`acords.csv` + `wavs_acords/`) · estructura
+(`estructura_ABC.csv` + `wavs_estructura/`) · **mapa de tempo/compàs** (els seus
+CSV, en carpeta pròpia).
+⏳ **Pendent d'implementació** (2026-10-18): `pipeline.exporta_total()` exporta
+acords i estructura, però encara **no** el mapa de tempo/compàs. La implementació
+es farà a part (agent a càrrec).
 
 ---
 
@@ -152,6 +173,7 @@ Aquests dos casos reals són el motiu del §«S'ha de complir SEMPRE» de dalt:
 ---
 
 > 📌 **En afegir una regla nova**: numera-la aquí, afegeix-ne la validació al
-> codi i un test que la comprovi. **Les 11 regles ja tenen el seu test**:
+> codi i un test que la comprovi. **Les regles 1–11 ja tenen el seu test**:
 > `tests/test_regles_or.py` (1, 3, 5, 6, 7, 8 i 10) · `test_seccions_contigues` (2)
 > · `test_cobertura_viu` (4) · `test_requirements` (9) · `test_regla11_paritat` (11).
+> La **12** (paritat d'exportació) encara **no té test**: ⏳ pendent d'implementació.

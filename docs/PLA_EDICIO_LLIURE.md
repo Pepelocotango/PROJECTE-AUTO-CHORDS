@@ -32,7 +32,7 @@
 | **Moure un clip** (arrossegar) | La marca es mou → l'anterior s'estira i el propi final canvia | **Retallar i enganxar**: l'origen queda `N` i el clip va al destí **sobreescrivint** |
 | **Redimensionar** (vores) | Mou la vora = mou la marca veïna | La vora és **lliure**: el clip es fa més llarg/curt i el que queda al costat és `N` |
 | **Duplicar** (`Ctrl+D`) | El duplicat va «a mig camí del següent» (sobreescriu el següent clip) | **Igual que enganxar**: el duplicat va després del clip i **sobreescriu** el tram que ocupa |
-| **Duplicar arrossegant** (`Ctrl+Shift`) | L'original es queda i la còpia va al destí (pendent: fantasma + semàntica) | **Igual que enganxar** (sobreescriu el destí) |
+| **Duplicar arrossegant** (`Ctrl+Shift`) | L'original es queda i la còpia va al destí (la semàntica ja és la d'enganxar; el **fantasma** del gest és *opcional*, vegeu §95) | **Igual que enganxar** (sobreescriu el destí) |
 | **Enganxar** (`Ctrl+V`) | ✅ Ja sobreescriu el tram | Igual (és el model de referència) |
 | **Afegir un acord** | Parteix el clip existent al punt | Igual (partir és correcte: el nou clip ocupa fins al següent) |
 | **Partir / fusionar** | Mantenen la cobertura | Igual |

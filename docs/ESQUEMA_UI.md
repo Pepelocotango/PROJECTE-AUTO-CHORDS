@@ -115,15 +115,16 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
   queda a lloc). És l'**única** drecera de duplicar: `Alt`+arrossegar **no** s'hi
   fa servir perquè a Linux el gestor de finestres se l'emporta per moure la
   finestra (MATE: `<Alt>`; GNOME: `<Super>`) i `Ctrl+Shift` és lliure als 3
-  sistemes. *Pendent: el mateix gest per a les seccions (avui arrossegar una
-  secció la mou).*
+  sistemes. El **mateix gest val per a les seccions** (l'original es queda i
+  la còpia va al destí).
 - **Arrossegar el COS d'un clip = moure el BLOC** (`PLA_EDICIO_LLIURE` §6.3): el
   clip (o el bloc **contigu** seleccionat) es mou **preservant la seva durada** i,
   al **destí**, el que queda **a sota** es **talla** (se'n conserva el tros de
   fora) o **s'elimina** (si no en queda cap tros) — «**mana l'últim editat**».
   L'**origen** el tanca el veí: **endavant**, l'anterior s'estira fins a l'inici
   nou; **endarrere**, el posterior fins al final nou. El gest **ja no va limitat**
-  pels veïns. *(Pendent: les VORES del clip lliures amb `N` al costat.)*
+  pels veïns. Les **VORES del clip són LLIURES** (§6.6): si l'encaixament deixa
+  un forat, el tanca el clip veí i, sense veí, hi apareix `N`/`-`.
 - La caixa d'informació (**`_info_panells`** → `_dreceres()`) llista **totes**
   les combinacions de tecles i de ratolí (també les del diàleg *Ajuda ▸
   Dreceres de teclat*: una sola font).

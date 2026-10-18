@@ -102,10 +102,13 @@ pactl unload-module $MOD
 Verificat així: volum/mute **sense cap event stop/play**; STOP únic al final
 (6,10 s per una wav de 6,00 s, cursor a 6,00 s → cua sencera).
 
-## 6. Pendent
+## 6. Idees (no són pendents)
 
-- Valorar `pw-play` (PipeWire natiu) com a alternativa a `paplay` a Linux.
-- **ASIO** a Windows com a possible opció avançada per a interfícies «pro».
+Cap pendent obert: el motor d'àudio funciona als 3 sistemes amb els host API
+del referents. Queden com a **idees opcionals**, sense res trencat al darrere:
+
+- `pw-play` (PipeWire natiu) com a alternativa a `paplay` a Linux.
+- **ASIO** a Windows com a opció avançada per a interfícies «pro».
 
 > ✅ **FET (2026-10-13, `aac8b26`)**: l'**avís és VISIBLE** (no només al log) quan
 > el motor d'àudio mor per error — un sol cop per reproducció (`_avis_audio_fet`).
