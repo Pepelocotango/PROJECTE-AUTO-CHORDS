@@ -7,6 +7,12 @@
 
 ## Com s'audita (mètode)
 
+**Prova de mutació** (per comprovar que els tests d'una regla *tenen dents*):
+es trenca la validació **a posta** i es comprova que el test peta; després es
+restaura (`git checkout --`). Si el test NO peta, el test no val — i això és
+un test feble que s'ha de reescriure. Resultats de la Ronda 12: 5/5 mutacions
+detectades.
+
 Per a **cada regla** es comproven tres coses, en aquest ordre:
 
 1. **La validació existeix i és completa** — la que la regla cita al peu
@@ -39,6 +45,22 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
 
 ## Trobades i fixes (el més nou a dalt)
+
+### 2026-10-18 · Ronda 12 — prova de MUTACIÓ: els tests de regla tenen dents
+
+Trencades a posta 5 validacions i comprovat que els tests corresponents peten
+(i després restaurades amb `git checkout --`):
+
+| Mutació | Regla | Test que va peta |
+|---|---|---|
+| Tret el clamp de temps negatius del mapa | 8 | `test_tempo_map` + `test_regles_or` ✅ |
+| Tret el clamp de l'acord amb inici negatiu | 8 | `test_regles_or` ✅ |
+| Desactivat l'arreglament d'encaixaments de seccions | 2 | `test_seccions_contigues` ✅ |
+| Desactivada la capçalera «N» dels acords | 4 | `test_pipeline_export` ✅ |
+| Treta la normalització del mapa a `_refresca_tempo_map` | 1/2/4 | `test_regles_or` ✅ |
+
+Cap test feble trobat en aquests camins. La prova de mutació queda com a mètode
+del registre (damunt) per a les properes rondes.
 
 ### 2026-10-18 · Ronda 10 — R11 camí a camí: operacions MIxtes de les 3 famílies
 
