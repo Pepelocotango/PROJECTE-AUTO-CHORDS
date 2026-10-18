@@ -35,10 +35,23 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 8 | Temps vàlids | `visor._valida_canvis_*` **+** les xarxes de seguretat (`normalitza_cobertura`, `normalitza_trams`) | `test_regles_or.TestRegla8TempsValids` | ✅ auditat (Ronda 1: 2 forats arreglats) |
 | 9 | Portabilitat i maquinari (3 SO, sense AVX) | CI (`eines/verifica_minos_macos.py`) · build genèric (`-msse -msse2`, sense AVX) · `tests/test_requirements.py` (pins) · **NOU `GuardAvxTests`** (flags dels scripts de build) | `test_requirements` | ✅ auditat (Ronda 8: + guard d'AVX als scripts) |
 | 10 | Estat en directori escriptible | `app/config.py` (prova d'escriptura real) | `test_regles_or.TestRegla10EstatEscriptible` | ✅ auditat |
-| 11 | Paritat d'edició i tracte visual | el joc simètric a `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` · pont MCP (`app/mcp_bridge.py`) | `test_regla11_paritat` · `test_mcp_paritat` | 🟡 auditada; **falta** acabar el repàs camí a camí (clipboard/undo) |
+| 11 | Paritat d'edició i tracte visual | el joc simètric a `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` · pont MCP (`app/mcp_bridge.py`) | `test_regla11_paritat` · `test_mcp_paritat` · `test_eina_marc` | ✅ auditada (Ronda 10: incloses les operacions MIxtes de les 3 famílies i el desfer/refer) |
 | 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
 
 ## Trobades i fixes (el més nou a dalt)
+
+### 2026-10-18 · Ronda 10 — R11 camí a camí: operacions MIxtes de les 3 famílies
+
+- **Verificat sense canvis** (i blindat amb un test nou a `test_regla11_paritat`):
+  * **Esborrar una selecció mixta** (un acord + una secció + un tram) és **una
+    sola** operació: els tres desapareixen alhora i **un sol `Ctrl+Z`** els
+    torna (i `Ctrl+Y` els torna a treure).
+  * **Copiar i enganxar una selecció mixta** (acord + tram): s'enganxen tots
+    dos de cop, amb la semàntica de cada carril (el clip substitueix el tram;
+    el mapa obre fronteres i hi canvia el BPM/compàs) i **un sol desfer** ho
+    reverteix.
+  * El **Ctrl+Shift**+arrossegar ja és coherent amb 1 clip o amb multi-selecció
+    (Ronda 6).
 
 ### 2026-10-18 · Ronda 9 — R11: l'MCP no podia editar els valors d'un tram
 

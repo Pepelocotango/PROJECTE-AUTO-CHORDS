@@ -215,6 +215,44 @@ class TestVisorParitat(_Base):
         v.undo()
         self.assertEqual(est(), [(0.0, 6.0, 120.0), (6.0, DUR, 90.0)])
 
+    def test_operacions_mixtes_les_tres_families(self):
+        """Una sola operacio sobre les TRES families alhora (R11 cami a cami).
+
+        Seleccionar un acord, una seccio i un tram i esborrar-los ha de ser UNA
+        operacio de desfer; una copia mixta tambe s'enganxa tota de cop i es
+        reverteix amb un sol Ctrl+Z (i es torna a fer amb Ctrl+Y).
+        """
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
+                              (10.0, DUR, 90.0, 3, 4)])
+
+        def estat():
+            return ([c.payload[0] for c in v.acords],
+                    [s[2] for s in v.seccions],
+                    [len(v.tempo_trams or [])])
+
+        base = estat()
+        v._elimina_seleccio([("chord", 0), ("section", 1), ("tempo", 1)])
+        self.assertEqual(estat(), (["N", "Am", "F"], ["A", "C"], [1]))
+        v.undo()
+        self.assertEqual(estat(), base)
+        v.redo()
+        self.assertEqual(estat(), (["N", "Am", "F"], ["A", "C"], [1]))
+        v.undo()
+        self.assertEqual(estat(), base)
+        # copia mixta (acord + tram) i enganxa: tot de cop, un sol desfer
+        tl = v.timeline
+        tl.select_multi({("chord", 0), ("tempo", 0)})
+        tl.copy_selection()
+        tl.set_position(5.0, snap=False)
+        tl.paste_at_cursor()
+        self.assertEqual([c.payload[0] for c in v.acords],
+                         ["C", "C", "Am", "F"])
+        self.assertEqual([t[2] for t in v.tempo_trams],
+                         [120.0, 120.0, 120.0, 90.0])
+        v.undo()
+        self.assertEqual(estat(), base)
+
     def test_la_seleccio_del_loop_inclou_els_trams(self):
         """El LOOP selecciona tambe els trams de BPM/compàs (es poden copiar)."""
         v = _visor()
