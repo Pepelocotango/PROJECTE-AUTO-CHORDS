@@ -371,6 +371,19 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 32 — guard: `bash -n` de tots els scripts de shell (12/12 nets)
+
+Una errada de sintaxi en un `.sh` **no peta enlloc** fins que el CI (o
+l'operador) el llança, i aleshores **cau el build sencer**. `bash -n` és una
+comprovació de mil·lisegons que estalvia una tongada de CI.
+
+- ➕ Cas nou a `tests/test_scripts_smoke.py`: `bash -n` dels **12** scripts
+  (arrel + `eines/`), amb **skip net** si no hi ha `bash` (p. ex. un runner sense
+  MSYS2).
+- Verificat: els 12 estan bé. I `notes_release.py` dona l'ús clar (codi 2).
+
+Commit `c096bac` · suite 1078 OK (1 skip).
+
 ## Ronda 31 — mòduls i eines sense test: `postproc`, `theme` i `prova_mcp_completa`
 
 Tres peces que no tenien cap prova pròpia:
