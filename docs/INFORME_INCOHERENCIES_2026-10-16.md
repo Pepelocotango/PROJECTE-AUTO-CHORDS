@@ -386,7 +386,13 @@ passar, capturar el nom del test (possible relació amb el punt 7.2).
 ### 7.4 ℹ️ `app/config.py` — directori d'estat (matís, no bug)
 
 `_dir_de_dades()` prefereix **`PROJECT_ROOT`** (la carpeta de l'app/repo) abans de
-`~/.local/state/auto-chords`. És **intencionat** (autocontenció del paquet), però els
-docs (README/PROVES/PROJECTES) diuen que l'estat va a `~/.local/state/…` — cert només
-quan la carpeta de l'app és de només lectura (p. ex. l'AppImage). No cal canviar codi;
-només, si es vol, matisar-ho en un doc.
+✅ **RESOLT (18-10-2026)** — `docs/PROJECTES.md` ja ho diu bé («al **directori
+d'estat**: la carpeta del projecte si és escrivible, si no `~/.local/state/…`»), i
+`docs/REGLES_DE_LA_APP.md` §10 descriu exactament aquesta cadena. El que diu
+`docs/PROVES_FUNCIONALS_3SO.md` es queda: parla del cas **AppImage** (muntada només
+lectura) i de la **quarantena** del `.app`, on la carpeta del paquet NO és
+escrivible i, per tant, sí que cau a `~/.local/state/…`. Cap canvi de codi.
+
+~~Original~~: `_dir_de_dades()` prefereix **`PROJECT_ROOT`** (la carpeta de l'app/repo)
+abans de `~/.local/state/auto-chords`; els docs (README/PROVES/PROJECTES) deien que
+l'estat va sempre a `~/.local/state/…`.
