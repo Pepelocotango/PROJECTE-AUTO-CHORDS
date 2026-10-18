@@ -439,6 +439,9 @@ Commit `558cf27` · suite 1093 OK (1 skip).
 > Context de la passada d'OC-13 (18-10-2026): suite **1085 OK** (1 skip) al HEAD
 > `d15e6d8`, **ordre aleatori** OK i **pyflakes** net; i una passada pròpia per
 > les **74 eines MCP**: **92 OK / 0 KO / 1 saltat** (74/74 exercitades).
+> **Actualitzat**: totes les passades d'OC-13 queden recollides a *Passades de
+> verificació* (al final del document); la seua **Passada A** confirma que este KO
+> (`ac_rename_chord`) **ja no hi és** i n'ha destapat un altre (→ cua, Ronda 40).
 
 ## Ronda 35 — zones dels clips: hit-test del gest i paritat d'affordances (#11)
 
@@ -735,6 +738,26 @@ mateix WAV (tres acords C · F · G) i s'han comparat:
 - **R1/R2/R4 al camí de càrrega** (empats d'inici, `fi < ini`, ordre barrejat,
   duplicats): ja es complien (Ronda 6).
 
+## 🧪 Passades de verificació (tests + proves MCP) — OC-13
+
+L'**evidència externa** de cada ronda: les passades independents de l'agent de
+**tests i proves MCP** (OC-13), sempre amb l'app **viva**. El recompte de tests
+és el que hi havia **en aquella data i HEAD**; als docs vius no se'n fixa cap
+(rota a cada ronda).
+
+| Passada | HEAD | Suite | pyflakes | Proves MCP |
+|---|---|---|---|---|
+| 1a · 18-10-2026 | `d15e6d8` | 1085 OK (1 skip) · ordre aleatori OK | net | `prova_mcp_completa.py`: 54 OK / **1 KO** (`ac_rename_chord`) |
+| **A** · 18-10-2026 · post-`558cf27` | `d08099b` (→ `5727eec`) | 1100 OK (1 skip) | net (app/tests/eines) | `prova_mcp_completa.py`: 54 OK / **1 KO** nou (`ac_move_section`: moviment d'identitat) · passada pròpia: **93 OK / 0 KO / 1 saltat**, **74/74 eines** exercitades |
+
+- La **1a** va destapar la troballa que és la **Ronda 36** (dues fonts: R36 i
+  `OC-13/484`).
+- A la **A** l'antic KO **ja no hi és** → arreglat a `558cf27` i **verificat**.
+- El KO nou **no és un bug de l'app**: l'eina de proves fa un **moviment
+  d'identitat** (mateixes coordenades) i l'app el refusa per la **#4**, que és el
+  comportament correcte; l'**expectativa** de l'eina queda desfasada. Decisió
+  portada a la **cua** (Ronda 40).
+
 ## Cua (properes rondes)
 
 1. **R2 a fons** — la contigüitat de les **3** famílies, incloent-hi el camí de
@@ -757,6 +780,10 @@ mateix WAV (tres acords C · F · G) i s'han comparat:
    `docs/AUTO_PROMPT_CONTINUACIO.md` — **eliminat el 18-10-2026** per decisió de
    l'operador; era l'**únic** lloc que en parlava. Si encara es reprodueix:
    test que el reproduïsca + fix.
+10. **R40 (per a OC-11)** — decidir si el **moviment d'identitat** d'una sola
+    secció (mateixes coordenades) ha de ser un **no-op permès** o **refusat** per
+    la #4; si es refusa, actualitzar `eines/prova_mcp_completa.py` (esperar
+    l'error clar, o partir la secció abans de moure-la).
 
 > 📌 **En tancar una ronda**: actualitza aquest mapa (l'✅/⏳ de cada regla) i
 > apunta-hi les trobades amb el seu fix i test.
