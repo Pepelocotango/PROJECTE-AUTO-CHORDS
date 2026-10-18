@@ -481,16 +481,23 @@ class TempoLayer(QGraphicsObject):
         return i, "cos"
 
     # -- esdeveniments --------------------------------------------------
+    @staticmethod
+    def _cursor_de_zona(z):
+        """Cursor de cada zona — **idèntic** al d'acords i estructura (#11).
+
+        ↔ a les vores (es pot arrossegar), mà **oberta** al cos (mou el punt de
+        canvi) i fletxa al buit. És una funció pura a posta: així es pot provar
+        sense haver de fabricar un event de *hover* (PyQt5 no en deixa).
+        """
+        if z in ("ini", "fi"):
+            return Qt.SizeHorCursor
+        if z == "cos":
+            return Qt.OpenHandCursor
+        return Qt.ArrowCursor
+
     def hoverMoveEvent(self, ev):
         _i, z = self._zona(ev.pos().x())
-        # MATEIXOS cursors que acords/estructura: ↔ a les vores, mà OBLERTA
-        # al cos, fletxa al buit.
-        if z in ("ini", "fi"):
-            self.setCursor(Qt.SizeHorCursor)
-        elif z == "cos":
-            self.setCursor(Qt.OpenHandCursor)
-        else:
-            self.setCursor(Qt.ArrowCursor)
+        self.setCursor(self._cursor_de_zona(z))
         super().hoverMoveEvent(ev)
 
     def mousePressEvent(self, ev):
