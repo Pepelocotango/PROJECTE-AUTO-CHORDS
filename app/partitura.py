@@ -75,18 +75,23 @@ def _base_de_sortida(sortida):
 
 
 # --- lectura de dades ------------------------------------------------------
-def parse_pos(s, bpb=4):
-    """`compàs.temps.setzena` -> posició absoluta en negres (beat)."""
+def parse_pos(s, bpb=4, bars=None):
+    """`compàs.temps.setzena` -> posició absoluta en negres (beat).
+
+    Amb `bars` (mapa compàs→negra d'inici; per a compàs variable) el
+    desplaçament ve del mapa; si no, `(b-1)*bpb` (compàs uniforme).
+    """
     b, t, sub = (int(x) for x in s.split("."))
     # 3r camp = subdivisió dins del temps (1..4, "setzena"; les dades d'Auto
     # Chords fan servir 1 = temps i 3 = "i" del temps -> +0,5 beats).
-    return (b - 1) * bpb + (t - 1) + (sub - 1) / 4.0
+    base = bars.get(b, (b - 1) * bpb) if bars else (b - 1) * bpb
+    return base + (t - 1) + (sub - 1) / 4.0
 
 
 _RE_POS = re.compile(r"^\d+\.\d+\.\d+$")
 
 
-def llegeix_locators(ruta, bpb=4):
+def llegeix_locators(ruta, bpb=4, bars=None):
     """Llegeix `acords_locators.txt` -> [(start_beat, acord, duracio_beats)]."""
     ev = []
     with open(ruta, encoding="utf-8") as f:
@@ -98,7 +103,7 @@ def llegeix_locators(ruta, bpb=4):
                 dur = float(parts[2])
             except ValueError:
                 continue
-            ev.append((parse_pos(parts[0], bpb), parts[1], dur))
+            ev.append((parse_pos(parts[0], bpb, bars), parts[1], dur))
     ev.sort(key=lambda e: e[0])
     return ev
 
@@ -221,7 +226,20 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
     """Retorna el text MusicXML (partwise) del lead sheet."""
     sec_bar = {bar: let for bar, let in seccions if let}
     fi = max([e[0] + e[2] for e in events] + [0.0])
+    compasos = None
+    if mapa is not None and not mapa.es_constant():
+        compasos = mapa.compassos_beats()
+
+    def _mesura(i):
+        """(negra_ini, negra_fi, num, den) de la mesura `i` (1-based)."""
+        if compasos and i <= len(compasos):
+            _bar, b0, num, den = compasos[i - 1]
+            return (float(b0), float(b0) + num * 4.0 / den, int(num), int(den))
+        return (float(i - 1) * bpb, float(i) * bpb, int(bpb), int(beat_type))
+
     n_bars = int(fi // bpb) + (1 if fi % bpb else 0)
+    if compasos:
+        n_bars = max(n_bars, len(compasos))
     if seccions:
         n_bars = max(n_bars, max(b for b, _ in seccions))
     n_bars = max(n_bars, 1)
@@ -248,8 +266,9 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
             n_bars = max(n_bars, max(canvis_tempo))
 
     darrera = None
+    sig_ant = None
     for i in range(1, n_bars + 1):
-        bs, be = (i - 1) * bpb, i * bpb
+        bs, be, num_m, den_m = _mesura(i)
         x.append(f'    <measure number="{i}">\n')
         # Salt de sistema: a l'inici de cada secció i, si es vol, cada N
         # compassos (per tenir línies regulars, estil lead sheet).
@@ -259,13 +278,20 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
         if i == 1:
             x.append("      <attributes><divisions>4</divisions>"
                      f"<key><fifths>{int(key_fifths)}</fifths></key>"
-                     f"<time><beats>{bpb}</beats>"
-                     f"<beat-type>{int(beat_type)}</beat-type></time>"
+                     f"<time><beats>{num_m}</beats>"
+                     f"<beat-type>{den_m}</beat-type></time>"
                      "<clef><sign>G</sign><line>2</line></clef></attributes>\n")
             x.append('      <direction placement="above"><direction-type>'
                      f"<metronome><beat-unit>quarter</beat-unit>"
                      f"<per-minute>{bpm:g}</per-minute></metronome></direction-type>"
                      f'<sound tempo="{bpm:g}"/></direction>\n')
+        elif (num_m, den_m) != sig_ant:
+            # canvi de COMPÀS (mapa variable): nova signatura
+            x.append("      <attributes><time>"
+                     f"<beats>{num_m}</beats>"
+                     f"<beat-type>{den_m}</beat-type>"
+                     "</time></attributes>\n")
+        sig_ant = (num_m, den_m)
         if i in canvis_tempo:
             tb = canvis_tempo[i]
             x.append('      <direction placement="above"><direction-type>'
@@ -461,7 +487,10 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
     bpm = float(bpm) if bpm else (g_bpm or 120.0)
     bpb = int(bpb) if bpb else (g_bpb or 4)
 
-    events = llegeix_locators(loc, bpb)
+    _bars = None
+    if mapa is not None and not mapa.es_constant():
+        _bars = {bar: b0 for (bar, b0, _n, _d) in mapa.compassos_beats()}
+    events = llegeix_locators(loc, bpb, _bars)
     if not events:
         log("partitura: acords_locators.txt buit")
         return {"error": "locators_buits"}

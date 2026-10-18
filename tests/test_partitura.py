@@ -301,6 +301,16 @@ class TestMusicXmlMapa(unittest.TestCase):
         self.assertIn('<sound tempo="60"', xml)      # canvi al compàs 3
         self.assertIn('<measure number="3">', xml)
 
+    def test_canvi_de_compas(self):
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 120.0, 3, 4)])
+        events = [(0.0, "C", 4.0), (4.0, "G", 3.0)]
+        xml = partitura.construeix_musicxml(events, [], bpb=4, bpm=120.0,
+                                            mapa=mapa)
+        self.assertIn("<beats>4</beats><beat-type>4</beat-type>", xml)
+        self.assertIn("<beats>3</beats><beat-type>4</beat-type>", xml)  # canvi
+        self.assertIn('<measure number="3">', xml)
+
     def test_constant_no_afegeix_res(self):
         from app.tempo_map import TempoMap
         const = TempoMap.constant(120, 4, 4, durada=8.0)

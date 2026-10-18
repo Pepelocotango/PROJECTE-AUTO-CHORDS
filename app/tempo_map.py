@@ -358,6 +358,19 @@ class TempoMap:
         """`[(q_ini, t_ini, num, den), …]` — inici de cada compàs del mapa."""
         return self._talls_de_compas()
 
+    def compassos_beats(self):
+        """`[(compàs, inici_en_negres, num, den), …]` — per a la notació.
+
+        El «beat» és la **negra** (la unitat del MusicXML); cada compàs fa
+        `num·4/den` negres. El compàs 1 arrenca a la negra 0.
+        """
+        talls = self._talls_de_compas()
+        if not talls:
+            return []
+        q0 = talls[0][0]
+        return [(k + 1, q - q0, num, den)
+                for k, (q, _t, num, den) in enumerate(talls)]
+
     def snap(self, t, divisio=("beat", 1.0)):
         """Encaixa `t` a la subdivisió més propera de la graella del mapa.
 
