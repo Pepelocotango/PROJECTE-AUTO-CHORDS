@@ -371,44 +371,39 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
-## Ronda 32 — `eines/prova_mcp_completa.py`: dos bugs (smoke de les eines)
+## Ronda 31 — mòduls i eines sense test: `postproc`, `theme` i `prova_mcp_completa`
 
-Smoke de les eines (el mateix patró que ja havia trobat `wav_a_wavs` i
-`explica_bpm`):
+Tres peces que no tenien cap prova pròpia:
 
-- 🐞 `prova_mcp_completa.py` connecta bé amb el pont viu (74 eines) però donava un
-  **fals KO** perquè el recompte esperat era `== 51` **hardcoded** d'una sessió
-  antiga. Ara es compara amb el que **exposa** el servidor (`_TOOLS`) — que és la
-  invariant que es vol comprovar; si no es pot importar, no s'exigeix.
-- 🐞 I **petava** amb `AttributeError: 'str' object has no attribute 'get'` quan
-  una crida tornava un **ERROR** (el resultat és un text, no un dict): ara
-  `chords()` i `seccions()` passen per `_llista()` i tornen buit en eixe cas.
-  Verificat en viu: `tools/list` (74 eines = servidor) OK.
-- **`DialegTrobaReemplaca`** afegit al test dels diàlegs (camps i `strip`):
-  `app/dialegs.py` queda amb **tots** els diàlegs coberts.
+- 🐞 **`eines/prova_mcp_completa.py`** (smoke de les eines, el mateix patró que ja
+  havia trobat `wav_a_wavs` i `explica_bpm`): connecta bé amb el pont viu (74
+  eines) però donava un **fals KO** perquè el recompte esperat era `== 51`
+  **hardcoded** d'una sessió antiga → ara es compara amb el que **exposa** el
+  servidor (`_TOOLS`), que és la invariant que es vol comprovar (si no es pot
+  importar, no s'exigeix). I **petava** amb `AttributeError: 'str' object has no
+  attribute 'get'` quan una crida tornava un **ERROR** (el resultat és un text,
+  no un dict) → ara `chords()` i `seccions()` passen per `_llista()` i tornen
+  buit. Verificat en viu: `tools/list` (74 eines = servidor) OK.
+- ➕ **NOU `tests/test_postproc.py`** (8 proves): fixa el **contracte** del
+  post-processat de l'anàlisi crua — buit, un de sol, duplicats al mateix
+  instant, `durada_min` que no pot traure un acord sol, BPM 0 a `snap_acords`, i
+  el negatiu que va a 0. Documenta (i blinda) que l'**ordre** i els **temps
+  vàlids** NO són responsabilitat d'ací, sinó de
+  `pipeline.normalitza_cobertura()` al límit del model (#1/#4/#8): que l'entrada
+  rara passe intacta és **deliberat**, no un forat.
+- ➕ **NOU `tests/test_theme.py`** (4 proves): tots els colors del tema són
+  `#rrggbb` de 6 dígits, les paletes (`SECTION_FILLS`…) no tenen colors repetits
+  i els carrils es distingixen entre si (#11). Un color mal escrit no peta
+  enlloc (es pinta mal i punt); aquest guard ho atura.
 
-Commit `583379a` · suite 1065 OK (1 skip).
+Commits `583379a` i `1ed76ba` · suite 1077 OK (1 skip).
 
-## Ronda 31 — dialegs (II): contracte de persistència i presets del mode fàcil
+## Ronda 30 — `app/dialegs.py`: cobertura completa + 2 bugs reals
 
-Completa la cobertura de `app/dialegs.py` (616 línies que no en tenien cap):
-
-- **`DialegOpcions`**: el **round-trip dels defectes** — posar-los als controls i
-  tornar-los a llegir amb `opcions()` ha de donar **exactament** el mateix, clau a
-  clau i tipus a tipus. És el contracte que evita que un canvi de widget trenque
-  l'anàlisi **en silenci**. També: `_restaura()` torna als defectes i la pestanya
-  inicial triada.
-- **`DialegModeFacil`**: cada preset d'estil fixa el seu ritme harmònic i el seu
-  mòdul (es proven **tots** els presets de `graella.PRESETS`), i una tria manual
-  posterior **mana** sobre el preset.
-
-Commit `8f1afda` · suite 1063 OK (1 skip).
-
-## Ronda 30 — `app/dialegs.py` (616 línies) no tenia CAP test: 2 bugs reals
-
-Els diàlegs sempre es **bypassaven** (patch de `QMessageBox`/`QInputDialog` o
-cridant la lògica del visor). El primer test que els exercita de debò ha destapat
-**dos bugs de veritat**, tots dos al diàleg «Mapa de tempo i compàs…»:
+Fins ara els diàlegs **no tenien cap test**: la resta de la suite sempre els
+bypassava (patch de `QMessageBox`/`QInputDialog` o cridant la lògica del visor).
+El primer test que els exercita de debò ha destapat **dos bugs de veritat**, tots
+dos al diàleg «Mapa de tempo i compàs…»:
 
 1. 🐞 **`_sync()` petava**: cridava `self.taula.item(...)` amb el número de
    **columna com a string** (`_t("0","0")`, `_t("1","120")`, `_t("2","4/4")`) →
@@ -425,7 +420,20 @@ cridant la lògica del visor). El primer test que els exercita de debò ha desta
 (compàs «num/den» i «num», invàlids, mai zero, el BPM del camp) i
 `DialegTempoMapa` (compàs → segons amb el tempo del tram correcte,
 afegir/eliminar i que el mapa que entrega siga **sempre vàlid**: regles
-#1/#2/#4). Commit `d124e6f` · suite 1058 OK (1 skip).
+#1/#2/#4).
+
+La cobertura s'ha anat completant fins a deixar **tots** els diàlegs coberts:
+
+- **`DialegOpcions`**: el **round-trip dels defectes** — posar-los als controls i
+  tornar-los a llegir amb `opcions()` ha de donar **exactament** el mateix, clau a
+  clau i tipus a tipus (el contracte que evita que un canvi de widget trenque
+  l'anàlisi **en silenci**). També `_restaura()` i la pestanya inicial triada.
+- **`DialegModeFacil`**: cada preset d'estil fixa el seu ritme harmònic i el seu
+  mòdul (es proven **tots** els presets de `graella.PRESETS`); una tria manual
+  posterior **mana** sobre el preset.
+- **`DialegTrobaReemplaca`**: els camps i el `strip`.
+
+Commits `d124e6f`, `8f1afda` i `583379a` · suite 1077 OK (1 skip).
 
 ## Ronda 29 — mutació: menús i `postproc`/`vamp_params` + un test feble (mutació 22)
 
