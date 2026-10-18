@@ -213,6 +213,24 @@ deixaven passar valors impossibles:
 
 Test nou: `tests/test_regles_or.py` › `test_les_xarxes_de_seguretat_tambe_ho_arreglen`.
 
+## Ronda 14 — prova de mutació a la R11: UN TEST FEIBLE trobat i arreglat
+
+Quatre mutacions de paritat (R11), i una **no** va fer petar res:
+
+| Mutació | Detectada? |
+|---|---|
+| `parteix_per_la_meitat` només per als acords | ✅ `test_regla11_paritat` |
+| Treure una acció del menú de llista d'acords | ✅ `test_regla11_paritat` |
+| `_elimina_seleccio` ignora els trams | ✅ `test_regla11_paritat` |
+| **`_sync_selection_visual` ignora els trams** | ❌ **NO** — cap test ho mirava! |
+
+- 🐞 **Test feble arreglat**: la pista de BPM/compàs es comprovava pel **model**
+  (`selected_keys`) però no pel **ressaltat visual** de la capa
+  (`TempoLayer._sel`). Si `_sync_selection_visual` deixava d'actualitzar-la, la
+  suite quedava verda i la pista no es ressaltava a la pantalla. Ara el test
+  ho comprova (`select_clip` → `_sel` i `clear_selection` → `-1`) i la mutació
+  **sí** que hi peta.
+
 ## Ronda 13 — l'informe d'incoherències: propostes obertes, RESOLTES
 
 - L'`INFORME_INCOHERENCIES_2026-10-16.md` tenia un punt obert (7.4): deia que els

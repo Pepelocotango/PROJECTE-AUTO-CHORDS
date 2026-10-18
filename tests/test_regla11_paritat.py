@@ -184,6 +184,13 @@ class TestVisorParitat(_Base):
         tl.select_clip("chord", 0)
         tl.extend_selection("chord", 1)
         self.assertFalse([k for k in tl.selected_keys() if k[0] == "tempo"])
+        # El RESSALTAT VISUAL de la pista ha de seguir la seleccio (prova de
+        # mutacio 18-10-2026: sense aixo, trencar `_sync_selection_visual` no
+        # feia petar cap test).
+        tl.select_clip("tempo", 1)
+        self.assertEqual(tl._tempo_lane._sel, 1)
+        tl.clear_selection()
+        self.assertEqual(tl._tempo_lane._sel, -1)
 
     def test_porta_retalls_dels_trams_de_tempo(self):
         """Copiar/enganxar, duplicar i retallar trams de BPM/compàs (#11)."""
