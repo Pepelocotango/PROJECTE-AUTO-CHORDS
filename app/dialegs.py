@@ -463,7 +463,9 @@ class DialegTempoMapa(QDialog):
         avis = QLabel(
             "El tempo i el compàs poden **canviar** al llarg del tema (com un "
             "DAW). Cada fila val fins a la següent; la primera («Des de 0 s») "
-            "és el valor inicial.")
+            "és el valor inicial.\nA «Des de» pots escriure **segons** (p. ex. "
+            "`90`) o un **compàs** fent-ho començar per `c` (p. ex. `c33` o "
+            "`c33.1`).")
         avis.setWordWrap(True)
         lay.addWidget(avis)
         self.taula = QTableWidget(0, 3)
@@ -506,10 +508,16 @@ class DialegTempoMapa(QDialog):
             def _t(c, d):
                 it = self.taula.item(r, c)
                 return ((it.text().strip() if it else "") or d)
+            txt_ini = _t("0", "0").replace(",", ".").strip().lower()
             try:
-                ini = 0.0 if r == 0 else float(_t("0", "0").replace(",", "."))
                 bpm = float(_t("1", "120").replace(",", "."))
-            except ValueError:
+                if r == 0:
+                    ini = 0.0
+                elif txt_ini.startswith("c"):
+                    ini = self._temps_de_compas(txt_ini[1:])
+                else:
+                    ini = float(txt_ini)
+            except (ValueError, IndexError):
                 continue
             comp = _t("2", "4/4").replace(" ", "")
             num, den = 4, 4
@@ -524,6 +532,16 @@ class DialegTempoMapa(QDialog):
             out.append((ini, ini, bpm, num, den))
         if out:
             self._trams = out
+
+    def _temps_de_compas(self, text):
+        """`33` / `33.1` (compàs[.temps]) → segons, segons el mapa actual."""
+        from app.tempo_map import TempoMap
+        mapa = TempoMap(tempo_map.normalitza_trams(self._trams,
+                                                   self._durada))
+        parts = str(text).split(".")
+        bar = int(parts[0])
+        beat = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 1
+        return float(mapa.t_de_pos(bar, beat))
 
     def _afegeix(self):
         self._sync()
