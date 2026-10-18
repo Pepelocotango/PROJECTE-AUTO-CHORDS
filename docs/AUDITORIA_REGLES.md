@@ -376,6 +376,41 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 50 — el carril de BPM/compàs desapareixia en tornar a BPM (reportat en viu per l'operador)
+
+L'operador ho va veure **en viu**: el carril de **BPM/compàs** desapareixia (i la
+graella i el regle quedaven **constants**) en tornar a **BPM** després d'haver
+passat per **hh:mm:ss**.
+
+- 🐞 **Causa arrel**: `_canvia_tempo()` tornava a cridar
+  `timeline.set_tempo_mode()` **sense** el paràmetre `mapa=` (la crida anterior era
+  amb el **mapa de tempo variable**) → `timeline._mapa = None` →
+  `TempoLayer._visible()` **False** (i graella/regle constants). **Les dades no es
+  perdien mai**: era l'estat de la capa.
+- 🔧 `_canvia_tempo()` ara només deixa l'**offset** al dia i **delega** en
+  `_actualitza_temps()` (font única de l'estat de temps).
+- ➕ `tests/test_canvi_mode_temps.py` (**6** proves); **mutació**: amb el codi vell
+  en peten **4**.
+- ⚠️ **Per a la doc**: **DESCARTADA** la hipòtesi que fos només **renderització** —
+  repintar i fer zoom **no** el tornaven; només un camí que **refa el mapa**.
+
+Commit `906188d` · suite tota verda (1 skip) · pyflakes net · `app/main.py` + `tests/test_canvi_mode_temps.py`.
+
+## Ronda 49 — icones «no referenciades»: era un error del detector (3 de 25, fora)
+
+L'operador va preguntar pels SVGs **«no referenciats»** (Ronda 33 → cua punt 7).
+
+- 🐞 El **detector era erroni**: no acceptava **guions** als noms, i
+  `arrow-left-to-line` / `arrow-right-to-line` **sí** que s'usen (són els botons
+  **A/B del loop**).
+- ✅ Comprovat de nou: de **25 SVGs**, només **3** no s'usaven → **fora a la
+  paperera** (`circle-gauge`, `mic`, `settings`) i trets també de la llista
+  d'`eines/baixa_icones.sh`. **En queden 22.**
+- ➕ Guard a `tests/test_icones.py`: cap SVG sense referència al codi, i el
+  detector ja accepta guions.
+
+Commit `65f20cb` · suite tota verda (1 skip) · pyflakes net · `icones/` + `eines/` + `tests/`.
+
 ## Ronda 48 — la fallada esporàdica de la suite és EDICIÓ CONCURRENT (no cap bug) + mutació de les proves noves
 
 - 🔍 **La fallada esporàdica** que apareixia de tant en tant **no és cap bug del
@@ -652,6 +687,9 @@ botó queda **sense dibuix**, en silenci; només es nota mirant la finestra.
   (arrow-left-to-line, circle-gauge, fast-forward, map-pin, mic, redo-2,
   repeat-2, settings, undo-2, volume-x, zoom-in, zoom-out…); poden ser del
   **panell lateral retirat**. Ho decideix l'operador.
+  → ✅ **RESOLT a la Ronda 49**: el recompte era **erroni** (el detector no
+  acceptava **guions** als noms); només **3** no s'usaven i van fora a la
+  paperera. **En queden 22.**
 
 Commit `a42eb83` · suite 1082 OK (1 skip).
 
@@ -940,8 +978,9 @@ L'**evidència externa** de cada ronda: les passades independents de l'agent de
 6. **R11** — repàs camí a camí (GUI ↔ MCP ↔ porta-retalls ↔ undo) de les 3
    famílies.
 7. **Neteja** de codi i tests obsolets que es vagen trobant pel camí.
-   ⏳ Pendent de **decisió de l'operador**: els **13 SVGs** de `icones/` que el
-   codi no referencia (Ronda 33) — esborrar-los o són del panell lateral retirat.
+   ✅ **RESOLT** (Ronda 49): no eren **13** SVGs sinó **3** — el detector de la
+   Ronda 33 no acceptava **guions** als noms; els 3 sense ús són fora a la
+   paperera. **En queden 22.**
 8. **R12** — quan l'agent a càrrec la implemente, auditar-la ací (no tocar-la).
 9. **Per confirmar**: el **re-etiquetatge de les lletres d'estructura** (l'`E`/`F`
    que es tornaven `B` totes soles) que alertava l'antic
