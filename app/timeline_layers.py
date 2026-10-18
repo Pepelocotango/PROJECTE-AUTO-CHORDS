@@ -437,8 +437,9 @@ class TempoLayer(QGraphicsObject):
 
     # -- geometria/hit-test ---------------------------------------------
     def _visible(self):
-        return (self._actiu and self._mapa is not None
-                and not self._mapa.es_constant())
+        # Es mostra sempre que el mode siga BPM·compàs (encara que el mapa
+        # siga d'un sol tros: així s'hi pot fer botó dret per afegir canvis).
+        return self._actiu and self._mapa is not None
 
     def _idx_a(self, x):
         """Índex del bloc a la x de l'item, o -1."""
