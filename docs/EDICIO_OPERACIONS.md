@@ -53,8 +53,8 @@
 | # | Operació | GUI | MCP | Acords | Estr. | **BPM/comp.** | Estat |
 |---|---|---|---|---|---|---|---|
 | 19 | **Seleccionar un clip** | clic · `ac_select_clip` | `ac_select_clip` | ✓ | ✓ | ✓ | **FET** |
-| 20 | **Multi-selecció (toggle)** | `Ctrl`+clic | `ac_toggle_selection` | ✓ | ✓ | (✓) | **FET**: els trams de BPM/compàs hi entren pel **MCP**; el `Ctrl`+clic damunt la pista, **pendent** |
-| 21 | **Rang** | `Shift`+clic · `Ctrl`+arrossegar (marquee) | `ac_selecciona_rang` | ✓ | ✓ | — | **FET** |
+| 20 | **Multi-selecció (toggle)** | `Ctrl`+clic | `ac_toggle_selection` | ✓ | ✓ | ✓ | **FET**: també a la pista de BPM/compàs (`Ctrl`+clic) i per MCP |
+| 21 | **Rang** | `Shift`+clic · `Ctrl`+arrossegar (marquee) | `ac_selecciona_rang` | ✓ | ✓ | ✓ | **FET** (trams inclosos; la **selecció del loop** encara és només acords+estructura) |
 | 22 | **Seleccionar el del cursor** | clic + cursor | `ac_select_at_cursor` | ✓ | ✓ | — | **FET** |
 | 23 | **Seleccionar el LOOP** | doble clic a la banda | `ac_selecciona_loop` | ✓ | ✓ | — | **FET** |
 | 24 | **Buida la selecció** | `Esc` | `ac_clear_selection` | ✓ | ✓ | ✓ | **FET** |
@@ -111,14 +111,16 @@
 La pista ja és editable i comparteix amb les altres el joc bàsic: **afegir/
 partir** (obrir un *tall*), **eliminar** (amb els veïns unint-se), **moure**
 (el cos mou la frontera), **redimensionar** (les vores), **desfer/refer**,
-**selecció** (`Esc`, `ac_selection`) i **partir per la meitat** (si escau).
+**selecció** (`Esc`, `ac_selection`, `Ctrl`+clic, `Shift`+clic i **marquee**)
+i **partir per la meitat** (si escau).
 Encara **NO** hi és (files marcades amb `—` a les taules de dalt):
 
-- **Copiar/retallar/enganxar** i **duplicar** un tram (a mà no hi ha el
-  contingut al porta-retalls del timeline, que és de clips).
-- **Rang** per `Shift`+clic, **marquee** i **selecció del loop**: entren
-  acords i estructura, però no els trams (`keys_dins_rang` /
-  `keys_dins_marc` encara no els llisten).
+- **Copiar/retallar/enganxar** i **duplicar** un tram (el porta-retalls del
+  timeline encara és només de clips: no té representació per al mapa).
+- **Selecció del LOOP** (`selecciona_bloc_del_loop`): entra acords i
+  estructura, però no els trams — perquè el LOOP s'usa per copiar i el
+  porta-retalls no els sap enganxar (si s'hi afegeixen trams, després
+  «Retalla el loop» els esborraria sense poder-los tornar).
 - **Nudge** amb `←`/`→` i «moure una marca».
 - **MCP**: cap eina del mapa (només `ac_set_tempo`, que és el BPM/compàs
   **global** de la barra).
