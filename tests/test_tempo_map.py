@@ -274,5 +274,32 @@ class TestExportsMapa(unittest.TestCase):
                 pipeline.pos_compas(t, 120, 4, False, 0.0))
 
 
+class TestInferencia(unittest.TestCase):
+    """Fase 5c: `infereix_trams_beat` (mapa a partir dels temps detectats)."""
+
+    def test_tempo_constant(self):
+        from app import tempo_map as tmm
+        beats = [i * 0.5 for i in range(40)]          # 120 BPM
+        trams = tmm.infereix_trams_beat(beats, 20.0, 4, 4)
+        self.assertEqual(len(trams), 1)
+        self.assertAlmostEqual(trams[0][2], 120.0, places=1)
+
+    def test_canvi_de_tempo(self):
+        from app import tempo_map as tmm
+        a = [i * 0.5 for i in range(21)]              # 120 BPM (0..10 s)
+        b = [10.0 + i * 1.0 for i in range(1, 11)]    # 60 BPM (10..20 s)
+        trams = tmm.infereix_trams_beat(a + b, 20.0, 4, 4)
+        self.assertEqual(len(trams), 2)
+        self.assertAlmostEqual(trams[0][2], 120.0, places=1)
+        self.assertAlmostEqual(trams[1][2], 60.0, places=1)
+        self.assertLessEqual(trams[1][0], 11.0)       # la frontera ~10 s
+        self.assertGreaterEqual(trams[1][0], 8.0)
+
+    def test_poques_dades(self):
+        from app import tempo_map as tmm
+        self.assertEqual(len(tmm.infereix_trams_beat([0.0, 0.5], 10.0)), 1)
+        self.assertEqual(len(tmm.infereix_trams_beat([], 10.0)), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

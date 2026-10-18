@@ -35,6 +35,7 @@ from . import icones  # noqa: E402
 from . import panell_xifrat  # noqa: E402
 from . import plataforma  # noqa: E402
 from . import projecte  # noqa: E402
+from . import tempo_map  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
 from . import __version__  # noqa: E402  (versió mostrada al «Quant a»)
 
@@ -823,6 +824,8 @@ class Finestra(QMainWindow):
                   self._mode_facil_ui)
         self._act(m, "Mapa de tempo i compàs…", "",
                   self._tempo_mapa_ui)
+        self._act(m, "Detecta el mapa de tempo (per beats)…", "",
+                  self._detecta_tempo_mapa)
         m.addSeparator()
         m.addAction(self.amb_est)      # Inclou estructura (commutable)
         # --- Ajuda ---
@@ -1507,6 +1510,31 @@ class Finestra(QMainWindow):
         self.bpb.setText(f"{int(vr.bpb)}/{int(getattr(vr, 'beat_type', 4) or 4)}")
         self._aplica_parametres_temps()
         self.registra(f"mapa de tempo/compàs: {len(vr.tempo_trams)} tros(s)")
+
+    def _detecta_tempo_mapa(self):
+        """Inferir el mapa de tempo a partir dels temps (beats) detectats."""
+        vr = self.visor_ref
+        wav = self.wav_edit.text().strip()
+        if vr is None or not wav:
+            self.avisa_info("Auto Chords", "Obre un tema primer.")
+            return
+        try:
+            temps = pipeline.detecta_beats(wav, log=self.registra)
+        except Exception as e:  # noqa: BLE001
+            self.avisa_info("Auto Chords",
+                            f"No s'han pogut detectar els temps: {e}")
+            return
+        self.registra(f"detecta tempo: {len(temps)} temps trobats")
+        trams = tempo_map.infereix_trams_beat(
+            temps, vr._durada_wav(), int(vr.bpb),
+            int(getattr(vr, "beat_type", 4) or 4))
+        if len(trams) <= 1:
+            self.registra("detecta tempo: és constant (cap canvi)")
+            return
+        if vr.aplica_tempo_trams(trams):
+            self.bpm.setText(f"{float(vr.bpm):g}")
+            self._aplica_parametres_temps()
+            self.registra(f"mapa de tempo inferit: {len(trams)} tros(s)")
 
     def _mode_facil_ui(self):
         """Mode fàcil: preset d'estil + ritme harmònic + mòdul → regularitza."""

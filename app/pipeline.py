@@ -476,6 +476,14 @@ QM = {
 }
 
 
+def detecta_beats(wav_path, log=None):
+    """Temps dels TEMPS (beats) detectats pel qm-barbeattracker (segons).
+
+    El fa servir la inferència del mapa de tempo (fase 5c).
+    """
+    return _qm_temps(QM["beats"], wav_path, log=log)
+
+
 def _qm_temps(transform, wav_path, timeout=1800, log=None):
     """Primera columna (segons) d'un transform del qm (onsets/bars/beats).
 

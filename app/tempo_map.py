@@ -459,3 +459,45 @@ def elimina_tall(trams, idx):
     if 0 <= idx < len(trams):
         return trams[:idx] + trams[idx + 1:]
     return trams
+
+
+def infereix_trams_beat(temps, durada, num=4, den=4, tol=0.12, finestra=3):
+    """Dedueix els trossos del mapa a partir dels temps dels **temps** (beats).
+
+    Calcula els intervals entre temps, els suavitza amb una **mediana local**
+    (`finestra`) i obre un tros nou quan el període local canvia més d'un
+    `tol` relatiu. El tempo de cada tros és `60/període`. Retorna trossos
+    `(ini, fi, bpm, num, den)` contigus (via `normalitza_trams`).
+    """
+    ts = sorted(float(t) for t in (temps or ()))
+    durada = float(durada or 0.0)
+    if len(ts) < 2 * finestra + 2:
+        return [(0.0, durada, 120.0, int(num), int(den))]
+    ibis = [ts[i + 1] - ts[i] for i in range(len(ts) - 1)]
+    local = []
+    for i in range(len(ibis)):
+        a, b = max(0, i - finestra), min(len(ibis), i + finestra + 1)
+        local.append(mediana(ibis[a:b]))
+    trossos, ref, ini_i = [], local[0], 0
+    for i in range(1, len(local)):
+        if ref > 0 and abs(local[i] - ref) / ref > tol:
+            trossos.append((ini_i, i, ref))
+            ref, ini_i = local[i], i
+    trossos.append((ini_i, len(local), ref))
+    out = []
+    for a, b, peri in trossos:
+        ini = ts[a]
+        fi = ts[b + 1] if b + 1 < len(ts) else (durada or ts[-1])
+        out.append((ini, fi, (60.0 / peri) if peri > 0 else 120.0,
+                    int(num), int(den)))
+    return normalitza_trams(out, durada)
+
+
+def mediana(vals):
+    """Mediana d'una llista (stdlib `statistics`, però sense import extra)."""
+    v = sorted(vals)
+    n = len(v)
+    if n == 0:
+        return 0.0
+    m = n // 2
+    return float(v[m]) if n % 2 else (v[m - 1] + v[m]) / 2.0
