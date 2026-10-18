@@ -371,6 +371,21 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 38 — `eines/notes_release.py`: el valor de `--fitxer` es confonia amb la versió
+
+Smoke de les eines amb **entrades rares** (el patró que ja havia trobat
+`wav_a_wavs`, `explica_bpm` i `prova_mcp_completa`):
+
+- 🐞 **`notes_release.py --fitxer out.md`** feia servir **«out.md» com a versió**:
+  el filtre dels arguments només treia les **banderes** (`--x`) i no els seus
+  **VALORS**. Ara `--fitxer` es tracta com una **parella** (bandera + valor) i una
+  versió buida o absent dona l'**ús** (codi 2).
+- Verificat: `--fitxer out.md` → ús; versió buida → ús; `v0.7.0` → OK. I que no hi
+  ha **injecció de shell** amb una versió com «1.2.3;rm».
+- ➕ Ampliació del guard a `tests/test_scripts_smoke.py` (**7 proves** al fitxer).
+
+Commit `ae9def1` · suite 1099 OK (1 skip).
+
 ## Ronda 37 — guard de les tecles del timeline: `Space` i `Esc` no les mirava ningú
 
 Les dreceres del timeline es proven totes **indirectament** (el nudge pel seu
