@@ -5,8 +5,8 @@
 > WAV** llestos per arrossegar a qualsevol DAW. Tot en català ·
 > **GPL-3.0-or-later**.
 >
-> **v0.7.0** · Estat: **flux de producte estable i multi-SO** · Suite: **871
-> tests OK** (1 skip) · pyflakes net.
+> **v0.7.0** · Estat: **flux de producte estable i multi-SO** · Suite: **1093
+> tests OK** (1 skip, 18-10-2026) · pyflakes net.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
