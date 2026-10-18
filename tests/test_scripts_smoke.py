@@ -42,6 +42,18 @@ class TestScriptsArrelSmoke(unittest.TestCase):
         self.assertNotEqual(p2.returncode, 0)
         self.assertNotIn("Traceback", p2.stderr, "ha de dir l'ús, no petar")
 
+    def test_baixa_verificat_valida_abans_de_baixar(self):
+        """Ha de rebutjar el SHA mal format i l'HTTP ABANS de tocar la xarxa."""
+        p = _corre("eines/baixa_verificat.py", "https://ex.invalid/x", "zzz",
+                   "/tmp/f.bin")
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("64 car", p.stderr)
+        p2 = _corre("eines/baixa_verificat.py", "http://ex.invalid/x", "-",
+                    "/tmp/f.bin")
+        self.assertNotEqual(p2.returncode, 0)
+        self.assertIn("HTTPS", p2.stdout + p2.stderr)
+        self.assertNotIn("Traceback", p2.stderr)
+
     def test_notes_release_vol_una_versio(self):
         """`--fitxer` no ha de confondre el seu VALOR amb la versio (abans
         `notes_release.py --fitxer out.md` feia servir «out.md» com a versio)."""
