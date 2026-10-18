@@ -204,8 +204,8 @@ class TestMarcSeleccio(_Base):
         v.close()
 
 
-class TestAltArrossegaCopia(_Base):
-    """Alt+arrossegar un clip d'acord = duplicar-lo: el clip viatja i a
+class TestCtrlShiftArrossegaCopia(_Base):
+    """Ctrl+Shift+arrossegar un clip d'acord = duplicar-lo: el clip viatja i a
     l'ORIGEN hi torna una còpia amb el mateix nom (convenció dels DAWs)."""
 
     def _gest(self, v, idx, desti):
@@ -215,10 +215,10 @@ class TestAltArrossegaCopia(_Base):
         tl._on_chord_time_changed(idx, desti)     # el moviment
         return tl
 
-    def test_alt_deixa_copia_a_l_origen(self):
+    def test_ctrl_shift_deixa_copia_a_l_origen(self):
         v = _visor()
         tl = self._gest(v, 2, 6.0)                # F: 4.5 → 6.0
-        tl._alt_copia = (4.5, "F")                # com si l'Alt fos premut
+        tl._copia_ac = (4.5, "F")                # com si Ctrl+Shift fos premut
         tl._emit_edit_finished()
         times = [round(float(t), 3) for t, *_r in v.acords]
         self.assertIn(6.0, times)                 # el clip mogut
@@ -228,10 +228,10 @@ class TestAltArrossegaCopia(_Base):
         self.assertEqual(len(v.acords), 6)        # s'ha afegit una marca
         v.close()
 
-    def test_sense_alt_no_deixa_cap_copia(self):
+    def test_sense_ctrl_shift_no_deixa_cap_copia(self):
         v = _visor()
         tl = self._gest(v, 2, 6.0)
-        self.assertIsNone(tl._alt_copia)          # sense Alt no s'ha capturat
+        self.assertIsNone(tl._copia_ac)          # sense Ctrl+Shift no s'ha capturat
         tl._emit_edit_finished()
         times = [round(float(t), 3) for t, *_r in v.acords]
         self.assertIn(6.0, times)
@@ -244,7 +244,7 @@ class TestAltArrossegaCopia(_Base):
         l'arrossegament, així que un sol Ctrl+Z reverteix el gest sencer."""
         v = _visor()
         tl = self._gest(v, 2, 6.0)
-        tl._alt_copia = (4.5, "F")
+        tl._copia_ac = (4.5, "F")
         tl._emit_edit_finished()
         self.assertIn(6.0, [round(float(t), 3) for t, *_r in v.acords])
         v.undo()                                  # UN sol desfer = tot el gest
@@ -284,7 +284,7 @@ class TestCopiaAmbMultiSeleccio(_Base):
 
         def gest():
             tl._on_chord_time_changed(1, 8.0)
-            return tl._alt_copia
+            return tl._copia_ac
         self.assertIsNone(self._amb_ctrl_shift(gest),
                           "amb multi-selecció no s'ha d'armar cap còpia")
         tl._emit_edit_finished()
@@ -299,7 +299,7 @@ class TestCopiaAmbMultiSeleccio(_Base):
 
         def gest():
             tl._on_chord_time_changed(2, 8.0)
-            return tl._alt_copia
+            return tl._copia_ac
         self.assertIsNotNone(self._amb_ctrl_shift(gest),
                              "amb un sol clip, Ctrl+Shift ha d'armar la còpia")
         v.close()

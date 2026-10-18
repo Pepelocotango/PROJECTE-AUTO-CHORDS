@@ -123,7 +123,7 @@ class TimelineView(QGraphicsView):
     chordRenamed = pyqtSignal(int, str)
     chordDeleteRequested = pyqtSignal(int)
     chordDuplicateRequested = pyqtSignal(int)
-    # Alt+arrossegar un clip d'acord: el clip viatja i a l'ORIGEN en queda una
+    # Ctrl+Shift+arrossegar un clip d'acord: el clip viatja i a l'ORIGEN en queda una
     # còpia (convenció universal dels DAWs: Alt+drag = duplicar). Payload:
     # (instant ORIGINAL on s'ha de deixar la còpia, nom de l'acord).
     chordCopyRequested = pyqtSignal(float, str)
@@ -226,8 +226,8 @@ class TimelineView(QGraphicsView):
         # si és minúscul (un clic) es resol com a toggle, i en deixar anar tot
         # torna a l'eina intel·ligent.
         self._marquee_ctrl = False
-        # Alt+arrossegament en curs: (idx, t original) per deixar-hi la còpia.
-        self._alt_copia = None
+        # Ctrl+Shift+arrossegament en curs: (l'índex i el temps original) per deixar-hi la còpia.
+        self._copia_ac = None
         # El mateix per a les SECCIONS: (ini, fi, lletra, família) originals.
         self._copia_sec = None
         # Moviment d'un BLOC d'acords en curs (PLA_EDICIO_LLIURE §6.3): dict
@@ -591,7 +591,7 @@ class TimelineView(QGraphicsView):
     def _emit_edit_finished(self) -> None:
         """Fi de drag -> amaga la guia i reporta.
 
-        Si el gest era un **Alt+arrossegament** d'un acord, el clip s'ha mogut i
+        Si el gest era un **Ctrl+Shift+arrossegament** d'un acord, el clip s'ha mogut i
         ara cal deixar-ne una **còpia a l'origen** (Alt+drag = duplicar, la
         convenció dels DAWs). S'emet DESPRÉS de `editFinished` perquè el moviment
         ja estigui consolidat: així la còpia és una segona operació neta.
@@ -599,9 +599,9 @@ class TimelineView(QGraphicsView):
         self._hide_guide()
         self._tanca_bloc()          # DESTÍ del moviment del bloc (§6.3)
         self.editFinished.emit()
-        if self._alt_copia is not None:
-            t0, nom = self._alt_copia
-            self._alt_copia = None
+        if self._copia_ac is not None:
+            t0, nom = self._copia_ac
+            self._copia_ac = None
             self.chordCopyRequested.emit(float(t0), str(nom))
         if self._copia_sec is not None:
             ini, fi, ll, fam = self._copia_sec
@@ -1234,9 +1234,9 @@ class TimelineView(QGraphicsView):
         # còpia d'un de sol deixaria un tros solt a l'origen (era el
         # comportament del camí llegat, que movia el grup i hi deixava una
         # marca òrfena).
-        if (self._alt_copia is None and len(self._multi) <= 1
+        if (self._copia_ac is None and len(self._multi) <= 1
                 and (mods & Qt.ControlModifier and mods & Qt.ShiftModifier)):
-            self._alt_copia = (float(self._acords[idx][0]),
+            self._copia_ac = (float(self._acords[idx][0]),
                                str(pipeline.nom_d_acord(self._acords[idx])))
         # Arrossegar el COS = moure el BLOC (§6.3), amb Ctrl+Shift o sense: el
         # que canvia és només que el final del gest hi deixa una còpia a

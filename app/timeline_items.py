@@ -198,7 +198,7 @@ class ChordItem(QGraphicsObject):
         elif z == self.ZONE_BODY:
             self.setCursor(Qt.ClosedHandCursor)
         if z != self.ZONE_NONE:
-            # Alt+arrossegar el COS = duplicar: el clip viatja i a l'ORIGEN en
+            # Ctrl+Shift+arrossegar el COS = duplicar: el clip viatja i a l'ORIGEN en
             # queda una còpia (convenció universal dels DAWs: Alt+drag = copy).
             # Ho resol el TimelineView (que coneix el model i la marca original).
             self.dragStarted.emit()   # captura l'estat ABANS de cap canvi

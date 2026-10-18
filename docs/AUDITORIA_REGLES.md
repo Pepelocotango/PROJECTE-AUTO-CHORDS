@@ -191,6 +191,17 @@ deixaven passar valors impossibles:
 
 Test nou: `tests/test_regles_or.py` › `test_les_xarxes_de_seguretat_tambe_ho_arreglen`.
 
+## Ronda 11 — restes de funcionalitats RETIRADES
+
+- 🧹 **`_alt_copia`** era el nom del gest **`Alt`+arrossegar**, retirat el
+  16-10-2026 (a Linux el gestor de finestres se l'emporta; ara és
+  **`Ctrl+Shift`**+arrossegar). El nom havia quedat al codi i als tests, i
+  confonia. Renombrat a **`_copia_ac`** (mirall de `_copia_sec` de les
+  seccions) i actualitzats els comentaris, el nom de la classe de test
+  (`TestCtrlShiftArrossegaCopia`) i els noms dels tests. Cap canvi de
+  comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
+  no s'usa `Alt`) es manté, que és correcte.
+
 ## Verificacions sense canvi (queda constància)
 
 - **`pipeline.SONIC`** (`OLD/sonic-annotator`, «reserva llegat»): **no és codi
