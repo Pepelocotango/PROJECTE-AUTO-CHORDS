@@ -54,6 +54,13 @@ class TestScriptsArrelSmoke(unittest.TestCase):
         self.assertNotIn("Traceback", p.stderr,
                          "ha de dir què falta, no petar amb IndexError")
 
+    def test_ordre_aleatori_llista(self):
+        """L'eina d'ordre aleatori ha de poder llistar sense executar res."""
+        p = _corre("eines/ordre_aleatori.py", "3", "--llista", timeout=180)
+        self.assertEqual(p.returncode, 0, p.stderr[-300:])
+        self.assertIn("seed=3", p.stdout)
+        self.assertIn("tests en ordre aleatori", p.stdout)
+
     def test_dev_reload_arranca(self):
         p = _corre("dev_reload.py", "--help")
         self.assertEqual(p.returncode, 0, p.stderr[-300:])
