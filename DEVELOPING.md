@@ -74,8 +74,22 @@ python3 acords_a_live.py acords.csv 138 4 [offset_segons]
 ## Verificar canvis
 
 ```bash
+# compilació ràpida (no arrenca l'app)
 .venv/bin/python -m py_compile acords_a_live.py wav_a_wavs.py app/main.py app/pipeline.py app/visor.py
+
+# la suite sencera (ha d'estar sempre verda; offscreen = cap diàleg)
+QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests
+
+# estil
+.venv/bin/python -m pyflakes app/*.py tests/*.py
 ```
+
+**Higiene dels temporals**: la suite **no ha de deixar res** al disc. Tots els
+fitxers de test importen **`tests/_temporals.py`**, que intercepta
+`tempfile.mkdtemp` / `mkstemp` / `NamedTemporaryFile`, anota el que es crea i ho
+esborra en plegar el procés (`atexit`). Abans una tongada deixava ~1.000 carpetes
+i ~1,3 GB, i se n'hi van acumular **57 GB** (disc al 97%). **Si afegeixes un test
+nou, importa'l també** (dues línies al costat del `sys.path.insert`).
 
 ## VM Debian (fora d'abast)
 

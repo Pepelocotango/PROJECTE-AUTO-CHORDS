@@ -371,6 +371,25 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 40 — higiene dels tests: cap temporal queda pel disc (57 GB acumulats)
+
+Troballa **de l'operador** (el disc va arribar al **97%**): `unittest discover`
+crea ~1.000 carpetes i WAVs temporals **per tongada** (`mkdtemp`/`mkstemp`/
+`NamedTemporaryFile`) i **ningú** els esborrava → ~1,3 GB per passada, i amb les
+tongades d'OC-11 i OC-13 s'hi van acumular **57 GB**.
+
+- ➕ `tests/_temporals.py`: intercepta les tres funcions de `tempfile`, **anota**
+  el que es crea i ho **esborra en plegar** el procés (`atexit`). Cap canvi de
+  comportament dels tests: només recull el que ells ja no volen.
+- Importat pels **90 fitxers de test** (dues línies al costat del `sys.path.insert`).
+- ✅ **Verificat**: una tongada completa deixa **0** elements nous a `/tmp`
+  (abans ~1.000).
+- Les **42.023 carpetes + 1.787 WAVs** acumulats (57 GB) van a la **paperera**;
+  alliberar eixe espai del tot requereix **buidar-la** (acció irreversible →
+  decisió de l'operador).
+
+Commit `c5fa572` · suite tota verda (1 skip) · només `tests/`.
+
 ## Ronda 39 — guard de `eines/baixa_verificat.py`: validar ABANS de tocar la xarxa
 
 Smoke de les eines amb **entrades rares**. L'eina estava **bé** (cap bug): valida el
@@ -780,10 +799,10 @@ L'**evidència externa** de cada ronda: les passades independents de l'agent de
    `docs/AUTO_PROMPT_CONTINUACIO.md` — **eliminat el 18-10-2026** per decisió de
    l'operador; era l'**únic** lloc que en parlava. Si encara es reprodueix:
    test que el reproduïsca + fix.
-10. **R40 (per a OC-11)** — decidir si el **moviment d'identitat** d'una sola
-    secció (mateixes coordenades) ha de ser un **no-op permès** o **refusat** per
-    la #4; si es refusa, actualitzar `eines/prova_mcp_completa.py` (esperar
-    l'error clar, o partir la secció abans de moure-la).
+10. **Per a OC-11** — decidir si el **moviment d'identitat** d'una sola secció
+    (mateixes coordenades) ha de ser un **no-op permès** o **refusat** per la #4;
+    si es refusa, actualitzar `eines/prova_mcp_completa.py` (esperar l'error clar,
+    o partir la secció abans de moure-la).
 
 > 📌 **En tancar una ronda**: actualitza aquest mapa (l'✅/⏳ de cada regla) i
 > apunta-hi les trobades amb el seu fix i test.
