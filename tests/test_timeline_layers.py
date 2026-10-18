@@ -40,11 +40,14 @@ class TestTempoLayerZones(_Base):
     def test_vores_i_cos_de_cada_bloc(self):
         capa = self._capa()
         # tram 0 [0,5) -> x 0..300 ; tram 1 [5,10) -> 300..600 ; 2 [10,20) -> 600..1200
-        # (la frontera és COMPARTIDA: a x=301 el tram 0 respon «fi» i el tram 1
-        #  «ini»; els dos són el mateix punt de canvi i el visor els tracta igual)
+        # (a la frontera 300 és COMPARTIDA: el tram 0 respon «fi» i el tram 1
+        #  «ini»; tots dos són el mateix punt de canvi i el visor els tracta
+        #  igual. La comprovació d'«ini» es fa al tram 2, on el tram anterior no
+        #  pot respondre «fi» — si no, el test no distingiria les dues vores.)
         self.assertIn(capa._zona(301.0), [(0, "fi"), (1, "ini")])
+        self.assertEqual(capa._zona(603.0), (2, "ini"))
         self.assertEqual(capa._zona(450.0), (1, "cos"))
-        self.assertEqual(capa._zona(1000.0), (2, "cos"))
+        self.assertEqual(capa._zona(700.0), (2, "cos"))
 
     def test_els_extrems_no_tenen_vora_draggable(self):
         """El PRIMER tram no té vora esquerra i l'ÚLTIM no en té de dreta: el
