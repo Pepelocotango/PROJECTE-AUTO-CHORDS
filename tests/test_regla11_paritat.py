@@ -106,7 +106,14 @@ class TestBackendParitat(_Base):
         with self.assertRaises(ValueError):
             pipeline.parteix_acord(list(ACORDS), 0, 12.0)
         with self.assertRaises(ValueError):
-            pipeline.parteix_acord(list(ACORDS), 2, 25.0)   # últim: sense durada
+            # Sense `durada` no se sap on acaba l'últim clip (fi=0) → fora de rang.
+            pipeline.parteix_acord(list(ACORDS), 2, 25.0)
+
+    def test_parteix_acord_l_ultim_amb_durada_es_parteix(self):
+        """Paritat #11: l'últim acord es parteix igual que l'última secció."""
+        nou = pipeline.parteix_acord(list(ACORDS), 2, 25.0, durada=DUR)
+        self.assertEqual([(a[0], a[1]) for a in nou],
+                         [(0.0, "C"), (10.0, "Am"), (20.0, "F"), (25.0, "F")])
 
     def test_fusiona_acords_esquena_l_harmonia_de_l_esquerre(self):
         # Fusionar 0 amb el següent → queda el "C" (esquerre) estès.
@@ -140,6 +147,32 @@ class TestVisorParitat(_Base):
         self.assertAlmostEqual(float(v.acords[0][0]), 0.0, places=6)
         v.undo()
         self.assertEqual(len(v.acords), n0)
+
+    def test_visor_parteix_l_ultim_acord(self):
+        """L'últim acord (que acaba a la WAV) TAMBÉ es pot partir (#11)."""
+        v = _visor()
+        n0 = len(v.acords)
+        self.assertEqual(v.parteix_acord(n0 - 1, 25.0), n0)
+        self.assertEqual(len(v.acords), n0 + 1)
+        self.assertAlmostEqual(float(v.acords[-1].ini), 25.0, places=6)
+        self.assertAlmostEqual(float(v.acords[-1].fi), DUR, places=6)
+        v.undo()
+        self.assertEqual(len(v.acords), n0)
+
+    def test_ultim_acord_fi_editable_crea_clip_de_cua(self):
+        """Paritat #11: l'últim clip també s'encongeix per la vora dreta.
+
+        Abans el timeline ho bloquejava (`pass`): la fi de l'últim acord no
+        s'editava mai i no hi havia manera de deixar un tros de cua.
+        """
+        v = _visor()
+        n0 = len(v.acords)
+        v.timeline._on_chord_end_changed(n0 - 1, DUR - 2.0)
+        cl = list(v.timeline._acords)
+        self.assertEqual(len(cl), n0 + 1)
+        self.assertAlmostEqual(float(cl[-1].ini), DUR - 2.0, places=6)
+        self.assertAlmostEqual(float(cl[-1].fi), DUR, places=6)
+        self.assertEqual(cl[-1].payload[0], pipeline.SENSE_ACORD)
 
     def test_fusiona_acord(self):
         v = _visor()

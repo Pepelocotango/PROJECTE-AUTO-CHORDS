@@ -1247,8 +1247,19 @@ class TimelineView(QGraphicsView):
                 self._chord_items[idx + 1].set_time(new_t_s)
             self.chordEndMoved.emit(idx, new_t_s)
         else:
-            # no hi ha següent: el final és la durada total (no s'edita).
-            pass
+            # Últim clip: el final ÉS la WAV (regla d'or #4), però ENCONGIR-LO
+            # sí que s'edita: es crea el clip de CUA (`forat`) i l'edició queda
+            # lliure (§6.3). Paritat #11: l'estructura ja ho permetia.
+            new_t_s = max(old_t + MIN_GAP_S,
+                          min(self._durada, self._snap(new_next_t)))
+            if abs(new_t_s - float(self._durada)) < 1e-9:
+                return                    # estirar més enllà de la WAV: res a fer
+            self._show_guide_at(new_t_s)
+            self._acords = list(pipeline.redimensiona_clips(
+                self._acords, idx, "fi", new_t_s, self._durada,
+                pipeline.FORAT_ACORD))
+            QTimer.singleShot(0, self._refresca_items)
+            self.chordEndMoved.emit(idx, new_t_s)
 
     def _move_chord_group(self, idx: int, sel: list, new_t: float) -> None:
         """Mou tots els acords de `sel` amb el mateix delta que el clip `idx`.

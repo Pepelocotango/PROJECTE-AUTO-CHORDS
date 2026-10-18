@@ -2674,15 +2674,15 @@ class Visor(QMainWindow):
         Mirall de `parteix_seccio`: l'acord de l'esquerra conserva el nom i acaba
         a `t`; el clip NOU (a la dreta) comença a `t` amb el nom triat (per
         defecte, el MATEIX). Retorna l'índex del clip nou, o `False` si `t` no
-        cau a dins (o si l'índex és l'últim acord, sense durada pròpia).
+        cau a dins. L'ÚLTIM acord també es pot partir (acaba a la WAV).
         """
         if not (0 <= idx < len(self.acords)):
             return False
-        if idx + 1 >= len(self.acords):
-            return False
         t = float(t)
         t0 = float(self.acords[idx][0])
-        fi = float(self.acords[idx + 1][0])
+        # L'últim clip acaba a la WAV (regla d'or #4) i TAMBÉ es pot partir:
+        # la meitat dreta queda fins al final (paritat #11 amb estructura).
+        fi = float(self.acords[idx].fi)
         if not (t0 + self.MIN_ACORD_S <= t <= fi - self.MIN_ACORD_S):
             self.log(f"partir: {t:.2f}s no cau dins l'acord "
                      f"{nom_acord(self.acords[idx])} ({t0:.2f}s–{fi:.2f}s)")
@@ -2709,13 +2709,7 @@ class Visor(QMainWindow):
             return False
         t0 = float(self.acords[idx][0])
         nom = nom_acord(self.acords[idx])
-        if idx + 1 >= len(self.acords):
-            QMessageBox.information(
-                self, "Parteix l'acord",
-                "L'últim acord no es pot partir: la seva durada arriba al final "
-                "de la WAV.")
-            return False
-        fi = float(self.acords[idx + 1][0])
+        fi = float(self.acords[idx].fi)
         if not (t0 + self.MIN_ACORD_S <= self.pos <= fi - self.MIN_ACORD_S):
             self.log(f"partir: el cursor ({self.pos:.2f}s) no cau dins l'acord "
                      f"{nom} ({t0:.2f}s–{fi:.2f}s)")

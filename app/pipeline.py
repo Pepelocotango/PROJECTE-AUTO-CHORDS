@@ -926,15 +926,13 @@ def fusiona_clips(clips, i, amb="seguent", etiqueta="clip"):
     return list(clips[:i]) + [Clip(a.ini, b.fi, a.payload)] + list(clips[i + 2:])
 
 
-def parteix_acord(acords, i, talla, nom=None, marge=0.05):
+def parteix_acord(acords, i, talla, nom=None, marge=0.05, durada=0.0):
     """Parteix l'acord `i` (wrapper del nucli unificat `parteix_clips`; #11)."""
     if i < 0 or i >= len(acords):
         raise ValueError("índex d'acord inexistent")
-    if i + 1 >= len(acords):
-        raise ValueError("no es pot partir l'últim acord (durada fins al final)")
     nom = (saneja_nom_acord(nom) if nom else "") or acords[i][1]
     payload = (nom, f"{float(talla):.9f}")
-    cl = parteix_clips(clips_d_acords(acords, 0.0), i, talla,
+    cl = parteix_clips(clips_d_acords(acords, durada), i, talla,
                        nou_payload=payload, marge=marge, etiqueta="acord")
     return [(float(c.ini),) + tuple(c.payload) for c in cl]
 
