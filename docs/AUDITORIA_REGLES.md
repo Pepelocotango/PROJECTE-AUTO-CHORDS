@@ -371,6 +371,24 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 32 — `eines/prova_mcp_completa.py`: dos bugs (smoke de les eines)
+
+Smoke de les eines (el mateix patró que ja havia trobat `wav_a_wavs` i
+`explica_bpm`):
+
+- 🐞 `prova_mcp_completa.py` connecta bé amb el pont viu (74 eines) però donava un
+  **fals KO** perquè el recompte esperat era `== 51` **hardcoded** d'una sessió
+  antiga. Ara es compara amb el que **exposa** el servidor (`_TOOLS`) — que és la
+  invariant que es vol comprovar; si no es pot importar, no s'exigeix.
+- 🐞 I **petava** amb `AttributeError: 'str' object has no attribute 'get'` quan
+  una crida tornava un **ERROR** (el resultat és un text, no un dict): ara
+  `chords()` i `seccions()` passen per `_llista()` i tornen buit en eixe cas.
+  Verificat en viu: `tools/list` (74 eines = servidor) OK.
+- **`DialegTrobaReemplaca`** afegit al test dels diàlegs (camps i `strip`):
+  `app/dialegs.py` queda amb **tots** els diàlegs coberts.
+
+Commit `583379a` · suite 1065 OK (1 skip).
+
 ## Ronda 31 — dialegs (II): contracte de persistència i presets del mode fàcil
 
 Completa la cobertura de `app/dialegs.py` (616 línies que no en tenien cap):
