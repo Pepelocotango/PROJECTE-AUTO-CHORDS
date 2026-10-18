@@ -102,9 +102,10 @@
   un `print()` amb emojis en consola cp1252 (`UnicodeEncodeError`), resolt
   (`653ca98`). El **#14** valida tot el codi de la Fase D.2.
 
-## Pendent real
+## Pendent de validació EXTERNA (no d'agent)
 
-> 🎯 **Dos pendents** (13-10):
+> 🎯 **Dos pendents** (13-10) — cap es pot tancar des d'un agent: el primer
+> demana una execució del CI al remot i el segon, els sistemes reals.
 > 1. **Revalidar el CI**: els passos nous (smoke de l'AppImage, verificació de
 >    contingut, `concurrency`/`timeout`, builds reproducibles) i els
 >    **fixos de Windows** encara **no han corregut** en una execució verda — cal

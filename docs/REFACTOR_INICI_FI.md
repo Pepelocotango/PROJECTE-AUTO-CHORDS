@@ -160,8 +160,9 @@ pendents derivats, resolts:**
   veí (§6.3) i, sense veí, hi va el `N`/`-`.
 - ✅ **Ponts S4 de l'MCP**: fora (el visor de proves ja és de clips).
 
-Pendents **fora del refactor** (no en formen part):
-- **Cursors** per definir (`AUTO_PROMPT_CONTINUACIO`).
+Pendents **fora del refactor** (no en formen part) — cap d'agent:
+- ~~**Cursors** per definir~~ → ✅ **TANCAT** (decisió de l'operador,
+  18-10-2026: es queden com estan; `AUTO_PROMPT_CONTINUACIO` §Cursors).
 - **Bump del tag `v0.7.1`** (decisió de l'operador).
 - **Proves funcionals manuals** dels 3 SO (`PROVES_FUNCIONALS_3SO`): l'únic que el
   CI no pot verificar.

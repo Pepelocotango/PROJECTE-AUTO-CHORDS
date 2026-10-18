@@ -4,7 +4,8 @@
 > **Windows x64** de l'AUTO CHORDS, amb **tots els natius a dins** (host Vamp,
 > plugins, ffmpeg) i **sense instal·lar res** al sistema (només cal Windows
 > 10/11 x64). **Build VERD al CI** (darrer verd conegut: run #14, `08bbfc7`); després
-> hi ha hagut **fixos de Windows pendents de revalidar** (pin de `PyQt5-Qt5`) — vegeu
+> hi ha hagut **fixos de Windows pendents de revalidar** (pin de `PyQt5-Qt5`) —
+> cal una execució nova del CI al remot; **no es pot fer des dels agents** — vegeu
 > `docs/ESTAT_MULTI_SO.md` · `ROADMAP_HISTORIA.md` §9.
 
 ## 1. Què es construeix
