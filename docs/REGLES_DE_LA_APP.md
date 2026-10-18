@@ -7,7 +7,8 @@
 > de l'operador, que s'ha de documentar aquí **i** al `CHANGELOG`).
 >
 > Cada regla té la seva **validació** al codi i un **test** que la comprova
-> (les 1–12, totes amb el seu test).
+> (les 1–12, totes amb el seu test). L'**auditoria continuada** (prova de mutació,
+> regla a regla) viu a `docs/AUDITORIA_REGLES.md`.
 > Referenciades a `ROADMAP_HISTORIA.md` (§Notes d'implementació) i `DEVELOPING.md`.
 >
 > ## ‼️ S'HA DE COMPLIR **SEMPRE** — a TOTS els punts
@@ -43,6 +44,9 @@ La durada d'un clip **no s'emmagatzema**: es **deriva** (l'inici del següent, o
 la durada de la WAV per a l'últim). El model `Clip(ini, fi, payload)` **sí** que
 té un camp `fi`, però **no és la dada que mana**: sempre es torna a derivar de la
 frontera (l'`ini` del següent) — la **cadena de fronteres** és la font de veritat.
+→ És **estructural** (el model no té camp de durada); l'acotament del fi de
+l'última secció el cobreix `tests/test_pipeline_export.py`.
+test `tests/test_regles_or.py` › `TestRegla3DuradesDerivades`.
 
 ## 4. Cobertura total
 **La suma dels clips d'acords = la durada de la WAV**, **la suma dels clips
@@ -62,6 +66,8 @@ El model viu al **backend**, no a la UI. Hi ha **dos backends**: `app.pipeline`
 (`self.acords`/`self.seccions` i `self.tempo_trams`/`self.tempo_map`), però
 **aquesta còpia mai no mana** — tota mutació passa abans per les funcions de
 `pipeline`/`tempo_map`, i el visor només n'aplica el resultat.
+→ `pipeline` + `tempo_map` (backends); el visor sempre hi delega.
+test `tests/test_regles_or.py` › `TestRegla5FontDeVeritat`.
 
 ## 6. Les WAVs només via `pipeline.exporta_total()`
 L'edició **mai** toca les WAVs generades; només s'escriuen en **exportar**, des
@@ -70,11 +76,18 @@ del backend `pipeline.exporta_total(...)`. La UI hi delega via els mètodes
 → Paritat d'exportació dels **3 carrils**: vegeu la **regla 12**.
 
 ## 7. Instància única
-No poden córrer **dues instàncies** de l'app alhora (un lock a `tempfile`).
+No poden córrer **dues instàncies** de l'app alhora. El bloqueig és un lock **del
+sistema operatiu** — `fcntl.flock` (Linux/macOS) / `msvcrt.locking` (Windows) —
+**no** un fitxer de PID: si l'app peta, el nucli l'allibera **sol** (no queden
+locks ròmics). El nom del fitxer inclou l'usuari.
 → `main.py` + `plataforma.bloqueja_instancia_unica`.
 
 ## 8. Temps vàlids
-Cap temps **negatiu** ni cap durada **≤ 0**.
+Cap temps **negatiu** ni cap durada **≤ 0**. Els validadors de la UI ho rebutgen;
+les **xarxes de seguretat** (les que cobreixen el CSV editat a mà, els projectes
+vells i els clients de l'MCP) també ho arreglen.
+→ `visor._valida_canvis_*` · `pipeline.normalitza_cobertura` · `tempo_map.normalitza_trams`.
+test `tests/test_regles_or.py` › `TestRegla8TempsValids`.
 
 ## 9. Portabilitat i maquinari objectiu
 L'app ha de córrer als **3 SO** — **Linux** (AppImage x86_64, compilat a Ubuntu
@@ -84,7 +97,10 @@ binari ni dependència del paquet no pot requerir **AVX** ni superar
 **`minos 10.13`**.
 → **`minos`**: verificat al CI (`eines/verifica_minos_macos.py`, pas 6b). →
 **AVX**: garantit pel build (CPython portable **genèric**, host VAMP `-msse -msse2`,
-`numpy` **1.x**) i `tests/test_requirements.py`. Vegeu `docs/ESTAT_MULTI_SO.md`.
+`numpy` **1.x**) i `tests/test_requirements.py`, que inclou el guard **`GuardAvxTests`**
+(cap script de compilació pot introduir `-mavx*`/`-march=native`/`-mtune=native` —
+compilarien pel maquinari de qui construeix, no pel de destí — i cal que hi hagen
+`-msse2`). Vegeu `docs/ESTAT_MULTI_SO.md`.
 
 ## 10. Estat en un directori escriptible
 El **log / opcions / temp** van sempre a un directori **escriptible** — mai dins
@@ -130,10 +146,12 @@ es detallen avall). Tota operació d'un tipus ho ha de ser per als altres, i pel
   l'estructura. *Partir* un tram de BPM/compàs = dos trams amb el mateix
   BPM i compàs (el de la dreta és editable).
 
-→ Validació: `app/visor.py` + `app/pipeline.py` (joc d'operacions simètric) ·
-test `tests/test_regla11_paritat.py` — **✅ FET** per a l'edició, el tracte visual i
-la selecció (verd; en fila amb les regles 1–10). La **paritat d'exportació** és la
-**regla 12**.
+→ Validació: `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` (joc d'operacions
+simètric) · pont MCP (`app/mcp_bridge.py`).
+test `tests/test_regla11_paritat.py` + `test_mcp_paritat` — **✅ FET (18-10-2026)** per a
+l'edició, el tracte visual, la selecció i el **desfer/refer**, incloses les **operacions
+MIxtes** de les 3 famílies (esborrar o copiar/enganxar una selecció acord+secció+tram =
+una sola operació, un sol `Ctrl+Z`). La **paritat d'exportació** és la **regla 12**.
 
 ## 12. Paritat a l'exportació (paquet complet)
 El paquet exportat tracta els **tres** tipus igual, cadascun amb la seva part:
@@ -174,8 +192,10 @@ Aquests dos casos reals són el motiu del §«S'ha de complir SEMPRE» de dalt:
 ---
 
 > 📌 **En afegir una regla nova**: numera-la aquí, afegeix-ne la validació al
-> codi i un test que la comprovi. **Les regles 1–11 ja tenen el seu test**:
+> codi i un test que la comprovi. **Les regles 1–12 ja tenen el seu test**:
 > `tests/test_regles_or.py` (1, 3, 5, 6, 7, 8 i 10) · `test_seccions_contigues` (2)
 > · `test_cobertura_viu` (4) · `test_requirements` (9) · `test_regla11_paritat` (11)
 > · `test_regla12_export` (12).
 > La **12** (paritat d'exportació) té el seu test: `tests/test_regla12_export.py`.
+>
+> Seguiment i verificacions (prova de mutació, regla a regla): **`docs/AUDITORIA_REGLES.md`**.
