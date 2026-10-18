@@ -27,7 +27,7 @@
 | `NOTACIO_XIFRAT.md` | **Notació del xifrat**: la forma canònica (`Am`→`A-`) i on s'aplica. |
 | `TIPUS_XIFRAT_ACORDS.md` | **Tipus de xifrat**: variants de sintaxi, graus i `<kind>` MusicXML (MuseScore). |
 | `AUDIO.md` | **Àudio**: reproducció (play) i motors per SO (Linux/macOS/Windows). |
-| `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps (nota tècnica). |
+| `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps: **estat actual del codi** (§1) i **proposta pendent** de la capa de *ticks*/PPQ 960 (§8). |
 | `PARTITURA_EXPORT.md` | Exportació de partitura (xifrat: MusicXML/PDF/MSCZ). |
 | `MCP_AUTO_CHORDS.md` | Pont MCP perquè un agent controli l'app viva. |
 | `EDICIO_OPERACIONS.md` | **Taula única** de totes les formes d'edició: operació × **GUI** × **MCP** × paritat acords/estructura (**#11**) × estat (FET/pendent). El test `test_edicio_operacions_doc.py` la manté al dia. |
