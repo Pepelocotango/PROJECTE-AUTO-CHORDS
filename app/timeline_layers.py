@@ -476,10 +476,12 @@ class TempoLayer(QGraphicsObject):
     # -- esdeveniments --------------------------------------------------
     def hoverMoveEvent(self, ev):
         _i, z = self._zona(ev.pos().x())
+        # MATEIXOS cursors que acords/estructura: ↔ a les vores, mà OBLERTA
+        # al cos, fletxa al buit.
         if z in ("ini", "fi"):
             self.setCursor(Qt.SizeHorCursor)
         elif z == "cos":
-            self.setCursor(Qt.PointingHandCursor)
+            self.setCursor(Qt.OpenHandCursor)
         else:
             self.setCursor(Qt.ArrowCursor)
         super().hoverMoveEvent(ev)
@@ -495,6 +497,10 @@ class TempoLayer(QGraphicsObject):
         if i != self._sel:
             self._sel = i
             self.update()
+        if z in ("ini", "fi"):
+            self.setCursor(Qt.SizeHorCursor)
+        elif z == "cos":
+            self.setCursor(Qt.ClosedHandCursor)
         self._press = ((i, z), ev.pos().x())
         ev.accept()
 
@@ -505,7 +511,7 @@ class TempoLayer(QGraphicsObject):
         # Les vores (i, en un DAW, el COS del bloc = el punt de canvi) mouen
         # on comenca el tros; el primer bloc (index 0) te l'inici fix.
         if ((z in ("ini", "fi")) or (z == "cos" and i > 0)) \
-                and abs(ev.pos().x() - x0) > 3:
+                and abs(ev.pos().x() - x0) > 5:
             self._t_guia = self._view_left + ev.pos().x() / max(self._pps, 1e-9)
             self.update()
         ev.accept()
@@ -536,7 +542,9 @@ class TempoLayer(QGraphicsObject):
         p = painter
         p.setRenderHint(QPainter.Antialiasing, True)
         rect = self.boundingRect()
-        p.fillRect(rect, QColor(theme.TL_LANE_BG_B))
+        bg = QColor(theme.TL_LANE_BG_B)
+        bg.setAlphaF(0.18)                 # fons subtil, com els altres carrils
+        p.fillRect(rect, bg)
         fills = [QColor(c) for c in SECTION_FILLS]
         font = QFont("Sans Serif", 9, QFont.Bold)
         for i, s in enumerate(self._mapa.trams):
