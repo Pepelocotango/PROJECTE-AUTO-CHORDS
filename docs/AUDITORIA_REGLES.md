@@ -949,6 +949,7 @@ L'**evidència externa** de cada ronda: les passades independents de l'agent de
 |---|---|---|---|---|
 | 1a · 18-10-2026 | `d15e6d8` | 1085 OK (1 skip) · ordre aleatori OK | net | `prova_mcp_completa.py`: 54 OK / **1 KO** (`ac_rename_chord`) |
 | **A** · 18-10-2026 · post-`558cf27` | `d08099b` (→ `5727eec`) | 1100 OK (1 skip) | net (app/tests/eines) | `prova_mcp_completa.py`: 54 OK / **1 KO** nou (`ac_move_section`: moviment d'identitat) · passada pròpia: **93 OK / 0 KO / 1 saltat**, **74/74 eines** exercitades |
+| **B** · 18-10-2026 · post-`44276ce` | `6c5d9af` | 1104 OK (1 skip) | net | `prova_mcp_completa.py`: **54 OK / 1 KO** (artefacte del WAV de la prova) · fix d'identitat confirmat via el pont MCP: identitat (0,13) → **OK**; moviment real (+1 s) → **error** clar (#4) |
 
 - La **1a** va destapar la troballa que és la **Ronda 36** (dues fonts: R36 i
   `OC-13/484`).
@@ -958,11 +959,22 @@ L'**evidència externa** de cada ronda: les passades independents de l'agent de
   comportament correcte; l'**expectativa** de l'eina queda desfasada. Decisió
   portada a la **cua** (Ronda 40). → ✅ **RESOLT a la Ronda 43** (`44276ce`): la
   identitat torna a ser **no-op legítim**.
-- **Passada B** (demanada, `OC-11/492`): ha de verificar la **higiene dels
-  temporals** (`c5fa572`: 0 residus a `/tmp` per tongada, que la Passada A no va
-  poder comprovar perquè és anterior) i re-executar `prova_mcp_completa.py` amb la
-  Ronda 43 (l'hauria de tornar **54 OK / 0 KO**). ⏳ Pendent d'aterrar → s'afegirà
-  la fila.
+- **Passada B** (`OC-13/498`, demanada per `OC-11/492`): **FETA**.
+  (1) **Fix d'identitat CONFIRMAT** via el pont MCP: `ac_move_section` a les
+  mateixes coordenades → **OK** (no-op legítim), moviment **real** (+1 s) →
+  **error** clar de la **#4**. Els **2 KO** anteriors (`ac_rename_chord` A-7 i la
+  identitat) **han desaparegut**.
+  (2) El KO que queda (`ac_mark_loop_a/b` → `a=1.05` en lloc de `1.0`) **no és cap
+  bug de l'app**: és un **artefacte del WAV regenerat** de la prova — l'app fa
+  **snap** del marc de loop a la graella i el tempo detectat d'eixe WAV desplaça
+  1,0 → 1,05; amb el WAV original donava `1.0` exacte. ⚠️ El fixture
+  `/tmp/ac_prova.wav` **no el crea la prova**: si es perd, cal regenerar-lo
+  (13 s, 5 acords).
+  (3) La **higiene dels temporals** (`c5fa572`) **no era verificable net** des de la
+  B (altres agents corrien tests en paral·lel i `/tmp` estava contaminat); OC-11 ja
+  la va comprovar a la **Ronda 40** i la **Ronda 46** la va completar (2 fitxers que
+  se saltaven l'esborrat).
+  (4) Sense canvis al repo (rol de tests).
 
 ## Cua (properes rondes)
 
