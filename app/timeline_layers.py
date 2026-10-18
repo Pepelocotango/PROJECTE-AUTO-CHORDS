@@ -491,7 +491,10 @@ class TempoLayer(QGraphicsObject):
         if self._press is None:
             return
         (i, z), x0 = self._press
-        if z in ("ini", "fi") and abs(ev.pos().x() - x0) > 3:
+        # Les vores (i, en un DAW, el COS del bloc = el punt de canvi) mouen
+        # on comenca el tros; el primer bloc (index 0) te l'inici fix.
+        if ((z in ("ini", "fi")) or (z == "cos" and i > 0)) \
+                and abs(ev.pos().x() - x0) > 3:
             self._t_guia = self._view_left + ev.pos().x() / max(self._pps, 1e-9)
             self.update()
         ev.accept()
@@ -504,8 +507,9 @@ class TempoLayer(QGraphicsObject):
         if p is None:
             return
         (i, z), _x0 = p
-        if guia is not None and i >= 0 and z in ("ini", "fi"):
-            self.tramMoved.emit(i, z, float(guia))
+        if guia is not None and i >= 0 and (z in ("ini", "fi")
+                                            or (z == "cos" and i > 0)):
+            self.tramMoved.emit(i, "ini" if z == "cos" else z, float(guia))
         elif i >= 0:
             self.tramClicked.emit(i)
         ev.accept()
