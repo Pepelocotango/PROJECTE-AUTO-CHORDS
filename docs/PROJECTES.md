@@ -41,7 +41,7 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
 |---|---|---|
 | **Obre àudio…** | `Ctrl+O` | Obre un àudio (com sempre). |
 | **Obre projecte…** | `Ctrl+Shift+O` | Obre una carpeta de projecte (`.acproj`). |
-| **Obre recent…** | — | **Recents** (fins a 8) — `recents.json` a `~/.local/state/auto-chords/`. |
+| **Obre recent…** | — | **Recents** (fins a 8) — `recents.json` al **directori d'estat** (`app/config.py`: la carpeta del projecte si és escrivible, si no `~/.local/state/auto-chords/`). |
 | **Desa** | `Ctrl+S` | Desa el `.acproj` (atòmic). |
 | **Desa com…** | `Ctrl+Shift+S` | **`Projecte.duplica()`**: copia la carpeta sencera i renombra el `.acproj`. |
 | **Desa una còpia…** | — | Duplica sense canviar el projecte obert. |
@@ -60,7 +60,7 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
   exports (`wavs_*`, `partitura/`), que es **deriven** i són grossos. **No duplica**
   si el contingut no ha canviat des de l'última còpia.
 - **Rotació**: es guarden les **10** còpies més noves (`MAX_BACKUPS`).
-- **Sessió / crash**: `sessio.json` (a `~/.local/state/auto-chords/`) s'escriu amb un
+- **Sessió / crash**: `sessio.json` (al **directori d'estat**, com el log) s'escriu amb un
   projecte obert i es **neteja al tancament net**; si l'app va **caure**, a l'arrencada
   **s'ofereix** el projecte pendent (`_sessio_pendent`).
 
