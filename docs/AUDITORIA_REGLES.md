@@ -37,10 +37,10 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 4 | Cobertura total | `pipeline.normalitza_cobertura()` (acords + seccions) · `tempo_map.normalitza_trams(trams, durada)` (mapa) · **punt únic**: `visor._refresca_tempo_map` | `test_cobertura_viu` · `test_regles_or` | ✅ auditada (Ronda 3: el mapa es re-normalitza SEMPRE que es construeix) |
 | 5 | Una sola font de veritat | `pipeline` + `tempo_map` (2 backends); la còpia del visor mai no mana | `test_regles_or.TestRegla5FontDeVeritat` | ✅ auditada (Ronda 5: les 36 mutacions del visor passen pels validators/normalitzadors o preserven els invariants) |
 | 6 | WAVs només via `exporta_total()` | `pipeline.exporta_total` / `regenera_wavs_*` | `test_regles_or.TestRegla6WavsNomesViaExporta` | ✅ auditada (Ronda 3: els 6 cridadors són tots camins d'exportació; la UI delega) |
-| 7 | Instància única | `plataforma.bloqueja_instancia_unica` | `test_regles_or.TestRegla7InstanciaUnica` | ✅ auditat |
+| 7 | Instància única | `plataforma.bloqueja_instancia_unica` (flock / `msvcrt.locking`) | `test_regles_or` · `test_lock_windows` | ✅ auditat a fons (Ronda 15) |
 | 8 | Temps vàlids | `visor._valida_canvis_*` **+** les xarxes de seguretat (`normalitza_cobertura`, `normalitza_trams`) | `test_regles_or.TestRegla8TempsValids` | ✅ auditat (Ronda 1: 2 forats arreglats) |
 | 9 | Portabilitat i maquinari (3 SO, sense AVX) | CI (`eines/verifica_minos_macos.py`) · build genèric (`-msse -msse2`, sense AVX) · `tests/test_requirements.py` (pins) · **NOU `GuardAvxTests`** (flags dels scripts de build) | `test_requirements` | ✅ auditat (Ronda 8: + guard d'AVX als scripts) |
-| 10 | Estat en directori escriptible | `app/config.py` (prova d'escriptura real) | `test_regles_or.TestRegla10EstatEscriptible` | ✅ auditat |
+| 10 | Estat en directori escriptible | `app/config.py` (prova d'escriptura real: projecte → XDG → temporal) | `test_regles_or` · `test_pipeline_export` (cas no escrivible) | ✅ auditat a fons (Ronda 15) |
 | 11 | Paritat d'edició i tracte visual | el joc simètric a `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` · pont MCP (`app/mcp_bridge.py`) | `test_regla11_paritat` · `test_mcp_paritat` · `test_eina_marc` | ✅ auditada (Ronda 10: incloses les operacions MIxtes de les 3 famílies i el desfer/refer) |
 | 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
 
@@ -254,6 +254,20 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   no s'usa `Alt`) es manté, que és correcte.
 
 ## Verificacions sense canvi (queda constància)
+
+- **R7 a fons (Ronda 15)**: el bloqueig d'instància única és un **`flock`/
+  `msvcrt.locking` del sistema operatiu**, no un fitxer de PID: si l'app peta,
+  el lock l'allibera el nucli **sol** → no hi ha *locks ròmics* que impedisquen
+  tornar a obrir-la (que era el risc del mètode). El nom del fitxer inclou
+  l'usuari (no és global al sistema) i la 2a instància es rebutja de manera neta
+  (el `write` de Windows va DINS el `try`: escriure en una regió bloquejada hi
+  llança `OSError`, no torna `False`).
+- **R10 als 3 SO (Ronda 15)**: la cadena **carpeta del projecte →
+  `$XDG_STATE_HOME/auto-chords` → temporal** cobreix els tres casos que la regla
+  enumera (AppImage de només lectura · `.zip` a `Program Files` · `.app` en
+  quarantena) amb una **prova d'escriptura real**, no amb una llista de
+  plataformes. Proveït pel cas «el projecte no és escrivible» de
+  `test_pipeline_export`.
 
 - **`pipeline.SONIC`** (`OLD/sonic-annotator`, «reserva llegat»): **no és codi
   mort**. `_cmd_transform` fa servir el **host Vamp propi** si hi és
