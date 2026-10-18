@@ -99,8 +99,9 @@ projecte → `$XDG_STATE_HOME`/`~/.local/state` → temp del sistema); d'allà e
 ## 11. Paritat d'edició i tracte visual (acords ↔ estructura ↔ BPM/compàs)
 
 Els clips d'**acords**, d'**estructura** i els **trams de BPM/compàs** són
-iguals davant l'edició i la visualització. Tota operació d'un tipus ho ha de
-ser per als altres, i pel **mateix camí d'usuari**.
+iguals davant l'edició i la visualització (**amb les diferències legítimes** que
+es detallen avall). Tota operació d'un tipus ho ha de ser per als altres, i pel
+**mateix camí d'usuari**.
 
 - **Joc d'operacions comú**: afegir · eliminar · partir (pel cursor · **per la
   meitat**) · moure · redimensionar · desfer/refer. Reanomenar i duplicar/fusionar
