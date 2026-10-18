@@ -371,6 +371,21 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 24 — el NUCLI de l'app no s'executava mai als tests
+
+Buscant el patró de la Ronda 20 (components vius que els tests sempre
+**mockegen**) s'ha trobat el forat més gros de tots: **l'anàlisi real de la
+WAV**. La suite patchava `pipeline.extract_chords` / `pipeline.executa_transform`
+en 3 llocs, i els que restaven només provaven el runner amb un transform
+**inexistent** (`vamp:x`) per veure que netejava el `.ttl`. És a dir: el nucli
+de l'app (treure els acords d'una cançó) **no s'executava mai de veritat**.
+
+➕ **NOU `tests/test_analisi_real.py`** (2 proves, ~1 s): corre el **host Vamp
+de debò** sobre un WAV sintètic de tres triades i comprova que (a) el CSV ix
+amb el format esperat, els temps en ordre i **almenys un acord de veritat** (no
+tot «N»), i (b) la crida amb `params` no deixa cap directori temporal `ac_ttl_`
+orphe. Si el host/els plugins no hi són, se salta netament.
+
 ## Ronda 23 — scripts d'arrel: DOS que petaven de bon començament
 
 Smoke dels scripts d'arrel (el mateix patró que `explica_bpm`/`acords_a_live`):
