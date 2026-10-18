@@ -371,6 +371,21 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 31 — dialegs (II): contracte de persistència i presets del mode fàcil
+
+Completa la cobertura de `app/dialegs.py` (616 línies que no en tenien cap):
+
+- **`DialegOpcions`**: el **round-trip dels defectes** — posar-los als controls i
+  tornar-los a llegir amb `opcions()` ha de donar **exactament** el mateix, clau a
+  clau i tipus a tipus. És el contracte que evita que un canvi de widget trenque
+  l'anàlisi **en silenci**. També: `_restaura()` torna als defectes i la pestanya
+  inicial triada.
+- **`DialegModeFacil`**: cada preset d'estil fixa el seu ritme harmònic i el seu
+  mòdul (es proven **tots** els presets de `graella.PRESETS`), i una tria manual
+  posterior **mana** sobre el preset.
+
+Commit `8f1afda` · suite 1063 OK (1 skip).
+
 ## Ronda 30 — `app/dialegs.py` (616 línies) no tenia CAP test: 2 bugs reals
 
 Els diàlegs sempre es **bypassaven** (patch de `QMessageBox`/`QInputDialog` o
