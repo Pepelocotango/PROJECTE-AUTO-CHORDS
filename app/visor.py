@@ -581,6 +581,11 @@ class Visor(QMainWindow):
         self.acords = nova
         if hasattr(self, "llista_ac"):
             self._omple_llista_ac()
+        # ⚠️ TOTA mutació del model refresca la VISTA (regla «el visor reflectix
+        # el model»). Ho fa la pròpia primitiva perquè cap camí —present o
+        # FUTUR— no puga oblidar-se'n i deixar un clip sense pintar (bug real
+        # 19-10-2026, caçat amb el fuzzer de `test_vista_segueix_model`).
+        self._sincronitza_vista()
         return True
 
     def _on_section_copia(self, ini, fi, lletra, familia):
@@ -741,6 +746,60 @@ class Visor(QMainWindow):
         _, self.seccions = pipeline.normalitza_cobertura(
             [], self.seccions, d, log=self.log)
         return self.acords != a0 or self.seccions != s0
+
+    def _index_valid(self, kind, idx):
+        """L'índex `idx` encara existeix al carril `kind`? (per re-seleccionar)."""
+        if kind == "chord":
+            return 0 <= idx < len(self.acords)
+        if kind == "section":
+            return 0 <= idx < len(self.seccions)
+        if kind == "tempo":
+            return 0 <= idx < len(self.tempo_trams or [])
+        return False
+
+    def _sincronitza_vista(self, preserva=False, difereix=False):
+        """Punt ÚNIC de sincronització **MODEL → VISTA**.
+
+        Regla del preàmbul de les regles d'or: «el que es veu a la pantalla
+        reflecteix el model vàlid». Després de qualsevol mutació, els items del
+        timeline i les llistes han de quadrar amb `self.acords`/`self.seccions`.
+
+        Per què existeix: abans això estava repartit per desenes de camins i qui
+        s'oblidava de refrescar deixava la vista **mentint** (p. ex. un acord
+        acabat d'afegir sense pintar, o un clip arrossegat que es quedava a la
+        posició de PREVISUALITZACIÓ mentre el model n'havia adoptat una altra).
+        Bug real trobat el 19-10-2026 amb el fuzzer de `test_vista_segueix_model`.
+
+        `preserva` → re-aplica la selecció prèvia (només els índexs que encara
+        són vàlids, perquè `set_data` sempre buida la selecció).
+        `difereix` → ho programa al cicle següent de l'esdeveniment. És
+        OBLIGATORI quan s'edita des de DINS l'esdeveniment d'un item (el release
+        d'un arrossegament): esborrar i reconstruir eixe mateix item allà no és
+        segur (mateix motiu pel qual `timeline._tanca_bloc` difereix).
+        """
+        # Hi ha camins (i tests) que fan servir el Visor sense timeline.
+        if getattr(self, "timeline", None) is None:
+            return
+        seleccio = sorted(self.timeline.selected_keys()) if preserva else []
+
+        def _fer():
+            try:
+                self.timeline.set_data(self.acords, self.seccions)
+            except RuntimeError:
+                return          # l'escena ja s'ha destruït (visor tancat)
+            if seleccio:
+                viu = {(k, i) for (k, i) in seleccio if self._index_valid(k, i)}
+                if viu:
+                    self.timeline.select_multi(viu)
+            if hasattr(self, "llista_ac"):
+                self._omple_llista_ac()
+            if hasattr(self, "llista_ab"):
+                self._actualitza_llista_abc()
+
+        if difereix:
+            QTimer.singleShot(0, _fer)
+        else:
+            _fer()
 
     def _desa_i_regenera(self):
         """Desa NOMÉS els CSV (l'edició és sobre text).
@@ -1537,13 +1596,23 @@ class Visor(QMainWindow):
         self._undo_marca()
 
     def _on_edit_finished(self):
-        """Fi d'un drag/resize → tanca l'operació i desa el CSV."""
+        """Fi d'un drag/resize → tanca l'operació i desa el CSV.
+
+        ⚠️ I **re-renderitza DES DEL MODEL** (diferit, i preservant la selecció):
+        durant l'arrossegament els items es mouen només de manera
+        **previsual**, i el resultat final pot no coincidir amb eixa previsió
+        (acotament del destí, snap, normalització del veí). Sense aquest
+        re-render la vista es quedava mentint: cas verificat pel fuzzer de
+        `test_vista_segueix_model` (seed 9) — l'item 0 pintat a `(0.000, 0.000)`
+        mentre el model ja deia `(0.000, 2.000)`.
+        """
         self._sync_timeline_acords()
         self._sync_timeline_seccions()
         self._undo_commit()
         try:
             self._desa_i_regenera()
             self._regenera_abc_des_de_totes_les_seccions("edició visual")
+            self._sincronitza_vista(preserva=True, difereix=True)
         except Exception as e:  # noqa: BLE001
             self.log(f"desat ERROR: {e}")
 
@@ -1691,6 +1760,8 @@ class Visor(QMainWindow):
                 return False
             self._undo_marca()
             try:
+                # (`_afegeix_acord` ja refresca la vista: la sincronització viu
+                # a la primitiva perquè cap camí se n'oblide.)
                 self._afegeix_acord(t, nou)
                 self._desa_i_regenera()
                 self.log(f"afegit acord a {t:.2f}s: {nou}")
@@ -1810,7 +1881,7 @@ class Visor(QMainWindow):
             if hasattr(self, "llista_ab"):
                 self._actualitza_llista_abc()
         self._undo_commit()
-        self.timeline.set_data(self.acords, self.seccions)
+        self._sincronitza_vista()      # punt únic MODEL -> VISTA
         try:
             if kind == "chord":
                 self._desa_i_regenera()
@@ -2831,6 +2902,8 @@ class Visor(QMainWindow):
         self.seccions = self._normalitza_seccions(self.seccions + [item])
         if hasattr(self, "llista_ab"):
             self._actualitza_llista_abc()
+        # Paritat #11 amb `_afegeix_acord`: la primitiva també refresca la vista.
+        self._sincronitza_vista()
         return True
 
     def parteix_acord(self, idx, t, nom=None):
