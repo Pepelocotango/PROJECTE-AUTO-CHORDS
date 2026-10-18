@@ -503,6 +503,10 @@ class TempoLayer(QGraphicsObject):
     def mousePressEvent(self, ev):
         if ev.button() == Qt.RightButton:
             i, _z = self._zona(ev.pos().x())
+            # Paritat amb els clips (regla d'or #11): el botó dret SELECCIONA
+            # el tram abans d'obrir el menú (si no, Copia/Retalla no tindrien
+            # sobre què actuar). Un clic al buit (i = -1) no toca la selecció.
+            self.tramSelected.emit(i)
             self.menuRequested.emit(
                 i, self._view_left + ev.pos().x() / max(self._pps, 1e-9))
             ev.accept()

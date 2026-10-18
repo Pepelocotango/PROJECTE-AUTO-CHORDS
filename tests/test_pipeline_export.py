@@ -2939,26 +2939,38 @@ class ContextMenuTests(unittest.TestCase):
 
     def test_menu_te_les_accions(self):
         """(A2 + regla #11) El menú contextual té les accions esperades; «Parteix…»
-        és ACTIVA sobre un clip, amb el text propi del tipus (acord/secció)."""
+        és ACTIVA sobre un clip, amb el text propi del tipus (acord/secció).
+
+        Des del 19-10-2026 obre amb «Afegeix … aquí»: és el mateix joc que el
+        menú de la pista de BPM/compàs (paritat #11 estesa a les TRES pistes).
+        """
         v = self._visor()
         accions = self._captura(v, "chord", 1)
         self.assertEqual([x[0] for x in accions],
-                         ["Duplica", "Elimina", "Reanomena",
+                         ["Afegeix acord aquí",
+                          "Duplica", "Elimina", "Reanomena",
                           "Parteix l'acord…", "Partir per la meitat",
                           "Retalla", "Copia", "Enganxa"])
-        self.assertTrue(accions[3][1], "sobre un acord ha d'estar activa")
-        self.assertTrue(accions[4][1], "«Partir per la meitat» també")
+        self.assertTrue(accions[4][1], "sobre un acord ha d'estar activa")
+        self.assertTrue(accions[5][1], "«Partir per la meitat» també")
         accions_sec = self._captura(v, "section", 0)
-        self.assertEqual(accions_sec[3][0], "Parteix la secció…")
-        self.assertTrue(accions_sec[3][1], "sobre una secció ha d'estar activa")
-        self.assertEqual(accions_sec[4][0], "Partir per la meitat")
-        self.assertTrue(accions_sec[4][1], "«Partir per la meitat» també")
+        self.assertEqual(accions_sec[0][0], "Afegeix secció aquí")
+        self.assertEqual(accions_sec[4][0], "Parteix la secció…")
+        self.assertTrue(accions_sec[4][1], "sobre una secció ha d'estar activa")
+        self.assertEqual(accions_sec[5][0], "Partir per la meitat")
+        self.assertTrue(accions_sec[5][1], "«Partir per la meitat» també")
         v.close()
 
     def test_menu_desactivat_sense_seleccio(self):
         v = self._visor()
         accions = self._captura(v, "chord", -1)
-        self.assertTrue(all(not habilitat for _n, habilitat in accions))
+        # «Afegeix … aquí» és l'ÚNICA que no depèn d'un clip prèviament
+        # seleccionat: justament serveix per crear-ne un on no n'hi ha.
+        self.assertEqual(accions[0][0], "Afegeix acord aquí")
+        self.assertTrue(accions[0][1],
+                        "l'afegeix ha d'estar actiu fins i tot sense selecció")
+        self.assertTrue(all(not habilitat for _n, habilitat in accions[1:]),
+                        f"la resta ha d'estar desactivada: {accions}")
         v.close()
 
 

@@ -16,7 +16,7 @@ import _temporals  # noqa: E402
 _ = _temporals  # higiene dels tests: l'import té efecte (esborra els temporals en plegar)
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PyQt5.QtCore import Qt  # noqa: E402
+from PyQt5.QtCore import QPointF, Qt  # noqa: E402
 from PyQt5.QtWidgets import QApplication  # noqa: E402
 
 from app import tempo_map as tm  # noqa: E402
@@ -94,6 +94,54 @@ class TestTempoLayerSeleccio(_Base):
         self.assertEqual(capa._sel, 1)
         capa.deselecciona()
         self.assertEqual(capa._sel, -1)
+
+
+class _Ev:
+    """Esdeveniment de ratolí mínim per a `mousePressEvent` (sense Qt real)."""
+
+    def __init__(self, x, boto=Qt.LeftButton):
+        self._x, self._boto, self.acceptat = x, boto, False
+
+    def pos(self):
+        return QPointF(self._x, 0.0)
+
+    def button(self):
+        return self._boto
+
+    def accept(self):
+        self.acceptat = True
+
+
+class TestTempoLayerBotoDret(_Base):
+    """Paritat amb els clips (regla #11): botó dret = SELECCIONAR + menú.
+
+    Sense això, el menú de ③ obria el mateix joc d'accions que ④/⑤ però
+    Copia/Retalla no tindrien res seleccionat (report de l'operador, 19-10-2026).
+    """
+
+    def _capa(self):
+        capa = L.TempoLayer(20, 60.0, 0.0, 0.0, 20.0)
+        capa.set_mapa(tm.TempoMap(TRAMS), True)
+        return capa
+
+    def test_el_boto_dret_selecciona_el_tram(self):
+        capa = self._capa()
+        sel, menu = [], []
+        capa.tramSelected.connect(sel.append)
+        capa.menuRequested.connect(lambda i, t: menu.append((i, t)))
+        ev = _Ev(450.0, Qt.RightButton)          # cos del tram 1
+        capa.mousePressEvent(ev)
+        self.assertEqual(sel, [1], "el botó dret ha de seleccionar el tram")
+        self.assertEqual(menu[0][0], 1)
+        self.assertTrue(ev.acceptat)
+
+    def test_el_boto_dret_al_buit_emet_minus_1(self):
+        """Fora de tot tram: -1 (el timeline l'ignora i no toca la selecció)."""
+        capa = self._capa()
+        sel = []
+        capa.tramSelected.connect(sel.append)
+        capa.mousePressEvent(_Ev(-500.0, Qt.RightButton))
+        self.assertEqual(sel, [-1])
 
 
 if __name__ == "__main__":

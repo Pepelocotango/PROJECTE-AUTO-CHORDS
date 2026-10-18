@@ -141,7 +141,10 @@ class TimelineView(QGraphicsView):
     tempoEditRequested = pyqtSignal(int)
     tempoChangeMoved = pyqtSignal(int, str, float)
     tempoMenuRequested = pyqtSignal(int, float)
-    clipContextMenuRequested = pyqtSignal(str, int, QPoint)  # (kind, idx, pos)
+    # (kind, idx, pos_global, t_clic): `t_clic` és l'instant del botó dret, per
+    # poder oferir «Afegeix … aquí» a la posició on s'ha clicat (paritat amb la
+    # pista de BPM/compàs, que ja rep el temps).
+    clipContextMenuRequested = pyqtSignal(str, int, QPoint, float)
     loopContextMenuRequested = pyqtSignal(QPoint)  # botó dret dins del loop
     loopDoubleClicked = pyqtSignal()   # doble-clic dins del loop (a dalt)
     sectionEditRequested = pyqtSignal(int)
@@ -1508,7 +1511,9 @@ class TimelineView(QGraphicsView):
                 self.select_clip(kind, idx)
                 gp = event.globalPos() if hasattr(event, "globalPos") \
                     else self.mapToGlobal(event.pos())
-                self.clipContextMenuRequested.emit(kind, idx, gp)
+                sp = self.mapToScene(event.pos())
+                self.clipContextMenuRequested.emit(
+                    kind, idx, gp, self._x_to_time(sp.x()))
                 event.accept()
                 return
             # Botó dret DINS la banda del loop (i sense cap clip a sota) → menú

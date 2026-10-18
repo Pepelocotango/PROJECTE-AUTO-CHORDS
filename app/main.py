@@ -1723,13 +1723,23 @@ class Finestra(QMainWindow):
             self, "Afegeix secció", f"Lletra a {vr.pos:.2f} s", text="A")
         if not ok or not lletra.strip():
             return
+        lletra = lletra.strip()[:1].upper()
         try:
             vr._undo_marca()      # A1: l'alta des del MENÚ també és desfer/fer
-            vr._afegeix_seccio(vr.pos, vr.pos + 2.0, lletra.strip()[:1].upper())
+            # Model SATURAT (regla d'or #4): «afegir» una secció on n'hi ha una
+            # altra vol dir PARTIR-la (abans s'intentava crear un tros nou i el
+            # solapament el rebutjava sempre: el menú no funcionava mai dins la
+            # cançó — mateix bug que el menú contextual, 19-10-2026).
+            idx = vr._seccio_a_t(vr.pos)
+            if idx >= 0:
+                ok_part = vr.parteix_seccio(idx, vr.pos, lletra)
+            else:
+                ok_part = vr._afegeix_seccio(vr.pos, vr.pos + 2.0, lletra)
             vr._regenera_abc_des_de_totes_les_seccions("secció afegida")
             vr.timeline.set_data(vr.acords, vr.seccions)
             vr._undo_commit()
-            self.registra(f"afegida secció a {vr.pos:.2f}s")
+            if ok_part:
+                self.registra(f"afegida secció a {vr.pos:.2f}s")
         except Exception as e:  # noqa: BLE001
             QMessageBox.warning(self, "Auto Chords", f"No s'ha pogut afegir:\n{e}")
 

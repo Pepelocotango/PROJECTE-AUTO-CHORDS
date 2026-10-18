@@ -23,7 +23,9 @@ _ = _temporals  # higiene dels tests: l'import té efecte (esborra els temporals
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt5.QtCore import QPoint, QPointF, Qt  # noqa: E402
-from PyQt5.QtWidgets import QApplication, QListWidget, QMenu  # noqa: E402
+from PyQt5.QtWidgets import (  # noqa: E402
+    QApplication, QInputDialog, QListWidget, QMenu)
+from unittest.mock import patch  # noqa: E402
 
 from app import pipeline  # noqa: E402
 from app import timeline_items  # noqa: E402
@@ -337,6 +339,25 @@ def _captura_menu(fn, *args):
     return capt.get("accions", [])
 
 
+def _tria_menu(fn, text, *args):
+    """Crida `fn` fent veure que l'usuari tria l'acció que conté `text`."""
+    trobat = {"ok": False}
+
+    def fake(self, pos, *rest):
+        for a in self.actions():
+            if not a.isSeparator() and text.lower() in a.text().lower():
+                trobat["ok"] = True
+                return a
+        return None
+    orig = QMenu.exec_
+    QMenu.exec_ = fake
+    try:
+        fn(*args)
+    finally:
+        QMenu.exec_ = orig
+    return trobat["ok"]
+
+
 class TestMenusParitat(_Base):
     def _amb_fila(self, fn):
         orig = QListWidget.indexAt
@@ -366,6 +387,131 @@ class TestMenusParitat(_Base):
                         f"hauria d'estar actiu sobre un acord: {ac}")
         self.assertTrue(dict(se).get("Parteix la secció…"),
                         f"hauria d'estar actiu sobre una secció: {se}")
+
+    # ── ③ BPM/compàs: paritat amb ④ i ⑤ (report de l'operador, 19-10-2026) ──
+
+    def _tres_menus(self):
+        """Els tres menús contextuals amb un estat equivalent (idx 0 actiu)."""
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
+                              (10.0, DUR, 90.0, 3, 4)])
+        ac = _captura_menu(v._on_clip_context_menu, "chord", 0,
+                           QPoint(0, 0), 3.0)
+        se = _captura_menu(v._on_clip_context_menu, "section", 0,
+                           QPoint(0, 0), 3.0)
+        tp = _captura_menu(v._on_tempo_menu, 0, 3.0)
+        return v, ac, se, tp
+
+    def test_els_tres_menus_tenen_el_mateix_joc(self):
+        """La pista ③ obre EL MATEIX joc d'accions que ④ i ⑤ (regla #11)."""
+        _v, ac, se, tp = self._tres_menus()
+        self.assertEqual(len(ac), len(se))
+        self.assertEqual(len(ac), len(tp),
+                         f"③ ha de tenir el mateix nombre d'accions:\n"
+                         f"④/⑤={ac}\n③={tp}")
+        self.assertEqual([e for _t, e in ac], [e for _t, e in se])
+        self.assertEqual([e for _t, e in ac], [e for _t, e in tp],
+                         f"activació diferent:\n④/⑤={ac}\n③={tp}")
+
+    def test_l_afegeix_es_el_primer_a_les_tres(self):
+        """Cada pista té el seu «Afegeix … aquí» al capdamunt i actiu."""
+        _v, ac, se, tp = self._tres_menus()
+        self.assertEqual(ac[0][0], "Afegeix acord aquí")
+        self.assertEqual(se[0][0], "Afegeix secció aquí")
+        self.assertEqual(tp[0][0], "Afegeix un canvi aquí")
+        for joc in (ac, se, tp):
+            self.assertTrue(joc[0][1], f"l'afegeix ha d'estar actiu: {joc}")
+
+    def test_menu_tempo_afegeix_un_canvi(self):
+        v, _ac, _se, _tp = self._tres_menus()
+        self.assertTrue(
+            _tria_menu(v._on_tempo_menu, "Afegeix un canvi", 0, 7.0))
+        self.assertEqual([(round(float(t[0]), 2), round(float(t[1]), 2))
+                          for t in v.tempo_trams],
+                         [(0.0, 7.0), (7.0, 10.0), (10.0, DUR)])
+        # la frontera nova HERETA el tempo/compàs del tros on cau
+        self.assertEqual(v.tempo_trams[1][2:4], (120.0, 4))
+        v.undo()
+        self.assertEqual(len(v.tempo_trams), 2)
+
+    def test_menu_tempo_parteix_per_la_meitat(self):
+        v, _ac, _se, _tp = self._tres_menus()
+        self.assertTrue(
+            _tria_menu(v._on_tempo_menu, "Partir per la meitat", 0, 3.0))
+        self.assertEqual([(round(float(t[0]), 2), round(float(t[1]), 2), t[2])
+                          for t in v.tempo_trams],
+                         [(0.0, 5.0, 120.0), (5.0, 10.0, 120.0),
+                          (10.0, DUR, 90.0)])
+        v.undo()
+        self.assertEqual(len(v.tempo_trams), 2)
+
+    def test_menu_tempo_duplica(self):
+        v, _ac, _se, _tp = self._tres_menus()
+        self.assertTrue(_tria_menu(v._on_tempo_menu, "Duplica", 0, 3.0))
+        self.assertEqual([t[2] for t in v.tempo_trams], [120.0, 120.0, 90.0])
+        v.undo()
+        self.assertEqual(len(v.tempo_trams), 2)
+
+    def test_menu_tempo_copia_i_enganxa(self):
+        v, _ac, _se, _tp = self._tres_menus()
+        self.assertTrue(_tria_menu(v._on_tempo_menu, "Copia", 0, 3.0))
+        self.assertTrue(v.timeline.has_clipboard())
+        v.timeline.set_position(15.0, snap=False)
+        _tria_menu(v._on_tempo_menu, "Enganxa", 0, 3.0)
+        # el bloc [0,10]=120 s'ha enganxat sobre [15,25]
+        self.assertEqual([(round(float(t[0]), 2), round(float(t[1]), 2), t[2])
+                          for t in v.tempo_trams],
+                         [(0.0, 10.0, 120.0), (10.0, 15.0, 90.0),
+                          (15.0, 25.0, 120.0), (25.0, DUR, 90.0)])
+
+    def test_menu_acord_afegeix_a_la_posicio_del_clic(self):
+        """«Afegeix acord aquí» cau a l'instant del CLIC, no al cursor."""
+        v, _ac, _se, _tp = self._tres_menus()
+        n0 = len(v.acords)
+        with patch.object(QInputDialog, "getText", return_value=("G", True)):
+            self.assertTrue(
+                _tria_menu(v._on_clip_context_menu, "Afegeix acord",
+                           "chord", 0, QPoint(0, 0), 3.0))
+        self.assertEqual(len(v.acords), n0 + 1)
+        self.assertAlmostEqual(float(v.acords[1].ini), 3.0, places=6)
+        self.assertEqual(v.acords[1].payload[0], "G")
+        v.undo()
+        self.assertEqual(len(v.acords), n0)
+
+    def test_menu_seccio_afegeix_a_la_posicio_del_clic(self):
+        """AFEGIR secció = PARTIR la que conté el punt (model saturat).
+
+        La versió anterior afegia un tros de 2 s que solapava → l'add petava
+        SEMPRE (llista i timeline). Ara parteix, com diu `parteix_seccio`.
+        """
+        v, _ac, _se, _tp = self._tres_menus()
+        n0 = len(v.seccions)
+        with patch.object(QInputDialog, "getText",
+                          side_effect=[("B2", True), ("B2", True)]):
+            self.assertTrue(
+                _tria_menu(v._on_clip_context_menu, "Afegeix secció",
+                           "section", 0, QPoint(0, 0), 12.0))
+        self.assertEqual(len(v.seccions), n0 + 1)
+        self.assertEqual([round(float(s[1]), 2) for s in v.seccions][:3],
+                         [10.0, 12.0, 20.0])
+        self.assertEqual(v.seccions[2][2], "B2")
+        v.undo()
+        self.assertEqual(len(v.seccions), n0)
+
+    def test_llista_afegeix_seccio_tambe_parteix(self):
+        """El «Afegeix secció aquí» de la LLISTA tenia el mateix bug."""
+        v = _visor()
+        orig = QListWidget.indexAt
+        QListWidget.indexAt = lambda self, pos: _Fila(0)
+        try:
+            v.pos = 12.0
+            with patch.object(QInputDialog, "getText",
+                              side_effect=[("Z", True), ("Z", True)]):
+                self.assertTrue(_tria_menu(v._menu_seccio,
+                                           "Afegeix secció", QPoint(1, 1)))
+        finally:
+            QListWidget.indexAt = orig
+        self.assertIn("Z", [s[2] for s in v.seccions])
 
 
 # ── Tracte visual ────────────────────────────────────────────────────────────

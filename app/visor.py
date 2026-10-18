@@ -686,18 +686,9 @@ class Visor(QMainWindow):
         if accio is None:
             return
         if accio == afegir:
-            nou, ok = QInputDialog.getText(self, "Afegeix acord",
-                                            f"Acord a {self.pos:.2f} s", text="N")
-            if not ok:
-                return
-            try:
-                self._afegeix_acord(self.pos, nou)
-                self._desa_i_regenera()
-                self.log(f"afegit acord a {self.pos:.2f}s: {nou}")
-            except Exception as e:  # noqa: BLE001
-                self.log(f"ERROR: {e}")
-                QMessageBox.warning(self, "Visor",
-                                    f"No s'ha pogut afegir l'acord:\n{e}")
+            # Un sol camí amb el menú contextual del timeline («Afegeix acord
+            # aquí»): mateixa semàntica i mateixa marca de desfer.
+            self._afegeix_a_la_posicio("chord", self.pos)
         elif accio == partir:
             self._parteix_acord_dialog(idx)
         elif accio == meitat:
@@ -874,37 +865,80 @@ class Visor(QMainWindow):
         self.aplica_tempo_trams(nou)
 
     def _on_tempo_menu(self, idx, t):
-        """Menú contextual de la pista de BPM/compàs."""
+        """Menú contextual de la pista de BPM/compàs (③).
+
+        Regla d'or #11: **el mateix joc d'accions i el mateix ordre** que el
+        menú contextual dels clips (④ estructura i ⑤ acords). L'únic afegit
+        propi és «Afegeix un canvi aquí», que és l'«afegeix» d'aquesta pista.
+
+        El porta-retalls (Retalla/Copia/Enganxa) és el MATEIX del timeline: ja
+        suporta `kind = "tempo"` (copiar, enganxar sobreescrivint, desfer).
+        """
         from app import tempo_map as tm
-        # Mateixa estructura/redacció que el menú dels CLIPS (regla d'or #11).
         te = idx >= 0
+        trams = list(self.tempo_trams or [])
         menu = QMenu(self)
-        a_edit = menu.addAction("Reanomena (BPM/compàs)…")
+        a_add = menu.addAction("Afegeix un canvi aquí")
+        menu.addSeparator()
+        a_dup = menu.addAction("Duplica")
         a_del = menu.addAction("Elimina")
         menu.addSeparator()
-        a_part = menu.addAction("Parteix aquest tros aquí")
+        a_edit = menu.addAction("Reanomena (BPM/compàs)…")
         menu.addSeparator()
-        a_add = menu.addAction("Afegeix un canvi aquí")
+        a_part = menu.addAction("Parteix aquest tros aquí")
+        a_meitat = menu.addAction("Partir per la meitat")
+        menu.addSeparator()
+        a_ret = menu.addAction("Retalla")
+        a_cop = menu.addAction("Copia")
+        a_eng = menu.addAction("Enganxa")
+        # Duplicar necessita lloc DESPRÉS del tram (el mapa sempre acaba a la
+        # WAV): a l'últim tros no hi cap. Eliminar, amb un sol tram, no.
+        a_dup.setEnabled(te and idx + 1 < len(trams))
+        a_del.setEnabled(te and len(trams) > 1)
         a_edit.setEnabled(te)
-        a_del.setEnabled(idx >= 0 and len(self.tempo_trams or []) > 1)
         a_part.setEnabled(te)
+        a_meitat.setEnabled(te)
+        a_ret.setEnabled(te)
+        a_cop.setEnabled(te)
+        a_eng.setEnabled(self.timeline.has_clipboard())
         acc = menu.exec_(QCursor.pos())
         if acc is None:
             return
-        self._undo_marca()
-        trams = list(self.tempo_trams or [])
-        if acc == a_add or acc == a_part:
-            # «Afegeix» i «Parteix aquí» són la mateixa operació al mapa (una
-            # frontera nova al punt); «Parteix» la posa dins del tros clicat.
-            self.aplica_tempo_trams(tm.afegeix_tall(trams, float(t)))
-        elif acc == a_edit and idx >= 0:
-            self._on_tempo_edit(idx)
-        elif acc == a_del and idx >= 0 and len(trams) > 1:
-            self.aplica_tempo_trams(tm.elimina_tall(trams, idx))
-        else:
-            self._undo_pending = None      # res fet: no hi ha res a desfer
+        if acc in (a_add, a_part, a_del):
+            self._undo_marca()
+            if acc == a_del:
+                if not (te and len(trams) > 1):
+                    self._undo_pending = None
+                    return
+                self.aplica_tempo_trams(tm.elimina_tall(trams, idx))
+            else:
+                self.aplica_tempo_trams(tm.afegeix_tall(trams, float(t)))
+            self._undo_commit()
             return
-        self._undo_commit()
+        if acc == a_dup:
+            if te and idx + 1 < len(trams):
+                self.timeline.select_clip("tempo", idx)
+                self._duplica_seleccio([("tempo", idx)])
+            return
+        if acc == a_edit:
+            if te:
+                self._on_tempo_edit(idx)
+            return
+        if acc == a_meitat:
+            if te:
+                self.parteix_per_la_meitat("tempo", idx)
+            return
+        # Copia/Retalla treballen sobre la SELECCIÓ: el botó dret ja ha
+        # seleccionat el tram, però si la crida és directa ens n'assegurem.
+        if acc in (a_ret, a_cop) and te:
+            if ("tempo", idx) not in self.timeline.selected_keys():
+                self.timeline.select_clip("tempo", idx)
+        if acc == a_ret:
+            self.timeline.cut_selection()
+        elif acc == a_cop:
+            self.timeline.copy_selection()
+        elif acc == a_eng:
+            self.timeline.paste_at_cursor()
 
     def _desa_csvs_base(self):
         """Desa els CSV d'acords i d'estructura (SENSE tocar la UI).
@@ -1556,10 +1590,22 @@ class Visor(QMainWindow):
             return
         self._focus_editor("chord", idx)
 
-    def _on_clip_context_menu(self, kind, idx, pos):
-        """Menú contextual (botó dret) sobre un clip del timeline."""
+    def _on_clip_context_menu(self, kind, idx, pos, t=None):
+        """Menú contextual (botó dret) sobre un clip del timeline.
+
+        `t` = instant on s'ha clicat (per al «Afegeix … aquí»). Si no arriba
+        (crides directes), s'usa el cursor, com fan els menús de les llistes.
+        """
+        if t is None:
+            t = float(self.pos)
         te_clip = idx is not None and idx >= 0
         menu = QMenu(self)
+        # Regla d'or #11: les TRES pistes (acords, estructura i BPM/compàs)
+        # obrin el MATEIX joc d'accions, i el «Afegeix … aquí» va al capdamunt
+        # a la posició del clic — igual que el menú de la pista de tempo.
+        a_add = menu.addAction(
+            "Afegeix secció aquí" if kind == "section" else "Afegeix acord aquí")
+        menu.addSeparator()
         a_dup = menu.addAction("Duplica")
         a_del = menu.addAction("Elimina")
         menu.addSeparator()
@@ -1585,7 +1631,9 @@ class Visor(QMainWindow):
         accio = menu.exec_(pos)
         if accio is None:
             return
-        if accio == a_dup:
+        if accio == a_add:
+            self._afegeix_a_la_posicio(kind, float(t))
+        elif accio == a_dup:
             if kind == "chord":
                 self._duplica_acord_index(idx)
             else:
@@ -1618,6 +1666,68 @@ class Visor(QMainWindow):
             self.timeline.copy_selection()
         elif accio == a_eng:
             self.timeline.paste_at_cursor()
+
+    def _afegeix_a_la_posicio(self, kind, t):
+        """«Afegeix acord/secció aquí» — **un sol camí** per a la LLISTA i el TIMELINE.
+
+        En un model **saturat** (els clips cobreixen tota la WAV, regla d'or #4)
+        «afegir» no pot ser inserir un tros nou: vol dir **obrir un clip nou**
+        en aquell instant.
+          - **acord**: una MARCA nova a `t` (el clip anterior s'hi acaba).
+          - **secció**: **partir** la secció que conté `t`; la meitat dreta rep
+            la lletra/família triades (`parteix_seccio` ja ho fa així).
+
+        ⚠️ Bug arreglat (19-10-2026): la versió anterior deia «secció nova de
+        2 s» i `_valida_canvis_seccions` la rebutjava SEMPRE per solapament →
+        «Afegeix secció aquí» petava sempre (llista i timeline).
+
+        Una sola operació de desfer (per al chord; `parteix_seccio` ja la fa).
+        """
+        t = float(t)
+        if kind == "chord":
+            nou, ok = QInputDialog.getText(
+                self, "Afegeix acord", f"Acord a {t:.2f} s", text="N")
+            if not ok:
+                return False
+            self._undo_marca()
+            try:
+                self._afegeix_acord(t, nou)
+                self._desa_i_regenera()
+                self.log(f"afegit acord a {t:.2f}s: {nou}")
+            except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR: {e}")
+                QMessageBox.warning(self, "Visor",
+                                    f"No s'ha pogut afegir l'acord:\n{e}")
+            self._undo_commit()
+            return True
+        lletra, ok1 = QInputDialog.getText(
+            self, "Afegeix secció", "Etiqueta de la secció", text="A")
+        if not ok1:
+            return False
+        fam, ok2 = QInputDialog.getText(
+            self, "Afegeix secció", "Família", text=lletra.strip() or "A")
+        if not ok2:
+            return False
+        idx = self._seccio_a_t(t)
+        if idx < 0 or not self.parteix_seccio(idx, t, lletra, fam):
+            self.log(f"afegir secció a {t:.2f}s: punt no vàlid "
+                     f"(fora de cap secció o massa a prop d'una vora)")
+            QMessageBox.warning(
+                self, "Visor",
+                "No s'ha pogut afegir la secció: el punt ha de caure DINS "
+                "d'una secció i no pot quedar a tocar d'una vora.")
+            return False
+        self._regenera_abc_des_de_totes_les_seccions(
+            f"secció afegida a {t:.2f}s")
+        return True
+
+    def _seccio_a_t(self, t):
+        """Índex de la secció que conté l'instant `t` (-1 si no n'hi ha cap)."""
+        t = float(t)
+        for i, (ini, fi, _L, _F) in enumerate(self.seccions or []):
+            if float(ini) - 1e-9 <= t <= float(fi) + 1e-9:
+                return i
+        return -1
 
     def selecciona_bloc_del_loop(self):
         """Selecciona TOT el que hi ha dins el loop A/B i posa el cursor al final.
@@ -2761,11 +2871,14 @@ class Visor(QMainWindow):
     def parteix_per_la_meitat(self, kind, idx):
         """Parteix el clip `idx` just pel MIG (dues meitats iguals).
 
-        `kind`: "chord" o "section" (regla d'or #11: la mateixa eina per als
-        dos tipus). El punt de tall és el centre exacte del clip, de manera que
-        totes dues meitats queden amb la mateixa durada. Retorna l'índex del clip
-        NOU, o `False` si no es pot (clip inexistent o meitat massa curta).
+        `kind`: "chord", "section" o "tempo" (regla d'or #11: la mateixa eina
+        per a les TRES pistes). El punt de tall és el centre exacte del clip /
+        tram, de manera que totes dues meitats queden amb la mateixa durada.
+        Retorna l'índex del clip NOU, o `False` si no es pot (clip inexistent o
+        meitat massa curta).
         """
+        if kind == "tempo":
+            return self._parteix_tram_per_la_meitat(idx)
         if kind == "chord":
             if not (0 <= idx < len(self.acords)):
                 return False
@@ -2794,6 +2907,32 @@ class Visor(QMainWindow):
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut desar:\n{e}")
         return nou
+
+    def _parteix_tram_per_la_meitat(self, idx):
+        """«Partir per la meitat» d'un tram de BPM/compàs (③).
+
+        El mapa és **saturat** (cobreix tota la WAV i els trams són contigus),
+        així que «partir» = obrir una **frontera nova** al punt mig amb el
+        MATEIX BPM/compàs: queden dues meitats idèntiques de valor. Si la
+        normalització no arriba a crear la frontera (tram massa curt), no es
+        toca res. Una sola operació de desfer.
+        """
+        trams = list(self.tempo_trams or [])
+        if not (0 <= idx < len(trams)):
+            return False
+        ini, fi = float(trams[idx][0]), float(trams[idx][1])
+        t = (ini + fi) / 2.0
+        nou = tempo_map.afegeix_tall(trams, t)
+        norm = tempo_map.normalitza_trams(nou, self._durada_wav())
+        if len(norm) != len(trams) + 1:
+            self.log(f"partir per la meitat: {t:.2f}s no serveix pel tram "
+                     f"{idx} ({ini:.2f}s–{fi:.2f}s)")
+            return False
+        self._undo_marca()
+        self.aplica_tempo_trams(nou)
+        self._undo_commit()
+        self.log(f"partit per la meitat el tram de BPM/compàs {idx} a {t:.2f}s")
+        return idx + 1
 
     def _parteix_acord_dialog(self, idx):
         """Parteix l'acord `idx` pel CURSOR, preguntant el nom nou (regla #11)."""
@@ -2991,21 +3130,9 @@ class Visor(QMainWindow):
         if accio is None:
             return
         if accio == afegir:
-            lletra, ok1 = QInputDialog.getText(self, "Afegeix secció",
-                                               "Etiqueta de la secció", text="A")
-            if not ok1:
-                return
-            fam, ok2 = QInputDialog.getText(self, "Afegeix secció",
-                                            "Família", text=lletra.strip() or "A")
-            if not ok2:
-                return
-            try:
-                self._afegeix_seccio(self.pos, min(self.audio["durada"], self.pos + 2.0), lletra, fam)
-                self._regenera_abc_des_de_totes_les_seccions(f"secció afegida a {self.pos:.2f}s")
-            except Exception as e:  # noqa: BLE001
-                self.log(f"ERROR: {e}")
-                QMessageBox.warning(self, "Visor",
-                                    f"No s'ha pogut afegir la secció:\n{e}")
+            # Un sol camí amb el menú contextual del timeline («Afegeix secció
+            # aquí»): parteix la secció que conté el cursor (model saturat).
+            self._afegeix_a_la_posicio("section", self.pos)
         elif accio == partir:
             self._parteix_seccio_dialog(idx)
         elif accio == meitat:
