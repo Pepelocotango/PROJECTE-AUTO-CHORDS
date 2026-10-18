@@ -178,6 +178,16 @@ deixaven passar valors impossibles:
 
 Test nou: `tests/test_regles_or.py` › `test_les_xarxes_de_seguretat_tambe_ho_arreglen`.
 
+## Verificacions sense canvi (queda constància)
+
+- **`pipeline.SONIC`** (`OLD/sonic-annotator`, «reserva llegat»): **no és codi
+  mort**. `_cmd_transform` fa servir el **host Vamp propi** si hi és
+  (`usa_host()`) i cau a `sonic-annotator` si no (arrencada des de codi font
+  sense el host compilat). Per això `main` l'exclou de l'autocomprovació
+  d'arrencada. Es deixa tal com està.
+- **R1/R2/R4 al camí de càrrega** (empats d'inici, `fi < ini`, ordre barrejat,
+  duplicats): ja es complien (Ronda 6).
+
 ## Cua (properes rondes)
 
 1. **R2 a fons** — la contigüitat de les **3** famílies, incloent-hi el camí de
