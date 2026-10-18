@@ -69,21 +69,41 @@ def err_esperat(etiqueta, nom, **args):
     prova(etiqueta, bool(err), d)
 
 
+def _llista(nom, clau):
+    """Llista d'un `ac_list_*`; si la crida falla, buida (i no peta).
+
+    Abans feia `d.get(...)` directament, però quan la crida torna un ERROR el
+    resultat és un text i l'eina petava amb `AttributeError: 'str' object has no
+    attribute 'get'` (auditoria 18-10-2026).
+    """
+    _err, d = call(nom)
+    return d.get(clau, []) if isinstance(d, dict) else []
+
+
 def chords():
-    _, d = call("ac_list_chords")
-    return d.get("chords", [])
+    return _llista("ac_list_chords", "chords")
 
 
 def seccions():
-    _, d = call("ac_list_sections")
-    return d.get("sections", [])
+    return _llista("ac_list_sections", "sections")
 
 
 print("== 0. Handshake ==")
 prova("initialize", "result" in rpc("initialize", {"protocolVersion": "2024-11-05"}))
 tl = rpc("tools/list")
 noms = {t["name"] for t in tl["result"]["tools"]}
-prova(f"tools/list ({len(noms)} eines)", len(noms) == 51)
+# El recompte ha de ser el que EXPOSA el servidor: abans hi havia un `== 51`
+# hardcoded d'una sessió antiga i l'eina donava un fals KO amb 74 eines
+# (auditoria 18-10-2026).
+try:
+    from mcp_auto_chords_server import _TOOLS as _EINES_SERVIDOR
+    _n_servidor = len(_EINES_SERVIDOR)
+except Exception:  # noqa: BLE001
+    _n_servidor = None
+prova(f"tools/list ({len(noms)} eines"
+      + (" = servidor)" if _n_servidor == len(noms) else ")"),
+      _n_servidor is None or len(noms) == _n_servidor,
+      f"el servidor n'exposa {_n_servidor}")
 prova("esquema + descripció a totes", all(
     e["inputSchema"]["type"] == "object" and e["description"]
     for e in tl["result"]["tools"]))

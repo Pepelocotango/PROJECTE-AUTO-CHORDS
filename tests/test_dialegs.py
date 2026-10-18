@@ -188,3 +188,18 @@ class TestDialegModeFacil(_Base):
         d.cb_modul.setCurrentIndex(d.cb_modul.findData(8))
         self.assertEqual(d.ritme(), "temps")
         self.assertEqual(d.modul(), 8)
+
+
+class TestDialegTrobaReemplaca(_Base):
+    """Els camps s'entregan sense espais sobrers (es busquen noms EXACTES)."""
+
+    def test_camp_i_textos(self):
+        d = dialegs.DialegTrobaReemplaca(None, camp="estructura")
+        self.assertEqual(d.camp(), "estructura")
+        d.ed_troba.setText("  D  ")
+        d.ed_reemplaca.setText(" Estribillo ")
+        self.assertEqual(d.troba(), "D")
+        self.assertEqual(d.reemplaca(), "Estribillo")
+
+    def test_camp_per_defecte(self):
+        self.assertEqual(dialegs.DialegTrobaReemplaca(None).camp(), "acords")
