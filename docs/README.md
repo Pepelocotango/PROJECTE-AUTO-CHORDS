@@ -19,6 +19,7 @@
 
 | Doc | Què explica |
 |---|---|
+| `AUDITORIA_REGLES.md` | 🔍 **Registre de l'auditoria** de les regles d'or contra tot el codi (mapa regla→validació→test, trobades i cua). |
 | `REGLES_DE_LA_APP.md` | Regles d'or: ordre estricte, contigüitat, cobertura total… |
 | `ESQUEMA_UI.md` · `ESQUEMA_UI.html` · `ESQUEMA_UI.svg` | Esquema de la GUI. El `.html` i el `.svg` es **generen** (`eines/genera_esquema_ui.py`) des del `.md` — **no editar-los a mà**. L'**art manual** original es conserva a `ESQUEMA_UI_manual.svg` · `ESQUEMA_UI_manual.html`. |
 | `PROJECTES.md` | **Projectes autocontinguts** («com un DAW»): `.acproj`, `audio/` copiat, «Desa com», backups. |

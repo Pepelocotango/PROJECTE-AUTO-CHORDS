@@ -783,6 +783,28 @@ def normalitza_cobertura(acords, seccions, durada, log=None):
     # `sort` és ESTABLE: davant d'instants repetits, es conserva el primer.
     acords.sort(key=lambda a: float(a[0]))
     seccions.sort(key=lambda s: float(s[0]))
+    # Regla d'or #8 (temps vàlids): aquesta funció és la XARXA DE SEGURETAT dels
+    # 4 camins, així que aquí també s'hi ha de fer front. Un inici negatiu
+    # (CSV editat a mà, projecte vell, client de l'MCP) es porta a 0 — la
+    # cobertura (#4) ja hi posarà la capçalera o el forat que calgui.
+    if any(float(a[0]) < 0.0 for a in acords):
+        n_neg = sum(1 for a in acords if float(a[0]) < 0.0)
+        acords = [((0.0,) + tuple(a[1:])) if float(a[0]) < 0.0 else a
+                  for a in acords]
+        if log:
+            log(f"cobertura: {n_neg} acord(s) amb inici negatiu portats a 0")
+    if any(float(s[0]) < 0.0 or float(s[1]) < 0.0 for s in seccions):
+        net_s, fora_neg = [], 0
+        for s in seccions:
+            ini, fi = float(s[0]), float(s[1])
+            if fi <= 0.0:              # tota la secció és abans de la WAV
+                fora_neg += 1
+                continue
+            net_s.append((max(0.0, ini), fi, s[2], s[3]))
+        if log:
+            log(f"cobertura: {len(seccions) - len(net_s)} secció(ns) abans de "
+                f"la WAV eliminades" + (f" ({fora_neg} senceres)" if fora_neg else ""))
+        seccions = net_s
     # Acords: la veritat és el que quedarà AL CSV (arrodonit a `TEMPS_DEC`).
     #   (a) els que cauen FORA de la WAV (arrodonits) no tenen àudio → fora;
     #   (b) dos acords que arrodoneixin al MATEIX instant deixarien un clip de

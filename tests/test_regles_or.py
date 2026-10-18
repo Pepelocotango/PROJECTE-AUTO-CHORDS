@@ -120,6 +120,29 @@ class TestRegla8TempsValids(_Base):
         with self.assertRaises(ValueError):
             v._valida_canvis_seccions([(5.0, 5.0, "A", "A")])
 
+    def test_les_xarxes_de_seguretat_tambe_ho_arreglen(self):
+        """Els normalitzadors (l'última xarxa dels 4 camins) tambe compleixen
+        la regla 8: cap valor negatiu ni impossible hi sobreviu.
+
+        Auditoria 18-10-2026: abans `normalitza_cobertura` deixava passar un
+        acord a -2 s i `normalitza_trams` un tram a -5 s amb bpm 0 i compas
+        0/0 (un CSV editat a mà o un projecte vell hi podien arribar).
+        """
+        from app import tempo_map as tempo
+        ac, _sec = pipeline.normalitza_cobertura(
+            [(-2.0, "C", "0"), (5.0, "G", "5")], [], 30.0)
+        self.assertEqual(float(ac[0][0]), 0.0)
+        a, b = pipeline.normalitza_cobertura(
+            [], [(-3.0, -1.0, "X", "X"), (-1.0, 10.0, "A", "A"),
+                 (10.0, 30.0, "B", "B")], 30.0)
+        self.assertEqual([(float(s[0]), float(s[1]), s[2]) for s in b],
+                         [(0.0, 10.0, "A"), (10.0, 30.0, "B")])
+        trams = tempo.normalitza_trams(
+            [(-5.0, 2.0, 0.0, 0, 0), (2.0, 30.0, 90.0, 3, 4)], 30.0)
+        self.assertEqual(trams[0][0], 0.0)
+        self.assertGreater(trams[0][2], 0)
+        self.assertEqual((trams[0][3], trams[0][4]), (4, 4))
+
 
 
 class TestRegla1OrdreEstricte(_Base):

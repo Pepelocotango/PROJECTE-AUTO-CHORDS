@@ -27,6 +27,9 @@ from collections import namedtuple
 
 # Tolerància temporal (evita falsos positius de coma flotant).
 TOL = 1e-9
+# BPM de seguretat (regla d'or #8): un valor no positiu no és vàlid i es
+# substitueix per aquest (el mateix que fa servir `TempoMap`).
+BPM_DEFECTE = 120.0
 
 # Un tros del mapa: temps i compàs constants dins `[ini, fi)`.
 #   bpm = negres per minut · num/den = compàs (p. ex. 4/4, 6/8, 12/8)
@@ -421,14 +424,20 @@ def normalitza_trams(trams, durada):
     durada = float(durada or 0.0)
     net, vists = [], set()
     for t in sorted(trams or (), key=lambda x: float(x[0])):
-        ini = float(t[0])
+        # Regla d'or #8 (temps vàlids): cap inici negatiu ni cap valor
+        # impossible. Si n'arriba algun (CSV editat a mà, projecte vell, client
+        # de l'MCP) es PORTA AL VALOR VÀLID en comptes de propagar-lo.
+        ini = max(0.0, float(t[0]))
         if durada > 0 and ini >= durada - TOL:
             continue
         clau = round(ini, 6)
         if clau in vists:
             continue
         vists.add(clau)
-        net.append((ini, float(t[2]), int(t[3]), int(t[4])))
+        bpm = float(t[2])
+        num, den = int(t[3]), int(t[4])
+        net.append((ini, bpm if bpm > 0 else BPM_DEFECTE,
+                    num if num > 0 else 4, den if den > 0 else 4))
     if not net:
         return []
     out = []
