@@ -28,9 +28,8 @@ from PyQt5.QtWidgets import (
 
 from app import theme      # noqa: E402  (paleta centralitzada)
 from app.timeline_base import (   # noqa: E402
-    CURSOR_COLOR,
-    LANE_DIVIDER,
-    RULER_BG, RULER_TEXT,
+    CHORD_HANDLE, CURSOR_COLOR, LANE_DIVIDER,
+    RULER_BG, RULER_TEXT, SECTION_FILLS, SECTION_TEXT,
     WF_BG, WF_ENV, WF_GAIN, WF_MID,
     fmt_pos, grid_levels, grid_plan, grid_positions, is_bar_start_label,
 )
@@ -516,23 +515,32 @@ class TempoLayer(QGraphicsObject):
         if not self._visible():
             return
         p = painter
-        p.setRenderHint(QPainter.Antialiasing, False)
+        p.setRenderHint(QPainter.Antialiasing, True)
         rect = self.boundingRect()
         p.fillRect(rect, QColor(theme.TL_LANE_BG_B))
-        p.setFont(QFont("Sans Serif", 8, QFont.Bold))
+        fills = [QColor(c) for c in SECTION_FILLS]
+        font = QFont("Sans Serif", 9, QFont.Bold)
         for s in self._mapa.trams:
             x0 = (s.ini - self._view_left) * self._pps
             x1 = (s.fi - self._view_left) * self._pps
             if x1 < 0 or x0 > rect.width():
                 continue
             x0, x1 = max(0.0, x0), min(rect.width(), x1)
-            p.fillRect(QRectF(x0, 1, max(1.0, x1 - x0), self._height - 2),
-                       QColor(theme.TL_LANE_BG_A))
-            p.setPen(QPen(QColor(theme.TL_GRID_MEASURE), 1))
-            p.drawLine(QPointF(x0, 0), QPointF(x0, self._height))
-            p.setPen(QPen(QColor(RULER_TEXT), 1))
-            p.drawText(QPointF(x0 + 4, self._height - 5),
-                       f"{s.bpm:g}  {s.num}/{s.den}")
+            # Mateix tracte visual que les SECCIONS (bloc arrodonit + nanses
+            # + text centrat), pero en mitja alcada.
+            fill = QColor(fills[hash("tempo") % len(fills)])
+            fill.setAlpha(180)
+            p.setBrush(QBrush(fill))
+            p.setPen(QPen(QColor(theme.CLIP_SECTION_BORDER), 1))
+            bx = QRectF(x0 + 1, 1, max(2.0, x1 - x0 - 2), self._height - 3)
+            p.drawRoundedRect(bx, 5, 5)
+            if bx.width() > 20:
+                p.setPen(QPen(QColor(CHORD_HANDLE), 2))
+                p.drawLine(QPointF(x0 + 4, 4), QPointF(x0 + 4, self._height - 6))
+                p.drawLine(QPointF(x1 - 4, 4), QPointF(x1 - 4, self._height - 6))
+            p.setPen(QPen(QColor(SECTION_TEXT), 1))
+            p.setFont(font)
+            p.drawText(bx, Qt.AlignCenter, f"{s.bpm:g} · {s.num}/{s.den}")
         if self._t_guia is not None:
             xg = (self._t_guia - self._view_left) * self._pps
             p.setPen(QPen(QColor(theme.TL_GUIDE if hasattr(theme, "TL_GUIDE")

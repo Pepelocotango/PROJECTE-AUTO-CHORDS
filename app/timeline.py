@@ -1471,6 +1471,12 @@ class TimelineView(QGraphicsView):
             # Si el botó dret cau SOBRE un clip -> menu contextual (i el
             # seleccionem). Si cau al buit -> pan, com sempre.
             it = self.itemAt(event.pos())
+            if isinstance(it, TempoLayer):
+                # Pista de BPM/compas: l'escena mostra el SEU menu.
+                self.setFocus()
+                super().mousePressEvent(event)
+                event.accept()
+                return
             if isinstance(it, (ChordItem, SectionItem)):
                 kind = "chord" if isinstance(it, ChordItem) else "section"
                 idx = getattr(it, "idx", -1)
@@ -1546,6 +1552,11 @@ class TimelineView(QGraphicsView):
                 event.accept()
                 return
             it = self.itemAt(event.pos())
+            if isinstance(it, TempoLayer):
+                # Pista de BPM/compas (eina intel·ligent): l'escena la gestiona.
+                self.setFocus()
+                super().mousePressEvent(event)
+                return
             if isinstance(it, (ChordItem, SectionItem)):
                 kind = "chord" if isinstance(it, ChordItem) else "section"
                 idx = getattr(it, "idx", -1)
@@ -1583,6 +1594,9 @@ class TimelineView(QGraphicsView):
         selecciona TOT el que hi ha a dins (acords I seccions)."""
         if event.button() == Qt.LeftButton:
             it = self.itemAt(event.pos())
+            if isinstance(it, TempoLayer):
+                super().mouseDoubleClickEvent(event)
+                return
             sp = self.mapToScene(event.pos())
             t = self._x_to_time(sp.x())
             dins = (self._loop_a is not None and self._loop_b is not None
