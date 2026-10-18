@@ -213,6 +213,21 @@ deixaven passar valors impossibles:
 
 Test nou: `tests/test_regles_or.py` › `test_les_xarxes_de_seguretat_tambe_ho_arreglen`.
 
+## Ronda 20 — `acords_a_live.py`: no s'executava MAI als tests
+
+- **Verificat**: cap script d'arrel està orfe (tots referenciats ≥2 llocs) i els
+  comentaris que parlen de funcions **retirades** (inspector lateral, selecció
+  creuada) ho fan per documentar-ho: cap resta de codi.
+- 🐞 **Forat de cobertura real**: la guia DAW (`acords_a_live.py`) la crida
+  l'app de debò (`pipeline.run_acords_py`) però la suite **sempre la mockejava**
+  (`patch.object(pipeline, 'run_acords_py')`) → ningú no provava que l'script
+  s'executara, que generara `acords_locators.txt` + `guia_acords.html` ni que
+  respectara el **mapa de tempo/compàs**.
+  → NOU `tests/test_acords_a_live.py` (3 proves): executa l'script de veritat
+  (sense mocks), amb un tema de 120 BPM i **amb un mapa variable** (4/4→3/4).
+- 🐞 Sense arguments l'script peta amb `IndexError`: ara diu l'**ús** i plega
+  amb codi 2 (com fa `explica_bpm.py`).
+
 ## Ronda 19 — camí `eines/`: un script que petava
 
 - **Tots els scripts de `eines/` estan referenciats** (CI, docs o codi): res

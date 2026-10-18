@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 # Ús: python3 acords_a_live.py acords_csv.csv 138 2   (BPM, temps per compàs)
 import csv, sys, html, os
+if len(sys.argv) < 4:
+    # Sense arguments petava amb IndexError (auditoria 18-10-2026).
+    print('Ús: acords_a_live.py <acords.csv> <bpm> <temps_per_compàs> '
+          '[offset_s] [durada_s]', file=sys.stderr)
+    raise SystemExit(2)
 src, bpm, bpb = sys.argv[1], float(sys.argv[2]), int(sys.argv[3])
 offset = float(sys.argv[4]) if len(sys.argv) > 4 else 0.0   # segons on cau el compàs 1
 durada = float(sys.argv[5]) if len(sys.argv) > 5 else 0.0   # durada de la WAV (cobertura)
