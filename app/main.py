@@ -1895,6 +1895,17 @@ class Finestra(QMainWindow):
         vr._undo_commit()
 
     def _canvia_tempo(self, fix):
+        """Commuta BPM·compàs ↔ Lliure i refresca el visor.
+
+        ⚠️ Aci NO es torna a cridar `timeline.set_tempo_mode(...)`: eixa crida
+        era anterior al **mapa de tempo variable** i, sense el paràmetre
+        `mapa=`, deixava el timeline amb `_mapa = None`. Això apagava la pista
+        de BPM/compàs (`TempoLayer._visible()`) i la graella/regle tornaven a
+        la graella constant. `_actualitza_temps()` ja fa la crida correcta
+        (amb `mapa=self.tempo_map`); ací només cal deixar-hi l'offset al dia,
+        que és el que `_actualitza_temps()` hi llig. (reportat per l'operador,
+        19-10-2026: «canvio a hh:mm:ss i torne a BPM i ja no hi ha carril»).
+        """
         for w in (self.bpm, self.bpb, self.offset):
             w.setEnabled(fix)
         if hasattr(self, "visor_ref") and self.visor_ref is not None:
@@ -1902,10 +1913,8 @@ class Finestra(QMainWindow):
             self.visor_ref.bpm = self._bpm_val()
             self.visor_ref.bpb = self._bpb_val()
             self.visor_ref.beat_type = self._beat_type_val()
+            self.visor_ref.offset = self._offset_val()
             self.visor_ref._actualitza_temps()
-            self.visor_ref.timeline.set_tempo_mode(
-                bool(fix), self._bpm_val(), self._bpb_val(),
-                self._offset_val(), self._beat_type_val())
 
     def _mostra_placeholder_visor(self):
         cont = QWidget()
