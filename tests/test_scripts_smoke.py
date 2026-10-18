@@ -42,6 +42,17 @@ class TestScriptsArrelSmoke(unittest.TestCase):
         self.assertNotEqual(p2.returncode, 0)
         self.assertNotIn("Traceback", p2.stderr, "ha de dir l'ús, no petar")
 
+    def test_notes_release_vol_una_versio(self):
+        """`--fitxer` no ha de confondre el seu VALOR amb la versio (abans
+        `notes_release.py --fitxer out.md` feia servir «out.md» com a versio)."""
+        p = _corre("eines/notes_release.py", "--fitxer", "/tmp/x.md")
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("Ús:", p.stderr)
+        p2 = _corre("eines/notes_release.py", "")
+        self.assertEqual(p2.returncode, 2)
+        p3 = _corre("eines/notes_release.py", "v0.0.0")
+        self.assertEqual(p3.returncode, 0, p3.stderr[-200:])
+
     def test_acords_a_live_diu_l_us(self):
         p = _corre("acords_a_live.py")
         self.assertEqual(p.returncode, 2)

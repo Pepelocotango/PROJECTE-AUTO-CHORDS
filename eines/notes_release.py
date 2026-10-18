@@ -101,13 +101,23 @@ def notes(versio):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    if not args:
-        print("Ús: notes_release.py <versio> [--fitxer <sortida>]", file=sys.stderr)
+    argv = list(sys.argv[1:])
+    desti = None
+    if "--fitxer" in argv:
+        i = argv.index("--fitxer")
+        if i + 1 >= len(argv):
+            print("Ús: notes_release.py <versio> [--fitxer <sortida>]",
+                  file=sys.stderr)
+            return 2
+        desti = argv[i + 1]
+        del argv[i:i + 2]          # el VALOR de --fitxer no és la versió
+    args = [a for a in argv if not a.startswith("--")]
+    if not args or not str(args[0]).strip():
+        print("Ús: notes_release.py <versio> [--fitxer <sortida>]",
+              file=sys.stderr)
         return 2
-    text = notes(args[0])
-    if "--fitxer" in sys.argv:
-        desti = sys.argv[sys.argv.index("--fitxer") + 1]
+    text = notes(str(args[0]).strip())
+    if desti:
         with open(desti, "w", encoding="utf-8") as f:
             f.write(text)
         print(f"notes escrites a {desti}")
