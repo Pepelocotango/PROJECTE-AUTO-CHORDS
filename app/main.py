@@ -288,6 +288,10 @@ class Feina(QThread):
             self.progres.emit(100)
             self.feta.emit(True, self.sortida)
         except Exception as e:  # noqa: BLE001
+            # Mateixa traça que `FeinaExporta`: un error d'analisi tambe ha de
+            # quedar AL REGISTRE (abans s'avisava per `feta` i prou, i al log no
+            # n'hi havia constancia — auditoria 18-10-2026).
+            self.log(f"ERROR a l'analisi: {e}")
             self.feta.emit(False, str(e))
 
 
