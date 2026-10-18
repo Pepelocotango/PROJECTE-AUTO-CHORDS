@@ -213,6 +213,38 @@ deixaven passar valors impossibles:
 
 Test nou: `tests/test_regles_or.py` › `test_les_xarxes_de_seguretat_tambe_ho_arreglen`.
 
+## 🏁 Cobertura de la prova de mutació — LES 11 REGLES, verificades
+
+Cada regla té almenys **una mutació feta i detectada** pels tests (una mutació =
+trencar la validació a posta i comprovar que la suite peta):
+
+| Regla | Mutació que es va provar | Detectada |
+|---|---|---|
+| 1 Ordre | treure el `sort` de `normalitza_cobertura` | ✅ (R11, R17) |
+| 2 Contigüitat | desactivar l'arreglament d'encaixaments de seccions | ✅ (R12) |
+| 3 Durades derivades | no acotar el fi de l'última secció | ✅ (R16) |
+| 4 Cobertura | treure la capçalera «N» / no cobrir fins a la durada (mapa) | ✅ (R12, R17) |
+| 5 Font de veritat | guardar el CSV convertit en no-op | ✅ (R16) |
+| 6 WAVs només en exportar | `_desa_i_regenera` deixant anar una WAV | ✅ (R16) |
+| 7 Instància única | el bloqueig dient sempre que sí | ✅ (R17) |
+| 8 Temps vàlids | treure els clamps de negatius (mapa i acords) | ✅ (R12) |
+| 9 Sense AVX | posar `-mavx` a l'script de build | ✅ (R17) |
+| 10 Directori escriptible | `_es_escriptible` dient sempre que sí | ✅ (R16) |
+| 11 Paritat | 4 mutacions (una NO detectada → test feible, arreglat) | ✅ (R14) |
+
+**Conclusió**: cap test feible pendent en el nucli de les regles. Només la
+**regla 12** queda fora (assignada a un altre agent).
+
+## Ronda 17 — mutació a les regles 1, 2, 4, 7 i 9 (totes detectades)
+
+| Mutació | Detectada |
+|---|---|
+| El bloqueig d'instància única diu sempre que sí (R7) | ✅ `test_regles_or` |
+| `-mavx` a `compila_vamp_host.sh` (R9) | ✅ el guard nou `GuardAvxTests` |
+| Treure el `sort` del backend (R1) | ✅ `test_regles_or` |
+| El mapa deixa de cobrir fins a la durada (R2/R4) | ✅ `test_tempo_map` (5) |
+| El mapa perd la capçalera a 0 (R4) | ✅ `test_tempo_map` + `test_regles_or` |
+
 ## Ronda 16 — prova de mutació a les regles 3, 5, 6 i 10
 
 Totes quatre **detectades** (cap test feble nou):
