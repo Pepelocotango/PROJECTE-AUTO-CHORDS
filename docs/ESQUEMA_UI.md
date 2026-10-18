@@ -284,6 +284,9 @@ Títol: «**<fitxer.wav> — Auto Chords**» un cop obert un fitxer (títol inic
 - Volum propi (60 % per defecte); el mute/volum de la cançó **no** l'afecta.
 - El clic es **mescla al mateix buffer** que s'envia al reproductor (sense
   QTimer ni segon procés → no deriva). Accent (temps 1) ≈ 1500 Hz; resta ≈ 1000.
+- **Commutar-lo** (o canviar-ne el volum) **no** reinicia el reproductor: el fil
+  d'alimentació llig `metro_on`/`metro_vol` a **cada tros**, com fa amb el volum i
+  el mute de la cançó. (Reiniciar-hi tallava l'àudio uns mil·lisegons.)
 - Sense clics per sobre de **400 BPM** (`metronom.BPM_MAX`).
 
 ---
