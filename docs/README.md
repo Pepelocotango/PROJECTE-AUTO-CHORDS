@@ -62,7 +62,7 @@
 
 | Doc | Què explica |
 |---|---|
-| `INFORME_INCOHERENCIES_2026-10-16.md` | **Auditoria de coherència** (docs + codi): incoherències, bugs i seguretat detectats. |
+| `archive/INFORME_INCOHERENCIES_2026-10-16.md` | **Auditoria de coherència** (docs + codi), del 16-10-2026: **tots els punts resolts**; arxivada (vegeu `AUDITORIA_REGLES.md`, Ronda 13). |
 
 ## Arxiu — superats o de referència (`archive/`)
 

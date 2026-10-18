@@ -371,6 +371,19 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 25 — guards amb dents + arxivar el que ja és històric
+
+- **Prova de mutació dels guards nous** (3): tornar a trencar
+  `wav_a_wavs.py` → `test_scripts_smoke` hi peta; treure el guard d'ús de
+  `acords_a_live.py` → hi peta; treure el de `explica_bpm.py` → hi peta. ✅
+- **Arxivat** `docs/INFORME_INCOHERENCIES_2026-10-16.md` → `docs/archive/`
+  (`git mv`): tots els seus punts han quedat resolts (l'últim, el 7.4, a la
+  Ronda 13) i era l'únic document de `docs/` que ja era purament històric.
+  `docs/README.md` actualitzat amb la ruta nova i l'estat.
+- Vist i **descartat**: afegir `docs/EDICIO_OPERACIONS.md` a la whitelist de
+  `concatena.py` (l'eina empaqueta el context mínim: `REGLES` + `MCP` i el codi;
+  la taula d'operacions és útil però «detallada», com diu el propi script).
+
 ## Ronda 24 — el NUCLI de l'app no s'executava mai als tests
 
 Buscant el patró de la Ronda 20 (components vius que els tests sempre
