@@ -651,6 +651,7 @@ class Visor(QMainWindow):
         menu = QMenu(self)
         afegir = menu.addAction("Afegeix acord aquí")
         partir = menu.addAction("Partir acord aquí")
+        meitat = menu.addAction("Partir per la meitat")
         fusionar_prev = menu.addAction("Fusionar amb anterior")
         fusionar_next = menu.addAction("Fusionar amb següent")
         eliminar = menu.addAction("Elimina acord")
@@ -660,6 +661,7 @@ class Visor(QMainWindow):
             f"Reanomena {n_sel} acords…" if n_sel >= 2 else "Reanomena acord…")
         te = 0 <= idx < len(self.acords)
         partir.setEnabled(te and idx + 1 < len(self.acords))
+        meitat.setEnabled(te)
         fusionar_prev.setEnabled(te and idx > 0)
         fusionar_next.setEnabled(te and idx + 1 < len(self.acords))
         eliminar.setEnabled(te)
@@ -682,6 +684,8 @@ class Visor(QMainWindow):
                                     f"No s'ha pogut afegir l'acord:\n{e}")
         elif accio == partir:
             self._parteix_acord_dialog(idx)
+        elif accio == meitat:
+            self.parteix_per_la_meitat("chord", idx)
         elif accio == fusionar_prev:
             self.fusiona_acord(idx, "anterior")
         elif accio == fusionar_next:
@@ -910,7 +914,7 @@ class Visor(QMainWindow):
         menu.addSeparator()
         a_add = menu.addAction("Afegeix un canvi aquí")
         a_edit.setEnabled(te)
-        a_del.setEnabled(idx > 0)
+        a_del.setEnabled(idx >= 0 and len(self.tempo_trams or []) > 1)
         a_part.setEnabled(te)
         acc = menu.exec_(QCursor.pos())
         if acc is None:
@@ -922,7 +926,7 @@ class Visor(QMainWindow):
             self.aplica_tempo_trams(tm.afegeix_tall(trams, float(t)))
         elif acc == a_edit and idx >= 0:
             self._on_tempo_edit(idx)
-        elif acc == a_del and idx > 0:
+        elif acc == a_del and idx >= 0 and len(trams) > 1:
             self.aplica_tempo_trams(tm.elimina_tall(trams, idx))
 
     def _desa_csvs_base(self):
@@ -1597,6 +1601,7 @@ class Visor(QMainWindow):
         # manera d'afegir-ne un de nou). Mateixa eina per a acord I secció.
         a_part = menu.addAction(
             "Parteix la secció…" if kind == "section" else "Parteix l'acord…")
+        a_meitat = menu.addAction("Partir per la meitat")
         menu.addSeparator()
         a_ret = menu.addAction("Retalla")
         a_cop = menu.addAction("Copia")
@@ -1605,6 +1610,7 @@ class Visor(QMainWindow):
         for a in (a_dup, a_del, a_ren):
             a.setEnabled(te_clip)
         a_part.setEnabled(te_clip)
+        a_meitat.setEnabled(te_clip)
         a_ret.setEnabled(te_clip)
         a_cop.setEnabled(te_clip)
         a_eng.setEnabled(self.timeline.has_clipboard())
@@ -1636,6 +1642,8 @@ class Visor(QMainWindow):
                 self._parteix_acord_dialog(idx)
             else:
                 self._parteix_seccio_dialog(idx)
+        elif accio == a_meitat:
+            self.parteix_per_la_meitat(kind, idx)
         elif accio == a_ret:
             self.timeline.cut_selection()
         elif accio == a_cop:
@@ -1851,7 +1859,7 @@ class Visor(QMainWindow):
         idx_tp = sorted({int(i) for k, i in keys if k == "tempo"}, reverse=True)
         idx_ac = [i for i in idx_ac if 0 <= i < len(self.acords)]
         idx_sec = [i for i in idx_sec if 0 <= i < len(self.seccions)]
-        idx_tp = [i for i in idx_tp if 0 < i < len(self.tempo_trams or [])]
+        idx_tp = [i for i in idx_tp if 0 <= i < len(self.tempo_trams or [])]
         if not idx_ac and not idx_sec and not idx_tp:
             return
         self._undo_marca()
@@ -2703,6 +2711,43 @@ class Visor(QMainWindow):
         self._omple_llista_ac()
         return idx + 1
 
+    def parteix_per_la_meitat(self, kind, idx):
+        """Parteix el clip `idx` just pel MIG (dues meitats iguals).
+
+        `kind`: "chord" o "section" (regla d'or #11: la mateixa eina per als
+        dos tipus). El punt de tall és el centre exacte del clip, de manera que
+        totes dues meitats queden amb la mateixa durada. Retorna l'índex del clip
+        NOU, o `False` si no es pot (clip inexistent o meitat massa curta).
+        """
+        if kind == "chord":
+            if not (0 <= idx < len(self.acords)):
+                return False
+            c = self.acords[idx]
+            t = (float(c.ini) + float(c.fi)) / 2.0
+        else:
+            if not (0 <= idx < len(self.seccions)):
+                return False
+            ini, fi = self.seccions[idx][0], self.seccions[idx][1]
+            t = (float(ini) + float(fi)) / 2.0
+        nou = (self.parteix_acord(idx, t) if kind == "chord"
+               else self.parteix_seccio(idx, t))
+        if not nou:
+            self.log(f"partir per la meitat: {t:.2f}s no serveix pel clip "
+                     f"{idx} ({kind})")
+            return False
+        nom = "acord" if kind == "chord" else "secció"
+        try:
+            if kind == "chord":
+                self._desa_i_regenera()
+            else:
+                self._regenera_abc_des_de_totes_les_seccions(
+                    f"secció partida per la meitat a {t:.2f}s")
+            self.log(f"partit per la meitat el {nom} {idx} a {t:.2f}s")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+            QMessageBox.warning(self, "Visor", f"No s'ha pogut desar:\n{e}")
+        return nou
+
     def _parteix_acord_dialog(self, idx):
         """Parteix l'acord `idx` pel CURSOR, preguntant el nom nou (regla #11)."""
         if not (0 <= idx < len(self.acords)):
@@ -2880,6 +2925,7 @@ class Visor(QMainWindow):
         menu = QMenu(self)
         afegir = menu.addAction("Afegeix secció aquí")
         partir = menu.addAction("Partir secció aquí")
+        meitat = menu.addAction("Partir per la meitat")
         fusionar_prev = menu.addAction("Fusionar amb anterior")
         fusionar_next = menu.addAction("Fusionar amb següent")
         eliminar = menu.addAction("Elimina secció")
@@ -2889,6 +2935,7 @@ class Visor(QMainWindow):
             f"Reanomena {n_sel} seccions…" if n_sel >= 2 else "Reanomena secció…")
         te = 0 <= idx < len(self.seccions)
         partir.setEnabled(te and idx + 1 < len(self.seccions))
+        meitat.setEnabled(te)
         fusionar_prev.setEnabled(te and idx > 0)
         fusionar_next.setEnabled(te and idx + 1 < len(self.seccions))
         eliminar.setEnabled(te)
@@ -2914,6 +2961,8 @@ class Visor(QMainWindow):
                                     f"No s'ha pogut afegir la secció:\n{e}")
         elif accio == partir:
             self._parteix_seccio_dialog(idx)
+        elif accio == meitat:
+            self.parteix_per_la_meitat("section", idx)
         elif accio == fusionar_prev:
             self.fusiona_seccio(idx, "anterior")
         elif accio == fusionar_next:

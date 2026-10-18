@@ -82,7 +82,8 @@ Els clips d'**acords**, d'**estructura** i els **trams de BPM/compàs** són
 iguals davant l'edició i la visualització. Tota operació d'un tipus ho ha de
 ser per als altres, i pel **mateix camí d'usuari**.
 
-- **Joc d'operacions comú**: afegir · eliminar · partir · moure ·
+- **Joc d'operacions comú**: afegir · eliminar · partir (pel cursor · **per la
+  meitat**) · moure ·
   redimensionar · desfer/refer. Reanomenar i duplicar/fusionar són comuns a
   **acords i estructura**; als **trams de BPM/compàs** el contingut és
   numèric (BPM + compàs) i s'edita amb el mateix diàleg per a tots ells, i

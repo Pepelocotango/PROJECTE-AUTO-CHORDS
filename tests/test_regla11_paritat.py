@@ -159,6 +159,22 @@ class TestVisorParitat(_Base):
         v.undo()
         self.assertEqual(len(v.acords), n0)
 
+    def test_partir_per_la_meitat_acord_i_seccio(self):
+        """«Partir per la meitat» = dues meitats exactes, als DOS tipus (#11)."""
+        v = _visor()
+        self.assertEqual(v.parteix_per_la_meitat("section", 0), 1)
+        self.assertAlmostEqual(float(v.seccions[0][1]), 5.0, places=6)
+        self.assertAlmostEqual(float(v.seccions[1][0]), 5.0, places=6)
+        self.assertAlmostEqual(float(v.seccions[1][1]), 10.0, places=6)
+        self.assertEqual(v.parteix_per_la_meitat("chord", 0), 1)
+        self.assertAlmostEqual(float(v.acords[0].fi), 5.0, places=6)
+        self.assertAlmostEqual(float(v.acords[1].ini), 5.0, places=6)
+        self.assertEqual(v.acords[1].payload[0], "C")
+        # tambe funciona amb l'ULTIM clip (acaba a la WAV)
+        n = len(v.acords)
+        self.assertEqual(v.parteix_per_la_meitat("chord", n - 1), n)
+        self.assertAlmostEqual(float(v.acords[-1].fi), DUR, places=6)
+
     def test_ultim_acord_fi_editable_crea_clip_de_cua(self):
         """Paritat #11: l'últim clip també s'encongeix per la vora dreta.
 
@@ -223,7 +239,7 @@ class TestMenusParitat(_Base):
         se = self._amb_fila(v._menu_seccio)
         self.assertEqual(len(ac), len(se),
                          f"jocs d'accions diferents: {ac} vs {se}")
-        self.assertEqual(len(ac), 6)
+        self.assertEqual(len(ac), 7)          # + «Partir per la meitat» (#11)
         # Mateixa estructura (activació) i mateixa paraula de tipus a cada posició.
         self.assertEqual([e for _t, e in ac], [e for _t, e in se])
         self.assertIn("acord", ac[1][0].lower())

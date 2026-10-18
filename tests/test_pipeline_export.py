@@ -2897,11 +2897,15 @@ class ContextMenuTests(unittest.TestCase):
         accions = self._captura(v, "chord", 1)
         self.assertEqual([x[0] for x in accions],
                          ["Duplica", "Elimina", "Reanomena",
-                          "Parteix l'acord…", "Retalla", "Copia", "Enganxa"])
+                          "Parteix l'acord…", "Partir per la meitat",
+                          "Retalla", "Copia", "Enganxa"])
         self.assertTrue(accions[3][1], "sobre un acord ha d'estar activa")
+        self.assertTrue(accions[4][1], "«Partir per la meitat» també")
         accions_sec = self._captura(v, "section", 0)
         self.assertEqual(accions_sec[3][0], "Parteix la secció…")
         self.assertTrue(accions_sec[3][1], "sobre una secció ha d'estar activa")
+        self.assertEqual(accions_sec[4][0], "Partir per la meitat")
+        self.assertTrue(accions_sec[4][1], "«Partir per la meitat» també")
         v.close()
 
     def test_menu_desactivat_sense_seleccio(self):

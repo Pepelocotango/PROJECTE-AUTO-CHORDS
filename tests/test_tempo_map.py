@@ -246,6 +246,29 @@ class TestEdicioMapa(unittest.TestCase):
             tmm.normalitza_trams(tmm.elimina_tall(nou, 1), 10.0),
             [(0.0, 10.0, 120.0, 4, 4)])
 
+    def test_elimina_tall_el_primer_ancora_a_zero(self):
+        """El mapa sempre comenca a 0: esborrar el 1r tros no hi deixa forat.
+
+        Abans el nou primer quedava amb l'inici vell i `normalitza_trams` hi
+        afegia un tros duplicat -> mai es podia arribar a un sol tram.
+        """
+        from app import tempo_map as tmm
+        trams = [(0.0, 6.0, 120.0, 4, 4), (6.0, 20.0, 90.0, 3, 4),
+                 (20.0, 30.0, 140.0, 4, 4)]
+        mig = tmm.normalitza_trams(tmm.elimina_tall(trams, 1), 30.0)
+        self.assertEqual([(t[0], t[1], t[2]) for t in mig],
+                         [(0.0, 20.0, 120.0), (20.0, 30.0, 140.0)])
+        # esborrar el 1r: el que era el 2n passa a ser el 1r i s'ancora a 0
+        # (amb el SEU tempo, no amb el del tros esborrat)
+        un = tmm.normalitza_trams(tmm.elimina_tall(trams, 0), 30.0)
+        self.assertEqual([(t[0], t[1], t[2]) for t in un],
+                         [(0.0, 20.0, 90.0), (20.0, 30.0, 140.0)])
+        # ... i tambe es pot deixar el mapa amb un sol tros des de dos
+        dos = tmm.normalitza_trams([(0.0, 6.0, 120.0, 4, 4),
+                                    (6.0, 30.0, 90.0, 3, 4)], 30.0)
+        self.assertEqual(len(tmm.normalitza_trams(tmm.elimina_tall(dos, 0),
+                                                   30.0)), 1)
+
     def test_dialog_trams_round_trip(self):
         from app import tempo_map as tmm
         trams = [(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 90.0, 3, 4)]

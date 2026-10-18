@@ -454,11 +454,19 @@ def afegeix_tall(trams, t):
 
 
 def elimina_tall(trams, idx):
-    """Treu el tros `idx` del mapa (el veí anterior n'ocupa l'espai)."""
+    """Treu el tros `idx` del mapa (els veïns n'ocupen l'espai).
+
+    El mapa **sempre** comença a 0: si el tros eliminat era el PRIMER, el nou
+    primer s'hi **ancora** (abans quedava a l'inici vell i `normalitza_trams`
+    hi afegia un tros duplicat — mai es podia arribar a un sol tram).
+    """
     trams = list(trams or [])
-    if 0 <= idx < len(trams):
-        return trams[:idx] + trams[idx + 1:]
-    return trams
+    if not (0 <= idx < len(trams)):
+        return trams
+    out = trams[:idx] + trams[idx + 1:]
+    if idx == 0 and out:
+        out[0] = (0.0,) + tuple(out[0][1:])
+    return out
 
 
 def infereix_trams_beat(temps, durada, num=4, den=4, tol=0.12, finestra=3):
