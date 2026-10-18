@@ -354,6 +354,10 @@ class TempoMap:
         return self.t_de_quarters(q)
 
     # ── snap a la graella ───────────────────────────────────────────────────
+    def compassos(self):
+        """`[(q_ini, t_ini, num, den), …]` — inici de cada compàs del mapa."""
+        return self._talls_de_compas()
+
     def snap(self, t, divisio=("beat", 1.0)):
         """Encaixa `t` a la subdivisió més propera de la graella del mapa.
 

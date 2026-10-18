@@ -864,7 +864,7 @@ def run_acords_py(csv_path, bpm, bpb, offset, workdir, log, durada=None):
             os.path.join(workdir, "guia_acords.html"))
 
 
-def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0):
+def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0, mapa=None):
     """Posició en format compàs.temps.subdivisió (qualsevol compàs).
 
     Graella = corxera (mig temps). `bpb` = temps per compàs, així funciona
@@ -872,6 +872,8 @@ def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0):
     """
     if lliure:
         return f"{float(t):07.2f}s"
+    if mapa is not None and not mapa.es_constant():
+        return mapa.label(t)           # mateixa forma (compàs.temps.sub)
     step = 60.0 / bpm / 2              # corxera
     SB = max(1, int(bpb)) * 2          # corxeres per compàs
     # Sense clampar: abans de l'offset (compàs 1) les posicions son negatives
@@ -1254,7 +1256,8 @@ def duplica_bloc_seccions(seccions, first, last, desti, durada):
         clips_de_seccions(seccions), first, last, desti, durada, FORAT_SECCIO))
 
 
-def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0):
+def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0,
+                 mapa=None):
     def _escriu(f):
         w = csv.writer(f)
         w.writerow(["inici_s", "fi_s", "durada_s", "lletra", "família",
@@ -1264,8 +1267,8 @@ def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0):
             w.writerow([f"{float(ini):.{TEMPS_DEC}f}",
                         f"{float(fi):.{TEMPS_DEC}f}",
                         f"{float(dur):.{TEMPS_DEC}f}", L, fam,
-                        pos_compas(ini, bpm, bpb, lliure, offset),
-                        pos_compas(fi, bpm, bpb, lliure, offset)])
+                        pos_compas(ini, bpm, bpb, lliure, offset, mapa),
+                        pos_compas(fi, bpm, bpb, lliure, offset, mapa)])
     escriu_atomic(ruta, _escriu)
     seq = seq_abc(seccions)
     log(f"ABC: {len(seccions)} trossos, seqüència {seq}")

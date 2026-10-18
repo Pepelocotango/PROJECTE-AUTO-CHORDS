@@ -864,7 +864,8 @@ class Visor(QMainWindow):
             pipeline.desa_abc_csv(os.path.join(sortida, "estructura_ABC.csv"),
                                   self.seccions, self.bpm, self.log,
                                   lliure=not self.tempo_fix, bpb=self.bpb,
-                                  offset=getattr(self, "offset", 0.0))
+                                  offset=getattr(self, "offset", 0.0),
+                                  mapa=getattr(self, "tempo_map", None))
         except Exception as e:  # noqa: BLE001
             self.log(f"desat ABC ERROR: {e}")
         # Mapa de tempo/compàs (fase 2): un sol tros → se sincronitza amb el
@@ -2858,7 +2859,8 @@ class Visor(QMainWindow):
         abc = os.path.join(sortida, "estructura_ABC.csv")
         pipeline.desa_abc_csv(abc, self.seccions, self.bpm, self.log,
                               lliure=not self.tempo_fix, bpb=self.bpb,
-                              offset=getattr(self, "offset", 0.0))
+                              offset=getattr(self, "offset", 0.0),
+                              mapa=getattr(self, "tempo_map", None))
         self.canvis.emit()   # l'estructura ha canviat → el projecte queda «brut»
         self.log(f"ABC recalculat (només CSV): {msg}")
 
@@ -3170,7 +3172,8 @@ class Visor(QMainWindow):
                 pipeline.desa_abc_csv(abc, self.seccions, self.bpm,
                                       self.log, lliure=not self.tempo_fix,
                                       bpb=self.bpb,
-                                      offset=getattr(self, "offset", 0.0))
+                                      offset=getattr(self, "offset", 0.0),
+                                      mapa=getattr(self, "tempo_map", None))
                 pipeline.regenera_wavs_acords(self.csv_acords, sortida,
                                               self.bpm, self.bpb,
                                               self.offset, self.audio["durada"],

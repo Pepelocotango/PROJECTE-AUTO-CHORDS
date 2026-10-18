@@ -286,3 +286,30 @@ class BaseDeSortidaTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestMusicXmlMapa(unittest.TestCase):
+    """Fase 5: el MusicXML reflecteix els canvis de TEMPO del mapa."""
+
+    def test_canvis_de_tempo(self):
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 60.0, 4, 4)])
+        events = [(0.0, "C", 4.0), (4.0, "G", 4.0)]
+        xml = partitura.construeix_musicxml(events, [], bpb=4, bpm=120.0,
+                                            mapa=mapa)
+        self.assertIn('<sound tempo="120"', xml)
+        self.assertIn('<sound tempo="60"', xml)      # canvi al compàs 3
+        self.assertIn('<measure number="3">', xml)
+
+    def test_constant_no_afegeix_res(self):
+        from app.tempo_map import TempoMap
+        const = TempoMap.constant(120, 4, 4, durada=8.0)
+        events = [(0.0, "C", 4.0), (4.0, "G", 4.0)]
+        a = partitura.construeix_musicxml(events, [], bpb=4, bpm=120.0)
+        b = partitura.construeix_musicxml(events, [], bpb=4, bpm=120.0,
+                                          mapa=const)
+        self.assertEqual(a, b)
+
+
+if __name__ == "__main__":
+    unittest.main()

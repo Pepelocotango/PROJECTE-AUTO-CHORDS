@@ -48,9 +48,12 @@ en mode «BPM·compàs».
    la WAV), actualitza el transport amb el **valor inicial** i desa. Al
    **regle** es dibuixen **marcadors** de canvi (BPM · compàs).
    ⏳ **Pendent (4b)**: pista pròpia al timeline amb vores §6.3 editables.
-5. ⏳ **Exports/derivats** (`acords_a_live.py`, partitura, **MusicXML** —que ja
-   suporta `<sound tempo>` i `<time>` per compàs—) i, si es vol, **inferència**
-   automàtica a partir de les pistes `beat`/`bar`/`onsets`.
+5. ✅ **FET — Exports/derivats**: `pipeline.pos_compas` (etiquetes de l'ABC i
+   del CSV d'estructura) i la guia DAW (`acords_a_live.py`, que llegeix el
+   mapa) són mapa-conscients; el **MusicXML** emet els canvis de **tempo**
+   (`<sound tempo>`) al compàs on cauen. ⏳ **Pendent**: els canvis de
+   **compàs** al MusicXML (cal refer la generació de compassos) i la
+   **inferència** automàtica del mapa des de `beat`/`bar`/`onsets`.
 
 ## Decisions obertes
 - **Rampes de tempo** lineals (sí/no i a quines fases).
@@ -60,7 +63,8 @@ en mode «BPM·compàs».
 - Què fa el **mode fàcil** quan hi ha mapa (regularitza amb el tempo local).
 
 ## Estat
-- **Fases 1, 2, 3 i 4 FETES** (motor + persistència + graella/regle/snap
-  + diàleg d'edició i marcadors al regle).
+- **Fases 1-5 FETES** (motor, persistència, graella/regle/snap, diàleg
+  d'edició + marcadors, i exports/derivats).
+- **Pendent**: 4b (pista pròpia al timeline), compàs al MusicXML i inferència automàtica del mapa.
 - L'app es comporta igual que abans (BPM·compàs constant = un sol tros → la
   via uniforme de sempre); el mapa variable ja funciona a l'engine i a la UI.

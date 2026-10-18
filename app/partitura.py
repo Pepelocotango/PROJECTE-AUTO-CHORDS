@@ -216,7 +216,8 @@ def _note_xml(units, rest=False):
 
 # --- construcció del MusicXML ----------------------------------------------
 def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
-                        key_fifths=0, new_system_each=None, beat_type=4):
+                        key_fifths=0, new_system_each=None, beat_type=4,
+                        mapa=None):
     """Retorna el text MusicXML (partwise) del lead sheet."""
     sec_bar = {bar: let for bar, let in seccions if let}
     fi = max([e[0] + e[2] for e in events] + [0.0])
@@ -235,6 +236,16 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
          '  <part-list><score-part id="P1"><part-name>Chords</part-name>'
          "</score-part></part-list>\n",
          '  <part id="P1">\n']
+
+    # Canvis de TEMPO del mapa (variable): <sound tempo> al compàs on cauen.
+    canvis_tempo = {}
+    if mapa is not None and not mapa.es_constant():
+        for k in range(1, len(mapa.trams)):
+            s, pre = mapa.trams[k], mapa.trams[k - 1]
+            if abs(s.bpm - pre.bpm) > 1e-9:
+                canvis_tempo[mapa.pos(s.ini)[0]] = s.bpm
+        if canvis_tempo:               # calen compassos fins al darrer canvi
+            n_bars = max(n_bars, max(canvis_tempo))
 
     darrera = None
     for i in range(1, n_bars + 1):
@@ -255,6 +266,13 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
                      f"<metronome><beat-unit>quarter</beat-unit>"
                      f"<per-minute>{bpm:g}</per-minute></metronome></direction-type>"
                      f'<sound tempo="{bpm:g}"/></direction>\n')
+        if i in canvis_tempo:
+            tb = canvis_tempo[i]
+            x.append('      <direction placement="above"><direction-type>'
+                     f"<metronome><beat-unit>quarter</beat-unit>"
+                     f"<per-minute>{tb:g}</per-minute></metronome>"
+                     "</direction-type>"
+                     f'<sound tempo="{tb:g}"/></direction>\n')
         if i in sec_bar:
             x.append('      <direction placement="above"><direction-type>'
                      f"<rehearsal>{escape(sec_bar[i])}</rehearsal>"
@@ -424,7 +442,8 @@ def _renderitza(binari, entrada, sortida, log, timeout=300):
 def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
                       titol=None, key_fifths=0, wav=None,
                       genera_pdf=True, genera_mscz=True, musescore=None,
-                      timeout=300, new_system_each=None, beat_type=4):
+                      timeout=300, new_system_each=None, beat_type=4,
+                      mapa=None):
     """Genera MusicXML (+ PDF/.mscz amb MuseScore) a `<sortida>/partitura/`.
 
     Retorna un diccionari amb les rutes generades (`musicxml`, `pdf`, `mscz`,
@@ -452,7 +471,7 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
     dest_dir = os.path.join(sortida, MOTS)
     os.makedirs(dest_dir, exist_ok=True)
 
-    xml = construeix_musicxml(events, seccions, bpb=bpb, bpm=bpm,
+    xml = construeix_musicxml(events, seccions, bpb=bpb, bpm=bpm, mapa=mapa,
                               titol=base, key_fifths=key_fifths,
                               new_system_each=new_system_each,
                               beat_type=beat_type)

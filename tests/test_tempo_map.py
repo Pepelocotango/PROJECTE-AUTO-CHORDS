@@ -254,5 +254,25 @@ class TestEdicioMapa(unittest.TestCase):
         self.assertEqual(tm.signatura(5.0), (3, 4))
 
 
+class TestExportsMapa(unittest.TestCase):
+    """Fase 5: `pos_compas` (etiqueta d'export) mapa-conscient."""
+
+    def test_pos_compas_mapa(self):
+        mapa = TempoMap([(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 60.0, 3, 4)])
+        self.assertEqual(pipeline.pos_compas(0.0, 120, 4, False, 0.0, mapa),
+                         "1.1.1")
+        self.assertEqual(pipeline.pos_compas(4.0, 120, 4, False, 0.0, mapa),
+                         "3.1.1")
+        self.assertEqual(pipeline.pos_compas(6.0, 120, 4, False, 0.0, mapa),
+                         "3.3.1")
+
+    def test_pos_compas_constant_identic(self):
+        const = TempoMap.constant(120, 4, 4, durada=10.0)
+        for t in (0.0, 0.5, 2.0):
+            self.assertEqual(
+                pipeline.pos_compas(t, 120, 4, False, 0.0, const),
+                pipeline.pos_compas(t, 120, 4, False, 0.0))
+
+
 if __name__ == "__main__":
     unittest.main()

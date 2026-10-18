@@ -2925,6 +2925,8 @@ class Finestra(QMainWindow):
                 wav=wav,
                 key_fifths=key_fifths,
                 new_system_each=4,     # 4 compassos per línia (lead sheet)
+                mapa=getattr(getattr(self, "visor_ref", None),
+                             "tempo_map", None),
             )
             if res.get("error"):
                 self.registra(f"partitura: sense resultat ({res['error']})")
