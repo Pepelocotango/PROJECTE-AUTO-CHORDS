@@ -10,7 +10,7 @@ Un **projecte** és una carpeta que ho conté tot::
     ├── acords.csv                 ← el model (font de veritat)
     ├── estructura_ABC.csv         ← el model (font de veritat)
     ├── wavs_acords/ …             ← exports (els crea `pipeline.exporta_total`)
-    └── backup/ …                  ← còpies versionades (fase 3)
+    └── backup/ …                  ← còpies versionades
 
 En crear un projecte **copiem l'àudio a `audio/`** (sempre): així la carpeta es
 pot renombrar o moure sencera —o es pot esborrar el fitxer original— i el

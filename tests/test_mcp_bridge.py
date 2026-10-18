@@ -367,7 +367,7 @@ class TestRegistre(unittest.TestCase):
             "set_inclou_estructura", "set_inclou_partitura",
             # Mapa de tempo/compàs (trams) — 2026-10-18.
             "list_tempo", "afegeix_tall", "elimina_tall", "mou_tall",
-            "detecta_tempo_mapa",
+            "detecta_tempo_mapa", "set_tram_tempo",
         }
         self.assertEqual(set(mcp_bridge.OPERACIONS), esperades)
 

@@ -769,6 +769,38 @@ def _op_detecta_tempo_mapa(ctx, params):
     return {"trams_inferits": int(n or 0), "estat": _op_status(ctx, {})}
 
 
+def _op_set_tram_tempo(ctx, params):
+    """Fixa el **BPM i/o el compàs** del tram `index` del mapa (mateix efecte
+    que el diàleg «Reanomena (BPM/compàs)…» de la GUI).
+
+    Els paràmetres que no s'indiquen conserven el valor del tram. Si el tram és
+    el 0, el valor nou passa també al transport (`bpm`/`bpb`), que és el que
+    mana com a valor inicial (igual que fa la GUI).
+    """
+    idx = _num(params, "index", "idx", enter=True)
+
+    def mut(vr):
+        trams = list(vr.tempo_trams or [])
+        if not 0 <= idx < len(trams):
+            raise BridgeError(f"Índex de tram fora de rang: {idx}")
+        t = trams[idx]
+        bpm = params.get("bpm")
+        num = params.get("bpb", params.get("num"))
+        den = params.get("beat_type", params.get("den"))
+        bpm = float(t[2]) if bpm is None else float(bpm)
+        num = int(t[3]) if num is None else int(num)
+        den = int(t[4]) if den is None else int(den)
+        if bpm <= 0:
+            raise BridgeError("El BPM ha de ser més gran que 0.")
+        if num <= 0 or den <= 0:
+            raise BridgeError("El compàs ha de ser positiu (p. ex. 4/4).")
+        nou = list(trams)
+        nou[idx] = (float(t[0]), float(t[1]), bpm, num, den)
+        vr.tempo_trams = nou
+
+    return _aplica_tempo(ctx, mut)
+
+
 def _op_list_tempo(ctx, params):
     """Llista els TRAMS del mapa de tempo/compàs (índex, inici, fi, BPM, compàs)."""
     vr = _requereix_visor(ctx)
@@ -1420,6 +1452,7 @@ OPERACIONS = {
     "afegeix_tall": _op_afegeix_tall,
     "elimina_tall": _op_elimina_tall,
     "mou_tall": _op_mou_tall,
+    "set_tram_tempo": _op_set_tram_tempo,
     # Projectes autocontinguts + paritat d'edició #11 (2026-10-15).
     "crea_projecte": _op_crea_projecte,
     "obre_projecte": _op_obre_projecte,

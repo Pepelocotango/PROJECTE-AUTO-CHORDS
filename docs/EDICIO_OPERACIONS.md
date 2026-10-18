@@ -35,7 +35,7 @@
 | 4 | **Eliminar** un clip | `Del` · menú contextual ▸ *Elimina* · llista | `ac_delete_chord`, `ac_delete_section`, `ac_elimina_tall` | ✓ | ✓ | ✓ | **FET**: nucli únic `elimina_clips` (§6.4) — mateix camí a la GUI i a l'MCP |
 | 5 | **Eliminar la SELECCIÓ** | `Del` amb multi-selecció | `ac_esborra_seleccio` | ✓ | ✓ | ✓ | **FET** |
 | 6 | **Eliminar-ho TOT** → `N`/`-` a 0 | `Del` de tot | `ac_esborra_seleccio` | ✓ | ✓ | — | **FET** |
-| 7 | **Reanomenar** | `F2` · doble clic (inline) · llista | `ac_rename_chord`, `ac_rename_section` | ✓ | ✓ | ✓ | **FET** |
+| 7 | **Reanomenar** | `F2` · doble clic (inline) · llista · *Reanomena (BPM/compàs)…* (diàleg del tram) | `ac_rename_chord`, `ac_rename_section`, `ac_set_tram_tempo` (BPM + compàs del tram) | ✓ | ✓ | ✓ | **FET** |
 | 8 | **Reanomenar en bloc** | `F2` amb multi-selecció | `ac_renomena_seleccio` | ✓ | ✓ | — | **FET** |
 | 9 | **Trobar i reemplaçar** | `Ctrl+H` | `ac_troba_i_reemplaca` | ✓ | ✓ | — | **FET** |
 | 10 | **Moure un clip / BLOC** | arrossegar el **cos** (guard `Ctrl+Shift` = duplicar) | `ac_mou_bloc` (`kind`) | ✓ | ✓ | ✓ | **FET** (§6.3) |

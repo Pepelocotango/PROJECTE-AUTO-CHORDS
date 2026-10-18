@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Mapa de TEMPO i COMPÀS variables — el «motor» (fase 1, stdlib pur).
+"""Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur).
 
 En un DAW el BPM i el compàs no són constants: hi ha un **mapa** (tempo track /
 signature track) amb esdeveniments que valen fins al següent. Aquest mòdul

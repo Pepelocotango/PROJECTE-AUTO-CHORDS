@@ -481,7 +481,7 @@ QM = {
 def detecta_beats(wav_path, log=None):
     """Temps dels TEMPS (beats) detectats pel qm-barbeattracker (segons).
 
-    El fa servir la inferència del mapa de tempo (fase 5c).
+    El fa servir la inferència del mapa de tempo.
     """
     return _qm_temps(QM["beats"], wav_path, log=log)
 
@@ -1716,7 +1716,7 @@ def desa_acords_csv(ruta, items, durada=0.0):
     escriu_atomic(ruta, _escriu)
 
 
-# --- Mapa de TEMPO i COMPÀS (fase 2: persistència) -------------------------
+# --- Mapa de TEMPO i COMPÀS (persistència) -------------------------
 # Dos fitxers, com les dues pistes d'un DAW (tempo track / signature track):
 #   tempo.csv   →  inici,fi,bpm
 #   compas.csv  →  inici,fi,num,den

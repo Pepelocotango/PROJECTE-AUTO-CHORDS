@@ -35,10 +35,27 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 8 | Temps vàlids | `visor._valida_canvis_*` **+** les xarxes de seguretat (`normalitza_cobertura`, `normalitza_trams`) | `test_regles_or.TestRegla8TempsValids` | ✅ auditat (Ronda 1: 2 forats arreglats) |
 | 9 | Portabilitat i maquinari (3 SO, sense AVX) | CI (`eines/verifica_minos_macos.py`) · build genèric (`-msse -msse2`, sense AVX) · `tests/test_requirements.py` (pins) · **NOU `GuardAvxTests`** (flags dels scripts de build) | `test_requirements` | ✅ auditat (Ronda 8: + guard d'AVX als scripts) |
 | 10 | Estat en directori escriptible | `app/config.py` (prova d'escriptura real) | `test_regles_or.TestRegla10EstatEscriptible` | ✅ auditat |
-| 11 | Paritat d'edició i tracte visual | el joc simètric a `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` | `test_regla11_paritat` | 🟡 auditada; **falta** repàs camí a camí (MCP inclòs) |
+| 11 | Paritat d'edició i tracte visual | el joc simètric a `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` · pont MCP (`app/mcp_bridge.py`) | `test_regla11_paritat` · `test_mcp_paritat` | 🟡 auditada; **falta** acabar el repàs camí a camí (clipboard/undo) |
 | 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
 
 ## Trobades i fixes (el més nou a dalt)
+
+### 2026-10-18 · Ronda 9 — R11: l'MCP no podia editar els valors d'un tram
+
+- 🐞 **Forat de paritat**: la GUI pot editar el **BPM i el compàs** de qualsevol
+  tram del mapa (menú ▸ *Reanomena (BPM/compàs)…*), però pel pont **no hi havia
+  cap eina**: `ac_set_tempo` només toca el valor global de la barra (que és el
+  del tram 0) i `ac_mou_tall` mou fronteres, no valors.
+  → NOVA eina **`ac_set_tram_tempo`** (73 → 74): fixa el BPM i/o el compàs del
+  tram `index` (el que no s'indique, es conserva), amb validació de bpm>0 i
+  compàs positiu. Si és el tram 0, el valor nou passa també al transport, com
+  fa la GUI. Test nou a `test_mcp_paritat` i taula d'operacions al dia.
+- 🧹 **Restes històriques al codi**: tretes les etiquetes «(fase N)» del pla de
+  tempo (ja tancat) dels comentaris de `pipeline`, `tempo_map`, `timeline`,
+  `visor`, `projecte` i `acords_a_live`, i **corregit un docstring obsolet** de
+  `_refresca_tempo_map` que deia que «la graella encara fa servir
+  `self.bpm`/`self.bpb`» — la graella, el regle, el snap i els exports ja són
+  mapa-conscients des de fa fases.
 
 ### 2026-10-18 · Ronda 8 — R9: guard automàtic dels flags de build
 

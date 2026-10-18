@@ -95,6 +95,19 @@ class TestMapaTempo(_Base):
         self.assertEqual(r["trams"][1]["bpb"], 3)
         w.close()
 
+    def test_set_tram_tempo(self):
+        w = self._finestra()
+        w.visor_ref.aplica_tempo_trams([(0.0, 4.0, 120.0, 4, 4),
+                                        (4.0, DURADA_S, 90.0, 3, 4)])
+        mcp_bridge._op_set_tram_tempo(_ctx(w), {"index": 1, "bpm": 100.0,
+                                                "bpb": 5, "beat_type": 8})
+        t = w.visor_ref.tempo_trams[1]
+        self.assertEqual((float(t[2]), int(t[3]), int(t[4])), (100.0, 5, 8))
+        self.assertEqual(w.visor_ref.tempo_trams[0][2], 120.0)  # el 0 no es toca
+        with self.assertRaises(mcp_bridge.BridgeError):
+            mcp_bridge._op_set_tram_tempo(_ctx(w), {"index": 1, "bpm": 0})
+        w.close()
+
     def test_afegeix_i_elimina_tall(self):
         w = self._finestra()
         w.visor_ref.aplica_tempo_trams([(0.0, DURADA_S, 120.0, 4, 4)])

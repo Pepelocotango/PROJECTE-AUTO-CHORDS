@@ -129,6 +129,11 @@ _TOOLS = [
      "Infereix el mapa de BPM/compàs a partir dels temps (beats) de l'àudio "
      "(pot trigar). No obre cap finestra.",
      {}),
+    ("ac_set_tram_tempo", "set_tram_tempo",
+     "Fixa el BPM i/o el compàs del tram `index` del mapa (el que fa el dialeg "
+     "de la GUI); el que no s'indique conserva el valor.",
+     {"index": {"type": "integer"}, "bpm": {"type": "number"},
+      "bpb": {"type": "integer"}, "beat_type": {"type": "integer"}}),
     ("ac_list_tempo", "list_tempo",
      "Llista els TRAMS del mapa de BPM/compàs (índex, inici, fi, BPM, compàs).",
      {}),

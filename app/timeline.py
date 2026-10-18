@@ -136,7 +136,7 @@ class TimelineView(QGraphicsView):
     # (mateixa lletra i família) sobre el mateix tram. Payload:
     # (ini, fi, lletra, família) de la secció original.
     sectionCopyRequested = pyqtSignal(float, float, str, str)
-    # Pista de BPM/compàs (fase 4b editable): clic a un bloc, vora arrossegada
+    # Pista de BPM/compàs (editable): clic a un bloc, vora arrossegada
     # i botó dret (índex del bloc; -1 = fora).
     tempoEditRequested = pyqtSignal(int)
     tempoChangeMoved = pyqtSignal(int, str, float)
@@ -200,7 +200,7 @@ class TimelineView(QGraphicsView):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
-        self._mapa = None      # mapa de tempo/compàs (fase 3; None = uniforme)
+        self._mapa = None      # mapa de tempo/compàs (None = uniforme)
         self._acords = _acords_a_clips(acords, self._durada)
         self._seccions = list(seccions) or []
         self._chord_items: List[ChordItem] = []

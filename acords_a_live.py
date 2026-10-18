@@ -7,7 +7,7 @@ durada = float(sys.argv[5]) if len(sys.argv) > 5 else 0.0   # durada de la WAV (
 step = 60.0 / bpm / 2            # graella = mig temps (corxera)
 slots_bar = bpb * 2
 
-# --- mapa de TEMPO i COMPÀS (fase 5): la guia en fa cas si és variable -------
+# --- mapa de TEMPO i COMPÀS: la guia en fa cas si és variable ---------------
 # Si a la carpeta del CSV hi ha `tempo.csv`/`compas.csv` amb mes d'un tros, la
 # posició «compàs.temps.setzena» es calcula amb el mapa; si no, amb el BPM fix.
 mapa = None

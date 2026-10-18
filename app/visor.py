@@ -196,7 +196,7 @@ class Visor(QMainWindow):
             arrodoneix=True, deriva_fi=True, log=self.log)
         _, self.seccions = pipeline.normalitza_cobertura(
             [], self.seccions, self._durada_wav(), log=self.log)
-        # Mapa de TEMPO i COMPÀS (fase 2): dels CSVs del projecte o, si no n'hi
+        # Mapa de TEMPO i COMPÀS: dels CSVs del projecte o, si no n'hi
         # ha, un **sol tros** amb el BPM·compàs actual (zero canvi visible).
         self.tempo_trams = pipeline.llegeix_tempo_map(
             self._carpeta_acords(), self.bpm, self.bpb, 4, self._durada_wav())
@@ -773,9 +773,9 @@ class Visor(QMainWindow):
     def _refresca_tempo_map(self):
         """(Re)construeix `self.tempo_map` a partir de `self.tempo_trams`.
 
-        El mapa és la font del tempo/compàs variables (fase 2: només persistència;
-        la graella encara fa servir `self.bpm`/`self.bpb`). Sense trossos, se'n
-        crea un de sol amb el BPM·compàs actual.
+        El mapa és la font del tempo/compàs variables: la graella, el regle, el
+        snap i els exports en surten. Sense trossos, se'n crea un de sol amb el
+        BPM·compàs actual.
         """
         from app.tempo_map import TempoMap, normalitza_trams
         d = self._durada_wav()
@@ -926,7 +926,7 @@ class Visor(QMainWindow):
                                   mapa=getattr(self, "tempo_map", None))
         except Exception as e:  # noqa: BLE001
             self.log(f"desat ABC ERROR: {e}")
-        # Mapa de tempo/compàs (fase 2): un sol tros → se sincronitza amb el
+        # Mapa de tempo/compàs: un sol tros → se sincronitza amb el
         # BPM·compàs actual (zero canvi visible); amb més trossos, es respecta.
         if len(self.tempo_trams) <= 1:
             self.tempo_trams = [(0.0, self._durada_wav(), float(self.bpm),
