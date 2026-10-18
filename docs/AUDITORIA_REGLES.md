@@ -28,9 +28,9 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 1 | Ordre estricte | `visor._valida_canvis_acords` / `_valida_canvis_seccions` · `pipeline.normalitza_cobertura` (reordena) · `tempo_map.normalitza_trams` (ordena i deduplica) | `test_regles_or.TestRegla1OrdreEstricte` · `test_tempo_map` | ✅ auditada als 3 nuclis i a la càrrega (Ronda 2) |
 | 2 | Contigüitat | `pipeline.filtra_seccions` · els normalitzadors dels 3 tipus (`prev.fi == curr.ini`) | `test_seccions_contigues` | 🟡 auditada al mapa (Ronda 2); **falta** el repàs complet dels 3 tipus |
 | 3 | Durades derivades | el `fi` del `Clip` **no mana**: es re-deriva de la frontera (cadena d'inis) | `test_regles_or.TestRegla3DuradesDerivades` | ✅ auditat |
-| 4 | Cobertura total | `pipeline.normalitza_cobertura()` (acords + seccions) · `tempo_map.normalitza_trams(trams, durada)` (mapa) | `test_cobertura_viu` | 🟡 auditada; **falta** comprovar-ho després de cada mutació del mapa (undo/porta-retalls/MCP) |
+| 4 | Cobertura total | `pipeline.normalitza_cobertura()` (acords + seccions) · `tempo_map.normalitza_trams(trams, durada)` (mapa) · **punt únic**: `visor._refresca_tempo_map` | `test_cobertura_viu` · `test_regles_or` | ✅ auditada (Ronda 3: el mapa es re-normalitza SEMPRE que es construeix) |
 | 5 | Una sola font de veritat | `pipeline` + `tempo_map` (2 backends); la còpia del visor mai no mana | `test_regles_or.TestRegla5FontDeVeritat` | ⏳ pendent de repàs (buscar mutacions de la UI que no passin pel backend) |
-| 6 | WAVs només via `exporta_total()` | `pipeline.exporta_total` / `regenera_wavs_*` | `test_regles_or.TestRegla6WavsNomesViaExporta` | 🟡 auditada; **falta** recórrer tots els cridadors de `regenera_wavs_*` |
+| 6 | WAVs només via `exporta_total()` | `pipeline.exporta_total` / `regenera_wavs_*` | `test_regles_or.TestRegla6WavsNomesViaExporta` | ✅ auditada (Ronda 3: els 6 cridadors són tots camins d'exportació; la UI delega) |
 | 7 | Instància única | `plataforma.bloqueja_instancia_unica` | `test_regles_or.TestRegla7InstanciaUnica` | ✅ auditat |
 | 8 | Temps vàlids | `visor._valida_canvis_*` **+** les xarxes de seguretat (`normalitza_cobertura`, `normalitza_trams`) | `test_regles_or.TestRegla8TempsValids` | ✅ auditat (Ronda 1: 2 forats arreglats) |
 | 9 | Portabilitat i maquinari (3 SO, sense AVX) | CI (`eines/verifica_minos_macos.py`) · build genèric · `tests/test_requirements.py` | `test_requirements` | ✅ auditat al que és verificable des d'ací |
@@ -39,6 +39,22 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
 
 ## Trobades i fixes (el més nou a dalt)
+
+### 2026-10-18 · Ronda 3 — R4 (punt únic del mapa) i R6 (escriptors de WAV)
+
+- **R4**: `visor._refresca_tempo_map` és l'**únic** lloc on es construeix
+  l'objecte `TempoMap` a partir de la còpia. Ara normalitza sempre
+  (`normalitza_trams`), així que la còpia vinga d'on vinga (CSV a mà, undo
+  vell, client MCP) ix amb ordre (#1), contigüitat (#2), cobertura (#4) i
+  valors vàlids (#8). Test nou a `test_regles_or`.
+- **R6**: revisats **tots** els cridadors d'escriptors de WAV
+  (`exporta_total`, `regenera_wavs_acords`, `regenera_wavs_estructura`,
+  `neteja_wavs`): els 6 són camins d'exportació (menú principal, visor i el
+  fil de l'exportació asíncrona). Cap camí d'edició n'escriu. ✅
+  *(Nota de redacció: la regla diu «des del backend `exporta_total()`» i el
+  visor autònom hi arriba pels seus regeneradors; el fons de la regla —només
+  l'exportació escriu WAVs— es compleix. Ho deixo anotat, no reescric la
+  regla perquè ara la té en mans un altre agent.)*
 
 ### 2026-10-18 · Ronda 2 — Regles 1/2/4 al CAMÍ DE CÀRREGA del mapa
 

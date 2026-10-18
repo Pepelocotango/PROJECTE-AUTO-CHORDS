@@ -815,9 +815,13 @@ class Visor(QMainWindow):
         la graella encara fa servir `self.bpm`/`self.bpb`). Sense trossos, se'n
         crea un de sol amb el BPM·compàs actual.
         """
-        from app.tempo_map import TempoMap
-        trams = list(self.tempo_trams or [])
+        from app.tempo_map import TempoMap, normalitza_trams
         d = self._durada_wav()
+        # Regles 1, 2, 4 i 8: aquest és el PUNT ÚNIC on es construeix el mapa,
+        # així que el que hi entra s'hi ha de complir sempre. Si la còpia no ho
+        # complia (CSV editat a mà, un estat vell de l'undo, un client de
+        # l'MCP), ací queda arreglada abans de construir l'objecte.
+        trams = normalitza_trams(list(self.tempo_trams or []), d)
         den = int(getattr(self, "beat_type", 4) or 4)
         if len(trams) <= 1:
             # Un sol tros = el cas constant d'avui.

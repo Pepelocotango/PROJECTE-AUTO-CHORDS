@@ -143,6 +143,22 @@ class TestRegla8TempsValids(_Base):
         self.assertGreater(trams[0][2], 0)
         self.assertEqual((trams[0][3], trams[0][4]), (4, 4))
 
+    def test_el_mapa_del_visor_no_pot_quedar_trencat(self):
+        """Construir el mapa (R1/R2/R4/R8) sempre ix normalitzat, vinga d'on
+        vinga la còpia: `_refresca_tempo_map` és el punt únic on es fa."""
+        v = _visor(dur=20.0)
+        v.tempo_trams = [(5.0, 8.0, 0.0, 0, 0), (8.0, 30.0, 90.0, 3, 4)]
+        v._refresca_tempo_map()
+        self.assertEqual(float(v.tempo_trams[0][0]), 0.0)          # R1/R4
+        self.assertGreater(float(v.tempo_trams[0][2]), 0.0)        # R8
+        self.assertGreater(int(v.tempo_trams[0][3]), 0)            # R8
+        self.assertGreater(int(v.tempo_trams[0][4]), 0)            # R8
+        self.assertAlmostEqual(float(v.tempo_trams[-1][1]), 20.0,  # R4
+                               places=6)
+        fis = [float(t[1]) for t in v.tempo_trams]
+        inis = [float(t[0]) for t in v.tempo_trams]
+        self.assertEqual(fis[:-1], inis[1:])                       # R2
+
 
 
 class TestRegla1OrdreEstricte(_Base):
