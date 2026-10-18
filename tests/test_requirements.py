@@ -22,6 +22,47 @@ _NUMPY_2 = (r"numpy\s*>=\s*2", r"numpy\s*==\s*2", r"numpy\s*>\s*2",
 _RE_NUMPY = re.compile(r"numpy\s*((?:==|>=|<=|>|<|~=|!=)\s*[^\"'\s]+)")
 
 
+class GuardAvxTests(unittest.TestCase):
+    """Regla d'or #9: cap binari del paquet pot requerir **AVX**.
+
+    El Q9400 no en té: un binari compilat amb AVX peta amb SIGILL (ja va passar
+    amb la CLI d'opencode). La garantia ve del build, així que aquest test
+    vigila que els scripts de compilació dels natius **no** hi introdueixin
+    flags amb AVX ni `-march=native` (que compilaria pel maquinari de qui
+    construeix, no pel de destí).
+    """
+
+    SCRIPTS = ("eines/compila_vamp_host.sh", "eines/compila_vamp_plugins.sh",
+               "eines/compila_vamp_plugins.sh")
+    PROHIBIT = (r"-mavx", r"-mavx2", r"-mavx512", r"-march\s*=\s*native",
+                r"-march\s*=\s*haswell", r"-mtune\s*=\s*native")
+
+    def test_cap_flag_amb_avx(self):
+        for rel in self.SCRIPTS:
+            f = os.path.join(ROOT, rel)
+            if not os.path.isfile(f):
+                continue
+            with open(f, encoding="utf-8") as fh:
+                linies = [ln for ln in fh.read().splitlines()
+                          if not ln.lstrip().startswith("#")]   # sense comentaris
+            text = "\n".join(linies)
+            for pat in self.PROHIBIT:
+                self.assertIsNone(
+                    re.search(pat, text),
+                    f"{rel}: hi ha un flag amb AVX ({pat}) — el Q9400 no en té")
+
+    def test_els_builds_demanen_sse2(self):
+        for rel in ("eines/compila_vamp_host.sh",
+                    "eines/compila_vamp_plugins.sh"):
+            f = os.path.join(ROOT, rel)
+            if not os.path.isfile(f):
+                continue
+            with open(f, encoding="utf-8") as fh:
+                text = fh.read()
+            self.assertIn("-msse2", text,
+                          f"{rel}: cal fixar el maquinari mínim amb -msse2")
+
+
 class DependènciesGuardTests(unittest.TestCase):
     @staticmethod
     def _sense_comentaris(t):

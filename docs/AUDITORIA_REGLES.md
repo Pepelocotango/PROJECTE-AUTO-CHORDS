@@ -33,12 +33,26 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 6 | WAVs només via `exporta_total()` | `pipeline.exporta_total` / `regenera_wavs_*` | `test_regles_or.TestRegla6WavsNomesViaExporta` | ✅ auditada (Ronda 3: els 6 cridadors són tots camins d'exportació; la UI delega) |
 | 7 | Instància única | `plataforma.bloqueja_instancia_unica` | `test_regles_or.TestRegla7InstanciaUnica` | ✅ auditat |
 | 8 | Temps vàlids | `visor._valida_canvis_*` **+** les xarxes de seguretat (`normalitza_cobertura`, `normalitza_trams`) | `test_regles_or.TestRegla8TempsValids` | ✅ auditat (Ronda 1: 2 forats arreglats) |
-| 9 | Portabilitat i maquinari (3 SO, sense AVX) | CI (`eines/verifica_minos_macos.py`) · build genèric · `tests/test_requirements.py` | `test_requirements` | ✅ auditat al que és verificable des d'ací |
+| 9 | Portabilitat i maquinari (3 SO, sense AVX) | CI (`eines/verifica_minos_macos.py`) · build genèric (`-msse -msse2`, sense AVX) · `tests/test_requirements.py` (pins) · **NOU `GuardAvxTests`** (flags dels scripts de build) | `test_requirements` | ✅ auditat (Ronda 8: + guard d'AVX als scripts) |
 | 10 | Estat en directori escriptible | `app/config.py` (prova d'escriptura real) | `test_regles_or.TestRegla10EstatEscriptible` | ✅ auditat |
 | 11 | Paritat d'edició i tracte visual | el joc simètric a `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` | `test_regla11_paritat` | 🟡 auditada; **falta** repàs camí a camí (MCP inclòs) |
 | 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
 
 ## Trobades i fixes (el més nou a dalt)
+
+### 2026-10-18 · Ronda 8 — R9: guard automàtic dels flags de build
+
+- **R9 verificada**: els natius es compilen amb `-msse -msse2` (i el comentari
+  de l'script diu per què) i cap script del paquet demana AVX. La suite
+  mateixa, corrent en un **Q9400 sense AVX**, és la prova de facto que res del
+  camí de l'app en demana (buit a `grep -o avx /proc/cpuinfo`).
+- ➕ **Guard nou** (`tests/test_requirements.py` › `GuardAvxTests`): vigila que
+  els scripts de compilació dels natius no hi introdueixin `-mavx*`,
+  `-march=native` ni `-mtune=native` — que compilarien pel maquinari de qui
+  construeix i no pel de destí (el Q9400) — i que hi hagen `-msse2`. Sense
+  això, la regla depenia només de llegir-se l'script.
+- **`eines/` net**: cap funció ni constant morta (revisades totes amb el
+  detector d'usos).
 
 ### 2026-10-18 · Ronda 7 — R2/R8: encavalcaments i durades nul·les de SECCIONS
 
