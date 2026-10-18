@@ -852,6 +852,33 @@ def normalitza_cobertura(acords, seccions, durada, log=None):
                     f"arrencaven fora de la WAV (>= {durada:.2f} s) eliminades")
         seccions = dins
     if seccions:
+        # Regles #2 (contigüitat) i #8 (durada > 0): les seccions no es poden
+        # ENCAVALCAR ni tenir durada nul·la. Aquesta funció és la xarxa de
+        # seguretat dels 4 camins + la càrrega, així que hi ha de fer front:
+        # un CSV editat a mà o un projecte vell hi poden arribar així (el
+        # visor ja ho valida, però per ací també s'hi passa). Mana la secció
+        # que ARRENCA MÉS TARD: el seu inici retalla el fi de l'anterior
+        # (mateix criteri que una marca d'acord); si algú queda sense espai,
+        # s'elimina.
+        net_s, calcigades, nulles = [], 0, 0
+        for s in seccions:
+            ini, fi = float(s[0]), float(s[1])
+            if fi <= ini + TOL_TEMPS:
+                nulles += 1
+                continue
+            while net_s and ini < net_s[-1][1] - TOL_TEMPS:
+                pi, _pf, _pl, _pfam = net_s[-1]
+                if ini <= pi + TOL_TEMPS:
+                    net_s.pop()
+                    calcigades += 1
+                    continue
+                net_s[-1] = (pi, ini, net_s[-1][2], net_s[-1][3])
+            net_s.append((ini, fi, s[2], s[3]))
+        if (calcigades or nulles) and log:
+            log(f"cobertura: estructures que s'encavalcaven ajustades "
+                f"({calcigades} calcigades, {nulles} de durada nul·la fora)")
+        seccions = net_s
+    if seccions:
         if float(seccions[0][0]) > 1e-9:
             seccions.insert(0, (0.0, float(seccions[0][0]),
                                 SENSE_SECCIO, SENSE_SECCIO))

@@ -26,7 +26,7 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | # | Regla | Validació al codi | Test | Estat |
 |---|---|---|---|---|
 | 1 | Ordre estricte | `visor._valida_canvis_acords` / `_valida_canvis_seccions` · `pipeline.normalitza_cobertura` (reordena) · `tempo_map.normalitza_trams` (ordena i deduplica) | `test_regles_or.TestRegla1OrdreEstricte` · `test_tempo_map` | ✅ auditada als 3 nuclis i a la càrrega (Ronda 2) |
-| 2 | Contigüitat | `pipeline.filtra_seccions` · els normalitzadors dels 3 tipus (`prev.fi == curr.ini`) · lectors (`llegeix_acords` / `llegeix_abc`) | `test_seccions_contigues` · `test_regles_or` | ✅ auditada (Ronda 4: mapa + càrrega dels 3 tipus) |
+| 2 | Contigüitat | `pipeline.filtra_seccions` · els normalitzadors dels 3 tipus (`prev.fi == curr.ini`) · `normalitza_cobertura` (encaixaments) · lectors | `test_seccions_contigues` · `test_regles_or` | ✅ auditada (Rondes 4 i 7: mapa, càrrega i encavalcaments) |
 | 3 | Durades derivades | el `fi` del `Clip` **no mana**: es re-deriva de la frontera (cadena d'inis) | `test_regles_or.TestRegla3DuradesDerivades` | ✅ auditat |
 | 4 | Cobertura total | `pipeline.normalitza_cobertura()` (acords + seccions) · `tempo_map.normalitza_trams(trams, durada)` (mapa) · **punt únic**: `visor._refresca_tempo_map` | `test_cobertura_viu` · `test_regles_or` | ✅ auditada (Ronda 3: el mapa es re-normalitza SEMPRE que es construeix) |
 | 5 | Una sola font de veritat | `pipeline` + `tempo_map` (2 backends); la còpia del visor mai no mana | `test_regles_or.TestRegla5FontDeVeritat` | ✅ auditada (Ronda 5: les 36 mutacions del visor passen pels validators/normalitzadors o preserven els invariants) |
@@ -39,6 +39,18 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
 
 ## Trobades i fixes (el més nou a dalt)
+
+### 2026-10-18 · Ronda 7 — R2/R8: encavalcaments i durades nul·les de SECCIONS
+
+- 🐞 `pipeline.normalitza_cobertura` (la xarxa de seguretat dels 4 camins + la
+  càrrega) **no** tocava les seccions que **s'encavalcaven** ni les de
+  **durada nul·la**: un CSV editat a mà o un projecte vell hi podien entrar i
+  el model quedava amb solapaments (#2) i amb una secció de durada 0 (#8). El
+  visor ja ho rebutja, però per ací també s'hi passa.
+  → ara mana la secció que **arrenca més tard** (el seu inici retalla el fi de
+  l'anterior, com fa una marca d'acord), les de `fi <= ini` s'eliminen i el
+  forat que en quede el tapa el farciment de sempre. Test nou a
+  `test_seccions_contigues`.
 
 ### 2026-10-18 · Ronda 6 — R1/R2/R4 a la càrrega (verificades) + camí llegat de duplicar
 

@@ -146,6 +146,29 @@ class TestMoureSeccioManteContiguitat(_Base):
         self.assertEqual([s[2] for s in v.seccions], ["A", "B", "-", "C", "D"])
         self.assertTrue(_contigues(_llegeix_abc(v.abc_csv)))
 
+    def test_la_xarxa_tambe_arregla_encavalcaments_i_durades_nulles(self):
+        """Regles #2 i #8 a la xarxa de seguretat: un CSV editat a mà (o un
+        projecte vell) pot portar seccions encavalcades o de durada zero.
+
+        Auditoria 18-10-2026: sobrevivien. Mana la secció que ARRENCA MÉS TARD
+        (el seu inici retalla el fi de l'anterior); les de durada nul·la fora.
+        """
+        a, b = pipeline.normalitza_cobertura(
+            [], [(0.0, 10.0, "A", "A"), (5.0, 20.0, "B", "B")], DUR)
+        self.assertEqual([(float(s[0]), float(s[1]), s[2]) for s in b],
+                         [(0.0, 5.0, "A"), (5.0, DUR, "B")])
+        self.assertTrue(_contigues(b))
+        a, b = pipeline.normalitza_cobertura(
+            [], [(0.0, 5.0, "A", "A"), (5.0, 5.0, "B", "B"),
+                 (5.0, DUR, "C", "C")], DUR)
+        self.assertEqual([s[2] for s in b], ["A", "C"])       # la nul·la, fora
+        self.assertTrue(_contigues(b))
+        a, b = pipeline.normalitza_cobertura(
+            [], [(0.0, 20.0, "A", "A"), (2.0, 3.0, "B", "B"),
+                 (5.0, DUR, "C", "C")], DUR)
+        self.assertTrue(_contigues(b))
+        self.assertAlmostEqual(_suma(b), DUR, places=6)
+
     def test_rebutja_si_un_vei_queda_sense_marge(self):
         v = _visor()
         with self.assertRaises(ValueError):
