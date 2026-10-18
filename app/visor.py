@@ -108,11 +108,27 @@ def llegeix_acords(ruta):
 
 
 def llegeix_abc(ruta):
+    """Llig `estructura_ABC.csv` com a tuples `(ini, fi, lletra, família)`.
+
+    Mateix tracte que `llegeix_acords` (paritat #11): una línia **malmesa**
+    (columna que falta o valor no numèric) es **descarta amb avís**, no fa
+    petar l'obertura del tema. I una lletra o família buida cau al valor per
+    defecte del model («-» i, la família, la lletra) en comptes de quedar
+    `None` — que després s'hauria escrit al CSV com «None».
+    """
     items = []
     with open(ruta, encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            items.append((float(r["inici_s"]), float(r["fi_s"]),
-                          r["lletra"], r["família"]))
+            try:
+                ini = float(r["inici_s"])
+                fi = float(r["fi_s"])
+            except (TypeError, ValueError, KeyError):
+                logging.getLogger("auto_chords").warning(
+                    "estructura: linia ignorada (no vàlida): %r", r)
+                continue
+            lletra = str(r.get("lletra") or "").strip() or pipeline.SENSE_SECCIO
+            fam = str(r.get("família") or "").strip() or lletra
+            items.append((ini, fi, lletra, fam))
     return items
 
 
@@ -706,60 +722,6 @@ class Visor(QMainWindow):
             elif te:
                 self._focus_editor("chord", idx)
 
-    def _edita_acord(self, item):
-        fila = self.llista_ac.row(item)
-        if fila < 0 or fila >= len(self.acords):
-            return
-        t, vell = float(self.acords[fila][0]), nom_acord(self.acords[fila])
-        nou_nom, ok_nom = QInputDialog.getText(
-            self, "Corregeix l'acord",
-            f"Nom de l'acord a {t:.2f} s (actual: {vell})",
-            text=vell)
-        if not ok_nom:
-            return
-        nou_nom = nou_nom.strip().replace(os.sep, "-").replace("\\", "-")
-        if not nou_nom:
-            return
-        nou_t, ok_t = QInputDialog.getDouble(
-            self, "Canvia l'inici de l'acord",
-            f"Inici en segons (actual: {t:.2f}s)",
-            float(t), 0.0, max(0.0, self.audio["durada"]), 3)
-        if not ok_t:
-            return
-        nou_t = max(0.0, min(float(nou_t), self.audio["durada"]))
-        antic = self.acords[fila]
-        nova = list(self.acords)
-        nova[fila] = (nou_t, nou_nom, f"{nou_t:.9f}")
-        self._undo_marca()
-        try:
-            self.acords = self._normalitza_acords(nova)
-        except ValueError as e:
-            self.log(f"edició no vàlida: {e}")
-            QMessageBox.warning(self, "Visor",
-                                f"No es pot desar aquest canvi perquè trenca la lògica temporal:\n{e}")
-            return
-        self._omple_llista_ac()
-        self._undo_commit()
-        # reforç: la normalitzacio pot canviar el nom/timestamps -> index segur
-        try:
-            self.llista_ac.setCurrentRow(self.acords.index(self.acords[fila]))
-        except (ValueError, IndexError):
-            if fila < self.llista_ac.count():
-                self.llista_ac.setCurrentRow(fila)
-        try:
-            nwavs = self._desa_i_regenera()
-        except Exception as e:  # noqa: BLE001
-            self.acords[fila] = antic
-            self.acords = self._normalitza_acords(self.acords)
-            self._omple_llista_ac()
-            self.llista_ac.setCurrentRow(fila)
-            self.log(f"edició ERROR: {e}")
-            QMessageBox.warning(self, "Visor",
-                                f"No s'ha pogut desar l'acord:\n{e}")
-            return
-        self.log(f"acord {t:.2f}s: {vell} → {nou_nom} @ {nou_t:.2f}s "
-                 f"(csv + {nwavs} wavs_acords)")
-
     def _durada_wav(self):
         """Durada de la WAV en segons (0.0 si no se sap).
 
@@ -1053,13 +1015,6 @@ class Visor(QMainWindow):
         per camins que no passen per _undo_marca)."""
         if getattr(self, "_undo_pending", None) is None:
             self._undo_base = self._estat_complet()
-
-    def _undo_reset(self):
-        """Neteja l'historial (nou document / nova analisi)."""
-        self._undo_stack = []
-        self._redo_stack = []
-        self._undo_base = self._estat_complet()
-        self._undo_pending = None
 
     def _undo_marca(self):
         """Inici d'una operació d'edició: captura l'estat 'abans'."""
@@ -1512,24 +1467,6 @@ class Visor(QMainWindow):
         self._omple_llista_ac()
         self._actualitza_llista_abc()
         self.temps.setText(self._fmt_timeline(self.pos))
-
-    def _edita_acord_index(self, idx):
-        if idx < 0 or idx >= len(self.acords):
-            return
-        if idx >= self.llista_ac.count():
-            return
-        item = self.llista_ac.item(idx)
-        if item is not None:
-            self._edita_acord(item)
-
-    def _edita_seccio_index(self, idx):
-        if idx < 0 or idx >= len(self.seccions):
-            return
-        if idx >= self.llista_ab.count():
-            return
-        item = self.llista_ab.item(idx)
-        if item is not None:
-            self._edita_seccio(item)
 
     # Handlers dels senyals del TimelineView (QGraphicsView DAW-like)
     def _sync_timeline_acords(self):
@@ -3083,56 +3020,6 @@ class Visor(QMainWindow):
                               mapa=getattr(self, "tempo_map", None))
         self.canvis.emit()   # l'estructura ha canviat → el projecte queda «brut»
         self.log(f"ABC recalculat (només CSV): {msg}")
-
-    def _edita_seccio(self, item):
-        fila = self.llista_ab.row(item)
-        if fila < 0 or fila >= len(self.seccions):
-            return
-        ini, fi, vell_lletra, vell_fam = self.seccions[fila]
-        nova_lletra, ok_l = QInputDialog.getText(
-            self, "Corregeix la secció",
-            f"Lletra de la secció {vell_lletra} ({ini:.2f}s–{fi:.2f}s)",
-            text=vell_lletra)
-        if not ok_l:
-            return
-        nova_lletra = str(nova_lletra).strip() or vell_lletra
-        nou_inici, ok_t = QInputDialog.getDouble(
-            self, "Canvia l'inici de la secció",
-            f"Inici en segons (actual: {ini:.2f}s)",
-            float(ini), 0.0, max(0.0, self.audio["durada"]), 3)
-        if not ok_t:
-            return
-        nou_inici = max(0.0, min(float(nou_inici), self.audio["durada"]))
-        antic = self.seccions[fila]
-        nova = list(self.seccions)
-        nova[fila] = (nou_inici, fi, nova_lletra, vell_fam)
-        self._undo_marca()
-        try:
-            self.seccions = self._normalitza_seccions(nova)
-        except ValueError as e:
-            self.log(f"edició secció no vàlida: {e}")
-            QMessageBox.warning(self, "Visor",
-                                f"No es pot desar aquest canvi perquè trenca la lògica temporal:\n{e}")
-            return
-        self._actualitza_llista_abc()
-        self._undo_commit()
-        try:
-            self.llista_ab.setCurrentRow(self.seccions.index(self.seccions[fila]))
-        except (ValueError, IndexError):
-            if fila < self.llista_ab.count():
-                self.llista_ab.setCurrentRow(fila)
-        try:
-            self._regenera_abc_des_de_totes_les_seccions(f"secció {vell_lletra}→{nova_lletra} @ {nou_inici:.2f}s")
-        except Exception as e:  # noqa: BLE001
-            self.seccions[fila] = antic
-            self.seccions = self._normalitza_seccions(self.seccions)
-            self._actualitza_llista_abc()
-            self.llista_ab.setCurrentRow(fila)
-            self.log(f"edició secció ERROR: {e}")
-            QMessageBox.warning(self, "Visor",
-                                f"No s'ha pogut desar la secció:\n{e}")
-            return
-        self.log(f"secció {ini:.2f}s: {vell_lletra} → {nova_lletra} @ {nou_inici:.2f}s")
 
     def _salt_lliscador(self, v):
         self.ves_a(v / 100.0)

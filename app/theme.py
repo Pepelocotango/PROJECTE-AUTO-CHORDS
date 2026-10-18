@@ -59,7 +59,6 @@ CLIP_FILL = "#2e3844"          # clip normal
 CLIP_BORDER = "#b8c7dc"
 CLIP_TEXT = "#edf3ff"
 CLIP_ACTIVE_FILL = "#1f5c3d"   # ACTIU: verd suau (sona)
-CLIP_ACTIVE_BORDER = "#4ade80"
 CLIP_ACTIVE_TEXT = "#eafff3"
 CLIP_SELECTED_BORDER = "#38bdf8"   # SELECCIONAT: cian brillant
 CLIP_SELECTED_WIDTH = 3

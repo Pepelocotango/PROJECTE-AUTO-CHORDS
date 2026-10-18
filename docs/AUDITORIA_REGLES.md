@@ -26,7 +26,7 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | # | Regla | Validació al codi | Test | Estat |
 |---|---|---|---|---|
 | 1 | Ordre estricte | `visor._valida_canvis_acords` / `_valida_canvis_seccions` · `pipeline.normalitza_cobertura` (reordena) · `tempo_map.normalitza_trams` (ordena i deduplica) | `test_regles_or.TestRegla1OrdreEstricte` · `test_tempo_map` | ✅ auditada als 3 nuclis i a la càrrega (Ronda 2) |
-| 2 | Contigüitat | `pipeline.filtra_seccions` · els normalitzadors dels 3 tipus (`prev.fi == curr.ini`) | `test_seccions_contigues` | 🟡 auditada al mapa (Ronda 2); **falta** el repàs complet dels 3 tipus |
+| 2 | Contigüitat | `pipeline.filtra_seccions` · els normalitzadors dels 3 tipus (`prev.fi == curr.ini`) · lectors (`llegeix_acords` / `llegeix_abc`) | `test_seccions_contigues` · `test_regles_or` | ✅ auditada (Ronda 4: mapa + càrrega dels 3 tipus) |
 | 3 | Durades derivades | el `fi` del `Clip` **no mana**: es re-deriva de la frontera (cadena d'inis) | `test_regles_or.TestRegla3DuradesDerivades` | ✅ auditat |
 | 4 | Cobertura total | `pipeline.normalitza_cobertura()` (acords + seccions) · `tempo_map.normalitza_trams(trams, durada)` (mapa) · **punt únic**: `visor._refresca_tempo_map` | `test_cobertura_viu` · `test_regles_or` | ✅ auditada (Ronda 3: el mapa es re-normalitza SEMPRE que es construeix) |
 | 5 | Una sola font de veritat | `pipeline` + `tempo_map` (2 backends); la còpia del visor mai no mana | `test_regles_or.TestRegla5FontDeVeritat` | ⏳ pendent de repàs (buscar mutacions de la UI que no passin pel backend) |
@@ -39,6 +39,24 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 | 12 | Paritat d'exportació (paquet complet) | — | — | ⛔ **PENDENT D'IMPLEMENTACIÓ, ASSIGNAT A PART** (un altre agent; `docs/REGLES_DE_LA_APP.md` §12). **No tocar des d'ací.** |
 
 ## Trobades i fixes (el més nou a dalt)
+
+### 2026-10-18 · Ronda 4 — R2 a la càrrega + neteja de codi mort
+
+- 🐞 `visor.llegeix_abc` (lector de l'estructura, camí de càrrega) **petava** amb
+  una línia malmesa (`ValueError`) mentre `llegeix_acords` ja la descartava amb
+  avís → el tema no s'obria. I una família absent quedava `None`, que després
+  s'escrivia al CSV com «None». Ara els dos lectors es comporten igual (#11):
+  línia dolenta fora amb avís, i lletra/família al valor per defecte del model.
+  Test nou a `test_regles_or`.
+- 🧹 **Neteja de codi mort** (5.443 caràcters): `theme.CLIP_ACTIVE_BORDER`,
+  `main._executa_i_exporta_final`, `visor._undo_reset` i els **diàlegs vells**
+  d'edició d'acord/secció (`_edita_acord_index` + `_edita_acord`,
+  `_edita_seccio_index` + `_edita_seccio`), substituïts per l'editor inline i
+  la franja Editor (`_focus_editor`). Comprovat que **no** eren els handlers
+  del doble clic de les llistes (això va a `_focus_editor`) ni que la cascada
+  deixara cap altre mètode orfe.
+- Els `skipTest` de la suite són tots legítims (Windows/POSIX/ffprobe/sonic),
+  cap test obsolet.
 
 ### 2026-10-18 · Ronda 3 — R4 (punt únic del mapa) i R6 (escriptors de WAV)
 

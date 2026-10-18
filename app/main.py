@@ -2740,9 +2740,6 @@ class Finestra(QMainWindow):
         self.feina.feta.connect(self.acabada)
         self.feina.start()
 
-    def _executa_i_exporta_final(self):
-        self.executa(pregunta=False)      # ja hem preguntat abans
-
     def acabada(self, be, dada):
         self.b_exec.setEnabled(True)
         if be:

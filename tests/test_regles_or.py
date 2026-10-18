@@ -143,6 +143,23 @@ class TestRegla8TempsValids(_Base):
         self.assertGreater(trams[0][2], 0)
         self.assertEqual((trams[0][3], trams[0][4]), (4, 4))
 
+    def test_estructura_amb_linies_malmeses_no_peta(self):
+        """El lector de l'ABC (cami de CARREGA) ha de ser tan robust com el
+        dels acords: una linia malmesa es descarta amb avis i la resta del tema
+        s'obre igual (abans petava i el tema no s'obria)."""
+        import tempfile
+
+        from app import visor as visor_mod
+        td = tempfile.mkdtemp()
+        ruta = os.path.join(td, "estructura_ABC.csv")
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
+            f.write("0.0,5.0,5.0,A,A,1.1,5.1\n")
+            f.write("x,9.0,9.0,Z,Z,1.1,5.1\n")      # no numeric -> fora
+            f.write("5.0,10.0,5.0,B\n")              # sense família -> la lletra
+        self.assertEqual(visor_mod.llegeix_abc(ruta),
+                         [(0.0, 5.0, "A", "A"), (5.0, 10.0, "B", "B")])
+
     def test_el_mapa_del_visor_no_pot_quedar_trencat(self):
         """Construir el mapa (R1/R2/R4/R8) sempre ix normalitzat, vinga d'on
         vinga la còpia: `_refresca_tempo_map` és el punt únic on es fa."""
