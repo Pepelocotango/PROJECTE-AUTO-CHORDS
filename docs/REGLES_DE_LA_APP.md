@@ -31,11 +31,12 @@ Els clips (**acords**, **seccions** i **trams de BPM/compàs**) estan
 `tempo_map.normalitza_trams`.
 
 ## 2. Contigüitat
-Cada clip comença **exactament** on acaba l'anterior: `prev.fi == curr.t` (acords)
-i `prev.fi == curr.ini` (seccions) — sense forats ni encavalcaments. Els **trams
-de BPM/compàs** compleixen el mateix (`prev.fi == curr.ini`, del primer a 0 fins a
-l'últim a la durada).
-→ `timeline.py` · `pipeline.filtra_seccions` · `tempo_map.normalitza_trams`.
+Cada clip comença **exactament** on acaba l'anterior: `prev.fi == curr.ini`, per a
+**les tres** famílies (acords, seccions i trams de BPM/compàs), amb el model
+unificat `Clip(ini, fi, payload)` — sense forats ni encavalcaments. Els **trams
+de BPM/compàs** compleixen el mateix (del primer a 0 fins a l'últim a la durada).
+→ `timeline.py` · `pipeline.filtra_seccions` · `tempo_map.normalitza_trams`
+(contracte: `docs/REFACTOR_INICI_FI.md`).
 
 ## 3. Durades derivades
 La durada d'un clip **no s'emmagatzema**: es **deriva** (l'inici del següent, o

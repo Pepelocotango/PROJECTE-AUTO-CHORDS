@@ -1686,7 +1686,8 @@ class Visor(QMainWindow):
         if a is None or b is None or float(b) - float(a) <= 1e-9:
             self.log("loop: no hi ha cap loop definit (marca A i B al regle)")
             return 0
-        keys = self.timeline.keys_dins_rang(float(a), float(b), inclou_fi=False)
+        keys = self.timeline.keys_dins_rang(float(a), float(b),
+                                            inclou_fi=False, tempo=True)
         if not keys:
             self.log("loop: no hi ha cap clip dins del loop")
             return 0
@@ -1814,9 +1815,12 @@ class Visor(QMainWindow):
         keys = list(keys or [])
         idx_ac = sorted({int(i) for k, i in keys if k == "chord"}, reverse=True)
         idx_sec = sorted({int(i) for k, i in keys if k == "section"}, reverse=True)
+        tr_tot = self.timeline._trams_tempo()
+        idx_tp = sorted({int(i) for k, i in keys if k == "tempo"})
         idx_ac = [i for i in idx_ac if 0 <= i < len(self.acords)]
         idx_sec = [i for i in idx_sec if 0 <= i < len(self.seccions)]
-        if not idx_ac and not idx_sec:
+        idx_tp = [i for i in idx_tp if 0 <= i < len(tr_tot)]
+        if not idx_ac and not idx_sec and not idx_tp:
             return
         durada = self._durada_wav()
         cand_ac = list(self.acords)
@@ -1829,6 +1833,16 @@ class Visor(QMainWindow):
             cand_sec = pipeline.duplica_bloc_seccions(
                 cand_sec, min(idx_sec), max(idx_sec),
                 float(cand_sec[max(idx_sec)][1]), durada)
+        cand_tp = None
+        if idx_tp:
+            first, last = min(idx_tp), max(idx_tp)
+            ini0, fi0 = float(tr_tot[first][0]), float(tr_tot[last][1])
+            bloc = [(float(t[0]) - ini0, float(t[1]) - ini0,
+                     t[2], t[3], t[4]) for t in tr_tot[first:last + 1]]
+            # §2: la còpia va DESPRÉS del bloc i n'hereta el BPM/compàs.
+            cand_tp = tempo_map.normalitza_trams(
+                self._bloc_sobre_trams(self.tempo_trams, bloc, fi0 - ini0,
+                                       fi0, durada), durada)
         try:
             cand_ac = self._valida_canvis_acords(cand_ac)
             if idx_sec:
@@ -1840,6 +1854,8 @@ class Visor(QMainWindow):
         self.acords = cand_ac
         if idx_sec:
             self.seccions = cand_sec
+        if cand_tp:
+            self.aplica_tempo_trams(cand_tp)
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
@@ -1944,7 +1960,8 @@ class Visor(QMainWindow):
             return
         chords = list(buf.get("chords") or [])
         sections = list(buf.get("sections") or [])
-        if not chords and not sections:
+        trams_buf = list(buf.get("tempo") or [])
+        if not chords and not sections and not trams_buf:
             return
         durada = float(self.audio["durada"])
         rel = 1e-6
@@ -1976,17 +1993,25 @@ class Visor(QMainWindow):
         noves_seccions = (self._bloc_sobre_seccions(
             self.seccions, sections, float(buf.get("section_len") or 0.0), T,
             durada, rel) if sections else None)
+        noves_trams = (self._bloc_sobre_trams(
+            self.tempo_trams, trams_buf,
+            float(buf.get("tempo_len") or 0.0), T, durada)
+            if trams_buf else None)
         # -- validació sense efectes (no assigna res) --
         try:
             cand_ac = (self._valida_canvis_acords(nous_acords)
                        if nous_acords is not None else list(self.acords))
             cand_sec = (self._valida_canvis_seccions(noves_seccions)
                         if noves_seccions is not None else list(self.seccions))
+            cand_tp = (tempo_map.normalitza_trams(noves_trams, durada)
+                       if noves_trams is not None
+                       else list(self.tempo_trams or []))
         except ValueError as e:
             self.log(f"enganxa: canvi invalid, no s'ha fet res ({e})")
             self.avis_editor(f"Enganxat no fet: {e}")
             return
-        if cand_ac == self.acords and cand_sec == self.seccions:
+        if (cand_ac == self.acords and cand_sec == self.seccions
+                and cand_tp == list(self.tempo_trams or [])):
             self.log("enganxa: res a fer")
             self.avis_editor("Enganxat: res a canviar (el bloc coincideix "
                              "amb el model actual).")
@@ -1995,6 +2020,8 @@ class Visor(QMainWindow):
         self.acords = cand_ac
         if noves_seccions is not None:
             self.seccions = cand_sec
+        if noves_trams is not None and cand_tp:
+            self.aplica_tempo_trams(cand_tp)
         self._normalitza_cobertura()
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
@@ -2007,7 +2034,8 @@ class Visor(QMainWindow):
             QMessageBox.warning(self, "Visor", f"No s'ha pogut enganxar:\n{e}")
         self._selecciona_bloc_enganxat(T, chords, sections, tol=0.02)
         self.log(f"enganxat a {T:.2f}s (sobreescrivint): {len(chords)} "
-                 f"acord(s), {len(sections)} secció(ns)")
+                 f"acord(s), {len(sections)} secció(ns), "
+                 f"{len(trams_buf)} tram(s) de tempo/compàs")
 
     def _bloc_sobre_acords(self, acords, bloc, llargada, T, durada, rel):
         """Nova llista d'acords amb el bloc sobreescrit dins `[T, T+llargada]`.
@@ -2046,6 +2074,41 @@ class Visor(QMainWindow):
             if float(marca[0]) > float(punts[-1][0]) + pipeline.RESOLUCIO_CSV - 1e-6:
                 nou.append(marca)
         nou += [a for a in acords if float(a[0]) > Te + rel]
+        return nou
+
+    def _bloc_sobre_trams(self, trams, bloc, llargada, T, durada):
+        """Mapa de BPM/compàs amb el bloc enganxat sobre `[T, T+llargada]`.
+
+        El mapa està **SATURAT** (cobreix sempre `[0, durada]` amb trams
+        contigus): enganxar-hi un bloc de trams no insereix res, **obre les
+        fronteres** del bloc i hi **canvia el BPM/compàs**. La resta del mapa no
+        es toca (el veïnatge queda ajustat en normalitzar).
+        """
+        out = list(trams or [])
+        if not bloc:
+            return out
+        T = float(T)
+        llargada = float(llargada or 0.0)
+        for (r, _rfi, _b, _n, _d) in bloc:
+            t = T + float(r)
+            if t < durada - 1e-6:
+                out = tempo_map.afegeix_tall(out, t)
+        te = T + llargada
+        if 1e-6 < te < durada - 1e-6:
+            out = tempo_map.afegeix_tall(out, te)
+
+        def _valor(rel):
+            for (r, rfi, b, n, d) in bloc:
+                if float(r) - 1e-9 <= rel < float(rfi) - 1e-9:
+                    return float(b), int(n), int(d)
+            return None
+
+        nou = []
+        for s in out:
+            v = _valor(float(s[0]) - T)
+            nou.append((float(s[0]), float(s[1]), v[0], v[1], v[2])
+                       if v else (float(s[0]), float(s[1]),
+                                  s[2], s[3], s[4]))
         return nou
 
     def _bloc_sobre_seccions(self, seccions, bloc, llargada, T, durada, rel):

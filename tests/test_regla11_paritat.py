@@ -185,6 +185,45 @@ class TestVisorParitat(_Base):
         tl.extend_selection("chord", 1)
         self.assertFalse([k for k in tl.selected_keys() if k[0] == "tempo"])
 
+    def test_porta_retalls_dels_trams_de_tempo(self):
+        """Copiar/enganxar, duplicar i retallar trams de BPM/compàs (#11)."""
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 6.0, 120.0, 4, 4), (6.0, DUR, 90.0, 3, 4)])
+        tl = v.timeline
+
+        def est():
+            return [(round(float(t[0]), 2), round(float(t[1]), 2), t[2])
+                    for t in v.tempo_trams]
+
+        tl.select_clip("tempo", 0)
+        tl.copy_selection()
+        tl.set_position(12.0, snap=False)
+        tl.paste_at_cursor()
+        self.assertEqual(est(), [(0.0, 6.0, 120.0), (6.0, 12.0, 90.0),
+                                 (12.0, 18.0, 120.0), (18.0, DUR, 90.0)])
+        v.undo()
+        self.assertEqual(est(), [(0.0, 6.0, 120.0), (6.0, DUR, 90.0)])
+        # Ctrl+D: la còpia va DESPRÉS del bloc i n'hereta el BPM/compàs
+        v._duplica_seleccio([("tempo", 0)])
+        self.assertEqual([(t[0], t[2]) for t in est()],
+                         [(0.0, 120.0), (6.0, 120.0), (12.0, 90.0)])
+        v.undo()
+        # Retallar: el tram esborrat deixa que el veí ocupi el seu espai
+        tl.select_clip("tempo", 0)
+        tl.cut_selection()
+        self.assertEqual(est(), [(0.0, DUR, 90.0)])
+        v.undo()
+        self.assertEqual(est(), [(0.0, 6.0, 120.0), (6.0, DUR, 90.0)])
+
+    def test_la_seleccio_del_loop_inclou_els_trams(self):
+        """El LOOP selecciona tambe els trams de BPM/compàs (es poden copiar)."""
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 6.0, 120.0, 4, 4), (6.0, DUR, 90.0, 3, 4)])
+        v.loop_a, v.loop_b = 2.0, 8.0
+        n = v.selecciona_bloc_del_loop()
+        self.assertTrue(n)
+        self.assertIn(("tempo", 1), v.timeline.selected_keys())
+
     def test_partir_per_la_meitat_acord_i_seccio(self):
         """«Partir per la meitat» = dues meitats exactes, als DOS tipus (#11)."""
         v = _visor()

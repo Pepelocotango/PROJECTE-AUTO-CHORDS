@@ -1017,7 +1017,7 @@ class TimelineView(QGraphicsView):
         if not keys:
             return
         durada = float(self._durada)
-        chords, chord_fis, sections = [], [], []
+        chords, chord_fis, sections, tempo_bloc = [], [], [], []
         for kind, idx in sorted(keys, key=lambda k: (k[0], k[1])):
             if kind == "chord" and 0 <= idx < len(self._acords):
                 t = float(self._acords[idx][0])
@@ -1028,16 +1028,24 @@ class TimelineView(QGraphicsView):
             elif kind == "section" and 0 <= idx < len(self._seccions):
                 ini, fi, lletra, fam = self._seccions[idx]
                 sections.append((float(ini), float(fi), str(lletra), str(fam)))
-        if not chords and not sections:
+            elif kind == "tempo":
+                tr = self._trams_tempo()
+                if 0 <= idx < len(tr):
+                    tempo_bloc.append(tuple(tr[idx]))
+        if not chords and not sections and not tempo_bloc:
             return
         chords.sort(key=lambda x: x[0])
         sections.sort(key=lambda x: x[0])
+        tempo_bloc.sort(key=lambda x: float(x[0]))
         # Cada carril es normalitza al SEU propi inici: així, en una selecció
         # mixta, els dos blocs s'enganxen a partir del cursor sense deixar forats.
         inici_ac = chords[0][0] if chords else 0.0
         inici_sec = sections[0][0] if sections else 0.0
-        inici = min([c[0] for c in chords] + [s[0] for s in sections])
-        bloc_fi = max(chord_fis + [s[1] for s in sections])
+        inici_tp = float(tempo_bloc[0][0]) if tempo_bloc else 0.0
+        inici = min([c[0] for c in chords] + [s[0] for s in sections]
+                    + [float(t[0]) for t in tempo_bloc])
+        bloc_fi = max(chord_fis + [s[1] for s in sections]
+                      + [float(t[1]) for t in tempo_bloc])
         self._clipboard = {
             "offset": inici,
             "chords": [(t - inici_ac, name) for (t, name) in chords],
@@ -1046,6 +1054,12 @@ class TimelineView(QGraphicsView):
                          for (ini, fi, ll, fam) in sections],
             "section_len": ((max(s[1] for s in sections) - inici_sec)
                             if sections else 0.0),
+            # Trams de BPM/compàs: relatius al SEU propi inici (com els
+            # altres carrils) + la llargada del bloc.
+            "tempo": [(float(t[0]) - inici_tp, float(t[1]) - inici_tp,
+                       t[2], t[3], t[4]) for t in tempo_bloc],
+            "tempo_len": ((max(float(t[1]) for t in tempo_bloc) - inici_tp)
+                          if tempo_bloc else 0.0),
             "bloc_fi": bloc_fi,
             "cursor_copy": float(self._pos_t),
         }
@@ -1056,6 +1070,11 @@ class TimelineView(QGraphicsView):
     def _delete_selection(self) -> None:
         """Esborra la selecció (1 clip -> senyal individual; >1 -> batch)."""
         multi = self.selected_keys()
+        # Els trams de BPM/compàs no tenen item propi amb senyal d'esborrar:
+        # van SEMPRE pel camí de grup, tambe quan n'hi ha un de sol.
+        if multi and next(iter(multi))[0] == "tempo":
+            self.multiDeleteRequested.emit(sorted(multi))
+            return
         if len(multi) > 1:
             self.multiDeleteRequested.emit(sorted(multi))
             return
@@ -1893,6 +1912,12 @@ class TimelineView(QGraphicsView):
                 # Ctrl+D: duplica el clip seleccionat; amb multi-selecció,
                 # duplica el GRUP sencer (el visor ho resol amb un sol undo).
                 keys = self.selected_keys()
+                if self._sel[0] == "tempo" and keys:
+                    # La pista de BPM/compàs va sempre pel camí de grup
+                    # (no té item propi amb senyal de duplicar).
+                    self.groupDuplicateRequested.emit(sorted(keys))
+                    event.accept()
+                    return
                 if len(keys) > 1:
                     self.groupDuplicateRequested.emit(sorted(keys))
                     event.accept()
