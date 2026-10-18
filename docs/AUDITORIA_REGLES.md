@@ -24,6 +24,10 @@ Per a **cada regla** es comproven tres coses, en aquest ordre:
    mà o un projecte vell no hi poden entrar trencant res).
 3. **El test mou el cas de veritat** — no un cas semblant: el test ha de poder
    fallar si es trenca la regla.
+4. **La VISTA quadra amb el MODEL** — el punt **2** del preàmbul
+   («el visor reflecteix el model») té **xarxa pròpia**: el fuzzer
+   `tests/test_vista_segueix_model.py` comprova, després de cada operació, que el
+   que està pintat al timeline és el model (Ronda 52).
 
 El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 
@@ -375,6 +379,31 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   (`TestCtrlShiftArrossegaCopia`) i els noms dels tests. Cap canvi de
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
+
+## Ronda 52 — el VISOR segueix el MODEL (punt únic) — dos bugs REALS de VISTA
+
+L'operador va veure que, després de la tongada de 12 h, **el visor no
+s'actualitzava bé** i «cada carril anava a la seva». Es va escriure un **fuzzer**
+que prova les regles com a **propietats** (R1/R2/R4/R8 + vista==model, amb gestos
+inclosos): el **MODEL** està bé (**0 violacions** en centenars d'operacions) — el
+que no seguia era la **VISTA**.
+
+- 🐞 (a) **Afegir un clip no el pintava**: `_desa_i_regenera()` només refresca el
+  timeline si canvia la **cobertura**, i afegir una marca **dins** de la cançó no
+  la canvia.
+- 🐞 (b) **Després d'un gest**, la vista es quedava amb la posició
+  **PREVISUAL** dels items (cas verificat, seed 9: item 0 pintat `(0.000, 0.000)`
+  vs model `(0.000, 2.000)`).
+- 🔧 **Fix centralitzat**: nou `Visor._sincronitza_vista(preserva, difereix)` =
+  **punt únic MODEL → VISTA**, cridat per les **primitives de mutació**
+  (`_afegeix_acord`, `_afegeix_seccio`), `_aplica_carril` i `_on_edit_finished`
+  (aquest, **diferit** i **preservant la selecció**).
+- ➕ `tests/test_vista_segueix_model.py` (**7**), amb fuzzer **determinista**; els
+  seeds **9 i 15** són els que **detecten** el bug del gest. **Mutació 2/2**.
+- 📄 El punt **2** del preàmbul de les regles d'or («el visor reflecteix el
+  model») **ara té xarxa pròpia** → apuntat a `docs/REGLES_DE_LA_APP.md`.
+
+Commit `db7c720` · suite 1126 → **1133 OK** (1 skip) · pyflakes net · `app/visor.py` + test nou.
 
 ## Ronda 51 — paritat de menús a les 3 pistes + un bug REAL: «Afegeix secció aquí» petava sempre
 

@@ -17,6 +17,11 @@
 > 1. **Edició en viu** — GUI del visor **i** pont MCP: cada mutació (afegir,
 >    eliminar, moure, redimensionar, reanomenar) ha de deixar el model **vàlid**.
 > 2. **Visor** — el que es veu a la pantalla reflecteix el model vàlid.
+>    **Té xarxa pròpia** (19-10-2026): punt **únic** `Visor._sincronitza_vista()`
+>    (el criden les primitives de mutació) + el fuzzer
+>    `tests/test_vista_segueix_model.py`, que comprova **després de cada operació**
+>    que els items pintats quadren amb el model (els seeds **9 i 15** detecten el
+>    bug del gest). Vegeu `docs/AUDITORIA_REGLES.md` → Ronda 52.
 > 3. **CSV desat** — `acords.csv` / `estructura_ABC.csv` es desen **ja normalitzats**.
 > 4. **Exportació** — el paquet exportat (CSV/ABC + wavs) surt del **model editat**,
 >    normalitzat.
