@@ -127,3 +127,64 @@ class TestDialegTempoMapa(_Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDialegOpcions(_Base):
+    """`opcions()` ha de tornar el que hi ha als controls (contracte de
+    persistència: el que es desa és el que s'analitzarà)."""
+
+    def test_el_round_trip_amb_els_defectes(self):
+        """Posar els DEFECTES i tornar-los a llegir ha de donar el mateix.
+
+        És el contracte que evita que un canvi de widget trenque l'anàlisi en
+        silenci: si `opcions()` canvia un tipus o una clau, això hi peta.
+        """
+        d = dialegs.DialegOpcions(None, opcions=dialegs.DEFECTES)
+        out = d.opcions()
+        self.assertEqual(set(out), {"bpm", "chords", "structure", "clean"})
+        for clau, val in dialegs.DEFECTES["bpm"].items():
+            self.assertEqual(out["bpm"][clau], val, f"bpm.{clau}")
+        for clau, val in dialegs.DEFECTES["chords"].items():
+            self.assertEqual(out["chords"][clau], val, f"chords.{clau}")
+        self.assertEqual(out["structure"]["motor"], "qm")
+        for clau in ("durada_min", "fusiona_iguals"):
+            self.assertEqual(out["structure"][clau],
+                             dialegs.DEFECTES["structure"][clau],
+                             f"structure.{clau}")
+        self.assertEqual(out["clean"], dialegs.DEFECTES["clean"])
+
+    def test_restaura_torna_als_defectes(self):
+        d = dialegs.DialegOpcions(None, opcions=dialegs.DEFECTES)
+        d._controls["bpm"]["min"].setValue(77)
+        self.assertEqual(d.opcions()["bpm"]["min"], 77)
+        d._restaura()
+        self.assertEqual(d.opcions()["bpm"]["min"],
+                         dialegs.DEFECTES["bpm"]["min"])
+
+    def test_la_pestanya_inicial(self):
+        d = dialegs.DialegOpcions(None, tab="structure",
+                                  opcions=dialegs.DEFECTES)
+        self.assertEqual(d.tabs.currentIndex(), 2)
+
+
+class TestDialegModeFacil(_Base):
+    """El preset d'estil ha de fixar el ritme harmònic i el mòdul."""
+
+    def test_cada_preset_aplica_el_seu_ritme_i_modul(self):
+        from app import graella
+        d = dialegs.DialegModeFacil(None)
+        for clau, p in graella.PRESETS.items():
+            i = d.cb_preset.findData(clau)
+            d.cb_preset.setCurrentIndex(i)     # dispara `_aplica_preset`
+            self.assertEqual(d.preset(), clau)
+            self.assertEqual(d.ritme(), p.get("ritme", "auto"),
+                             f"preset {clau}: ritme")
+            self.assertEqual(d.modul(), int(p.get("modul", 4)),
+                             f"preset {clau}: modul")
+
+    def test_tria_manual_guanya_sobre_el_preset(self):
+        d = dialegs.DialegModeFacil(None)
+        d.cb_ritme.setCurrentIndex(d.cb_ritme.findData("temps"))
+        d.cb_modul.setCurrentIndex(d.cb_modul.findData(8))
+        self.assertEqual(d.ritme(), "temps")
+        self.assertEqual(d.modul(), 8)
