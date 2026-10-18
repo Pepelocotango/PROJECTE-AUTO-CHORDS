@@ -40,6 +40,26 @@ El que no es complisca → **fix + test** el mateix dia, i s'anota ací.
 
 ## Trobades i fixes (el més nou a dalt)
 
+### 2026-10-18 · Ronda 6 — R1/R2/R4 a la càrrega (verificades) + camí llegat de duplicar
+
+- **R1/R2/R4 (mapa i acords, camí de càrrega)**: provats els casos extrems —
+  empats d'inici, `fi < ini`, `fi != inici del següent`, desordre i trams
+  repetits — i tots ixen normalitzats i deterministes. ✅ (El mapa: l'empat
+  el guanya el primer; `afegeix_tall` sobre una frontera existent és un
+  no-op, que és el que toca.)
+- 🧹 **Camí llegat de duplicar arrossegant** (`_move_chord_group`, amb el
+  comentari «es reubicarà a la fase 4»): amb **multi-selecció** el gest
+  movia el grup pel camí vell i deixava **una sola marca solta** a l'origen;
+  i amb un sol clip duplicava fent un **redimensionat** (la durada podia
+  canviar) en comptes d'un moviment de bloc. Ara el cos arrossega sempre el
+  **BLOC** (§6.3) i la còpia a l'origen només s'arma amb **un** clip
+  seleccionat → mateix tracte que les seccions (#11). Mètode llegat eliminat
+  (−1.871 caràcters) i test nou a `test_eina_marc`.
+- **Tests obsolets**: cap. Comprovat amb tres detectors —noms repetits dins
+  la mateixa classe (0 ombrejats), tests sense cap assert (7, tots *smoke*
+  legítims del tipus «no peta») i ajudants/constants de test morts (cap;
+  l'únic candidat, `setUpModule`, és un ganxo del framework).
+
 ### 2026-10-18 · Ronda 5 — R5 (una sola font de veritat): cap mutació fora del backend
 
 Repàs de les **36** assignacions a `self.acords` / `self.seccions` del visor, una

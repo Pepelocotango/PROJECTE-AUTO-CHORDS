@@ -1229,26 +1229,23 @@ class TimelineView(QGraphicsView):
         # Només **Ctrl+Shift**: és l'única combinació lliure als 3 sistemes
         # (a Linux el gestor de finestres s'emporta Alt —MATE— i Super —GNOME—).
         mods = QApplication.keyboardModifiers()
-        if self._alt_copia is None and (
-                mods & Qt.ControlModifier and mods & Qt.ShiftModifier):
+        # La còpia a l'origen (duplicar arrossegant) només té sentit amb UN clip
+        # seleccionat: amb una multi-selecció el gest mou el BLOC sencer, i la
+        # còpia d'un de sol deixaria un tros solt a l'origen (era el
+        # comportament del camí llegat, que movia el grup i hi deixava una
+        # marca òrfena).
+        if (self._alt_copia is None and len(self._multi) <= 1
+                and (mods & Qt.ControlModifier and mods & Qt.ShiftModifier)):
             self._alt_copia = (float(self._acords[idx][0]),
                                str(pipeline.nom_d_acord(self._acords[idx])))
-        # MOVIMENT d'un bloc (arrossegar el cos): §6.3. El gest de DUPLICAR
-        # (Ctrl+Shift) encara va pel camí antic (es reubicarà a la fase 4).
-        if (self._alt_copia is None
-                and getattr(self._chord_items[idx], "_drag_mode", None)
+        # Arrossegar el COS = moure el BLOC (§6.3), amb Ctrl+Shift o sense: el
+        # que canvia és només que el final del gest hi deixa una còpia a
+        # l'origen. Mateix camí per a totes dues coses (paritat #11 amb les
+        # seccions, que ja ho feien així).
+        if (getattr(self._chord_items[idx], "_drag_mode", None)
                 == ChordItem.ZONE_BODY):
             self._on_chord_body_drag(idx, new_t)
             return
-        # El gest de DUPLICAR (Ctrl+Shift) encara va pel camí de GRUP antic
-        # (es reubicarà a la fase 4 del pla); aquí es conserva tal qual.
-        if (self._alt_copia is not None and len(self._multi) > 1
-                and getattr(self._chord_items[idx], "_drag_mode", None)
-                == ChordItem.ZONE_BODY):
-            sel = sorted(i for (k, i) in self._multi if k == "chord")
-            if len(sel) > 1 and idx in sel:
-                self._move_chord_group(idx, sel, new_t)
-                return
         old_t = float(self._acords[idx][0])
         # Vores LLIURES (§6.6): el tall/eliminació del veí el resol
         # `redimensiona_clips` (§6.3); només cal que el clip no quede buit.
@@ -1275,8 +1272,7 @@ class TimelineView(QGraphicsView):
             return
         # En un moviment de BLOC (cos) ho resol `_on_chord_body_drag` +
         # `_tanca_bloc`; aquí no s'ha de moure res.
-        if (self._alt_copia is None
-                and getattr(self._chord_items[idx], "_drag_mode", None)
+        if (getattr(self._chord_items[idx], "_drag_mode", None)
                 == ChordItem.ZONE_BODY):
             return
         old_t = float(self._acords[idx][0])
@@ -1314,46 +1310,6 @@ class TimelineView(QGraphicsView):
             QTimer.singleShot(0, self._refresca_items)
             self.chordEndMoved.emit(idx, new_t_s)
 
-    def _move_chord_group(self, idx: int, sel: list, new_t: float) -> None:
-        """Mou tots els acords de `sel` amb el mateix delta que el clip `idx`.
-
-        El delta es calcula respecte la posició a l'inici del drag i es limita
-        perquè cap acord seleccionat ultrapassi el veí NO seleccionat més
-        proper (esquerra/dreta). Es recalcula l'amplada (next_t) de tot el
-        carril perquè els clips contigus es tornin a pintar bé."""
-        item = self._chord_items[idx]
-        t0 = float(getattr(item, "_drag_t0", self._acords[idx][0]))
-        t_snap = self._snap(new_t)
-        dt = t_snap - t0
-        selset = set(sel)
-        dt_lo, dt_hi = -1e18, 1e18
-        for i in sel:
-            p = i - 1
-            while p >= 0 and p in selset:
-                p -= 1
-            n = i + 1
-            while n < len(self._acords) and n in selset:
-                n += 1
-            lo = (self._acords[p][0] if p >= 0 else 0.0) + MIN_GAP_S
-            hi = (self._acords[n][0] if n < len(self._acords)
-                  else self._durada) - MIN_GAP_S
-            t_i = self._acords[i][0]
-            dt_lo = max(dt_lo, lo - t_i)
-            dt_hi = min(dt_hi, hi - t_i)
-        dt = 0.0 if dt_lo > dt_hi else max(dt_lo, min(dt_hi, dt))
-        for i in sel:
-            t_i = self._acords[i][0] + dt
-            self._acords[i] = pipeline.Clip(
-                t_i, float(self._acords[i][1]), self._acords[i][2])
-            self._chord_items[i].set_time(t_i)
-        # re-sincronitza l'amplada (next_t = inici del següent) de tot el carril
-        for i in range(len(self._acords)):
-            nxt = (self._acords[i + 1][0] if i + 1 < len(self._acords)
-                   else self._durada)
-            self._chord_items[i].set_next_t(nxt)
-        self._show_guide_at(self._acords[idx][0])
-        self.chordTimeMoved.emit(idx, self._acords[idx][0])
-
     def _on_chord_edit(self, idx: int) -> None:
         """Doble-clic: obre el RenameEditor inline."""
         item = self._chord_by_idx.get(idx)
@@ -1375,8 +1331,8 @@ class TimelineView(QGraphicsView):
         # Ctrl+Shift+arrossegar = duplicar: capturem la secció ORIGINAL (abans
         # del primer moviment). El `_emit_edit_finished` hi deixarà la còpia.
         mods = QApplication.keyboardModifiers()
-        if self._copia_sec is None and (
-                mods & Qt.ControlModifier and mods & Qt.ShiftModifier):
+        if (self._copia_sec is None and len(self._multi) <= 1
+                and (mods & Qt.ControlModifier and mods & Qt.ShiftModifier)):
             s = self._seccions[idx]
             self._copia_sec = (float(s[0]), float(s[1]), str(s[2]), str(s[3]))
         # Moviment de BLOC de seccions: l'arrossega `_on_section_body_drag`

@@ -254,6 +254,57 @@ class TestAltArrossegaCopia(_Base):
         v.close()
 
 
+class TestCopiaAmbMultiSeleccio(_Base):
+    """Amb més d'un clip seleccionat, `Ctrl+Shift`+arrossegar **no** deixa cap
+    còpia a l'origen: el cos arrossega el BLOC (§6.3).
+
+    Auditoria 18-10-2026: abans, amb multi-selecció, el gest anava pel camí
+    llegat `_move_chord_group`, movia el grup i hi deixava una sola marca solta
+    a l'origen (i, amb un sol clip, duplicava fent un redimensionat en comptes
+    d'un moviment de bloc).
+    """
+
+    def _amb_ctrl_shift(self, fn):
+        from PyQt5.QtWidgets import QApplication
+        orig = QApplication.keyboardModifiers
+        QApplication.keyboardModifiers = staticmethod(
+            lambda: Qt.ControlModifier | Qt.ShiftModifier)
+        try:
+            return fn()
+        finally:
+            QApplication.keyboardModifiers = orig
+
+    def test_multi_seleccio_no_arma_la_copia(self):
+        from app.timeline_items import ChordItem
+        v = _visor()
+        tl = v.timeline
+        tl.select_multi({("chord", 1), ("chord", 2)})
+        for i in (1, 2):
+            tl._chord_items[i]._drag_mode = ChordItem.ZONE_BODY
+
+        def gest():
+            tl._on_chord_time_changed(1, 8.0)
+            return tl._alt_copia
+        self.assertIsNone(self._amb_ctrl_shift(gest),
+                          "amb multi-selecció no s'ha d'armar cap còpia")
+        tl._emit_edit_finished()
+        v.close()
+
+    def test_un_sol_clip_si_que_arma_la_copia(self):
+        from app.timeline_items import ChordItem
+        v = _visor()
+        tl = v.timeline
+        tl.select_clip("chord", 2)
+        tl._chord_items[2]._drag_mode = ChordItem.ZONE_BODY
+
+        def gest():
+            tl._on_chord_time_changed(2, 8.0)
+            return tl._alt_copia
+        self.assertIsNotNone(self._amb_ctrl_shift(gest),
+                             "amb un sol clip, Ctrl+Shift ha d'armar la còpia")
+        v.close()
+
+
 class TestCopiaSeccio(_Base):
     """`Ctrl+Shift`+arrossegar una **SECCIÓ**: la secció viatja i a l'ORIGEN hi
     torna una còpia (mateixa lletra/família) sobre el mateix tram. Paritat #11
