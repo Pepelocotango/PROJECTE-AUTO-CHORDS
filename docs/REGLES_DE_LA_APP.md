@@ -25,22 +25,26 @@
 > l'evidència de baix (**2 bugs de producció**, `OC-6/332-334`).
 
 ## 1. Ordre estricte dels clips
-Els clips (acords i seccions) estan **ordenats pel temps d'inici**, **sense
-solapaments ni inversions**. → `visor._valida_canvis_acords` /
-`_valida_canvis_seccions`.
+Els clips (**acords**, **seccions** i **trams de BPM/compàs**) estan
+**ordenats pel temps d'inici**, **sense solapaments ni inversions**.
+→ `visor._valida_canvis_acords` / `_valida_canvis_seccions` /
+`tempo_map.normalitza_trams`.
 
 ## 2. Contigüitat
 Cada clip comença **exactament** on acaba l'anterior: `prev.fi == curr.t` (acords)
-i `prev.fi == curr.ini` (seccions) — sense forats ni encavalcaments.
-→ `timeline.py` · `pipeline.filtra_seccions`.
+i `prev.fi == curr.ini` (seccions) — sense forats ni encavalcaments. Els **trams
+de BPM/compàs** compleixen el mateix (`prev.fi == curr.ini`, del primer a 0 fins a
+l'últim a la durada).
+→ `timeline.py` · `pipeline.filtra_seccions` · `tempo_map.normalitza_trams`.
 
 ## 3. Durades derivades
 La durada d'un clip **no s'emmagatzema**: es **deriva** (l'inici del següent, o
 la durada de la WAV per a l'últim).
 
 ## 4. Cobertura total
-**La suma dels clips d'acords = la durada de la WAV** i **la suma dels clips
-d'estructura = la durada**, en qualsevol mode (**Lliure** o **BPM · compàs**) i
+**La suma dels clips d'acords = la durada de la WAV**, **la suma dels clips
+d'estructura = la durada** i **la dels trams de BPM/compàs = la durada**,
+en qualsevol mode (**Lliure** o **BPM · compàs**) i
 amb o sense **snap**: el 1r clip arrenca a **0** (capçalera «N» si cal) i
 l'últim arriba a la **durada**. La regla **mana sobre el snap** (que només
 quantitza els límits **interiors**). → `pipeline.normalitza_cobertura()`.
@@ -72,26 +76,33 @@ Tot el que sigui natiu es compila per a **macOS 10.13+** i **sense AVX**
 El **log / opcions / temp** van sempre a un directori **escriptible** — mai dins
 un paquet de només lectura (AppImage, `.app` en quarantena). → `app/config.py`.
 
-## 11. Paritat d'edició i tracte visual (acords ↔ estructura)
+## 11. Paritat d'edició i tracte visual (acords ↔ estructura ↔ BPM/compàs)
 
-Els clips d'**acords** i d'**estructura** són iguals davant l'edició i la
-visualització. Tota operació d'un tipus ho ha de ser per a l'altre, i pel
-**mateix camí d'usuari**.
+Els clips d'**acords**, d'**estructura** i els **trams de BPM/compàs** són
+iguals davant l'edició i la visualització. Tota operació d'un tipus ho ha de
+ser per als altres, i pel **mateix camí d'usuari**.
 
-- **Joc d'operacions idèntic**: afegir · eliminar · duplicar · reanomenar
-  (inline i Editor) · moure · redimensionar · partir · fusionar amb
-  anterior/seguent · desfer/refer.
-- **Gest i affordances idèntics**: nanses laterals, cursor de hover, senyal
-  d'inici de gest (`dragStarted`), ressaltat de selecció, ordre relatiu (z),
-  doble-clic → Editor i edició inline del nom.
+- **Joc d'operacions comú**: afegir · eliminar · partir · moure ·
+  redimensionar · desfer/refer. Reanomenar i duplicar/fusionar són comuns a
+  **acords i estructura**; als **trams de BPM/compàs** el contingut és
+  numèric (BPM + compàs) i s'edita amb el mateix diàleg per a tots ells, i
+  «afegir» i «partir» hi són el **mateix gest** (obrir un **tall** nou:
+  `tempo_map.afegeix_tall`), mentre que «eliminar» **fusióna els veïns**.
+- **Gest i affordances idèntics**: nanses laterals, cursor de hover
+  (`OpenHandCursor`, tancat en arrossegar, `↔` a les vores), senyal d'inici
+  de gest (`dragStarted`), ressaltat de selecció, ordre relatiu (z),
+  doble-clic/menú contextual → editar, **menú contextual amb la mateixa
+  estructura i redacció**, i **mateixa transparència** del carri.
 - **Propi de cada tipus (NO s'iguala)**: el model de dades (acord `(t, nom)`
-  amb final derivat; secció `(ini, fi, lletra, família)`), el camp «Família»
-  de l'Editor (només secció) i el **color/carri** del timeline (distinció de
-  tipus).
+  amb final derivat; secció `(ini, fi, lletra, família)`; tram de BPM/compàs
+  `(ini, fi, bpm, compàs)`), el camp «Família» de l'Editor (només secció),
+  l'edició **inline** i «Reanomena en bloc» (només acord/secció) i el
+  **color/carri** del timeline (distinció de tipus).
 - **Semàntica de les operacions**: *partir* un acord = dos trossos amb el
   mateix nom (el de la part nova és editable, per defecte heretat);
   *fusionar* acords = en queda l'harmonia de l'esquerre. Mateix patró que
-  l'estructura.
+  l'estructura. *Partir* un tram de BPM/compàs = dos trams amb el mateix
+  BPM i compàs (el de la dreta és editable).
 
 → Validació: `app/visor.py` + `app/pipeline.py` (joc d'operacions simètric) ·
 test `tests/test_regla11_paritat.py` — **✅ FET** (verd; en fila amb les regles 1–10).

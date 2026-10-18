@@ -17,13 +17,15 @@
 
 - **#1–#4** ordre, contigüitat, durades derivades i **cobertura total** (0 → durada;
   el forat explícit és **`N`** als acords i **`-`** a l'estructura, §6.1).
-- **#11 paritat d'edició**: acords i estructura tenen **les mateixes eines i el mateix
-  tracte**; només canvia el contingut semàntic.
+- **#11 paritat d'edició**: **acords**, **estructura** i **trams de BPM/compàs**
+  tenen **les mateixes eines i el mateix tracte**; només canvia el contingut
+  semàntic (i el tram de BPM/compàs no té inline ni «reanomena en bloc»: s'edita
+  amb el diàleg, comú a tots els trams).
 - **§6.3 (edició lliure)**: en moure un bloc, **mana l'últim editat**; es **preserva la
   durada** del bloc; al **destí** el que queda a sota es **talla o s'elimina**; el que
   hi ha **entremig no es toca**. Cap operació es refusa per la #4.
 
-## 2. Edició de clips (les dues pistes)
+## 2. Edició de clips (acords · estructura · BPM/compàs)
 
 | # | Operació | GUI (gest / drecera) | MCP | Acords | Estr. | Estat |
 |---|---|---|---|---|---|---|
