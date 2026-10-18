@@ -213,6 +213,27 @@ deixaven passar valors impossibles:
 
 Test nou: `tests/test_regles_or.py` › `test_les_xarxes_de_seguretat_tambe_ho_arreglen`.
 
+## Ronda 16 — prova de mutació a les regles 3, 5, 6 i 10
+
+Totes quatre **detectades** (cap test feble nou):
+
+| Mutació | Regla | Qui la va caçar |
+|---|---|---|
+| Guardar el CSV convertit en no-op | 5 | `test_regles_or` ✅ |
+| `_desa_i_regenera` deixant anar una WAV | 6 | `test_regles_or` ✅ |
+| Fi de l'última secció sense acotar a la durada | 3 | `test_pipeline_export` ✅ |
+| `_es_escriptible` dient sempre que sí | 10 | `test_pipeline_export` ✅ |
+
+Notes del mètode (après a la Ronda 14 i 16):
+
+- **La mutació s'ha de comprovar que S'EXECUTA**: dues temptatives de la Ronda
+  16 no van valdre perquè el punt d'injecció no s'arribava a cridar (una va
+  petar de sintaxi i l'altra escrivia a un lloc que el test no mirava). Cal
+  `import` net i pensar QUIN camí passa el test.
+- Els tests de la regla 3 són **estructurals** (el model no té camp de durada):
+  l'acotament del fi de l'última secció el cobreix `test_pipeline_export`. Està
+  cobert, però és bo saber-ho.
+
 ## Ronda 14 — prova de mutació a la R11: UN TEST FEIBLE trobat i arreglat
 
 Quatre mutacions de paritat (R11), i una **no** va fer petar res:
