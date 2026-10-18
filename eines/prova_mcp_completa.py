@@ -175,8 +175,10 @@ err, d = call("ac_add_chord", t_s=t_lliure, acord="Am")
 prova("ac_add_chord", not err and d["model"]["n_chords"] == n_abans + 1, d)
 cs = chords()
 idx = len(cs) - 1
+# L'app desa el xifrat CANONIC (`Am7` -> `A-7`, vegeu `docs/NOTACIO_XIFRAT.md`):
+# l'expectativa ha de ser la canonica, no el text d'entrada.
 err, d = call("ac_rename_chord", index=idx, acord="Am7")
-prova("ac_rename_chord", not err and chords()[idx]["acord"] == "Am7", d)
+prova("ac_rename_chord", not err and chords()[idx]["acord"] == "A-7", d)
 err, d = call("ac_move_chord", index=idx, t_s=float(cs[idx]["t_s"]))
 prova("ac_move_chord", not err, d)
 err, d = call("ac_undo")

@@ -50,7 +50,7 @@ def beats_a_temps(k, bpm, offset=0.0):
 
 
 def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
-                    volum=0.6, offset=0.0):
+                    volum=0.6, offset=0.0, mapa=None):
     """Mescla els clics a la rodanxa `mono_bytes` (int16 mono, a partir de
     `t_inici` segons de la cançó) i retorna els bytes int16 resultants.
 
@@ -74,6 +74,29 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
     guany = 32767.0 * float(volum)
     clic_accent = genera_clic(sr, True) * guany
     clic_normal = genera_clic(sr, False) * guany
+
+    # ── Amb un mapa de tempo/compàs VARIABLE (regla d'or #5: el mapa és la
+    # font), els clics van als TEMPS DEL MAPA i l'accent al primer de cada
+    # compàs. Abans es feia servir sempre el BPM fix de la barra i, amb un mapa,
+    # el metrònom es desalineava a partir del primer canvi de tempo (auditoria
+    # 18-10-2026).
+    if mapa is not None and not mapa.es_constant():
+        q = max(0, int(np.floor(mapa.quarters(max(0.0, float(t_inici))))) - 1)
+        while True:
+            t_abs = float(mapa.t_de_quarters(q))
+            t_b = t_abs - float(t_inici)
+            if t_b >= dur:
+                break
+            if t_b >= 0.0:
+                _c, b, s = mapa.pos(t_abs)
+                i = int(round(t_b * sr))
+                clic = clic_accent if (b == 1 and s == 1) else clic_normal
+                n = min(clic.size, buf.size - i)
+                if n > 0:
+                    buf[i:i + n] += clic[:n]
+            q += 1
+        np.clip(buf, -32768.0, 32767.0, out=buf)
+        return buf.astype(np.int16).tobytes()
 
     # Primer beat amb temps >= t_inici, pero mai abans de t=0 de la canco:
     # aixi el SILENCI INICIAL tambe s'omple amb el compte enrere (count-in).

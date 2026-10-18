@@ -2656,6 +2656,14 @@ class Visor(QMainWindow):
         """
         if not (0 <= idx < len(self.seccions)):
             return False
+        # Amb una sola secció no hi ha res a moure: ha de cobrir tota la WAV
+        # (regla d'or #4). Abans s'aplicava el canvi i el normalitzador de
+        # cobertura el desfeia en silenci — l'usuari/agent veia "OK" i res no
+        # canviava (trobat per OC-13, 18-10-2026).
+        if len(self.seccions) <= 1:
+            raise ValueError(
+                "És l'única secció: ha de cobrir tota la WAV (regla #4) i no "
+                "es pot moure. Parteix-la primer si vols editar-ne un tros.")
         ini, fi = float(ini), float(fi)
         nova = list(self.seccions)
         _i, _f, L, F = nova[idx]
@@ -3130,7 +3138,8 @@ class Visor(QMainWindow):
                     tros = metronom.mescla_metronom(
                         tros, sr, pos / float(sr), self.bpm, self.bpb,
                         volum=self.metro_vol,
-                        offset=getattr(self, "offset", 0.0))
+                        offset=getattr(self, "offset", 0.0),
+                        mapa=getattr(self, "tempo_map", None))
                 try:
                     proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):
