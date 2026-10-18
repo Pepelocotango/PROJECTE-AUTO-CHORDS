@@ -55,7 +55,7 @@
 | Doc | Què explica |
 |---|---|
 | `CI_WORKFLOWS.md` | Els workflows de GitHub Actions i el flux de Release. |
-| `COMPONENTS_I_VERSIONS.md` | Inventari de components i versions (per vigilar CVE). |
+| `COMPONENTS_I_VERSIONS.md` | Inventari de components i versions (per vigilar CVE). El **genera** `eines/genera_inventari.py` des de `requirements.txt` i `eines/deps_fixades.env` — **no editar-lo a mà** (el CI comprova que estiga al dia). |
 | `SEGURETAT.md` · `../SECURITY.md` | Enduriment de seguretat i canal de report. |
 
 ## Auditoria

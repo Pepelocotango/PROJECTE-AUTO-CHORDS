@@ -371,6 +371,18 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 39 — guard de `eines/baixa_verificat.py`: validar ABANS de tocar la xarxa
+
+Smoke de les eines amb **entrades rares**. L'eina estava **bé** (cap bug): valida el
+SHA (**64 hex**), rebutja l'HTTP que no siga HTTPS i dona l'**ús** sense arguments.
+Es **blinda** perquè seguisca sent així:
+
+- ➕ Cas nou a `tests/test_scripts_smoke.py`: SHA mal format → error clar (codi 2) i
+  URL `http://` → rebutjada, totes dues **sense tocar la xarxa** (la validació va
+  **abans** de la descàrrega).
+
+Commit `d08099b` · suite 1100 OK (1 skip).
+
 ## Ronda 38 — `eines/notes_release.py`: el valor de `--fitxer` es confonia amb la versió
 
 Smoke de les eines amb **entrades rares** (el patró que ja havia trobat
