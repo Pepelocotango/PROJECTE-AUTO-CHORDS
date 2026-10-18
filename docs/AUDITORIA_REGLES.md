@@ -752,6 +752,11 @@ mateix WAV (tres acords C · F · G) i s'han comparat:
    ⏳ Pendent de **decisió de l'operador**: els **13 SVGs** de `icones/` que el
    codi no referencia (Ronda 33) — esborrar-los o són del panell lateral retirat.
 8. **R12** — quan l'agent a càrrec la implemente, auditar-la ací (no tocar-la).
+9. **Per confirmar**: el **re-etiquetatge de les lletres d'estructura** (l'`E`/`F`
+   que es tornaven `B` totes soles) que alertava l'antic
+   `docs/AUTO_PROMPT_CONTINUACIO.md` — **eliminat el 18-10-2026** per decisió de
+   l'operador; era l'**únic** lloc que en parlava. Si encara es reprodueix:
+   test que el reproduïsca + fix.
 
 > 📌 **En tancar una ronda**: actualitza aquest mapa (l'✅/⏳ de cada regla) i
 > apunta-hi les trobades amb el seu fix i test.
