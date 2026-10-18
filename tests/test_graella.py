@@ -11,6 +11,9 @@ import unittest
 import wave
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402
+_ = _temporals  # higiene dels tests: l'import té efecte (esborra els temporals en plegar)
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from app import graella  # noqa: E402

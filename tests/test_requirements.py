@@ -9,6 +9,10 @@ import glob
 import os
 import re
 import unittest
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402
+_ = _temporals  # higiene dels tests: l'import té efecte (esborra en plegar)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FITXERS = ([os.path.join(ROOT, "requirements.txt"),

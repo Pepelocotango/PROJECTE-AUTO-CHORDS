@@ -15,6 +15,9 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402
+_ = _temporals  # higiene dels tests: l'import té efecte (esborra els temporals en plegar)
 
 from eines import mcp_auto_chords_server as srv  # noqa: E402
 

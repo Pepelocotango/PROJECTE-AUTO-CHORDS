@@ -8,6 +8,9 @@ import os
 import subprocess
 import sys
 import unittest
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402
+_ = _temporals  # higiene dels tests: l'import té efecte (esborra en plegar)
 import xml.etree.ElementTree as ET
 
 ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

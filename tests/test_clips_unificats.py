@@ -5,6 +5,10 @@ reproduir EXACTAMENT el que fa avui `pipeline.normalitza_cobertura` (que no es
 toca) sobre el corpus dels dos tipus (acords i estructura).
 """
 import unittest
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402
+_ = _temporals  # higiene dels tests: l'import té efecte (esborra en plegar)
 
 from app import pipeline
 

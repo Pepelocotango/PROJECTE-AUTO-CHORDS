@@ -8,6 +8,9 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402
+_ = _temporals  # higiene dels tests: l'import té efecte (esborra els temporals en plegar)
 
 from app.timeline_base import LOOP_GRAB_PX, loop_after_drag  # noqa: E402
 

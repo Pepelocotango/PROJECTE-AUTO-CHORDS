@@ -10,6 +10,9 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402
+_ = _temporals  # higiene dels tests: l'import té efecte (esborra els temporals en plegar)
 
 from app import pipeline  # noqa: E402
 from app.tempo_map import TempoMap  # noqa: E402

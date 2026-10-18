@@ -6,6 +6,10 @@ la descomposició de durades i la construcció del MusicXML.
 import os
 import tempfile
 import unittest
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402
+_ = _temporals  # higiene dels tests: l'import té efecte (esborra en plegar)
 from pathlib import Path
 from unittest import mock
 

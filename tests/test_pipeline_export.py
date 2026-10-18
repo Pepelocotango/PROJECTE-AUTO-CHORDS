@@ -6,6 +6,9 @@ import subprocess
 import sys
 import tempfile
 import unittest
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402
+_ = _temporals  # higiene dels tests: l'import té efecte (esborra en plegar)
 import wave
 from pathlib import Path
 from unittest.mock import patch
