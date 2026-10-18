@@ -508,9 +508,15 @@ class DialegTempoMapa(QDialog):
             def _t(c, d):
                 it = self.taula.item(r, c)
                 return ((it.text().strip() if it else "") or d)
-            txt_ini = _t("0", "0").replace(",", ".").strip().lower()
+            # El PRIMER argument de `_t` és la COLUMNA (un int): abans hi
+            # passaven strings ("0"/"1"/"2"), cosa que feia petar
+            # `self.taula.item(r, "0")` amb TypeError — i no es capturava, així
+            # que el diàleg del mapa PETAVA en afegir/eliminar un tram o en
+            # prémer OK (auditoria 18-10-2026, destapat pel primer test que
+            # exercita el diàleg).
+            txt_ini = _t(0, "0").replace(",", ".").strip().lower()
             try:
-                bpm = float(_t("1", "120").replace(",", "."))
+                bpm = float(_t(1, "120").replace(",", "."))
                 if r == 0:
                     ini = 0.0
                 elif txt_ini.startswith("c"):
@@ -519,7 +525,7 @@ class DialegTempoMapa(QDialog):
                     ini = float(txt_ini)
             except (ValueError, IndexError):
                 continue
-            comp = _t("2", "4/4").replace(" ", "")
+            comp = _t(2, "4/4").replace(" ", "")
             num, den = 4, 4
             if "/" in comp:
                 try:
@@ -545,12 +551,17 @@ class DialegTempoMapa(QDialog):
 
     def _afegeix(self):
         self._sync()
+        # `_sync` deixa els trams com `(ini, ini, …)` (el `fi` encara per
+        # derivar): cal NORMALITZAR abans de calcular el punt mig del darrer
+        # tram, o el mig ix igual que la frontera i el tall es descarta (el
+        # botó «+» no feia res — auditoria 18-10-2026).
+        trams = tempo_map.normalitza_trams(self._trams, self._durada)
         t = 0.0
-        if self._trams:
-            s = self._trams[-1]
+        if trams:
+            s = trams[-1]
             t = (float(s[0]) + float(s[1])) / 2.0
         self._trams = tempo_map.normalitza_trams(
-            tempo_map.afegeix_tall(self._trams, t), self._durada)
+            tempo_map.afegeix_tall(trams, t), self._durada)
         self._omple()
 
     def _elimina(self):
