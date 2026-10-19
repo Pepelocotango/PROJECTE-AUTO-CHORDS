@@ -665,58 +665,8 @@ class Visor(QMainWindow):
         return True
 
     def _menu_acord(self, pos):
-        # Regla d'or #11: MATEIX joc d'accions que el menú de les seccions.
-        if not hasattr(self, "llista_ac"):
-            return
-        idx = self.llista_ac.indexAt(pos).row()
-        menu = QMenu(self)
-        afegir = menu.addAction("Afegeix acord aquí")
-        partir = menu.addAction("Partir acord aquí")
-        meitat = menu.addAction("Partir per la meitat")
-        fusionar_prev = menu.addAction("Fusionar amb anterior")
-        fusionar_next = menu.addAction("Fusionar amb següent")
-        eliminar = menu.addAction("Elimina acord")
-        n_sel = len({i for (k, i) in self.timeline.selected_keys()
-                     if k == "chord"})
-        reanomena = menu.addAction(
-            f"Reanomena {n_sel} acords…" if n_sel >= 2 else "Reanomena acord…")
-        te = 0 <= idx < len(self.acords)
-        partir.setEnabled(te and idx + 1 < len(self.acords))
-        meitat.setEnabled(te)
-        fusionar_prev.setEnabled(te and idx > 0)
-        fusionar_next.setEnabled(te and idx + 1 < len(self.acords))
-        eliminar.setEnabled(te)
-        reanomena.setEnabled(te or n_sel >= 1)
-        accio = menu.exec_(self.llista_ac.mapToGlobal(pos))
-        if accio is None:
-            return
-        if accio == afegir:
-            # Un sol camí amb el menú contextual del timeline («Afegeix acord
-            # aquí»): mateixa semàntica i mateixa marca de desfer.
-            self._afegeix_a_la_posicio("chord", self.pos)
-        elif accio == partir:
-            self._parteix_acord_dialog(idx)
-        elif accio == meitat:
-            self.parteix_per_la_meitat("chord", idx)
-        elif accio == fusionar_prev:
-            self.fusiona_acord(idx, "anterior")
-        elif accio == fusionar_next:
-            self.fusiona_acord(idx, "seguent")
-        elif accio == eliminar:
-            try:
-                self._elimina_acord(idx)
-                self._desa_i_regenera()
-                self.log(f"eliminat acord {idx}")
-            except Exception as e:  # noqa: BLE001
-                self.log(f"ERROR: {e}")
-                QMessageBox.warning(self, "Visor",
-                                    f"No s'ha pogut eliminar l'acord:\n{e}")
-        elif accio == reanomena:
-            # >1 seleccionat → renom en bloc; si no, edita el clip del clic.
-            if n_sel >= 2:
-                self.renomena_seleccio()
-            elif te:
-                self._focus_editor("chord", idx)
+        """Botó dret a la LLISTA d'acords (mateixa definició que el timeline)."""
+        self._menu_de_llista("chord", getattr(self, "llista_ac", None), pos)
 
     def _durada_wav(self):
         """Durada de la WAV en segons (0.0 si no se sap).
@@ -924,80 +874,16 @@ class Visor(QMainWindow):
         self.aplica_tempo_trams(nou)
 
     def _on_tempo_menu(self, idx, t):
-        """Menú contextual de la pista de BPM/compàs (③).
+        """Botó dret a la pista ③ BPM/compàs.
 
-        Regla d'or #11: **el mateix joc d'accions i el mateix ordre** que el
-        menú contextual dels clips (④ estructura i ⑤ acords). L'únic afegit
-        propi és «Afegeix un canvi aquí», que és l'«afegeix» d'aquesta pista.
-
-        El porta-retalls (Retalla/Copia/Enganxa) és el MATEIX del timeline: ja
-        suporta `kind = "tempo"` (copiar, enganxar sobreescrivint, desfer).
+        Regla d'or #11: **la mateixa definició de menú** que ④ estructura i
+        ⑤ acords (vegeu `_menu_contextual`), pel mateix camí d'usuari.
         """
-        from app import tempo_map as tm
-        te = idx >= 0
-        trams = list(self.tempo_trams or [])
-        menu = QMenu(self)
-        a_add = menu.addAction("Afegeix un canvi aquí")
-        menu.addSeparator()
-        a_dup = menu.addAction("Duplica")
-        a_del = menu.addAction("Elimina")
-        menu.addSeparator()
-        a_edit = menu.addAction("Reanomena (BPM/compàs)…")
-        menu.addSeparator()
-        a_part = menu.addAction("Parteix aquest tros aquí")
-        a_meitat = menu.addAction("Partir per la meitat")
-        menu.addSeparator()
-        a_ret = menu.addAction("Retalla")
-        a_cop = menu.addAction("Copia")
-        a_eng = menu.addAction("Enganxa")
-        # Duplicar necessita lloc DESPRÉS del tram (el mapa sempre acaba a la
-        # WAV): a l'últim tros no hi cap. Eliminar, amb un sol tram, no.
-        a_dup.setEnabled(te and idx + 1 < len(trams))
-        a_del.setEnabled(te and len(trams) > 1)
-        a_edit.setEnabled(te)
-        a_part.setEnabled(te)
-        a_meitat.setEnabled(te)
-        a_ret.setEnabled(te)
-        a_cop.setEnabled(te)
-        a_eng.setEnabled(self.timeline.has_clipboard())
-        acc = menu.exec_(QCursor.pos())
-        if acc is None:
-            return
-        if acc in (a_add, a_part, a_del):
-            self._undo_marca()
-            if acc == a_del:
-                if not (te and len(trams) > 1):
-                    self._undo_pending = None
-                    return
-                self.aplica_tempo_trams(tm.elimina_tall(trams, idx))
-            else:
-                self.aplica_tempo_trams(tm.afegeix_tall(trams, float(t)))
-            self._undo_commit()
-            return
-        if acc == a_dup:
-            if te and idx + 1 < len(trams):
-                self.timeline.select_clip("tempo", idx)
-                self._duplica_seleccio([("tempo", idx)])
-            return
-        if acc == a_edit:
-            if te:
-                self._on_tempo_edit(idx)
-            return
-        if acc == a_meitat:
-            if te:
-                self.parteix_per_la_meitat("tempo", idx)
-            return
-        # Copia/Retalla treballen sobre la SELECCIÓ: el botó dret ja ha
-        # seleccionat el tram, però si la crida és directa ens n'assegurem.
-        if acc in (a_ret, a_cop) and te:
-            if ("tempo", idx) not in self.timeline.selected_keys():
-                self.timeline.select_clip("tempo", idx)
-        if acc == a_ret:
-            self.timeline.cut_selection()
-        elif acc == a_cop:
-            self.timeline.copy_selection()
-        elif acc == a_eng:
-            self.timeline.paste_at_cursor()
+        idx = -1 if idx is None else int(idx)
+        menu = self._menu_contextual("tempo", idx, float(t))
+        accio = menu.exec_(QCursor.pos())
+        self._executa_contextual("tempo", idx, float(t),
+                                 accio.data() if accio else None, "timeline")
 
     def _desa_csvs_base(self):
         """Desa els CSV d'acords i d'estructura (SENSE tocar la UI).
@@ -1659,82 +1545,188 @@ class Visor(QMainWindow):
             return
         self._focus_editor("chord", idx)
 
+    # ── Menú contextual d'un carril: DEFINICIÓ ÚNICA (regla d'or #11) ────────
+    #
+    # Les DUES superfícies (timeline i llistes) i les TRES pistes comparteixen
+    # aquesta definició: mateix joc d'accions, mateix ordre i mateixa redacció.
+    # Abans cada superfície tenia el seu menú escrit a mà i divergien (la llista
+    # tenia «Fusionar…» i el timeline no; ③ anava pel seu compte). Afegir una
+    # operació ACÍ la fa aparéixer a tot arreu, i `test_regla11_paritat` ho
+    # comprova superfície per superfície.
+    _ETQ_AFEGEIX = {"chord": "Afegeix acord aquí",
+                    "section": "Afegeix secció aquí",
+                    "tempo": "Afegeix un canvi aquí"}
+    _ETQ_PARTEIX = {"chord": "Parteix l'acord…",
+                    "section": "Parteix la secció…",
+                    "tempo": "Parteix aquest tros aquí"}
+    _ETQ_REANOMENA = {"chord": "Reanomena acord…",
+                      "section": "Reanomena secció…",
+                      "tempo": "Reanomena (BPM/compàs)…"}
+    _PLURAL = {"chord": "acords", "section": "seccions", "tempo": "trams"}
+
+    def _n_clips(self, kind):
+        if kind == "chord":
+            return len(self.acords)
+        if kind == "section":
+            return len(self.seccions)
+        return len(self.tempo_trams or [])
+
+    def _menu_contextual(self, kind, idx, t):
+        """Construeix el menú contextual d'un carril (definició ÚNICA)."""
+        n = self._n_clips(kind)
+        te = 0 <= idx < n
+        menu = QMenu(self)
+
+        def act(clau, text, actiu=True):
+            a = menu.addAction(text)
+            a.setData(clau)
+            a.setEnabled(actiu)
+            return a
+
+        act("afegeix", self._ETQ_AFEGEIX[kind])
+        menu.addSeparator()
+        # Duplicar un tram de tempo necessita lloc DESPRÉS (el mapa sempre acaba
+        # a la WAV); eliminar-lo, que n'hi haja més d'un.
+        act("duplica", "Duplica", te and (kind != "tempo" or idx + 1 < n))
+        act("elimina", "Elimina", te and (kind != "tempo" or n > 1))
+        menu.addSeparator()
+        n_sel = len({i for (k, i) in self.timeline.selected_keys()
+                     if k == kind})
+        act("reanomena",
+            (f"Reanomena {n_sel} {self._PLURAL[kind]}…" if n_sel >= 2
+             else self._ETQ_REANOMENA[kind]),
+            te or n_sel >= 1)
+        menu.addSeparator()
+        act("parteix", self._ETQ_PARTEIX[kind], te)
+        act("meitat", "Partir per la meitat", te)
+        menu.addSeparator()
+        # «Fusionar» = traure una frontera (a ③, fondre el tram amb el veí).
+        # Era l'única operació que només existia a les llistes.
+        act("fusiona_anterior", "Fusionar amb anterior", te and idx > 0)
+        act("fusiona_seguent", "Fusionar amb següent", te and idx + 1 < n)
+        menu.addSeparator()
+        act("retalla", "Retalla", te)
+        act("copia", "Copia", te)
+        act("enganxa", "Enganxa", self.timeline.has_clipboard())
+        return menu
+
+    def _executa_contextual(self, kind, idx, t, clau, superficie="timeline"):
+        """Executa una acció del menú contextual (definició única)."""
+        if clau is None:
+            return
+        if clau == "afegeix":
+            self._afegeix_a_la_posicio(kind, float(t))
+        elif clau == "duplica":
+            if kind == "chord":
+                self._duplica_acord_index(idx)
+            elif kind == "section":
+                self._duplica_seccio_index(idx)
+            else:
+                self.timeline.select_clip("tempo", idx)
+                self._duplica_seleccio([("tempo", idx)])
+        elif clau == "elimina":
+            if kind == "chord":
+                self._elimina_acord_index(idx)
+            elif kind == "section":
+                self._elimina_seccio_index(idx)
+            else:
+                self._elimina_tram(idx)
+        elif clau == "reanomena":
+            n_sel = len({i for (k, i) in self.timeline.selected_keys()
+                         if k == kind})
+            if n_sel >= 2:
+                self.renomena_seleccio()
+            elif kind == "tempo":
+                self._on_tempo_edit(idx)
+            elif superficie == "llista":
+                self._focus_editor(kind, idx)
+            elif kind == "chord":
+                self.timeline.chordEditRequested.emit(idx)
+            else:
+                self.timeline.sectionEditRequested.emit(idx)
+        elif clau == "parteix":
+            if kind == "chord":
+                self._parteix_acord_dialog(idx)
+            elif kind == "section":
+                self._parteix_seccio_dialog(idx)
+            else:
+                self._afegeix_tall(float(t))
+        elif clau == "meitat":
+            self.parteix_per_la_meitat(kind, idx)
+        elif clau in ("fusiona_anterior", "fusiona_seguent"):
+            amb = "anterior" if clau == "fusiona_anterior" else "seguent"
+            if kind == "tempo":
+                self._fusiona_tram(idx, amb)
+            elif kind == "chord":
+                self.fusiona_acord(idx, amb)
+            else:
+                self.fusiona_seccio(idx, amb)
+        elif clau in ("retalla", "copia"):
+            if kind == "tempo" and \
+                    ("tempo", idx) not in self.timeline.selected_keys():
+                self.timeline.select_clip("tempo", idx)
+            if clau == "retalla":
+                self.timeline.cut_selection()
+            else:
+                self.timeline.copy_selection()
+        elif clau == "enganxa":
+            self.timeline.paste_at_cursor()
+
+    def _afegeix_tall(self, t):
+        """Obre una frontera nova al mapa de tempo (l'«afegeix» de ③)."""
+        self._undo_marca()
+        self.aplica_tempo_trams(
+            tempo_map.afegeix_tall(list(self.tempo_trams or []), float(t)))
+        self._undo_commit()
+        return True
+
+    def _elimina_tram(self, idx):
+        """Elimina un tram del mapa (els veïns n'ocupen l'espai)."""
+        trams = list(self.tempo_trams or [])
+        if not (0 <= idx < len(trams)) or len(trams) <= 1:
+            return False
+        self._undo_marca()
+        self.aplica_tempo_trams(tempo_map.elimina_tall(trams, idx))
+        self._undo_commit()
+        return True
+
+    def _fusiona_tram(self, idx, amb="seguent"):
+        """Fusiona el tram `idx` amb el veí (mirall de `fusiona_acord`, #11)."""
+        trams = list(self.tempo_trams or [])
+        nou = tempo_map.fusiona_trams(trams, idx, amb)
+        if len(nou) == len(trams):
+            return False
+        self._undo_marca()
+        self.aplica_tempo_trams(nou)
+        self._undo_commit()
+        return True
+
     def _on_clip_context_menu(self, kind, idx, pos, t=None):
-        """Menú contextual (botó dret) sobre un clip del timeline.
+        """Botó dret sobre un clip del TIMELINE (definició única del menú).
 
         `t` = instant on s'ha clicat (per al «Afegeix … aquí»). Si no arriba
         (crides directes), s'usa el cursor, com fan els menús de les llistes.
         """
         if t is None:
             t = float(self.pos)
-        te_clip = idx is not None and idx >= 0
-        menu = QMenu(self)
-        # Regla d'or #11: les TRES pistes (acords, estructura i BPM/compàs)
-        # obrin el MATEIX joc d'accions, i el «Afegeix … aquí» va al capdamunt
-        # a la posició del clic — igual que el menú de la pista de tempo.
-        a_add = menu.addAction(
-            "Afegeix secció aquí" if kind == "section" else "Afegeix acord aquí")
-        menu.addSeparator()
-        a_dup = menu.addAction("Duplica")
-        a_del = menu.addAction("Elimina")
-        menu.addSeparator()
-        a_ren = menu.addAction("Reanomena")
-        menu.addSeparator()
-        # A2 + regla d'or #11: partir pel cursor (en un model saturat és l'única
-        # manera d'afegir-ne un de nou). Mateixa eina per a acord I secció.
-        a_part = menu.addAction(
-            "Parteix la secció…" if kind == "section" else "Parteix l'acord…")
-        a_meitat = menu.addAction("Partir per la meitat")
-        menu.addSeparator()
-        a_ret = menu.addAction("Retalla")
-        a_cop = menu.addAction("Copia")
-        a_eng = menu.addAction("Enganxa")
-        # desactivats si no hi ha cap clip seleccionat
-        for a in (a_dup, a_del, a_ren):
-            a.setEnabled(te_clip)
-        a_part.setEnabled(te_clip)
-        a_meitat.setEnabled(te_clip)
-        a_ret.setEnabled(te_clip)
-        a_cop.setEnabled(te_clip)
-        a_eng.setEnabled(self.timeline.has_clipboard())
+        idx = -1 if idx is None else int(idx)
+        menu = self._menu_contextual(kind, idx, t)
         accio = menu.exec_(pos)
-        if accio is None:
+        self._executa_contextual(kind, idx, t,
+                                 accio.data() if accio else None, "timeline")
+
+    def _menu_de_llista(self, kind, llista, pos):
+        """Botó dret a la LLISTA d'un carril: EL MATEIX menú que el timeline.
+
+        L'«aquí» és el cursor (`self.pos`), com feien aquests menús abans.
+        """
+        if llista is None:
             return
-        if accio == a_add:
-            self._afegeix_a_la_posicio(kind, float(t))
-        elif accio == a_dup:
-            if kind == "chord":
-                self._duplica_acord_index(idx)
-            else:
-                self._duplica_seccio_index(idx)
-        elif accio == a_del:
-            if kind == "chord":
-                self._elimina_acord_index(idx)
-            else:
-                self._elimina_seccio_index(idx)
-        elif accio == a_ren:
-            # >1 seleccionat del mateix tipus → renom en bloc; si no, inline.
-            n_same = len({i for (k, i) in self.timeline.selected_keys()
-                          if k == kind})
-            if n_same >= 2:
-                self.renomena_seleccio()
-            elif kind == "chord":
-                self.timeline.chordEditRequested.emit(idx)
-            else:
-                self.timeline.sectionEditRequested.emit(idx)
-        elif accio == a_part:
-            if kind == "chord":
-                self._parteix_acord_dialog(idx)
-            else:
-                self._parteix_seccio_dialog(idx)
-        elif accio == a_meitat:
-            self.parteix_per_la_meitat(kind, idx)
-        elif accio == a_ret:
-            self.timeline.cut_selection()
-        elif accio == a_cop:
-            self.timeline.copy_selection()
-        elif accio == a_eng:
-            self.timeline.paste_at_cursor()
+        idx = llista.indexAt(pos).row()
+        menu = self._menu_contextual(kind, idx, float(self.pos))
+        accio = menu.exec_(llista.mapToGlobal(pos))
+        self._executa_contextual(kind, idx, float(self.pos),
+                                 accio.data() if accio else None, "llista")
 
     def _afegeix_a_la_posicio(self, kind, t):
         """«Afegeix acord/secció aquí» — **un sol camí** per a la LLISTA i el TIMELINE.
@@ -1753,6 +1745,10 @@ class Visor(QMainWindow):
         Una sola operació de desfer (per al chord; `parteix_seccio` ja la fa).
         """
         t = float(t)
+        if kind == "tempo":
+            # A ③ «afegir» és OBRIR UN TALL (regla #11: a la pista de tempo
+            # «afegir» i «partir» són el mateix gest).
+            return self._afegeix_tall(t)
         if kind == "chord":
             nou, ok = QInputDialog.getText(
                 self, "Afegeix acord", f"Acord a {t:.2f} s", text="N")
@@ -3177,57 +3173,8 @@ class Visor(QMainWindow):
         self.timeline.ensure_cursor_visible()
 
     def _menu_seccio(self, pos):
-        # Regla d'or #11: MATEIX joc d'accions que el menú dels acords.
-        if not self.seccions:
-            return
-        idx = self.llista_ab.indexAt(pos).row()
-        menu = QMenu(self)
-        afegir = menu.addAction("Afegeix secció aquí")
-        partir = menu.addAction("Partir secció aquí")
-        meitat = menu.addAction("Partir per la meitat")
-        fusionar_prev = menu.addAction("Fusionar amb anterior")
-        fusionar_next = menu.addAction("Fusionar amb següent")
-        eliminar = menu.addAction("Elimina secció")
-        n_sel = len({i for (k, i) in self.timeline.selected_keys()
-                     if k == "section"})
-        reanomena = menu.addAction(
-            f"Reanomena {n_sel} seccions…" if n_sel >= 2 else "Reanomena secció…")
-        te = 0 <= idx < len(self.seccions)
-        partir.setEnabled(te and idx + 1 < len(self.seccions))
-        meitat.setEnabled(te)
-        fusionar_prev.setEnabled(te and idx > 0)
-        fusionar_next.setEnabled(te and idx + 1 < len(self.seccions))
-        eliminar.setEnabled(te)
-        reanomena.setEnabled(te or n_sel >= 1)
-        accio = menu.exec_(self.llista_ab.mapToGlobal(pos))
-        if accio is None:
-            return
-        if accio == afegir:
-            # Un sol camí amb el menú contextual del timeline («Afegeix secció
-            # aquí»): parteix la secció que conté el cursor (model saturat).
-            self._afegeix_a_la_posicio("section", self.pos)
-        elif accio == partir:
-            self._parteix_seccio_dialog(idx)
-        elif accio == meitat:
-            self.parteix_per_la_meitat("section", idx)
-        elif accio == fusionar_prev:
-            self.fusiona_seccio(idx, "anterior")
-        elif accio == fusionar_next:
-            self.fusiona_seccio(idx, "seguent")
-        elif accio == eliminar:
-            try:
-                self._elimina_seccio(idx)
-                self._regenera_abc_des_de_totes_les_seccions("secció eliminada")
-            except Exception as e:  # noqa: BLE001
-                self.log(f"ERROR: {e}")
-                QMessageBox.warning(self, "Visor",
-                                    f"No s'ha pogut eliminar la secció:\n{e}")
-        elif accio == reanomena:
-            # >1 seleccionat → renom en bloc; si no, edita la secció del clic.
-            if n_sel >= 2:
-                self.renomena_seleccio()
-            elif te:
-                self._focus_editor("section", idx)
+        """Botó dret a la LLISTA d'estructura (mateixa definició que el timeline)."""
+        self._menu_de_llista("section", getattr(self, "llista_ab", None), pos)
 
     def _regenera_abc_des_de_totes_les_seccions(self, msg):
         sortida = self._carpeta_acords()

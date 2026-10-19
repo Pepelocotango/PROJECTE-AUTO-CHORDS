@@ -339,6 +339,28 @@ def _captura_menu(fn, *args):
     return capt.get("accions", [])
 
 
+def _claus_menu(fn, *args):
+    """Les CLAUS de les accions (`QAction.data()`) + si estan actives.
+
+    Serveix per comparar **l'operació** entre carrils: la redacció sí que canvia
+    («Afegeix acord aquí» / «Afegeix un canvi aquí»), l'operació NO.
+    """
+    capt = {}
+    orig = QMenu.exec_
+
+    def fake(self, pos, *rest):
+        acts = [a for a in self.actions() if not a.isSeparator()]
+        capt["claus"] = [a.data() for a in acts]
+        capt["actiu"] = [a.isEnabled() for a in acts]
+        return None
+    QMenu.exec_ = fake
+    try:
+        fn(*args)
+    finally:
+        QMenu.exec_ = orig
+    return capt.get("claus", []), capt.get("actiu", [])
+
+
 def _tria_menu(fn, text, *args):
     """Crida `fn` fent veure que l'usuari tria l'acció que conté `text`."""
     trobat = {"ok": False}
@@ -373,11 +395,82 @@ class TestMenusParitat(_Base):
         se = self._amb_fila(v._menu_seccio)
         self.assertEqual(len(ac), len(se),
                          f"jocs d'accions diferents: {ac} vs {se}")
-        self.assertEqual(len(ac), 7)          # + «Partir per la meitat» (#11)
+        # 11 accions = la definició ÚNICA del menú contextual (regla #11),
+        # compartida amb el timeline (abans la llista en tenia 7 i el timeline 9).
+        self.assertEqual(len(ac), 11, f"joc inesperat: {ac}")
         # Mateixa estructura (activació) i mateixa paraula de tipus a cada posició.
         self.assertEqual([e for _t, e in ac], [e for _t, e in se])
-        self.assertIn("acord", ac[1][0].lower())
-        self.assertIn("secció", se[1][0].lower())
+        self.assertIn("acord", ac[0][0].lower())
+        self.assertIn("secció", se[0][0].lower())
+        self.assertIn("acord", ac[3][0].lower())
+        self.assertIn("secció", se[3][0].lower())
+
+    def test_les_cinc_superficies_tenen_el_mateix_menu(self):
+        """③ BPM/compàs + ④ estructura + ⑤ acords, al TIMELINE i a les LLISTES.
+
+        Regla d'or #11: **una sola definició** de menú (`_menu_contextual`) per a
+        totes les superfícies → mateixa OPERACIÓ, mateix ordre i mateixa
+        activació. La redacció sí que pot canviar («Afegeix acord aquí» vs
+        «Afegeix un canvi aquí»), per això es comparen les **claus**.
+        """
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
+                              (10.0, DUR, 90.0, 3, 4)])
+        orig = QListWidget.indexAt
+        QListWidget.indexAt = lambda self, pos: _Fila(0)
+        try:
+            jocs = {
+                "TL acords": _claus_menu(v._on_clip_context_menu, "chord", 0,
+                                         QPoint(0, 0), 3.0),
+                "TL estructura": _claus_menu(v._on_clip_context_menu, "section",
+                                             0, QPoint(0, 0), 3.0),
+                "TL BPM": _claus_menu(v._on_tempo_menu, 0, 3.0),
+                "LLISTA acords": _claus_menu(v._menu_acord, QPoint(1, 1)),
+                "LLISTA estructura": _claus_menu(v._menu_seccio, QPoint(1, 1)),
+            }
+        finally:
+            QListWidget.indexAt = orig
+        base_claus, base_actiu = jocs["TL acords"]
+        self.assertEqual(base_claus, [
+            "afegeix", "duplica", "elimina", "reanomena", "parteix", "meitat",
+            "fusiona_anterior", "fusiona_seguent", "retalla", "copia", "enganxa",
+        ])
+        for nom, (claus, actiu) in jocs.items():
+            self.assertEqual(claus, base_claus,
+                             f"«{nom}» no té el mateix joc/ordre d'operacions")
+            self.assertEqual(actiu, base_actiu,
+                             f"«{nom}» té una activació diferent")
+
+    def test_l_operacio_que_nomes_era_a_les_llistes_ara_hi_es_a_tot_arreu(self):
+        """«Fusionar amb anterior/seguint» existia només a les llistes."""
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
+                              (10.0, DUR, 90.0, 3, 4)])
+        for etq, args in (("TL acords", ("chord", 1, QPoint(0, 0), 3.0)),
+                          ("TL estructura", ("section", 1, QPoint(0, 0), 3.0)),
+                          ("TL BPM", (1, 3.0))):
+            fn = v._on_tempo_menu if etq == "TL BPM" else v._on_clip_context_menu
+            claus, actiu = _claus_menu(fn, *args)
+            self.assertIn("fusiona_anterior", claus)
+            self.assertIn("fusiona_seguent", claus)
+            d = dict(zip(claus, actiu))
+            self.assertTrue(d["fusiona_anterior"],
+                            f"«{etq}»: amb un clip anterior, ha d'estar activa")
+
+    def test_els_menus_tenen_les_onze_accions_esperades(self):
+        """La llista blanca de les 11 accions (canviar-la és una decisió)."""
+        v = _visor()
+        v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
+                              (10.0, DUR, 90.0, 3, 4)])
+        joc = [t for t, _e in _captura_menu(v._on_tempo_menu, 0, 3.0)]
+        self.assertEqual(joc, [
+            "Afegeix un canvi aquí",
+            "Duplica", "Elimina",
+            "Reanomena (BPM/compàs)…",
+            "Parteix aquest tros aquí", "Partir per la meitat",
+            "Fusionar amb anterior", "Fusionar amb següent",
+            "Retalla", "Copia", "Enganxa",
+        ])
 
     def test_menu_contextual_parteix_per_a_tots_dos(self):
         v = _visor()
@@ -512,6 +605,67 @@ class TestMenusParitat(_Base):
         finally:
             QListWidget.indexAt = orig
         self.assertIn("Z", [s[2] for s in v.seccions])
+
+
+class TestMenuPrincipalParitat(_Base):
+    """El menú principal ha de tindre les MATEIXES operacions a les 3 pistes.
+
+    Era l'última superfície amb forat: hi havia «Afegeix acord…» i «Afegeix
+    secció…» (i els dos «Parteix … al cursor…»), però **res** per a ③.
+    """
+
+    def _finestra(self):
+        import tempfile
+        from app import config
+        from app import main as app_main
+        td = tempfile.mkdtemp()
+        p = patch.object(config, "DADES_DIR", td)
+        p.start()
+        self.addCleanup(p.stop)
+        f = app_main.Finestra()
+        self.addCleanup(self._tanca, f)
+        return f
+
+    @staticmethod
+    def _tanca(f):
+        import _qt_neteja
+        f.dirty = False
+        _qt_neteja.tanca_i_destrueix(f)
+
+    def _menu_edita(self, f):
+        for a in f.menuBar().actions():
+            if "edita" in a.text().replace("&", "").lower():
+                return a.menu()
+        return None
+
+    def test_les_tres_pistes_tenen_afegeix_i_parteix(self):
+        f = self._finestra()
+        m = self._menu_edita(f)
+        self.assertIsNotNone(m, "no trobo el menu Edita")
+        textos = [a.text() for a in m.actions()]
+        for esperat in ("Afegeix acord…", "Afegeix secció…",
+                        "Afegeix tram de tempo/compàs…",
+                        "Parteix l'acord al cursor…",
+                        "Parteix la secció al cursor…",
+                        "Parteix el tram al cursor…"):
+            self.assertIn(esperat, textos,
+                          f"falta «{esperat}» al menu Edita: {textos}")
+
+    def test_afegeix_i_parteix_tram_funcionen(self):
+        """I fan la feina (no només hi són)."""
+        f = self._finestra()
+        v = _visor()
+        f.visor_ref = v
+        n0 = len(v.tempo_trams or [])
+        v.pos = 12.0
+        f._afegeix_tram_ui()
+        self.assertEqual(len(v.tempo_trams), n0 + 1,
+                         "«Afegeix tram» ha d'obrir una frontera nova")
+        v.pos = 14.0
+        n1 = len(v.tempo_trams)
+        f._parteix_tram_ui()
+        self.assertEqual(len(v.tempo_trams), n1 + 1,
+                         "«Parteix el tram» ha de partir-lo pel cursor")
 
 
 # ── Tracte visual ────────────────────────────────────────────────────────────

@@ -462,6 +462,36 @@ def afegeix_tall(trams, t):
     return trams + [(t, t, 120.0, 4, 4)]
 
 
+def fusiona_trams(trams, i, amb="seguent"):
+    """Fusiona el tram `i` amb el veí (mirall de `pipeline.fusiona_acords`).
+
+    Regla d'or #11: el carril de BPM/compàs ha de tindre les **mateixes
+    operacions** que els d'acords i estructura. «Fusionar» ací vol dir
+    **traure una frontera** (l'invers de «partir»): mana el BPM/compàs del
+    tram que s'estira.
+
+    - `"seguent"`: el tram `i` s'estira fins al fi del següent (mana el SEU BPM).
+    - `"anterior"`: el tram anterior s'estira fins al fi de `i` (mana el d'aquell).
+
+    Retorna la llista NOVA (encara per normalitzar); no muta l'entrada. Si no
+    es pot (índex fora de rang o sense veí), torna la llista tal com estava.
+    """
+    out = list(trams or [])
+    if not (0 <= i < len(out)):
+        return out
+    if amb == "anterior":
+        if i == 0:
+            return out
+        out[i - 1] = (float(out[i - 1][0]), float(out[i][1])) + tuple(out[i - 1][2:])
+        del out[i]
+    else:
+        if i + 1 >= len(out):
+            return out
+        out[i] = (float(out[i][0]), float(out[i + 1][1])) + tuple(out[i][2:])
+        del out[i + 1]
+    return out
+
+
 def elimina_tall(trams, idx):
     """Treu el tros `idx` del mapa (els veïns n'ocupen l'espai).
 

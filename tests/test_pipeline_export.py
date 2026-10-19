@@ -2941,24 +2941,60 @@ class ContextMenuTests(unittest.TestCase):
         """(A2 + regla #11) El menú contextual té les accions esperades; «Parteix…»
         és ACTIVA sobre un clip, amb el text propi del tipus (acord/secció).
 
-        Des del 19-10-2026 obre amb «Afegeix … aquí»: és el mateix joc que el
-        menú de la pista de BPM/compàs (paritat #11 estesa a les TRES pistes).
+        Des del 19-10-2026 és la **definició única** del menú contextual
+        (`visor._menu_contextual`), compartida pel timeline i les llistes i per
+        les tres pistes: 11 accions, amb «Fusionar…» inclòs.
+
+        ⚠️ Este test demanava el menú amb `idx=1` quan el model només té **UN**
+        acord (WAV de 2 s; el segon cau fora) i n'esperava accions ACTIVes: el
+        codi vell només comprovava `idx >= 0`, així que donava per bo un clip
+        que no existeix — i el test ho congelava. Ara es prova amb l'índex REAL
+        (0) i el cas fora de rang té el seu propi test.
         """
         v = self._visor()
-        accions = self._captura(v, "chord", 1)
+        self.assertEqual(len(v.acords), 1, "el fixture té un sol acord")
+        accions = self._captura(v, "chord", 0)
         self.assertEqual([x[0] for x in accions],
                          ["Afegeix acord aquí",
-                          "Duplica", "Elimina", "Reanomena",
+                          "Duplica", "Elimina", "Reanomena acord…",
                           "Parteix l'acord…", "Partir per la meitat",
+                          "Fusionar amb anterior", "Fusionar amb següent",
                           "Retalla", "Copia", "Enganxa"])
         self.assertTrue(accions[4][1], "sobre un acord ha d'estar activa")
         self.assertTrue(accions[5][1], "«Partir per la meitat» també")
+        # ⚠️ El fixture NO té estructura (`abc=None` → 0 seccions) i el test vell
+        # n'esperava accions ACTIVes: mateix bug congelat que el de dalt. Amb 0
+        # seccions no hi ha res a editar → tot desactivat llevat de l'afegeix.
+        self.assertEqual(v.seccions, [])
+        sec_buida = self._captura(v, "section", 0)
+        self.assertEqual(sec_buida[0][0], "Afegeix secció aquí")
+        self.assertTrue(all(not e for _t, e in sec_buida[1:]),
+                        f"sense cap seccio no hi ha accions: {sec_buida}")
+        # Amb una secció de debò, el cas «actiu»:
+        v._afegeix_seccio(0.0, 2.0, "A", "A")
         accions_sec = self._captura(v, "section", 0)
         self.assertEqual(accions_sec[0][0], "Afegeix secció aquí")
+        self.assertEqual(accions_sec[3][0], "Reanomena secció…")
         self.assertEqual(accions_sec[4][0], "Parteix la secció…")
         self.assertTrue(accions_sec[4][1], "sobre una secció ha d'estar activa")
         self.assertEqual(accions_sec[5][0], "Partir per la meitat")
         self.assertTrue(accions_sec[5][1], "«Partir per la meitat» també")
+        v.close()
+
+    def test_menu_amb_index_inexistent_desactiva_tot_menys_afegir(self):
+        """Un índex FORA DE RANG no pot oferir accions sobre un clip que no hi és.
+
+        Regressió del bug que este mateix fitxer congelava: el menú només
+        comprovava `idx >= 0` i donava «Parteix…»/«Elimina» per actives amb
+        `idx=99`.
+        """
+        v = self._visor()
+        accions = self._captura(v, "chord", 99)
+        self.assertEqual(accions[0][0], "Afegeix acord aquí")
+        self.assertTrue(accions[0][1],
+                        "l'afegeix no depén de cap clip existent")
+        self.assertTrue(all(not e for _t, e in accions[1:]),
+                        f"cap accio mes no pot estar activa: {accions}")
         v.close()
 
     def test_menu_desactivat_sense_seleccio(self):

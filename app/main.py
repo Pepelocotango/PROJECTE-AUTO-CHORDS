@@ -774,6 +774,9 @@ class Finestra(QMainWindow):
         # cursor — MATEIXA acció per a acord i secció.
         self._act(m, "Parteix l'acord al cursor…", "", self._parteix_acord_ui)
         self._act(m, "Parteix la secció al cursor…", "", self._parteix_seccio_ui)
+        self._act(m, "Afegeix tram de tempo/compàs…", "",
+                  self._afegeix_tram_ui)
+        self._act(m, "Parteix el tram al cursor…", "", self._parteix_tram_ui)
         m.addSeparator()
         self._act(m, "Elimina element", "Del", self._elimina_element)
         self._act(m, "Duplica element", "Ctrl+D", self._duplica_element)
@@ -1697,6 +1700,44 @@ class Finestra(QMainWindow):
         if vr._parteix_seccio_dialog(idx):
             self.registra(f"secció partida a {vr.pos:.2f} s")
 
+    def _idx_tram_del_cursor(self):
+        """Índex del tram de BPM/compàs que CONTÉ el cursor (o `None`). #11."""
+        vr = getattr(self, "visor_ref", None)
+        trams = getattr(vr, "tempo_trams", None) if vr is not None else None
+        if not trams:
+            return None
+        idx = -1
+        for i, t in enumerate(trams):
+            if float(t[0]) <= vr.pos:
+                idx = i
+            else:
+                break
+        return idx if idx >= 0 else None
+
+    def _afegeix_tram_ui(self):
+        """«Afegeix un canvi de tempo/compàs» al cursor.
+
+        Regla d'or #11: el mateix camí que «Afegeix acord…» / «Afegeix secció…»
+        (l'operació del carril ③ era l'única que no hi era).
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        if vr._afegeix_a_la_posicio("tempo", vr.pos):
+            self.registra(f"afegit un canvi de tempo/compàs a {vr.pos:.2f} s")
+
+    def _parteix_tram_ui(self):
+        """Parteix el tram de tempo/compàs que conté el cursor (paritat #11)."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.registra("Parteix: no hi ha visor carregat")
+            return
+        if self._idx_tram_del_cursor() is None:
+            self.registra("Parteix: el cursor no és dins cap tram de tempo/compàs")
+            return
+        if vr._afegeix_tall(vr.pos):
+            self.registra(f"tram de tempo/compàs partit a {vr.pos:.2f} s")
+
     def _afegeix_acord_ui(self):
         vr = getattr(self, "visor_ref", None)
         if vr is None:
@@ -1762,13 +1803,8 @@ class Finestra(QMainWindow):
         trams = getattr(vr, "tempo_trams", None) if vr is not None else None
         if not trams:
             return False
-        idx = -1
-        for i, t in enumerate(trams):
-            if float(t[0]) <= vr.pos:
-                idx = i
-            else:
-                break
-        if idx < 0:
+        idx = self._idx_tram_del_cursor()
+        if idx is None:
             return False
         vr.timeline.select_clip("tempo", idx)
         return True
