@@ -68,12 +68,15 @@ def main():
         pipeline.extract_segments(os.path.abspath(a.wav), csv_seg, log)
 
     if tempo_fix:
-        log("3/5 locators + guia...")
-        loc, guia = pipeline.run_acords_py(csv_ac, a.bpm, a.bpb, a.offset,
-                                           sortida, log)
-        log(f"  -> {loc} + {guia}")
+        log("3/5 guia + segments...")
+        segs = pipeline.segments_locators(csv_ac, a.bpm, a.bpb, a.offset,
+                                          durada=info["durada"])
+        guia = pipeline.genera_guia_html(csv_ac, a.bpm, a.bpb, a.offset,
+                                         workdir=sortida,
+                                         durada=info["durada"], log=log)
+        log(f"  -> {guia} ({len(segs)} acords)")
         log("4/5 wavs d'acords...")
-        pipeline.fer_wavs_acords(loc, a.bpm,
+        pipeline.fer_wavs_acords(segs, a.bpm,
                                  os.path.join(sortida, "wavs_acords"),
                                  a.sr, log, a.bpb)
     else:

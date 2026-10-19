@@ -11,8 +11,8 @@
 | Capa | Fitxers | Quan s'escriuen | Qui els toca |
 |---|---|---|---|
 | **CRUA** | `analisi/chords_raw.csv`<br>`analisi/segments_raw.csv`<br>`analisi/meta.json` | **una vegada**, a cada «Analitza» | **només `Feina.run`**. Mai l'edició ni el mode fàcil |
-| **MODEL** | `acords.csv`<br>`estructura_ABC.csv`<br>`segments.csv` | a **cada edició** | el visor/MCP, el mode fàcil, l'anàlisi inicial |
-| **EXPORTS** | `wavs_acords/` · `wavs_estructura/` · `partitura/` · `acords_locators.txt` | només a «Exporta» | `pipeline.exporta_total` |
+| **MODEL** | `acords.csv`<br>`estructura_ABC.csv`<br>`tempo.csv` · `compas.csv` | a **cada edició** | el visor, el mode fàcil, l'anàlisi inicial |
+| **EXPORTS** | `wavs_acords/` · `wavs_estructura/` · `partitura/` · `guia_acords.html` | només a «Exporta» | `pipeline.exporta_total` |
 | **CÒPIES** | `backup/<data-hora>/` (**hi inclou `analisi/`**) | autosave cada 60 s, si hi ha canvis | `Projecte.fes_backup` |
 
 ## 2. Estructura de la carpeta del projecte
@@ -25,7 +25,6 @@ La meva cançó/                     ← carpeta autocontinguda (portable)
 ├── acords.csv                    ← MODEL: els acords
 ├── estructura_ABC.csv            ← MODEL: l'estructura A/B/C
 ├── segments.csv                  ← MODEL: els talls (base de l'ABC)
-├── acords_locators.txt           ← export (posició · acord · durada)
 │
 ├── analisi/                      ← CAPA CRUA (evidència · IMMUTABLE)
 │   ├── chords_raw.csv            ←   acords de Chordino ABANS de netejar
@@ -56,7 +55,7 @@ La meva cançó/                     ← carpeta autocontinguda (portable)
                                     │  (4) engega el visor
                                     ▼
                           ┌────────────────────┐
-                          │   edició en viu    │  ← l'usuari edita al visor/MCP
+                          │   edició en viu    │  ← l'usuari edita al visor
                           │ (acords + seccions)│
                           └─────────┬──────────┘
                                     │  desa NOMÉS els CSV (mai la crua)

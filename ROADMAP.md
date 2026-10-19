@@ -44,8 +44,8 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 > [`ROADMAP_HISTORIA.md`](ROADMAP_HISTORIA.md).
 
 - **Anàlisi** — Chordino (acords) + qm-segmenter (estructura), **opcions reals**
-  del detector, BPM (amb `consens`), compàs 1 automàtic (`🧭`), tonalitat
-  (`qm-keydetector`), import de formats via `ffmpeg`. **L'anàlisi és OPCIONAL**:
+  del detector, BPM (amb `consens`), compàs 1 automàtic (`🧭`), import de
+  formats via `ffmpeg`. **L'anàlisi és OPCIONAL**:
   es pot **treballar sense analitzar** (model inicial 1+1 clips editables).
 - **Visor DAW-like** — ona, ruler BPM/segons, 2 carrils, **constraint
   propagation** en viu, nanses de resize, **rename inline**, **snap**
@@ -60,7 +60,6 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   autosave i recuperació de sessió.
 - **Export** — paquet de WAVs per DAW + **partitura** (MusicXML sempre;
   PDF/MSCZ si hi ha MuseScore).
-- **MCP** — pont amb **51 eines** `ac_*` (control des d'un agent).
 - **Multi-SO** — AppImage (Linux) · ZIP (Windows x64) · `.app`/DMG (macOS
   10.13+) — tot amb GitHub Actions. Sense signar (assumit).
 - **Qualitat** — suite completa als 3 CI; pyflakes net.
@@ -86,7 +85,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 ## 4. ARA (Now)
 
 - **Cicle de treball** (acordat): **OC-8 = codi** (blocs amb tests verds →
-  **para**) · **OC-5 = tests + proves MCP + documentació + commits locals**.
+  **para**) · **OC-5 = tests + documentació + commits locals**.
   **Cap push ni compilacions** sense l'OK de l'operador.
 - **En curs**: refinaments d'**edició a la graella** (convencions de DAW) i
   l'**eina del timeline** (intel·ligent / marc). Últim detall: `CHANGELOG` +
@@ -118,7 +117,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
  
 - **Confiança dels acords** (`loglikelihood` del Chordino) → **ressaltar a la UI**
   els acords dubtosos per revisar-los.
-- **Tonalitat** (`qm-keydetector`) → mostrar-la i, si escau, **paleta d'acords**
+- **Tonalitat** → si mai cal, mostrar-la i, si escau, **paleta d'acords**
   (suggerir diatònics).
 
 ### Could

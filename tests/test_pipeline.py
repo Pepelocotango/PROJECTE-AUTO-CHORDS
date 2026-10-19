@@ -36,7 +36,6 @@ import xml.etree.ElementTree as ET
 import wave
 import PyQt5.QtWidgets as QW
 from app import main as app_main
-from app import mcp_bridge
 import faulthandler
 import glob
 import re
@@ -66,13 +65,12 @@ def tearDownModule():
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_acords_a_live.py
 # ══════════════════════════════════════════════════════════════════════════
-"""Smoke de la guia DAW (`genera_locators` / `genera_guia_html`) i dels locators.
+"""Guia DAW — tot EN MEMÒRIA (`segments_locators` / `genera_guia_html`).
 
-Verifica que `pipeline.genera_locators`, `pipeline.genera_guia_html` i
-`pipeline.run_acords_py` generen els dos fitxers en memòria (sense subprocés)
-i respecten el mapa de tempo/compàs.
+Els segments (posició, acord, durada en temps) i la guia HTML es calculen a
+partir del model. **No hi ha cap `acords_locators.txt`**: decisió de
+l'operador (2026-10-19) de tenir el sistema de fitxers intern més simple.
 """
-
 
 
 ACORDS = "inici_s,fi_s,acord\n0.0,4.0,C\n4.0,8.0,Am\n8.0,12.0,F\n12.0,16.0,G\n"
@@ -92,46 +90,69 @@ def _carpeta(tempo=None, compas=None):
 
 class TestGuiaDaw(unittest.TestCase):
 
-    def _corre(self, td, durada=16.0):
-        return pipeline.run_acords_py(
-            os.path.join(td, "acords.csv"), 120.0, 4, 0.0, td,
-            lambda *a: None, durada=durada)
+    def _segs(self, td, durada=16.0):
+        return pipeline.segments_locators(
+            os.path.join(td, "acords.csv"), 120.0, 4, 0.0, durada=durada)
 
-    def test_genera_locators_i_guia(self):
+    def test_segments_en_memoria(self):
         td = _carpeta()
-        loc, guia = self._corre(td)
-        self.assertTrue(os.path.isfile(loc), "ha de generar acords_locators.txt")
+        segs = self._segs(td)
+        self.assertEqual([c for (_p, c, _d) in segs], ["C", "Am", "F", "G"])
+        self.assertEqual(segs[0][0], "1.1.1", "posició compàs.temps.setzena")
+        self.assertAlmostEqual(segs[0][2], 8.0, places=6)   # 4 s a 120 BPM
+
+    def test_genera_guia_html(self):
+        td = _carpeta()
+        guia = pipeline.genera_guia_html(
+            os.path.join(td, "acords.csv"), 120.0, 4, 0.0, workdir=td,
+            durada=16.0)
         self.assertTrue(os.path.isfile(guia), "ha de generar guia_acords.html")
-        with open(loc, encoding="utf-8") as f:
-            text = f.read()
-        self.assertIn("C", text)
-        self.assertIn("G", text)
         with open(guia, encoding="utf-8") as f:
             html = f.read()
         self.assertIn("120 BPM", html)
-        self.assertIn("<div class=\"g\">", html)
+        self.assertIn('<div class="g">', html)
+        self.assertIn("G", html)
+
+    def test_no_escriu_cap_locators(self):
+        td = _carpeta()
+        self._segs(td)
+        pipeline.genera_guia_html(os.path.join(td, "acords.csv"), 120.0, 4,
+                                  0.0, workdir=td, durada=16.0)
+        self.assertFalse(os.path.exists(os.path.join(td, "acords_locators.txt")),
+                         "el locator intermedi ja no s'ha de crear mai")
+
+    def test_events_partitura(self):
+        """Els beats de la partitura surten del mateix model (sense fitxers)."""
+        td = _carpeta()
+        ev = pipeline.events_partitura(
+            os.path.join(td, "acords.csv"), 120.0, 4, 0.0, durada=16.0)
+        self.assertEqual([e[1] for e in ev], ["C", "Am", "F", "G"])
+        self.assertAlmostEqual(ev[0][0], 0.0)
+        self.assertAlmostEqual(ev[0][2], 8.0, places=6)
 
     def test_amb_mapa_de_tempo_variable(self):
-        """Amb `tempo.csv`/`compas.csv` de més d'un tram, la guia es calcula
-        amb el mapa (posicions compàs.temps.setzena) i no peta."""
+        """Amb `tempo.csv`/`compas.csv` de més d'un tram, tot es calcula amb el
+        mapa (posicions compàs.temps.setzena) i no peta."""
         td = _carpeta(tempo="ini_s,fi_s,bpm\n0.0,8.0,120\n8.0,16.0,90\n",
                       compas="ini_s,fi_s,beats,beat_type\n0.0,8.0,4,4\n"
                              "8.0,16.0,3,4\n")
-        loc, guia = self._corre(td)
-        self.assertTrue(os.path.isfile(loc))
-        self.assertTrue(os.path.isfile(guia))
+        segs = self._segs(td)
+        self.assertEqual(len(segs), 4)
+        guia = pipeline.genera_guia_html(
+            os.path.join(td, "acords.csv"), 120.0, 4, 0.0, workdir=td,
+            durada=16.0)
         with open(guia, encoding="utf-8") as f:
             self.assertIn("G", f.read())
 
     def test_tot_n_dona_error_clar(self):
-        """Un CSV amb només N ha de llançar RuntimeError clar."""
+        """Un model amb només «N» ha de llançar RuntimeError clar."""
         td = tempfile.mkdtemp()
         csv_path = os.path.join(td, "acords.csv")
         with open(csv_path, "w", encoding="utf-8") as f:
             f.write("inici_s,fi_s,acord\n0.0,4.0,N\n")
         with self.assertRaises(RuntimeError) as ctx:
-            pipeline.genera_locators(csv_path, 120.0, 4, 0.0, td, durada=4.0)
-        self.assertIn("tot N", str(ctx.exception))
+            pipeline.segments_locators(csv_path, 120.0, 4, 0.0, durada=4.0)
+        self.assertIn("cap acord per exportar", str(ctx.exception))
 
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_acord_audio.py
@@ -143,8 +164,6 @@ noves** i amb el **mateix motor d'àudio** de l'app. Aquí **no es fa sonar res*
 es verifica la matemàtica (notes → MIDI) i el senyal (mida, extrems, sense
 saturar, sense NaN).
 """
-
-
 
 
 class TestNotes(unittest.TestCase):
@@ -250,8 +269,6 @@ tests se **salten** netament en comptes de fallar.
 """
 
 
-
-
 def _wav_triades(ruta, sr=44100):
     import wave
 
@@ -322,9 +339,6 @@ manera que aquests tests corren a **Linux** (locals i al CI) i caçen bugs de
 **concurrència/teardown** (com el `Pa_CloseStream` doble que petava l'app a
 macOS) **abans** de compilar.
 """
-
-
-
 
 
 # ── `sounddevice` FALS ───────────────────────────────────────────────────────
@@ -622,7 +636,6 @@ class TestReengegaComElVisor(unittest.TestCase):
         self.assertIsNotNone(nou.stream)
         self.assertEqual(nou._fake.creats[-1].closes, 0)
         self.assertIsNone(nou.poll())
-
 
 
 def _audio_out_tearDownModule():
@@ -1012,8 +1025,6 @@ la versió anterior sencera o la nova sencera, i no queden temporals.
 """
 
 
-
-
 class TestDesatAtomic(unittest.TestCase):
     def setUp(self):
         self.td = tempfile.mkdtemp()
@@ -1093,7 +1104,6 @@ class TestDesatAtomic(unittest.TestCase):
 Si s'afegeix un tipus d'acord al codi (`xifrat.TIPUS`) i no es documenta, el CI
 peta — igual que fa `tests/test_esquema_ui_doc.py` amb l'ESQUEMA_UI.
 """
-
 
 
 ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1179,31 +1189,6 @@ a `ac_status` (`exportant`), i `ac_export_wav` accepta `async: true`.
 """
 
 
-
-
-
-
-def _finestra():
-    td = tempfile.mkdtemp()
-    wav = os.path.join(td, "t.wav")
-    with wave.open(wav, "wb") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(44100)
-        w.writeframes(b"\x00\x00" * 44100 * 3)
-    s = pipeline.carpeta_sortida(wav)
-    os.makedirs(s, exist_ok=True)
-    with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
-        f.write("0.0,2.0,C\n2.0,4.0,Am\n")
-    w = app_main.Finestra()
-    w.wav_edit.setText(wav)
-    w._carrega_visor(wav)
-    # Amb el pont actiu els avisos són NO modals: així el test no es queda
-    # esperant un clic (i és el cas realista: l'export sol venir de l'MCP).
-    w.mcp_actiu = True
-    return w
-
-
 class _Base(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1218,8 +1203,6 @@ class _Base(unittest.TestCase):
         p.start()
         self.addCleanup(p.stop)
 
-    def ctx(self, w):
-        return mcp_bridge._Context(w)
 
     def _espera(self, w, ms=8000):
         w.feina_export.wait(ms)
@@ -1262,32 +1245,6 @@ class TestExportAsync(_Base):
         w.close()
 
 
-class TestExportAsyncMCP(_Base):
-    def test_ac_export_wav_async_torna_de_seguida(self):
-        w = _finestra()
-        import time as _t
-        with patch.object(pipeline, "exporta_total",
-                          side_effect=lambda **k: _t.sleep(0.3)), \
-                patch.object(w, "obre_carpeta"):
-            r = mcp_bridge._op_export_wav(self.ctx(w), {"async": True})
-            self.assertTrue(r.get("iniciat"))
-            st = mcp_bridge._op_status(self.ctx(w), {})
-            self.assertTrue(st.get("exportant"), "l'estat ha de dir que exporta")
-            self._espera(w)
-        st2 = mcp_bridge._op_status(self.ctx(w), {})
-        self.assertFalse(st2.get("exportant"))
-        w.close()
-
-    def test_async_sense_wav_es_rebutja(self):
-        w = _finestra()
-        w.wav_edit.setText("")
-        w.sortida = ""
-        with self.assertRaises(mcp_bridge.BridgeError):
-            mcp_bridge._op_export_wav(self.ctx(w), {"async": True})
-        w.close()
-
-
-
 def _export_async_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -1309,8 +1266,6 @@ NOTA (a revisar amb l'operador): l'export aplica `style()` al nom del fitxer, de
 manera que el nom del WAV pot DIFERIR del nom al CSV (`Am` → `A-.wav`). El test
 `test_nom_wav_usa_style` ho DOCUMENTA (no és una afirmació que sigui el desitjat).
 """
-
-
 
 
 def _export(acords, total_s):
@@ -1373,37 +1328,6 @@ de l'export anterior (`wavs_estructura/`), i **sempre amb confirmació**.
 """
 
 
-
-
-
-
-def _export_neteja_estructura___finestra(amb_estructura):
-    td = tempfile.mkdtemp()
-    wav = os.path.join(td, "t.wav")
-    with wave.open(wav, "wb") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(44100)
-        w.writeframes(b"\x00\x00" * 44100 * 3)
-    s = pipeline.carpeta_sortida(wav)
-    os.makedirs(s, exist_ok=True)
-    with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
-        f.write("0.0,2.0,C\n2.0,4.0,Am\n")
-    # restes d'un export ANTERIOR amb estructura
-    with open(os.path.join(s, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
-        f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
-    os.makedirs(os.path.join(s, "wavs_estructura"), exist_ok=True)
-    with open(os.path.join(s, "wavs_estructura", "vella.wav"), "wb") as f:
-        f.write(b"RIFF")
-    w = app_main.Finestra()
-    w.wav_edit.setText(wav)
-    w._carrega_visor(wav)
-    w.mcp_actiu = True
-    w.amb_est.setChecked(amb_estructura)
-    w._sortida = s
-    return w, s
-
-
 class TestNetejaEstructura(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1440,15 +1364,6 @@ class TestNetejaEstructura(unittest.TestCase):
         self.assertIn("es conserven els derivats", w.log.toPlainText())
         w.close()
 
-    def test_amb_pont_mcp_actiu_no_esborra_mai_res(self):
-        """Amb el pont MCP actiu no es mostra cap diàleg ni s'esborra res."""
-        w, s = _export_neteja_estructura___finestra(amb_estructura=False)   # mcp_actiu=True dins _export_neteja_estructura___finestra
-        with patch.object(pipeline, "exporta_total", return_value={}), \
-                patch.object(w, "obre_carpeta"):
-            w.exporta()
-        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")))
-        self.assertTrue(os.path.isdir(os.path.join(s, "wavs_estructura")))
-        w.close()
 
     def test_amb_la_marca_on_es_respecten(self):
         w, s = _export_neteja_estructura___finestra(amb_estructura=True)
@@ -1458,7 +1373,6 @@ class TestNetejaEstructura(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")))
         self.assertTrue(os.path.isdir(os.path.join(s, "wavs_estructura")))
         w.close()
-
 
 
 def _export_neteja_estructura_tearDownModule():
@@ -1483,29 +1397,6 @@ fals i s'hi afegeix el motiu (`error`), a més de l'avís de l'app.
 """
 
 
-
-
-
-
-def _export_ok_fals___finestra():
-    td = tempfile.mkdtemp()
-    wav = os.path.join(td, "t.wav")
-    with wave.open(wav, "wb") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(44100)
-        w.writeframes(b"\x00\x00" * 44100 * 3)
-    s = pipeline.carpeta_sortida(wav)
-    os.makedirs(s, exist_ok=True)
-    with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
-        f.write("0.0,2.0,C\n2.0,4.0,Am\n")
-    w = app_main.Finestra()
-    w.wav_edit.setText(wav)
-    w._carrega_visor(wav)
-    w.mcp_actiu = True          # avisos no-modals (no ha de bloquejar el test)
-    return w
-
-
 class TestOkFalsEnFallar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1517,38 +1408,6 @@ class TestOkFalsEnFallar(unittest.TestCase):
         p = patch.object(QW.QMessageBox, "show", lambda self: None)
         p.start()
         self.addCleanup(p.stop)
-
-    def test_export_que_falla_retorna_ok_false(self):
-        w = _export_ok_fals___finestra()
-        with patch.object(pipeline, "exporta_total",
-                          side_effect=RuntimeError("no hi ha acords")), \
-                patch.object(w, "obre_carpeta"):
-            r = mcp_bridge._op_export_wav(mcp_bridge._Context(w), {})
-        self.assertFalse(r.get("ok"), f"hauria de ser ok:false → {r}")
-        self.assertIn("no hi ha acords", r.get("error", ""))
-        w.close()
-
-    def test_export_bo_retorna_ok_true(self):
-        w = _export_ok_fals___finestra()
-        with patch.object(pipeline, "exporta_total", return_value={}), \
-                patch.object(w, "obre_carpeta"):
-            r = mcp_bridge._op_export_wav(mcp_bridge._Context(w), {})
-        self.assertTrue(r.get("ok"), f"hauria de ser ok:true → {r}")
-        self.assertNotIn("error", r)
-        w.close()
-
-    def test_async_que_falla_tambe_ho_diu(self):
-        w = _export_ok_fals___finestra()
-        with patch.object(pipeline, "exporta_total",
-                          side_effect=RuntimeError("boom")), \
-                patch.object(w, "obre_carpeta"):
-            mcp_bridge._op_export_wav(mcp_bridge._Context(w), {"async": True})
-            w.feina_export.wait(8000)
-            for _export_ok_fals___ in range(20):
-                self._app.processEvents()
-        self.assertEqual(w.exporta_error, "boom")
-        w.close()
-
 
 
 def _export_ok_fals_tearDownModule():
@@ -1570,8 +1429,6 @@ def _export_ok_fals_tearDownModule():
 Sense això, un SIGSEGV de Qt/PortAudio no deixava res (ni `excepthook` ni log)
 i un informe de beta era només «s'ha tancat sol».
 """
-
-
 
 
 class _Logger:
@@ -1658,8 +1515,6 @@ guard comprova que totes les icones que el CODI demana hi són (auditoria
 """
 
 
-
-
 _icones__ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -1732,8 +1587,6 @@ divergir i el *monkey-patching* deixa de funcionar (va passar de veritat: un
 test de la partitura patchejava `app.partitura` i `main` seguia fent servir
 l'altre objecte).
 """
-
-
 
 
 class TestUnSolObjecteDeModul(unittest.TestCase):
@@ -1825,8 +1678,6 @@ Amb això, dos bugs reals queden coberts:
 2. si el `locking` bloqueja un offset diferent del que allibera `desbloqueja`
    → el lock penja i el test falla (la 2a instància no el pot tornar a agafar).
 """
-
-
 
 
 class _FakeMsvcrt:
@@ -1930,7 +1781,6 @@ la descomposició de durades i la construcció del MusicXML.
 """
 
 
-
 class ParsingTests(unittest.TestCase):
     def test_parse_pos_qualsevol_compas(self):
         self.assertAlmostEqual(partitura.parse_pos("1.1.1", 4), 0.0)
@@ -1938,19 +1788,6 @@ class ParsingTests(unittest.TestCase):
         self.assertAlmostEqual(partitura.parse_pos("2.3.3", 4), 6.5)
         self.assertAlmostEqual(partitura.parse_pos("1.1.1", 3), 0.0)
         self.assertAlmostEqual(partitura.parse_pos("2.1.1", 3), 3.0)
-
-    def test_llegeix_locators_ignora_capcalera(self):
-        with tempfile.TemporaryDirectory() as td:
-            p = Path(td) / "acords_locators.txt"
-            p.write_text("posició (compàs.temps.setzena)   acord   durada(temps)\n"
-                         "1.1.3          G        22\n"
-                         "6.3.3          BbMaj7   1\n", encoding="utf-8")
-            ev = partitura.llegeix_locators(str(p), 4)
-            self.assertEqual(len(ev), 2)
-            self.assertAlmostEqual(ev[0][0], 0.5)
-            self.assertEqual(ev[0][1], "G")
-            self.assertEqual(ev[0][2], 22.0)
-            self.assertEqual(ev[1][1], "BbMaj7")
 
     def test_llegeix_seccions_deduplica(self):
         with tempfile.TemporaryDirectory() as td:
@@ -2080,23 +1917,6 @@ class MusicXmlTests(unittest.TestCase):
         return [(0.0, "C", 4.0), (4.0, "Am", 2.0), (6.0, "F", 2.0),
                 (8.0, "G", 4.0)]
 
-    def test_construeix_basic(self):
-        xml = partitura.construeix_musicxml(
-            self._events(), [(1, "A"), (3, "B")], bpb=4, bpm=120.0,
-            titol="Prova", key_fifths=1)
-        self.assertIn('<score-partwise version="4.0">', xml)
-        self.assertIn("<work-title>Prova</work-title>", xml)
-        self.assertIn("<fifths>1</fifths>", xml)
-        self.assertIn("<per-minute>120</per-minute>", xml)
-        self.assertIn("<rehearsal>A</rehearsal>", xml)
-        self.assertIn("<rehearsal>B</rehearsal>", xml)
-        self.assertIn("<print new-system=\"yes\"/>", xml)
-        self.assertIn("<harmony><root><root-step>C</root-step>", xml)
-        self.assertIn("minor</kind>", xml)
-        # 3 compassos + compàs final de tancament
-        self.assertEqual(xml.count("<measure number="), 4)
-        # no hi ha d'haver durations incoherents: cada compàs suma 16 unitats
-        self.assertIn("<bar-style>light-heavy</bar-style>", xml)
 
     def test_salt_de_sistema_i_beat_type(self):
         xml = partitura.construeix_musicxml(
@@ -2110,10 +1930,8 @@ class ExportaTests(unittest.TestCase):
     def _escriu_font(self, td):
         d = Path(td) / "AUTOCHORDS_Tema"
         d.mkdir()
-        (d / "acords_locators.txt").write_text(
-            "posició (compàs.temps.setzena)   acord   durada(temps)\n"
-            "1.1.1   C   4\n"
-            "2.1.1   Am  4\n", encoding="utf-8")
+        (d / "acords.csv").write_text(
+            "0.00,1.94,C\n1.94,3.88,Am\n", encoding="utf-8")
         (d / "estructura_ABC.csv").write_text(
             "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0,5,5,A,A,1.1.1,2.2.1\n", encoding="utf-8")
@@ -2135,11 +1953,11 @@ class ExportaTests(unittest.TestCase):
             self.assertIn("<per-minute>103</per-minute>", text)  # de la guia
             self.assertIn("<harmony>", text)
 
-    def test_sense_locators(self):
+    def test_sense_acords(self):
         with tempfile.TemporaryDirectory() as td:
             res = partitura.exporta_partitura(str(td), log=lambda *_a: None,
                                               genera_pdf=False, genera_mscz=False)
-            self.assertEqual(res.get("error"), "sense_locators")
+            self.assertEqual(res.get("error"), "sense_acords")
 
 
 class EntornTests(unittest.TestCase):
@@ -2153,14 +1971,6 @@ class EntornTests(unittest.TestCase):
                 os.environ.pop("AUTO_CHORDS_MUSESCORE", None)
             else:
                 os.environ["AUTO_CHORDS_MUSESCORE"] = vell
-
-    def test_fifths_de_to(self):
-        self.assertEqual(partitura.fifths_de_to("C"), 0)
-        self.assertEqual(partitura.fifths_de_to("G"), 1)
-        self.assertEqual(partitura.fifths_de_to("F"), -1)
-        self.assertEqual(partitura.fifths_de_to("G major"), 1)
-        self.assertEqual(partitura.fifths_de_to("E minor"), 1)
-        self.assertEqual(partitura.fifths_de_to("Em"), 1)
 
 
 class TestMuseScore(unittest.TestCase):
@@ -2201,8 +2011,6 @@ class BaseDeSortidaTests(unittest.TestCase):
 
     def test_sense_prefix_es_queda_igual(self):
         self.assertEqual(partitura._base_de_sortida("/musica/Altres"), "Altres")
-
-
 
 
 class TestMusicXmlMapa(unittest.TestCase):
@@ -2251,15 +2059,11 @@ comptes de dependre de si la màquina el té instal·lat.
 """
 
 
-
-
-
-
-def _sortida_amb_locators():
+def _sortida_amb_acords():
     """Carpeta de sortida mínima vàlida per a la partitura (mode BPM · compàs)."""
     d = tempfile.mkdtemp()
-    with open(os.path.join(d, "acords_locators.txt"), "w", encoding="utf-8") as f:
-        f.write("1.1.1 Am 4\n2.1.1 C 4\n")
+    with open(os.path.join(d, "acords.csv"), "w", encoding="utf-8") as f:
+        f.write("0.00,1.00,Am\n1.00,2.00,C\n")
     with open(os.path.join(d, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
                 "0.00,4.00,4.00,A,A,1.1,2.1\n")
@@ -2272,7 +2076,7 @@ class TestPartituraSenseMuseScore(unittest.TestCase):
         cls._app = QW.QApplication.instance() or QW.QApplication([])
 
     def test_fallback_a_nomes_musicxml(self):
-        d = _sortida_amb_locators()
+        d = _sortida_amb_acords()
         logs = []
         with patch.object(partitura, "musescore_bin", return_value=None):
             res = partitura.exporta_partitura(d, log=logs.append, bpm=120.0,
@@ -2287,7 +2091,7 @@ class TestPartituraSenseMuseScore(unittest.TestCase):
 
     def test_la_gui_ho_diu_clarament(self):
         w = app_main.Finestra()
-        w.sortida = _sortida_amb_locators()
+        w.sortida = _sortida_amb_acords()
         # ⚠️ `main.py` fa `import partitura` (nom cru): el mòdul que ELL veu no
         # és `app.partitura` → cal patchejar el seu.
         with patch.object(app_main.partitura, "musescore_bin", return_value=None):
@@ -2297,18 +2101,6 @@ class TestPartituraSenseMuseScore(unittest.TestCase):
         self.assertIn("MusicXML", msg)
         self.assertIn("MuseScore", msg, "ha de dir que el PDF depèn de MuseScore")
         w.close()
-
-    def test_el_mcp_torna_ok_amb_nomes_musicxml(self):
-        w = app_main.Finestra()
-        w.sortida = _sortida_amb_locators()
-        with patch.object(app_main.partitura, "musescore_bin", return_value=None):
-            r = mcp_bridge._op_export_partitura(mcp_bridge._Context(w), {})
-        self.assertTrue(r.get("ok"))
-        self.assertTrue(r.get("musicxml"))
-        self.assertIsNone(r.get("pdf"))
-        self.assertIn("MusicXML", r.get("missatge", ""))
-        w.close()
-
 
 
 def _partitura_sense_musescore_tearDownModule():
@@ -2801,7 +2593,6 @@ class ExportPipelineTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             v._valida_canvis_seccions([(0.0, 5.0, "A", "A"), (3.0, 10.0, "B", "B")])
-
 
 
 class TimelineConstraintTests(unittest.TestCase):
@@ -3957,10 +3748,10 @@ class Compas1Tests(unittest.TestCase):
         w.close()
 
     def test_transforms_qm_disponibles(self):
+        # (El qm-keydetector es va retirar amb la tonalitat automàtica.)
         for clau, frag in (("onsets", "qm-onsetdetector:onsets"),
                            ("bars", "qm-barbeattracker:bars"),
                            ("beats", "qm-barbeattracker:beats"),
-                           ("key", "qm-keydetector:key"),
                            ("segments", "qm-segmenter:segmentation")):
             self.assertIn(frag, pipeline.QM[clau])
 
@@ -5561,47 +5352,6 @@ class TriaPlayerTests(unittest.TestCase):
         self.assertEqual(args, [])
 
 
-class TonalitatAutoTests(unittest.TestCase):
-    """Partitura a la GUI: opció «Tonalitat automàtica» (qm-keydetector).
-
-    Comprovem que l'acció és commutable i per defecte NO, i que el ganxo passa
-    `key_fifths` a `partitura.exporta_partitura` només quan està marcada.
-    """
-
-    def _finestra(self):
-        app_main.QApplication.instance() or app_main.QApplication([])
-        w = app_main.Finestra()
-        w.sortida = "/tmp/sortida_falsa"
-        w.wav_edit.setText("/tmp/tema.wav")
-        return w
-
-    def test_accio_existeix_i_per_defecte_no(self):
-        w = self._finestra()
-        self.assertTrue(w.tonalitat_auto.isCheckable())
-        self.assertFalse(w.tonalitat_auto.isChecked())
-
-    def test_sense_marcar_no_detecta_i_key_fifths_zero(self):
-        w = self._finestra()
-        with patch("app.main.partitura.exporta_partitura",
-                   return_value={"musicxml": "/tmp/x.musicxml"}) as ex, \
-             patch("app.main.partitura.detecta_fifths", return_value=3) as det:
-            w._exporta_partitura()
-        det.assert_not_called()
-        self.assertEqual(ex.call_args.kwargs["key_fifths"], 0)
-
-    def test_marcada_detecta_i_passa_els_fifths(self):
-        w = self._finestra()
-        w.tonalitat_auto.setChecked(True)
-        with patch("app.main.partitura.exporta_partitura",
-                   return_value={"musicxml": "/tmp/x.musicxml"}) as ex, \
-             patch("app.main.partitura.detecta_fifths", return_value=1) as det:
-            w._exporta_partitura()
-        det.assert_called_once()
-        self.assertEqual(ex.call_args.kwargs["key_fifths"], 1)
-        self.assertEqual(ex.call_args.kwargs["wav"], "/tmp/tema.wav")
-        self.assertEqual(ex.call_args.kwargs["new_system_each"], 4)
-
-
 class ConfigEscripturaTests(unittest.TestCase):
     """L'AppImage munta el contingut en NOMÉS LECTURA.
 
@@ -6069,17 +5819,6 @@ class TemporalsTests(unittest.TestCase):
                                            None, params={"s": 0.7})
         self.assertEqual(self._dirs_ac() - abans, set())
 
-    def test_detecta_fifths_neteja(self):
-        from app import partitura as _part
-        abans = self._dirs_ac()
-
-        def _fake(transform, out, wav, log):
-            with open(out, "w", encoding="utf-8") as f:
-                f.write("G major\n")
-
-        with patch.object(pipeline, "executa_transform", _fake):
-            self.assertEqual(_part.detecta_fifths("/tmp/x.wav"), 1)
-        self.assertEqual(self._dirs_ac() - abans, set())
 
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_postproc.py
@@ -6091,8 +5830,6 @@ cobertura es garanteixen DESPRÉS, a `pipeline.normalitza_cobertura()` (regles
 d'or #1, #4 i #8). Ací es fixa què fa amb l'entrada rara perquè quede clar on
 acaba la seua responsabilitat i que no peta (auditoria 18-10-2026).
 """
-
-
 
 
 class TestProcessaAcords(unittest.TestCase):
@@ -6158,7 +5895,6 @@ part:
 
 Abans el mapa no s'exportava: el paquet no era paritari.
 """
-
 
 
 DURADA = 16.0
@@ -6358,7 +6094,6 @@ haurien atrapat tots dos.
 """
 
 
-
 _scripts_smoke__ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -6458,7 +6193,6 @@ class TestScriptsShSintaxi(unittest.TestCase):
 - `icones`: disponibilitat dels SVG i els colors de la UI (l'app no ha de petar
   mai per una icona que falti).
 """
-
 
 
 N3_PROVA = """
@@ -6570,7 +6304,6 @@ acords en una forma canònica; si l'usuari n'escriu una variant, l'app l'enten i
 la deixa bé → el model, els noms de fitxer de l'export i la partitura
 (MusicXML → MuseScore) parlen tots la mateixa llengua.
 """
-
 
 
 CANONICS = [
@@ -6774,8 +6507,6 @@ dues files «6.83».
 """
 
 
-
-
 DUR = 40.0
 E7_T = 6.831683
 XOC_T = 6.8317          # a 1,7e-5 s de l'E7 → mateixa fila «6.83» del CSV
@@ -6848,13 +6579,6 @@ class TestXocsResolucioCSV(_xocs_inici_csv___Base):
         with self.assertRaises(ValueError):
             v._afegeix_acord(XOC_T, "DUP")
 
-    def test_mcp_add_chord_rebutja_el_xoc(self):
-        v = _visor()
-        ctx = mcp_bridge._Context(_FinestraFalsa(v))
-        with self.assertRaises(mcp_bridge.BridgeError):
-            mcp_bridge._op_add_chord(ctx, {"t_s": XOC_T, "acord": "DUP"})
-        # i el model no ha quedat tocat
-        self.assertNotIn("DUP", [a[2][0] for a in v.acords])
 
     def test_el_csv_no_te_mai_temps_duplicats_ni_clips_buits(self):
         v = _visor()
@@ -6898,7 +6622,6 @@ class TestExportMaiEscriuClipsBuits(_xocs_inici_csv___Base):
                          ["0000.00s_0005.00s_C.wav", "0005.00s_0010.00s_DUP.wav"])
 
 
-
 def _xocs_inici_csv_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -6909,6 +6632,23 @@ def _xocs_inici_csv_tearDownModule():
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import _qt_neteja
     _qt_neteja.processa_esborrats()
+
+
+class TestPaperera(unittest.TestCase):
+    """`plataforma.a_la_paperera`: mai esborrar en sec si no hi ha paperera."""
+
+    def test_sense_mecanisme_retorna_false_i_no_esborra(self):
+        from app import plataforma
+        if not plataforma.ES_LINUX:
+            self.skipTest("només Linux (els altres SO tenen el seu propi camí)")
+        carp = tempfile.mkdtemp()
+        ruta = os.path.join(carp, "x.txt")
+        with open(ruta, "w", encoding="utf-8") as fh:
+            fh.write("x")
+        with patch.object(plataforma.shutil, "which", return_value=None):
+            self.assertFalse(plataforma.a_la_paperera(ruta))
+        self.assertTrue(os.path.exists(ruta),
+                        "sense paperera no s'ha d'esborrar mai res")
 
 
 class TestHigieneTemporals(unittest.TestCase):
@@ -6953,6 +6693,70 @@ class TestHigieneTemporals(unittest.TestCase):
             _temporals._arrel = original
         self.assertTrue(os.path.exists(wav), "fora de l'àmbit no s'ha de tocar")
         self.assertTrue(os.path.isdir(germana))
+
+
+def _finestra():
+    """Finestra amb un tema de prova carregat (ajuda compartida)."""
+    td = tempfile.mkdtemp()
+    wav = os.path.join(td, "t.wav")
+    with wave.open(wav, "wb") as f:
+        f.setnchannels(1)
+        f.setsampwidth(2)
+        f.setframerate(44100)
+        f.writeframes(b"\x00\x00" * 44100 * 3)
+    s = pipeline.carpeta_sortida(wav)
+    os.makedirs(s, exist_ok=True)
+    with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
+        f.write("0.0,2.0,C\n2.0,4.0,Am\n")
+    w = app_main.Finestra()
+    w.wav_edit.setText(wav)
+    w._carrega_visor(wav)
+    return w
+
+
+def _export_neteja_estructura___finestra(amb_estructura):
+    """Finestra amb restes d'un export ANTERIOR amb estructura."""
+    td = tempfile.mkdtemp()
+    wav = os.path.join(td, "t.wav")
+    with wave.open(wav, "wb") as f:
+        f.setnchannels(1)
+        f.setsampwidth(2)
+        f.setframerate(44100)
+        f.writeframes(b"\x00\x00" * 44100 * 3)
+    s = pipeline.carpeta_sortida(wav)
+    os.makedirs(s, exist_ok=True)
+    with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
+        f.write("0.0,2.0,C\n2.0,4.0,Am\n")
+    with open(os.path.join(s, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
+        f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
+    os.makedirs(os.path.join(s, "wavs_estructura"), exist_ok=True)
+    with open(os.path.join(s, "wavs_estructura", "vella.wav"), "wb") as f:
+        f.write(b"RIFF")
+    w = app_main.Finestra()
+    w.wav_edit.setText(wav)
+    w._carrega_visor(wav)
+    w.amb_est.setChecked(amb_estructura)
+    w._sortida = s
+    return w, s
+
+
+def _export_ok_fals___finestra():
+    """Finestra amb model, per als tests d'export fallit (`ok: false`)."""
+    td = tempfile.mkdtemp()
+    wav = os.path.join(td, "t.wav")
+    with wave.open(wav, "wb") as f:
+        f.setnchannels(1)
+        f.setsampwidth(2)
+        f.setframerate(44100)
+        f.writeframes(b"\x00\x00" * 44100 * 3)
+    s = pipeline.carpeta_sortida(wav)
+    os.makedirs(s, exist_ok=True)
+    with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
+        f.write("0.0,2.0,C\n2.0,4.0,Am\n")
+    w = app_main.Finestra()
+    w.wav_edit.setText(wav)
+    w._carrega_visor(wav)
+    return w
 
 
 if __name__ == "__main__":   # pragma: no cover

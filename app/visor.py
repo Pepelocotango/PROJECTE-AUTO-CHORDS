@@ -741,7 +741,7 @@ class Visor(QMainWindow):
         # Regles 1, 2, 4 i 8: aquest és el PUNT ÚNIC on es construeix el mapa,
         # així que el que hi entra s'hi ha de complir sempre. Si la còpia no ho
         # complia (CSV editat a mà, un estat vell de l'undo, un client de
-        # l'MCP), ací queda arreglada abans de construir l'objecte.
+        # ací queda arreglada abans de construir l'objecte.
         trams = normalitza_trams(list(self.tempo_trams or []), d)
         den = int(getattr(self, "beat_type", 4) or 4)
         if len(trams) <= 1:
@@ -879,7 +879,7 @@ class Visor(QMainWindow):
     # ---------- Undo/Redo: el MODEL d'edició + la GRAELLA i el LOOP ----------
     # Mai toca les wavs generades (aquestes són l'últim pas, via exporta()).
     def _estat_edicio(self):
-        """(acords, seccions) — el MODEL. El fa servir també el pont MCP."""
+        """(acords, seccions) — el MODEL (font de veritat del backend)."""
         return (copy.deepcopy(list(self.acords)),
                 copy.deepcopy(list(self.seccions)))
 
@@ -2382,7 +2382,7 @@ class Visor(QMainWindow):
 
     # navegació
     def ves_a(self, t):
-        # Cerca PROGRAMÀTICA (barra lliscant, llistes, MCP): posició EXACTA.
+        # Cerca PROGRAMÀTICA (barra lliscant, llistes): posició EXACTA.
         # El snap del cursor s'aplica als clics DIRECTES al timeline.
         self.pos = max(0.0, min(float(t), self.audio["durada"]))
         self.timeline.set_position(self.pos, emit=False, snap=False)
@@ -2568,7 +2568,7 @@ class Visor(QMainWindow):
             nova = list(self.seccions)
             nova[i] = (ini, max(ini + 0.05, fi), lletra, fam)
             try:
-                # Manté la contigüitat (#2) com el drag del timeline/MCP.
+                # Manté la contigüitat (#2) com el drag del timeline.
                 nova = self._contiguitat_seccions(nova, i)
                 self.seccions = self._normalitza_seccions(nova)
             except ValueError as e:
@@ -2627,7 +2627,7 @@ class Visor(QMainWindow):
     def mou_seccio(self, idx, ini, fi):
         """Mou/redimensiona la secció `idx` a (`ini`,`fi`) mantenint la contigüitat.
 
-        Camí CANÒNIC del moviment de seccions (MCP i editor): el veí anterior
+        Camí CANÒNIC del moviment de seccions (editor): el veí anterior
         estén/arronsa el seu `fi` fins al nou inici, i el següent fa el mateix
         amb el seu `ini`. Sense això quedava un forat intern que l'app acceptava
         (la suma de durades ja no quadrava amb la WAV).
@@ -3313,7 +3313,7 @@ def main():
     ap = argparse.ArgumentParser(
         description="Visor: ona + acords + escolta + correcció.")
     ap.add_argument("wav", nargs="?", help="fitxer .wav")
-    ap.add_argument("--acords", default="", help="csv Chordino o locators")
+    ap.add_argument("--acords", default="", help="csv d'acords (inici,fi,acord)")
     ap.add_argument("--abc", default="", help="estructura_ABC.csv")
     ap.add_argument("--bpm", type=float, default=138.0)
     ap.add_argument("--bpb", type=int, default=4)

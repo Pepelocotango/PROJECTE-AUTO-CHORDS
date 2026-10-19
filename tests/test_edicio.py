@@ -29,14 +29,11 @@ from PyQt5.QtCore import QPoint, QPointF
 from PyQt5.QtWidgets import QInputDialog, QListWidget, QMenu
 from unittest.mock import patch
 from app import timeline_items
-from app import mcp_bridge
 from app import config, plataforma
 from app import visor
 from PyQt5.QtGui import QMouseEvent
 from app.timeline_base import LANE_ACC_TOP, LANE_H, LANE_SEC_TOP
 from app import projecte
-import re
-
 
 
 def tearDownModule():
@@ -79,8 +76,6 @@ Els dos exemples de l'operador (MATEIX dibuix, 10 s):
   · ENDAVANT: bloc [Am,F] +2 → C@0 Am@4 F@6 Em@8   (G, queia sota, eliminat)
   · ENDARRERE: bloc [F,G] −2 → C@0 F@2 G@4 Em@6    (Am, queia sota, eliminat)
 """
-
-
 
 
 DURADA = 10.0
@@ -528,8 +523,6 @@ cursor: `Visor.parteix_seccio()` (+ l'acció de menú i el menú contextual).
 """
 
 
-
-
 DUR = 30.0
 _partir_seccio__SECCIONS = [(0.0, 10.0, "A", "A"), (10.0, DUR, "B", "B")]
 
@@ -696,7 +689,6 @@ class TestPartirDesDelMenu(_Base):
         self.assertEqual(len(v.seccions), 2)
 
 
-
 def _partir_seccio_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -718,7 +710,6 @@ créixer → enganxar **substitueix** el tram `[T, T+L]` (les vores es tallen i
 s'acoblen), mai insereix. Àncora `T` = cursor; si el cursor no s'ha mogut des de
 la còpia, el final del bloc copiat.
 """
-
 
 
 # acords: 0 C · 2 Am · 4.5 F · 7 G · 10 C   |   durada 20 s
@@ -1019,8 +1010,6 @@ Una sola operació de desfer; només es mou UNA frontera → ordre i contigüita
 """
 
 
-
-
 _nudge__ACORDS = "0.0,2.0,C\n2.0,4.5,Am\n4.5,7.0,F\n7.0,10.0,G\n10.0,20.0,C\n"
 _nudge__SECCIONS = ("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.0,5.0,5.0,A,A,1.1,5.1\n"
@@ -1208,8 +1197,6 @@ Aquest mòdul blinda la paritat:
 - Menú contextual del clip: «Parteix…» és disponible per a acords I seccions.
 - Item visual: el `SectionItem` emet `dragStarted` (com el `ChordItem`).
 """
-
-
 
 
 _regla11_paritat__DUR = 30.0
@@ -1900,8 +1887,6 @@ això impedia escriure acords amb baix.
 """
 
 
-
-
 _rename_sanejat__DUR = 40.0
 BRUT = "  A7/G  "        # espais sobrers → es netegen
 NET = "A7/G"             # però el SÍMBOL es conserva (baix amb `/` inclòs)
@@ -1966,21 +1951,6 @@ class TestSanejatCanonic(_rename_sanejat___Base):
         self.assertEqual(pipeline.saneja_nom_acord("   "), "")
 
 
-class TestRenameMCP(_rename_sanejat___Base):
-    def test_rename_saneja_el_nom(self):
-        v = _rename_sanejat___visor()
-        ctx = mcp_bridge._Context(_FinestraFalsa(v))
-        mcp_bridge._op_rename_chord(ctx, {"index": 1, "acord": BRUT})
-        self.assertEqual(v.acords[1][2][0], NET)
-        self.assertEqual(_csv_acords(v)[1][1], NET)   # i al CSV del disc
-
-    def test_nom_que_queda_buit_es_rebutja(self):
-        v = _rename_sanejat___visor()
-        ctx = mcp_bridge._Context(_FinestraFalsa(v))
-        with self.assertRaises(mcp_bridge.BridgeError):
-            mcp_bridge._op_rename_chord(ctx, {"index": 1, "acord": "   "})
-
-
 class TestRenameEditor(_rename_sanejat___Base):
     def test_editor_saneja_el_nom(self):
         v = _rename_sanejat___visor()
@@ -2011,7 +1981,6 @@ class TestAltaCoherent(_rename_sanejat___Base):
         self.assertEqual(nou, [NET])
 
 
-
 def _rename_sanejat_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -2035,8 +2004,6 @@ d'or #11: mateix tracte acords↔estructura). La selecció mixta serveix per a
 operacions de BLOC (eliminar/copiar/enganxar/duplicar/moure) i per renombrar el
 tipus actiu.
 """
-
-
 
 
 _rename_seleccio__ACORDS = "0.0,2.0,C\n2.0,4.5,Am\n4.5,7.0,F\n7.0,10.0,G\n10.0,20.0,C\n"
@@ -2188,8 +2155,6 @@ def _rename_seleccio_tearDownModule():
   el camp Nom + «Aplica» de l'editor també ho fa amb una multi-selecció.
 Regla d'or #11: mateix tracte acords↔estructura.
 """
-
-
 
 
 # acords: 0 C · 2 Am · 4.5 F · 7 G · 10 C   |   seccions: A 0-5 · B 5-10 · C 10-20
@@ -2348,8 +2313,6 @@ Cobreix els 3 camins que podien crear el forat: el **MCP** (`move_section`),
 l'**editor** de la franja Editor, i la **càrrega** d'un CSV que ja venia amb
 forat (que s'ha de normalitzar també AL DISC).
 """
-
-
 
 
 _seccions_contigues__DUR = 40.0
@@ -2523,22 +2486,6 @@ class TestMoureSeccioManteContiguitat(_seccions_contigues___Base):
         self.assertEqual(v.seccions, _seccions_contigues__SECCIONS)
 
 
-class TestCamiMCP(_seccions_contigues___Base):
-    """El camí que va reportar OC-6: `ac_move_section` pel pont."""
-
-    def test_op_move_section_mante_la_contiguitat(self):
-        v = _seccions_contigues___visor()
-        ctx = mcp_bridge._Context(_seccions_contigues___FinestraFalsa(v))
-        mcp_bridge._op_move_section(ctx, {"index": 2, "ini_s": 25.0, "fi_s": 30.0})
-        self.assertAlmostEqual(float(v.seccions[1][1]), 25.0, places=6)
-        self.assertTrue(_contigues(v.seccions))
-        self.assertAlmostEqual(_suma(v.seccions), _seccions_contigues__DUR, places=3)
-        # i al disc (el pont hi desa)
-        s = _seccions_contigues___llegeix_abc(v.abc_csv)
-        self.assertTrue(_contigues(s))
-        self.assertAlmostEqual(_suma(s), _seccions_contigues__DUR, places=3)
-
-
 class TestEditorDeSeccions(_seccions_contigues___Base):
     def test_canviar_l_inici_al_editor_mante_la_contiguitat(self):
         v = _seccions_contigues___visor()
@@ -2566,7 +2513,6 @@ class TestCarregaCSVAmbForat(_seccions_contigues___Base):
         self.assertAlmostEqual(_suma(s), _seccions_contigues__DUR, places=3)
 
 
-
 def _seccions_contigues_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -2592,8 +2538,6 @@ podia complir. El negatiu SÍ que es rebutjava.
 A la càrrega, però, el model es REPARA (acords fora de la WAV s'eliminen i el
 `fi` d'una última secció que surt s'acota), i el CSV del disc s'hi reescriu.
 """
-
-
 
 
 _temps_fora_rang__DUR = 40.0
@@ -2694,37 +2638,6 @@ class TestTopallSuperiorSeccions(_temps_fora_rang___Base):
             len(v._valida_canvis_seccions([(0.0, _temps_fora_rang__DUR, "A", "A")])), 1)
 
 
-class _temps_fora_rang__TestCamiMCP(_temps_fora_rang___Base):
-    """Repro exacte d'OC-6: les 3 operacions MCP han de sortir REBUTJADES."""
-
-    def _ctx(self, v):
-        return mcp_bridge._Context(_temps_fora_rang___FinestraFalsa(v))
-
-    def test_add_chord_fora_de_la_wav(self):
-        v = _temps_fora_rang___visor()
-        with self.assertRaises(mcp_bridge.BridgeError):
-            mcp_bridge._op_add_chord(self._ctx(v), {"t_s": 250.0, "acord": "C"})
-
-    def test_move_chord_fora_de_la_wav(self):
-        v = _temps_fora_rang___visor()
-        with self.assertRaises(mcp_bridge.BridgeError):
-            mcp_bridge._op_move_chord(self._ctx(v), {"index": 0, "t_s": 1000.0})
-
-    def test_add_section_fora_de_la_wav(self):
-        v = _temps_fora_rang___visor()
-        with self.assertRaises(mcp_bridge.BridgeError):
-            mcp_bridge._op_add_section(self._ctx(v),
-                                       {"ini_s": 200.0, "fi_s": 250.0})
-
-    def test_l_estat_no_canvia_despres_del_rebuig(self):
-        v = _temps_fora_rang___visor()
-        abans_a, abans_s = list(v.acords), list(v.seccions)
-        with self.assertRaises(mcp_bridge.BridgeError):
-            mcp_bridge._op_add_chord(self._ctx(v), {"t_s": 250.0, "acord": "X"})
-        self.assertEqual(v.acords, abans_a)
-        self.assertEqual(v.seccions, abans_s)
-
-
 class TestCarregaAmbTempsFora(_temps_fora_rang___Base):
     def test_acords_fora_de_la_wav_s_eliminen_i_el_disc_queda_net(self):
         v = _temps_fora_rang___visor(acords=((0.0, "C"), (4.0, "G"), (250.0, "X")))
@@ -2737,7 +2650,6 @@ class TestCarregaAmbTempsFora(_temps_fora_rang___Base):
         self.assertAlmostEqual(float(v.seccions[-1][1]), _temps_fora_rang__DUR, places=3)
         self.assertAlmostEqual(float(_temps_fora_rang___llegeix_abc(v.csv_abc)[-1][1]), _temps_fora_rang__DUR,
                                places=3)
-
 
 
 def _temps_fora_rang_tearDownModule():
@@ -2760,7 +2672,6 @@ Esborrar el primer/últim clip, moure el primer més enllà de 0, esborrar-ho to
 i l'export després d'editar. La #4 mana: si el 1r clip no arrenca a 0 s'hi afegeix
 una «N»; l'últim arriba a la durada; el CSV i l'export surten del MODEL.
 """
-
 
 
 _cobertura_rare__DUR = 20.0
@@ -2904,8 +2815,6 @@ def _cobertura_rare_tearDownModule():
 """
 
 
-
-
 def _cobertura_viu___wav(segons=3.0, sr=44100):
     fd, ruta = tempfile.mkstemp(suffix=".wav")
     os.close(fd)
@@ -3017,7 +2926,6 @@ class TestCoberturaViu(unittest.TestCase):
         self.assertEqual(r["acords_csv"], os.path.abspath(ca))
 
 
-
 def _cobertura_viu_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -3040,8 +2948,6 @@ vegeu el test), **3** (durades derivades), **5** (una sola font de veritat),
 **6** (les WAVs només via `exporta()`), **7** (instància única), **8** (temps
 vàlids) i **10** (estat en un directori escriptible).
 """
-
-
 
 
 def _regles_or___visor(dur=10.0):
@@ -3202,7 +3108,6 @@ class TestRegla8TempsValids(_regles_or___Base):
         self.assertEqual(fis[:-1], inis[1:])                       # R2
 
 
-
 class TestRegla1OrdreEstricte(_regles_or___Base):
     """Regla 1: els clips sempre ordenats per temps d'inici (sense inversions).
 
@@ -3301,7 +3206,6 @@ cap temps (regles d'or intactes).
 """
 
 
-
 _troba_reemplaca__ACORDS = "0.0,2.0,Cmaj7\n2.0,4.0,Am\n4.0,6.0,Cmaj7\n6.0,8.0,G\n"
 _troba_reemplaca__SECCIONS = ("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
             "0.0,4.0,4.0,A,A,1.1,4.1\n"
@@ -3398,7 +3302,6 @@ N refers al final; i una edició nova ha de netejar la pila de refer.
 """
 
 
-
 _undo_llarg__ACORDS = "0.0,2.0,C\n2.0,4.0,G\n4.0,20.0,Am\n"
 
 
@@ -3490,8 +3393,6 @@ o el loop era **irreversible** (Desfer no hi feia res). Ara la pila del
 desfer/refer apila `(acords, seccions, temps)` amb `_estat_complet()`, i els
 camins que canvien la graella o el loop hi marquen l'operació.
 """
-
-
 
 
 def _undo_temps___finestra():
@@ -3614,7 +3515,6 @@ class TestUndoTemps(_undo_temps___Base):
         self.assertEqual(len(v._estat_edicio()), 2)
 
 
-
 def _undo_temps_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -3642,8 +3542,6 @@ Arreglament: si l'inici NO s'ha tocat (el valor de l'editor és el mateix dins
 l'error d'arrodoniment de 2 decimals), es conserva el valor INTERN de precisió
 completa. Mateix criteri per als acords.
 """
-
-
 
 
 def _wav_silenci(segons=40):
@@ -3722,7 +3620,6 @@ class TestEditorRenom(unittest.TestCase):
         self.assertAlmostEqual(float(v.acords[2][0]), 7.144567, places=5)
 
 
-
 def _editor_renom_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -3744,8 +3641,6 @@ botó «Aplica» semblava mort (CSV intacte, cap 'editor:' al log). Ara tots els
 camins que no apliquen donen feedback visible (`avis_editor` → log + caixa
 d'informació).
 """
-
-
 
 
 def _editor_feedback___visor():
@@ -3829,7 +3724,6 @@ class TestEditorFeedback(unittest.TestCase):
         self.assertEqual(v._missatges, [], "el camí bo no ha d'avisar")
 
 
-
 def _editor_feedback_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -3859,8 +3753,6 @@ Convencions dels DAWs (Cubase `Snap Type`, marquee de Logic/Reaper) i decisió
 de l'operador del 16-10-2026: «eina intel·ligent o mode només selecció amb
 marquee; el creuat, desactivat per defecte».
 """
-
-
 
 
 # acords: 0 C · 2 Am · 4.5 F · 7 G · 10 C (fins a 20)   |   seccions: A 0-5 · B 5-10 · C 10-20
@@ -4289,8 +4181,6 @@ la capa crua (`analisi/`).
 """
 
 
-
-
 _VIVES = []
 
 
@@ -4448,7 +4338,6 @@ d'inventada.
 """
 
 
-
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOC = os.path.join(ROOT, "docs", "EDICIO_OPERACIONS.md")
 
@@ -4458,24 +4347,12 @@ class TestDocEdicioOperacions(unittest.TestCase):
     def setUpClass(cls):
         with open(DOC, encoding="utf-8") as f:
             cls.text = f.read()
-        cls.citades = set(re.findall(r"`(ac_[a-z_]+)`", cls.text))
 
-    def _vives(self):
-        return {"ac_" + op for op in mcp_bridge.OPERACIONS}
 
-    def test_totes_les_eines_hi_surten(self):
-        falten = sorted(self._vives() - self.citades)
-        self.assertEqual(falten, [], f"eines sense documentar: {falten}")
-
-    def test_cap_eina_inventada(self):
-        fantasma = sorted(self.citades - self._vives())
-        self.assertEqual(fantasma, [],
-                         f"eines citades que no existeixen: {fantasma}")
-
-    def test_la_taula_diu_gui_mcp_i_paritat(self):
-        """Cada fila ha de dir com es fa per GUI, per MCP i si val per a les dues
-        pistes (paritat #11)."""
-        for capçalera in ("| GUI", "| MCP |", "| Acords |", "| Estr. |"):
+    def test_la_taula_diu_gui_i_pistes(self):
+        """Cada fila ha de dir com es fa per GUI i si val per a cada pista
+        (paritat d'edició #11)."""
+        for capçalera in ("| GUI", "| Acords |", "| Estr. |"):
             self.assertIn(capçalera, self.text)
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -4488,8 +4365,6 @@ en faltaven moltes d'actives (Ctrl+O/E, F5, Ctrl+D, Del, F2, Ctrl+C/X/V,
 Ctrl+`[`/`]`, Ctrl+0/±…). Ara les de **menú** es dedueixen dels menús REALS i les
 que no hi són (teclat del visor i ratolí) van llistades a part.
 """
-
-
 
 
 def _dreceres_completes___finestra():
@@ -4544,17 +4419,6 @@ class TestDreceresCompletes(unittest.TestCase):
                   "Ctrl+[", "Ctrl+]"):
             self.assertIn(d, text, f"encara falta «{d}»")
 
-    def test_amb_el_pont_actiu_es_no_modal(self):
-        """(3) Amb el pont MCP actiu, el diàleg de dreceres NO pot ser modal
-        (encallaria el pont fins que algú el tanqués)."""
-        from unittest.mock import patch
-        import PyQt5.QtWidgets as QW
-        w = _dreceres_completes___finestra()
-        w.mcp_actiu = True
-        with patch.object(QW.QMessageBox, "information") as modal, \
-                patch.object(QW.QMessageBox, "show", lambda self: None):
-            w._mostra_dreceres()
-        self.assertFalse(modal.called, "amb el pont no pot haver-hi modal")
 
     def test_el_dialeg_no_peta(self):
         from unittest.mock import patch
@@ -4563,7 +4427,6 @@ class TestDreceresCompletes(unittest.TestCase):
         with patch.object(QW.QMessageBox, "information", return_value=None) as m:
             w._mostra_dreceres()
         self.assertTrue(m.called)
-
 
 
 def _dreceres_completes_tearDownModule():

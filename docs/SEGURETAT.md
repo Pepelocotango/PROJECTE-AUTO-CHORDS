@@ -37,16 +37,11 @@ l'usuari.
   (esborrar-lo crearia una carrera entre instàncies).
 - Tests: `InstanciaUnicaTests`.
 
-## 3. Pont MCP — `app/mcp_bridge.py`
+## 3. (Retirat) Pont MCP
 
-- El fitxer d'acord `temp/mcp_bridge.json` (que porta el **testimoni**) es crea
-  amb **permisos `0600`** (`os.open` amb mode + `os.replace`).
-- **Límit de longitud de línia (1 MiB)**: es respon error i es tanca la connexió
-  **abans de processar-la**. **Límit de connexions simultànies (8)**.
-- El **testimoni es valida abans de qualsevol altra feina** (comparació en temps
-  constant) i abans de posar res a la cua.
-- `ac_open_wav` **no restringeix** la ruta (invariant).
-- Tests: `tests/test_mcp_bridge.py` → `TestPontSocket` (socket real).
+El pont MCP (`app/mcp_bridge.py`) i el seu servidor es van **retirar el
+2026-10-19** (decisió de l'operador): l'app ja no obre cap socket intern. La
+còpia del codi i la seva documentació viuen a `OLD/` (fora del git).
 
 ## 4. Noms de fitxer — `app/pipeline.py:safe_filename()`
 

@@ -14,7 +14,7 @@
 > ## ‼️ S'HA DE COMPLIR **SEMPRE** — a TOTS els punts
 > Les regles **no** són una comprovació «de tant en tant»: s'han de complir en
 > **TOTS** aquests punts, sempre i alhora:
-> 1. **Edició en viu** — GUI del visor **i** pont MCP: cada mutació (afegir,
+> 1. **Edició en viu** — GUI del visor: cada mutació (afegir,
 >    eliminar, moure, redimensionar, reanomenar) ha de deixar el model **vàlid**.
 > 2. **Visor** — el que es veu a la pantalla reflecteix el model vàlid.
 >    **Té xarxa pròpia** (19-10-2026): punt **únic** `Visor._sincronitza_vista()`
@@ -61,7 +61,7 @@ amb o sense **snap**: el 1r clip arrenca a **0** (capçalera «N» si cal) i
 l'últim arriba a la **durada**. La regla **mana sobre el snap** (que només
 quantitza els límits **interiors**). → `pipeline.normalitza_cobertura()`.
 **S'aplica SEMPRE** (§«S'ha de complir SEMPRE»): en l'**edició en viu** (després de
-cada mutació al visor i al MCP), al **visor**, al **CSV** que es desa i en
+cada mutació al visor), al **visor**, al **CSV** que es desa i en
 **exportar** (CSV/ABC + wavs) — **no només** «en carregar el visor i en exportar».
 
 ## 5. Una sola font de veritat
@@ -90,7 +90,7 @@ locks ròmics). El nom del fitxer inclou l'usuari.
 ## 8. Temps vàlids
 Cap temps **negatiu** ni cap durada **≤ 0**. Els validadors de la UI ho rebutgen;
 les **xarxes de seguretat** (les que cobreixen el CSV editat a mà, els projectes
-vells i els clients de l'MCP) també ho arreglen.
+vells) també ho arreglen.
 → `visor._valida_canvis_*` · `pipeline.normalitza_cobertura` · `tempo_map.normalitza_trams`.
 test `tests/test_regles_or.py` › `TestRegla8TempsValids`.
 
@@ -152,8 +152,8 @@ es detallen avall). Tota operació d'un tipus ho ha de ser per als altres, i pel
   BPM i compàs (el de la dreta és editable).
 
 → Validació: `app/visor.py` + `app/pipeline.py` + `app/tempo_map.py` (joc d'operacions
-simètric) · pont MCP (`app/mcp_bridge.py`).
-test `tests/test_regla11_paritat.py` + `test_mcp_paritat` — **✅ FET (18-10-2026)** per a
+simètric).
+test `tests/test_edicio.py` › paritat — **✅ FET (18-10-2026)** per a
 l'edició, el tracte visual, la selecció i el **desfer/refer**, incloses les **operacions
 MIxtes** de les 3 famílies (esborrar o copiar/enganxar una selecció acord+secció+tram =
 una sola operació, un sol `Ctrl+Z`). La **paritat d'exportació** és la **regla 12**.
@@ -186,7 +186,7 @@ Aquests dos casos reals són el motiu del §«S'ha de complir SEMPRE» de dalt:
    forat es veia **al visor i al CSV** (`acords.csv`: `0.30,N … 192.18,Em7`; hauria
    de ser `0.00 … 199.60`). `pipeline.normalitza_cobertura()` només s'aplicava a
    l'anàlisi, en carregar el visor i en exportar l'ABC — **no** després d'editar
-   (ni pel camí de la GUI ni pel del MCP). → La cobertura s'ha de reaplicar
+   (ni pel camí de la GUI). → La cobertura s'ha de reaplicar
    **després de cada mutació**.
 
 > 🧭 **Lliçó**: una regla d'or **no** pot dependre d'*on* s'aplica el codi; ha de

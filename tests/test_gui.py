@@ -135,6 +135,23 @@ class TestCrea(BaseProjecte):
                                    os.path.join(self.td, "no.wav"))
 
 
+    def test_crea_ja_deixa_tot_el_model(self):
+        """Un projecte nou neix COMPLET: es pot treballar i exportar sense analitzar."""
+        wav = os.path.join(self.td, "tema.wav")
+        _wav(wav, 2.0)
+        carp = os.path.join(self.td, "P")
+        p = projecte.Projecte.crea(carp, wav, bpm=138.0, bpb=4)
+        for nom in ("acords.csv", "estructura_ABC.csv", "tempo.csv",
+                    "compas.csv"):
+            self.assertTrue(os.path.isfile(os.path.join(carp, nom)),
+                            f"falta {nom} en crear el projecte")
+        with open(os.path.join(carp, "acords.csv"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read().strip(), "0.00,2.00,N")
+        with open(os.path.join(carp, "tempo.csv"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read().strip(), "0.00,2.00,138")
+        self.assertTrue(os.path.isfile(p.ruta_acproj))
+
+
 class TestAutocontencio(BaseProjecte):
     def test_esborra_original_i_mou_la_carpeta(self):
         wav = os.path.join(self.td, "tema.wav")
@@ -353,9 +370,6 @@ class TestBackups(unittest.TestCase):
         with open(os.path.join(p.carpeta, "segments.csv"), "w",
                   encoding="utf-8") as f:
             f.write("0.0,5.0,0,A\n")
-        with open(os.path.join(p.carpeta, "acords_locators.txt"), "w",
-                  encoding="utf-8") as f:
-            f.write("posicio acord duracio\n1-1-1 C 1\n")
         ana = os.path.join(p.carpeta, pipeline.NOM_ANALISI)
         os.makedirs(ana, exist_ok=True)
         with open(os.path.join(ana, pipeline.NOM_CRU_ACORDS), "w",
@@ -363,8 +377,7 @@ class TestBackups(unittest.TestCase):
             f.write("0.0,C\n")
         dest = p.fes_backup()
         for nom in (os.path.basename(p.ruta_acproj), "acords.csv",
-                    "estructura_ABC.csv", "segments.csv",
-                    "acords_locators.txt"):
+                    "estructura_ABC.csv", "segments.csv"):
             self.assertTrue(os.path.isfile(os.path.join(dest, nom)), nom)
         self.assertTrue(os.path.isfile(os.path.join(
             dest, pipeline.NOM_ANALISI, pipeline.NOM_CRU_ACORDS)))
@@ -1087,44 +1100,6 @@ class _tancar_sonant___Base(unittest.TestCase):
 
 
 class TestTancarSonant(_tancar_sonant___Base):
-    def test_tancar_mentre_sona_atura_el_motor_i_no_peta(self):
-        f = _tancar_sonant___finestra()
-        v = f.visor_ref
-        v.player, v.player_args = "paplay", []   # crea_motor queda substituït
-        f.feina_export = _FakeFeina()
-        f._mcp_pont = _FakePont()
-        f.mcp_actiu = True
-        f.avisa("T", "avís viu")                 # caixa no modal oberta
-        tmp = tempfile.mkdtemp()
-        motor = _FakeMotor()
-
-        with patch.object(audio_out, "crea_motor", lambda *a, **k: motor), \
-                patch.object(app_visor, "OPENCODE_DIR", tmp):
-            v.play_stop()                        # ARRENCA la reproducció
-            self.assertTrue(v.sona, "hauria d'estar sonant")
-            self.assertIs(v.proc, motor)
-            fil = _fil_alimenta(v)
-            self.assertIsNotNone(fil, "el fil d'alimentació hauria d'estar viu")
-            f.close()                            # <<< EL CAS: tancar SONANT
-
-        # El closeEvent ho ha netejat tot, en ordre:
-        self.assertTrue(f.feina_export.esperat == 10000,
-                        "s'hauria d'haver esperat l'export (10000 ms)")
-        self.assertTrue(motor.aturat, "el motor d'àudio s'hauria d'haver aturat")
-        self.assertIsNone(v.proc, "el visor no pot quedar amb el proc viu")
-        self.assertFalse(v.rellotge.isActive(), "el rellotge s'hauria d'haver aturat")
-        self.assertTrue(f._mcp_pont.tancat, "el pont MCP s'hauria d'haver tancat")
-        self.assertIsNone(getattr(f, "_avis_box", None),
-                          "la caixa d'avís no modal hauria d'estar tancada")
-        # El fil d'alimentació ACABA (no queda res viu escrivint PCM).
-        for _tancar_sonant___ in range(80):
-            if not fil.is_alive():
-                break
-            time.sleep(0.05)
-        self.assertFalse(fil.is_alive(),
-                         "el fil d'alimentació no pot quedar viu")
-        self.assertEqual(motor.escrit, 65536,
-                         "només hi cap un tros (32768 mostres) abans d'aturar-lo")
 
     def test_tancar_sense_sonar_tambe_es_net(self):
         """Camí normal: tancar amb el visor aturat no ha de petar ni fer res."""
@@ -4046,6 +4021,117 @@ class TestZoomRebuild(_zoom_rebuild___Base):
                 self.assertAlmostEqual(it._view_left, vl, places=9)
         finally:
             v.close()
+
+
+class TestProjecteAssociat(_Base):
+    """Un àudio amb projecte propi: carregar-lo o sobreescriure'l (mai un error)."""
+
+    def _crea(self, f, wav, nom="Projecte1"):
+        return _projectes_gui___obre_wav(f, wav, nom)
+
+    def test_detecta_la_carpeta_germana(self):
+        f = _projectes_gui___finestra()
+        wav = _projectes_gui___wav()
+        p = self._crea(f, wav)
+        trobat = f._projecte_associat(wav)
+        self.assertIsNotNone(trobat)
+        self.assertEqual(trobat.carpeta, p.carpeta)
+
+    def test_detecta_pels_recents_si_es_en_un_altre_lloc(self):
+        f = _projectes_gui___finestra()
+        wav_dir = tempfile.mkdtemp()
+        wav = os.path.join(wav_dir, "tema.wav")
+        _wav(wav, 1.0)
+        p = projecte.Projecte.crea(os.path.join(self.td, "Altra"), wav)
+        f.recents = [p.ruta_acproj]
+        trobat = f._projecte_associat(wav)
+        self.assertIsNotNone(trobat, "s'ha de trobar pels recents")
+        self.assertEqual(trobat.carpeta, p.carpeta)
+
+    def test_carrega_per_defecte_offscreen_i_no_trenca_el_model(self):
+        f = _projectes_gui___finestra()
+        wav = _projectes_gui___wav()
+        p = self._crea(f, wav)
+        # Edició «manual» del projecte: un acord diferent.
+        with open(os.path.join(p.carpeta, "acords.csv"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("0.00,2.00,Z\n")
+        # Tornem a obrir el mateix àudio: offscreen → carrega (no sobreescriu).
+        with patch.object(QFileDialog, "getOpenFileName",
+                          return_value=(wav, "")):
+            f.tria_wav()
+        self.assertEqual(f.projecte.carpeta, p.carpeta)
+        self.assertEqual(f.visor_ref.acords[0].nom, "Z",
+                         "ha de manar el projecte, no l'àudio")
+
+    def test_sobreescriu_deixa_la_carpeta_neta(self):
+        f = _projectes_gui___finestra()
+        wav = _projectes_gui___wav()
+        p = self._crea(f, wav)
+        carp = p.carpeta
+        # Restes d'una sessió anterior (derivats i anàlisi crua).
+        os.makedirs(os.path.join(carp, "wavs_acords"), exist_ok=True)
+        open(os.path.join(carp, "wavs_acords", "vell.wav"), "wb").close()
+        os.makedirs(os.path.join(carp, "analisi"), exist_ok=True)
+        with open(os.path.join(carp, "acords.csv"), "w", encoding="utf-8") as fh:
+            fh.write("0.00,1.00,Z\n")
+
+        def _fake_paperera(ruta):
+            shutil.rmtree(ruta, ignore_errors=True)
+            return True
+
+        with patch.object(f, "_pregunta_projecte_existent",
+                          return_value="sobreescriu"), \
+                patch.object(app_main.plataforma, "a_la_paperera", _fake_paperera):
+            with patch.object(QFileDialog, "getOpenFileName",
+                              return_value=(wav, "")):
+                f.tria_wav()
+
+        self.assertEqual(f.projecte.carpeta, carp)
+        for nom in ("acords.csv", "estructura_ABC.csv", "tempo.csv",
+                    "compas.csv"):
+            self.assertTrue(os.path.isfile(os.path.join(carp, nom)), nom)
+        self.assertFalse(os.path.exists(os.path.join(carp, "wavs_acords")),
+                         "els derivats vells no poden quedar")
+        self.assertFalse(os.path.exists(os.path.join(carp, "analisi")),
+                         "l'anàlisi crua vella no pot quedar")
+        with open(os.path.join(carp, "acords.csv"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read().strip(), "0.00,2.00,N",
+                             "el model s'ha de reinicialitzar")
+
+    def test_projecte_nou_serveix_per_exportar_sense_analitzar(self):
+        f = _projectes_gui___finestra()
+        wav = _projectes_gui___wav()
+        p = self._crea(f, wav)
+        self.assertTrue(f.b_export.isEnabled(), "Exporta WAV's ha d'estar actiu")
+        self.assertTrue(f.b_export_part.isEnabled(),
+                        "Exporta partitura ha d'estar actiu")
+        # Flux MANUAL: l'usuari reanomena el clip «N» a «C» (sense analitzar).
+        self.assertTrue(f.visor_ref._renomena_acords([0], "C"))
+        res = pipeline.exporta_total(
+            csv_ac=os.path.join(p.carpeta, "acords.csv"), csv_seg=None,
+            sortida=p.carpeta, bpm=120.0, bpb=4, offset=0.0, sr=44100,
+            log=lambda *_: None, tempo_fix=True, amb_estructura=True,
+            total_s=2.0,
+            acords=f.visor_ref.acords, seccions=f.visor_ref.seccions,
+            mapa_tempo=list(f.visor_ref.tempo_trams))
+        self.assertEqual(res["n_acords_wavs"], 1)
+        self.assertEqual(res["n_estructura_wavs"], 1)
+        self.assertTrue(any("C" in n for n in
+                            os.listdir(os.path.join(p.carpeta, "wavs_acords"))))
+
+    def test_exportar_amb_nomes_N_dona_un_missatge_clar(self):
+        f = _projectes_gui___finestra()
+        p = _projectes_gui___obre_wav(f, _projectes_gui___wav())
+        with self.assertRaises(RuntimeError) as ctx:
+            pipeline.exporta_total(
+                csv_ac=os.path.join(p.carpeta, "acords.csv"), csv_seg=None,
+                sortida=p.carpeta, bpm=120.0, bpb=4, offset=0.0, sr=44100,
+                log=lambda *_: None, tempo_fix=True, amb_estructura=True,
+                total_s=2.0,
+                acords=f.visor_ref.acords, seccions=f.visor_ref.seccions)
+        self.assertIn("cap acord per exportar", str(ctx.exception))
+        self.assertNotIn("Chordino", str(ctx.exception))
 
 
 if __name__ == "__main__":   # pragma: no cover

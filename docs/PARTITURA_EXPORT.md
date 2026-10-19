@@ -8,7 +8,7 @@
 
 Aprofita les dades que ja genera l'exportació normal:
 
-    <sortida>/acords_locators.txt   (posició compàs.temps.setzena · acord · durada en temps)
+    <sortida>/acords.csv            (el MODEL: inici,fi,acord — es quantitza a corxera)
     <sortida>/estructura_ABC.csv    (seccions amb posició en compàs)
 
 i produeix:
@@ -33,14 +33,12 @@ i **marques de secció** (cada secció comença línia).
 
       from app import partitura
       partitura.exporta_partitura(sortida, log=print, bpm=103, bpb=4,
-                                  offset=0.0, key_fifths=0)
+                                  offset=0.0)
 
 - **App** (menú **Fitxer**):
   - **«Inclou la partitura (xifrat)»** (commutable, per defecte **NO**): en fer
     «Exporta WAV's», genera també el lead sheet.
   - **«Exporta la partitura…»**: genera només la partitura de la sortida actual.
-  - **«Tonalitat automàtica (qm-keydetector)»** (per defecte **NO**): calcula
-    l'armadura amb `detecta_fifths` (triga uns segons).
   - La GUI passa `new_system_each=4` (4 compassos per línia).
 
 ## Requisits i maquinari
@@ -56,7 +54,7 @@ i **marques de secció** (cada secció comença línia).
 
 ## Límits
 
-- Només té sentit en mode **BPM · compàs** (cal `acords_locators.txt`); en mode
+- Només té sentit en mode **BPM · compàs** (calen acords al model); en mode
   lliure no hi ha graella de compassos.
 - És un full de **xifrat**: **no hi ha melodia** (el pipeline no extreu
   alçades), només acords i estructura. La melodia s'afegiria a mà al MuseScore.
@@ -68,7 +66,8 @@ i **marques de secció** (cada secció comença línia).
 - Mapeig de qualitats -> `<kind>` de MusicXML (`major`, `minor`, `dominant`,
   `major-seventh`, `diminished`…); les desconegudes -> `<kind text="...">other`.
 - Acords amb baix (`G/D`, `A7/C#`) -> `<bass>`.
-- `--key auto` usa el `qm-keydetector` del projecte (via `app.pipeline`).
+- L'armadura s'escriu sempre en **do major** (`<fifths>0</fifths>`): la detecció
+  automàtica de tonalitat es va retirar (2026-10-19).
 - `new_system_each=N` (CLI `--compassos-per-linia`): salt de sistema cada N compassos
   (a més de l'inici de cada secció).
 - `beat_type=N` (CLI `--beat-type`): denominador del compàs (per defecte 4; 8 per 6/8).

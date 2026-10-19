@@ -140,9 +140,8 @@ class FeinaExporta(QThread):
     """Exporta el paquet de WAV's en un FIL (A5).
 
     L'export pot trigar (una WAV per acord/secció): fet al fil de la UI,
-    congelava la finestra i —si venia d'una crida MCP— deixava el pont sense
-    resposta fins al final. Aquí el progrés arriba per senyal (segur entre
-    fils) i el pont pot retornar de seguida.
+    congelava la finestra. Aquí el progrés arriba per senyal (segur entre
+    fils) i la UI no es queda encallada.
     """
     missatge = pyqtSignal(str)
     progres = pyqtSignal(int)
@@ -192,7 +191,7 @@ class Feina(QThread):
         Disseny (decisio de l'operador): les `wavs_acords/`/`wavs_estructura/`
         no tenen cap paper en la visualitzacio ni l'edicio; son l'ULTIM pas.
         Aqui nomes es creen `acords.csv`, `segments.csv` i `estructura_ABC.csv`
-        (els locators/guia i les wavs els fa `pipeline.exporta_total`).
+        (la guia i les wavs els fa `pipeline.exporta_total`).
         """
         try:
             os.makedirs(self.sortida, exist_ok=True)
@@ -308,13 +307,7 @@ class Finestra(QMainWindow):
         self.recents = self._carrega_recents()
         self.wav_original = ""                     # si ve d'un format convertit
         self._info_msg_fins = 0.0                  # missatge transitori info box
-        # Pont MCP actiu? → cap avís pot ser MODAL (encallaria el pont) i el
-        # darrer avís queda a `ultim_avis` per retornar-lo a l'agent.
-        self.mcp_actiu = False
-        self.ultim_avis = ""
-        # A5: export asíncron (progrés llegible des de l'MCP a `ac_status`).
-        # `exporta_error`: motiu de l'últim export fallit ("" = cap) → l'MCP el
-        # pot retornar amb `ok: false` en comptes de dir que tot ha anat bé.
+        # A5: export asíncron (progrés a la barra d'estat).
         self.exporta_error = ""
         self.exportant = False
         self.exporta_iniciat = 0.0
@@ -457,17 +450,6 @@ class Finestra(QMainWindow):
             "es genera SEMPRE (sense dependències). El PDF i el MSCZ NOMÉS es "
             "poden fer si tens MuseScore instal·lat (l'app no l'inclou). "
             "Només en mode BPM · compàs.")
-
-        # "Tonalitat automàtica": calcula l'armadura (fifths) amb el
-        # qm-keydetector abans de generar la partitura. Opcional i per defecte
-        # NO (triga uns segons); només té efecte si «Inclou la partitura» està
-        # marcat.
-        self.tonalitat_auto = QAction("Tonalitat automàtica (qm-keydetector)", self)
-        self.tonalitat_auto.setCheckable(True)
-        self.tonalitat_auto.setChecked(False)
-        self.tonalitat_auto.setToolTip(
-            "Detecta la tonalitat amb el qm-keydetector i posa l'armadura a la "
-            "partitura. Si falla, surt sense armadura (no trenca res).")
 
         # estat `tempo_fix` (ocult): el visor i la resta de codi el consulten
         self.tempo_fix = QCheckBox()
@@ -753,7 +735,6 @@ class Finestra(QMainWindow):
         a_part.setStatusTip("Genera la partitura (xifrat). El MusicXML sempre; "
                             "el PDF i el MSCZ NOMÉS si hi ha MuseScore instal·lat.")
         m.addAction(self.amb_part)      # Inclou la partitura (commutable)
-        m.addAction(self.tonalitat_auto)  # Tonalitat automàtica (commutable)
         self._act(m, "Obre la carpeta de sortida", "", self.obre_carpeta)
         m.addSeparator()
         self._act(m, "Surt", "Ctrl+Q", self.close)
@@ -986,7 +967,7 @@ class Finestra(QMainWindow):
         ]))
         return grups
 
-    # ---------- Avisos (mai modals si el pont MCP és actiu) -------------------
+    # ---------- Avisos ---------------------------------------------------------
     def avisa(self, titol, text):
         """Avis d'advertència. Vegeu `_avis`."""
         return self._avis(titol, text, "warning")
@@ -1000,50 +981,8 @@ class Finestra(QMainWindow):
         return self._avis(titol, text, "critical")
 
     def _avis(self, titol, text, tipus):
-        """Mostra un avís SENSE poder encallar el pont MCP.
-
-        Amb el pont actiu, un `QMessageBox` MODAL deixa el pont bloquejat fins
-        que algú el tanca: l'agent que ha disparat l'acció (exportar, analitzar)
-        no rebria mai la resposta i es quedaria penjat. En aquest cas s'ensenya
-        **no modal**, s'auto-tanca al cap de 10 s i el text queda a
-        `self.ultim_avis` perquè el pont el pugui retornar a l'agent. Sense
-        pont, el comportament és exactament l'de sempre (modal).
-        """
-        text = str(text)
-        self.ultim_avis = text
-        if not getattr(self, "mcp_actiu", False):
-            return getattr(QMessageBox, tipus)(self, titol, text)
-        self.logger.warning("avís (pont MCP actiu, sense modal): %s", text)
-        try:
-            self.registra(f"AVÍS: {text}")
-        except Exception:  # noqa: BLE001
-            pass
-        # Un sol avís no modal alhora: tanquem l'anterior (evita acumular
-        # finestres fill que després es destrueixen amb la Finestra).
-        self._tanca_avis_box()
-        box = QMessageBox(getattr(QMessageBox, tipus.capitalize()), titol, text,
-                          QMessageBox.Ok, self)
-        box.setWindowModality(Qt.NonModal)
-        box.setAttribute(Qt.WA_DeleteOnClose, True)
-        self._avis_box = box   # (sense destroyed.connect: era un parany de GC)
-        box.show()
-        # El timer és FILL del box: mor amb ell (abans, `QTimer.singleShot`
-        # sobre `box.close` podia disparar-se amb el box/la finestra ja destruïts).
-        t = QTimer(box)
-        t.setSingleShot(True)
-        t.timeout.connect(box.close)
-        t.start(10000)
-        return None
-
-    def _tanca_avis_box(self):
-        box = getattr(self, "_avis_box", None)
-        self._avis_box = None
-        if box is None:
-            return
-        try:
-            box.close()
-        except RuntimeError:      # ja destruït per C++ (WA_DeleteOnClose)
-            pass
+        """Mostra un avís modal (no hi ha cap pont que puga quedar encallat)."""
+        return getattr(QMessageBox, tipus)(self, titol, str(text))
 
     def _text_dreceres(self):
         """El diàleg de dreceres en HTML (separat per poder-lo testar)."""
@@ -1054,10 +993,6 @@ class Finestra(QMainWindow):
         return "<br><br>".join(blocs)
 
     def _mostra_dreceres(self):
-        # (3) Amb el pont MCP actiu, un modal encallaria el pont: no-modal.
-        if getattr(self, "mcp_actiu", False):
-            return self._avis("Dreceres de teclat", self._text_dreceres(),
-                              "information")
         QMessageBox.information(self, "Dreceres de teclat", self._text_dreceres())
 
     def _quant_a(self):
@@ -1067,9 +1002,6 @@ class Finestra(QMainWindow):
             "wav → acords + estructura<br><br>"
             "Visor DAW-like (PyQt5).<br>"
             "Motor: Chordino (acords) + Queen Mary/qm (estructura) · Vamp.")
-        # (3) Amb el pont MCP actiu, no-modal (un modal encallaria el pont).
-        if getattr(self, "mcp_actiu", False):
-            return self._avis("Quant a Auto Chords", text, "information")
         QMessageBox.about(self, "Quant a Auto Chords", text)
 
     def registra(self, t):
@@ -1524,8 +1456,8 @@ class Finestra(QMainWindow):
         """Inferir el mapa de tempo a partir dels temps (beats) detectats.
 
         NUCLI (sense diàlegs). Retorna el nombre de trams inferits (0 si el
-        tempo és constant o si no s'ha pogut). Amb `avis=False` (pont MCP) els
-        problemes van per **excepció**: cap finestra emergent.
+        tempo és constant o si no s'ha pogut). Amb `avis=False` els problemes
+        van per **excepció**: cap finestra emergent.
         """
         vr = self.visor_ref
         wav = self.wav_edit.text().strip()
@@ -2382,15 +2314,13 @@ class Finestra(QMainWindow):
     def _reverteix(self):
         """Torna el projecte a l'últim estat desat.
 
-        Amb el pont MCP actiu NO es demana confirmació (un diàleg modal deixaria
-        l'agent penjat): l'acció s'ha demanat explícitament i el descart és el
-        seu significat.
+        No es demana confirmació: l'acció s'ha demanat explícitament i el
+        descart és el seu significat.
         """
         if self.projecte is None:
             self.avisa_info("Auto Chords", "No hi ha cap projecte obert.")
             return
-        if (self._te_canvis() and not getattr(self, "mcp_actiu", False)
-                and not self._confirma_descartar()):
+        if self._te_canvis() and not self._confirma_descartar():
             return
         try:
             p = projecte.Projecte.obre(self.projecte.ruta_acproj)
@@ -2493,8 +2423,67 @@ class Finestra(QMainWindow):
             return
         self._obri_des_de_wav(ruta)
 
+    def _projecte_associat(self, wav):
+        """Projecte ja associat a aquest àudio, o `None`.
+
+        1. La carpeta germana `AUTOCHORDS_<nom>/` (convenció de l'app).
+        2. Si no hi és, els **recents**: un projecte desat en un altre lloc el
+           `audio/` del qual es diu igual que aquest fitxer.
+        """
+        carp = projecte.carpeta_autochords(wav)
+        if carp:
+            try:
+                return projecte.Projecte.obre(carp)
+            except projecte.ProjecteError:
+                pass
+        base = os.path.basename(wav).lower()
+        for ruta in list(self.recents or ()):
+            try:
+                p = projecte.Projecte.obre(ruta)
+            except projecte.ProjecteError:
+                continue
+            try:
+                if os.path.basename(p.ruta_audio()).lower() == base:
+                    return p
+            except (OSError, ValueError):
+                continue
+        return None
+
+    def _pregunta_projecte_existent(self, p):
+        """Carrega / sobreescriu / cancel·la el projecte que ja té aquest àudio.
+
+        Retorna `"carrega"`, `"sobreescriu"` o `None` (cancel·la). Sense sessió
+        interactiva (tests, `offscreen`) s'escull el camí **no destructiu**.
+        """
+        if not self._interactiu():
+            self.registra("projecte existent: sense sessió interactiva → es "
+                          "carrega (no es destrueix res)")
+            return "carrega"
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle("Aquest àudio ja té projecte")
+        box.setText("Ja hi ha un projecte associat a aquest àudio.")
+        box.setInformativeText(
+            f"{p.carpeta}\n\n"
+            "Si el carregues, mana el projecte (el seu àudio, els seus acords i "
+            "el seu tempo).\n"
+            "Si el sobreescrius, la carpeta actual va a la PAPERERA i es crea "
+            "de zero amb aquest àudio.")
+        b_car = box.addButton("Carrega el projecte", QMessageBox.AcceptRole)
+        b_sov = box.addButton("Sobreescriu (esborra'l)",
+                              QMessageBox.DestructiveRole)
+        box.addButton("Cancel·la", QMessageBox.RejectRole)
+        box.setDefaultButton(b_car)
+        box.exec_()
+        clic = box.clickedButton()
+        if clic is b_car:
+            return "carrega"
+        if clic is b_sov:
+            return "sobreescriu"
+        return None
+
     def _obri_des_de_wav(self, ruta):
-        """Crea un projecte AUTOCONTINGUT a partir d'un WAV (preguntant ON)."""
+        """Obre un àudio: reutilitza el projecte si ja n'hi ha, o en crea un."""
         if not self._pot_descartar():
             return
         self.wav_original = ""
@@ -2507,13 +2496,38 @@ class Finestra(QMainWindow):
             return
         if treball != ruta:
             self.wav_original = os.path.abspath(ruta)
-        # Pregunta ON crear el projecte (per defecte, al costat del WAV).
-        base = os.path.splitext(os.path.basename(treball))[0]
-        desti = self._demana_ubicacio_projecte(
-            os.path.dirname(treball), pipeline.PREFIX_SORTIDA + base,
-            "Crea el projecte")
+
+        # Un àudio que JA té projecte: l'usuari decideix (mai un error).
+        previ = self._projecte_associat(treball)
+        desti = None
+        if previ is not None:
+            tria = self._pregunta_projecte_existent(previ)
+            if tria is None:
+                return
+            if tria == "carrega":
+                self._activa_projecte(previ)
+                self.registra(f"Projecte existent carregat: {previ.carpeta}")
+                return
+            # SOBREESCRIURE: la carpeta vella a la paperera (recuperable) i es
+            # recrea allí mateix, sense restes de l'anterior.
+            desti = previ.carpeta
+            if not plataforma.a_la_paperera(desti):
+                self.avisa(
+                    "Auto Chords",
+                    "No s'ha pogut enviar el projecte actual a la paperera, "
+                    "així que NO se sobreescriu res.\n"
+                    f"Projecte: {desti}")
+                return
+            self.registra(f"Projecte anterior a la paperera: {desti}")
+
         if not desti:
-            return
+            # Pregunta ON crear el projecte (per defecte, al costat del WAV).
+            base = os.path.splitext(os.path.basename(treball))[0]
+            desti = self._demana_ubicacio_projecte(
+                os.path.dirname(treball), pipeline.PREFIX_SORTIDA + base,
+                "Crea el projecte")
+            if not desti:
+                return
         # Un WAV NOU no ha d'heretar el BPM del tema anterior (OC-6/415).
         if self.bpm.text().strip() not in ("", "120.0", "120"):
             self.registra("WAV nou → BPM reiniciat a 120.0 "
@@ -2879,9 +2893,8 @@ class Finestra(QMainWindow):
         «Inclou estructura» decideix què s'**exporta**, no què es **conserva**.
         Només s'ofereix treure els **derivats de l'export** (`wavs_estructura/`).
 
-        **(c) Sempre amb confirmació**: (1) només es pregunta si hi ha restes a
-        treure; (2) amb el pont MCP actiu no s'esborra mai res (evita encallar
-        el pont amb un diàleg modal — vegeu `test_avis_no_modal`).
+        **(c) Sempre amb confirmació**: només es pregunta si hi ha restes a
+        treure, i res no s'esborra sense un «sí» explícit.
         """
         wavs = os.path.join(sortida, "wavs_estructura")
         if not os.path.isdir(wavs):
@@ -2905,10 +2918,9 @@ class Finestra(QMainWindow):
             self.registra(f"AVÍS: no he pogut treure {wavs}: {e}")
 
     def _ho_confirma(self, titol, text, boto_si):
-        """Demana confirmació (Sí/No). Amb el pont MCP actiu (o sense sessió
-        interactiva, `offscreen`) respon **No** i no mostra cap diàleg modal
-        (no s'ha d'encallar el pont ni petar el CI; cf. `_avis`/`_interactiu`)."""
-        if getattr(self, "mcp_actiu", False) or not self._interactiu():
+        """Demana confirmació (Sí/No). Sense sessió interactiva (`offscreen`,
+        CI) respon **No** i no mostra cap diàleg modal."""
+        if not self._interactiu():
             return False
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Question)
@@ -2928,10 +2940,7 @@ class Finestra(QMainWindow):
             msg += ("\n\n⚠️ La partitura s'ha generat NOMÉS en MusicXML: el "
                     "PDF necessita MuseScore instal·lat.")
         self.avisa_info("Auto Chords", msg)
-        # Amb el pont MCP actiu NO s'obre el gestor de fitxers: l'agent que ha
-        # demanat l'export no necessita finestres a l'escriptori de l'usuari.
-        if not getattr(self, "mcp_actiu", False):
-            self.obre_carpeta()
+        self.obre_carpeta()
 
     def exporta(self):
         """Exporta de forma SÍNCRONA (la UI espera). Vegeu `exporta_async`."""
@@ -2954,8 +2963,7 @@ class Finestra(QMainWindow):
         """Exporta en un FIL (A5). Retorna True si ha arrencat.
 
         La partitura (si la marca hi és) es fa DESPRÉS, al fil de la UI, quan el
-        fil acaba. El progrés es veu a la barra i a `self.exportant` (que l'MCP
-        llegeix a `ac_status`).
+        fil acaba. El progrés es veu a la barra i a `self.exportant`.
         """
         fe = getattr(self, "feina_export", None)
         if fe is not None and fe.isRunning():
@@ -2985,37 +2993,6 @@ class Finestra(QMainWindow):
         res_part = self._exporta_partitura() if self.amb_part.isChecked() else None
         self._exporta_acabada(res_part)
 
-    def _assegura_locators(self):
-        """Regenera `acords_locators.txt` si és MÉS VELL que el model.
-
-        La partitura es construeix a partir dels **locators**, que són un
-        DERIVAT del CSV (`pipeline.genera_locators`). Si s'ha editat el model
-        després de l'últim export de WAVs, els locators del disc són VELLS i la
-        partitura sortia amb els acords antics (bug real, 2026-10-15).
-        """
-        sortida = self.sortida or ""
-        csv_ac = os.path.join(sortida, "acords.csv")
-        loc = os.path.join(sortida, "acords_locators.txt")
-        if not (sortida and os.path.isfile(csv_ac) and os.path.isfile(loc)):
-            return False            # sense locators, `partitura` ja avisa
-        try:
-            if os.path.getmtime(loc) >= os.path.getmtime(csv_ac):
-                return True         # ja estan al dia
-        except OSError:
-            pass
-        vr = getattr(self, "visor_ref", None)
-        try:
-            pipeline.run_acords_py(
-                csv_ac, self._bpm_val(), self._bpb_val(), self._offset_val(),
-                sortida, self.registra,
-                durada=(vr.audio["durada"] if vr is not None else None))
-            self.registra("partitura: locators regenerats (el model havia "
-                          "canviat des de l'últim export de WAVs)")
-            return True
-        except Exception as e:  # noqa: BLE001
-            self.registra(f"AVÍS: no he pogut regenerar els locators: {e}")
-            return False
-
     def _exporta_partitura(self):
         """Genera el lead sheet de xifrats de la carpeta de sortida.
 
@@ -3023,16 +3000,22 @@ class Finestra(QMainWindow):
         si troba el MuseScore, el PDF/MSCZ. Cap error d'aquí no ha de fer caure
         l'exportació normal. Retorna el diccionari de resultats (o None).
 
-        Si l'acció «Tonalitat automàtica» està marcada, calcula l'armadura amb
-        `partitura.detecta_fifths` (qm-keydetector; tolerant: 0 si falla).
         """
         wav = self.wav_edit.text().strip() or None
-        key_fifths = 0
-        if self.tonalitat_auto.isChecked() and wav:
-            key_fifths = partitura.detecta_fifths(wav, self.registra)
+        vr = getattr(self, "visor_ref", None)
+        mapa = getattr(vr, "tempo_map", None)
+        durada = float((getattr(vr, "audio", {}) or {}).get("durada", 0.0) or 0.0)
+        # Els acords surten del MODEL viu (zero fitxers intermedis). Si encara
+        # no n'hi ha, la partitura ja retorna el seu error net («sense acords»).
+        ev = []
         try:
-            # Els locators són un derivat del model: si és vell, es regenera.
-            self._assegura_locators()
+            ev = pipeline.events_partitura(
+                os.path.join(self.sortida, "acords.csv"),
+                self._bpm_val(), self._bpb_val(), self._offset_val(),
+                durada=durada, mapa=mapa)
+        except (RuntimeError, OSError) as e:
+            self.registra(f"partitura: el model encara no té acords ({e})")
+        try:
             res = partitura.exporta_partitura(
                 self.sortida,
                 log=self.registra,
@@ -3040,10 +3023,10 @@ class Finestra(QMainWindow):
                 bpb=self._bpb_val(),
                 offset=self._offset_val(),
                 wav=wav,
-                key_fifths=key_fifths,
                 new_system_each=4,     # 4 compassos per línia (lead sheet)
-                mapa=getattr(getattr(self, "visor_ref", None),
-                             "tempo_map", None),
+                mapa=mapa,
+                events=ev,
+                durada=durada,
             )
             if res.get("error"):
                 self.registra(f"partitura: sense resultat ({res['error']})")
@@ -3085,19 +3068,18 @@ class Finestra(QMainWindow):
                 "Auto Chords",
                 "No s'ha pogut generar la partitura.\n"
                 "Cal haver exportat abans, en mode BPM · compàs "
-                "(hi ha d'haver acords_locators.txt). Detall al log.")
+                "(cal que el model tinga almenys un acord). Detall al log.")
             return
         self.avisa_info("Auto Chords",
                                 self._missatge_partitura(res))
-        if not getattr(self, "mcp_actiu", False):    # cf. `_exporta_acabada`
-            self.obre_carpeta()
+        self.obre_carpeta()
 
     def closeEvent(self, ev):
         """Neteja ordenada abans que Qt destrueixi la finestra.
 
-        Sense això, es destruïa la Finestra amb fils vius (`FeinaExporta`), el
-        reproductor del visor sonant, el pont MCP obert i un avís no modal fill
-        visible: destrucció en ordre arbitrari = risc d'access violation.
+        Sense això, es destruïa la Finestra amb fils vius (`FeinaExporta`) i el
+        reproductor del visor sonant: destrucció en ordre arbitrari = risc
+        d'access violation.
         """
         if not self._pot_descartar():
             ev.ignore()
@@ -3115,13 +3097,6 @@ class Finestra(QMainWindow):
                 vr._atura_proc()
             except (RuntimeError, AttributeError):
                 pass
-        pont = getattr(self, "_mcp_pont", None)
-        if pont is not None:
-            try:
-                pont.tanca()
-            except Exception:  # noqa: BLE001
-                pass
-        self._tanca_avis_box()
         self._neteja_sessio()          # tancament NET: ja no cal recuperar
         super().closeEvent(ev)
 

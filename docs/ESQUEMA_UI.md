@@ -66,7 +66,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.b_tap` | **TAP** (tecla **T**) | `QPushButton` |
 | — | `self.b_offset_cursor` | **Marca el compàs 1 aquí** (icona `map-pin`) → al cursor | `QPushButton` |
 | — | `self.amb_est` · `self.a_metro` · `self.a_eina_marc` | **Inclou estructura** · **Metrònom** · **Eina de marc** | `QAction` (checkable, menús) |
-| — | `self.amb_part` · `self.tonalitat_auto` | **Inclou la partitura (xifrat)** · **Tonalitat automàtica** | `QAction` (checkable, menú Fitxer) |
+| — | `self.amb_part` | **Inclou la partitura (xifrat)** | `QAction` (checkable, menú Fitxer) |
 | — | `self.b_mode_facil` · `self.b_eina` | **Mode fàcil** · **Eina: intel·ligent / Eina: marc** | `QPushButton` (el 2n, checkable) |
 | — | `self._params_temps` | contenidor dels **paràmetres de temps** (BPM · ×2/÷2 · Detecta · TAP · Compàs · Offset · ≈ C.B) | `QWidget` |
 | — | `self.panell_xifrat` · `self.dock_xifrat` | **panell «Tipus d'acord»** (arrel · baix · 62 tipus · ▶ Escoltar · timbre) | `PanellXifrat` en un `QDockWidget` |
@@ -90,7 +90,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 | Menú | Accions |
 |------|---------|
-| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… (Ctrl+Shift+O) · Obre recent… · Desa (Ctrl+S) · Desa com… (Ctrl+Shift+S) · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Tonalitat automàtica (qm-keydetector) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
+| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… (Ctrl+Shift+O) · Obre recent… · Desa (Ctrl+S) · Desa com… (Ctrl+Shift+S) · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |

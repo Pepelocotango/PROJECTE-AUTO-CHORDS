@@ -153,12 +153,37 @@ class Projecte:
         if os.path.abspath(dest_wav) != os.path.abspath(wav_origen):
             shutil.copy2(wav_origen, dest_wav)
         # Importa CSVs existents (migració), sense copiar-se a si mateixos.
-        for origen, desti in ((csv_acords, cls._csv(carpeta, NOM_CSV_ACORDS)),
-                              (csv_estructura,
-                               cls._csv(carpeta, NOM_CSV_ESTRUCTURA))):
+        csv_a = cls._csv(carpeta, NOM_CSV_ACORDS)
+        csv_s = cls._csv(carpeta, NOM_CSV_ESTRUCTURA)
+        for origen, desti in ((csv_acords, csv_a), (csv_estructura, csv_s)):
             if origen and os.path.isfile(origen) and \
                     os.path.abspath(origen) != os.path.abspath(desti):
                 shutil.copy2(origen, desti)
+        # MODEL INICIAL COMPLET: un projecte acabat de crear ja serveix per
+        # treballar i exportar **sense cap anàlisi** (decisió de l'operador,
+        # 2026-10-19). Els CSVs cobreixen tota la cançó (regla d'or #4) i el
+        # mapa de tempo/compàs també hi és des del primer moment.
+        try:
+            durada = float(pipeline.wav_info(dest_wav)["durada"])
+        except Exception:  # noqa: BLE001  (wav il·legible: model de durada 0)
+            durada = 0.0
+        if not os.path.isfile(csv_a):
+            pipeline.desa_acords_csv(
+                csv_a, [pipeline.Clip(0.0, durada, pipeline.FORAT_ACORD)],
+                durada)
+        if not os.path.isfile(csv_s):
+            pipeline.desa_abc_csv(
+                csv_s, [(0.0, durada, "A", "A")], float(bpm),
+                lambda *_a: None, lliure=not fix, bpb=int(bpb),
+                offset=float(offset))
+        den = 4
+        if compas and "/" in str(compas):
+            try:
+                den = int(str(compas).split("/", 1)[1])
+            except (TypeError, ValueError):
+                den = 4
+        pipeline.desa_tempo_map(
+            carpeta, [(0.0, durada, float(bpm), int(bpb), int(den or 4))])
         dades = {
             "format": FORMAT,
             "app": "AUTO_CHORDS",
@@ -254,7 +279,7 @@ class Projecte:
         """Còpia versionada dins `backup/<data-hora>/`.
 
         Guarda el **document** (`.acproj` amb l'estat viu) + els **fitxers
-        importants** (CSV d'acords/estructura/segments i locators) + la carpeta
+        importants** (CSV d'acords/estructura/segments) + la carpeta
         **`analisi/`** (l'anàlisi crua). **NO** copia l'àudio (`audio/`) ni els
         exports (`wavs_*`, `partitura/`), que es deriven i són grossos.
 
@@ -301,7 +326,6 @@ class Projecte:
 
     # Fitxers del projecte que es guarden a cada còpia (model + anàlisi crua).
     _FITXERS_BACKUP = (NOM_CSV_ACORDS, NOM_CSV_ESTRUCTURA, "segments.csv",
-                       "acords_locators.txt",
                        pipeline.NOM_CSV_TEMPO, pipeline.NOM_CSV_COMPAS)
 
     def _materials_backup(self):

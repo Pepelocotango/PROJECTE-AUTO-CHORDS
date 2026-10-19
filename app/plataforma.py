@@ -7,6 +7,7 @@ Vegeu `ROADMAP_HISTORIA.md` §9 (desplegament a altres SO).
 """
 import os
 import signal
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -294,3 +295,75 @@ def proces_viu(pid):
             k.CloseHandle(h)
     except Exception:  # noqa: BLE001
         return False
+
+
+def a_la_paperera(ruta):
+    """Envia `ruta` a la **paperera del sistema** (recuperable). True si ho ha fet.
+
+    Regla de l'app: mai esborrar en sec. Si el sistema no ofereix cap mecanisme
+    de paperera, retorna `False` i qui crida decideix (en sobreescriure un
+    projecte, l'app s'atura en lloc de destruir-lo).
+
+    - **Linux**: `gio trash` (GLib) o `trash-put` (trash-cli).
+    - **macOS**: `~/.Trash`.
+    - **Windows**: `SHFileOperationW` amb `FOF_ALLOWUNDO` (paperera de reciclatge).
+    """
+    ruta = os.path.abspath(ruta)
+    if not os.path.exists(ruta):
+        return True
+    if ES_LINUX:
+        for nom in ("gio", "trash-put"):
+            exe = shutil.which(nom)
+            if not exe:
+                continue
+            args = [exe, "trash", ruta] if nom == "gio" else [exe, ruta]
+            try:
+                r = subprocess.run(args, capture_output=True, timeout=30)
+            except (OSError, subprocess.SubprocessError):
+                continue
+            if r.returncode == 0 and not os.path.exists(ruta):
+                return True
+        return False
+    if ES_MAC:
+        try:
+            paperera = os.path.join(os.path.expanduser("~"), ".Trash")
+            os.makedirs(paperera, exist_ok=True)
+            desti = os.path.join(paperera, os.path.basename(ruta))
+            i = 2
+            while os.path.exists(desti):
+                desti = os.path.join(paperera, f"{os.path.basename(ruta)}-{i}")
+                i += 1
+            shutil.move(ruta, desti)
+            return True
+        except OSError:
+            return False
+    if ES_WINDOWS:
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            class _SHFILEOPSTRUCTW(ctypes.Structure):
+                _fields_ = [
+                    ("hwnd", wintypes.HWND),
+                    ("wFunc", wintypes.UINT),
+                    ("pFrom", wintypes.LPCWSTR),
+                    ("pTo", wintypes.LPCWSTR),
+                    ("fFlags", ctypes.c_uint16),
+                    ("fAnyOperationsAborted", wintypes.BOOL),
+                    ("hNameMappings", ctypes.c_void_p),
+                    ("lpszProgressTitle", wintypes.LPCWSTR),
+                ]
+
+            FO_DELETE = 3
+            FOF_ALLOWUNDO = 0x0040
+            FOF_NOCONFIRMATION = 0x0010
+            FOF_SILENT = 0x0004
+            op = _SHFILEOPSTRUCTW()
+            op.wFunc = FO_DELETE
+            op.pFrom = ruta + "\0\0"       # doble NUL: és una llista de rutes
+            op.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT
+            res = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
+            return res == 0 and not os.path.exists(ruta)
+        except Exception:  # noqa: BLE001
+            return False
+    return False

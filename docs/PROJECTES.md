@@ -55,7 +55,7 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
 - **Autosave**: un `QTimer` cada **60 s** (`AUTOSAVE_MS`) fa una **còpia versionada**
   a **`backup/<data-hora>/`** — **només si hi ha canvis NOUS**.
 - **Què copia** `Projecte.fes_backup()`: el **document** (`.acproj` amb l'**estat viu**)
-  + els **fitxers importants** (CSVs d'acords/estructura/segments i locators) + la
+  + els **fitxers importants** (CSVs d'acords/estructura/segments) + la
   carpeta **`analisi/`** (l'anàlisi crua). **NO** copia l'àudio (`audio/`) ni els
   exports (`wavs_*`, `partitura/`), que es **deriven** i són grossos. **No duplica**
   si el contingut no ha canviat des de l'última còpia.
@@ -84,9 +84,6 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
 
 ## Estat
 
-- **(MCP) exposar els projectes al pont** ✅ **FET (2026-10-15)**: `ac_crea_projecte`,
-  `ac_obre_projecte`, `ac_desa_projecte`, `ac_desa_com`, `ac_fes_backup`, `ac_recents`.
-  Detall: `docs/MCP_AUTO_CHORDS.md` §«Funcions noves cobertes».
 - ~~Migracions de `format` < actual~~ → ✅ **FET**: `_migra` accepta qualsevol
   `format` anterior (el 0 = projectes sense el camp), migra camp a camp quan
   calgui i **rebutja** els projectes d'un format MÉS NOU amb un error clar;

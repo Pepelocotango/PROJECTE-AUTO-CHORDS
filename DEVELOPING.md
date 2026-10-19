@@ -71,9 +71,9 @@ VAMP_PATH=nnls-chroma-linux64-local ./sonic-annotator \
 python3 -c "from app import pipeline as p; p.run_acords_py('acords.csv', 138, 4, 0.0, '.', print)"
 ```
 
-> Els locators i la guia HTML es generen **en memòria** dins
-> `app/pipeline.py` (`genera_locators` / `genera_guia_html`): ja no hi ha cap
-> script solt ni cap subprocés de Python.
+> La guia DAW (segments + `guia_acords.html`) es genera **en memòria** dins
+> `app/pipeline.py` (`segments_locators` / `genera_guia_html`): no hi ha cap
+> fitxer intermedi (`acords_locators.txt`) ni cap subprocés de Python.
 
 ## Verificar canvis
 
@@ -99,8 +99,6 @@ nou, importa'l també** (dues línies al costat del `sys.path.insert`).
 
 - **Si hi ha una app viva, porta el codi vell en memòria**: cal **reiniciar-la**
   perquè els canvis del disc hi entren.
-- **Eines MCP noves**: es criden pel **servidor**, no pel llistat de la sessió →
-  `.venv/bin/python eines/mcp_auto_chords_server.py --call <ac_tool> --args '{...}'`.
 - **Missatges en català dins comandes `bash`** amb accents o *backticks*: fes
   servir **heredocs** (`python3 - <<'PY' … PY`), no `-c "..."` (els *backticks*
   es substitueixen i mutilen el text).
@@ -187,7 +185,7 @@ Aquesta llista recull els temes que no són bloquejos del flux actual, però que
 ### 5) Auditoria de seguretat — ✅ FET (2026-10-13)
 
 > **Fet (v0.7.0+)**: enduriment de seguretat de l'app i de la cadena de
-> subministrament (10 punts: ffmpeg/ffprobe, instància única, pont MCP,
+> subministrament (10 punts: ffmpeg/ffprobe, instància única,
 > `safe_filename`, temporals, `baixa_verificat.py`+`deps_fixades.env`, accions
 > de GitHub per SHA, pins, inventari). Detall: `docs/SEGURETAT.md` +
 > `SECURITY.md`; auditoria de producció: `docs/archive/AUDITORIA_PRODUCCIO.md`.

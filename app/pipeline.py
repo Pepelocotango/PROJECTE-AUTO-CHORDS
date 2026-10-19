@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # pipeline.py — motor de l'Auto Chords (stdlib + binaris del projecte).
-# Cadena: wav -> csv acords (annotator+Chordino) -> locators/guia ->
+# Cadena: wav -> csv acords (annotator+Chordino) -> guia ->
 #         wavs_acords (+ qm-segmenter -> ABC -> wavs_estructura, opcional).
 # Tot en català.
 import csv
@@ -226,7 +226,6 @@ STEPS = {
     "vamp:qm-vamp-plugins:qm-onsetdetector:onsets": (512, 1024),
     "vamp:qm-vamp-plugins:qm-barbeattracker:bars": (512, 1024),
     "vamp:qm-vamp-plugins:qm-barbeattracker:beats": (512, 1024),
-    "vamp:qm-vamp-plugins:qm-keydetector:key": (512, 1024),
 }
 
 
@@ -472,7 +471,6 @@ QM = {
     "onsets": "vamp:qm-vamp-plugins:qm-onsetdetector:onsets",
     "bars": "vamp:qm-vamp-plugins:qm-barbeattracker:bars",
     "beats": "vamp:qm-vamp-plugins:qm-barbeattracker:beats",
-    "key": "vamp:qm-vamp-plugins:qm-keydetector:key",
     "segments": "vamp:qm-vamp-plugins:qm-segmenter:segmentation",
 }
 
@@ -860,28 +858,50 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
         last = p
     if not segs:
         raise RuntimeError(
-            "cap acord detectat al csv (tot N): revisa la wav o l'extracció Chordino")
+            "No hi ha cap acord per exportar: el model només té «N». "
+            "Posa'n almenys un (editant-lo al timeline) o prem «Analitza».")
     end = max(end, segs[-1][1] + slots_bar)
     if durada > 0:
         end = max(end, round(_q(durada) * 2))
     return segs, end, step, slots_bar, mapa, _pos
 
 
-def genera_locators(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
-                    mapa=None, _dades=None):
-    """Genera `acords_locators.txt` en memòria i en retorna la ruta."""
-    workdir = workdir or os.path.dirname(os.path.abspath(csv_path))
+def segments_locators(csv_path, bpm, bpb, offset=0.0, durada=None,
+                      mapa=None, _dades=None):
+    """Guia DAW **en memòria**: `[(posició, acord, durada_en_temps), …]`.
+
+    És un DERIVAT del model: **no es desa en cap fitxer** (decisió de
+    l'operador, 2026-10-19: el sistema de fitxers intern, el més simple
+    possible). El fan servir els WAVs d'acords (nom i durada en temps) i la
+    partitura (`events_partitura`, que en treu els beats).
+    """
     if _dades is None:
         _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
                                     durada=durada, mapa=mapa)
     segs, end, _step, _slots_bar, _mapa, _pos = _dades
-    loc_path = os.path.join(workdir, "acords_locators.txt")
-    with open(loc_path, "w", encoding="utf-8") as f:
-        f.write("posició (compàs.temps.setzena)   acord   durada(temps)\n")
-        for i, (t, p, c) in enumerate(segs):
-            q = segs[i + 1][1] if i + 1 < len(segs) else end
-            f.write("%-14s %-8s %g\n" % (_pos(t), c, (q - p) / 2))
-    return loc_path
+    out = []
+    for i, (t, p, c) in enumerate(segs):
+        q = segs[i + 1][1] if i + 1 < len(segs) else end
+        out.append((_pos(t), c, (q - p) / 2.0))
+    return out
+
+
+def events_partitura(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
+                     _dades=None):
+    """Acords per a la PARTITURA en memòria: `[(beat_inici, acord, beats), …]`.
+
+    Mateixa font que els WAVs (`_segments_guia_daw`): el model quantitzat a
+    corxera. Així la partitura no depèn de cap fitxer intermedi.
+    """
+    if _dades is None:
+        _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
+                                    durada=durada, mapa=mapa)
+    segs, end, _step, _slots_bar, _mapa, _pos = _dades
+    out = []
+    for i, (_t, p, c) in enumerate(segs):
+        q = segs[i + 1][1] if i + 1 < len(segs) else end
+        out.append((p / 2.0, c, (q - p) / 2.0))
+    return out
 
 
 def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
@@ -941,18 +961,6 @@ def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
     if log:
         log(f"  {len(segs)} acords, {nbars} compassos")
     return guia_path
-
-
-def run_acords_py(csv_path, bpm, bpb, offset, workdir, log, durada=None,
-                  mapa=None):
-    """Genera `acords_locators.txt` i `guia_acords.html` en memòria."""
-    dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
-                               durada=durada, mapa=mapa)
-    loc = genera_locators(csv_path, bpm, bpb, offset=offset, workdir=workdir,
-                          durada=durada, mapa=mapa, _dades=dades)
-    guia = genera_guia_html(csv_path, bpm, bpb, offset=offset, workdir=workdir,
-                            durada=durada, mapa=mapa, log=log, _dades=dades)
-    return loc, guia
 
 
 def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0, mapa=None):
@@ -1753,7 +1761,8 @@ def fer_wavs_acords_lliures(csv_path, total_s, dest_dir, sr, log):
     return n
 
 
-def fer_wavs_acords(locators_txt, bpm, dest_dir, sr, log, bpb=4):
+def fer_wavs_acords(segments, bpm, dest_dir, sr, log, bpb=4):
+    """WAVs silenciosos d'acords a partir de `segments_locators(...)`."""
     os.makedirs(dest_dir, exist_ok=True)
 
     def inici_en_temps(pos_):
@@ -1771,22 +1780,19 @@ def fer_wavs_acords(locators_txt, bpm, dest_dir, sr, log, bpb=4):
     n = 0
     primer = True
     usats = set()          # desambigua noms d'acord que quedin iguals
-    with open(locators_txt, encoding="utf-8") as f:
-        for line in f.read().splitlines()[1:]:
-            if not line.strip():
-                continue
-            pos_, chord, dur = line.split()
-            if primer:
-                # la tanda sempre engega a l'1-1-1: buit inicial -> N
-                cap = inici_en_temps(pos_)
-                if cap > 1e-9:
-                    escriu("1-1-1_N.wav", cap)
-                    n += 1
-                    log(f"capçalera N: {cap:.2f} temps")
-                primer = False
-            fn = f"{pos_.replace('.', '-')}_{safe_filename(chord, fallback='N', usats=usats)}.wav"
-            escriu(fn, float(dur))
-            n += 1
+    for pos_, chord, dur in segments or ():
+        if primer:
+            # la tanda sempre engega a l'1-1-1: buit inicial -> N
+            cap = inici_en_temps(pos_)
+            if cap > 1e-9:
+                escriu("1-1-1_N.wav", cap)
+                n += 1
+                log(f"capçalera N: {cap:.2f} temps")
+            primer = False
+        fn = (f"{pos_.replace('.', '-')}_"
+              f"{safe_filename(chord, fallback='N', usats=usats)}.wav")
+        escriu(fn, float(dur))
+        n += 1
     log(f"wavs_acords: {n}")
     return n
 
@@ -1831,15 +1837,14 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
     if tempo_fix:
         dades_guia = _segments_guia_daw(csv_ac, bpm, bpb, offset=offset,
                                         durada=total_s)
-        loc = genera_locators(csv_ac, bpm, bpb, offset=offset, workdir=sortida,
-                              durada=total_s, _dades=dades_guia)
+        segs = segments_locators(csv_ac, bpm, bpb, offset=offset,
+                                 durada=total_s, _dades=dades_guia)
         guia = genera_guia_html(csv_ac, bpm, bpb, offset=offset, workdir=sortida,
                                 durada=total_s, log=log, _dades=dades_guia)
-        result["locators_txt"] = loc
         result["guia_html"] = guia
         dest = os.path.join(sortida, "wavs_acords")
         neteja_wavs(dest)
-        result["n_acords_wavs"] = fer_wavs_acords(loc, bpm, dest, sr, log, bpb)
+        result["n_acords_wavs"] = fer_wavs_acords(segs, bpm, dest, sr, log, bpb)
     else:
         if total_s is None:
             total_s = 0.0
@@ -2095,17 +2100,17 @@ def neteja_wavs(dest_dir):
 
 def regenera_wavs_acords(csv_path, sortida, bpm, bpb, offset, total_s, sr, log,
                          tempo_fix=True):
-    # Recalcula locators/guia + wavs_acords/ a partir del csv ja editat.
+    # Recalcula guia + wavs_acords/ a partir del csv ja editat.
     dest = os.path.join(sortida, "wavs_acords")
     neteja_wavs(dest)
     if tempo_fix:
         dades_guia = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
                                         durada=total_s)
-        loc = genera_locators(csv_path, bpm, bpb, offset=offset, workdir=sortida,
-                              durada=total_s, _dades=dades_guia)
+        segs = segments_locators(csv_path, bpm, bpb, offset=offset,
+                                 durada=total_s, _dades=dades_guia)
         genera_guia_html(csv_path, bpm, bpb, offset=offset, workdir=sortida,
                          durada=total_s, log=log, _dades=dades_guia)
-        return fer_wavs_acords(loc, bpm, dest, sr, log, bpb)
+        return fer_wavs_acords(segs, bpm, dest, sr, log, bpb)
     return fer_wavs_acords_lliures(csv_path, total_s, dest, sr, log)
 
 

@@ -4,7 +4,6 @@
 Genera un **lead sheet de xifrats** a partir dels resultats que ja produeix
 l'exportació normal del projecte:
 
-    <sortida>/acords_locators.txt   (posició compàs.temps.setzena · acord · durada en temps)
     <sortida>/estructura_ABC.csv    (seccions amb posició en compàs)
 
 i el converteix a:
@@ -22,7 +21,7 @@ si no es troba el binari, s'escriu només el MusicXML i s'avisa (no trenca res).
 
 Abast: la partitura reflecteix els **xifrats** detectats/editats (no hi ha
 transcripció de melodia). Només té sentit en mode **BPM · compàs** (cal
-`acords_locators.txt`; en mode lliure no hi ha graella).
+el MODEL (`acords.csv`, quantitzat a corxera); en mode lliure no hi ha graella).
 """
 import csv
 import glob
@@ -36,8 +35,8 @@ from app import xifrat           # notació del xifrat (sense deps del projecte)
 
 __all__ = [
     "exporta_partitura", "construeix_musicxml", "harmony_xml",
-    "llegeix_locators", "llegeix_seccions", "parse_pos",
-    "musescore_bin", "detecta_fifths", "fifths_de_to",
+    "llegeix_seccions", "parse_pos",
+    "musescore_bin",
 ]
 
 DIV = 4                      # divisions per negra (quarter) al MusicXML
@@ -89,23 +88,6 @@ def parse_pos(s, bpb=4, bars=None):
 
 
 _RE_POS = re.compile(r"^\d+\.\d+\.\d+$")
-
-
-def llegeix_locators(ruta, bpb=4, bars=None):
-    """Llegeix `acords_locators.txt` -> [(start_beat, acord, duracio_beats)]."""
-    ev = []
-    with open(ruta, encoding="utf-8") as f:
-        for line in f.read().splitlines():
-            parts = line.split()
-            if len(parts) < 3 or not _RE_POS.match(parts[0]):
-                continue                     # capçalera o línia no vàlida
-            try:
-                dur = float(parts[2])
-            except ValueError:
-                continue
-            ev.append((parse_pos(parts[0], bpb, bars), parts[1], dur))
-    ev.sort(key=lambda e: e[0])
-    return ev
 
 
 def llegeix_seccions(ruta):
@@ -221,7 +203,7 @@ def _note_xml(units, rest=False):
 
 # --- construcció del MusicXML ----------------------------------------------
 def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
-                        key_fifths=0, new_system_each=None, beat_type=4,
+                        new_system_each=None, beat_type=4,
                         mapa=None):
     """Retorna el text MusicXML (partwise) del lead sheet."""
     sec_bar = {bar: let for bar, let in seccions if let}
@@ -277,7 +259,7 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
             x.append('      <print new-system="yes"/>\n')
         if i == 1:
             x.append("      <attributes><divisions>4</divisions>"
-                     f"<key><fifths>{int(key_fifths)}</fifths></key>"
+                     "<key><fifths>0</fifths></key>"
                      f"<time><beats>{num_m}</beats>"
                      f"<beat-type>{den_m}</beat-type></time>"
                      "<clef><sign>G</sign><line>2</line></clef></attributes>\n")
@@ -327,57 +309,6 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
              "<bar-style>light-heavy</bar-style></barline></measure>\n")
     x.append("  </part>\n</score-partwise>\n")
     return "".join(x)
-
-
-# --- tonalitat -------------------------------------------------------------
-_MAJ = {"C": 0, "G": 1, "D": 2, "A": 3, "E": 4, "B": 5, "F#": 6, "C#": 7,
-        "F": -1, "Bb": -2, "Eb": -3, "Ab": -4, "Db": -5, "Gb": -6, "Cb": -7}
-_MIN_REL = {"A": "C", "E": "G", "B": "D", "F#": "A", "C#": "E", "G#": "B",
-            "D#": "F#", "D": "F", "G": "Bb", "C": "Eb", "F": "Ab",
-            "Bb": "Db", "Eb": "Gb"}
-
-
-def fifths_de_to(to):
-    """`G` / `G major` / `E minor` / `Em` -> armadura en fifths (C=0)."""
-    m = re.match(r"^\s*([A-G][#b]?)\s*(major|maj|minor|min|m)?\s*$",
-                 str(to), re.I)
-    if not m:
-        return 0
-    root, mode = m.group(1), (m.group(2) or "major").lower()
-    if mode.startswith("mi") or mode == "m":          # menor -> relatiu major
-        root = _MIN_REL.get(root, root)
-    return _MAJ.get(root, 0)
-
-
-def detecta_fifths(wav, log=None):
-    """Tonalitat amb el `qm-keydetector` del projecte (opcional).
-
-    Reutilitza l'API pública de `app.pipeline` (no en modifica res). Si falla,
-    retorna 0 (= sense armadura) sense interrompre l'exportació.
-    """
-    log = _log_std(log)
-    d = None
-    try:
-        from app import pipeline
-        import tempfile
-        d = tempfile.mkdtemp(prefix="ac_key_")
-        out = os.path.join(d, "key.csv")
-        pipeline.executa_transform(pipeline.QM["key"], out, wav,
-                                   lambda *_a: None)
-        with open(out, encoding="utf-8") as f:
-            for row in csv.reader(f):
-                for cell in row:
-                    t = cell.strip()
-                    if re.match(r"^[A-G][#b]?\s+(major|minor)$", t):
-                        log(f"partitura: tonalitat detectada: {t}")
-                        return fifths_de_to(t)
-    except Exception as e:  # noqa: BLE001
-        log(f"partitura: no he pogut detectar la tonalitat ({e})")
-    finally:
-        # El directori temporal és nostre: s'esborra sempre (també si peta).
-        if d:
-            shutil.rmtree(d, ignore_errors=True)
-    return 0
 
 
 # --- MuseScore -------------------------------------------------------------
@@ -466,10 +397,10 @@ def _renderitza(binari, entrada, sortida, log, timeout=300):
 
 # --- export principal ------------------------------------------------------
 def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
-                      titol=None, key_fifths=0, wav=None,
+                      titol=None, wav=None,
                       genera_pdf=True, genera_mscz=True, musescore=None,
                       timeout=300, new_system_each=None, beat_type=4,
-                      mapa=None):
+                      mapa=None, events=None, durada=None):
     """Genera MusicXML (+ PDF/.mscz amb MuseScore) a `<sortida>/partitura/`.
 
     Retorna un diccionari amb les rutes generades (`musicxml`, `pdf`, `mscz`,
@@ -477,23 +408,27 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
     """
     log = _log_std(log)
     sortida = os.path.abspath(sortida)
-    loc = os.path.join(sortida, "acords_locators.txt")
-    if not os.path.isfile(loc):
-        log("partitura: no trobo acords_locators.txt (cal el mode BPM · compàs)")
-        return {"error": "sense_locators"}
 
     guia = os.path.join(sortida, "guia_acords.html")
     g_bpm, g_bpb = llegeix_bpm_bpb_de_guia(guia)
     bpm = float(bpm) if bpm else (g_bpm or 120.0)
     bpb = int(bpb) if bpb else (g_bpb or 4)
 
-    _bars = None
-    if mapa is not None and not mapa.es_constant():
-        _bars = {bar: b0 for (bar, b0, _n, _d) in mapa.compassos_beats()}
-    events = llegeix_locators(loc, bpb, _bars)
+    # Els acords surten del MODEL (no de cap fitxer intermedi): el pipeline els
+    # quantitza a corxera i en dona els beats. Si qui crida ja els passa, encara
+    # millor (zero lectures de disc).
+    if events is None:
+        from app import pipeline          # import local: evita cicles
+        try:
+            events = pipeline.events_partitura(
+                os.path.join(sortida, "acords.csv"), bpm, bpb,
+                offset=offset, durada=durada, mapa=mapa)
+        except (RuntimeError, OSError) as e:
+            log(f"partitura: no hi ha acords per escriure ({e})")
+            events = []
     if not events:
-        log("partitura: acords_locators.txt buit")
-        return {"error": "locators_buits"}
+        log("partitura: el model no té cap acord (tot «N»)")
+        return {"error": "sense_acords"}
     seccions = llegeix_seccions(os.path.join(sortida, "estructura_ABC.csv"))
 
     base = safe_filename(titol) if titol else _base_de_sortida(sortida)
@@ -501,8 +436,7 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
     os.makedirs(dest_dir, exist_ok=True)
 
     xml = construeix_musicxml(events, seccions, bpb=bpb, bpm=bpm, mapa=mapa,
-                              titol=base, key_fifths=key_fifths,
-                              new_system_each=new_system_each,
+                              titol=base, new_system_each=new_system_each,
                               beat_type=beat_type)
     ruta_xml = os.path.join(dest_dir, base + ".musicxml")
     with open(ruta_xml, "w", encoding="utf-8") as f:

@@ -428,7 +428,7 @@ def normalitza_trams(trams, durada):
     for t in sorted(trams or (), key=lambda x: float(x[0])):
         # Regla d'or #8 (temps vàlids): cap inici negatiu ni cap valor
         # impossible. Si n'arriba algun (CSV editat a mà, projecte vell, client
-        # de l'MCP) es PORTA AL VALOR VÀLID en comptes de propagar-lo.
+        # es PORTA AL VALOR VÀLID en comptes de propagar-lo.
         ini = max(0.0, float(t[0]))
         if durada > 0 and ini >= durada - TOL:
             continue

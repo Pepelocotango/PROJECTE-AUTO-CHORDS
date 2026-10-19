@@ -5,7 +5,41 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
 
 ## [Unreleased]
 
+### Tret
+- **MCP retirat (2026-10-19)**: fora el pont dins l'app (`app/mcp_bridge.py`), el
+  servidor (`eines/mcp_auto_chords_server.py`), el llançador
+  (`eines/mcp_auto_chords_launcher.py`, `AUTO_CHORDS_MCP.sh`), la prova
+  (`eines/prova_mcp_completa.py`), la documentació (`docs/MCP_AUTO_CHORDS.md`) i
+  la seva suite (123 tests). Decisió de l'operador: ens feia perdre temps; es
+  reprendrà, si cal, quan el codi estigui estable. Còpia íntegra a `OLD/`
+  (gitignored) + historial de git. La GUI és ara l'única via d'edició (cap avís
+  s'ha de protegir de cap pont).
+- **Tonalitat automàtica retirada (2026-10-19)**: fora l'acció «Tonalitat
+  automàtica (qm-keydetector)», `partitura.detecta_fifths`/`fifths_de_to`, el
+  paràmetre `key_fifths`, i el `qm-keydetector` de `pipeline.QM`/`STEPS`. La
+  partitura surt sempre amb armadura de **do major**.
+- **Format intern més simple**: fora el fitxer intermedi `acords_locators.txt`;
+  els segments (posició · acord · durada en temps) i els events de la partitura
+  es calculen **en memòria** des del model (`pipeline.segments_locators` /
+  `events_partitura`). Fora el paràmetre `key_fifths` i `docs/MCP_AUTO_CHORDS.md`
+  també de l'índex de docs.
+- **Projecte complet des del naixement** i **diàleg d'àudio amb projecte ja
+  associat** (carregar / sobreescriure amb paperera): vegeu l'entrada anterior.
+
 ### Canviat
+- **«Obre àudio» amb projecte ja associat (2026-10-19)**: si l'àudio triat ja té
+  projecte (la carpeta `AUTOCHORDS_<nom>/` del costat o un projecte dels
+  **recents** amb el mateix àudio), l'app **pregunta**: **Carrega el projecte**
+  (per defecte; mana el projecte: el seu `audio/`, CSVs i tempo) · **Sobreescriu**
+  (la carpeta vella va a la **paperera** del sistema i es recrea de zero, sense
+  restes de derivats ni d'`analisi/`) · **Cancel·la**. Abans donava un error
+  («ja hi ha un projecte a …»).
+- **Projecte complet des del naixement**: `Projecte.crea()` escriu també el
+  **model inicial** (`acords.csv` 0→durada amb «N», `estructura_ABC.csv` 0→durada
+  amb «A», i `tempo.csv`/`compas.csv`), no només `.acproj` + `audio/`. Així es
+  pot treballar i **exportar WAVs i partitura sense analitzar mai**.
+- **Exportar sense cap acord**: el missatge ja no és tècnic («tot N… Chordino»)
+  sinó «No hi ha cap acord per exportar: el model només té «N»…».
 - **Consolidació d'arquitectura i neteja de codi (4 fases, 2026-10-19)**: sense
   funcionalitats noves; **1.138 tests (1 skip)** i `pyflakes` net abans i
   després.
