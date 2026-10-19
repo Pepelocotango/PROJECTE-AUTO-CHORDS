@@ -25,6 +25,7 @@ import threading
 from unittest import mock
 from app import audio_out, plataforma
 import hashlib
+import struct
 import http.server
 import importlib.util
 import shutil
@@ -1518,6 +1519,67 @@ def _usades():
     return noms
 
 
+def _icns_blocs(ruta):
+    """Retorna els blocs de l'`.icns` {tipus: dades}, validant-ne l'estructura."""
+    with open(ruta, "rb") as f:
+        d = f.read()
+    if d[:4] != b"icns":
+        raise AssertionError(f"{ruta} no comença amb 'icns'")
+    if struct.unpack(">I", d[4:8])[0] != len(d):
+        raise AssertionError("la mida declarada de l'.icns no coincideix")
+    blocs, off = {}, 8
+    while off < len(d):
+        tipus = d[off:off + 4]
+        n = struct.unpack(">I", d[off + 4:off + 8])[0]
+        if n < 8 or off + n > len(d):
+            raise AssertionError(f"bloc {tipus!r} amb mida invàlida ({n})")
+        blocs[tipus] = d[off + 8:off + n]
+        off += n
+    return blocs
+
+
+def _packbits_descomprimeix(dades):
+    """Desfà l'RLE PackBits de l'ICNS (per validar `ic04`/`ic05`)."""
+    out, i = bytearray(), 0
+    while i < len(dades):
+        control = dades[i]
+        i += 1
+        if control & 0x80:
+            n = control - 125
+            out.extend([dades[i]] * n)
+            i += 1
+        else:
+            n = control + 1
+            out.extend(dades[i:i + n])
+            i += n
+    return bytes(out)
+
+
+def _ico_entrades(ruta):
+    """Retorna les entrades de l'ICO {mida, planes, bpp, dades}, validant-ne els límits."""
+    with open(ruta, "rb") as f:
+        d = f.read()
+    reserved, tipus, n = struct.unpack("<HHH", d[:6])
+    if (reserved, tipus) != (0, 1):
+        raise AssertionError(f"{ruta}: capçalera ICO invàlida")
+    entrades, off = [], 6
+    for _ in range(n):
+        w, h, _colors, _resv, planes, bpp, size, ofs = struct.unpack(
+            "<BBBBHHII", d[off:off + 16])
+        off += 16
+        if ofs + size > len(d):
+            raise AssertionError(f"{ruta}: imatge fora del fitxer")
+        if (w == 0) != (h == 0):
+            raise AssertionError(f"{ruta}: amplada/alçada 0 incoherents")
+        entrades.append({
+            "mida": 256 if w == 0 else w,
+            "planes": planes,
+            "bpp": bpp,
+            "dades": d[ofs:ofs + size],
+        })
+    return entrades
+
+
 class TestIcones(unittest.TestCase):
 
     @classmethod
@@ -1540,6 +1602,78 @@ class TestIcones(unittest.TestCase):
         """La icona de la finestra (barra de tasques) també ha d'haver-hi."""
         pm = icones.icona_app()
         self.assertFalse(pm.isNull(), "la icona de l'app ix buida")
+
+    def test_icns_macos_usa_argb_a_16_i_32_px(self):
+        """`ic04`/`ic05` han de ser ARGB+RLE, no PNG (`icp4`/`icp5`/`icp6`).
+
+        macOS Finder/DMG dibuixa **corruptes** els PNG petits de l'ICNS a 1×;
+        el Dock i l'app instal·lada (mides grans) es veuen bé. Apple's
+        `iconutil` escriu el 16 i el 32 px com a `ic04`/`ic05` amb ARGB+RLE.
+        """
+        ruta = os.path.join(_icones__ARREL, "icona", "auto-chords.icns")
+        blocs = _icns_blocs(ruta)
+        for tipus, mida in ((b"ic04", 16), (b"ic05", 32)):
+            self.assertIn(tipus, blocs, f"falta el bloc {tipus!r}")
+            dades = blocs[tipus]
+            self.assertEqual(dades[:4], b"ARGB",
+                             f"{tipus!r} no és ARGB (¿PNG?)")
+            canals = _packbits_descomprimeix(dades[4:])
+            self.assertEqual(
+                len(canals), 4 * mida * mida,
+                f"{tipus!r}: els 4 canals no fan {mida}×{mida} píxels")
+        for tipus in (b"icp4", b"icp5", b"icp6"):
+            self.assertNotIn(
+                tipus, blocs,
+                f"{tipus!r} (PNG petit) fa que Finder/DMG el vegi corrupte")
+        for tipus in (b"ic07", b"ic08", b"ic09", b"ic10",
+                      b"ic11", b"ic12", b"ic13", b"ic14"):
+            self.assertIn(tipus, blocs, f"falta el bloc {tipus!r}")
+            self.assertTrue(blocs[tipus].startswith(b"\x89PNG"),
+                            f"{tipus!r} hauria de ser PNG")
+
+    def test_ico_windows_te_bmp_a_les_mides_petites_i_png_a_256(self):
+        """ICO de Windows: BMP/DIB fins a 128 px i PNG només a 256.
+
+        Microsoft recomana no comprimir les mides < 256; el mix BMP+PNG evita
+        problemes en eines antigues i en el diàleg de propietats. També calen
+        les mides 20 i 40 px, que Windows 10/11 usa a 125 % i 150 % de DPI.
+        """
+        ruta = os.path.join(_icones__ARREL, "icona", "auto-chords.ico")
+        entrades = _ico_entrades(ruta)
+        self.assertEqual([e["mida"] for e in entrades],
+                         [16, 20, 24, 32, 40, 48, 64, 128, 256])
+        for e in entrades:
+            self.assertEqual((e["planes"], e["bpp"]), (1, 32),
+                             f"{e['mida']} px: planes/bpp inesperats")
+            dades = e["dades"]
+            if e["mida"] == 256:
+                self.assertTrue(dades.startswith(b"\x89PNG\r\n\x1a\n"),
+                                "256 px ha de ser PNG")
+                self.assertEqual(struct.unpack(">II", dades[16:24]), (256, 256))
+                continue
+            self.assertEqual(dades[:4], b"\x28\x00\x00\x00",
+                             f"{e['mida']} px: hauria de ser BMP/DIB")
+            (bi_size, bi_w, bi_h, bi_planes, bi_bpp, bi_comp, bi_img,
+             _x, _y, _cu, _ci) = struct.unpack("<IiiHHIIiiII", dades[:40])
+            self.assertEqual(bi_size, 40)
+            self.assertEqual((bi_w, bi_h), (e["mida"], e["mida"] * 2))
+            self.assertEqual((bi_planes, bi_bpp, bi_comp), (1, 32, 0))
+            self.assertEqual(bi_img, e["mida"] * e["mida"] * 4)
+            mask_row = ((e["mida"] + 31) // 32) * 4
+            self.assertEqual(
+                len(dades),
+                40 + e["mida"] * e["mida"] * 4 + mask_row * e["mida"],
+                f"{e['mida']} px: mida del DIB + màscara incorrecta")
+
+    def test_icona_app_a_windows_prefereix_l_ico_multimida(self):
+        """A Windows, la finestra/taskbar han de poder triar la mida exacta."""
+        from app import plataforma
+        with mock.patch.object(plataforma, "ES_WINDOWS", True):
+            ic = icones.icona_app()
+        mides = {(s.width(), s.height()) for s in ic.availableSizes()}
+        self.assertTrue(
+            {(m, m) for m in (16, 20, 24, 32, 40, 48, 64, 128, 256)} <= mides,
+            f"l'ICO no ofereix totes les mides: {sorted(mides)}")
 
     def test_no_hi_ha_icones_innecessaries(self):
         """Cap SVG del disc sense referència al codi.

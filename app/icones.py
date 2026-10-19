@@ -79,11 +79,24 @@ def pm_mida(mida):
 def icona_app():
     """QIcon del logo de l'aplicació (barra de títol / llançador).
 
-    El logo es genera a `icona/` (vegeu eines/crea_icona.py). Si no hi és,
-    retorna un QIcon buit: l'app no ha de petar mai per una icona que falti.
+    El logo es genera a `icona/` (vegeu eines/crea_icona.py). A Windows es
+    prefereix l'`.ico` multi-mida (Qt tria la mida exacta per al títol i la
+    taskbar); a Linux/macOS, el PNG. Si el fitxer no es pot carregar, es prova
+    el següent i, si no n'hi ha cap, retorna un QIcon buit: l'app no ha de
+    petar mai per una icona que falti.
     """
-    for nom in ("auto-chords.png", "auto-chords-256.png", "auto-chords-128.png"):
+    noms = ["auto-chords.png", "auto-chords-256.png", "auto-chords-128.png"]
+    try:
+        from app import plataforma
+        if plataforma.ES_WINDOWS:
+            noms.insert(0, "auto-chords.ico")
+    except Exception:
+        # Si no es pot consultar la plataforma, els PNG de sempre.
+        pass
+    for nom in noms:
         ruta = os.path.join(_ARREL, "icona", nom)
         if os.path.isfile(ruta):
-            return QIcon(ruta)
+            ic = QIcon(ruta)
+            if not ic.isNull():
+                return ic
     return QIcon()

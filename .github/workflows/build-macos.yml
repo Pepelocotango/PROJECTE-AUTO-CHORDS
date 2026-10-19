@@ -347,7 +347,9 @@ jobs:
           NOM="AutoChords-${VER}-build${GITHUB_RUN_NUMBER}-macos-x86_64"
           STAGE="$(mktemp -d)/dmg"
           mkdir -p "$STAGE"
-          cp -R "dist/AUTO_CHORDS.app" "$STAGE/"
+          # `ditto` (no `cp -R`): copia el bundle 1:1, amb permisos, resource
+          # forks i metadades; `cp -R` pot deixar l'.app sense icona/recursos.
+          ditto "dist/AUTO_CHORDS.app" "$STAGE/AUTO_CHORDS.app"
           ln -s /Applications "$STAGE/Applications"
           # Al DMG NOMÉS hi va l'imprescindible per a l'usuari: el README i les
           # llicències (obligatòries). El CHANGELOG/ROADMAP i tot `docs/` són

@@ -5,6 +5,25 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
 
 ## [Unreleased]
 
+### Canviat
+- **Icones de Windows (2026-10-19)**: `auto-chords.ico` passa a tenir 9 mides
+  (16, 20, 24, 32, 40, 48, 64, 128 i 256): **16–128 en BMP/DIB 32-bit** i
+  **256 en PNG**, segons la recomanació de Microsoft. S'hi afegeixen 20 i 40 px
+  perquè Windows 10/11 els fa servir a 125 % i 150 % de DPI.
+  `icones.icona_app()` prefereix l'ICO a Windows perquè Qt triï la mida exacta
+  a la finestra/taskbar (amb fallback als PNG). Guards:
+  `TestIcones.test_ico_windows_te_bmp_a_les_mides_petites_i_png_a_256` i
+  `TestIcones.test_icona_app_a_windows_prefereix_l_ico_multimida`.
+
+### Corregit
+- **Icona de macOS al DMG/Finder (2026-10-19)**: l'`.icns` portava el 16 i el
+  32 px com a PNG dins `icp4`/`icp5`/`icp6`. macOS els dibuixa **corruptes** a
+  1× al Finder (finestra del DMG, còpia a Aplicacions), tot i que el Dock i
+  l'app instal·lada es veien bé. Ara `ic04`/`ic05` es generen en **ARGB+RLE**,
+  com `iconutil`, i s'han tret els blocs PNG petits. El staging del DMG fa
+  servir `ditto` (no `cp -R`) per copiar el bundle 1:1. Guard:
+  `TestIcones.test_icns_macos_usa_argb_a_16_i_32_px`.
+
 ### Afegit
 - **Proteccions del `.acproj` (2026-10-19)**: el cru viatja dins el document i es
   tracta com una *cache*: (1) **lectura tolerant** (`saneja_analisi`: si el cru
