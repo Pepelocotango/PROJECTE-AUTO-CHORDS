@@ -1,13 +1,31 @@
 # AGENTS.md — guia per a agents d'IA · PROJECTE AUTO CHORDS
 
-> **Llegeix aquest fitxer sencer abans de tocar res.** 
+> **Llegeix aquest fitxer sencer abans de tocar res.**
 > Conté l'orientació, l'arquitectura i les trampes. **Les regles de l'app NO són
 > ací**: la font canònica és **`docs/REGLES_DE_LA_APP.md`** (vegeu més avall).
+
+## 📌 Font de veritat: **el CODI** (els `.md` són documentació)
+
+- **Cap fitxer `.md` és font de veritat.** Aquest `AGENTS.md`, el `README`, tot
+  `docs/` i el `CHANGELOG` són **documentació**: expliquen la intenció i el perquè,
+  però **poden estar desactualitzats** (ahir eren cert i avui no).
+- **L'única font de veritat és el CODI** (`app/`, `tests/`, `eines/`) i l'estat
+  real del repositori i del disc. Si un document diu una cosa i el codi en fa una
+  altra, **mana el codi** — i el document s'ha d'actualitzar.
+- Per saber què fa l'app *de debò*: llig el **codi**, els **tests** (que fixen el
+  comportament) i, si cal, **executa-ho**. No et refies d'un doc sense
+  contrastar-lo.
+- **Excepció: les regles d'or** (`docs/REGLES_DE_LA_APP.md`). No són una
+  descripció sinó un **contracte**: si el codi no les compleix, és un **bug del
+  codi**. Es poden **revisar**, però només **amb supervisió i consentiment
+  explícit de l'operador** (i el canvi queda documentat al `CHANGELOG`). Un agent
+  **no** les canvia per iniciativa pròpia.
 
 ## ⏱️ Els primers 5 minuts (ordre de lectura)
 
 1. Aquest fitxer (l'estàs llegint).
-2. **`docs/REGLES_DE_LA_APP.md`** — les regles d'or (canònic).
+2. **`docs/REGLES_DE_LA_APP.md`** — les regles d'or (contracte; canvis només
+   amb consentiment explícit de l'operador).
 3. `docs/FLUX_DE_DADES.md` — què és el MODEL, què és el cru i on viu cada cosa.
 4. `git status` — mira si hi ha feina d'altres agents o canvis sense commitejar
    (**no els descartes ni els refacis**: pregunta a l'operador).
