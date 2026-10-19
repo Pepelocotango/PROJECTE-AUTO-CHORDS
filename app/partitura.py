@@ -21,7 +21,7 @@ si no es troba el binari, s'escriu només el MusicXML i s'avisa (no trenca res).
 
 Abast: la partitura reflecteix els **xifrats** detectats/editats (no hi ha
 transcripció de melodia). Només té sentit en mode **BPM · compàs** (cal
-el MODEL (`acords.csv`, quantitzat a 1/16); en mode lliure no hi ha graella).
+el MODEL (`acords.csv`, quantitzat a 1/32); en mode lliure no hi ha graella).
 """
 import csv
 import glob
@@ -75,16 +75,16 @@ def _base_de_sortida(sortida):
 
 # --- lectura de dades ------------------------------------------------------
 def parse_pos(s, bpb=4, bars=None):
-    """`compàs.temps.setzena` -> posició absoluta en negres (beat).
+    """`compàs.temps.fusa` -> posició absoluta en negres (beat).
 
     Amb `bars` (mapa compàs→negra d'inici; per a compàs variable) el
     desplaçament ve del mapa; si no, `(b-1)*bpb` (compàs uniforme).
     """
     b, t, sub = (int(x) for x in s.split("."))
-    # 3r camp = subdivisió dins del temps (1..4, "setzena"; les dades d'Auto
-    # Chords fan servir 1 = temps i 3 = "i" del temps -> +0,5 beats).
+    # 3r camp = subdivisió dins del temps (1..8, "fusa"; 1 = temps,
+    # 5 = "i" del temps -> +0,5 beats).
     base = bars.get(b, (b - 1) * bpb) if bars else (b - 1) * bpb
-    return base + (t - 1) + (sub - 1) / 4.0
+    return base + (t - 1) + (sub - 1) / 8.0
 
 
 _RE_POS = re.compile(r"^\d+\.\d+\.\d+$")
@@ -174,10 +174,11 @@ def harmony_xml(chord):
 
 # --- durades i notes -------------------------------------------------------
 _UNITS = {"whole": 1920, "half": 960, "quarter": 480, "eighth": 240,
-          "16th": 120}
+          "16th": 120, "32nd": 60}
 _STD = [(1920, "whole", 0), (1440, "half", 1), (960, "half", 0),
         (720, "quarter", 1), (480, "quarter", 0), (360, "eighth", 1),
-        (240, "eighth", 0), (120, "16th", 0)]
+        (240, "eighth", 0), (120, "16th", 0), (90, "32nd", 1),
+        (60, "32nd", 0)]
 
 
 def _decomposa(units):
@@ -417,7 +418,7 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
     bpb = int(bpb) if bpb else (g_bpb or 4)
 
     # Els acords surten del MODEL (no de cap fitxer intermedi): el pipeline els
-    # quantitza a 1/16 i en dona els beats. Si qui crida ja els passa, encara
+    # quantitza a 1/32 i en dona els beats. Si qui crida ja els passa, encara
     # millor (zero lectures de disc).
     if events is None:
         from app import pipeline          # import local: evita cicles

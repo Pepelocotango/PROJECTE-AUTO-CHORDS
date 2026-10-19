@@ -14,6 +14,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   `.rpp-bak` de REAPER).
 
 ### Canviat
+- **Opcions de snap ampliades (2026-10-19)**: a més de les divisions binàries,
+  el selector de graella inclou **treset de negra (2/3)**, **treset de corxera
+  (1/3)** i **treset de semicorxera (1/6)**, i blocs de **2, 6, 12, 24, 32, 48
+  i 64 compassos** (a més d'1, 4, 8 i 16). El snap manual també es respecta amb
+  un **mapa de tempo variable** (abans queia al snap automàtic). El selector
+  **força el grid visual** encara que el snap estigui apagat; amb «Auto» mana
+  el zoom. Les línies de treset porten etiquetes al temps (no es poden
+  representar amb la graella binària de 1/32).
+
+### Canviat
 - **Resolució temporal unificada (2026-10-19)**: els quatre CSV del MODEL
   (`acords.csv`, `estructura_ABC.csv`, `tempo.csv`, `compas.csv`) es desen amb
   **6 decimals (1 µs)**, no 2 (10 ms). El BPM també es desa amb 6 decimals (no
@@ -22,12 +32,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   marges de partir, moure, redimensionar i duplicar també. MusicXML passa de
   `divisions=4` a **480**. Els fitxers editables ja no tenen resolucions
   diferents entre si.
-- **Posicions musicals a 1/16 (2026-10-19)**: `pos_compas` i `TempoMap.pos`
-  passen de **corxera (1/8)** a **semicorxera (1/16)**; el tercer camp de
-  `compàs.temps.setzena` és 1..4. Afecta el regle, la guia, `estructura_ABC.csv`
-  i els noms d'export (que continuen sent `1-1-1_C.wav`).
+- **Posicions musicals a 1/32 (2026-10-19)**: `pos_compas`, `TempoMap.pos`, el
+  regle, el camp `C.B.S` i els noms d'export passen de **corxera (1/8)** a
+  **fusa (1/32)**; el tercer camp de `compàs.temps.fusa` és **1..8**. Afecta el
+  regle, la guia, `estructura_ABC.csv` i els noms d'export (que continuen sent
+  `1-1-1_C.wav`). MusicXML pot escriure la **32nd** (`divisions` 480 → 60
+  unitats) i el snap d'anàlisi admet fins a 8 subdivisions per temps.
 - **Export amb temps exactes (2026-10-19)**: les durades dels WAV surten dels
-  **segons exactes** del model (no de la graella 1/16) i l'exportació escriu
+  **segons exactes** del model (no de la graella 1/32) i l'exportació escriu
   **`manifest.csv`** amb `tipus, fitxer, inici_s, fi_s, durada_s, contingut,
   posicio` a 6 decimals. Els noms musicals es mantenen. En mode Lliure, els noms
   dels WAV passen a mil·lisegons (`0000.000s_...`).

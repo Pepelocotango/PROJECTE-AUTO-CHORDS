@@ -179,11 +179,13 @@ class TempoMap:
         beat = _beat_quarters(s.den) * 60.0 / s.bpm
         return (_bar_quarters(s.num, s.den) * 60.0 / s.bpm, beat, beat / 2.0)
 
-    def grid_lines(self, t0, t1, kind="bar", n=1):
+    def grid_lines(self, t0, t1, kind="bar", n=1, frac=None):
         """Temps de les línies de graella de `kind` dins `[t0, t1]` (mapa-aware).
 
         `kind`: `"bar"` (cada `n` compassos), `"beat"` (temps) o `"sub"`
-        (mitja negra). Les línies són **musicals** (bar/beat), per tant el seu
+        (fracció de temps). `frac` permet graelles de treset (1/3, 2/3, 1/6)
+        o qualsevol altra subdivisió; si no es passa, 0,5 per a `"sub"` i 1,0
+        per a `"beat"`. Les línies són **musicals** (bar/beat), per tant el seu
         espaiat en segons varia amb el mapa.
         """
         t0, t1 = float(t0), float(t1)
@@ -195,7 +197,10 @@ class TempoMap:
                 if k % pas == 0 and t0 - TOL <= tall[1] <= t1 + TOL:
                     out.append(tall[1])
             return out
-        frac = 0.5 if kind == "sub" else 1.0
+        if frac is None:
+            frac = 0.5 if kind == "sub" else 1.0
+        if frac <= 0:
+            frac = 1.0
         for k, (q_bar, _t_bar, num, den) in enumerate(talls):
             q_fi = talls[k + 1][0] if k + 1 < len(talls) else None
             pas_q = _beat_quarters(den) * frac
@@ -320,13 +325,13 @@ class TempoMap:
         """`(compàs, temps, subdivisió)` d'un instant.
 
         El **compàs 1** és a l'offset; abans seu la numeració és ≤ 0 (compte
-        enrere). `subdivisió` és la **setzena** dins del temps (1..4).
+        enrere). `subdivisió` és la **fusa** dins del temps (1..8).
         """
         t = float(t)
-        # La posició es mostra a resolució de 1/16: arrodonim la negra a la
-        # setzena més propera perquè `pos_compas` i el mapa donen la mateixa
+        # La posició es mostra a resolució de 1/32: arrodonim la negra a la
+        # fusa més propera perquè `pos_compas` i el mapa donen la mateixa
         # etiqueta també a les vores (p. ex. 9,5 s a 101 BPM).
-        q = round(self.quarters(t) * 4) / 4.0
+        q = round(self.quarters(t) * 8) / 8.0
         talls = self._talls_de_compas()
         if q >= -TOL:
             idx = 0
@@ -351,8 +356,8 @@ class TempoMap:
         if b >= num:
             b = num - 1
         frac = (dins - b * beat_q) / beat_q
-        sub = 1 + int(frac * 4 + TOL)
-        return (compas, max(1, min(num, b + 1)), min(4, sub))
+        sub = 1 + int(frac * 8 + TOL)
+        return (compas, max(1, min(num, b + 1)), min(8, sub))
 
     def label(self, t):
         """Etiqueta `compàs.temps.subdivisió` (mateixa forma que `pos_compas`)."""

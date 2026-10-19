@@ -480,15 +480,15 @@ class Visor(QMainWindow):
         if not self.tempo_fix:
             return f"{s:07.3f}s"
         # Mateixa graella que el regle: offset inclos i compassos negatius
-        # (count-in) abans del compas 1. El tercer camp és la setzena (1..4).
+        # (count-in) abans del compas 1. El tercer camp és la fusa (1..8).
         beat_len = 60.0 / self.bpm
         p = int(round((float(s) - getattr(self, "offset", 0.0))
-                      / beat_len * 4))
-        SB = max(1, int(self.bpb)) * 4
+                      / beat_len * 8))
+        SB = max(1, int(self.bpb)) * 8
         compas = p // SB + 1
         dins = p % SB
-        beat = dins // 4 + 1
-        sub = dins % 4 + 1
+        beat = dins // 8 + 1
+        sub = dins % 8 + 1
         return f"{compas}.{beat}" if sub == 1 else f"{compas}.{beat}.{sub}"
 
 
@@ -504,9 +504,9 @@ class Visor(QMainWindow):
             compas = int(m.group(1))
             beat = int(m.group(2))
             sub = int(m.group(3)) if m.group(3) else 1
-            sub = max(1, min(4, sub))
+            sub = max(1, min(8, sub))
             return (((compas - 1) * self.bpb + (beat - 1)
-                     + (sub - 1) / 4.0) * (60.0 / self.bpm))
+                     + (sub - 1) / 8.0) * (60.0 / self.bpm))
         return float(text.split()[0])
 
     def _omple_llista_ac(self):
@@ -2442,28 +2442,28 @@ class Visor(QMainWindow):
             self.ed_ini.clear(); self.ed_cb.clear()
 
     def _secs_a_cb(self, t):
-        """Segons -> compas.beat o compas.beat.setzena (offset=0)."""
+        """Segons -> compas.beat o compas.beat.fusa (offset=0)."""
         beat = 60.0 / max(self.bpm, 1e-9)
         bpb = max(1, int(self.bpb))
-        p = int(round(float(t) / beat * 4))
-        SB = bpb * 4
+        p = int(round(float(t) / beat * 8))
+        SB = bpb * 8
         c = p // SB + 1
         dins = p % SB
-        b = dins // 4 + 1
-        sub = dins % 4 + 1
+        b = dins // 8 + 1
+        sub = dins % 8 + 1
         return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
 
     def _cb_a_secs(self, text):
-        """compas.beat o compas.beat.setzena -> segons (offset=0)."""
+        """compas.beat o compas.beat.fusa -> segons (offset=0)."""
         m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)"
                      r"(?:\s*[.,]\s*(\d+))?\s*$", str(text))
         if not m:
             return None
         c, b = int(m.group(1)), int(m.group(2))
         sub = int(m.group(3)) if m.group(3) else 1
-        sub = max(1, min(4, sub))
+        sub = max(1, min(8, sub))
         beat = 60.0 / max(self.bpm, 1e-9)
-        n = (c - 1) * max(1, int(self.bpb)) + (b - 1) + (sub - 1) / 4.0
+        n = (c - 1) * max(1, int(self.bpb)) + (b - 1) + (sub - 1) / 8.0
         return max(0.0, n * beat)
 
     def avis_editor(self, text):

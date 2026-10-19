@@ -80,11 +80,23 @@ DIVISIONS = {
     "corxera": ("beat", 0.5),        # 1/8
     "semicorxera": ("beat", 0.25),   # 1/16
     "fusa": ("beat", 0.125),         # 1/32
-    "treset": ("beat", 1.0 / 3.0),   # treset de negra
+    # Treset: 3 notes en el lloc de 2.
+    "treset_negra": ("beat", 2.0 / 3.0),        # 3 negres en 2 temps
+    "treset_corxera": ("beat", 1.0 / 3.0),      # 3 corxeres en 1 temps
+    "treset_semicorxera": ("beat", 1.0 / 6.0),  # 3 semicorxeres en 1/2 temps
+    "treset": ("beat", 1.0 / 3.0),   # àlies històric = treset de corxera
+    # Blocs de compàs (estructura pop, blues i partits).
     "compas1": ("bars", 1),
+    "compas2": ("bars", 2),
     "compas4": ("bars", 4),
+    "compas6": ("bars", 6),
     "compas8": ("bars", 8),
+    "compas12": ("bars", 12),
     "compas16": ("bars", 16),
+    "compas24": ("bars", 24),
+    "compas32": ("bars", 32),
+    "compas48": ("bars", 48),
+    "compas64": ("bars", 64),
 }
 
 

@@ -1713,11 +1713,23 @@ class TimelineView(QGraphicsView):
             self._snap_on = bool(on)
         if divisio is not None:
             self._snap_div_nom = str(divisio)
+            if hasattr(self, "_grid"):
+                self._grid.set_divisio(self._snap_div_nom)
+            if hasattr(self, "_ruler"):
+                self._ruler.set_divisio(self._snap_div_nom)
         self.update()
 
     def _snap_step(self) -> float:
         """Pas de snap: la divisió triada (BPM·compàs) o la de zoom (auto)."""
         if self._snap_div_nom:
+            d = graella.DIVISIONS.get(self._snap_div_nom)
+            mapa = getattr(self, "_mapa", None)
+            if d and mapa is not None and not mapa.es_constant():
+                # Amb mapa variable, el compàs/temps no és constant: el pas
+                # es pren del tram on cau el cursor.
+                bar_s, beat_s, _sub_s = mapa.durations(self._pos_t)
+                return (bar_s * int(d[1]) if d[0] == "bars"
+                        else beat_s * float(d[1]))
             s = graella.divisio_segons(self._snap_div_nom, self._bpm,
                                        self._tempo_fix, self._bpb)
             if s > 0:
@@ -1732,6 +1744,12 @@ class TimelineView(QGraphicsView):
         off = getattr(self, "_offset", 0.0)
         mapa = getattr(self, "_mapa", None)
         if mapa is not None and not mapa.es_constant():
+            if self._snap_div_nom:
+                d = graella.DIVISIONS.get(self._snap_div_nom)
+                if d:
+                    if d[0] == "bars":
+                        return mapa.snap(float(t), ("bars", int(d[1])))
+                    return mapa.snap(float(t), ("beat", float(d[1])))
             return snap_time(float(t), self._tempo_fix, self._bpm, self._bpb,
                              self._pps, off, mapa=mapa)
         step = self._snap_step()

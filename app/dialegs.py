@@ -237,7 +237,7 @@ class DialegOpcions(QDialog):
         c.setToolTip("Mou l'inici de cada acord a la graella (BPM/compàs).")
         self._controls["clean"]["snap"] = c
         fn.addRow(QLabel("Encaixar a la graella"), c)
-        s = _spin(1, 4, 1, dnet.get("divisio", 1), 0)
+        s = _spin(1, 8, 1, dnet.get("divisio", 1), 0)
         s.setToolTip("Subdivisions per temps on encaixar (1 = temps).")
         self._controls["clean"]["divisio"] = s
         fn.addRow(QLabel("Subdivisions per temps"), s)

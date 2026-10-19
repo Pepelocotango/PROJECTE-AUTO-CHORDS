@@ -683,17 +683,17 @@ def _mapa_tempo_carpeta(carpeta, offset=0.0):
 
 
 def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
-    """Calcula els segments quantitzats a **1/16** per als locators i la guia HTML.
+    """Calcula els segments quantitzats a **1/32** per als locators i la guia HTML.
 
     Retorna `(segs, end, step, slots_bar, mapa, pos_de_p)`, on cada segment és
-    `(t_exacte, p, acord)` i `p` és l'índex de **semicorxera** des de l'origen.
+    `(t_exacte, p, acord)` i `p` és l'índex de **fusa** des de l'origen.
     """
     bpm = float(bpm)
     bpb = int(bpb)
     offset = float(offset or 0.0)
     durada = float(durada or 0.0)
-    step = 60.0 / bpm / 4.0                  # semicorxera (1/16)
-    slots_bar = bpb * 4                      # setzenes per compàs
+    step = 60.0 / bpm / 8.0                  # fusa (1/32)
+    slots_bar = bpb * 8                      # fuses per compàs
 
     if mapa is None:
         mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)),
@@ -713,18 +713,18 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
 
     def _t_de_p(p):
         if mapa is not None:
-            return mapa.t_de_quarters(p / 4.0)
+            return mapa.t_de_quarters(p / 8.0)
         return offset + p * step
 
     def _pos_de_p(p):
         if mapa is not None:
             return mapa.label(_t_de_p(p))
-        return "%d.%d.%d" % (p // slots_bar + 1, (p % slots_bar) // 4 + 1,
-                             1 + (p % 4))
+        return "%d.%d.%d" % (p // slots_bar + 1, (p % slots_bar) // 8 + 1,
+                             1 + (p % 8))
 
     segs, last, end = [], -1, 0
     for t, c in rows:
-        p = max(0, round(_q(t) * 4))
+        p = max(0, round(_q(t) * 8))
         if c == "N":
             end = p
             continue
@@ -741,13 +741,13 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
             "Posa'n almenys un (editant-lo al timeline) o prem «Analitza».")
     end = max(end, segs[-1][1] + slots_bar)
     if durada > 0:
-        end = max(end, round(_q(durada) * 4))
+        end = max(end, round(_q(durada) * 8))
     return segs, end, step, slots_bar, mapa, _pos_de_p
 
 
 def segments_locators(csv_path, bpm, bpb, offset=0.0, durada=None,
                       mapa=None, _dades=None):
-    """Guia DAW **en memòria**: `[(posició_1/16, acord, durada_en_beats), …]`.
+    """Guia DAW **en memòria**: `[(posició_1/32, acord, durada_en_beats), …]`.
 
     És un DERIVAT del model: **no es desa en cap fitxer** (decisió de
     l'operador, 2026-10-19: el sistema de fitxers intern, el més simple
@@ -761,7 +761,7 @@ def segments_locators(csv_path, bpm, bpb, offset=0.0, durada=None,
     out = []
     for i, (_t, p, c) in enumerate(segs):
         q = segs[i + 1][1] if i + 1 < len(segs) else end
-        out.append((_pos_de_p(p), c, (q - p) / 4.0))
+        out.append((_pos_de_p(p), c, (q - p) / 8.0))
     return out
 
 
@@ -770,7 +770,7 @@ def events_partitura(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
     """Acords per a la PARTITURA en memòria: `[(beat_inici, acord, beats), …]`.
 
     Mateixa font que la guia (`_segments_guia_daw`): el model quantitzat a
-    **1/16**. Així la partitura no depèn de cap fitxer intermedi.
+    **1/32**. Així la partitura no depèn de cap fitxer intermedi.
     """
     if _dades is None:
         _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
@@ -779,14 +779,14 @@ def events_partitura(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
     out = []
     for i, (_t, p, c) in enumerate(segs):
         q = segs[i + 1][1] if i + 1 < len(segs) else end
-        out.append((p / 4.0, c, (q - p) / 4.0))
+        out.append((p / 8.0, c, (q - p) / 8.0))
     return out
 
 
 def segments_exactes(csv_path, durada=0.0):
     """Segments EXACTES del model: `[(ini_s, fi_s, acord), …]`.
 
-    A diferència de `segments_locators` (que quantitza a 1/16 per a la guia i
+    A diferència de `segments_locators` (que quantitza a 1/32 per a la guia i
     els noms), ací els temps són els del model, sense arrodonir. És la font
     per a les durades dels WAV i per al `manifest.csv` de l'export.
     """
@@ -826,10 +826,10 @@ def segments_exactes(csv_path, durada=0.0):
 
 
 def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None):
-    """`[(posicio_1/16, acord, ini_s, fi_s)]` per als WAVs i el manifest.
+    """`[(posicio_1/32, acord, ini_s, fi_s)]` per als WAVs i el manifest.
 
-    El nom és la posició musical quantitzada a 1/16; els temps són els EXACTES
-    del model. Si dos acords cauen a la mateixa setzena, el segon agafa la
+    El nom és la posició musical quantitzada a 1/32; els temps són els EXACTES
+    del model. Si dos acords cauen a la mateixa fusa, el segon agafa la
     següent etiqueta per no xocar el nom (el manifest porta el temps exacte).
     """
     bpm = float(bpm)
@@ -841,8 +841,8 @@ def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None):
                                    offset=offset)
     elif hasattr(mapa, "es_constant") and mapa.es_constant():
         mapa = None
-    step = 60.0 / bpm / 4.0                  # semicorxera (1/16)
-    slots_bar = bpb * 4
+    step = 60.0 / bpm / 8.0                  # fusa (1/32)
+    slots_bar = bpb * 8
 
     def _q(t):
         if mapa is not None:
@@ -851,19 +851,19 @@ def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None):
 
     def _t_de_p(p):
         if mapa is not None:
-            return mapa.t_de_quarters(p / 4.0)
+            return mapa.t_de_quarters(p / 8.0)
         return offset + p * step
 
     def _pos(p):
         if mapa is not None:
             return mapa.label(_t_de_p(p))
-        return "%d.%d.%d" % (p // slots_bar + 1, (p % slots_bar) // 4 + 1,
-                             1 + (p % 4))
+        return "%d.%d.%d" % (p // slots_bar + 1, (p % slots_bar) // 8 + 1,
+                             1 + (p % 8))
 
     exactes = segments_exactes(csv_path, durada)
     out, last = [], -1
     for ini, fi, c in exactes:
-        p = max(0, round(_q(ini) * 4))
+        p = max(0, round(_q(ini) * 8))
         if p <= last:
             p = last + 1
         out.append((_pos(p), c, ini, fi))
@@ -931,21 +931,21 @@ def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
 
 
 def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0, mapa=None):
-    """Posició en format compàs.temps.setzena (qualsevol compàs).
+    """Posició en format compàs.temps.fusa (qualsevol compàs).
 
-    Graella = **1/16** (semicorxera). El tercer camp és la setzena dins del
-    temps (1..4). `bpb` = temps per compàs, així funciona amb 3/4, 6/8, 5/4…
+    Graella = **1/32** (fusa). El tercer camp és la fusa dins del temps
+    (1..8). `bpb` = temps per compàs, així funciona amb 3/4, 6/8, 5/4…
     """
     if lliure:
         return f"{float(t):07.3f}s"
     if mapa is not None and not mapa.es_constant():
-        return mapa.label(t)           # mateixa forma (compàs.temps.setzena)
-    step = 60.0 / bpm / 4              # semicorxera (1/16)
-    SB = max(1, int(bpb)) * 4          # setzenes per compàs
+        return mapa.label(t)           # mateixa forma (compàs.temps.fusa)
+    step = 60.0 / bpm / 8              # fusa (1/32)
+    SB = max(1, int(bpb)) * 8          # fuses per compàs
     # Sense clampar: abans de l'offset (compàs 1) les posicions son negatives
     # -> el silenci inicial queda com un compte enrere (compàs -1, -2...).
     p = round((float(t) - float(offset)) / step)
-    return "%d.%d.%d" % (p // SB + 1, (p % SB) // 4 + 1, 1 + (p % 4))
+    return "%d.%d.%d" % (p // SB + 1, (p % SB) // 8 + 1, 1 + (p % 8))
 
 
 def seq_abc(seccions):
@@ -1744,7 +1744,7 @@ def fer_wavs_acords_lliures(csv_path, total_s, dest_dir, sr, log,
 def fer_wavs_acords(segments, dest_dir, sr, log, manifest=None):
     """WAVs silenciosos d'acords amb durades EXACTES.
 
-    `segments` = `[(posicio_1/16, acord, ini_s, fi_s)]` (vegeu
+    `segments` = `[(posicio_1/32, acord, ini_s, fi_s)]` (vegeu
     `segments_export`). El nom conserva la posició musical `1-1-1`; la durada
     del WAV surt dels segons exactes, no de la graella. Si es passa `manifest`,
     s'hi afegeix una fila per cada WAV amb els temps exactes.
@@ -1752,7 +1752,7 @@ def fer_wavs_acords(segments, dest_dir, sr, log, manifest=None):
     os.makedirs(dest_dir, exist_ok=True)
     n = 0
     usats = set()          # desambigua noms d'acord que quedin iguals
-    usats_pos = set()      # desambigua posicions que caiguen a la mateixa 1/16
+    usats_pos = set()      # desambigua posicions que caiguen a la mateixa 1/32
     for pos_, chord, ini, fi in segments or ():
         ini, fi = float(ini), float(fi)
         frames = int(round((fi - ini) * sr))

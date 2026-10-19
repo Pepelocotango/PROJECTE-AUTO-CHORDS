@@ -8,7 +8,7 @@
 
 Aprofita les dades que ja genera l'exportació normal:
 
-    <sortida>/acords.csv            (el MODEL: inici,fi,acord — es quantitza a 1/16)
+    <sortida>/acords.csv            (el MODEL: inici,fi,acord — es quantitza a 1/32)
     <sortida>/estructura_ABC.csv    (seccions amb posició en compàs)
 
 i produeix:
@@ -61,7 +61,7 @@ i **marques de secció** (cada secció comença línia).
 
 ## Notes tècniques
 
-- Conversió `compàs.temps.setzena` -> beats: `(b-1)*bpb + (t-1) + (sub-1)/4`
+- Conversió `compàs.temps.fusa` -> beats: `(b-1)*bpb + (t-1) + (sub-1)/8`
   (el 3r camp és la subdivisió dins del temps: 1 = temps, 3 = «i» del temps).
 - Mapeig de qualitats -> `<kind>` de MusicXML (`major`, `minor`, `dominant`,
   `major-seventh`, `diminished`…); les desconegudes -> `<kind text="...">other`.

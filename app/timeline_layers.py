@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import (
     QGraphicsRectItem,
 )
 
-from app import theme      # noqa: E402  (paleta centralitzada)
+from app import graella, theme      # noqa: E402  (paleta centralitzada)
 from app.timeline_base import (   # noqa: E402
     CHORD_HANDLE, CHORD_HANDLE_ACTIVE, CURSOR_COLOR, LANE_DIVIDER,
     RULER_BG, RULER_TEXT, SECTION_FILLS, SECTION_TEXT, SELECTION_COLOR,
@@ -138,6 +138,7 @@ class GridLayer(QGraphicsItem):
         self._bpb = int(bpb)
         self._beat_type = 4
         self._mapa = None
+        self._divisio = ""      # divisió manual del snap ("" = automàtic)
         self._top = float(top)
         self.setZValue(-6)
         self.setPos(self._x_offset, self._top)
@@ -167,14 +168,20 @@ class GridLayer(QGraphicsItem):
         self._mapa = mapa
         self.update()
 
+    def set_divisio(self, divisio):
+        """Divisió manual del snap ('' = automàtic); afecta el grid visual."""
+        self._divisio = str(divisio or "")
+        self.update()
+
     def paint(self, painter, option, widget=None):
         p = painter
         p.setRenderHint(QPainter.Antialiasing, False)
         off = getattr(self, "_offset", 0.0)
         view_px = max(self._view_right - self._view_left, 1e-6) * self._pps
+        div = graella.DIVISIONS.get(self._divisio) if self._divisio else None
         for step, color, width in grid_levels(self._tempo_fix, self._bpm,
                                               self._bpb, self._pps, view_px,
-                                              mapa=self._mapa):
+                                              mapa=self._mapa, divisio=div):
             if step <= 1e-9:
                 continue
             p.setPen(QPen(QColor(color), width))
@@ -205,6 +212,7 @@ class RulerLayer(QGraphicsItem):
         self._bpb = int(bpb)
         self._beat_type = 4
         self._mapa = None
+        self._divisio = ""      # divisió manual del snap ("" = automàtic)
         self._top = float(top)
         self.setZValue(-4)
         self.setPos(self._x_offset, self._top)
@@ -235,6 +243,11 @@ class RulerLayer(QGraphicsItem):
         self._mapa = mapa
         self.update()
 
+    def set_divisio(self, divisio):
+        """Divisió manual del snap ('' = automàtic); afecta el regle/grid."""
+        self._divisio = str(divisio or "")
+        self.update()
+
     def mode_label(self) -> str:
         """Text de l'indicador de mode del regle.
 
@@ -255,8 +268,9 @@ class RulerLayer(QGraphicsItem):
         p.drawLine(QPointF(0, self._height - 1),
                    QPointF(rect.width(), self._height - 1))
         view_px = max(self._view_right - self._view_left, 1e-6) * self._pps
+        div = graella.DIVISIONS.get(self._divisio) if self._divisio else None
         plan = grid_plan(self._tempo_fix, self._bpm, self._bpb, self._pps,
-                         view_px, mapa=self._mapa)
+                         view_px, mapa=self._mapa, divisio=div)
         col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
                "sub": theme.TL_GRID_SUB}
         # ticks dels nivells secundaris (els més fins que el d'etiqueta)
@@ -295,16 +309,15 @@ class RulerLayer(QGraphicsItem):
                 p.setFont(label_font)
                 fm = QFontMetricsF(label_font)
                 wlab = fm.width(lab)
-                # No deixem que l'etiqueta isca per les vores (al primer
-                # compàs, a x=0, abans es veia només el darrer caràcter).
-                tx = x - wlab / 2
-                if tx < 2.0:
-                    tx = 2.0
-                elif tx + wlab > rect.width() - 2.0:
-                    tx = max(2.0, rect.width() - 2.0 - wlab)
-                # Separació mínima entre etiquetes: 8 px (abans només se
-                # superposaven, i al min zoom quedaven enganxades).
-                if tx > last_label_x:
+                # La col·lisió es calcula amb la posició SENSE clamp; si no,
+                # la primera etiqueta (desplaçada a x=2) feia saltar la segona.
+                label_left = x - wlab / 2
+                if label_left > last_label_x:
+                    tx = label_left
+                    if tx < 2.0:
+                        tx = 2.0
+                    elif tx + wlab > rect.width() - 2.0:
+                        tx = max(2.0, rect.width() - 2.0 - wlab)
                     if is_bar:
                         bg = QColor(theme.TL_GRID_MEASURE)
                         bg.setAlpha(90)
@@ -312,7 +325,7 @@ class RulerLayer(QGraphicsItem):
                                           wlab + 6, 13), bg)
                     p.setPen(QPen(QColor(theme.TL_GRID_MEASURE if is_bar else RULER_TEXT), 1))
                     p.drawText(QPointF(tx, self._height - 11), lab)
-                    last_label_x = tx + wlab + 8.0
+                    last_label_x = label_left + wlab + 4.0
 
         # CANVIS de tempo/compàs (com la «tempo track» d'un DAW): un marcador a
         # cada frontera del mapa, amb el valor nou.

@@ -1086,7 +1086,7 @@ class Finestra(QMainWindow):
         return self._llegeix_num(self.offset, 0.0, 0.0, 60.0)
 
     def _cb_a_secs(self, text):
-        """'C.B' o 'C.B.S' (compàs.beat.setzena) -> segons (offset=0)."""
+        """'C.B' o 'C.B.S' (compàs.beat.fusa) -> segons (offset=0)."""
         import re
         m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)"
                      r"(?:\s*[.,]\s*(\d+))?\s*$", str(text))
@@ -1094,22 +1094,22 @@ class Finestra(QMainWindow):
             return None
         c, b = int(m.group(1)), int(m.group(2))
         sub = int(m.group(3)) if m.group(3) else 1
-        sub = max(1, min(4, sub))
+        sub = max(1, min(8, sub))
         beat_len = 60.0 / max(self._bpm_val(), 1e-9)
         n = ((c - 1) * max(1, self._bpb_val()) + (b - 1)
-             + (sub - 1) / 4.0)
+             + (sub - 1) / 8.0)
         return max(0.0, min(60.0, n * beat_len))
 
     def _secs_a_cb(self, t):
-        """Segons -> 'C.B' o 'C.B.S' (setzena) a la graella ORIGINAL."""
+        """Segons -> 'C.B' o 'C.B.S' (fusa) a la graella ORIGINAL."""
         beat_len = 60.0 / max(self._bpm_val(), 1e-9)
         bpb = max(1, self._bpb_val())
-        p = int(round(float(t) / beat_len * 4))
-        SB = bpb * 4
+        p = int(round(float(t) / beat_len * 8))
+        SB = bpb * 8
         c = p // SB + 1
         dins = p % SB
-        b = dins // 4 + 1
-        sub = dins % 4 + 1
+        b = dins // 8 + 1
+        sub = dins % 8 + 1
         return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
 
     def _offset_cb_canviat(self):
@@ -2670,14 +2670,21 @@ class Finestra(QMainWindow):
                             self._canvia_snap, checkable=True)
         self.tb_snap.setChecked(True)
         self.cb_graella = QComboBox()
-        self.cb_graella.setToolTip("Divisió de la graella (on encaixa el snap)")
-        for et, val in (("Auto (zoom)", ""), ("Negra (1/4)", "negra"),
-                        ("Corxera (1/8)", "corxera"),
-                        ("Semicorxera (1/16)", "semicorxera"),
-                        ("Fusa (1/32)", "fusa"), ("Treset (1/12)", "treset"),
-                        ("1 compàs", "compas1"), ("4 compassos", "compas4"),
-                        ("8 compassos", "compas8"),
-                        ("16 compassos", "compas16")):
+        self.cb_graella.setToolTip("Divisió de la graella: grid visual i snap")
+        for et, val in (
+                ("Auto (zoom)", ""), ("Negra (1/4)", "negra"),
+                ("Corxera (1/8)", "corxera"),
+                ("Semicorxera (1/16)", "semicorxera"),
+                ("Fusa (1/32)", "fusa"),
+                ("Treset de negra (2/3)", "treset_negra"),
+                ("Treset de corxera (1/3)", "treset_corxera"),
+                ("Treset de semicorxera (1/6)", "treset_semicorxera"),
+                ("1 compàs", "compas1"), ("2 compassos", "compas2"),
+                ("4 compassos", "compas4"), ("6 compassos", "compas6"),
+                ("8 compassos", "compas8"), ("12 compassos", "compas12"),
+                ("16 compassos", "compas16"), ("24 compassos", "compas24"),
+                ("32 compassos", "compas32"), ("48 compassos", "compas48"),
+                ("64 compassos", "compas64")):
             self.cb_graella.addItem(et, val)
         self.cb_graella.currentIndexChanged.connect(self._canvia_snap)
         bar.addWidget(self.cb_graella)

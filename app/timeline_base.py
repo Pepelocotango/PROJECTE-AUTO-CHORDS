@@ -97,13 +97,15 @@ def _divisions(tempo_fix, bpm, bpb, mapa=None):
             return [(bar * 16, ("bar", 16)), (bar * 8, ("bar", 8)),
                     (bar * 4, ("bar", 4)), (bar * 2, ("bar", 2)),
                     (bar, "bar"), (beat, "beat"),
-                    (beat / 2.0, "sub"), (beat / 4.0, "sub")]
+                    (beat / 2.0, "sub"), (beat / 4.0, "sub"),
+                    (beat / 8.0, "sub")]
         beat = 60.0 / max(float(bpm), 1e-9)
         measure = beat * max(int(bpb), 1)
         return [(measure * 16, "bar"), (measure * 8, "bar"),
                 (measure * 4, "bar"), (measure * 2, "bar"),
                 (measure, "bar"), (beat, "beat"),
-                (beat / 2.0, "sub"), (beat / 4.0, "sub")]
+                (beat / 2.0, "sub"), (beat / 4.0, "sub"),
+                (beat / 8.0, "sub")]
     return [(600.0, "bar"), (300.0, "bar"), (60.0, "bar"), (30.0, "bar"),
             (10.0, "bar"), (5.0, "bar"), (2.0, "bar"), (1.0, "bar"),
             (0.5, "sub"), (0.2, "sub"), (0.1, "sub"), (0.05, "sub"),
@@ -121,7 +123,7 @@ def snap_step(tempo_fix, bpm, bpb, pps, mapa=None):
 
 
 def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
-              min_label_px=MIN_LABEL_PX, mapa=None):
+              min_label_px=MIN_LABEL_PX, mapa=None, divisio=None):
     """Pla ÚNIC de grid (font de veritat per a grid, regle i snap).
 
     Es decideix segons el **zoom en píxels** (com els DAWs), no per segons:
@@ -130,8 +132,54 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
                  **encara visible** (px <= view_px) + un de mig + el snap.
       - 'label': nivell de les etiquetes = el més gruixut que hi cap
                  (px >= min_label_px).
+
+    `divisio` = `(mena, valor)` de `graella.DIVISIONS` (o `None` = automàtic).
+    Quan n'hi ha, mana eixa divisió per al grid visual: si és un treset, les
+    línies van a 1/3, 2/3 o 1/6 de temps i les etiquetes queden al temps (per
+    no inventar posicions binàries); si és un bloc de compassos, les línies van
+    cada N compassos.
     """
     pps = max(float(pps), 1e-9)
+    if divisio and tempo_fix:
+        mena, val = divisio
+        variable = mapa is not None and not mapa.es_constant()
+        if variable:
+            bar_s, beat_s, _sub_s = mapa.durations(mapa.offset)
+        else:
+            beat_s = 60.0 / max(float(bpm), 1e-9)
+            bar_s = beat_s * max(int(bpb), 1)
+        lines = []
+        if mena == "bars":
+            step = bar_s * int(val)
+            kind = ("bar", int(val)) if variable else "bar"
+            label = step
+            # Context: les línies de compàs (més fines que el bloc triat).
+            # `lines` va de gruixut a fi: primer el bloc, després el compàs.
+            lines.append((step, kind))
+            if bar_s < step - 1e-9 and bar_s * pps >= min_line_px:
+                lines.append((bar_s, ("bar", 1) if variable else "bar"))
+        else:
+            step = beat_s * float(val)
+            es_treset = any(abs(float(val) - x) < 1e-9
+                            for x in (2.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0))
+            if variable:
+                kind = (("beat", 1.0) if abs(float(val) - 1.0) < 1e-9
+                        else ("sub", float(val)))
+            else:
+                kind = "beat" if abs(float(val) - 1.0) < 1e-9 else "sub"
+            # Un treset no es pot etiquetar amb la graella binària de 1/32:
+            # deixem les etiquetes al TEMPS i les línies fines al treset.
+            label = beat_s if es_treset else step
+            # Context: compàs i temps (si hi caben i són més gruixuts).
+            if bar_s > beat_s + 1e-9 and bar_s * pps >= min_line_px:
+                lines.append((bar_s, ("bar", 1) if variable else "bar"))
+            if beat_s > step + 1e-9 and beat_s * pps >= min_line_px:
+                lines.append((beat_s, ("beat", 1.0) if variable else "beat"))
+            lines.append((step, kind))
+        # Una divisió MANUAL mana sempre: no caiem a l'automàtic encara que
+        # siga molt fina o que no capa a la vista. L'usuari l'ha forçada des
+        # del selector de snap (independentment de si el snap està activat).
+        return {"snap": step, "lines": lines, "label": label}
     divs = _divisions(tempo_fix, bpm, bpb, mapa)
     fit = [(s, k) for (s, k) in divs if s * pps >= min_line_px]
     if not fit:
@@ -187,11 +235,15 @@ def grid_positions(view_left, view_right, step, offset=0.0, tol=1e-9,
         # Graella MUSICAL del mapa (l'espaiat varia amb el tempo/compàs).
         # `kind` pot ser ("bar", n) per als múltiples de compàs del min zoom.
         if isinstance(kind, tuple):
-            kind_name, n = kind
+            kind_name, val = kind
+            if kind_name == "bar":
+                n, frac = int(val), None
+            else:
+                n, frac = 1, float(val)
         else:
-            kind_name, n = kind, 1
+            kind_name, n, frac = kind, 1, None
         for t in mapa.grid_lines(float(view_left), float(view_right),
-                                 kind_name, n=n):
+                                 kind_name, n=n, frac=frac):
             yield t
         return
     if step is None or step <= tol:
@@ -268,7 +320,7 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
 
     `offset` = segon on cau el compàs 1 (la graella hi comença).
     `step` = pas de l'etiqueta. Quan és més fi que el beat, es mostra el 3r
-    camp (`compàs.beat.setzena`), com en DAWs professionals.
+    camp (`compàs.beat.fusa`), com en DAWs professionals.
     """
     if not tempo_fix:
         neg = t < -1e-9
@@ -299,14 +351,14 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
         compas += 1
         beat_idx = 1
     if step is not None and step > 0 and step < beat - 1e-9:
-        # El tercer camp és SEMPRE la setzena dins del temps (1..4), igual que
+        # El tercer camp és SEMPRE la fusa dins del temps (1..8), igual que
         # `pos_compas` i `TempoMap.pos`. Abans depenia del zoom.
         phase = beats - math.floor(beats)
         if phase < 0:
             phase += 1.0
-        sub_idx = 1 + int(phase * 4 + 1e-9)
-        if sub_idx > 4:
-            sub_idx = 4
+        sub_idx = 1 + int(phase * 8 + 1e-9)
+        if sub_idx > 8:
+            sub_idx = 8
         return f"{compas}.{beat_idx}.{sub_idx}"
     return f"{compas}.{beat_idx}"
 
@@ -324,7 +376,7 @@ def is_bar_start_label(label: str) -> bool:
         return False
 
 
-def grid_levels(tempo_fix, bpm, bpb, pps, view_px, mapa=None):
+def grid_levels(tempo_fix, bpm, bpb, pps, view_px, mapa=None, divisio=None):
     """[(step_s, color, width), ...] de menys a més important (GridLayer).
 
     `color` és un valor de color REAL (resolt de `theme`). Deriva del **pla
@@ -332,7 +384,8 @@ def grid_levels(tempo_fix, bpm, bpb, pps, view_px, mapa=None):
     """
     col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
            "sub": theme.TL_GRID_SUB}
-    plan = grid_plan(tempo_fix, bpm, bpb, pps, view_px, mapa=mapa)
+    plan = grid_plan(tempo_fix, bpm, bpb, pps, view_px, mapa=mapa,
+                     divisio=divisio)
 
     def _col(k):
         return col[k[0] if isinstance(k, tuple) else k]

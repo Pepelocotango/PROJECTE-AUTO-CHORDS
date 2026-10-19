@@ -98,7 +98,7 @@ class TestGuiaDaw(unittest.TestCase):
         td = _carpeta()
         segs = self._segs(td)
         self.assertEqual([c for (_p, c, _d) in segs], ["C", "Am", "F", "G"])
-        self.assertEqual(segs[0][0], "1.1.1", "posició compàs.temps.setzena")
+        self.assertEqual(segs[0][0], "1.1.1", "posició compàs.temps.fusa")
         self.assertAlmostEqual(segs[0][2], 8.0, places=6)   # 4 s a 120 BPM
 
     def test_genera_guia_html(self):
@@ -132,7 +132,7 @@ class TestGuiaDaw(unittest.TestCase):
 
     def test_amb_mapa_de_tempo_variable(self):
         """Amb `tempo.csv`/`compas.csv` de més d'un tram, tot es calcula amb el
-        mapa (posicions compàs.temps.setzena) i no peta."""
+        mapa (posicions compàs.temps.fusa) i no peta."""
         td = _carpeta(tempo="ini_s,fi_s,bpm\n0.0,8.0,120\n8.0,16.0,90\n",
                       compas="ini_s,fi_s,beats,beat_type\n0.0,8.0,4,4\n"
                              "8.0,16.0,3,4\n")
@@ -1769,8 +1769,8 @@ la descomposició de durades i la construcció del MusicXML.
 class ParsingTests(unittest.TestCase):
     def test_parse_pos_qualsevol_compas(self):
         self.assertAlmostEqual(partitura.parse_pos("1.1.1", 4), 0.0)
-        self.assertAlmostEqual(partitura.parse_pos("1.1.3", 4), 0.5)
-        self.assertAlmostEqual(partitura.parse_pos("2.3.3", 4), 6.5)
+        self.assertAlmostEqual(partitura.parse_pos("1.1.3", 4), 0.25)
+        self.assertAlmostEqual(partitura.parse_pos("2.3.3", 4), 6.25)
         self.assertAlmostEqual(partitura.parse_pos("1.1.1", 3), 0.0)
         self.assertAlmostEqual(partitura.parse_pos("2.1.1", 3), 3.0)
 
@@ -1888,12 +1888,16 @@ class DuradesTests(unittest.TestCase):
         self.assertEqual(partitura._decomposa(1440), [("half", 1)])
         self.assertEqual(partitura._decomposa(1200), [("half", 0), ("eighth", 0)])
         self.assertEqual(partitura._decomposa(360), [("eighth", 1)])
+        self.assertEqual(partitura._decomposa(90), [("32nd", 1)])
+        self.assertEqual(partitura._decomposa(60), [("32nd", 0)])
         self.assertEqual(partitura._decomposa(0), [])
 
     def test_note_i_silenci(self):
         self.assertIn("<notehead>slash</notehead>", partitura._note_xml(960))
         self.assertIn("<rest/>", partitura._note_xml(480, rest=True))
         self.assertNotIn("<pitch>", partitura._note_xml(480, rest=True))
+        self.assertIn("<type>32nd</type>", partitura._note_xml(60))
+        self.assertIn("<type>32nd</type>", partitura._note_xml(90))
 
 
 class MusicXmlTests(unittest.TestCase):
@@ -3272,10 +3276,10 @@ class OffsetDosCampsTests(unittest.TestCase):
         self.assertEqual(window._secs_a_cb(0.0), "1.1")
         window.close()
 
-    def test_compas_beat_setzena(self):
-        # 5.1.3 = compàs 5, temps 1, tercera setzena = 16,5 beats
+    def test_compas_beat_fusa(self):
+        # 5.1.3 = compàs 5, temps 1, tercera fusa = 16,25 beats
         window = self._finestra()
-        t = (16 + 0.5) * (60.0 / 101.0)
+        t = (16 + 0.25) * (60.0 / 101.0)
         self.assertAlmostEqual(window._cb_a_secs("5.1.3"), t, places=4)
         self.assertEqual(window._secs_a_cb(t), "5.1.3")
         window.close()
@@ -3411,8 +3415,8 @@ class OffsetTests(unittest.TestCase):
         from app.timeline import fmt_pos
         # amb zoom prou gran, el regle mostra compàs.temps.subdivisió, com en DAW
         self.assertEqual(fmt_pos(0.0, True, 120, 4, 0.0, step=0.25), "1.1.1")
-        self.assertEqual(fmt_pos(0.25, True, 120, 4, 0.0, step=0.25), "1.1.3")
-        self.assertEqual(fmt_pos(0.75, True, 120, 4, 0.0, step=0.25), "1.2.3")
+        self.assertEqual(fmt_pos(0.25, True, 120, 4, 0.0, step=0.25), "1.1.5")
+        self.assertEqual(fmt_pos(0.75, True, 120, 4, 0.0, step=0.25), "1.2.5")
 
     def test_compas_manual_accepta_fraccio(self):
         from app.main import Finestra
@@ -3465,7 +3469,7 @@ class OffsetTests(unittest.TestCase):
 
     def test_snap_time_amb_offset(self):
         from app.timeline import snap_time
-        # pps=64 -> snap 0.125 (setzena a 120 BPM); offset 1.0
+        # pps=64 -> snap 0.125 (1/16 a 120 BPM; 1/32 = 4 px, no hi cap); offset 1.0
         self.assertAlmostEqual(snap_time(1.13, True, 120, 4, 64.0, 1.0),
                                1.125, places=4)
         self.assertAlmostEqual(snap_time(1.13, True, 120, 4, 64.0, 0.0),
@@ -5133,17 +5137,21 @@ class FormatCsvTests(unittest.TestCase):
                         .endswith("s"))
 
 
-class Resolucio1_16IExportTests(unittest.TestCase):
-    """La graella musical és 1/16; l'export conserva els temps exactes."""
+class Resolucio1_32IExportTests(unittest.TestCase):
+    """La graella musical és 1/32; l'export conserva els temps exactes."""
 
-    def test_pos_compas_1_16(self):
+    def test_pos_compas_1_32(self):
         self.assertEqual(pipeline.pos_compas(0.0, 120, 4), "1.1.1")
-        self.assertEqual(pipeline.pos_compas(0.125, 120, 4), "1.1.2")
-        self.assertEqual(pipeline.pos_compas(0.25, 120, 4), "1.1.3")
-        self.assertEqual(pipeline.pos_compas(0.375, 120, 4), "1.1.4")
+        self.assertEqual(pipeline.pos_compas(0.0625, 120, 4), "1.1.2")
+        self.assertEqual(pipeline.pos_compas(0.125, 120, 4), "1.1.3")
+        self.assertEqual(pipeline.pos_compas(0.1875, 120, 4), "1.1.4")
+        self.assertEqual(pipeline.pos_compas(0.25, 120, 4), "1.1.5")
+        self.assertEqual(pipeline.pos_compas(0.3125, 120, 4), "1.1.6")
+        self.assertEqual(pipeline.pos_compas(0.375, 120, 4), "1.1.7")
+        self.assertEqual(pipeline.pos_compas(0.4375, 120, 4), "1.1.8")
         self.assertEqual(pipeline.pos_compas(0.5, 120, 4), "1.2.1")
 
-    def test_segments_export_1_16_i_temps_exactes(self):
+    def test_segments_export_1_32_i_temps_exactes(self):
         td = tempfile.mkdtemp()
         ca = os.path.join(td, "acords.csv")
         with open(ca, "w", encoding="utf-8", newline="") as f:
@@ -5152,7 +5160,7 @@ class Resolucio1_16IExportTests(unittest.TestCase):
             w.writerow(["0.123456", "0.260000", "G"])
             w.writerow(["0.260000", "2.000000", "Am"])
         segs = pipeline.segments_export(ca, 120.0, 4, 0.0, durada=2.0)
-        self.assertEqual([s[0] for s in segs], ["1.1.1", "1.1.2", "1.1.3"])
+        self.assertEqual([s[0] for s in segs], ["1.1.1", "1.1.3", "1.1.5"])
         self.assertEqual([s[1] for s in segs], ["C", "G", "Am"])
         self.assertAlmostEqual(segs[0][2], 0.0, places=9)
         self.assertAlmostEqual(segs[0][3], 0.123456, places=9)
@@ -5176,14 +5184,14 @@ class Resolucio1_16IExportTests(unittest.TestCase):
         acords = [x for x in files if x["tipus"] == "acord"]
         estructura = [x for x in files if x["tipus"] == "estructura"]
         self.assertEqual([x["fitxer"] for x in acords],
-                         ["1-1-1_C.wav", "1-1-2_G.wav", "1-1-3_Am.wav"])
+                         ["1-1-1_C.wav", "1-1-3_G.wav", "1-1-5_Am.wav"])
         self.assertEqual([x["inici_s"] for x in acords],
                          ["0.000000", "0.123456", "0.260000"])
         self.assertEqual([x["fi_s"] for x in acords],
                          ["0.123456", "0.260000", "2.000000"])
         self.assertEqual(len(estructura), 2)
-        # La durada del WAV surt dels segons exactes, no de la graella 1/16.
-        with wave.open(os.path.join(out, "wavs_acords", "1-1-2_G.wav"),
+        # La durada del WAV surt dels segons exactes, no de la graella 1/32.
+        with wave.open(os.path.join(out, "wavs_acords", "1-1-3_G.wav"),
                        "rb") as w:
             self.assertEqual(w.getnframes(),
                              int(round((0.26 - 0.123456) * 44100)))

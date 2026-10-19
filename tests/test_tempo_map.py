@@ -78,16 +78,16 @@ class TestConstant(unittest.TestCase):
         tm = TempoMap.constant(120, 4, 4, durada=8.0)
         self.assertEqual(tm.pos(0.0), (1, 1, 1))
         self.assertEqual(tm.pos(0.5), (1, 2, 1))
-        self.assertEqual(tm.pos(0.25), (1, 1, 3))
+        self.assertEqual(tm.pos(0.25), (1, 1, 5))
         self.assertEqual(tm.pos(2.0), (2, 1, 1))
         self.assertEqual(tm.label(4.0), "3.1.1")
 
-    def test_pos_1_16_i_vora_de_compas(self):
+    def test_pos_1_32_i_vora_de_compas(self):
         tm = TempoMap.constant(101, 4, 4, durada=20.0)
         self.assertEqual(tm.pos(0.125 * (60.0 / 101.0) * 2),
-                         (1, 1, 2))
+                         (1, 1, 3))
         # 9,5 s a 101 BPM és pràcticament 16 negres (compàs 5): la vista a
-        # 1/16 ha de coincidir amb `pos_compas`, no quedar-se al compàs 4.
+        # 1/32 ha de coincidir amb `pos_compas`, no quedar-se al compàs 4.
         from app import pipeline
         self.assertEqual(tm.label(9.5), pipeline.pos_compas(9.5, 101, 4))
 
@@ -597,12 +597,22 @@ class TestGraella(unittest.TestCase):
 
     def test_divisio_segons_compassos(self):
         # 120 BPM, 4/4 → compàs = 2 s
-        self.assertAlmostEqual(graella.divisio_segons("compas1", 120, True, 4), 2.0)
-        self.assertAlmostEqual(graella.divisio_segons("compas4", 120, True, 4), 8.0)
-        self.assertAlmostEqual(graella.divisio_segons("compas8", 120, True, 4), 16.0)
-        self.assertAlmostEqual(graella.divisio_segons("compas16", 120, True, 4), 32.0)
+        for n, segons in ((1, 2.0), (2, 4.0), (4, 8.0), (6, 12.0),
+                          (8, 16.0), (12, 24.0), (16, 32.0), (24, 48.0),
+                          (32, 64.0), (48, 96.0), (64, 128.0)):
+            self.assertAlmostEqual(
+                graella.divisio_segons(f"compas{n}", 120, True, 4), segons)
         # depèn del compàs: 3/4 → compàs 1,5 s
         self.assertAlmostEqual(graella.divisio_segons("compas1", 120, True, 3), 1.5)
+
+    def test_divisio_segons_tresets(self):
+        # 120 BPM → negra = 0,5 s
+        self.assertAlmostEqual(
+            graella.divisio_segons("treset_negra", 120, True), 0.5 * 2 / 3)
+        self.assertAlmostEqual(
+            graella.divisio_segons("treset_corxera", 120, True), 0.5 / 3)
+        self.assertAlmostEqual(
+            graella.divisio_segons("treset_semicorxera", 120, True), 0.5 / 6)
 
     def test_divisio_segons_lliure(self):
         self.assertEqual(graella.divisio_segons("corxera", 120, False), 0.0)
@@ -800,7 +810,7 @@ def _graella_bpm_tearDownModule():
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_snap.py
 # ══════════════════════════════════════════════════════════════════════════
-"""Graella configurable: interruptor de snap + divisió (1/4 · 1/8 · 1/16 …).
+"""Graella configurable: interruptor de snap + divisió (1/4 · 1/8 · 1/16 · 1/32…).
 
 Amb el snap configurable, el nudge fi és possible (divisió fina) i es pot
 desactivar el snap del tot. Només mou fronteres → regles d'or intactes.
@@ -884,11 +894,52 @@ class TestSnap(_Base):
 
     def test_divisio_en_compassos(self):
         v = _snap___visor()                                   # 120 BPM, 4/4 → compàs 2 s
-        for divisio, esperat in (("compas1", 2.0), ("compas4", 8.0),
-                                 ("compas8", 16.0), ("compas16", 32.0)):
+        for divisio, esperat in (("compas1", 2.0), ("compas2", 4.0),
+                                 ("compas4", 8.0), ("compas6", 12.0),
+                                 ("compas8", 16.0), ("compas12", 24.0),
+                                 ("compas16", 32.0), ("compas24", 48.0),
+                                 ("compas32", 64.0), ("compas48", 96.0),
+                                 ("compas64", 128.0)):
             v.timeline.set_snap(on=True, divisio=divisio)
             self.assertAlmostEqual(v.timeline._pas_nudge(), esperat, places=6,
                                    msg=divisio)
+        v.close()
+
+    def test_snap_amb_tresets(self):
+        v = _snap___visor()                                   # 120 BPM
+        v.timeline.set_snap(on=True, divisio="treset_corxera")
+        self.assertAlmostEqual(v.timeline._snap(2.13), 13 * (0.5 / 3),
+                               places=6)
+        v.timeline.set_snap(on=True, divisio="treset_negra")
+        self.assertAlmostEqual(v.timeline._snap(2.13), 6 * (0.5 * 2 / 3),
+                               places=6)
+        v.close()
+
+    def test_el_grid_segueix_el_snap(self):
+        v = _snap___visor()
+        v.timeline.set_snap(on=True, divisio="treset_corxera")
+        self.assertEqual(v.timeline._grid._divisio, "treset_corxera")
+        self.assertEqual(v.timeline._ruler._divisio, "treset_corxera")
+        v.timeline.set_snap(on=True, divisio="compas12")
+        self.assertEqual(v.timeline._grid._divisio, "compas12")
+        # El snap OFF no ha de desactivar el grid forçat.
+        v.timeline.set_snap(on=False, divisio="compas12")
+        self.assertFalse(v.timeline._snap_on)
+        self.assertEqual(v.timeline._grid._divisio, "compas12")
+        # I Auto torna a manar pel zoom.
+        v.timeline.set_snap(on=False, divisio="")
+        self.assertEqual(v.timeline._grid._divisio, "")
+        v.close()
+
+    def test_snap_manual_amb_mapa_variable(self):
+        v = _snap___visor()
+        mapa = TempoMap([(0.0, 10.0, 120, 4, 4), (10.0, 20.0, 60, 4, 4)])
+        v.timeline.set_tempo_mode(True, 120, 4, mapa=mapa)
+        v.timeline.set_snap(on=True, divisio="treset_corxera")
+        self.assertAlmostEqual(v.timeline._snap(2.13), 13 * (0.5 / 3),
+                               places=6)
+        v.timeline.set_snap(on=True, divisio="compas2")
+        self.assertAlmostEqual(v.timeline._snap(2.13), 4.0, places=6)
         v.close()
 
     def test_cursor_segueix_snap(self):
@@ -1170,6 +1221,41 @@ class TestGridPlan(unittest.TestCase):
         else:
             self.assertGreater(plan["label"], 0.0)
 
+    def test_divisio_manual_treset(self):
+        plan = tb.grid_plan(True, 120.0, 4, 60.0, 1000.0,
+                            divisio=("beat", 1.0 / 3.0))
+        self.assertAlmostEqual(plan["snap"], 1.0 / 6.0)
+        self.assertEqual(plan["lines"][-1][1], "sub")
+        self.assertAlmostEqual(plan["label"], 0.5)   # etiqueta al temps
+        self.assertIn((0.5, "beat"), plan["lines"])
+
+    def test_divisio_manual_bloc_de_compassos(self):
+        plan = tb.grid_plan(True, 120.0, 4, 20.0, 1000.0,
+                            divisio=("bars", 12))
+        self.assertAlmostEqual(plan["snap"], 24.0)
+        self.assertEqual(plan["lines"], [(24.0, "bar"), (2.0, "bar")])
+        self.assertAlmostEqual(plan["label"], 24.0)
+
+    def test_divisio_manual_molt_fina_es_forca(self):
+        plan = tb.grid_plan(True, 120.0, 4, 60.0, 1000.0,
+                            divisio=("beat", 1.0 / 6.0))
+        self.assertAlmostEqual(plan["snap"], 1.0 / 12.0)
+        self.assertAlmostEqual(plan["lines"][-1][0], 1.0 / 12.0)
+
+    def test_divisio_manual_fora_de_vista_es_forca(self):
+        plan = tb.grid_plan(True, 120.0, 4, 60.0, 1000.0,
+                            divisio=("bars", 64))
+        self.assertAlmostEqual(plan["snap"], 128.0)
+        self.assertEqual(plan["label"], 128.0)
+
+    def test_grid_positions_amb_treset_i_mapa(self):
+        mapa = TempoMap([(0.0, 10.0, 120, 4, 4), (10.0, 20.0, 121, 4, 4)])
+        pos = list(tb.grid_positions(0.0, 0.5, 0.5, mapa=mapa,
+                                     kind=("sub", 1.0 / 3.0)))
+        self.assertEqual(len(pos), 4)
+        for obtingut, esperat in zip(pos, (0.0, 1 / 6, 2 / 6, 0.5)):
+            self.assertAlmostEqual(obtingut, esperat, places=6)
+
     def test_min_zoom_no_omple_el_grid_de_linies(self):
         """A poc zoom, la divisió més fina que hi cap (no 0,02 s a l'atzar)."""
         plan = tb.grid_plan(True, 120.0, 4, 0.5, 1000.0)
@@ -1182,10 +1268,10 @@ class TestGridPlan(unittest.TestCase):
         self.assertEqual(plan["lines"], [(32.0, "bar")])
         self.assertEqual(tb.snap_step(True, 120.0, 4, 0.01), 32.0)
 
-    def test_max_zoom_arriba_a_1_16(self):
+    def test_max_zoom_arriba_a_1_32(self):
         plan = tb.grid_plan(True, 120.0, 4, 5000.0, 1000.0)
-        self.assertAlmostEqual(plan["snap"], 0.125)   # semicorxera
-        self.assertAlmostEqual(plan["label"], 0.125)
+        self.assertAlmostEqual(plan["snap"], 0.0625)   # fusa
+        self.assertAlmostEqual(plan["label"], 0.0625)
 
     def test_multiples_de_compas_amb_mapa(self):
         mapa = tm.TempoMap([(0.0, 20.0, 120.0, 4, 4)])

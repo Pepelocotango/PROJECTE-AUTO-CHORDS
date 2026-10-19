@@ -27,7 +27,7 @@ el BPM són "vistes" calculades a sobre.
 - Metrònom amb la mateixa graella (`app/metronom.py`, `beat = 60/bpm`).
 - **Offset** = segon on cau el compàs 1; abans, la graella és **negativa**
   (count-in).
-- Export a Live: els noms `1-1-1_C.wav` es quantitzen a **1/16**
+- Export a Live: els noms `1-1-1_C.wav` es quantitzen a **1/32**
   (`pipeline._segments_guia_daw`); les **durades** dels WAV surten dels segons
   exactes del model i l'exportació escriu **`manifest.csv`** amb els temps
   exactes (6 decimals) per a la col·locació fina al DAW.
@@ -122,7 +122,7 @@ segons → tick     : tick = round( s · BPM / 60 · PPQ )
 - **MIDI (SMF):** el header porta `division` = **ticks per quarter**. Si els
   tresets han d'existir al fitxer, ha de ser múltiple de 3 → **960**
   (`mido`: `ticks_per_beat=960`; el seu valor per defecte és 480).
-- **.als (Live):** les posicions viuen en **beats** (XML). El `step` de 1/16
+- **.als (Live):** les posicions viuen en **beats** (XML). El `step` de 1/32
   actual és correcte, però calcular-lo des de segons perd exactitud en tresets.
 - **Audio (WAV):** sense graella → segons/mostres directes.
 
