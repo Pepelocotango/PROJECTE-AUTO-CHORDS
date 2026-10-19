@@ -49,7 +49,7 @@ else
     for f in app docs icones icona *-local vamp_host_local \
              AUTO_CHORDS.sh AUTO_CHORDS.desktop pyproject.toml LICENSE \
              LLICENCIES_TERCERS.md README.md CHANGELOG.md ROADMAP.md \
-             DEVELOPING.md requirements.txt concatena.py acords_a_live.py \
+             DEVELOPING.md requirements.txt concatena.py \
              wav_a_wavs.py portable; do
         if [ -e "$f" ]; then
             cp -r "$f" "$DEST"/ || { echo "ERROR copiant $f" >&2; exit 1; }

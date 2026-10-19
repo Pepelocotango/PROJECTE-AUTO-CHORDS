@@ -107,10 +107,14 @@ def processa_acords_csv(ruta, durada_min=0.0, fusiona_iguals=True,
         items = snap_acords(items, bpm, bpb, offset, divisio)
     # INVARIANT de COBERTURA: els acords cobreixen tota la WAV (0 → durada).
     from app import pipeline           # import local: evita cicle d'imports
+    clips = pipeline.clips_d_acords(items, durada)
     if durada:
-        items, _ = pipeline.normalitza_cobertura(items, [], durada, log=log)
+        clips = pipeline.normalitza_clips(
+            clips, durada, pipeline.FORAT_ACORD,
+            arrodoneix=True, deriva_fi=True, log=log)
+        items = pipeline.acords_de_clips(clips)
     # El MODEL sempre s'escriu com a clips `inici,fi,acord` (S3).
-    pipeline.desa_acords_csv(ruta, items, durada)
+    pipeline.desa_acords_csv(ruta, clips, durada)
     if log and len(items) != n_abans:
         log(f"  neteja d'acords: {n_abans} -> {len(items)}")
     return items

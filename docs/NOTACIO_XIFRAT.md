@@ -63,7 +63,7 @@ N · NC · N.C.     →  N           «solo» / «H7» →  intactes
 |---|---|
 | **Model / CSV** | `pipeline.saneja_nom_acord()` → `xifrat.normalitza_xifrat()` (ho fan servir editor, renombrar, renom **en bloc**, alta, **MCP** i troba-i-reemplaça) |
 | **Noms de fitxer** de l'export | `pipeline.safe_filename()` / `partitura.safe_filename()`: `/` i separadors de path → **`_`** (mai `-`, que vol dir «menor») → `A7/G` → `A7_G.wav` |
-| **Export de WAVs** | `acords_a_live.py`: **sense** `style()` → els noms viatgen **verbatim** |
+| **Export de WAVs** | `pipeline.genera_locators()`: **sense** `style()` → els noms viatgen **verbatim** |
 | **Partitura (MusicXML)** | `partitura.harmony_xml()`: usa la forma canònica (taula `xifrat.TIPUS`) i escriu el `<kind>` base **+ els `<degree>`** de les alteracions/extensions (`#5`, `b9`, `add9`, `no5`…) → **MuseScore ho mostra i ho reprodueix**. Si una qualitat no es reconeix, cau a `<kind text="…">other</kind>` amb **només el sufix** (el root ja s'escriu a part). |
 
 ## 5. Conseqüències pràctiques

@@ -21,7 +21,6 @@ from app import plataforma, tempo, xifrat
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJ_DIR = os.path.dirname(APP_DIR)
 SONIC = os.path.join(PROJ_DIR, "OLD", "sonic-annotator")   # arxivat (reserva)
-ACORDS_PY = os.path.join(PROJ_DIR, "acords_a_live.py")
 # Directoris dels plugins Vamp SEGONS EL SO (vegeu `app/plataforma.py`):
 #   Linux   -> nnls-chroma-linux64-local + qm-vamp-plugins-linux64-local
 #   Windows -> nnls-chroma-win64-local   + qm-vamp-plugins-win64-local
@@ -612,61 +611,41 @@ TOL_TEMPS = 1e-6
 #   · estructura: `(lletra, família)` — p. ex. `("A", "A")`.
 # La font única de veritat és la CADENA DE FRONTERES: el `fi` se'n deriva i, per
 # tant, no pot quedar mai incoherent. Contracte i pla: docs/archive/REFACTOR_INICI_FI.md.
-Clip = namedtuple("Clip", ("ini", "fi", "payload"))
+_ClipBase = namedtuple("Clip", ("ini", "fi", "payload"))
+
+
+class Clip(_ClipBase):
+    """Estructura única de clip: interval `[ini, fi)` amb `payload`."""
+
+    @property
+    def nom(self):
+        p = self.payload
+        return p[0] if isinstance(p, tuple) else p
 
 
 def clips_d_acords(acords, durada):
-    """Acords (marques `(t, nom, tsrc)`) → `Clip` amb el `fi` derivat.
-
-    El `fi` d'un acord és l'`ini` del següent; el de l'últim, la `durada`.
-    """
+    """Converteix acords a `Clip` amb el `fi` derivat de la cadena de fronteres."""
     durada = float(durada or 0.0)
+    acords = list(acords or ())
     out = []
-    for i, a in enumerate(acords or ()):
-        fi = float(acords[i + 1][0]) if i + 1 < len(acords) else durada
-        out.append(Clip(float(a[0]), fi, tuple(a[1:])))
-    return out
-
-
-def acords_de_clips(clips):
-    """`Clip` → acords (marques `(t, nom, tsrc)`): només la frontera d'inici."""
-    return [(float(c.ini),) + tuple(c.payload) for c in clips]
-
-
-def nom_d_acord(it):
-    """Nom d'un clip d'acord (`Clip(ini, fi, payload)`) o d'una marca `(t, nom[, tsrc])`.
-
-    Pont mentre el model viu passa de **marques** a **clips** (S4): permet
-    accedir al nom sense dependre de la forma de l'element.
-    """
-    if isinstance(it, Clip):
-        p = it.payload
-        return p[0] if isinstance(p, tuple) else p
-    return it[1]
-
-
-def clips_de_model(items, durada=0.0):
-    """Normalitza una llista d'acords (clips `Clip` o marques `(t, nom[, tsrc])`) a clips.
-
-    Pont (S4): el model viu ja són clips; les **marques** encara hi arriben des
-    del camí de l'anàlisi o de crides directes. El `fi` d'una marca es deriva
-    (inici del següent; l'últim, `durada`). No muta l'entrada.
-    """
-    items = list(items or [])
-    durada = float(durada or 0.0)
-    out = []
-    for i, a in enumerate(items):
+    for i, a in enumerate(acords):
         if isinstance(a, Clip):
             out.append(a)
         else:
-            fi = (float(items[i + 1][0]) if i + 1 < len(items) else durada)
+            fi = float(acords[i + 1][0]) if i + 1 < len(acords) else durada
             out.append(Clip(float(a[0]), fi, tuple(a[1:])))
     return out
 
 
+def acords_de_clips(clips):
+    """`Clip` → acords `(t, nom, tsrc)`: només la frontera d'inici."""
+    return [(float(c.ini),) + tuple(c.payload) for c in clips]
+
+
 def clips_de_seccions(seccions):
-    """Seccions `(ini, fi, lletra, família)` → `Clip` (el `fi` ja hi és)."""
-    return [Clip(float(s[0]), float(s[1]), tuple(s[2:])) for s in (seccions or ())]
+    """Seccions `(ini, fi, lletra, família)` → `Clip`."""
+    return [s if isinstance(s, Clip) else Clip(float(s[0]), float(s[1]), tuple(s[2:]))
+            for s in (seccions or ())]
 
 
 def seccions_de_clips(clips):
@@ -676,35 +655,43 @@ def seccions_de_clips(clips):
 
 def normalitza_clips(clips, durada, forat, arrodoneix=False, deriva_fi=False,
                      log=None):
-    """XARXA DE SEGURETAT única dels invariants #1, #2 i #4 (model de clips).
+    """XARXA DE SEGURETAT única dels invariants #1, #2, #4 i #8 (model de clips).
 
     - **#1 ordre estricte**: clips ordenats per `ini` (`sort` estable).
     - **#2 contigüitat**: la frontera entre dos clips és una de sola → si dos
-      clips es trepitgen, el primer s'acota a l'`ini` del segon; si hi ha un
-      forat, es tapa amb un clip de payload `forat`.
+      clips es trepitgen, el primer s'acota a l'`ini` del segon (o s'elimina si
+      queda sense espai); si hi ha un forat, es tapa amb un clip de payload `forat`.
     - **#4 cobertura**: si el primer no arrenca a 0 s'hi posa una capçalera
       `forat`, i el `fi` de l'últim s'acota a `durada`.
-
-    Paràmetres de variant (les dues cares del model actual):
-    - `forat`: payload del clip de farciment — `(SENSE_ACORD, "0.000000000")`
-      per als acords i `(SENSE_SECCIO, SENSE_SECCIO)` per a l'estructura.
-    - `arrodoneix`: aplica la resolució del CSV (`TEMPS_DEC`, 10 ms) als descarts
-      i als xocs d'inici (es conserva el primer).
-    - `deriva_fi`: el `fi` es **deriva** de la cadena (semàntica de marques). Si
-      és fals es respecta el `fi` d'entrada (semàntica d'intervals: els forats
-      són reals i es tapen amb `forat`).
+    - **#8 temps vàlids**: cap inici negatiu ni durada ≤ 0.
 
     Retorna una llista NOVA de `Clip`; no muta l'entrada.
     """
     durada = float(durada or 0.0)
-    net, vists = [], set()
-    for c in clips or ():
+    ordenats = sorted(
+        (c if isinstance(c, Clip) else Clip(float(c[0]), float(c[1]), tuple(c[2]))
+         for c in (clips or ())),
+        key=lambda c: float(c.ini))
+    net, vists, fora, n_neg = [], set(), 0, 0
+    for c in ordenats:
         ini, fi = float(c.ini), float(c.fi)
+        if deriva_fi:
+            if ini < 0.0:
+                ini = 0.0
+                n_neg += 1
+        else:
+            if fi <= 0.0:
+                n_neg += 1
+                continue
+            if ini < 0.0:
+                ini = 0.0
+                n_neg += 1
         if durada > 0:
             ref = round(ini, TEMPS_DEC) if arrodoneix else ini
             if ref >= durada - TOL_TEMPS:
-                continue                  # arrenca (o arrodonit) fora: no hi és
-            fi = min(fi, durada)          # cap clip no surt de la WAV
+                fora += 1
+                continue
+            fi = min(fi, durada)
         if arrodoneix:
             clau = round(ini, TEMPS_DEC)
             if clau in vists:
@@ -714,21 +701,30 @@ def normalitza_clips(clips, durada, forat, arrodoneix=False, deriva_fi=False,
                 continue
             vists.add(clau)
         net.append(Clip(ini, fi, tuple(c.payload)))
+    if n_neg and log:
+        log(f"cobertura: {n_neg} clip(s) amb temps negatiu ajustats")
+    if fora and log:
+        log(f"cobertura: {fora} clip(s) fora de la WAV (>= {durada:.2f} s) eliminats")
     net.sort(key=lambda c: c.ini)
     if deriva_fi:
         net = [Clip(c.ini, net[i + 1].ini if i + 1 < len(net) else durada,
                     c.payload) for i, c in enumerate(net)]
     out = []
     for c in net:
-        if out:
+        if not deriva_fi and c.fi <= c.ini + TOL_TEMPS:
+            continue
+        while out and c.ini < out[-1].fi - TOL_TEMPS:
             prev = out[-1]
-            if c.ini < prev.fi - TOL_TEMPS:
-                out[-1] = Clip(prev.ini, c.ini, prev.payload)    # es trepitgen
-            elif c.ini > prev.fi + TOL_TEMPS:
-                out.append(Clip(prev.fi, c.ini, tuple(forat)))   # forat
-                if log:
-                    log(f"cobertura: forat {prev.fi:.2f}–{c.ini:.2f} s tapat "
-                        f"amb «{forat[0]}»")
+            if c.ini <= prev.ini + TOL_TEMPS:
+                out.pop()
+                continue
+            out[-1] = Clip(prev.ini, c.ini, prev.payload)
+            break
+        if out and c.ini > out[-1].fi + TOL_TEMPS:
+            out.append(Clip(out[-1].fi, c.ini, tuple(forat)))
+            if log:
+                log(f"cobertura: forat {out[-2].fi:.2f}–{c.ini:.2f} s tapat "
+                    f"amb «{forat[0]}»")
         out.append(c)
     if out and out[0].ini > 1e-9:
         out.insert(0, Clip(0.0, out[0].ini, tuple(forat)))
@@ -756,171 +752,207 @@ def model_inicial(durada, log=None):
 
 
 def normalitza_cobertura(acords, seccions, durada, log=None):
-    """Garanteix l'**INVARIANT de COBERTURA** (regla d'or de l'app):
-
-        suma(clips d'acords)     == durada de la WAV
-        suma(clips d'estructura) == durada de la WAV
-
-    És a dir, els clips cobreixen **tota** la WAV (0 → durada), en qualsevol
-    mode (Lliure o BPM·compàs) i amb o sense snap.
-
-    - **Acords** `[(t, nom, tsrc), …]`: si el primer comença > 0 s'hi insereix
-      una **«N» a 0** (capçalera). (La durada de l'últim acord és implícita: el
-      timeline/export la fixen a `durada`.)
-    - **Seccions** `[(ini, fi, lletra, família), …]`: si la primera comença > 0
-      s'hi insereix una **«N» a 0**; i el `fi` de l'última **s'acota a `durada`**.
-    - **Forats interns de les seccions**: si una secció no arrenca on acaba
-      l'anterior (`prev.fi != curr.ini`, regla d'or #2) el forat es **tapa amb
-      una secció «N»** (una regió sense etiqueta, com la capçalera) → la suma
-      de durades torna a ser exactament la de la WAV.
-
-    Retorna `(acords, seccions)` normalitzats (llistes noves; no muta les d'entrada).
-    """
+    """Garanteix l'**INVARIANT de COBERTURA** delegant al motor únic `normalitza_clips`."""
     durada = float(durada or 0.0)
-    acords = [tuple(a) for a in (acords or [])]
-    seccions = [tuple(s) for s in (seccions or [])]
-    # Regla d'or #1 (ordre estricte): aquesta funció és la XARXA DE SEGURETAT
-    # dels 4 camins (edició en viu, visor, CSV i export), així que reordenem
-    # aquí. El visor ja ho valida, però un CSV editat a mà no hi passa. El
-    # `sort` és ESTABLE: davant d'instants repetits, es conserva el primer.
-    acords.sort(key=lambda a: float(a[0]))
-    seccions.sort(key=lambda s: float(s[0]))
-    # Regla d'or #8 (temps vàlids): aquesta funció és la XARXA DE SEGURETAT dels
-    # 4 camins, així que aquí també s'hi ha de fer front. Un inici negatiu
-    # (CSV editat a mà, projecte vell, client de l'MCP) es porta a 0 — la
-    # cobertura (#4) ja hi posarà la capçalera o el forat que calgui.
-    if any(float(a[0]) < 0.0 for a in acords):
-        n_neg = sum(1 for a in acords if float(a[0]) < 0.0)
-        acords = [((0.0,) + tuple(a[1:])) if float(a[0]) < 0.0 else a
-                  for a in acords]
-        if log:
-            log(f"cobertura: {n_neg} acord(s) amb inici negatiu portats a 0")
-    if any(float(s[0]) < 0.0 or float(s[1]) < 0.0 for s in seccions):
-        net_s, fora_neg = [], 0
-        for s in seccions:
-            ini, fi = float(s[0]), float(s[1])
-            if fi <= 0.0:              # tota la secció és abans de la WAV
-                fora_neg += 1
-                continue
-            net_s.append((max(0.0, ini), fi, s[2], s[3]))
-        if log:
-            log(f"cobertura: {len(seccions) - len(net_s)} secció(ns) abans de "
-                f"la WAV eliminades" + (f" ({fora_neg} senceres)" if fora_neg else ""))
-        seccions = net_s
-    # Acords: la veritat és el que quedarà AL CSV (arrodonit a `TEMPS_DEC`).
-    #   (a) els que cauen FORA de la WAV (arrodonits) no tenen àudio → fora;
-    #   (b) dos acords que arrodoneixin al MATEIX instant deixarien un clip de
-    #       durada 0 a l'export (xocs d'inici dins la resolució del CSV) → es
-    #       conserva el primer.
+    ac_out, sec_out = [], []
+    if acords:
+        son_clips = isinstance(acords[0], Clip)
+        if son_clips:
+            ac_out = normalitza_clips(acords, durada, FORAT_ACORD,
+                                      arrodoneix=True, deriva_fi=True, log=log)
+        else:
+            extra = tuple("0.000000000" for _ in acords[0][2:])
+            cl = normalitza_clips(
+                clips_d_acords(acords, durada), durada,
+                (SENSE_ACORD,) + extra, arrodoneix=True, deriva_fi=True,
+                log=log)
+            ac_out = acords_de_clips(cl)
+    if seccions:
+        son_clips_s = isinstance(seccions[0], Clip)
+        cl_s = seccions if son_clips_s else clips_de_seccions(seccions)
+        norm_s = normalitza_clips(cl_s, durada, FORAT_SECCIO, log=log)
+        sec_out = norm_s if son_clips_s else seccions_de_clips(norm_s)
+    return ac_out, sec_out
+
+
+def _mapa_tempo_carpeta(carpeta, offset=0.0):
+    """Llegeix `tempo.csv` i `compas.csv` de `carpeta` (o `mapa_tempo/`) i
+    retorna un `TempoMap` si té més d'un tram i no és constant, o `None`.
+    """
+    try:
+        from app.tempo_map import TempoMap
+
+        def _llegeix(base_dir, nom, ncol):
+            r = os.path.join(base_dir, nom)
+            out = []
+            if os.path.isfile(r):
+                with open(r, encoding="utf-8") as f:
+                    for fila in csv.reader(f):
+                        if len(fila) >= ncol and not fila[0].startswith(("inici", "ini")):
+                            try:
+                                out.append([float(x) for x in fila[:ncol]])
+                            except ValueError:
+                                pass
+            return out
+
+        for d in (carpeta, os.path.join(carpeta, "mapa_tempo")):
+            _tempo = _llegeix(d, "tempo.csv", 3)
+            _compas = _llegeix(d, "compas.csv", 4)
+            if len(_tempo) > 1 and len(_tempo) == len(_compas):
+                _trams = [(t[0], t[1], t[2], int(c[2]), int(c[3]))
+                          for t, c in zip(_tempo, _compas)]
+                tm = TempoMap(_trams, offset=offset)
+                if not tm.es_constant():
+                    return tm
+    except Exception:
+        pass
+    return None
+
+
+def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
+    """Calcula els segments quantitzats a corxera per als locators i la guia HTML."""
+    bpm = float(bpm)
+    bpb = int(bpb)
+    offset = float(offset or 0.0)
+    durada = float(durada or 0.0)
+    step = 60.0 / bpm / 2.0
+    slots_bar = bpb * 2
+
+    if mapa is None:
+        mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)),
+                                   offset=offset)
+    elif hasattr(mapa, "es_constant") and mapa.es_constant():
+        mapa = None
+
+    with open(csv_path, encoding="utf-8") as f:
+        rows = [(float(r[0]), r[2].strip())
+                for r in csv.reader(f)
+                if len(r) >= 3 and not r[0].startswith("inici")]
+
+    def _q(t):
+        if mapa is not None:
+            return mapa.quarters(t)
+        return (float(t) - offset) / (60.0 / bpm)
+
+    def _t_de_p(p):
+        if mapa is not None:
+            return mapa.t_de_quarters(p / 2.0)
+        return offset + p * step
+
+    def _pos(t):
+        if mapa is not None:
+            return mapa.label(t)
+        p = max(0, round((float(t) - offset) / step))
+        return "%d.%d.%d" % (p // slots_bar + 1, (p % slots_bar) // 2 + 1,
+                             1 + 2 * (p % 2))
+
+    segs, last, end = [], -1, 0
+    for t, c in rows:
+        p = max(0, round(_q(t) * 2))
+        if c == "N":
+            end = p
+            continue
+        if p <= last:
+            p = last + 1
+        if segs and segs[-1][2] == c:
+            continue
+        segs.append((_t_de_p(p), p, c))
+        last = p
+    if not segs:
+        raise RuntimeError(
+            "cap acord detectat al csv (tot N): revisa la wav o l'extracció Chordino")
+    end = max(end, segs[-1][1] + slots_bar)
     if durada > 0:
-        net, vists, fora, xocs = [], set(), 0, 0
-        for a in acords:
-            t_arrod = round(float(a[0]), TEMPS_DEC)
-            if t_arrod >= durada - TOL_TEMPS:
-                fora += 1
-                continue
-            if t_arrod in vists:
-                xocs += 1
-                if log:
-                    log(f"cobertura: acord {a[1]} a {float(a[0]):.3f} s eliminat "
-                        f"(xoca amb un altre a {t_arrod:.2f} s al CSV)")
-                continue
-            vists.add(t_arrod)
-            net.append(a)
-        if fora and log:
-            log(f"cobertura: {fora} acord(s) fora de la WAV "
-                f"(arrodonits >= {durada:.2f} s) eliminats")
-        if fora or xocs:
-            acords = net
-    # Acords: capçalera N si el 1r no arrenca a 0.
-    if acords and float(acords[0][0]) > 1e-9:
-        # conserva els camps extra (p. ex. `tsrc`), posant-los a 0.
-        extra = tuple("0.000000000" for _ in acords[0][2:])
-        acords.insert(0, (0.0, "N") + extra)
-        if log:
-            log(f"cobertura: capçalera N als acords (1r acord a "
-                f"{float(acords[1][0]):.2f} s)")
-    # Seccions: capçalera N + forats interns + dins de la durada.
-    if seccions and durada > 0:
-        # (a) Una secció no pot SORTIR de la WAV: si arrenca més enllà, no hi
-        #     és (fora); si el seu fi passa de la durada, s'hi acota.
-        dins = [(s[0], min(float(s[1]), durada), s[2], s[3]) for s in seccions
-                if float(s[0]) < durada - TOL_TEMPS]
-        if len(dins) != len(seccions):
-            if log:
-                log(f"cobertura: {len(seccions) - len(dins)} secció(ns) que "
-                    f"arrencaven fora de la WAV (>= {durada:.2f} s) eliminades")
-        seccions = dins
-    if seccions:
-        # Regles #2 (contigüitat) i #8 (durada > 0): les seccions no es poden
-        # ENCAVALCAR ni tenir durada nul·la. Aquesta funció és la xarxa de
-        # seguretat dels 4 camins + la càrrega, així que hi ha de fer front:
-        # un CSV editat a mà o un projecte vell hi poden arribar així (el
-        # visor ja ho valida, però per ací també s'hi passa). Mana la secció
-        # que ARRENCA MÉS TARD: el seu inici retalla el fi de l'anterior
-        # (mateix criteri que una marca d'acord); si algú queda sense espai,
-        # s'elimina.
-        net_s, calcigades, nulles = [], 0, 0
-        for s in seccions:
-            ini, fi = float(s[0]), float(s[1])
-            if fi <= ini + TOL_TEMPS:
-                nulles += 1
-                continue
-            while net_s and ini < net_s[-1][1] - TOL_TEMPS:
-                pi, _pf, _pl, _pfam = net_s[-1]
-                if ini <= pi + TOL_TEMPS:
-                    net_s.pop()
-                    calcigades += 1
-                    continue
-                net_s[-1] = (pi, ini, net_s[-1][2], net_s[-1][3])
-            net_s.append((ini, fi, s[2], s[3]))
-        if (calcigades or nulles) and log:
-            log(f"cobertura: estructures que s'encavalcaven ajustades "
-                f"({calcigades} calcigades, {nulles} de durada nul·la fora)")
-        seccions = net_s
-    if seccions:
-        if float(seccions[0][0]) > 1e-9:
-            seccions.insert(0, (0.0, float(seccions[0][0]),
-                                SENSE_SECCIO, SENSE_SECCIO))
-            if log:
-                log(f"cobertura: capçalera «{SENSE_SECCIO}» a l'estructura "
-                    f"(1a secció a {float(seccions[1][0]):.2f} s)")
-        # Forats INTERNS (regla d'or #2: el fi d'una secció == inici de la
-        # següent): es tapen amb una secció «-» (§6.1: sense secció). Sense
-        # això, moure una secció cap endavant deixava un forat que l'app
-        # acceptava i la suma de durades ja no quadrava amb la WAV (#4).
-        farcit = []
-        for s in seccions:
-            if farcit and float(s[0]) > float(farcit[-1][1]) + 1e-9:
-                forat = (float(farcit[-1][1]), float(s[0]),
-                         SENSE_SECCIO, SENSE_SECCIO)
-                farcit.append(forat)
-                if log:
-                    log(f"cobertura: forat intern {forat[0]:.2f}–{forat[1]:.2f} s "
-                        f"tapat amb «{SENSE_SECCIO}»")
-            farcit.append(s)
-        seccions = farcit
-        if durada > 0 and float(seccions[-1][1]) < durada - 1e-9:
-            ini, _fi, L, fam = seccions[-1]
-            seccions[-1] = (ini, durada, L, fam)
-            if log:
-                log(f"cobertura: última secció acotada a la durada "
-                    f"({durada:.2f} s)")
-    return acords, seccions
+        end = max(end, round(_q(durada) * 2))
+    return segs, end, step, slots_bar, mapa, _pos
 
 
-def run_acords_py(csv_path, bpm, bpb, offset, workdir, log, durada=None):
-    # `sys.executable` (mai un `python3` fix): trencava a Windows i amb
-    # PyInstaller. Vegeu `app/plataforma.py`.
-    args = [plataforma.python_actual(), ACORDS_PY, csv_path, str(bpm),
-            str(bpb), str(offset)]
-    if durada:
-        # INVARIANT de COBERTURA: l'últim acord ha d'arribar a la durada.
-        args.append(str(float(durada)))
-    run(args, log, cwd=workdir)
-    # el py escriu al directori de treball
-    return (os.path.join(workdir, "acords_locators.txt"),
-            os.path.join(workdir, "guia_acords.html"))
+def genera_locators(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
+                    mapa=None, _dades=None):
+    """Genera `acords_locators.txt` en memòria i en retorna la ruta."""
+    workdir = workdir or os.path.dirname(os.path.abspath(csv_path))
+    if _dades is None:
+        _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
+                                    durada=durada, mapa=mapa)
+    segs, end, _step, _slots_bar, _mapa, _pos = _dades
+    loc_path = os.path.join(workdir, "acords_locators.txt")
+    with open(loc_path, "w", encoding="utf-8") as f:
+        f.write("posició (compàs.temps.setzena)   acord   durada(temps)\n")
+        for i, (t, p, c) in enumerate(segs):
+            q = segs[i + 1][1] if i + 1 < len(segs) else end
+            f.write("%-14s %-8s %g\n" % (_pos(t), c, (q - p) / 2))
+    return loc_path
+
+
+def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
+                     mapa=None, log=None, _dades=None):
+    """Genera `guia_acords.html` en memòria i en retorna la ruta."""
+    import html as _html
+    workdir = workdir or os.path.dirname(os.path.abspath(csv_path))
+    bpm = float(bpm)
+    bpb = int(bpb)
+    offset = float(offset or 0.0)
+    durada_val = float(durada or 0.0)
+    if _dades is None:
+        _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
+                                    durada=durada_val, mapa=mapa)
+    segs, end, step, slots_bar, mapa_resolt, _pos = _dades
+
+    if mapa_resolt is not None:
+        talls = [x[1] for x in mapa_resolt.compassos()]
+        nbars = len(talls)
+    else:
+        nbars = (end + slots_bar - 1) // slots_bar
+        talls = [offset + b * slots_bar * step for b in range(nbars)]
+
+    def _bar_de(t):
+        k = 0
+        for i, tb in enumerate(talls):
+            if t >= tb - 1e-9:
+                k = i
+            else:
+                break
+        return k
+
+    cells = []
+    for b in range(nbars):
+        items = []
+        for i, (t, _p, c) in enumerate(segs):
+            t1 = segs[i + 1][0] if i + 1 < len(segs) else (
+                durada_val if durada_val > 0 else t + 1e-9)
+            if _bar_de(t) <= b <= _bar_de(max(t1 - 1e-9, t)):
+                items.append(
+                    '<span class="%s">%s</span>'
+                    % ("" if _bar_de(t) >= b else "k", _html.escape(c)))
+        cells.append('<div class="b"><i>%d</i>%s</div>' % (b + 1, " ".join(items)))
+
+    guia_path = os.path.join(workdir, "guia_acords.html")
+    with open(guia_path, "w", encoding="utf-8") as f:
+        f.write(
+            """<!doctype html><meta charset="utf-8"><title>Guia d'acords</title>
+<style>body{font:20px system-ui;margin:20px;background:#fff;color:#111}
+.g{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid #999;border-left:1px solid #999}
+.b{position:relative;min-height:56px;padding:22px 8px 6px;border-right:1px solid #999;border-bottom:1px solid #999;font-weight:600}
+.b i{position:absolute;top:3px;left:6px;font:12px system-ui;color:#888}.b span{margin-right:10px}.k{color:#aaa;font-weight:400}
+@media(prefers-color-scheme:dark){body{background:#111;color:#eee}}</style>
+<h3>%d BPM · %d temps/compàs · gris = acord que ve del compàs anterior</h3><div class="g">%s</div>"""
+            % (bpm, bpb, "".join(cells))
+        )
+    if log:
+        log(f"  {len(segs)} acords, {nbars} compassos")
+    return guia_path
+
+
+def run_acords_py(csv_path, bpm, bpb, offset, workdir, log, durada=None,
+                  mapa=None):
+    """Genera `acords_locators.txt` i `guia_acords.html` en memòria."""
+    dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
+                               durada=durada, mapa=mapa)
+    loc = genera_locators(csv_path, bpm, bpb, offset=offset, workdir=workdir,
+                          durada=durada, mapa=mapa, _dades=dades)
+    guia = genera_guia_html(csv_path, bpm, bpb, offset=offset, workdir=workdir,
+                            durada=durada, mapa=mapa, log=log, _dades=dades)
+    return loc, guia
 
 
 def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0, mapa=None):
@@ -1313,6 +1345,234 @@ def duplica_bloc_seccions(seccions, first, last, desti, durada):
         clips_de_seccions(seccions), first, last, desti, durada, FORAT_SECCIO))
 
 
+def _nom_item_acord(item):
+    if isinstance(item, Clip):
+        return item.nom
+    if len(item) >= 3 and isinstance(item[1], (int, float)):
+        p = item[2]
+        return p[0] if isinstance(p, tuple) else p
+    return item[1]
+
+
+def valida_canvis_acords(items, durada=0.0):
+    """Valida l'ordre estricte, límits i resolució CSV, i deriva el `fi` en `Clip`."""
+    if not items:
+        return []
+    durada = float(durada or 0.0)
+    ordenats = sorted(items, key=lambda x: float(x[0]))
+    n = len(ordenats)
+    out = []
+    prev_t, prev_nom = None, None
+    for i, item in enumerate(ordenats):
+        t = float(item[0])
+        nom = _nom_item_acord(item)
+        if t < 0:
+            raise ValueError(f"L'acord {nom} té un inici negatiu ({t:.2f}s)")
+        if durada > 0 and t >= durada - TOL_TEMPS:
+            raise ValueError(
+                f"L'acord {nom} no cap dins de la WAV ({t:.2f}s; la WAV "
+                f"fa {durada:.2f}s)")
+        if prev_t is not None:
+            if t <= prev_t + 1e-9:
+                raise ValueError(
+                    "Els acords no poden compartir ni invertir el seu inici. "
+                    "L'ordre ha de ser estricte i sense solapaments."
+                )
+            if t - prev_t < RESOLUCIO_CSV - 1e-9:
+                raise ValueError(
+                    f"Els acords {prev_nom} ({prev_t:.3f}s) i {nom} "
+                    f"({t:.3f}s) estan a menys de "
+                    f"{RESOLUCIO_CSV * 1000:.0f} ms: al CSV "
+                    f"({TEMPS_DEC} decimals) quedarien al mateix "
+                    f"instant i un clip tindria durada 0."
+                )
+        prev_t, prev_nom = t, nom
+        fi = float(ordenats[i + 1][0]) if i + 1 < n else durada
+        if isinstance(item, Clip):
+            payload = tuple(item.payload)
+        elif len(item) >= 3 and isinstance(item[1], (int, float)):
+            p = item[2]
+            payload = tuple(p) if isinstance(p, tuple) else (p,)
+        else:
+            payload = tuple(item[1:])
+        out.append(Clip(t, fi, payload))
+    return out
+
+
+def valida_canvis_seccions(items, durada=0.0):
+    """Valida l'ordre estricte, durades positives i no solapament d'estructura."""
+    if not items:
+        return []
+    durada = float(durada or 0.0)
+    ordenats = sorted(items, key=lambda x: float(x[0]))
+    prev_fi = -1e-9
+    for item in ordenats:
+        ini = float(item[0])
+        fi = float(item[1])
+        etq = item.payload[0] if isinstance(item, Clip) else item[2]
+        if ini < 0 or fi < 0:
+            raise ValueError(
+                f"La secció {etq} té temps negatius ({ini:.2f}s–{fi:.2f}s)")
+        if fi <= ini:
+            raise ValueError(
+                f"La secció {etq} té una durada no vàlida ({ini:.2f}s–{fi:.2f}s)")
+        if durada > 0 and fi > durada + TOL_TEMPS:
+            raise ValueError(
+                f"La secció {etq} surt de la WAV ({fi:.2f}s; la WAV fa "
+                f"{durada:.2f}s)")
+        if ini < prev_fi - 1e-9:
+            raise ValueError(
+                "Les seccions no poden solapar-se ni invertir-se. "
+                "L'ordre temporal ha de ser estricte."
+            )
+        prev_fi = fi
+    return ordenats
+
+
+def contiguitat_seccions(items, idx, min_s=0.05):
+    """Manté l'INVARIANT de CONTIGÜITAT (#2) ajustant els veïns de la secció `idx`."""
+    items = list(items)
+    ini, fi, L, _F = items[idx]
+    if fi - ini < min_s:
+        raise ValueError(
+            f"La secció {L} quedaria massa curta ({ini:.2f}s–{fi:.2f}s)")
+    if idx - 1 >= 0:
+        pi, _pf, pl, pfam = items[idx - 1]
+        if ini - pi < min_s:
+            raise ValueError(
+                f"La secció {pl} quedaria massa curta: el nou inici "
+                f"({ini:.2f}s) no deixa marge")
+        items[idx - 1] = (pi, ini, pl, pfam)
+    if idx + 1 < len(items):
+        _ni, nf, nl, nfam = items[idx + 1]
+        if nf - fi < min_s:
+            raise ValueError(
+                f"La secció {nl} quedaria massa curta: el nou fi "
+                f"({fi:.2f}s) no deixa marge")
+        items[idx + 1] = (fi, nf, nl, nfam)
+    return items
+
+
+def bloc_sobre_acords(acords, bloc, llargada, T, durada, rel=1e-6):
+    """Sobreescriu un bloc copiat d'acords dins `[T, T+llargada]`."""
+    Te = min(float(T) + float(llargada), float(durada))
+    punts = []
+    for (r, name) in bloc:
+        t = float(T) + float(r)
+        if t < durada - rel:
+            punts.append(Clip(t, t, (str(name), f"{t:.9f}")))
+    if not punts:
+        return list(acords)
+    marca = None
+    for a in acords:
+        if abs(float(a[0]) - Te) <= rel:
+            marca = a
+            break
+    if marca is None and Te < durada - rel:
+        after = None
+        for a in acords:
+            if float(a[0]) <= Te - rel:
+                after = a
+            else:
+                break
+        nom_m = (str(_nom_item_acord(after))
+                 if after else str(_nom_item_acord(punts[-1])))
+        marca = Clip(Te, Te, (nom_m, f"{Te:.9f}"))
+    nou = [a for a in acords if float(a[0]) < float(T) - rel]
+    nou += punts
+    if marca is not None:
+        if float(marca[0]) > float(punts[-1][0]) + RESOLUCIO_CSV - 1e-6:
+            nou.append(marca)
+    nou += [a for a in acords if float(a[0]) > Te + rel]
+    return nou
+
+
+def bloc_sobre_seccions(seccions, bloc, llargada, T, durada, rel=1e-6):
+    """Sobreescriu un bloc copiat de seccions dins `[T, T+llargada]`."""
+    T = float(T)
+    durada = float(durada)
+    Te = min(T + float(llargada), durada)
+    nou = []
+    for (ini, fi, ll, fam) in seccions:
+        ini, fi = float(ini), float(fi)
+        if fi <= T + rel or ini >= Te - rel:
+            nou.append((ini, fi, ll, fam))
+            continue
+        if ini < T - rel:
+            nou.append((ini, T, ll, fam))
+        if fi > Te + rel:
+            nou.append((Te, fi, ll, fam))
+    for (ri, rf, ll, fam) in bloc:
+        ini = T + float(ri)
+        fi = min(T + float(rf), Te)
+        if ini < durada - rel and fi - ini > rel:
+            nou.append((ini, fi, str(ll), str(fam)))
+    nou.sort(key=lambda s: float(s[0]))
+    return [s for s in nou if float(s[1]) - float(s[0]) > rel]
+
+
+def renomena_acords_model(acords, idxs, nom, durada=0.0):
+    """Reanomena els acords `idxs` a `nom` i valida la cadena."""
+    idxs = sorted({i for i in idxs if 0 <= i < len(acords)})
+    nom = saneja_nom_acord(nom)
+    if not idxs or not nom:
+        return None, ""
+    nova = list(acords)
+    for i in idxs:
+        _a = nova[i]
+        nova[i] = Clip(float(_a[0]), float(_a[1]), (nom,) + tuple(_a[2][1:]))
+    return valida_canvis_acords(nova, durada), nom
+
+
+def renomena_seccions_model(seccions, idxs, lletra, durada=0.0):
+    """Reanomena les seccions `idxs` a `lletra` i valida la cadena."""
+    idxs = sorted({i for i in idxs if 0 <= i < len(seccions)})
+    if not idxs:
+        return None, ""
+    lletra = (str(lletra) if lletra is not None else "").strip() \
+        or seccions[idxs[0]][2]
+    nova = list(seccions)
+    for i in idxs:
+        ini, fi, _l, _f = nova[i]
+        nova[i] = (ini, fi, lletra, lletra)
+    return valida_canvis_seccions(nova, durada), lletra
+
+
+def substitueix_en_model(items, camp, troba, reemplaca, durada=0.0):
+    """Substitueix aparicions exactes a `items` (`acords` o `estructura`).
+
+    Retorna `(nova_llista, n_canvis, etiqueta_aplicada)`.
+    """
+    troba = str(troba or "").strip()
+    reemplaca = str(reemplaca or "").strip()
+    if not troba or not reemplaca:
+        return list(items), 0, ""
+    if camp == "estructura":
+        lista, n = [], 0
+        for (ini, fi, lletra, fam) in items:
+            if str(lletra) == troba:
+                n += 1
+                fam = reemplaca if str(fam) == troba else fam
+                lletra = reemplaca
+            lista.append((ini, fi, lletra, fam))
+        if not n:
+            return list(items), 0, reemplaca
+        return valida_canvis_seccions(lista, durada), n, reemplaca
+    nou = saneja_nom_acord(reemplaca)
+    if not nou:
+        return list(items), 0, ""
+    lista, n = [], 0
+    for _a in items:
+        t, fi, nom = float(_a[0]), float(_a[1]), _nom_item_acord(_a)
+        if str(nom) == troba:
+            n += 1
+            nom = nou
+        lista.append(Clip(t, fi, (nom, f"{t:.9f}")))
+    if not n:
+        return list(items), 0, nou
+    return valida_canvis_acords(lista, durada), n, nou
+
+
 def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0,
                  mapa=None):
     def _escriu(f):
@@ -1447,7 +1707,7 @@ def style(c):
 
 
 def segments_lliures(csv_path, total_s, log):
-    # com acords_a_live.py però en segons, sense graella: N s'absorbeix,
+    # Mode Lliure: com la guia DAW però en segons, sense graella: N s'absorbeix,
     # repetits seguits es fusionen, capçalera N si cal.
     # El CSV del model és `inici,fi,acord` (S3): el fi es re-deriva.
     segs = []
@@ -1559,7 +1819,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         durada = float(total_s or 0.0)
         if acords is not None:
             clips = normalitza_clips(
-                clips_de_model(acords, durada), durada, FORAT_ACORD,
+                clips_d_acords(acords, durada), durada, FORAT_ACORD,
                 arrodoneix=True, deriva_fi=True, log=log)
             desa_acords_csv(csv_ac, clips, durada)
         if seccions is not None:
@@ -1569,8 +1829,12 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
 
     result = {"acords_csv": csv_ac, "sortida": sortida}
     if tempo_fix:
-        loc, guia = run_acords_py(csv_ac, bpm, bpb, offset, sortida, log,
-                                  durada=total_s)
+        dades_guia = _segments_guia_daw(csv_ac, bpm, bpb, offset=offset,
+                                        durada=total_s)
+        loc = genera_locators(csv_ac, bpm, bpb, offset=offset, workdir=sortida,
+                              durada=total_s, _dades=dades_guia)
+        guia = genera_guia_html(csv_ac, bpm, bpb, offset=offset, workdir=sortida,
+                                durada=total_s, log=log, _dades=dades_guia)
         result["locators_txt"] = loc
         result["guia_html"] = guia
         dest = os.path.join(sortida, "wavs_acords")
@@ -1702,35 +1966,26 @@ def regularitza_acords_csv(csv_cru, csv_desti, bpm, bpb, offset, ritme, durada,
         ritme = graella.infereix_nivell(items, bpm, bpb, offset, durada, log=log)
     res = graella.regularitza_acords(items, bpm, bpb, offset,
                                      ritme or "compas", durada, log=log)
-    acords, _ = normalitza_cobertura(res, [], durada, log=log)
-    desa_acords_csv(csv_desti, [(float(t), str(n)) for (t, n) in acords], durada)
-    return acords
+    clips = normalitza_clips(
+        clips_d_acords(res, durada), durada, FORAT_ACORD,
+        arrodoneix=True, deriva_fi=True, log=log)
+    desa_acords_csv(csv_desti, clips, durada)
+    return acords_de_clips(clips)
 
 
-def desa_acords_csv(ruta, items, durada=0.0):
-    """Desa el model d'acords com a CLIPS: `inici,fi,acord` (S3+S4).
-
-    Accepta **clips** `(ini, fi, payload)` (el model del visor) o **marques**
-    `(t, nom[, tsrc])` (el camí de l'anàlisi); en tots dos casos n'escriu el nom.
-    El `fi` d'una marca es deriva (inici del següent; l'últim, la `durada`). Els
-    temps van arrodonits a `TEMPS_DEC` (10 ms), com `estructura_ABC.csv`.
-    """
-    items = [tuple(it) for it in items]
+def desa_acords_csv(ruta, clips, durada=0.0):
+    """Desa el model d'acords (`Clip(ini, fi, payload)`) com a `inici,fi,acord`."""
+    clips = list(clips or ())
     durada = float(durada or 0.0)
-
-    def _nom(payload):
-        return payload[0] if isinstance(payload, tuple) else payload
 
     def _escriu(f):
         w = csv.writer(f)
-        for i, it in enumerate(items):
-            t = float(it[0])
-            if isinstance(it[1], (int, float)):     # CLIP (ini, fi, payload)
-                fi, c = float(it[1]), _nom(it[2])
-            else:                                    # MARCA (t, nom[, tsrc])
-                c = _nom(it[1])
-                fi = float(items[i + 1][0]) if i + 1 < len(items) else durada
-            w.writerow([f"{t:.{TEMPS_DEC}f}", f"{fi:.{TEMPS_DEC}f}", c])
+        for c in clips:
+            if not isinstance(c, Clip):
+                c = Clip(float(c[0]), float(c[1]), c[2])
+            ini, fi = float(c.ini), float(c.fi)
+            nom = c.nom
+            w.writerow([f"{ini:.{TEMPS_DEC}f}", f"{fi:.{TEMPS_DEC}f}", nom])
     escriu_atomic(ruta, _escriu)
 
 
@@ -1844,7 +2099,12 @@ def regenera_wavs_acords(csv_path, sortida, bpm, bpb, offset, total_s, sr, log,
     dest = os.path.join(sortida, "wavs_acords")
     neteja_wavs(dest)
     if tempo_fix:
-        loc, _guia = run_acords_py(csv_path, bpm, bpb, offset, sortida, log)
+        dades_guia = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
+                                        durada=total_s)
+        loc = genera_locators(csv_path, bpm, bpb, offset=offset, workdir=sortida,
+                              durada=total_s, _dades=dades_guia)
+        genera_guia_html(csv_path, bpm, bpb, offset=offset, workdir=sortida,
+                         durada=total_s, log=log, _dades=dades_guia)
         return fer_wavs_acords(loc, bpm, dest, sr, log, bpb)
     return fer_wavs_acords_lliures(csv_path, total_s, dest, sr, log)
 

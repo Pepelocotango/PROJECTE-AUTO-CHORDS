@@ -6,6 +6,26 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
 ## [Unreleased]
 
 ### Canviat
+- **Consolidació d'arquitectura i neteja de codi (4 fases, 2026-10-19)**: sense
+  funcionalitats noves; **1.138 tests (1 skip)** i `pyflakes` net abans i
+  després.
+  - **Fase 1 — fora els subprocessos**: `acords_a_live.py` absorbit a
+    `app/pipeline.py` (`genera_locators` / `genera_guia_html`), de manera que
+    l'export ja no invoca cap intèrpret extern. `eines/launcher_pyinstaller.py`
+    perd la intercepció amb `runpy` i els empaquetats (Win/macOS/portable) ja no
+    inclouen l'script.
+  - **Fase 2 — `Clip` com a única veritat**: `Tram` exposa `payload`; fora
+    `clips_de_model`, `nom_d_acord` i `_acords_a_clips`; `normalitza_clips`
+    absorbeix les regles #1/#2/#4/#8 i `normalitza_cobertura` hi delega;
+    `desa_acords_csv` només accepta clips.
+  - **Fase 3 — GUI prima**: la validació i les transformacions de blocs surten
+    de `app/visor.py` cap a `app/pipeline.py` / `app/tempo_map.py`
+    (`valida_canvis_*`, `contiguitat_seccions`, `bloc_sobre_*`,
+    `renomena_*_model`, `substitueix_en_model`); el visor delega i refresca amb
+    `_sincronitza_vista()`.
+  - **Fase 4 — suite consolidada**: 95 fitxers de test → **5 suites**
+    (`test_pipeline`, `test_tempo_map`, `test_edicio`, `test_mcp`, `test_gui`)
+    amb la mateixa cobertura (cap test eliminat).
 - **Refactor «inici+fi» del model de dades (S1–S5; tags `refactor-inici-fi` →
   `refactor-s1-s3-fets` → `refactor-s4-fet` → `refactor-s5-fet`)**: acords i
   estructura passen a compartir **un sol model de clips** `Clip(ini, fi, payload)`

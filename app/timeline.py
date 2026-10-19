@@ -88,11 +88,6 @@ from app.timeline_items import (   # noqa: E402,F401
 # -----------------------------------------------------------------------------
 # TimelineView — la vista QGraphicsView principal
 # -----------------------------------------------------------------------------
-def _acords_a_clips(acords, durada):
-    """Converteix el model d'acords a **clips** (S4); accepta marques (pont)."""
-    return pipeline.clips_de_model(acords, durada)
-
-
 class TimelineView(QGraphicsView):
     """Vista amb ona + ruler + 2 carrils (acords + estructura).
 
@@ -204,7 +199,7 @@ class TimelineView(QGraphicsView):
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self._mapa = None      # mapa de tempo/compàs (None = uniforme)
-        self._acords = _acords_a_clips(acords, self._durada)
+        self._acords = pipeline.clips_d_acords(acords, self._durada)
         self._seccions = list(seccions) or []
         self._chord_items: List[ChordItem] = []
         self._section_items: List[SectionItem] = []
@@ -322,9 +317,7 @@ class TimelineView(QGraphicsView):
 
     # -- API pública ----------------------------------------------------------
     def set_data(self, acords: Sequence, seccions: Sequence) -> None:
-        # El model d'acords són **clips** (S4). Acceptem també **marques**
-        # `(t, nom[, tsrc])` (pont per a crides directes/tests): s'hi deriva el fi.
-        self._acords = _acords_a_clips(acords, self._durada)
+        self._acords = pipeline.clips_d_acords(acords, self._durada)
         self._seccions = list(seccions) or []
         # Els índexs canvien amb les dades noves: la multi-selecció antiga
         # queda òrfena, per tant la buidem (els items es reconstrueixen).
@@ -478,9 +471,7 @@ class TimelineView(QGraphicsView):
         n = len(self._acords)
         for i in range(n):
             _c = self._acords[i]
-            t, name = _c[0], pipeline.nom_d_acord(_c)
-            next_t = self._acords[i + 1][0] if i + 1 < n else self._durada
-            item = ChordItem(i, float(t), str(name), float(next_t),
+            item = ChordItem(i, float(_c.ini), str(_c.nom), float(_c.fi),
                              self._pps, self._x_offset,
                              LANE_ACC_TOP, LANE_H)
             item.timeChanged.connect(
@@ -1019,15 +1010,12 @@ class TimelineView(QGraphicsView):
         keys = self.selected_keys()
         if not keys:
             return
-        durada = float(self._durada)
         chords, chord_fis, sections, tempo_bloc = [], [], [], []
         for kind, idx in sorted(keys, key=lambda k: (k[0], k[1])):
             if kind == "chord" and 0 <= idx < len(self._acords):
-                t = float(self._acords[idx][0])
-                fi = (float(self._acords[idx + 1][0])
-                      if idx + 1 < len(self._acords) else durada)
-                chords.append((t, str(pipeline.nom_d_acord(self._acords[idx]))))
-                chord_fis.append(fi)
+                c = self._acords[idx]
+                chords.append((float(c.ini), str(c.nom)))
+                chord_fis.append(float(c.fi))
             elif kind == "section" and 0 <= idx < len(self._seccions):
                 ini, fi, lletra, fam = self._seccions[idx]
                 sections.append((float(ini), float(fi), str(lletra), str(fam)))
@@ -1239,8 +1227,8 @@ class TimelineView(QGraphicsView):
         # marca òrfena).
         if (self._copia_ac is None and len(self._multi) <= 1
                 and (mods & Qt.ControlModifier and mods & Qt.ShiftModifier)):
-            self._copia_ac = (float(self._acords[idx][0]),
-                               str(pipeline.nom_d_acord(self._acords[idx])))
+            self._copia_ac = (float(self._acords[idx].ini),
+                               str(self._acords[idx].nom))
         # Arrossegar el COS = moure el BLOC (§6.3), amb Ctrl+Shift o sense: el
         # que canvia és només que el final del gest hi deixa una còpia a
         # l'origen. Mateix camí per a totes dues coses (paritat #11 amb les

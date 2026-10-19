@@ -14,7 +14,7 @@ fi
 
 echo "== 2/6 Python =="
 .venv/bin/python -c "from PyQt5.QtCore import QT_VERSION_STR; print('PyQt5 Qt', QT_VERSION_STR)"
-.venv/bin/python -m py_compile acords_a_live.py wav_a_wavs.py app/main.py app/pipeline.py
+.venv/bin/python -m py_compile wav_a_wavs.py app/main.py app/pipeline.py
 echo "py_compile OK"
 
 echo "== 3/6 binaris (lectura, sense instal·lar) =="

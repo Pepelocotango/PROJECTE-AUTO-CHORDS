@@ -68,14 +68,18 @@ python3 app/main.py
 ```bash
 VAMP_PATH=nnls-chroma-linux64-local ./sonic-annotator \
   -d vamp:nnls-chroma:chordino:simplechord -w csv tema.wav
-python3 acords_a_live.py acords.csv 138 4 [offset_segons]
+python3 -c "from app import pipeline as p; p.run_acords_py('acords.csv', 138, 4, 0.0, '.', print)"
 ```
+
+> Els locators i la guia HTML es generen **en memòria** dins
+> `app/pipeline.py` (`genera_locators` / `genera_guia_html`): ja no hi ha cap
+> script solt ni cap subprocés de Python.
 
 ## Verificar canvis
 
 ```bash
 # compilació ràpida (no arrenca l'app)
-.venv/bin/python -m py_compile acords_a_live.py wav_a_wavs.py app/main.py app/pipeline.py app/visor.py
+.venv/bin/python -m py_compile wav_a_wavs.py app/main.py app/pipeline.py app/visor.py
 
 # la suite sencera (ha d'estar sempre verda; offscreen = cap diàleg)
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests

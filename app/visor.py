@@ -80,8 +80,13 @@ def llegeix_wav(ruta):
 
 
 def nom_acord(it):
-    """Nom d'un clip d'acord (`Clip(ini, fi, payload)`) o d'una marca `(t, nom[, tsrc])`."""
-    return pipeline.nom_d_acord(it)
+    """Nom d'un clip d'acord (`Clip(ini, fi, payload)`)."""
+    if isinstance(it, pipeline.Clip):
+        return it.nom
+    if len(it) >= 3 and isinstance(it[1], (int, float)):
+        p = it[2]
+        return p[0] if isinstance(p, tuple) else p
+    return it[1]
 
 
 def llegeix_acords(ruta):
@@ -512,54 +517,8 @@ class Visor(QMainWindow):
             self.llista_ac.setCurrentRow(cur)
 
     def _valida_canvis_acords(self, items):
-        """Valida i DERIVA el `fi` dels clips d'acord (S4).
-
-        Mateixes regles que abans (ordre estricte per inici, sense duplicats ni
-        xocs a la resolució del CSV, dins de la WAV), ara sobre clips: accepta
-        clips `Clip(ini, fi, payload)` o marques `(t, nom[, tsrc])` i retorna
-        clips amb el `fi` re-derivat de la cadena de fronteres.
-        """
-        if not items:
-            return []
-        durada = self._durada_wav()
-        ordenats = sorted(items, key=lambda x: float(x[0]))
-        n = len(ordenats)
-        out = []
-        prev_t, prev_nom = None, None
-        for i, item in enumerate(ordenats):
-            t = float(item[0])
-            nom = nom_acord(item)
-            if t < 0:
-                raise ValueError(f"L'acord {nom} té un inici negatiu ({t:.2f}s)")
-            # TOPALL superior: un acord al final de la WAV (o més enllà)
-            # quedaria amb durada <= 0 i trencaria l'invariant de cobertura (#4).
-            if durada > 0 and t >= durada - pipeline.TOL_TEMPS:
-                raise ValueError(
-                    f"L'acord {nom} no cap dins de la WAV ({t:.2f}s; la WAV "
-                    f"fa {durada:.2f}s)")
-            if prev_t is not None:
-                if t <= prev_t + 1e-9:
-                    raise ValueError(
-                        "Els acords no poden compartir ni invertir el seu inici. "
-                        "L'ordre ha de ser estricte i sense solapaments."
-                    )
-                # Resolució del CSV: dos inicis a menys de 10 ms cauen a la
-                # MATEIXA fila del CSV (2 decimals) i el primer quedaria amb un
-                # clip de durada ~0 a l'export (trenca #1/#2 a nivell de CSV).
-                if t - prev_t < pipeline.RESOLUCIO_CSV - 1e-9:
-                    raise ValueError(
-                        f"Els acords {prev_nom} ({prev_t:.3f}s) i {nom} "
-                        f"({t:.3f}s) estan a menys de "
-                        f"{pipeline.RESOLUCIO_CSV * 1000:.0f} ms: al CSV "
-                        f"({pipeline.TEMPS_DEC} decimals) quedarien al mateix "
-                        f"instant i un clip tindria durada 0."
-                    )
-            prev_t, prev_nom = t, nom
-            fi = float(ordenats[i + 1][0]) if i + 1 < n else durada
-            payload = (tuple(item.payload) if isinstance(item, pipeline.Clip)
-                       else tuple(item[1:]))
-            out.append(pipeline.Clip(t, fi, payload))
-        return out
+        """Delega la validació i derivació de `fi` d'acords a `pipeline`."""
+        return pipeline.valida_canvis_acords(items, self._durada_wav())
 
     def _normalitza_acords(self, items=None):
         items = self.acords if items is None else items
@@ -576,7 +535,7 @@ class Visor(QMainWindow):
         nom = pipeline.saneja_nom_acord(nom)
         if not nom:
             return False
-        item = (float(t), nom, f"{float(t):.9f}")
+        item = pipeline.Clip(float(t), float(t), (nom, f"{float(t):.9f}"))
         nova = self._normalitza_acords(self.acords + [item])
         self.acords = nova
         if hasattr(self, "llista_ac"):
@@ -691,7 +650,7 @@ class Visor(QMainWindow):
         s0 = list(self.seccions)
         d = self._durada_wav()
         self.acords = pipeline.normalitza_clips(
-            pipeline.clips_de_model(self.acords, d), d, pipeline.FORAT_ACORD,
+            pipeline.clips_d_acords(self.acords, d), d, pipeline.FORAT_ACORD,
             arrodoneix=True, deriva_fi=True, log=self.log)
         _, self.seccions = pipeline.normalitza_cobertura(
             [], self.seccions, d, log=self.log)
@@ -2159,99 +2118,16 @@ class Visor(QMainWindow):
                  f"{len(trams_buf)} tram(s) de tempo/compàs")
 
     def _bloc_sobre_acords(self, acords, bloc, llargada, T, durada, rel):
-        """Nova llista d'acords amb el bloc sobreescrit dins `[T, T+llargada]`.
-
-        Els acords són marques (inici) amb final **derivat**: es mantenen les
-        marques anteriors a `T`, s'hi posen les del bloc i s'assegura una marca a
-        `T+llargada` (amb el nom del clip que hi havia) perquè l'últim acord
-        copiat acabi exactament allà.
-        """
-        Te = min(T + float(llargada), durada)
-        punts = []
-        for (r, name) in bloc:
-            t = T + float(r)
-            if t < durada - rel:
-                punts.append((t, str(name), f"{t:.9f}"))
-        if not punts:
-            return list(acords)
-        # marca de tancament a Te
-        marca = None
-        for a in acords:
-            if abs(float(a[0]) - Te) <= rel:
-                marca = a
-                break
-        if marca is None and Te < durada - rel:
-            after = None
-            for a in acords:
-                if float(a[0]) <= Te - rel:
-                    after = a
-                else:
-                    break
-            marca = (Te, str(nom_acord(after)) if after else punts[-1][1],
-                     f"{Te:.9f}")
-        nou = [a for a in acords if float(a[0]) < T - rel]
-        nou += punts
-        if marca is not None:
-            if float(marca[0]) > float(punts[-1][0]) + pipeline.RESOLUCIO_CSV - 1e-6:
-                nou.append(marca)
-        nou += [a for a in acords if float(a[0]) > Te + rel]
-        return nou
+        """Delega la sobreescriptura del bloc d'acords a `pipeline`."""
+        return pipeline.bloc_sobre_acords(acords, bloc, llargada, T, durada, rel)
 
     def _bloc_sobre_trams(self, trams, bloc, llargada, T, durada):
-        """Mapa de BPM/compàs amb el bloc enganxat sobre `[T, T+llargada]`.
-
-        El mapa està **SATURAT** (cobreix sempre `[0, durada]` amb trams
-        contigus): enganxar-hi un bloc de trams no insereix res, **obre les
-        fronteres** del bloc i hi **canvia el BPM/compàs**. La resta del mapa no
-        es toca (el veïnatge queda ajustat en normalitzar).
-        """
-        out = list(trams or [])
-        if not bloc:
-            return out
-        T = float(T)
-        llargada = float(llargada or 0.0)
-        for (r, _rfi, _b, _n, _d) in bloc:
-            t = T + float(r)
-            if t < durada - 1e-6:
-                out = tempo_map.afegeix_tall(out, t)
-        te = T + llargada
-        if 1e-6 < te < durada - 1e-6:
-            out = tempo_map.afegeix_tall(out, te)
-
-        def _valor(rel):
-            for (r, rfi, b, n, d) in bloc:
-                if float(r) - 1e-9 <= rel < float(rfi) - 1e-9:
-                    return float(b), int(n), int(d)
-            return None
-
-        nou = []
-        for s in out:
-            v = _valor(float(s[0]) - T)
-            nou.append((float(s[0]), float(s[1]), v[0], v[1], v[2])
-                       if v else (float(s[0]), float(s[1]),
-                                  s[2], s[3], s[4]))
-        return nou
+        """Delega la sobreescriptura del bloc de trams a `tempo_map`."""
+        return tempo_map.bloc_sobre_trams(trams, bloc, llargada, T, durada)
 
     def _bloc_sobre_seccions(self, seccions, bloc, llargada, T, durada, rel):
-        """Nova llista de seccions amb el bloc sobreescrit dins `[T, T+llargada]`."""
-        Te = min(T + float(llargada), durada)
-        nou = []
-        for (ini, fi, ll, fam) in seccions:
-            ini, fi = float(ini), float(fi)
-            if fi <= T + rel or ini >= Te - rel:
-                nou.append((ini, fi, ll, fam))
-                continue
-            if ini < T - rel:              # part esquerra
-                nou.append((ini, T, ll, fam))
-            if fi > Te + rel:              # part dreta
-                nou.append((Te, fi, ll, fam))
-        for (ri, rf, ll, fam) in bloc:
-            ini = T + float(ri)
-            fi = min(T + float(rf), Te)
-            if ini < durada - rel and fi - ini > rel:
-                nou.append((ini, fi, str(ll), str(fam)))
-        nou.sort(key=lambda s: float(s[0]))
-        return [s for s in nou if float(s[1]) - float(s[0]) > rel]
+        """Delega la sobreescriptura del bloc de seccions a `pipeline`."""
+        return pipeline.bloc_sobre_seccions(seccions, bloc, llargada, T, durada, rel)
 
     def _selecciona_bloc_enganxat(self, T, chords, sections, tol=0.02):
         """Deixa seleccionat el bloc acabat d'enganxar (acords i/o seccions)."""
@@ -2342,118 +2218,88 @@ class Visor(QMainWindow):
         return self._renomena_seccions(idxs, text)
 
     def _renomena_acords(self, idxs, nom):
-        """Reanomena els acords `idxs` a `nom` (1 sola op. de desfer). True si OK."""
-        idxs = sorted({i for i in idxs if 0 <= i < len(self.acords)})
-        nom = pipeline.saneja_nom_acord(nom)
-        if not idxs or not nom:
-            self.log("reanomena acords: res a fer (nom o selecció buits)")
-            return False
-        self._undo_marca()
-        nova = list(self.acords)
-        for i in idxs:
-            _a = nova[i]
-            nova[i] = pipeline.Clip(float(_a[0]), float(_a[1]),
-                                    (nom,) + tuple(_a[2][1:]))
+        """Reanomena els acords `idxs` a `nom` delegant a `pipeline`."""
         try:
-            self.acords = self._valida_canvis_acords(nova)
+            cand, nom_net = pipeline.renomena_acords_model(
+                self.acords, idxs, nom, self._durada_wav())
         except ValueError as e:
             self.log(f"reanomena acords: {e}")
             return False
+        if cand is None:
+            self.log("reanomena acords: res a fer (nom o selecció buits)")
+            return False
+        idxs = sorted({i for i in idxs if 0 <= i < len(self.acords)})
+        self._undo_marca()
+        self.acords = cand
         self._undo_commit()
-        self.timeline.set_data(self.acords, self.seccions)
+        self._sincronitza_vista()
         try:
             self._desa_i_regenera()
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
         self.timeline.select_multi({("chord", i) for i in idxs})
-        self._omple_llista_ac()
-        self.log(f"reanomenats {len(idxs)} acord(s) → {nom}")
+        self.log(f"reanomenats {len(idxs)} acord(s) → {nom_net}")
         return True
 
     def _renomena_seccions(self, idxs, lletra):
-        """Reanomena les seccions `idxs`: lletra i família passen a `lletra`."""
-        idxs = sorted({i for i in idxs if 0 <= i < len(self.seccions)})
-        if not idxs:
-            self.log("reanomena seccions: res a fer")
-            return False
-        lletra = (str(lletra) if lletra is not None else "").strip() \
-            or self.seccions[idxs[0]][2]
-        self._undo_marca()
-        nova = list(self.seccions)
-        for i in idxs:
-            ini, fi, _l, _f = nova[i]
-            nova[i] = (ini, fi, lletra, lletra)
+        """Reanomena les seccions `idxs` delegant a `pipeline`."""
         try:
-            self.seccions = self._valida_canvis_seccions(nova)
+            cand, lletra_net = pipeline.renomena_seccions_model(
+                self.seccions, idxs, lletra, self._durada_wav())
         except ValueError as e:
             self.log(f"reanomena seccions: {e}")
             return False
+        if cand is None:
+            self.log("reanomena seccions: res a fer")
+            return False
+        idxs = sorted({i for i in idxs if 0 <= i < len(self.seccions)})
+        self._undo_marca()
+        self.seccions = cand
         self._undo_commit()
-        self.timeline.set_data(self.acords, self.seccions)
+        self._sincronitza_vista()
         try:
             self._regenera_abc_des_de_totes_les_seccions("bloc reanomenat")
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
         self.timeline.select_multi({("section", i) for i in idxs})
-        self._actualitza_llista_abc()
-        self.log(f"reanomenades {len(idxs)} secció(ns) → {lletra}")
+        self.log(f"reanomenades {len(idxs)} secció(ns) → {lletra_net}")
         return True
 
     def troba_i_reemplaca(self, camp, troba, reemplaca):
-        """Substitueix TOTES les aparicions EXACTES d'un xifrat (acords) o d'una
-        etiqueta (estructura) al tema. Retorna quants n'ha canviat (0 = cap).
-
-        No canvia cap temps → les regles d'or (ordre/contigüitat/cobertura) queden
-        intactes. Una sola operació de desfer.
-        """
+        """Substitueix TOTES les aparicions EXACTES delegant a `pipeline`."""
         troba = str(troba or "").strip()
         reemplaca = str(reemplaca or "").strip()
         if not troba or not reemplaca:
             return 0
         if camp == "estructura":
-            lista, n = [], 0
-            for (ini, fi, lletra, fam) in self.seccions:
-                if str(lletra) == troba:
-                    n += 1
-                    fam = reemplaca if str(fam) == troba else fam
-                    lletra = reemplaca
-                lista.append((ini, fi, lletra, fam))
+            cand, n, etq = pipeline.substitueix_en_model(
+                self.seccions, "estructura", troba, reemplaca,
+                self._durada_wav())
             if not n:
                 return 0
             self._undo_marca()
-            self.seccions = self._valida_canvis_seccions(lista)
+            self.seccions = cand
             self._undo_commit()
-            self.timeline.set_data(self.acords, self.seccions)
+            self._sincronitza_vista()
             try:
                 self._regenera_abc_des_de_totes_les_seccions(
-                    f"substitució estructura: {troba}→{reemplaca}")
+                    f"substitució estructura: {troba}→{etq}")
             except Exception as e:  # noqa: BLE001
                 self.log(f"ERROR: {e}")
-            self._actualitza_llista_abc()
-            self.log(f"substitució estructura: «{troba}» → «{reemplaca}» ({n})")
+            self.log(f"substitució estructura: «{troba}» → «{etq}» ({n})")
             return n
-        # acords
-        nou = pipeline.saneja_nom_acord(reemplaca)
-        if not nou:
-            return 0
-        lista, n = [], 0
-        for _a in self.acords:
-            t, nom = float(_a[0]), nom_acord(_a)
-            if str(nom) == troba:
-                n += 1
-                nom = nou
-            lista.append((t, nom, f"{t:.9f}"))
+        cand, n, nou = pipeline.substitueix_en_model(
+            self.acords, "acords", troba, reemplaca, self._durada_wav())
         if not n:
             return 0
         self._undo_marca()
-        self.acords = self._valida_canvis_acords(lista)
+        self.acords = cand
         self._undo_commit()
-        self.timeline.set_data(self.acords, self.seccions)
+        self._sincronitza_vista()
         try:
             self._desa_i_regenera()
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
-        self._omple_llista_ac()
         self.log(f"substitució acords: «{troba}» → «{nou}» ({n})")
         return n
 
@@ -2494,9 +2340,11 @@ class Visor(QMainWindow):
                                          log=self.log)
         nous_acords = []
         if nou:
-            c, _ = pipeline.normalitza_cobertura(nou, [], durada, log=self.log)
-            # Manté el 3r camp (precisió interna) com la resta del model.
-            nous_acords = [(float(t), str(n), f"{float(t):.9f}") for (t, n) in c]
+            nous_acords = pipeline.normalitza_clips(
+                [pipeline.Clip(float(t), float(t), (str(n), f"{float(t):.9f}"))
+                 for (t, n) in nou],
+                durada, pipeline.FORAT_ACORD, arrodoneix=True, deriva_fi=True,
+                log=self.log)
         noves_sec = self.seccions
         if modul_compassos and self.seccions:
             noves_sec = graella.regularitza_seccions(
@@ -2763,30 +2611,8 @@ class Visor(QMainWindow):
         self.timeline.ensure_cursor_visible()
 
     def _valida_canvis_seccions(self, items):
-        if not items:
-            return []
-        durada = self._durada_wav()
-        ordenats = sorted(items, key=lambda x: float(x[0]))
-        prev_fi = -1e-9
-        for item in ordenats:
-            ini = float(item[0])
-            fi = float(item[1])
-            if ini < 0 or fi < 0:
-                raise ValueError(f"La secció {item[2]} té temps negatius ({ini:.2f}s–{fi:.2f}s)")
-            if fi <= ini:
-                raise ValueError(f"La secció {item[2]} té una durada no vàlida ({ini:.2f}s–{fi:.2f}s)")
-            # TOPALL superior: cap secció pot sortir de la WAV (#4).
-            if durada > 0 and fi > durada + pipeline.TOL_TEMPS:
-                raise ValueError(
-                    f"La secció {item[2]} surt de la WAV ({fi:.2f}s; la WAV fa "
-                    f"{durada:.2f}s)")
-            if ini < prev_fi - 1e-9:
-                raise ValueError(
-                    "Les seccions no poden solapar-se ni invertir-se. "
-                    "L'ordre temporal ha de ser estricte."
-                )
-            prev_fi = fi
-        return ordenats
+        """Delega la validació d'estructura a `pipeline`."""
+        return pipeline.valida_canvis_seccions(items, self._durada_wav())
 
     # Durada mínima d'una secció en moure'n una vora (evita seccions nul·les).
     MIN_SECCIO_S = 0.05
@@ -2795,33 +2621,8 @@ class Visor(QMainWindow):
     MIN_ACORD_S = 0.05
 
     def _contiguitat_seccions(self, items, idx):
-        """Manté l'INVARIANT de CONTIGÜITAT (regla d'or #2) en moure `idx`.
-
-        El `fi` de la secció anterior i l'`ini` de la següent segueixen les
-        vores noves de la secció moguda (mateixa lògica que el drag del
-        timeline i que `_elimina_seccio`): així no apareixen forats interns ni
-        solapaments. Rebutja (`ValueError`) si algun veí quedaria sense marge.
-        """
-        items = list(items)
-        ini, fi, L, _F = items[idx]
-        if fi - ini < self.MIN_SECCIO_S:
-            raise ValueError(
-                f"La secció {L} quedaria massa curta ({ini:.2f}s–{fi:.2f}s)")
-        if idx - 1 >= 0:
-            pi, _pf, pl, pfam = items[idx - 1]
-            if ini - pi < self.MIN_SECCIO_S:
-                raise ValueError(
-                    f"La secció {pl} quedaria massa curta: el nou inici "
-                    f"({ini:.2f}s) no deixa marge")
-            items[idx - 1] = (pi, ini, pl, pfam)
-        if idx + 1 < len(items):
-            _ni, nf, nl, nfam = items[idx + 1]
-            if nf - fi < self.MIN_SECCIO_S:
-                raise ValueError(
-                    f"La secció {nl} quedaria massa curta: el nou fi "
-                    f"({fi:.2f}s) no deixa marge")
-            items[idx + 1] = (fi, nf, nl, nfam)
-        return items
+        """Delega el manteniment de la contigüitat (#2) a `pipeline`."""
+        return pipeline.contiguitat_seccions(items, idx, self.MIN_SECCIO_S)
 
     def mou_seccio(self, idx, ini, fi):
         """Mou/redimensiona la secció `idx` a (`ini`,`fi`) mantenint la contigüitat.
@@ -3057,17 +2858,18 @@ class Visor(QMainWindow):
         L2 = (str(lletra).strip() if lletra else L) or L
         F2 = (str(fam).strip() if fam else (F or L2)) or L2
         self._undo_marca()
-        nova = list(self.seccions)
-        nova[idx] = (ini, t, L, F)
-        nova.insert(idx + 1, (t, fi, L2, F2))
         try:
+            nova = pipeline.seccions_de_clips(
+                pipeline.parteix_clips(
+                    pipeline.clips_de_seccions(self.seccions), idx, t,
+                    nou_payload=(L2, F2), marge=self.MIN_SECCIO_S,
+                    etiqueta="secció"))
             self.seccions = self._normalitza_seccions(nova)
         except ValueError as e:
             self.log(f"partir: canvi invalid ({e})")
             return False
         self._undo_commit()
-        if hasattr(self, "timeline"):
-            self.timeline.set_data(self.acords, self.seccions)
+        self._sincronitza_vista()
         if hasattr(self, "llista_ab"):
             self._actualitza_llista_abc()
         return idx + 1

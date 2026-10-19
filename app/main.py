@@ -665,7 +665,7 @@ class Finestra(QMainWindow):
         # posem `pipeline.SONIC` (`OLD/sonic-annotator`): és una **reserva
         # llegat** que no s'empaqueta mai (l'app fa servir `vamp_host_local`), i
         # avisar-ne confonia en arrencar l'app congelada (mac/win/AppImage).
-        for p in (pipeline.ACORDS_PY, *pipeline.VAMP_DIRS):
+        for p in pipeline.VAMP_DIRS:
             if not os.path.exists(p):
                 self.registra(f"AVÍS: no trobo {p}")
         # A9: ffmpeg és imprescindible per OBRIR qualsevol format que no sigui
@@ -2989,7 +2989,7 @@ class Finestra(QMainWindow):
         """Regenera `acords_locators.txt` si és MÉS VELL que el model.
 
         La partitura es construeix a partir dels **locators**, que són un
-        DERIVAT del CSV (els fa `acords_a_live.py`). Si s'ha editat el model
+        DERIVAT del CSV (`pipeline.genera_locators`). Si s'ha editat el model
         després de l'últim export de WAVs, els locators del disc són VELLS i la
         partitura sortia amb els acords antics (bug real, 2026-10-15).
         """

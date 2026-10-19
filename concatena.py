@@ -41,7 +41,6 @@ INCLOU = [
     "AUTO_CHORDS.sh",       # llançador
     "AUTO_CHORDS_MCP.sh",   # llançador de l'app amb el pont MCP actiu
     "AUTO_CHORDS.desktop",  # drecera d'escriptori
-    "acords_a_live.py",     # script del pipeline (CSV -> locators/guia)
     "wav_a_wavs.py",        # CLI wav -> wavs
     "concatena.py",         # aquest mateix script
     # 5. Els tests (perquè qui revisi el codi pugui veure el comportament)

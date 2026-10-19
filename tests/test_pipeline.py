@@ -1,18 +1,2330 @@
-import csv
-import logging
+"""Suite de test — Pipeline
+
+> Suite CONSOLIDADA (Fase 4, 2026-10-19): fusiona 28 mòduls de test que abans
+> vivien separats a `tests/`. Cada bloc conserva el seu codi original íntegre
+> (només s'han renombrat els símbols de nivell superior que xocaven i s'han
+> unificat els imports). Cobertura intacta: cap test eliminat.
+"""
 import os
-import shutil
-import subprocess
 import sys
-import tempfile
-import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _temporals  # noqa: E402
-_ = _temporals  # higiene dels tests: l'import té efecte (esborra en plegar)
-import wave
-from pathlib import Path
-from unittest.mock import patch
+_ = _temporals  # higiene: esborra els temporals en plegar
 
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+import unittest
+import tempfile
+from app import pipeline
+import numpy as np
+from app import acord_audio as A
+import subprocess
+import threading
+from unittest import mock
+from app import audio_out, plataforma
+import hashlib
+import http.server
+import importlib.util
+import shutil
+import socketserver
+from unittest.mock import patch
+import io
+from app import xifrat
+import xml.etree.ElementTree as ET
+import wave
+import PyQt5.QtWidgets as QW
+from app import main as app_main
+from app import mcp_bridge
+import faulthandler
+import glob
+import re
+from PyQt5.QtWidgets import QApplication
+from app import icones
+from pathlib import Path
+from app import partitura
+import csv
+import logging
+from app import config, dialegs, ffmpeg, postproc, theme, vamp_params, visor
+from app import visor as visor_mod
+
+def setUpModule():
+    _pipeline_export_setUpModule()
+
+
+def tearDownModule():
+    _audio_out_tearDownModule()
+    _export_async_tearDownModule()
+    _export_neteja_estructura_tearDownModule()
+    _export_ok_fals_tearDownModule()
+    _partitura_sense_musescore_tearDownModule()
+    _pipeline_export_tearDownModule()
+    _xocs_inici_csv_tearDownModule()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_acords_a_live.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Smoke de la guia DAW (`genera_locators` / `genera_guia_html`) i dels locators.
+
+Verifica que `pipeline.genera_locators`, `pipeline.genera_guia_html` i
+`pipeline.run_acords_py` generen els dos fitxers en memòria (sense subprocés)
+i respecten el mapa de tempo/compàs.
+"""
+
+
+
+ACORDS = "inici_s,fi_s,acord\n0.0,4.0,C\n4.0,8.0,Am\n8.0,12.0,F\n12.0,16.0,G\n"
+
+
+def _carpeta(tempo=None, compas=None):
+    td = tempfile.mkdtemp()
+    with open(os.path.join(td, "acords.csv"), "w", encoding="utf-8") as f:
+        f.write(ACORDS)
+    if tempo:
+        with open(os.path.join(td, "tempo.csv"), "w", encoding="utf-8") as f:
+            f.write(tempo)
+        with open(os.path.join(td, "compas.csv"), "w", encoding="utf-8") as f:
+            f.write(compas)
+    return td
+
+
+class TestGuiaDaw(unittest.TestCase):
+
+    def _corre(self, td, durada=16.0):
+        return pipeline.run_acords_py(
+            os.path.join(td, "acords.csv"), 120.0, 4, 0.0, td,
+            lambda *a: None, durada=durada)
+
+    def test_genera_locators_i_guia(self):
+        td = _carpeta()
+        loc, guia = self._corre(td)
+        self.assertTrue(os.path.isfile(loc), "ha de generar acords_locators.txt")
+        self.assertTrue(os.path.isfile(guia), "ha de generar guia_acords.html")
+        with open(loc, encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn("C", text)
+        self.assertIn("G", text)
+        with open(guia, encoding="utf-8") as f:
+            html = f.read()
+        self.assertIn("120 BPM", html)
+        self.assertIn("<div class=\"g\">", html)
+
+    def test_amb_mapa_de_tempo_variable(self):
+        """Amb `tempo.csv`/`compas.csv` de més d'un tram, la guia es calcula
+        amb el mapa (posicions compàs.temps.setzena) i no peta."""
+        td = _carpeta(tempo="ini_s,fi_s,bpm\n0.0,8.0,120\n8.0,16.0,90\n",
+                      compas="ini_s,fi_s,beats,beat_type\n0.0,8.0,4,4\n"
+                             "8.0,16.0,3,4\n")
+        loc, guia = self._corre(td)
+        self.assertTrue(os.path.isfile(loc))
+        self.assertTrue(os.path.isfile(guia))
+        with open(guia, encoding="utf-8") as f:
+            self.assertIn("G", f.read())
+
+    def test_tot_n_dona_error_clar(self):
+        """Un CSV amb només N ha de llançar RuntimeError clar."""
+        td = tempfile.mkdtemp()
+        csv_path = os.path.join(td, "acords.csv")
+        with open(csv_path, "w", encoding="utf-8") as f:
+            f.write("inici_s,fi_s,acord\n0.0,4.0,N\n")
+        with self.assertRaises(RuntimeError) as ctx:
+            pipeline.genera_locators(csv_path, 120.0, 4, 0.0, td, durada=4.0)
+        self.assertIn("tot N", str(ctx.exception))
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_acord_audio.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Àudio per escoltar un tipus d'acord (`app/acord_audio.py`).
+
+Piano elèctric sintetitzat amb numpy (FM estil Rhodes): **sense dependències
+noves** i amb el **mateix motor d'àudio** de l'app. Aquí **no es fa sonar res**:
+es verifica la matemàtica (notes → MIDI) i el senyal (mida, extrems, sense
+saturar, sense NaN).
+"""
+
+
+
+
+class TestNotes(unittest.TestCase):
+    def test_acords_coneguts(self):
+        for arrel, graus, esperat in [
+                ("C", "1,3,5,7", [48, 52, 55, 59]),          # Cmaj7: C3 E3 G3 B3
+                ("F#", "1,b3,b5,b7", [54, 57, 60, 64]),      # F#m7b5
+                ("Ab", "1,3,5,6,9", [56, 60, 63, 65, 70]),   # Ab6/9
+                ("C", "1,5", [48, 55]),                      # C5 (power)
+                ("C", "", [48])]:                            # sense graus → arrel
+            self.assertEqual(A.notes_del_tipus(arrel, graus), esperat,
+                             f"{arrel} {graus}")
+
+    def test_sense_arrel_valida(self):
+        self.assertEqual(A.notes_del_tipus("", "1,3,5"), [])
+        self.assertEqual(A.notes_del_tipus("H", "1,3,5"), [])
+
+    def test_graus_no_numerics_s_ignoren(self):
+        """`7alt` porta «+alt» → s'ignora i queden 1,3,b7."""
+        self.assertEqual(A.notes_del_tipus("C", "1,3,b7,+alt"), [48, 52, 58])
+
+    def test_no_surt_del_rang(self):
+        for arrel in ("C", "B", "Gb"):
+            notes = A.notes_del_tipus(arrel, "1,3,5,7,9,11,13")
+            self.assertTrue(all(A.MIDI_MIN <= m <= A.MIDI_MAX for m in notes),
+                            arrel)
+
+    def test_notes_amb_baix(self):
+        """Acords amb `/`: el baix sona una octava sota l'arrel."""
+        # A + 1,3,5,b7 (A7) amb baix G → G2 (43) + l'acord de A3 (57)
+        notes = A.notes_amb_baix("A", "1,3,5,b7", "G")
+        self.assertEqual(notes[0], 43, "el baix ha d'anar a baix de tot")
+        self.assertIn(57, notes)
+        # sense baix → igual que el tipus sol
+        self.assertEqual(A.notes_amb_baix("A", "1,3,5,b7", ""),
+                         A.notes_del_tipus("A", "1,3,5,b7"))
+        # baix invàlid → s'ignora
+        self.assertEqual(A.notes_amb_baix("A", "1,3,5,b7", "H"),
+                         A.notes_del_tipus("A", "1,3,5,b7"))
+
+    def test_baix_enharmonic(self):
+        # Db2 i C#2 són la mateixa nota (MIDI 37)
+        self.assertEqual(A.notes_amb_baix("Ab", "1,3,5,6,9", "Db")[0], 37)
+        self.assertEqual(A.notes_amb_baix("F#", "1,b3,b5,b7", "C#")[0], 37)
+
+    def test_duplicats_fora(self):
+        # `1,1,3` → dues vegades la tònica = una sola nota
+        self.assertEqual(A.notes_del_tipus("C", "1,1,3"), [48, 52])
+
+
+class TestSenyal(unittest.TestCase):
+    def _x(self, pcm):
+        return np.frombuffer(pcm, "<i2").astype(float)
+
+    def test_pcm_acord(self):
+        sr = 22050
+        x = self._x(A.pcm_acord([48, 52, 55, 59], sr, 0.5))
+        self.assertEqual(len(x), int(0.5 * sr))
+        self.assertFalse(np.isnan(x).any())
+        self.assertLessEqual(abs(x).max(), 32767)
+        self.assertLess(abs(x[0]), 100, "ha de començar a 0 (sense clic)")
+        self.assertGreater(abs(x).max(), 10000, "no pot ser silenci")
+
+    def test_no_satura_amb_moltes_notes(self):
+        """El pic ha de quedar a 0,85 sense arribar mai al fons d'escala."""
+        for n in (1, 4, 8, 12):
+            notes = [48 + i for i in range(n)]
+            x = self._x(A.pcm_acord(notes, 22050, 0.4))
+            self.assertLessEqual(abs(x).max(), 32767, n)
+            self.assertAlmostEqual(abs(x).max(), 0.85 * 32767, delta=250,
+                                   msg=f"{n} notes saturades")
+
+    def test_arpegi_i_escolta(self):
+        bloc = A.pcm_acord([48, 52, 55], 22050, 0.5)
+        arp = A.pcm_arpegi([48, 52, 55], 22050, 0.5, 0.2)
+        self.assertGreater(len(arp), len(bloc), "l'arpegi dura més (en sèrie)")
+        esc = A.pcm_escolta([48, 52, 55], 22050)
+        self.assertGreater(len(esc), len(arp), "escolta = arpegi + pausa + bloc")
+
+    def test_buits(self):
+        self.assertEqual(A.pcm_acord([]), b"")
+        self.assertEqual(A.pcm_arpegi([]), b"")
+        self.assertEqual(A.pcm_escolta([]), b"")
+        self.assertEqual(A.notes_del_tipus("C", ""), [48])
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_analisi_real.py
+# ══════════════════════════════════════════════════════════════════════════
+"""ANÀLISI REAL (motor Vamp) de cap a cap — el nucli de l'app.
+
+La resta de la suite **sempre mockeja** `pipeline.extract_chords` /
+`pipeline.executa_transform`: per velocitat i per no dependre dels plugins. El
+resultat era que el **nucli de l'app** (treure els acords d'una WAV) no
+s'executava mai de veritat als tests (auditoria 18-10-2026: forat trobat amb el
+mateix patró que el de la guia DAW de la Ronda 20).
+
+Aquest fitxer corre el **host Vamp de debò** sobre un WAV sintètic (tres triades)
+i comprova que el pipeline dels transforms funciona: arrenca, desa el CSV amb el
+format esperat i hi ha **almenys un acord de veritat** (no tot «N»).
+
+Si el host o els plugins no hi són (p. ex. un CI abans de compilar-los), els
+tests se **salten** netament en comptes de fallar.
+"""
+
+
+
+
+def _wav_triades(ruta, sr=44100):
+    import wave
+
+    import numpy as np
+    def acord(fs, dur=2.6):
+        n = int(sr * dur)
+        t = np.arange(n) / sr
+        return (sum(np.sin(2 * np.pi * f * t) for f in fs) * 6000 / len(fs)
+                ).astype(np.int16)
+    x = np.concatenate([acord([261.6, 329.6, 392.0]),    # C
+                        acord([349.2, 440.0, 523.3]),    # F
+                        acord([392.0, 493.9, 587.3])])   # G
+    with wave.open(ruta, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(x.tobytes())
+
+
+@unittest.skipUnless(pipeline.usa_host(),
+                     "cal el host Vamp propi (vamp_host_local) compilat")
+class TestAnalisiReal(unittest.TestCase):
+
+    def test_el_motor_treu_acords_de_veritat(self):
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "triades.wav")
+        _wav_triades(wav)
+        out = os.path.join(td, "acords.csv")
+        pipeline.executa_transform(pipeline.TRANSFORMS["chords"], out, wav,
+                                   lambda *a: None)
+        self.assertTrue(os.path.isfile(out), "ha de generar el CSV")
+        with open(out, encoding="utf-8") as f:
+            files = [ln.strip() for ln in f if ln.strip()]
+        self.assertTrue(files, "el CSV no pot ser buit")
+        camps = [ln.split(",") for ln in files]
+        temps = []
+        for c in camps:
+            self.assertEqual(len(c), 2, f"format inesperat: {c!r}")
+            temps.append(float(c[0]))
+        self.assertEqual(temps, sorted(temps), "els temps han d'anar en ordre")
+        noms = [c[1].strip().strip('"') for c in camps]
+        self.assertTrue([n for n in noms if n and n != "N"],
+                        f"cap acord detectat de veritat: {noms}")
+
+    def test_el_ttl_temporal_no_queda_enrere(self):
+        """Els `.ttl` temporals de la crida s'esborren en acabar."""
+        import glob
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "triades.wav")
+        _wav_triades(wav)
+        abans = set(glob.glob(os.path.join(tempfile.gettempdir(), "ac_ttl_*")))
+        pipeline.executa_transform(
+            pipeline.TRANSFORMS["chords"], os.path.join(td, "o.csv"), wav,
+            lambda *a: None, params={"smoothing": 0.5})
+        despres = set(glob.glob(os.path.join(tempfile.gettempdir(), "ac_ttl_*")))
+        self.assertEqual(despres - abans, set(),
+                         "no ha de deixar directoris ac_ttl_ orfes")
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_audio_out.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Tests del motor d'àudio (`app/audio_out.py`, `app/plataforma.py`).
+
+⚠️ **Per què són aquí i no al CI de cada SO**: el motor natiu (`sounddevice`/
+PortAudio) només s'executa a macOS/Windows. Com que provar al Mac és car (temps),
+aquí fem servir un **`sounddevice` FALS** (`FakeSD`) i **simulem el SO**, de
+manera que aquests tests corren a **Linux** (locals i al CI) i caçen bugs de
+**concurrència/teardown** (com el `Pa_CloseStream` doble que petava l'app a
+macOS) **abans** de compilar.
+"""
+
+
+
+
+
+# ── `sounddevice` FALS ───────────────────────────────────────────────────────
+class _FakeStream:
+    def __init__(self, **kw):
+        self._falla = kw.pop("_falla", False)
+        self.kw = kw
+        self.started = False
+        self.stops = 0
+        self.aborts = 0
+        self.closes = 0
+        self.mostres = 0
+
+    def start(self):
+        if self._falla:
+            raise RuntimeError("no s'ha pogut obrir el dispositiu")
+        self.started = True
+
+    def write(self, a):
+        self.mostres += int(np.asarray(a).size)
+
+    def stop(self):
+        self.stops += 1
+
+    def abort(self):
+        self.aborts += 1
+
+    def close(self):
+        self.closes += 1
+
+
+class FakeSD:
+    """Substitut del mòdul `sounddevice` (per provar `MotorStream` a Linux)."""
+
+    def __init__(self, apis=None, fallar=()):
+        self.apis = apis if apis is not None else [
+            {"name": "Core Audio", "default_output_device": 0}]
+        self.fallar = set(fallar)
+        self.creats = []
+        self.default = mock.Mock(device=(0, 0))
+
+    def query_hostapis(self):
+        return list(self.apis)
+
+    def OutputStream(self, **kw):
+        # Com PortAudio: crea l'objecte i FALLA al start() si el dispositiu no
+        # serveix (així provem que el MotorStream el tanqui).
+        falla = kw.get("device") in self.fallar
+        s = _FakeStream(_falla=falla, **kw)
+        self.creats.append(s)
+        return s
+
+
+def _motor(so="mac", fake=None):
+    """Crea un `MotorStream` real amb un `sounddevice` fals."""
+    fake = fake or FakeSD()
+    with mock.patch.dict(sys.modules, {"sounddevice": fake}), \
+            mock.patch.object(plataforma, "SO", so):
+        m = audio_out.MotorStream(44100)
+    m._fake = fake
+    return m
+
+
+# ── Obertura / selecció de dispositiu ────────────────────────────────────────
+class TestMotorStreamObertura(unittest.TestCase):
+    def test_obre_el_primer_dispositiu(self):
+        m = _motor()
+        self.assertEqual(len(m._fake.creats), 1)
+        self.assertTrue(m._fake.creats[0].started)
+        self.assertIsNone(m.poll())          # encara sona
+
+    def test_fallback_entre_host_apis(self):
+        fake = FakeSD(apis=[{"name": "Windows WASAPI", "default_output_device": 0},
+                            {"name": "MME", "default_output_device": 1}],
+                      fallar=(0,))
+        m = _motor(so="win", fake=fake)
+        self.assertEqual(m._device, 1)                       # ha hagut de caure a MME
+        self.assertEqual(m._fake.creats[0].closes, 1)        # el que va fallar es tanca
+
+    def test_si_tot_falla_llanca(self):
+        # cap host API obre, I el recurs final (`device=None`) tampoc.
+        fake = FakeSD(fallar=(0, None))
+        with self.assertRaises(RuntimeError):
+            _motor(fake=fake)
+
+
+# ── Escriptura ───────────────────────────────────────────────────────────────
+class TestMotorStreamEscriptura(unittest.TestCase):
+    def test_escriu_totes_les_mostres(self):
+        m = _motor()
+        m.write(b"\x01\x00" * 5000)
+        m.close()
+        self.assertEqual(m._fake.creats[0].mostres, 5000)
+
+    def test_escriu_en_trossos(self):
+        m = _motor()
+        n = audio_out.MotorStream._PAS * 3 + 7
+        m.write(b"\x00\x00" * n)
+        m.close()
+        self.assertEqual(m._fake.creats[0].mostres, n)
+
+    def test_write_despres_de_tancar_peta(self):
+        m = _motor()
+        m.atura()
+        with self.assertRaises(ValueError):
+            m.write(b"\x00\x00")
+
+
+# ── Teardown (el bug del crash) ──────────────────────────────────────────────
+class TestMotorStreamTeardown(unittest.TestCase):
+    def test_close_drena_i_tanca_un_sol_cop(self):
+        m = _motor()
+        st = m._fake.creats[0]
+        m.close()
+        self.assertEqual(st.stops, 1)        # drena
+        self.assertEqual(st.closes, 1)
+        self.assertIsNone(m.stream)
+        self.assertEqual(m.poll(), 0)         # ha acabat
+
+    def test_atura_no_drena(self):
+        m = _motor()
+        st = m._fake.creats[0]
+        m.atura()
+        self.assertEqual(st.stops, 0)        # atura talla, no drena
+        self.assertEqual(st.closes, 1)
+        self.assertEqual(m.poll(), 0)
+
+    def test_tanca_idempotent(self):
+        m = _motor()
+        st = m._fake.creats[0]
+        m.close()
+        m.atura()          # 2n tancament -> no ha de tocar el stream
+        m.close()          # 3r -> tampoc
+        self.assertEqual(st.stops, 1)
+        self.assertEqual(st.closes, 1)
+        self.assertIsNone(m.stream)
+
+
+class TestMotorStreamConcurrencia(unittest.TestCase):
+    """⚠️ El bug original: `Pa_CloseStream` cridat 2 cops (o des de 2 fils) →
+    `AudioToolbox APComponentInstance::disposeInstance` → EXC_BAD_ACCESS."""
+
+    def test_concurrent_un_sol_tancament(self):
+        m = _motor()
+        st = m._fake.creats[0]
+        errors = []
+
+        def bucle(fn):
+            for _audio_out___ in range(300):
+                try:
+                    fn()
+                except ValueError:
+                    pass
+                except Exception as e:   # noqa: BLE001
+                    errors.append(repr(e))
+
+        accions = [m.close, m.atura, m.close,
+                   lambda: m.write(b"\x00\x00" * 64), m.atura]
+        fils = [threading.Thread(target=bucle, args=(a,)) for a in accions]
+        for f in fils:
+            f.start()
+        for f in fils:
+            f.join()
+        self.assertEqual(errors, [])
+        self.assertEqual(st.closes, 1, "el stream s'ha tancat més d'un cop! (crash a mac)")
+        self.assertLessEqual(st.stops, 1)
+        self.assertIsNone(m.stream)
+        self.assertEqual(m.poll(), 0)
+
+
+# ── Motor de procés (Linux) + selecció per SO ────────────────────────────────
+class TestMotorProc(unittest.TestCase):
+    def test_cicle_de_vida(self):
+        if plataforma.ES_WINDOWS:
+            self.skipTest("la prova fa servir /bin/cat (no hi és a Windows)")
+        with open(os.devnull, "wb") as ferr:
+            motor = audio_out.crea_motor("cat", [], 44100, ferr)
+            self.assertIsInstance(motor, audio_out.MotorProc)
+            motor.stdin.write(b"\x00\x00" * 64)
+            self.assertIsNone(motor.poll())
+            motor.stdin.close()
+            motor.atura()
+        self.assertIsNotNone(motor.poll())
+
+
+class TestSeleccioPerSO(unittest.TestCase):
+    def test_linux(self):
+        # Determinista a qualsevol SO (simulem Linux).
+        with mock.patch.object(plataforma, "ES_LINUX", True), \
+                mock.patch.object(plataforma, "ES_MAC", False), \
+                mock.patch.object(plataforma, "ES_WINDOWS", False):
+            self.assertFalse(plataforma.usa_audio_natiu())
+            self.assertEqual(plataforma.candidats_reproductor(),
+                             ("paplay", "aplay"))
+            self.assertIn("PipeWire", plataforma.missatge_sense_audio())
+
+    def test_mac_i_win(self):
+        for mac, win in ((True, False), (False, True)):
+            with mock.patch.object(plataforma, "ES_MAC", mac), \
+                    mock.patch.object(plataforma, "ES_WINDOWS", win):
+                self.assertTrue(plataforma.usa_audio_natiu())
+                self.assertEqual(plataforma.candidats_reproductor(), ())
+                self.assertNotIn("PipeWire", plataforma.missatge_sense_audio())
+
+    def test_tria_player_mac_win_es_natiu(self):
+        from app import visor
+        with mock.patch.object(plataforma, "ES_MAC", True), \
+                mock.patch.object(plataforma, "ES_WINDOWS", False):
+            v = visor.Visor.__new__(visor.Visor)
+            v.audio = {"sr": 44100}
+            player, args = v._tria_player()
+        self.assertEqual(player, audio_out.NOM_NATIU)
+        self.assertEqual(args, [])
+
+
+class TestPlataforma(unittest.TestCase):
+    """Capa compartida (`app/plataforma.py`): camins de Linux/mac/win."""
+
+    def test_executable(self):
+        import tempfile
+        p = os.path.join(tempfile.mkdtemp(), "x")
+        open(p, "w").close()
+        if plataforma.ES_WINDOWS:
+            self.assertTrue(plataforma.executable(p))     # a Windows n'hi ha prou que existeixi
+        else:
+            self.assertFalse(plataforma.executable(p))
+            os.chmod(p, 0o755)
+            self.assertTrue(plataforma.executable(p))
+
+    def test_kwargs_nou_grup(self):
+        if plataforma.ES_WINDOWS:
+            self.assertIn("creationflags", plataforma.kwargs_nou_grup())
+        else:
+            self.assertEqual(plataforma.kwargs_nou_grup(),
+                             {"start_new_session": True})
+
+    def test_bloqueja_instancia_unica(self):
+        if plataforma.ES_WINDOWS:
+            self.skipTest("prova de flock només POSIX")
+        import tempfile
+        p = os.path.join(tempfile.mkdtemp(), "lock")
+        with open(p, "w") as a, open(p, "w") as b:
+            self.assertTrue(plataforma.bloqueja_instancia_unica(a))
+            self.assertFalse(plataforma.bloqueja_instancia_unica(b))
+            plataforma.desbloqueja(a)
+
+    def test_mata_grup(self):
+        if plataforma.ES_WINDOWS:
+            self.skipTest("prova de grup només POSIX")
+        p = subprocess.Popen(["sleep", "30"], **plataforma.kwargs_nou_grup())
+        plataforma.mata_grup(p)
+        try:
+            p.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        self.assertIsNotNone(p.poll())
+
+    def test_path_env_vamp(self):
+        self.assertEqual(plataforma.path_env_vamp(["/a", "/b"]), "/a" + os.pathsep + "/b")
+
+
+class TestReengegaComElVisor(unittest.TestCase):
+    """El camí que petava a macOS (i que encara passa en bussejar/saltar):
+    `_atura_proc()` del motor vell + `_engega_des_de()` (motor nou), **mentre el
+    fil d'alimentació vell encara tancava**. El motor vell s'ha de tancar UN sol
+    cop.
+
+    (El canvi de BPM/compàs JA NO reengega res — el fil llig la graella a cada
+    tros; vegeu `test_canviar_bpm_mentre_sona_no_talla_l_audio`. El reinici viu
+    encara a `ves_a()`, que és un salt demanat per l'usuari.)"""
+
+    def test_atura_i_reengega_amb_fil_vell_escrivint(self):
+        fake = FakeSD()
+        vell = _motor(fake=fake)
+        st_vell = vell._fake.creats[0]
+
+        aturat = threading.Event()
+
+        def alimenta():                     # com `visor._alimenta`
+            while not aturat.is_set():
+                try:
+                    vell.write(b"\x00\x00" * 512)
+                except ValueError:
+                    return                  # tancat: plega
+
+        fil = threading.Thread(target=alimenta, daemon=True)
+        fil.start()
+
+        vell.atura()                        # com al salt: atura el vell
+        nou = _motor(fake=fake)             # ...i n'obre un de nou
+        aturat.set()
+        fil.join(timeout=5)
+
+        self.assertEqual(st_vell.closes, 1, "el motor vell s'ha tancat més d'un cop!")
+        self.assertIsNotNone(nou.stream)
+        self.assertEqual(nou._fake.creats[-1].closes, 0)
+        self.assertIsNone(nou.poll())
+
+
+
+def _audio_out_tearDownModule():
+    # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
+    # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
+    try:
+        import _qt_neteja
+    except ImportError:      # 'python -m unittest tests.test_x' (tests/ no al path)
+        import os, sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import _qt_neteja
+    _qt_neteja.processa_esborrats()
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_baixa_verificat.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Tests de l'eina de baixada verificada (`eines/baixa_verificat.py`).
+
+Es fa servir un **servidor HTTP local** (loopback) perquè els tests no depenguin
+de la xarxa.
+"""
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _carrega():
+    ruta = os.path.join(ROOT, "eines", "baixa_verificat.py")
+    spec = importlib.util.spec_from_file_location("baixa_verificat", ruta)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+BV = _carrega()
+
+
+class _Servidor:
+    """Servidor HTTP local que serveix un diccionari {cami: bytes}."""
+
+    def __init__(self, fitxers):
+        self._fitxers = fitxers
+        pare = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                cos = pare._fitxers.get(self.path)
+                if cos is None:
+                    self.send_error(404)
+                    return
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(cos)))
+                self.end_headers()
+                self.wfile.write(cos)
+
+            def log_message(self, *a):      # silenciós
+                pass
+
+        self._srv = socketserver.TCPServer(("127.0.0.1", 0), Handler)
+        self.port = self._srv.server_address[1]
+        self._fil = threading.Thread(target=self._srv.serve_forever,
+                                     daemon=True)
+        self._fil.start()
+
+    def url(self, cami):
+        return f"http://127.0.0.1:{self.port}{cami}"
+
+    def tanca(self):
+        self._srv.shutdown()
+        self._srv.server_close()
+
+
+class BaixaVerificatTests(unittest.TestCase):
+    def setUp(self):
+        # Sense reintents ni esperes: els tests de fallada han de ser ràpids.
+        self._reintents = BV.REINTENTS
+        self._espera = BV.ESPERA
+        BV.REINTENTS = 1
+        BV.ESPERA = 0
+        # Memòria cau AÏLLADA (que no toqui la del projecte).
+        self._cache = tempfile.mkdtemp()
+        self._env = os.environ.get(BV.CACHE_ENV)
+        os.environ[BV.CACHE_ENV] = self._cache
+        self._d = tempfile.mkdtemp()
+        self._cos = b"contingut de prova\n" * 20
+        self._sha = hashlib.sha256(self._cos).hexdigest()
+        self.srv = _Servidor({"/fitxer.bin": self._cos})
+
+    def tearDown(self):
+        BV.REINTENTS = self._reintents
+        BV.ESPERA = self._espera
+        if self._env is None:
+            os.environ.pop(BV.CACHE_ENV, None)
+        else:
+            os.environ[BV.CACHE_ENV] = self._env
+        self.srv.tanca()
+        shutil.rmtree(self._d, ignore_errors=True)
+        shutil.rmtree(self._cache, ignore_errors=True)
+
+    def _desti(self):
+        return os.path.join(self._d, "f.bin")
+
+    def test_hash_correcte(self):
+        rc = BV.main(["baixa_verificat.py", self.srv.url("/fitxer.bin"),
+                      self._sha, self._desti()])
+        self.assertEqual(rc, 0)
+        with open(self._desti(), "rb") as f:
+            self.assertEqual(f.read(), self._cos)
+
+    def test_hash_incorrecte(self):
+        rc = BV.main(["baixa_verificat.py", self.srv.url("/fitxer.bin"),
+                      "0" * 64, self._desti()])
+        self.assertEqual(rc, 1)
+        self.assertFalse(os.path.exists(self._desti()))
+        self.assertFalse(os.path.exists(self._desti() + ".part"))
+
+    def test_calcula_el_hash(self):
+        rc = BV.main(["baixa_verificat.py", self.srv.url("/fitxer.bin"),
+                      "-", self._desti()])
+        self.assertEqual(rc, 0)
+        self.assertTrue(os.path.exists(self._desti()))
+        self.assertEqual(BV.baixa(self.srv.url("/fitxer.bin"),
+                                  os.path.join(self._d, "altre.bin")),
+                         self._sha)
+
+    def test_url_no_permesa(self):
+        for url in ("file:///etc/passwd", "ftp://exemple/x",
+                    "http://exemple.com/x", "data:text/plain,hola", ""):
+            with self.assertRaises(ValueError):
+                BV.baixa(url, self._desti())
+
+    def test_404_no_deixa_fitxer(self):
+        rc = BV.main(["baixa_verificat.py", self.srv.url("/no-existeix"),
+                      self._sha, self._desti()])
+        self.assertEqual(rc, 1)
+        self.assertFalse(os.path.exists(self._desti()))
+        self.assertFalse(os.path.exists(self._desti() + ".part"))
+
+    def test_sha256_mal_format(self):
+        rc = BV.main(["baixa_verificat.py", self.srv.url("/fitxer.bin"),
+                      "abc", self._desti()])
+        self.assertEqual(rc, 2)
+
+    def test_us_dolent(self):
+        self.assertEqual(BV.main(["baixa_verificat.py"]), 2)
+
+    def test_crea_el_directori_desti(self):
+        desti = os.path.join(self._d, "sub", "dir", "f.bin")
+        rc = BV.main(["baixa_verificat.py", self.srv.url("/fitxer.bin"),
+                      self._sha, desti])
+        self.assertEqual(rc, 0)
+        self.assertTrue(os.path.isfile(desti))
+
+
+class MemoriaCauTests(unittest.TestCase):
+    """Memòria cau de baixades (A+B): no es baixa dues vegades el mateix."""
+
+    def setUp(self):
+        self._reintents, self._espera = BV.REINTENTS, BV.ESPERA
+        self._usa = BV.USA_CACHE
+        BV.REINTENTS, BV.ESPERA, BV.USA_CACHE = 1, 0, True
+        self._d = tempfile.mkdtemp()
+        self._cache = tempfile.mkdtemp()
+        self._env = os.environ.get(BV.CACHE_ENV)
+        os.environ[BV.CACHE_ENV] = self._cache
+        self._cos = b"memoria cau\n" * 5
+        self._sha = hashlib.sha256(self._cos).hexdigest()
+        self.srv = _Servidor({"/f.bin": self._cos})
+
+    def tearDown(self):
+        BV.REINTENTS, BV.ESPERA, BV.USA_CACHE = (self._reintents, self._espera,
+                                                 self._usa)
+        if self._env is None:
+            os.environ.pop(BV.CACHE_ENV, None)
+        else:
+            os.environ[BV.CACHE_ENV] = self._env
+        self.srv.tanca()
+        shutil.rmtree(self._d, ignore_errors=True)
+        shutil.rmtree(self._cache, ignore_errors=True)
+
+    def _desa(self, cami):
+        return os.path.join(self._d, cami)
+
+    def test_segona_baixada_usa_la_cache(self):
+        self.assertEqual(BV.main(["baixa_verificat.py", self.srv.url("/f.bin"),
+                                  self._sha, self._desa("a.bin")]), 0)
+        self.assertTrue(os.path.isfile(os.path.join(self._cache, self._sha)))
+        # Ara el servidor no serveix RES: si intentés baixar, petaria.
+        self.srv.tanca()
+        self.srv = _Servidor({})
+        self.assertEqual(BV.main(["baixa_verificat.py", self.srv.url("/f.bin"),
+                                  self._sha, self._desa("b.bin")]), 0)
+        with open(self._desa("b.bin"), "rb") as f:
+            self.assertEqual(f.read(), self._cos)
+
+    def test_cache_corrupta_es_ignora_i_es_repara(self):
+        with open(os.path.join(self._cache, self._sha), "wb") as f:
+            f.write(b"corrupte")
+        self.assertEqual(BV.main(["baixa_verificat.py", self.srv.url("/f.bin"),
+                                  self._sha, self._desa("c.bin")]), 0)
+        with open(self._desa("c.bin"), "rb") as f:
+            self.assertEqual(f.read(), self._cos)     # s'ha tornat a baixar
+        # i la còpia de la cache ha quedat reparada
+        with open(os.path.join(self._cache, self._sha), "rb") as f:
+            self.assertEqual(f.read(), self._cos)
+
+    def test_sense_cache_no_desa_res(self):
+        self.assertEqual(BV.main(["baixa_verificat.py", "--sense-cache",
+                                  self.srv.url("/f.bin"), self._sha,
+                                  self._desa("d.bin")]), 0)
+        self.assertFalse(os.path.isfile(os.path.join(self._cache, self._sha)))
+
+
+class DepsFixadesTests(unittest.TestCase):
+    """El fitxer de versions fixades ha de ser complet i llegible."""
+
+    RUTA = os.path.join(ROOT, "eines", "deps_fixades.env")
+    CLAUS_SHA = ("PYBS_SHA256", "FFMPEG_LINUX_SHA256", "APPIMAGETOOL_SHA256",
+                 "FFMPEG_MAC_SHA256", "FFMPEG_WIN_SHA256")
+    CLAUS_URL = ("PYBS_URL", "FFMPEG_LINUX_URL", "APPIMAGETOOL_URL",
+                 "FFMPEG_MAC_URL", "FFMPEG_WIN_URL")
+    CLAUS_COMMIT = ("QM_VAMP_PLUGINS_COMMIT", "QM_DSP_COMMIT",
+                    "VAMP_PLUGIN_SDK_COMMIT", "LIBSNDFILE_COMMIT")
+
+    def _vars(self):
+        """Llegeix el fitxer com ho faria bash (KEY=valor)."""
+        valors = {}
+        with open(self.RUTA, encoding="utf-8") as f:
+            for linia in f:
+                linia = linia.strip()
+                if not linia or linia.startswith("#") or "=" not in linia:
+                    continue
+                clau, valor = linia.split("=", 1)
+                valors[clau.strip()] = valor.strip().strip('"')
+        return valors
+
+    def test_te_les_claus(self):
+        v = self._vars()
+        for c in self.CLAUS_SHA + self.CLAUS_URL + self.CLAUS_COMMIT:
+            self.assertIn(c, v, f"falta {c} a deps_fixades.env")
+
+    def test_sha256_son_valids(self):
+        v = self._vars()
+        for c in self.CLAUS_SHA:
+            self.assertRegex(v[c], r"^[0-9a-f]{64}$", f"{c} no és un SHA256")
+
+    def test_commits_son_valids(self):
+        v = self._vars()
+        for c in self.CLAUS_COMMIT:
+            self.assertRegex(v[c], r"^[0-9a-f]{40}$", f"{c} no és un commit")
+
+    def test_urls_https_i_no_mobils(self):
+        v = self._vars()
+        for c in self.CLAUS_URL:
+            self.assertTrue(v[c].startswith("https://"), f"{c} no és HTTPS")
+            for mobil in ("continuous", "getrelease", "/latest/", "-release-"):
+                self.assertNotIn(mobil, v[c], f"{c} encara és mòbil ({mobil})")
+
+    def test_tag_lucide_fixat(self):
+        self.assertRegex(self._vars()["LUCIDE_TAG"], r"^\d+\.\d+\.\d+$")
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_clips_unificats.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Model unificat de clips (inici+fi) — refactor S1 (docs/archive/REFACTOR_INICI_FI.md).
+
+Criteri d'èxit de S1: **cap canvi de comportament**. Les funcions noves han de
+reproduir EXACTAMENT el que fa avui `pipeline.normalitza_cobertura` (que no es
+toca) sobre el corpus dels dos tipus (acords i estructura).
+"""
+
+
+SENSE_A = (pipeline.SENSE_ACORD, "0.000000000")
+SENSE_S = (pipeline.SENSE_SECCIO, pipeline.SENSE_SECCIO)
+D = 10.0
+
+
+class TestAdaptadors(unittest.TestCase):
+    """`clip` ↔ model actual, anada i tornada."""
+
+    def test_acords_a_clips_deriva_el_fi(self):
+        ac = [(0.0, "C", "0.000000000"), (2.0, "Am", "2.000000000")]
+        c = pipeline.clips_d_acords(ac, D)
+        self.assertEqual([(x.ini, x.fi) for x in c], [(0.0, 2.0), (2.0, D)])
+        self.assertEqual(c[0].payload, ("C", "0.000000000"))
+
+    def test_acords_anada_i_tornada(self):
+        ac = [(0.0, "C", "0"), (2.0, "Am", "0")]
+        self.assertEqual(pipeline.acords_de_clips(
+            pipeline.clips_d_acords(ac, D)), ac)
+
+    def test_seccions_anada_i_tornada(self):
+        s = [(0.0, 4.0, "A", "A"), (4.0, 10.0, "B", "B")]
+        self.assertEqual(pipeline.seccions_de_clips(
+            pipeline.clips_de_seccions(s)), s)
+
+    def test_clip_es_comporta_com_a_tupla(self):
+        c = pipeline.Clip(0.0, 2.0, ("C", "0"))
+        self.assertEqual(tuple(c), (0.0, 2.0, ("C", "0")))
+        ini, fi, payload = c
+        self.assertEqual((ini, fi), (0.0, 2.0))
+        self.assertEqual(payload, ("C", "0"))
+
+
+class TestEquivalencia(unittest.TestCase):
+    """`normalitza_clips` ha de donar el MATEIX que `normalitza_cobertura`."""
+
+    CASOS_ACORDS = [
+        [(0.0, "C", "0.000000000")],
+        [(0.0, "C", "0"), (2.0, "Am", "0"), (4.0, "F", "0")],
+        [(2.0, "C", "0")],                                       # capçalera N
+        [(0.0, "C", "0"), (10.0, "Am", "0")],                     # fora de la WAV
+        [(0.0, "C", "0"), (2.0, "Am", "0"), (2.004, "F", "0")],   # xoc al CSV
+        [(0.0, "C", "0"), (9.999, "Am", "0")],
+        [(2.0, "C", "0"), (2.004, "F", "0"), (5.0, "G", "0")],
+    ]
+    CASOS_SECCIONS = [
+        [(0.0, 10.0, "A", "A")],
+        [(2.0, 4.0, "A", "A")],                                  # capçalera
+        [(2.0, 4.0, "A", "A"), (5.0, 7.0, "B", "B")],             # forat intern
+        [(0.0, 12.0, "A", "A")],                                 # fi > durada
+        [(0.0, 2.0, "A", "A"), (12.0, 14.0, "B", "B")],           # fora
+        [(0.0, 3.0, "A", "A"), (7.0, 10.0, "-", "-")],
+    ]
+
+    def test_acords_equivalent(self):
+        for ac in self.CASOS_ACORDS:
+            amb, _clips_unificats___ = pipeline.normalitza_cobertura([tuple(x) for x in ac], [], D)
+            nou = pipeline.acords_de_clips(pipeline.normalitza_clips(
+                pipeline.clips_d_acords(ac, D), D, forat=SENSE_A,
+                arrodoneix=True, deriva_fi=True))
+            self.assertEqual(nou, amb, f"acords {ac}")
+
+    def test_seccions_equivalent(self):
+        for s in self.CASOS_SECCIONS:
+            _clips_unificats___, amb = pipeline.normalitza_cobertura([], [tuple(x) for x in s], D)
+            nou = pipeline.seccions_de_clips(pipeline.normalitza_clips(
+                pipeline.clips_de_seccions(s), D, forat=SENSE_S))
+            self.assertEqual(nou, amb, f"seccions {s}")
+
+    def test_cobertura_exacta(self):
+        for s in self.CASOS_SECCIONS:
+            cl = pipeline.normalitza_clips(pipeline.clips_de_seccions(s), D,
+                                           forat=SENSE_S)
+            self.assertAlmostEqual(cl[0].ini, 0.0)
+            self.assertAlmostEqual(cl[-1].fi, D)
+            for a, b in zip(cl, cl[1:]):
+                self.assertAlmostEqual(a.fi, b.ini)
+
+    def test_cadena_sense_forats_ni_solapaments(self):
+        for ac in self.CASOS_ACORDS:
+            cl = pipeline.normalitza_clips(pipeline.clips_d_acords(ac, D), D,
+                                           forat=SENSE_A, arrodoneix=True,
+                                           deriva_fi=True)
+            for a, b in zip(cl, cl[1:]):
+                self.assertAlmostEqual(a.fi, b.ini)
+
+    def test_treure_zona_determinista(self):
+        """Dos clips que es trepitgen: mana l'inici del segon (regla única)."""
+        s = [(0.0, 6.0, "A", "A"), (4.0, 10.0, "B", "B")]
+        cl = pipeline.normalitza_clips(pipeline.clips_de_seccions(s), D,
+                                       forat=SENSE_S)
+        self.assertEqual([(x.ini, x.fi) for x in cl],
+                         [(0.0, 4.0), (4.0, 10.0)])
+
+    def test_no_muta_l_entrada(self):
+        s = [(2.0, 4.0, "A", "A")]
+        copia = list(s)
+        pipeline.normalitza_clips(pipeline.clips_de_seccions(s), D, forat=SENSE_S)
+        self.assertEqual(s, copia)
+
+    def test_forat_porta_el_payload_de_forat(self):
+        s = [(2.0, 4.0, "A", "A"), (6.0, 8.0, "B", "B")]
+        cl = pipeline.normalitza_clips(pipeline.clips_de_seccions(s), D,
+                                       forat=SENSE_S)
+        self.assertEqual([x.payload for x in cl],
+                         [SENSE_S, ("A", "A"), SENSE_S, ("B", "B")])
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_desat_atomic.py
+# ══════════════════════════════════════════════════════════════════════════
+"""El desat dels CSV d'edició (acords + estructura) és ATÒMIC.
+
+Les edicions de l'usuari es desen a `acords.csv` i `estructura_ABC.csv` a cada
+canvi. Abans el fitxer es truncava ABANS d'escriure: un error (o un crash/tall
+de corrent) enmig el deixava buit o a mitges i es perdia la feina. Ara, o hi ha
+la versió anterior sencera o la nova sencera, i no queden temporals.
+"""
+
+
+
+
+class TestDesatAtomic(unittest.TestCase):
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+        self.addCleanup(__import__("shutil").rmtree, self.td, True)
+
+    def _llegeix(self, nom):
+        with open(os.path.join(self.td, nom), encoding="utf-8") as f:
+            return f.read()
+
+    def _residus(self):
+        return [n for n in os.listdir(self.td) if n.endswith(".tmp")]
+
+    def test_acords_escriu_i_no_deixa_temporals(self):
+        ruta = os.path.join(self.td, "acords.csv")
+        pipeline.desa_acords_csv(
+            ruta, [pipeline.Clip(0.0, 2.0, ("N",)), pipeline.Clip(2.0, 4.0, ("Am",))])
+        self.assertIn("2.00", self._llegeix("acords.csv"))
+        self.assertEqual(self._residus(), [])
+
+    def test_acords_error_enmig_conserva_la_versio_anterior(self):
+        ruta = os.path.join(self.td, "acords.csv")
+        pipeline.desa_acords_csv(
+            ruta, [pipeline.Clip(0.0, 2.0, ("N",)), pipeline.Clip(2.0, 4.0, ("Am",))])
+        abans = self._llegeix("acords.csv")
+        with self.assertRaises(ValueError):
+            pipeline.desa_acords_csv(
+                ruta, [pipeline.Clip(0.0, 2.0, ("C",)),
+                       pipeline.Clip("no-és-un-temps", 4.0, ("G",))])
+        self.assertEqual(self._llegeix("acords.csv"), abans,
+                         "un error enmig no pot deixar el CSV truncat")
+        self.assertEqual(self._residus(), [])
+
+    def test_abc_error_enmig_conserva_la_versio_anterior(self):
+        ruta = os.path.join(self.td, "estructura_ABC.csv")
+        bons = [(0.0, 4.0, "A", "A"), (4.0, 8.0, "B", "B")]
+        pipeline.desa_abc_csv(ruta, bons, 120.0, lambda *_desat_atomic___: None)
+        abans = self._llegeix("estructura_ABC.csv")
+        dolents = [(0.0, 4.0, "A", "A"), ("x", 8.0, "B", "B")]
+        with self.assertRaises((ValueError, TypeError)):
+            pipeline.desa_abc_csv(ruta, dolents, 120.0, lambda *_desat_atomic___: None)
+        self.assertEqual(self._llegeix("estructura_ABC.csv"), abans)
+        self.assertEqual(self._residus(), [])
+
+    def test_windows_destí_ocupat_es_reintenta(self):
+        """Antivirus/Explorer poden tenir el destí obert un instant."""
+        ruta = os.path.join(self.td, "acords.csv")
+        real = os.replace
+        crides = {"n": 0}
+
+        def replace_flaquer(a, b):
+            crides["n"] += 1
+            if crides["n"] < 3:
+                raise PermissionError("destí ocupat")
+            return real(a, b)
+
+        with patch.object(pipeline.os, "replace", replace_flaquer), \
+                patch.object(pipeline.time, "sleep"):
+            pipeline.desa_acords_csv(ruta, [pipeline.Clip(0.0, 2.0, ("N",))])
+        self.assertEqual(crides["n"], 3)
+        self.assertTrue(os.path.isfile(ruta))
+        self.assertEqual(self._residus(), [])
+
+    def test_windows_destí_sempre_ocupat_dona_error_net(self):
+        ruta = os.path.join(self.td, "acords.csv")
+        with patch.object(pipeline.os, "replace",
+                          side_effect=PermissionError("ocupat")), \
+                patch.object(pipeline.time, "sleep"):
+            with self.assertRaises(PermissionError):
+                pipeline.desa_acords_csv(ruta, [pipeline.Clip(0.0, 2.0, ("N",))])
+        self.assertEqual(self._residus(), [])
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_doc_xifrat.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Auditoria: `docs/TIPUS_XIFRAT_ACORDS.md` no ha de divergir de `app/xifrat.py`.
+
+Si s'afegeix un tipus d'acord al codi (`xifrat.TIPUS`) i no es documenta, el CI
+peta — igual que fa `tests/test_esquema_ui_doc.py` amb l'ESQUEMA_UI.
+"""
+
+
+
+ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DOC = os.path.join(ARREL, "docs", "TIPUS_XIFRAT_ACORDS.md")
+
+
+class TestDocXifrat(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        with io.open(DOC, encoding="utf-8") as f:
+            cls.doc = f.read()
+
+    def test_tots_els_tipus_del_codi_son_al_doc(self):
+        faltes = []
+        for qual in xifrat.TIPUS:
+            canon = "C" + qual          # els exemples del doc fan servir l'arrel C
+            if f"`{canon}`" not in self.doc:
+                faltes.append(canon)
+        self.assertEqual(faltes, [],
+                         f"tipus al codi i NO documentats al doc: {faltes}")
+
+    def test_el_doc_tambe_llista_els_extres(self):
+        """Els extres (no del PDF) hi han de ser: `5`, `noN`, `alt`, baixes…"""
+        for tros in ("`C5`", "`Cno5`", "`C7alt`", "`C/E`", "`C##`", "`N`",
+                     "`C69`"):
+            self.assertIn(tros, self.doc, f"falta {tros} al doc")
+
+    def test_diu_que_els_policords_no_hi_son(self):
+        """Els policords NO estan suportats i el doc ho ha de dir."""
+        self.assertIn("Policords", self.doc)
+        self.assertIn("drop2", self.doc)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_esquema_ui_gen.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Les vistes de l'esquema de la UI (`docs/ESQUEMA_UI.html` i `.svg`) han d'estar
+**generades** i **al dia** amb la font única `docs/ESQUEMA_UI.md`.
+
+El generador és **`eines/genera_esquema_ui.py`** (stdlib). Si algú edita el `.md`
+i no regenera, aquest test peta i diu la comanda exacta a córrer.
+"""
+
+_esquema_ui_gen__ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GEN = os.path.join(_esquema_ui_gen__ARREL, "eines", "genera_esquema_ui.py")
+HTML = os.path.join(_esquema_ui_gen__ARREL, "docs", "ESQUEMA_UI.html")
+SVG = os.path.join(_esquema_ui_gen__ARREL, "docs", "ESQUEMA_UI.svg")
+MD = os.path.join(_esquema_ui_gen__ARREL, "docs", "ESQUEMA_UI.md")
+
+
+class TestEsquemaUiGenerat(unittest.TestCase):
+    def test_vistes_generades_i_al_dia(self):
+        """`--check` compara les vistes amb el que produiria el `.md`."""
+        r = subprocess.run([sys.executable, GEN, "--check"],
+                           cwd=_esquema_ui_gen__ARREL, capture_output=True, text=True)
+        self.assertEqual(
+            r.returncode, 0,
+            "Les vistes ESQUEMA_UI no estan al dia amb el .md:\n"
+            f"{r.stdout}{r.stderr}\n"
+            "→ Corre: python3 eines/genera_esquema_ui.py")
+
+    def test_els_fitxers_existeixen(self):
+        for p in (MD, GEN, HTML, SVG):
+            self.assertTrue(os.path.isfile(p), f"falta {p}")
+
+    def test_svg_es_xml_valid(self):
+        ET.parse(SVG)          # aixeca si no és XML correcte
+
+    def test_html_referencia_la_font(self):
+        with open(HTML, encoding="utf-8") as f:
+            s = f.read()
+        self.assertIn("ESQUEMA_UI.md", s)     # porta el peu «generat des de…»
+        self.assertIn("NO editar a mà", s)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_export_async.py
+# ══════════════════════════════════════════════════════════════════════════
+"""A5: export ASÍNCRON (l'export pot trigar i no ha de bloquejar res).
+
+Fet al fil de la UI, l'export congelava la finestra i —si venia d'una crida
+MCP— deixava el pont sense resposta fins al final (síncrona opaca). Ara
+`exporta_async()` el fa en un fil (`FeinaExporta`), amb el progrés a la barra i
+a `ac_status` (`exportant`), i `ac_export_wav` accepta `async: true`.
+"""
+
+
+
+
+
+
+def _finestra():
+    td = tempfile.mkdtemp()
+    wav = os.path.join(td, "t.wav")
+    with wave.open(wav, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(44100)
+        w.writeframes(b"\x00\x00" * 44100 * 3)
+    s = pipeline.carpeta_sortida(wav)
+    os.makedirs(s, exist_ok=True)
+    with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
+        f.write("0.0,2.0,C\n2.0,4.0,Am\n")
+    w = app_main.Finestra()
+    w.wav_edit.setText(wav)
+    w._carrega_visor(wav)
+    # Amb el pont actiu els avisos són NO modals: així el test no es queda
+    # esperant un clic (i és el cas realista: l'export sol venir de l'MCP).
+    w.mcp_actiu = True
+    return w
+
+
+class _Base(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QW.QApplication.instance() or QW.QApplication([])
+
+    def setUp(self):
+        # Cap test no ha d'ensenyar un QMessageBox REAL: amb el pont MCP actiu
+        # l'avís és NO modal i, a Windows, mostrar-lo des del context del test fa
+        # «access violation» (crash natiu: vist al CI, run #14, a main._avis →
+        # box.show()). Mateix remei que `test_avis_no_modal`.
+        p = patch.object(QW.QMessageBox, "show", lambda self: None)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def ctx(self, w):
+        return mcp_bridge._Context(w)
+
+    def _espera(self, w, ms=8000):
+        w.feina_export.wait(ms)
+        for _export_async___ in range(20):                  # deixa arribar el senyal `feta`
+            self._app.processEvents()
+
+
+class TestExportAsync(_Base):
+    def test_arrenca_i_acaba(self):
+        w = _finestra()
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"):
+            self.assertTrue(w.exporta_async())
+            self.assertTrue(w.exportant, "mentre corre ha de constar com a tal")
+            self._espera(w)
+        self.assertFalse(w.exportant, "en acabar ha de quedar a False")
+        self.assertIn("Exportació feta", w.log.toPlainText())
+        w.close()
+
+    def test_no_arrenca_dues_vegades(self):
+        w = _finestra()
+        import time as _t
+        with patch.object(pipeline, "exporta_total",
+                          side_effect=lambda **k: _t.sleep(0.3)), \
+                patch.object(w, "obre_carpeta"):
+            self.assertTrue(w.exporta_async())
+            self.assertFalse(w.exporta_async(), "no pot arrencar-ne dos")
+            self._espera(w)
+        w.close()
+
+    def test_error_al_fil_avisa(self):
+        w = _finestra()
+        with patch.object(pipeline, "exporta_total",
+                          side_effect=RuntimeError("boom")), \
+                patch.object(w, "obre_carpeta"):
+            self.assertTrue(w.exporta_async())
+            self._espera(w)
+        self.assertFalse(w.exportant)
+        self.assertIn("boom", w.log.toPlainText())
+        w.close()
+
+
+class TestExportAsyncMCP(_Base):
+    def test_ac_export_wav_async_torna_de_seguida(self):
+        w = _finestra()
+        import time as _t
+        with patch.object(pipeline, "exporta_total",
+                          side_effect=lambda **k: _t.sleep(0.3)), \
+                patch.object(w, "obre_carpeta"):
+            r = mcp_bridge._op_export_wav(self.ctx(w), {"async": True})
+            self.assertTrue(r.get("iniciat"))
+            st = mcp_bridge._op_status(self.ctx(w), {})
+            self.assertTrue(st.get("exportant"), "l'estat ha de dir que exporta")
+            self._espera(w)
+        st2 = mcp_bridge._op_status(self.ctx(w), {})
+        self.assertFalse(st2.get("exportant"))
+        w.close()
+
+    def test_async_sense_wav_es_rebutja(self):
+        w = _finestra()
+        w.wav_edit.setText("")
+        w.sortida = ""
+        with self.assertRaises(mcp_bridge.BridgeError):
+            mcp_bridge._op_export_wav(self.ctx(w), {"async": True})
+        w.close()
+
+
+
+def _export_async_tearDownModule():
+    # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
+    # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
+    try:
+        import _qt_neteja
+    except ImportError:      # 'python -m unittest tests.test_x' (tests/ no al path)
+        import os, sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import _qt_neteja
+    _qt_neteja.processa_esborrats()
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_export_limits.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Validació — exportació: límits (0 wavs), fusió d'iguals, capçalera «N» i
+retall al final. Mode Lliure (`tempo_fix=False`) per no dependre d'scripts.
+
+NOTA (a revisar amb l'operador): l'export aplica `style()` al nom del fitxer, de
+manera que el nom del WAV pot DIFERIR del nom al CSV (`Am` → `A-.wav`). El test
+`test_nom_wav_usa_style` ho DOCUMENTA (no és una afirmació que sigui el desitjat).
+"""
+
+
+
+
+def _export(acords, total_s):
+    td = tempfile.mkdtemp()
+    ca = os.path.join(td, "acords.csv")
+    out = os.path.join(td, "out")
+    r = pipeline.exporta_total(
+        csv_ac=ca, csv_seg=None, sortida=out, bpm=120.0, bpb=4, offset=0.0,
+        sr=44100, log=lambda *_export_limits___: None, tempo_fix=False, amb_estructura=False,
+        total_s=total_s, acords=acords, seccions=None)
+    dest = os.path.join(out, "wavs_acords")
+    wavs = sorted(os.listdir(dest)) if os.path.isdir(dest) else []
+    return ca, wavs, r
+
+
+class TestExportLimits(unittest.TestCase):
+    def test_tot_N_zero_wavs(self):
+        _ca, wavs, r = _export([(0.0, "N", "0")], 5.0)
+        self.assertEqual(wavs, [])
+        self.assertEqual(r["n_acords_wavs"], 0)
+
+    def test_csv_buit_zero_wavs(self):
+        _ca, wavs, r = _export([], 5.0)
+        self.assertEqual(wavs, [])
+        self.assertEqual(r["n_acords_wavs"], 0)
+
+    def test_fusiona_acords_iguals_seguits(self):
+        _ca, wavs, r = _export([(0.0, "C", "0"), (2.0, "C", "2"), (4.0, "G", "4")],
+                               8.0)
+        self.assertEqual(len(wavs), 2)               # C 0-4 · G 4-8
+        self.assertTrue(any("_C.wav" in w for w in wavs))
+        self.assertTrue(any("_G.wav" in w for w in wavs))
+
+    def test_capcalera_N_produeix_wav(self):
+        _ca, wavs, r = _export([(0.5, "C", "0.5")], 3.0)
+        self.assertEqual(len(wavs), 2)               # N 0-0.5 · C 0.5-3
+        self.assertTrue(any("_N.wav" in w for w in wavs))
+
+    def test_retalla_al_final(self):
+        _ca, wavs, r = _export([(0.0, "C", "0")], 3.0)
+        self.assertEqual(len(wavs), 1)
+        self.assertIn("0000.00s_0003.00s", wavs[0])  # fi = durada de la WAV
+
+    def test_nom_wav_usa_style(self):
+        """DOCUMENTA: l'export estilitza el nom → pot diferir del CSV."""
+        ca, wavs, r = _export([(0.0, "Am", "0"), (2.0, "Cmaj7", "2")], 4.0)
+        self.assertTrue(any("A-.wav" in w for w in wavs),
+                        f"l'export estilitza (Am→A-): {wavs}")
+        with open(ca, encoding="utf-8") as f:
+            self.assertIn("Am", f.read())
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_export_neteja_estructura.py
+# ══════════════════════════════════════════════════════════════════════════
+"""(2) Amb «Inclou estructura» OFF: el MODEL mai s'esborra.
+
+`estructura_ABC.csv` és el MODEL del projecte i **no es toca mai** (la marca
+decideix què s'EXPORTA, no què es conserva). Només s'ofereixen treure les restes
+de l'export anterior (`wavs_estructura/`), i **sempre amb confirmació**.
+"""
+
+
+
+
+
+
+def _export_neteja_estructura___finestra(amb_estructura):
+    td = tempfile.mkdtemp()
+    wav = os.path.join(td, "t.wav")
+    with wave.open(wav, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(44100)
+        w.writeframes(b"\x00\x00" * 44100 * 3)
+    s = pipeline.carpeta_sortida(wav)
+    os.makedirs(s, exist_ok=True)
+    with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
+        f.write("0.0,2.0,C\n2.0,4.0,Am\n")
+    # restes d'un export ANTERIOR amb estructura
+    with open(os.path.join(s, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
+        f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
+    os.makedirs(os.path.join(s, "wavs_estructura"), exist_ok=True)
+    with open(os.path.join(s, "wavs_estructura", "vella.wav"), "wb") as f:
+        f.write(b"RIFF")
+    w = app_main.Finestra()
+    w.wav_edit.setText(wav)
+    w._carrega_visor(wav)
+    w.mcp_actiu = True
+    w.amb_est.setChecked(amb_estructura)
+    w._sortida = s
+    return w, s
+
+
+class TestNetejaEstructura(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QW.QApplication.instance() or QW.QApplication([])
+
+    def setUp(self):
+        # Cap QMessageBox REAL: mostrar-lo amb el pont MCP actiu fa «access
+        # violation» a Windows (crash natiu; CI run #14). Vegeu test_avis_no_modal.
+        p = patch.object(QW.QMessageBox, "show", lambda self: None)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_amb_la_marca_off_es_netegen_els_wavs_pero_MAI_el_model(self):
+        w, s = _export_neteja_estructura___finestra(amb_estructura=False)
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"), \
+                patch.object(type(w), "_ho_confirma", return_value=True):
+            w.exporta()
+        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")),
+                        "el MODEL de l'estructura NO s'ha d'esborrar mai")
+        self.assertFalse(os.path.isdir(os.path.join(s, "wavs_estructura")),
+                         "la carpeta de wavs d'estructura vella hi és")
+        self.assertIn("tret l'export anterior", w.log.toPlainText())
+        w.close()
+
+    def test_amb_la_marca_off_sense_confirmacio_no_esborra_res(self):
+        w, s = _export_neteja_estructura___finestra(amb_estructura=False)
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"), \
+                patch.object(type(w), "_ho_confirma", return_value=False):
+            w.exporta()
+        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")))
+        self.assertTrue(os.path.isdir(os.path.join(s, "wavs_estructura")))
+        self.assertIn("es conserven els derivats", w.log.toPlainText())
+        w.close()
+
+    def test_amb_pont_mcp_actiu_no_esborra_mai_res(self):
+        """Amb el pont MCP actiu no es mostra cap diàleg ni s'esborra res."""
+        w, s = _export_neteja_estructura___finestra(amb_estructura=False)   # mcp_actiu=True dins _export_neteja_estructura___finestra
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"):
+            w.exporta()
+        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")))
+        self.assertTrue(os.path.isdir(os.path.join(s, "wavs_estructura")))
+        w.close()
+
+    def test_amb_la_marca_on_es_respecten(self):
+        w, s = _export_neteja_estructura___finestra(amb_estructura=True)
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"):
+            w.exporta()
+        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")))
+        self.assertTrue(os.path.isdir(os.path.join(s, "wavs_estructura")))
+        w.close()
+
+
+
+def _export_neteja_estructura_tearDownModule():
+    # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
+    # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
+    try:
+        import _qt_neteja
+    except ImportError:      # 'python -m unittest tests.test_x' (tests/ no al path)
+        import os, sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import _qt_neteja
+    _qt_neteja.processa_esborrats()
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_export_ok_fals.py
+# ══════════════════════════════════════════════════════════════════════════
+"""`ac_export_wav` ha de dir `ok: false` quan l'export FALLA (OC-6/386).
+
+Abans retornava `ok: true` SEMPRE, també quan l'export petava (p. ex. amb 0
+acords): l'agent creia que s'havia exportat. Ara, si l'export falla, `ok` és
+fals i s'hi afegeix el motiu (`error`), a més de l'avís de l'app.
+"""
+
+
+
+
+
+
+def _export_ok_fals___finestra():
+    td = tempfile.mkdtemp()
+    wav = os.path.join(td, "t.wav")
+    with wave.open(wav, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(44100)
+        w.writeframes(b"\x00\x00" * 44100 * 3)
+    s = pipeline.carpeta_sortida(wav)
+    os.makedirs(s, exist_ok=True)
+    with open(os.path.join(s, "acords.csv"), "w", encoding="utf-8") as f:
+        f.write("0.0,2.0,C\n2.0,4.0,Am\n")
+    w = app_main.Finestra()
+    w.wav_edit.setText(wav)
+    w._carrega_visor(wav)
+    w.mcp_actiu = True          # avisos no-modals (no ha de bloquejar el test)
+    return w
+
+
+class TestOkFalsEnFallar(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QW.QApplication.instance() or QW.QApplication([])
+
+    def setUp(self):
+        # Cap QMessageBox REAL: mostrar-lo amb el pont MCP actiu fa «access
+        # violation» a Windows (crash natiu; CI run #14). Vegeu test_avis_no_modal.
+        p = patch.object(QW.QMessageBox, "show", lambda self: None)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_export_que_falla_retorna_ok_false(self):
+        w = _export_ok_fals___finestra()
+        with patch.object(pipeline, "exporta_total",
+                          side_effect=RuntimeError("no hi ha acords")), \
+                patch.object(w, "obre_carpeta"):
+            r = mcp_bridge._op_export_wav(mcp_bridge._Context(w), {})
+        self.assertFalse(r.get("ok"), f"hauria de ser ok:false → {r}")
+        self.assertIn("no hi ha acords", r.get("error", ""))
+        w.close()
+
+    def test_export_bo_retorna_ok_true(self):
+        w = _export_ok_fals___finestra()
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"):
+            r = mcp_bridge._op_export_wav(mcp_bridge._Context(w), {})
+        self.assertTrue(r.get("ok"), f"hauria de ser ok:true → {r}")
+        self.assertNotIn("error", r)
+        w.close()
+
+    def test_async_que_falla_tambe_ho_diu(self):
+        w = _export_ok_fals___finestra()
+        with patch.object(pipeline, "exporta_total",
+                          side_effect=RuntimeError("boom")), \
+                patch.object(w, "obre_carpeta"):
+            mcp_bridge._op_export_wav(mcp_bridge._Context(w), {"async": True})
+            w.feina_export.wait(8000)
+            for _export_ok_fals___ in range(20):
+                self._app.processEvents()
+        self.assertEqual(w.exporta_error, "boom")
+        w.close()
+
+
+
+def _export_ok_fals_tearDownModule():
+    # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
+    # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
+    try:
+        import _qt_neteja
+    except ImportError:      # 'python -m unittest tests.test_x' (tests/ no al path)
+        import os, sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import _qt_neteja
+    _qt_neteja.processa_esborrats()
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_faulthandler_crash.py
+# ══════════════════════════════════════════════════════════════════════════
+"""`activa_faulthandler`: la traça d'un crash nadiu queda a disc.
+
+Sense això, un SIGSEGV de Qt/PortAudio no deixava res (ni `excepthook` ni log)
+i un informe de beta era només «s'ha tancat sol».
+"""
+
+
+
+
+class _Logger:
+    def __init__(self):
+        self.avisos = []
+
+    def warning(self, fmt, *args):
+        self.avisos.append(fmt % args if args else fmt)
+
+
+class TestActivaFaulthandler(unittest.TestCase):
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+        self.log = os.path.join(self.td, "auto-chords.log")
+        # el faulthandler és global del procés: ho deixem com estava
+        self._estava = faulthandler.is_enabled()
+        self.addCleanup(self._restaura)
+
+    def _restaura(self):
+        if app_main._FH_FITXER is not None:
+            try:
+                app_main._FH_FITXER.close()
+            except OSError:
+                pass
+            app_main._FH_FITXER = None
+        faulthandler.disable()
+        if self._estava:
+            faulthandler.enable()
+        __import__("shutil").rmtree(self.td, True)
+
+    def test_activa_i_crea_el_fitxer_al_costat_del_log(self):
+        ruta = app_main.activa_faulthandler(self.log)
+        self.assertEqual(ruta, os.path.join(self.td, "crash_nadiu.log"))
+        self.assertTrue(os.path.isfile(ruta))
+        self.assertTrue(faulthandler.is_enabled())
+        self.assertEqual(os.path.getsize(ruta), 0, "en sortida normal, buit")
+
+    def test_escriu_la_traça_al_fitxer(self):
+        ruta = app_main.activa_faulthandler(self.log)
+        faulthandler.dump_traceback(file=app_main._FH_FITXER)
+        app_main._FH_FITXER.flush()
+        with open(ruta, encoding="utf-8") as f:
+            self.assertIn("most recent call first", f.read())
+
+    def test_traça_anterior_es_conserva_i_s_avisa(self):
+        ruta = os.path.join(self.td, "crash_nadiu.log")
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write("Windows fatal exception: access violation\n")
+        lg = _Logger()
+        app_main.activa_faulthandler(self.log, lg)
+        with open(ruta + ".anterior", encoding="utf-8") as f:
+            self.assertIn("access violation", f.read())
+        self.assertEqual(os.path.getsize(ruta), 0)
+        self.assertTrue(any("crash nadiu" in a for a in lg.avisos))
+
+    def test_sense_crash_previ_no_avisa(self):
+        lg = _Logger()
+        app_main.activa_faulthandler(self.log, lg)
+        self.assertEqual(lg.avisos, [])
+        self.assertFalse(os.path.exists(
+            os.path.join(self.td, "crash_nadiu.log.anterior")))
+
+    def test_dues_activacions_no_deixen_fitxers_oberts(self):
+        app_main.activa_faulthandler(self.log)
+        primer = app_main._FH_FITXER
+        app_main.activa_faulthandler(self.log)
+        self.assertTrue(primer.closed)
+        self.assertFalse(app_main._FH_FITXER.closed)
+
+    def test_directori_no_escriptible_no_peta(self):
+        ruta = app_main.activa_faulthandler(
+            os.path.join(self.td, "no", "existeix", "x.log"))
+        self.assertIsNone(ruta)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_icones.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Coherència de les ICONES (`app/icones.py` + `icones/*.svg`).
+
+Una icona que no existeix **no peta**: `icones.ico()` torna una pixmap buida i
+el botó queda sense dibuix, en silenci. Només es nota mirant la finestra. Aquest
+guard comprova que totes les icones que el CODI demana hi són (auditoria
+18-10-2026).
+"""
+
+
+
+
+_icones__ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _usades():
+    """Noms d'icona que apareixen LITERALMENT al codi de `app/`."""
+    noms = set()
+    for p in glob.glob(os.path.join(_icones__ARREL, "app", "*.py")):
+        with open(p, encoding="utf-8") as f:
+            src = f.read()
+        # Noms amb guions compten: `arrow-left-to-line` etc. (el primer
+        # detector no els veia i donava falsos «innecessaris»).
+        noms |= set(re.findall(r'icones\.ico\("([a-z0-9\-]+)"', src))
+        noms |= set(re.findall(r'\bicona\s*=\s*"([a-z0-9\-]+)"', src))
+        noms |= set(re.findall(
+            r'icones\.icona_boto\([^,]+,\s*"([a-z0-9\-]+)"', src))
+    return noms
+
+
+class TestIcones(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QApplication.instance() or QApplication([])
+
+    def test_totes_les_icones_demanades_existeixen(self):
+        usades = _usades()
+        self.assertGreaterEqual(len(usades), 8, "no he trobat usos d'icones")
+        for nom in sorted(usades):
+            self.assertTrue(icones.disponible(nom),
+                            f"falta l'icona {nom!r} ({nom}.svg)")
+
+    def test_disponible_es_fiable(self):
+        """`disponible()` mira el fitxer de debò, no una llista hardcoded."""
+        self.assertTrue(icones.disponible("play"))
+        self.assertFalse(icones.disponible("aixo_no_existeix"))
+
+    def test_l_icona_de_l_app_existeix(self):
+        """La icona de la finestra (barra de tasques) també ha d'haver-hi."""
+        pm = icones.icona_app()
+        self.assertFalse(pm.isNull(), "la icona de l'app ix buida")
+
+    def test_no_hi_ha_icones_innecessaries(self):
+        """Cap SVG del disc sense referència al codi.
+
+        Una icona que no s'usa és pes mort que ningú no gosa esborrar: n'hi
+        havia tres (`circle-gauge`, `mic`, `settings`, 18-10-2026) i s'han
+        tret. Si mai cal, `eines/baixa_icones.sh` les torna a baixar
+        afegint-les a la seua llista.
+        """
+        al_disc = {os.path.basename(x)[:-4]
+                   for x in glob.glob(os.path.join(_icones__ARREL, "icones", "*.svg"))}
+        sobren = sorted(al_disc - _usades())
+        self.assertEqual(sobren, [],
+                         f"icones sense cap referencia al codi: {sobren}")
+
+    def test_les_icones_tenen_paleta_de_recoloreig(self):
+        """`ico()` recoloreix l'SVG: un color invàlid no ha de fer-la buida."""
+        pm = icones.ico("play", 18)
+        self.assertFalse(pm.isNull())
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_imports_unificats.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Els mòduls de l'app han de ser UN SOL objecte (no dos per import cru).
+
+`app/main.py` importava `ffmpeg`, `partitura`, `pipeline`, `postproc` i `theme`
+pel **nom cru** mentre la resta del codi feia `from . import X`: això crea
+**dos objectes de mòdul** per al mateix fitxer → l'estat a nivell de mòdul pot
+divergir i el *monkey-patching* deixa de funcionar (va passar de veritat: un
+test de la partitura patchejava `app.partitura` i `main` seguia fent servir
+l'altre objecte).
+"""
+
+
+
+
+class TestUnSolObjecteDeModul(unittest.TestCase):
+    def test_main_veu_els_mateixos_moduls(self):
+        from app import main as app_main
+        from app import ffmpeg, partitura, pipeline, postproc, theme
+        for nom, mod in (("ffmpeg", ffmpeg), ("partitura", partitura),
+                         ("pipeline", pipeline), ("postproc", postproc),
+                         ("theme", theme)):
+            self.assertIs(
+                getattr(app_main, nom), mod,
+                f"`app.main.{nom}` i `app.{nom}` són objectes DIFERENTS "
+                f"(import cru vs relatiu)")
+
+    def test_el_visor_i_la_finestra_comparteixen_pipeline(self):
+        from app import main as app_main
+        from app import pipeline, visor
+        self.assertIs(visor.pipeline, pipeline)
+        self.assertIs(app_main.pipeline, pipeline)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_inventari_al_dia.py
+# ══════════════════════════════════════════════════════════════════════════
+"""La llista de components (`docs/COMPONENTS_I_VERSIONS.md`) ha d'estar AL DIA.
+
+El CI ja ho comprova (`build-all`: genera l'inventari i fa `git diff
+--exit-code`), però això vol dir descobrir el desfasament **al CI**, després
+d'haver pujat. Aquest test ho atrapa en local.
+
+Es fa servir la funció **PURA** `construeix()` de l'eina (no escriu cap fitxer):
+el document és d'OC-12 i un test no l'ha de tocar (auditoria 18-10-2026).
+"""
+
+
+_inventari_al_dia__ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_inventari_al_dia__DOC = os.path.join(_inventari_al_dia__ARREL, "docs", "COMPONENTS_I_VERSIONS.md")
+EINA = os.path.join(_inventari_al_dia__ARREL, "eines", "genera_inventari.py")
+
+
+def _eina():
+    spec = importlib.util.spec_from_file_location("genera_inventari", EINA)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class TestInventariAlDia(unittest.TestCase):
+
+    def test_el_document_coincideix_amb_el_que_es_generaria(self):
+        if not os.path.isfile(_inventari_al_dia__DOC):
+            self.skipTest("no hi ha el document d'inventari")
+        with open(_inventari_al_dia__DOC, encoding="utf-8") as f:
+            actual = f.read()
+        generat = _eina().construeix()
+        self.assertEqual(
+            generat, actual,
+            "docs/COMPONENTS_I_VERSIONS.md està desfasat respecte de "
+            "requirements.txt / eines/deps_fixades.env: torna a generar-lo "
+            "(python3 eines/genera_inventari.py)")
+
+    def test_l_eina_no_te_efectes_en_construir(self):
+        """`construeix()` no ha d'escriure res (el test no toca cap doc)."""
+        abans = None
+        if os.path.isfile(_inventari_al_dia__DOC):
+            with open(_inventari_al_dia__DOC, encoding="utf-8") as f:
+                abans = f.read()
+        _eina().construeix()
+        if abans is not None:
+            with open(_inventari_al_dia__DOC, encoding="utf-8") as f:
+                self.assertEqual(f.read(), abans, "no pot haver-lo tocat")
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_lock_windows.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Simula WINDOWS per provar `plataforma.bloqueja_instancia_unica`.
+
+El bloqueig d'instància única a Windows fa servir `msvcrt.locking`, que **no
+existeix a Linux**. Aquí l'injectem amb un **doble** de `msvcrt` i simulem el
+seu comportament, perquè aquesta classe d'error es caçi **a Linux** (sense
+dependre que el CI de Windows hi sigui):
+
+- `locking(fd, LK_NBLCK, 1)` bloqueja la regió **[posició actual, +1)** del
+  **fitxer** (no del fd): dues obertures del mateix fitxer comparteixen el lock.
+- **Escriure** en una regió bloquejada **llança `OSError`** (com fa Windows).
+
+Amb això, dos bugs reals queden coberts:
+1. si el `write`/`locking` no van dins el `try` → el test peta en lloc de
+   retornar `False` (ERROR);
+2. si el `locking` bloqueja un offset diferent del que allibera `desbloqueja`
+   → el lock penja i el test falla (la 2a instància no el pot tornar a agafar).
+"""
+
+
+
+
+class _FakeMsvcrt:
+    """Doble de `msvcrt`: bloqueig per regió `(fitxer, offset)`."""
+
+    LK_NBLCK = 2
+    LK_UNLCK = 0
+
+    def __init__(self):
+        self._fitxers = {}          # fd -> _FitxerFals
+        self._bloquejats = set()    # {(fitxer_id, offset)}
+
+    def registrar(self, fitxer):
+        self._fitxers[fitxer.fileno()] = fitxer
+
+    def esta_bloquejat(self, fitxer_id, offset):
+        return (fitxer_id, offset) in self._bloquejats
+
+    def locking(self, fd, mode, nbytes):
+        fx = self._fitxers[fd]
+        clau = (fx.fitxer_id, fx.posicio())
+        if mode == self.LK_NBLCK:
+            if clau in self._bloquejats:
+                raise OSError(13, "regió ja bloquejada")
+            self._bloquejats.add(clau)
+        elif mode == self.LK_UNLCK:
+            self._bloquejats.discard(clau)
+
+
+class _FitxerFals:
+    """Fitxer fals: `write()` peta si la regió actual està bloquejada."""
+
+    def __init__(self, fake, fitxer_id, fd):
+        self.fake = fake
+        self.fitxer_id = fitxer_id
+        self._fd = fd
+        self._pos = 0
+        fake.registrar(self)
+
+    def seek(self, n):
+        self._pos = int(n)
+
+    def write(self, s):
+        if self.fake.esta_bloquejat(self.fitxer_id, self._pos):
+            raise OSError(13, "escriure en una regió bloquejada")
+        self._pos += len(s)
+
+    def flush(self):
+        pass
+
+    def fileno(self):
+        return self._fd
+
+    def posicio(self):
+        return self._pos
+
+
+class TestLockWindowsSimulat(unittest.TestCase):
+    def setUp(self):
+        self.msv = _FakeMsvcrt()
+        sys.modules["msvcrt"] = self.msv          # `import msvcrt` dins la funció
+        self._orig = plataforma.ES_WINDOWS
+        plataforma.ES_WINDOWS = True
+
+    def tearDown(self):
+        plataforma.ES_WINDOWS = self._orig
+        sys.modules.pop("msvcrt", None)
+
+    def test_segona_instancia_rebutjada(self):
+        f1 = _FitxerFals(self.msv, "tema", fd=1)
+        self.assertTrue(plataforma.bloqueja_instancia_unica(f1))
+        # 2a obertura del MATEIX fitxer: escriure/bloquejar la regió ja
+        # bloquejada ha de donar False (no petar).
+        f2 = _FitxerFals(self.msv, "tema", fd=2)
+        self.assertFalse(plataforma.bloqueja_instancia_unica(f2))
+        # En alliberar el primer, el segon JA el pot agafar (el lock no penja).
+        plataforma.desbloqueja(f1)
+        self.assertTrue(plataforma.bloqueja_instancia_unica(f2))
+        plataforma.desbloqueja(f2)
+
+    def test_desbloqueja_allibera_la_mateixa_regio(self):
+        f = _FitxerFals(self.msv, "tema", fd=3)
+        self.assertTrue(plataforma.bloqueja_instancia_unica(f))
+        self.assertTrue(self.msv.esta_bloquejat("tema", 0))   # offset 0
+        plataforma.desbloqueja(f)
+        self.assertFalse(self.msv.esta_bloquejat("tema", 0))  # alliberat
+
+    def test_desbloqueja_es_best_effort(self):
+        # Mai ha de llançar, ni amb un fitxer sense `locking` disponible.
+        plataforma.desbloqueja(None)
+        f = _FitxerFals(self.msv, "tema", fd=4)   # sense bloquejar prèviament
+        plataforma.desbloqueja(f)                 # no ha de petar
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_partitura.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Tests de l'exportació de partitura (app/partitura.py).
+
+No necessiten MuseScore: només proven el parsing, el mapeig xifrat-><harmony>,
+la descomposició de durades i la construcció del MusicXML.
+"""
+
+
+
+class ParsingTests(unittest.TestCase):
+    def test_parse_pos_qualsevol_compas(self):
+        self.assertAlmostEqual(partitura.parse_pos("1.1.1", 4), 0.0)
+        self.assertAlmostEqual(partitura.parse_pos("1.1.3", 4), 0.5)
+        self.assertAlmostEqual(partitura.parse_pos("2.3.3", 4), 6.5)
+        self.assertAlmostEqual(partitura.parse_pos("1.1.1", 3), 0.0)
+        self.assertAlmostEqual(partitura.parse_pos("2.1.1", 3), 3.0)
+
+    def test_llegeix_locators_ignora_capcalera(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "acords_locators.txt"
+            p.write_text("posició (compàs.temps.setzena)   acord   durada(temps)\n"
+                         "1.1.3          G        22\n"
+                         "6.3.3          BbMaj7   1\n", encoding="utf-8")
+            ev = partitura.llegeix_locators(str(p), 4)
+            self.assertEqual(len(ev), 2)
+            self.assertAlmostEqual(ev[0][0], 0.5)
+            self.assertEqual(ev[0][1], "G")
+            self.assertEqual(ev[0][2], 22.0)
+            self.assertEqual(ev[1][1], "BbMaj7")
+
+    def test_llegeix_seccions_deduplica(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "estructura_ABC.csv"
+            p.write_text("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
+                         "0,3,3,A,A,1.1.1,2.2.1\n"
+                         "3,30,27,B,B,2.2.1,13.3.3\n", encoding="utf-8")
+            secs = partitura.llegeix_seccions(str(p))
+            self.assertEqual(secs, [(1, "A"), (2, "B")])
+
+
+class HarmonyTests(unittest.TestCase):
+    def test_majors_i_menors(self):
+        self.assertIn("<kind>major</kind>", partitura.harmony_xml("C"))
+        self.assertIn("<kind>minor</kind>", partitura.harmony_xml("Am"))
+        self.assertIn("<kind>minor</kind>", partitura.harmony_xml("A-"))
+
+    def test_septimes_i_alteracions(self):
+        self.assertIn("major-seventh", partitura.harmony_xml("Cmaj7"))
+        w = partitura.harmony_xml("BbMaj7")
+        self.assertIn("<root-step>B</root-step>", w)
+        self.assertIn("<root-alter>-1</root-alter>", w)
+        self.assertIn("major-seventh", w)
+        self.assertIn("diminished-seventh", partitura.harmony_xml("F#dim7"))
+
+    def test_slash_chord(self):
+        w = partitura.harmony_xml("G/D")
+        self.assertIn("<kind>major</kind>", w)
+        self.assertIn("<bass-step>D</bass-step>", w)
+
+    def test_xifrat_jazz_amb_baix(self):
+        """Els xifrats de jazz (menor amb `-`, maj7, 6a) amb baix `/nota`.
+
+        Regressió: `A-maj7/G#` sortia com a `<root>A</root>` + un `<kind
+        text="A-maj7-G#">` → MuseScore duplicava el nom («AA-maj7-G#»).
+        """
+        w = partitura.harmony_xml("A-7/G")
+        self.assertIn("<kind>minor-seventh</kind>", w)
+        self.assertIn("<bass-step>G</bass-step>", w)
+        w = partitura.harmony_xml("A-6/F#")
+        self.assertIn("<kind>minor-sixth</kind>", w)
+        self.assertIn("<bass-step>F</bass-step>", w)
+        self.assertIn("<bass-alter>1</bass-alter>", w)
+        w = partitura.harmony_xml("A-maj7/G#")
+        self.assertIn("<kind>major-minor</kind>", w)
+        self.assertIn("<bass-step>G</bass-step>", w)
+        w = partitura.harmony_xml("A7/G")
+        self.assertIn("<kind>dominant</kind>", w)
+        self.assertIn("<bass-step>G</bass-step>", w)
+
+    def test_la_barra_de_6_9_no_es_un_baix(self):
+        """`C6/9` porta barra però NO és un acord amb baix."""
+        w = partitura.harmony_xml("C6/9")
+        self.assertNotIn("<bass>", w)
+        self.assertIn("<kind>major-sixth</kind>", w)   # 6a amb la 9a afegida
+        self.assertIn("<degree-value>9</degree-value>", w)
+
+    def test_acord_complexe_amb_tensions_i_baix(self):
+        """`Ab69(#11,#13)/Db`: root + kind + els 3 `<degree>` + baix."""
+        w = partitura.harmony_xml("Ab69(#11,#13)/Db")
+        self.assertIn("<root-step>A</root-step>", w)
+        self.assertIn("<root-alter>-1</root-alter>", w)
+        self.assertIn("<kind>major-sixth</kind>", w)      # 6a
+        for v in ("9", "11", "13"):                        # 9 afegida + #11 + #13
+            self.assertIn(f"<degree-value>{v}</degree-value>", w)
+        self.assertIn("<degree-alter>1</degree-alter>", w)  # sostinguts
+        self.assertIn("<bass-step>D</bass-step>", w)
+        self.assertIn("<bass-alter>-1</bass-alter>", w)
+
+    def test_alteracions_dobles_al_root_i_al_baix(self):
+        """`##`/`bb` → `<root-alter>±2</root-alter>` (i el baix igual)."""
+        w = partitura.harmony_xml("C##m7")
+        self.assertIn("<root-alter>2</root-alter>", w)
+        self.assertIn("<kind>minor-seventh</kind>", w)
+        w = partitura.harmony_xml("Gbbmaj7")
+        self.assertIn("<root-alter>-2</root-alter>", w)
+        w = partitura.harmony_xml("C##/Dbb")
+        self.assertIn("<root-alter>2</root-alter>", w)
+        self.assertIn("<bass-alter>-2</bass-alter>", w)
+
+    def test_qualitat_no_estandard_conserva_el_text(self):
+        """`C7alt`: el `kind` base + el símbol sencer al `text` (no es perd)."""
+        w = partitura.harmony_xml("C7alt")
+        self.assertIn("<kind text=\"7alt\">dominant</kind>", w)
+
+    def test_no_grau(self):
+        """`noN` (sense la 5a, etc.) → `<degree-type>subtract</degree-type>`."""
+        w = partitura.harmony_xml("Cmaj7no5")
+        self.assertIn("<kind>major-seventh</kind>", w)
+        self.assertIn("<degree-value>5</degree-value>", w)
+        self.assertIn("<degree-type>subtract</degree-type>", w)
+
+    def test_altered_amb_degrees(self):
+        w = partitura.harmony_xml("C7b9#11")
+        self.assertIn("<kind>dominant</kind>", w)
+        self.assertIn("<degree-value>9</degree-value>", w)
+        self.assertIn("<degree-alter>-1</degree-alter>", w)
+        self.assertIn("<degree-value>11</degree-value>", w)
+        self.assertIn("<degree-type>alter</degree-type>", w)
+
+    def test_no_acord_i_qualitat_desconeguda(self):
+        self.assertEqual(partitura.harmony_xml("N"), "")
+        self.assertEqual(partitura.harmony_xml("N.C."), "")
+        # Qualitat desconeguda: el `text` porta NOMÉS el sufix (el root ja
+        # s'escriu a part) → MuseScore no duplica el nom.
+        self.assertIn('text="xyz"', partitura.harmony_xml("Cxyz"))
+        self.assertNotIn('text="Cxyz"', partitura.harmony_xml("Cxyz"))
+
+
+class DuradesTests(unittest.TestCase):
+    def test_decomposa(self):
+        self.assertEqual(partitura._decomposa(16), [("whole", 0)])
+        self.assertEqual(partitura._decomposa(12), [("half", 1)])
+        self.assertEqual(partitura._decomposa(10), [("half", 0), ("eighth", 0)])
+        self.assertEqual(partitura._decomposa(3), [("eighth", 1)])
+        self.assertEqual(partitura._decomposa(0), [])
+
+    def test_note_i_silenci(self):
+        self.assertIn("<notehead>slash</notehead>", partitura._note_xml(8))
+        self.assertIn("<rest/>", partitura._note_xml(4, rest=True))
+        self.assertNotIn("<pitch>", partitura._note_xml(4, rest=True))
+
+
+class MusicXmlTests(unittest.TestCase):
+    def _events(self):
+        # C (1 compàs) | Am (2 temps) + F (2 temps) | G
+        return [(0.0, "C", 4.0), (4.0, "Am", 2.0), (6.0, "F", 2.0),
+                (8.0, "G", 4.0)]
+
+    def test_construeix_basic(self):
+        xml = partitura.construeix_musicxml(
+            self._events(), [(1, "A"), (3, "B")], bpb=4, bpm=120.0,
+            titol="Prova", key_fifths=1)
+        self.assertIn('<score-partwise version="4.0">', xml)
+        self.assertIn("<work-title>Prova</work-title>", xml)
+        self.assertIn("<fifths>1</fifths>", xml)
+        self.assertIn("<per-minute>120</per-minute>", xml)
+        self.assertIn("<rehearsal>A</rehearsal>", xml)
+        self.assertIn("<rehearsal>B</rehearsal>", xml)
+        self.assertIn("<print new-system=\"yes\"/>", xml)
+        self.assertIn("<harmony><root><root-step>C</root-step>", xml)
+        self.assertIn("minor</kind>", xml)
+        # 3 compassos + compàs final de tancament
+        self.assertEqual(xml.count("<measure number="), 4)
+        # no hi ha d'haver durations incoherents: cada compàs suma 16 unitats
+        self.assertIn("<bar-style>light-heavy</bar-style>", xml)
+
+    def test_salt_de_sistema_i_beat_type(self):
+        xml = partitura.construeix_musicxml(
+            self._events(), [(1, "A")], bpb=4, bpm=100.0, titol="X",
+            new_system_each=2, beat_type=8)
+        self.assertIn("<beat-type>8</beat-type>", xml)
+        self.assertIn('new-system="yes"', xml)
+
+
+class ExportaTests(unittest.TestCase):
+    def _escriu_font(self, td):
+        d = Path(td) / "AUTOCHORDS_Tema"
+        d.mkdir()
+        (d / "acords_locators.txt").write_text(
+            "posició (compàs.temps.setzena)   acord   durada(temps)\n"
+            "1.1.1   C   4\n"
+            "2.1.1   Am  4\n", encoding="utf-8")
+        (d / "estructura_ABC.csv").write_text(
+            "inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
+            "0,5,5,A,A,1.1.1,2.2.1\n", encoding="utf-8")
+        (d / "guia_acords.html").write_text(
+            "<h3>103 BPM · 4 temps/compàs · gris = acord</h3>", encoding="utf-8")
+        return d
+
+    def test_exporta_sense_musescore(self):
+        with tempfile.TemporaryDirectory() as td:
+            d = self._escriu_font(td)
+            res = partitura.exporta_partitura(
+                str(d), log=lambda *_a: None,
+                genera_pdf=False, genera_mscz=False)
+            self.assertIn("musicxml", res)
+            self.assertTrue(os.path.isfile(res["musicxml"]))
+            self.assertTrue(res["musicxml"].endswith("Tema.musicxml"))
+            self.assertIsNone(res["pdf"])
+            text = open(res["musicxml"], encoding="utf-8").read()
+            self.assertIn("<per-minute>103</per-minute>", text)  # de la guia
+            self.assertIn("<harmony>", text)
+
+    def test_sense_locators(self):
+        with tempfile.TemporaryDirectory() as td:
+            res = partitura.exporta_partitura(str(td), log=lambda *_a: None,
+                                              genera_pdf=False, genera_mscz=False)
+            self.assertEqual(res.get("error"), "sense_locators")
+
+
+class EntornTests(unittest.TestCase):
+    def test_musescore_bin_env_override(self):
+        vell = os.environ.get("AUTO_CHORDS_MUSESCORE")
+        try:
+            os.environ["AUTO_CHORDS_MUSESCORE"] = "/tmp/fals_mscore"
+            self.assertEqual(partitura.musescore_bin(), "/tmp/fals_mscore")
+        finally:
+            if vell is None:
+                os.environ.pop("AUTO_CHORDS_MUSESCORE", None)
+            else:
+                os.environ["AUTO_CHORDS_MUSESCORE"] = vell
+
+    def test_fifths_de_to(self):
+        self.assertEqual(partitura.fifths_de_to("C"), 0)
+        self.assertEqual(partitura.fifths_de_to("G"), 1)
+        self.assertEqual(partitura.fifths_de_to("F"), -1)
+        self.assertEqual(partitura.fifths_de_to("G major"), 1)
+        self.assertEqual(partitura.fifths_de_to("E minor"), 1)
+        self.assertEqual(partitura.fifths_de_to("Em"), 1)
+
+
+class TestMuseScore(unittest.TestCase):
+    """Descobriment del binari de MuseScore (ha de funcionar a tots els SO)."""
+
+    def test_env_te_prioritat(self):
+        with mock.patch.dict(os.environ, {"AUTO_CHORDS_MUSESCORE": "/tmp/msc"}):
+            self.assertEqual(partitura.musescore_bin(), "/tmp/msc")
+
+    def test_no_peta_si_no_hi_es(self):
+        env = {k: v for k, v in os.environ.items()
+               if k != "AUTO_CHORDS_MUSESCORE"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            partitura.musescore_bin()      # None o binari real: no ha de petar
+
+    def test_troba_binari_per_glob(self):
+        env = {k: v for k, v in os.environ.items()
+               if k != "AUTO_CHORDS_MUSESCORE"}
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("app.partitura.shutil.which", return_value=None), \
+                mock.patch("app.partitura.glob.glob",
+                           side_effect=lambda p, **k: ["/X"] if "MuseScore" in p else []):
+            self.assertEqual(partitura.musescore_bin(), "/X")
+
+
+class BaseDeSortidaTests(unittest.TestCase):
+    """Títol per defecte derivat del nom de la carpeta (prefix AUTOCHORDS_)."""
+
+    def test_prefix_coincideix_amb_pipeline(self):
+        # El mòdul partitura no importa el projecte: el prefix s'hi repeteix i
+        # aquest test evita que els dos valors divergeixin.
+        from app import pipeline
+        self.assertEqual(partitura._PREFIX_SORTIDA, pipeline.PREFIX_SORTIDA)
+
+    def test_treu_el_prefix(self):
+        self.assertEqual(partitura._base_de_sortida("/musica/AUTOCHORDS_Tema"),
+                         "Tema")
+
+    def test_sense_prefix_es_queda_igual(self):
+        self.assertEqual(partitura._base_de_sortida("/musica/Altres"), "Altres")
+
+
+
+
+class TestMusicXmlMapa(unittest.TestCase):
+    """Fase 5: el MusicXML reflecteix els canvis de TEMPO del mapa."""
+
+    def test_canvis_de_tempo(self):
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 60.0, 4, 4)])
+        events = [(0.0, "C", 4.0), (4.0, "G", 4.0)]
+        xml = partitura.construeix_musicxml(events, [], bpb=4, bpm=120.0,
+                                            mapa=mapa)
+        self.assertIn('<sound tempo="120"', xml)
+        self.assertIn('<sound tempo="60"', xml)      # canvi al compàs 3
+        self.assertIn('<measure number="3">', xml)
+
+    def test_canvi_de_compas(self):
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 120.0, 3, 4)])
+        events = [(0.0, "C", 4.0), (4.0, "G", 3.0)]
+        xml = partitura.construeix_musicxml(events, [], bpb=4, bpm=120.0,
+                                            mapa=mapa)
+        self.assertIn("<beats>4</beats><beat-type>4</beat-type>", xml)
+        self.assertIn("<beats>3</beats><beat-type>4</beat-type>", xml)  # canvi
+        self.assertIn('<measure number="3">', xml)
+
+    def test_constant_no_afegeix_res(self):
+        from app.tempo_map import TempoMap
+        const = TempoMap.constant(120, 4, 4, durada=8.0)
+        events = [(0.0, "C", 4.0), (4.0, "G", 4.0)]
+        a = partitura.construeix_musicxml(events, [], bpb=4, bpm=120.0)
+        b = partitura.construeix_musicxml(events, [], bpb=4, bpm=120.0,
+                                          mapa=const)
+        self.assertEqual(a, b)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_partitura_sense_musescore.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Partitura SENSE MuseScore: ha de fer el fallback (només MusicXML) sense petar.
+
+El PDF i el MSCZ depenen de MuseScore (l'app no l'inclou). Sense ell, l'export
+ha de generar **igualment** el MusicXML, avisar que el PDF no s'ha fet i no
+fallar mai (ni des de la GUI ni des de l'MCP).
+
+Aquí es **mocka** `partitura.musescore_bin()` → None (com si no hi fos), en
+comptes de dependre de si la màquina el té instal·lat.
+"""
+
+
+
+
+
+
+def _sortida_amb_locators():
+    """Carpeta de sortida mínima vàlida per a la partitura (mode BPM · compàs)."""
+    d = tempfile.mkdtemp()
+    with open(os.path.join(d, "acords_locators.txt"), "w", encoding="utf-8") as f:
+        f.write("1.1.1 Am 4\n2.1.1 C 4\n")
+    with open(os.path.join(d, "estructura_ABC.csv"), "w", encoding="utf-8") as f:
+        f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
+                "0.00,4.00,4.00,A,A,1.1,2.1\n")
+    return d
+
+
+class TestPartituraSenseMuseScore(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QW.QApplication.instance() or QW.QApplication([])
+
+    def test_fallback_a_nomes_musicxml(self):
+        d = _sortida_amb_locators()
+        logs = []
+        with patch.object(partitura, "musescore_bin", return_value=None):
+            res = partitura.exporta_partitura(d, log=logs.append, bpm=120.0,
+                                              bpb=4)
+        self.assertFalse(res.get("error"), f"no hauria de fallar: {res}")
+        self.assertTrue(res.get("musicxml"), "hauria de generar el MusicXML")
+        self.assertTrue(os.path.isfile(res["musicxml"]))
+        self.assertIsNone(res.get("pdf"), "sense MuseScore no hi ha PDF")
+        self.assertIsNone(res.get("mscz"), "sense MuseScore no hi ha MSCZ")
+        self.assertTrue(any("MuseScore" in m for m in logs),
+                        "hauria d'avisar que no hi ha MuseScore")
+
+    def test_la_gui_ho_diu_clarament(self):
+        w = app_main.Finestra()
+        w.sortida = _sortida_amb_locators()
+        # ⚠️ `main.py` fa `import partitura` (nom cru): el mòdul que ELL veu no
+        # és `app.partitura` → cal patchejar el seu.
+        with patch.object(app_main.partitura, "musescore_bin", return_value=None):
+            res = w._exporta_partitura()
+        self.assertTrue(res and res.get("musicxml"))
+        msg = w._missatge_partitura(res)
+        self.assertIn("MusicXML", msg)
+        self.assertIn("MuseScore", msg, "ha de dir que el PDF depèn de MuseScore")
+        w.close()
+
+    def test_el_mcp_torna_ok_amb_nomes_musicxml(self):
+        w = app_main.Finestra()
+        w.sortida = _sortida_amb_locators()
+        with patch.object(app_main.partitura, "musescore_bin", return_value=None):
+            r = mcp_bridge._op_export_partitura(mcp_bridge._Context(w), {})
+        self.assertTrue(r.get("ok"))
+        self.assertTrue(r.get("musicxml"))
+        self.assertIsNone(r.get("pdf"))
+        self.assertIn("MusicXML", r.get("missatge", ""))
+        w.close()
+
+
+
+def _partitura_sense_musescore_tearDownModule():
+    # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
+    # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
+    try:
+        import _qt_neteja
+    except ImportError:      # 'python -m unittest tests.test_x' (tests/ no al path)
+        import os, sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import _qt_neteja
+    _qt_neteja.processa_esborrats()
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_pipeline_export.py
+# ══════════════════════════════════════════════════════════════════════════
 # --- Neteja: la suite creava centenars de tempdirs a /tmp que no s'esborraven
 # (s'acumulaven entre execucions). Interceptem tempfile.mkdtemp i els traiem
 # tots en acabar el modul de tests.
@@ -26,26 +2338,22 @@ def _mkdtemp_tracked(*args, **kwargs):
     return d
 
 
-def setUpModule():
+def _pipeline_export_setUpModule():
     _TMPDIRS.clear()
     tempfile.mkdtemp = _mkdtemp_tracked
 
 
-def tearDownModule():
+def _pipeline_export_tearDownModule():
     tempfile.mkdtemp = _MKDTEMP_ORIG
     for d in _TMPDIRS:
         shutil.rmtree(d, ignore_errors=True)
     _TMPDIRS.clear()
 
-import numpy as np
 
 # Mode headless GLOBAL: sense això, les classes que creen QApplication abans
 # de definir-lo (p.ex. ExportPipelineTests, que corre primer) poden penjar-se
 # o avortar en un entorn sense pantalla.
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from app import (config, dialegs, ffmpeg, main as app_main, pipeline,
-                 plataforma, postproc, theme, vamp_params, visor)
 
 # QMessageBox.information/warning/... son MODALS: bloquegen fins que algu
 # clica OK. En un entorn sense pantalla (CI) aixo penja el test per sempre.
@@ -3051,8 +5359,8 @@ class FormatCsvTests(unittest.TestCase):
         td = tempfile.mkdtemp()
         ruta = os.path.join(td, "acords.csv")
         pipeline.desa_acords_csv(ruta, [
-            (0.0, "C", "0.000000000"),
-            (16.439727891, "E7", "16.439727891"),
+            pipeline.Clip(0.0, 16.439727891, ("C", "0.000000000")),
+            pipeline.Clip(16.439727891, 0.0, ("E7", "16.439727891")),
         ])
         files = open(ruta, encoding="utf-8").read().strip().splitlines()
         self.assertEqual(files[0], "0.00,16.44,C")
@@ -3773,6 +6081,835 @@ class TemporalsTests(unittest.TestCase):
             self.assertEqual(_part.detecta_fifths("/tmp/x.wav"), 1)
         self.assertEqual(self._dirs_ac() - abans, set())
 
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_postproc.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Casos límit de `app/postproc.py` (post-processat de l'anàlisi crua).
 
-if __name__ == "__main__":
+El post-processador NO és el límit del model: l'ordre, els negatius i la
+cobertura es garanteixen DESPRÉS, a `pipeline.normalitza_cobertura()` (regles
+d'or #1, #4 i #8). Ací es fixa què fa amb l'entrada rara perquè quede clar on
+acaba la seua responsabilitat i que no peta (auditoria 18-10-2026).
+"""
+
+
+
+
+class TestProcessaAcords(unittest.TestCase):
+
+    def test_buit_i_un_de_sol(self):
+        self.assertEqual(postproc.processa_acords([], durada_min=0.0), [])
+        self.assertEqual(postproc.processa_acords([(0.0, "C")], durada_min=0.0),
+                         [(0.0, "C")])
+
+    def test_duplicats_mateix_instant_es_fonen(self):
+        self.assertEqual(
+            postproc.processa_acords([(0.0, "C"), (2.0, "C")], durada_min=0.0),
+            [(0.0, "C")])
+
+    def test_un_sol_acord_no_el_treu_encara_que_siga_curt(self):
+        """Amb `durada_min` gran, un acord sol no desapareix (no hi ha veí)."""
+        self.assertEqual(postproc.processa_acords([(0.0, "C")], durada_min=3.0),
+                         [(0.0, "C")])
+
+    def test_no_ordena_ni_sana_negatius(self):
+        """Documenta el CONTRACTE: això és post-processat, no el límit del
+        model. L'ordre i els temps vàlids els garanteix `normalitza_cobertura`
+        (regles #1 i #8), que és qui alimenta el model."""
+        desordenat = [(4.0, "G"), (0.0, "C"), (2.0, "Am")]
+        self.assertEqual(postproc.processa_acords(desordenat, durada_min=0.0),
+                         desordenat)
+        negatiu = [(-2.0, "C"), (2.0, "G")]
+        self.assertEqual(postproc.processa_acords(negatiu, durada_min=0.0),
+                         negatiu)
+
+
+class TestSnapAcords(unittest.TestCase):
+
+    def test_buit(self):
+        self.assertEqual(postproc.snap_acords([], 120.0), [])
+
+    def test_encaixa_al_mig_temps(self):
+        """A 120 BPM la divisió és 0,5 s: 0,37 s va a 0,5."""
+        self.assertEqual(postproc.snap_acords([(0.37, "C")], 120.0),
+                         [(0.5, "C")])
+
+    def test_bpm_zero_no_canvia_res(self):
+        self.assertEqual(postproc.snap_acords([(0.37, "C")], 0.0),
+                         [(0.37, "C")])
+
+    def test_negatiu_va_a_zero(self):
+        self.assertEqual(postproc.snap_acords([(-0.4, "C")], 120.0),
+                         [(0.0, "C")])
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_regla12_export.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Regla d'or #12 — PARITAT A L'EXPORTACIÓ (el paquet tracta els 3 tipus igual).
+
+`docs/REGLES_DE_LA_APP.md` §12: el paquet exportat ha de tractar igual els
+**acords**, l'**estructura** i el **mapa de tempo/compàs**, cadascun amb la seva
+part:
+
+- acords: `acords.csv` + `wavs_acords/`
+- estructura: `estructura_ABC.csv` + `wavs_estructura/`
+- mapa de tempo/compàs: **carpeta pròpia** `mapa_tempo/` amb `tempo.csv` i
+  `compas.csv`
+
+Abans el mapa no s'exportava: el paquet no era paritari.
+"""
+
+
+
+DURADA = 16.0
+_regla12_export__ACORDS = [(0.0, "C", "0.0"), (4.0, "Am", "4.0"), (8.0, "F", "8.0"),
+          (12.0, "G", "12.0")]
+SECCIONS = [(0.0, 8.0, "A", "A"), (8.0, DURADA, "B", "B")]
+TRAMS = [(0.0, 8.0, 120.0, 4, 4), (8.0, DURADA, 90.0, 3, 4)]
+
+
+class _regla12_export___Base(unittest.TestCase):
+
+    def _exporta(self, trams=None):
+        td = tempfile.mkdtemp()
+        sortida = os.path.join(td, "AUTOCHORDS_tema")
+        os.makedirs(sortida, exist_ok=True)
+        csv_ac = os.path.join(sortida, "acords.csv")
+        with open(csv_ac, "w", encoding="utf-8") as f:
+            f.write("inici_s,fi_s,acord\n")
+            for t, n, ts in _regla12_export__ACORDS:
+                f.write(f"{t},{t + 4.0},{n}\n")
+        res = pipeline.exporta_total(
+            csv_ac, None, sortida, 120.0, 4, 0.0, 44100, lambda *a: None,
+            tempo_fix=True, amb_estructura=True, total_s=DURADA,
+            acords=list(_regla12_export__ACORDS), seccions=list(SECCIONS), mapa_tempo=trams)
+        return sortida, res
+
+
+class TestRegla12ParitatExport(_regla12_export___Base):
+
+    def test_els_tres_tipus_tenen_la_seva_part(self):
+        """Amb el mapa del model, el paquet ha de portar les TRES parts."""
+        sortida, res = self._exporta(TRAMS)
+        # acords
+        self.assertTrue(os.path.isfile(os.path.join(sortida, "acords.csv")))
+        self.assertTrue(os.path.isdir(os.path.join(sortida, "wavs_acords")))
+        # estructura
+        self.assertTrue(os.path.isfile(
+            os.path.join(sortida, "estructura_ABC.csv")))
+        self.assertTrue(os.path.isdir(os.path.join(sortida, "wavs_estructura")))
+        # mapa de BPM/compàs, amb carpeta PRÒPIA
+        mapa = os.path.join(sortida, "mapa_tempo")
+        self.assertTrue(os.path.isdir(mapa), "falta la carpeta del mapa")
+        self.assertTrue(os.path.isfile(os.path.join(mapa, "tempo.csv")))
+        self.assertTrue(os.path.isfile(os.path.join(mapa, "compas.csv")))
+        self.assertEqual(res.get("mapa_tempo_dir"), mapa)
+        self.assertEqual(res.get("n_mapa_trams"), len(TRAMS))
+
+    def test_el_mapa_exportat_es_el_del_model(self):
+        """El que s'exporta és el MODEL (no una còpia vella del disc)."""
+        sortida, _regla12_export___ = self._exporta(TRAMS)
+        trams = pipeline.llegeix_tempo_map(
+            os.path.join(sortida, "mapa_tempo"), 120.0, 4, 4, DURADA)
+        self.assertEqual([(float(t[0]), float(t[1]), float(t[2]), int(t[3]),
+                           int(t[4])) for t in trams], TRAMS)
+
+    def test_sense_mapa_no_hi_ha_carpeta(self):
+        """Sense mapa al model (flux antic), el paquet queda com era."""
+        sortida, res = self._exporta(None)
+        self.assertFalse(os.path.isdir(os.path.join(sortida, "mapa_tempo")))
+        self.assertNotIn("mapa_tempo_dir", res)
+
+    def test_el_csv_de_compas_te_els_compassos_del_mapa(self):
+        """El `compas.csv` ha de dur el compàs de cada tram (4/4 i 3/4)."""
+        sortida, _regla12_export___ = self._exporta(TRAMS)
+        with open(os.path.join(sortida, "mapa_tempo", "compas.csv"),
+                  encoding="utf-8") as f:
+            files = [r for r in csv.reader(f) if r and not r[0][0].isalpha()]
+        valors = [(int(r[2]), int(r[3])) for r in files]
+        self.assertEqual(valors, [(4, 4), (3, 4)])
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_requirements.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Guard de dependències: MAI `numpy >= 2` ni `PyQt6`.
+
+El Q9400 no té AVX/SSE4.2: `numpy` 2.x demana `x86_64-v2` (SIGILL) i PyQt6
+trencaria el desplegament a High Sierra 10.13. Aquest test ho vigila a
+`requirements.txt`, `pyproject.toml` i els workflows de CI: si algú ho
+introdueix sense voler, el CI peta.
+"""
+
+_requirements__ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FITXERS = ([os.path.join(_requirements__ROOT, "requirements.txt"),
+            os.path.join(_requirements__ROOT, "pyproject.toml")]
+           + sorted(glob.glob(os.path.join(_requirements__ROOT, ".github", "workflows", "*.yml"))))
+
+# Especificadors que admetrien la 2.x de numpy.
+_NUMPY_2 = (r"numpy\s*>=\s*2", r"numpy\s*==\s*2", r"numpy\s*>\s*2",
+            r"numpy\s*~=\s*2", r"numpy\s*!=\s*1")
+# Requisit REAL de numpy: `numpy` seguit d'un operador (no una menció en prosa).
+_RE_NUMPY = re.compile(r"numpy\s*((?:==|>=|<=|>|<|~=|!=)\s*[^\"'\s]+)")
+
+
+class GuardAvxTests(unittest.TestCase):
+    """Regla d'or #9: cap binari del paquet pot requerir **AVX**.
+
+    El Q9400 no en té: un binari compilat amb AVX peta amb SIGILL (ja va passar
+    amb la CLI d'opencode). La garantia ve del build, així que aquest test
+    vigila que els scripts de compilació dels natius **no** hi introdueixin
+    flags amb AVX ni `-march=native` (que compilaria pel maquinari de qui
+    construeix, no pel de destí).
+    """
+
+    SCRIPTS = ("eines/compila_vamp_host.sh", "eines/compila_vamp_plugins.sh",
+               "eines/compila_vamp_plugins.sh")
+    PROHIBIT = (r"-mavx", r"-mavx2", r"-mavx512", r"-march\s*=\s*native",
+                r"-march\s*=\s*haswell", r"-mtune\s*=\s*native")
+
+    def test_cap_flag_amb_avx(self):
+        for rel in self.SCRIPTS:
+            f = os.path.join(_requirements__ROOT, rel)
+            if not os.path.isfile(f):
+                continue
+            with open(f, encoding="utf-8") as fh:
+                linies = [ln for ln in fh.read().splitlines()
+                          if not ln.lstrip().startswith("#")]   # sense comentaris
+            text = "\n".join(linies)
+            for pat in self.PROHIBIT:
+                self.assertIsNone(
+                    re.search(pat, text),
+                    f"{rel}: hi ha un flag amb AVX ({pat}) — el Q9400 no en té")
+
+    def test_els_builds_demanen_sse2(self):
+        for rel in ("eines/compila_vamp_host.sh",
+                    "eines/compila_vamp_plugins.sh"):
+            f = os.path.join(_requirements__ROOT, rel)
+            if not os.path.isfile(f):
+                continue
+            with open(f, encoding="utf-8") as fh:
+                text = fh.read()
+            self.assertIn("-msse2", text,
+                          f"{rel}: cal fixar el maquinari mínim amb -msse2")
+
+
+class DependènciesGuardTests(unittest.TestCase):
+    @staticmethod
+    def _sense_comentaris(t):
+        """Treu els comentaris (`#...`): un comentari no és una dependència."""
+        return "\n".join(ln.split("#", 1)[0] for ln in t.splitlines())
+
+    def _llegeix(self):
+        d = {}
+        for f in FITXERS:
+            if os.path.isfile(f):
+                with open(f, encoding="utf-8") as fh:
+                    d[f] = self._sense_comentaris(fh.read())
+        return d
+
+    def test_cap_pyqt6(self):
+        for f, t in self._llegeix().items():
+            self.assertNotIn("PyQt6", t, f"PyQt6 introduït a {f}")
+
+    def test_cap_especificador_de_numpy_2(self):
+        for f, t in self._llegeix().items():
+            for patro in _NUMPY_2:
+                self.assertIsNone(re.search(patro, t),
+                                  f"{f}: numpy podria resoldre's a 2.x ({patro})")
+
+    def test_si_es_demana_numpy_ha_d_excloure_la_2(self):
+        # Només mirem REQUISITS reals (`numpy` + operador), no mencions en prosa
+        # (noms de passos, comentaris...).
+        for f, t in self._llegeix().items():
+            for m in _RE_NUMPY.finditer(t):
+                spec = m.group(1).replace(" ", "")
+                ok = ("<2" in spec) or spec.startswith("==1.")
+                self.assertTrue(ok, f"{f}: numpy '{m.group(1)}' podria ser 2.x")
+
+    def test_requirements_pin_exacte(self):
+        # A requirements.txt totes les dependències van amb `==` (pins exactes).
+        with open(os.path.join(_requirements__ROOT, "requirements.txt"), encoding="utf-8") as fh:
+            linies = [ln.strip() for ln in fh
+                      if ln.strip() and not ln.strip().startswith("#")]
+        self.assertTrue(linies, "requirements.txt buit?")
+        for ln in linies:
+            nom = ln.split(";")[0].strip()      # sense el marcador de plataforma
+            self.assertIn("==", nom, f"sense pin exacte: {ln!r}")
+        m = re.search(r"^numpy==([\d.]+)", "\n".join(linies), re.M)
+        self.assertIsNotNone(m, "requirements.txt ha de fixar numpy amb ==")
+        self.assertTrue(m.group(1).startswith("1."),
+                        f"numpy ha de ser 1.x, no {m.group(1)}")
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_scripts_smoke.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Smoke dels scripts d'_scripts_smoke__ARREL: que es puguen executar.
+
+L'auditoria (18-10-2026) va trobar dos scripts d'arrel que PETAVEN de bon
+començament i que cap test mirava:
+
+- `wav_a_wavs.py`: feia `import pipeline` amb `app/` al `sys.path` → petava amb
+  «attempted relative import with no known parent package» (el mòdul viu dins el
+  paquet `app` des del refactor).
+- `acords_a_live.py` sense arguments: `IndexError`.
+
+Aquests guards són barats (una execució amb `--help` o sense arguments) i
+haurien atrapat tots dos.
+"""
+
+
+
+_scripts_smoke__ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _corre(script, *args, timeout=60):
+    return subprocess.run([plataforma.python_actual(),
+                           os.path.join(_scripts_smoke__ARREL, script), *args],
+                          capture_output=True, text=True, timeout=timeout,
+                          cwd=_scripts_smoke__ARREL)
+
+
+class TestScriptsArrelSmoke(unittest.TestCase):
+
+    def test_wav_a_wavs_arranca(self):
+        """`--help` ha de funcionar: si l'import està trencat, peta (codi 1)."""
+        p = _corre("wav_a_wavs.py", "--help")
+        self.assertEqual(p.returncode, 0, f"wav_a_wavs.py --help peta:\n"
+                                          f"{p.stderr[-400:]}")
+        self.assertIn("wav", p.stdout.lower())
+        p2 = _corre("wav_a_wavs.py")
+        self.assertNotEqual(p2.returncode, 0)
+        self.assertNotIn("Traceback", p2.stderr, "ha de dir l'ús, no petar")
+
+    def test_baixa_verificat_valida_abans_de_baixar(self):
+        """Ha de rebutjar el SHA mal format i l'HTTP ABANS de tocar la xarxa."""
+        p = _corre("eines/baixa_verificat.py", "https://ex.invalid/x", "zzz",
+                   "/tmp/f.bin")
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("64 car", p.stderr)
+        p2 = _corre("eines/baixa_verificat.py", "http://ex.invalid/x", "-",
+                    "/tmp/f.bin")
+        self.assertNotEqual(p2.returncode, 0)
+        self.assertIn("HTTPS", p2.stdout + p2.stderr)
+        self.assertNotIn("Traceback", p2.stderr)
+
+    def test_notes_release_vol_una_versio(self):
+        """`--fitxer` no ha de confondre el seu VALOR amb la versio (abans
+        `notes_release.py --fitxer out.md` feia servir «out.md» com a versio)."""
+        p = _corre("eines/notes_release.py", "--fitxer", "/tmp/x.md")
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("Ús:", p.stderr)
+        p2 = _corre("eines/notes_release.py", "")
+        self.assertEqual(p2.returncode, 2)
+        p3 = _corre("eines/notes_release.py", "v0.0.0")
+        self.assertEqual(p3.returncode, 0, p3.stderr[-200:])
+
+    def test_explica_bpm_diu_l_us(self):
+        p = _corre("eines/explica_bpm.py")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertNotIn("Traceback", p.stderr,
+                         "ha de dir què falta, no petar amb IndexError")
+
+    def test_ordre_aleatori_llista(self):
+        """L'eina d'ordre aleatori ha de poder llistar sense executar res."""
+        p = _corre("eines/ordre_aleatori.py", "3", "--llista", timeout=180)
+        self.assertEqual(p.returncode, 0, p.stderr[-300:])
+        self.assertIn("seed=3", p.stdout)
+        self.assertIn("tests en ordre aleatori", p.stdout)
+
+    def test_dev_reload_arranca(self):
+        p = _corre("dev_reload.py", "--help")
+        self.assertEqual(p.returncode, 0, p.stderr[-300:])
+        self.assertIn("usage", p.stdout.lower())
+
+
+class TestScriptsShSintaxi(unittest.TestCase):
+    """`bash -n` de TOTS els scripts de shell del projecte.
+
+    Una errada de sintaxi en un `.sh` no peta enlloc fins que el CI (o
+    l'operador) el llança — i aleshores el build sencer cau. És una comprovació
+    de mil·lisegons que estalvia una tongada de CI (auditoria 18-10-2026; els
+    12 scripts estaven bé).
+    """
+
+    def test_la_sintaxi_dels_scripts(self):
+        import glob
+        import shutil
+        if not shutil.which("bash"):
+            self.skipTest("sense bash (p. ex. un runner sense MSYS2)")
+        scripts = sorted(glob.glob(os.path.join(_scripts_smoke__ARREL, "*.sh"))
+                         + glob.glob(os.path.join(_scripts_smoke__ARREL, "eines", "*.sh")))
+        self.assertGreaterEqual(len(scripts), 5, "no he trobat els scripts")
+        for s in scripts:
+            p = subprocess.run(["bash", "-n", s], capture_output=True,
+                               text=True, timeout=60)
+            self.assertEqual(p.returncode, 0,
+                             f"sintaxi de {os.path.basename(s)}:\n{p.stderr}")
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_vamp_params_icones.py
+# ══════════════════════════════════════════════════════════════════════════
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Tests dels mòduls que no en tenien cap: `app/vamp_params.py` i `app/icones.py`.
+
+- `vamp_params`: parseja els descriptors `.n3` dels plugins Vamp (paràmetres
+  quantitzats i numèrics, ordre del descriptor, valors per defecte).
+- `icones`: disponibilitat dels SVG i els colors de la UI (l'app no ha de petar
+  mai per una icona que falti).
+"""
+
+
+
+N3_PROVA = """
+plugbase:test_param_alpha a vamp:QuantizedParameter ;
+    vamp:identifier "alpha" ;
+    dc:title "Alpha" ;
+    value_names ("one", "two", "three") ;
+    min_value 1 ; max_value 3 ; quantize_step 1 ; default_value 2 .
+
+plugbase:test_param_beta a vamp:Parameter ;
+    vamp:identifier "beta" ;
+    dc:title "Beta" ;
+    min_value 0.0 ; max_value 10.0 ; default_value 5.0 .
+
+plugbase:test a vamp:Plugin ;
+    vamp:parameter plugbase:test_param_alpha ;
+    vamp:parameter plugbase:test_param_beta .
+"""
+
+
+class TestVampParams(unittest.TestCase):
+    """Els descriptors `.n3` dels plugins Vamp es converteixen bé."""
+
+    def _n3(self, text=N3_PROVA):
+        d = tempfile.mkdtemp()
+        p = os.path.join(d, "test.n3")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(text)
+        self.addCleanup(lambda: os.remove(p))
+        return p
+
+    def test_parseja_quantitzat_i_numeric(self):
+        ps = vamp_params.llegeix_params(self._n3(), "test")
+        self.assertEqual(len(ps), 2, "dos paràmetres al descriptor")
+        alpha = next(p for p in ps if p["id"] == "alpha")
+        beta = next(p for p in ps if p["id"] == "beta")
+        self.assertEqual(alpha["tipus"], "quantitzat")
+        self.assertEqual(alpha["titol"], "Alpha")
+        self.assertEqual(alpha["valors"], ["one", "two", "three"])
+        self.assertEqual(alpha["minim"], 1.0)
+        self.assertEqual(alpha["maxim"], 3.0)
+        self.assertEqual(alpha["defecte"], 2.0)
+        self.assertEqual(beta["tipus"], "numeric")
+        self.assertEqual(beta["valors"], [])
+        self.assertEqual(beta["maxim"], 10.0)
+        self.assertEqual(beta["pas"], 0.0, "un numèric no té pas de quantització")
+
+    def test_ordre_del_descriptor(self):
+        ps = vamp_params.llegeix_params(self._n3(), "test")
+        self.assertEqual([p["id"] for p in ps], ["alpha", "beta"],
+                         "s'ha de respectar l'ordre declarat al plugin")
+
+    def test_plugin_sense_parametres(self):
+        ps = vamp_params.llegeix_params(
+            self._n3("plugbase:test a vamp:Plugin .\n"), "test")
+        self.assertEqual(ps, [])
+
+    def test_params_de_clau_desconeguda(self):
+        with self.assertRaises(KeyError):
+            vamp_params.params_de("no_existeix")
+
+    def test_params_de_i_valors_per_defecte_dels_reals(self):
+        # Amb els plugins reals del repo (si hi són) o llista buida; mai peta.
+        for clau in ("chords", "structure"):
+            ps = vamp_params.params_de(clau)
+            self.assertIsInstance(ps, list)
+            vd = vamp_params.valors_per_defecte(clau)
+            self.assertIsInstance(vd, dict)
+            self.assertEqual(set(vd), {p["id"] for p in ps})
+
+
+class _vamp_params_icones__TestIcones(unittest.TestCase):
+    """Icones SVG + colors de la UI."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QApplication.instance() or QApplication([])
+
+    def test_disponible_amb_una_icona_real(self):
+        svgs = [f[:-4] for f in os.listdir(icones._DIR) if f.endswith(".svg")]
+        self.assertTrue(svgs, "hi ha d'haver icones al repo")
+        for nom in svgs[:5]:
+            self.assertTrue(icones.disponible(nom), nom)
+
+    def test_disponible_inexistent(self):
+        self.assertFalse(icones.disponible("no_existeix_zzz"))
+
+    def test_ico_sense_svg_retorna_buida_sense_petar(self):
+        # L'app no ha de petar mai per una icona que falti.
+        ico = icones.ico("no_existeix_zzz")
+        self.assertTrue(ico.isNull(), "ha de tornar un QIcon buit")
+
+    def test_ico_real_no_es_buida(self):
+        svgs = [f[:-4] for f in os.listdir(icones._DIR) if f.endswith(".svg")]
+        self.assertFalse(icones.ico(svgs[0]).isNull())
+
+    def test_colors_son_hex_valids(self):
+        for c in (icones.TEXT, icones.MUTED, icones.ACTIU, icones.BLAU,
+                  icones.GROC, icones.VERMELL):
+            self.assertRegex(c, r"^#[0-9a-fA-F]{6}$", f"color invàlid: {c!r}")
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_xifrat.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Notació del xifrat (`app/xifrat.py`): parseig del baix i forma canònica.
+
+Decisió de l'operador (2026-10-15, «opció 3»): el MODEL desa **sempre** els
+acords en una forma canònica; si l'usuari n'escriu una variant, l'app l'enten i
+la deixa bé → el model, els noms de fitxer de l'export i la partitura
+(MusicXML → MuseScore) parlen tots la mateixa llengua.
+"""
+
+
+
+CANONICS = [
+    # tríades
+    ("C", "C"), ("Cmaj", "C"), ("CM", "C"), ("CΔ", "C"), ("c", "C"),
+    ("Am", "A-"), ("A-", "A-"), ("Amin", "A-"), ("Ami", "A-"), ("amin", "A-"),
+    ("Cdim", "Cdim"), ("C°", "Cdim"), ("Co", "Cdim"), ("Caug", "Caug"),
+    ("C+", "Caug"), ("Csus4", "Csus4"), ("Csus", "Csus4"), ("Csus2", "Csus2"),
+    # séptimes
+    ("C7", "C7"), ("Cmaj7", "CMaj7"), ("CM7", "CMaj7"), ("CΔ7", "CMaj7"),
+    ("CMa7", "CMaj7"), ("Cm7", "C-7"), ("Cmin7", "C-7"), ("C-7", "C-7"),
+    ("CmM7", "C-Maj7"), ("CmMaj7", "C-Maj7"), ("C-maj7", "C-Maj7"),
+    ("Cdim7", "Cdim7"), ("Co7", "Cdim7"), ("Cm7b5", "C-7b5"), ("Cø", "C-7b5"),
+    ("Cø7", "C-7b5"), ("Caug7", "Caug7"),
+    # sisenes / extensions / afegits
+    ("C6", "C6"), ("Cm6", "C-6"), ("C-6", "C-6"), ("Cadd9", "Cadd9"),
+    ("C9", "C9"), ("Cm9", "C-9"), ("Cmaj9", "CMaj9"), ("CM9", "CMaj9"),
+    ("C7#9", "C7#9"), ("C11", "C11"), ("C13", "C13"), ("C7sus4", "C7sus4"),
+    # alteracions de l'arrel (+ baix)
+    ("Bb", "Bb"), ("A#", "A#"), ("F#dim7", "F#dim7"), ("BbMaj7", "BbMaj7"),
+    ("A7/G", "A7/G"), ("Am/G", "A-/G"), ("G/D", "G/D"), ("C/E", "C/E"),
+    ("A-7/G", "A-7/G"), ("A-6/F#", "A-6/F#"), ("Amaj7/G#", "AMaj7/G#"),
+    ("C/Bb", "C/Bb"), ("a7/g", "A7/G"),
+    # «sense acord» i espais
+    ("N", "N"), ("NC", "N"), ("N.C.", "N"), ("", ""), ("  C  ", "C"),
+]
+
+
+class TestFormaCanonica(unittest.TestCase):
+    def test_taula(self):
+        for brut, net in CANONICS:
+            self.assertEqual(xifrat.normalitza_xifrat(brut), net,
+                             f"{brut!r} hauria de donar {net!r}")
+
+    def test_el_baix_no_es_confon_amb_6_9(self):
+        """`C6/9` porta barra però NO és un acord amb baix."""
+        self.assertEqual(xifrat.parteix_baix("C6/9"), ("C6/9", ""))
+        self.assertEqual(xifrat.parteix_baix("A7/G"), ("A7", "G"))
+        self.assertEqual(xifrat.normalitza_xifrat("C6/9"), "C6add9")
+
+    def test_es_cap_acord(self):
+        for t in ("N", "n", "NC", "N.C.", "", "  "):
+            self.assertTrue(xifrat.es_cap_acord(t), t)
+        for t in ("C", "Am", "N7"):
+            self.assertFalse(xifrat.es_cap_acord(t), t)
+
+    def test_text_no_dacord_no_es_trenca(self):
+        for t in ("solo", "veus", "H7", "X"):
+            self.assertEqual(xifrat.normalitza_xifrat(t), t,
+                             f"no s'hauria de tocar {t!r}")
+
+    def test_arrel_i_qualitat(self):
+        self.assertEqual(xifrat.parteix_arrel("BbMaj7"), ("Bb", "Maj7"))
+        self.assertEqual(xifrat.parteix_arrel("A-7"), ("A", "-7"))
+        self.assertIsNone(xifrat.parteix_arrel("solo"))
+
+
+# Els tipus de la taula de referència de l'operador («acords i tensions»,
+# 3 nivells) amb el `kind` de MusicXML i els GRAUS que han de generar.
+TIPUS_REFERENCIA = [
+    # Beginners
+    ("C", "major", []), ("Cm", "minor", []), ("Cdim", "diminished", []),
+    ("C7", "dominant", []), ("Cm7", "minor-seventh", []),
+    ("Cm7b5", "half-diminished", []), ("Cmaj7", "major-seventh", []),
+    # Intermediates
+    ("Cmajb5", "major", [(5, -1, "alter")]),
+    ("C5", "power", []), ("Csus2", "suspended-second", []),
+    ("Csus4", "suspended-fourth", []), ("C+", "augmented", []),
+    ("C6", "major-sixth", []), ("Cadd9", "major", [(9, 0, "add")]),
+    ("Cm6", "minor-sixth", []), ("Cmadd9", "minor", [(9, 0, "add")]),
+    ("Cdim7", "diminished-seventh", []),
+    ("C7sus4", "suspended-fourth", [(7, -1, "add")]),
+    ("C7b5", "dominant", [(5, -1, "alter")]),
+    ("C7#5", "augmented-seventh", []), ("Cm(maj7)", "major-minor", []),
+    ("C6add9", "major-sixth", [(9, 0, "add")]),
+    ("Cm6add9", "minor-sixth", [(9, 0, "add")]),
+    ("C7b9", "dominant", [(9, -1, "alter")]),
+    ("C7#9", "dominant", [(9, 1, "alter")]),
+    ("Cm7b9", "minor-seventh", [(9, -1, "alter")]),
+    ("C9", "dominant-ninth", []),
+    ("C9b5", "dominant-ninth", [(5, -1, "alter")]),
+    ("C9#5", "dominant-ninth", [(5, 1, "alter")]),
+    ("Cm9", "minor-ninth", []), ("Cmaj9", "major-ninth", []),
+    ("C11", "dominant-11th", []), ("Cm11", "minor-11th", []),
+    ("Cmaj11", "major-11th", []), ("C13", "dominant-13th", []),
+    ("Cm13", "minor-13th", []), ("Cmaj13", "major-13th", []),
+    # Advanced
+    ("Cmaj7b5", "major-seventh", [(5, -1, "alter")]),
+    ("Cmaj7#5", "major-seventh", [(5, 1, "alter")]),
+    ("C7b5b9", "dominant", [(5, -1, "alter"), (9, -1, "alter")]),
+    ("C7#5b9", "augmented-seventh", [(9, -1, "alter")]),
+    ("C7#5#9", "augmented-seventh", [(9, 1, "alter")]),
+    ("C7add11", "dominant", [(11, 0, "add")]),
+    ("C7#11", "dominant", [(11, 1, "alter")]),
+    ("Cm7b5b9", "half-diminished", [(9, -1, "alter")]),
+    ("Cm7add11", "minor-seventh", [(11, 0, "add")]),
+    ("Cmaj7#11", "major-seventh", [(11, 1, "alter")]),
+    ("Cm9b5", "minor-ninth", [(5, -1, "alter")]),
+    ("Cm(maj9)", "major-minor", [(9, 0, "add")]),
+    ("Cmaj9#5", "major-ninth", [(5, 1, "alter")]),
+    ("C9#11", "dominant-ninth", [(11, 1, "alter")]),
+    ("Cmaj9#11", "major-ninth", [(11, 1, "alter")]),
+    ("C11b9", "dominant-11th", [(9, -1, "alter")]),
+    ("C13b5b9", "dominant-13th", [(5, -1, "alter"), (9, -1, "alter")]),
+    ("C13b9", "dominant-13th", [(9, -1, "alter")]),
+    ("C13#9", "dominant-13th", [(9, 1, "alter")]),
+    ("C13#11", "dominant-13th", [(11, 1, "alter")]),
+]
+
+
+class TestGraus(unittest.TestCase):
+    def test_graus_treure(self):
+        """`noN` = treure un grau → MusicXML `subtract` (`no3`, `no5`, `no7`…)."""
+        for xif, kind, gr in [
+                ("Cno5", "major", [(5, 0, "subtract")]),
+                ("Cno3", "major", [(3, 0, "subtract")]),
+                ("Cno7", "major", [(7, 0, "subtract")]),
+                ("Cmaj7no5", "major-seventh", [(5, 0, "subtract")]),
+                ("Cm7no3no5", "minor-seventh",
+                 [(3, 0, "subtract"), (5, 0, "subtract")]),
+                ("C7no9", "dominant", [(9, 0, "subtract")]),
+                ("C13no5", "dominant-13th", [(5, 0, "subtract")]),
+                ("Cm6no5", "minor-sixth", [(5, 0, "subtract")])]:
+            pa = xifrat.parteix_arrel(xifrat.normalitza_xifrat(xif))
+            self.assertIsNotNone(pa, xif)
+            k, g = xifrat.kind_i_graus(pa[1])
+            self.assertEqual(k, kind, f"{xif}: kind")
+            self.assertEqual(list(g), [tuple(x) for x in gr], f"{xif}: graus")
+
+    def test_alteracions_dobles(self):
+        """Dobles alteracions (MuseScore: `##`, `bb` i `x` = doble sostingut)."""
+        for brut, net in [("C##", "C##"), ("Cbb", "Cbb"), ("Cx", "C##"),
+                          ("Cx5", "C##5"), ("F##m7", "F##-7"),
+                          ("C##/Dbb", "C##/Dbb"), ("Gbbmaj7", "GbbMaj7"),
+                          ("Cxyz", "Cxyz")]:     # `x` + lletra ≠ accidental
+            self.assertEqual(xifrat.normalitza_xifrat(brut), net, brut)
+
+    def test_resta_qualitat(self):
+        """El tros no convertible (p. ex. `alt`) es conserva per al `text`."""
+        self.assertEqual(xifrat.resta_qualitat("7alt"), "alt")
+        self.assertEqual(xifrat.resta_qualitat("7#11"), "")   # → `<degree>`
+        self.assertEqual(xifrat.resta_qualitat("Maj7"), "")
+        self.assertEqual(xifrat.resta_qualitat("xyz"), "xyz")
+
+    def test_paraules_i_parentesis(self):
+        """`major`/`minor` senceres i els graus entre parèntesis.
+
+        Regressió (graella «Create The Music»): `Cmajor` feia `CMajdimr` i
+        `C7(9,13)` feia `C7913` (els graus s'engrunaven i es perdien).
+        """
+        for brut, net in [("Cmajor", "C"), ("CMajor", "C"),
+                          ("Cminor", "C-"), ("CMinor", "C-"),
+                          ("C7(9,13)", "C7add9add13"),
+                          ("Cmaj7(9)", "CMaj7add9"),
+                          ("Cmaj7(13)", "CMaj7add13"),
+                          ("Cmaj7(#11)", "CMaj7#11"),
+                          ("C7(#9,b5)", "C7#9b5"),
+                          ("C7sus2", "C7sus2"), ("C9sus4", "C9sus4"),
+                          ("C13sus4", "C13sus4")]:
+            self.assertEqual(xifrat.normalitza_xifrat(brut), net, brut)
+
+    def test_els_graus_dels_parentesis_no_sengrunen(self):
+        k, g = xifrat.kind_i_graus("7add9add13")
+        self.assertEqual(k, "dominant")
+        self.assertEqual(list(g), [(9, 0, "add"), (13, 0, "add")])
+
+    def test_alteracions_no_son_acords(self):
+        """Text que no és un xifrat NO s'ha de reconèixer (ni amb `no5`)."""
+        for t in ("Cxyz", "solo", "veus", "X"):
+            pa = xifrat.parteix_arrel(xifrat.normalitza_xifrat(t))
+            k, _g = xifrat.kind_i_graus(pa[1]) if pa else (None, ())
+            self.assertIsNone(k, f"{t!r} no s'hauria de reconèixer")
+
+
+class TestTipusDeReferencia(unittest.TestCase):
+    def test_kind_i_graus(self):
+        for xif, kind, gr in TIPUS_REFERENCIA:
+            q = xifrat.normalitza_xifrat(xif)[1:]      # treu l'arrel («C»)
+            k, g = xifrat.kind_i_graus(q)
+            self.assertEqual(k, kind, f"{xif}: kind={k!r} (esperat {kind!r})")
+            self.assertEqual(list(g), [tuple(x) for x in gr], f"{xif}: graus")
+
+    def test_tots_els_tipus_tenen_arrel_i_qualitat(self):
+        for xif, _k, _g in TIPUS_REFERENCIA:
+            pa = xifrat.parteix_arrel(xifrat.normalitza_xifrat(xif))
+            self.assertIsNotNone(pa, xif)
+            self.assertEqual(pa[0], "C", xif)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ORIGEN: test_xocs_inici_csv.py
+# ══════════════════════════════════════════════════════════════════════════
+"""Regressió del BUG #5 (informe OC-6/357): xocs d'inici DINS la resolució del CSV.
+
+El CSV d'acords es desa amb `TEMPS_DEC = 2` decimals (10 ms). Dos acords amb
+inicis separats per menys de 10 ms cauen a la **mateixa fila** del CSV i el
+primer queda amb un clip de durada ~0 a l'export (trenca les regles #1/#2).
+
+Repro original: amb un E7 a `t = 6.831683`, `ac_add_chord(t_s=6.8317, "DUP")`
+s'acceptava (el validador només mirava `t <= prev + 1e-9`) i el CSV quedava amb
+dues files «6.83».
+"""
+
+
+
+
+DUR = 40.0
+E7_T = 6.831683
+XOC_T = 6.8317          # a 1,7e-5 s de l'E7 → mateixa fila «6.83» del CSV
+
+
+def _escriu_wav(ruta, dur=DUR):
+    with wave.open(ruta, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(44100)
+        w.writeframes(b"\x00\x00" * int(44100 * dur))
+
+
+def _llegeix_acords(ruta):
+    with open(ruta, encoding="utf-8") as f:
+        return [(float(r[0]), r[1]) for r in csv.reader(f) if r]
+
+
+def _visor(acords=((0.0, "C"), (E7_T, "E7"))):
+    td = tempfile.mkdtemp()
+    wav = os.path.join(td, "tema.wav")
+    _escriu_wav(wav)
+    sortida = pipeline.carpeta_sortida(wav)
+    os.makedirs(sortida, exist_ok=True)
+    ca = os.path.join(sortida, "acords.csv")
+    with open(ca, "w", encoding="utf-8") as f:
+        for t, nom in acords:
+            f.write(f"{t},{t + 1},{nom}\n")
+    sa = os.path.join(sortida, "estructura_ABC.csv")
+    with open(sa, "w", encoding="utf-8") as f:
+        f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
+        f.write(f"0.00,{DUR}, {DUR},A,A,1,1\n")
+    v = visor_mod.Visor(wav, ca, sa, 120.0, 4, True)
+    v.td, v.sortida = td, sortida
+    return v
+
+
+class _xocs_inici_csv___Base(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QApplication.instance() or QApplication([])
+
+
+class _FinestraFalsa:
+    def __init__(self, visor):
+        self.visor_ref = visor
+        self.sortida = "/tmp/out"
+
+    def windowTitle(self):
+        return "Auto Chords — prova"
+
+
+class TestXocsResolucioCSV(_xocs_inici_csv___Base):
+    def test_validador_rebutja_inicis_dins_la_resolucio(self):
+        v = _visor()
+        with self.assertRaises(ValueError):
+            v._valida_canvis_acords([(0.0, "C", "0"),
+                                     (E7_T, "E7", "6.831683"),
+                                     (XOC_T, "DUP", "6.8317")])
+
+    def test_validador_accepta_just_a_la_resolucio(self):
+        v = _visor()
+        ok = v._valida_canvis_acords([(0.0, "C", "0"),
+                                      (6.83, "E7", "6.83"),
+                                      (6.84, "DUP", "6.84")])
+        self.assertEqual(len(ok), 3)
+
+    def test_afegeix_acord_rebutja_el_xoc(self):
+        v = _visor()
+        with self.assertRaises(ValueError):
+            v._afegeix_acord(XOC_T, "DUP")
+
+    def test_mcp_add_chord_rebutja_el_xoc(self):
+        v = _visor()
+        ctx = mcp_bridge._Context(_FinestraFalsa(v))
+        with self.assertRaises(mcp_bridge.BridgeError):
+            mcp_bridge._op_add_chord(ctx, {"t_s": XOC_T, "acord": "DUP"})
+        # i el model no ha quedat tocat
+        self.assertNotIn("DUP", [a[2][0] for a in v.acords])
+
+    def test_el_csv_no_te_mai_temps_duplicats_ni_clips_buits(self):
+        v = _visor()
+        with self.assertRaises(ValueError):
+            v._afegeix_acord(XOC_T, "DUP")      # xoc → rebutjat
+        v._afegeix_acord(6.90, "G")             # aquest sí (> 10 ms del E7)
+        v._desa_i_regenera()
+        files = _llegeix_acords(v.csv_acords)
+        temps = [t for t, _xocs_inici_csv___ in files]
+        self.assertEqual(len(temps), len(set(temps)),
+                         f"el CSV té temps duplicats: {temps}")
+        for (t0, n0), (t1, _n1) in zip(files, files[1:]):
+            self.assertGreater(t1 - t0, 0.0,
+                               f"clip de durada 0 al CSV entre {n0} i {t1}")
+        self.assertGreater(DUR - files[-1][0], 0.0)
+
+    def test_repara_un_csv_que_ja_venia_xocat(self):
+        """Si el CSV ja portava el xoc (versió antiga), en carregar es neteja."""
+        v = _visor(acords=((0.0, "C"), (E7_T, "E7"), (XOC_T, "DUP")))
+        noms = [a[2][0] for a in v.acords]
+        self.assertNotIn("DUP", noms)
+        self.assertIn("E7", noms)
+        self.assertEqual(noms, ["C", "E7"])
+        # ...i el CSV del disc queda net
+        temps = [t for t, _xocs_inici_csv___ in _llegeix_acords(v.csv_acords)]
+        self.assertEqual(len(temps), len(set(temps)))
+
+
+class TestExportMaiEscriuClipsBuits(_xocs_inici_csv___Base):
+    def test_segment_de_durada_zero_s_omet(self):
+        """Blindatge darrer: encara que un CSV porti un xoc, l'export no ha
+        d'escriure cap WAV de durada 0."""
+        td = tempfile.mkdtemp()
+        cs = os.path.join(td, "acords.csv")
+        with open(cs, "w", encoding="utf-8") as f:
+            f.write("0.00,5.00,C\n5.00,5.00,E7\n5.00,5.00,DUP\n")
+        dest = os.path.join(td, "wavs")
+        pipeline.fer_wavs_acords_lliures(cs, 10.0, dest, 44100,
+                                        lambda _m: None)
+        self.assertEqual(sorted(os.listdir(dest)),
+                         ["0000.00s_0005.00s_C.wav", "0005.00s_0010.00s_DUP.wav"])
+
+
+
+def _xocs_inici_csv_tearDownModule():
+    # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
+    # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
+    try:
+        import _qt_neteja
+    except ImportError:      # 'python -m unittest tests.test_x' (tests/ no al path)
+        import os, sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import _qt_neteja
+    _qt_neteja.processa_esborrats()
+
+
+if __name__ == "__main__":   # pragma: no cover
     unittest.main()

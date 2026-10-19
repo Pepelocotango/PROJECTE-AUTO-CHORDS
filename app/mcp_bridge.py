@@ -184,7 +184,7 @@ def _op_list_chords(ctx, params):
     vr = _requereix_visor(ctx)
     return {"chords": [
         {"index": i, "t_s": round(float(a[0]), 4),
-         "acord": str(pipeline.nom_d_acord(a))}
+         "acord": str(a.nom if isinstance(a, pipeline.Clip) else a[2][0] if isinstance(a[1], (int, float)) else a[1])}
         for i, a in enumerate(vr.acords)
     ]}
 

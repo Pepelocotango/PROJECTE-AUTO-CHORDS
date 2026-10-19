@@ -26,7 +26,7 @@ el BPM són "vistes" calculades a sobre.
 - Metrònom amb la mateixa graella (`app/metronom.py`, `beat = 60/bpm`).
 - **Offset** = segon on cau el compàs 1; abans, la graella és **negativa**
   (count-in).
-- Export a Live: `acords_a_live.py` fa servir `step = 60.0 / bpm / 2`
+- Export a Live: `pipeline.genera_locators()` fa servir `step = 60.0 / bpm / 2`
   (corxera); `app/pipeline.py` idem.
 - BPM: `app/tempo.py` (numpy) / `qm-tempotracker` (l'aubio està **retirat**).
 

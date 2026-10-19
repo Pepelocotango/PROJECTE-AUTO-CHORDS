@@ -154,7 +154,7 @@ chmod +x AutoChords-*-x86_64.AppImage && ./AutoChords-*-x86_64.AppImage
 | `app/plataforma.py` | **Abstracció de SO** (noms `.exe`, dirs de plugins, reproductor, kill, lock) |
 | `eines/compila_vamp_host.sh` | Host propi, **multi-SO** |
 | `eines/compila_vamp_plugins.sh` | Plugins, **dispatch per SO** (Linux/Windows/macOS) |
-| `eines/launcher_pyinstaller.py` | Entry de PyInstaller (Win i macOS) |
+| `eines/launcher_pyinstaller.py` | Entry de PyInstaller (Win i macOS); només resol `sys.path` |
 | `.github/workflows/build-{appimage,windows,macos}.yml` | Els 3 builds |
 | `.github/workflows/build-all.yml` | **Agregador**: els executa tots 3 en paral·lel |
 | `docs/PORTABILITAT_WINDOWS.md`, `docs/archive/PLANIFICACIO_MACOS.md` | Detall per SO |

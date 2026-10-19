@@ -63,18 +63,22 @@ El script **detecta el SO** amb `uname -s` i té tres branques (`Linux`,
 `eines/AutoChords-win.spec` (`--onedir`, `console=False`):
 
 * **Entry**: `eines/launcher_pyinstaller.py` (**no** `app/main.py`).
-* **Datas**: `acords_a_live.py`, `vamp_host_local.exe`, `icones/`, els dos
-  directoris de plugins, `portable/bin/ffmpeg.exe` i les DLLs de runtime.
+* **Datas**: `vamp_host_local.exe`, `icones/`, els dos directoris de plugins,
+  `portable/bin/ffmpeg.exe` i les DLLs de runtime.
 * `hiddenimports` per als mòduls de primer nivell que viuen a `app/`
   (`pipeline`, `theme`, `metronom`, `icones`…) i el paquet `app`.
 
-### El llançador i el subprocés `acords_a_live.py`
+### El llançador (sense subprocessos)
 
-PyInstaller fa que `sys.executable` sigui `AutoChords.exe`. L'app, però, torna
-a invocar-se per executar `acords_a_live.py` (`app/pipeline.run_acords_py`). En
-mode congelat això reobriria la GUI. `launcher_pyinstaller.py` detecta el cas
-(1r argument = `acords_a_live.py`) i l'executa **en el mateix procés** amb
-`runpy`, sense tocar `app/`. El mateix llançador serveix per a **macOS**.
+`eines/launcher_pyinstaller.py` només assegura que `app/` (i els mòduls de
+primer nivell) siguin importables en mode congelat i arrenca la finestra
+principal.
+
+Ja **no** hi ha cap subprocés de Python intern: la generació de locators i de
+la guia HTML (`acords_locators.txt` / `guia_acords.html`) viu dins
+`app/pipeline.py` (`genera_locators` / `genera_guia_html`) i s'executa **en el
+mateix procés**. Per això el llançador no necessita cap intercepció amb
+`runpy`. El mateix llançador serveix per a **macOS**.
 
 ## 5. Verificació
 

@@ -278,7 +278,6 @@ jobs:
             --add-data "qm-vamp-plugins-macos-local:qm-vamp-plugins-macos-local" \
             --add-data "vamp_host_local:." \
             --add-data "portable:portable" \
-            --add-data "acords_a_live.py:." \
             eines/launcher_pyinstaller.py
           ls -la dist/
           echo "--- PyQt5 al bundle? ---"
@@ -319,7 +318,6 @@ jobs:
             --add-data "nnls-chroma-macos-local:nnls-chroma-macos-local" \
             --add-data "qm-vamp-plugins-macos-local:qm-vamp-plugins-macos-local" \
             --add-data "vamp_host_local:." --add-data "portable:portable" \
-            --add-data "acords_a_live.py:." \
             eines/launcher_pyinstaller.py >/dev/null 2>&1
           echo "--- execucio de la variant --console ---"
           AUTO_CHORDS_SMOKE=1 QT_QPA_PLATFORM=offscreen \

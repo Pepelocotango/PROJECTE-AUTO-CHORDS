@@ -13,14 +13,12 @@
 #   · portable/bin/ffmpeg.exe                  (baixat al workflow)
 #   · icona/auto-chords.ico                    (generat: python eines/crea_icona.py)
 #
-# Nota: l'entry és eines/launcher_pyinstaller.py (no app/main.py), perquè resol
-# el subprocés `acords_a_live.py` en mode congelat. Vegeu aquell fitxer.
+# Nota: l'entry és eines/launcher_pyinstaller.py (assegura sys.path en congelat).
 import os
 
 ROOT = os.path.abspath(os.path.join(SPECPATH, os.pardir))
 
 datas = [
-    (os.path.join(ROOT, 'acords_a_live.py'), '.'),
     (os.path.join(ROOT, 'vamp_host_local.exe'), '.'),
     (os.path.join(ROOT, 'icones'), 'icones'),
     (os.path.join(ROOT, 'icona'), 'icona'),

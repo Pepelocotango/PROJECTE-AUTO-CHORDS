@@ -33,7 +33,15 @@ BPM_DEFECTE = 120.0
 
 # Un tros del mapa: temps i compàs constants dins `[ini, fi)`.
 #   bpm = negres per minut · num/den = compàs (p. ex. 4/4, 6/8, 12/8)
-Tram = namedtuple("Tram", ("ini", "fi", "bpm", "num", "den"))
+_TramBase = namedtuple("Tram", ("ini", "fi", "bpm", "num", "den"))
+
+
+class Tram(_TramBase):
+    """Tram de tempo/compàs amb interfície compatible amb `Clip(ini, fi, payload)`."""
+
+    @property
+    def payload(self):
+        return (self.bpm, self.num, self.den)
 
 
 def _bar_quarters(num, den):
@@ -542,3 +550,37 @@ def mediana(vals):
         return 0.0
     m = n // 2
     return float(v[m]) if n % 2 else (v[m - 1] + v[m]) / 2.0
+
+
+def bloc_sobre_trams(trams, bloc, llargada, T, durada):
+    """Mapa de BPM/compàs amb el bloc enganxat sobre `[T, T+llargada]`.
+
+    El mapa està **SATURAT** (cobreix sempre `[0, durada]` amb trams
+    contigus): enganxar-hi un bloc de trams no insereix res, **obre les
+    fronteres** del bloc i hi **canvia el BPM/compàs**.
+    """
+    out = list(trams or [])
+    if not bloc:
+        return out
+    T = float(T)
+    llargada = float(llargada or 0.0)
+    for (r, _rfi, _b, _n, _d) in bloc:
+        t = T + float(r)
+        if t < durada - 1e-6:
+            out = afegeix_tall(out, t)
+    te = T + llargada
+    if 1e-6 < te < durada - 1e-6:
+        out = afegeix_tall(out, te)
+
+    def _valor(rel):
+        for (r, rfi, b, n, d) in bloc:
+            if float(r) - 1e-9 <= rel < float(rfi) - 1e-9:
+                return float(b), int(n), int(d)
+        return None
+
+    nou = []
+    for s in out:
+        v = _valor(float(s[0]) - T)
+        nou.append((float(s[0]), float(s[1]), v[0], v[1], v[2])
+                   if v else (float(s[0]), float(s[1]), s[2], s[3], s[4]))
+    return nou
