@@ -49,16 +49,18 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 
 1. **Obre l'àudio** (`Fitxer ▸ Obre…`, `Ctrl+O`) — si no és WAV, es converteix sol amb **ffmpeg**.
 2. **Ajusta el temps** (BPM amb **🎯 Detecta** o **TAP**) i fes **Analitza** (`F5`, obre el diàleg d'opcions).
-3. **Revisa i edita** els acords i les seccions al visor (timeline estil DAW, llistes, franja Editor).
+3. **Revisa i edita** els acords, les seccions i el **mapa de BPM/compàs** al visor
+   (timeline estil DAW amb **tres pistes**, llistes i franja Editor).
 4. **`Exporta WAV's…`** (`Ctrl+E`) — i, si vols, **`Exporta partitura`**.
 
 ## 🎛️ Què fa
 
 - **Importa** WAV, MP3, FLAC i **16 formats més** (vegeu [§ Formats](#-formats-dàudio-acceptats)) convertint-los amb `ffmpeg`.
 - **Analitza** els acords amb **Chordino** (NNLS-Chroma) i l'estructura amb **qm-segmenter** (Queen Mary), tots dos **dins l'app** (Vamp).
-- **Timeline estil DAW**: ona, regle, cursor, zoom; mode **BPM · compàs** o **Lliure (hh:mm:ss)**; metrònom; loop A/B.
-- **Edició completa**: moure/partir/duplicar acords i seccions, **multi-selecció** (`Ctrl`/`Shift+clic`), **copiar/retallar/enganxar**, **desfer/refer** (`Ctrl+Z`/`Ctrl+Y`).
-- **Exporta clips WAV silenciosos** ordenats i nomenats per acord/secció → els arrossegues al teu DAW i hi tens l'harmonia marcada.
+- **Timeline estil DAW** amb **tres pistes**: **acords**, **estructura** i **BPM/compàs** (mapa de tempo per trams). Ona, regle, cursor, zoom; mode **BPM · compàs** o **Lliure (hh:mm:ss)**; metrònom; loop A/B.
+- **Edició completa** de les tres pistes: **moure/partir/duplicar/redimensionar** acords i seccions, i **moure/partir/duplicar** els **trams de tempo**; **multi-selecció** (`Ctrl`/`Shift+clic`), **copiar/retallar/enganxar**, **desfer/refer** (`Ctrl+Z`/`Ctrl+Y`). Les tres comparteixen les mateixes eines (regla d'or #11).
+- **Exporta clips WAV silenciosos** ordenats i nomenats per acord (`1-1-1_C.wav`) i per secció (`1-1-1_3-2-1_A.wav`) → els arrossegues al teu DAW i hi tens l'harmonia marcada.
+- **Exporta el mapa de tempo** a `mapa_tempo/` (`tempo.csv` + `compas.csv`) i una **guia d'acords** (`guia_acords.html`) per imprimir.
 - **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: [`docs/PROJECTES.md`](docs/PROJECTES.md).
 - **Partitura de xifrats**: MusicXML sempre; PDF/MSCZ amb MuseScore.
 - La interfície (menús, barres, dreceres) és a [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md).
