@@ -380,6 +380,30 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 53 — paritat de SUPERFÍCIES: una sola definició del menú contextual
+
+- **`Visor._menu_contextual`** és ara la **definició ÚNICA** del menú contextual
+  (**11 accions**, amb una **clau per acció**) per a les **DUES superfícies**
+  (timeline i llistes) i les **TRES pistes**. Abans divergien:
+  - el menú del **timeline** no tenia **Fusionar amb anterior/seguint** (només hi
+    eren a les llistes);
+  - **③ BPM/compàs** anava pel seu compte;
+  - el **menú principal** no tenia **cap entrada** per a ③ → ara té
+    *Afegeix tram de tempo/compàs…* i *Parteix el tram al cursor…*.
+- ➕ Nou `tempo_map.fusiona_trams` (mirall de `pipeline.fusiona_acords`).
+- ⚠️ **L'operador tenia raó: els TESTS estaven MALAMENT.** `test_menu_te_les_accions`
+  demanava el menú amb `idx=1` quan el model només té **UN** acord, i n'esperava
+  accions **ACTIVES** (el codi vell només comprovava `idx >= 0` → donava per bo un
+  clip **inexistent**). El mateix amb les seccions (el fixture en té **zero**). Ara
+  es comprova `0 <= idx < n` i hi ha un **test propi** per a l'índex fora de rang.
+  **Mutació 2/2**.
+- 📄 **Docs** (rol OC-12): `docs/ESQUEMA_UI.md` — les **dues** entrades noves del
+  menú *Edita* per a la pista ③ (era l'**única** fallada de la suite:
+  `test_esquema_ui_doc::test_accions_de_menu_documentades`, que exigix que **tota**
+  acció de menú conste al doc).
+
+Commit `e9fd70c` · suite 1139 (1 skip) un cop documentat · pyflakes net · `app/main.py` + `app/visor.py` + `app/tempo_map.py` + tests.
+
 ## Ronda 52 — el VISOR segueix el MODEL (punt únic) — dos bugs REALS de VISTA
 
 L'operador va veure que, després de la tongada de 12 h, **el visor no
