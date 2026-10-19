@@ -169,30 +169,10 @@ test `tests/test_regla12_export.py` — **✅ FET (2026-10-18)**.
 
 ---
 
-## 📌 Evidència: 2 bugs de producció (`OC-6/332-334`, 2026-10-13)
 
-Aquests dos casos reals són el motiu del §«S'ha de complir SEMPRE» de dalt:
-
-1. **L'exportació ignorava les edicions de seccions** (`OC-6/332`) — **greu**.
-   `app/main.py` passava a `pipeline.exporta_total` la sortida **crua** del
-   qm-segmenter (`segments.csv`) i **regenerava** l'estructura des d'allà, ignorant
-   el model editat (`self.seccions`). Resultat: `estructura_ABC.csv` i
-   `wavs_estructura/` **tornaven a les seccions originals**. (Els **acords**, en
-   canvi, sí que s'exportaven del model editat.) → L'exportació ha de sortir del
-   **model**, no de dades intermèdies.
-
-2. **La COBERTURA (#4) no s'aplicava a les edicions en viu** (`OC-6/333`).
-   En eliminar el **1r** acord, el primer clip passava de **0,00** a **0,30** i el
-   forat es veia **al visor i al CSV** (`acords.csv`: `0.30,N … 192.18,Em7`; hauria
-   de ser `0.00 … 199.60`). `pipeline.normalitza_cobertura()` només s'aplicava a
-   l'anàlisi, en carregar el visor i en exportar l'ABC — **no** després d'editar
-   (ni pel camí de la GUI). → La cobertura s'ha de reaplicar
-   **després de cada mutació**.
 
 > 🧭 **Lliçó**: una regla d'or **no** pot dependre d'*on* s'aplica el codi; ha de
-> valer a **tots** els punts (edició en viu, visor, CSV i exportació). Aquests 2
-> bugs van aparèixer precisament perquè la validació vivia només en alguns passos.
-> **Seguiment**: fix assignat a **OC-4** + tests de regressió (detall a `OC-6/334`).
+> valer a **tots** els punts (edició en viu, visor, CSV i exportació)..
 
 ---
 
