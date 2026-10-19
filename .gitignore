@@ -101,8 +101,8 @@ XX TEMP FILES USUARI/
 htmlcov/
 .cov-env/
 
-# Fitxers locals d'agents d'IA: són locals de cada entorn i NO es versionen.
-AGENTS.md
+# `AGENTS.md` SÍ que es versiona (és la guia del projecte per a qualsevol agent).
+# La resta de fitxers d'agents són locals de cada entorn i NO es versionen.
 CLAUDE.md
 .cursorrules
 .cursor/
