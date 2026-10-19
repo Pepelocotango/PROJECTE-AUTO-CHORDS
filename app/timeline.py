@@ -1344,12 +1344,6 @@ class TimelineView(QGraphicsView):
         zone = self._section_items[idx]._drag_mode
         n = len(self._seccions)
 
-        def prev_ini(i):
-            return self._seccions[i - 1][0] if i - 1 >= 0 else 0.0
-
-        def next_ini_of(i):
-            return self._seccions[i + 1][0] if i + 1 < n else self._durada
-
         if zone == SectionItem.ZONE_RIGHT:
             # Mou el FI -> és l'inici de la següent (vora LLIURE, §6.6)
             nt = max(ini_o + MIN_SEC_LEN_S,

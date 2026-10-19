@@ -211,11 +211,6 @@ def _op_selection(ctx, params):
     return {"seleccio": keys, "pos_s": round(float(getattr(vr, "pos", 0.0)), 3)}
 
 
-def _jsonable(items):
-    """Converteix tuples del model a llistes (per serialitzar)."""
-    return [list(x) for x in items]
-
-
 # ── Edició del model (amb undo + desat, com fa la GUI) ───────────────────────
 def _refresca(vr, desa=True):
     """Sincronitza timeline, llistes i franja editor des del model del visor."""

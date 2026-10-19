@@ -371,14 +371,6 @@ class CursorLine(QGraphicsLineItem):
         line.setP2(QPointF(x, self._y_bottom))
         self.setLine(line)
 
-    def set_y_range(self, y_top: float, y_bottom: float) -> None:
-        self._y_top = y_top
-        self._y_bottom = y_bottom
-        line = self.line()
-        line.setP1(QPointF(line.p1().x(), y_top))
-        line.setP2(QPointF(line.p2().x(), y_bottom))
-        self.setLine(line)
-
 
 # -----------------------------------------------------------------------------
 # TempoLayer — la pista de TEMPO i COMPÀS (blocs de cada tros del mapa)

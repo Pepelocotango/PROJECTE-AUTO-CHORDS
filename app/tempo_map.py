@@ -406,12 +406,6 @@ class TempoMap:
         k = round((q - q_bar) / pas_q)
         return self.t_de_quarters(max(0.0, q_bar + k * pas_q))
 
-    # ── informació ──────────────────────────────────────────────────────────
-    def resum(self):
-        """Llista de trossos per a diagnòstic/log."""
-        return [(s.ini, s.fi, s.bpm, "%d/%d" % (s.num, s.den))
-                for s in self._trams]
-
 
 # --- edició del mapa (utilitats pures per a la GUI) ------------------------
 def normalitza_trams(trams, durada):
