@@ -5,7 +5,27 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
 
 ## [Unreleased]
 
+### Afegit
+- **Tap tempo amb clip objectiu (2026-10-19)**: amb diversos trams de
+  BPM/compàs, el tap (tecla `T` o botó **TAP**) afecta el **tram de tempo
+  seleccionat**; si no n'hi ha cap, el primer (transport). Els camps BPM i
+  compàs de la barra segueixen eixa selecció i l'edició manual també hi va.
+  Una sessió de taps (fins a 2 s sense tocar, canvi de tram o aturada) és
+  **una sola operació de desfer**.
+- **Loop a la selecció (2026-10-19)**: `L`, menú *Selecciona* i menú
+  contextual dels **tres** carrils. Un clip → les seues fronteres; diversos o
+  selecció mixta → unió (mínim inici → màxim fi); una sola operació d'undo.
+  Si està sonant, alinea el cursor a l'inici.
+- **Loop automàtic amb el tap (2026-10-19)**: si el tap es fa **mentre sona**,
+  es crea i s'activa el loop A/B del clip de tempo objectiu (o del primer) i
+  el cursor s'hi alinea. El loop es manté en aturar.
+
 ### Canviat
+- **Posicions musicals en canviar el BPM (2026-10-19)**: els segons continuen
+  sent la font de veritat (els acords i les seccions **no es mouen**), però les
+  etiquetes de compàs i les columnes `compas_ini`/`compas_fi` de
+  `estructura_ABC.csv` es recalculen amb la graella nova. Per alinear clips a
+  la graella es fa servir **Quantitza**.
 - **Icones de Windows (2026-10-19)**: `auto-chords.ico` passa a tenir 9 mides
   (16, 20, 24, 32, 40, 48, 64, 128 i 256): **16–128 en BMP/DIB 32-bit** i
   **256 en PNG**, segons la recomanació de Microsoft. S'hi afegeixen 20 i 40 px
@@ -14,8 +34,31 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   a la finestra/taskbar (amb fallback als PNG). Guards:
   `TestIcones.test_ico_windows_te_bmp_a_les_mides_petites_i_png_a_256` i
   `TestIcones.test_icona_app_a_windows_prefereix_l_ico_multimida`.
+- **Despatx únic d'edició (2026-10-19)**: el menú contextual, les llistes, el
+  menú principal, el teclat del timeline i el menú del loop ja no decideixen
+  per carril: tots envien la intenció a **`Visor.executa_edicio()`**. La
+  selecció també té un punt únic (`TimelineView.selecciona` amb
+  `set`/`toggle`/`extend`) i `Visor.seleccio_activa()` inclou els **tres**
+  carrils. Efectes visibles: `Ctrl+clic` i `Shift+clic` funcionen al carril de
+  BPM/compàs, i `Del`, `F2` i `Ctrl+D` hi arriben (abans el QAction de la
+  finestra es menjava la tecla i `main._clip_seleccionat()` només mirava
+  acords/seccions). «Reanomena» amb diversos trams de tempo ja no renombra les
+  seccions per error d'índex; el renom en bloc queda desactivat a ③. Contracte:
+  `tests/test_despatx_edicio.py`.
+- **Afegir secció** des del menú principal passa pel mateix camí que el menú
+  contextual: demana **lletra i família** i, si el model no és saturat, crea el
+  tros de 2 s pel mateix punt únic (abans `main.py` tenia una còpia pròpia).
 
 ### Corregit
+- **Partir des del menú contextual (2026-10-19)**: el tall es fa al **punt del
+  clic** (amb **snap** si està actiu), no al cursor. Si el punt del clic no
+  deixa marge suficient, es fa servir el cursor (també amb snap). El menú
+  principal continua tallant al cursor perquè el text ho diu explícitament.
+- **Duplicar sense lloc (2026-10-19)**: `Ctrl+D` / «Duplica» només actua si la
+  còpia **sencera** cap després del clip o del bloc seleccionat. Si no hi cap,
+  no es toca res i s'avisa a la barra d'informació (la cançó no pot créixer).
+  Abans el destí s'acotava i la còpia podia caure damunt de l'original o del
+  veí; a l'últim clip podia no fer res sense explicar-ho.
 - **Icona de macOS al DMG/Finder (2026-10-19)**: l'`.icns` portava el 16 i el
   32 px com a PNG dins `icp4`/`icp5`/`icp6`. macOS els dibuixa **corruptes** a
   1× al Finder (finestra del DMG, còpia a Aplicacions), tot i que el Dock i
@@ -23,6 +66,31 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   com `iconutil`, i s'han tret els blocs PNG petits. El staging del DMG fa
   servir `ditto` (no `cp -R`) per copiar el bundle 1:1. Guard:
   `TestIcones.test_icns_macos_usa_argb_a_16_i_32_px`.
+- **Cobertura total als tres carrils (2026-10-19)**: si un projecte arriba amb
+  una pista buida (sense acords o sense estructura), el visor la completa amb
+  «N» / «-» de 0 a durada, com el model inicial. Tota **alta** torna a
+  normalitzar la cobertura: afegir una secció en una estructura buida ja no
+  deixa un illot de 2 s (queda «-» al davant i la secció fins al final), i
+  afegir un acord tampoc no deixa forats. Els tres carrils queden sempre
+  coberts després de l'edició.
+- **Gestos i undo (2026-10-19)**: un clic o un micro-arrossegament (< 5 px)
+  sobre un clip ja no deixa la marca d'undo oberta ni deixa el preview
+  desplaçat respecte del model. El llindar de gest s'aplica abans d'emetre cap
+  canvi; en deixar anar sense moviment s'emet `dragCancelled` i es tanca
+  l'operació sense apilar res.
+- **Drag del carril de BPM/compàs (2026-10-19)**: les fronteres fan el mateix
+  **snap** que els clips (graella BPM/offset/mapa variable) i la guia visual ja
+  ensenya el punt imantat. A més, el release del layer es processa **abans** de
+  `editFinished`: abans el canvi de tempo s'aplicava després de tancar
+  l'operació i quedava **fora de l'undo**. Un simple clic al tram tampoc no
+  desa ni regenera res.
+- **Drag de seccions (2026-10-19)**: ja no reescriu `estructura_ABC.csv` a cada
+  `mouseMove`; desa al release com els acords (`_on_edit_finished`), i s'ha
+  tret el segon desat d'ABC que es feia tot seguit.
+- **Editor i selecció (2026-10-19)**: seleccionar un tram de BPM/compàs buida
+  la franja editor (no queda un acord antic actiu). En enganxar, els trams
+  enganxats queden seleccionats; el zoom a la selecció i el ressaltat visual
+  inclouen tots els trams seleccionats.
 
 ### Afegit
 - **Proteccions del `.acproj` (2026-10-19)**: el cru viatja dins el document i es

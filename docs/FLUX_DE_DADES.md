@@ -83,6 +83,10 @@ es van fer servir.
 
 5. **Canviar BPM / compàs / offset / mode no toca el cru.** Afecten la
    interpretació de temps (i per tant el MODEL), no l'anàlisi original.
+   Els clips guarden **segons** (font de veritat): canviar el BPM **no els mou**.
+   Es recalcula la vista musical (etiquetes de compàs i columnes
+   `compas_ini`/`compas_fi` de `estructura_ABC.csv`). Per alinear clips a la
+   graella es fa servir **Quantitza**.
 
 6. **L'estructura també té el seu cru.** Els `segments` (talls + etiquetes del
    qm-segmenter) viuen al document; les **lletres A/B/C** i els ajustos de mòdul

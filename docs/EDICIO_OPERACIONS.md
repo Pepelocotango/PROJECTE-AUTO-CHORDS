@@ -13,6 +13,31 @@
 > taula continua dient com es fa cada operació **per GUI** i per a quines pistes
 > val (paritat #11).
 
+> **Despatx únic (2026-10-19)**: totes les superfícies (menú contextual,
+> llistes, menú principal, teclat del timeline i menú del loop) envien la
+> intenció a **`Visor.executa_edicio(operacio, kind, idx, **kw)`**. Cap
+> superfície decideix per si mateixa com s'edita un carril; el despatx resol la
+> selecció (`Visor.seleccio_activa()`, que inclou `chord`, `section` i `tempo`)
+> i tria el nucli canònic. La selecció també té un punt únic
+> (`TimelineView.selecciona(kind, idx, mode)` amb `set`/`toggle`/`extend`).
+> El contracte el blinda `tests/test_despatx_edicio.py` (operacions × carrils ×
+> superfícies). Les mutacions de **gest** (arrossegar/redimensionar) continuen
+> resolent-se al timeline perquè necessiten l'estat del ratolí; les seues
+> funcions de backend són les mateixes per als tres carrils.
+>
+> **Gestos (2026-10-19)**: el drag del carril ③ fa el mateix **snap** que els
+> clips i s'aplica **abans** de `editFinished` (perquè el canvi entre a
+> l'undo). Els tres carrils desen **al release** (no a cada `mouseMove`). Un
+> clic o un micro-moviment (< 5 px) no canvia el model: s'emet
+> `dragCancelled` i es tanca la marca d'undo sense apilar res.
+>
+> **Tempo objectiu (2026-10-19)**: si hi ha un tram de tempo seleccionat, els
+> camps BPM/compàs de la barra i el **tap tempo** editen eixe tram; si no, el
+> transport (tram 0). Mentre sona, el tap crea el **loop** del tram objectiu.
+> Els canvis de BPM no mouen els clips en segons: només recalculen les
+> posicions musicals (etiquetes i columnes de compàs de l'ABC); per alinear
+> clips a la graella es fa servir **Quantitza**.
+
 ## 1. Regles que manen
 
 - **#1–#4** ordre, contigüitat, durades derivades i **cobertura total** (0 → durada;
@@ -33,13 +58,16 @@
   🐞 **Arreglat el 19-10-2026**: la versió anterior creava una **secció de 2 s**
   que la validació **rebutjava sempre** per solapament → «Afegeix secció aquí»
   petava **sempre** dins la cançó, als **tres** llocs.
+  Si el carril ve **buit** (estat excepcional), l'alta crea el clip i tapa els
+  forats amb **`N`/`-`** perquè torne a cobrir `0..durada`; en carregar, el
+  visor també completa qualsevol pista buida (regla #4).
 
 ## 2. Edició de clips (acords · estructura · BPM/compàs)
 
 | # | Operació | GUI (gest / drecera) | Acords | Estr. | **BPM/comp.** | Estat |
 |---|---|---|---|---|---|---|
 | 1 | **Afegir** un clip | menú *Edita ▸ Afegeix acord/secció…* · menú contextual · *Afegeix…* a la llista | ✓ | ✓ | ✓ | **FET**: model **saturat** → acord = **marca** nova; secció = **partir** (un sol camí sota `_afegeix_a_la_posicio`; vegeu §1) |
-| 2 | **Partir** (dividir) | menú contextual ▸ *Parteix l'acord/secció…* (pel cursor) · **«Partir per la meitat»** (dues meitats iguals) als menús de la llista, del clip i de la **pista de BPM/compàs** (③) | ✓ | ✓ | ✓ | **FET**: «per la meitat» = `parteix_per_la_meitat` (centre exacte); a la pista ③ el menú diu *Parteix aquest tros aquí* |
+| 2 | **Partir** (dividir) | menú contextual ▸ *Parteix l'acord/secció…* (**al punt del clic, amb snap**; si no deixa marge, al cursor) · **«Partir per la meitat»** (dues meitats iguals) als menús de la llista, del clip i de la **pista de BPM/compàs** (③) | ✓ | ✓ | ✓ | **FET**: «per la meitat» = `parteix_per_la_meitat` (centre exacte); a la pista ③ el menú diu *Parteix aquest tros aquí* |
 | 3 | **Fusionar** | menú contextual ▸ *Fusionar amb anterior/seguent* | ✓ | ✓ | ✓ | **FET**: als trams de BPM/compàs es fa amb **«Elimina»** (el veïnatge s'uneix) |
 | 4 | **Eliminar** un clip | `Del` · menú contextual ▸ *Elimina* · llista | ✓ | ✓ | ✓ | **FET**: nucli únic `elimina_clips` (§6.4) |
 | 5 | **Eliminar la SELECCIÓ** | `Del` amb multi-selecció | ✓ | ✓ | ✓ | **FET** |
@@ -51,7 +79,7 @@
 | 11 | **Moure una marca** (fi = inici del següent) | — | ✓ | ✓ | ✓ | **FET** (camí de la vora) |
 | 12 | **Nudge** (moure una frontera) | `←` / `→` · `Alt+←`/`→` (vora dreta) | ✓ | ✓ | ✓ | **FET** (`←`/`→` mou la frontera del tram; `Alt` la de la dreta) |
 | 13 | **Redimensionar (vores lliures)** | arrossegar la **vora** del clip | ✓ | ✓ | ✓ | **FET**: nucli únic (`redimensiona_clips` + `redimensiona_acord`/`redimensiona_seccio`) i el gest del visor hi enganxat · vores **LLIURES** (§6.6): estirar talla/elimina el veí |
-| 14 | **Duplicar** | `Ctrl+D` · *Duplica* del menú contextual de les 3 pistes (a la ③ només si hi ha lloc després del tram) | ✓ | ✓ | ✓ | **FET**: nucli únic `duplica_bloc_clips` (§2: la còpia va DESPRÉS i sobreescriu el tram, §6.3) |
+| 14 | **Duplicar** | `Ctrl+D` · *Duplica* del menú contextual de les 3 pistes | ✓ | ✓ | ✓ | **FET**: nucli únic `duplica_bloc_clips` (§2: la còpia va DESPRÉS i sobreescriu el tram, §6.3). Cal que la còpia **sencera** hi capça després; si no, no es fa res i s'avisa (la cançó no pot créixer) |
 | 15 | **Duplicar arrossegant** | — | — | — | — | **RETIRAT** (2026-10-19). Es duplica amb `Ctrl+D` (#14) o copiar/enganxar (#16); `Ctrl+Shift` queda per a l'eina de selecció temporal |
 | 16 | **Copiar / Retallar / Enganxar** | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` (`Ctrl+Alt+V` = sense snap) | ✓ | ✓ | ✓ | **FET** (sobreescriu el tram; als trams obre les fronteres i hi canvia el BPM/compàs) |
 | 17 | **Copiar/retallar el LOOP** | doble clic al regle · menú contextual de la banda | ✓ | ✓ | ✓ | **FET** (composable; la selecció del LOOP ja inclou els trams) |
@@ -63,7 +91,7 @@
 |---|---|---|---|---|---|---|
 | 19 | **Seleccionar un clip** | clic ·  | ✓ | ✓ | ✓ | **FET** |
 | 20 | **Multi-selecció (toggle)** | `Ctrl`+clic | ✓ | ✓ | ✓ | **FET**: també a la pista de BPM/compàs (`Ctrl`+clic) |
-| 21 | **Rang** | `Shift`+clic · `Ctrl`+arrossegar (marquee) | ✓ | ✓ | ✓ | **FET** (trams inclosos; la **selecció del loop** encara és només acords+estructura) |
+| 21 | **Rang** | `Shift`+clic · `Ctrl`+arrossegar (marquee) | ✓ | ✓ | ✓ | **FET** (trams inclosos; la **selecció del LOOP** també inclou els trams) |
 | 22 | **Seleccionar el del cursor** | clic + cursor | ✓ | ✓ | ✓ | **FET** (`kind: tempo` al i al menú) |
 | 23 | **Seleccionar el LOOP** | doble clic a la banda | ✓ | ✓ | ✓ | **FET** (la selecció del LOOP inclou els trams) |
 | 24 | **Buida la selecció** | `Esc` | ✓ | ✓ | ✓ | **FET** |
@@ -78,6 +106,7 @@
 | 28 | **Play / Pausa / Stop** | `Espai` · barra | **FET** |
 | 29 | **Cursor (seek)** | clic al regle | **FET** |
 | 30 | **Loop A/B** (marcar, activar, netejar) | `Ctrl+[` / `Ctrl+]` · menú | **FET** |
+| 30b | **Loop a la selecció** | `L` · *Selecciona ▸ Loop a la selecció* · menú contextual dels **3** carrils | **FET**: unió de la selecció (mínim inici → màxim fi), una sola operació d'undo; si sona, alinea el cursor a l'inici |
 | 31 | **Mute** | barra | **FET** |
 | 32 | **Metrònom** | *Visualitza ▸ Metrònom* | **FET** |
 
@@ -93,7 +122,8 @@
 
 | # | Operació | GUI | Estat |
 |---|---|---|---|
-| 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | **FET** |
+| 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | **FET**: amb un tram de tempo seleccionat, els camps editen **eixe tram** (2B); si no, el transport. L'offset és global |
+| 36b | **Tap tempo** | `T` · botó **TAP** | **FET**: al tram de tempo seleccionat (o al primer); **una sola operació d'undo per sessió**; mentre sona, crea el **loop** del tram objectiu i alinea el cursor |
 | 37 | **Analitzar** (acords + estructura) | `F5` · *Analitza* | **FET** |
 | 38 | **Opcions d'anàlisi** | *Paràmetres…* · *Inclou estructura* | **FET** |
 | 39 | **Compàs 1** (detectar / marcar) | *Analitza ▸* | **FET** |
