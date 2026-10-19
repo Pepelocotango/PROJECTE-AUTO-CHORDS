@@ -24,6 +24,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   representar amb la graella binària de 1/32).
 
 ### Canviat
+- **Dreceres de ratolí i teclat (2026-10-19)**: `Ctrl+Shift` mantingut passa
+  temporalment a l'eina **marc** (en deixar anar, torna a l'eina anterior) i
+  s'elimina el gest `Ctrl+Shift`+arrossegar per duplicar (queda `Ctrl+D`).
+  També s'eliminen les dreceres `Ctrl+Shift` de *Obre projecte*, *Desa com*,
+  *Refer alternatiu*, *Afegeix acord* i *Afegeix secció* per evitar
+  ambigüitats; l'enganxat sense snap passa a **`Ctrl+Alt+V`**. `Alt+clic` no
+  fa cap acció pròpia (Alt+←/→ mou la vora dreta).
+
+### Canviat
 - **El «Mode fàcil» passa a ser «Quantitza» (2026-10-19)**: s'elimina tota la
   lògica de re-derivació del cru, la inferència compàs/mig/temps, els presets
   d'estil i el canvi automàtic de compàs. El botó i l'acció de menú es

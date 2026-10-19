@@ -147,9 +147,11 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 >
 > **Multi-selecció (timeline)**: **Ctrl+clic** afegeix/treu un clip ·
 > **Shift+clic** = rang **per temps, sempre del carril del clip clicat** (per agafar
-> clips de **les dues pistes**, el **marquee**: `Ctrl`+arrossega o l'eina «marc») · **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V** · **Ctrl+Alt+V** = enganxar sense snap · **Ctrl+Shift** = eina marc temporal
-> = copiar/retallar/enganxar la selecció **sobreescrivint** el tram (regla d'or #4: la
-> cançó no pot créixer) · **Ctrl+D** = duplicar el grup ·
+> clips de **les dues pistes**, el **marquee**: `Ctrl`+arrossega o l'eina «marc») ·
+> **Ctrl+Shift** = eina «marc» temporal mentre es mantenen les tecles ·
+> **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V** = copiar/retallar/enganxar
+> la selecció **sobreescrivint** el tram (regla d'or #4: la cançó no pot créixer) ·
+> **Ctrl+Alt+V** = enganxar sense snap · **Ctrl+D** = duplicar el grup ·
 > **arrossegar** un clip seleccionat = moure el grup. El regle mostra el
 > **mode** (`120 BPM · 4/4` o `hh:mm:ss`).
 
@@ -264,6 +266,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Espai** | **play / pausa** |
 | **T** | **tap tempo** |
 | **Ctrl+clic / Shift+clic** | **multi-selecció**: afegeix/treu del grup · **rang** (Shift = per temps, **sempre del carril**; per les 2 pistes, el **marquee**) |
+| **Ctrl+Shift (mantingut)** | passa temporalment a l'eina **marc**; en deixar anar, torna a l'eina anterior |
+| **Alt+clic** | **cap acció de l'app**. Alt només s'usa amb `Alt+←`/`Alt+→` (vora dreta); el sistema pot interceptar Alt+clic (moure la finestra / menú) |
 | **Delete / Backspace** | **elimina** el clip o tota la **selecció** (grup) |
 | **Ctrl+D** | **duplica** el clip o **tot el grup** seleccionat |
 | **Ctrl+C / Ctrl+X / Ctrl+V** | **copiar / retallar / enganxar** la selecció — l'enganxat **sobreescriu** el tram (regla #4: la cançó no pot créixer); si no mous el cursor, enganxa just **després** del bloc i deixa el bloc enganxat **seleccionat** |

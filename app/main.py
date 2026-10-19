@@ -965,6 +965,7 @@ class Finestra(QMainWindow):
             ("enganxar SALTANT-SE el snap", "Ctrl+Alt+V"),
             ("moure un clip un pas de graella (Alt = vora dreta)",
              "← / →"),
+            ("Alt+clic", "cap acció de l'app (el sistema pot interceptar-lo)"),
             ("cancel·lar: rang en curs · loop · selecció", "Esc"),
             ("desfer / refer", "Ctrl+Z / Ctrl+Y"),
             ("reanomenar (clip o grup del tipus actiu)", "F2"),
@@ -1246,6 +1247,7 @@ class Finestra(QMainWindow):
                 ("Un clip", "Clic"),
                 ("Afegir/treure un clip (disjunt)", "Ctrl+clic"),
                 ("Rang del carril del clip clicat", "Shift+clic"),
+                ("Eina de selecció temporal", "Ctrl+Shift"),
                 ("Rectangle: el que HI SONA a dins", "Ctrl+arrossega"),
             ]),
             ("El rectangle (marquee)", [
@@ -1265,6 +1267,7 @@ class Finestra(QMainWindow):
                 ("Moure l'inici o el final", "Arrossega una vora"),
                 ("Un pas de graella", "← / →"),
                 ("La vora DRETA un pas de graella", "Alt+← / Alt+→"),
+                ("Alt+clic", "cap acció de l'app"),
             ]),
             ("Copiar, retallar i enganxar", [
                 ("Al cursor", "Ctrl+C / Ctrl+X / Ctrl+V"),
