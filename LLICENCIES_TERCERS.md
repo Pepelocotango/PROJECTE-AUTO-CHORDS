@@ -15,7 +15,6 @@
 | **Chordino / NNLS-Chroma** (Matthias Mauch, C4DM) | **GPL-2.0+** | `nnls-chroma-linux64-local/` | https://code.soundsoftware.ac.uk/projects/nnls-chroma |
 | **QM Vamp Plugins** (Queen Mary) | **GPL-2.0+** | `qm-vamp-plugins-linux64-local/` | https://github.com/c4dm/qm-vamp-plugins |
 | **Vamp Plugin SDK** (enllaçat a l'host) | **MIT / BSD-3** | `vamp_host_local` · `portable/lib/` | https://github.com/c4dm/vamp-plugin-sdk |
-| **Sonic Annotator** (reserva) | **GPL-2.0+** | `sonic-annotator` | https://github.com/sonic-visualiser/sonic-annotator |
 | **CPython** (Python portable) | **PSF-2.0** | AppImage (`portable/`) | https://www.python.org |
 | **PyQt5 / PyQt5-Qt5** | **GPL-3.0** | AppImage | https://riverbankcomputing.com/software/pyqt |
 | **Qt 5** (dins la roda PyQt5) | **LGPL-3.0** (+ parts GPL) | AppImage | https://www.qt.io |

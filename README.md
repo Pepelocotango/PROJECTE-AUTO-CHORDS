@@ -149,7 +149,6 @@ complet de llicències és a [`LLICENCIES_TERCERS.md`](LLICENCIES_TERCERS.md).**
 | **[Chordino / NNLS-Chroma](https://code.soundsoftware.ac.uk/projects/nnls-chroma)** | GPL-2.0+ | Matthias Mauch (C4DM, Queen Mary) |
 | **[QM Vamp Plugins](https://github.com/c4dm/qm-vamp-plugins)** | GPL-2.0+ | Centre for Digital Music (Queen Mary) |
 | **[Vamp Plugin SDK](https://github.com/c4dm/vamp-plugin-sdk)** | MIT / BSD-3 | C4DM |
-| **[Sonic Annotator](https://github.com/sonic-visualiser/sonic-annotator)** | GPL-2.0+ | Chris Cannam / QMUL |
 | **[FFmpeg](https://ffmpeg.org)** | GPL-3.0 | FFmpeg team |
 | **[Lucide](https://lucide.dev)** (icones) | **ISC** (+ MIT de **[Feather](https://feathericons.com)**, © Cole Bemis) | Lucide contributors |
 | **[libsndfile](https://libsndfile.github.io/libsndfile)** | LGPL-2.1+ | Erik de Castro Lopo |

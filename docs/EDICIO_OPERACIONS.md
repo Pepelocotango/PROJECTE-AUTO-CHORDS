@@ -5,7 +5,7 @@
 > si valen per a **acords** i **estructura** (paritat d'edició **#11**) i el seu
 > **estat**.
 >
-> Fonts que creua: `docs/PLA_EDICIO_LLIURE.md` (§2, §6) · `docs/ESQUEMA_UI.md`
+> Fonts que creua: `docs/archive/PLA_EDICIO_LLIURE.md` (§2, §6) · `docs/ESQUEMA_UI.md`
 > (gestos i dreceres) ·
 > `docs/REGLES_DE_LA_APP.md` (regles d'or).
 >

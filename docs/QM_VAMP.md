@@ -46,7 +46,7 @@ cp qm-vamp-plugins.{so,cat,n3} "<PROJECTE>/qm-vamp-plugins-linux64-local/"
 ```
 
 El directori `qm-vamp-plugins-linux64-local/` ja és a `pipeline.VAMP_DIRS`,
-així que `sonic-annotator --list` els veu.
+així que el host propi (`vamp_host_local`) els troba.
 
 ## Comparativa real (11 temes, 2026-10-07)
 
@@ -94,9 +94,10 @@ botó 📍). I els `beats` donen la graella real de pulsacions.
 - Així el projecte només depèn de **2 conjunts de plugins**: `nnls-chroma`
   (Chordino) i `qm-vamp-plugins`.
 
-## Host Vamp propi (substitueix `sonic-annotator`)
+## Host Vamp propi (l'ÚNIC motor)
 
-`sonic-annotator` arrossegava **~70 llibreries** (Qt6, ICU, glib, gnutls…).
+El `sonic-annotator` de llegat arrossegava **~70 llibreries** (Qt6, ICU, glib,
+gnutls…) i es va **retirar** (2026-10-19): ja no forma part del projecte.
 S'ha escrit **`eines/vamp_host.cpp`** → `vamp_host_local` (**48 KB**, **13
 llibreries**: libc/libstdc++ + libvamp-hostsdk + libsndfile), compilat amb
 **`-msse -msse2`** (sense AVX). Compilació: `eines/compila_vamp_host.sh`.
@@ -114,9 +115,10 @@ llibreries**: libc/libstdc++ + libvamp-hostsdk + libsndfile), compilat amb
    refusen si no quadren → `executa_transform` reintenta amb els preferits.
 3. **Sense** el `PluginBufferingAdapter` (trencava el Segmentino, retirat).
 
-**Resultats**: **idèntics** al `sonic-annotator` per al Chordino (54 acords),
-`qm-tempotracker` i `qm-onsetdetector`; equivalents per al `qm-segmenter` i
-el `qm-barbeattracker`. El `sonic-annotator` es conserva com a **reserva**.
+**Resultats**: **idèntics** als del `sonic-annotator` de referència per al
+Chordino (54 acords), `qm-tempotracker` i `qm-onsetdetector`; equivalents per al
+`qm-segmenter` i el `qm-barbeattracker`. Aquell binari de llegat es va retirar
+(2026-10-19): el projecte només depèn del host propi.
 
 ## Pendents / idees
 - ✅ **Tonalitat** amb `qm-keydetector` → **FET**: acció **«Tonalitat automàtica (qm-keydetector)»** al menú **Fitxer** (posa l'armadura a la partitura; `app/partitura.detecta_fifths`).

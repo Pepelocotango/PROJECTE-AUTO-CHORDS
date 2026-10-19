@@ -8,7 +8,7 @@
 >
 > Cada regla té la seva **validació** al codi i un **test** que la comprova
 > (les 1–12, totes amb el seu test). L'**auditoria continuada** (prova de mutació,
-> regla a regla) viu a `docs/AUDITORIA_REGLES.md`.
+> regla a regla) viu a `docs/archive/AUDITORIA_REGLES.md`.
 > Referenciades a `ROADMAP_HISTORIA.md` (§Notes d'implementació) i `DEVELOPING.md`.
 >
 > ## ‼️ S'HA DE COMPLIR **SEMPRE** — a TOTS els punts
@@ -21,7 +21,7 @@
 >    (el criden les primitives de mutació) + el fuzzer
 >    `tests/test_vista_segueix_model.py`, que comprova **després de cada operació**
 >    que els items pintats quadren amb el model (els seeds **9 i 15** detecten el
->    bug del gest). Vegeu `docs/AUDITORIA_REGLES.md` → Ronda 52.
+>    bug del gest). Vegeu `docs/archive/AUDITORIA_REGLES.md` → Ronda 52.
 > 3. **CSV desat** — `acords.csv` / `estructura_ABC.csv` es desen **ja normalitzats**.
 > 4. **Exportació** — el paquet exportat (CSV/ABC + wavs) surt del **model editat**,
 >    normalitzat.
@@ -203,4 +203,4 @@ Aquests dos casos reals són el motiu del §«S'ha de complir SEMPRE» de dalt:
 > · `test_regla12_export` (12).
 > La **12** (paritat d'exportació) té el seu test: `tests/test_regla12_export.py`.
 >
-> Seguiment i verificacions (prova de mutació, regla a regla): **`docs/AUDITORIA_REGLES.md`**.
+> Seguiment i verificacions (prova de mutació, regla a regla): **`docs/archive/AUDITORIA_REGLES.md`**.

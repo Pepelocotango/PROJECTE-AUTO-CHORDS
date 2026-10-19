@@ -19,7 +19,7 @@ implementa aquest mapa per a AUTO CHORDS.
 Tot és stdlib pur (immune a AVX/SIGILL al Q9400) i sense dependències d'app.
 
 Vegeu el contracte del refactor a `docs/REFACTOR_INICI_FI.md` i el pla del mapa
-a `docs/PLA_TEMPO_COMPAS.md`.
+a `docs/archive/PLA_TEMPO_COMPAS.md`.
 """
 from __future__ import annotations
 

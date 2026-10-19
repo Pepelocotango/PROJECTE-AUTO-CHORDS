@@ -643,10 +643,8 @@ class Finestra(QMainWindow):
         self._sc_eina.activated.connect(self._toggle_eina_tecla)
         self._sc_tap.activated.connect(self._tap_tempo)
         self._crea_menus()
-        # Autocomprovació dels fitxers que l'app NECESSITA per analitzar. NO hi
-        # posem `pipeline.SONIC` (`OLD/sonic-annotator`): és una **reserva
-        # llegat** que no s'empaqueta mai (l'app fa servir `vamp_host_local`), i
-        # avisar-ne confonia en arrencar l'app congelada (mac/win/AppImage).
+        # Autocomprovació dels fitxers que l'app NECESSITA per analitzar
+        # (els plugins Vamp; l'host és `vamp_host_local`).
         for p in pipeline.VAMP_DIRS:
             if not os.path.exists(p):
                 self.registra(f"AVÍS: no trobo {p}")

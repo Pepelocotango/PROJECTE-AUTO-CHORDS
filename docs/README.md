@@ -19,7 +19,6 @@
 
 | Doc | Què explica |
 |---|---|
-| `AUDITORIA_REGLES.md` | 🔍 **Registre de l'auditoria** de les regles d'or contra tot el codi (mapa regla→validació→test, trobades i cua). |
 | `REGLES_DE_LA_APP.md` | Regles d'or: ordre estricte, contigüitat, cobertura total… |
 | `ESQUEMA_UI.md` · `ESQUEMA_UI.html` · `ESQUEMA_UI.svg` | Esquema de la GUI. El `.html` i el `.svg` es **generen** (`eines/genera_esquema_ui.py`) des del `.md` — **no editar-los a mà**. L'**art manual** original es conserva a `ESQUEMA_UI_manual.svg` · `ESQUEMA_UI_manual.html`. |
 | `PROJECTES.md` | **Projectes autocontinguts** («com un DAW»): `.acproj`, `audio/` copiat, «Desa com», backups. |
@@ -35,8 +34,6 @@
 
 | Doc | Què explica |
 |---|---|
-| `PLA_TEMPO_COMPAS.md` | 🎚️ **Pla del mapa de tempo i compàs** variables (com als DAWs): model, fases i estat. Fase 1 (motor `app/tempo_map.py`) **FETA**. |
-| `PLA_EDICIO_LLIURE.md` | ✂️ **Pla de l'edició lliure**: la regla #4 passa de grilló a **contracte posterior** a cada operació (§6 = especificació tancada de l'operador). |
 
 > Els refactors **acabats** viuen a `archive/` (p. ex. `REFACTOR_INICI_FI.md`):
 > es conserven com a contracte i rastre, però ja no descriuen estat viu.
@@ -68,7 +65,7 @@
 
 | Doc | Què explica |
 |---|---|
-| `archive/INFORME_INCOHERENCIES_2026-10-16.md` | **Auditoria de coherència** (docs + codi), del 16-10-2026: **tots els punts resolts**; arxivada (vegeu `AUDITORIA_REGLES.md`, Ronda 13). |
+| `archive/INFORME_INCOHERENCIES_2026-10-16.md` | **Auditoria de coherència** (docs + codi), del 16-10-2026: **tots els punts resolts**; arxivada (vegeu `archive/AUDITORIA_REGLES.md`, Ronda 13). |
 
 ## Arxiu — superats o de referència (`archive/`)
 
@@ -78,6 +75,9 @@
 | `archive/AUDITORIA_PRODUCCIO.md` **[HISTÒRIC]** | Auditoria de producció (OC-5+OC-6, 10-2026): estat i bugs trobats/arreglats. |
 | `archive/REFERENCIA_PILES_PROGRAMES_REFERENCIA.md` **[REFERÈNCIA]** | Piles tecnològiques/gràfiques d'altres programes (REAPER, Audacity…). |
 | `archive/PANELL_TIPUS_ACORD_mockup.svg` · `.png` **[DISSENY]** | Maqueta **aprovada** del panell de tipus d'acord (ja implementat). |
+| `archive/AUDITORIA_REGLES.md` **[ARXIVAT]** | 🔍 Registre de l'auditoria de les regles d'or (rondes 1–54), **tancada**: mapa regla→validació→test, trobades i cua. |
+| `archive/PLA_TEMPO_COMPAS.md` **[FET]** | 🎚️ Pla del mapa de tempo i compàs variables (motor `app/tempo_map.py`). |
+| `archive/PLA_EDICIO_LLIURE.md` **[FET]** | ✂️ Pla de l'edició lliure (§2, §6): la regla #4 com a contracte **posterior** a cada operació. |
 | `archive/AUBIO_TEMPO.md` **[HISTÒRIC]** | Plugin d'aubio (tempo/beats), **retirat** — substituït per `app/tempo.py`. |
 | `archive/PORTABILITAT.md` **[ANÀLISI]** | Anàlisi original de què calia per ser autocontingut (ja fet). |
 | `archive/PLA_PORTABILITAT.md` **[COMPLETAT]** | Pla per fases (2026-10-07) — ja executat. |

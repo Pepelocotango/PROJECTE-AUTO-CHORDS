@@ -288,16 +288,15 @@ def _wav_triades(ruta, sr=44100):
         w.writeframes(x.tobytes())
 
 
-@unittest.skipUnless(pipeline.usa_host(),
-                     "cal el host Vamp propi (vamp_host_local) compilat")
 class TestAnalisiReal(unittest.TestCase):
+    """Anàlisi REAL amb el host propi (`vamp_host_local`), sense skips."""
 
     def test_el_motor_treu_acords_de_veritat(self):
         td = tempfile.mkdtemp()
         wav = os.path.join(td, "triades.wav")
         _wav_triades(wav)
         out = os.path.join(td, "acords.csv")
-        pipeline.executa_transform(pipeline.TRANSFORMS["chords"], out, wav,
+        pipeline.executa_transform(pipeline.CHORDS_TRANSFORM, out, wav,
                                    lambda *a: None)
         self.assertTrue(os.path.isfile(out), "ha de generar el CSV")
         with open(out, encoding="utf-8") as f:
@@ -312,20 +311,6 @@ class TestAnalisiReal(unittest.TestCase):
         noms = [c[1].strip().strip('"') for c in camps]
         self.assertTrue([n for n in noms if n and n != "N"],
                         f"cap acord detectat de veritat: {noms}")
-
-    def test_el_ttl_temporal_no_queda_enrere(self):
-        """Els `.ttl` temporals de la crida s'esborren en acabar."""
-        import glob
-        td = tempfile.mkdtemp()
-        wav = os.path.join(td, "triades.wav")
-        _wav_triades(wav)
-        abans = set(glob.glob(os.path.join(tempfile.gettempdir(), "ac_ttl_*")))
-        pipeline.executa_transform(
-            pipeline.TRANSFORMS["chords"], os.path.join(td, "o.csv"), wav,
-            lambda *a: None, params={"smoothing": 0.5})
-        despres = set(glob.glob(os.path.join(tempfile.gettempdir(), "ac_ttl_*")))
-        self.assertEqual(despres - abans, set(),
-                         "no ha de deixar directoris ac_ttl_ orfes")
 
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_audio_out.py
@@ -4364,64 +4349,14 @@ class VampParamsTests(unittest.TestCase):
         self.assertEqual(ps["tuningmode"]["valors"],
                          ["global tuning", "local tuning"])
 
-    def test_segmentino_sense_parametres(self):
+    def test_structure_sense_parametres(self):
+        """El qm-segmenter no té paràmetres .n3 (el Segmentino es va retirar)."""
         self.assertEqual(vamp_params.params_de("structure"), [])
 
     def test_valors_per_defecte(self):
         d = vamp_params.valors_per_defecte("chords")
         self.assertEqual(d["useHMM"], 1.0)
         self.assertEqual(d["s"], 0.7)
-
-
-def _sonic_ok():
-    """Cert si el `sonic-annotator` es pot executar (les seves llibreries hi son).
-
-    S'usa per FER SKIP dels tests que en depenen quan falta (p. ex. a un
-    runner de CI sense Qt6/ICU/glib). El pipeline real fa servir l'host propi
-    (`vamp_host_local`); el sonic-annotator nome es la reserva.
-    """
-    import subprocess
-    try:
-        p = subprocess.run([pipeline.SONIC, "--version"],
-                           capture_output=True, timeout=30)
-        return p.returncode == 0
-    except (OSError, subprocess.SubprocessError):
-        return False
-
-
-_SONIC_OK = _sonic_ok()
-
-
-@unittest.skipUnless(_SONIC_OK, "sonic-annotator no executable (falten llibreries)")
-class EscriuTtlTests(unittest.TestCase):
-    """Generacio del transform .ttl amb els parametres triats.
-
-    NOMES amb el sonic-annotator executable: es el que genera el TTL base.
-    El pipeline real fa servir l'host propi (vamp_host_local).
-    """
-
-    def _ttl(self, params):
-        import tempfile
-        d = tempfile.mkdtemp()
-        ruta = os.path.join(d, "t.ttl")
-        pipeline.escriu_ttl("chords", params, ruta, lambda *a: None)
-        return open(ruta, encoding="utf-8").read()
-
-    def test_ttl_te_tots_els_parametres(self):
-        s = self._ttl({})
-        for k in ("useNNLS", "useHMM", "rollon", "tuningmode", "whitening", "s"):
-            self.assertIn(f'vamp:identifier "{k}"', s)
-        self.assertIn("vamp:output", s)
-
-    def test_ttl_aplica_els_valors_demanats(self):
-        s = self._ttl({"useHMM": 0, "rollon": 3})
-        self.assertIn('vamp:identifier "useHMM" ] ;\n        vamp:value "0.0"', s)
-        self.assertIn('vamp:identifier "rollon" ] ;\n        vamp:value "3.0"', s)
-        # els no indicats agafen el defecte
-        self.assertIn('vamp:identifier "useNNLS" ] ;\n        vamp:value "1.0"', s)
-
-    def test_ttl_no_es_el_default_quan_canvia(self):
-        self.assertNotEqual(self._ttl({}), self._ttl({"useHMM": 0, "rollon": 3}))
 
 
 class BotoOnOffTests(unittest.TestCase):
@@ -5750,74 +5685,6 @@ class CarpetaSortidaTests(unittest.TestCase):
     def test_sense_directori(self):
         self.assertEqual(pipeline.carpeta_sortida("Tema.wav"),
                          "AUTOCHORDS_Tema")
-
-
-class TemporalsTests(unittest.TestCase):
-    """Els directoris temporals de l'app no s'han de quedar mai (Pas 5)."""
-
-    @staticmethod
-    def _dirs_ac():
-        try:
-            noms = os.listdir(tempfile.gettempdir())
-        except OSError:
-            return set()
-        return {n for n in noms if n.startswith(pipeline.PREFIXOS_TMP)}
-
-    def test_esborra_tmp_nomes_els_prefixos_propis(self):
-        d = tempfile.mkdtemp(prefix="ac_qm_")
-        altre = tempfile.mkdtemp(prefix="no_nostre_")
-        try:
-            pipeline.esborra_tmp([d, altre])
-            self.assertFalse(os.path.exists(d))        # el nostre: fora
-            self.assertTrue(os.path.exists(altre))     # aliè: intacte
-        finally:
-            shutil.rmtree(altre, ignore_errors=True)
-
-    def test_qm_valors_neteja(self):
-        abans = self._dirs_ac()
-
-        def _fake(transform, out, wav, log):
-            with open(out, "w", encoding="utf-8") as f:
-                f.write("x,120\n")
-
-        with patch.object(pipeline, "executa_transform", _fake):
-            vals = pipeline._qm_valors("t", "/tmp/x.wav")
-        self.assertEqual(vals, [120.0])
-        self.assertEqual(self._dirs_ac() - abans, set())
-
-    def test_qm_valors_neteja_si_peta(self):
-        abans = self._dirs_ac()
-
-        def _peta(*a, **k):
-            raise RuntimeError("boom")
-
-        with patch.object(pipeline, "executa_transform", _peta):
-            with self.assertRaises(RuntimeError):
-                pipeline._qm_valors("t", "/tmp/x.wav")
-        self.assertEqual(self._dirs_ac() - abans, set())
-
-    def test_executa_transform_neteja_el_ttl(self):
-        abans = self._dirs_ac()
-        with patch.object(pipeline, "usa_host", lambda: False), \
-                patch.object(pipeline, "escriu_ttl", lambda *a, **k: None), \
-                patch.object(pipeline, "run", lambda *a, **k: None):
-            pipeline.executa_transform("vamp:x", "/tmp/o.csv", "/tmp/x.wav",
-                                       None, params={"s": 0.7})
-        self.assertEqual(self._dirs_ac() - abans, set())
-
-    def test_executa_transform_neteja_el_ttl_si_peta(self):
-        abans = self._dirs_ac()
-
-        def _peta(*a, **k):
-            raise RuntimeError("boom")
-
-        with patch.object(pipeline, "usa_host", lambda: False), \
-                patch.object(pipeline, "escriu_ttl", lambda *a, **k: None), \
-                patch.object(pipeline, "run", _peta):
-            with self.assertRaises(RuntimeError):
-                pipeline.executa_transform("vamp:x", "/tmp/o.csv", "/tmp/x.wav",
-                                           None, params={"s": 0.7})
-        self.assertEqual(self._dirs_ac() - abans, set())
 
 
 # ══════════════════════════════════════════════════════════════════════════

@@ -1,3 +1,7 @@
+> 📦 **[ARXIVAT 2026-10-19]** Registre històric de l'auditoria de les regles
+> d'or (rondes 1–54), tancada. Es conserva com a traça; el que mana és
+> `docs/REGLES_DE_LA_APP.md`.
+
 # 🔍 AUDITORIA DE LES REGLES D'OR — revisió contínua
 
 > Revisió exhaustiva de `docs/REGLES_DE_LA_APP.md` contra **tot** el codi,

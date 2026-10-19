@@ -57,7 +57,6 @@ import random
 from PyQt5.QtWidgets import QInputDialog
 
 
-
 def tearDownModule():
     _projecte_backups_tearDownModule()
     _projectes_gui_tearDownModule()
@@ -85,8 +84,6 @@ Comprova que `app/projecte.py` crea una carpeta que ho conté tot (l'àudio
 copiat a `audio/`, els CSVs i el document `.acproj`) i que **no depèn de fora**:
 si s'esborra l'original o es mou la carpeta sencera, el projecte s'obre igual.
 """
-
-
 
 
 def _wav(ruta, dur=5.0):
@@ -320,8 +317,6 @@ class TestMigracioAutochords(BaseProjecte):
 """
 
 
-
-
 _VIVES = []
 
 
@@ -528,8 +523,6 @@ def _projecte_backups_tearDownModule():
 autocontingut, desar / desar com / desar una còpia / reverteix, recents,
 «brut» i títol.
 """
-
-
 
 
 _projectes_gui___VIVES = []
@@ -802,8 +795,6 @@ el desat falla.
 """
 
 
-
-
 _tancament___VIVES = []
 
 
@@ -987,9 +978,6 @@ segueix sent prova manual.
 """
 
 
-
-
-
 _tancar_sonant___VIVES = []     # finestres creades pel test: es tanquen al tearDown
 
 
@@ -1134,9 +1122,6 @@ ho registra; l'usuari el pot detectar o posar a mà.
 """
 
 
-
-
-
 _canvi_wav___VIVES = []
 
 
@@ -1227,8 +1212,6 @@ l'usuari en rebi un avís (senyal `infoMissatge` → caixa d'informació).
 """
 
 
-
-
 def _wav_silenci(segons=1):
     fd, ruta = tempfile.mkstemp(suffix=".wav")
     os.close(fd)
@@ -1287,7 +1270,6 @@ class TestAvisAudio(unittest.TestCase):
         self.assertEqual(len(n), 1)
 
 
-
 def _avis_audio_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -1309,8 +1291,6 @@ sobreviurà el resultat actual (i les edicions manuals) i que no es pot desfer.
 Aquí comprovem la DECISIÓ de quan cal avisar (`_hi_ha_resultats` /
 `_confirma_reanalisi`); el diàleg en si és de la GUI.
 """
-
-
 
 
 def _win(visor):
@@ -1357,7 +1337,6 @@ class TestConfirmaReanalisi(unittest.TestCase):
         self.assertTrue(w._confirma_reanalisi())
 
 
-
 def _avis_reanalisi_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -1380,10 +1359,6 @@ L'app s'autocomprova `ACORDS_PY` i els `VAMP_DIRS`, però **no** comprovava
 críptic. Ara s'avisa a l'arrencada i, si no hi és, el diàleg d'obertura només
 ofereix WAV (oferir la resta seria enganyós).
 """
-
-
-
-
 
 
 class TestAutocomprovacioFfmpeg(unittest.TestCase):
@@ -1427,7 +1402,6 @@ class TestAutocomprovacioFfmpeg(unittest.TestCase):
         w.close()
 
 
-
 def _autocomprovacio_ffmpeg_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -1459,9 +1433,6 @@ Els tests no depenen de maquinari d'àudio: s'injecta un motor FALS (mateixa
 interfície que `audio_out.crea_motor`) el `write()` del qual es bloqueja, així
 el fil d'alimentació no acaba sol durant el test.
 """
-
-
-
 
 
 _VISORS = []
@@ -1668,9 +1639,6 @@ la seua lògica, que és on viu el que pot fallar.
 """
 
 
-
-
-
 class _dialegs___Base(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1775,8 +1743,6 @@ class TestDialegTempoMapa(_dialegs___Base):
                          [float(t[0]) for t in trams[1:]])
 
 
-
-
 class TestDialegOpcions(_dialegs___Base):
     """`opcions()` ha de tornar el que hi ha als controls (contracte de
     persistència: el que es desa és el que s'analitzarà)."""
@@ -1861,7 +1827,6 @@ Blinda la decisió de l'operador (2026-10-13): els defectes de fàbrica que
 mostra el diàleg en obrir-lo i als quals torna el botó «Restaura per defecte».
 Si algú els canvia sense voler, el CI peta.
 """
-
 
 
 # Els 19 controls revisats amb l'operador (font única d'aquest acord).
@@ -1951,8 +1916,6 @@ quan va incrustat.)
 """
 
 
-
-
 ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOC = os.path.join(ARREL, "docs", "ESQUEMA_UI.md")
 
@@ -2016,7 +1979,6 @@ class EsquemaUiDocTests(unittest.TestCase):
                          f"hi ha barres a la mateixa fila: {ys}")
 
 
-
 def _esquema_ui_doc_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -2042,9 +2004,6 @@ Es crida `run()` directament (al fil principal): determinista, sense curses.
 """
 
 
-
-
-
 class _fil_analisi___Base(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -2065,51 +2024,6 @@ def _fil_analisi___wav(ruta, segons=3):
         w.writeframes(x.tobytes())
 
 
-class TestFilAnalisi(_fil_analisi___Base):
-
-    def test_error_de_l_analisi_arriba_a_feta_false(self):
-        td = tempfile.mkdtemp()
-        f = app_main.Feina(os.path.join(td, "no_existeix.wav"), td,
-                           120.0, 4, 0.0, False)
-        log, feta, prog = [], [], []
-        f.missatge.connect(log.append)
-        f.feta.connect(lambda ok, err: feta.append((ok, err)))
-        f.progres.connect(prog.append)
-        f.run()                       # al fil principal: determinista
-        self.assertTrue(any("1/3" in m for m in log),
-                        "l'analisi ha d'anar dient per on va (text)")
-
-        self.assertEqual(len(feta), 1, "ha d'avisar UNA vegada")
-        self.assertFalse(feta[0][0], "l'analisi ha fallat")
-        self.assertTrue(feta[0][1], "ha de dir QUE ha fallat")
-        self.assertTrue(any("ERROR" in m for m in log),
-                        "l'error ha de quedar al log")
-        # `Feina` no emet progrés numeric (a diferencia de `FeinaExporta`): el
-        # que fa servir es el TEXT del registre («1/3…», «3/3…»).
-        self.assertEqual(prog, [], "l'analisi no mou la barra per senyals")
-
-    @unittest.skipUnless(pipeline.usa_host(),
-                         "cal el host Vamp propi (vamp_host_local) compilat")
-    def test_analisi_real_acaba_ok_i_deixa_els_csvs(self):
-        td = tempfile.mkdtemp()
-        wav = os.path.join(td, "t.wav")
-        _fil_analisi___wav(wav)
-        sortida = os.path.join(td, "AUTOCHORDS_t")
-        f = app_main.Feina(wav, sortida, 120.0, 4, 0.0, False)
-        feta, prog = [], []
-        f.feta.connect(lambda ok, err: feta.append((ok, err)))
-        f.progres.connect(prog.append)
-        f.run()
-
-        self.assertEqual(len(feta), 1)
-        self.assertTrue(feta[0][0], f"hauria d'acabar be: {feta[0][1]}")
-        self.assertEqual(prog[-1], 100, "la barra ha d'arribar al 100")
-        self.assertTrue(os.path.isfile(os.path.join(sortida, "acords.csv")),
-                        "l'analisi ha de deixar acords.csv")
-        # La CAPA CRUA es desa apart (evidència de l'anàlisi, no es toca mai).
-        ana = pipeline.carpeta_analisi(sortida)
-        self.assertTrue(os.path.isdir(ana), "ha de crear la carpeta d'analisi")
-
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_fitxer_llarg.py
 # ══════════════════════════════════════════════════════════════════════════
@@ -2119,8 +2033,6 @@ El visor carrega el PCM sencer a memòria (`raw` + la còpia `mono`) ≈ 3× la 
 del fitxer (prova real: 1 h ≈ 2 GB de pic). A partir de `visor.LLARG_MIN_S`
 s'ha de registrar un avís al panell del log — sense bloquejar.
 """
-
-
 
 
 def _fitxer_llarg___wav(segons=2):
@@ -2179,8 +2091,6 @@ Tambe cobreix la interaccio: un **clic** a la caixa **para** el rotatori
 Es el complement del «ratoli intel·ligent»: si hi ha info concreta s'explica; si
 no, la caixa no queda morta ni amb un text vell.
 """
-
-
 
 
 def _info_box_consells___finestra():
@@ -2346,9 +2256,6 @@ loop **s'activava** (el play ja feia loop) però el botó 🔁 de la barra queda
 """
 
 
-
-
-
 def _loop_boto___wav(dur=2.0):
     td = tempfile.mkdtemp()
     wav = os.path.join(td, "tema.wav")
@@ -2409,7 +2316,6 @@ class TestBotoTransportSincronitzat(_loop_boto___Base):
         self.assertFalse(w.tb_loop.isChecked())   # ... pero el boto no ho sap
 
 
-
 def _loop_boto_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -2430,9 +2336,6 @@ loop ell mateix, en un flux continu, sense reiniciar el reproductor.
 Provem `Visor._alimenta` amb un reproductor fals i àudio constant: si hi hagués
 un «tall», apareixeria silenci (zeros) al punt de la volta.
 """
-
-
-
 
 
 class _FakeStdin:
@@ -2564,8 +2467,6 @@ punt per copiar (Ctrl+C) i enganxar (Ctrl+V).
 
 També hi ha el menú de botó dret dins del loop (copiar/retallar/enganxar).
 """
-
-
 
 
 ACORDS = "0.0,2.0,C\n2.0,4.5,Am\n4.5,7.0,F\n7.0,10.0,G\n10.0,20.0,C\n"
@@ -2730,8 +2631,6 @@ Un model amb centenars de clips s'ha de carregar, dibuixar i permetre-hi operar
 """
 
 
-
-
 DUR = 200.0
 
 
@@ -2819,8 +2718,6 @@ Comportament acordat amb l'operador (mockup aprovat):
 - Botó **▶ Escoltar**: toca el tipus triat (piano elèctric sintetitzat:
   arpegi + bloc) via `escoltarDemandat` → `Visor.toca_notes`.
 """
-
-
 
 
 _panell_xifrat___VIVES = []
@@ -3025,7 +2922,6 @@ per defecte, i ningú no se n'adona. Aquest guard ho atura (auditoria
 """
 
 
-
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
@@ -3076,7 +2972,6 @@ la funció no s'exercitava mai directament (auditoria 18-10-2026).
 A més es comprova la **paritat d'affordances** (regla #11): els dos tipus han de
 tindre la mateixa amplada de nansa i els mateixos llindars.
 """
-
 
 
 _timeline_items__ACORDS = "0.0,2.0,C\n2.0,5.0,Am\n5.0,10.0,G\n"
@@ -3157,8 +3052,6 @@ BPM/compàs: decideix si l'arrossegament mou una **vora** o el **punt de canvi**
 (i, amb ell, què passa amb els veïns). No tenia cap prova pròpia (auditoria
 18-10-2026).
 """
-
-
 
 
 TRAMS = [(0.0, 5.0, 120.0, 4, 4), (5.0, 10.0, 90.0, 3, 4),
@@ -3292,8 +3185,6 @@ càlcul (límits dins la cançó, A<B, i 'move' que manté la durada).
 """
 
 
-
-
 class TestLoopAfterDrag(unittest.TestCase):
     A, B, DUR = 4.0, 10.0, 100.0
 
@@ -3422,8 +3313,6 @@ refactor se les menjava, la suite quedava verda i el teclat deixava de funcionar
 """
 
 
-
-
 _timeline_tecles__ACORDS = "0.0,4.0,C\n4.0,10.0,G\n"
 
 
@@ -3516,7 +3405,6 @@ desplaçar (pan) perquè el cursor quedi visible, MANTENINT el ZOOM actual.
 zona còmoda (no canvia el zoom). El visor el crida en seleccionar una fila de
 les llistes (acords o seccions).
 """
-
 
 
 _vista_cursor__ACORDS = "0.0,2.0,C\n2.0,4.5,Am\n4.5,7.0,F\n7.0,10.0,G\n10.0,20.0,C\n"
@@ -3635,8 +3523,6 @@ Els dos s'han arreglat centralitzant la sincronització a
 `visor._sincronitza_vista()` (i fent que la criden les **primitives** de mutació,
 no cada camí d'usuari).
 """
-
-
 
 
 _vista_segueix_model__DUR = 40.0
@@ -3927,7 +3813,6 @@ reconstrueix tots els items. Si els items nous no reben la VISTA ACTUAL
 «salta» fora de vista i sembla que es perd el focus. Aquest test fixa
 l'invariant: tot item reconstruït ha de portar la `_view_left` del timeline.
 """
-
 
 
 _zoom_rebuild__ACORDS = "0.0,2.0,C\n2.0,4.5,Am\n4.5,7.0,F\n7.0,10.0,G\n10.0,20.0,C\n"

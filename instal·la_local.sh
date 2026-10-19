@@ -18,7 +18,7 @@ echo "== 2/6 Python =="
 echo "py_compile OK"
 
 echo "== 3/6 binaris (lectura, sense instal·lar) =="
-for b in OLD/sonic-annotator nnls-chroma-linux64-local/nnls-chroma.so; do
+for b in nnls-chroma-linux64-local/nnls-chroma.so vamp_host_local; do
   if [ -f "$b" ]; then
     falt=$(ldd "$b" 2>/dev/null | grep "not found" || true)
     if [ -n "$falt" ]; then

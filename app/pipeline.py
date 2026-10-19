@@ -5,7 +5,6 @@
 # Tot en català.
 import csv
 import os
-import re
 import shutil
 
 from . import tempo_map
@@ -20,7 +19,6 @@ from app import plataforma, tempo, xifrat
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJ_DIR = os.path.dirname(APP_DIR)
-SONIC = os.path.join(PROJ_DIR, "OLD", "sonic-annotator")   # arxivat (reserva)
 # Directoris dels plugins Vamp SEGONS EL SO (vegeu `app/plataforma.py`):
 #   Linux   -> nnls-chroma-linux64-local + qm-vamp-plugins-linux64-local
 #   Windows -> nnls-chroma-win64-local   + qm-vamp-plugins-win64-local
@@ -210,12 +208,12 @@ def wav_info(path):
 
 
 # --- Host Vamp propi (vamp_host_local) ------------------------------------
-# Substitueix `sonic-annotator` (que arrossegava Qt6/ICU/glib). El nostre host
-# nomes depen de libc/libstdc++/sndfile. Vegeu eines/vamp_host.cpp.
+# L'ÚNIC motor d'anàlisi: no arrossega Qt6/ICU/glib, només libc/libstdc++/
+# sndfile. Vegeu eines/vamp_host.cpp.
 HOST = os.path.join(PROJ_DIR, plataforma.NOM_HOST)   # .exe a Windows
 
-# mida de finestra (step, block) per transform: son les que fa servir el
-# sonic-annotator (extretes del seu `-s`). Calen per replicar-ne la resolucio.
+# mida de finestra (step, block) per transform (els valors «de fàbrica» dels
+# plugins a 44.1 kHz; s'escalen al mostreig real).
 STEPS = {
     "vamp:nnls-chroma:chordino:simplechord": (2048, 16384),
     "vamp:nnls-chroma:chordino:loglikelihood": (2048, 16384),
@@ -229,152 +227,55 @@ STEPS = {
 }
 
 
-def usa_host():
-    """Cert si hi ha el nostre host Vamp (preferent al sonic-annotator)."""
-    return os.path.isfile(HOST) and os.access(HOST, os.X_OK)
-
-
-def _cmd_transform(transform, out_csv, wav, params=None, tmp=None):
-    """Comanda per executar un transform: el nostre host, o sonic-annotator.
-
-    Si cal un `.ttl` temporal, el seu directori s'apunta a `tmp` (una llista)
-    perquè qui crida el pugui esborrar quan la comanda ja s'hagi executat.
-    """
-    if usa_host():
-        cmd = [HOST, "--plugin", transform.replace("vamp:", ""),
-               "--csv", out_csv]
-        st = STEPS.get(transform)
-        if st:
-            # Les mides de la taula son per 44100 Hz; els plugins les volen
-            # escalades al mostreig real (p. ex. el barbeattracker vol 256 a
-            # 22050 i 512 a 44100).
-            try:
-                sr = wav_info(wav)["mostreig"]
-            except Exception:  # noqa: BLE001
-                # fallback: si no puc llegir el mostreig, assumeixo 44100
-                sr = 44100
-            esc = (sr / 44100.0) if sr else 1.0
-            stp = max(1, int(round(st[0] * esc)))
-            blk = max(1, int(round(st[1] * esc)))
-            cmd += ["--step", str(stp), "--block", str(blk)]
-        for k, v in (params or {}).items():
-            cmd += ["--param", f"{k}={v}"]
-        cmd.append(wav)
-        return cmd
-    if params:
-        d = tempfile.mkdtemp(prefix="ac_ttl_")
-        if tmp is not None:
-            tmp.append(d)      # el ttl ha de viure fins que corri la comanda
-        ttl = os.path.join(d, "t.ttl")
-        escriu_ttl("chords" if "chordino" in transform else "structure",
-                   params, ttl, lambda *a: None)
-        return [SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
-                "--csv-force", "--csv-omit-filename", wav]
-    return [SONIC, "-d", transform, "-w", "csv", "--csv-one-file", out_csv,
-            "--csv-force", "--csv-omit-filename", wav]
+def _cmd_host(transform, out_csv, wav, params=None):
+    """Comanda per executar un transform amb el nostre host Vamp."""
+    cmd = [HOST, "--plugin", transform.replace("vamp:", ""), "--csv", out_csv]
+    st = STEPS.get(transform)
+    if st:
+        # Les mides de la taula son per 44100 Hz; els plugins les volen
+        # escalades al mostreig real (p. ex. el barbeattracker vol 256 a
+        # 22050 i 512 a 44100).
+        try:
+            sr = wav_info(wav)["mostreig"]
+        except Exception:  # noqa: BLE001
+            # fallback: si no puc llegir el mostreig, assumeixo 44100
+            sr = 44100
+        esc = (sr / 44100.0) if sr else 1.0
+        stp = max(1, int(round(st[0] * esc)))
+        blk = max(1, int(round(st[1] * esc)))
+        cmd += ["--step", str(stp), "--block", str(blk)]
+    for k, v in (params or {}).items():
+        cmd += ["--param", f"{k}={v}"]
+    cmd.append(wav)
+    return cmd
 
 
 def executa_transform(transform, out_csv, wav, log, params=None):
-    """Executa un transform Vamp i desa el CSV.
+    """Executa un transform Vamp (host propi) i desa el CSV.
 
-    Primer amb el step/block de la taula (fidelitat amb el sonic-annotator);
-    si el plugin els refusa (depenen del mostreig), reintenta amb els seus
-    valors preferits (sempre funcionen).
-
-    Els `.ttl` temporals s'esborren SEMPRE en sortir (també si peta).
+    Primer amb el step/block de la taula; si el plugin els refusa (depenen del
+    mostreig), reintenta amb els seus valors preferits (sempre funcionen).
     """
-    tmp = []
+    cmd = _cmd_host(transform, out_csv, wav, params)
     try:
-        cmd = _cmd_transform(transform, out_csv, wav, params, tmp)
-        try:
-            return run(cmd, log)
-        except RuntimeError:
-            if "--step" not in cmd:
-                raise
-            cmd2 = _cmd_transform(transform, out_csv, wav, params, tmp)
-            i = cmd2.index("--step")
-            del cmd2[i:i + 4]                 # treu --step N --block M
-            if log:
-                log("  (step/block de la taula refusats; uso els del plugin)")
-            return run(cmd2, log)
-    finally:
-        esborra_tmp(tmp)
+        return run(cmd, log)
+    except RuntimeError:
+        if "--step" not in cmd:
+            raise
+        cmd2 = _cmd_host(transform, out_csv, wav, params)
+        i = cmd2.index("--step")
+        del cmd2[i:i + 4]                     # treu --step N --block M
+        if log:
+            log("  (step/block de la taula refusats; uso els del plugin)")
+        return run(cmd2, log)
 
 
-# Transform Vamp per defecte de cada deteccio (vegeu docs/AUTODETECCIO_OPCIONS.md)
-TRANSFORMS = {
-    "chords": "vamp:nnls-chroma:chordino:simplechord",
-    "structure": "vamp:qm-vamp-plugins:qm-segmenter:segmentation",
-}
-
-
-def escriu_ttl(clau, params, dest, log):
-    """Genera un transform `.ttl` del transform `clau` amb `params` aplicats.
-
-    IMPORTANT: `sonic-annotator -s <id>` NOMES llista una part dels parametres
-    (p. ex. no hi surt `useHMM`), aixi que no podem pedacar el TTL per defecte.
-    El reconstruim: prenem plugin/step/block/output del TTL per defecte i hi
-    afegim un `vamp:parameter_binding` per a CADA parametre del descriptor .n3
-    (amb el valor demanat o el seu defecte).
-    """
-    from app import vamp_params          # import local: evita cicle d'imports
-    base = run([SONIC, "-s", TRANSFORMS[clau]], log, silenci=True).stdout
-
-    def _cap(patro):
-        m = re.search(patro, base)
-        return m.group(1) if m else None
-
-    plugin = _cap(r"vamp:plugin\s+<([^>]*)>")
-    step = _cap(r'vamp:step_size\s+"([^"]*)"')
-    block = _cap(r'vamp:block_size\s+"([^"]*)"')
-    versio = _cap(r'vamp:plugin_version\s+"""(\d+)"""')
-    output = _cap(r"vamp:output\s+<([^>]*)>")
-    if not (plugin and output):
-        raise RuntimeError(f"no puc llegir el transform per defecte de {clau}")
-
-    specs = vamp_params.params_de(clau)
-    triats = {s["id"]: triats_val for s in specs
-              for triats_val in [float((params or {}).get(s["id"], s["defecte"]))]}
-    linies = ['@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .',
-              '@prefix vamp:     <http://purl.org/ontology/vamp/> .',
-              '@prefix :         <#> .',
-              ':transform a vamp:Transform ;',
-              f'    vamp:plugin <{plugin}> ;',
-              f'    vamp:step_size "{step}"^^xsd:int ;',
-              f'    vamp:block_size "{block}"^^xsd:int ;']
-    if versio:
-        linies.append(f'    vamp:plugin_version """{versio}""" ;')
-    for s in specs:
-        linies.append('    vamp:parameter_binding [')
-        linies.append(f'        vamp:parameter [ vamp:identifier "{s["id"]}" ] ;')
-        linies.append(f'        vamp:value "{triats[s["id"]]}"^^xsd:float ;')
-        linies.append('    ] ;')
-    linies.append(f'    vamp:output <{output}> .')
-    with open(dest, "w", encoding="utf-8") as f:
-        f.write("\n".join(linies) + "\n")
-    log(f"  transform {clau}: {len(specs)} paràmetres "
-        f"({sum(1 for s in specs if s['id'] in (params or {}))} ajustats)")
-    return dest
+CHORDS_TRANSFORM = "vamp:nnls-chroma:chordino:simplechord"
 
 
 def extract_chords(wav_path, out_csv, log, params=None):
     """Acords via Chordino (host propi; `params` son els parametres .n3)."""
-    if usa_host():
-        return executa_transform(TRANSFORMS["chords"], out_csv, wav_path, log,
-                                 params)
-    if params:
-        d = tempfile.mkdtemp(prefix="ac_ttl_")
-        try:
-            ttl = os.path.join(d, "chords.ttl")
-            escriu_ttl("chords", params, ttl, log)
-            run([SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
-                 "--csv-force", "--csv-omit-filename", wav_path], log)
-        finally:
-            esborra_tmp([d])
-    else:
-        run([SONIC, "-d", TRANSFORMS["chords"],
-             "-w", "csv", "--csv-one-file", out_csv, "--csv-force",
-             "--csv-omit-filename", wav_path], log)
+    return executa_transform(CHORDS_TRANSFORM, out_csv, wav_path, log, params)
 
 
 MOTORS_BPM = ("nostre", "qm", "consens")
@@ -536,23 +437,6 @@ def extract_segments(wav_path, out_csv, log, params=None, motor="qm"):
     les repeticions (A...A). Format (inici, durada, index, etiqueta) -> fer_abc.
     """
     return executa_transform(QM["segments"], out_csv, wav_path, log)
-
-
-def _extract_segments_segmentino(wav_path, out_csv, log, params=None):
-    """[historic] Segmentino. Retirat de la UI; es conserva per referencia."""
-    if params:
-        d = tempfile.mkdtemp(prefix="ac_ttl_")
-        try:
-            ttl = os.path.join(d, "seg.ttl")
-            escriu_ttl("structure", params, ttl, log)
-            run([SONIC, "-t", ttl, "-w", "csv", "--csv-one-file", out_csv,
-                 "--csv-force", "--csv-omit-filename", wav_path], log)
-        finally:
-            esborra_tmp([d])
-    else:
-        run([SONIC, "-d", TRANSFORMS["structure"],
-             "-w", "csv", "--csv-one-file", out_csv, "--csv-force",
-             "--csv-omit-filename", wav_path], log)
 
 
 def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):

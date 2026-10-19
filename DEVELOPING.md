@@ -48,7 +48,7 @@ aquest filtre o mor al SIGILL / violació de segment.
 | `paplay --raw` (libpulse → PipeWire) | ✅ fem servir | Camí natiu Ubuntu 24 amb mescla; `aplay` (ALSA directe) només de reserva |
 | `QAudioOutput` QtMultimedia | ❌ aparcat | Les rodes SÍ porten plugins (`libqtaudio_alsa.so`); el segfault era format/QBuffer, però `paplay` té stderr visible i zero acoblament Qt — no es reobre sense motiu |
 | `sounddevice` (PortAudio) | ✅ fem servir a macOS/Win | Motor natiu d'àudio (`app/audio_out.py`) per a CoreAudio (macOS) i WASAPI/MME (Windows). A Linux es manté `paplay`. |
-| Chordino + QM (`qm-segmenter`…) via **host propi** | ✅ fem servir | Vegeu `docs/QM_VAMP.md`; el `sonic-annotator` queda com a reserva |
+| Chordino + QM (`qm-segmenter`…) via **host propi** | ✅ fem servir | Únic motor: `vamp_host_local` (`docs/QM_VAMP.md`) |
 | **`qm-vamp-plugins`** (Queen Mary) | ✅ fem servir | Compilats del codi font amb `-msse -msse2` (**sense AVX**); `docs/QM_VAMP.md` |
 | **`ffmpeg`/`ffprobe`** del sistema | ✅ fem servir | Import d'altres formats → WAV PCM16; no cal per WAV |
 | `librosa` / `madmom` / `essentia` (pip) | ❌ no provat | El `tempo.py` propi + el `qm-tempotracker` ja cobreixen el BPM (5/5 i 4/5 amb 11 temes reals) |
@@ -66,9 +66,13 @@ python3 app/main.py
 ## Pipeline manual
 
 ```bash
-VAMP_PATH=nnls-chroma-linux64-local ./sonic-annotator \
-  -d vamp:nnls-chroma:chordino:simplechord -w csv tema.wav
-python3 -c "from app import pipeline as p; p.run_acords_py('acords.csv', 138, 4, 0.0, '.', print)"
+# Extracció directa amb el host propi (el mateix que fa l'app):
+VAMP_PATH=nnls-chroma-linux64-local ./vamp_host_local \
+  --plugin nnls-chroma:chordino:simplechord --csv out.csv tema.wav
+
+# Segments (posició · acord · durada en temps) i guia, en memòria:
+python3 -c "from app import pipeline as p; \
+print(p.segments_locators('acords.csv', 138, 4, 0.0, durada=180.0))"
 ```
 
 > La guia DAW (segments + `guia_acords.html`) es genera **en memòria** dins
@@ -284,7 +288,7 @@ Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
 - Els binaris natius de Linux (`*-local/*.so`, `vamp_host_local`) SÍ es
   commitegen (són l'eina); les sortides (`*_obsolets/`, `midis_acords/`) no.
 - **`OLD/`** (gitignorat) és l'**arxiu local** del que no és necessari però es
-  vol conservar (p. ex. `sonic-annotator`, la reserva). **No es puja al repo.**
+  vol conservar (p. ex. versions retirades). **No es puja al repo.**
 
 ## Estructura del codi (mapa ràpid)
 

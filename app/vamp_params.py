@@ -4,7 +4,7 @@ Vamp és un estàndard sense GUI: cada plugin descriu els seus paràmetres en un
 fitxer `.n3` (identificador, títol, rang, pas, valor per defecte i, de vega-
 des, els noms de valor). Aquesta peça els converteix en estructures simples
 perquè la UI pugui construir un diàleg i el pipeline els pugui passar al
-motor amb un fitxer transform (`.ttl`) via `sonic-annotator -t`.
+motor amb el transform corresponent (host propi, `vamp_host_local`).
 
 Vegeu `docs/AUTODETECCIO_OPCIONS.md` per al context.
 """

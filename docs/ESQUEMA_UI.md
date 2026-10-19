@@ -374,8 +374,8 @@ surt un `QDialog` amb 3 pestanyes + «Restaura per defecte»:
 La pestanya **Acords** es genera **dinàmicament** des de `app/vamp_params.py`
 (checkbox pels 0/1, combo quan el paràmetre té noms, spinbox pels numèrics).
 Els títols són **en català** amb l'`id` del plugin a sota i una **ajuda**
-(tooltip). Es passen al motor amb un transform `.ttl` (`pipeline.escriu_ttl`
-+ `sonic-annotator -t`).
+(tooltip). Es passen al motor amb `--param nom=valor` (host propi,
+`vamp_host_local`).
 
 **Neteja posterior** (`app/postproc.py`): treure el baix (`A/E`→`A`), reduir
 (`Cmaj7`→`C`), fusionar iguals, durada mínima i encaixar a la graella.
