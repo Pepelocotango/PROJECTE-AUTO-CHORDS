@@ -397,7 +397,6 @@ class Finestra(QMainWindow):
         self.b_detecta.clicked.connect(lambda: self._detecta_bpm())
         for camp in (self.bpm, self.bpb, self.offset):
             camp.editingFinished.connect(self._aplica_parametres_temps)
-            camp.editingFinished.connect(self._marca_dirty)
 
         self._params_temps = QWidget()      # s'amaga sencer en mode Lliure
         hp = QHBoxLayout(self._params_temps)
@@ -641,6 +640,16 @@ class Finestra(QMainWindow):
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
         self._sc_play.activated.connect(self._toggle_play)
         self._taps = []                       # instants dels taps (tap tempo)
+        # Estat de la sessió de tap tempo: destí, undo obert i timer de
+        # tancament (2 s sense tocar → una sola operació de desfer).
+        self._tap_target = None
+        self._tap_sessio_oberta = False
+        self._tap_canviat = False
+        self._actualitzant_temps = False
+        self._tap_timer = QTimer(self)
+        self._tap_timer.setSingleShot(True)
+        self._tap_timer.setInterval(2000)
+        self._tap_timer.timeout.connect(self._tanca_sessio_tap)
         self._sc_tap = QShortcut(QKeySequence(Qt.Key_T), self)
         # `E`: commuta l'EINA del timeline (intel·ligent ⇄ marc). És un TOGGLE:
         # cada pulsació canvia d'estat; per defecte sempre s'arrenca en
@@ -692,6 +701,14 @@ class Finestra(QMainWindow):
             self.b_play_tb.setIcon(icones.ico("pause" if on else "play", 16))
             self.b_play_tb.setToolTip("Atura  (Espai)" if on
                                       else "Reprodueix  (Espai)")
+        if not on and hasattr(self, "_tanca_sessio_tap"):
+            # En aturar, la sessió de tap es tanca (una sola operació d'undo).
+            self._tanca_sessio_tap()
+
+    def _on_visor_seleccio(self, kind, idx):
+        """La selecció del timeline ha canviat → camps BPM/compàs al dia."""
+        self._tanca_sessio_tap()
+        self._sincronitza_temps_del_visor()
 
     def _on_loop_state(self, on):
         """Sincronitza el botó 🔁 del transport amb l'estat REAL del loop.
@@ -776,6 +793,7 @@ class Finestra(QMainWindow):
         self._act(m, "Selecciona el tram de tempo/compàs del cursor", "",
                   self._sel_tram_cursor)
         m.addSeparator()
+        self._act(m, "Loop a la selecció", "L", self._loop_seleccio)
         self._act(m, "Marca inici de loop (A)", "Ctrl+[", self._marca_A_visor)
         self._act(m, "Marca fi de loop (B)", "Ctrl+]", self._marca_B_visor)
         self._act(m, "Neteja el loop", "", self._neteja_loop)
@@ -837,42 +855,57 @@ class Finestra(QMainWindow):
             self.avisa_info("Auto Chords", f"No trobo la carpeta del registre:\n{d}")
 
     def _sincronitza_temps_del_visor(self):
-        """Refresca els camps de temps/loop de la barra des del visor.
+        """Refresca els camps de temps/loop des del visor.
 
-        Cal després de desfer/refer: l'undo pot haver restaurat BPM, compàs,
-        offset, mode o el loop A-B (A1). Només reescriu el text si el valor
-        difereix, per no reformatejar el que l'usuari hi ha escrit.
+        El BPM i el compàs mostren el **clip de tempo seleccionat** (2B); si no
+        n'hi ha cap, el transport (tram 0). L'offset és global. Només reescriu
+        el text si el valor difereix, per no reformatejar el que l'usuari hi ha
+        escrit.
         """
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             return
-        # El compàs viu al camp `bpb` («4» o «4/4»): el numerador és `vr.bpb` i
-        # el denominador `vr.beat_type` (no hi ha camp propi per al denominador).
-        num, den = getattr(vr, "bpb", None), getattr(vr, "beat_type", None)
+        try:
+            _idx, bpm, num, den = vr.tempo_objectiu_vals()
+        except Exception:  # noqa: BLE001
+            bpm, num, den = getattr(vr, "bpm", None), getattr(vr, "bpb", None), \
+                getattr(vr, "beat_type", None)
         compas = None
         if num is not None:
-            compas = str(int(num)) if (den is None or int(den) == 4) \
-                else f"{int(num)}/{int(den)}"
-        for camp, valor, text in ((self.bpm, getattr(vr, "bpm", None), None),
-                                  (self.bpb, num, compas),
-                                  (self.offset, getattr(vr, "offset", None),
-                                   None)):
-            if valor is None:
-                continue
-            try:
-                igual = abs(float(camp.text().replace(",", "."))
-                            - float(valor)) <= 1e-9
-            except (TypeError, ValueError):
-                igual = False
-            if not igual:
-                camp.setText(text if text is not None else f"{float(valor):g}")
+            compas = (str(int(num)) if (den is None or int(den) == 4)
+                      else f"{int(num)}/{int(den)}")
+
+        self._actualitzant_temps = True
         try:
-            self.offset_cb.setText(self._secs_a_cb(float(getattr(vr, "offset", 0.0))))
-        except (TypeError, ValueError, AttributeError):
-            pass
+            for camp, valor, text in (
+                    (self.bpm, bpm,
+                     None if bpm is None else f"{float(bpm):.3f}"),
+                    (self.bpb, num, compas),
+                    (self.offset, getattr(vr, "offset", None),
+                     None if getattr(vr, "offset", None) is None
+                     else f"{float(vr.offset):.3f}")):
+                if valor is None or text is None:
+                    continue
+                if camp.text().strip() == text:
+                    continue
+                try:
+                    if abs(float(camp.text().replace(",", "."))
+                           - float(valor)) <= 1e-9:
+                        continue
+                except (TypeError, ValueError):
+                    pass
+                camp.setText(text)
+            try:
+                self.offset_cb.setText(
+                    self._secs_a_cb(float(getattr(vr, "offset", 0.0))))
+            except (TypeError, ValueError, AttributeError):
+                pass
+        finally:
+            self._actualitzant_temps = False
         self._on_loop_state(getattr(vr, "loop_on", False))
 
     def _undo_visor(self):
+        self._tanca_sessio_tap()
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
             vr.undo()
@@ -881,6 +914,7 @@ class Finestra(QMainWindow):
             self.registra("Edita: no hi ha visor carregat")
 
     def _redo_visor(self):
+        self._tanca_sessio_tap()
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
             vr.redo()
@@ -1278,6 +1312,7 @@ class Finestra(QMainWindow):
                 ("Crear-lo o editar-lo", "Arrossega sobre el regle"),
                 ("Marcar l'inici / el final al cursor", "Ctrl+[ / Ctrl+]"),
                 ("Seleccionar TOT el que hi ha a dins", "Doble-clic al loop"),
+                ("Loop a la selecció (unió dels 3 carrils)", "L"),
             ]),
             ("Transport", [
                 ("Play / aturar", "Espai"),
@@ -1375,53 +1410,25 @@ class Finestra(QMainWindow):
 
     # ---- accions d'edició des del menú (reutilitzen la lògica existent) ----
     def _clip_seleccionat(self):
-        """Retorna (kind, idx) de l'element seleccionat al timeline."""
+        """Retorna (kind, idx) de l'element actiu del timeline (3 carrils)."""
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             return None, -1
-        for items, kind in ((vr.timeline._chord_items, "chord"),
-                            (vr.timeline._section_items, "section")):
-            for it in items:
-                if getattr(it, "_selected", False):
-                    return kind, getattr(it, "idx", -1)
-        return None, -1
+        return vr.seleccio_activa()
 
     def _elimina_element(self):
-        kind, idx = self._clip_seleccionat()
-        if kind is None:
-            return
-        vr = self.visor_ref
-        # MULTI-SELECCIÓ: amb més d'un clip seleccionat s'esborren TOTS. Abans
-        # aquest camí (la drecera `Del` de la finestra, que s'executa ABANS que
-        # el `keyPressEvent` del timeline) només esborrava el clip «actiu», i
-        # per això d'una selecció de 49 clips queia només el primer (bug
-        # reportat per l'operador, 17-10-2026).
-        keys = vr.timeline.selected_keys()
-        if len(keys) > 1:
-            vr._elimina_seleccio(sorted(keys))
-            return
-        if kind == "chord":
-            vr._elimina_acord_index(idx)
-        else:
-            vr._elimina_seccio_index(idx)
+        """`Del`: el despatx únic resol la selecció (una o múltiple, 3 carrils)."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return False
+        return vr.executa_edicio("elimina")
 
     def _duplica_element(self):
-        vr = self.visor_ref
+        """`Ctrl+D`: el despatx únic resol el clip o el grup seleccionat."""
+        vr = getattr(self, "visor_ref", None)
         if vr is None:
-            return
-        # MULTI-SELECCIÓ: amb més d'un clip seleccionat es dupliquen TOTS
-        # (mateix cas que la `Del`; auditats tots els handlers el 17-10-2026).
-        keys = vr.timeline.selected_keys()
-        if len(keys) > 1:
-            vr._duplica_seleccio(sorted(keys))
-            return
-        kind, idx = self._clip_seleccionat()
-        if kind is None:
-            return
-        if kind == "chord":
-            vr._duplica_acord_index(idx)
-        else:
-            vr._duplica_seccio_index(idx)
+            return False
+        return vr.executa_edicio("duplica")
 
     def _troba_i_reemplaca_ui(self):
         """Troba i reemplaça xifrats (acords) o etiquetes (estructura) a tot el tema."""
@@ -1459,9 +1466,7 @@ class Finestra(QMainWindow):
         if not vr.aplica_tempo_trams(dlg.trams()):
             self.avisa_info("Auto Chords", "El mapa no és vàlid.")
             return
-        self.bpm.setText(f"{float(vr.bpm):.3f}")
-        self.bpb.setText(f"{int(vr.bpb)}/{int(getattr(vr, 'beat_type', 4) or 4)}")
-        self._aplica_parametres_temps()
+        self._sincronitza_temps_del_visor()
         self.registra(f"mapa de tempo/compàs: {len(vr.tempo_trams)} tros(s)")
 
     def detecta_tempo_mapa(self, avis=True):
@@ -1494,8 +1499,7 @@ class Finestra(QMainWindow):
             self.registra("detecta tempo: és constant (cap canvi)")
             return 0
         if vr.aplica_tempo_trams(trams):
-            self.bpm.setText(f"{float(vr.bpm):.3f}")
-            self._aplica_parametres_temps()
+            self._sincronitza_temps_del_visor()
             self.registra(f"mapa de tempo inferit: {len(trams)} tros(s)")
             return len(trams)
         return 0
@@ -1567,207 +1571,136 @@ class Finestra(QMainWindow):
     def _copia_clips(self):
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
-            vr.timeline.copy_selection()
+            return vr.executa_edicio("copia")
+        return False
 
     def _retalla_clips(self):
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
-            vr.timeline.cut_selection()
+            return vr.executa_edicio("retalla")
+        return False
 
     def _enganxa_clips(self):
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
-            vr.timeline.paste_at_cursor()
+            return vr.executa_edicio("enganxa")
+        return False
 
     def _renomena_element(self):
-        vr = self.visor_ref
-        if vr is None:
-            return
-        keys = vr.timeline.selected_keys()
-        # >1 clip seleccionat → renom EN BLOC del tipus ACTIU. Amb selecció
-        # mixta es renombren NOMÉS els del tipus del clip actiu (opció A).
-        if len(keys) > 1:
-            vr.renomena_seleccio()
-            return
-        kind, idx = self._clip_seleccionat()
-        if kind is None:
-            return
-        tl = vr.timeline
-        if kind == "chord":
-            tl.chordEditRequested.emit(idx)
-        else:
-            tl.sectionEditRequested.emit(idx)
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            return vr.executa_edicio("reanomena")
+        return False
 
     def _idx_acord_del_cursor(self):
-        """Índex de l'acord que CONTÉ el cursor (o `None`). Regla d'or #11."""
+        """Índex de l'acord que conté el cursor (o `None`). Regla d'or #11."""
         vr = getattr(self, "visor_ref", None)
-        if vr is None or not vr.acords:
-            return None
-        idx = None
-        for i, a in enumerate(vr.acords):
-            if float(a[0]) <= float(vr.pos):
-                idx = i
-            else:
-                break
-        return idx
+        return vr._idx_a_t("chord", vr.pos) if vr is not None else None
 
     def _parteix_acord_ui(self):
         """Parteix l'acord que conté el cursor pel punt del cursor (regla #11)."""
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             self.registra("Parteix: no hi ha visor carregat")
-            return
-        idx = self._idx_acord_del_cursor()
-        if idx is None:
-            self.registra("Parteix: el cursor no és dins cap acord")
-            return
-        if vr._parteix_acord_dialog(idx):
+            return False
+        if vr.executa_edicio("parteix", "chord", t=vr.pos):
             self.registra(f"acord partit a {vr.pos:.3f} s")
+            return True
+        self.registra("Parteix: el cursor no és dins cap acord")
+        return False
 
     def _idx_seccio_del_cursor(self):
         """Índex de la secció que CONTÉ el cursor (o `None`). A2."""
         vr = getattr(self, "visor_ref", None)
-        if vr is None or not vr.seccions:
-            return None
-        for i, s in enumerate(vr.seccions):
-            if float(s[0]) <= float(vr.pos) < float(s[1]):
-                return i
-        return None
+        return vr._idx_a_t("section", vr.pos) if vr is not None else None
 
     def _parteix_seccio_ui(self):
         """Parteix la secció que conté el cursor pel punt del cursor (A2)."""
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             self.registra("Parteix: no hi ha visor carregat")
-            return
-        idx = self._idx_seccio_del_cursor()
-        if idx is None:
-            self.registra("Parteix: el cursor no és dins cap secció")
-            return
-        if vr._parteix_seccio_dialog(idx):
+            return False
+        if vr.executa_edicio("parteix", "section", t=vr.pos):
             self.registra(f"secció partida a {vr.pos:.3f} s")
+            return True
+        self.registra("Parteix: el cursor no és dins cap secció")
+        return False
 
     def _idx_tram_del_cursor(self):
         """Índex del tram de BPM/compàs que CONTÉ el cursor (o `None`). #11."""
         vr = getattr(self, "visor_ref", None)
-        trams = getattr(vr, "tempo_trams", None) if vr is not None else None
-        if not trams:
-            return None
-        idx = -1
-        for i, t in enumerate(trams):
-            if float(t[0]) <= vr.pos:
-                idx = i
-            else:
-                break
-        return idx if idx >= 0 else None
+        return vr._idx_a_t("tempo", vr.pos) if vr is not None else None
 
     def _afegeix_tram_ui(self):
-        """«Afegeix un canvi de tempo/compàs» al cursor.
-
-        Regla d'or #11: el mateix camí que «Afegeix acord…» / «Afegeix secció…»
-        (l'operació del carril ③ era l'única que no hi era).
-        """
+        """«Afegeix un canvi de tempo/compàs» al cursor (despatx únic)."""
         vr = getattr(self, "visor_ref", None)
         if vr is None:
-            return
-        if vr._afegeix_a_la_posicio("tempo", vr.pos):
+            return False
+        if vr.executa_edicio("afegeix", "tempo", t=vr.pos):
             self.registra(f"afegit un canvi de tempo/compàs a {vr.pos:.3f} s")
+            return True
+        self.registra("Afegeix tram: ja hi ha una frontera en eixe punt")
+        return False
 
     def _parteix_tram_ui(self):
         """Parteix el tram de tempo/compàs que conté el cursor (paritat #11)."""
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             self.registra("Parteix: no hi ha visor carregat")
-            return
-        if self._idx_tram_del_cursor() is None:
-            self.registra("Parteix: el cursor no és dins cap tram de tempo/compàs")
-            return
-        if vr._afegeix_tall(vr.pos):
+            return False
+        if vr.executa_edicio("parteix", "tempo", t=vr.pos):
             self.registra(f"tram de tempo/compàs partit a {vr.pos:.3f} s")
+            return True
+        self.registra("Parteix: el cursor ja és en una frontera del mapa")
+        return False
 
     def _afegeix_acord_ui(self):
         vr = getattr(self, "visor_ref", None)
         if vr is None:
-            return
-        nom, ok = QInputDialog.getText(
-            self, "Afegeix acord", f"Acord a {vr.pos:.3f} s", text="N")
-        if not ok or not nom.strip():
-            return
-        try:
-            vr._undo_marca()      # A1: l'alta des del MENÚ també és desfer/fer
-            vr._afegeix_acord(vr.pos, nom.strip())
-            vr._desa_i_regenera()
-            vr.timeline.set_data(vr.acords, vr.seccions)
-            vr._undo_commit()
-            self.registra(f"afegit acord a {vr.pos:.3f}s: {nom.strip()}")
-        except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Auto Chords", f"No s'ha pogut afegir:\n{e}")
+            return False
+        if vr.executa_edicio("afegeix", "chord", t=vr.pos):
+            self.registra(f"afegit acord a {vr.pos:.3f}s")
+            return True
+        return False
 
     def _afegeix_seccio_ui(self):
         vr = getattr(self, "visor_ref", None)
         if vr is None:
-            return
-        lletra, ok = QInputDialog.getText(
-            self, "Afegeix secció", f"Lletra a {vr.pos:.3f} s", text="A")
-        if not ok or not lletra.strip():
-            return
-        lletra = lletra.strip()[:1].upper()
-        try:
-            vr._undo_marca()      # A1: l'alta des del MENÚ també és desfer/fer
-            # Model SATURAT (regla d'or #4): «afegir» una secció on n'hi ha una
-            # altra vol dir PARTIR-la (abans s'intentava crear un tros nou i el
-            # solapament el rebutjava sempre: el menú no funcionava mai dins la
-            # cançó — mateix bug que el menú contextual, 19-10-2026).
-            idx = vr._seccio_a_t(vr.pos)
-            if idx >= 0:
-                ok_part = vr.parteix_seccio(idx, vr.pos, lletra)
-            else:
-                ok_part = vr._afegeix_seccio(vr.pos, vr.pos + 2.0, lletra)
-            vr._regenera_abc_des_de_totes_les_seccions("secció afegida")
-            vr.timeline.set_data(vr.acords, vr.seccions)
-            vr._undo_commit()
-            if ok_part:
-                self.registra(f"afegida secció a {vr.pos:.3f}s")
-        except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Auto Chords", f"No s'ha pogut afegir:\n{e}")
+            return False
+        if vr.executa_edicio("afegeix", "section", t=vr.pos):
+            self.registra(f"afegida secció a {vr.pos:.3f}s")
+            return True
+        return False
+
+    def _sel_cursor(self, kind):
+        """Selecciona el clip de `kind` que conté el cursor (despatx únic)."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return False
+        idx = vr._idx_a_t(kind, vr.pos)
+        if idx is None:
+            return False
+        return bool(vr.executa_edicio("selecciona", kind, idx, mode="set"))
 
     def _sel_acord_cursor(self):
         """Selecciona l'acord que conté la posició del cursor."""
-        vr = getattr(self, "visor_ref", None)
-        if vr is None or not vr.acords:
-            return
-        idx = 0
-        for i, a in enumerate(vr.acords):
-            if a[0] <= vr.pos:
-                idx = i
-            else:
-                break
-        vr.timeline.select_clip("chord", idx)
+        return self._sel_cursor("chord")
 
     def _sel_tram_cursor(self):
         """Selecciona el tram de BPM/compàs que conté la posició del cursor."""
-        vr = getattr(self, "visor_ref", None)
-        trams = getattr(vr, "tempo_trams", None) if vr is not None else None
-        if not trams:
-            return False
-        idx = self._idx_tram_del_cursor()
-        if idx is None:
-            return False
-        vr.timeline.select_clip("tempo", idx)
-        return True
+        return self._sel_cursor("tempo")
 
     def _sel_seccio_cursor(self):
         """Selecciona la secció que conté la posició del cursor."""
+        return self._sel_cursor("section")
+
+    def _loop_seleccio(self):
+        """`L`: loop A/B a la unió de la selecció (3 carrils)."""
         vr = getattr(self, "visor_ref", None)
-        if vr is None or not vr.seccions:
-            return
-        idx = 0
-        for i, s in enumerate(vr.seccions):
-            if s[0] <= vr.pos:
-                idx = i
-            else:
-                break
-        vr.timeline.select_clip("section", idx)
+        if vr is None:
+            self.registra("Loop a la selecció: no hi ha visor carregat")
+            return False
+        return bool(vr.executa_edicio("loop_seleccio"))
 
     def _neteja_loop(self):
         vr = getattr(self, "visor_ref", None)
@@ -1792,36 +1725,86 @@ class Finestra(QMainWindow):
         self._aplica_parametres_temps()
         self.registra(f"BPM {'×2' if factor > 1 else '÷2'} → {b:.3f}")
 
-    def _tap_tempo(self):
-        """Tap tempo (com als DAWs): intervals dels ultims taps -> BPM.
+    def _tanca_sessio_tap(self):
+        """Tanca la sessió de taps: desa el canvi i apila UN sol undo.
 
-        Segueix el patro estandard: reset si passa de 2 s (LMMS), mitjana
-        dels ultims intervals i descart dels intervals fora de 30-300 BPM
-        (Max/Dobrian) per ignorar dobles-taps i gaps llargs.
+        La sessió s'obri al primer toc (o quan canvia el clip objectiu) i es
+        tanca al cap de 2 s sense tocar, en canviar de clip o en aturar el
+        transport. Així `Ctrl+Z` desfà tota la mesura de cop.
+        """
+        if not getattr(self, "_tap_sessio_oberta", False):
+            return
+        self._tap_sessio_oberta = False
+        try:
+            self._tap_timer.stop()
+        except (AttributeError, RuntimeError):
+            pass
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            try:
+                if getattr(self, "_tap_canviat", False):
+                    vr._desa_i_regenera()
+                vr._undo_commit()
+            except Exception as e:  # noqa: BLE001
+                self.registra(f"tap tempo: no s'ha pogut tancar la sessió ({e})")
+            self._sincronitza_temps_del_visor()
+        self._tap_canviat = False
+
+    def _tap_tempo(self):
+        """Tap tempo (com als DAWs): intervals dels últims taps → BPM.
+
+        El destí és el **clip de tempo seleccionat**; si no n'hi ha cap, el
+        transport (tram 0). Una sessió de taps = una sola operació de desfer.
         """
         ara = time.monotonic()
+        vr = getattr(self, "visor_ref", None)
+        idx = vr.tempo_objectiu() if vr is not None else 0
+        # Canvi de clip objectiu o pausa > 2 s → tanca la sessió anterior.
+        if self._taps and (self._tap_target != idx):
+            self._tanca_sessio_tap()
+            self._taps = []
         if self._taps and (ara - self._taps[-1]) > 2.0:
-            self._taps = []                      # reset per timeout (2 s)
+            self._tanca_sessio_tap()
+            self._taps = []
+        if vr is not None and not self._tap_sessio_oberta:
+            self._tap_sessio_oberta = True
+            self._tap_canviat = False
+            vr._undo_marca()
+            # Decisió 3: si està SONANT, el tap tanca el loop al clip de tempo
+            # objectiu (o al primer, si no n'hi ha cap de seleccionat).
+            if getattr(vr, "sona", False):
+                trams = list(vr.tempo_trams or [])
+                if 0 <= idx < len(trams):
+                    a, b = float(trams[idx][0]), float(trams[idx][1])
+                    if b > a:
+                        vr._fixa_loop(a, b, activa=True, alinea=True)
+                        self._tap_canviat = True
+        self._tap_target = idx
         self._taps.append(ara)
         if len(self._taps) > 8:
-            self._taps = self._taps[-8:]         # finestra dels ultims 8
+            self._taps = self._taps[-8:]         # finestra dels últims 8
         if len(self._taps) < 2:
             self.b_tap.setText("TAP (1)")
+            self._tap_timer.start()
             return
         ivs = [b - a for a, b in zip(self._taps, self._taps[1:])]
         ivs = [x for x in ivs if 0.2 <= x <= 2.0]   # 30-300 BPM
         if not ivs:
             self.b_tap.setText(f"TAP ({len(self._taps)})")
+            self._tap_timer.start()
             return
         bpm = 60.0 / (sum(ivs) / len(ivs))
-        self.bpm.setText(f"{bpm:.3f}")
-        # propaga al visor (regle + clic) SENSE reengegar l'audio en curs
-        vr = getattr(self, "visor_ref", None)
         if vr is not None:
-            vr.bpm = self._bpm_val()
-            vr._actualitza_temps()
+            _, _bpm, num, den = vr.tempo_objectiu_vals()
+            if vr.edita_tempo_objectiu(idx, bpm, num, den, desa=False):
+                self._tap_canviat = True
+            self._sincronitza_temps_del_visor()
+        else:
+            self.bpm.setText(f"{bpm:.3f}")
         self.b_tap.setText(f"TAP ({len(self._taps)}) {bpm:.0f}")
-        self.registra(f"tap tempo: {bpm:.3f} BPM ({len(self._taps)} taps)")
+        self.registra(f"tap tempo: {bpm:.3f} BPM · tram {idx} "
+                      f"({len(self._taps)} taps)")
+        self._tap_timer.start()
 
     def _marca_compas_1(self):
         """Posa l'offset a la posició del cursor: la graella hi comença.
@@ -1867,25 +1850,40 @@ class Finestra(QMainWindow):
         self.registra(f"Compàs 1 detectat a {seg:.3f}s ✔")
 
     def _aplica_parametres_temps(self):
-        """Propaga BPM/compàs/offset al visor — **sense tallar l'àudio**.
+        """Aplica BPM/compàs/offset al VISOR, al clip de tempo objectiu.
 
-        NO cal reengegar res: el fil d'alimentació llig `bpm`/`bpb`/`offset` (i
-        el mapa de tempo) a **cada tros**, així que el metrònom segueix la
-        graella nova a l'instant. Abans es reiniciava el reproductor i se sentia
-        un **micro-tall** en canviar el BPM/compàs mentre sonava (mateix defecte
-        que el commutador del metrònom; reportat per l'operador, 18-10-2026).
+        Decisió 2B (2026-10-19): si hi ha un tram de tempo seleccionat, els
+        camps de dalt editen **eixe tram**; si no, el transport (tram 0).
+        L'offset continua sent global. No es reinicia l'àudio: el fil
+        d'alimentació llig el BPM/mapa a cada tros.
         """
+        if getattr(self, "_actualitzant_temps", False):
+            return
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             return
-        vr._undo_marca()          # A1: el BPM/compàs/offset també és desfer/fer
-        vr.bpm = self._bpm_val()
-        vr.bpb = self._bpb_val()
-        vr.beat_type = self._beat_type_val()
-        vr.offset = self._offset_val()
-        self.offset_cb.setText(self._secs_a_cb(vr.offset))
-        vr._actualitza_temps()
+        idx = vr.tempo_objectiu()
+        bpm = self._bpm_val()
+        num = self._bpb_val()
+        den = self._beat_type_val()
+        offset = self._offset_val()
+        try:
+            _idx, _bpm, _num, _den = vr.tempo_objectiu_vals()
+        except Exception:  # noqa: BLE001
+            _bpm, _num, _den = vr.bpm, vr.bpb, getattr(vr, "beat_type", 4)
+        if (abs(bpm - float(_bpm)) <= 1e-9 and num == int(_num)
+                and den == int(_den)
+                and abs(offset - float(getattr(vr, "offset", 0.0))) <= 1e-9):
+            return
+        vr._undo_marca()
+        vr.offset = offset
+        ok = vr.edita_tempo_objectiu(idx, bpm, num, den)
         vr._undo_commit()
+        self.offset_cb.setText(self._secs_a_cb(offset))
+        if ok:
+            self.registra(f"tempo: tram {idx} → {bpm:.3f} BPM · "
+                          f"{num}/{den} (offset {offset:.3f}s)")
+        self._sincronitza_temps_del_visor()
 
     def _canvia_tempo(self, fix):
         """Commuta BPM·compàs ↔ Lliure i refresca el visor.
@@ -1901,13 +1899,15 @@ class Finestra(QMainWindow):
         """
         for w in (self.bpm, self.bpb, self.offset):
             w.setEnabled(fix)
-        if hasattr(self, "visor_ref") and self.visor_ref is not None:
-            self.visor_ref.tempo_fix = bool(fix)
-            self.visor_ref.bpm = self._bpm_val()
-            self.visor_ref.bpb = self._bpb_val()
-            self.visor_ref.beat_type = self._beat_type_val()
-            self.visor_ref.offset = self._offset_val()
-            self.visor_ref._actualitza_temps()
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            # Els camps poden estar mostrant un tram interior (2B): el canvi de
+            # MODE no ha de copiar-los al transport. L'offset, però, és global
+            # i el camp n'és la font (el test de commutació ho exigeix).
+            vr.offset = self._offset_val()
+            vr.tempo_fix = bool(fix)
+            vr._actualitza_temps()
+            self._sincronitza_temps_del_visor()
 
     def _mostra_placeholder_visor(self):
         cont = QWidget()
@@ -1968,6 +1968,8 @@ class Finestra(QMainWindow):
                 # el visor no desa mai cap CSV a `audio/…` (carpeta derivada
                 # del WAV).
                 sortida=self.sortida or pipeline.carpeta_sortida(wav),
+                offset=self._offset_val(),
+                beat_type=self._beat_type_val(),
             )
             self.visor_ref = visor
             # El visor ha de desar els CSV/export a la carpeta de sortida del
@@ -1994,6 +1996,16 @@ class Finestra(QMainWindow):
             except (TypeError, AttributeError):
                 pass
             visor.loopStateChanged.connect(self._on_loop_state)
+            try:
+                visor.timeline.clipSelected.disconnect(self._on_visor_seleccio)
+            except (TypeError, AttributeError, RuntimeError):
+                pass
+            visor.timeline.clipSelected.connect(self._on_visor_seleccio)
+            try:
+                visor.tempoCanviat.disconnect(self._sincronitza_temps_del_visor)
+            except (TypeError, AttributeError, RuntimeError):
+                pass
+            visor.tempoCanviat.connect(self._sincronitza_temps_del_visor)
             self._on_loop_state(getattr(visor, "loop_on", False))
             self.visor_widget = visor.centralWidget()
             self.visor_widget.setParent(self._stack)
@@ -2017,6 +2029,9 @@ class Finestra(QMainWindow):
             visor._embedded = True
             visor.setVisible(False)
             visor.close()
+            # Els camps BPM/compàs han de mostrar el transport fins que es
+            # seleccione un tram de tempo concret (2B).
+            self._sincronitza_temps_del_visor()
         except Exception:  # noqa: BLE001
             self.logger.exception("Crash en carregar el visor per %s", wav)
             self.registra(f"Visor ERROR: {traceback.format_exc()}")
@@ -2122,6 +2137,10 @@ class Finestra(QMainWindow):
         self.setWindowTitle(base + (" *" if self.dirty else ""))
 
     def _marca_dirty(self, *_):
+        # Els canvis programàtics de la barra (sincronitzar BPM/compàs amb el
+        # clip de tempo seleccionat) no han de marcar el projecte com a brut.
+        if getattr(self, "_actualitzant_temps", False):
+            return
         if not self.dirty:
             self.dirty = True
             self._actualitza_titol()
@@ -2175,11 +2194,24 @@ class Finestra(QMainWindow):
         return (not self._te_canvis()) or self._confirma_descartar()
 
     def _dades_projecte(self):
+        # El document desa el TEMPO DEL TRANSPORT (tram 0), no el del clip de
+        # tempo que estiga seleccionat en eixe moment (2B).
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None and vr.tempo_objectiu() > 0:
+            bpm = float(getattr(vr, "bpm", 120.0))
+            bpb = int(getattr(vr, "bpb", 4) or 4)
+            den = int(getattr(vr, "beat_type", 4) or 4)
+            offset = float(getattr(vr, "offset", 0.0) or 0.0)
+        else:
+            # Sense clip de tempo seleccionat, la barra ÉS el transport: es
+            # desa el que hi ha escrit (encara que no s'haja premut Enter).
+            bpm, bpb = self._bpm_val(), self._bpb_val()
+            den, offset = self._beat_type_val(), self._offset_val()
         return {
-            "tempo": {"bpm": self._bpm_val(), "bpb": self._bpb_val(),
-                      "offset": self._offset_val(),
+            "tempo": {"bpm": bpm, "bpb": bpb,
+                      "offset": offset,
                       "fix": self.tempo_fix.isChecked(),
-                      "compas": self.bpb.text().strip()},
+                      "compas": f"{bpb}/{den}"},
             "opcions": self.opcions,
         }
 
@@ -3132,6 +3164,7 @@ class Finestra(QMainWindow):
         if not self._pot_descartar():
             ev.ignore()
             return
+        self._tanca_sessio_tap()
         fe = getattr(self, "feina_export", None)
         try:
             if fe is not None and fe.isRunning():

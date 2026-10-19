@@ -1563,9 +1563,9 @@ class TestMenusParitat(_regla11_paritat___Base):
         se = self._amb_fila(v._menu_seccio)
         self.assertEqual(len(ac), len(se),
                          f"jocs d'accions diferents: {ac} vs {se}")
-        # 11 accions = la definició ÚNICA del menú contextual (regla #11),
+        # 12 accions = la definició ÚNICA del menú contextual (regla #11),
         # compartida amb el timeline (abans la llista en tenia 7 i el timeline 9).
-        self.assertEqual(len(ac), 11, f"joc inesperat: {ac}")
+        self.assertEqual(len(ac), 12, f"joc inesperat: {ac}")
         # Mateixa estructura (activació) i mateixa paraula de tipus a cada posició.
         self.assertEqual([e for _t, e in ac], [e for _t, e in se])
         self.assertIn("acord", ac[0][0].lower())
@@ -1602,6 +1602,7 @@ class TestMenusParitat(_regla11_paritat___Base):
         self.assertEqual(base_claus, [
             "afegeix", "duplica", "elimina", "reanomena", "parteix", "meitat",
             "fusiona_anterior", "fusiona_seguent", "retalla", "copia", "enganxa",
+            "loop_seleccio",
         ])
         for nom, (claus, actiu) in jocs.items():
             self.assertEqual(claus, base_claus,
@@ -1625,8 +1626,8 @@ class TestMenusParitat(_regla11_paritat___Base):
             self.assertTrue(d["fusiona_anterior"],
                             f"«{etq}»: amb un clip anterior, ha d'estar activa")
 
-    def test_els_menus_tenen_les_onze_accions_esperades(self):
-        """La llista blanca de les 11 accions (canviar-la és una decisió)."""
+    def test_els_menus_tenen_les_dotze_accions_esperades(self):
+        """La llista blanca de les 12 accions (canviar-la és una decisió)."""
         v = _regla11_paritat___visor()
         v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
                               (10.0, _regla11_paritat__DUR, 90.0, 3, 4)])
@@ -1637,7 +1638,7 @@ class TestMenusParitat(_regla11_paritat___Base):
             "Reanomena (BPM/compàs)…",
             "Parteix aquest tros aquí", "Partir per la meitat",
             "Fusionar amb anterior", "Fusionar amb següent",
-            "Retalla", "Copia", "Enganxa",
+            "Retalla", "Copia", "Enganxa", "Loop a la selecció",
         ])
 
     def test_menu_contextual_parteix_per_a_tots_dos(self):
@@ -3500,7 +3501,13 @@ class TestUndoTemps(_undo_temps___Base):
         with patch.object(QW.QInputDialog, "getText", return_value=("X", True)):
             v.ves_a(10.0)
             w._afegeix_seccio_ui()
-        self.assertEqual(len(v.seccions), 1)
+        # Regla #4: el carril queda cobert («-» al davant + la secció nova
+        # fins al final), no un illot de 2 s.
+        self.assertEqual(len(v.seccions), 2)
+        self.assertAlmostEqual(float(v.seccions[0][0]), 0.0, places=2)
+        self.assertAlmostEqual(float(v.seccions[-1][1]),
+                               float(v.audio["durada"]), places=2)
+        self.assertIn("X", [s[2] for s in v.seccions])
         w._undo_visor()
         self.assertEqual(len(v.seccions), 0)
 

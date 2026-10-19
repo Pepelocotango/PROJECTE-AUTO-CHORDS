@@ -150,7 +150,11 @@ class Visor(QMainWindow):
     # missatge per a la caixa d'informacio (desfer/refer, etc.)
     infoMissatge = pyqtSignal(str)
     canvis = pyqtSignal()      # el model (acords/seccions) ha canviat per edició
-    def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True, sortida=None):
+    # El mapa de tempo/compàs ha canviat (diàleg, drag, undo…): la finestra
+    # principal ha de refrescar els camps BPM/compàs del clip objectiu.
+    tempoCanviat = pyqtSignal()
+    def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True, sortida=None,
+                 offset=0.0, beat_type=4):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
         self._embedded = False
@@ -165,7 +169,8 @@ class Visor(QMainWindow):
         # (`<projecte>/audio/AUTOCHORDS_…/`) → còpia estranya dins `audio/`.
         self.sortida = sortida or pipeline.carpeta_sortida(wav)
         self.bpm, self.bpb = bpm, bpb
-        self.offset = 0.0
+        self.beat_type = int(beat_type or 4)
+        self.offset = float(offset or 0.0)
         self.tempo_fix = bool(tempo_fix)
         self.csv_acords = os.path.abspath(acords) if acords else None
         self.logger.info("Inicialitzant visor per %s | bpm=%s bpb=%s tempo_fix=%s", wav, bpm, bpb, tempo_fix)
@@ -190,6 +195,17 @@ class Visor(QMainWindow):
         if not self.acords and not self.seccions:
             self.acords, self.seccions = pipeline.model_inicial(
                 self._durada_wav(), log=self.log)
+            nou_model = True
+        # Regla #4 a TOTES les pistes: un projecte pot arribar amb una pista
+        # buida (p. ex. sense estructura). El visor sempre n'ha de mostrar una
+        # que cobrisca 0 → durada, com fa el model inicial.
+        _dur = self._durada_wav()
+        if not self.acords:
+            self.acords = [pipeline.Clip(0.0, _dur, pipeline.FORAT_ACORD)]
+            nou_model = True
+        if not self.seccions:
+            self.seccions = [(0.0, _dur, pipeline.SENSE_SECCIO,
+                              pipeline.SENSE_SECCIO)]
             nou_model = True
         # INVARIANT de COBERTURA (regla d'or): els clips cobreixen TOTA la WAV
         # (0 → durada): 1r a 0 (capçalera «N» si cal) i últim a la durada.
@@ -227,23 +243,25 @@ class Visor(QMainWindow):
         self.timeline.playRequested.connect(self.play_stop)
         self.timeline.editStarted.connect(self._on_edit_started)
         self.timeline.editFinished.connect(self._on_edit_finished)
+        self.timeline.editCancelled.connect(self._on_edit_cancelled)
         self.timeline.loopChanged.connect(self._on_loop_changed)
         self.timeline.escapePressed.connect(self._on_escape_pressed)
         self.timeline.chordTimeMoved.connect(self._on_chord_time_moved)
         self.timeline.chordEndMoved.connect(self._on_chord_end_moved)
         self.timeline.chordRenamed.connect(self._on_chord_renamed)
         self.timeline.chordDeleteRequested.connect(self._elimina_acord_index)
-        self.timeline.chordDuplicateRequested.connect(self._duplica_acord_index)
         self.timeline.chordEditRequested.connect(self._on_chord_edit_requested)
         self.timeline.sectionMoved.connect(self._on_section_moved)
         self.timeline.sectionRenamed.connect(self._on_section_renamed)
         self.timeline.sectionDeleteRequested.connect(self._elimina_seccio_index)
-        self.timeline.sectionDuplicateRequested.connect(self._duplica_seccio_index)
         self.timeline.multiDeleteRequested.connect(self._elimina_seleccio)
         self.timeline.pasteRequested.connect(self._enganxa_seleccio)
-        self.timeline.groupDuplicateRequested.connect(self._duplica_seleccio)
         self.timeline.clipContextMenuRequested.connect(
             self._on_clip_context_menu)
+        # Despatx ÚNIC de les ordres d'edició que arriben del teclat del
+        # timeline (Del, Ctrl+C/X/V/D, fletxes): el timeline només envia la
+        # intenció i el Visor resol el carril i la selecció.
+        self.timeline.editCommandRequested.connect(self._on_edit_command)
         # Pista de BPM/compàs (editable)
         self.timeline.tempoEditRequested.connect(self._on_tempo_edit)
         self.timeline.tempoChangeMoved.connect(self._on_tempo_mogut)
@@ -539,6 +557,10 @@ class Visor(QMainWindow):
         item = pipeline.Clip(float(t), float(t), (nom, f"{float(t):.9f}"))
         nova = self._normalitza_acords(self.acords + [item])
         self.acords = nova
+        # Regla #4 per a TOT el carril: si el clip nou deixa un forat al
+        # davant o al darrere, s'hi posa la «N» canònica. Així l'alta deixa
+        # el model vàlid a l'instant (no només quan es desa).
+        self._normalitza_cobertura()
         if hasattr(self, "llista_ac"):
             self._omple_llista_ac()
         # ⚠️ TOTA mutació del model refresca la VISTA (regla «el visor reflectix
@@ -603,6 +625,80 @@ class Visor(QMainWindow):
         if kind == "tempo":
             return 0 <= idx < len(self.tempo_trams or [])
         return False
+
+    def clips_seleccionats(self):
+        """Conjunt `{(kind, idx)}` vàlid de la selecció del timeline (3 carrils)."""
+        if getattr(self, "timeline", None) is None:
+            return set()
+        keys = self.timeline.selected_keys()
+        return {(k, int(i)) for (k, i) in keys if self._index_valid(k, int(i))}
+
+    def seleccio_activa(self):
+        """`(kind, idx)` de l'element ACTIU, incloent-hi els trams de tempo.
+
+        És l'equivalent únic de l'antic `main._clip_seleccionat()` (que només
+        mirava acords i seccions). Si l'element actiu del timeline encara és
+        vàlid, mana eixe; si no, es tria el primer vàlid de la selecció.
+        """
+        if getattr(self, "timeline", None) is None:
+            return None, -1
+        keys = self.clips_seleccionats()
+        if not keys:
+            return None, -1
+        k, i = getattr(self.timeline, "_sel", ("", -1))
+        if (k, i) in keys:
+            return k, i
+        return next(iter(sorted(keys)))
+
+    def tempo_objectiu(self):
+        """Índex del tram de tempo objectiu.
+
+        Si hi ha un tram de tempo seleccionat, mana eixe (el clip actiu de la
+        selecció); si no, el **transport** (tram 0). Decisió 2026-10-19.
+        """
+        kind, idx = self.seleccio_activa()
+        if kind == "tempo" and self._index_valid("tempo", idx):
+            return int(idx)
+        return 0
+
+    def tempo_objectiu_vals(self):
+        """`(idx, bpm, num, den)` del tram objectiu (o del transport)."""
+        trams = list(self.tempo_trams or [])
+        idx = self.tempo_objectiu()
+        if not trams:
+            return (idx, float(self.bpm), int(self.bpb),
+                    int(getattr(self, "beat_type", 4) or 4))
+        idx = min(max(0, int(idx)), len(trams) - 1)
+        s = trams[idx]
+        return (idx, float(s[2]), int(s[3]), int(s[4]))
+
+    def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True):
+        """Aplica BPM/compàs a un tram de tempo (0 = transport).
+
+        Els segons dels clips no es mouen: només canvia la graella i les
+        posicions musicals derivades. Amb `desa=False` (tap en viu) el canvi
+        queda només en memòria; el desat es fa en tancar la sessió de taps.
+        """
+        trams = list(self.tempo_trams or [])
+        if not trams:
+            trams = [(0.0, self._durada_wav(), float(bpm), int(num), int(den))]
+            idx = 0
+        idx = min(max(0, int(idx)), len(trams) - 1)
+        bpm = float(bpm)
+        num, den = int(num), int(den)
+        if idx == 0:
+            self.bpm, self.bpb, self.beat_type = bpm, num, den
+            trams[0] = (float(trams[0][0]), float(trams[0][1]), bpm, num, den)
+        else:
+            s = trams[idx]
+            trams[idx] = (float(s[0]), float(s[1]), bpm, num, den)
+        if desa:
+            return bool(self.aplica_tempo_trams(trams))
+        # En memòria: el mapa es reconstrueix i la vista es refresca, però no
+        # s'escriu cap CSV ni s'emet `canvis` (ho farà el tancament de sessió).
+        self.tempo_trams = trams
+        self._actualitza_temps()
+        return True
 
     def _sincronitza_vista(self, preserva=False, difereix=False):
         """Punt ÚNIC de sincronització **MODEL → VISTA**.
@@ -709,19 +805,23 @@ class Visor(QMainWindow):
         self.bpb = int(nous[0][3])
         self.beat_type = int(nous[0][4])
         self.tempo_trams = nous
-        self._refresca_tempo_map()
-        if hasattr(self, "timeline"):
-            self.timeline.set_tempo_mode(
-                self.tempo_fix, self.bpm, self.bpb,
-                getattr(self, "offset", 0.0), mapa=self.tempo_map)
+        # Refresca mapa + timeline + LLISTES (les etiquetes de compàs depenen
+        # de l'offset i del BPM; `_actualitza_temps` és el punt únic).
+        self._actualitza_temps()
         try:
             pipeline.desa_tempo_map(self._carpeta_acords(), self.tempo_trams)
         except Exception as e:  # noqa: BLE001
             self.log(f"desa mapa tempo/compàs ERROR: {e}")
+        # Els compassos són una vista derivada del mapa: en canviar el tempo,
+        # les columnes `compas_ini`/`compas_fi` de l'ABC han de quadrar amb la
+        # graella nova. Els SEGONS no es mouen (model audio-first).
+        self._regenera_posicions_musicals("canvi de tempo/compàs")
         # Si el canvi ve de FORA d'una operacio (carrega, analisi, el dialeg
         # del mapa...), la base del desfer s'ha de quedar al dia; si ve de
         # dins d'una operacio oberta, no fa res.
         self._undo_touch_base()
+        self.canvis.emit()   # el mapa ha canviat → el projecte queda «brut»
+        self.tempoCanviat.emit()   # la barra ha de refrescar BPM/compàs
         self.log(f"mapa de tempo/compàs: {len(nous)} tros(s)")
         return True
 
@@ -748,7 +848,13 @@ class Visor(QMainWindow):
         self._undo_commit()
 
     def _on_tempo_mogut(self, idx, vora, t):
-        """Vora d'un bloc de BPM/compàs arrossegada → mou on canvia."""
+        """Vora d'un bloc de BPM/compàs arrossegada → mou on canvia.
+
+        El snap el fa el **gest** (`TempoLayer._snap_t`, la mateixa graella que
+        els clips). Ací no se'n fa cap altre: el nudge (←/→) ja hi envia un pas
+        de graella i tornar-lo a imantar amb el mapa variable el podia saltar a
+        la graella del tram del costat.
+        """
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)):
             return
@@ -1189,6 +1295,72 @@ class Visor(QMainWindow):
             self.log("Esc: selecció buidada")
             return
 
+    def _fixa_loop(self, a, b, activa=True, alinea=True):
+        """Fixa el loop A/B **sense** tocar l'undo (el caller el gestiona).
+
+        Pensat per al tap tempo automàtic i per a «Loop a la selecció»: el
+        canvi de loop forma part de la mateixa operació que l'edició. Si està
+        sonant i el cursor queda fora, l'alinea a l'inici (so i cursor quadren).
+        """
+        self.loop_a = None if a is None else float(a)
+        self.loop_b = None if b is None else float(b)
+        self.loop_on = bool(
+            activa and self.loop_a is not None and self.loop_b is not None
+            and self.loop_b > self.loop_a)
+        if hasattr(self, "b_loop"):
+            self.b_loop.setChecked(self.loop_on)
+        self.loopStateChanged.emit(self.loop_on)
+        self._pinta_loop()
+        if self.loop_on and alinea and getattr(self, "sona", False):
+            self._alinea_cursor_loop(self.pos)
+        self.log(f"loop {'ON' if self.loop_on else 'OFF'}"
+                 + (f" A={self.loop_a:.3f}s B={self.loop_b:.3f}s"
+                    if self.loop_on else ""))
+        return self.loop_on
+
+    def loop_a_la_seleccio(self, kind=None, idx=None):
+        """Posa el loop A/B a la **unió** de la selecció (3 carrils).
+
+        Un sol clip → les seues fronteres. Diversos (o selecció mixta) → del
+        mínim inici al màxim final. Sense selecció, si el menú contextual ha
+        apuntat un clip vàlid, s'usa eixe. És una sola operació d'undo i, si
+        està sonant, alinea el cursor a l'inici del loop.
+        """
+        keys = self.clips_seleccionats()
+        if not keys and kind in self._KINDS_EDICIO and idx is not None:
+            i = int(idx)
+            if self._index_valid(kind, i):
+                keys = {(kind, i)}
+        if not keys:
+            self.avis_editor(
+                "Loop a la selecció: no hi ha cap clip seleccionat.")
+            return False
+        inis, fis = [], []
+        for k, i in keys:
+            if k == "chord":
+                c = self.acords[i]
+                inis.append(float(c.ini))
+                fis.append(float(c.fi))
+            elif k == "section":
+                s = self.seccions[i]
+                inis.append(float(s[0]))
+                fis.append(float(s[1]))
+            elif k == "tempo":
+                tr = (self.tempo_trams or [])[i]
+                inis.append(float(tr[0]))
+                fis.append(float(tr[1]))
+        if not inis:
+            return False
+        a, b = min(inis), max(fis)
+        if b <= a:
+            return False
+        self._undo_marca()
+        self._fixa_loop(a, b, activa=True, alinea=True)
+        self._undo_commit()
+        self.avis_editor(f"Loop a la selecció: {a:.3f}–{b:.3f}s "
+                         f"({len(keys)} clip(s))")
+        return True
+
     def set_loop(self, on):
         """Fixa l'estat del loop A-B (les barres de fora NO toquen b_loop)."""
         self._undo_marca()          # A1: el loop també és desfer/fer
@@ -1378,6 +1550,19 @@ class Visor(QMainWindow):
         de dependre de senyals de canvi (que poden no arribar)."""
         self._undo_marca()
 
+    def _on_edit_command(self, operacio, kw):
+        """Ordre d'edició vinguda del teclat del timeline → despatx únic."""
+        return self.executa_edicio(operacio, **(kw or {}))
+
+    def _on_edit_cancelled(self):
+        """Fi d'un gest SENSE moviment (clic o micro-moviment).
+
+        `dragStarted` ja havia obert una marca d'undo; ací es tanca sense
+        apilar res (l'estat no ha canviat). Sense això la marca quedava penjada
+        i la propera operació arrossegava un estat «abans» vell.
+        """
+        self._undo_commit()
+
     def _on_edit_finished(self):
         """Fi d'un drag/resize → tanca l'operació i desa el CSV.
 
@@ -1393,8 +1578,9 @@ class Visor(QMainWindow):
         self._sync_timeline_seccions()
         self._undo_commit()
         try:
+            # `_desa_i_regenera` ja escriu els 4 CSV (acords, ABC i mapa de
+            # tempo): no cal tornar a regenerar l'ABC ací (eren dos desats).
             self._desa_i_regenera()
-            self._regenera_abc_des_de_totes_les_seccions("edició visual")
             self._sincronitza_vista(preserva=True, difereix=True)
         except Exception as e:  # noqa: BLE001
             self.log(f"desat ERROR: {e}")
@@ -1468,6 +1654,240 @@ class Visor(QMainWindow):
             return len(self.seccions)
         return len(self.tempo_trams or [])
 
+    # ── DESPATX ÚNIC D'EDICIÓ ────────────────────────────────────────────────
+    # Totes les superfícies (menú contextual, llistes, menú principal, teclat)
+    # envien ACÍ la seua intenció. Cap superfície decideix per si mateixa com
+    # s'edita un carril: així el carril ③ no pot quedar-se fora d'una operació
+    # (regla d'or #11) i no hi ha dos camins que divergisquen.
+    OPERACIONS_EDICIO = (
+        "afegeix", "parteix", "parteix_meitat", "fusiona", "elimina",
+        "reanomena", "duplica", "nudge", "copia", "retalla", "enganxa",
+        "selecciona", "loop_seleccio", "quantitza",
+    )
+    _KINDS_EDICIO = ("chord", "section", "tempo")
+
+    def _elimina_un(self, kind, idx):
+        """Elimina UN clip del carril indicat (nucli del despatx)."""
+        if not self._index_valid(kind, idx):
+            return False
+        if kind == "chord":
+            self._elimina_acord_index(idx)
+        elif kind == "section":
+            self._elimina_seccio_index(idx)
+        else:
+            return bool(self._elimina_tram(idx))
+        return True
+
+    def _hi_ha_lloc_duplicat(self, kind, keys):
+        """True si la còpia SENCERA del clip/bloc cap després (sense créixer).
+
+        Decisió 2026-10-19: si no cap, no es duplica res (abans el destí
+        s'acotava i la còpia podia caure damunt de l'original o del veí).
+        """
+        idxs = sorted({int(i) for (k, i) in (keys or ()) if k == kind})
+        idxs = [i for i in idxs if self._index_valid(kind, i)]
+        if not idxs:
+            return True
+        if kind == "chord":
+            a = float(self.acords[idxs[0]].ini)
+            b = float(self.acords[idxs[-1]].fi)
+        elif kind == "section":
+            a = float(self.seccions[idxs[0]][0])
+            b = float(self.seccions[idxs[-1]][1])
+        elif kind == "tempo":
+            tr = self.tempo_trams or []
+            a = float(tr[idxs[0]][0])
+            b = float(tr[idxs[-1]][1])
+        else:
+            return True
+        return b + (b - a) <= self._durada_wav() + 1e-9
+
+    def _avis_sense_lloc_duplicat(self):
+        self.avis_editor(
+            "Duplicar: no hi ha lloc després del clip o bloc seleccionat. "
+            "La cançó no pot créixer; mou-lo o escurça'l abans de duplicar.")
+
+    def _duplica_un(self, kind, idx):
+        """Duplica UN clip del carril indicat (nucli del despatx)."""
+        if not self._index_valid(kind, idx):
+            return False
+        if not self._hi_ha_lloc_duplicat(kind, [(kind, idx)]):
+            self._avis_sense_lloc_duplicat()
+            return False
+        if kind == "chord":
+            return bool(self._duplica_acord_index(idx))
+        if kind == "section":
+            return bool(self._duplica_seccio_index(idx))
+        self.timeline.select_clip("tempo", idx)
+        return bool(self._duplica_seleccio([("tempo", idx)]))
+
+    def executa_edicio(self, operacio, kind=None, idx=None, **kw):
+        """**Punt ÚNIC** de despatx de les edicions dels tres carrils.
+
+        `operacio`: una de `OPERACIONS_EDICIO`.
+        `kind`/`idx`: objectiu explícit (menú contextual); si no arriben, es
+        resol la selecció del timeline (`seleccio_activa`).
+        `kw`: paràmetres de l'operació (`t`, `amb`, `mode`, `direccio`…).
+
+        Les superfícies NO han de duplicar el despatx per carril: criden ací i
+        aquest mètode tria el nucli canònic (`_afegeix_a_la_posicio`,
+        `parteix_*`, `fusiona_*`, `_elimina_*`, `_duplica_*`, `renomena_*`).
+        """
+        op = str(operacio or "").strip().lower()
+        if op not in self.OPERACIONS_EDICIO:
+            self.log(f"despatx: operació desconeguda «{operacio}»")
+            return False
+
+        kind = None if kind in (None, "", "active") else str(kind)
+        if kind is not None and kind not in self._KINDS_EDICIO:
+            self.log(f"despatx: carril desconegut «{kind}»")
+            return False
+        idx = -1 if idx is None else int(idx)
+
+        # -- selecció (no necessita cap clip prèviament seleccionat) ----------
+        if op == "selecciona":
+            if kind is None or idx < 0:
+                return False
+            return bool(self.timeline.selecciona(
+                kind, idx, kw.get("mode", "set")))
+
+        if op == "loop_seleccio":
+            return self.loop_a_la_seleccio(kind, idx)
+
+        # -- nudge: la implementació viu al timeline (necessita el gest) ------
+        if op == "nudge":
+            if not hasattr(self, "timeline"):
+                return False
+            self.timeline.nudge(kw.get("direccio", 1),
+                                bool(kw.get("estira", False)),
+                                kw.get("pas"))
+            return True
+
+        # -- quantitza: abast + graelles (operació de model, no de clip) -----
+        if op == "quantitza":
+            return bool(self.quantitza(
+                kw.get("abast", "tot"),
+                kw.get("grid_acords", "compas1"),
+                kw.get("grid_estructura", "compas4")))
+
+        # -- porta-retalls: si l'objectiu explícit no és seleccionat, se
+        #    selecciona ABANS de copiar/retallar (una sola regla per als 3) --
+        if op in ("copia", "retalla"):
+            if kind is not None and idx >= 0:
+                if not self._index_valid(kind, idx):
+                    return False
+                if (kind, idx) not in self.timeline.selected_keys():
+                    self.timeline.select_clip(kind, idx)
+            if not self.timeline.selected_keys():
+                return False
+            if op == "copia":
+                self.timeline.copy_selection()
+            else:
+                self.timeline.cut_selection()
+            return True
+        if op == "enganxa":
+            if not self.timeline.has_clipboard():
+                return False
+            self.timeline.paste_at_cursor()
+            return True
+
+        # -- operacions amb objectiu explícit (menú contextual / menú) ------
+        if kind is not None and idx < 0 and op in (
+                "elimina", "duplica", "reanomena", "parteix_meitat", "fusiona"):
+            ak, ai = self.seleccio_activa()
+            if ak == kind:
+                idx = ai
+
+        if op == "afegeix":
+            if kind is None:
+                return False
+            t = float(kw.get("t", getattr(self, "pos", 0.0)))
+            if kind == "tempo":
+                # «Afegir» i «partir» a ③ són el mateix gest: tots dos amb snap.
+                t = self._snap_ui(t)
+            return bool(self._afegeix_a_la_posicio(kind, t))
+
+        if op == "parteix":
+            if kind is None:
+                return False
+            t = self._snap_ui(float(kw.get("t", getattr(self, "pos", 0.0))))
+            if kind == "tempo":
+                return bool(self._afegeix_tall(t))
+            if idx < 0:
+                i = self._idx_a_t(kind, t)
+                if i is None:
+                    return False
+                idx = i
+            if not self._index_valid(kind, idx):
+                return False
+            if kind == "chord":
+                return bool(self._parteix_acord_dialog(idx, t=t))
+            return bool(self._parteix_seccio_dialog(idx, t=t))
+
+        if op == "parteix_meitat":
+            if kind is None:
+                kind, idx = self.seleccio_activa()
+            if kind is None or idx < 0:
+                return False
+            return bool(self.parteix_per_la_meitat(kind, idx))
+
+        if op == "fusiona":
+            if kind is None:
+                kind, idx = self.seleccio_activa()
+            if kind is None or idx < 0:
+                return False
+            amb = str(kw.get("amb", "seguent"))
+            if kind == "tempo":
+                return bool(self._fusiona_tram(idx, amb))
+            if kind == "chord":
+                return bool(self.fusiona_acord(idx, amb))
+            return bool(self.fusiona_seccio(idx, amb))
+
+        if op == "elimina":
+            if kind is not None:
+                return self._elimina_un(kind, idx) if idx >= 0 else False
+            keys = self.clips_seleccionats()
+            if not keys:
+                return False
+            if len(keys) > 1:
+                self._elimina_seleccio(sorted(keys))
+                return True
+            k, i = next(iter(keys))
+            return self._elimina_un(k, i)
+
+        if op == "duplica":
+            if kind is not None:
+                return self._duplica_un(kind, idx) if idx >= 0 else False
+            keys = self.clips_seleccionats()
+            if not keys:
+                return False
+            if len(keys) > 1:
+                return bool(self._duplica_seleccio(sorted(keys)))
+            k, i = next(iter(keys))
+            return self._duplica_un(k, i)
+
+        if op == "reanomena":
+            if kind is None:
+                kind, idx = self.seleccio_activa()
+            if kind is None:
+                return False
+            # ③ no té renom en bloc: sempre s'edita el tram actiu (mai les
+            # seccions per error d'índex — bug reproduït el 19-10-2026).
+            if kind == "tempo":
+                if idx < 0:
+                    return False
+                return bool(self._on_tempo_edit(idx))
+            n_sel = len({i for (k, i) in self.clips_seleccionats()
+                         if k == kind})
+            if n_sel >= 2:
+                return bool(self.renomena_seleccio(kind=kind))
+            if idx < 0:
+                return False
+            self._focus_editor(kind, idx)
+            return True
+
+        return False
+
     def _menu_contextual(self, kind, idx, t):
         """Construeix el menú contextual d'un carril (definició ÚNICA)."""
         n = self._n_clips(kind)
@@ -1489,10 +1909,14 @@ class Visor(QMainWindow):
         menu.addSeparator()
         n_sel = len({i for (k, i) in self.timeline.selected_keys()
                      if k == kind})
+        # ③ no té renom en bloc (el contingut és numèric i s'edita amb el
+        # diàleg): amb diversos trams seleccionats, l'acció es desactiva en
+        # comptes d'acabar renombrant les seccions (bug 19-10-2026).
+        ren_bloc = (n_sel >= 2 and kind != "tempo")
         act("reanomena",
-            (f"Reanomena {n_sel} {self._PLURAL[kind]}…" if n_sel >= 2
+            (f"Reanomena {n_sel} {self._PLURAL[kind]}…" if ren_bloc
              else self._ETQ_REANOMENA[kind]),
-            te or n_sel >= 1)
+            te or (n_sel >= 1 and kind != "tempo"))
         menu.addSeparator()
         act("parteix", self._ETQ_PARTEIX[kind], te)
         act("meitat", "Partir per la meitat", te)
@@ -1505,77 +1929,54 @@ class Visor(QMainWindow):
         act("retalla", "Retalla", te)
         act("copia", "Copia", te)
         act("enganxa", "Enganxa", self.timeline.has_clipboard())
+        menu.addSeparator()
+        act("loop_seleccio", "Loop a la selecció",
+            bool(self.clips_seleccionats()) or te)
         return menu
 
     def _executa_contextual(self, kind, idx, t, clau, superficie="timeline"):
-        """Executa una acció del menú contextual (definició única)."""
+        """Executa una acció del menú contextual (definició única).
+
+        La superfície NO decideix res per carril: tradueix la clau del menú a
+        una operació del despatx únic i li passa l'objectiu. `superficie`
+        ("timeline" o "llista") es conserva per compatibilitat; el despatx ja
+        no necessita saber d'on ve l'ordre.
+        """
         if clau is None:
-            return
-        if clau == "afegeix":
-            self._afegeix_a_la_posicio(kind, float(t))
-        elif clau == "duplica":
-            if kind == "chord":
-                self._duplica_acord_index(idx)
-            elif kind == "section":
-                self._duplica_seccio_index(idx)
-            else:
-                self.timeline.select_clip("tempo", idx)
-                self._duplica_seleccio([("tempo", idx)])
-        elif clau == "elimina":
-            if kind == "chord":
-                self._elimina_acord_index(idx)
-            elif kind == "section":
-                self._elimina_seccio_index(idx)
-            else:
-                self._elimina_tram(idx)
-        elif clau == "reanomena":
-            n_sel = len({i for (k, i) in self.timeline.selected_keys()
-                         if k == kind})
-            if n_sel >= 2:
-                self.renomena_seleccio()
-            elif kind == "tempo":
-                self._on_tempo_edit(idx)
-            elif superficie == "llista":
-                self._focus_editor(kind, idx)
-            elif kind == "chord":
-                self.timeline.chordEditRequested.emit(idx)
-            else:
-                self.timeline.sectionEditRequested.emit(idx)
-        elif clau == "parteix":
-            if kind == "chord":
-                self._parteix_acord_dialog(idx)
-            elif kind == "section":
-                self._parteix_seccio_dialog(idx)
-            else:
-                self._afegeix_tall(float(t))
-        elif clau == "meitat":
-            self.parteix_per_la_meitat(kind, idx)
-        elif clau in ("fusiona_anterior", "fusiona_seguent"):
-            amb = "anterior" if clau == "fusiona_anterior" else "seguent"
-            if kind == "tempo":
-                self._fusiona_tram(idx, amb)
-            elif kind == "chord":
-                self.fusiona_acord(idx, amb)
-            else:
-                self.fusiona_seccio(idx, amb)
-        elif clau in ("retalla", "copia"):
-            if kind == "tempo" and \
-                    ("tempo", idx) not in self.timeline.selected_keys():
-                self.timeline.select_clip("tempo", idx)
-            if clau == "retalla":
-                self.timeline.cut_selection()
-            else:
-                self.timeline.copy_selection()
-        elif clau == "enganxa":
-            self.timeline.paste_at_cursor()
+            return False
+        mapa = {
+            "afegeix": ("afegeix", {"t": float(t)}),
+            "duplica": ("duplica", {}),
+            "elimina": ("elimina", {}),
+            "reanomena": ("reanomena", {}),
+            "parteix": ("parteix", {"t": float(t)}),
+            "meitat": ("parteix_meitat", {}),
+            "fusiona_anterior": ("fusiona", {"amb": "anterior"}),
+            "fusiona_seguent": ("fusiona", {"amb": "seguent"}),
+            "retalla": ("retalla", {}),
+            "copia": ("copia", {}),
+            "enganxa": ("enganxa", {}),
+            "loop_seleccio": ("loop_seleccio", {}),
+        }
+        desti = mapa.get(clau)
+        if desti is None:
+            self.log(f"menú contextual: acció desconeguda «{clau}»")
+            return False
+        operacio, kw = desti
+        return self.executa_edicio(operacio, kind, idx, **kw)
 
     def _afegeix_tall(self, t):
-        """Obre una frontera nova al mapa de tempo (l'«afegeix» de ③)."""
+        """Obre una frontera nova al mapa de tempo (l'«afegeix» de ③).
+
+        Retorna `True` NOMÉS si el mapa ha guanyat un tram (si `t` ja era una
+        frontera, la normalització el deduplica i no canvia res).
+        """
+        abans = len(self.tempo_trams or [])
         self._undo_marca()
         self.aplica_tempo_trams(
             tempo_map.afegeix_tall(list(self.tempo_trams or []), float(t)))
         self._undo_commit()
-        return True
+        return len(self.tempo_trams or []) > abans
 
     def _elimina_tram(self, idx):
         """Elimina un tram del mapa (els veïns n'ocupen l'espai)."""
@@ -1652,18 +2053,22 @@ class Visor(QMainWindow):
             if not ok:
                 return False
             self._undo_marca()
+            fet = False
             try:
                 # (`_afegeix_acord` ja refresca la vista: la sincronització viu
                 # a la primitiva perquè cap camí se n'oblide.)
-                self._afegeix_acord(t, nou)
-                self._desa_i_regenera()
-                self.log(f"afegit acord a {t:.3f}s: {nou}")
+                fet = bool(self._afegeix_acord(t, nou))
+                if fet:
+                    self._desa_i_regenera()
+                    self.log(f"afegit acord a {t:.3f}s: {nou}")
+                else:
+                    self.log(f"afegir acord a {t:.3f}s: nom no vàlid")
             except Exception as e:  # noqa: BLE001
                 self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
                                     f"No s'ha pogut afegir l'acord:\n{e}")
             self._undo_commit()
-            return True
+            return fet
         lletra, ok1 = QInputDialog.getText(
             self, "Afegeix secció", "Etiqueta de la secció", text="A")
         if not ok1:
@@ -1673,7 +2078,25 @@ class Visor(QMainWindow):
         if not ok2:
             return False
         idx = self._seccio_a_t(t)
-        if idx < 0 or not self.parteix_seccio(idx, t, lletra, fam):
+        if idx < 0:
+            # Model NO saturat (p. ex. estructura buida): no hi ha cap secció
+            # per partir. Es crea un tros de 2 s, com feia el menú principal.
+            # (El despatx únic ha d'unificar els DOS camins, no triar-ne un.)
+            self._undo_marca()
+            try:
+                self._afegeix_seccio(t, t + 2.0, lletra, fam)
+                self._regenera_abc_des_de_totes_les_seccions(
+                    f"secció nova a {t:.3f}s")
+                self.log(f"afegida secció a {t:.3f}s")
+                return True
+            except Exception as e:  # noqa: BLE001
+                self.log(f"afegir secció a {t:.3f}s: {e}")
+                QMessageBox.warning(
+                    self, "Visor", f"No s'ha pogut afegir la secció:\n{e}")
+                return False
+            finally:
+                self._undo_commit()
+        if not self.parteix_seccio(idx, t, lletra, fam):
             self.log(f"afegir secció a {t:.3f}s: punt no vàlid "
                      f"(fora de cap secció o massa a prop d'una vora)")
             QMessageBox.warning(
@@ -1684,6 +2107,74 @@ class Visor(QMainWindow):
         self._regenera_abc_des_de_totes_les_seccions(
             f"secció afegida a {t:.3f}s")
         return True
+
+    def _idx_a_t(self, kind, t):
+        """Índex del clip de `kind` que conté (o arrenca abans de) `t`.
+
+        Punt únic per als tres carrils; el fan servir el despatx i els menús
+        (abans `main.py` tenia tres còpies amb criteris lleugerament distints).
+        Retorna `None` si no n'hi ha cap.
+        """
+        t = float(t)
+        if kind == "chord":
+            idx = -1
+            for i, a in enumerate(self.acords):
+                if float(a[0]) <= t:
+                    idx = i
+                else:
+                    break
+            return idx if idx >= 0 else None
+        if kind == "section":
+            for i, s in enumerate(self.seccions):
+                if float(s[0]) - 1e-9 <= t < float(s[1]) - 1e-9:
+                    return i
+            return None
+        if kind == "tempo":
+            idx = -1
+            for i, tr in enumerate(self.tempo_trams or []):
+                if float(tr[0]) <= t:
+                    idx = i
+                else:
+                    break
+            return idx if idx >= 0 else None
+        return None
+
+    def _snap_ui(self, t):
+        """Aplica el snap vigent a un temps que ve d'un clic o del cursor.
+
+        Si el snap està apagat, `TimelineView._snap()` retorna el mateix temps.
+        És el punt únic perquè els talls i els canvis de tempo des de la GUI
+        respecten la graella sense duplicar la lògica.
+        """
+        if hasattr(self, "timeline") and hasattr(self.timeline, "_snap"):
+            return float(self.timeline._snap(float(t)))
+        return float(t)
+
+    def _punt_de_tall(self, t, ini, fi, minim, nom):
+        """Tria on tallar: primer `t` (clic), després el cursor; tots amb snap.
+
+        Retorna el punt vàlid o `None`. Un punt és vàlid si deixa marge a les
+        dues vores (les dues meitats han de tindre sentit).
+        """
+        def _valid(x):
+            return ini + minim <= x <= fi - minim
+
+        candidats = []
+        if t is not None:
+            candidats.append(float(t))
+        candidats.append(float(getattr(self, "pos", 0.0)))
+        vist = set()
+        for c in candidats:
+            cs = self._snap_ui(c)
+            clau = round(cs, 9)
+            if clau in vist:
+                continue
+            vist.add(clau)
+            if _valid(cs):
+                return cs
+        self.log(f"partir: ni el clic ni el cursor no cauen dins «{nom}» "
+                 f"({ini:.3f}s–{fi:.3f}s) amb marge suficient")
+        return None
 
     def _seccio_a_t(self, t):
         """Índex de la secció que conté l'instant `t` (-1 si no n'hi ha cap)."""
@@ -1732,15 +2223,12 @@ class Visor(QMainWindow):
         if accio in (a_cop, a_ret):
             if not self.selecciona_bloc_del_loop():
                 return
-            if accio == a_cop:
-                self.timeline.copy_selection()
-            else:
-                self.timeline.cut_selection()
+            self.executa_edicio("copia" if accio == a_cop else "retalla")
             # copy/cut mouen el cursor al final del BLOC; el volem al final del
             # LOOP, perquè «Enganxa» hi caigui just després.
             self.ves_a(float(self.loop_b))
         elif accio == a_eng:
-            self.timeline.paste_at_cursor()
+            self.executa_edicio("enganxa")
 
     # --- nucli comú dels canvis d'un CARRIL (acords / estructura) -----------
     def _aplica_carril(self, kind, mut, missatge="", avisa=None):
@@ -1791,38 +2279,47 @@ class Visor(QMainWindow):
         return True
 
     def _duplica_acord_index(self, idx):
-        """Duplica l'acord idx: es parteix pel mig (nucli únic `duplica_acord`).
+        """Duplica l'acord `idx` DESPRÉS d'ell, conservant-ne la durada.
 
-        El duplicat va JUST DESPRÉS i comparteix la durada de l'original (la
-        meitat per a cadascun), així no cal desplaçar res i es mantenen els
-        invariants. Regla d'or #11: mateix nucli que les seccions."""
+        La còpia **sobreescriu** el tram que ocupa (§6.3/#11). Si no hi ha lloc
+        per a la còpia sencera després del clip, no es fa res i s'avisa (la
+        cançó no pot créixer).
+        """
         if idx < 0 or idx >= len(self.acords):
-            return
+            return False
+        if not self._hi_ha_lloc_duplicat("chord", [("chord", idx)]):
+            self._avis_sense_lloc_duplicat()
+            return False
         cand = pipeline.duplica_bloc_clips(
             self.acords, idx, idx, float(self.acords[idx].fi),
             self._durada_wav(), pipeline.FORAT_ACORD)
         if cand == list(self.acords):
             self.log(f"no es pot duplicar l'acord {idx}: no hi ha lloc")
-            return
-        self._aplica_carril("chord", lambda _L: cand,
-                            f"duplicat acord {idx} (després, sobreescrivint)")
+            return False
+        return bool(self._aplica_carril(
+            "chord", lambda _L: cand,
+            f"duplicat acord {idx} (després, sobreescrivint)"))
 
     def _duplica_seccio_index(self, idx):
-        """Duplica la secció idx: es parteix en dues (nucli únic `duplica_seccio`).
+        """Duplica la secció `idx` DESPRÉS d'ella, conservant-ne la durada.
 
-        El duplicat va JUST DESPRÉS i comparteix la durada de l'original (la
-        meitat per a cadascun), sense desplaçar els següents (manté els
-        invariants). Regla d'or #11: mateix nucli que els acords."""
+        Mateixa regla que els acords (#11): si no cap sencera després, no es fa
+        res i s'avisa.
+        """
         if idx < 0 or idx >= len(self.seccions):
-            return
+            return False
+        if not self._hi_ha_lloc_duplicat("section", [("section", idx)]):
+            self._avis_sense_lloc_duplicat()
+            return False
         cand = pipeline.duplica_bloc_seccions(
             self.seccions, idx, idx, float(self.seccions[idx][1]),
             self._durada_wav())
         if cand == list(self.seccions):
             self.log(f"no es pot duplicar la secció {idx}: no hi ha lloc")
-            return
-        self._aplica_carril("section", lambda _L: cand,
-                            f"secció {idx} duplicada (després, sobreescrivint)")
+            return False
+        return bool(self._aplica_carril(
+            "section", lambda _L: cand,
+            f"secció {idx} duplicada (després, sobreescrivint)"))
 
     def _duplica_seleccio(self, keys):
         """Duplica tots els clips de la multi-selecció en una sola operació.
@@ -1839,7 +2336,13 @@ class Visor(QMainWindow):
         idx_sec = [i for i in idx_sec if 0 <= i < len(self.seccions)]
         idx_tp = [i for i in idx_tp if 0 <= i < len(tr_tot)]
         if not idx_ac and not idx_sec and not idx_tp:
-            return
+            return False
+        # Decisió 2026-10-19: la còpia sencera ha de cabre DESPRÉS del bloc.
+        # Si un dels carrils no hi cap, no es duplica res (una sola operació).
+        for kind in ("chord", "section", "tempo"):
+            if not self._hi_ha_lloc_duplicat(kind, keys):
+                self._avis_sense_lloc_duplicat()
+                return False
         durada = self._durada_wav()
         cand_ac = list(self.acords)
         if idx_ac:
@@ -1867,7 +2370,7 @@ class Visor(QMainWindow):
                 cand_sec = self._valida_canvis_seccions(cand_sec)
         except ValueError as e:
             self.log(f"duplica selecció: canvi invalid, no s'ha fet res ({e})")
-            return
+            return False
         self._undo_marca()
         self.acords = cand_ac
         if idx_sec:
@@ -1887,6 +2390,8 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut duplicar:\n{e}")
+            return False
+        return True
 
     def _elimina_acord_index(self, idx):
         if idx < 0 or idx >= len(self.acords):
@@ -2050,7 +2555,8 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut enganxar:\n{e}")
-        self._selecciona_bloc_enganxat(T, chords, sections, tol=pipeline.MIN_GAP_TEMPS)
+        self._selecciona_bloc_enganxat(T, chords, sections, trams=trams_buf,
+                                       tol=pipeline.MIN_GAP_TEMPS)
         self.log(f"enganxat a {T:.3f}s (sobreescrivint): {len(chords)} "
                  f"acord(s), {len(sections)} secció(ns), "
                  f"{len(trams_buf)} tram(s) de tempo/compàs")
@@ -2067,8 +2573,9 @@ class Visor(QMainWindow):
         """Delega la sobreescriptura del bloc de seccions a `pipeline`."""
         return pipeline.bloc_sobre_seccions(seccions, bloc, llargada, T, durada, rel)
 
-    def _selecciona_bloc_enganxat(self, T, chords, sections, tol=pipeline.MIN_GAP_TEMPS):
-        """Deixa seleccionat el bloc acabat d'enganxar (acords i/o seccions)."""
+    def _selecciona_bloc_enganxat(self, T, chords, sections, trams=None,
+                                  tol=pipeline.MIN_GAP_TEMPS):
+        """Deixa seleccionat el bloc acabat d'enganxar (acords, seccions i trams)."""
         keys = set()
         for (r, _n) in chords:
             t = T + float(r)
@@ -2082,18 +2589,22 @@ class Visor(QMainWindow):
                 if abs(float(s[0]) - ini) <= tol:
                     keys.add(("section", i))
                     break
+        for (r, _rfi, _b, _n, _d) in (trams or []):
+            t = T + float(r)
+            for i, tr in enumerate(self.tempo_trams or []):
+                if abs(float(tr[0]) - t) <= tol:
+                    keys.add(("tempo", i))
+                    break
         if keys and hasattr(self, "timeline"):
             self.timeline.select_multi(keys)
 
     def _on_section_moved(self, idx, ini, fi):
+        # Només sincronitzem el model/llista; el desat va al release
+        # (`_on_edit_finished`), igual que als acords. Abans es reescrivia
+        # l'ABC a cada `mouseMove` (disc i log per píxel).
         self._undo_marca()
         self._sync_timeline_seccions()
-        try:
-            self._regenera_abc_des_de_totes_les_seccions(
-                f"secció {idx} moguda ({ini:.2f}-{fi:.2f})")
-        except Exception as e:  # noqa: BLE001
-            self.log(f"ERROR: {e}")
-            QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
+        self.log(f"secció {idx} moguda ({ini:.3f}-{fi:.3f})")
 
     def _on_section_renamed(self, idx, lletra, familia):
         self._undo_marca()
@@ -2107,35 +2618,41 @@ class Visor(QMainWindow):
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
         self._refresca_post_edicio("section", idx)
 
-    def _clips_per_renombrar(self):
-        """(kind, índexs) del TIPUS ACTIU dins la selecció; `(None, [])` si no.
+    def _clips_per_renombrar(self, kind=None):
+        """(kind, índexs) del TIPUS indicat (o ACTIU) dins la selecció.
 
         Amb selecció **mixta** (acords + seccions) es renombren NOMÉS els del
-        tipus del clip actiu (opció acordada): dins un full de càlcul tampoc no
+        tipus indicat/actiu (opció acordada): dins un full de càlcul tampoc no
         es barreja en una sola acció el contingut de files de tipus diferent.
-        El clip «actiu» és el darrer seleccionat (`timeline._sel`).
+        Els **trams de BPM/compàs** no tenen renom en bloc (el contingut és
+        numèric): es retorna `(None, [])` i el despatx obre el diàleg del tram.
         """
         keys = self.timeline.selected_keys()
         if not keys:
             return None, []
-        akind, _aidx = getattr(self.timeline, "_sel", ("", -1))
+        akind = kind or getattr(self.timeline, "_sel", ("", -1))[0]
+        if akind not in ("chord", "section"):
+            return None, []
         kinds = {k for (k, _i) in keys}
         if akind not in kinds:
             if len(kinds) != 1:
                 return None, []
             akind = next(iter(kinds))
-        idxs = sorted({i for (k, i) in keys
-                       if k == akind and 0 <= i < len(
-                           self.acords if akind == "chord" else self.seccions)})
+            if akind not in ("chord", "section"):
+                return None, []
+        n = len(self.acords if akind == "chord" else self.seccions)
+        idxs = sorted({i for (k, i) in keys if k == akind and 0 <= i < n})
         return akind, idxs
 
-    def renomena_seleccio(self):
+    def renomena_seleccio(self, kind=None):
         """Reanomena EN BLOC la selecció del **tipus actiu** (acords O seccions).
 
         Amb selecció mixta es renombren només els del tipus actiu (opció A).
         Tot en una sola operació de desfer; al final queda seleccionat el bloc.
+        `kind` permet al despatx únic forçar el carril (i impedeix que un índex
+        de tempo acabe renombrant seccions).
         """
-        kind, idxs = self._clips_per_renombrar()
+        kind, idxs = self._clips_per_renombrar(kind)
         if not idxs:
             self.log("reanomena en bloc: no hi ha res seleccionat")
             return False
@@ -2385,7 +2902,12 @@ class Visor(QMainWindow):
         elif kind == "section" and 0 <= index < self.llista_ab.count():
             self.llista_ab.setCurrentRow(index)
         elif kind == "tempo":
-            return                          # la pista de BPM/compàs no té editor
+            # La pista de BPM/compàs no té editor integrat: buidem la franja
+            # perquè no quede un acord/secció antic actiu i un «Aplica» puga
+            # editar-lo sense que l'usuari ho veja.
+            self._ed_kind, self._ed_idx = None, -1
+            self._actualitza_editor()
+            return
         self._ed_kind, self._ed_idx = kind, index
         self._actualitza_editor()
 
@@ -2687,6 +3209,10 @@ class Visor(QMainWindow):
             lletra = fam
         item = (ini, fi, str(lletra).strip() or "A", str(fam).strip() or "A")
         self.seccions = self._normalitza_seccions(self.seccions + [item])
+        # Regla #4: la secció nova no pot deixar la resta de la cançó sense
+        # etiqueta. Els forats es tapen amb «-» (el forat explícit), també si
+        # el carril venia buit (llavors queden «-» | secció | «-»).
+        self._normalitza_cobertura()
         if hasattr(self, "llista_ab"):
             self._actualitza_llista_abc()
         # Paritat #11 amb `_afegeix_acord`: la primitiva també refresca la vista.
@@ -2794,28 +3320,33 @@ class Visor(QMainWindow):
         self.log(f"partit per la meitat el tram de BPM/compàs {idx} a {t:.3f}s")
         return idx + 1
 
-    def _parteix_acord_dialog(self, idx):
-        """Parteix l'acord `idx` pel CURSOR, preguntant el nom nou (regla #11)."""
+    def _parteix_acord_dialog(self, idx, t=None):
+        """Parteix l'acord `idx` pel punt del clic (o el cursor), preguntant el nom.
+
+        Decisió 2026-10-19: des del menú contextual mana el **punt del clic**
+        (amb snap si està actiu); si no és vàlid, es fa servir el cursor. El
+        menú principal hi passa el cursor. Regla #11: mateix criteri que les
+        seccions i el tempo.
+        """
         if not (0 <= idx < len(self.acords)):
             return False
         t0 = float(self.acords[idx][0])
         nom = nom_acord(self.acords[idx])
         fi = float(self.acords[idx].fi)
-        if not (t0 + self.MIN_ACORD_S <= self.pos <= fi - self.MIN_ACORD_S):
-            self.log(f"partir: el cursor ({self.pos:.3f}s) no cau dins l'acord "
-                     f"{nom} ({t0:.3f}s–{fi:.3f}s)")
+        tall = self._punt_de_tall(t, t0, fi, self.MIN_ACORD_S, nom)
+        if tall is None:
             QMessageBox.information(
                 self, "Parteix l'acord",
-                f"Posa el cursor DINS l'acord «{nom}» ({t0:.3f}–{fi:.3f} s) "
-                "al punt on vols el tall.")
+                f"Cal un punt DINS l'acord «{nom}» ({t0:.3f}–{fi:.3f} s), "
+                "amb marge a les vores. Amb el snap actiu, pot caure a la vora.")
             return False
         nou, ok = QInputDialog.getText(
             self, "Parteix l'acord",
-            f"Parteix «{nom}» a {self.pos:.3f} s.\nNom de la part nova:",
+            f"Parteix «{nom}» a {tall:.3f} s.\nNom de la part nova:",
             text=nom)
         if not ok:
             return False
-        if not self.parteix_acord(idx, self.pos, nou):
+        if not self.parteix_acord(idx, tall, nou):
             return False
         try:
             self._desa_i_regenera()
@@ -2864,31 +3395,34 @@ class Visor(QMainWindow):
             self._actualitza_llista_abc()
         return idx + 1
 
-    def _parteix_seccio_dialog(self, idx):
-        """Parteix la secció `idx` pel CURSOR, preguntant la lletra nova (A2)."""
+    def _parteix_seccio_dialog(self, idx, t=None):
+        """Parteix la secció `idx` pel punt del clic (o el cursor), amb snap.
+
+        Mateix criteri que els acords (#11 i decisió 2026-10-19): mana el punt
+        del clic; si no és vàlid, el cursor.
+        """
         if not (0 <= idx < len(self.seccions)):
             return False
         ini, fi, L, _F = self.seccions[idx]
         ini, fi = float(ini), float(fi)
-        if not (ini + self.MIN_SECCIO_S <= self.pos <= fi - self.MIN_SECCIO_S):
-            self.log(f"partir: el cursor ({self.pos:.3f}s) no cau dins la "
-                     f"secció {L} ({ini:.3f}s–{fi:.3f}s)")
+        tall = self._punt_de_tall(t, ini, fi, self.MIN_SECCIO_S, L)
+        if tall is None:
             QMessageBox.information(
                 self, "Parteix la secció",
-                f"Posa el cursor DINS la secció «{L}» ({ini:.3f}–{fi:.3f} s) "
-                "al punt on vols el tall.")
+                f"Cal un punt DINS la secció «{L}» ({ini:.3f}–{fi:.3f} s), "
+                "amb marge a les vores. Amb el snap actiu, pot caure a la vora.")
             return False
         nova, ok = QInputDialog.getText(
             self, "Parteix la secció",
-            f"Parteix «{L}» a {self.pos:.3f} s.\nLletra de la part nova:",
+            f"Parteix «{L}» a {tall:.3f} s.\nLletra de la part nova:",
             text=L)
         if not ok:
             return False
-        if not self.parteix_seccio(idx, self.pos, nova):
+        if not self.parteix_seccio(idx, tall, nova):
             return False
         try:
             self._regenera_abc_des_de_totes_les_seccions(
-                f"secció {L} partida a {self.pos:.3f}s")
+                f"secció {L} partida a {tall:.3f}s")
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
@@ -2967,6 +3501,23 @@ class Visor(QMainWindow):
     def _menu_seccio(self, pos):
         """Botó dret a la LLISTA d'estructura (mateixa definició que el timeline)."""
         self._menu_de_llista("section", getattr(self, "llista_ab", None), pos)
+
+    def _regenera_posicions_musicals(self, msg):
+        """Reescriu les **posicions musicals** derivades (compàs) de l'ABC.
+
+        Decisió 2026-10-19: els segons són la font de veritat; canviar el BPM
+        no mou cap acord ni secció. Però les columnes `compas_ini`/`compas_fi`
+        de `estructura_ABC.csv` (i les etiquetes de la UI) sí que depenen del
+        mapa de tempo i s'han de recalcular.
+        """
+        if not self.seccions:
+            return False
+        try:
+            self._regenera_abc_des_de_totes_les_seccions(msg)
+            return True
+        except Exception as e:  # noqa: BLE001
+            self.log(f"posicions musicals: ERROR ({e})")
+            return False
 
     def _regenera_abc_des_de_totes_les_seccions(self, msg):
         sortida = self._carpeta_acords()
@@ -3282,6 +3833,7 @@ class Visor(QMainWindow):
                 ("playRequested", self.play_stop),
                 ("editStarted", self._on_edit_started),
                 ("editFinished", self._on_edit_finished),
+                ("editCancelled", self._on_edit_cancelled),
                 ("loopChanged", self._on_loop_changed),
                 ("chordTimeMoved", self._on_chord_time_moved),
                 ("chordEndMoved", self._on_chord_end_moved),
@@ -3292,6 +3844,7 @@ class Visor(QMainWindow):
                 ("sectionRenamed", self._on_section_renamed),
                 ("sectionDeleteRequested", self._elimina_seccio_index),
                 ("sectionEditRequested", self._on_section_edit_requested),
+                ("editCommandRequested", self._on_edit_command),
             ]:
                 try:
                     getattr(self.timeline, sig).disconnect(slot)

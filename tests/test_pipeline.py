@@ -2619,6 +2619,13 @@ class ExportPipelineTests(unittest.TestCase):
         v.audio = {"durada": 4.0}
         v.log = lambda msg: None
 
+        # La regla #4 no permet forats: afegim la secció al tros lliure 3–4
+        # ABANS de l'alta d'acord (que normalitza la cobertura de tots dos
+        # carrils i taparia eixe forat amb «-»).
+        v._afegeix_seccio(3.0, 4.0, "C", "C")
+        self.assertEqual(len(v.seccions), 3)
+        self.assertEqual(v.seccions[2][2], "C")
+
         v._afegeix_acord(1.0, "G")
         self.assertEqual(len(v.acords), 3)
         self.assertEqual(v.acords[1][2][0], "G")
@@ -2626,10 +2633,6 @@ class ExportPipelineTests(unittest.TestCase):
         v._elimina_acord(1)
         self.assertEqual(len(v.acords), 2)
         self.assertEqual(v.acords[1][2][0], "Am")
-
-        v._afegeix_seccio(3.0, 4.0, "C", "C")
-        self.assertEqual(len(v.seccions), 3)
-        self.assertEqual(v.seccions[2][2], "C")
 
         v._elimina_seccio(2)
         self.assertEqual(len(v.seccions), 2)
@@ -4712,7 +4715,7 @@ class TapTempoTests(unittest.TestCase):
         from unittest.mock import patch
         t = inici
         with patch("app.main.time.monotonic", side_effect=[t + i * interval
-                                                           for i in range(n)]):
+                                                           for i in range(n * 4)]):
             w._taps = []
             for _ in range(n):
                 w._tap_tempo()
@@ -4754,6 +4757,100 @@ class TapTempoTests(unittest.TestCase):
             w._tap_tempo()
         # els intervals valids son 0.5 i 0.49 -> BPM ~120, no ~2000
         self.assertLess(w._bpm_val(), 130)
+        w.close()
+
+    def _mapa_dos_trams(self, w):
+        v = w.visor_ref
+        v.aplica_tempo_trams([(0.0, 4.0, 90.0, 4, 4),
+                              (4.0, 10.0, 120.0, 3, 4)])
+        return v
+
+    def test_camps_segueixen_el_tram_de_tempo_seleccionat(self):
+        w = self._finestra()
+        v = self._mapa_dos_trams(w)
+        v.timeline.select_clip("tempo", 1)
+        self.assertAlmostEqual(float(w.bpm.text()), 120.0, places=3)
+        self.assertEqual(w.bpb.text(), "3")
+        v.timeline.select_clip("chord", 0)
+        self.assertAlmostEqual(float(w.bpm.text()), 90.0, places=3)
+        self.assertEqual(w.bpb.text(), "4")
+        w.close()
+
+    def test_edicio_manual_va_al_tram_seleccionat(self):
+        w = self._finestra()
+        v = self._mapa_dos_trams(w)
+        v.timeline.select_clip("tempo", 1)
+        w.bpm.setText("100")
+        w._aplica_parametres_temps()
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=6)
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 90.0, places=6)
+        v.timeline.clear_selection()
+        w.bpm.setText("110")
+        w._aplica_parametres_temps()
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 110.0, places=6)
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=6)
+        w.close()
+
+    def test_tap_va_al_tram_seleccionat_i_undo_per_sessio(self):
+        w = self._finestra()
+        v = self._mapa_dos_trams(w)
+        v.timeline.select_clip("tempo", 1)
+        n0 = len(v._undo_stack)
+        self._taps_en(w, 0.6)
+        w._tanca_sessio_tap()
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, delta=3.0)
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 90.0, places=6)
+        self.assertEqual(len(v._undo_stack), n0 + 1,
+                         "la sessió de taps ha de ser UNA operació d'undo")
+        v.undo()
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=3)
+        w.close()
+
+    def test_el_projecte_desa_el_transport_no_el_tram_seleccionat(self):
+        w = self._finestra()
+        v = self._mapa_dos_trams(w)
+        v.timeline.select_clip("tempo", 1)
+        d = w._dades_projecte()
+        self.assertAlmostEqual(float(d["tempo"]["bpm"]), 90.0, places=6)
+        self.assertEqual(d["tempo"]["compas"], "4/4")
+        w.close()
+
+    def test_tap_sonant_fa_loop_al_tram_seleccionat(self):
+        w = self._finestra()
+        v = self._mapa_dos_trams(w)
+        v.timeline.select_clip("tempo", 1)
+        v.sona = True
+        v.pos = 0.0
+        self._taps_en(w, 0.6)
+        self.assertTrue(v.loop_on)
+        self.assertAlmostEqual(float(v.loop_a), 4.0, places=6)
+        self.assertAlmostEqual(float(v.loop_b), 10.0, places=6)
+        self.assertAlmostEqual(float(v.pos), 4.0, places=6)
+        w._tanca_sessio_tap()
+        v.sona = False
+        self.assertTrue(v.loop_on, "el loop es manté en aturar")
+        w.close()
+
+    def test_tap_sonant_sense_seleccio_fa_loop_al_primer(self):
+        w = self._finestra()
+        v = self._mapa_dos_trams(w)
+        v.timeline.clear_selection()
+        v.sona = True
+        v.pos = 8.0
+        self._taps_en(w, 0.6)
+        self.assertTrue(v.loop_on)
+        self.assertAlmostEqual(float(v.loop_a), 0.0, places=6)
+        self.assertAlmostEqual(float(v.loop_b), 4.0, places=6)
+        w.close()
+
+    def test_tap_aturat_no_toca_el_loop(self):
+        w = self._finestra()
+        v = self._mapa_dos_trams(w)
+        v.timeline.select_clip("tempo", 1)
+        self.assertFalse(v.loop_on)
+        self._taps_en(w, 0.6)
+        self.assertFalse(v.loop_on)
+        self.assertIsNone(v.loop_a)
         w.close()
 
 
@@ -4915,12 +5012,16 @@ class MenuEdicioTests(unittest.TestCase):
             v.ves_a(21.0); n = len(v.seccions)
             w._afegeix_seccio_ui()
             self.assertEqual(len(v.seccions), n)
-            # Amb espai lliure (cap secció), l'add sí que funciona.
+            # Amb espai lliure (cap secció), l'add sí que funciona i deixa el
+            # carril COMPLET: «-» al davant i la secció nova fins al final.
             v.seccions = []
             v.ves_a(6.0)
             w._afegeix_seccio_ui()
-            self.assertEqual(len(v.seccions), 1)
-            self.assertAlmostEqual(float(v.seccions[0][0]), 6.0, places=2)
+            self.assertEqual(len(v.seccions), 2)
+            self.assertAlmostEqual(float(v.seccions[0][0]), 0.0, places=2)
+            self.assertEqual(v.seccions[0][2], "-")
+            self.assertAlmostEqual(float(v.seccions[1][0]), 6.0, places=2)
+            self.assertAlmostEqual(float(v.seccions[1][1]), 20.0, places=2)
         w.close()
 
     def test_neteja_loop(self):
@@ -5123,7 +5224,8 @@ class ContextMenuTests(unittest.TestCase):
 
         Des del 19-10-2026 és la **definició única** del menú contextual
         (`visor._menu_contextual`), compartida pel timeline i les llistes i per
-        les tres pistes: 11 accions, amb «Fusionar…» inclòs.
+        les tres pistes: 12 accions, amb «Fusionar…» i «Loop a la selecció»
+        inclosos.
 
         ⚠️ Este test demanava el menú amb `idx=1` quan el model només té **UN**
         acord (WAV de 2 s; el segon cau fora) i n'esperava accions ACTIVes: el
@@ -5139,19 +5241,14 @@ class ContextMenuTests(unittest.TestCase):
                           "Duplica", "Elimina", "Reanomena acord…",
                           "Parteix l'acord…", "Partir per la meitat",
                           "Fusionar amb anterior", "Fusionar amb següent",
-                          "Retalla", "Copia", "Enganxa"])
+                          "Retalla", "Copia", "Enganxa",
+                          "Loop a la selecció"])
         self.assertTrue(accions[4][1], "sobre un acord ha d'estar activa")
         self.assertTrue(accions[5][1], "«Partir per la meitat» també")
-        # ⚠️ El fixture NO té estructura (`abc=None` → 0 seccions) i el test vell
-        # n'esperava accions ACTIVes: mateix bug congelat que el de dalt. Amb 0
-        # seccions no hi ha res a editar → tot desactivat llevat de l'afegeix.
-        self.assertEqual(v.seccions, [])
-        sec_buida = self._captura(v, "section", 0)
-        self.assertEqual(sec_buida[0][0], "Afegeix secció aquí")
-        self.assertTrue(all(not e for _t, e in sec_buida[1:]),
-                        f"sense cap seccio no hi ha accions: {sec_buida}")
-        # Amb una secció de debò, el cas «actiu»:
-        v._afegeix_seccio(0.0, 2.0, "A", "A")
+        # El fixture ve amb acords però SENSE estructura: el visor la completa
+        # amb un tram «-» que cobreix tota la WAV (regla #4). Per tant, la
+        # secció existeix i el menú ha d'oferir les accions d'edició.
+        self.assertEqual([s[2] for s in v.seccions], ["-"])
         accions_sec = self._captura(v, "section", 0)
         self.assertEqual(accions_sec[0][0], "Afegeix secció aquí")
         self.assertEqual(accions_sec[3][0], "Reanomena secció…")

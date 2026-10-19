@@ -427,6 +427,7 @@ class TempoLayer(QGraphicsObject):
         self._press = None
         self._t_guia = None
         self._sel = -1          # bloc seleccionat (resaltat)
+        self._sel_multi = set()  # multi-selecció (Ctrl/Shift/marquee)
         self.setZValue(2)
         self.setPos(self._x_offset, self._top)
         self.setAcceptHoverEvents(True)
@@ -447,14 +448,25 @@ class TempoLayer(QGraphicsObject):
 
     def select(self, idx):
         """Marca el bloc `idx` com a seleccionat (o -1 per a cap)."""
-        if idx != self._sel:
+        idx = int(idx)
+        if idx != self._sel or self._sel_multi != ({idx} if idx >= 0 else set()):
             self._sel = idx
+            self._sel_multi = {idx} if idx >= 0 else set()
+            self.update()
+
+    def select_multi(self, idxs):
+        """Marca un CONJUNT de blocs (multi-selecció del timeline, regla #11)."""
+        nou = {int(i) for i in (idxs or ()) if int(i) >= 0}
+        if nou != self._sel_multi:
+            self._sel_multi = nou
+            self._sel = next(iter(sorted(nou)), -1)
             self.update()
 
     def deselecciona(self):
         """Treu el resaltat del bloc de BPM/compàs (clic al fons)."""
-        if self._sel != -1:
+        if self._sel != -1 or self._sel_multi:
             self._sel = -1
+            self._sel_multi = set()
             self.update()
 
     def set_mapa(self, mapa, actiu=True):
@@ -510,6 +522,21 @@ class TempoLayer(QGraphicsObject):
             return Qt.OpenHandCursor
         return Qt.ArrowCursor
 
+    def _snap_t(self, t):
+        """Aplica el snap del timeline (si en té) a un temps del carril.
+
+        El carril ③ ha de moure les fronteres a la MATEIXA graella que els
+        clips (regla #11). El layer no coneix el Visor: demana la funció a la
+        vista de l'escena, que és qui té `_snap` (BPM/offset/mapa variables).
+        """
+        esc = self.scene()
+        if esc is not None:
+            for v in esc.views():
+                f = getattr(v, "_snap", None)
+                if callable(f):
+                    return float(f(t))
+        return float(t)
+
     def hoverMoveEvent(self, ev):
         _i, z = self._zona(ev.pos().x())
         self.setCursor(self._cursor_de_zona(z))
@@ -543,7 +570,8 @@ class TempoLayer(QGraphicsObject):
         # on comenca el tros; el primer bloc (index 0) te l'inici fix.
         if ((z in ("ini", "fi")) or (z == "cos" and i > 0)) \
                 and abs(ev.pos().x() - x0) > 5:
-            self._t_guia = self._view_left + ev.pos().x() / max(self._pps, 1e-9)
+            t = self._view_left + ev.pos().x() / max(self._pps, 1e-9)
+            self._t_guia = self._snap_t(t)
             self.update()
         ev.accept()
 
@@ -586,7 +614,7 @@ class TempoLayer(QGraphicsObject):
             x0, x1 = max(0.0, x0), min(rect.width(), x1)
             # Mateix tracte visual que les SECCIONS (bloc arrodonit + nanses
             # + text centrat), pero en mitja alcada.
-            sel = (i == self._sel)
+            sel = (i in self._sel_multi)
             fill = QColor(fills[hash("tempo") % len(fills)])
             fill.setAlpha(180)                 # semitransparent, com les altres
             if sel:

@@ -67,6 +67,7 @@ class ChordItem(QGraphicsObject):
     clicked = pyqtSignal()  # click sense drag → seek
     dragStarted = pyqtSignal()   # INICI de gest (mouse press sobre el clip)
     dragFinished = pyqtSignal()  # fi de drag (moure/redimensionar)
+    dragCancelled = pyqtSignal()  # press sense moviment: tanca la marca d'undo
 
     def __init__(self, idx: int, t: float, name: str, next_t: float,
                  pps: float, x_offset: float, lane_y: float, lane_h: float,
@@ -84,6 +85,7 @@ class ChordItem(QGraphicsObject):
         self._selected = False
         self._editing = False
         self._drag_mode = self.ZONE_NONE
+        self._drag_moved = False
         self._drag_x0 = 0.0
         self._drag_t0 = 0.0
         self._drag_next_t0 = 0.0
@@ -222,8 +224,14 @@ class ChordItem(QGraphicsObject):
         # el moviment es delega al TimelineView via signals (millor control de|
         # snap i propagació). Aquí només calculem deltas i emetem.|
         dx = event.pos().x() - self._drag_x0
-        if abs(dx) > 5:
-            self._drag_moved = True
+        # Llindar de gest: per davall de 5 px NO s'emet res. Abans s'emetia i el
+        # model/previsualització es movia igualment; si en deixar anar no es
+        # superava el llindar, l'item es quedava desplaçat sense `dragFinished`
+        # (vista mentidera) i la marca d'undo quedava oberta.
+        if abs(dx) <= 5 and not self._drag_moved:
+            event.accept()
+            return
+        self._drag_moved = True
         dt = dx / self._pps if self._pps > 0 else 0.0
         if self._drag_mode == self.ZONE_LEFT:
             new_t = self._drag_t0 + dt
@@ -258,6 +266,10 @@ class ChordItem(QGraphicsObject):
         if moved:
             self.dragFinished.emit()
         else:
+            # Ha sigut un clic (o un micro-moviment): no hi ha canvi de model,
+            # però `dragStarted` ja havia obert una marca d'undo. Cal tancar-la
+            # explícitament o queda penjada per a la propera operació.
+            self.dragCancelled.emit()
             self.clicked.emit()
 
     def mouseDoubleClickEvent(self, event) -> None:
@@ -292,6 +304,7 @@ class SectionItem(QGraphicsObject):
     clicked = pyqtSignal()  # click sense drag → seek
     dragStarted = pyqtSignal()   # INICI de gest (mouse press sobre el clip)
     dragFinished = pyqtSignal()  # fi de drag (moure/redimensionar)
+    dragCancelled = pyqtSignal()  # press sense moviment: tanca la marca d'undo
 
     def __init__(self, idx: int, ini: float, fi: float, lletra: str,
                  familia: str, pps: float, x_offset: float,
@@ -312,6 +325,7 @@ class SectionItem(QGraphicsObject):
         self._editing = False
         self._active = False
         self._drag_mode = self.ZONE_NONE
+        self._drag_moved = False
         self._drag_x0 = 0.0
         self._drag_ini0 = 0.0
         self._drag_fi0 = 0.0
@@ -442,8 +456,11 @@ class SectionItem(QGraphicsObject):
             super().mouseMoveEvent(event)
             return
         dx = event.pos().x() - self._drag_x0
-        if abs(dx) > 5:
-            self._drag_moved = True
+        # Mateix llindar que el ChordItem: res s'emet fins que el gest és real.
+        if abs(dx) <= 5 and not self._drag_moved:
+            event.accept()
+            return
+        self._drag_moved = True
         dt = dx / self._pps if self._pps > 0 else 0.0
         if self._drag_mode == self.ZONE_LEFT:
             self.timeChanged.emit(self._drag_ini0 + dt, self._drag_fi0)
@@ -474,6 +491,10 @@ class SectionItem(QGraphicsObject):
         if moved:
             self.dragFinished.emit()
         else:
+            # Ha sigut un clic (o un micro-moviment): no hi ha canvi de model,
+            # però `dragStarted` ja havia obert una marca d'undo. Cal tancar-la
+            # explícitament o queda penjada per a la propera operació.
+            self.dragCancelled.emit()
             self.clicked.emit()
 
     def mouseDoubleClickEvent(self, event) -> None:

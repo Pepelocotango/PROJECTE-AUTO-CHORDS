@@ -110,6 +110,7 @@ class TimelineView(QGraphicsView):
     clipSelected = pyqtSignal(str, int)   # ('chord'|'section', index)
     editStarted = pyqtSignal()            # inici d'un gest d'edicio (undo)
     editFinished = pyqtSignal()           # fi d'un drag (cal persistir)
+    editCancelled = pyqtSignal()          # press sense moviment (tanca l'undo)
     loopChanged = pyqtSignal(float, float)  # nou loop A/B (segons)
     playRequested = pyqtSignal()          # espai premut
     escapePressed = pyqtSignal()          # Esc (el resol el visor, per ordre)
@@ -117,12 +118,10 @@ class TimelineView(QGraphicsView):
     chordEndMoved = pyqtSignal(int, float)
     chordRenamed = pyqtSignal(int, str)
     chordDeleteRequested = pyqtSignal(int)
-    chordDuplicateRequested = pyqtSignal(int)
     chordEditRequested = pyqtSignal(int)
     sectionMoved = pyqtSignal(int, float, float)
     sectionRenamed = pyqtSignal(int, str, str)
     sectionDeleteRequested = pyqtSignal(int)
-    sectionDuplicateRequested = pyqtSignal(int)
     # Pista de BPM/compàs (editable): clic a un bloc, vora arrossegada
     # i botó dret (índex del bloc; -1 = fora).
     tempoEditRequested = pyqtSignal(int)
@@ -137,7 +136,11 @@ class TimelineView(QGraphicsView):
     sectionEditRequested = pyqtSignal(int)
     multiDeleteRequested = pyqtSignal(list)  # [(kind, idx), ...] multi-selecció
     pasteRequested = pyqtSignal(dict, float)  # (buffer intern, temps d'enganxar)
-    groupDuplicateRequested = pyqtSignal(list)  # [(kind, idx), ...] duplicar grup
+    # ORDRE d'edició (despatx ÚNIC): el timeline NO decideix l'operació, només
+    # envia `(operacio, kwargs)` al Visor (`Visor.executa_edicio`). Així el
+    # teclat, el menú contextual i el menú principal comparteixen el mateix camí
+    # i cap carril (acords/estructura/BPM-compàs) no queda fora.
+    editCommandRequested = pyqtSignal(str, object)
 
     def info_zona(self, pos_vista) -> str:
         """Text d'ajuda per a la caixa d'informacio, segons on es el ratoli.
@@ -222,6 +225,11 @@ class TimelineView(QGraphicsView):
         # resol sencer al final del gest (`_tanca_bloc`), perquè pot esborrar
         # marques i cal reconstruir el timeline.
         self._bloc_gest = None
+        # Gest del carril de BPM/compàs: `_tempo_gest` = hi ha un press actiu;
+        # `_tempo_mogut` = el layer ha emès `tramMoved` (moviment real). Sense
+        # això, un simple clic hi obria/desava una operació buida.
+        self._tempo_gest = False
+        self._tempo_mogut = False
         self._loop_item = None     # banda de loop A/B
         self._loop_a = None
         self._loop_b = None
@@ -286,7 +294,7 @@ class TimelineView(QGraphicsView):
         self._scene.addItem(self._tempo_lane)
         self._tempo_lane.tramSelected.connect(self._on_tempo_selected)
         self._tempo_lane.tramClicked.connect(self.tempoEditRequested.emit)
-        self._tempo_lane.tramMoved.connect(self.tempoChangeMoved.emit)
+        self._tempo_lane.tramMoved.connect(self._on_tempo_moved)
         self._tempo_lane.menuRequested.connect(self.tempoMenuRequested.emit)
 
         # cursor
@@ -472,6 +480,7 @@ class TimelineView(QGraphicsView):
                     float(it.t), "chord", getattr(it, "idx", -1)))
             item.dragStarted.connect(self.editStarted.emit)
             item.dragFinished.connect(self._emit_edit_finished)
+            item.dragCancelled.connect(self.editCancelled.emit)
             item.editRequested.connect(
                 lambda idx=i: self._on_chord_edit(idx))
             item.deleteRequested.connect(
@@ -500,6 +509,7 @@ class TimelineView(QGraphicsView):
                     float(it.ini), "section", getattr(it, "idx", -1)))
             item.dragStarted.connect(self.editStarted.emit)
             item.dragFinished.connect(self._emit_edit_finished)
+            item.dragCancelled.connect(self.editCancelled.emit)
             item.editRequested.connect(
                 lambda idx=i: self._on_section_edit(idx))
             item.deleteRequested.connect(
@@ -541,8 +551,17 @@ class TimelineView(QGraphicsView):
         self._loop_item.setVisible(True)
 
     def _loop_px(self, t: float) -> float:
-        """Coordenada x d'escena per a un temps (per a la hit-test del loop)."""
+        """Coordinada x d'escena per a un temps (per a la hit-test del loop)."""
         return self._x_offset + (t - self._view_left) * self._pps
+
+    def _tempo_zona(self, x_vista: float):
+        """`(índex, zona)` del carril de BPM/compàs a partir d'una x de la VISTA.
+
+        `TempoLayer._zona()` treballa en coordenades LOCALS de l'item (que està
+        desplaçat `x_offset`); passar-hi la x de la vista directament deixava un
+        error de 12 px a les vores. Aquest mètode és l'únic punt de conversió.
+        """
+        return self._tempo_lane._zona(float(x_vista) - self._x_offset)
 
     def _loop_mode_at(self, x: float):
         """Què farà un clic al regle segons l'x (o None = crear loop nou).
@@ -656,6 +675,11 @@ class TimelineView(QGraphicsView):
                 it = self._section_items[idx]
                 t0s.append(it.ini)
                 t1s.append(it.fi)
+            elif kind == "tempo":
+                tr = self._trams_tempo()
+                if 0 <= idx < len(tr):
+                    t0s.append(float(tr[idx][0]))
+                    t1s.append(float(tr[idx][1]))
         if not t0s:
             return None
         return (min(t0s), max(t1s))
@@ -718,14 +742,66 @@ class TimelineView(QGraphicsView):
         # propi timeline.
         self.clipSelected.emit(kind, index)
 
+    def selecciona(self, kind: str, index: int, mode: str = "set") -> bool:
+        """Punt ÚNIC de selecció per als TRES carrils (regla d'or #11).
+
+        `mode`: `"set"` (substitueix), `"toggle"` (Ctrl+clic) o `"extend"`
+        (Shift+clic / rang). Valida el tipus i l'índex ABANS de tocar res, de
+        manera que totes les superfícies (ratolí, teclat, menús) poden cridar-lo
+        sense duplicar la lògica de cada carril.
+        """
+        kind = str(kind or "")
+        if kind == "chord":
+            n = len(self._acords)
+        elif kind == "section":
+            n = len(self._seccions)
+        elif kind == "tempo":
+            n = len(self._trams_tempo())
+        else:
+            return False
+        idx = int(index)
+        if not (0 <= idx < n):
+            return False
+        m = str(mode or "set").strip().lower()
+        if m == "toggle":
+            self.toggle_selection(kind, idx)
+        elif m in ("extend", "rang", "range"):
+            self.extend_selection(kind, idx)
+        else:
+            self.select_clip(kind, idx)
+        return True
+
+    def _despatxa(self, operacio: str, **kw) -> bool:
+        """Envia una ordre al despatx únic del Visor (si n'hi ha).
+
+        El timeline no muta el model per a les ordres de menú/teclat: només
+        n'envia la intenció. Les mutacions de gest (arrossegar/redimensionar)
+        continuen resolent-se ací perquè necessiten l'estat del ratolí.
+        """
+        sig = getattr(self, "editCommandRequested", None)
+        if sig is None:
+            return False
+        sig.emit(str(operacio), dict(kw))
+        return True
+
+    def nudge(self, direccio: int, estira: bool = False,
+              pas=None) -> None:
+        """Nudge públic (una sola implementació per al teclat i el despatx)."""
+        self._nudge(int(direccio), bool(estira),
+                    float(pas) if pas is not None else self._pas_nudge())
+
     def _on_tempo_selected(self, idx: int) -> None:
         """Clic a la pista de BPM/compàs: selecciona (amb `Ctrl`, toggle)."""
         if idx is None or idx < 0:
             return
-        if QApplication.keyboardModifiers() & Qt.ControlModifier:
-            self.toggle_selection("tempo", idx)
-        else:
-            self.select_clip("tempo", idx)
+        mode = ("toggle" if QApplication.keyboardModifiers() & Qt.ControlModifier
+                else "set")
+        self.selecciona("tempo", idx, mode)
+
+    def _on_tempo_moved(self, idx: int, vora: str, t: float) -> None:
+        """El layer ha mogut una frontera: marca el gest i propaga el canvi."""
+        self._tempo_mogut = True
+        self.tempoChangeMoved.emit(idx, vora, t)
 
     def _sync_selection_visual(self) -> None:
         """Pinta la vora de selecció a tots els items de `self._multi`."""
@@ -733,8 +809,8 @@ class TimelineView(QGraphicsView):
             it.set_selected(("chord", getattr(it, "idx", -1)) in self._multi)
         for it in self._section_items:
             it.set_selected(("section", getattr(it, "idx", -1)) in self._multi)
-        self._tempo_lane.select(
-            next((i for (k, i) in self._multi if k == "tempo"), -1))
+        self._tempo_lane.select_multi(
+            {i for (k, i) in self._multi if k == "tempo"})
 
     def selected_keys(self) -> set:
         """Conjunt de (kind, idx) actualment seleccionats (multi-selecció)."""
@@ -938,8 +1014,15 @@ class TimelineView(QGraphicsView):
                 if isinstance(it, (ChordItem, SectionItem)):
                     kind = ("chord" if isinstance(it, ChordItem)
                             else "section")
-                    self.toggle_selection(kind, getattr(it, "idx", -1))
+                    self.selecciona(kind, getattr(it, "idx", -1), "toggle")
                     return
+                if isinstance(it, TempoLayer):
+                    # El carril ③ també fa toggle (abans el marquee el deixava
+                    # fora i el Ctrl+clic ESBORRAVA la selecció).
+                    ti, _z = self._tempo_zona(x0)
+                    if ti >= 0:
+                        self.selecciona("tempo", ti, "toggle")
+                        return
             sp = self.mapToScene(QPoint(int(x0), int(y0)))
             t = max(0.0, min(self._durada, self._x_to_time(sp.x())))
             self.set_position(t)
@@ -1537,8 +1620,15 @@ class TimelineView(QGraphicsView):
                 # Si el gest mourà una frontera del mapa, l'emboliquem com UNA
                 # sola operacio de desfer (editStarted/editFinished).
                 self.setFocus()
-                ti, _tz = self._tempo_lane._zona(event.pos().x())
+                ti, _tz = self._tempo_zona(event.pos().x())
+                # Shift+clic = RANG, igual que als altres dos carrils (#11).
+                # Sense això el TempoLayer només sabia fer una selecció simple.
+                if ti >= 0 and (event.modifiers() & Qt.ShiftModifier):
+                    self.selecciona("tempo", ti, "extend")
+                    event.accept()
+                    return
                 if ti >= 0:
+                    self._tempo_mogut = False
                     self._tempo_gest = True
                     self.editStarted.emit()
                 super().mousePressEvent(event)
@@ -1671,10 +1761,18 @@ class TimelineView(QGraphicsView):
                 self._update_loop_item()
             event.accept()
             return
+        # PRIMER deixem que el layer resolga el release (pot emetre `tramMoved`;
+        # així el canvi de tempo ja és al model) i DESPRÉS tanquem el gest. A
+        # l'inrevés, `editFinished` s'executava abans d'aplicar el canvi i
+        # l'operació quedava fora de l'undo.
+        super().mouseReleaseEvent(event)
         if getattr(self, "_tempo_gest", False):
             self._tempo_gest = False
-            self.editFinished.emit()
-        super().mouseReleaseEvent(event)
+            if self._tempo_mogut:
+                self.editFinished.emit()
+            else:
+                self.editCancelled.emit()
+            self._tempo_mogut = False
 
     def set_snap(self, on=None, divisio=None) -> None:
         """Configura el snap: `on` (interruptor) i `divisio` (nom de la graella)."""
@@ -1824,54 +1922,38 @@ class TimelineView(QGraphicsView):
             return
         if (event.key() in (Qt.Key_Left, Qt.Key_Right) and self._sel[0]
                 and not (mods & Qt.ControlModifier)):
-            self._nudge(-1 if event.key() == Qt.Key_Left else 1,
-                        bool(mods & Qt.AltModifier), self._pas_nudge())
+            self._despatxa("nudge",
+                           direccio=(-1 if event.key() == Qt.Key_Left else 1),
+                           estira=bool(mods & Qt.AltModifier),
+                           pas=self._pas_nudge())
             event.accept()
             return
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             # Esborra la selecció. Els items no reben tecles (no son
             # focusables), per tant ho gestionem aquí, que si tenim el focus.
             if self.selected_keys():
-                self._delete_selection()
+                self._despatxa("elimina")
                 event.accept()
                 return
         if mods & Qt.ControlModifier:
-            # Dreceres estàndard de DAW: copy/cut/paste (+ duplicar)
+            # Dreceres estàndard de DAW: totes passen pel despatx ÚNIC del
+            # Visor (que resol els tres carrils i la multi-selecció).
             if event.key() == Qt.Key_C:
-                self.copy_selection()
+                self._despatxa("copia")
                 event.accept()
                 return
             if event.key() == Qt.Key_X:
-                self.cut_selection()
+                self._despatxa("retalla")
                 event.accept()
                 return
             if event.key() == Qt.Key_V:
-                self.paste_at_cursor()
+                self._despatxa("enganxa")
                 event.accept()
                 return
             if event.key() == Qt.Key_D:
-                # Ctrl+D: duplica el clip seleccionat; amb multi-selecció,
-                # duplica el GRUP sencer (el visor ho resol amb un sol undo).
-                keys = self.selected_keys()
-                if self._sel[0] == "tempo" and keys:
-                    # La pista de BPM/compàs va sempre pel camí de grup
-                    # (no té item propi amb senyal de duplicar).
-                    self.groupDuplicateRequested.emit(sorted(keys))
-                    event.accept()
-                    return
-                if len(keys) > 1:
-                    self.groupDuplicateRequested.emit(sorted(keys))
-                    event.accept()
-                    return
-                for items, sig in ((self._chord_items,
-                                    self.chordDuplicateRequested),
-                                   (self._section_items,
-                                    self.sectionDuplicateRequested)):
-                    for it in items:
-                        if getattr(it, "_selected", False):
-                            sig.emit(getattr(it, "idx", -1))
-                            event.accept()
-                            return
+                self._despatxa("duplica")
+                event.accept()
+                return
         super().keyPressEvent(event)
 
     def keyReleaseEvent(self, event) -> None:
