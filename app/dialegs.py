@@ -70,7 +70,7 @@ DEFECTES = {
                   "fusiona_iguals": True},
     # Neteja posterior dels acords (post-processat, app/postproc.py)
     "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
-              "reduir": False, "snap": True, "divisio": 4, "ritme": "off"},
+              "reduir": False, "snap": True, "divisio": 4},
 }
 
 
@@ -241,17 +241,6 @@ class DialegOpcions(QDialog):
         s.setToolTip("Subdivisions per temps on encaixar (1 = temps).")
         self._controls["clean"]["divisio"] = s
         fn.addRow(QLabel("Subdivisions per temps"), s)
-        cb = QComboBox()
-        for clau in ("off", "auto", "compas", "mig", "temps"):
-            cb.addItem("Desactivat" if clau == "off"
-                       else graella.ETIQUETES[clau], clau)
-        i = cb.findData(dnet.get("ritme", "off"))
-        if i >= 0:
-            cb.setCurrentIndex(i)
-        cb.setToolTip("Mode fàcil: re-deriva els acords de l'anàlisi CRUA a la "
-                      "graella (un acord per cel·la) en analitzar.")
-        self._controls["clean"]["ritme"] = cb
-        fn.addRow(QLabel("Ritme harmònic (mode fàcil)"), cb)
         f.addRow(net)
         return w
 
@@ -309,8 +298,6 @@ class DialegOpcions(QDialog):
         cl["durada_min"].setValue(float(dc["durada_min"]))
         cl["snap"].setChecked(bool(dc["snap"]))
         cl["divisio"].setValue(float(dc["divisio"]))
-        cl["ritme"].setCurrentIndex(max(0, cl["ritme"].findData(
-            dc.get("ritme", "off"))))
 
     def opcions(self):
         """Retorna les opcions triades, a punt per al pipeline."""
@@ -341,7 +328,6 @@ class DialegOpcions(QDialog):
             "durada_min": round(float(cl["durada_min"].value()), 2),
             "snap": bool(cl["snap"].isChecked()),
             "divisio": int(cl["divisio"].value()),
-            "ritme": cl["ritme"].currentData(),
         }
         return {"bpm": bpm, "chords": chords, "structure": est, "clean": clean}
 
@@ -386,63 +372,91 @@ class DialegTrobaReemplaca(QDialog):
         return self.ed_reemplaca.text().strip()
 
 
-class DialegModeFacil(QDialog):
-    """Mode fàcil: preset d'estil + ritme harmònic + mòdul d'estructura."""
+class DialegQuantitza(QDialog):
+    """Quantització del model: abast + graella d'acords i d'estructura.
 
-    def __init__(self, parent=None, preset="auto"):
+    No toca BPM, compàs, offset ni el cru. Només decideix QUÈ es quantitza i
+    amb quina graella; l'operació és una sola i es pot desfer/refer.
+    """
+
+    def __init__(self, parent=None, abast="tot", te_acords=True,
+                 te_seccions=True):
         super().__init__(parent)
-        self.setWindowTitle("Mode fàcil")
-        self.setMinimumWidth(430)
+        self.setWindowTitle("Quantitza")
+        self.setMinimumWidth(460)
+        self._te_acords = bool(te_acords)
+        self._te_seccions = bool(te_seccions)
         lay = QVBoxLayout(self)
         form = QFormLayout()
-        self.cb_preset = QComboBox()
-        for clau, p in graella.PRESETS.items():
-            self.cb_preset.addItem(p["etiqueta"], clau)
-        if preset in graella.PRESETS:
-            self.cb_preset.setCurrentIndex(list(graella.PRESETS).index(preset))
-        self.cb_ritme = QComboBox()
-        for clau in ("auto", "compas", "mig", "temps"):
-            self.cb_ritme.addItem(graella.ETIQUETES[clau], clau)
-        self.cb_modul = QComboBox()
-        for v, et in ((0, "No tocar-ne els talls"), (1, "1 compàs"),
-                      (2, "2 compassos"), (4, "4 compassos (blocs)"),
-                      (8, "8 compassos"), (12, "12 compassos (blues)")):
-            self.cb_modul.addItem(et, v)
-        form.addRow("Preset d'estil:", self.cb_preset)
-        form.addRow("Ritme harmònic:", self.cb_ritme)
-        form.addRow("Estructura en blocs de:", self.cb_modul)
+
+        self.cb_abast = QComboBox()
+        for text, clau in (("Tot (acords i estructura)", "tot"),
+                           ("Només la selecció", "seleccio"),
+                           ("Tot, només acords", "acords"),
+                           ("Tot, només estructura", "estructura")):
+            self.cb_abast.addItem(text, clau)
+        i = self.cb_abast.findData(abast)
+        if i >= 0:
+            self.cb_abast.setCurrentIndex(i)
+
+        self.cb_acords = QComboBox()
+        for et, clau in graella.GRID_ACORDS:
+            self.cb_acords.addItem(et, clau)
+        self.cb_estructura = QComboBox()
+        for et, clau in graella.GRID_ESTRUCTURA:
+            self.cb_estructura.addItem(et, clau)
+        # Valors inicials raonables: negra per a l'harmonia, 4 compassos per a
+        # les frases. L'usuari els pot canviar.
+        i = self.cb_acords.findData("negra")
+        if i >= 0:
+            self.cb_acords.setCurrentIndex(i)
+        i = self.cb_estructura.findData("compas4")
+        if i >= 0:
+            self.cb_estructura.setCurrentIndex(i)
+
+        form.addRow("Abast:", self.cb_abast)
+        form.addRow("Graella d'acords:", self.cb_acords)
+        form.addRow("Graella d'estructura:", self.cb_estructura)
         lay.addLayout(form)
-        avis = QLabel("Re-deriva els acords de l'anàlisi CRUA, els encaixa al "
-                      "ritme harmònic i ajusta els talls de secció als blocs. "
-                      "Tot és editable i es pot desfer.")
+
+        avis = QLabel("Només es mouen els INICIS dels clips. El final de cada "
+                      "clip es deriva del següent i l'últim arriba a la durada "
+                      "del WAV. No es toca BPM, compàs, offset ni el cru de "
+                      "l'anàlisi. Tot és una sola operació de desfer.")
         avis.setWordWrap(True)
         lay.addWidget(avis)
-        botons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        botons.accepted.connect(self.accept)
-        botons.rejected.connect(self.reject)
-        lay.addWidget(botons)
-        self.cb_preset.currentIndexChanged.connect(self._aplica_preset)
-        self._aplica_preset()
 
-    def _aplica_preset(self):
-        p = graella.PRESETS.get(self.cb_preset.currentData())
-        if not p:
-            return
-        i = self.cb_ritme.findData(p.get("ritme", "auto"))
-        if i >= 0:
-            self.cb_ritme.setCurrentIndex(i)
-        j = self.cb_modul.findData(int(p.get("modul", 4)))
-        if j >= 0:
-            self.cb_modul.setCurrentIndex(j)
+        self.botons = QDialogButtonBox(QDialogButtonBox.Ok |
+                                       QDialogButtonBox.Cancel)
+        self.botons.button(QDialogButtonBox.Ok).setText("Quantitza")
+        self.botons.button(QDialogButtonBox.Cancel).setText("Cancel·la")
+        self.botons.accepted.connect(self.accept)
+        self.botons.rejected.connect(self.reject)
+        lay.addWidget(self.botons)
 
-    def preset(self):
-        return self.cb_preset.currentData()
+        self.cb_abast.currentIndexChanged.connect(self._actualitza)
+        self._actualitza()
 
-    def ritme(self):
-        return self.cb_ritme.currentData()
+    def _actualitza(self):
+        abast = self.abast()
+        te_ac = abast in ("tot", "acords") or (
+            abast == "seleccio" and self._te_acords)
+        te_es = abast in ("tot", "estructura") or (
+            abast == "seleccio" and self._te_seccions)
+        self.cb_acords.setEnabled(te_ac)
+        self.cb_estructura.setEnabled(te_es)
+        ok = self.botons.button(QDialogButtonBox.Ok)
+        if ok is not None:
+            ok.setEnabled(te_ac or te_es)
 
-    def modul(self):
-        return int(self.cb_modul.currentData())
+    def abast(self):
+        return self.cb_abast.currentData()
+
+    def grid_acords(self):
+        return self.cb_acords.currentData()
+
+    def grid_estructura(self):
+        return self.cb_estructura.currentData()
 
 
 class DialegTempoMapa(QDialog):

@@ -97,7 +97,7 @@ procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i **[`docs/ESTAT_MULTI_SO.md
 | [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md) | **Invariants** del producte («s'ha de complir sempre») |
 | [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md) | Esquema de la interfície (menús, barres, dreceres) |
 | [`docs/PROJECTES.md`](docs/PROJECTES.md) | **Projectes autocontinguts** («com un DAW»): `.acproj`, «Desa com», autosave/backups i recuperació |
-| [`docs/FLUX_DE_DADES.md`](docs/FLUX_DE_DADES.md) | **Flux de dades**: el MODEL (4 CSV) i el cru de l'anàlisi (dins el `.acproj`); per què editar o el mode fàcil no el destrueixen |
+| [`docs/FLUX_DE_DADES.md`](docs/FLUX_DE_DADES.md) | **Flux de dades**: el MODEL (4 CSV) i el cru de l'anàlisi (dins el `.acproj`); per què editar o quantitzar no el destrueixen |
 | [`docs/NOTACIO_XIFRAT.md`](docs/NOTACIO_XIFRAT.md) | **Notació del xifrat**: la **forma canònica** (`Am`→`A-`, `Cmaj7`→`CMaj7`, `Bø`→`B-7b5`) i on s'aplica (model, noms de fitxer, partitura) |
 | [`docs/TIPUS_XIFRAT_ACORDS.md`](docs/TIPUS_XIFRAT_ACORDS.md) | **Catàleg de tipus d'acord**: variants de sintaxi, graus i `<kind>` MusicXML (per nivells + extres) |
 | [`docs/ESTAT_MULTI_SO.md`](docs/ESTAT_MULTI_SO.md) | Com es construeixen i l'estat dels 3 paquets (Linux/Windows/macOS) |

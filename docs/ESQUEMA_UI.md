@@ -67,7 +67,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.b_offset_cursor` | **Marca el compàs 1 aquí** (icona `map-pin`) → al cursor | `QPushButton` |
 | — | `self.amb_est` · `self.a_metro` · `self.a_eina_marc` | **Inclou estructura** · **Metrònom** · **Eina de marc** | `QAction` (checkable, menús) |
 | — | `self.amb_part` | **Inclou la partitura (xifrat)** | `QAction` (checkable, menú Fitxer) |
-| — | `self.b_mode_facil` · `self.b_eina` | **Mode fàcil** · **Eina: intel·ligent / Eina: marc** | `QPushButton` (el 2n, checkable) |
+| — | `self.b_eina` | **Eina: intel·ligent / Eina: marc** | `QPushButton` (checkable) |
 | — | `self._params_temps` | contenidor dels **paràmetres de temps** (BPM · ×2/÷2 · Detecta · TAP · Compàs · Offset · ≈ C.B) | `QWidget` |
 | — | `self.panell_xifrat` · `self.dock_xifrat` | **panell «Tipus d'acord»** (arrel · baix · 62 tipus · ▶ Escoltar · timbre) | `PanellXifrat` en un `QDockWidget` |
 | — | `self.tb_loop` · `self.tb_neteja_loop` · `self.tb_mut` | **loop** (icona `repeat-2`) · **neteja el loop** (icona `x`) · **mute** (icona `volume-x`) | `QPushButton` |
@@ -82,19 +82,19 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (barra 1, fila 1) | `Obre àudio` → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B · **[Mode fàcil]** (`Inclou estructura` és una acció del **menú Analitza**) |
+| **Treball** (barra 1, fila 1) | `Obre àudio` → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B (`Inclou estructura` és una acció del **menú Analitza**) |
 | **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Obre la carpeta de sortida** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) |
-| **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · `metronome` · volum del clic · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
+| **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · `metronome` · volum del clic · **[Quantitza]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
 ### Menús
 
 | Menú | Accions |
 |------|---------|
-| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… (Ctrl+Shift+O) · Obre recent… · Desa (Ctrl+S) · Desa com… (Ctrl+Shift+S) · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
-| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) (Ctrl+Shift+Z) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… (Ctrl+Shift+A) · Afegeix secció… (Ctrl+Shift+S) · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
+| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… · Obre recent… · Desa (Ctrl+S) · Desa com… · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
+| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Mode fàcil: re-regularitza a la graella… · Mapa de tempo i compàs… · Detecta el mapa de tempo (per beats)… · Inclou estructura |
+| **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · Mapa de tempo i compàs… · Detecta el mapa de tempo (per beats)… · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Eina del timeline i abast del rang
@@ -110,20 +110,20 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   canviar d'eina; en deixar anar, tot torna a **intel·ligent** (és la convenció
   de l'Studio One: *«[Ctrl] in arrangement temporarily switches Tools»*). Si el
   gest és un clic sense arrossegar, es resol com a **`Ctrl`+clic = toggle**, que
-  continua funcionant igual. `Ctrl+Shift`+arrossegar té prioritat (és duplicar).
+  continua funcionant igual.
+- **`Ctrl+Shift` mantingut = eina «marc» temporal**: mentre les dues tecles
+  estan premudes, el timeline passa a l'eina de selecció (marquee) i, en
+  deixar anar qualsevol de les dues, torna a l'eina que hi havia (normalment
+  «intel·ligent»). És el gest equivalent al *temporary tool switch* d'un DAW.
 - El **rang de `Shift+clic`** és sempre del **carril del clip clicat**. Per
   agafar clips de les **dues pistes** de cop, el **marquee**: `Ctrl`+arrossega
   (temporal) o l'eina «marc» (permanent).
 - La **selecció no entra a la pila de desfer** (com abans).
 - **Tecla `E`**: commuta l'eina (**toggle**, no on/off). Per defecte sempre
   s'arrenca en «intel·ligent».
-- **`Ctrl+Shift`+arrossegar el cos d'un clip d'acord = duplicar-lo**: el clip
-  viatja i a l'**origen hi torna una còpia** amb el mateix nom (l'original es
-  queda a lloc). És l'**única** drecera de duplicar: `Alt`+arrossegar **no** s'hi
-  fa servir perquè a Linux el gestor de finestres se l'emporta per moure la
-  finestra (MATE: `<Alt>`; GNOME: `<Super>`) i `Ctrl+Shift` és lliure als 3
-  sistemes. El **mateix gest val per a les seccions** (l'original es queda i
-  la còpia va al destí).
+- **Duplicar**: `Ctrl+D` (element o grup seleccionat). **No hi ha** duplicat
+  arrossegant: l'arrossegament del cos mou; per duplicar, `Ctrl+D` o
+  copiar/enganxar.
 - **Arrossegar el COS d'un clip = moure el BLOC** (`PLA_EDICIO_LLIURE` §6.3): el
   clip (o el bloc **contigu** seleccionat) es mou **preservant la seva durada** i,
   al **destí**, el que queda **a sota** es **talla** (se'n conserva el tros de
@@ -138,16 +138,16 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 > ⚠️ Les **dreceres** viuen a la **finestra principal** (`QShortcut`/`QAction`),
 > mai al visor incrustat (un `QShortcut` dins el visor no s'activa).
-> **Espai** = play/stop · **T** = tap tempo · **Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z**
+> **Espai** = play/stop · **T** = tap tempo · **Ctrl+Z / Ctrl+Y**
 > = desfer/refer · **Del** = eliminar · **Ctrl+D** = duplicar · **F2** = reanomenar (clip o **grup del mateix tipus**) ·
 > **←/→** = **nudge** un pas de graella (**Alt+←/→** = vora dreta) ·
-> **Ctrl+O** = obrir WAV · **Ctrl+Shift+O** = obrir projecte · **Ctrl+S** = desar ·
-> **Ctrl+Shift+S** = desar com · **Ctrl+E** = exportar · **Ctrl+[ / Ctrl+]** = loop A/B ·
+> **Ctrl+O** = obrir WAV · **Ctrl+S** = desar · **Ctrl+E** = exportar ·
+> **Ctrl+[ / Ctrl+]** = loop A/B ·
 > **F5** = Analitza · **Ctrl++ / Ctrl+− / Ctrl+0** = zoom +/− / total.
 >
 > **Multi-selecció (timeline)**: **Ctrl+clic** afegeix/treu un clip ·
 > **Shift+clic** = rang **per temps, sempre del carril del clip clicat** (per agafar
-> clips de **les dues pistes**, el **marquee**: `Ctrl`+arrossega o l'eina «marc») · **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V**
+> clips de **les dues pistes**, el **marquee**: `Ctrl`+arrossega o l'eina «marc») · **Del** = esborrar la selecció (grup) · **Ctrl+C/X/V** · **Ctrl+Alt+V** = enganxar sense snap · **Ctrl+Shift** = eina marc temporal
 > = copiar/retallar/enganxar la selecció **sobreescrivint** el tram (regla d'or #4: la
 > cançó no pot créixer) · **Ctrl+D** = duplicar el grup ·
 > **arrossegar** un clip seleccionat = moure el grup. El regle mostra el

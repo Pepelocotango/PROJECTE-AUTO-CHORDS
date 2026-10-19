@@ -37,6 +37,7 @@ import types
 from app.main import Finestra
 from PyQt5.QtWidgets import QApplication
 from app import dialegs
+from app import graella
 import copy
 from PyQt5.QtWidgets import QMenu, QPushButton, QToolBar
 from app import visor as visor_mod
@@ -1779,27 +1780,33 @@ class TestDialegOpcions(_dialegs___Base):
         self.assertEqual(d.tabs.currentIndex(), 2)
 
 
-class TestDialegModeFacil(_dialegs___Base):
-    """El preset d'estil ha de fixar el ritme harmònic i el mòdul."""
+class TestDialegQuantitza(_dialegs___Base):
+    """El diàleg de quantització: abast + graelles lògiques."""
 
-    def test_cada_preset_aplica_el_seu_ritme_i_modul(self):
-        from app import graella
-        d = dialegs.DialegModeFacil(None)
-        for clau, p in graella.PRESETS.items():
-            i = d.cb_preset.findData(clau)
-            d.cb_preset.setCurrentIndex(i)     # dispara `_aplica_preset`
-            self.assertEqual(d.preset(), clau)
-            self.assertEqual(d.ritme(), p.get("ritme", "auto"),
-                             f"preset {clau}: ritme")
-            self.assertEqual(d.modul(), int(p.get("modul", 4)),
-                             f"preset {clau}: modul")
+    def test_abast_i_graelles(self):
+        d = dialegs.DialegQuantitza(None, abast="tot")
+        self.assertEqual(d.abast(), "tot")
+        self.assertGreater(d.cb_acords.count(), 0)
+        self.assertGreater(d.cb_estructura.count(), 0)
+        self.assertTrue(d.cb_acords.isEnabled())
+        self.assertTrue(d.cb_estructura.isEnabled())
+        self.assertIn(d.grid_acords(), [c for _e, c in graella.GRID_ACORDS])
+        self.assertIn(d.grid_estructura(),
+                      [c for _e, c in graella.GRID_ESTRUCTURA])
 
-    def test_tria_manual_guanya_sobre_el_preset(self):
-        d = dialegs.DialegModeFacil(None)
-        d.cb_ritme.setCurrentIndex(d.cb_ritme.findData("temps"))
-        d.cb_modul.setCurrentIndex(d.cb_modul.findData(8))
-        self.assertEqual(d.ritme(), "temps")
-        self.assertEqual(d.modul(), 8)
+    def test_abast_apaga_la_graella_que_no_toca(self):
+        d = dialegs.DialegQuantitza(None, abast="acords")
+        self.assertTrue(d.cb_acords.isEnabled())
+        self.assertFalse(d.cb_estructura.isEnabled())
+        d.cb_abast.setCurrentIndex(d.cb_abast.findData("estructura"))
+        self.assertFalse(d.cb_acords.isEnabled())
+        self.assertTrue(d.cb_estructura.isEnabled())
+
+    def test_seleccio_nomes_activa_els_tipus_presents(self):
+        d = dialegs.DialegQuantitza(None, abast="seleccio",
+                                    te_acords=True, te_seccions=False)
+        self.assertTrue(d.cb_acords.isEnabled())
+        self.assertFalse(d.cb_estructura.isEnabled())
 
 
 class TestDialegTrobaReemplaca(_dialegs___Base):
@@ -1835,7 +1842,7 @@ ESPERATS = {
                "whitening": 1.0, "s": 0.7},
     "structure": {"motor": "qm", "durada_min": 2.0, "fusiona_iguals": True},
     "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
-              "reduir": False, "snap": True, "divisio": 4, "ritme": "off"},
+              "reduir": False, "snap": True, "divisio": 4},
 }
 
 
@@ -1935,13 +1942,17 @@ class EsquemaUiDocTests(unittest.TestCase):
             self.assertIn(tb.windowTitle(), self.doc,
                           f"la barra «{tb.windowTitle()}» no surt a la doc")
 
-    def test_botons_obre_audio_i_mode_facil(self):
-        """La barra ha de tenir «Obre àudio» i «Mode fàcil» (botó a l'app)."""
+    def test_botons_obre_audio_i_quantitza(self):
+        """«Obre àudio» a Treball i «Quantitza» just abans de «Snap» a Transport."""
         texts = [b.text()
                  for b in self.w.barra_principal.findChildren(QPushButton)]
         self.assertIn("Obre àudio", texts)
-        self.assertIn("Mode fàcil", texts)
-        self.assertIsNotNone(getattr(self.w, "b_mode_facil", None))
+        transport = [b.text()
+                     for b in self.w.barra_transport.findChildren(QPushButton)]
+        self.assertIn("Quantitza", transport)
+        self.assertIn("Snap", transport)
+        self.assertLess(transport.index("Quantitza"), transport.index("Snap"))
+        self.assertIsNotNone(getattr(self.w, "b_quantitza", None))
 
     def test_accions_de_menu_documentades(self):
         """Cada acció real de menú ha d'aparèixer a la doc."""

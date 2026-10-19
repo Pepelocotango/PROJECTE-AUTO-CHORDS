@@ -24,6 +24,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   representar amb la graella binària de 1/32).
 
 ### Canviat
+- **El «Mode fàcil» passa a ser «Quantitza» (2026-10-19)**: s'elimina tota la
+  lògica de re-derivació del cru, la inferència compàs/mig/temps, els presets
+  d'estil i el canvi automàtic de compàs. El botó i l'acció de menú es
+  reciclen: **Quantitza** mou només els **inicis** dels clips del model
+  (acords i/o estructura) a la graella. Abast: **tot · selecció · tot però
+  només acords · tot però només estructura**. Graelles: acords de **1/8 a 1
+  compàs**; estructura d'**1 a 64 compassos**. No toca BPM, compàs, offset ni
+  el cru; una sola operació de desfer/refer. Selecció mixta = una sola
+  operació (cada tipus amb la seua graella).
+
+### Canviat
 - **Resolució temporal unificada (2026-10-19)**: els quatre CSV del MODEL
   (`acords.csv`, `estructura_ABC.csv`, `tempo.csv`, `compas.csv`) es desen amb
   **6 decimals (1 µs)**, no 2 (10 ms). El BPM també es desa amb 6 decimals (no

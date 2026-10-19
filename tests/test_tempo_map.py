@@ -35,8 +35,7 @@ from app import timeline_base as tb
 
 
 def tearDownModule():
-    _graella_tearDownModule()
-    _graella_bpm_tearDownModule()
+    _quantitza_tearDownModule()
     _snap_tearDownModule()
 
 
@@ -460,141 +459,12 @@ class TestMetronom(unittest.TestCase):
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_graella.py
 # ══════════════════════════════════════════════════════════════════════════
-"""Graella musical: conversió segons↔graella i regularització del ritme harmònic
-(mode fàcil), a partir de l'ANÀLISI CRUA.
-
-Exemple de fons: 120 BPM, 4/4 → compàs = 2,00 s · mig compàs = 1,00 s ·
-temps = 0,50 s.
-"""
+"""Quantització: divisions, nuclis de fronteres i visor."""
 
 
 
 
-class TestGraella(unittest.TestCase):
-    def test_nivell_segons(self):
-        self.assertAlmostEqual(graella.nivell_segons("compas", 120, 4), 2.0)
-        self.assertAlmostEqual(graella.nivell_segons("mig", 120, 4), 1.0)
-        self.assertAlmostEqual(graella.nivell_segons("temps", 120, 4), 0.5)
-        # canvia amb el BPM: a 90 BPM el compàs és 2,666… s
-        self.assertAlmostEqual(graella.nivell_segons("compas", 90, 4),
-                               8.0 / 3.0, places=6)
-
-    def test_snap_a_nivell(self):
-        self.assertAlmostEqual(graella.snap_a_nivell(2.1, "compas", 120, 4), 2.0)
-        self.assertAlmostEqual(graella.snap_a_nivell(1.4, "mig", 120, 4), 1.0)
-        self.assertAlmostEqual(graella.snap_a_nivell(0.6, "temps", 120, 4), 0.5)
-
-    def test_regularitza_encaixa_a_la_graella(self):
-        # canvis crus amb una mica de jitter, tots a prop de línies de compàs
-        cru = [(0.04, "C"), (2.03, "G"), (4.05, "Am"), (5.98, "F")]
-        res = graella.regularitza_acords(cru, 120, 4, 0.0, "compas", 8.0)
-        self.assertEqual([round(t, 3) for t, _n in res], [0.0, 2.0, 4.0, 6.0])
-        self.assertEqual([n for _t, n in res], ["C", "G", "Am", "F"])
-
-    def test_regularitza_es_queda_el_dominant(self):
-        # dins el compàs 1 (0–2 s) hi ha dos canvis: el "dominant" és el que dura més
-        cru = [(0.0, "C"), (0.2, "X"), (2.0, "G")]
-        res = graella.regularitza_acords(cru, 120, 4, 0.0, "compas", 4.0)
-        self.assertEqual(res[0], (0.0, "X"))     # X dura 1,8 s > C (0,2 s)
-
-    def test_infereix_compas_vs_temps(self):
-        per_compas = [(0.0, "C"), (2.0, "G"), (4.0, "Am"), (6.0, "F")]
-        self.assertEqual(graella.infereix_nivell(per_compas, 120, 4, 0.0, 8.0),
-                         "compas")
-        per_temps = [(0.0, "C"), (0.5, "G"), (1.0, "Am"), (1.5, "F")]
-        self.assertEqual(graella.infereix_nivell(per_temps, 120, 4, 0.0, 8.0),
-                         "temps")
-
-    def test_regularitza_acords_csv(self):
-        td = tempfile.mkdtemp()
-        cru = os.path.join(td, "chords_raw.csv")
-        dest = os.path.join(td, "acords.csv")
-        with open(cru, "w", encoding="utf-8") as f:
-            for t, n in [(0.04, "C"), (2.03, "G"), (4.05, "Am"), (5.98, "F")]:
-                f.write(f"{t},{n}\n")
-        res = pipeline.regularitza_acords_csv(cru, dest, 120, 4, 0.0,
-                                              "compas", 8.0)
-        self.assertEqual([round(float(t), 2) for (t, *_r) in res],
-                         [0.0, 2.0, 4.0, 6.0])
-        self.assertTrue(os.path.isfile(dest))
-        self.assertIn("0.04", open(cru, encoding="utf-8").read(),
-                      "el cru no s'ha de tocar")
-
-    def test_presets_ben_formats(self):
-        for clau, p in graella.PRESETS.items():
-            self.assertIn("etiqueta", p, clau)
-            self.assertIn(p["ritme"], ("auto",) + graella.NIVELLS, clau)
-            self.assertIn(int(p["modul"]), (0, 1, 2, 4, 8, 12), clau)
-        # hi ha estils representatius del que volíem cobrir
-        for clau in ("pop", "blues", "swing", "buleria", "vals", "bossa"):
-            self.assertIn(clau, graella.PRESETS)
-
-    def test_infereix_cicle_blues12_i_loop4(self):
-        bpm, bpb, durada = 120, 4, 48.0          # 24 compassos de 2 s
-        blues = ["C", "C", "C", "C", "F", "F", "C", "C", "G", "F", "C", "G"]
-        items = [(2.0 * k, blues[k % 12]) for k in range(24)]
-        self.assertEqual(graella.infereix_cicle_compassos(items, bpm, bpb, 0.0,
-                                                          durada), 12)
-        loop4 = ["C", "G", "Am", "F"]
-        items4 = [(2.0 * k, loop4[k % 4]) for k in range(24)]
-        self.assertEqual(graella.infereix_cicle_compassos(items4, bpm, bpb, 0.0,
-                                                          durada), 4)
-
-    def test_regularitza_seccions_a_blocs(self):
-        # 120 BPM 4/4 → compàs 2 s; blocs de 4 compassos = 8 s
-        sec = [(0.0, 5.0, "A", "A"), (5.0, 10.0, "B", "B"), (10.0, 22.0, "C", "C")]
-        res = graella.regularitza_seccions(sec, 120, 4, 0.0, 22.0,
-                                           modul_compassos=4)
-        # talls encaixats a múltiples de 8 s: 0 · 8 · 22
-        self.assertEqual([round(s[0], 3) for s in res], [0.0, 8.0])
-        self.assertAlmostEqual(res[-1][1], 22.0)
-        self.assertEqual(res[-1][2], "C")            # el bloc del final és C
-        self.assertAlmostEqual(res[0][0], 0.0)
-        for i in range(len(res) - 1):
-            self.assertAlmostEqual(res[i][1], res[i + 1][0], places=6)
-
-    def test_regularitza_clips_nucli_unic(self):
-        # El nucli únic treballa sobre clips `(ini, fi, payload)`.
-        clips = [(0.0, 0.2, ("C",)), (0.2, 2.0, ("X",)), (2.0, 4.0, ("G",))]
-        out = graella.regularitza_clips(clips, 2.0, 0.0, 4.0)
-        self.assertEqual([c[0] for c in out], [0.0, 2.0])
-        self.assertEqual([c[2] for c in out], [("X",), ("G",)])  # X domina
-
-    def test_regularitza_seccions_segueix_el_nucli_dominant(self):
-        # El tram resolt [16,22) el domina la secció C[10,20) (4 s) i NO la D
-        # [20,22) (2 s): el nucli mira la COBERTURA del tram, no només qui hi
-        # encaixa l'inici. Paritat estructural #11 amb els acords.
-        sec = [(0.0, 5.0, "A", "A"), (5.0, 10.0, "B", "B"),
-               (10.0, 20.0, "C", "C"), (20.0, 22.0, "D", "D")]
-        res = graella.regularitza_seccions(sec, 120, 4, 0.0, 22.0,
-                                           modul_compassos=4)
-        self.assertEqual([(s[0], s[2]) for s in res],
-                         [(0.0, "A"), (8.0, "C"), (16.0, "C")])
-
-    # ── Casos límit (validació) ──────────────────────────────────────────────
-    def test_regularitza_acords_durada_zero(self):
-        cru = [(0.0, "C"), (2.0, "G")]
-        self.assertEqual(graella.regularitza_acords(cru, 120, 4, 0.0, "compas",
-                                                    0.0), cru)
-
-    def test_regularitza_acords_buit(self):
-        self.assertEqual(graella.regularitza_acords([], 120, 4, 0.0, "compas",
-                                                    8.0), [])
-
-    def test_infereix_nivell_pocs_items(self):
-        self.assertEqual(graella.infereix_nivell([], 120, 4, 0.0, 8.0), "compas")
-        self.assertEqual(graella.infereix_nivell([(0.0, "C")], 120, 4, 0.0, 8.0),
-                         "compas")
-
-    def test_infereix_cicle_poques_barres(self):
-        self.assertIsNone(graella.infereix_cicle_compassos(
-            [(0.0, "C"), (2.0, "G")], 120, 4, 0.0, 4.0))
-
-    def test_regularitza_seccions_una_de_sola(self):
-        sec = [(0.0, 10.0, "A", "A")]
-        self.assertEqual(
-            graella.regularitza_seccions(sec, 120, 4, 0.0, 10.0, 4), sec)
-
+class TestDivisionsQuantitza(unittest.TestCase):
     def test_divisio_segons_compassos(self):
         # 120 BPM, 4/4 → compàs = 2 s
         for n, segons in ((1, 2.0), (2, 4.0), (4, 8.0), (6, 12.0),
@@ -604,6 +474,9 @@ class TestGraella(unittest.TestCase):
                 graella.divisio_segons(f"compas{n}", 120, True, 4), segons)
         # depèn del compàs: 3/4 → compàs 1,5 s
         self.assertAlmostEqual(graella.divisio_segons("compas1", 120, True, 3), 1.5)
+        # 6/8 → 3 negres (1,5 s), no 6 negres
+        self.assertAlmostEqual(
+            graella.divisio_segons("compas1", 120, True, 6, 8), 1.5)
 
     def test_divisio_segons_tresets(self):
         # 120 BPM → negra = 0,5 s
@@ -618,8 +491,66 @@ class TestGraella(unittest.TestCase):
         self.assertEqual(graella.divisio_segons("corxera", 120, False), 0.0)
         self.assertAlmostEqual(graella.divisio_segons("corxera", 120, True), 0.25)
 
+    def test_graelles_logiques(self):
+        self.assertEqual([c for _e, c in graella.GRID_ACORDS],
+                         ["corxera", "treset_corxera", "negra",
+                          "treset_negra", "blanca", "compas1"])
+        self.assertEqual([c for _e, c in graella.GRID_ESTRUCTURA],
+                         [f"compas{n}" for n in
+                          (1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64)])
 
-def _visor(raw=None, bpm=120.0, bpb=4):
+
+class TestQuantitzaNucli(unittest.TestCase):
+    def test_tot_quantitza_inicis(self):
+        clips = [(0.0, 1.0, ("C",)), (1.0, 2.0, ("G",)),
+                 (2.0, 3.0, ("Am",))]
+        out = graella.quantitza_boundaries(
+            clips, [0.0, 1.0, 2.0], {0, 1, 2}, 3.0)
+        self.assertEqual([round(c[0], 3) for c in out], [0.0, 1.0, 2.0])
+        self.assertEqual([c[2] for c in out], [("C",), ("G",), ("Am",)])
+
+    def test_seleccio_nomes_mou_els_seleccionats(self):
+        clips = [(0.0, 1.0, ("C",)), (1.0, 2.0, ("G",)),
+                 (2.0, 3.0, ("Am",))]
+        out = graella.quantitza_boundaries(
+            clips, [0.0, 1.3, 2.0], {1}, 3.0)
+        self.assertEqual([round(c[0], 3) for c in out], [0.0, 1.3, 2.0])
+
+    def test_capcalera_n_no_menja_el_primer_acord(self):
+        clips = [(0.0, 0.1, ("N",)), (0.1, 2.0, ("C",)),
+                 (2.0, 4.0, ("G",))]
+        out = graella.quantitza_boundaries(
+            clips, [0.0, 0.0, 2.0], {0, 1, 2}, 4.0)
+        self.assertEqual(out[0], (0.0, 2.0, ("C",)))
+        self.assertEqual([c[2][0] for c in out], ["C", "G"])
+
+    def test_no_inverteix_lordre_entre_fixos(self):
+        clips = [(0.0, 1.0, ("C",)), (1.0, 2.0, ("G",)),
+                 (2.0, 3.0, ("Am",))]
+        # El seleccionat vol anar a 3, però el fix el limita abans de 2.0.
+        out = graella.quantitza_boundaries(
+            clips, [0.0, 5.0, 2.0], {1}, 3.0)
+        self.assertLess(out[1][0], 2.0)
+        self.assertGreaterEqual(
+            out[1][0] - out[0][0], graella.MIN_GAP_QUANTITZA - 1e-9)
+
+    def test_el_fixe_despres_del_seleccionat_sobreviu(self):
+        clips = [(0.0, 1.0, ("C",)), (1.0, 2.0, ("G",)),
+                 (2.0, 3.0, ("Am",))]
+        out = graella.quantitza_boundaries(
+            clips, [0.0, 1.999, 2.0], {1}, 3.0)
+        self.assertEqual([round(c[0], 3) for c in out],
+                         [0.0, 1.999, 2.0])
+        self.assertEqual([c[2][0] for c in out], ["C", "G", "Am"])
+
+    def test_colisio_entre_seleccionats_queda_el_mes_llarg(self):
+        clips = [(0.0, 0.2, ("C",)), (0.2, 2.0, ("X",))]
+        out = graella.quantitza_boundaries(
+            clips, [0.0, 0.0], {0, 1}, 2.0)
+        self.assertEqual(out, [(0.0, 2.0, ("X",))])
+
+
+def _quantitza___visor():
     td = tempfile.mkdtemp()
     wav = os.path.join(td, "tema.wav")
     out = os.path.join(td, "AUTOCHORDS_tema")
@@ -632,51 +563,91 @@ def _visor(raw=None, bpm=120.0, bpb=4):
     ca = os.path.join(out, "acords.csv")
     sa = os.path.join(out, "estructura_ABC.csv")
     with open(ca, "w", encoding="utf-8") as f:
-        f.write("0.0,2.0,C\n2.0,4.0,G\n4.0,6.0,Am\n6.0,8.0,F\n")
+        f.write("0.00,0.10,N\n0.10,2.00,C\n2.10,4.00,G\n"
+                "4.20,6.00,Am\n6.10,8.00,F\n")
     with open(sa, "w", encoding="utf-8") as f:
         f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n"
-                "0.0,8.0,8.0,A,A,1.1,5.1\n")
-    v = visor_mod.Visor(wav, ca, sa, bpm=bpm, bpb=bpb, tempo_fix=True)
+                "0.0,2.9,2.9,A,A,1.1,2.2\n"
+                "2.9,8.0,5.1,B,B,2.2,5.1\n")
+    v = visor_mod.Visor(wav, ca, sa, bpm=120, bpb=4, tempo_fix=True)
     v.td, v.sortida = td, out
-    if raw is not None:
-        # El CRU viu en memòria (al projecte); ja no hi ha `analisi/`.
-        v.raw_acords = [[float(t), str(n)] for t, n in raw]
     return v
 
 
-class TestModeFacilVisor(unittest.TestCase):
+class TestQuantitzaVisor(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = visor_mod.QApplication.instance() or visor_mod.QApplication([])
 
-    def test_regularitza_des_del_cru(self):
-        v = _visor(raw=[(0.04, "C"), (2.03, "G"), (4.05, "Am"), (5.98, "F")])
-        n = v.regularitza_des_de_cru("compas")
+    def test_tot_acords_i_estructura(self):
+        v = _quantitza___visor()
+        n = v.quantitza("tot", "compas1", "compas1")
         self.assertGreater(n, 0)
-        self.assertEqual([round(float(t), 2) for (t, *_r) in v.acords],
+        self.assertEqual([round(float(a[0]), 2) for a in v.acords],
                          [0.0, 2.0, 4.0, 6.0])
         self.assertEqual([a[2][0] for a in v.acords], ["C", "G", "Am", "F"])
-        # cobertura (#4): 0 → durada
-        self.assertAlmostEqual(float(v.acords[0][0]), 0.0, places=6)
+        self.assertEqual([round(float(s[0]), 2) for s in v.seccions],
+                         [0.0, 2.0])
+        self.assertEqual([s[2] for s in v.seccions], ["A", "B"])
         self.assertEqual(len(v._undo_stack), 1)
         v.close()
 
-    def test_auto_infereix_compas(self):
-        v = _visor(raw=[(0.0, "C"), (2.0, "G"), (4.0, "Am"), (6.0, "F")])
-        v.regularitza_des_de_cru("auto")
-        self.assertEqual([a[2][0] for a in v.acords], ["C", "G", "Am", "F"])
+    def test_no_toca_bpm_compas_offset_ni_cru(self):
+        v = _quantitza___visor()
+        abans = (v.bpm, v.bpb, getattr(v, "beat_type", 4), v.offset,
+                 list(v.tempo_trams or ()))
+        v.quantitza("tot", "compas1", "compas1")
+        self.assertEqual(abans, (v.bpm, v.bpb, getattr(v, "beat_type", 4),
+                                 v.offset, list(v.tempo_trams or ())))
+        self.assertFalse(hasattr(v, "raw_acords"))
         v.close()
 
-    def test_el_cru_no_es_toca(self):
-        v = _visor(raw=[(0.04, "C"), (2.03, "G"), (4.05, "Am"), (5.98, "F")])
-        abans = [list(x) for x in v.raw_acords]
-        v.regularitza_des_de_cru("compas")
-        self.assertEqual([list(x) for x in v.raw_acords], abans,
-                         "el mode fàcil no ha de tocar el cru del projecte")
+    def test_seleccio_mixta_una_sola_operacio(self):
+        v = _quantitza___visor()
+        v.timeline.select_multi({("chord", 2), ("section", 1)})
+        n = v.quantitza("seleccio", "compas1", "compas1")
+        self.assertGreater(n, 0)
+        self.assertEqual(len(v._undo_stack), 1)
+        despres = ([a[2][0] for a in v.acords],
+                   [s[2] for s in v.seccions])
+        v.undo()
+        self.assertEqual([a[2][0] for a in v.acords],
+                         ["N", "C", "G", "Am", "F"])
+        v.redo()
+        self.assertEqual(([a[2][0] for a in v.acords],
+                          [s[2] for s in v.seccions]), despres)
+        v.close()
+
+    def test_nomes_acords_no_toca_estructura(self):
+        v = _quantitza___visor()
+        abans = list(v.seccions)
+        v.quantitza("acords", "compas1", "compas1")
+        self.assertEqual(v.seccions, abans)
+        v.close()
+
+    def test_nomes_estructura_no_toca_acords(self):
+        v = _quantitza___visor()
+        acords = [a[2][0] for a in v.acords]
+        v.quantitza("estructura", "compas1", "compas1")
+        self.assertEqual([a[2][0] for a in v.acords], acords)
+        v.close()
+
+    def test_en_mode_lliure_no_quantitza(self):
+        v = _quantitza___visor()
+        v.tempo_fix = False
+        self.assertEqual(v.quantitza("tot", "compas1", "compas1"), 0)
+        v.close()
+
+    def test_sense_canvis_no_crea_undo(self):
+        v = _quantitza___visor()
+        v.quantitza("tot", "compas1", "compas1")
+        abans = len(v._undo_stack)
+        self.assertEqual(v.quantitza("tot", "compas1", "compas1"), 0)
+        self.assertEqual(len(v._undo_stack), abans)
         v.close()
 
 
-def _graella_tearDownModule():
+def _quantitza_tearDownModule():
     try:
         import _qt_neteja
     except ImportError:
@@ -684,130 +655,6 @@ def _graella_tearDownModule():
         import _qt_neteja
     _qt_neteja.processa_esborrats()
 
-# ══════════════════════════════════════════════════════════════════════════
-# ORIGEN: test_graella_bpm.py
-# ══════════════════════════════════════════════════════════════════════════
-"""Validació: mode fàcil / graella amb BPM extrems i modes rars.
-
-Rangs de l'app: BPM 30–400 (`_bpm_val`), compàs bpb 1–12, offset 0–60. Comprova
-que la «matemàtica» de la graella i el mode fàcil no es trenquen als extrems i
-que, sobretot, la COBERTURA (regla #4) es manté.
-"""
-
-
-
-
-class TestGraellaBpmExtrems(unittest.TestCase):
-    def test_nivell_segons_rangs(self):
-        self.assertAlmostEqual(graella.nivell_segons("compas", 30, 4), 8.0)
-        self.assertAlmostEqual(graella.nivell_segons("compas", 400, 4), 0.6)
-        self.assertAlmostEqual(graella.nivell_segons("compas", 120, 1), 0.5)
-        self.assertAlmostEqual(graella.nivell_segons("compas", 120, 12), 6.0)
-        self.assertAlmostEqual(graella.nivell_segons("mig", 120, 12), 3.0)
-
-    def test_regularitza_bpm_extrem(self):
-        # bpm 30 → compàs 8 s: 20 s → cel·les a 0, 8, 16
-        cru = [(0.1, "C"), (8.1, "G"), (16.2, "Am")]
-        res = graella.regularitza_acords(cru, 30, 4, 0.0, "compas", 20.0)
-        self.assertEqual([round(t, 3) for t, _n in res], [0.0, 8.0, 16.0])
-
-    def test_guards_bpm_zero(self):
-        self.assertEqual(graella.nivell_segons("compas", 0, 4), 0.0)
-        self.assertEqual(graella.divisio_segons("corxera", 0, True), 0.0)
-        self.assertAlmostEqual(graella.snap_a_nivell(2.1, "compas", 0, 4), 2.1)
-        cru = [(0.0, "C"), (2.0, "G")]
-        # sense BPM no es pot encaixar → es retorna el cru tal qual
-        self.assertEqual(
-            graella.regularitza_acords(cru, 0, 4, 0.0, "compas", 8.0), cru)
-        self.assertEqual(graella.infereix_nivell(cru, 0, 4, 0.0, 8.0), "temps")
-
-    def test_infereix_nivell_bpm_extrem(self):
-        # canvis cada 8 s amb bpm 30 (compàs 8 s) → "compas"
-        cru = [(0.0, "C"), (8.0, "G"), (16.0, "Am")]
-        self.assertEqual(graella.infereix_nivell(cru, 30, 4, 0.0, 24.0),
-                         "compas")
-
-
-def _model_csv(cru):
-    """Cru `t,acord` -> format del MODEL `inici,fi,acord` (S3)."""
-    files = [ln for ln in cru.strip().splitlines() if ln.strip()]
-    ts = [float(ln.split(",")[0]) for ln in files]
-    out = []
-    for i, ln in enumerate(files):
-        t, nom = ln.split(",", 1)
-        fi = ts[i + 1] if i + 1 < len(ts) else ts[-1] + 1.0
-        out.append(f"{t},{fi},{nom}")
-    return "\n".join(out) + "\n"
-
-
-def _graella_bpm___visor(bpm, bpb, tempo_fix, acords, durada):
-    td = tempfile.mkdtemp()
-    wav = os.path.join(td, "tema.wav")
-    out = os.path.join(td, "AUTOCHORDS_tema")
-    os.makedirs(out)
-    with wave.open(wav, "wb") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(44100)
-        w.writeframes(b"\x00\x00" * int(44100 * durada))
-    ca = os.path.join(out, "acords.csv")
-    with open(ca, "w", encoding="utf-8") as f:
-        f.write(_model_csv(acords))
-    v = visor_mod.Visor(wav, ca, None, bpm=bpm, bpb=bpb, tempo_fix=tempo_fix)
-    v.td, v.sortida = td, out
-    # el CRU viu en memòria (al projecte)
-    v.raw_acords = [[float(f.split(",")[0]), f.split(",")[1].strip()]
-                    for f in acords.strip().splitlines() if "," in f]
-    return v
-
-
-class TestModeFacilBpmExtrem(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.app = visor_mod.QApplication.instance() or visor_mod.QApplication([])
-
-    def _check_cobertura(self, v):
-        self.assertAlmostEqual(float(v.acords[0][0]), 0.0, places=6)
-        if v.seccions:
-            self.assertAlmostEqual(float(v.seccions[0][0]), 0.0, places=6)
-            self.assertAlmostEqual(float(v.seccions[-1][1]),
-                                   float(v.audio["durada"]), places=2)
-
-    def test_mode_facil_bpm_baix(self):
-        cru = "0.1,C\n8.1,G\n16.2,Am\n"
-        v = _graella_bpm___visor(30, 4, True, cru, 24.0)
-        n = v.regularitza_des_de_cru("compas", modul_compassos=4)
-        self.assertGreater(n, 0)
-        self._check_cobertura(v)
-        v.close()
-
-    def test_mode_facil_bpm_alt(self):
-        cru = "0.1,C\n0.7,G\n1.3,Am\n1.9,F\n"
-        v = _graella_bpm___visor(400, 4, True, cru, 5.0)
-        n = v.regularitza_des_de_cru("compas", modul_compassos=4)
-        self.assertGreater(n, 0)
-        self._check_cobertura(v)
-        v.close()
-
-    def test_mode_facil_amb_offset(self):
-        cru = "0.6,C\n1.1,G\n1.6,Am\n"
-        v = _graella_bpm___visor(120, 4, True, cru, 6.0)
-        v.offset = 0.15                      # el compàs 1 cau a 0,15 s
-        n = v.regularitza_des_de_cru("temps")
-        self.assertGreater(n, 0)
-        self._check_cobertura(v)
-        v.close()
-
-
-def _graella_bpm_tearDownModule():
-    try:
-        import _qt_neteja
-    except ImportError:
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        import _qt_neteja
-    _qt_neteja.processa_esborrats()
-
-# ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_snap.py
 # ══════════════════════════════════════════════════════════════════════════
 """Graella configurable: interruptor de snap + divisió (1/4 · 1/8 · 1/16 · 1/32…).

@@ -180,9 +180,6 @@ class Visor(QMainWindow):
             raise RuntimeError(f"No puc obrir la wav: {e}") from e
         if not acords and self.csv_acords:
             acords = self.csv_acords
-        # CRU de l'anàlisi (el posa `main` des del `.acproj`): el «Mode fàcil»
-        # regularitza des d'ací, no des d'un fitxer.
-        self.raw_acords = []
         self.acords = llegeix_acords(acords) if acords else []
         self.seccions = llegeix_abc(abc) if abc else []
         # Roadmap §14.1 — «treballar SENSE analitzar»: si el model ve BUIT (cap
@@ -2309,63 +2306,124 @@ class Visor(QMainWindow):
         self.log(f"substitució acords: «{troba}» → «{nou}» ({n})")
         return n
 
-    def regularitza_des_de_cru(self, nivell="auto", modul_compassos=0):
-        """Mode fàcil: re-deriva els acords de l'ANÀLISI CRUA sobre la graella.
+    def _grid_target(self, t, grid, durada):
+        """Instant de graella més proper per a un inici (mapa o BPM constant)."""
+        t = float(t)
+        d = graella.DIVISIONS.get(grid)
+        if d is None:
+            return t
+        mapa = getattr(self, "tempo_map", None)
+        if mapa is not None and not mapa.es_constant():
+            return mapa.snap(t, d)
+        step = graella.divisio_segons(grid, self.bpm, self.tempo_fix,
+                                      self.bpb, getattr(self, "beat_type", 4))
+        if step <= 0:
+            return t
+        off = float(getattr(self, "offset", 0.0))
+        return max(0.0, off + round((t - off) / step) * step)
 
-        `nivell`: "auto" | "compas" | "mig" | "temps" → **un acord per cel·la**
-        (ritme harmònic). Si `modul_compassos` > 0, també **encaixa els talls de
-        secció** a múltiples d'aquell nombre de compassos (blocs 4/8/16…).
+    def quantitza(self, abast="tot", grid_acords="compas1",
+                  grid_estructura="compas4"):
+        """Quantitza els INICIS dels clips del model (no el cru).
 
-        **No toca el cru** (viu al `.acproj`). Una sola operació de desfer.
-        Retorna quants acords ha deixat (0 = res a fer).
+        `abast`: `"tot"` · `"seleccio"` · `"acords"` · `"estructura"`.
+        Cada tipus usa la seua graella. Els clips no seleccionats no es mouen.
+        Una sola operació de desfer; no toca BPM, compàs, offset ni el cru.
+        Retorna quants clips (acords + seccions) ha canviat.
         """
-        durada = float(self.audio["durada"])
-        items = [(float(t), str(n)) for t, n in (self.raw_acords or ())]
-        if not items:
-            self.log("mode fàcil: sense cru al projecte → parteixo del MODEL")
-            items = [(float(a[0]), str(nom_acord(a))) for a in self.acords]
-        bpm, bpb, off = self.bpm, self.bpb, self.offset
-        if nivell in (None, "auto"):
-            nivell = graella.infereix_nivell(items, bpm, bpb, off, durada,
-                                             log=self.log)
-        nou = graella.regularitza_acords(items, bpm, bpb, off,
-                                         nivell or "compas", durada,
-                                         log=self.log)
-        nous_acords = []
-        if nou:
-            nous_acords = pipeline.normalitza_clips(
-                [pipeline.Clip(float(t), float(t), (str(n), f"{float(t):.9f}"))
-                 for (t, n) in nou],
-                durada, pipeline.FORAT_ACORD, arrodoneix=True, deriva_fi=True,
-                log=self.log)
-        noves_sec = self.seccions
-        if modul_compassos and self.seccions:
-            noves_sec = graella.regularitza_seccions(
-                self.seccions, bpm, bpb, off, durada, modul_compassos,
-                log=self.log)
-        canvi_ac = bool(nous_acords)
-        canvi_sec = modul_compassos and noves_sec != self.seccions
-        if not canvi_ac and not canvi_sec:
+        if not self.tempo_fix:
+            self.log("quantitza: cal el mode BPM · compàs (graella musical)")
             return 0
+        durada = float(self.audio["durada"])
+        sel = set(self.timeline.selected_keys())
+        if abast == "seleccio":
+            ac_sel = {i for (k, i) in sel if k == "chord"}
+            es_sel = {i for (k, i) in sel if k == "section"}
+            if not ac_sel and not es_sel:
+                self.log("quantitza: no hi ha cap clip seleccionat")
+                return 0
+        elif abast == "acords":
+            ac_sel, es_sel = set(range(len(self.acords))), set()
+        elif abast == "estructura":
+            ac_sel, es_sel = set(), set(range(len(self.seccions)))
+        else:
+            ac_sel = set(range(len(self.acords)))
+            es_sel = set(range(len(self.seccions)))
+
+        canvi_ac = False
+        canvi_sec = False
+        nous_ac = list(self.acords)
+        noves_sec = list(self.seccions)
+
+        if ac_sel and self.acords:
+            starts = [
+                self._grid_target(c.ini, grid_acords, durada)
+                if i in ac_sel else float(c.ini)
+                for i, c in enumerate(self.acords)
+            ]
+            base = [(float(c.ini), float(c.fi), tuple(c.payload))
+                    for c in self.acords]
+            res = graella.quantitza_boundaries(
+                base, starts, ac_sel, durada, log=self.log)
+            nous_ac = pipeline.normalitza_clips(
+                [pipeline.Clip(*c) for c in res], durada,
+                pipeline.FORAT_ACORD, arrodoneix=True, deriva_fi=True,
+                log=self.log)
+            if not nous_ac:
+                nous_ac = list(self.acords)
+            try:
+                nous_ac = self._valida_canvis_acords(nous_ac)
+            except ValueError as e:
+                self.log(f"quantitza: acords no vàlids ({e})")
+                return 0
+            canvi_ac = nous_ac != self.acords
+
+        if es_sel and self.seccions:
+            starts = [
+                self._grid_target(float(s[0]), grid_estructura, durada)
+                if i in es_sel else float(s[0])
+                for i, s in enumerate(self.seccions)
+            ]
+            base = [(float(s[0]), float(s[1]),
+                     (str(s[2]), str(s[3]))) for s in self.seccions]
+            res = graella.quantitza_boundaries(
+                base, starts, es_sel, durada, log=self.log)
+            clips = pipeline.normalitza_clips(
+                [pipeline.Clip(*c) for c in res], durada,
+                pipeline.FORAT_SECCIO, log=self.log)
+            noves_sec = pipeline.seccions_de_clips(clips)
+            try:
+                noves_sec = self._valida_canvis_seccions(noves_sec)
+            except ValueError as e:
+                self.log(f"quantitza: estructura no vàlida ({e})")
+                return 0
+            canvi_sec = noves_sec != self.seccions
+
+        if not canvi_ac and not canvi_sec:
+            self.log("quantitza: sense canvis (ja estava a la graella)")
+            return 0
+
         self._undo_marca()
         if canvi_ac:
-            self.acords = self._valida_canvis_acords(nous_acords)
+            self.acords = nous_ac
         if canvi_sec:
-            self.seccions = self._valida_canvis_seccions(noves_sec)
+            self.seccions = noves_sec
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
             if canvi_ac:
                 self._desa_i_regenera()
             if canvi_sec:
-                self._regenera_abc_des_de_totes_les_seccions("mode fàcil")
+                self._regenera_abc_des_de_totes_les_seccions("quantitza")
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
         self._omple_llista_ac()
         self._actualitza_llista_abc()
-        self.log(f"mode fàcil: {len(self.acords)} acords, {len(self.seccions)} "
-                 f"seccions (ritme harmònic «{nivell}»)")
-        return len(self.acords)
+        n = (len(self.acords) if canvi_ac else 0) + (
+            len(self.seccions) if canvi_sec else 0)
+        self.log(f"quantitza: {n} clip(s) (abast «{abast}», "
+                 f"acords {grid_acords}, estructura {grid_estructura})")
+        return n
 
     def _on_section_edit_requested(self, idx):
         # Doble-clic al SectionItem -> franja EDITOR (sense finestra emergent).

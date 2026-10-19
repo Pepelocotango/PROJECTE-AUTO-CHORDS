@@ -43,8 +43,8 @@ NOM_CSV_ACORDS = "acords.csv"
 NOM_CSV_ESTRUCTURA = "estructura_ABC.csv"
 MAX_BACKUPS = 10
 # El cru de l'anàlisi viatja DINS el document; si és enorme (cançons molt
-# llargues), no es desa: el MODEL (4 CSV) ja és al disc i el mode fàcil pot
-# tornar a analitzar. Evita que el `.acproj` es convertisca en una base de dades.
+# llargues), no es desa: el MODEL (4 CSV) ja és al disc i es pot tornar
+# a analitzar. Evita que el `.acproj` es convertisca en una base de dades.
 MAX_ANALISI_BYTES = 512 * 1024
 
 
@@ -56,7 +56,7 @@ def saneja_analisi(ana):
     """Valida i neteja el CRU que viatja dins el document. Tolerant.
 
     Retorna el diccionari net, o `None` si no serveix (es descarta: el MODEL és
-    als CSV i el mode fàcil pot tornar a analitzar). Un projecte amb el cru
+    als CSV i es pot tornar a analitzar). Un projecte amb el cru
     malmès **s'ha de poder obrir igualment** (l'oficial de Studio One diu
     literalment «esborra el Cache/» quan alguna cosa va malament).
     """

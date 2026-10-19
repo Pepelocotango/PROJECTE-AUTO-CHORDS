@@ -30,7 +30,7 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 # UN SOL objecte per mòdul (vegeu visor.py): els imports crus creaven objectes
 # diferents dels que veuen la resta de mòduls i els tests.
-from . import ffmpeg, graella, partitura, pipeline, postproc, theme  # noqa: F401
+from . import ffmpeg, partitura, pipeline, postproc, theme  # noqa: F401
 from . import config  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402
@@ -212,8 +212,8 @@ class Feina(QThread):
             self.log("1/3 extreu acords (Chordino)...")
             pipeline.extract_chords(self.wav, csv_ac, self.log,
                                     params=(self.opcions.get("chords") or None))
-            # CRU en memòria: el resultat de Chordino ABANS de netejar-lo (el
-            # mode fàcil i la re-neteja el fan servir; es desa al `.acproj`).
+            # CRU en memòria: el resultat de Chordino ABANS de netejar-lo
+            # (es desa al `.acproj` com a caché; l'edició no el toca).
             self.raw_chords = _llegeix_cru_acords(csv_ac)
             # Neteja posterior dels acords (opcions del dialeg).
             cl = self.opcions.get("clean") or {}
@@ -231,16 +231,6 @@ class Feina(QThread):
                     bpm=self.bpm, bpb=self.bpb, offset=self.offset,
                     divisio=int(cl.get("divisio", 1)), log=self.log,
                     durada=durada_wav)
-            # Mode fàcil: si està activat, re-regularitza els acords del CRU.
-            ritme = str(cl.get("ritme") or "off")
-            if ritme and ritme != "off":
-                self.log("1c/3 mode fàcil (ritme harmònic)...")
-                try:
-                    pipeline.regularitza_acords_items(
-                        self.raw_chords, csv_ac, self.bpm, self.bpb,
-                        self.offset, ritme, durada_wav, log=self.log)
-                except Exception as e:  # noqa: BLE001
-                    self.log(f"mode fàcil ERROR: {e}")
             self.progres.emit(50)
             if self.amb_estructura:
                 self.log("2/3 extreu estructura (qm-segmenter)...")
@@ -516,18 +506,6 @@ class Finestra(QMainWindow):
         barra.addSeparator()
         barra.addWidget(self._params_temps)
         barra.addSeparator()
-        # «Mode fàcil» també a la barra (abans només era al menú Analitza):
-        # acció d'un clic que regularitza els acords a la graella.
-        self.b_mode_facil = QPushButton("Mode fàcil")
-        self.b_mode_facil.setObjectName("secundari")
-        self.b_mode_facil.setToolTip(
-            "Mode fàcil: re-regularitza els acords a la graella (ritme "
-            "harmònic). Treballa sobre el CRU de l'anàlisi (desat al "
-            "projecte), per això depèn d'«Analitza»: sense anàlisi no hi ha "
-            "res a re-regularitzar. "
-            "Es pot desfer i repetir amb un altre nivell.")
-        self.b_mode_facil.clicked.connect(self._mode_facil_ui)
-        barra.addWidget(self.b_mode_facil)
         # (El commutador d'EINA del timeline viu a la barra de transport, just
         #  darrere del snap i la seva divisió — vegeu la resta d'aquest mètode.)
         barra.addSeparator()
@@ -836,8 +814,7 @@ class Finestra(QMainWindow):
         self._act(m, "Detecta el compàs 1 automàticament", None,
                     lambda: self._detecta_compas1())
         self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
-        self._act(m, "Mode fàcil: re-regularitza a la graella…", "",
-                  self._mode_facil_ui)
+        self._act(m, "Quantitza el model…", "", self._quantitza_ui)
         self._act(m, "Mapa de tempo i compàs…", "",
                   self._tempo_mapa_ui)
         self._act(m, "Detecta el mapa de tempo (per beats)…", "",
@@ -1320,15 +1297,16 @@ class Finestra(QMainWindow):
                 ("Zoom + / − / total", "Ctrl++ / Ctrl+− / Ctrl+0"),
                 ("Menú del clip (o pan arrossegant)", "Botó dret"),
             ]),
-            ("Mode fàcil: què fa i per què va amb «Analitza»", [
-                ("Posa els acords a la GRAELLA: els arrodoneix al compàs i al "
-                 "temps (ritme harmònic net)", ""),
-                ("Treballa sobre el CRU de l'anàlisi (desat al `.acproj`), no "
-                 "sobre el model que veus", ""),
-                ("Per això depèn d'«Analitza»: sense anàlisi no hi ha res a "
-                 "re-regularitzar", ""),
-                ("No toca l'anàlisi crua: pots desfer (Ctrl+Z) i tornar-hi "
-                 "amb un altre nivell", ""),
+            ("Quantitza: què fa i què NO toca", [
+                ("Mou només els INICIS dels clips a la graella; el final de "
+                 "cada clip es deriva del següent", ""),
+                ("Abast: tot, només la selecció, tot però només acords o tot "
+                 "però només estructura", ""),
+                ("Graella d'acords: de corxera a 1 compàs. Graella "
+                 "d'estructura: d'1 a 64 compassos", ""),
+                ("No toca BPM, compàs, offset ni el cru de l'anàlisi: "
+                 "treballa sobre el model que veus", ""),
+                ("És una sola operació: Ctrl+Z la desfà i Ctrl+Y la refer", ""),
             ]),
             ("Per què l'enganxat sobreescriu", [
                 ("Els clips cobreixen SEMPRE tota la WAV (regla d'or #4)", ""),
@@ -1522,26 +1500,29 @@ class Finestra(QMainWindow):
         """Acció de menú: infereix el mapa i avisa per pantalla si cal."""
         self.detecta_tempo_mapa(avis=True)
 
-    def _mode_facil_ui(self):
-        """Mode fàcil: preset d'estil + ritme harmònic + mòdul → regularitza."""
+    def _quantitza_ui(self):
+        """Quantitza el model: abast + graella d'acords/estructura."""
         vr = self.visor_ref
-        if vr is None or not vr.acords:
-            self.avisa_info("Auto Chords", "Analitza un tema primer.")
+        if vr is None:
+            self.avisa_info("Auto Chords", "Obre un àudio primer.")
             return
-        dlg = dialegs.DialegModeFacil(self)
+        if not getattr(vr, "tempo_fix", False):
+            self.avisa_info("Auto Chords",
+                            "La quantització necessita el mode BPM · compàs.")
+            return
+        sel = vr.timeline.selected_keys()
+        te_ac = any(k == "chord" for k, _i in sel)
+        te_es = any(k == "section" for k, _i in sel)
+        abast = "seleccio" if (te_ac or te_es) else "tot"
+        dlg = dialegs.DialegQuantitza(
+            self, abast=abast, te_acords=te_ac, te_seccions=te_es)
         if dlg.exec_() != QDialog.Accepted:
             return
-        p = graella.PRESETS.get(dlg.preset()) or {}
-        bpb = int(p.get("bpb") or self._bpb_val())
-        den = int(p.get("den") or 4)
-        nou = f"{bpb}/{den}"      # sempre en format complet (4/4, no «4»)
-        if self.bpb.text().strip() != nou:
-            self.bpb.setText(nou)
-            self._aplica_parametres_temps()
-        n = vr.regularitza_des_de_cru(dlg.ritme(), modul_compassos=dlg.modul())
+        n = vr.quantitza(dlg.abast(), dlg.grid_acords(),
+                         dlg.grid_estructura())
         if n:
-            self.registra(f"mode fàcil: {n} acords a la graella "
-                          f"({p.get('etiqueta', '')})")
+            self.registra(f"quantització: {n} clip(s) "
+                          f"(abast: {dlg.abast()})")
 
     # -- eina del timeline + abast del rang ----------------------------------
     def _replica_eina(self):
@@ -1985,10 +1966,6 @@ class Finestra(QMainWindow):
                 sortida=self.sortida or pipeline.carpeta_sortida(wav),
             )
             self.visor_ref = visor
-            # CRU de l'anàlisi (del projecte) per al «Mode fàcil».
-            _ana = ((self.projecte.dades.get("analisi")
-                     if self.projecte is not None else None) or {})
-            visor.raw_acords = list(_ana.get("chords") or [])
             # El visor ha de desar els CSV/export a la carpeta de sortida del
             # PROJECTE (no derivar-la del WAV, que viu a <projecte>/audio/).
             visor.sortida = self.sortida or pipeline.carpeta_sortida(wav)
@@ -2665,6 +2642,16 @@ class Finestra(QMainWindow):
         self.vol_metro.valueChanged.connect(self._canvia_vol_metro)
         bar.addWidget(self.vol_metro)
         bar.addSeparator()
+        # Quantitza: just abans del Snap (petició de l'operador). Recicla el
+        # lloc de l'antic «Mode fàcil».
+        self.b_quantitza = QPushButton("Quantitza")
+        self.b_quantitza.setObjectName("secundari")
+        self.b_quantitza.setToolTip(
+            "Quantitza els inicis dels clips a la graella. Abast: tot, "
+            "selecció, només acords o només estructura. No toca BPM, compàs "
+            "ni el cru; es pot desfer i refer.")
+        self.b_quantitza.clicked.connect(self._quantitza_ui)
+        bar.addWidget(self.b_quantitza)
         # Graella configurable: interruptor de snap + divisió (habilita el nudge fi).
         self.tb_snap = boto("Snap", "Interruptor de snap (encaixar a la graella)",
                             self._canvia_snap, checkable=True)
@@ -2878,11 +2865,6 @@ class Finestra(QMainWindow):
             wav = self.wav_edit.text().strip()
             if wav and os.path.isfile(wav):
                 self._carrega_visor(wav)
-                # Encara que no s'haja pogut persistir, el mode fàcil té el cru
-                # en aquesta sessió.
-                if (getattr(self.feina, "raw_chords", None)
-                        and getattr(self, "visor_ref", None) is not None):
-                    self.visor_ref.raw_acords = list(self.feina.raw_chords)
         else:
             self.b_export.setEnabled(False)
             self.b_export_part.setEnabled(False)

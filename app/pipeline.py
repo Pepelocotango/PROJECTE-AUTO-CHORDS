@@ -123,7 +123,7 @@ def carpeta_sortida(wav):
 
 
 # Subcarpeta de la SORTIDA on es desa l'ANÀLISI CRUA (evidència, només lectura):
-# NO la toquen l'edició, ni el mode fàcil, ni els canvis de compàs/BPM/mode.
+# NO la toquen l'edició, ni la quantització, ni els canvis de compàs/BPM/mode.
 # És el «primer autoanàlisi» que es pot reintrepretar amb la graella.
 # Prefixos dels directoris temporals que crea l'app (per netejar-los sempre).
 PREFIXOS_TMP = ("ac_ttl_", "ac_qm_", "ac_key_")
@@ -1952,47 +1952,6 @@ def escriu_atomic(ruta, escriu):
         except OSError:
             pass
         raise
-
-
-def regularitza_acords_items(items, csv_desti, bpm, bpb, offset, ritme, durada,
-                             log=None):
-    """Mode fàcil: regularitza a la graella uns acords ja en memòria.
-
-    `items`: `[(t, nom), …]` (normalment el **cru** de l'anàlisi desat al
-    projecte). Escriu `csv_desti` amb el MODEL resultant (cobertura #4).
-    """
-    from app import graella                    # import local: evita cicles
-    items = [(float(t), str(n)) for t, n in (items or ())]
-    if not items:
-        return None
-    if ritme in (None, "auto"):
-        ritme = graella.infereix_nivell(items, bpm, bpb, offset, durada, log=log)
-    res = graella.regularitza_acords(items, bpm, bpb, offset,
-                                     ritme or "compas", durada, log=log)
-    clips = normalitza_clips(
-        clips_d_acords(res, durada), durada, FORAT_ACORD,
-        arrodoneix=True, deriva_fi=True, log=log)
-    desa_acords_csv(csv_desti, clips, durada)
-    return acords_de_clips(clips)
-
-
-def regularitza_acords_csv(csv_cru, csv_desti, bpm, bpb, offset, ritme, durada,
-                           log=None):
-    """Igual que `regularitza_acords_items`, però llegint el cru d'un CSV."""
-    items = []
-    try:
-        with open(csv_cru, encoding="utf-8") as f:
-            for fila in csv.reader(f):
-                if not fila or fila[0].startswith("posici"):
-                    continue
-                try:
-                    items.append((float(fila[0]), fila[1].strip()))
-                except (ValueError, IndexError):
-                    continue
-    except OSError:
-        return None
-    return regularitza_acords_items(items, csv_desti, bpm, bpb, offset, ritme,
-                                    durada, log=log)
 
 
 def desa_acords_csv(ruta, clips, durada=0.0):
