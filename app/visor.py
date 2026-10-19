@@ -181,6 +181,9 @@ class Visor(QMainWindow):
             raise RuntimeError(f"No puc obrir la wav: {e}") from e
         if not acords and self.csv_acords:
             acords = self.csv_acords
+        # CRU de l'anàlisi (el posa `main` des del `.acproj`): el «Mode fàcil»
+        # regularitza des d'ací, no des d'un fitxer.
+        self.raw_acords = []
         self.acords = llegeix_acords(acords) if acords else []
         self.seccions = llegeix_abc(abc) if abc else []
         # Roadmap §14.1 — «treballar SENSE analitzar»: si el model ve BUIT (cap
@@ -2310,26 +2313,13 @@ class Visor(QMainWindow):
         (ritme harmònic). Si `modul_compassos` > 0, també **encaixa els talls de
         secció** a múltiples d'aquell nombre de compassos (blocs 4/8/16…).
 
-        **No toca la capa crua** (`analisi/`). Una sola operació de desfer.
+        **No toca el cru** (viu al `.acproj`). Una sola operació de desfer.
         Retorna quants acords ha deixat (0 = res a fer).
         """
         durada = float(self.audio["durada"])
-        cru = os.path.join(pipeline.carpeta_analisi(self._carpeta_acords()),
-                           pipeline.NOM_CRU_ACORDS)
-        items = []
-        if os.path.isfile(cru):
-            try:
-                with open(cru, encoding="utf-8") as f:
-                    for fila in csv.reader(f):
-                        if not fila or fila[0].startswith("posici"):
-                            continue
-                        try:
-                            items.append((float(fila[0]), fila[1].strip()))
-                        except (ValueError, IndexError):
-                            continue
-            except OSError:
-                items = []
+        items = [(float(t), str(n)) for t, n in (self.raw_acords or ())]
         if not items:
+            self.log("mode fàcil: sense cru al projecte → parteixo del MODEL")
             items = [(float(a[0]), str(nom_acord(a))) for a in self.acords]
         bpm, bpb, off = self.bpm, self.bpb, self.offset
         if nivell in (None, "auto"):
@@ -3258,12 +3248,10 @@ class Visor(QMainWindow):
                 pipeline.regenera_wavs_estructura(abc, sortida, 44100,
                                                   self.log)
             else:
-                seg_csv = os.path.join(sortida, "segments.csv")
-                amb_est = os.path.isfile(seg_csv)
-                pipeline.exporta_total(self.csv_acords, seg_csv if amb_est else None,
+                pipeline.exporta_total(self.csv_acords, None,
                                        sortida, self.bpm, self.bpb, self.offset,
                                        44100, self.log, tempo_fix=self.tempo_fix,
-                                       amb_estructura=amb_est,
+                                       amb_estructura=False,
                                        mapa_tempo=list(self.tempo_trams or []))
             self.log(f"exporta FET: {sortida}")
             QMessageBox.information(self, "Visor",

@@ -125,17 +125,6 @@ def carpeta_sortida(wav):
 # Subcarpeta de la SORTIDA on es desa l'ANÀLISI CRUA (evidència, només lectura):
 # NO la toquen l'edició, ni el mode fàcil, ni els canvis de compàs/BPM/mode.
 # És el «primer autoanàlisi» que es pot reintrepretar amb la graella.
-NOM_ANALISI = "analisi"
-NOM_CRU_ACORDS = "chords_raw.csv"
-NOM_CRU_SEGMENTS = "segments_raw.csv"
-NOM_ANALISI_META = "meta.json"
-
-
-def carpeta_analisi(sortida):
-    """Carpeta de l'anàlisi crua (`analisi/`) dins la sortida del tema."""
-    return os.path.join(sortida, NOM_ANALISI)
-
-
 # Prefixos dels directoris temporals que crea l'app (per netejar-los sempre).
 PREFIXOS_TMP = ("ac_ttl_", "ac_qm_", "ac_key_")
 
@@ -1490,8 +1479,13 @@ def regenera_wavs_estructura(abc_csv, sortida, sr, log):
     return fer_wavs_estructura(abc_csv, dest, sr, log)
 
 
-def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
+def fer_abc(trossos, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
             durada_min=0.0, fusiona_iguals=True, durada=None):
+    """Talls (en memòria o camí a un CSV) -> `estructura_ABC.csv`.
+
+    `trossos`: llista `[(ini, durada, index, etiqueta), …]` (el que retorna el
+    qm-segmenter) o el camí d'un CSV amb eixes columnes.
+    """
     import re
 
     def familia(lab):
@@ -1500,17 +1494,22 @@ def fer_abc(seg_csv, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
         fam = re.sub(r"\d+$", "", lab.strip()).upper() or lab.strip()
         return fam
 
-    # 1. Llegeix + fusiona adjacents de la mateixa família (C-C -> un sol tros).
-    trossos = []  # (ini, fi, família, etiqueta_original)
-    with open(seg_csv, encoding="utf-8") as f:
-        for ini, dur, _idx, lab in csv.reader(f):
-            ini, dur = float(ini), float(dur)
-            fam = familia(lab)
-            if fusiona_iguals and trossos and trossos[-1][2] == fam:
-                trossos[-1][1] = ini + dur
-                trossos[-1][3] += "+" + lab
-            else:
-                trossos.append([ini, ini + dur, fam, lab])
+    # 1. Llegeix (si cal) + fusiona adjacents de la mateixa família.
+    if isinstance(trossos, (str, os.PathLike)):
+        with open(trossos, encoding="utf-8") as f:
+            files = [[float(r[0]), float(r[1]), r[2], r[3]]
+                     for r in csv.reader(f) if len(r) >= 4]
+    else:
+        files = [[float(r[0]), float(r[1]), r[2], r[3]] for r in (trossos or ())]
+    trams = []  # (ini, fi, família, etiqueta_original)
+    for ini, dur, _idx, lab in files:
+        fam = familia(lab)
+        if fusiona_iguals and trams and trams[-1][2] == fam:
+            trams[-1][1] = ini + dur
+            trams[-1][3] += "+" + lab
+        else:
+            trams.append([ini, ini + dur, fam, str(lab)])
+    trossos = trams
     # 1b. Filtratge per durada minima (opcio del dialeg).
     if durada_min and durada_min > 0:
         trossos = [list(t) for t in filtra_seccions(
@@ -1828,15 +1827,31 @@ def escriu_atomic(ruta, escriu):
         raise
 
 
-def regularitza_acords_csv(csv_cru, csv_desti, bpm, bpb, offset, ritme, durada,
-                           log=None):
-    """Mode fàcil: del cru al MODEL regularitzat a la graella.
+def regularitza_acords_items(items, csv_desti, bpm, bpb, offset, ritme, durada,
+                             log=None):
+    """Mode fàcil: regularitza a la graella uns acords ja en memòria.
 
-    `ritme`: "auto" | "compas" | "mig" | "temps". Converteix la decisió musical
-    (cada quants **temps** canvia l'acord) en segons amb el BPM. Aplica la
-    cobertura (#4). **No toca `csv_cru`.** Retorna la llista d'acords o `None`.
+    `items`: `[(t, nom), …]` (normalment el **cru** de l'anàlisi desat al
+    projecte). Escriu `csv_desti` amb el MODEL resultant (cobertura #4).
     """
     from app import graella                    # import local: evita cicles
+    items = [(float(t), str(n)) for t, n in (items or ())]
+    if not items:
+        return None
+    if ritme in (None, "auto"):
+        ritme = graella.infereix_nivell(items, bpm, bpb, offset, durada, log=log)
+    res = graella.regularitza_acords(items, bpm, bpb, offset,
+                                     ritme or "compas", durada, log=log)
+    clips = normalitza_clips(
+        clips_d_acords(res, durada), durada, FORAT_ACORD,
+        arrodoneix=True, deriva_fi=True, log=log)
+    desa_acords_csv(csv_desti, clips, durada)
+    return acords_de_clips(clips)
+
+
+def regularitza_acords_csv(csv_cru, csv_desti, bpm, bpb, offset, ritme, durada,
+                           log=None):
+    """Igual que `regularitza_acords_items`, però llegint el cru d'un CSV."""
     items = []
     try:
         with open(csv_cru, encoding="utf-8") as f:
@@ -1849,17 +1864,8 @@ def regularitza_acords_csv(csv_cru, csv_desti, bpm, bpb, offset, ritme, durada,
                     continue
     except OSError:
         return None
-    if not items:
-        return None
-    if ritme in (None, "auto"):
-        ritme = graella.infereix_nivell(items, bpm, bpb, offset, durada, log=log)
-    res = graella.regularitza_acords(items, bpm, bpb, offset,
-                                     ritme or "compas", durada, log=log)
-    clips = normalitza_clips(
-        clips_d_acords(res, durada), durada, FORAT_ACORD,
-        arrodoneix=True, deriva_fi=True, log=log)
-    desa_acords_csv(csv_desti, clips, durada)
-    return acords_de_clips(clips)
+    return regularitza_acords_items(items, csv_desti, bpm, bpb, offset, ritme,
+                                    durada, log=log)
 
 
 def desa_acords_csv(ruta, clips, durada=0.0):

@@ -16,10 +16,8 @@ La meva cançó/                 ← la carpeta del projecte (portable)
 ├── audio/ tema.wav            ← CÒPIA de l'àudio (mai depèn de fora)
 ├── acords.csv                 ← el model (font de veritat)
 ├── estructura_ABC.csv         ← el model (font de veritat)
-├── analisi/                   ← ANÀLISI CRUA (evidència, MAI es toca):
-│   ├── chords_raw.csv         ←    sortida de Chordino, sense netejar
-│   ├── segments_raw.csv       ←    sortida del segmentador d'estructura
-│   └── meta.json              ←    WAV, durada, BPM/compàs/offset i opcions
+├── tempo.csv · compas.csv     ← el model (mapa de BPM/compàs)
+│   (el CRU de l'anàlisi viu DINS el .acproj — no hi ha carpeta analisi/)
 ├── wavs_acords/ …             ← exports (els crea `pipeline.exporta_total`)
 └── backup/ <data-hora>/ …     ← còpies versionades (autosave / rotació)
 ```
@@ -56,7 +54,7 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
   a **`backup/<data-hora>/`** — **només si hi ha canvis NOUS**.
 - **Què copia** `Projecte.fes_backup()`: el **document** (`.acproj` amb l'**estat viu**)
   + els **fitxers importants** (CSVs d'acords/estructura/segments) + la
-  carpeta **`analisi/`** (l'anàlisi crua). **NO** copia l'àudio (`audio/`) ni els
+  **cru de l'anàlisi** (que viatja dins el `.acproj`). **NO** copia l'àudio (`audio/`) ni els
   exports (`wavs_*`, `partitura/`), que es **deriven** i són grossos. **No duplica**
   si el contingut no ha canviat des de l'última còpia.
 - **Rotació**: es guarden les **10** còpies més noves (`MAX_BACKUPS`).

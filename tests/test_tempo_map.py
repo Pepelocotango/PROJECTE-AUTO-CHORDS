@@ -620,12 +620,8 @@ def _visor(raw=None, bpm=120.0, bpb=4):
     v = visor_mod.Visor(wav, ca, sa, bpm=bpm, bpb=bpb, tempo_fix=True)
     v.td, v.sortida = td, out
     if raw is not None:
-        ana = pipeline.carpeta_analisi(out)
-        os.makedirs(ana, exist_ok=True)
-        with open(os.path.join(ana, pipeline.NOM_CRU_ACORDS), "w",
-                  encoding="utf-8") as f:
-            for t, n in raw:
-                f.write(f"{t},{n}\n")
+        # El CRU viu en memòria (al projecte); ja no hi ha `analisi/`.
+        v.raw_acords = [[float(t), str(n)] for t, n in raw]
     return v
 
 
@@ -652,14 +648,12 @@ class TestModeFacilVisor(unittest.TestCase):
         self.assertEqual([a[2][0] for a in v.acords], ["C", "G", "Am", "F"])
         v.close()
 
-    def test_la_capa_crua_no_es_toca(self):
+    def test_el_cru_no_es_toca(self):
         v = _visor(raw=[(0.04, "C"), (2.03, "G"), (4.05, "Am"), (5.98, "F")])
-        cru = os.path.join(pipeline.carpeta_analisi(v.sortida),
-                           pipeline.NOM_CRU_ACORDS)
-        abans = open(cru, encoding="utf-8").read()
+        abans = [list(x) for x in v.raw_acords]
         v.regularitza_des_de_cru("compas")
-        self.assertEqual(open(cru, encoding="utf-8").read(), abans,
-                         "el mode fàcil no ha de tocar l'anàlisi crua")
+        self.assertEqual([list(x) for x in v.raw_acords], abans,
+                         "el mode fàcil no ha de tocar el cru del projecte")
         v.close()
 
 
@@ -742,12 +736,9 @@ def _graella_bpm___visor(bpm, bpb, tempo_fix, acords, durada):
         f.write(_model_csv(acords))
     v = visor_mod.Visor(wav, ca, None, bpm=bpm, bpb=bpb, tempo_fix=tempo_fix)
     v.td, v.sortida = td, out
-    # capa crua
-    ana = pipeline.carpeta_analisi(out)
-    os.makedirs(ana, exist_ok=True)
-    with open(os.path.join(ana, pipeline.NOM_CRU_ACORDS), "w",
-              encoding="utf-8") as f:
-        f.write(acords)
+    # el CRU viu en memòria (al projecte)
+    v.raw_acords = [[float(f.split(",")[0]), f.split(",")[1].strip()]
+                    for f in acords.strip().splitlines() if "," in f]
     return v
 
 

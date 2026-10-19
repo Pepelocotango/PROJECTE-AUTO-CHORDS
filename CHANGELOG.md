@@ -5,6 +5,29 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
 
 ## [Unreleased]
 
+### Afegit
+- **Proteccions del `.acproj` (2026-10-19)**: el cru viatja dins el document i es
+  tracta com una *cache*: (1) **lectura tolerant** (`saneja_analisi`: si el cru
+  és invàlid es descarta i el projecte s'obre igual); (2) **límit de 512 KB**
+  (`MAX_ANALISI_BYTES`): si el cru és més gran no es desa (s'avisa al log; el
+  model als CSV ja hi és); (3) **`<nom>.acproj.bak`** abans de cada desat (com el
+  `.rpp-bak` de REAPER).
+
+### Tret
+- **Els intermedis de l'anàlisi ja no són fitxers (2026-10-19)**: la carpeta
+  `analisi/` (`chords_raw.csv`, `segments_raw.csv`, `meta.json`) i
+  `segments.csv` desapareixen. El **cru** (sortida del motor abans de netejar)
+  viu ara **dins el `.acproj`** (`dades["analisi"]`: data, durada, BPM/compàs/
+  offset, opcions i els acords/talls crus). Format del document **2**; **sense
+  migració** (l'app encara s'està construint).
+  - L'«Analitza» escriu **directament** els 4 CSV del MODEL; el cru es queda en
+    memòria i es desa al document en acabar.
+  - El «Mode fàcil» llegeix el cru **del projecte** (no d'un CSV).
+  - `fer_abc()` accepta els talls **en memòria**; les còpies de seguretat ja no
+    han de copiar `analisi/` (viatja dins el `.acproj`).
+  - Resultat: la carpeta del tema queda amb **6 fitxers** (`.acproj` + `audio/` +
+    4 CSV) i els exports.
+
 ### Tret
 - **MCP retirat (2026-10-19)**: fora el pont dins l'app (`app/mcp_bridge.py`), el
   servidor (`eines/mcp_auto_chords_server.py`), el llançador

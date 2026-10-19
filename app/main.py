@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # main.py — Auto Chords (PyQt5/Qt5: l'únic Qt que corre al Q9400) —
 #           wav -> acords + estructura -> carpetes. Tot en català.
+import csv
 import faulthandler
 import json
 import logging
 import os
 import shutil
 import sys
+import tempfile
 import time
 import traceback
 
@@ -173,6 +175,11 @@ class Feina(QThread):
     def __init__(self, wav, sortida, bpm, bpb, offset, amb_estructura,
                  tempo_fix=True, opcions=None):
         super().__init__()
+        # CRU de l'anàlisi EN MEMÒRIA: es desa dins el `.acproj` en acabar
+        # (decisió 2026-10-19: ni `analisi/` ni `segments.csv` al disc).
+        self.raw_chords = []       # [(t, acord), …] tal com l'ha donat Chordino
+        self.raw_segments = []     # [(ini, durada, idx, etiqueta), …]
+        self.analisi = None
         self.wav = wav
         self.sortida = sortida
         self.bpm = bpm
@@ -190,8 +197,9 @@ class Feina(QThread):
 
         Disseny (decisio de l'operador): les `wavs_acords/`/`wavs_estructura/`
         no tenen cap paper en la visualitzacio ni l'edicio; son l'ULTIM pas.
-        Aqui nomes es creen `acords.csv`, `segments.csv` i `estructura_ABC.csv`
-        (la guia i les wavs els fa `pipeline.exporta_total`).
+        Ací només s'escriuen els CSV del MODEL (`acords.csv`,
+        `estructura_ABC.csv`); el CRU es queda en memòria i es desa dins el
+        `.acproj`. La guia i les wavs les fa `pipeline.exporta_total`.
         """
         try:
             os.makedirs(self.sortida, exist_ok=True)
@@ -204,17 +212,9 @@ class Feina(QThread):
             self.log("1/3 extreu acords (Chordino)...")
             pipeline.extract_chords(self.wav, csv_ac, self.log,
                                     params=(self.opcions.get("chords") or None))
-            # CAPA CRUA: desa el resultat de Chordino ABANS de netejar-lo. És
-            # l'evidència de l'anàlisi i NO es toca mai (ni l'edició, ni el mode
-            # fàcil, ni els canvis de compàs/BPM/mode).
-            ana = pipeline.carpeta_analisi(self.sortida)
-            try:
-                os.makedirs(ana, exist_ok=True)
-                if os.path.isfile(csv_ac):
-                    shutil.copy2(csv_ac, os.path.join(
-                        ana, pipeline.NOM_CRU_ACORDS))
-            except OSError as e:  # noqa: BLE001
-                self.log(f"no s'ha pogut desar l'anàlisi crua dels acords: {e}")
+            # CRU en memòria: el resultat de Chordino ABANS de netejar-lo (el
+            # mode fàcil i la re-neteja el fan servir; es desa al `.acproj`).
+            self.raw_chords = _llegeix_cru_acords(csv_ac)
             # Neteja posterior dels acords (opcions del dialeg).
             cl = self.opcions.get("clean") or {}
             beat = (60.0 / float(self.bpm)) if self.bpm else 0.0
@@ -231,58 +231,50 @@ class Feina(QThread):
                     bpm=self.bpm, bpb=self.bpb, offset=self.offset,
                     divisio=int(cl.get("divisio", 1)), log=self.log,
                     durada=durada_wav)
-            # Mode fàcil: si està activat, re-regularitza els acords de l'anàlisi CRUA.
+            # Mode fàcil: si està activat, re-regularitza els acords del CRU.
             ritme = str(cl.get("ritme") or "off")
             if ritme and ritme != "off":
                 self.log("1c/3 mode fàcil (ritme harmònic)...")
                 try:
-                    raw = os.path.join(ana, pipeline.NOM_CRU_ACORDS)
-                    if os.path.isfile(raw):
-                        pipeline.regularitza_acords_csv(
-                            raw, csv_ac, self.bpm, self.bpb, self.offset,
-                            ritme, durada_wav, log=self.log)
+                    pipeline.regularitza_acords_items(
+                        self.raw_chords, csv_ac, self.bpm, self.bpb,
+                        self.offset, ritme, durada_wav, log=self.log)
                 except Exception as e:  # noqa: BLE001
                     self.log(f"mode fàcil ERROR: {e}")
             self.progres.emit(50)
-            csv_seg = None
             if self.amb_estructura:
-                csv_seg = os.path.join(self.sortida, "segments.csv")
                 self.log("2/3 extreu estructura (qm-segmenter)...")
-                pipeline.extract_segments(
-                    self.wav, csv_seg, self.log,
-                    motor=(self.opcions.get("structure") or {}).get(
-                        "motor", "qm"))
+                tmpd = tempfile.mkdtemp(prefix="ac_qm_")
                 try:
-                    if os.path.isfile(csv_seg):
-                        shutil.copy2(csv_seg, os.path.join(
-                            ana, pipeline.NOM_CRU_SEGMENTS))
-                except OSError:
-                    pass
+                    seg = os.path.join(tmpd, "seg.csv")
+                    pipeline.extract_segments(
+                        self.wav, seg, self.log,
+                        motor=(self.opcions.get("structure") or {}).get(
+                            "motor", "qm"))
+                    self.raw_segments = _llegeix_cru_segments(seg)
+                finally:
+                    pipeline.esborra_tmp([tmpd])
                 self.progres.emit(75)
                 self.log("3/3 ABC (estructura)...")
                 abc = os.path.join(self.sortida, "estructura_ABC.csv")
                 _est = self.opcions.get("structure") or {}
                 compas = beat * max(1, int(self.bpb or 4))
-                pipeline.fer_abc(csv_seg, abc, self.bpm, self.log,
+                pipeline.fer_abc(self.raw_segments, abc, self.bpm, self.log,
                                  lliure=not self.tempo_fix, bpb=self.bpb,
                                  offset=self.offset,
                                  # `durada_min` s'expressa en COMPASSOS → a segons
                                  durada_min=float(_est.get("durada_min", 0.0)) * compas,
                                  fusiona_iguals=bool(_est.get("fusiona_iguals", True)),
                                  durada=durada_wav)
-            try:
-                os.makedirs(ana, exist_ok=True)
-                with open(os.path.join(ana, pipeline.NOM_ANALISI_META), "w",
-                          encoding="utf-8") as f:
-                    json.dump({"wav": self.wav, "durada": durada_wav,
-                               "bpm": self.bpm, "bpb": self.bpb,
-                               "offset": self.offset,
-                               "tempo_fix": self.tempo_fix,
-                               "opcions": self.opcions,
-                               "data": time.strftime("%Y-%m-%dT%H:%M:%S")},
-                              f, ensure_ascii=False, indent=2)
-            except OSError as e:  # noqa: BLE001
-                self.log(f"no s'ha pogut desar la meta de l'anàlisi: {e}")
+            self.analisi = {
+                "data": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "durada": durada_wav,
+                "bpm": self.bpm, "bpb": self.bpb, "offset": self.offset,
+                "tempo_fix": self.tempo_fix,
+                "opcions": self.opcions,
+                "chords": self.raw_chords,
+                "segments": self.raw_segments,
+            }
             self.log("Analisi feta. Les wavs es generaran en 'Exporta'.")
             self.progres.emit(100)
             self.feta.emit(True, self.sortida)
@@ -292,6 +284,41 @@ class Feina(QThread):
             # n'hi havia constancia — auditoria 18-10-2026).
             self.log(f"ERROR a l'analisi: {e}")
             self.feta.emit(False, str(e))
+
+
+def _llegeix_cru_acords(ruta):
+    """CSV del host -> `[(t, acord), …]` (el CRU que es guarda al projecte)."""
+    out = []
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            for fila in csv.reader(f):
+                if len(fila) < 2 or not fila[0] or fila[0].startswith("posici"):
+                    continue
+                try:
+                    out.append([float(fila[0]), fila[1].strip()])
+                except ValueError:
+                    continue
+    except OSError:
+        return []
+    return out
+
+
+def _llegeix_cru_segments(ruta):
+    """CSV del qm-segmenter -> `[(ini, durada, idx, etiqueta), …]`."""
+    out = []
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            for fila in csv.reader(f):
+                if len(fila) < 4:
+                    continue
+                try:
+                    out.append([float(fila[0]), float(fila[1]),
+                                int(float(fila[2])), fila[3].strip()])
+                except (ValueError, IndexError):
+                    continue
+    except OSError:
+        return []
+    return out
 
 
 class Finestra(QMainWindow):
@@ -495,8 +522,9 @@ class Finestra(QMainWindow):
         self.b_mode_facil.setObjectName("secundari")
         self.b_mode_facil.setToolTip(
             "Mode fàcil: re-regularitza els acords a la graella (ritme "
-            "harmònic). Treballa sobre l'ANÀLISI CRUA (`analisi/`), per això "
-            "depèn d'«Analitza»: sense anàlisi no hi ha res a re-regularitzar. "
+            "harmònic). Treballa sobre el CRU de l'anàlisi (desat al "
+            "projecte), per això depèn d'«Analitza»: sense anàlisi no hi ha "
+            "res a re-regularitzar. "
             "Es pot desfer i repetir amb un altre nivell.")
         self.b_mode_facil.clicked.connect(self._mode_facil_ui)
         barra.addWidget(self.b_mode_facil)
@@ -1291,8 +1319,8 @@ class Finestra(QMainWindow):
             ("Mode fàcil: què fa i per què va amb «Analitza»", [
                 ("Posa els acords a la GRAELLA: els arrodoneix al compàs i al "
                  "temps (ritme harmònic net)", ""),
-                ("Treballa sobre l'ANÀLISI CRUA (carpeta `analisi/`), no sobre "
-                 "el model que veus", ""),
+                ("Treballa sobre el CRU de l'anàlisi (desat al `.acproj`), no "
+                 "sobre el model que veus", ""),
                 ("Per això depèn d'«Analitza»: sense anàlisi no hi ha res a "
                  "re-regularitzar", ""),
                 ("No toca l'anàlisi crua: pots desfer (Ctrl+Z) i tornar-hi "
@@ -1953,6 +1981,10 @@ class Finestra(QMainWindow):
                 sortida=self.sortida or pipeline.carpeta_sortida(wav),
             )
             self.visor_ref = visor
+            # CRU de l'anàlisi (del projecte) per al «Mode fàcil».
+            _ana = ((self.projecte.dades.get("analisi")
+                     if self.projecte is not None else None) or {})
+            visor.raw_acords = list(_ana.get("chords") or [])
             # El visor ha de desar els CSV/export a la carpeta de sortida del
             # PROJECTE (no derivar-la del WAV, que viu a <projecte>/audio/).
             visor.sortida = self.sortida or pipeline.carpeta_sortida(wav)
@@ -2814,9 +2846,32 @@ class Finestra(QMainWindow):
             self.b_export_part.setEnabled(True)
             self.registra("FET ✅ — ara pots revisar el visor i fer «Exporta WAV's».")
             self.barra.setValue(100)
+            # El CRU de l'anàlisi es desa DINS el document (un sol fitxer).
+            ana = getattr(self.feina, "analisi", None)
+            if ana is not None and self.projecte is not None:
+                net = projecte.saneja_analisi(ana)
+                if net is None:
+                    self.registra("AVÍS: l'anàlisi és massa gran (o no vàlida) "
+                                  "per desar-la al projecte; el MODEL sí que "
+                                  "hi és. Es pot tornar a analitzar.")
+                    self.projecte.dades.pop("analisi", None)
+                else:
+                    self.projecte.dades["analisi"] = net
+                try:
+                    self.projecte.desa()
+                    self.dirty = False
+                    self._actualitza_titol()
+                except OSError as e:
+                    self.registra(f"AVÍS: no s'ha pogut desar l'anàlisi al "
+                                  f"projecte: {e}")
             wav = self.wav_edit.text().strip()
             if wav and os.path.isfile(wav):
                 self._carrega_visor(wav)
+                # Encara que no s'haja pogut persistir, el mode fàcil té el cru
+                # en aquesta sessió.
+                if (getattr(self.feina, "raw_chords", None)
+                        and getattr(self, "visor_ref", None) is not None):
+                    self.visor_ref.raw_acords = list(self.feina.raw_chords)
         else:
             self.b_export.setEnabled(False)
             self.b_export_part.setEnabled(False)
@@ -2840,7 +2895,6 @@ class Finestra(QMainWindow):
             self.sortida = pipeline.carpeta_sortida(wav)
 
         csv_ac = os.path.join(self.sortida, "acords.csv")
-        csv_seg = os.path.join(self.sortida, "segments.csv")
         if not os.path.isfile(csv_ac):
             if not wav or not os.path.isfile(wav):
                 self.avisa("Auto Chords",
@@ -2860,8 +2914,7 @@ class Finestra(QMainWindow):
                    if vr is not None else None)
         # Regla d'or #12: el mapa de BPM/compàs del model viu també s'exporta.
         mapa_model = list(vr.tempo_trams) if vr is not None else None
-        amb_estructura = self.amb_est.isChecked() and (
-            seccions_model is not None or os.path.isfile(csv_seg))
+        amb_estructura = self.amb_est.isChecked() and seccions_model is not None
         # (2) Amb «Inclou estructura» OFF, les restes d'un export ANTERIOR
         # (`wavs_estructura/`) quedaven a la carpeta i semblava que l'export
         # actual hagués inclòs estructura → s'ofereix treure-les (amb
@@ -2870,7 +2923,7 @@ class Finestra(QMainWindow):
             self._neteja_estructura_vella(self.sortida)
         return dict(
             csv_ac=csv_ac,
-            csv_seg=csv_seg if amb_estructura else None,
+            csv_seg=None,
             sortida=self.sortida,
             bpm=self._bpm_val(),
             bpb=self._bpb_val(),

@@ -61,11 +61,20 @@ def main():
     log("1/5 extreu acords (Chordino)...")
     pipeline.extract_chords(os.path.abspath(a.wav), csv_ac, log)
 
-    csv_seg = None
+    trossos_seg = []
     if amb_est:
-        csv_seg = os.path.join(sortida, "segments.csv")
+        import tempfile
         log("2/5 extreu estructura (qm-segmenter)...")
-        pipeline.extract_segments(os.path.abspath(a.wav), csv_seg, log)
+        tmpd = tempfile.mkdtemp(prefix="ac_qm_")
+        try:
+            seg = os.path.join(tmpd, "seg.csv")
+            pipeline.extract_segments(os.path.abspath(a.wav), seg, log)
+            with open(seg, encoding="utf-8") as f:
+                import csv as _csv
+                trossos_seg = [[float(r[0]), float(r[1]), r[2], r[3]]
+                               for r in _csv.reader(f) if len(r) >= 4]
+        finally:
+            pipeline.esborra_tmp([tmpd])
 
     if tempo_fix:
         log("3/5 guia + segments...")
@@ -85,11 +94,11 @@ def main():
                                          os.path.join(sortida, "wavs_acords"),
                                          a.sr, log)
 
-    if csv_seg:
+    if trossos_seg:
         log("5/5 ABC + wavs d'estructura...")
         abc = os.path.join(sortida, "estructura_ABC.csv")
-        pipeline.fer_abc(csv_seg, abc, a.bpm, log, lliure=not tempo_fix, bpb=a.bpb,
-                             offset=a.offset)
+        pipeline.fer_abc(trossos_seg, abc, a.bpm, log, lliure=not tempo_fix,
+                         bpb=a.bpb, offset=a.offset)
         pipeline.fer_wavs_estructura(abc,
                                      os.path.join(sortida, "wavs_estructura"),
                                      a.sr, log)

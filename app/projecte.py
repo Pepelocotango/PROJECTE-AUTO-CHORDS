@@ -5,10 +5,12 @@
 Un **projecte** és una carpeta que ho conté tot::
 
     La meva cançó/                 ← la carpeta del projecte (portable)
-    ├── La meva cançó.acproj       ← el document (JSON, amb «versió de format»)
+    ├── La meva cançó.acproj       ← el document (JSON: tempo, opcions, vista i
+    │                                el CRU de l'anàlisi)
     ├── audio/ tema.wav            ← CÒPIA de l'àudio (mai depèn de fora)
     ├── acords.csv                 ← el model (font de veritat)
     ├── estructura_ABC.csv         ← el model (font de veritat)
+    ├── tempo.csv · compas.csv     ← el model (mapa de BPM/compàs)
     ├── wavs_acords/ …             ← exports (els crea `pipeline.exporta_total`)
     └── backup/ …                  ← còpies versionades
 
@@ -30,16 +32,63 @@ from datetime import datetime
 from app import pipeline
 
 EXT = ".acproj"
-FORMAT = 1
+# 2 (2026-10-19): el CRU de l'anàlisi viu DINS el document (`dades["analisi"]`)
+# en lloc de la carpeta `analisi/` i de `segments.csv`. **Sense migració**: els
+# projectes antics s'obren igual, només sense cru (l'app encara s'està
+# construint; decisió de l'operador).
+FORMAT = 2
 NOM_AUDIO_DIR = "audio"
 NOM_BACKUP_DIR = "backup"
 NOM_CSV_ACORDS = "acords.csv"
 NOM_CSV_ESTRUCTURA = "estructura_ABC.csv"
 MAX_BACKUPS = 10
+# El cru de l'anàlisi viatja DINS el document; si és enorme (cançons molt
+# llargues), no es desa: el MODEL (4 CSV) ja és al disc i el mode fàcil pot
+# tornar a analitzar. Evita que el `.acproj` es convertisca en una base de dades.
+MAX_ANALISI_BYTES = 512 * 1024
 
 
 class ProjecteError(Exception):
     """Error en crear, obrir o desar un projecte."""
+
+
+def saneja_analisi(ana):
+    """Valida i neteja el CRU que viatja dins el document. Tolerant.
+
+    Retorna el diccionari net, o `None` si no serveix (es descarta: el MODEL és
+    als CSV i el mode fàcil pot tornar a analitzar). Un projecte amb el cru
+    malmès **s'ha de poder obrir igualment** (l'oficial de Studio One diu
+    literalment «esborra el Cache/» quan alguna cosa va malament).
+    """
+    if not isinstance(ana, dict):
+        return None
+    net = {k: v for k, v in ana.items()
+           if k in ("data", "durada", "bpm", "bpb", "offset", "tempo_fix",
+                    "opcions")}
+    chords = []
+    for it in (ana.get("chords") or ()):
+        try:
+            chords.append([float(it[0]), str(it[1])])
+        except (TypeError, ValueError, IndexError):
+            continue
+    segments = []
+    for it in (ana.get("segments") or ()):
+        try:
+            segments.append([float(it[0]), float(it[1]), int(it[2]),
+                             str(it[3])])
+        except (TypeError, ValueError, IndexError):
+            continue
+    net["chords"] = chords
+    net["segments"] = segments
+    if not chords and not segments:
+        return None
+    try:
+        tamany = len(json.dumps(net, ensure_ascii=False).encode("utf-8"))
+    except (TypeError, ValueError):
+        return None
+    if tamany > MAX_ANALISI_BYTES:
+        return None
+    return net
 
 
 def _ara():
@@ -223,9 +272,19 @@ class Projecte:
 
     # -- escriptura -----------------------------------------------------
     def desa(self):
-        """Desa el `.acproj` **atomicament**. Retorna la ruta escrita."""
+        """Desa el `.acproj` **atomicament**. Retorna la ruta escrita.
+
+        Abans de sobreescriure, deixa una còpia de l'anterior a `<ruta>.bak`
+        (com el `.rpp-bak` de REAPER): la protecció més barata contra un desat
+        dolent.
+        """
         ruta = self.ruta_acproj
         os.makedirs(self.carpeta, exist_ok=True)
+        if os.path.isfile(ruta):
+            try:
+                shutil.copy2(ruta, ruta + ".bak")
+            except OSError:
+                pass
         self.dades["desat"] = _ara()
         pipeline.escriu_atomic(
             ruta, lambda f: json.dump(self.dades, f, ensure_ascii=False,
@@ -278,9 +337,10 @@ class Projecte:
     def fes_backup(self, max_backups=MAX_BACKUPS):
         """Còpia versionada dins `backup/<data-hora>/`.
 
-        Guarda el **document** (`.acproj` amb l'estat viu) + els **fitxers
-        importants** (CSV d'acords/estructura/segments) + la carpeta
-        **`analisi/`** (l'anàlisi crua). **NO** copia l'àudio (`audio/`) ni els
+        Guarda el **document** (`.acproj` amb l'estat viu **i el cru de
+        l'anàlisi**) + els **fitxers del model** (`acords.csv`,
+        `estructura_ABC.csv`, `tempo.csv`, `compas.csv`). **NO** copia l'àudio
+        (`audio/`) ni els
         exports (`wavs_*`, `partitura/`), que es deriven i són grossos.
 
         **No duplica** si el contingut no ha canviat des de l'última còpia.
@@ -325,7 +385,7 @@ class Projecte:
         return dest
 
     # Fitxers del projecte que es guarden a cada còpia (model + anàlisi crua).
-    _FITXERS_BACKUP = (NOM_CSV_ACORDS, NOM_CSV_ESTRUCTURA, "segments.csv",
+    _FITXERS_BACKUP = (NOM_CSV_ACORDS, NOM_CSV_ESTRUCTURA,
                        pipeline.NOM_CSV_TEMPO, pipeline.NOM_CSV_COMPAS)
 
     def _materials_backup(self):
@@ -334,11 +394,7 @@ class Projecte:
         for n in self._FITXERS_BACKUP:
             if os.path.isfile(os.path.join(self.carpeta, n)):
                 fits.append(n)
-        dirs = []
-        an = getattr(pipeline, "NOM_ANALISI", "analisi")
-        if os.path.isdir(os.path.join(self.carpeta, an)):
-            dirs.append(an)
-        return fits, dirs
+        return fits, []
 
     def _signatura(self, fits, dirs):
         """Empremta del contingut que es copia (per no duplicar còpies iguals)."""
@@ -383,8 +439,14 @@ def _migra(dades, ap):
             f"{FORMAT}); actualitza l'app")
     # fmt 0 = projectes desats abans que existira el camp `format`: els seus
     # camps son els mateixos de la versio 1, aixi que no cal canviar-ne cap.
-    # Quan hi hagi un FORMAT 2, aquí hi van les migracions camp a camp (i el
-    # test que les cobreix).
+    # FORMAT 2 (2026-10-19): el cru viu dins `dades["analisi"]`. **Sense
+    # migració**: si ve malmès o és massa gran, es descarta (tolerant).
+    if "analisi" in dades:
+        ana = saneja_analisi(dades.get("analisi"))
+        if ana is None:
+            dades.pop("analisi", None)
+        else:
+            dades["analisi"] = ana
     dades["format"] = FORMAT
     return dades
 

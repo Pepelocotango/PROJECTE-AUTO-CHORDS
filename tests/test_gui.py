@@ -362,20 +362,18 @@ class TestBackups(unittest.TestCase):
         with open(p.ruta_csv_estructura(), "w", encoding="utf-8") as f:
             f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
             f.write("0.0,5.0,5.0,A,A,1.1,1.5\n")
-        with open(os.path.join(p.carpeta, "segments.csv"), "w",
-                  encoding="utf-8") as f:
-            f.write("0.0,5.0,0,A\n")
-        ana = os.path.join(p.carpeta, pipeline.NOM_ANALISI)
-        os.makedirs(ana, exist_ok=True)
-        with open(os.path.join(ana, pipeline.NOM_CRU_ACORDS), "w",
-                  encoding="utf-8") as f:
-            f.write("0.0,C\n")
+        # El CRU viu DINS el document: ha d'anar a la còpia amb el `.acproj`.
+        p.dades["analisi"] = {"chords": [[0.0, "C"], [1.0, "Am"]],
+                              "segments": [[0.0, 5.0, 0, "A"]]}
         dest = p.fes_backup()
         for nom in (os.path.basename(p.ruta_acproj), "acords.csv",
-                    "estructura_ABC.csv", "segments.csv"):
+                    "estructura_ABC.csv"):
             self.assertTrue(os.path.isfile(os.path.join(dest, nom)), nom)
-        self.assertTrue(os.path.isfile(os.path.join(
-            dest, pipeline.NOM_ANALISI, pipeline.NOM_CRU_ACORDS)))
+        with open(os.path.join(dest, os.path.basename(p.ruta_acproj)),
+                  encoding="utf-8") as f:
+            copia = json.load(f)
+        self.assertIn("analisi", copia)
+        self.assertEqual(copia["analisi"]["chords"], [[0.0, "C"], [1.0, "Am"]])
         self.assertEqual(len(p.backups()), 1)
 
     def test_no_duplica_si_no_canvia(self):
@@ -4017,6 +4015,64 @@ class TestProjecteAssociat(_Base):
                 acords=f.visor_ref.acords, seccions=f.visor_ref.seccions)
         self.assertIn("cap acord per exportar", str(ctx.exception))
         self.assertNotIn("Chordino", str(ctx.exception))
+
+
+class TestProteccionsDocument(unittest.TestCase):
+    """El cru viatja dins el `.acproj`: lectura tolerant, límit i `.bak`."""
+
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+
+    def _projecte(self):
+        wav = os.path.join(self.td, "tema.wav")
+        _wav(wav, 1.0)
+        return projecte.Projecte.crea(os.path.join(self.td, "P"), wav)
+
+    def test_cru_malmes_no_impedeix_obrir(self):
+        p = self._projecte()
+        p.dades["analisi"] = "això no és un diccionari"
+        p.desa()
+        p2 = projecte.Projecte.obre(p.ruta_acproj)
+        self.assertNotIn("analisi", p2.dades)
+        self.assertTrue(os.path.isfile(p2.ruta_csv_acords()))
+
+    def test_cru_amb_entrades_dolentes_es_neteja(self):
+        p = self._projecte()
+        p.dades["analisi"] = {"data": "x",
+                              "chords": [[0.0, "C"], ["no", "G"], [1.0]],
+                              "segments": [[0.0, 1.0, 0, "A"], [1, 2]]}
+        p.desa()
+        p2 = projecte.Projecte.obre(p.ruta_acproj)
+        ana = p2.dades["analisi"]
+        self.assertEqual(ana["chords"], [[0.0, "C"]])
+        self.assertEqual(ana["segments"], [[0.0, 1.0, 0, "A"]])
+
+    def test_cru_massa_gran_es_descarta(self):
+        p = self._projecte()
+        gross = {"chords": [[i * 0.01, "C"] for i in range(60000)]}
+        p.dades["analisi"] = gross
+        p.desa()
+        p2 = projecte.Projecte.obre(p.ruta_acproj)
+        self.assertNotIn("analisi", p2.dades)
+
+    def test_saneja_analisi_detecta_el_limit(self):
+        petit = {"chords": [[0.0, "C"]]}
+        self.assertIsNotNone(projecte.saneja_analisi(petit))
+        self.assertIsNone(projecte.saneja_analisi({}))
+        self.assertIsNone(projecte.saneja_analisi({"chords": "x"}))
+
+    def test_desa_deixa_la_copia_bak(self):
+        p = self._projecte()
+        p.dades["nom"] = "primer"
+        p.desa()
+        p.dades["nom"] = "segon"
+        p.desa()
+        bak = p.ruta_acproj + ".bak"
+        self.assertTrue(os.path.isfile(bak), "ha de quedar la còpia anterior")
+        with open(bak, encoding="utf-8") as f:
+            self.assertEqual(json.load(f)["nom"], "primer")
+        with open(p.ruta_acproj, encoding="utf-8") as f:
+            self.assertEqual(json.load(f)["nom"], "segon")
 
 
 if __name__ == "__main__":   # pragma: no cover
