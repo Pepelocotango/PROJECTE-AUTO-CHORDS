@@ -24,6 +24,10 @@ _mkdtemp = tempfile.mkdtemp
 _mkstemp = tempfile.mkstemp
 _named = tempfile.NamedTemporaryFile
 _arrel = os.path.abspath(tempfile.gettempdir()) + os.sep
+# Prefix de les carpetes que l'app crea al costat de la WAV
+# (`pipeline.PREFIX_SORTIDA`; es repeteix ací per no importar `app` en un mòdul
+# que es carrega abans que res).
+_PREFIX_APP = "AUTOCHORDS_"
 
 
 def _apunta(ruta):
@@ -58,9 +62,19 @@ tempfile.mkstemp = mkstemp
 tempfile.NamedTemporaryFile = NamedTemporaryFile
 
 
-def esborra():
-    """Esborra els temporals anotats (els més pregons primer)."""
-    for ruta in sorted(_creats, key=len, reverse=True):
+def esborra(objectius=None):
+    """Esborra els temporals anotats (els més pregons primer).
+
+    `objectius` permet netejar només un subconjunt (ho fan els tests del propi
+    mecanisme, per no interferir amb la resta de la tongada).
+    """
+    origens = set(_creats if objectius is None else objectius)
+    a_esborrar = set(origens)
+    for ruta in origens:
+        a_esborrar.update(_germans_de_l_app(ruta))
+    for ruta in sorted(a_esborrar, key=len, reverse=True):
+        if not _es_dins_el_temporal(ruta):
+            continue
         try:
             if os.path.isdir(ruta):
                 shutil.rmtree(ruta, ignore_errors=True)
@@ -68,7 +82,28 @@ def esborra():
                 os.remove(ruta)
         except OSError:
             pass
-    _creats.clear()
+    _creats.difference_update(origens)
+
+
+def _es_dins_el_temporal(ruta):
+    try:
+        return os.path.abspath(ruta).startswith(_arrel)
+    except (TypeError, ValueError):
+        return False
+
+
+def _germans_de_l_app(ruta):
+    """Carpetes `AUTOCHORDS_<stem>` que l'app crea al costat d'una WAV temporal.
+
+    `pipeline.carpeta_sortida()` retorna `<dir>/AUTOCHORDS_<nom-sense-ext>` i el
+    qui exporta/edita fa `makedirs`. Quan la WAV és un `tempfile.mkstemp`
+    (`/tmp/tmpXXXX.wav`), eixa carpeta queda directament a `/tmp` — **fora** de
+    qualsevol directori registrat — i fins ara sobrevivia a la tongada (102
+    carpetes buides per execució, detectat 2026-10-19).
+    """
+    ruta = os.path.abspath(ruta)
+    base = os.path.splitext(os.path.basename(ruta))[0]
+    return (os.path.join(os.path.dirname(ruta), _PREFIX_APP + base),)
 
 
 def escombra_residus(hores=12):

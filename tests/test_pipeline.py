@@ -6911,5 +6911,49 @@ def _xocs_inici_csv_tearDownModule():
     _qt_neteja.processa_esborrats()
 
 
+class TestHigieneTemporals(unittest.TestCase):
+    """La suite no pot deixar res al disc (`AGENTS.md` §«Com es treballa»).
+
+    Forat detectat el 2026-10-19: les WAV creades amb `tempfile.mkstemp(suffix=
+    ".wav")` fan que `pipeline.carpeta_sortida()` cree la germana
+    `/tmp/AUTOCHORDS_tmpXXXX`, que `_temporals` no coneixia → **102 carpetes
+    buides per tongada**. El mecanisme ara les deriva del temporal registrat.
+    """
+
+    def test_esborra_la_carpeta_autochords_germana(self):
+        import _temporals
+        from app import pipeline as _pl
+        fd, wav = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
+        germana = _pl.carpeta_sortida(wav)
+        os.makedirs(germana, exist_ok=True)
+        self.assertTrue(os.path.isdir(germana), "precondició: la carpeta existeix")
+
+        _temporals.esborra([wav])          # només aquest (no toca la resta)
+
+        self.assertFalse(os.path.exists(wav), "el temporal s'ha d'esborrar")
+        self.assertFalse(os.path.exists(germana),
+                         "la carpeta AUTOCHORDS_* germana també s'ha d'esborrar")
+
+    def test_no_esborra_fora_del_temporal_del_sistema(self):
+        """Regla de seguretat: només s'esborra dins el temporal del sistema."""
+        import _temporals
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "fora.wav")
+        open(wav, "wb").close()
+        germana = os.path.join(td, "AUTOCHORDS_fora")
+        os.makedirs(germana, exist_ok=True)
+        original = _temporals._arrel
+        try:
+            # Simula que el "temporal del sistema" és un altre lloc: res de `td`
+            # no hi cau → no s'ha de tocar.
+            _temporals._arrel = os.path.join(td, "un-altre-lloc") + os.sep
+            _temporals.esborra([wav])
+        finally:
+            _temporals._arrel = original
+        self.assertTrue(os.path.exists(wav), "fora de l'àmbit no s'ha de tocar")
+        self.assertTrue(os.path.isdir(germana))
+
+
 if __name__ == "__main__":   # pragma: no cover
     unittest.main()
