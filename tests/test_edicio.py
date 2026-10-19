@@ -3931,137 +3931,36 @@ class TestMarcSeleccio(_eina_marc___Base):
         v.close()
 
 
-class TestCtrlShiftArrossegaCopia(_eina_marc___Base):
-    """Ctrl+Shift+arrossegar un clip d'acord = duplicar-lo: el clip viatja i a
-    l'ORIGEN hi torna una còpia amb el mateix nom (convenció dels DAWs)."""
+class TestEinaTemporalCtrlShift(_eina_marc___Base):
+    """Ctrl+Shift mantingut = eina «marc»; en deixar anar, torna a l'anterior."""
 
-    def _gest(self, v, idx, desti):
-        """Simula el gest: el clip es mou; després `_emit_edit_finished`."""
-        tl = v.timeline
-        tl.select_clip("chord", idx)
-        tl._on_chord_time_changed(idx, desti)     # el moviment
-        return tl
+    def _press(self, tl, key, mods):
+        tl.keyPressEvent(QKeyEvent(QEvent.KeyPress, key, mods))
 
-    def test_ctrl_shift_deixa_copia_a_l_origen(self):
-        v = _eina_marc___visor()
-        tl = self._gest(v, 2, 6.0)                # F: 4.5 → 6.0
-        tl._copia_ac = (4.5, "F")                # com si Ctrl+Shift fos premut
-        tl._emit_edit_finished()
-        times = [round(float(t), 3) for t, *_r in v.acords]
-        self.assertIn(6.0, times)                 # el clip mogut
-        self.assertIn(4.5, times)                 # ...i la còpia a l'origen
-        copia = [a for a in v.acords if abs(float(a[0]) - 4.5) < 1e-6][0]
-        self.assertEqual(copia[2][0], "F")        # mateix nom
-        self.assertEqual(len(v.acords), 6)        # s'ha afegit una marca
-        v.close()
+    def _release(self, tl, key, mods):
+        tl.keyReleaseEvent(QKeyEvent(QEvent.KeyRelease, key, mods))
 
-    def test_sense_ctrl_shift_no_deixa_cap_copia(self):
-        v = _eina_marc___visor()
-        tl = self._gest(v, 2, 6.0)
-        self.assertIsNone(tl._copia_ac)          # sense Ctrl+Shift no s'ha capturat
-        tl._emit_edit_finished()
-        times = [round(float(t), 3) for t, *_r in v.acords]
-        self.assertIn(6.0, times)
-        self.assertNotIn(4.5, times)              # moviment normal
-        self.assertEqual(len(v.acords), 5)
-        v.close()
-
-    def test_un_sol_desfer_desfà_tot_el_gest(self):
-        """Des del 16-10-2026 la còpia NO té desfer propi: s'aplega al de
-        l'arrossegament, així que un sol Ctrl+Z reverteix el gest sencer."""
-        v = _eina_marc___visor()
-        tl = self._gest(v, 2, 6.0)
-        tl._copia_ac = (4.5, "F")
-        tl._emit_edit_finished()
-        self.assertIn(6.0, [round(float(t), 3) for t, *_r in v.acords])
-        v.undo()                                  # UN sol desfer = tot el gest
-        trams = [round(float(t), 3) for t, *_r in v.acords]
-        self.assertNotIn(6.0, trams)              # el clip mogut, fora
-        self.assertIn(4.5, trams)                 # l'original, com era
-        v.close()
-
-
-class TestCopiaAmbMultiSeleccio(_eina_marc___Base):
-    """Amb més d'un clip seleccionat, `Ctrl+Shift`+arrossegar **no** deixa cap
-    còpia a l'origen: el cos arrossega el BLOC (§6.3).
-
-    Auditoria 18-10-2026: abans, amb multi-selecció, el gest anava pel camí
-    llegat `_move_chord_group`, movia el grup i hi deixava una sola marca solta
-    a l'origen (i, amb un sol clip, duplicava fent un redimensionat en comptes
-    d'un moviment de bloc).
-    """
-
-    def _amb_ctrl_shift(self, fn):
-        from PyQt5.QtWidgets import QApplication
-        orig = QApplication.keyboardModifiers
-        QApplication.keyboardModifiers = staticmethod(
-            lambda: Qt.ControlModifier | Qt.ShiftModifier)
-        try:
-            return fn()
-        finally:
-            QApplication.keyboardModifiers = orig
-
-    def test_multi_seleccio_no_arma_la_copia(self):
-        from app.timeline_items import ChordItem
+    def test_ctrl_shift_activa_i_restaura_intelligent(self):
         v = _eina_marc___visor()
         tl = v.timeline
-        tl.select_multi({("chord", 1), ("chord", 2)})
-        for i in (1, 2):
-            tl._chord_items[i]._drag_mode = ChordItem.ZONE_BODY
-
-        def gest():
-            tl._on_chord_time_changed(1, 8.0)
-            return tl._copia_ac
-        self.assertIsNone(self._amb_ctrl_shift(gest),
-                          "amb multi-selecció no s'ha d'armar cap còpia")
-        tl._emit_edit_finished()
+        self._press(tl, Qt.Key_Control, Qt.ControlModifier)
+        self._press(tl, Qt.Key_Shift,
+                    Qt.ControlModifier | Qt.ShiftModifier)
+        self.assertEqual(tl.tool(), "marc")
+        self._release(tl, Qt.Key_Shift, Qt.ControlModifier)
+        self.assertEqual(tl.tool(), "intel·ligent")
         v.close()
 
-    def test_un_sol_clip_si_que_arma_la_copia(self):
-        from app.timeline_items import ChordItem
+    def test_restaura_l_eina_fixa_que_hi_havia(self):
         v = _eina_marc___visor()
         tl = v.timeline
-        tl.select_clip("chord", 2)
-        tl._chord_items[2]._drag_mode = ChordItem.ZONE_BODY
-
-        def gest():
-            tl._on_chord_time_changed(2, 8.0)
-            return tl._copia_ac
-        self.assertIsNotNone(self._amb_ctrl_shift(gest),
-                             "amb un sol clip, Ctrl+Shift ha d'armar la còpia")
-        v.close()
-
-
-class TestCopiaSeccio(_eina_marc___Base):
-    """`Ctrl+Shift`+arrossegar una **SECCIÓ**: la secció viatja i a l'ORIGEN hi
-    torna una còpia (mateixa lletra/família) sobre el mateix tram. Paritat #11
-    amb els acords (que ja ho feien)."""
-
-    def test_copia_de_seccio_a_l_origen(self):
-        v = _eina_marc___visor()
-        tl = v.timeline
-        # com si s'arrossegués la secció B (5-10) fins a 8-13
-        tl._copia_sec = (5.0, 10.0, "B", "B")
-        tl._on_section_changed(1, 8.0, 13.0)          # el moviment
-        tl._emit_edit_finished()                      # ...i la còpia a l'origen
-        trams = [(round(float(s[0]), 3), round(float(s[1]), 3), str(s[2]))
-                 for s in v.seccions]
-        copia = [t for t in trams if abs(t[0] - 5.0) < 1e-6 and t[2] == "B"]
-        self.assertTrue(copia, f"no hi ha còpia a l'origen: {trams}")
-        self.assertAlmostEqual(copia[0][1], 10.0, places=3)
-        # la cançó segueix coberta de dalt a baix (regla d'or #4)
-        self.assertAlmostEqual(trams[0][0], 0.0, places=6)
-        self.assertAlmostEqual(trams[-1][1], 20.0, places=3)
-        v.close()
-
-    def test_sense_ctrl_shift_no_copia(self):
-        v = _eina_marc___visor()
-        tl = v.timeline
-        tl._on_section_changed(1, 8.0, 13.0)          # moviment normal
-        tl._emit_edit_finished()
-        trams = [(round(float(s[0]), 3), str(s[2])) for s in v.seccions]
-        self.assertFalse([t for t in trams
-                          if abs(t[0] - 5.0) < 1e-6 and t[1] == "B"])
+        tl.set_tool("marc")
+        self._press(tl, Qt.Key_Shift, Qt.ShiftModifier)
+        self._press(tl, Qt.Key_Control,
+                    Qt.ControlModifier | Qt.ShiftModifier)
+        self.assertEqual(tl.tool(), "marc")
+        self._release(tl, Qt.Key_Control, Qt.ShiftModifier)
+        self.assertEqual(tl.tool(), "marc")
         v.close()
 
 

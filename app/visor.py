@@ -234,13 +234,11 @@ class Visor(QMainWindow):
         self.timeline.chordRenamed.connect(self._on_chord_renamed)
         self.timeline.chordDeleteRequested.connect(self._elimina_acord_index)
         self.timeline.chordDuplicateRequested.connect(self._duplica_acord_index)
-        self.timeline.chordCopyRequested.connect(self._on_chord_copia)
         self.timeline.chordEditRequested.connect(self._on_chord_edit_requested)
         self.timeline.sectionMoved.connect(self._on_section_moved)
         self.timeline.sectionRenamed.connect(self._on_section_renamed)
         self.timeline.sectionDeleteRequested.connect(self._elimina_seccio_index)
         self.timeline.sectionDuplicateRequested.connect(self._duplica_seccio_index)
-        self.timeline.sectionCopyRequested.connect(self._on_section_copia)
         self.timeline.multiDeleteRequested.connect(self._elimina_seleccio)
         self.timeline.pasteRequested.connect(self._enganxa_seleccio)
         self.timeline.groupDuplicateRequested.connect(self._duplica_seleccio)
@@ -549,69 +547,6 @@ class Visor(QMainWindow):
         # 19-10-2026, caçat amb el fuzzer de `test_vista_segueix_model`).
         self._sincronitza_vista()
         return True
-
-    def _on_section_copia(self, ini, fi, lletra, familia):
-        """`Ctrl+Shift`+arrossegar una **secció**: la secció viatja i a l'ORIGEN
-        hi torna una còpia amb la **mateixa lletra i família**, sobre el mateix
-        tram. (Paritat #11 amb els acords.)
-
-        Les seccions cobreixen tota la cançó, així que la còpia **sobreviu** el
-        tram: les vores es tallen i s'acoblen — la mateixa operació que fa un
-        enganxament de secció (`_bloc_sobre_seccions`), reaprofitada.
-        """
-        durada = float(self.audio["durada"])
-        ini0 = max(0.0, min(float(ini), durada))
-        llargada = max(0.0, min(float(fi), durada) - ini0)
-        if llargada <= 1e-6:
-            return
-        bloc = [(0.0, llargada, str(lletra), str(familia))]
-        # (Sense desfer propi: s'aplega al de l'arrossegament → un sol Ctrl+Z
-        # desfà el gest sencer. Paritat amb els acords.)
-        try:
-            noves = self._bloc_sobre_seccions(self.seccions, bloc, llargada,
-                                              ini0, durada, 1e-6)
-            cand = self._valida_canvis_seccions(noves)
-        except ValueError as e:
-            self.log(f"Ctrl+Shift+arrossegat (secció): no s'ha fet res ({e})")
-            return
-        self.seccions = cand
-        self.timeline.set_data(self.acords, self.seccions)
-        try:
-            self._desa_i_regenera()
-            self._regenera_abc_des_de_totes_les_seccions(
-                "secció duplicada (Ctrl+Shift+arrossegar)")
-        except Exception as e:  # noqa: BLE001
-            self.log(f"ERROR: {e}")
-        self.log(f"Ctrl+Shift+arrossegat (secció): còpia «{lletra}» a "
-                 f"{ini0:.3f}s")
-
-    def _on_chord_copia(self, t_original, nom):
-        """`Ctrl+Shift`+arrossegar un clip d'acord: el clip viatja i **a
-        l'ORIGEN hi torna una còpia** amb el mateix nom (duplicar, com als
-        DAWs). Les seccions tenen el mateix gest (`_on_section_copia`).
-
-        El model d'aquesta app són MARQUES, i el gest ja ha mogut la marca: per
-        tant n'hi ha prou de tornar-ne a posar una a l'instant original. La
-        cobertura de tota la cançó (regla d'or #4) es manté sola.
-        """
-        durada = float(self.audio["durada"])
-        t = max(0.0, min(float(t_original), durada))
-        # (Sense `_undo_marca`/`_undo_commit` propis: la còpia s'apleguen a
-        # l'operació de desfer del mateix arrossegament, de manera que UN sol
-        # Ctrl+Z desfà el gest sencer.)
-        try:
-            if not self._afegeix_acord(t, str(nom)):
-                return
-            self._normalitza_cobertura()
-        except Exception as e:  # noqa: BLE001
-            self.log(f"Ctrl+Shift+arrossegat: no s'ha pogut deixar la còpia ({e})")
-            return
-        self.timeline.set_data(self.acords, self.seccions)
-        try:
-            self._desa_i_regenera()
-        except Exception as e:  # noqa: BLE001
-            self.log(f"ERROR: {e}")
-        self.log(f"Ctrl+Shift+arrossegat: còpia «{nom}» a {t:.3f}s")
 
     def _elimina_acord(self, idx):
         if idx is None:
@@ -2035,7 +1970,7 @@ class Visor(QMainWindow):
              la vora que s'ha de substituir la deixava a 2 ms i la validació
              (≥ 10 ms) rebuixava l'operació sencera.
           2. **Graella** (BPM/offset) si no hi ha cap marca a prop.
-          `Shift` (Ctrl+Shift+V) se salta el snap, com el «hold N» del Final Cut.
+          `Alt` (Ctrl+Alt+V) se salta el snap, com el «hold N» del Final Cut.
         El bloc viatja **rígid** (com `Grid Relative` del Cubase): no s'arrodoneix
         cada element, per no deformar l'espaiat intern de la còpia.
         """
@@ -2053,7 +1988,7 @@ class Visor(QMainWindow):
         cc, bf = buf.get("cursor_copy"), buf.get("bloc_fi")
         if cc is not None and bf is not None and abs(T - float(cc)) <= 1e-6:
             T = float(bf)
-        salta_snap = bool(QApplication.keyboardModifiers() & Qt.ShiftModifier)
+        salta_snap = bool(QApplication.keyboardModifiers() & Qt.AltModifier)
         if (hasattr(self, "timeline") and self.timeline._snap_on
                 and not salta_snap):
             # 1r) EVENTS: marca del model a prop → el seu instant EXACTE

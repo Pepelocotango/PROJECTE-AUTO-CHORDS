@@ -47,15 +47,15 @@
 | 7 | **Reanomenar** | `F2` · doble clic (inline) · llista · *Reanomena (BPM/compàs)…* (diàleg del tram) | ✓ | ✓ | ✓ | **FET** |
 | 8 | **Reanomenar en bloc** | `F2` amb multi-selecció | ✓ | ✓ | — | **FET** |
 | 9 | **Trobar i reemplaçar** | `Ctrl+H` | ✓ | ✓ | — | **FET** |
-| 10 | **Moure un clip / BLOC** | arrossegar el **cos** (guard `Ctrl+Shift` = duplicar) | ✓ | ✓ | ✓ | **FET** (§6.3) |
+| 10 | **Moure un clip / BLOC** | arrossegar el **cos** | ✓ | ✓ | ✓ | **FET** (§6.3) |
 | 11 | **Moure una marca** (fi = inici del següent) | — | ✓ | ✓ | ✓ | **FET** (camí de la vora) |
 | 12 | **Nudge** (moure una frontera) | `←` / `→` · `Alt+←`/`→` (vora dreta) | ✓ | ✓ | ✓ | **FET** (`←`/`→` mou la frontera del tram; `Alt` la de la dreta) |
 | 13 | **Redimensionar (vores lliures)** | arrossegar la **vora** del clip | ✓ | ✓ | ✓ | **FET**: nucli únic (`redimensiona_clips` + `redimensiona_acord`/`redimensiona_seccio`) i el gest del visor hi enganxat · vores **LLIURES** (§6.6): estirar talla/elimina el veí |
 | 14 | **Duplicar** | `Ctrl+D` · *Duplica* del menú contextual de les 3 pistes (a la ③ només si hi ha lloc després del tram) | ✓ | ✓ | ✓ | **FET**: nucli únic `duplica_bloc_clips` (§2: la còpia va DESPRÉS i sobreescriu el tram, §6.3) |
-| 15 | **Duplicar arrossegant** | `Ctrl+Shift`+arrossegar (a l'origen hi torna una còpia) | ✓ | ✓ | — | **FET**. Als trams de BPM/compàs **no hi ha aquest gest**: l'arrossegar del cos hi mou el punt de canvi; es duplica amb `Ctrl+D` (#14) o copiar/enganxar (#16) |
-| 16 | **Copiar / Retallar / Enganxar** | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` (`Ctrl+Shift+V` = sense snap) | ✓ | ✓ | ✓ | **FET** (sobreescriu el tram; als trams obre les fronteres i hi canvia el BPM/compàs) |
+| 15 | **Duplicar arrossegant** | — | — | — | — | **RETIRAT** (2026-10-19). Es duplica amb `Ctrl+D` (#14) o copiar/enganxar (#16); `Ctrl+Shift` queda per a l'eina de selecció temporal |
+| 16 | **Copiar / Retallar / Enganxar** | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` (`Ctrl+Alt+V` = sense snap) | ✓ | ✓ | ✓ | **FET** (sobreescriu el tram; als trams obre les fronteres i hi canvia el BPM/compàs) |
 | 17 | **Copiar/retallar el LOOP** | doble clic al regle · menú contextual de la banda | ✓ | ✓ | ✓ | **FET** (composable; la selecció del LOOP ja inclou els trams) |
-| 18 | **Mode fàcil** (re-regularitzar) | *Analitza ▸ Mode fàcil…* | ✓ | — | — | **FET** |
+| 18 | **Quantitza** (inicis de clips) | *Analitza ▸ Quantitza el model…* · botó **Quantitza** | ✓ | ✓ | — | **FET** (abast: tot · selecció · només acords · només estructura) |
 
 ## 3. Selecció i vista
 
@@ -85,7 +85,7 @@
 
 | # | Operació | GUI | Estat |
 |---|---|---|---|
-| 33 | **Desfer / Refer** | `Ctrl+Z` · `Ctrl+Y` · `Ctrl+Shift+Z` | **FET** |
+| 33 | **Desfer / Refer** | `Ctrl+Z` · `Ctrl+Y` | **FET** |
 | 34 | **Estat complet de l'app** | — | **FET** |
 | 35 | **Llistar el model** | llistes del visor | **FET** |
 
@@ -139,11 +139,11 @@ pendents:
   s'edita amb el diàleg; no hi ha noms inline.
 - **#9 Trobar i reemplaçar**: idem — no hi ha text on buscar (es fa tram a tram
   o amb les eines del mapa).
-- **#15 Duplicar arrossegant**: aquest gest, a la pista, ja el té pres el cos
-  del tram (**mou el punt de canvi**); duplicar es fa amb `Ctrl+D` o el
-  porta-retalls.
-- **#18 Mode fàcil**: re-regularitza el **ritme harmònic** dels acords (i les
-  seccions); no toca el mapa de tempo.
+- **#15 Duplicar arrossegant**: retirat; `Ctrl+Shift` és l'eina de selecció
+  temporal i duplicar es fa amb `Ctrl+D` o el porta-retalls.
+- **#18 Quantitza**: mou els **inicis** dels clips d'acords i/o estructura a
+  la graella. No toca BPM, compàs, offset ni el cru; una sola operació de
+  desfer. Graelles: acords de 1/8 a 1 compàs; estructura d'1 a 64 compassos.
 
 1. **Redimensionat amb vores lliures** (#13) — nucli únic FET (S2a: `redimensiona_clips`); falta el gest del visor i.
 2. **Duplicar**: alinear el destí amb **§6.3** (#14) i exposar el gest de **duplicar

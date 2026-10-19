@@ -725,11 +725,11 @@ class Finestra(QMainWindow):
         # --- Fitxer ---
         m = mb.addMenu("&Fitxer")
         self._act(m, "Obre àudio…", "Ctrl+O", self.tria_wav)
-        self._act(m, "Obre projecte…", "Ctrl+Shift+O", self._obre_projecte)
+        self._act(m, "Obre projecte…", "", self._obre_projecte)
         self._act(m, "Obre recent…", "", self._obre_recent)
         m.addSeparator()
         self._act(m, "Desa", "Ctrl+S", self._desa_projecte)
-        self._act(m, "Desa com…", "Ctrl+Shift+S", self._desa_projecte_com)
+        self._act(m, "Desa com…", "", self._desa_projecte_com)
         self._act(m, "Desa una còpia…", "", self._desa_copia)
         self._act(m, "Reverteix", "", self._reverteix)
         m.addSeparator()
@@ -746,14 +746,14 @@ class Finestra(QMainWindow):
         m = mb.addMenu("&Edita")
         self._act(m, "Desfer", "Ctrl+Z", self._undo_visor)
         self._act(m, "Refer", "Ctrl+Y", self._redo_visor)
-        self._act(m, "Refer (alternatiu)", "Ctrl+Shift+Z", self._redo_visor)
+        self._act(m, "Refer (alternatiu)", "", self._redo_visor)
         m.addSeparator()
         self._act(m, "Retalla", "Ctrl+X", self._retalla_clips)
         self._act(m, "Copia", "Ctrl+C", self._copia_clips)
         self._act(m, "Enganxa", "Ctrl+V", self._enganxa_clips)
         m.addSeparator()
-        self._act(m, "Afegeix acord…", "Ctrl+Shift+A", self._afegeix_acord_ui)
-        self._act(m, "Afegeix secció…", "Ctrl+Shift+S", self._afegeix_seccio_ui)
+        self._act(m, "Afegeix acord…", "", self._afegeix_acord_ui)
+        self._act(m, "Afegeix secció…", "", self._afegeix_seccio_ui)
         # A2 + regla d'or #11: en un model saturat (els clips cobreixen tota la
         # WAV) no hi ha forat per afegir-ne: cal PARTIR el clip que hi ha al
         # cursor — MATEIXA acció per a acord i secció.
@@ -944,8 +944,10 @@ class Finestra(QMainWindow):
             ("rang de clips del MATEIX carril", "Shift+clic"),
             ("moure un clip (tot el grup si està seleccionat)",
              "Arrossega el cos del clip"),
-            ("DUPLICAR-LO: l'original es queda a lloc",
-             "Ctrl+Shift+arrossega el cos"),
+            ("duplicar l'element seleccionat (sense arrossegar)",
+             "Ctrl+D"),
+            ("eina de selecció temporal (mentre es mantenen)",
+             "Ctrl+Shift"),
             ("redimensionar (inici / final)", "Arrossega una vora"),
             ("rectangle de selecció (marquee)",
              "Ctrl+arrossega (temporal) o Eina marc ▸ arrossega"),
@@ -960,7 +962,7 @@ class Finestra(QMainWindow):
             ("TAP del temps (tap tempo)", "T"),
             ("copiar / retallar / enganxar al cursor",
              "Ctrl+C / Ctrl+X / Ctrl+V"),
-            ("enganxar SALTANT-SE el snap", "Ctrl+Shift+V"),
+            ("enganxar SALTANT-SE el snap", "Ctrl+Alt+V"),
             ("moure un clip un pas de graella (Alt = vora dreta)",
              "← / →"),
             ("cancel·lar: rang en curs · loop · selecció", "Esc"),
@@ -1254,9 +1256,8 @@ class Finestra(QMainWindow):
                 ("Es temporal: Ctrl+arrossega · o fix: Eina marc", ""),
             ]),
             ("Duplicar un clip", [
-                ("El clip viatja i a l'origen en queda una còpia (mateix nom)",
-                 "Ctrl+Shift+arrossega el cos"),
-                ("Duplicar l'element seleccionat", "Ctrl+D"),
+                ("Duplicar l'element seleccionat (o el grup)", "Ctrl+D"),
+                ("L'arrossegament normal mou; no duplica", ""),
             ]),
             ("Moure i redimensionar", [
                 ("Moure (tot el grup si està seleccionat)",
@@ -1268,7 +1269,7 @@ class Finestra(QMainWindow):
             ("Copiar, retallar i enganxar", [
                 ("Al cursor", "Ctrl+C / Ctrl+X / Ctrl+V"),
                 ("L'enganxat SUBSTITUEIX el tram: la cançó no creix mai", ""),
-                ("Enganxar saltant-se el snap", "Ctrl+Shift+V"),
+                ("Enganxar saltant-se el snap", "Ctrl+Alt+V"),
             ]),
             ("Loop A-B", [
                 ("Crear-lo o editar-lo", "Arrossega sobre el regle"),

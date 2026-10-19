@@ -17,7 +17,7 @@ from typing import Callable, Optional
 from PyQt5.QtCore import QPointF, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QFont, QFontMetricsF, QPainter, QPen
 from PyQt5.QtWidgets import (
-    QApplication, QGraphicsItem, QGraphicsObject, QLineEdit, QWidget,
+    QGraphicsItem, QGraphicsObject, QLineEdit, QWidget,
 )
 
 from app import theme      # noqa: E402  (paleta centralitzada)
@@ -32,6 +32,17 @@ from app.timeline_base import (   # noqa: E402
 # -----------------------------------------------------------------------------
 # ChordItem — un acord (caixa amb nanses + edició inline)
 # -----------------------------------------------------------------------------
+def _vista_en_marc(item):
+    """True si la vista del timeline està en l'eina «marc» (temporal o fixa)."""
+    escena = item.scene()
+    if escena is None:
+        return False
+    for v in escena.views():
+        if getattr(v, "_tool", "") == "marc":
+            return True
+    return False
+
+
 class ChordItem(QGraphicsObject):
     """Un acord: rectangle amb 3 zones (handle-esq | cos | handle-dreta).
 
@@ -50,7 +61,6 @@ class ChordItem(QGraphicsObject):
 
     timeChanged = pyqtSignal(float)          # self.t ha canviat
     endTimeChanged = pyqtSignal(float)       # self.next_t ha canviat (el del següent)
-    copiaRequested = pyqtSignal(float)       # Alt+drag: deixar còpia a l'origen
     renameRequested = pyqtSignal(str)         # usuari ha escrit nom nou
     deleteRequested = pyqtSignal()
     editRequested = pyqtSignal()
@@ -187,20 +197,12 @@ class ChordItem(QGraphicsObject):
         self._drag_t0 = self.t
         self._drag_next_t0 = self._next_t
         self._drag_moved = False
-        _m = getattr(event, "modifiers", lambda: Qt.NoModifier)()
-        if (_m & Qt.ControlModifier) and (_m & Qt.ShiftModifier):
-            # Ctrl+Shift = DUPLICAR: es tracta SEMPRE com el cos del clip (mai
-            # no redimensiona; el gest a les vores no vol dir res).
-            z = self.ZONE_BODY
-            self._drag_mode = z
         if z in (self.ZONE_LEFT, self.ZONE_RIGHT):
             self.setCursor(Qt.SizeHorCursor)
         elif z == self.ZONE_BODY:
             self.setCursor(Qt.ClosedHandCursor)
         if z != self.ZONE_NONE:
-            # Ctrl+Shift+arrossegar el COS = duplicar: el clip viatja i a l'ORIGEN en
-            # queda una còpia (convenció universal dels DAWs: Alt+drag = copy).
-            # Ho resol el TimelineView (que coneix el model i la marca original).
+            # Arrossegar el cos = moure. Per duplicar, Ctrl+D.
             self.dragStarted.emit()   # captura l'estat ABANS de cap canvi
             event.accept()
         else:
@@ -237,14 +239,9 @@ class ChordItem(QGraphicsObject):
         event.accept()
 
     def hoverMoveEvent(self, event) -> None:
-        # Ctrl+Shift = duplicar: el cursor ho diu (fletxa amb «+», l'estàndard
-        # de copiar). Com que l'event d'hover NO porta els modificadors, es
-        # miren en directe; Qt no emet res en prémer una tecla sola, o sigui
-        # que el cursor s'actualitza al primer moviment del ratolí.
-        _m = QApplication.keyboardModifiers()
-        if (_m & Qt.ControlModifier) and (_m & Qt.ShiftModifier):
-            self.setCursor(Qt.DragCopyCursor)
-            return super().hoverMoveEvent(event)
+        if _vista_en_marc(self):
+            self.setCursor(Qt.CrossCursor)
+            return
         z = self._zone_at(event.pos().x())
         if z in (self.ZONE_LEFT, self.ZONE_RIGHT):
             self.setCursor(Qt.SizeHorCursor)
@@ -421,11 +418,6 @@ class SectionItem(QGraphicsObject):
         self._drag_ini0 = self.ini
         self._drag_fi0 = self.fi
         self._drag_moved = False
-        _m = getattr(event, "modifiers", lambda: Qt.NoModifier)()
-        if (_m & Qt.ControlModifier) and (_m & Qt.ShiftModifier):
-            # Ctrl+Shift = DUPLICAR (paritat amb els acords): sempre el cos.
-            z = self.ZONE_BODY
-            self._drag_mode = z
         # Regla d'or #11: MATEIX tracte que el ChordItem — cursor segons la zona
         # i senyal d'inici de gest (perquè desfer/refer capturi l'estat ABANS).
         if z in (self.ZONE_LEFT, self.ZONE_RIGHT):
@@ -463,14 +455,9 @@ class SectionItem(QGraphicsObject):
         event.accept()
 
     def hoverMoveEvent(self, event) -> None:
-        # Ctrl+Shift = duplicar: el cursor ho diu (fletxa amb «+», l'estàndard
-        # de copiar). Com que l'event d'hover NO porta els modificadors, es
-        # miren en directe; Qt no emet res en prémer una tecla sola, o sigui
-        # que el cursor s'actualitza al primer moviment del ratolí.
-        _m = QApplication.keyboardModifiers()
-        if (_m & Qt.ControlModifier) and (_m & Qt.ShiftModifier):
-            self.setCursor(Qt.DragCopyCursor)
-            return super().hoverMoveEvent(event)
+        if _vista_en_marc(self):
+            self.setCursor(Qt.CrossCursor)
+            return
         z = self._zone_at(event.pos().x())
         if z in (self.ZONE_LEFT, self.ZONE_RIGHT):
             self.setCursor(Qt.SizeHorCursor)

@@ -118,19 +118,11 @@ class TimelineView(QGraphicsView):
     chordRenamed = pyqtSignal(int, str)
     chordDeleteRequested = pyqtSignal(int)
     chordDuplicateRequested = pyqtSignal(int)
-    # Ctrl+Shift+arrossegar un clip d'acord: el clip viatja i a l'ORIGEN en queda una
-    # còpia (convenció universal dels DAWs: Alt+drag = duplicar). Payload:
-    # (instant ORIGINAL on s'ha de deixar la còpia, nom de l'acord).
-    chordCopyRequested = pyqtSignal(float, str)
     chordEditRequested = pyqtSignal(int)
     sectionMoved = pyqtSignal(int, float, float)
     sectionRenamed = pyqtSignal(int, str, str)
     sectionDeleteRequested = pyqtSignal(int)
     sectionDuplicateRequested = pyqtSignal(int)
-    # Ctrl+Shift+arrossegar una SECCIÓ: viatja i a l'ORIGEN hi torna una còpia
-    # (mateixa lletra i família) sobre el mateix tram. Payload:
-    # (ini, fi, lletra, família) de la secció original.
-    sectionCopyRequested = pyqtSignal(float, float, str, str)
     # Pista de BPM/compàs (editable): clic a un bloc, vora arrossegada
     # i botó dret (índex del bloc; -1 = fora).
     tempoEditRequested = pyqtSignal(int)
@@ -217,6 +209,7 @@ class TimelineView(QGraphicsView):
         # que hi ha sota: mou, redimensiona, loop…) o «marc» (arrossegar dibuixa
         # un rectangle de selecció i NO mou clips, com el marquee dels DAWs).
         self._tool = "intel·ligent"
+        self._tool_abans = None   # eina a restaurar després de Ctrl+Shift
         # (El rang de Shift+clic és SEMPRE del carril del clip clicat: per agafar
         # clips de les dues pistes es fa servir el marquee, Ctrl+arrossegant.)
         self._marquee = None       # rectangle en curs: [x0,y0,x1,y1] de la vista
@@ -224,10 +217,6 @@ class TimelineView(QGraphicsView):
         # si és minúscul (un clic) es resol com a toggle, i en deixar anar tot
         # torna a l'eina intel·ligent.
         self._marquee_ctrl = False
-        # Ctrl+Shift+arrossegament en curs: (l'índex i el temps original) per deixar-hi la còpia.
-        self._copia_ac = None
-        # El mateix per a les SECCIONS: (ini, fi, lletra, família) originals.
-        self._copia_sec = None
         # Moviment d'un BLOC d'acords en curs (PLA_EDICIO_LLIURE §6.3): dict
         # {first, last, idx, t0, dt, acords0}. El DESTÍ (tallar/eliminar) es
         # resol sencer al final del gest (`_tanca_bloc`), perquè pot esborrar
@@ -583,25 +572,10 @@ class TimelineView(QGraphicsView):
         return Qt.ArrowCursor
 
     def _emit_edit_finished(self) -> None:
-        """Fi de drag -> amaga la guia i reporta.
-
-        Si el gest era un **Ctrl+Shift+arrossegament** d'un acord, el clip s'ha mogut i
-        ara cal deixar-ne una **còpia a l'origen** (Alt+drag = duplicar, la
-        convenció dels DAWs). S'emet DESPRÉS de `editFinished` perquè el moviment
-        ja estigui consolidat: així la còpia és una segona operació neta.
-        """
+        """Fi de drag -> amaga la guia i reporta al visor."""
         self._hide_guide()
         self._tanca_bloc()          # DESTÍ del moviment del bloc (§6.3)
         self.editFinished.emit()
-        if self._copia_ac is not None:
-            t0, nom = self._copia_ac
-            self._copia_ac = None
-            self.chordCopyRequested.emit(float(t0), str(nom))
-        if self._copia_sec is not None:
-            ini, fi, ll, fam = self._copia_sec
-            self._copia_sec = None
-            self.sectionCopyRequested.emit(float(ini), float(fi), str(ll),
-                                           str(fam))
 
     def _x_to_time(self, x: float) -> float:
         """De x de la vista a temps (coords relatives a la vista)."""
@@ -914,6 +888,7 @@ class TimelineView(QGraphicsView):
     def set_tool(self, nom: str) -> None:
         """Eina del timeline: «intel·ligent» (per defecte) o «marc»."""
         n = str(nom or "").strip().lower()
+        self._tool_abans = None
         self._tool = "marc" if n.startswith("marc") else "intel·ligent"
         self._marquee = None
         self.viewport().setCursor(
@@ -923,6 +898,23 @@ class TimelineView(QGraphicsView):
     def tool(self) -> str:
         """Eina vigent: «intel·ligent» o «marc»."""
         return self._tool
+
+    def _activa_eina_temporal(self):
+        """Mentres Ctrl+Shift estan premuts, passa a l'eina «marc»."""
+        if self._tool_abans is None:
+            self._tool_abans = self._tool
+            self._tool = "marc"
+            self.viewport().setCursor(Qt.CrossCursor)
+            self.update()
+
+    def _restaura_eina_temporal(self):
+        """En deixar anar Ctrl o Shift, torna a l'eina que hi havia."""
+        if self._tool_abans is not None:
+            self._tool = self._tool_abans
+            self._tool_abans = None
+            self.viewport().setCursor(
+                Qt.CrossCursor if self._tool == "marc" else Qt.ArrowCursor)
+            self.update()
 
     def _inicia_marc(self, event, temporal: bool = False) -> None:
         """Comença el rectangle de selecció (eina «marc» o Ctrl+arrossegament)."""
@@ -1215,24 +1207,7 @@ class TimelineView(QGraphicsView):
         """Mou l'inici de l'acord idx a new_t (amb snap + constraint)."""
         if idx < 0 or idx >= len(self._acords):
             return
-        # Arrossegar per DUPLICAR: capturem l'instant ORIGINAL (abans del
-        # primer moviment). El `_emit_edit_finished` deixarà la còpia allà.
-        # Només **Ctrl+Shift**: és l'única combinació lliure als 3 sistemes
-        # (a Linux el gestor de finestres s'emporta Alt —MATE— i Super —GNOME—).
-        mods = QApplication.keyboardModifiers()
-        # La còpia a l'origen (duplicar arrossegant) només té sentit amb UN clip
-        # seleccionat: amb una multi-selecció el gest mou el BLOC sencer, i la
-        # còpia d'un de sol deixaria un tros solt a l'origen (era el
-        # comportament del camí llegat, que movia el grup i hi deixava una
-        # marca òrfena).
-        if (self._copia_ac is None and len(self._multi) <= 1
-                and (mods & Qt.ControlModifier and mods & Qt.ShiftModifier)):
-            self._copia_ac = (float(self._acords[idx].ini),
-                               str(self._acords[idx].nom))
-        # Arrossegar el COS = moure el BLOC (§6.3), amb Ctrl+Shift o sense: el
-        # que canvia és només que el final del gest hi deixa una còpia a
-        # l'origen. Mateix camí per a totes dues coses (paritat #11 amb les
-        # seccions, que ja ho feien així).
+        # Arrossegar el COS = moure el BLOC (§6.3). El duplicat és Ctrl+D.
         if (getattr(self._chord_items[idx], "_drag_mode", None)
                 == ChordItem.ZONE_BODY):
             self._on_chord_body_drag(idx, new_t)
@@ -1319,13 +1294,6 @@ class TimelineView(QGraphicsView):
         """
         if idx < 0 or idx >= len(self._seccions):
             return
-        # Ctrl+Shift+arrossegar = duplicar: capturem la secció ORIGINAL (abans
-        # del primer moviment). El `_emit_edit_finished` hi deixarà la còpia.
-        mods = QApplication.keyboardModifiers()
-        if (self._copia_sec is None and len(self._multi) <= 1
-                and (mods & Qt.ControlModifier and mods & Qt.ShiftModifier)):
-            s = self._seccions[idx]
-            self._copia_sec = (float(s[0]), float(s[1]), str(s[2]), str(s[3]))
         # Moviment de BLOC de seccions: l'arrossega `_on_section_body_drag`
         # (paritat #11 amb els acords; abans ho feia `_move_section_group`).
         ini_o, fi_o, lletra, familia = self._seccions[idx]
@@ -1539,11 +1507,12 @@ class TimelineView(QGraphicsView):
                     self._loop_t0 = self._loop_x_to_time(sp.x())
                 event.accept()
                 return
-            # Ctrl+arrossegar = fer el MARC **temporalment** (a tot arreu de les
-            # pistes). En deixar anar, tot torna a l'eina intel·ligent; i si el
-            # gest és un clic (rectangle minúscul) es resol com a toggle.
-            # (Ctrl+Shift té prioritat: és el d'DUPLICAR i va per un altre camí.)
+            # Ctrl+arrossegar = MARC temporal (torna a l'eina anterior en
+            # deixar anar). Ctrl+Shift mantingut = eina «marc» mentre dura.
             mods_ara = event.modifiers()
+            if (mods_ara & Qt.ControlModifier
+                    and (mods_ara & Qt.ShiftModifier)):
+                self._activa_eina_temporal()
             if (mods_ara & Qt.ControlModifier
                     and not (mods_ara & Qt.ShiftModifier)):
                 self.setFocus()
@@ -1578,13 +1547,9 @@ class TimelineView(QGraphicsView):
                 kind = "chord" if isinstance(it, ChordItem) else "section"
                 idx = getattr(it, "idx", -1)
                 mods = event.modifiers()
-                # Aquí només hi arriben: Shift+clic (rang) i Ctrl+Shift
-                # (duplicar arrossegant). El Ctrl sol ja s'ha resolt abans com a
-                # MARC temporal, i el Ctrl+Shift cau a `super()` perquè l'item
-                # iniciï l'arrossegament de la còpia.
-                if mods & Qt.ControlModifier and mods & Qt.ShiftModifier:
-                    self.setFocus()
-                elif mods & Qt.ShiftModifier:
+                # Ctrl+Shift ja s'ha resolt abans com a eina «marc»; ací només
+                # queda Shift+clic (rang).
+                if mods & Qt.ShiftModifier:
                     self.setFocus()
                     self.extend_selection(kind, idx)
                     event.accept()
@@ -1670,6 +1635,10 @@ class TimelineView(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
+        if self._tool_abans is not None:
+            m = QApplication.keyboardModifiers()
+            if not ((m & Qt.ControlModifier) and (m & Qt.ShiftModifier)):
+                self._restaura_eina_temporal()
         if event.button() == Qt.LeftButton and self._marquee is not None:
             x0, y0, x1, y1 = self._marquee
             ctrl = self._marquee_ctrl
@@ -1731,7 +1700,8 @@ class TimelineView(QGraphicsView):
                 return (bar_s * int(d[1]) if d[0] == "bars"
                         else beat_s * float(d[1]))
             s = graella.divisio_segons(self._snap_div_nom, self._bpm,
-                                       self._tempo_fix, self._bpb)
+                                       self._tempo_fix, self._bpb,
+                                       getattr(self, "_beat_type", 4))
             if s > 0:
                 return s
         return snap_step(self._tempo_fix, self._bpm, self._bpb, self._pps,
@@ -1832,6 +1802,16 @@ class TimelineView(QGraphicsView):
 
     def keyPressEvent(self, event) -> None:
         mods = event.modifiers()
+        # Qt no inclou en `modifiers()` la tecla que s'acaba de prémer: si és
+        # Ctrl o Shift, cal afegir-la per detectar la combinació.
+        mods_tots = mods
+        if event.key() == Qt.Key_Control:
+            mods_tots |= Qt.ControlModifier
+        elif event.key() == Qt.Key_Shift:
+            mods_tots |= Qt.ShiftModifier
+        if ((mods_tots & Qt.ControlModifier)
+                and (mods_tots & Qt.ShiftModifier)):
+            self._activa_eina_temporal()
         if event.key() == Qt.Key_Escape:
             # Esc: el resol el VISOR, per ordre — (1) el RANG en curs, (2) el
             # LOOP, (3) la SELECCIÓ. Si no es compleix cap, no fa res.
@@ -1893,6 +1873,23 @@ class TimelineView(QGraphicsView):
                             event.accept()
                             return
         super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event) -> None:
+        if event.key() in (Qt.Key_Control, Qt.Key_Shift):
+            mods = event.modifiers()
+            # Alguns backends inclouen la tecla que s'acaba de deixar anar;
+            # la traiem per saber quines queden realment premudes.
+            if event.key() == Qt.Key_Control:
+                mods &= ~Qt.ControlModifier
+            else:
+                mods &= ~Qt.ShiftModifier
+            if not ((mods & Qt.ControlModifier) and (mods & Qt.ShiftModifier)):
+                self._restaura_eina_temporal()
+        super().keyReleaseEvent(event)
+
+    def focusOutEvent(self, event) -> None:
+        self._restaura_eina_temporal()
+        super().focusOutEvent(event)
 
     def leaveEvent(self, event) -> None:
         self._hide_guide()
