@@ -1292,7 +1292,7 @@ class TestExportLimits(unittest.TestCase):
     def test_retalla_al_final(self):
         _ca, wavs, r = _export([(0.0, "C", "0")], 3.0)
         self.assertEqual(len(wavs), 1)
-        self.assertIn("0000.00s_0003.00s", wavs[0])  # fi = durada de la WAV
+        self.assertIn("0000.000s_0003.000s", wavs[0])  # fi = durada de la WAV
 
     def test_nom_wav_usa_style(self):
         """DOCUMENTA: l'export estilitza el nom → pot diferir del CSV."""
@@ -1884,16 +1884,16 @@ class HarmonyTests(unittest.TestCase):
 
 class DuradesTests(unittest.TestCase):
     def test_decomposa(self):
-        self.assertEqual(partitura._decomposa(16), [("whole", 0)])
-        self.assertEqual(partitura._decomposa(12), [("half", 1)])
-        self.assertEqual(partitura._decomposa(10), [("half", 0), ("eighth", 0)])
-        self.assertEqual(partitura._decomposa(3), [("eighth", 1)])
+        self.assertEqual(partitura._decomposa(1920), [("whole", 0)])
+        self.assertEqual(partitura._decomposa(1440), [("half", 1)])
+        self.assertEqual(partitura._decomposa(1200), [("half", 0), ("eighth", 0)])
+        self.assertEqual(partitura._decomposa(360), [("eighth", 1)])
         self.assertEqual(partitura._decomposa(0), [])
 
     def test_note_i_silenci(self):
-        self.assertIn("<notehead>slash</notehead>", partitura._note_xml(8))
-        self.assertIn("<rest/>", partitura._note_xml(4, rest=True))
-        self.assertNotIn("<pitch>", partitura._note_xml(4, rest=True))
+        self.assertIn("<notehead>slash</notehead>", partitura._note_xml(960))
+        self.assertIn("<rest/>", partitura._note_xml(480, rest=True))
+        self.assertNotIn("<pitch>", partitura._note_xml(480, rest=True))
 
 
 class MusicXmlTests(unittest.TestCase):
@@ -2624,10 +2624,10 @@ class TimelineConstraintTests(unittest.TestCase):
         view.zoom_to(0, 10)
         # Prova d'anar més enllà de F (4.5)
         view._on_chord_time_changed(1, 100.0)
-        self.assertLessEqual(view._acords[1][0], 4.5 - 0.02 + 1e-6)
+        self.assertLessEqual(view._acords[1][0], 4.5 - 0.001 + 1e-6)
         # Prova d'anar més enrere de C (0.0)
         view._on_chord_time_changed(1, -10.0)
-        self.assertGreaterEqual(view._acords[1][0], 0.02)
+        self.assertGreaterEqual(view._acords[1][0], 0.001)
 
     def test_chord_end_move_propagates_to_next_chord(self):
         """Moure B.fi (= inici de C) propaga C.t."""
@@ -3272,12 +3272,20 @@ class OffsetDosCampsTests(unittest.TestCase):
         self.assertEqual(window._secs_a_cb(0.0), "1.1")
         window.close()
 
+    def test_compas_beat_setzena(self):
+        # 5.1.3 = compàs 5, temps 1, tercera setzena = 16,5 beats
+        window = self._finestra()
+        t = (16 + 0.5) * (60.0 / 101.0)
+        self.assertAlmostEqual(window._cb_a_secs("5.1.3"), t, places=4)
+        self.assertEqual(window._secs_a_cb(t), "5.1.3")
+        window.close()
+
     def test_els_dos_camps_queden_sincronitzats(self):
         window = self._finestra()
         # escrivim el compas.beat -> el camp de segons s'actualitza
         window.offset_cb.setText("5.1")
         window._offset_cb_canviat()
-        # el camp de segons es desa amb 2 decimals (9.50495 -> 9.50)
+        # el camp de segons es desa amb 3 decimals (9.50495 -> 9.505)
         self.assertAlmostEqual(window._offset_val(), 16 * (60.0 / 101.0),
                                places=2)
         self.assertEqual(window.offset_cb.text(), "5.1")
@@ -3403,8 +3411,8 @@ class OffsetTests(unittest.TestCase):
         from app.timeline import fmt_pos
         # amb zoom prou gran, el regle mostra compàs.temps.subdivisió, com en DAW
         self.assertEqual(fmt_pos(0.0, True, 120, 4, 0.0, step=0.25), "1.1.1")
-        self.assertEqual(fmt_pos(0.25, True, 120, 4, 0.0, step=0.25), "1.1.2")
-        self.assertEqual(fmt_pos(0.75, True, 120, 4, 0.0, step=0.25), "1.2.2")
+        self.assertEqual(fmt_pos(0.25, True, 120, 4, 0.0, step=0.25), "1.1.3")
+        self.assertEqual(fmt_pos(0.75, True, 120, 4, 0.0, step=0.25), "1.2.3")
 
     def test_compas_manual_accepta_fraccio(self):
         from app.main import Finestra
@@ -4531,7 +4539,7 @@ class OffsetBotoCursorTests(unittest.TestCase):
         v.ves_a(9.5)                       # "cursor vermell" a 9.5s
         w.b_offset_cursor.click()          # com l'usuari
         self.assertAlmostEqual(v.offset, 9.5, places=2)
-        self.assertEqual(w.offset.text(), "9.50")
+        self.assertEqual(w.offset.text(), "9.500")
         # el camp compas.beat tambe s'actualitza
         self.assertTrue(w.offset_cb.text().startswith("5."))
         v.ves_a(3.0); w.b_offset_cursor.click()
@@ -4643,7 +4651,7 @@ class EditorFranjaTests(unittest.TestCase):
         v.timeline.select_clip("chord", 1); v._on_clip_selected("chord", 1)
         self.assertEqual(v.ed_gran.text(), "Am")
         self.assertEqual(v.ed_nom.text(), "Am")
-        self.assertEqual(v.ed_ini.text(), "4.00")
+        self.assertEqual(v.ed_ini.text(), "4.000")
         self.assertFalse(v.ed_fam.isVisible())
         w.close()
 
@@ -5077,9 +5085,9 @@ class PipelineRunTests(unittest.TestCase):
 
 
 class FormatCsvTests(unittest.TestCase):
-    """Resolució temporal unificada (10 ms) i compassos de qualsevol bpb."""
+    """Resolució temporal unificada (1 µs) i compassos de qualsevol bpb."""
 
-    def test_acords_csv_te_2_decimals(self):
+    def test_acords_csv_te_6_decimals(self):
         import tempfile
         from app import pipeline
         td = tempfile.mkdtemp()
@@ -5089,14 +5097,14 @@ class FormatCsvTests(unittest.TestCase):
             pipeline.Clip(16.439727891, 0.0, ("E7", "16.439727891")),
         ])
         files = open(ruta, encoding="utf-8").read().strip().splitlines()
-        self.assertEqual(files[0], "0.00,16.44,C")
-        self.assertEqual(files[1], "16.44,0.00,E7")   # durada=0 -> fi 0
+        self.assertEqual(files[0], "0.000000,16.439728,C")
+        self.assertEqual(files[1], "16.439728,0.000000,E7")   # durada=0 -> fi 0
         for linia in files:
             for cell in linia.split(",")[:2]:
-                self.assertLessEqual(len(cell.split(".")[1]), 2,
-                                     f"mes de 2 decimals: {linia}")
+                self.assertLessEqual(len(cell.split(".")[1]), 6,
+                                     f"mes de 6 decimals: {linia}")
 
-    def test_abc_csv_te_2_decimals(self):
+    def test_abc_csv_te_6_decimals(self):
         import tempfile
         from app import pipeline
         td = tempfile.mkdtemp()
@@ -5105,7 +5113,8 @@ class FormatCsvTests(unittest.TestCase):
                               lambda m: None)
         files = open(ruta, encoding="utf-8").read().strip().splitlines()
         self.assertEqual(files[0].split(",")[:3], ["inici_s", "fi_s", "durada_s"])
-        self.assertEqual(files[1].split(",")[:3], ["0.00", "21.36", "21.36"])
+        self.assertEqual(files[1].split(",")[:3],
+                         ["0.000000", "21.362000", "21.362000"])
 
     def test_pos_compas_respecta_bpb(self):
         from app import pipeline
@@ -5122,6 +5131,62 @@ class FormatCsvTests(unittest.TestCase):
         from app import pipeline
         self.assertTrue(pipeline.pos_compas(12.34, 120, 4, lliure=True)
                         .endswith("s"))
+
+
+class Resolucio1_16IExportTests(unittest.TestCase):
+    """La graella musical és 1/16; l'export conserva els temps exactes."""
+
+    def test_pos_compas_1_16(self):
+        self.assertEqual(pipeline.pos_compas(0.0, 120, 4), "1.1.1")
+        self.assertEqual(pipeline.pos_compas(0.125, 120, 4), "1.1.2")
+        self.assertEqual(pipeline.pos_compas(0.25, 120, 4), "1.1.3")
+        self.assertEqual(pipeline.pos_compas(0.375, 120, 4), "1.1.4")
+        self.assertEqual(pipeline.pos_compas(0.5, 120, 4), "1.2.1")
+
+    def test_segments_export_1_16_i_temps_exactes(self):
+        td = tempfile.mkdtemp()
+        ca = os.path.join(td, "acords.csv")
+        with open(ca, "w", encoding="utf-8", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["0.000000", "0.123456", "C"])
+            w.writerow(["0.123456", "0.260000", "G"])
+            w.writerow(["0.260000", "2.000000", "Am"])
+        segs = pipeline.segments_export(ca, 120.0, 4, 0.0, durada=2.0)
+        self.assertEqual([s[0] for s in segs], ["1.1.1", "1.1.2", "1.1.3"])
+        self.assertEqual([s[1] for s in segs], ["C", "G", "Am"])
+        self.assertAlmostEqual(segs[0][2], 0.0, places=9)
+        self.assertAlmostEqual(segs[0][3], 0.123456, places=9)
+        self.assertAlmostEqual(segs[1][2], 0.123456, places=9)
+        self.assertAlmostEqual(segs[2][3], 2.0, places=9)
+
+    def test_export_manifest_i_durades_exactes(self):
+        td = tempfile.mkdtemp()
+        ca = os.path.join(td, "acords.csv")
+        out = os.path.join(td, "out")
+        r = pipeline.exporta_total(
+            csv_ac=ca, csv_seg=None, sortida=out, bpm=120.0, bpb=4,
+            offset=0.0, sr=44100, log=lambda *_a: None, tempo_fix=True,
+            amb_estructura=True, total_s=2.0,
+            acords=[(0.0, "C", "0"), (0.123456, "G", "0.123456"),
+                    (0.26, "Am", "0.26")],
+            seccions=[(0.0, 1.0, "A", "A"), (1.0, 2.0, "B", "B")])
+        self.assertTrue(os.path.isfile(r["manifest_csv"]))
+        with open(r["manifest_csv"], encoding="utf-8") as f:
+            files = list(csv.DictReader(f))
+        acords = [x for x in files if x["tipus"] == "acord"]
+        estructura = [x for x in files if x["tipus"] == "estructura"]
+        self.assertEqual([x["fitxer"] for x in acords],
+                         ["1-1-1_C.wav", "1-1-2_G.wav", "1-1-3_Am.wav"])
+        self.assertEqual([x["inici_s"] for x in acords],
+                         ["0.000000", "0.123456", "0.260000"])
+        self.assertEqual([x["fi_s"] for x in acords],
+                         ["0.123456", "0.260000", "2.000000"])
+        self.assertEqual(len(estructura), 2)
+        # La durada del WAV surt dels segons exactes, no de la graella 1/16.
+        with wave.open(os.path.join(out, "wavs_acords", "1-1-2_G.wav"),
+                       "rb") as w:
+            self.assertEqual(w.getnframes(),
+                             int(round((0.26 - 0.123456) * 44100)))
 
 
 class UndoRedoTests(unittest.TestCase):
@@ -6364,9 +6429,9 @@ class TestTipusDeReferencia(unittest.TestCase):
 # ══════════════════════════════════════════════════════════════════════════
 """Regressió del BUG #5 (informe OC-6/357): xocs d'inici DINS la resolució del CSV.
 
-El CSV d'acords es desa amb `TEMPS_DEC = 2` decimals (10 ms). Dos acords amb
-inicis separats per menys de 10 ms cauen a la **mateixa fila** del CSV i el
-primer queda amb un clip de durada ~0 a l'export (trenca les regles #1/#2).
+El CSV d'acords es desa amb `TEMPS_DEC = 6` decimals (1 µs) i el validador
+exigeix 1 ms entre inicis. Dos acords amb inicis separats per menys d'1 ms es
+consideren un xoc i el segon es rebutja/neteja (trencaria les regles #1/#2).
 
 Repro original: amb un E7 a `t = 6.831683`, `ac_add_chord(t_s=6.8317, "DUP")`
 s'acceptava (el validador només mirava `t <= prev + 1e-9`) i el CSV quedava amb
@@ -6376,7 +6441,7 @@ dues files «6.83».
 
 DUR = 40.0
 E7_T = 6.831683
-XOC_T = 6.8317          # a 1,7e-5 s de l'E7 → mateixa fila «6.83» del CSV
+XOC_T = 6.8317          # a 1,7e-5 s de l'E7 → xoc real (< 1 ms)
 
 
 def _escriu_wav(ruta, dur=DUR):
@@ -6438,7 +6503,7 @@ class TestXocsResolucioCSV(_xocs_inici_csv___Base):
         v = _visor()
         ok = v._valida_canvis_acords([(0.0, "C", "0"),
                                       (6.83, "E7", "6.83"),
-                                      (6.84, "DUP", "6.84")])
+                                      (6.831, "DUP", "6.831")])
         self.assertEqual(len(ok), 3)
 
     def test_afegeix_acord_rebutja_el_xoc(self):
@@ -6486,7 +6551,7 @@ class TestExportMaiEscriuClipsBuits(_xocs_inici_csv___Base):
         pipeline.fer_wavs_acords_lliures(cs, 10.0, dest, 44100,
                                         lambda _m: None)
         self.assertEqual(sorted(os.listdir(dest)),
-                         ["0000.00s_0005.00s_C.wav", "0005.00s_0010.00s_DUP.wav"])
+                         ["0000.000s_0005.000s_C.wav", "0005.000s_0010.000s_DUP.wav"])
 
 
 def _xocs_inici_csv_tearDownModule():

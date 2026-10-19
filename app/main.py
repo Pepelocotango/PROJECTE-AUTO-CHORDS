@@ -387,17 +387,17 @@ class Finestra(QMainWindow):
         self.b_mode_lliure.clicked.connect(lambda: self._canvia_mode_temps(False))
 
         # camps d'entrada MANUAL de text (sense fletxes ▲▼)
-        self.bpm = QLineEdit("120.0")
+        self.bpm = QLineEdit("120.000")
         self.bpm.setMaximumWidth(70)
-        self.bpm.setPlaceholderText("120.0")
+        self.bpm.setPlaceholderText("120.000")
         self.bpm.setToolTip("BPM del tema. Entrada manual (text).")
         self.bpb = QLineEdit("4/4")
         self.bpb.setMaximumWidth(60)
         self.bpb.setPlaceholderText("4/4")
         self.bpb.setToolTip("Compàs manual: 4/4, 3/4, 6/8, etc.")
-        self.offset = QLineEdit("0.0")
+        self.offset = QLineEdit("0.000")
         self.offset.setMaximumWidth(60)
-        self.offset.setPlaceholderText("0.0")
+        self.offset.setPlaceholderText("0.000")
         self.offset.setToolTip("Offset del compàs 1, en segons.")
         self.b_detecta = QPushButton(" Detecta")
         self.b_detecta.setIcon(icones.ico("target"))
@@ -1086,34 +1086,38 @@ class Finestra(QMainWindow):
         return self._llegeix_num(self.offset, 0.0, 0.0, 60.0)
 
     def _cb_a_secs(self, text):
-        """'C.B' (compàs.beat) -> segons a la graella ORIGINAL (offset=0)."""
+        """'C.B' o 'C.B.S' (compàs.beat.setzena) -> segons (offset=0)."""
         import re
-        m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)\s*$", str(text))
+        m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)"
+                     r"(?:\s*[.,]\s*(\d+))?\s*$", str(text))
         if not m:
             return None
         c, b = int(m.group(1)), int(m.group(2))
+        sub = int(m.group(3)) if m.group(3) else 1
+        sub = max(1, min(4, sub))
         beat_len = 60.0 / max(self._bpm_val(), 1e-9)
-        n = (c - 1) * max(1, self._bpb_val()) + (b - 1)
+        n = ((c - 1) * max(1, self._bpb_val()) + (b - 1)
+             + (sub - 1) / 4.0)
         return max(0.0, min(60.0, n * beat_len))
 
     def _secs_a_cb(self, t):
-        """Segons -> 'C.B' a la graella ORIGINAL (offset=0)."""
+        """Segons -> 'C.B' o 'C.B.S' (setzena) a la graella ORIGINAL."""
         beat_len = 60.0 / max(self._bpm_val(), 1e-9)
         bpb = max(1, self._bpb_val())
-        beats = float(t) / beat_len
-        c = int(beats // bpb) + 1
-        b = int(round(beats % bpb)) + 1
-        if b > bpb:
-            c += 1
-            b = 1
-        return f"{c}.{b}"
+        p = int(round(float(t) / beat_len * 4))
+        SB = bpb * 4
+        c = p // SB + 1
+        dins = p % SB
+        b = dins // 4 + 1
+        sub = dins % 4 + 1
+        return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
 
     def _offset_cb_canviat(self):
         """L'usuari ha escrit el camp compàs.beat -> passa-ho a segons."""
         s = self._cb_a_secs(self.offset_cb.text())
         if s is None:
             return
-        self.offset.setText(f"{s:.2f}")
+        self.offset.setText(f"{s:.3f}")
         self._aplica_parametres_temps()
 
     def _canvia_mode_temps(self, bpm_compas):
@@ -1149,8 +1153,8 @@ class Finestra(QMainWindow):
         finally:
             QApplication.restoreOverrideCursor()
         if bpm:
-            self.bpm.setText(f"{bpm:.1f}")
-            self.registra(f"BPM detectat: {bpm:.1f} (pots editar-lo)")
+            self.bpm.setText(f"{bpm:.3f}")
+            self.registra(f"BPM detectat: {bpm:.3f} (pots editar-lo)")
         else:
             self.avisa_info(
                 "Detecta BPM",
@@ -1473,7 +1477,7 @@ class Finestra(QMainWindow):
         if not vr.aplica_tempo_trams(dlg.trams()):
             self.avisa_info("Auto Chords", "El mapa no és vàlid.")
             return
-        self.bpm.setText(f"{float(vr.bpm):g}")
+        self.bpm.setText(f"{float(vr.bpm):.3f}")
         self.bpb.setText(f"{int(vr.bpb)}/{int(getattr(vr, 'beat_type', 4) or 4)}")
         self._aplica_parametres_temps()
         self.registra(f"mapa de tempo/compàs: {len(vr.tempo_trams)} tros(s)")
@@ -1508,7 +1512,7 @@ class Finestra(QMainWindow):
             self.registra("detecta tempo: és constant (cap canvi)")
             return 0
         if vr.aplica_tempo_trams(trams):
-            self.bpm.setText(f"{float(vr.bpm):g}")
+            self.bpm.setText(f"{float(vr.bpm):.3f}")
             self._aplica_parametres_temps()
             self.registra(f"mapa de tempo inferit: {len(trams)} tros(s)")
             return len(trams)
@@ -1633,7 +1637,7 @@ class Finestra(QMainWindow):
             self.registra("Parteix: el cursor no és dins cap acord")
             return
         if vr._parteix_acord_dialog(idx):
-            self.registra(f"acord partit a {vr.pos:.2f} s")
+            self.registra(f"acord partit a {vr.pos:.3f} s")
 
     def _idx_seccio_del_cursor(self):
         """Índex de la secció que CONTÉ el cursor (o `None`). A2."""
@@ -1656,7 +1660,7 @@ class Finestra(QMainWindow):
             self.registra("Parteix: el cursor no és dins cap secció")
             return
         if vr._parteix_seccio_dialog(idx):
-            self.registra(f"secció partida a {vr.pos:.2f} s")
+            self.registra(f"secció partida a {vr.pos:.3f} s")
 
     def _idx_tram_del_cursor(self):
         """Índex del tram de BPM/compàs que CONTÉ el cursor (o `None`). #11."""
@@ -1682,7 +1686,7 @@ class Finestra(QMainWindow):
         if vr is None:
             return
         if vr._afegeix_a_la_posicio("tempo", vr.pos):
-            self.registra(f"afegit un canvi de tempo/compàs a {vr.pos:.2f} s")
+            self.registra(f"afegit un canvi de tempo/compàs a {vr.pos:.3f} s")
 
     def _parteix_tram_ui(self):
         """Parteix el tram de tempo/compàs que conté el cursor (paritat #11)."""
@@ -1694,14 +1698,14 @@ class Finestra(QMainWindow):
             self.registra("Parteix: el cursor no és dins cap tram de tempo/compàs")
             return
         if vr._afegeix_tall(vr.pos):
-            self.registra(f"tram de tempo/compàs partit a {vr.pos:.2f} s")
+            self.registra(f"tram de tempo/compàs partit a {vr.pos:.3f} s")
 
     def _afegeix_acord_ui(self):
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             return
         nom, ok = QInputDialog.getText(
-            self, "Afegeix acord", f"Acord a {vr.pos:.2f} s", text="N")
+            self, "Afegeix acord", f"Acord a {vr.pos:.3f} s", text="N")
         if not ok or not nom.strip():
             return
         try:
@@ -1710,7 +1714,7 @@ class Finestra(QMainWindow):
             vr._desa_i_regenera()
             vr.timeline.set_data(vr.acords, vr.seccions)
             vr._undo_commit()
-            self.registra(f"afegit acord a {vr.pos:.2f}s: {nom.strip()}")
+            self.registra(f"afegit acord a {vr.pos:.3f}s: {nom.strip()}")
         except Exception as e:  # noqa: BLE001
             QMessageBox.warning(self, "Auto Chords", f"No s'ha pogut afegir:\n{e}")
 
@@ -1719,7 +1723,7 @@ class Finestra(QMainWindow):
         if vr is None:
             return
         lletra, ok = QInputDialog.getText(
-            self, "Afegeix secció", f"Lletra a {vr.pos:.2f} s", text="A")
+            self, "Afegeix secció", f"Lletra a {vr.pos:.3f} s", text="A")
         if not ok or not lletra.strip():
             return
         lletra = lletra.strip()[:1].upper()
@@ -1738,7 +1742,7 @@ class Finestra(QMainWindow):
             vr.timeline.set_data(vr.acords, vr.seccions)
             vr._undo_commit()
             if ok_part:
-                self.registra(f"afegida secció a {vr.pos:.2f}s")
+                self.registra(f"afegida secció a {vr.pos:.3f}s")
         except Exception as e:  # noqa: BLE001
             QMessageBox.warning(self, "Auto Chords", f"No s'ha pogut afegir:\n{e}")
 
@@ -1799,9 +1803,9 @@ class Finestra(QMainWindow):
         """Multiplica (×2) o divideix (÷2) el BPM actual."""
         b = self._bpm_val() * float(factor)
         b = max(30.0, min(400.0, b))
-        self.bpm.setText(f"{b:.1f}")
+        self.bpm.setText(f"{b:.3f}")
         self._aplica_parametres_temps()
-        self.registra(f"BPM {'×2' if factor > 1 else '÷2'} → {b:.1f}")
+        self.registra(f"BPM {'×2' if factor > 1 else '÷2'} → {b:.3f}")
 
     def _tap_tempo(self):
         """Tap tempo (com als DAWs): intervals dels ultims taps -> BPM.
@@ -1825,14 +1829,14 @@ class Finestra(QMainWindow):
             self.b_tap.setText(f"TAP ({len(self._taps)})")
             return
         bpm = 60.0 / (sum(ivs) / len(ivs))
-        self.bpm.setText(f"{bpm:.1f}")
+        self.bpm.setText(f"{bpm:.3f}")
         # propaga al visor (regle + clic) SENSE reengegar l'audio en curs
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
             vr.bpm = self._bpm_val()
             vr._actualitza_temps()
         self.b_tap.setText(f"TAP ({len(self._taps)}) {bpm:.0f}")
-        self.registra(f"tap tempo: {bpm:.1f} BPM ({len(self._taps)} taps)")
+        self.registra(f"tap tempo: {bpm:.3f} BPM ({len(self._taps)} taps)")
 
     def _marca_compas_1(self):
         """Posa l'offset a la posició del cursor: la graella hi comença.
@@ -1843,9 +1847,9 @@ class Finestra(QMainWindow):
         if vr is None:
             return
         off = float(vr.pos)
-        self.offset.setText(f"{off:.2f}")
+        self.offset.setText(f"{off:.3f}")
         self._aplica_parametres_temps()      # propaga + actualitza el camp cb
-        self.registra(f"Compàs 1 marcat a {off:.2f}s")
+        self.registra(f"Compàs 1 marcat a {off:.3f}s")
 
     def _detecta_compas1(self):
         """Detecta el compàs 1 (primer downbeat) i hi posa l'offset.
@@ -1873,9 +1877,9 @@ class Finestra(QMainWindow):
                 "No s'ha pogut detectar el compàs 1.\n"
                 "Pots posar-lo a mà amb el botó 📍 (al cursor).")
             return
-        self.offset.setText(f"{seg:.2f}")
+        self.offset.setText(f"{seg:.3f}")
         self._aplica_parametres_temps()
-        self.registra(f"Compàs 1 detectat a {seg:.2f}s ✔")
+        self.registra(f"Compàs 1 detectat a {seg:.3f}s ✔")
 
     def _aplica_parametres_temps(self):
         """Propaga BPM/compàs/offset al visor — **sense tallar l'àudio**.
@@ -2225,13 +2229,13 @@ class Finestra(QMainWindow):
         self.wav_original = ""
         self.wav_edit.setText(wav)
         tempo = p.dades.get("tempo") or {}
-        self.bpm.setText(f"{float(tempo.get('bpm', 120.0)):.1f}")
+        self.bpm.setText(f"{float(tempo.get('bpm', 120.0)):.3f}")
         compas = tempo.get("compas")
         # Format COMPLET (4/4, no «4»): un «4» sol sembla el compàs denormalitzat
         # i confon; el parser accepta els dos, però el camp sempre el mostra bé.
         self.bpb.setText(str(compas) if compas
                          else f"{int(tempo.get('bpb', 4))}/4")
-        self.offset.setText(f"{float(tempo.get('offset', 0.0)):.2f}")
+        self.offset.setText(f"{float(tempo.get('offset', 0.0)):.3f}")
         self.tempo_fix.setChecked(bool(tempo.get("fix", False)))
         if isinstance(p.dades.get("opcions"), dict) and p.dades["opcions"]:
             self.opcions = p.dades["opcions"]
@@ -2562,7 +2566,7 @@ class Finestra(QMainWindow):
         if self.bpm.text().strip() not in ("", "120.0", "120"):
             self.registra("WAV nou → BPM reiniciat a 120.0 "
                           "(detecta'l o posa'l a mà)")
-            self.bpm.setText("120.0")
+            self.bpm.setText("120.000")
         # Migració: si hi ha una AUTOCHORDS_<nom>/ vella al costat del WAV,
         # n'importem els CSVs (i, si el destí és la mateixa carpeta, in situ).
         antic = projecte.carpeta_autochords(treball)

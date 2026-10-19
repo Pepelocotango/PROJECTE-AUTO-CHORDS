@@ -143,9 +143,9 @@ class TestCrea(BaseProjecte):
             self.assertTrue(os.path.isfile(os.path.join(carp, nom)),
                             f"falta {nom} en crear el projecte")
         with open(os.path.join(carp, "acords.csv"), encoding="utf-8") as fh:
-            self.assertEqual(fh.read().strip(), "0.00,2.00,N")
+            self.assertEqual(fh.read().strip(), "0.000000,2.000000,N")
         with open(os.path.join(carp, "tempo.csv"), encoding="utf-8") as fh:
-            self.assertEqual(fh.read().strip(), "0.00,2.00,138")
+            self.assertEqual(fh.read().strip(), "0.000000,2.000000,138.000000")
         self.assertTrue(os.path.isfile(p.ruta_acproj))
 
 
@@ -686,7 +686,7 @@ class TestDesa(_Base):
         f._marca_dirty()
         with patch.object(f, "_confirma_descartar", return_value=True):
             f._reverteix()
-        self.assertEqual(f.bpm.text(), "99.0")
+        self.assertEqual(f.bpm.text(), "99.000")
         self.assertFalse(f.dirty)
 
 
@@ -1179,15 +1179,15 @@ class TestCanviWavReiniciaTempo(_canvi_wav___Base):
         f = _canvi_wav___finestra()
         f.bpm.setText("140.0")
         self._obre(f, _canvi_wav___wav())
-        self.assertEqual(f.bpm.text(), "120.0",
+        self.assertEqual(f.bpm.text(), "120.000",
                          "el WAV nou no ha d'heretar el BPM de l'anterior")
         self.assertIsNotNone(f.visor_ref, "s'hauria d'haver carregat el visor")
 
     def test_bpm_per_defecte_no_canvia(self):
         f = _canvi_wav___finestra()
-        self.assertEqual(f.bpm.text(), "120.0")
+        self.assertEqual(f.bpm.text(), "120.000")
         self._obre(f, _canvi_wav___wav())
-        self.assertEqual(f.bpm.text(), "120.0")
+        self.assertEqual(f.bpm.text(), "120.000")
 
 
 def _canvi_wav_tearDownModule():
@@ -1835,7 +1835,7 @@ ESPERATS = {
                "whitening": 1.0, "s": 0.7},
     "structure": {"motor": "qm", "durada_min": 2.0, "fusiona_iguals": True},
     "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
-              "reduir": False, "snap": True, "divisio": 2, "ritme": "off"},
+              "reduir": False, "snap": True, "divisio": 4, "ritme": "off"},
 }
 
 
@@ -3979,7 +3979,7 @@ class TestProjecteAssociat(_Base):
         self.assertFalse(os.path.exists(os.path.join(carp, "analisi")),
                          "l'anàlisi crua vella no pot quedar")
         with open(os.path.join(carp, "acords.csv"), encoding="utf-8") as fh:
-            self.assertEqual(fh.read().strip(), "0.00,2.00,N",
+            self.assertEqual(fh.read().strip(), "0.000000,2.000000,N",
                              "el model s'ha de reinicialitzar")
 
     def test_projecte_nou_serveix_per_exportar_sense_analitzar(self):

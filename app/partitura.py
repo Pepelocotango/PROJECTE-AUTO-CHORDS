@@ -21,7 +21,7 @@ si no es troba el binari, s'escriu només el MusicXML i s'avisa (no trenca res).
 
 Abast: la partitura reflecteix els **xifrats** detectats/editats (no hi ha
 transcripció de melodia). Només té sentit en mode **BPM · compàs** (cal
-el MODEL (`acords.csv`, quantitzat a corxera); en mode lliure no hi ha graella).
+el MODEL (`acords.csv`, quantitzat a 1/16); en mode lliure no hi ha graella).
 """
 import csv
 import glob
@@ -39,7 +39,7 @@ __all__ = [
     "musescore_bin",
 ]
 
-DIV = 4                      # divisions per negra (quarter) al MusicXML
+DIV = 480                    # divisions per negra (quarter) al MusicXML
 MOTS = "partitura"
 
 
@@ -173,9 +173,11 @@ def harmony_xml(chord):
 
 
 # --- durades i notes -------------------------------------------------------
-_UNITS = {"whole": 16, "half": 8, "quarter": 4, "eighth": 2, "16th": 1}
-_STD = [(16, "whole", 0), (12, "half", 1), (8, "half", 0), (6, "quarter", 1),
-        (4, "quarter", 0), (3, "eighth", 1), (2, "eighth", 0), (1, "16th", 0)]
+_UNITS = {"whole": 1920, "half": 960, "quarter": 480, "eighth": 240,
+          "16th": 120}
+_STD = [(1920, "whole", 0), (1440, "half", 1), (960, "half", 0),
+        (720, "quarter", 1), (480, "quarter", 0), (360, "eighth", 1),
+        (240, "eighth", 0), (120, "16th", 0)]
 
 
 def _decomposa(units):
@@ -258,7 +260,7 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
                        (new_system_each and (i - 1) % new_system_each == 0)):
             x.append('      <print new-system="yes"/>\n')
         if i == 1:
-            x.append("      <attributes><divisions>4</divisions>"
+            x.append(f"      <attributes><divisions>{DIV}</divisions>"
                      "<key><fifths>0</fifths></key>"
                      f"<time><beats>{num_m}</beats>"
                      f"<beat-type>{den_m}</beat-type></time>"
@@ -415,7 +417,7 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
     bpb = int(bpb) if bpb else (g_bpb or 4)
 
     # Els acords surten del MODEL (no de cap fitxer intermedi): el pipeline els
-    # quantitza a corxera i en dona els beats. Si qui crida ja els passa, encara
+    # quantitza a 1/16 i en dona els beats. Si qui crida ja els passa, encara
     # millor (zero lectures de disc).
     if events is None:
         from app import pipeline          # import local: evita cicles

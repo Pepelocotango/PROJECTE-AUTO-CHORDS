@@ -17,7 +17,7 @@
 |---|---|---|---|
 | **MODEL** | `acords.csv`<br>`estructura_ABC.csv`<br>`tempo.csv` · `compas.csv` | a **cada edició** | el visor, el mode fàcil, l'anàlisi |
 | **CRU** | dins `<nom>.acproj` → `dades["analisi"]` | a cada «Analitza» | **només `Feina.run`** (i el desat del document) |
-| **EXPORTS** | `wavs_acords/` · `wavs_estructura/` · `partitura/` · `guia_acords.html` · `mapa_tempo/` | només a «Exporta» | `pipeline.exporta_total` |
+| **EXPORTS** | `wavs_acords/` · `wavs_estructura/` · `partitura/` · `guia_acords.html` · `mapa_tempo/` · `manifest.csv` | només a «Exporta» | `pipeline.exporta_total` |
 | **CÒPIES** | `backup/<data-hora>/` | autosave cada 60 s, si hi ha canvis | `Projecte.fes_backup` |
 
 ## 2. Estructura de la carpeta del projecte
@@ -32,7 +32,7 @@ La meva cançó/                     ← carpeta autocontinguda (portable)
 ├── tempo.csv · compas.csv        ← MODEL: el mapa de BPM/compàs
 │
 ├── wavs_acords/ · wavs_estructura/ · partitura/   ← EXPORTS («Exporta»)
-├── guia_acords.html · mapa_tempo/                  ← EXPORTS
+├── guia_acords.html · mapa_tempo/ · manifest.csv   ← EXPORTS
 └── backup/ <data-hora>/          ← còpies versionades (fins a 10)
 ```
 

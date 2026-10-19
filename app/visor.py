@@ -6,7 +6,6 @@ import argparse
 import copy
 import csv
 import logging
-import math
 import os
 import re
 import shutil
@@ -479,17 +478,18 @@ class Visor(QMainWindow):
 
     def _fmt_compas(self, s):
         if not self.tempo_fix:
-            return f"{s:07.2f}s"
+            return f"{s:07.3f}s"
         # Mateixa graella que el regle: offset inclos i compassos negatius
-        # (count-in) abans del compas 1.
+        # (count-in) abans del compas 1. El tercer camp és la setzena (1..4).
         beat_len = 60.0 / self.bpm
-        beats = (s - getattr(self, "offset", 0.0)) / beat_len
-        compas = math.floor(beats / self.bpb) + 1
-        beat = int(round(beats % self.bpb)) + 1
-        if beat > self.bpb:
-            compas += 1
-            beat = 1
-        return f"{compas}.{beat}"
+        p = int(round((float(s) - getattr(self, "offset", 0.0))
+                      / beat_len * 4))
+        SB = max(1, int(self.bpb)) * 4
+        compas = p // SB + 1
+        dins = p % SB
+        beat = dins // 4 + 1
+        sub = dins % 4 + 1
+        return f"{compas}.{beat}" if sub == 1 else f"{compas}.{beat}.{sub}"
 
 
 
@@ -499,11 +499,14 @@ class Visor(QMainWindow):
             m = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*s", text)
             if m:
                 return float(m.group(1))
-        m = re.search(r"(\d+)\.(\d+)", text)
+        m = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", text)
         if m:
             compas = int(m.group(1))
             beat = int(m.group(2))
-            return ((compas - 1) * self.bpb + (beat - 1)) * (60.0 / self.bpm)
+            sub = int(m.group(3)) if m.group(3) else 1
+            sub = max(1, min(4, sub))
+            return (((compas - 1) * self.bpb + (beat - 1)
+                     + (sub - 1) / 4.0) * (60.0 / self.bpm))
         return float(text.split()[0])
 
     def _omple_llista_ac(self):
@@ -514,7 +517,7 @@ class Visor(QMainWindow):
         self.llista_ac.clear()
         for _a in self.acords:
             t, c = float(_a[0]), nom_acord(_a)
-            et = self._fmt_compas(t) if self.tempo_fix else f"{t:07.2f}s"
+            et = self._fmt_compas(t) if self.tempo_fix else f"{t:07.3f}s"
             self.llista_ac.addItem(f"{et}  {c}")
         if 0 <= cur < self.llista_ac.count():
             self.llista_ac.setCurrentRow(cur)
@@ -583,7 +586,7 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
         self.log(f"Ctrl+Shift+arrossegat (secció): còpia «{lletra}» a "
-                 f"{ini0:.2f}s")
+                 f"{ini0:.3f}s")
 
     def _on_chord_copia(self, t_original, nom):
         """`Ctrl+Shift`+arrossegar un clip d'acord: el clip viatja i **a
@@ -611,7 +614,7 @@ class Visor(QMainWindow):
             self._desa_i_regenera()
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
-        self.log(f"Ctrl+Shift+arrossegat: còpia «{nom}» a {t:.2f}s")
+        self.log(f"Ctrl+Shift+arrossegat: còpia «{nom}» a {t:.3f}s")
 
     def _elimina_acord(self, idx):
         if idx is None:
@@ -820,14 +823,14 @@ class Visor(QMainWindow):
         t = max(0.0, min(self._durada_wav(), float(t)))
         s = trams[idx]
         if vora == "ini":
-            if idx == 0 or t >= s[1] - 0.02:
+            if idx == 0 or t >= s[1] - pipeline.MIN_GAP_TEMPS:
                 return
             p = trams[idx - 1]
             nou = list(trams)
             nou[idx - 1] = (p[0], t, p[2], p[3], p[4])
             nou[idx] = (t, s[1], s[2], s[3], s[4])
         else:
-            if idx + 1 >= len(trams) or t <= s[0] + 0.02:
+            if idx + 1 >= len(trams) or t <= s[0] + pipeline.MIN_GAP_TEMPS:
                 return
             n = trams[idx + 1]
             nou = list(trams)
@@ -1009,13 +1012,13 @@ class Visor(QMainWindow):
                         f"«{nom_acord(a1)}»")
             if abs(float(a0[0]) - float(a1[0])) > 1e-6:
                 return (f"moure l'acord «{nom_acord(a1)}» "
-                        f"({float(a0[0]):.2f}s → {float(a1[0]):.2f}s)")
+                        f"({float(a0[0]):.3f}s → {float(a1[0]):.3f}s)")
         for (i0, f0, l0, fa0), (i1, f1, l1, fa1) in zip(se0, se1):
             if l0 != l1 or fa0 != fa1:
                 return f"reanomenar la secció «{l0}» → «{l1}»"
             if abs(float(i0) - float(i1)) > 1e-6 or abs(float(f0) - float(f1)) > 1e-6:
                 return (f"moure la secció «{l1}» "
-                        f"({float(i0):.2f}s → {float(i1):.2f}s)")
+                        f"({float(i0):.3f}s → {float(i1):.3f}s)")
         # A1: canvis de GRAELLA o de LOOP (que no toquen el model).
         if tp0.get("bpm") != tp1.get("bpm"):
             return f"canviar el BPM ({tp0['bpm']:g} → {tp1['bpm']:g})"
@@ -1023,8 +1026,8 @@ class Visor(QMainWindow):
                 or tp0.get("beat_type") != tp1.get("beat_type")):
             return "canviar el compàs"
         if tp0.get("offset") != tp1.get("offset"):
-            return (f"canviar l'offset ({tp0['offset']:.2f}s → "
-                    f"{tp1['offset']:.2f}s)")
+            return (f"canviar l'offset ({tp0['offset']:.3f}s → "
+                    f"{tp1['offset']:.3f}s)")
         if tp0.get("tempo_fix") != tp1.get("tempo_fix"):
             return "canviar el mode de temps (BPM·compàs / Lliure)"
         if ((tp0.get("loop_on"), tp0.get("loop_a"), tp0.get("loop_b"))
@@ -1199,7 +1202,7 @@ class Visor(QMainWindow):
     def marca_A(self):
         self._undo_marca()
         self.loop_a = self.timeline.snap(self.pos)
-        self.log(f"loop A = {self.loop_a:.2f}s")
+        self.log(f"loop A = {self.loop_a:.3f}s")
         if self.loop_b is not None:
             self.timeline.set_loop(self.loop_a, self.loop_b)
         if self.loop_on and getattr(self, "sona", False):
@@ -1209,7 +1212,7 @@ class Visor(QMainWindow):
     def marca_B(self):
         self._undo_marca()
         self.loop_b = self.timeline.snap(self.pos)
-        self.log(f"loop B = {self.loop_b:.2f}s")
+        self.log(f"loop B = {self.loop_b:.3f}s")
         if self.loop_a is not None:
             self.timeline.set_loop(self.loop_a, self.loop_b)
         if self.loop_on and getattr(self, "sona", False):
@@ -1429,12 +1432,12 @@ class Visor(QMainWindow):
         # Només sincronitzem el model/llista; el desat va al release
         self._undo_marca()
         self._sync_timeline_acords()
-        self.log(f"acord {idx} → {new_t:.2f}s")
+        self.log(f"acord {idx} → {new_t:.3f}s")
 
     def _on_chord_end_moved(self, idx, new_t):
         self._undo_marca()
         self._sync_timeline_acords()
-        self.log(f"final acord {idx} → {new_t:.2f}s")
+        self.log(f"final acord {idx} → {new_t:.3f}s")
 
     def _on_edit_started(self):
         """Inici del gest (mouse press sobre un clip): captura l'estat 'abans'.
@@ -1474,7 +1477,7 @@ class Visor(QMainWindow):
         # El botó 🔁 de la barra de fora ha de reflectir-ho (abans quedava
         # desactivat mentre el play ja feia loop).
         self.loopStateChanged.emit(True)
-        self.log(f"loop A={a:.2f}s B={b:.2f}s")
+        self.log(f"loop A={a:.3f}s B={b:.3f}s")
         self._undo_commit()
 
     def _on_chord_renamed(self, idx, new_name):
@@ -1713,7 +1716,7 @@ class Visor(QMainWindow):
             return self._afegeix_tall(t)
         if kind == "chord":
             nou, ok = QInputDialog.getText(
-                self, "Afegeix acord", f"Acord a {t:.2f} s", text="N")
+                self, "Afegeix acord", f"Acord a {t:.3f} s", text="N")
             if not ok:
                 return False
             self._undo_marca()
@@ -1722,7 +1725,7 @@ class Visor(QMainWindow):
                 # a la primitiva perquè cap camí se n'oblide.)
                 self._afegeix_acord(t, nou)
                 self._desa_i_regenera()
-                self.log(f"afegit acord a {t:.2f}s: {nou}")
+                self.log(f"afegit acord a {t:.3f}s: {nou}")
             except Exception as e:  # noqa: BLE001
                 self.log(f"ERROR: {e}")
                 QMessageBox.warning(self, "Visor",
@@ -1739,7 +1742,7 @@ class Visor(QMainWindow):
             return False
         idx = self._seccio_a_t(t)
         if idx < 0 or not self.parteix_seccio(idx, t, lletra, fam):
-            self.log(f"afegir secció a {t:.2f}s: punt no vàlid "
+            self.log(f"afegir secció a {t:.3f}s: punt no vàlid "
                      f"(fora de cap secció o massa a prop d'una vora)")
             QMessageBox.warning(
                 self, "Visor",
@@ -1747,7 +1750,7 @@ class Visor(QMainWindow):
                 "d'una secció i no pot quedar a tocar d'una vora.")
             return False
         self._regenera_abc_des_de_totes_les_seccions(
-            f"secció afegida a {t:.2f}s")
+            f"secció afegida a {t:.3f}s")
         return True
 
     def _seccio_a_t(self, t):
@@ -1776,7 +1779,7 @@ class Visor(QMainWindow):
             return 0
         self.timeline.select_multi(keys)
         self.ves_a(float(b))          # cursor al FINAL del loop
-        self.log(f"loop {float(a):.2f}–{float(b):.2f}s: {len(keys)} clip(s) "
+        self.log(f"loop {float(a):.3f}–{float(b):.3f}s: {len(keys)} clip(s) "
                  f"seleccionats; cursor al final → ja pots enganxar")
         return len(keys)
 
@@ -2115,8 +2118,8 @@ class Visor(QMainWindow):
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut enganxar:\n{e}")
-        self._selecciona_bloc_enganxat(T, chords, sections, tol=0.02)
-        self.log(f"enganxat a {T:.2f}s (sobreescrivint): {len(chords)} "
+        self._selecciona_bloc_enganxat(T, chords, sections, tol=pipeline.MIN_GAP_TEMPS)
+        self.log(f"enganxat a {T:.3f}s (sobreescrivint): {len(chords)} "
                  f"acord(s), {len(sections)} secció(ns), "
                  f"{len(trams_buf)} tram(s) de tempo/compàs")
 
@@ -2132,7 +2135,7 @@ class Visor(QMainWindow):
         """Delega la sobreescriptura del bloc de seccions a `pipeline`."""
         return pipeline.bloc_sobre_seccions(seccions, bloc, llargada, T, durada, rel)
 
-    def _selecciona_bloc_enganxat(self, T, chords, sections, tol=0.02):
+    def _selecciona_bloc_enganxat(self, T, chords, sections, tol=pipeline.MIN_GAP_TEMPS):
         """Deixa seleccionat el bloc acabat d'enganxar (acords i/o seccions)."""
         keys = set()
         for (r, _n) in chords:
@@ -2412,7 +2415,7 @@ class Visor(QMainWindow):
             self.ed_icona.setPixmap(icones.ico("music", 20).pixmap(20, 20))
             self.ed_gran.setText(nom)
             self.ed_nom.setText(nom)
-            self.ed_ini.setText(f"{float(t):.2f}")
+            self.ed_ini.setText(f"{float(t):.3f}")
             self.ed_cb.setText(self._secs_a_cb(float(t)))
             self.ed_fam.setVisible(False); self.ed_fam_lbl.setVisible(False)
             for w in (self.ed_nom, self.ed_ini, self.ed_cb, self.ed_aplica):
@@ -2423,7 +2426,7 @@ class Visor(QMainWindow):
             self.ed_gran.setText(f"{lletra} ({fam})")
             self.ed_nom.setText(lletra)
             self.ed_fam.setText(fam)
-            self.ed_ini.setText(f"{float(ini):.2f}")
+            self.ed_ini.setText(f"{float(ini):.3f}")
             self.ed_cb.setText(self._secs_a_cb(float(ini)))
             self.ed_fam.setVisible(True); self.ed_fam_lbl.setVisible(True)
             for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
@@ -2439,24 +2442,28 @@ class Visor(QMainWindow):
             self.ed_ini.clear(); self.ed_cb.clear()
 
     def _secs_a_cb(self, t):
-        """Segons -> compas.beat (graella original offset=0)."""
+        """Segons -> compas.beat o compas.beat.setzena (offset=0)."""
         beat = 60.0 / max(self.bpm, 1e-9)
-        beats = float(t) / beat
         bpb = max(1, int(self.bpb))
-        c = int(math.floor(beats / bpb)) + 1
-        b = int(round(beats % bpb)) + 1
-        if b > bpb:
-            c += 1; b = 1
-        return f"{c}.{b}"
+        p = int(round(float(t) / beat * 4))
+        SB = bpb * 4
+        c = p // SB + 1
+        dins = p % SB
+        b = dins // 4 + 1
+        sub = dins % 4 + 1
+        return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
 
     def _cb_a_secs(self, text):
-        """compas.beat -> segons (graella original offset=0)."""
-        m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)\s*$", str(text))
+        """compas.beat o compas.beat.setzena -> segons (offset=0)."""
+        m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)"
+                     r"(?:\s*[.,]\s*(\d+))?\s*$", str(text))
         if not m:
             return None
         c, b = int(m.group(1)), int(m.group(2))
+        sub = int(m.group(3)) if m.group(3) else 1
+        sub = max(1, min(4, sub))
         beat = 60.0 / max(self.bpm, 1e-9)
-        n = (c - 1) * max(1, int(self.bpb)) + (b - 1)
+        n = (c - 1) * max(1, int(self.bpb)) + (b - 1) + (sub - 1) / 4.0
         return max(0.0, n * beat)
 
     def avis_editor(self, text):
@@ -2536,7 +2543,7 @@ class Visor(QMainWindow):
             self._undo_commit()
             self.timeline.set_data(self.acords, self.seccions)
             self._desa_i_regenera()
-            self.log(f"editor: acord {i} -> {nom} @ {ini:.2f}s")
+            self.log(f"editor: acord {i} -> {nom} @ {ini:.3f}s")
             # Si s'ha mogut l'inici, l'acord pot haver canviat de fila → re-localitza.
             i = next((j for j, a in enumerate(self.acords)
                       if abs(float(a[0]) - ini) <= 1e-6
@@ -2556,7 +2563,7 @@ class Visor(QMainWindow):
             fam = self.ed_fam.text().strip() or self.seccions[i][3]
             self._undo_marca()
             nova = list(self.seccions)
-            nova[i] = (ini, max(ini + 0.05, fi), lletra, fam)
+            nova[i] = (ini, max(ini + self.MIN_SECCIO_S, fi), lletra, fam)
             try:
                 # Manté la contigüitat (#2) com el drag del timeline.
                 nova = self._contiguitat_seccions(nova, i)
@@ -2567,7 +2574,7 @@ class Visor(QMainWindow):
             self._undo_commit()
             self.timeline.set_data(self.acords, self.seccions)
             self._regenera_abc_des_de_totes_les_seccions("editat des de l'editor")
-            self.log(f"editor: seccio {i} -> {lletra} @ {ini:.2f}s")
+            self.log(f"editor: seccio {i} -> {lletra} @ {ini:.3f}s")
             i = next((j for j, s in enumerate(self.seccions)
                       if abs(float(s[0]) - ini) <= 1e-6 and s[2] == lletra), i)
         self._refresca_post_edicio(k, i)
@@ -2605,10 +2612,10 @@ class Visor(QMainWindow):
         return pipeline.valida_canvis_seccions(items, self._durada_wav())
 
     # Durada mínima d'una secció en moure'n una vora (evita seccions nul·les).
-    MIN_SECCIO_S = 0.05
+    MIN_SECCIO_S = 0.001
 
     # Durada mínima d'un acord en partir-lo (regla d'or #11; mirall de la secció).
-    MIN_ACORD_S = 0.05
+    MIN_ACORD_S = 0.001
 
     def _contiguitat_seccions(self, items, idx):
         """Delega el manteniment de la contigüitat (#2) a `pipeline`."""
@@ -2670,8 +2677,8 @@ class Visor(QMainWindow):
                 ini_txt = self._fmt_compas(ini)
                 fi_txt = self._fmt_compas(fi)
             else:
-                ini_txt = f"{ini:07.2f}s"
-                fi_txt = f"{fi:07.2f}s"
+                ini_txt = f"{ini:07.3f}s"
+                fi_txt = f"{fi:07.3f}s"
             self.llista_ab.addItem(f"{L} ({fam})  {ini_txt}–{fi_txt}")
         if 0 <= cur < self.llista_ab.count():
             self.llista_ab.setCurrentRow(cur)
@@ -2709,8 +2716,8 @@ class Visor(QMainWindow):
         # la meitat dreta queda fins al final (paritat #11 amb estructura).
         fi = float(self.acords[idx].fi)
         if not (t0 + self.MIN_ACORD_S <= t <= fi - self.MIN_ACORD_S):
-            self.log(f"partir: {t:.2f}s no cau dins l'acord "
-                     f"{nom_acord(self.acords[idx])} ({t0:.2f}s–{fi:.2f}s)")
+            self.log(f"partir: {t:.3f}s no cau dins l'acord "
+                     f"{nom_acord(self.acords[idx])} ({t0:.3f}s–{fi:.3f}s)")
             return False
         self._undo_marca()
         if nom is None:
@@ -2752,7 +2759,7 @@ class Visor(QMainWindow):
         nou = (self.parteix_acord(idx, t) if kind == "chord"
                else self.parteix_seccio(idx, t))
         if not nou:
-            self.log(f"partir per la meitat: {t:.2f}s no serveix pel clip "
+            self.log(f"partir per la meitat: {t:.3f}s no serveix pel clip "
                      f"{idx} ({kind})")
             return False
         nom = "acord" if kind == "chord" else "secció"
@@ -2761,8 +2768,8 @@ class Visor(QMainWindow):
                 self._desa_i_regenera()
             else:
                 self._regenera_abc_des_de_totes_les_seccions(
-                    f"secció partida per la meitat a {t:.2f}s")
-            self.log(f"partit per la meitat el {nom} {idx} a {t:.2f}s")
+                    f"secció partida per la meitat a {t:.3f}s")
+            self.log(f"partit per la meitat el {nom} {idx} a {t:.3f}s")
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut desar:\n{e}")
@@ -2785,13 +2792,13 @@ class Visor(QMainWindow):
         nou = tempo_map.afegeix_tall(trams, t)
         norm = tempo_map.normalitza_trams(nou, self._durada_wav())
         if len(norm) != len(trams) + 1:
-            self.log(f"partir per la meitat: {t:.2f}s no serveix pel tram "
-                     f"{idx} ({ini:.2f}s–{fi:.2f}s)")
+            self.log(f"partir per la meitat: {t:.3f}s no serveix pel tram "
+                     f"{idx} ({ini:.3f}s–{fi:.3f}s)")
             return False
         self._undo_marca()
         self.aplica_tempo_trams(nou)
         self._undo_commit()
-        self.log(f"partit per la meitat el tram de BPM/compàs {idx} a {t:.2f}s")
+        self.log(f"partit per la meitat el tram de BPM/compàs {idx} a {t:.3f}s")
         return idx + 1
 
     def _parteix_acord_dialog(self, idx):
@@ -2802,16 +2809,16 @@ class Visor(QMainWindow):
         nom = nom_acord(self.acords[idx])
         fi = float(self.acords[idx].fi)
         if not (t0 + self.MIN_ACORD_S <= self.pos <= fi - self.MIN_ACORD_S):
-            self.log(f"partir: el cursor ({self.pos:.2f}s) no cau dins l'acord "
-                     f"{nom} ({t0:.2f}s–{fi:.2f}s)")
+            self.log(f"partir: el cursor ({self.pos:.3f}s) no cau dins l'acord "
+                     f"{nom} ({t0:.3f}s–{fi:.3f}s)")
             QMessageBox.information(
                 self, "Parteix l'acord",
-                f"Posa el cursor DINS l'acord «{nom}» ({t0:.2f}–{fi:.2f} s) "
+                f"Posa el cursor DINS l'acord «{nom}» ({t0:.3f}–{fi:.3f} s) "
                 "al punt on vols el tall.")
             return False
         nou, ok = QInputDialog.getText(
             self, "Parteix l'acord",
-            f"Parteix «{nom}» a {self.pos:.2f} s.\nNom de la part nova:",
+            f"Parteix «{nom}» a {self.pos:.3f} s.\nNom de la part nova:",
             text=nom)
         if not ok:
             return False
@@ -2842,8 +2849,8 @@ class Visor(QMainWindow):
         ini, fi, L, F = self.seccions[idx]
         ini, fi = float(ini), float(fi)
         if not (ini + self.MIN_SECCIO_S <= t <= fi - self.MIN_SECCIO_S):
-            self.log(f"partir: {t:.2f}s no cau dins la secció {L} "
-                     f"({ini:.2f}s–{fi:.2f}s)")
+            self.log(f"partir: {t:.3f}s no cau dins la secció {L} "
+                     f"({ini:.3f}s–{fi:.3f}s)")
             return False
         L2 = (str(lletra).strip() if lletra else L) or L
         F2 = (str(fam).strip() if fam else (F or L2)) or L2
@@ -2871,16 +2878,16 @@ class Visor(QMainWindow):
         ini, fi, L, _F = self.seccions[idx]
         ini, fi = float(ini), float(fi)
         if not (ini + self.MIN_SECCIO_S <= self.pos <= fi - self.MIN_SECCIO_S):
-            self.log(f"partir: el cursor ({self.pos:.2f}s) no cau dins la "
-                     f"secció {L} ({ini:.2f}s–{fi:.2f}s)")
+            self.log(f"partir: el cursor ({self.pos:.3f}s) no cau dins la "
+                     f"secció {L} ({ini:.3f}s–{fi:.3f}s)")
             QMessageBox.information(
                 self, "Parteix la secció",
-                f"Posa el cursor DINS la secció «{L}» ({ini:.2f}–{fi:.2f} s) "
+                f"Posa el cursor DINS la secció «{L}» ({ini:.3f}–{fi:.3f} s) "
                 "al punt on vols el tall.")
             return False
         nova, ok = QInputDialog.getText(
             self, "Parteix la secció",
-            f"Parteix «{L}» a {self.pos:.2f} s.\nLletra de la part nova:",
+            f"Parteix «{L}» a {self.pos:.3f} s.\nLletra de la part nova:",
             text=L)
         if not ok:
             return False
@@ -2888,7 +2895,7 @@ class Visor(QMainWindow):
             return False
         try:
             self._regenera_abc_des_de_totes_les_seccions(
-                f"secció {L} partida a {self.pos:.2f}s")
+                f"secció {L} partida a {self.pos:.3f}s")
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut regenerar:\n{e}")
@@ -3001,7 +3008,7 @@ class Visor(QMainWindow):
         # queda FORA del bucle: `_alimenta` hi salta tot sol. El cursor ha de
         # fer el MATEIX (vegeu `_alinea_cursor_loop`), o queden desalineats.
         t = self._alinea_cursor_loop(t)
-        self.log(f"play des de {t:.2f}s amb {self.player}...")
+        self.log(f"play des de {t:.3f}s amb {self.player}...")
         self.fitxer_err = os.path.join(OPENCODE_DIR, "visor_player.log")
         try:
             # Assegura que el directori temporal del projecte existeix
@@ -3132,7 +3139,7 @@ class Visor(QMainWindow):
 
     def play_stop(self):
         if self.sona:
-            self.log(f"stop a {self.pos:.2f}s")
+            self.log(f"stop a {self.pos:.3f}s")
             self._atura_proc()
             self.rellotge.stop()
             self.sona = False
@@ -3240,13 +3247,19 @@ class Visor(QMainWindow):
                                       bpb=self.bpb,
                                       offset=getattr(self, "offset", 0.0),
                                       mapa=getattr(self, "tempo_map", None))
+                manifest = []
                 pipeline.regenera_wavs_acords(self.csv_acords, sortida,
                                               self.bpm, self.bpb,
                                               self.offset, self.audio["durada"],
                                               44100, self.log,
-                                              self.tempo_fix)
+                                              self.tempo_fix,
+                                              manifest=manifest)
                 pipeline.regenera_wavs_estructura(abc, sortida, 44100,
-                                                  self.log)
+                                                  self.log,
+                                                  manifest=manifest)
+                if manifest:
+                    pipeline.escriu_manifest(
+                        os.path.join(sortida, "manifest.csv"), manifest)
             else:
                 pipeline.exporta_total(self.csv_acords, None,
                                        sortida, self.bpm, self.bpb, self.offset,

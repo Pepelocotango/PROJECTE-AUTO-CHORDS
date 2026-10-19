@@ -473,6 +473,10 @@ def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
 # Tolerància compartida per als temps (evita falsos positius per coma flotant).
 # La fan servir la normalització de cobertura i els validadors del visor.
 TOL_TEMPS = 1e-6
+# Separació mínima PRÀCTICA per a l'edició manual: 1 ms. La resolució de
+# guardat és 1 µs, però dos canvis d'acord a menys d'1 ms no tenen sentit
+# musical i fan clips inútils. No s'ha de confondre amb `RESOLUCIO_CSV`.
+MIN_GAP_TEMPS = 0.001
 
 
 # --- Model unificat de CLIPS (refactor «inici+fi») -------------------------
@@ -543,7 +547,7 @@ def normalitza_clips(clips, durada, forat, arrodoneix=False, deriva_fi=False,
         (c if isinstance(c, Clip) else Clip(float(c[0]), float(c[1]), tuple(c[2]))
          for c in (clips or ())),
         key=lambda c: float(c.ini))
-    net, vists, fora, n_neg = [], set(), 0, 0
+    net, fora, n_neg = [], 0, 0
     for c in ordenats:
         ini, fi = float(c.ini), float(c.fi)
         if deriva_fi:
@@ -563,14 +567,12 @@ def normalitza_clips(clips, durada, forat, arrodoneix=False, deriva_fi=False,
                 fora += 1
                 continue
             fi = min(fi, durada)
-        if arrodoneix:
-            clau = round(ini, TEMPS_DEC)
-            if clau in vists:
-                if log:
-                    log(f"cobertura: clip a {ini:.3f} s eliminat (xoca al CSV "
-                        f"amb un altre a {clau:.2f} s)")
-                continue
-            vists.add(clau)
+        if arrodoneix and net and ini - net[-1].ini < MIN_GAP_TEMPS - TOL_TEMPS:
+            if log:
+                log(f"cobertura: clip a {ini:.6f} s eliminat (a menys de "
+                    f"{MIN_GAP_TEMPS * 1000:.0f} ms del clip anterior, "
+                    f"{net[-1].ini:.6f} s)")
+            continue
         net.append(Clip(ini, fi, tuple(c.payload)))
     if n_neg and log:
         log(f"cobertura: {n_neg} clip(s) amb temps negatiu ajustats")
@@ -681,13 +683,17 @@ def _mapa_tempo_carpeta(carpeta, offset=0.0):
 
 
 def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
-    """Calcula els segments quantitzats a corxera per als locators i la guia HTML."""
+    """Calcula els segments quantitzats a **1/16** per als locators i la guia HTML.
+
+    Retorna `(segs, end, step, slots_bar, mapa, pos_de_p)`, on cada segment és
+    `(t_exacte, p, acord)` i `p` és l'índex de **semicorxera** des de l'origen.
+    """
     bpm = float(bpm)
     bpb = int(bpb)
     offset = float(offset or 0.0)
     durada = float(durada or 0.0)
-    step = 60.0 / bpm / 2.0
-    slots_bar = bpb * 2
+    step = 60.0 / bpm / 4.0                  # semicorxera (1/16)
+    slots_bar = bpb * 4                      # setzenes per compàs
 
     if mapa is None:
         mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)),
@@ -707,19 +713,18 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
 
     def _t_de_p(p):
         if mapa is not None:
-            return mapa.t_de_quarters(p / 2.0)
+            return mapa.t_de_quarters(p / 4.0)
         return offset + p * step
 
-    def _pos(t):
+    def _pos_de_p(p):
         if mapa is not None:
-            return mapa.label(t)
-        p = max(0, round((float(t) - offset) / step))
-        return "%d.%d.%d" % (p // slots_bar + 1, (p % slots_bar) // 2 + 1,
-                             1 + 2 * (p % 2))
+            return mapa.label(_t_de_p(p))
+        return "%d.%d.%d" % (p // slots_bar + 1, (p % slots_bar) // 4 + 1,
+                             1 + (p % 4))
 
     segs, last, end = [], -1, 0
     for t, c in rows:
-        p = max(0, round(_q(t) * 2))
+        p = max(0, round(_q(t) * 4))
         if c == "N":
             end = p
             continue
@@ -727,7 +732,8 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
             p = last + 1
         if segs and segs[-1][2] == c:
             continue
-        segs.append((_t_de_p(p), p, c))
+        # El TEMPS és l'exacte del model; `p` només serveix per a l'etiqueta.
+        segs.append((t, p, c))
         last = p
     if not segs:
         raise RuntimeError(
@@ -735,27 +741,27 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
             "Posa'n almenys un (editant-lo al timeline) o prem «Analitza».")
     end = max(end, segs[-1][1] + slots_bar)
     if durada > 0:
-        end = max(end, round(_q(durada) * 2))
-    return segs, end, step, slots_bar, mapa, _pos
+        end = max(end, round(_q(durada) * 4))
+    return segs, end, step, slots_bar, mapa, _pos_de_p
 
 
 def segments_locators(csv_path, bpm, bpb, offset=0.0, durada=None,
                       mapa=None, _dades=None):
-    """Guia DAW **en memòria**: `[(posició, acord, durada_en_temps), …]`.
+    """Guia DAW **en memòria**: `[(posició_1/16, acord, durada_en_beats), …]`.
 
     És un DERIVAT del model: **no es desa en cap fitxer** (decisió de
     l'operador, 2026-10-19: el sistema de fitxers intern, el més simple
-    possible). El fan servir els WAVs d'acords (nom i durada en temps) i la
-    partitura (`events_partitura`, que en treu els beats).
+    possible). El fan servir la guia HTML i la partitura; els WAVs d'acords
+    usen `segments_export` (temps exactes) i el `manifest.csv`.
     """
     if _dades is None:
         _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
                                     durada=durada, mapa=mapa)
-    segs, end, _step, _slots_bar, _mapa, _pos = _dades
+    segs, end, _step, _slots_bar, _mapa, _pos_de_p = _dades
     out = []
-    for i, (t, p, c) in enumerate(segs):
+    for i, (_t, p, c) in enumerate(segs):
         q = segs[i + 1][1] if i + 1 < len(segs) else end
-        out.append((_pos(t), c, (q - p) / 2.0))
+        out.append((_pos_de_p(p), c, (q - p) / 4.0))
     return out
 
 
@@ -763,17 +769,105 @@ def events_partitura(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
                      _dades=None):
     """Acords per a la PARTITURA en memòria: `[(beat_inici, acord, beats), …]`.
 
-    Mateixa font que els WAVs (`_segments_guia_daw`): el model quantitzat a
-    corxera. Així la partitura no depèn de cap fitxer intermedi.
+    Mateixa font que la guia (`_segments_guia_daw`): el model quantitzat a
+    **1/16**. Així la partitura no depèn de cap fitxer intermedi.
     """
     if _dades is None:
         _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
                                     durada=durada, mapa=mapa)
-    segs, end, _step, _slots_bar, _mapa, _pos = _dades
+    segs, end, _step, _slots_bar, _mapa, _pos_de_p = _dades
     out = []
     for i, (_t, p, c) in enumerate(segs):
         q = segs[i + 1][1] if i + 1 < len(segs) else end
-        out.append((p / 2.0, c, (q - p) / 2.0))
+        out.append((p / 4.0, c, (q - p) / 4.0))
+    return out
+
+
+def segments_exactes(csv_path, durada=0.0):
+    """Segments EXACTES del model: `[(ini_s, fi_s, acord), …]`.
+
+    A diferència de `segments_locators` (que quantitza a 1/16 per a la guia i
+    els noms), ací els temps són els del model, sense arrodonir. És la font
+    per a les durades dels WAV i per al `manifest.csv` de l'export.
+    """
+    durada = float(durada or 0.0)
+    rows = []
+    with open(csv_path, encoding="utf-8") as f:
+        for r in csv.reader(f):
+            if len(r) < 3 or r[0].startswith(("inici", "posici")):
+                continue
+            try:
+                t = float(r[0])
+            except ValueError:
+                continue
+            c = r[2].strip()
+            if c == "N":
+                continue
+            if rows and rows[-1][1] == c:
+                continue
+            rows.append((t, c))
+    if not rows:
+        raise RuntimeError(
+            "No hi ha cap acord per exportar: el model només té «N». "
+            "Posa'n almenys un (editant-lo al timeline) o prem «Analitza».")
+    out = []
+    if rows[0][0] > 1e-9:
+        out.append((0.0, rows[0][0], "N"))
+    for i, (t, c) in enumerate(rows):
+        if durada > 0 and t >= durada - 1e-9:
+            continue
+        fi = rows[i + 1][0] if i + 1 < len(rows) else (
+            durada if durada > 0 else t + 1.0)
+        if durada > 0:
+            fi = min(fi, durada)
+        if fi > t + 1e-9:
+            out.append((t, fi, c))
+    return out
+
+
+def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None):
+    """`[(posicio_1/16, acord, ini_s, fi_s)]` per als WAVs i el manifest.
+
+    El nom és la posició musical quantitzada a 1/16; els temps són els EXACTES
+    del model. Si dos acords cauen a la mateixa setzena, el segon agafa la
+    següent etiqueta per no xocar el nom (el manifest porta el temps exacte).
+    """
+    bpm = float(bpm)
+    bpb = int(bpb)
+    offset = float(offset or 0.0)
+    durada = float(durada or 0.0)
+    if mapa is None:
+        mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)),
+                                   offset=offset)
+    elif hasattr(mapa, "es_constant") and mapa.es_constant():
+        mapa = None
+    step = 60.0 / bpm / 4.0                  # semicorxera (1/16)
+    slots_bar = bpb * 4
+
+    def _q(t):
+        if mapa is not None:
+            return mapa.quarters(t)
+        return (float(t) - offset) / (60.0 / bpm)
+
+    def _t_de_p(p):
+        if mapa is not None:
+            return mapa.t_de_quarters(p / 4.0)
+        return offset + p * step
+
+    def _pos(p):
+        if mapa is not None:
+            return mapa.label(_t_de_p(p))
+        return "%d.%d.%d" % (p // slots_bar + 1, (p % slots_bar) // 4 + 1,
+                             1 + (p % 4))
+
+    exactes = segments_exactes(csv_path, durada)
+    out, last = [], -1
+    for ini, fi, c in exactes:
+        p = max(0, round(_q(ini) * 4))
+        if p <= last:
+            p = last + 1
+        out.append((_pos(p), c, ini, fi))
+        last = p
     return out
 
 
@@ -837,28 +931,28 @@ def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
 
 
 def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0, mapa=None):
-    """Posició en format compàs.temps.subdivisió (qualsevol compàs).
+    """Posició en format compàs.temps.setzena (qualsevol compàs).
 
-    Graella = corxera (mig temps). `bpb` = temps per compàs, així funciona
-    amb 3/4, 6/8, 5/4... (abans estava fixat a 8 corxeres = només 4/4).
+    Graella = **1/16** (semicorxera). El tercer camp és la setzena dins del
+    temps (1..4). `bpb` = temps per compàs, així funciona amb 3/4, 6/8, 5/4…
     """
     if lliure:
-        return f"{float(t):07.2f}s"
+        return f"{float(t):07.3f}s"
     if mapa is not None and not mapa.es_constant():
-        return mapa.label(t)           # mateixa forma (compàs.temps.sub)
-    step = 60.0 / bpm / 2              # corxera
-    SB = max(1, int(bpb)) * 2          # corxeres per compàs
+        return mapa.label(t)           # mateixa forma (compàs.temps.setzena)
+    step = 60.0 / bpm / 4              # semicorxera (1/16)
+    SB = max(1, int(bpb)) * 4          # setzenes per compàs
     # Sense clampar: abans de l'offset (compàs 1) les posicions son negatives
     # -> el silenci inicial queda com un compte enrere (compàs -1, -2...).
     p = round((float(t) - float(offset)) / step)
-    return "%d.%d.%d" % (p // SB + 1, (p % SB) // 2 + 1, 1 + 2 * (p % 2))
+    return "%d.%d.%d" % (p // SB + 1, (p % SB) // 4 + 1, 1 + (p % 4))
 
 
 def seq_abc(seccions):
     return "".join(s[2] for s in seccions)
 
 
-def parteix_clips(clips, i, talla, nou_payload=None, marge=0.05,
+def parteix_clips(clips, i, talla, nou_payload=None, marge=MIN_GAP_TEMPS,
                   etiqueta="clip"):
     """Parteix el clip `i` pel temps `talla` (implementació única, #11)."""
     if i < 0 or i >= len(clips):
@@ -890,7 +984,7 @@ def fusiona_clips(clips, i, amb="seguent", etiqueta="clip"):
     return list(clips[:i]) + [Clip(a.ini, b.fi, a.payload)] + list(clips[i + 2:])
 
 
-def parteix_acord(acords, i, talla, nom=None, marge=0.05, durada=0.0):
+def parteix_acord(acords, i, talla, nom=None, marge=MIN_GAP_TEMPS, durada=0.0):
     """Parteix l'acord `i` (wrapper del nucli unificat `parteix_clips`; #11)."""
     if i < 0 or i >= len(acords):
         raise ValueError("índex d'acord inexistent")
@@ -986,7 +1080,7 @@ def redimensiona_clips(clips, idx, vora, t, durada, forat, log=None):
     c = out[idx]
     if not esq:
         if (abs(t - c.fi) < TOL_TEMPS
-                or (t < c.fi and t - c.ini < 0.02 - TOL_TEMPS)):
+                or (t < c.fi and t - c.ini < MIN_GAP_TEMPS - TOL_TEMPS)):
             return out                      # no canvia res (o queda massa curt)
         if t > c.fi:                        # ESTIRAR cap a la dreta
             nous = [Clip(c.ini, t, c.payload)]
@@ -1019,7 +1113,7 @@ def redimensiona_clips(clips, idx, vora, t, durada, forat, log=None):
             nous.append(x)
         nous.sort(key=lambda z: z.ini)
         return normalitza_clips(nous, durada, forat)
-    if c.fi - t < 0.02 - TOL_TEMPS:
+    if c.fi - t < MIN_GAP_TEMPS - TOL_TEMPS:
         return out                          # no canvia res (queda massa curt)
     if idx > 0:                             # l'anterior s'estira endavant
         p = out[idx - 1]
@@ -1101,7 +1195,7 @@ def mou_bloc_seccions(seccions, first, last, dt, durada, log=None):
         clips_de_seccions(seccions), first, last, dt, durada, FORAT_SECCIO, log))
 
 
-def parteix_seccio(seccions, i, talla, marge=0.05):
+def parteix_seccio(seccions, i, talla, marge=MIN_GAP_TEMPS):
     """Parteix la secció `i` (mateix nucli que els acords, #11)."""
     return seccions_de_clips(parteix_clips(
         clips_de_seccions(seccions), i, talla, marge=marge, etiqueta="secció"))
@@ -1142,7 +1236,7 @@ def elimina_seccio(seccions, idx, durada):
         clips_de_seccions(seccions), idx, durada, FORAT_SECCIO))
 
 
-def duplica_clips(clips, idx, marge=0.05):
+def duplica_clips(clips, idx, marge=MIN_GAP_TEMPS):
     """Nucli únic de DUPLICAR un clip: es **parteix pel mig** en dos d'iguals.
 
     El duplicat conserva el `payload` i, entre els dos, la durada total (com el
@@ -1160,7 +1254,7 @@ def duplica_clips(clips, idx, marge=0.05):
                                Clip(mig, c.fi, c.payload)] + list(out[idx + 1:]))
 
 
-def duplica_acord(acords, idx, durada, marge=0.02):
+def duplica_acord(acords, idx, durada, marge=MIN_GAP_TEMPS):
     """Duplica l'acord `idx` (wrapper de `duplica_clips`; #11).
 
     El 2n tros (el nou) pren el seu inici com a `tsrc` (temps font), com fan la
@@ -1176,7 +1270,7 @@ def duplica_acord(acords, idx, durada, marge=0.02):
     return acords_de_clips(nou)
 
 
-def duplica_seccio(seccions, idx, marge=0.05):
+def duplica_seccio(seccions, idx, marge=MIN_GAP_TEMPS):
     """Duplica la secció `idx` (mateix nucli que els acords; #11)."""
     return seccions_de_clips(duplica_clips(
         clips_de_seccions(seccions), idx, marge))
@@ -1259,13 +1353,12 @@ def valida_canvis_acords(items, durada=0.0):
                     "Els acords no poden compartir ni invertir el seu inici. "
                     "L'ordre ha de ser estricte i sense solapaments."
                 )
-            if t - prev_t < RESOLUCIO_CSV - 1e-9:
+            if t - prev_t < MIN_GAP_TEMPS - 1e-9:
                 raise ValueError(
-                    f"Els acords {prev_nom} ({prev_t:.3f}s) i {nom} "
-                    f"({t:.3f}s) estan a menys de "
-                    f"{RESOLUCIO_CSV * 1000:.0f} ms: al CSV "
-                    f"({TEMPS_DEC} decimals) quedarien al mateix "
-                    f"instant i un clip tindria durada 0."
+                    f"Els acords {prev_nom} ({prev_t:.6f}s) i {nom} "
+                    f"({t:.6f}s) estan a menys de "
+                    f"{MIN_GAP_TEMPS * 1000:.0f} ms: dos canvis d'acord "
+                    f"més junts no són útils i fan clips inútils."
                 )
         prev_t, prev_nom = t, nom
         fi = float(ordenats[i + 1][0]) if i + 1 < n else durada
@@ -1310,7 +1403,7 @@ def valida_canvis_seccions(items, durada=0.0):
     return ordenats
 
 
-def contiguitat_seccions(items, idx, min_s=0.05):
+def contiguitat_seccions(items, idx, min_s=MIN_GAP_TEMPS):
     """Manté l'INVARIANT de CONTIGÜITAT (#2) ajustant els veïns de la secció `idx`."""
     items = list(items)
     ini, fi, L, _F = items[idx]
@@ -1473,10 +1566,10 @@ def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0,
     return seccions
 
 
-def regenera_wavs_estructura(abc_csv, sortida, sr, log):
+def regenera_wavs_estructura(abc_csv, sortida, sr, log, manifest=None):
     dest = os.path.join(sortida, "wavs_estructura")
     neteja_wavs(dest)
-    return fer_wavs_estructura(abc_csv, dest, sr, log)
+    return fer_wavs_estructura(abc_csv, dest, sr, log, manifest=manifest)
 
 
 def fer_abc(trossos, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
@@ -1620,7 +1713,8 @@ def segments_lliures(csv_path, total_s, log):
     return out
 
 
-def fer_wavs_acords_lliures(csv_path, total_s, dest_dir, sr, log):
+def fer_wavs_acords_lliures(csv_path, total_s, dest_dir, sr, log,
+                            manifest=None):
     os.makedirs(dest_dir, exist_ok=True)
     n = 0
     usats = set()          # desambigua noms d'acord que quedin iguals
@@ -1629,55 +1723,78 @@ def fer_wavs_acords_lliures(csv_path, total_s, dest_dir, sr, log):
         if frames <= 0:
             # Mai escriure un WAV de durada 0 (un xoc d'inicis a la resolució
             # del CSV, o un acord a tocar del final, el produiria).
-            log(f"wavs_acords: segment {ini:.2f}–{fi:.2f}s ({chord}) de durada "
+            log(f"wavs_acords: segment {ini:.6f}–{fi:.6f}s ({chord}) de durada "
                 f"0 → s'omet")
             continue
-        fn = (f"{ini:07.2f}s_{fi:07.2f}s_"
+        fn = (f"{ini:08.3f}s_{fi:08.3f}s_"
               f"{safe_filename(chord, fallback='N', usats=usats)}.wav")
         with wave.open(os.path.join(dest_dir, fn), "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
             w.setframerate(sr)
             w.writeframes(b"\x00" * (frames * 2))
+        if manifest is not None:
+            manifest.append(("acord", fn, ini, fi, fi - ini, chord,
+                             f"{ini:.3f}s"))
         n += 1
     log(f"wavs_acords: {n}")
     return n
 
 
-def fer_wavs_acords(segments, bpm, dest_dir, sr, log, bpb=4):
-    """WAVs silenciosos d'acords a partir de `segments_locators(...)`."""
+def fer_wavs_acords(segments, dest_dir, sr, log, manifest=None):
+    """WAVs silenciosos d'acords amb durades EXACTES.
+
+    `segments` = `[(posicio_1/16, acord, ini_s, fi_s)]` (vegeu
+    `segments_export`). El nom conserva la posició musical `1-1-1`; la durada
+    del WAV surt dels segons exactes, no de la graella. Si es passa `manifest`,
+    s'hi afegeix una fila per cada WAV amb els temps exactes.
+    """
     os.makedirs(dest_dir, exist_ok=True)
-
-    def inici_en_temps(pos_):
-        b, t, s = (int(x) for x in pos_.split("."))
-        return (b - 1) * bpb + (t - 1) + (s - 1) / 4.0
-
-    def escriu(nom, temps):
-        frames = int(round(temps * 60.0 / bpm * sr))
-        with wave.open(os.path.join(dest_dir, nom), "wb") as w:
+    n = 0
+    usats = set()          # desambigua noms d'acord que quedin iguals
+    usats_pos = set()      # desambigua posicions que caiguen a la mateixa 1/16
+    for pos_, chord, ini, fi in segments or ():
+        ini, fi = float(ini), float(fi)
+        frames = int(round((fi - ini) * sr))
+        if frames <= 0:
+            log(f"wavs_acords: segment {ini:.6f}–{fi:.6f}s ({chord}) de "
+                f"durada 0 → s'omet")
+            continue
+        fn = (f"{pos_.replace('.', '-')}_"
+              f"{safe_filename(chord, fallback='N', usats=usats)}.wav")
+        base = fn
+        k = 2
+        while fn in usats_pos:
+            fn = base[:-4] + f"_{k}.wav"
+            k += 1
+        usats_pos.add(fn)
+        with wave.open(os.path.join(dest_dir, fn), "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
             w.setframerate(sr)
             w.writeframes(b"\x00" * (frames * 2))
-
-    n = 0
-    primer = True
-    usats = set()          # desambigua noms d'acord que quedin iguals
-    for pos_, chord, dur in segments or ():
-        if primer:
-            # la tanda sempre engega a l'1-1-1: buit inicial -> N
-            cap = inici_en_temps(pos_)
-            if cap > 1e-9:
-                escriu("1-1-1_N.wav", cap)
-                n += 1
-                log(f"capçalera N: {cap:.2f} temps")
-            primer = False
-        fn = (f"{pos_.replace('.', '-')}_"
-              f"{safe_filename(chord, fallback='N', usats=usats)}.wav")
-        escriu(fn, float(dur))
+        if manifest is not None:
+            manifest.append(("acord", fn, ini, fi, fi - ini, chord, pos_))
         n += 1
     log(f"wavs_acords: {n}")
     return n
+
+
+def escriu_manifest(ruta, files):
+    """Escriu `manifest.csv` amb els temps EXACTES de cada WAV exportat.
+
+    `files`: `[(tipus, fitxer, ini_s, fi_s, durada_s, contingut, posicio), …]`.
+    Els temps es desen amb 6 decimals (1 µs), igual que el MODEL.
+    """
+    def _escriu(f):
+        w = csv.writer(f)
+        w.writerow(["tipus", "fitxer", "inici_s", "fi_s", "durada_s",
+                    "contingut", "posicio"])
+        for tipus, fn, ini, fi, dur, contingut, pos in files:
+            w.writerow([tipus, fn, f"{float(ini):.6f}", f"{float(fi):.6f}",
+                        f"{float(dur):.6f}", contingut, pos])
+    escriu_atomic(ruta, _escriu)
+    return ruta
 
 
 def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
@@ -1717,17 +1834,19 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         raise FileNotFoundError(f"No trobo acords.csv: {csv_ac}")
 
     result = {"acords_csv": csv_ac, "sortida": sortida}
+    manifest = []
     if tempo_fix:
         dades_guia = _segments_guia_daw(csv_ac, bpm, bpb, offset=offset,
                                         durada=total_s)
-        segs = segments_locators(csv_ac, bpm, bpb, offset=offset,
-                                 durada=total_s, _dades=dades_guia)
+        segs = segments_export(csv_ac, bpm, bpb, offset=offset,
+                               durada=total_s, mapa=dades_guia[4])
         guia = genera_guia_html(csv_ac, bpm, bpb, offset=offset, workdir=sortida,
                                 durada=total_s, log=log, _dades=dades_guia)
         result["guia_html"] = guia
         dest = os.path.join(sortida, "wavs_acords")
         neteja_wavs(dest)
-        result["n_acords_wavs"] = fer_wavs_acords(segs, bpm, dest, sr, log, bpb)
+        result["n_acords_wavs"] = fer_wavs_acords(
+            segs, dest, sr, log, manifest=manifest)
     else:
         if total_s is None:
             total_s = 0.0
@@ -1742,7 +1861,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         dest = os.path.join(sortida, "wavs_acords")
         neteja_wavs(dest)
         result["n_acords_wavs"] = fer_wavs_acords_lliures(
-            csv_ac, total_s, dest, sr, log)
+            csv_ac, total_s, dest, sr, log, manifest=manifest)
 
     if amb_estructura and (seccions is not None or csv_seg):
         abc = os.path.join(sortida, "estructura_ABC.csv")
@@ -1764,7 +1883,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         dest_abc = os.path.join(sortida, "wavs_estructura")
         neteja_wavs(dest_abc)
         result["n_estructura_wavs"] = fer_wavs_estructura(
-            abc, dest_abc, sr, log)
+            abc, dest_abc, sr, log, manifest=manifest)
 
     # Regla d'or #12 (paritat a l'exportació): el mapa de BPM/compàs també surt
     # al paquet, amb la seva carpeta pròpia, com els altres dos tipus.
@@ -1778,12 +1897,20 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
             log(f"mapa de tempo/compàs exportat: {len(trams)} tram(s) a "
                 f"{dest_mapa}")
 
+    if manifest:
+        result["manifest_csv"] = escriu_manifest(
+            os.path.join(sortida, "manifest.csv"), manifest)
+        if log:
+            log(f"manifest: {len(manifest)} fila(es) amb temps exactes")
+
     return result
 
 
-# Resolució temporal unificada dels CSV: 10 ms (2 decimals) — opció (b).
-# Abans: acords.csv guardava 9 decimals i estructura_ABC.csv 2 → incoherent.
-TEMPS_DEC = 2
+# Resolució temporal unificada dels CSV: 6 decimals (1 µs). És la MATEIXA
+# unitat per als quatre fitxers editables (`acords.csv`, `estructura_ABC.csv`,
+# `tempo.csv` i `compas.csv`): el model no ha de tindre una resolució per a
+# cada fitxer. La UI en mostra 3 (mil·lisegons); el model en guarda 6.
+TEMPS_DEC = 6
 # Distància MÍNIMA entre dos temps del CSV perquè els seus arrodoniments siguin
 # DIFERENTS. Amb menys, dues files cauen al mateix instant del CSV → un clip de
 # durada 0 a l'export (i la suma de durades ja no quadra). Vegeu `visor` (els
@@ -1900,7 +2027,7 @@ def desa_tempo_csv(ruta, trams):
         for s in trams:
             w.writerow([f"{float(s[0]):.{TEMPS_DEC}f}",
                         f"{float(s[1]):.{TEMPS_DEC}f}",
-                        f"{float(s[2]):g}"])
+                        f"{float(s[2]):.6f}"])
     escriu_atomic(ruta, _escriu)
 
 
@@ -1989,22 +2116,23 @@ def neteja_wavs(dest_dir):
 
 
 def regenera_wavs_acords(csv_path, sortida, bpm, bpb, offset, total_s, sr, log,
-                         tempo_fix=True):
+                         tempo_fix=True, manifest=None):
     # Recalcula guia + wavs_acords/ a partir del csv ja editat.
     dest = os.path.join(sortida, "wavs_acords")
     neteja_wavs(dest)
     if tempo_fix:
         dades_guia = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
                                         durada=total_s)
-        segs = segments_locators(csv_path, bpm, bpb, offset=offset,
-                                 durada=total_s, _dades=dades_guia)
+        segs = segments_export(csv_path, bpm, bpb, offset=offset,
+                               durada=total_s, mapa=dades_guia[4])
         genera_guia_html(csv_path, bpm, bpb, offset=offset, workdir=sortida,
                          durada=total_s, log=log, _dades=dades_guia)
-        return fer_wavs_acords(segs, bpm, dest, sr, log, bpb)
-    return fer_wavs_acords_lliures(csv_path, total_s, dest, sr, log)
+        return fer_wavs_acords(segs, dest, sr, log, manifest=manifest)
+    return fer_wavs_acords_lliures(csv_path, total_s, dest, sr, log,
+                                   manifest=manifest)
 
 
-def fer_wavs_estructura(abc_csv, dest_dir, sr, log):
+def fer_wavs_estructura(abc_csv, dest_dir, sr, log, manifest=None):
     os.makedirs(dest_dir, exist_ok=True)
     n = 0
     usats = set()          # desambigua etiquetes de secció que quedin iguals
@@ -2013,7 +2141,16 @@ def fer_wavs_estructura(abc_csv, dest_dir, sr, log):
             nm = (f"{r['compas_ini'].replace('.', '-')}_"
                   f"{r['compas_fi'].replace('.', '-')}_"
                   f"{safe_filename(r['lletra'], fallback='X', usats=usats)}")
-            frames = int(round(float(r["durada_s"]) * sr))
+            try:
+                ini = float(r["inici_s"])
+                fi = float(r["fi_s"])
+            except (KeyError, TypeError, ValueError):
+                # CSV antic/manual sense les columnes de segons: el WAV encara
+                # es pot generar per `durada_s`; el manifest no hi pot posar
+                # temps exactes i s'omet eixa fila.
+                ini = fi = None
+            dur = float(r["durada_s"])
+            frames = int(round(dur * sr))
             if frames <= 0:
                 # Mateix motiu que als acords: mai un WAV de durada 0.
                 log(f"wavs_estructura: secció {r.get('lletra', '?')} de durada "
@@ -2024,6 +2161,10 @@ def fer_wavs_estructura(abc_csv, dest_dir, sr, log):
                 w.setsampwidth(2)
                 w.setframerate(sr)
                 w.writeframes(b"\x00" * (frames * 2))
+            if manifest is not None and ini is not None:
+                manifest.append(("estructura", nm + ".wav", ini, fi, dur,
+                                 r["lletra"],
+                                 f"{r['compas_ini']}–{r['compas_fi']}"))
             n += 1
     log(f"wavs_estructura: {n}")
     return n

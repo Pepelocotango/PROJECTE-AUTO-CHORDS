@@ -614,8 +614,8 @@ class TestPartirSeccio(_Base):
 
     def test_massa_a_prop_de_la_vora_es_rebutja(self):
         v = _visor()
-        self.assertFalse(v.parteix_seccio(0, 0.01, "Z"))    # < MIN_SECCIO_S
-        self.assertFalse(v.parteix_seccio(0, 9.99, "Z"))
+        self.assertFalse(v.parteix_seccio(0, 0.0001, "Z"))  # < MIN_SECCIO_S
+        self.assertFalse(v.parteix_seccio(0, 9.9999, "Z"))
         self.assertEqual(v.seccions, _partir_seccio__SECCIONS)
 
     def test_index_invalid(self):
@@ -974,9 +974,9 @@ class TestEnganxatALaVoraDelBloc(_copiar_enganxar___Base):
         self.assertEqual(_noms_acords(v), [
             "N", "Bbmaj7", "B", "C", "B/C#", "Bbmaj7", "Bbmaj7",
             "Bbmaj7", "B", "C", "B/C#", "Bbmaj7", "Bbmaj7", "B", "C"])
-        # CAP marca a menys de 10 ms: era exactament la col·lisió que ho trencava
+        # CAP marca a menys de 1 ms: era exactament la col·lisió que ho trencava
         for a, b in zip(v.acords, v.acords[1:]):
-            self.assertGreaterEqual(float(b[0]) - float(a[0]), 0.01 - 1e-9)
+            self.assertGreaterEqual(float(b[0]) - float(a[0]), 0.001 - 1e-9)
         v.close()
 
     def test_rebuig_en_silenci_ja_no_existeix(self):
@@ -984,7 +984,7 @@ class TestEnganxatALaVoraDelBloc(_copiar_enganxar___Base):
         v = _visor_otis()
         avisos = []
         v.infoMissatge.connect(avisos.append)
-        v._enganxa_seleccio({"chords": [(0.0, "X"), (0.002, "Y")],
+        v._enganxa_seleccio({"chords": [(0.0, "X"), (0.0005, "Y")],
                              "chord_len": 1.0, "bloc_fi": 18.5}, 18.5)
         self.assertTrue(avisos, "el rebuig hauria d'avisar a pantalla")
         self.assertIn("Enganxat no fet", avisos[0])
@@ -2479,9 +2479,9 @@ class TestMoureSeccioManteContiguitat(_seccions_contigues___Base):
     def test_rebutja_si_un_vei_queda_sense_marge(self):
         v = _seccions_contigues___visor()
         with self.assertRaises(ValueError):
-            v.mou_seccio(2, 10.01, 30.0)     # deixaria B amb 0,01 s (veí previ)
+            v.mou_seccio(2, 10.0001, 30.0)   # deixaria B amb 0,0001 s (veí previ)
         with self.assertRaises(ValueError):
-            v.mou_seccio(2, 20.0, 39.99)     # deixaria D amb 0,01 s (veí següent)
+            v.mou_seccio(2, 20.0, 39.9999)   # deixaria D amb 0,0001 s (veí següent)
         # I el model NO ha quedat tocat pels intents rebutjats.
         self.assertEqual(v.seccions, _seccions_contigues__SECCIONS)
 
@@ -2872,7 +2872,7 @@ class TestCoberturaViu(unittest.TestCase):
         with open(v.csv_acords, encoding="utf-8") as f:
             primera = f.readline().strip()
         cols = primera.split(",")
-        self.assertEqual(cols[0], "0.00")
+        self.assertEqual(cols[0], "0.000000")
         self.assertEqual(cols[2], "N")
 
     def test_export_usa_el_model_no_el_csv_vell(self):
@@ -2911,7 +2911,7 @@ class TestCoberturaViu(unittest.TestCase):
         with open(ca, encoding="utf-8") as f:
             primera = f.readline().strip()
         cols = primera.split(",")
-        self.assertEqual(cols[0], "0.00")
+        self.assertEqual(cols[0], "0.000000")
         self.assertEqual(cols[2], "N")
 
     def test_export_sense_model_segueix_llegint_el_csv(self):
@@ -3603,7 +3603,7 @@ class TestEditorRenom(unittest.TestCase):
         v = self._visor()
         # El model duu la «N» de capçalera a 0 (regla d'or #4: els clips
         # cobreixen TOTA la WAV); el parell 7.13/7.144567 és el que prova
-        # l'arrodoniment de l'editor. Han de distar >= 10 ms (resolució del
+        # l'arrodoniment de l'editor. Han de distar >= 1 ms (resolució del
         # CSV): abans eren 7.13/7.134567 (4,6 ms) i arrodonien a la MATEIXA
         # fila «7.13» → col·lisió que el bug #5 ara rebutja.
         v.acords = v._valida_canvis_acords([

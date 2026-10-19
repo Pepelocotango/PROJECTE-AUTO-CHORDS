@@ -17,7 +17,8 @@ el BPM són "vistes" calculades a sobre.
 
 ## 1. On som ara (estat actual del codi)
 
-- Posicions en **segons** (`float`); es converteix a `compàs.beat` (C.B) amb
+- Posicions en **segons** (`float`) amb **6 decimals (1 µs)** als quatre CSV del
+  MODEL; la UI en mostra **3 (ms)**. Es converteix a `compàs.beat` (C.B) amb
   `beat = 60/bpm` i el compàs cada `bpb` temps.
 - Grid **unificat** (`grid_plan` a `app/timeline_base.py`): grid, regle i snap
   surten del **mateix pla** → sempre quadren; nivells adaptatius al zoom
@@ -26,13 +27,16 @@ el BPM són "vistes" calculades a sobre.
 - Metrònom amb la mateixa graella (`app/metronom.py`, `beat = 60/bpm`).
 - **Offset** = segon on cau el compàs 1; abans, la graella és **negativa**
   (count-in).
-- Export a Live: `pipeline.genera_locators()` fa servir `step = 60.0 / bpm / 2`
-  (corxera); `app/pipeline.py` idem.
+- Export a Live: els noms `1-1-1_C.wav` es quantitzen a **1/16**
+  (`pipeline._segments_guia_daw`); les **durades** dels WAV surten dels segons
+  exactes del model i l'exportació escriu **`manifest.csv`** amb els temps
+  exactes (6 decimals) per a la col·locació fina al DAW.
 - BPM: `app/tempo.py` (numpy) / `qm-tempotracker` (l'aubio està **retirat**).
 
-👉 **Implicació:** avui les subdivisions viuen en **segons**. Afegir una capa
-de **ticks (PPQ)** fa el sistema exacte (sense arrodoniment acumulat), habilita
-**tresets i puntets** amb enters i fa fiable l'**export MIDI**.
+👉 **Implicació:** el model ja guarda **segons amb 1 µs**, de sobres per a
+acords i estructura. El **PPQ 480** es reserva per a la **vista musical** i
+l'**export** (MusicXML ja fa servir `divisions=480`); no és la unitat de guardat.
+Convertir el model a ticks només caldria si l'export MIDI passa a ser el centre.
 
 ## 2. PPQ — la resolució
 
@@ -118,7 +122,7 @@ segons → tick     : tick = round( s · BPM / 60 · PPQ )
 - **MIDI (SMF):** el header porta `division` = **ticks per quarter**. Si els
   tresets han d'existir al fitxer, ha de ser múltiple de 3 → **960**
   (`mido`: `ticks_per_beat=960`; el seu valor per defecte és 480).
-- **.als (Live):** les posicions viuen en **beats** (XML). El `step` de corxera
+- **.als (Live):** les posicions viuen en **beats** (XML). El `step` de 1/16
   actual és correcte, però calcular-lo des de segons perd exactitud en tresets.
 - **Audio (WAV):** sense graella → segons/mostres directes.
 

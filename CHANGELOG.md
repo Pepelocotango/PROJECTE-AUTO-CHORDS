@@ -13,6 +13,34 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   model als CSV ja hi és); (3) **`<nom>.acproj.bak`** abans de cada desat (com el
   `.rpp-bak` de REAPER).
 
+### Canviat
+- **Resolució temporal unificada (2026-10-19)**: els quatre CSV del MODEL
+  (`acords.csv`, `estructura_ABC.csv`, `tempo.csv`, `compas.csv`) es desen amb
+  **6 decimals (1 µs)**, no 2 (10 ms). El BPM també es desa amb 6 decimals (no
+  amb `:g`). La UI mostra **hh:mm:ss.mmm** i els camps d'edició accepten
+  mil·lisegons. La separació mínima entre inicis passa de **10 ms a 1 ms**; els
+  marges de partir, moure, redimensionar i duplicar també. MusicXML passa de
+  `divisions=4` a **480**. Els fitxers editables ja no tenen resolucions
+  diferents entre si.
+- **Posicions musicals a 1/16 (2026-10-19)**: `pos_compas` i `TempoMap.pos`
+  passen de **corxera (1/8)** a **semicorxera (1/16)**; el tercer camp de
+  `compàs.temps.setzena` és 1..4. Afecta el regle, la guia, `estructura_ABC.csv`
+  i els noms d'export (que continuen sent `1-1-1_C.wav`).
+- **Export amb temps exactes (2026-10-19)**: les durades dels WAV surten dels
+  **segons exactes** del model (no de la graella 1/16) i l'exportació escriu
+  **`manifest.csv`** amb `tipus, fitxer, inici_s, fi_s, durada_s, contingut,
+  posicio` a 6 decimals. Els noms musicals es mantenen. En mode Lliure, els noms
+  dels WAV passen a mil·lisegons (`0000.000s_...`).
+
+### Arreglat
+- **Graella a zoom extrem (2026-10-19)**: el pla únic de grid inclou
+  **múltiples de compàs** (2, 4, 8 i 16) perquè el min zoom no siga una taca;
+  si cap divisió hi cap, cau a la **més gruixuda** (abans queia a la més fina,
+  `0,02 s`, i omplia el grid de milers de línies). Les etiquetes del regle no
+  ixen per les vores, tenen una separació mínima de 8 px i, al min zoom, la
+  línia de l'etiqueta es pinta més forta. Al max zoom, el primer compàs ja no
+  es veu tallat.
+
 ### Tret
 - **Els intermedis de l'anàlisi ja no són fitxers (2026-10-19)**: la carpeta
   `analisi/` (`chords_raw.csv`, `segments_raw.csv`, `meta.json`) i

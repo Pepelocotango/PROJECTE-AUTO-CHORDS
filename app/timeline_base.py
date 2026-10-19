@@ -58,8 +58,8 @@ CURSOR_COLOR = theme.TL_CURSOR
 GUIDE_COLOR = theme.TL_GUIDE
 SELECTION_COLOR = theme.CLIP_SELECTED_BORDER
 PIXELS_PER_SECOND_DEFAULT = 60.0
-MIN_GAP_S = 0.02         # gap mínim entre inicis d'acords
-MIN_SEC_LEN_S = 0.05     # durada mínima d'una secció
+MIN_GAP_S = 0.001        # gap mínim entre inicis d'acords (1 ms)
+MIN_SEC_LEN_S = 0.001    # durada mínima d'una secció (1 ms)
 # Tolerància (en PÍXELS, per tant depèn del zoom) per enganxar una edició a una
 # MARCA del model. És el «snap distance» dels DAWs (Reaper), i el que fa que
 # l'snap als events sigui visual i no un valor de temps fix.
@@ -72,7 +72,12 @@ SNAP_MARCA_PX = 10.0
 # Llindars en PIXELS (com els DAWs): un nivell de grid es dibuixa si el seu
 # espaiat en px hi arriba; l'etiqueta del regle només es posa si hi cap.
 MIN_LINE_PX = 8.0
-MIN_LABEL_PX = 30.0
+MIN_LABEL_PX = 50.0
+
+
+def _es_nivell_compas(kind):
+    """True si `kind` és un nivell de compàs (``"bar"`` o ``("bar", n)``)."""
+    return kind == "bar" or (isinstance(kind, tuple) and kind and kind[0] == "bar")
 
 
 def _divisions(tempo_fix, bpm, bpb, mapa=None):
@@ -86,11 +91,18 @@ def _divisions(tempo_fix, bpm, bpb, mapa=None):
     if tempo_fix:
         if mapa is not None and not mapa.es_constant():
             bar, beat, _sub = mapa.durations(mapa.offset)
-            return [(bar, "bar"), (beat, "beat"),
+            # Múltiples de compàs per al zoom molt allunyat (min zoom): amb un
+            # compàs de 2 s i una vista de 10 min, una línia cada compàs seria
+            # una taca. El `n` s'usa a `mapa.grid_lines(..., n=n)`.
+            return [(bar * 16, ("bar", 16)), (bar * 8, ("bar", 8)),
+                    (bar * 4, ("bar", 4)), (bar * 2, ("bar", 2)),
+                    (bar, "bar"), (beat, "beat"),
                     (beat / 2.0, "sub"), (beat / 4.0, "sub")]
         beat = 60.0 / max(float(bpm), 1e-9)
         measure = beat * max(int(bpb), 1)
-        return [(measure, "bar"), (beat, "beat"),
+        return [(measure * 16, "bar"), (measure * 8, "bar"),
+                (measure * 4, "bar"), (measure * 2, "bar"),
+                (measure, "bar"), (beat, "beat"),
                 (beat / 2.0, "sub"), (beat / 4.0, "sub")]
     return [(600.0, "bar"), (300.0, "bar"), (60.0, "bar"), (30.0, "bar"),
             (10.0, "bar"), (5.0, "bar"), (2.0, "bar"), (1.0, "bar"),
@@ -103,7 +115,9 @@ def snap_step(tempo_fix, bpm, bpb, pps, mapa=None):
     pps = max(float(pps), 1e-9)
     divs = _divisions(tempo_fix, bpm, bpb, mapa)
     fit = [s for (s, _k) in divs if s * pps >= MIN_LINE_PX]
-    return fit[-1] if fit else divs[-1][0]
+    # Si no hi cap cap divisió (zoom molt allunyat), MANA la més GRUIXUDA.
+    # Abans es tornava la més fina (0,02 s) i el grid es convertia en una taca.
+    return fit[-1] if fit else divs[0][0]
 
 
 def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
@@ -121,11 +135,19 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
     divs = _divisions(tempo_fix, bpm, bpb, mapa)
     fit = [(s, k) for (s, k) in divs if s * pps >= min_line_px]
     if not fit:
-        snap, snap_k = divs[-1]
+        # Zoom extremadament allunyat: una sola línia, la MÉS GRUIXUDA.
+        snap, snap_k = divs[0]
         return {"snap": snap, "lines": [(snap, snap_k)], "label": divs[0][0]}
     snap, snap_k = fit[-1]
-    majors = [x for x in fit if x[0] * pps <= view_px] or [fit[0]]
-    major = majors[0]
+    # El nivell gran és el compàs (o el múltiple de compàs més fi que encara
+    # cap a la vista). Així a zoom normal mana el compàs, no un múltiple enorme.
+    bar_levels = [x for x in fit if _es_nivell_compas(x[1])]
+    visible_bar = [x for x in bar_levels if x[0] * pps <= view_px]
+    if visible_bar:
+        major = visible_bar[-1]
+    else:
+        majors = [x for x in fit if x[0] * pps <= view_px] or [fit[0]]
+        major = majors[0]
     lines = [major]
     if len(fit) >= 3:
         gm = math.sqrt(major[0] * snap)
@@ -163,7 +185,13 @@ def grid_positions(view_left, view_right, step, offset=0.0, tol=1e-9,
             kind = "sub"
     if mapa is not None and kind is not None and not mapa.es_constant():
         # Graella MUSICAL del mapa (l'espaiat varia amb el tempo/compàs).
-        for t in mapa.grid_lines(float(view_left), float(view_right), kind):
+        # `kind` pot ser ("bar", n) per als múltiples de compàs del min zoom.
+        if isinstance(kind, tuple):
+            kind_name, n = kind
+        else:
+            kind_name, n = kind, 1
+        for t in mapa.grid_lines(float(view_left), float(view_right),
+                                 kind_name, n=n):
             yield t
         return
     if step is None or step <= tol:
@@ -220,7 +248,8 @@ def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
         if step <= 0:
             return t
         if step >= bar_s - 1e-9:
-            return mapa.snap(t, ("bars", 1))
+            n = max(1, int(round(step / bar_s)))
+            return mapa.snap(t, ("bars", n))
         if step >= beat_s - 1e-9:
             return mapa.snap(t, ("beat", 1.0))
         if step >= sub_s - 1e-9:
@@ -239,7 +268,7 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
 
     `offset` = segon on cau el compàs 1 (la graella hi comença).
     `step` = pas de l'etiqueta. Quan és més fi que el beat, es mostra el 3r
-    camp (`compàs.beat.subdivisió`), com en DAWs professionals.
+    camp (`compàs.beat.setzena`), com en DAWs professionals.
     """
     if not tempo_fix:
         neg = t < -1e-9
@@ -247,7 +276,7 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
         m = int(tt // 60)
         s = tt - m * 60
         if step is not None and step < 1.0:
-            txt = f"{m}:{s:04.1f}"              # m:ss.d
+            txt = f"{m}:{s:06.3f}"              # m:ss.mmm
         else:
             txt = f"{m}:{int(round(s)):02d}"    # m:ss
         return ("-" if neg else "") + txt
@@ -270,13 +299,14 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
         compas += 1
         beat_idx = 1
     if step is not None and step > 0 and step < beat - 1e-9:
-        divs = max(1, int(round(beat / step)))
+        # El tercer camp és SEMPRE la setzena dins del temps (1..4), igual que
+        # `pos_compas` i `TempoMap.pos`. Abans depenia del zoom.
         phase = beats - math.floor(beats)
         if phase < 0:
             phase += 1.0
-        sub_idx = int(math.floor(phase * divs)) + 1
-        if sub_idx > divs:
-            sub_idx = divs
+        sub_idx = 1 + int(phase * 4 + 1e-9)
+        if sub_idx > 4:
+            sub_idx = 4
         return f"{compas}.{beat_idx}.{sub_idx}"
     return f"{compas}.{beat_idx}"
 
@@ -303,5 +333,14 @@ def grid_levels(tempo_fix, bpm, bpb, pps, view_px, mapa=None):
     col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
            "sub": theme.TL_GRID_SUB}
     plan = grid_plan(tempo_fix, bpm, bpb, pps, view_px, mapa=mapa)
+
+    def _col(k):
+        return col[k[0] if isinstance(k, tuple) else k]
+
     # de fi a gruixut, perquè els nivells gruixuts es pintin al damunt
-    return [(s, col[k], 1) for (s, k) in reversed(plan["lines"])]
+    levels = [(s, _col(k), 1) for (s, k) in reversed(plan["lines"])]
+    # Al min zoom, la línia de l'etiqueta (cada N compassos) ha de ser més
+    # forta que el grid de base; si no, totes les línies semblen iguals.
+    if plan["label"] > levels[-1][0] + 1e-9:
+        levels.append((plan["label"], col["bar"], 2))
+    return levels

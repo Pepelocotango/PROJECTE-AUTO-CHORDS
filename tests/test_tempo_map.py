@@ -82,6 +82,15 @@ class TestConstant(unittest.TestCase):
         self.assertEqual(tm.pos(2.0), (2, 1, 1))
         self.assertEqual(tm.label(4.0), "3.1.1")
 
+    def test_pos_1_16_i_vora_de_compas(self):
+        tm = TempoMap.constant(101, 4, 4, durada=20.0)
+        self.assertEqual(tm.pos(0.125 * (60.0 / 101.0) * 2),
+                         (1, 1, 2))
+        # 9,5 s a 101 BPM és pràcticament 16 negres (compàs 5): la vista a
+        # 1/16 ha de coincidir amb `pos_compas`, no quedar-se al compàs 4.
+        from app import pipeline
+        self.assertEqual(tm.label(9.5), pipeline.pos_compas(9.5, 101, 4))
+
     def test_snap(self):
         tm = TempoMap.constant(120, 4, 4, durada=10.0)
         self.assertAlmostEqual(tm.snap(0.6, ("beat", 1.0)), 0.5)
@@ -226,7 +235,7 @@ class TestPersistencia(unittest.TestCase):
         pipeline.desa_tempo_csv(ruta, [(0.0, 2.5, 105.315, 4, 4)])
         with open(ruta, encoding="utf-8") as f:
             linia = f.read().strip()
-        self.assertEqual(linia, "0.00,2.50,105.315")
+        self.assertEqual(linia, "0.000000,2.500000,105.315000")
 
 
 class TestGraellaAmbMapa(unittest.TestCase):
@@ -1101,9 +1110,8 @@ class TestSnapStep(unittest.TestCase):
     def test_mes_zoom_mai_dona_una_divisio_mes_gruixuda(self):
         """Amb més zoom (més pps) la divisió es va afiant o es queda igual.
 
-        (Amb un zoom TAN petit que cap divisió hi cap, la funció cau a la més
-        fina — és el fallback documentat; per això es prova només on hi ha
-        candidats.)
+        Si cap divisió hi cap (zoom extremadament allunyat), la funció cau a la
+        **més gruixuda**; abans queia a la més fina i omplia el grid de línies.
         """
         pps_valors = [10.0, 50.0, 400.0]
         pas = [tb.snap_step(True, 120.0, 4, p) for p in pps_valors]
@@ -1118,9 +1126,12 @@ class TestSnapStep(unittest.TestCase):
         """
         mapa = tm.TempoMap([(0.0, 4.0, 120.0, 4, 4), (4.0, 12.0, 60.0, 3, 4)])
         divs = tb._divisions(True, 120.0, 4, mapa)
-        self.assertEqual([k for _s, k in divs][:2], ["bar", "beat"])
-        self.assertAlmostEqual(divs[0][0], 2.0, places=6)   # 4 temps a 120 BPM
-        self.assertAlmostEqual(divs[1][0], 0.5, places=6)   # una negra
+        bar = next(s for s, k in divs if k == "bar")
+        beat = next(s for s, k in divs if k == "beat")
+        self.assertAlmostEqual(bar, 2.0, places=6)   # 4 temps a 120 BPM
+        self.assertAlmostEqual(beat, 0.5, places=6)  # una negra
+        self.assertTrue(any(isinstance(k, tuple) and k[0] == "bar"
+                            for _s, k in divs), "falten múltiples de compàs")
         # ... i el pla les fa servir (no els valors del BPM de la barra)
         plan = tb.grid_plan(True, 90.0, 3, 60.0, 800.0, mapa=mapa)
         self.assertGreater(plan["snap"], 0.0)
@@ -1159,6 +1170,29 @@ class TestGridPlan(unittest.TestCase):
         else:
             self.assertGreater(plan["label"], 0.0)
 
+    def test_min_zoom_no_omple_el_grid_de_linies(self):
+        """A poc zoom, la divisió més fina que hi cap (no 0,02 s a l'atzar)."""
+        plan = tb.grid_plan(True, 120.0, 4, 0.5, 1000.0)
+        self.assertGreaterEqual(plan["snap"] * 0.5, tb.MIN_LINE_PX - 1e-9)
+        self.assertLessEqual(len(plan["lines"]), 3)
+
+    def test_zoom_extremadament_allunyat_cau_a_la_mes_gruixuda(self):
+        plan = tb.grid_plan(True, 120.0, 4, 0.01, 1000.0)
+        self.assertEqual(plan["snap"], 32.0)       # 16 compassos a 120 BPM
+        self.assertEqual(plan["lines"], [(32.0, "bar")])
+        self.assertEqual(tb.snap_step(True, 120.0, 4, 0.01), 32.0)
+
+    def test_max_zoom_arriba_a_1_16(self):
+        plan = tb.grid_plan(True, 120.0, 4, 5000.0, 1000.0)
+        self.assertAlmostEqual(plan["snap"], 0.125)   # semicorxera
+        self.assertAlmostEqual(plan["label"], 0.125)
+
+    def test_multiples_de_compas_amb_mapa(self):
+        mapa = tm.TempoMap([(0.0, 20.0, 120.0, 4, 4)])
+        pos = list(tb.grid_positions(0.0, 20.0, 8.0, mapa=mapa,
+                                     kind=("bar", 4)))
+        self.assertEqual(pos, [0.0, 8.0, 16.0])
+
     def test_grid_levels_deriva_del_pla(self):
         plan = tb.grid_plan(True, 120.0, 4, 60.0, 800.0)
         nivells = tb.grid_levels(True, 120.0, 4, 60.0, 800.0)
@@ -1167,6 +1201,12 @@ class TestGridPlan(unittest.TestCase):
         for _s, color, width in nivells:
             self.assertIsInstance(color, str)
             self.assertEqual(width, 1)
+
+    def test_min_zoom_te_una_linia_mestra_mes_gruixuda(self):
+        plan = tb.grid_plan(True, 120.0, 4, 1.96, 1200.0)
+        nivells = tb.grid_levels(True, 120.0, 4, 1.96, 1200.0)
+        self.assertIn((plan["label"], 2),
+                      [(s, w) for s, _c, w in nivells])
 
 
 class TestGridPositions(unittest.TestCase):

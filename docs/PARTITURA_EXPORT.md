@@ -8,7 +8,7 @@
 
 Aprofita les dades que ja genera l'exportació normal:
 
-    <sortida>/acords.csv            (el MODEL: inici,fi,acord — es quantitza a corxera)
+    <sortida>/acords.csv            (el MODEL: inici,fi,acord — es quantitza a 1/16)
     <sortida>/estructura_ABC.csv    (seccions amb posició en compàs)
 
 i produeix:

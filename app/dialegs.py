@@ -70,7 +70,7 @@ DEFECTES = {
                   "fusiona_iguals": True},
     # Neteja posterior dels acords (post-processat, app/postproc.py)
     "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
-              "reduir": False, "snap": True, "divisio": 2, "ritme": "off"},
+              "reduir": False, "snap": True, "divisio": 4, "ritme": "off"},
 }
 
 
@@ -493,7 +493,7 @@ class DialegTempoMapa(QDialog):
         for i, s in enumerate(self._trams):
             r = self.taula.rowCount()
             self.taula.insertRow(r)
-            it0 = QTableWidgetItem("0.00" if i == 0 else f"{float(s[0]):.2f}")
+            it0 = QTableWidgetItem("0.000" if i == 0 else f"{float(s[0]):.3f}")
             if i == 0:
                 it0.setFlags(Qt.ItemIsEnabled)      # el valor inicial: fix
             self.taula.setItem(r, 0, it0)
@@ -591,7 +591,7 @@ class DialegTramTempo(QDialog):
         if inicial:
             cap = "Valor inicial (compàs 1)."
         else:
-            cap = f"Comença a {float(inici):.2f} s"
+            cap = f"Comença a {float(inici):.3f} s"
             if text_inici:
                 cap += f" (compàs {text_inici})"
         avis = QLabel(cap)

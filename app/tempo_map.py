@@ -320,10 +320,13 @@ class TempoMap:
         """`(compàs, temps, subdivisió)` d'un instant.
 
         El **compàs 1** és a l'offset; abans seu la numeració és ≤ 0 (compte
-        enrere). `subdivisió` és 1 o 3 (les dues meitats del temps), com a l'app.
+        enrere). `subdivisió` és la **setzena** dins del temps (1..4).
         """
         t = float(t)
-        q = self.quarters(t)
+        # La posició es mostra a resolució de 1/16: arrodonim la negra a la
+        # setzena més propera perquè `pos_compas` i el mapa donen la mateixa
+        # etiqueta també a les vores (p. ex. 9,5 s a 101 BPM).
+        q = round(self.quarters(t) * 4) / 4.0
         talls = self._talls_de_compas()
         if q >= -TOL:
             idx = 0
@@ -348,8 +351,8 @@ class TempoMap:
         if b >= num:
             b = num - 1
         frac = (dins - b * beat_q) / beat_q
-        sub = 1 + 2 * int(frac * 2 + TOL)
-        return (compas, max(1, min(num, b + 1)), min(3, sub))
+        sub = 1 + int(frac * 4 + TOL)
+        return (compas, max(1, min(num, b + 1)), min(4, sub))
 
     def label(self, t):
         """Etiqueta `compàs.temps.subdivisió` (mateixa forma que `pos_compas`)."""

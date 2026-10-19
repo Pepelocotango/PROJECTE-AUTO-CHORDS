@@ -263,7 +263,8 @@ class RulerLayer(QGraphicsItem):
         for (sub, kind) in plan["lines"]:
             if sub <= 1e-9 or sub >= plan["label"] - 1e-9:
                 continue
-            p.setPen(QPen(QColor(col[kind]), 1))
+            kind_name = kind[0] if isinstance(kind, tuple) else kind
+            p.setPen(QPen(QColor(col[kind_name]), 1))
             for t in grid_positions(self._view_left, self._view_right, sub, off,
                                     mapa=self._mapa):
                 if t >= 0:
@@ -294,15 +295,24 @@ class RulerLayer(QGraphicsItem):
                 p.setFont(label_font)
                 fm = QFontMetricsF(label_font)
                 wlab = fm.width(lab)
-                if x - wlab / 2 > last_label_x:
+                # No deixem que l'etiqueta isca per les vores (al primer
+                # compàs, a x=0, abans es veia només el darrer caràcter).
+                tx = x - wlab / 2
+                if tx < 2.0:
+                    tx = 2.0
+                elif tx + wlab > rect.width() - 2.0:
+                    tx = max(2.0, rect.width() - 2.0 - wlab)
+                # Separació mínima entre etiquetes: 8 px (abans només se
+                # superposaven, i al min zoom quedaven enganxades).
+                if tx > last_label_x:
                     if is_bar:
                         bg = QColor(theme.TL_GRID_MEASURE)
                         bg.setAlpha(90)
-                        p.fillRect(QRectF(x - wlab / 2 - 3, self._height - 18,
+                        p.fillRect(QRectF(tx - 3, self._height - 18,
                                           wlab + 6, 13), bg)
                     p.setPen(QPen(QColor(theme.TL_GRID_MEASURE if is_bar else RULER_TEXT), 1))
-                    p.drawText(QPointF(x - wlab / 2, self._height - 11), lab)
-                    last_label_x = x + wlab / 2
+                    p.drawText(QPointF(tx, self._height - 11), lab)
+                    last_label_x = tx + wlab + 8.0
 
         # CANVIS de tempo/compàs (com la «tempo track» d'un DAW): un marcador a
         # cada frontera del mapa, amb el valor nou.
