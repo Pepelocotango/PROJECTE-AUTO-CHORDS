@@ -380,6 +380,24 @@ Quatre mutacions de paritat (R11), i una **no** va fer petar res:
   comportament; el text explicatiu del `docs/ESQUEMA_UI.md` (que diu *per què*
   no s'usa `Alt`) es manté, que és correcte.
 
+## Ronda 54 — codi mort (5 funcions) + MAPA de la duplicació: viu a la capa de PARITAT
+
+- 🧹 **Fora 5 funcions mortes** d'`app/`. **Mesurat abans de tocar res**: **841
+  noms únics** al codi i només **5** no apareixien enlloc → **0,6 %**.
+- 📊 **Mesura de duplicació**: el **2,6 %** de les línies d'`app/` són dins blocs
+  repetits. El rellevant **no és el %**, sinó **ON**:
+  - la lògica de **cursor/zona** dels items està **copiada 4 vegades**
+    (`app/timeline_items.py`);
+  - **`boundingRect`/`update_geometry` 3 vegades** (`app/timeline_layers.py`).
+- 🎯 **Conclusió**: la duplicació viu justament a la capa de **PARITAT** (regla
+  #11) → és la **causa estructural** de «cada carril es comporta diferent», i les
+  Rondes 50/51/52/53 en són **símptomes**.
+- 💡 **Proposta** (d'OC-11, **PENDENT de decisió de l'operador**): **base/mixin
+  comú** per a les **affordances** i la **geometria** dels items → a la **cua**,
+  punt 11.
+
+Commit `b7cc9c2` · suite tota verda (1 skip) · pyflakes net · `app/`.
+
 ## Ronda 53 — paritat de SUPERFÍCIES: una sola definició del menú contextual
 
 - **`Visor._menu_contextual`** és ara la **definició ÚNICA** del menú contextual
@@ -1079,6 +1097,15 @@ L'**evidència externa** de cada ronda: les passades independents de l'agent de
 10. ~~**Moviment d'identitat de `mou_seccio`**~~ → ✅ **RESOLT** (decisió (a), Ronda 43):
     ubicar una secció on ja és **no és un error** (no-op); un moviment de debò
     segueix refusat per la #4.
+11. **Base/mixin comú per a la PARITAT (#11)** — proposta d'OC-11 (**Ronda 54**,
+    **decisió pendent de l'operador**): la lògica de **cursor/zona** dels items
+    està **copiada 4×** (`app/timeline_items.py`) i **`boundingRect`/
+    `update_geometry` 3×** (`app/timeline_layers.py`). És la **causa
+    estructural** de «cada carril es comporta diferent» (símptomes: Rondes 50 a
+    53). Si s'aprova: un mixin/base comú d'**affordances** i **geometria**, amb
+    la xarxa de paritat (`test_regla11_paritat` + `test_vista_segueix_model`) com
+    a garantia. És **refactor de risc**: toca la capa que més bugs de paritat ha
+    donat.
 
 > 📌 **En tancar una ronda**: actualitza aquest mapa (l'✅/⏳ de cada regla) i
 > apunta-hi les trobades amb el seu fix i test.
