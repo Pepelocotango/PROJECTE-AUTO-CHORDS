@@ -171,3 +171,6 @@ les eines i els desenvolupadors que ens han donat base i inspiració.
 
 **GPL-3.0-or-later** (GPLv3 o posterior) — vegeu [`LICENSE`](LICENSE).
 Copyright (c) 2026 Pëp <pepelocotango@gmail.com>.
+
+
+-
