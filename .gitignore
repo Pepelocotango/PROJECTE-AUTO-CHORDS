@@ -50,6 +50,9 @@ recents.json
 # Marcador de sessió oberta (per a la recuperació després d'un crash)
 sessio.json
 
+# Traces natives de crash (el .log ja cau a *.log; el .anterior no)
+crash_nadiu.log*
+
 # Python/ffmpeg portables (Fase 2-3 de portabilitat; es regeneren)
 portable/
 

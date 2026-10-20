@@ -167,6 +167,47 @@ class FeinaExporta(QThread):
             self.feta.emit(False, str(e))
 
 
+class FilGuiaBpm(QThread):
+    """Detecció del BPM d'UNA finestra de l'«Anàlisi guiat» (fil separat).
+
+    L'agent del bucle és `Finestra._analisi_guitat`: cada finestra de ~16
+    temps es detecta en un fil (com `Feina`, però per un sol tram) i el
+    resultat arriba per `feta(bpm)` amb `bpm=None` si ha fallat.
+
+    ⚠️ El `log` NO és una crida directa (`Finestra.registra` toca un
+    QTextEdit): el mateix patró que `Feina` — es **emet per `missatge`**
+    (queued) i la Finestra el conect a `registra`. Cridar la GUI des del
+    fil = UB i segfault al bucle principal (bug del 20-10).
+    """
+    feta = pyqtSignal(object)
+    missatge = pyqtSignal(str)
+
+    def __init__(self, wav, ini, fi, bpm_min=None, bpm_max=None,
+                 preferit=None, parent=None):
+        super().__init__(parent)
+        self._wav = wav
+        self._ini = float(ini)
+        self._fi = float(fi)
+        self._min = bpm_min
+        self._max = bpm_max
+        self._pref = preferit
+
+    def log(self, t):
+        # mai directe: emet (queued) — la GUI no es toca des d'aquest fil
+        self.missatge.emit(str(t))
+
+    def run(self):
+        try:
+            bpm = pipeline.detecta_bpm_tram(
+                self._wav, self._ini, self._fi, self.log,
+                bpm_min=self._min, bpm_max=self._max,
+                preferit=self._pref)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"Anàlisi guiat: detecció ERROR ({e})")
+            bpm = None
+        self.feta.emit(bpm)
+
+
 class Feina(QThread):
     missatge = pyqtSignal(str)
     progres = pyqtSignal(int)
@@ -321,6 +362,9 @@ class Finestra(QMainWindow):
         # PROJECTE (carpeta autocontinguda): el document viu + «canvis sense desar».
         self.projecte = None
         self.dirty = False
+        # Assistent «Anàlisi guiat»: estat buit fins al primer clic.
+        self._guia = {}
+        self._guia_fil = None                       # FilGuiaBpm en curs (si n'hi ha)
         self.recents = self._carrega_recents()
         self.wav_original = ""                     # si ve d'un format convertit
         self._info_msg_fins = 0.0                  # missatge transitori info box
@@ -357,6 +401,18 @@ class Finestra(QMainWindow):
         b_obre.setObjectName("secundari")
         b_obre.setToolTip("Obre un àudio: WAV/MP3/FLAC/AIFF… (Ctrl+O)")
         b_obre.clicked.connect(self.tria_wav)
+
+        # botó «Anàlisi guiat»: assistent interactiu per a BPM no constant
+        # (downbeat + finestres de 16 temps); acaba al diàleg d'Analitza.
+        # Disseny i límits de la v1: docs/ANALISI_GUIAT.md
+        self.b_guia = QPushButton("Anàlisi guiat")
+        self.b_guia.setObjectName("secundari")
+        self.b_guia.setToolTip(
+            "Anàlisi guiat: assistent per a cançons amb BPM no constant "
+            "(downbeat + finestres de 16 temps). En acabar obre l'anàlisi "
+            "d'acords. Vegeu docs/ANALISI_GUIAT.md")
+        self.b_guia.setEnabled(False)          # fins que hi hagi WAV
+        self.b_guia.clicked.connect(self._analisi_guitat)
 
         # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
         #    (abans era un QGroupBox «2 · Temps i paràmetres»)
@@ -428,7 +484,9 @@ class Finestra(QMainWindow):
         self.b_offset_cursor.setIcon(icones.ico("map-pin"))
         self.b_offset_cursor.setObjectName("secundari")
         self.b_offset_cursor.setToolTip(
-            "Posa l'offset a la posició del cursor vermell (compàs 1 aquí)")
+            "Compàs 1 al cursor: posa l'offset, TALLA el carril de tempo "
+            "aquí i fa començar el clip de tempo en aquesta posició "
+            "(es mostra en segons i en compàs.beat)")
         self.b_offset_cursor.clicked.connect(self._marca_compas_1)
         hp.addWidget(self.b_offset_cursor)
         self.b_compas_auto = QPushButton()
@@ -499,6 +557,7 @@ class Finestra(QMainWindow):
         barra.setObjectName("barra_principal")
         barra.setMovable(False)
         barra.addWidget(b_obre)
+        barra.addWidget(self.b_guia)
         barra.addSeparator()
         barra.addWidget(self.b_mode_bpm)
         barra.addWidget(self.b_mode_lliure)
@@ -1140,6 +1199,253 @@ class Finestra(QMainWindow):
         self.tempo_fix.setChecked(bool(bpm_compas))
         self._actualitza_metro_ui()
 
+    def _analisi_guitat(self):
+        """«Anàlisi guiat»: analitzar amb passos interactius, usuari al mig.
+
+        Disseny complet a `docs/ANALISI_GUIAT.md` (implementació v1 del
+        2026-10-20). Pas 1: l'usuari posa el cursor al downbeat → offset +
+        tall lliure del carril de tempo al cursor. Pas 2: bucle de finestres
+        de 16 temps — es detecta el BPM del tram en un fil (`FilGuiaBpm`), el
+        diàleg el deixa confirmar (Enter), doblar (×2) o partir (÷2), i cada
+        tram confirmat s'aplica amb UN pas de desfer. Al final es fusionen
+        els trams iguals i s'obre el diàleg d'anàlisi d'acords.
+        """
+        wav = self.wav_edit.text().strip()
+        if not wav or not os.path.isfile(wav):
+            self.avisa("Anàlisi guiat", "Primer tria una WAV.")
+            return
+        feina = getattr(self, "feina", None)
+        if feina is not None and feina.isRunning():
+            self.avisa("Anàlisi guiat",
+                       "Hi ha una anàlisi en curs. Espera que acabi.")
+            return
+        if getattr(self, "_guia", None):
+            # ja hi ha un guiat obert: un segon clic no ha de reiniciar-lo
+            # (perdria els diàlegs oberts i l'estat del bucle)
+            self.registra("Anàlisi guiat: ja hi ha un guiat en curs.")
+            return
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        self._atura_si_sona("anàlisi guiat")
+        self._guia = {"n": 0}
+        # Pas 1 · mode lliure + sense snap: el cursor ha de caure on toca,
+        # sobre cops secs quan hi arribem, no a la graella vella.
+        self.b_mode_lliure.setChecked(True)
+        self._canvia_mode_temps(False)
+        self.tb_snap.setChecked(False)
+        self._canvia_snap()
+        dlg1 = dialegs.DialegGuiaDownbeat(self)
+        dlg1.accepted.connect(self._guia_pas1_fet)
+        dlg1.rejected.connect(self._guia_cancel)
+        self._guia["dlg1"] = dlg1
+        self.registra("Anàlisi guiat · pas 1: posa el cursor al primer "
+                      "downbeat (compàs 1) i prem Enter al diàleg.")
+        dlg1.show()
+
+    def _guia_tanca_dlg2(self):
+        dlg = self._guia.pop("dlg2", None)
+        if dlg is not None:
+            dlg.deleteLater()
+
+    def _guia_pas1_fet(self):
+        """Downbeat marcat: offset al cursor + tall lliure del carril de tempo."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self._guia_cancel()
+            return
+        self._guia_tanca_dlg1()
+        t0 = float(vr.pos)
+        durada = vr._durada_wav()
+        if t0 >= durada - 1e-3:
+            self.avisa("Anàlisi guiat",
+                       "El cursor és (gairebé) al final de la WAV: no hi "
+                       "cap un tram de música a analitzar-hi.")
+            self._guia_cancel()
+            return
+        # Compàs 1 al cursor + tall lliure del carril de tempo (un sol
+        # desfer: el backend és permissiu, encara no hi ha compassos enters).
+        res = self._talla_i_offset(t0)
+        if res is None:
+            self._guia_cancel()
+            return
+        self.registra(f"Anàlisi guiat · compàs 1 a {t0:.3f}s: offset + tall "
+                      f"del carril de tempo (clip {res[1]}).")
+        self._guia["durada"] = durada
+        self._guia["n"] = 0
+        # Tornem al mode BPM·compàs amb snap a negra (decisió del disseny,
+        # pas 4): el bucle treballa amb el mapa, no amb el cursor lliure.
+        self._guia_restaurar_ui()
+        self._guia_fenestra()
+
+    def _guia_restaurar_ui(self):
+        """Mode BPM·compàs + snap a negra (decisió del disseny del guiat)."""
+        self.b_mode_bpm.setChecked(True)
+        self._canvia_mode_temps(True)
+        self.tb_snap.setChecked(True)
+        idx = self.cb_graella.findData("negra")
+        if idx >= 0:
+            self.cb_graella.setCurrentIndex(idx)   # dispara _canvia_snap
+
+    def _guia_tanca_dlg1(self):
+        dlg = self._guia.pop("dlg1", None)
+        if dlg is not None:
+            dlg.deleteLater()
+
+    def _guia_fenestra(self):
+        """Obra la finestra de detecció següent (bucle del pas 2)."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self._guia_cancel()
+            return
+        durada = self._guia["durada"]
+        trams = list(vr.tempo_trams or [])
+        if not trams:
+            trams = [(0.0, durada, 120.0, 4, 4)]
+        ultim = trams[-1]
+        t_k = float(ultim[0])
+        num, den = int(ultim[3]), int(ultim[4])
+        if t_k >= durada - 1e-6:
+            self._guia_final()
+            return
+        bpm_prev = float(ultim[2])
+        # Finestra ≈ 16 temps: la 1a és llarga (encara no sabem res, ~14 s
+        # a 70 BPM); les següents ja fan servir el BPM confirmat.
+        window_s = (16.0 * 60.0 / 70.0 if self._guia["n"] == 0
+                    else 16.0 * 60.0 / max(20.0, bpm_prev))
+        fi = min(t_k + window_s, durada)
+        # Detecció: si hi ha loop A–B, només se'n fa servir el tros que cau
+        # dins la finestra (el tram a aplicar continua sent de `m` compassos
+        # des de t_k; el loop només acota ON es mesura el BPM).
+        det_ini, det_fi, nota = t_k, fi, ""
+        loop = self._loop_actiu(minim=1.5)
+        if loop is not None:
+            i0, i1 = max(loop[0], t_k), min(loop[1], fi)
+            if i1 - i0 >= 1.5:
+                det_ini, det_fi = i0, i1
+                nota = (f"detecció només de la selecció A–B: "
+                        f"{i0:.3f}–{i1:.3f}s")
+        self._guia["t_k"] = t_k
+        self._guia["num"] = num
+        self._guia["den"] = den
+        try:
+            lbl = vr.tempo_map.label(t_k).split(".")[0]
+        except Exception:  # noqa: BLE001
+            lbl = ""
+        n = self._guia["n"] + 1
+        self._guia["n"] = n
+        self._guia_tanca_dlg2()
+        dlg = dialegs.DialegGuiaBpm(self, n, t_k, fi, lbl, nota=nota)
+        dlg.accepted.connect(lambda d=dlg: self._guia_fenestra_aplica(d))
+        dlg.rejected.connect(self._guia_cancel)
+        self._guia["dlg2"] = dlg
+        b = self.opcions.get("bpm", {})
+        wav = self.wav_edit.text().strip()
+        fil = FilGuiaBpm(wav, det_ini, det_fi,
+                         bpm_min=b.get("min"), bpm_max=b.get("max"),
+                         preferit=(b.get("pref_min"), b.get("pref_max")),
+                         parent=self)
+        fil.feta.connect(self._guia_bpm_ditectat)
+        fil.missatge.connect(self.registra)   # log del fil → GUI (queued)
+        fil.finished.connect(
+            lambda: (setattr(self, "_guia_fil", None), fil.deleteLater()))
+        self._guia_fil = fil
+        fil.start()
+        self.registra(f"Anàlisi guiat · tram {n}: detectant el BPM de "
+                      f"{det_ini:.3f}s a {det_fi:.3f}s…"
+                      + (f" ({nota})" if nota else ""))
+        dlg.show()
+
+    def _guia_bpm_ditectat(self, bpm):
+        """El fil ha acabat: omple el camp del diàleg (o el deixa editar)."""
+        dlg = self._guia.get("dlg2")
+        if dlg is None:            # el guiat s'ha cancel·lat mentrestant
+            return
+        if bpm is None:
+            dlg.mostra_bpm(None)
+        else:
+            dlg.mostra_bpm(float(bpm))
+        self.registra(f"Anàlisi guiat · tram {self._guia['n']}: BPM "
+                      f"{float(bpm):.2f} — revisa'l i prem Enter."
+                      if bpm is not None else
+                      f"Anàlisi guiat · tram {self._guia['n']}: la detecció "
+                      "ha fallat; escriu el BPM a mà o cancel·la.")
+
+    def _guia_fenestra_aplica(self, dlg=None):
+        """Enter al diàleg: aplica el tram confirmat i segueix el bucle."""
+        if dlg is None:
+            dlg = self.sender()
+        bpm = None
+        try:
+            if dlg is not None:
+                bpm = dlg.valors()
+        except Exception:  # noqa: BLE001
+            bpm = None
+        self._guia_tanca_dlg2()
+        if bpm is None:
+            self.avisa("Anàlisi guiat", "El BPM del camp no és vàlid.")
+            self._guia["n"] -= 1        # re-numera: és el mateix tram
+            self._guia_fenestra()       # reobri la mateixa finestra
+            return
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self._guia_cancel()
+            return
+        durada = self._guia["durada"]
+        res = tempo_map.trams_finestra_guia(
+            vr.tempo_trams, self._guia["t_k"], bpm,
+            self._guia["num"], self._guia["den"], durada)
+        if res is None:
+            self._guia_final()
+            return
+        nous, t_seg, m = res
+        vr._undo_marca()
+        vr.aplica_tempo_trams(nous)
+        vr._undo_commit()
+        self.registra(f"Anàlisi guiat · tram {self._guia['n']}: BPM "
+                      f"{bpm:.2f} aplicat ({m} compàsos, fins a "
+                      f"{t_seg:.3f}s).")
+        if t_seg >= durada - 1e-6:
+            self._guia_final()
+            return
+        # NO incrementem `n` ací: `_guia_fenestra` ja hi assigna el número
+        # de la finestra següent (si sumàvem als dos llocs, la numeració
+        # saltava 1, 3, 5… — bug del 20-10).
+        self._guia_fenestra()
+
+    def _guia_final(self):
+        """Fusiona els trams iguals, restaura la UI i obre l'anàlisi d'acords."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            durada = vr._durada_wav()
+            nous = tempo_map.fusiona_trams_iguals(list(vr.tempo_trams or []),
+                                                  durada)
+            vr._undo_marca()
+            vr.aplica_tempo_trams(nous)
+            vr._undo_commit()
+        n = self._guia.get("n", 0)
+        self._guia_netega()
+        # Tornem al mode BPM·compàs amb snap a negra (ja hi som des del pas 4;
+        # restaurem igualment per si de cas).
+        self._guia_restaurar_ui()
+        self.registra(f"Anàlisi guiat · mapa de tempo complet ({n} trams "
+                      "confirmats). Ara obro el diàleg d'anàlisi d'acords.")
+        self.executa()
+
+    def _guia_cancel(self):
+        """Cancel·la el guiat: restaura el mode BPM + snap i tanca dialegs."""
+        self._guia_netega()
+        self._guia_restaurar_ui()
+        self.registra("Anàlisi guiat cancel·lat (els trams ja aplicats es "
+                      "desfan amb Ctrl+Z).")
+
+    def _guia_netega(self):
+        """Tanca els diàlegs del guiat i allibera l'estat."""
+        if getattr(self, "_guia", None):
+            self._guia_tanca_dlg1()
+            self._guia_tanca_dlg2()
+        self._guia = {}
+
     def _detecta_bpm(self, pregunta=True):
         """Obre el dialeg d'opcions de BPM i detecta (l'usuari pot editar-lo)."""
         wav = self.wav_edit.text().strip()
@@ -1160,12 +1466,24 @@ class Finestra(QMainWindow):
         te_tempo = (kind == "tempo" and vr is not None
                     and 0 <= idx < len(vr.tempo_trams or []))
         tr = vr.tempo_trams[idx] if te_tempo else None
+        # Selecció A–B: si hi ha loop marcat, el BPM surt NOMÉS d'eixe rang
+        # (mana sobre el tram seleccionat i sobre el tema sencer).
+        loop = self._loop_actiu()
         self._atura_si_sona("deteccio de BPM")
-        self.registra("Detectant el BPM…" if not te_tempo
-                      else f"Detectant el BPM del tram {idx}…")
+        if loop is not None:
+            self.registra(f"Detectant el BPM de la selecció A–B "
+                          f"({loop[0]:.3f}–{loop[1]:.3f}s)…")
+        else:
+            self.registra("Detectant el BPM…" if not te_tempo
+                          else f"Detectant el BPM del tram {idx}…")
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
-            if te_tempo:
+            if loop is not None:
+                bpm = pipeline.detecta_bpm_tram(
+                    wav, loop[0], loop[1], self.registra,
+                    bpm_min=b.get("min"), bpm_max=b.get("max"),
+                    preferit=(b.get("pref_min"), b.get("pref_max")))
+            elif te_tempo:
                 bpm = pipeline.detecta_bpm_tram(
                     wav, float(tr[0]), float(tr[1]), self.registra,
                     bpm_min=b.get("min"), bpm_max=b.get("max"),
@@ -1839,18 +2157,86 @@ class Finestra(QMainWindow):
                       f"({len(self._taps)} taps)")
         self._tap_timer.start()
 
-    def _marca_compas_1(self):
-        """Posa l'offset a la posició del cursor: la graella hi comença.
+    def _loop_actiu(self, minim=1.0):
+        """Rang A–B del visor si serveix com a selecció, o `None`.
 
-        Aixi el regle, el metrònom i l'export queden alineats amb la música.
+        Basta que A i B estiguen marcats: **no cal** que el loop estiga
+        sonant (es pot detectar amb el transport parat). `minim` descarta
+        rangs massa curts per a un BPM fiable.
         """
         vr = getattr(self, "visor_ref", None)
         if vr is None:
+            return None
+        a = getattr(vr, "loop_a", None)
+        b = getattr(vr, "loop_b", None)
+        if a is None or b is None:
+            return None
+        a, b = sorted((float(a), float(b)))
+        if b - a < float(minim):
+            return None
+        return (max(0.0, a), b)
+
+    def _talla_i_offset(self, t):
+        """Offset del compàs 1 al cursor + tall del carril de tempo (1 desfer).
+
+        El **clip de tempo** nou (si el cursor no era ja una frontera) arrenca
+        exactament a `t`. Retorna `(trams, idx)` amb l'índex del clip que
+        comença a `t`, o `None` si no hi ha visor.
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return None
+        durada = vr._durada_wav()
+        t = max(0.0, min(float(t), durada))
+        nous = tempo_map.parteix_trams_a(list(vr.tempo_trams or []), t, durada)
+        vr._undo_marca()
+        vr.offset = t
+        vr.aplica_tempo_trams(nous)
+        vr._undo_commit()
+        self._sincronitza_temps_del_visor()
+        self.offset_cb.setText(self._secs_a_cb(t))
+        idx = next((i for i, s in enumerate(nous)
+                    if abs(float(s[0]) - t) <= 1e-6), 0)
+        return (nous, idx)
+
+    def _marca_compas_1(self):
+        """Compàs 1 al cursor: offset + tall + inici del clip de tempo.
+
+        Un sol pas de desfer fa les tres coses (si el cursor ja era una
+        frontera del mapa no hi ha tall: només canvia l'offset). El clip de
+        tempo que arrenca al cursor es mostra en **segons** i en
+        **compàs.beat** (la graella original, abans de moure l'offset), i es
+        deixa seleccionat perquè els camps BPM/compàs l'editen.
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa("Compàs 1", "Primer obri un àudio.")
             return
-        off = float(vr.pos)
-        self.offset.setText(f"{off:.3f}")
-        self._aplica_parametres_temps()      # propaga + actualitza el camp cb
-        self.registra(f"Compàs 1 marcat a {off:.3f}s")
+        t = float(vr.pos)
+        durada = vr._durada_wav()
+        if t >= durada - 1e-3:
+            self.avisa("Compàs 1",
+                       "El cursor és al final de la WAV: no hi ha res a "
+                       "alinear-hi.")
+            return
+        cb_original = self._secs_a_cb(t)     # ABANS de moure l'offset
+        res = self._talla_i_offset(t)
+        if res is None:
+            return
+        _nous, idx = res
+        try:
+            vr.timeline.selecciona("tempo", idx)
+        except Exception:  # noqa: BLE001
+            pass
+        self.registra(f"Compàs 1 a {t:.3f}s · clip de tempo {idx} des de "
+                      f"{t:.3f}s = compàs 1.1 (graella original "
+                      f"{cb_original})")
+        if len(res[0]) > 2:
+            # El tall és LLIURE (no busca línia de compàs): amb trams
+            # interiors, les fronteres poden quedar fora de compàs.
+            self.registra("Atenció: el mapa té trams interiors — comprova "
+                          "que les fronteres caiguen en línia de compàs "
+                          "(o passa l'Anàlisi guiat).")
 
     def _detecta_compas1(self):
         """Detecta el compàs 1 (primer downbeat) i hi posa l'offset.
@@ -1971,6 +2357,7 @@ class Finestra(QMainWindow):
             self.logger.warning("No s'ha pogut carregar la WAV: %s", wav)
             self.visor_ref = None
             self.b_exec.setEnabled(False)
+            self.b_guia.setEnabled(False)
             self._mostra_placeholder_visor()
             return
         try:
@@ -2047,6 +2434,7 @@ class Finestra(QMainWindow):
             self._stack.setCurrentWidget(self.visor_widget)
             self.visor_widget.show()
             self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
+            self.b_guia.setEnabled(True)     # (el guiat també hi pot treballar)
             # Si el visor ja porta MODEL (projecte obert, o anàlisi feta), les
             # exportacions també han d'estar disponibles. Abans només
             # s'activaven al final d'una ANÀLISI → OBRIR UN PROJECTE deixava
@@ -2894,6 +3282,7 @@ class Finestra(QMainWindow):
         self.barra.setValue(0)
         self.registra(f"Sortida: {self.sortida}")
         self.b_exec.setEnabled(False)
+        self.b_guia.setEnabled(False)        # res de guiat mentre s'analitza
         self.b_export.setEnabled(False)
         self.b_export_part.setEnabled(False)
         self.feina = Feina(wav, self.sortida, self._bpm_val(),
@@ -2908,6 +3297,7 @@ class Finestra(QMainWindow):
 
     def acabada(self, be, dada):
         self.b_exec.setEnabled(True)
+        self.b_guia.setEnabled(True)
         if be:
             self.b_export.setEnabled(True)
             self.b_export_part.setEnabled(True)
@@ -3197,6 +3587,16 @@ class Finestra(QMainWindow):
         if not self._pot_descartar():
             ev.ignore()
             return
+        # Assistent «Anàlisi guiat»: tanca dialegs modeless i espera el fil
+        # de detecció (si és en curs) per no destruir Qt amb fils vius.
+        if self._guia or getattr(self, "_guia_fil", None) is not None:
+            self._guia_cancel()
+            gf = getattr(self, "_guia_fil", None)
+            try:
+                if gf is not None and gf.isRunning():
+                    gf.wait(10000)
+            except RuntimeError:
+                pass
         self._tanca_sessio_tap()
         fe = getattr(self, "feina_export", None)
         try:

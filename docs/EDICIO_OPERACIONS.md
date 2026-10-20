@@ -48,6 +48,12 @@
 > si no es pot, es rebutja. Crear/moure/partir una frontera s'imanta a la línia
 > de compàs més pròxima. Contracte complet: `docs/REGLES_TEMPS_GRID.md`.
 >
+> **Clic a un tram de tempo (2026-10-20, paritat #11)**: el clic **selecciona**
+> el tram i posa el cursor **exactament al seu inici** (sense snap: les
+> fronteres del mapa poden ser lliures, p. ex. el tall de «compàs 1 al
+> cursor»). Igual que els clips d'acords/seccions ④⑤; arrossegar una vora
+> **no** mou el cursor.
+>
 > **Detecció per tram (2026-10-20)**: amb un tram de tempo seleccionat, el
 > botó **Detecta** analitza només l'àudio d'eixe tram i aplica el BPM
 > directament (una sola operació de desfer); el seu inici és el downbeat.
@@ -100,6 +106,7 @@
 | 11 | **Moure una marca** (fi = inici del següent) | — | ✓ | ✓ | ✓ | **FET** (camí de la vora) |
 | 12 | **Nudge** (moure una frontera) | `←` / `→` · `Alt+←`/`→` (vora dreta) | ✓ | ✓ | ✓ | **FET** (`←`/`→` mou la frontera del tram; `Alt` la de la dreta) |
 | 13 | **Redimensionar (vores lliures)** | arrossegar la **vora** del clip | ✓ | ✓ | ✓ | **FET**: nucli únic (`redimensiona_clips` + `redimensiona_acord`/`redimensiona_seccio`) i el gest del visor hi enganxat · vores **LLIURES** (§6.6): estirar talla/elimina el veí |
+| 13b | **Retallar a la selecció A–B** | menú contextual dels **3** carrils ▸ *Retalla a la selecció A–B (A–Bs)* | ✓ | ✓ | ✓ | **FET** (20-10-2026): el clip passa a ocupar **exactament `[A, B]`** — es mou la frontera d'inici a **A** i la de fi a **B**; els veïns s'ajusten sols (cadena de fronteres) i tot va en **una sola operació d'undo**. Vores clavades per la regla #4: al **primer** clip l'inici no es mou (0) i a l'**últim** el final no es mou (durada). Surt **desactivat** sense loop; si el clip no toca l'A–B, o el backend ho rebutja (a ③ tota frontera interior ha de caure en **línia de compàs**), no toca res i avisa |
 | 14 | **Duplicar** | `Ctrl+D` · *Duplica* del menú contextual de les 3 pistes | ✓ | ✓ | ✓ | **FET**: nucli únic `duplica_bloc_clips` (§2: la còpia va DESPRÉS i sobreescriu el tram, §6.3). Cal que la còpia **sencera** hi capça després; si no, no es fa res i s'avisa (la cançó no pot créixer) |
 | 15 | **Duplicar arrossegant** | — | — | — | — | **RETIRAT** (2026-10-19). Es duplica amb `Ctrl+D` (#14) o copiar/enganxar (#16); `Ctrl+Shift` queda per a l'eina de selecció temporal |
 | 16 | **Copiar / Retallar / Enganxar** | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` (`Ctrl+Alt+V` = sense snap) | ✓ | ✓ | ✓ | **FET** (sobreescriu el tram; als trams obre les fronteres i hi canvia el BPM/compàs) |

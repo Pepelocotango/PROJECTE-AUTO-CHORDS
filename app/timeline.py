@@ -294,6 +294,7 @@ class TimelineView(QGraphicsView):
                                       self._view_right, LANE_TEMPO_TOP)
         self._scene.addItem(self._tempo_lane)
         self._tempo_lane.tramSelected.connect(self._on_tempo_selected)
+        self._tempo_lane.tramCursorRequested.connect(self._on_tempo_cursor)
         self._tempo_lane.tramClicked.connect(self.tempoEditRequested.emit)
         self._tempo_lane.tramMoved.connect(self._on_tempo_moved)
         self._tempo_lane.menuRequested.connect(self.tempoMenuRequested.emit)
@@ -827,6 +828,15 @@ class TimelineView(QGraphicsView):
         mode = ("toggle" if QApplication.keyboardModifiers() & Qt.ControlModifier
                 else "set")
         self.selecciona("tempo", idx, mode)
+
+    def _on_tempo_cursor(self, t: float) -> None:
+        """Clic a un bloc de BPM/compàs → cursor al SEU INICI (paritat #11).
+
+        Sense snap: les fronteres del mapa poden ser **lliures** (tall al
+        cursor) i el cursor ha de caure exactament a l'inici del clip, no a
+        la línia de graella més pròxima.
+        """
+        self.set_position(float(t), emit=True, snap=False)
 
     def _on_tempo_moved(self, idx: int, vora: str, t: float) -> None:
         """El layer ha mogut una frontera: marca el gest i propaga el canvi."""

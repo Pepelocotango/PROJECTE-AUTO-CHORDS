@@ -452,6 +452,108 @@ class TestExportsMapa(unittest.TestCase):
                 pipeline.pos_compas(t, 120, 4, False, 0.0))
 
 
+class TestGuia(unittest.TestCase):
+    """Anàlisi guiat: el tall lliure del carril i les finestres de 16 temps.
+
+    Disseny: `docs/ANALISI_GUIAT.md`. Cada resultat ha de passar el contracte
+    de compassos enters (`valida_i_normalitza_compassos`) amb l'offset del
+    compàs 1, que és com el consumirà l'app.
+    """
+
+    DURADA = 30.0
+
+    def test_parteix_al_mig_mateixos_valors(self):
+        p = tm.parteix_trams_a([(0.0, 10.0, 120.0, 4, 4)], 2.5, 10.0)
+        self.assertEqual([(s[0], s[1], s[2], s[3], s[4]) for s in p],
+                         [(0.0, 2.5, 120.0, 4, 4), (2.5, 10.0, 120.0, 4, 4)])
+
+    def test_parteix_damunt_frontera_no_duplica(self):
+        p = tm.parteix_trams_a([(0.0, 5.0, 120.0, 4, 4), (5.0, 10.0, 90.0, 4, 4)],
+                               5.0, 10.0)
+        self.assertEqual([(s[0], s[1], s[2]) for s in p],
+                         [(0.0, 5.0, 120.0), (5.0, 10.0, 90.0)])
+
+    def test_parteix_fora_rang_no_canvia_res(self):
+        base = [(0.0, 10.0, 120.0, 4, 4)]
+        for t in (0.0, -1.0, 10.0, 12.0):
+            self.assertEqual(tm.parteix_trams_a(base, t, 10.0), base)
+
+    def test_finestra_44(self):
+        p = tm.parteix_trams_a([(0.0, self.DURADA, 120.0, 4, 4)], 2.5,
+                               self.DURADA)
+        nous, t_seg, m = tm.trams_finestra_guia(p, 2.5, 100.0, 4, 4,
+                                                self.DURADA)
+        # bar(100, 4/4) = 2.4s; 16 temps = 9.6s → m = 4 compàsos exactes
+        self.assertEqual(m, 4)
+        self.assertAlmostEqual(t_seg, 12.1, places=6)
+        self.assertEqual([(s[0], s[1], s[2], s[3], s[4]) for s in nous],
+                         [(0.0, 2.5, 120.0, 4, 4),
+                          (2.5, 12.1, 100.0, 4, 4),
+                          (12.1, 30.0, 100.0, 4, 4)])
+        v = tm.valida_i_normalitza_compassos(nous, self.DURADA, offset=2.5)
+        self.assertEqual(len(v), 3)
+
+    def test_finestra_34_m_five(self):
+        p = tm.parteix_trams_a([(0.0, self.DURADA, 120.0, 4, 4)], 1.0,
+                               self.DURADA)
+        _, t_seg, m = tm.trams_finestra_guia(p, 1.0, 120.0, 3, 4,
+                                             self.DURADA)
+        # bar(120, 3/4) = 1.5s; 16 temps = 8.0s → m = round(5.333) = 5
+        self.assertEqual(m, 5)
+        self.assertAlmostEqual(t_seg, 1.0 + 5 * 1.5, places=6)
+        _, t_seg, m = tm.trams_finestra_guia(p, 1.0, 120.0, 3, 4,
+                                             self.DURADA)
+        nous2, _, _ = tm.trams_finestra_guia(p, 1.0, 120.0, 3, 4,
+                                             self.DURADA)
+        v = tm.valida_i_normalitza_compassos(nous2, self.DURADA, offset=1.0)
+        self.assertTrue(len(v) >= 3)
+
+    def test_finestra_ultima_absorbeix(self):
+        """Si la finestra sobrepassa la fi de la WAV, un sol tram etern."""
+        p = tm.parteix_trams_a([(0.0, self.DURADA, 120.0, 4, 4)], 2.5,
+                               self.DURADA)
+        trams = p
+        for t in (2.5, 12.1, 21.7):
+            r = tm.trams_finestra_guia(trams, t, 100.0, 4, 4, self.DURADA)
+            trams, t_seg, m = r
+        self.assertAlmostEqual(t_seg, 21.7 + 9.6, places=6)  # 31.3 > 30
+        # però la durada es retalla: l'últim tram acaba a durada
+        self.assertAlmostEqual(trams[-1][1], self.DURADA, places=6)
+        v = tm.valida_i_normalitza_compassos(trams, self.DURADA, offset=2.5)
+        self.assertAlmostEqual(v[-1][1], self.DURADA, places=6)
+
+    def test_finestra_invalida_retorna_none(self):
+        p = tm.parteix_trams_a([(0.0, self.DURADA, 120.0, 4, 4)], 2.5,
+                               self.DURADA)
+        self.assertIsNone(tm.trams_finestra_guia(p, self.DURADA, 100.0, 4, 4,
+                                                 self.DURADA))
+        self.assertIsNone(tm.trams_finestra_guia(p, 2.5, 0.0, 4, 4,
+                                                 self.DURADA))
+
+    def test_bucle_complet_valida(self):
+        """Simulació de 4 finestres com les faria l'app: sempre vàlid."""
+        trams = tm.parteix_trams_a([(0.0, self.DURADA, 120.0, 4, 4)], 2.5,
+                                   self.DURADA)
+        off = 2.5
+        confirmats = 0
+        for bpm in (94.0, 58.0, 122.0, 94.0):
+            r = tm.trams_finestra_guia(trams, float(trams[-1][0]), bpm,
+                                       4, 4, self.DURADA)
+            self.assertIsNotNone(r)
+            trams, t_seg, m = r
+            self.assertGreaterEqual(m, 1)
+            v = tm.valida_i_normalitza_compassos(trams, self.DURADA,
+                                                 offset=off)
+            self.assertAlmostEqual(v[-1][1], self.DURADA, places=6)
+            confirmats += 1
+            if t_seg >= self.DURADA - 1e-6:
+                break                   # última finestra: l'app s'atura aquí
+        # al final: fusiona els iguals (cap adjacent d'iguals en aquest cas)
+        fm = tm.fusiona_trams_iguals(trams, self.DURADA)
+        v = tm.valida_i_normalitza_compassos(fm, self.DURADA, offset=off)
+        self.assertEqual(len(v), 1 + confirmats)   # pre-música + confirmats
+
+
 class TestInferencia(unittest.TestCase):
     """Fase 5c: `infereix_trams_beat` (mapa a partir dels temps detectats)."""
 

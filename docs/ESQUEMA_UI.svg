@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 719 1032.5" width="719" height="1032.5" font-family="ui-monospace,Consolas,monospace">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 804 1032.5" width="804" height="1032.5" font-family="ui-monospace,Consolas,monospace">
   <title>ESQUEMA VISUAL DE LA INTERFÍCIE — PROJECTE AUTO CHORDS</title>
-  <rect width="719" height="1032.5" fill="#15181d"/>
+  <rect width="804" height="1032.5" fill="#15181d"/>
   <text x="18" y="26" fill="#e8edf5" font-size="15" font-weight="700" font-family="system-ui,sans-serif">ESQUEMA VISUAL DE LA INTERFÍCIE — PROJECTE AUTO CHORDS</text>
   <text x="18" y="43" fill="#9aa6b8" font-size="11" font-family="system-ui,sans-serif">Font única: docs/ESQUEMA_UI.md · generat (no editar a mà)</text>
   <text x="18" y="54" fill="#7db1f5" font-size="12" font-weight="700" font-family="system-ui,sans-serif">0. Finestra principal (Finestra, app/main.py)</text>
-  <rect x="12" y="66" width="695" height="318.5" rx="7" fill="#0f1218" stroke="#3a4150"/>
+  <rect x="12" y="66" width="780" height="318.5" rx="7" fill="#0f1218" stroke="#3a4150"/>
   <text x="18" y="84.0" fill="#cdd6e4" font-size="12" xml:space="preserve">┌────────────────────────────────────────────────────────────────────────────┐</text>
   <text x="18" y="98.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú</text>
   <text x="18" y="113.0" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────────┤</text>
-  <text x="18" y="127.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│ [Obre àudio] [BPM·compàs][Lliure] BPM:[101][×2][÷2] ◎Detecta TAP Compàs:[4]     │  ← BARRA 1a</text>
+  <text x="18" y="127.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│ [Obre àudio][Anàlisi guiat][BPM·compàs][Lliure] BPM:[101][×2][÷2] ◎Detecta TAP Compàs:[4]     │  ← BARRA 1a</text>
   <text x="18" y="142.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│   Offset:[0.0] 📍 🧭 ≈[1.1]                                                 │     (treball)</text>
   <text x="18" y="156.5" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────────┤</text>
   <text x="18" y="171.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│ [Analitza] [Exporta WAV&#x27;s] [Exporta partitura]                              │  ← BARRA 1b</text>
@@ -28,7 +28,7 @@
   <text x="18" y="359.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│ 223.4 s · 2 canals · 44100 Hz                              [▓▓▓▓░░] progrés  │  ← BARRA D&#x27;ESTAT</text>
   <text x="18" y="374.0" fill="#cdd6e4" font-size="12" xml:space="preserve">└────────────────────────────────────────────────────────────────────────────┘</text>
   <text x="18" y="410.5" fill="#7db1f5" font-size="12" font-weight="700" font-family="system-ui,sans-serif">1. Visor (Visor, app/visor.py) — widget central</text>
-  <rect x="12" y="422.5" width="695" height="594.0" rx="7" fill="#0f1218" stroke="#3a4150"/>
+  <rect x="12" y="422.5" width="780" height="594.0" rx="7" fill="#0f1218" stroke="#3a4150"/>
   <text x="18" y="440.5" fill="#cdd6e4" font-size="12" xml:space="preserve">┌────────────────────────────────────────────────────────────────────────┐</text>
   <text x="18" y="455.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ①  REGLE DE TEMPS        (RulerLayer)      y 0–26    · 26 px          │</text>
   <text x="18" y="469.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│      etiquetes compàs.beat (o gt; amb offset, abans del compàs 1 són   │</text>

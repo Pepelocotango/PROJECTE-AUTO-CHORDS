@@ -1954,6 +1954,26 @@ class EsquemaUiDocTests(unittest.TestCase):
         self.assertLess(transport.index("Quantitza"), transport.index("Snap"))
         self.assertIsNotNone(getattr(self.w, "b_quantitza", None))
 
+    def test_boto_analisi_guitat_muntat(self):
+        """«Anàlisi guiat» viu a Treball, entre «Obre àudio» i el mode BPM."""
+        texts = [b.text()
+                 for b in self.w.barra_principal.findChildren(QPushButton)]
+        self.assertIn("Obre àudio", texts)
+        self.assertIn("Anàlisi guiat", texts)
+        self.assertIn("BPM · compàs", texts)
+        self.assertLess(texts.index("Obre àudio"),
+                        texts.index("Anàlisi guiat"))
+        self.assertLess(texts.index("Anàlisi guiat"),
+                        texts.index("BPM · compàs"))
+        # sense àudio carregat: desactivat; el clic avisa (cap avaluació
+        # d'excepcions) i l'estat del guiat queda buit
+        self.assertIsNotNone(getattr(self.w, "b_guia", None))
+        self.assertFalse(self.w.b_guia.isEnabled())
+        with patch.object(self.w, "avisa") as mock:
+            self.w.b_guia.clicked.emit()     # no ha de petar (cap WAV)
+        self.assertEqual(mock.call_count, 1)
+        self.assertEqual(self.w._guia, {})
+
     def test_accions_de_menu_documentades(self):
         """Cada acció real de menú ha d'aparèixer a la doc."""
         faltes = []
@@ -3184,6 +3204,226 @@ class TestTempoLayerBotoDret(_timeline_layers___Base):
         capa.mousePressEvent(_Ev(-500.0, Qt.RightButton))
         self.assertEqual(sel, [-1])
 
+class TestRetallaALoop(unittest.TestCase):
+    """«Retalla a la selecció A–B» als TRES carrils (regla d'or #11).
+
+    El model és una cadena de fronteres: el clip seleccionat passa a ocupar
+    exactament [A, B] i els veïns s'ajusten sols. Una sola operació de desfer.
+    """
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+        self.td = tempfile.mkdtemp()
+        self.wav = os.path.join(self.td, "tema.wav")
+        with wave.open(self.wav, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)     # 20 s
+        self.w = Finestra()
+        acproj = os.path.join(self.td, "P1.acproj")
+        with patch.object(QFileDialog, "getOpenFileName",
+                          return_value=(self.wav, "")), \
+                patch.object(QFileDialog, "getSaveFileName",
+                             return_value=(acproj, "")):
+            self.w.tria_wav()
+        self.vr = self.w.visor_ref
+        # model de prova: 3 clips per carril (0–4, 4–8, 8–20)
+        C = pipeline.Clip
+        self.vr.acords = [C(0.0, 4.0, ("C", "0")), C(4.0, 8.0, ("G", "4")),
+                          C(8.0, 20.0, ("Am", "8"))]
+        self.vr.seccions = [(0.0, 4.0, "A", "A"), (4.0, 8.0, "B", "B"),
+                            (8.0, 20.0, "A", "A")]
+        self.vr.tempo_trams = [(0.0, 4.0, 120.0, 4, 4),
+                               (4.0, 8.0, 120.0, 4, 4),
+                               (8.0, 20.0, 120.0, 4, 4)]
+        self.vr._refresca_tempo_map()
+        self.vr.timeline.set_data(self.vr.acords, self.vr.seccions)
+        self.vr._undo_init()          # la base del desfer és el model de prova
+        self.vr._undo_touch_base()
+        self.vr.loop_a, self.vr.loop_b = 2.0, 6.0
+
+    def tearDown(self):
+        self.w.close()
+        shutil.rmtree(self.td, ignore_errors=True)
+
+    def test_acord_a_la_seleccio(self):
+        vr = self.vr
+        self.assertTrue(vr.retalla_a_loop("chord", 1))
+        self.assertAlmostEqual(vr.acords[1].ini, 2.0, places=6)
+        self.assertAlmostEqual(vr.acords[1].fi, 6.0, places=6)
+        self.assertAlmostEqual(vr.acords[0].fi, 2.0, places=6)   # veí escurça
+        self.assertAlmostEqual(vr.acords[2].ini, 6.0, places=6)  # veí s'allarga
+        vr.undo()
+        self.assertAlmostEqual(vr.acords[1].ini, 4.0, places=6)
+        self.assertAlmostEqual(vr.acords[0].fi, 4.0, places=6)
+
+    def test_seccio_a_la_seleccio(self):
+        vr = self.vr
+        self.assertTrue(vr.retalla_a_loop("section", 1))
+        self.assertEqual(tuple(vr.seccions[1][:2]), (2.0, 6.0))
+        self.assertAlmostEqual(vr.seccions[0][1], 2.0, places=6)
+        self.assertAlmostEqual(vr.seccions[2][0], 6.0, places=6)
+        vr.undo()
+        self.assertAlmostEqual(vr.seccions[1][0], 4.0, places=6)
+
+    def test_tram_de_tempo_a_la_seleccio(self):
+        vr = self.vr
+        self.assertTrue(vr.retalla_a_loop("tempo", 1))
+        self.assertAlmostEqual(vr.tempo_trams[1][0], 2.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][1], 6.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][0], 6.0, places=6)
+        vr.undo()
+        self.assertAlmostEqual(vr.tempo_trams[1][0], 4.0, places=6)
+
+    def test_primer_clip_te_la_capcalera_clavada(self):
+        """Regla #4: el clip 0 comença a 0; només es pot ajustar el final."""
+        vr = self.vr
+        self.assertTrue(vr.retalla_a_loop("chord", 0))
+        self.assertAlmostEqual(vr.acords[0].ini, 0.0, places=6)
+        self.assertAlmostEqual(vr.acords[0].fi, 6.0, places=6)
+
+    def test_ultim_clip_te_el_final_clavat(self):
+        """Regla #4: l'últim clip acaba a la durada; només canvia l'inici."""
+        vr = self.vr
+        vr.loop_a, vr.loop_b = 10.0, 14.0
+        self.assertTrue(vr.retalla_a_loop("chord", 2))
+        self.assertAlmostEqual(vr.acords[2].ini, 10.0, places=6)
+        self.assertAlmostEqual(vr.acords[2].fi, 20.0, places=6)
+
+    def test_sense_loop_no_fa_res(self):
+        vr = self.vr
+        vr.loop_a = vr.loop_b = None
+        avisos = []
+        vr.avis_editor = lambda text: avisos.append(text)
+        self.assertFalse(vr.retalla_a_loop("chord", 1))
+        self.assertAlmostEqual(vr.acords[1].ini, 4.0, places=6)
+        self.assertEqual(len(avisos), 1)
+
+    def test_loop_que_no_toca_el_clip(self):
+        vr = self.vr
+        vr.loop_a, vr.loop_b = 10.0, 12.0
+        avisos = []
+        vr.avis_editor = lambda text: avisos.append(text)
+        self.assertFalse(vr.retalla_a_loop("chord", 0))   # 0–4 s vs 10–12 s
+        self.assertAlmostEqual(vr.acords[0].fi, 4.0, places=6)
+        self.assertIn("no toca el loop", avisos[0])
+
+    def test_tempo_rebutja_si_no_cau_en_linia_de_compas(self):
+        vr = self.vr
+        vr.loop_a, vr.loop_b = 3.0, 7.0        # 3 s no és línia de compàs
+        avisos = []
+        vr.avis_editor = lambda text: avisos.append(text)
+        self.assertFalse(vr.retalla_a_loop("tempo", 1))
+        self.assertAlmostEqual(vr.tempo_trams[1][0], 4.0, places=6)
+        self.assertEqual(len(avisos), 1)
+
+    def test_el_despatx_unic_hi_arriba(self):
+        """`executa_edicio` (despatxador únic) encamina l'operació nova."""
+        vr = self.vr
+        self.assertTrue(vr.executa_edicio("retalla_loop", "chord", 1))
+        self.assertAlmostEqual(vr.acords[1].ini, 2.0, places=6)
+
+    def test_el_menu_ho_ofereix_als_tres_carrils(self):
+        vr = self.vr
+        for kind in ("chord", "section", "tempo"):
+            menu = vr._menu_contextual(kind, 1, 0.0)
+            acts = [a for a in menu.actions()
+                    if a.data() == "retalla_loop"]
+            self.assertEqual(len(acts), 1, kind)
+            self.assertTrue(acts[0].isEnabled(), kind)
+            self.assertIn("2.00–6.00s", acts[0].text())
+
+    def test_el_menu_el_desactiva_sense_loop(self):
+        vr = self.vr
+        vr.loop_a = vr.loop_b = None
+        menu = vr._menu_contextual("chord", 1, 0.0)
+        act = next(a for a in menu.actions() if a.data() == "retalla_loop")
+        self.assertFalse(act.isEnabled())
+        self.assertNotIn("s)", act.text())      # sense valors A–B
+
+
+class TestTempoLayerCursorAlClic(_timeline_layers___Base):
+    """Paritat amb els clips: clic a un bloc de ③ → cursor al SEU INICI.
+
+    Abans, clicar un bloc de BPM/compàs només el seleccionava: el cursor es
+    quedava on era i el bloc quedava «seleccionat sense cursor», a diferència
+    dels clips d'acords/seccions (report de l'operador, 20-10-2026).
+    """
+
+    def _capa(self):
+        capa = L.TempoLayer(20, 60.0, 0.0, 0.0, 20.0)
+        capa.set_mapa(tm.TempoMap(TRAMS), True)
+        return capa
+
+    def _clic(self, capa, x):
+        capa.mousePressEvent(_Ev(x, Qt.LeftButton))
+        capa.mouseReleaseEvent(_Ev(x, Qt.LeftButton))
+
+    def test_clic_emet_linici_del_bloc(self):
+        capa = self._capa()
+        destins = []
+        capa.tramCursorRequested.connect(destins.append)
+        self._clic(capa, 450.0)          # cos del tram 1 (5–10 s a 60 px/s)
+        self.assertEqual(destins, [5.0])
+
+    def test_clic_al_primer_bloc_dona_zero(self):
+        capa = self._capa()
+        destins = []
+        capa.tramCursorRequested.connect(destins.append)
+        self._clic(capa, 60.0)           # dins del tram 0 (0–5 s)
+        self.assertEqual(destins, [0.0])
+
+    def test_arrossegar_no_mou_el_cursor(self):
+        """Si hi ha arrossegada (canvi de frontera), NO s'ha de moure el cursor."""
+        capa = self._capa()
+        destins = []
+        capa.tramCursorRequested.connect(destins.append)
+        capa.mousePressEvent(_Ev(300.0, Qt.LeftButton))   # vora ini del tram 1
+        capa._t_guia = 4.6                                # simulació d'arrossegada
+        capa.mouseReleaseEvent(_Ev(276.0, Qt.LeftButton))
+        self.assertEqual(destins, [])
+
+    def test_boto_dret_no_mou_el_cursor(self):
+        capa = self._capa()
+        destins = []
+        capa.tramCursorRequested.connect(destins.append)
+        capa.mousePressEvent(_Ev(450.0, Qt.RightButton))
+        capa.mouseReleaseEvent(_Ev(450.0, Qt.RightButton))
+        self.assertEqual(destins, [])
+
+    def test_el_timeline_hi_posa_el_cursor(self):
+        """El handler del timeline deixa el cursor exactament a l'inici."""
+        w = self._w_amb_timeline()
+        tl = w.visor_ref.timeline
+        tl.set_position(0.0, emit=False, snap=False)
+        tl._on_tempo_cursor(7.25)        # frontera LLIURE (no cau a la graella)
+        self.assertAlmostEqual(tl.get_position(), 7.25, places=6)
+
+    def _w_amb_timeline(self):
+        if getattr(self, "_w_cache", None) is not None:
+            return self._w_cache
+        import tempfile, wave
+        from app.main import Finestra
+        td = tempfile.mkdtemp()
+        wav = os.path.join(td, "tema.wav")
+        with wave.open(wav, "wb") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(44100)
+            f.writeframes(b"\x00\x00" * 44100 * 10)     # 10 s
+        w = Finestra()
+        with patch.object(QFileDialog, "getOpenFileName",
+                          return_value=(wav, "")), \
+                patch.object(QFileDialog, "getSaveFileName",
+                             return_value=(os.path.join(td, "P1.acproj"), "")):
+            w.tria_wav()
+        self.addCleanup(w.close)
+        self.addCleanup(shutil.rmtree, td, True)
+        self._w_cache = w
+        return w
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_timeline_loop.py
 # ══════════════════════════════════════════════════════════════════════════
@@ -4084,6 +4324,447 @@ class TestProteccionsDocument(unittest.TestCase):
             self.assertEqual(json.load(f)["nom"], "primer")
         with open(p.ruta_acproj, encoding="utf-8") as f:
             self.assertEqual(json.load(f)["nom"], "segon")
+
+
+# ── Anàlisi guiat: diàlegs + flux de l'assistent ──────────
+class TestDialegGuia(unittest.TestCase):
+    """Diàlegs de l'«Anàlisi guiat» (docs/ANALISI_GUIAT.md), sense visor."""
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+
+    def _dlg(self):
+        return dialegs.DialegGuiaBpm(
+            None, 3, 12.5, 22.1, "compàs 20")
+
+    def test_inicia_detectant_i_no_accepta(self):
+        d = self._dlg()
+        self.assertTrue(d.detectant())
+        d.accept()
+        self.assertEqual(d.result(), 0)     # Enter mentre detecta → res
+
+    def test_mostra_bpm_habilita_i_accepta(self):
+        d = self._dlg()
+        d.mostra_bpm(93.37)
+        self.assertFalse(d.detectant())
+        self.assertEqual(d.valors(), 93.37)
+        d.accept()
+        self.assertEqual(d.result(), 1)     # QDialog.Accepted
+
+    def test_deteccio_fallida_permet_editar(self):
+        d = self._dlg()
+        d.mostra_bpm(None)
+        self.assertFalse(d.detectant())
+        d.ed_bpm.setText("140,5")           # comma decimal suportada
+        self.assertEqual(d.valors(), 140.5)
+
+    def test_escala_x2_i_mig(self):
+        d = self._dlg()
+        d.mostra_bpm(93.37)
+        for btn in d.findChildren(QPushButton):
+            if btn.text().startswith("×2"):
+                btn.click()
+                break
+        self.assertEqual(d.valors(), 186.74)
+        for btn in d.findChildren(QPushButton):
+            if btn.text().startswith("÷2"):
+                btn.click()
+                break
+        self.assertEqual(d.valors(), 93.37)
+
+    def test_escala_tanca_al_rang(self):
+        d = self._dlg()
+        d.mostra_bpm(280.0)
+        for btn in d.findChildren(QPushButton):
+            if btn.text().startswith("×2"):
+                btn.click()
+                break
+        self.assertEqual(d.valors(), 300.0)
+
+    def test_valors_no_valids(self):
+        d = self._dlg()
+        d.mostra_bpm(90.0)
+        d.ed_bpm.setText("abc")
+        self.assertIsNone(d.valors())
+        d.ed_bpm.setText("")
+        self.assertIsNone(d.valors())
+        d.ed_bpm.setText("500")             # fora del rang guardat
+        self.assertIsNone(d.valors())
+        d.ed_bpm.setText("10")              # massa lent
+        self.assertIsNone(d.valors())
+
+
+class _FilFals(app_main.FilGuiaBpm):
+    """Substituciï del fil de detecció per als tests: `start` no fa res."""
+
+    def start(self, *a, **k):
+        pass
+
+
+class TestGuiaFlux(unittest.TestCase):
+    """Flux de l'assistent a la Finestra, amb la detecció ANUL·LADA.
+
+    `FilGuiaBpm` es substitueix per `_FilFals` (sense fil de veritat) i el
+    flux es condueix amb `_guia_bpm_ditectat(bpm)` + `_guia_fenestra_aplica
+    (dlg)` — exactament el que fan el fil i el diàleg de resultats en viu,
+    però síncron.
+    """
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+        self.td = tempfile.mkdtemp()
+        self.wav = os.path.join(self.td, "tema.wav")
+        with wave.open(self.wav, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)   # 20 s
+        self.w = Finestra()
+        # patró `_obre_wav`: tria_wav també pregunta ON crear el projecte
+        acproj = os.path.join(self.td, "P1.acproj")
+        with patch.object(QFileDialog, "getOpenFileName",
+                          return_value=(self.wav, "")), \
+                patch.object(QFileDialog, "getSaveFileName",
+                             return_value=(acproj, "")):
+            self.w.tria_wav()
+        self._p_fil = patch.object(app_main, "FilGuiaBpm", _FilFals)
+        self._p_fil.start()
+
+    def tearDown(self):
+        self.w.close()
+        self._p_fil.stop()
+        shutil.rmtree(self.td, ignore_errors=True)
+
+    def _posa_cursor(self, t):
+        self.w.visor_ref.pos = t
+        self.w.visor_ref.timeline.set_position(t, emit=False, snap=False)
+
+    def test_pas1_offset_tall_i_finestra(self):
+        w = self.w
+        w._analisi_guitat()
+        self.assertIn("dlg1", w._guia)
+        self._posa_cursor(2.0)
+        w._guia_pas1_fet()
+        vr = w.visor_ref
+        self.assertEqual(w.offset.text(), "2.000")
+        trams = vr.tempo_trams
+        self.assertEqual(len(trams), 2)
+        self.assertAlmostEqual(trams[0][1], 2.0, places=6)
+        self.assertAlmostEqual(trams[1][0], 2.0, places=6)
+        # pas 4 del disseny: el bucle ja treballa en mode BPM + snap negra
+        self.assertTrue(w.b_mode_bpm.isChecked())
+        self.assertTrue(w.tb_snap.isChecked())
+        self.assertIn("dlg2", w._guia)
+        w._guia_cancel()
+
+    def test_flux_complet_fins_al_final(self):
+        """Pas 1 + 1a finestra + última (absorbeix) + fusió + executa()."""
+        w = self.w
+        crides = []
+        w.executa = lambda: crides.append(1)   # no obris res de modal
+        w._analisi_guitat()
+        self._posa_cursor(2.0)
+        w._guia_pas1_fet()
+        vr = w.visor_ref
+        # finestra 1 · 90 BPM (bar 2.667 s · 4 compasos → t_seg 12.667 s)
+        w._guia_bpm_ditectat(90.0)
+        dlg2 = w._guia["dlg2"]
+        self.assertEqual(dlg2.valors(), 90.0)
+        w._guia_fenestra_aplica(dlg2)
+        self.assertAlmostEqual(vr.tempo_trams[1][0], 2.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 90.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][1], 12.667, places=3)
+        # en aplicar la finestra 1 ja s'obre la 2 → n=2 (correlatiu; amb el
+        # doble increment hauria estat 3 i la numeració saltaria 1, 3, 5…)
+        self.assertEqual(w._guia["n"], 2)
+        # finestra 2 · 74 BPM: la finestra sobrepassa la fi → ABSORBEIX
+        self.assertAlmostEqual(w._guia["t_k"], 12.667, places=3)
+        w._guia_bpm_ditectat(74.0)
+        dlg3 = w._guia["dlg2"]
+        w._guia_fenestra_aplica(dlg3)
+        # mode BPM + snap negra restaurats; executa() cridat; estat net
+        self.assertTrue(w.b_mode_bpm.isChecked())
+        self.assertTrue(w.tb_snap.isChecked())
+        self.assertEqual(w.cb_graella.currentData(), "negra")
+        self.assertEqual(crides, [1])
+        self.assertEqual(w._guia, {})
+        # mapa final vàlid (contracte de compasos enters amb l'offset)
+        from app import tempo_map
+        val = tempo_map.valida_i_normalitza_compassos(
+            vr.tempo_trams, vr._durada_wav(), offset=2.0)
+        self.assertAlmostEqual(val[-1][1], vr._durada_wav(), places=6)
+        self.assertAlmostEqual(vr.tempo_trams[-1][2], 74.0, places=6)
+
+    def test_cancel_restaura(self):
+        w = self.w
+        w._analisi_guitat()
+        w._guia_cancel()
+        self.assertTrue(w.b_mode_bpm.isChecked())
+        self.assertTrue(w.tb_snap.isChecked())
+        self.assertEqual(w.cb_graella.currentData(), "negra")
+        self.assertEqual(w._guia, {})
+
+    def test_sense_wav_avis(self):
+        w = self.w
+        w.wav_edit.setText("/no/existeix.wav")
+        with patch.object(w, "avisa") as mock:
+            w._analisi_guitat()
+        self.assertEqual(mock.call_count, 1)
+        self.assertEqual(w._guia, {})
+
+
+class TestGuiaFilReal(unittest.TestCase):
+    """El camí de la caçada real: fil DE VERITAT + senyals QUEUED.
+
+    Bug del 20-10-2026: `FilGuiaBpm` cridava `Finestra.registra` DIRECTE
+    des del fil (`QTextEdit.append`) → UB Qt → segfault al bucle principal
+    ("Cannot queue arguments of type 'QTextCursor'"). El test anula el fil
+    i cridava els mètodes a mà, així que no excercitava cap camí real.
+    Ací: fil real (detecció sobre silenci → BPM None), espiant el resultat
+    amb el bucle d'esdeveniments de veritat.
+    """
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+        self.td = tempfile.mkdtemp()
+        self.wav = os.path.join(self.td, "tema.wav")
+        with wave.open(self.wav, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)   # 20 s de silenci
+        self.w = Finestra()
+        acproj = os.path.join(self.td, "P1.acproj")
+        with patch.object(QFileDialog, "getOpenFileName",
+                          return_value=(self.wav, "")), \
+                patch.object(QFileDialog, "getSaveFileName",
+                             return_value=(acproj, "")):
+            self.w.tria_wav()
+
+    def tearDown(self):
+        self.w.close()
+        shutil.rmtree(self.td, ignore_errors=True)
+
+    def _espera_dlg_eines(self, app, motiu, segons=20.0):
+        """Espera (baixant esdeveniments) fins que el diàleg siga editable."""
+        dret = time.time() + segons
+        d = self.w._guia.get("dlg2")
+        while time.time() < dret and d is not None and d.detectant():
+            app.processEvents()
+            time.sleep(0.02)
+            d = self.w._guia.get("dlg2")
+        return d
+
+    def test_finestra_amb_fil_real(self):
+        app = self._app
+        w = self.w
+        w._analisi_guitat()
+        w.visor_ref.pos = 2.0
+        w._guia_pas1_fet()
+        d = self._espera_dlg_eines(app, None)
+        self.assertIsNotNone(d)
+        self.assertFalse(d.detectant())
+        d.ed_bpm.setText("96")
+        d.accept()
+        app.processEvents()
+        self.assertAlmostEqual(w.visor_ref.tempo_trams[1][2], 96.0, places=6)
+        w._guia_cancel()
+
+
+class TestSeleccioBpmICompas1(unittest.TestCase):
+    """Selecció A–B per al BPM + «compàs 1 al cursor» complet (2026-10-20).
+
+    - BPM: si hi ha loop A–B marcat, la detecció fa servir NOMÉS eixe rang
+      (mana sobre el tram de tempo seleccionat i sobre el tema sencer).
+    - Compàs 1 al cursor: offset + TALL del carril de tempo + inici del clip
+      de tempo en eixa posició, tot en UN sol pas de desfer.
+    """
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+        self.td = tempfile.mkdtemp()
+        self.wav = os.path.join(self.td, "tema.wav")
+        with wave.open(self.wav, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)     # 20 s
+        self.w = Finestra()
+        acproj = os.path.join(self.td, "P1.acproj")
+        with patch.object(QFileDialog, "getOpenFileName",
+                          return_value=(self.wav, "")), \
+                patch.object(QFileDialog, "getSaveFileName",
+                             return_value=(acproj, "")):
+            self.w.tria_wav()
+
+    def tearDown(self):
+        self.w.close()
+        shutil.rmtree(self.td, ignore_errors=True)
+
+    # --- BPM només de la selecció -----------------------------------------
+    def test_detecta_bpm_nomes_de_la_seleccio(self):
+        w = self.w
+        vr = w.visor_ref
+        vr.loop_a, vr.loop_b = 1.0, 5.0
+        crides = []
+
+        def _tram(wav, ini, fi, *a, **k):
+            crides.append((wav, ini, fi))
+            return 120.0
+
+        with patch.object(app_main.pipeline, "detecta_bpm_tram", _tram), \
+                patch.object(app_main.pipeline, "detecta_bpm",
+                             lambda *a, **k: self.fail(
+                                 "amb loop no s'ha de detectar el tema sencer")):
+            w._detecta_bpm(pregunta=False)
+        self.assertEqual(len(crides), 1)
+        self.assertEqual(crides[0][1:], (1.0, 5.0))
+        self.assertEqual(w.bpm.text(), "120.000")
+        self.assertIn("selecció A–B", w.log.toPlainText())
+
+    def test_sense_loop_detecta_el_tema(self):
+        w = self.w
+        crides = []
+        with patch.object(app_main.pipeline, "detecta_bpm",
+                          lambda *a, **k: crides.append("tema") or 100.0), \
+                patch.object(app_main.pipeline, "detecta_bpm_tram",
+                             lambda *a, **k: self.fail(
+                                 "sense loop ha de detectar el tema")):
+            w._detecta_bpm(pregunta=False)
+        self.assertEqual(crides, ["tema"])
+
+    def test_loop_massa_curt_es_ignora(self):
+        w = self.w
+        vr = w.visor_ref
+        vr.loop_a, vr.loop_b = 1.0, 1.2      # 0.2 s: no és una selecció útil
+        crides = []
+        with patch.object(app_main.pipeline, "detecta_bpm",
+                          lambda *a, **k: crides.append("tema") or 100.0):
+            w._detecta_bpm(pregunta=False)
+        self.assertEqual(crides, ["tema"])
+
+    # --- Compàs 1 al cursor: offset + tall + inici de clip -----------------
+    def test_compas1_offset_tall_i_clip_en_un_desfer(self):
+        w = self.w
+        vr = w.visor_ref
+        durada = vr._durada_wav()
+        self.assertEqual(len(vr.tempo_trams), 1)     # tot el tema, 1 tram
+        vr.pos = 3.0
+        w._marca_compas_1()
+        # offset + clip de tempo nou a 3.0 s
+        self.assertAlmostEqual(float(vr.offset), 3.0, places=6)
+        self.assertEqual(w.offset.text(), "3.000")
+        trams = vr.tempo_trams
+        self.assertEqual(len(trams), 2)
+        self.assertAlmostEqual(trams[0][1], 3.0, places=6)
+        self.assertAlmostEqual(trams[1][0], 3.0, places=6)
+        self.assertAlmostEqual(trams[1][1], durada, places=6)
+        # el clip nou queda seleccionat (els camps BPM/compàs l'editen)
+        self.assertIn(("tempo", 1), vr.timeline.selected_keys())
+        # UN sol desfer ho desfà tot (offset i tall)
+        vr.undo()
+        self.assertAlmostEqual(float(vr.offset), 0.0, places=6)
+        self.assertEqual(len(vr.tempo_trams), 1)
+
+    def test_compas1_sobre_una_frontera_no_afegeix_tall(self):
+        w = self.w
+        vr = w.visor_ref
+        durada = vr._durada_wav()
+        vr.tempo_trams = [(0.0, 3.0, 120.0, 4, 4),
+                          (3.0, durada, 120.0, 4, 4)]
+        vr.pos = 3.0
+        w._marca_compas_1()
+        self.assertAlmostEqual(float(vr.offset), 3.0, places=6)
+        self.assertEqual(len(vr.tempo_trams), 2)     # sense tall nou
+
+    def test_compas1_al_final_avisa_i_no_toca_res(self):
+        w = self.w
+        vr = w.visor_ref
+        avisos = []
+        w.avisa = lambda titol, text: avisos.append(titol)
+        vr.pos = vr._durada_wav()
+        w._marca_compas_1()
+        self.assertEqual(len(avisos), 1)
+        self.assertAlmostEqual(float(vr.offset), 0.0, places=6)
+        self.assertEqual(len(vr.tempo_trams), 1)
+
+    # --- El guiat detecta només el tros del loop dins la finestra ---------
+    def test_guia_finestra_usa_el_loop_per_detectar(self):
+        w = self.w
+        vr = w.visor_ref
+        vr.loop_a, vr.loop_b = 1.0, 4.0
+        w._guia = {"durada": vr._durada_wav(), "n": 0}
+        capturat = []
+
+        class _FilCaptura(app_main.FilGuiaBpm):
+            def __init__(self, wav, ini, fi, **kw):
+                capturat.append((ini, fi))
+                super().__init__(wav, ini, fi, **kw)
+
+            def start(self, *a, **k):
+                pass
+
+        with patch.object(app_main, "FilGuiaBpm", _FilCaptura):
+            w._guia_fenestra()
+        try:
+            self.assertEqual(len(capturat), 1)
+            self.assertAlmostEqual(capturat[0][0], 1.0, places=6)
+            self.assertAlmostEqual(capturat[0][1], 4.0, places=6)
+            d = w._guia["dlg2"]
+            self.assertIn("A–B", d.lb_nota.text())
+        finally:
+            w._guia_cancel()
+
+    def test_guia_finestra_loop_fora_de_la_finestra_no_acota(self):
+        """Si el loop no cau dins la finestra, es mesura la finestra sencera."""
+        w = self.w
+        vr = w.visor_ref
+        vr.loop_a, vr.loop_b = 15.0, 19.0      # molt més enllà de la 1a finestra
+        w._guia = {"durada": vr._durada_wav(), "n": 0}
+        capturat = []
+
+        class _FilCaptura(app_main.FilGuiaBpm):
+            def __init__(self, wav, ini, fi, **kw):
+                capturat.append((ini, fi))
+                super().__init__(wav, ini, fi, **kw)
+
+            def start(self, *a, **k):
+                pass
+
+        with patch.object(app_main, "FilGuiaBpm", _FilCaptura):
+            w._guia_fenestra()
+        try:
+            self.assertEqual(len(capturat), 1)
+            self.assertAlmostEqual(capturat[0][0], 0.0, places=6)
+            self.assertGreater(capturat[0][1], 10.0)
+            self.assertIsNone(getattr(w._guia["dlg2"], "lb_nota", None))
+        finally:
+            w._guia_cancel()
+
+    def test_guia_finestra_sense_loop_usa_la_finestra(self):
+        w = self.w
+        vr = w.visor_ref
+        w._guia = {"durada": vr._durada_wav(), "n": 0}
+        capturat = []
+
+        class _FilCaptura(app_main.FilGuiaBpm):
+            def __init__(self, wav, ini, fi, **kw):
+                capturat.append((ini, fi))
+                super().__init__(wav, ini, fi, **kw)
+
+            def start(self, *a, **k):
+                pass
+
+        with patch.object(app_main, "FilGuiaBpm", _FilCaptura):
+            w._guia_fenestra()
+        try:
+            self.assertEqual(len(capturat), 1)
+            self.assertAlmostEqual(capturat[0][0], 0.0, places=6)
+            self.assertGreater(capturat[0][1], 0.0)
+            self.assertIsNone(getattr(w._guia["dlg2"],
+                                      "lb_nota", None))
+        finally:
+            w._guia_cancel()
 
 
 if __name__ == "__main__":   # pragma: no cover

@@ -1565,9 +1565,10 @@ class TestMenusParitat(_regla11_paritat___Base):
         se = self._amb_fila(v._menu_seccio)
         self.assertEqual(len(ac), len(se),
                          f"jocs d'accions diferents: {ac} vs {se}")
-        # 12 accions = la definició ÚNICA del menú contextual (regla #11),
+        # 13 accions = la definició ÚNICA del menú contextual (regla #11),
         # compartida amb el timeline (abans la llista en tenia 7 i el timeline 9).
-        self.assertEqual(len(ac), 12, f"joc inesperat: {ac}")
+        # 13a: «Retalla a la selecció A–B» (2026-10-20).
+        self.assertEqual(len(ac), 13, f"joc inesperat: {ac}")
         # Mateixa estructura (activació) i mateixa paraula de tipus a cada posició.
         self.assertEqual([e for _t, e in ac], [e for _t, e in se])
         self.assertIn("acord", ac[0][0].lower())
@@ -1603,7 +1604,7 @@ class TestMenusParitat(_regla11_paritat___Base):
         base_claus, base_actiu = jocs["TL acords"]
         self.assertEqual(base_claus, [
             "afegeix", "duplica", "elimina", "reanomena", "parteix", "meitat",
-            "fusiona_anterior", "fusiona_seguent", "retalla", "copia", "enganxa",
+            "retalla_loop", "fusiona_anterior", "fusiona_seguent", "retalla", "copia", "enganxa",
             "loop_seleccio",
         ])
         for nom, (claus, actiu) in jocs.items():
@@ -1628,8 +1629,8 @@ class TestMenusParitat(_regla11_paritat___Base):
             self.assertTrue(d["fusiona_anterior"],
                             f"«{etq}»: amb un clip anterior, ha d'estar activa")
 
-    def test_els_menus_tenen_les_dotze_accions_esperades(self):
-        """La llista blanca de les 12 accions (canviar-la és una decisió)."""
+    def test_els_menus_tenen_les_tretze_accions_esperades(self):
+        """La llista blanca de les 13 accions (canviar-la és una decisió)."""
         v = _regla11_paritat___visor()
         v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
                               (10.0, _regla11_paritat__DUR, 90.0, 3, 4)])
@@ -1639,6 +1640,7 @@ class TestMenusParitat(_regla11_paritat___Base):
             "Duplica", "Elimina",
             "Reanomena (BPM/compàs)…",
             "Parteix aquest tros aquí", "Partir per la meitat",
+            "Retalla a la selecció A–B",
             "Fusionar amb anterior", "Fusionar amb següent",
             "Retalla", "Copia", "Enganxa", "Loop a la selecció",
         ])

@@ -1703,7 +1703,8 @@ class Visor(QMainWindow):
     # s'edita un carril: així el carril ③ no pot quedar-se fora d'una operació
     # (regla d'or #11) i no hi ha dos camins que divergisquen.
     OPERACIONS_EDICIO = (
-        "afegeix", "parteix", "parteix_meitat", "fusiona", "elimina",
+        "afegeix", "parteix", "parteix_meitat", "retalla_loop", "fusiona",
+        "elimina",
         "reanomena", "duplica", "nudge", "copia", "retalla", "enganxa",
         "selecciona", "loop_seleccio", "quantitza",
     )
@@ -1874,6 +1875,13 @@ class Visor(QMainWindow):
                 return False
             return bool(self.parteix_per_la_meitat(kind, idx))
 
+        if op == "retalla_loop":
+            if kind is None or idx is None or idx < 0:
+                kind, idx = self.seleccio_activa()
+            if kind is None or idx < 0:
+                return False
+            return bool(self.retalla_a_loop(kind, idx))
+
         if op == "fusiona":
             if kind is None:
                 kind, idx = self.seleccio_activa()
@@ -1963,6 +1971,13 @@ class Visor(QMainWindow):
         menu.addSeparator()
         act("parteix", self._ETQ_PARTEIX[kind], te)
         act("meitat", "Partir per la meitat", te)
+        # Retallar a la selecció A–B (2026-10-20): ajusta la frontera d'inici
+        # a A i la de fi a B (els veïns s'ajusten sols, cadena de fronteres).
+        loop = self._loop_vals()
+        act("retalla_loop",
+            ("Retalla a la selecció A–B" if loop is None else
+             f"Retalla a la selecció A–B ({loop[0]:.2f}–{loop[1]:.2f}s)"),
+            te and loop is not None)
         menu.addSeparator()
         # «Fusionar» = traure una frontera (a ③, fondre el tram amb el veí).
         # Era l'única operació que només existia a les llistes.
@@ -1994,6 +2009,7 @@ class Visor(QMainWindow):
             "reanomena": ("reanomena", {}),
             "parteix": ("parteix", {"t": float(t)}),
             "meitat": ("parteix_meitat", {}),
+            "retalla_loop": ("retalla_loop", {}),
             "fusiona_anterior": ("fusiona", {"amb": "anterior"}),
             "fusiona_seguent": ("fusiona", {"amb": "seguent"}),
             "retalla": ("retalla", {}),
@@ -3399,6 +3415,163 @@ class Visor(QMainWindow):
             self.log(f"ERROR: {e}")
             QMessageBox.warning(self, "Visor", f"No s'ha pogut desar:\n{e}")
         return nou
+
+    # --- Retallar a la selecció A–B (2026-10-20) ---------------------------
+    def _loop_vals(self):
+        """Rang A–B del loop si és vàlid (A<B i dins la WAV), o `None`."""
+        a = getattr(self, "loop_a", None)
+        b = getattr(self, "loop_b", None)
+        if a is None or b is None:
+            return None
+        a, b = sorted((float(a), float(b)))
+        durada = self._durada_wav()
+        if b - a <= 1e-6 or a >= durada - 1e-6:
+            return None
+        return (max(0.0, a), min(b, durada))
+
+    def retalla_a_loop(self, kind, idx):
+        """Retalla el clip `idx` a la **selecció A–B** (una operació de desfer).
+
+        Paritat d'edició #11 (④ acords · ⑤ estructura · ③ BPM/compàs). El
+        model és una **cadena de fronteres** (regles #2/#3/#4): «retallar a
+        A–B» vol dir moure la frontera d'inici del clip a A i la de fi a B;
+        els veïns s'ajusten sols (el de davant acaba a A, el de darrere
+        comença a B). Les vores clavades per la regla #4 (el primer clip
+        comença a 0, l'últim acaba a la durada) **no es mouen**: si el clip
+        és el primer o l'últim, s'ajusta només l'altra banda.
+
+        Retorna `True` si s'ha aplicat cap canvi.
+        """
+        loop = self._loop_vals()
+        if loop is None:
+            self.avis_editor("Retalla a A–B: no hi ha cap loop A–B marcat.")
+            return False
+        a, b = loop
+        durada = self._durada_wav()
+        if kind == "chord":
+            return self._retalla_chord_a_loop(idx, a, b, durada)
+        if kind == "section":
+            return self._retalla_seccio_a_loop(idx, a, b, durada)
+        if kind == "tempo":
+            return self._retalla_tram_a_loop(idx, a, b, durada)
+        return False
+
+    @staticmethod
+    def _nota_vora_clavada(idx, n):
+        """Nota per al log si la regla #4 clava una vora (primer/últim clip)."""
+        if idx == 0 and n > 1:
+            return " (inici a 0 per la regla #4)"
+        if idx == n - 1 and n > 1:
+            return " (final a la durada per la regla #4)"
+        return ""
+
+    def _retalla_chord_a_loop(self, idx, a, b, durada):
+        items = list(self.acords)
+        n = len(items)
+        if not (0 <= idx < n):
+            return False
+        ini, fi = float(items[idx].ini), float(items[idx].fi)
+        if not (a < fi - 1e-9 and b > ini + 1e-9):
+            self.avis_editor(
+                f"Retalla a A–B: l'acord {idx + 1} ({ini:.2f}–{fi:.2f}s) no "
+                f"toca el loop ({a:.2f}–{b:.2f}s).")
+            return False
+        nous = list(items)
+        if idx > 0:
+            nous[idx] = nous[idx]._replace(ini=a)
+        if idx + 1 < n:
+            nous[idx + 1] = nous[idx + 1]._replace(ini=b)
+        if nous == items:
+            self.avis_editor("Retalla a A–B: el clip ja hi era exactament.")
+            return False
+        try:
+            nous = pipeline.valida_canvis_acords(nous, durada)
+        except ValueError as e:
+            self.avis_editor(f"Retalla a A–B: {e}")
+            return False
+        self._undo_marca()
+        self.acords = nous
+        self._undo_commit()
+        self._desa_i_regenera()
+        self._refresca_post_edicio("chord", min(idx, len(self.acords) - 1))
+        nou = self.acords[idx]
+        self.log(f"retallat a A–B: acord {idx + 1} → "
+                 f"{nou.ini:.3f}–{nou.fi:.3f}s"
+                 f"{self._nota_vora_clavada(idx, len(self.acords))}")
+        return True
+
+    def _retalla_seccio_a_loop(self, idx, a, b, durada):
+        items = list(self.seccions)
+        n = len(items)
+        if not (0 <= idx < n):
+            return False
+        ini, fi = float(items[idx][0]), float(items[idx][1])
+        if not (a < fi - 1e-9 and b > ini + 1e-9):
+            self.avis_editor(
+                f"Retalla a A–B: la secció {items[idx][2]} "
+                f"({ini:.2f}–{fi:.2f}s) no toca el loop ({a:.2f}–{b:.2f}s).")
+            return False
+        nous = list(items)
+        nous[idx] = (a if idx > 0 else ini,
+                     b if idx + 1 < n else fi,
+                     items[idx][2], items[idx][3])
+        if nous[idx] == items[idx]:
+            self.avis_editor("Retalla a A–B: la secció ja hi era exactament.")
+            return False
+        try:
+            nous = pipeline.contiguitat_seccions(nous, idx, self.MIN_SECCIO_S)
+            nous = pipeline.valida_canvis_seccions(nous, durada)
+        except ValueError as e:
+            self.avis_editor(f"Retalla a A–B: {e}")
+            return False
+        self._undo_marca()
+        self.seccions = nous
+        self._undo_commit()
+        try:
+            self._regenera_abc_des_de_totes_les_seccions("retallat a A–B")
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR: {e}")
+            self.avis_editor(f"Retalla a A–B: no s'ha pogut desar ({e})")
+        self._refresca_post_edicio("section", idx)
+        nou = self.seccions[idx]
+        self.log(f"retallat a A–B: secció {nou[2]} → "
+                 f"{nou[0]:.3f}–{nou[1]:.3f}s"
+                 f"{self._nota_vora_clavada(idx, len(self.seccions))}")
+        return True
+
+    def _retalla_tram_a_loop(self, idx, a, b, durada):
+        trams = [tuple(s) for s in (self.tempo_trams or [])]
+        n = len(trams)
+        if not (0 <= idx < n):
+            return False
+        ini, fi = float(trams[idx][0]), float(trams[idx][1])
+        if not (a < fi - 1e-9 and b > ini + 1e-9):
+            self.avis_editor(
+                f"Retalla a A–B: el tram {idx} ({ini:.2f}–{fi:.2f}s) no toca "
+                f"el loop ({a:.2f}–{b:.2f}s).")
+            return False
+        nous = list(trams)
+        if idx > 0:
+            nous[idx] = (a,) + tuple(trams[idx][1:])
+        if idx + 1 < n:
+            nous[idx + 1] = (b,) + tuple(trams[idx + 1][1:])
+        if nous == trams:
+            self.avis_editor("Retalla a A–B: el tram ja hi era exactament.")
+            return False
+        try:
+            nous = tempo_map.valida_i_normalitza_compassos(
+                nous, durada, offset=float(getattr(self, "offset", 0.0) or 0.0))
+        except ValueError as e:
+            self.avis_editor(f"Retalla a A–B (compàs): {e}")
+            return False
+        self._undo_marca()
+        self.aplica_tempo_trams(nous)
+        self._undo_commit()
+        nou = self.tempo_trams[idx]
+        self.log(f"retallat a A–B: tram {idx} → "
+                 f"{nou[0]:.3f}–{nou[1]:.3f}s"
+                 f"{self._nota_vora_clavada(idx, len(self.tempo_trams))}")
+        return True
 
     def _parteix_tram_per_la_meitat(self, idx):
         """«Partir per la meitat» d'un tram de BPM/compàs (③).

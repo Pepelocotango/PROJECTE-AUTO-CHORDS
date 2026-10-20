@@ -615,6 +615,68 @@ def valida_i_normalitza_compassos(trams, durada, offset=0.0):
     return nous
 
 
+# --- Anàlisi guiat (docs/ANALISI_GUIAT.md) ----------------------------------
+def parteix_trams_a(trams, t, durada):
+    """Talla el mapa a la posició `t` (mateix bpm/compàs als dos trossos).
+
+    L'«Anàlisi guiat» l'usa per al tall LLIURE del carril de tempo al punt del
+    cursor: encara no hi ha cap contracte de compassos enters en joc (la zona
+    anterior al compàs 1 és el compte enrere). Retorna trams normalitzats; si
+    `t` cau fora del tema o damunt d'una frontera existent, no canvia res.
+    """
+    durada = float(durada or 0.0)
+    t = float(t)
+    net = normalitza_trams(trams, durada)
+    if durada <= 0 or t <= TOL or t >= durada - TOL:
+        return net
+    out = []
+    for s in net:
+        if s[0] + TOL < t < s[1] - TOL:
+            out.append((s[0], t, s[2], s[3], s[4]))
+            out.append((t, s[1], s[2], s[3], s[4]))
+        else:
+            out.append(s)
+    return normalitza_trams(out, durada)
+
+
+def trams_finestra_guia(trams, t_inici, bpm, num, den, durada, beats=16):
+    """Nou mapa després de CONFIRMAR una finestra de l'«Anàlisi guiat».
+
+    `t_inici` = inici del tram de cua (pendent de detectar). El tram
+    confirmat acaba a la primera quantitat **entera de compassos** que més
+    s'acosta a `beats` temps del nou BPM (a 4/4, 16 temps = 4 compassos);
+    la cua que queda després va amb el BPM confirmat (es re-detectarà a la
+    finestra següent, o es queda com a últim tram si ja som al final).
+
+    Retorna `(nous, t_seguent, m)` amb `nous` la llista de trams nova
+    (normalitzada), `t_seguent` la frontera confirmada i `m` el nombre de
+    compassos del tram confirmat. No muta l'entrada. Retorna `None` si no
+    hi ha res a detectar (`t_inici` al final de la WAV o BPM invàlid).
+    """
+    durada = float(durada or 0.0)
+    t = float(t_inici)
+    bpm = float(bpm)
+    num, den = int(num), int(den)
+    if bpm <= 0 or durada <= 0 or t >= durada - TOL:
+        return None
+    b_len = durada_compas(bpm, num, den)
+    if b_len <= TOL:
+        return None
+    # el càlcul assumeix que `t` és una frontera; si no ho fos, la creem
+    base = parteix_trams_a(trams, t, durada)
+    if not base:
+        base = [(0.0, durada, bpm, num, den)]
+    abans = [s for s in base if float(s[0]) < t - TOL]
+    m = max(1, int(round((float(beats) * 60.0 / bpm) / b_len)))
+    t_seg = t + m * b_len
+    if t_seg >= durada - TOL:
+        nous = abans + [(t, durada, bpm, num, den)]
+    else:
+        nous = (abans + [(t, t_seg, bpm, num, den),
+                         (t_seg, durada, bpm, num, den)])
+    return (normalitza_trams(nous, durada), t_seg, m)
+
+
 def _ripple_des_de(trams, idx, nou_fi, durada):
     """Mou la fi del tram `idx` i arrossega les fronteres següents.
 

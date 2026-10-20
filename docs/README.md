@@ -1,6 +1,6 @@
 # Índex de la documentació (`docs/`)
 
-> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-10-18.**
+> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-10-20.**
 > L'estat *actual* del projecte és a **`../README.md`** i **`../ROADMAP.md`**;
 > aquí hi ha el **detall temàtic**. Els documents d'**`archive/`** (marcats
 > **[HISTÒRIC]**, **[ANÀLISI]** o **[COMPLETAT]**) es conserven com a referència,
@@ -29,6 +29,7 @@
 | `AUDIO.md` | **Àudio**: reproducció (play) i motors per SO (Linux/macOS/Windows). |
 | `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps: **estat actual del codi** (§1) i **proposta pendent** de la capa de *ticks*/PPQ 960 (§8). |
 | `PARTITURA_EXPORT.md` | Exportació de partitura (xifrat: MusicXML/PDF/MSCZ). |
+| `ANALISI_GUIAT.md` | ✅ **Anàlisi guiat, v1 implementada** (botó a Treball): guiar l'usuari per construir un mapa de tempo per finestres de 16 temps quan el BPM no és constant; acaba al diàleg d'Analitza. Diferit: botó *Escolta el tram*, mode automàtic. |
 | `EDICIO_OPERACIONS.md` | **Taula única** de totes les formes d'edició: operació × **GUI** × paritat acords/estructura (**#11**) × estat (FET/pendent). El test `TestDocEdicioOperacions` la manté al dia. |
 
 ## Plans i refactors **en curs**

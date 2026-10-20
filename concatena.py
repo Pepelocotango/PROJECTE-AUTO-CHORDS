@@ -35,6 +35,7 @@ INCLOU = [
     "docs/FLUX_DE_DADES.md",      # el MODEL editable i el cru dins el .acproj
     "docs/REGLES_TEMPS_GRID.md",  # contracte viu: temps, compàs, graella
     "docs/EDICIO_OPERACIONS.md",  # totes les formes d'edició (GUI ↔ codi)
+    "docs/ANALISI_GUIAT.md",      # assistent de mapa de tempo (BPM no constant)
     "docs/NOTACIO_XIFRAT.md",     # forma canònica del xifrat
     "docs/TIPUS_XIFRAT_ACORDS.md",  # els 80 tipus + graus + <kind> MusicXML
     # 4+. El codi i la resta

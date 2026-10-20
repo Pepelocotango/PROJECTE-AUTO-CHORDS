@@ -639,3 +639,147 @@ class DialegTramTempo(QDialog):
         elif txt.isdigit():
             num = int(txt)
         return (float(self.sp_bpm.value()), max(1, num), max(1, den))
+
+
+# ---------------------------------------------------------------------------
+# Anàlisi guiat (docs/ANALISI_GUIAT.md)
+# ---------------------------------------------------------------------------
+class DialegGuiaDownbeat(QDialog):
+    """Pas 1 de l'«Anàlisi guiat»: marcar el downbeat (compàs 1).
+
+    MODELESS (s'obre amb `show()`, no amb `exec_()`): l'usuari ha de poder
+    moure el cursor del visor mentre el diàleg és obert. Enter = Fet.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Anàlisi guiat — pas 1: el compàs 1")
+        self.setMinimumWidth(480)
+        lay = QVBoxLayout(self)
+        txt = QLabel(
+            "1 · Poseu el cursor a la <b>primera marca del tema</b> "
+            "(el primer cop sec, on comença el compte).<br>"
+            "2 · Premeu <b>Fet (Enter)</b> aquí sota.<br><br>"
+            "El guiat posarà l'offset del compàs 1 al cursor, farà un tall "
+            "lliure del carril de tempo en aquell punt i seguirà amb la "
+            "detecció del BPM finestra a finestra.")
+        txt.setWordWrap(True)
+        txt.setTextFormat(Qt.RichText)
+        lay.addWidget(txt)
+        botons = QDialogButtonBox(QDialogButtonBox.Ok
+                                  | QDialogButtonBox.Cancel)
+        botons.button(QDialogButtonBox.Ok).setText("Fet (Enter)")
+        botons.button(QDialogButtonBox.Ok).setDefault(True)
+        botons.button(QDialogButtonBox.Cancel).setText("Cancel·la el guiat")
+        botons.accepted.connect(self.accept)
+        botons.rejected.connect(self.reject)
+        lay.addWidget(botons)
+
+
+class DialegGuiaBpm(QDialog):
+    """Pas 2 de l'«Anàlisi guiat»: confirmar el BPM d'una finestra.
+
+    S'obre MODELESS amb el camp de BPM deshabilitat mentre el fil de detecció
+    treballa; quan arriba el resultat, el camp s'omple i es pot editar (o
+    duplicar/partir amb ×2/÷2). Enter = Accepta; tancar = Cancel·la el guiat.
+    """
+
+    BPM_MIN, BPM_MAX = 20.0, 300.0
+
+    def __init__(self, parent, n_tram, t_ini, t_fi, etiqueta_ini="",
+                 nota=""):
+        super().__init__(parent)
+        self.setWindowTitle(f"Anàlisi guiat — tram {int(n_tram)}")
+        self.setMinimumWidth(480)
+        lay = QVBoxLayout(self)
+        lbl = QLabel(
+            f"Tram {int(n_tram)} · des de {etiqueta_ini or '—'} "
+            f"({float(t_ini):.3f}s) fins a {float(t_fi):.3f}s "
+            f"({float(t_fi) - float(t_ini):.1f}s de finestra)")
+        lbl.setWordWrap(True)
+        lay.addWidget(lbl)
+        if nota:
+            self.lb_nota = QLabel(str(nota))
+            self.lb_nota.setWordWrap(True)
+            self.lb_nota.setObjectName("secundari")
+            lay.addWidget(self.lb_nota)
+        form = QFormLayout()
+        self.ed_bpm = QLineEdit()
+        self.ed_bpm.setEnabled(False)
+        self.ed_bpm.setPlaceholderText("detectant…")
+        form.addRow("BPM del tram:", self.ed_bpm)
+        lay.addLayout(form)
+        self.lb_estat = QLabel("Detectant el BPM del tram…")
+        lay.addWidget(self.lb_estat)
+        fila = QHBoxLayout()
+        b_x2 = QPushButton("×2 (doblega)")
+        b_x2.clicked.connect(lambda: self._escala(2.0))
+        b_mig = QPushButton("÷2 (mig temps)")
+        b_mig.clicked.connect(lambda: self._escala(0.5))
+        fila.addWidget(b_x2)
+        fila.addWidget(b_mig)
+        fila.addStretch(1)
+        lay.addLayout(fila)
+        botons = QDialogButtonBox(QDialogButtonBox.Ok
+                                  | QDialogButtonBox.Cancel)
+        self.b_ok = botons.button(QDialogButtonBox.Ok)
+        self.b_ok.setText("Accepta (Enter)")
+        self.b_ok.setDefault(True)
+        self.b_ok.setEnabled(False)
+        botons.button(QDialogButtonBox.Cancel).setText("Cancel·la el guiat")
+        botons.accepted.connect(self.accept)
+        botons.rejected.connect(self.reject)
+        lay.addWidget(botons)
+
+    # --- API per a l'orquestrador (main.Finestra) --------------------------
+    def mostra_bpm(self, bpm):
+        """Resultat de la detecció: omple i habilita el camp."""
+        if bpm is None:
+            self.mostra_error(
+                "No s'ha pogut detectar el BPM del tram. Escriu-lo a mà "
+                "(o cancel·la el guiat).")
+            return
+        self.ed_bpm.setText(f"{float(bpm):.2f}")
+        self.ed_bpm.setEnabled(True)
+        self.b_ok.setEnabled(True)
+        self.ed_bpm.setFocus()
+        self.ed_bpm.selectAll()
+        self.lb_estat.setText("Revisa el BPM: Enter per acceptar, ×2/÷2 per "
+                              "corregir, o edita'l a mà.")
+
+    def mostra_error(self, text):
+        """La detecció ha fallat: permet l'edició manual del BPM."""
+        self.ed_bpm.setEnabled(True)
+        self.b_ok.setEnabled(True)
+        self.ed_bpm.setFocus()
+        self.lb_estat.setText(text)
+
+    def detectant(self):
+        """`True` mentre el fil de detecció no ha arribat."""
+        return not self.ed_bpm.isEnabled()
+
+    def accept(self):
+        """Enter mentre encara es detecta → no accepta res."""
+        if self.detectant():
+            return
+        super().accept()
+
+    def valors(self):
+        """BPM confirmat (float) o `None` si el camp no té un valor vàlid."""
+        txt = (self.ed_bpm.text() or "").strip().replace(",", ".")
+        try:
+            bpm = float(txt)
+        except ValueError:
+            return None
+        if not (self.BPM_MIN <= bpm <= self.BPM_MAX):
+            return None
+        return bpm
+
+    def _escala(self, f):
+        if not self.ed_bpm.isEnabled():
+            return
+        v = self.valors()
+        if v is None:
+            return
+        v = min(self.BPM_MAX, max(self.BPM_MIN, v * float(f)))
+        self.ed_bpm.setText(f"{v:.2f}")

@@ -5,6 +5,90 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit (2026-10-20, 4a tongada)
+- **«Retalla a la selecció A–B» als TRES carrils** (menú contextual, botó
+  dret): el clip seleccionat passa a ocupar exactament `[A, B]` — es mou la
+  seua frontera d'inici a **A** i la de fi a **B**, i els veïns s'ajusten
+  sols (el de davant acaba a A, el de darrere comença a B). Tot en **una
+  sola operació de desfer** i validat pels backends (`valida_canvis_acords`,
+  `contiguitat_seccions`+`valida_canvis_seccions`,
+  `valida_i_normalitza_compassos`). Vores clavades per la regla #4: al
+  **primer** clip l'inici no es mou (0) i a l'**últim** el final no es mou
+  (durada). Surt **desactivat** sense loop A–B; si el clip no toca el loop o
+  el backend ho rebutja (a ③ la frontera ha de caure en línia de compàs), no
+  toca res i avisa per la franja Editor. L'etiqueta mostra el rang
+  (`Retalla a la selecció A–B (2.00–6.00s)`). **10 tests** nous
+  (`TestRetallaALoop`) + les llistes blanques de paritat actualitzades a 13
+  accions.
+
+### Afegit (2026-10-20, 3a tongada)
+- **Clic a un tram de tempo → cursor al seu inici** (paritat amb els clips
+  d'acords/seccions, regla d'or #11): el `TempoLayer` emet
+  `tramCursorRequested(inici)` en soltar un clic **sense arrossegada** i el
+  timeline hi posa el cursor **sense snap** (les fronteres del mapa poden ser
+  lliures: tall del guiat o de «compàs 1 al cursor»). El botó dret i
+  l'arrossegada de vores **no** mouen el cursor. **5 tests**
+  (`TestTempoLayerCursorAlClic`).
+- Docs: `ESQUEMA_UI` i `EDICIO_OPERACIONS` ho documentaven **sense** estar
+  implementat — ara codi i docs coincideixen.
+
+### Afegit (2026-10-20, 2a tongada)
+- **BPM només de la selecció A–B**: amb el loop marcat (encara que no
+  soni), el botó **Detecta** mesura el BPM **només** d'eixe interval
+  (`tempo.detecta_bpm(inici=, fi=)`); mana sobre el tram de tempo
+  seleccionat. Rang < 1 s s'ignora. El **guiat** també l'aprofita: cada
+  finestra mesura només la intersecció del loop amb la finestra (si és
+  ≥ 1,5 s) i el diàleg ho indica.
+- **Compàs 1 al cursor = offset + tall + inici del clip de tempo** (📍 i
+  *Analitza ▸ Marca el compàs 1 aquí*): un sol pas de desfer fa les tres
+  coses; el clip de tempo nou (si no hi havia frontera) arrenca al cursor,
+  queda seleccionat i la posició es mostra en **segons** i en
+  **compàs.beat** de la graella original. El guiat pas 1 reutilitza el
+  mateix camí (abans eren dos desfers).
+- **8 tests nous** (`TestSeleccioBpmICompas1`): loop com a font del BPM,
+  sense loop, loop massa curt, offset+tall+clip amb un sol desfer, cursor
+  damunt d'una frontera, cursor al final, i la finestra del guiat amb i
+  sense loop.
+
+### Corregit
+- **Segfault de l'Anàlisi guiat en detectar (2026-10-20)**: el fil
+  `FilGuiaBpm` cridava `Finestra.registra` **directament des del fil de
+  treball** (que fa `QTextEdit.append`) — UB de Qt, avís
+  `Cannot queue arguments of type 'QTextCursor'` al log i **segfault
+  natiu** al bucle principal just després d'entregar el resultat (vist
+  realment a la prova amb *Sitting on the Dock of the Bay*). Solució:
+  mateix patró que `Feina` — el fil **emet el log per `missatge(str)`**
+  (queued) i la Finestra el conect a `registra`; mai cap crida a la GUI
+  des del fil. Test de regressió amb fil real + esdeveniments reals
+  (`TestGuiaFilReal`).
+
+### Afegit
+- **Anàlisi guiat — implementada (2026-10-20)**: la v1 completa de l'assistent
+  per a cançons amb **BPM no constant**. Pas 1: mode lliure + sense snap,
+  l'usuari posa el cursor al downbeat i prem Enter → **offset + tall lliure**
+  del carril de tempo (`tempo_map.parteix_trams_a`); immediatament torna el
+  mode BPM·compàs amb snap a negra. Pas 2: **bucle de finestres de 16 temps** —
+  cada finestra es detecta en un fil separat (`FilGuiaBpm`), el diàleg
+  `DialegGuiaBpm` (modeless) deixa confirmar el BPM (**Enter · ×2 · ÷2**,
+  editable a mà si la detecció falla), i cada tram confirmat s'aplica amb UN
+  pas de desfer construint trams de **compassos enters**
+  (`tempo_map.trams_finestra_guia`); l'últim tram absorbeix fins a la fi de la
+  WAV. Al final: fusió dels trams iguals i obertura del diàleg **Analitza**.
+  Cancel·lable en qualsevol moment (els trams aplicats es desfan amb Ctrl+Z).
+- **Botó «Anàlisi guiat» (2026-10-20)**: a la barra *Treball*, entre
+  **Obre àudio** i el selector de temps; desactivat sense WAV i durant una
+  anàlisi. Obre l'assistent amb passos interactius (usuari al mig).
+- **`docs/ANALISI_GUIAT.md` (2026-10-20)**: disseny de l'assistent
+  (fluxe en 8 passos, finestra de 16 temps que viatja amb el BPM anterior,
+  què ja existeix al codi i què falta, UI i preguntes obertes).
+
+### Tests
+- **18 tests nous**: `TestGuia` (nucli pur: tall lliure, finestres en 4/4 i
+  3/4, absorció de l'últim tram, simulació completa validant el contracte),
+  `TestDialegGuia` (estats detectant/detecció/×2/÷2/vàlids) i `TestGuiaFlux`
+  (flux complet a la Finestra amb el fil anul·lat, pas 1, fusió final,
+  cancel·lació, no-WAV). Suite: **1087 OK**.
+
 ## [0.8.0] — 2026-10-20 (BETA)
 
 ### Afegit

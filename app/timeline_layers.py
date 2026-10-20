@@ -424,6 +424,9 @@ class TempoLayer(QGraphicsObject):
 
     tramSelected = pyqtSignal(int)         # selecció d'un bloc (índex)
     tramClicked = pyqtSignal(int)          # doble-clic a un bloc (índex)
+    # Clic (sense arrossegar) a un bloc → l'inici del bloc, per posar-hi el
+    # cursor (paritat amb els clips d'acords/seccions, regla d'or #11).
+    tramCursorRequested = pyqtSignal(float)
     tramMoved = pyqtSignal(int, str, float)   # vora soltada (índex, vora, t)
     menuRequested = pyqtSignal(int, float)    # botó dret (índex; -1=fora, t)
 
@@ -614,6 +617,11 @@ class TempoLayer(QGraphicsObject):
         if guia is not None and i >= 0 and (z in ("ini", "fi")
                                             or (z == "cos" and i > 0)):
             self.tramMoved.emit(i, "ini" if z == "cos" else z, float(guia))
+        elif i >= 0 and self._mapa is not None \
+                and i < len(self._mapa.trams):
+            # Paritat amb els clips: clic sense arrossegada → cursor a
+            # l'INICI del bloc (el botó dret no hi passa: no obri `_press`).
+            self.tramCursorRequested.emit(float(self._mapa.trams[i].ini))
         ev.accept()
 
     # -- pintura --------------------------------------------------------
