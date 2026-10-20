@@ -5,7 +5,8 @@
 # Ús: python3 concatena.py [sortida.txt]   (defecte: CODI_concatenat.txt)
 #
 # INCLOU (whitelist), EN ORDRE: primer el CONTEXT (`README.md`, `ROADMAP.md`,
-#   `DEVELOPING.md`, les regles d'or), després el CODI: `app/`, `eines/`
+#   `DEVELOPING.md`, les regles d'or i els docs Tier A — contractes de
+#   comportament), després el CODI: `app/`, `eines/`
 #   (scripts de build + host C++ + `deps_fixades.env`), `.github/workflows/`
 #   (CI), les dades de build (`pyproject.toml`, `requirements*.txt`,
 #   `instal·la_local.sh`), els llançadors, els scripts CLI i `tests/`.
@@ -29,7 +30,13 @@ INCLOU = [
     "README.md",            # visió general + com executar
     "ROADMAP.md",           # full de ruta (abast, fases, futur)
     "DEVELOPING.md",        # setup, entorn i desenvolupament
-    "docs/REGLES_DE_LA_APP.md",  # ⚠️ regles d'or (invariants) — IMPRESCINDIBLE
+    "docs/REGLES_DE_LA_APP.md",   # ⚠️ regles d'or (invariants) — IMPRESCINDIBLE
+    # 3b. Context Tier A — contractes de comportament (docs revisats 20-10-2026)
+    "docs/FLUX_DE_DADES.md",      # el MODEL editable i el cru dins el .acproj
+    "docs/REGLES_TEMPS_GRID.md",  # contracte viu: temps, compàs, graella
+    "docs/EDICIO_OPERACIONS.md",  # totes les formes d'edició (GUI ↔ codi)
+    "docs/NOTACIO_XIFRAT.md",     # forma canònica del xifrat
+    "docs/TIPUS_XIFRAT_ACORDS.md",  # els 80 tipus + graus + <kind> MusicXML
     # 4+. El codi i la resta
     "app",                  # codi de l'aplicació (Python)
     "eines",                # scripts de build/empaquetat + host C++ (vamp_host.cpp)
