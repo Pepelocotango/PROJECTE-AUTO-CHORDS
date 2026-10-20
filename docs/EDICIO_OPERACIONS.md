@@ -52,6 +52,12 @@
 > botó **Detecta** analitza només l'àudio d'eixe tram i aplica el BPM
 > directament (una sola operació de desfer); el seu inici és el downbeat.
 > Sense tram seleccionat, es manté la detecció global.
+>
+> **Sincronització (2026-10-20)**: quan el model es reconstrueix (quantitzar,
+> desfer, etc.), l'editor integrat es buida/refresca. Després de quantitzar es
+> recupera el clip editat (si encara existeix) amb el **temps nou**; no es pot
+> aplicar el temps vell. En carregar, els trams de tempo adjacents amb el
+> mateix BPM/compàs es fusionen.
 
 ## 1. Regles que manen
 

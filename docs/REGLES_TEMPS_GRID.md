@@ -122,6 +122,10 @@ les úniques excepcions.**
 
 - En **carregar** un projecte vell, el mapa es mostra tal com és: no es
   rebutja. Així no es perd la feina ni es mouen coses sense avisar.
+- En carregar també es **fusionen els trams adjacents amb el mateix BPM i
+  compàs**: no representen cap canvi musical i solen ser duplicats de
+  l'anàlisi o de projectes vells. Una partició manual de dos trams iguals es
+  respecta mentre s'edita; no es desfà sola.
 - Les **edicions de la GUI** (moure/crear/partir una frontera, canviar
   BPM/compàs, detectar el BPM d'un tram, el diàleg del mapa) validen o
   imanten a la línia de compàs. Si el resultat no compleix el contracte,
@@ -130,3 +134,11 @@ les úniques excepcions.**
   d'usuari és el que fa complir la regla.
 - Els tests del contracte viuen a `tests/test_tempo_map.py`
   (`TestCompassosEnters`) i a `tests/test_pipeline.py` (detecció local).
+
+## 14. Sincronització de la vista
+
+- Quan el model es reconstrueix (quantitzar, desfer, etc.), la selecció del
+  timeline es notifica buida i l'editor integrat s'ha de buidar o refrescar.
+  No pot quedar mostrant el **temps vell** d'un clip que s'ha mogut.
+- Després de quantitzar es recupera, si encara existeix, el clip que s'estava
+  editant, perquè l'editor mostre el temps **nou**.

@@ -66,6 +66,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   tros de 2 s pel mateix punt únic (abans `main.py` tenia una còpia pròpia).
 
 ### Corregit
+- **Editor després de quantitzar (2026-10-20)**: en reconstruir el model es
+  notifica la pèrdua de selecció i l'editor es buida/refresca; després de
+  quantitzar es recupera el clip editat (si encara existeix) perquè mostre el
+  **temps nou**, no el vell. Abans es podia prémer «Aplica» i tornar a escriure
+  el temps anterior.
+- **Trams de tempo duplicats (2026-10-20)**: en carregar es fusionen els trams
+  adjacents amb el mateix BPM i compàs; no són cap canvi musical i omplien la
+  pista de blocs repetits. Una partició manual de dos trams iguals es respecta
+  mentre s'edita.
 - **Graella i compassos amb tempo variable (2026-10-20)**: un canvi de
   **tempo** a mig compàs ja no reinicia el compàs (només els canvis de
   **compàs**/signatura obrin un compàs nou). El grid conserva el tipus de
