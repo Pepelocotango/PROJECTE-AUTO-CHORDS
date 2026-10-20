@@ -3204,11 +3204,12 @@ class TestTempoLayerBotoDret(_timeline_layers___Base):
         capa.mousePressEvent(_Ev(-500.0, Qt.RightButton))
         self.assertEqual(sel, [-1])
 
-class TestRetallaALoop(unittest.TestCase):
-    """«Retalla a la selecció A–B» als TRES carrils (regla d'or #11).
+class TestParteixALoop(unittest.TestCase):
+    """«Parteix a la selecció A–B» als TRES carrils (regla d'or #11).
 
-    El model és una cadena de fronteres: el clip seleccionat passa a ocupar
-    exactament [A, B] i els veïns s'ajusten sols. Una sola operació de desfer.
+    És el «parteix aquí» als DOS punts alhora: cada frontera del loop (A i B)
+    que caiga dins del clip seleccionat hi deixa un tall nou (2 o 3 trossos amb
+    el mateix nom) i el tros d'A a B queda seleccionat; un sol desfer.
     """
 
     def setUp(self):
@@ -3241,104 +3242,108 @@ class TestRetallaALoop(unittest.TestCase):
         self.vr.timeline.set_data(self.vr.acords, self.vr.seccions)
         self.vr._undo_init()          # la base del desfer és el model de prova
         self.vr._undo_touch_base()
-        self.vr.loop_a, self.vr.loop_b = 2.0, 6.0
+        self.avisos = []
+        self.vr.avis_editor = lambda text: self.avisos.append(text)
+        self.vr.loop_a, self.vr.loop_b = 5.0, 6.0
 
     def tearDown(self):
         self.w.close()
         shutil.rmtree(self.td, ignore_errors=True)
 
-    def test_acord_a_la_seleccio(self):
+    def test_acord_es_parteix_a_A_i_B(self):
         vr = self.vr
-        self.assertTrue(vr.retalla_a_loop("chord", 1))
-        self.assertAlmostEqual(vr.acords[1].ini, 2.0, places=6)
-        self.assertAlmostEqual(vr.acords[1].fi, 6.0, places=6)
-        self.assertAlmostEqual(vr.acords[0].fi, 2.0, places=6)   # veí escurça
-        self.assertAlmostEqual(vr.acords[2].ini, 6.0, places=6)  # veí s'allarga
+        self.assertTrue(vr.parteix_a_loop("chord", 1))   # G 4–8 → 4–5|5–6|6–8
+        self.assertEqual(len(vr.acords), 5)
+        self.assertEqual([round(c.ini, 3) for c in vr.acords],
+                         [0.0, 4.0, 5.0, 6.0, 8.0])
+        self.assertEqual([c.nom for c in vr.acords[1:4]], ["G", "G", "G"])
+        # el tros d'A a B queda seleccionat
+        self.assertEqual(vr.clips_seleccionats(), {("chord", 2)})
         vr.undo()
-        self.assertAlmostEqual(vr.acords[1].ini, 4.0, places=6)
-        self.assertAlmostEqual(vr.acords[0].fi, 4.0, places=6)
+        self.assertEqual(len(vr.acords), 3)
+        self.assertEqual([round(c.ini, 3) for c in vr.acords], [0.0, 4.0, 8.0])
 
-    def test_seccio_a_la_seleccio(self):
+    def test_seccio_es_parteix_a_A_i_B(self):
         vr = self.vr
-        self.assertTrue(vr.retalla_a_loop("section", 1))
-        self.assertEqual(tuple(vr.seccions[1][:2]), (2.0, 6.0))
-        self.assertAlmostEqual(vr.seccions[0][1], 2.0, places=6)
-        self.assertAlmostEqual(vr.seccions[2][0], 6.0, places=6)
+        vr.loop_a, vr.loop_b = 4.5, 7.25
+        self.assertTrue(vr.parteix_a_loop("section", 1))
+        self.assertEqual([(round(s[0], 3), round(s[1], 3)) for s in vr.seccions],
+                         [(0.0, 4.0), (4.0, 4.5), (4.5, 7.25), (7.25, 8.0),
+                          (8.0, 20.0)])
+        self.assertEqual(vr.seccions[2][2], "B")
         vr.undo()
-        self.assertAlmostEqual(vr.seccions[1][0], 4.0, places=6)
+        self.assertEqual(len(vr.seccions), 3)
 
-    def test_tram_de_tempo_a_la_seleccio(self):
+    def test_tram_de_tempo_es_parteix_a_A_i_B(self):
         vr = self.vr
-        self.assertTrue(vr.retalla_a_loop("tempo", 1))
-        self.assertAlmostEqual(vr.tempo_trams[1][0], 2.0, places=6)
-        self.assertAlmostEqual(vr.tempo_trams[1][1], 6.0, places=6)
-        self.assertAlmostEqual(vr.tempo_trams[2][0], 6.0, places=6)
+        # 240 BPM 4/4 → un compàs cada segon: 5.0 i 6.0 SÍ que són línies.
+        vr.tempo_trams = [(0.0, 4.0, 240.0, 4, 4), (4.0, 8.0, 240.0, 4, 4),
+                          (8.0, 20.0, 240.0, 4, 4)]
+        vr._refresca_tempo_map()
+        vr.loop_a, vr.loop_b = 5.0, 6.0
+        self.assertTrue(vr.parteix_a_loop("tempo", 1))
+        self.assertEqual([round(t[0], 3) for t in vr.tempo_trams],
+                         [0.0, 4.0, 5.0, 6.0, 8.0])
         vr.undo()
-        self.assertAlmostEqual(vr.tempo_trams[1][0], 4.0, places=6)
+        self.assertEqual(len(vr.tempo_trams), 3)
 
-    def test_primer_clip_te_la_capcalera_clavada(self):
-        """Regla #4: el clip 0 comença a 0; només es pot ajustar el final."""
+    def test_tempo_A_i_B_al_mateix_compas_deixen_un_sol_tall(self):
+        """A i B s'imanten al mateix compàs → un únic tall (no peta)."""
         vr = self.vr
-        self.assertTrue(vr.retalla_a_loop("chord", 0))
-        self.assertAlmostEqual(vr.acords[0].ini, 0.0, places=6)
-        self.assertAlmostEqual(vr.acords[0].fi, 6.0, places=6)
+        vr.loop_a, vr.loop_b = 4.9, 5.1    # 120 BPM 4/4: l'únic compàs és 6
+        self.assertTrue(vr.parteix_a_loop("tempo", 1))
+        self.assertEqual([round(t[0], 3) for t in vr.tempo_trams],
+                         [0.0, 4.0, 6.0, 8.0])
 
-    def test_ultim_clip_te_el_final_clavat(self):
-        """Regla #4: l'últim clip acaba a la durada; només canvia l'inici."""
+    def test_nomes_una_frontera_dins(self):
+        """Si només A cau dins del clip, es parteix només allà."""
         vr = self.vr
-        vr.loop_a, vr.loop_b = 10.0, 14.0
-        self.assertTrue(vr.retalla_a_loop("chord", 2))
-        self.assertAlmostEqual(vr.acords[2].ini, 10.0, places=6)
-        self.assertAlmostEqual(vr.acords[2].fi, 20.0, places=6)
+        vr.loop_a, vr.loop_b = 5.0, 9.5         # B cau a l'Am (8–20)
+        self.assertTrue(vr.parteix_a_loop("chord", 1))
+        self.assertEqual(len(vr.acords), 4)
+        self.assertEqual([round(c.ini, 3) for c in vr.acords],
+                         [0.0, 4.0, 5.0, 8.0])
+
+    def test_cap_frontera_dins_no_fa_res(self):
+        vr = self.vr
+        vr.loop_a, vr.loop_b = 1.0, 2.0         # tot dins del primer acord
+        self.assertFalse(vr.parteix_a_loop("chord", 1))
+        self.assertEqual(len(vr.acords), 3)
+        self.assertIn("no hi ha res a partir", self.avisos[0])
 
     def test_sense_loop_no_fa_res(self):
         vr = self.vr
         vr.loop_a = vr.loop_b = None
-        avisos = []
-        vr.avis_editor = lambda text: avisos.append(text)
-        self.assertFalse(vr.retalla_a_loop("chord", 1))
-        self.assertAlmostEqual(vr.acords[1].ini, 4.0, places=6)
-        self.assertEqual(len(avisos), 1)
+        self.assertFalse(vr.parteix_a_loop("chord", 1))
+        self.assertEqual(len(vr.acords), 3)
+        self.assertEqual(len(self.avisos), 1)
 
-    def test_loop_que_no_toca_el_clip(self):
+    def test_vores_exactes_no_tallen(self):
+        """A o B coincidents amb la vora del clip no són cap tall."""
         vr = self.vr
-        vr.loop_a, vr.loop_b = 10.0, 12.0
-        avisos = []
-        vr.avis_editor = lambda text: avisos.append(text)
-        self.assertFalse(vr.retalla_a_loop("chord", 0))   # 0–4 s vs 10–12 s
-        self.assertAlmostEqual(vr.acords[0].fi, 4.0, places=6)
-        self.assertIn("no toca el loop", avisos[0])
-
-    def test_tempo_rebutja_si_no_cau_en_linia_de_compas(self):
-        vr = self.vr
-        vr.loop_a, vr.loop_b = 3.0, 7.0        # 3 s no és línia de compàs
-        avisos = []
-        vr.avis_editor = lambda text: avisos.append(text)
-        self.assertFalse(vr.retalla_a_loop("tempo", 1))
-        self.assertAlmostEqual(vr.tempo_trams[1][0], 4.0, places=6)
-        self.assertEqual(len(avisos), 1)
+        vr.loop_a, vr.loop_b = 4.0, 8.0         # = vores del G
+        self.assertFalse(vr.parteix_a_loop("chord", 1))
+        self.assertEqual(len(vr.acords), 3)
 
     def test_el_despatx_unic_hi_arriba(self):
-        """`executa_edicio` (despatxador únic) encamina l'operació nova."""
         vr = self.vr
-        self.assertTrue(vr.executa_edicio("retalla_loop", "chord", 1))
-        self.assertAlmostEqual(vr.acords[1].ini, 2.0, places=6)
+        self.assertTrue(vr.executa_edicio("parteix_loop", "chord", 1))
+        self.assertEqual(len(vr.acords), 5)
 
     def test_el_menu_ho_ofereix_als_tres_carrils(self):
         vr = self.vr
         for kind in ("chord", "section", "tempo"):
             menu = vr._menu_contextual(kind, 1, 0.0)
-            acts = [a for a in menu.actions()
-                    if a.data() == "retalla_loop"]
+            acts = [a for a in menu.actions() if a.data() == "parteix_loop"]
             self.assertEqual(len(acts), 1, kind)
             self.assertTrue(acts[0].isEnabled(), kind)
-            self.assertIn("2.00–6.00s", acts[0].text())
+            self.assertIn("5.00–6.00s", acts[0].text())
 
     def test_el_menu_el_desactiva_sense_loop(self):
         vr = self.vr
         vr.loop_a = vr.loop_b = None
         menu = vr._menu_contextual("chord", 1, 0.0)
-        act = next(a for a in menu.actions() if a.data() == "retalla_loop")
+        act = next(a for a in menu.actions() if a.data() == "parteix_loop")
         self.assertFalse(act.isEnabled())
         self.assertNotIn("s)", act.text())      # sense valors A–B
 

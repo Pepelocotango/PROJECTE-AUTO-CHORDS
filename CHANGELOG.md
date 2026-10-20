@@ -6,20 +6,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 ## [Unreleased]
 
 ### Afegit (2026-10-20, 4a tongada)
-- **«Retalla a la selecció A–B» als TRES carrils** (menú contextual, botó
-  dret): el clip seleccionat passa a ocupar exactament `[A, B]` — es mou la
-  seua frontera d'inici a **A** i la de fi a **B**, i els veïns s'ajusten
-  sols (el de davant acaba a A, el de darrere comença a B). Tot en **una
-  sola operació de desfer** i validat pels backends (`valida_canvis_acords`,
-  `contiguitat_seccions`+`valida_canvis_seccions`,
-  `valida_i_normalitza_compassos`). Vores clavades per la regla #4: al
-  **primer** clip l'inici no es mou (0) i a l'**últim** el final no es mou
-  (durada). Surt **desactivat** sense loop A–B; si el clip no toca el loop o
-  el backend ho rebutja (a ③ la frontera ha de caure en línia de compàs), no
-  toca res i avisa per la franja Editor. L'etiqueta mostra el rang
-  (`Retalla a la selecció A–B (2.00–6.00s)`). **10 tests** nous
-  (`TestRetallaALoop`) + les llistes blanques de paritat actualitzades a 13
-  accions.
+- **«Parteix a la selecció A–B» als TRES carrils** (menú contextual, botó
+  dret): és el «parteix aquí» fet **als dos llocs alhora** — cada frontera
+  del loop (**A** i **B**) que caiga **dins** del clip seleccionat hi deixa
+  un tall nou, de manera que el clip queda en **2 o 3 trossos amb el mateix
+  nom** i el tros que va d'A a B queda **seleccionat**. Tot en **una sola
+  operació de desfer** i amb els nuclis canònics (`pipeline.parteix_clips`,
+  `tempo_map.parteix_a_compas`). Si A i B cauen fora del clip, no es parteix
+  res i s'avisa per la franja Editor. A ③ el tall s'imanta a la **línia de
+  compàs** i, si A i B cauen al mateix compàs, queda **un sol tall**.
+  L'etiqueta mostra el rang (`Parteix a la selecció A–B (2.10–4.10s)`).
+  **10 tests** (`TestParteixALoop`) + les llistes blanques de paritat
+  actualitzades a 13 accions.
 
 ### Afegit (2026-10-20, 3a tongada)
 - **Clic a un tram de tempo → cursor al seu inici** (paritat amb els clips

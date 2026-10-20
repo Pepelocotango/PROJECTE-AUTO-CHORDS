@@ -1567,7 +1567,7 @@ class TestMenusParitat(_regla11_paritat___Base):
                          f"jocs d'accions diferents: {ac} vs {se}")
         # 13 accions = la definició ÚNICA del menú contextual (regla #11),
         # compartida amb el timeline (abans la llista en tenia 7 i el timeline 9).
-        # 13a: «Retalla a la selecció A–B» (2026-10-20).
+        # 13a: «Parteix a la selecció A–B» (2026-10-20).
         self.assertEqual(len(ac), 13, f"joc inesperat: {ac}")
         # Mateixa estructura (activació) i mateixa paraula de tipus a cada posició.
         self.assertEqual([e for _t, e in ac], [e for _t, e in se])
@@ -1604,7 +1604,7 @@ class TestMenusParitat(_regla11_paritat___Base):
         base_claus, base_actiu = jocs["TL acords"]
         self.assertEqual(base_claus, [
             "afegeix", "duplica", "elimina", "reanomena", "parteix", "meitat",
-            "retalla_loop", "fusiona_anterior", "fusiona_seguent", "retalla", "copia", "enganxa",
+            "parteix_loop", "fusiona_anterior", "fusiona_seguent", "retalla", "copia", "enganxa",
             "loop_seleccio",
         ])
         for nom, (claus, actiu) in jocs.items():
@@ -1640,7 +1640,7 @@ class TestMenusParitat(_regla11_paritat___Base):
             "Duplica", "Elimina",
             "Reanomena (BPM/compàs)…",
             "Parteix aquest tros aquí", "Partir per la meitat",
-            "Retalla a la selecció A–B",
+            "Parteix a la selecció A–B",
             "Fusionar amb anterior", "Fusionar amb següent",
             "Retalla", "Copia", "Enganxa", "Loop a la selecció",
         ])

@@ -5261,7 +5261,7 @@ class ContextMenuTests(unittest.TestCase):
 
         Des del 19-10-2026 és la **definició única** del menú contextual
         (`visor._menu_contextual`), compartida pel timeline i les llistes i per
-        les tres pistes: 13 accions, amb «Fusionar…», «Retalla a la selecció
+        les tres pistes: 13 accions, amb «Fusionar…», «Parteix a la selecció
         A–B» (2026-10-20) i «Loop a la selecció» inclosos.
 
         ⚠️ Este test demanava el menú amb `idx=1` quan el model només té **UN**
@@ -5277,7 +5277,7 @@ class ContextMenuTests(unittest.TestCase):
                          ["Afegeix acord aquí",
                           "Duplica", "Elimina", "Reanomena acord…",
                           "Parteix l'acord…", "Partir per la meitat",
-                          "Retalla a la selecció A–B",
+                          "Parteix a la selecció A–B",
                           "Fusionar amb anterior", "Fusionar amb següent",
                           "Retalla", "Copia", "Enganxa",
                           "Loop a la selecció"])
