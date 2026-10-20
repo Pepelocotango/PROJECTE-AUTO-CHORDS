@@ -45,16 +45,25 @@ def _prior(bpm, preferit=BPM_PREFERIT):
     return float(np.exp(-0.5 * (x / PRIOR_SIGMA) ** 2))
 
 
-def _envolupant_onsets(wav_path):
+def _envolupant_onsets(wav_path, inici=0.0, fi=None):
     """Envolupant d'onsets (flux espectral simplificat) a passos de HOP_S.
 
-    Treu el silenci inicial (perquè no dilueixi la periodicitat). Retorna un
-    array 1-D (centrat a 0).
+    `inici`/`fi` (segons) permeten analitzar **només un tros** de la WAV: és
+    el que fa servir la detecció de BPM dins d'un tram de tempo. Sense eixos
+    arguments, analitza tota la WAV (comportament de sempre).
+
+    Treu el silenci inicial (perquè no diluïsca la periodicitat). Retorna un
+    array 1-D (centrat a 0) i el sample rate.
     """
     with wave.open(wav_path, "rb") as w:
         sr = w.getframerate()
         ch = w.getnchannels()
-        d = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+        nframes = w.getnframes()
+        i0 = max(0, min(nframes, int(round(float(inici or 0.0) * sr))))
+        i1 = nframes if fi is None else max(
+            i0, min(nframes, int(round(float(fi) * sr))))
+        w.setpos(i0)
+        d = np.frombuffer(w.readframes(i1 - i0), dtype=np.int16)
     d = d.astype(np.float32)
     if ch > 1:
         d = d.reshape(-1, ch).mean(axis=1)
@@ -108,21 +117,23 @@ def _comb_bpm(env, hop_s=HOP_S, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
 
 
 def detecta_bpm(wav_path, log, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
-                preferit=BPM_PREFERIT):
-    """Estima el BPM d'una WAV. Retorna float o None si no es pot.
+                preferit=BPM_PREFERIT, inici=0.0, fi=None):
+    """Estima el BPM d'una WAV (o d'un tros) amb numpy pur.
 
-    Pur numpy: no cal cap procés extern ni el plugin d'aubio.
+    `inici`/`fi` limiten l'anàlisi a un interval en segons (detecció dins d'un
+    tram de tempo). Sense ells, analitza tota la WAV.
     `bpm_min`/`bpm_max` limiten la cerca; `preferit` premia el rang musical
     habitual (per evitar el doble/meitat). Vegeu el dialeg d'opcions.
     """
     try:
-        env, sr = _envolupant_onsets(wav_path)
+        env, sr = _envolupant_onsets(wav_path, inici=inici, fi=fi)
         bpm = _comb_bpm(env, bpm_min=bpm_min, bpm_max=bpm_max,
                         preferit=preferit)
         if bpm is None:
             log("BPM: senyal massa curt o silenciós")
             return None
-        log(f"BPM detectat: {bpm:.1f} (envolupant d'onsets, {sr} Hz)")
+        log(f"BPM detectat: {bpm:.1f} (envolupant d'onsets, {sr} Hz, "
+            f"{float(inici):.3f}–{float(fi) if fi is not None else 'fi'} s)")
         return bpm
     except Exception as e:  # noqa: BLE001
         log(f"BPM: no s'ha pogut detectar ({e})")

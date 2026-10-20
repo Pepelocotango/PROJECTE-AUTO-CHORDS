@@ -222,6 +222,16 @@ class Visor(QMainWindow):
             self._carpeta_acords(), self.bpm, self.bpb, 4, self._durada_wav())
         self.tempo_map = None
         self._refresca_tempo_map()
+        # Els projectes vells poden portar fronteres de tempo fora de compàs.
+        # No es rebutgen en carregar, però l'usuari ha de saber que eixe mapa
+        # no complirà la regla de compassos enters fins que l'edite.
+        try:
+            tempo_map.valida_i_normalitza_compassos(
+                self.tempo_trams, self._durada_wav(),
+                offset=getattr(self, "offset", 0.0))
+        except ValueError as e:
+            self.log(f"AVÍS: el mapa de tempo/compàs no complix els compassos "
+                     f"enters: {e}")
         # Si la normalització ha canviat el model (forats interns, capçalera
         # «N», últim fi acotat…), el CSV DEL DISC s'ha de normalitzar JA: abans
         # hi quedava el defecte fins a la 1a edició o export. I si el model és
@@ -492,8 +502,14 @@ class Visor(QMainWindow):
     def _fmt_compas(self, s):
         if not self.tempo_fix:
             return f"{s:07.3f}s"
-        # Mateixa graella que el regle: offset inclos i compassos negatius
-        # (count-in) abans del compas 1. El tercer camp és la fusa (1..8).
+        # El MAPA mana: amb diversos trams de tempo/compàs, cada instant pot
+        # tindre una durada de compàs distinta. La via constant de davall
+        # queda només com a fallback si encara no hi ha mapa.
+        mapa = getattr(self, "tempo_map", None)
+        if mapa is not None:
+            c, b, sub = mapa.pos(float(s))
+            return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
+        # Fallback constant (offset inclòs i compassos negatius/count-in).
         beat_len = 60.0 / self.bpm
         p = int(round((float(s) - getattr(self, "offset", 0.0))
                       / beat_len * 8))
@@ -512,12 +528,19 @@ class Visor(QMainWindow):
             m = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*s", text)
             if m:
                 return float(m.group(1))
-        m = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", text)
+        m = re.search(r"(-?\d+)\.(\d+)(?:\.(\d+))?", text)
         if m:
             compas = int(m.group(1))
             beat = int(m.group(2))
             sub = int(m.group(3)) if m.group(3) else 1
             sub = max(1, min(8, sub))
+            mapa = getattr(self, "tempo_map", None)
+            if mapa is not None:
+                t = mapa.t_de_pos(compas, beat)
+                if sub > 1:
+                    _bar_s, beat_s, _sub_s = mapa.durations(t)
+                    t += (sub - 1) / 8.0 * beat_s
+                return max(0.0, float(t))
             return (((compas - 1) * self.bpb + (beat - 1)
                      + (sub - 1) / 8.0) * (60.0 / self.bpm))
         return float(text.split()[0])
@@ -675,28 +698,36 @@ class Visor(QMainWindow):
     def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
-        Els segons dels clips no es mouen: només canvia la graella i les
-        posicions musicals derivades. Amb `desa=False` (tap en viu) el canvi
-        queda només en memòria; el desat es fa en tancar la sessió de taps.
+        Regla de compassos enters (`docs/REGLES_TEMPS_GRID.md`): el tram
+        conserva el seu nombre de compassos, la seua fi es mou a la nova línia
+        de compàs i les fronteres següents s'arrosseguen (l'últim absorbeix).
+        Si el canvi no és vàlid, es rebutja amb un avís.
+
+        Amb `desa=False` (tap en viu) el canvi queda només en memòria; el desat
+        es fa en tancar la sessió de taps.
         """
         trams = list(self.tempo_trams or [])
         if not trams:
             trams = [(0.0, self._durada_wav(), float(bpm), int(num), int(den))]
-            idx = 0
         idx = min(max(0, int(idx)), len(trams) - 1)
-        bpm = float(bpm)
-        num, den = int(num), int(den)
-        if idx == 0:
-            self.bpm, self.bpb, self.beat_type = bpm, num, den
-            trams[0] = (float(trams[0][0]), float(trams[0][1]), bpm, num, den)
-        else:
-            s = trams[idx]
-            trams[idx] = (float(s[0]), float(s[1]), bpm, num, den)
+        try:
+            nous = tempo_map.canvia_bpm_compassos(
+                trams, idx, float(bpm), self._durada_wav(),
+                offset=getattr(self, "offset", 0.0),
+                num=int(num), den=int(den))
+        except ValueError as e:
+            self.avis_editor(f"Tempo: {e}")
+            return False
+        if not nous:
+            return False
+        self.bpm = float(nous[0][2])
+        self.bpb = int(nous[0][3])
+        self.beat_type = int(nous[0][4])
         if desa:
-            return bool(self.aplica_tempo_trams(trams))
+            return bool(self.aplica_tempo_trams(nous))
         # En memòria: el mapa es reconstrueix i la vista es refresca, però no
         # s'escriu cap CSV ni s'emet `canvis` (ho farà el tancament de sessió).
-        self.tempo_trams = trams
+        self.tempo_trams = nous
         self._actualitza_temps()
         return True
 
@@ -825,6 +856,22 @@ class Visor(QMainWindow):
         self.log(f"mapa de tempo/compàs: {len(nous)} tros(s)")
         return True
 
+    def aplica_tempo_validat(self, trams, msg="Tempo"):
+        """Aplica un mapa només si compleix els compassos enters.
+
+        Punt d'entrada de la GUI per als canvis de mapa (diàleg, eliminar,
+        fusionar, duplicar…). El backend `aplica_tempo_trams` continua
+        permissiu per a càrregues de projectes vells i tests.
+        """
+        try:
+            nous = tempo_map.valida_i_normalitza_compassos(
+                trams, self._durada_wav(),
+                offset=getattr(self, "offset", 0.0))
+        except ValueError as e:
+            self.avis_editor(f"{msg}: {e}")
+            return False
+        return bool(self.aplica_tempo_trams(nous))
+
     def _on_tempo_edit(self, idx):
         """Clic a un bloc de BPM/compàs → diàleg per editar-ne el valor."""
         trams = list(self.tempo_trams or [])
@@ -842,39 +889,31 @@ class Visor(QMainWindow):
             return
         bpm, num, den = dlg.valors()
         self._undo_marca()
-        nou = list(trams)
-        nou[idx] = (s[0], s[1], bpm, num, den)
-        self.aplica_tempo_trams(nou)
+        self.edita_tempo_objectiu(idx, bpm, num, den)
         self._undo_commit()
 
     def _on_tempo_mogut(self, idx, vora, t):
         """Vora d'un bloc de BPM/compàs arrossegada → mou on canvia.
 
-        El snap el fa el **gest** (`TempoLayer._snap_t`, la mateixa graella que
-        els clips). Ací no se'n fa cap altre: el nudge (←/→) ja hi envia un pas
-        de graella i tornar-lo a imantar amb el mapa variable el podia saltar a
-        la graella del tram del costat.
+        La frontera s'imanta a la **línia de compàs** més pròxima
+        (`docs/REGLES_TEMPS_GRID.md`) i s'arrosseguen les fronteres següents
+        perquè els trams interiors continuen amb compassos enters. Si el
+        resultat no és vàlid, no es toca res i s'avisa.
         """
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)):
             return
-        t = max(0.0, min(self._durada_wav(), float(t)))
-        s = trams[idx]
-        if vora == "ini":
-            if idx == 0 or t >= s[1] - pipeline.MIN_GAP_TEMPS:
-                return
-            p = trams[idx - 1]
-            nou = list(trams)
-            nou[idx - 1] = (p[0], t, p[2], p[3], p[4])
-            nou[idx] = (t, s[1], s[2], s[3], s[4])
-        else:
-            if idx + 1 >= len(trams) or t <= s[0] + pipeline.MIN_GAP_TEMPS:
-                return
-            n = trams[idx + 1]
-            nou = list(trams)
-            nou[idx] = (s[0], t, s[2], s[3], s[4])
-            nou[idx + 1] = (t, n[1], n[2], n[3], n[4])
-        self.aplica_tempo_trams(nou)
+        p_idx = (idx - 1) if str(vora).strip().lower() == "ini" else idx
+        if not (0 <= p_idx < len(trams) - 1):
+            return
+        try:
+            _tall, nous = tempo_map.snap_frontera_compas(
+                trams, p_idx, float(t), self._durada_wav(),
+                offset=getattr(self, "offset", 0.0))
+        except ValueError as e:
+            self.avis_editor(f"Frontera de tempo: {e}")
+            return
+        self.aplica_tempo_trams(nous)
 
     def _on_tempo_menu(self, idx, t):
         """Botó dret a la pista ③ BPM/compàs.
@@ -1968,13 +2007,32 @@ class Visor(QMainWindow):
     def _afegeix_tall(self, t):
         """Obre una frontera nova al mapa de tempo (l'«afegeix» de ③).
 
-        Retorna `True` NOMÉS si el mapa ha guanyat un tram (si `t` ja era una
-        frontera, la normalització el deduplica i no canvia res).
+        El tall s'imanta a la línia de compàs del tram que el conté i ha de
+        deixar compassos enters a les dues bandes (`REGLES_TEMPS_GRID.md`).
+        Retorna `True` NOMÉS si el mapa ha guanyat un tram.
         """
-        abans = len(self.tempo_trams or [])
+        trams = list(self.tempo_trams or [])
+        if any(abs(float(s[0]) - float(t)) <= 1e-6 for s in trams):
+            self.avis_editor("Afegeix tempo: ja hi ha una frontera en eixe punt")
+            return False
+        idx = None
+        for i, s in enumerate(trams):
+            if float(s[0]) - 1e-9 <= float(t) <= float(s[1]) + 1e-9:
+                idx = i
+                break
+        if idx is None:
+            self.avis_editor("Afegeix tempo: el punt no cau dins cap tram")
+            return False
+        abans = len(trams)
+        try:
+            _tall, nous = tempo_map.parteix_a_compas(
+                trams, idx, float(t), self._durada_wav(),
+                offset=getattr(self, "offset", 0.0))
+        except ValueError as e:
+            self.avis_editor(f"Afegeix tempo: {e}")
+            return False
         self._undo_marca()
-        self.aplica_tempo_trams(
-            tempo_map.afegeix_tall(list(self.tempo_trams or []), float(t)))
+        self.aplica_tempo_trams(nous)
         self._undo_commit()
         return len(self.tempo_trams or []) > abans
 
@@ -1984,9 +2042,10 @@ class Visor(QMainWindow):
         if not (0 <= idx < len(trams)) or len(trams) <= 1:
             return False
         self._undo_marca()
-        self.aplica_tempo_trams(tempo_map.elimina_tall(trams, idx))
+        ok = self.aplica_tempo_validat(
+            tempo_map.elimina_tall(trams, idx), "Elimina tempo")
         self._undo_commit()
-        return True
+        return ok
 
     def _fusiona_tram(self, idx, amb="seguent"):
         """Fusiona el tram `idx` amb el veí (mirall de `fusiona_acord`, #11)."""
@@ -1995,9 +2054,9 @@ class Visor(QMainWindow):
         if len(nou) == len(trams):
             return False
         self._undo_marca()
-        self.aplica_tempo_trams(nou)
+        ok = self.aplica_tempo_validat(nou, "Fusiona tempo")
         self._undo_commit()
-        return True
+        return ok
 
     def _on_clip_context_menu(self, kind, idx, pos, t=None):
         """Botó dret sobre un clip del TIMELINE (definició única del menú).
@@ -2368,8 +2427,12 @@ class Visor(QMainWindow):
             cand_ac = self._valida_canvis_acords(cand_ac)
             if idx_sec:
                 cand_sec = self._valida_canvis_seccions(cand_sec)
+            if cand_tp is not None:
+                cand_tp = tempo_map.valida_i_normalitza_compassos(
+                    cand_tp, durada, offset=getattr(self, "offset", 0.0))
         except ValueError as e:
             self.log(f"duplica selecció: canvi invalid, no s'ha fet res ({e})")
+            self.avis_editor(f"Duplica: {e}")
             return False
         self._undo_marca()
         self.acords = cand_ac
@@ -2425,16 +2488,25 @@ class Visor(QMainWindow):
         idx_tp = [i for i in idx_tp if 0 <= i < len(self.tempo_trams or [])]
         if not idx_ac and not idx_sec and not idx_tp:
             return
+        durada = self._durada_wav()
+        cand_tp = None
+        if idx_tp:
+            trams = list(self.tempo_trams or [])
+            for i in idx_tp:
+                trams = tempo_map.elimina_tall(trams, i)
+            try:
+                cand_tp = tempo_map.valida_i_normalitza_compassos(
+                    trams, durada, offset=getattr(self, "offset", 0.0))
+            except ValueError as e:
+                self.avis_editor(f"Elimina tempo: {e}")
+                return
         self._undo_marca()
         for i in idx_ac:
             self._elimina_acord(i)
         for i in idx_sec:
             self._elimina_seccio(i)
-        if idx_tp:
-            trams = list(self.tempo_trams or [])
-            for i in idx_tp:
-                trams = tempo_map.elimina_tall(trams, i)
-            self.aplica_tempo_trams(trams)
+        if cand_tp:
+            self.aplica_tempo_trams(cand_tp)
         self._undo_commit()
         # INVARIANT #4 INSTANTANI: si l'esborrat ha deixat el model sense acords
         # (o sense estructura), s'hi torna a posar la marca canònica a 0 («N» /
@@ -2526,9 +2598,10 @@ class Visor(QMainWindow):
                        if nous_acords is not None else list(self.acords))
             cand_sec = (self._valida_canvis_seccions(noves_seccions)
                         if noves_seccions is not None else list(self.seccions))
-            cand_tp = (tempo_map.normalitza_trams(noves_trams, durada)
-                       if noves_trams is not None
-                       else list(self.tempo_trams or []))
+            cand_tp = (tempo_map.valida_i_normalitza_compassos(
+                noves_trams, durada, offset=getattr(self, "offset", 0.0))
+                if noves_trams is not None
+                else list(self.tempo_trams or []))
         except ValueError as e:
             self.log(f"enganxa: canvi invalid, no s'ha fet res ({e})")
             self.avis_editor(f"Enganxat no fet: {e}")
@@ -2957,7 +3030,11 @@ class Visor(QMainWindow):
             self.ed_ini.clear(); self.ed_cb.clear()
 
     def _secs_a_cb(self, t):
-        """Segons -> compas.beat o compas.beat.fusa (offset=0)."""
+        """Segons → compàs.temps[.fusa] segons el MAPA de tempo vigent."""
+        mapa = getattr(self, "tempo_map", None)
+        if mapa is not None:
+            c, b, sub = mapa.pos(float(t))
+            return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
         beat = 60.0 / max(self.bpm, 1e-9)
         bpb = max(1, int(self.bpb))
         p = int(round(float(t) / beat * 8))
@@ -2969,7 +3046,7 @@ class Visor(QMainWindow):
         return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
 
     def _cb_a_secs(self, text):
-        """compas.beat o compas.beat.fusa -> segons (offset=0)."""
+        """compàs.temps[.fusa] → segons segons el MAPA de tempo vigent."""
         m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)"
                      r"(?:\s*[.,]\s*(\d+))?\s*$", str(text))
         if not m:
@@ -2977,6 +3054,13 @@ class Visor(QMainWindow):
         c, b = int(m.group(1)), int(m.group(2))
         sub = int(m.group(3)) if m.group(3) else 1
         sub = max(1, min(8, sub))
+        mapa = getattr(self, "tempo_map", None)
+        if mapa is not None:
+            t = mapa.t_de_pos(c, b)
+            if sub > 1:
+                _bar_s, beat_s, _sub_s = mapa.durations(t)
+                t += (sub - 1) / 8.0 * beat_s
+            return max(0.0, float(t))
         beat = 60.0 / max(self.bpm, 1e-9)
         n = (c - 1) * max(1, int(self.bpb)) + (b - 1) + (sub - 1) / 8.0
         return max(0.0, n * beat)
@@ -3297,27 +3381,29 @@ class Visor(QMainWindow):
     def _parteix_tram_per_la_meitat(self, idx):
         """«Partir per la meitat» d'un tram de BPM/compàs (③).
 
-        El mapa és **saturat** (cobreix tota la WAV i els trams són contigus),
-        així que «partir» = obrir una **frontera nova** al punt mig amb el
-        MATEIX BPM/compàs: queden dues meitats idèntiques de valor. Si la
-        normalització no arriba a crear la frontera (tram massa curt), no es
-        toca res. Una sola operació de desfer.
+        El mapa és **saturat** i els trams interiors tenen compassos enters:
+        el tall s'imanta a la línia de compàs més pròxima al centre. Si el
+        tram només té un compàs, no es pot partir en dos trams enters i es
+        rebutja. Una sola operació de desfer.
         """
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)):
             return False
         ini, fi = float(trams[idx][0]), float(trams[idx][1])
         t = (ini + fi) / 2.0
-        nou = tempo_map.afegeix_tall(trams, t)
-        norm = tempo_map.normalitza_trams(nou, self._durada_wav())
-        if len(norm) != len(trams) + 1:
-            self.log(f"partir per la meitat: {t:.3f}s no serveix pel tram "
-                     f"{idx} ({ini:.3f}s–{fi:.3f}s)")
+        try:
+            _tall, nous = tempo_map.parteix_a_compas(
+                trams, idx, t, self._durada_wav(),
+                offset=getattr(self, "offset", 0.0))
+        except ValueError as e:
+            self.log(f"partir per la meitat: {e}")
+            self.avis_editor(f"Partir tempo: {e}")
             return False
         self._undo_marca()
-        self.aplica_tempo_trams(nou)
+        self.aplica_tempo_trams(nous)
         self._undo_commit()
-        self.log(f"partit per la meitat el tram de BPM/compàs {idx} a {t:.3f}s")
+        self.log(f"partit per la meitat el tram de BPM/compàs {idx} a "
+                 f"{t:.3f}s")
         return idx + 1
 
     def _parteix_acord_dialog(self, idx, t=None):

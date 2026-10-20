@@ -153,6 +153,7 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
             step = bar_s * int(val)
             kind = ("bar", int(val)) if variable else "bar"
             label = step
+            label_kind = kind
             # Context: les línies de compàs (més fines que el bloc triat).
             # `lines` va de gruixut a fi: primer el bloc, després el compàs.
             lines.append((step, kind))
@@ -170,6 +171,8 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
             # Un treset no es pot etiquetar amb la graella binària de 1/32:
             # deixem les etiquetes al TEMPS i les línies fines al treset.
             label = beat_s if es_treset else step
+            label_kind = (("beat", 1.0) if variable else "beat") \
+                if es_treset else kind
             # Context: compàs i temps (si hi caben i són més gruixuts).
             if bar_s > beat_s + 1e-9 and bar_s * pps >= min_line_px:
                 lines.append((bar_s, ("bar", 1) if variable else "bar"))
@@ -179,13 +182,15 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
         # Una divisió MANUAL mana sempre: no caiem a l'automàtic encara que
         # siga molt fina o que no capa a la vista. L'usuari l'ha forçada des
         # del selector de snap (independentment de si el snap està activat).
-        return {"snap": step, "lines": lines, "label": label}
+        return {"snap": step, "lines": lines, "label": label,
+                "label_kind": label_kind}
     divs = _divisions(tempo_fix, bpm, bpb, mapa)
     fit = [(s, k) for (s, k) in divs if s * pps >= min_line_px]
     if not fit:
         # Zoom extremadament allunyat: una sola línia, la MÉS GRUIXUDA.
         snap, snap_k = divs[0]
-        return {"snap": snap, "lines": [(snap, snap_k)], "label": divs[0][0]}
+        return {"snap": snap, "lines": [(snap, snap_k)],
+                "label": divs[0][0], "label_kind": divs[0][1]}
     snap, snap_k = fit[-1]
     # El nivell gran és el compàs (o el múltiple de compàs més fi que encara
     # cap a la vista). Així a zoom normal mana el compàs, no un múltiple enorme.
@@ -206,9 +211,10 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
         lines.append((snap, snap_k))
     # label: el MÉS FI que hi cap (densitat MÀXIMA sense solapar). El regle,
     # a més, salta les etiquetes que no hi caben segons l'amplada del text.
-    cands = [s for (s, _k) in divs if s * pps >= min_label_px]
-    lab = cands[-1] if cands else major[0]
-    return {"snap": snap, "lines": lines, "label": lab}
+    cands = [(s, k) for (s, k) in divs if s * pps >= min_label_px]
+    lab, lab_kind = cands[-1] if cands else major
+    return {"snap": snap, "lines": lines, "label": lab,
+            "label_kind": lab_kind}
 
 
 def grid_positions(view_left, view_right, step, offset=0.0, tol=1e-9,

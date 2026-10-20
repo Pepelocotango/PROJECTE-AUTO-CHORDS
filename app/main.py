@@ -393,7 +393,7 @@ class Finestra(QMainWindow):
         self.b_detecta.setIcon(icones.ico("target"))
         self.b_detecta.setIconSize(icones.pm_mida(16))
         self.b_detecta.setObjectName("secundari")
-        self.b_detecta.setToolTip("Detecta el BPM automàticament (motor triable).")
+        self.b_detecta.setToolTip("Detecta el BPM. Amb un tram de tempo seleccionat, analitza només eixe tram (el seu inici és el downbeat).")
         self.b_detecta.clicked.connect(lambda: self._detecta_bpm())
         for camp in (self.bpm, self.bpb, self.offset):
             camp.editingFinished.connect(self._aplica_parametres_temps)
@@ -1155,17 +1155,50 @@ class Finestra(QMainWindow):
             dialegs.desa_opcions(self.opcions)
             self._marca_dirty()
         b = self.opcions.get("bpm", {})
+        vr = getattr(self, "visor_ref", None)
+        kind, idx = vr.seleccio_activa() if vr is not None else (None, -1)
+        te_tempo = (kind == "tempo" and vr is not None
+                    and 0 <= idx < len(vr.tempo_trams or []))
+        tr = vr.tempo_trams[idx] if te_tempo else None
         self._atura_si_sona("deteccio de BPM")
-        self.registra("Detectant el BPM…")
+        self.registra("Detectant el BPM…" if not te_tempo
+                      else f"Detectant el BPM del tram {idx}…")
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
-            bpm = pipeline.detecta_bpm(
-                wav, self.registra,
-                bpm_min=b.get("min"), bpm_max=b.get("max"),
-                preferit=(b.get("pref_min"), b.get("pref_max")),
-                motor=b.get("motor", "nostre"))
+            if te_tempo:
+                bpm = pipeline.detecta_bpm_tram(
+                    wav, float(tr[0]), float(tr[1]), self.registra,
+                    bpm_min=b.get("min"), bpm_max=b.get("max"),
+                    preferit=(b.get("pref_min"), b.get("pref_max")))
+            else:
+                bpm = pipeline.detecta_bpm(
+                    wav, self.registra,
+                    bpm_min=b.get("min"), bpm_max=b.get("max"),
+                    preferit=(b.get("pref_min"), b.get("pref_max")),
+                    motor=b.get("motor", "nostre"))
         finally:
             QApplication.restoreOverrideCursor()
+        if te_tempo:
+            if bpm:
+                vr._undo_marca()
+                ok = vr.edita_tempo_objectiu(idx, bpm, tr[3], tr[4])
+                vr._undo_commit()
+                if ok:
+                    self._sincronitza_temps_del_visor()
+                    self.registra(f"BPM del tram {idx}: {bpm:.3f} (aplicat)")
+                    self._missatge_info(
+                        f"BPM del tram {idx}: {bpm:.3f} (aplicat)")
+                else:
+                    self.avisa_info(
+                        "Detecta BPM",
+                        "El BPM detectat no es pot aplicar amb compassos "
+                        "enters; no s'ha tocat el mapa.")
+            else:
+                self.avisa_info(
+                    "Detecta BPM",
+                    "No s'ha pogut estimar el BPM del tram seleccionat.\n"
+                    "Pot ser un tram massa curt o irregular: posa'l a mà.")
+            return
         if bpm:
             self.bpm.setText(f"{bpm:.3f}")
             self.registra(f"BPM detectat: {bpm:.3f} (pots editar-lo)")
@@ -1463,7 +1496,7 @@ class Finestra(QMainWindow):
         dlg = dialegs.DialegTempoMapa(self, trams, vr._durada_wav())
         if dlg.exec_() != QDialog.Accepted:
             return
-        if not vr.aplica_tempo_trams(dlg.trams()):
+        if not vr.aplica_tempo_validat(dlg.trams(), "Mapa de tempo"):
             self.avisa_info("Auto Chords", "El mapa no és vàlid.")
             return
         self._sincronitza_temps_del_visor()
@@ -1498,7 +1531,7 @@ class Finestra(QMainWindow):
         if len(trams) <= 1:
             self.registra("detecta tempo: és constant (cap canvi)")
             return 0
-        if vr.aplica_tempo_trams(trams):
+        if vr.aplica_tempo_validat(trams, "Mapa de tempo detectat"):
             self._sincronitza_temps_del_visor()
             self.registra(f"mapa de tempo inferit: {len(trams)} tros(s)")
             return len(trams)

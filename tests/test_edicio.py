@@ -1122,10 +1122,11 @@ class TestNudge(_nudge___Base):
         v = _nudge___visor()
         v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
                               (10.0, 20.0, 90.0, 3, 4)])
-        pas = v.timeline._pas_nudge()
+        # El nudge de tempo mou COMPASSOS sencers: 4/4 a 120 BPM = 2 s.
+        bar = 60.0 / 120.0 * 4
         v.timeline.select_clip("tempo", 1)
         v.timeline.keyPressEvent(_key(Qt.Key_Right))
-        self.assertAlmostEqual(float(v.tempo_trams[1][0]) - 10.0, pas,
+        self.assertAlmostEqual(float(v.tempo_trams[1][0]) - 10.0, bar,
                                places=6)
         self.assertAlmostEqual(float(v.tempo_trams[0][0]), 0.0, places=6)
         # Alt+→ (estira) mou la frontera DRETA del tram
@@ -1424,12 +1425,13 @@ class TestVisorParitat(_regla11_paritat___Base):
         tl = v.timeline
         tl.select_multi({("chord", 0), ("tempo", 0)})
         tl.copy_selection()
-        tl.set_position(5.0, snap=False)
+        # El destí del bloc de tempo ha de caure en una línia de compàs (12 s).
+        tl.set_position(12.0, snap=False)
         tl.paste_at_cursor()
         self.assertEqual([c.payload[0] for c in v.acords],
-                         ["C", "C", "Am", "F"])
+                         ["C", "Am", "C", "F"])
         self.assertEqual([t[2] for t in v.tempo_trams],
-                         [120.0, 120.0, 120.0, 90.0])
+                         [120.0, 90.0, 120.0, 90.0])
         v.undo()
         self.assertEqual(estat(), base)
 
@@ -1688,9 +1690,10 @@ class TestMenusParitat(_regla11_paritat___Base):
         v, _ac, _se, _tp = self._tres_menus()
         self.assertTrue(
             _tria_menu(v._on_tempo_menu, "Afegeix un canvi", 0, 7.0))
+        # El tall s'imanta a la línia de compàs més pròxima (6 s: 0, 2, 4, 6, 8…).
         self.assertEqual([(round(float(t[0]), 2), round(float(t[1]), 2))
                           for t in v.tempo_trams],
-                         [(0.0, 7.0), (7.0, 10.0), (10.0, _regla11_paritat__DUR)])
+                         [(0.0, 6.0), (6.0, 10.0), (10.0, _regla11_paritat__DUR)])
         # la frontera nova HERETA el tempo/compàs del tros on cau
         self.assertEqual(v.tempo_trams[1][2:4], (120.0, 4))
         v.undo()
@@ -1700,9 +1703,10 @@ class TestMenusParitat(_regla11_paritat___Base):
         v, _ac, _se, _tp = self._tres_menus()
         self.assertTrue(
             _tria_menu(v._on_tempo_menu, "Partir per la meitat", 0, 3.0))
+        # El centre (5 s) s'imanta a la línia de compàs més pròxima (4 s).
         self.assertEqual([(round(float(t[0]), 2), round(float(t[1]), 2), t[2])
                           for t in v.tempo_trams],
-                         [(0.0, 5.0, 120.0), (5.0, 10.0, 120.0),
+                         [(0.0, 4.0, 120.0), (4.0, 10.0, 120.0),
                           (10.0, _regla11_paritat__DUR, 90.0)])
         v.undo()
         self.assertEqual(len(v.tempo_trams), 2)
@@ -1718,13 +1722,15 @@ class TestMenusParitat(_regla11_paritat___Base):
         v, _ac, _se, _tp = self._tres_menus()
         self.assertTrue(_tria_menu(v._on_tempo_menu, "Copia", 0, 3.0))
         self.assertTrue(v.timeline.has_clipboard())
-        v.timeline.set_position(15.0, snap=False)
+        # El destí ha de caure en una línia de compàs del mapa (16 s: 10, 12,
+        # 14, 16…). El bloc [0,10]=120 s'enganxa sobre [16,26].
+        v.timeline.set_position(16.0, snap=False)
         _tria_menu(v._on_tempo_menu, "Enganxa", 0, 3.0)
-        # el bloc [0,10]=120 s'ha enganxat sobre [15,25]
         self.assertEqual([(round(float(t[0]), 2), round(float(t[1]), 2), t[2])
                           for t in v.tempo_trams],
-                         [(0.0, 10.0, 120.0), (10.0, 15.0, 90.0),
-                          (15.0, 25.0, 120.0), (25.0, _regla11_paritat__DUR, 90.0)])
+                         [(0.0, 10.0, 120.0), (10.0, 16.0, 90.0),
+                          (16.0, 26.0, 120.0),
+                          (26.0, _regla11_paritat__DUR, 90.0)])
 
     def test_menu_acord_afegeix_a_la_posicio_del_clic(self):
         """«Afegeix acord aquí» cau a l'instant del CLIC, no al cursor."""
@@ -4159,8 +4165,9 @@ class TestSenseAnalisi(_sense_analisi___Base):
         vr._on_tempo_mogut(1, "ini", 6.0)          # frontera 4 s -> 6 s
         self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 6.0, places=2)
         self.assertAlmostEqual(float(vr.tempo_trams[0][1]), 6.0, places=2)
-        vr._on_tempo_mogut(0, "fi", 3.0)           # frontera 6 s -> 3 s
-        self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 3.0, places=2)
+        # 3 s no és línia de compàs del primer tram (0, 2, 4, 6): s'imanta a 2.
+        vr._on_tempo_mogut(0, "fi", 3.0)           # frontera 6 s -> 2 s
+        self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 2.0, places=2)
         self.assertEqual(vr.tempo_map.signatura(4.0), (3, 4))
 
     def test_audio_nou_neix_amb_1_acord_i_1_seccio(self):

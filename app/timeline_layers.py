@@ -31,7 +31,7 @@ from app.timeline_base import (   # noqa: E402
     CHORD_HANDLE, CHORD_HANDLE_ACTIVE, CURSOR_COLOR, LANE_DIVIDER,
     RULER_BG, RULER_TEXT, SECTION_FILLS, SECTION_TEXT, SELECTION_COLOR,
     WF_BG, WF_ENV, WF_GAIN, WF_MID,
-    fmt_pos, grid_levels, grid_plan, grid_positions, is_bar_start_label,
+    fmt_pos, grid_plan, grid_positions, is_bar_start_label,
 )
 
 
@@ -179,15 +179,28 @@ class GridLayer(QGraphicsItem):
         off = getattr(self, "_offset", 0.0)
         view_px = max(self._view_right - self._view_left, 1e-6) * self._pps
         div = graella.DIVISIONS.get(self._divisio) if self._divisio else None
-        for step, color, width in grid_levels(self._tempo_fix, self._bpm,
-                                              self._bpb, self._pps, view_px,
-                                              mapa=self._mapa, divisio=div):
+        plan = grid_plan(self._tempo_fix, self._bpm, self._bpb, self._pps,
+                         view_px, mapa=self._mapa, divisio=div)
+        col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
+               "sub": theme.TL_GRID_SUB}
+
+        def _col(k):
+            return col[k[0] if isinstance(k, tuple) else k]
+
+        # de fi a gruixut, perquè els nivells gruixuts es pintin al damunt
+        nivells = [(s, k, _col(k), 1) for (s, k) in reversed(plan["lines"])]
+        if plan["label"] > nivells[-1][0] + 1e-9:
+            nivells.append((plan["label"], plan.get("label_kind"),
+                            col["bar"], 2))
+        for step, kind, color, width in nivells:
             if step <= 1e-9:
                 continue
             p.setPen(QPen(QColor(color), width))
-            # posicions per índex (sense acumular → sense deriva de coma flotant)
+            # El `kind` (bar/beat/sub o («bar», n)) s'ha de passar EXPLÍCIT:
+            # si es deixa inferir per la mida del pas, amb un mapa variable
+            # s'equivoca i el grid no quadra amb els canvis de tempo/compàs.
             for t in grid_positions(self._view_left, self._view_right, step, off,
-                                    mapa=self._mapa):
+                                    mapa=self._mapa, kind=kind):
                 if t >= 0:
                     x = (t - self._view_left) * self._pps
                     p.drawLine(QPointF(x, 0), QPointF(x, self._height))
@@ -280,7 +293,7 @@ class RulerLayer(QGraphicsItem):
             kind_name = kind[0] if isinstance(kind, tuple) else kind
             p.setPen(QPen(QColor(col[kind_name]), 1))
             for t in grid_positions(self._view_left, self._view_right, sub, off,
-                                    mapa=self._mapa):
+                                    mapa=self._mapa, kind=kind):
                 if t >= 0:
                     x = (t - self._view_left) * self._pps
                     p.drawLine(QPointF(x, self._height - 4),
@@ -288,6 +301,7 @@ class RulerLayer(QGraphicsItem):
         # ticks principals + etiquetes (AMB l'offset, com el GridLayer: si no,
         # les etiquetes queden desplaçades respecte de les linies del grid)
         step = plan["label"]
+        step_kind = plan.get("label_kind")
         font = QFont("Sans Serif", 8)
         p.setFont(font)
         fm = QFontMetricsF(font)
@@ -295,7 +309,7 @@ class RulerLayer(QGraphicsItem):
         # posicions per índex (sense acumular → les etiquetes d'inici de compàs
         # ja no deriven a «(N-1).4»)
         for t in grid_positions(self._view_left, self._view_right, step, off,
-                                mapa=self._mapa):
+                                mapa=self._mapa, kind=step_kind):
             if t >= 0:
                 x = (t - self._view_left) * self._pps
                 p.setPen(QPen(QColor(theme.TL_GRID_MEASURE), 1))
@@ -571,7 +585,15 @@ class TempoLayer(QGraphicsObject):
         if ((z in ("ini", "fi")) or (z == "cos" and i > 0)) \
                 and abs(ev.pos().x() - x0) > 5:
             t = self._view_left + ev.pos().x() / max(self._pps, 1e-9)
-            self._t_guia = self._snap_t(t)
+            vista = None
+            esc = self.scene()
+            if esc is not None:
+                for v in esc.views():
+                    vista = v
+                    break
+            snap_bar = getattr(vista, "_snap_tempo_guia", None)
+            self._t_guia = (snap_bar(i, z, t) if callable(snap_bar)
+                            else self._snap_t(t))
             self.update()
         ev.accept()
 

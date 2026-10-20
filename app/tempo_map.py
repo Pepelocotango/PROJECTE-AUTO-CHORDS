@@ -23,10 +23,13 @@ a `docs/archive/PLA_TEMPO_COMPAS.md`.
 """
 from __future__ import annotations
 
+import math
 from collections import namedtuple
 
 # Tolerància temporal (evita falsos positius de coma flotant).
 TOL = 1e-9
+# Tolerància per a les fronteres de compàs en segons (els CSV guarden 1 µs).
+TOL_COMPAS = 1e-4
 # BPM de seguretat (regla d'or #8): un valor no positiu no és vàlid i es
 # substitueix per aquest (el mateix que fa servir `TempoMap`).
 BPM_DEFECTE = 120.0
@@ -286,39 +289,71 @@ class TempoMap:
         return len(self._trams) - 1
 
     # ── posició compàs·temps·subdivisió ─────────────────────────────────────
+    def _canvi_compas_entre(self, t0, t1, sig):
+        """Primer canvi de **compàs** (signatura) estrictament dins (t0, t1).
+
+        Els canvis de TEMPO amb la mateixa signatura NO compten: el compàs
+        continua i només canvia la seua durada en segons. Retorna
+        `(t, (num, den))` o `None`.
+        """
+        for s in self._trams:
+            if s.ini <= t0 + TOL:
+                continue
+            if s.ini >= t1 - TOL:
+                break
+            if (s.num, s.den) != sig:
+                return float(s.ini), (s.num, s.den)
+        return None
+
     def _talls_de_compas(self):
         """`[(q_ini, t_ini, num, den), …]` — inici de cada compàs des de l'origen.
 
-        Els **canvis de compàs** arrenquen un compàs nou encara que caiguen a
-        mig (com als DAWs: el canvi de compàs implica frontera de compàs).
+        Els **canvis de compàs** (signatura) arrenquen un compàs nou, encara
+        que caiguen a mig compàs (com als DAWs). Els **canvis de tempo** amb la
+        mateixa signatura **NO** tallen el compàs: es continua el compàs actual
+        i la resta es mesura amb el BPM nou. Els inici de compàs es calculen en
+        l'espai de negres i es converteixen a segons amb `t_de_quarters`, així
+        la integració del tempo variable és la correcta.
         """
-        talls = [(0.0, float(self._offset), self.tram(self._offset).num,
-                  self.tram(self._offset).den)]
-        i = self._index(self._offset)
-        q = 0.0
-        t = self._offset
+        offset = float(self._offset)
+        durada = float(self._trams[-1].fi)
+        s = self.tram(offset)
+        sig = (s.num, s.den)
+        talls = [(0.0, offset, sig[0], sig[1])]
+        q_bar, t_bar = 0.0, offset
         limit = 100000                     # salvavides
-        while i < len(self._trams) and limit > 0:
+        while t_bar < durada - TOL and limit > 0:
             limit -= 1
-            s = self._trams[i]
-            bq = _bar_quarters(s.num, s.den)
-            q_fi_tram = q + (s.fi - t) * s.bpm / 60.0
-            q_bar = q + bq
-            if q_bar <= q_fi_tram + TOL:
-                t_bar = self.t_de_quarters(q_bar)
-                talls.append((q_bar, t_bar, s.num, s.den))
-                q, t = q_bar, t_bar
-            else:
-                # canvia de compàs/tempo abans d'acabar el compàs → nou compàs
-                if i + 1 < len(self._trams):
-                    q, t = q_fi_tram, s.fi
-                    nxt = self._trams[i + 1]
-                    talls.append((q, t, nxt.num, nxt.den))
-                    i += 1
-                    continue
+            bq = _bar_quarters(sig[0], sig[1])
+            if bq <= TOL:
                 break
-            if abs(t - s.fi) <= TOL and i + 1 < len(self._trams):
-                i += 1
+            q_end = q_bar + bq
+            t_end = self.t_de_quarters(q_end)
+            if t_end <= t_bar + TOL:
+                break
+            canvi = self._canvi_compas_entre(t_bar, t_end, sig)
+            if canvi is not None:
+                # Canvi de compàs a mig compàs: es tanca el compàs ahí i se'n
+                # comença un altre amb la signatura nova.
+                t_nou, sig_nou = canvi
+                q_nou = self.quarters(t_nou)
+                if q_nou <= q_bar + TOL:
+                    break
+                talls.append((q_nou, t_nou, sig_nou[0], sig_nou[1]))
+                q_bar, t_bar, sig = q_nou, t_nou, sig_nou
+                continue
+            if t_end > durada + TOL:
+                break
+            # El compàs acaba dins del mapa. La signatura del compàs que
+            # COMENÇA ahí és la del tram on cau `t_end` (pot haver-hi un canvi
+            # de compàs exactament a la frontera).
+            s_next = self.tram(t_end)
+            sig_next = (s_next.num, s_next.den)
+            talls.append((q_end, t_end, sig_next[0], sig_next[1]))
+            q_bar, t_bar = q_end, t_end
+            sig = sig_next
+            if t_end >= durada - TOL:
+                break
         return talls
 
     def pos(self, t):
@@ -365,12 +400,28 @@ class TempoMap:
         return "%d.%d.%d" % (c, b, s)
 
     def t_de_pos(self, compas, temps=1):
-        """Instant del compàs/temps indicat (inversa parcial de `pos`)."""
-        s = self.tram(self._offset)
-        bq = _bar_quarters(s.num, s.den)
-        beat_q = _beat_quarters(s.den)
-        q = (int(compas) - 1) * bq + (int(temps) - 1) * beat_q
-        return self.t_de_quarters(q)
+        """Instant del compàs/temps indicat (inversa parcial de `pos`).
+
+        Usa la llista REAL de compassos (`_talls_de_compas`), no una suposició
+        de compàs constant: amb canvis de tempo/compàs, cada compàs pot tindre
+        una durada distinta.
+        """
+        compas, temps = int(compas), int(temps)
+        talls = self._talls_de_compas()
+        if not talls:
+            return self._offset
+        if compas >= 1:
+            idx = compas - 1
+            if idx < len(talls):
+                q_bar, _t, num, den = talls[idx]
+            else:
+                q_bar, _t, num, den = talls[-1]
+                q_bar += (compas - len(talls)) * _bar_quarters(num, den)
+        else:
+            # Compte enrere (abans del compàs 1): signatura de l'origen.
+            q_bar, _t, num, den = talls[0]
+            q_bar += (compas - 1) * _bar_quarters(num, den)
+        return self.t_de_quarters(q_bar + (temps - 1) * _beat_quarters(den))
 
     # ── snap a la graella ───────────────────────────────────────────────────
     def compassos(self):
@@ -457,6 +508,224 @@ def normalitza_trams(trams, durada):
     if out[0][0] > TOL:
         out.insert(0, (0.0, out[0][0], out[0][2], out[0][3], out[0][4]))
     return out
+
+
+# --- contracte de COMPASSOS ENTERS (docs/REGLES_TEMPS_GRID.md) -------------
+def durada_compas(bpm, num, den):
+    """Segons que dura un compàs `num/den` a `bpm`."""
+    return _bar_quarters(num, den) * 60.0 / float(bpm)
+
+
+def _bar_lines_tram(tram, offset=0.0):
+    """Línies de compàs d'un tram, en segons (inclou les dels extrems)."""
+    ini, fi, bpm, num, den = (float(tram[0]), float(tram[1]), float(tram[2]),
+                              int(tram[3]), int(tram[4]))
+    b = durada_compas(bpm, num, den)
+    if b <= TOL:
+        return []
+    # El primer tram pot tindre un tros de compte enrere abans del compàs 1
+    # (offset): les seues línies Parteixen de l'offset, no de 0.
+    base = float(offset) if abs(ini) <= TOL and offset > TOL else ini
+    k0 = int(math.floor((ini - base) / b)) - 2
+    k1 = int(math.ceil((fi - base) / b)) + 2
+    return [base + k * b for k in range(k0, k1 + 1)]
+
+
+def valida_i_normalitza_compassos(trams, durada, offset=0.0):
+    """Valida el contracte de compassos enters i retorna el mapa normalitzat.
+
+    - Les fronteres interiors han de caure en una **línia de compàs**.
+    - Els trams interiors han de tindre un **nombre enter de compassos** ≥1.
+    - El primer inici i l'últim final poden ser parcials (excepcions).
+    - El mapa ha de ser contigu i cobrir `[0, durada]`.
+
+    Aixeca `ValueError` amb un missatge d'usuari si no es compleix.
+    """
+    durada = float(durada or 0.0)
+    for t in trams or ():
+        if durada > 0 and float(t[0]) >= durada - TOL:
+            raise ValueError("Hi ha un tram que comença fora de la WAV")
+    nous = normalitza_trams(trams, durada)
+    if not nous:
+        raise ValueError("El mapa de tempo/compàs és buit")
+    if len(nous) == 1:
+        return nous
+
+    mapa = TempoMap(nous, offset=offset)
+    bar_times = [float(t) for _q, t, _n, _d in mapa.compassos()]
+
+    def _es_bar(t):
+        return any(abs(float(t) - b) <= TOL_COMPAS for b in bar_times)
+
+    # Totes les fronteres interiors (inclou l'inici de l'últim tram). El
+    # primer inici (0) i l'últim final (durada) són les excepcions.
+    for i in range(1, len(nous)):
+        t = float(nous[i][0])
+        if not _es_bar(t):
+            raise ValueError(
+                f"La frontera {t:.6f}s no cau en una línia de compàs")
+    # El primer tram: el tros posterior a la primera línia de compàs (l'offset,
+    # si cau dins del tram) ha de ser un nombre enter de compassos. El tros
+    # anterior a l'offset és l'única part parcial permesa al començament.
+    ini0, fi0, bpm0, num0, den0 = nous[0]
+    b0 = durada_compas(bpm0, num0, den0)
+    if b0 <= TOL:
+        raise ValueError("El primer tram té un compàs de durada nul·la")
+    base0 = float(offset) if float(offset) > float(ini0) + TOL else float(ini0)
+    bars0 = (float(fi0) - base0) / b0
+    if base0 <= float(ini0) + TOL and bars0 < 1.0 - 1e-5:
+        raise ValueError(
+            "El primer tram ha d'acabar com a mínim al primer compàs sencer")
+    if bars0 < -1e-5 or abs(bars0 - round(bars0)) > 1e-5:
+        raise ValueError(
+            "El primer tram no acaba en una línia de compàs "
+            f"({bars0:.3f} compassos des del compàs 1)")
+    # Els trams interiors (ni el primer ni l'últim) han de ser enters.
+    for i in range(1, len(nous) - 1):
+        ini, fi, bpm, num, den = nous[i]
+        b = durada_compas(bpm, num, den)
+        if b <= TOL:
+            raise ValueError(f"El tram {i + 1} té un compàs de durada nul·la")
+        bars = (float(fi) - float(ini)) / b
+        if bars < 1.0 - 1e-5 or abs(bars - round(bars)) > 1e-5:
+            raise ValueError(
+                f"El tram {i + 1} no conté un nombre enter de compassos "
+                f"({bars:.3f}); ha de ser 1, 2, 3…")
+    return nous
+
+
+def _ripple_des_de(trams, idx, nou_fi, durada):
+    """Mou la fi del tram `idx` i arrossega les fronteres següents.
+
+    Els trams posteriors conserven la seua durada (i, per tant, els seus
+    compassos); l'últim acabarà a `durada` (excepció).
+    """
+    out = [list(t) for t in trams]
+    delta = float(nou_fi) - float(out[idx][1])
+    out[idx][1] = float(nou_fi)
+    for j in range(idx + 1, len(out)):
+        out[j][0] = float(out[j][0]) + delta
+        out[j][1] = float(out[j][1]) + delta
+    return [tuple(t) for t in out]
+
+
+def canvia_bpm_compassos(trams, idx, bpm, durada, offset=0.0,
+                         num=None, den=None):
+    """Canvia BPM/compàs conservant els compassos del tram (opció A).
+
+    - Tram interior: conserva el nombre enter de compassos i mou la seua fi.
+    - Primer tram: conserva els compassos des de l'offset (o des de 0) fins a
+      la fi; el tros de compte enrere inicial és l'excepció.
+    - Últim tram: com que la fi de la WAV no es mou, pot canviar el nombre de
+      compassos (excepció).
+    - Els trams següents s'arrosseguen; l'últim absorbeix.
+    """
+    durada = float(durada or 0.0)
+    nous = normalitza_trams(trams, durada)
+    if not (0 <= int(idx) < len(nous)):
+        raise ValueError("El tram de tempo no existeix")
+    idx = int(idx)
+    ini, fi, bpm0, num0, den0 = nous[idx]
+    bpm = float(bpm)
+    num = int(num if num is not None else num0)
+    den = int(den if den is not None else den0)
+    if bpm <= 0 or num <= 0 or den <= 0:
+        raise ValueError("BPM o compàs no vàlid")
+    b_old = durada_compas(bpm0, num0, den0)
+    b_new = durada_compas(bpm, num, den)
+    if b_old <= TOL or b_new <= TOL:
+        raise ValueError("El compàs té una durada nul·la")
+
+    if idx == len(nous) - 1:
+        # Últim tram: la fi de la WAV mana; pot canviar el nombre de compassos.
+        out = list(nous)
+        out[idx] = (ini, fi, bpm, num, den)
+        return valida_i_normalitza_compassos(out, durada, offset)
+
+    if idx == 0:
+        base = float(offset) if float(offset) > float(ini) + TOL else float(ini)
+        n = int(round((float(fi) - base) / b_old))
+        if base <= float(ini) + TOL and n < 1:
+            raise ValueError("El primer tram ha de tindre almenys un compàs")
+        if n < 0:
+            raise ValueError("El tram no pot acabar abans del compàs 1")
+        nou_fi = base + n * b_new
+    else:
+        n = int(round((float(fi) - float(ini)) / b_old))
+        if n < 1:
+            raise ValueError("El tram ha de tindre almenys un compàs")
+        nou_fi = float(ini) + n * b_new
+
+    if nou_fi <= float(ini) + TOL or nou_fi >= durada - TOL:
+        raise ValueError("El canvi no cap dins de la WAV")
+
+    out = _ripple_des_de(nous, idx, nou_fi, durada)
+    for j in range(idx + 1, len(out)):
+        s = float(out[j][0])
+        if s < -TOL or s >= durada - TOL:
+            raise ValueError("El canvi no cap dins de la WAV")
+    out[idx] = (float(ini), float(nou_fi), bpm, num, den)
+    return valida_i_normalitza_compassos(out, durada, offset)
+
+
+def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0):
+    """Imanta la FI del tram `p_idx` a la línia de compàs més pròxima.
+
+    Retorna `(t_final, mapa_normalitzat)`. Arrossega les fronteres següents
+    perquè els trams interiors continuen amb compassos enters. Rebutja si no
+    hi ha cap línia vàlida.
+    """
+    durada = float(durada or 0.0)
+    nous = normalitza_trams(trams, durada)
+    p_idx = int(p_idx)
+    if not (0 <= p_idx < len(nous) - 1):
+        raise ValueError("No hi ha cap frontera posterior per a moure")
+    tram = nous[p_idx]
+    ini, fi, bpm, num, den = tram
+    b = durada_compas(bpm, num, den)
+    if b <= TOL:
+        raise ValueError("El compàs té una durada nul·la")
+    base = float(offset) if (p_idx == 0 and float(offset) > float(ini) + TOL) \
+        else float(ini)
+    minim = base + (b if (p_idx > 0 or base <= float(ini) + TOL) else 0.0)
+    cands = [c for c in _bar_lines_tram(tram, offset)
+             if minim - TOL_COMPAS <= c <= durada + TOL_COMPAS]
+    for c in sorted(cands, key=lambda x: abs(x - float(t))):
+        out = _ripple_des_de(nous, p_idx, c, durada)
+        try:
+            return float(c), valida_i_normalitza_compassos(out, durada, offset)
+        except ValueError:
+            continue
+    raise ValueError("No hi ha cap línia de compàs vàlida a prop")
+
+
+def parteix_a_compas(trams, idx, t, durada, offset=0.0):
+    """Parteix el tram `idx` per la línia de compàs més pròxima a `t`.
+
+    Retorna `(tall, mapa_normalitzat)` o aixeca `ValueError` si el tall deixaria
+    un tram interior sense cap compàs sencer.
+    """
+    durada = float(durada or 0.0)
+    nous = normalitza_trams(trams, durada)
+    idx = int(idx)
+    if not (0 <= idx < len(nous)):
+        raise ValueError("El tram de tempo no existeix")
+    tram = nous[idx]
+    ini, fi, bpm, num, den = tram
+    b = durada_compas(bpm, num, den)
+    if b <= TOL:
+        raise ValueError("El compàs té una durada nul·la")
+    cands = [c for c in _bar_lines_tram(tram, offset)
+             if float(ini) + TOL_COMPAS < c < float(fi) - TOL_COMPAS]
+    for c in sorted(cands, key=lambda x: abs(x - float(t))):
+        out = list(nous)
+        out[idx:idx + 1] = [(float(ini), float(c), bpm, num, den),
+                            (float(c), float(fi), bpm, num, den)]
+        try:
+            return float(c), valida_i_normalitza_compassos(out, durada, offset)
+        except ValueError:
+            continue
+    raise ValueError("No hi ha cap línia de compàs vàlida per a este tall")
 
 
 def afegeix_tall(trams, t):

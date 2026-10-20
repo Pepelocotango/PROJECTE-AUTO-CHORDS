@@ -3526,6 +3526,28 @@ class TempoTests(unittest.TestCase):
             b = tempo.detecta_bpm(ruta, lambda m: None)
             self.assertLess(abs(b - 101.0), 4.0, f"detectat {b}")
 
+    def test_detecta_bpm_dins_un_tram(self):
+        """La detecció local analitza només l'interval demanat."""
+        import tempfile
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            ruta = self._wav_clics(td, 120.0, dur=10.0, silenci_ini=2.0)
+            b = tempo.detecta_bpm(ruta, lambda m: None, inici=2.0, fi=8.0)
+            self.assertIsNotNone(b)
+            self.assertLess(abs(b - 120.0), 4.0, f"detectat {b}")
+
+    def test_detecta_bpm_tram_respecta_el_rang(self):
+        """Un interval sense clics no ha de detectar el BPM d'un altre tros."""
+        import tempfile
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            ruta = self._wav_clics(td, 120.0, dur=8.0, silenci_ini=4.0)
+            self.assertIsNone(tempo.detecta_bpm(
+                ruta, lambda m: None, inici=0.0, fi=3.0))
+            b = tempo.detecta_bpm(ruta, lambda m: None, inici=4.0, fi=8.0)
+            self.assertIsNotNone(b)
+            self.assertLess(abs(b - 120.0), 4.0, f"detectat {b}")
+
     def test_detecta_bpm_silenci_retorna_none(self):
         import tempfile, wave
         from app import tempo
@@ -4761,8 +4783,10 @@ class TapTempoTests(unittest.TestCase):
 
     def _mapa_dos_trams(self, w):
         v = w.visor_ref
-        v.aplica_tempo_trams([(0.0, 4.0, 90.0, 4, 4),
-                              (4.0, 10.0, 120.0, 3, 4)])
+        # Mapa VÀLID amb compassos enters: 0–8 a 90 4/4 (3 compassos) i
+        # 8–10 a 120 3/4 (l'últim pot ser parcial: excepció).
+        v.aplica_tempo_trams([(0.0, 8.0, 90.0, 4, 4),
+                              (8.0, 10.0, 120.0, 3, 4)])
         return v
 
     def test_camps_segueixen_el_tram_de_tempo_seleccionat(self):
@@ -4815,6 +4839,19 @@ class TapTempoTests(unittest.TestCase):
         self.assertEqual(d["tempo"]["compas"], "4/4")
         w.close()
 
+    def test_detecta_bpm_del_tram_aplica_directament(self):
+        from unittest.mock import patch
+        w = self._finestra()
+        v = self._mapa_dos_trams(w)
+        v.timeline.select_clip("tempo", 1)
+        with patch.object(pipeline, "detecta_bpm_tram", return_value=100.0):
+            w._detecta_bpm(pregunta=False)
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=3)
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 90.0, places=3)
+        v.undo()
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=3)
+        w.close()
+
     def test_tap_sonant_fa_loop_al_tram_seleccionat(self):
         w = self._finestra()
         v = self._mapa_dos_trams(w)
@@ -4823,9 +4860,9 @@ class TapTempoTests(unittest.TestCase):
         v.pos = 0.0
         self._taps_en(w, 0.6)
         self.assertTrue(v.loop_on)
-        self.assertAlmostEqual(float(v.loop_a), 4.0, places=6)
+        self.assertAlmostEqual(float(v.loop_a), 8.0, places=6)
         self.assertAlmostEqual(float(v.loop_b), 10.0, places=6)
-        self.assertAlmostEqual(float(v.pos), 4.0, places=6)
+        self.assertAlmostEqual(float(v.pos), 8.0, places=6)
         w._tanca_sessio_tap()
         v.sona = False
         self.assertTrue(v.loop_on, "el loop es manté en aturar")
@@ -4840,7 +4877,7 @@ class TapTempoTests(unittest.TestCase):
         self._taps_en(w, 0.6)
         self.assertTrue(v.loop_on)
         self.assertAlmostEqual(float(v.loop_a), 0.0, places=6)
-        self.assertAlmostEqual(float(v.loop_b), 4.0, places=6)
+        self.assertAlmostEqual(float(v.loop_b), 8.0, places=6)
         w.close()
 
     def test_tap_aturat_no_toca_el_loop(self):

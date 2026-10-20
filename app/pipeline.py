@@ -326,6 +326,25 @@ def detecta_bpm(wav_path, log, bpm_min=None, bpm_max=None, preferit=None,
     return tempo.detecta_bpm(wav_path, log, **kw)
 
 
+def detecta_bpm_tram(wav_path, inici, fi, log, bpm_min=None, bpm_max=None,
+                     preferit=None):
+    """BPM **dins d'un tram** (interval de segons), amb el motor intern.
+
+    És la detecció local que usa el botó quan hi ha un tram de tempo
+    seleccionat. El downbeat és l'inici del tram, per això no es busca un
+    downbeat a part. El motor qm/consens és global i no s'aplica ací.
+    """
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    return tempo.detecta_bpm(wav_path, log, inici=float(inici), fi=float(fi),
+                             **kw)
+
+
 def _bpm_consens(wav_path, log, bpm_min, bpm_max, preferit):
     """Consens: si el nostre motor i el qm coincideixen, confiança alta.
 

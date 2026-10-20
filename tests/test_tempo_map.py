@@ -16,6 +16,7 @@ _ = _temporals  # higiene: esborra els temporals en plegar
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import unittest
+import unittest.mock  # noqa: F401  (alguns tests fan servir unittest.mock)
 from app import pipeline
 from app.tempo_map import TempoMap
 import numpy as np
@@ -127,6 +128,26 @@ class TestCanviDeTempo(unittest.TestCase):
         self.assertEqual(self.tm.label(4.0), "3.1.1")
         self.assertEqual(self.tm.label(8.0), "4.1.1")
 
+    def test_tempo_a_mig_compas_no_reinicia_el_compas(self):
+        """Un canvi de TEMPO a mig compàs no és una frontera de compàs."""
+        tm = TempoMap([(0.0, 3.0, 120, 4, 4), (3.0, 8.0, 60, 4, 4)])
+        starts = [round(t, 6) for _q, t, _n, _d in tm.compassos()]
+        self.assertEqual(starts, [0.0, 2.0, 5.0])
+        self.assertEqual(tm.label(0.0), "1.1.1")
+        self.assertEqual(tm.label(2.0), "2.1.1")
+        self.assertEqual(tm.label(3.0), "2.3.1")
+        self.assertEqual(tm.label(5.0), "3.1.1")
+        self.assertEqual([round(t, 6) for t in tm.grid_lines(0.0, 8.0,
+                                                             kind="bar")],
+                         [0.0, 2.0, 5.0])
+
+    def test_t_de_pos_amb_canvi_de_tempo(self):
+        tm = TempoMap([(0.0, 3.0, 120, 4, 4), (3.0, 8.0, 60, 4, 4)])
+        self.assertAlmostEqual(tm.t_de_pos(2, 1), 2.0, places=6)
+        self.assertAlmostEqual(tm.t_de_pos(2, 3), 3.0, places=6)
+        self.assertAlmostEqual(tm.t_de_pos(3, 1), 5.0, places=6)
+        self.assertAlmostEqual(tm.t_de_pos(3, 2), 6.0, places=6)
+
 
 class TestCanviDeCompas(unittest.TestCase):
     def setUp(self):
@@ -144,12 +165,73 @@ class TestCanviDeCompas(unittest.TestCase):
         self.assertEqual(self.tm.signatura(6.0), (3, 4))
         self.assertEqual(self.tm.signatura(1.0), (4, 4))
 
+    def test_canvi_de_compas_a_mig_compas(self):
+        """Un canvi de compàs a mig compàs sí que obri un compàs nou."""
+        tm = TempoMap([(0.0, 3.0, 120, 4, 4), (3.0, 8.0, 120, 3, 4)])
+        starts = [round(t, 6) for _q, t, _n, _d in tm.compassos()]
+        self.assertEqual(starts, [0.0, 2.0, 3.0, 4.5, 6.0, 7.5])
+        self.assertEqual(tm.label(2.0), "2.1.1")
+        self.assertEqual(tm.label(3.0), "3.1.1")
+        self.assertEqual(tm.label(4.5), "4.1.1")
+
     def test_6_8(self):
         # 6/8 → compàs de 3 negres (1,5 s a 120) i temps de 0,5 negres
         tm = TempoMap.constant(120, 6, 8, durada=10.0)
         self.assertEqual(tm.label(0.0), "1.1.1")
         self.assertEqual(tm.label(1.5), "2.1.1")
         self.assertAlmostEqual(tm.snap(0.3, ("beat", 1.0)), 0.25)
+
+
+class TestCompassosEnters(unittest.TestCase):
+    """Contracte de `docs/REGLES_TEMPS_GRID.md` (trams interiors enters)."""
+
+    BASE = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4)]
+
+    def test_mapa_valid(self):
+        self.assertEqual(tm.valida_i_normalitza_compassos(self.BASE, 30.0),
+                         self.BASE)
+
+    def test_frontera_a_mig_compas_es_rebutja(self):
+        with self.assertRaises(ValueError):
+            tm.valida_i_normalitza_compassos(
+                [(0.0, 4.0, 90.0, 4, 4), (4.0, 10.0, 120.0, 3, 4)], 10.0)
+
+    def test_primer_parcial_amb_offset(self):
+        # El primer tram comença en un compte enrere parcial; la resta són
+        # compassos sencers des de l'offset.
+        trams = [(0.0, 3.0, 120.0, 4, 4), (3.0, 9.0, 120.0, 4, 4)]
+        self.assertEqual(tm.valida_i_normalitza_compassos(
+            trams, 9.0, offset=1.0), trams)
+
+    def test_canviar_bpm_conserva_compassos_i_arrossega(self):
+        nous = tm.canvia_bpm_compassos(self.BASE, 0, 100.0, 30.0)
+        self.assertEqual(nous, [(0.0, 12.0, 100.0, 4, 4),
+                                (12.0, 30.0, 90.0, 3, 4)])
+
+    def test_ultim_tram_absorbeix(self):
+        nous = tm.canvia_bpm_compassos(self.BASE, 1, 100.0, 30.0)
+        self.assertEqual(nous, [(0.0, 10.0, 120.0, 4, 4),
+                                (10.0, 30.0, 100.0, 3, 4)])
+
+    def test_snap_frontera_a_compas(self):
+        tall, nous = tm.snap_frontera_compas(self.BASE, 0, 11.5, 30.0)
+        self.assertAlmostEqual(tall, 12.0, places=6)
+        self.assertEqual(nous, [(0.0, 12.0, 120.0, 4, 4),
+                                (12.0, 30.0, 90.0, 3, 4)])
+
+    def test_parteix_a_compas(self):
+        tall, nous = tm.parteix_a_compas(self.BASE, 0, 5.0, 30.0)
+        self.assertIn(round(tall, 6), (4.0, 6.0))
+        self.assertEqual(len(nous), 3)
+        self.assertTrue(all(
+            abs((t[1] - t[0]) / tm.durada_compas(t[2], t[3], t[4])
+                - round((t[1] - t[0]) / tm.durada_compas(t[2], t[3], t[4])))
+            < 1e-5 for t in nous[1:-1]))
+
+    def test_no_es_parteix_un_unic_compas(self):
+        trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 120.0, 4, 4)]
+        with self.assertRaises(ValueError):
+            tm.parteix_a_compas(trams, 0, 1.0, 6.0)
 
 
 class TestCombinacio(unittest.TestCase):
@@ -1125,6 +1207,19 @@ class TestGridPlan(unittest.TestCase):
         pos = list(tb.grid_positions(0.0, 20.0, 8.0, mapa=mapa,
                                      kind=("bar", 4)))
         self.assertEqual(pos, [0.0, 8.0, 16.0])
+
+    def test_grid_plan_manual_bar_multiple_te_label_kind(self):
+        """El nivell de compàs múltiple no s'ha de perdre al pintar el grid."""
+        # Mapa VARIABLE (4/4 → 8/8) però amb el mateix compàs de 4 negres.
+        mapa = tm.TempoMap([(0.0, 10.0, 120.0, 4, 4),
+                            (10.0, 20.0, 120.0, 8, 8)])
+        plan = tb.grid_plan(True, 120.0, 4, 10.0, 1000.0, mapa=mapa,
+                            divisio=("bars", 2))
+        self.assertEqual(plan["label_kind"], ("bar", 2))
+        self.assertIn((4.0, ("bar", 2)), plan["lines"])
+        pos = list(tb.grid_positions(0.0, 20.0, 4.0, mapa=mapa,
+                                     kind=("bar", 2)))
+        self.assertEqual(pos, [0.0, 4.0, 8.0, 12.0, 16.0, 20.0])
 
     def test_grid_levels_deriva_del_pla(self):
         plan = tb.grid_plan(True, 120.0, 4, 60.0, 800.0)

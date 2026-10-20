@@ -662,10 +662,12 @@ class TestPartirAlClic(_Base):
         try:
             v.ves_a(2.0)
             t = 15.3
-            ts = v.timeline._snap(t)
             self.assertTrue(self._parteix(v, "tempo", 1, t))
             starts = [round(float(tr[0]), 6) for tr in v.tempo_trams]
-            self.assertIn(round(float(ts), 6), starts)
+            # El tram 1 és 10–30 a 90 BPM 3/4 (compàs de 2 s): la línia més
+            # pròxima a 15,3 s és 16 s (10, 12, 14, 16…).
+            self.assertIn(16.0, starts)
+            self.assertEqual(len(v.tempo_trams), 3)
         finally:
             v.close()
 
@@ -714,6 +716,33 @@ class TestPosicionsMusicals(_Base):
                              segons_abans)
             self.assertNotEqual([(r[i_ci], r[i_cf]) for r in ara[1:]],
                                 compas_abans)
+        finally:
+            v.close()
+
+    def test_aplica_tempo_validat_rebutja_frontera_no_compas(self):
+        v = _visor()
+        try:
+            abans = list(v.tempo_trams)
+            self.assertFalse(v.aplica_tempo_validat(
+                [(0.0, 4.0, 90.0, 4, 4), (4.0, 10.0, 120.0, 3, 4)],
+                "Prova"))
+            self.assertEqual(v.tempo_trams, abans)
+        finally:
+            v.close()
+
+    def test_llistes_i_editor_amb_tempo_a_mig_compas(self):
+        """Els acords/seccions han de llegir el compàs del MAPA, no del BPM 0."""
+        v = _visor()
+        try:
+            # Canvi de tempo a 3 s, a mig compàs: els compassos són
+            # 0, 2, 5, 9, 13…  El clip de 10 s cau al compàs 4, temps 2.
+            v.aplica_tempo_trams([(0.0, 3.0, 120.0, 4, 4),
+                                  (3.0, 30.0, 60.0, 4, 4)])
+            self.assertTrue(v.llista_ac.item(1).text().startswith("4.2"),
+                            v.llista_ac.item(1).text())
+            self.assertIn("4.2", v.llista_ab.item(1).text())
+            self.assertEqual(v._secs_a_cb(10.0), "4.2")
+            self.assertAlmostEqual(v._cb_a_secs("4.2"), 10.0, places=6)
         finally:
             v.close()
 

@@ -53,6 +53,7 @@ from app.timeline_base import (   # noqa: E402,F401
 )
 from app import graella  # noqa: E402
 from app import pipeline  # noqa: E402  (DESTÍ del moviment d'un bloc, §6.3)
+from app import tempo_map  # noqa: E402  (pas de nudge = compàs sencer)
 
 
 # -----------------------------------------------------------------------------
@@ -562,6 +563,30 @@ class TimelineView(QGraphicsView):
         error de 12 px a les vores. Aquest mètode és l'únic punt de conversió.
         """
         return self._tempo_lane._zona(float(x_vista) - self._x_offset)
+
+    def _snap_tempo_guia(self, i: int, z: str, t: float) -> float:
+        """Línia de compàs vàlida per a la GUIA d'un drag de tempo.
+
+        La guia ha de coincidir amb el que s'aplicarà en deixar anar: la
+        frontera de tempo s'imanta a la línia de compàs del tram anterior.
+        """
+        trams = self._trams_tempo()
+        p_idx = int(i) if z == "fi" else int(i) - 1
+        if not (0 <= p_idx < len(trams) - 1):
+            return float(t)
+        p = trams[p_idx]
+        b = tempo_map.durada_compas(p[2], p[3], p[4])
+        if b <= 0:
+            return float(t)
+        ini = float(p[0])
+        off = float(getattr(self, "_offset", 0.0))
+        base = off if (p_idx == 0 and off > ini + 1e-9) else ini
+        minim = base + (b if (p_idx > 0 or base <= ini + 1e-9) else 0.0)
+        lines = [c for c in tempo_map._bar_lines_tram(p, off)
+                 if minim - 1e-6 <= c <= self._durada + 1e-6]
+        if not lines:
+            return float(t)
+        return min(lines, key=lambda x: abs(x - float(t)))
 
     def _loop_mode_at(self, x: float):
         """Què farà un clic al regle segons l'x (o None = crear loop nou).
@@ -1874,12 +1899,18 @@ class TimelineView(QGraphicsView):
                 self._on_chord_time_changed(
                     idx, float(self._acords[idx][0]) + direccio * pas)
         elif kind == "tempo":
+            # Les fronteres de tempo/compàs es mouen en COMPASSOS sencers
+            # (REGLES_TEMPS_GRID.md), no en la subdivisió genèrica del snap.
+            p = tr[idx] if estira else tr[idx - 1]
+            bar = tempo_map.durada_compas(p[2], p[3], p[4])
+            if bar <= 0:
+                bar = pas
             if estira:      # vora dreta = frontera amb el tram següent
                 self.tempoChangeMoved.emit(
-                    idx, "fi", float(tr[idx][1]) + direccio * pas)
+                    idx, "fi", float(tr[idx][1]) + direccio * bar)
             else:           # vora esquerra = frontera amb l'anterior
                 self.tempoChangeMoved.emit(
-                    idx, "ini", float(tr[idx][0]) + direccio * pas)
+                    idx, "ini", float(tr[idx][0]) + direccio * bar)
         elif estira:
             self._nudge_vora_seccio(
                 idx, float(self._seccions[idx][1]) + direccio * pas)
