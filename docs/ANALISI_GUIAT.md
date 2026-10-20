@@ -1,6 +1,6 @@
 # Anàlisi guiat — l'assistent de BPM no constant
 
-> **Estat: IMPLEMENTAT (v1, 2026-10-20).** Botó a la barra *Treball*
+> **Estat: IMPLEMENTAT (v1 2026-10-20 · v2 2026-10-21).** Botó a la barra *Treball*
 > (`b_guia`, entre **Obre àudio** i el selector de temps; sense WAV és
 > desactivat). Implementació: `main._analisi_guitat` + els mètodes
 > `_guia_*` de la Finestra · diàlegs `DialegGuiaDownbeat`/`DialegGuiaBpm`
@@ -8,8 +8,9 @@
 > `tempo_map.parteix_trams_a` i `tempo_map.trams_finestra_guia`. Tests:
 > `TestGuia` (tempo_map) + `TestDialegGuia`/`TestGuiaFlux` (gui).
 >
-> **Diferred de la v1** (vegeu §4 i §6): el botó *Escolta el tram*, el
-> mode automàtic i el «per cops» exacte (`detecta_cops`).
+> **Diferred** (vegeu §4 i §6): el mode automàtic i el «per cops» exacte
+> (`detecta_cops`). El botó *Escolta el tram* ja **no** és diferred: la
+> v2 el converteix en una **estació d'audició** (§4.3).
 >
 > **Necessitat que cobreix**: cançons amb **BPM no constant** (rubato,
 > canvis de tempo, temes gravats en viu), on la detecció global del
@@ -54,15 +55,20 @@ tempo (`tempo.csv` + `compas.csv`); **no toca mai el cru** de l'anàlisi.
   Cridar `QTextEdit.append` des del fil = UB → segfault natiu al bucle
   principal.
 
-## 2. La finestra de 16 temps (com viatja)
+## 2. La finestra (4 compassos) — com viatja
 
-Cada finestra del bucle **autodetecta els 16 temps següents** des d'on va
+Cada finestra del bucle **autodetecta els 4 compassos següents** des d'on va
 quedar la frontera — no assumim mai el BPM «original»:
 
 - **La longitud de la finestra, en segons, surt del BPM del tram anterior**:
-  16 temps al BPM anterior = 16 · 60 / BPM_anterior s. És la manera de
-  dir «detecta'm els 16 temps següents» sense saber encara el BPM nou: el
-  tracker treballa dins d'eixe marge i el BPM que retorna és el seu.
+  `4 · num · (60/BPM_anterior)` s. És la manera de dir «detecta'm els 4
+  compassos següents» sense saber encara el BPM nou: el tracker treballa
+  dins d'eixe marge i el BPM que retorna és el seu.
+- **Des de la v2 la llargada és explícita** (`n_compassos`): el diàleg del
+  tram porta **−/+ de compassos** (1…32) i el nombre triat mana al càlcul
+  de la finestra *i* al tall aplicat. Abans es comptaven **16 temps** i en
+  3/4 eixien **5 compassos** (`round(16/3)`) en compte de 4 — bug real
+  arreglat el 21-10.
 - **Primer tram** (no hi ha BPM previ): finestra de **8 s** (16 temps a
   120 BPM). Abans eren 13,7 s (16 temps a 70 BPM) i eixa finestra llarga
   va donar **55,25** en un tema de **103,5** (Otis «Dock of the Bay»,
@@ -71,11 +77,10 @@ quedar la frontera — no assumim mai el BPM «original»:
   fins a 7 s (mínim raonable per a mesurar un tempo; Cubase en demana 7).
 - **No és trampa**: la mida de la finestra només decideix **fins a on es
   talla** el bucle; el BPM n'és sempre la **autodetecció** del tram.
-- Si el compàs vigent no és 4/4, el tall es fa en **compassos sencers**
-  (16 temps en 4/4 = 4 compàsos; en 3/4, 4 compàsos = 12 temps…): el
+- El tall es fa sempre en **compassos sencers** del compàs vigent: el
   contracte dels **compassos enters interiors** (`REGLES_TEMPS_GRID` §4)
-  exigeix fronteres en línia de compàs. Per defecte: **4 compàsos del
-  compàs vigent**.
+  exigeix fronteres en línia de compàs. Per defecte: **4 compassos** (en
+  4/4 = 16 temps; en 3/4 = 12; en 6/8 = 24 corxeres…).
 
 ## 3. «Marcar un punt X i que el detector només detecti els N primers cops forts» — què tenim i què fa falta
 
@@ -102,9 +107,8 @@ quedar la frontera — no assumim mai el BPM «original»:
   finestra), els dos modeless.
 - El bucle (pas 5): **Enter = accepta el BPM** · **×2 / ÷2** per arreglar
   errors d'octava (els mateixos botons del transport) · *Escolta el tram*
-  (loop del tram sonat) per comprovar-lo a l'oïda. → **v1**: Enter · ×2 ·
-  ÷2 ✅; l'usuari pot escoltar amb el transport normal (espai) mentre el
-  diàleg és obert; el botó *Escolta el tram* queda **diferit**.
+  (loop del tram sonat) per comprovar-lo a l'oïda. → **v2**: Enter · ×2 ·
+  ÷2 · ×4/3 · ×3/4 i **audició automàtica** (§4.3) ✅.
 - **Mode automàtic opcional** (només dins el bucle): acceptar el BPM de
   cada finestra sense confirmar — el guiat és per fiabilitat, no de
   cap mena d'obligació. → **diferit** (pregunta §6.1).
@@ -128,6 +132,12 @@ El loop es **captura en arrancar** el guiat (`_guia["loop"]`) i es fa servir
 de reserva si un desfer el buida a mitja feina. El **tram aplicat** continua sent de `m` compassos des de
 `t_k`: el loop només acota **on** es mesura. El diàleg del tram ho indica
 («detecció només de la selecció A–B: a–b s»).
+
+**Important (v2)**: eixa instantània és **només per a mesurar**. Des de la
+v2 el loop del visor passa a ser l'**interval d'audició** del tram (bucle +
+metrònom, §4.3), i per tant **no** s'ha de llegir mai com a «loop de
+l'usuari»: `_guia_fenestra` usa sempre `_guia["loop"]` i, en tancar el
+guiat, el loop de l'usuari es **restaura** (`_guia["loop_usuari"]`).
 
 El botó **🎯 Detecta** de la barra fa el mateix fora del guiat: amb loop
 marcat, el BPM surt només de `[A, B]`.
@@ -157,6 +167,71 @@ del clip** en eixa posició, mostrat en segons i en compàs.beat de la graella
 original. El clip nou queda seleccionat (els camps BPM/compàs l'editen).
 El tall és lliure: amb trams interiors, cal comprovar que les fronteres
 caiguen en línia de compàs.
+
+### 4.3 Estació d'audició: el tram sona amb metrònom (2026-10-21)
+
+El punt que faltava de la **v2** (`docs/analisis guiat v2.markdown:72-85`):
+no cal esperar cap Enter per a saber si el BPM és bo.
+
+- **En rebre el BPM** (detecció o TAP) el tram es posa **en bucle** a
+  `[t_k, t_k + m·compàs]` i sona amb **metrònom** encastat. Prem
+  **Enter** si quadra, o corregeix-lo: el clic es mou **a l'instant**.
+- **Metrònom forçat** (`Visor.set_metro_forcat(bpm, bpb, offset)`): amb mapa
+  de tempo variable el metrònom normal ignora el BPM (segueix el mapa), i
+  ací ha de seguir el **BPM proposat** des de `t_k`. El fil de farciment el
+  torna a lligar a cada tros (~0,7 s): canviar-lo **no** reinicia l'àudio
+  ni fa micro-talls.
+- **Mètrica i llargada al diàleg**: desplegable **4/4 · 3/4 · 2/4 · 6/8 ·
+  12/8** (més la mètrica vigent si no hi és) i **−/+ de compassos** (1…32).
+  Canviar-ho re-arma el bucle i el clic sense tocar el mapa.
+- **TAP dins el diàleg** (tecla **T** o botó): 2–6 cops, mediana dels
+  intervals (menys outliers), reinici automàtic si passes > 2,5 s sense
+  tocar. És la mateixa lògica del TAP del transport, però sense eixir.
+- **Espai** = play/pausa del tram. Les tecles **no** s'activen mentre
+  s'escriu al camp del BPM (allà `t` i espai han de poder entrar).
+- En **aplicar**, **acabar** o **cancel·lar** s'atura el so, es lleva el
+  metrònom forçat, es para si sonava i es **restaura el loop de l'usuari**
+  (i el metrònom, si estava parat). El mapa no queda mai amb el metrònom
+  forçat posat.
+
+### 4.4 Mida del tram (4/8/16/32) i doble comprovació (2026-10-21)
+
+L'operador: «la autodetecció és fluixa» i «volem decidir si fem el procés per
+tram a 4, 8, 16, 32 compassos».
+
+**On es tria**: al **pas 1**, dos controls que valen per a tot el guiat i es
+**recorden** a `opcions_detecta.json` (`guiat.compassos`, `guiat.confirma`):
+
+- **«Cada tram: N compassos»** — 4 (defecte), 8, 16 o 32. També es pot canviar
+  **a cada tram** des del diàleg del tram (combo «Tram:»), i eixa tria passa a
+  ser la dels següents. El valor no és una simple preferència: **deriva la
+  finestra de mesura** (`m · durada_compas`), el **tall aplicat** i el bucle
+  d'audició. Com més llarg el tram, més estable el BPM (més música per a
+  mesurar) i menys punts per a seguir un rubato; 4 = el més flexible.
+- **«Confirma amb el BPM del tram anterior i un tros llarg»** (marcat per
+  defecte) — dos mesuraments **extra** del mateix tram (cost: ~0,1 s cadascun,
+  en el mateix fil):
+  - **banda**: la mateixa finestra buscant **només** dins del ±8 % del BPM que
+    vas confirmar al tram anterior (el tempo no fa un salt del doble entre dos
+    trams).
+  - **tros llarg**: la detecció normal sobre el **doble** de finestra (una
+    mesura llarga és molt més estable que una de curta).
+  Amb les tres mesures, `tempo_map.avalua_confirmacio` decidix:
+  - **✓ fiable** si totes coincidixen (≤ 0,5 BPM entre mesures, ≤ 3 % respecte
+    del tram anterior);
+  - **⚠ dubtós** si alguna discrepa — i el diàleg **ensenya els tres números**
+    amb una ✗ al que no casa (51,70 vs 103,40…): millor això que un número
+    fals amb cara de bo;
+  - si la detecció lliure **falla** però el reforç té número, s'usa eixe número.
+
+  El veredicte ix en una línia sota les alternatives (`lb_confirma`) i al log.
+
+**BPM dels trams anteriors** (`hist`): cada tram nou mostra els **dos últims**
+BPM que vas confirmar com a pastilles («tram 3 · 103.40»); un clic el posa al
+camp (i el metrònom s'hi mou). A més, el **últim** s'usa com a prior de la
+comprovació acotada. És el que ja saps tu, no només el que detecta el motor.
+
+**TAP**: tecles **`T`** i **`0`** (a més del botó), 2–6 cops amb mediana.
 
 ## 5. Què NO fa (per no demanar-li de més)
 

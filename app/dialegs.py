@@ -9,8 +9,9 @@ Tot en català.
 """
 
 import json
+import time
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
     QFormLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
@@ -72,6 +73,9 @@ DEFECTES = {
     # Neteja posterior dels acords (post-processat, app/postproc.py)
     "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
               "reduir": False, "snap": True, "divisio": 4},
+    # Anàlisi guiat (docs/ANALISI_GUIAT.md §4.3): mida del tram i si es
+    # confirma la detecció amb el BPM del tram anterior.
+    "guiat": {"compassos": 4, "confirma": True},
 }
 
 
@@ -128,6 +132,9 @@ class DialegOpcions(QDialog):
         self.setWindowTitle("Opcions d'autodetecció")
         self.setMinimumWidth(460)
         opcions = opcions or carrega_opcions()
+        # el diàleg només reescriu bpm/chords/structure/clean: la resta de
+        # seccions (p. ex. «guiat») es conserven tal com estaven
+        self._base = dict(opcions)
 
         lay = QVBoxLayout(self)
         self.tabs = QTabWidget(self)
@@ -371,7 +378,11 @@ class DialegOpcions(QDialog):
             "snap": bool(cl["snap"].isChecked()),
             "divisio": int(cl["divisio"].value()),
         }
-        return {"bpm": bpm, "chords": chords, "structure": est, "clean": clean}
+        fora = {k: v for k, v in self._base.items()
+                if k not in ("bpm", "chords", "structure", "clean")}
+        fora.update({"bpm": bpm, "chords": chords, "structure": est,
+                     "clean": clean})
+        return fora
 
 
 class DialegTrobaReemplaca(QDialog):
@@ -693,7 +704,10 @@ class DialegGuiaDownbeat(QDialog):
     moure el cursor del visor mentre el diàleg és obert. Enter = Fet.
     """
 
-    def __init__(self, parent=None):
+    #: mides de tram oferides (compassos). La 1a és la de defecte.
+    MIDA_TRAM = (4, 8, 16, 32)
+
+    def __init__(self, parent=None, compassos=4, confirma=True):
         super().__init__(parent)
         self.setWindowTitle("Anàlisi guiat — pas 1: el compàs 1")
         self.setMinimumWidth(480)
@@ -708,6 +722,34 @@ class DialegGuiaDownbeat(QDialog):
         txt.setWordWrap(True)
         txt.setTextFormat(Qt.RichText)
         lay.addWidget(txt)
+        # ── com es fa el procés (es recorda entre sessions) ──
+        fila = QHBoxLayout()
+        fila.addWidget(QLabel("Cada tram:"))
+        self.cb_compassos = QComboBox()
+        for m in self.MIDA_TRAM:
+            self.cb_compassos.addItem(f"{m} compassos", m)
+        m = int(compassos or 4)
+        idx = self.cb_compassos.findText(f"{m} compassos")
+        if idx < 0:
+            self.cb_compassos.addItem(f"{m} compassos", m)
+            idx = self.cb_compassos.count() - 1
+        self.cb_compassos.setCurrentIndex(idx)
+        self.cb_compassos.setToolTip(
+            "Quants compassos per tram es detecten (i s'apliquen). Com més "
+            "llarg és el tram, més estable és la mesura del BPM, però el mapa "
+            "té menys punts per a seguir un rubato.")
+        fila.addWidget(self.cb_compassos)
+        fila.addStretch(1)
+        lay.addLayout(fila)
+        self.ck_confirma = QCheckBox(
+            "Confirma amb el BPM del tram anterior i un tros llarg")
+        self.ck_confirma.setChecked(bool(confirma))
+        self.ck_confirma.setToolTip(
+            "Fa dues mesures més del mateix tram: una acotada al ±8 % del BPM "
+            "que vas posar al tram anterior i una altra sobre el doble de "
+            "tros. Si les tres coincidixen, el BPM ix «fiable»; si no, "
+            "«dubtós» i tries tu.")
+        lay.addWidget(self.ck_confirma)
         botons = QDialogButtonBox(QDialogButtonBox.Ok
                                   | QDialogButtonBox.Cancel)
         botons.button(QDialogButtonBox.Ok).setText("Fet (Enter)")
@@ -716,6 +758,15 @@ class DialegGuiaDownbeat(QDialog):
         botons.accepted.connect(self.accept)
         botons.rejected.connect(self.reject)
         lay.addWidget(botons)
+
+    def compassos(self):
+        """Compàsos per tram triats per a tot el guiat (int)."""
+        d = self.cb_compassos.currentData()
+        return int(d) if d else 4
+
+    def confirma(self):
+        """`True` si vol la doble comprovació (tram anterior + tros llarg)."""
+        return bool(self.ck_confirma.isChecked())
 
 
 class DialegGuiaBpm(QDialog):
@@ -728,13 +779,32 @@ class DialegGuiaBpm(QDialog):
 
     BPM_MIN, BPM_MAX = 20.0, 300.0
 
+    #: l'usuari ha canviat el BPM (teclat, ràtio, pastilla o TAP) → el
+    #: metrònom de l'audició s'ha de moure a l'instant.
+    bpm_canviat = pyqtSignal(float)
+    #: play/pausa del bucle del tram sense tancar el diàleg (botó o Espai).
+    vol_reproduir = pyqtSignal()
+
+    #: compassos del tram oferits (l'usuari els pot pujar/baixar)
+    COMPASSOS_MIN, COMPASSOS_MAX = 1, 32
+    #: mides de tram del procés (docs/ANALISI_GUIAT.md §4.3)
+    MIDA_TRAM = (4, 8, 16, 32)
+    #: si passa més d'això entre dos TAPs, s'hi comença de nou
+    TAP_REINICI_S = 2.5
+    TAP_MAX = 6
+
     def __init__(self, parent, n_tram, t_ini, t_fi, etiqueta_ini="",
-                 nota="", ref=None, rang=None):
+                 nota="", ref=None, rang=None, num=4, den=4, compassos=4):
         super().__init__(parent)
         self._cands = []
         self._avis = ""
         self._ref = ref
         self._rang = rang
+        self._m = max(self.COMPASSOS_MIN,
+                      min(self.COMPASSOS_MAX, int(compassos or 4)))
+        self._num, self._den = int(num), int(den)
+        self._taps = []
+        self._reproduint = False
         self.setWindowTitle(f"Anàlisi guiat — tram {int(n_tram)}")
         self.setMinimumWidth(480)
         lay = QVBoxLayout(self)
@@ -753,8 +823,59 @@ class DialegGuiaBpm(QDialog):
         self.ed_bpm = QLineEdit()
         self.ed_bpm.setEnabled(False)
         self.ed_bpm.setPlaceholderText("detectant…")
+        self.ed_bpm.textEdited.connect(self._bpm_escrit)
         form.addRow("BPM del tram:", self.ed_bpm)
         lay.addLayout(form)
+
+        # ── mètrica i llargada del tram (contracte de compassos enters) ──
+        fila_m = QHBoxLayout()
+        fila_m.addWidget(QLabel("Compàs:"))
+        self.cb_metrica = QComboBox()
+        for n_, d_ in ((4, 4), (3, 4), (2, 4), (6, 8), (12, 8)):
+            self.cb_metrica.addItem(f"{n_}/{d_}", (n_, d_))
+        # si la mètrica vigent no és cap preset, s'afegeix (no es perd res)
+        # per TEXT: `findData` amb una tupla no casa mai a PyQt5 i afegia
+        # un «4/4» duplicat al desplegable (vist 21-10).
+        idx = self.cb_metrica.findText(f"{self._num}/{self._den}")
+        if idx < 0:
+            self.cb_metrica.addItem(f"{self._num}/{self._den}",
+                                    (self._num, self._den))
+            idx = self.cb_metrica.count() - 1
+        self.cb_metrica.setCurrentIndex(idx)
+        self.cb_metrica.setToolTip(
+            "Mètrica del tram. Canviar-la recalcula la llargada perquè siguen "
+            "compassos SENCERS (la graella no accepta mig compàs).")
+        fila_m.addWidget(self.cb_metrica)
+        fila_m.addSpacing(12)
+        fila_m.addWidget(QLabel("Tram:"))
+        self.cb_compassos = QComboBox()
+        for m in self.MIDA_TRAM:
+            self.cb_compassos.addItem(f"{m} compassos", m)
+        self.cb_compassos.setToolTip(
+            "Compàsos per tram. Com més llarg, més estable la mesura del BPM "
+            "i menys punts per a seguir un rubato. Es recorda per al guiat "
+            "següent.")
+        self.cb_compassos.currentIndexChanged.connect(
+            lambda _i: self._estableix_compassos(
+                self.cb_compassos.currentData()))
+        fila_m.addWidget(self.cb_compassos)
+        fila_m.addSpacing(12)
+        self.b_menys = QPushButton("−1 compàs")
+        self.b_menys.setToolTip("Escurça el tram un compàs")
+        self.b_menys.clicked.connect(lambda: self._canvia_compassos(-1))
+        self.b_mes = QPushButton("+1 compàs")
+        self.b_mes.setToolTip("Allarga el tram un compàs")
+        self.b_mes.clicked.connect(lambda: self._canvia_compassos(+1))
+        self.lb_compassos = QLabel("")
+        self.lb_compassos.setMinimumWidth(110)
+        self.lb_compassos.setAlignment(Qt.AlignCenter)
+        fila_m.addWidget(self.b_menys)
+        fila_m.addWidget(self.lb_compassos)
+        fila_m.addWidget(self.b_mes)
+        fila_m.addStretch(1)
+        lay.addLayout(fila_m)
+        self._pinta_compassos()
+
         self.lb_estat = QLabel("Detectant el BPM del tram…")
         lay.addWidget(self.lb_estat)
         fila = QHBoxLayout()
@@ -788,12 +909,52 @@ class DialegGuiaBpm(QDialog):
         self._fila_cand.addStretch(1)
         lay.addLayout(self._fila_cand)
         self.lb_cand.setVisible(False)
+        # BPM que l'usuari ja va confirmar en trams anteriors (pastilles)
+        self._hist = []
+        self._fila_hist = QHBoxLayout()
+        self.lb_hist = QLabel("Tram anterior:")
+        self.lb_hist.setObjectName("secundari")
+        self._fila_hist.addWidget(self.lb_hist)
+        self._b_hist = []
+        for k in range(2):
+            b = QPushButton("")
+            b.setVisible(False)
+            b.setToolTip("Posa este BPM al camp (el vas confirmar abans)")
+            b.clicked.connect(lambda _c=False, i=k: self._tria_hist(i))
+            self._fila_hist.addWidget(b)
+            self._b_hist.append(b)
+        self._fila_hist.addStretch(1)
+        lay.addLayout(self._fila_hist)
+        self.lb_hist.setVisible(False)
         self.lb_ref = QLabel("")
         self.lb_ref.setObjectName("secundari")
         self.lb_ref.setVisible(False)
         lay.addWidget(self.lb_ref)
+        # resultat de la doble comprovació (tram anterior + tros llarg)
+        self.lb_confirma = QLabel("")
+        self.lb_confirma.setObjectName("secundari")
+        self.lb_confirma.setWordWrap(True)
+        self.lb_confirma.setVisible(False)
+        lay.addWidget(self.lb_confirma)
         if ref:
             self._mostra_ref(ref)
+        fila_tap = QHBoxLayout()
+        self.b_repro = QPushButton("▶ Escolta el tram")
+        self.b_repro.setToolTip("Reproduir/aturar el bucle del tram amb el "
+                                "metrònom (Espai)")
+        self.b_repro.clicked.connect(self.vol_reproduir.emit)
+        fila_tap.addWidget(self.b_repro)
+        fila_tap.addSpacing(12)
+        self.b_tap = QPushButton("TAP")
+        self.b_tap.setToolTip("Marcar el pols amb la tecla T o 0 (2–6 cops)")
+        self.b_tap.clicked.connect(self._tap)
+        fila_tap.addWidget(self.b_tap)
+        self.lb_tap = QLabel("")
+        self.lb_tap.setObjectName("secundari")
+        fila_tap.addWidget(self.lb_tap)
+        fila_tap.addStretch(1)
+        lay.addLayout(fila_tap)
+
         botons = QDialogButtonBox(QDialogButtonBox.Ok
                                   | QDialogButtonBox.Cancel)
         self.b_ok = botons.button(QDialogButtonBox.Ok)
@@ -806,13 +967,16 @@ class DialegGuiaBpm(QDialog):
         lay.addWidget(botons)
 
     # --- API per a l'orquestrador (main.Finestra) --------------------------
-    def mostra_bpm(self, bpm, candidats=None, alternatives=None, ref=None):
+    def mostra_bpm(self, bpm, candidats=None, alternatives=None, ref=None,
+                   hist=None):
         """Resultat de la detecció: omple el camp i ofereix alternatives.
 
-        `candidats` = `[(bpm, fiabilitat), …]` (el primer és el detectat) i
-        `alternatives` = els que queden **fora** del rang configurat.
+        `candidats` = `[(bpm, fiabilitat), …]` (el primer és el detectat),
+        `alternatives` = els que queden **fora** del rang configurat i
+        `hist` = `[(n_tram, bpm), …]` els BPM confirmats en trams anteriors.
         """
         self._mostra_candidats(candidats, alternatives)
+        self._mostra_hist(hist)
         if ref:
             self._mostra_ref(ref)
             self._ref = float(ref)
@@ -875,6 +1039,7 @@ class DialegGuiaBpm(QDialog):
         self.ed_bpm.setText(f"{float(altres[i][0]):.2f}")
         self.ed_bpm.setFocus()
         self.ed_bpm.selectAll()
+        self._emet_bpm()
 
     def mostra_error(self, text):
         """La detecció ha fallat: permet l'edició manual del BPM."""
@@ -912,6 +1077,147 @@ class DialegGuiaBpm(QDialog):
             return
         v = min(self.BPM_MAX, max(self.BPM_MIN, v * float(f)))
         self.ed_bpm.setText(f"{v:.2f}")
+        self._emet_bpm()
+
+    # --- mètrica i llargada del tram ---------------------------------------
+    def metrica(self):
+        """`(num, den)` triats al desplegable."""
+        d = self.cb_metrica.currentData()
+        return (int(d[0]), int(d[1])) if d else (self._num, self._den)
+
+    def compassos(self):
+        """Nombre de compassos triat per al tram (≥1)."""
+        return int(self._m)
+
+    def _etiqueta_compassos(self, m=None):
+        m = self._m if m is None else int(m)
+        return f"{m} compàs" if m == 1 else f"{m} compassos"
+
+    def _pinta_compassos(self):
+        self.lb_compassos.setText(self._etiqueta_compassos())
+        self.b_menys.setEnabled(self._m > self.COMPASSOS_MIN)
+        self.b_mes.setEnabled(self._m < self.COMPASSOS_MAX)
+        cb = getattr(self, "cb_compassos", None)
+        if cb is None:
+            return
+        txt = self._etiqueta_compassos()
+        # ⚠️ `removeItem` de l'element que és l'actual fa canviar
+        # `currentIndex` i EMET el senyal: si no està blocat, el lambda del
+        # combo re-escriu `_m` amb el valor del veí (bug del 21-10: el comptador
+        # saltava a 32 i no baixava mai).
+        previ = cb.blockSignals(True)
+        try:
+            idx = cb.findText(txt)
+            if idx < 0:
+                # valor fi (p. ex. 6) que no és cap preset: s'afig al final
+                if cb.count() > len(self.MIDA_TRAM):
+                    cb.removeItem(cb.count() - 1)
+                cb.addItem(txt, self._m)
+                idx = cb.count() - 1
+            cb.setCurrentIndex(idx)
+        finally:
+            cb.blockSignals(previ)
+
+    def _estableix_compassos(self, m):
+        """Fixar la mida del tram (combo de presets o ±1)."""
+        if m is None:
+            return
+        self._m = max(self.COMPASSOS_MIN, min(self.COMPASSOS_MAX, int(m)))
+        self._pinta_compassos()
+
+    def _canvia_compassos(self, delta):
+        self._estableix_compassos(self._m + int(delta))
+
+    # --- història de BPM i confirmació -------------------------------------
+    def _mostra_hist(self, hist=None):
+        """Pastilles amb els BPM confirmats en trams anteriors."""
+        self._hist = list(hist or [])
+        for k, b in enumerate(self._b_hist):
+            if k < len(self._hist):
+                n_tram, bpm = self._hist[k]
+                b.setText(f"tram {int(n_tram)} · {float(bpm):.2f}")
+                b.setVisible(True)
+            else:
+                b.setText("")
+                b.setVisible(False)
+        self.lb_hist.setVisible(bool(self._hist))
+
+    def _tria_hist(self, i):
+        """Clic en un BPM anterior: al camp (sense acceptar)."""
+        if i >= len(self._hist):
+            return
+        bpm = float(self._hist[i][1])
+        self.ed_bpm.setEnabled(True)
+        self.b_ok.setEnabled(True)
+        for b in (self.b_x2, self.b_mig, self.b_x43, self.b_x34):
+            b.setEnabled(True)
+        self.ed_bpm.setText(f"{bpm:.2f}")
+        self.ed_bpm.setFocus()
+        self.ed_bpm.selectAll()
+        self._emet_bpm()
+
+    def set_confirmacio(self, res):
+        """Ensenya el veredicte de `tempo_map.avalua_confirmacio`."""
+        txt = (res or {}).get("detall") or ""
+        self.lb_confirma.setText(txt)
+        self.lb_confirma.setVisible(bool(txt))
+        self.lb_confirma.setToolTip(
+            "Es compara la detecció lliure amb (a) la mateixa finestra "
+            "acotada al ±8 % del BPM del tram anterior i (b) el doble de "
+            "tros. Si coincidixen, el número és de fiar.")
+
+    # --- TAP i audició -----------------------------------------------------
+    def _bpm_escrit(self, _txt):
+        self._emet_bpm()
+
+    def _emet_bpm(self):
+        """Avisa l'orquestrador del BPM vigent (metrònom en viu)."""
+        v = self.valors()
+        if v is not None:
+            self.bpm_canviat.emit(float(v))
+
+    def _tap(self, *_a):
+        """Marcar el pols: 2–6 cops → BPM per la mediana dels intervals."""
+        ara = time.monotonic()
+        if self._taps and ara - self._taps[-1] > self.TAP_REINICI_S:
+            self._taps = []
+        self._taps.append(ara)
+        if len(self._taps) > self.TAP_MAX:
+            del self._taps[0]
+        self.b_tap.setText(f"TAP ({len(self._taps)})")
+        if len(self._taps) < 2:
+            self.lb_tap.setText("marca el pols…")
+            return
+        intervals = sorted(b - a for a, b in zip(self._taps, self._taps[1:]))
+        mitja = intervals[len(intervals) // 2]       # mediana: menys outliers
+        if mitja <= 0:
+            return
+        bpm = min(self.BPM_MAX, max(self.BPM_MIN, 60.0 / mitja))
+        self.ed_bpm.setEnabled(True)
+        self.b_ok.setEnabled(True)
+        for b in (self.b_x2, self.b_mig, self.b_x43, self.b_x34):
+            b.setEnabled(True)
+        self.ed_bpm.setText(f"{bpm:.2f}")
+        self.lb_tap.setText(f"→ {bpm:.1f} BPM")
+        self._emet_bpm()
+
+    def set_reproduint(self, sona):
+        """Sincronitza el text del botó amb l'estat real de reproducció."""
+        self._reproduint = bool(sona)
+        self.b_repro.setText("⏸ Pausa (Espai)" if self._reproduint
+                             else "▶ Escolta el tram")
+
+    def keyPressEvent(self, ev):
+        # T = TAP i Espai = play/pausa, sempre que no s'estiga escrivint al
+        # camp del BPM (allà una «t» o un espai han de poder entrar).
+        editant = isinstance(self.focusWidget(), QLineEdit)
+        if not editant and ev.key() in (Qt.Key_T, Qt.Key_0):
+            self._tap()
+            return
+        if not editant and ev.key() == Qt.Key_Space:
+            self.vol_reproduir.emit()
+            return
+        super().keyPressEvent(ev)
 
 
 class DialegTempoPerTrams(QDialog):

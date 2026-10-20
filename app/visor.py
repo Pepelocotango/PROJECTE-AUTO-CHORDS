@@ -451,6 +451,11 @@ class Visor(QMainWindow):
         # metrònom: clic mesclat al buffer (no afectat pel mute/volum cançó)
         self.metro_on = False
         self.metro_vol = 0.6
+        # Metrònom FORÇAT (None = normal): `(bpm, bpb, offset)` fa sonar el
+        # clic sobre una graella pròpia, alineada a `offset`, sense passar pel
+        # mapa de tempo. És el que permet escoltar un tram del guiat **encara
+        # no aplicat** (i moure'n el BPM en viu).
+        self.metro_forcat = None
         self.loop_a = None
         self.loop_b = None
         self.loop_on = False
@@ -1506,6 +1511,26 @@ class Visor(QMainWindow):
     def commuta_metro(self):
         """Activa/desactiva el metrònom (sense tallar la reproducció)."""
         self.set_metro(not self.metro_on)
+
+    def set_metro_forcat(self, bpm=None, bpb=4, offset=0.0):
+        """Metrònom sobre una graella pròpia: `bpm` + `bpb` des de `offset`.
+
+        Amb `bpm=None` es torna al metrònom normal (mapa de tempo o BPM de la
+        barra). El fil d'àudio ho llig **a cada tros**, així que el canvi de
+        BPM o l'encesa/apagada s'apliquen a l'instant i **sense reiniciar** el
+        reproductor (cap micro-tall).
+        """
+        if bpm is None:
+            self.metro_forcat = None
+            self.log("metrònom forçat: OFF (torna al mapa)")
+            return
+        bpm = float(bpm)
+        if not (bpm > 0):
+            self.metro_forcat = None
+            return
+        self.metro_forcat = (bpm, max(1, int(bpb)), float(offset))
+        self.log(f"metrònom forçat: {bpm:.2f} BPM · compàs {int(bpb)} · "
+                 f"des de {float(offset):.3f}s")
 
     def _canvia_vol_metro(self, v):
         """Volum del clic (0-100) — **sense tallar la reproducció**.
@@ -3943,11 +3968,20 @@ class Visor(QMainWindow):
                         x = x * g
                     tros = np.clip(x, -32768, 32767).astype(np.int16).tobytes()
                 if self.metro_on and self.metro_vol > 0:
-                    tros = metronom.mescla_metronom(
-                        tros, sr, pos / float(sr), self.bpm, self.bpb,
-                        volum=self.metro_vol,
-                        offset=getattr(self, "offset", 0.0),
-                        mapa=getattr(self, "tempo_map", None))
+                    forc = getattr(self, "metro_forcat", None)
+                    if forc is not None:
+                        # graella pròpia (guiat): el clic s'alinea a `offset`
+                        # encara que el mapa diga una altra cosa
+                        mbpm, mbpb, moff = forc
+                        tros = metronom.mescla_metronom(
+                            tros, sr, pos / float(sr), mbpm, mbpb,
+                            volum=self.metro_vol, offset=moff, mapa=None)
+                    else:
+                        tros = metronom.mescla_metronom(
+                            tros, sr, pos / float(sr), self.bpm, self.bpb,
+                            volum=self.metro_vol,
+                            offset=getattr(self, "offset", 0.0),
+                            mapa=getattr(self, "tempo_map", None))
                 try:
                     proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):

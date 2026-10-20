@@ -1754,7 +1754,11 @@ class TestDialegOpcions(_dialegs___Base):
         """
         d = dialegs.DialegOpcions(None, opcions=dialegs.DEFECTES)
         out = d.opcions()
-        self.assertEqual(set(out), {"bpm", "chords", "structure", "clean"})
+        # el diàleg edita 4 seccions però ha de **conservar** les altres
+        # (p. ex. «guiat»: abans es perdien en desar des d'Opcions)
+        self.assertEqual(set(out), {"bpm", "chords", "structure", "clean",
+                                    "guiat"})
+        self.assertEqual(out["guiat"], dialegs.DEFECTES["guiat"])
         for clau, val in dialegs.DEFECTES["bpm"].items():
             self.assertEqual(out["bpm"][clau], val, f"bpm.{clau}")
         for clau, val in dialegs.DEFECTES["chords"].items():
@@ -1765,6 +1769,13 @@ class TestDialegOpcions(_dialegs___Base):
                              dialegs.DEFECTES["structure"][clau],
                              f"structure.{clau}")
         self.assertEqual(out["clean"], dialegs.DEFECTES["clean"])
+
+    def test_seccions_que_no_edita_es_conserven(self):
+        """`guiat` (i qualsevol secció futura) no es perd en desar."""
+        base = dict(dialegs.DEFECTES)
+        base["guiat"] = {"compassos": 16, "confirma": False}
+        out = dialegs.DialegOpcions(None, opcions=base).opcions()
+        self.assertEqual(out["guiat"], {"compassos": 16, "confirma": False})
 
     def test_restaura_torna_als_defectes(self):
         d = dialegs.DialegOpcions(None, opcions=dialegs.DEFECTES)
@@ -1843,6 +1854,8 @@ ESPERATS = {
     "structure": {"motor": "qm", "durada_min": 2.0, "fusiona_iguals": True},
     "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
               "reduir": False, "snap": True, "divisio": 4},
+    # anàlisi guiat: mida del tram i doble comprovació (21-10)
+    "guiat": {"compassos": 4, "confirma": True},
 }
 
 
@@ -4618,6 +4631,19 @@ class TestTempoPerTramsGui(unittest.TestCase):
         self.assertEqual(mock.call_count, 1)
 
 
+def _opcions_temporals(test, carpeta):
+    """Redirigir `opcions_detecta.json` a un fitxer temporal del test.
+
+    El guiat hi desa la mida de tram i la confirmació: una prova que trie 5
+    compassos contaminaria la sessió real de l'usuari (vist 21-10).
+    """
+    p = os.path.join(carpeta, "opcions_test.json")
+    pedac = patch.object(dialegs, "FITXER_OPCIONS", p)
+    pedac.start()
+    test.addCleanup(pedac.stop)
+    return p
+
+
 class TestGuiaFlux(unittest.TestCase):
     """Flux de l'assistent a la Finestra, amb la detecció ANUL·LADA.
 
@@ -4646,10 +4672,19 @@ class TestGuiaFlux(unittest.TestCase):
             self.w.tria_wav()
         self._p_fil = patch.object(app_main, "FilGuiaBpm", _FilFals)
         self._p_fil.start()
+        # estat del guiat determinista (no depén de les opcions desades)
+        self.w.opcions["guiat"] = {"compassos": 4, "confirma": False}
+        _opcions_temporals(self, self.td)
+        # el guiat v2 posa el tram en bucle: motor fals perquè la suite no
+        # òbriga cap `paplay` de veritat
+        self._p_motor = patch.object(audio_out, "crea_motor",
+                                     lambda *_a, **_k: _MotorMut())
+        self._p_motor.start()
 
     def tearDown(self):
         self.w.close()
         self._p_fil.stop()
+        self._p_motor.stop()
         shutil.rmtree(self.td, ignore_errors=True)
 
     def _posa_cursor(self, t):
@@ -5011,6 +5046,528 @@ class TestSeleccioBpmICompas1(unittest.TestCase):
                                       "lb_nota", None))
         finally:
             w._guia_cancel()
+
+
+class TestGuiatOpcioTram(unittest.TestCase):
+    """Guiat v2: mida del tram a l'anàlisi (4/8/16/32) i doble comprovació."""
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+        self._oberts = []
+        self.td = tempfile.mkdtemp()
+        _opcions_temporals(self, self.td)
+
+    def tearDown(self):
+        for d in self._oberts:
+            d.close()
+        shutil.rmtree(self.td, ignore_errors=True)
+
+    def _pas1(self, compassos=4, confirma=True):
+        d = dialegs.DialegGuiaDownbeat(None, compassos=compassos,
+                                       confirma=confirma)
+        self._oberts.append(d)
+        return d
+
+    def test_presets_i_valor_inicial(self):
+        d = self._pas1(compassos=16)
+        textos = [d.cb_compassos.itemText(i)
+                  for i in range(d.cb_compassos.count())]
+        self.assertEqual(textos, ["4 compassos", "8 compassos",
+                                  "16 compassos", "32 compassos"])
+        self.assertEqual(d.compassos(), 16)
+        self.assertTrue(d.confirma())
+
+    def test_desmarcar_la_confirmacio(self):
+        d = self._pas1(confirma=False)
+        self.assertFalse(d.confirma())
+        d.ck_confirma.setChecked(True)
+        self.assertTrue(d.confirma())
+
+    def test_mida_que_no_es_preset_no_es_perd(self):
+        d = self._pas1(compassos=6)
+        self.assertEqual(d.compassos(), 6)
+        self.assertEqual(d.cb_compassos.currentText(), "6 compassos")
+
+    def test_es_desa_a_les_opcions_del_guiat(self):
+        """La tria es recorda (fitxer temporal de la suite, mai el real)."""
+        from app import dialegs as dl
+        self.assertEqual(dialegs.DEFECTES["guiat"]["compassos"], 4)
+        self.assertTrue(dialegs.DEFECTES["guiat"]["confirma"])
+        dl.desa_opcions({"guiat": {"compassos": 32, "confirma": False}})
+        self.assertEqual(dl.carrega_opcions()["guiat"],
+                         {"compassos": 32, "confirma": False})
+
+
+class _MotorMut:
+    """Motor d'àudio fals: no sona res i no bloqueja el fil de farciment."""
+
+    def __init__(self):
+        self.pid = 4242
+        self.stdin = self
+        self.aturat = False
+
+    def write(self, b):
+        time.sleep(0.002)          # el fil avança a poc a poc, sense cremar CPU
+        return len(b)
+
+    def close(self):
+        pass
+
+    def flush(self):
+        pass
+
+    def poll(self):
+        return None
+
+    def atura(self):
+        self.aturat = True
+
+
+class _RellotgeFals:
+    """`time` de mentida per als TAP (`monotonic` fix o per llista)."""
+
+    def __init__(self, valors):
+        self.valors = list(valors)
+
+    def monotonic(self):
+        if len(self.valors) > 1:
+            return self.valors.pop(0)
+        return self.valors[0]
+
+
+class TestDialegGuiaAudicio(unittest.TestCase):
+    """Guiat v2 al diàleg: mètrica, compassos, TAP i senyals (sense fils)."""
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+        self._oberts = []
+
+    def tearDown(self):
+        for d in self._oberts:
+            d.close()
+        self._oberts = []
+
+    def _dlg(self, num=4, den=4, compassos=4):
+        d = dialegs.DialegGuiaBpm(None, 1, 0.0, 8.0, "1.1", num=num,
+                                  den=den, compassos=compassos)
+        self._oberts.append(d)
+        return d
+
+    def test_metrica_inicial_i_presets(self):
+        d = self._dlg(num=3, den=4)
+        self.assertEqual(d.metrica(), (3, 4))      # la vigent, encara que
+        self.assertEqual(d.compassos(), 4)         # no siga al catàleg
+        for txt in ("4/4", "3/4", "2/4", "6/8", "12/8"):
+            self.assertGreaterEqual(d.cb_metrica.findText(txt), 0, txt)
+        self.assertEqual(d.cb_metrica.count(), 5)     # sense duplicats
+
+    def test_metrica_no_preset_s_afegeix(self):
+        d = self._dlg(num=5, den=8)
+        self.assertEqual(d.metrica(), (5, 8))
+        self.assertGreaterEqual(d.cb_metrica.findText("5/8"), 0)
+
+    def test_compassos_amb_limits(self):
+        d = self._dlg()
+        d._canvia_compassos(+1)
+        self.assertEqual(d.compassos(), 5)
+        self.assertIn("5", d.lb_compassos.text())
+        for _ in range(20):
+            d._canvia_compassos(-1)
+        self.assertEqual(d.compassos(), d.COMPASSOS_MIN)
+        for _ in range(60):
+            d._canvia_compassos(+1)
+        self.assertEqual(d.compassos(), d.COMPASSOS_MAX)
+        self.assertIn("compassos", d.lb_compassos.text())
+        d2 = self._dlg(compassos=1)
+        self.assertIn("1 compàs", d2.lb_compassos.text())
+
+    def test_tap_calcula_bpm(self):
+        d = self._dlg()
+        rellotge = _RellotgeFals([100.0, 100.5, 101.0, 101.52])
+        with patch.object(dialegs, "time", rellotge):
+            for _ in range(4):
+                d._tap()
+        self.assertAlmostEqual(d.valors(), 60.0 / 0.5, places=1)  # 120 BPM
+        self.assertIn("120", d.lb_tap.text())
+        self.assertIn("TAP (4)", d.b_tap.text())
+
+    def test_tap_usa_mediana(self):
+        d = self._dlg()
+        # intervals 0,5 · 0,9 (outlier) · 0,5 → mediana 0,5 → 120 BPM
+        rellotge = _RellotgeFals([0.0, 0.5, 1.4, 1.9])
+        with patch.object(dialegs, "time", rellotge):
+            for _ in range(4):
+                d._tap()
+        self.assertAlmostEqual(d.valors(), 120.0, places=1)
+
+    def test_tap_reinicia_si_passa_estona(self):
+        d = self._dlg()
+        rellotge = _RellotgeFals([0.0, 0.5, 10.0, 10.5])
+        with patch.object(dialegs, "time", rellotge):
+            for _ in range(4):
+                d._tap()
+        self.assertIn("TAP (2)", d.b_tap.text())
+        self.assertAlmostEqual(d.valors(), 120.0, places=1)
+
+    def test_emet_bpm_amb_escala_i_candidats(self):
+        d = self._dlg()
+        rebuts = []
+        d.bpm_canviat.connect(rebuts.append)
+        d.mostra_bpm(120.0, candidats=[(120.0, 0.9), (103.0, 0.7)])
+        d._escala(2.0)                              # ×2 → 240
+        self.assertAlmostEqual(rebuts[-1], 240.0, places=1)
+        d.ed_bpm.setText("96.5")
+        d._bpm_escrit("96.5")
+        self.assertAlmostEqual(rebuts[-1], 96.5, places=2)
+        d.ed_bpm.setText("")
+        d._bpm_escrit("")
+        self.assertAlmostEqual(rebuts[-1], 96.5, places=2)   # res vàlid: no emet
+
+    def test_tria_candidat_emet(self):
+        d = self._dlg()
+        rebuts = []
+        d.bpm_canviat.connect(rebuts.append)
+        d.mostra_bpm(120.0, candidats=[(120.0, 0.9), (103.4, 0.7)])
+        d._tria_candidat(0)                         # la 1a alternativa
+        self.assertAlmostEqual(d.valors(), 103.4, places=2)
+        self.assertAlmostEqual(rebuts[-1], 103.4, places=2)
+
+    def test_tecles_t_i_espai(self):
+        from PyQt5.QtCore import QEvent, Qt
+        from PyQt5.QtGui import QKeyEvent
+        d = self._dlg()
+        cops = []
+        d.vol_reproduir.connect(lambda: cops.append(1))
+        d.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Space,
+                                  Qt.NoModifier))
+        self.assertEqual(len(cops), 1)
+        rellotge = _RellotgeFals([1.0, 1.5])
+        with patch.object(dialegs, "time", rellotge):
+            for _ in range(2):
+                d.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_T,
+                                          Qt.NoModifier))
+        self.assertAlmostEqual(d.valors(), 120.0, places=1)
+
+    def test_tecles_no_activen_mentre_s_edita(self):
+        from PyQt5.QtCore import QEvent, Qt
+        from PyQt5.QtGui import QKeyEvent
+        d = self._dlg()
+        cops = []
+        d.vol_reproduir.connect(lambda: cops.append(1))
+        with patch.object(d, "focusWidget", return_value=d.ed_bpm):
+            d.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Space,
+                                      Qt.NoModifier))
+        self.assertEqual(cops, [])
+
+    def test_set_reproduint(self):
+        d = self._dlg()
+        d.set_reproduint(True)
+        self.assertIn("Pausa", d.b_repro.text())
+        d.set_reproduint(False)
+        self.assertIn("Escolta", d.b_repro.text())
+
+    def test_tecla_0_tambe_es_tap(self):
+        from PyQt5.QtCore import QEvent, Qt
+        from PyQt5.QtGui import QKeyEvent
+        d = self._dlg()
+        rellotge = _RellotgeFals([1.0, 1.5])
+        with patch.object(dialegs, "time", rellotge):
+            for k in (Qt.Key_0, Qt.Key_0):
+                d.keyPressEvent(QKeyEvent(QEvent.KeyPress, k,
+                                          Qt.NoModifier))
+        self.assertAlmostEqual(d.valors(), 120.0, places=1)
+        self.assertIn("TAP (2)", d.b_tap.text())
+
+    def test_combo_de_mides_del_tram(self):
+        d = self._dlg()
+        textos = [d.cb_compassos.itemText(i)
+                  for i in range(d.cb_compassos.count())]
+        self.assertEqual(textos, ["4 compassos", "8 compassos",
+                                  "16 compassos", "32 compassos"])
+        d.cb_compassos.setCurrentIndex(d.cb_compassos.findText("16 compassos"))
+        self.assertEqual(d.compassos(), 16)
+        d._canvia_compassos(+1)                     # 17: no és preset
+        self.assertEqual(d.compassos(), 17)
+        self.assertEqual(d.cb_compassos.currentText(), "17 compassos")
+        d._canvia_compassos(-1)                     # torna a 16 (preset)
+        self.assertEqual(d.cb_compassos.currentText(), "16 compassos")
+
+    def test_historia_de_bpm_anterior(self):
+        d = self._dlg()
+        d.mostra_bpm(104.0, hist=[(3, 103.4), (2, 103.1)])
+        self.assertEqual(d._b_hist[0].text(), "tram 3 · 103.40")
+        self.assertEqual(d._b_hist[1].text(), "tram 2 · 103.10")
+        self.assertTrue(d._b_hist[0].isVisibleTo(d))
+        rebuts = []
+        d.bpm_canviat.connect(rebuts.append)
+        d._tria_hist(1)
+        self.assertAlmostEqual(d.valors(), 103.1, places=2)
+        self.assertAlmostEqual(rebuts[-1], 103.1, places=2)
+        # sense història, les pastilles s'amaguen
+        d.mostra_bpm(104.0)
+        self.assertFalse(d._b_hist[0].isVisibleTo(d))
+
+    def test_set_confirmacio(self):
+        d = self._dlg()
+        d.set_confirmacio({"detall": "✓ fiable (tram anterior 103.40)"})
+        self.assertIn("fiable", d.lb_confirma.text())
+        self.assertTrue(d.lb_confirma.isVisibleTo(d))
+        d.set_confirmacio({})
+        self.assertFalse(d.lb_confirma.isVisibleTo(d))
+
+
+class TestGuiatAudicio(unittest.TestCase):
+    """Guiat v2 a la Finestra: bucle del tram + metrònom forçat en viu."""
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+        self.td = tempfile.mkdtemp()
+        self.wav = os.path.join(self.td, "tema.wav")
+        with wave.open(self.wav, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 60)          # 60 s
+        self.motors = []
+        self._p_motor = patch.object(audio_out, "crea_motor", self._motor)
+        self._p_motor.start()
+        self._p_fil = patch.object(app_main, "FilGuiaBpm", _FilFals)
+        self._p_fil.start()
+        self.w = Finestra()
+        self.w.opcions["guiat"] = {"compassos": 4, "confirma": True}
+        _opcions_temporals(self, self.td)
+        acproj = os.path.join(self.td, "P1.acproj")
+        with patch.object(QFileDialog, "getOpenFileName",
+                          return_value=(self.wav, "")), \
+                patch.object(QFileDialog, "getSaveFileName",
+                             return_value=(acproj, "")):
+            self.w.tria_wav()
+
+    def _motor(self, *_a, **_k):
+        m = _MotorMut()
+        self.motors.append(m)
+        return m
+
+    def tearDown(self):
+        for m in self.motors:
+            m.atura()
+        self.w.close()
+        self._p_fil.stop()
+        self._p_motor.stop()
+        shutil.rmtree(self.td, ignore_errors=True)
+
+    def _arrenca(self, t=1.0):
+        w = self.w
+        w._analisi_guitat()
+        w.visor_ref.pos = t
+        w._guia_pas1_fet()
+        return w, w.visor_ref
+
+    def test_audicio_loop_i_metronom(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            self.assertIn("dlg2", w._guia)
+            w._guia_bpm_ditectat(120.0)
+            t_k = w._guia["t_k"]
+            self.assertAlmostEqual(t_k, 1.0, places=6)
+            # 4 compassos de 4/4 a 120 BPM = 8 s
+            self.assertAlmostEqual(vr.loop_a, t_k, places=6)
+            self.assertAlmostEqual(vr.loop_b, 9.0, places=6)
+            self.assertEqual(tuple(vr.metro_forcat), (120.0, 4, 1.0))
+            self.assertTrue(vr.metro_on)
+            aud = w._guia["audicio"]
+            self.assertAlmostEqual(aud[1], 9.0, places=6)
+            self.assertEqual(aud[2], 120.0)
+            self.assertIn("Pausa", w._guia["dlg2"].b_repro.text())
+        finally:
+            w._guia_cancel()
+        self.assertIsNone(vr.metro_forcat)
+        self.assertFalse(vr.metro_on)
+
+    def test_bpm_en_viu_mou_el_metronom_i_el_bucle(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            w._guia_bpm_ditectat(120.0)
+            w._guia_bpm_canviat(100.0)
+            self.assertEqual(tuple(vr.metro_forcat), (100.0, 4, 1.0))
+            # 4 compassos de 4/4 a 100 BPM = 9,6 s → 10,6 (cap dins 12 s)
+            self.assertAlmostEqual(vr.loop_b, 10.6, places=6)
+        finally:
+            w._guia_cancel()
+
+    def test_bpm_canviat_sense_audicio_no_fa_res(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            abans = (vr.loop_a, vr.loop_b, vr.metro_forcat)
+            w._guia_bpm_canviat(140.0)
+            self.assertEqual((vr.loop_a, vr.loop_b, vr.metro_forcat), abans)
+        finally:
+            w._guia_cancel()
+
+    def test_play_pausa(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            w._guia["dlg2"].mostra_bpm(120.0)
+            w._guia_play_pausa()            # arrenca (audició amb metrònom)
+            self.assertTrue(vr.sona)
+            w._guia_play_pausa()            # pausa
+            self.assertFalse(vr.sona)
+            self.assertIn("Escolta", w._guia["dlg2"].b_repro.text())
+        finally:
+            w._guia_cancel()
+
+    def test_metrica_i_compassos_del_dialeg_manen(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            d = w._guia["dlg2"]
+            d.cb_metrica.setCurrentIndex(d.cb_metrica.findText("3/4"))
+            d._canvia_compassos(+1)                 # 5 compassos de 3/4
+            w._guia_bpm_ditectat(120.0)
+            # 5 × 1,5 s = 7,5 s
+            self.assertAlmostEqual(vr.loop_b, 8.5, places=6)
+            w._guia_fenestra_aplica(d)
+            trams = vr.tempo_trams
+            self.assertTrue(any(t[2] == 120.0 and t[3] == 3 and t[4] == 4
+                                for t in trams), trams)
+            tram = [t for t in trams if abs(t[0] - 1.0) < 1e-6][0]
+            self.assertAlmostEqual(tram[1], 8.5, places=6)
+        finally:
+            w._guia_cancel()
+
+    def test_mida_8_compassos_amplia_la_finestra_i_es_desa(self):
+        """La mida triada mana a la finestra, a la detecció i al tram."""
+        w = self.w
+        w.opcions["guiat"] = {"compassos": 8, "confirma": False}
+        capturat = []
+
+        class _FilCap(app_main.FilGuiaBpm):
+            def __init__(self, wav, ini, fi, **kw):
+                capturat.append({"ini": ini, "fi": fi, **kw})
+                super().__init__(wav, ini, fi, **kw)
+
+            def start(self, *_a, **_k):
+                pass
+
+        with patch.object(app_main, "FilGuiaBpm", _FilCap):
+            w._analisi_guitat()
+            w.visor_ref.pos = 2.0
+            w._guia_pas1_fet()
+        try:
+            self.assertEqual(w._guia["compassos"], 8)
+            c = capturat[0]
+            # 8 compassos a 120 BPM (suposat al 1r tram) = 16 s
+            self.assertAlmostEqual(c["ini"], 2.0, places=6)
+            self.assertAlmostEqual(c["fi"] - c["ini"], 16.0, places=6)
+            self.assertFalse(c["confirmar"])
+            self.assertIsNone(c["prev"])
+            # el tros llarg de reforç demana el doble de finestra
+            self.assertAlmostEqual(c["fi_llarga"], 34.0, places=6)
+        finally:
+            w._guia_cancel()
+
+    def test_confirma_i_tros_llarg_arriben_al_fil(self):
+        w = self.w
+        w.opcions["guiat"] = {"compassos": 4, "confirma": True}
+        capturat = []
+
+        class _FilCap(app_main.FilGuiaBpm):
+            def __init__(self, wav, ini, fi, **kw):
+                capturat.append({"ini": ini, "fi": fi, **kw})
+                super().__init__(wav, ini, fi, **kw)
+
+            def start(self, *_a, **_k):
+                pass
+
+        with patch.object(app_main, "FilGuiaBpm", _FilCap):
+            w._analisi_guitat()
+            w.visor_ref.pos = 2.0
+            w._guia_pas1_fet()
+        try:
+            self.assertTrue(capturat[0]["confirmar"])
+            # 4 compassos a 120 = 8 s; el reforç llarg = 16 s
+            self.assertAlmostEqual(capturat[0]["fi_llarga"], 18.0, places=6)
+        finally:
+            w._guia_cancel()
+
+    def test_confirmacio_dubtosa_al_dialeg(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            w._guia_bpm_ditectat(
+                {"bpm": 51.7, "candidats": [], "alternatives": [],
+                 "ref": 103.4,
+                 "confirma": {"prev": 103.0, "banda": 103.4,
+                              "llarga": 103.5}})
+            txt = w._guia["dlg2"].lb_confirma.text()
+            self.assertIn("dubtós", txt)
+            self.assertIn("51.70", txt)
+        finally:
+            w._guia_cancel()
+
+    def test_confirmacio_fiable_al_dialeg(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            w._guia_bpm_ditectat(
+                {"bpm": 103.4, "candidats": [], "alternatives": [],
+                 "ref": 103.4,
+                 "confirma": {"prev": 103.0, "banda": 103.5,
+                              "llarga": 103.3}})
+            self.assertIn("fiable", w._guia["dlg2"].lb_confirma.text())
+        finally:
+            w._guia_cancel()
+
+    def test_historia_de_bpm_arriba_al_tram_seguent(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            w._guia_bpm_ditectat(103.4)
+            d1 = w._guia["dlg2"]
+            self.assertEqual(w._guia["bpm_hist"], [])
+            w._guia_fenestra_aplica(d1)          # tram 1 aplicat → tram 2
+            d2 = w._guia["dlg2"]
+            w._guia_bpm_ditectat(103.6)
+            self.assertEqual(d2._b_hist[0].text(), "tram 1 · 103.40")
+            self.assertEqual(w._guia["bpm_hist"], [(1, 103.4)])
+            # clicar la pastilla posa el BPM al camp
+            d2._tria_hist(0)
+            self.assertAlmostEqual(d2.valors(), 103.4, places=2)
+        finally:
+            w._guia_cancel()
+
+    def test_la_mida_del_tram_es_recorda_per_al_seguent(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            d1 = w._guia["dlg2"]
+            d1.cb_compassos.setCurrentIndex(
+                d1.cb_compassos.findText("16 compassos"))
+            w._guia_bpm_ditectat(120.0)
+            w._guia_fenestra_aplica(d1)
+            self.assertEqual(w._guia["compassos"], 16)
+            self.assertEqual(w._guia["dlg2"].compassos(), 16)
+            # i queda desada a les opcions (fitxer temporal de la suite)
+            self.assertEqual(dialegs.carrega_opcions()["guiat"]["compassos"],
+                             16)
+        finally:
+            w._guia_cancel()
+
+    def test_mesura_usa_la_instantania_i_no_l_audicio(self):
+        w = self.w
+        vr = w.visor_ref
+        vr._fixa_loop(2.0, 8.0, alinea=False)       # loop de l'usuari
+        w._analisi_guitat()
+        vr.pos = 2.0
+        w._guia_pas1_fet()
+        try:
+            self.assertEqual(tuple(w._guia["loop"]), (2.0, 8.0))
+            w._guia_bpm_ditectat(120.0)
+            self.assertAlmostEqual(vr.loop_a, 2.0, places=6)
+            self.assertAlmostEqual(vr.loop_b, 10.0, places=6)   # audició
+            # la instantània no s'ha tocat: la mesura no veu el bucle nou
+            self.assertEqual(tuple(w._guia["loop"]), (2.0, 8.0))
+        finally:
+            w._guia_cancel()
+        # en cancel·lar, el loop de l'usuari torna
+        self.assertAlmostEqual(vr.loop_a, 2.0, places=6)
+        self.assertAlmostEqual(vr.loop_b, 8.0, places=6)
+        self.assertFalse(vr.metro_on)
 
 
 if __name__ == "__main__":   # pragma: no cover

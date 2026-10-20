@@ -5,6 +5,55 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit (2026-10-21, 3a) — mida del tram, doble comprovació i BPM anterior
+- **Mida del tram configurable**: **4 · 8 · 16 · 32 compassos** (abans era una
+  constant 4 al codi). Es tria al **pas 1** (val per a tot el guiat i es
+  **recorda** a `opcions_detecta.json` → `guiat.compassos`) i es pot canviar a
+  cada tram des del combo «Tram:» del diàleg; la tria passa a les finestres
+  següents. Deriva la **finestra de mesura** (`m · durada_compas`), el tall i
+  el bucle d'audició → trams llargs = mesura més estable; curts = més punts
+  per a un rubato.
+- **Doble comprovació de la detecció** (`guiat.confirma`, marcada per defecte):
+  dues mesures extra del mateix tram — (a) la finestra **acotada al ±8 % del
+  BPM del tram anterior** i (b) la detecció sobre el **doble de tros**.
+  `tempo_map.avalua_confirmacio` les creua i el diàleg diu **✓ fiable** o
+  **⚠ dubtós** amb els tres números i una ✗ al que discrepa; si la detecció
+  lliure falla, s'usa el número del reforç. És la resposta als errors de
+  meitat/doble tempo (51,70 en compte de 103,40).
+- **BPM dels trams anteriors**: pastilles amb els **dos últims** BPM
+  confirmats («tram 3 · 103.40») que omplin el camp d'un clic; l'últim entra
+  com a prior de la comprovació acotada.
+- **Tecla `0` = TAP** al diàleg del guiat (a més de `T`).
+- **Fix**: desar des d'*Opcions* ja **no esborra** les seccions que eixe diàleg
+  no edita (es perdia `guiat`); `opcions()` les conserva.
+- **Fix**: el combo de mida es podia quedar «enganxat» a 32 en llevar-li
+  l'element temporal (`removeItem` de l'actual emetia `currentIndexChanged`
+  amb el valor del veí).
+
+### Afegit (2026-10-21, 2a) — el guiat com a estació d'audició
+- **El tram sona amb metrònom** en rebre el BPM (detecció o TAP): bucle
+  `[t_k, t_k + m·compàs]` + **metrònom forçat** (`Visor.set_metro_forcat`)
+  que **ignora el mapa** i segueix el BPM proposat. Canviar el BPM al camp
+  mou el clic **a l'instant** (el fil de farciment el relliga cada ~0,7 s:
+  sense reiniciar l'àudio ni micro-talls).
+- **Mètrica i llargada al diàleg del tram**: desplegable **4/4 · 3/4 · 2/4 ·
+  6/8 · 12/8** (+ la vigent) i **−/+ de compassos (1…32)**. Abans la finestra
+  comptava **16 temps** i en 3/4 eixien **5 compassos** (`round(16/3)`) en
+  compte de 4 — **bug arreglat** amb `trams_finestra_guia(n_compassos=…)`
+  (el paràmetre `beats` es conserva per compatibilitat).
+- **TAP dins el diàleg** (tecla **T** o botó): 2–6 cops, mediana dels
+  intervals i reinici si passes > 2,5 s. **Espai** = play/pausa del tram.
+  Les tecles no s'activen mentre s'escriu al camp del BPM.
+- **El loop de l'usuari no es contamina**: la mesura usa sempre la
+  instantània feta en arrencar (`_guia["loop"]`) i el loop del visor passa
+  a ser l'interval d'audició; en aplicar/acabar/cancel·lar es **restaura**
+  el loop de l'usuari (`_guia["loop_usuari"]`) i el metrònom.
+- **Avís final no modal** (caixa d'informació del visor) en consolidar el
+  mapa, en compte d'un diàleg que interromp.
+- **Bug cosmètic arreglat**: el desplegable de mètrica afegia un «4/4»
+  duplicat (`findData` amb una tupla no casa mai a PyQt5 → es compara per
+  text).
+
 ### Afegit (2026-10-21) — tempo per trams i alternatives de BPM
 - **«Detecta el tempo per trams…»** (*Analitza*): mapa de BPM **cada N
   compassos** (4 per defecte) pensat per a **cançons amb tempo variable**.

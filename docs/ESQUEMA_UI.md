@@ -52,7 +52,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | ⓪ | `Finestra` | finestra principal | `QMainWindow` |
 | — | `self.offset` · `self.offset_cb` | **dos camps d'offset** (segons · compàs.beat) | `QLineEdit` |
 | — | `b_obre` (local) | **Obre àudio** | `QPushButton` |
-| — | `self.b_guia` | **Anàlisi guiat** (assistent per BPM no constant: downbeat + finestres de 16 temps; `docs/ANALISI_GUIAT.md`; sense WAV desactivat) | `QPushButton` |
+| — | `self.b_guia` | **Anàlisi guiat** (assistent per BPM no constant: downbeat, trams de 4/8/16/32 compassos amb audició, metrònom i doble comprovació; `docs/ANALISI_GUIAT.md`; sense WAV desactivat) | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |
 | — | `self.b_export_part` | **Exporta partitura** (MusicXML; PDF/MSCZ si hi ha MuseScore) | `QPushButton` |

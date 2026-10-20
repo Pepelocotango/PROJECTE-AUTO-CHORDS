@@ -639,12 +639,16 @@ def parteix_trams_a(trams, t, durada):
     return normalitza_trams(out, durada)
 
 
-def trams_finestra_guia(trams, t_inici, bpm, num, den, durada, beats=16):
+def trams_finestra_guia(trams, t_inici, bpm, num, den, durada, beats=16,
+                       n_compassos=None):
     """Nou mapa després de CONFIRMAR una finestra de l'«Anàlisi guiat».
 
     `t_inici` = inici del tram de cua (pendent de detectar). El tram
     confirmat acaba a la primera quantitat **entera de compassos** que més
     s'acosta a `beats` temps del nou BPM (a 4/4, 16 temps = 4 compassos);
+    amb `n_compassos` s'imposa el nombre de compassos directament (és el que
+    fa servir el guiat: 4 compassos **de la mètrica vigent**, no 16 temps —
+    en 3/4, `beats=16` donava 5 compassos);
     la cua que queda després va amb el BPM confirmat (es re-detectarà a la
     finestra següent, o es queda com a últim tram si ja som al final).
 
@@ -667,7 +671,10 @@ def trams_finestra_guia(trams, t_inici, bpm, num, den, durada, beats=16):
     if not base:
         base = [(0.0, durada, bpm, num, den)]
     abans = [s for s in base if float(s[0]) < t - TOL]
-    m = max(1, int(round((float(beats) * 60.0 / bpm) / b_len)))
+    if n_compassos is None:
+        m = max(1, int(round((float(beats) * 60.0 / bpm) / b_len)))
+    else:
+        m = max(1, int(n_compassos))
     t_seg = t + m * b_len
     if t_seg >= durada - TOL:
         nous = abans + [(t, durada, bpm, num, den)]
@@ -944,3 +951,60 @@ def bloc_sobre_trams(trams, bloc, llargada, T, durada):
         nou.append((float(s[0]), float(s[1]), v[0], v[1], v[2])
                    if v else (float(s[0]), float(s[1]), s[2], s[3], s[4]))
     return nou
+
+
+# ---------------------------------------------------------------------------
+# Guiat v2: confirmació de la detecció amb el tram anterior i un tros llarg
+# ---------------------------------------------------------------------------
+def avalua_confirmacio(bpm, prev=None, banda=None, llarga=None,
+                       tol=0.5, tol_prev_pct=3.0):
+    """Decideix si el BPM detectat és **fiable** o **dubtós** (guiat v2).
+
+    Tres mesures del mateix tram, fetes per `main.FilGuiaBpm`:
+
+    - `bpm`: la detecció normal (lliure) sobre la finestra del tram.
+    - `banda`: la mateixa finestra buscant **només** dins del ±8 % del BPM
+      del tram anterior (si el tempo continua prop del que portàvem).
+    - `llarga`: la detecció normal sobre el **doble** de tros (una mesura
+      llarga és molt més estable que una de curta).
+
+    Es considera **fiable** si coincidix amb totes les que hi ha (tolerància
+    `tol` BPM entre mesures, `tol_prev_pct` % respecte del tram anterior).
+    Si alguna discrepa → **dubtós** (l'usuari decideix; millor això que
+    donar-li un número fals amb cara de bo).
+
+    Retorna ``{"estat": "fiable"|"dubtos"|"sense", "bpm": float|None,
+    "detall": str, "coincideix": bool}``.
+    """
+    res = {"estat": "sense", "bpm": None, "detall": "", "coincideix": False}
+    if bpm is None:
+        bpm = banda if banda is not None else llarga
+        if bpm is None:
+            res["detall"] = "cap mesura utilitzable"
+            return res
+    bpm = float(bpm)
+    res["bpm"] = bpm
+    trossos = []
+    coincideix = True
+    if banda is not None:
+        ok = abs(float(banda) - bpm) <= float(tol)
+        coincideix = coincideix and ok
+        trossos.append(f"tram anterior {float(banda):.2f}"
+                       + ("" if ok else " ✗"))
+    if llarga is not None:
+        ok = abs(float(llarga) - bpm) <= float(tol)
+        coincideix = coincideix and ok
+        trossos.append(f"tros llarg {float(llarga):.2f}"
+                       + ("" if ok else " ✗"))
+    if prev:
+        ok = abs(float(prev) - bpm) <= max(float(tol),
+                                           float(prev) * tol_prev_pct / 100.0)
+        coincideix = coincideix and ok
+        trossos.append(f"anterior {float(prev):.2f}" + ("" if ok else " ✗"))
+    res["coincideix"] = bool(coincideix and trossos)
+    res["estat"] = "fiable" if res["coincideix"] else (
+        "dubtos" if trossos else "sense")
+    res["detall"] = (f"✓ fiable ({'; '.join(trossos)})" if res["coincideix"]
+                     else (f"⚠ dubtós — {bpm:.2f} vs " + "; ".join(trossos)
+                           if trossos else ""))
+    return res

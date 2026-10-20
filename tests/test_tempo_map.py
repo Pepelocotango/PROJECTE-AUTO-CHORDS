@@ -494,6 +494,11 @@ class TestGuia(unittest.TestCase):
         self.assertEqual(len(v), 3)
 
     def test_finestra_34_m_five(self):
+        """Camí ANTIC (`beats=16`, compatibilitat): en 3/4 eixen 5 compassos.
+
+        L'app ja no l'usa (passa `n_compassos`), però es conserva perquè el
+        paràmetre `beats` seguisca funcionant per a qui cride la funció.
+        """
         p = tm.parteix_trams_a([(0.0, self.DURADA, 120.0, 4, 4)], 1.0,
                                self.DURADA)
         _, t_seg, m = tm.trams_finestra_guia(p, 1.0, 120.0, 3, 4,
@@ -507,6 +512,37 @@ class TestGuia(unittest.TestCase):
                                              self.DURADA)
         v = tm.valida_i_normalitza_compassos(nous2, self.DURADA, offset=1.0)
         self.assertTrue(len(v) >= 3)
+
+    def test_finestra_n_compassos_34(self):
+        """`n_compassos` mana: 4 compassos de 3/4 (no els 5 del mode `beats`)."""
+        p = tm.parteix_trams_a([(0.0, self.DURADA, 120.0, 4, 4)], 1.0,
+                               self.DURADA)
+        _, t_seg, m = tm.trams_finestra_guia(p, 1.0, 120.0, 3, 4,
+                                             self.DURADA, n_compassos=4)
+        self.assertEqual(m, 4)
+        self.assertAlmostEqual(t_seg, 1.0 + 4 * 1.5, places=6)   # 1,5 s/compàs
+        nous, _, _ = tm.trams_finestra_guia(p, 1.0, 120.0, 3, 4,
+                                           self.DURADA, n_compassos=4)
+        v = tm.valida_i_normalitza_compassos(nous, self.DURADA, offset=1.0)
+        self.assertAlmostEqual(v[1][1], 7.0, places=6)
+
+    def test_finestra_n_compassos_68(self):
+        p = tm.parteix_trams_a([(0.0, self.DURADA, 100.0, 4, 4)], 2.0,
+                               self.DURADA)
+        # 6/8 a 100 BPM: el «compàs» són 3 negres = 1,8 s
+        self.assertAlmostEqual(tm.durada_compas(100.0, 6, 8), 1.8, places=6)
+        _, t_seg, m = tm.trams_finestra_guia(p, 2.0, 100.0, 6, 8,
+                                             self.DURADA, n_compassos=2)
+        self.assertEqual(m, 2)
+        self.assertAlmostEqual(t_seg, 2.0 + 2 * 1.8, places=6)
+
+    def test_finestra_n_compassos_limits(self):
+        p = tm.parteix_trams_a([(0.0, self.DURADA, 120.0, 4, 4)], 1.0,
+                               self.DURADA)
+        for m_in, m_out in ((1, 1), (8, 8), (0, 1), (-3, 1), (2, 2)):
+            _, _, m = tm.trams_finestra_guia(p, 1.0, 120.0, 4, 4, self.DURADA,
+                                             n_compassos=m_in)
+            self.assertEqual(m, m_out)
 
     def test_finestra_ultima_absorbeix(self):
         """Si la finestra sobrepassa la fi de la WAV, un sol tram etern."""
@@ -1435,6 +1471,49 @@ class TestGridPositionsSenseDeriva(unittest.TestCase):
 
     def test_step_invalid(self):
         self.assertEqual(list(tb.grid_positions(0.0, 10.0, 0.0)), [])
+
+
+class TestAvaluaConfirmacio(unittest.TestCase):
+    """Guiat v2: el veredicte «fiable / dubtós» de la doble comprovació."""
+
+    def test_tot_coincidix_es_fiable(self):
+        r = tm.avalua_confirmacio(103.4, prev=103.0, banda=103.5,
+                                  llarga=103.3)
+        self.assertEqual(r["estat"], "fiable")
+        self.assertTrue(r["coincideix"])
+        self.assertAlmostEqual(r["bpm"], 103.4, places=6)
+        self.assertIn("fiable", r["detall"])
+
+    def test_meitat_de_tempo_es_dubtos(self):
+        """El cas real: la detecció lliure cau a la meitat (51,7)."""
+        r = tm.avalua_confirmacio(51.7, prev=103.0, banda=103.4,
+                                  llarga=103.5)
+        self.assertEqual(r["estat"], "dubtos")
+        self.assertFalse(r["coincideix"])
+        self.assertIn("dubtós", r["detall"])
+        self.assertIn("✗", r["detall"])
+
+    def test_sense_reforc_no_es_pot_confirmar(self):
+        r = tm.avalua_confirmacio(103.4)
+        self.assertEqual(r["estat"], "sense")
+        self.assertFalse(r["coincideix"])
+        self.assertAlmostEqual(r["bpm"], 103.4, places=6)
+
+    def test_reforc_salva_una_deteccio_lliure_fallida(self):
+        """Si la lliure falla però el reforç té número, s'usa eixe número."""
+        r = tm.avalua_confirmacio(None, prev=103.0, banda=103.4)
+        self.assertAlmostEqual(r["bpm"], 103.4, places=6)
+        self.assertEqual(r["estat"], "fiable")
+
+    def test_res_utilitzable(self):
+        r = tm.avalua_confirmacio(None, prev=None, banda=None, llarga=None)
+        self.assertEqual(r["estat"], "sense")
+        self.assertIsNone(r["bpm"])
+
+    def test_tolerancia_del_tram_anterior_es_percentual(self):
+        # 103 → ±3 % = ±3,09 BPM: 106 casa, 107 no
+        self.assertTrue(tm.avalua_confirmacio(106.0, prev=103.0)["coincideix"])
+        self.assertFalse(tm.avalua_confirmacio(107.0, prev=103.0)["coincideix"])
 
 
 if __name__ == "__main__":   # pragma: no cover

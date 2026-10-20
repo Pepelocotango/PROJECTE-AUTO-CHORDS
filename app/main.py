@@ -184,7 +184,8 @@ class FilGuiaBpm(QThread):
     missatge = pyqtSignal(str)
 
     def __init__(self, wav, ini, fi, bpm_min=None, bpm_max=None,
-                 preferit=None, ref=None, parent=None):
+                 preferit=None, ref=None, prev=None, confirmar=False,
+                 fi_llarga=None, parent=None):
         super().__init__(parent)
         self._wav = wav
         self._ini = float(ini)
@@ -193,6 +194,12 @@ class FilGuiaBpm(QThread):
         self._max = bpm_max
         self._pref = preferit
         self._ref = ref
+        #: BPM confirmat al tram anterior (per a la comprovació acotada)
+        self._prev = prev
+        #: fer les passades de reforç (tram anterior ±8 % i doble de tros)
+        self._confirmar = bool(confirmar)
+        #: final del tros llarg (doble finestra) o `None` = no fer-la
+        self._fi_llarga = fi_llarga
 
     def log(self, t):
         # mai directe: emet (queued) — la GUI no es toca des d'aquest fil
@@ -207,7 +214,7 @@ class FilGuiaBpm(QThread):
 
     def run(self):
         res = {"bpm": None, "candidats": [], "alternatives": [],
-               "ref": self._ref}
+               "ref": self._ref, "confirma": None}
         try:
             ref = self._ref
             if not ref:
@@ -232,9 +239,53 @@ class FilGuiaBpm(QThread):
             res["bpm"] = r.get("bpm")
             res["candidats"] = r.get("candidats") or []
             res["alternatives"] = r.get("alternatives") or []
+            if self._confirmar:
+                res["confirma"] = self._reforc(r.get("bpm"), pref)
         except Exception as e:  # noqa: BLE001
             self.log(f"Anàlisi guiat: detecció ERROR ({e})")
         self.feta.emit(res)
+
+    def _reforc(self, bpm, pref):
+        """Passades de reforç: (a) banda del tram anterior, (b) tros llarg.
+
+        Són mesures **del mateix tram** des de dos punts de vista distints;
+        no canvien res del mapa, només diuen si el número és de fiar
+        (`tempo_map.avalua_confirmacio` decideix).
+        """
+        out = {"prev": self._prev, "banda": None, "llarga": None,
+               "bpm": bpm}
+        prev = self._prev
+        if prev:
+            lo = max(float(self._min or 20.0), float(prev) * 0.92)
+            hi = min(float(self._max or 300.0), float(prev) * 1.08)
+            if hi - lo > 2.0:
+                try:
+                    rb = pipeline.detecta_bpm_tram_detallat(
+                        self._wav, self._ini, self._fi, self.log,
+                        bpm_min=lo, bpm_max=hi, preferit=(lo, hi))
+                    out["banda"] = rb.get("bpm")
+                    self.log(f"Anàlisi guiat: comprovació al ±8 % del tram "
+                             f"anterior ({lo:.1f}–{hi:.1f}) → "
+                             f"{out['banda']:.2f}"
+                             if out["banda"] else
+                             "Anàlisi guiat: la comprovació acotada no ha "
+                             "trobat res")
+                except Exception as e:  # noqa: BLE001
+                    self.log(f"Anàlisi guiat: comprovació ERROR ({e})")
+        if self._fi_llarga and float(self._fi_llarga) > self._fi + 1.0:
+            try:
+                rl = pipeline.detecta_bpm_tram_detallat(
+                    self._wav, self._ini, self._fi_llarga, self.log,
+                    bpm_min=self._min, bpm_max=self._max, preferit=pref)
+                out["llarga"] = rl.get("bpm")
+                self.log(f"Anàlisi guiat: tros llarg "
+                         f"({self._ini:.1f}–{float(self._fi_llarga):.1f}s) → "
+                         f"{out['llarga']:.2f}"
+                         if out["llarga"] else
+                         "Anàlisi guiat: el tros llarg no ha donat res")
+            except Exception as e:  # noqa: BLE001
+                self.log(f"Anàlisi guiat: tros llarg ERROR ({e})")
+        return out
 
 
 class FilTempoTrams(QThread):
@@ -1304,14 +1355,25 @@ class Finestra(QMainWindow):
         # Instantània del loop i de la referència global: el guiat treballa
         # amb ells encara que un desfer els toque a mitja feina (bug del 20-10:
         # el loop es va perdre i la finestra va tornar a 14 s sense acotar).
-        self._guia = {"n": 0, "loop": self._loop_actiu(), "ref": None}
+        g = self.opcions.get("guiat") or {}
+        self._guia = {"n": 0, "loop": self._loop_actiu(), "ref": None,
+                      # loop de l'usuari per a restaurar-lo en tancar (el
+                      # visor passa a mostrar l'interval d'audició del tram)
+                      "loop_usuari": (vr.loop_a, vr.loop_b, bool(vr.loop_on)),
+                      # com es fa el procés (docs/ANALISI_GUIAT.md §4.3)
+                      "compassos": int(g.get("compassos") or 4),
+                      "confirma": bool(g.get("confirma", True)),
+                      # BPM confirmats (n, bpm) per a oferir-los al tram nou
+                      "bpm_hist": []}
         # Pas 1 · mode lliure + sense snap: el cursor ha de caure on toca,
         # sobre cops secs quan hi arribem, no a la graella vella.
         self.b_mode_lliure.setChecked(True)
         self._canvia_mode_temps(False)
         self.tb_snap.setChecked(False)
         self._canvia_snap()
-        dlg1 = dialegs.DialegGuiaDownbeat(self)
+        dlg1 = dialegs.DialegGuiaDownbeat(
+            self, compassos=self._guia["compassos"],
+            confirma=self._guia["confirma"])
         dlg1.accepted.connect(self._guia_pas1_fet)
         dlg1.rejected.connect(self._guia_cancel)
         self._guia["dlg1"] = dlg1
@@ -1330,6 +1392,15 @@ class Finestra(QMainWindow):
         if vr is None:
             self._guia_cancel()
             return
+        dlg1 = self._guia.get("dlg1")
+        if dlg1 is not None:
+            # com es farà el procés: es desa per al pròxim guiat
+            try:
+                self._guia["compassos"] = int(dlg1.compassos())
+                self._guia["confirma"] = bool(dlg1.confirma())
+            except (AttributeError, RuntimeError):
+                pass
+            self._guia_desa_opcions()
         self._guia_tanca_dlg1()
         t0 = float(vr.pos)
         durada = vr._durada_wav()
@@ -1385,11 +1456,11 @@ class Finestra(QMainWindow):
             self._guia_final()
             return
         bpm_prev = float(ultim[2])
-        # Finestra ≈ 16 temps: la 1a fa 8 s (16 temps a 120 BPM; abans eren
-        # 13,7 s a 70 BPM i eixa finestra llarga donava 55 en un tema de 103);
-        # les següents ja fan servir el BPM confirmat.
-        window_s = (8.0 if self._guia["n"] == 0
-                    else 16.0 * 60.0 / max(20.0, bpm_prev))
+        # Mida del tram del procés (4/8/16/32 compassos, triada al pas 1 i
+        # canviable a cada tram): la finestra de mesura en DERIVA.
+        m = int(self._guia.get("compassos") or 4)
+        bpm_win = 120.0 if self._guia["n"] == 0 else max(20.0, bpm_prev)
+        window_s = max(1.0, m * tempo_map.durada_compas(bpm_win, num, den))
         fi = min(t_k + window_s, durada)
         # Detecció: si hi ha loop A–B, només se'n fa servir el tros que cau
         # dins la finestra (el tram a aplicar continua sent de `m` compassos
@@ -1397,7 +1468,10 @@ class Finestra(QMainWindow):
         # SENCER mana: si interseca la finestra, s'analitza tot el loop
         # encara que arribe més enllà de `fi`.
         det_ini, det_fi, nota = t_k, fi, ""
-        loop = self._loop_actiu() or self._guia.get("loop")
+        # La MESURA usa sempre la instantània de l'arrencada: el loop del
+        # visor passa a ser l'interval d'audició del tram (+ metrònom) i no
+        # ha de contaminar el que es mesura.
+        loop = self._guia.get("loop") or self._loop_actiu()
         if loop is not None:
             i0, i1 = max(float(loop[0]), t_k), float(loop[1])
             if i1 - i0 >= 1.5 and i0 < fi:
@@ -1422,15 +1496,25 @@ class Finestra(QMainWindow):
         b = self.opcions.get("bpm", {})
         rang = (b.get("min"), b.get("max"))
         dlg = dialegs.DialegGuiaBpm(self, n, t_k, fi, lbl, nota=nota,
-                                    ref=self._guia.get("ref"), rang=rang)
+                                    ref=self._guia.get("ref"), rang=rang,
+                                    num=num, den=den, compassos=m)
         dlg.accepted.connect(lambda d=dlg: self._guia_fenestra_aplica(d))
         dlg.rejected.connect(self._guia_cancel)
+        dlg.bpm_canviat.connect(self._guia_bpm_canviat)
+        dlg.vol_reproduir.connect(self._guia_play_pausa)
         self._guia["dlg2"] = dlg
         wav = self.wav_edit.text().strip()
+        hist = self._guia.get("bpm_hist") or []
+        prev = float(hist[-1][1]) if hist else None
+        # tros llarg de reforç: el doble de finestra des del mateix t_k
+        fi_llarga = min(t_k + 2.0 * window_s, durada)
         fil = FilGuiaBpm(wav, det_ini, det_fi,
                          bpm_min=b.get("min"), bpm_max=b.get("max"),
                          preferit=(b.get("pref_min"), b.get("pref_max")),
-                         ref=self._guia.get("ref"), parent=self)
+                         ref=self._guia.get("ref"),
+                         prev=prev,
+                         confirmar=bool(self._guia.get("confirma", True)),
+                         fi_llarga=fi_llarga, parent=self)
         fil.feta.connect(self._guia_bpm_ditectat)
         fil.missatge.connect(self.registra)   # log del fil → GUI (queued)
         fil.finished.connect(
@@ -1453,15 +1537,31 @@ class Finestra(QMainWindow):
         if dlg is None:            # el guiat s'ha cancel·lat mentrestant
             return
         cands = alts = []
+        conf = None
         ref = self._guia.get("ref")
         if isinstance(bpm, dict):
             cands = bpm.get("candidats") or []
             alts = bpm.get("alternatives") or []
             ref = bpm.get("ref") or ref
             self._guia["ref"] = ref
+            conf = bpm.get("confirma")
             bpm = bpm.get("bpm")
+        hist = list(self._guia.get("bpm_hist") or [])[-2:]
         dlg.mostra_bpm(None if bpm is None else float(bpm),
-                       candidats=cands, alternatives=alts, ref=ref)
+                       candidats=cands, alternatives=alts, ref=ref,
+                       hist=hist)
+        if conf:
+            res = tempo_map.avalua_confirmacio(bpm, prev=conf.get("prev"),
+                                               banda=conf.get("banda"),
+                                               llarga=conf.get("llarga"))
+            dlg.set_confirmacio(res)
+            self.registra(f"Anàlisi guiat · tram {self._guia['n']}: "
+                          f"confirmació {res['detall']}")
+            if bpm is None and res.get("bpm") is not None:
+                # la detecció lliure ha fallat però el reforç té número
+                bpm = float(res["bpm"])
+                dlg.mostra_bpm(bpm, candidats=cands, alternatives=alts,
+                               ref=ref, hist=hist)
         if bpm is None:
             self.registra(f"Anàlisi guiat · tram {self._guia['n']}: la "
                           "detecció ha fallat; escriu el BPM a mà o cancel·la.")
@@ -1472,6 +1572,134 @@ class Finestra(QMainWindow):
                          + ", ".join(f"{float(v):.2f}" for v, _c in cands[1:4]))
             self.registra(f"Anàlisi guiat · tram {self._guia['n']}: BPM "
                           f"{float(bpm):.2f}{extra} — revisa'l i prem Enter.")
+            # Estació d'audició: el tram es posa en bucle amb metrònom perquè
+            # es puga validar d'oïda (docs/ANALISI_GUIAT.md §2.2).
+            self._guia_audita(float(bpm))
+
+    # --- estació d'audició (guiat v2) --------------------------------------
+    def _guia_segment(self, bpm):
+        """`(t_k, fi, num, den, m)` del tram proposat segons el diàleg."""
+        g = self._guia
+        dlg = g.get("dlg2")
+        t_k = float(g.get("t_k") or 0.0)
+        durada = float(g.get("durada") or 0.0)
+        num, den, m = int(g.get("num") or 4), int(g.get("den") or 4), 4
+        if dlg is not None:
+            try:
+                num, den = dlg.metrica()
+                m = int(dlg.compassos())
+            except (AttributeError, RuntimeError):
+                pass
+        b_len = tempo_map.durada_compas(float(bpm), num, den)
+        fi = min(t_k + m * b_len, durada) if durada > 0 else t_k + m * b_len
+        return t_k, fi, num, den, m
+
+    def _guia_audita(self, bpm=None):
+        """Posa el tram en bucle amb metrònom (sense esperar cap Enter).
+
+        És el que converteix el guiat en una estació d'audició: el músic sent
+        el tram i el clic junts, i pot corregir el BPM a l'instant.
+        """
+        vr = getattr(self, "visor_ref", None)
+        g = getattr(self, "_guia", None)
+        if vr is None or not g or g.get("dlg2") is None:
+            return False
+        if bpm is None:
+            bpm = g["dlg2"].valors()
+        if bpm is None:
+            return False
+        t_k, fi, num, den, m = self._guia_segment(bpm)
+        if fi - t_k <= 0.05:
+            return False
+        g["audicio"] = (t_k, fi, float(bpm), num, den, m)
+        vr._fixa_loop(t_k, fi, alinea=False)
+        vr.set_metro_forcat(float(bpm), num, t_k)
+        if not vr.metro_on:
+            self._toggle_metro(True)
+        if not getattr(vr, "sona", False):
+            vr.play_stop()
+        try:
+            g["dlg2"].set_reproduint(bool(getattr(vr, "sona", False)))
+        except RuntimeError:
+            pass
+        self.registra(
+            f"Anàlisi guiat · tram {g.get('n')}: escoltant {t_k:.2f}–{fi:.2f}s "
+            f"a {float(bpm):.2f} BPM amb metrònom (compàs {num}/{den}, "
+            f"{m} compàs{'os' if m != 1 else ''}). Canvia el BPM i el clic "
+            "es mou a l'instant.")
+        return True
+
+    def _guia_bpm_canviat(self, bpm):
+        """El BPM del diàleg ha canviat: refés el bucle i el clic, en viu."""
+        g = getattr(self, "_guia", None)
+        vr = getattr(self, "visor_ref", None)
+        if not g or vr is None or g.get("dlg2") is None:
+            return
+        if g.get("audicio") is None:
+            return                      # encara no s'ha començat a escoltar
+        bpm = float(bpm)
+        if not (bpm > 0):
+            return
+        t_k, fi, num, den, m = self._guia_segment(bpm)
+        g["audicio"] = (t_k, fi, bpm, num, den, m)
+        # el clic és el que ha de quadrar: es mou el forçat (a cada tros)
+        vr.set_metro_forcat(bpm, num, t_k)
+        # si el tram s'ha fet més llarg o més curt, el bucle l'acompanya
+        a, b = (vr.loop_a, vr.loop_b)
+        if a is None or b is None or abs(float(a) - t_k) > 0.02                 or abs(float(b) - fi) > 0.02:
+            vr._fixa_loop(t_k, fi, alinea=False)
+
+    def _guia_play_pausa(self):
+        """Espai / botó ▶: alterna la reproducció del tram sense tancar res."""
+        vr = getattr(self, "visor_ref", None)
+        g = getattr(self, "_guia", None)
+        if vr is None or not g:
+            return
+        if g.get("audicio") is None:
+            if self._guia_audita():
+                return
+            # sense BPM encara (detecció fallida): almenys que puga sentir el
+            # tram; el metrònom arribarà quan hi haja un BPM vàlid.
+            vr.play_stop()
+            return
+        vr.play_stop()
+        dlg = g.get("dlg2")
+        if dlg is not None:
+            try:
+                dlg.set_reproduint(bool(getattr(vr, "sona", False)))
+            except RuntimeError:
+                pass
+
+    def _guia_desa_opcions(self):
+        """Recorda mida de tram i confirmació per al pròxim guiat."""
+        g = self.opcions.setdefault("guiat", {})
+        g["compassos"] = int(self._guia.get("compassos") or 4)
+        g["confirma"] = bool(self._guia.get("confirma", True))
+        try:
+            dialegs.desa_opcions(self.opcions)
+        except OSError:
+            pass
+
+    def _guia_atura_audicio(self, restaura=True):
+        """Atura el so del guiat i (si cal) torna el loop i el metrònom."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        try:
+            vr.set_metro_forcat(None)
+            if getattr(vr, "sona", False):
+                vr.play_stop()
+        except RuntimeError:
+            return
+        if getattr(vr, "metro_on", False):
+            self._toggle_metro(False)
+        if not restaura:
+            return
+        a, b, on = (self._guia or {}).get("loop_usuari") or (None, None, False)
+        try:
+            vr._fixa_loop(a, b, activa=bool(on), alinea=False)
+        except RuntimeError:
+            pass
 
     def _guia_fenestra_aplica(self, dlg=None):
         """Enter al diàleg: aplica el tram confirmat i segueix el bucle."""
@@ -1483,6 +1711,12 @@ class Finestra(QMainWindow):
                 bpm = dlg.valors()
         except Exception:  # noqa: BLE001
             bpm = None
+        num_den = compassos = None
+        if dlg is not None:
+            try:
+                num_den, compassos = dlg.metrica(), dlg.compassos()
+            except (AttributeError, RuntimeError):
+                num_den = compassos = None
         self._guia_tanca_dlg2()
         if bpm is None:
             self.avisa("Anàlisi guiat", "El BPM del camp no és vàlid.")
@@ -1494,13 +1728,25 @@ class Finestra(QMainWindow):
             self._guia_cancel()
             return
         durada = self._guia["durada"]
+        # L'audició s'atura abans de tocar el mapa (el propi canvi de tempo
+        # deixaria el metrònom forçat desalineat).
+        self._guia_atura_audicio(restaura=False)
+        num = num_den[0] if num_den else self._guia["num"]
+        den = num_den[1] if num_den else self._guia["den"]
         res = tempo_map.trams_finestra_guia(
-            vr.tempo_trams, self._guia["t_k"], bpm,
-            self._guia["num"], self._guia["den"], durada)
+            vr.tempo_trams, self._guia["t_k"], bpm, num, den, durada,
+            n_compassos=compassos or 4)
         if res is None:
             self._guia_final()
             return
         nous, t_seg, m = res
+        # la mida triada en este tram val per als següents (llevat que el
+        # pas 1 diga una altra cosa en un guiat nou)
+        if compassos:
+            self._guia["compassos"] = int(compassos)
+            self._guia_desa_opcions()
+        self._guia.setdefault("bpm_hist", []).append(
+            (int(self._guia["n"]), float(bpm)))
         vr._undo_marca()
         vr.aplica_tempo_trams(nous)
         vr._undo_commit()
@@ -1517,6 +1763,7 @@ class Finestra(QMainWindow):
 
     def _guia_final(self):
         """Fusiona els trams iguals, restaura la UI i obre l'anàlisi d'acords."""
+        self._guia_atura_audicio()
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
             durada = vr._durada_wav()
@@ -1527,6 +1774,16 @@ class Finestra(QMainWindow):
             vr._undo_commit()
         n = self._guia.get("n", 0)
         self._guia_netega()
+        if n:
+            # avís NO modal: la caixa d'informació del visor (no interromp)
+            msg = (f"Mapa de tempo consolidat ({n} trams). S'obri l'anàlisi "
+                   "d'acords i estructura sobre el mapa.")
+            self.registra(msg)
+            if vr is not None:
+                try:
+                    vr.avis_editor(msg)
+                except (RuntimeError, AttributeError):
+                    pass
         # Tornem al mode BPM·compàs amb snap a negra (ja hi som des del pas 4;
         # restaurem igualment per si de cas).
         self._guia_restaurar_ui()
@@ -1536,6 +1793,7 @@ class Finestra(QMainWindow):
 
     def _guia_cancel(self):
         """Cancel·la el guiat: restaura el mode BPM + snap i tanca dialegs."""
+        self._guia_atura_audicio()
         self._guia_netega()
         self._guia_restaurar_ui()
         self.registra("Anàlisi guiat cancel·lat (els trams ja aplicats es "

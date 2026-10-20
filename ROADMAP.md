@@ -235,3 +235,6 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Detall complet** de tot això (i els brainstorms originals §10–§12, l'anàlisi
   multi-SO, la nota de graella/PPQ, la d'obertura tecnològica i les notes
   d'implementació): **[`ROADMAP_HISTORIA.md`](ROADMAP_HISTORIA.md)**.
+
+
+apunt usuari: investigar madmom motor neuronal per detectar downbeats i bpm.
