@@ -184,3 +184,22 @@ test `tests/test_regla12_export.py` — **✅ FET (2026-10-18)**.
 > La **12** (paritat d'exportació) té el seu test: `tests/test_regla12_export.py`.
 >
 > Seguiment i verificacions (prova de mutació, regla a regla): **`docs/archive/AUDITORIA_REGLES.md`**.
+
+---
+
+## 🕒 Regles específiques de temps, compàs i graella
+
+El contracte detallat viu a **`docs/REGLES_TEMPS_GRID.md`** i complementa les
+regles 1–12:
+
+- els **segons** són la font de veritat de l'àudio; canviar el BPM no mou
+  acords ni seccions;
+- els **trams de tempo/compàs** manen sobre la graella;
+- els trams **interiors** contenen un **nombre enter de compassos** i les
+  fronteres cauen en línies de compàs;
+- el **primer inici** i l'**últim final** de la WAV són les úniques
+  excepcions;
+- canviar el BPM d'un tram conserva els seus compassos i **arrossega** les
+  fronteres següents (l'últim tram absorbeix);
+- la detecció de BPM amb un tram seleccionat analitza **només eixe tram** i
+  aplica el canvi directament, amb desfer.

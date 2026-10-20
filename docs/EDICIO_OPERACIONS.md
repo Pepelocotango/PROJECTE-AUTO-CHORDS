@@ -36,7 +36,22 @@
 > transport (tram 0). Mentre sona, el tap crea el **loop** del tram objectiu.
 > Els canvis de BPM no mouen els clips en segons: només recalculen les
 > posicions musicals (etiquetes i columnes de compàs de l'ABC); per alinear
-> clips a la graella es fa servir **Quantitza**.
+> clips a la graella es fa servir **Quantitza**. Un canvi de **tempo** a mig
+> compàs no reinicia la numeració: el compàs continua i només canvia la seua
+> durada; els canvis de **compàs** (signatura) sí que obrin un compàs nou.
+>
+> **Compassos enters (2026-10-20)**: les fronteres entre trams **interiors** de
+> tempo/compàs cauen en **línies de compàs**, i cada tram interior té un
+> **nombre enter de compassos**. El primer inici i l'últim final de la WAV són
+> les excepcions. Canviar el BPM/compàs d'un tram conserva els seus compassos,
+> mou la seua fi i **arrossega** les fronteres següents (l'últim absorbeix);
+> si no es pot, es rebutja. Crear/moure/partir una frontera s'imanta a la línia
+> de compàs més pròxima. Contracte complet: `docs/REGLES_TEMPS_GRID.md`.
+>
+> **Detecció per tram (2026-10-20)**: amb un tram de tempo seleccionat, el
+> botó **Detecta** analitza només l'àudio d'eixe tram i aplica el BPM
+> directament (una sola operació de desfer); el seu inici és el downbeat.
+> Sense tram seleccionat, es manté la detecció global.
 
 ## 1. Regles que manen
 
@@ -67,7 +82,7 @@
 | # | Operació | GUI (gest / drecera) | Acords | Estr. | **BPM/comp.** | Estat |
 |---|---|---|---|---|---|---|
 | 1 | **Afegir** un clip | menú *Edita ▸ Afegeix acord/secció…* · menú contextual · *Afegeix…* a la llista | ✓ | ✓ | ✓ | **FET**: model **saturat** → acord = **marca** nova; secció = **partir** (un sol camí sota `_afegeix_a_la_posicio`; vegeu §1) |
-| 2 | **Partir** (dividir) | menú contextual ▸ *Parteix l'acord/secció…* (**al punt del clic, amb snap**; si no deixa marge, al cursor) · **«Partir per la meitat»** (dues meitats iguals) als menús de la llista, del clip i de la **pista de BPM/compàs** (③) | ✓ | ✓ | ✓ | **FET**: «per la meitat» = `parteix_per_la_meitat` (centre exacte); a la pista ③ el menú diu *Parteix aquest tros aquí* |
+| 2 | **Partir** (dividir) | menú contextual ▸ *Parteix l'acord/secció…* (**al punt del clic, amb snap**; si no deixa marge, al cursor) · **«Partir per la meitat»** (dues meitats iguals) als menús de la llista, del clip i de la **pista de BPM/compàs** (③) | ✓ | ✓ | ✓ | **FET**: «per la meitat» = `parteix_per_la_meitat` (centre exacte); a la pista ③ el menú diu *Parteix aquest tros aquí*. Els talls de tempo s'imanten a la **línia de compàs** i es rebutgen si deixarien un tram interior sense un compàs sencer |
 | 3 | **Fusionar** | menú contextual ▸ *Fusionar amb anterior/seguent* | ✓ | ✓ | ✓ | **FET**: als trams de BPM/compàs es fa amb **«Elimina»** (el veïnatge s'uneix) |
 | 4 | **Eliminar** un clip | `Del` · menú contextual ▸ *Elimina* · llista | ✓ | ✓ | ✓ | **FET**: nucli únic `elimina_clips` (§6.4) |
 | 5 | **Eliminar la SELECCIÓ** | `Del` amb multi-selecció | ✓ | ✓ | ✓ | **FET** |
@@ -75,7 +90,7 @@
 | 7 | **Reanomenar** | `F2` · doble clic (inline) · llista · *Reanomena (BPM/compàs)…* (diàleg del tram) | ✓ | ✓ | ✓ | **FET** |
 | 8 | **Reanomenar en bloc** | `F2` amb multi-selecció | ✓ | ✓ | — | **FET** |
 | 9 | **Trobar i reemplaçar** | `Ctrl+H` | ✓ | ✓ | — | **FET** |
-| 10 | **Moure un clip / BLOC** | arrossegar el **cos** | ✓ | ✓ | ✓ | **FET** (§6.3) |
+| 10 | **Moure un clip / BLOC** | arrossegar el **cos** | ✓ | ✓ | ✓ | **FET** (§6.3). A ③ el cos mou la frontera i s'imanta a la **línia de compàs**; les fronteres següents s'arrosseguen |
 | 11 | **Moure una marca** (fi = inici del següent) | — | ✓ | ✓ | ✓ | **FET** (camí de la vora) |
 | 12 | **Nudge** (moure una frontera) | `←` / `→` · `Alt+←`/`→` (vora dreta) | ✓ | ✓ | ✓ | **FET** (`←`/`→` mou la frontera del tram; `Alt` la de la dreta) |
 | 13 | **Redimensionar (vores lliures)** | arrossegar la **vora** del clip | ✓ | ✓ | ✓ | **FET**: nucli únic (`redimensiona_clips` + `redimensiona_acord`/`redimensiona_seccio`) i el gest del visor hi enganxat · vores **LLIURES** (§6.6): estirar talla/elimina el veí |
@@ -122,8 +137,8 @@
 
 | # | Operació | GUI | Estat |
 |---|---|---|---|
-| 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | **FET**: amb un tram de tempo seleccionat, els camps editen **eixe tram** (2B); si no, el transport. L'offset és global |
-| 36b | **Tap tempo** | `T` · botó **TAP** | **FET**: al tram de tempo seleccionat (o al primer); **una sola operació d'undo per sessió**; mentre sona, crea el **loop** del tram objectiu i alinea el cursor |
+| 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | **FET**: amb un tram de tempo seleccionat, els camps editen **eixe tram** (2B); si no, el transport. L'offset és global. Canviar BPM/compàs conserva els compassos enters i arrossega les fronteres (opció A); si no es pot, es rebutja |
+| 36b | **Tap tempo** | `T` · botó **TAP** | **FET**: al tram de tempo seleccionat (o al primer); **una sola operació d'undo per sessió**; mentre sona, crea el **loop** del tram objectiu i alinea el cursor. Amb un tram seleccionat, el botó **Detecta** analitza només eixe tram i aplica el BPM directament |
 | 37 | **Analitzar** (acords + estructura) | `F5` · *Analitza* | **FET** |
 | 38 | **Opcions d'anàlisi** | *Paràmetres…* · *Inclou estructura* | **FET** |
 | 39 | **Compàs 1** (detectar / marcar) | *Analitza ▸* | **FET** |

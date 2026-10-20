@@ -6,6 +6,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
 ## [Unreleased]
 
 ### Afegit
+- **Regles de temps/compàs/graella (2026-10-20)**: nou contracte a
+  `docs/REGLES_TEMPS_GRID.md`. Els trams **interiors** de tempo/compàs tenen
+  un **nombre enter de compassos** i les fronteres cauen en línies de compàs;
+  el primer inici i l'últim final de la WAV són les úniques excepcions.
+- **Detecció de BPM per tram (2026-10-20)**: amb un tram de tempo seleccionat,
+  el botó **Detecta** analitza **només eixe tram** i aplica el BPM directament
+  (una sola operació de desfer). El downbeat és l'inici del tram. Sense
+  selecció, es manté la detecció global.
 - **Tap tempo amb clip objectiu (2026-10-19)**: amb diversos trams de
   BPM/compàs, el tap (tecla `T` o botó **TAP**) afecta el **tram de tempo
   seleccionat**; si no n'hi ha cap, el primer (transport). Els camps BPM i
@@ -21,6 +29,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   el cursor s'hi alinea. El loop es manté en aturar.
 
 ### Canviat
+- **Canviar BPM/compàs d'un tram (opció A, 2026-10-20)**: el tram conserva el
+  seu nombre enter de compassos; la seua fi es mou a la nova línia de compàs i
+  les fronteres següents s'arrosseguen (l'últim absorbeix a la fi de la WAV).
+  Si el resultat no compleix els compassos enters, el canvi es rebutja i
+  s'avisa.
+- **Fronteres de tempo a mà (2026-10-20)**: crear, moure, partir o fer nudge
+  d'una frontera de tempo/compàs s'imanta a la línia de compàs més pròxima. Si
+  deixaria un tram interior sense cap compàs sencer, es rebutja.
 - **Posicions musicals en canviar el BPM (2026-10-19)**: els segons continuen
   sent la font de veritat (els acords i les seccions **no es mouen**), però les
   etiquetes de compàs i les columnes `compas_ini`/`compas_fi` de
@@ -50,6 +66,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
   tros de 2 s pel mateix punt únic (abans `main.py` tenia una còpia pròpia).
 
 ### Corregit
+- **Graella i compassos amb tempo variable (2026-10-20)**: un canvi de
+  **tempo** a mig compàs ja no reinicia el compàs (només els canvis de
+  **compàs**/signatura obrin un compàs nou). El grid conserva el tipus de
+  nivell (compàs/temps/subdivisió) i les llistes, l'editor i les columnes
+  `compas_ini`/`compas_fi` de l'ABC calculen la posició amb el mapa, no amb el
+  BPM del primer tram. Això arregla els acords/seccions que quedaven amb un
+  compàs incorrecte després d'un canvi de BPM.
 - **Partir des del menú contextual (2026-10-19)**: el tall es fa al **punt del
   clic** (amb **snap** si està actiu), no al cursor. Si el punt del clic no
   deixa marge suficient, es fa servir el cursor (també amb snap). El menú

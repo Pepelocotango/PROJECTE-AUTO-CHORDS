@@ -269,6 +269,8 @@ widgets, netegen amb `tests/_qt_neteja.py`. Si afegeixes un test nou, importa
 - `README.md` — el producte (per a l'usuari).
 - `docs/README.md` — **índex complet** de la documentació.
 - **`docs/REGLES_DE_LA_APP.md`** — **les regles d'or (canònic)**.
+- **`docs/REGLES_TEMPS_GRID.md`** — contracte de **temps, compàs i graella**
+  (compassos enters als trams interiors, opció A, detecció de BPM per tram).
 - `docs/FLUX_DE_DADES.md` — model, cru, fitxers i proteccions.
 - `docs/ESQUEMA_UI.md` (+ `.html`/`.svg` generats) — la interfície.
 - `docs/PROJECTES.md` · `docs/EDICIO_OPERACIONS.md` · `docs/PARTITURA_EXPORT.md`.

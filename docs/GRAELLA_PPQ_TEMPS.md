@@ -24,6 +24,11 @@ el BPM són "vistes" calculades a sobre.
   surten del **mateix pla** → sempre quadren; nivells adaptatius al zoom
   (`MIN_LINE_PX`).
 - Snap a beat/compàs, amb subdivisions triables.
+- **Mapa de tempo variable**: els canvis de **tempo** a mig compàs **no**
+  reinicien el compàs; només els canvis de **compàs** (signatura) obrin un
+  compàs nou. El grid conserva el `kind` del nivell
+  (compàs/temps/subdivisió) i les posicions surten de `TempoMap`; les llistes,
+  l'editor i les columnes de compàs de l'ABC també.
 - Metrònom amb la mateixa graella (`app/metronom.py`, `beat = 60/bpm`).
 - **Offset** = segon on cau el compàs 1; abans, la graella és **negativa**
   (count-in).
