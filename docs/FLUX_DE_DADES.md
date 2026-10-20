@@ -125,8 +125,10 @@ blindatges (2026-10-19):
 
 ## 7. Preguntes curtes
 
-- **Puc tornar a l'anàlisi original?** Sí: el cru és dins el `.acproj`. El mode
-  fàcil o una re-neteja hi tornen a partir sense re-analitzar.
+- **Puc tornar a l'anàlisi original?** Sí: el cru és dins el `.acproj`, i una
+  **re-neteja** hi torna a partir sense re-analitzar. Per posar al dia el
+  MODEL amb la graella vigent, **Quantitza** (el «mode fàcil» va ser
+  substituït per ella, 2026-10-19).
 - **Per què no s'edita el cru directament?** Perquè és l'**evidència**: si
   l'edició el toqués, ja no podries dir «què va detectar l'anàlisi» ni re-provar
   un estil diferent des de zero.

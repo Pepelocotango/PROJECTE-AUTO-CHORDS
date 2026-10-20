@@ -5,10 +5,10 @@
 # Ús: python3 concatena.py [sortida.txt]   (defecte: CODI_concatenat.txt)
 #
 # INCLOU (whitelist), EN ORDRE: primer el CONTEXT (`README.md`, `ROADMAP.md`,
-#   `DEVELOPING.md`), després el CODI: `app/`, `eines/` (scripts de build +
-#   host C++), `.github/workflows/` (CI), les dades de build (`pyproject.toml`,
-#   `requirements.txt`, `instal·la_local.sh`), els llançadors, els scripts CLI i
-#   `tests/` (perquè qui revisi pugui veure el comportament esperat).
+#   `DEVELOPING.md`, les regles d'or), després el CODI: `app/`, `eines/`
+#   (scripts de build + host C++ + `deps_fixades.env`), `.github/workflows/`
+#   (CI), les dades de build (`pyproject.toml`, `requirements*.txt`,
+#   `instal·la_local.sh`), els llançadors, els scripts CLI i `tests/`.
 #
 # EXCLOU la resta (no indispensable): CHANGELOG/LLICENCIES, `docs/` detallats,
 #   `tests/`, el codi de tercers (`codi_font_chordino/`), binaris i plugins,
@@ -36,9 +36,12 @@ INCLOU = [
     ".github/workflows",    # CI (build-appimage / windows / macos / release)
     "pyproject.toml",       # paquet + metadades
     "requirements.txt",     # dependències del venv
+    "requirements-build.txt",  # pins del build (font única pels 3 workflows CI)
     "instal·la_local.sh",   # setup local (sense sudo)
     "AUTO_CHORDS.sh",       # llançador
     "AUTO_CHORDS.desktop",  # drecera d'escriptori
+    "AUTO_CHORDS_dev.sh",   # llançador de dev (recarrega automàtica)
+    "dev_reload.py",        # recàrrega en viu usada pel llançador de dev
     "wav_a_wavs.py",        # CLI wav -> wavs
     "concatena.py",         # aquest mateix script
     # 5. Els tests (perquè qui revisi el codi pugui veure el comportament)
@@ -54,8 +57,8 @@ EXTENSIONS = {
     ".py", ".sh", ".cpp", ".h", ".c",          # codi
     ".toml", ".txt", ".cfg", ".ini", ".spec",  # build/config
     ".yml", ".yaml",                            # CI/workflows
-    ".md",                                      # docs (les 2 de la whitelist)
-    ".desktop", ".json",
+    ".md",                                      # docs (els de la whitelist)
+    ".desktop", ".json", ".env",
 }
 
 

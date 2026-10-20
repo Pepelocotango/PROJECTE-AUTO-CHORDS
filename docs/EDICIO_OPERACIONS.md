@@ -110,7 +110,7 @@
 
 | # | Operació | GUI | Acords | Estr. | **BPM/comp.** | Estat |
 |---|---|---|---|---|---|---|
-| 19 | **Seleccionar un clip** | clic ·  | ✓ | ✓ | ✓ | **FET** |
+| 19 | **Seleccionar un clip** | clic | ✓ | ✓ | ✓ | **FET** |
 | 20 | **Multi-selecció (toggle)** | `Ctrl`+clic | ✓ | ✓ | ✓ | **FET**: també a la pista de BPM/compàs (`Ctrl`+clic) |
 | 21 | **Rang** | `Shift`+clic · `Ctrl`+arrossegar (marquee) | ✓ | ✓ | ✓ | **FET** (trams inclosos; la **selecció del LOOP** també inclou els trams) |
 | 22 | **Seleccionar el del cursor** | clic + cursor | ✓ | ✓ | ✓ | **FET** (`kind: tempo` al i al menú) |
@@ -118,7 +118,7 @@
 | 24 | **Buida la selecció** | `Esc` | ✓ | ✓ | ✓ | **FET** |
 | 25 | **Consultar la selecció / cursor** | — | ✓ | ✓ | ✓ | **FET** |
 | 26 | **Eina del timeline** (intel·ligent/marc) | tecla `E` · menú *Selecciona* · botó | ✓ | ✓ | ✓ | **FET** |
-| 27 | **Zoom** | `Ctrl++` / `Ctrl+−` / `Ctrl+0` |`seleccio`\|`in`\|`out`) | ✓ | ✓ | ✓ | **FET** |
+| 27 | **Zoom** | `Ctrl++` · `Ctrl+−` · `Ctrl+0` (Zoom total) | ✓ | ✓ | ✓ | **FET** |
 
 ## 4. Transport
 
@@ -148,7 +148,7 @@
 | 37 | **Analitzar** (acords + estructura) | `F5` · *Analitza* | **FET** |
 | 38 | **Opcions d'anàlisi** | *Paràmetres…* · *Inclou estructura* | **FET** |
 | 39 | **Compàs 1** (detectar / marcar) | *Analitza ▸* | **FET** |
-| 40 | **Tonalitat automàtica** | *Fitxer ▸ Tonalitat automàtica* | **FET** |
+| 40 | **Tonalitat automàtica** | — | **RETIRAT** (2026-10-19, decisió de l'operador): la partitura surt sempre amb `<fifths>0</fifths>` · `docs/REGLES_DE_LA_APP.md` |
 | 41 | **Inclou la partitura** (marca d'export) | *Fitxer ▸ Inclou la partitura* | **FET** |
 
 ## 7. Fitxers, projecte i export
@@ -158,7 +158,7 @@
 | 42 | **Obrir àudio** | `Ctrl+O` | **FET** |
 | 43 | **Projecte**: crear/obrir/desar/desar com/còpia | *Fitxer ▸* | **FET** |
 | 44 | **Recents** | *Fitxer ▸ Obre recent…* | **FET** |
-| 45 | **Revertir** | *Fitxer ▸ Reverteix* | **FET** (sense confirm modal amb el pont) |
+| 45 | **Revertir** | *Fitxer ▸ Reverteix* | **FET** (amb confirmació modal) |
 | 46 | **Còpia versionada (backup)** | automàtic (autosave) | **FET** |
 | 47 | **Exportar WAVs** | `Ctrl+E` | **FET** — el paquet hi porta les **tres parts** (regla #12): `acords.csv`+`wavs_acords/`, `estructura_ABC.csv`+`wavs_estructura/` i **`mapa_tempo/`** (tempo+compàs) |
 | 48 | **Exportar la partitura** | *Fitxer ▸ Exporta la partitura…* | **FET** |
@@ -194,12 +194,7 @@ pendents:
   temporal i duplicar es fa amb `Ctrl+D` o el porta-retalls.
 - **#18 Quantitza**: mou els **inicis** dels clips d'acords i/o estructura a
   la graella. No toca BPM, compàs, offset ni el cru; una sola operació de
-  desfer. Graelles: acords de 1/8 a 1 compàs; estructura d'1 a 64 compassos.
-
-1. **Redimensionat amb vores lliures** (#13) — nucli únic FET (S2a: `redimensiona_clips`); falta el gest del visor i.
-2. **Duplicar**: alinear el destí amb **§6.3** (#14) i exposar el gest de **duplicar
-   arrossegant** a l'(#15).
-3. **Seccions**: resta de la Fase 5 del pla (vores lliures).
+  desfer. Graelles: acords de corxera a 1 compàs; estructura d'1 a 64 compassos.
 
 > ✅ **Fet el 17-10-2026**: el **moviment de bloc** (§6.3, #10) amb el destí; la
 > **paritat d'estructura** (`mou_bloc_seccions`, gest del visor i  amb

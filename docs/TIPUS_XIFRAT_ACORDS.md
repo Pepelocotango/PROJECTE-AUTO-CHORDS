@@ -5,9 +5,9 @@
 > referència de l'operador *«acords i tensions»*; la secció **Extres** són
 > tipus/formes que l'app també entén i que la referència no llistava.
 >
-> Aquesta llista la **fixa un test** (`tests/test_xifrat.py`,
-> `tests/test_doc_xifrat.py`): si s'hi afegeix un tipus al codi i no aquí, la
-> suite peta.
+> Aquesta llista la **fixa un test** (`tests/test_pipeline.py`, classe
+> `TestDocXifrat`; els graus i els `<kind>` també hi estan coberts): si
+> s'hi afegeix un tipus al codi i no aquí, la suite peta.
 
 ## Panell «Tipus d'acord» (a l'app)
 
@@ -184,8 +184,8 @@ Columnes: **Tipus** (forma canònica) · **Variants acceptades** · **Graus**
 ## Referències
 - Codi: `app/xifrat.py` (notació) · `app/partitura.py` (`harmony_xml`) ·
   `app/pipeline.py` (`saneja_nom_acord`, `safe_filename`).
-- Tests: `tests/test_xifrat.py` · `tests/test_partitura.py` ·
-  `tests/test_doc_xifrat.py` (aquest fitxer).
+- Tests: `tests/test_pipeline.py` — xifrat (`normalitza_xifrat`, `TIPUS`,
+  `TAULA_TIPUS`), partitura (`events_partitura`) i `TestDocXifrat` (aquest fitxer).
 - Vegeu també: [`NOTACIO_XIFRAT.md`](NOTACIO_XIFRAT.md) (**les regles** de la
   forma canònica i on s'aplica) · [`FLUX_DE_DADES.md`](FLUX_DE_DADES.md) ·
   [`PARTITURA_EXPORT.md`](PARTITURA_EXPORT.md).
