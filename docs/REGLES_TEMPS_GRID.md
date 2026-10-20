@@ -94,6 +94,10 @@ Quan es canvia el BPM o el compàs d'un tram seleccionat:
   clar del BPM detectat.
 - Si no hi ha cap tram de tempo seleccionat, la detecció global existent es
   manté com a via separada.
+- Per a **tempo variable**, *Analitza ▸ Detecta el tempo per trams…* fa el
+  mapa sencer: un BPM cada N compassos, amb cada frontera exactament en una
+  línia de compàs (el BPM es deriva de la durada del bloc, §4) i el resultat
+  validat amb les mateixes regles d'ací. Detall: `TEMPO_PER_TRAMS.md`.
 
 ## 10. Temps lliure
 

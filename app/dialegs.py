@@ -14,7 +14,8 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
     QFormLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-    QPushButton, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout,
+    QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget,
+    QVBoxLayout,
 )
 
 from app import config, graella, tempo, tempo_map, vamp_params
@@ -180,7 +181,48 @@ class DialegOpcions(QDialog):
         info.setWordWrap(True)
         info.setStyleSheet("color:#9aa6b8; font-size:11px;")
         f.addRow(info)
+        b_rec = QPushButton("Valors recomanats (60–180 · 85–150)")
+        b_rec.setToolTip(
+            "Rang ample i zona còmoda: és el que evita que la detecció es "
+            "quede amb la meitat o el doble del tempo real.")
+        b_rec.clicked.connect(self._bpm_recomanat)
+        f.addRow(b_rec)
+        self.lb_rang = QLabel("")
+        self.lb_rang.setWordWrap(True)
+        self.lb_rang.setStyleSheet("color:#b26a00; font-size:11px;")
+        f.addRow(self.lb_rang)
+        for clau in ("min", "max", "pref_min", "pref_max"):
+            self._controls["bpm"][clau].valueChanged.connect(self._avisa_rang)
+        self._avisa_rang()
         return w
+
+    def _bpm_recomanat(self):
+        """Posa el rang recomanat (60–180 · 85–150) als quatre camps."""
+        c = self._controls.get("bpm", {})
+        for clau, valor in (("min", 60), ("max", 180), ("pref_min", 85),
+                            ("pref_max", 150)):
+            if clau in c:
+                c[clau].setValue(int(valor))
+
+    def _avisa_rang(self, *_a):
+        """Avís en viu si el rang de BPM és massa estret o incoherent."""
+        c = self._controls.get("bpm", {})
+        try:
+            mn = int(c["min"].value())
+            mx = int(c["max"].value())
+            pm = int(c["pref_min"].value())
+            px = int(c["pref_max"].value())
+        except (KeyError, AttributeError):
+            return
+        msg = ""
+        if mx - mn < 80 or (mn > 0 and mx / float(mn) < 1.8):
+            msg = (f"Rang estret ({mn}–{mx} BPM): si el tema va més "
+                   "ràpid o més lent, la detecció donarà la meitat o el doble "
+                   "del tempo real.")
+        elif not (mn <= pm < px <= mx):
+            msg = ("El rang preferit ha d'estar DINS del rang de cerca i amb "
+                   f"mínim < màxim (ara {pm}–{px} amb cerca {mn}–{mx}).")
+        self.lb_rang.setText(msg)
 
     def _tab_acords(self, val):
         w = QGroupBox("Acords (`Chordino`)")
@@ -687,8 +729,12 @@ class DialegGuiaBpm(QDialog):
     BPM_MIN, BPM_MAX = 20.0, 300.0
 
     def __init__(self, parent, n_tram, t_ini, t_fi, etiqueta_ini="",
-                 nota=""):
+                 nota="", ref=None, rang=None):
         super().__init__(parent)
+        self._cands = []
+        self._avis = ""
+        self._ref = ref
+        self._rang = rang
         self.setWindowTitle(f"Anàlisi guiat — tram {int(n_tram)}")
         self.setMinimumWidth(480)
         lay = QVBoxLayout(self)
@@ -712,14 +758,42 @@ class DialegGuiaBpm(QDialog):
         self.lb_estat = QLabel("Detectant el BPM del tram…")
         lay.addWidget(self.lb_estat)
         fila = QHBoxLayout()
-        b_x2 = QPushButton("×2 (doblega)")
-        b_x2.clicked.connect(lambda: self._escala(2.0))
-        b_mig = QPushButton("÷2 (mig temps)")
-        b_mig.clicked.connect(lambda: self._escala(0.5))
-        fila.addWidget(b_x2)
-        fila.addWidget(b_mig)
+        self.b_x2 = QPushButton("×2 (doblega)")
+        self.b_x2.clicked.connect(lambda: self._escala(2.0))
+        self.b_mig = QPushButton("÷2 (mig temps)")
+        self.b_mig.clicked.connect(lambda: self._escala(0.5))
+        self.b_x43 = QPushButton("×4/3")
+        self.b_x43.setToolTip("Tresets: el pols és un terç més lent")
+        self.b_x43.clicked.connect(lambda: self._escala(4.0 / 3.0))
+        self.b_x34 = QPushButton("×3/4")
+        self.b_x34.setToolTip("Tresets: el pols és un quart més ràpid")
+        self.b_x34.clicked.connect(lambda: self._escala(3.0 / 4.0))
+        for b in (self.b_x2, self.b_mig, self.b_x43, self.b_x34):
+            b.setEnabled(False)
+            fila.addWidget(b)
         fila.addStretch(1)
         lay.addLayout(fila)
+        # Alternatives de la detecció (com les 5 propostes de Logic)
+        self._fila_cand = QHBoxLayout()
+        self.lb_cand = QLabel("Altres:")
+        self.lb_cand.setObjectName("secundari")
+        self._fila_cand.addWidget(self.lb_cand)
+        self._b_cand = []
+        for k in range(3):
+            b = QPushButton("")
+            b.setVisible(False)
+            b.clicked.connect(lambda _c=False, i=k: self._tria_candidat(i))
+            self._fila_cand.addWidget(b)
+            self._b_cand.append(b)
+        self._fila_cand.addStretch(1)
+        lay.addLayout(self._fila_cand)
+        self.lb_cand.setVisible(False)
+        self.lb_ref = QLabel("")
+        self.lb_ref.setObjectName("secundari")
+        self.lb_ref.setVisible(False)
+        lay.addWidget(self.lb_ref)
+        if ref:
+            self._mostra_ref(ref)
         botons = QDialogButtonBox(QDialogButtonBox.Ok
                                   | QDialogButtonBox.Cancel)
         self.b_ok = botons.button(QDialogButtonBox.Ok)
@@ -732,8 +806,16 @@ class DialegGuiaBpm(QDialog):
         lay.addWidget(botons)
 
     # --- API per a l'orquestrador (main.Finestra) --------------------------
-    def mostra_bpm(self, bpm):
-        """Resultat de la detecció: omple i habilita el camp."""
+    def mostra_bpm(self, bpm, candidats=None, alternatives=None, ref=None):
+        """Resultat de la detecció: omple el camp i ofereix alternatives.
+
+        `candidats` = `[(bpm, fiabilitat), …]` (el primer és el detectat) i
+        `alternatives` = els que queden **fora** del rang configurat.
+        """
+        self._mostra_candidats(candidats, alternatives)
+        if ref:
+            self._mostra_ref(ref)
+            self._ref = float(ref)
         if bpm is None:
             self.mostra_error(
                 "No s'ha pogut detectar el BPM del tram. Escriu-lo a mà "
@@ -742,10 +824,57 @@ class DialegGuiaBpm(QDialog):
         self.ed_bpm.setText(f"{float(bpm):.2f}")
         self.ed_bpm.setEnabled(True)
         self.b_ok.setEnabled(True)
+        for b in (self.b_x2, self.b_mig, self.b_x43, self.b_x34):
+            b.setEnabled(True)
         self.ed_bpm.setFocus()
         self.ed_bpm.selectAll()
-        self.lb_estat.setText("Revisa el BPM: Enter per acceptar, ×2/÷2 per "
-                              "corregir, o edita'l a mà.")
+        extra = ""
+        if self._ref:
+            extra = (" Prem una alternativa si el tema sencer "
+                     f"({float(self._ref):.2f}) és més de fiar.")
+        txt = ("Revisa el BPM: Enter per acceptar, ×2/÷2/×4/3 per corregir, "
+               "o edita'l a mà." + extra)
+        if self._avis:
+            txt += " · " + self._avis
+        self.lb_estat.setText(txt)
+
+    def _mostra_candidats(self, candidats, alternatives):
+        """Omple els botons d'alternatives (sense duplicar el detectat)."""
+        self._cands = list(candidats or [])
+        altres = self._cands[1:4]
+        for i, b in enumerate(self._b_cand):
+            if i < len(altres):
+                v, conf = altres[i]
+                b.setText(f"{float(v):.2f} ({float(conf) * 100:.0f} %)")
+                b.setToolTip(f"Candidat alternatiu: {float(v):.2f} BPM "
+                             f"(fiabilitat {float(conf) * 100:.0f} %)")
+                b.setVisible(True)
+            else:
+                b.setVisible(False)
+        self.lb_cand.setVisible(bool(altres))
+        avis = ""
+        if alternatives:
+            avis = ("⚠️ Fora del rang configurat: "
+                    + ", ".join(f"{float(v):.2f}" for v, _c in alternatives[:3])
+                    + " BPM. Si el tema va per ahí, canvia el rang a "
+                      "Opcions → BPM.")
+        self._avis = avis
+        if avis:
+            self.lb_estat.setStyleSheet("color: #b26a00;")
+
+    def _mostra_ref(self, ref):
+        """Etiqueta amb el BPM del tema sencer (referència del guiat)."""
+        self.lb_ref.setText(f"Referència del tema sencer: {float(ref):.2f} BPM")
+        self.lb_ref.setVisible(True)
+
+    def _tria_candidat(self, i):
+        """Clic en una alternativa: la posa al camp (sense acceptar)."""
+        altres = self._cands[1:4]
+        if i >= len(altres):
+            return
+        self.ed_bpm.setText(f"{float(altres[i][0]):.2f}")
+        self.ed_bpm.setFocus()
+        self.ed_bpm.selectAll()
 
     def mostra_error(self, text):
         """La detecció ha fallat: permet l'edició manual del BPM."""
@@ -783,3 +912,71 @@ class DialegGuiaBpm(QDialog):
             return
         v = min(self.BPM_MAX, max(self.BPM_MIN, v * float(f)))
         self.ed_bpm.setText(f"{v:.2f}")
+
+
+class DialegTempoPerTrams(QDialog):
+    """«Detecta el tempo per trams»: mapa de BPM cada N compassos.
+
+    És l'acció automàtica per a cançons amb **tempo variable**: es detecta un
+    BPM cada `cada` compassos (per defecte 4) i les fronteres cauen sempre en
+    una línia de compàs. Els veïns amb un BPM quasi igual es fusionen.
+    """
+
+    def __init__(self, parent, durada=0.0, num=4, den=4, cada=4,
+                 tolerancia=2, offset_auto=True):
+        super().__init__(parent)
+        self.setWindowTitle("Detecta el tempo per trams")
+        self.setMinimumWidth(460)
+        lay = QVBoxLayout(self)
+        exp = QLabel(
+            "Analitza els temps de la cançó i crea un tram de BPM cada pocs "
+            "compassos. Pensat per a temes amb tempo variable (directes, "
+            "ritardandos, canvis de secció).")
+        exp.setWordWrap(True)
+        lay.addWidget(exp)
+        form = QFormLayout()
+        self.sp_cada = QSpinBox()
+        self.sp_cada.setRange(1, 64)
+        self.sp_cada.setValue(max(1, int(cada)))
+        self.sp_cada.setSuffix(" compassos")
+        self.sp_cada.setToolTip(
+            "Cada quants compassos es mesura un BPM nou. 4 és un bon equilibri "
+            "entre precisió i nombre de trams.")
+        form.addRow("Nova mesura cada:", self.sp_cada)
+        self.sp_tol = QDoubleSpinBox()
+        self.sp_tol.setRange(0.0, 10.0)
+        self.sp_tol.setDecimals(1)
+        self.sp_tol.setSingleStep(0.5)
+        self.sp_tol.setValue(float(tolerancia))
+        self.sp_tol.setSuffix(" %")
+        self.sp_tol.setToolTip(
+            "Els trams veïns amb menys diferència de BPM es fusionen en un de "
+            "sol (evita mapes de mil trams per vibrato o micro-deriva).")
+        form.addRow("Fusiona si el BPM difereix menys de:", self.sp_tol)
+        lay.addLayout(form)
+        self.ck_offset = QCheckBox(
+            "Mou el compàs 1 al primer temps detectat (recomanat)")
+        self.ck_offset.setChecked(bool(offset_auto))
+        self.ck_offset.setToolTip(
+            "Si la cançó comença amb anacrusi o silenci, el compàs 1 no cau a "
+            "0 s: es col·loca al primer temps fort detectat.")
+        lay.addWidget(self.ck_offset)
+        self.lb_info = QLabel(
+            f"Durada del tema: {float(durada):.2f}s · compàs {int(num)}/"
+            f"{int(den)}")
+        self.lb_info.setObjectName("secundari")
+        lay.addWidget(self.lb_info)
+        botons = QDialogButtonBox(QDialogButtonBox.Ok
+                                  | QDialogButtonBox.Cancel)
+        botons.button(QDialogButtonBox.Ok).setText("Detecta")
+        botons.button(QDialogButtonBox.Ok).setDefault(True)
+        botons.button(QDialogButtonBox.Cancel).setText("Cancel·la")
+        botons.accepted.connect(self.accept)
+        botons.rejected.connect(self.reject)
+        lay.addWidget(botons)
+
+    def valors(self):
+        """`(cada_compassos, tolerancia_fraccio, offset_auto)`."""
+        return (int(self.sp_cada.value()),
+                float(self.sp_tol.value()) / 100.0,
+                bool(self.ck_offset.isChecked()))

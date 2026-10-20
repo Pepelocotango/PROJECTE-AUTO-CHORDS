@@ -63,9 +63,12 @@ quedar la frontera — no assumim mai el BPM «original»:
   16 temps al BPM anterior = 16 · 60 / BPM_anterior s. És la manera de
   dir «detecta'm els 16 temps següents» sense saber encara el BPM nou: el
   tracker treballa dins d'eixe marge i el BPM que retorna és el seu.
-- **Primer tram** (no hi ha BPM previ): finestra d'estimació prou llarga
-  per a 16 temps de la cançó més lenta plausible (16 temps a ~70 BPM =
-  ≈ 14 s): el BPM que trobi és el de referència del tram següent.
+- **Primer tram** (no hi ha BPM previ): finestra de **8 s** (16 temps a
+  120 BPM). Abans eren 13,7 s (16 temps a 70 BPM) i eixa finestra llarga
+  va donar **55,25** en un tema de **103,5** (Otis «Dock of the Bay»,
+  20-10-2026): com més llarga és la finestra, més pes guanya el que passa
+  enmig. Si no hi ha loop i la finestra queda per sota de **7 s**, s'allarga
+  fins a 7 s (mínim raonable per a mesurar un tempo; Cubase en demana 7).
 - **No és trampa**: la mida de la finestra només decideix **fins a on es
   talla** el bucle; el BPM n'és sempre la **autodetecció** del tram.
 - Si el compàs vigent no és 4/4, el tall es fa en **compassos sencers**
@@ -115,14 +118,35 @@ quedar la frontera — no assumim mai el BPM «original»:
 ### 4.1 Detecció limitada a la selecció (loop A–B)
 
 Si hi ha **loop A–B** marcat al visor (`loop_a`/`loop_b`, tant si sona com
-si no), cada finestra **mesura el BPM només del tros del loop que cau dins
-la finestra** (intersecció; si l'interval resultant és < 1,5 s, cau a la
-finestra sencera). El **tram aplicat** continua sent de `m` compassos des de
+si no), cada finestra **mesura el BPM només del loop**, **sencer** (encara
+que arribe més enllà del final de la finestra). Es fa servir si interseca la
+finestra; si l'interval resultant és < 1,5 s (o queda fora), cau a la
+finestra sencera. Amb loop **no** s'aplica el mínim de 7 s: si l'usuari ha
+triat un tros curt, mana ell (un loop de 4 s a 4/4 ja té 8 temps).
+
+El loop es **captura en arrancar** el guiat (`_guia["loop"]`) i es fa servir
+de reserva si un desfer el buida a mitja feina. El **tram aplicat** continua sent de `m` compassos des de
 `t_k`: el loop només acota **on** es mesura. El diàleg del tram ho indica
 («detecció només de la selecció A–B: a–b s»).
 
 El botó **🎯 Detecta** de la barra fa el mateix fora del guiat: amb loop
 marcat, el BPM surt només de `[A, B]`.
+
+### 4.1-bis Alternatives i referència (2026-10-21)
+
+El diàleg del tram ja **no ensenya un sol número**: el fil calcula el BPM
+del tema sencer (referència) i, amb eixa referència, les **3 millors
+opcions** del tram amb la **fiabilitat** de cadascuna (com les propostes de
+Logic). A més:
+
+- Si la referència cau dins del rang configurat, el **prior s'estreny a
+  ±10 %** al seu voltant: el tram no se'n va al doble/meitat sense motiu.
+- Si cau **fora** del rang (el cas d'Otis: tema 103,4 amb rang 50–100), el
+  log ho avisa i el diàleg mostra el BPM detectat amb l'avís
+  «⚠️ fora del rang configurat: 103.40».
+- Botons de ràtio: **×2 · ÷2 · ×4/3 · ×3/4** (els de tresets, com Cubase).
+- La referència es calcula **una vegada** i es reutilitza a les finestres
+  següents (no es paga a cada tram).
 
 ### 4.2 El botó 📍 fora del guiat
 

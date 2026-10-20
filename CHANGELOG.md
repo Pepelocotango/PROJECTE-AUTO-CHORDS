@@ -5,6 +5,38 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit (2026-10-21) — tempo per trams i alternatives de BPM
+- **«Detecta el tempo per trams…»** (*Analitza*): mapa de BPM **cada N
+  compassos** (4 per defecte) pensat per a **cançons amb tempo variable**.
+  Motor nou a `app/tempo.py`: `segueix_beats` (beat tracking per
+  **programació dinàmica**, Ellis 2007) + `beats_a_trams` (el BPM de cada
+  tram es **deriva** de la seua durada → la frontera cau sempre en una línia
+  de compàs i el mapa passa `valida_i_normalitza_compassos`). Amb opcions de
+  cada quants compassos, tolerància de fusió i offset automàtic. Tot en un
+  **fil** (`FilTempoTrams`) i aplicat amb **un sol desfer**.
+- **Alternatives de BPM amb fiabilitat** (`tempo.candidats_bpm`): el diàleg
+  del guiat mostra les **3 millors** opcions amb el % de confiança (com
+  Logic), la **referència del tema sencer** i un avís quan el BPM detectat
+  cau **fora del rang configurat** (cas real: tema de 120 amb rang 50–100 →
+  surt 59,9 i s'avisa del 120). Botons de ràtio **×4/3** i **×3/4** (tresets).
+- **Guiat més fiable**: la 1a finestra passa de **13,7 s a 8 s** (la llarga
+  donava 55,25 en un tema de 103,5), **mínim 7 s** si no hi ha loop, el
+  **loop sencer** mana si interseca la finestra, i es **captura en arrancar**
+  perquè un desfer no el perda. El prior s'estreny a **±10 %** al voltant de
+  la referència global.
+- **Opcions → BPM**: botó **«Valors recomanats (60–180 · 85–150)»** i avís
+  en viu si el rang és estret (era la causa que la detecció donara la meitat
+  del tempo: 99,75 en compte de 103,5).
+- **Pistes de tempo** (`tempo.llegeix_pistes_tempo`): chunk **ACID** de la
+  WAV i `103bpm` al nom del fitxer (només com a pista, mai com a veritat).
+- **Resultat mesurat** (Otis «Dock of the Bay»): sencer **103,4** (abans
+  99,75 amb el rang de l'usuari), loop **104,6** (abans 52,25), mapa de **8
+  trams** de 100,4 a 106,5 validat. Motor **numpy pur** (el Q9400 no té AVX:
+  res de torch/madmom).
+- **21 tests nous** (`tests/test_tempo_trams.py` + GUI) i doc
+  `docs/TEMPO_PER_TRAMS.md` amb la comparativa de DAW (Ableton, Logic, Pro
+  Tools, Cubase, REAPER).
+
 ### Afegit (2026-10-20, 4a tongada)
 - **«Parteix a la selecció A–B» als TRES carrils** (menú contextual, botó
   dret): és el «parteix aquí» fet **als dos llocs alhora** — cada frontera

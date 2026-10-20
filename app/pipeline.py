@@ -345,6 +345,70 @@ def detecta_bpm_tram(wav_path, inici, fi, log, bpm_min=None, bpm_max=None,
                              **kw)
 
 
+def detecta_bpm_tram_detallat(wav_path, inici, fi, log, bpm_min=None,
+                              bpm_max=None, preferit=None, n=3):
+    """Com `detecta_bpm_tram`, però amb **alternatives i fiabilitat**.
+
+    Retorna el diccionari de `tempo.detecta_bpm_candidats` (bpm, candidats,
+    alternatives). El diàleg del guiat l'usa per a ensenyar les 3 millors
+    opcions, com fa Logic amb les seues propostes.
+    """
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    return tempo.detecta_bpm_candidats(wav_path, log, inici=float(inici),
+                                       fi=float(fi), n=n, **kw)
+
+
+def detecta_bpm_detallat(wav_path, log, bpm_min=None, bpm_max=None,
+                         preferit=None, n=3):
+    """BPM del fitxer **sencer** amb alternatives (sense tros concret)."""
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    return tempo.detecta_bpm_candidats(wav_path, log, n=n, **kw)
+
+
+def detecta_tempo_per_trams(wav_path, log, durada, num=4, den=4,
+                            cada_compassos=4, tolerancia=0.02,
+                            bpm_min=None, bpm_max=None, preferit=None,
+                            tightness=30.0, bpm=None, offset=None):
+    """Mapa de tempo complet: beats seguits + un BPM cada N compassos.
+
+    Motor intern (numpy), pensat per a cançons amb **tempo variable**: cada
+    bloc de `cada_compassos` compassos mesura el seu propi BPM i la frontera
+    cau sempre en una línia de compàs. Retorna `(trams, offset, bpm_base)`;
+    el mapa ja compleix el contracte de compassos enters.
+    """
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    trams, offset, base = tempo.mapa_tempo_automatic(
+        wav_path, log, durada=durada, num=num, den=den,
+        cada_compassos=cada_compassos, tolerancia=tolerancia,
+        tightness=tightness, bpm=bpm, offset=offset, **kw)
+    if trams:
+        try:
+            trams = tempo_map.valida_i_normalitza_compassos(
+                trams, durada, offset=offset)
+        except ValueError as e:  # noqa: BLE001
+            log(f"mapa: el resultat no complix el contracte ({e})")
+            return [], 0.0, base
+    return trams, offset, base
+
+
 def _bpm_consens(wav_path, log, bpm_min, bpm_max, preferit):
     """Consens: si el nostre motor i el qm coincideixen, confiança alta.
 

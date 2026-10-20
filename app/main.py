@@ -12,7 +12,8 @@ import tempfile
 import time
 import traceback
 
-from PyQt5.QtCore import QEvent, QThread, Qt, QTimer, QUrl, pyqtSignal
+from PyQt5.QtCore import (QCoreApplication, QEvent, QThread, Qt, QTimer,
+                          QUrl, pyqtSignal)
 from PyQt5.QtGui import QCursor, QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QFileDialog, QDockWidget,
@@ -183,7 +184,7 @@ class FilGuiaBpm(QThread):
     missatge = pyqtSignal(str)
 
     def __init__(self, wav, ini, fi, bpm_min=None, bpm_max=None,
-                 preferit=None, parent=None):
+                 preferit=None, ref=None, parent=None):
         super().__init__(parent)
         self._wav = wav
         self._ini = float(ini)
@@ -191,21 +192,90 @@ class FilGuiaBpm(QThread):
         self._min = bpm_min
         self._max = bpm_max
         self._pref = preferit
+        self._ref = ref
 
     def log(self, t):
         # mai directe: emet (queued) — la GUI no es toca des d'aquest fil
         self.missatge.emit(str(t))
 
+    def _dins_rang(self, bpm):
+        if self._min is not None and float(bpm) < float(self._min) - 1e-9:
+            return False
+        if self._max is not None and float(bpm) > float(self._max) + 1e-9:
+            return False
+        return True
+
     def run(self):
+        res = {"bpm": None, "candidats": [], "alternatives": [],
+               "ref": self._ref}
         try:
-            bpm = pipeline.detecta_bpm_tram(
+            ref = self._ref
+            if not ref:
+                g = pipeline.detecta_bpm_detallat(
+                    self._wav, self.log, bpm_min=self._min,
+                    bpm_max=self._max, preferit=self._pref, n=1)
+                ref = g.get("bpm")
+                res["ref"] = ref
+            pref = self._pref
+            if ref and self._dins_rang(ref):
+                # prior estret al voltant del tempo del tema (±10 %): un tram
+                # no ha d'anar-se'n al doble/meitat sense un bon motiu.
+                pref = (float(ref) * 0.9, float(ref) * 1.1)
+            elif ref:
+                self.log(f"Anàlisi guiat: ⚠️ la referència del tema "
+                         f"({float(ref):.2f} BPM) cau FORA del rang "
+                         f"configurat ({self._min}–{self._max}); potser cal "
+                         "canviar-lo a Opcions → BPM.")
+            r = pipeline.detecta_bpm_tram_detallat(
                 self._wav, self._ini, self._fi, self.log,
-                bpm_min=self._min, bpm_max=self._max,
-                preferit=self._pref)
+                bpm_min=self._min, bpm_max=self._max, preferit=pref)
+            res["bpm"] = r.get("bpm")
+            res["candidats"] = r.get("candidats") or []
+            res["alternatives"] = r.get("alternatives") or []
         except Exception as e:  # noqa: BLE001
             self.log(f"Anàlisi guiat: detecció ERROR ({e})")
-            bpm = None
-        self.feta.emit(bpm)
+        self.feta.emit(res)
+
+
+class FilTempoTrams(QThread):
+    """«Detecta el tempo per trams» en un fil (no bloqueja la GUI).
+
+    Segueix els temps de tota la cançó (DP d'Ellis) i en fa un mapa de BPM
+    cada N compassos. Emet `{"trams", "offset", "bpm_base"}`.
+    """
+    feta = pyqtSignal(object)
+    missatge = pyqtSignal(str)
+
+    def __init__(self, wav, durada, num, den, cada, tol, bpm_min=None,
+                 bpm_max=None, preferit=None, offset=None, parent=None):
+        super().__init__(parent)
+        self._wav = wav
+        self._durada = float(durada)
+        self._num = int(num)
+        self._den = int(den)
+        self._cada = int(cada)
+        self._tol = float(tol)
+        self._min = bpm_min
+        self._max = bpm_max
+        self._pref = preferit
+        self._offset = offset
+
+    def log(self, t):
+        self.missatge.emit(str(t))
+
+    def run(self):
+        res = {"trams": [], "offset": 0.0, "bpm_base": None}
+        try:
+            trams, offset, base = pipeline.detecta_tempo_per_trams(
+                self._wav, self.log, self._durada, num=self._num,
+                den=self._den, cada_compassos=self._cada,
+                tolerancia=self._tol, bpm_min=self._min, bpm_max=self._max,
+                preferit=self._pref, offset=self._offset)
+            res = {"trams": trams, "offset": float(offset or 0.0),
+                   "bpm_base": base}
+        except Exception as e:  # noqa: BLE001
+            self.log(f"tempo per trams: ERROR ({e})")
+        self.feta.emit(res)
 
 
 class Feina(QThread):
@@ -365,6 +435,7 @@ class Finestra(QMainWindow):
         # Assistent «Anàlisi guiat»: estat buit fins al primer clic.
         self._guia = {}
         self._guia_fil = None                       # FilGuiaBpm en curs (si n'hi ha)
+        self._fil_trams = None                      # FilTempoTrams en curs
         self.recents = self._carrega_recents()
         self.wav_original = ""                     # si ve d'un format convertit
         self._info_msg_fins = 0.0                  # missatge transitori info box
@@ -894,6 +965,8 @@ class Finestra(QMainWindow):
         self._act(m, "Quantitza el model…", "", self._quantitza_ui)
         self._act(m, "Mapa de tempo i compàs…", "",
                   self._tempo_mapa_ui)
+        self._act(m, "Detecta el tempo per trams…", "",
+                  self._detecta_tempo_per_trams)
         self._act(m, "Detecta el mapa de tempo (per beats)…", "",
                   self._detecta_tempo_mapa)
         m.addSeparator()
@@ -1228,7 +1301,10 @@ class Finestra(QMainWindow):
         if vr is None:
             return
         self._atura_si_sona("anàlisi guiat")
-        self._guia = {"n": 0}
+        # Instantània del loop i de la referència global: el guiat treballa
+        # amb ells encara que un desfer els toque a mitja feina (bug del 20-10:
+        # el loop es va perdre i la finestra va tornar a 14 s sense acotar).
+        self._guia = {"n": 0, "loop": self._loop_actiu(), "ref": None}
         # Pas 1 · mode lliure + sense snap: el cursor ha de caure on toca,
         # sobre cops secs quan hi arribem, no a la graella vella.
         self.b_mode_lliure.setChecked(True)
@@ -1309,22 +1385,30 @@ class Finestra(QMainWindow):
             self._guia_final()
             return
         bpm_prev = float(ultim[2])
-        # Finestra ≈ 16 temps: la 1a és llarga (encara no sabem res, ~14 s
-        # a 70 BPM); les següents ja fan servir el BPM confirmat.
-        window_s = (16.0 * 60.0 / 70.0 if self._guia["n"] == 0
+        # Finestra ≈ 16 temps: la 1a fa 8 s (16 temps a 120 BPM; abans eren
+        # 13,7 s a 70 BPM i eixa finestra llarga donava 55 en un tema de 103);
+        # les següents ja fan servir el BPM confirmat.
+        window_s = (8.0 if self._guia["n"] == 0
                     else 16.0 * 60.0 / max(20.0, bpm_prev))
         fi = min(t_k + window_s, durada)
         # Detecció: si hi ha loop A–B, només se'n fa servir el tros que cau
         # dins la finestra (el tram a aplicar continua sent de `m` compassos
-        # des de t_k; el loop només acota ON es mesura el BPM).
+        # des de t_k; el loop només acota ON es mesura el BPM). El loop
+        # SENCER mana: si interseca la finestra, s'analitza tot el loop
+        # encara que arribe més enllà de `fi`.
         det_ini, det_fi, nota = t_k, fi, ""
-        loop = self._loop_actiu(minim=1.5)
+        loop = self._loop_actiu() or self._guia.get("loop")
         if loop is not None:
-            i0, i1 = max(loop[0], t_k), min(loop[1], fi)
-            if i1 - i0 >= 1.5:
-                det_ini, det_fi = i0, i1
+            i0, i1 = max(float(loop[0]), t_k), float(loop[1])
+            if i1 - i0 >= 1.5 and i0 < fi:
+                det_ini, det_fi = i0, min(i1, durada)
                 nota = (f"detecció només de la selecció A–B: "
-                        f"{i0:.3f}–{i1:.3f}s")
+                        f"{i0:.3f}–{det_fi:.3f}s")
+        # Mínim 7 s de música per a mesurar un tempo fiable (Cubase també en
+        # demana 7): només s'amplia si NO hi ha loop (si l'usuari ha triat un
+        # tros curt, mana ell).
+        if loop is None and det_fi - det_ini < 7.0:
+            det_fi = min(t_k + 7.0, durada)
         self._guia["t_k"] = t_k
         self._guia["num"] = num
         self._guia["den"] = den
@@ -1335,16 +1419,18 @@ class Finestra(QMainWindow):
         n = self._guia["n"] + 1
         self._guia["n"] = n
         self._guia_tanca_dlg2()
-        dlg = dialegs.DialegGuiaBpm(self, n, t_k, fi, lbl, nota=nota)
+        b = self.opcions.get("bpm", {})
+        rang = (b.get("min"), b.get("max"))
+        dlg = dialegs.DialegGuiaBpm(self, n, t_k, fi, lbl, nota=nota,
+                                    ref=self._guia.get("ref"), rang=rang)
         dlg.accepted.connect(lambda d=dlg: self._guia_fenestra_aplica(d))
         dlg.rejected.connect(self._guia_cancel)
         self._guia["dlg2"] = dlg
-        b = self.opcions.get("bpm", {})
         wav = self.wav_edit.text().strip()
         fil = FilGuiaBpm(wav, det_ini, det_fi,
                          bpm_min=b.get("min"), bpm_max=b.get("max"),
                          preferit=(b.get("pref_min"), b.get("pref_max")),
-                         parent=self)
+                         ref=self._guia.get("ref"), parent=self)
         fil.feta.connect(self._guia_bpm_ditectat)
         fil.missatge.connect(self.registra)   # log del fil → GUI (queued)
         fil.finished.connect(
@@ -1357,19 +1443,35 @@ class Finestra(QMainWindow):
         dlg.show()
 
     def _guia_bpm_ditectat(self, bpm):
-        """El fil ha acabat: omple el camp del diàleg (o el deixa editar)."""
+        """El fil ha acabat: omple el camp, les alternatives i la referència.
+
+        Accepta el **diccionari** del fil (`bpm`, `candidats`, `alternatives`,
+        `ref`) i també un `float`/`None` (compatibilitat amb els fils de
+        prova dels tests).
+        """
         dlg = self._guia.get("dlg2")
         if dlg is None:            # el guiat s'ha cancel·lat mentrestant
             return
+        cands = alts = []
+        ref = self._guia.get("ref")
+        if isinstance(bpm, dict):
+            cands = bpm.get("candidats") or []
+            alts = bpm.get("alternatives") or []
+            ref = bpm.get("ref") or ref
+            self._guia["ref"] = ref
+            bpm = bpm.get("bpm")
+        dlg.mostra_bpm(None if bpm is None else float(bpm),
+                       candidats=cands, alternatives=alts, ref=ref)
         if bpm is None:
-            dlg.mostra_bpm(None)
+            self.registra(f"Anàlisi guiat · tram {self._guia['n']}: la "
+                          "detecció ha fallat; escriu el BPM a mà o cancel·la.")
         else:
-            dlg.mostra_bpm(float(bpm))
-        self.registra(f"Anàlisi guiat · tram {self._guia['n']}: BPM "
-                      f"{float(bpm):.2f} — revisa'l i prem Enter."
-                      if bpm is not None else
-                      f"Anàlisi guiat · tram {self._guia['n']}: la detecció "
-                      "ha fallat; escriu el BPM a mà o cancel·la.")
+            extra = ""
+            if len(cands) > 1:
+                extra = (" · alternatives: "
+                         + ", ".join(f"{float(v):.2f}" for v, _c in cands[1:4]))
+            self.registra(f"Anàlisi guiat · tram {self._guia['n']}: BPM "
+                          f"{float(bpm):.2f}{extra} — revisa'l i prem Enter.")
 
     def _guia_fenestra_aplica(self, dlg=None):
         """Enter al diàleg: aplica el tram confirmat i segueix el bucle."""
@@ -1854,6 +1956,76 @@ class Finestra(QMainWindow):
             self.registra(f"mapa de tempo inferit: {len(trams)} tros(s)")
             return len(trams)
         return 0
+
+    def _detecta_tempo_per_trams(self):
+        """Acció de menú: mapa de BPM cada N compassos (tempo variable)."""
+        vr = getattr(self, "visor_ref", None)
+        wav = self.wav_edit.text().strip()
+        if vr is None or not wav or not os.path.isfile(wav):
+            self.avisa_info("Auto Chords", "Primer obri un tema amb àudio.")
+            return
+        if self._guia:
+            self.avisa_info("Auto Chords",
+                            "Hi ha un «Anàlisi guiat» en curs: acaba'l o "
+                            "cancel·la'l abans de detectar per trams.")
+            return
+        ft = getattr(self, "_fil_trams", None)
+        if ft is not None and ft.isRunning():
+            self.avisa_info("Auto Chords",
+                            "Ja hi ha una detecció per trams en curs.")
+            return
+        durada = vr._durada_wav()
+        dlg = dialegs.DialegTempoPerTrams(
+            self, durada=durada, num=int(vr.bpb),
+            den=int(getattr(vr, "beat_type", 4) or 4))
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        cada, tol, offset_auto = dlg.valors()
+        self._atura_si_sona("detecció de tempo per trams")
+        b = self.opcions.get("bpm", {})
+        self.registra(f"Detectant el tempo per trams (1 BPM cada {cada} "
+                      f"compassos, fusió {tol * 100:.1f} %)…")
+        fil = FilTempoTrams(
+            wav, durada, int(vr.bpb), int(getattr(vr, "beat_type", 4) or 4),
+            cada, tol, bpm_min=b.get("min"), bpm_max=b.get("max"),
+            preferit=(b.get("pref_min"), b.get("pref_max")),
+            offset=None if offset_auto else 0.0, parent=self)
+        fil.feta.connect(self._tempo_trams_fet)
+        fil.missatge.connect(self.registra)
+        fil.finished.connect(
+            lambda: (setattr(self, "_fil_trams", None), fil.deleteLater()))
+        self._fil_trams = fil
+        fil.start()
+
+    def _tempo_trams_fet(self, res):
+        """Arriba el mapa de tempo per trams: s'aplica amb UN sol desfer."""
+        vr = getattr(self, "visor_ref", None)
+        trams = (res or {}).get("trams") or []
+        offset = float((res or {}).get("offset") or 0.0)
+        base = (res or {}).get("bpm_base")
+        if vr is None or not trams:
+            self.avisa_info("Tempo per trams",
+                            "No s'ha pogut construir el mapa de tempo "
+                            "(potser l'àudio no té pols clar).")
+            return
+        vr._undo_marca()
+        if offset > 0:
+            vr.offset = offset
+        ok = vr.aplica_tempo_validat(trams, "Mapa de tempo per trams")
+        vr._undo_commit()
+        if not ok:
+            self.avisa_info("Tempo per trams",
+                            "El mapa detectat no ha passat la validació de "
+                            "compassos: no s'ha aplicat.")
+            return
+        self._sincronitza_temps_del_visor()
+        if offset > 0:
+            self.offset_cb.setText(self._secs_a_cb(offset))
+        bpms = sorted({round(float(t[2]), 2) for t in trams})
+        self.registra(
+            f"mapa de tempo per trams: {len(trams)} trams, compàs 1 a "
+            f"{offset:.3f}s, BPM base {base if base is None else round(base, 2)}"
+            f" (rang {bpms[0]}–{bpms[-1]})")
 
     def _detecta_tempo_mapa(self):
         """Acció de menú: infereix el mapa i avisa per pantalla si cal."""
@@ -3577,6 +3749,21 @@ class Finestra(QMainWindow):
                                 self._missatge_partitura(res))
         self.obre_carpeta()
 
+    @staticmethod
+    def _buida_esdeveniments():
+        """Entrega els esdeveniments JA postejats (p. ex. `finished` d'un fil).
+
+        Per què: `QThread.wait()` espera que el fil acabe, però el senyal
+        `finished` viatja **postejat** (connexió cua) i es pot entregar molt
+        més tard, quan la finestra o el fil ja són destruïts → el slot corre
+        sobre un objecte mort (segfault). Entregar-lo ací, amb tot viu, tanca
+        el forat. Detectat al CI/teardown dels tests (2026-10-21).
+        """
+        try:
+            QCoreApplication.sendPostedEvents(None, 0)
+        except Exception:  # noqa: BLE001 — mai ha de fer fallar el tancament
+            pass
+
     def closeEvent(self, ev):
         """Neteja ordenada abans que Qt destrueixi la finestra.
 
@@ -3597,13 +3784,22 @@ class Finestra(QMainWindow):
                     gf.wait(10000)
             except RuntimeError:
                 pass
+            self._buida_esdeveniments()
         self._tanca_sessio_tap()
+        ft = getattr(self, "_fil_trams", None)
+        try:
+            if ft is not None and ft.isRunning():
+                ft.wait(20000)
+        except RuntimeError:
+            pass
+        self._buida_esdeveniments()
         fe = getattr(self, "feina_export", None)
         try:
             if fe is not None and fe.isRunning():
                 fe.wait(10000)
         except RuntimeError:
             pass
+        self._buida_esdeveniments()
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
             try:

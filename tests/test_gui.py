@@ -4406,6 +4406,218 @@ class _FilFals(app_main.FilGuiaBpm):
         pass
 
 
+class TestDialegGuiaCandidats(unittest.TestCase):
+    """Diàleg del guiat: alternatives amb fiabilitat + avís de rang."""
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+        self.td = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.td, ignore_errors=True)
+        # Els diàlegs són top-level (parent=None): destruir-los ACÍ i no pas
+        # al GC d'un test posterior (un DeferredDelete tardà feia petar
+        # `processa_esborrats` uns quants tests més enllà).
+        import _qt_neteja
+        _qt_neteja.processa_esborrats()
+
+    def _dlg(self, **kw):
+        return dialegs.DialegGuiaBpm(None, 1, 0.0, 8.0, "1.1", **kw)
+
+    def test_mostra_alternatives_i_tria(self):
+        d = self._dlg()
+        d.mostra_bpm(103.4,
+                     candidats=[(103.4, 1.0), (101.3, 0.97), (105.5, 0.95)],
+                     alternatives=[(52.0, 0.6)], ref=103.4)
+        self.assertEqual(d.valors(), 103.4)
+        visibles = [b for b in d._b_cand if b.isVisibleTo(d)]
+        self.assertEqual(len(visibles), 2)
+        self.assertIn("101.30", visibles[0].text())
+        d._tria_candidat(0)                  # clic a l'alternativa
+        self.assertAlmostEqual(d.valors(), 101.3, places=2)
+        self.assertIn("52.00", d.lb_estat.text())      # avís fora de rang
+        self.assertIn("103.40", d.lb_ref.text())
+        d.close()
+
+    def test_sense_candidats_es_com_de_sempre(self):
+        d = self._dlg()
+        d.mostra_bpm(120.0)
+        self.assertEqual(d.valors(), 120.0)
+        self.assertFalse(any(b.isVisibleTo(d) for b in d._b_cand))
+        d._escala(4.0 / 3.0)
+        self.assertAlmostEqual(d.valors(), 160.0, places=1)
+        d._escala(3.0 / 4.0)
+        self.assertAlmostEqual(d.valors(), 120.0, places=1)
+        d.close()
+
+    def test_error_allow_editar(self):
+        d = self._dlg()
+        d.mostra_bpm(None, candidats=[(120.0, 1.0)])
+        self.assertTrue(d.ed_bpm.isEnabled())
+        self.assertTrue(d.b_ok.isEnabled())
+        d.close()
+
+
+class TestOpcionsRangBpm(unittest.TestCase):
+    """Pestanya BPM: avís de rang estret + botó de valors recomanats."""
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+
+    def test_avisa_rang_estret(self):
+        d = dialegs.DialegOpcions(None, tab="bpm", opcions={
+            "bpm": {"motor": "consens", "min": 50, "max": 100,
+                    "pref_min": 50, "pref_max": 100}})
+        self.assertIn("50–100", d.lb_rang.text())
+        d.deleteLater()
+
+    def test_valors_recomanats(self):
+        d = dialegs.DialegOpcions(None, tab="bpm", opcions={
+            "bpm": {"motor": "consens", "min": 50, "max": 100,
+                    "pref_min": 50, "pref_max": 100}})
+        d._bpm_recomanat()
+        c = d._controls["bpm"]
+        self.assertEqual((c["min"].value(), c["max"].value(),
+                          c["pref_min"].value(), c["pref_max"].value()),
+                         (60, 180, 85, 150))
+        self.assertEqual(d.lb_rang.text(), "")
+        d.deleteLater()
+
+    def test_preferit_fora_del_rang(self):
+        d = dialegs.DialegOpcions(None, tab="bpm", opcions={
+            "bpm": {"motor": "nostre", "min": 60, "max": 180,
+                    "pref_min": 100, "pref_max": 260}})
+        self.assertIn("preferit", d.lb_rang.text())
+        d.deleteLater()
+
+
+class TestDialegTempoPerTrams(unittest.TestCase):
+    """Diàleg «Detecta el tempo per trams»: valors per defecte i extrems."""
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+
+    def test_valors_per_defecte(self):
+        d = dialegs.DialegTempoPerTrams(None, durada=180.0)
+        self.assertEqual(d.valors(), (4, 0.02, True))
+        self.assertIn("180.00", d.lb_info.text())
+        d.deleteLater()
+
+    def test_valors_al_extrem(self):
+        d = dialegs.DialegTempoPerTrams(None, durada=60.0, cada=1,
+                                        tolerancia=5.5, offset_auto=False)
+        cada, tol, auto = d.valors()
+        self.assertEqual(cada, 1)
+        self.assertAlmostEqual(tol, 0.055, places=6)
+        self.assertFalse(auto)
+        d.deleteLater()
+
+
+class TestTempoPerTramsGui(unittest.TestCase):
+    """Acció de menú → fil → aplicació del mapa amb UN sol desfer."""
+
+    def setUp(self):
+        self._app = QApplication.instance() or QApplication([])
+        self.td = tempfile.mkdtemp()
+        self.wav = os.path.join(self.td, "tema.wav")
+        with wave.open(self.wav, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 20)     # 20 s
+        self.w = Finestra()
+        acproj = os.path.join(self.td, "P1.acproj")
+        with patch.object(QFileDialog, "getOpenFileName",
+                          return_value=(self.wav, "")), \
+                patch.object(QFileDialog, "getSaveFileName",
+                             return_value=(acproj, "")):
+            self.w.tria_wav()
+
+    def tearDown(self):
+        self.w.dirty = False       # sense prompt de tancament als tests
+        self.w.close()
+        shutil.rmtree(self.td, ignore_errors=True)
+
+    def test_llanca_el_fil_amb_els_parametres(self):
+        w = self.w
+        capturat = []
+
+        class _FilFals(app_main.FilTempoTrams):
+            def __init__(self, wav, durada, num, den, cada, tol, **kw):
+                capturat.append((wav, durada, num, den, cada, tol, kw))
+                super().__init__(wav, durada, num, den, cada, tol, **kw)
+
+            def start(self, *a, **k):
+                pass
+
+        class _DlgOK:
+            def __init__(self, *a, **k):
+                pass
+
+            def exec_(self):
+                return QW.QDialog.Accepted
+
+            def valors(self):
+                return (2, 0.03, False)
+
+        with patch.object(app_main, "FilTempoTrams", _FilFals), \
+                patch.object(dialegs, "DialegTempoPerTrams", _DlgOK):
+            w._detecta_tempo_per_trams()
+        try:
+            self.assertEqual(len(capturat), 1)
+            _wav, _dur, num, den, cada, tol, kw = capturat[0]
+            self.assertEqual(cada, 2)
+            self.assertAlmostEqual(tol, 0.03)
+            self.assertEqual(kw.get("offset"), 0.0)   # offset_auto OFF
+            self.assertIsNotNone(w._fil_trams)
+        finally:
+            # El fil no s'ha arrencat mai (start és no-op): n'hi ha prou de
+            # deixar-lo anar. Un `deleteLater()` d'un QThread ací acaba en un
+            # DeferredDelete dins del teardown d'un altre test → segfault.
+            fil = w._fil_trams
+            w._fil_trams = None
+            if fil is not None:
+                fil.wait(500)
+
+    def test_aplica_el_mapa_en_un_sol_desfer(self):
+        w = self.w
+        vr = w.visor_ref
+        from app import tempo_map
+        # amb offset 0.5 les línies de compàs comencen a 0.5
+        b1 = tempo_map.durada_compas(120.0, 4, 4)
+        b2 = tempo_map.durada_compas(124.0, 4, 4)
+        t1 = 0.5 + 4 * b1
+        t2 = t1 + 4 * b2
+        trams = [(0.0, t1, 120.0, 4, 4), (t1, t2, 124.0, 4, 4),
+                 (t2, 20.0, 124.0, 4, 4)]
+        abans = vr._undo_stack.__len__()
+        w._tempo_trams_fet({"trams": trams, "offset": 0.5, "bpm_base": 120.0})
+        self.assertAlmostEqual(float(vr.offset), 0.5, places=6)
+        self.assertEqual(len(vr.tempo_trams), 3)
+        self.assertEqual(len(vr._undo_stack), abans + 1)
+        vr.undo()
+        self.assertNotEqual(len(vr.tempo_trams), 3)
+
+    def test_mapa_invalid_no_s_aplica(self):
+        w = self.w
+        vr = w.visor_ref
+        abans = list(vr.tempo_trams or [])
+        with patch.object(w, "avisa_info") as mock:
+            # dues fronteres: la de 7,3 s no cau en cap línia de compàs
+            w._tempo_trams_fet({"trams": [(0.0, 7.3, 121.7, 4, 4),
+                                          (7.3, 20.0, 121.7, 4, 4)],
+                                "offset": 0.0, "bpm_base": 121.7})
+        self.assertEqual(mock.call_count, 1)
+        self.assertEqual(list(vr.tempo_trams or []), abans)
+
+    def test_sense_trams_avisa(self):
+        w = self.w
+        with patch.object(w, "avisa_info") as mock:
+            w._tempo_trams_fet({"trams": [], "offset": 0.0,
+                                "bpm_base": None})
+        self.assertEqual(mock.call_count, 1)
+
+
 class TestGuiaFlux(unittest.TestCase):
     """Flux de l'assistent a la Finestra, amb la detecció ANUL·LADA.
 
@@ -4720,6 +4932,34 @@ class TestSeleccioBpmICompas1(unittest.TestCase):
         finally:
             w._guia_cancel()
 
+    def test_guia_bpm_dict_omple_candidats_i_ref(self):
+        """El fil del guiat arriba amb alternatives → diàleg i referència."""
+        w = self.w
+        vr = w.visor_ref
+        w._guia = {"durada": vr._durada_wav(), "n": 0, "loop": None,
+                   "ref": None}
+
+        class _FilCaptura(app_main.FilGuiaBpm):
+            def start(self, *a, **k):
+                pass
+
+        with patch.object(app_main, "FilGuiaBpm", _FilCaptura):
+            w._guia_fenestra()
+        try:
+            d = w._guia["dlg2"]
+            w._guia_bpm_ditectat({
+                "bpm": 103.4,
+                "candidats": [(103.4, 1.0), (101.3, 0.97)], 
+                "alternatives": [], "ref": 103.4})
+            self.assertAlmostEqual(d.valors(), 103.4, places=2)
+            self.assertAlmostEqual(w._guia["ref"], 103.4, places=6)
+            self.assertTrue(d.lb_ref.isVisibleTo(d))
+            # compatibilitat: un float també s'accepta (fils de prova)
+            w._guia_bpm_ditectat(99.5)
+            self.assertAlmostEqual(d.valors(), 99.5, places=2)
+        finally:
+            w._guia_cancel()
+
     def test_guia_finestra_loop_fora_de_la_finestra_no_acota(self):
         """Si el loop no cau dins la finestra, es mesura la finestra sencera."""
         w = self.w
@@ -4741,7 +4981,8 @@ class TestSeleccioBpmICompas1(unittest.TestCase):
         try:
             self.assertEqual(len(capturat), 1)
             self.assertAlmostEqual(capturat[0][0], 0.0, places=6)
-            self.assertGreater(capturat[0][1], 10.0)
+            # la 1a finestra fa 8 s i no s'acota al loop (que és fora)
+            self.assertAlmostEqual(capturat[0][1], 8.0, places=6)
             self.assertIsNone(getattr(w._guia["dlg2"], "lb_nota", None))
         finally:
             w._guia_cancel()
