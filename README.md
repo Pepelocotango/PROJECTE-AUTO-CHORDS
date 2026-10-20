@@ -12,10 +12,13 @@ fitxer**— llestos per **arrossegar-los ordenats en una sola pista a qualsevol 
 (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…). Opcionalment genera
 també la **partitura de xifrats** (MusicXML; PDF/MSCZ si tens MuseScore).
 
-> **Novetats de la v0.7.0 (BETA)** — exportació **asíncrona** amb progrés ·
-> **desat atòmic** dels CSV (mai un fitxer a mitges) ·
-> **desfer/refer complet** (BPM, compàs, offset i loop) · **parteix una secció** ·
-> **cursor del loop alineat amb el so**. Historial complet: [`CHANGELOG.md`](CHANGELOG.md).
+> **Novetats de la v0.8.0 (BETA)** — **mapa de tempo amb compassos enters**
+> (les fronteres de tempo cauen en línies de compàs; primer inici i últim
+> final exceptuats) · **detecció de BPM per tram** (el tram seleccionat, el
+> seu inici és el downbeat) · **tap tempo al tram objectiu** amb loop
+> automàtic mentre sona · **loop a la selecció** (`L`) · **Quantitza**
+> arranja el model a la graella. Historial complet:
+> [`CHANGELOG.md`](CHANGELOG.md).
 
 <p align="center">
   <img src="icona/captura.png" alt="El visor d'AUTO CHORDS: el timeline amb l'ona, els acords (C, G, F, G) i les seccions (A, B: intro, tornada, final), el regle amb el BPM i el compàs, les llistes i el transport">

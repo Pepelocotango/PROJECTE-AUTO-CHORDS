@@ -8,4 +8,4 @@ nom de l'artefacte). Un test ho comprova:
 `tests/test_pipeline_export.py::test_versio_app_coincideix_amb_pyproject`.
 """
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"

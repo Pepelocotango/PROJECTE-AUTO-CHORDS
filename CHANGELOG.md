@@ -1,9 +1,11 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control` … `v0.7.1`).
+Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
+
+## [0.8.0] — 2026-10-20 (BETA)
 
 ### Afegit
 - **Regles de temps/compàs/graella (2026-10-20)**: nou contracte a
