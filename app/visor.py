@@ -220,6 +220,10 @@ class Visor(QMainWindow):
         # ha, un **sol tros** amb el BPM·compàs actual (zero canvi visible).
         self.tempo_trams = pipeline.llegeix_tempo_map(
             self._carpeta_acords(), self.bpm, self.bpb, 4, self._durada_wav())
+        # Neteja els duplicats de l'anàlisi/projectes vells: dos trams
+        # adjacents amb el mateix BPM i compàs no són cap canvi musical.
+        self.tempo_trams = tempo_map.fusiona_trams_iguals(
+            self.tempo_trams, self._durada_wav())
         self.tempo_map = None
         self._refresca_tempo_map()
         # Els projectes vells poden portar fronteres de tempo fora de compàs.
@@ -2934,6 +2938,10 @@ class Visor(QMainWindow):
         if canvi_sec:
             self.seccions = noves_sec
         self._undo_commit()
+        # Després de reconstruir el model, el `set_data` buida la selecció i
+        # l'editor. Es recupera el clip que s'estava editant (si encara hi és)
+        # perquè l'editor mostre el temps NOU, no el vell.
+        ed = (getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1))
         self.timeline.set_data(self.acords, self.seccions)
         try:
             if canvi_ac:
@@ -2944,6 +2952,8 @@ class Visor(QMainWindow):
             self.log(f"ERROR: {e}")
         self._omple_llista_ac()
         self._actualitza_llista_abc()
+        if ed[0] in ("chord", "section") and self._index_valid(ed[0], ed[1]):
+            self.timeline.select_clip(ed[0], ed[1])
         n = (len(self.acords) if canvi_ac else 0) + (
             len(self.seccions) if canvi_sec else 0)
         self.log(f"quantitza: {n} clip(s) (abast «{abast}», "
@@ -2970,6 +2980,16 @@ class Visor(QMainWindow):
 
     def _on_clip_selected(self, kind, index):
         """Click a un clip del timeline -> sincronitza la llista + l'editor."""
+        if not kind:
+            # El timeline ha perdut la selecció (re-render, quantitza, undo…):
+            # l'editor no pot quedar-se mostrant un clip vell.
+            if hasattr(self, "llista_ac"):
+                self.llista_ac.setCurrentRow(-1)
+            if hasattr(self, "llista_ab"):
+                self.llista_ab.setCurrentRow(-1)
+            self._ed_kind, self._ed_idx = None, -1
+            self._actualitza_editor()
+            return
         if kind == "chord" and 0 <= index < self.llista_ac.count():
             self.llista_ac.setCurrentRow(index)
         elif kind == "section" and 0 <= index < self.llista_ab.count():
@@ -2978,6 +2998,8 @@ class Visor(QMainWindow):
             # La pista de BPM/compàs no té editor integrat: buidem la franja
             # perquè no quede un acord/secció antic actiu i un «Aplica» puga
             # editar-lo sense que l'usuari ho veja.
+            self.llista_ac.setCurrentRow(-1)
+            self.llista_ab.setCurrentRow(-1)
             self._ed_kind, self._ed_idx = None, -1
             self._actualitza_editor()
             return

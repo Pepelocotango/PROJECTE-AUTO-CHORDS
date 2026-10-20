@@ -191,6 +191,13 @@ class TestCompassosEnters(unittest.TestCase):
         self.assertEqual(tm.valida_i_normalitza_compassos(self.BASE, 30.0),
                          self.BASE)
 
+    def test_fusiona_trams_iguals(self):
+        trams = [(0.0, 5.0, 120.0, 4, 4), (5.0, 10.0, 120.0, 4, 4),
+                 (10.0, 20.0, 90.0, 4, 4)]
+        self.assertEqual(tm.fusiona_trams_iguals(trams, 20.0),
+                         [(0.0, 10.0, 120.0, 4, 4),
+                          (10.0, 20.0, 90.0, 4, 4)])
+
     def test_frontera_a_mig_compas_es_rebutja(self):
         with self.assertRaises(ValueError):
             tm.valida_i_normalitza_compassos(

@@ -511,6 +511,27 @@ def normalitza_trams(trams, durada):
 
 
 # --- contracte de COMPASSOS ENTERS (docs/REGLES_TEMPS_GRID.md) -------------
+def fusiona_trams_iguals(trams, durada=0.0):
+    """Fusiona trams adjacents amb el **mateix BPM i compàs**.
+
+    No representen cap canvi musical; els projectes vells i les anàlisis en
+    solen deixar de duplicats (p. ex. `65.75` repetit). Es fa sobretot en
+    **carregar**, perquè una partició manual de dos trams iguals no es desfa
+    automàticament mentre s'edita. Retorna trams normalitzats.
+    """
+    base = normalitza_trams(trams, durada)
+    out = []
+    for t in base:
+        if out:
+            p = out[-1]
+            if (abs(float(p[2]) - float(t[2])) <= TOL
+                    and int(p[3]) == int(t[3])
+                    and int(p[4]) == int(t[4])):
+                continue
+        out.append(t)
+    return normalitza_trams(out, durada)
+
+
 def durada_compas(bpm, num, den):
     """Segons que dura un compàs `num/den` a `bpm`."""
     return _bar_quarters(num, den) * 60.0 / float(bpm)

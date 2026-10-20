@@ -730,6 +730,29 @@ class TestPosicionsMusicals(_Base):
         finally:
             v.close()
 
+    def test_quantitza_refresca_editor_i_llista(self):
+        """Després de quantitzar, l'editor ha de mostrar el temps NOU."""
+        v = _visor()
+        try:
+            v.aplica_tempo_trams([(0.0, 8.0, 120.0, 4, 4),
+                                  (8.0, 30.0, 90.0, 3, 4)])
+            v.acords = [pipeline.Clip(0.0, 11.0, ("C", "0")),
+                        pipeline.Clip(11.0, 20.0, ("Am", "11")),
+                        pipeline.Clip(20.0, 30.0, ("F", "20"))]
+            v.timeline.set_data(v.acords, v.seccions)
+            v.timeline.select_clip("chord", 1)
+            self.assertEqual(v._ed_kind, "chord")
+            v.quantitza("acords", "negra")
+            nou = float(v.acords[1].ini)
+            self.assertNotAlmostEqual(nou, 11.0, places=3)
+            self.assertEqual(v._ed_kind, "chord")
+            self.assertEqual(v._ed_idx, 1)
+            self.assertAlmostEqual(float(v.ed_ini.text()), nou, places=3)
+            self.assertIn(v._fmt_compas(nou),
+                          v.llista_ac.item(1).text())
+        finally:
+            v.close()
+
     def test_llistes_i_editor_amb_tempo_a_mig_compas(self):
         """Els acords/seccions han de llegir el compàs del MAPA, no del BPM 0."""
         v = _visor()

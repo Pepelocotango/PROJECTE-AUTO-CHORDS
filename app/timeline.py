@@ -324,6 +324,11 @@ class TimelineView(QGraphicsView):
         self._bloc_gest = None      # el gest de moviment no sobreviu a un re-render
         self._rebuild_chord_items()
         self._rebuild_section_items()
+        # Avisem que la selecció s'ha perdut: el Visor ha de buidar/refrescar
+        # la franja editor i les llistes. Sense això, després de quantitzar o
+        # reconstruir el model, l'editor podia mostrar el temps VELL del clip
+        # seleccionat (bug reproduït 2026-10-20).
+        self.clipSelected.emit("", -1)
 
     def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
                        offset: float = 0.0, beat_type: int = 4,
