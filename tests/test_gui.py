@@ -3186,6 +3186,18 @@ class TestTempoLayerZones(_timeline_layers___Base):
         self.assertEqual(capa._zona(450.0), (1, "cos"))
         self.assertEqual(capa._zona(700.0), (2, "cos"))
 
+    def test_la_nansa_te_8_px_de_marge(self):
+        """La frontera s'agarra 8 px a cada costat (nansa pintada al paint).
+
+        Abans el marge era d'1 px i, amb zoom normal, era impossible encertar
+        la frontera per moure-la; a més la nansa no es veia.
+        """
+        capa = self._capa()
+        self.assertEqual(capa._zona(300.0 - 7.0), (0, "fi"))
+        self.assertEqual(capa._zona(300.0 + 7.0)[1], "ini")
+        self.assertEqual(capa._zona(300.0 - 9.0), (0, "cos"))
+        self.assertEqual(capa._zona(300.0 + 9.0), (1, "cos"))
+
     def test_els_extrems_no_tenen_vora_draggable(self):
         """El PRIMER tram no té vora esquerra i l'ÚLTIM no en té de dreta: el
         mapa sempre comença a 0 i acaba a la durada."""

@@ -1120,6 +1120,8 @@ class Finestra(QMainWindow):
                   self._esborra_ultim_marcador)
         self._act(m, "BPM a partir dels marcadors…", "",
                   self._bpm_dels_marcadors)
+        self._act(m, "Ajusta BPMs a partir dels marcadors per trams", "",
+                  self._ajusta_bpms_marcadors)
         m.addSeparator()
         m.addAction(self.amb_est)      # Inclou estructura (commutable)
         # --- Ajuda ---
@@ -1553,6 +1555,37 @@ class Finestra(QMainWindow):
                 f"BPM dels marcadors: {triat['bpm']:.2f} · "
                 f"{len(triat.get('intervals') or ())} trams · "
                 f"compassos {triat.get('compassos')}")
+        return ok
+
+    def _ajusta_bpms_marcadors(self):
+        """Acció per lot: compassos enters i BPM derivat a cada interval.
+
+        Recorre els intervals entre marcadors, tria el nombre enter de
+        compassos més pròxim al BPM vigent (referència) i aplica el mapa
+        complet en **una sola operació de desfer**. No detecta àudio ací: si
+        l'operador vol un BPM de referència detectat, primer el pot aplicar
+        amb «Detecta» (o amb el mapa per trams) i després ajustar.
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa("Ajusta BPMs", "Primer obri una WAV.")
+            return False
+        if len(vr.marcadors or ()) < 2:
+            self.avisa("Ajusta BPMs",
+                       "Calen almenys dos marcadors (prem + a cada inici de "
+                       "compàs que vulgues ajustar).")
+            return False
+        self._atura_si_sona("ajust dels BPMs pels marcadors")
+        abans = len(vr.tempo_trams or ())
+        ok = bool(vr.ajusta_bpms_marcadors())
+        if ok:
+            self._sincronitza_temps_del_visor()
+            self.registra(
+                f"Ajusta BPMs pels marcadors: {len(vr.tempo_trams)} trams "
+                f"(abans {abans}), compàs 1 a {float(vr.offset):.3f}s")
+            self._missatge_info(
+                f"BPMs ajustats amb {len(vr.marcadors)} marcadors "
+                f"({len(vr.tempo_trams)} trams). Ctrl+Z ho desfà tot.")
         return ok
 
     def _esborra_ultim_marcador(self):
@@ -2149,19 +2182,22 @@ class Finestra(QMainWindow):
             QApplication.restoreOverrideCursor()
         if te_tempo:
             if bpm:
-                vr._undo_marca()
-                ok = vr.edita_tempo_objectiu(idx, bpm, tr[3], tr[4])
-                vr._undo_commit()
+                ok = vr.retempo_tram_detectat(idx, bpm)
                 if ok:
                     self._sincronitza_temps_del_visor()
-                    self.registra(f"BPM del tram {idx}: {bpm:.3f} (aplicat)")
+                    aplicat = float(vr.tempo_trams[idx][2])
+                    self.registra(
+                        f"BPM del tram {idx}: {aplicat:.3f} "
+                        f"(detectat {bpm:.3f}; fronteres intactes)")
                     self._missatge_info(
-                        f"BPM del tram {idx}: {bpm:.3f} (aplicat)")
+                        f"BPM del tram {idx}: {aplicat:.3f} "
+                        "(ajustat sense moure les fronteres)")
                 else:
                     self.avisa_info(
                         "Detecta BPM",
-                        "El BPM detectat no es pot aplicar amb compassos "
-                        "enters; no s'ha tocat el mapa.")
+                        "El BPM detectat no canvia el tram o no es pot "
+                        "aplicar dins del rang 30–350 BPM; no s'ha tocat "
+                        "el mapa.")
             else:
                 self.avisa_info(
                     "Detecta BPM",

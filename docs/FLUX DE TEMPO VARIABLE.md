@@ -6,9 +6,20 @@
 > `canvia_compassos_tram` · §4.B guia del drag lliure · §4.C 4 accions de
 > compassos al menú del tram + marcadors lligats a la frontera · §6 els 4 plans
 > de prova a `tests/test_tempo_trams.py` i `tests/test_despatx_edicio.py`).
-> Suite **1.307 OK** (1 skip). Decisions de l'operador: els marcadors **es mouen**
+> Suite **1.321 OK** (1 skip). Decisions de l'operador: els marcadors **es mouen**
 > amb la frontera i **s'esborren** amb ella; `+1/−1/×2/÷2` afecten **només** eixe
 > tram (segons immòbils, els veïns no es toquen). Detall: `CHANGELOG.md` 11b.
+>
+> **11d — marcadors i «Detecta» (21-10-2026):** `+` parteix el tram amb un
+> nombre enter de compassos (`parteix_tram_marcador`): el tram esquerre adopta
+> el BPM derivat, la resta fins al pròxim inici —que **no es mou**— ajusta el
+> BPM al N enter més pròxim, i si el marcador cau massa a prop de l'inici es
+> conserva el BPM vigent (el gest no es bloqueja). «Detecta» sobre un tram fixa
+> Δt i només tria N (`retempo_tram_detectat`, sense *ripple*). «Ajusta BPMs a
+> partir dels marcadors per trams» refà tot el mapa amb offset = primer
+> marcador. Cap frontera heretada bloqueja ni es mou sola
+> (`_mapa_valida_sense_moure`, permissiu). La nansa de la frontera té 8 px de
+> marge i es pinta al timeline.
 
 ---
 

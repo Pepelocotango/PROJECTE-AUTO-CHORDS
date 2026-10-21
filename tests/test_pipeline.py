@@ -4839,14 +4839,22 @@ class TapTempoTests(unittest.TestCase):
         self.assertEqual(d["tempo"]["compas"], "4/4")
         w.close()
 
-    def test_detecta_bpm_del_tram_aplica_directament(self):
+    def test_detecta_bpm_del_tram_no_mou_les_fronteres(self):
+        """El BPM detectat només tria N: la frontera 8→10 queda clavada.
+
+        Abans s'aplicava el BPM detectat amb *ripple* i la fi del tram es movia
+        (desquadrant el marcador següent). Ara Δt mana: 2 s amb 3/4 i 100 BPM
+        donen N=1 compàs → 90 BPM exactes.
+        """
         from unittest.mock import patch
         w = self._finestra()
         v = self._mapa_dos_trams(w)
         v.timeline.select_clip("tempo", 1)
         with patch.object(pipeline, "detecta_bpm_tram", return_value=100.0):
             w._detecta_bpm(pregunta=False)
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=3)
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 90.0, places=3)
+        self.assertAlmostEqual(float(v.tempo_trams[1][0]), 8.0, places=6)
+        self.assertAlmostEqual(float(v.tempo_trams[1][1]), 10.0, places=6)
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 90.0, places=3)
         v.undo()
         self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=3)

@@ -38,6 +38,13 @@ from app.timeline_base import (   # noqa: E402
 #: Color dels marcadors humans (inici de compàs marcat en viu).
 MARCADOR_COLOR = "#e8d44d"
 
+#: Zona d'arrossegament de cada frontera de tempo (px a cada costat).
+#: Ha de ser còmoda (≥ 8 px): la ratlla del marcador és fina i, amb 5 px,
+#: costava encertar-la amb el ratolí.
+TEMPO_GRAB_PX = 8.0
+#: Amplada de la nansa visible al capdamunt de cada frontera (px).
+TEMPO_KNOB_W = 9.0
+
 
 # -----------------------------------------------------------------------------
 # WaveformLayer — l'ona pintada com a pixmap (estil Audacity/DAW)
@@ -524,9 +531,9 @@ class TempoLayer(QGraphicsObject):
         s = self._mapa.trams[i]
         x0 = (s.ini - self._view_left) * self._pps
         x1 = (s.fi - self._view_left) * self._pps
-        if i > 0 and x <= x0 + 5:
+        if i > 0 and x <= x0 + TEMPO_GRAB_PX:
             return i, "ini"
-        if i + 1 < n and x >= x1 - 5:
+        if i + 1 < n and x >= x1 - TEMPO_GRAB_PX:
             return i, "fi"
         return i, "cos"
 
@@ -661,6 +668,16 @@ class TempoLayer(QGraphicsObject):
                           2 if sel else 1))
             bx = QRectF(x0 + 1, 1, max(2.0, x1 - x0 - 2), self._height - 3)
             p.drawRoundedRect(bx, 5, 5)
+            if i > 0:
+                # Nansa superior de la frontera (la zona d'arrossegament real
+                # és TEMPO_GRAB_PX a cada costat; el dibuix només ho assenyala).
+                p.setBrush(QBrush(QColor(CHORD_HANDLE_ACTIVE if sel
+                                         else CHORD_HANDLE)))
+                p.setPen(QPen(QColor(theme.CLIP_SECTION_BORDER), 1))
+                p.drawRoundedRect(
+                    QRectF(x0 - TEMPO_KNOB_W / 2.0, 0.0,
+                           TEMPO_KNOB_W, 7.0), 2, 2)
+                p.setBrush(Qt.NoBrush)
             if bx.width() > 20:
                 p.setPen(QPen(QColor(CHORD_HANDLE_ACTIVE if sel
                                      else CHORD_HANDLE), 2))

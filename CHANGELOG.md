@@ -5,6 +5,38 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit/Corregit (2026-10-21, 11d) — marcadors i «Detecta» sense bloquejos
+- **`+` (marcador) ja no es pot perdre** per una validació de compassos. El
+  tram que es tanca naix amb un **nombre enter de compassos** i el BPM derivat
+  (`tempo_map.parteix_tram_marcador`); la resta fins al pròxim inici, que **no
+  es mou**, ajusta el seu BPM al nombre enter més pròxim. Si el marcador cau
+  massa a prop de l'inici per a cap compàs dins de 30–350 BPM (el cas real del
+  `+` a 0,4 s durant el play), es conserva el BPM vigent i el tram queda
+  pendent d'ajust: **el gest no es bloqueja**.
+- **«Detecta» sobre un tram ja no fa *ripple***: `tempo_map.retempo_tram_detectat`
+  fixa Δt (les fronteres i els veïns no es mouen), el BPM detectat només tria
+  `N` i s'aplica el BPM exacte (`main._detecta_bpm` → `Visor.retempo_tram_detectat`).
+- **Acció nova** «Ajusta BPMs a partir dels marcadors per trams»
+  (`Visor.ajusta_bpms_marcadors` → `tempo_map.ajusta_trams_a_marcadors`): un
+  tram per interval entre marcadors, compassos enters, offset = primer
+  marcador, **un sol desfer**.
+- **Cap frontera heretada bloqueja ni es mou sola**: `_mapa_valida_sense_moure`
+  valida i, si un altre tram arrossega una desviació vella, retorna el mapa
+  normalitzat (permissiu). S'elimina el pas per `repara_fronteres` en els
+  gestos en viu (marcador, re-tempo, «Detecta», ajust per lot) i a
+  `Visor._normalitza_mapa_viu`.
+- **Nansa de la frontera de BPM/compàs visible i agarrable**: zona de 8 px a
+  cada costat (`TEMPO_GRAB_PX`), nansa dibuixada al `paint` i guia vertical a
+  tot el timeline mentre s'arrossega.
+- **El diàleg de guiat passa a ser la finestra activa** en obrir-se
+  (`showEvent`): els atalls `+`/`−` no es perdien si el visor conservava
+  l'activació.
+- **Tests**: `tests/test_tempo_trams.py` (marcador amb N enter, offset,
+  0,4 s sense bloqueig, «Detecta» sense moure fronteres, ajust per intervals,
+  frontera heretada), `tests/test_despatx_edicio.py` (5 proves de visor, un sol
+  desfer) i `tests/test_gui.py` (zona de 8 px). Actualitzat el test de
+  «Detecta» de `test_pipeline.py` al contracte nou (90 BPM en 2 s de 3/4).
+
 ### Canviat (2026-10-21, 11b) — **re-tempo**: el ratolí mana sobre el temps
 - **Arrossegar una frontera de BPM/compàs ja no s'imanta a la línia de compàs
   ni arrossega els trams següents**: la jerarquia del mapa s'inverteix

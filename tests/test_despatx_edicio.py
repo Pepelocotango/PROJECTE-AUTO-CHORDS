@@ -930,5 +930,81 @@ class TestCompassosTempo(_Base):
             tl._snap_on = antic
 
 
+class TestMarcadorsTempoEnViu(_Base):
+    """`+` i «Detecta»: el gest mana i el mapa queda mètricament coherent.
+
+    Regressió del flux de tempo variable: el marcador naix damunt d'una línia
+    de compàs i «Detecta» no arrossega els trams següents. Cada operació és un
+    sol desfer.
+    """
+
+    def setUp(self):
+        self.v = _visor()
+        self.abans = [tuple(t) for t in self.v.tempo_trams]
+        self.sec0 = [tuple(s) for s in self.v.seccions]
+
+    def tearDown(self):
+        self.v.close()
+
+    def test_marcador_parteix_amb_compassos_enters(self):
+        self.assertTrue(self.v.afegeix_marcador(7.3))
+        self.assertEqual(len(self.v.tempo_trams), 3)
+        self.assertAlmostEqual(float(self.v.tempo_trams[0][1]), 7.3, places=6)
+        # 7,3 s amb N=4 compassos de 4/4 → 131,51 BPM.
+        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]), 131.5068,
+                               places=3)
+        self.assertAlmostEqual(
+            7.3 / tempo_map.durada_compas(
+                float(self.v.tempo_trams[0][2]), 4, 4), 4.0, places=3)
+        # La resta 7,3→10 queda amb 1 compàs (BPM 88,89) i el pròxim inici
+        # (10 s) no es mou: el marcador no arrossega els trams següents.
+        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]), 88.8889,
+                               places=3)
+        self.assertEqual(tuple(self.v.tempo_trams[2]), self.abans[1])
+
+    def test_marcador_massa_a_prop_no_es_bloqueja(self):
+        # El `+` del play pot caure a 0,4 s: abans el validador el rebutjava.
+        self.assertTrue(self.v.afegeix_marcador(0.4))
+        self.assertEqual(len(self.v.tempo_trams), 3)
+        self.assertAlmostEqual(float(self.v.tempo_trams[0][1]), 0.4, places=6)
+        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]), 120.0,
+                               places=6)
+
+    def test_marcador_es_un_sol_desfer(self):
+        self.assertTrue(self.v.afegeix_marcador(7.3))
+        self.v.undo()
+        self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)
+        self.assertEqual([tuple(s) for s in self.v.seccions], self.sec0)
+
+    def test_detecta_no_mou_les_fronteres(self):
+        self.assertTrue(self.v.retempo_tram_detectat(0, 100.0))
+        # 10 s amb N=round(10·100/240)=4 compassos → 96 BPM.
+        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]), 96.0,
+                               places=4)
+        self.assertAlmostEqual(float(self.v.tempo_trams[0][1]), 10.0,
+                               places=6)
+        self.assertEqual(tuple(self.v.tempo_trams[1]), self.abans[1])
+        self.v.undo()
+        self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)
+
+    def test_ajusta_els_bpms_dels_marcadors(self):
+        self.v.marcadors = [2.0, 10.5, 20.0]
+        self.assertTrue(self.v.ajusta_bpms_marcadors())
+        self.assertAlmostEqual(float(self.v.offset), 2.0, places=6)
+        self.assertEqual([round(float(t[0]), 6) for t in self.v.tempo_trams],
+                         [0.0, 2.0, 10.5, 20.0])
+        self.assertAlmostEqual(float(self.v.tempo_trams[-1][1]), _DUR,
+                               places=6)
+        # 8,5 s de 4/4 amb N=4 → 112,94 BPM; 9,5 s de 3/4 amb N=5 →
+        # 94,74 BPM (la referència del tram 2 és el 90 BPM de 3/4).
+        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]), 112.9412,
+                               places=3)
+        self.assertAlmostEqual(float(self.v.tempo_trams[2][2]), 94.7368,
+                               places=3)
+        self.v.undo()
+        self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)
+        self.assertAlmostEqual(float(self.v.offset), 0.0, places=6)
+
+
 if __name__ == "__main__":
     unittest.main()

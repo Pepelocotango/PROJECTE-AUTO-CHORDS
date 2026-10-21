@@ -914,3 +914,20 @@ class DialegAncoratges(QDialog):
     def closeEvent(self, ev):
         self._neteja()
         super().closeEvent(ev)
+
+    def showEvent(self, ev):
+        """El diàleg ha d'estar ACTIU en mostrar-se.
+
+        Els atalls «+» són `WindowShortcut`: si una altra finestra (el visor)
+        conserva l'activació, la tecla no arriba i l'operador no pot marcar
+        ancoratges. Passava en obrir el guiat just després de treballar al
+        visor.
+        """
+        super().showEvent(ev)
+        self.raise_()
+        # `activateWindow()` no sempre basta quan el visor acaba de tindre el
+        # focus (el gestor de finestres pot mantindre l'activació vella): amb
+        # `setActiveWindow` el diàleg passa a ser la finestra activa i els
+        # atalls «+» (WindowShortcut) hi arriben segur.
+        QApplication.setActiveWindow(self)
+        self.b_play.setFocus()

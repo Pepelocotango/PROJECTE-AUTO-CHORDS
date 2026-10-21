@@ -597,7 +597,12 @@ class TimelineView(QGraphicsView):
         per a qualsevol zona; l'índex ja no cal.
         """
         _ = (i, z)
-        return float(self._snap(float(t)))
+        t_final = float(self._snap(float(t)))
+        # La guia vertical acompanya el ratolí per TOT el timeline (ona
+        # inclosa), no només dins del carril estret de BPM/compàs: l'operador
+        # ha de vore on caurà la frontera damunt del pic de l'ona.
+        self._show_guide_at(t_final)
+        return t_final
 
     def _loop_mode_at(self, x: float):
         """Què farà un clic al regle segons l'x (o None = crear loop nou).
@@ -1813,6 +1818,7 @@ class TimelineView(QGraphicsView):
         super().mouseReleaseEvent(event)
         if getattr(self, "_tempo_gest", False):
             self._tempo_gest = False
+            self._hide_guide()
             if self._tempo_mogut:
                 self.editFinished.emit()
             else:
