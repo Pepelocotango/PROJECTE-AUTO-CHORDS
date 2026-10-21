@@ -758,8 +758,12 @@ def canvia_bpm_compassos(trams, idx, bpm, durada, offset=0.0,
     return valida_i_normalitza_compassos(out, durada, offset)
 
 
-def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0):
+def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0, direccio=None):
     """Imanta la FI del tram `p_idx` a la línia de compàs més pròxima.
+
+    `direccio` ("dreta"/"esquerra") limita les candidates al sentit del gest:
+    així arrossegar una vora mitja compàs cap a la dreta **avança** una línia de
+    compàs en lloc de tornar a la mateixa (que es veia com «no es pot moure»).
 
     Retorna `(t_final, mapa_normalitzat)`. Arrossega les fronteres següents
     perquè els trams interiors continuen amb compassos enters. Rebutja si no
@@ -780,6 +784,15 @@ def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0):
     minim = base + (b if (p_idx > 0 or base <= float(ini) + TOL) else 0.0)
     cands = [c for c in _bar_lines_tram(tram, offset)
              if minim - TOL_COMPAS <= c <= durada + TOL_COMPAS]
+    d = str(direccio or "").lower()
+    if d == "dreta":
+        cap = [c for c in cands if c > float(fi) + TOL_COMPAS]
+    elif d == "esquerra":
+        cap = [c for c in cands if c < float(fi) - TOL_COMPAS]
+    else:
+        cap = []
+    if cap:
+        cands = cap
     for c in sorted(cands, key=lambda x: abs(x - float(t))):
         out = _ripple_des_de(nous, p_idx, c, durada)
         try:
@@ -787,6 +800,51 @@ def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0):
         except ValueError:
             continue
     raise ValueError("No hi ha cap línia de compàs vàlida a prop")
+
+
+def repara_fronteres(trams, durada, offset=0.0):
+    """Fa vàlid un mapa **imantant** les fronteres que no cauen a la graella.
+
+    Les operacions sobre el mapa (eliminar, fusionar o duplicar un tram)
+    hereten fronteres d'altres trams amb un BPM lleugerament diferent: la
+    frontera queda fora de la línia de compàs (a mil·lèsimes, o a un tros de
+    compàs si els BPM difereixen) i el contracte de compassos enters la
+    rebutja — l'operació quedava bloquejada (bug 21-10: després de l'Anàlisi
+    guiat no es podien editar els trams de tempo).
+
+    Esmena: la frontera **més desviada** s'imanta amb `snap_frontera_compas`
+    (que prova les línies de compàs més pròximes fins que el mapa valida i
+    arrossega les fronteres següents). Es repeteix fins que valida o no hi ha
+    res a imantar. Si no és pot, propaga el `ValueError` original.
+    """
+    durada = float(durada or 0.0)
+    out = normalitza_trams(trams, durada)
+    if len(out) <= 1:
+        return out
+    error = None
+    for _ in range(2 * len(out) + 2):
+        try:
+            return valida_i_normalitza_compassos(out, durada, offset)
+        except ValueError as e:
+            error = e
+        pitjor = None
+        for i in range(1, len(out)):
+            t = float(out[i][0])
+            linies = _bar_lines_tram(out[i - 1], offset)
+            if not linies:
+                continue
+            millor = min(linies, key=lambda c: abs(float(c) - t))
+            d = abs(float(millor) - t)
+            if d > TOL_COMPAS and (pitjor is None or d > pitjor[0]):
+                pitjor = (d, i - 1, t)
+        if pitjor is None:
+            break
+        _d, p_idx, t = pitjor
+        try:
+            _tall, out = snap_frontera_compas(out, p_idx, t, durada, offset)
+        except ValueError:
+            break
+    raise error if error is not None else ValueError("Mapa de tempo invàlid")
 
 
 def parteix_a_compas(trams, idx, t, durada, offset=0.0):

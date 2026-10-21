@@ -5,6 +5,117 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit (2026-10-21, 4a) — Anàlisi guiat **v3**: ancoratges (F1–F3)
+- **Nucli d'encaix** `app/ancoratges.py` (pur, sense Qt): donats els ancoratges
+  humans (`t`, `num`, `den`) deriva el BPM de cada interval (`n` compassos
+  enters dins d'un rang) i retorna el mapa que passa **exactament** pels punts
+  (+ «cap» absorbit per l'`offset` i «cua» allargada amb l'últim BPM). Estats
+  `ok/nota/sospitos/no_encaixa/sense_referencia/massa_curt/manual` i llindars
+  editables (1 % / 3 % / 10 % per defecte). 42 tests.
+- **Velocitat amb to mantingut** (`ffmpeg.estira_a_wav`, `VELOCITATS`,
+  `cadena_atempo`, caché per mtime+mida+factor a PCM mono): a ½ el fitxer dura
+  el doble i ``t_real = t_estirat × factor``. `atempo` encadenat per a factors
+  extrems. Mai `--rate` (canviaria el to).
+- **Finestra `DialegAncoratges`** (`app/dialeg_ancoratges.py`): **+** = ancoratge
+  (inici de compàs **i** de secció) amb metre i delay aplicats; transport amb
+  ▶/⏸ i **½ · ⅔ (÷1,5) · 1 · 1,5 · 2 · 4** (tecles 1…6); llista inversa amb `→`
+  (salt) i `×` (esborrar); `↶ Desfés`
+  amb pila (afegir → cursor 2 s enrere i pausa); llindars i `N ≤` a la pròpia
+  finestra amb validació creixent; tecles `+` (**el de dalt i el del teclat
+  numèric**; atall de finestra → funciona amb qualsevol focus), `Espai`,
+  `Ctrl+Z`, `1…6` — les **fletxes no fan res** (donaven problemes);
+  els temporals van a la paperera en tancar.
+- **Aplicació en un sol desfer**: `main._aplica_ancoratges` valida amb
+  `tempo_map.valida_i_normalitza_compassos` (si no quadra, no toca res) i
+  aplica **offset + trams** junts. El botó «Anàlisi guiat» obri la v3; la v2
+  queda al menú **Analitza** com a eina de reparació.
+- **Integració amb el visor (R21)**: mentre sona el diàleg, el **cursor del
+  visor avança en directe** (línia, regla de temps, barra lliscant i
+  desplaçament de la vista) i l'audició **arrenca on hi ha el cursor**. Abans el
+  diàleg era un món aïllat: s'hi punxava a cegues.
+- **Spec**: `docs/ANALISI_GUIAT_v3.md` (R1–R20, mockup, pla F1–F5) i capçalera
+  de llegat a `docs/ANALISI_GUIAT.md`.
+
+### Afegit (2026-10-21, 9a) — **BPM a partir dels marcadors** (clips editables)
+- `marcadors.candidats_bpm()`: busca els BPM que fan que **tots** els intervals
+  entre marcadors siguen compassos sencers (error en **segons**, amb preferència
+  suau pel rang 70–160 per a desfer el doble/meitat) i torna una llista.
+- *Analitza ▸ BPM a partir dels marcadors…* (`DialegBpmMarcadors`): tries el
+  candidat (es mostra quants compassos té cada tram) i s'escriu el mapa amb
+  `k` compassos exactes per interval → **les fronteres cauen en línia de compàs
+  i els clips de tempo/compàs tornen a ser editables**. Un sol desfer. L'offset
+  passa a ser el primer marcador.
+- **Diagnosi del «no puc editar»**: els marcadors creaven fronteres que no eren
+  línies de compàs (el BPM de la barra encara no era el bo), i el contracte de
+  compassos enters les rebutjava. Amb el BPM deduït, el mapa és consistent.
+
+### Afegit (2026-10-21, 8a) — **MARCADORS en viu** (+ marker) i guiat en stand by
+- **Marcadors humans** (`app/marcadors.py` + `Visor.afegeix_marcador`):
+  la tecla **`+`** (de dalt o del teclat numèric) o el botó **＋ Marker** marquen
+  un **inici de compàs** en el punt del cursor, **també mentre sona**. Un sol
+  desfer ho desfà. Es pinten com a **ratlles grogues discontínues** damunt del
+  visor (`MarcadorsLayer`).
+- En crear-se, un marcador **talla dos carrils**: comença un clip de
+  **BPM/compàs** i un d'**estructura** en eixe instant. Després el marcador és
+  **independent** dels clips (si els mous o els esborres, es queda on era).
+- Es guarden a `marcadors.csv` del projecte; *Analitza ▸ Esborra l'últim
+  marcador* i `Ctrl+Z`.
+- **`+` no roba la tecla** si estas escrivint en un camp (nom d'acord, BPM…):
+  va per un filtre d'esdeveniments, no per un `QShortcut`.
+- **«Anàlisi guiat» passa a guia** (`app/dialeg_guia_rapida.py`): 5 pantalles
+  d'informació (obrir àudio → escoltar i marcar → què fa un marcador → ajustar
+  BPM/compàs → acords i exportar). **No toca el model**.
+- **Guiat v2 (per trams) i v3 (ancoratges): EN STAND BY** — el codi queda, però
+  no tenen entrada d'UI (el diàleg v3 era modal i impedia moure el cursor del
+  visor; eixa era la queixa). Docs: `docs/MARCADORS.md`.
+
+### Afegit (2026-10-21, 7a) — dos marcs (offset + rang de BPM) i voreres que es mouen
+- **①② marcs obligatoris** al diàleg: *Marca el compàs 1* (offset + primer
+  ancoratge) i *Marca el compàs 2* (o un de posterior, amb «compassos entre»).
+  D'allí ix el **BPM aproximat** i el **rang ±10 %** que descarta el doble o la
+  meitat; sense els dos marcs, «Genera» està desactivat i el diàleg diu per què.
+  El marge i els compassos entre marcs es desen a les opcions.
+- **Arrossegar les voreres de tempo**: ara mana el **sentit del gest** (dreta →
+  següent línia de compàs; esquerra → anterior). Abans, mig compàs de moviment
+  s'imantava a la mateixa línia i pareixia que el clip no es podia moure.
+
+### Afegit (2026-10-21, 6a) — v3 completa: seccions, ×2/÷2 i detecció puntual
+- **Seccions automàtiques**: `ancoratges.seccions_de_ancoratges` crea **un clip
+  d'estructura per interval** (A, B, C…) i una secció **«Intro»** per al cap.
+  `Visor.aplica_ancoratges` aplica **offset + mapa + seccions en un sol
+  desfer** (també regenera l'ABC i desa l'offset al `.acproj`; abans, en
+  reobrir el projecte la graella tornava a compàs 1 = 0).
+- **×2 / ÷2 per interval** al diàleg: força el nombre de compassos (`n_manual`)
+  i recalcula; els ancoratges no es toquen.
+- **Detecció de BPM per interval, només on fa falta**: si algun interval no
+  encaixa, el diàleg demana la detecció **només d'eixos** i l'accepta només si
+  l'encaix **millora** (cost acotat).
+- **Cursor del visor en directe** mentre sona el diàleg (R21) i l'audició
+  arranca **on és el cursor**.
+
+### Arreglat (2026-10-21, 6a) — editar els trams de tempo després del guiat
+- **«No puc editar clips de temps/compàs»** (reportat per l'operador): després
+  d'aplicar ancoratges, **eliminar/fusionar/duplicar** un tram fallava amb
+  «La frontera 30.378667s no cau en una línia de compàs» — la frontera quedava
+  a mil·lèsimes de la graella. Nou `tempo_map.repara_fronteres`: imanta la
+  frontera més desviada a la línia de compàs i arrossega les següents
+  (`snap_frontera_compas`) abans de rebutjar. També s'aplica al `duplica`.
+
+### Arreglat (2026-10-21, 5a) — el «+» del teclat numèric i l'encaix amb BPM global
+- **«+» del teclat numèric**: a més del de dalt (Maj+`=`), ara és un **atall de
+  finestra** (`QShortcut`) → funciona amb `Qt.Key_Plus` ± `KeypadModifier` i
+  **encara que el focus siga a un camp** (un `QLineEdit` s'empassava la tecla).
+- **`encaix NO` en un tema a ~100 BPM** (cas real del log): el primer interval
+  es rebutjava per allunyar-se del **BPM de la barra (120 = valor per defecte)**.
+  Ara la referència global només **informa** (`nota`); el primer interval
+  estableix el tempo i la cadena mana a partir del segon. El missatge d'error
+  diu **quin** interval falla (temps) i **per què**.
+
+### Pendent (v3)
+- Detecció de BPM **per interval** (ara mana `bpm_ref`), **seccions
+  automàtiques**, `×2/÷2` + salt al diàleg per tram des de la llista de
+  sospitosos i avís no modal amb el resum.
+
 ### Afegit (2026-10-21, 3a) — mida del tram, doble comprovació i BPM anterior
 - **Mida del tram configurable**: **4 · 8 · 16 · 32 compassos** (abans era una
   constant 4 al codi). Es tria al **pas 1** (val per a tot el guiat i es

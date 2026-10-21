@@ -63,6 +63,7 @@ from app import tempo_map  # noqa: E402  (pas de nudge = compàs sencer)
 from app.timeline_layers import (   # noqa: E402,F401
     CursorLine, GridLayer, LaneBackground, RulerLayer, TempoLayer,
     WaveformLayer,
+    MarcadorsLayer,
 )
 
 # API pública del mòdul (inclou els re-exports per compatibilitat amb codi i
@@ -71,7 +72,7 @@ from app.timeline_layers import (   # noqa: E402,F401
 __all__ = [
     "TimelineView", "ChordItem", "SectionItem", "RenameEditor",
     "WaveformLayer", "GridLayer", "RulerLayer", "LaneBackground", "CursorLine",
-    "TempoLayer",
+    "TempoLayer", "MarcadorsLayer",
     "fmt_pos", "snap_time", "grid_levels", "CURSOR_COLOR",
     "CHORD_ACTIVE_FILL", "SELECTION_COLOR",
 ]
@@ -302,6 +303,12 @@ class TimelineView(QGraphicsView):
         # cursor
         self._cursor = CursorLine(0, TOTAL_H - 2)
         self._scene.addItem(self._cursor)
+        # marcadors humans (inici de compàs marcat en viu): només es pinten
+        self._marcadors = MarcadorsLayer(self._total_h if hasattr(self, "_total_h")
+                                         else TOTAL_H, self._pps,
+                                         self._x_offset, 0.0)
+        self._marcadors.set_marcadors([])
+        self._scene.addItem(self._marcadors)
 
         # items inicials
         self._rebuild_chord_items()
@@ -330,6 +337,10 @@ class TimelineView(QGraphicsView):
         # reconstruir el model, l'editor podia mostrar el temps VELL del clip
         # seleccionat (bug reproduït 2026-10-20).
         self.clipSelected.emit("", -1)
+
+    def set_marcadors(self, marques):
+        """Pinta els marcadors humans (llista de temps en segons)."""
+        self._marcadors.set_marcadors(marques)
 
     def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
                        offset: float = 0.0, beat_type: int = 4,
@@ -425,6 +436,8 @@ class TimelineView(QGraphicsView):
                                        self._view_left, self._view_right)
         self._tempo_lane.update_geometry(self._pps, self._x_offset,
                                          self._view_left, self._view_right)
+        self._marcadors.update_geometry(self._pps, self._x_offset,
+                                        self._view_left, self._view_right)
         for it in self._chord_items:
             it.set_pps(self._pps, self._x_offset, self._view_left)
         for it in self._section_items:

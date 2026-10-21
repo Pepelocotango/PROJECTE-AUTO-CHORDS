@@ -20,6 +20,8 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QComboBox,
     QInputDialog, QMessageBox, QProgressBar, QPushButton, QShortcut, QSlider,
     QDialog,
+    QAbstractSpinBox,
+    QPlainTextEdit,
     QTextEdit,
     QStackedWidget, QToolBar,
     QVBoxLayout, QWidget,
@@ -33,11 +35,16 @@ if APP_DIR not in sys.path:
 # diferents dels que veuen la resta de mòduls i els tests.
 from . import ffmpeg, partitura, pipeline, postproc, theme  # noqa: F401
 from . import config  # noqa: E402
+from . import ancoratges as ancoratges_mod  # noqa: E402
+from . import dialeg_ancoratges  # noqa: E402
+from . import dialeg_bpm_marcadors  # noqa: E402
+from . import dialeg_guia_rapida  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402
 from . import panell_xifrat  # noqa: E402
 from . import plataforma  # noqa: E402
 from . import projecte  # noqa: E402
+from . import tempo  # noqa: E402
 from . import tempo_map  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
 from . import __version__  # noqa: E402  (versió mostrada al «Quant a»)
@@ -530,11 +537,21 @@ class Finestra(QMainWindow):
         self.b_guia = QPushButton("Anàlisi guiat")
         self.b_guia.setObjectName("secundari")
         self.b_guia.setToolTip(
-            "Anàlisi guiat: assistent per a cançons amb BPM no constant "
-            "(downbeat + finestres de 16 temps). En acabar obre l'anàlisi "
-            "d'acords. Vegeu docs/ANALISI_GUIAT.md")
+            "Anàlisi guiat (v3): punxa + a cada compàs nou mentre escoltes i "
+            "el mapa encaixa exactament per damunt. Vegeu "
+            "docs/ANALISI_GUIAT_v3.md")
         self.b_guia.setEnabled(False)          # fins que hi hagi WAV
-        self.b_guia.clicked.connect(self._analisi_guitat)
+        # «Anàlisi guiat» passa a ser una GUIA (informació) i el treball real
+        # es fa amb marcadors en viu: `+` o este botó.
+        self.b_guia.clicked.connect(self._obre_guia_rapida)
+        self.b_marker = QPushButton("＋ Marker")
+        self.b_marker.setObjectName("secundari")
+        self.b_marker.setToolTip(
+            "Marca l'inici d'un compàs en el punt del cursor (tecla +). Crea "
+            "un inici de clip a BPM/compàs i a estructura; després el marcador "
+            "és independent dels clips.")
+        self.b_marker.setEnabled(False)
+        self.b_marker.clicked.connect(self._afegeix_marcador)
 
         # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
         #    (abans era un QGroupBox «2 · Temps i paràmetres»)
@@ -680,6 +697,7 @@ class Finestra(QMainWindow):
         barra.setMovable(False)
         barra.addWidget(b_obre)
         barra.addWidget(self.b_guia)
+        barra.addWidget(self.b_marker)
         barra.addSeparator()
         barra.addWidget(self.b_mode_bpm)
         barra.addWidget(self.b_mode_lliure)
@@ -838,6 +856,11 @@ class Finestra(QMainWindow):
         self._sc_eina = QShortcut(QKeySequence(Qt.Key_E), self)
         self._sc_eina.activated.connect(self._toggle_eina_tecla)
         self._sc_tap.activated.connect(self._tap_tempo)
+        # `+` (de dalt i del teclat numèric) = **marcador** en viu, també
+        # mentre sona. Va per un FILTRE d'esdeveniments (no un QShortcut):
+        # així, si estas escrivint en un camp (nom d'acord, BPM…), el `+`
+        # s'escriu normalment i NO afig cap marcador.
+        QApplication.instance().installEventFilter(self)
         self._crea_menus()
         # Autocomprovació dels fitxers que l'app NECESSITA per analitzar
         # (els plugins Vamp; l'host és `vamp_host_local`).
@@ -1020,6 +1043,13 @@ class Finestra(QMainWindow):
                   self._detecta_tempo_per_trams)
         self._act(m, "Detecta el mapa de tempo (per beats)…", "",
                   self._detecta_tempo_mapa)
+        m.addSeparator()
+        self._act(m, "Afegeix un marcador (inici de compàs)", "+",
+                  self._afegeix_marcador)
+        self._act(m, "Esborra l'últim marcador", "",
+                  self._esborra_ultim_marcador)
+        self._act(m, "BPM a partir dels marcadors…", "",
+                  self._bpm_dels_marcadors)
         m.addSeparator()
         m.addAction(self.amb_est)      # Inclou estructura (commutable)
         # --- Ajuda ---
@@ -1322,6 +1352,192 @@ class Finestra(QMainWindow):
         self._params_temps.setVisible(bool(bpm_compas))
         self.tempo_fix.setChecked(bool(bpm_compas))
         self._actualitza_metro_ui()
+
+    # ---------------- ANÀLISI GUIAT v3 (ancoratges) ----------------
+    def _analisi_ancoratges(self):
+        """Anàlisi guiat **v3**: l'operador declara, el motor encaixa.
+
+        Obre `DialegAncoratges` (docs/ANALISI_GUIAT_v3.md §5-§7): mentre sona
+        la cançó, cada **+** marca inici de compàs i de secció. En generar, el
+        nucli `app.ancoratges` deriva el BPM de cada interval i aplica el mapa
+        amb **un sol pas de desfer**.
+        """
+        wav = self.wav_edit.text().strip()
+        if not wav or not os.path.isfile(wav):
+            self.avisa("Anàlisi guiat", "Primer tria una WAV.")
+            return
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        feina = getattr(self, "feina", None)
+        if feina is not None and feina.isRunning():
+            self.avisa("Anàlisi guiat",
+                       "Hi ha una anàlisi en curs. Espera que acabi.")
+            return
+        self._atura_si_sona("anàlisi guiat (ancoratges)")
+        dlg = dialeg_ancoratges.DialegAncoratges(
+            self, wav, vr._durada_wav(),
+            opcions=(self.opcions or {}).get("ancoratges"),
+            bpm_global=self._bpm_val(),
+            detector=self._detector_interval,   # només als intervals dolents
+            aplicar=self._aplica_ancoratges,
+            bpm_min=float(tempo.BPM_MIN), bpm_max=float(tempo.BPM_MAX),
+            log=self.registra, mou_cursor=self._mou_cursor_guia,
+            inici=float(getattr(vr, "pos", 0.0) or 0.0),
+            # ① / ② agafen la posició del CURSOR del visor (no la del diàleg)
+            posicio_cursor=lambda: float(getattr(vr, "pos", 0.0) or 0.0),
+            # marge del rang de BPM (±10 % per defecte, desat a les opcions)
+            marge=float(((self.opcions or {}).get("ancoratges") or {})
+                        .get("marge", 0.10)))
+        self.registra("Anàlisi guiat v3: escolta i punxa + a cada compàs nou "
+                      "(cada + = compàs 1 de secció).")
+        # Mentre el diàleg és obert, l'Espai és del diàleg: si no, els atalls
+        # de la finestra i del visor arrencaven l'àudio pel darrere (vist al
+        # log del 21-10: «VISOR: play des de 0.000s» amb el diàleg obert).
+        atalls = [getattr(self, "_sc_play", None),
+                  getattr(vr, "_sc_play", None)]
+        for sc in atalls:
+            if sc is not None:
+                sc.setEnabled(False)
+        try:
+            res = dlg.exec_()
+        finally:
+            for sc in atalls:
+                if sc is not None:
+                    sc.setEnabled(True)
+        if res == dlg.Accepted:
+            try:
+                self.opcions["ancoratges"] = dlg.opcions()
+                dialegs.desa_opcions(self.opcions)
+            except OSError:
+                pass
+            self.registra("Anàlisi guiat v3: mapa aplicat pels ancoratges.")
+
+    def _detector_interval(self, ini, fi):
+        """BPM detectat en un interval (R6) — només si el diàleg ho demana.
+
+        El diàleg el crida **només** per als intervals que la cadena de
+        referències no ha pogut encaixar (cost acotat: finestres de 2-5 s).
+        """
+        wav = self.wav_edit.text().strip()
+        if not wav or not os.path.isfile(wav):
+            return None
+        try:
+            res = tempo.detecta_bpm_candidats(
+                wav, self.registra, bpm_min=float(tempo.BPM_MIN),
+                bpm_max=float(tempo.BPM_MAX), inici=float(ini),
+                fi=float(fi), n=2, amplia=False)
+        except Exception as e:  # noqa: BLE001  (mai ha de tombar el guiat)
+            self.registra(f"guiat v3: detecció de l'interval ha fallat ({e})")
+            return None
+        bpm = res.get("bpm")
+        return float(bpm) if bpm else None
+
+    def _afegeix_marcador(self):
+        """Marca un inici de compàs al cursor (o mentre sona). Tecla `+`."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa("Marcador", "Primer obri una WAV.")
+            return False
+        ok = bool(vr.afegeix_marcador())
+        if ok:
+            self.registra(f"Marcador a {vr.pos:.3f}s "
+                          f"({len(vr.marcadors)} en total)")
+        return ok
+
+    def _bpm_dels_marcadors(self):
+        """Deduu el BPM dels marcadors i reescriu el mapa (clips editables)."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa("BPM dels marcadors", "Primer obri una WAV.")
+            return False
+        if len(vr.marcadors or ()) < 2:
+            self.avisa("BPM dels marcadors",
+                       "Calen almenys dos marcadors (prem + al compàs 1 i a un "
+                       "altre compàs).")
+            return False
+        try:
+            cands = vr.candidats_bpm_marcadors(self._bpm_val(),
+                                               self._bpb_val(),
+                                               self._beat_type_val())
+        except ValueError as e:
+            self.avisa("BPM dels marcadors", str(e))
+            return False
+        if not cands:
+            self.avisa("BPM dels marcadors",
+                       "Els marcadors no quadren amb cap BPM entre 60 i 180.")
+            return False
+        dlg = dialeg_bpm_marcadors.DialegBpmMarcadors(
+            cands, self, self._bpb_val(), self._beat_type_val())
+        if dlg.exec_() != dlg.Accepted:
+            return False
+        triat = dlg.triat()
+        if not triat:
+            return False
+        ok = bool(vr.aplica_bpm_marcadors(triat, self._bpb_val(),
+                                          self._beat_type_val()))
+        if ok:
+            self._sincronitza_temps_del_visor()
+            self._desa_meta_silencios()
+            self.registra(
+                f"BPM dels marcadors: {triat['bpm']:.2f} · "
+                f"{len(triat.get('intervals') or ())} trams · "
+                f"compassos {triat.get('compassos')}")
+        return ok
+
+    def _esborra_ultim_marcador(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is None or not vr.elimina_marcador():
+            return False
+        return True
+
+    def _obre_guia_rapida(self):
+        """Guia de benvinguda (només informació, sense tocar el model)."""
+        dlg = dialeg_guia_rapida.DialegGuiaRapida(self)
+        dlg.exec_()
+
+    def _mou_cursor_guia(self, t):
+        """El cursor del **visor** avança amb l'audició del diàleg (integrat).
+
+        La v3 no reprodueix pel motor del visor (té el seu transport amb
+        velocitat i to mantingut), però el cursor, la regla de temps i la vista
+        han de seguir el só: si no, l'operador punxa a cegues.
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        try:
+            vr.ves_a(float(t))
+            vr.timeline.ensure_cursor_visible()
+        except (AttributeError, RuntimeError, TypeError):
+            pass
+
+    def _aplica_ancoratges(self, trams, offset, ancoratges):
+        """Aplica el resultat del guiat: **offset + mapa + estructura**, 1 desfer.
+
+        L'estructura ix dels ancoratges (`ancoratges.seccions_de_ancoratges`):
+        cada interval és una secció A, B, C… i el cap, «Intro». Tot ho fa el
+        visor (`Visor.aplica_ancoratges`), que valida abans de mutar.
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return False
+        seccions = ancoratges_mod.seccions_de_ancoratges(
+            ancoratges, vr._durada_wav())
+        ok = bool(vr.aplica_ancoratges(trams, offset, seccions,
+                                       "Anàlisi guiat v3"))
+        if ok:
+            self._sincronitza_temps_del_visor()
+            self.offset_cb.setText(self._secs_a_cb(float(offset)))
+            # L'offset del compàs 1 viu al `.acproj` (el CSV de tempo només
+            # guarda les fronteres): si no es desa, en reobrir el projecte la
+            # graella torna a compàs 1 = 0 i el mapa deixa de quadrar.
+            self._desa_meta_silencios()
+            self.registra(
+                f"Anàlisi guiat v3: {len(seccions)} seccions · "
+                f"offset {offset:.3f}s · {len(trams)} trams "
+                f"({len(ancoratges)} ancoratges).")
+        return ok
 
     def _analisi_guitat(self):
         """«Anàlisi guiat»: analitzar amb passos interactius, usuari al mig.
@@ -1887,11 +2103,43 @@ class Finestra(QMainWindow):
                 "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
 
     def eventFilter(self, obj, ev):
-        """Filtre d'esdeveniments: un CLIC dins la caixa d'informacio.
+        """Filtre d'esdeveniments de la finestra.
 
-        La caixa es de nomes lectura, pero els clics hi arriben; els fem servir
-        per **pausar** el rotatori i **passar de pantalla** sense esperar.
+        1. **`+`** (de dalt o del teclat numèric) → **marcador** en viu, també
+           mentre sona. Si s'està escrivint en un camp, el `+` s'hi escriu.
+        2. **Clic** dins la caixa d'informació (només lectura): pausa el
+           rotatori i passa de pantalla sense esperar.
         """
+        try:
+            if (ev.type() == QEvent.KeyPress
+                    and getattr(self, "visor_ref", None) is not None):
+                tecla, txt, mods = ev.key(), ev.text(), ev.modifiers()
+                es_plus = (tecla == Qt.Key_Plus
+                           or (tecla == Qt.Key_Equal
+                               and (txt == "+" or mods & Qt.ShiftModifier)))
+                if es_plus:
+                    # El MATEIX esdeveniment pot passar dos voltes pel filtre
+                    # (el camp el rebutja i puja al pare): la segona no compta.
+                    if getattr(self, "_plus_ev", None) is ev:
+                        return True
+                    self._plus_ev = ev
+                    # Qui rep la tecla (o qui té el focus) manarà: si és un
+                    # camp d'escriptura, el «+» s'hi escriu i no marca res.
+                    w = obj if isinstance(obj, QWidget) \
+                        else QApplication.focusWidget()
+                    escrivint = False
+                    while w is not None:
+                        if isinstance(w, (QLineEdit, QAbstractSpinBox,
+                                          QTextEdit, QPlainTextEdit)):
+                            escrivint = True
+                            break
+                        w = w.parentWidget()
+                    if escrivint:
+                        return False        # que s'escriga el «+» al camp
+                    self._afegeix_marcador()
+                    return True
+        except (RuntimeError, AttributeError):
+            pass
         caixa = getattr(self, "info_box", None)
         if (caixa is not None
                 and obj in (caixa, caixa.viewport())
@@ -2788,6 +3036,7 @@ class Finestra(QMainWindow):
             self.visor_ref = None
             self.b_exec.setEnabled(False)
             self.b_guia.setEnabled(False)
+            self.b_marker.setEnabled(False)
             self._mostra_placeholder_visor()
             return
         try:
@@ -2864,7 +3113,8 @@ class Finestra(QMainWindow):
             self._stack.setCurrentWidget(self.visor_widget)
             self.visor_widget.show()
             self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
-            self.b_guia.setEnabled(True)     # (el guiat també hi pot treballar)
+            self.b_guia.setEnabled(True)
+            self.b_marker.setEnabled(True)
             # Si el visor ja porta MODEL (projecte obert, o anàlisi feta), les
             # exportacions també han d'estar disponibles. Abans només
             # s'activaven al final d'una ANÀLISI → OBRIR UN PROJECTE deixava
@@ -2959,6 +3209,10 @@ class Finestra(QMainWindow):
         return os.path.join(config.DADES_DIR, "recents.json")
 
     def _carrega_recents(self):
+        # En la suite (AUTO_CHORDS_TEST=1) no es llig la llista de l'usuari:
+        # si no, un test podria obrir el projecte d'un altre.
+        if os.environ.get("AUTO_CHORDS_TEST"):
+            return []
         try:
             with open(self._recents_path(), encoding="utf-8") as f:
                 d = json.load(f)
@@ -3238,6 +3492,16 @@ class Finestra(QMainWindow):
         d = self._dades_projecte()
         self.projecte.dades["tempo"] = d["tempo"]
         self.projecte.dades["opcions"] = d["opcions"]
+
+    def _desa_meta_silencios(self):
+        """Desa el document del projecte (tempo/offset/opcions) sense avisos."""
+        if getattr(self, "projecte", None) is None:
+            return
+        try:
+            self._refresca_dades_projecte()
+            self.projecte.desa()
+        except OSError as e:
+            self.registra(f"no s'ha pogut desar el projecte: {e}")
 
     def _engega_autosave(self):
         if getattr(self, "_autosave", None) is None:
@@ -3713,6 +3977,7 @@ class Finestra(QMainWindow):
         self.registra(f"Sortida: {self.sortida}")
         self.b_exec.setEnabled(False)
         self.b_guia.setEnabled(False)        # res de guiat mentre s'analitza
+        self.b_marker.setEnabled(False)
         self.b_export.setEnabled(False)
         self.b_export_part.setEnabled(False)
         self.feina = Feina(wav, self.sortida, self._bpm_val(),
@@ -3728,6 +3993,7 @@ class Finestra(QMainWindow):
     def acabada(self, be, dada):
         self.b_exec.setEnabled(True)
         self.b_guia.setEnabled(True)
+        self.b_marker.setEnabled(True)
         if be:
             self.b_export.setEnabled(True)
             self.b_export_part.setEnabled(True)

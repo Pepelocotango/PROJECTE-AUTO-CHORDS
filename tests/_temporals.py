@@ -13,6 +13,11 @@ cap comportament dels tests: només recull el que ells ja no volen.
 Regla de seguretat: només s'esborra el que haja quedat **dins el directori
 temporal del sistema**; mai res de fora.
 """
+
+# Mode test: l'app no ha de llegir la llista de recents de l'usuari (si no, un
+# test podria obrir el projecte d'un altre i contaminar-se).
+import os as _os
+_os.environ.setdefault("AUTO_CHORDS_TEST", "1")
 import atexit
 import os
 import shutil

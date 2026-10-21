@@ -19,6 +19,7 @@ from typing import Optional
 import numpy as np
 from PyQt5.QtCore import QLineF, QPointF, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import (
+    QPainterPath, QPolygonF,
     QBrush, QColor, QFont, QFontMetricsF, QImage, QPainter, QPen, QPixmap,
 )
 from PyQt5.QtWidgets import (
@@ -33,6 +34,9 @@ from app.timeline_base import (   # noqa: E402
     WF_BG, WF_ENV, WF_GAIN, WF_MID,
     fmt_pos, grid_plan, grid_positions, is_bar_start_label,
 )
+
+#: Color dels marcadors humans (inici de compàs marcat en viu).
+MARCADOR_COLOR = "#e8d44d"
 
 
 # -----------------------------------------------------------------------------
@@ -668,3 +672,62 @@ class TempoLayer(QGraphicsObject):
             p.setPen(QPen(QColor(theme.TL_GUIDE if hasattr(theme, "TL_GUIDE")
                                  else RULER_TEXT), 1))
             p.drawLine(QPointF(xg, 0), QPointF(xg, self._height))
+
+
+# -----------------------------------------------------------------------------
+# MarcadorsLayer — marcadors humans (inici de compàs marcat en viu)
+# -----------------------------------------------------------------------------
+class MarcadorsLayer(QGraphicsObject):
+    """Ratlles discontínues + banderí a dalt per a cada **marcador**.
+
+    Un marcador no és cap clip: assenyala on l'operador va prémer `+` mentre
+    escoltava (inici de compàs). Es pinta damunt de tot, sense rebre ratolí.
+    """
+
+    def __init__(self, height: float, pps: float, x_offset: float,
+                 view_left: float = 0.0, parent=None):
+        super().__init__(parent)
+        self._h = float(height)
+        self._pps = float(pps)
+        self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
+        self._marques = []
+        self.setZValue(40)
+        self.setAcceptedMouseButtons(Qt.NoButton)
+        self.setFlag(QGraphicsItem.ItemIgnoresTransformations, False)
+
+    def set_marcadors(self, marques):
+        self._marques = [float(m) for m in (marques or ())]
+        self.update()
+
+    def update_geometry(self, pps, x_offset, view_left=0.0, view_right=None):
+        self._pps = float(pps)
+        self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
+        self.update()
+
+    def boundingRect(self):
+        return QRectF(0, 0, 1e6, self._h)
+
+    def shape(self):
+        # No ha de capturar clics ni `itemAt` (els clics van als clips de baix;
+        # `info_zona` ha de vore el que hi ha davall dels marcadors).
+        return QPainterPath()
+
+    def paint(self, painter, option, widget=None):   # noqa: ARG002
+        if not self._marques:
+            return
+        painter.setRenderHint(QPainter.Antialiasing, False)
+        pen = QPen(QColor(MARCADOR_COLOR), 1, Qt.DashLine)
+        painter.setPen(pen)
+        for m in self._marques:
+            x = self._x_offset + (m - self._view_left) * self._pps
+            if x < -2 or x > 1e6:
+                continue
+            painter.drawLine(QPointF(x, 0), QPointF(x, self._h))
+            # banderí (triangle) a la part de dalt
+            painter.setBrush(QBrush(QColor(MARCADOR_COLOR)))
+            painter.setPen(Qt.NoPen)
+            painter.drawPolygon(QPolygonF([
+                QPointF(x, 0), QPointF(x + 7, 0), QPointF(x, 8)]))
+            painter.setPen(pen)

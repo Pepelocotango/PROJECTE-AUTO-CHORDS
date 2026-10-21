@@ -226,6 +226,9 @@ class Visor(QMainWindow):
             self.tempo_trams, self._durada_wav())
         self.tempo_map = None
         self._refresca_tempo_map()
+        # Marcadors humans (inici de compàs marcat a mà, en viu)
+        self.marcadors = pipeline.llegeix_marcadors(
+            self._carpeta_acords(), self._durada_wav())
         # Els projectes vells poden portar fronteres de tempo fora de compàs.
         # No es rebutgen en carregar, però l'usuari ha de saber que eixe mapa
         # no complirà la regla de compassos enters fins que l'edite.
@@ -252,6 +255,7 @@ class Visor(QMainWindow):
         # Editor tipus DAW (ona + ruler + 2 carrils: acords + estructura)
         self.timeline = TimelineView(self.audio, self.acords, self.seccions,
                                     self.bpm, self.bpb, self.tempo_fix)
+        self._pinta_marcadors()      # els del projecte, si n'hi havia
         self.timeline.positionChanged.connect(self.ves_a)
         self.timeline.clipSelected.connect(self._on_clip_selected)
         self.timeline.playRequested.connect(self.play_stop)
@@ -915,10 +919,13 @@ class Visor(QMainWindow):
         p_idx = (idx - 1) if str(vora).strip().lower() == "ini" else idx
         if not (0 <= p_idx < len(trams) - 1):
             return
+        actual = float(trams[p_idx][1])
+        dir_ = ("dreta" if float(t) > actual + 1e-9
+                else "esquerra" if float(t) < actual - 1e-9 else None)
         try:
             _tall, nous = tempo_map.snap_frontera_compas(
                 trams, p_idx, float(t), self._durada_wav(),
-                offset=getattr(self, "offset", 0.0))
+                offset=getattr(self, "offset", 0.0), direccio=dir_)
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return
@@ -993,6 +1000,8 @@ class Visor(QMainWindow):
             # El MAPA de tempo/compas tambe es desfeu (abans no: editar
             # els trams era irreversible i el Ctrl+Z no els tornava).
             "tempo_trams": copy.deepcopy(list(self.tempo_trams or [])),
+            # Els marcadors humans també es desfan (es creen amb `+` en viu).
+            "marcadors": list(getattr(self, "marcadors", []) or []),
         }
 
     def _estat_complet(self):
@@ -1004,6 +1013,9 @@ class Visor(QMainWindow):
         for k in ("bpm", "bpb", "beat_type", "offset", "tempo_fix"):
             if temps.get(k) is not None:
                 setattr(self, k, temps[k])
+        if "marcadors" in temps and temps.get("marcadors") is not None:
+            self.marcadors = list(temps["marcadors"])
+            self._pinta_marcadors()
         tt = temps.get("tempo_trams")
         if tt is not None:
             self.tempo_trams = copy.deepcopy(list(tt))
@@ -2082,13 +2094,203 @@ class Visor(QMainWindow):
         self._undo_commit()
         return len(self.tempo_trams or []) > abans
 
+    # ---------------- MARCADORS (inici de compàs, en viu) ----------------
+    def afegeix_marcador(self, t=None):
+        """Marca l'instant actual (o `t`) com a **inici de compàs**.
+
+        Crea, en eixe punt, un **inici de clip al carril de BPM/compàs i al
+        d'estructura**; a partir d'ací el marcador és independent dels clips.
+        Es pot cridar mentre sona (tecla `+`). Un sol desfer ho desfà tot.
+        """
+        from app import marcadors as M
+        durada = self._durada_wav()
+        t = float(self.pos if t is None else t)
+        if not (0.0 < t < durada - 1e-3):
+            return False
+        abans = list(self.marcadors or [])
+        marques = M.afegeix(abans, t, durada)
+        if marques == abans:
+            return False
+        trams = tempo_map.parteix_trams_a(
+            list(self.tempo_trams or [(0.0, durada, self.bpm, self.bpb,
+                                       getattr(self, "beat_type", 4))]),
+            t, durada)
+        seccions = list(self.seccions or [])
+        idx = next((i for i, s in enumerate(seccions)
+                    if float(s[0]) + 1e-6 < t < float(s[1]) - 1e-6), None)
+        if idx is not None:
+            try:
+                seccions = pipeline.parteix_seccio(
+                    seccions, idx, t, marge=self.MIN_SECCIO_S)
+            except ValueError as e:
+                self.log(f"marcador: no s'ha pogut partir l'estructura ({e})")
+                seccions = list(self.seccions or [])
+        self._undo_marca()
+        self.marcadors = marques
+        if [tuple(x) for x in trams] != [tuple(x) for x in
+                                         (self.tempo_trams or [])]:
+            self.aplica_tempo_trams(trams)
+        if seccions != list(self.seccions or []):
+            self.seccions = self._normalitza_seccions(seccions)
+        self._undo_commit()
+        self._pinta_marcadors()
+        self._sincronitza_vista()
+        try:
+            pipeline.desa_marcadors(self._carpeta_acords(), self.marcadors)
+        except OSError as e:
+            self.log(f"marcadors: no s'han pogut desar ({e})")
+        self.log(f"marcador a {t:.3f}s (n'hi ha {len(self.marcadors)})")
+        return True
+
+    def candidats_bpm_marcadors(self, preferit=None, num=None, den=None,
+                                bpm_min=60.0, bpm_max=180.0):
+        """BPMs compatibles amb els marcadors (tots els talls enters).
+
+        `preferit` = BPM de la barra: servix per a ordenar els candidats (no
+        decidix res: l'ambigüitat doble/meitat la resol l'operador).
+        """
+        from app import marcadors as M
+        num = int(num or self.bpb)
+        den = int(den or getattr(self, "beat_type", 4))
+        return M.candidats_bpm(
+            list(self.marcadors or ()), num, den, bpm_min, bpm_max,
+            preferit=float(preferit if preferit else self.bpm))
+
+    def aplica_bpm_marcadors(self, candidat, num=None, den=None):
+        """Reescriu el mapa amb el BPM deduït dels marcadors (1 sol desfer).
+
+        Cada interval entre marcadors passa a tindre **exactament `k`
+        compassos** al BPM del propi interval: així totes les fronteres cauen
+        en línia de compàs i els clips de tempo/compàs tornen a ser editables.
+        El «cap» (abans del 1r marcador) va amb el primer BPM i l'offset passa a
+        ser el primer marcador.
+        """
+        from app import marcadors as M
+        ms = M.normalitza_marcadors(list(self.marcadors or ()),
+                                    self._durada_wav())
+        if len(ms) < 2:
+            self.avis_editor("Calen almenys dos marcadors per a traure el BPM")
+            return False
+        num = int(num or self.bpb)
+        den = int(den or getattr(self, "beat_type", 4))
+        durada = self._durada_wav()
+        inter = list(candidat.get("intervals") or ())
+        if len(inter) != len(ms) - 1:
+            self.log("BPM marcadors: els intervals no quadren amb els marcadors")
+            return False
+        trams = [(0.0, float(ms[0]), float(inter[0][2]), num, den)]
+        ini = float(ms[0])
+        for dt, _k, bpm_i in inter:
+            fi = ini + float(dt)
+            trams.append((ini, fi, float(bpm_i), num, den))
+            ini = fi
+        trams.append((ini, durada, float(inter[-1][2]), num, den))
+        self._undo_marca()
+        try:
+            self.offset = float(ms[0])
+            if not self.aplica_tempo_trams(trams):
+                self.log("BPM marcadors: el mapa no s'ha pogut aplicar")
+                return False
+        finally:
+            self._undo_commit()
+        self.bpm = float(candidat.get("bpm") or self.bpm)
+        self.bpb = num
+        self.beat_type = den
+        self._actualitza_temps()
+        self._sincronitza_vista()
+        self._desa_i_regenera()
+        self.log(f"BPM dels marcadors: {self.bpm:.2f} (residu "
+                 f"{float(candidat.get('residu') or 0):.4f}) · "
+                 f"{len(trams)} trams · {len(ms)} marcadors")
+        return True
+
+    def elimina_marcador(self, idx=None):
+        """Esborra un marcador (per defecte, l'últim). Els clips NO es toquen."""
+        from app import marcadors as M
+        if not self.marcadors:
+            return False
+        idx = (len(self.marcadors) - 1) if idx is None else int(idx)
+        abans = list(self.marcadors)
+        marques = M.elimina(abans, idx)
+        if marques == abans:
+            return False
+        self._undo_marca()
+        self.marcadors = marques
+        self._undo_commit()
+        self._pinta_marcadors()
+        try:
+            pipeline.desa_marcadors(self._carpeta_acords(), self.marcadors)
+        except OSError:
+            pass
+        self.log(f"marcador esborrat (en queden {len(self.marcadors)})")
+        return True
+
+    def _pinta_marcadors(self):
+        tl = getattr(self, "timeline", None)
+        if tl is not None and hasattr(tl, "set_marcadors"):
+            tl.set_marcadors(list(self.marcadors or []))
+
+    def aplica_ancoratges(self, trams, offset, seccions=None,
+                          msg="Anàlisi guiat (ancoratges)"):
+        """Aplica **offset + mapa de tempo + estructura** en UN sol desfer.
+
+        Punt d'entrada de l'Anàlisi guiat v3 (`docs/ANALISI_GUIAT_v3.md`). La
+        GUI no toca mai el model directament: valida el contracte de compassos
+        enters (`tempo_map`) i la cobertura d'estructura (`pipeline`) ABANS de
+        mutar res; si alguna cosa no quadra, no es toca ni el mapa ni l'offset.
+        """
+        durada = self._durada_wav()
+        try:
+            nous = tempo_map.valida_i_normalitza_compassos(
+                trams, durada, offset=float(offset))
+            sec = None
+            if seccions is not None:
+                sec = pipeline.valida_canvis_seccions(
+                    pipeline.clips_de_seccions(seccions), durada)
+                sec = pipeline.seccions_de_clips(sec)
+        except ValueError as e:
+            self.avis_editor(f"{msg}: {e}")
+            return False
+        self._undo_marca()
+        self.offset = float(offset)
+        self.aplica_tempo_trams(nous)
+        if sec is not None:
+            self.seccions = sec
+        self._undo_commit()
+        self._sincronitza_vista()
+        if sec is not None:
+            try:
+                self._regenera_abc_des_de_totes_les_seccions(msg)
+            except Exception as e:  # noqa: BLE001
+                self.log(f"ERROR regenerant l'ABC: {e}")
+        self.log(f"{msg}: offset {float(offset):.3f}s · {len(nous)} trams · "
+                 f"{len(sec) if sec else len(self.seccions)} seccions")
+        return True
+
+    def _aplica_mapa_reparat(self, nous, msg):
+        """Aplica un mapa i, si les fronteres hereten mil·lèsimes fora de
+        graella, les imanta abans de rebutjar (bug 21-10: eliminar/fusionar/
+        duplicar un tram fallava després de l'Anàlisi guiat)."""
+        durada = self._durada_wav()
+        offset = getattr(self, "offset", 0.0)
+        try:
+            fi = tempo_map.valida_i_normalitza_compassos(nous, durada, offset)
+        except ValueError as e:
+            try:
+                fi = tempo_map.repara_fronteres(nous, durada, offset)
+            except ValueError:
+                self.avis_editor(f"{msg}: {e}")
+                return False
+            self.log(f"{msg}: fronteres imantades a la línia de compàs")
+        return bool(self.aplica_tempo_trams(fi))
+
     def _elimina_tram(self, idx):
         """Elimina un tram del mapa (els veïns n'ocupen l'espai)."""
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)) or len(trams) <= 1:
             return False
         self._undo_marca()
-        ok = self.aplica_tempo_validat(
+        ok = self._aplica_mapa_reparat(
             tempo_map.elimina_tall(trams, idx), "Elimina tempo")
         self._undo_commit()
         return ok
@@ -2100,7 +2302,7 @@ class Visor(QMainWindow):
         if len(nou) == len(trams):
             return False
         self._undo_marca()
-        ok = self.aplica_tempo_validat(nou, "Fusiona tempo")
+        ok = self._aplica_mapa_reparat(nou, "Fusiona tempo")
         self._undo_commit()
         return ok
 
@@ -2474,7 +2676,9 @@ class Visor(QMainWindow):
             if idx_sec:
                 cand_sec = self._valida_canvis_seccions(cand_sec)
             if cand_tp is not None:
-                cand_tp = tempo_map.valida_i_normalitza_compassos(
+                # Les fronteres heretades poden quedar a unes mil·lèsimes de
+                # la línia de compàs: s'imanten abans de rebutjar (21-10).
+                cand_tp = tempo_map.repara_fronteres(
                     cand_tp, durada, offset=getattr(self, "offset", 0.0))
         except ValueError as e:
             self.log(f"duplica selecció: canvi invalid, no s'ha fet res ({e})")
@@ -2541,7 +2745,9 @@ class Visor(QMainWindow):
             for i in idx_tp:
                 trams = tempo_map.elimina_tall(trams, i)
             try:
-                cand_tp = tempo_map.valida_i_normalitza_compassos(
+                # Les fronteres heretades poden quedar a mil·lèsimes de la
+                # graella: s'imanten abans de rebutjar (21-10).
+                cand_tp = tempo_map.repara_fronteres(
                     trams, durada, offset=getattr(self, "offset", 0.0))
             except ValueError as e:
                 self.avis_editor(f"Elimina tempo: {e}")

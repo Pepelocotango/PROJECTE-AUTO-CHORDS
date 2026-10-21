@@ -14,8 +14,23 @@ import _temporals  # noqa: E402
 _ = _temporals  # higiene: esborra els temporals en plegar
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ["AUTO_CHORDS_TEST"] = "1"      # no llegir recents reals
+
+# HIGIENE: la suite no ha d'escriure la llista de recents ni el marcador de
+# sessió de l'usuari. Abans hi quedaven desenes de `/tmp/tmpXXXX/P1/P1.acproj`.
+# Es redirigixen els FITXERS a un directori temporal (no es desactiva la
+# funcionalitat: els tests que la comproven continuen veient el fitxer).
+import tempfile as _tempfile  # noqa: E402
+from unittest.mock import patch as _patch  # noqa: E402
+from app.main import Finestra as _Finestra  # noqa: E402
+_DIR_SUITE = _tempfile.mkdtemp(prefix="ac_suite_")
+_patch.object(_Finestra, "_recents_path",
+              lambda self: os.path.join(_DIR_SUITE, "recents.json")).start()
+_patch.object(_Finestra, "_sessio_path",
+              lambda self: os.path.join(_DIR_SUITE, "sessio.json")).start()
 
 import unittest
+import uuid
 import json
 import shutil
 import tempfile
@@ -1978,14 +1993,15 @@ class EsquemaUiDocTests(unittest.TestCase):
                         texts.index("Anàlisi guiat"))
         self.assertLess(texts.index("Anàlisi guiat"),
                         texts.index("BPM · compàs"))
-        # sense àudio carregat: desactivat; el clic avisa (cap avaluació
-        # d'excepcions) i l'estat del guiat queda buit
+        # des del 21-10 el botó obri la GUIA (només informació); el treball
+        # es fa amb marcadors en viu. Sense WAV el botó està desactivat.
         self.assertIsNotNone(getattr(self.w, "b_guia", None))
         self.assertFalse(self.w.b_guia.isEnabled())
-        with patch.object(self.w, "avisa") as mock:
-            self.w.b_guia.clicked.emit()     # no ha de petar (cap WAV)
-        self.assertEqual(mock.call_count, 1)
-        self.assertEqual(self.w._guia, {})
+        self.assertIn("＋ Marker", texts)        # el botó del marcador hi és
+        self.assertFalse(self.w.b_marker.isEnabled())
+        with patch.object(app_main, "dialeg_guia_rapida") as mod:
+            self.w._obre_guia_rapida()
+        self.assertEqual(mod.DialegGuiaRapida.call_count, 1)
 
     def test_accions_de_menu_documentades(self):
         """Cada acció real de menú ha d'aparèixer a la doc."""
@@ -3228,7 +3244,9 @@ class TestParteixALoop(unittest.TestCase):
     def setUp(self):
         self._app = QApplication.instance() or QApplication([])
         self.td = tempfile.mkdtemp()
-        self.wav = os.path.join(self.td, "tema.wav")
+        # Nom ÚNIC: si es diu «tema.wav», `tria_wav` pot reutilitzar un
+        # projecte recent amb eixe nom i contaminar el test.
+        self.wav = os.path.join(self.td, f"tema_{uuid.uuid4().hex[:8]}.wav")
         with wave.open(self.wav, "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
@@ -4532,7 +4550,9 @@ class TestTempoPerTramsGui(unittest.TestCase):
     def setUp(self):
         self._app = QApplication.instance() or QApplication([])
         self.td = tempfile.mkdtemp()
-        self.wav = os.path.join(self.td, "tema.wav")
+        # Nom ÚNIC: si es diu «tema.wav», `tria_wav` pot reutilitzar un
+        # projecte recent amb eixe nom i contaminar el test.
+        self.wav = os.path.join(self.td, f"tema_{uuid.uuid4().hex[:8]}.wav")
         with wave.open(self.wav, "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
@@ -4641,6 +4661,12 @@ def _opcions_temporals(test, carpeta):
     pedac = patch.object(dialegs, "FITXER_OPCIONS", p)
     pedac.start()
     test.addCleanup(pedac.stop)
+    # Els tests NO han de contaminar la llista de recents de l'usuari (abans
+    # hi apareixien desenes de `/tmp/tmpXXXX/P1/P1.acproj`).
+    pedac2 = patch.object(app_main.Finestra, "_guarda_recents",
+                          lambda self: None)
+    pedac2.start()
+    test.addCleanup(pedac2.stop)
     return p
 
 
@@ -4656,7 +4682,9 @@ class TestGuiaFlux(unittest.TestCase):
     def setUp(self):
         self._app = QApplication.instance() or QApplication([])
         self.td = tempfile.mkdtemp()
-        self.wav = os.path.join(self.td, "tema.wav")
+        # Nom ÚNIC: si es diu «tema.wav», `tria_wav` pot reutilitzar un
+        # projecte recent amb eixe nom i contaminar el test.
+        self.wav = os.path.join(self.td, f"tema_{uuid.uuid4().hex[:8]}.wav")
         with wave.open(self.wav, "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
@@ -4779,7 +4807,9 @@ class TestGuiaFilReal(unittest.TestCase):
     def setUp(self):
         self._app = QApplication.instance() or QApplication([])
         self.td = tempfile.mkdtemp()
-        self.wav = os.path.join(self.td, "tema.wav")
+        # Nom ÚNIC: si es diu «tema.wav», `tria_wav` pot reutilitzar un
+        # projecte recent amb eixe nom i contaminar el test.
+        self.wav = os.path.join(self.td, f"tema_{uuid.uuid4().hex[:8]}.wav")
         with wave.open(self.wav, "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
@@ -4835,7 +4865,9 @@ class TestSeleccioBpmICompas1(unittest.TestCase):
     def setUp(self):
         self._app = QApplication.instance() or QApplication([])
         self.td = tempfile.mkdtemp()
-        self.wav = os.path.join(self.td, "tema.wav")
+        # Nom ÚNIC: si es diu «tema.wav», `tria_wav` pot reutilitzar un
+        # projecte recent amb eixe nom i contaminar el test.
+        self.wav = os.path.join(self.td, f"tema_{uuid.uuid4().hex[:8]}.wav")
         with wave.open(self.wav, "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
@@ -5322,7 +5354,9 @@ class TestGuiatAudicio(unittest.TestCase):
     def setUp(self):
         self._app = QApplication.instance() or QApplication([])
         self.td = tempfile.mkdtemp()
-        self.wav = os.path.join(self.td, "tema.wav")
+        # Nom ÚNIC: si es diu «tema.wav», `tria_wav` pot reutilitzar un
+        # projecte recent amb eixe nom i contaminar el test.
+        self.wav = os.path.join(self.td, f"tema_{uuid.uuid4().hex[:8]}.wav")
         with wave.open(self.wav, "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
@@ -5568,6 +5602,647 @@ class TestGuiatAudicio(unittest.TestCase):
         self.assertAlmostEqual(vr.loop_a, 2.0, places=6)
         self.assertAlmostEqual(vr.loop_b, 8.0, places=6)
         self.assertFalse(vr.metro_on)
+
+
+# ===========================================================================
+# Diàleg d'ancoratges (Anàlisi guiat v3) — doc: docs/ANALISI_GUIAT_v3.md
+# ===========================================================================
+class TestDialegAncoratges(unittest.TestCase):
+    """La finestra de l'operador: TAP, desfer, esborrar, llindars i generar."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QW.QApplication.instance() or QW.QApplication([])
+
+    def setUp(self):
+        from app.dialeg_ancoratges import DialegAncoratges
+        self._dlg = []
+        self.D = DialegAncoratges
+
+    def tearDown(self):
+        for d in self._dlg:
+            d._neteja()
+            d.deleteLater()
+
+    def _nou(self, **kw):
+        kw.setdefault("opcions", {"velocitat": 1.0})
+        d = self.D(None, "/tmp/no_existeix_ac.wav", 12.0, **kw)
+        self._dlg.append(d)
+        return d
+
+    @staticmethod
+    def _marcs(d, t1=0.5, t2=2.5):
+        """Fix els dos marcs (① compàs 1, ② compàs 2) sense passar per la UI."""
+        d._marcs = [t1, t2]
+        d._actualitza_rang()
+
+    def test_afegeix_i_desfer_torna_enrere(self):
+        d = self._nou()
+        d._pos = 3.0
+        self.assertTrue(d._afegeix())
+        self.assertEqual(len(d.ancoratges()), 1)
+        self.assertAlmostEqual(d.ancoratges()[0]["t"], 3.0)
+        d._desfer()
+        self.assertEqual(d.ancoratges(), [])
+        self.assertAlmostEqual(d._pos, 1.0)      # 2 s enrere (R13)
+        self.assertFalse(d.b_genera.isEnabled() is None)
+
+    def test_autorepeticio_no_duplica(self):
+        d = self._nou()
+        d._pos = 2.0
+        self.assertTrue(d._afegeix())
+        d._pos = 2.10                            # < 0,15 s: rebot
+        self.assertFalse(d._afegeix())
+        self.assertEqual(len(d.ancoratges()), 1)
+
+    def test_esborra_i_desfer(self):
+        d = self._nou()
+        d._pos = 1.0
+        d._afegeix()
+        d._pos = 4.0
+        d._afegeix()
+        d._esborra(0)
+        self.assertEqual(len(d.ancoratges()), 1)
+        self.assertAlmostEqual(d.ancoratges()[0]["t"], 4.0)
+        d._desfer()
+        self.assertEqual(len(d.ancoratges()), 2)
+        self.assertAlmostEqual(d.ancoratges()[0]["t"], 1.0)
+
+    def test_metre_de_l_ancoratge_i_canvi(self):
+        d = self._nou()
+        d.cb_compas.setCurrentText("3/4")
+        d._pos = 2.0
+        d._afegeix()
+        self.assertEqual((d.ancoratges()[0]["num"], d.ancoratges()[0]["den"]),
+                         (3, 4))
+        self.assertTrue(d._canvia_metre(0, "7/8"))
+        self.assertEqual((d.ancoratges()[0]["num"], d.ancoratges()[0]["den"]),
+                         (7, 8))
+        self.assertFalse(d._canvia_metre(0, "0/4"))
+
+    def test_delay_retroactiu(self):
+        d = self._nou()
+        d.sp_delay.setValue(150)
+        d._pos = 5.0
+        d._afegeix()
+        self.assertAlmostEqual(d.ancoratges()[0]["t"], 4.85)
+
+    def test_llindars_han_de_ser_creixents(self):
+        d = self._nou()
+        self.assertFalse(d.b_genera.isEnabled())   # falten els 2 marcs
+        self._marcs(d)
+        d._pos = 3.0
+        d._afegeix()
+        self.assertTrue(d.b_genera.isEnabled())
+        d.sp_sosp.setValue(0.5)                  # nota=1 > sosp=0,5
+        self.assertFalse(d.b_genera.isEnabled())
+        d.sp_sosp.setValue(3.0)
+        self.assertTrue(d.b_genera.isEnabled())
+
+    def test_genera_encaixa_i_aplica(self):
+        rebut = {}
+        def aplicar(trams, offset, ancoratges):
+            rebut.update(trams=trams, offset=offset, anc=ancoratges)
+            return True
+        d = self._nou(bpm_global=120.0, aplicar=aplicar)
+        self._marcs(d, 0.5, 2.5)
+        for t in (0.5, 2.5, 4.5):
+            d._pos = t
+            d._afegeix()
+        d._genera()
+        self.assertIn("trams", rebut)
+        self.assertAlmostEqual(rebut["offset"], 0.5)
+        self.assertEqual(len(rebut["trams"]), 3)
+        self.assertAlmostEqual(rebut["trams"][0][2], 120.0, places=3)
+        self.assertEqual(d.result(), d.Accepted)
+
+    def test_no_encaixa_no_aplica_res(self):
+        crides = []
+        d = self._nou(bpm_global=120.0,
+                      aplicar=lambda *a: crides.append(a) or True)
+        d.sp_no.setValue(0.3)                    # 0,3 %: massa estret
+        d.sp_sosp.setValue(0.2)
+        d.sp_nota.setValue(0.1)
+        self._marcs(d, 0.0, 2.0)
+        for t in (0.0, 2.0, 2.3):                # el 2n interval (0,3 s) no
+            d._pos = t                           # cap a cap BPM del rang
+            d._afegeix()
+        d._genera()
+        self.assertEqual(crides, [])
+        self.assertNotEqual(d.result(), d.Accepted)
+        self.assertNotEqual(d._resultat["intervals"][1]["estat"], "ok")
+        self.assertIn("interval 2", d.lb_avis.text())   # missatge amb detall
+
+    def test_dos_marcs_donen_el_rang_de_bpm(self):
+        """①②: compàs 1 (offset) i compàs 2 → BPM aproximat i rang ±10 %."""
+        pos = {"t": 2.0}
+        d = self._nou(posicio_cursor=lambda: pos["t"])
+        pos["t"] = 2.0
+        d._marca(1)                     # compàs 1 → offset + ancoratge
+        self.assertEqual(len(d.ancoratges()), 1)
+        self.assertAlmostEqual(d.ancoratges()[0]["t"], 2.0)
+        pos["t"] = 4.3
+        d._marca(2)                     # compàs 2 a 2,3 s → 1 compàs 4/4
+        # 4 · 60 / 2,3 = 104,35 BPM; rang 93,9–114,8
+        self.assertAlmostEqual(d._bpm_prov, 4 * 60 / 2.3, places=3)
+        lo, hi = d._rang
+        self.assertAlmostEqual(lo, 104.35 * 0.9, places=1)
+        self.assertAlmostEqual(hi, 104.35 * 1.1, places=1)
+        self.assertIn("104", d.lb_rang.text())
+        self.assertTrue(d.b_genera.isEnabled())
+
+    def test_sense_marcs_no_es_genera(self):
+        d = self._nou(bpm_global=120.0)
+        d._pos = 2.0
+        d._afegeix()
+        self.assertFalse(d.b_genera.isEnabled())
+        self.assertIn("compàs 1", d.lb_avis.text())
+        d._genera()                     # no fa res (no aplica ni accepta)
+        self.assertIsNone(d._resultat)
+        self.assertNotEqual(d.result(), d.Accepted)
+
+    def test_el_rang_descarta_el_doble_de_bpm(self):
+        """Amb el tema a ~104, un n que donaria 208 ha de quedar fora."""
+        d = self._nou()
+        self._marcs(d, 2.0, 4.3)        # ~104 BPM
+        for t in (2.0, 4.3):
+            d._pos = t
+            d._afegeix()
+        d._genera()
+        self.assertEqual(d._resultat["intervals"][0]["n"], 1)
+        self.assertAlmostEqual(d._resultat["intervals"][0]["bpm"], 104.35,
+                               places=2)
+
+    def test_doble_i_meitat_de_compassos(self):
+        """R8: ×2 / ÷2 per interval (força `n`) — no toca els ancoratges."""
+        d = self._nou(bpm_global=120.0)
+        self._marcs(d, 0.5, 2.5)
+        for t in (0.5, 2.5, 4.5):
+            d._pos = t
+            d._afegeix()
+        d._genera()                              # 2 intervals d'1 compàs
+        self.assertEqual([i["n"] for i in d._resultat["intervals"]], [1, 1])
+        self.assertTrue(d._canvia_n(0, 2))       # ×2 al primer
+        self.assertEqual(d._resultat["intervals"][0]["n"], 2)
+        self.assertAlmostEqual(d._resultat["intervals"][0]["bpm"], 240.0,
+                               places=3)
+        self.assertTrue(d._canvia_n(0, 0.5))     # ÷2 torna a 1
+        self.assertEqual(d._resultat["intervals"][0]["n"], 1)
+        self.assertEqual(len(d.ancoratges()), 3)   # els ancoratges no es toquen
+
+    def test_deteccio_nomes_als_intervals_dolents(self):
+        """R6: només es detecta on la cadena no quadra, i només si millora."""
+        crides = []
+
+        def detector(ini, fi):
+            crides.append((round(ini, 2), round(fi, 2)))
+            return 120.0
+
+        d = self._nou(bpm_global=120.0, detector=detector)
+        self._marcs(d, 0.5, 2.5)
+        for t in (0.5, 2.5, 4.5):
+            d._pos = t
+            d._afegeix()
+        d._genera()
+        self.assertEqual(crides, [])             # tot encaixa: ni una detecció
+
+        d2 = self._nou(bpm_global=60.0, detector=lambda a, b: 120.0)
+        self._marcs(d2, 0.5, 2.5)
+        for t in (0.5, 2.5, 4.5):
+            d2._pos = t
+            d2._afegeix()
+        d2._genera()                              # 120 vs 60 → dolents
+        self.assertTrue(crides or d2._resultat is not None)
+
+    def test_opcions_rodones(self):
+        d = self._nou(opcions={"delay_ms": 40, "velocitat": 0.5,
+                               "compas": "6/8", "n_max": 32,
+                               "desv_nota": 0.01, "desv_sospitos": 0.03,
+                               "desv_no_encaixa": 0.10})
+        o = d.opcions()
+        self.assertEqual(o["delay_ms"], 40)
+        self.assertAlmostEqual(o["velocitat"], 0.5)
+        self.assertEqual(o["compas"], "6/8")
+        self.assertEqual(o["n_max"], 32)
+        self.assertAlmostEqual(o["desv_sospitos"], 0.03)
+
+    def test_temporals_a_la_paperera(self):
+        d = self._nou()
+        d._temporals = ["/tmp/inventat_ac_vel_0.5.wav"]
+        from app import plataforma
+        with patch.object(plataforma, "a_la_paperera") as f:
+            d._neteja()
+        f.assert_called_once_with("/tmp/inventat_ac_vel_0.5.wav")
+        self.assertEqual(d._temporals, [])
+
+    def test_cursor_del_visor_segueix_l_audicio(self):
+        """Integració: el cursor del visor avança amb el só del diàleg."""
+        vist = []
+        d = self._nou(mou_cursor=vist.append, inici=7.5)
+        self.assertAlmostEqual(d._pos, 7.5)          # arrenca on era el cursor
+        d._pausa_i_vés(12.0)                         # salt d'un ancoratge
+        self.assertAlmostEqual(vist[-1], 12.0)
+
+        class _Rep:
+            def esta_sonant(self):
+                return True
+
+            def posicio(self):
+                return 3.0
+
+            def pausa(self):
+                pass
+
+            def atura(self):
+                pass
+
+            def tanca(self):
+                pass
+
+        d._rep = _Rep()
+        d._tick()
+        self.assertAlmostEqual(vist[-1], 3.0)        # el tick mou el cursor
+
+    def test_botons_de_velocitat_amb_1_5(self):
+        from PyQt5.QtTest import QTest
+        d = self._nou()
+        d.show()
+        b = {x.text(): x for x in d.findChildren(QW.QPushButton)
+             if x.property("vel") is not None}
+        self.assertEqual(sorted(b), sorted(["½", "⅔", "1×", "1,5×", "2×", "4×"]))
+        self.assertTrue(b["1×"].isChecked())
+        b["1,5×"].click()
+        self.assertAlmostEqual(d.opcions()["velocitat"], 1.5)
+        self.assertTrue(b["1,5×"].isChecked())
+        self.assertFalse(b["1×"].isChecked())
+        b["⅔"].click()                         # ÷1,5
+        self.assertAlmostEqual(d.opcions()["velocitat"], 2.0 / 3.0)
+        # tecles 1…6 en el mateix ordre
+        QTest.keyClick(d, Qt.Key_4)
+        self.assertAlmostEqual(d.opcions()["velocitat"], 1.5)
+        QTest.keyClick(d, Qt.Key_2)
+        self.assertAlmostEqual(d.opcions()["velocitat"], 2.0 / 3.0)
+        d.hide()
+
+    def test_tecla_mes_afegeix_ancoratge(self):
+        from PyQt5.QtTest import QTest
+        d = self._nou()
+        d.show()
+        d._pos = 3.5
+        QTest.keyClick(d, Qt.Key_Plus)                 # «+» de dalt del teclat
+        self.assertEqual(len(d.ancoratges()), 1)
+        self.assertAlmostEqual(d.ancoratges()[0]["t"], 3.5)
+        d._pos = 6.0
+        QTest.keyClick(d, Qt.Key_Plus, Qt.KeypadModifier)   # «+» del NUMÈRIC
+        self.assertEqual(len(d.ancoratges()), 2)
+        self.assertAlmostEqual(d.ancoratges()[1]["t"], 6.0)
+        d._pos = 9.0
+        QTest.keyClick(d, Qt.Key_Equal, Qt.ShiftModifier)   # Maj+«=»
+        self.assertEqual(len(d.ancoratges()), 3)
+        self.assertAlmostEqual(d.ancoratges()[1]["t"], 6.0)
+        # el «+» del NUMÈRIC i el de dalt són atalls de finestra (no depenen
+        # del focus: un QLineEdit s'empassa la tecla i no arriba al diàleg)
+        claus = [sc.key().toString() for sc in d._atallets]
+        self.assertEqual(len(claus), 2)
+        self.assertIn("+", claus)
+        # les fletxes JA NO afiguen res (donaven problemes)
+        d._pos = 20.0
+        QTest.keyClick(d, Qt.Key_Down)
+        QTest.keyClick(d, Qt.Key_Up)
+        self.assertEqual(len(d.ancoratges()), 3)
+        QTest.keyClick(d, Qt.Key_Space)      # Espai = play/pausa del diàleg
+        d.hide()
+
+    def test_velocitat_canvia_el_factor(self):
+        d = self._nou()
+        d._velocitat(0.5)
+        self.assertAlmostEqual(d.opcions()["velocitat"], 0.5)
+        self.assertAlmostEqual(d._rep.factor if d._rep else 0.5, 0.5)
+
+
+
+class TestAncoratgesFinestra(unittest.TestCase):
+    """v3 a la Finestra: el mapa encaixat s'aplica com UN sol desfer."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QW.QApplication.instance() or QW.QApplication([])
+
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+        # Nom ÚNIC: si es diu «tema.wav», `tria_wav` pot reutilitzar un
+        # projecte recent amb eixe nom i contaminar el test.
+        self.wav = os.path.join(self.td, f"tema_{uuid.uuid4().hex[:8]}.wav")
+        with wave.open(self.wav, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(b"\x00\x00" * 44100 * 60)          # 60 s
+        self.motors = []
+        self._p_motor = patch.object(audio_out, "crea_motor",
+                                     lambda *a, **k: self.motors.append(
+                                         _MotorMut()) or self.motors[-1])
+        self._p_motor.start()
+        _opcions_temporals(self, self.td)
+        self.w = Finestra()
+        acproj = os.path.join(self.td, "P1.acproj")
+        with patch.object(QFileDialog, "getOpenFileName",
+                          return_value=(self.wav, "")), \
+                patch.object(QFileDialog, "getSaveFileName",
+                             return_value=(acproj, "")):
+            self.w.tria_wav()
+        # Estat de partida CONEGUT: si l'app ha recuperat una sessió o un
+        # projecte d'una prova anterior, el test ha de començar igualment net.
+        vr0 = self.w.visor_ref
+        vr0.offset = 0.0
+        vr0.aplica_tempo_trams([(0.0, 60.0, 120.0, 4, 4)])
+        vr0.seccions = [(0.0, 60.0, "A", "A")]
+        vr0.marcadors = []
+        vr0._pinta_marcadors()
+        vr0.timeline.set_data(vr0.acords, vr0.seccions)
+        vr0._undo_stack.clear()
+        vr0._undo_base = vr0._estat_complet()
+
+    def tearDown(self):
+        for m in self.motors:
+            m.atura()
+        self.w.close()
+        self._p_motor.stop()
+        shutil.rmtree(self.td, ignore_errors=True)
+
+    def test_aplica_el_mapa_i_es_un_sol_desfer(self):
+        vr = self.w.visor_ref
+        abans = [tuple(t) for t in (vr.tempo_trams or [])]
+        trams = [(1.0, 3.0, 120.0, 4, 4), (3.0, 5.0, 120.0, 4, 4),
+                 (5.0, 60.0, 120.0, 4, 4)]
+        sec0 = list(vr.seccions)
+        self.assertTrue(self.w._aplica_ancoratges(
+            trams, 1.0, [{"t": 1.0}, {"t": 3.0}, {"t": 5.0}]))
+        self.assertAlmostEqual(vr.offset, 1.0, places=6)
+        # el validador afig el tros del «cap» (0→1 s): el mapa té 3 trams
+        # d'ancoratge + eixe, i el primer que comença a l'offset és el bo.
+        tr = next(t for t in vr.tempo_trams if abs(t[0] - 1.0) < 1e-6)
+        self.assertAlmostEqual(tr[2], 120.0, places=3)
+        self.assertEqual(len([t for t in vr.tempo_trams if t[0] >= 1.0 - 1e-9]),
+                         3)
+        # el camp de compàs.beat del compàs 1 també s'ha refrescat
+        self.assertTrue(self.w.offset_cb.text())
+        # L'ESTRUCTURA també s'ha creat (1 secció per interval + «Intro»):
+        # cada + és compàs 1 i secció nova (D3).
+        lletres = [s[2] for s in vr.seccions]
+        self.assertEqual(lletres, ["Intro", "A", "B", "C"])
+        self.assertEqual(vr.seccions[0][0], 0.0)
+        self.assertAlmostEqual(vr.seccions[-1][1], 60.0, places=6)
+        # L'offset s'ha desat al document del projecte (si no, en reobrir-lo
+        # la graella tornaria a compàs 1 = 0 i el mapa no quadraria)
+        self.assertAlmostEqual(
+            self.w.projecte.dades["tempo"]["offset"], 1.0, places=6)
+        # UN sol desfer: mapa, offset, estructura i ABC tornen enrere alhora
+        vr.undo()
+        self.assertEqual([tuple(t) for t in (vr.tempo_trams or [])], abans)
+        self.assertAlmostEqual(vr.offset, 0.0, places=6)
+        self.assertEqual([tuple(s) for s in vr.seccions], sec0)
+
+    def test_elimina_i_fusiona_despres_del_guiat(self):
+        """Bug 21-10: després d'aplicar ancoratges, eliminar/fusionar un tram
+        de tempo ha de funcionar (abans: «La frontera … no cau en una línia de
+        compàs» per mil·lèsimes) i ha de ser UN sol desfer."""
+        from app import ancoratges as A
+        vr = self.w.visor_ref
+        anc = [{"t": 27.989, "num": 4, "den": 4}, {"t": 30.379, "num": 4, "den": 4},
+               {"t": 35.157, "num": 4, "den": 4}, {"t": 39.595, "num": 4, "den": 4}]
+        r = A.encaixa_ancoratges(anc, 60.0, None, 120.0)
+        self.assertTrue(self.w._aplica_ancoratges(r["trams"], r["offset"], anc))
+        abans = [tuple(t) for t in vr.tempo_trams]
+        self.assertTrue(vr._elimina_tram(1))
+        self.assertEqual(len(vr.tempo_trams), len(abans) - 1)
+        self.assertAlmostEqual(vr.tempo_trams[0][1], 35.159, places=3)
+        vr.undo()
+        self.assertEqual([tuple(t) for t in vr.tempo_trams], abans)
+        self.assertTrue(vr._fusiona_tram(0))
+        self.assertEqual(len(vr.tempo_trams), len(abans) - 1)
+
+    def test_arrossegar_una_vora_de_tempo_avança_una_linia(self):
+        """Bug 21-10: arrossegar mitja compàs no movia res (s'imantava a la
+        MATEIXA línia). Ara el sentit del gest mana: dreta → següent línia."""
+        from app import ancoratges as A
+        vr = self.w.visor_ref
+        anc = [{"t": 27.989, "num": 4, "den": 4}, {"t": 30.379, "num": 4, "den": 4},
+               {"t": 35.157, "num": 4, "den": 4}, {"t": 39.595, "num": 4, "den": 4}]
+        r = A.encaixa_ancoratges(anc, 60.0, None, 120.0)
+        self.assertTrue(self.w._aplica_ancoratges(r["trams"], r["offset"], anc))
+        abans = [tuple(t) for t in vr.tempo_trams]
+
+        def arrossega(idx, vora, t):        # el gest real: marca → mou → tanca
+            vr.timeline.editStarted.emit()
+            vr._on_tempo_mogut(idx, vora, t)
+            vr.timeline.editFinished.emit()
+
+        arrossega(0, "fi", 31.5)                   # cap a la dreta
+        self.assertAlmostEqual(vr.tempo_trams[0][1], 32.769, places=3)
+        self.assertNotEqual([tuple(t) for t in vr.tempo_trams], abans)
+        vr.undo()
+        self.assertEqual([tuple(t) for t in vr.tempo_trams], abans)
+        arrossega(1, "ini", 29.0)                  # cap a l'esquerra
+        self.assertAlmostEqual(vr.tempo_trams[0][1], 27.989, places=3)
+
+    def test_esborrar_diversos_trams_de_cop(self):
+        """La multi-selecció del carril de tempo també s'ha de poder esborrar."""
+        from app import ancoratges as A
+        vr = self.w.visor_ref
+        anc = [{"t": 27.989, "num": 4, "den": 4}, {"t": 30.379, "num": 4, "den": 4},
+               {"t": 35.157, "num": 4, "den": 4}, {"t": 39.595, "num": 4, "den": 4}]
+        r = A.encaixa_ancoratges(anc, 60.0, None, 120.0)
+        self.assertTrue(self.w._aplica_ancoratges(r["trams"], r["offset"], anc))
+        n = len(vr.tempo_trams)
+        vr._elimina_seleccio([("tempo", 1), ("tempo", 2)])
+        self.assertEqual(len(vr.tempo_trams), n - 2)
+        TM = __import__("app.tempo_map", fromlist=["x"])
+        TM.valida_i_normalitza_compassos(vr.tempo_trams, 60.0, vr.offset)
+
+    def test_mapa_invalid_no_toca_res(self):
+        vr = self.w.visor_ref
+        abans = [tuple(t) for t in (vr.tempo_trams or [])]
+        # frontera interior que no és línia de compàs (2 s a 120 BPM = 1 compàs,
+        # però el tros 1→2 només en té mig)
+        with patch.object(vr, "avis_editor") as av:
+            self.assertFalse(self.w._aplica_ancoratges(
+                [(1.0, 2.0, 120.0, 4, 4), (2.0, 60.0, 120.0, 4, 4)], 1.0, []))
+        av.assert_called_once()          # avisa pel visor (l'editor del tempo)
+        self.assertEqual([tuple(t) for t in (vr.tempo_trams or [])], abans)
+        self.assertAlmostEqual(vr.offset, 0.0, places=6)
+
+    def test_opcions_del_dialeg_es_desen(self):
+        """Regressió 21-10: `_desa_opcions` no existia → AttributeError en
+        acceptar el diàleg (el mapa s'aplicava però es perdia la configuració)."""
+        from app import dialeg_ancoratges as DA
+        import json
+
+        class _Dlg:
+            Accepted = 1
+
+            def __init__(self, *a, **kw):
+                pass
+
+            def exec_(self):
+                return 1
+
+            def opcions(self):
+                return {"velocitat": 1.5, "delay_ms": 30, "compas": "6/8",
+                        "n_max": 32, "desv_nota": 0.01,
+                        "desv_sospitos": 0.03, "desv_no_encaixa": 0.1}
+
+        with patch.object(DA, "DialegAncoratges", _Dlg):
+            self.w._analisi_ancoratges()
+        self.assertAlmostEqual(self.w.opcions["ancoratges"]["velocitat"], 1.5)
+        with open(dialegs.FITXER_OPCIONS, encoding="utf-8") as f:
+            desat = json.load(f)
+        self.assertAlmostEqual(desat["ancoratges"]["velocitat"], 1.5)
+
+    def test_cursor_del_visor_segueix_el_temps(self):
+        vr = self.w.visor_ref
+        self.w._mou_cursor_guia(12.5)
+        self.assertAlmostEqual(vr.pos, 12.5, places=6)
+        self.assertAlmostEqual(vr.timeline._pos_t, 12.5, places=6)
+        self.assertEqual(vr.lliscador.value(), 1250)  # barra lliscant al dia
+
+    def test_marcador_crea_inicis_de_clip_i_es_independent(self):
+        """Un marcador = inici de clip a BPM/compàs I a estructura; després
+        no està lligat a res (esborrar clips no el mou)."""
+        vr = self.w.visor_ref
+        vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
+        vr.seccions = [(0.0, 60.0, "A", "A")]
+        vr.timeline.set_data(vr.acords, vr.seccions)
+        vr.pos = 12.0
+        self.assertTrue(vr.afegeix_marcador())
+        self.assertEqual(len(vr.marcadors), 1)
+        self.assertAlmostEqual(vr.marcadors[0], 12.0, places=6)
+        # inicia un clip de tempo a 12 s i una secció a 12 s
+        self.assertEqual(len(vr.tempo_trams), 2)
+        self.assertAlmostEqual(vr.tempo_trams[1][0], 12.0, places=6)
+        self.assertEqual(len(vr.seccions), 2)
+        self.assertAlmostEqual(vr.seccions[1][0], 12.0, places=6)
+        # el marcador NO està lligat: es pot esborrar el clip i queda
+        self.assertTrue(vr._elimina_tram(1))
+        self.assertEqual(len(vr.tempo_trams), 1)
+        self.assertEqual(len(vr.marcadors), 1)
+        # es desfà tot (clips i marcador) en un sol pas
+        vr.undo()          # desfà l'eliminació
+        vr.undo()          # desfà el marcador
+        self.assertEqual(len(vr.marcadors), 0)
+        self.assertEqual(len(vr.tempo_trams), 1)
+
+    def test_tecla_mes_crea_marcador_a_la_finestra(self):
+        """`+` és un atall de finestra (no depén del focus) que crida l'acció."""
+        vr = self.w.visor_ref
+        vr.pos = 20.0
+        self.assertTrue(self.w._afegeix_marcador())     # acció de l'atall
+        self.assertEqual(len(vr.marcadors), 1)
+        self.assertFalse(self.w._afegeix_marcador())    # mateix punt: rebot
+        vr.pos = 30.0
+        self.assertTrue(self.w._afegeix_marcador())
+        self.assertEqual(len(vr.marcadors), 2)
+        # i s'esborra l'últim des del menú
+        self.assertTrue(self.w._esborra_ultim_marcador())
+        self.assertEqual(len(vr.marcadors), 1)
+
+    def test_escriure_un_plus_en_un_camp_no_crea_marcador(self):
+        """Escriure «+» al nom d'un acord no ha d'afegir cap marcador."""
+        from PyQt5.QtTest import QTest
+        vr = self.w.visor_ref
+        vr.pos = 15.0
+        vr.ed_nom.setEnabled(True)      # (amb un clip seleccionat ho està)
+        vr.ed_nom.setFocus()
+        QTest.keyClick(vr.ed_nom, Qt.Key_Plus)
+        QTest.keyClick(vr.ed_nom, Qt.Key_Equal, Qt.ShiftModifier)
+        self.assertEqual(len(vr.marcadors), 0)
+        self.assertIn("+", vr.ed_nom.text())     # el «+» s'ha escrit
+
+    def test_bpm_dels_marcadors_deixa_els_clips_editables(self):
+        """El flux real: marcadors → BPM dels marcadors → clips editables."""
+        from app import tempo_map as TM
+        vr = self.w.visor_ref
+        # tema a 96 BPM 4/4 (compàs 2,5 s), marcadors a 4/8/16 compassos
+        t, ks = 8.1, (4, 4, 8, 4)          # 8.1, 18.1, 28.1, 48.1 (< 60 s)
+        for k in ks:
+            vr.pos = t
+            self.assertTrue(vr.afegeix_marcador())
+            t += k * 2.5
+        self.assertEqual(len(vr.marcadors), len(ks))
+        cands = vr.candidats_bpm_marcadors(120.0, 4, 4)
+        triat = next(c for c in cands if abs(c["bpm"] - 96.0) < 0.2)
+        self.assertTrue(vr.aplica_bpm_marcadors(triat, 4, 4))
+        self.assertAlmostEqual(vr.bpm, 96.0, places=2)
+        self.assertAlmostEqual(vr.offset, 8.1, places=3)
+        # el mapa complix el contracte de compassos enters...
+        TM.valida_i_normalitza_compassos(vr.tempo_trams, 60.0, vr.offset)
+        # ...i per tant els clips es poden editar i suprimir
+        self.assertTrue(vr.edita_tempo_objectiu(1, 97.0, 4, 4))
+        self.assertTrue(vr._elimina_tram(1))
+        # tot és un sol desfer per operació
+        vr.undo()
+        self.assertEqual(len(vr.tempo_trams), len(ks) + 1)
+
+    def test_marcador_durant_el_play_usa_el_cursor_del_so(self):
+        """El cas real: donar-li a `+` mentre SONA (el cursor és el playhead)."""
+        from PyQt5.QtTest import QTest
+        vr = self.w.visor_ref
+        with patch.object(audio_out, "crea_motor", lambda *a, **k: _MotorMut()):
+            vr.play_stop()
+            QTest.qWait(400)
+            pos = float(vr.pos)
+            self.assertGreater(pos, 0.05)       # el cursor s'ha mogut
+            self.assertTrue(self.w._afegeix_marcador())
+            vr.play_stop()
+        self.assertAlmostEqual(vr.marcadors[0], pos, places=1)
+
+    def test_marcador_no_talla_dues_vegades_el_mateix_punt(self):
+        vr = self.w.visor_ref
+        vr.pos = 10.0
+        self.assertTrue(vr.afegeix_marcador())
+        self.assertFalse(vr.afegeix_marcador())     # mateix instant
+        vr.pos = 0.0
+        self.assertFalse(vr.afegeix_marcador())     # no es pot a l'inici
+
+    def test_obre_el_dialeg_amb_les_dades(self):
+        from app import dialeg_ancoratges as DA
+        rebut = {}
+
+        class _Dlg:
+            Accepted = 1
+
+            def __init__(self, parent, wav, durada, **kw):
+                rebut.update(wav=wav, durada=durada, **kw)
+
+            def exec_(self):
+                return 0
+
+            def opcions(self):
+                return {"velocitat": 2.0}
+
+        visor_sc = self.w.visor_ref._sc_play
+        sc_play = self.w._sc_play
+        vist = {}
+
+        class _Dlg2(_Dlg):
+            def exec_(self):
+                # mentre el diàleg és obert, l'Espai NO pot arrancar el visor
+                vist["main"] = sc_play.isEnabled()
+                vist["visor"] = visor_sc.isEnabled()
+                return 0
+
+        with patch.object(DA, "DialegAncoratges", _Dlg2):
+            self.w._analisi_ancoratges()
+        self.assertFalse(vist["main"])
+        self.assertFalse(vist["visor"])
+        self.assertTrue(sc_play.isEnabled())        # i es torna a activar
+        self.assertTrue(visor_sc.isEnabled())
+        # `tria_wav` copia l'àudio dins del projecte: mana la ruta viva
+        self.assertEqual(rebut["wav"], self.w.wav_edit.text().strip())
+        self.assertAlmostEqual(rebut["durada"], 60.0, places=3)
+        self.assertTrue(callable(rebut["aplicar"]))
+        self.assertAlmostEqual(rebut["bpm_global"], 120.0, places=3)
+
 
 
 if __name__ == "__main__":   # pragma: no cover

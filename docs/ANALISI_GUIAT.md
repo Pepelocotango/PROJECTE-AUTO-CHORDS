@@ -1,5 +1,11 @@
 # Anàlisi guiat — l'assistent de BPM no constant
 
+> ⚠️ **2026-10-20 — ESTE FLUX QUEDA SUBSTITUÏT** per l'**Anàlisi guiat v3**
+> (ancoratges humans): [`ANALISI_GUIAT_v3.md`](ANALISI_GUIAT_v3.md). Decisió de
+> l'operador: el flux d'este document (v2) deixa de ser l'entrada principal i el
+> diàleg per tram es queda com a **eina de reparació**. La v3 és, de moment,
+> **especificació per revisar** (no implementada).
+
 > **Estat: IMPLEMENTAT (v1 2026-10-20 · v2 2026-10-21).** Botó a la barra *Treball*
 > (`b_guia`, entre **Obre àudio** i el selector de temps; sense WAV és
 > desactivat). Implementació: `main._analisi_guitat` + els mètodes

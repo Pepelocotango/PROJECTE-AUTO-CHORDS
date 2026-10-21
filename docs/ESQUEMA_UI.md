@@ -52,7 +52,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | ⓪ | `Finestra` | finestra principal | `QMainWindow` |
 | — | `self.offset` · `self.offset_cb` | **dos camps d'offset** (segons · compàs.beat) | `QLineEdit` |
 | — | `b_obre` (local) | **Obre àudio** | `QPushButton` |
-| — | `self.b_guia` | **Anàlisi guiat** (assistent per BPM no constant: downbeat, trams de 4/8/16/32 compassos amb audició, metrònom i doble comprovació; `docs/ANALISI_GUIAT.md`; sense WAV desactivat) | `QPushButton` |
+| — | `self.b_marker` | **＋ Marker**: crea un **inici de compàs** (clip de BPM/compàs + clip d'estructura) en el punt del cursor, també durant el play; després el marcador és independent (ratlla groga al visor). Tecla `+` (dalt o teclat numèric). Sense WAV, desactivat | `QPushButton` |
+| — | `self.b_guia` | **Anàlisi guiat (guia ràpida)**: obri `DialegAncoratges` — punxa **+** a cada compàs nou mentre escoltes (cada + = compàs 1 de secció); el motor encaixa el mapa per damunt. Transport ½·⅔·1·1,5·2·4 amb to mantingut, delay, metre per ancoratge, llista amb esborrar/desfer i **×2/÷2** per interval; en aplicar crea **el mapa de tempo I les seccions** (un clip per interval + «Intro») en un sol desfer, i el **cursor del visor avança** amb el só. `docs/ANALISI_GUIAT_v3.md`; la v2 per trams queda al menú Analitza. Sense WAV, desactivat | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |
 | — | `self.b_export_part` | **Exporta partitura** (MusicXML; PDF/MSCZ si hi ha MuseScore) | `QPushButton` |
@@ -83,7 +84,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (barra 1, fila 1) | `Obre àudio` → **Anàlisi guiat** (assistent de BPM no constant) → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B (`Inclou estructura` és una acció del **menú Analitza**) |
+| **Treball** (barra 1, fila 1) | `Obre àudio` → **Anàlisi guiat** (guia ràpida) → **＋ Marker** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B (`Inclou estructura` és una acció del **menú Analitza**) |
 | **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Obre la carpeta de sortida** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) |
 | **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · `metronome` · volum del clic · **[Quantitza]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
@@ -95,7 +96,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · Mapa de tempo i compàs… · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Inclou estructura |
+| **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · Mapa de tempo i compàs… · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Eina del timeline i abast del rang

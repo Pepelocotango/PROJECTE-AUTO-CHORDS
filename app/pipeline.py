@@ -2122,6 +2122,50 @@ def llegeix_compas_csv(ruta):
     return out
 
 
+# --- Marcadors (inici de compàs marcats a mà, en viu) -----------------------
+NOM_MARCADORS = "marcadors.csv"
+
+
+def desa_marcadors(carpeta, marques):
+    """Desa els marcadors (una columna `t_s`) al projecte. Silenciós si falla."""
+    if not carpeta:
+        return None
+    ruta = os.path.join(str(carpeta), NOM_MARCADORS)
+    try:
+        escriu_atomic(ruta, lambda f: _escriu_marcadors(f, marques))
+    except OSError:
+        return None
+    return ruta
+
+
+def _escriu_marcadors(f, marques):
+    f.write("t_s\n")
+    for t in marques or ():
+        f.write(f"{float(t):.6f}\n")
+
+
+def llegeix_marcadors(carpeta, durada=0.0):
+    """Llig els marcadors del projecte (llista buida si no n'hi ha)."""
+    from app import marcadors as _m
+    if not carpeta:
+        return []
+    ruta = os.path.join(str(carpeta), NOM_MARCADORS)
+    out = []
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            for linia in f:
+                text = linia.strip().split(",")[0]
+                if not text or text.lower().startswith("t_"):
+                    continue
+                try:
+                    out.append(float(text))
+                except ValueError:
+                    continue
+    except OSError:
+        return []
+    return _m.normalitza_marcadors(out, float(durada or 1e9))
+
+
 def desa_tempo_map(carpeta, trams):
     """Desa els dos mapes (tempo + compàs) d'una carpeta de projecte."""
     os.makedirs(carpeta, exist_ok=True)
