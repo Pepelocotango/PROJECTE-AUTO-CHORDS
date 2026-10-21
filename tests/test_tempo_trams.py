@@ -301,16 +301,21 @@ class RetempoTests(unittest.TestCase):
         self.assertEqual(out[2], trams[2])      # el veí del fons, intacte
         self.assertAlmostEqual(out[0][1], 12.0, places=6)
 
-    def test_limits_de_seguretat(self):
+    def test_arrossegar_es_lliure_sense_banda_de_bpm(self):
+        # Regla 22-10-2026: el ratolí mana. No hi ha mínim de 0,5 s ni banda de
+        # BPM; només es rebutja el que deixa un tram sense durada.
         trams = self._trams()
-        # Massa a prop de l'inici del tram esquerre.
+        out = tempo_map.mou_frontera_retempo(trams, 1, 0.25, self.DU)
+        self.assertAlmostEqual(out[0][1], 0.25, places=6)
+        self.assertGreater(out[0][2], 30.0)
+        out = tempo_map.mou_frontera_retempo(
+            trams, 1, self.DU - 0.25, self.DU)
+        self.assertAlmostEqual(out[0][1], self.DU - 0.25, places=6)
+        # Durada zero sí que no.
         with self.assertRaises(ValueError):
-            tempo_map.mou_frontera_retempo(
-                trams, 1, tempo_map.FRONTERA_MIN_S / 2.0, self.DU)
-        # Massa a prop del final del tram dret.
+            tempo_map.mou_frontera_retempo(trams, 1, 0.0, self.DU)
         with self.assertRaises(ValueError):
-            tempo_map.mou_frontera_retempo(
-                trams, 1, self.DU - tempo_map.FRONTERA_MIN_S / 2.0, self.DU)
+            tempo_map.mou_frontera_retempo(trams, 1, self.DU, self.DU)
         # La primera frontera (inici de la WAV) no es pot moure.
         with self.assertRaises(ValueError):
             tempo_map.mou_frontera_retempo(trams, 0, 1.0, self.DU)
@@ -318,12 +323,14 @@ class RetempoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             tempo_map.mou_frontera_retempo(trams, 2, 1.0, self.DU)
 
-    def test_bpm_fora_de_rang_es_rebutja(self):
-        # 8 compassos en 0,6 s → 3200 BPM: absurd, s'ha d'avisar.
+    def test_bpm_fora_de_rang_s_accepta_en_arrossegar(self):
+        # 8 compassos en 0,6 s → 3.200 BPM: és absurd, però el drag és lliure
+        # (la banda 30–350 només valida l'edició manual del BPM).
         trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, self.DU, 120.0, 4, 4)]
-        with self.assertRaises(ValueError) as cm:
-            tempo_map.mou_frontera_retempo(trams, 1, 0.6, self.DU)
-        self.assertIn("BPM", str(cm.exception))
+        out = tempo_map.mou_frontera_retempo(trams, 1, 0.6, self.DU)
+        self.assertAlmostEqual(out[0][1], 0.6, places=6)
+        self.assertGreater(out[0][2], 350.0)
+        self.assertEqual(out[0][3:], (4, 4))
 
     def test_primer_tram_amb_premusica_conserva_l_offset(self):
         # L'offset (3 s de pre-música) no es toca: els compassos compten des d'ell.
@@ -350,6 +357,42 @@ class RetempoTests(unittest.TestCase):
         self.assertAlmostEqual(out[1][1], 165.733854, places=6)
         # La dreta conserva els seus 80 compassos (163,76 s) → 117,25 BPM.
         self.assertAlmostEqual(out[1][2], 117.25, places=1)
+
+    def test_preroll_zero_compassos_es_el_compas_1(self):
+        # Cas real (Get Lucky, 22-10): compàs 1 a 0,036 s i el primer tram
+        # sense cap compàs. Arrossegar eixa frontera = moure el compàs 1; el
+        # tram de música conserva els seus 112 compassos.
+        trams = [(0.0, 0.036162, 116.0, 4, 4),
+                 (0.036162, 231.672536, 116.043951, 4, 4),
+                 (231.672536, 248.407075, 115.898692, 4, 4)]
+        self.assertTrue(tempo_map.es_frontera_preroll(trams, 1, 0.036162))
+        out, off = tempo_map.mou_frontera_preroll(
+            trams, 1, 2.105, 248.407075, 0.036162)
+        self.assertAlmostEqual(off, 2.105, places=6)
+        self.assertAlmostEqual(out[0][0], 0.0, places=6)
+        self.assertAlmostEqual(out[0][1], 2.105, places=6)
+        self.assertAlmostEqual(out[0][2], 116.0, places=6)   # BPM intacte
+        self.assertAlmostEqual(out[1][0], 2.105, places=6)
+        self.assertAlmostEqual(out[1][1], 231.672536, places=6)
+        bars = (out[1][1] - out[1][0]) / tempo_map.durada_compas(
+            out[1][2], 4, 4)
+        self.assertAlmostEqual(bars, 112.0, places=6)
+        self.assertAlmostEqual(out[2][1], 248.407075, places=6)
+
+    def test_preroll_no_accepta_offset_fora_del_tram_de_musica(self):
+        trams = [(0.0, 0.036162, 116.0, 4, 4),
+                 (0.036162, 20.0, 116.0, 4, 4)]
+        with self.assertRaises(ValueError):
+            tempo_map.mou_frontera_preroll(trams, 1, 0.0, 20.0, 0.036162)
+        with self.assertRaises(ValueError):
+            tempo_map.mou_frontera_preroll(trams, 1, 25.0, 20.0, 0.036162)
+
+    def test_retempo_avisa_si_el_tram_esquerre_no_te_compassos(self):
+        trams = [(0.0, 0.036162, 116.0, 4, 4),
+                 (0.036162, 20.0, 116.0, 4, 4)]
+        with self.assertRaises(ValueError) as cm:
+            tempo_map.mou_frontera_retempo(trams, 1, 0.5, 20.0, 0.036162)
+        self.assertIn("compàs 1", str(cm.exception))
 
     def test_frontera_no_passa_abans_del_compas_1(self):
         trams = [(0.0, 6.778, 50.0, 4, 4),

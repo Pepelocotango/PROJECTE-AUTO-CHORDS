@@ -1126,36 +1126,39 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0):
         raise ValueError("No hi ha cap frontera interior per a moure")
     a, b = nous[i - 1], nous[i]
     ini_a, fi_b = float(a[0]), float(b[1])
-    # Límit físic: ni enganxar-se a l'inici del tram esquerre ni al fi del dret.
-    ini_min = ini_a + FRONTERA_MIN_S
-    minim = ini_min
+    # Límit físic: només no es pot deixar un tram de durada zero. El mínim de
+    # 0,5 s es va traure el 22-10-2026: bloquejava fronteres que ja hi eren a
+    # prop (p. ex. el compàs 1 a 0,036 s) i el BPM ja acotat a 30–350 basta.
+    minim = ini_a + TOL
     pre = False
     if (i - 1) == 0 and float(offset or 0.0) > ini_a + TOL:
         # El primer tram pot tindre pre-música: la frontera no pot passar
         # ABANS del compàs 1, però sí caure-hi exactament (pre-roll pur) o
-        # deixar-hi música. Abans s'exigia `offset + 0.5`, cosa que impedia
-        # tornar la fi del primer clip al compàs 1 (bug del 0,5 s).
+        # deixar-hi música.
         pre = True
-        minim = max(ini_min, float(offset))
-    maxim = fi_b - FRONTERA_MIN_S
+        minim = max(minim, float(offset))
+    maxim = fi_b - TOL
     if maxim <= minim:
         raise ValueError("Els trams són massa curts per a moure la frontera")
     t = float(nou_t)
     if t < minim - TOL:
-        if pre and minim > ini_min + TOL:
+        if pre:
             raise ValueError(
                 "La frontera no pot quedar abans del compàs 1")
-        raise ValueError(
-            f"La frontera no pot quedar a menys de {FRONTERA_MIN_S:g} s de "
-            "l'inici del tram")
+        raise ValueError("La frontera deixaria el tram esquerre sense durada")
     if t > maxim + TOL:
-        raise ValueError(
-            f"La frontera no pot quedar a menys de {FRONTERA_MIN_S:g} s del "
-            "final del tram")
+        raise ValueError("La frontera deixaria el tram dret sense durada")
     t = min(maxim, max(minim, t))
 
+    bars_a = _compassos_del_tram(a, i - 1, offset)
+    if abs(bars_a) < 1e-6 and t > float(offset or 0.0) + TOL:
+        # Tram de pre-roll sense cap compàs (regla §5): no se li pot inventar
+        # un compàs. Estirar-lo és moure el compàs 1 (`mou_frontera_preroll`).
+        raise ValueError(
+            "La frontera és el compàs 1: mou-lo amb el botó 📍 (o el camp "
+            "«Compàs 1»)")
     # N de cada costat: el que JA té (el mapa vàlid té compassos enters).
-    n_a = max(1, _enter_mes_proper(_compassos_del_tram(a, i - 1, offset)))
+    n_a = max(1, _enter_mes_proper(bars_a))
     n_b = max(1, _enter_mes_proper(_compassos_del_tram(b, i, offset)))
     bq_a = _bar_quarters(int(a[3]), int(a[4]))
     bq_b = _bar_quarters(int(b[3]), int(b[4]))
@@ -1164,7 +1167,7 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0):
         # cap compàs (excepció §5). Conserva el seu BPM; la dreta conserva N.
         n_b = max(1, _enter_mes_proper(_compassos_del_tram(b, i, offset)))
         dt_b = fi_b - float(offset)
-        bpm_b = _valida_bpm_edicio(n_b * bq_b * 60.0 / dt_b, "dret")
+        bpm_b = _bpm_de_n(n_b, bq_b, dt_b)
         out = list(nous)
         out[0] = (ini_a, float(offset), float(a[2]), int(a[3]), int(a[4]))
         out[i] = (float(offset), fi_b, bpm_b, int(b[3]), int(b[4]))
@@ -1174,8 +1177,11 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0):
     dt_b = fi_b - t
     if dt_a <= TOL or dt_b <= TOL:
         raise ValueError("La frontera deixaria un tram sense durada")
-    bpm_a = _valida_bpm_edicio(n_a * bq_a * 60.0 / dt_a, "esquerre")
-    bpm_b = _valida_bpm_edicio(n_b * bq_b * 60.0 / dt_b, "dret")
+    # Arrossegar és LLIURE (regla 22-10-2026): el ratolí mana i l'únic que es
+    # recalcula és el BPM de dins del clip. La banda 30–350 només valida les
+    # edicions de BPM a mà (`canvia_bpm_local`, diàlegs, +1/−1).
+    bpm_a = _bpm_de_n(n_a, bq_a, dt_a)
+    bpm_b = _bpm_de_n(n_b, bq_b, dt_b)
 
     out = list(nous)
     out[i - 1] = (ini_a, t, bpm_a, int(a[3]), int(a[4]))
@@ -1190,6 +1196,62 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0):
                 f"El tram {costat} no ha quedat amb compassos enters "
                 f"({bars:.3f})")
     return _mapa_valida_sense_moure(out, durada, offset)
+
+
+def _bpm_de_n(n, bq, dt):
+    """BPM per a `n` compassos (`bq` negres) en `dt` segons. Sense banda."""
+    if dt <= 0:
+        raise ValueError("La frontera deixaria un tram sense durada")
+    bpm = float(n) * float(bq) * 60.0 / float(dt)
+    if not (bpm > 0 and bpm == bpm and bpm != float("inf")):
+        raise ValueError("El BPM calculat no és vàlid")
+    return bpm
+
+
+def es_frontera_preroll(trams, idx_frontera, offset=0.0):
+    """Cert si la frontera `idx_frontera` tanca el **pre-roll**.
+
+    El primer tram no té cap compàs (regla §5): la seua fi és el compàs 1.
+    """
+    i = int(idx_frontera)
+    if not (0 < i < len(trams or ())):
+        return False
+    off = float(offset or 0.0)
+    if off <= float(trams[0][0]) + TOL:
+        return False
+    return abs(_compassos_del_tram(trams[0], 0, off)) < 1e-6
+
+
+def mou_frontera_preroll(trams, idx_frontera, nou_offset, durada, offset=0.0):
+    """Arrossegar la frontera del **pre-roll** = moure el **compàs 1**.
+
+    El primer tram no té compassos, així que el gest no li toca el BPM ni n'hi
+    inventa cap: canvia l'`offset` i el tram de la música conserva els seus
+    compassos (BPM recalculat). És el que fa 📍, però arrossegant el tall.
+
+    Retorna `(trams, nou_offset)`.
+    """
+    durada = float(durada or 0.0)
+    nous = normalitza_trams(trams, durada)
+    i = int(idx_frontera)
+    if not (0 < i < len(nous)):
+        raise ValueError("No hi ha cap frontera de pre-roll per a moure")
+    off = float(nou_offset)
+    ini_a = float(nous[0][0])
+    fi_b = float(nous[i][1])
+    if off <= ini_a + TOL:
+        raise ValueError("El compàs 1 no pot quedar a l'inici de la WAV")
+    if off >= fi_b - TOL:
+        raise ValueError("El compàs 1 quedaria més enllà del tram de música")
+    b = nous[i]
+    n_b = max(1, _enter_mes_proper(_compassos_del_tram(
+        b, i, float(offset or 0.0))))
+    bq_b = _bar_quarters(int(b[3]), int(b[4]))
+    bpm_b = _bpm_de_n(n_b, bq_b, fi_b - off)
+    out = list(nous)
+    out[0] = (ini_a, off, float(nous[0][2]), int(nous[0][3]), int(nous[0][4]))
+    out[i] = (off, fi_b, bpm_b, int(b[3]), int(b[4]))
+    return _mapa_valida_sense_moure(out, durada, off), off
 
 
 def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,

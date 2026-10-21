@@ -961,12 +961,34 @@ class Visor(QMainWindow):
         # l'índex del tram de la DRETA (la frontera és el seu inici).
         p_idx = int(idx) if str(vora).strip().lower() == "ini" else int(idx) + 1
         if not (0 < p_idx < len(trams)):
+            # Els extrems del tema no es toquen: marquen l'inici i el final WAV.
+            if p_idx <= 0:
+                self.avis_editor(
+                    "L'inici del primer clip marca l'inici de la WAV")
+            else:
+                self.avis_editor(
+                    "La fi de l'últim clip marca el final de la WAV")
             return
         vell = float(trams[p_idx][0])
+        offset = float(getattr(self, "offset", 0.0))
+        if tempo_map.es_frontera_preroll(trams, p_idx, offset):
+            # El tall és el COMPÀS 1 (el primer tram no té cap compàs): el gest
+            # el mou a ell i el tram de música conserva els seus compassos.
+            try:
+                nous, nou_off = tempo_map.mou_frontera_preroll(
+                    trams, p_idx, float(t), self._durada_wav(), offset)
+            except ValueError as e:
+                self.avis_editor(f"Compàs 1: {e}")
+                return
+            self._undo_marca()
+            self.offset = float(nou_off)
+            if self.aplica_tempo_trams(nous):
+                self._mou_marcador(vell, float(self.tempo_trams[p_idx][0]))
+            self._undo_commit()
+            return
         try:
             nous = tempo_map.mou_frontera_retempo(
-                trams, p_idx, float(t), self._durada_wav(),
-                offset=getattr(self, "offset", 0.0))
+                trams, p_idx, float(t), self._durada_wav(), offset=offset)
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return

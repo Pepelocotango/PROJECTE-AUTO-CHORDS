@@ -3813,6 +3813,24 @@ class TestVistaCursor(_vista_cursor___Base):
         finally:
             v.close()
 
+    def test_arrossegar_la_frontera_del_preroll_mou_el_compas_1(self):
+        from app import tempo_map
+        v = _vista_cursor___visor()
+        try:
+            v.offset = 1.0
+            v.tempo_trams = [(0.0, 1.0, 120.0, 4, 4),
+                             (1.0, 20.0, 120.0, 4, 4)]
+            v._refresca_tempo_map()
+            v._on_tempo_mogut(0, "fi", 3.0)     # arrossega el tall del pre-roll
+            self.assertAlmostEqual(v.offset, 3.0, places=6)
+            self.assertAlmostEqual(v.tempo_trams[0][1], 3.0, places=6)
+            self.assertAlmostEqual(v.tempo_trams[1][0], 3.0, places=6)
+            bars = (20.0 - 3.0) / tempo_map.durada_compas(
+                v.tempo_trams[1][2], 4, 4)
+            self.assertAlmostEqual(bars, round(bars), places=6)
+        finally:
+            v.close()
+
     def test_roda_de_zoom_segueix_el_ratoli(self):
         """La roda ha de mantindre el temps davall el punter (no el playhead)."""
         v = _vista_cursor___visor()

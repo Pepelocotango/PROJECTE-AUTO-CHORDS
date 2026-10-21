@@ -5,6 +5,30 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Canviat (2026-10-22, 11m) — regla: edició lliure dels talls de tempo
+- **Regla nova de l'operador**: tots els clips de tempo/compàs admeten moure
+  l'inici o el fi **lliurement** (amb el snap apagat); l'extrem contrari no es
+  mou i es **recalcula el BPM de dins**. Excepcions: l'inici del primer clip i
+  el final de l'últim (marquen la WAV) — ara amb avís explícit.
+- `mou_frontera_retempo()` i `mou_frontera_preroll()` ja **no apliquen la banda
+  30–350**: eixa banda queda només per a l'edició manual del BPM. Només es
+  rebutja una durada zero (`_bpm_de_n`).
+- Tests: 2 reescrits (el drag de 0,6 s i el de 0,25 s ara s'accepten) →
+  **1.347 OK** (1 skip), pyflakes net.
+
+### Corregit (2026-10-22, 11l) — arrossegar el compàs 1 i fora la guarda de 0,5 s
+- **`tempo_map.mou_frontera_retempo()`**: fora el mínim arbitrari
+  `FRONTERA_MIN_S` (0,5 s) als dos costats. Impedia moure una frontera que ja
+  hi era més a prop (compàs 1 a 0,036 s) i, amb el guard, cap posició era
+  vàlida. El que bloqueja ara és la banda de BPM (30–350) i un tram de durada
+  zero.
+- **Pre-roll**: si el primer tram no té cap compàs (§5), arrossegar-ne la fi
+  **mou el compàs 1** (`mou_frontera_preroll` + `es_frontera_preroll`): el
+  pre-roll continua de 0 compassos, el tram de música conserva els seus i se'n
+  recalcula el BPM. Abans es forçava `N=1` i eixien 606 BPM → rebutjat.
+- `Visor._on_tempo_mogut()` encamina eixe cas al compàs 1 (un sol desfer).
+- **Tests**: +4 → **1.347 OK** (1 skip), pyflakes net.
+
 ### Canviat (2026-10-21, 11k) — la roda del ratolí fa zoom al punter
 - **`Timeline.wheelEvent()`**: el zoom seguix el **punt del ratolí** (el temps
   davall el cursor es queda a la mateixa columna), com en qualsevol DAW. Abans

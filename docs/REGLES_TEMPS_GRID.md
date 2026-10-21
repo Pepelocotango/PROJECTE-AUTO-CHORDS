@@ -92,12 +92,12 @@ marcadors— l'ajust és **local**:
    de qui canvia (no el tram editat), conserva el seu **BPM** i la seua **fi** i
    absorbeix el desplaçament en el nombre de compassos (pot ser fraccionari:
    excepció §5).
-6. Si el resultat deixaria un tram **interior** per davall d'un compàs, si el
-   veí es quedaria sense espai (`FRONTERA_MIN_S`) o si algun BPM derivat eixira
-   de la banda editable (`BPM_EDIT_MIN/MAX`), **es rebutja el canvi** i
-   s'avisa; mai no s'aplica un valor absurd. Si el tram no hi cap, l'avís diu
-   **quin és el BPM extrem que encara hi cap** (perquè baixar el BPM allarga
-   el tram).
+6. Si el resultat deixaria un tram **interior** per davall d'un compàs,
+   **es rebutja el canvi** i s'avisa. **Arrossegar no té banda de BPM**
+   (regla 22-10-2026): el ratolí mana i l'únic que es recalcula és el BPM de
+   dins del clip; la banda `BPM_EDIT_MIN/MAX` només valida les edicions de BPM
+   **a mà** (diàleg, `+1`/`−1`, TAP). Així, si el tram no hi cap en escriure-hi
+   un BPM, l'avís diu **quin és el BPM extrem que encara hi cap**.
 7. El **primer tram** pot acabar a **mig compàs** (pre-roll o un marcador que
    no cau en graella): editar-ne el BPM no es bloqueja — conserva eixa fracció
    i canvia de mida; si tot ell és pre-música, només canvia el BPM. La
@@ -122,14 +122,19 @@ zero.
   (`BPM = N · bq · 60 / Δt`) perquè el compàs acabe exactament en el tall.
 - Per construcció, la frontera **sempre cau en una línia de compàs**: no cal
   imantar-la-hi ni pot quedar-hi un compàs fraccionari.
-- Es **rebutja** i s'avisa si un tram interior quedaria per davall d'un compàs
-  (`FRONTERA_MIN_S` a cada veí) o si algun BPM eixiria de la banda
-  `BPM_EDIT_MIN/MAX`.
+- **Arrossegar és lliure** (regla 22-10-2026): amb el snap apagat, l'inici i el
+  fi de cada clip es poden moure sempre. L'extrem contrari del clip **no es
+  mou** i el que es recalcula és el **BPM de dins** (`BPM = N · bq · 60 / Δt`).
+  No hi ha mínim de 0,5 s ni banda de BPM per al ratolí: només es rebutja el
+  que deixaria un tram **sense durada**.
+- **Excepcions**: l'**inici del primer clip** i el **final de l'últim** no es
+  toquen mai: marquen l'inici i el final de la WAV (l'avís ho diu).
 - **Primer tram amb pre-música**: la seua fi **no pot passar abans del compàs 1**
   (`offset`), però sí caure-hi **exactament** (pre-roll pur, sense cap compàs:
-  excepció §5): només canvia la fi i el tram conserva el BPM. Abans el codi
-  exigia `offset + 0,5 s` i era impossible tornar la fi al compàs 1; l'avís ara
-  diu «no pot quedar abans del compàs 1».
+  excepció §5). Si el primer tram no té cap compàs, arrossegar-ne la fi **mou
+  el compàs 1**: el pre-roll continua sense compassos i el tram de música
+  conserva els seus (BPM recalculat). És el mateix que fer-ho amb 📍, però
+  arrossegant el tall.
 - El gest és **local**: cap altre tram no es mou i els marcadors humans lligats
   a la frontera **viatgen amb ella**. El **clip d'estructura** que el `+` va
   crear en eixe punt també la seguix (vincle per coincidència de temps, ±5 ms;
