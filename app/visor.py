@@ -723,10 +723,11 @@ class Visor(QMainWindow):
     def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
-        Regla de compassos enters (`docs/REGLES_TEMPS_GRID.md`): el tram
-        conserva el seu nombre de compassos, la seua fi es mou a la nova línia
-        de compàs i les fronteres següents s'arrosseguen (l'últim absorbeix).
-        Si el canvi no és vàlid, es rebutja amb un avís.
+        Re-tempo local (`docs/REGLES_TEMPS_GRID.md` §7): el tram conserva el
+        seu nombre de compassos, la seua durada passa a `N · bq · 60 / BPM` i
+        el veí de la dreta conserva els compassos i el seu final recalculant el
+        BPM. Els trams posteriors **no es mouen** (sense *ripple*). Si el canvi
+        no és vàlid, es rebutja amb un avís.
 
         Amb `desa=False` (tap en viu) el canvi queda només en memòria; el desat
         es fa en tancar la sessió de taps.
@@ -736,7 +737,7 @@ class Visor(QMainWindow):
             trams = [(0.0, self._durada_wav(), float(bpm), int(num), int(den))]
         idx = min(max(0, int(idx)), len(trams) - 1)
         try:
-            nous = tempo_map.canvia_bpm_compassos(
+            nous = tempo_map.canvia_bpm_local(
                 trams, idx, float(bpm), self._durada_wav(),
                 offset=getattr(self, "offset", 0.0),
                 num=int(num), den=int(den))
@@ -2323,8 +2324,9 @@ class Visor(QMainWindow):
     def _mou_marcador(self, t_vell, t_nou):
         """Mou el marcador ancorat a una frontera que s'ha mogut (§4.C).
 
-        Va DINS de l'operació de desfer del gest: el marcador i el mapa es
-        desfan junts. Retorna `True` si n'hi havia cap.
+        Va DINS de l'operació de desfer del gest: el marcador, la frontera
+        d'**estructura** que va crear i el mapa es desfan junts. Retorna `True`
+        si n'hi havia cap.
         """
         from app import marcadors as M
         i = self._marcador_a(t_vell)
@@ -2337,11 +2339,56 @@ class Visor(QMainWindow):
             return False
         self.marcadors = nou
         self._pinta_marcadors()
+        self._mou_seccio_amb_marcador(t_vell, t_nou)
         try:
             pipeline.desa_marcadors(self._carpeta_acords(), self.marcadors)
         except OSError as e:
             self.log(f"marcadors: no s'han pogut desar ({e})")
         self.log(f"marcador mogut amb la frontera: {t_vell:.3f} → {t_nou:.3f}s")
+        return True
+
+    def _mou_seccio_amb_marcador(self, t_vell, t_nou):
+        """Mou la frontera d'**estructura** que coincidia amb el marcador.
+
+        El `+` crea alhora un inici de clip de BPM/compàs **i** d'estructura:
+        si després es mou la frontera de tempo (i el marcador viatja amb ella,
+        §4.C), el clip de secció també ha de seguir el marcador que el va
+        crear. El vincle es resol per **coincidència de temps** (5 ms), sense
+        desar cap identificador nou al projecte.
+
+        Mou només les **dues** seccions que toquen la frontera (la de
+        l'esquerra estira la fi i la de la dreta mou l'inici) i respecta
+        `MIN_SECCIO_S`; si no hi cap, no toca res i ho deixa al registre.
+        """
+        seccions = list(self.seccions or [])
+        if len(seccions) < 2:
+            return False
+        idx = next((j for j in range(1, len(seccions))
+                    if abs(float(seccions[j][0]) - float(t_vell)) <= 0.005),
+                   None)
+        if idx is None:
+            return False
+        nou = float(t_nou)
+        ini_a = float(seccions[idx - 1][0])
+        fi_b = float(seccions[idx][1])
+        if not (ini_a + self.MIN_SECCIO_S <= nou <= fi_b - self.MIN_SECCIO_S):
+            self.log(f"marcador: la secció no pot seguir-lo ({nou:.3f}s)")
+            return False
+        nova = list(seccions)
+        nova[idx - 1] = (ini_a, nou) + tuple(seccions[idx - 1][2:])
+        nova[idx] = (nou, fi_b) + tuple(seccions[idx][2:])
+        self.seccions = self._normalitza_seccions(nova)
+        # El gest acaba al `release` del carril de tempo: NO podem re-sincronitzar
+        # model←timeline (tornaria les seccions velles). Passem les dades noves
+        # al timeline (sense reconstruir items ací mateix, que seria insegur
+        # dins de l'esdeveniment) i deixem el re-render al cicle següent.
+        tl = getattr(self, "timeline", None)
+        if tl is not None:
+            tl._seccions = [tuple(s) for s in self.seccions]
+        self._actualitza_llista_abc()
+        self._sincronitza_vista(preserva=True, difereix=True)
+        self.log(f"estructura moguda amb el marcador: {t_vell:.3f} → "
+                 f"{nou:.3f}s")
         return True
 
     def _esborra_marcador_a(self, t, tol=0.05):
@@ -2365,8 +2412,10 @@ class Visor(QMainWindow):
         Crea, en eixe punt, un **inici de clip al carril de BPM/compàs i al
         d'estructura**. El marcador queda **lligat a la frontera de tempo**
         (la segueix si s'arrossega i s'esborra amb ella, §4.C del flux de tempo
-        variable); les seccions són independents. Es pot cridar mentre sona
-        (tecla `+`). Un sol desfer ho desfà tot.
+        variable) i el **clip d'estructura** que naix ací el seguix també
+        (`_mou_seccio_amb_marcador`, vincle per coincidència de temps: si
+        després s'edita la secció a mà i deixa de coincidir, deixa de seguir-lo).
+        Es pot cridar mentre sona (tecla `+`). Un sol desfer ho desfà tot.
 
         El tram que es tanca **naix ja amb compassos enters i BPM derivat**
         (`tempo_map.parteix_tram_marcador`): si es conservara el BPM cec, el

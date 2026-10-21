@@ -6270,6 +6270,64 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr.undo()
         self.assertEqual(len(vr.tempo_trams), len(ks) + 1)
 
+    def test_edita_tempo_objectiu_no_arrossega_els_trams(self):
+        """Diàleg/transport = re-tempo local (§7): només es mou la frontera."""
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        self.assertTrue(vr.edita_tempo_objectiu(1, 100.0, 3, 4))
+        self.assertEqual(len(vr.tempo_trams), 3)
+        self.assertEqual(vr.tempo_trams[0], trams[0])       # intacte
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 100.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][1], 28.0, places=6)
+        # El veí de la dreta (últim) conserva el BPM i el seu final.
+        self.assertAlmostEqual(vr.tempo_trams[2][0], 28.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][1], 60.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][2], 120.0, places=6)
+
+    def test_el_marcador_arrossega_la_frontera_d_estructura(self):
+        """El clip de secció que va crear el `+` seguix el marcador (§4.C)."""
+        vr = self.w.visor_ref
+        vr.seccions = [(0.0, 10.0, "A", "A"), (10.0, 20.0, "B", "B"),
+                       (20.0, 60.0, "A", "A")]
+        vr.marcadors = [10.0]
+        vr.timeline.set_data(vr.acords, vr.seccions)
+        self.assertTrue(vr._mou_marcador(10.0, 12.0))
+        self.assertAlmostEqual(float(vr.marcadors[0]), 12.0, places=6)
+        self.assertAlmostEqual(float(vr.seccions[0][1]), 12.0, places=6)
+        self.assertAlmostEqual(float(vr.seccions[1][0]), 12.0, places=6)
+        self.assertEqual(vr.seccions[0][2:], ("A", "A"))
+        self.assertEqual(vr.seccions[1][2:], ("B", "B"))
+
+    def test_el_marcador_no_buida_una_seccio_que_no_hi_cap(self):
+        """Si la secció no pot seguir el marcador, no es toca (no queda buida)."""
+        vr = self.w.visor_ref
+        vr.seccions = [(0.0, 10.0, "A", "A"), (10.0, 10.5, "B", "B"),
+                       (10.5, 60.0, "C", "C")]
+        vr.marcadors = [10.0]
+        vr.timeline.set_data(vr.acords, vr.seccions)
+        before = list(vr.seccions)
+        self.assertTrue(vr._mou_marcador(10.0, 10.6))
+        self.assertAlmostEqual(float(vr.marcadors[0]), 10.6, places=6)
+        self.assertEqual(vr.seccions, before)
+
+    def test_frontera_de_tempo_arrossega_marcador_i_estructura(self):
+        """El gest complet: frontera → marcador → inici del clip de secció."""
+        vr = self.w.visor_ref
+        trams = [(0.0, 16.0, 120.0, 4, 4), (16.0, 32.0, 120.0, 4, 4),
+                 (32.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        vr.seccions = [(0.0, 16.0, "A", "A"), (16.0, 32.0, "B", "B"),
+                       (32.0, 60.0, "A", "A")]
+        vr.marcadors = [16.0]
+        vr.timeline.set_data(vr.acords, vr.seccions)
+        vr._on_tempo_mogut(0, "fi", 18.0)
+        self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 18.0, places=6)
+        self.assertAlmostEqual(float(vr.marcadors[0]), 18.0, places=6)
+        self.assertAlmostEqual(float(vr.seccions[0][1]), 18.0, places=6)
+        self.assertAlmostEqual(float(vr.seccions[1][0]), 18.0, places=6)
+
     def test_marcador_durant_el_play_usa_el_cursor_del_so(self):
         """El cas real: donar-li a `+` mentre SONA (el cursor és el playhead)."""
         from PyQt5.QtTest import QTest

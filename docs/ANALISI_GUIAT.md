@@ -277,7 +277,7 @@ comprovació acotada. És el que ja saps tu, no només el que detecta el motor.
 ---
 
 > Vegeu també: [`REGLES_TEMPS_GRID.md`](REGLES_TEMPS_GRID.md) (contracte
-> dels trams: opció A, compassos enters, detecció per tram) ·
+> dels trams: re-tempo local, compassos enters, detecció per tram) ·
 > [`EDICIO_OPERACIONS.md`](EDICIO_OPERACIONS.md) §6 (#36/36b tempo i tap) ·
 > [`QM_VAMP.md`](QM_VAMP.md) (motors) · [`FLUX_DE_DADES.md`](FLUX_DE_DADES.md)
 > (el MODEL vs cru).

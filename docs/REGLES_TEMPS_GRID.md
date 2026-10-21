@@ -82,19 +82,22 @@ marcadors— l'ajust és **local**:
    ha ripple**. Els marcadors humans tampoc no es mouen si no toquen la
    frontera afectada.
 5. L'**últim tram** continua acotat per la fi de la WAV (§5): pot canviar el
-   nombre de compassos o el BPM per a quadrar-hi.
+   nombre de compassos o el BPM per a quadrar-hi. Si l'últim tram és el **veí**
+   de qui canvia (no el tram editat), conserva el seu **BPM** i la seua **fi** i
+   absorbeix el desplaçament en el nombre de compassos (pot ser fraccionari:
+   excepció §5).
 6. Si el resultat deixaria un tram **interior** per davall d'un compàs, si el
    veí es quedaria sense espai (`FRONTERA_MIN_S`) o si algun BPM derivat eixira
    de la banda editable (`BPM_EDIT_MIN/MAX`), **es rebutja el canvi** i
    s'avisa; mai no s'aplica un valor absurd.
 
-**Deute declarat (no és una excepció del contracte).** El **diàleg del tram**
-(`Visor._on_tempo_edit`) i el **transport** (`Visor.edita_tempo_objectiu` →
-`tempo_map.canvia_bpm_compassos`) encara apliquen el model vell: conserven els
-compassos però mouen la fi i **arrosseguen** els trams següents (l'últim
-absorbeix). S'han de migrar al re-tempo local (`mou_frontera_retempo` /
-`retempo_tram_detectat`); mentres no es faça, són **l'única via que arrossega**.
-La resta de camins ja complixen este apartat.
+**Implementació.** `tempo_map.canvia_bpm_local` (diàleg del tram, camps de la
+barra i TAP), `mou_frontera_retempo` (drag de la frontera),
+`canvia_compassos_tram` (`+1`/`−1`/`×2`/`÷2`) i `retempo_tram_detectat`
+(«Detecta» per tram) complixen este apartat. **No hi ha cap camí d'usuari amb
+*ripple*.** `snap_frontera_compas`/`_ripple_des_de` només queden per a
+`repara_fronteres` (mapes heretats) i l'anàlisi guiat, que creen el mapa des de
+zero.
 
 ## 8. Moure o crear fronteres a mà
 
@@ -110,7 +113,9 @@ La resta de camins ja complixen este apartat.
   (`FRONTERA_MIN_S` a cada veí) o si algun BPM eixiria de la banda
   `BPM_EDIT_MIN/MAX`.
 - El gest és **local**: cap altre tram no es mou i els marcadors humans lligats
-  a la frontera **viatgen amb ella**.
+  a la frontera **viatgen amb ella**. El **clip d'estructura** que el `+` va
+  crear en eixe punt també la seguix (vincle per coincidència de temps, ±5 ms;
+  si després s'edita la secció a mà i deixa de coincidir, deixa de seguir-la).
 
 ## 9. Detecció de BPM dins d'un tram
 
@@ -166,17 +171,17 @@ trams següents); i el primer inici i l'últim final són les úniques excepcion
   l'anàlisi o de projectes vells. Una partició manual de dos trams iguals es
   respecta mentre s'edita; no es desfà sola.
 - Les **edicions de la GUI** que re-temporitzen (moure/crear/partir una
-  frontera, `+1`/`−1`/`×2`/`÷2`, detectar el BPM d'un tram) passen pel
+  frontera, `+1`/`−1`/`×2`/`÷2`, detectar el BPM d'un tram, canviar el BPM o el
+  compàs pel diàleg del tram, pels camps de la barra o pel TAP) passen pel
   **re-tempo local** (`tempo_map.mou_frontera_retempo`,
-  `retempo_tram_detectat`, `canvia_compassos_tram`): conserven els compassos,
-  recalculen el BPM i **no mouen els trams següents**. Si el resultat no
-  compleix el contracte, **no es toca res** i s'avisa.
-- El **diàleg del tram/transport** és l'únic camí que encara arrossega
-  (§7, *deute declarat*): usa `canvia_bpm_compassos`, que conserva els
-  compassos però mou la fi i aplica `_ripple_des_de`/`snap_frontera_compas`.
-  L'**anàlisi guiat** també pot fer servir estes dues funcions perquè crea o
-  reorganitza el mapa des de zero, no per a arrossegar menyspreant els
-  marcadors humans.
+  `canvia_bpm_local`, `retempo_tram_detectat`, `canvia_compassos_tram`):
+  conserven els compassos, recalculen el BPM i **no mouen els trams següents**.
+  Si el resultat no compleix el contracte, **no es toca res** i s'avisa.
+- Ja **no hi ha cap camí d'usuari que arrossegue** fronteres:
+  `canvia_bpm_compassos` (opció A amb *ripple*) s'ha retirat.
+  `snap_frontera_compas`/`_ripple_des_de` només queden per a
+  `repara_fronteres` (mapes heretats) i l'anàlisi guiat, que creen o
+  reorganitzen el mapa des de zero.
 - El backend permissiu serveix per a càrregues i eines internes; el camí
   d'usuari és el que fa complir la regla.
 - Els tests del contracte viuen a `tests/test_tempo_map.py`

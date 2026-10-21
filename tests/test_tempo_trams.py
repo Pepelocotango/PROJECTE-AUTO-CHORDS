@@ -380,6 +380,74 @@ class RetempoTests(unittest.TestCase):
                                             1, b * 10)
         self.assertIn("BPM", str(cm.exception))
 
+    def test_canviar_bpm_local_ajusta_el_vei_sense_moure_res_mes(self):
+        # Diàleg/transport (contracte §7): el tram conserva N; el veí interior
+        # conserva els compassos i el seu final, i recalcula el BPM. La resta
+        # del mapa no es mou.
+        trams = [(0.0, 8.0, 120.0, 4, 4), (8.0, 20.0, 60.0, 3, 4),
+                 (20.0, 32.0, 60.0, 3, 4), (32.0, 44.0, 120.0, 4, 4)]
+        out = tempo_map.canvia_bpm_local(trams, 1, 90.0, 44.0)
+        self.assertEqual(out[0], trams[0])            # el d'abans, intacte
+        self.assertEqual(out[3], trams[3])            # el del fons, intacte
+        self.assertAlmostEqual(out[1][2], 90.0, places=6)
+        self.assertAlmostEqual(out[1][1], 16.0, places=6)   # 4 compassos a 90
+        self.assertAlmostEqual(out[2][1], trams[2][1], places=9)  # fi immòbil
+        # 4 compassos de 3/4 en 16 s → 45 BPM (el BPM és la conseqüència).
+        self.assertAlmostEqual(out[2][2], 45.0, places=6)
+        self.assertAlmostEqual(
+            (out[2][1] - out[2][0]) / tempo_map.durada_compas(out[2][2], 3, 4),
+            4.0, places=6)
+
+    def test_canviar_bpm_local_el_vei_ultim_absorbeix(self):
+        # L'últim tram no pot moure la seua fi (WAV): conserva el BPM i
+        # absorbeix el desplaçament en el nombre de compassos (§5).
+        trams = [(0.0, 8.0, 90.0, 4, 4), (8.0, 10.0, 120.0, 3, 4)]
+        out = tempo_map.canvia_bpm_local(trams, 0, 110.0, 10.0)
+        self.assertAlmostEqual(out[0][1], 6.54545, places=4)
+        self.assertAlmostEqual(out[1][0], out[0][1], places=9)
+        self.assertAlmostEqual(out[1][1], 10.0, places=9)   # la WAV mana
+        self.assertAlmostEqual(out[1][2], 120.0, places=6)  # el tempo es manté
+
+    def test_canviar_bpm_local_respecta_la_premusica(self):
+        trams = [(0.0, 19.0, 120.0, 4, 4), (19.0, 35.0, 120.0, 4, 4)]
+        out = tempo_map.canvia_bpm_local(trams, 0, 100.0, 35.0, offset=3.0)
+        self.assertAlmostEqual(out[0][0], 0.0, places=9)    # pre-música intacta
+        self.assertAlmostEqual(out[0][1], 22.2, places=6)   # 3 + 8 compassos
+        self.assertAlmostEqual(out[0][2], 100.0, places=6)
+        self.assertAlmostEqual(out[1][1], 35.0, places=9)   # la fi no es mou
+        self.assertAlmostEqual(out[1][2], 120.0, places=6)  # l'últim absorbeix
+
+    def test_canviar_bpm_local_rebutja_si_no_hi_cap(self):
+        # El tram creixeria més enllà del veí.
+        trams = [(0.0, 8.0, 120.0, 4, 4), (8.0, 16.0, 120.0, 4, 4)]
+        with self.assertRaises(ValueError):
+            tempo_map.canvia_bpm_local(trams, 0, 30.0, 16.0)
+        # ...i si el BPM d'un veí INTERIOR se n'aniria fora de la banda.
+        trams = [(0.0, 8.0, 120.0, 4, 4), (8.0, 40.0, 90.0, 4, 4),
+                 (40.0, 50.0, 120.0, 4, 4)]
+        with self.assertRaises(ValueError) as cm:
+            tempo_map.canvia_bpm_local(trams, 0, 30.0, 50.0)
+        self.assertIn("BPM", str(cm.exception))
+
+    def test_canviar_bpm_local_canvia_el_compas_conservant_n(self):
+        # 5 compassos de 4/4 a 120 (10 s) → 5 compassos de 3/4 a 100 (9 s).
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 42.0, 120.0, 4, 4)]
+        out = tempo_map.canvia_bpm_local(trams, 0, 100.0, 42.0, num=3, den=4)
+        self.assertAlmostEqual(out[0][1], 9.0, places=6)
+        self.assertEqual(out[0][3:], (3, 4))
+        self.assertAlmostEqual(
+            out[0][1] / tempo_map.durada_compas(100.0, 3, 4), 5.0, places=6)
+        self.assertAlmostEqual(out[1][1], 30.0, places=9)
+        # El veí [9,30] = 21 s conserva 10 compassos → 85,714 BPM.
+        self.assertAlmostEqual(out[1][2], 10 * 3 * 60 / 21.0, places=6)
+        self.assertEqual(out[2], trams[2])            # el del fons, intacte
+
+    def test_canviar_bpm_local_ultim_tram(self):
+        out = tempo_map.canvia_bpm_local([(0.0, 12.0, 60.0, 3, 4)], 0,
+                                         90.0, 12.0)
+        self.assertEqual(out, [(0.0, 12.0, 90.0, 3, 4)])
+
 
 class MarcadorsTempoTests(unittest.TestCase):
     """`+` i «Detecta» per tram: cap gest es bloqueja per compassos fraccionaris.

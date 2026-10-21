@@ -699,65 +699,6 @@ def _ripple_des_de(trams, idx, nou_fi, durada):
     return [tuple(t) for t in out]
 
 
-def canvia_bpm_compassos(trams, idx, bpm, durada, offset=0.0,
-                         num=None, den=None):
-    """Canvia BPM/compàs conservant els compassos del tram (opció A).
-
-    - Tram interior: conserva el nombre enter de compassos i mou la seua fi.
-    - Primer tram: conserva els compassos des de l'offset (o des de 0) fins a
-      la fi; el tros de compte enrere inicial és l'excepció.
-    - Últim tram: com que la fi de la WAV no es mou, pot canviar el nombre de
-      compassos (excepció).
-    - Els trams següents s'arrosseguen; l'últim absorbeix.
-    """
-    durada = float(durada or 0.0)
-    nous = normalitza_trams(trams, durada)
-    if not (0 <= int(idx) < len(nous)):
-        raise ValueError("El tram de tempo no existeix")
-    idx = int(idx)
-    ini, fi, bpm0, num0, den0 = nous[idx]
-    bpm = float(bpm)
-    num = int(num if num is not None else num0)
-    den = int(den if den is not None else den0)
-    if bpm <= 0 or num <= 0 or den <= 0:
-        raise ValueError("BPM o compàs no vàlid")
-    b_old = durada_compas(bpm0, num0, den0)
-    b_new = durada_compas(bpm, num, den)
-    if b_old <= TOL or b_new <= TOL:
-        raise ValueError("El compàs té una durada nul·la")
-
-    if idx == len(nous) - 1:
-        # Últim tram: la fi de la WAV mana; pot canviar el nombre de compassos.
-        out = list(nous)
-        out[idx] = (ini, fi, bpm, num, den)
-        return valida_i_normalitza_compassos(out, durada, offset)
-
-    if idx == 0:
-        base = float(offset) if float(offset) > float(ini) + TOL else float(ini)
-        n = int(round((float(fi) - base) / b_old))
-        if base <= float(ini) + TOL and n < 1:
-            raise ValueError("El primer tram ha de tindre almenys un compàs")
-        if n < 0:
-            raise ValueError("El tram no pot acabar abans del compàs 1")
-        nou_fi = base + n * b_new
-    else:
-        n = int(round((float(fi) - float(ini)) / b_old))
-        if n < 1:
-            raise ValueError("El tram ha de tindre almenys un compàs")
-        nou_fi = float(ini) + n * b_new
-
-    if nou_fi <= float(ini) + TOL or nou_fi >= durada - TOL:
-        raise ValueError("El canvi no cap dins de la WAV")
-
-    out = _ripple_des_de(nous, idx, nou_fi, durada)
-    for j in range(idx + 1, len(out)):
-        s = float(out[j][0])
-        if s < -TOL or s >= durada - TOL:
-            raise ValueError("El canvi no cap dins de la WAV")
-    out[idx] = (float(ini), float(nou_fi), bpm, num, den)
-    return valida_i_normalitza_compassos(out, durada, offset)
-
-
 def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0, direccio=None):
     """Imanta la FI del tram `p_idx` a la línia de compàs més pròxima.
 
@@ -863,6 +804,93 @@ def _mapa_valida_sense_moure(out, durada, offset):
         return normalitza_trams(out, durada)
 
 
+def canvia_bpm_local(trams, idx, bpm, durada, offset=0.0, num=None, den=None):
+    """Canvia el BPM/compàs d'un tram **conservant els compassos** (local).
+
+    És el camí del diàleg del tram, dels camps de la barra i del TAP
+    (`docs/REGLES_TEMPS_GRID.md` §7): el tram conserva el seu nombre enter de
+    compassos `N`, la seua durada passa a ``Δt = N · bq · 60 / BPM`` i el
+    **veí de la dreta** conserva els seus compassos i el seu final, recalculant
+    el BPM. La resta del mapa **no es mou** (sense *ripple*).
+
+    - **Últim tram** (o mapa d'un sol tram): la fi de la WAV mana → conserva
+      `ini`/`fi` i pot canviar `N` (excepció §5).
+    - **Primer tram**: la zona de pre-música (`0 → offset`) es respecta.
+    - Si el **veí afectat és l'últim tram**, conserva el seu BPM i la seua fi
+      (la WAV mana) i absorbeix el desplaçament en el nombre de compassos
+      (excepció §5); si és interior, conserva els compassos i recalcula el BPM.
+
+    Retorna el mapa normalitzat i validat. Aixeca `ValueError` amb un missatge
+    d'usuari si el canvi no cap (massa a prop del veí, BPM fora de rang…).
+    """
+    durada = float(durada or 0.0)
+    nous = normalitza_trams(trams, durada)
+    i = int(idx)
+    if not (0 <= i < len(nous)):
+        raise ValueError("El tram de tempo no existeix")
+    ini, fi, bpm0, num0, den0 = nous[i]
+    bpm = float(bpm)
+    num = int(num if num is not None else num0)
+    den = int(den if den is not None else den0)
+    if bpm <= 0 or num <= 0 or den <= 0:
+        raise ValueError("BPM o compàs no vàlid")
+    b_old = durada_compas(bpm0, num0, den0)
+    b_new = durada_compas(bpm, num, den)
+    if b_old <= TOL or b_new <= TOL:
+        raise ValueError("El compàs té una durada nul·la")
+
+    if i == len(nous) - 1:
+        # Últim tram: la fi de la WAV no es mou; pot canviar el nombre de
+        # compassos (excepció §5).
+        out = list(nous)
+        out[i] = (float(ini), float(fi), bpm, num, den)
+        return valida_i_normalitza_compassos(out, durada, offset)
+
+    n = _enter_mes_proper(_compassos_del_tram(nous[i], i, offset))
+    if n < 1:
+        raise ValueError("El tram ha de tindre almenys un compàs")
+    base = _base_tram(nous[i], i, offset)
+    nou_fi = base + n * b_new
+    vei = nous[i + 1]
+    if nou_fi <= float(ini) + TOL:
+        raise ValueError("El canvi deixaria el tram sense durada")
+    if nou_fi >= float(vei[1]) - FRONTERA_MIN_S:
+        raise ValueError(
+            "El canvi no cap: el tram següent quedaria massa curt")
+
+    out = list(nous)
+    out[i] = (float(ini), float(nou_fi), bpm, num, den)
+    interior = (i + 1) < (len(nous) - 1)
+    if interior:
+        n_v = _enter_mes_proper(_compassos_del_tram(vei, i + 1, offset))
+        if n_v < 1:
+            raise ValueError("El tram següent ha de tindre almenys un compàs")
+        bq_v = _bar_quarters(int(vei[3]), int(vei[4]))
+        dt_v = float(vei[1]) - nou_fi
+        bpm_v = _valida_bpm_edicio(n_v * bq_v * 60.0 / dt_v, "següent")
+        out[i + 1] = (float(nou_fi), float(vei[1]), bpm_v, int(vei[3]),
+                      int(vei[4]))
+    else:
+        # L'últim tram conserva el tempo i la fi (la WAV mana): absorbeix el
+        # desplaçament en els compassos, que poden ser fraccionaris (§5).
+        out[i + 1] = (float(nou_fi), float(vei[1]), float(vei[2]),
+                      int(vei[3]), int(vei[4]))
+    # El tram afectat ha de quedar amb compassos enters per construcció; ho
+    # comprovem abans de validar la resta (un mapa vell pot arrossegar
+    # fraccions i no ha de bloquejar este gest).
+    bars = _compassos_del_tram(out[i], i, offset)
+    if abs(bars - _enter_mes_proper(bars)) > 1e-6:
+        raise ValueError(
+            f"El tram no ha quedat amb compassos enters ({bars:.3f})")
+    if interior:
+        bars_v = _compassos_del_tram(out[i + 1], i + 1, offset)
+        if abs(bars_v - _enter_mes_proper(bars_v)) > 1e-6:
+            raise ValueError(
+                f"El tram següent no ha quedat amb compassos enters "
+                f"({bars_v:.3f})")
+    return _mapa_valida_sense_moure(out, durada, offset)
+
+
 def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None):
     """Parteix el mapa a `t` fent nàixer el tram esquerre **ja vàlid**.
 
@@ -943,7 +971,7 @@ def retempo_tram_detectat(trams, idx, bpm_detectat, durada, offset=0.0):
 
     i s'aplica el BPM matemàtic exacte que clava eixos `N` compassos a `Δt`.
     Així el clip queda mètricament vàlid i la música no es desquadra amb el
-    següent marcador (l'antic `canvia_bpm_compassos` feia *ripple*).
+    següent marcador (l'antic camí amb *ripple* ho desquadrava).
 
     Retorna el mapa validat. `ValueError` si l'índex no existeix, el BPM no és
     positiu o el BPM resultant ix del rang raonable.

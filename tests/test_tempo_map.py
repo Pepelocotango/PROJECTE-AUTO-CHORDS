@@ -210,13 +210,17 @@ class TestCompassosEnters(unittest.TestCase):
         self.assertEqual(tm.valida_i_normalitza_compassos(
             trams, 9.0, offset=1.0), trams)
 
-    def test_canviar_bpm_conserva_compassos_i_arrossega(self):
-        nous = tm.canvia_bpm_compassos(self.BASE, 0, 100.0, 30.0)
+    def test_canviar_bpm_conserva_compassos_i_ajusta_el_vei(self):
+        # Re-tempo local (contracte §7): el tram conserva N; el veí (ací,
+        # l'últim) conserva el BPM i la fi de la WAV i absorbeix la diferència.
+        nous = tm.canvia_bpm_local(self.BASE, 0, 100.0, 30.0)
         self.assertEqual(nous, [(0.0, 12.0, 100.0, 4, 4),
                                 (12.0, 30.0, 90.0, 3, 4)])
+        self.assertAlmostEqual(nous[1][1], self.BASE[1][1], places=9)
 
-    def test_ultim_tram_absorbeix(self):
-        nous = tm.canvia_bpm_compassos(self.BASE, 1, 100.0, 30.0)
+    def test_ultim_tram_conserva_la_fi(self):
+        # L'últim tram no pot moure la fi de la WAV: canvia N (excepció §5).
+        nous = tm.canvia_bpm_local(self.BASE, 1, 100.0, 30.0)
         self.assertEqual(nous, [(0.0, 10.0, 120.0, 4, 4),
                                 (10.0, 30.0, 100.0, 3, 4)])
 

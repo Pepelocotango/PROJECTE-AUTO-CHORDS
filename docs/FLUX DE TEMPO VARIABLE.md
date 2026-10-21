@@ -6,7 +6,7 @@
 > `canvia_compassos_tram` · §4.B guia del drag lliure · §4.C 4 accions de
 > compassos al menú del tram + marcadors lligats a la frontera · §6 els 4 plans
 > de prova a `tests/test_tempo_trams.py` i `tests/test_despatx_edicio.py`).
-> Suite **1.321 OK** (1 skip). Decisions de l'operador: els marcadors **es mouen**
+> Suite **verda** (1 skip). Decisions de l'operador: els marcadors **es mouen**
 > amb la frontera i **s'esborren** amb ella; `+1/−1/×2/÷2` afecten **només** eixe
 > tram (segons immòbils, els veïns no es toquen). Detall: `CHANGELOG.md` 11b.
 >
@@ -20,6 +20,13 @@
 > marcador. Cap frontera heretada bloqueja ni es mou sola
 > (`_mapa_valida_sense_moure`, permissiu). La nansa de la frontera té 8 px de
 > marge i es pinta al timeline.
+>
+> **11e/11f — re-tempo local i estructura (21-10-2026):** el diàleg del tram,
+> la barra/transport i el TAP fan **re-tempo local** (`canvia_bpm_local`: els
+> compassos es conserven, només es mou la frontera, sense *ripple*); el **clip
+> d'estructura** que crea el `+` seguix el marcador (±5 ms) dins del mateix
+> desfer, i esborrar el marcador **no** fusiona les seccions. Detall:
+> `CHANGELOG.md` 11e/11f.
 
 ---
 
@@ -137,6 +144,12 @@ def canvia_compassos_tram(trams, idx, delta_compassos, durada, offset=0.0):
 
 1. Sincronitzar `self.marcadors` amb les fronteres de `self.tempo_trams`:
    - Els marcadors ja no han de ser una llista independent sense connexió. Les fronteres de tempo interiors representen els punts d'ancoratge clau.
+   - El `+` crea alhora un inici de clip de **BPM/compàs** i d'**estructura**:
+     quan el marcador viatja amb la frontera, `_mou_seccio_amb_marcador` mou
+     també les dues seccions que hi toquen (fi de l'anterior, inici de la
+     següent), dins del mateix desfer i respectant `MIN_SECCIO_S`. El vincle
+     és per **coincidència de temps** (±5 ms), sense id nou al projecte; si la
+     secció s'edita a mà i deixa de coincidir, deixa de seguir el marcador.
 2. Afegir els accessos ràpids a la franja Editor o al menú contextual del tram de tempo:
    - Botons o opcions de menú: *Afegir 1 compàs*, *Restar 1 compàs*, *Doblar compassos (×2)*, *Dividir compassos (÷2)*.
 

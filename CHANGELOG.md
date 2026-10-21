@@ -5,6 +5,49 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Corregit (2026-10-21, 11f) — el clip d'estructura seguix el marcador
+- **`Visor._mou_seccio_amb_marcador()`**: en arrossegar una frontera de
+  BPM/compàs, el marcador que hi havia viatja amb ella (ja passava) i ara
+  també ho fa el **clip d'estructura** que el `+` va crear en eixe punt: la
+  secció de l'esquerra estira la fi i la de la dreta mou l'inici, dins del
+  **mateix desfer** i respectant `MIN_SECCIO_S`. El vincle es resol per
+  **coincidència de temps** (±5 ms), sense cap identificador nou al projecte:
+  si la secció s'edita a mà i deixa de coincidir amb el marcador, deixa de
+  seguir-lo.
+- Si la secció no hi cap (quedaria buida o fora del seu final), **no es toca**:
+  el marcador es mou i el registre n'informa (mai una secció nul·la).
+- **Esborrar/fusionar el tram** que s'emporta el marcador **no** fusiona les
+  seccions: l'estructura és model d'usuari i es queda com està.
+- **Tests**: +3 a `test_gui.TestAncoratgesFinestra` (el gest complet frontera →
+  marcador → clip de secció, el seguiment amb etiquetes intactes i el rebuig
+  sense espai) → **1.331 OK** (1 skip), pyflakes net.
+
+### Canviat (2026-10-21, 11e) — diàleg, barra i TAP fan **re-tempo local** (deute tancat)
+- **`tempo_map.canvia_bpm_local()`** (pur): canvia el BPM/compàs d'un tram
+  conservant-li els compassos (`Δt = N · bq · 60 / BPM`) i fent que el **veí
+  interior** conserve els seus compassos i el seu final recalculant el BPM.
+  **Cap altra frontera es mou** (sense *ripple*). Respecta la pre-música del
+  primer tram i, si el veí és **l'últim**, este conserva BPM i fi i absorbeix
+  el desplaçament en compassos (excepció §5). Rebutja si no hi cap o si un BPM
+  interior ix de `BPM_EDIT_MIN/MAX`.
+- **`Visor.edita_tempo_objectiu()`** hi delega: cobrix el **diàleg del tram**
+  (`_on_tempo_edit`), els **camps de la barra/transport** i el **TAP**
+  (`desa=False`). S'ha acabat el «deute declarat» de l'11c: ja **no queda cap
+  camí d'usuari que arrossegue** les fronteres següents.
+- **Retirat `tempo_map.canvia_bpm_compassos()`** (l'opció A amb
+  `_ripple_des_de`). `snap_frontera_compas`/`_ripple_des_de` es conserven
+  només per a `repara_fronteres` (mapes heretats) i l'anàlisi guiat, que creen
+  el mapa des de zero.
+- **Documentació**: §7 i §13 de `REGLES_TEMPS_GRID.md` ja no parlen de deute
+  (diuen què fa `canvia_bpm_local`); `docs/EDICIO_OPERACIONS.md` (paràgraf de
+  compassos enters i fila 36) alineats. Les **12 regles d'or** i la regla de
+  compassos enters queden intactes.
+- **Tests**: +7 → **1.328 OK** (1 skip), pyflakes net. 6 de nous a
+  `test_tempo_trams` (veí interior amb BPM recalculat i la resta quieta, veí
+  últim que absorbeix, pre-música, rebuig per espai i per BPM, canvi de compàs
+  conservant N, últim tram) + 1 a `test_gui` (barra/diàleg = re-tempo local).
+  Reescrits els 2 de `test_tempo_map` que fixaven l'opció A amb *ripple*.
+
 ### Afegit/Corregit (2026-10-21, 11d) — marcadors i «Detecta» sense bloquejos
 - **`+` (marcador) ja no es pot perdre** per una validació de compassos. El
   tram que es tanca naix amb un **nombre enter de compassos** i el BPM derivat
