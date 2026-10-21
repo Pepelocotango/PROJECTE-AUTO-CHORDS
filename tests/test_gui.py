@@ -6328,6 +6328,21 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(float(vr.seccions[0][1]), 18.0, places=6)
         self.assertAlmostEqual(float(vr.seccions[1][0]), 18.0, places=6)
 
+    def test_bpm_manual_funciona_amb_el_primer_i_l_ultim_tram(self):
+        """Cas real: pre-roll de 1,99 s (fora de graella) + últim tram."""
+        vr = self.w.visor_ref
+        trams = [(0.0, 1.99, 120.0, 4, 4), (1.99, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        # Primer tram: redimensiona; el veí (últim) conserva BPM i final.
+        self.assertTrue(vr.edita_tempo_objectiu(0, 100.0, 4, 4))
+        self.assertAlmostEqual(vr.tempo_trams[0][1], 2.4, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 120.0, places=6)
+        # Últim tram: canvia el BPM encara que la frontera no ciga en graella.
+        vr.aplica_tempo_trams(trams)
+        self.assertTrue(vr.edita_tempo_objectiu(1, 100.0, 4, 4))
+        self.assertAlmostEqual(vr.tempo_trams[1][0], 1.99, places=9)
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 100.0, places=6)
+
     def test_marcador_durant_el_play_usa_el_cursor_del_so(self):
         """El cas real: donar-li a `+` mentre SONA (el cursor és el playhead)."""
         from PyQt5.QtTest import QTest

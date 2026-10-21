@@ -89,7 +89,14 @@ marcadors— l'ajust és **local**:
 6. Si el resultat deixaria un tram **interior** per davall d'un compàs, si el
    veí es quedaria sense espai (`FRONTERA_MIN_S`) o si algun BPM derivat eixira
    de la banda editable (`BPM_EDIT_MIN/MAX`), **es rebutja el canvi** i
-   s'avisa; mai no s'aplica un valor absurd.
+   s'avisa; mai no s'aplica un valor absurd. Si el tram no hi cap, l'avís diu
+   **quin és el BPM extrem que encara hi cap** (perquè baixar el BPM allarga
+   el tram).
+7. El **primer tram** pot acabar a **mig compàs** (pre-roll o un marcador que
+   no cau en graella): editar-ne el BPM no es bloqueja — conserva eixa fracció
+   i canvia de mida; si tot ell és pre-música, només canvia el BPM. La
+   validació és **permissiva** com la del drag (una frontera vella fora de
+   graella no impedix editar el tram).
 
 **Implementació.** `tempo_map.canvia_bpm_local` (diàleg del tram, camps de la
 barra i TAP), `mou_frontera_retempo` (drag de la frontera),
@@ -112,6 +119,11 @@ zero.
 - Es **rebutja** i s'avisa si un tram interior quedaria per davall d'un compàs
   (`FRONTERA_MIN_S` a cada veí) o si algun BPM eixiria de la banda
   `BPM_EDIT_MIN/MAX`.
+- **Primer tram amb pre-música**: la seua fi **no pot passar abans del compàs 1**
+  (`offset`), però sí caure-hi **exactament** (pre-roll pur, sense cap compàs:
+  excepció §5): només canvia la fi i el tram conserva el BPM. Abans el codi
+  exigia `offset + 0,5 s` i era impossible tornar la fi al compàs 1; l'avís ara
+  diu «no pot quedar abans del compàs 1».
 - El gest és **local**: cap altre tram no es mou i els marcadors humans lligats
   a la frontera **viatgen amb ella**. El **clip d'estructura** que el `+` va
   crear en eixe punt també la seguix (vincle per coincidència de temps, ±5 ms;

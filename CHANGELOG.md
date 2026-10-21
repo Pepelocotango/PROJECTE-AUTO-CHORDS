@@ -5,6 +5,43 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Corregit (2026-10-21, 11i) — la fi del primer clip pot tornar al compàs 1
+- **`tempo_map.mou_frontera_retempo()`**: amb pre-música, la frontera es
+  limitava a `offset + 0,5 s`, així que era **impossible** tornar la fi del
+  primer clip al compàs 1 (l'intro d'«Otis», offset 1,978 s, no podia baixar de
+  2,478 s). Ara el límit és el **compàs 1** (`offset`): la frontera no pot
+  passar-hi abans, però sí caure-hi exactament → **pre-roll pur** (0 compassos,
+  excepció §5): el primer tram conserva el BPM i només canvia la fi, i el tram
+  de la dreta conserva N i recalcula el BPM.
+- L'avís és específic («La frontera no pot quedar abans del compàs 1») en lloc
+  de l'enganyós «a menys de 0,5 s de l'inici del tram».
+- **Tests**: +2 (fi exacta al compàs 1 i rebuig abans del compàs 1) → **1.338 OK**
+  (1 skip), pyflakes net.
+
+### Canviat (2026-10-21, 11h) — l'avís de «no hi cap» diu el BPM límit
+- **`tempo_map.canvia_bpm_local()`** ja no es limita a «el tram següent quedaria
+  massa curt»: calcula i mostra el **BPM més baix que encara hi cap** (baixar el
+  BPM allarga el tram i el veí té el final fix). Exemple real (Otis): el clip
+  central de 78 compassos no pot baixar de **114,6 BPM** perquè l'últim clip
+  (8,5 s) es quedaria a 0,5 s. El comportament seguix refusant el canvi.
+- **Tests**: +1 (missatge amb el llindar) → **1.336 OK** (1 skip), pyflakes net.
+
+### Corregit (2026-10-21, 11g) — BPM manual amb el primer i l'últim tram
+- **`tempo_map.canvia_bpm_local()`** validava amb el contracte estricte de
+  compassos enters: qualsevol **frontera vella fora de graella** (p. ex. un
+  marcador a 1,99 s amb compàs de 2 s) bloquejava el canvi de BPM de **qualsevol**
+  tram, i el **primer tram** d'un pre-roll podia no tindre cap compàs sencer
+  («El tram ha de tindre almenys un compàs»). Ara:
+  - usa `_mapa_valida_sense_moure` (la mateixa validació **permissiva** que el
+    drag): una frontera heretada no impedix editar el tram;
+  - el primer tram que acaba a **mig compàs** conserva eixa fracció i canvia de
+    mida; si tot ell és pre-música, només canvia el BPM.
+- Reproduït amb el projecte real d'«Otis Redding» (2 trams, frontera a
+  1,990315 s): els intents de BPM manual a l'11g donaven «almenys un compàs» i
+  «la frontera no cau en una línia de compàs».
+- **Tests**: +4 (3 de `tempo_map` i 1 de GUI amb eixe mapa) → **1.335 OK**
+  (1 skip), pyflakes net.
+
 ### Corregit (2026-10-21, 11f) — el clip d'estructura seguix el marcador
 - **`Visor._mou_seccio_amb_marcador()`**: en arrossegar una frontera de
   BPM/compàs, el marcador que hi havia viatja amb ella (ja passava) i ara

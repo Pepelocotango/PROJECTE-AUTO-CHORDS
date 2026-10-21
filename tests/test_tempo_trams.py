@@ -336,6 +336,29 @@ class RetempoTests(unittest.TestCase):
         # 18 s de música des de l'offset amb N=8 → 106,67 BPM (N es conserva).
         self.assertAlmostEqual(out[0][2], 106.6667, places=3)
 
+    def test_primer_tram_pot_acabar_al_compas_1(self):
+        # Pre-roll pur: la fi del primer clip pot caure EXACTAMENT al compàs 1
+        # (abans s'exigia offset + 0,5 s i era impossible tornar-hi).
+        trams = [(0.0, 6.778, 50.0, 4, 4),
+                 (6.778, 165.733854, 120.858, 4, 4)]
+        out = tempo_map.mou_frontera_retempo(trams, 1, 1.978, 165.733854,
+                                            offset=1.978)
+        self.assertAlmostEqual(out[0][0], 0.0, places=6)
+        self.assertAlmostEqual(out[0][1], 1.978, places=6)
+        self.assertAlmostEqual(out[0][2], 50.0, places=6)   # BPM intacte
+        self.assertAlmostEqual(out[1][0], 1.978, places=6)
+        self.assertAlmostEqual(out[1][1], 165.733854, places=6)
+        # La dreta conserva els seus 80 compassos (163,76 s) → 117,25 BPM.
+        self.assertAlmostEqual(out[1][2], 117.25, places=1)
+
+    def test_frontera_no_passa_abans_del_compas_1(self):
+        trams = [(0.0, 6.778, 50.0, 4, 4),
+                 (6.778, 165.733854, 120.858, 4, 4)]
+        with self.assertRaises(ValueError) as cm:
+            tempo_map.mou_frontera_retempo(trams, 1, 1.5, 165.733854,
+                                          offset=1.978)
+        self.assertIn("compàs 1", str(cm.exception))
+
     def test_compassos_mes_menys_i_doblar(self):
         un = [(0.0, 8.0, 120.0, 4, 4)]
         self.assertAlmostEqual(
@@ -447,6 +470,46 @@ class RetempoTests(unittest.TestCase):
         out = tempo_map.canvia_bpm_local([(0.0, 12.0, 60.0, 3, 4)], 0,
                                          90.0, 12.0)
         self.assertEqual(out, [(0.0, 12.0, 90.0, 3, 4)])
+
+    def test_canviar_bpm_local_primer_parcial_redimensiona(self):
+        # Pre-roll que acaba fora de graella (marcador a 1,99 s): no es
+        # bloqueja, el tram canvia de mida i el veí últim absorbeix.
+        trams = [(0.0, 1.99, 120.0, 4, 4), (1.99, 60.0, 120.0, 4, 4)]
+        out = tempo_map.canvia_bpm_local(trams, 0, 100.0, 60.0)
+        self.assertAlmostEqual(out[0][1], 2.4, places=6)   # 1 compàs a 100
+        self.assertAlmostEqual(out[0][2], 100.0, places=6)
+        self.assertAlmostEqual(out[1][0], 2.4, places=9)
+        self.assertAlmostEqual(out[1][1], 60.0, places=9)  # la WAV mana
+        self.assertAlmostEqual(out[1][2], 120.0, places=6)  # conserva el BPM
+
+    def test_canviar_bpm_local_premusica_pura_no_es_mou(self):
+        # Tot el primer tram és pre-música: només canvia el BPM.
+        trams = [(0.0, 1.99, 120.0, 4, 4), (1.99, 60.0, 120.0, 4, 4)]
+        out = tempo_map.canvia_bpm_local(trams, 0, 100.0, 60.0, offset=1.99)
+        self.assertEqual(out[0], (0.0, 1.99, 100.0, 4, 4))
+        self.assertEqual(out[1], trams[1])
+
+    def test_canviar_bpm_local_diu_el_llindar_que_hi_cap(self):
+        # Cas real (Otis): el clip central no pot créixer més enllà de la WAV.
+        # El missatge ha de dir el BPM més baix que encara hi cap.
+        trams = [(0.0, 1.911874, 124.625161, 4, 4),
+                 (1.911874, 1.925775, 124.625161, 4, 4),
+                 (1.925775, 157.232073, 120.536, 4, 4),
+                 (157.232073, 165.733854, 112.911987, 4, 4)]
+        with self.assertRaises(ValueError) as cm:
+            tempo_map.canvia_bpm_local(trams, 2, 100.0, 165.733854)
+        self.assertIn("massa curt", str(cm.exception))
+        self.assertIn("114.6", str(cm.exception))
+
+    def test_canviar_bpm_local_no_el_bloqueja_una_frontera_fora_de_graella(self):
+        # Canviar el BPM de l'últim tram amb la frontera a 1,99 s (fora de
+        # graella) ha de funcionar: mateixa validació permissiva que el drag.
+        trams = [(0.0, 1.99, 120.0, 4, 4), (1.99, 60.0, 120.0, 4, 4)]
+        out = tempo_map.canvia_bpm_local(trams, 1, 100.0, 60.0)
+        self.assertAlmostEqual(out[0][0], 0.0, places=9)
+        self.assertAlmostEqual(out[1][0], 1.99, places=9)
+        self.assertAlmostEqual(out[1][1], 60.0, places=9)
+        self.assertAlmostEqual(out[1][2], 100.0, places=6)
 
 
 class MarcadorsTempoTests(unittest.TestCase):

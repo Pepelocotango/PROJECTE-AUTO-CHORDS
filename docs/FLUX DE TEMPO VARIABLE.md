@@ -161,7 +161,7 @@ def canvia_compassos_tram(trams, idx, delta_compassos, durada, offset=0.0):
 | :--- | :--- |
 | **Primer tram (abans del Compàs 1)** | Es tracta com a compte enrere / zona pre-música. Admet compàs parcial o tempo lligat al primer compàs útil. |
 | **Últim tram (cua de la cançó)** | S'allarga fins a la fi de la WAV. Pot contenir un compàs incomplet a la sortida (fade-out/cua de reverberació) sense invalidar la regla interior. |
-| **Col·lisió de fronteres** | El ratolí no pot apropar una frontera a menys d'un límit mínim de seguretat respecte a la frontera veïna (per exemple, $\ge 0.5\text{ s}$). |
+| **Col·lisió de fronteres** | El ratolí no pot apropar una frontera a menys d'un límit mínim de seguretat respecte a la frontera veïna (per exemple, $\ge 0.5\text{ s}$). Excepció: el **primer tram** pot acabar **exactament** al Compàs 1 (`offset`) com a pre-roll pur (0 compassos), però mai abans. |
 | **BPMs extrems** | Si l'arrossegament produeix un tempo absurd ($<30\text{ BPM}$ o $>350\text{ BPM}$), la UI ha d'alertar visualment o limitar el recorregut físic de la nansa. |
 
 ---
