@@ -59,37 +59,72 @@
 - Amb la regla dels compassos enters, els canvis de compàs interiors també
   cauen en una línia de compàs.
 
-## 7. Canviar el BPM o el compàs d'un tram (opció A)
+## 7. Canviar el BPM o el compàs d'un tram (re-tempo local)
 
-Quan es canvia el BPM o el compàs d'un tram seleccionat:
+> **Jerarquia:** el punter/tall mana sobre **Δt**, el **nombre de compassos N**
+> es conserva i el **BPM en deriva** (`BPM = N · bq · 60 / Δt`). Detall:
+> `docs/FLUX DE TEMPO VARIABLE.md` §2.
 
-1. El tram **conserva el seu nombre enter de compassos**.
-2. La seua fi es mou en segons fins a la nova línia de compàs.
-3. Les fronteres dels trams **següents s'arrosseguen** la mateixa quantitat,
-   perquè continuen tenint compassos enters.
-4. L'**últim tram absorbeix** la diferència perquè ha d'acabar a la fi de la
-   WAV (pot canviar el seu nombre de compassos: és l'excepció).
-5. Si el resultat deixa un tram **interior** per davall d'un compàs, o el mapa
-   no pot cobrir la WAV, **es rebutja el canvi** i s'avisa.
-6. Si el tram afectat és l'últim, com que la fi de la WAV no es mou, és
-   l'excepció: pot canviar el nombre de compassos.
+**Contracte.** Quan es re-temporitza un tram —moure una frontera, arrossegar un
+bloc, `+1`/`−1`/`×2`/`÷2`, o detectar el BPM dins d'un tram delimitat per
+marcadors— l'ajust és **local**:
+
+1. El tram **conserva el seu nombre enter de compassos**. Si l'operador en vol
+   canviar el nombre, ho fa explícitament (`+1` / `−1` / `×2` / `÷2`), no com a
+   efecte secundari d'un canvi de BPM.
+2. En canviar el BPM, la **durada del tram** s'ajusta a
+   `Δt = N · bq · 60 / BPM`; la **frontera amb el veí** es mou fins on cau la
+   nova línia de compàs, que per construcció és exacta.
+3. El **veí afectat conserva els seus compassos** i **recalcula el seu BPM**
+   per encabir-s'hi. L'ajust és **local**: només els dos trams que toquen
+   eixa frontera.
+4. Les fronteres dels trams **següents NO es desplacen** en el temps: **no hi
+   ha ripple**. Els marcadors humans tampoc no es mouen si no toquen la
+   frontera afectada.
+5. L'**últim tram** continua acotat per la fi de la WAV (§5): pot canviar el
+   nombre de compassos o el BPM per a quadrar-hi.
+6. Si el resultat deixaria un tram **interior** per davall d'un compàs, si el
+   veí es quedaria sense espai (`FRONTERA_MIN_S`) o si algun BPM derivat eixira
+   de la banda editable (`BPM_EDIT_MIN/MAX`), **es rebutja el canvi** i
+   s'avisa; mai no s'aplica un valor absurd.
+
+**Deute declarat (no és una excepció del contracte).** El **diàleg del tram**
+(`Visor._on_tempo_edit`) i el **transport** (`Visor.edita_tempo_objectiu` →
+`tempo_map.canvia_bpm_compassos`) encara apliquen el model vell: conserven els
+compassos però mouen la fi i **arrosseguen** els trams següents (l'últim
+absorbeix). S'han de migrar al re-tempo local (`mou_frontera_retempo` /
+`retempo_tram_detectat`); mentres no es faça, són **l'única via que arrossega**.
+La resta de camins ja complixen este apartat.
 
 ## 8. Moure o crear fronteres a mà
 
-- En crear o moure una frontera de tempo/compàs, s'imanta a la **línia de
-  compàs més pròxima**.
-- Si la frontera resultant deixaria un tram interior per davall d'un compàs,
-  **es rebutja** i s'avisa.
-- No es poden crear trams interiors amb compassos fraccionaris.
+- La frontera **la col·loca el músic** damunt del pic de l'ona, d'un marcador o
+  on decidisca. El snap a la graella és **opcional** (es pot apagar) i, si
+  s'usa, és el **snap normal del timeline**, no la graella del tempo vell.
+- **La graella s'ajusta a la frontera**, no al revés: es conserven els
+  compassos dels dos trams i es recalcula el BPM de cada un
+  (`BPM = N · bq · 60 / Δt`) perquè el compàs acabe exactament en el tall.
+- Per construcció, la frontera **sempre cau en una línia de compàs**: no cal
+  imantar-la-hi ni pot quedar-hi un compàs fraccionari.
+- Es **rebutja** i s'avisa si un tram interior quedaria per davall d'un compàs
+  (`FRONTERA_MIN_S` a cada veí) o si algun BPM eixiria de la banda
+  `BPM_EDIT_MIN/MAX`.
+- El gest és **local**: cap altre tram no es mou i els marcadors humans lligats
+  a la frontera **viatgen amb ella**.
 
 ## 9. Detecció de BPM dins d'un tram
 
 - Si hi ha un **tram de tempo/compàs seleccionat**, la detecció analitza
-  **només l'àudio d'eixe tram** i n'estima el BPM.
+  **només l'àudio d'eixe tram** i n'estima el BPM de referència.
 - El **downbeat del tram és el seu inici** (el primer atac); no cal detectar-lo
   a part.
-- El BPM detectat s'aplica amb l'opció A (compassos enters, arrossegament de
-  fronteres, últim absorbeix).
+- En un tram delimitat per marcadors, **Δt és fix**: el BPM detectat només
+  serveix per a escollir quants compassos hi caben —
+  `N = round(Δt · BPM_ref / (bq · 60))`, mínim 1 — i s'aplica el **BPM derivat
+  exacte** (`N · bq · 60 / Δt`) que clava les barres entre els dos punts.
+- **La fi del tram no es mou**, i els trams següents tampoc: si el BPM derivat
+  cau fora de `BPM_EDIT_MIN/MAX` o el tram no admet cap compàs sencer, s'avisa
+  en comptes d'aplicar-lo.
 - S'aplica **directament**, com una sola operació de desfer, amb un missatge
   clar del BPM detectat.
 - Si no hi ha cap tram de tempo seleccionat, la detecció global existent es
@@ -118,9 +153,9 @@ Quan es canvia el BPM o el compàs d'un tram seleccionat:
 ## 12. Resum d'una frase
 
 **Els segons manen per a l'àudio; els trams de tempo/compàs manen per a la
-graella; els trams interiors tenen compassos enters; canviar el BPM conserva
-els compassos i arrossega les fronteres; i el primer inici i l'últim final són
-les úniques excepcions.**
+graella; els trams interiors tenen compassos enters; el punter fixa Δt, els
+compassos es conserven i el BPM en deriva (ajust local, sense arrossegar els
+trams següents); i el primer inici i l'últim final són les úniques excepcions.**
 
 ## 13. Com s'aplica
 
@@ -130,14 +165,23 @@ les úniques excepcions.**
   compàs**: no representen cap canvi musical i solen ser duplicats de
   l'anàlisi o de projectes vells. Una partició manual de dos trams iguals es
   respecta mentre s'edita; no es desfà sola.
-- Les **edicions de la GUI** (moure/crear/partir una frontera, canviar
-  BPM/compàs, detectar el BPM d'un tram, el diàleg del mapa) validen o
-  imanten a la línia de compàs. Si el resultat no compleix el contracte,
-  **no es toca res** i s'avisa.
+- Les **edicions de la GUI** que re-temporitzen (moure/crear/partir una
+  frontera, `+1`/`−1`/`×2`/`÷2`, detectar el BPM d'un tram) passen pel
+  **re-tempo local** (`tempo_map.mou_frontera_retempo`,
+  `retempo_tram_detectat`, `canvia_compassos_tram`): conserven els compassos,
+  recalculen el BPM i **no mouen els trams següents**. Si el resultat no
+  compleix el contracte, **no es toca res** i s'avisa.
+- El **diàleg del tram/transport** és l'únic camí que encara arrossega
+  (§7, *deute declarat*): usa `canvia_bpm_compassos`, que conserva els
+  compassos però mou la fi i aplica `_ripple_des_de`/`snap_frontera_compas`.
+  L'**anàlisi guiat** també pot fer servir estes dues funcions perquè crea o
+  reorganitza el mapa des de zero, no per a arrossegar menyspreant els
+  marcadors humans.
 - El backend permissiu serveix per a càrregues i eines internes; el camí
   d'usuari és el que fa complir la regla.
 - Els tests del contracte viuen a `tests/test_tempo_map.py`
-  (`TestCompassosEnters`) i a `tests/test_pipeline.py` (detecció local).
+  (`TestCompassosEnters`), `tests/test_tempo_trams.py` (re-tempo, límits i
+  detecció per trams) i `tests/test_pipeline.py` (detecció local).
 
 ## 14. Sincronització de la vista
 

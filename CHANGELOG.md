@@ -37,6 +37,43 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   desfer) i `tests/test_gui.py` (zona de 8 px). Actualitzat el test de
   «Detecta» de `test_pipeline.py` al contracte nou (90 BPM en 2 s de 3/4).
 
+### Canviat (2026-10-21, 11c) — **contracte de temps/graella** alineat amb el re-tempo
+- **Canvi de regla amb vistiplau explícit de l'operador** (com exigeix el
+  preàmbul de `docs/REGLES_TEMPS_GRID.md`): el document encara descrivia el
+  model antic —snap a la graella vella i *ripple*— mentre el codi ja aplicava el
+  re-tempo des de l'11b. Es reescriuen **§7, §8 i §9**:
+  - **§7 «Canviar el BPM o el compàs d'un tram»**: el re-tempo és **local**.
+    El tram conserva els compassos, la seua durada en surt
+    (`Δt = N · bq · 60 / BPM`), el **veí recalcula el BPM conservant els
+    seus compassos** i **els trams posteriors no es desplacen**. L'últim
+    tram segueix acotat per la fi de la WAV; es rebutja si un interior baixa
+    d'un compàs, si falta espai (`FRONTERA_MIN_S`) o si el BPM surt de
+    `BPM_EDIT_MIN/MAX`.
+  - **§8 «Moure o crear fronteres a mà»**: la frontera la col·loca el músic
+    (snap normal opcional) i **és la graella que s'ajusta**, recalculant els
+    BPMs dels dos costats; la línia de compàs es complix per construcció, no
+    per imantació. Els marcadors lligats a la frontera viatgen amb ella.
+  - **§9 «Detecció de BPM dins d'un tram»**: en un tram delimitat per marcadors
+    **Δt és fix**; el BPM detectat només tria **N**
+    (`N = round(Δt · BPM_ref / (bq · 60))`) i s'aplica el BPM derivat exacte.
+    **La fi del tram no es mou.**
+- **Coherència total del document**: també s'actualitzen el **resum (§12)**,
+  que encara deia «arrossega les fronteres», i **§13**, que deia que totes les
+  edicions «imanten a la línia de compàs»; ara distingix el re-tempo local, el
+  deute declarat del diàleg/transport i l'anàlisi guiat, i afegix
+  `tests/test_tempo_trams.py` a la llista de tests del contracte.
+- **Deute declarat al document** (no és una excepció del contracte): el
+  **diàleg del tram** (`Visor._on_tempo_edit`) i el **transport**
+  (`Visor.edita_tempo_objectiu` → `tempo_map.canvia_bpm_compassos`) encara
+  apliquen el model vell (fi moguda + `_ripple_des_de`, l'últim absorbeix).
+  Queda escrit a §7 i §13 com a únic camí que arrossega, pendent de migrar a
+  `mou_frontera_retempo`/`retempo_tram_detectat`. Així el document no menteix
+  ni deixa zona grisa: diu què és contracte i què és bug pendent.
+- **Intactes**: les **12 regles d'or** (`docs/REGLES_DE_LA_APP.md`) i la **regla
+  de compassos enters** (§4). **Cap canvi de codi ni de tests**: només
+  documentació (`docs/REGLES_TEMPS_GRID.md` + les referències creuades de
+  `docs/README.md` i `docs/EDICIO_OPERACIONS.md` + este `CHANGELOG`).
+
 ### Canviat (2026-10-21, 11b) — **re-tempo**: el ratolí mana sobre el temps
 - **Arrossegar una frontera de BPM/compàs ja no s'imanta a la línia de compàs
   ni arrossega els trams següents**: la jerarquia del mapa s'inverteix

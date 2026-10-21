@@ -40,13 +40,15 @@
 > compàs no reinicia la numeració: el compàs continua i només canvia la seua
 > durada; els canvis de **compàs** (signatura) sí que obrin un compàs nou.
 >
-> **Compassos enters (2026-10-20)**: les fronteres entre trams **interiors** de
-> tempo/compàs cauen en **línies de compàs**, i cada tram interior té un
-> **nombre enter de compassos**. El primer inici i l'últim final de la WAV són
-> les excepcions. Canviar el BPM/compàs d'un tram conserva els seus compassos,
-> mou la seua fi i **arrossega** les fronteres següents (l'últim absorbeix);
-> si no es pot, es rebutja. Crear/moure/partir una frontera s'imanta a la línia
-> de compàs més pròxima. Contracte complet: `docs/REGLES_TEMPS_GRID.md`.
+> **Compassos enters (2026-10-20 · re-tempo 2026-10-21)**: les fronteres entre
+> trams **interiors** de tempo/compàs cauen en **línies de compàs**, i cada tram
+> interior té un **nombre enter de compassos**. El primer inici i l'últim final
+> de la WAV són les excepcions. **Moure una frontera o canviar els compassos
+> (`+1`/`−1`/`×2`/`÷2`) fa re-tempo local**: Δt mana, els compassos dels dos
+> costats es conserven, el BPM en deriva i **els trams següents no es mouen**.
+> Canviar el BPM **pels camps de la barra o pel diàleg del tram** encara
+> arrossega les fronteres (l'últim absorbeix): és un *deute declarat*, no una
+> excepció. Contracte complet: `docs/REGLES_TEMPS_GRID.md` §7–§9.
 >
 > **Clic a un tram de tempo (2026-10-20, paritat #11)**: el clic **selecciona**
 > el tram i posa el cursor **exactament al seu inici** (sense snap: les
@@ -102,7 +104,7 @@
 | 7 | **Reanomenar** | `F2` · doble clic (inline) · llista · *Reanomena (BPM/compàs)…* (diàleg del tram) | ✓ | ✓ | ✓ | **FET** |
 | 8 | **Reanomenar en bloc** | `F2` amb multi-selecció | ✓ | ✓ | — | **FET** |
 | 9 | **Trobar i reemplaçar** | `Ctrl+H` | ✓ | ✓ | — | **FET** |
-| 10 | **Moure un clip / BLOC** | arrossegar el **cos** | ✓ | ✓ | ✓ | **FET** (§6.3). A ③ el cos mou la frontera i s'imanta a la **línia de compàs**; les fronteres següents s'arrosseguen |
+| 10 | **Moure un clip / BLOC** | arrossegar el **cos** | ✓ | ✓ | ✓ | **FET** (§6.3). A ③ el cos mou la frontera amb **re-tempo local** (els compassos dels dos costats es conserven, el BPM en deriva i les fronteres següents **no** es mouen); la guia del drag segueix el punter |
 | 11 | **Moure una marca** (fi = inici del següent) | — | ✓ | ✓ | ✓ | **FET** (camí de la vora) |
 | 12 | **Nudge** (moure una frontera) | `←` / `→` · `Alt+←`/`→` (vora dreta) | ✓ | ✓ | ✓ | **FET** (`←`/`→` mou la frontera del tram; `Alt` la de la dreta) |
 | 13 | **Redimensionar (vores lliures)** | arrossegar la **vora** del clip | ✓ | ✓ | ✓ | **FET**: nucli únic (`redimensiona_clips` + `redimensiona_acord`/`redimensiona_seccio`) i el gest del visor hi enganxat · vores **LLIURES** (§6.6): estirar talla/elimina el veí |
@@ -150,8 +152,8 @@
 
 | # | Operació | GUI | Estat |
 |---|---|---|---|
-| 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | **FET**: amb un tram de tempo seleccionat, els camps editen **eixe tram** (2B); si no, el transport. L'offset és global. Canviar BPM/compàs conserva els compassos enters i arrossega les fronteres (opció A); si no es pot, es rebutja |
-| 36b | **Tap tempo** | `T` · botó **TAP** | **FET**: al tram de tempo seleccionat (o al primer); **una sola operació d'undo per sessió**; mentre sona, crea el **loop** del tram objectiu i alinea el cursor. Amb un tram seleccionat, el botó **Detecta** analitza només eixe tram i aplica el BPM directament |
+| 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | **FET**: amb un tram de tempo seleccionat, els camps editen **eixe tram** (2B); si no, el transport. L'offset és global. Arrossegar una frontera o `+1/−1/×2/÷2` fa **re-tempo local** (Δt mana, els compassos es conserven, el BPM en deriva i cap altre tram no es mou). Canviar el BPM **pels camps de la barra o pel diàleg del tram** encara conserva els compassos enters però **arrossega les fronteres** (*deute declarat*, `REGLES_TEMPS_GRID.md` §7); si no es pot, es rebutja |
+| 36b | **Tap tempo** | `T` · botó **TAP** | **FET**: al tram de tempo seleccionat (o al primer); **una sola operació d'undo per sessió**; mentre sona, crea el **loop** del tram objectiu i alinea el cursor. Amb un tram seleccionat, el botó **Detecta** analitza només eixe tram i n'ajusta el BPM **sense moure les fronteres** (el detectat tria N i Δt mana) |
 | 37 | **Analitzar** (acords + estructura) | `F5` · *Analitza* | **FET** |
 | 38 | **Opcions d'anàlisi** | *Paràmetres…* · *Inclou estructura* | **FET** |
 | 39 | **Compàs 1** (detectar / marcar) | *Analitza ▸* | **FET** |

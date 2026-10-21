@@ -13,7 +13,7 @@
 | **`../README.md`** | Visió general, instal·lació i «estat actual». |
 | **`../DEVELOPING.md`** | Entorn de desenvolupament i mapa del codi. |
 | **`REGLES_DE_LA_APP.md`** | 🔴 **Les regles d'or (invariants)** — llegir **abans** de tocar codi. |
-| **`REGLES_TEMPS_GRID.md`** | 🕒 **Contracte de temps, compàs i graella**: segons vs compassos, trams interiors amb compassos enters, opció A, detecció de BPM per tram. |
+| **`REGLES_TEMPS_GRID.md`** | 🕒 **Contracte de temps, compàs i graella**: segons vs compassos, trams interiors amb compassos enters, **re-tempo local** (Δt mana, els compassos es conserven i el BPM en deriva) i detecció de BPM per tram. |
 | **`ESQUEMA_UI.md`** (`.html` · `.svg`) | Esquema visual de la interfície: zones, icones reals i colors. |
 
 ## Funcionament de l'app
