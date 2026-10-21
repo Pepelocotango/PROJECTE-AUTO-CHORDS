@@ -11,33 +11,53 @@ from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QLabel, QPushButton,
                              QStackedWidget, QVBoxLayout, QWidget)
 
 PASSOS = (
-    ("1 · Obri l'àudio",
-     "Prem <b>Obre àudio…</b> i tria el tema. L'app el copia dins del seu "
-     "projecte (així el pots moure de lloc quan vulgues).<br><br>"
-     "El BPM i el compàs de dalt són la <b>referència</b>: si no els saps, "
-     "deixa 120 i 4/4 — els marcadors ja ajustaran el mapa."),
-    ("2 · Escolta i marca",
-     "Prem <b>Espai</b> i, cada vegada que comence un compàs, prem "
-     "<b>+</b> (o el botó <b>＋ Marker</b>).<br><br>"
-     "El cursor del visor es mou amb la música, així que els marcadors cauen "
-     "on tu els sents. Si t'equivoques: <b>Ctrl+Z</b> o "
-     "<i>Analitza ▸ Esborra l'últim marcador</i>."),
-    ("3 · Què fa un marcador",
-     "Cada marcador crea <b>un inici de clip a BPM/compàs</b> i "
-     "<b>un inici de clip a estructura</b> en eixe instant.<br><br>"
-     "Després ja és <b>independent</b>: si mous o esborres eixos clips, el "
-     "marcador es queda on el vas posar (es pinten com a ratlles grogues)."),
-    ("4 · Ajusta el mapa",
-     "Amb els marcadors posats, toca el <b>BPM</b> i el <b>compàs</b> de dalt, "
-     "o arrossega les <b>vores</b> dels blocs de la pista de BPM/compàs "
-     "(s'imanten a la línia de compàs).<br><br>"
-     "El carril d'estructura també s'edita igual: doble clic per renombrar, "
-     "vores per moure, botó dret per a més opcions."),
-    ("5 · Acords i exporta",
-     "Quan el mapa ja quadra, prem <b>Analitza l'àudio</b> (F5): els acords "
-     "s'alineen amb la graella dels marcadors.<br><br>"
-     "Després: <b>Exporta WAV's</b> (un fitxer per acord) o <b>Exporta la "
-     "partitura</b>. Tot quede al projecte: pots tancar i tornar demà."),
+    ("1 · Obri l'àudio i dona una pista",
+     "Prem <b>Obre àudio…</b> i tria la cançó. L'app la copia dins del "
+     "projecte (pots moure-la de lloc quan vulgues).<br><br>"
+     "A dalt, indica el <b>compàs</b> (per defecte <b>4/4</b>) i dona-li un "
+     "<b>BPM orientatiu</b>:<br>"
+     "• Si saps el tempo aproximat, escriu-lo a la casella.<br>"
+     "• Si no el saps, prem <b>TAP</b> (o la tecla <b>T</b>) 4 vegades "
+     "seguint el ritme, o prem <b>🎯 Detecta</b> per a una estimació "
+     "ràpida.<br><br>"
+     "No cal que siga exacte: només és la referència perquè l'app entenga "
+     "les <b>frases musicals</b>."),
+    ("2 · Marca el compàs 1",
+     "Moltes cançons tenen uns segons de silenci o una anacrusi al "
+     "principi.<br><br>"
+     "1. Posa el cursor vermell just al <b>primer cop fort</b> on comença el "
+     "ritme de la cançó.<br>"
+     "2. Prem el botó <b>📍</b> (<i>Compàs 1 al cursor</i>)."),
+    ("3 · Escolta i marca les parts",
+     "Prem <b>Espai</b> per escoltar. Cada vegada que comence una "
+     "<b>secció nova</b> o una <b>frase musical</b> (cada 4, 8 o 16 "
+     "compassos), prem <b>+</b> (o el botó <b>＋ Marker</b>).<br><br>"
+     "<b>No cal marcar cada compàs!</b> L'app calcula quants compassos "
+     "enters hi ha en cada tram i en dedueix el <b>BPM exacte</b> perquè la "
+     "graella quede perfectament clavada.<br><br>"
+     "Si t'equivoques prement <b>+</b>, desfés de seguida amb "
+     "<b>Ctrl+Z</b>."),
+    ("4 · Ajusta els talls a l'ona",
+     "Si un marcador no ha caigut exactament damunt del cop de "
+     "bateria:<br><br>"
+     "1. Fes <b>zoom</b> amb la roda del ratolí per veure bé l'ona.<br>"
+     "2. <b>Arrossega la vora</b> del tram fins al pic exacte del "
+     "so.<br><br>"
+     "El marcador es mou amb la vora i el <b>BPM es recalcula sol</b>: tu "
+     "manes damunt de l'ona, l'app fa els números."),
+    ("5 · Revisa i analitza els acords",
+     "Si en algun tram l'app ha deduït 8 compassos però eren 9 (o al "
+     "revés):<br>"
+     "• Fes <b>clic dret</b> sobre el tram de tempo i tria <b>Afegir 1 "
+     "compàs (+1)</b>, <b>Restar 1 compàs (−1)</b> o <b>Doblar / Dividir "
+     "compassos (×2 / ÷2)</b>.<br>"
+     "Els <b>segons queden quiets</b> i el BPM s'ajusta a l'acte.<br><br>"
+     "Quan el mapa de tempo quadre amb la música:<br>"
+     "• Prem <b>Analitza l'àudio</b> (<b>F5</b>): al diàleg pots desactivar "
+     "<b>BPM</b> i <b>Estructura</b> si només vols els acords de "
+     "Chordino.<br>"
+     "• Prem <b>Exporta WAV's</b> per generar els clips llestos per al teu "
+     "DAW."),
 )
 
 
@@ -48,7 +68,7 @@ class DialegGuiaRapida(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Anàlisi guiat — guia ràpida")
         self.setModal(True)
-        self.resize(620, 380)
+        self.resize(680, 470)
         v = QVBoxLayout(self)
 
         self._pila = QStackedWidget()

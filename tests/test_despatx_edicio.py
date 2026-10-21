@@ -29,7 +29,7 @@ from PyQt5.QtGui import QKeyEvent  # noqa: E402
 from PyQt5.QtTest import QTest  # noqa: E402
 from PyQt5.QtWidgets import QApplication  # noqa: E402
 
-from app import main as app_main, pipeline  # noqa: E402
+from app import main as app_main, pipeline, tempo_map  # noqa: E402
 from app import visor as visor_mod  # noqa: E402
 from app import timeline_base as tb  # noqa: E402
 from app.timeline import TimelineView  # noqa: E402
@@ -438,13 +438,19 @@ class TestFase2Gestos(_Base):
             tl._tempo_lane.mouseMoveEvent(_EvItem(lx(12.0)))
             tl._tempo_lane.mouseReleaseEvent(_EvItem(lx(12.0)))
             tl.editFinished.emit()
-            # La frontera s'ha mogut a 12; el final del tram continua a 30 i
-            # cada costat conserva el seu BPM (90 el segon, 120 el primer).
+            # La frontera s'ha mogut a 12; el final del tram continua a 30.
             self.assertAlmostEqual(float(v.tempo_trams[0][1]), 12.0, places=2)
             self.assertAlmostEqual(float(v.tempo_trams[1][0]), 12.0, places=2)
             self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=2)
-            self.assertEqual(float(v.tempo_trams[1][2]), 90.0)
-            self.assertEqual(float(v.tempo_trams[0][2]), 120.0)
+            # Re-tempo (docs/FLUX DE TEMPO VARIABLE.md §2): els COMPASSOS es
+            # conserven (5 a l'esquerre i 10 a la dreta) i el BPM s'adapta.
+            for i, n in ((0, 5), (1, 10)):
+                tr = v.tempo_trams[i]
+                self.assertAlmostEqual(
+                    (float(tr[1]) - float(tr[0])) /
+                    tempo_map.durada_compas(tr[2], tr[3], tr[4]), n, places=4)
+            self.assertAlmostEqual(float(v.tempo_trams[0][2]), 100.0, places=4)
+            self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=4)
         finally:
             v.close()
 
@@ -841,6 +847,87 @@ def tearDownModule():
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import _qt_neteja
     _qt_neteja.processa_esborrats()
+
+
+class TestCompassosTempo(_Base):
+    """Correcció MÈTRICA discreta del carril ③ (`docs/FLUX DE TEMPO VARIABLE.md`).
+
+    `+1`/`−1`/`×2`/`÷2` canvien N mantenint els SEGONS: el BPM s'adapta i cap
+    veí no es mou. Passa pel despatx únic (`executa_edicio("compassos")`).
+    """
+
+    def setUp(self):
+        self.v = _visor()
+        self.v.aplica_tempo_trams([(0.0, 8.0, 120.0, 4, 4),
+                                   (8.0, 20.0, 60.0, 3, 4),
+                                   (20.0, 30.0, 90.0, 4, 4)])
+        self.abans = [tuple(t) for t in self.v.tempo_trams]
+
+    def tearDown(self):
+        self.v.close()
+
+    def _despatxa(self, **kw):
+        return self.v.executa_edicio("compassos", "tempo", 0, **kw)
+
+    def test_mes_menys_i_doblar(self):
+        for kw, bpm in (({"delta_compassos": 1}, 150.0),
+                        ({"delta_compassos": -1}, 90.0),
+                        ({"factor": 2.0}, 240.0),
+                        ({"factor": 0.5}, 60.0)):
+            self.v.aplica_tempo_trams(self.abans)
+            self.assertTrue(self._despatxa(**kw), kw)
+            tr = self.v.tempo_trams[0]
+            # Els segons no es mouen; el BPM s'adapta.
+            self.assertAlmostEqual(float(tr[0]), 0.0, places=6)
+            self.assertAlmostEqual(float(tr[1]), 8.0, places=6)
+            self.assertAlmostEqual(float(tr[2]), bpm, places=4)
+            # Els veïns, intactes.
+            self.assertEqual([tuple(t) for t in self.v.tempo_trams[1:]],
+                             self.abans[1:], kw)
+
+    def test_les_claus_del_menu_arriben_al_despatx(self):
+        self.assertTrue(self.v._executa_contextual(
+            "tempo", 0, 3.0, "compas_mes1"))
+        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]), 150.0,
+                               places=4)
+        self.v.aplica_tempo_trams(self.abans)
+        self.assertTrue(self.v._executa_contextual(
+            "tempo", 0, 3.0, "compas_div2"))
+        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]), 60.0,
+                               places=4)
+
+    def test_es_desfeu_en_un_sol_pas(self):
+        self._despatxa(delta_compassos=1)
+        self.assertNotEqual([tuple(t) for t in self.v.tempo_trams], self.abans)
+        self.v.undo()
+        self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)
+
+    def test_sense_objectiu_usa_la_seleccio(self):
+        self.v.timeline.select_clip("tempo", 1)
+        self.assertTrue(self.v.executa_edicio("compassos",
+                                              delta_compassos=1))
+        # 12 s amb 3/4 a 60 = 4 compassos → 5 compassos en 12 s = 75 BPM.
+        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]), 75.0, places=4)
+        self.assertAlmostEqual(float(self.v.tempo_trams[1][0]), 8.0, places=6)
+        self.assertAlmostEqual(float(self.v.tempo_trams[1][1]), 20.0, places=6)
+
+    def test_no_accepta_altres_carrils(self):
+        self.assertFalse(self.v.executa_edicio("compassos", "chord", 0,
+                                               delta_compassos=1))
+        self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)
+
+    def test_la_guia_del_drag_no_s_imanta_a_la_linia_de_compas(self):
+        """§4.B: la nansa segueix el punter (l'Snap normal del timeline)."""
+        tl = self.v.timeline
+        antic = tl._snap_on
+        try:
+            tl._snap_on = False
+            self.assertAlmostEqual(tl._snap_tempo_guia(0, "fi", 5.123),
+                                   5.123, places=6)
+            self.assertAlmostEqual(tl._snap_tempo_guia(1, "ini", 17.777),
+                                   17.777, places=6)
+        finally:
+            tl._snap_on = antic
 
 
 if __name__ == "__main__":

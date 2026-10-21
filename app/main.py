@@ -342,7 +342,7 @@ class Feina(QThread):
     feta = pyqtSignal(bool, str)
 
     def __init__(self, wav, sortida, bpm, bpb, offset, amb_estructura,
-                 tempo_fix=True, opcions=None):
+                 tempo_fix=True, opcions=None, amb_bpm=True, amb_acords=True):
         super().__init__()
         # CRU de l'anàlisi EN MEMÒRIA: es desa dins el `.acproj` en acabar
         # (decisió 2026-10-19: ni `analisi/` ni `segments.csv` al disc).
@@ -357,19 +357,60 @@ class Feina(QThread):
         self.amb_estructura = amb_estructura
         self.tempo_fix = tempo_fix
         self.opcions = opcions or {}
+        # QUÈ S'ANALITZA (3 etapes independents, decisió 21-10-2026): el que
+        # està desactivat NO es toca — es conserva el model que ja hi ha.
+        self.amb_bpm = bool(amb_bpm)
+        self.amb_acords = bool(amb_acords)
+        #: BPM detectat en esta passada (None = no s'ha detectat o no tocava)
+        self.bpm_detectat = None
 
     def log(self, t):
         self.missatge.emit(t)
 
+    def _detecta_bpm(self, durada_wav=None):
+        """BPM del tema **sencer** amb les opcions del diàleg (motor + rang).
+
+        Retorna el número o `None`. No toca res: qui l'aplica és la Finestra
+        (camp del transport) en acabar el fil.
+        """
+        b = self.opcions.get("bpm") or {}
+        try:
+            return pipeline.detecta_bpm(
+                self.wav, self.log,
+                bpm_min=b.get("min"), bpm_max=b.get("max"),
+                preferit=(b.get("pref_min"), b.get("pref_max")),
+                motor=b.get("motor", "nostre"))
+        except Exception as e:  # noqa: BLE001
+            self.log(f"BPM: ERROR a la detecció ({e})")
+            return None
+
     def run(self):
-        """ANALITZA: nomes extreu els CSVs. Les wavs es generen a l'EXPORTAR.
+        """ANALITZA: les **3 etapes** (BPM · acords · estructura), cadascuna
+        activable/desactivable a les Opcions. Les wavs es generen a l'EXPORTAR.
 
         Disseny (decisio de l'operador): les `wavs_acords/`/`wavs_estructura/`
         no tenen cap paper en la visualitzacio ni l'edicio; son l'ULTIM pas.
         Ací només s'escriuen els CSV del MODEL (`acords.csv`,
         `estructura_ABC.csv`); el CRU es queda en memòria i es desa dins el
         `.acproj`. La guia i les wavs les fa `pipeline.exporta_total`.
+
+        El que està **desactivat no es toca**: es conserva el model actual (el
+        BPM del transport, els acords o les seccions que ja hi ha).
         """
+        passos = []
+        if self.amb_bpm:
+            passos.append("bpm")
+        if self.amb_acords:
+            passos.append("acords")
+        if self.amb_estructura:
+            passos.append("estructura")
+        n = len(passos) or 1
+        comptador = {"i": 0}
+
+        def _pas(text):
+            comptador["i"] += 1
+            return f"{comptador['i']}/{n} {text}"
+
         try:
             os.makedirs(self.sortida, exist_ok=True)
             csv_ac = os.path.join(self.sortida, "acords.csv")
@@ -378,31 +419,54 @@ class Feina(QThread):
                 durada_wav = float(pipeline.wav_info(self.wav)["durada"])
             except Exception:  # noqa: BLE001
                 durada_wav = None
-            self.log("1/3 extreu acords (Chordino)...")
-            pipeline.extract_chords(self.wav, csv_ac, self.log,
-                                    params=(self.opcions.get("chords") or None))
-            # CRU en memòria: el resultat de Chordino ABANS de netejar-lo
-            # (es desa al `.acproj` com a caché; l'edició no el toca).
-            self.raw_chords = _llegeix_cru_acords(csv_ac)
-            # Neteja posterior dels acords (opcions del dialeg).
-            cl = self.opcions.get("clean") or {}
+
+            # ── 1) BPM (nou: «Analitza» també el detecta) ─────────────────
+            if self.amb_bpm:
+                self.log(_pas("detecta el BPM..."))
+                self.bpm_detectat = self._detecta_bpm(durada_wav)
+                if self.bpm_detectat:
+                    self.bpm = float(self.bpm_detectat)
+                    self.log(f"BPM detectat: {self.bpm:.3f} "
+                             "(s'aplicarà al transport)")
+                else:
+                    self.log("BPM: la detecció no ha donat cap número; es "
+                             "conserva el del transport")
+            else:
+                self.log("BPM: OMÈS (es conserva el del transport)")
+            self.progres.emit(20)
+
+            # ── 2) acords ─────────────────────────────────────────────────
             beat = (60.0 / float(self.bpm)) if self.bpm else 0.0
-            if cl:
-                self.log("1b/3 neteja dels acords...")
-                postproc.processa_acords_csv(
-                    csv_ac,
-                    # `durada_min` s'expressa en TEMPS → a segons amb el BPM
-                    durada_min=float(cl.get("durada_min", 0.0)) * beat,
-                    fusiona_iguals=bool(cl.get("fusiona_iguals", True)),
-                    sense_baix=bool(cl.get("sense_baix", False)),
-                    reduir=bool(cl.get("reduir", False)),
-                    snap=bool(cl.get("snap", False)),
-                    bpm=self.bpm, bpb=self.bpb, offset=self.offset,
-                    divisio=int(cl.get("divisio", 1)), log=self.log,
-                    durada=durada_wav)
-            self.progres.emit(50)
+            if self.amb_acords:
+                self.log(_pas("extreu acords (Chordino)..."))
+                pipeline.extract_chords(
+                    self.wav, csv_ac, self.log,
+                    params=(self.opcions.get("chords") or None))
+                # CRU en memòria: el resultat de Chordino ABANS de netejar-lo
+                # (es desa al `.acproj` com a caché; l'edició no el toca).
+                self.raw_chords = _llegeix_cru_acords(csv_ac)
+                # Neteja posterior dels acords (opcions del dialeg).
+                cl = self.opcions.get("clean") or {}
+                if cl:
+                    self.log("neteja dels acords...")
+                    postproc.processa_acords_csv(
+                        csv_ac,
+                        # `durada_min` s'expressa en TEMPS → a segons amb el BPM
+                        durada_min=float(cl.get("durada_min", 0.0)) * beat,
+                        fusiona_iguals=bool(cl.get("fusiona_iguals", True)),
+                        sense_baix=bool(cl.get("sense_baix", False)),
+                        reduir=bool(cl.get("reduir", False)),
+                        snap=bool(cl.get("snap", False)),
+                        bpm=self.bpm, bpb=self.bpb, offset=self.offset,
+                        divisio=int(cl.get("divisio", 1)), log=self.log,
+                        durada=durada_wav)
+            else:
+                self.log("acords: OMESOS (es conserva el model actual)")
+            self.progres.emit(55)
+
+            # ── 3) estructura ─────────────────────────────────────────────
             if self.amb_estructura:
-                self.log("2/3 extreu estructura (qm-segmenter)...")
+                self.log(_pas("extreu estructura (qm-segmenter)..."))
                 tmpd = tempfile.mkdtemp(prefix="ac_qm_")
                 try:
                     seg = os.path.join(tmpd, "seg.csv")
@@ -413,8 +477,8 @@ class Feina(QThread):
                     self.raw_segments = _llegeix_cru_segments(seg)
                 finally:
                     pipeline.esborra_tmp([tmpd])
-                self.progres.emit(75)
-                self.log("3/3 ABC (estructura)...")
+                self.progres.emit(80)
+                self.log(_pas("ABC (estructura)..."))
                 abc = os.path.join(self.sortida, "estructura_ABC.csv")
                 _est = self.opcions.get("structure") or {}
                 compas = beat * max(1, int(self.bpb or 4))
@@ -425,6 +489,8 @@ class Feina(QThread):
                                  durada_min=float(_est.get("durada_min", 0.0)) * compas,
                                  fusiona_iguals=bool(_est.get("fusiona_iguals", True)),
                                  durada=durada_wav)
+            else:
+                self.log("estructura: OMESA (es conserva la que hi ha)")
             self.analisi = {
                 "data": time.strftime("%Y-%m-%dT%H:%M:%S"),
                 "durada": durada_wav,
@@ -650,7 +716,9 @@ class Finestra(QMainWindow):
         # es una ACCIO commutable al menu Analitza (la funcio es la mateixa).
         self.amb_est = QAction("Inclou estructura", self)
         self.amb_est.setCheckable(True)
-        self.amb_est.setChecked(True)
+        # Es recorda entre sessions (Opcions → «Només els acords»).
+        self.amb_est.setChecked(bool((self.opcions.get("analisi") or {})
+                                     .get("estructura", True)))
         self.amb_est.setToolTip("Genera la jerarquia de seccions i l’ABC de l’estructura del tema.")
 
         # "Inclou la partitura": accio commutable al menu Fitxer. Per defecte NO
@@ -1032,6 +1100,8 @@ class Finestra(QMainWindow):
         # --- Analitza ---
         m = mb.addMenu("&Analitza")
         self._act(m, "Analitza l'àudio", "F5", lambda: self.executa())
+        self._act(m, "Analitza només els acords…", "F6",
+                  lambda: self.executa(nomes_acords=True))
         m.addSeparator()
         self._act(m, "Detecta el compàs 1 automàticament", None,
                     lambda: self._detecta_compas1())
@@ -2036,6 +2106,11 @@ class Finestra(QMainWindow):
             self.opcions = dlg.opcions()
             dialegs.desa_opcions(self.opcions)
             self._marca_dirty()
+            # La casella «Només els acords» i l'acció «Inclou estructura» són
+            # el MATEIX estat: es sincronitzen (una sola font de veritat).
+            self.amb_est.setChecked(
+                bool((self.opcions.get("analisi") or {})
+                     .get("estructura", True)))
         b = self.opcions.get("bpm", {})
         vr = getattr(self, "visor_ref", None)
         kind, idx = vr.seleccio_activa() if vr is not None else (None, -1)
@@ -3105,6 +3180,14 @@ class Finestra(QMainWindow):
             except (TypeError, AttributeError, RuntimeError):
                 pass
             visor.tempoCanviat.connect(self._sincronitza_temps_del_visor)
+            try:
+                visor.velocitatCanviada.disconnect(
+                    self._sincronitza_velocitat)
+            except (TypeError, AttributeError, RuntimeError):
+                pass
+            visor.velocitatCanviada.connect(self._sincronitza_velocitat)
+            self._sincronitza_velocitat(
+                getattr(visor, "velocitat", 1.0))
             self._on_loop_state(getattr(visor, "loop_on", False))
             self.visor_widget = visor.centralWidget()
             self.visor_widget.setParent(self._stack)
@@ -3728,6 +3811,21 @@ class Finestra(QMainWindow):
         else:
             getattr(vr, nom)(*args)
 
+    def _sincronitza_velocitat(self, f):
+        """Posa el selector de velocitat de la barra al valor del visor."""
+        c = getattr(self, "cmb_vel_tb", None)
+        if c is None:
+            return
+        try:
+            i = c.findData(round(float(f), 4))
+        except (TypeError, ValueError):
+            return
+        if i < 0:
+            return
+        c.blockSignals(True)
+        c.setCurrentIndex(i)
+        c.blockSignals(False)
+
     def _crea_transport(self, bar):
         def boto(text, tip, accio, checkable=False, icona=None):
             b = QPushButton("" if icona else text)
@@ -3776,6 +3874,22 @@ class Finestra(QMainWindow):
         self.tb_mut.setObjectName("mute")
         self.tb_mut.clicked.connect(
             lambda: self._acc_visor("set_mut", self.tb_mut.isChecked()))
+        # Velocitat de reproducció (0,5–3×, to mantingut): el visor la prepara
+        # i la barra només la manega; `velocitatCanviada` manté els dos
+        # selectors sincronitzats.
+        self.cmb_vel_tb = QComboBox()
+        for v in (0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0):
+            self.cmb_vel_tb.addItem(f"{v:g}×", float(v))
+        self.cmb_vel_tb.setCurrentIndex(2)
+        self.cmb_vel_tb.setMaximumWidth(80)
+        self.cmb_vel_tb.setToolTip(
+            "Velocitat de reproducció (0,5–3×) amb el to mantingut (ffmpeg "
+            "atempo, com el VLC). El cursor, el loop i el metrònom es mantenen "
+            "alineats; el primer cop a cada velocitat pot trigar uns segons.")
+        self.cmb_vel_tb.currentIndexChanged.connect(
+            lambda _i: self._acc_visor("set_velocitat",
+                                       self.cmb_vel_tb.currentData()))
+        bar.addWidget(self.cmb_vel_tb)
         bar.addSeparator()
         # metrònom: només en mode BPM · compàs (vegeu _actualitza_metro_ui)
         self.b_metro = QPushButton()
@@ -3941,7 +4055,16 @@ class Finestra(QMainWindow):
         box.exec_()
         return box.clickedButton() is b_go
 
-    def executa(self, pregunta=True):
+    def executa(self, pregunta=True, nomes_acords=False):
+        """Analitza l'àudio (BPM · acords · estructura, segons les Opcions).
+
+        Amb `nomes_acords` (F6) només es passen els acords: ni BPM ni
+        estructura. Sense, mana el que hi haja a les 3 pestanyes del diàleg.
+        """
+        if nomes_acords:
+            self.amb_est.setChecked(False)
+            self.opcions["analisi"] = {"bpm": False, "acords": True,
+                                       "estructura": False}
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
             self.avisa("Auto Chords",
@@ -3963,6 +4086,11 @@ class Finestra(QMainWindow):
             self.opcions = dlg.opcions()
             dialegs.desa_opcions(self.opcions)
             self._marca_dirty()
+            # La casella «Només els acords» i l'acció «Inclou estructura» són
+            # el MATEIX estat: es sincronitzen (una sola font de veritat).
+            self.amb_est.setChecked(
+                bool((self.opcions.get("analisi") or {})
+                     .get("estructura", True)))
             # AVÍS OBLIGATORI: re-analitzar re-escriu els acords/estructura (i
             # les edicions manuals) i reinicia el desfer → no es recupera.
             if not self._confirma_reanalisi():
@@ -3980,11 +4108,14 @@ class Finestra(QMainWindow):
         self.b_marker.setEnabled(False)
         self.b_export.setEnabled(False)
         self.b_export_part.setEnabled(False)
+        _ana = self.opcions.get("analisi") or {}
         self.feina = Feina(wav, self.sortida, self._bpm_val(),
                            self._bpb_val(), self._offset_val(),
-                           self.amb_est.isChecked(),
+                           bool(_ana.get("estructura", True)),
                            self.tempo_fix.isChecked(),
-                           opcions=self.opcions)
+                           opcions=self.opcions,
+                           amb_bpm=bool(_ana.get("bpm", True)),
+                           amb_acords=bool(_ana.get("acords", True)))
         self.feina.missatge.connect(self.registra)
         self.feina.progres.connect(self.barra.setValue)
         self.feina.feta.connect(self.acabada)
@@ -4020,12 +4151,38 @@ class Finestra(QMainWindow):
             wav = self.wav_edit.text().strip()
             if wav and os.path.isfile(wav):
                 self._carrega_visor(wav)
+            # BPM detectat per l'anàlisi: al transport (tram 0) DESPRÉS de
+            # carregar el visor, que si no el sobreescriu amb el del projecte.
+            b_det = getattr(self.feina, "bpm_detectat", None)
+            if b_det:
+                self._aplica_bpm_detectat(float(b_det))
         else:
             self.b_export.setEnabled(False)
             self.b_export_part.setEnabled(False)
             self.registra(f"ERROR: {dada}")
             self.log_dock.setVisible(True)    # en cas d'error, obrim el log
             self.avisa_crit("Auto Chords", dada)
+
+    def _aplica_bpm_detectat(self, b):
+        """Posa al transport el BPM que ha detectat «Analitza» (etapa BPM).
+
+        Si el mapa de tempo té **més d'un tram**, no s'hi toca res: canviar-ne
+        només el primer trencaria el contracte de compassos enters dels trams
+        (regla de temps) — per a eixe cas hi ha «Detecta el tempo per trams».
+        """
+        b = float(b)
+        self.bpm.setText(f"{b:.3f}")
+        self._marca_dirty()
+        self.registra(f"BPM detectat: {b:.3f}")
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        trams = list(getattr(vr, "tempo_trams", []) or [])
+        if len(trams) > 1:
+            self.registra(f"BPM detectat: no s'aplica al mapa ({len(trams)} "
+                          "trams); fes servir «Detecta el tempo per trams»")
+            return
+        self._aplica_parametres_temps()
 
     def _prepara_export(self):
         """Valida i calcula els arguments de l'export (NOMÉS al fil de UI).

@@ -4,9 +4,13 @@
 
 Un **marcador** és només un instant marcat per l'operador mentre escolta
 (tecla `+` o botó «Afegeix marker»). Quan es crea, **talla** el carril de
-BPM/compàs i el d'estructura en eixe punt (comença un clip nou a cada un); a
-partir d'ací el marcador és **independent**: si després mous o esborres eixos
-clips, el marcador es queda on el vas posar.
+BPM/compàs i el d'estructura en eixe punt (comença un clip nou a cada un).
+
+Des del 21-10-2026 (`docs/FLUX DE TEMPO VARIABLE.md` §4.C) el marcador
+**viatja amb la seua frontera de tempo**: si s'arrossega la frontera, el
+marcador s'hi mou; si la frontera desapareix (eliminar o fusionar el tram), el
+marcador **s'esborra**. Els clips d'estructura, en canvi, continuen sent
+independents.
 
 Este mòdul és **pur** (sense Qt ni fitxers): llista de temps ordenada, amb
 alta, baixa i consulta. La persistència i el model viu són a `pipeline` i

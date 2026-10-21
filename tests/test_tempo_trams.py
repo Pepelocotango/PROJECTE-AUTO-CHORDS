@@ -251,5 +251,135 @@ class PistesTempoTests(unittest.TestCase):
             self.assertIn((118.0, "acid"), pistes, pistes)
 
 
+class RetempoTests(unittest.TestCase):
+    """Re-tempo pel ratolí (docs/FLUX DE TEMPO VARIABLE.md).
+
+    Llei de fons: el **ratolí** fixa Δt, el nombre de compassos N de cada tram
+    es conserva i el **BPM** es recalcula. Contrari del flux vell (snap a la
+    línia de compàs), on qui manava era el validador i el punter es descartava.
+    """
+
+    DU = 32.0
+
+    def _trams(self, bpm_a=120.0, bpm_b=120.0):
+        b = tempo_map.durada_compas(bpm_a, 4, 4)
+        tall = b * 8                      # 8 compassos de 120 BPM = 16 s
+        return [(0.0, tall, bpm_a, 4, 4), (tall, self.DU, bpm_b, 4, 4)]
+
+    def test_retempo_mou_la_frontera_i_recalcula_els_dos_bpm(self):
+        out = tempo_map.mou_frontera_retempo(self._trams(), 1, 18.0, self.DU)
+        self.assertAlmostEqual(out[0][1], 18.0, places=6)
+        self.assertAlmostEqual(out[1][0], 18.0, places=6)
+        # N es conserva a TOTS dos costats: 8 compassos cada un (§6.1 del doc).
+        self.assertAlmostEqual(
+            (18.0 - 0.0) / tempo_map.durada_compas(out[0][2], 4, 4), 8.0,
+            places=4)
+        self.assertAlmostEqual(
+            (self.DU - 18.0) / tempo_map.durada_compas(out[1][2], 4, 4), 8.0,
+            places=4)
+        # Cobertura exacta: de 0 a la fi de la WAV, sense forats.
+        self.assertAlmostEqual(out[0][0], 0.0, places=9)
+        self.assertAlmostEqual(out[1][1], self.DU, places=9)
+        self.assertAlmostEqual(out[0][1], out[1][0], places=9)
+        # Xifres del document: 106,67 i 137,14 BPM.
+        self.assertAlmostEqual(out[0][2], 106.6667, places=3)
+        self.assertAlmostEqual(out[1][2], 137.1429, places=3)
+
+    def test_la_frontera_cau_sempre_en_linia_de_compas(self):
+        # El validador de compassos enters ha d'acceptar qualsevol drag.
+        trams = self._trams()
+        # Vàlids: N=8 a cada costat amb Δt dins la banda 30–350 BPM.
+        for t in (9.123, 15.999, 16.001, 24.4):
+            out = tempo_map.mou_frontera_retempo(trams, 1, t, self.DU)
+            self.assertEqual(len(out), 2)
+            self.assertAlmostEqual(out[0][1], t, places=6)
+
+    def test_no_mou_cap_altre_tram(self):
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 20.0, 120.0, 4, 4),
+                 (20.0, self.DU, 90.0, 4, 4)]
+        out = tempo_map.mou_frontera_retempo(trams, 1, 12.0, self.DU)
+        self.assertEqual(out[2], trams[2])      # el veí del fons, intacte
+        self.assertAlmostEqual(out[0][1], 12.0, places=6)
+
+    def test_limits_de_seguretat(self):
+        trams = self._trams()
+        # Massa a prop de l'inici del tram esquerre.
+        with self.assertRaises(ValueError):
+            tempo_map.mou_frontera_retempo(
+                trams, 1, tempo_map.FRONTERA_MIN_S / 2.0, self.DU)
+        # Massa a prop del final del tram dret.
+        with self.assertRaises(ValueError):
+            tempo_map.mou_frontera_retempo(
+                trams, 1, self.DU - tempo_map.FRONTERA_MIN_S / 2.0, self.DU)
+        # La primera frontera (inici de la WAV) no es pot moure.
+        with self.assertRaises(ValueError):
+            tempo_map.mou_frontera_retempo(trams, 0, 1.0, self.DU)
+        # Frontera inexistent.
+        with self.assertRaises(ValueError):
+            tempo_map.mou_frontera_retempo(trams, 2, 1.0, self.DU)
+
+    def test_bpm_fora_de_rang_es_rebutja(self):
+        # 8 compassos en 0,6 s → 3200 BPM: absurd, s'ha d'avisar.
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, self.DU, 120.0, 4, 4)]
+        with self.assertRaises(ValueError) as cm:
+            tempo_map.mou_frontera_retempo(trams, 1, 0.6, self.DU)
+        self.assertIn("BPM", str(cm.exception))
+
+    def test_primer_tram_amb_premusica_conserva_l_offset(self):
+        # L'offset (3 s de pre-música) no es toca: els compassos compten des d'ell.
+        trams = [(0.0, 19.0, 120.0, 4, 4), (19.0, self.DU, 120.0, 4, 4)]
+        out = tempo_map.mou_frontera_retempo(trams, 1, 21.0, self.DU,
+                                            offset=3.0)
+        # La pre-música (0 → 3 s) no es toca mai: només canvia la frontera.
+        self.assertAlmostEqual(out[0][0], 0.0, places=6)
+        self.assertAlmostEqual(out[0][1], 21.0, places=6)
+        # 18 s de música des de l'offset amb N=8 → 106,67 BPM (N es conserva).
+        self.assertAlmostEqual(out[0][2], 106.6667, places=3)
+
+    def test_compassos_mes_menys_i_doblar(self):
+        un = [(0.0, 8.0, 120.0, 4, 4)]
+        self.assertAlmostEqual(
+            tempo_map.canvia_compassos_tram(un, 0, 1, 8.0)[0][2], 150.0,
+            places=4)                      # +1 → 5 compassos en 8 s
+        self.assertAlmostEqual(
+            tempo_map.canvia_compassos_tram(un, 0, -1, 8.0)[0][2], 90.0,
+            places=4)                      # −1 → 3 compassos en 8 s
+        self.assertAlmostEqual(
+            tempo_map.canvia_compassos_tram(un, 0, 0, 8.0, factor=2)[0][2],
+            240.0, places=4)               # ×2 → 8 compassos en 8 s
+        self.assertAlmostEqual(
+            tempo_map.canvia_compassos_tram(un, 0, 0, 8.0, factor=0.5)[0][2],
+            60.0, places=4)                # ÷2 → 2 compassos en 8 s
+
+    def test_compassos_no_mouen_res_mes(self):
+        # Tram central de 12 s amb 3/4 a 60 BPM = 4 compassos (12 s / 3 s).
+        trams = [(0.0, 8.0, 120.0, 4, 4), (8.0, 20.0, 60.0, 3, 4),
+                 (20.0, self.DU, 90.0, 4, 4)]
+        out = tempo_map.canvia_compassos_tram(trams, 1, 2, self.DU)
+        self.assertEqual(out[0], trams[0])          # el veí d'abans, intacte
+        self.assertEqual(out[2], trams[2])          # el de darrere, intacte
+        self.assertAlmostEqual(out[1][0], 8.0, places=6)   # ini immòbil
+        self.assertAlmostEqual(out[1][1], 20.0, places=6)  # fi immòbil
+        # 12 s amb 3/4: 4 compassos a 60 BPM → 6 compassos a 90 BPM.
+        self.assertAlmostEqual(out[1][2], 90.0, places=4)
+
+    def test_compassos_no_baixen_d_un(self):
+        with self.assertRaises(ValueError):
+            # 4 compassos − 4 = 0 compassos.
+            tempo_map.canvia_compassos_tram([(0.0, 8.0, 120.0, 4, 4)], 0, -4,
+                                            8.0)
+        with self.assertRaises(ValueError):
+            tempo_map.canvia_compassos_tram([(0.0, 8.0, 120.0, 4, 4)], 0, 0,
+                                            8.0, factor=0)
+
+    def test_compassos_fora_de_rang(self):
+        # 10 compassos a 340 BPM + 1 → 374 BPM: fora de la banda raonable.
+        b = tempo_map.durada_compas(340.0, 4, 4)
+        with self.assertRaises(ValueError) as cm:
+            tempo_map.canvia_compassos_tram([(0.0, b * 10, 340.0, 4, 4)], 0,
+                                            1, b * 10)
+        self.assertIn("BPM", str(cm.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

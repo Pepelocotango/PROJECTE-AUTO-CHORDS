@@ -1601,6 +1601,10 @@ class TestMenusParitat(_regla11_paritat___Base):
             }
         finally:
             QListWidget.indexAt = orig
+        # Accions EXCLUSIVES del carril ③ (correcció mètrica discreta, §4.C del
+        # flux de tempo variable): no tenen sentit als clips d'acords/seccions.
+        extres_tercera = {"compas_mes1", "compas_menys1", "compas_x2",
+                          "compas_div2"}
         base_claus, base_actiu = jocs["TL acords"]
         self.assertEqual(base_claus, [
             "afegeix", "duplica", "elimina", "reanomena", "parteix", "meitat",
@@ -1608,9 +1612,21 @@ class TestMenusParitat(_regla11_paritat___Base):
             "loop_seleccio",
         ])
         for nom, (claus, actiu) in jocs.items():
-            self.assertEqual(claus, base_claus,
+            comu = [c for c in claus if c not in extres_tercera]
+            self.assertEqual(comu, base_claus,
                              f"«{nom}» no té el mateix joc/ordre d'operacions")
-            self.assertEqual(actiu, base_actiu,
+            if nom == "TL BPM":
+                # ③ sí que porta els 4 extres, en bloc i darrere de «fusiona».
+                self.assertEqual([c for c in claus if c in extres_tercera],
+                                 ["compas_mes1", "compas_menys1",
+                                  "compas_x2", "compas_div2"])
+                base_actiu = [e for c, e in zip(claus, actiu)
+                              if c not in extres_tercera]
+            else:
+                self.assertFalse([c for c in claus if c in extres_tercera],
+                                 f"«{nom}» no pot tindre les accions de compassos")
+            self.assertEqual([e for c, e in zip(claus, actiu)
+                              if c not in extres_tercera], base_actiu,
                              f"«{nom}» té una activació diferent")
 
     def test_l_operacio_que_nomes_era_a_les_llistes_ara_hi_es_a_tot_arreu(self):
@@ -1630,7 +1646,10 @@ class TestMenusParitat(_regla11_paritat___Base):
                             f"«{etq}»: amb un clip anterior, ha d'estar activa")
 
     def test_els_menus_tenen_les_tretze_accions_esperades(self):
-        """La llista blanca de les 13 accions (canviar-la és una decisió)."""
+        """La llista blanca de les 13 accions + les 4 de compassos del ③.
+
+        Canviar-la és una decisió (regla #11).
+        """
         v = _regla11_paritat___visor()
         v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
                               (10.0, _regla11_paritat__DUR, 90.0, 3, 4)])
@@ -1642,6 +1661,8 @@ class TestMenusParitat(_regla11_paritat___Base):
             "Parteix aquest tros aquí", "Partir per la meitat",
             "Parteix a la selecció A–B",
             "Fusionar amb anterior", "Fusionar amb següent",
+            "Afegir 1 compàs (+1)", "Restar 1 compàs (−1)",
+            "Doblar compassos (×2)", "Dividir compassos (÷2)",
             "Retalla", "Copia", "Enganxa", "Loop a la selecció",
         ])
 
@@ -1669,14 +1690,19 @@ class TestMenusParitat(_regla11_paritat___Base):
         return v, ac, se, tp
 
     def test_els_tres_menus_tenen_el_mateix_joc(self):
-        """La pista ③ obre EL MATEIX joc d'accions que ④ i ⑤ (regla #11)."""
+        """La pista ③ obre EL MATEIX joc d'accions que ④ i ⑤ (regla #11),
+        més les 4 accions de COMPASSOS que només tenen sentit al tempo."""
         _v, ac, se, tp = self._tres_menus()
+        extres = {"Afegir 1 compàs (+1)", "Restar 1 compàs (−1)",
+                  "Doblar compassos (×2)", "Dividir compassos (÷2)"}
+        tp_comu = [x for x in tp if x[0] not in extres]
         self.assertEqual(len(ac), len(se))
-        self.assertEqual(len(ac), len(tp),
-                         f"③ ha de tenir el mateix nombre d'accions:\n"
+        self.assertEqual(len(ac), len(tp) - 4,
+                         f"③ ha de tindre 4 accions més (compassos):\n"
                          f"④/⑤={ac}\n③={tp}")
+        self.assertEqual({x[0] for x in tp if x[0] in extres}, extres)
         self.assertEqual([e for _t, e in ac], [e for _t, e in se])
-        self.assertEqual([e for _t, e in ac], [e for _t, e in tp],
+        self.assertEqual([e for _t, e in ac], [e for _t, e in tp_comu],
                          f"activació diferent:\n④/⑤={ac}\n③={tp}")
 
     def test_l_afegeix_es_el_primer_a_les_tres(self):
@@ -4167,9 +4193,14 @@ class TestSenseAnalisi(_sense_analisi___Base):
         vr._on_tempo_mogut(1, "ini", 6.0)          # frontera 4 s -> 6 s
         self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 6.0, places=2)
         self.assertAlmostEqual(float(vr.tempo_trams[0][1]), 6.0, places=2)
-        # 3 s no és línia de compàs del primer tram (0, 2, 4, 6): s'imanta a 2.
-        vr._on_tempo_mogut(0, "fi", 3.0)           # frontera 6 s -> 2 s
-        self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 2.0, places=2)
+        # Re-tempo (21-10-2026): la frontera segueix el ratolí TAL QUAL (3 s ja
+        # no s'imanta a 2 s); N=2 a l'esquerre → 80 BPM en 6 s, i el tram dret
+        # no es mou del seu lloc (acaba a 8 s).
+        self.assertAlmostEqual(float(vr.tempo_trams[0][2]), 80.0, places=3)
+        fi_dret = float(vr.tempo_trams[1][1])      # el final no s'ha de moure
+        vr._on_tempo_mogut(0, "fi", 3.0)           # frontera 6 s -> 3 s
+        self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 3.0, places=2)
+        self.assertAlmostEqual(float(vr.tempo_trams[1][1]), fi_dret, places=3)
         self.assertEqual(vr.tempo_map.signatura(4.0), (3, 4))
 
     def test_audio_nou_neix_amb_1_acord_i_1_seccio(self):

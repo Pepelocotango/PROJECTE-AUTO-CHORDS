@@ -584,28 +584,20 @@ class TimelineView(QGraphicsView):
         return self._tempo_lane._zona(float(x_vista) - self._x_offset)
 
     def _snap_tempo_guia(self, i: int, z: str, t: float) -> float:
-        """Línia de compàs vàlida per a la GUIA d'un drag de tempo.
+        """Posició de la GUIA d'un drag de frontera de tempo (re-tempo).
 
-        La guia ha de coincidir amb el que s'aplicarà en deixar anar: la
-        frontera de tempo s'imanta a la línia de compàs del tram anterior.
+        Des del 21-10-2026 (`docs/FLUX DE TEMPO VARIABLE.md` §4.B) la nansa
+        **no** busca la línia de compàs del tram anterior: la jerarquia està
+        invertida i el punter mana sobre Δt (el BPM s'adapta en deixar anar).
+        Per tant la guia és exactament el que s'aplicarà: el punter amb el
+        **snap normal del timeline** (que l'operador pot apagar per a anar-hi
+        lliurement damunt del pic de l'ona).
+
+        Es conserva la signatura (índex, zona, t) perquè `TempoLayer` la crida
+        per a qualsevol zona; l'índex ja no cal.
         """
-        trams = self._trams_tempo()
-        p_idx = int(i) if z == "fi" else int(i) - 1
-        if not (0 <= p_idx < len(trams) - 1):
-            return float(t)
-        p = trams[p_idx]
-        b = tempo_map.durada_compas(p[2], p[3], p[4])
-        if b <= 0:
-            return float(t)
-        ini = float(p[0])
-        off = float(getattr(self, "_offset", 0.0))
-        base = off if (p_idx == 0 and off > ini + 1e-9) else ini
-        minim = base + (b if (p_idx > 0 or base <= ini + 1e-9) else 0.0)
-        lines = [c for c in tempo_map._bar_lines_tram(p, off)
-                 if minim - 1e-6 <= c <= self._durada + 1e-6]
-        if not lines:
-            return float(t)
-        return min(lines, key=lambda x: abs(x - float(t)))
+        _ = (i, z)
+        return float(self._snap(float(t)))
 
     def _loop_mode_at(self, x: float):
         """Què farà un clic al regle segons l'x (o None = crear loop nou).

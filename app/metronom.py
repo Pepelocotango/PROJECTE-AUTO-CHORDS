@@ -50,7 +50,7 @@ def beats_a_temps(k, bpm, offset=0.0):
 
 
 def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
-                    volum=0.6, offset=0.0, mapa=None):
+                    volum=0.6, offset=0.0, mapa=None, factor=1.0):
     """Mescla els clics a la rodanxa `mono_bytes` (int16 mono, a partir de
     `t_inici` segons de la cançó) i retorna els bytes int16 resultants.
 
@@ -58,16 +58,27 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
       qualsevol posició i amb el loop A/B).
     - Suma en float32 i fa clip a int16 per evitar desbordament.
     - volum 0 (o BPM invàlid) → retorna l'àudio sense canvis.
+    - `factor` = velocitat de reproducció del visor (0,5–3×, to mantingut):
+      la rodanxa cobreix `factor` cops més de cançó per segon real, així que
+      els clics s'han de col·locar dividint per `factor` (si no, amb 2× el
+      metrònom aniria a la meitat del tempo que sona). A 1,0× és idèntic.
     """
     _bpb = _es_valid(bpm, bpb)
     if _bpb is None or volum <= 0:
         return mono_bytes
+    try:
+        factor = float(factor)
+    except (TypeError, ValueError):
+        factor = 1.0
+    if not np.isfinite(factor) or factor <= 0:
+        factor = 1.0
 
     buf = np.frombuffer(mono_bytes, dtype=np.int16).astype(np.float32)
     if buf.size == 0:
         return mono_bytes
     sr = float(sr)
-    dur = buf.size / sr
+    # Durada de la rodanxa en SEGONS DE CANÇÓ (a `factor`× n'hi cap més).
+    dur = buf.size / sr * factor
     beat_len = 60.0 / float(bpm)
 
     # genera_clic() retorna ±1 normalitzat: cal escalar-lo a la gamma int16
@@ -89,7 +100,7 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
                 break
             if t_b >= 0.0:
                 _c, b, s = mapa.pos(t_abs)
-                i = int(round(t_b * sr))
+                i = int(round(t_b / factor * sr))
                 clic = clic_accent if (b == 1 and s == 1) else clic_normal
                 n = min(clic.size, buf.size - i)
                 if n > 0:
@@ -110,7 +121,7 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
         if t_b >= dur:
             break
         if t_b >= 0.0:
-            i = int(round(t_b * sr))
+            i = int(round(t_b / factor * sr))
             clic = clic_accent if (k % _bpb == 0) else clic_normal
             n = min(clic.size, buf.size - i)
             if n > 0:

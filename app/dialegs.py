@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
     QFormLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
     QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget,
-    QVBoxLayout,
+    QVBoxLayout, QWidget,
 )
 
 from app import config, graella, tempo, tempo_map, vamp_params
@@ -76,6 +76,11 @@ DEFECTES = {
     # Anàlisi guiat (docs/ANALISI_GUIAT.md §4.3): mida del tram i si es
     # confirma la detecció amb el BPM del tram anterior.
     "guiat": {"compassos": 4, "confirma": True},
+    # QUÈ fa «Analitza»: cada etapa es pot activar/desactivar per separat
+    # (BPM · acords · estructura). El que està desactivat NO es toca: es
+    # conserva el que ja hi ha al model. Decisió de l'operador (21-10-2026):
+    # per defecte les tres ACTIVADES — «Analitza» detecta també el BPM.
+    "analisi": {"bpm": True, "acords": True, "estructura": True},
 }
 
 
@@ -159,9 +164,51 @@ class DialegOpcions(QDialog):
         lay.addWidget(box)
 
     # -- pestanyes ---------------------------------------------------------
+    def _casella_etapa(self, clau, text, tooltip, nota):
+        """Capçalera comuna de cada pestanya: què s'analitza (sí/no).
+
+        És la font ÚNICA de `opcions["analisi"]` (una entrada per etapa) i el
+        que decideix què fa «Analitza»: el que està desactivat es conserva.
+        """
+        ana = QGroupBox("Què s'analitza")
+        lay = QVBoxLayout(ana)
+        c = QCheckBox(text)
+        c.setToolTip(tooltip)
+        c.setChecked(bool((self._base.get("analisi") or {}).get(clau, True)))
+        lay.addWidget(c)
+        lb = QLabel(nota)
+        lb.setWordWrap(True)
+        lb.setStyleSheet("color:#9aa6b8; font-size:11px;")
+        lay.addWidget(lb)
+        setattr(self, "_cb_" + clau, c)
+        return ana
+
+    def _lliga_etapa(self, clau, w):
+        """La casella de l'etapa habilita/deshabilita els seus paràmetres.
+
+        Amb l'etapa apagada els controls queden en gris (no es perden: si la
+        tornes a encendre, hi tornen). Així es veu d'un cop d'ull què farà
+        «Analitza» i què no.
+        """
+        cb = getattr(self, "_cb_" + clau)
+        cb.toggled.connect(w.setEnabled)
+        w.setEnabled(cb.isChecked())
+
     def _tab_bpm(self, val):
-        w = QGroupBox("Detecció de BPM (`app/tempo.py`)")
-        f = QFormLayout(w)
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.addWidget(self._casella_etapa(
+            "bpm", "Analitza el BPM (i l'aplica al transport)",
+            "Si està activada, «Analitza» detecta el tempo del tema amb el "
+            "motor triat i l'escriu al camp BPM del transport (i al tram 0 "
+            "del mapa). Si la desactives, el BPM que tinguis es conserva.",
+            "El BPM detectat es fa servir també per a la neteja dels acords "
+            "(durada mínima i encaix a la graella) i per a l'ABC."))
+        grup = QGroupBox("Detecció de BPM (`app/tempo.py`)")
+        v.addWidget(grup)
+        self._lliga_etapa("bpm", grup)
+        f = QFormLayout(grup)
         self._controls["bpm"] = {}
         d = val or DEFECTES["bpm"]
         c = QComboBox()
@@ -232,8 +279,23 @@ class DialegOpcions(QDialog):
         self.lb_rang.setText(msg)
 
     def _tab_acords(self, val):
-        w = QGroupBox("Acords (`Chordino`)")
-        f = QFormLayout(w)
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(0, 0, 0, 0)
+        # QUÈ S'ANALITZA (etapa d'acords). L'estructura té la seua casella a la
+        # seua pestanya: les tres etapes són independents.
+        v.addWidget(self._casella_etapa(
+            "acords", "Analitza els acords (Chordino)",
+            "Si està activada, «Analitza» passa el Chordino i reescriu "
+            "acords.csv. Si la desactives, els acords que tinguis es "
+            "conserven tal com estan (edicions manuals incloses).",
+            "Desactivar-la és útil quan només vols refer l'estructura o el "
+            "BPM sense tocar l'harmonia que ja tens revisada."))
+
+        grup = QGroupBox("Acords (`Chordino`)")
+        v.addWidget(grup)
+        self._lliga_etapa("acords", grup)
+        f = QFormLayout(grup)
         self._controls["chords"] = {}
         d = val or {}
         for p in vamp_params.params_de("chords"):
@@ -294,8 +356,20 @@ class DialegOpcions(QDialog):
         return w
 
     def _tab_estructura(self, val):
-        w = QGroupBox("Estructura (post-processat)")
-        f = QFormLayout(w)
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.addWidget(self._casella_etapa(
+            "estructura", "Analitza l'estructura (qm-segmenter)",
+            "Si està activada, «Analitza» passa el qm-segmenter i reescriu "
+            "estructura_ABC.csv. Si la desactives, les seccions que tinguis "
+            "es conserven (les que hagis fet amb marcadors o a mà).",
+            "És la part més lenta de l'anàlisi: si ja tens l'estructura feta, "
+            "desactiva-la i estalvia temps."))
+        grup = QGroupBox("Estructura (post-processat)")
+        v.addWidget(grup)
+        self._lliga_etapa("estructura", grup)
+        f = QFormLayout(grup)
         self._controls["structure"] = {}
         d = val or DEFECTES["structure"]
         s = _spin(0, 120, 0.5, d.get("durada_min", 0.0), 1)
@@ -347,6 +421,10 @@ class DialegOpcions(QDialog):
         cl["durada_min"].setValue(float(dc["durada_min"]))
         cl["snap"].setChecked(bool(dc["snap"]))
         cl["divisio"].setValue(float(dc["divisio"]))
+        # QUÈ S'ANALITZA (les 3 etapes): també torna a la fàbrica.
+        da = DEFECTES["analisi"]
+        for clau in ("bpm", "acords", "estructura"):
+            getattr(self, "_cb_" + clau).setChecked(bool(da[clau]))
 
     def opcions(self):
         """Retorna les opcions triades, a punt per al pipeline."""
@@ -379,9 +457,14 @@ class DialegOpcions(QDialog):
             "divisio": int(cl["divisio"].value()),
         }
         fora = {k: v for k, v in self._base.items()
-                if k not in ("bpm", "chords", "structure", "clean")}
+                if k not in ("bpm", "chords", "structure", "clean",
+                             "analisi")}
+        # QUÈ S'ANALITZA: una entrada per etapa (les 3 pestanyes).
+        ana = {"bpm": self._cb_bpm.isChecked(),
+               "acords": self._cb_acords.isChecked(),
+               "estructura": self._cb_estructura.isChecked()}
         fora.update({"bpm": bpm, "chords": chords, "structure": est,
-                     "clean": clean})
+                     "clean": clean, "analisi": ana})
         return fora
 
 

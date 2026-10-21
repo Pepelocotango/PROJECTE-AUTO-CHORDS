@@ -683,6 +683,25 @@ class TestMetronom(unittest.TestCase):
                                      mapa=mapa)
         self.assertEqual(a, b)
 
+    def test_velocitat_2x_els_clics_van_al_doble_de_tempo(self):
+        """A 2× la rodanxa cobreix 4 s de cançó en 2 s reals: els clics de
+        120 BPM (cada 0,5 s de cançó) sonen cada 0,25 s reals."""
+        out = metronom.mescla_metronom(_silenci(2), SR, 0.0, 120.0, 4,
+                                       factor=2.0)
+        self.assertEqual(_clics(out)[:4], [0.0, 0.25, 0.5, 0.75])
+
+    def test_velocitat_mig_x_els_clics_van_a_la_meitat(self):
+        """A 0,5× hi cap la meitat de cançó per rodanxa: clic cada 1 s."""
+        out = metronom.mescla_metronom(_silenci(2), SR, 0.0, 120.0, 4,
+                                       factor=0.5)
+        self.assertEqual(_clics(out), [0.0, 1.0])
+
+    def test_velocitat_1x_es_identica_a_sense_factor(self):
+        a = metronom.mescla_metronom(_silenci(2), SR, 0.0, 120.0, 4)
+        b = metronom.mescla_metronom(_silenci(2), SR, 0.0, 120.0, 4,
+                                     factor=1.0)
+        self.assertEqual(a, b)
+
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_graella.py
 # ══════════════════════════════════════════════════════════════════════════

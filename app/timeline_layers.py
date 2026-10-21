@@ -422,8 +422,10 @@ class TempoLayer(QGraphicsObject):
     Només es mostra en mode **BPM·compàs** i amb mapa **variable** (amb un sol
     tros no hi ha res a editar; tot es comporta com abans). Els gestos són els
     mateixos que a la resta de pistes: **clic** a un bloc → diàleg per al BPM i
-    el compàs; **arrossegar una vora** → on canvia el tempo (el veí s'ajusta);
-    **botó dret** → menú (afegir/eliminar).
+    el compàs; **arrossegar una vora** → re-tempo (mana el punter: es conserven
+    els compassos dels dos costats i el BPM s'adapta, sense moure cap altre
+    tram — `docs/FLUX DE TEMPO VARIABLE.md`); **botó dret** → menú (afegir,
+    eliminar, fusionar i compassos +1/−1/×2/÷2).
     """
 
     tramSelected = pyqtSignal(int)         # selecció d'un bloc (índex)

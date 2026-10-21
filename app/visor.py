@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
     QApplication, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
     QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QShortcut,
     QSlider, QSplitter, QTextEdit, QVBoxLayout, QWidget,
-    QLineEdit,
+    QLineEdit, QComboBox,
 )
 
 import numpy as np
@@ -43,6 +43,7 @@ from .timeline import TimelineView  # noqa: E402
 
 # Configuració centralitzada per al directori temporal (configurable)
 from .config import TEMP_DIR as OPENCODE_DIR
+from . import ffmpeg  # noqa: E402
 from . import plataforma  # noqa: E402
 from . import audio_out  # noqa: E402
 
@@ -153,6 +154,9 @@ class Visor(QMainWindow):
     # El mapa de tempo/compàs ha canviat (diàleg, drag, undo…): la finestra
     # principal ha de refrescar els camps BPM/compàs del clip objectiu.
     tempoCanviat = pyqtSignal()
+    # Velocitat de reproducció canviada (0,5–3×): la barra de la finestra
+    # principal té el seu propi selector i ha d'anar sincronitzada.
+    velocitatCanviada = pyqtSignal(float)
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True, sortida=None,
                  offset=0.0, beat_type=4):
         super().__init__()
@@ -442,6 +446,8 @@ class Visor(QMainWindow):
         self.volum.setToolTip("Volum (programari)")
         self.volum.valueChanged.connect(self._canvia_volum)
         fila2.addWidget(self.volum)
+        # Velocitat de reproducció (0,5–3×, to mantingut amb `ffmpeg atempo`).
+        fila2.addWidget(self._crea_selector_velocitat())
         self.etiqueta = QLabel(f"{self.audio['durada']:.1f} s · "
                                f"{len(self.acords)} acords · "
                                f"{len(self.seccions)} seccions")
@@ -452,6 +458,12 @@ class Visor(QMainWindow):
         # estat de transports
         self.vol = 1.0
         self.mut = False
+        # Velocitat de reproducció (1,0× = normal). El buffer estirat es
+        # renderitza UNA vegada per factor i es queda a `_vel_cache`; els
+        # temporals de `ffmpeg` es netegen en tancar (paperera).
+        self.velocitat = 1.0
+        self._vel_cache = {}
+        self._vel_temporals = []
         # metrònom: clic mesclat al buffer (no afectat pel mute/volum cançó)
         self.metro_on = False
         self.metro_vol = 0.6
@@ -906,30 +918,82 @@ class Visor(QMainWindow):
         self._undo_commit()
 
     def _on_tempo_mogut(self, idx, vora, t):
-        """Vora d'un bloc de BPM/compàs arrossegada → mou on canvia.
+        """Vora d'un bloc de BPM/compàs arrossegada → **re-tempo** (el ratolí mana).
 
-        La frontera s'imanta a la **línia de compàs** més pròxima
-        (`docs/REGLES_TEMPS_GRID.md`) i s'arrosseguen les fronteres següents
-        perquè els trams interiors continuen amb compassos enters. Si el
-        resultat no és vàlid, no es toca res i s'avisa.
+        Des del 21-10-2026 (`docs/FLUX DE TEMPO VARIABLE.md` §2) la jerarquia
+        està invertida: el punter fixa **Δt**, els **compassos N** dels dos
+        costats es conserven i el **BPM** es recalcula. Per això ja no s'imanta
+        a la línia de compàs del tram anterior ni s'arrosseguen els trams
+        següents (`_ripple_des_de`): **cap altre tram no es mou** i la frontera
+        cau sempre en línia de compàs per construcció (el validador de
+        compassos enters ja no pot bloquejar el gest).
+
+        Si el marcador humà d'eixa frontera coincidia, es mou amb ella (§4.C),
+        tot dins del **mateix** desfer.
         """
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)):
             return
-        p_idx = (idx - 1) if str(vora).strip().lower() == "ini" else idx
-        if not (0 <= p_idx < len(trams) - 1):
+        # `idx` és el tram de la vora tocada; la frontera és el SEU inici
+        # («ini»/«cos») o el del SEGÜENT («fi»). `mou_frontera_retempo` rep
+        # l'índex del tram de la DRETA (la frontera és el seu inici).
+        p_idx = int(idx) if str(vora).strip().lower() == "ini" else int(idx) + 1
+        if not (0 < p_idx < len(trams)):
             return
-        actual = float(trams[p_idx][1])
-        dir_ = ("dreta" if float(t) > actual + 1e-9
-                else "esquerra" if float(t) < actual - 1e-9 else None)
+        vell = float(trams[p_idx][0])
         try:
-            _tall, nous = tempo_map.snap_frontera_compas(
+            nous = tempo_map.mou_frontera_retempo(
                 trams, p_idx, float(t), self._durada_wav(),
-                offset=getattr(self, "offset", 0.0), direccio=dir_)
+                offset=getattr(self, "offset", 0.0))
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return
-        self.aplica_tempo_trams(nous)
+        self._undo_marca()
+        if self.aplica_tempo_trams(nous):
+            self._mou_marcador(vell, float(self.tempo_trams[p_idx][0]))
+        self._undo_commit()
+
+    def canvia_compassos_tram(self, idx, delta_compassos=0, factor=None):
+        """Correcció **mètrica** discreta d'un tram de tempo (§4.C del flux).
+
+        `+1`/`−1` compassos o `×2`/`÷2`: els **segons queden immòbils**, els
+        veïns no es toquen i el BPM es recalcula (`tempo_map.canvia_compassos_tram`).
+        Un sol desfer. Retorna `True` si el mapa ha canviat.
+        """
+        trams = list(self.tempo_trams or [])
+        idx = -1 if idx is None else int(idx)
+        if not (0 <= idx < len(trams)):
+            return False
+        try:
+            nous = tempo_map.canvia_compassos_tram(
+                trams, idx, delta_compassos=delta_compassos,
+                durada=self._durada_wav(),
+                offset=getattr(self, "offset", 0.0), factor=factor)
+        except ValueError as e:
+            self.avis_editor(f"Compassos: {e}")
+            return False
+        if [tuple(x) for x in nous] == [tuple(x) for x in trams]:
+            return False
+        self._undo_marca()
+        ok = self.aplica_tempo_trams(nous)
+        self._undo_commit()
+        if ok:
+            self.log(f"compassos tram {idx}: {trams[idx][2]:g} → "
+                     f"{self.tempo_trams[idx][2]:.2f} BPM "
+                     f"({self._compassos_de(idx):g} compassos)")
+        return bool(ok)
+
+    def _compassos_de(self, idx):
+        """Compassos (arredonits) del tram `idx` del mapa viu (per a missatges)."""
+        trams = list(self.tempo_trams or [])
+        if not (0 <= int(idx) < len(trams)):
+            return 0
+        try:
+            n = tempo_map._compassos_del_tram(
+                trams[int(idx)], int(idx), getattr(self, "offset", 0.0))
+        except ValueError:
+            return 0
+        return tempo_map._enter_mes_proper(max(1.0, n))
 
     def _on_tempo_menu(self, idx, t):
         """Botó dret a la pista ③ BPM/compàs.
@@ -1500,6 +1564,109 @@ class Visor(QMainWindow):
         # cal reiniciar el reproductor, aixi canviar el volum no fa cap tall.
         self.vol = v / 100.0
 
+    # -- velocitat de reproducció (0,5–3×, to mantingut) -------------------
+    VELOCITATS = (0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0)
+
+    def _crea_selector_velocitat(self):
+        """Desplegable de velocitat (es fa servir al visor i a la finestra)."""
+        c = QComboBox()
+        for v in self.VELOCITATS:
+            c.addItem(f"{v:g}×", float(v))
+        c.setToolTip("Velocitat de reproducció (0,5–3×) amb el TO MANTINGUT "
+                     "(ffmpeg atempo, com el VLC). El cursor, el loop i el "
+                     "metrònom es mantenen alineats. El primer cop a cada "
+                     "velocitat pot trigar uns segons a preparar l'àudio.")
+        c.setMaximumWidth(80)
+        c.setCurrentIndex(self.VELOCITATS.index(1.0))
+        c.currentIndexChanged.connect(
+            lambda _i, cc=c: self.set_velocitat(cc.currentData()))
+        self.cmb_vel = c
+        return c
+
+    def _sincronitza_selector_velocitat(self):
+        """Posa el desplegable al valor vigent (sense disparar el canvi)."""
+        c = getattr(self, "cmb_vel", None)
+        if c is None:
+            return
+        i = c.findData(round(float(getattr(self, "velocitat", 1.0)), 4))
+        if i < 0:
+            return
+        c.blockSignals(True)
+        c.setCurrentIndex(i)
+        c.blockSignals(False)
+
+    def _mono_a(self, factor):
+        """PCM mono 16 bits per reproduir a `factor`× (to mantingut).
+
+        A 1,0× és el buffer de sempre (cost zero). La resta es renderitza amb
+        `ffmpeg atempo` **una vegada per factor** (`ffmpeg.prepara_escolta`,
+        que ja cacheja per mtime+mida+factor) i es queda a `_vel_cache`
+        mentre el visor viu.
+        """
+        f = round(float(factor), 4)
+        if abs(f - 1.0) < 1e-9:
+            return self._mono_bytes()
+        if f in self._vel_cache:
+            return self._vel_cache[f]
+        if not ffmpeg.disponible():
+            raise RuntimeError("cal ffmpeg per canviar la velocitat")
+        dest = ffmpeg.prepara_escolta(self.wav_path, f, log=self.log)
+        try:
+            mono = llegeix_wav(dest)["mono"]
+        finally:
+            # El temporal només es toca en tancar (paperera), mai `rm`.
+            if dest != self.wav_path and dest not in self._vel_temporals:
+                self._vel_temporals.append(dest)
+        self._vel_cache[f] = mono.astype(np.int16).tobytes()
+        # Memòria: com a molt 2 factors en caché (en un tema llarg, cadascun
+        # pot ser de desenes de MB). Es descarta el més antic.
+        while len(self._vel_cache) > 2:
+            self._vel_cache.pop(next(iter(self._vel_cache)))
+        return self._vel_cache[f]
+
+    def set_velocitat(self, factor, avisar=True):
+        """Canvia la velocitat de reproducció (0,5–3,0×, to mantingut).
+
+        Si està sonant, es repren **exactament** a la mateixa posició de la
+        cançó (el cursor no salta): el buffer estirat es llig des d'on toca.
+        """
+        try:
+            f = float(factor)
+        except (TypeError, ValueError):
+            return
+        f = round(max(0.5, min(3.0, f)), 2)
+        if abs(f - float(getattr(self, "velocitat", 1.0))) < 1e-9:
+            self._sincronitza_selector_velocitat()
+            return
+        # Preparar el buffer ABANS de tocar la reproducció: si falla, no canvia.
+        try:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            try:
+                self._mono_a(f)
+            finally:
+                QApplication.restoreOverrideCursor()
+        except (RuntimeError, OSError, ValueError) as e:
+            self.log(f"velocitat {f:g}×: no s'ha pogut preparar ({e})")
+            if avisar:
+                QMessageBox.warning(self, "Velocitat",
+                                    f"No s'ha pogut preparar l'àudio a "
+                                    f"{f:g}×:\n{e}")
+            self._sincronitza_selector_velocitat()
+            return
+        sonava = bool(self.sona)
+        pos = float(self.pos)
+        if sonava:
+            self._atura_proc()     # invalida el fil vell (el rellotge segueix)
+        self.velocitat = f
+        self._sincronitza_selector_velocitat()
+        self.log(f"velocitat: {f:g}×"
+                 + (" (to mantingut)" if abs(f - 1.0) > 1e-9 else ""))
+        if sonava:
+            self._engega_des_de(pos)   # re-ancora t0 amb la velocitat nova
+            if self.proc is None:
+                self.play_stop()
+        self.velocitatCanviada.emit(f)
+
     def metro_disponible(self):
         """El metrònom només té sentit amb graella (mode BPM · compàs)."""
         return bool(self.tempo_fix)
@@ -1743,7 +1910,7 @@ class Visor(QMainWindow):
         "afegeix", "parteix", "parteix_meitat", "parteix_loop", "fusiona",
         "elimina",
         "reanomena", "duplica", "nudge", "copia", "retalla", "enganxa",
-        "selecciona", "loop_seleccio", "quantitza",
+        "selecciona", "loop_seleccio", "quantitza", "compassos",
     )
     _KINDS_EDICIO = ("chord", "section", "tempo")
 
@@ -1878,6 +2045,18 @@ class Visor(QMainWindow):
             ak, ai = self.seleccio_activa()
             if ak == kind:
                 idx = ai
+
+        # -- compassos: correcció métrica discreta del carril ③ (un sol desfer) --
+        if op == "compassos":
+            if kind not in (None, "tempo"):
+                return False
+            if idx < 0:
+                ak, ai = self.seleccio_activa()
+                if ak != "tempo":
+                    return False
+                idx = ai
+            return bool(self.canvia_compassos_tram(
+                idx, kw.get("delta_compassos", 0), kw.get("factor")))
 
         if op == "afegeix":
             if kind is None:
@@ -2021,6 +2200,14 @@ class Visor(QMainWindow):
         # Era l'única operació que només existia a les llistes.
         act("fusiona_anterior", "Fusionar amb anterior", te and idx > 0)
         act("fusiona_seguent", "Fusionar amb següent", te and idx + 1 < n)
+        if kind == "tempo":
+            # Correcció MÈTRICA discreta (§4.C del flux de tempo variable):
+            # els segons queden quiets, el N canvia i el BPM s'adapta.
+            menu.addSeparator()
+            act("compas_mes1", "Afegir 1 compàs (+1)", te)
+            act("compas_menys1", "Restar 1 compàs (−1)", te)
+            act("compas_x2", "Doblar compassos (×2)", te)
+            act("compas_div2", "Dividir compassos (÷2)", te)
         menu.addSeparator()
         act("retalla", "Retalla", te)
         act("copia", "Copia", te)
@@ -2050,6 +2237,10 @@ class Visor(QMainWindow):
             "parteix_loop": ("parteix_loop", {}),
             "fusiona_anterior": ("fusiona", {"amb": "anterior"}),
             "fusiona_seguent": ("fusiona", {"amb": "seguent"}),
+            "compas_mes1": ("compassos", {"delta_compassos": 1}),
+            "compas_menys1": ("compassos", {"delta_compassos": -1}),
+            "compas_x2": ("compassos", {"factor": 2.0}),
+            "compas_div2": ("compassos", {"factor": 0.5}),
             "retalla": ("retalla", {}),
             "copia": ("copia", {}),
             "enganxa": ("enganxa", {}),
@@ -2095,12 +2286,66 @@ class Visor(QMainWindow):
         return len(self.tempo_trams or []) > abans
 
     # ---------------- MARCADORS (inici de compàs, en viu) ----------------
+    def _marcador_a(self, t, tol=0.05):
+        """Índex del marcador humà que coincideix amb `t` (o `None`).
+
+        Els marcadors es creen amb `+` i els seus ancestres són les fronteres
+        de tempo; 0,05 s és prou per a emparellar-los sense confondre dos
+        marcadors distints (entre ells sempre hi ha ≥ `SEPARACIO_MIN`).
+        """
+        t = float(t)
+        for i, m in enumerate(self.marcadors or ()):
+            if abs(float(m) - t) <= float(tol):
+                return i
+        return None
+
+    def _mou_marcador(self, t_vell, t_nou):
+        """Mou el marcador ancorat a una frontera que s'ha mogut (§4.C).
+
+        Va DINS de l'operació de desfer del gest: el marcador i el mapa es
+        desfan junts. Retorna `True` si n'hi havia cap.
+        """
+        from app import marcadors as M
+        i = self._marcador_a(t_vell)
+        if i is None:
+            return False
+        marques = [float(x) for x in (self.marcadors or ())]
+        marques[i] = float(t_nou)
+        nou = M.normalitza_marcadors(marques, self._durada_wav())
+        if nou == list(self.marcadors or ()):
+            return False
+        self.marcadors = nou
+        self._pinta_marcadors()
+        try:
+            pipeline.desa_marcadors(self._carpeta_acords(), self.marcadors)
+        except OSError as e:
+            self.log(f"marcadors: no s'han pogut desar ({e})")
+        self.log(f"marcador mogut amb la frontera: {t_vell:.3f} → {t_nou:.3f}s")
+        return True
+
+    def _esborra_marcador_a(self, t, tol=0.05):
+        """Esborra el marcador d'una frontera que ha desaparegut (§4.C)."""
+        from app import marcadors as M
+        i = self._marcador_a(t, tol)
+        if i is None:
+            return False
+        self.marcadors = M.elimina(list(self.marcadors or ()), i)
+        self._pinta_marcadors()
+        try:
+            pipeline.desa_marcadors(self._carpeta_acords(), self.marcadors)
+        except OSError as e:
+            self.log(f"marcadors: no s'han pogut desar ({e})")
+        self.log(f"marcador esborrat amb la frontera de {float(t):.3f}s")
+        return True
+
     def afegeix_marcador(self, t=None):
         """Marca l'instant actual (o `t`) com a **inici de compàs**.
 
         Crea, en eixe punt, un **inici de clip al carril de BPM/compàs i al
-        d'estructura**; a partir d'ací el marcador és independent dels clips.
-        Es pot cridar mentre sona (tecla `+`). Un sol desfer ho desfà tot.
+        d'estructura**. El marcador queda **lligat a la frontera de tempo**
+        (la segueix si s'arrossega i s'esborra amb ella, §4.C del flux de tempo
+        variable); les seccions són independents. Es pot cridar mentre sona
+        (tecla `+`). Un sol desfer ho desfà tot.
         """
         from app import marcadors as M
         durada = self._durada_wav()
@@ -2292,6 +2537,9 @@ class Visor(QMainWindow):
         self._undo_marca()
         ok = self._aplica_mapa_reparat(
             tempo_map.elimina_tall(trams, idx), "Elimina tempo")
+        if ok:
+            # §4.C: la frontera desapareix → el marcador que hi ancorava, també.
+            self._esborra_marcador_a(float(trams[idx][0]))
         self._undo_commit()
         return ok
 
@@ -2301,8 +2549,13 @@ class Visor(QMainWindow):
         nou = tempo_map.fusiona_trams(trams, idx, amb)
         if len(nou) == len(trams):
             return False
+        # La frontera que desapareix depén de amb qui es fusiona.
+        frontera = float(trams[idx][0]) if str(amb) == "anterior" \
+            else float(trams[idx][1])
         self._undo_marca()
         ok = self._aplica_mapa_reparat(nou, "Fusiona tempo")
+        if ok:
+            self._esborra_marcador_a(frontera)
         self._undo_commit()
         return ok
 
@@ -4137,38 +4390,62 @@ class Visor(QMainWindow):
           costura B→A no faci clic.
         """
         try:
-            mono = memoryview(self._mono_bytes())
+            # VELOCITAT: si no és 1×, el buffer ja ve estirat (`atempo`, to
+            # mantingut) → dura `1/factor` (a 2×, la meitat). `pos` va SEMPRE
+            # en mostres de CANÇÓ (les mateixes que el model, el cursor, el
+            # loop i el metrònom); al buffer li toca `pos/factor`.
+            factor = max(0.5, min(3.0, float(getattr(self, "velocitat", 1.0))))
+            if abs(factor - 1.0) < 1e-9:
+                # 1×: el camí de sempre (cap còpia, cap dependència de ffmpeg)
+                mono = memoryview(self._mono_bytes())
+            else:
+                try:
+                    mono = memoryview(self._mono_a(factor))
+                except (RuntimeError, OSError, ValueError) as e:
+                    # Sense ffmpeg (o si el render falla) el so NO s'ha
+                    # d'aturar: es torna a 1× i s'avisa al registre.
+                    self.log(f"velocitat {factor:g}× no disponible ({e}); "
+                             "es reprodueix a 1×")
+                    factor = 1.0
+                    mono = memoryview(self._mono_bytes())
             sr = int(self.audio["sr"])
-            n_mostres = len(mono) // 2
-            pas = 32768  # mostres per tros
+            n_canco = (len(mono) // 2) * factor     # mostres de cançó
+            pas = 32768  # mostres de SORTIDA per tros (a ritme real)
             fade = max(1, int(self.FADE_LOOP_S * sr))
-            pos = int(max(0.0, min(float(t_inici),
-                                   float(self.audio["durada"]))) * sr)
+            pos = float(max(0.0, min(float(t_inici),
+                                     float(self.audio["durada"]))) * sr)
             while True:
                 if sess != self._sess or proc.poll() is not None:
                     break
                 bucle = (self.loop_on and self.loop_a is not None
                          and self.loop_b is not None)
-                a = b = 0
+                a = b = 0.0
                 if bucle:
-                    a = int(self.loop_a * sr)
-                    b = int(self.loop_b * sr)
+                    a = float(self.loop_a) * sr
+                    b = float(self.loop_b) * sr
                     if b - a < 2:
                         bucle = False
                     elif pos < a or pos >= b:
                         pos = a
-                fi = min(b if bucle else n_mostres, pos + pas)
+                # `pas` mostres de SORTIDA = `pas*factor` mostres de cançó
+                fi = min(b if bucle else n_canco, pos + pas * factor)
                 if fi <= pos:
                     break
-                tros = bytes(mono[pos * 2:fi * 2])
+                i_ini = int(round(pos / factor))
+                i_fi = int(round(fi / factor))
+                tros = bytes(mono[i_ini * 2:i_fi * 2])
                 g = 0.0 if self.mut else self.vol
                 if bucle or g != 1.0:
                     x = np.frombuffer(tros, dtype=np.int16).astype(np.float32)
                     if bucle:
-                        idx = np.arange(pos - a, fi - a, dtype=np.float32)
+                        a_buf = int(round(a / factor))
+                        b_buf = int(round(b / factor))
+                        idx = np.arange(i_ini - a_buf, i_fi - a_buf,
+                                        dtype=np.float32)
                         env = np.minimum(np.minimum(1.0, idx / fade),
                                          np.minimum(1.0,
-                                                    (b - a - 1 - idx) / fade))
+                                                    (b_buf - a_buf - 1 - idx)
+                                                    / fade))
                         x = x * (g * env)
                     else:
                         x = x * g
@@ -4181,13 +4458,15 @@ class Visor(QMainWindow):
                         mbpm, mbpb, moff = forc
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), mbpm, mbpb,
-                            volum=self.metro_vol, offset=moff, mapa=None)
+                            volum=self.metro_vol, offset=moff, mapa=None,
+                            factor=factor)
                     else:
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), self.bpm, self.bpb,
                             volum=self.metro_vol,
                             offset=getattr(self, "offset", 0.0),
-                            mapa=getattr(self, "tempo_map", None))
+                            mapa=getattr(self, "tempo_map", None),
+                            factor=factor)
                 try:
                     proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):
@@ -4195,7 +4474,7 @@ class Visor(QMainWindow):
                 pos = fi
                 if bucle and pos >= b:
                     pos = a
-                elif not bucle and pos >= n_mostres:
+                elif not bucle and pos >= n_canco:
                     break
             try:
                 proc.stdin.close()
@@ -4270,7 +4549,10 @@ class Visor(QMainWindow):
                 self.log("final de la cançó")
             self.play_stop()
             return
-        t = self.t0_pos + (time.monotonic() - self.t0_mono)
+        # El cursor avança en TEMPS DE CANÇÓ: a 2× passa el doble de cançó per
+        # segon real (el só ja va estirat, el rellotge ha d'anar al mateix pas).
+        t = self.t0_pos + ((time.monotonic() - self.t0_mono)
+                           * float(getattr(self, "velocitat", 1.0)))
         if self.loop_on and self.loop_a is not None and self.loop_b is not None:
             dur = self.loop_b - self.loop_a
             if dur > 0.05 and t >= self.loop_b:
@@ -4365,10 +4647,21 @@ class Visor(QMainWindow):
             QMessageBox.warning(self, "Visor",
                                 f"No s'ha pogut exportar:\n{e}")
 
+    def _neteja_velocitat(self):
+        """Els WAV estirats que ha creat `ffmpeg` → **paperera** (mai `rm`)."""
+        for ruta in getattr(self, "_vel_temporals", []):
+            try:
+                plataforma.a_la_paperera(ruta)
+            except OSError:
+                pass
+        self._vel_temporals = []
+        self._vel_cache = {}
+
     def closeEvent(self, ev):
         self.log("tanco: mato l'àudio...")
         self.rellotge.stop()
         self._atura_proc()
+        self._neteja_velocitat()
         # Disconnect dels signals del TimelineView per evitar memory leaks.
         # NOMÉS si és una finestra autònoma: en incrustar-se el visor dins
         # Finestra es fa `_embedded = True` + `close()` per amagar-lo, i

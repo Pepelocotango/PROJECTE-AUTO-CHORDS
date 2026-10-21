@@ -5,6 +5,91 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Canviat (2026-10-21, 11b) — **re-tempo**: el ratolí mana sobre el temps
+- **Arrossegar una frontera de BPM/compàs ja no s'imanta a la línia de compàs
+  ni arrossega els trams següents**: la jerarquia del mapa s'inverteix
+  (`docs/FLUX DE TEMPO VARIABLE.md` §2) — el punter fixa **Δt**, els
+  **compassos N** dels dos costats es conserven i el **BPM** es recalcula
+  (`BPM = N · bq · 60 / Δt`). Sempre en línia de compàs per construcció, així
+  que `valida_i_normalitza_compassos` no pot bloquejar el gest (era el
+  *bloqueig circular* de la §1). Amb l'exemple del document: dos trams de 8
+  compassos a 120 BPM (32 s) amb la frontera central a 16 s → arrossegada a
+  18 s deixa `106,67` i `137,14` BPM, 8 compassos a cada costat i 32 s de
+  cobertura exacta. **Cap altre tram no es mou.**
+- **`tempo_map.mou_frontera_retempo()`** (pur): límits de seguretat
+  `FRONTERA_MIN_S` (0,5 s) a cada veí, banda `BPM_EDIT_MIN/MAX`
+  (30–350 BPM, s'avisa en comptes d'aplicar un absurd), **pre-música** del
+  primer tram respectada (compta des de l'`offset`) i últim tram fins a la fi
+  de la WAV. `snap_frontera_compas`/`_ripple_des_de` es conserven per al diàleg
+  i l'anàlisi guiat.
+- **La guia del drag segueix el punter** (§4.B): `_snap_tempo_guia` ja no busca
+  la línia de compàs del tram anterior; aplica el **snap normal del timeline**
+  (que l'operador pot apagar per a anar-hi lliurement damunt del pic de l'ona).
+  El que es veu durant el gest és el que s'aplica en deixar anar.
+- **Correcció mètrica discreta** (§4.C): al menú contextual del tram de tempo,
+  4 accions noves — **Afegir 1 compàs (+1)**, **Restar 1 compàs (−1)**,
+  **Doblar compassos (×2)**, **Dividir compassos (÷2)** — que canvien **N**
+  amb els **segons immòbils** (`tempo_map.canvia_compassos_tram`, p. ex. 8 s
+  amb 4 compassos a 120 → `+1` = 5 compassos a 150). Passen pel despatx únic
+  (`executa_edicio("compassos")`, claus `compas_*`), un sol desfer i cap veí
+  tocat. Són **exclusives del carril ③**; la paritat de menús (regla #11)
+  passa a declarar-les com a extres.
+- **Els marcadors humans viatgen amb la seua frontera** (decisió de
+  l'operador, §4.C): si el marcador coincidia amb la frontera moguda, es mou
+  amb ella; si la frontera **desapareix** (eliminar el tram o fusionar), el
+  marcador **s'esborra**. Tot dins del **mateix** desfer. Abans el docstring de
+  `app/marcadors.py` deia el contrari («el marcador és independent»), que és el
+  *desacoblament* de la §1.
+- **Tests**: `+17` → **1.307 OK** (1 skip), pyflakes net. 11 de nous a
+  `test_tempo_trams` (retempo bidireccional amb les xifres del document,
+  cobertura exacta, no-bloqueig del validador, no-moure els veïns, límits i
+  BPM absurd, pre-música, +1/−1/×2/÷2 i els seus extrems) + 6 a
+  `test_despatx_edicio` (les 4 accions pel despatx, claus del menú, desfer,
+  selecció, altres carrils, guia del drag) i 1 de fusió amb marcador.
+  Actualitzats els 9 que fixaven el comportament vell (snap + ripple).
+
+### Afegit (2026-10-21, 11a) — anàlisi **per etapes** + **velocitat de reproducció**
+- **Les 3 etapes es poden activar/desactivar per separat** al diàleg
+  *Opcions d'autodetecció*: una casella **«Què s'analitza»** a cada pestanya —
+  **BPM** (`_cb_bpm`) · **Acords** (`_cb_acords`) · **Estructura**
+  (`_cb_estructura`) — desades a `analisi.bpm` / `analisi.acords` /
+  `analisi.estructura` (defecte: totes tres). Substitueix la casella única
+  «Només els acords» del 10a.
+- **«Analitza» ara també detecta el BPM**: etapa 1 del pipeline
+  (`Feina._detecta_bpm` → `pipeline.detecta_bpm`), amb la numeració dels passos
+  dinàmica (`1/3`, `2/3`, `3/3`). El tempo detectat s'escriu al camp BPM i
+  s'aplica al mapa (`_aplica_bpm_detectat`), **sense tocar-lo si té més d'un
+  tram** (s'avisa al log). Abans el BPM només sortia de `🎯 Detecta`.
+- Cada etapa desactivada **no s'executa i conserva el que hi ha**: sense BPM es
+  manté el tempo del transport; sense acords, el model i el seu CSV; sense
+  estructura, les seccions dels marcadors. Log:
+  `1/3 BPM: OMÈS (es conserva el del transport)` · `2/3 acords: OMESOS`
+  · `3/3 estructura: OMESA`.
+- **Selector de velocitat de reproducció 0,5–3× amb el to mantingut**
+  (`ffmpeg atempo`, com el VLC; mai `--rate`): desplegable al **transport de la
+  finestra** (`cmb_vel_tb`) i al del **visor** (`cmb_vel`), sincronitzats pel
+  senyal `velocitatCanviada`. El PCM estirat es renderitza **una vegada per
+  factor** (`ffmpeg.prepara_escolta`, caché per mtime+mida+factor) i es queda a
+  `_vel_cache` (màxim 2 factors simultanis a memòria); els WAV temporals van a
+  la **paperera** en tancar el visor.
+- **Cursor, loop i metrònom es mantenen alineats a qualsevol velocitat**: el
+  fil d'alimentació llig el buffer a `pos × factor` (posicions sempre en
+  **mostres de cançó**), el rellotge del cursor multiplica pel factor
+  (`_tiquet`) i `metronom.mescla_metronom` guanya el paràmetre `factor`
+  (al final, per no trencar les crides posicionals) que col·loca els clics a
+  `t/factor`. Canviar de velocitat **no mou el cursor**: es reprèn exactament
+  al mateix punt de la cançó.
+- **Tests**: `+17` des de l'última tongada — 7 de **velocitat** (sincronia dels
+  dos selectors, el de la barra → el visor, 1×, rellotge × factor, sense
+  `ffmpeg`, paperera), 3 de **recorregut complet del fil d'àudio** a 1× / ½ /
+  2× (el buffer estirat es llig amb l'índex `pos/factor`; sense això es
+  quedava a mig camí), 3 del **`factor`** del metrònom a `test_tempo_map`, 3
+  del **diàleg/`Feina`** (les 3 caselles, «Analitza» detecta el BPM, etapa
+  d'acords OFF conserva el CSV) i 1 de la tongada 10a que encara no s'havia
+  comptat. Suite **1.290 OK** (1 skip), pyflakes net. Comprovat a més **en
+  viu** amb ffmpeg real: 128 BPM detectats (127,75) i el fil d'àudio recorre
+  la cançó sencera a 1× / 1,5× / 2× / ½×.
+
 ### Afegit (2026-10-21, 4a) — Anàlisi guiat **v3**: ancoratges (F1–F3)
 - **Nucli d'encaix** `app/ancoratges.py` (pur, sense Qt): donats els ancoratges
   humans (`t`, `num`, `den`) deriva el BPM de cada interval (`n` compassos
@@ -35,6 +120,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   diàleg era un món aïllat: s'hi punxava a cegues.
 - **Spec**: `docs/ANALISI_GUIAT_v3.md` (R1–R20, mockup, pla F1–F5) i capçalera
   de llegat a `docs/ANALISI_GUIAT.md`.
+
+### Afegit (2026-10-21, 10a) — analitzar **només els acords** (sense estructura)
+- **Casella «Només els acords (no detectar l'estructura)»** dalt de la pestanya
+  *Acords* d'*Opcions d'autodetecció*: només passa Chordino i **conserva les
+  seccions** que ja tens (les dels marcadors); no passa el qm-segmenter ni
+  reescriu l'ABC. Es recorda a `opcions_detecta.json` → `analisi.estructura`.
+- **Acció nova** *Analitza ▸ Analitza només els acords…* (**F6**), que força
+  eixa opció. La casella i l'acció *Inclou estructura* són **un sol estat**
+  (es sincronitzen; abans el toggle del menú no es desava).
+- Al log: `2/3 estructura: OMESA (es conserva la que hi ha)`.
 
 ### Afegit (2026-10-21, 9a) — **BPM a partir dels marcadors** (clips editables)
 - `marcadors.candidats_bpm()`: busca els BPM que fan que **tots** els intervals

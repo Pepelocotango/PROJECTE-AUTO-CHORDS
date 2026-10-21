@@ -76,6 +76,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió del grid i del snap**: Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · **Treset de negra (2/3) · Treset de corxera (1/3) · Treset de semicorxera (1/6)** · **1 · 2 · 4 · 6 · 8 · 12 · 16 · 24 · 32 · 48 · 64 compassos**. El selector **força el grid** encara que el snap estigui apagat; «Auto» torna a manar pel zoom. | `QPushButton` (checkable) · `QComboBox` |
 | — | `self.b_metro` · `self.vol_metro` | **metrònom** (icona `metronome`) · volum del clic | `QPushButton` · `QSlider` |
 | — | `self.b_play_tb` | **play / pause** transport (icones `play` / `pause`) | `QPushButton` |
+| — | `self.cmb_vel_tb` · `visor.cmb_vel` | **velocitat de reproducció** (0,5 · 0,75 · 1 · 1,25 · 1,5 · 2 · 3×) amb el **to mantingut** (`ffmpeg atempo`); els dos selectors van sincronitzats per `velocitatCanviada` | `QComboBox` |
 | — | `self.barra` | **barra de progrés** | `QProgressBar` (a la status) |
 | — | `self.log` · `self.info_box` | **log** · **caixa d'informació «live»** | `QTextEdit` ×2 |
 | — | `self.log_dock` | dock **«Log · Informació»** (a baix) | `QDockWidget` |
@@ -86,7 +87,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 |-------|-----------|
 | **Treball** (barra 1, fila 1) | `Obre àudio` → **Anàlisi guiat** (guia ràpida) → **＋ Marker** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B (`Inclou estructura` és una acció del **menú Analitza**) |
 | **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Obre la carpeta de sortida** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) |
-| **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · `metronome` · volum del clic · **[Quantitza]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
+| **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[Quantitza]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
 ### Menús
 
@@ -96,7 +97,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (F5) · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · Mapa de tempo i compàs… · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Inclou estructura |
+| **Analitza** | Analitza l'àudio (F5) · **Analitza només els acords… (F6)** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · Mapa de tempo i compàs… · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Eina del timeline i abast del rang
@@ -234,7 +235,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | ⑬ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
 
 > 🥁 **El transport principal** (`b_play`, `b_stop`, `b_menys`, `b_mes`, `b_A`,
-> `b_B`, `b_loop`, `b_zm`, `b_zp`, `b_zt`, `b_zs`, `b_mut`, `b_metro`, `vol_metro`)
+> `b_B`, `b_loop`, `b_zm`, `b_zp`, `b_zt`, `b_zs`, `b_mut`, `cmb_vel_tb`, `b_metro`,
+> `vol_metro`)
 > viu a la **barra de Transport** de la finestra (3a fila). Quan el visor va incrustat, la seva fila
 > interna s'amaga; el visor **standalone** encara la té.
 > El visor emet **`playStateChanged(bool)`** perquè la barra de fora actualitzi
@@ -262,8 +264,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Botó dret SOBRE un clip** | **selecciona** el clip i obri el **menú contextual** — **el mateix joc a les 3 pistes** (regla #11): **Afegeix acord/secció aquí** · Duplica · Elimina · Reanomena · Parteix l'acord/la secció… · Partir per la meitat · **Parteix a la selecció A–B** (només amb loop marcat) · Retalla · Copia · Enganxa |
 | **Pista de tempo ③ — clic** | **selecciona** el tram de tempo/compàs i hi posa el cursor **exactament al seu inici** (paritat amb els clips ④⑤; sense snap, perquè les fronteres del mapa poden ser lliures) |
 | **Pista de tempo ③ — doble-clic** | **diàleg** per editar-ne el valor (`_on_tempo_edit`) |
-| **Pista de tempo ③ — vores** | arrossegar → **mou on canvia** el tempo (`_on_tempo_mogut`; ±5 px i cursor ↔ com als clips — regla #11) |
-| **Pista de tempo ③ — botó dret** | **selecciona** el tram i obri **el mateix joc de menú que els clips** (regla #11): **Afegeix un canvi aquí** (el seu «afegir» propi) · Duplica (només si hi ha lloc després) · Elimina (només si hi ha més d'un tram) · Reanomena (BPM/compàs)… · Parteix aquest tros aquí · Partir per la meitat · **Parteix a la selecció A–B** (s'imanta a línia de compàs) · Retalla · Copia · Enganxa |
+| **Pista de tempo ③ — vores** | arrossegar → **re-tempo**: la frontera va **on deixa anar el ratolí** (amb l'Snap normal, que es pot apagar), es conserven els **compassos** dels dos costats i el **BPM** es recalcula; **cap altre tram no es mou** (`_on_tempo_mogut` → `tempo_map.mou_frontera_retempo`; ±5 px i cursor ↔ com als clips — regla #11). El marcador de la frontera **es mou amb ella** |
+| **Pista de tempo ③ — botó dret** | **selecciona** el tram i obri **el mateix joc de menú que els clips** (regla #11): **Afegeix un canvi aquí** (el seu «afegir» propi) · Duplica (només si hi ha lloc després) · Elimina (només si hi ha més d'un tram) · Reanomena (BPM/compàs)… · Parteix aquest tros aquí · Partir per la meitat · **Parteix a la selecció A–B** (s'imanta a línia de compàs) · **Afegir 1 compàs (+1)** · **Restar 1 compàs (−1)** · **Doblar compassos (×2)** · **Dividir compassos (÷2)** (aquestes 4, només a ③: canvien els compassos amb els **segons immòbils** i el BPM s'adapta) · Retalla · Copia · Enganxa |
 | **Roda ②** | **zoom** (centrat al clip seleccionat) |
 | **Espai** | **play / pausa** |
 | **T** | **tap tempo** |
@@ -378,17 +380,33 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 En clicar **`🎯 Detecta`** (obre a **BPM**) o **`Analitza`** (obre a **Acords**)
 surt un `QDialog` amb 3 pestanyes + «Restaura per defecte»:
 
-| Pestanya | Controls |
+| Pestanya | «Què s'analitza» + paràmetres |
 |----------|----------|
-| **BPM** | rang de cerca (min/max) i rang preferit |
-| **Acords** | els **6 paràmetres del Chordino** (construïts del descriptor `.n3`) + **neteja posterior** |
-| **Estructura** | durada mínima de secció + fusionar trossos iguals |
+| **BPM** | **casella «Detecta el BPM»** (`_cb_bpm`) + rang de cerca (min/max), rang preferit i motor (consens/tempo) |
+| **Acords** | **casella «Detecta els acords»** (`_cb_acords`) + els **6 paràmetres del Chordino** (construïts del descriptor `.n3`) + **neteja posterior** |
+| **Estructura** | **casella «Detecta l'estructura»** (`_cb_estructura`) + durada mínima de secció + fusionar trossos iguals |
 
 La pestanya **Acords** es genera **dinàmicament** des de `app/vamp_params.py`
 (checkbox pels 0/1, combo quan el paràmetre té noms, spinbox pels numèrics).
 Els títols són **en català** amb l'`id` del plugin a sota i una **ajuda**
 (tooltip). Es passen al motor amb `--param nom=valor` (host propi,
 `vamp_host_local`).
+
+Les **3 caselles** són **independents** (`analisi.bpm` · `analisi.acords` ·
+`analisi.estructura` a `opcions_detecta.json`, defecte: totes tres marcades).
+Cada etapa que es desactiva **no s'executa i conserva el que ja hi ha**:
+sense BPM es manté el tempo del transport, sense acords es manté el model
+d'acords (i el seu CSV), sense estructura es conserven les seccions dels
+marcadors (`2/3 estructura: OMESA (es conserva la que hi ha)` al log).
+
+> **El BPM també es detecta amb «Analitza»** (abans només amb `🎯 Detecta`):
+> l'etapa 1 del pipeline busca el tempo (`pipeline.detecta_bpm`) i, si en surt
+> un, s'escriu al camp BPM i s'aplica al mapa de tempo (si el mapa té més
+> d'un tram, s'avisa i no es toca). L'acció **F6** *Analitza només els acords*
+> és drecera de «només acords» (BPM i estructura desactivats).
+
+La casella **«Detecta l'estructura»** és el MATEIX estat que l'acció *Inclou
+estructura* del menú (es sincronitzen).
 
 **Neteja posterior** (`app/postproc.py`): treure el baix (`A/E`→`A`), reduir
 (`Cmaj7`→`C`), fusionar iguals, durada mínima i encaixar a la graella.

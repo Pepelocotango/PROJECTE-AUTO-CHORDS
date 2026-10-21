@@ -1772,7 +1772,7 @@ class TestDialegOpcions(_dialegs___Base):
         # el diàleg edita 4 seccions però ha de **conservar** les altres
         # (p. ex. «guiat»: abans es perdien en desar des d'Opcions)
         self.assertEqual(set(out), {"bpm", "chords", "structure", "clean",
-                                    "guiat"})
+                                    "guiat", "analisi"})
         self.assertEqual(out["guiat"], dialegs.DEFECTES["guiat"])
         for clau, val in dialegs.DEFECTES["bpm"].items():
             self.assertEqual(out["bpm"][clau], val, f"bpm.{clau}")
@@ -1784,6 +1784,8 @@ class TestDialegOpcions(_dialegs___Base):
                              dialegs.DEFECTES["structure"][clau],
                              f"structure.{clau}")
         self.assertEqual(out["clean"], dialegs.DEFECTES["clean"])
+        # QUÈ S'ANALITZA: les 3 etapes (BPM · acords · estructura)
+        self.assertEqual(out["analisi"], dialegs.DEFECTES["analisi"])
 
     def test_seccions_que_no_edita_es_conserven(self):
         """`guiat` (i qualsevol secció futura) no es perd en desar."""
@@ -1871,6 +1873,8 @@ ESPERATS = {
               "reduir": False, "snap": True, "divisio": 4},
     # anàlisi guiat: mida del tram i doble comprovació (21-10)
     "guiat": {"compassos": 4, "confirma": True},
+    # QUÈ S'ANALITZA: les 3 etapes, activables per separat (21-10)
+    "analisi": {"bpm": True, "acords": True, "estructura": True},
 }
 
 
@@ -2435,9 +2439,20 @@ class _Doble:
         self.metro_on = False
         self.metro_vol = 0.6
         self.bpm, self.bpb, self.offset = 120.0, 4, 0.0
+        self.velocitat = 1.0
+        self._estirat = {}
 
     def _mono_bytes(self):
         return self._mono
+
+    def _mono_a(self, factor):
+        """Buffer ja estirat: `1/factor` mostres per mostra de cançó."""
+        f = round(float(factor), 4)
+        if f not in self._estirat:
+            n = int(round(len(self._mono) / 2 / f))
+            arr = np.full(n, 1000, dtype=np.int16)
+            self._estirat[f] = arr.tobytes()
+        return self._estirat[f]
 
 
 def _max_run_zeros(data):
@@ -2450,6 +2465,35 @@ def _max_run_zeros(data):
 
 
 class TestLoopContinu(unittest.TestCase):
+    def test_a_2x_el_fil_esgota_tota_la_canco(self):
+        """A 2× el buffer dura la meitat: el fil ha de recórrer la cançó
+        SENcera (abans es quedava a mig camí: índex de buffer mal calculat)."""
+        doble = _Doble(np.full(2000, 1000, dtype=np.int16), 1000)
+        doble.velocitat = 2.0
+        proc = _FakeProc(10_000_000)
+        Visor._alimenta(doble, proc, 0.0, 0)
+        data = np.frombuffer(bytes(proc.stdin.buf), dtype=np.int16)
+        # sortida = mostres del buffer estirat = 2000/2 = 1000 (1 s real)
+        self.assertEqual(data.size, 1000)
+        self.assertTrue(proc.stdin.tancat)
+
+    def test_a_mig_x_el_fil_esgota_tota_la_canco(self):
+        doble = _Doble(np.full(2000, 1000, dtype=np.int16), 1000)
+        doble.velocitat = 0.5
+        proc = _FakeProc(10_000_000)
+        Visor._alimenta(doble, proc, 0.0, 0)
+        data = np.frombuffer(bytes(proc.stdin.buf), dtype=np.int16)
+        self.assertEqual(data.size, 4000)      # 2000/0,5 (4 s reals)
+
+    def test_loop_a_2x_fa_voltes_sense_tall(self):
+        doble = _Doble(np.full(2000, 1000, dtype=np.int16), 1000,
+                       loop=(0.1, 0.2))
+        doble.velocitat = 2.0
+        proc = _FakeProc(3000)
+        Visor._alimenta(doble, proc, 0.15, 0)
+        data = np.frombuffer(bytes(proc.stdin.buf), dtype=np.int16)
+        self.assertGreater(data.size, 1000, "ha de fer més d'una volta")
+
     def test_sense_loop_alimenta_fins_al_final(self):
         doble = _Doble(np.full(2000, 1000, dtype=np.int16), 1000)
         proc = _FakeProc(10_000_000)
@@ -6022,9 +6066,13 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr._fusiona_tram(0))
         self.assertEqual(len(vr.tempo_trams), len(abans) - 1)
 
-    def test_arrossegar_una_vora_de_tempo_avança_una_linia(self):
-        """Bug 21-10: arrossegar mitja compàs no movia res (s'imantava a la
-        MATEIXA línia). Ara el sentit del gest mana: dreta → següent línia."""
+    def test_arrossegar_una_vora_de_tempo_segueix_el_ratoli(self):
+        """Re-tempo (21-10-2026): la frontera va ON deixa anar el ratolí.
+
+        Abans s'imantava a una línia de compàs del tram anterior i
+        s'arrossegaven els trams següents (`_ripple`); ara mana el punter
+        (`docs/FLUX DE TEMPO VARIABLE.md` §2) i cap altre tram es mou.
+        """
         from app import ancoratges as A
         vr = self.w.visor_ref
         anc = [{"t": 27.989, "num": 4, "den": 4}, {"t": 30.379, "num": 4, "den": 4},
@@ -6038,13 +6086,16 @@ class TestAncoratgesFinestra(unittest.TestCase):
             vr._on_tempo_mogut(idx, vora, t)
             vr.timeline.editFinished.emit()
 
+        fi_ultim = float(vr.tempo_trams[-1][1])
         arrossega(0, "fi", 31.5)                   # cap a la dreta
-        self.assertAlmostEqual(vr.tempo_trams[0][1], 32.769, places=3)
+        self.assertAlmostEqual(vr.tempo_trams[0][1], 31.5, places=3)
+        self.assertAlmostEqual(float(vr.tempo_trams[-1][1]), fi_ultim,
+                               places=6)           # cap altre tram no es mou
         self.assertNotEqual([tuple(t) for t in vr.tempo_trams], abans)
         vr.undo()
         self.assertEqual([tuple(t) for t in vr.tempo_trams], abans)
         arrossega(1, "ini", 29.0)                  # cap a l'esquerra
-        self.assertAlmostEqual(vr.tempo_trams[0][1], 27.989, places=3)
+        self.assertAlmostEqual(vr.tempo_trams[0][1], 29.0, places=3)
 
     def test_esborrar_diversos_trams_de_cop(self):
         """La multi-selecció del carril de tempo també s'ha de poder esborrar."""
@@ -6106,13 +6157,17 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(vr.timeline._pos_t, 12.5, places=6)
         self.assertEqual(vr.lliscador.value(), 1250)  # barra lliscant al dia
 
-    def test_marcador_crea_inicis_de_clip_i_es_independent(self):
+    def test_marcador_crea_inicis_de_clip_i_va_lligat_a_la_frontera(self):
         """Un marcador = inici de clip a BPM/compàs I a estructura; després
-        no està lligat a res (esborrar clips no el mou)."""
+        **viatja amb la frontera** i desapareix si la frontera desapareix
+        (decisió de l'operador 21-10-2026, `docs/FLUX DE TEMPO VARIABLE.md`
+        §4.C)."""
         vr = self.w.visor_ref
         vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
         vr.seccions = [(0.0, 60.0, "A", "A")]
         vr.timeline.set_data(vr.acords, vr.seccions)
+        vr.marcadors = []
+        vr._undo_touch_base()          # estat de partida consolidat
         vr.pos = 12.0
         self.assertTrue(vr.afegeix_marcador())
         self.assertEqual(len(vr.marcadors), 1)
@@ -6122,15 +6177,35 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(vr.tempo_trams[1][0], 12.0, places=6)
         self.assertEqual(len(vr.seccions), 2)
         self.assertAlmostEqual(vr.seccions[1][0], 12.0, places=6)
-        # el marcador NO està lligat: es pot esborrar el clip i queda
+        # MOURE la frontera arrossega el marcador (dins del mateix desfer)
+        vr._on_tempo_mogut(1, "ini", 13.0)
+        self.assertAlmostEqual(vr.tempo_trams[1][0], 13.0, places=6)
+        self.assertAlmostEqual(vr.marcadors[0], 13.0, places=6)
+        vr.undo()
+        self.assertAlmostEqual(vr.marcadors[0], 12.0, places=6)
+        # ELIMINAR la frontera s'endú el marcador associat
         self.assertTrue(vr._elimina_tram(1))
         self.assertEqual(len(vr.tempo_trams), 1)
+        self.assertEqual(len(vr.marcadors), 0, "la frontera se l'ha endut")
+        # es desfà tot (mapa, marcador i clau) en un sol pas
+        vr.undo()
         self.assertEqual(len(vr.marcadors), 1)
-        # es desfà tot (clips i marcador) en un sol pas
-        vr.undo()          # desfà l'eliminació
-        vr.undo()          # desfà el marcador
-        self.assertEqual(len(vr.marcadors), 0)
+        self.assertEqual(len(vr.tempo_trams), 2)
+
+    def test_fusionar_una_frontera_amb_marcador_esborra_el_marcador(self):
+        """§4.C: la frontera que desapareix s'endú el seu marcador (i es desfà)."""
+        vr = self.w.visor_ref
+        vr.tempo_trams = [(0.0, 30.0, 120.0, 4, 4),
+                          (30.0, 60.0, 120.0, 4, 4)]
+        vr.marcadors = [30.0]
+        vr._undo_touch_base()          # estat de partida consolidat
+        self.assertTrue(vr._fusiona_tram(0, "seguent"))
         self.assertEqual(len(vr.tempo_trams), 1)
+        self.assertEqual(vr.marcadors, [])
+        vr.undo()
+        self.assertEqual(len(vr.tempo_trams), 2)
+        self.assertEqual(len(vr.marcadors), 1)
+        self.assertAlmostEqual(vr.marcadors[0], 30.0, places=6)
 
     def test_tecla_mes_crea_marcador_a_la_finestra(self):
         """`+` és un atall de finestra (no depén del focus) que crida l'acció."""
@@ -6203,6 +6278,198 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertFalse(vr.afegeix_marcador())     # mateix instant
         vr.pos = 0.0
         self.assertFalse(vr.afegeix_marcador())     # no es pot a l'inici
+
+    def test_analitzar_nomes_acords_omet_l_estructura(self):
+        """F6 / «Només els acords»: no passa el qm-segmenter ni toca l'ABC."""
+        from app import main as app_main
+        w = self.w
+        w.amb_est.setChecked(True)
+        w.opcions["analisi"] = {"estructura": True}
+        vist = {}
+
+        def _extreu_chords(wav, csv, log, params=None):
+            open(csv, "w", encoding="utf-8").write("0.0,1.0,N\n")
+            vist["chords"] = True
+
+        def _extreu_segments(*a, **k):
+            vist["segments"] = True
+
+        with patch.object(app_main.pipeline, "extract_chords",
+                          _extreu_chords), \
+                patch.object(app_main.pipeline, "extract_segments",
+                             _extreu_segments), \
+                patch.object(app_main.pipeline, "wav_info",
+                             lambda p: {"durada": 60.0}):
+            fil = app_main.Feina(w.wav_edit.text().strip(), self.td, 120.0, 4,
+                                 0.0, False, opcions={}, amb_bpm=False)
+            fil.run()
+        self.assertTrue(vist.get("chords"))
+        self.assertNotIn("segments", vist)
+        self.assertTrue(os.path.exists(os.path.join(self.td, "acords.csv")))
+        self.assertFalse(os.path.exists(
+            os.path.join(self.td, "estructura_ABC.csv")))
+
+    # -- velocitat de reproducció (0,5–3×, to mantingut) ------------------
+    def test_velocitat_1x_es_el_buffer_de_sempre(self):
+        """A 1× no es renderitza res: es fa servir el PCM del visor."""
+        vr = self.w.visor_ref
+        self.assertEqual(vr._mono_a(1.0), vr._mono_bytes())
+
+    def test_selector_de_velocitat_sincronitzat(self):
+        """`_sincronitza_selector_velocitat` no ha de disparar el canvi."""
+        vr = self.w.visor_ref
+        try:
+            vr.velocitat = 1.5
+            vr._sincronitza_selector_velocitat()
+            self.assertEqual(vr.cmb_vel.currentData(), 1.5)
+            self.assertEqual(self.w.cmb_vel_tb.currentData(), 1.0)
+        finally:
+            vr.velocitat = 1.0
+            vr._sincronitza_selector_velocitat()
+
+    def test_velocitat_canviada_sincronitza_la_barra(self):
+        vr = self.w.visor_ref
+        try:
+            vr.velocitatCanviada.emit(2.0)
+            self.assertEqual(self.w.cmb_vel_tb.currentData(), 2.0)
+        finally:
+            vr.velocitatCanviada.emit(1.0)
+        self.assertEqual(self.w.cmb_vel_tb.currentData(), 1.0)
+
+    def test_cursor_a_doble_velocitat_avanca_el_doble(self):
+        """El rellotge del cursor va en temps de cançó (× velocitat)."""
+        import time as _t
+        vr = self.w.visor_ref
+        try:
+            vr.velocitat = 2.0
+            vr.loop_on = False
+            vr.t0_pos = 0.0
+            vr.t0_mono = _t.monotonic() - 1.0
+            vr._tiquet()
+            self.assertAlmostEqual(vr.pos, 2.0, delta=0.15)
+        finally:
+            vr.velocitat = 1.0
+
+    @unittest.skipUnless(app_visor.ffmpeg.disponible(),
+                         "cal ffmpeg per canviar la velocitat")
+    def test_selector_de_la_barra_mou_el_visor(self):
+        """El desplegable del transport (finestra) arriba al visor."""
+        vr = self.w.visor_ref
+        try:
+            self.w.cmb_vel_tb.setCurrentIndex(3)          # 1,25×
+            self.assertEqual(vr.velocitat, 1.25)
+            self.assertEqual(vr.cmb_vel.currentData(), 1.25)
+        finally:
+            self.w.cmb_vel_tb.setCurrentIndex(2)          # torna a 1×
+        self.assertEqual(vr.velocitat, 1.0)
+        vr._neteja_velocitat()
+
+    def test_velocitat_sense_ffmpeg_no_canvia_res(self):
+        """Si no hi ha ffmpeg, s'avisa i la velocitat es queda com estava."""
+        from app import visor as V
+        vr = self.w.visor_ref
+        with patch.object(V.ffmpeg, "disponible", lambda: False):
+            vr.set_velocitat(2.0, avisar=False)
+        self.assertEqual(vr.velocitat, 1.0)
+        self.assertEqual(vr.cmb_vel.currentData(), 1.0)
+
+    def test_neteja_velocitat_va_a_la_paperera(self):
+        """Els temporals d'`atempo` s'esborren per la paperera (mai `rm`)."""
+        from app import plataforma
+        from app import visor as V
+        vr = self.w.visor_ref
+        tmp = os.path.join(self.td, "vel_prova.wav")
+        open(tmp, "wb").close()
+        cridats = []
+        try:
+            vr._vel_temporals = [tmp]
+            vr._vel_cache = {2.0: b"x"}
+            with patch.object(V.plataforma, "a_la_paperera",
+                              lambda r: cridats.append(r) or True):
+                vr._neteja_velocitat()
+            self.assertEqual(cridats, [tmp])
+            self.assertEqual(vr._vel_temporals, [])
+            self.assertEqual(vr._vel_cache, {})
+        finally:
+            plataforma.a_la_paperera(tmp)
+
+    def test_les_tres_etapes_al_dialeg(self):
+        """BPM · acords · estructura: una casella independent per pestanya."""
+        from app import dialegs as D
+        d = D.DialegOpcions(None, "acords",
+                            {"analisi": {"bpm": False, "acords": True,
+                                         "estructura": False},
+                             "guiat": {"compassos": 8}})
+        self.assertFalse(d._cb_bpm.isChecked())
+        self.assertTrue(d._cb_acords.isChecked())
+        self.assertFalse(d._cb_estructura.isChecked())
+        o = d.opcions()
+        self.assertEqual(o["analisi"], {"bpm": False, "acords": True,
+                                        "estructura": False})
+        self.assertEqual(o["guiat"], {"compassos": 8})   # es conserva
+        d._cb_bpm.setChecked(True)
+        d._cb_estructura.setChecked(True)
+        self.assertEqual(d.opcions()["analisi"],
+                         {"bpm": True, "acords": True, "estructura": True})
+
+    def test_analitza_tambe_detecta_el_bpm(self):
+        """«Analitza» amb l'etapa BPM activa: detecta i aplica el tempo."""
+        from app import main as app_main
+        w = self.w
+        vist = {}
+
+        def _detecta(*a, **k):
+            vist["bpm"] = True
+            return 101.0
+
+        def _extreu_chords(wav, csv, log, params=None):
+            open(csv, "w", encoding="utf-8").write("0.0,1.0,N\n")
+
+        def _abc(*a, **k):
+            open(os.path.join(self.td, "estructura_ABC.csv"), "w",
+                 encoding="utf-8").write("0.0,60.0,60.0,A,A,1,1\n")
+
+        with patch.object(app_main.pipeline, "detecta_bpm", _detecta), \
+                patch.object(app_main.pipeline, "extract_chords",
+                             _extreu_chords), \
+                patch.object(app_main.pipeline, "extract_segments",
+                             lambda *a, **k: None), \
+                patch.object(app_main.pipeline, "fer_abc", _abc), \
+                patch.object(app_main.pipeline, "wav_info",
+                             lambda p: {"durada": 60.0}):
+            fil = app_main.Feina(w.wav_edit.text().strip(), self.td, 120.0, 4,
+                                 0.0, True, opcions={})
+            fil.run()
+        self.assertTrue(vist.get("bpm"))
+        self.assertEqual(fil.bpm_detectat, 101.0)
+        self.assertEqual(fil.bpm, 101.0)     # el BPM detectat mana al pipeline
+
+    def test_etapa_acords_desactivada_no_toca_el_csv(self):
+        """Amb l'etapa d'acords OFF, el model d'acords es conserva intacte."""
+        from app import main as app_main
+        w = self.w
+        csv_ac = os.path.join(self.td, "acords.csv")
+        with open(csv_ac, "w", encoding="utf-8") as f:
+            f.write("0.0,60.0,N\n")
+        abans = open(csv_ac, encoding="utf-8").read()
+        vist = {}
+
+        with patch.object(app_main.pipeline, "detecta_bpm",
+                          lambda *a, **k: 120.0), \
+                patch.object(app_main.pipeline, "extract_chords",
+                             lambda *a, **k: vist.setdefault("chords", True)), \
+                patch.object(app_main.pipeline, "extract_segments",
+                             lambda *a, **k: vist.setdefault("segments", True)), \
+                patch.object(app_main.pipeline, "fer_abc",
+                             lambda *a, **k: None), \
+                patch.object(app_main.pipeline, "wav_info",
+                             lambda p: {"durada": 60.0}):
+            fil = app_main.Feina(w.wav_edit.text().strip(), self.td, 120.0, 4,
+                                 0.0, True, opcions={}, amb_acords=False)
+            fil.run()
+        self.assertNotIn("chords", vist)
+        self.assertIn("segments", vist)
+        self.assertEqual(open(csv_ac, encoding="utf-8").read(), abans)
 
     def test_obre_el_dialeg_amb_les_dades(self):
         from app import dialeg_ancoratges as DA

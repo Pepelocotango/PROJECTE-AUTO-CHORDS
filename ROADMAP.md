@@ -90,6 +90,10 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **En curs**: refinaments d'**edició a la graella** (convencions de DAW) i
   l'**eina del timeline** (intel·ligent / marc). Últim detall: `CHANGELOG` +
   `ROADMAP_HISTORIA.md` §15.
+- **Fet (21-10-2026)**: **re-tempo** — arrossegar una frontera de tempo mou
+  **Δt** (el ratolí mana), conserva els **compassos** i recalcula el **BPM**;
+  `+1/−1/×2/÷2` al menú del tram i els marcadors lligats a la frontera
+  (`docs/FLUX DE TEMPO VARIABLE.md`).
 
 ---
 
@@ -232,9 +236,24 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Xifrat canònic + panell de tipus + audició · eina del timeline
   (intel·ligent/marc, tecla `E`) · `Ctrl+Shift`+arrossegar = duplicar · treballar
   sense analitzar** — 15–16/10/2026.
+- **Anàlisi per etapes + velocitat de reproducció** — 21/10/2026: les 3
+  etapes de l'anàlisi (BPM · acords · estructura) són **caselles
+  independents** al diàleg d'autodetecció i «Analitza» **també detecta el
+  BPM** (i l'aplica al mapa); el transport guanya **selector de velocitat
+  0,5–3×** amb el **to mantingut** (`ffmpeg atempo`), amb cursor, loop i
+  metrònom alineats (`factor` a `metronom.mescla_metronom`).
 - **Detall complet** de tot això (i els brainstorms originals §10–§12, l'anàlisi
   multi-SO, la nota de graella/PPQ, la d'obertura tecnològica i les notes
   d'implementació): **[`ROADMAP_HISTORIA.md`](ROADMAP_HISTORIA.md)**.
 
 
 apunt usuari: investigar madmom motor neuronal per detectar downbeats i bpm.
+exportar partitures amb silenci al pentagrama, que sonin només els acords xifrats
+play a diferents velocitats — ✅ FET (21-10: selector 0,5–3× al transport amb
+  `ffmpeg atempo`, to mantingut; cursor, loop i metrònom alineats)
+acabar separació analitza tot/només estructura/només acords/ etc.. — ✅ FET
+  (21-10: 3 caselles independents al diàleg d'autodetecció —BPM · acords ·
+  estructura— i «Analitza» ja detecta també el BPM)
+actualitzar documentació V8.x¿?¿?
+millorar welcome mode fàcil ( text millor explicat de flux de treball)
+millorar info box
