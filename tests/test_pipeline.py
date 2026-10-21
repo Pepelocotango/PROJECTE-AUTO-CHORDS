@@ -3594,22 +3594,17 @@ class OffsetTests(unittest.TestCase):
         self.assertFalse(is_bar_start_label("1.2"))
         self.assertFalse(is_bar_start_label("1:00"))
 
-    def test_zoom_amb_roda_centra_cursor_vermell_si_no_hi_ha_seleccio(self):
+    def test_zoom_amb_roda_segueix_el_punter(self):
+        # La roda fa zoom al RATOLÍ: el temps davall el punter no es mou (el
+        # playhead i la selecció no hi manen). Abans centrava el playhead.
         from app.timeline import TimelineView
         app = visor.QApplication.instance() or visor.QApplication([])
         view = TimelineView({"durada": 30.0, "mono": np.zeros(1, dtype=np.float32)},
                             [], [], 120.0, 4, True)
         view.set_position(8.0)
-        view._view_left, view._view_right = 0.0, 30.0
-        captured = {}
-
-        def fake_center_on(t, ampl):
-            captured["t"] = t
-            captured["ampl"] = ampl
-            view._view_left = max(0.0, t - ampl / 2.0)
-            view._view_right = min(30.0, view._view_left + ampl)
-
-        view._center_on = fake_center_on
+        view.zoom_to(0.0, 30.0)
+        x = max(view._x_offset + 20, view.viewport().width() // 3)
+        t_abans = view._view_left + (x - view._x_offset) / view._pps
 
         class FakeEvent:
             def angleDelta(self):
@@ -3618,12 +3613,17 @@ class OffsetTests(unittest.TestCase):
             def modifiers(self):
                 return 0
 
+            def pos(self):
+                return type("P", (), {"x": lambda self: x})()
+
             def accept(self):
                 pass
 
         view.wheelEvent(FakeEvent())
-        self.assertEqual(captured["t"], 8.0)
-        self.assertGreater(captured["ampl"], 0.0)
+        t_despres = view._view_left + (x - view._x_offset) / view._pps
+        self.assertAlmostEqual(t_abans, t_despres, places=6)
+        self.assertAlmostEqual(view._view_right - view._view_left, 25.5,
+                               places=6)          # 30 s x 0,85
         app.quit()
 
     def test_snap_time_amb_offset(self):

@@ -3813,6 +3813,24 @@ class TestVistaCursor(_vista_cursor___Base):
         finally:
             v.close()
 
+    def test_roda_de_zoom_segueix_el_ratoli(self):
+        """La roda ha de mantindre el temps davall el punter (no el playhead)."""
+        v = _vista_cursor___visor()
+        try:
+            tl = v.timeline
+            tl.zoom_to(0.0, 10.0)
+            tl.set_position(8.5, emit=False, snap=False)   # playhead lluny
+            x = 300
+            t_abans = tl._view_left + (x - tl._x_offset) / tl._pps
+            tl._zoom_al_punt(x, 5.0)
+            t_despres = tl._view_left + (x - tl._x_offset) / tl._pps
+            self.assertAlmostEqual(t_abans, t_despres, places=6)
+            self.assertAlmostEqual(_span(tl), 5.0, places=6)
+            # i el playhead NO ha de manar: el seu temps no és el del punter
+            self.assertGreater(abs(t_abans - 8.5), 0.5)
+        finally:
+            v.close()
+
     def test_llista_desplaca_la_vista_al_cursor(self):
         """Seleccionar una fila llunyana ha de portar el visor al clip."""
         for llista, salt, idx in (("llista_ac", "_salt_acord", 4),

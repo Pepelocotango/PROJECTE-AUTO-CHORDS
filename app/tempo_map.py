@@ -597,7 +597,10 @@ def valida_i_normalitza_compassos(trams, durada, offset=0.0):
     if base0 <= float(ini0) + TOL and bars0 < 1.0 - 1e-5:
         raise ValueError(
             "El primer tram ha d'acabar com a mínim al primer compàs sencer")
-    if bars0 < -1e-5 or abs(bars0 - round(bars0)) > 1e-5:
+    # Tolerància en TEMPS (no en compassos): l'offset es desa amb 3 decimals i
+    # la frontera pot caure a dècimes de mil·lisegon (abans 1e-5 compassos = 20
+    # µs a 120 BPM bloquejaven qualsevol reparació).
+    if bars0 < -1e-5 or abs(bars0 - round(bars0)) * b0 > TOL_COMPAS:
         raise ValueError(
             "El primer tram no acaba en una línia de compàs "
             f"({bars0:.3f} compassos des del compàs 1)")
@@ -813,6 +816,9 @@ def canvia_bpm_local(trams, idx, bpm, durada, offset=0.0, num=None, den=None):
     **veí de la dreta** conserva els seus compassos i el seu final, recalculant
     el BPM. La resta del mapa **no es mou** (sense *ripple*).
 
+    - **Canvi només de compàs** (`4/4` → `3/4`…): es conserva la **durada** i
+      es recompta `N` (el BPM s'ajusta el mínim perquè siga enter). Canviar la
+      xifra no ha de fer el tram més llarg: les fronteres són la veritat.
     - **Últim tram** (o mapa d'un sol tram): la fi de la WAV mana → conserva
       `ini`/`fi` i pot canviar `N` (excepció §5).
     - **Primer tram**: la zona de pre-música (`0 → offset`) es respecta; si el
@@ -851,6 +857,22 @@ def canvia_bpm_local(trams, idx, bpm, durada, offset=0.0, num=None, den=None):
         # tram (`_mapa_valida_sense_moure`).
         out = list(nous)
         out[i] = (float(ini), float(fi), bpm, num, den)
+        return _mapa_valida_sense_moure(out, durada, offset)
+
+    if (num, den) != (int(num0), int(den0)):
+        # Només canvia el COMPÀS (p. ex. 1/4 → 4/4): és el mateix tros de
+        # música recontat. Mana la DURADA (les fronteres no es mouen) i el
+        # nombre de compassos passa a ser el que hi cap; el BPM s'ajusta el
+        # mínim perquè N siga enter. Abans es conservava N i el tram es feia
+        # 4× més llarg → «el tram següent quedaria massa curt» (Jamiroquai).
+        base = _base_tram(nous[i], i, offset)
+        dt = float(fi) - base
+        out = list(nous)
+        if dt > TOL:
+            bq = _bar_quarters(num, den)
+            n = max(1, _enter_mes_proper(dt * float(bpm) / (bq * 60.0)))
+            bpm = _valida_bpm_edicio(n * bq * 60.0 / dt, "tram")
+        out[i] = (float(ini), float(fi), float(bpm), num, den)
         return _mapa_valida_sense_moure(out, durada, offset)
 
     base = _base_tram(nous[i], i, offset)
@@ -1212,6 +1234,68 @@ def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
     return valida_i_normalitza_compassos(out, durada, offset)
 
 
+#: Un tram més curt que això (50 ms) no té cap sentit musical: naix d'un `+`
+#: o d'un drag a mil·lèsimes d'una frontera i fa inviable qualsevol validació.
+NETEJA_TRAM_S = 0.05
+
+
+def neteja_trams_curts(trams, minim=NETEJA_TRAM_S):
+    """Fon els trams més curts que `minim` amb el veí (no muta l'entrada)."""
+    out = [tuple(t) for t in (trams or ())]
+    if len(out) <= 1 or minim <= 0:
+        return out
+    i = 0
+    while i < len(out) and len(out) > 1:
+        ini, fi = float(out[i][0]), float(out[i][1])
+        if fi - ini < minim:
+            if i > 0:
+                pre = out[i - 1]
+                out[i - 1] = (pre[0], fi, pre[2], pre[3], pre[4])
+                del out[i]
+                i = max(0, i - 1)
+            else:
+                seg = out[1]
+                out[0] = (ini, seg[1], seg[2], seg[3], seg[4])
+                del out[1]
+                i = 0
+        else:
+            i += 1
+    return out
+
+
+def refit_trams(trams, durada, offset=0.0):
+    """Repara el mapa **recalculant** el BPM de cada tram amb N enter.
+
+    Cada frontera és la fi del tram de l'esquerra: si es conserva el nombre de
+    compassos i es recalcula el BPM, la frontera cau exactament a la seua
+    graella sense moure-la (l'inici del tram de la dreta n'és la base). És
+    l'últim recurs de `repara_fronteres` quan imantar la frontera faria curt
+    un dels dos costats.
+
+    L'últim tram i el pre-roll pur conserven el BPM (excepcions §5).
+    """
+    durada = float(durada or 0.0)
+    out = normalitza_trams(trams, durada)
+    res = []
+    for i, (ini, fi, bpm, num, den) in enumerate(out):
+        if i == len(out) - 1:
+            res.append((ini, fi, bpm, num, den))
+            continue
+        base = _base_tram(out[i], i, offset)
+        bq = _bar_quarters(num, den)
+        dt = float(fi) - base
+        if dt <= TOL or bq <= TOL:
+            res.append((ini, fi, bpm, num, den))
+            continue
+        n = max(1, _enter_mes_proper(dt * float(bpm) / (bq * 60.0)))
+        bpm2 = n * bq * 60.0 / dt
+        if not (BPM_EDIT_MIN - TOL <= bpm2 <= BPM_EDIT_MAX + TOL):
+            res.append((ini, fi, bpm, num, den))
+            continue
+        res.append((ini, fi, bpm2, num, den))
+    return valida_i_normalitza_compassos(res, durada, offset)
+
+
 def repara_fronteres(trams, durada, offset=0.0):
     """Fa vàlid un mapa **imantant** les fronteres que no cauen a la graella.
 
@@ -1228,7 +1312,7 @@ def repara_fronteres(trams, durada, offset=0.0):
     res a imantar. Si no és pot, propaga el `ValueError` original.
     """
     durada = float(durada or 0.0)
-    out = normalitza_trams(trams, durada)
+    out = neteja_trams_curts(normalitza_trams(trams, durada))
     if len(out) <= 1:
         return out
     error = None
@@ -1254,6 +1338,11 @@ def repara_fronteres(trams, durada, offset=0.0):
             _tall, out = snap_frontera_compas(out, p_idx, t, durada, offset)
         except ValueError:
             break
+    # Últim recurs: conservar les fronteres i recalcular els BPM (N enter).
+    try:
+        return refit_trams(out, durada, offset)
+    except ValueError:
+        pass
     raise error if error is not None else ValueError("Mapa de tempo invàlid")
 
 

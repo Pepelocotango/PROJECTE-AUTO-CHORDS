@@ -416,6 +416,22 @@ class TimelineView(QGraphicsView):
             centre = self._pos_t
         self._center_on(centre, ampl)
 
+    def _zoom_al_punt(self, x: float, ampl: float) -> None:
+        """Zoom mantenint a la mateixa columna el temps que hi ha davall `x`.
+
+        És el comportament de la **roda**: el punt que estàs mirant no se'n va
+        (el playhead i la selecció no hi tenen res a veure).
+        """
+        ampl = max(float(ampl), 0.3)
+        pps = max(float(self._pps), 1e-9)
+        t = self._view_left + (float(x) - self._x_offset) / pps
+        w = max(1, self.viewport().width() - LEFT_PAD - RIGHT_PAD)
+        frac = min(1.0, max(0.0, (float(x) - LEFT_PAD) / w))
+        left = t - frac * ampl
+        top = max(0.0, float(self._durada) - ampl)
+        left = min(max(0.0, left), top)
+        self._set_view_range(left, left + ampl)
+
     def _zoom_full(self) -> None:
         self._set_view_range(0.0, max(self._durada, 0.5))
 
@@ -1548,7 +1564,7 @@ class TimelineView(QGraphicsView):
         self._set_view_range(self._view_left, self._view_right)
 
     def wheelEvent(self, event) -> None:
-        """Roda = zoom centrat al cursor (mouse intel·ligent).
+        """Roda = zoom al punt del ratolí (el temps davall el punter no es mou).
         Shift+roda = desplaçament horitzontal (pan)."""
         delta = event.angleDelta().y()
         if delta == 0:
@@ -1563,17 +1579,11 @@ class TimelineView(QGraphicsView):
             self._set_view_range(new_l, new_r)
             event.accept()
             return
-        # Si hi ha un clip seleccionat, centrem la vista al seu centre.
-        # Si no, el zoom ha de quedar centrat al cursor vermell (playhead), no
-        # al punt del ratolí.
-        centre = self.selected_center()
+        # La roda seguix el RATOLÍ (no el playhead ni la selecció): el temps
+        # que hi ha davall el punter es queda a la mateixa columna.
         ampl = max((self._view_right - self._view_left) *
                    (0.85 if delta > 0 else (1.0 / 0.85)), 0.3)
-        if centre is not None:
-            self._center_on(centre, ampl)
-            event.accept()
-            return
-        self._center_on(self._pos_t, ampl)
+        self._zoom_al_punt(event.pos().x(), ampl)
         event.accept()
 
     def mousePressEvent(self, event) -> None:

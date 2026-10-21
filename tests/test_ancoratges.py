@@ -171,6 +171,38 @@ class TestReparaFronteres(unittest.TestCase):
         self.assertAlmostEqual(fi[0][1], 35.156, places=3)   # imantat
         TM.valida_i_normalitza_compassos(fi, 60.0, self.OFF)
 
+    MAPA_MICRO = [(0.0, 0.273090, 120.0, 4, 4),
+                  (0.273090, 0.273773, 120.0, 4, 4),
+                  (0.273773, 286.186817, 115.0, 4, 4),
+                  (286.186817, 297.453333, 125.125938, 4, 4)]
+
+    def test_elimina_amb_micro_tram_i_offset_de_milisegons(self):
+        # Cas real (Jamiroquai, 23:40): un `+` a 0,7 ms d'una frontera va
+        # deixar un tram de 0,000683 s i cap «Elimina tempo» no passava.
+        for idx in range(4):
+            fi = TM.repara_fronteres(TM.elimina_tall(self.MAPA_MICRO, idx),
+                                     297.453333, 0.273)
+            TM.valida_i_normalitza_compassos(fi, 297.453333, 0.273)
+            self.assertAlmostEqual(fi[0][0], 0.0)
+            self.assertAlmostEqual(fi[-1][1], 297.453333, places=6)
+            self.assertTrue(all(float(b[1]) - float(b[0]) > 0 for b in fi))
+
+    def test_neteja_trams_curts(self):
+        t = TM.neteja_trams_curts([(0.0, 0.5, 120.0, 4, 4),
+                                   (0.5, 0.5007, 120.0, 4, 4),
+                                   (0.5007, 2.0, 90.0, 4, 4)])
+        self.assertEqual(len(t), 2)
+        self.assertAlmostEqual(t[0][1], 0.5007, places=6)
+
+    def test_premusica_amb_offset_de_milisegons_valida(self):
+        # L'offset es desa amb 3 decimals (0,273) i la frontera pot caure a
+        # 0,273090: la tolerància és en TEMPS, no en compassos (abans 1e-5
+        # compassos = 20 µs ho rebutjava i bloquejava la reparació).
+        trams = [(0.0, 0.273090, 120.0, 4, 4),
+                 (0.273090, 10.0, 120.0, 4, 4)]
+        out = TM.valida_i_normalitza_compassos(trams, 10.0, 0.273)
+        self.assertAlmostEqual(out[0][1], 0.273090, places=6)
+
     def test_un_mapa_ja_valid_no_es_toca(self):
         fi = TM.valida_i_normalitza_compassos(self.MAPA, 60.0, self.OFF)
         self.assertEqual(TM.repara_fronteres(fi, 60.0, self.OFF),

@@ -5,6 +5,32 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Canviat (2026-10-21, 11k) — la roda del ratolí fa zoom al punter
+- **`Timeline.wheelEvent()`**: el zoom seguix el **punt del ratolí** (el temps
+  davall el cursor es queda a la mateixa columna), com en qualsevol DAW. Abans
+  centrava la vista al clip seleccionat o al **playhead** («sempre seguix el
+  cursor vermell»). `Shift`+roda continua fent *pan* horitzontal.
+- Els botons **+/−** no canvien: zoomen al centre del clip seleccionat i, si no
+  n'hi ha, al playhead.
+- **Tests**: +1 → **1.343 OK** (1 skip), pyflakes net.
+
+### Corregit (2026-10-21, 11j) — eliminar trams amb micro-trams i tornar a 4/4
+- **`tempo_map.repara_fronteres()`** neteja abans de validar els trams de menys
+  de **50 ms** (`neteja_trams_curts`): un `+` a 0,7 ms d'una frontera deixava un
+  micro-tram i **cap** «Elimina tempo» passava («La frontera 0.273773s no cau
+  en una línia de compàs», 28 intents).
+- **Últim recurs `refit_trams()`**: si imantar la frontera faria curt un dels
+  costats, es conserven les fronteres i es **recalcula el BPM** de cada tram
+  amb `N` enter.
+- **Tolerància del pre-roll en TEMPS** (1e-4 s) en lloc de 1e-5 compassos
+  (20 µs a 120 BPM): l'offset es desa amb 3 decimals (`0,273`) i la frontera
+  0,273090 bloquejava qualsevol reparació.
+- **`canvia_bpm_local()`**: canviar **només el compàs** conserva la **durada**
+  i recompta `N` (abans conservava `N` i el tram es feia 4× més llarg): un clip
+  de mig tema en `1/4` (551 compassos) ja es pot tornar a `4/4` (138 compassos,
+  BPM 114,19 → 114,40).
+- **Tests**: +4 → **1.342 OK** (1 skip), pyflakes net.
+
 ### Corregit (2026-10-21, 11i) — la fi del primer clip pot tornar al compàs 1
 - **`tempo_map.mou_frontera_retempo()`**: amb pre-música, la frontera es
   limitava a `offset + 0,5 s`, així que era **impossible** tornar la fi del

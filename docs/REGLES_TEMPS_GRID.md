@@ -75,6 +75,12 @@ marcadors— l'ajust és **local**:
 2. En canviar el BPM, la **durada del tram** s'ajusta a
    `Δt = N · bq · 60 / BPM`; la **frontera amb el veí** es mou fins on cau la
    nova línia de compàs, que per construcció és exacta.
+2bis. En canviar **només el compàs** (`4/4` → `3/4`…, amb el mateix BPM), no
+   es conserva `N`: el tros de música és el mateix, així que **mana la durada**
+   i es recompta el nombre de compassos (el BPM s'ajusta el mínim perquè `N`
+   siga enter). Canviar la xifra no pot fer el tram més llarg: si no, un
+   `1/4` accidental amb 551 compassos no es podia tornar a `4/4` («el tram
+   següent quedaria massa curt»).
 3. El **veí afectat conserva els seus compassos** i **recalcula el seu BPM**
    per encabir-s'hi. L'ajust és **local**: només els dos trams que toquen
    eixa frontera.

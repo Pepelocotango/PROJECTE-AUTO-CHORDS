@@ -452,19 +452,36 @@ class RetempoTests(unittest.TestCase):
             tempo_map.canvia_bpm_local(trams, 0, 30.0, 50.0)
         self.assertIn("BPM", str(cm.exception))
 
-    def test_canviar_bpm_local_canvia_el_compas_conservant_n(self):
-        # 5 compassos de 4/4 a 120 (10 s) → 5 compassos de 3/4 a 100 (9 s).
+    def test_canviar_bpm_local_canvia_el_compas_conservant_la_durada(self):
+        # Canviar el COMPÀS no ha de fer el tram més llarg: mana la durada i
+        # es recompta N (el BPM s'ajusta el mínim perquè siga enter).
+        # 10 s a 3/4 i 100 BPM → 5,56 compassos → 6 → 108 BPM.
         trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
                  (30.0, 42.0, 120.0, 4, 4)]
         out = tempo_map.canvia_bpm_local(trams, 0, 100.0, 42.0, num=3, den=4)
-        self.assertAlmostEqual(out[0][1], 9.0, places=6)
+        self.assertAlmostEqual(out[0][1], 10.0, places=6)
         self.assertEqual(out[0][3:], (3, 4))
-        self.assertAlmostEqual(
-            out[0][1] / tempo_map.durada_compas(100.0, 3, 4), 5.0, places=6)
-        self.assertAlmostEqual(out[1][1], 30.0, places=9)
-        # El veí [9,30] = 21 s conserva 10 compassos → 85,714 BPM.
-        self.assertAlmostEqual(out[1][2], 10 * 3 * 60 / 21.0, places=6)
-        self.assertEqual(out[2], trams[2])            # el del fons, intacte
+        self.assertAlmostEqual(out[0][2], 6 * 3 * 60 / 10.0, places=6)
+        self.assertEqual(out[1], trams[1])            # els veïns, intactes
+        self.assertEqual(out[2], trams[2])
+
+    def test_canviar_compas_1_4_a_4_4(self):
+        # Cas real (Jamiroquai, 23:55): el clip del mig era 1/4 (551
+        # compassos) i posar-lo a 4/4 conservava N → 4× més llarg i «no hi
+        # cap». Ara conserva la durada: 138 compassos de 4/4.
+        trams = [(0.0, 0.274, 120.0, 4, 4),
+                 (0.274, 289.781330, 114.194, 1, 4),
+                 (289.781330, 297.453333, 117.303262, 1, 4)]
+        out = tempo_map.canvia_bpm_local(trams, 1, 114.194, 297.453333,
+                                         offset=0.274, num=4, den=4)
+        self.assertAlmostEqual(out[1][0], 0.274, places=6)
+        self.assertAlmostEqual(out[1][1], 289.781330, places=6)
+        self.assertEqual(out[1][3:], (4, 4))
+        bars = (out[1][1] - out[1][0]) / tempo_map.durada_compas(
+            out[1][2], 4, 4)
+        self.assertAlmostEqual(bars, round(bars), places=6)
+        self.assertEqual(round(bars), 138)
+        self.assertEqual(out[2], trams[2])
 
     def test_canviar_bpm_local_ultim_tram(self):
         out = tempo_map.canvia_bpm_local([(0.0, 12.0, 60.0, 3, 4)], 0,
