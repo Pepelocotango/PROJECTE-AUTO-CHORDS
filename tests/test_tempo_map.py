@@ -311,7 +311,10 @@ class TestPersistencia(unittest.TestCase):
             f.write("ini_s,fi_s,beats,beat_type\n4.0,10.0,3,4\n-2.0,20.0,0,0\n")
         trams = pipeline.llegeix_tempo_map(td, 120.0, 4, 4, 30.0)
         self.assertEqual(trams[0][0], 0.0)                    # comença a 0
-        self.assertEqual(trams, [(0.0, 4.0, 120.0, 4, 4),      # valors valids
+        # Un compàs 0/0 ja no és un error: és un tros EN SEGONS (100 BPM de
+        # referència per a la notació). El que sí que es repara és l'inici
+        # negatiu i el forat inicial.
+        self.assertEqual(trams, [(0.0, 4.0, 100.0, 0, 0),
                                  (4.0, 30.0, 90.0, 3, 4)])     # i acaba a la WAV
 
     def test_sense_fitxers_es_constant(self):
@@ -1537,6 +1540,106 @@ class TestAvaluaConfirmacio(unittest.TestCase):
         # 103 → ±3 % = ±3,09 BPM: 106 casa, 107 no
         self.assertTrue(tm.avalua_confirmacio(106.0, prev=103.0)["coincideix"])
         self.assertFalse(tm.avalua_confirmacio(107.0, prev=103.0)["coincideix"])
+
+
+class TestTramsEnSegons(unittest.TestCase):
+    """Trams **en segons** (`num`/`den` = 0): sense graella ni contracte.
+
+    Són els passatges rubato: duren el que duren i no han de caure en cap
+    línia de compàs. Per a la notació es prenen a 100 BPM (referència).
+    """
+
+    def _mapa(self):
+        return TempoMap([(0.0, 2.0, 120.0, 4, 4),
+                         (2.0, 6.0, 100.0, 0, 0),
+                         (6.0, 10.0, 120.0, 4, 4)])
+
+    def test_normalitza_conserva_el_zero(self):
+        out = tm.normalitza_trams([(0.0, 2.0, 120.0, 4, 4),
+                                   (2.0, 6.0, 0.0, 0, 0)], 6.0)
+        self.assertEqual(out[1][2], 100.0)
+        self.assertEqual((out[1][3], out[1][4]), (0, 0))
+
+    def test_es_lliure_i_te_durada_en_segons(self):
+        m = self._mapa()
+        self.assertFalse(m.es_lliure(1.0))
+        self.assertTrue(m.es_lliure(3.0))
+        self.assertEqual(m.tram(3.0).lliure, True)
+        self.assertAlmostEqual(m.tram(3.0).fi - m.tram(3.0).ini, 4.0)
+
+    def test_sense_graella_dins_del_tros(self):
+        m = self._mapa()
+        # Cap línia de compàs ni de temps dins del tros lliure.
+        self.assertEqual(m.grid_lines(2.0, 6.0, "bar"), [])
+        self.assertEqual(m.grid_lines(2.0, 6.0, "beat"), [])
+        self.assertEqual(m.grid_lines(2.1, 5.9, "sub"), [])
+        # Fora, la graella hi és.
+        self.assertTrue(m.grid_lines(0.0, 2.0, "bar"))
+
+    def test_label_en_segons(self):
+        m = self._mapa()
+        self.assertEqual(m.label(3.0), "—")
+        self.assertNotEqual(m.label(1.0), "—")
+
+    def test_validacio_accepta_lliure_fora_de_graella(self):
+        # El tros lliure arrenca a 2,1 s (fora de la graella) i dura 3,37 s:
+        # no ha de fer fallar el contracte de compassos.
+        trams = [(0.0, 2.1, 120.0, 4, 4), (2.1, 5.47, 100.0, 0, 0),
+                 (5.47, 10.0, 120.0, 4, 4)]
+        out = tm.valida_i_normalitza_compassos(trams, 10.0, offset=0.0)
+        self.assertEqual(out[1][3:], (0, 0))
+
+    def test_canvia_bpm_local_el_deixa_en_segons(self):
+        # Des del diàleg: 4/4 → «en segons» conserva les fronteres del clip.
+        trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 120.0, 4, 4),
+                 (6.0, 10.0, 120.0, 4, 4)]
+        out = tm.canvia_bpm_local(trams, 1, 97.0, 10.0, num=0, den=0)
+        self.assertEqual((out[1][3], out[1][4]), (0, 0))
+        self.assertAlmostEqual(out[1][0], 2.0)
+        self.assertAlmostEqual(out[1][1], 6.0)
+        self.assertAlmostEqual(out[1][2], 97.0)
+
+    def test_tornar_de_segons_a_compas(self):
+        trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 100.0, 0, 0),
+                 (6.0, 10.0, 120.0, 4, 4)]
+        out = tm.canvia_bpm_local(trams, 1, 120.0, 10.0, num=4, den=4)
+        self.assertEqual((out[1][3], out[1][4]), (4, 4))
+        self.assertAlmostEqual(out[1][0], 2.0)
+        self.assertAlmostEqual(out[1][1], 6.0)   # la durada mana
+        self.assertAlmostEqual(out[1][2], 120.0)
+
+    def test_arrossegar_la_vora_dun_clip_en_segons_es_lliure(self):
+        trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 100.0, 0, 0),
+                 (6.0, 10.0, 120.0, 4, 4)]
+        out = tm.mou_frontera_retempo(trams, 1, 2.7, 10.0, 0.0)
+        self.assertAlmostEqual(out[0][1], 2.7)
+        self.assertAlmostEqual(out[1][0], 2.7)
+        self.assertAlmostEqual(out[1][1], 6.0)
+        self.assertEqual((out[1][3], out[1][4]), (0, 0))
+        self.assertAlmostEqual(out[0][2], 120.0)   # cap BPM tocat
+
+    def test_compassos_dun_clip_en_segons_es_rebutja(self):
+        trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 100.0, 0, 0)]
+        with self.assertRaises(ValueError):
+            tm.canvia_compassos_tram(trams, 1, 1, 6.0)
+
+    def test_round_trip_csv_en_segons(self):
+        import tempfile
+        td = tempfile.mkdtemp()
+        trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 100.0, 0, 0),
+                 (6.0, 10.0, 120.0, 4, 4)]
+        pipeline.desa_tempo_map(td, trams)
+        with open(os.path.join(td, "compas.csv"), encoding="utf-8") as f:
+            self.assertIn("0,0", f.read().replace(" ", ""))
+        self.assertEqual(pipeline.llegeix_tempo_map(td, 120, 4, 4, 10.0),
+                         trams)
+
+    def test_quart_compas_zero_no_divideix(self):
+        m = self._mapa()
+        bar_s, beat_s, sub_s = m.durations(3.0)
+        self.assertGreater(bar_s, 0.0)      # 4/4 a 100 BPM = 2,4 s
+        self.assertAlmostEqual(bar_s, 2.4, places=6)
+        self.assertAlmostEqual(beat_s, 0.6, places=6)
 
 
 if __name__ == "__main__":   # pragma: no cover

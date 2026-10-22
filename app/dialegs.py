@@ -615,7 +615,9 @@ class DialegTempoMapa(QDialog):
             "DAW). Cada fila val fins a la següent; la primera («Des de 0 s») "
             "és el valor inicial.\nA «Des de» pots escriure **segons** (p. ex. "
             "`90`) o un **compàs** fent-ho començar per `c` (p. ex. `c33` o "
-            "`c33.1`).")
+            "`c33.1`).\nPer a un passatge **rubato** (en segons, sense "
+            "graella), posa-hi el compàs `0/0`: eixa fila dura el que diuen "
+            "els segons i no compta compassos.")
         avis.setWordWrap(True)
         lay.addWidget(avis)
         self.taula = QTableWidget(0, 3)
@@ -683,8 +685,17 @@ class DialegTempoMapa(QDialog):
                     num, den = int(a), int(b)
                 except ValueError:
                     num, den = 4, 4
-            if bpm <= 0 or num <= 0 or den <= 0:
+            if num < 0 or den < 0:
                 continue
+            if num == 0 or den == 0:
+                # `0/0` = tros EN SEGONS (rubato): el BPM és la referència de
+                # notació (100 per defecte).
+                num = den = 0
+                bpm = bpm if bpm > 0 else 100.0
+            elif bpm <= 0:
+                # No es descarta la fila (abans desapareixia en silenci): es
+                # deixa al valor per defecte de `normalitza_trams`.
+                bpm = 120.0
             out.append((ini, ini, bpm, num, den))
         if out:
             self._trams = out
@@ -757,13 +768,27 @@ class DialegTramTempo(QDialog):
         form.addRow("BPM:", self.sp_bpm)
         form.addRow("Compàs:", self.ed_compas)
         lay.addLayout(form)
+        self.chk_segons = QCheckBox("En segons (sense compàs: rubato)")
+        self.chk_segons.setToolTip(
+            "El clip dura el que diu l'àudio, sense graella ni compassos "
+            "enters. Per a la partitura es pren a 100 BPM.")
+        self.chk_segons.setChecked(int(num) <= 0 or int(den) <= 0)
+        self.chk_segons.toggled.connect(self._segons_canviat)
+        lay.addWidget(self.chk_segons)
+        self._segons_canviat(self.chk_segons.isChecked())
         botons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         botons.accepted.connect(self.accept)
         botons.rejected.connect(self.reject)
         lay.addWidget(botons)
 
+    def _segons_canviat(self, actiu):
+        """En segons el compàs no té sentit: s'apaga l'edició del camp."""
+        self.ed_compas.setEnabled(not bool(actiu))
+
     def valors(self):
-        """`(bpm, num, den)`; el compàs s'escriu «num/den» (o «num»)."""
+        """`(bpm, num, den)`; 0/0 = clip en segons; «num/den» o «num»."""
+        if self.chk_segons.isChecked():
+            return (float(self.sp_bpm.value()), 0, 0)
         num, den = 4, 4
         txt = (self.ed_compas.text() or "").strip().replace(" ", "")
         if "/" in txt:

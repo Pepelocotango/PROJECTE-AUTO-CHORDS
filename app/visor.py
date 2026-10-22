@@ -746,9 +746,12 @@ class Visor(QMainWindow):
             return False
         if not nous:
             return False
-        self.bpm = float(nous[0][2])
-        self.bpb = int(nous[0][3])
-        self.beat_type = int(nous[0][4])
+        # El transport només pren valors d'un tros AMB compàs: un primer tros
+        # «en segons» (0/0) no ha de deixar `bpb` a zero.
+        if int(nous[0][3]) > 0 and int(nous[0][4]) > 0:
+            self.bpm = float(nous[0][2])
+            self.bpb = int(nous[0][3])
+            self.beat_type = int(nous[0][4])
         if desa:
             return bool(self.aplica_tempo_trams(nous))
         # En memòria: el mapa es reconstrueix i la vista es refresca, però no
@@ -835,11 +838,19 @@ class Visor(QMainWindow):
         # ací queda arreglada abans de construir l'objecte.
         trams = normalitza_trams(list(self.tempo_trams or []), d)
         den = int(getattr(self, "beat_type", 4) or 4)
+
+        def _lliure(t):
+            return int(t[3]) <= 0 or int(t[4]) <= 0
+
         if len(trams) <= 1:
-            # Un sol tros = el cas constant d'avui.
-            trams = [(0.0, d, float(self.bpm), int(self.bpb), den)]
-        else:
-            # El tram 0 és el VALOR INICIAL (el transport mana).
+            # Un sol tros = el cas constant d'avui, EXCEPTE si va en segons
+            # (rubato): llavors el transport no hi té res a dir.
+            if not (trams and _lliure(trams[0])):
+                trams = [(0.0, d, float(self.bpm), int(self.bpb), den)]
+        elif not _lliure(trams[0]):
+            # El tram 0 és el VALOR INICIAL (el transport mana), però només
+            # si té compàs: un primer clip en segons no s'ha de convertir
+            # en 4/4 al BPM de la barra.
             t0 = trams[0]
             trams[0] = (float(t0[0]), float(t0[1]), float(self.bpm),
                         int(self.bpb), den)
@@ -858,9 +869,12 @@ class Visor(QMainWindow):
         nous = normalitza_trams(trams, self._durada_wav())
         if not nous:
             return False
-        self.bpm = float(nous[0][2])
-        self.bpb = int(nous[0][3])
-        self.beat_type = int(nous[0][4])
+        # El transport només pren valors d'un tros AMB compàs: un primer tros
+        # «en segons» (0/0) no ha de deixar `bpb` a zero.
+        if int(nous[0][3]) > 0 and int(nous[0][4]) > 0:
+            self.bpm = float(nous[0][2])
+            self.bpb = int(nous[0][3])
+            self.beat_type = int(nous[0][4])
         self.tempo_trams = nous
         # Refresca mapa + timeline + LLISTES (les etiquetes de compàs depenen
         # de l'offset i del BPM; `_actualitza_temps` és el punt únic).
@@ -1073,7 +1087,10 @@ class Visor(QMainWindow):
             self.log(f"desat ABC ERROR: {e}")
         # Mapa de tempo/compàs: un sol tros → se sincronitza amb el
         # BPM·compàs actual (zero canvi visible); amb més trossos, es respecta.
-        if len(self.tempo_trams) <= 1:
+        if (len(self.tempo_trams) <= 1
+                and not (self.tempo_trams
+                         and (int(self.tempo_trams[0][3]) <= 0
+                              or int(self.tempo_trams[0][4]) <= 0))):
             self.tempo_trams = [(0.0, self._durada_wav(), float(self.bpm),
                                  int(self.bpb),
                                  int(getattr(self, "beat_type", 4) or 4))]
@@ -3739,6 +3756,8 @@ class Visor(QMainWindow):
         """Segons → compàs.temps[.fusa] segons el MAPA de tempo vigent."""
         mapa = getattr(self, "tempo_map", None)
         if mapa is not None:
+            if mapa.es_lliure(float(t)):
+                return "—"          # rubato: no hi ha compàs
             c, b, sub = mapa.pos(float(t))
             return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
         beat = 60.0 / max(self.bpm, 1e-9)

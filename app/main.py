@@ -683,6 +683,12 @@ class Finestra(QMainWindow):
         hp.addWidget(self.b_tap)
         hp.addWidget(QLabel("Compàs:"))
         hp.addWidget(self.bpb)
+        self.chk_segons = QCheckBox("En segons")
+        self.chk_segons.setToolTip(
+            "El clip de tempo objectiu va en segons (rubato): sense compàs ni "
+            "graella, dura el que diu l'àudio. A la partitura es pren a 100 BPM.")
+        self.chk_segons.toggled.connect(self._segons_top_bar)
+        hp.addWidget(self.chk_segons)
         hp.addWidget(QLabel("Offset:"))
         hp.addWidget(self.offset)                 # segons
         self.b_offset_cursor = QPushButton()
@@ -1180,6 +1186,10 @@ class Finestra(QMainWindow):
                 except (TypeError, ValueError):
                     pass
                 camp.setText(text)
+            try:
+                self.chk_segons.setChecked(num is not None and int(num) <= 0)
+            except (TypeError, ValueError):
+                pass
             try:
                 self.offset_cb.setText(
                     self._secs_a_cb(float(getattr(vr, "offset", 0.0))))
@@ -3071,9 +3081,27 @@ class Finestra(QMainWindow):
         if vr is None:
             return
         idx = vr.tempo_objectiu()
-        bpm = self._bpm_val()
-        num = self._bpb_val()
-        den = self._beat_type_val()
+        free = bool(getattr(self, "chk_segons", None)
+                    and self.chk_segons.isChecked())
+        if not free:
+            # Escriure 0 BPM NO s'ha de convertir en 30 en silenci: és el gest
+            # natural per demanar un clip en segons.
+            raw = str(self.bpm.text()).replace(",", ".").strip()
+            try:
+                zero = abs(float(raw)) <= 1e-9
+            except ValueError:
+                zero = False
+            if zero:
+                self.avis_info(
+                    "Auto Chords",
+                    "Un BPM de 0 no és vàlid. Per a un passatge rubato, marca "
+                    "«En segons» al costat del compàs.")
+                self._sincronitza_temps_del_visor()
+                return
+        bpm = (self._llegeix_num(self.bpm, 100.0, 1, 400) if free
+               else self._bpm_val())
+        num = 0 if free else self._bpb_val()
+        den = 0 if free else self._beat_type_val()
         offset = self._offset_val()
         try:
             _idx, _bpm, _num, _den = vr.tempo_objectiu_vals()
@@ -3092,6 +3120,14 @@ class Finestra(QMainWindow):
             self.registra(f"tempo: tram {idx} → {bpm:.3f} BPM · "
                           f"{num}/{den} (offset {offset:.3f}s)")
         self._sincronitza_temps_del_visor()
+
+    def _segons_top_bar(self, actiu):
+        """Casella «En segons» de la barra: aplica 0/0 (o torna a compàs)."""
+        if getattr(self, "_actualitzant_temps", False):
+            return
+        if not actiu and self.bpb.text().strip() in ("0/0", "0", ""):
+            self.bpb.setText("4/4")     # tornar a compàs: un valor real
+        self._aplica_parametres_temps()
 
     def _canvia_tempo(self, fix):
         """Commuta BPM·compàs ↔ Lliure i refresca el visor.

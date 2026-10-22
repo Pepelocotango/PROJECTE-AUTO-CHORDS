@@ -658,8 +658,13 @@ class TempoLayer(QGraphicsObject):
             # Mateix tracte visual que les SECCIONS (bloc arrodonit + nanses
             # + text centrat), pero en mitja alcada.
             sel = (i in self._sel_multi)
-            fill = QColor(fills[hash("tempo") % len(fills)])
-            fill.setAlpha(180)                 # semitransparent, com les altres
+            if s.lliure:
+                # Tros EN SEGONS (rubato): sense compàs, color propi.
+                fill = QColor(theme.TL_LANE_BG_A)
+                fill.setAlpha(215)
+            else:
+                fill = QColor(fills[hash("tempo") % len(fills)])
+                fill.setAlpha(180)             # semitransparent, com les altres
             if sel:
                 fill = fill.lighter(140)       # resaltat de selecció
             p.setBrush(QBrush(fill))
@@ -685,7 +690,11 @@ class TempoLayer(QGraphicsObject):
                 p.drawLine(QPointF(x1 - 4, 4), QPointF(x1 - 4, self._height - 6))
             p.setPen(QPen(QColor(SECTION_TEXT), 1))
             p.setFont(font)
-            p.drawText(bx, Qt.AlignCenter, f"{s.bpm:g} · {s.num}/{s.den}")
+            if s.lliure:
+                txt = "segons · %.2f s" % (s.fi - s.ini)
+            else:
+                txt = f"{s.bpm:g} · {s.num}/{s.den}"
+            p.drawText(bx, Qt.AlignCenter, txt)
         if self._t_guia is not None:
             xg = (self._t_guia - self._view_left) * self._pps
             p.setPen(QPen(QColor(theme.TL_GUIDE if hasattr(theme, "TL_GUIDE")

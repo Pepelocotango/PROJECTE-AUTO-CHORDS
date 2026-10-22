@@ -301,6 +301,8 @@ def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
     Fa servir el MATEIX `grid_plan` que el grid i el regle → sempre quadren.
     """
     if mapa is not None and not mapa.es_constant():
+        if mapa.es_lliure(t):
+            return float(t)           # rubato: sense snap
         bar_s, beat_s, sub_s = mapa.durations(t)
         step = snap_step(tempo_fix, bpm, bpb, pps, mapa)
         if step <= 0:
@@ -339,6 +341,14 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
             txt = f"{m}:{int(round(s)):02d}"    # m:ss
         return ("-" if neg else "") + txt
     if mapa is not None and not mapa.es_constant():
+        if mapa.es_lliure(t):
+            neg = t < -1e-9
+            tt = abs(float(t))
+            m = int(tt // 60)
+            sec = tt - m * 60
+            txt = (f"{m}:{sec:06.3f}" if step is not None and step < 1.0
+                   else f"{m}:{int(round(sec)):02d}")
+            return ("-" if neg else "") + txt
         c, b, sub = mapa.pos(t)
         _bar_s, beat_s, _sub_s = mapa.durations(t)
         if step is not None and 0 < step < beat_s - 1e-9:

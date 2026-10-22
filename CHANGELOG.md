@@ -5,6 +5,41 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit (2026-10-22, 11n) — clips **en segons** (rubato) al carril de tempo
+- **Regla nova de l'operador**: qualsevol clip de tempo/compàs pot existir **en
+  segons** (compàs `0/0`), al mig del tema. Dura el que diu l'àudio; no té
+  graella, ni compassos enters, ni obligació de caure en una línia.
+- **`tempo_map.py`**: `Tram.lliure` / `num_ef` / `den_ef` / `bpm_ef` (0/0 →
+  100 BPM 4/4 per a l'aritmètica). `normalitza_trams` i `TempoMap` conserven el
+  0/0; `grid_lines` no dibuixa res dins del clip (sí la línia que l'obri);
+  `label`/`fmt_pos` mostren temps; `snap` no encaixa res; el validador de
+  compassos enters ignora les fronteres i els intervals que toquen un clip
+  lliure. `canvia_bpm_local` accepta entrar i eixir del mode segons;
+  `mou_frontera_retempo` mou la frontera sense tocar cap BPM quan un costat va
+  en segons; `canvia_compassos_tram` i el pre-roll el rebutgen amb avís.
+- **`dialegs.py`**: casella «En segons (sense compàs: rubato)» al diàleg del
+  clip (apaga el camp del compàs).
+- **`timeline_layers.py`**: el clip en segons es pinta amb color propi i
+  l'etiqueta «segons · N s».
+- **`visor.py`**: el transport (BPM/compàs/beat_type) només pren valors d'un
+  primer clip **amb** compàs (0/0 no deixa `bpb=0`).
+- **Partitura**: els clips en segons s'exporten com a compassos a 100 BPM
+  (últim compàs parcial si cal).
+- **Tests**: +14 (model, CSV, diàlegs, barra) → **1.362 OK** (1 skip), pyflakes net.
+- **Barra de temps** (`main.py`): casella **«En segons»** al costat del compàs
+  (aplica `0/0` al clip objectiu). Escriure **0 BPM** ja no es converteix en 30
+  en silenci: avisa i indica la casella.
+- **Corregit el bloquejador real** (`visor._refresca_tempo_map`): el mapa es
+  reconstruïa des del transport i **forçava el tram 0 a 4/4 al BPM de la
+  barra**; amb un sol tram, a més, el substituïa sencer. Per això un clip en
+  segons «no es quedava». Ara un 0/0 es respecta (transport inclòs).
+- **`DialegTempoMapa`** («Mapa de tempo i compàs»): la columna «Compàs» també
+  accepta `0/0` (= clip en segons) i una fila amb BPM 0 ja no desapareix en
+  silenci.
+- Docs: `REGLES_TEMPS_GRID.md` §4, §5 i §10 reescrita.
+
+## [Unreleased]
+
 ### Canviat (2026-10-22, 11m) — regla: edició lliure dels talls de tempo
 - **Regla nova de l'operador**: tots els clips de tempo/compàs admeten moure
   l'inici o el fi **lliurement** (amb el snap apagat); l'extrem contrari no es

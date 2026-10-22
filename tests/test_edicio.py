@@ -3091,8 +3091,10 @@ class TestRegla8TempsValids(_regles_or___Base):
         la regla 8: cap valor negatiu ni impossible hi sobreviu.
 
         Auditoria 18-10-2026: abans `normalitza_cobertura` deixava passar un
-        acord a -2 s i `normalitza_trams` un tram a -5 s amb bpm 0 i compas
-        0/0 (un CSV editat a mà o un projecte vell hi podien arribar).
+        acord a -2 s i `normalitza_trams` un tram a -5 s amb bpm 0 (un CSV
+        editat a mà o un projecte vell hi podien arribar).
+        Nota (22-10-2026): el compàs 0/0 ja NO és un error: és un tram **en
+        segons** (rubato), i s'ha de conservar.
         """
         from app import tempo_map as tempo
         ac, _sec = pipeline.normalitza_cobertura(
@@ -3107,7 +3109,8 @@ class TestRegla8TempsValids(_regles_or___Base):
             [(-5.0, 2.0, 0.0, 0, 0), (2.0, 30.0, 90.0, 3, 4)], 30.0)
         self.assertEqual(trams[0][0], 0.0)
         self.assertGreater(trams[0][2], 0)
-        self.assertEqual((trams[0][3], trams[0][4]), (4, 4))
+        self.assertEqual(trams[0][2], 100.0)          # referència de notació
+        self.assertEqual((trams[0][3], trams[0][4]), (0, 0))   # en segons
 
     def test_estructura_amb_linies_malmeses_no_peta(self):
         """El lector de l'ABC (cami de CARREGA) ha de ser tan robust com el
@@ -3134,8 +3137,15 @@ class TestRegla8TempsValids(_regles_or___Base):
         v._refresca_tempo_map()
         self.assertEqual(float(v.tempo_trams[0][0]), 0.0)          # R1/R4
         self.assertGreater(float(v.tempo_trams[0][2]), 0.0)        # R8
-        self.assertGreater(int(v.tempo_trams[0][3]), 0)            # R8
-        self.assertGreater(int(v.tempo_trams[0][4]), 0)            # R8
+        # Un 0/0 és un tros EN SEGONS (vàlid des del 22-10-2026), no un
+        # valor trencat: es conserva i el BPM passa a la referència (100).
+        self.assertEqual((int(v.tempo_trams[0][3]),
+                          int(v.tempo_trams[0][4])), (0, 0))
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 100.0)
+        # I un mapa mètric trencat sí que es repara amb el transport.
+        v.tempo_trams = [(5.0, 8.0, 0.0, 4, 4), (8.0, 30.0, 90.0, 3, 4)]
+        v._refresca_tempo_map()
+        self.assertGreater(int(v.tempo_trams[0][3]), 0)
         self.assertAlmostEqual(float(v.tempo_trams[-1][1]), 20.0,  # R4
                                places=6)
         fis = [float(t[1]) for t in v.tempo_trams]
@@ -3489,6 +3499,31 @@ class TestUndoTemps(_undo_temps___Base):
         self.assertEqual(int(v.bpb), 3)
         w._undo_visor()
         self.assertEqual(int(v.bpb), 4)
+
+    def test_posar_el_clip_en_segons_des_de_la_barra(self):
+        """Casella «En segons» de la barra → el clip objectiu queda 0/0."""
+        w = _undo_temps___finestra()
+        v = w.visor_ref
+        w.chk_segons.setChecked(True)
+        self.assertEqual((int(v.tempo_trams[-1][3]),
+                          int(v.tempo_trams[-1][4])), (0, 0))
+        self.assertTrue(v.tempo_map.es_lliure(float(v.pos)))
+        # I el text del compàs queda en 0/0.
+        self.assertEqual(w.bpb.text().strip(), "0/0")
+        # Desfer torna a compàs.
+        w._undo_visor()
+        self.assertNotEqual((int(v.tempo_trams[-1][3]),
+                             int(v.tempo_trams[-1][4])), (0, 0))
+
+    def test_bpm_zero_avisa_i_no_aplica_res(self):
+        w = _undo_temps___finestra()
+        v = w.visor_ref
+        abans = [tuple(t) for t in v.tempo_trams]
+        w.avis_info = __import__("unittest.mock", fromlist=["Mock"]).Mock()
+        w.bpm.setText("0")
+        w._aplica_parametres_temps()
+        self.assertTrue(w.avis_info.called)
+        self.assertEqual([tuple(t) for t in v.tempo_trams], abans)
 
     def test_activar_el_loop_es_pot_desfer(self):
         w = _undo_temps___finestra()

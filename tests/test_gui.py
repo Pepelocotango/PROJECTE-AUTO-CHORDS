@@ -1659,6 +1659,20 @@ class _dialegs___Base(unittest.TestCase):
         cls._app = QApplication.instance() or QApplication([])
 
 
+class TestDialegTempoMapaEnSegons(_dialegs___Base):
+    """`0/0` a la columna «Compàs» = tros en segons (rubato)."""
+
+    def test_compas_zero_zero_no_es_rebutja(self):
+        d = dialegs.DialegTempoMapa(
+            None, trams=[(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 90.0, 4, 4)],
+            durada=8.0)
+        d.taula.item(1, 2).setText("0/0")
+        trams = d.trams()
+        self.assertEqual((trams[1][3], trams[1][4]), (0, 0))
+        self.assertAlmostEqual(trams[1][0], 4.0)
+        self.assertAlmostEqual(trams[1][1], 8.0)
+
+
 class TestDialegTramTempo(_dialegs___Base):
     """`valors()` — el compàs s'escriu «num/den» o «num»."""
 
@@ -1688,6 +1702,17 @@ class TestDialegTramTempo(_dialegs___Base):
 
     def test_el_bpm_surt_del_camp(self):
         self.assertEqual(self._dlg(bpm=97.5).valors()[0], 97.5)
+
+    def test_clip_en_segons_surt_amb_zero_zero(self):
+        """«En segons» (rubato) → compàs 0/0; el camp de compàs s'apaga."""
+        d = dialegs.DialegTramTempo(None, inici=4.0, bpm=100.0, num=0, den=0)
+        self.assertTrue(d.chk_segons.isChecked())
+        self.assertFalse(d.ed_compas.isEnabled())
+        self.assertEqual(d.valors(), (100.0, 0, 0))
+        d.chk_segons.setChecked(False)
+        self.assertTrue(d.ed_compas.isEnabled())
+        d.ed_compas.setText("3/4")
+        self.assertEqual(d.valors(), (100.0, 3, 4))
 
 
 class TestDialegTempoMapa(_dialegs___Base):

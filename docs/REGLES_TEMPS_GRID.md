@@ -42,6 +42,9 @@
 - Les **fronteres entre trams interiors** cauen sempre en una **línia de
   compàs**.
 - Un tram d'1,5 compassos no és vàlid encara que dure més d'un compàs.
+- **Excepció — clips en segons**: un clip amb compàs `0/0` (vegeu §10) no té
+  cap d'estes obligacions: dura el que diu l'àudio i les seues fronteres poden
+  caure on vulguen. El contracte només s'aplica **entre dos clips amb compàs**.
 
 ## 5. Excepcions: el primer inici i l'últim final
 
@@ -50,6 +53,9 @@
 - La resta de fronteres —inclosa la del primer amb el segon i la de
   l'últim amb l'anterior— són línies de compàs.
 - Si la WAV sencera és més curta que un compàs, el tram únic és l'excepció.
+- Si un clip en segons toca un clip amb compàs, la frontera és **lliure** i el
+  clip mètric pot acabar (o començar) amb un **compàs parcial**, com el `*`
+  dels marcadors de compàs de REAPER.
 
 ## 6. Tempo i compàs no són el mateix
 
@@ -162,12 +168,30 @@ zero.
   línia de compàs (el BPM es deriva de la durada del bloc, §4) i el resultat
   validat amb les mateixes regles d'ací. Detall: `TEMPO_PER_TRAMS.md`.
 
-## 10. Temps lliure
+## 10. Temps lliure — clips «en segons» (rubato)
 
-- De moment **no es fan trams de temps lliure al mig** de la cançó.
-- Tots els trams són de BPM/compàs.
-- Les úniques parts “lliures” permeses són el començament del primer tram i el
-  final de l'últim, perquè la WAV pot no començar o acabar en un compàs sencer.
+Des del 22-10-2026 qualsevol clip del carril de tempo/compàs pot existir **en
+segons**, no només el primer o l'últim: un passatge rubato al mig del tema.
+
+- **Com s'escriu**: `num = 0` i `den = 0` a `compas.csv` (i `tempo.csv`).
+  Al diàleg del clip: casella **«En segons (sense compàs: rubato)»**.
+- **Què vol dir**: el clip dura exactament el que diuen els segons; no té
+  graella, ni compassos enters, ni obligació de caure en cap línia. La graella
+  i el regle mostren **temps** (`m:ss.mmm`) dins del clip.
+- **BPM**: el camp `bpm` es conserva com a **referència de notació** (100 per
+  defecte). No afecta la graella del clip (no n'hi ha).
+- **Partitura**: el clip s'exporta com un tram de **compassos a 100 BPM** (1
+  compàs 4/4 = 2,4 s). Si la durada no és múltiple exacte, l'últim compàs del
+  tram queda parcial.
+- **Numeració**: els compassos del clip no compten per a la numeració; el
+  primer clip amb compàs després del rubato continua la sèrie.
+- **Validació**: cap. Les fronteres amb clips mètrics són lliures (compàs
+  parcial), i no es poden canviar «compassos» d'un clip en segons (el menú ho
+  rebutja amb un avís).
+- **Arrossegar les vores** d'un clip en segons (o la vora compartida amb un de
+  mètric) mou només la frontera: cap BPM no es recalcula.
+- **Exportació**: `tempo.csv` i `compas.csv` (i la còpia a `mapa_tempo/`)
+  porten `0,0`; res més canvia.
 
 ## 11. Exportació i paritat
 

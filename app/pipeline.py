@@ -2224,8 +2224,15 @@ def fer_wavs_estructura(abc_csv, dest_dir, sr, log, manifest=None):
     usats = set()          # desambigua etiquetes de secció que quedin iguals
     with open(abc_csv, encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            nm = (f"{r['compas_ini'].replace('.', '-')}_"
-                  f"{r['compas_fi'].replace('.', '-')}_"
+            def _neta_pos(txt):
+                # Un clip «en segons» dona «—» (sense compàs): el nom del WAV
+                # ha de ser un fitxer vàlid a tots els sistemes.
+                txt = str(txt or "").replace(".", "-").replace("—", "s")
+                return "".join(c if (c.isalnum() or c in "-_") else "_"
+                               for c in txt) or "X"
+
+            nm = (f"{_neta_pos(r['compas_ini'])}_"
+                  f"{_neta_pos(r['compas_fi'])}_"
                   f"{safe_filename(r['lletra'], fallback='X', usats=usats)}")
             try:
                 ini = float(r["inici_s"])
