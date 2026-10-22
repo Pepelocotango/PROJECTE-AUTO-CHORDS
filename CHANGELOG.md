@@ -5,6 +5,23 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit (2026-10-22, 11o) — llista de clips de **tempo/compàs** editable
+- **Tercera llista** a l'Inspector, al costat d'acords i seccions:
+  `QTableWidget` amb **Inici (s) · Fi (s) · BPM · Compàs** (a un clip rubato, la
+  columna Compàs diu «segons»). Una fila per tram del mapa.
+- **Mateix tracte que les altres dues** (regla d'or #11): clic → selecciona el
+  clip al timeline i hi porta el cursor; **doble-clic → franja Editor**; botó
+  dret → el **mateix** menú contextual del carril (`_menu_de_llista`).
+- **Franja Editor amb mode tempo**: les etiquetes passen a **BPM:** i
+  **Compàs:** (el camp de compàs accepta `4/4`, `0/0` o «segons»); Inici/Fi es
+  mouen arrossegant la vora al timeline i, per tant, hi queden de només
+  lectura. «Aplica» crida `edita_tempo_objectiu` (re-tempo local + desfer).
+- **`_on_clip_selected`**: seleccionar un clip de tempo ja **no buida** la
+  franja (abans ho feia perquè no hi havia editor de tempo).
+- **Tests**: +6 (`TestLlistaTempo`: files/columnes, clic, doble-clic, aplicar
+  BPM/compàs, `0/0`, compàs invàlid amb avís) i actualitzat el de
+  `test_despatx_edicio` a la conducta nova → **1.368 OK** (1 skip), pyflakes net.
+
 ### Afegit (2026-10-22, 11n) — clips **en segons** (rubato) al carril de tempo
 - **Regla nova de l'operador**: qualsevol clip de tempo/compàs pot existir **en
   segons** (compàs `0/0`), al mig del tema. Dura el que diu l'àudio; no té

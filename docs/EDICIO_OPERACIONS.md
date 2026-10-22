@@ -145,7 +145,7 @@
 |---|---|---|---|
 | 33 | **Desfer / Refer** | `Ctrl+Z` · `Ctrl+Y` | **FET** |
 | 34 | **Estat complet de l'app** | — | **FET** |
-| 35 | **Llistar el model** | llistes del visor | **FET** |
+| 35 | **Llistar el model** | llistes del visor: acords ⑩, seccions ⑪ i **clips de tempo/compàs ⑭** (`Inici (s)`·`Fi (s)`·`BPM`·`Compàs`; «segons» als rubato). Clic = salta, doble-clic = franja Editor, botó dret = el mateix menú del carril | **FET** |
 
 ## 6. Tempo, anàlisi i opcions
 

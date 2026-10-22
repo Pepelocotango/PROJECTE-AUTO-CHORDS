@@ -18,10 +18,11 @@ import wave
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QCursor, QKeySequence
 from PyQt5.QtWidgets import (
-    QApplication, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
-    QListWidget, QMainWindow, QMenu, QMessageBox, QPushButton, QShortcut,
-    QSlider, QSplitter, QTextEdit, QVBoxLayout, QWidget,
-    QLineEdit, QComboBox,
+    QAbstractItemView, QApplication, QDialog, QFileDialog, QHBoxLayout,
+    QInputDialog, QLabel, QListWidget, QMainWindow, QMenu, QMessageBox,
+    QPushButton, QShortcut, QSlider, QSplitter, QTableWidget,
+    QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
+    QLineEdit, QComboBox, QHeaderView,
 )
 
 import numpy as np
@@ -314,7 +315,8 @@ class Visor(QMainWindow):
         _eh.addWidget(self.ed_icona)
         _eh.addWidget(self.ed_gran)
         _eh.addSpacing(12)
-        _eh.addWidget(QLabel("Nom:"))
+        self.ed_nom_lbl = QLabel("Nom:")
+        _eh.addWidget(self.ed_nom_lbl)
         self.ed_nom = QLineEdit()
         self.ed_nom.setMaximumWidth(90)
         self.ed_nom.setToolTip("Nom de l'acord o lletra de la secció")
@@ -367,6 +369,37 @@ class Visor(QMainWindow):
             lambda it: self._focus_editor("section", self.llista_ab.row(it)))
         self.llista_ab.customContextMenuRequested.connect(self._menu_seccio)
         div.addWidget(self.llista_ab)
+        # Tercera llista: clips de tempo/compàs (una fila per tram). Taula per
+        # veure inici/fi/BPM/compàs de colp d'ull; l'edició va a la franja
+        # Editor, igual que a les llistes d'acords i seccions.
+        self.llista_tempo = QTableWidget(0, 4)
+        self.llista_tempo.setHorizontalHeaderLabels(
+            ["Inici (s)", "Fi (s)", "BPM", "Compàs"])
+        self.llista_tempo.verticalHeader().setVisible(False)
+        self.llista_tempo.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.llista_tempo.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.llista_tempo.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.llista_tempo.setShowGrid(False)
+        self.llista_tempo.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.llista_tempo.setToolTip(
+            "Clic: salta. Doble-clic: edita a la franja Editor.")
+        # Files: les xifres a la seua amplada i el BPM s'emporta el que sobra
+        # (així «100.000» no es talla quan el tauler és estret).
+        for _c in (0, 1, 3):
+            self.llista_tempo.horizontalHeader().setSectionResizeMode(
+                _c, QHeaderView.ResizeToContents)
+        self.llista_tempo.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.Stretch)
+        self._omple_llista_tempo()
+        self.llista_tempo.itemClicked.connect(self._salt_tempo)
+        self.llista_tempo.itemDoubleClicked.connect(
+            lambda it: self._focus_editor("tempo", self.llista_tempo.row(it)))
+        self.llista_tempo.customContextMenuRequested.connect(self._menu_tempo)
+        div.addWidget(self.llista_tempo)
+        # La taula de tempo necessita més amplada que una llista de noms.
+        div.setStretchFactor(0, 3)
+        div.setStretchFactor(1, 3)
+        div.setStretchFactor(2, 4)
         # Les llistes viuen en un contenidor propi perque la finestra les
         # pugui posar en un tauler lateral («Inspector»). Si el visor va sol,
         # queden al mateix lloc de sempre.
@@ -1825,6 +1858,7 @@ class Visor(QMainWindow):
         # quan canvia la graella (offset/BPM/compas).
         self._omple_llista_ac()
         self._actualitza_llista_abc()
+        self._omple_llista_tempo()
         self.temps.setText(self._fmt_timeline(self.pos))
 
     # Handlers dels senyals del TimelineView (QGraphicsView DAW-like)
@@ -3688,6 +3722,8 @@ class Visor(QMainWindow):
                 self.llista_ac.setCurrentRow(-1)
             if hasattr(self, "llista_ab"):
                 self.llista_ab.setCurrentRow(-1)
+            if hasattr(self, "llista_tempo"):
+                self.llista_tempo.setCurrentCell(-1, -1)
             self._ed_kind, self._ed_idx = None, -1
             self._actualitza_editor()
             return
@@ -3696,12 +3732,14 @@ class Visor(QMainWindow):
         elif kind == "section" and 0 <= index < self.llista_ab.count():
             self.llista_ab.setCurrentRow(index)
         elif kind == "tempo":
-            # La pista de BPM/compàs no té editor integrat: buidem la franja
-            # perquè no quede un acord/secció antic actiu i un «Aplica» puga
-            # editar-lo sense que l'usuari ho veja.
+            # El clip de tempo/compàs també s'edita a la franja Editor (BPM +
+            # compàs). Es buiden les altres llistes perquè no quede un
+            # acord/secció ressaltat mentre la franja mostra el tempo.
             self.llista_ac.setCurrentRow(-1)
             self.llista_ab.setCurrentRow(-1)
-            self._ed_kind, self._ed_idx = None, -1
+            if hasattr(self, "llista_tempo"):
+                self.llista_tempo.setCurrentCell(int(index), 0)
+            self._ed_kind, self._ed_idx = "tempo", int(index)
             self._actualitza_editor()
             return
         self._ed_kind, self._ed_idx = kind, index
@@ -3721,11 +3759,41 @@ class Visor(QMainWindow):
     def _actualitza_editor(self):
         """Mostra a la franja Editor l'element seleccionat (o el buit)."""
         k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
-        if k == "chord" and 0 <= i < len(self.acords):
+        # La franja és compartida: cada mode hi posa les seues etiquetes.
+        self.ed_nom_lbl.setText("Nom:")
+        self.ed_fam_lbl.setText("Família:")
+        self.ed_ini.setEnabled(True)
+        self.ed_cb.setEnabled(True)
+        if k == "tempo" and 0 <= i < len(getattr(self, "tempo_trams", None) or []):
+            ini, fi, bpm, num, den = self.tempo_trams[i]
+            lliure = int(num) <= 0 or int(den) <= 0
+            self.ed_icona.setPixmap(icones.ico("metronome", 20).pixmap(20, 20))
+            self.ed_gran.setText(
+                f"Tempo · {float(fi) - float(ini):.2f} s"
+                + (" · rubato" if lliure else ""))
+            self.ed_nom_lbl.setText("BPM:")
+            self.ed_nom.setToolTip("BPM del clip (30–350)")
+            self.ed_nom.setText(f"{float(bpm):.3f}")
+            self.ed_fam_lbl.setText("Compàs:")
+            self.ed_fam.setToolTip(
+                "Compàs num/den · 0/0 = clip en segons (rubato)")
+            self.ed_fam.setText("0/0" if lliure else f"{int(num)}/{int(den)}")
+            self.ed_fam.setVisible(True)
+            self.ed_fam_lbl.setVisible(True)
+            self.ed_ini.setText(f"{float(ini):.3f}")
+            self.ed_cb.setText(self._secs_a_cb(float(ini)))
+            # Inici/fi es mouen arrossegant la vora al timeline (re-tempo).
+            self.ed_ini.setEnabled(False)
+            self.ed_cb.setEnabled(False)
+            for w in (self.ed_nom, self.ed_fam, self.ed_aplica):
+                w.setEnabled(True)
+        elif k == "chord" and 0 <= i < len(self.acords):
             t, nom = float(self.acords[i][0]), nom_acord(self.acords[i])
             self.ed_icona.setPixmap(icones.ico("music", 20).pixmap(20, 20))
             self.ed_gran.setText(nom)
             self.ed_nom.setText(nom)
+            self.ed_nom.setToolTip("Nom de l'acord o lletra de la secció")
+            self.ed_fam.setToolTip("Família de la secció (p. ex. N, A, B)")
             self.ed_ini.setText(f"{float(t):.3f}")
             self.ed_cb.setText(self._secs_a_cb(float(t)))
             self.ed_fam.setVisible(False); self.ed_fam_lbl.setVisible(False)
@@ -3799,6 +3867,49 @@ class Visor(QMainWindow):
         self.log(f"editor: {text}")
         self.infoMissatge.emit(text)
 
+    def _aplica_editor_tempo(self, i):
+        """Aplica BPM/compàs de la franja Editor a un clip de tempo.
+
+        El compàs `0/0` (o buit, o «segons») deixa el clip en mode rubato;
+        qualsevol altre valor ha de ser `num/den`.
+        """
+        trams = list(getattr(self, "tempo_trams", None) or [])
+        if not (0 <= i < len(trams)):
+            self.avis_editor("Aquest clip de tempo ja no existeix.")
+            return
+        txt = self.ed_nom.text().strip().replace(",", ".")
+        try:
+            bpm = float(txt)
+        except ValueError:
+            self.avis_editor(f"El BPM «{self.ed_nom.text()}» no és un número.")
+            return
+        txt_c = self.ed_fam.text().strip().lower()
+        if txt_c in ("", "—", "-", "segons"):
+            num = den = 0
+        else:
+            m = re.match(r"^\s*(\d+)\s*[/:]\s*(\d+)\s*$", txt_c)
+            if not m:
+                self.avis_editor(
+                    f"El compàs «{self.ed_fam.text()}» no és vàlid "
+                    "(num/den · 0/0 = segons).")
+                return
+            num, den = int(m.group(1)), int(m.group(2))
+            if num <= 0 or den <= 0:
+                num = den = 0          # 0/0 explícit = en segons
+            elif not (1 <= num <= 12) or not (1 <= den <= 16):
+                self.avis_editor(
+                    f"Compàs {num}/{den} fora de rang (1–12 sobre 1–16).")
+                return
+        if num <= 0:
+            if bpm < 1.0:
+                bpm = 100.0
+        self._undo_marca()
+        # Si el canvi no és vàlid, `edita_tempo_objectiu` ja avisa; el commit
+        # no apila res perquè l'estat no ha canviat.
+        self.edita_tempo_objectiu(i, bpm, num, den)
+        self._undo_commit()
+        self._actualitza_editor()
+
     def _aplica_editor(self):
         """Aplica els canvis de la franja Editor al model (amb undo).
 
@@ -3807,8 +3918,11 @@ class Visor(QMainWindow):
         """
         k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
         if k is None or i < 0:
-            self.avis_editor("Selecciona un acord o una secció (clic al clip) "
-                             "abans d'aplicar.")
+            self.avis_editor("Selecciona un acord, una secció o un clip de "
+                             "tempo (clic al clip) abans d'aplicar.")
+            return
+        if k == "tempo":
+            self._aplica_editor_tempo(i)
             return
         # Multi-selecció del MATEIX tipus → renom EN BLOC (estil fulla de càlcul):
         # el camp Nom s'aplica a TOTS els seleccionats del tipus actiu. L'INICI
@@ -4494,6 +4608,58 @@ class Visor(QMainWindow):
     def _menu_seccio(self, pos):
         """Botó dret a la LLISTA d'estructura (mateixa definició que el timeline)."""
         self._menu_de_llista("section", getattr(self, "llista_ab", None), pos)
+
+    # ---- Llista de clips de tempo/compàs -------------------------------
+    def _omple_llista_tempo(self):
+        """Una fila per tram del mapa (inici, fi, BPM, compàs).
+
+        Es repobla des de `_actualitza_temps()`, el punt únic que ja criden
+        tots els camins que canvien el mapa (barra, diàlegs, drag, undo).
+        Preserva la fila seleccionada, com les altres dues llistes.
+        """
+        t = getattr(self, "llista_tempo", None)
+        if t is None:
+            return
+        cur = t.currentRow()
+        trams = list(getattr(self, "tempo_trams", None) or [])
+        t.blockSignals(True)
+        try:
+            t.setRowCount(len(trams))
+            for i, (ini, fi, bpm, num, den) in enumerate(trams):
+                lliure = int(num) <= 0 or int(den) <= 0
+                vals = (f"{float(ini):.3f}", f"{float(fi):.3f}",
+                        f"{float(bpm):.3f}",
+                        "segons" if lliure else f"{int(num)}/{int(den)}")
+                for c, v in enumerate(vals):
+                    it = t.item(i, c)
+                    if it is None:
+                        it = QTableWidgetItem()
+                        it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                        it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                        t.setItem(i, c, it)
+                    if it.text() != v:
+                        it.setText(v)
+        finally:
+            t.blockSignals(False)
+        if 0 <= cur < t.rowCount():
+            t.setCurrentCell(cur, 0)
+
+    def _salt_tempo(self, item):
+        """Clic a la llista de tempo → selecciona el clip i hi porta el cursor."""
+        row = self.llista_tempo.row(item)
+        if row < 0:
+            return
+        self._ed_kind, self._ed_idx = "tempo", row
+        self.timeline.select_clip("tempo", row)
+        self._actualitza_editor()
+        trams = getattr(self, "tempo_trams", None) or []
+        if 0 <= row < len(trams):
+            self.ves_a(float(trams[row][0]))
+        self.timeline.ensure_cursor_visible()
+
+    def _menu_tempo(self, pos):
+        """Botó dret a la LLISTA de tempo (mateixa definició que el timeline)."""
+        self._menu_de_llista("tempo", getattr(self, "llista_tempo", None), pos)
 
     def _regenera_posicions_musicals(self, msg):
         """Reescriu les **posicions musicals** derivades (compàs) de l'ABC.

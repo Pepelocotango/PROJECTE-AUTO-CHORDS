@@ -4424,3 +4424,81 @@ def _dreceres_completes_tearDownModule():
 
 if __name__ == "__main__":   # pragma: no cover
     unittest.main()
+
+
+class TestLlistaTempo(_undo_temps___Base):
+    """La tercera llista (clips de tempo/compàs): taula + franja Editor."""
+
+    def _prepara(self):
+        w = _undo_temps___finestra()
+        v = w.visor_ref
+        v.tempo_trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 100.0, 0, 0)]
+        v._actualitza_temps()
+        return w, v
+
+    def test_una_fila_per_tram_amb_les_quatre_columnes(self):
+        _w, v = self._prepara()
+        t = v.llista_tempo
+        self.assertEqual(t.rowCount(), 2)
+        self.assertEqual([t.horizontalHeaderItem(c).text()
+                          for c in range(4)],
+                         ["Inici (s)", "Fi (s)", "BPM", "Compàs"])
+        self.assertEqual(t.item(0, 0).text(), "0.000")
+        self.assertEqual(t.item(0, 1).text(), "10.000")
+        self.assertEqual(t.item(0, 2).text(), "120.000")
+        self.assertEqual(t.item(0, 3).text(), "4/4")
+        self.assertEqual(t.item(1, 3).text(), "segons")
+
+    def test_clic_selecciona_el_clip_i_hi_porta_el_cursor(self):
+        _w, v = self._prepara()
+        v._salt_tempo(v.llista_tempo.item(1, 0))
+        self.assertIn(("tempo", 1), v.timeline.selected_keys())
+        self.assertAlmostEqual(float(v.pos), 10.0, places=6)
+
+    def test_doble_clic_omple_la_franja_editor(self):
+        _w, v = self._prepara()
+        v.llista_tempo.setCurrentCell(1, 0)
+        v._focus_editor("tempo", 1)
+        self.assertEqual((v._ed_kind, v._ed_idx), ("tempo", 1))
+        self.assertEqual(v.ed_nom_lbl.text(), "BPM:")
+        self.assertEqual(v.ed_fam_lbl.text(), "Compàs:")
+        self.assertEqual(v.ed_nom.text(), "100.000")
+        self.assertEqual(v.ed_fam.text(), "0/0")
+        self.assertEqual(v.ed_ini.text(), "10.000")
+        self.assertFalse(v.ed_ini.isEnabled())
+
+    def test_aplicar_des_de_l_editor_canvia_bpm_i_compas(self):
+        _w, v = self._prepara()
+        v._focus_editor("tempo", 1)
+        v.ed_nom.setText("96")
+        v.ed_fam.setText("3/4")
+        v._aplica_editor()
+        self.assertEqual((int(v.tempo_trams[1][3]),
+                          int(v.tempo_trams[1][4])), (3, 4))
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 96.0, places=6)
+        self.assertAlmostEqual(float(v.tempo_trams[1][0]), 10.0, places=6)
+        self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=6)
+        # La llista s'ha refrescat i la franja mostra el valor aplicat.
+        self.assertEqual(v.llista_tempo.item(1, 3).text(), "3/4")
+        self.assertEqual(v.ed_fam.text(), "3/4")
+
+    def test_aplicar_zero_zero_el_deixa_en_segons(self):
+        _w, v = self._prepara()
+        v._focus_editor("tempo", 0)
+        v.ed_fam.setText("0/0")
+        v._aplica_editor()
+        self.assertEqual((int(v.tempo_trams[0][3]),
+                          int(v.tempo_trams[0][4])), (0, 0))
+        self.assertTrue(v.tempo_map.es_lliure(1.0))
+        self.assertEqual(v.llista_tempo.item(0, 3).text(), "segons")
+
+    def test_compas_invalid_avisa_i_no_toca_res(self):
+        _w, v = self._prepara()
+        abans = list(v.tempo_trams)
+        avisos = []
+        v.avis_editor = lambda txt: avisos.append(txt)
+        v._focus_editor("tempo", 0)
+        v.ed_fam.setText("4/xx")
+        v._aplica_editor()
+        self.assertEqual(v.tempo_trams, abans)
+        self.assertTrue(avisos and "compàs" in avisos[-1].lower())

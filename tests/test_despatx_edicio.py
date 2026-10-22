@@ -398,14 +398,21 @@ class TestFase2Gestos(_Base):
         finally:
             v.close()
 
-    def test_editor_es_buida_en_seleccionar_un_tram(self):
+    def test_editor_mostra_el_tram_de_tempo(self):
+        """Des del 22-10-2026 el clip de tempo SÍ que té editor integrat
+        (BPM + compàs a la franja); abans la franja es buidava."""
         v = _visor()
         try:
             v.timeline.select_clip("chord", 0)
             self.assertEqual(v._ed_kind, "chord")
             v.timeline.select_clip("tempo", 0)
-            self.assertIsNone(v._ed_kind)
-            self.assertFalse(v.ed_nom.isEnabled())
+            self.assertEqual(v._ed_kind, "tempo")
+            self.assertEqual(v.ed_nom_lbl.text(), "BPM:")
+            self.assertTrue(v.ed_nom.isEnabled())
+            # Tornar a un acord restaura les etiquetes de la franja.
+            v.timeline.select_clip("chord", 0)
+            self.assertEqual(v._ed_kind, "chord")
+            self.assertEqual(v.ed_nom_lbl.text(), "Nom:")
         finally:
             v.close()
 

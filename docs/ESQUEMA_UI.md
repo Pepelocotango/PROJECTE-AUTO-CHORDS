@@ -198,14 +198,14 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 │  ⑨  GUIA DE SNAP          línia que apareix en arrossegar               │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑫  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
-│      [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]              │
-│      (sense finestres emergents; Enter = aplica)                       │
+│      acord/secció: [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│
+│      tempo:        [🥁]    [BPM▢] [Compàs▢]  [Inici (s)▢] [≈ ▢] [Aplica]│
+│      (0/0 o «segons» = clip rubato; sense finestres emergents)          │
 ├────────────────────────────────────────────────────────────────────────┤
-│  ⑩  LLISTA ACORDS (llista_ac) │ ⑪ LLISTA SECCIONS (llista_ab)          │
-│     «1.1 N», «8.1 E7»…        │   «A(N) 1.1–10.1»…                     │
-│     clic=salta (i ressalta)   │   clic=salta (i ressalta)              │
-│     doble=edita (Editor)      │   doble=edita (Editor)                 │
-│     dret=menú contextual      │   dret=menú contextual                 │
+│  ⑩ LLISTA ACORDS    │ ⑪ LLISTA SECCIONS  │ ⑭ LLISTA TEMPO             │
+│  «1.1 N», «8.1 E7»… │ «A(N) 1.1–10.1»…   │ Inici·Fi·BPM·Compàs        │
+│  clic=salta (i ressalta la fila) · doble=edita (Editor)                │
+│  dret=menú contextual (el mateix del carril)                          │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑬  LLISCADOR ──────●────────  │ 9.4 / 95.1 │ [🔇] │ [volum] │ stats    │
 │      (posició + estatus del transport; el transport principal és a la  │
@@ -231,7 +231,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `TimelineView` | tot el bloc ①–⑨ | `QGraphicsView` |
 | ⑩ | `self.llista_ac` | **llista d'acords** | `QListWidget` |
 | ⑪ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
-| ⑫ | `ed_icona` · `ed_gran` · `ed_nom` · `ed_fam` · `ed_ini` · `ed_cb` · `ed_aplica` | **franja Editor** | `QLabel`/`QLineEdit`/`QPushButton` |
+| ⑫ | `ed_icona` · `ed_gran` · `ed_nom` · `ed_fam` · `ed_ini` · `ed_cb` · `ed_aplica` | **franja Editor** (acord/secció i, amb etiquetes pròpies, **tempo: BPM + compàs**) | `QLabel`/`QLineEdit`/`QPushButton` |
+| ⑭ | `self.llista_tempo` | **llista de clips de tempo/compàs** (`Inici (s)` · `Fi (s)` · `BPM` · `Compàs`; «segons» als rubato) | `QTableWidget` |
 | ⑬ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
 
 > 🥁 **El transport principal** (`b_play`, `b_stop`, `b_menys`, `b_mes`, `b_A`,
@@ -259,7 +260,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Vora esquerra ④⑤** | arrossegar → **mou l'inici** · `hover` = ↔ |
 | **Clic (sense moure)** | **posa el cursor vermell** a l'inici del clip |
 | **Doble-clic ④⑤ / llistes ⑩⑪** | **selecciona i enfoca l'Editor ⑫** |
-| **Clic llista ⑩⑪** | salta + **ressalta la fila** (i selecciona el clip al carril) |
+| **Clic llista ⑩⑪⑭** | salta + **ressalta la fila** (i selecciona el clip al carril) |
+| **Doble-clic llista ⑭** | porta el clip de tempo a la franja Editor (BPM + compàs) |
 | **Zona buida ② + botó dret** | **pan** (desplaçar la vista) |
 | **Botó dret SOBRE un clip** | **selecciona** el clip i obri el **menú contextual** — **el mateix joc a les 3 pistes** (regla #11): **Afegeix acord/secció aquí** · Duplica · Elimina · Reanomena · Parteix l'acord/la secció… · Partir per la meitat · **Parteix a la selecció A–B** (només amb loop marcat) · Retalla · Copia · Enganxa |
 | **Pista de tempo ③ — clic** | **selecciona** el tram de tempo/compàs i hi posa el cursor **exactament al seu inici** (paritat amb els clips ④⑤; sense snap, perquè les fronteres del mapa poden ser lliures) |
