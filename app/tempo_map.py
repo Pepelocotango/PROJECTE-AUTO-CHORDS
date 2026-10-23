@@ -110,6 +110,15 @@ class TempoMap:
             trams.insert(0, Tram(0.0, s0.ini, s0.bpm, s0.num, s0.den))
         if not trams:
             trams = [self._DEFECTE]
+        # Regla #2: en un mapa de tempo/compàs la contigüitat no és una
+        # convenció, és **estructura** — el `fi` d'un tram ÉS l'`ini` del
+        # següent (i l'últim conserva el seu, que és la fi de la WAV). Es
+        # re-deriva ací perquè cap llista amb forats o encavalcaments (CSV
+        # editat a mà, client antic) puga produir una graella trencada.
+        for _i in range(len(trams) - 1):
+            _t = trams[_i]
+            trams[_i] = Tram(_t.ini, trams[_i + 1].ini, _t.bpm, _t.num,
+                             _t.den)
         self._trams = trams
         self._offset = float(offset or 0.0)
 

@@ -392,6 +392,21 @@ class TestEdicioMapa(unittest.TestCase):
         self.assertEqual(trams, [(0.0, 2.0, 120.0, 4, 4),
                                  (2.0, 10.0, 90.0, 3, 4)])
 
+    def test_el_mapa_es_contigu_encara_que_li_donen_forats(self):
+        """Regla #2 al mapa: el `fi` d'un tram ÉS l'`ini` del següent.
+
+        Una llista amb un forat (o un encavalcament) no pot produir una graella
+        trencada: `TempoMap` re-deriva les fronteres en construir-se.
+        """
+        from app.tempo_map import TempoMap
+        tm = TempoMap([(0.0, 3.0, 120.0, 4, 4), (5.0, 9.0, 90.0, 3, 4)], 0.0)
+        trams = list(tm.trams)
+        self.assertEqual([t.ini for t in trams], [0.0, 5.0])
+        self.assertEqual([t.fi for t in trams], [5.0, 9.0])
+        # L'encavalcament també es resol (mana l'inici del següent).
+        tm2 = TempoMap([(0.0, 7.0, 120.0, 4, 4), (5.0, 9.0, 90.0, 3, 4)], 0.0)
+        self.assertEqual([t.fi for t in tm2.trams], [5.0, 9.0])
+
     def test_neteja_avisa_quan_repara(self):
         """Regla #1: l'estat invàlid es repara I S'AVISA (mai en silenci)."""
         from app import tempo_map as tmm

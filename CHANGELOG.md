@@ -23,6 +23,19 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   llista ⑭).
 - Suite **1.368 OK** (1 skip), pyflakes net.
 
+### Corregit (2026-10-23, 11s) — regla #2: la contigüitat del mapa, estructural
+- **`TempoMap.__init__`** re-deriva el `fi` de cada tram a partir de l'`ini` del
+  següent (l'últim conserva el seu): una llista amb **forats o encavalcaments**
+  (CSV editat a mà, client antic) ja **no pot** produir una graella trencada.
+  És el mateix criteri que `neteja_trams` al model, però a la capa derivada, de
+  manera que quede garantit encara que un camí nou s'oblide de normalitzar.
+- **`visor._refresca_tempo_map`**: comentari del punt únic de reparació
+  reescrit (havia quedat tallat en fusionar les regles #1 i #2).
+- **Tests**: +2 (`TempoMap` amb forat i amb encavalcament → contigu; i la
+  bateria al visor —afegir tall, desfer, refer, moure la frontera, eliminar,
+  desfer— amb la invariant comprovada després de **cada** gest).
+- Docs: `REGLES_DE_LA_APP.md` #2 i §13.3. Suite **1.379 OK** (1 skip).
+
 ### Documentació (2026-10-23, 11r) — les referències de tests, al dia
 - El canònic citava **fitxers de test que no existeixen** (eren noms de *classes*
   de la ronda de fusió de suites): `test_regles_or.py`, `test_regla12_export.py`,

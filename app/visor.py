@@ -878,11 +878,9 @@ class Visor(QMainWindow):
         d = self._durada_wav()
         # Regles 1, 2, 4 i 8: aquest és el PUNT ÚNIC on es construeix el mapa,
         # així que el que hi entra s'hi ha de complir sempre. Si la còpia no ho
-        # complia (CSV editat a mà, un estat vell de l'undo, un client de
-        # ací queda arreglada abans de construir l'objecte.
-        # Regla #1: l'estat invàlid no pot existir. Si n'arriba un (CSV a mà,
-        # projecte vell, estat vell del desfer), es REPARA ací —punt únic— i
-        # s'avisa; si no, el model quedaria arreglat en silenci.
+        # complia (CSV editat a mà, un estat vell del desfer, un client extern),
+        # quede arreglada ací abans de construir l'objecte — i s'avisa: la
+        # reparació mai no és silenciosa.
         trams, avisos = neteja_trams(list(self.tempo_trams or []), d)
         if avisos and tuple(avisos) != getattr(self, "_avisos_tempo", ()):
             for _a in avisos:

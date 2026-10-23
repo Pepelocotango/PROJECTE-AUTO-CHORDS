@@ -4570,6 +4570,42 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertTrue(v.tempo_map.es_lliure(2.0))
         w.close()
 
+    def test_el_mapa_viu_sempre_es_contigu_i_cobert(self):
+        """Regla #2: cap operació del visor deixa forats ni encavalcaments.
+
+        Al mapa de tempo/compàs la contigüitat és **estructura** (el `fi` d'un
+        tram és l'`ini` del següent), així que es comprova després de cada
+        gest: afegir un tall, desfer, refer, moure una frontera i eliminar.
+        """
+        _w, v = self._prepara()
+        self._dos_trams(v)
+
+        def _comprova(quan):
+            trams = list(v.tempo_trams)
+            d = v._durada_wav()
+            self.assertAlmostEqual(float(trams[0][0]), 0.0, places=6, msg=quan)
+            self.assertAlmostEqual(float(trams[-1][1]), d, places=6, msg=quan)
+            for a, b in zip(trams, trams[1:]):
+                self.assertAlmostEqual(float(a[1]), float(b[0]), places=6,
+                                       msg=quan)
+
+        _comprova("inicial")
+        self.assertTrue(v._afegeix_tall(15.0))
+        _comprova("afegeix")
+        v.undo()
+        _comprova("desfer")
+        v.redo()
+        _comprova("refer")
+        v._focus_editor("tempo", 2)
+        v.ed_ini.setText("14.000")
+        v._aplica_editor()
+        _comprova("mou la frontera")
+        from app import tempo_map as tmm
+        v.aplica_tempo_validat(tmm.elimina_tall(v.tempo_trams, 1))
+        _comprova("elimina")
+        v.undo()
+        _comprova("desfer elimina")
+
     def test_compas_invalid_avisa_i_no_toca_res(self):
         _w, v = self._prepara()
         abans = list(v.tempo_trams)

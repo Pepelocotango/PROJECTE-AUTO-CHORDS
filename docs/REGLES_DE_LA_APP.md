@@ -51,7 +51,16 @@ Cada clip comença **exactament** on acaba l'anterior: `prev.fi == curr.ini`, pe
 **les tres** famílies (acords, seccions i trams de BPM/compàs), amb el model
 unificat `Clip(ini, fi, payload)` — sense forats ni encavalcaments. (Els **extrems**
 0 ↔ durada són competència de la regla 4.)
-→ `timeline.py` · `pipeline.filtra_seccions` · `tempo_map.normalitza_trams`
+
+Al **mapa de tempo/compàs** això no és una convenció sinó **estructura**: el `fi`
+d'un tram **no s'emmagatzema**, és l'`ini` del següent (l'últim conserva el de la
+WAV). Per això un forat o un encavalcament **no es poden representar**:
+`tempo_map.TempoMap` els re-deriva en construir-se i `visor._refresca_tempo_map`
+—el **punt únic** on es toca el model— els re-deriva *i els desa* al model, amb
+avís si ha calgut reparar (regla #1). Cap operació hi mou una vora sola: `ini` i
+`fi` d'un tram són la **mateixa frontera** compartida amb el veí (§13.6).
+→ `timeline.py` · `pipeline.filtra_seccions` · `tempo_map.neteja_trams` /
+`normalitza_trams` (model) i `tempo_map.TempoMap` (graella)
 (contracte: `docs/archive/REFACTOR_INICI_FI.md`).
 
 ## 3. Durades derivades
@@ -248,8 +257,13 @@ test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026
 - Els trams cobreixen **tota la WAV**, de 0 a la durada, **contigus i ordenats**:
   `Σ trams = durada`, sense forats, solapaments ni durades nul·les o negatives.
 - El mapa buit no existix: sense trams, se'n crea un de sol amb el transport.
-- **Codi:** `tempo_map.neteja_trams` (repara i avisa) · `normalitza_trams`
-- **Test:** `test_tempo_map`
+- La contigüitat és **estructural** (regla #2): el `fi` de cada tram és l'`ini`
+  del següent, i `TempoMap` ho re-deriva en construir-se (`test_tempo_map` ›
+  `test_el_mapa_es_contigu_encara_que_li_donen_forats`).
+- **Codi:** `tempo_map.neteja_trams` (repara i avisa) · `normalitza_trams` ·
+  `TempoMap.__init__` · `visor._refresca_tempo_map`
+- **Test:** `test_tempo_map` · `test_edicio` ›
+  `TestLlistaTempo.test_el_mapa_viu_sempre_es_contigu_i_cobert`
 
 ### 13.4 Compassos enters i valors vàlids
 
