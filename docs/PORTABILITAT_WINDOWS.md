@@ -87,7 +87,8 @@ mateix procés**. Per això el llançador no necessita cap intercepció amb
   comprova que els plugins carreguen i escriuen CSV. S'executa **dues** vegades:
   sobre l'arrel del repo (natius acabats de compilar) i sobre
   `dist/AutoChords/_internal` (natius dins el paquet).
-* **Tests unitaris**: `python -m unittest tests.test_pipeline_export tests.test_partitura`.
+* **Tests unitaris**: `python -m unittest discover -s tests` (la suite sencera; el
+  CI de Windows ja ho fa així).
 * A mà (operador): descomprimir el ZIP i obrir `AutoChords.exe`. L'estat
   (log/opcions/temp) va a `%LOCALAPPDATA%` o al propi paquet, mai en una carpeta
   de només lectura (vegeu `app/config.py`).

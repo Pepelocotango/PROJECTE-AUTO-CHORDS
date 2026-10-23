@@ -442,7 +442,8 @@ com **`<nom>_convertit.wav`** (es reutilitza si ja és més nou).
 - `docs/ESQUEMA_UI.html` i `docs/ESQUEMA_UI.svg` — aquest mateix esquema en
   **HTML** i **vectorial**, **GENERATS** d'aquest `.md` amb
   **`python3 eines/genera_esquema_ui.py`** (**no editar-los a mà**; el test
-  `tests/test_esquema_ui_gen.py` ho blinda → si edites aquest `.md`, regenera'ls).
+  `tests/test_pipeline.py` › `TestEsquemaUiGenerat` ho blinda → si edites aquest
+  `.md`, regenera'ls).
   L'**art manual** original es conserva a `ESQUEMA_UI_manual.svg`/`.html`.
 - `docs/archive/AUBIO_TEMPO.md` — **[històric]** plugin d'aubio (tempo/beats), retirat.
 - `docs/AUTODETECCIO_OPCIONS.md` — motors d'autodetecció, opcions i post-processat.

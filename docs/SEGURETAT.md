@@ -23,7 +23,8 @@ l'usuari.
 - **Fallback**: si el binari no entén una d'aquestes opcions (ffprobe no té
   `-nostdin`; ffmpeg molt vells no tenen `-protocol_whitelist`), es reintenta
   sense ella i es registra al log. **Mai es trenca l'obertura d'àudio.**
-- Tests: `tests/test_pipeline_export.py` → `FfmpegSeguretatTests`.
+- Tests: `tests/test_pipeline.py` › `FfmpegSeguretatTests` (i `TestPlataforma`,
+  per a la tria del binari per SO).
 
 ## 2. Instància única — `app/plataforma.py`, `app/main.py`
 
@@ -73,7 +74,8 @@ còpia del codi i la seva documentació viuen a `OLD/` (fora del git).
   baixa (CPython portable, ffmpeg de Linux/macOS/Windows, appimagetool, icones
   Lucide) i el **commit** dels repositoris que es compilen (qm-vamp-plugins,
   qm-dsp, vamp-plugin-sdk, libsndfile).
-- Tests: `tests/test_baixa_verificat.py`.
+- Tests: `tests/test_pipeline.py` › `TestReengegaComElVisor` (el bloc marcat
+  *ORIGEN: test_baixa_verificat.py*).
 
 ### Com s'actualitza una versió
 

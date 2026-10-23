@@ -71,12 +71,14 @@ i **marques de secció** (cada secció comença línia).
 - `new_system_each=N` (CLI `--compassos-per-linia`): salt de sistema cada N compassos
   (a més de l'inici de cada secció).
 - `beat_type=N` (CLI `--beat-type`): denominador del compàs (per defecte 4; 8 per 6/8).
-- Tests: `tests/test_partitura.py` (no necessiten MuseScore).
+- Tests: `tests/test_pipeline.py` › `TestMusicXmlMapa`,
+  `TestPartituraSenseMuseScore`, `TestMuseScore` (no necessiten MuseScore).
 
 ## Coordinació
 
 - Fitxers **nous** d'OC-2: `app/partitura.py`, `eines/exporta_partitura.py`,
-  `tests/test_partitura.py`, aquest document. **Cap fitxer existent tocat.**
+  `tests/test_pipeline.py` (les tres classes de partitura), aquest document.
+  **Cap fitxer existent tocat.**
 - El ganxo a `app/main.py` (accions «Inclou la partitura», «Exporta la
   partitura…» i «Tonalitat automàtica») el va fer **OC-1** (propietari de
   `main.py`), a partir de la spec OC-2/182.

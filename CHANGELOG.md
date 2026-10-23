@@ -23,6 +23,20 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   llista ⑭).
 - Suite **1.368 OK** (1 skip), pyflakes net.
 
+### Documentació (2026-10-23, 11r) — les referències de tests, al dia
+- El canònic citava **fitxers de test que no existeixen** (eren noms de *classes*
+  de la ronda de fusió de suites): `test_regles_or.py`, `test_regla12_export.py`,
+  `test_requirements.py`, `test_vista_segueix_model.py`, `test_regla11_paritat.py`,
+  `test_seccions_contigues`, `test_cobertura_viu`. Ara apunten al **fitxer real ›
+  classe real** (`test_edicio.py` › `TestRegla1OrdreEstricte`…,
+  `_regla11_paritat___Base`, `TestCoberturaViu`; `test_pipeline.py` ›
+  `GuardAvxTests`, `TestRegla12ParitatExport`, `CoberturaTests`; `test_gui.py` ›
+  `_vista_segueix_model___Base`).
+- Mateixa correcció a `PROJECTES.md`, `PARTITURA_EXPORT.md`, `SEGURETAT.md`,
+  `ESQUEMA_UI.md` i `PORTABILITAT_WINDOWS.md` (aquest, a més, ja no proposa
+  `unittest tests.test_pipeline_export …`: mana `discover -s tests`, com el CI).
+- Suite **1.377 OK** (1 skip), pyflakes net.
+
 ### Afegit (2026-10-23, 11q) — regla #1: l'estat invàlid no pot existir
 - **`tempo_map.neteja_trams(trams, durada)`** → `(trams, avisos)`: el punt únic
   de reparació del mapa (inici negatiu → 0; inici repetit, descartat; inici fora

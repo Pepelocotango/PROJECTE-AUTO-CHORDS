@@ -1,8 +1,10 @@
 # Projectes d'AUTO CHORDS — carpeta autocontinguda («com un DAW»)
 
 > ✅ **FET** (2026-10-14, OC-8; refinat després). Codi: **`app/projecte.py`** + la
-> **GUI** a `app/main.py`. Tests: `tests/test_projecte.py`,
-> `test_projectes_gui.py`, `test_projecte_backups.py`, `test_regla11_paritat.py`.
+> **GUI** a `app/main.py`. Tests: `tests/test_gui.py` (`TestCrea`,
+> `TestAutocontencio`, `TestObreDesa`, `TestDuplica`, `TestMigracioAutochords`,
+> `TestBackups`) i la paritat de projecte a `tests/test_edicio.py` ›
+> `_regla11_paritat___Base`.
 > Regla de producte: **«com un DAW»** — un projecte ho conté tot i **no depèn de res
 > de fora**.
 
@@ -85,7 +87,7 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
 - ~~Migracions de `format` < actual~~ → ✅ **FET**: `_migra` accepta qualsevol
   `format` anterior (el 0 = projectes sense el camp), migra camp a camp quan
   calgui i **rebutja** els projectes d'un format MÉS NOU amb un error clar;
-  proveït a `tests/test_projecte.py` (`format` 0 i 99).
+  proveït a `tests/test_gui.py` (`format` 0 i 99).
 
 ### Idees (no són pendents)
 
