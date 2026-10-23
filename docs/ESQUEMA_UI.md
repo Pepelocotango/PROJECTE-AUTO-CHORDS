@@ -199,7 +199,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑫  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
 │      acord/secció: [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│
-│      tempo:        [🥁]    [BPM▢] [Compàs▢]  [Inici (s)▢] [≈ ▢] [Aplica]│
+│      tempo: [🥁]  [BPM▢] [Compàs▢] [Inici (s)▢] [Fi (s)▢] [≈ ▢] [Aplica]│
 │      (0/0 o «segons» = clip rubato; sense finestres emergents)          │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑩ LLISTA ACORDS    │ ⑪ LLISTA SECCIONS  │ ⑭ LLISTA TEMPO             │
@@ -231,7 +231,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `TimelineView` | tot el bloc ①–⑨ | `QGraphicsView` |
 | ⑩ | `self.llista_ac` | **llista d'acords** | `QListWidget` |
 | ⑪ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
-| ⑫ | `ed_icona` · `ed_gran` · `ed_nom` · `ed_fam` · `ed_ini` · `ed_cb` · `ed_aplica` | **franja Editor** (acord/secció i, amb etiquetes pròpies, **tempo: BPM + compàs**) | `QLabel`/`QLineEdit`/`QPushButton` |
+| ⑫ | `ed_icona` · `ed_gran` · `ed_nom` · `ed_fam` · `ed_ini` · `ed_cb` · **`ed_fi`** · `ed_aplica` | **franja Editor** (acord/secció i, amb etiquetes pròpies, **tempo: BPM + compàs**; `ed_fi` —«Fi (s)»— només en mode tempo: mou la frontera, §13.6) | `QLabel`/`QLineEdit`/`QPushButton` |
 | ⑭ | `self.llista_tempo` | **llista de clips de tempo/compàs** (`Inici (s)` · `Fi (s)` · `BPM` · `Compàs`; «segons» als rubato) | `QTableWidget` |
 | ⑬ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
 

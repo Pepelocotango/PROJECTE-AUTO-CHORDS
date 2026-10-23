@@ -392,6 +392,41 @@ class TestEdicioMapa(unittest.TestCase):
         self.assertEqual(trams, [(0.0, 2.0, 120.0, 4, 4),
                                  (2.0, 10.0, 90.0, 3, 4)])
 
+    def test_neteja_avisa_quan_repara(self):
+        """Regla #1: l'estat invàlid es repara I S'AVISA (mai en silenci)."""
+        from app import tempo_map as tmm
+        out, avisos = tmm.neteja_trams(
+            [(-2.0, 0.0, 120.0, 4, 4),      # inici negatiu
+             (0.0, 3.0, 90.0, 3, 4),
+             (3.0, 3.0, 100.0, 4, 4),       # inici repetit
+             (99.0, 99.0, 120.0, 4, 4)],    # fora del tema
+            10.0)
+        self.assertEqual([t[0] for t in out], [0.0, 3.0])
+        self.assertTrue(any("abans de 0" in a for a in avisos))
+        self.assertTrue(any("mateix instant" in a for a in avisos))
+        self.assertTrue(any("fora del tema" in a for a in avisos))
+
+    def test_neteja_avisa_del_fi_abans_de_l_inici(self):
+        from app import tempo_map as tmm
+        out, avisos = tmm.neteja_trams([(4.0, 1.0, 120.0, 4, 4)], 10.0)
+        # La fi es re-deriva (4→10) i la capçalera completa la cobertura.
+        self.assertEqual([t[0] for t in out], [0.0, 4.0])
+        self.assertAlmostEqual(out[1][1], 10.0)
+        self.assertTrue(any("fi abans de l'inici" in a for a in avisos))
+
+    def test_neteja_sense_avisos_quan_ja_es_valid(self):
+        from app import tempo_map as tmm
+        out, avisos = tmm.neteja_trams(
+            [(0.0, 4.0, 120.0, 4, 4), (4.0, 10.0, 90.0, 3, 4)], 10.0)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(avisos, [])
+
+    def test_afegeix_tall_no_duplica_un_inici(self):
+        from app import tempo_map as tmm
+        base = [(0.0, 10.0, 120.0, 4, 4)]
+        self.assertEqual(tmm.afegeix_tall(base, 0.0), base)
+        self.assertEqual(len(tmm.afegeix_tall(base, 5.0)), 2)
+
     def test_normalitza_capcalera(self):
         from app import tempo_map as tmm
         trams = tmm.normalitza_trams([(3.0, 3.0, 90.0, 3, 4)], 10.0)

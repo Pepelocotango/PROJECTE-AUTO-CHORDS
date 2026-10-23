@@ -514,26 +514,52 @@ class TempoMap:
 
 
 # --- edició del mapa (utilitats pures per a la GUI) ------------------------
-def normalitza_trams(trams, durada):
-    """Ordena i fa **contigus** els trossos, cobrint `[0, durada]`.
+def neteja_trams(trams, durada):
+    """Ordena, fa contigus i **repara** els trossos; retorna `(trams, avisos)`.
 
     Cada tros és `(ini, fi, bpm, num, den)`; el `fi` es **re-deriva** de l'inici
-    del següent (o de `durada` per a l'últim). Descarta inicis repetits o fora
-    del tema. No muta l'entrada.
+    del següent (o de `durada` per a l'últim): la frontera és única. No muta
+    l'entrada.
+
+    **Regla #1** (`docs/REGLES_DE_LA_APP.md`): l'estat invàlid no pot existir;
+    si una entrada externa (CSV a mà, projecte vell, estat vell del desfer) n'hi
+    porta un, es **repara cap al valor vàlid i s'avisa** — la llista `avisos`
+    és el que la UI ha de mostrar (mai en silenci). Casos:
+
+    - inici negatiu → 0;
+    - inici repetit → es descarta el segon (un sol tram pot començar en cada
+      instant, per construcció);
+    - inici fora del tema (≥ durada) → es descarta;
+    - fi abans de l'inici → es recalcula.
+
+    La **capçalera** (forat a l'inici) no avisa: és com es construïx un mapa a
+    partir d'un tros solt (`elimina_tall`, anàlisi guiat).
     """
     durada = float(durada or 0.0)
-    net, vists = [], set()
+    net, vists, avisos = [], set(), []
     for t in sorted(trams or (), key=lambda x: float(x[0])):
+        ini = float(t[0])
         # Regla d'or #8 (temps vàlids): cap inici negatiu ni cap valor
-        # impossible. Si n'arriba algun (CSV editat a mà, projecte vell, client
-        # es PORTA AL VALOR VÀLID en comptes de propagar-lo.
-        ini = max(0.0, float(t[0]))
+        # impossible: es porta al valor vàlid en comptes de propagar-lo.
+        if ini < -TOL:
+            avisos.append("Un tram començava abans de 0 s: s'ha posat a 0.")
+        ini = max(0.0, ini)
         if durada > 0 and ini >= durada - TOL:
+            avisos.append("Un tram començava fora del tema: s'ha descartat.")
             continue
         clau = round(ini, 6)
         if clau in vists:
+            avisos.append("Dos trams començaven al mateix instant: "
+                          "se n'ha fusionat un (només n'hi pot haver un).")
             continue
         vists.add(clau)
+        try:
+            fi0 = float(t[1])
+        except (TypeError, ValueError):
+            fi0 = ini
+        if fi0 < ini - TOL:
+            avisos.append("Un tram tenia el fi abans de l'inici: "
+                          "s'ha recalculat.")
         bpm = float(t[2])
         num, den = int(t[3]), int(t[4])
         if num <= 0 or den <= 0:
@@ -543,14 +569,19 @@ def normalitza_trams(trams, durada):
         else:
             net.append((ini, bpm if bpm > 0 else BPM_DEFECTE, num, den))
     if not net:
-        return []
+        return [], avisos
     out = []
     for i, t in enumerate(net):
         fi = net[i + 1][0] if i + 1 < len(net) else durada
         out.append((t[0], fi, t[1], t[2], t[3]))
     if out[0][0] > TOL:
         out.insert(0, (0.0, out[0][0], out[0][2], out[0][3], out[0][4]))
-    return out
+    return out, avisos
+
+
+def normalitza_trams(trams, durada):
+    """`neteja_trams` sense els avisos (compatibilitat i camins interns)."""
+    return neteja_trams(trams, durada)[0]
 
 
 # --- contracte de COMPASSOS ENTERS (docs/REGLES_DE_LA_APP.md §13.4) ---------
@@ -1559,6 +1590,10 @@ def afegeix_tall(trams, t):
     """
     t = float(t)
     trams = list(trams or [])
+    # Regla #1: un sol tram pot començar en cada instant. Si el tall ja hi és,
+    # no se'n crea un altre (ni tan sols per a ser descartat després).
+    if any(abs(float(s[0]) - t) <= TOL for s in trams):
+        return trams
     for s in trams:
         if float(s[0]) - TOL <= t <= float(s[1]) + TOL:
             return trams + [(t, t, float(s[2]), int(s[3]), int(s[4]))]

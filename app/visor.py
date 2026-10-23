@@ -337,13 +337,24 @@ class Visor(QMainWindow):
         self.ed_cb.setMaximumWidth(50)
         self.ed_cb.setToolTip("Inici en compàs.beat (graella original)")
         _eh.addWidget(self.ed_cb)
+        # Fi (s): només per als clips de tempo/compàs (§13.6). A acords i
+        # seccions el fi se'n deriva de la contigüitat (regla #2) i no s'edita.
+        self.ed_fi_lbl = QLabel("Fi (s):")
+        self.ed_fi = QLineEdit()
+        self.ed_fi.setMaximumWidth(70)
+        self.ed_fi.setToolTip("Fi del clip en segons (mou la frontera)")
+        _eh.addWidget(self.ed_fi_lbl)
+        _eh.addWidget(self.ed_fi)
+        self.ed_fi_lbl.setVisible(False)
+        self.ed_fi.setVisible(False)
         self.ed_aplica = QPushButton("Aplica")
         self.ed_aplica.setObjectName("principal")
         self.ed_aplica.setToolTip("Aplica els canvis (Enter)")
         self.ed_aplica.clicked.connect(self._aplica_editor)
         _eh.addWidget(self.ed_aplica)
         _eh.addStretch(1)
-        for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb):
+        for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
+                  self.ed_fi):
             w.returnPressed.connect(self._aplica_editor)
         capa.addWidget(self.editor)
         self._ed_kind = None
@@ -863,13 +874,21 @@ class Visor(QMainWindow):
         snap i els exports en surten. Sense trossos, se'n crea un de sol amb el
         BPM·compàs actual.
         """
-        from app.tempo_map import TempoMap, normalitza_trams
+        from app.tempo_map import TempoMap, neteja_trams
         d = self._durada_wav()
         # Regles 1, 2, 4 i 8: aquest és el PUNT ÚNIC on es construeix el mapa,
         # així que el que hi entra s'hi ha de complir sempre. Si la còpia no ho
         # complia (CSV editat a mà, un estat vell de l'undo, un client de
         # ací queda arreglada abans de construir l'objecte.
-        trams = normalitza_trams(list(self.tempo_trams or []), d)
+        # Regla #1: l'estat invàlid no pot existir. Si n'arriba un (CSV a mà,
+        # projecte vell, estat vell del desfer), es REPARA ací —punt únic— i
+        # s'avisa; si no, el model quedaria arreglat en silenci.
+        trams, avisos = neteja_trams(list(self.tempo_trams or []), d)
+        if avisos and tuple(avisos) != getattr(self, "_avisos_tempo", ()):
+            for _a in avisos:
+                self.log(f"tempo: {_a}")
+            self.infoMissatge.emit("Tempo: " + " ".join(avisos))
+        self._avisos_tempo = tuple(avisos)
         den = int(getattr(self, "beat_type", 4) or 4)
 
         def _lliure(t):
@@ -3764,6 +3783,9 @@ class Visor(QMainWindow):
         self.ed_fam_lbl.setText("Família:")
         self.ed_ini.setEnabled(True)
         self.ed_cb.setEnabled(True)
+        self.ed_fi_lbl.setVisible(False)
+        self.ed_fi.setVisible(False)
+        self.ed_fi.setEnabled(False)
         if k == "tempo" and 0 <= i < len(getattr(self, "tempo_trams", None) or []):
             ini, fi, bpm, num, den = self.tempo_trams[i]
             lliure = int(num) <= 0 or int(den) <= 0
@@ -3782,8 +3804,13 @@ class Visor(QMainWindow):
             self.ed_fam_lbl.setVisible(True)
             self.ed_ini.setText(f"{float(ini):.3f}")
             self.ed_cb.setText(self._secs_a_cb(float(ini)))
-            # Inici/fi es mouen arrossegant la vora al timeline (re-tempo).
-            self.ed_ini.setEnabled(False)
+            # Inici i Fi (s) són editables (§13.6): mouen la frontera i es
+            # recalcula el BPM dels dos costats. El compàs.beat (≈) és de
+            # només lectura: el calcula el mapa.
+            self.ed_fi_lbl.setVisible(True)
+            self.ed_fi.setVisible(True)
+            self.ed_fi.setEnabled(True)
+            self.ed_fi.setText(f"{float(fi):.3f}")
             self.ed_cb.setEnabled(False)
             for w in (self.ed_nom, self.ed_fam, self.ed_aplica):
                 w.setEnabled(True)
@@ -3903,12 +3930,81 @@ class Visor(QMainWindow):
         if num <= 0:
             if bpm < 1.0:
                 bpm = 100.0
+        # ---- Inici / Fi (s): moure la FRONTERA (§13.6) --------------------
+        ini, fi = float(trams[i][0]), float(trams[i][1])
+        bpm0, num0, den0 = (float(trams[i][2]), int(trams[i][3]),
+                            int(trams[i][4]))
+        canvi_bpm = (abs(bpm - bpm0) > 5e-4
+                     or (num, den) != (num0, den0))
+        ini_nou, fi_nou = ini, fi
+        for camp, actual in ((self.ed_ini, ini), (self.ed_fi, fi)):
+            txt_t = camp.text().strip().replace(",", ".")
+            if not txt_t:
+                continue
+            try:
+                val = float(txt_t)
+            except ValueError:
+                self.avis_editor(f"«{camp.text()}» no és un temps vàlid.")
+                return
+            if camp is self.ed_ini:
+                ini_nou = val
+            else:
+                fi_nou = val
+        mou_ini = abs(ini_nou - ini) > 5e-3
+        mou_fi = abs(fi_nou - fi) > 5e-3
+        # El principi de la WAV i la seua fi no es poden moure: es rebutja i
+        # s'avisa (no s'ha d'aplicar res més del formulari).
+        if mou_ini and i == 0:
+            self.avis_editor("L'inici del primer clip és l'inici de la WAV: "
+                             "no es pot moure.")
+            return
+        if mou_fi and i == len(trams) - 1:
+            self.avis_editor("La fi de l'últim clip és la fi de la WAV: "
+                             "no es pot moure.")
+            return
+        d = self._durada_wav()
+        off = float(getattr(self, "offset", 0.0) or 0.0)
         self._undo_marca()
-        # Si el canvi no és vàlid, `edita_tempo_objectiu` ja avisa; el commit
-        # no apila res perquè l'estat no ha canviat.
-        self.edita_tempo_objectiu(i, bpm, num, den)
+        mapa = trams
+        if mou_ini:
+            mapa = self._mou_frontera_ui(mapa, i, ini_nou, d, off)
+        if mapa is None:
+            self._undo_commit()
+            return
+        if mou_fi:
+            mapa = self._mou_frontera_ui(mapa, i + 1, fi_nou, d, off)
+        if mapa is None:
+            self._undo_commit()
+            return
+        if mapa is not trams:
+            self.aplica_tempo_trams(mapa)
+        # Després de moure fronteres, si l'usuari HA CANVIAT el BPM/compàs al
+        # formulari, manen (re-tempo local sobre el tram ja re-situat). Si no
+        # els ha tocat, el BPM que hi ha és el que ha derivat la frontera: no
+        # se li ha de tornar a imposar el valor vell (desfaria el moviment).
+        if canvi_bpm:
+            self.edita_tempo_objectiu(i, bpm, num, den)
         self._undo_commit()
         self._actualitza_editor()
+
+    def _mou_frontera_ui(self, trams, idx_frontera, t, durada, offset):
+        """Mou una frontera des de la franja Editor (re-tempo §13.6).
+
+        Retorna el mapa nou o `None` si no es pot (amb avís). Si el punter
+        demanava un instant impossible, s'aplica el més a prop i s'avisa.
+        """
+        try:
+            nous = tempo_map.mou_frontera_retempo(
+                trams, int(idx_frontera), float(t), durada, offset=offset)
+        except ValueError as e:
+            self.avis_editor(f"Frontera: {e}")
+            return None
+        real = float(nous[int(idx_frontera)][0])
+        if abs(real - float(t)) > 1e-3:
+            self.avis_editor(
+                f"La frontera s'ha ajustat a {real:.3f} s "
+                "(no pot passar del veí).")
+        return nous
 
     def _aplica_editor(self):
         """Aplica els canvis de la franja Editor al model (amb undo).

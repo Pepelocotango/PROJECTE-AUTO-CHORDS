@@ -33,8 +33,17 @@
 ## 1. Ordre estricte dels clips
 Els clips (**acords**, **seccions** i **trams de BPM/compàs**) estan
 **ordenats pel temps d'inici**, **sense solapaments ni inversions**.
+
+L'estat invàlid **no pot existir**: les operacions de l'app no el poden produir
+(per lògica i per construcció —p. ex. un inici de tram **no es pot duplicar**:
+`tempo_map.afegeix_tall` no crea el tall si ja hi ha una frontera en eixe
+instant). Si entra **de fora** (CSV editat a mà, projecte vell, estat vell del
+desfer), es **repara** cap al valor vàlid **i s'avisa** — mai en silenci: la
+reparació passa per un sol punt (`tempo_map.neteja_trams`, que retorna els
+avisos, i `visor._refresca_tempo_map`, que els mostra) i deixa traça al registre.
 → `visor._valida_canvis_acords` / `_valida_canvis_seccions` /
-`tempo_map.normalitza_trams`.
+`tempo_map.neteja_trams` (repara i avisa) · `normalitza_trams` (intern) ·
+`afegeix_tall`.
 
 ## 2. Contigüitat
 Cada clip comença **exactament** on acaba l'anterior: `prev.fi == curr.ini`, per a
@@ -230,7 +239,7 @@ test `tests/test_regla12_export.py` — **✅ FET (2026-10-18)**.
 - Els trams cobreixen **tota la WAV**, de 0 a la durada, **contigus i ordenats**:
   `Σ trams = durada`, sense forats, solapaments ni durades nul·les o negatives.
 - El mapa buit no existix: sense trams, se'n crea un de sol amb el transport.
-- **Codi:** `tempo_map.normalitza_trams`
+- **Codi:** `tempo_map.neteja_trams` (repara i avisa) · `normalitza_trams`
 - **Test:** `test_tempo_map`
 
 ### 13.4 Compassos enters i valors vàlids
@@ -282,14 +291,28 @@ test `tests/test_regla12_export.py` — **✅ FET (2026-10-18)**.
   moure sempre; l'extrem contrari **no es mou** i només es recalcula el BPM de
   dins. No hi ha mínim de 0,5 s: només es rebutja el que deixaria un tram **sense
   durada**.
-- L'**inici del primer** clip i el **final de l'últim** no es toquen mai (marquen
-  la WAV; l'avís ho diu). La fi del primer pot caure **exactament** en el compàs 1
-  (pre-roll pur); si el primer tram no té cap compàs, arrossegar-ne la fi **mou el
-  compàs 1** (offset).
+- **Inici i fi són editables** —arrossegant la vora al timeline o escrivint-los a
+  la franja Editor (`Inici (s)` / `Fi (s)`, només en mode tempo). Com que la
+  frontera és única, moure'n un mou **eixa** frontera; **l'extrem contrari del
+  clip no es mou** i es recalcula el BPM del clip editat i, si cal, el del veí:
+
+  | Gest | Resultat |
+  |---|---|
+  | `ini` del **1r** clip | **rebutjat + avís** (és l'inici de la WAV) |
+  | `fi` de l'**últim** clip | **rebutjat + avís** (és la fi de la WAV) |
+  | `ini` de qualsevol altre | mou la frontera `(i-1, i)`; el `fi` del clip **no** es mou; re-tempo del clip i del **veí anterior** |
+  | `fi` de qualsevol altre | mou la frontera `(i, i+1)`; l'`ini` del clip **no** es mou; re-tempo del clip i del **veí posterior** |
+  | qualsevol dels dos amb un costat en segons (`0/0`) | només es mou la frontera: **cap** BPM no canvia |
+
+  Si l'instant demanat no és possible (passaria del veí, o deixaria un tram sense
+  durada), s'aplica el més a prop i **s'avisa**.
+- La fi del primer pot caure **exactament** en el compàs 1 (pre-roll pur); si el
+  primer tram no té cap compàs, moure'n la fi **mou el compàs 1** (offset).
 - El gest és **local**: els **marcadors humans** lligats a la frontera **viatgen
   amb ella** (i s'esborren amb ella), i el clip d'estructura creat en eixe punt la
   seguix per coincidència de temps (±5 ms) fins que s'edite a mà.
-- **Codi:** `tempo_map.mou_frontera_retempo` · `visor._on_tempo_mogut` · `marcadors`
+- **Codi:** `tempo_map.mou_frontera_retempo` · `visor._on_tempo_mogut` ·
+  `visor._aplica_editor_tempo` · `marcadors`
 - **Test:** `test_despatx_edicio`
 
 ### 13.7 Clips en segons (`0/0`, rubato)

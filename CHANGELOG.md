@@ -23,6 +23,27 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   llista ⑭).
 - Suite **1.368 OK** (1 skip), pyflakes net.
 
+### Afegit (2026-10-23, 11q) — regla #1: l'estat invàlid no pot existir
+- **`tempo_map.neteja_trams(trams, durada)`** → `(trams, avisos)`: el punt únic
+  de reparació del mapa (inici negatiu → 0; inici repetit, descartat; inici fora
+  del tema, descartat; fi abans de l'inici, recalculat). `normalitza_trams`
+  queda com a embolcall sense avisos.
+- **`visor._refresca_tempo_map`** mostra els avisos (caixa d'informació + log,
+  **sense repetir-los** a cada refresc): reparar mai no és silenciós.
+- **Inici duplicat impossible per construcció**: `tempo_map.afegeix_tall` no
+  crea el tall si ja hi ha una frontera en eixe instant.
+- **`Inici (s)` i `Fi (s)` a la franja Editor** (només en mode tempo, camp nou
+  `ed_fi`): mouen **la frontera** (§13.6) amb re-tempo local del clip i del veí;
+  l'**inici del 1r** clip i la **fi de l'últim** es **rebutgen amb avís**; si
+  l'instant demanat no és possible, s'aplica el més a prop i s'avisa; amb un
+  costat en segons (`0/0`) no es recalcula cap BPM. Si el BPM/compàs del
+  formulari no s'ha tocat, no es reimposa (desfaria el moviment).
+- **Docs**: `REGLES_DE_LA_APP.md` #1 (repara i avisa) i §13.6 (taula
+  d'inicis/fis), `ESQUEMA_UI.md` ⑫, `EDICIO_OPERACIONS.md` #13.
+- **Tests**: +8 (avisos de `neteja_trams`, `afegeix_tall` sense duplicat,
+  moviment d'inici/fi amb recalcul del veí, rebuig dels extrems, rubato intacte,
+  camp Fi visible només en tempo). Suite **1.377 OK** (1 skip), pyflakes net.
+
 ### Afegit (2026-10-22, 11o) — llista de clips de **tempo/compàs** editable
 - **Tercera llista** a l'Inspector, al costat d'acords i seccions:
   `QTableWidget` amb **Inici (s) · Fi (s) · BPM · Compàs** (a un clip rubato, la
@@ -31,9 +52,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   clip al timeline i hi porta el cursor; **doble-clic → franja Editor**; botó
   dret → el **mateix** menú contextual del carril (`_menu_de_llista`).
 - **Franja Editor amb mode tempo**: les etiquetes passen a **BPM:** i
-  **Compàs:** (el camp de compàs accepta `4/4`, `0/0` o «segons»); Inici/Fi es
-  mouen arrossegant la vora al timeline i, per tant, hi queden de només
-  lectura. «Aplica» crida `edita_tempo_objectiu` (re-tempo local + desfer).
+  **Compàs:** (el camp de compàs accepta `4/4`, `0/0` o «segons»); «Aplica»
+  crida `edita_tempo_objectiu` (re-tempo local + desfer). *(11q: Inici i Fi ja
+  s'hi poden escriure.)*
 - **`_on_clip_selected`**: seleccionar un clip de tempo ja **no buida** la
   franja (abans ho feia perquè no hi havia editor de tempo).
 - **Tests**: +6 (`TestLlistaTempo`: files/columnes, clic, doble-clic, aplicar
