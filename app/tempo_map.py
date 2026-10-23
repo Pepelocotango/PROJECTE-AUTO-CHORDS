@@ -545,7 +545,7 @@ def neteja_trams(trams, durada):
     partir d'un tros solt (`elimina_tall`, anàlisi guiat).
     """
     durada = float(durada or 0.0)
-    net, vists, avisos = [], set(), []
+    net, avisos = [], []
     for t in sorted(trams or (), key=lambda x: float(x[0])):
         ini = float(t[0])
         # Regla d'or #8 (temps vàlids): cap inici negatiu ni cap valor
@@ -556,12 +556,14 @@ def neteja_trams(trams, durada):
         if durada > 0 and ini >= durada - TOL:
             avisos.append("Un tram començava fora del tema: s'ha descartat.")
             continue
-        clau = round(ini, 6)
-        if clau in vists:
+        # «Mateix instant» vol dir **el mateix** (o el soroll de coma flotant,
+        # ~1e-16), no «dins del mateix microsegon»: arredonir a 6 decimals
+        # descartava un tram sencer quan dos inicis queien a 1e-9 s (el mapa es
+        # quedava amb el primer i el segon desapareixia — pèrdua silenciosa).
+        if net and ini - float(net[-1][0]) <= 1e-12:
             avisos.append("Dos trams començaven al mateix instant: "
                           "se n'ha fusionat un (només n'hi pot haver un).")
             continue
-        vists.add(clau)
         try:
             fi0 = float(t[1])
         except (TypeError, ValueError):

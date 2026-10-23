@@ -421,6 +421,20 @@ class TestEdicioMapa(unittest.TestCase):
         self.assertTrue(any("mateix instant" in a for a in avisos))
         self.assertTrue(any("fora del tema" in a for a in avisos))
 
+    def test_un_inici_a_un_nanosegon_no_es_perd(self):
+        """Regla #3: reparar no pot fer desaparéixer un tram.
+
+        Dos inicis a 1e-9 s queien dins del mateix microsegon i el segon es
+        descartava (el mapa sencer es tornava rubato, en silenci). Només es
+        fusiona el que comença **exactament** al mateix instant.
+        """
+        from app import tempo_map as tmm
+        out, avisos = tmm.neteja_trams(
+            [(0.0, 10.0, 120.0, 0, 0), (1e-9, 30.0, 120.0, 4, 4)], 30.0)
+        self.assertEqual(len(out), 2)
+        self.assertAlmostEqual(float(out[0][1]), 1e-9, places=15)
+        self.assertEqual(avisos, [])
+
     def test_neteja_avisa_del_fi_abans_de_l_inici(self):
         from app import tempo_map as tmm
         out, avisos = tmm.neteja_trams([(4.0, 1.0, 120.0, 4, 4)], 10.0)
