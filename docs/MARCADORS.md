@@ -23,9 +23,17 @@ En crear-se, un marcador **talla dos carrils** en eixe instant:
   canviar o arrossegar la vora).
 - **Estructura**: comença una secció nova (parteix la que hi havia).
 
-I **res més**: a partir d'ací el marcador és **independent**. Si mous, fusiones
-o esborres eixos clips, el marcador es queda on el vas posar (es pinta com una
-**ratlla groga discontínua** amb banderí, damunt de tot).
+A partir d'ací, el marcador **seguix la frontera de tempo** (regla
+**§13.6** de `docs/REGLES_DE_LA_APP.md`, decisió de l'operador 21-10-2026):
+
+- si **mous** la frontera, el marcador **hi viatja** (i torna enrere amb el
+  desfer);
+- si la frontera **desapareix** (eliminar o fusionar el tram), el marcador
+  **s'esborra** amb ella;
+- el clip d'**estructura** que es va crear en eixe punt la seguix per
+  coincidència de temps (±5 ms) fins que l'edites a mà.
+
+Es pinta com una **ratlla groga discontínua** amb banderí, damunt de tot.
 
 ## Del marcador al BPM (el pas que ho fa editable)
 

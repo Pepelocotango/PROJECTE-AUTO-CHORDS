@@ -47,7 +47,7 @@
 > (`+1`/`−1`/`×2`/`÷2`) o canviar el BPM/compàs pel diàleg, la barra o el TAP fa
 > re-tempo local**: Δt mana, els compassos dels dos costats es conserven, el BPM
 > en deriva i **els trams següents no es mouen**. Contracte complet:
-> `docs/REGLES_TEMPS_GRID.md` §7–§9.
+> `docs/REGLES_DE_LA_APP.md` §13.4–13.6.
 >
 > **Clic a un tram de tempo (2026-10-20, paritat #11)**: el clic **selecciona**
 > el tram i posa el cursor **exactament al seu inici** (sense snap: les

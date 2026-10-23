@@ -431,7 +431,7 @@ class TempoLayer(QGraphicsObject):
     mateixos que a la resta de pistes: **clic** a un bloc → diàleg per al BPM i
     el compàs; **arrossegar una vora** → re-tempo (mana el punter: es conserven
     els compassos dels dos costats i el BPM s'adapta, sense moure cap altre
-    tram — `docs/FLUX DE TEMPO VARIABLE.md`); **botó dret** → menú (afegir,
+    tram — `docs/REGLES_DE_LA_APP.md` §13); **botó dret** → menú (afegir,
     eliminar, fusionar i compassos +1/−1/×2/÷2).
     """
 

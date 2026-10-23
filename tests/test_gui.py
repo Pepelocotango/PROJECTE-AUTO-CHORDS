@@ -6144,7 +6144,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
 
         Abans s'imantava a una línia de compàs del tram anterior i
         s'arrossegaven els trams següents (`_ripple`); ara mana el punter
-        (`docs/FLUX DE TEMPO VARIABLE.md` §2) i cap altre tram es mou.
+        (`docs/REGLES_DE_LA_APP.md` §13.5) i cap altre tram es mou.
         """
         from app import ancoratges as A
         vr = self.w.visor_ref
@@ -6233,8 +6233,8 @@ class TestAncoratgesFinestra(unittest.TestCase):
     def test_marcador_crea_inicis_de_clip_i_va_lligat_a_la_frontera(self):
         """Un marcador = inici de clip a BPM/compàs I a estructura; després
         **viatja amb la frontera** i desapareix si la frontera desapareix
-        (decisió de l'operador 21-10-2026, `docs/FLUX DE TEMPO VARIABLE.md`
-        §4.C)."""
+        (decisió de l'operador 21-10-2026, `docs/REGLES_DE_LA_APP.md`
+        §13.6)."""
         vr = self.w.visor_ref
         vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
         vr.seccions = [(0.0, 60.0, "A", "A")]

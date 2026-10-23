@@ -449,7 +449,7 @@ class TestFase2Gestos(_Base):
             self.assertAlmostEqual(float(v.tempo_trams[0][1]), 12.0, places=2)
             self.assertAlmostEqual(float(v.tempo_trams[1][0]), 12.0, places=2)
             self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=2)
-            # Re-tempo (docs/FLUX DE TEMPO VARIABLE.md §2): els COMPASSOS es
+            # Re-tempo (docs/REGLES_DE_LA_APP.md §13.5): els COMPASSOS es
             # conserven (5 a l'esquerre i 10 a la dreta) i el BPM s'adapta.
             for i, n in ((0, 5), (1, 10)):
                 tr = v.tempo_trams[i]
@@ -857,7 +857,7 @@ def tearDownModule():
 
 
 class TestCompassosTempo(_Base):
-    """Correcció MÈTRICA discreta del carril ③ (`docs/FLUX DE TEMPO VARIABLE.md`).
+    """Correcció MÈTRICA discreta del carril ③ (`docs/REGLES_DE_LA_APP.md` §13.5).
 
     `+1`/`−1`/`×2`/`÷2` canvien N mantenint els SEGONS: el BPM s'adapta i cap
     veí no es mou. Passa pel despatx únic (`executa_edicio("compassos")`).

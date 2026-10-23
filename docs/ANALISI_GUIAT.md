@@ -84,7 +84,7 @@ quedar la frontera — no assumim mai el BPM «original»:
 - **No és trampa**: la mida de la finestra només decideix **fins a on es
   talla** el bucle; el BPM n'és sempre la **autodetecció** del tram.
 - El tall es fa sempre en **compassos sencers** del compàs vigent: el
-  contracte dels **compassos enters interiors** (`REGLES_TEMPS_GRID` §4)
+  contracte dels **compassos enters interiors** (`REGLES_DE_LA_APP.md` §13.4)
   exigeix fronteres en línia de compàs. Per defecte: **4 compassos** (en
   4/4 = 16 temps; en 3/4 = 12; en 6/8 = 24 corxeres…).
 
@@ -276,7 +276,7 @@ comprovació acotada. És el que ja saps tu, no només el que detecta el motor.
 
 ---
 
-> Vegeu també: [`REGLES_TEMPS_GRID.md`](REGLES_TEMPS_GRID.md) (contracte
+> Vegeu també: [`REGLES_DE_LA_APP.md`](REGLES_DE_LA_APP.md) **§13** (contracte
 > dels trams: re-tempo local, compassos enters, detecció per tram) ·
 > [`EDICIO_OPERACIONS.md`](EDICIO_OPERACIONS.md) §6 (#36/36b tempo i tap) ·
 > [`QM_VAMP.md`](QM_VAMP.md) (motors) · [`FLUX_DE_DADES.md`](FLUX_DE_DADES.md)

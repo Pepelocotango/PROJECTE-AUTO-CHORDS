@@ -1,3 +1,11 @@
+> ## 📦 ARXIU — fusionat a `docs/REGLES_DE_LA_APP.md` §13 el **23-10-2026**
+>
+> Este document **ja no és la font de veritat**. Les regles normatives viuen a
+> **`docs/REGLES_DE_LA_APP.md` §13 (Temps, compàs i graella)**, en forma
+> compacta (13.1–13.8 + notes d'aplicació). Es conserva com a **història** del
+> contracte i per al detall llarg (exemples, casos extrems i el perquè).
+> Si hi ha contradicció, **mana `REGLES_DE_LA_APP.md`**.
+
 # Regles de TEMPS, COMPÀS i GRAELLA
 
 > **Contracte viu.** Aquest document fixa les regles del que hem acordat sobre

@@ -93,7 +93,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Fet (21-10-2026)**: **re-tempo** — arrossegar una frontera de tempo mou
   **Δt** (el ratolí mana), conserva els **compassos** i recalcula el **BPM**;
   `+1/−1/×2/÷2` al menú del tram i els marcadors lligats a la frontera
-  (`docs/FLUX DE TEMPO VARIABLE.md`).
+  (`docs/REGLES_DE_LA_APP.md` §13.5–13.6).
 
 ---
 

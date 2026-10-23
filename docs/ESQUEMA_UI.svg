@@ -56,14 +56,14 @@
   <text x="18" y="788.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑨  GUIA DE SNAP          línia que apareix en arrossegar               │</text>
   <text x="18" y="803.0" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────┤</text>
   <text x="18" y="817.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑫  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │</text>
-  <text x="18" y="832.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│      [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]              │</text>
-  <text x="18" y="846.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│      (sense finestres emergents; Enter = aplica)                       │</text>
-  <text x="18" y="861.0" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────┤</text>
-  <text x="18" y="875.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑩  LLISTA ACORDS (llista_ac) │ ⑪ LLISTA SECCIONS (llista_ab)          │</text>
-  <text x="18" y="890.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│     «1.1 N», «8.1 E7»…        │   «A(N) 1.1–10.1»…                     │</text>
-  <text x="18" y="904.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│     clic=salta (i ressalta)   │   clic=salta (i ressalta)              │</text>
-  <text x="18" y="919.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│     doble=edita (Editor)      │   doble=edita (Editor)                 │</text>
-  <text x="18" y="933.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│     dret=menú contextual      │   dret=menú contextual                 │</text>
+  <text x="18" y="832.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│      acord/secció: [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│</text>
+  <text x="18" y="846.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│      tempo:        [🥁]    [BPM▢] [Compàs▢]  [Inici (s)▢] [≈ ▢] [Aplica]│</text>
+  <text x="18" y="861.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│      (0/0 o «segons» = clip rubato; sense finestres emergents)          │</text>
+  <text x="18" y="875.5" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────┤</text>
+  <text x="18" y="890.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑩ LLISTA ACORDS    │ ⑪ LLISTA SECCIONS  │ ⑭ LLISTA TEMPO             │</text>
+  <text x="18" y="904.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  «1.1 N», «8.1 E7»… │ «A(N) 1.1–10.1»…   │ Inici·Fi·BPM·Compàs        │</text>
+  <text x="18" y="919.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│  clic=salta (i ressalta la fila) · doble=edita (Editor)                │</text>
+  <text x="18" y="933.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  dret=menú contextual (el mateix del carril)                          │</text>
   <text x="18" y="948.0" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────┤</text>
   <text x="18" y="962.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑬  LLISCADOR ──────●────────  │ 9.4 / 95.1 │ [🔇] │ [volum] │ stats    │</text>
   <text x="18" y="977.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│      (posició + estatus del transport; el transport principal és a la  │</text>

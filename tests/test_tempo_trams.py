@@ -252,7 +252,7 @@ class PistesTempoTests(unittest.TestCase):
 
 
 class RetempoTests(unittest.TestCase):
-    """Re-tempo pel ratolí (docs/FLUX DE TEMPO VARIABLE.md).
+    """Re-tempo pel ratolí (docs/REGLES_DE_LA_APP.md §13.5–13.6).
 
     Llei de fons: el **ratolí** fixa Δt, el nombre de compassos N de cada tram
     es conserva i el **BPM** es recalcula. Contrari del flux vell (snap a la

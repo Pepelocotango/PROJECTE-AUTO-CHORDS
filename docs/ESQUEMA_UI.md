@@ -52,7 +52,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | ⓪ | `Finestra` | finestra principal | `QMainWindow` |
 | — | `self.offset` · `self.offset_cb` | **dos camps d'offset** (segons · compàs.beat) | `QLineEdit` |
 | — | `b_obre` (local) | **Obre àudio** | `QPushButton` |
-| — | `self.b_marker` | **＋ Marker**: crea un **inici de compàs** (clip de BPM/compàs + clip d'estructura) en el punt del cursor, també durant el play; després el marcador és independent (ratlla groga al visor). Tecla `+` (dalt o teclat numèric). Sense WAV, desactivat | `QPushButton` |
+| — | `self.b_marker` | **＋ Marker**: crea un **inici de compàs** (clip de BPM/compàs + clip d'estructura) en el punt del cursor, també durant el play; el marcador **viatja amb la frontera de tempo** i s'esborra amb ella (§13.6; ratlla groga al visor). Tecla `+` (dalt o teclat numèric). Sense WAV, desactivat | `QPushButton` |
 | — | `self.b_guia` | **Anàlisi guiat (guia ràpida)**: obri `DialegAncoratges` — punxa **+** a cada compàs nou mentre escoltes (cada + = compàs 1 de secció); el motor encaixa el mapa per damunt. Transport ½·⅔·1·1,5·2·4 amb to mantingut, delay, metre per ancoratge, llista amb esborrar/desfer i **×2/÷2** per interval; en aplicar crea **el mapa de tempo I les seccions** (un clip per interval + «Intro») en un sol desfer, i el **cursor del visor avança** amb el só. `docs/ANALISI_GUIAT_v3.md`; la v2 per trams queda al menú Analitza. Sense WAV, desactivat | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |

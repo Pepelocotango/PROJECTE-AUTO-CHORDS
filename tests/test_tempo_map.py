@@ -183,7 +183,7 @@ class TestCanviDeCompas(unittest.TestCase):
 
 
 class TestCompassosEnters(unittest.TestCase):
-    """Contracte de `docs/REGLES_TEMPS_GRID.md` (trams interiors enters)."""
+    """Contracte de `docs/REGLES_DE_LA_APP.md` §13.4 (trams interiors enters)."""
 
     BASE = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4)]
 

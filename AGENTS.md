@@ -104,10 +104,11 @@ prémer «Analitza» mai.
 
 ## 🔴 Les regles de l'app — **font única: `docs/REGLES_DE_LA_APP.md`**
 
-Les regles d'or (12) són **invariants** i **no es dupliquen en aquest fitxer**.
+Les regles d'or (**1–12** i el **§13**: temps, compàs i graella) són
+**invariants** i **no es dupliquen en aquest fitxer**.
 Abans de tocar codi:
 
-1. Llegeix **`docs/REGLES_DE_LA_APP.md`** sencer (numerades 1–12, amb la
+1. Llegeix **`docs/REGLES_DE_LA_APP.md`** sencer (numerades 1–12 més el §13, amb la
    validació al codi i el test que les comprova).
 2. Recorda que **s'han de complir sempre i a tots els punts**: **edició en viu
    (GUI), visor, CSV desat i exportació**. No és una comprovació «de tant en tant».
@@ -268,9 +269,9 @@ widgets, netegen amb `tests/_qt_neteja.py`. Si afegeixes un test nou, importa
 
 - `README.md` — el producte (per a l'usuari).
 - `docs/README.md` — **índex complet** de la documentació.
-- **`docs/REGLES_DE_LA_APP.md`** — **les regles d'or (canònic)**.
-- **`docs/REGLES_TEMPS_GRID.md`** — contracte de **temps, compàs i graella**
-  (compassos enters als trams interiors, opció A, detecció de BPM per tram).
+- **`docs/REGLES_DE_LA_APP.md`** — **les regles d'or (canònic)**: 1–12 i, al
+  **§13**, tot el contracte de **temps, compàs i graella** (compassos enters,
+  re-tempo local, fronteres i marcadors, clips en segons, detecció i export).
 - `docs/FLUX_DE_DADES.md` — model, cru, fitxers i proteccions.
 - `docs/ESQUEMA_UI.md` (+ `.html`/`.svg` generats) — la interfície.
 - `docs/PROJECTES.md` · `docs/EDICIO_OPERACIONS.md` · `docs/PARTITURA_EXPORT.md`.

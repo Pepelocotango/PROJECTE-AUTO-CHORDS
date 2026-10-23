@@ -1,6 +1,6 @@
 # Índex de la documentació (`docs/`)
 
-> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-10-21.**
+> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-10-23.**
 > L'estat *actual* del projecte és a **`../README.md`** i **`../ROADMAP.md`**;
 > aquí hi ha el **detall temàtic**. Els documents d'**`archive/`** (marcats
 > **[HISTÒRIC]**, **[ANÀLISI]** o **[COMPLETAT]**) es conserven com a referència,
@@ -12,8 +12,7 @@
 |---|---|
 | **`../README.md`** | Visió general, instal·lació i «estat actual». |
 | **`../DEVELOPING.md`** | Entorn de desenvolupament i mapa del codi. |
-| **`REGLES_DE_LA_APP.md`** | 🔴 **Les regles d'or (invariants)** — llegir **abans** de tocar codi. |
-| **`REGLES_TEMPS_GRID.md`** | 🕒 **Contracte de temps, compàs i graella**: segons vs compassos, trams interiors amb compassos enters, **re-tempo local** (Δt mana, els compassos es conserven i el BPM en deriva) i detecció de BPM per tram. |
+| **`REGLES_DE_LA_APP.md`** | 🔴 **Les regles d'or (invariants)** — llegir **abans** de tocar codi. Inclou el **§13: temps, compàs i graella** (segon vs compassos, trams interiors amb compassos enters, **re-tempo local**, fronteres i marcadors, **clips en segons**, detecció i export del mapa). |
 | **`ESQUEMA_UI.md`** (`.html` · `.svg`) | Esquema visual de la interfície: zones, icones reals i colors. |
 
 ## Funcionament de l'app
@@ -80,6 +79,8 @@
 | `archive/PANELL_TIPUS_ACORD_mockup.svg` · `.png` **[DISSENY]** | Maqueta **aprovada** del panell de tipus d'acord (ja implementat). |
 | `archive/AUDITORIA_REGLES.md` **[ARXIVAT]** | 🔍 Registre de l'auditoria de les regles d'or (rondes 1–54), **tancada**: mapa regla→validació→test, trobades i cua. |
 | `archive/PLA_TEMPO_COMPAS.md` **[FET]** | 🎚️ Pla del mapa de tempo i compàs variables (motor `app/tempo_map.py`). |
+| `archive/REGLES_TEMPS_GRID.md` **[FUSIONAT]** | 🕒 Antic contracte de temps, compàs i graella: **fusionat** a `REGLES_DE_LA_APP.md` **§13** el 23-10-2026. Es conserva pel detall llarg (exemples i casos extrems). |
+| `archive/FLUX DE TEMPO VARIABLE.md` **[HISTÒRIC]** | 🎚️ Especificació del re-tempo basat en marcacions (model mental, matemàtica i pla de proves). Regles vigents a `REGLES_DE_LA_APP.md` §13.5–13.6; el seu §5 (mínim de 0,5 s) està **superat**. |
 | `archive/PLA_EDICIO_LLIURE.md` **[FET]** | ✂️ Pla de l'edició lliure (§2, §6): la regla #4 com a contracte **posterior** a cada operació. |
 | `archive/AUBIO_TEMPO.md` **[HISTÒRIC]** | Plugin d'aubio (tempo/beats), **retirat** — substituït per `app/tempo.py`. |
 | `archive/PORTABILITAT.md` **[ANÀLISI]** | Anàlisi original de què calia per ser autocontingut (ja fet). |

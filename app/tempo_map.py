@@ -553,7 +553,7 @@ def normalitza_trams(trams, durada):
     return out
 
 
-# --- contracte de COMPASSOS ENTERS (docs/REGLES_TEMPS_GRID.md) -------------
+# --- contracte de COMPASSOS ENTERS (docs/REGLES_DE_LA_APP.md §13.4) ---------
 def fusiona_trams_iguals(trams, durada=0.0):
     """Fusiona trams adjacents amb el **mateix BPM i compàs**.
 
@@ -812,7 +812,7 @@ def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0, direccio=None):
     raise ValueError("No hi ha cap línia de compàs vàlida a prop")
 
 
-# --- Re-tempo: el RATOLÍ mana sobre el temps (docs/FLUX DE TEMPO VARIABLE.md) --
+# --- Re-tempo: el RATOLÍ mana sobre el temps (REGLES_DE_LA_APP.md §13.5) -----
 #: Distància mínima (s) entre una frontera i la seua veïna (límit de seguretat).
 FRONTERA_MIN_S = 0.5
 #: Banda de BPM «raonable» per a un arrossegament (fora d'ací s'avisa i no es fa).
@@ -882,7 +882,7 @@ def canvia_bpm_local(trams, idx, bpm, durada, offset=0.0, num=None, den=None):
     """Canvia el BPM/compàs d'un tram **conservant els compassos** (local).
 
     És el camí del diàleg del tram, dels camps de la barra i del TAP
-    (`docs/REGLES_TEMPS_GRID.md` §7): el tram conserva el seu nombre enter de
+    (`docs/REGLES_DE_LA_APP.md` §13.5): el tram conserva el seu nombre enter de
     compassos `N`, la seua durada passa a ``Δt = N · bq · 60 / BPM`` i el
     **veí de la dreta** conserva els seus compassos i el seu final, recalculant
     el BPM. La resta del mapa **no es mou** (sense *ripple*).
@@ -1189,7 +1189,7 @@ def ajusta_trams_a_marcadors(trams, marcadors, durada, offset=None,
 def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0):
     """Mou una frontera **interior** conservant els compassos dels dos costats.
 
-    Inverteix la jerarquia (docs/FLUX DE TEMPO VARIABLE.md §2): el ratolí fixa
+    Inverteix la jerarquia (docs/REGLES_DE_LA_APP.md §13.5): el ratolí fixa
     Δt, el nombre de compassos N de cada tram es conserva i el BPM es recalcula
     (``BPM = N · bq · 60 / Δt``). Cap altre tram del tema no es mou, i les
     fronteres resultants cauen **sempre** en línia de compàs per construcció —

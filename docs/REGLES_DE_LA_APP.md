@@ -7,7 +7,7 @@
 > de l'operador, que s'ha de documentar aquí **i** al `CHANGELOG`).
 >
 > Cada regla té la seva **validació** al codi i un **test** que la comprova
-> (les 1–12, totes amb el seu test). L'**auditoria continuada** (prova de mutació,
+> (les 1–19, totes amb el seu test). L'**auditoria continuada** (prova de mutació,
 > regla a regla) viu a `docs/archive/AUDITORIA_REGLES.md`.
 > Referenciades a `ROADMAP_HISTORIA.md` (§Notes d'implementació) i `DEVELOPING.md`.
 >
@@ -137,14 +137,16 @@ es detallen avall). Tota operació d'un tipus ho ha de ser per als altres, i pel
   estructura i redacció**, i **mateixa transparència** del carri.
 - **Propi de cada tipus (NO s'iguala)**: el **payload** (acord i estructura són
   `Clip(ini, fi, payload)` — acord `(nom, tsrc)`, secció `(lletra, família)` — i el
-  tram és `Tram(ini, fi, bpm, num, den)`), el camp «Família» de l'Editor (només
-  secció), l'edició **inline** i «Reanomena en bloc» (només acord/secció) i el
-  **color/carri** del timeline (distinció de tipus).
+  tram és `Tram(ini, fi, bpm, num, den)`), els camps propis de cada tipus a
+  l'Editor («Família» a la secció; «BPM»/«Compàs» al tram), l'edició **inline**
+  i «Reanomena en bloc» (només acord/secció) i el **color/carri** del timeline
+  (distinció de tipus).
 - **Diferències legítimes del carril de BPM/compàs** (NO són manca de paritat):
-  la seva **alçada** és **mitja** (`timeline_base.LANE_TEMPO_H`) i el contingut
-  s'edita **només amb diàleg emergent** (`DialegTramTempo`), mentre que
-  acords/seccions tenen la **franja EDITORA integrada**, l'edició **inline** al
-  timeline i el «Reanomena en bloc».
+  la seva **alçada** és **mitja** (`timeline_base.LANE_TEMPO_H`) i no té edició
+  **inline** al timeline ni «Reanomena en bloc» (el contingut és numèric). Sí que
+  té, des del 22-10-2026, **franja Editor** (mode BPM/Compàs, amb `0/0` =
+  segons) i **llista pròpia** (⑭: `Inici (s)` · `Fi (s)` · `BPM` · `Compàs`), amb
+  el mateix clic / doble-clic / menú contextual que ⑩ i ⑪.
 - **Semàntica de les operacions**: *partir* un acord = dos trossos amb el
   mateix nom (el de la part nova és editable, per defecte heretat);
   *fusionar* acords = en queda l'harmonia de l'esquerre. Mateix patró que
@@ -181,25 +183,170 @@ test `tests/test_regla12_export.py` — **✅ FET (2026-10-18)**.
 > `tests/test_regles_or.py` (1, 3, 5, 6, 7, 8 i 10) · `test_seccions_contigues` (2)
 > · `test_cobertura_viu` (4) · `test_requirements` (9) · `test_regla11_paritat` (11)
 > · `test_regla12_export` (12).
+> **La 13 (temps, compàs i graella)** es verifica a `test_tempo_map`
+> (`TestCompassosEnters`, `TestTramsEnSegons`), `test_tempo_trams`,
+> `test_despatx_edicio`, `test_edicio` (`TestUndoTemps`, `TestLlistaTempo`) i
+> `test_pipeline`.
 > La **12** (paritat d'exportació) té el seu test: `tests/test_regla12_export.py`.
 >
 > Seguiment i verificacions (prova de mutació, regla a regla): **`docs/archive/AUDITORIA_REGLES.md`**.
 
 ---
 
-## 🕒 Regles específiques de temps, compàs i graella
+## 13. Temps, compàs i graella
 
-El contracte detallat viu a **`docs/REGLES_TEMPS_GRID.md`** i complementa les
-regles 1–12:
+> **Contracte fusionat ací el 23-10-2026** (abans vivia a
+> `docs/REGLES_TEMPS_GRID.md`, ara a `docs/archive/`). Si el codi no el complix,
+> **és un bug del codi**. Un canvi d'estes regles necessita el vistiplau
+> explícit de l'operador i queda al `CHANGELOG`.
+>
+> **Resum**: *els segons manen per a l'àudio; els trams de tempo/compàs manen per
+> a la graella; els trams interiors tenen compassos enters; el punter fixa Δt, els
+> compassos es conserven i el BPM en deriva (ajust local, sense arrossegar els
+> trams següents); i el primer inici i l'últim final són les úniques excepcions.*
 
-- els **segons** són la font de veritat de l'àudio; canviar el BPM no mou
-  acords ni seccions;
-- els **trams de tempo/compàs** manen sobre la graella;
-- els trams **interiors** contenen un **nombre enter de compassos** i les
-  fronteres cauen en línies de compàs;
-- el **primer inici** i l'**últim final** de la WAV són les úniques
-  excepcions;
-- canviar el BPM d'un tram conserva els seus compassos i **arrossega** les
-  fronteres següents (l'últim tram absorbeix);
-- la detecció de BPM amb un tram seleccionat analitza **només eixe tram** i
-  aplica el canvi directament, amb desfer.
+### 13.1 Els segons són la font de veritat de l'àudio
+
+- Acords i seccions es guarden en **segons**: canviar BPM o compàs **no els mou**
+  ni els fa sonar en un altre instant de la WAV.
+- Només es recalcula la **posició musical** (etiquetes de compàs de la UI i
+  columnes `compas_ini`/`compas_fi` de `estructura_ABC.csv`). Alinear a la
+  graella és **Quantitza**, explícit; res no es mou sol.
+- **Codi:** `visor._regenera_posicions_musicals` · `tempo_map`
+- **Test:** `test_edicio` (regla 10) · `test_tempo_map`
+
+### 13.2 Els trams de tempo/compàs manen sobre la graella
+
+- El mapa (`tempo_trams`) definix el BPM i la mida de compàs a cada instant; la
+  graella, el regle, les coordenades `compàs.temps.subdivisió`, el **snap**, el
+  metrònom, la numeració i els exports **en deriven**.
+- `app/tempo_map.py` és l'**únic motor** del temps; el visor només n'aplica el
+  resultat (mai calcula graella pel seu compte).
+- **Codi:** `tempo_map.TempoMap` · `visor._refresca_tempo_map` (punt únic de construcció)
+- **Test:** `test_tempo_map`
+
+### 13.3 Cobertura, ordre i contigüitat del mapa
+
+- Els trams cobreixen **tota la WAV**, de 0 a la durada, **contigus i ordenats**:
+  `Σ trams = durada`, sense forats, solapaments ni durades nul·les o negatives.
+- El mapa buit no existix: sense trams, se'n crea un de sol amb el transport.
+- **Codi:** `tempo_map.normalitza_trams`
+- **Test:** `test_tempo_map`
+
+### 13.4 Compassos enters i valors vàlids
+
+- Cada tram **interior** té un **nombre enter de compassos** i les seues
+  fronteres cauen en **línia de compàs** (1,5 compassos és invàlid encara que
+  dure més d'un compàs).
+- **Excepcions**: el **primer inici** (offset/pre-roll) i l'**últim final** (fi de
+  la WAV) poden ser a mig compàs; si un clip va **en segons** (§13.7), la seua
+  frontera és lliure i el clip mètric del costat pot acabar o començar amb un
+  **compàs parcial** (com el `*` dels marcadors de compàs de REAPER).
+- **Valors**: BPM 30–350 (`BPM_EDIT_MIN/MAX`) i compàs 1–12 sobre 1–16 (lligat a
+  la regla #8).
+- **Codi:** `tempo_map.valida_i_normalitza_compassos` · `_mapa_valida_sense_moure`
+- **Test:** `test_tempo_map::TestCompassosEnters`
+
+### 13.5 Re-tempo local (BPM i compàs)
+
+- **Jerarquia**: el punter/tall mana sobre **Δt**; el **nombre de compassos N** es
+  conserva i el **BPM en deriva** (`BPM = N · bq · 60 / Δt`).
+- En canviar el **BPM**, la durada del tram s'ajusta i la frontera amb el veí es
+  mou; el veí **conserva els seus compassos** i **recalcula el seu BPM**.
+  L'ajust és **local**: només els dos trams que toquen eixa frontera.
+- En canviar **només el compàs** (`4/4` → `3/4`…), **mana la durada** i es
+  recompta `N` (el BPM s'ajusta el mínim perquè siga enter): conservar `N` faria
+  el tram més llarg (el cas `1/4` amb 551 compassos).
+- **Sense *ripple***: les fronteres dels trams **següents no es desplacen** ni els
+  marcadors es mouen, si no toquen la frontera afectada. L'**últim tram** queda
+  acotat per la fi de la WAV; si és el veí, conserva BPM i fi i absorbix el
+  desplaçament en compassos.
+- Si el resultat deixaria un tram **interior** per davall d'un compàs, **es
+  rebutja** i l'avís diu **quin és el BPM extrem que encara hi cap**.
+  Arrossegar **no té banda de BPM** —el ratolí mana—; la banda 30–350 només
+  valida el BPM escrit **a mà** (diàleg, `±1`, TAP).
+- **Codi:** `tempo_map.canvia_bpm_local` · `canvia_compassos_tram` ·
+`retempo_tram_detectat` · `snap_frontera_compas`/`_ripple_des_de` (només per a
+`repara_fronteres` i l'anàlisi guiat, que creen el mapa des de zero)
+- **Test:** `test_tempo_trams`
+
+### 13.6 Fronteres a mà i marcadors
+
+- La frontera **la col·loca el músic** (damunt del pic de l'ona, d'un marcador o
+  on decidisca). El snap és **opcional** i, si s'usa, és el **snap normal del
+  timeline**, no la graella del tempo vell.
+- **La graella s'ajusta a la frontera**: es conserven els compassos dels dos
+  costats i es recalcula el BPM de cada un; per construcció la frontera **sempre
+  cau en línia de compàs**.
+- **Arrossegar és lliure** (22-10-2026): amb el snap apagat, inici i fi es poden
+  moure sempre; l'extrem contrari **no es mou** i només es recalcula el BPM de
+  dins. No hi ha mínim de 0,5 s: només es rebutja el que deixaria un tram **sense
+  durada**.
+- L'**inici del primer** clip i el **final de l'últim** no es toquen mai (marquen
+  la WAV; l'avís ho diu). La fi del primer pot caure **exactament** en el compàs 1
+  (pre-roll pur); si el primer tram no té cap compàs, arrossegar-ne la fi **mou el
+  compàs 1** (offset).
+- El gest és **local**: els **marcadors humans** lligats a la frontera **viatgen
+  amb ella** (i s'esborren amb ella), i el clip d'estructura creat en eixe punt la
+  seguix per coincidència de temps (±5 ms) fins que s'edite a mà.
+- **Codi:** `tempo_map.mou_frontera_retempo` · `visor._on_tempo_mogut` · `marcadors`
+- **Test:** `test_despatx_edicio`
+
+### 13.7 Clips en segons (`0/0`, rubato)
+
+- **Qualsevol** clip del carril pot existir en segons (no només el primer o
+  l'últim): un passatge rubato al mig del tema.
+- **Com s'escriu**: `num = 0` i `den = 0` a `compas.csv`/`tempo.csv`; al diàleg
+  del clip, la casella **«En segons (sense compàs: rubato)»**; a la franja
+  Editor, el camp **Compàs** amb `0/0` o «segons».
+- **Dura el que diu l'àudio**: no té graella, ni compassos enters, ni obligació de
+  caure en cap línia. Dins del clip, regle i etiquetes mostren **temps**
+  (`m:ss.mmm`) i el `snap` no hi encaixa res.
+- `bpm` es conserva com a **referència de notació** (100 per defecte): no afecta
+  cap graella. La **partitura** l'exporta com a compassos a 100 BPM 4/4 (1 compàs
+  = 2,4 s) i pot acabar amb un compàs **parcial**.
+- Els seus compassos **no compten** per a la numeració: el primer clip amb
+  compàs després del rubato continua la sèrie.
+- Les **vores** es mouen sense recalcular cap BPM; canviar-li «compassos» es
+  rebutja amb avís. `tempo.csv`, `compas.csv` i la còpia a `mapa_tempo/` porten
+  `0,0` i res més canvia.
+- La **paritat #11 s'hi aplica igual**: clip, llista ⑭ i franja Editor.
+- **Codi:** `tempo_map.Tram.lliure`/`es_lliure`/`num_ef` · `canvia_bpm_local` ·
+`mou_frontera_retempo` · `visor._secs_a_cb`
+- **Test:** `test_tempo_map::TestTramsEnSegons` · `test_edicio::TestLlistaTempo`
+
+### 13.8 Detecció i export del mapa
+
+- Amb un **tram seleccionat**, *Detecta* analitza **només** l'àudio d'eixe tram; el
+  downbeat és el seu inici. En un tram delimitat per marcadors **Δt és fix**: el
+  BPM detectat només servix per a comptar compassos
+  (`N = round(Δt · BPM_ref / (bq · 60))`, mínim 1) i s'aplica el **BPM derivat
+  exacte** (`N · bq · 60 / Δt`), que clava les barres entre els dos punts.
+- La **fi del tram no es mou** ni els trams següents tampoc; si el BPM derivat cau
+  fora de 30–350 o no hi cap cap compàs sencer, **s'avisa** en compte d'aplicar-lo.
+- S'aplica **directament**, com una sola operació de desfer, amb el BPM detectat al
+  missatge. Sense tram seleccionat, la detecció global és una via separada.
+- Per a **tempo variable**, *Analitza ▸ Detecta el tempo per trams…* fa el mapa
+  sencer (un BPM cada N compassos, fronteres en línia de compàs) i el valida amb
+  estes mateixes regles.
+- L'export porta les **tres parts** (acords, estructura i **mapa**): `tempo.csv` +
+  `compas.csv` + còpia a `mapa_tempo/`; les columnes de compàs de l'ABC en surten
+  (lligat a #12).
+- **Codi:** `tempo_map.retempo_tram_detectat` · `app/tempo.py` ·
+`pipeline.desa_tempo_map`
+- **Test:** `test_pipeline` · `test_tempo_trams`
+
+### Com s'aplica (notes d'implementació)
+
+- En **carregar** un projecte vell, el mapa es mostra **tal com és** (no es
+  rebutja) i es **fusionen** els trams adjacents amb el mateix BPM i compàs: no
+  representen cap canvi musical. Una partició manual de dos trams iguals es
+  respecta mentre s'edita.
+- **Totes** les edicions de la GUI que re-temporitzen passen pel re-tempo local; si
+  el resultat no complix el contracte, **no es toca res** i s'avisa. El backend
+  permissiu és per a càrregues i eines internes; el camí d'usuari és el que fa
+  complir la regla. **No queda cap camí d'usuari amb *ripple***.
+- Quan el model es reconstrueix (quantitzar, desfer…), la selecció es notifica
+  buida i l'editor s'ha de buidar o refrescar: **mai el temps vell** d'un clip que
+  s'ha mogut; després de quantitzar es recupera, si encara existix, el clip que
+  s'estava editant (punt 2 del preàmbul).

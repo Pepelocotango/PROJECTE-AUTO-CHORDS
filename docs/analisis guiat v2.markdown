@@ -3,7 +3,7 @@
 > **Destinatari:** Agent de desenvolupament (OC / Claude / Assistent de codi).  
 > **Àmbit:** Projecte AUTO CHORDS (v0.8.x).  
 > **Objectiu:** Transformar l'«Anàlisi guiat» actual en una estació d'audició interactiva, fluida i orientada al músic per construir mapes de tempo variables fiables sense fricció cognitiva.  
-> **Restricció fonamental:** Complir estrictament les 12 Regles d'Or (`docs/REGLES_DE_LA_APP.md`), el contracte de compassos enters (`docs/REGLES_TEMPS_GRID.md`) i les limitacions de maquinari (sense AVX, `numpy < 2`, PyQt5, multi-SO).
+> **Restricció fonamental:** Complir estrictament les 12 Regles d'Or (`docs/REGLES_DE_LA_APP.md`), el contracte de compassos enters (`docs/REGLES_DE_LA_APP.md` §13.4) i les limitacions de maquinari (sense AVX, `numpy < 2`, PyQt5, multi-SO).
 
 ---
 
@@ -114,7 +114,7 @@ El diàleg ha d'incorporar els següents elements operatius:
 ### Pas 3: Tancament Orgànic i Transició a l'Harmonia
 
 1. **Últim tram (Cua del tema):**
-   * L'últim tram absorbeix la diferència fins al final exacte de la WAV (excepció permesa pel contracte `REGLES_TEMPS_GRID.md` §5).
+   * L'últim tram absorbeix la diferència fins al final exacte de la WAV (excepció permesa pel contracte `REGLES_DE_LA_APP.md` §13.4).
 2. **Consolidació del model:**
    * S'executa `tempo_map.fusiona_trams_iguals()` per unir trams consecutius amb el mateix BPM i mètrica.
    * S'atura la reproducció i es desactiva el metrònom.

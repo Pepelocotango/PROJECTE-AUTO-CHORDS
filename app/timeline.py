@@ -602,7 +602,7 @@ class TimelineView(QGraphicsView):
     def _snap_tempo_guia(self, i: int, z: str, t: float) -> float:
         """Posició de la GUIA d'un drag de frontera de tempo (re-tempo).
 
-        Des del 21-10-2026 (`docs/FLUX DE TEMPO VARIABLE.md` §4.B) la nansa
+        Des del 21-10-2026 (`docs/REGLES_DE_LA_APP.md` §13.6) la nansa
         **no** busca la línia de compàs del tram anterior: la jerarquia està
         invertida i el punter mana sobre Δt (el BPM s'adapta en deixar anar).
         Per tant la guia és exactament el que s'aplicarà: el punter amb el
@@ -1936,7 +1936,7 @@ class TimelineView(QGraphicsView):
                     idx, float(self._acords[idx][0]) + direccio * pas)
         elif kind == "tempo":
             # Les fronteres de tempo/compàs es mouen en COMPASSOS sencers
-            # (REGLES_TEMPS_GRID.md), no en la subdivisió genèrica del snap.
+            # (REGLES_DE_LA_APP.md §13.4), no en la subdivisió genèrica del snap.
             p = tr[idx] if estira else tr[idx - 1]
             bar = tempo_map.durada_compas(p[2], p[3], p[4])
             if bar <= 0:

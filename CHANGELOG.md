@@ -5,6 +5,24 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Documentació (2026-10-23, 11p) — les regles de temps/compàs, al canònic
+- **`docs/REGLES_DE_LA_APP.md`** incorpora el **§13 «Temps, compàs i graella»**
+  (13.1–13.8 + notes d'aplicació): els segons com a font de veritat, el mapa com
+  a amo de la graella, cobertura/contigüitat, compassos enters i valors, re-tempo
+  local (**sense *ripple***), fronteres i marcadors, **clips en segons (`0/0`)** i
+  detecció/export del mapa. Passa a ser l'**únic document normatiu**.
+- **Fusionats i arxivats** a `docs/archive/`: `REGLES_TEMPS_GRID.md` (contracte
+  vell) i `FLUX DE TEMPO VARIABLE.md` (especificació del re-tempo; el seu §5, amb
+  el «mínim de 0,5 s», ja estava superat). Les **referències repuntades** a
+  `§13.x` a tot el codi, els tests, `AGENTS.md`, `ROADMAP`, `docs/` i
+  `concatena.py` (19 ocurrències).
+- **Tres contradiccions eliminades** (el codi ja no les feia): «el BPM
+  arrossega les fronteres següents» (§13 antic), «el marcador és independent»
+  (`MARCADORS.md`, `ESQUEMA_UI.md`, `ANALISI_GUIAT_v3.md` → ara §13.6) i «el tram
+  de tempo només s'edita amb diàleg emergent» (§11 → també franja Editor i
+  llista ⑭).
+- Suite **1.368 OK** (1 skip), pyflakes net.
+
 ### Afegit (2026-10-22, 11o) — llista de clips de **tempo/compàs** editable
 - **Tercera llista** a l'Inspector, al costat d'acords i seccions:
   `QTableWidget` amb **Inici (s) · Fi (s) · BPM · Compàs** (a un clip rubato, la

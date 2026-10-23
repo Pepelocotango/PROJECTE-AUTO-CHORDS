@@ -756,7 +756,7 @@ class Visor(QMainWindow):
     def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
-        Re-tempo local (`docs/REGLES_TEMPS_GRID.md` §7): el tram conserva el
+        Re-tempo local (`docs/REGLES_DE_LA_APP.md` §13.5): el tram conserva el
         seu nombre de compassos, la seua durada passa a `N · bq · 60 / BPM` i
         el veí de la dreta conserva els compassos i el seu final recalculant el
         BPM. Els trams posteriors **no es mouen** (sense *ripple*). Si el canvi
@@ -989,7 +989,7 @@ class Visor(QMainWindow):
     def _on_tempo_mogut(self, idx, vora, t):
         """Vora d'un bloc de BPM/compàs arrossegada → **re-tempo** (el ratolí mana).
 
-        Des del 21-10-2026 (`docs/FLUX DE TEMPO VARIABLE.md` §2) la jerarquia
+        Des del 21-10-2026 (`docs/REGLES_DE_LA_APP.md` §13.5) la jerarquia
         està invertida: el punter fixa **Δt**, els **compassos N** dels dos
         costats es conserven i el **BPM** es recalcula. Per això ja no s'imanta
         a la línia de compàs del tram anterior ni s'arrosseguen els trams
@@ -2352,7 +2352,7 @@ class Visor(QMainWindow):
         """Obre una frontera nova al mapa de tempo (l'«afegeix» de ③).
 
         El tall s'imanta a la línia de compàs del tram que el conté i ha de
-        deixar compassos enters a les dues bandes (`REGLES_TEMPS_GRID.md`).
+        deixar compassos enters a les dues bandes (`REGLES_DE_LA_APP.md` §13.4).
         Retorna `True` NOMÉS si el mapa ha guanyat un tram.
         """
         trams = list(self.tempo_trams or [])

@@ -3,7 +3,8 @@
 > **21-10-2026:** el flux v3 queda **en stand by** (codi conservat, sense
 > entrada d'UI). La feina diària es fa amb **marcadors en viu**
 > (`docs/MARCADORS.md`): `+` mentre sona → inici de clip de BPM/compàs i
-> d'estructura, i després el marcador és independent. El motiu: el
+> d'estructura; el marcador seguix la frontera de tempo (regla §13.6 de
+> `docs/REGLES_DE_LA_APP.md`). El motiu: el
 > diàleg era modal i no deixava moure el cursor del visor.
 
 ---

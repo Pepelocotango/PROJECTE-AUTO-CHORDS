@@ -1,3 +1,15 @@
+> ## 📦 ARXIU — regles fusionades a `docs/REGLES_DE_LA_APP.md` §13 el **23-10-2026**
+>
+> L'especificació és **història de disseny** (el model mental, la matemàtica i
+> el pla de proves de l'octubre de 2026). Les regles normatives —i les seues
+> actualitzacions posteriors— viuen a **`docs/REGLES_DE_LA_APP.md` §13**
+> (13.5 re-tempo local, 13.6 fronteres i marcadors).
+>
+> ⚠️ **Part superada**: el §5 d'este document encara diu «mínim de 0,5 s entre
+> fronteres» i «limitar el recorregut de la nansa per BPM». Des del **22-10-2026**
+> **arrossegar és lliure** (no hi ha mínim de 0,5 s) i la banda 30–350 només
+> valida el BPM escrit a mà. Mana `REGLES_DE_LA_APP.md` §13.5–13.6.
+
 # Especificació Tècnica: Flux de Tempo Variable Basat en Marcacions Humanes i Re-tempo Dinàmic
 
 > **Objectiu del document:** Definir l'arquitectura, el model matemàtic i el flux d'interacció perquè un agent de codi pugui implementar el sistema de detecció i edició de tempo variable en cançons sense claqueta (rubato, directes o fluctuacions de tempo).

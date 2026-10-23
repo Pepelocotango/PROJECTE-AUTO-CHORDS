@@ -6,7 +6,7 @@ Un **marcador** és només un instant marcat per l'operador mentre escolta
 (tecla `+` o botó «Afegeix marker»). Quan es crea, **talla** el carril de
 BPM/compàs i el d'estructura en eixe punt (comença un clip nou a cada un).
 
-Des del 21-10-2026 (`docs/FLUX DE TEMPO VARIABLE.md` §4.C) el marcador
+Des del 21-10-2026 (`docs/REGLES_DE_LA_APP.md` §13.6) el marcador
 **viatja amb la seua frontera de tempo**: si s'arrossega la frontera, el
 marcador s'hi mou; si la frontera desapareix (eliminar o fusionar el tram), el
 marcador **s'esborra**. Els clips d'estructura, en canvi, continuen sent

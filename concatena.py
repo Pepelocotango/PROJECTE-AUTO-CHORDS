@@ -33,7 +33,6 @@ INCLOU = [
     "docs/REGLES_DE_LA_APP.md",   # ⚠️ regles d'or (invariants) — IMPRESCINDIBLE
     # 3b. Context Tier A — contractes de comportament (docs revisats 20-10-2026)
     "docs/FLUX_DE_DADES.md",      # el MODEL editable i el cru dins el .acproj
-    "docs/REGLES_TEMPS_GRID.md",  # contracte viu: temps, compàs, graella
     "docs/EDICIO_OPERACIONS.md",  # totes les formes d'edició (GUI ↔ codi)
     "docs/ANALISI_GUIAT.md",      # assistent de mapa de tempo (BPM no constant)
     "docs/NOTACIO_XIFRAT.md",     # forma canònica del xifrat

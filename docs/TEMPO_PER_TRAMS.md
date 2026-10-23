@@ -16,7 +16,7 @@ measure from time selection*).
 
 Ací: **un BPM cada N compassos** (4 per defecte) amb les fronteres **sempre
 en línia de compàs**, que és el contracte de la graella
-(`REGLES_TEMPS_GRID.md` §4).
+(`docs/REGLES_DE_LA_APP.md` §13.4).
 
 ## 2. Canonada (3 passos)
 
