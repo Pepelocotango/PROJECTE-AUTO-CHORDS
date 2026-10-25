@@ -23,6 +23,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   llista ⑭).
 - Suite **1.368 OK** (1 skip), pyflakes net.
 
+### Corregit (2026-10-23, 11u) — regla #4: sense durada, el mapa no es destrossa
+- **`tempo_map.neteja_trams`** amb `durada == 0` (WAV absent o encara no
+  carregat) posava el `fi` de l'últim tram a **0**: el tram quedava **invertit**
+  (10 → 0) i el mapa es desava així (un projecte amb l'àudio il·legible perdia
+  el mapa). Ara, si la durada no es coneix, la cobertura **no s'imposa** i es
+  conserva el `fi` propi. Amb durada > 0 tot igual (l'últim acaba a la WAV).
+- **Test**: `test_tempo_map` › `test_sense_durada_el_mapa_no_es_destrossa`.
+- Docs: §13.3. Suite **1.384 OK** (1 skip).
+
 ### Canviat (2026-10-23, 11t) — regla #3: banda de BPM al re-tempo (decisió)
 - **Arrossegar una frontera** ja no pot deixar un tram **amb compàs** fora de
   **30–350 BPM**: com que N es conserva, un clip d'1 ms demanava **1.200.000

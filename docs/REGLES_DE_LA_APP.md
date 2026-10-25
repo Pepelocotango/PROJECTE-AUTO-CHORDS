@@ -257,6 +257,9 @@ test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026
 - Els trams cobreixen **tota la WAV**, de 0 a la durada, **contigus i ordenats**:
   `Σ trams = durada`, sense forats, solapaments ni durades nul·les o negatives.
 - El mapa buit no existix: sense trams, se'n crea un de sol amb el transport.
+- Si **no se sap la durada** (`durada == 0`: WAV absent o encara no carregat) la
+  cobertura **no s'imposa**: es conserva el `fi` de l'últim tram. Inventar-hi 0
+  deixava el tram invertit (10 → 0) i eixe mapa es desava al disc.
 - La contigüitat és **estructural** (regla #2): el `fi` de cada tram és l'`ini`
   del següent, i `TempoMap` ho re-deriva en construir-se (`test_tempo_map` ›
   `test_el_mapa_es_contigu_encara_que_li_donen_forats`).

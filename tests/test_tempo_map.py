@@ -421,6 +421,23 @@ class TestEdicioMapa(unittest.TestCase):
         self.assertTrue(any("mateix instant" in a for a in avisos))
         self.assertTrue(any("fora del tema" in a for a in avisos))
 
+    def test_sense_durada_el_mapa_no_es_destrossa(self):
+        """Regla #4: la cobertura només s'imposa si se sap la durada.
+
+        Amb `durada == 0` (WAV absent o encara no carregat) la versió anterior
+        posava el `fi` de l'últim tram a 0: el tram quedava **invertit**
+        (10 → 0) i el mapa es desava així. Ara es conserva el `fi` propi.
+        """
+        from app import tempo_map as tmm
+        dos = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 120.0, 4, 4)]
+        out, avisos = tmm.neteja_trams(dos, 0.0)
+        self.assertEqual(out, dos)
+        self.assertEqual(avisos, [])
+        # Amb durada, la cobertura sí que mana (regla #4).
+        out, _ = tmm.neteja_trams([(0.0, 10.0, 120.0, 4, 4),
+                                   (10.0, 90.0, 120.0, 4, 4)], 30.0)
+        self.assertAlmostEqual(float(out[-1][1]), 30.0, places=6)
+
     def test_un_inici_a_un_nanosegon_no_es_perd(self):
         """Regla #3: reparar no pot fer desaparéixer un tram.
 

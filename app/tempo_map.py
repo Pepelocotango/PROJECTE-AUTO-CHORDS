@@ -534,7 +534,9 @@ def neteja_trams(trams, durada):
 
     Cada tros és `(ini, fi, bpm, num, den)`; el `fi` es **re-deriva** de l'inici
     del següent (o de `durada` per a l'últim): la frontera és única. No muta
-    l'entrada.
+    l'entrada. Sense `durada` (> 0) no es pot imposar la cobertura (regla #4) i
+    es **conserva** el `fi` de l'últim tram: inventar-hi 0 destruïa el mapa
+    d'un projecte amb el WAV absent o encara no carregat.
 
     **Regla #1** (`docs/REGLES_DE_LA_APP.md`): l'estat invàlid no pot existir;
     si una entrada externa (CSV a mà, projecte vell, estat vell del desfer) n'hi
@@ -582,15 +584,20 @@ def neteja_trams(trams, durada):
         if num <= 0 or den <= 0:
             # Tros EN SEGONS: es conserva (0/0); el BPM és la referència de
             # notació (100 per defecte).
-            net.append((ini, bpm if bpm > 0 else 100.0, 0, 0))
+            net.append((ini, fi0, bpm if bpm > 0 else 100.0, 0, 0))
         else:
-            net.append((ini, bpm if bpm > 0 else BPM_DEFECTE, num, den))
+            net.append((ini, fi0, bpm if bpm > 0 else BPM_DEFECTE, num, den))
     if not net:
         return [], avisos
     out = []
     for i, t in enumerate(net):
-        fi = net[i + 1][0] if i + 1 < len(net) else durada
-        out.append((t[0], fi, t[1], t[2], t[3]))
+        if i + 1 < len(net):
+            fi = net[i + 1][0]
+        elif durada > TOL:
+            fi = durada                 # regla #4: l'últim acaba a la WAV
+        else:
+            fi = float(t[1]) if float(t[1]) > float(t[0]) + TOL else t[0]
+        out.append((t[0], fi, t[2], t[3], t[4]))
     if out[0][0] > TOL:
         out.insert(0, (0.0, out[0][0], out[0][2], out[0][3], out[0][4]))
     return out, avisos
