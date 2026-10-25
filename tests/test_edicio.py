@@ -4575,6 +4575,25 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertTrue(v.tempo_map.es_lliure(2.0))
         w.close()
 
+    def test_desar_no_deixa_el_mapa_derivat_endarrerit(self):
+        """Regla #5: la UI no fabrica trams; el punt únic rederiva model i mapa.
+
+        Abans, `_desa_csvs_base` muntava a mà el tram únic des del transport i
+        **no** refrescava `self.tempo_map`: el CSV deia 140 BPM i la graella
+        encara 120 (dues fonts de veritat).
+        """
+        import os
+        _w, v = self._prepara()
+        v.tempo_trams = [(0.0, 30.0, 120.0, 4, 4)]
+        v._actualitza_temps()
+        v.bpm = 140.0
+        v._desa_i_regenera()
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 140.0, places=6)
+        self.assertAlmostEqual(v.tempo_map.bpm(0.0), 140.0, places=6)
+        with open(os.path.join(v._carpeta_acords(), "tempo.csv"),
+                  encoding="utf-8") as f:
+            self.assertIn("140", f.read())
+
     def test_el_mapa_viu_sempre_es_contigu_i_cobert(self):
         """Regla #2: cap operació del visor deixa forats ni encavalcaments.
 

@@ -1135,15 +1135,13 @@ class Visor(QMainWindow):
                                   mapa=getattr(self, "tempo_map", None))
         except Exception as e:  # noqa: BLE001
             self.log(f"desat ABC ERROR: {e}")
-        # Mapa de tempo/compàs: un sol tros → se sincronitza amb el
-        # BPM·compàs actual (zero canvi visible); amb més trossos, es respecta.
-        if (len(self.tempo_trams) <= 1
-                and not (self.tempo_trams
-                         and (int(self.tempo_trams[0][3]) <= 0
-                              or int(self.tempo_trams[0][4]) <= 0))):
-            self.tempo_trams = [(0.0, self._durada_wav(), float(self.bpm),
-                                 int(self.bpb),
-                                 int(getattr(self, "beat_type", 4) or 4))]
+        # Mapa de tempo/compàs: un sol tros → el valor és el del transport
+        # (zero canvi visible); amb més trossos, es respecta. La sincronització
+        # la fa el PUNT ÚNIC (`_refresca_tempo_map`), que rederiva **model i
+        # mapa alhora**: abans es muntava el tram ací a mà i el mapa derivat es
+        # quedava enrere (regla #5: la UI no fabrica model).
+        if len(self.tempo_trams or []) <= 1:
+            self._refresca_tempo_map()
         try:
             pipeline.desa_tempo_map(sortida, self.tempo_trams)
         except Exception as e:  # noqa: BLE001

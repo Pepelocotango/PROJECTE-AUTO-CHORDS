@@ -91,7 +91,13 @@ El model viu al **backend**, no a la UI. Hi ha **dos backends**: `app.pipeline`
 (`self.acords`/`self.seccions` i `self.tempo_trams`/`self.tempo_map`), però
 **aquesta còpia mai no mana** — tota mutació passa abans per les funcions de
 `pipeline`/`tempo_map`, i el visor només n'aplica el resultat.
+Al **mapa de tempo/compàs** les còpies derivades (`self.tempo_map`, el
+**transport** `bpm`/`bpb`/`beat_type`, la llista ⑭, la graella) es
+reconstrueixen en **un sol punt**: `visor._refresca_tempo_map`. La UI **mai
+munta ni muta trams a mà** —tampoc en desar—: si ho fera, el model avançaria
+sense el mapa derivat (CSV i graella discrepant).
 → `pipeline` + `tempo_map` (backends); el visor sempre hi delega.
+→ `visor._refresca_tempo_map` (punt únic model ↔ mapa ↔ transport).
 test `tests/test_edicio.py` › `TestRegla5FontDeVeritat`.
 
 ## 6. Les WAVs només via `pipeline.exporta_total()`

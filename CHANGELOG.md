@@ -23,6 +23,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   llista ⑭).
 - Suite **1.368 OK** (1 skip), pyflakes net.
 
+### Corregit (2026-10-23, 11v) — regla #5: la UI no fabrica trams
+- **`visor._desa_csvs_base`** muntava a mà el tram únic a partir del transport
+  (`self.bpm`/`self.bpb`) i **no** refrescava `self.tempo_map`: es podia desar
+  un `tempo.csv` a 140 BPM mentre la graella encara anava a 120 (dues fonts de
+  veritat). Ara la sincronització la fa el **punt únic**
+  (`_refresca_tempo_map`), que rederiva model **i** mapa alhora.
+- **Test**: `test_edicio` › `TestLlistaTempo.test_desar_no_deixa_el_mapa_derivat_endarrerit`
+  (comprova model, mapa derivat **i** el `tempo.csv` del disc).
+- Docs: regla #5 (punt únic + «la UI no munta trams»). Suite **1.385 OK**.
+
 ### Corregit (2026-10-23, 11u) — regla #4: sense durada, el mapa no es destrossa
 - **`tempo_map.neteja_trams`** amb `durada == 0` (WAV absent o encara no
   carregat) posava el `fi` de l'últim tram a **0**: el tram quedava **invertit**
