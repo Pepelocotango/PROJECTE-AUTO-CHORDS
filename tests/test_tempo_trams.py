@@ -431,18 +431,18 @@ class RetempoTests(unittest.TestCase):
 
     def test_compassos_mes_menys_i_doblar(self):
         un = [(0.0, 8.0, 120.0, 4, 4)]
-        self.assertAlmostEqual(
-            tempo_map.canvia_compassos_tram(un, 0, 1, 8.0)[0][2], 150.0,
-            places=4)                      # +1 → 5 compassos en 8 s
-        self.assertAlmostEqual(
-            tempo_map.canvia_compassos_tram(un, 0, -1, 8.0)[0][2], 90.0,
-            places=4)                      # −1 → 3 compassos en 8 s
-        self.assertAlmostEqual(
-            tempo_map.canvia_compassos_tram(un, 0, 0, 8.0, factor=2)[0][2],
-            240.0, places=4)               # ×2 → 8 compassos en 8 s
-        self.assertAlmostEqual(
-            tempo_map.canvia_compassos_tram(un, 0, 0, 8.0, factor=0.5)[0][2],
-            60.0, places=4)                # ÷2 → 2 compassos en 8 s
+        out = tempo_map.canvia_compassos_tram(un, 0, 1, 8.0)
+        self.assertAlmostEqual(out[0][2], 150.0, places=4)  # +1 → 5 compassos en 8 s
+        self.assertAlmostEqual(out[0][1], 8.0, places=6)  # durada en segons es manté
+        out = tempo_map.canvia_compassos_tram(un, 0, -1, 8.0)
+        self.assertAlmostEqual(out[0][2], 90.0, places=4)  # −1 → 3 compassos en 8 s
+        self.assertAlmostEqual(out[0][1], 8.0, places=6)  # durada en segons es manté
+        out = tempo_map.canvia_compassos_tram(un, 0, 0, 8.0, factor=2)
+        self.assertAlmostEqual(out[0][2], 240.0, places=4)  # ×2 → 8 compassos en 8 s
+        self.assertAlmostEqual(out[0][1], 8.0, places=6)  # durada en segons es manté
+        out = tempo_map.canvia_compassos_tram(un, 0, 0, 8.0, factor=0.5)
+        self.assertAlmostEqual(out[0][2], 60.0, places=4)  # ÷2 → 2 compassos en 8 s
+        self.assertAlmostEqual(out[0][1], 8.0, places=6)  # durada en segons es manté
 
     def test_compassos_no_mouen_res_mes(self):
         # Tram central de 12 s amb 3/4 a 60 BPM = 4 compassos (12 s / 3 s).

@@ -529,7 +529,7 @@ class TempoMap:
 
 
 # --- edició del mapa (utilitats pures per a la GUI) ------------------------
-def neteja_trams(trams, durada):
+def neteja_trams(trams, durada, preserva_fi_idx=None):
     """Ordena, fa contigus i **repara** els trossos; retorna `(trams, avisos)`.
 
     Cada tros és `(ini, fi, bpm, num, den)`; el `fi` es **re-deriva** de l'inici
@@ -551,6 +551,10 @@ def neteja_trams(trams, durada):
 
     La **capçalera** (forat a l'inici) no avisa: és com es construïx un mapa a
     partir d'un tros solt (`elimina_tall`, anàlisi guiat).
+
+    **`preserva_fi_idx`**: índex del tram que ha de conservar el seu `fi` original
+    (per a edicions mètriques ×2/÷2 on els segons no canvien). Només s'usa en
+    camins interns on es garanteix que la contigüitat es respecta.
     """
     durada = float(durada or 0.0)
     net, avisos = [], []
@@ -591,7 +595,10 @@ def neteja_trams(trams, durada):
         return [], avisos
     out = []
     for i, t in enumerate(net):
-        if i + 1 < len(net):
+        if preserva_fi_idx is not None and i == int(preserva_fi_idx):
+            # Preserva el fi original d'aquest tram (edicció mètrica)
+            fi = float(t[1]) if float(t[1]) > float(t[0]) + TOL else t[0]
+        elif i + 1 < len(net):
             fi = net[i + 1][0]
         elif durada > TOL:
             fi = durada                 # regla #4: l'últim acaba a la WAV
@@ -603,9 +610,13 @@ def neteja_trams(trams, durada):
     return out, avisos
 
 
-def normalitza_trams(trams, durada):
-    """`neteja_trams` sense els avisos (compatibilitat i camins interns)."""
-    return neteja_trams(trams, durada)[0]
+def normalitza_trams(trams, durada, preserva_fi_idx=None):
+    """`neteja_trams` sense els avisos (compatibilitat i camins interns).
+
+    **`preserva_fi_idx`**: índex del tram que ha de conservar el seu `fi` original
+    (per a edicions mètriques ×2/÷2 on els segons no canvien).
+    """
+    return neteja_trams(trams, durada, preserva_fi_idx=preserva_fi_idx)[0]
 
 
 # --- contracte de COMPASSOS ENTERS (docs/REGLES_DE_LA_APP.md §13.4) ---------
@@ -650,7 +661,7 @@ def _bar_lines_tram(tram, offset=0.0):
     return [base + k * b for k in range(k0, k1 + 1)]
 
 
-def valida_i_normalitza_compassos(trams, durada, offset=0.0):
+def valida_i_normalitza_compassos(trams, durada, offset=0.0, preserva_fi_idx=None):
     """Valida el contracte de compassos enters i retorna el mapa normalitzat.
 
     - Les fronteres interiors han de caure en una **línia de compàs**.
@@ -659,12 +670,15 @@ def valida_i_normalitza_compassos(trams, durada, offset=0.0):
     - El mapa ha de ser contigu i cobrir `[0, durada]`.
 
     Aixeca `ValueError` amb un missatge d'usuari si no es compleix.
+
+    **`preserva_fi_idx`**: índex del tram que ha de conservar el seu `fi` original
+    (per a edicions mètriques ×2/÷2 on els segons no canvien).
     """
     durada = float(durada or 0.0)
     for t in trams or ():
         if durada > 0 and float(t[0]) >= durada - TOL:
             raise ValueError("Hi ha un tram que comença fora de la WAV")
-    nous = normalitza_trams(trams, durada)
+    nous = normalitza_trams(trams, durada, preserva_fi_idx=preserva_fi_idx)
     if not nous:
         raise ValueError("El mapa de tempo/compàs és buit")
     if len(nous) == 1:
@@ -1486,7 +1500,7 @@ def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
     bpm_new = _valida_bpm_edicio(n_new * bq * 60.0 / dt, "triat")
     out = list(nous)
     out[i] = (float(ini), float(fi), bpm_new, int(num), int(den))
-    return valida_i_normalitza_compassos(out, durada, offset)
+    return valida_i_normalitza_compassos(out, durada, offset, preserva_fi_idx=i)
 
 
 #: Un tram més curt que això (50 ms) no té cap sentit musical: naix d'un `+`
