@@ -5,21 +5,25 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
-### Corregit (2026-10-25) — ×2/÷2 als clips de BPM/compàs mantenen la duració en segons
+### Corregit (2026-10-25) — les edicions mètriques mantenen la duració en segons
 - **`app/tempo_map.py`**: afegit paràmetre opcional `preserva_fi_idx` a
   `neteja_trams()`, `normalitza_trams()` i `valida_i_normalitza_compassos()` per
   poder preservar el `fi` original d'un tram específic quan es fa una edició
-  mètrica (×2/÷2). Abans, normalitza_trams() re-derivava tots els fi des dels
-  ini següents, fent que el fi original del clip editat es perdés i el clip
-  s'estirés o encogia incorrectament.
-- **`canvia_compassos_tram()`**: ara passa `preserva_fi_idx=i` a
-  `valida_i_normalitza_compassos()` quan s'aplica una edició mètrica.
+  mètrica que ha de conservar els segons. Abans, normalitza_trams() re-derivava
+  tots els fi des dels ini següents, fent que el fi del clip editat es perdés i
+  el clip s'estirés o encogia incorrectament.
+- **Edicions mètriques**: `canvia_compassos_tram()` i `canvia_bpm_local()`
+  passen `preserva_fi_idx=i` en validar/normalitzar el mapa (inclòs el camí del
+  diàleg/barra en canviar la signatura: per exemple, passar de 3/4 a 7/8 no
+  altera els segons d'inici i final del clip.
 - **Exemple**: clip 0-8s a 120 BPM (4 compassos)
   - ×2 → 0-8s a 240 BPM (8 compassos, mateixa duració)
   - ÷2 → 0-8s a 60 BPM (2 compassos, mateixa duració)
 - **Test**: `test_tempo_trams` › `test_compassos_mes_menys_i_doblar` ara verifica
   que `out[0][1]` (el fi) es manté en 8.0s per a totes les operacions (+1, -1,
   ×2, ÷2).
+- **Regressió**: canvi de signatura 3/4→7/8 provat al backend i des de
+  `Visor.edita_tempo_objectiu()`, incloent-hi trams interiors i finals.
 - **Docs**: `docs/EDICIO_OPERACIONS.md` actualitzat per especificar que ×2/÷2
   mantenen els segons immòbils i només recalculen el BPM.
 - Suite **1.386 OK** (1 skip), pyflakes net.

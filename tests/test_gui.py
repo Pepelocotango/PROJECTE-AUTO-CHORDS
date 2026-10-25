@@ -6347,6 +6347,18 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(vr.tempo_trams[2][1], 60.0, places=6)
         self.assertAlmostEqual(vr.tempo_trams[2][2], 120.0, places=6)
 
+    def test_edita_tempo_objectiu_canviar_signatura_no_mou_els_segons(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        self.assertTrue(vr.edita_tempo_objectiu(1, 90.0, 7, 8))
+        self.assertEqual(vr.tempo_trams[0], trams[0])
+        self.assertEqual(vr.tempo_trams[1][:2], trams[1][:2])
+        self.assertEqual(vr.tempo_trams[1][3:], (7, 8))
+        self.assertEqual(vr.tempo_trams[1][2], 94.5)
+        self.assertEqual(vr.tempo_trams[2], trams[2])
+
     def test_el_marcador_arrossega_la_frontera_d_estructura(self):
         """El clip de secció que va crear el `+` seguix el marcador (§4.C)."""
         vr = self.w.visor_ref

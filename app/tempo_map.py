@@ -553,8 +553,8 @@ def neteja_trams(trams, durada, preserva_fi_idx=None):
     partir d'un tros solt (`elimina_tall`, anàlisi guiat).
 
     **`preserva_fi_idx`**: índex del tram que ha de conservar el seu `fi` original
-    (per a edicions mètriques ×2/÷2 on els segons no canvien). Només s'usa en
-    camins interns on es garanteix que la contigüitat es respecta.
+    en edicions mètriques que no canvien els segons. Només s'usa en camins
+    interns on es garanteix que la contigüitat es respecta.
     """
     durada = float(durada or 0.0)
     net, avisos = [], []
@@ -614,7 +614,7 @@ def normalitza_trams(trams, durada, preserva_fi_idx=None):
     """`neteja_trams` sense els avisos (compatibilitat i camins interns).
 
     **`preserva_fi_idx`**: índex del tram que ha de conservar el seu `fi` original
-    (per a edicions mètriques ×2/÷2 on els segons no canvien).
+    en edicions mètriques que no canvien els segons.
     """
     return neteja_trams(trams, durada, preserva_fi_idx=preserva_fi_idx)[0]
 
@@ -672,7 +672,7 @@ def valida_i_normalitza_compassos(trams, durada, offset=0.0, preserva_fi_idx=Non
     Aixeca `ValueError` amb un missatge d'usuari si no es compleix.
 
     **`preserva_fi_idx`**: índex del tram que ha de conservar el seu `fi` original
-    (per a edicions mètriques ×2/÷2 on els segons no canvien).
+    en edicions mètriques que no canvien els segons.
     """
     durada = float(durada or 0.0)
     for t in trams or ():
@@ -930,7 +930,7 @@ def _valida_bpm_edicio(bpm, costat):
     return b
 
 
-def _mapa_valida_sense_moure(out, durada, offset):
+def _mapa_valida_sense_moure(out, durada, offset, preserva_fi_idx=None):
     """Valida el mapa **sense moure cap frontera**.
 
     Les operacions de l'usuari (`+`, re-tempo pel ratolí, «Detecta» d'un tram,
@@ -940,11 +940,15 @@ def _mapa_valida_sense_moure(out, durada, offset):
     `repara_fronteres` (mouria la frontera que l'operador acaba de posar). Es
     retorna el mapa normalitzat (permissiu): el gest no es bloqueja i la
     reparació es farà quan l'operador la veja.
+
+    **`preserva_fi_idx`**: índex del tram que ha de conservar el seu `fi`
+    original en canviar la signatura de compàs, sense moure els segons.
     """
     try:
-        return valida_i_normalitza_compassos(out, durada, offset)
+        return valida_i_normalitza_compassos(out, durada, offset,
+                                             preserva_fi_idx=preserva_fi_idx)
     except ValueError:
-        return normalitza_trams(out, durada)
+        return normalitza_trams(out, durada, preserva_fi_idx=preserva_fi_idx)
 
 
 def canvia_bpm_local(trams, idx, bpm, durada, offset=0.0, num=None, den=None):
@@ -1007,14 +1011,14 @@ def canvia_bpm_local(trams, idx, bpm, durada, offset=0.0, num=None, den=None):
         # tram (`_mapa_valida_sense_moure`).
         out = list(nous)
         out[i] = (float(ini), float(fi), bpm, num, den)
-        return _mapa_valida_sense_moure(out, durada, offset)
+        return _mapa_valida_sense_moure(out, durada, offset, preserva_fi_idx=i)
 
     if (num, den) != (int(num0), int(den0)):
         # Només canvia el COMPÀS (p. ex. 1/4 → 4/4): és el mateix tros de
-        # música recontat. Mana la DURADA (les fronteres no es mouen) i el
-        # nombre de compassos passa a ser el que hi cap; el BPM s'ajusta el
-        # mínim perquè N siga enter. Abans es conservava N i el tram es feia
-        # 4× més llarg → «el tram següent quedaria massa curt» (Jamiroquai).
+        # música recontat. Es conserven les fronteres en segons i el nombre de
+        # compassos passa a ser el que hi cap; el BPM s'ajusta el mínim perquè
+        # N siga enter. Abans es conservava N i el tram es feia 4× més llarg
+        # → «el tram següent quedaria massa curt» (Jamiroquai).
         base = _base_tram(nous[i], i, offset)
         dt = float(fi) - base
         out = list(nous)
@@ -1023,7 +1027,7 @@ def canvia_bpm_local(trams, idx, bpm, durada, offset=0.0, num=None, den=None):
             n = max(1, _enter_mes_proper(dt * float(bpm) / (bq * 60.0)))
             bpm = _valida_bpm_edicio(n * bq * 60.0 / dt, "tram")
         out[i] = (float(ini), float(fi), float(bpm), num, den)
-        return _mapa_valida_sense_moure(out, durada, offset)
+        return _mapa_valida_sense_moure(out, durada, offset, preserva_fi_idx=i)
 
     base = _base_tram(nous[i], i, offset)
     n_frac = _compassos_del_tram(nous[i], i, offset)

@@ -100,6 +100,24 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 ## 5. DESPRÉS (Next) — prioritzat (MoSCoW)
 
 ### Must (properes línies)
+- **Endurir i provar l'edició del mapa BPM/compàs** — auditoria completa de
+  `canvia_bpm_local()` i de totes les superfícies que l'invoquen (diàleg de
+  tram, barra/transport i franja Editor). Casos reproduïts el 25-10-2026:
+  el diàleg accepta 1–1000 BPM i compassos fora de 1–12 sobre 1–16; el backend
+  també pot deixar aquests valors al mapa, mentre que la franja Editor aplica
+  límits diferents. A més, el diàleg converteix un compàs mal escrit en 4/4
+  sense avisar. Unificar la validació al backend i a la UI: BPM finit dins
+  30–350, compàs dins del contracte de §13.4 de
+  [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md), errors visibles (cap
+  substitució silenciosa) i `0/0` com a representació explícita de rubato.
+  Cobrir amb proves: BPM 0/negatiu, NaN/Inf i límits; compàs mal format,
+  zero parcial i límits; tram únic, primer (inclòs offset/pre-roll), interior
+  i últim; canviar només BPM, només compàs i tots dos; entrada/eixida de
+  `0/0`; veïns mètrics o rubato; límits de durada, nombre enter de compassos i
+  banda del BPM derivat; edició simultània d'inici/fi i BPM/compàs; avís i cap
+  mutació parcial quan no cap. Verificar també GUI, desfer/refer, CSV desat,
+  recàrrega i export. Un canvi impossible per les regles (p. ex. tram veí massa
+  curt o BPM derivat fora de banda) s'ha de rebutjar amb avís, no forçar-se.
 - **Backups: triar/restaurar des de l'app** — llista de còpies (`backup/`) amb
   data-hora → previsualitzar i restaurar (amb confirmació, mai destructiu);
   mostrar què conté cada còpia.

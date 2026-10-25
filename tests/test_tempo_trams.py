@@ -535,6 +535,18 @@ class RetempoTests(unittest.TestCase):
         self.assertEqual(out[1], trams[1])            # els veïns, intactes
         self.assertEqual(out[2], trams[2])
 
+    def test_canviar_signatura_no_mou_els_segons_del_tram(self):
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        for idx in (1, 2):
+            with self.subTest(idx=idx):
+                out = tempo_map.canvia_bpm_local(
+                    trams, idx, trams[idx][2], 60.0, num=7, den=8)
+                self.assertEqual(out[idx][:2], trams[idx][:2])
+                self.assertEqual(out[idx][3:], (7, 8))
+                for neighbor in (j for j in range(len(trams)) if j != idx):
+                    self.assertEqual(out[neighbor], trams[neighbor])
+
     def test_canviar_compas_1_4_a_4_4(self):
         # Cas real (Jamiroquai, 23:55): el clip del mig era 1/4 (551
         # compassos) i posar-lo a 4/4 conservava N → 4× més llarg i «no hi
