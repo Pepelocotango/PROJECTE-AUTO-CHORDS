@@ -4557,7 +4557,8 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual(v.tempo_trams, abans)
         self.assertTrue(avisos and "últim" in avisos[-1])
 
-    def test_clip_en_segons_no_recalcula_cap_bpm_en_moure_la_vora(self):
+    def test_el_clip_en_segons_no_es_recalcula_pero_el_vei_metric_si(self):
+        """Rubato = cap regla; el seu VEÍ amb compàs conserva N i re-tempa."""
         w, v = self._prepara()
         v.tempo_trams = [(0.0, 10.0, 120.0, 0, 0), (10.0, 30.0, 100.0, 4, 4)]
         v._actualitza_temps()
@@ -4565,8 +4566,12 @@ class TestLlistaTempo(_undo_temps___Base):
         v.ed_ini.setText("12.000")
         v._aplica_editor()
         self.assertAlmostEqual(float(v.tempo_trams[0][1]), 12.0, places=6)
+        self.assertEqual((int(v.tempo_trams[0][3]), int(v.tempo_trams[0][4])),
+                         (0, 0))
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 120.0, places=6)
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=6)
+        # El mètric (8 compassos a 100 BPM) passa de 20 s a 18 s → 106,7 BPM.
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 8 * 4 * 60 / 18.0,
+                               places=4)
         self.assertTrue(v.tempo_map.es_lliure(2.0))
         w.close()
 

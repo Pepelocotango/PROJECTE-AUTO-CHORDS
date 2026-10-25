@@ -1680,7 +1680,10 @@ class TestTramsEnSegons(unittest.TestCase):
         self.assertAlmostEqual(out[1][0], 2.7)
         self.assertAlmostEqual(out[1][1], 6.0)
         self.assertEqual((out[1][3], out[1][4]), (0, 0))
-        self.assertAlmostEqual(out[0][2], 120.0)   # cap BPM tocat
+        self.assertAlmostEqual(out[1][2], 100.0)   # rubato: BPM de notació
+        # El VEÍ amb compàs conserva el seu compàs (N=1) i en deriva el BPM:
+        # 1 compàs 4/4 en 2,7 s (§13.4: compassos enters).
+        self.assertAlmostEqual(out[0][2], 4 * 60 / 2.7, places=4)
 
     def test_compassos_dun_clip_en_segons_es_rebutja(self):
         trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 100.0, 0, 0)]

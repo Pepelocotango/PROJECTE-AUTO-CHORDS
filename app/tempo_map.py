@@ -68,7 +68,13 @@ class Tram(_TramBase):
 
 
 def _bar_quarters(num, den):
-    """Negres que fa un compàs `num/den` (4/4→4, 3/4→3, 6/8→3, 12/8→6)."""
+    """Negres que fa un compàs `num/den` (4/4→4, 3/4→3, 6/8→3, 12/8→6).
+
+    Un tram EN SEGONS (`0/0`) no té compàs: 4 (el valor de notació) evita el
+    `ZeroDivisionError` i no s'usa per a res (eixe costat no es re-tempa).
+    """
+    if int(num) <= 0 or int(den) <= 0:
+        return 4.0
     return float(num) * 4.0 / float(den)
 
 
@@ -1278,28 +1284,35 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0):
         raise ValueError("La frontera deixaria el tram dret sense durada")
     t = min(maxim, max(minim, t))
 
-    if _es_lliure_tram(a) or _es_lliure_tram(b):
-        # Un costat va EN SEGONS: no té compassos ni contracte. El punter
-        # mana i cap BPM no es toca.
+    lliure_a, lliure_b = _es_lliure_tram(a), _es_lliure_tram(b)
+    if lliure_a and lliure_b:
+        # Els DOS costats van EN SEGONS: no hi ha cap contracte de compàs i el
+        # punter mana (el «BPM» d'un rubato només és referència de notació).
         out = list(nous)
         out[i - 1] = (float(ini_a), float(t), float(a[2]), int(a[3]),
                       int(a[4]))
         out[i] = (float(t), float(fi_b), float(b[2]), int(b[3]), int(b[4]))
         return _mapa_valida_sense_moure(out, durada, offset)
 
-    bars_a = _compassos_del_tram(a, i - 1, offset)
-    if abs(bars_a) < 1e-6 and t > float(offset or 0.0) + TOL:
-        # Tram de pre-roll sense cap compàs (regla §5): no se li pot inventar
-        # un compàs. Estirar-lo és moure el compàs 1 (`mou_frontera_preroll`).
-        raise ValueError(
-            "La frontera és el compàs 1: mou-lo amb el botó 📍 (o el camp "
-            "«Compàs 1»)")
-    # N de cada costat: el que JA té (el mapa vàlid té compassos enters).
-    n_a = max(1, _enter_mes_proper(bars_a))
-    n_b = max(1, _enter_mes_proper(_compassos_del_tram(b, i, offset)))
+    # Un costat rubato no té compassos, però el SEU VEÍ amb compàs sí: el
+    # costat mètric conserva N i recalcula el BPM (el nombre de compassos ha
+    # de quedar enter, §13.4) i ha de respectar la banda (§13.5).
+    n_a = n_b = None
     bq_a = _bar_quarters(int(a[3]), int(a[4]))
     bq_b = _bar_quarters(int(b[3]), int(b[4]))
-    if pre and t <= float(offset) + TOL:
+    if not lliure_a:
+        bars_a = _compassos_del_tram(a, i - 1, offset)
+        if abs(bars_a) < 1e-6 and t > float(offset or 0.0) + TOL:
+            # Tram de pre-roll sense cap compàs (regla §5): no se li pot
+            # inventar un compàs. Estirar-lo és moure el compàs 1.
+            raise ValueError(
+                "La frontera és el compàs 1: mou-lo amb el botó 📍 (o el camp "
+                "«Compàs 1»)")
+        # N del costat: el que JA té (el mapa vàlid té compassos enters).
+        n_a = max(1, _enter_mes_proper(bars_a))
+    if not lliure_b:
+        n_b = max(1, _enter_mes_proper(_compassos_del_tram(b, i, offset)))
+    if pre and not lliure_a and t <= float(offset) + TOL:
         # Pre-roll PUR: la frontera cau al compàs 1, el tram esquerre no té
         # cap compàs (excepció §5). Conserva el seu BPM; la dreta conserva N.
         n_b = max(1, _enter_mes_proper(_compassos_del_tram(b, i, offset)))
@@ -1314,11 +1327,42 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0):
     dt_b = fi_b - t
     if dt_a <= TOL or dt_b <= TOL:
         raise ValueError("La frontera deixaria un tram sense durada")
-    # Arrossegar és LLIURE (regla 22-10-2026): el ratolí mana i l'únic que es
-    # recalcula és el BPM de dins del clip. La banda 30–350 només valida les
-    # edicions de BPM a mà (`canvia_bpm_local`, diàlegs, +1/−1).
-    bpm_a = _bpm_de_n(n_a, bq_a, dt_a)
-    bpm_b = _bpm_de_n(n_b, bq_b, dt_b)
+    # El ratolí fixa Δt; el costat amb compàs conserva N i en deriva el BPM.
+    # Un costat rubato (0/0) no té compassos: conserva el seu «BPM» (referència
+    # de notació) i només canvia de llargada.
+    bpm_a = float(a[2]) if lliure_a else _bpm_de_n(n_a, bq_a, dt_a)
+    bpm_b = float(b[2]) if lliure_b else _bpm_de_n(n_b, bq_b, dt_b)
+    # Regla #3 (decisió de l'operador, 23-10-2026): un tram **amb compàs** no
+    # es pot quedar fora de la banda de BPM. Com que N es conserva, «fora de
+    # banda» vol dir un clip massa curt (1 ms → 1.200.000 BPM) o massa llarg.
+    # Els trams EN SEGONS (0/0) no hi entren: ixen per la branca de dalt, on
+    # el ratolí mana i cap BPM no es toca.
+    base_a = _base_tram(a, i - 1, offset)
+    lo, hi = float("-inf"), float("inf")
+    if not lliure_a:
+        lo = max(lo, base_a + n_a * bq_a * 60.0 / BPM_EDIT_MAX)
+        hi = min(hi, base_a + n_a * bq_a * 60.0 / BPM_EDIT_MIN)
+    if not lliure_b:
+        lo = max(lo, fi_b - n_b * bq_b * 60.0 / BPM_EDIT_MIN)
+        hi = min(hi, fi_b - n_b * bq_b * 60.0 / BPM_EDIT_MAX)
+    if lo > hi + TOL:
+        raise ValueError(
+            f"No hi ha cap posició que deixe els dos trams dins de "
+            f"{BPM_EDIT_MIN:g}–{BPM_EDIT_MAX:g} BPM: el tram quedaria massa "
+            "curt per al seu nombre de compassos")
+    if t < lo - TOL or t > hi + TOL:
+        fora = []
+        if not lliure_a and not (BPM_EDIT_MIN - TOL <= bpm_a
+                                <= BPM_EDIT_MAX + TOL):
+            fora.append(f"l'esquerre a {bpm_a:.0f}")
+        if not lliure_b and not (BPM_EDIT_MIN - TOL <= bpm_b
+                                <= BPM_EDIT_MAX + TOL):
+            fora.append(f"el dret a {bpm_b:.0f}")
+        qui = " i ".join(fora) or "un tram"
+        raise ValueError(
+            f"Quedaria {qui} BPM (fora de {BPM_EDIT_MIN:g}–"
+            f"{BPM_EDIT_MAX:g}): mou la frontera entre "
+            f"{max(0.0, lo):.3f} i {min(hi, durada):.3f} s")
 
     out = list(nous)
     out[i - 1] = (ini_a, t, bpm_a, int(a[3]), int(a[4]))
@@ -1327,6 +1371,8 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0):
     # construcció; ho comprovem abans de validar la resta (si un tram VELL
     # del projecte arrossega fraccions, no ha de bloquejar este gest).
     for j, costat in ((i - 1, "esquerre"), (i, "dret")):
+        if _es_lliure_tram(out[j]):
+            continue                      # rubato: no té compassos
         bars = _compassos_del_tram(out[j], j, offset)
         if abs(bars - _enter_mes_proper(bars)) > 1e-6:
             raise ValueError(

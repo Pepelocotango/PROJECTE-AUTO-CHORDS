@@ -293,10 +293,15 @@ test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026
   marcadors es mouen, si no toquen la frontera afectada. L'**últim tram** queda
   acotat per la fi de la WAV; si és el veí, conserva BPM i fi i absorbix el
   desplaçament en compassos.
-- Si el resultat deixaria un tram **interior** per davall d'un compàs, **es
-  rebutja** i l'avís diu **quin és el BPM extrem que encara hi cap**.
-  Arrossegar **no té banda de BPM** —el ratolí mana—; la banda 30–350 només
-  valida el BPM escrit **a mà** (diàleg, `±1`, TAP).
+- **Banda al re-tempo (decisió 23-10-2026)**: en arrossegar, el ratolí fixa Δt
+  i **no** hi ha mínim de 0,5 s, però un tram **amb compàs** conserva N i no pot
+  quedar-se fora de **30–350 BPM** — eixa banda és el que impedix l'estat absurd
+  d'un clip d'1 ms a 1.200.000 BPM. Si el gest el deixaria fora, **es rebutja** i
+  l'avís diu **entre quins segons** sí que hi cap.
+- Un tram **en segons** (`0/0`, rubato) **no té cap regla** de duració ni de BPM:
+  es mou lliurement. Però **el seu veí amb compàs sí**: eixe costat conserva N i
+  en deriva el BPM (si no, quedaria amb compassos fraccionaris, §13.4) i respecta
+  la banda.
 - **Codi:** `tempo_map.canvia_bpm_local` · `canvia_compassos_tram` ·
 `retempo_tram_detectat` · `snap_frontera_compas`/`_ripple_des_de` (només per a
 `repara_fronteres` i l'anàlisi guiat, que creen el mapa des de zero)
@@ -310,10 +315,11 @@ test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026
 - **La graella s'ajusta a la frontera**: es conserven els compassos dels dos
   costats i es recalcula el BPM de cada un; per construcció la frontera **sempre
   cau en línia de compàs**.
-- **Arrossegar és lliure** (22-10-2026): amb el snap apagat, inici i fi es poden
-  moure sempre; l'extrem contrari **no es mou** i només es recalcula el BPM de
-  dins. No hi ha mínim de 0,5 s: només es rebutja el que deixaria un tram **sense
-  durada**.
+- **Arrossegar és lliure** (22-10-2026, amb la banda del §13.5 des del
+  23-10-2026): amb el snap apagat, inici i fi es poden moure sempre que el tram
+  **amb compàs** es quede dins de 30–350 BPM; l'extrem contrari **no es mou** i
+  només es recalcula el BPM de dins. No hi ha mínim de 0,5 s: el que no pot
+  passar és que un tram quede **sense durada** o a un BPM impossible.
 - **Inici i fi són editables** —arrossegant la vora al timeline o escrivint-los a
   la franja Editor (`Inici (s)` / `Fi (s)`, només en mode tempo). Com que la
   frontera és única, moure'n un mou **eixa** frontera; **l'extrem contrari del
@@ -325,7 +331,7 @@ test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026
   | `fi` de l'**últim** clip | **rebutjat + avís** (és la fi de la WAV) |
   | `ini` de qualsevol altre | mou la frontera `(i-1, i)`; el `fi` del clip **no** es mou; re-tempo del clip i del **veí anterior** |
   | `fi` de qualsevol altre | mou la frontera `(i, i+1)`; l'`ini` del clip **no** es mou; re-tempo del clip i del **veí posterior** |
-  | qualsevol dels dos amb un costat en segons (`0/0`) | només es mou la frontera: **cap** BPM no canvia |
+  | qualsevol dels dos amb un costat en segons (`0/0`) | es mou la frontera; el costat **rubato** no canvia (ni BPM ni compàs), el costat **amb compàs** conserva N i re-tempa (banda 30–350) |
 
   Si l'instant demanat no és possible (passaria del veí, o deixaria un tram sense
   durada), s'aplica el més a prop i **s'avisa**.
@@ -353,8 +359,9 @@ test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026
   = 2,4 s) i pot acabar amb un compàs **parcial**.
 - Els seus compassos **no compten** per a la numeració: el primer clip amb
   compàs després del rubato continua la sèrie.
-- Les **vores** es mouen sense recalcular cap BPM; canviar-li «compassos» es
-  rebutja amb avís. `tempo.csv`, `compas.csv` i la còpia a `mapa_tempo/` porten
+- Les **vores** es mouen sense recalcular **el seu** BPM (el «BPM» d'un rubato
+  és de notació); el **veí amb compàs** sí que re-tempa (§13.5). Canviar-li
+  «compassos» es rebutja amb avís. `tempo.csv`, `compas.csv` i la còpia a `mapa_tempo/` porten
   `0,0` i res més canvia.
 - La **paritat #11 s'hi aplica igual**: clip, llista ⑭ i franja Editor.
 - **Codi:** `tempo_map.Tram.lliure`/`es_lliure`/`num_ef` · `canvia_bpm_local` ·

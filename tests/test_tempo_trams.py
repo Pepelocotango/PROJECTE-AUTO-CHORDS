@@ -301,16 +301,15 @@ class RetempoTests(unittest.TestCase):
         self.assertEqual(out[2], trams[2])      # el veí del fons, intacte
         self.assertAlmostEqual(out[0][1], 12.0, places=6)
 
-    def test_arrossegar_es_lliure_sense_banda_de_bpm(self):
-        # Regla 22-10-2026: el ratolí mana. No hi ha mínim de 0,5 s ni banda de
-        # BPM; només es rebutja el que deixa un tram sense durada.
+    def test_arrossegar_dins_de_la_banda_es_lliure(self):
+        # Decisió 23-10-2026: no hi ha mínim de 0,5 s, però un tram AMB COMPÀS
+        # no pot quedar a menys d'un compàs del seu N (BPM fora de 30–350).
         trams = self._trams()
-        out = tempo_map.mou_frontera_retempo(trams, 1, 0.25, self.DU)
-        self.assertAlmostEqual(out[0][1], 0.25, places=6)
-        self.assertGreater(out[0][2], 30.0)
-        out = tempo_map.mou_frontera_retempo(
-            trams, 1, self.DU - 0.25, self.DU)
-        self.assertAlmostEqual(out[0][1], self.DU - 0.25, places=6)
+        for t in (16.0, 12.0, 20.0, 5.486, 26.514):
+            out = tempo_map.mou_frontera_retempo(trams, 1, t, self.DU)
+            self.assertAlmostEqual(out[0][1], t, places=6)
+            self.assertGreaterEqual(out[0][2], 30.0 - 1e-6)
+            self.assertLessEqual(out[0][2], 350.0 + 1e-6)
         # Durada zero sí que no.
         with self.assertRaises(ValueError):
             tempo_map.mou_frontera_retempo(trams, 1, 0.0, self.DU)
@@ -323,14 +322,42 @@ class RetempoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             tempo_map.mou_frontera_retempo(trams, 2, 1.0, self.DU)
 
-    def test_bpm_fora_de_rang_s_accepta_en_arrossegar(self):
-        # 8 compassos en 0,6 s → 3.200 BPM: és absurd, però el drag és lliure
-        # (la banda 30–350 només valida l'edició manual del BPM).
+    def test_no_es_pot_deixar_un_tram_fora_de_la_banda(self):
+        # Regla #3: conservant N, un clip massa curt demanaria milers de BPM
+        # (1 ms → 1.200.000). Es rebutja i l'avís diu on sí que hi cap.
         trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, self.DU, 120.0, 4, 4)]
-        out = tempo_map.mou_frontera_retempo(trams, 1, 0.6, self.DU)
-        self.assertAlmostEqual(out[0][1], 0.6, places=6)
-        self.assertGreater(out[0][2], 350.0)
-        self.assertEqual(out[0][3:], (4, 4))
+        for t in (0.001, 0.6, self.DU - 0.25):
+            with self.assertRaises(ValueError) as cm:
+                tempo_map.mou_frontera_retempo(trams, 1, t, self.DU)
+            self.assertIn("30", str(cm.exception))
+            self.assertIn("350", str(cm.exception))
+        # Dins de la banda sí.
+        out = tempo_map.mou_frontera_retempo(trams, 1, 12.0, self.DU)
+        self.assertAlmostEqual(out[0][1], 12.0, places=6)
+
+    def test_el_vei_metric_d_un_rubato_recalcula_el_bpm(self):
+        """Un rubato no té regla, però el seu veí amb compàs SÍ (§13.4/#3).
+
+        Abans, la branca «algú va en segons» deixava el costat mètric amb el
+        BPM vell → nombre de compassos fraccionari (fora de graella).
+        """
+        trams = [(0.0, 10.0, 100.0, 0, 0), (10.0, 30.0, 120.0, 4, 4)]
+        out = tempo_map.mou_frontera_retempo(trams, 1, 12.0, 30.0)
+        self.assertEqual(out[0][3:], (0, 0))          # rubato intacte
+        self.assertEqual(out[0][2], 100.0)            # BPM de notació
+        self.assertAlmostEqual(out[1][2], 10 * 4 * 60 / 18.0, places=4)
+        self.assertAlmostEqual(out[1][1], 30.0, places=6)
+
+    def test_el_vei_metric_d_un_rubato_respecta_la_banda(self):
+        trams = [(0.0, 10.0, 100.0, 0, 0), (10.0, 30.0, 120.0, 4, 4)]
+        with self.assertRaises(ValueError):
+            tempo_map.mou_frontera_retempo(trams, 1, 29.5, 30.0)
+
+    def test_dos_rubatos_son_lliures(self):
+        trams = [(0.0, 10.0, 100.0, 0, 0), (10.0, 30.0, 100.0, 0, 0)]
+        out = tempo_map.mou_frontera_retempo(trams, 1, 0.5, 30.0)
+        self.assertAlmostEqual(out[0][1], 0.5, places=6)
+        self.assertEqual(out[0][3:], (0, 0))
 
     def test_primer_tram_amb_premusica_conserva_l_offset(self):
         # L'offset (3 s de pre-música) no es toca: els compassos compten des d'ell.

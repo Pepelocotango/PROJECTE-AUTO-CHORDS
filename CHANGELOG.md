@@ -23,6 +23,26 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   llista ⑭).
 - Suite **1.368 OK** (1 skip), pyflakes net.
 
+### Canviat (2026-10-23, 11t) — regla #3: banda de BPM al re-tempo (decisió)
+- **Arrossegar una frontera** ja no pot deixar un tram **amb compàs** fora de
+  **30–350 BPM**: com que N es conserva, un clip d'1 ms demanava **1.200.000
+  BPM** (i el veí, 80). Ara el gest **es rebutja** i l'avís diu **entre quins
+  segons** sí que hi cap. Continua **sense** mínim de 0,5 s.
+- **Els clips rubato (`0/0`) no tenen cap regla**: es mouen lliurement (sense
+  mínim ni banda). Però **el seu veí amb compàs sí**: abans la branca «algun
+  costat va en segons» deixava eixe costat amb el BPM vell i, per tant, amb un
+  **nombre de compassos fraccionari** (fora de graella). Ara conserva N, en
+  deriva el BPM i respecta la banda.
+- **`_bar_quarters(0, 0)`** ja no peta (`ZeroDivisionError`): un tram en segons
+  val 4 de notació.
+- **Tests**: 2 reescrits (codificaven la decisió del 22-10 «drag sense banda»:
+  `test_arrossegar_dins_de_la_banda_es_lliure`,
+  `test_no_es_pot_deixar_un_tram_fora_de_la_banda`) + 3 de nous (veí mètric d'un
+  rubato re-tempa, veí mètric respecta la banda, dos rubatos són lliures) i 2
+  actualitzats (vora d'un mètric i test del visor).
+- Docs: §13.5 (banda), §13.6 («arrossegar és lliure» + taula), §13.7 (vores del
+  rubato). Suite **1.383 OK** (1 skip).
+
 ### Corregit (2026-10-23, 11s) — regla #2: la contigüitat del mapa, estructural
 - **`TempoMap.__init__`** re-deriva el `fi` de cada tram a partir de l'`ini` del
   següent (l'últim conserva el seu): una llista amb **forats o encavalcaments**
