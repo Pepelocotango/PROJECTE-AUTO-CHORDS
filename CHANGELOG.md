@@ -5,6 +5,25 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Corregit (2026-10-25) — ×2/÷2 als clips de BPM/compàs mantenen la duració en segons
+- **`app/tempo_map.py`**: afegit paràmetre opcional `preserva_fi_idx` a
+  `neteja_trams()`, `normalitza_trams()` i `valida_i_normalitza_compassos()` per
+  poder preservar el `fi` original d'un tram específic quan es fa una edició
+  mètrica (×2/÷2). Abans, normalitza_trams() re-derivava tots els fi des dels
+  ini següents, fent que el fi original del clip editat es perdés i el clip
+  s'estirés o encogia incorrectament.
+- **`canvia_compassos_tram()`**: ara passa `preserva_fi_idx=i` a
+  `valida_i_normalitza_compassos()` quan s'aplica una edició mètrica.
+- **Exemple**: clip 0-8s a 120 BPM (4 compassos)
+  - ×2 → 0-8s a 240 BPM (8 compassos, mateixa duració)
+  - ÷2 → 0-8s a 60 BPM (2 compassos, mateixa duració)
+- **Test**: `test_tempo_trams` › `test_compassos_mes_menys_i_doblar` ara verifica
+  que `out[0][1]` (el fi) es manté en 8.0s per a totes les operacions (+1, -1,
+  ×2, ÷2).
+- **Docs**: `docs/EDICIO_OPERACIONS.md` actualitzat per especificar que ×2/÷2
+  mantenen els segons immòbils i només recalculen el BPM.
+- Suite **1.386 OK** (1 skip), pyflakes net.
+
 ### Documentació (2026-10-23, 11p) — les regles de temps/compàs, al canònic
 - **`docs/REGLES_DE_LA_APP.md`** incorpora el **§13 «Temps, compàs i graella»**
   (13.1–13.8 + notes d'aplicació): els segons com a font de veritat, el mapa com
