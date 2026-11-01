@@ -12,10 +12,12 @@ fitxer**— llestos per **arrossegar-los ordenats en una sola pista a qualsevol 
 (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…). Opcionalment genera
 també la **partitura de xifrats** (MusicXML; PDF/MSCZ si tens MuseScore).
 
-També està planificat que servisca per a **editar àudio bàsicament**: retallar o
-allargar amb silenci els extrems d'una còpia WAV de treball i exportar el resultat
-a un format triat. Aquesta funció **encara no està implementada**; l'abast acordat
-és a [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+També està planificat que servisca per a **editar àudio bàsicament dins d'un
+projecte**, sense haver d'analitzar acords: retallar o allargar amb silenci els
+extrems d'una còpia WAV de treball i exportar el WAV sencer a un format triat.
+El silenci afegit es marca «N» (sense acord); les seccions es mantenen. Aquesta
+funció **encara no està implementada**; l'abast acordat és a
+[`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 
 > **Novetats de la v0.8.0 (BETA)** — **mapa de tempo amb compassos enters**
 > (les fronteres de tempo cauen en línies de compàs; primer inici i últim

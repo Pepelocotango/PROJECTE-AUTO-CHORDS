@@ -135,18 +135,42 @@ Tasques:
   `audio/` dins del projecte; no crear un `_convertit.wav` intermedi al costat
   de l'original. L'original extern es conserva intacte. (Això canvia el flux
   actual d'importació i s'ha de cobrir amb proves.)
+- L'edició d'àudio sempre es fa dins d'un projecte; no es crea un mode separat
+  d'editor de fitxers. L'anàlisi musical és opcional: es pot editar i exportar
+  el WAV sense extraure acords ni estructura.
 - Sobre la forma d'ona, oferir nanses senzilles per a **retallar l'inici i/o el
   final**. Allargar més enllà de l'àudio existent afegeix **silenci**; no canvia
   la velocitat ni el to. Aquesta fase no edita el mig de la cançó: tallar,
   enganxar, duplicar, fades i processament queden per a més endavant.
+- Mentre s'arrossega una nansa, mostrar una previsualització; en deixar-la anar,
+  aplicar-ho com una sola acció desferable amb `Ctrl+Z`, sense diàleg de
+  confirmació per a cada gest. L'afegit automàtic de silenci per completar
+  compassos sí que requereix confirmació.
+- L'ajust de les nanses a les línies de compàs es pot activar o desactivar.
+- Ajustar el punt final del tall al pas per zero més pròxim per reduir clics;
+  no aplicar fades automàtiques. Verificar que l'ajust és molt pròxim al punt
+  triat i funciona amb WAV mono i estèreo.
+- Si es retalla l'inici, eliminar el contingut anterior al tall i desplaçar
+  l'àudio restant i el seu model musical junts cap a zero. Si es retalla el
+  final, ajustar el model al nou límit: eliminar el que queda fora i escurçar
+  els clips que el travessen. Àudio i model es restauren junts amb un sol
+  desfer.
+- En afegir silenci al principi, desplaçar amb ell el so i el model musical; al
+  final, estendre la cobertura fins al nou límit. El silenci afegit rep un tram
+  d'acord `N` (sense acord), mentre la secció existent el continua cobrint.
 - Per completar compassos als extrems, calcular i mostrar quant de silenci es
   proposa afegir i una previsió del resultat. L'usuari ha de confirmar abans
   d'aplicar l'afegit de silenci.
 - Afegir «Exporta àudio…»: demanar **on** desar el fitxer, el nom i el format.
   Primera llista objectiu: **WAV, MP3, FLAC, AAC/M4A, OGG i Opus**. Verificar
   encoders disponibles en els FFmpeg dels tres paquets abans de prometre cada
-  format; els errors d'exportació han de ser visibles i el WAV de treball no
-  s'ha de substituir.
+  format. Exportar sempre el WAV sencer; usar qualitat predeterminada, sense
+  controls tècnics de còdec/bitrate/mostreig. Els errors d'exportació han de ser
+  visibles i el WAV de treball no s'ha de substituir. Exportar fragments i
+  opcions avançades queda per a més endavant.
+- Crear o obrir sempre un projecte per editar àudio; no hi haurà mode independent
+  d'editor ràpid. L'anàlisi és opcional: es pot editar i exportar sense extraure
+  acords ni estructura.
 - Escriure cada canvi en un temporal, validar-lo i només llavors actualitzar la
   còpia WAV del projecte. Àudio i model s'han de mantindre alineats; una edició
   que canvie inici o durada ha de tractar conjuntament acords, estructura,
@@ -162,7 +186,8 @@ Tasques:
   silenci a cada extrem; confirmar/cancel·lar la proposta; coherència de durada
   i alineació amb el model; exportació a un destí nou en els formats validats;
   original i WAV de treball intactes durant l'exportació; desfer/refer conjunt;
-  errors sense mutació parcial; rebuig d'un tram lliure massa curt.
+  reducció de clics amb talls propers a pas per zero en mono i estèreo; errors
+  sense mutació parcial; rebuig d'un tram lliure massa curt.
 
 **Acceptació**: l'usuari pot obrir àudio, treballar sobre una única còpia WAV
 interna, retallar o afegir silenci als extrems amb nanses i exportar una còpia
