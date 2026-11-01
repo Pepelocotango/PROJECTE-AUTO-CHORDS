@@ -51,6 +51,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   projecte; l'exportació pot generar una graella mètrica aproximada
   identificada com a tal, sense canviar els CSV del model.
 
+### Afegit — Fase 1: constants i validació unificades
+- Centralitzats els límits a `app/limits.py`: BPM 30–350, numerador 1–12,
+  denominadors 2, 4 o 8.
+- `tempo_map.valida_tempo` retorna valors normalitzats o aixeca `ValueError`.
+- Totes les superfícies hi passen; entrada incorrecta s'avisa i no es converteix
+  silenciosament en 4/4.
+- Actualitzat §13.4 de `docs/REGLES_DE_LA_APP.md`.
+
+### Afegit — Fase 0: línia base i corpus de prova
+- Avaluador `eines/avalua_tempo.py` amb mètriques sintètiques i casos buits.
+- Notes de verificació a `docs/NOTES_VERIFICACIO.md`.
+
 ### Afegit — Fase 2: fuzzer d'invariants i proposta de regles
 - Estès `tests/test_gui.py` (`TestFuzzerReglesIVista`) amb ≥ 20 seeds deterministes
   (`test_tongada_amplia`, seeds 1–20, n=30) i l'operació `quantitza tot`.
