@@ -227,7 +227,8 @@ widgets, netegen amb `tests/_qt_neteja.py`. Si afegeixes un test nou, importa
    `docs/REGLES_DE_LA_APP.md`.
 4. **Documenta**: si canvies comportament, actualitza els `.md` que toqui
    (`docs/`, `CHANGELOG.md`, `ROADMAP.md`) i, si toca codi d'un domini, la seva
-   docstring.
+   docstring. Actualitza `DEVELOPING.md` només si canvia l'entorn, el build o el
+   CI; `README.md` només si canvia el producte visible per a l'usuari.
 5. **Commits**: missatge descriptiu **en català**; **mai push** (el decideix
    l'operador) i **mai commit per iniciativa pròpia** si l'operador no ho ha dit.
 6. **Els paquets de release només porten l'imprescindible**: `README.md`,
