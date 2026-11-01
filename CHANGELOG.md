@@ -5,6 +5,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit — Fase 4: compàs vs secció
+- Dos botons: «＋ Compàs» (frontera només al mapa de tempo) i «＋ Secció»
+  (frontera al mapa de tempo i a l'estructura).
+- `marcadors.csv` guanya columna `tipus` (`compas` | `seccio`); lectura de
+  tipus amb `pipeline.llegeix_marcadors_tipus`.
+- Marcadors pintats amb colors diferents segons el tipus.
+- Format nou sense migració dels marcadors antics.
+
 ### Afegit — Fase 3: TAP robust i destí visible
 - TAP de la barra principal usa mediana i descart d'intervals anòmals
   (rang 30–350, límits compartits).

@@ -2095,7 +2095,7 @@ class EsquemaUiDocTests(unittest.TestCase):
         # es fa amb marcadors en viu. Sense WAV el botó està desactivat.
         self.assertIsNotNone(getattr(self.w, "b_guia", None))
         self.assertFalse(self.w.b_guia.isEnabled())
-        self.assertIn("＋ Marker", texts)        # el botó del marcador hi és
+        self.assertIn("＋ Secció", texts)        # el botó del marcador hi és
         self.assertFalse(self.w.b_marker.isEnabled())
         with patch.object(app_main, "dialeg_guia_rapida") as mod:
             self.w._obre_guia_rapida()

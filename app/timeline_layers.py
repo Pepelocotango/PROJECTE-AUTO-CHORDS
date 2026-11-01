@@ -725,7 +725,14 @@ class MarcadorsLayer(QGraphicsObject):
         self.setFlag(QGraphicsItem.ItemIgnoresTransformations, False)
 
     def set_marcadors(self, marques):
-        self._marques = [float(m) for m in (marques or ())]
+        out = []
+        for m in (marques or ()):
+            if isinstance(m, (tuple, list)):
+                t, tipus = m[0], (m[1] if len(m) > 1 else "seccio")
+            else:
+                t, tipus = m, "seccio"
+            out.append((float(t), tipus))
+        self._marques = out
         self.update()
 
     def update_geometry(self, pps, x_offset, view_left=0.0, view_right=None):
@@ -746,16 +753,16 @@ class MarcadorsLayer(QGraphicsObject):
         if not self._marques:
             return
         painter.setRenderHint(QPainter.Antialiasing, False)
-        pen = QPen(QColor(MARCADOR_COLOR), 1, Qt.DashLine)
-        painter.setPen(pen)
         for m in self._marques:
-            x = self._x_offset + (m - self._view_left) * self._pps
+            t, tipus = (m[0], m[1]) if isinstance(m, tuple) else (float(m), "seccio")
+            color = "#4da6e8" if tipus == "compas" else MARCADOR_COLOR
+            x = self._x_offset + (t - self._view_left) * self._pps
             if x < -2 or x > 1e6:
                 continue
+            pen = QPen(QColor(color), 1, Qt.DashLine)
+            painter.setPen(pen)
             painter.drawLine(QPointF(x, 0), QPointF(x, self._h))
-            # banderí (triangle) a la part de dalt
-            painter.setBrush(QBrush(QColor(MARCADOR_COLOR)))
+            painter.setBrush(QBrush(QColor(color)))
             painter.setPen(Qt.NoPen)
             painter.drawPolygon(QPolygonF([
                 QPointF(x, 0), QPointF(x + 7, 0), QPointF(x, 8)]))
-            painter.setPen(pen)

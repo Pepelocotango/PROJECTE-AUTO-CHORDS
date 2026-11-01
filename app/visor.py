@@ -244,7 +244,8 @@ class Visor(QMainWindow):
         # Marcadors humans (inici de compàs marcat a mà, en viu)
         self.marcadors = pipeline.llegeix_marcadors(
             self._carpeta_acords(), self._durada_wav())
-        # Els projectes vells poden portar fronteres de tempo fora de compàs.
+        self.marcador_tipus = pipeline.llegeix_marcadors_tipus(
+            self._carpeta_acords())        # Els projectes vells poden portar fronteres de tempo fora de compàs.
         # No es rebutgen en carregar, però l'usuari ha de saber que eixe mapa
         # no complirà la regla de compassos enters fins que l'edite.
         try:
@@ -2738,7 +2739,10 @@ class Visor(QMainWindow):
         self._pinta_marcadors()
         self._mou_seccio_amb_marcador(t_vell, t_nou)
         try:
-            pipeline.desa_marcadors(self._carpeta_acords(), self.marcadors)
+            pipeline.desa_marcadors(
+                self._carpeta_acords(),
+                [(m, self.marcador_tipus.get(round(float(m), 6), "seccio"))
+                 for m in (self.marcadors or [])])
         except OSError as e:
             self.log(f"marcadors: no s'han pogut desar ({e})")
         self.log(f"marcador mogut amb la frontera: {t_vell:.3f} → {t_nou:.3f}s")
@@ -2797,14 +2801,17 @@ class Visor(QMainWindow):
         self.marcadors = M.elimina(list(self.marcadors or ()), i)
         self._pinta_marcadors()
         try:
-            pipeline.desa_marcadors(self._carpeta_acords(), self.marcadors)
+            pipeline.desa_marcadors(
+                self._carpeta_acords(),
+                [(m, self.marcador_tipus.get(round(float(m), 6), "seccio"))
+                 for m in (self.marcadors or [])])
         except OSError as e:
             self.log(f"marcadors: no s'han pogut desar ({e})")
         self.log(f"marcador esborrat amb la frontera de {float(t):.3f}s")
         return True
 
-    def afegeix_marcador(self, t=None):
-        """Marca l'instant actual (o `t`) com a **inici de compàs**.
+    def afegeix_marcador(self, t=None, tipus="seccio"):
+        tipus = tipus if tipus in ("compas", "seccio") else "seccio"        """Marca l'instant actual (o `t`) com a **inici de compàs**.
 
         Crea, en eixe punt, un **inici de clip al carril de BPM/compàs i al
         d'estructura**. El marcador queda **lligat a la frontera de tempo**
@@ -2843,17 +2850,19 @@ class Visor(QMainWindow):
             return False
         trams = self._normalitza_mapa_viu(trams, "Marcador")
         seccions = list(self.seccions or [])
-        idx = next((i for i, s in enumerate(seccions)
-                    if float(s[0]) + 1e-6 < t < float(s[1]) - 1e-6), None)
-        if idx is not None:
-            try:
-                seccions = pipeline.parteix_seccio(
-                    seccions, idx, t, marge=self.MIN_SECCIO_S)
-            except ValueError as e:
-                self.log(f"marcador: no s'ha pogut partir l'estructura ({e})")
-                seccions = list(self.seccions or [])
+        if tipus == "seccio":
+            idx = next((i for i, s in enumerate(seccions)
+                        if float(s[0]) + 1e-6 < t < float(s[1]) - 1e-6), None)
+            if idx is not None:
+                try:
+                    seccions = pipeline.parteix_seccio(
+                        seccions, idx, t, marge=self.MIN_SECCIO_S)
+                except ValueError as e:
+                    self.log(f"marcador: no s'ha pogut partir l'estructura ({e})")
+                    seccions = list(self.seccions or [])
         self._undo_marca()
         self.marcadors = marques
+        self.marcador_tipus[round(float(t), 6)] = tipus
         if [tuple(x) for x in trams] != [tuple(x) for x in
                                          (self.tempo_trams or [])]:
             self.aplica_tempo_trams(trams)
@@ -2863,8 +2872,11 @@ class Visor(QMainWindow):
         self._pinta_marcadors()
         self._sincronitza_vista()
         try:
-            pipeline.desa_marcadors(self._carpeta_acords(), self.marcadors)
-        except OSError as e:
+            pipeline.desa_marcadors(
+                self._carpeta_acords(),
+                [(m, self.marcador_tipus.get(round(float(m), 6), "seccio"))
+                 for m in (self.marcadors or [])])
+        except Exception as e:  # noqa: BLE001
             self.log(f"marcadors: no s'han pogut desar ({e})")
         self.log(f"marcador a {t:.3f}s (n'hi ha {len(self.marcadors)})")
         return True
@@ -3036,7 +3048,10 @@ class Visor(QMainWindow):
         self._undo_commit()
         self._pinta_marcadors()
         try:
-            pipeline.desa_marcadors(self._carpeta_acords(), self.marcadors)
+            pipeline.desa_marcadors(
+                self._carpeta_acords(),
+                [(m, self.marcador_tipus.get(round(float(m), 6), "seccio"))
+                 for m in (self.marcadors or [])])
         except OSError:
             pass
         self.log(f"marcador esborrat (en queden {len(self.marcadors)})")
@@ -3045,7 +3060,9 @@ class Visor(QMainWindow):
     def _pinta_marcadors(self):
         tl = getattr(self, "timeline", None)
         if tl is not None and hasattr(tl, "set_marcadors"):
-            tl.set_marcadors(list(self.marcadors or []))
+            marques = [(m, self.marcador_tipus.get(round(float(m), 6), "seccio"))
+                       for m in (self.marcadors or [])]
+            tl.set_marcadors(marques)
 
     def aplica_ancoratges(self, trams, offset, seccions=None,
                           msg="Anàlisi guiat (ancoratges)"):

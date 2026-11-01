@@ -612,14 +612,19 @@ class Finestra(QMainWindow):
         # «Anàlisi guiat» passa a ser una GUIA (informació) i el treball real
         # es fa amb marcadors en viu: `+` o este botó.
         self.b_guia.clicked.connect(self._obre_guia_rapida)
-        self.b_marker = QPushButton("＋ Marker")
+        self.b_marker = QPushButton("＋ Secció")
         self.b_marker.setObjectName("secundari")
         self.b_marker.setToolTip(
-            "Marca l'inici d'un compàs en el punt del cursor (tecla +). Crea "
-            "un inici de clip a BPM/compàs i a estructura; després el marcador "
-            "és independent dels clips.")
+            "Marca un compàs i una secció en el punt del cursor (tecla +).")
         self.b_marker.setEnabled(False)
-        self.b_marker.clicked.connect(self._afegeix_marcador)
+        self.b_marker.clicked.connect(lambda: self._afegeix_marcador("seccio"))
+
+        self.b_marker_compas = QPushButton("＋ Compàs")
+        self.b_marker_compas.setObjectName("secundari")
+        self.b_marker_compas.setToolTip(
+            "Marca només un compàs en el punt del cursor (sense secció).")
+        self.b_marker_compas.setEnabled(False)
+        self.b_marker_compas.clicked.connect(lambda: self._afegeix_marcador("compas"))
 
         # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
         #    (abans era un QGroupBox «2 · Temps i paràmetres»)
@@ -777,6 +782,7 @@ class Finestra(QMainWindow):
         barra.addWidget(b_obre)
         barra.addWidget(self.b_guia)
         barra.addWidget(self.b_marker)
+        barra.addWidget(self.b_marker_compas)
         barra.addSeparator()
         barra.addWidget(self.b_mode_bpm)
         barra.addWidget(self.b_mode_lliure)
@@ -1544,13 +1550,13 @@ class Finestra(QMainWindow):
         bpm = res.get("bpm")
         return float(bpm) if bpm else None
 
-    def _afegeix_marcador(self):
+    def _afegeix_marcador(self, tipus="seccio"):
         """Marca un inici de compàs al cursor (o mentre sona). Tecla `+`."""
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             self.avisa("Marcador", "Primer obri una WAV.")
             return False
-        ok = bool(vr.afegeix_marcador())
+        ok = bool(vr.afegeix_marcador(tipus=tipus))
         if ok:
             self.registra(f"Marcador a {vr.pos:.3f}s "
                           f"({len(vr.marcadors)} en total)")
@@ -3239,6 +3245,7 @@ class Finestra(QMainWindow):
             self.b_exec.setEnabled(False)
             self.b_guia.setEnabled(False)
             self.b_marker.setEnabled(False)
+            self.b_marker_compas.setEnabled(False)
             self._mostra_placeholder_visor()
             return
         try:
@@ -3330,6 +3337,7 @@ class Finestra(QMainWindow):
             self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
             self.b_guia.setEnabled(True)
             self.b_marker.setEnabled(True)
+            self.b_marker_compas.setEnabled(True)
             # Si el visor ja porta MODEL (projecte obert, o anàlisi feta), les
             # exportacions també han d'estar disponibles. Abans només
             # s'activaven al final d'una ANÀLISI → OBRIR UN PROJECTE deixava
@@ -4240,6 +4248,7 @@ class Finestra(QMainWindow):
         self.b_exec.setEnabled(False)
         self.b_guia.setEnabled(False)        # res de guiat mentre s'analitza
         self.b_marker.setEnabled(False)
+        self.b_marker_compas.setEnabled(False)
         self.b_export.setEnabled(False)
         self.b_export_part.setEnabled(False)
         _ana = self.opcions.get("analisi") or {}
@@ -4259,14 +4268,14 @@ class Finestra(QMainWindow):
         self.b_exec.setEnabled(True)
         self.b_guia.setEnabled(True)
         self.b_marker.setEnabled(True)
-        if be:
-            self.b_export.setEnabled(True)
-            self.b_export_part.setEnabled(True)
-            self.registra("FET ✅ — ara pots revisar el visor i fer «Exporta WAV's».")
-            self.barra.setValue(100)
-            # El CRU de l'anàlisi es desa DINS el document (un sol fitxer).
-            ana = getattr(self.feina, "analisi", None)
-            if ana is not None and self.projecte is not None:
+        self.b_marker_compas.setEnabled(True)
+        self.b_export.setEnabled(True)
+        self.b_export_part.setEnabled(True)
+        self.registra("FET ✅ — ara pots revisar el visor i fer «Exporta WAV's».")
+        self.barra.setValue(100)
+        # El CRU de l'anàlisi es desa DINS el document (un sol fitxer).
+        ana = getattr(self.feina, "analisi", None)
+        if ana is not None and self.projecte is not None:
                 net = projecte.saneja_analisi(ana)
                 if net is None:
                     self.registra("AVÍS: l'anàlisi és massa gran (o no vàlida) "
@@ -4282,9 +4291,9 @@ class Finestra(QMainWindow):
                 except OSError as e:
                     self.registra(f"AVÍS: no s'ha pogut desar l'anàlisi al "
                                   f"projecte: {e}")
-            wav = self.wav_edit.text().strip()
-            if wav and os.path.isfile(wav):
-                self._carrega_visor(wav)
+        wav = self.wav_edit.text().strip()
+        if wav and os.path.isfile(wav):
+            self._carrega_visor(wav)
             # BPM detectat per l'anàlisi: al transport (tram 0) DESPRÉS de
             # carregar el visor, que si no el sobreescriu amb el del projecte.
             b_det = getattr(self.feina, "bpm_detectat", None)

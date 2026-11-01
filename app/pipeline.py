@@ -2158,13 +2158,22 @@ def desa_marcadors(carpeta, marques):
 
 
 def _escriu_marcadors(f, marques):
-    f.write("t_s\n")
-    for t in marques or ():
-        f.write(f"{float(t):.6f}\n")
+    # Format nou (Fase 4): `t_s,tipus` (tipus = compas | seccio).
+    f.write("t_s,tipus\n")
+    for item in marques or ():
+        if isinstance(item, (tuple, list)):
+            t, tipus = item[0], item[1] if len(item) > 1 else "seccio"
+        else:
+            t, tipus = item, "seccio"
+        f.write(f"{float(t):.6f},{tipus}\n")
 
 
 def llegeix_marcadors(carpeta, durada=0.0):
-    """Llig els marcadors del projecte (llista buida si no n'hi ha)."""
+    """Llig els marcadors del projecte (llista de temps en segons).
+
+    Manté la signatura antiga (llista de floats) per compatibilitat. Els tipus
+    es lliguen amb `llegeix_marcadors_tipus`.
+    """
     from app import marcadors as _m
     if not carpeta:
         return []
@@ -2173,7 +2182,8 @@ def llegeix_marcadors(carpeta, durada=0.0):
     try:
         with open(ruta, encoding="utf-8") as f:
             for linia in f:
-                text = linia.strip().split(",")[0]
+                parts = linia.strip().split(",")
+                text = parts[0]
                 if not text or text.lower().startswith("t_"):
                     continue
                 try:
@@ -2183,6 +2193,31 @@ def llegeix_marcadors(carpeta, durada=0.0):
     except OSError:
         return []
     return _m.normalitza_marcadors(out, float(durada or 1e9))
+
+
+def llegeix_marcadors_tipus(carpeta):
+    """Llig el mapa temps→tipus dels marcadors (buit si no n'hi ha)."""
+    if not carpeta:
+        return {}
+    ruta = os.path.join(str(carpeta), NOM_MARCADORS)
+    out = {}
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            for linia in f:
+                parts = linia.strip().split(",")
+                if not parts or parts[0].lower().startswith("t_"):
+                    continue
+                try:
+                    t = float(parts[0])
+                except ValueError:
+                    continue
+                tipus = parts[1].strip() if len(parts) > 1 else "seccio"
+                if tipus not in ("compas", "seccio"):
+                    tipus = "seccio"
+                out[round(t, 6)] = tipus
+    except OSError:
+        return {}
+    return out
 
 
 def desa_tempo_map(carpeta, trams):
