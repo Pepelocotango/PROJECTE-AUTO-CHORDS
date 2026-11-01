@@ -288,6 +288,19 @@ widgets, netegen amb `tests/_qt_neteja.py`. Si afegeixes un test nou, importa
 - **Criteri**: cap idea de futur pot **trencar una regla d'or**; el que afegeixes
   ha de mantenir l'app **simple, coherent i predictible**.
 
+## 📋 Documents claus
+
+| Finalitat | Document | Quan actualitzar-lo |
+|-----------|----------|---------------------|
+| Entendre el projecte i les normes | `AGENTS.md` | Sempre que canviï l'estat del projecte |
+| Contracte (regles d'or) | `docs/REGLES_DE_LA_APP.md` | Només amb aprovació explícita de l'operador |
+| Flux de dades (model, cru) | `docs/FLUX_DE_DADES.md` | Si canvia el model o els fitxers |
+| Historial de canvis | `CHANGELOG.md` | Cada canvi de comportament (amb data) |
+| Full de ruta i fases | `ROADMAP.md` | Si canvia l'estat de les fases |
+| Interfície | `docs/ESQUEMA_UI.md` | Si canvia la UI |
+| Entorn, build i CI | `DEVELOPING.md` | Només si canvia l'entorn/build/CI |
+| Producte (usuari) | `README.md` | Només si canvia el producte visible |
+
 ## 📚 Recursos
 
 - `README.md` — el producte (per a l'usuari).
