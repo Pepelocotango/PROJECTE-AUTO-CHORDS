@@ -34,6 +34,10 @@
 
 ## 📍 Estat actual (relleu de sessió, 2026-11-01)
 
+> **Norma per a agents:** qualsevol agent que treballi en el codi ha
+> d'**actualitzar aquesta secció** (reescriure-la, **no** incrementalment:
+> reflectir l'estat actual, no l'historial). L'historial viu al `CHANGELOG.md`.
+
 Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3, 4, 5**.
 Pendents: 6 (edició d'àudio), 7 (rubato exportat), 10 (motor detecció). Ajornades: 8, 9, 11.
 
