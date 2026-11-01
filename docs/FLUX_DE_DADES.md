@@ -105,11 +105,11 @@ es van fer servir.
    `.acproj` (que ja porta el cru) + els 4 CSV del MODEL. **No** copia l'àudio
    ni els exports.
 
-8. **Àudio editable (proposta, no implementada).** La còpia WAV interna serà el
-   mitjà de treball per a una futura edició dels extrems. Els fitxers exportats
-   en altres formats seran derivats independents i no substituiran aquesta còpia.
-   Cal resoldre còpia de seguretat, desfer/refer i sincronització temporal amb el
-   MODEL abans d'implementar-ho; el contracte canònic continua sent l'autoritat.
+8. **Àudio editable (aprovat, no implementat).** La còpia WAV interna serà el
+   mitjà de treball per a l'edició dels extrems. Els fitxers exportats en altres
+   formats seran derivats independents i no substituiran aquesta còpia. En
+   implementar-ho, els backups inclouran també el WAV de treball perquè es
+   restauren junts l'àudio i el MODEL; vegeu el §13.9 del contracte canònic.
 
 ## 5. Referència al codi
 

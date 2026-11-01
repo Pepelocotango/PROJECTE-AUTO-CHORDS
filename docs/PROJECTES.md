@@ -63,6 +63,10 @@ actual encara pot crear aquest fitxer intermedi; vegeu
   **cru de l'anàlisi** (que viatja dins el `.acproj`). **NO** copia l'àudio (`audio/`) ni els
   exports (`wavs_*`, `partitura/`), que es **deriven** i són grossos. **No duplica**
   si el contingut no ha canviat des de l'última còpia.
+- **Quan s'implemente l'edició d'àudio**: els backups hauran d'incloure el WAV
+  de treball perquè una restauració recupere l'àudio i el model del mateix
+  estat (§13.9 de `REGLES_DE_LA_APP.md`). Aquest comportament encara no està
+  implementat.
 - **Rotació**: es guarden les **10** còpies més noves (`MAX_BACKUPS`).
 - **Sessió / crash**: `sessio.json` (al **directori d'estat**, com el log) s'escriu amb un
   projecte obert i es **neteja al tancament net**; si l'app va **caure**, a l'arrencada

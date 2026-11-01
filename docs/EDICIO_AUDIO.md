@@ -71,24 +71,28 @@ flux fàcil d'entendre —importar, veure la forma d'ona, editar, desfer i expor
 - L'original de fora del projecte es conserva intacte. El projecte conté una
   sola còpia editable en WAV; les exportacions són fitxers derivats separats.
 
-## Regles i punts previs a implementar
+## Contracte i validacions pendents
 
-- El desplaçament del model en retallar/afegir silenci al principi i la
-  representació `N` són decisions de producte acordades, però s'han de validar
-  contra la regla de cobertura i §13 abans de codificar-les.
+- El contracte per a la transformació conjunta de l'àudio i el model ja està
+  aprovat i documentat al §13.9 de
+  [`REGLES_DE_LA_APP.md`](REGLES_DE_LA_APP.md). La regla de cobertura continua
+  sent obligatòria en tots els tres carrils.
 - El punt de tall proper al pas per zero ha de quedar prou pròxim a la posició
   triada i reduir clics sense alterar de manera audible el fragment. Cal validar
   el comportament amb senyals sintètics mono i estèreo.
 - El canvi d'àudio i els canvis del model musical han de ser atòmics i desfer-se
   junts. Cal dissenyar com es desa l'historial d'àudio sense duplicar fitxers
   innecessàriament.
+- Les còpies de seguretat versionades han d'incloure també el WAV de treball:
+  restaurar-ne una ha de recuperar l'àudio i el model del mateix estat. Això
+  pot augmentar l'espai ocupat; la rotació existent limita el nombre de còpies.
 - La còpia de treball s'ha d'escriure primer en un temporal, validar-se i només
   després substituir la còpia del projecte. Si falla la conversió o la
   validació, no es modifica el projecte.
-- Les regles d'or vigents, inclosa la regla 6 sobre WAVs generades i el §13
-  sobre segons, graella i cobertura, continuen manant. Abans d'implementar, cal
-  revisar el contracte i demanar aprovació explícita si el comportament proposat
-  requereix canviar-lo; no s'ha de canviar el contracte per iniciativa pròpia.
+- Encara cal implementar i provar el contracte: transformacions als dos
+  extrems, cobertura i offset, desfer/refer, exportació, fallades atòmiques i
+  restauració conjunta des d'un backup. La regla 6 i la resta del §13 continuen
+  vigents.
 
 ## Inspiració en Audacity
 

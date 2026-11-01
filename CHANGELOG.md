@@ -5,6 +5,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Canviat (2026-11-01) — contracte per a edició bàsica d'àudio
+- **`docs/REGLES_DE_LA_APP.md`**: aclarit que la regla #6 protegeix els WAVs
+  musicals silenciosos generats, no la còpia WAV font del projecte.
+- Afegit el §13.9, aprovat per l'operador, per definir com retallar i afegir
+  silenci als extrems transformant alhora l'àudio, els temps del model, els
+  marcadors i l'offset. Es mantenen la cobertura total, l'àudio original i els
+  WAVs musicals exportats intactes; cada canvi és atòmic i desferable.
+- Els backups versionats hauran d'incloure el WAV de treball perquè l'àudio i el
+  model es restauren sempre des del mateix estat.
+- El §13.9 és un requisit documentat, encara no implementat; els tests i el
+  codi s'afegiran en la fase corresponent.
+
 ### Corregit (2026-10-25) — les edicions mètriques mantenen la duració en segons
 - **`app/tempo_map.py`**: afegit paràmetre opcional `preserva_fi_idx` a
   `neteja_trams()`, `normalitza_trams()` i `valida_i_normalitza_compassos()` per

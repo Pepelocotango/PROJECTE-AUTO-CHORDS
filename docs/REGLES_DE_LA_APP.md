@@ -6,9 +6,10 @@
 > regla, es canvia **la funcionalitat**, no la regla (tret de decisió explícita
 > de l'operador, que s'ha de documentar aquí **i** al `CHANGELOG`).
 >
-> Cada regla té la seva **validació** al codi i un **test** que la comprova
-> (les 1–19, totes amb el seu test). L'**auditoria continuada** (prova de mutació,
-> regla a regla) viu a `docs/archive/AUDITORIA_REGLES.md`.
+> Les regles numerades **1–19** tenen la seva **validació** al codi i un
+> **test** que les comprova. El §13.9 és un requisit nou aprovat, però està
+> **pendent d'implementació i de tests**. L'**auditoria continuada** (prova de
+> mutació, regla a regla) viu a `docs/archive/AUDITORIA_REGLES.md`.
 > Referenciades a `ROADMAP_HISTORIA.md` (§Notes d'implementació) i `DEVELOPING.md`.
 >
 > ## ‼️ S'HA DE COMPLIR **SEMPRE** — a TOTS els punts
@@ -100,10 +101,13 @@ sense el mapa derivat (CSV i graella discrepant).
 → `visor._refresca_tempo_map` (punt únic model ↔ mapa ↔ transport).
 test `tests/test_edicio.py` › `TestRegla5FontDeVeritat`.
 
-## 6. Les WAVs només via `pipeline.exporta_total()`
-L'edició **mai** toca les WAVs generades; només s'escriuen en **exportar**, des
-del backend `pipeline.exporta_total(...)`. La UI hi delega via els mètodes
-`exporta()` (`app.visor` / `app.main`). «Mai toca els WAVs generats.»
+## 6. Els WAVs musicals generats només via `pipeline.exporta_total()`
+L'edició **mai** toca els WAVs silenciosos generats per als acords i les
+seccions; només s'escriuen en **exportar**, des del backend
+`pipeline.exporta_total(...)`. La UI hi delega via els mètodes `exporta()`
+(`app.visor` / `app.main`). La còpia WAV de treball del projecte és l'àudio
+font i es pot editar d'acord amb el **§13.9**; això no autoritza a modificar
+els WAVs musicals generats.
 → Paritat d'exportació dels **3 carrils**: vegeu la **regla 12**.
 
 ## 7. Instància única
@@ -397,6 +401,51 @@ test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026
 - **Codi:** `tempo_map.retempo_tram_detectat` · `app/tempo.py` ·
 `pipeline.desa_tempo_map`
 - **Test:** `test_pipeline` · `test_tempo_trams`
+
+### 13.9 Edició de l'àudio del projecte
+
+> **Estat:** requisit de producte aprovat (2026-11-01), pendent d'implementació
+> i dels tests de regressió corresponents.
+
+- L'edició afecta només la **còpia WAV de treball** dins del projecte; l'original
+  importat es conserva. Els WAVs silenciosos generats per als acords/seccions no
+  es modifiquen (regla #6).
+- La retallada i l'afegit de silenci als extrems són una transformació conjunta
+  del fitxer d'àudio i del model en segons:
+  - En retallar l'inici `t`, s'elimina l'àudio anterior al tall; els elements
+    musicals, marcadors i fronteres que queden es desplacen `−t`, i l'offset
+    també es desplaça `−t`. El contingut anterior al nou zero desapareix.
+  - En retallar el final a `D`, els elements posteriors a `D` s'eliminen i els
+    intervals que travessen `D` s'escurcen; la durada nova del WAV és `D`.
+  - En afegir silenci a l'inici `t`, el so existent i les seves referències
+    musicals es desplacen `+t`; l'offset es desplaça `+t`. Es crea un interval
+    d'acord `N` per al silenci i la secció existent el continua cobrint.
+  - En afegir silenci al final, la cobertura s'estén fins a la nova durada amb
+    acord `N`; la secció existent i l'últim tram del mapa cobreixen l'extensió.
+- Després de cada operació, acords, seccions i mapa continuen ordenats,
+  contigus i cobrint `[0, durada WAV]` (regles #1–4 i §13.3). El mapa conserva
+  la relació entre compassos, offset i els mateixos instants musicals; el
+  pre-roll i el final poden continuar sent parcials segons §13.4.
+- L'edició d'àudio és una acció explícita diferent d'un canvi de BPM/compàs:
+  **§13.1 continua vigent** —canviar el tempo no mou els clips—; en canvi,
+  retallar o inserir àudio transforma els temps perquè les marques segueixin el
+  mateix so. Les restriccions de gest de §13.6 per a les vores del mapa no
+  autoritzen ni prohibeixen aquesta operació d'àudio.
+- Cada operació mostra una previsualització durant l'arrossegament i s'aplica en
+  deixar anar; àudio i model són **atòmics** i una sola acció de desfer/refer.
+  L'ajust a línies de compàs és commutable; la proposta automàtica de silenci
+  per completar compassos necessita confirmació. El tall s'ajusta al pas per
+  zero més pròxim per reduir clics, sense fades automàtiques.
+- Els canvis s'escriuen primer en un temporal i es validen abans de substituir
+  la còpia del projecte. Un error no pot deixar l'àudio i el model en estats
+  diferents.
+- Les còpies de seguretat versionades inclouen també el WAV de treball, perquè
+  restaurar una còpia recupere l'àudio i el model del mateix estat.
+- **Codi i tests:** pendents. Abans de donar-ho per implementat, afegir proves
+  de retall/afegit als dos extrems, transformació de l'offset i les marques,
+  cobertura dels tres carrils, silenci `N`, previsualització/confirmació,
+  pas per zero mono/estèreo, exportació, desfer/refer, fallada atòmica i
+  restauració conjunta d'àudio i model des d'un backup.
 
 ### Com s'aplica (notes d'implementació)
 
