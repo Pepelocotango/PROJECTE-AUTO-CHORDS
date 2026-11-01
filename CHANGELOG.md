@@ -5,6 +5,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit — avaluació del tempo sobre corpus local
+- `eines/avalua_tempo.py` calcula error de BPM i downbeat, alineació dels
+  compassos dins ±70 ms, compassos sobrants/absents, error màxim i deriva.
+- El corpus d'àudio queda local i opcional; la prova sintètica no necessita
+  plugins ni fitxers comercials. Sense anotacions, l'eina informa que no hi ha
+  dades en lloc d'inventar una línia base.
+- Validats els camps opcionals de les anotacions per evitar errors de tipus
+  (`None` cap a `float`/`int`); l'avaluador queda sense diagnòstics Pylance.
+- Les notes de verificació i el format de les anotacions són a
+  `docs/NOTES_VERIFICACIO.md`.
+
 ### Afegit — edició bàsica dels extrems d'àudio
 - Les nanses de la forma d'ona retallen o afegeixen silenci a l'inici i al final;
   la previsualització acompanya el gest i reutilitza el snap del timeline.

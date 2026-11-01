@@ -37,6 +37,8 @@
 
 | Doc | Què explica |
 |---|---|
+| `../00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` | Pla acordat per fases; la fase 0 incorpora l'avaluador local de tempo i la fase 1 és el pas següent. |
+| `NOTES_VERIFICACIO.md` | Verificacions de la fase 0: avaluador, destins TAP/guia i mapa de proves de les regles. |
 
 > Els refactors **acabats** viuen a `archive/` (p. ex. `REFACTOR_INICI_FI.md`):
 > es conserven com a contracte i rastre, però ja no descriuen estat viu.

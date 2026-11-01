@@ -24,6 +24,16 @@ Context: anàlisi del projecte AUTO CHORDS del 25-10-2026.
 
 ## Fase 0 — Línia base i corpus de prova
 
+> **Estat: completada (2026-11-01, commit local pendent de publicar).**
+> Avaluador, mètriques sintètiques, comprovacions de tipus i notes de
+> verificació afegits. L'avaluador passa sis proves específiques i la suite
+> completa passa amb 1.417 tests correctes i 1 omés; `pyflakes` i Pylance
+> queden nets. No hi ha corpus real autoritzat; la línia base amb àudio queda
+> pendent de rebre'l.
+
+> **Pas següent:** fase 1, centralitzar i unificar la validació del tempo i
+> compàs. Encara no s'ha començat ni s'ha canviat el contracte de les regles.
+
 **Per què**: sense mesura no es pot saber si un canvi millora o empitjora l'anàlisi.
 
 Tasques:
