@@ -82,11 +82,13 @@ def seccions_de_ancoratges(ancoratges, durada, intro="Intro"):
 
 def bpm_de_n(n, num, den, dt):
     """BPM que fa que `n` compassos `num/den` duren exactament `dt` (R4)."""
-    n, num, den, dt = int(n), int(num), int(den), float(dt)
+    n, dt = int(n), float(dt)
+    _, num, den = tempo_map.valida_tempo(
+        tempo_map.BPM_EDIT_MIN, num, den)
     if dt <= 0:
         raise ValueError("La durada de l'interval ha de ser positiva")
-    if n < 1 or num < 1 or den < 1:
-        raise ValueError("n, num i den han de ser enters positius")
+    if n < 1:
+        raise ValueError("n ha de ser un enter positiu")
     return float(n) * float(num) * (4.0 / float(den)) * 60.0 / dt
 
 
@@ -112,10 +114,13 @@ def normalitza_ancoratges(ancoratges, durada, separacio_min=SEPARACIO_MIN):
                     f"Ancoratge {k + 1}: format no reconegut") from None
         try:
             t = float(t)
-            num = int(num)
-            den = int(den)
         except (TypeError, ValueError):
             raise ValueError(f"Ancoratge {k + 1}: valors no numèrics") from None
+        try:
+            _, num, den = tempo_map.valida_tempo(
+                tempo_map.BPM_EDIT_MIN, num, den)
+        except ValueError as e:
+            raise ValueError(f"Ancoratge {k + 1}: {e}") from None
         if not math.isfinite(t):
             raise ValueError(f"Ancoratge {k + 1}: temps no vàlid")
         if num < 1 or den < 1:

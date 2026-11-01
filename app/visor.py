@@ -229,8 +229,12 @@ class Visor(QMainWindow):
             [], self.seccions, self._durada_wav(), log=self.log)
         # Mapa de TEMPO i COMPÀS: dels CSVs del projecte o, si no n'hi
         # ha, un **sol tros** amb el BPM·compàs actual (zero canvi visible).
+        self._avisos_csv_tempo = []
         self.tempo_trams = pipeline.llegeix_tempo_map(
-            self._carpeta_acords(), self.bpm, self.bpb, 4, self._durada_wav())
+            self._carpeta_acords(), self.bpm, self.bpb, 4,
+            self._durada_wav(), log=self._avisos_csv_tempo.append)
+        for avís in self._avisos_csv_tempo:
+            self.log(f"tempo CSV: {avís}")
         # Neteja els duplicats de l'anàlisi/projectes vells: dos trams
         # adjacents amb el mateix BPM i compàs no són cap canvi musical.
         self.tempo_trams = tempo_map.fusiona_trams_iguals(
@@ -786,13 +790,13 @@ class Visor(QMainWindow):
         """
         trams = list(self.tempo_trams or [])
         if not trams:
-            trams = [(0.0, self._durada_wav(), float(bpm), int(num), int(den))]
+            trams = [(0.0, self._durada_wav(), float(bpm), num, den)]
         idx = min(max(0, int(idx)), len(trams) - 1)
         try:
             nous = tempo_map.canvia_bpm_local(
                 trams, idx, float(bpm), self._durada_wav(),
                 offset=getattr(self, "offset", 0.0),
-                num=int(num), den=int(den))
+                num=num, den=den)
         except ValueError as e:
             self.avis_editor(f"Tempo: {e}")
             return False
@@ -2873,11 +2877,13 @@ class Visor(QMainWindow):
         decidix res: l'ambigüitat doble/meitat la resol l'operador).
         """
         from app import marcadors as M
-        num = int(num or self.bpb)
-        den = int(den or getattr(self, "beat_type", 4))
+        num = self.bpb if num is None else num
+        den = getattr(self, "beat_type", 4) if den is None else den
+        preferit = self.bpm if preferit is None else preferit
+        _, num, den = tempo_map.valida_tempo(preferit, num, den)
         return M.candidats_bpm(
             list(self.marcadors or ()), num, den, bpm_min, bpm_max,
-            preferit=float(preferit if preferit else self.bpm))
+            preferit=float(preferit))
 
     def aplica_bpm_marcadors(self, candidat, num=None, den=None):
         """Reescriu el mapa amb el BPM deduït dels marcadors (1 sol desfer).
@@ -2894,8 +2900,14 @@ class Visor(QMainWindow):
         if len(ms) < 2:
             self.avis_editor("Calen almenys dos marcadors per a traure el BPM")
             return False
-        num = int(num or self.bpb)
-        den = int(den or getattr(self, "beat_type", 4))
+        num = self.bpb if num is None else num
+        den = getattr(self, "beat_type", 4) if den is None else den
+        try:
+            bpm_ref, num, den = tempo_map.valida_tempo(
+                candidat.get("bpm"), num, den)
+        except (AttributeError, ValueError) as e:
+            self.avis_editor(f"BPM marcadors: {e}")
+            return False
         durada = self._durada_wav()
         inter = list(candidat.get("intervals") or ())
         if len(inter) != len(ms) - 1:
@@ -2908,6 +2920,12 @@ class Visor(QMainWindow):
             trams.append((ini, fi, float(bpm_i), num, den))
             ini = fi
         trams.append((ini, durada, float(inter[-1][2]), num, den))
+        try:
+            trams = tempo_map.valida_i_normalitza_compassos(
+                trams, durada, offset=float(ms[0]))
+        except ValueError as e:
+            self.avis_editor(f"BPM marcadors: {e}")
+            return False
         self._undo_marca()
         try:
             self.offset = float(ms[0])
@@ -2916,7 +2934,7 @@ class Visor(QMainWindow):
                 return False
         finally:
             self._undo_commit()
-        self.bpm = float(candidat.get("bpm") or self.bpm)
+        self.bpm = bpm_ref
         self.bpb = num
         self.beat_type = den
         self._actualitza_temps()
@@ -4222,15 +4240,11 @@ class Visor(QMainWindow):
                     "(num/den · 0/0 = segons).")
                 return
             num, den = int(m.group(1)), int(m.group(2))
-            if num <= 0 or den <= 0:
-                num = den = 0          # 0/0 explícit = en segons
-            elif not (1 <= num <= 12) or not (1 <= den <= 16):
-                self.avis_editor(
-                    f"Compàs {num}/{den} fora de rang (1–12 sobre 1–16).")
-                return
-        if num <= 0:
-            if bpm < 1.0:
-                bpm = 100.0
+        try:
+            bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
+        except ValueError as e:
+            self.avis_editor(str(e))
+            return
         # ---- Inici / Fi (s): moure la FRONTERA (§13.6) --------------------
         ini, fi = float(trams[i][0]), float(trams[i][1])
         bpm0, num0, den0 = (float(trams[i][2]), int(trams[i][3]),

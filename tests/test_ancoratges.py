@@ -431,6 +431,12 @@ class TestValidacions(unittest.TestCase):
         with self.assertRaises(ValueError):
             A.encaixa_ancoratges([(0, 4, 0), (8, 4, 4)], 8.0, [120.0])
 
+    def test_denominadors_no_admesos_i_compas_fraccionari(self):
+        for compas in ((4, 1), (4, 16), (4.5, 4)):
+            with self.subTest(compas=compas), self.assertRaises(ValueError):
+                A.normalitza_ancoratges(
+                    [(0.0, *compas), (8.0, 4, 4)], 10.0)
+
 
 class TestVerificacio(unittest.TestCase):
     def test_bona(self):

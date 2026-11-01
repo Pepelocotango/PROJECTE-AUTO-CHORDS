@@ -31,9 +31,6 @@ Context: anàlisi del projecte AUTO CHORDS del 25-10-2026.
 > queden nets. No hi ha corpus real autoritzat; la línia base amb àudio queda
 > pendent de rebre'l.
 
-> **Pas següent:** fase 1, centralitzar i unificar la validació del tempo i
-> compàs. Encara no s'ha començat ni s'ha canviat el contracte de les regles.
-
 **Per què**: sense mesura no es pot saber si un canvi millora o empitjora l'anàlisi.
 
 Tasques:
@@ -52,6 +49,15 @@ Tasques:
 ---
 
 ## Fase 1 — Constants i validació unificades
+
+> **Estat: completada.** Constants compartides i validador connectats a les
+> superfícies d'entrada, reparació avisada dels CSV i proves de regressió.
+> Acceptació verificada amb 1.435 proves correctes i 1 omesa; `pyflakes` i
+> `git diff --check` nets.
+>
+> **Continuació:** la fase següent és la 2 (fuzzer d'invariants i proposta de
+> regles). No s'ha començat. Executar-la com un bloc separat i parar abans
+> d'aplicar canvis al contracte fins a tindre l'aprovació requerida.
 
 **Per què**: és el *Must* del roadmap; hi ha 6 rangs diferents de BPM/compàs repartits.
 

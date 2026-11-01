@@ -9,17 +9,18 @@ Tot en català.
 """
 
 import json
+import math
 import time
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
     QFormLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-    QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget,
+    QMessageBox, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget,
     QVBoxLayout, QWidget,
 )
 
-from app import config, graella, tempo, tempo_map, vamp_params
+from app import config, graella, limits, tempo, tempo_map, vamp_params
 
 # Traducció al català dels títols dels paràmetres del Chordino (els que dona
 # el plugin son en anglès) + una ajuda curta de quan tocar-los.
@@ -223,10 +224,14 @@ class DialegOpcions(QDialog):
         self._controls["bpm"]["motor"] = c
         f.addRow(QLabel("Motor de detecció"), c)
         for clau, etiqueta, (mn, mx, pas) in (
-                ("min", "Rang de cerca · mínim (BPM)", (30, 400, 1)),
-                ("max", "Rang de cerca · màxim (BPM)", (30, 400, 1)),
-                ("pref_min", "Rang preferit · mínim (BPM)", (30, 400, 1)),
-                ("pref_max", "Rang preferit · màxim (BPM)", (30, 400, 1))):
+                ("min", "Rang de cerca · mínim (BPM)",
+                 (limits.BPM_MIN, limits.BPM_MAX, 1)),
+                ("max", "Rang de cerca · màxim (BPM)",
+                 (limits.BPM_MIN, limits.BPM_MAX, 1)),
+                ("pref_min", "Rang preferit · mínim (BPM)",
+                 (limits.BPM_MIN, limits.BPM_MAX, 1)),
+                ("pref_max", "Rang preferit · màxim (BPM)",
+                 (limits.BPM_MIN, limits.BPM_MAX, 1))):
             s = _spin(mn, mx, pas, d.get(clau, DEFECTES["bpm"][clau]), 0)
             self._controls["bpm"][clau] = s
             f.addRow(QLabel(etiqueta), s)
@@ -657,48 +662,62 @@ class DialegTempoMapa(QDialog):
         """Llegeix la taula cap a `self._trams` (encara per normalitzar)."""
         out = []
         for r in range(self.taula.rowCount()):
-            def _t(c, d):
+            def _t(c):
                 it = self.taula.item(r, c)
-                return ((it.text().strip() if it else "") or d)
+                return it.text().strip() if it else ""
             # El PRIMER argument de `_t` és la COLUMNA (un int): abans hi
             # passaven strings ("0"/"1"/"2"), cosa que feia petar
             # `self.taula.item(r, "0")` amb TypeError — i no es capturava, així
             # que el diàleg del mapa PETAVA en afegir/eliminar un tram o en
             # prémer OK (auditoria 18-10-2026, destapat pel primer test que
             # exercita el diàleg).
-            txt_ini = _t(0, "0").replace(",", ".").strip().lower()
+            txt_ini = _t(0).replace(",", ".").strip().lower()
             try:
-                bpm = float(_t(1, "120").replace(",", "."))
+                bpm = float(_t(1).replace(",", "."))
                 if r == 0:
                     ini = 0.0
                 elif txt_ini.startswith("c"):
                     ini = self._temps_de_compas(txt_ini[1:])
                 else:
                     ini = float(txt_ini)
-            except (ValueError, IndexError):
-                continue
-            comp = _t(2, "4/4").replace(" ", "")
-            num, den = 4, 4
+            except (ValueError, IndexError) as e:
+                raise ValueError(f"Fila {r + 1}: BPM o inici no vàlid") from e
+            if not math.isfinite(ini):
+                raise ValueError(f"Fila {r + 1}: l'inici ha de ser finit")
+            if ini < 0:
+                raise ValueError(f"Fila {r + 1}: l'inici no pot ser negatiu")
+            if self._durada > 0 and ini >= self._durada:
+                raise ValueError(f"Fila {r + 1}: l'inici queda fora de la WAV")
+            if out and ini <= out[-1][0] + 1e-12:
+                raise ValueError(
+                    f"Fila {r + 1}: els inicis han d'anar en ordre creixent")
+            comp = _t(2).replace(" ", "")
             if "/" in comp:
                 try:
                     a, b = comp.split("/", 1)
                     num, den = int(a), int(b)
-                except ValueError:
-                    num, den = 4, 4
-            if num < 0 or den < 0:
-                continue
-            if num == 0 or den == 0:
-                # `0/0` = tros EN SEGONS (rubato): el BPM és la referència de
-                # notació (100 per defecte).
-                num = den = 0
-                bpm = bpm if bpm > 0 else 100.0
-            elif bpm <= 0:
-                # No es descarta la fila (abans desapareixia en silenci): es
-                # deixa al valor per defecte de `normalitza_trams`.
-                bpm = 120.0
+                except ValueError as e:
+                    raise ValueError(
+                        f"Fila {r + 1}: compàs «{comp}» no vàlid") from e
+            else:
+                raise ValueError(
+                    f"Fila {r + 1}: escriu el compàs com num/den o 0/0")
+            try:
+                bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
+            except ValueError as e:
+                raise ValueError(f"Fila {r + 1}: {e}") from e
             out.append((ini, ini, bpm, num, den))
-        if out:
-            self._trams = out
+        if not out:
+            raise ValueError("El mapa de tempo/compàs és buit")
+        self._trams = out
+
+    def accept(self):
+        try:
+            self.trams()
+        except ValueError as e:
+            QMessageBox.warning(self, "Mapa de tempo invàlid", str(e))
+            return
+        super().accept()
 
     def _temps_de_compas(self, text):
         """`33` / `33.1` (compàs[.temps]) → segons, segons el mapa actual."""
@@ -711,7 +730,11 @@ class DialegTempoMapa(QDialog):
         return float(mapa.t_de_pos(bar, beat))
 
     def _afegeix(self):
-        self._sync()
+        try:
+            self._sync()
+        except ValueError as e:
+            QMessageBox.warning(self, "Mapa de tempo invàlid", str(e))
+            return
         # `_sync` deixa els trams com `(ini, ini, …)` (el `fi` encara per
         # derivar): cal NORMALITZAR abans de calcular el punt mig del darrer
         # tram, o el mig ix igual que la frontera i el tall es descarta (el
@@ -729,7 +752,11 @@ class DialegTempoMapa(QDialog):
         r = self.taula.currentRow()
         if r <= 0:                               # no es toca el valor inicial
             return
-        self._sync()
+        try:
+            self._sync()
+        except ValueError as e:
+            QMessageBox.warning(self, "Mapa de tempo invàlid", str(e))
+            return
         self._trams = tempo_map.normalitza_trams(
             tempo_map.elimina_tall(self._trams, r), self._durada)
         self._omple()
@@ -760,9 +787,10 @@ class DialegTramTempo(QDialog):
         lay.addWidget(avis)
         form = QFormLayout()
         self.sp_bpm = QDoubleSpinBox()
-        self.sp_bpm.setRange(1.0, 1000.0)
+        self.sp_bpm.setRange(limits.BPM_MIN, limits.BPM_MAX)
         self.sp_bpm.setDecimals(3)
         self.sp_bpm.setValue(float(bpm))
+        self._den_defecte = int(den) if int(den) > 0 else 4
         self.ed_compas = QLineEdit(f"{int(num)}/{int(den)}")
         self.ed_compas.setPlaceholderText("4/4")
         form.addRow("BPM:", self.sp_bpm)
@@ -781,6 +809,14 @@ class DialegTramTempo(QDialog):
         botons.rejected.connect(self.reject)
         lay.addWidget(botons)
 
+    def accept(self):
+        try:
+            self.valors()
+        except ValueError as e:
+            QMessageBox.warning(self, "Tempo invàlid", str(e))
+            return
+        super().accept()
+
     def _segons_canviat(self, actiu):
         """En segons el compàs no té sentit: s'apaga l'edició del camp."""
         self.ed_compas.setEnabled(not bool(actiu))
@@ -788,18 +824,20 @@ class DialegTramTempo(QDialog):
     def valors(self):
         """`(bpm, num, den)`; 0/0 = clip en segons; «num/den» o «num»."""
         if self.chk_segons.isChecked():
-            return (float(self.sp_bpm.value()), 0, 0)
-        num, den = 4, 4
+            return tempo_map.valida_tempo(float(self.sp_bpm.value()), 0, 0)
+        num, den = 4, self._den_defecte
         txt = (self.ed_compas.text() or "").strip().replace(" ", "")
         if "/" in txt:
             try:
                 a, b = txt.split("/", 1)
                 num, den = int(a), int(b)
-            except ValueError:
-                num, den = 4, 4
+            except ValueError as e:
+                raise ValueError(f"El compàs «{txt}» no és vàlid") from e
         elif txt.isdigit():
             num = int(txt)
-        return (float(self.sp_bpm.value()), max(1, num), max(1, den))
+        else:
+            raise ValueError(f"El compàs «{txt}» no és vàlid")
+        return tempo_map.valida_tempo(float(self.sp_bpm.value()), num, den)
 
 
 # ---------------------------------------------------------------------------
@@ -885,7 +923,7 @@ class DialegGuiaBpm(QDialog):
     duplicar/partir amb ×2/÷2). Enter = Accepta; tancar = Cancel·la el guiat.
     """
 
-    BPM_MIN, BPM_MAX = 20.0, 300.0
+    BPM_MIN, BPM_MAX = limits.BPM_MIN, limits.BPM_MAX
 
     #: l'usuari ha canviat el BPM (teclat, ràtio, pastilla o TAP) → el
     #: metrònom de l'audició s'ha de moure a l'instant.
@@ -1183,7 +1221,12 @@ class DialegGuiaBpm(QDialog):
         v = self.valors()
         if v is None:
             return
-        v = min(self.BPM_MAX, max(self.BPM_MIN, v * float(f)))
+        v *= float(f)
+        if not self.BPM_MIN <= v <= self.BPM_MAX:
+            self.lb_estat.setText(
+                f"El resultat queda fora de {self.BPM_MIN:g}–"
+                f"{self.BPM_MAX:g} BPM.")
+            return
         self.ed_bpm.setText(f"{v:.2f}")
         self._emet_bpm()
 
@@ -1300,7 +1343,12 @@ class DialegGuiaBpm(QDialog):
         mitja = intervals[len(intervals) // 2]       # mediana: menys outliers
         if mitja <= 0:
             return
-        bpm = min(self.BPM_MAX, max(self.BPM_MIN, 60.0 / mitja))
+        bpm = 60.0 / mitja
+        if not self.BPM_MIN <= bpm <= self.BPM_MAX:
+            self.lb_tap.setText(
+                f"El tap queda fora de {self.BPM_MIN:g}–"
+                f"{self.BPM_MAX:g} BPM.")
+            return
         self.ed_bpm.setEnabled(True)
         self.b_ok.setEnabled(True)
         for b in (self.b_x2, self.b_mig, self.b_x43, self.b_x34):

@@ -290,10 +290,16 @@ test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026
   la WAV) poden ser a mig compàs; si un clip va **en segons** (§13.7), la seua
   frontera és lliure i el clip mètric del costat pot acabar o començar amb un
   **compàs parcial** (com el `*` dels marcadors de compàs de REAPER).
-- **Valors**: BPM 30–350 (`BPM_EDIT_MIN/MAX`) i compàs 1–12 sobre 1–16 (lligat a
-  la regla #8).
-- **Codi:** `tempo_map.valida_i_normalitza_compassos` · `_mapa_valida_sense_moure`
-- **Test:** `test_tempo_map::TestCompassosEnters`
+- **Valors**: BPM 30–350, numerador 1–12 i denominador 2, 4 o 8. `0/0` és
+  l'única excepció i representa un tram en segons (rubato; §13.7). Els límits
+  d'edició són compartits a `app/limits.py`.
+- Una entrada d'usuari amb BPM o compàs invàlid es rebutja amb avís i sense
+  mutació parcial; en carregar un CSV editat fora de l'app, el mapa es repara i
+  s'informa de què s'ha corregit.
+- **Codi:** `tempo_map.valida_tempo` · `neteja_trams` ·
+  `valida_i_normalitza_compassos` · `_mapa_valida_sense_moure`
+- **Test:** `test_tempo_map::TestValidaTempo` · `TestCompassosEnters` ·
+  `TestPersistencia` · proves GUI dels camps d'entrada
 
 ### 13.5 Re-tempo local (BPM i compàs)
 

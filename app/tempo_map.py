@@ -26,6 +26,8 @@ from __future__ import annotations
 import math
 from collections import namedtuple
 
+from app import limits
+
 # Tolerància temporal (evita falsos positius de coma flotant).
 TOL = 1e-9
 # Tolerància per a les fronteres de compàs en segons (els CSV guarden 1 µs).
@@ -33,6 +35,49 @@ TOL_COMPAS = 1e-4
 # BPM de seguretat (regla d'or #8): un valor no positiu no és vàlid i es
 # substitueix per aquest (el mateix que fa servir `TempoMap`).
 BPM_DEFECTE = 120.0
+BPM_EDIT_MIN = limits.BPM_MIN
+BPM_EDIT_MAX = limits.BPM_MAX
+
+
+def valida_tempo(bpm, num, den):
+    """Valida BPM i compàs; retorna `(bpm, num, den)` normalitzats.
+
+    `0/0` és l'única representació vàlida d'un tram en segons (rubato).
+    """
+    try:
+        b = float(bpm)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError("El BPM no és un número vàlid") from None
+    if not math.isfinite(b):
+        raise ValueError("El BPM ha de ser finit")
+    if not limits.BPM_MIN <= b <= limits.BPM_MAX:
+        raise ValueError(
+            f"El BPM ha d'estar entre {limits.BPM_MIN:g} i "
+            f"{limits.BPM_MAX:g}")
+
+    def _enter(valor, nom):
+        try:
+            n = float(valor)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError(f"El {nom} del compàs no és vàlid") from None
+        if not math.isfinite(n) or not n.is_integer():
+            raise ValueError(f"El {nom} del compàs ha de ser un enter")
+        return int(n)
+
+    numerador = _enter(num, "numerador")
+    denominador = _enter(den, "denominador")
+    if numerador == 0 and denominador == 0:
+        return b, 0, 0
+    if numerador == 0 or denominador == 0:
+        raise ValueError("El compàs ha de ser 0/0 per anar en segons")
+    if not limits.NUM_MIN <= numerador <= limits.NUM_MAX:
+        raise ValueError(
+            f"El numerador ha d'estar entre {limits.NUM_MIN} i "
+            f"{limits.NUM_MAX}")
+    if denominador not in limits.DENOMINADORS_ADMESOS:
+        valors = ", ".join(str(x) for x in limits.DENOMINADORS_ADMESOS)
+        raise ValueError(f"El denominador ha de ser {valors}")
+    return b, numerador, denominador
 
 # Un tros del mapa: temps i compàs constants dins `[ini, fi)`.
 #   bpm = negres per minut · num/den = compàs (p. ex. 4/4, 6/8, 12/8)
@@ -562,8 +607,22 @@ def neteja_trams(trams, durada, preserva_fi_idx=None):
     """
     durada = float(durada or 0.0)
     net, avisos = [], []
-    for t in sorted(trams or (), key=lambda x: float(x[0])):
-        ini = float(t[0])
+    def _clau_inici(t):
+        try:
+            ini = float(t[0])
+        except (TypeError, ValueError, IndexError):
+            return 0.0
+        return ini if math.isfinite(ini) else 0.0
+
+    for t in sorted(trams or (), key=_clau_inici):
+        try:
+            ini = float(t[0])
+        except (TypeError, ValueError, IndexError):
+            avisos.append("Un tram tenia un inici invàlid: s'ha descartat.")
+            continue
+        if not math.isfinite(ini):
+            avisos.append("Un tram tenia un inici no finit: s'ha posat a 0.")
+            ini = 0.0
         # Regla d'or #8 (temps vàlids): cap inici negatiu ni cap valor
         # impossible: es porta al valor vàlid en comptes de propagar-lo.
         if ini < -TOL:
@@ -582,19 +641,32 @@ def neteja_trams(trams, durada, preserva_fi_idx=None):
             continue
         try:
             fi0 = float(t[1])
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, IndexError):
+            fi0 = ini
+        if not math.isfinite(fi0):
+            avisos.append("Un tram tenia un fi no finit: s'ha recalculat.")
             fi0 = ini
         if fi0 < ini - TOL:
             avisos.append("Un tram tenia el fi abans de l'inici: "
                           "s'ha recalculat.")
-        bpm = float(t[2])
-        num, den = int(t[3]), int(t[4])
-        if num <= 0 or den <= 0:
-            # Tros EN SEGONS: es conserva (0/0); el BPM és la referència de
-            # notació (100 per defecte).
-            net.append((ini, fi0, bpm if bpm > 0 else 100.0, 0, 0))
-        else:
-            net.append((ini, fi0, bpm if bpm > 0 else BPM_DEFECTE, num, den))
+        try:
+            bpm, num, den = valida_tempo(t[2], t[3], t[4])
+        except (ValueError, IndexError, TypeError) as e:
+            avisos.append(f"Un tram tenia tempo/compàs invàlid ({e}); "
+                          "s'ha reparat.")
+            try:
+                num0, den0 = int(t[3]), int(t[4])
+            except (ValueError, TypeError, IndexError):
+                num0, den0 = 4, 4
+            num, den = (0, 0) if num0 == den0 == 0 else (4, 4)
+            try:
+                bpm0 = float(t[2])
+            except (ValueError, TypeError, IndexError):
+                bpm0 = float("nan")
+            bpm = (bpm0 if math.isfinite(bpm0)
+                   and limits.BPM_MIN <= bpm0 <= limits.BPM_MAX
+                   else (100.0 if num == den == 0 else BPM_DEFECTE))
+        net.append((ini, fi0, bpm, num, den))
     if not net:
         return [], avisos
     out = []
@@ -679,9 +751,13 @@ def valida_i_normalitza_compassos(trams, durada, offset=0.0, preserva_fi_idx=Non
     en edicions mètriques que no canvien els segons.
     """
     durada = float(durada or 0.0)
-    for t in trams or ():
+    for i, t in enumerate(trams or ()):
         if durada > 0 and float(t[0]) >= durada - TOL:
             raise ValueError("Hi ha un tram que comença fora de la WAV")
+        try:
+            valida_tempo(t[2], t[3], t[4])
+        except (ValueError, IndexError, TypeError) as e:
+            raise ValueError(f"Tram {i + 1}: {e}") from None
     nous = normalitza_trams(trams, durada, preserva_fi_idx=preserva_fi_idx)
     if not nous:
         raise ValueError("El mapa de tempo/compàs és buit")
@@ -888,9 +964,6 @@ def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0, direccio=None):
 # --- Re-tempo: el RATOLÍ mana sobre el temps (REGLES_DE_LA_APP.md §13.5) -----
 #: Distància mínima (s) entre una frontera i la seua veïna (límit de seguretat).
 FRONTERA_MIN_S = 0.5
-#: Banda de BPM «raonable» per a un arrossegament (fora d'ací s'avisa i no es fa).
-BPM_EDIT_MIN = 30.0
-BPM_EDIT_MAX = 350.0
 
 
 def _enter_mes_proper(x):
@@ -989,21 +1062,16 @@ def canvia_bpm_local(trams, idx, bpm, durada, offset=0.0, num=None, den=None):
     if not (0 <= i < len(nous)):
         raise ValueError("El tram de tempo no existeix")
     ini, fi, bpm0, num0, den0 = nous[i]
-    bpm = float(bpm)
-    num = int(num if num is not None else num0)
-    den = int(den if den is not None else den0)
+    bpm, num, den = valida_tempo(
+        bpm, num if num is not None else num0,
+        den if den is not None else den0)
     lliure_vel = int(num0) <= 0 or int(den0) <= 0
-    if num <= 0 or den <= 0:
+    if num == 0 and den == 0:
         # Passa a **EN SEGONS**: conserva les fronteres i no hi ha contracte
-        # de compàs. El BPM queda com a referència de notació (100 si no hi
-        # ha cap valor).
-        if bpm <= 0:
-            bpm = 100.0
+        # de compàs. El BPM és la referència de notació.
         out = list(nous)
         out[i] = (float(ini), float(fi), float(bpm), 0, 0)
         return _mapa_valida_sense_moure(out, durada, offset)
-    if bpm <= 0:
-        raise ValueError("BPM o compàs no vàlid")
     b_old = 0.0 if lliure_vel else durada_compas(bpm0, num0, den0)
     b_new = durada_compas(bpm, num, den)
     if (not lliure_vel and b_old <= TOL) or b_new <= TOL:

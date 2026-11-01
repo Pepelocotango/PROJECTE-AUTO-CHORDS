@@ -113,6 +113,45 @@ class TestConstant(unittest.TestCase):
         self.assertEqual(tm.pos(1.0), (2, 1, 1))
 
 
+class TestValidaTempo(unittest.TestCase):
+    def test_accepta_limits_i_rubato(self):
+        self.assertEqual(tm.valida_tempo(30, 1, 2), (30.0, 1, 2))
+        self.assertEqual(tm.valida_tempo(350, 12, 8), (350.0, 12, 8))
+        self.assertEqual(tm.valida_tempo(100, 0, 0), (100.0, 0, 0))
+
+    def test_rebutja_bpm_no_finit_o_fora_de_rang(self):
+        for bpm in (0, -1, 29.99, 350.01, float("nan"),
+                    float("inf"), float("-inf"), "no"):
+            with self.subTest(bpm=bpm), self.assertRaises(ValueError):
+                tm.valida_tempo(bpm, 4, 4)
+        with self.assertRaises(ValueError):
+            tm.valida_tempo(10**400, 4, 4)
+
+    def test_rebutja_compassos_mal_formats_o_no_admesos(self):
+        for num, den in ((0, 4), (4, 0), (13, 4), (4, 16),
+                         (4.5, 4), ("x", 4)):
+            with self.subTest(compas=(num, den)), self.assertRaises(ValueError):
+                tm.valida_tempo(120, num, den)
+
+    def test_el_validador_del_mapa_no_normalitza_entrades_invalides(self):
+        with self.assertRaisesRegex(ValueError, "denominador"):
+            tm.valida_i_normalitza_compassos(
+                [(0.0, 8.0, 120.0, 4, 16)], 8.0)
+
+    def test_neteja_repara_i_avisa_entrades_invalides(self):
+        trams, avisos = tm.neteja_trams(
+            [(0.0, 8.0, 120.0, 4, 16)], 8.0)
+        self.assertTrue(avisos)
+        self.assertEqual((trams[0][2], trams[0][3], trams[0][4]),
+                         (120.0, 4, 4))
+
+    def test_barra_parseja_compas_amb_els_mateixos_limits(self):
+        self.assertEqual(app_main.Finestra._parse_compas("5"), (5, 4))
+        for text in ("", "4/16", "0/4", "4/3", "x"):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                app_main.Finestra._parse_compas(text)
+
+
 class TestCanviDeTempo(unittest.TestCase):
     def setUp(self):
         # 120 BPM [0,4) i 60 BPM [4,8)
@@ -332,11 +371,33 @@ class TestPersistencia(unittest.TestCase):
         self.assertEqual(trams, [(0.0, 4.0, 100.0, 0, 0),
                                  (4.0, 30.0, 90.0, 3, 4)])     # i acaba a la WAV
 
+    def test_csv_invalid_es_repara_i_avisa(self):
+        import tempfile
+        td = tempfile.mkdtemp()
+        with open(os.path.join(td, "tempo.csv"), "w", encoding="utf-8") as f:
+            f.write("inici,fi,bpm\n0,8,120\n")
+        with open(os.path.join(td, "compas.csv"), "w", encoding="utf-8") as f:
+            f.write("inici,fi,num,den\n0,8,4,16\n")
+        avisos = []
+        trams = pipeline.llegeix_tempo_map(
+            td, 120, 4, 4, 8.0, log=avisos.append)
+        self.assertEqual(trams, [(0.0, 8.0, 120.0, 4, 4)])
+        self.assertTrue(any("denominador" in avís for avís in avisos))
+
     def test_sense_fitxers_es_constant(self):
         import tempfile
         td = tempfile.mkdtemp()                    # carpeta buida
         self.assertEqual(pipeline.llegeix_tempo_map(td, 100.0, 3, 4, 20.0),
                          [(0.0, 20.0, 100.0, 3, 4)])
+
+    def test_fallback_invalid_es_repara_i_avisa(self):
+        import tempfile
+        td = tempfile.mkdtemp()
+        avisos = []
+        trams = pipeline.llegeix_tempo_map(
+            td, 400.0, 4, 16, 8.0, log=avisos.append)
+        self.assertEqual(trams, [(0.0, 8.0, 120.0, 4, 4)])
+        self.assertTrue(any("Mapa de tempo" in avís for avís in avisos))
 
     def test_tempo_csv_format(self):
         import tempfile
@@ -755,6 +816,13 @@ class TestMetronom(unittest.TestCase):
     def test_sense_volum_no_toca_res(self):
         s = _silenci(2)
         self.assertEqual(metronom.mescla_metronom(s, SR, 0.0, 120.0, 4, 0.0), s)
+
+    def test_bpm_fora_de_banda_no_generen_clics(self):
+        s = _silenci(2)
+        for bpm in (29.99, 350.01, 400.0):
+            with self.subTest(bpm=bpm):
+                self.assertEqual(
+                    metronom.mescla_metronom(s, SR, 0.0, bpm, 4), s)
 
     def test_bpm_fix_clics_cada_temps(self):
         """A 120 BPM el temps fa 0,5 s: clics a 0, 0,5, 1,0, 1,5…"""

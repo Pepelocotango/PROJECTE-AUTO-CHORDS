@@ -36,6 +36,7 @@ from app import xifrat
 import xml.etree.ElementTree as ET
 import wave
 import PyQt5.QtWidgets as QW
+from PyQt5.QtWidgets import QMessageBox
 from app import main as app_main
 import faulthandler
 import glob
@@ -4122,10 +4123,13 @@ class BpmDoblaTests(unittest.TestCase):
 
     def test_limits(self):
         w = self._finestra()
-        w.bpm.setText("300.0"); w.b_bpm_x2.click()
-        self.assertAlmostEqual(w._bpm_val(), 400.0, places=1)
-        w.bpm.setText("50.0"); w.b_bpm_div2.click()
-        self.assertAlmostEqual(w._bpm_val(), 30.0, places=1)
+        with patch.object(QMessageBox, "information",
+                          return_value=QMessageBox.Ok) as avisa:
+            w.bpm.setText("300.0"); w.b_bpm_x2.click()
+            self.assertAlmostEqual(w._bpm_val(), 300.0, places=1)
+            w.bpm.setText("50.0"); w.b_bpm_div2.click()
+            self.assertAlmostEqual(w._bpm_val(), 50.0, places=1)
+        self.assertEqual(avisa.call_count, 2)
         w.close()
 
     def test_propaga_al_visor(self):

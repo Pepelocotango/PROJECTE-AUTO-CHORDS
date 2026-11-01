@@ -29,6 +29,7 @@ from PyQt5.QtWidgets import (
 
 from app import ancoratges as ANC
 from app import audio_out, ffmpeg, plataforma
+from app import tempo_map
 
 PRESETS_COMPAS = ("4/4", "3/4", "2/4", "5/4", "6/8", "7/8", "9/8", "12/8")
 VELOCITATS = ffmpeg.VELOCITATS
@@ -378,12 +379,11 @@ class DialegAncoratges(QDialog):
         txt = self.cb_compas.currentText().strip().replace(" ", "")
         try:
             a, b = txt.split("/", 1)
-            num, den = int(a), int(b)
-            if num > 0 and den > 0:
-                return num, den
-        except (ValueError, AttributeError):
-            pass
-        return 4, 4
+            _, num, den = tempo_map.valida_tempo(
+                tempo_map.BPM_EDIT_MIN, int(a), int(b))
+        except (ValueError, AttributeError) as e:
+            raise ValueError(f"El compàs «{txt}» no és vàlid: {e}") from None
+        return num, den
 
     def _delay_s(self):
         return self.sp_delay.value() / 1000.0
@@ -480,15 +480,18 @@ class DialegAncoratges(QDialog):
         """`①` compàs 1 (offset + ancoratge) · `②` compàs posterior (rang)."""
         t = max(0.0, min(float(self._pos_cursor()), self._durada))
         if i == 1:
+            try:
+                num, den = self._metre()
+            except ValueError as e:
+                self._avis(str(e))
+                return
             a = self._anc_marc1 if self._anc_marc1 in self._anc else None
             if a is not None:
                 a["t"] = t
-                num, den = self._metre()
                 a["num"], a["den"] = num, den
                 self._anc.sort(key=lambda d: d["t"])
                 self._log(f"guiat v3: compàs 1 mogut a {t:.3f}s")
             else:
-                num, den = self._metre()
                 a = {"t": t, "num": num, "den": den}
                 self._anc.append(a)
                 self._anc.sort(key=lambda d: d["t"])
@@ -520,10 +523,23 @@ class DialegAncoratges(QDialog):
         """
         m1, m2 = self._marcs
         self._bpm_prov = None
-        if m1 is not None and m2 is not None and m2 > m1:
+        try:
             num, den = self._metre()
+        except ValueError as e:
+            self.lb_rang.setText(str(e))
+            self._rang = None
+            self._valida_llindars()
+            return
+        if m1 is not None and m2 is not None and m2 > m1:
             n = max(1, self.sp_marc_comp.value())
             bpm = n * num * (4.0 / den) * 60.0 / (m2 - m1)
+            try:
+                tempo_map.valida_tempo(bpm, num, den)
+            except ValueError as e:
+                self.lb_rang.setText(str(e))
+                self._rang = None
+                self._valida_llindars()
+                return
             self._bpm_prov = bpm
             lo = max(self._bpm_min, bpm * (1.0 - self._marge))
             hi = min(self._bpm_max, bpm * (1.0 + self._marge))
@@ -542,7 +558,11 @@ class DialegAncoratges(QDialog):
         t = max(0.0, min(t, self._durada))
         if self._anc and abs(t - self._anc[-1]["t"]) < ANC.SEPARACIO_MIN:
             return False
-        num, den = self._metre()
+        try:
+            num, den = self._metre()
+        except ValueError as e:
+            self._avis(str(e))
+            return False
         a = {"t": t, "num": num, "den": den}
         self._anc.append(a)
         self._anc.sort(key=lambda d: d["t"])
@@ -607,10 +627,10 @@ class DialegAncoratges(QDialog):
             return False
         try:
             num, den = text.replace(" ", "").split("/", 1)
-            num, den = int(num), int(den)
-        except (ValueError, AttributeError):
-            return False
-        if num < 1 or den < 1:
+            _, num, den = tempo_map.valida_tempo(
+                tempo_map.BPM_EDIT_MIN, int(num), int(den))
+        except (ValueError, AttributeError) as e:
+            self._avis(f"Compàs no vàlid: {e}")
             return False
         self._anc[idx]["num"] = num
         self._anc[idx]["den"] = den
@@ -707,14 +727,16 @@ class DialegAncoratges(QDialog):
 
     def _valida_llindars(self):
         nota, sosp, no = self._llindars()
-        bo = 0 <= nota < sosp < no and bool(self._anc) \
+        bo = self._rang is not None and 0 <= nota < sosp < no and bool(self._anc) \
             and self._marcs[0] is not None and self._marcs[1] is not None
         for w, malament in ((self.sp_nota, not (nota < sosp)),
                             (self.sp_sosp, not (nota < sosp < no)),
                             (self.sp_no, not (sosp < no))):
             w.setStyleSheet("" if not malament else "background: #ffcccc;")
         self.b_genera.setEnabled(bo)
-        if 0 <= nota < sosp < no:
+        if self._rang is None:
+            self.lb_avis.setText("Corregeix el compàs abans de continuar.")
+        elif 0 <= nota < sosp < no:
             if self._marcs[0] is None or self._marcs[1] is None:
                 self.lb_avis.setText(
                     "Marca primer el compàs 1 (①) i el compàs 2 (②): així el "
@@ -730,6 +752,8 @@ class DialegAncoratges(QDialog):
     # -- generar ----------------------------------------------------------
     def _encaixa(self, deteccions):
         nota, sosp, no = self._llindars()
+        if self._rang is None:
+            raise ValueError("El compàs no és vàlid")
         lo, hi = self._rang
         return ANC.encaixa_ancoratges(
             self._anc, self._durada, deteccions,

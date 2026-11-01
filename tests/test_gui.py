@@ -1747,14 +1747,18 @@ class TestDialegTramTempo(_dialegs___Base):
         """«5» vol dir 5/4 (el denominador es conserva a 4)."""
         self.assertEqual(self._dlg("5").valors(), (120.0, 5, 4))
 
-    def test_compas_invalid_cau_a_4_4(self):
-        self.assertEqual(self._dlg("abc").valors(), (120.0, 4, 4))
-        self.assertEqual(self._dlg("3/x").valors(), (120.0, 4, 4))
-        self.assertEqual(self._dlg("").valors(), (120.0, 4, 4))
+    def test_compas_invalid_es_rebutja(self):
+        for compas in ("abc", "3/x", ""):
+            with self.subTest(compas=compas), self.assertRaises(ValueError):
+                self._dlg(compas).valors()
 
-    def test_compas_mai_zero(self):
-        """El compàs sempre és positiu (regla #12 de les dades: valors vàlids)."""
-        self.assertEqual(self._dlg("0/0").valors(), (120.0, 1, 1))
+    def test_zero_parcial_es_rebutja(self):
+        with self.assertRaisesRegex(ValueError, "0/0"):
+            self._dlg("0/4").valors()
+
+    def test_compas_no_admes_es_rebutja(self):
+        with self.assertRaisesRegex(ValueError, "denominador"):
+            self._dlg("4/16").valors()
 
     def test_el_bpm_surt_del_camp(self):
         self.assertEqual(self._dlg(bpm=97.5).valors()[0], 97.5)
@@ -1803,6 +1807,15 @@ class TestDialegTempoMapa(_dialegs___Base):
 
     def test_compas_1_es_l_inici(self):
         self.assertAlmostEqual(self._dlg()._temps_de_compas("1"), 0.0, places=6)
+
+    def test_fila_invalid_es_rebutja_sense_reescriure_la_fila(self):
+        d = self._dlg()
+        original = d.taula.item(0, 2).text()
+        d.taula.item(0, 2).setText("4/16")
+        with self.assertRaisesRegex(ValueError, "denominador"):
+            d.trams()
+        self.assertEqual(d.taula.item(0, 2).text(), "4/16")
+        d.taula.item(0, 2).setText(original)
 
     def test_afegeix_un_tram_al_mig_del_darrer(self):
         d = self._dlg()
@@ -4375,6 +4388,26 @@ class _vista_segueix_model___Base(unittest.TestCase):
         self.addCleanup(lambda: [p.stop() for p in self._p])
 
 
+class TestValidacioTempoVisor(_vista_segueix_model___Base):
+    def test_editor_rebutja_metre_invalid_sense_mutar_model(self):
+        v = _vista_segueix_model___visor()
+        abans = [tuple(t) for t in v.tempo_trams]
+        v.ed_nom.setText("120")
+        v.ed_fam.setText("4/16")
+        v.ed_ini.setText("0.000")
+        v.ed_fi.setText("20.000")
+        v._aplica_editor_tempo(0)
+        self.assertEqual([tuple(t) for t in v.tempo_trams], abans)
+        v.close()
+
+    def test_edita_tempo_rebutja_bpm_invalid_sense_mutar_model(self):
+        v = _vista_segueix_model___visor()
+        abans = [tuple(t) for t in v.tempo_trams]
+        self.assertFalse(v.edita_tempo_objectiu(0, float("nan"), 4, 4))
+        self.assertEqual([tuple(t) for t in v.tempo_trams], abans)
+        v.close()
+
+
 class TestFuzzerReglesIVista(_vista_segueix_model___Base):
     """Tongada pseudo-aleatòria, amb seeds FIXOS (reproduïble, no flaky)."""
 
@@ -4779,14 +4812,15 @@ class TestDialegGuia(unittest.TestCase):
                 break
         self.assertEqual(d.valors(), 93.37)
 
-    def test_escala_tanca_al_rang(self):
+    def test_escala_for_de_limit_es_rebutja(self):
         d = self._dlg()
         d.mostra_bpm(280.0)
         for btn in d.findChildren(QPushButton):
             if btn.text().startswith("×2"):
                 btn.click()
                 break
-        self.assertEqual(d.valors(), 300.0)
+        self.assertEqual(d.valors(), 280.0)
+        self.assertIn("350", d.lb_estat.text())
 
     def test_valors_no_valids(self):
         d = self._dlg()
@@ -4941,6 +4975,17 @@ class TestTempoPerTramsGui(unittest.TestCase):
         self.w.dirty = False       # sense prompt de tancament als tests
         self.w.close()
         shutil.rmtree(self.td, ignore_errors=True)
+
+    def test_barra_rebutja_metre_invalid_sense_mutar_model(self):
+        abans = [tuple(t) for t in self.w.visor_ref.tempo_trams]
+        self.w.bpm.setText("120")
+        self.w.bpb.setText("4/16")
+        with patch.object(QMessageBox, "information",
+                          return_value=QMessageBox.Ok) as avisa:
+            self.w._aplica_parametres_temps()
+        self.assertTrue(avisa.called)
+        self.assertEqual([tuple(t) for t in self.w.visor_ref.tempo_trams],
+                         abans)
 
     def test_llanca_el_fil_amb_els_parametres(self):
         w = self.w
@@ -5626,6 +5671,21 @@ class TestDialegGuiaAudicio(unittest.TestCase):
         d._bpm_escrit("")
         self.assertAlmostEqual(rebuts[-1], 96.5, places=2)   # res vàlid: no emet
 
+    def test_escala_no_retalla_silenciosament_el_bpm(self):
+        d = self._dlg()
+        d.mostra_bpm(200.0)
+        d._escala(2.0)
+        self.assertEqual(d.valors(), 200.0)
+        self.assertIn("350", d.lb_estat.text())
+
+    def test_tap_fora_de_rang_no_es_converteix_al_limit(self):
+        d = self._dlg()
+        with patch.object(dialegs, "time", _RellotgeFals([0.0, 0.15])):
+            d._tap()
+            d._tap()
+        self.assertIsNone(d.valors())
+        self.assertIn("350", d.lb_tap.text())
+
     def test_tria_candidat_emet(self):
         d = self._dlg()
         rebuts = []
@@ -6050,6 +6110,25 @@ class TestDialegAncoratges(unittest.TestCase):
         self.assertEqual((d.ancoratges()[0]["num"], d.ancoratges()[0]["den"]),
                          (7, 8))
         self.assertFalse(d._canvia_metre(0, "0/4"))
+
+    def test_metre_invalid_no_es_converteix_a_4_4(self):
+        d = self._nou()
+        self._marcs(d)
+        for t in (0.5, 2.5):
+            d._pos = t
+            self.assertTrue(d._afegeix())
+        self.assertTrue(d.b_genera.isEnabled())
+        ancoratges = d.ancoratges()
+        d._pos = 2.0
+        d.cb_compas.setCurrentText("4/16")
+        self.assertFalse(d.b_genera.isEnabled())
+        self.assertFalse(d._afegeix())
+        self.assertEqual(d.ancoratges(), ancoratges)
+        self.assertIn("denominador", d.lb_avis.text())
+        aplicats = []
+        d._aplicar = lambda *args: aplicats.append(args)
+        d._genera()
+        self.assertEqual(aplicats, [])
 
     def test_delay_retroactiu(self):
         d = self._nou()

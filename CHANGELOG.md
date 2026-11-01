@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Canviat — validació unificada del tempo i el compàs
+- Els valors d'edició comparteixen ara els límits BPM 30–350, numerador 1–12
+  i denominadors 2, 4 o 8; `0/0` continua sent l'opció explícita per al rubato.
+- Els camps de la barra, els diàlegs, l'Editor, el TAP, els marcadors i l'anàlisi
+  guiada rebutgen entrades invàlides en lloc de convertir-les silenciosament en
+  4/4; ×2/÷2 no canvia el valor si el resultat queda fora del límit. En carregar
+  un mapa de CSV mal format, es repara amb un avís visible i una traça al registre.
+- Afegides proves per als límits, l'absència de mutació parcial i la reparació
+  avisada dels CSV.
+
 ### Afegit — avaluació del tempo sobre corpus local
 - `eines/avalua_tempo.py` calcula error de BPM i downbeat, alineació dels
   compassos dins ±70 ms, compassos sobrants/absents, error màxim i deriva.

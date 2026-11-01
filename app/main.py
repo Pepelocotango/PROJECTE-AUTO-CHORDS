@@ -46,6 +46,7 @@ from . import plataforma  # noqa: E402
 from . import projecte  # noqa: E402
 from . import tempo  # noqa: E402
 from . import tempo_map  # noqa: E402
+from . import limits  # noqa: E402
 from . import visor as visor_mod  # noqa: E402
 from . import __version__  # noqa: E402  (versió mostrada al «Quant a»)
 
@@ -1346,28 +1347,22 @@ class Finestra(QMainWindow):
     # ---- lectura manual dels camps de text ----
     @staticmethod
     def _parse_compas(text, defecte_num=4, defecte_den=4):
-        """Accepta '4', '4/4', '3/4', '6/8' i retorna (num, den)."""
-        s = str(text).strip()
+        """Accepta «4», «4/4», «3/4», «6/8» o «0/0»; rebutja la resta."""
+        s = str(text).replace(" ", "").strip()
         if not s:
-            return defecte_num, defecte_den
+            raise ValueError("El compàs no pot estar buit")
         if "/" in s:
             parts = s.split("/", 1)
-            try:
-                numer = int(float(parts[0].strip().replace(",", ".")))
-                den = int(float(parts[1].strip().replace(",", ".")))
-            except ValueError:
-                return defecte_num, defecte_den
-            if numer <= 0:
-                numer = defecte_num
-            if den <= 0:
-                den = defecte_den
-            return numer, den
-        try:
-            v = float(s.replace(",", "."))
-        except ValueError:
-            return defecte_num, defecte_den
-        v = max(1, int(round(v)))
-        return v, defecte_den
+            if len(parts) != 2 or not all(p.isdigit() for p in parts):
+                raise ValueError(f"El compàs «{text}» no és vàlid")
+            numer, den = int(parts[0]), int(parts[1])
+        elif s.isdigit():
+            numer, den = int(s), int(defecte_den)
+        else:
+            raise ValueError(f"El compàs «{text}» no és vàlid")
+        _, numer, den = tempo_map.valida_tempo(
+            limits.BPM_MIN, numer, den)
+        return numer, den
 
     @staticmethod
     def _llegeix_num(w, defecte, minim, maxim, enter=False):
@@ -1379,17 +1374,19 @@ class Finestra(QMainWindow):
         return int(round(v)) if enter else v
 
     def _bpm_val(self):
-        # rang ampli (30-400): els botons ×2/÷2 i el metrònom (BPM_MAX=400)
-        # ho necessiten; abans 40-240 tallava el doble de temes ràpids.
-        return self._llegeix_num(self.bpm, 120.0, 30, 400)
+        raw = str(self.bpm.text()).replace(",", ".").strip()
+        try:
+            return tempo_map.valida_tempo(float(raw), 4, 4)[0]
+        except ValueError as e:
+            raise ValueError(f"Tempo: {e}") from e
 
     def _bpb_val(self):
-        num, _den = self._parse_compas(self.bpb.text(), defecte_num=4, defecte_den=4)
-        return max(1, min(12, int(num)))
+        num, den = self._parse_compas(self.bpb.text())
+        return tempo_map.valida_tempo(self._bpm_val(), num, den)[1]
 
     def _beat_type_val(self):
-        _num, den = self._parse_compas(self.bpb.text(), defecte_num=4, defecte_den=4)
-        return max(1, min(16, int(den)))
+        num, den = self._parse_compas(self.bpb.text())
+        return tempo_map.valida_tempo(self._bpm_val(), num, den)[2]
 
     def _offset_val(self):
         return self._llegeix_num(self.offset, 0.0, 0.0, 60.0)
@@ -2869,8 +2866,17 @@ class Finestra(QMainWindow):
 
     def _dobla_bpm(self, factor):
         """Multiplica (×2) o divideix (÷2) el BPM actual."""
-        b = self._bpm_val() * float(factor)
-        b = max(30.0, min(400.0, b))
+        try:
+            b = self._bpm_val() * float(factor)
+        except ValueError as e:
+            self.avisa_info("Tempo invàlid", str(e))
+            return
+        if not limits.BPM_MIN <= b <= limits.BPM_MAX:
+            self.avisa_info(
+                "Tempo invàlid",
+                f"El resultat ({b:.3f} BPM) queda fora de "
+                f"{limits.BPM_MIN:g}–{limits.BPM_MAX:g} BPM.")
+            return
         self.bpm.setText(f"{b:.3f}")
         self._aplica_parametres_temps()
         self.registra(f"BPM {'×2' if factor > 1 else '÷2'} → {b:.3f}")
@@ -2938,7 +2944,7 @@ class Finestra(QMainWindow):
             self._tap_timer.start()
             return
         ivs = [b - a for a, b in zip(self._taps, self._taps[1:])]
-        ivs = [x for x in ivs if 0.2 <= x <= 2.0]   # 30-300 BPM
+        ivs = [x for x in ivs if 60.0 / limits.BPM_MAX <= x <= 2.0]
         if not ivs:
             self.b_tap.setText(f"TAP ({len(self._taps)})")
             self._tap_timer.start()
@@ -3098,10 +3104,18 @@ class Finestra(QMainWindow):
                     "«En segons» al costat del compàs.")
                 self._sincronitza_temps_del_visor()
                 return
-        bpm = (self._llegeix_num(self.bpm, 100.0, 1, 400) if free
-               else self._bpm_val())
-        num = 0 if free else self._bpb_val()
-        den = 0 if free else self._beat_type_val()
+        try:
+            raw_bpm = float(str(self.bpm.text()).replace(",", ".").strip())
+            if free:
+                bpm, num, den = tempo_map.valida_tempo(raw_bpm, 0, 0)
+            else:
+                num, den = self._parse_compas(self.bpb.text())
+                bpm, num, den = tempo_map.valida_tempo(
+                    raw_bpm, num, den)
+        except ValueError as e:
+            self.avisa_info("Tempo o compàs invàlid", str(e))
+            self._sincronitza_temps_del_visor()
+            return
         offset = self._offset_val()
         try:
             _idx, _bpm, _num, _den = vr.tempo_objectiu_vals()
@@ -3252,6 +3266,11 @@ class Finestra(QMainWindow):
             except (TypeError, AttributeError, RuntimeError):
                 pass
             visor.tempoCanviat.connect(self._sincronitza_temps_del_visor)
+            avisos_tempo = getattr(visor, "_avisos_csv_tempo", ())
+            if avisos_tempo:
+                self._missatge_info(
+                    "El mapa CSV de tempo s'ha reparat: "
+                    + " ".join(avisos_tempo))
             try:
                 visor.velocitatCanviada.disconnect(
                     self._sincronitza_velocitat)

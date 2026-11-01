@@ -19,6 +19,8 @@ alta, baixa i consulta. La persistència i el model viu són a `pipeline` i
 
 import math
 
+from app import tempo_map
+
 #: Dos marcadors més a prop que això són el mateix colp (rebot de la tecla).
 SEPARACIO_MIN = 0.05
 
@@ -109,10 +111,20 @@ def candidats_bpm(marques, num=4, den=4, bpm_min=60.0, bpm_max=180.0,
     if len(ms) < 2:
         raise ValueError("Calen almenys dos marcadors per a traure el BPM")
     gaps = [b - a for a, b in zip(ms, ms[1:])]
-    num, den = int(num), int(den)
-    if num < 1 or den < 1:
-        raise ValueError("El compàs no és vàlid")
-    preferit = float(preferit) if preferit else 110.0
+    _, num, den = tempo_map.valida_tempo(
+        tempo_map.BPM_EDIT_MIN, num, den)
+    try:
+        bpm_min, bpm_max = float(bpm_min), float(bpm_max)
+    except (TypeError, ValueError):
+        raise ValueError("El rang de BPM no és vàlid") from None
+    if (not math.isfinite(bpm_min) or not math.isfinite(bpm_max)
+            or bpm_min < tempo_map.BPM_EDIT_MIN
+            or bpm_max > tempo_map.BPM_EDIT_MAX or bpm_min > bpm_max):
+        raise ValueError(
+            f"El rang ha d'estar dins de {tempo_map.BPM_EDIT_MIN:g}–"
+            f"{tempo_map.BPM_EDIT_MAX:g} BPM")
+    preferit = 110.0 if preferit is None else preferit
+    preferit, _, _ = tempo_map.valida_tempo(preferit, num, den)
 
     def _residu(bpm):
         """Error mitjà, en SEGONS, de cada tall respecte de la línia més pròxima.
