@@ -2635,6 +2635,15 @@ class Visor(QMainWindow):
         menu.addSeparator()
         act("loop_seleccio", "Loop a la selecció",
             bool(self.clips_seleccionats()) or te)
+        # Marcador a prop: permet convertir-lo de compàs a secció i viceversa.
+        if kind == "tempo":
+            mi = self._marcador_a(t)
+            if mi is not None:
+                menu.addSeparator()
+                act("converteix_marcador_compas",
+                    "Marcador → compàs", True)
+                act("converteix_marcador_seccio",
+                    "Marcador → secció", True)
         return menu
 
     def _executa_contextual(self, kind, idx, t, clau, superficie="timeline"):
@@ -2647,6 +2656,9 @@ class Visor(QMainWindow):
         """
         if clau is None:
             return False
+        if clau in ("converteix_marcador_compas", "converteix_marcador_seccio"):
+            tipus = "compas" if clau.endswith("compas") else "seccio"
+            return self.converteix_marcador(float(t), tipus)
         mapa = {
             "afegeix": ("afegeix", {"t": float(t)}),
             "duplica": ("duplica", {}),
@@ -3055,6 +3067,30 @@ class Visor(QMainWindow):
         except OSError:
             pass
         self.log(f"marcador esborrat (en queden {len(self.marcadors)})")
+        return True
+
+    def converteix_marcador(self, t, tipus_nou):
+        """Converteix el marcador més pròxim a `t` al tipus indicat."""
+        tipus_nou = tipus_nou if tipus_nou in ("compas", "seccio") else "seccio"
+        mi = self._marcador_a(t)
+        if mi is None:
+            return False
+        marques = list(self.marcadors or [])
+        if not (0 <= mi < len(marques)):
+            return False
+        m = marques[mi]
+        self._undo_marca()
+        self.marcador_tipus[round(float(m), 6)] = tipus_nou
+        self._pinta_marcadors()
+        self._undo_commit()
+        try:
+            pipeline.desa_marcadors(
+                self._carpeta_acords(),
+                [(x, self.marcador_tipus.get(round(float(x), 6), "seccio"))
+                 for x in (self.marcadors or [])])
+        except OSError:
+            pass
+        self.log(f"marcador convertit a {tipus_nou}")
         return True
 
     def _pinta_marcadors(self):

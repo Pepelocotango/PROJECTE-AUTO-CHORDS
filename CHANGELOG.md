@@ -11,6 +11,8 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 - `marcadors.csv` guanya columna `tipus` (`compas` | `seccio`); lectura de
   tipus amb `pipeline.llegeix_marcadors_tipus`.
 - Marcadors pintats amb colors diferents segons el tipus.
+- Menú contextual del carril de tempo permet convertir un marcador entre
+  compàs i secció.
 - Format nou sense migració dels marcadors antics.
 
 ### Afegit — Fase 3: TAP robust i destí visible
