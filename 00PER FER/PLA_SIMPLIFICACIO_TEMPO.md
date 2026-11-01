@@ -2,10 +2,7 @@
 
 Context: anàlisi del projecte AUTO CHORDS del 25-10-2026.
 > Objectiu de producte: carregar una cançó → extreure acords, estructura **i mapa de
-> tempo/compàs** → veure'ls i exportar-los perquè un músic els pugui fer servir dins la propia app, 
-> en un DAW i en una partitura. **Els tres són el producte**: un acord sense compàs no és
-> interpretable per a un músic. La graella és el que fa útil l'exportació, i la qualitat del
-> mapa (que quadri amb la cançó al DAW) és la **mètrica central** del projecte.
+ tempo/compàs** → veure'ls i exportar-los perquè un músic els pugui fer servir dins la propia app, en un DAW i en una partitura. **Els tres són el producte**: un acord sense compàs no és interpretable per a un músic. La graella és el que fa útil l'exportació, i la qualitat del mapa (que quadri amb la cançó al DAW) és la **mètrica central** del projecte.
 >
 
 ## 0. Normes de treball (obligatòries)
