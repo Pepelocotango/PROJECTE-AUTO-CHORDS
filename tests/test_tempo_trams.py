@@ -370,6 +370,14 @@ class RetempoTests(unittest.TestCase):
         # 18 s de música des de l'offset amb N=8 → 106,67 BPM (N es conserva).
         self.assertAlmostEqual(out[0][2], 106.6667, places=3)
 
+    def test_retempo_primer_tram_amb_offset_negatiu_conserva_compassos(self):
+        trams = [(0.0, 4.5, 120.0, 4, 4),
+                 (4.5, 16.5, 100.0, 4, 4)]
+        out = tempo_map.canvia_bpm_local(
+            trams, 0, 100.0, 16.5, offset=-1.5)
+        self.assertAlmostEqual(out[0][1], 5.7, places=6)
+        self.assertAlmostEqual(out[1][0], 5.7, places=6)
+
     def test_primer_tram_pot_acabar_al_compas_1(self):
         # Pre-roll pur: la fi del primer clip pot caure EXACTAMENT al compàs 1
         # (abans s'exigia offset + 0,5 s i era impossible tornar-hi).

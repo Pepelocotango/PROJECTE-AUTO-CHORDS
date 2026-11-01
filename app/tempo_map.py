@@ -187,8 +187,10 @@ class TempoMap:
         return float(self._trams[-1].fi)
 
     def tram(self, t):
-        """Tros actiu a l'instant `t` (el darrer si és més enllà del mapa)."""
+        """Tros actiu a `t`, extrapolant el primer/últim fora del mapa."""
         t = float(t)
+        if t < self._trams[0].ini - TOL:
+            return self._trams[0]
         for s in self._trams:
             if s.ini - TOL <= t < s.fi - TOL:
                 return s
@@ -334,6 +336,8 @@ class TempoMap:
         return t
 
     def _index(self, t):
+        if float(t) < self._trams[0].ini - TOL:
+            return 0
         for i, s in enumerate(self._trams):
             if s.ini - TOL <= t < s.fi - TOL:
                 return i
@@ -712,7 +716,7 @@ def valida_i_normalitza_compassos(trams, durada, offset=0.0, preserva_fi_idx=Non
         b0 = durada_compas(bpm0, num0, den0)
     if not _lliure(nous[0]) and b0 <= TOL:
         raise ValueError("El primer tram té un compàs de durada nul·la")
-    base0 = float(offset) if float(offset) > float(ini0) + TOL else float(ini0)
+    base0 = float(offset)
     bars0 = 0.0 if b0 <= TOL else (float(fi0) - base0) / b0
     # Si el segon tram va EN SEGONS, el primer pot acabar a mig compàs (la
     # frontera és lliure, com al pre-roll).
@@ -897,12 +901,13 @@ def _enter_mes_proper(x):
 def _base_tram(tram, idx, offset=0.0):
     """Instant on comença a comptar el compàs 1 **dins** del tram.
 
-    Només el PRIMER tram pot tindre una zona de pre-música (`0 → offset`): la
-    seua graella compta des de l'offset. La resta, des del propi inici.
+    Només el PRIMER tram es compta des de l'offset, que pot quedar abans del
+    WAV quan s'ha retallat el so anterior al compàs 1. La resta compta des del
+    propi inici.
     """
     ini = float(tram[0])
     off = float(offset or 0.0)
-    return off if (int(idx) == 0 and off > ini + TOL) else ini
+    return off if int(idx) == 0 else ini
 
 
 def _es_lliure_tram(tram):

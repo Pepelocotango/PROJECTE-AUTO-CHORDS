@@ -5,6 +5,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Corregit (2026-11-01) — el mapa conserva la graella amb offset negatiu
+- `TempoMap` extrapola el primer tram abans de l'inici de la WAV. Això manté
+  les línies de compàs i la validació correctes si es retalla l'àudio més enllà
+  de l'offset del compàs 1.
+- Afegides regressions per a la posició musical, les fronteres i el re-tempo
+  amb offset negatiu.
+
 ### Canviat (2026-11-01) — contracte per a edició bàsica d'àudio
 - **`docs/REGLES_DE_LA_APP.md`**: aclarit que la regla #6 protegeix els WAVs
   musicals silenciosos generats, no la còpia WAV font del projecte.

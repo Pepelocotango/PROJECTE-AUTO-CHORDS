@@ -103,6 +103,15 @@ class TestConstant(unittest.TestCase):
         c, _b, _s = tm.pos(0.5)                     # compte enrere: compàs ≤ 0
         self.assertLessEqual(c, 0)
 
+    def test_offset_negatiu_conserva_la_graella_variable(self):
+        tm = TempoMap([(0.0, 5.0, 120, 4, 4),
+                       (5.0, 17.0, 100, 4, 4)], offset=-1.0)
+
+        self.assertAlmostEqual(tm.t_de_quarters(12.0), 5.0)
+        self.assertIn((12.0, 5.0, 4, 4), tm.compassos())
+        self.assertEqual(tm.pos(0.0), (1, 3, 1))
+        self.assertEqual(tm.pos(1.0), (2, 1, 1))
+
 
 class TestCanviDeTempo(unittest.TestCase):
     def setUp(self):
@@ -209,6 +218,12 @@ class TestCompassosEnters(unittest.TestCase):
         trams = [(0.0, 3.0, 120.0, 4, 4), (3.0, 9.0, 120.0, 4, 4)]
         self.assertEqual(tm.valida_i_normalitza_compassos(
             trams, 9.0, offset=1.0), trams)
+
+    def test_primer_parcial_amb_offset_negatiu(self):
+        trams = [(0.0, 5.0, 120.0, 4, 4),
+                 (5.0, 17.0, 100.0, 4, 4)]
+        self.assertEqual(tm.valida_i_normalitza_compassos(
+            trams, 17.0, offset=-1.0), trams)
 
     def test_canviar_bpm_conserva_compassos_i_ajusta_el_vei(self):
         # Re-tempo local (contracte §7): el tram conserva N; el veí (ací,
