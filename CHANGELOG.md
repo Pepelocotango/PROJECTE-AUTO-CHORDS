@@ -5,25 +5,25 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
-### Corregit — T (tap tempo) només amb clip de tempo seleccionat
+### Corregit — T (tap tempo) només amb clip de tempo seleccionat (2026-11-01)
 - La hotkey `T` i la funció de tap tempo només actuen quan hi ha un clip de
   BPM/compàs seleccionat; sense selecció o amb acords/seccions seleccionats,
   no fan res.
 
-### Corregit — downbeat (offset) absolut
+### Corregit — downbeat (offset) absolut (2026-11-01)
 - Les operacions d'ajust de BPM a partir de marcadors (`bpm_dels_marcadors`,
   `ajusta_bpms_marcadors`, `ajusta_bpm_minims_quadrats`) ja no desplacen
   l'offset (downbeat). L'offset només canvia quan l'usuari l'edita
   explícitament.
 
-### Afegit — Fase 5: ajust d'un sol BPM i fusió amb tolerància
+### Afegit — Fase 5: ajust d'un sol BPM i fusió amb tolerància (2026-11-01)
 - Nou mòdul `app/tempo_ajust.py`: ajust per mínims quadrats i partició
   recursiva per llindar (40 ms per defecte).
 - Acció «Ajusta un BPM (mínims quadrats) a partir dels marcadors» al menú
   Analitza, amb missatge i un sol desfer.
 - Tests sintètics a `tests/test_tempo_ajust.py`.
 
-### Afegit — Fase 4: compàs vs secció
+### Afegit — Fase 4: compàs vs secció (2026-11-01)
 - Dos botons: «＋ Compàs» (frontera només al mapa de tempo) i «＋ Secció»
   (frontera al mapa de tempo i a l'estructura).
 - `marcadors.csv` guanya columna `tipus` (`compas` | `seccio`); lectura de
@@ -33,17 +33,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   compàs i secció.
 - Format nou sense migració dels marcadors antics.
 
-### Afegit — Fase 3: TAP robust i destí visible
+### Afegit — Fase 3: TAP robust i destí visible (2026-11-01)
 - TAP de la barra principal usa mediana i descart d'intervals anòmals
   (rang 30–350, límits compartits).
 - Afegit indicador visible del destí de Detecta i TAP (`lb_desti_accions`),
   actualitzat amb la selecció.
 - Test `TestDestiAccionsFase3`.
 
-### Netejat — documentació obsoleta
+### Netejat — documentació obsoleta (2026-11-01)
 - Eliminat `docs/PROPOSTA_REGLES_v2.md` (contingut fusionat al contracte).
 
-### Canviat — contracte: fusió de la proposta v2 (aprovada per l'operador)
+### Canviat — contracte: fusió de la proposta v2 (aprovada per l'operador) (2026-11-01)
 - Afegits els grups de regles (plataforma/paritat/tempo) sense canviar la
   numeració vigent.
 - Afegida la secció «Cobertura i invariants (proposta v2)» amb la taula I1–I7.
@@ -51,7 +51,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   projecte; l'exportació pot generar una graella mètrica aproximada
   identificada com a tal, sense canviar els CSV del model.
 
-### Afegit — Fase 1: constants i validació unificades
+### Afegit — Fase 1: constants i validació unificades (2026-11-01)
 - Centralitzats els límits a `app/limits.py`: BPM 30–350, numerador 1–12,
   denominadors 2, 4 o 8.
 - `tempo_map.valida_tempo` retorna valors normalitzats o aixeca `ValueError`.
@@ -59,18 +59,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   silenciosament en 4/4.
 - Actualitzat §13.4 de `docs/REGLES_DE_LA_APP.md`.
 
-### Afegit — Fase 0: línia base i corpus de prova
+### Afegit — Fase 0: línia base i corpus de prova (2026-11-01)
 - Avaluador `eines/avalua_tempo.py` amb mètriques sintètiques i casos buits.
 - Notes de verificació a `docs/NOTES_VERIFICACIO.md`.
 
-### Afegit — Fase 2: fuzzer d'invariants i proposta de regles
+### Afegit — Fase 2: fuzzer d'invariants i proposta de regles (2026-11-01)
 - Estès `tests/test_gui.py` (`TestFuzzerReglesIVista`) amb ≥ 20 seeds deterministes
   (`test_tongada_amplia`, seeds 1–20, n=30) i l'operació `quantitza tot`.
 - Afegida `docs/PROPOSTA_REGLES_v2.md` amb els invariants candidats I1–I7, la
   cobertura actual i la proposta de reorganització de regles (sense aplicar).
 - No s'ha modificat `docs/REGLES_DE_LA_APP.md`.
 
-### Canviat — validació unificada del tempo i el compàs
+### Canviat — validació unificada del tempo i el compàs (2026-11-01)
 - Els valors d'edició comparteixen ara els límits BPM 30–350, numerador 1–12
   i denominadors 2, 4 o 8; `0/0` continua sent l'opció explícita per al rubato.
 - Els camps de la barra, els diàlegs, l'Editor, el TAP, els marcadors i l'anàlisi
@@ -80,7 +80,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 - Afegides proves per als límits, l'absència de mutació parcial i la reparació
   avisada dels CSV.
 
-### Afegit — avaluació del tempo sobre corpus local
+### Afegit — avaluació del tempo sobre corpus local (2026-11-01)
 - `eines/avalua_tempo.py` calcula error de BPM i downbeat, alineació dels
   compassos dins ±70 ms, compassos sobrants/absents, error màxim i deriva.
 - El corpus d'àudio queda local i opcional; la prova sintètica no necessita
@@ -91,7 +91,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 - Les notes de verificació i el format de les anotacions són a
   `docs/NOTES_VERIFICACIO.md`.
 
-### Afegit — edició bàsica dels extrems d'àudio
+### Afegit — edició bàsica dels extrems d'àudio (2026-11-01)
 - Les nanses de la forma d'ona retallen o afegeixen silenci a l'inici i al final;
   la previsualització acompanya el gest i reutilitza el snap del timeline.
 - En deixar anar, la còpia WAV, acords, seccions, mapa, offset i marcadors
@@ -104,14 +104,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   desfer/refer mixt i fallada de publicació. L'exportació d'àudio continua
   pendent.
 
-### Canviat — backups coherents amb l'àudio de treball
+### Canviat — backups coherents amb l'àudio de treball (2026-11-01)
 - Els backups versionats ara inclouen `audio/` i es publiquen només després
   d'haver copiat tots els fitxers, de manera que no queda una còpia parcial
   visible si falla l'operació.
 - La detecció de canvis d'àudio usa mida i data de modificació, evitant llegir
   WAVs grans sencers a cada autosave. Afegides proves de còpia i canvi del WAV.
 
-### Canviat — importació directament dins del projecte
+### Canviat — importació directament dins del projecte (2026-11-01)
 - Els formats d'entrada incompatibles es converteixen en un temporal dins
   `audio/`, es validen i després es publiquen com a WAV de treball. No es deixa
   cap `<nom>_convertit.wav` al costat de l'original, que es conserva intacte.
@@ -859,7 +859,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   damunt d'una frontera, cursor al final, i la finestra del guiat amb i
   sense loop.
 
-### Corregit
+### Corregit (2026-11-01)
 - **Segfault de l'Anàlisi guiat en detectar (2026-10-20)**: el fil
   `FilGuiaBpm` cridava `Finestra.registra` **directament des del fil de
   treball** (que fa `QTextEdit.append`) — UB de Qt, avís
@@ -871,7 +871,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   des del fil. Test de regressió amb fil real + esdeveniments reals
   (`TestGuiaFilReal`).
 
-### Afegit
+### Afegit (2026-11-01)
 - **Anàlisi guiat — implementada (2026-10-20)**: la v1 completa de l'assistent
   per a cançons amb **BPM no constant**. Pas 1: mode lliure + sense snap,
   l'usuari posa el cursor al downbeat i prem Enter → **offset + tall lliure**
@@ -891,7 +891,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   (fluxe en 8 passos, finestra de 16 temps que viatja amb el BPM anterior,
   què ja existeix al codi i què falta, UI i preguntes obertes).
 
-### Tests
+### Tests (2026-11-01)
 - **18 tests nous**: `TestGuia` (nucli pur: tall lliure, finestres en 4/4 i
   3/4, absorció de l'últim tram, simulació completa validant el contracte),
   `TestDialegGuia` (estats detectant/detecció/×2/÷2/vàlids) i `TestGuiaFlux`
@@ -900,7 +900,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [0.8.0] — 2026-10-20 (BETA)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Regles de temps/compàs/graella (2026-10-20)**: nou contracte a
   `docs/REGLES_TEMPS_GRID.md`. Els trams **interiors** de tempo/compàs tenen
   un **nombre enter de compassos** i les fronteres cauen en línies de compàs;
@@ -923,7 +923,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   es crea i s'activa el loop A/B del clip de tempo objectiu (o del primer) i
   el cursor s'hi alinea. El loop es manté en aturar.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Canviar BPM/compàs d'un tram (opció A, 2026-10-20)**: el tram conserva el
   seu nombre enter de compassos; la seua fi es mou a la nova línia de compàs i
   les fronteres següents s'arrosseguen (l'últim absorbeix a la fi de la WAV).
@@ -960,7 +960,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   contextual: demana **lletra i família** i, si el model no és saturat, crea el
   tros de 2 s pel mateix punt únic (abans `main.py` tenia una còpia pròpia).
 
-### Corregit
+### Corregit (2026-11-01)
 - **Editor després de quantitzar (2026-10-20)**: en reconstruir el model es
   notifica la pèrdua de selecció i l'editor es buida/refresca; després de
   quantitzar es recupera el clip editat (si encara existeix) perquè mostre el
@@ -1019,7 +1019,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   enganxats queden seleccionats; el zoom a la selecció i el ressaltat visual
   inclouen tots els trams seleccionats.
 
-### Afegit
+### Afegit (2026-11-01)
 - **Proteccions del `.acproj` (2026-10-19)**: el cru viatja dins el document i es
   tracta com una *cache*: (1) **lectura tolerant** (`saneja_analisi`: si el cru
   és invàlid es descarta i el projecte s'obre igual); (2) **límit de 512 KB**
@@ -1027,7 +1027,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   model als CSV ja hi és); (3) **`<nom>.acproj.bak`** abans de cada desat (com el
   `.rpp-bak` de REAPER).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Opcions de snap ampliades (2026-10-19)**: a més de les divisions binàries,
   el selector de graella inclou **treset de negra (2/3)**, **treset de corxera
   (1/3)** i **treset de semicorxera (1/6)**, i blocs de **2, 6, 12, 24, 32, 48
@@ -1037,7 +1037,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   el zoom. Les línies de treset porten etiquetes al temps (no es poden
   representar amb la graella binària de 1/32).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Dreceres de ratolí i teclat (2026-10-19)**: `Ctrl+Shift` mantingut passa
   temporalment a l'eina **marc** (en deixar anar, torna a l'eina anterior) i
   s'elimina el gest `Ctrl+Shift`+arrossegar per duplicar (queda `Ctrl+D`).
@@ -1046,7 +1046,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   ambigüitats; l'enganxat sense snap passa a **`Ctrl+Alt+V`**. `Alt+clic` no
   fa cap acció pròpia (Alt+←/→ mou la vora dreta).
 
-### Canviat
+### Canviat (2026-11-01)
 - **El «Mode fàcil» passa a ser «Quantitza» (2026-10-19)**: s'elimina tota la
   lògica de re-derivació del cru, la inferència compàs/mig/temps, els presets
   d'estil i el canvi automàtic de compàs. El botó i l'acció de menú es
@@ -1057,7 +1057,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   el cru; una sola operació de desfer/refer. Selecció mixta = una sola
   operació (cada tipus amb la seua graella).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Resolució temporal unificada (2026-10-19)**: els quatre CSV del MODEL
   (`acords.csv`, `estructura_ABC.csv`, `tempo.csv`, `compas.csv`) es desen amb
   **6 decimals (1 µs)**, no 2 (10 ms). El BPM també es desa amb 6 decimals (no
@@ -1078,7 +1078,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   posicio` a 6 decimals. Els noms musicals es mantenen. En mode Lliure, els noms
   dels WAV passen a mil·lisegons (`0000.000s_...`).
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Graella a zoom extrem (2026-10-19)**: el pla únic de grid inclou
   **múltiples de compàs** (2, 4, 8 i 16) perquè el min zoom no siga una taca;
   si cap divisió hi cap, cau a la **més gruixuda** (abans queia a la més fina,
@@ -1087,7 +1087,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   línia de l'etiqueta es pinta més forta. Al max zoom, el primer compàs ja no
   es veu tallat.
 
-### Tret
+### Tret (2026-11-01)
 - **Els intermedis de l'anàlisi ja no són fitxers (2026-10-19)**: la carpeta
   `analisi/` (`chords_raw.csv`, `segments_raw.csv`, `meta.json`) i
   `segments.csv` desapareixen. El **cru** (sortida del motor abans de netejar)
@@ -1102,7 +1102,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   - Resultat: la carpeta del tema queda amb **6 fitxers** (`.acproj` + `audio/` +
     4 CSV) i els exports.
 
-### Tret
+### Tret (2026-11-01)
 - **MCP retirat (2026-10-19)**: fora el pont dins l'app (`app/mcp_bridge.py`), el
   servidor (`eines/mcp_auto_chords_server.py`), el llançador
   (`eines/mcp_auto_chords_launcher.py`, `AUTO_CHORDS_MCP.sh`), la prova
@@ -1123,7 +1123,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 - **Projecte complet des del naixement** i **diàleg d'àudio amb projecte ja
   associat** (carregar / sobreescriure amb paperera): vegeu l'entrada anterior.
 
-### Canviat
+### Canviat (2026-11-01)
 - **«Obre àudio» amb projecte ja associat (2026-10-19)**: si l'àudio triat ja té
   projecte (la carpeta `AUTOCHORDS_<nom>/` del costat o un projecte dels
   **recents** amb el mateix àudio), l'app **pregunta**: **Carrega el projecte**
@@ -1188,7 +1188,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   - Neteja: fora els «ponts» de l'MCP pel visor de proves amb **marques** (ja és de
     clips).
 
-### Documentació
+### Documentació (2026-11-01)
 - **Auditoria de coherència (16-10-2026, `docs/INFORME_INCOHERENCIES_2026-10-16.md`)**:
   corregides **12 referències** a documents arxivats (ara `docs/archive/…`), xifres
   desfasades (**871 tests**, **80 tipus** d'acord, línies de `main.py`/`visor.py`),
@@ -1197,7 +1197,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   retirat, paràmetres del Chordino via host propi `--param`). Vistes `ESQUEMA_UI`
   regenerades. *(Detall: l'informe; commits `bcd253d` + correccions següents.)*
 
-### Afegit
+### Afegit (2026-11-01)
 - **MCP: paritat d'ACCIONS amb la GUI — 16 eines noves (51 → 67)**
   (`app/mcp_bridge.py` + `eines/mcp_auto_chords_server.py`). L'MCP ja pot fer
   tot el que fa l'usuari: **porta-retalls** (`ac_copia_seleccio`,
@@ -1419,7 +1419,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   documentada a `docs/REGLES_DE_LA_APP.md` (§11) i blindada amb el test
   **`tests/test_regla11_paritat.py`**. `AGENTS.md` passa a 11 regles.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Moviment de bloc: CORREGIT + paritat d'estructura (regla d'or #11)**. El bloc
   només **tapa el seu tram nou** `[a',b')`: abans s'esborraven TOTS els clips que
   quedaven entre l'origen i el destí (es perdien clips que no hi tocaven). Ara el
@@ -1479,7 +1479,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   ara pel **cursor** (com la resta de punts de partir), en lloc de demanar el
   temps per número — mateix tracte que els acords.
 
-### Corregit
+### Corregit (2026-11-01)
 - **El clic a la caixa d'informació no responia**: un `QTextEdit` és una
   `QAbstractScrollArea` → rep els clics al seu **viewport**, no al widget; el
   filtre d'esdeveniments només era al widget. Ara es filtra **també el viewport**
@@ -1564,7 +1564,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [0.7.0] — 2026-10-14 (BETA)
 
-### Seguretat
+### Seguretat (2026-11-01)
 - **Import d'àudio (ffmpeg/ffprobe) endurit**: les comandes d'`info()` i
   `converteix_a_wav()` porten ara **`-nostdin`** i **`-protocol_whitelist
   file,pipe`** abans de l'entrada, perquè un fitxer disfressat (playlist
@@ -1644,7 +1644,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   al Release → qui baixa un paquet pot comprovar que és exactament el publicat
   (`sha256sum -c SHA256SUMS.txt`).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Les carpetes que genera l'app porten ara un PREFIX**: `AUTOCHORDS_<nom>`
   (abans `<nom>_ACORDS`). P. ex. `Tema.wav` → **`AUTOCHORDS_Tema/`**. Així totes
   les carpetes de l'app queden juntes i al davant quan s'ordena el directori de
@@ -1660,7 +1660,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   **deliberats** (Q9400 sense AVX, macOS 10.13, roda Windows) i Dependabot obria PRs
   perjudicials; les actualitzacions es fan a mà amb validació al CI.
 
-### Afegit
+### Afegit (2026-11-01)
 - **`docs/REGLES_DE_LA_APP.md`**: totes les **regles d'or (invariants)** de l'app
   en un sol lloc, **numerades** (1–10) amb la seva validació al codi i tests.
   Enllaçat des del `ROADMAP` i el `DEVELOPING`.
@@ -1697,7 +1697,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   **avís de fitxer llarg** (>45 min, no bloquejant); **Ajuda ▸ Obre la carpeta del
   registre**.
 
-### Corregit
+### Corregit (2026-11-01)
 - **Invariant de COBERTURA dels clips** (regla d'or): la **suma dels clips
   d'acords = la durada de la WAV** i la **suma dels clips d'estructura = la
   durada** — el 1r clip arrenca a **0** (s'hi afegeix una **capçalera «N»** si el
@@ -1730,7 +1730,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   un avís vell com si fos nou.
 ## [0.6.2] — 2026-10-13 (BETA)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Botons nous a la barra principal**: **«Exporta WAV's»** (abans «Exporta»),
   **«Exporta partitura»** (genera el MusicXML i, si hi ha MuseScore, el PDF/MSCZ)
   i **«Zoom selecció»** (ajusta la vista del timeline a tota la selecció).
@@ -1738,14 +1738,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   al menú i als botons, i el missatge de resultat diu què s'ha generat i, si no
   hi ha PDF, que cal **MuseScore** instal·lat.
 
-### Corregit
+### Corregit (2026-11-01)
 - **AVÍS confús en arrencar l'app congelada** (`AVÍS: no trobo …/OLD/
   sonic-annotator`): l'autocomprovació d'inici buscava la **reserva llegat**
   `OLD/sonic-annotator`, que **no s'empaqueta mai** (l'app fa servir
   `vamp_host_local`). Ja no s'avisa d'aquell fitxer (es manté com a *fallback*
   intern a `pipeline.py`).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Barra d'eines en 2 files**: la fila **Treball** (Obre…, opcions de temps) i
   una fila nova **Accions** amb **Analitza · Exporta WAV's · Exporta partitura**.
 - **Zoom a la selecció**: ara és un **botó d'icona** (`focus`, sense text) al
@@ -1753,7 +1753,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [0.6.1] — 2026-10-11 (BETA)
 
-### Corregit
+### Corregit (2026-11-01)
 - **macOS: l'app petava en aturar/canviar** (`EXC_BAD_ACCESS` a
   `AudioToolbox`/`Pa_CloseStream`). El motor natiu podia tancar el **mateix
   stream** de PortAudio **dues vegades o des de dos fils alhora** (el fil
@@ -1767,7 +1767,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   fa servir `shutil.which` + rutes de **macOS** (`/Applications/MuseScore*.app`)
   i **Windows** (`Program Files\MuseScore *`).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Tests per caçar bugs ABANS de compilar**: nova bateria
   `tests/test_audio_out.py` que cobreix els camins que **només s'executen a
   macOS/Windows** fent servir un **`sounddevice` FALS** + simulant el SO —
@@ -1778,7 +1778,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [0.6.0] — 2026-10-10 (BETA)
 
-### Corregit
+### Corregit (2026-11-01)
 - **macOS: l'`.app` no arrencava** (`ModuleNotFoundError: No module named
   'PyQt5'`). El build de macOS no passava `--paths` a PyInstaller; com que el
   launcher fa `from app.main import …` **dins d'una funció** i l'entry és a
@@ -1788,7 +1788,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   Windows, que ja ho tenia). Verificat: amb `--paths` PyInstaller recull
   `PyQt5/Qt5/plugins/platforms`.
 
-### Afegit
+### Afegit (2026-11-01)
 - **Àudio a macOS i Windows: motor natiu** (`app/audio_out.py` + `sounddevice`).
   L'app reprodueix **dins el procés** amb **PortAudio**: **CoreAudio** a macOS i
   **WASAPI** a Windows (amb fallback DirectSound → MME → WDM-KS; ASIO només si
@@ -1810,7 +1810,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   l'executable, els natius, ffmpeg…) — **només la fatia x86_64** — i **falla**
   si algun supera **10.13**. Funciona sense `otool` (parser propi).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Release `release.yml`**: ara **publica directament** (abans deixava un
   esborrany per aprovar a mà), **aprofita l'agregador `build-all`** (els builds
   *reusable* no queden registrats com a execucions pròpies) i **crea el tag**
@@ -1824,7 +1824,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [0.5.2] — 2026-10-09 (BETA)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Fase D.2 — edició DAW-like al timeline**:
   - **Multi-selecció**: **Ctrl+clic** afegeix/treu un clip de la selecció;
     **Shift+clic** selecciona el rang entre l'àncora i el clip clicat (dins del
@@ -1864,7 +1864,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   fi que hi cap** (abans era el més gruixut visible) → surten **cada 2-4 línies
   de graella** segons el zoom (abans 4-60), sense solapar-se.
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Línies del grid pintades de negre**: `grid_levels()` retornava els *strings*
   literals `"theme.TL_GRID_*"` i els consumidors feien `QColor(string)` → color
   **invàlid**. Ara retorna els colors **reals** de `theme`.
@@ -1877,7 +1877,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 - **Labels d’inici de compàs destacades**: `1.1`, `2.1`, `3.1`... apareixen
   ressaltats en negreta i amb color de mesura per emular millor l’estil DAW.
 
-### Proves
+### Proves (2026-11-01)
 - **231 tests** · OK (1 skip) — +21 respecte de la v0.5.1 (multi-selecció,
   `Ctrl+C/V/X`, `Ctrl+D` i **moure** el grup, indicador de mode, **loop A/B amb
   snap** i colors del grid).
@@ -1886,7 +1886,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [0.5.1] — 2026-10-08 (BETA)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Multi-SO (Linux + Windows + macOS): els 3 builds del CI VERDS** —
   abstracció de plataforma (`app/plataforma.py`), host i plugins **multi-SO**
   (`eines/compila_vamp_{host,plugins}.sh`, dispatch per SO), entry de
@@ -1906,7 +1906,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   **Verificat** amb les 9 llibreries del sistema amagades dins un *namespace*
   de muntatge: acords + estructura OK.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Llançadors unificats**: `AUTO_CHORDS.desktop` ara executa **`AUTO_CHORDS.sh`**
   (que tria l'intèrpret: `portable/` → `.venv` → `python3`); retirat `launcher.sh`.
 - **Arxiu local `OLD/`** (gitignorat): s'hi mou el que **no és necessari** però
@@ -1917,7 +1917,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   `app/dialegs.py`, `app/pipeline.py` i `wav_a_wavs.py`; `dev_reload.py` amb
   import lazy de `watchdog`; retirat `instal·la_vm_debian.sh` (la VM ja no cal).
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **CI macOS**: `build-macos.yml` ara **corre la suite de tests**
   (`tests.test_pipeline_export` + `tests.test_partitura`, amb anotació `::error::`);
   era l'únic dels 3 workflows que no validava els tests.
@@ -1943,7 +1943,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   deprecació de Node 20).
 - `.gitignore`: s'ignoren `LOGS GITHUB ACTIONS/` i `logs_*/`.
 
-### Documentació
+### Documentació (2026-11-01)
 - **Deute tècnic (Pas 4 — concatenat)**: `concatena.py` inclou **`tests/`**
   (47 fitxers · ~594 KB) perquè la revisió externa vegi el comportament esperat.
 - **Deute tècnic (Pas 1 — docs)**: comandament del visor corregit a
@@ -1966,7 +1966,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [0.5.0] — 2026-10-07
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Revisió 1 a 1 de tota la documentació**: tretes/actualitzades les restes
   de l'etapa anterior (Segmentino, aubio, pyqtgraph, «Processa»/«Finalitza i
   publica», `v0.4.0`). Actualitzats: `ROADMAP` (estat v0.5.0 + novetats),
@@ -1977,7 +1977,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   directors retirats), `PLAY`, `REFERENCIA_PILES`. Les mencions a CHANGELOG i
   `AUBIO_TEMPO` es conserven (història).
 
-### Afegit
+### Afegit (2026-11-01)
 - **Secció «Autoria» al README** (i cua de les notes del Release): autor
   **Pëp** + **reconeixement explícit als agents d'IA** que hi han treballat
   (opencode amb models com **DeepSeek**, Gemini, Devin, Chatbox, Spark), amb
@@ -1993,7 +1993,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
     (fallen si hi ha error HTTP, abans un 404 passava com a èxit); el
     `empaqueta_portable.sh` ja **no s'empassa** els errors de còpia.
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **CI robust**: els 3 tests de `EscriuTtlTests` depenien de `sonic-annotator`
   (que vol Qt6/ICU/glib). Ara es fan **SKIP** (`skipUnless`) si no es pot
   executar, i els workflows **intenten** instal·lar-ne les llibreries
@@ -2009,7 +2009,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   `LLICENCIES_TERCERS.md` les llicències del runtime (libfuse LGPL-2.1,
   squashfuse BSD-2, musl MIT).
 
-### Afegit
+### Afegit (2026-11-01)
 - **Release automàtic de GitHub** en crear un tag `v*`
   (`.github/workflows/release.yml`): construeix l'AppImage i crea un
   **Release esborrany** amb títol `AUTO CHORDS v<versió>` i el cos **en
@@ -2017,7 +2017,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   amb l'AppImage adjunta. El publiques tu. (El build manual
   `build-appimage.yml` segueix igual: només `workflow_dispatch`.)
 
-### Canviat
+### Canviat (2026-11-01)
 - **`.gitignore` blindat** (sense esborrar res del disc): afegides regles
   preventives per a `temp/`, `.pytest_cache/`, `.ruff_cache/`,
   `.mypy_cache/`, `.venv*/`, `*.orig`, `*.rej` i `*.AppImage.zsync`.
@@ -2025,7 +2025,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   ignorats** (el git puja 4,9 MB; el `portable/`, `.venv/` i `.deps/`
   es queden al PC).
 
-### Afegit
+### Afegit (2026-11-01)
 - **Preparat per compilar un AppImage (i a GitHub Actions)**:
   - **Icona d'aplicació** (no en teníem): `eines/crea_icona.py` la dibuixa amb
     Qt (quadrat fosc + forma d'ona de Lucide en blau, coherent amb el tema) a
@@ -2041,9 +2041,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
     mínima: aquí es compila `vamp_host_local`; la resta de binaris són antics:
     Python 2.17, PyQt5 2.17, numpy 2.14, ffmpeg estàtic).
 
-### Canviat
+### Canviat (2026-11-01)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Desfer/refer surten a la caixa d'informació**: en fer `Ctrl+Z`/`Ctrl+Y` es
   mostra **què** s'ha desfet/refer, descrit automàticament comparant els dos
   estats (p. ex. «⟲ DESFER: moure l'acord «Am» (5.00s → 4.00s)»,
@@ -2051,13 +2051,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   `Visor._descriu_canvi()` + senyal `infoMissatge`; el missatge es veu **4 s**
   i no el trepitja el ratolí. **4 tests nous** (`UndoInfoTests`).
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Senyal `playStateChanged` no connectat en carregar el visor**: la icona
   ▶/⏸ **no s'actualitzava** en donar a play (la connexió havia anat a parar
   per error a `_tap_tempo`). Ara `_carrega_visor` connecta `playStateChanged`
   **i** `infoMissatge` (i `_tap_tempo` queda net).✨
 
-### Afegit
+### Afegit (2026-11-01)
 - **La caixa d'informació explica el «ratolí intel·ligent» del visor**: abans
   només mostrava el tooltip del *giny* (i el timeline és un sol giny), així
   que sobre el visor no deia res. Ara `TimelineView.info_zona()` retorna
@@ -2066,7 +2066,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   final) — amb el nom de l'acord o secció. La info box ho mostra en passar-hi
   el ratolí. **3 tests nous** (`InfoBoxTests`, 169 en total).
 
-### Canviat
+### Canviat (2026-11-01)
 - **ICONES PROFESSIONALS (Lucide, ISC) en comptes d'emoji**: l'app ja no
   sembla de joguina. Nou `app/icones.py` (carrega els SVG de `icones/`,
   els **recoloreix** via QtSvg) i `eines/baixa_icones.sh` (21 icones, 88 KB).
@@ -2076,34 +2076,34 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   Tot→`maximize`, 🎵/🎼→`music`/`piano`. `×2`/`÷2` eixamplats perquè no es
   talli el text. Amplada mínima 1240. **166 tests.**
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **El paquet portable ja no porta cap `.gitignore`** (era una còpia per
   accident: `rsync` no l'excloïa i, a més, `--exclude` *protegeix* els
   fitxers ja existents al destí i no els esborrava). `empaqueta_portable.sh`
   ara exclou `.gitignore`/`.git*` i, per si queden d'una build anterior, els
   treu explícitament. El paquet **no és un repo** i no necessita res de git.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Barres d'eines: 2 files amb `Analitza`/`Exporta` a la fila 1** (com a
   l'origen): **fila 1** = `Obre…` + temps/BPM/offset + **Analitza** +
   **Exporta** (1197 px); **fila 2** = **transport** (play/loop/zoom/mute/
   metrònom, 703 px). Amplada mínima de finestra **1210** perquè res no es
   talli (`Inclou estructura` és a `Analitza ▸ Inclou estructura`).
 
-### Canviat
+### Canviat (2026-11-01)
 - **`Inclou estructura` surt de la barra d'eines** (era un `QCheckBox`) i passa
   a ser una **acció commutable al menú Analitza** (per defecte marcada). La
   **funció és la mateixa**; només canvia d'ubicació. La barra «Accions» queda
   amb `Analitza` + `Exporta` i comparteix fila amb el transport
   (**2 files**: opcions / accions+transport).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Barres d'eines: 3 files → 2**. La barra «Accions» (`Inclou estructura` +
   `Analitza` + `Exporta`) i la de **Transport** ara **comparteixen fila**
   (314 + 703 = 1029 px, caben junts). Així: fila 1 = opcions, fila 2 =
   accions + transport, i **tot visible a ≥1040 px**.
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Barres d'eines en finestres estretes** (<1400 px): la barra 1 demanava
   **1462 px** i, com que `QToolBar` **no crea cap botó d'extensió** aquí, els
   botons de la dreta (**Analitza/Exporta**) quedaven **inaccessibles**.
@@ -2118,7 +2118,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 Tongada de **portabilitat** (5 fases) + retirada de Segmentino/aubio +
 `Analitza`/`Exporta` ben separats. **166 tests.**
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **`Analitza` ja NO genera les carpetes de wavs** (es feien DUES vegades:
   també a l'`Exporta`). Restaura el disseny acordat: les `wavs_acords/` i
   `wavs_estructura/` són **l'últim pas**, i es generen **només amb
@@ -2128,7 +2128,7 @@ Tongada de **portabilitat** (5 fases) + retirada de Segmentino/aubio +
   d'analitzar només hi ha els 3 CSVs; després d'exportar hi ha els locators,
   la guia i les dues carpetes de wavs. **166 tests.**
 
-### Afegit
+### Afegit (2026-11-01)
 - **Fase 5 de portabilitat — empaquetat**: `eines/empaqueta_portable.sh`
   munta `AUTO_CHORDS_PORTABLE/` (codi + plugins + host + Python portable +
   ffmpeg; exclou `.deps/`, `.venv/`, `.git/`, `temp/`, brossa).
@@ -2137,15 +2137,15 @@ Tongada de **portabilitat** (5 fases) + retirada de Segmentino/aubio +
   estructura, compàs 1 = 9,49 s, BPM) i l'import d'mp3 amb el ffmpeg del
   paquet. **Mida final ~526 MB.**
 
-### Canviat
+### Canviat (2026-11-01)
 
-### Canviat
+### Canviat (2026-11-01)
 - **Fase 4 de portabilitat — àudio/requisits**: si no hi ha cap reproductor
   (`paplay`/`aplay`/`ffplay`), l'app **avisa clarament** (cal PipeWire o
   PulseAudio per escoltar) i **la resta funciona igual**; abans petava en
   engegar el play. Documentat a `DEVELOPING.md`.
 
-### Afegit
+### Afegit (2026-11-01)
 - **Fase 3 de portabilitat — `ffmpeg` estàtic embegut**: `portable/bin/ffmpeg`
   (build estàtic de johnvansickle, 80 MB, corre al Q9400). `app/ffmpeg.py`
   **prefereix el local** i cau al del sistema. Només s'embega `ffmpeg`:
@@ -2153,7 +2153,7 @@ Tongada de **portabilitat** (5 fases) + retirada de Segmentino/aubio +
   80 MB. Verificat: conversió d'mp3 → WAV PCM16 amb el ffmpeg portable.
   `eines/crea_portable.sh` actualitzat.
 
-### Afegit
+### Afegit (2026-11-01)
 - **Fase 2 de portabilitat — CPython portable**: `python-build-standalone`
   3.12.15 (build **genèric x86_64**, sense AVX; el `_v2` demanaria SSE4.2)
   a `portable/python/` amb PyQt5 + numpy<2. `AUTO_CHORDS.sh` **prefereix el
@@ -2161,7 +2161,7 @@ Tongada de **portabilitat** (5 fases) + retirada de Segmentino/aubio +
   tests passen amb el Python portable** i l'app carrega. `portable/` és al
   `.gitignore` (es regenera). Trets `pyqtgraph` (no s'usava) i `pip`.
 
-### Afegit
+### Afegit (2026-11-01)
 - **Fase 1 de portabilitat — host Vamp propi** (`eines/vamp_host.cpp` →
   `vamp_host_local`, 48 KB): substitueix `sonic-annotator` (que arrossegava
   ~70 llibreries: Qt6/ICU/glib/gnutls). Només depèn de libc/libstdc++ +
@@ -2171,7 +2171,7 @@ Tongada de **portabilitat** (5 fases) + retirada de Segmentino/aubio +
   `executa_transform` (el sonic-annotator queda de reserva). Vegeu
   `docs/QM_VAMP.md` i `docs/PORTABILITAT.md`.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Retirats el Segmentino i l'aubio**: l'**estructura** la fa només el
   **`qm-segmenter`** (l'única cosa que hi havia al diàleg) i el **BPM** el
   fan el `tempo.py` / `qm-tempotracker` / **consens**. Motius: el Segmentino
@@ -2188,7 +2188,7 @@ d'octava + motors triables), **plugins Queen Mary compilats** (qm-tempotracker,
 qm-barbeattracker, qm-segmenter, qm-keydetector), **compàs 1 automàtic** i
 **qm-segmenter com a motor d'estructura per defecte**. 165 tests.
 
-### Canviat
+### Canviat (2026-11-01)
 - **L'estructura ara la fa el `qm-segmenter` per defecte** (abans Segmentino).
   Es va triar perquè **detecta les repeticions** (`A … A … A`) de manera
   explícita; dona una estructura més fina (~13 trossos al tema de 101 vs 7
@@ -2196,7 +2196,7 @@ qm-barbeattracker, qm-segmenter, qm-keydetector), **compàs 1 automàtic** i
   o tornar al Segmentino des del diàleg. `extract_segments` i el diàleg
   passen a tenir `qm` com a defecte; el combo el llista primer.
 
-### Afegit
+### Afegit (2026-11-01)
 - **Motor de BPM triable i motor d'estructura** (parts 2 i 4/3 amb el
   Queen Mary), al diàleg d'opcions:
   - **BPM**: `nostre` (tempo.py, per defecte) · `qm` (qm-tempotracker) ·
@@ -2235,7 +2235,7 @@ qm-barbeattracker, qm-segmenter, qm-keydetector), **compàs 1 automàtic** i
   detecta el BPM (envolupant → autocorrelació → puntuació comb → prior), amb
   el cas real. Útil per documentar i per depurar casos difícils.
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **BPM: ambigüitat d'octava/subdivisió** (casos reals). El biaix pla antic
   («+15 % a 90–180») **no** la resolia: amb corxera/8ens forts guanyava el
   doble/subdivisió (Otis Redding → 179,8 en comptes de **103,5**; Chemical
@@ -2276,14 +2276,14 @@ Sessió gran: tap tempo, botó 📍, franja Editor, menús, paleta de botons,
 reals dels plugins Vamp + post-processat), **import d'altres formats amb
 ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
-### Afegit
+### Afegit (2026-11-01)
 - **Botons `×2` / `÷2` del BPM** a la barra de temps (al costat del camp):
   doblen o fan la meitat del BPM d'un clic, útil quan la detecció agafa el
   doble o la meitat. Rangs ampliats a **30–400** (abans 40–240) perquè hi
   càpiguen els dobles de temes ràpids; es propaga al regle + metrònom.
   **4 tests nous** (`BpmDoblaTests`).
 
-### Afegit
+### Afegit (2026-11-01)
 - **Import d'altres formats d'àudio via ffmpeg** (`app/ffmpeg.py`): `Obre…`
   ara accepta **wav, mp3, aif/aiff, flac, m4a, ogg, opus, wma…** i, si el
   fitxer no és **WAV PCM 16 bits**, el **converteix automàticament** amb
@@ -2293,11 +2293,11 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   dependències noves (ffmpeg ja és al sistema). **6 tests nous**
   (`FfmpegTests`), amb conversió real d'mp3/aiff/flac.
 
-### Arreglat
+### Arreglat (2026-11-01)
 - Les etiquetes del diàleg mostren el nom català + l'`id` petit
   (abans el `<small>` sortia literal).
 
-### Afegit
+### Afegit (2026-11-01)
 - **Neteja posterior dels acords** (post-processat, `app/postproc.py`), amb
   controls nous a la pestanya **Acords** del dialeg:
   - **Treure el baix** (`A/E` → `A`), **Reduir a l'acord bàsic**
@@ -2307,14 +2307,14 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   Funcions pures i testeables; s'apliquen al CSV després del Chordino.
   **7 tests nous** (`PostprocTests`).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Opcions del Chordino traduïdes al català** al diàleg d'autodetecció, amb
   una **ajuda** per a cada paràmetre (tooltip) i els valors traduïts
   («afinació global/local»). Completesa **verificada**: el Chordino té
   exactament aquests **6** paràmetres (cap més) i el Segmentino **cap**; els
   paràmetres d'aubio només són dels seus plugins (que no fem servir per BPM).
 
-### Afegit
+### Afegit (2026-11-01)
 - **Diàleg d'opcions d'autodetecció** (fases 3+4 de `AUTODETECCIO_OPCIONS.md`):
   en clicar **`🎯 Detecta`** (obre a la pestanya **BPM**) o **`Analitza`**
   (obre a **Acords**) surt un diàleg amb 3 pestanyes:
@@ -2342,7 +2342,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   - Verificat amb execució real: `useHMM=0, rollon=3` → **57 acords** vs
     **54** del defecte. **8 tests nous** (`VampParamsTests`, `EscriuTtlTests`).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Botó de reproducció**: `▶ Escolta` → **botó d'icona** que canvia sol
   (**`▶`** aturat / **`⏸`** sonant), com als DAWs, sense text. El visor emet
   `playStateChanged(bool)` i la barra de transport s'hi sincronitza.
@@ -2355,7 +2355,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   **5 tests nous** (`BotoOnOffTests`), inclòs un que comprova el color real
   del píxel entre apagat i encès.
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Selecció de les llistes**: clicar una fila d'acords o de seccions ara la
   deixa **ressaltada** (abans el carril sí que quedava seleccionat però la
   llista no). Causa: `ves_a()` → `_actualitza_temps()` repoblava les llistes
@@ -2364,7 +2364,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   la selecció també sobreviu als canvis de BPM/offset/compàs. **3 tests nous**
   (`LlistaSeleccioTests`).
 
-### Afegit
+### Afegit (2026-11-01)
 - **Botó `📍` a l'Offset**: llegeix la posició del **cursor vermell** i hi posa
   el **compàs 1** (offset) a l'instant, actualitzant els dos camps
   (segons i ≈ C.B) i la graella. És la versió *botó* de
@@ -2381,14 +2381,14 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   **sense reengegar l'àudio** en curs. El botó mostra `TAP (n) BPM`.
   **5 tests nous** (`TapTempoTests`).
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Seleccionar des de les LLISTES no actualitzava la franja Editor**:
   `TimelineView.select_clip()` no emetia `clipSelected` (només ho feia
   `_seek_to`, el clic al propi clip). Ara `select_clip()` **sí que l'emet**
   (i `_seek_to` no el duplica) → **tots els camins** (llista, carril, menú)
   actualitzen l'Editor i les llistes. **1 test nou** (regressió).
 
-### Afegit
+### Afegit (2026-11-01)
 - **Franja «EDITOR»** entre els carrils i les llistes (app/visor.py): mostra
   **en gran** l'element seleccionat (🎵 acord / 🎼 secció) i s'edita
   **directament allà**, **sense cap finestra emergent**. Camps: **Nom**
@@ -2414,7 +2414,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   no s'ha pogut comprovar en entorn headless (limitació de QTest sense
   ratolí). Les accions del menú cobreixen el cas.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Barra 1 reordenada segons el FLUX de treball**: ara és
   `Obre…` → opcions de temps (selector BPM·compàs/Lliure, BPM, 🎯 Detecta,
   Compàs, Offset, ≈ C.B, Inclou estructura) → `Analitza` → `Exporta`.
@@ -2422,7 +2422,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   de la de temps i trencava l'ordre natural. Tot en **una sola barra**.
   Docs (`ESQUEMA_UI.md/.html/.svg`) actualitzats.
 
-### Documentat
+### Documentat (2026-11-01)
 - **`docs/ESQUEMA_UI.md` · `.html` · `.svg` actualitzats a la vista actual
   (v0.2.2)**: finestra única amb el **visor al centre**, **dues barres
   d'eines** (temps + transport), **dos camps d'offset** sincronitzats
@@ -2430,7 +2430,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   el dock **«Log · Informació»** (log 3/4 + ajuda «live» 1/4). Taules de
   noms, interaccions, mides i colors al dia.
 
-### Afegit
+### Afegit (2026-11-01)
 - **Offset amb DOS camps sincronitzats**: `Offset` (segons) i `≈ C.B`
   (compàs.beat). El camp compàs.beat és **relatiu a la graella original
   (offset = 0)** -> el número que hi escrius és el que llegiries al regle
@@ -2438,7 +2438,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   actualitza l'altre i la graella. En mode Lliure s'amaga amb la resta de
   paràmetres. **3 tests nous** (`OffsetDosCampsTests`).
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Les llistes d'acords/estructura no seguien l'offset**: mostraven
   l'etiqueta de compas calculada amb offset 0 (p. ex. `5.1 Am` per un acord
   a 9,5 s), mentre el regle ja el tenia en compte. Dues causes: `_fmt_compas`
@@ -2449,7 +2449,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
 ## [0.2.2] — 2026-10-06 (tag `v0.2.2-checkpoint`)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Compte enrere (count-in) al silenci inicial**: abans de l'offset (el
   compàs 1) la graella ara és **negativa** en comptes de quedar-se clavada a
   `1.1`. Així, si el compàs 1 cau a 9,5 s, el silenci es llegeix
@@ -2458,7 +2458,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   (des de t=0 de la cançó, no només des de l'offset). **3 tests nous** (+1
   adaptat).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Detecció de BPM reescrita (`app/tempo.py`, numpy pur)**: l'antic mètode
   (beat tracker d'**aubio** + mediana dels intervals) fallava amb temes reals:
   amb prou feines encertava `01 101bpm pep live RE-ESTRUCTURA.wav` (9,5 s de
@@ -2472,7 +2472,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
 ## [0.2.1] — 2026-10-06 (tag `v0.2.1-checkpoint`)
 
-### Canviat
+### Canviat (2026-11-01)
 - **Llistes i log tornen a l'espai buit sota l'ona**: al PAS 6 les llistes
   havien passat a un dock lateral i havien deixat el visor buit. Ara tornen
   **al visor, sota l'ona** (acords | estructura) i el **log de l'anàlisi** és
@@ -2480,7 +2480,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   del menú. Es mantenen clic-per-saltar, doble-clic-per-editar i menú
   contextual de les llistes.
 
-### Afegit
+### Afegit (2026-11-01)
 - **Offset real (compàs 1)**: el camp «Offset (s)» ara s'aplica **a tot
   arreu** amb la MATEIXA graella: el **regle/graella** del timeline
   (`fmt_pos`, `grid_levels`, `snap_time` i el pintat de `GridLayer`/
@@ -2496,7 +2496,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 - **5 tests nous** (`OffsetTests`): fmt_pos, snap_time, pos_compas,
   metrònom amb offset i límit de BPM.
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Els botons 🔇 (mute) i 🔁 (loop) de la barra de transport no feien res**:
   `commuta_mut()` i `commuta_loop()` llegien l'estat dels botons **propis del
   visor** (`b_mut`/`b_loop`), que la barra no toca -> el botó es marcava però
@@ -2507,7 +2507,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
 ## [0.2.0] — 2026-10-06 (tag `v0.2.0-checkpoint`)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Metrònom (PAS 3: interfície i estat gris)**:
   - Botó marcable **🥁** i un **QSlider 0-100** (per defecte **60**) a la barra
     de transport, al costat del mute, amb tooltips. Acció marcable
@@ -2521,7 +2521,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
     codi del visor.
   - 2 tests nous a la finestra.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Metrònom (PAS 2: integració a la reproducció)** — `app/visor.py`:
   - Estat `metro_on = False` i `metro_vol = 0.6`.
   - A `_engega_des_de()`, **després** d'aplicar volum/mute de la cançó, els
@@ -2533,7 +2533,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
     posició actual. Volum amb clamp 0-1.
   - 5 tests nous (`MetroVisorTests`). Encara **sense widgets**.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Metrònom (PAS 1: generador)** — `app/metronom.py`, numpy pur sense Qt:
   - `genera_clic(sr, accent)`: clic de 25 ms (sinusoide, envolupant
     exponencial). Accent → 1500 Hz (temps 1 de cada compàs); normal → 1000 Hz.
@@ -2547,7 +2547,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   - 6 tests nous (`MetronomTests`): posicions a 120 BPM 4/4, començar a mig
     compàs, BPM invàlid, clip, volum 0, `bpb<1`.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Reorganització de la GUI — PAS 6: llistes al tauler «Inspector».**
   - Les llistes d'acords i estructura viuen en un **tauler lateral dret
     plegable** (`QDockWidget` «Inspector»), **amagat per defecte**;
@@ -2633,14 +2633,14 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
 ## [0.1.8] — 2026-10-06 (tag `v0.1.8-checkpoint`)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Menú contextual** (botó dret) sobre un clip del timeline amb
   **Duplica**, **Elimina** i **Reanomena**, reutilitzant les accions dels
   punts anteriors i el rename inline existent. Les tres accions surten
   **desactivades** si no hi ha cap clip seleccionat. El botó dret al buit
   segueix fent **pan** (no s'ha perdut).
 
-### Canviat
+### Canviat (2026-11-01)
 - **Seleccionat vs actiu, clarament diferents**: abans el `SELECTION_COLOR`
   era el mateix groc que la guia de snap i el fons «actiu» era quasi blanc
   (es confonien). Ara:
@@ -2651,7 +2651,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 - **Tots els colors del visor centralitzats a `app/theme.py`** (abans hi
   havia ~18 hex escampats per `app/timeline.py`). Aquest ja no en conté cap.
 
-### Afegit
+### Afegit (2026-11-01)
 - **Ctrl+D duplica el clip seleccionat** (acord o secció), amb **undo** i
   respectant les invariants. On s'insereix: **just després de l'original,
   repartint la seva durada** (no es desplaça res):
@@ -2664,13 +2664,13 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   veí ocupa l'espai buit). Els items de QGraphicsView no reben tecles (no
   són focusables), per tant es gestiona al `TimelineView`. 2 tests nous.
 
-### Verificat
+### Verificat (2026-11-01)
 - **Clic a un clip → cursor al seu inici** (acords i seccions): JA funcionava
   (es va arreglar en una versió anterior: el lambda del click capturava el
   valor vell d'`ini`/`t`). Afegit un **test de regressió**
   (`test_click_a_un_clip_mou_el_cursor`).
 
-### Documentat
+### Documentat (2026-11-01)
 - **README**: «Estat actual» posat al dia (v0.1.8) i el bloc de configuració
   de `AUTO_CHORDS_TEMP` tret de dins de «Filosofia i lògica del flux»
   (trencava la secció «Semàntica del flux») → nova secció «Configuració».
@@ -2678,7 +2678,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   `requires-python` del `pyproject.toml`).
 - **requirements.txt**: treta la menció a `als2rpp.py` (ja no hi és).
 
-### Netejat
+### Netejat (2026-11-01)
 - **Imports sense ús** trets (`pyflakes` no és al venv i instal·lar-lo seria
   una dependència nova → anàlisi amb l'AST de la stdlib): `visor.py`
   (`atexit`, `math`, `QObject`, `QThread`, `pyqtSignal`), `timeline.py`
@@ -2689,7 +2689,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   `%k` (la ubicació del mateix `.desktop`) → **funciona des de qualsevol
   carpeta o usuari**. `launcher.sh` fa el seu propi `cd`.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Missatges d'error al log**: els handlers `except Exception` que només
   mostraven un `QMessageBox` (o que s'empassaven l'error en silenci) ara
   **també escriuen a `auto_chords.log`** amb el context. 14 punts a
@@ -2698,7 +2698,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   desconnectat, fallback d'API Qt) es deixen silenciosos a propòsit.
   Comportament visible **sense canvis**.
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Els tests ja no es pengen en entorns sense pantalla (CI)**: els
   `QMessageBox` de `Visor.exporta()` i `Finestra.exporta()` són **modals** i
   bloquejaven per sempre (ningú no pot clicar «OK» sense pantalla). Als
@@ -2708,7 +2708,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
 ## [0.1.7] — 2026-10-05 (tag `v0.1.7-checkpoint`)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Plugin Vamp d'aubio** (`vamp-aubio-linux64-local/`): detecció de
   **tempo/BPM** i **pulsacions** (`vamp:vamp-aubio:aubiotempo:beats`),
   més onsets, pitch, notes, silencis i descriptors. Compilat localment
@@ -2726,11 +2726,11 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   sol fitxer, amb índex; exclou `.venv/.git/.deps`, binaris, plugins i el
   C++ de tercers). L'artefacte generat queda a `.gitignore`.
 
-### Canviat
+### Canviat (2026-11-01)
 - `pipeline.detecta_bpm(wav, log)`: BPM a partir de la **mediana** dels
   intervals entre pulsacions (aubio).
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Compàs de qualsevol mètrica**: `pos_compas` tenia `SB = 8` fix (només
   4/4) i contradeia `acords_a_live.py`. Ara usa `bpb` (`SB = bpb*2`) i
   funciona amb 3/4, 6/8, 5/4… El `bpb` es propaga a `desa_abc_csv`,
@@ -2740,7 +2740,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
   Ara tots dos a **2 decimals = 10 ms** (constant `TEMPS_DEC`).
   Tests nous a `FormatCsvTests`.
 
-### Netejat
+### Netejat (2026-11-01)
 - Fora el material innecessari per l'app actual (a la paperera; tot
   recuperable de git): **`tauri-ui/`** (experiment Tauri aparcat, 8,8 GB
   amb build + node_modules), `AUTO_CHORDS_TAURI.sh`,
@@ -2752,14 +2752,14 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
 ## [0.1.6] — 2026-10-05 (tag `v0.1.6-checkpoint`)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Barra de menús** (`app/main.py`): Fitxer · Edita · Selecciona ·
   Visualitza · Analitza · Ajuda, amb les accions bàsiques cablejades
   (obre WAV, exporta, desfer/refer, zoom, loop A/B, ajuda).
 - Captura d'**excepcions no gestionades** al log (`sys.excepthook`) i els
   logs del visor ara també van a `auto_chords.log`.
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **CRÍTIC — el visor incrustat quedava sord**: `_carrega_visor` fa
   `_embedded = True` + `close()`, i el `closeEvent` **desconnectava tots
   els senyals del timeline** sense comprovar `_embedded`. Ara només
@@ -2778,13 +2778,13 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 - **Mètodes duplicats** `_elimina_acord_index` / `_elimina_seccio_index`
   eliminats (la 2a definició guanyava).
 
-### Nota
+### Nota (2026-11-01)
 - Undo/Redo treballa **només** sobre el model (les dades que van al CSV);
   mai regenera wavs.
 
 ## [0.1.5] — 2026-10-05 (tag `v0.1.5-checkpoint`)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Desfer/refer (undo/redo)** d'edició: moviment, redimensionat i canvi
   de nom, tant d'acords com d'estructures. Pila de **snapshots** del model
   (`acords`/`seccions`). Dreceres **Ctrl+Z** (desfer) i
@@ -2794,28 +2794,28 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 - `docs/ESQUEMA_UI.html` — réplica visual fidel de la GUI (HTML+CSS).
 - `docs/ESQUEMA_UI.svg` — versió vectorial de l'esquema.
 
-### Canviat
+### Canviat (2026-11-01)
 - **Les wavs ja no es regeneren a cada edició.** `_desa_i_regenera()` i
   `_regenera_abc_des_de_totes_les_seccions()` ara escriuen **NOMÉS el CSV**.
   Les `wavs_acords/` i `wavs_estructura/` es generen **exclusivament** amb
   `exporta()` («Finalitza i publica»), quan tot està revisat i editat.
   Efecte: editar és **instantani** i l'undo/redo no toca mai les wavs.
 
-### Nota de disseny
+### Nota de disseny (2026-11-01)
 - Les wavs generades **no tenen cap paper** en la visualització ni l'edició:
   l'ona i la reproducció fan servir el **WAV original**; l'edició treballa
   sobre el **CSV**. Les wavs són el producte final d'exportació.
 
 ## [0.1.4] — 2026-10-05 (tag `v0.1.4-checkpoint`)
 
-### Afegit
+### Afegit (2026-11-01)
 - **Follow del cursor**: durant la reproducció, si el cursor surt de la
   zona còmoda (0–85 % de la vista), la vista es desplaça per deixar-lo
   a ~15 % de l'esquerra (estil DAW). S'activa amb ▶ i s'atura amb ⏸.
 - **Cursor hover** als clips d'acord i de secció: la «mà» sobre el cos,
   fletxes ↔ a les vores (paritat acords/estructura).
 
-### Arreglat
+### Arreglat (2026-11-01)
 - **Click sobre un clip desplaçat**: les connexions capturaven l'inici
   en crear el lambda (`lambda t0=float(ini)`) → després d'un resize, el
   click anava al **vell** inici. Ara es llegeix el valor **actual**
@@ -2827,7 +2827,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
 ## [0.1.3] — 2026-10-05 (tag `v0.1.3-wip`)
 
-### Afegit / Canviat
+### Afegit / Canviat (2026-11-01)
 - **Paritat acords/estructura**: les estructures passen a model «només
   inici» (el fi es deriva del veí); cos de secció desplaça inici+fi.
 - **Snap més fi**: mai el compàs sencer — setzena (span ≤ 8 beats),
@@ -2837,7 +2837,7 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
 ## [0.1.2] — 2026-10-05 (tag `v0.1.2`)
 
-### Afegit / Canviat
+### Afegit / Canviat (2026-11-01)
 - **Coordenades unificades** al visor: clips, cursor, grid, regle, ona,
   guia i loop tots relatius a la vista (`_x_to_time` únic); escena =
   mida de la viewport. Abans clips/cursor eren absoluts i la resta
@@ -2849,14 +2849,14 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 
 ## [0.1.1] — 2026-10-05 (tag `v0.1.1`)
 
-### Afegit
+### Afegit (2026-11-01)
 - Visor DAW-like: **ona plena** (estil Audacity, envolupant min/max per
   tram visible) + **GridLayer** (compàs/beat/subdivisió) + regle a dalt.
 - **2 carrils sobreposats** semitransparents (estructura + acords).
 
 ## [0.1] — 2026-10-01 (tag `v0.1-punt-control`)
 
-### Afegit
+### Afegit (2026-11-01)
 - Script únic `wav_a_wavs.py` (mateix motor que l'app, sense duplicar lògica).
 - Entorn aïllat Ubuntu sense sudo: `requirements.txt` (`PyQt5`,
   `pyqtgraph`, `numpy<2` obligat pel Q9400) + `instal·la_local.sh`
@@ -2865,13 +2865,13 @@ ffmpeg** i botons **×2/÷2** del BPM. 148 tests.
 - `fer_abc` per famílies (`N1/N4→N`), fusió d'adjacents i resum de
   repeticions (ex. `ABCBACDACA, A×4 B×2 C×3 D×1`).
 
-### Arreglat
+### Arreglat (2026-11-01)
 - `acords_a_live.py`: csv amb tot `N` donava `IndexError`; ara error
   llegible (`cap acord detectat...`, sortida 1).
 
 ## [No publicat — visor fase A/B.1]
 
-### Afegit
+### Afegit (2026-11-01)
 - Visor fase A (`app/visor.py`): ona + acords + estructura + escolta amb
   transports (play/pausa/stop, ±10 s, volum/mute, loop A-B, zoom, temps),
   botó «Analitza» (Chordino+Segmentino en fil) i ressalt del que sona.
