@@ -5,6 +5,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit — Fase 5: ajust d'un sol BPM i fusió amb tolerància
+- Nou mòdul `app/tempo_ajust.py`: ajust per mínims quadrats i partició
+  recursiva per llindar (40 ms per defecte).
+- Acció «Ajusta un BPM (mínims quadrats) a partir dels marcadors» al menú
+  Analitza, amb missatge i un sol desfer.
+- Tests sintètics a `tests/test_tempo_ajust.py`.
+
 ### Afegit — Fase 4: compàs vs secció
 - Dos botons: «＋ Compàs» (frontera només al mapa de tempo) i «＋ Secció»
   (frontera al mapa de tempo i a l'estructura).

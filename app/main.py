@@ -1139,6 +1139,8 @@ class Finestra(QMainWindow):
                   self._bpm_dels_marcadors)
         self._act(m, "Ajusta BPMs a partir dels marcadors per trams", "",
                   self._ajusta_bpms_marcadors)
+        self._act(m, "Ajusta un BPM (mínims quadrats) a partir dels marcadors",
+                  "", self._ajusta_bpm_minims_quadrats)
         m.addSeparator()
         m.addAction(self.amb_est)      # Inclou estructura (commutable)
         # --- Ajuda ---
@@ -1630,6 +1632,28 @@ class Finestra(QMainWindow):
                 f"(abans {abans}), compàs 1 a {float(vr.offset):.3f}s")
             self._missatge_info(
                 f"BPMs ajustats amb {len(vr.marcadors)} marcadors "
+                f"({len(vr.tempo_trams)} trams). Ctrl+Z ho desfà tot.")
+        return ok
+
+    def _ajusta_bpm_minims_quadrats(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa("Ajusta BPM", "Primer obri una WAV.")
+            return False
+        if len(vr.marcadors or ()) < 2:
+            self.avisa("Ajusta BPM",
+                       "Calen almenys dos marcadors.")
+            return False
+        self._atura_si_sona("ajust del BPM per mínims quadrats")
+        abans = len(vr.tempo_trams or ())
+        ok = bool(vr.ajusta_bpm_minims_quadrats())
+        if ok:
+            self._sincronitza_temps_del_visor()
+            self.registra(
+                f"Ajusta BPM mínims quadrats: {len(vr.tempo_trams)} trams "
+                f"(abans {abans})")
+            self._missatge_info(
+                f"BPM ajustat per mínims quadrats "
                 f"({len(vr.tempo_trams)} trams). Ctrl+Z ho desfà tot.")
         return ok
 

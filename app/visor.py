@@ -3045,6 +3045,51 @@ class Visor(QMainWindow):
                      f"{len(nous)} trams · compàs 1 a {ms[0]:.3f}s")
         return bool(ok)
 
+    def ajusta_bpm_minims_quadrats(self, llindar_ms=40.0):
+        """Ajusta el mapa amb un sol BPM per mínims quadrats, amb partició
+        recursiva si el residu supera el llindar. Un sol desfer."""
+        from app import tempo_ajust
+        from app import marcadors as M
+        durada = self._durada_wav()
+        ms = M.normalitza_marcadors(list(self.marcadors or ()), durada)
+        if len(ms) < 2:
+            self.avis_editor(
+                "Calen almenys dos marcadors per a ajustar el BPM")
+            return False
+        try:
+            trams_part, motius = tempo_ajust.ajusta_amb_particio(
+                ms, float(llindar_ms), 4, 4)
+        except ValueError as e:
+            self.avis_editor(f"Ajusta BPM: {e}")
+            return False
+        # Afegir cap i cua com a excepcions.
+        num0, den0 = 4, 4
+        out = []
+        if ms[0] > 0:
+            out.append((0.0, float(ms[0]), trams_part[0][2], num0, den0))
+        out.extend(trams_part)
+        if ms[-1] < durada:
+            out.append((float(ms[-1]), durada, trams_part[-1][2], num0, den0))
+        # Normalitzar contigüitat
+        norm = []
+        for i, (ini, fi, bpm, n, d) in enumerate(out):
+            if norm:
+                ini = norm[-1][1]
+            norm.append((float(ini), float(fi), float(bpm), int(n), int(d)))
+        abans = [tuple(x) for x in (self.tempo_trams or [])]
+        if [tuple(x) for x in norm] == abans:
+            return False
+        self._undo_marca()
+        self.offset = float(ms[0])
+        ok = self.aplica_tempo_trams(norm)
+        self._undo_commit()
+        if ok:
+            self._sincronitza_vista()
+            residu_msg = "; ".join(motius) if motius else "sense divisions"
+            self.log(f"BPM ajustat per mínims quadrats: {len(norm)} trams · "
+                     f"{residu_msg}")
+        return bool(ok)
+
     def elimina_marcador(self, idx=None):
         """Esborra un marcador (per defecte, l'últim). Els clips NO es toquen."""
         from app import marcadors as M
