@@ -32,6 +32,18 @@
 5. Comprova que l'entorn funciona: la suite en verd i `pyflakes` net (comandes a
    «Com executar-ho»). Si no ho està, **atura't i avisa** abans de canviar res.
 
+## 📍 Estat actual (relleu de sessió, 2026-11-01)
+
+Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3, 4, 5**.
+Pendents: 6 (edició d'àudio), 7 (rubato exportat), 10 (motor detecció). Ajornades: 8, 9, 11.
+
+Bugs corregits recentment:
+- Downbeat (offset) absolut: no es mou en ajustar BPM.
+- T (tap tempo): només amb clip de tempo seleccionat.
+
+Commits recents: `0bb763a`, `8620f79`, `db32196`, `6fc462b`, `b80912d`, `18c46f1`, `6b73a8b`.
+Suite: ~1.436 tests, `pyflakes` net. Corpus real encara pendent.
+
 ## 🎚️ Qui ets i com has de pensar
 
 Ets un **desenvolupador d'àudio i de programari** amb experiència real en **DAWs**
