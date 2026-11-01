@@ -178,7 +178,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 │      ◄── arrossega AQUÍ el ratolí per crear un LOOP A/B ──►            │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ②  FORMA D'ONA           (WaveformLayer)   fons #0f1218               │
-│                                                                        │
+│      ↔ nanses d'inici i final d'àudio                                   │
 │  ③  PISTA BPM/COMPÀS      (TempoLayer)      y 29–54   · 25 px          │
 │         ┌────────────┐┌───────────┐   trams «120 · 4/4»… (només en     │
 │         │ 120 · 4/4  ││  98 · 4/4 │   mode BPM · compàs; a Lliure,     │
@@ -221,6 +221,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 |-----|-----------------|-----------------|-------|
 | ① | `RulerLayer` / `self._ruler` | **regle de temps** | `QGraphicsItem` |
 | ② | `WaveformLayer` / `self._waveform` | **forma d'ona** | `QGraphicsPixmapItem` |
+| — | `self._audio_handles` / `self._audio_preview` | **nanses i previsualització** de retall/afegit als extrems; snap compartit amb el timeline | `QGraphicsRectItem` |
 | ③ | `TempoLayer` / `self._tempo_lane` | **pista de BPM/compàs** (trams de tempo; només en mode BPM · compàs) | `QGraphicsObject` |
 | ④ | `SectionItem` / `self._section_items` | **carril estructura** | `QGraphicsObject` |
 | ⑤ | `ChordItem` / `self._chord_items` | **carril acords** | `QGraphicsObject` |
@@ -268,6 +269,9 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Pista de tempo ③ — doble-clic** | **diàleg** per editar-ne el valor (`_on_tempo_edit`) |
 | **Pista de tempo ③ — vores** | arrossegar → **re-tempo**: la frontera va **on deixa anar el ratolí** (amb l'Snap normal, que es pot apagar), es conserven els **compassos** dels dos costats i el **BPM** es recalcula; **cap altre tram no es mou** (`_on_tempo_mogut` → `tempo_map.mou_frontera_retempo`; ±5 px i cursor ↔ com als clips — regla #11). El marcador de la frontera **es mou amb ella** |
 | **Pista de tempo ③ — botó dret** | **selecciona** el tram i obri **el mateix joc de menú que els clips** (regla #11): **Afegeix un canvi aquí** (el seu «afegir» propi) · Duplica (només si hi ha lloc després) · Elimina (només si hi ha més d'un tram) · Reanomena (BPM/compàs)… · Parteix aquest tros aquí · Partir per la meitat · **Parteix a la selecció A–B** (s'imanta a línia de compàs) · **Afegir 1 compàs (+1)** · **Restar 1 compàs (−1)** · **Doblar compassos (×2)** · **Dividir compassos (÷2)** (aquestes 4, només a ③: canvien els compassos amb els **segons immòbils** i el BPM s'adapta) · Retalla · Copia · Enganxa |
+| **Nansa esquerra de l'àudio ②** | arrossegar cap a dins → retalla l'inici · cap a fora → afegeix silenci |
+| **Nansa dreta de l'àudio ②** | arrossegar cap a dins → retalla el final · cap a fora → afegeix silenci |
+| **Previsualització d'àudio** | mostra el tram afectat mentre s'arrossega; en deixar anar, aplica l'edició a la còpia del projecte i sincronitza el model (una acció de desfer) |
 | **Roda ②** | **zoom** (centrat al clip seleccionat) |
 | **Espai** | **play / pausa** |
 | **T** | **tap tempo** |
@@ -433,8 +437,8 @@ El **`🧭`** (i Analitza ▸ «Detecta el compàs 1 automàticament») usa
 
 `Obre àudio` accepta **wav, mp3, aif/aiff, flac, m4a, ogg, opus, wma…**. Si el
 fitxer no és **WAV PCM 16 bits**, es converteix automàticament amb
-`ffmpeg -vn -c:a pcm_s16le` i el WAV de treball queda al costat de l'original
-com **`<nom>_convertit.wav`** (es reutilitza si ja és més nou).
+`ffmpeg -vn -c:a pcm_s16le` directament en un temporal dins `audio/` del
+projecte. No es crea cap WAV convertit al costat de l'original.
 
 ---
 

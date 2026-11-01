@@ -3804,18 +3804,9 @@ class Finestra(QMainWindow):
         if not self._pot_descartar():
             return
         self.wav_original = ""
-        try:
-            treball = self._assegura_wav(ruta)
-        except Exception as e:  # noqa: BLE001
-            self.logger.exception("Àudio no vàlid: %s", ruta)
-            self.wav_info.setText(f"No s'ha pogut obrir: {e}")
-            self._mostra_placeholder_visor()
-            return
-        if treball != ruta:
-            self.wav_original = os.path.abspath(ruta)
 
         # Un àudio que JA té projecte: l'usuari decideix (mai un error).
-        previ = self._projecte_associat(treball)
+        previ = self._projecte_associat(ruta)
         desti = None
         if previ is not None:
             tria = self._pregunta_projecte_existent(previ)
@@ -3839,9 +3830,9 @@ class Finestra(QMainWindow):
 
         if not desti:
             # Pregunta ON crear el projecte (per defecte, al costat del WAV).
-            base = os.path.splitext(os.path.basename(treball))[0]
+            base = os.path.splitext(os.path.basename(ruta))[0]
             desti = self._demana_ubicacio_projecte(
-                os.path.dirname(treball), pipeline.PREFIX_SORTIDA + base,
+                os.path.dirname(ruta), pipeline.PREFIX_SORTIDA + base,
                 "Crea el projecte")
             if not desti:
                 return
@@ -3852,21 +3843,32 @@ class Finestra(QMainWindow):
             self.bpm.setText("120.000")
         # Migració: si hi ha una AUTOCHORDS_<nom>/ vella al costat del WAV,
         # n'importem els CSVs (i, si el destí és la mateixa carpeta, in situ).
-        antic = projecte.carpeta_autochords(treball)
+        antic = projecte.carpeta_autochords(ruta)
         ca = os.path.join(antic, projecte.NOM_CSV_ACORDS) if antic else None
         sa = os.path.join(antic, projecte.NOM_CSV_ESTRUCTURA) if antic else None
         in_situ = bool(antic) and os.path.abspath(desti) == os.path.abspath(antic)
+        if not ffmpeg.es_wav_pcm16(ruta):
+            self.registra(f"Convertint «{os.path.basename(ruta)}» a WAV "
+                          "dins del projecte (ffmpeg)…")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        error = None
         try:
             p = projecte.Projecte.crea(
-                desti, treball, nom=os.path.basename(desti),
+                desti, ruta, nom=os.path.basename(desti),
                 bpm=self._bpm_val(), bpb=self._bpb_val(),
                 offset=self._offset_val(), fix=self.tempo_fix.isChecked(),
                 opcions=self.opcions, compas=self.bpb.text().strip(),
                 csv_acords=ca if ca and os.path.isfile(ca) else None,
                 csv_estructura=sa if sa and os.path.isfile(sa) else None,
-                permet_existent=in_situ)
+                permet_existent=in_situ, log=self.registra)
         except (projecte.ProjecteError, OSError) as e:
-            self.avisa("Auto Chords", f"No s'ha pogut crear el projecte:\n{e}")
+            self.logger.exception("No s'ha pogut crear el projecte des de %s",
+                                  ruta)
+            error = e
+        finally:
+            QApplication.restoreOverrideCursor()
+        if error is not None:
+            self.avisa("Auto Chords", f"No s'ha pogut crear el projecte:\n{error}")
             return
         self._activa_projecte(p)
         self.registra(f"Projecte creat a: {desti}")

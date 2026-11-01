@@ -37,6 +37,7 @@ import tempfile
 import wave
 from app import pipeline
 from app import projecte
+from app import ffmpeg
 from unittest.mock import patch
 from PyQt5.QtWidgets import QFileDialog
 from app import config
@@ -119,6 +120,43 @@ class BaseProjecte(unittest.TestCase):
 
 
 class TestCrea(BaseProjecte):
+    def test_crea_converteix_directament_dins_del_projecte(self):
+        origen = os.path.join(self.td, "tema.mp3")
+        with open(origen, "wb") as f:
+            f.write(b"original")
+        desti = os.path.join(self.td, "Projecte")
+        destinacions = []
+
+        def converteix(_origen, log=None, dest=None):
+            destinacions.append(dest)
+            _wav(dest, dur=1.0)
+            return dest
+
+        with patch.object(ffmpeg, "converteix_a_wav",
+                          side_effect=converteix):
+            p = projecte.Projecte.crea(desti, origen)
+
+        self.assertEqual(len(destinacions), 1)
+        self.assertEqual(os.path.commonpath(
+            [p.carpeta, destinacions[0]]), p.carpeta)
+        self.assertEqual(os.listdir(os.path.join(p.carpeta, "audio")),
+                         ["tema.wav"])
+        self.assertFalse(os.path.exists(
+            os.path.join(self.td, "tema_convertit.wav")))
+        with open(origen, "rb") as f:
+            self.assertEqual(f.read(), b"original")
+
+    def test_fallada_de_conversio_no_deixa_audio_parcial(self):
+        origen = os.path.join(self.td, "tema.mp3")
+        with open(origen, "wb") as f:
+            f.write(b"original")
+        desti = os.path.join(self.td, "Projecte")
+        with patch.object(ffmpeg, "converteix_a_wav",
+                          side_effect=RuntimeError("ffmpeg falla")):
+            with self.assertRaises(projecte.ProjecteError):
+                projecte.Projecte.crea(desti, origen)
+        self.assertFalse(os.path.exists(os.path.join(desti, "audio")))
+
     def test_carpeta_autocontinguda(self):
         wav = os.path.join(self.td, "tema.wav")
         _wav(wav)
@@ -325,8 +363,8 @@ class TestMigracioAutochords(BaseProjecte):
 # ══════════════════════════════════════════════════════════════════════════
 """Projectes — backups versionats + sessió/recuperació (fase 3).
 
-- `Projecte.fes_backup()`: còpia dins `backup/<data-hora>/` (document + CSVs) i
-  rotació perquè no creixin sense control.
+- `Projecte.fes_backup()`: còpia dins `backup/<data-hora>/` (document + model +
+  àudio) i rotació perquè no creixin sense control.
 - Sessió: marcador `sessio.json` (s'escriu amb un projecte obert i es neteja al
   tancament net); a l'arrencada, `_sessio_pendent()` retorna el projecte a
   oferir si l'app va caure.
@@ -378,19 +416,37 @@ class TestBackups(unittest.TestCase):
         with open(p.ruta_csv_estructura(), "w", encoding="utf-8") as f:
             f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
             f.write("0.0,5.0,5.0,A,A,1.1,1.5\n")
+        with open(os.path.join(p.carpeta, pipeline.NOM_MARCADORS), "w",
+                  encoding="utf-8") as f:
+            f.write("t_s\n1.0\n")
         # El CRU viu DINS el document: ha d'anar a la còpia amb el `.acproj`.
         p.dades["analisi"] = {"chords": [[0.0, "C"], [1.0, "Am"]],
                               "segments": [[0.0, 5.0, 0, "A"]]}
         dest = p.fes_backup()
         for nom in (os.path.basename(p.ruta_acproj), "acords.csv",
-                    "estructura_ABC.csv"):
+                    "estructura_ABC.csv", pipeline.NOM_MARCADORS):
             self.assertTrue(os.path.isfile(os.path.join(dest, nom)), nom)
+        copia_audio = os.path.join(dest, projecte.NOM_AUDIO_DIR,
+                                   os.path.basename(p.ruta_audio()))
+        self.assertTrue(os.path.isfile(copia_audio))
+        with open(copia_audio, "rb") as f:
+            bytes_backup = f.read()
+        with open(p.ruta_audio(), "rb") as f:
+            self.assertEqual(bytes_backup, f.read())
         with open(os.path.join(dest, os.path.basename(p.ruta_acproj)),
                   encoding="utf-8") as f:
             copia = json.load(f)
         self.assertIn("analisi", copia)
         self.assertEqual(copia["analisi"]["chords"], [[0.0, "C"], [1.0, "Am"]])
         self.assertEqual(len(p.backups()), 1)
+
+    def test_backup_detecta_canvis_al_wav(self):
+        p = self._projecte()
+        self.assertIsNotNone(p.fes_backup())
+        self.assertIsNone(p.fes_backup())
+        _wav(p.ruta_audio(), dur=3.0)
+        self.assertIsNotNone(p.fes_backup())
+        self.assertEqual(len(p.backups()), 2)
 
     def test_no_duplica_si_no_canvia(self):
         p = self._projecte()
@@ -3665,6 +3721,204 @@ class TestInteraccioRegle(unittest.TestCase):
                                       Qt.LeftButton, Qt.NoButton))
         self.assertAlmostEqual(tl._loop_a, a0, places=6)         # A no canvia
         self.assertGreater(tl._loop_b, 20.0)                     # B s'ha mogut
+
+
+class TestNansesAudioTimeline(unittest.TestCase):
+    def setUp(self):
+        if not os.environ.get("DISPLAY") and not os.environ.get("QT_QPA_PLATFORM"):
+            os.environ["QT_QPA_PLATFORM"] = "offscreen"
+        from PyQt5.QtWidgets import QApplication
+        import numpy as np
+        from app.timeline import TimelineView
+        self._qapp = QApplication.instance() or QApplication([])
+        audio = {"durada": 60.0, "sr": 44100, "canals": 1,
+                 "mono": np.zeros(2000, dtype=np.int16)}
+        self.tl = TimelineView(audio, [], [], 120.0, 4, True)
+        self.tl.resize(800, 360)
+        self.tl.set_snap(False)
+        self.edicions = []
+        self.tl.audioEditRequested.connect(
+            lambda operacio, frames: self.edicions.append((operacio, frames)))
+
+    def tearDown(self):
+        self.tl.close()
+
+    def _event(self, event_type, t, button, buttons):
+        from PyQt5.QtCore import QPointF, Qt
+        from PyQt5.QtGui import QMouseEvent
+        from app.timeline import RULER_H
+        punt = self.tl.mapFromScene(QPointF(
+            self.tl._temps_a_x(t), RULER_H + 12))
+        return QMouseEvent(event_type, QPointF(punt), button, buttons,
+                           Qt.NoModifier)
+
+    def _arrossega(self, inici, final):
+        from PyQt5.QtCore import QEvent, Qt
+        self.tl.mousePressEvent(
+            self._event(QEvent.MouseButtonPress, inici, Qt.LeftButton,
+                        Qt.LeftButton))
+        self.tl.mouseMoveEvent(
+            self._event(QEvent.MouseMove, final, Qt.NoButton, Qt.LeftButton))
+        self.tl.mouseReleaseEvent(
+            self._event(QEvent.MouseButtonRelease, final, Qt.LeftButton,
+                        Qt.NoButton))
+
+    def test_inici_recula_per_afegir_silenci(self):
+        from app.audio_edit import SILENCI_INICI
+        self._arrossega(0.0, -1.0)
+        self.assertEqual(len(self.edicions), 1)
+        self.assertEqual(self.edicions[0][0], SILENCI_INICI)
+        self.assertGreater(self.edicions[0][1], 0)
+
+    def test_inici_avanca_per_retallar(self):
+        from app.audio_edit import RETALLA_INICI
+        self._arrossega(0.0, 1.0)
+        self.assertEqual(len(self.edicions), 1)
+        self.assertEqual(self.edicions[0][0], RETALLA_INICI)
+        self.assertGreater(self.edicions[0][1], 0)
+
+    def test_final_recula_per_retallar(self):
+        from app.audio_edit import RETALLA_FINAL
+        self._arrossega(60.0, 59.0)
+        self.assertEqual(len(self.edicions), 1)
+        self.assertEqual(self.edicions[0][0], RETALLA_FINAL)
+        self.assertGreater(self.edicions[0][1], 0)
+
+    def test_final_avanca_per_afegir_silenci(self):
+        from app.audio_edit import SILENCI_FINAL
+        self._arrossega(60.0, 61.0)
+        self.assertEqual(len(self.edicions), 1)
+        self.assertEqual(self.edicions[0][0], SILENCI_FINAL)
+        self.assertGreater(self.edicions[0][1], 0)
+
+
+class TestEdicioAudioVisor(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+        self.wav = os.path.join(self.td, "tema.wav")
+        with wave.open(self.wav, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(1000)
+            w.writeframes(np.arange(8000, dtype="<i2").tobytes())
+        self.sortida = os.path.join(self.td, "projecte")
+        os.makedirs(self.sortida)
+        self.v = visor_mod.Visor(
+            self.wav, None, None, 120, 4, sortida=self.sortida)
+        self.v.marcadors = [1.0, 6.0]
+        pipeline.desa_marcadors(self.sortida, self.v.marcadors)
+        self.v.pos = 3.0
+        self.v.loop_a, self.v.loop_b, self.v.loop_on = 1.0, 6.0, True
+        self.v.timeline.set_loop(1.0, 6.0)
+        self.v._undo_base = self.v._estat_complet()
+
+    def tearDown(self):
+        self.v.close()
+
+    def test_edit_audio_model_undo_i_redo_junts(self):
+        from app import audio_edit
+        self.v.timeline.audioEditRequested.emit(
+            audio_edit.SILENCI_INICI, 1000)
+        self.assertAlmostEqual(self.v.audio["durada"], 9.0)
+        self.assertEqual(self.v.marcadors, [2.0, 7.0])
+        self.assertEqual(self.v.pos, 4.0)
+        self.assertEqual((self.v.loop_a, self.v.loop_b), (2.0, 7.0))
+        self.assertEqual(len(self.v._undo_stack), 1)
+        self.assertAlmostEqual(
+            float(self.v.tempo_trams[0][1]), 9.0)
+        self.assertEqual(
+            pipeline.llegeix_marcadors(self.sortida, 9.0), [2.0, 7.0])
+        acords = visor_mod.llegeix_acords(
+            os.path.join(self.sortida, "acords.csv"))
+        seccions = visor_mod.llegeix_abc(
+            os.path.join(self.sortida, "estructura_ABC.csv"))
+        trams = pipeline.llegeix_tempo_map(
+            self.sortida, self.v.bpm, self.v.bpb, self.v.beat_type, 9.0)
+        self.assertAlmostEqual(float(acords[-1].fi), 9.0)
+        self.assertAlmostEqual(float(seccions[-1][1]), 9.0)
+        self.assertAlmostEqual(float(trams[-1][1]), 9.0)
+
+        self.v.undo()
+        self.assertAlmostEqual(self.v.audio["durada"], 8.0)
+        self.assertEqual(self.v.marcadors, [1.0, 6.0])
+        self.assertEqual(self.v.pos, 3.0)
+        self.assertEqual((self.v.loop_a, self.v.loop_b), (1.0, 6.0))
+        self.assertEqual(len(self.v._redo_stack), 1)
+        self.v.redo()
+        self.assertAlmostEqual(self.v.audio["durada"], 9.0)
+        self.assertEqual(self.v.marcadors, [2.0, 7.0])
+        self.assertEqual(self.v.pos, 4.0)
+        self.assertEqual((self.v.loop_a, self.v.loop_b), (2.0, 7.0))
+
+    def test_historial_mixt_mante_laudio_en_desar_i_refer(self):
+        from app import audio_edit
+        self.v._on_audio_edit_requested(audio_edit.SILENCI_FINAL, 1000)
+        self.v._on_chord_renamed(0, "C")
+        self.assertEqual(len(self.v._undo_stack), 2)
+        self.v.undo()
+        self.assertAlmostEqual(self.v.audio["durada"], 9.0)
+        self.assertEqual(visor_mod.nom_acord(self.v.acords[0]), "N")
+        self.v.undo()
+        self.assertAlmostEqual(self.v.audio["durada"], 8.0)
+        self.v.redo()
+        self.assertAlmostEqual(self.v.audio["durada"], 9.0)
+        self.v.redo()
+        self.assertAlmostEqual(self.v.audio["durada"], 9.0)
+        self.assertEqual(visor_mod.nom_acord(self.v.acords[0]), "C")
+
+    def test_retalla_inici_desplaca_offset_i_marques(self):
+        from app import audio_edit
+        self.v.offset = 2.0
+        self.v.marcadors = [2.0, 6.0]
+        pipeline.desa_marcadors(self.sortida, self.v.marcadors)
+        self.v._undo_base = self.v._estat_complet()
+        self.v.timeline.audioEditRequested.emit(
+            audio_edit.RETALLA_INICI, 1000)
+        self.assertAlmostEqual(self.v.audio["durada"], 7.0)
+        self.assertAlmostEqual(self.v.offset, 1.0)
+        self.assertEqual(self.v.marcadors, [1.0, 5.0])
+        self.v.undo()
+        self.assertAlmostEqual(self.v.audio["durada"], 8.0)
+        self.assertAlmostEqual(self.v.offset, 2.0)
+        self.assertEqual(self.v.marcadors, [2.0, 6.0])
+
+    def test_retalla_final_actualitza_la_cobertura(self):
+        from app import audio_edit
+        self.v.timeline.audioEditRequested.emit(
+            audio_edit.RETALLA_FINAL, 7000)
+        self.assertAlmostEqual(self.v.audio["durada"], 7.0)
+        self.assertAlmostEqual(float(self.v.acords[-1].fi), 7.0)
+        self.assertAlmostEqual(float(self.v.seccions[-1][1]), 7.0)
+        self.assertAlmostEqual(float(self.v.tempo_trams[-1][1]), 7.0)
+
+    def test_fallada_de_publicacio_no_deixa_estats_divergents(self):
+        from app import audio_edit
+
+        def llig_bytes(ruta):
+            with open(ruta, "rb") as f:
+                return f.read()
+
+        abans_audio = llig_bytes(self.wav)
+        ruta_acords = os.path.join(self.sortida, "acords.csv")
+        abans_acords = llig_bytes(ruta_acords)
+        reemplaça = os.replace
+
+        def falla_audio(origen, desti):
+            if os.path.abspath(desti) == os.path.abspath(self.wav):
+                raise OSError("fallada simulada")
+            return reemplaça(origen, desti)
+
+        with patch("app.visor.os.replace", side_effect=falla_audio):
+            self.v._on_audio_edit_requested(
+                audio_edit.SILENCI_FINAL, 1000)
+        self.assertEqual(llig_bytes(self.wav), abans_audio)
+        self.assertEqual(llig_bytes(ruta_acords), abans_acords)
+        self.assertAlmostEqual(self.v.audio["durada"], 8.0)
+        self.assertEqual(len(self.v._undo_stack), 0)
 
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_timeline_tecles.py

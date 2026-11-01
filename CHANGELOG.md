@@ -5,6 +5,46 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit — edició bàsica dels extrems d'àudio
+- Les nanses de la forma d'ona retallen o afegeixen silenci a l'inici i al final;
+  la previsualització acompanya el gest i reutilitza el snap del timeline.
+- En deixar anar, la còpia WAV, acords, seccions, mapa, offset i marcadors
+  s'actualitzen plegats. Els fades de 4 ms es mantenen a les vores noves.
+- Desfer/refer inclou snapshots temporals d'àudio i comparteix el límit de 10
+  accions amb les edicions musicals. Les fallades durant la publicació restauren
+  els CSV i mantenen l'àudio anterior.
+- Els backups versionats inclouen també `marcadors.csv`.
+- Afegides proves de les quatre nanses, retall/afegit, offset, cobertura,
+  desfer/refer mixt i fallada de publicació. L'exportació d'àudio continua
+  pendent.
+
+### Canviat — backups coherents amb l'àudio de treball
+- Els backups versionats ara inclouen `audio/` i es publiquen només després
+  d'haver copiat tots els fitxers, de manera que no queda una còpia parcial
+  visible si falla l'operació.
+- La detecció de canvis d'àudio usa mida i data de modificació, evitant llegir
+  WAVs grans sencers a cada autosave. Afegides proves de còpia i canvi del WAV.
+
+### Canviat — importació directament dins del projecte
+- Els formats d'entrada incompatibles es converteixen en un temporal dins
+  `audio/`, es validen i després es publiquen com a WAV de treball. No es deixa
+  cap `<nom>_convertit.wav` al costat de l'original, que es conserva intacte.
+- Afegides proves de conversió dins del projecte i de fallada sense deixar
+  àudio parcial.
+
+### Canviat (2026-11-01) — fades curts als talls d'àudio
+- El contracte del §13.9 passa de buscar passos per zero a tallar al fotograma
+  més pròxim i aplicar fades d'entrada/eixida de 4 ms a les vores noves entre
+  àudio i silenci, seguint el patró de protecció contra clics d'Ableton Live.
+- El crossfade entre clips amb àudio queda ajornat: l'abast inicial continua
+  sent un únic WAV editat només als extrems.
+
+### Canviat (2026-11-01) — historial de desfer limitat a 10 accions
+- L'historial global conserva les 10 accions més recents, tant musicals com
+  d'àudio; superar el límit avisa que l'acció més antiga s'ha descartat.
+- La limitació manté àudio i model sincronitzats quan una edició del WAV es
+  desfà o es refà junt amb els canvis musicals.
+
 ### Corregit (2026-11-01) — el mapa conserva la graella amb offset negatiu
 - `TempoMap` extrapola el primer tram abans de l'inici de la WAV. Això manté
   les línies de compàs i la validació correctes si es retalla l'àudio més enllà

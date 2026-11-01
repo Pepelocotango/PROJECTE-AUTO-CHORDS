@@ -19,6 +19,7 @@ La meva cançó/                 ← la carpeta del projecte (portable)
 ├── acords.csv                 ← el model (font de veritat)
 ├── estructura_ABC.csv         ← el model (font de veritat)
 ├── tempo.csv · compas.csv     ← el model (mapa de BPM/compàs)
+├── marcadors.csv              ← marcadors humans del mapa
 │   (el CRU de l'anàlisi viu DINS el .acproj — no hi ha carpeta analisi/)
 ├── wavs_acords/ …             ← exports (els crea `pipeline.exporta_total`)
 └── backup/ <data-hora>/ …     ← còpies versionades (autosave / rotació)
@@ -26,10 +27,10 @@ La meva cançó/                 ← la carpeta del projecte (portable)
 
 L'àudio de treball es guarda a `audio/`: així la carpeta es pot **renombrar o moure**
 sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament igual**.
-**Cap ruta absoluta cap a fora** del projecte. En una futura edició d'àudio, aquesta
-serà l'única còpia editable; si l'entrada no és un WAV compatible, es vol convertir
-directament ací, sense un WAV intermedi addicional al costat de l'original. L'estat
-actual encara pot crear aquest fitxer intermedi; vegeu
+**Cap ruta absoluta cap a fora** del projecte. Aquesta és l'única còpia editable
+per a les operacions actuals als extrems. Si l'entrada no és un WAV PCM 16 bits compatible,
+es converteix directament en un temporal dins `audio/`, sense un WAV intermedi
+al costat de l'original; vegeu
 [`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
 
 ## El document `.acproj` (JSON)
@@ -59,14 +60,16 @@ actual encara pot crear aquest fitxer intermedi; vegeu
 - **Autosave**: un `QTimer` cada **60 s** (`AUTOSAVE_MS`) fa una **còpia versionada**
   a **`backup/<data-hora>/`** — **només si hi ha canvis NOUS**.
 - **Què copia** `Projecte.fes_backup()`: el **document** (`.acproj` amb l'**estat viu**)
-  + els **fitxers importants** (CSVs d'acords/estructura/segments) + la
-  **cru de l'anàlisi** (que viatja dins el `.acproj`). **NO** copia l'àudio (`audio/`) ni els
-  exports (`wavs_*`, `partitura/`), que es **deriven** i són grossos. **No duplica**
-  si el contingut no ha canviat des de l'última còpia.
-- **Quan s'implemente l'edició d'àudio**: els backups hauran d'incloure el WAV
-  de treball perquè una restauració recupere l'àudio i el model del mateix
-  estat (§13.9 de `REGLES_DE_LA_APP.md`). Aquest comportament encara no està
-  implementat.
+  + els **fitxers del MODEL** + `marcadors.csv` + la **cru de l'anàlisi** (que viatja dins el
+  `.acproj`) + el WAV de treball (`audio/`). **NO** copia els exports
+  (`wavs_*`, `partitura/`), que es deriven i són grossos. No duplica si el
+  contingut no ha canviat des de l'última còpia. El WAV es compara amb mida i
+  data de modificació per evitar llegir-lo complet a cada autosave; les còpies
+  es preparen en temporal i només es publiquen quan estan completes.
+- La inclusió del WAV i els marcadors està implementada; les edicions actuals
+  sincronitzen l'àudio i el model i es poden desfer/refer junts. Encara falta
+  implementar el flux de restauració conjunta des d'un backup (§13.9 de
+  `REGLES_DE_LA_APP.md`).
 - **Rotació**: es guarden les **10** còpies més noves (`MAX_BACKUPS`).
 - **Sessió / crash**: `sessio.json` (al **directori d'estat**, com el log) s'escriu amb un
   projecte obert i es **neteja al tancament net**; si l'app va **caure**, a l'arrencada
@@ -97,12 +100,13 @@ actual encara pot crear aquest fitxer intermedi; vegeu
   calgui i **rebutja** els projectes d'un format MÉS NOU amb un error clar;
   proveït a `tests/test_gui.py` (`format` 0 i 99).
 
-## Funcionalitat planificada: edició bàsica d'àudio
+## Edició bàsica d'àudio (parcialment disponible)
 
-- El WAV de `audio/` serà l'única còpia editable dins del projecte; l'original
-  importat es conservarà intacte i el resultat exportat anirà a un fitxer nou.
-  La conversió d'entrada directa a aquesta còpia i l'edició dels extrems encara
-  no estan implementades. Detall: [`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
+- El WAV de `audio/` és l'única còpia editable dins del projecte; l'original
+  importat es conserva intacte i el resultat exportat anirà a un fitxer nou.
+  La conversió i l'edició dels extrems ja estan implementades; l'exportació
+  d'àudio continua pendent. Detall:
+  [`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
 
 ### Idees (no són pendents)
 

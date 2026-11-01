@@ -16,7 +16,8 @@
 |---|---|---|---|
 | **MODEL** | `acords.csv`<br>`estructura_ABC.csv`<br>`tempo.csv` · `compas.csv` | a **cada edició** | el visor, la quantització, l'anàlisi |
 | **CRU** | dins `<nom>.acproj` → `dades["analisi"]` | a cada «Analitza» | **només `Feina.run`** (i el desat del document) |
-| **ÀUDIO DE TREBALL** | `audio/tema.wav` | en crear/importar el projecte; edició dels extrems planificada | còpia interna del projecte |
+| **ÀUDIO DE TREBALL** | `audio/tema.wav` | en crear/importar el projecte i en editar els extrems | còpia interna editable |
+| **MARCADORS** | `marcadors.csv` | en afegir/moure/eliminar marcadors i en editar l'àudio | referències humanes del mapa |
 | **EXPORTS** | `wavs_acords/` · `wavs_estructura/` · `partitura/` · `guia_acords.html` · `mapa_tempo/` · `manifest.csv` | només a «Exporta» | `pipeline.exporta_total` |
 | **CÒPIES** | `backup/<data-hora>/` | autosave cada 60 s, si hi ha canvis | `Projecte.fes_backup` |
 
@@ -30,6 +31,7 @@ La meva cançó/                     ← carpeta autocontinguda (portable)
 ├── acords.csv                    ← MODEL: els acords
 ├── estructura_ABC.csv            ← MODEL: l'estructura A/B/C
 ├── tempo.csv · compas.csv        ← MODEL: el mapa de BPM/compàs
+├── marcadors.csv               ← marcadors humans del mapa
 │
 ├── wavs_acords/ · wavs_estructura/ · partitura/   ← EXPORTS («Exporta»)
 ├── guia_acords.html · mapa_tempo/ · manifest.csv   ← EXPORTS
@@ -37,12 +39,11 @@ La meva cançó/                     ← carpeta autocontinguda (portable)
 ```
 
 **Estat actual i evolució prevista:** avui `Obre àudio` converteix els formats
-incompatibles a WAV PCM 16 bits i el projecte conté la seva còpia d'àudio. La
-conversió d'entrada pot deixar també un `<nom>_convertit.wav` al costat de
-l'original. El disseny futur vol convertir directament a una sola còpia WAV dins
-del projecte, editar-ne els extrems i exportar fitxers nous en altres formats.
-L'original extern no es modifica. La conversió d'entrada directa, l'edició i
-l'exportació d'àudio encara no formen part del codi; vegeu
+incompatibles a WAV PCM 16 bits directament dins del projecte, sense deixar un
+`<nom>_convertit.wav` al costat de l'original. El projecte conté la seva còpia
+d'àudio i l'original extern no es modifica. La retallada i l'afegit de silenci
+als extrems ja transformen l'àudio i el model plegats; l'exportació d'àudio
+encara no forma part del codi. Vegeu
 [`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
 
 ## 3. El flux
@@ -101,15 +102,17 @@ es van fer servir.
    qm-segmenter) viuen al document; les **lletres A/B/C** i els ajustos de mòdul
    de compassos es calculen sobre el MODEL (`estructura_ABC.csv`).
 
-7. **Les còpies de seguretat inclouen el cru.** `Projecte.fes_backup` copia el
-   `.acproj` (que ja porta el cru) + els 4 CSV del MODEL. **No** copia l'àudio
-   ni els exports.
+7. **Les còpies de seguretat inclouen el cru, els marcadors i el WAV.**
+   `Projecte.fes_backup` copia el `.acproj` (que ja porta el cru), els CSV del
+   MODEL, `marcadors.csv` i el WAV de treball. La còpia es prepara en una
+   carpeta temporal i només es publica quan està completa. No copia els exports.
 
-8. **Àudio editable (aprovat, no implementat).** La còpia WAV interna serà el
-   mitjà de treball per a l'edició dels extrems. Els fitxers exportats en altres
-   formats seran derivats independents i no substituiran aquesta còpia. En
-   implementar-ho, els backups inclouran també el WAV de treball perquè es
-   restauren junts l'àudio i el MODEL; vegeu el §13.9 del contracte canònic.
+8. **Àudio editable (aprovat, parcialment implementat).** La còpia WAV interna
+   és el mitjà de treball per a l'edició dels extrems. Cada edició desa l'àudio,
+   el model i els marcadors; undo/redo els restaura conjuntament. Els fitxers
+   exportats en altres formats seran derivats independents i no substituiran
+   aquesta còpia. L'exportació d'àudio continua pendent. Vegeu el §13.9 del
+   contracte canònic.
 
 ## 5. Referència al codi
 

@@ -98,7 +98,12 @@ prémer «Analitza» mai.
   cursor ha d'anar **exactament on sona** (`visor._alinea_cursor_loop`). Mateix
   criteri al play, al seek i en activar el loop sonant.
 - **Import**: `Obre àudio` accepta **19 formats** i els converteix amb `ffmpeg`
-  (deixa `<nom>_convertit.wav` al costat de l'original).
+  directament dins `audio/` del projecte; no deixa `<nom>_convertit.wav` al
+  costat de l'original. Les còpies de seguretat versionades també inclouen el
+  WAV de treball.
+- **Edició d'àudio (parcial)**: les nanses de la forma d'ona retallen o afegeixen
+  silenci als extrems, amb snap commutable i desfer/refer sincronitzat amb el
+  model. L'exportació d'àudio encara està pendent; el contracte és §13.9.
 - **Partitura**: **MusicXML sempre**; **PDF/MSCZ només amb MuseScore** (provat
   amb 4.6.x; el 4.7+ no va al Q9400).
 
@@ -259,7 +264,8 @@ widgets, netegen amb `tests/_qt_neteja.py`. Si afegeixes un test nou, importa
 ## 🚀 Cap on va (visió)
 
 - **Import universal** (l'`ffmpeg` intern ja hi és) i **export MIDI**.
-- **Edició d'àudio dins l'app** (sempre sobre una còpia, mai l'original).
+- **Exportació d'àudio amb FFmpeg**; l'edició actual dels extrems sempre treballa
+  sobre una còpia, mai sobre l'original.
 - **Multilingüe (i18n)** i millores de UI.
 - **Eines per a DAWs i directes** (plantilles, CLI/headless, *cue-sheets*).
 - **Criteri**: cap idea de futur pot **trencar una regla d'or**; el que afegeixes

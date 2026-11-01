@@ -30,15 +30,16 @@ plugins o transcriure a mà.
 Els clips exportats no són àudio musical: són una **pista visual de noms i
 durades**, deliberadament simple i per això compatible amb qualsevol DAW.
 L'edició bàsica del fitxer d'àudio carregat és una funció complementària
-planificada, amb un abast molt més limitat que un editor general.
+parcialment implementada, amb un abast molt més limitat que un editor general.
 
 **Cas d'ús**: obrir WAV → analitzar (Chordino + qm) o **treballar a mà** →
 editar visualment → exportar → arrossegar al DAW.
 
-**Línia de producte complementària (planificada)**: importar àudio a una única
-còpia WAV de treball, retallar o allargar amb silenci els extrems sobre la forma
-d'ona i exportar el resultat a un format triat. L'original es conserva. Aquesta
-funció encara no està implementada; l'abast és a
+**Línia de producte complementària (parcialment implementada)**: la importació
+ja desa una única còpia WAV de treball dins del projecte i els backups també la
+inclouen; l'original es conserva. Les nanses permeten retallar o allargar amb
+silenci els extrems i desfer/refer l'edició junt amb el model musical.
+L'exportació del resultat a un format triat encara està pendent. L'abast és a
 [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 
 **Arquitectura oberta**: el **core** (pipeline + plugins Vamp) és **independent
@@ -109,12 +110,13 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 ## 5. DESPRÉS (Next) — prioritzat (MoSCoW)
 
 ### Must (properes línies)
-- **Edició bàsica d'àudio amb FFmpeg** — treballar sobre una sola còpia WAV dins
-  del projecte, retallar els extrems o afegir-hi silenci amb nanses a la forma
-  d'ona, desfer i refer els canvis, i exportar a una ubicació triada en WAV, MP3,
-  FLAC, AAC/M4A, OGG o Opus. L'original no se sobreescriu. Abans d'implementar,
-  resoldre com sincronitzar els canvis amb el model musical i validar els
-  encoders dels tres paquets. Vegeu
+- **FET parcialment — edició bàsica d'àudio**: còpia de treball interna,
+  retall/afegit als extrems, previsualització, snap compartit, fades de 4 ms,
+  sincronització amb el model i desfer/refer conjunt. L'original no se
+  sobreescriu.
+- **Exportar àudio editat amb FFmpeg** — exportar el WAV sencer a una ubicació
+  triada en WAV, MP3, FLAC, AAC/M4A, OGG o Opus, sense substituir ni l'original
+  ni la còpia del projecte. Validar els encoders dels tres paquets. Vegeu
   [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 - **Endurir i provar l'edició del mapa BPM/compàs** — auditoria completa de
   `canvia_bpm_local()` i de totes les superfícies que l'invoquen (diàleg de
@@ -197,9 +199,10 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Conversió avançada d'àudio** (aprofitar l'`ffmpeg` intern): més formats,
   processament en lot, normalització **LUFS**, remostreig i mono/stereo.
 - **Edició avançada** més enllà dels extrems: tallar/enganxar al mig,
-  **fades/crossfade** i processament de clips.
+  **fades ajustables/crossfade** i processament de clips.
 - **Guany per clip** (sense tocar la WAV mare) i **fades amb nanses**.
-- **Snap a zero-crossings** (talls sense clic).
+- Els talls continuaran al fotograma triat (sense moure'ls a un zero-crossing);
+  els fades automàtics de 4 ms protegeixen les vores.
 - **Loudness (LUFS) + espectrograma** i **anàlisi en lot** (informe de carpetes).
 - **A/B de dues anàlisis** (detectors/paràmetres) amb commutador.
 

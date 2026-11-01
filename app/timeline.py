@@ -51,6 +51,7 @@ from app.timeline_base import (   # noqa: E402,F401
     SELECTION_COLOR, SNAP_MARCA_PX, TOTAL_H, WAVEFORM_H, fmt_pos, grid_levels,
     loop_after_drag, snap_step, snap_time,
 )
+from app import audio_edit  # noqa: E402
 from app import graella  # noqa: E402
 from app import pipeline  # noqa: E402  (DESTÍ del moviment d'un bloc, §6.3)
 from app import tempo_map  # noqa: E402  (pas de nudge = compàs sencer)
@@ -113,6 +114,7 @@ class TimelineView(QGraphicsView):
     editStarted = pyqtSignal()            # inici d'un gest d'edicio (undo)
     editFinished = pyqtSignal()           # fi d'un drag (cal persistir)
     editCancelled = pyqtSignal()          # press sense moviment (tanca l'undo)
+    audioEditRequested = pyqtSignal(str, int)
     loopChanged = pyqtSignal(float, float)  # nou loop A/B (segons)
     playRequested = pyqtSignal()          # espai premut
     escapePressed = pyqtSignal()          # Esc (el resol el visor, per ordre)
@@ -154,6 +156,13 @@ class TimelineView(QGraphicsView):
         p = self.mapToScene(pos_vista)
         if p.y() < RULER_H:
             return ("Regle: arrossega per crear un LOOP A/B · clic per saltar-hi")
+        edge = self._audio_edge_en(p)
+        if edge == "start":
+            return ("↔ Arrossega l'inici de l'àudio: retalla'l; cap a "
+                    "l'esquerra: afegeix silenci")
+        if edge == "end":
+            return ("↔ Arrossega el final de l'àudio: retalla'l; cap a "
+                    "la dreta: afegeix silenci")
         it = self.itemAt(pos_vista)
         if isinstance(it, ChordItem):
             nom = getattr(it, "name", "?")
@@ -276,6 +285,26 @@ class TimelineView(QGraphicsView):
         self._waveform = WaveformLayer(samples, sr, WAVEFORM_H, self._pps,
                                        self._x_offset, RULER_H)
         self._scene.addItem(self._waveform)
+        self._audio_handles = {}
+        for edge, tooltip in (
+                ("start", "Arrossega: retalla l'inici; cap a l'esquerra: "
+                          "afegeix silenci"),
+                ("end", "Arrossega: retalla el final; cap a la dreta: "
+                        "afegeix silenci")):
+            handle = QGraphicsRectItem()
+            handle.setBrush(QBrush(QColor("#42b99a")))
+            handle.setPen(QPen(QColor("#102b27"), 1))
+            handle.setToolTip(tooltip)
+            handle.setZValue(16)
+            self._scene.addItem(handle)
+            self._audio_handles[edge] = handle
+        self._audio_preview = QGraphicsRectItem()
+        self._audio_preview.setBrush(QBrush(QColor(230, 150, 45, 80)))
+        self._audio_preview.setPen(QPen(Qt.NoPen))
+        self._audio_preview.setZValue(15)
+        self._audio_preview.setVisible(False)
+        self._scene.addItem(self._audio_preview)
+        self._audio_gesture = None
 
         # graella (línies verticals sobre l'ona)
         self._grid = GridLayer(WAVEFORM_H, self._pps, self._x_offset,
@@ -337,6 +366,21 @@ class TimelineView(QGraphicsView):
         # reconstruir el model, l'editor podia mostrar el temps VELL del clip
         # seleccionat (bug reproduït 2026-10-20).
         self.clipSelected.emit("", -1)
+
+    def set_audio(self, audio: dict) -> None:
+        """Substitueix la forma d'ona i actualitza la durada visible."""
+        self._audio = audio
+        self._durada = float(audio.get("durada", 0.0))
+        samples = audio.get("mono")
+        if samples is None or len(samples) == 0:
+            samples = np.zeros(1, dtype=np.int16)
+        self._scene.removeItem(self._waveform)
+        self._waveform = WaveformLayer(
+            samples, int(audio.get("sr", 44100)), WAVEFORM_H, self._pps,
+            self._x_offset, RULER_H)
+        self._scene.addItem(self._waveform)
+        self._pos_t = min(self._pos_t, self._durada)
+        self._zoom_full()
 
     def set_marcadors(self, marques):
         """Pinta els marcadors humans (llista de temps en segons)."""
@@ -467,6 +511,55 @@ class TimelineView(QGraphicsView):
         wv = max(200, self.viewport().width())
         self._scene.setSceneRect(0, 0, wv, self._total_h)
         self._update_guide_line()
+        self._actualitza_nanses_audio()
+
+    def _temps_a_x(self, t):
+        return self._x_offset + (float(t) - self._view_left) * self._pps
+
+    def _actualitza_nanses_audio(self, moviment=None):
+        posicions = {"start": 0.0, "end": self._durada}
+        if moviment is not None and self._audio_gesture:
+            posicions[self._audio_gesture["edge"]] = moviment
+        for edge, t in posicions.items():
+            x = self._temps_a_x(t)
+            self._audio_handles[edge].setRect(
+                x - 5, RULER_H + 3, 10, 25)
+
+    def _audio_edge_en(self, punt):
+        if not (RULER_H <= punt.y() <= RULER_H + 32):
+            return None
+        posicions = {
+            "start": self._temps_a_x(0.0),
+            "end": self._temps_a_x(self._durada),
+        }
+        propers = [(abs(punt.x() - x), edge)
+                   for edge, x in posicions.items()]
+        dist, edge = min(propers)
+        return edge if dist <= 9 else None
+
+    def _previsualitza_edicio_audio(self, t):
+        edge = self._audio_gesture["edge"]
+        if edge == "start":
+            a, b = (t, 0.0) if t < 0 else (0.0, t)
+        else:
+            a, b = ((self._durada, t) if t > self._durada
+                    else (t, self._durada))
+        x0, x1 = sorted((self._temps_a_x(a), self._temps_a_x(b)))
+        ample = max(200, self.viewport().width())
+        x0 = max(0.0, min(float(ample), x0))
+        x1 = max(0.0, min(float(ample), x1))
+        if x1 <= x0:
+            x0 = max(0.0, min(float(ample - 1), x0))
+            x1 = x0 + 1.0
+        self._audio_preview.setRect(
+            x0, RULER_H, x1 - x0, WAVEFORM_H)
+        self._audio_preview.setVisible(True)
+        self._actualitza_nanses_audio(moviment=t)
+
+    def _temps_arrossegament_audio(self, event):
+        punt = self.mapToScene(event.pos())
+        t = self._x_to_time(punt.x())
+        return self._snap(t) if self._snap_on else t
 
     def _update_guide_line(self) -> None:
         if self._guide_line is None:
@@ -1634,6 +1727,16 @@ class TimelineView(QGraphicsView):
             self.setFocus()  # perquè Space arribi al timeline
             # Click al regle (a dalt) -> comença una selecció de loop A/B
             sp = self.mapToScene(event.pos())
+            edge = self._audio_edge_en(sp)
+            if edge:
+                self._audio_gesture = {
+                    "edge": edge,
+                    "start_x": float(sp.x()),
+                    "target": 0.0 if edge == "start" else self._durada,
+                }
+                self.viewport().setCursor(Qt.SizeHorCursor)
+                event.accept()
+                return
             if sp.y() < RULER_H:
                 # Al regle: vora del loop → redimensionar (A/B); dins → moure'l;
                 # fora → crear-ne un de nou (com sempre).
@@ -1742,6 +1845,12 @@ class TimelineView(QGraphicsView):
         super().mouseDoubleClickEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
+        if self._audio_gesture is not None:
+            t = self._temps_arrossegament_audio(event)
+            self._audio_gesture["target"] = t
+            self._previsualitza_edicio_audio(t)
+            event.accept()
+            return
         if getattr(self, "_pan_drag", False):
             dx = event.pos().x() - self._pan_x0
             dt = -dx / max(self._pps, 1e-9)
@@ -1779,9 +1888,11 @@ class TimelineView(QGraphicsView):
         if not (getattr(self, "_loop_drag", False)
                 or getattr(self, "_pan_drag", False)):
             sp = self.mapToScene(event.pos())
+            edge = self._audio_edge_en(sp)
             self.viewport().setCursor(
-                self._cursor_regle(sp.x()) if sp.y() < RULER_H
-                else Qt.ArrowCursor)
+                Qt.SizeHorCursor if edge else
+                (self._cursor_regle(sp.x()) if sp.y() < RULER_H
+                 else Qt.ArrowCursor))
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
@@ -1789,6 +1900,40 @@ class TimelineView(QGraphicsView):
             m = QApplication.keyboardModifiers()
             if not ((m & Qt.ControlModifier) and (m & Qt.ShiftModifier)):
                 self._restaura_eina_temporal()
+        if event.button() == Qt.LeftButton and self._audio_gesture is not None:
+            gest = self._audio_gesture
+            t = self._temps_arrossegament_audio(event)
+            edge = gest["edge"]
+            frames = 0
+            operacio = ""
+            sr = int(self._audio.get("sr", 44100))
+            total = int(round(self._durada * sr))
+            if edge == "start":
+                if t < 0:
+                    operacio = audio_edit.SILENCI_INICI
+                    frames = int(-t * sr + 0.5)
+                else:
+                    operacio = audio_edit.RETALLA_INICI
+                    frames = int(t * sr + 0.5)
+                    if frames >= total:
+                        frames = 0
+            elif t > self._durada:
+                operacio = audio_edit.SILENCI_FINAL
+                frames = int((t - self._durada) * sr + 0.5)
+            else:
+                operacio = audio_edit.RETALLA_FINAL
+                frames = int(t * sr + 0.5)
+                if frames >= total:
+                    frames = 0
+            mogut = abs(float(event.pos().x()) - gest["start_x"]) >= 3
+            self._audio_gesture = None
+            self._audio_preview.setVisible(False)
+            self._actualitza_nanses_audio()
+            self.viewport().setCursor(Qt.ArrowCursor)
+            if mogut and frames > 0:
+                self.audioEditRequested.emit(operacio, frames)
+            event.accept()
+            return
         if event.button() == Qt.LeftButton and self._marquee is not None:
             x0, y0, x1, y1 = self._marquee
             ctrl = self._marquee_ctrl

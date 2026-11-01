@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import wave
@@ -47,6 +48,7 @@ from .config import TEMP_DIR as OPENCODE_DIR
 from . import ffmpeg  # noqa: E402
 from . import plataforma  # noqa: E402
 from . import audio_out  # noqa: E402
+from . import audio_edit  # noqa: E402
 
 VISOR_STYLESHEET = theme.visor_stylesheet()
 
@@ -56,6 +58,7 @@ N_BUCKETS = 2000  # pics precalculats: obrir 250 s és instantani
 # sencer a memòria (`raw` + la còpia `mono`) → ~3× la mida del fitxer (prova
 # real: 1 h ≈ 2 GB de pic; als 8 GB va, però 2 h+ potser no).
 LLARG_MIN_S = 45 * 60
+MAX_OPERACIONS_DESFER = 10
 
 
 def llegeix_wav(ruta):
@@ -168,6 +171,9 @@ class Visor(QMainWindow):
         self.setWindowTitle("Auto Chords — visor")
         self.resize(900, 600)
         self.wav_path = wav
+        self._audio_snapshot_current = None
+        self._audio_snapshot_files = set()
+        self._audio_state_meta = {}
         # Carpeta de sortida (projecte autocontingut) DES DEL PRINCIPI: el
         # constructor pot desar CSV normalitzats (vegeu més avall) i, sense
         # això, anaven a la carpeta derivada del WAV
@@ -267,6 +273,8 @@ class Visor(QMainWindow):
         self.timeline.editStarted.connect(self._on_edit_started)
         self.timeline.editFinished.connect(self._on_edit_finished)
         self.timeline.editCancelled.connect(self._on_edit_cancelled)
+        self.timeline.audioEditRequested.connect(
+            self._on_audio_edit_requested)
         self.timeline.loopChanged.connect(self._on_loop_changed)
         self.timeline.escapePressed.connect(self._on_escape_pressed)
         self.timeline.chordTimeMoved.connect(self._on_chord_time_moved)
@@ -1221,6 +1229,7 @@ class Visor(QMainWindow):
             self._redo_stack = []
             self._undo_base = self._estat_complet()
             self._undo_pending = None
+            self._undo_pending_audio_meta = None
 
     def _undo_touch_base(self):
         """La base = el darrer estat CONSOLIDAT (fora d'una operacio).
@@ -1236,6 +1245,8 @@ class Visor(QMainWindow):
         self._undo_init()
         if self._undo_pending is None:
             self._undo_pending = self._undo_base
+            self._undo_pending_audio_meta = (
+                self._audio_snapshot_current, None, False)
 
     def _undo_commit(self):
         """Tanca l'operació d'edició i l'apila si hi ha hagut canvi."""
@@ -1244,18 +1255,288 @@ class Visor(QMainWindow):
         canvi = self._undo_pending is not None and ara != self._undo_pending
         if canvi:
             self._undo_stack.append(self._undo_pending)
+            self._audio_state_meta[id(self._undo_pending)] = (
+                self._undo_pending_audio_meta
+                or (self._audio_snapshot_current, None, False))
+            if len(self._undo_stack) > MAX_OPERACIONS_DESFER:
+                del self._undo_stack[:-MAX_OPERACIONS_DESFER]
+                self.infoMissatge.emit(
+                    "L'historial conserva les 10 últimes accions; "
+                    "la més antiga ja no es pot desfer.")
             self._redo_stack.clear()
             self.log(f"undo: apilada (desfer={len(self._undo_stack)} "
                      f"refer={len(self._redo_stack)})")
         self._undo_base = ara
         self._undo_pending = None
+        self._undo_pending_audio_meta = None
+        self._neteja_snapshots_audio()
 
-    def _aplica_estat(self, estat):
+    def _crea_snapshot_audio(self, origen):
+        os.makedirs(OPENCODE_DIR, exist_ok=True)
+        fd, ruta = tempfile.mkstemp(
+            prefix="auto-chords-audio-", suffix=".wav", dir=OPENCODE_DIR)
+        os.close(fd)
+        try:
+            shutil.copy2(origen, ruta)
+        except OSError:
+            try:
+                os.unlink(ruta)
+            except OSError:
+                pass
+            raise
+        self._audio_snapshot_files.add(ruta)
+        return ruta
+
+    def _neteja_snapshots_audio(self):
+        estats = self._undo_stack + self._redo_stack
+        actius = {id(estat) for estat in estats}
+        if self._undo_pending is not None:
+            actius.add(id(self._undo_pending))
+        for clau in list(self._audio_state_meta):
+            if clau not in actius:
+                self._audio_state_meta.pop(clau, None)
+        referenciats = {self._audio_snapshot_current}
+        referenciats.update(
+            meta[0] for meta in self._audio_state_meta.values()
+            if meta and meta[0])
+        if self._undo_pending_audio_meta:
+            ruta = self._undo_pending_audio_meta[0]
+            if ruta:
+                referenciats.add(ruta)
+        for ruta in list(self._audio_snapshot_files - referenciats):
+            try:
+                os.unlink(ruta)
+            except FileNotFoundError:
+                pass
+            except OSError as e:
+                self.log(f"snapshot d'àudio: no s'ha pogut netejar "
+                         f"{ruta}: {e}")
+            else:
+                self._audio_snapshot_files.discard(ruta)
+
+    def _neteja_tots_snapshots_audio(self):
+        for ruta in list(self._audio_snapshot_files):
+            try:
+                os.unlink(ruta)
+            except FileNotFoundError:
+                pass
+            except OSError as e:
+                self.log(f"snapshot d'àudio: no s'ha pogut netejar "
+                         f"{ruta}: {e}")
+            else:
+                self._audio_snapshot_files.discard(ruta)
+        self._audio_state_meta.clear()
+        self._audio_snapshot_current = None
+
+    def _restaura_snapshot_audio(self, ruta):
+        if not ruta:
+            return False
+        if ruta == self._audio_snapshot_current:
+            return False
+        nou_audio = llegeix_wav(ruta)
+        carpeta = os.path.dirname(os.path.abspath(self.wav_path))
+        fd, temporal = tempfile.mkstemp(
+            prefix=".audio-undo-", suffix=".wav", dir=carpeta)
+        os.close(fd)
+        try:
+            shutil.copy2(ruta, temporal)
+            os.replace(temporal, self.wav_path)
+        finally:
+            if os.path.exists(temporal):
+                os.unlink(temporal)
+        self.audio = nou_audio
+        self._audio_snapshot_current = ruta
+        return True
+
+    def _refresca_ui_audio(self):
+        self.timeline.set_audio(self.audio)
+        self.timeline.set_data(self.acords, self.seccions)
+        self.timeline.set_marcadors(self.marcadors)
+        self._actualitza_temps()
+        self.timeline.set_loop(self.loop_a, self.loop_b)
+        self.timeline.set_position(self.pos, emit=False, snap=False)
+        self.lliscador.setRange(0, int(self.audio["durada"] * 100))
+        self.lliscador.setValue(int(self.pos * 100))
+        self.etiqueta.setText(f"{self.audio['durada']:.1f} s · "
+                              f"{len(self.acords)} acords · "
+                              f"{len(self.seccions)} seccions")
+        if hasattr(self, "b_loop"):
+            self.b_loop.setChecked(bool(self.loop_on))
+
+    def _desa_model_audio_temporal(self, carpeta, model):
+        os.makedirs(carpeta, exist_ok=True)
+        pipeline.desa_acords_csv(
+            os.path.join(carpeta, "acords.csv"),
+            model["acords"], model["durada"])
+        mapa = tempo_map.TempoMap(model["trams"], model["offset"])
+        pipeline.desa_abc_csv(
+            os.path.join(carpeta, "estructura_ABC.csv"),
+            model["seccions"], model["bpm"], self.log,
+            lliure=not self.tempo_fix, bpb=model["bpb"],
+            offset=model["offset"], mapa=mapa)
+        pipeline.desa_tempo_map(carpeta, model["trams"])
+        if pipeline.desa_marcadors(carpeta, model["marcadors"]) is None:
+            raise OSError("no s'han pogut desar els marcadors")
+        return ("acords.csv", "estructura_ABC.csv", "tempo.csv",
+                "compas.csv", pipeline.NOM_MARCADORS)
+
+    def _publica_model_audio(self, temporal, noms, wav_temporal):
+        carpeta = self._carpeta_acords()
+        originals = {}
+        publicats = []
+        for nom in noms:
+            desti = os.path.join(carpeta, nom)
+            if os.path.isfile(desti):
+                copia = os.path.join(temporal, ".anterior-" + nom)
+                shutil.copy2(desti, copia)
+                originals[nom] = copia
+            else:
+                originals[nom] = None
+        try:
+            for nom in noms:
+                origen = os.path.join(temporal, nom)
+                if not os.path.isfile(origen):
+                    raise OSError(f"no s'ha preparat {nom}")
+                os.replace(origen, os.path.join(carpeta, nom))
+                publicats.append(nom)
+            os.replace(wav_temporal, self.wav_path)
+        except OSError as error:
+            errors_restauracio = []
+            for nom in reversed(publicats):
+                desti = os.path.join(carpeta, nom)
+                copia = originals[nom]
+                try:
+                    if copia:
+                        os.replace(copia, desti)
+                    elif os.path.exists(desti):
+                        os.unlink(desti)
+                except OSError as e:
+                    errors_restauracio.append(f"{nom}: {e}")
+            if errors_restauracio:
+                raise OSError(
+                    f"{error}; també ha fallat la restauració de "
+                    f"{', '.join(errors_restauracio)}") from error
+            raise
+
+    def _on_audio_edit_requested(self, operacio, frames):
+        """Aplica una edició d'extrem com una sola acció d'àudio + model."""
+        try:
+            sr = int(self.audio["sr"])
+            delta = float(frames) / sr
+            durada = float(self.audio["durada"])
+            tr = audio_edit.transforma_model(
+                self.acords, self.seccions, self.tempo_trams, self.marcadors,
+                self.offset, durada, operacio, delta, pos=self.pos,
+                loop_a=self.loop_a, loop_b=self.loop_b,
+                loop_on=self.loop_on)
+            if operacio == audio_edit.RETALLA_FINAL:
+                tr["durada"] = delta
+            tr["bpm"] = float(self.bpm)
+            tr["bpb"] = int(self.bpb)
+            if tr["trams"] and int(tr["trams"][0][3]) > 0:
+                tr["bpm"] = float(tr["trams"][0][2])
+                tr["bpb"] = int(tr["trams"][0][3])
+                tr["beat_type"] = int(tr["trams"][0][4])
+            else:
+                tr["beat_type"] = int(self.beat_type)
+            audio_dir = os.path.dirname(os.path.abspath(self.wav_path))
+            with tempfile.TemporaryDirectory(
+                    prefix=".audio-edit-", dir=audio_dir) as audio_tmp:
+                wav_temporal = os.path.join(audio_tmp, "editada.wav")
+                durada_nova = audio_edit.escriu_wav_editada(
+                    self.wav_path, wav_temporal, operacio, int(frames))
+                if abs(durada_nova - tr["durada"]) > 1.0 / sr:
+                    raise ValueError(
+                        "la durada de l'àudio i del model no coincideixen")
+                audio_nou = llegeix_wav(wav_temporal)
+                with tempfile.TemporaryDirectory(
+                        prefix=".audio-model-", dir=self._carpeta_acords()
+                        ) as model_tmp:
+                    noms = self._desa_model_audio_temporal(model_tmp, tr)
+                    snapshot_antic = self._audio_snapshot_current
+                    if snapshot_antic is None:
+                        snapshot_antic = self._crea_snapshot_audio(
+                            self.wav_path)
+                    snapshot_nou = self._crea_snapshot_audio(wav_temporal)
+                    abans = self._estat_complet()
+                    self._undo_base = abans
+                    self._audio_snapshot_current = snapshot_antic
+                    self._undo_marca()
+                    self._undo_pending_audio_meta = (
+                        snapshot_antic, self.pos, True)
+                    audio_antic = self.audio
+                    pos_antic = self.pos
+                    try:
+                        self.audio = audio_nou
+                        self.acords = tr["acords"]
+                        self.seccions = tr["seccions"]
+                        self.tempo_trams = tr["trams"]
+                        self.offset = tr["offset"]
+                        self.pos = tr["pos"]
+                        self.loop_a, self.loop_b = tr["loop_a"], tr["loop_b"]
+                        self.loop_on = tr["loop_on"]
+                        self.bpm = tr["bpm"]
+                        self.bpb = tr["bpb"]
+                        self.beat_type = tr["beat_type"]
+                        self.marcadors = tr["marcadors"]
+                        self._refresca_ui_audio()
+                        self._publica_model_audio(
+                            model_tmp, noms, wav_temporal)
+                    except Exception:
+                        self.audio = audio_antic
+                        self.pos = pos_antic
+                        (self.acords, self.seccions, temps_antic) = abans
+                        self.tempo_trams = copy.deepcopy(
+                            temps_antic["tempo_trams"])
+                        self.marcadors = list(temps_antic["marcadors"])
+                        for k in ("bpm", "bpb", "beat_type", "offset",
+                                  "tempo_fix", "loop_a", "loop_b", "loop_on"):
+                            setattr(self, k, temps_antic[k])
+                        try:
+                            self._refresca_ui_audio()
+                        except Exception as e:
+                            self.log(f"restauració de la vista d'àudio: {e}")
+                        self._undo_commit()
+                        raise
+                    self._audio_snapshot_current = snapshot_nou
+                    self._undo_commit()
+            self._neteja_snapshots_audio()
+            self.canvis.emit()
+            self.log(f"àudio editat: {operacio}, {frames} fotogrames")
+            self.infoMissatge.emit("Edició d'àudio aplicada")
+        except Exception as e:  # noqa: BLE001
+            self._neteja_snapshots_audio()
+            self.log(f"edició d'àudio ERROR: {e}")
+            self.infoMissatge.emit(f"No s'ha pogut editar l'àudio: {e}")
+
+    def _aplica_estat(self, estat, audio_meta=None):
+        audio_restaurat = False
+        if audio_meta:
+            ruta, pos_audio, restaura_pos = audio_meta
+            if ruta:
+                audio_restaurat = self._restaura_snapshot_audio(ruta)
+            if restaura_pos and pos_audio is not None:
+                self.pos = max(
+                    0.0, min(float(pos_audio), self.audio["durada"]))
+            if audio_restaurat:
+                self.timeline.set_audio(self.audio)
         acords, seccions, temps = estat
         self.acords = copy.deepcopy(acords)
         self.seccions = copy.deepcopy(seccions)
         self.timeline.set_data(self.acords, self.seccions)
         self._aplica_temps(temps)
+        if audio_meta and audio_meta[0]:
+            ruta_marcadors = pipeline.desa_marcadors(
+                self._carpeta_acords(), self.marcadors)
+            if ruta_marcadors is None:
+                self.log("undo d'àudio: no s'han pogut desar els marcadors")
+        if audio_meta and audio_meta[2]:
+            self.timeline.set_position(self.pos, emit=False, snap=False)
+            self.lliscador.setRange(0, int(self.audio["durada"] * 100))
+            self.lliscador.setValue(int(self.pos * 100))
+            self.etiqueta.setText(f"{self.audio['durada']:.1f} s · "
+                                  f"{len(self.acords)} acords · "
+                                  f"{len(self.seccions)} seccions")
         self._omple_llista_ac()
         self._actualitza_llista_abc()
         try:
@@ -1315,12 +1596,24 @@ class Visor(QMainWindow):
             return
         abans = self._estat_complet()
         desti = self._undo_stack.pop()
+        meta = self._audio_state_meta.get(
+            id(desti), (None, None, False))
         desc = self._descriu_canvi(abans, desti)   # el que fa el desfer
         self._redo_stack.append(abans)
-        self._aplica_estat(desti)
+        self._audio_state_meta[id(abans)] = (
+            self._audio_snapshot_current, self.pos, bool(meta[2]))
+        try:
+            self._aplica_estat(desti, meta)
+        except Exception as e:  # noqa: BLE001
+            self._redo_stack.pop()
+            self._undo_stack.append(desti)
+            self.log(f"DESFER ERROR: {e}")
+            self.infoMissatge.emit(f"No s'ha pogut desfer: {e}")
+            return
         self.infoMissatge.emit(f"⟲ DESFER: {desc}")
         self._undo_base = self._estat_complet()
         self._undo_pending = None
+        self._neteja_snapshots_audio()
         self.log(f"DESFER fet (desfer={len(self._undo_stack)} "
                  f"refer={len(self._redo_stack)})")
 
@@ -1333,11 +1626,23 @@ class Visor(QMainWindow):
             return
         abans = self._estat_complet()
         desti = self._redo_stack.pop()
+        meta = self._audio_state_meta.get(
+            id(desti), (None, None, False))
         desc = self._descriu_canvi(abans, desti)
         self._undo_stack.append(abans)
-        self._aplica_estat(desti)
+        self._audio_state_meta[id(abans)] = (
+            self._audio_snapshot_current, self.pos, bool(meta[2]))
+        try:
+            self._aplica_estat(desti, meta)
+        except Exception as e:  # noqa: BLE001
+            self._undo_stack.pop()
+            self._redo_stack.append(desti)
+            self.log(f"REFER ERROR: {e}")
+            self.infoMissatge.emit(f"No s'ha pogut refer: {e}")
+            return
         self._undo_base = self._estat_complet()
         self._undo_pending = None
+        self._neteja_snapshots_audio()
         self.log(f"REFER fet (desfer={len(self._undo_stack)} "
                  f"refer={len(self._redo_stack)})")
         self.infoMissatge.emit(f"⟳ REFER: {desc}")
@@ -5122,6 +5427,8 @@ class Visor(QMainWindow):
         self.rellotge.stop()
         self._atura_proc()
         self._neteja_velocitat()
+        if not getattr(self, "_embedded", False):
+            self._neteja_tots_snapshots_audio()
         # Disconnect dels signals del TimelineView per evitar memory leaks.
         # NOMÉS si és una finestra autònoma: en incrustar-se el visor dins
         # Finestra es fa `_embedded = True` + `close()` per amagar-lo, i

@@ -22,7 +22,7 @@
 | `REGLES_DE_LA_APP.md` | Regles d'or: ordre estricte, contigüitat, cobertura total… |
 | `ESQUEMA_UI.md` · `ESQUEMA_UI.html` · `ESQUEMA_UI.svg` | Esquema de la GUI. El `.html` i el `.svg` es **generen** (`eines/genera_esquema_ui.py`) des del `.md` — **no editar-los a mà**. L'**art manual** original es conserva a `ESQUEMA_UI_manual.svg` · `ESQUEMA_UI_manual.html`. |
 | `PROJECTES.md` | **Projectes autocontinguts** («com un DAW»): `.acproj`, `audio/` copiat, «Desa com», backups. |
-| `EDICIO_AUDIO.md` | **Proposta planificada** d'edició bàsica: còpia WAV de treball, retall/allargament dels extrems i exportació amb FFmpeg. |
+| `EDICIO_AUDIO.md` | **Abast i estat** de l'edició bàsica: còpia WAV, retall/allargament dels extrems i exportació pendent amb FFmpeg. |
 | `FLUX_DE_DADES.md` | **Flux de dades**: el **MODEL** (4 CSV) i el **cru** de l'anàlisi, que viu dins el `.acproj`. |
 | `NOTACIO_XIFRAT.md` | **Notació del xifrat**: la forma canònica (`Am`→`A-`) i on s'aplica. |
 | `TIPUS_XIFRAT_ACORDS.md` | **Tipus de xifrat**: variants de sintaxi, graus i `<kind>` MusicXML (MuseScore). |

@@ -3383,19 +3383,22 @@ class _undo_llarg___Base(unittest.TestCase):
 
 
 class TestUndoLlarg(_undo_llarg___Base):
-    def test_40_edicions_40_desfers_40_refers(self):
+    def test_conserva_les_10_ultimes_editions_per_desfer_i_refer(self):
         v = self._visor()
         ini = _snapshot(v)
+        avisos = []
+        v.infoMissatge.connect(avisos.append)
         for k in range(40):
             self._edita(v, 6.0 + k * 0.2, "X")
         self.assertEqual(len(v.acords), len(ini) + 40)
-        self.assertEqual(len(v._undo_stack), 40)
-        for _undo_llarg___ in range(40):
+        self.assertEqual(len(v._undo_stack), 10)
+        self.assertTrue(any("10 últimes accions" in avís for avís in avisos))
+        for _undo_llarg___ in range(10):
             v.undo()
-        self.assertEqual(_snapshot(v), ini)
+        self.assertEqual(len(v.acords), len(ini) + 30)
         self.assertEqual(len(v._undo_stack), 0)
-        self.assertEqual(len(v._redo_stack), 40)
-        for _undo_llarg___ in range(40):
+        self.assertEqual(len(v._redo_stack), 10)
+        for _undo_llarg___ in range(10):
             v.redo()
         self.assertEqual(len(v.acords), len(ini) + 40)
         self.assertEqual(len(v._redo_stack), 0)

@@ -12,6 +12,11 @@
 > **No pot quedar desfasat**: el test `TestDocEdicioOperacions` comprova que la
 > taula continua dient com es fa cada operació **per GUI** i per a quines pistes
 > val (paritat #11).
+>
+> Aquest inventari cobreix les operacions del **model musical** (acords,
+> estructura i tempo/compàs). L'edició de la còpia WAV del projecte —nanses als
+> extrems, fades i desfer/refer conjunt— es descriu a
+> [`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
 
 > **Despatx únic (2026-10-19)**: totes les superfícies (menú contextual,
 > llistes, menú principal, teclat del timeline i menú del loop) envien la
@@ -149,6 +154,9 @@
 | 33 | **Desfer / Refer** | `Ctrl+Z` · `Ctrl+Y` | **FET** |
 | 34 | **Estat complet de l'app** | — | **FET** |
 | 35 | **Llistar el model** | llistes del visor: acords ⑩, seccions ⑪ i **clips de tempo/compàs ⑭** (`Inici (s)`·`Fi (s)`·`BPM`·`Compàs`; «segons» als rubato). Clic = salta, doble-clic = franja Editor, botó dret = el mateix menú del carril | **FET** |
+
+L'historial de desfer/refer conserva les **10 últimes accions totals**. En
+superar el límit, la més antiga es descarta i l'app ho comunica.
 
 ## 6. Tempo, anàlisi i opcions
 

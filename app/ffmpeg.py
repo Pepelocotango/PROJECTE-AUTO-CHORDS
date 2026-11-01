@@ -4,9 +4,10 @@ L'app treballa amb **WAV PCM 16 bits**; si l'usuari obre un mp3, aif, flac,
 m4a… el convertim automàticament amb **ffmpeg** (que ja és al sistema) i
 treballem amb el WAV resultant.
 
-El WAV convertit es deixa **al costat de l'original** com `<nom>_convertit.wav`
-(i es reutilitza si ja és més nou que l'original). Així el pipeline hi pot
-escriure la carpeta `AUTOCHORDS_<nom>` al costat.
+En crear un projecte, la conversió s'escriu directament en un temporal dins
+`audio/` del projecte. Altres crides a `converteix_a_wav()` que no indiquen
+destinació mantenen el comportament per defecte de deixar
+`<nom>_convertit.wav` al costat de l'original.
 
 Tot en català.
 """

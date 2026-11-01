@@ -12,11 +12,11 @@ fitxer**— llestos per **arrossegar-los ordenats en una sola pista a qualsevol 
 (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…). Opcionalment genera
 també la **partitura de xifrats** (MusicXML; PDF/MSCZ si tens MuseScore).
 
-També està planificat que servisca per a **editar àudio bàsicament dins d'un
-projecte**, sense haver d'analitzar acords: retallar o allargar amb silenci els
-extrems d'una còpia WAV de treball i exportar el WAV sencer a un format triat.
-El silenci afegit es marca «N» (sense acord); les seccions es mantenen. Aquesta
-funció **encara no està implementada**; l'abast acordat és a
+També permet **editar els extrems de la còpia WAV de treball** dins d'un
+projecte, sense haver d'analitzar acords: retallar-los o afegir-hi silenci amb
+nanses, previsualització i desfer/refer. El silenci afegit es marca «N» (sense
+acord); les seccions es mantenen. L'exportació de l'àudio editat a altres formats
+encara està pendent. L'abast acordat és a
 [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 
 > **Novetats de la v0.8.0 (BETA)** — **mapa de tempo amb compassos enters**
@@ -72,7 +72,7 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 - **Exporta clips WAV silenciosos** ordenats i nomenats per acord (`1-1-1_C.wav`) i per secció (`1-1-1_3-2-1_A.wav`) → els arrossegues al teu DAW i hi tens l'harmonia marcada.
 - **Exporta el mapa de tempo** a `mapa_tempo/` (`tempo.csv` + `compas.csv`) i una **guia d'acords** (`guia_acords.html`) per imprimir.
 - **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: [`docs/PROJECTES.md`](docs/PROJECTES.md).
-- **Edició d'àudio bàsica (planificada)**: nanses per retallar els extrems o afegir-hi silenci, amb l'original intacte; exportació de la còpia editada a WAV, MP3, FLAC, AAC/M4A, OGG o Opus. No és disponible encara; vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+- **Edició d'àudio bàsica (parcialment disponible)**: nanses per retallar els extrems o afegir-hi silenci a la còpia del projecte, amb snap commutable, previsualització i desfer/refer sincronitzat amb el model; l'original queda intacte. L'exportació de la còpia editada a WAV, MP3, FLAC, AAC/M4A, OGG o Opus encara està pendent; vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 - **Partitura de xifrats**: MusicXML sempre; PDF/MSCZ amb MuseScore.
 - La interfície (menús, barres, dreceres) és a [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md).
 
@@ -108,7 +108,7 @@ procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i **[`docs/ESTAT_MULTI_SO.md
 | [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md) | **Invariants** del producte («s'ha de complir sempre») |
 | [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md) | Esquema de la interfície (menús, barres, dreceres) |
 | [`docs/PROJECTES.md`](docs/PROJECTES.md) | **Projectes autocontinguts** («com un DAW»): `.acproj`, «Desa com», autosave/backups i recuperació |
-| [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md) | Proposta d'edició bàsica d'àudio: còpia WAV de treball, edició dels extrems i exportació amb FFmpeg |
+| [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md) | Abast i estat de l'edició bàsica d'àudio: còpia WAV, extrems i exportació amb FFmpeg |
 | [`docs/FLUX_DE_DADES.md`](docs/FLUX_DE_DADES.md) | **Flux de dades**: el MODEL (4 CSV) i el cru de l'anàlisi (dins el `.acproj`); per què editar o quantitzar no el destrueixen |
 | [`docs/NOTACIO_XIFRAT.md`](docs/NOTACIO_XIFRAT.md) | **Notació del xifrat**: la **forma canònica** (`Am`→`A-`, `Cmaj7`→`CMaj7`, `Bø`→`B-7b5`) i on s'aplica (model, noms de fitxer, partitura) |
 | [`docs/TIPUS_XIFRAT_ACORDS.md`](docs/TIPUS_XIFRAT_ACORDS.md) | **Catàleg de tipus d'acord**: variants de sintaxi, graus i `<kind>` MusicXML (per nivells + extres) |
@@ -124,11 +124,11 @@ i els converteix automàticament amb **ffmpeg** (vegeu `app/ffmpeg.py`):
 `WAV` · `MP3` · `AIFF`/`AIF`/`AIFC` · `FLAC` · `M4A` · `AAC` · `OGG`/`OGA` · `Opus` ·
 `WMA` · `MP2` · `CAF` · `W64` · `AU` · `WV` · `APE` · `ALAC`
 
-Avui, si cal convertir, el WAV queda al costat de l'original com
-**`<nom>_convertit.wav`** (es reutilitza si ja és més nou). La proposta d'edició
-d'àudio vol convertir directament a una sola còpia de treball dins del projecte
-i afegir una exportació separada en el format que tries; encara no està
-implementada. Vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+En obrir un àudio, el projecte desa la WAV PCM 16 bits a `audio/`: si cal,
+converteix l'original directament en un temporal dins del projecte, sense crear
+`<nom>_convertit.wav` al costat de l'original. L'original no es modifica. La
+retallada dels extrems i l'exportació d'àudio en altres formats encara no estan
+implementades. Vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 
 ## 👤 Autoria
 

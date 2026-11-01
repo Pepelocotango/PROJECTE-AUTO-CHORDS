@@ -14,10 +14,11 @@ Un **projecte** és una carpeta que ho conté tot::
     ├── wavs_acords/ …             ← exports (els crea `pipeline.exporta_total`)
     └── backup/ …                  ← còpies versionades
 
-En crear un projecte **copiem l'àudio a `audio/`** (sempre): així la carpeta es
-pot renombrar o moure sencera —o es pot esborrar el fitxer original— i el
-projecte continua obrint-se **exactament igual**. No hi ha cap ruta absoluta cap
-a fora del projecte.
+En crear un projecte, l'àudio compatible es copia a `audio/`; els altres
+formats es converteixen directament a una WAV temporal dins d'aquesta carpeta.
+Així la carpeta es pot renombrar o moure sencera —o es pot esborrar el fitxer
+original— i el projecte continua obrint-se **exactament igual**. No hi ha cap
+ruta absoluta cap a fora del projecte.
 
 Tot en català. Només biblioteca estàndard (sense AVX).
 """
@@ -27,6 +28,7 @@ import copy
 import json
 import os
 import shutil
+import tempfile
 from datetime import datetime
 
 from app import pipeline
@@ -174,10 +176,11 @@ class Projecte:
     @classmethod
     def crea(cls, carpeta, wav_origen, nom=None, bpm=120.0, bpb=4, offset=0.0,
              fix=False, opcions=None, vista=None, csv_acords=None,
-             csv_estructura=None, permet_existent=False, compas=None):
-        """Crea una carpeta de projecte AUTOCONTINGUDA a partir d'un WAV.
+             csv_estructura=None, permet_existent=False, compas=None,
+             log=None):
+        """Crea una carpeta de projecte AUTOCONTINGUDA a partir d'un àudio.
 
-        - **Copia l'àudio a `audio/`** (sempre): el projecte no depèn de fora.
+        - Desa una WAV PCM 16 bits a `audio/`; converteix-hi l'entrada si cal.
         - Opcionalment importa CSVs ja existents (migració).
         - Escriu el `.acproj` **atomicament** (últim pas).
 
@@ -197,10 +200,45 @@ class Projecte:
         nom = (nom or os.path.basename(carpeta)).strip() or "Projecte"
         os.makedirs(carpeta, exist_ok=True)
         audio_dir = os.path.join(carpeta, NOM_AUDIO_DIR)
+        audio_dir_existeix = os.path.isdir(audio_dir)
         os.makedirs(audio_dir, exist_ok=True)
-        dest_wav = os.path.join(audio_dir, os.path.basename(wav_origen))
-        if os.path.abspath(dest_wav) != os.path.abspath(wav_origen):
-            shutil.copy2(wav_origen, dest_wav)
+        from app import ffmpeg
+        if ffmpeg.es_wav_pcm16(wav_origen):
+            dest_wav = os.path.join(audio_dir, os.path.basename(wav_origen))
+            if os.path.abspath(dest_wav) != os.path.abspath(wav_origen):
+                if os.path.exists(dest_wav):
+                    raise ProjecteError(
+                        f"ja existeix l'àudio de treball: {dest_wav!r}")
+                shutil.copy2(wav_origen, dest_wav)
+        else:
+            dest_wav = os.path.join(
+                audio_dir, os.path.splitext(os.path.basename(wav_origen))[0]
+                + ".wav")
+            try:
+                if os.path.abspath(dest_wav) == os.path.abspath(wav_origen):
+                    raise ProjecteError(
+                        "no es pot convertir l'àudio sobre el fitxer d'origen")
+                if os.path.exists(dest_wav):
+                    raise ProjecteError(
+                        f"ja existeix l'àudio de treball: {dest_wav!r}")
+                with tempfile.TemporaryDirectory(
+                        prefix=".import-", dir=audio_dir) as temporal:
+                    wav_temporal = os.path.join(
+                        temporal, os.path.basename(dest_wav))
+                    ffmpeg.converteix_a_wav(
+                        wav_origen, log=log, dest=wav_temporal)
+                    if not ffmpeg.es_wav_pcm16(wav_temporal):
+                        raise ProjecteError(
+                            "la conversió no ha generat un WAV PCM de 16 bits")
+                    os.replace(wav_temporal, dest_wav)
+            except ProjecteError:
+                raise
+            except (OSError, RuntimeError, ValueError) as e:
+                raise ProjecteError(
+                    f"no s'ha pogut convertir l'àudio d'entrada: {e}") from e
+            finally:
+                if not audio_dir_existeix and not os.listdir(audio_dir):
+                    os.rmdir(audio_dir)
         # Importa CSVs existents (migració), sense copiar-se a si mateixos.
         csv_a = cls._csv(carpeta, NOM_CSV_ACORDS)
         csv_s = cls._csv(carpeta, NOM_CSV_ESTRUCTURA)
@@ -329,7 +367,8 @@ class Projecte:
         d = self.dir_backup()
         try:
             noms = sorted(x for x in os.listdir(d)
-                          if os.path.isdir(os.path.join(d, x)))
+                          if not x.startswith(".")
+                          and os.path.isdir(os.path.join(d, x)))
         except OSError:
             return []
         return [os.path.join(d, x) for x in noms]
@@ -337,11 +376,9 @@ class Projecte:
     def fes_backup(self, max_backups=MAX_BACKUPS):
         """Còpia versionada dins `backup/<data-hora>/`.
 
-        Guarda el **document** (`.acproj` amb l'estat viu **i el cru de
-        l'anàlisi**) + els **fitxers del model** (`acords.csv`,
-        `estructura_ABC.csv`, `tempo.csv`, `compas.csv`). **NO** copia l'àudio
-        (`audio/`) ni els
-        exports (`wavs_*`, `partitura/`), que es deriven i són grossos.
+        Guarda el **document** (`.acproj` amb l'estat viu i el cru de
+        l'anàlisi), els fitxers del model i l'àudio de treball (`audio/`).
+        No copia els exports (`wavs_*`, `partitura/`), que es deriven.
 
         **No duplica** si el contingut no ha canviat des de l'última còpia.
         Rota perquè només quedin `max_backups` (les més noves).
@@ -363,30 +400,39 @@ class Projecte:
         while os.path.exists(dest):
             dest = os.path.join(self.dir_backup(), f"{_timestamp()}-{k}")
             k += 1
-        os.makedirs(dest, exist_ok=True)
-        # document (estat viu, encara que no s'hagi «desat»)
-        ap = os.path.join(dest, os.path.basename(self.ruta_acproj))
-        pipeline.escriu_atomic(
-            ap, lambda f: json.dump(self.dades, f, ensure_ascii=False,
-                                    indent=2, sort_keys=True))
-        for n in fits:
-            if n == os.path.basename(self.ruta_acproj):
-                continue
-            origen = os.path.join(self.carpeta, n)
-            if os.path.isfile(origen):
-                shutil.copy2(origen, os.path.join(dest, n))
-        for d in dirs:
-            origen = os.path.join(self.carpeta, d)
-            if os.path.isdir(origen):
-                shutil.copytree(origen, os.path.join(dest, d))
-        with open(os.path.join(dest, ".signatura"), "w", encoding="utf-8") as f:
-            f.write(sign)
+        arrel_backup = self.dir_backup()
+        os.makedirs(arrel_backup, exist_ok=True)
+        temporal = tempfile.mkdtemp(prefix=".copia-", dir=arrel_backup)
+        try:
+            # document (estat viu, encara que no s'hagi «desat»)
+            ap = os.path.join(temporal, os.path.basename(self.ruta_acproj))
+            pipeline.escriu_atomic(
+                ap, lambda f: json.dump(self.dades, f, ensure_ascii=False,
+                                        indent=2, sort_keys=True))
+            for n in fits:
+                if n == os.path.basename(self.ruta_acproj):
+                    continue
+                origen = os.path.join(self.carpeta, n)
+                if os.path.isfile(origen):
+                    shutil.copy2(origen, os.path.join(temporal, n))
+            for d in dirs:
+                origen = os.path.join(self.carpeta, d)
+                if os.path.isdir(origen):
+                    shutil.copytree(origen, os.path.join(temporal, d))
+            with open(os.path.join(temporal, ".signatura"), "w",
+                      encoding="utf-8") as f:
+                f.write(sign)
+            os.replace(temporal, dest)
+        finally:
+            if os.path.isdir(temporal):
+                shutil.rmtree(temporal)
         self._rota_backups(max_backups)
         return dest
 
     # Fitxers del projecte que es guarden a cada còpia (model + anàlisi crua).
     _FITXERS_BACKUP = (NOM_CSV_ACORDS, NOM_CSV_ESTRUCTURA,
-                       pipeline.NOM_CSV_TEMPO, pipeline.NOM_CSV_COMPAS)
+                       pipeline.NOM_CSV_TEMPO, pipeline.NOM_CSV_COMPAS,
+                       pipeline.NOM_MARCADORS)
 
     def _materials_backup(self):
         """(noms de fitxers, carpetes) del projecte que es guarden a una còpia."""
@@ -394,7 +440,10 @@ class Projecte:
         for n in self._FITXERS_BACKUP:
             if os.path.isfile(os.path.join(self.carpeta, n)):
                 fits.append(n)
-        return fits, []
+        dirs = ([NOM_AUDIO_DIR]
+                if os.path.isdir(os.path.join(self.carpeta, NOM_AUDIO_DIR))
+                else [])
+        return fits, dirs
 
     def _signatura(self, fits, dirs):
         """Empremta del contingut que es copia (per no duplicar còpies iguals)."""
@@ -414,12 +463,13 @@ class Projecte:
             for arrel, _dd, ff in os.walk(os.path.join(self.carpeta, d)):
                 for fit in sorted(ff):
                     p = os.path.join(arrel, fit)
-                    try:
+                    h.update(os.path.relpath(p, self.carpeta).encode())
+                    if d == NOM_AUDIO_DIR:
+                        stat = os.stat(p)
+                        h.update(f"{stat.st_size}:{stat.st_mtime_ns}".encode())
+                    else:
                         with open(p, "rb") as f:
-                            h.update(os.path.relpath(p, self.carpeta).encode())
                             h.update(f.read())
-                    except OSError:
-                        pass
         return h.hexdigest()
 
     def _rota_backups(self, max_backups):
