@@ -35,6 +35,16 @@
 > visor i en exportar» — s'ha d'aplicar **després de cada edició** també. Vegeu
 > l'evidència de baix (**2 bugs de producció**, `OC-6/332-334`).
 
+## Grups de regles (organització)
+
+Les regles 1–19 i el §13 es mantenen amb la numeració vigent. A efectes de
+lectura i prioritat, es poden agrupar així (sense canviar el contracte):
+
+- **Requisits de plataforma**: 7 (instància única), 9 (portabilitat/AVX), 10
+  (estat en directori escriptible).
+- **Criteri de paritat**: 11 (edició i tracte visual), 12 (exportació).
+- **Especificació del tempo**: §13 (temps, compàs i graella).
+
 ## 1. Ordre estricte dels clips
 Els clips (**acords**, **seccions** i **trams de BPM/compàs**) estan
 **ordenats pel temps d'inici**, **sense solapaments ni inversions**.
@@ -201,6 +211,23 @@ amb `tempo.csv` i `compas.csv`).
 → `pipeline.exporta_total(..., mapa_tempo=)` — rep el mapa del **model viu** (com
 `acords`/`seccions`); si no se li passa, el paquet queda exactament com era.
 test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026-10-18)**.
+- **Representació aproximada (I7)**: el mapa exportat pot incloure una graella mètrica
+  aproximada per als trams en segons, identificada visiblement com a tal; els CSV del
+  model del projecte mantenen `0,0`.
+
+## Cobertura i invariants (proposta v2)
+
+Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secció):
+
+| Id | Enunciat (resum) | Test que el cobreix | Cobertura |
+|----|------------------|---------------------|-----------|
+| I1 | Partició contigua i completa de `[0, durada]` per carril. | `_viola_regles` (`tests/test_gui.py`, fuzzer) · `tests/test_edicio.py`. | Sí |
+| I2 | Els segons manen; la graella en deriva. | `_viola_regles` · `tests/test_tempo_map.py` · `tests/test_edicio.py`. | Parcial |
+| I3 | Fronteres interiors en línia de compàs (excepcions: primer, últim, lliures). | `tests/test_tempo_map.py` · `tests/test_edicio.py`. | Parcial |
+| I4 | Una sola font de veritat al backend, un únic punt de refresc. | `TestElsDosBugsDeLaRonda12h` · `TestFuzzerReglesIVista` (`_viola_vista`). | Sí |
+| I5 | Atòmic, un desfer, sense reparacions silencioses. | `TestValidacioTempoVisor` · `tests/test_edicio.py`. | Parcial |
+| I6 | L'exportació surt del model editat; l'edició no escriu àudio. | `tests/test_pipeline.py` (export). | Sí |
+| I7 | Rubato conservat com `0/0` a l'app; aproximació mètrica a l'exportació (aprovat). | — (pendent d'implementació, Fase 7). | No |
 
 ---
 
@@ -379,6 +406,16 @@ test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026
 - `bpm` es conserva com a **referència de notació** (100 per defecte): no afecta
   cap graella. La **partitura** l'exporta com a compassos a 100 BPM 4/4 (1 compàs
   = 2,4 s) i pot acabar amb un compàs **parcial**.
+- **Representació mètrica aproximada a l'exportació (I7)**: el model del projecte
+  conserva el clip com a `0/0` i els seus segons no canvien. Per als formats d'exportació
+  que necessiten una graella mètrica (còpia de `tempo.csv`/`compas.csv` a
+  `mapa_tempo/` i MusicXML), es pot generar una representació mètrica **aproximada**
+  per a cada clip `0/0`: s'usa com a referència el compàs i el tempo del tram
+  mètric anterior (o, si no n'hi ha, el següent; si tampoc, els del transport); es
+  tria el nombre enter de compassos que done un BPM més pròxim a aquesta referència i
+  es calcula el BPM exacte que fa coincidir l'inici i la fi del clip. La durada real
+  no canvia. Aquesta representació s'identifica visiblement com a **aproximada** i no
+  es presenta com una detecció real; els CSV del model del projecte mantenen `0,0`.
 - Els seus compassos **no compten** per a la numeració: el primer clip amb
   compàs després del rubato continua la sèrie.
 - Les **vores** es mouen sense recalcular **el seu** BPM (el «BPM» d'un rubato

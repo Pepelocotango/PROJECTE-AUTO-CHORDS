@@ -8,6 +8,7 @@ import logging
 import os
 import shutil
 import sys
+import statistics
 import tempfile
 import time
 import traceback
@@ -682,6 +683,9 @@ class Finestra(QMainWindow):
                               "2 s sense tocar = reinicia.")
         self.b_tap.clicked.connect(self._tap_tempo)
         hp.addWidget(self.b_tap)
+        self.lb_desti_accions = QLabel("")
+        self.lb_desti_accions.setObjectName("desti_accions")
+        hp.addWidget(self.lb_desti_accions)
         hp.addWidget(QLabel("Compàs:"))
         hp.addWidget(self.bpb)
         self.chk_segons = QCheckBox("En segons")
@@ -1199,6 +1203,34 @@ class Finestra(QMainWindow):
         finally:
             self._actualitzant_temps = False
         self._on_loop_state(getattr(vr, "loop_on", False))
+        self._actualitza_desti_accions()
+
+    def _actualitza_desti_accions(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        try:
+            # Detecta: prioritat A-B, tram seleccionat, tema sencer.
+            loop = None
+            try:
+                loop = self._loop_actiu()
+            except Exception:  # noqa: BLE001
+                loop = None
+            if loop is not None:
+                desti_detecta = "Detecta: selecció A–B"
+            else:
+                kind, idx = vr.seleccio_activa()
+                if kind == "tempo":
+                    desti_detecta = f"Detecta: tram {idx}"
+                else:
+                    desti_detecta = "Detecta: tema sencer"
+            # TAP: tram seleccionat o, si no, tram 0 (transport).
+            idx_tap = vr.tempo_objectiu()
+            desti_tap = f"TAP: tram {idx_tap}"
+            self.lb_desti_accions.setText(
+                f"{desti_detecta} · {desti_tap}")
+        except Exception:  # noqa: BLE001
+            pass
 
     def _undo_visor(self):
         self._tanca_sessio_tap()
@@ -2134,6 +2166,7 @@ class Finestra(QMainWindow):
 
     def _detecta_bpm(self, pregunta=True):
         """Obre el dialeg d'opcions de BPM i detecta (l'usuari pot editar-lo)."""
+        self._actualitza_desti_accions()
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
             self.avisa("Detecta BPM",
@@ -2912,6 +2945,7 @@ class Finestra(QMainWindow):
         El destí és el **clip de tempo seleccionat**; si no n'hi ha cap, el
         transport (tram 0). Una sessió de taps = una sola operació de desfer.
         """
+        self._actualitza_desti_accions()
         ara = time.monotonic()
         vr = getattr(self, "visor_ref", None)
         idx = vr.tempo_objectiu() if vr is not None else 0
@@ -2949,7 +2983,13 @@ class Finestra(QMainWindow):
             self.b_tap.setText(f"TAP ({len(self._taps)})")
             self._tap_timer.start()
             return
-        bpm = 60.0 / (sum(ivs) / len(ivs))
+        # TAP robust (Fase 3): mediana + descart d'intervals clarament anòmals.
+        mediana = statistics.median(ivs)
+        ivs_robustos = [x for x in ivs
+                        if mediana * 0.7 <= x <= mediana * 1.3]
+        if not ivs_robustos:
+            ivs_robustos = [mediana]
+        bpm = 60.0 / statistics.median(ivs_robustos)
         if vr is not None:
             _, _bpm, num, den = vr.tempo_objectiu_vals()
             if vr.edita_tempo_objectiu(idx, bpm, num, den, desa=False):
@@ -2961,6 +3001,7 @@ class Finestra(QMainWindow):
         self.registra(f"tap tempo: {bpm:.3f} BPM · tram {idx} "
                       f"({len(self._taps)} taps)")
         self._tap_timer.start()
+        self._actualitza_desti_accions()
 
     def _loop_actiu(self, minim=1.0):
         """Rang A–B del visor si serveix com a selecció, o `None`.

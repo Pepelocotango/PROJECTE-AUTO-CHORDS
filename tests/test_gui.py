@@ -4330,9 +4330,10 @@ def _ops(r):
         ("gest cos acord", lambda v: _gest(v, r, "cos_acord")),
         ("gest cos seccio", lambda v: _gest(v, r, "cos_seccio")),
         ("gest frontera tempo", lambda v: _gest(v, r, "frontera_tempo")),
-        ("desfer/refer", lambda v: (v.undo(),
-                                    v.redo() if r.random() < 0.5 else None)),
-    ]
+         ("desfer/refer", lambda v: (v.undo(),
+                                     v.redo() if r.random() < 0.5 else None)),
+         ("quantitza tot", lambda v: v.quantitza("tot", "compas1", "compas1")),
+     ]
     return r.choice(v_ops)
 
 
@@ -4438,6 +4439,11 @@ class TestFuzzerReglesIVista(_vista_segueix_model___Base):
     def test_tongada_general(self):
         for seed in (1, 2):
             self._tongada(seed, 40)
+
+    def test_tongada_amplia(self):
+        """Fase 2: ≥ 20 seeds deterministes, n=30 (no flaky)."""
+        for seed in range(1, 21):
+            self._tongada(seed, 30)
 
 
 class TestElsDosBugsDeLaRonda12h(_vista_segueix_model___Base):
@@ -7001,6 +7007,31 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(callable(rebut["aplicar"]))
         self.assertAlmostEqual(rebut["bpm_global"], 120.0, places=3)
 
+
+
+class TestDestiAccionsFase3(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        self._p = []
+        for m in ("warning", "information", "critical"):
+            self._p.append(patch.object(QMessageBox, m,
+                                       return_value=QMessageBox.Ok))
+        for p in self._p:
+            p.start()
+        self.addCleanup(lambda: [p.stop() for p in self._p])
+
+    def test_desti_accions_text(self):
+        f = _finestra_amb_projecte()
+        try:
+            f._actualitza_desti_accions()
+            txt = f.lb_desti_accions.text()
+            self.assertIn("Detecta:", txt)
+            self.assertIn("TAP:", txt)
+        finally:
+            _tanca(f)
 
 
 if __name__ == "__main__":   # pragma: no cover

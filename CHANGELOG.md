@@ -5,6 +5,31 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit — Fase 3: TAP robust i destí visible
+- TAP de la barra principal usa mediana i descart d'intervals anòmals
+  (rang 30–350, límits compartits).
+- Afegit indicador visible del destí de Detecta i TAP (`lb_desti_accions`),
+  actualitzat amb la selecció.
+- Test `TestDestiAccionsFase3`.
+
+### Netejat — documentació obsoleta
+- Eliminat `docs/PROPOSTA_REGLES_v2.md` (contingut fusionat al contracte).
+
+### Canviat — contracte: fusió de la proposta v2 (aprovada per l'operador)
+- Afegits els grups de regles (plataforma/paritat/tempo) sense canviar la
+  numeració vigent.
+- Afegida la secció «Cobertura i invariants (proposta v2)» amb la taula I1–I7.
+- Aplicat I7 al §13.7 i a la regla 12: el rubato es conserva com `0/0` al
+  projecte; l'exportació pot generar una graella mètrica aproximada
+  identificada com a tal, sense canviar els CSV del model.
+
+### Afegit — Fase 2: fuzzer d'invariants i proposta de regles
+- Estès `tests/test_gui.py` (`TestFuzzerReglesIVista`) amb ≥ 20 seeds deterministes
+  (`test_tongada_amplia`, seeds 1–20, n=30) i l'operació `quantitza tot`.
+- Afegida `docs/PROPOSTA_REGLES_v2.md` amb els invariants candidats I1–I7, la
+  cobertura actual i la proposta de reorganització de regles (sense aplicar).
+- No s'ha modificat `docs/REGLES_DE_LA_APP.md`.
+
 ### Canviat — validació unificada del tempo i el compàs
 - Els valors d'edició comparteixen ara els límits BPM 30–350, numerador 1–12
   i denominadors 2, 4 o 8; `0/0` continua sent l'opció explícita per al rubato.
