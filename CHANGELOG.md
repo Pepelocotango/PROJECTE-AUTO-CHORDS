@@ -5,6 +5,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Corregit — downbeat (offset) absolut
+- Les operacions d'ajust de BPM a partir de marcadors (`bpm_dels_marcadors`,
+  `ajusta_bpms_marcadors`, `ajusta_bpm_minims_quadrats`) ja no desplacen
+  l'offset (downbeat). L'offset només canvia quan l'usuari l'edita
+  explícitament.
+
 ### Afegit — Fase 5: ajust d'un sol BPM i fusió amb tolerància
 - Nou mòdul `app/tempo_ajust.py`: ajust per mínims quadrats i partició
   recursiva per llindar (40 ms per defecte).

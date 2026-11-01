@@ -2946,13 +2946,12 @@ class Visor(QMainWindow):
         trams.append((ini, durada, float(inter[-1][2]), num, den))
         try:
             trams = tempo_map.valida_i_normalitza_compassos(
-                trams, durada, offset=float(ms[0]))
+                trams, durada, offset=getattr(self, "offset", 0.0))
         except ValueError as e:
             self.avis_editor(f"BPM marcadors: {e}")
             return False
         self._undo_marca()
         try:
-            self.offset = float(ms[0])
             if not self.aplica_tempo_trams(trams):
                 self.log("BPM marcadors: el mapa no s'ha pogut aplicar")
                 return False
@@ -3027,16 +3026,15 @@ class Visor(QMainWindow):
         try:
             nous = tempo_map.ajusta_trams_a_marcadors(
                 list(self.tempo_trams or []), ms, durada,
-                referencies=referencies)
+                referencies=referencies,
+                offset=getattr(self, "offset", 0.0))
         except ValueError as e:
             self.avis_editor(f"Ajusta BPMs: {e}")
             return False
         abans = [tuple(x) for x in (self.tempo_trams or [])]
-        if [tuple(x) for x in nous] == abans and \
-                abs(float(getattr(self, "offset", 0.0)) - float(ms[0])) < 1e-9:
+        if [tuple(x) for x in nous] == abans:
             return False
         self._undo_marca()
-        self.offset = float(ms[0])
         ok = self.aplica_tempo_trams(nous)
         self._undo_commit()
         if ok:
@@ -3080,7 +3078,6 @@ class Visor(QMainWindow):
         if [tuple(x) for x in norm] == abans:
             return False
         self._undo_marca()
-        self.offset = float(ms[0])
         ok = self.aplica_tempo_trams(norm)
         self._undo_commit()
         if ok:
