@@ -2978,7 +2978,13 @@ class Finestra(QMainWindow):
         self._actualitza_desti_accions()
         ara = time.monotonic()
         vr = getattr(self, "visor_ref", None)
-        idx = vr.tempo_objectiu() if vr is not None else 0
+        if vr is None:
+            return
+        kind, idx = vr.seleccio_activa()
+        if kind != "tempo" or not vr._index_valid("tempo", idx):
+            # T només actua amb un clip de BPM/compàs seleccionat.
+            return
+        idx = int(idx)
         # Canvi de clip objectiu o pausa > 2 s → tanca la sessió anterior.
         if self._taps and (self._tap_target != idx):
             self._tanca_sessio_tap()

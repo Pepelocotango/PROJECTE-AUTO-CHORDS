@@ -5,6 +5,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Corregit — T (tap tempo) només amb clip de tempo seleccionat
+- La hotkey `T` i la funció de tap tempo només actuen quan hi ha un clip de
+  BPM/compàs seleccionat; sense selecció o amb acords/seccions seleccionats,
+  no fan res.
+
 ### Corregit — downbeat (offset) absolut
 - Les operacions d'ajust de BPM a partir de marcadors (`bpm_dels_marcadors`,
   `ajusta_bpms_marcadors`, `ajusta_bpm_minims_quadrats`) ja no desplacen

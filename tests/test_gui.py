@@ -6658,6 +6658,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(len(vr.marcadors), len(ks))
         cands = vr.candidats_bpm_marcadors(120.0, 4, 4)
         triat = next(c for c in cands if abs(c["bpm"] - 96.0) < 0.2)
+        vr.offset = 8.1
         self.assertTrue(vr.aplica_bpm_marcadors(triat, 4, 4))
         self.assertAlmostEqual(vr.bpm, 96.0, places=2)
         self.assertAlmostEqual(vr.offset, 8.1, places=3)
