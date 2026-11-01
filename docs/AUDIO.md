@@ -5,6 +5,10 @@
 > Codi: `app/audio_out.py` (motors) i `app/visor.py` (`_engega_des_de`,
 > `_alimenta`, `_atura_proc`, `_tiquet`, `play_stop`, `_mono_bytes`).
 
+> Aquest document tracta de **reproducció**. L'edició bàsica d'àudio amb FFmpeg
+> és una proposta planificada, no disponible encara: vegeu
+> [`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
+
 ## 1. Cadena
 
 ```

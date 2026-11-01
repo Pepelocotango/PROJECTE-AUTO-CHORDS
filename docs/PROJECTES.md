@@ -15,7 +15,7 @@ Un **projecte** és una **carpeta que ho conté tot** (com el projecte d'un DAW)
 ```
 La meva cançó/                 ← la carpeta del projecte (portable)
 ├── La meva cançó.acproj       ← el document (JSON, amb «versió de format»)
-├── audio/ tema.wav            ← CÒPIA de l'àudio (mai depèn de fora)
+├── audio/ tema.wav            ← CÒPIA WAV de treball (mai depèn de fora)
 ├── acords.csv                 ← el model (font de veritat)
 ├── estructura_ABC.csv         ← el model (font de veritat)
 ├── tempo.csv · compas.csv     ← el model (mapa de BPM/compàs)
@@ -24,9 +24,13 @@ La meva cançó/                 ← la carpeta del projecte (portable)
 └── backup/ <data-hora>/ …     ← còpies versionades (autosave / rotació)
 ```
 
-L'àudio es **copia sempre** a `audio/`: així la carpeta es pot **renombrar o moure**
+L'àudio de treball es guarda a `audio/`: així la carpeta es pot **renombrar o moure**
 sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament igual**.
-**Cap ruta absoluta cap a fora** del projecte.
+**Cap ruta absoluta cap a fora** del projecte. En una futura edició d'àudio, aquesta
+serà l'única còpia editable; si l'entrada no és un WAV compatible, es vol convertir
+directament ací, sense un WAV intermedi addicional al costat de l'original. L'estat
+actual encara pot crear aquest fitxer intermedi; vegeu
+[`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
 
 ## El document `.acproj` (JSON)
 
@@ -88,6 +92,13 @@ sencera —o es pot **esborrar l'original**— i el projecte s'obre **exactament
   `format` anterior (el 0 = projectes sense el camp), migra camp a camp quan
   calgui i **rebutja** els projectes d'un format MÉS NOU amb un error clar;
   proveït a `tests/test_gui.py` (`format` 0 i 99).
+
+## Funcionalitat planificada: edició bàsica d'àudio
+
+- El WAV de `audio/` serà l'única còpia editable dins del projecte; l'original
+  importat es conservarà intacte i el resultat exportat anirà a un fitxer nou.
+  La conversió d'entrada directa a aquesta còpia i l'edició dels extrems encara
+  no estan implementades. Detall: [`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
 
 ### Idees (no són pendents)
 

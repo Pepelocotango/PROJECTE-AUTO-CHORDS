@@ -1,10 +1,9 @@
 # Flux de dades: el MODEL editable (i el cru dins el document)
 
-> **En una frase:** el projecte té **una sola capa de fitxers** — el **MODEL**
-> (`acords.csv`, `estructura_ABC.csv`, `tempo.csv`, `compas.csv`). El **cru de
-> l'anàlisi** (el que retorna el motor *abans* de netejar) viu **dins el
-> `.acproj`**, no en fitxers solts. Així el pots reaprofitar (re-neteja,
-> re-anàlisi) sense omplir la carpeta de fitxers intermedis.
+> **En una frase:** el **MODEL musical** viu als CSV (`acords.csv`,
+> `estructura_ABC.csv`, `tempo.csv`, `compas.csv`); el **cru de l'anàlisi** (el
+> que retorna el motor *abans* de netejar) viu **dins el `.acproj`**, no en
+> fitxers solts. El projecte també conté una còpia WAV de treball.
 
 > Canvi de disseny (2026-10-19): s'han retirat la carpeta `analisi/` (3 fitxers)
 > i `segments.csv`. El cru ara és una clau del document. **Sense
@@ -17,6 +16,7 @@
 |---|---|---|---|
 | **MODEL** | `acords.csv`<br>`estructura_ABC.csv`<br>`tempo.csv` · `compas.csv` | a **cada edició** | el visor, la quantització, l'anàlisi |
 | **CRU** | dins `<nom>.acproj` → `dades["analisi"]` | a cada «Analitza» | **només `Feina.run`** (i el desat del document) |
+| **ÀUDIO DE TREBALL** | `audio/tema.wav` | en crear/importar el projecte; edició dels extrems planificada | còpia interna del projecte |
 | **EXPORTS** | `wavs_acords/` · `wavs_estructura/` · `partitura/` · `guia_acords.html` · `mapa_tempo/` · `manifest.csv` | només a «Exporta» | `pipeline.exporta_total` |
 | **CÒPIES** | `backup/<data-hora>/` | autosave cada 60 s, si hi ha canvis | `Projecte.fes_backup` |
 
@@ -25,7 +25,7 @@
 ```
 La meva cançó/                     ← carpeta autocontinguda (portable)
 ├── La meva cançó.acproj          ← EL DOCUMENT: tempo, opcions, vista i el CRU
-├── audio/ tema.wav               ← CÒPIA de l'àudio (mai depèn de fora)
+├── audio/ tema.wav               ← WAV DE TREBALL (còpia interna del projecte)
 │
 ├── acords.csv                    ← MODEL: els acords
 ├── estructura_ABC.csv            ← MODEL: l'estructura A/B/C
@@ -35,6 +35,15 @@ La meva cançó/                     ← carpeta autocontinguda (portable)
 ├── guia_acords.html · mapa_tempo/ · manifest.csv   ← EXPORTS
 └── backup/ <data-hora>/          ← còpies versionades (fins a 10)
 ```
+
+**Estat actual i evolució prevista:** avui `Obre àudio` converteix els formats
+incompatibles a WAV PCM 16 bits i el projecte conté la seva còpia d'àudio. La
+conversió d'entrada pot deixar també un `<nom>_convertit.wav` al costat de
+l'original. El disseny futur vol convertir directament a una sola còpia WAV dins
+del projecte, editar-ne els extrems i exportar fitxers nous en altres formats.
+L'original extern no es modifica. La conversió d'entrada directa, l'edició i
+l'exportació d'àudio encara no formen part del codi; vegeu
+[`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
 
 ## 3. El flux
 
@@ -95,6 +104,12 @@ es van fer servir.
 7. **Les còpies de seguretat inclouen el cru.** `Projecte.fes_backup` copia el
    `.acproj` (que ja porta el cru) + els 4 CSV del MODEL. **No** copia l'àudio
    ni els exports.
+
+8. **Àudio editable (proposta, no implementada).** La còpia WAV interna serà el
+   mitjà de treball per a una futura edició dels extrems. Els fitxers exportats
+   en altres formats seran derivats independents i no substituiran aquesta còpia.
+   Cal resoldre còpia de seguretat, desfer/refer i sincronització temporal amb el
+   MODEL abans d'implementar-ho; el contracte canònic continua sent l'autoritat.
 
 ## 5. Referència al codi
 

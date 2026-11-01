@@ -12,6 +12,11 @@ fitxer**— llestos per **arrossegar-los ordenats en una sola pista a qualsevol 
 (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…). Opcionalment genera
 també la **partitura de xifrats** (MusicXML; PDF/MSCZ si tens MuseScore).
 
+També està planificat que servisca per a **editar àudio bàsicament**: retallar o
+allargar amb silenci els extrems d'una còpia WAV de treball i exportar el resultat
+a un format triat. Aquesta funció **encara no està implementada**; l'abast acordat
+és a [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+
 > **Novetats de la v0.8.0 (BETA)** — **mapa de tempo amb compassos enters**
 > (les fronteres de tempo cauen en línies de compàs; primer inici i últim
 > final exceptuats) · **detecció de BPM per tram** (el tram seleccionat, el
@@ -65,6 +70,7 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 - **Exporta clips WAV silenciosos** ordenats i nomenats per acord (`1-1-1_C.wav`) i per secció (`1-1-1_3-2-1_A.wav`) → els arrossegues al teu DAW i hi tens l'harmonia marcada.
 - **Exporta el mapa de tempo** a `mapa_tempo/` (`tempo.csv` + `compas.csv`) i una **guia d'acords** (`guia_acords.html`) per imprimir.
 - **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: [`docs/PROJECTES.md`](docs/PROJECTES.md).
+- **Edició d'àudio bàsica (planificada)**: nanses per retallar els extrems o afegir-hi silenci, amb l'original intacte; exportació de la còpia editada a WAV, MP3, FLAC, AAC/M4A, OGG o Opus. No és disponible encara; vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 - **Partitura de xifrats**: MusicXML sempre; PDF/MSCZ amb MuseScore.
 - La interfície (menús, barres, dreceres) és a [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md).
 
@@ -100,6 +106,7 @@ procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i **[`docs/ESTAT_MULTI_SO.md
 | [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md) | **Invariants** del producte («s'ha de complir sempre») |
 | [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md) | Esquema de la interfície (menús, barres, dreceres) |
 | [`docs/PROJECTES.md`](docs/PROJECTES.md) | **Projectes autocontinguts** («com un DAW»): `.acproj`, «Desa com», autosave/backups i recuperació |
+| [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md) | Proposta d'edició bàsica d'àudio: còpia WAV de treball, edició dels extrems i exportació amb FFmpeg |
 | [`docs/FLUX_DE_DADES.md`](docs/FLUX_DE_DADES.md) | **Flux de dades**: el MODEL (4 CSV) i el cru de l'anàlisi (dins el `.acproj`); per què editar o quantitzar no el destrueixen |
 | [`docs/NOTACIO_XIFRAT.md`](docs/NOTACIO_XIFRAT.md) | **Notació del xifrat**: la **forma canònica** (`Am`→`A-`, `Cmaj7`→`CMaj7`, `Bø`→`B-7b5`) i on s'aplica (model, noms de fitxer, partitura) |
 | [`docs/TIPUS_XIFRAT_ACORDS.md`](docs/TIPUS_XIFRAT_ACORDS.md) | **Catàleg de tipus d'acord**: variants de sintaxi, graus i `<kind>` MusicXML (per nivells + extres) |
@@ -107,7 +114,7 @@ procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i **[`docs/ESTAT_MULTI_SO.md
 | [`docs/CI_WORKFLOWS.md`](docs/CI_WORKFLOWS.md) | Els workflows de GitHub Actions (build + release) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de versions |
 
-## 🎼 Formats d'àudio acceptats
+## 🎼 Formats d'àudio acceptats (importació actual)
 
 L'app treballa amb **WAV PCM 16 bits** internament, però `Obre…` accepta **19 formats**
 i els converteix automàticament amb **ffmpeg** (vegeu `app/ffmpeg.py`):
@@ -115,8 +122,11 @@ i els converteix automàticament amb **ffmpeg** (vegeu `app/ffmpeg.py`):
 `WAV` · `MP3` · `AIFF`/`AIF`/`AIFC` · `FLAC` · `M4A` · `AAC` · `OGG`/`OGA` · `Opus` ·
 `WMA` · `MP2` · `CAF` · `W64` · `AU` · `WV` · `APE` · `ALAC`
 
-El WAV de treball queda al costat de l'original com **`<nom>_convertit.wav`**
-(es reutilitza si ja és més nou que l'original).
+Avui, si cal convertir, el WAV queda al costat de l'original com
+**`<nom>_convertit.wav`** (es reutilitza si ja és més nou). La proposta d'edició
+d'àudio vol convertir directament a una sola còpia de treball dins del projecte
+i afegir una exportació separada en el format que tries; encara no està
+implementada. Vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 
 ## 👤 Autoria
 
