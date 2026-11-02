@@ -1,6 +1,6 @@
 # Índex de la documentació (`docs/`)
 
-> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-11-01.**
+> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-11-02.**
 > L'estat *actual* del projecte és a **`../README.md`** i **`../ROADMAP.md`**;
 > aquí hi ha el **detall temàtic**. Els documents d'**`archive/`** (marcats
 > **[HISTÒRIC]**, **[ANÀLISI]** o **[COMPLETAT]**) es conserven com a referència,
@@ -22,7 +22,7 @@
 | `REGLES_DE_LA_APP.md` | Regles d'or: ordre estricte, contigüitat, cobertura total… |
 | `ESQUEMA_UI.md` · `ESQUEMA_UI.html` · `ESQUEMA_UI.svg` | Esquema de la GUI. El `.html` i el `.svg` es **generen** (`eines/genera_esquema_ui.py`) des del `.md` — **no editar-los a mà**. L'**art manual** original es conserva a `ESQUEMA_UI_manual.svg` · `ESQUEMA_UI_manual.html`. |
 | `PROJECTES.md` | **Projectes autocontinguts** («com un DAW»): `.acproj`, `audio/` copiat, «Desa com», backups. |
-| `EDICIO_AUDIO.md` | **Abast i estat** de l'edició bàsica: còpia WAV, retall/allargament dels extrems i exportació pendent amb FFmpeg. |
+| `EDICIO_AUDIO.md` | **Abast i estat** de l'edició bàsica: còpia WAV, retall/allargament dels extrems i **exportació amb FFmpeg** (perfils WAV/MP3/FLAC/AAC/OGG/Opus). |
 | `FLUX_DE_DADES.md` | **Flux de dades**: el **MODEL** (4 CSV) i el **cru** de l'anàlisi, que viu dins el `.acproj`. |
 | `NOTACIO_XIFRAT.md` | **Notació del xifrat**: la forma canònica (`Am`→`A-`) i on s'aplica. |
 | `TIPUS_XIFRAT_ACORDS.md` | **Tipus de xifrat**: variants de sintaxi, graus i `<kind>` MusicXML (MuseScore). |
@@ -30,14 +30,15 @@
 | `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps: **estat actual del codi** (§1) i **proposta pendent** de la capa de *ticks*/PPQ 960 (§8). |
 | `PARTITURA_EXPORT.md` | Exportació de partitura (xifrat: MusicXML/PDF/MSCZ). |
 | `TEMPO_PER_TRAMS.md` | 🥁 **Motor de tempo per trams** (2026-10-21): BPM cada N compassos per a cançons amb tempo variable (DP d'Ellis + alternatives amb fiabilitat), xifres reals i comparativa amb els DAW. |
-| `ANALISI_GUIAT.md` | ✅ **Anàlisi guiat, v1 implementada** (botó a Treball): guiar l'usuari per construir un mapa de tempo per finestres de 16 temps quan el BPM no és constant; acaba al diàleg d'Analitza. Diferit: botó *Escolta el tram*, mode automàtic. |
+| `ANALISI_GUIAT.md` | **HISTÒRIC**: anàlisi guiada v1/v2 per trams (substituïda). El treball real és amb **marcadors en viu** (`MARCADORS.md`); la v3 (ancoratges) queda en **stand-by** (`ANALISI_GUIAT_v3.md`). |
+| `MARCADORS.md` | **Marcadors d'inici de compàs en viu**: `+` mentre sona, tipus **compàs/secció**, relació amb les fronteres de tempo i pas a BPM. |
 | `EDICIO_OPERACIONS.md` | **Taula única** de totes les formes d'edició: operació × **GUI** × paritat acords/estructura (**#11**) × estat (FET/pendent). El test `TestDocEdicioOperacions` la manté al dia. |
 
 ## Plans i refactors **en curs**
 
 | Doc | Què explica |
 |---|---|
-| `../00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` | Pla acordat per fases; la fase 0 incorpora l'avaluador local de tempo i la fase 1 és el pas següent. |
+| `../00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` | Pla acordat per fases: **0–6 fetes**; pendents **7** (rubato exportat + anacrusi), **10** (motor de detecció) i **12** (CI/congelació); **8, 9 i 11 ajornades**. |
 | `NOTES_VERIFICACIO.md` | Verificacions de la fase 0: avaluador, destins TAP/guia i mapa de proves de les regles. |
 
 > Els refactors **acabats** viuen a `archive/` (p. ex. `REFACTOR_INICI_FI.md`):

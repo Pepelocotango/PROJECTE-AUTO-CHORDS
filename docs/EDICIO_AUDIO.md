@@ -1,9 +1,11 @@
 # Edició bàsica d'àudio — abast i estat
 
-> **Estat: parcialment implementada.** La importació converteix al projecte,
-> els backups inclouen el WAV i els marcadors, i ja es poden retallar o ampliar
-> els extrems amb nanses, previsualització i desfer/refer. L'exportació d'àudio
-> continua pendent.
+> **Estat: implementada (Fase 6, 2026-11-02).** La importació converteix al
+> projecte, els backups inclouen el WAV i els marcadors, es poden retallar o
+> ampliar els extrems amb nanses, previsualització i desfer/refer, i
+> **«Exporta àudio…»** desa la còpia de treball amb FFmpeg a un fitxer nou.
+> Continuen pendents la restauració d'una còpia des de la GUI i la validació
+> funcional dels 3 paquets.
 > Aquest document descriu l'abast acordat. No canvia les regles canòniques de
 > [`REGLES_DE_LA_APP.md`](REGLES_DE_LA_APP.md).
 
@@ -48,10 +50,16 @@ flux fàcil d'entendre —importar, veure la forma d'ona, editar, desfer i expor
 6. **Representar el silenci afegit.** Es crea un tram d'acord `N` (sense acord)
    sobre el silenci nou; la secció existent continua cobrint-lo. Així no
    s'atribueix un acord inventat a un interval sense so musical.
-7. **Exportar l'àudio editat.** «Exporta àudio…» demana carpeta, nom i format;
-   usa una qualitat predeterminada senzilla, sense opcions tècniques de còdec,
-   bitrate o freqüència de mostreig. Exporta sempre el WAV sencer a un fitxer
-   nou i no sobreescriu ni l'original importat ni el WAV de treball.
+7. **Exportar l'àudio editat.** «Exporta àudio…» obri el **diàleg natiu de
+   desar**; l'usuari tria carpeta, nom i perfil: **WAV** 16 bits (mostreig
+   original, 44,1 o 48 kHz), 24 bits i 32 bits float; **MP3** 128/192/320 kbps;
+   **FLAC** 16 bits; **AAC/M4A** 256 kbps; **OGG Vorbis** q6; **Opus** 160 kbps.
+   Només s'ofereixen els perfils que el `ffmpeg` del paquet pot escriure de
+   debò (es consulta `-encoders` en temps d'execució). Exporta sempre el WAV
+   sencer a un fitxer nou, de manera atòmica, i no sobreescriu el WAV de
+   treball. Si tries un fitxer existent (inclòs l'original importat), el
+   diàleg natiu demana confirmació abans de substituir-lo.
+   **Implementat (2026-11-02).**
 
 ## Abast inicial
 
@@ -73,8 +81,9 @@ flux fàcil d'entendre —importar, veure la forma d'ona, editar, desfer i expor
 - Si s'afegeix silenci, es manté el model sincronitzat: `N` per al tram sense
   acord i la secció existent cobrint-lo.
 - Conversió/exportació amb FFmpeg a una selecció curta de formats comuns:
-  **WAV, MP3, FLAC, AAC/M4A, OGG i Opus**. Cal verificar quins encoders estan
-  disponibles en cada FFmpeg distribuït abans de tancar l'oferta de formats.
+  **WAV, MP3, FLAC, AAC/M4A, OGG i Opus**, amb perfils senzills. La
+  disponibilitat de cada còdec es detecta en temps d'execució (`-encoders`),
+  així que la UI només ofereix el que el paquet de cada SO porta de debò.
 - Exportació de tot el WAV editat; exportar només una selecció i ajustar
   opcions tècniques de qualitat queden per a més endavant.
 - L'edició d'àudio sempre es fa dins d'un projecte; no hi haurà un mode
@@ -107,9 +116,10 @@ flux fàcil d'entendre —importar, veure la forma d'ona, editar, desfer i expor
   valida i només després es publica com a WAV de treball. La conversió i la
   còpia del WAV als backups tenen proves. Les transformacions als dos extrems,
   cobertura, offset, desfer/refer mixt i una fallada de publicació tenen proves
-  de regressió. Encara falta implementar i provar l'exportació d'àudio i la
-  restauració d'una còpia des de la GUI. La regla 6 i la resta del §13
-  continuen vigents.
+  de regressió. L'**exportació d'àudio** també té proves (perfils, detecció
+  d'encoders, atomicitat i protecció de la còpia de treball).
+  Encara falta la **restauració d'una còpia des de la GUI** i les proves
+  visuals de previsualització. La regla 6 i la resta del §13 continuen vigents.
 
 ## Inspiració en Audacity
 

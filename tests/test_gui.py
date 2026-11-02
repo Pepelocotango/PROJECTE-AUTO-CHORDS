@@ -820,10 +820,14 @@ class TestObrirProjecteHabilitaExport(_Base):
         f = _projectes_gui___finestra()
         f.avisa = lambda *a, **k: None
         self.assertFalse(f.b_export.isEnabled(), "abans d'obrir, apagat")
+        self.assertFalse(f.a_exporta_audio.isEnabled(),
+                         "sense àudio, exporta àudio apagat")
         f._activa_projecte(projecte.Projecte.obre(p.ruta_acproj))
         self.assertTrue(f.b_export.isEnabled(),
                         "amb projecte obert l'export ha d'estar activa")
         self.assertTrue(f.b_export_part.isEnabled())
+        self.assertTrue(f.a_exporta_audio.isEnabled(),
+                        "amb àudio, exporta àudio ha d'estar actiu")
 
     def test_obrir_projecte_no_deixa_copia_dins_audio(self):
         """El visor desa a la carpeta del PROJECTE, mai dins `<projecte>/audio/`.
@@ -4686,6 +4690,8 @@ class TestProjecteAssociat(_Base):
         self.assertTrue(f.b_export.isEnabled(), "Exporta WAV's ha d'estar actiu")
         self.assertTrue(f.b_export_part.isEnabled(),
                         "Exporta partitura ha d'estar actiu")
+        self.assertTrue(f.a_exporta_audio.isEnabled(),
+                        "Exporta àudio ha d'estar actiu")
         # Flux MANUAL: l'usuari reanomena el clip «N» a «C» (sense analitzar).
         self.assertTrue(f.visor_ref._renomena_acords([0], "C"))
         res = pipeline.exporta_total(

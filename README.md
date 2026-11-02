@@ -15,17 +15,22 @@ també la **partitura de xifrats** (MusicXML; PDF/MSCZ si tens MuseScore).
 També permet **editar els extrems de la còpia WAV de treball** dins d'un
 projecte, sense haver d'analitzar acords: retallar-los o afegir-hi silenci amb
 nanses, previsualització i desfer/refer. El silenci afegit es marca «N» (sense
-acord); les seccions es mantenen. L'exportació de l'àudio editat a altres formats
-encara està pendent. L'abast acordat és a
-[`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+acord); les seccions es mantenen. També pots **exportar la còpia editada** a
+WAV, MP3, FLAC, AAC/M4A, OGG o Opus des de `Fitxer ▸ Exporta àudio…`. L'abast
+acordat és a [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 
 > **Novetats de la v0.8.0 (BETA)** — **mapa de tempo amb compassos enters**
 > (les fronteres de tempo cauen en línies de compàs; primer inici i últim
 > final exceptuats) · **detecció de BPM per tram** (el tram seleccionat, el
-> seu inici és el downbeat) · **tap tempo al tram objectiu** amb loop
-> automàtic mentre sona · **loop a la selecció** (`L`) · **Quantitza**
-> arranja el model a la graella. Historial complet:
-> [`CHANGELOG.md`](CHANGELOG.md).
+> seu inici és el downbeat) · **tap tempo al tram seleccionat** amb loop
+> automàtic mentre sona · **marcadors de compàs vs secció** · **ajust d'un sol
+> BPM per mínims quadrats** · **validació unificada** de BPM/compàs ·
+> **loop a la selecció** (`L`) · **Quantitza** arranja el model a la graella.
+> Historial complet: [`CHANGELOG.md`](CHANGELOG.md).
+
+> ⚠️ **Beta:** la retrocompatibilitat de formats **no és una prioritat**. Una
+> versió nova pot rebutjar un projecte vell amb un missatge clar; no es fan
+> migracions automàtiques. L'app no modifica ni esborra el projecte rebutjat.
 
 <p align="center">
   <img src="icona/captura.png" alt="El visor d'AUTO CHORDS: el timeline amb l'ona, els acords (C, G, F, G) i les seccions (A, B: intro, tornada, final), el regle amb el BPM i el compàs, les llistes i el transport">
@@ -58,10 +63,10 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 ## 🚀 Ús en 4 passos
 
 1. **Obre l'àudio** (`Fitxer ▸ Obre…`, `Ctrl+O`) — si no és WAV, es converteix sol amb **ffmpeg**.
-2. **Ajusta el temps** (BPM amb **🎯 Detecta** o **TAP**) i fes **Analitza** (`F5`, obre el diàleg d'opcions).
+2. **Ajusta el temps**: selecciona el tram de **BPM/compàs** i fes-lo servir amb **🎯 Detecta** o **TAP** (el TAP només actua amb un tram seleccionat). Després, **Analitza** (`F5`, obre el diàleg d'opcions).
 3. **Revisa i edita** els acords, les seccions i el **mapa de BPM/compàs** al visor
    (timeline estil DAW amb **tres pistes**, llistes i franja Editor).
-4. **`Exporta WAV's…`** (`Ctrl+E`) — i, si vols, **`Exporta partitura`**.
+4. **`Exporta WAV's…`** (`Ctrl+E`) — i, si vols, **`Exporta partitura`**. Per a una còpia en un altre format, **`Fitxer ▸ Exporta àudio…`**.
 
 ## 🎛️ Què fa
 
@@ -72,7 +77,7 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 - **Exporta clips WAV silenciosos** ordenats i nomenats per acord (`1-1-1_C.wav`) i per secció (`1-1-1_3-2-1_A.wav`) → els arrossegues al teu DAW i hi tens l'harmonia marcada.
 - **Exporta el mapa de tempo** a `mapa_tempo/` (`tempo.csv` + `compas.csv`) i una **guia d'acords** (`guia_acords.html`) per imprimir.
 - **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: [`docs/PROJECTES.md`](docs/PROJECTES.md).
-- **Edició d'àudio bàsica (parcialment disponible)**: nanses per retallar els extrems o afegir-hi silenci a la còpia del projecte, amb snap commutable, previsualització i desfer/refer sincronitzat amb el model; l'original queda intacte. L'exportació de la còpia editada a WAV, MP3, FLAC, AAC/M4A, OGG o Opus encara està pendent; vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+- **Edició d'àudio bàsica**: nanses per retallar els extrems o afegir-hi silenci a la còpia del projecte, amb snap commutable, previsualització i desfer/refer sincronitzat amb el model; l'original queda intacte. **`Exporta àudio…`** desa la còpia editada a WAV (16/24/32 bits), MP3, FLAC, AAC/M4A, OGG o Opus, amb els perfils que el `ffmpeg` del paquet sap escriure; vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 - **Partitura de xifrats**: MusicXML sempre; PDF/MSCZ amb MuseScore.
 - La interfície (menús, barres, dreceres) és a [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md).
 
@@ -127,8 +132,9 @@ i els converteix automàticament amb **ffmpeg** (vegeu `app/ffmpeg.py`):
 En obrir un àudio, el projecte desa la WAV PCM 16 bits a `audio/`: si cal,
 converteix l'original directament en un temporal dins del projecte, sense crear
 `<nom>_convertit.wav` al costat de l'original. L'original no es modifica. La
-retallada dels extrems i l'exportació d'àudio en altres formats encara no estan
-implementades. Vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+retallada dels extrems i l'exportació de la còpia editada (WAV, MP3, FLAC,
+AAC/M4A, OGG o Opus) ja estan implementades. Vegeu
+[`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 
 ## 👤 Autoria
 

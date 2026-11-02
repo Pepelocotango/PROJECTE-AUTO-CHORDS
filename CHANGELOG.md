@@ -5,6 +5,44 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Política — la retrocompatibilitat no és prioritat (2026-11-02)
+- Decisió global de l'operador: els canvis de format poden **rebutjar**
+  projectes vells amb un error clar; no es fan migracions, lectors tolerants ni
+  capes de compatibilitat.
+- **Cap agent ha de preguntar per retrocompatibilitat** en una modificació de
+  codi: la resposta per defecte és **no** i el canvi es documenta ací.
+- Excepció de seguretat: un projecte no suportat es rebutja **sense tocar-lo**;
+  mai se sobreescriu ni s'esborra.
+- Documentat a `AGENTS.md`, `DEVELOPING.md`, `ROADMAP.md`, `README.md`,
+  `docs/FLUX_DE_DADES.md` i `docs/PROJECTES.md`.
+
+### Afegit — Fase 6: exportació de l'àudio editat (2026-11-02)
+- **`Fitxer ▸ Exporta àudio…`** obri el diàleg natiu de desar i exporta la
+  còpia WAV de treball a un fitxer nou.
+- Perfils: **WAV** PCM 16 bits (mostreig original, 44,1 o 48 kHz), 24 bits i
+  32 bits float; **MP3** 128/192/320 kbps; **FLAC** 16 bits; **AAC/M4A**
+  256 kbps; **OGG Vorbis** q6; **Opus** 160 kbps.
+- La llista de perfils es filtra amb `ffmpeg -encoders` en temps d'execució:
+  només s'ofereix el que el paquet de cada SO pot escriure de debò.
+- Exportació en un **fil** amb estat visible al log; escriptura **atòmica**
+  (temporal + `os.replace`) i cap fitxer a mitges si falla.
+- Protecció de la **còpia de treball**: no es pot exportar damunt d'ella.
+  Qualsevol altre fitxer existent passa per la **confirmació de sobreescriptura
+  del diàleg natiu** (com els DAWs); el projecte no guarda rutes absolutes de
+  l'original.
+- Nous tests: perfils i filtres, rebuig de destí/extensió/còdec, fallada sense
+  temporals, exportació real WAV/MP3 i activació de l'acció a la GUI.
+
+### Corregit — indicador del TAP i suite al dia (2026-11-02)
+- L'indicador de destí ja no anuncia «TAP: tram 0» quan no hi ha cap tram de
+  tempo seleccionat: mostra «TAP: tria un tram de tempo», coherent amb el
+  comportament del 2026-11-01.
+- Actualitzats els tests del TAP (ara seleccionen el tram; un parteix d'un BPM
+  diferent perquè no passe pel valor per defecte), el test de l'offset absolut
+  i les vistes generades (`ESQUEMA_UI.html`).
+- Docstrings i documentació (`MARCADORS`, `EDICIO_OPERACIONS`, `ESQUEMA_UI`)
+  alineats amb l'offset absolut i el TAP només amb tram seleccionat.
+
 ### Corregit — T (tap tempo) només amb clip de tempo seleccionat (2026-11-01)
 - La hotkey `T` i la funció de tap tempo només actuen quan hi ha un clip de
   BPM/compàs seleccionat; sense selecció o amb acords/seccions seleccionats,

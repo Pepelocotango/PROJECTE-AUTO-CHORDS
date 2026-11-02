@@ -8,6 +8,12 @@
 > Regla de producte: **«com un DAW»** — un projecte ho conté tot i **no depèn de res
 > de fora**.
 
+> ⚠️ **Política de formats (2026-11-02):** la **retrocompatibilitat no és
+> prioritat**. Un canvi de format pot **rebutjar** projectes vells amb un error
+> clar; no es fan migracions automàtiques ni es mantenen dos formats en
+> paral·lel. Els fitxers de l'usuari no es toquen mai: es rebutgen i s'explica
+> el motiu.
+
 ## Què és
 
 Un **projecte** és una **carpeta que ho conté tot** (com el projecte d'un DAW):
@@ -100,13 +106,13 @@ al costat de l'original; vegeu
   calgui i **rebutja** els projectes d'un format MÉS NOU amb un error clar;
   proveït a `tests/test_gui.py` (`format` 0 i 99).
 
-## Edició bàsica d'àudio (parcialment disponible)
+## Edició bàsica d'àudio
 
 - El WAV de `audio/` és l'única còpia editable dins del projecte; l'original
-  importat es conserva intacte i el resultat exportat anirà a un fitxer nou.
-  La conversió i l'edició dels extrems ja estan implementades; l'exportació
-  d'àudio continua pendent. Detall:
-  [`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
+  importat es conserva intacte i el resultat exportat va a un fitxer nou.
+  La conversió, l'edició dels extrems i l'exportació amb FFmpeg ja estan
+  implementades; la restauració de backups des de la GUI continua pendent.
+  Detall: [`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
 
 ### Idees (no són pendents)
 

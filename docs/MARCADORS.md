@@ -48,7 +48,8 @@ ser un **nombre enter de compassos**. Amb dos o més marcadors:
 3. En aplicar-lo, cada interval passa a tindre **exactament `k` compassos** al
    BPM d'eixe interval → **totes les fronteres cauen en línia de compàs** i els
    clips de tempo/compàs **tornen a ser editables** (canviar BPM, moure vores,
-   suprimir, fusionar…). L'offset passa a ser el primer marcador.
+   suprimir, fusionar…). L'offset (downbeat) **no es mou**: continua sent el
+   que hi havia; només canvia si l'edites explícitament.
 
 Sense este pas, els talls dels marcadors no són línies de compàs (el BPM de la
 barra encara no és el bo) i l'editor estricte els rebutja amb «La frontera … no

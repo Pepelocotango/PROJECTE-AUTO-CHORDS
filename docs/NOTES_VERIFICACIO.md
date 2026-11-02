@@ -62,10 +62,10 @@ aquest comportament.
   `tests/test_tempo_trams.py`, `tests/test_despatx_edicio.py`,
   `tests/test_edicio.py` (`TestUndoTemps`, `TestLlistaTempo`) i
   `tests/test_pipeline.py`.
-- §13.9 (edició d'àudio): `tests/test_audio_edit.py` i les classes
-  `TestEdicioAudioVisor`, `TestNansesAudioTimeline` i `TestBackups` a
-  `tests/test_gui.py`. L'exportació d'àudio i la restauració de backup des de
-  la GUI continuen sense implementar.
+- §13.9 (edició d'àudio): `tests/test_audio_edit.py`, `tests/test_exporta_audio.py`
+  i les classes `TestEdicioAudioVisor`, `TestNansesAudioTimeline` i
+  `TestBackups` a `tests/test_gui.py`. L'exportació d'àudio s'ha implementat a
+  la Fase 6; la restauració de backup des de la GUI continua sense implementar.
 
 ## Seguiment de Pylance
 

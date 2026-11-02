@@ -997,7 +997,9 @@ class TestMarcadorsTempoEnViu(_Base):
     def test_ajusta_els_bpms_dels_marcadors(self):
         self.v.marcadors = [2.0, 10.5, 20.0]
         self.assertTrue(self.v.ajusta_bpms_marcadors())
-        self.assertAlmostEqual(float(self.v.offset), 2.0, places=6)
+        # L'offset (downbeat) és absolut: ajustar els BPMs no el mou
+        # (decisió 2026-11-01). Només canvia quan l'usuari l'edita.
+        self.assertAlmostEqual(float(self.v.offset), 0.0, places=6)
         self.assertEqual([round(float(t[0]), 6) for t in self.v.tempo_trams],
                          [0.0, 2.0, 10.5, 20.0])
         self.assertAlmostEqual(float(self.v.tempo_trams[-1][1]), _DUR,

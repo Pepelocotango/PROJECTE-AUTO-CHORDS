@@ -3006,8 +3006,9 @@ class Visor(QMainWindow):
         Acció per lot: cada interval entre marcadors passa a tindre compassos
         enters amb el BPM derivat; el BPM vigent del mapa al centre de cada
         interval és la referència (l'àudio detectat, si l'operador l'ha aplicat
-        abans, ja és al mapa). El «cap» i la «cua» queden com a excepcions i
-        l'offset passa a ser el primer marcador (és un inici de compàs).
+        abans, ja és al mapa). El «cap» i la «cua» queden com a excepcions.
+        L'offset (downbeat) és absolut i **no es mou**: només canvia quan
+        l'usuari l'edita explícitament (decisió 2026-11-01).
         Retorna `True` si el mapa ha canviat.
         """
         from app import marcadors as M

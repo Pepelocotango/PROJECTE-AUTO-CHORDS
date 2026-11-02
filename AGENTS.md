@@ -32,21 +32,30 @@
 5. Comprova que l'entorn funciona: la suite en verd i `pyflakes` net (comandes a
    «Com executar-ho»). Si no ho està, **atura't i avisa** abans de canviar res.
 
-## 📍 Estat actual (relleu de sessió, 2026-11-01)
+## 📍 Estat actual (relleu de sessió, 2026-11-02)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** (reescriure-la, **no** incrementalment:
 > reflectir l'estat actual, no l'historial). L'historial viu al `CHANGELOG.md`.
 
-Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3, 4, 5**.
-Pendents: 6 (edició d'àudio), 7 (rubato exportat), 10 (motor detecció). Ajornades: 8, 9, 11.
+Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3,
+4, 5, 6**. Pendents: **7** (rubato exportat aproximat + anacrusi), **10** (motor
+de detecció) i **12** (fuzzer al CI, congelació i docs). Ajornades: **8**
+(MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
 
-Bugs corregits recentment:
+Fet recentment (2026-11-01/02):
+- **Fase 6**: `Fitxer ▸ Exporta àudio…` amb diàleg natiu, perfils
+  WAV/MP3/FLAC/AAC/OGG/Opus, detecció d'encoders en temps d'execució,
+  escriptura atòmica i protecció de la còpia de treball.
+- **P0**: suite verda (**1.452 tests**, 1 omés), `pyflakes` net, vistes
+  `ESQUEMA_UI` al dia i indicador del TAP coherent amb el comportament real.
 - Downbeat (offset) absolut: no es mou en ajustar BPM.
 - T (tap tempo): només amb clip de tempo seleccionat.
+- Fases 4 i 5: compàs ≠ secció i ajust d'un sol BPM per mínims quadrats.
 
-Commits recents: `0bb763a`, `8620f79`, `db32196`, `6fc462b`, `b80912d`, `18c46f1`, `6b73a8b`.
-Suite: ~1.436 tests, `pyflakes` net. Corpus real encara pendent.
+Corpus real de tempo encara pendent (l'avaluador sintètic funciona).
+Últim commit: `688174e` (docs); el treball P0 i la fase 6 són locals i sense
+commit.
 
 ## 🎚️ Qui ets i com has de pensar
 
@@ -117,9 +126,10 @@ prémer «Analitza» mai.
   directament dins `audio/` del projecte; no deixa `<nom>_convertit.wav` al
   costat de l'original. Les còpies de seguretat versionades també inclouen el
   WAV de treball.
-- **Edició d'àudio (parcial)**: les nanses de la forma d'ona retallen o afegeixen
+- **Edició d'àudio**: les nanses de la forma d'ona retallen o afegeixen
   silenci als extrems, amb snap commutable i desfer/refer sincronitzat amb el
-  model. L'exportació d'àudio encara està pendent; el contracte és §13.9.
+  model. `Fitxer ▸ Exporta àudio…` desa la còpia editada (WAV/MP3/FLAC/AAC/
+  OGG/Opus) amb els còdecs que el paquet pot escriure; el contracte és §13.9.
 - **Partitura**: **MusicXML sempre**; **PDF/MSCZ només amb MuseScore** (provat
   amb 4.6.x; el 4.7+ no va al Q9400).
 
@@ -242,6 +252,27 @@ widgets, netegen amb `tests/_qt_neteja.py`. Si afegeixes un test nou, importa
 - **Neteja**: no deixar processos ni temporals en segon pla en acabar.
 - **GUI**: si cal interactuar amb diàlegs/menús, **demana ajuda a l'operador**
   (1 clic seu estalvia desenes d'intents).
+
+## 🔁 Retrocompatibilitat — NO és prioritat (decisió 2026-11-02)
+
+> **Norma global i obligatòria per a qualsevol agent.**
+
+- La **retrocompatibilitat no és un criteri de disseny** del projecte. No cal
+  mantindre formats, fitxers, camps ni comportaments antics si compliquen el
+  model o alenteixen una millora.
+- **Cap agent ha de preguntar per retrocompatibilitat** en una modificació de
+  codi. La resposta per defecte és **no**: es canvia el format i es documenta.
+- Els canvis de format poden **rebutjar** projectes vells amb un **error clar**
+  («projecte anterior a…; no suportat»). No cal migració, lector tolerant ni
+  capa de compatibilitat.
+- **No es fan migracions automàtiques** ni es mantenen dos formats en paral·lel.
+  Si un canvi necessita un format nou, el vell deixa d'existir.
+- **Excepció de seguretat**: no es destrueix mai un fitxer de l'usuari. Un
+  projecte no suportat es **rebutja sense tocar-lo** i s'explica el motiu; no
+  se sobreescriu ni s'esborra.
+- Tot canvi de format o de comportament que trenque compatibilitat es documenta
+  al `CHANGELOG.md` i, si afecta el contracte, a `docs/REGLES_DE_LA_APP.md`
+  amb l'aprovació explícita de l'operador.
 
 ## ⚠️ Paranys coneguts (que ja ens han picat)
 

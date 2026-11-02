@@ -93,12 +93,31 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 | Menú | Accions |
 |------|---------|
-| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… · Obre recent… · Desa (Ctrl+S) · Desa com… · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta la partitura… · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
+| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… · Obre recent… · Desa (Ctrl+S) · Desa com… · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta àudio… · Exporta la partitura… · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
 | **Analitza** | Analitza l'àudio (F5) · **Analitza només els acords… (F6)** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · Mapa de tempo i compàs… · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
+
+### Exporta àudio… (Fase 6)
+
+- **`Fitxer ▸ Exporta àudio…`** obre el **diàleg natiu de desar** del sistema.
+  Exporta la **còpia WAV de treball** (ja editada). Si el destí és eixa mateixa
+  còpia, es rebutja amb un avís; per a qualsevol altre fitxer existent (també
+  l'original importat), el diàleg natiu demana confirmació de sobreescriptura.
+- **Perfils** (els que el `ffmpeg` del paquet sap escriure de debò):
+  - **WAV** PCM 16 bits (mostreig original, 44,1 kHz o 48 kHz), 24 bits i
+    32 bits float.
+  - **MP3** 128, 192 i 320 kbps · **FLAC** 16 bits · **AAC/M4A** 256 kbps ·
+    **OGG Vorbis** q6 · **Opus** 160 kbps.
+  - La llista s'obté amb `ffmpeg -encoders`: si un còdec no hi és, el perfil
+    no s'ofereix.
+- El nom suggerit és `<projecte>_editat.<ext>` dins la carpeta del projecte.
+  L'escriptura és **atòmica** (temporal + `os.replace`); l'error surt al log i
+  en un avís, sense deixar fitxers a mitges.
+- L'exportació va en un **fil** i l'estat es veu al log (inici, comandament i
+  resultat).
 
 ### Eina del timeline i abast del rang
 
@@ -318,9 +337,11 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   detecta **només eixe interval** (també amb el loop parat); mana sobre el
   tram de tempo seleccionat i sobre el tema sencer. Rang < 1 s s'ignora.
 - **TAP** (tecla **T**): patró estàndard dels DAWs — guarda els instants dels
-  últims taps, **mitjana dels intervals** → `60/∅`; **reset als 2 s** (LMMS);
-  **descarta intervals fora de 30–300 BPM** (Max/Dobrian). Propaga BPM al regle
-  i al metrònom **sense reengegar l'àudio**. El botó mostra `TAP (n) BPM`.
+  últims taps, **mediana dels intervals** → `60/∅`; **reset als 2 s** (LMMS);
+  **descarta intervals fora de 30–350 BPM** i els clarament anòmals (±30 % de
+  la mediana). **Només actua amb un tram de tempo seleccionat**: sense
+  selecció, `T` no fa res. Propaga BPM al regle i al metrònom **sense
+  reengegar l'àudio**. El botó mostra `TAP (n) BPM`.
 
 ## 4. Metrònom 🥁
 

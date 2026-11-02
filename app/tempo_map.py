@@ -1290,8 +1290,9 @@ def ajusta_trams_a_marcadors(trams, marcadors, durada, offset=None,
     `N_k` de compassos al BPM derivat, amb el BPM de referència (l'àudio
     detectat o el BPM vigent del mapa) com a àrbitre. El «cap» (`0 → t_0`) i la
     «cua» (`t_últim → durada`) són les excepcions permeses (primer inici i
-    últim final). L'`offset` passa a ser el primer marcador (és un inici de
-    compàs) tret que se n'indique un.
+    últim final). Si `offset` és `None`, es pren el primer marcador; si
+    s'indica, es conserva eixe offset (el camí de la GUI hi passa el downbeat
+    absolut, que no s'ha de moure en ajustar els BPMs).
 
     Retorna el mapa validat. `ValueError` si hi ha menys de dos marcadors.
     """

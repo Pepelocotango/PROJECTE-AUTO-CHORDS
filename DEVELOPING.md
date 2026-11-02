@@ -107,6 +107,19 @@ nou, importa'l també** (dues línies al costat del `sys.path.insert`).
   servir **heredocs** (`python3 - <<'PY' … PY`), no `-c "..."` (els *backticks*
   es substitueixen i mutilen el text).
 
+## Retrocompatibilitat — no és prioritat (2026-11-02)
+
+- **Cap canvi de codi no ha de mantindre** formats, fitxers, camps o
+  comportaments antics si això complica el model o alenteix una millora.
+- Els canvis de format poden **rebutjar** projectes vells amb un **error clar**;
+  no es fan migracions, lectors tolerants ni carpetes de compatibilitat.
+- **No es mantenen dos formats en paral·lel.** Si un canvi necessita un format
+  nou, el vell deixa d'existir.
+- **No es pregunta per retrocompatibilitat** en una modificació de codi: la
+  resposta per defecte és **no** i el canvi es documenta al `CHANGELOG.md`.
+- **Excepció de seguretat**: no es destrueix mai un fitxer de l'usuari. Un
+  projecte no suportat es rebutja **sense tocar-lo** i s'explica el motiu.
+
 ## VM Debian (fora d'abast)
 
 La VM Debian **ja no es fa servir per a l'app** (era massa limitada): l'antic

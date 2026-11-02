@@ -4749,18 +4749,28 @@ class TapTempoTests(unittest.TestCase):
 
     def test_taps_594ms_donen_101bpm(self):
         w = self._finestra()
+        # El TAP només actua amb un tram de tempo seleccionat (2026-11-01).
+        w.visor_ref.timeline.select_clip("tempo", 0)
         self._taps_en(w, 0.594)
         self.assertAlmostEqual(w._bpm_val(), 101.0, delta=3.0)
         w.close()
 
     def test_taps_500ms_donen_120bpm(self):
         w = self._finestra()
+        # Partim d'un BPM diferent perquè la prova no passe pel valor per
+        # defecte: si el TAP no fera res, es quedaria a 90.
+        w.bpm.setText("90")
+        w._aplica_parametres_temps()
+        w.visor_ref.timeline.select_clip("tempo", 0)
         self._taps_en(w, 0.5)
         self.assertAlmostEqual(w._bpm_val(), 120.0, delta=3.0)
         w.close()
 
     def test_tap_propaga_al_visor(self):
         w = self._finestra()
+        w.bpm.setText("90")
+        w._aplica_parametres_temps()
+        w.visor_ref.timeline.select_clip("tempo", 0)
         self._taps_en(w, 0.5)
         self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=3.0)
         w.close()
@@ -4880,16 +4890,29 @@ class TapTempoTests(unittest.TestCase):
         self.assertTrue(v.loop_on, "el loop es manté en aturar")
         w.close()
 
-    def test_tap_sonant_sense_seleccio_fa_loop_al_primer(self):
+    def test_tap_sonant_amb_tram_seleccionat_fa_loop_al_primer(self):
         w = self._finestra()
         v = self._mapa_dos_trams(w)
-        v.timeline.clear_selection()
+        v.timeline.select_clip("tempo", 0)
         v.sona = True
         v.pos = 8.0
         self._taps_en(w, 0.6)
         self.assertTrue(v.loop_on)
         self.assertAlmostEqual(float(v.loop_a), 0.0, places=6)
         self.assertAlmostEqual(float(v.loop_b), 8.0, places=6)
+        w.close()
+
+    def test_tap_sense_seleccio_no_fa_res(self):
+        """Regressió 2026-11-01: sense tram de tempo seleccionat, T no actua."""
+        w = self._finestra()
+        v = self._mapa_dos_trams(w)
+        v.timeline.clear_selection()
+        v.sona = True
+        v.pos = 8.0
+        self._taps_en(w, 0.6)
+        self.assertFalse(v.loop_on)
+        self.assertEqual(w._taps, [])
+        self.assertFalse(w._tap_sessio_oberta)
         w.close()
 
     def test_tap_aturat_no_toca_el_loop(self):

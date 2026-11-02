@@ -5,6 +5,12 @@
 > que retorna el motor *abans* de netejar) viu **dins el `.acproj`**, no en
 > fitxers solts. El projecte també conté una còpia WAV de treball.
 
+> **Política del projecte (2026-11-02):** la **retrocompatibilitat no és
+> prioritat**. Un canvi de format pot **rebutjar** projectes vells amb un error
+> clar; no es fan migracions, lectors tolerants ni carpetes de compatibilitat.
+> Els fitxers de l'usuari no es toquen mai: un projecte no suportat es rebutja
+> sense modificar-lo i s'explica el motiu.
+
 > Canvi de disseny (2026-10-19): s'han retirat la carpeta `analisi/` (3 fitxers)
 > i `segments.csv`. El cru ara és una clau del document. **Sense
 > retrocompatibilitat** (l'app s'està construint; els projectes existents són de
@@ -110,8 +116,9 @@ es van fer servir.
 8. **Àudio editable (aprovat, parcialment implementat).** La còpia WAV interna
    és el mitjà de treball per a l'edició dels extrems. Cada edició desa l'àudio,
    el model i els marcadors; undo/redo els restaura conjuntament. Els fitxers
-   exportats en altres formats seran derivats independents i no substituiran
-   aquesta còpia. L'exportació d'àudio continua pendent. Vegeu el §13.9 del
+   exportats en altres formats són derivats independents i no substituiran
+   aquesta còpia. L'exportació d'àudio ja està implementada (Fase 6); la
+   restauració de backups des de la GUI continua pendent. Vegeu el §13.9 del
    contracte canònic.
 
 ## 5. Referència al codi

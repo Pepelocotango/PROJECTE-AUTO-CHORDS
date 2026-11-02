@@ -36,9 +36,11 @@
 > clic o un micro-moviment (< 5 px) no canvia el model: s'emet
 > `dragCancelled` i es tanca la marca d'undo sense apilar res.
 >
-> **Tempo objectiu (2026-10-19)**: si hi ha un tram de tempo seleccionat, els
-> camps BPM/compàs de la barra i el **tap tempo** editen eixe tram; si no, el
-> transport (tram 0). Mentre sona, el tap crea el **loop** del tram objectiu.
+> **Tempo objectiu (2026-10-19 · TAP 2026-11-01)**: si hi ha un tram de tempo
+> seleccionat, els camps BPM/compàs de la barra editen eixe tram; si no, el
+> transport (tram 0). El **tap tempo** només actua amb un tram de tempo
+> seleccionat: sense selecció no fa res. Mentre sona, el tap crea el **loop**
+> d'eixe tram.
 > Els canvis de BPM no mouen els clips en segons: només recalculen les
 > posicions musicals (etiquetes i columnes de compàs de l'ABC); per alinear
 > clips a la graella es fa servir **Quantitza**. Un canvi de **tempo** a mig
@@ -163,7 +165,7 @@ superar el límit, la més antiga es descarta i l'app ho comunica.
 | # | Operació | GUI | Estat |
 |---|---|---|---|
 | 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | **FET**: amb un tram de tempo seleccionat, els camps editen **eixe tram** (2B); si no, el transport. L'offset és global. Canviar el BPM/compàs (barra, diàleg del tram o TAP) fa **re-tempo local** (`canvia_bpm_local`): Δt mana, els compassos es conserven, el BPM en deriva i cap altre tram no es mou; si no es pot, es rebutja |
-| 36b | **Tap tempo** | `T` · botó **TAP** | **FET**: al tram de tempo seleccionat (o al primer); **una sola operació d'undo per sessió**; mentre sona, crea el **loop** del tram objectiu i alinea el cursor. Amb un tram seleccionat, el botó **Detecta** analitza només eixe tram i n'ajusta el BPM **sense moure les fronteres** (el detectat tria N i Δt mana) |
+| 36b | **Tap tempo** | `T` · botó **TAP** | **FET**: només al tram de tempo **seleccionat** (sense selecció no fa res); **una sola operació d'undo per sessió**; mentre sona, crea el **loop** d'eixe tram i alinea el cursor. Amb un tram seleccionat, el botó **Detecta** analitza només eixe tram i n'ajusta el BPM **sense moure les fronteres** (el detectat tria N i Δt mana) |
 | 37 | **Analitzar** (acords + estructura) | `F5` · *Analitza* | **FET** |
 | 38 | **Opcions d'anàlisi** | *Paràmetres…* · *Inclou estructura* | **FET** |
 | 39 | **Compàs 1** (detectar / marcar) | *Analitza ▸* | **FET** |
@@ -182,6 +184,7 @@ superar el límit, la més antiga es descarta i l'app ho comunica.
 | 47 | **Exportar WAVs** | `Ctrl+E` | **FET** — el paquet hi porta les **tres parts** (regla #12): `acords.csv`+`wavs_acords/`, `estructura_ABC.csv`+`wavs_estructura/` i **`mapa_tempo/`** (tempo+compàs) |
 | 48 | **Exportar la partitura** | *Fitxer ▸ Exporta la partitura…* | **FET** |
 | 49 | **Obrir la carpeta de sortida** | *Fitxer ▸ Obre la carpeta de sortida* | **FET** |
+| 50 | **Exportar l'àudio editat** | *Fitxer ▸ Exporta àudio…* | **FET** (Fase 6): diàleg natiu de desar; perfils WAV 16/24/32 bits, MP3 128/192/320, FLAC, AAC/M4A, OGG i Opus; només els còdecs que el `ffmpeg` del paquet pot escriure; escriptura atòmica i protecció de la còpia de treball |
 
 ## 8. Estat i exclusions (resum)
 

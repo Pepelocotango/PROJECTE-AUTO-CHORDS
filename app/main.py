@@ -41,6 +41,7 @@ from . import dialeg_ancoratges  # noqa: E402
 from . import dialeg_bpm_marcadors  # noqa: E402
 from . import dialeg_guia_rapida  # noqa: E402
 from . import dialegs  # noqa: E402
+from . import exporta_audio as exporta_audio_mod  # noqa: E402
 from . import icones  # noqa: E402
 from . import panell_xifrat  # noqa: E402
 from . import plataforma  # noqa: E402
@@ -175,6 +176,34 @@ class FeinaExporta(QThread):
         except Exception as e:  # noqa: BLE001
             self.log(f"ERROR a l'exportar: {e}")
             self.feta.emit(False, str(e))
+
+
+class FeinaExportaAudio(QThread):
+    """Exporta la còpia WAV de treball a un altre format (Fase 6).
+
+    Igual que `FeinaExporta`, el log s'emet per senyal: cridar la GUI des del
+    fil seria UB. El resultat arriba amb `feta(ok, error, desti)`.
+    """
+    missatge = pyqtSignal(str)
+    feta = pyqtSignal(bool, str, str)
+
+    def __init__(self, origen, desti, perfil):
+        super().__init__()
+        self._origen = origen
+        self._desti = desti
+        self._perfil = perfil
+
+    def log(self, t):
+        self.missatge.emit(t)
+
+    def run(self):
+        try:
+            exporta_audio_mod.exporta(self._origen, self._desti,
+                                      self._perfil, log=self.log)
+            self.feta.emit(True, "", self._desti)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"ERROR a l'exportar àudio: {e}")
+            self.feta.emit(False, str(e), "")
 
 
 class FilGuiaBpm(QThread):
@@ -562,8 +591,8 @@ class Finestra(QMainWindow):
         self._guia = {}
         self._guia_fil = None                       # FilGuiaBpm en curs (si n'hi ha)
         self._fil_trams = None                      # FilTempoTrams en curs
+        self._fil_exporta_audio = None              # FeinaExportaAudio en curs
         self.recents = self._carrega_recents()
-        self.wav_original = ""                     # si ve d'un format convertit
         self._info_msg_fins = 0.0                  # missatge transitori info box
         # A5: export asíncron (progrés a la barra d'estat).
         self.exporta_error = ""
@@ -1040,6 +1069,12 @@ class Finestra(QMainWindow):
         self._act(m, "Reverteix", "", self._reverteix)
         m.addSeparator()
         self._act(m, "Exporta WAV's…", "Ctrl+E", self.exporta)
+        self.a_exporta_audio = self._act(
+            m, "Exporta àudio…", "", self._exporta_audio_ui)
+        self.a_exporta_audio.setStatusTip(
+            "Exporta la còpia WAV de treball (ja editada) a WAV, MP3, FLAC, "
+            "AAC/M4A, OGG o Opus.")
+        self.a_exporta_audio.setEnabled(False)
         a_part = self._act(m, "Exporta la partitura…", "",
                            self.exporta_partitura_ara)
         a_part.setStatusTip("Genera la partitura (xifrat). El MusicXML sempre; "
@@ -1232,9 +1267,12 @@ class Finestra(QMainWindow):
                     desti_detecta = f"Detecta: tram {idx}"
                 else:
                     desti_detecta = "Detecta: tema sencer"
-            # TAP: tram seleccionat o, si no, tram 0 (transport).
-            idx_tap = vr.tempo_objectiu()
-            desti_tap = f"TAP: tram {idx_tap}"
+            # TAP: només amb un tram de tempo seleccionat (2026-11-01).
+            kind, idx = vr.seleccio_activa()
+            if kind == "tempo" and vr._index_valid("tempo", idx):
+                desti_tap = f"TAP: tram {idx}"
+            else:
+                desti_tap = "TAP: tria un tram de tempo"
             self.lb_desti_accions.setText(
                 f"{desti_detecta} · {desti_tap}")
         except Exception:  # noqa: BLE001
@@ -2972,8 +3010,9 @@ class Finestra(QMainWindow):
     def _tap_tempo(self):
         """Tap tempo (com als DAWs): intervals dels últims taps → BPM.
 
-        El destí és el **clip de tempo seleccionat**; si no n'hi ha cap, el
-        transport (tram 0). Una sessió de taps = una sola operació de desfer.
+        El destí és el **clip de tempo seleccionat**; sense un tram de
+        BPM/compàs seleccionat, T no fa res. Una sessió de taps = una sola
+        operació de desfer.
         """
         self._actualitza_desti_accions()
         ara = time.monotonic()
@@ -2997,7 +3036,7 @@ class Finestra(QMainWindow):
             self._tap_canviat = False
             vr._undo_marca()
             # Decisió 3: si està SONANT, el tap tanca el loop al clip de tempo
-            # objectiu (o al primer, si no n'hi ha cap de seleccionat).
+            # seleccionat.
             if getattr(vr, "sona", False):
                 trams = list(vr.tempo_trams or [])
                 if 0 <= idx < len(trams):
@@ -3403,6 +3442,18 @@ class Finestra(QMainWindow):
                                            or getattr(vr, "seccions", None))
         self.b_export.setEnabled(te_model)
         self.b_export_part.setEnabled(te_model)
+        accio = getattr(self, "a_exporta_audio", None)
+        if accio is not None:
+            accio.setEnabled(bool(self._wav_treball()))
+
+    def _wav_treball(self):
+        """Ruta de la còpia WAV de treball del projecte (o del WAV obert)."""
+        if self.projecte is not None:
+            ruta = self.projecte.ruta_audio()
+            if ruta and os.path.isfile(ruta):
+                return ruta
+        ruta = self.wav_edit.text().strip()
+        return ruta if ruta and os.path.isfile(ruta) else ""
 
     def _posa_nom_editor(self, nom):
         """El panell «Tipus d'acord» vol escriure `nom` a la casella de l'editor.
@@ -3597,7 +3648,6 @@ class Finestra(QMainWindow):
         self.projecte = p
         self.sortida = p.carpeta
         wav = p.ruta_audio()
-        self.wav_original = ""
         self.wav_edit.setText(wav)
         tempo = p.dades.get("tempo") or {}
         self.bpm.setText(f"{float(tempo.get('bpm', 120.0)):.3f}")
@@ -3901,7 +3951,6 @@ class Finestra(QMainWindow):
         """Obre un àudio: reutilitza el projecte si ja n'hi ha, o en crea un."""
         if not self._pot_descartar():
             return
-        self.wav_original = ""
 
         # Un àudio que JA té projecte: l'usuari decideix (mai un error).
         previ = self._projecte_associat(ruta)
@@ -4461,6 +4510,101 @@ class Finestra(QMainWindow):
         box.exec_()
         return box.clickedButton() is b_si
 
+    def _exporta_audio_ui(self):
+        """Tria format i destí i exporta la còpia WAV de treball (Fase 6).
+
+        Obre el diàleg natiu de desar. Els filtres són els perfils que aquest
+        `ffmpeg` sap escriure de debò; el nom suggerit viu a la carpeta del
+        projecte. Mai es pot triar la còpia de treball; per a qualsevol altre
+        fitxer existent, el diàleg natiu demana confirmació.
+        """
+        origen = self._wav_treball()
+        if not origen:
+            self.avisa_info("Exporta àudio",
+                            "Obre un àudio abans d'exportar-ne una còpia.")
+            return
+        perfils = exporta_audio_mod.perfils_disponibles()
+        if not perfils:
+            self.avisa(
+                "Exporta àudio",
+                "Aquest ffmpeg no té cap codificador d'àudio compatible.\n"
+                "No s'ofereix cap format per no prometre'n un que fallaria.")
+            return
+        carpeta = (self.projecte.carpeta if self.projecte is not None
+                   else os.path.dirname(origen))
+        nom = ((self.projecte.nom if self.projecte is not None
+                else os.path.splitext(os.path.basename(origen))[0])
+               + "_editat")
+        filtres = [exporta_audio_mod.filtre(p) for p in perfils]
+        dlg = QFileDialog(self, "Exporta àudio", carpeta, ";;".join(filtres))
+        dlg.setAcceptMode(QFileDialog.AcceptSave)
+        dlg.setFileMode(QFileDialog.AnyFile)
+        dlg.setConfirmOverwrite(True)
+        dlg.setDefaultSuffix(perfils[0]["ext"])
+        dlg.selectNameFilter(filtres[0])
+        dlg.selectFile(os.path.join(carpeta,
+                                    nom + "." + perfils[0]["ext"]))
+
+        def _canvia_filtre(text):
+            p = exporta_audio_mod.perfil_de_filtre(text, perfils)
+            if p is not None:
+                dlg.setDefaultSuffix(p["ext"])
+
+        dlg.filterSelected.connect(_canvia_filtre)
+        if dlg.exec_() != QFileDialog.Accepted:
+            return
+        ruta = dlg.selectedFiles()[0]
+        perfil = exporta_audio_mod.perfil_de_filtre(
+            dlg.selectedNameFilter(), perfils)
+        if perfil is None:
+            self.avisa("Exporta àudio",
+                       "No s'ha pogut determinar el format triat.")
+            return
+        ext_esperada = "." + perfil["ext"]
+        arrel, ext = os.path.splitext(ruta)
+        if not ext:
+            ruta = arrel + ext_esperada
+        elif ext.lower() != ext_esperada:
+            # No substituïm l'extensió en silenci: seria un fitxer amb un
+            # contingut que no diu el nom.
+            self.avisa(
+                "Exporta àudio",
+                f"El nom acaba en «{ext}», però el format triat és "
+                f"«{perfil['etiqueta']}» ({ext_esperada}).\n"
+                "Tria el format que corresponga a l'extensió o canvia el nom.")
+            return
+        protegits = {os.path.realpath(origen)}
+        if os.path.realpath(ruta) in protegits:
+            self.avisa(
+                "Exporta àudio",
+                "No es pot exportar sobre la còpia de treball del projecte.\n"
+                "Tria un altre nom o una altra carpeta.")
+            return
+        if not os.path.isdir(os.path.dirname(os.path.abspath(ruta))):
+            self.avisa("Exporta àudio",
+                       "La carpeta de destinació no existeix.")
+            return
+        self.a_exporta_audio.setEnabled(False)
+        self.registra(f"Exportant àudio ({perfil['etiqueta']}): {ruta}")
+        fil = FeinaExportaAudio(origen, ruta, perfil)
+        fil.missatge.connect(self.registra)
+        fil.feta.connect(self._exporta_audio_acabada)
+        self._fil_exporta_audio = fil
+        fil.start()
+
+    def _exporta_audio_acabada(self, ok, error, desti):
+        """Tanca l'exportació d'àudio: log visible i estat de l'acció."""
+        self._fil_exporta_audio = None
+        if hasattr(self, "a_exporta_audio"):
+            self.a_exporta_audio.setEnabled(bool(self._wav_treball()))
+        if ok:
+            self.registra(f"Exportació d'àudio feta: {desti}")
+            self._missatge_info(f"Àudio exportat: {os.path.basename(desti)}")
+        else:
+            self.registra(f"ERROR a l'exportar àudio: {error}")
+            self.avisa("Exporta àudio",
+                       f"No s'ha pogut exportar l'àudio:\n{error}")
+
     def _exporta_acabada(self, res_part=None):
         """Missatges de final d'exportació (compartit pel camí síncron i el fil)."""
         self.registra("Exportació feta ✅")
@@ -4644,6 +4788,13 @@ class Finestra(QMainWindow):
         try:
             if ft is not None and ft.isRunning():
                 ft.wait(20000)
+        except RuntimeError:
+            pass
+        self._buida_esdeveniments()
+        fa = getattr(self, "_fil_exporta_audio", None)
+        try:
+            if fa is not None and fa.isRunning():
+                fa.wait(20000)
         except RuntimeError:
             pass
         self._buida_esdeveniments()

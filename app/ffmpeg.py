@@ -69,6 +69,42 @@ def extensions():
     return list(EXTENSIONS)
 
 
+_RE_ENCODER = re.compile(r"^\s*A[A-Z.]{5}\s+(\S+)")
+
+
+def encoders():
+    """Conjunt d'encoders d'àudio que ofereix aquest ffmpeg (`-encoders`).
+
+    Es consulta en temps d'execució perquè els paquets de cada SO poden
+    portar codecs diferents: la UI només ha d'oferir els formats que el
+    binari de debò sap escriure. Retorna un `set` buit si ffmpeg no hi és.
+    """
+    try:
+        p = subprocess.run([FFMPEG, "-hide_banner", "-encoders"],
+                           capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    if p.returncode != 0:
+        return set()
+    noms = set()
+    for linia in (p.stdout or "").splitlines():
+        m = _RE_ENCODER.match(linia)
+        if m:
+            noms.add(m.group(1))
+    return noms
+
+
+def comanda_exporta(origen, desti, codec, extra=()):
+    """Comanda d'ffmpeg per exportar `origen` amb un còdec concret.
+
+    `extra` són opcions addicionals del còdec (bitrate, mostreig…). Sempre
+    exporta només àudio (`-vn`) i no copia metadades del contenidor d'origen.
+    """
+    return [FFMPEG, *_OPCIONS_ENTRADA, "-y", "-i", _ruta_arg(origen),
+            "-vn", "-map_metadata", "-1", "-c:a", str(codec),
+            *[str(x) for x in extra], _ruta_arg(desti)]
+
+
 def filtre():
     """Filtre per al QFileDialog (tots els formats acceptats)."""
     pats = " ".join(f"*.{e}" for e in EXTENSIONS)

@@ -8,8 +8,8 @@
 >
 > Les regles numerades **1–19** tenen la seva **validació** al codi i un
 > **test** que les comprova. El §13.9 és un requisit nou aprovat i està
-> **parcialment implementat**: retall/afegit als extrems, sincronització del
-> model i undo/redo tenen codi i proves; l'exportació d'àudio, la restauració
+> **implementat** pel que fa a importació, backups, retall/afegit als extrems,
+> sincronització del model, undo/redo i **exportació d'àudio**; la restauració
 > des de la GUI i les proves visuals continuen pendents. L'**auditoria
 > continuada** (prova de mutació, regla a regla) viu a
 > `docs/archive/AUDITORIA_REGLES.md`.
@@ -450,10 +450,10 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
 
 ### 13.9 Edició de l'àudio del projecte
 
-> **Estat:** requisit de producte aprovat (2026-11-01), parcialment implementat.
-> Importació, backups, retall/afegit als extrems, sincronització del model i
-> desfer/refer estan implementats. L'exportació d'àudio i la restauració d'una
-> còpia des de la GUI continuen pendents.
+> **Estat:** requisit de producte aprovat (2026-11-01), implementat pel que fa a
+> importació, backups, retall/afegit als extrems, sincronització del model,
+> desfer/refer i **exportació d'àudio amb FFmpeg**. La restauració d'una còpia
+> des de la GUI i les proves visuals continuen pendents.
 
 - L'edició afecta només la **còpia WAV de treball** dins del projecte; l'original
   importat es conserva. Els WAVs silenciosos generats per als acords/seccions no
@@ -501,9 +501,10 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
   caràcter atòmic i la detecció de canvis tenen codi i proves. També hi ha
   proves del motor PCM, fades mono/estèreo, quatre gestos de les nanses,
   retall/afegit, offset i marques, cobertura dels tres carrils, `N`, undo/redo
-  mixt i recuperació davant d'una fallada de publicació. Abans de donar la
-  resta per implementada, afegir proves visuals de previsualització, exportació
-  d'àudio i restauració conjunta d'àudio i model des d'un backup.
+  mixt i recuperació davant d'una fallada de publicació. L'**exportació
+  d'àudio** té proves pròpies (`tests/test_exporta_audio.py`). Abans de donar
+  la resta per implementada, afegir proves visuals de previsualització i la
+  restauració conjunta d'àudio i model des d'un backup.
 
 ### Com s'aplica (notes d'implementació)
 
