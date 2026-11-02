@@ -120,8 +120,11 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   [`PLA_SIMPLIFICACIO_TEMPO`](00PER%20FER/PLA_SIMPLIFICACIO_TEMPO.md) —
   línia base i avaluador, validació unificada, fuzzer i proposta de regles,
   TAP robust, compàs vs secció i ajust d'un BPM per mínims quadrats.
-- **Següent**: **fase 7** (rubato exportat aproximat i anacrusi). Després,
-  **fase 10** (motor de detecció amb corpus real).
+- **Següent (prioritari)**: **subplà de rubato**
+  ([`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md)),
+  previ a la fase 7. **No continuar amb les fases 7, 10 ni 12** fins que el
+  subplà estiga complet i verificat. Després, la fase 10 (motor de detecció
+  amb corpus real).
 - **En curs de documentació**: sincronitzar `ROADMAP`, `README` i l'índex de
   `docs/` amb l'estat real (aquest mateix canvi).
 
@@ -145,13 +148,14 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   còdecs que el `ffmpeg` del paquet pot escriure (`-encoders`). Escriptura
   atòmica, log visible i protecció de la còpia de treball. Vegeu
   [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
-- **PENDENT (fase 7) — Rubato exportat i anacrusi**: conservar `0/0` al model
-  i generar una graella mètrica **aproximada** (identificada com a tal) per a
-  `mapa_tempo/` i MusicXML; mostrar l'anacrusi com un compàs inicial incomplet.
-  Requereix implementar la I7 del contracte sense canviar els CSV del model.
+- **SUBPLÀ PRIORITARI — Rubato i doble graella**: substitueix la fase 7.
+  Model B (BPM/compàs derivats, `mapa_tempo.csv`, dues graelles, exportació
+  marcada, anacrusi). S'ha d'executar **abans** de les fases 10 i 12. Vegeu
+  [`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md).
 - **PENDENT (fase 10) — Millorar el motor de detecció**: puntuar downbeats amb
   els canvis d'acord i avaluar motors alternatius (madmom, Beat This!…) amb
-  l'avaluador de la fase 0. Cap motor nou sense l'OK de l'operador.
+  l'avaluador de la fase 0. Cap motor nou sense l'OK de l'operador. **Després
+  del subplà de rubato.**
 - **PENDENT — Backups: triar/restaurar des de l'app** — llista de còpies
   (`backup/`) amb data-hora → previsualitzar i restaurar (amb confirmació,
   mai destructiu); mostrar què conté cada còpia.

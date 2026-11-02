@@ -43,6 +43,11 @@ Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3,
 de detecció) i **12** (fuzzer al CI, congelació i docs). Ajornades: **8**
 (MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
 
+> **Prioritat actual (2026-11-02):** el següent bloc és el **subplà de rubato**
+> (`00PER FER/DECISIONS_RUBATO.md`), que s'ha d'executar **abans** de la fase 7
+> i, per tant, abans de les fases 10 i 12. No començar cap altra fase del pla
+> de simplificació fins que el subplà estiga complet i verificat.
+
 Fet recentment (2026-11-01/02):
 - **Fase 6**: `Fitxer ▸ Exporta àudio…` amb diàleg natiu, perfils
   WAV/MP3/FLAC/AAC/OGG/Opus, detecció d'encoders en temps d'execució,
@@ -54,8 +59,7 @@ Fet recentment (2026-11-01/02):
 - Fases 4 i 5: compàs ≠ secció i ajust d'un sol BPM per mínims quadrats.
 
 Corpus real de tempo encara pendent (l'avaluador sintètic funciona).
-Últim commit: `688174e` (docs); el treball P0 i la fase 6 són locals i sense
-commit.
+Commit de referència: `eb5e825` (P0, fase 6 i política de formats).
 
 ## 🎚️ Qui ets i com has de pensar
 

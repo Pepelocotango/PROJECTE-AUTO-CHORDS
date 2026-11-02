@@ -10,6 +10,12 @@ Context: anàlisi del projecte AUTO CHORDS del 25-10-2026.
 > **mètrica central** del projecte.
 >
 
+> ⛔ **ATURADA OBLIGATÒRIA (2026-11-02):** abans de continuar amb la **fase 7**
+> (i, per tant, amb les fases 10 i 12), cal executar el **subplà de rubato**
+> definit a [`DECISIONS_RUBATO.md`](DECISIONS_RUBATO.md). El model `0/0` i les
+> tasques de la fase 7 queden **substituïts** per eixe subplà. No implementar
+> la fase 7 amb el model antic.
+
 ## 0. Normes de treball (obligatòries)
 
 1. **Un bloc = una fase.** En acabar una fase: suite verda + pyflakes net → **para** i informa. Cap push ni compilació sense l'OK de l'operador.
@@ -214,6 +220,9 @@ s'hagen validat en els paquets distribuïts.
 ---
 
 ## Fase 7 — Rubato a l'app, mapa aproximat a l'exportació i anacrusi
+
+> **SUBSTITUÏDA pel subplà de rubato** ([`DECISIONS_RUBATO.md`](DECISIONS_RUBATO.md)).
+> Aquesta descripció queda com a històric; **no executar-la amb el model `0/0`**.
 
 **Per què**: l'usuari ha de poder conservar i editar el rubato com a temps lliure dins l'app, però alguns formats de DAW o partitura necessiten una graella mètrica. L'exportació pot oferir una aproximació sense canviar el model original.
 

@@ -1,5 +1,10 @@
 # Decisions de disseny — rubato i doble graella
 
+> **SUBPLÀ PRIORITARI (2026-11-02).** S'ha d'executar **abans de continuar**
+> amb el `PLA_SIMPLIFICACIO_TEMPO.md` (fases 7, 10 i 12). No començar cap altra
+> fase del pla de simplificació fins que aquest subplà estiga complet i
+> verificat.
+
 > **Estat:** en discussió (2026-11-02). **No implementat.**
 > Document viu per no perdre cap decisió durant la conversa. Cada decisió
 > s'afig ací quan l'operador la confirma. Les preguntes obertes queden al final.

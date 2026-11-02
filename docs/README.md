@@ -38,7 +38,8 @@
 
 | Doc | Què explica |
 |---|---|
-| `../00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` | Pla acordat per fases: **0–6 fetes**; pendents **7** (rubato exportat + anacrusi), **10** (motor de detecció) i **12** (CI/congelació); **8, 9 i 11 ajornades**. |
+| `../00PER FER/DECISIONS_RUBATO.md` | **SUBPLÀ PRIORITARI**: model de rubato (B) i doble graella. S'ha d'executar **abans** de la fase 7 del pla de simplificació; atura les fases 7, 10 i 12. |
+| `../00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` | Pla acordat per fases: **0–6 fetes**; la **fase 7 queda substituïda pel subplà de rubato**; pendents **10** (motor de detecció) i **12** (CI/congelació); **8, 9 i 11 ajornades**. |
 | `NOTES_VERIFICACIO.md` | Verificacions de la fase 0: avaluador, destins TAP/guia i mapa de proves de les regles. |
 
 > Els refactors **acabats** viuen a `archive/` (p. ex. `REFACTOR_INICI_FI.md`):

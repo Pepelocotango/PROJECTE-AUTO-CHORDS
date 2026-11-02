@@ -5,6 +5,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Documentació — subplà de rubato prioritari (2026-11-02)
+- El disseny complet del rubato (29 decisions) viu a
+  `00PER FER/DECISIONS_RUBATO.md`.
+- S'ha d'executar **abans** de continuar amb la fase 7 del pla de
+  simplificació. Les fases **7, 10 i 12** queden aturades fins que el subplà
+  estiga complet i verificat.
+
 ### Política — la retrocompatibilitat no és prioritat (2026-11-02)
 - Decisió global de l'operador: els canvis de format poden **rebutjar**
   projectes vells amb un error clar; no es fan migracions, lectors tolerants ni
