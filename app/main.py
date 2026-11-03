@@ -676,7 +676,7 @@ class Finestra(QMainWindow):
 
         # camps d'entrada MANUAL de text (sense fletxes ▲▼)
         self.bpm = QLineEdit("120.000")
-        self.bpm.setMaximumWidth(70)
+        self.bpm.setFixedWidth(70)
         self.bpm.setPlaceholderText("120.000")
         self.bpm.setToolTip("BPM del tema. Entrada manual (text).")
         self.cb_bpm_unit = QComboBox()
@@ -684,17 +684,20 @@ class Finestra(QMainWindow):
             self.cb_bpm_unit.addItem(_et, _clau)
         self.cb_bpm_unit.setCurrentIndex(0)
         self._bpm_unit_anterior = "negra"
-        self.cb_bpm_unit.setMaximumWidth(120)
+        self.cb_bpm_unit.setFixedWidth(118)
+        self.cb_bpm_unit.setSizeAdjustPolicy(
+            QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.cb_bpm_unit.setMinimumContentsLength(10)
         self.cb_bpm_unit.setToolTip(
             "Unitat del BPM: negra (per defecte), negra amb punt, corxera o "
             "blanca. El model intern continua en negres/minut.")
         self.cb_bpm_unit.currentIndexChanged.connect(self._canvia_unitat_bpm)
         self.bpb = QLineEdit("4/4")
-        self.bpb.setMaximumWidth(60)
+        self.bpb.setFixedWidth(60)
         self.bpb.setPlaceholderText("4/4")
         self.bpb.setToolTip("Compàs manual: 4/4, 3/4, 6/8, etc.")
         self.offset = QLineEdit("0.000")
-        self.offset.setMaximumWidth(60)
+        self.offset.setFixedWidth(60)
         self.offset.setPlaceholderText("0.000")
         self.offset.setToolTip("Offset del compàs 1, en segons.")
         self.b_detecta = QPushButton(" Detecta")
@@ -719,7 +722,7 @@ class Finestra(QMainWindow):
         for b, factor, tip in ((self.b_bpm_x2, 2.0, "Dobla el BPM (×2)"),
                                (self.b_bpm_div2, 0.5, "Meitat del BPM (÷2)")):
             b.setObjectName("secundari")
-            b.setMaximumWidth(46)
+            b.setFixedWidth(46)
             b.setToolTip(tip + "  ·  útil quan la detecció agafa el doble/meitat")
             b.clicked.connect(lambda _=False, f=factor: self._dobla_bpm(f))
             hp.addWidget(b)
@@ -828,15 +831,21 @@ class Finestra(QMainWindow):
         barra.addSeparator()
         barra.addWidget(self.b_mode_bpm)
         barra.addWidget(self.b_mode_lliure)
-        barra.addSeparator()
-        barra.addWidget(self._params_temps)
-        barra.addSeparator()
-        # (El commutador d'EINA del timeline viu a la barra de transport, just
-        #  darrere del snap i la seva divisió — vegeu la resta d'aquest mètode.)
-        barra.addSeparator()
+        # El bloc de paràmetres de temps viu en la seua pròpia fila: dins la
+        # barra principal superava l'amplada de la finestra i QToolBar el
+        # movia a l'overflow, on els QWidgetAction no es pinten (BPM/Unitat/
+        # Compàs/TAP desapareixien visualment).
+        self._params_temps.setFixedHeight(36)
+        self._params_temps.setFixedWidth(self._params_temps.sizeHint().width())
         self.addToolBar(Qt.TopToolBarArea, barra)
         self.barra_principal = barra
-        self.barra_temps = barra
+        self.addToolBarBreak(Qt.TopToolBarArea)
+        barra_temps = QToolBar("Temps")
+        barra_temps.setObjectName("barra_temps")
+        barra_temps.setMovable(False)
+        barra_temps.addWidget(self._params_temps)
+        self.addToolBar(Qt.TopToolBarArea, barra_temps)
+        self.barra_temps = barra_temps
 
         # 1b. SEGONA FILA de la barra 1: les ACCIONS (Analitza + exportacions).
         barra_accions = QToolBar("Accions")
@@ -989,6 +998,7 @@ class Finestra(QMainWindow):
         # s'escriu normalment i NO afig cap marcador.
         QApplication.instance().installEventFilter(self)
         self._crea_menus()
+        self._canvia_mode_temps(True)
         # Autocomprovació dels fitxers que l'app NECESSITA per analitzar
         # (els plugins Vamp; l'host és `vamp_host_local`).
         for p in pipeline.VAMP_DIRS:
@@ -1000,6 +1010,17 @@ class Finestra(QMainWindow):
         if not ffmpeg.disponible():
             self.registra("AVÍS: no trobo ffmpeg — només podré obrir WAV PCM "
                           "16 bits (mp3/flac/m4a/ogg… no)")
+
+    def showEvent(self, event):
+        """Assegura que els paràmetres de temps es veuen en obrir la finestra.
+
+        `QToolBar` pot deixar el QWidget intern ocult fins que la finestra ja
+        és visible; si no es refresca ací, BPM/Unitat/Compàs/TAP desapareixen
+        visualment fins que l'usuari canvia de mode.
+        """
+        super().showEvent(event)
+        QTimer.singleShot(0, lambda: self._canvia_mode_temps(
+            self.tempo_fix.isChecked()))
 
     def _filtre_audio(self):
         """Filtre del diàleg d'obertura (A9).
@@ -1573,6 +1594,8 @@ class Finestra(QMainWindow):
     def _canvia_mode_temps(self, bpm_compas):
         """Canvia entre mode BPM·compàs i mode Lliure (hh:mm:ss)."""
         self._params_temps.setVisible(bool(bpm_compas))
+        if hasattr(self, "barra_temps"):
+            self.barra_temps.setVisible(bool(bpm_compas))
         self.tempo_fix.setChecked(bool(bpm_compas))
         self._actualitza_metro_ui()
 
@@ -3792,6 +3815,7 @@ class Finestra(QMainWindow):
                          else f"{int(tempo.get('bpb', 4))}/4")
         self.offset.setText(f"{float(tempo.get('offset', 0.0)):.3f}")
         self.tempo_fix.setChecked(bool(tempo.get("fix", False)))
+        self._canvia_mode_temps(bool(tempo.get("fix", False)))
         if isinstance(p.dades.get("opcions"), dict) and p.dades["opcions"]:
             self.opcions = p.dades["opcions"]
         if not p.audio_present():

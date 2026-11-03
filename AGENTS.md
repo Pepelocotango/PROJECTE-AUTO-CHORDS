@@ -59,15 +59,13 @@ Fet recentment (2026-11-02/03):
 - **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
   unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
   projectes vells), visor/graella, accions de crear/convertir rubato i
-  exportació amb avís aproximat. Suite completa: **1.540 tests**, 1 omés.
+  exportació amb avís aproximat. Suite completa: **1.541 tests**, 1 omés.
 - **Anàlisi del projecte de prova** `AUTOCHORDS_01 POLICE_convertit`:
   model coherent i cobertura exacta; documentats els límits del pre-roll a la
   partitura, els noms d'acord crus de l'anàlisi i la precisió de l'offset.
 - **Unitat de BPM**: selector global negra / negra amb punt / corxera /
-  blanca; el metrònom té una unitat de clic independent
-  (denominador/negra/negra amb punt/corxera/blanca). El model continua en
-  negres/min i la unitat es desa al `.acproj`.
-  Suite: **1.540 tests**.
+  blanca; el metrònom té una unitat de clic independent (auto/negra/negra amb punt/corxera/blanca). El model continua en negres/min i la unitat es desa al `.acproj`.
+  Suite: **1.541 tests**.
 - **Metrònom per denominador**: el beat és `4/den` negres; `6/8`, `9/8` i
   `12/8` cliquen corxeres, `2/2` blanques; accents de compàs i grup, modes
   Auto/Compàs/Temps/Grup i selector al transport.

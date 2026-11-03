@@ -5917,6 +5917,19 @@ class TestGuiatAudicio(unittest.TestCase):
         finally:
             w._guia_cancel()
 
+    def test_parametres_de_temps_visibles_en_mostrar(self):
+        from app import main as app_main
+        w = app_main.Finestra()
+        try:
+            w.show()
+            QApplication.processEvents()
+            self.assertTrue(w._params_temps.isVisible())
+            self.assertTrue(w.bpm.isVisible())
+            self.assertTrue(w.cb_bpm_unit.isVisible())
+            self.assertTrue(w.bpb.isVisible())
+        finally:
+            w.close()
+
     def test_unitat_de_clic_del_metronom(self):
         w, vr = self._arrenca(t=1.0)
         try:

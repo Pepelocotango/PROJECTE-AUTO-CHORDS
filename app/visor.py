@@ -2370,7 +2370,15 @@ class Visor(QMainWindow):
         if on == self.metro_on:
             return
         self.metro_on = on
-        self.log(f"metrònom {'ON' if self.metro_on else 'OFF'}")
+        if self.metro_on:
+            self.log(
+                f"metrònom ON: {self.bpm_mostra()} "
+                f"{bpm_unit_mod.etiqueta(self.bpm_unit).lower()} "
+                f"({float(self.bpm):.3f} negres/min) · compàs "
+                f"{int(self.bpb)}/{int(self.beat_type)} · patró "
+                f"{self.metro_mode} · clic {self.metro_click_unit}")
+        else:
+            self.log("metrònom OFF")
 
     def commuta_metro(self):
         """Activa/desactiva el metrònom (sense tallar la reproducció)."""
