@@ -5845,7 +5845,7 @@ class TestGuiatAudicio(unittest.TestCase):
             # 4 compassos de 4/4 a 120 BPM = 8 s
             self.assertAlmostEqual(vr.loop_a, t_k, places=6)
             self.assertAlmostEqual(vr.loop_b, 9.0, places=6)
-            self.assertEqual(tuple(vr.metro_forcat), (120.0, 4, 1.0))
+            self.assertEqual(tuple(vr.metro_forcat), (120.0, 4, 1.0, 4, "auto"))
             self.assertTrue(vr.metro_on)
             aud = w._guia["audicio"]
             self.assertAlmostEqual(aud[1], 9.0, places=6)
@@ -5861,9 +5861,24 @@ class TestGuiatAudicio(unittest.TestCase):
         try:
             w._guia_bpm_ditectat(120.0)
             w._guia_bpm_canviat(100.0)
-            self.assertEqual(tuple(vr.metro_forcat), (100.0, 4, 1.0))
+            self.assertEqual(tuple(vr.metro_forcat), (100.0, 4, 1.0, 4, "auto"))
             # 4 compassos de 4/4 a 100 BPM = 9,6 s → 10,6 (cap dins 12 s)
             self.assertAlmostEqual(vr.loop_b, 10.6, places=6)
+        finally:
+            w._guia_cancel()
+
+    def test_metro_forcat_12_8_i_patro(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            vr.set_metro_forcat(120.0, 12, 1.0, 8, "grup")
+            self.assertEqual(tuple(vr.metro_forcat),
+                             (120.0, 12, 1.0, 8, "grup"))
+            vr.set_metro_mode("compas")
+            self.assertEqual(vr.metro_forcat[4], "compas")
+            idx = w.cb_metro.findData("temps")
+            self.assertGreaterEqual(idx, 0)
+            w.cb_metro.setCurrentIndex(idx)
+            self.assertEqual(vr.metro_mode, "temps")
         finally:
             w._guia_cancel()
 

@@ -859,6 +859,17 @@ class TestMetronom(unittest.TestCase):
                                      mapa=mapa)
         self.assertEqual(a, b)
 
+    def test_amb_mapa_12_8_clica_les_corxeres_del_compas(self):
+        """El mapa 4/4 → 12/8 ha de canviar de negres a corxeres."""
+        mapa = tm.TempoMap([(0.0, 2.0, 120.0, 4, 4),
+                            (2.0, 5.0, 120.0, 12, 8)])
+        out = metronom.mescla_metronom(_silenci(5.0), SR, 0.0, 120.0, 4,
+                                       mapa=mapa, den=4)
+        self.assertEqual(
+            _clics(out),
+            [0.0, 0.5, 1.0, 1.5, 2.0, 2.25, 2.5, 2.75,
+             3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75])
+
     def test_velocitat_2x_els_clics_van_al_doble_de_tempo(self):
         """A 2× la rodanxa cobreix 4 s de cançó en 2 s reals: els clics de
         120 BPM (cada 0,5 s de cançó) sonen cada 0,25 s reals."""

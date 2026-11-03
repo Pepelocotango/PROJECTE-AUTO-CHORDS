@@ -2045,7 +2045,7 @@ class Finestra(QMainWindow):
             return False
         g["audicio"] = (t_k, fi, float(bpm), num, den, m)
         vr._fixa_loop(t_k, fi, alinea=False)
-        vr.set_metro_forcat(float(bpm), num, t_k)
+        vr.set_metro_forcat(float(bpm), num, t_k, den)
         if not vr.metro_on:
             self._toggle_metro(True)
         if not getattr(vr, "sona", False):
@@ -2075,7 +2075,7 @@ class Finestra(QMainWindow):
         t_k, fi, num, den, m = self._guia_segment(bpm)
         g["audicio"] = (t_k, fi, bpm, num, den, m)
         # el clic és el que ha de quadrar: es mou el forçat (a cada tros)
-        vr.set_metro_forcat(bpm, num, t_k)
+        vr.set_metro_forcat(bpm, num, t_k, den)
         # si el tram s'ha fet més llarg o més curt, el bucle l'acompanya
         a, b = (vr.loop_a, vr.loop_b)
         if a is None or b is None or abs(float(a) - t_k) > 0.02                 or abs(float(b) - fi) > 0.02:
@@ -4184,6 +4184,18 @@ class Finestra(QMainWindow):
         self.vol_metro.setToolTip("Volum del clic del metrònom (%)")
         self.vol_metro.valueChanged.connect(self._canvia_vol_metro)
         bar.addWidget(self.vol_metro)
+        self.cb_metro = QComboBox()
+        for _et, _val in (("Auto", "auto"), ("Compàs", "compas"),
+                          ("Temps", "temps"), ("Grup", "grup")):
+            self.cb_metro.addItem(_et, _val)
+        self.cb_metro.setCurrentIndex(0)
+        self.cb_metro.setMaximumWidth(82)
+        self.cb_metro.setToolTip(
+            "Patró del metrònom: Auto (temps + accents de compàs i grup), "
+            "Compàs (només el primer temps), Temps (sense accents de grup) "
+            "o Grup (només compàs i inicis de grup).")
+        self.cb_metro.currentIndexChanged.connect(self._canvia_mode_metro)
+        bar.addWidget(self.cb_metro)
         bar.addSeparator()
         # Quantitza: just abans del Snap (petició de l'operador). Recicla el
         # lloc de l'antic «Mode fàcil».
@@ -4260,11 +4272,16 @@ class Finestra(QMainWindow):
         if vr is not None:
             vr._canvia_vol_metro(int(v))
 
+    def _canvia_mode_metro(self, _idx=None):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.set_metro_mode(self.cb_metro.currentData())
+
     def _actualitza_metro_ui(self):
         """El metrònom només està disponible en mode BPM · compàs."""
         vr = getattr(self, "visor_ref", None)
         disponible = vr is not None and vr.metro_disponible()
-        for w in (self.b_metro, self.vol_metro, self.a_metro):
+        for w in (self.b_metro, self.vol_metro, self.cb_metro, self.a_metro):
             w.setEnabled(disponible)
         if not disponible:
             # en mode Lliure: desmarcat i amb tooltip explicatiu
@@ -4273,11 +4290,19 @@ class Finestra(QMainWindow):
             tip = "Només disponible en mode BPM · compàs"
             self.b_metro.setToolTip(tip)
             self.vol_metro.setToolTip(tip)
+            self.cb_metro.setToolTip(tip)
             self.a_metro.setToolTip(tip)
         else:
             self.b_metro.setToolTip("Metrònom")
             self.vol_metro.setToolTip("Volum del clic del metrònom (%)")
+            self.cb_metro.setToolTip(
+                "Patró del metrònom: Auto, Compàs, Temps o Grup")
             self.a_metro.setToolTip("Clic de metrònom")
+            idx = self.cb_metro.findData(getattr(vr, "metro_mode", "auto"))
+            if idx >= 0 and idx != self.cb_metro.currentIndex():
+                self.cb_metro.blockSignals(True)
+                self.cb_metro.setCurrentIndex(idx)
+                self.cb_metro.blockSignals(False)
 
     def _actualitza_info_wav(self, ruta, info=None):
         """Info (durada/Hz) a la barra d'estat. El títol el duu `_actualitza_titol`."""

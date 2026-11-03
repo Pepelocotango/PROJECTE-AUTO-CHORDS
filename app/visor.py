@@ -38,7 +38,7 @@ import metronom  # noqa: E402
 # monkey-patching que no funciona (ho va caçar `test_imports_unificats`).
 # Forma d'execució suportada: `python -m app.visor` (el directe ja demana
 # l'arrel al sys.path per altres imports relatius d'aquest fitxer).
-from . import graella, icones, pipeline, theme  # noqa: F401
+from . import graella, icones, limits, pipeline, theme  # noqa: F401
 from . import acord_audio  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import mapa_tempo  # noqa: E402
@@ -523,10 +523,13 @@ class Visor(QMainWindow):
         # metrònom: clic mesclat al buffer (no afectat pel mute/volum cançó)
         self.metro_on = False
         self.metro_vol = 0.6
-        # Metrònom FORÇAT (None = normal): `(bpm, bpb, offset)` fa sonar el
-        # clic sobre una graella pròpia, alineada a `offset`, sense passar pel
-        # mapa de tempo. És el que permet escoltar un tram del guiat **encara
-        # no aplicat** (i moure'n el BPM en viu).
+        # Patró del clic: auto (temps + accents de compàs/grup), compas,
+        # temps o grup. El fil d'àudio el llig a cada tros.
+        self.metro_mode = "auto"
+        # Metrònom FORÇAT (None = normal): `(bpm, bpb, offset, den, mode)`
+        # fa sonar el clic sobre una graella pròpia, alineada a `offset`,
+        # sense passar pel mapa de tempo. És el que permet escoltar un tram
+        # del guiat **encara no aplicat** (i moure'n el BPM en viu).
         self.metro_forcat = None
         self.loop_a = None
         self.loop_b = None
@@ -2369,8 +2372,8 @@ class Visor(QMainWindow):
         """Activa/desactiva el metrònom (sense tallar la reproducció)."""
         self.set_metro(not self.metro_on)
 
-    def set_metro_forcat(self, bpm=None, bpb=4, offset=0.0):
-        """Metrònom sobre una graella pròpia: `bpm` + `bpb` des de `offset`.
+    def set_metro_forcat(self, bpm=None, bpb=4, offset=0.0, den=4, mode=None):
+        """Metrònom sobre una graella pròpia: `bpm` + `bpb`/`den` des de `offset`.
 
         Amb `bpm=None` es torna al metrònom normal (mapa de tempo o BPM de la
         barra). El fil d'àudio ho llig **a cada tros**, així que el canvi de
@@ -2385,9 +2388,31 @@ class Visor(QMainWindow):
         if not (bpm > 0):
             self.metro_forcat = None
             return
-        self.metro_forcat = (bpm, max(1, int(bpb)), float(offset))
-        self.log(f"metrònom forçat: {bpm:.2f} BPM · compàs {int(bpb)} · "
+        try:
+            den = int(den)
+        except (TypeError, ValueError):
+            den = 4
+        if den not in limits.DENOMINADORS_ADMESOS:
+            den = 4
+        if mode not in metronom.MODES:
+            mode = getattr(self, "metro_mode", "auto")
+        if mode not in metronom.MODES:
+            mode = "auto"
+        self.metro_forcat = (bpm, max(1, int(bpb)), float(offset),
+                             den, mode)
+        self.log(f"metrònom forçat: {bpm:.2f} BPM · compàs "
+                 f"{int(bpb)}/{den} · patró {mode} · "
                  f"des de {float(offset):.3f}s")
+
+    def set_metro_mode(self, mode):
+        """Canvia el patró del metrònom sense tallar la reproducció."""
+        if mode not in metronom.MODES:
+            mode = "auto"
+        self.metro_mode = mode
+        if self.metro_forcat is not None:
+            bpm, bpb, offset, den, _mode = self.metro_forcat
+            self.metro_forcat = (bpm, bpb, offset, den, mode)
+        self.log(f"metrònom: patró {mode}")
 
     def _canvia_vol_metro(self, v):
         """Volum del clic (0-100) — **sense tallar la reproducció**.
@@ -5629,18 +5654,20 @@ class Visor(QMainWindow):
                     if forc is not None:
                         # graella pròpia (guiat): el clic s'alinea a `offset`
                         # encara que el mapa diga una altra cosa
-                        mbpm, mbpb, moff = forc
+                        mbpm, mbpb, moff, mden, mmode = forc
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), mbpm, mbpb,
                             volum=self.metro_vol, offset=moff, mapa=None,
-                            factor=factor)
+                            factor=factor, den=mden, mode=mmode)
                     else:
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), self.bpm, self.bpb,
                             volum=self.metro_vol,
                             offset=getattr(self, "offset", 0.0),
                             mapa=getattr(self, "tempo_map", None),
-                            factor=factor)
+                            factor=factor,
+                            den=getattr(self, "beat_type", 4),
+                            mode=getattr(self, "metro_mode", "auto"))
                 try:
                     proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):

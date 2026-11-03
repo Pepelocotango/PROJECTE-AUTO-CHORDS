@@ -74,7 +74,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.panell_xifrat` · `self.dock_xifrat` | **panell «Tipus d'acord»** (arrel · baix · 62 tipus · ▶ Escoltar · timbre) | `PanellXifrat` en un `QDockWidget` |
 | — | `self.tb_loop` · `self.tb_neteja_loop` · `self.tb_mut` | **loop** (icona `repeat-2`) · **neteja el loop** (icona `x`) · **mute** (icona `volume-x`) | `QPushButton` |
 | — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió del grid i del snap**: Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · **Treset de negra (2/3) · Treset de corxera (1/3) · Treset de semicorxera (1/6)** · **1 · 2 · 4 · 6 · 8 · 12 · 16 · 24 · 32 · 48 · 64 compassos**. El selector **força el grid** encara que el snap estigui apagat; «Auto» torna a manar pel zoom. | `QPushButton` (checkable) · `QComboBox` |
-| — | `self.b_metro` · `self.vol_metro` | **metrònom** (icona `metronome`) · volum del clic | `QPushButton` · `QSlider` |
+| — | `self.b_metro` · `self.vol_metro` · `self.cb_metro` | **metrònom** (icona `metronome`) · volum del clic · **patró** (Auto · Compàs · Temps · Grup) | `QPushButton` · `QSlider` · `QComboBox` |
 | — | `self.b_play_tb` | **play / pause** transport (icones `play` / `pause`) | `QPushButton` |
 | — | `self.cmb_vel_tb` · `visor.cmb_vel` | **velocitat de reproducció** (0,5 · 0,75 · 1 · 1,25 · 1,5 · 2 · 3×) amb el **to mantingut** (`ffmpeg atempo`); els dos selectors van sincronitzats per `velocitatCanviada` | `QComboBox` |
 | — | `self.barra` | **barra de progrés** | `QProgressBar` (a la status) |
@@ -87,7 +87,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 |-------|-----------|
 | **Treball** (barra 1, fila 1) | `Obre àudio` → **Anàlisi guiat** (guia ràpida) → **＋ Marker** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B (`Inclou estructura` és una acció del **menú Analitza**) |
 | **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Obre la carpeta de sortida** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) |
-| **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[Quantitza]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
+| **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup]** · **[Quantitza]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
 ### Menús
 
@@ -359,11 +359,19 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 - Només en mode **BPM · compàs** (gris a Lliure).
 - Volum propi (60 % per defecte); el mute/volum de la cançó **no** l'afecta.
+- El clic segueix el **beat del compàs**: `4/den` negres. Per tant `4/4` clica
+  negres, `6/8` i `12/8` cliquen corxeres i `2/2` clica blanques. Accent de
+  compàs (temps 1) ≈ 1500 Hz; resta ≈ 1000 Hz.
+- **Patrons**: `Auto` (per defecte) = tots els temps + accent de compàs i
+  accents de grup cada 3 en `6/8`, `9/8` i `12/8`; `Compàs` = només el primer
+  temps; `Temps` = tots els temps sense accents de grup; `Grup` = només el
+  compàs i els inicis de grup.
 - El clic es **mescla al mateix buffer** que s'envia al reproductor (sense
-  QTimer ni segon procés → no deriva). Accent (temps 1) ≈ 1500 Hz; resta ≈ 1000.
-- **Commutar-lo** (o canviar-ne el volum) **no** reinicia el reproductor: el fil
-  d'alimentació llig `metro_on`/`metro_vol` a **cada tros**, com fa amb el volum i
-  el mute de la cançó. (Reiniciar-hi tallava l'àudio uns mil·lisegons.)
+  QTimer ni segon procés → no deriva).
+- **Commutar-lo** (o canviar-ne el volum o el patró) **no** reinicia el
+  reproductor: el fil d'alimentació llig `metro_on`/`metro_vol`/`metro_mode` a
+  **cada tros**, com fa amb el volum i el mute de la cançó. (Reiniciar-hi
+  tallava l'àudio uns mil·lisegons.)
 - Sense clics per sobre de **400 BPM** (`metronom.BPM_MAX`).
 
 ---

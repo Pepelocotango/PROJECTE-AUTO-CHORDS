@@ -5,6 +5,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Corregit — metrònom amb denominador i compassos compostos (2026-11-03)
+- El metrònom ja no clica sempre negres: el beat és `4/den` negres. `6/8`,
+  `9/8` i `12/8` cliquen corxeres; `2/2` clica blanques.
+- `12/8` a 120 BPM fa 12 clics per compàs (0,25 s) amb accents de compàs i
+  de grup a 1, 4, 7 i 10.
+- Nous patrons `Auto` (per defecte), `Compàs`, `Temps` i `Grup`, amb selector
+  a la barra de transport.
+- El metrònom forçat del guiat conserva el denominador i el patró.
+- Tests de `4/4`, `2/2`, `6/8`, `12/8`, modes, mapa de tempo i canvi de compàs.
+- Suite completa: **1.524 tests**, 1 omés; `pyflakes` net.
+
 ### Documentació — anàlisi del projecte de prova i límits del rubato (2026-11-03)
 - Analitzat `AUTOCHORDS_01 POLICE_convertit` (format 3): les tres pistes
   cobreixen `0–255.216327 s` sense forats; rubato inicial `0–4.160585 s`
