@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit — rubato: motor pur de derivació (fase 1) (2026-11-02)
+- Nou `app/rubato.py`: càlcul del nombre de pulsos, BPM derivat i seqüència
+  de compassos (màxim 4 segments, 999 compassos), amb referència
+  anterior → següent → transport.
+- Sintaxi canònica ASCII (`4/4*3+3/4`), presentació per a la UI
+  (`4/4 × 3 + 3/4`) i validació estricta.
+- Pressupost global de cerca perquè un rubato impossible no bloquege la GUI.
+- **32 tests** a `tests/test_rubato.py`; suite completa verda (1.484 tests).
+- Encara sense model `mapa_tempo.csv`, `FORMAT = 3`, UI ni exportació.
+
 ### Documentació — subplà de rubato prioritari (2026-11-02)
 - El disseny complet del rubato (29 decisions) viu a
   `00PER FER/DECISIONS_RUBATO.md`.

@@ -43,17 +43,22 @@ Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3,
 de detecció) i **12** (fuzzer al CI, congelació i docs). Ajornades: **8**
 (MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
 
-> **Prioritat actual (2026-11-02):** el següent bloc és el **subplà de rubato**
-> (`00PER FER/DECISIONS_RUBATO.md`), que s'ha d'executar **abans** de la fase 7
-> i, per tant, abans de les fases 10 i 12. No començar cap altra fase del pla
-> de simplificació fins que el subplà estiga complet i verificat.
+> **Prioritat actual (2026-11-02):** el **subplà de rubato**
+> (`00PER FER/DECISIONS_RUBATO.md`) està **en curs**. La **fase 1** (motor pur
+> de derivació) està feta; la següent és la **fase 2** (model i format). S'ha
+> d'executar **abans** de la fase 7 i, per tant, abans de les fases 10 i 12.
+> No començar cap altra fase del pla de simplificació fins que el subplà
+> estiga complet i verificat.
 
 Fet recentment (2026-11-01/02):
+- **Subplà de rubato — fase 1**: `app/rubato.py` (N/BPM, seqüència de
+  compassos, referència, parser canònic) amb **32 tests** i pressupost
+  anti-hangs. Suite completa: **1.484 tests**, 1 omés.
 - **Fase 6**: `Fitxer ▸ Exporta àudio…` amb diàleg natiu, perfils
   WAV/MP3/FLAC/AAC/OGG/Opus, detecció d'encoders en temps d'execució,
   escriptura atòmica i protecció de la còpia de treball.
-- **P0**: suite verda (**1.452 tests**, 1 omés), `pyflakes` net, vistes
-  `ESQUEMA_UI` al dia i indicador del TAP coherent amb el comportament real.
+- **P0**: suite verda, `pyflakes` net, vistes `ESQUEMA_UI` al dia i indicador
+  del TAP coherent amb el comportament real.
 - Downbeat (offset) absolut: no es mou en ajustar BPM.
 - T (tap tempo): només amb clip de tempo seleccionat.
 - Fases 4 i 5: compàs ≠ secció i ajust d'un sol BPM per mínims quadrats.

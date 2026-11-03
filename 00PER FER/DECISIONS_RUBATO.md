@@ -138,9 +138,7 @@ supera, es rebutja amb avís.
 
 ## Pla d'implementació proposat
 
-1. **Motor pur de derivació** (`app/rubato.py` o similar): referència, `N`,
-   BPM, cerca de seqüència, validació i rebuig. Funcions pures i tests amb els
-   casos A/B/C, rubatos curts/llargs, fora de banda, denominadors i segments.
+1. ✅ **Motor pur de derivació** (`app/rubato.py`): fet el 2026-11-02.
 2. **Model i format**: lector/escriptor de `mapa_tempo.csv`, `FORMAT = 3`,
    rebuig de projectes vells, integració a `projecte`/`pipeline`/`tempo_map`,
    tests.
@@ -150,7 +148,19 @@ supera, es rebutja amb avís.
    MusicXML, actualització de la regla 12, tests.
 5. **Docs i CI**: regles, docs, `CHANGELOG`, suite i `pyflakes` verds.
 
-## Pregunta actual
+## Implementació — fase 1 (motor pur) ✅
 
-**Voleu que comence pel punt 1, el motor pur de derivació, sense tocar encara
-la UI ni el format del projecte?**
+- `app/rubato.py`: `deriva()`, `tria_referencia()`, `compassos_a_text()`,
+  `text_a_compassos()` i `presenta_compassos()`.
+- `tests/test_rubato.py`: **32 tests** (casos A/B/C, bandes de BPM, 999
+  compassos, famílies 2/4/8, parser estricte, referències).
+- **Pressupost global de 500.000 nodes** a la cerca de la seqüència: si un
+  rubato impossible l'esgota, es llança `RubatoError` en ~0,3 s (mai es penja).
+- El BPM derivat es **clampa** a 30–350.
+- Encara **no** hi ha model `mapa_tempo.csv`, `FORMAT = 3`, UI ni exportació:
+  són les fases 2–4.
+
+## Estat
+
+**Fase 1 completada.** Següent: **fase 2 — model i format** (`mapa_tempo.csv`,
+`FORMAT = 3`, rebuig de projectes vells i integració).

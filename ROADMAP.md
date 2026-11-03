@@ -120,13 +120,12 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   [`PLA_SIMPLIFICACIO_TEMPO`](00PER%20FER/PLA_SIMPLIFICACIO_TEMPO.md) —
   línia base i avaluador, validació unificada, fuzzer i proposta de regles,
   TAP robust, compàs vs secció i ajust d'un BPM per mínims quadrats.
-- **Següent (prioritari)**: **subplà de rubato**
-  ([`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md)),
-  previ a la fase 7. **No continuar amb les fases 7, 10 ni 12** fins que el
-  subplà estiga complet i verificat. Després, la fase 10 (motor de detecció
-  amb corpus real).
-- **En curs de documentació**: sincronitzar `ROADMAP`, `README` i l'índex de
-  `docs/` amb l'estat real (aquest mateix canvi).
+- **En curs (prioritari)**: **subplà de rubato**
+  ([`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md)).
+  **Fase 1 (motor pur) feta**; següent: **fase 2** (model i format). És previ
+  a la fase 7: **no continuar amb les fases 7, 10 ni 12** fins que el subplà
+  estiga complet i verificat. Després, la fase 10 (motor de detecció amb
+  corpus real).
 
 ---
 
