@@ -528,6 +528,8 @@ class Visor(QMainWindow):
         # Patró del clic: auto (temps + accents de compàs/grup), compas,
         # temps o grup. El fil d'àudio el llig a cada tros.
         self.metro_mode = "auto"
+        # Unitat de clic: "auto" = denominador; o negra/negra_punt/corxera/blanca.
+        self.metro_click_unit = "auto"
         # Metrònom FORÇAT (None = normal): `(bpm, bpb, offset, den, mode)`
         # fa sonar el clic sobre una graella pròpia, alineada a `offset`,
         # sense passar pel mapa de tempo. És el que permet escoltar un tram
@@ -2415,6 +2417,42 @@ class Visor(QMainWindow):
             bpm, bpb, offset, den, _mode = self.metro_forcat
             self.metro_forcat = (bpm, bpb, offset, den, mode)
         self.log(f"metrònom: patró {mode}")
+
+    def click_unit_encaixa(self, unit):
+        """True si la unitat de clic dividix tots els compassos del mapa."""
+        unit = (bpm_unit_mod.normalitza(unit)
+                if unit not in (None, "", "auto") else "auto")
+        if unit == "auto":
+            return True
+        trams = list(getattr(self, "tempo_trams", None) or [])
+        if not trams:
+            return bpm_unit_mod.encaixa_en_compas(
+                unit, self.bpb, self.beat_type)
+        for tr in trams:
+            segs = getattr(tr, "segments", None)
+            if segs:
+                for num, den, _count in segs:
+                    if not bpm_unit_mod.encaixa_en_compas(unit, num, den):
+                        return False
+            else:
+                num, den = int(tr[3]), int(tr[4])
+                if not bpm_unit_mod.encaixa_en_compas(unit, num, den):
+                    return False
+        return True
+
+    def set_metro_click_unit(self, unit):
+        """Canvia la unitat de clic en viu, si dividix tots els compassos."""
+        unit = (bpm_unit_mod.normalitza(unit)
+                if unit not in (None, "", "auto") else "auto")
+        if not self.click_unit_encaixa(unit):
+            msg = (f"La unitat de clic «{bpm_unit_mod.etiqueta(unit).lower()}» "
+                   "no encaixa en tots els compassos del mapa.")
+            self.log(f"metrònom: {msg}")
+            self.infoMissatge.emit(msg)
+            return False
+        self.metro_click_unit = unit
+        self.log(f"metrònom: unitat de clic {self.metro_click_unit}")
+        return True
 
     def bpm_mostra(self, bpm=None, decimals=3):
         """BPM intern (negres/min) → text en la unitat global del projecte."""
@@ -5689,7 +5727,8 @@ class Visor(QMainWindow):
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), mbpm, mbpb,
                             volum=self.metro_vol, offset=moff, mapa=None,
-                            factor=factor, den=mden, mode=mmode)
+                            factor=factor, den=mden, mode=mmode,
+                            click_unit=self.metro_click_unit)
                     else:
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), self.bpm, self.bpb,
@@ -5698,7 +5737,9 @@ class Visor(QMainWindow):
                             mapa=getattr(self, "tempo_map", None),
                             factor=factor,
                             den=getattr(self, "beat_type", 4),
-                            mode=getattr(self, "metro_mode", "auto"))
+                            mode=getattr(self, "metro_mode", "auto"),
+                            click_unit=getattr(self, "metro_click_unit",
+                                               "auto"))
                 try:
                     proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):

@@ -54,3 +54,26 @@ def formata(bpm_quarter, unitat, decimals=3):
 def opcions():
     """`[(clau, etiqueta), …]` en l'orde de la UI."""
     return [(clau, dades[0]) for clau, dades in UNITATS.items()]
+
+
+def encaixa_en_compas(unitat, num, den, tolerancia=1e-9):
+    """True si la unitat de clic dividix exactament un compàs `num/den`.
+
+    `auto` sempre encaixa (és el denominador). Una unitat més gran que el
+    compàs o que no el dividix (p. ex. negra amb punt en 4/4) no encaixa.
+    """
+    unitat = normalitza(unitat) if unitat not in (None, "", "auto") else "auto"
+    if unitat == "auto":
+        return True
+    try:
+        num, den = int(num), int(den)
+    except (TypeError, ValueError):
+        return False
+    if num <= 0 or den <= 0:
+        return False
+    barra = float(num) * 4.0 / float(den)
+    pas = factor(unitat)
+    if pas <= 0 or pas > barra + tolerancia:
+        return False
+    quocient = barra / pas
+    return abs(quocient - round(quocient)) <= tolerancia

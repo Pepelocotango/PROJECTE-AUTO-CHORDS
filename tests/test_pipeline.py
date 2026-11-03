@@ -3416,6 +3416,55 @@ class MetronomTests(unittest.TestCase):
         i = int(0.75 * self.SR)
         self.assertLess(self._freq(arr[i:i + n]), 1100)
 
+    def test_click_unit_negra_amb_punt_en_12_8(self):
+        from app import metronom
+        out = metronom.mescla_metronom(
+            self._silenci(3.2), self.SR, 0.0, 120.0, 12, volum=1.0,
+            den=8, click_unit="negra_punt")
+        self.assertEqual(
+            [round(t, 3) for t in self._onsets(self._a_array(out))],
+            [0.0, 0.75, 1.5, 2.25, 3.0])
+
+    def test_click_unit_blanca_en_4_4(self):
+        from app import metronom
+        out = metronom.mescla_metronom(
+            self._silenci(3.1), self.SR, 0.0, 120.0, 4, volum=1.0,
+            den=4, click_unit="blanca")
+        self.assertEqual(
+            [round(t, 3) for t in self._onsets(self._a_array(out))],
+            [0.0, 1.0, 2.0, 3.0])
+
+    def test_click_unit_que_no_encaixa_cau_a_auto(self):
+        from app import metronom
+        a = metronom.mescla_metronom(
+            self._silenci(2.0), self.SR, 0.0, 120.0, 4, volum=1.0, den=4)
+        b = metronom.mescla_metronom(
+            self._silenci(2.0), self.SR, 0.0, 120.0, 4, volum=1.0, den=4,
+            click_unit="negra_punt")
+        self.assertEqual(a, b)
+
+    def test_click_unit_corxera_mante_els_accents_de_grup(self):
+        from app import metronom
+        out = metronom.mescla_metronom(
+            self._silenci(1.6), self.SR, 0.0, 120.0, 12, volum=1.0,
+            den=8, click_unit="corxera")
+        onsets = self._onsets(self._a_array(out))
+        self.assertEqual(len(onsets), 7)
+        arr = self._a_array(out)
+        n = int(self.SR * 0.02)
+        for t in (0.0, 0.75, 1.5):
+            i = int(t * self.SR)
+            self.assertGreater(self._freq(arr[i:i + n]), 1300, t)
+
+    def test_click_unit_auto_es_el_denominador(self):
+        from app import metronom
+        a = metronom.mescla_metronom(
+            self._silenci(2.0), self.SR, 0.0, 120.0, 12, volum=1.0, den=8)
+        b = metronom.mescla_metronom(
+            self._silenci(2.0), self.SR, 0.0, 120.0, 12, volum=1.0, den=8,
+            click_unit="auto")
+        self.assertEqual(a, b)
+
     def test_comencar_a_mig_compas_mante_el_patro(self):
         from app import metronom
         # comencem a t=2.5 s (beat 5). En 2 s de buffer hi cauen els beats

@@ -712,6 +712,7 @@ class Finestra(QMainWindow):
         hp.setSpacing(6)
         hp.addWidget(QLabel("BPM:"))
         hp.addWidget(self.bpm)
+        hp.addWidget(QLabel("Unitat:"))
         hp.addWidget(self.cb_bpm_unit)
         self.b_bpm_x2 = QPushButton("×2")
         self.b_bpm_div2 = QPushButton("÷2")
@@ -1274,6 +1275,7 @@ class Finestra(QMainWindow):
             self._actualitzant_temps = False
         self._on_loop_state(getattr(vr, "loop_on", False))
         self._actualitza_desti_accions()
+        self._actualitza_metro_ui()
 
     def _actualitza_desti_accions(self):
         vr = getattr(self, "visor_ref", None)
@@ -3465,6 +3467,7 @@ class Finestra(QMainWindow):
                 bpm_unit=self._bpm_unit_val(),
             )
             self.visor_ref = visor
+            visor.metro_click_unit = self._metro_click_unit_val()
             # El visor ha de desar els CSV/export a la carpeta de sortida del
             # PROJECTE (no derivar-la del WAV, que viu a <projecte>/audio/).
             visor.sortida = self.sortida or pipeline.carpeta_sortida(wav)
@@ -3737,7 +3740,8 @@ class Finestra(QMainWindow):
                       "offset": offset,
                       "fix": self.tempo_fix.isChecked(),
                       "compas": f"{bpb}/{den}",
-                      "unit": self._bpm_unit_val()},
+                      "unit": self._bpm_unit_val(),
+                      "metro_unit": self._metro_click_unit_val()},
             "opcions": self.opcions,
         }
 
@@ -3775,6 +3779,12 @@ class Finestra(QMainWindow):
             self.cb_bpm_unit.blockSignals(False)
         self._bpm_unit_anterior = unit
         self._posa_bpm_quarter(float(tempo.get("bpm", 120.0)))
+        munit = tempo.get("metro_unit", "auto")
+        idx_m = self.cb_metro_unit.findData(munit)
+        if idx_m >= 0:
+            self.cb_metro_unit.blockSignals(True)
+            self.cb_metro_unit.setCurrentIndex(idx_m)
+            self.cb_metro_unit.blockSignals(False)
         compas = tempo.get("compas")
         # Format COMPLET (4/4, no «4»): un «4» sol sembla el compàs denormalitzat
         # i confon; el parser accepta els dos, però el camp sempre el mostra bé.
@@ -4263,6 +4273,19 @@ class Finestra(QMainWindow):
             "o Grup (només compàs i inicis de grup).")
         self.cb_metro.currentIndexChanged.connect(self._canvia_mode_metro)
         bar.addWidget(self.cb_metro)
+        bar.addWidget(QLabel("Clic:"))
+        self.cb_metro_unit = QComboBox()
+        self.cb_metro_unit.addItem("Denominador", "auto")
+        for _clau, _et in bpm_unit_mod.opcions():
+            self.cb_metro_unit.addItem(_et, _clau)
+        self.cb_metro_unit.setCurrentIndex(0)
+        self.cb_metro_unit.setMaximumWidth(110)
+        self.cb_metro_unit.setToolTip(
+            "Unitat de clic del metrònom: auto (denominador), negra, "
+            "negra amb punt, corxera o blanca.")
+        self.cb_metro_unit.currentIndexChanged.connect(
+            self._canvia_metro_click_unit)
+        bar.addWidget(self.cb_metro_unit)
         bar.addSeparator()
         # Quantitza: just abans del Snap (petició de l'operador). Recicla el
         # lloc de l'antic «Mode fàcil».
@@ -4344,11 +4367,28 @@ class Finestra(QMainWindow):
         if vr is not None:
             vr.set_metro_mode(self.cb_metro.currentData())
 
+    def _metro_click_unit_val(self):
+        cb = getattr(self, "cb_metro_unit", None)
+        return cb.currentData() if cb is not None else "auto"
+
+    def _canvia_metro_click_unit(self, _idx=None):
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        if not vr.set_metro_click_unit(self._metro_click_unit_val()):
+            idx = self.cb_metro_unit.findData(
+                getattr(vr, "metro_click_unit", "auto"))
+            if idx >= 0:
+                self.cb_metro_unit.blockSignals(True)
+                self.cb_metro_unit.setCurrentIndex(idx)
+                self.cb_metro_unit.blockSignals(False)
+
     def _actualitza_metro_ui(self):
         """El metrònom només està disponible en mode BPM · compàs."""
         vr = getattr(self, "visor_ref", None)
         disponible = vr is not None and vr.metro_disponible()
-        for w in (self.b_metro, self.vol_metro, self.cb_metro, self.a_metro):
+        for w in (self.b_metro, self.vol_metro, self.cb_metro,
+                  self.cb_metro_unit, self.a_metro):
             w.setEnabled(disponible)
         if not disponible:
             # en mode Lliure: desmarcat i amb tooltip explicatiu
@@ -4358,13 +4398,42 @@ class Finestra(QMainWindow):
             self.b_metro.setToolTip(tip)
             self.vol_metro.setToolTip(tip)
             self.cb_metro.setToolTip(tip)
+            self.cb_metro_unit.setToolTip(tip)
             self.a_metro.setToolTip(tip)
         else:
             self.b_metro.setToolTip("Metrònom")
             self.vol_metro.setToolTip("Volum del clic del metrònom (%)")
             self.cb_metro.setToolTip(
                 "Patró del metrònom: Auto, Compàs, Temps o Grup")
+            self.cb_metro_unit.setToolTip(
+                "Unitat de clic: auto (denominador), negra, negra amb punt, "
+                "corxera o blanca")
             self.a_metro.setToolTip("Clic de metrònom")
+            idx_u = self.cb_metro_unit.findData(
+                getattr(vr, "metro_click_unit", "auto"))
+            if idx_u >= 0 and idx_u != self.cb_metro_unit.currentIndex():
+                self.cb_metro_unit.blockSignals(True)
+                self.cb_metro_unit.setCurrentIndex(idx_u)
+                self.cb_metro_unit.blockSignals(False)
+            # Desactiva les unitats que no caben en algun compàs del mapa.
+            model = self.cb_metro_unit.model()
+            unit_actual = self._metro_click_unit_val()
+            for i in range(self.cb_metro_unit.count()):
+                unitat = self.cb_metro_unit.itemData(i)
+                valid = unitat == "auto" or vr.click_unit_encaixa(unitat)
+                it = model.item(i)
+                if it is not None:
+                    it.setEnabled(valid)
+            if not vr.click_unit_encaixa(unit_actual):
+                # El mapa ha canviat i la unitat triada ja no hi cap.
+                auto = self.cb_metro_unit.findData("auto")
+                self.cb_metro_unit.blockSignals(True)
+                self.cb_metro_unit.setCurrentIndex(auto)
+                self.cb_metro_unit.blockSignals(False)
+                vr.metro_click_unit = "auto"
+                vr.infoMissatge.emit(
+                    "La unitat de clic anterior ja no encaixa en el nou "
+                    "compàs; s'ha posat en auto.")
             idx = self.cb_metro.findData(getattr(vr, "metro_mode", "auto"))
             if idx >= 0 and idx != self.cb_metro.currentIndex():
                 self.cb_metro.blockSignals(True)

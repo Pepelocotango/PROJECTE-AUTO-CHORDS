@@ -5917,6 +5917,34 @@ class TestGuiatAudicio(unittest.TestCase):
         finally:
             w._guia_cancel()
 
+    def test_unitat_de_clic_del_metronom(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            idx = w.cb_metro_unit.findData("blanca")
+            self.assertGreaterEqual(idx, 0)
+            w.cb_metro_unit.setCurrentIndex(idx)
+            self.assertEqual(vr.metro_click_unit, "blanca")
+            self.assertEqual(w._dades_projecte()["tempo"]["metro_unit"],
+                             "blanca")
+            w.cb_metro_unit.setCurrentIndex(
+                w.cb_metro_unit.findData("auto"))
+            self.assertEqual(vr.metro_click_unit, "auto")
+        finally:
+            w._guia_cancel()
+
+    def test_unitat_de_clic_que_no_encaixa_es_bloqueja(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            # En 4/4, negra amb punt no dividix el compàs.
+            idx = w.cb_metro_unit.findData("negra_punt")
+            self.assertGreaterEqual(idx, 0)
+            w.cb_metro_unit.setCurrentIndex(idx)
+            self.assertEqual(vr.metro_click_unit, "auto")
+            model = w.cb_metro_unit.model()
+            self.assertFalse(model.item(idx).isEnabled())
+        finally:
+            w._guia_cancel()
+
     def test_bpm_canviat_sense_audicio_no_fa_res(self):
         w, vr = self._arrenca(t=1.0)
         try:
