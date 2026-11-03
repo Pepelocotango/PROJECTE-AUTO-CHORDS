@@ -5,6 +5,33 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Documentació — rubato: subplà complet (fase 5) (2026-11-02)
+- Actualitzats `REGLES_DE_LA_APP` §13.7, `FLUX_DE_DADES`, `PARTITURA_EXPORT`,
+  `EDICIO_OPERACIONS`, `ESQUEMA_UI`, `README`, `AGENTS`, `ROADMAP` i este
+  `CHANGELOG`.
+- Suite completa: **1.518 tests**, 1 omés; `pyflakes` net.
+- El subplà de rubato queda complet; el pla de simplificació continua per la
+  fase 10 (motor de detecció) i la 12 (CI/congelació).
+
+### Afegit — rubato: exportació (fase 4) (2026-11-02)
+- `mapa_tempo/mapa_tempo.csv` conserva `tipus=rubato` i la seqüència de
+  compassos (abans l'exportació convertia els trams a 5 tuples i perdia el
+  tipus).
+- Si hi ha rubatos, es genera `mapa_tempo/AVIS_APROXIMACIO.txt` amb els
+  intervals, el BPM derivat i l'avís de graella aproximada.
+- El MusicXML inclou un `<credit>` «Rubato — graella aproximada».
+- Suite completa: **1.518 tests**, 1 omés.
+
+### Afegit — rubato: accions d’usuari (fase 3.2) (2026-11-02)
+- `Marca el rang A–B com a rubato`: parteix el mapa, crea el rubato amb la
+  referència anterior → següent → transport i un sol desfer.
+- `Converteix el tram de tempo a rubato` i `Converteix el rubato a normal`
+  (aquest des del menú contextual i el menú Analitza).
+- Rubatos adjacents es fusionen; si el rubato és inicial, l’offset passa al
+  primer clip mètric.
+- Accions també al menú contextual del carril ③ i documentades a l’ESQUEMA_UI.
+- Suite completa: **1.516 tests**, 1 omés.
+
 ### Afegit — rubato: visor i graella (fase 3.1) (2026-11-02)
 - `TempoMap` expandix la seqüència d’un rubato en sub-trams de compàs; la
   graella, el regle i el snap ja la interpreten.

@@ -24,7 +24,7 @@
 | **CRU** | dins `<nom>.acproj` → `dades["analisi"]` | a cada «Analitza» | **només `Feina.run`** (i el desat del document) |
 | **ÀUDIO DE TREBALL** | `audio/tema.wav` | en crear/importar el projecte i en editar els extrems | còpia interna editable |
 | **MARCADORS** | `marcadors.csv` | en afegir/moure/eliminar marcadors i en editar l'àudio | referències humanes del mapa |
-| **EXPORTS** | `wavs_acords/` · `wavs_estructura/` · `partitura/` · `guia_acords.html` · `mapa_tempo/` · `manifest.csv` | només a «Exporta» | `pipeline.exporta_total` |
+| **EXPORTS** | `wavs_acords/` · `wavs_estructura/` · `partitura/` · `guia_acords.html` · `mapa_tempo/mapa_tempo.csv` (+ `AVIS_APROXIMACIO.txt` si hi ha rubatos) · `manifest.csv` | només a «Exporta» | `pipeline.exporta_total` |
 | **CÒPIES** | `backup/<data-hora>/` | autosave cada 60 s, si hi ha canvis | `Projecte.fes_backup` |
 
 ## 2. Estructura de la carpeta del projecte

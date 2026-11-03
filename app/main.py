@@ -1161,6 +1161,12 @@ class Finestra(QMainWindow):
         self._act(m, "Quantitza el model…", "", self._quantitza_ui)
         self._act(m, "Mapa de tempo i compàs…", "",
                   self._tempo_mapa_ui)
+        self._act(m, "Marca el rang A–B com a rubato", "",
+                  self._marca_rubato_rang)
+        self._act(m, "Converteix el tram de tempo a rubato", "",
+                  self._converteix_rubato_ui)
+        self._act(m, "Converteix el rubato a normal", "",
+                  self._converteix_normal_ui)
         self._act(m, "Detecta el tempo per trams…", "",
                   self._detecta_tempo_per_trams)
         self._act(m, "Detecta el mapa de tempo (per beats)…", "",
@@ -2629,6 +2635,45 @@ class Finestra(QMainWindow):
             self.avisa_info("Auto Chords",
                             f"No s'ha trobat cap «{troba}» per substituir.")
 
+    def _marca_rubato_rang(self):
+        """Marca el rang A–B com a rubato (fase 3.2)."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self._missatge_info("Obre un tema abans de marcar un rubato.")
+            return
+        loop = vr._loop_vals()
+        if loop is None:
+            self._missatge_info(
+                "Marca primer un rang A–B (arrossega el regle o usa A/B).")
+            return
+        vr.crea_rubato_rang(*loop)
+
+    def _converteix_rubato_ui(self):
+        """Converteix el tram de tempo seleccionat a rubato."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self._missatge_info("Obre un tema abans de convertir un tram.")
+            return
+        kind, idx = vr.seleccio_activa()
+        if kind != "tempo" or not vr._index_valid("tempo", idx):
+            self._missatge_info(
+                "Selecciona un clip del carril de BPM/compàs.")
+            return
+        vr.converteix_rubato(idx)
+
+    def _converteix_normal_ui(self):
+        """Converteix el rubato seleccionat en clips normals."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self._missatge_info("Obre un tema abans de convertir un rubato.")
+            return
+        kind, idx = vr.seleccio_activa()
+        if kind != "tempo" or not vr._index_valid("tempo", idx):
+            self._missatge_info(
+                "Selecciona un clip del carril de BPM/compàs.")
+            return
+        vr.converteix_normal(idx)
+
     def _tempo_mapa_ui(self):
         """Mapa de tempo i compàs: canvis de BPM/compàs al llarg del tema."""
         vr = self.visor_ref
@@ -3213,7 +3258,7 @@ class Finestra(QMainWindow):
         if free:
             self._missatge_info(
                 "El rubato es crea amb «Marca com a rubato» o «Converteix a "
-                "rubato»; el commutador «En segons» arribarà en la fase 3.2.")
+                "rubato», no amb el commutador «En segons».")
             self.chk_segons.setChecked(False)
             self._sincronitza_temps_del_visor()
             return
@@ -4700,6 +4745,11 @@ class Finestra(QMainWindow):
                 durada=durada, mapa=mapa)
         except (RuntimeError, OSError) as e:
             self.registra(f"partitura: el model encara no té acords ({e})")
+        rubatos = [
+            (float(t.ini), float(t.fi), t.compassos)
+            for t in (getattr(vr, "tempo_trams", None) or [])
+            if getattr(t, "tipus", None) == "rubato"
+        ]
         try:
             res = partitura.exporta_partitura(
                 self.sortida,
@@ -4712,6 +4762,7 @@ class Finestra(QMainWindow):
                 mapa=mapa,
                 events=ev,
                 durada=durada,
+                rubatos=rubatos,
             )
             if res.get("error"):
                 self.registra(f"partitura: sense resultat ({res['error']})")

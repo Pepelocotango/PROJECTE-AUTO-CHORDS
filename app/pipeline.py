@@ -1957,11 +1957,33 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
     # Regla d'or #12 (paritat a l'exportació): el mapa de BPM/compàs també surt
     # al paquet, amb la seva carpeta pròpia, com els altres dos tipus.
     if mapa_tempo:
-        trams = [tuple(t) for t in mapa_tempo]
+        # No convertir a tuples: es perdrien `tipus`/`compassos` dels rubatos.
+        trams = list(mapa_tempo)
         dest_mapa = os.path.join(sortida, "mapa_tempo")
         desa_tempo_map(dest_mapa, trams)
         result["mapa_tempo_dir"] = dest_mapa
         result["n_mapa_trams"] = len(trams)
+        rubatos = [t for t in trams
+                   if getattr(t, "tipus", None) == "rubato"]
+        if rubatos:
+            ruta_avis = os.path.join(dest_mapa, "AVIS_APROXIMACIO.txt")
+
+            def _escriu_avis(f):
+                f.write(
+                    "RUBATO — GRAELLA APROXIMADA\n"
+                    "================================\n\n"
+                    "Estos trams no són una detecció de tempo: el BPM i els\n"
+                    "compassos són una representació derivada per a DAW i\n"
+                    "partitura. Els segons del model són la veritat.\n\n"
+                    "inici_s\tfi_s\tbpm_derivat\tcompassos\n")
+                for tr in rubatos:
+                    f.write(f"{float(tr.ini):.6f}\t{float(tr.fi):.6f}\t"
+                            f"{float(tr.bpm):.6f}\t{tr.compassos}\n")
+            escriu_atomic(ruta_avis, _escriu_avis)
+            result["mapa_tempo_avis"] = ruta_avis
+            if log:
+                log(f"mapa de tempo/compàs: {len(rubatos)} rubato(s) marcats "
+                    "com a graella aproximada")
         if log:
             log(f"mapa de tempo/compàs exportat: {len(trams)} tram(s) a "
                 f"{dest_mapa}")

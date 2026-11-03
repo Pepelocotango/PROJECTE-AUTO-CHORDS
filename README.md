@@ -25,8 +25,10 @@ acordat és a [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 > seu inici és el downbeat) · **tap tempo al tram seleccionat** amb loop
 > automàtic mentre sona · **marcadors de compàs vs secció** · **ajust d'un sol
 > BPM per mínims quadrats** · **validació unificada** de BPM/compàs ·
-> **loop a la selecció** (`L`) · **Quantitza** arranja el model a la graella.
-> Historial complet: [`CHANGELOG.md`](CHANGELOG.md).
+> **loop a la selecció** (`L`) · **Quantitza** arranja el model a la graella ·
+> **rubato**: marca un rang A–B o converteix un tram, amb BPM/compàs derivats
+> i graella marcada com a aproximada a l’exportació. Historial complet:
+> [`CHANGELOG.md`](CHANGELOG.md).
 
 > ⚠️ **Beta:** la retrocompatibilitat de formats **no és una prioritat**. Una
 > versió nova pot rebutjar un projecte vell amb un missatge clar; no es fan
@@ -76,6 +78,7 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 - **Edició completa** de les tres pistes: **moure/partir/duplicar/redimensionar** acords i seccions, i **moure/partir/duplicar** els **trams de tempo**; **multi-selecció** (`Ctrl`/`Shift+clic`), **copiar/retallar/enganxar**, **desfer/refer** (`Ctrl+Z`/`Ctrl+Y`). Les tres comparteixen les mateixes eines (regla d'or #11).
 - **Exporta clips WAV silenciosos** ordenats i nomenats per acord (`1-1-1_C.wav`) i per secció (`1-1-1_3-2-1_A.wav`) → els arrossegues al teu DAW i hi tens l'harmonia marcada.
 - **Exporta el mapa de tempo** a `mapa_tempo/` (`mapa_tempo.csv`) i una **guia d'acords** (`guia_acords.html`) per imprimir.
+- **Rubato**: selecciona un rang A–B o un clip del carril de BPM/compàs i marca’l com a rubato; l’app deriva BPM i compassos, conserva els segons i identifica la graella exportada com a aproximada (`mapa_tempo/AVIS_APROXIMACIO.txt` i text al MusicXML).
 - **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: [`docs/PROJECTES.md`](docs/PROJECTES.md).
 - **Edició d'àudio bàsica**: nanses per retallar els extrems o afegir-hi silenci a la còpia del projecte, amb snap commutable, previsualització i desfer/refer sincronitzat amb el model; l'original queda intacte. **`Exporta àudio…`** desa la còpia editada a WAV (16/24/32 bits), MP3, FLAC, AAC/M4A, OGG o Opus, amb els perfils que el `ffmpeg` del paquet sap escriure; vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 - **Partitura de xifrats**: MusicXML sempre; PDF/MSCZ amb MuseScore.

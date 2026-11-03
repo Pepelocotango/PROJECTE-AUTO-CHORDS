@@ -149,11 +149,11 @@ supera, es rebutja amb avís.
 2. ✅ **Model i format**: `mapa_tempo.csv`, `FORMAT = 3`, rebuig de
    projectes vells i integració dels clips **normals**; els rubatos al visor
    queden per a la fase 3.
-3. **Visor i timeline**: 3.1 ✅ model al visor, graella i display derivat;
-   3.2 pendent: crear/convertir rubato, fronteres i undo.
-4. **Exportació**: `mapa_tempo/` unificat, `AVIS_APROXIMACIO.txt`, text al
-   MusicXML, actualització de la regla 12, tests.
-5. **Docs i CI**: regles, docs, `CHANGELOG`, suite i `pyflakes` verds.
+3. ✅ **Visor i timeline**: 3.1 model al visor, graella i display derivat;
+   3.2 crear/convertir rubato, fronteres i undo.
+4. ✅ **Exportació**: `mapa_tempo/` unificat, `AVIS_APROXIMACIO.txt` i text
+   al MusicXML.
+5. ✅ **Docs i CI**: regles, docs, `CHANGELOG`, suite i `pyflakes` verds.
 
 ## Implementació — fase 1 (motor pur) ✅
 
@@ -193,7 +193,39 @@ supera, es rebutja amb avís.
   denominadors barrejats ja es calculen bé.
 - Suite completa: **1.507 tests**, 1 omés.
 
+## Implementació — fase 3.2 (accions de rubato) ✅
+
+- `Visor.crea_rubato_rang(ini, fi)`: parteix el mapa, crea el rubato amb la
+  referència anterior → següent → transport i un sol desfer.
+- `Visor.converteix_rubato(idx)` i `Visor.converteix_normal(idx)`: conversió
+  en els dos sentits; el normal parteix per segments (Q16).
+- Rubatos adjacents es fusionen; si el rubato és inicial, l'offset passa al
+  primer clip mètric (Q9).
+- Accions al menú *Analitza*, al menú contextual del carril ③ i a la llista
+  de tempo. La documentació de la UI i les proves de paritat estan al dia.
+- Suite completa: **1.516 tests**, 1 omés.
+
+## Implementació — fase 4 (exportació) ✅
+
+- `pipeline.exporta_total` conserva els `TramMapa` del rubato (no los
+  converteix a 5 tuples): `mapa_tempo/mapa_tempo.csv` porta `tipus=rubato`.
+- Si hi ha rubatos, genera **`mapa_tempo/AVIS_APROXIMACIO.txt`** amb els trams
+  i l'avís que la graella és aproximada.
+- El **MusicXML** inclou un `<credit>` «Rubato — graella aproximada» amb els
+  intervals.
+- Suite completa: **1.518 tests**, 1 omés.
+
+## Implementació — fase 5 (docs i CI) ✅
+
+- Actualitzats `REGLES_DE_LA_APP` (§13.7), `FLUX_DE_DADES`, `PARTITURA_EXPORT`,
+  `EDICIO_OPERACIONS`, `ESQUEMA_UI`, `README`, `AGENTS`, `ROADMAP` i
+  `CHANGELOG`.
+- Suite completa: **1.518 tests**, 1 omés; `pyflakes` net.
+- No cal un workflow nou: el CI ja executa tota la suite, inclosos els tests
+  de rubato.
+
 ## Estat
 
-**Fases 1, 2 i 3.1 completades.** Següent: **3.2 — accions de rubato**
-(crear/convertir, fronteres, fusionar, convertir a normal i undo).
+**Subplà de rubato complet (fases 1–5).** El pla de simplificació pot
+continuar per la **fase 10** (motor de detecció amb corpus) i la **fase 12**
+(CI/congelació). La **fase 7** queda coberta per este subplà.

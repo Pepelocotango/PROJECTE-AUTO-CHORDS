@@ -17,6 +17,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import unittest
 import tempfile
+from app import mapa_tempo
 from app import pipeline
 import numpy as np
 from app import acord_audio as A
@@ -2159,6 +2160,14 @@ class TestMusicXmlMapa(unittest.TestCase):
         self.assertIn("<beats>4</beats><beat-type>4</beat-type>", xml)
         self.assertIn("<beats>3</beats><beat-type>4</beat-type>", xml)  # canvi
         self.assertIn('<measure number="3">', xml)
+
+    def test_rubato_marca_la_graella_aproximada(self):
+        events = [(0.0, "C", 4.0), (4.0, "G", 4.0)]
+        xml = partitura.construeix_musicxml(
+            events, [], bpb=4, bpm=120.0,
+            rubatos=[(0.0, 4.0, "4/4*2")])
+        self.assertIn("Rubato — graella aproximada", xml)
+        self.assertIn("4/4*2", xml)
 
     def test_constant_no_afegeix_res(self):
         from app.tempo_map import TempoMap
@@ -6183,6 +6192,24 @@ class TestRegla12ParitatExport(_regla12_export___Base):
         self.assertTrue(os.path.isfile(os.path.join(mapa, "mapa_tempo.csv")))
         self.assertEqual(res.get("mapa_tempo_dir"), mapa)
         self.assertEqual(res.get("n_mapa_trams"), len(TRAMS))
+
+    def test_rubato_exporta_avis_i_conserva_tipus(self):
+        trams = [
+            mapa_tempo.TramMapa(0.0, 8.0, 120.0, "rubato", "4/4*4"),
+            mapa_tempo.TramMapa(8.0, 16.0, 120.0, "normal", "4/4"),
+        ]
+        sortida, res = self._exporta(trams)
+        ruta = os.path.join(sortida, "mapa_tempo", "mapa_tempo.csv")
+        with open(ruta, encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn("rubato", text)
+        self.assertIn("4/4*4", text)
+        avis = res.get("mapa_tempo_avis")
+        self.assertTrue(avis and os.path.isfile(avis))
+        with open(avis, encoding="utf-8") as f:
+            text_avis = f.read()
+        self.assertIn("GRAELLA APROXIMADA", text_avis)
+        self.assertIn("4/4*4", text_avis)
 
     def test_el_mapa_exportat_es_el_del_model(self):
         """El que s'exporta és el MODEL (no una còpia vella del disc)."""

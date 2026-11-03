@@ -97,7 +97,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (F5) · **Analitza només els acords… (F6)** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · Mapa de tempo i compàs… · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
+| **Analitza** | Analitza l'àudio (F5) · **Analitza només els acords… (F6)** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Exporta àudio… (Fase 6)
@@ -219,7 +219,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 │  ⑫  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
 │      acord/secció: [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│
 │      tempo: [🥁]  [BPM▢] [Compàs▢] [Inici (s)▢] [Fi (s)▢] [≈ ▢] [Aplica]│
-│      (RUBATO = clip derivat; crear-lo: fase 3.2)                      │
+│      (RUBATO = clip derivat; crear-lo amb «Marca/Converteix a rubato»)                      │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑩ LLISTA ACORDS    │ ⑪ LLISTA SECCIONS  │ ⑭ LLISTA TEMPO             │
 │  «1.1 N», «8.1 E7»… │ «A(N) 1.1–10.1»…   │ Inici·Fi·BPM·Compàs        │
@@ -342,6 +342,18 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   la mediana). **Només actua amb un tram de tempo seleccionat**: sense
   selecció, `T` no fa res. Propaga BPM al regle i al metrònom **sense
   reengegar l'àudio**. El botó mostra `TAP (n) BPM`.
+
+### Rubato
+
+- Es crea amb **`Analitza ▸ Marca el rang A–B com a rubato`**, **`Converteix
+  el tram de tempo a rubato`** o les mateixes accions del menú contextual del
+  carril ③.
+- El clip de rubato té **inici i fi en segons invariables** i mostra el BPM i
+  la seqüència de compassos **derivats** (`R 4/4 × 8 + 2/4`); a l’Editor són
+  de només lectura.
+- La graella mètrica del rubato és una representació; la **graella de temps**
+  continua sent la referència. En exportar, la representació s’identifica com
+  a **aproximada** (`AVIS_APROXIMACIO.txt` i text al MusicXML).
 
 ## 4. Metrònom 🥁
 

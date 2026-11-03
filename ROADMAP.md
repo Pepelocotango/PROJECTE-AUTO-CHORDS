@@ -120,12 +120,11 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   [`PLA_SIMPLIFICACIO_TEMPO`](00PER%20FER/PLA_SIMPLIFICACIO_TEMPO.md) —
   línia base i avaluador, validació unificada, fuzzer i proposta de regles,
   TAP robust, compàs vs secció i ajust d'un BPM per mínims quadrats.
-- **En curs (prioritari)**: **subplà de rubato**
-  ([`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md)).
-  **Fases 1, 2 i 3.1 fetes**; següent: **fase 3.2** (accions de rubato). És previ
-  a la fase 7: **no continuar amb les fases 7, 10 ni 12** fins que el subplà
-  estiga complet i verificat. Després, la fase 10 (motor de detecció amb
-  corpus real).
+- **Fet (2026-11-02)**: **subplà de rubato complet (fases 1–5)** —
+  [`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md).
+  Inclou la fase 7 del pla de simplificació.
+- **Següent**: **fase 10** (motor de detecció amb corpus real) i **fase 12**
+  (fuzzer al CI, congelació i docs).
 
 ---
 

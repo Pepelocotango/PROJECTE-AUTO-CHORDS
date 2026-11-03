@@ -20,6 +20,10 @@ i produeix:
 És un **lead sheet**: xifrats sobre notes *slash*, amb tempo, compàs, armadura
 i **marques de secció** (cada secció comença línia).
 
+Si el model té **rubatos**, el MusicXML inclou un `<credit>` «Rubato — graella
+aproximada» amb els intervals. La graella mètrica d'eixos trams és una
+representació derivada, no una detecció.
+
 ## Com s'usa
 
 - **CLI**:

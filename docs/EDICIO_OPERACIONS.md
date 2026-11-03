@@ -120,6 +120,9 @@
 | 13b | **Parteix a la selecció A–B** | menú contextual dels **3** carrils ▸ *Parteix a la selecció A–B (A–Bs)* | ✓ | ✓ | ✓ | **FET** (20-10-2026): és el «parteix aquí» fet **als dos llocs alhora** — cada frontera del loop (**A** i **B**) que caiga **dins** del clip seleccionat hi deixa un tall nou, així que el clip queda en **2 o 3 trossos amb el mateix nom** i el tros que va d'A a B queda **seleccionat**. Tot en **una sola operació d'undo**. Si A i B cauen fora del clip, no es parteix res i s'avisa. A ③ el tall s'imanta a la **línia de compàs** (dues fronteres al mateix compàs = **un sol tall**) i es rebutja si deixaria un tram interior sense un compàs sencer |
 | 14 | **Duplicar** | `Ctrl+D` · *Duplica* del menú contextual de les 3 pistes | ✓ | ✓ | ✓ | **FET**: nucli únic `duplica_bloc_clips` (§2: la còpia va DESPRÉS i sobreescriu el tram, §6.3). Cal que la còpia **sencera** hi capça després; si no, no es fa res i s'avisa (la cançó no pot créixer) |
 | 15 | **Duplicar arrossegant** | — | — | — | — | **RETIRAT** (2026-10-19). Es duplica amb `Ctrl+D` (#14) o copiar/enganxar (#16); `Ctrl+Shift` queda per a l'eina de selecció temporal |
+| 15b | **Crear rubato sobre un rang** | *Analitza ▸ Marca el rang A–B com a rubato* · menú contextual ③ | — | — | ✓ | **FET** (3.2): parteix el mapa, ajusta els veïns i deriva BPM/seqüència; un sol desfer |
+| 15c | **Convertir un tram a rubato** | menú contextual ③ · *Analitza ▸ Converteix el tram de tempo a rubato* | — | — | ✓ | **FET** (3.2) |
+| 15d | **Convertir un rubato a normal** | menú contextual ③ · *Analitza ▸ Converteix el rubato a normal* | — | — | ✓ | **FET** (3.2): un clip normal per segment de compàs |
 | 16 | **Copiar / Retallar / Enganxar** | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` (`Ctrl+Alt+V` = sense snap) | ✓ | ✓ | ✓ | **FET** (sobreescriu el tram; als trams obre les fronteres i hi canvia el BPM/compàs) |
 | 17 | **Copiar/retallar el LOOP** | doble clic al regle · menú contextual de la banda | ✓ | ✓ | ✓ | **FET** (composable; la selecció del LOOP ja inclou els trams) |
 | 18 | **Quantitza** (inicis de clips) | *Analitza ▸ Quantitza el model…* · botó **Quantitza** | ✓ | ✓ | — | **FET** (abast: tot · selecció · només acords · només estructura) |
@@ -181,7 +184,7 @@ superar el límit, la més antiga es descarta i l'app ho comunica.
 | 44 | **Recents** | *Fitxer ▸ Obre recent…* | **FET** |
 | 45 | **Revertir** | *Fitxer ▸ Reverteix* | **FET** (amb confirmació modal) |
 | 46 | **Còpia versionada (backup)** | automàtic (autosave) | **FET** |
-| 47 | **Exportar WAVs** | `Ctrl+E` | **FET** — el paquet hi porta les **tres parts** (regla #12): `acords.csv`+`wavs_acords/`, `estructura_ABC.csv`+`wavs_estructura/` i **`mapa_tempo/`** (tempo+compàs) |
+| 47 | **Exportar WAVs** | `Ctrl+E` | **FET** — el paquet hi porta les **tres parts** (regla #12): `acords.csv`+`wavs_acords/`, `estructura_ABC.csv`+`wavs_estructura/` i **`mapa_tempo/mapa_tempo.csv`** (+ `AVIS_APROXIMACIO.txt` si hi ha rubatos) |
 | 48 | **Exportar la partitura** | *Fitxer ▸ Exporta la partitura…* | **FET** |
 | 49 | **Obrir la carpeta de sortida** | *Fitxer ▸ Obre la carpeta de sortida* | **FET** |
 | 50 | **Exportar l'àudio editat** | *Fitxer ▸ Exporta àudio…* | **FET** (Fase 6): diàleg natiu de desar; perfils WAV 16/24/32 bits, MP3 128/192/320, FLAC, AAC/M4A, OGG i Opus; només els còdecs que el `ffmpeg` del paquet pot escriure; escriptura atòmica i protecció de la còpia de treball |

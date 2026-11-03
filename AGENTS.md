@@ -39,23 +39,21 @@
 > reflectir l'estat actual, no l'historial). L'historial viu al `CHANGELOG.md`.
 
 Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3,
-4, 5, 6**. Pendents: **7** (rubato exportat aproximat + anacrusi), **10** (motor
-de detecció) i **12** (fuzzer al CI, congelació i docs). Ajornades: **8**
-(MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
+4, 5, 6** i **7** (coberta pel subplà de rubato). Pendents: **10** (motor de
+detecció) i **12** (fuzzer al CI, congelació i docs). Ajornades: **8** (MIDI),
+**9** (anàlisi guiada) i **11** (flux del 90 %).
 
 > **Prioritat actual (2026-11-02):** el **subplà de rubato**
-> (`00PER FER/DECISIONS_RUBATO.md`) està **en curs**. Les **fases 1, 2 i 3.1**
-> (motor, model/format i visor/graella) estan fetes; la següent és la **fase
-> 3.2** (accions de rubato). S'ha
-> d'executar **abans** de la fase 7 i, per tant, abans de les fases 10 i 12.
-> No començar cap altra fase del pla de simplificació fins que el subplà
-> estiga complet i verificat.
+> (`00PER FER/DECISIONS_RUBATO.md`) està **complet (fases 1–5)**. El pla de
+> simplificació pot continuar per la **fase 10** (motor de detecció amb
+> corpus) i la **fase 12** (CI/congelació); la fase 7 queda coberta pel
+> subplà.
 
 Fet recentment (2026-11-01/02):
-- **Subplà de rubato — fases 1-3.1**: motor pur `app/rubato.py`, model
+- **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
   unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
-  projectes vells) i visor/graella amb rubatos derivats de només lectura.
-  Suite completa: **1.507 tests**, 1 omés.
+  projectes vells), visor/graella, accions de crear/convertir rubato i
+  exportació amb avís aproximat. Suite completa: **1.518 tests**, 1 omés.
 - **Fase 6**: `Fitxer ▸ Exporta àudio…` amb diàleg natiu, perfils
   WAV/MP3/FLAC/AAC/OGG/Opus, detecció d'encoders en temps d'execució,
   escriptura atòmica i protecció de la còpia de treball.

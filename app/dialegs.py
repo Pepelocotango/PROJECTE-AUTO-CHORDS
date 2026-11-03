@@ -621,7 +621,7 @@ class DialegTempoMapa(QDialog):
             "és el valor inicial.\nA «Des de» pots escriure **segons** (p. ex. "
             "`90`) o un **compàs** fent-ho començar per `c` (p. ex. `c33` o "
             "`c33.1`).\nEls rubatos es creen des del visor amb «Marca com a "
-            "rubato» o «Converteix a rubato» (fase 3.2).")
+            "rubato» o «Converteix a rubato».")
         avis.setWordWrap(True)
         lay.addWidget(avis)
         self.taula = QTableWidget(0, 3)
@@ -829,7 +829,7 @@ class DialegTramTempo(QDialog):
         if self.chk_segons.isChecked():
             raise ValueError(
                 "El rubato es crea amb «Marca com a rubato» o «Converteix a "
-                "rubato» (fase 3.2); no des del diàleg de tram.")
+                "rubato»; no des del diàleg de tram.")
         num, den = 4, self._den_defecte
         txt = (self.ed_compas.text() or "").strip().replace(" ", "")
         if "/" in txt:

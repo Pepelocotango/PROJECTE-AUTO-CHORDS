@@ -207,7 +207,7 @@ def _note_xml(units, rest=False):
 # --- construcció del MusicXML ----------------------------------------------
 def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
                         new_system_each=None, beat_type=4,
-                        mapa=None):
+                        mapa=None, rubatos=None):
     """Retorna el text MusicXML (partwise) del lead sheet."""
     sec_bar = {bar: let for bar, let in seccions if let}
     fi = max([e[0] + e[2] for e in events] + [0.0])
@@ -235,10 +235,19 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
          '<score-partwise version="4.0">\n',
          f"  <work><work-title>{escape(titol)}</work-title></work>\n",
          "  <identification><encoding><software>AUTO CHORDS</software>"
-         "</encoding></identification>\n",
-         '  <part-list><score-part id="P1"><part-name>Chords</part-name>'
-         "</score-part></part-list>\n",
-         '  <part id="P1">\n']
+         "</encoding></identification>\n"]
+    if rubatos:
+        detalls = "; ".join(
+            f"{float(a):.2f}–{float(b):.2f} s ({text})"
+            for a, b, text in rubatos)
+        x.append(
+            '  <credit page="1"><credit-words default-x="600" default-y="40" '
+            'justify="center" font-size="9">'
+            f"Rubato — graella aproximada: {escape(detalls)}"
+            "</credit-words></credit>\n")
+    x += ['  <part-list><score-part id="P1"><part-name>Chords</part-name>'
+            "</score-part></part-list>\n",
+          '  <part id="P1">\n']
 
     # Canvis de TEMPO del mapa (variable): <sound tempo> al compàs on cauen.
     canvis_tempo = {}
@@ -403,7 +412,7 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
                       titol=None, wav=None,
                       genera_pdf=True, genera_mscz=True, musescore=None,
                       timeout=300, new_system_each=None, beat_type=4,
-                      mapa=None, events=None, durada=None):
+                      mapa=None, events=None, durada=None, rubatos=None):
     """Genera MusicXML (+ PDF/.mscz amb MuseScore) a `<sortida>/partitura/`.
 
     Retorna un diccionari amb les rutes generades (`musicxml`, `pdf`, `mscz`,
@@ -440,7 +449,7 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
 
     xml = construeix_musicxml(events, seccions, bpb=bpb, bpm=bpm, mapa=mapa,
                               titol=base, new_system_each=new_system_each,
-                              beat_type=beat_type)
+                              beat_type=beat_type, rubatos=rubatos)
     ruta_xml = os.path.join(dest_dir, base + ".musicxml")
     with open(ruta_xml, "w", encoding="utf-8") as f:
         f.write(xml)

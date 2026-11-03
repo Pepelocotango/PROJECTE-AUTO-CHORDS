@@ -394,10 +394,9 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
 
 ### 13.7 Clips de rubato (`tipus=rubato`)
 
-> **Implementació (2026-11-02):** motor, model i visor/graella (fase 3.1)
-> fets (`app/rubato.py`, `app/mapa_tempo.py`, `TempoMap`); les accions
-> d'usuari (crear/convertir/fronteres) són la **fase 3.2**. Mentre no
-> estiguen, el visor mostra els rubatos com a derivats i de només lectura.
+> **Implementació (2026-11-02):** subplà de rubato complet — motor, model,
+> visor/graella, accions d'usuari i exportació (amb `AVIS_APROXIMACIO.txt` i
+> text al MusicXML).
 
 - **Qualsevol** clip del carril pot ser rubato (inici, mig o final). Els seus
   **segons són invariables**: cap canvi de BPM o compàs el mou.
