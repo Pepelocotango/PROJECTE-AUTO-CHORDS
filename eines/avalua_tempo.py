@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Avalua l'alineació de tempo i compassos sobre un corpus local autoritzat."""
+"""Avalua tempo, compassos, beats i downbeats sobre un corpus local autoritzat."""
 
 import argparse
 import csv
@@ -18,12 +18,17 @@ from app import pipeline
 from app.tempo_map import TempoMap
 
 TOLERANCIA_COMPAS = 0.070
+TOLERANCIA_ESDEVENIMENT = 0.070
 COLUMNES = (
     "cançó", "bpm_referencia", "bpm_detectat", "error_bpm_pct",
     "compas_1_referencia_s", "compas_1_detectat_s", "error_downbeat_ms",
     "compassos_esperats", "compassos_detectats", "dins_70ms_pct",
-    "sobrants", "absents", "error_maxim_ms", "deriva_ms", "temps_s",
-    "error",
+    "sobrants", "absents", "error_maxim_ms", "deriva_ms",
+    "beat_esperats", "beat_detectats", "beat_precisio", "beat_recall",
+    "beat_f", "beat_error_mitja_ms", "beat_error_maxim_ms",
+    "downbeat_esperats", "downbeat_detectats", "downbeat_precisio",
+    "downbeat_recall", "downbeat_f", "downbeat_error_mitja_ms",
+    "downbeat_error_maxim_ms", "temps_s", "error",
 )
 
 
@@ -80,6 +85,107 @@ def _interval_rubato(valor):
     if not math.isfinite(inici) or not math.isfinite(fi) or inici < 0 or fi <= inici:
         raise ValueError(f"interval de rubato invàlid: {valor!r}")
     return inici, fi
+
+
+_CAMPS_TEMPS = (
+    "time", "t", "inici_s", "beatTime", "downbeatTime",
+    "odfPeakTime", "refinedAttackTime",
+)
+
+
+def _temps_referencia(dades, camp, durada, unics=True):
+    """Llig una llista de temps (números o objectes) d'una anotació.
+
+    Accepta els noms del model suggerit per la guia tècnica (`time`,
+    `beatTime`, `downbeatTime`, `odfPeakTime`…) i els de les anotacions
+    simples (`inici_s`). Retorna `None` si el camp no hi és.
+    """
+    valor = dades.get(camp)
+    if valor is None and camp == "beats":
+        beat_track = dades.get("beatTrack")
+        if isinstance(beat_track, dict):
+            valor = beat_track.get("beats")
+    if valor is None:
+        return None
+    if not isinstance(valor, (list, tuple)):
+        raise ValueError(f"«{camp}» ha de ser una llista de temps")
+
+    temps = []
+    for item in valor:
+        if isinstance(item, dict):
+            for clau in _CAMPS_TEMPS:
+                if clau in item:
+                    brut = item[clau]
+                    break
+            else:
+                raise ValueError(
+                    f"un element de «{camp}» no té cap camp de temps")
+        else:
+            brut = item
+        t = _a_float(brut, f"un temps de «{camp}»")
+        if not math.isfinite(t) or t < 0 or t > float(durada) + 1e-6:
+            raise ValueError(f"temps fora de l'àudio a «{camp}»: {brut!r}")
+        temps.append(t)
+    temps.sort()
+    if unics:
+        for abans, despres in zip(temps, temps[1:]):
+            if abs(despres - abans) < 1e-9:
+                raise ValueError(f"«{camp}» té temps duplicats")
+    return temps
+
+
+def avalua_events(esperats, detectats, tolerancia=TOLERANCIA_ESDEVENIMENT):
+    """Precisió, recall, F i error d'alineació amb emparellament un-a-un.
+
+    Els temps de referència i els detectats s'ordenen i s'emparellen dins la
+    tolerància. Els detectats sobrants i els esperats absents es compten com a
+    errors, de manera que una graella massa densa no es premia.
+    """
+    esperats = sorted(float(t) for t in (esperats or ()))
+    detectats = sorted(float(t) for t in (detectats or ()))
+    tolerancia = float(tolerancia)
+    if not math.isfinite(tolerancia) or tolerancia < 0:
+        raise ValueError("la tolerància ha de ser finita i no negativa")
+    if any(not math.isfinite(t) for t in esperats + detectats):
+        raise ValueError("els temps dels esdeveniments han de ser finits")
+
+    i = j = emparellats = 0
+    errors = []
+    while i < len(esperats) and j < len(detectats):
+        error = detectats[j] - esperats[i]
+        if abs(error) <= tolerancia:
+            errors.append(error)
+            emparellats += 1
+            i += 1
+            j += 1
+        elif error < -tolerancia:
+            j += 1
+        else:
+            i += 1
+
+    n_esperats = len(esperats)
+    n_detectats = len(detectats)
+    if not n_esperats and not n_detectats:
+        precisio = recall = f = None
+    elif not n_esperats or not n_detectats:
+        precisio = recall = f = 0.0
+    else:
+        precisio = emparellats / n_detectats
+        recall = emparellats / n_esperats
+        f = (2.0 * precisio * recall / (precisio + recall)
+             if precisio + recall else 0.0)
+    errors_abs = [abs(e) for e in errors]
+    return {
+        "esperats": n_esperats,
+        "detectats": n_detectats,
+        "emparellats": emparellats,
+        "precisio": precisio,
+        "recall": recall,
+        "f": f,
+        "error_mitja_s": (statistics.mean(errors_abs)
+                          if errors_abs else None),
+        "error_maxim_s": (max(errors_abs) if errors_abs else None),
+    }
 
 
 def compassos_referencia(dades, durada):
@@ -197,6 +303,11 @@ def avalua_canço(ruta_anotacio, num=4, den=4, cada_compassos=4,
         raise FileNotFoundError(f"no existeix l'àudio anotat: {ruta_audio}")
     durada = float(pipeline.wav_info(ruta_audio)["durada"])
     esperats = compassos_referencia(dades, durada)
+    beats_ref = _temps_referencia(dades, "beats", durada)
+    downbeats_ref = _temps_referencia(dades, "downbeats", durada)
+    # Els onsets encara no es puntuen, però es validen perquè el schema siga
+    # estable i els errors d'anotació es detecten abans de comparar motors.
+    _temps_referencia(dades, "onsets", durada, unics=False)
     canvis = [_canvi_tempo(c) for c in dades.get("canvis", [])]
     bpm_ref = float(dades.get(
         "bpm", canvis[0][1] if canvis else 120.0))
@@ -216,7 +327,21 @@ def avalua_canço(ruta_anotacio, num=4, den=4, cada_compassos=4,
                   TempoMap(trams, offset=offset).compassos()]
                  if trams else [])
     graella = avalua_graella(esperats, detectats)
+
+    beat_met = None
+    if beats_ref:
+        beats_detectats = pipeline.detecta_beats(ruta_audio, registre)
+        beat_met = avalua_events(beats_ref, beats_detectats)
+    downbeat_met = (avalua_events(downbeats_ref, detectats)
+                    if downbeats_ref else None)
     elapsed = time.perf_counter() - inici
+
+    def _met(metrica, clau):
+        return metrica[clau] if metrica else None
+
+    def _ms(metrica, clau):
+        valor = _met(metrica, clau)
+        return 1000.0 * valor if valor is not None else None
     err_bpm = (100.0 * (float(bpm) - bpm_ref) / bpm_ref
                if bpm is not None and bpm_ref else None)
     err_downbeat = (1000.0 * (float(downbeat) - downbeat_ref)
@@ -238,6 +363,20 @@ def avalua_canço(ruta_anotacio, num=4, den=4, cada_compassos=4,
                            if graella["error_maxim_s"] is not None else None),
         "deriva_ms": (1000.0 * graella["deriva_s"]
                       if graella["deriva_s"] is not None else None),
+        "beat_esperats": _met(beat_met, "esperats"),
+        "beat_detectats": _met(beat_met, "detectats"),
+        "beat_precisio": _met(beat_met, "precisio"),
+        "beat_recall": _met(beat_met, "recall"),
+        "beat_f": _met(beat_met, "f"),
+        "beat_error_mitja_ms": _ms(beat_met, "error_mitja_s"),
+        "beat_error_maxim_ms": _ms(beat_met, "error_maxim_s"),
+        "downbeat_esperats": _met(downbeat_met, "esperats"),
+        "downbeat_detectats": _met(downbeat_met, "detectats"),
+        "downbeat_precisio": _met(downbeat_met, "precisio"),
+        "downbeat_recall": _met(downbeat_met, "recall"),
+        "downbeat_f": _met(downbeat_met, "f"),
+        "downbeat_error_mitja_ms": _ms(downbeat_met, "error_mitja_s"),
+        "downbeat_error_maxim_ms": _ms(downbeat_met, "error_maxim_s"),
         "temps_s": elapsed,
         "error": "",
     }
@@ -268,6 +407,14 @@ def resum(files):
                 if f["error_downbeat_ms"] is not None]
     percentatges = [float(f["dins_70ms_pct"]) for f in valid
                     if f["dins_70ms_pct"] is not None]
+    beat_f = [float(f["beat_f"]) for f in valid
+              if f["beat_f"] is not None]
+    downbeat_f = [float(f["downbeat_f"]) for f in valid
+                  if f["downbeat_f"] is not None]
+    beat_error = [float(f["beat_error_mitja_ms"]) for f in valid
+                  if f["beat_error_mitja_ms"] is not None]
+    downbeat_error = [float(f["downbeat_error_mitja_ms"]) for f in valid
+                      if f["downbeat_error_mitja_ms"] is not None]
     if not valid:
         return "Sense dades d'àudio avaluades."
     return (
@@ -281,6 +428,18 @@ def resum(files):
     ) + (
         f"; compassos dins ±70 ms: {statistics.mean(percentatges):.1f}%"
         if percentatges else "; graella: sense dades"
+    ) + (
+        f"; beat F mitjà: {statistics.mean(beat_f):.3f}"
+        if beat_f else "; beat F: sense dades"
+    ) + (
+        f"; error beat mitjà: {statistics.mean(beat_error):.1f} ms"
+        if beat_error else "; error beat: sense dades"
+    ) + (
+        f"; downbeat F mitjà: {statistics.mean(downbeat_f):.3f}"
+        if downbeat_f else "; downbeat F: sense dades"
+    ) + (
+        f"; error downbeat mitjà: {statistics.mean(downbeat_error):.1f} ms"
+        if downbeat_error else "; error downbeat: sense dades"
     )
 
 
@@ -306,6 +465,20 @@ def prova_sintetica():
     empty = avalua_graella([], [])
     if empty["dins_tolerancia_pct"] is not None:
         raise AssertionError(f"cas buit incorrecte: {empty}")
+
+    events = avalua_events([0.0, 1.0, 2.0],
+                           [0.01, 1.02, 2.30], 0.070)
+    if (events["emparellats"] != 2
+            or abs(events["f"] - 2.0 / 3.0) > 1e-12):
+        raise AssertionError(f"beat F sintètic incorrecte: {events}")
+    shifted_events = avalua_events(
+        [0.0, 1.0, 2.0], [0.1, 1.1, 2.1], 0.070)
+    if shifted_events["f"] != 0.0:
+        raise AssertionError(
+            f"tolerància de beat sintètica incorrecta: {shifted_events}")
+    empty_events = avalua_events([], [])
+    if empty_events["f"] is not None:
+        raise AssertionError(f"cas buit de beat incorrecte: {empty_events}")
     return True
 
 

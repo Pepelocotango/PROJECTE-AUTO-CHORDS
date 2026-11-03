@@ -129,6 +129,16 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Següent**: **fase 10** (motor de detecció amb corpus real; **en curs**,
   pendent del corpus manual de tempo/compàs a `CORPUS/`) i **fase 12**
   (fuzzer al CI, congelació i docs).
+- **EN CURS (2026-11-03) — fase 12: congelació i higiene**:
+  - **congelades** les funcions laterals **afinador de guitarra** i
+    **`Gt_ALL_Chords_app`**; no s'eliminen, només no es desenvolupen fins que
+    la fase 10 estiga estable;
+  - higiene de tests: `tests/_temporals.py` és obligatori a tots els mòduls de
+    test; la suite no deixa temporals;
+  - nou workflow manual **`qualitat.yml`** amb fuzzer i proves sintètiques
+    **no bloquejants**; no usa cap corpus real;
+  - pendent: tancament final i actualització d'estat quan la fase 10 es
+    considere estable.
 
 ---
 

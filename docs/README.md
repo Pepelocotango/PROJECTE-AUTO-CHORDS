@@ -1,6 +1,6 @@
 # Índex de la documentació (`docs/`)
 
-> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-11-02.**
+> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-11-03.**
 > L'estat *actual* del projecte és a **`../README.md`** i **`../ROADMAP.md`**;
 > aquí hi ha el **detall temàtic**. Els documents d'**`archive/`** (marcats
 > **[HISTÒRIC]**, **[ANÀLISI]** o **[COMPLETAT]**) es conserven com a referència,
@@ -30,6 +30,7 @@
 | `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps: **estat actual del codi** (§1) i **proposta pendent** de la capa de *ticks*/PPQ 960 (§8). |
 | `PARTITURA_EXPORT.md` | Exportació de partitura (xifrat: MusicXML/PDF/MSCZ). |
 | `TEMPO_PER_TRAMS.md` | 🥁 **Motor de tempo per trams** (2026-10-21): BPM cada N compassos per a cançons amb tempo variable (DP d'Ellis + alternatives amb fiabilitat), xifres reals i comparativa amb els DAW. |
+| `guia_tecnica_downbeat_onsets_beats.md` | 🥁 **Guia tècnica d'onsets, beats i downbeats**: separació de capes, pipeline, model de dades, mètriques i criteris d'implementació. És una especificació de treball per a la fase 10. |
 | `ANALISI_GUIAT.md` | **HISTÒRIC**: anàlisi guiada v1/v2 per trams (substituïda). El treball real és amb **marcadors en viu** (`MARCADORS.md`); la v3 (ancoratges) queda en **stand-by** (`ANALISI_GUIAT_v3.md`). |
 | `MARCADORS.md` | **Marcadors d'inici de compàs en viu**: `+` mentre sona, tipus **compàs/secció**, relació amb les fronteres de tempo i pas a BPM. |
 | `EDICIO_OPERACIONS.md` | **Taula única** de totes les formes d'edició: operació × **GUI** × paritat acords/estructura (**#11**) × estat (FET/pendent). El test `TestDocEdicioOperacions` la manté al dia. |
@@ -39,8 +40,8 @@
 | Doc | Què explica |
 |---|---|
 | `../00PER FER/DECISIONS_RUBATO.md` | **SUBPLÀ PRIORITARI**: model de rubato (B) i doble graella. **Subplà complet (fases 1-5)**: motor, model/format, visor/graella, accions, exportació i docs. S'ha d'executar **abans** de la fase 7; atura les fases 7, 10 i 12. |
-| `../00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` | Pla acordat per fases: **0–6 fetes**; la **fase 7 queda substituïda pel subplà de rubato**; pendents **10** (motor de detecció) i **12** (CI/congelació); **8, 9 i 11 ajornades**. |
-| `NOTES_VERIFICACIO.md` | Verificacions de la fase 0: avaluador, destins TAP/guia i mapa de proves de les regles. |
+| `../00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` | Pla acordat per fases: **0–7 fetes**; la **fase 10** (motor de detecció) està **en curs i bloquejada pel corpus manual**; la **fase 12** (congelació, higiene i CI) està **en curs**; **8, 9 i 11 ajornades**. |
+| `NOTES_VERIFICACIO.md` | Verificacions de la fase 0 i estat de la fase 10: avaluador, corpus manual, destins TAP/guia i mapa de proves de les regles. |
 
 > Els refactors **acabats** viuen a `archive/` (p. ex. `REFACTOR_INICI_FI.md`):
 > es conserven com a contracte i rastre, però ja no descriuen estat viu.

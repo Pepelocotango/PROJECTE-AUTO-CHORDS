@@ -350,7 +350,7 @@ Requereix haver fet abans `eines/crea_portable.sh` i `eines/compila_vamp_host.sh
 
 ## GitHub Actions (CI)
 
-Cinc workflows a `.github/workflows/` (tots d'**execució manual**):
+Sis workflows a `.github/workflows/` (tots d'**execució manual**):
 
 | Workflow | Què fa |
 |----------|--------|
@@ -359,6 +359,7 @@ Cinc workflows a `.github/workflows/` (tots d'**execució manual**):
 | **`build-windows.yml`** | Construeix el paquet portable de **Windows x64** (MSYS2 + PyInstaller `--onedir`) → `.zip` |
 | **`build-macos.yml`** | Construeix l'`.app` de **macOS 10.13+** (Intel) → `.dmg` |
 | **`release.yml`** | Agafa els **últims artefactes verds** dels 3 SO i crea/actualitza el **Release** (idempotent) amb les notes en català i el `SHA256SUMS.txt` |
+| **`qualitat.yml`** | Fuzzer d'invariants i proves sintètiques, **no bloquejant**; no usa cap corpus real |
 
 > Cap workflow fa `git push` ni s'activa sol. Els paquets només porten `README.md` + `LICENSE` + `LLICENCIES_TERCERS.md`. Detall: `docs/CI_WORKFLOWS.md`.
 > ⚠️ Els runners de Linux són `ubuntu-22.04` (allà s'hi compila `vamp_host_local`; la glibc marca l'abast mínim de l'AppImage). Detall: `docs/ESTAT_MULTI_SO.md`.

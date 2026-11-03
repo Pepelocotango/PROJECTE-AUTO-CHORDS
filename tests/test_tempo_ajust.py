@@ -1,5 +1,11 @@
-import unittest
+import os
 import random
+import sys
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402,F401
+_ = _temporals  # higiene: esborra els temporals en plegar
 
 from app import tempo_ajust
 

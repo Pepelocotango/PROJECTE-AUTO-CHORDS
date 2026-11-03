@@ -1,0 +1,61 @@
+name: Qualitat no bloquejant (fuzzer + sintètic)
+
+# Fase 12: comprovacions de qualitat que NO bloquegen el build.
+# Manual (workflow_dispatch), com la resta de workflows del projecte.
+# No fa push, no crea releases i no necessita cap corpus real.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qualitat-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fuzzer-i-sintetic:
+    name: Fuzzer i proves sintètiques
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - name: 1. Checkout del codi
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
+        with:
+          persist-credentials: false
+
+      - name: 2. Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: '3.12'
+
+      - name: 3. Biblioteques Qt mínimes
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libportaudio2
+
+      - name: 4. Dependències Python
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet -r requirements.txt
+
+      - name: 5. Fuzzer d'invariants (no bloquejant)
+        continue-on-error: true
+        run: |
+          QT_QPA_PLATFORM=offscreen python -m unittest \
+            tests.test_gui.TestFuzzerReglesIVista -v
+
+      - name: 6. Proves sintètiques de tempo (no bloquejant)
+        continue-on-error: true
+        run: |
+          python eines/avalua_tempo.py --prova-sintetica
+          QT_QPA_PLATFORM=offscreen python -m unittest \
+            tests.test_avalua_tempo -v
+
+      - name: 7. Resum
+        if: always()
+        run: |
+          echo "Fase 12: les comprovacions no bloquejants han acabat."
+          echo "El resultat de cada pas és informatiu; no atura els builds."

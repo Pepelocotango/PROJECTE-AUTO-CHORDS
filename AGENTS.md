@@ -40,19 +40,22 @@
 
 Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3,
 4, 5, 6** i **7** (coberta pel subplà de rubato). La **10** (motor de detecció)
-queda **oberta**; la **12** (fuzzer al CI, congelació i docs) encara no s'ha
-començat. Ajornades: **8** (MIDI), **9** (anàlisi guiada) i **11** (flux del
-90 %).
+queda **oberta**; la **12** (congelació, higiene i CI) està **en curs**.
+Ajornades: **8** (MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
 
 > **Prioritat actual (2026-11-03):** el **subplà de rubato**
 > (`00PER FER/DECISIONS_RUBATO.md`) està **complet (fases 1–5)** i els seus
 > límits de sortida ja estan documentats. La feina següent és la **fase 10**
 > (motor de detecció), que **necessita corpus real** per mesurar i acceptar
 > qualsevol motor nou; l’operador prepara un **corpus manual només de
-> tempo/compàs** a `CORPUS/` (ignorat per Git). La **fase 12** pot avançar en
-> paral·lel pel que fa a higiene i CI.
+> tempo/compàs** a `CORPUS/` (ignorat per Git). La **fase 12** avança en
+> paral·lel: funcions laterals congelades, tests sense temporals i workflow de
+> qualitat no bloquejant.
 
 Fet recentment (2026-11-02/03):
+- **Fase 12 (en curs)**: afinador i `Gt_ALL_Chords_app` congelats; tots els
+  tests importen `_temporals`; `.github/workflows/qualitat.yml` executa fuzzer i
+  proves sintètiques sense bloquejar.
 - **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
   unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
   projectes vells), visor/graella, accions de crear/convertir rubato i

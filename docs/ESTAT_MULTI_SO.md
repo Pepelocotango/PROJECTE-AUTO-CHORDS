@@ -2,7 +2,7 @@
 
 > **2026-10-14 · v0.7.0 (BETA).** Foto del desplegament a **Linux, Windows i
 > macOS**: **els 3 builds del CI són VERDS**. Complementa `ROADMAP_HISTORIA.md` §9
-> (viabilitat), `docs/CI_WORKFLOWS.md` (els 5 workflows de CI),
+> (viabilitat), `docs/CI_WORKFLOWS.md` (els 6 workflows de CI),
 > `docs/archive/PORTABILITAT.md` (Linux), `docs/PORTABILITAT_WINDOWS.md`,
 > `docs/archive/PLANIFICACIO_MACOS.md` i `docs/AUDIO.md` (àudio per SO).
 
@@ -22,8 +22,8 @@
 > 🔧 **Enduriment del CI (13-10, `4f6c8bb`)**: builds **reproduïbles**
 > (`requirements-build.txt` amb pins + `pyinstaller==6.22.3`), **verificació de
 > contingut** de cada paquet, **smoke test de l'AppImage** (Linux), tests **abans**
-> de l'upload a Windows, `concurrency`+`timeout` als 5 workflows i Dependabot (**retirat el 14-10**; a mà).
-> Detall: `docs/CI_WORKFLOWS.md` §4.
+> de l'upload a Windows, `concurrency`+`timeout` als 6 workflows i Dependabot (**retirat el 14-10**; a mà).
+> Detall: `docs/CI_WORKFLOWS.md` §5.
 >
 > ⚠️ **Pendent de validar (operador)**: el **`build-all` agregat** no s'ha tornat
 > a llançar des del **#4** (`98aa58e`) tot i que els fluxos per plataforma sí que

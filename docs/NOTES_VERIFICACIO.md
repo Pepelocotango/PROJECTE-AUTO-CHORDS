@@ -69,6 +69,10 @@ aquest comportament.
 
 ## Fase 10 — motor de detecció (2026-11-03)
 
+> **Guia tècnica:** [`guia_tecnica_downbeat_onsets_beats.md`](guia_tecnica_downbeat_onsets_beats.md)
+> — separació entre onset, beat, downbeat, BPM i fase; pipeline, model de
+> dades, criteris d’avaluació i advertiments per a la implementació.
+
 - **Estat**: en curs, **bloquejada per corpus real**. `eines/avalua_tempo.py
   --prova-sintetica` passa; no hi ha cap corpus local autoritzat al
   repositori ni cap `BASE.csv` inventat.
@@ -94,9 +98,14 @@ aquest comportament.
 
 ### Corpus manual de tempo (abast acordat 2026-11-03)
 
-- **Abast**: només **tempo i compàs**; no calen acords, estructura ni
-  partitura. L’avaluador actual mesura BPM, compàs 1 i alineació de la
-  graella.
+- **Abast**: **tempo i compàs** obligatoris; opcionalment **beats**,
+  **downbeats** i **onsets** (guia tècnica §6 i §9). No calen acords,
+  estructura ni partitura.
+- **Nivell A — graella**: BPM, compàs 1, canvis i rubatos. Permet mesurar BPM,
+  primer downbeat i alineació de la graella.
+- **Nivell B — motor de beats/downbeats**: afig `beats` (tots els polsos) i
+  `downbeats` (inici de cada compàs). Permet calcular **beat F**, **downbeat
+  F** i l’error d’alineació. `onsets` és opcional i, de moment, només es valida.
 - **Ubicació**: carpeta local `CORPUS/` a l’arrel del projecte, **ignorada per
   Git**; no es versiona cap WAV ni cap anotació. Es pot tindre fora del
   repositori i passar la ruta amb `--corpus`.
@@ -114,9 +123,29 @@ aquest comportament.
   **sense usar la sortida del detector**. Si s’anota dins AUTO CHORDS, no
   prémer «Analitza» ni acceptar la proposta automàtica; evitar el snap si
   arrossega a la graella del detector.
-- **Camps mínims** per cançó: `audio`, `bpm` (negres/minut), `num`, `den`,
+- **Camps del Nivell A**: `audio`, `bpm` (negres/minut), `num`, `den`,
   `compas_1_s` (primer downbeat), `canvis` (`[t, bpm, num, den]`) i
-  `rubatos` (`[inici_s, fi_s]`) si n’hi ha. No cal anotar cada beat.
+  `rubatos` (`[inici_s, fi_s]`) si n’hi ha.
+- **Camps del Nivell B**: a més, `beats` i `downbeats` en segons; `onsets`
+  opcional. Es poden escriure com a números o com a objectes amb `time`,
+  `beatTime`, `downbeatTime`, `odfPeakTime` o `refinedAttackTime`.
+
+  ```json
+  {
+    "beats": [0.50, 1.00, 1.50, 2.00],
+    "downbeats": [0.50, 2.50, 4.50],
+    "onsets": [0.50, 0.75, 1.00]
+  }
+  ```
+- **Mètriques**:
+  - beat F, precisió i recall, amb emparellament un-a-un i tolerància ±70 ms;
+  - downbeat F, precisió i recall, amb la mateixa tolerància;
+  - error mitjà i màxim d’alineació en ms per a beats i downbeats.
+  - **Font actual**: beat F usa els beats de `pipeline.detecta_beats` (qm);
+    downbeat F usa les línies del mapa detectat (`TempoMap.compassos()`).
+    És una primera instrumentació, no una comparació definitiva de motors.
+- **Sense `beats`/`downbeats`**, les columnes de beat/downbeat queden buides;
+  no es fabrica una referència a partir del resultat del detector.
 - **Volum**: **3–5 cançons** per a la primera línia base; **15–20** per a
   l’acceptació final, amb tempo fix, canvi de tempo, canvi de compàs, rubato,
   silenci/anacrusi i estils diferents.
@@ -127,12 +156,26 @@ aquest comportament.
     --csv /tmp/resultats_tempo.csv
   ```
 
+## Fase 12 — congelació i higiene (2026-11-03)
+
+- **Congelació**: afinador de guitarra i `Gt_ALL_Chords_app` queden congelats
+  (no s'eliminen) fins que la fase 10 estiga estable; documentat al `ROADMAP`.
+- **Higiene de tests**: tots els mòduls `tests/test_*.py` importen
+  `tests/_temporals.py`; la suite no ha de deixar `tempdir` ni WAVs al disc.
+  La neteja de `temp/` de l'app és una altra cosa i no substitueix esta norma.
+- **CI no bloquejant**: `.github/workflows/qualitat.yml` (manual) executa el
+  fuzzer `TestFuzzerReglesIVista` i les proves sintètiques de
+  `eines/avalua_tempo.py`/`tests.test_avalua_tempo` amb
+  `continue-on-error: true`. No usa cap corpus real ni cap WAV comercial.
+- **Pendent**: tancament final de la fase 12 quan la fase 10 estiga estable.
+  Les fases ajornades 8, 9 i 11 no bloquegen.
+
 ## Seguiment de Pylance
 
 Els diagnòstics `reportArgumentType` venien de llegir camps opcionals del JSON
 i passar valors `None | Unknown` a `float()`/`int()`. L'avaluador ara valida
 els tipus i els valors numèrics a l'entrada, i Pylance retorna zero
-diagnòstics per a `eines/avalua_tempo.py`. Les proves de l'avaluador (6),
+diagnòstics per a `eines/avalua_tempo.py`. Les proves de l'avaluador (10),
 `pyflakes` i `git diff --check` també passen després d'aquest ajust.
 
 ## Ús

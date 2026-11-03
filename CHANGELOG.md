@@ -5,6 +5,30 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit — fase 12: congelació, higiene i CI no bloquejant (2026-11-03)
+- Congelades les funcions laterals **afinador de guitarra** i
+  **`Gt_ALL_Chords_app`** fins que la fase 10 estiga estable; no s'eliminen.
+- Tots els mòduls `tests/test_*.py` importen `tests/_temporals.py`; la suite no
+  deixa temporals propis.
+- Nou workflow manual **`.github/workflows/qualitat.yml`**: fuzzer
+  `TestFuzzerReglesIVista` i proves sintètiques de tempo amb
+  `continue-on-error: true`; no usa cap corpus real.
+- Actualitzats `ROADMAP`, `PLA_SIMPLIFICACIO_TEMPO`, `NOTES_VERIFICACIO`,
+  `CI_WORKFLOWS` i `DEVELOPING`.
+- Pendent el tancament final quan la fase 10 estiga estable.
+
+### Afegit — avaluador de beats/downbeats i guia tècnica (2026-11-03)
+- `eines/avalua_tempo.py` accepta `beats`, `downbeats` i `onsets` a les
+  anotacions del corpus.
+- Calcula **beat F**, **downbeat F**, precisió, recall, error mitjà i error
+  màxim d'alineació (tolerància ±70 ms, emparellament un-a-un).
+- Si una anotació no porta beats/downbeats, les columnes queden buides; no es
+  fabrica cap referència a partir del detector.
+- Documentada la guia tècnica `docs/guia_tecnica_downbeat_onsets_beats.md` i
+  enllaçada al pla de la fase 10 i a l'índex de documentació.
+- Tests de l'avaluador: **10**; suite completa: **1.541 tests**, 1 omés;
+  `pyflakes` net.
+
 ### Afegit — unitat de BPM (negra amb punt, corxera, blanca) (2026-11-03)
 - Selector global de **unitat del BPM** a la barra: `Negra` (per defecte),
   `Negra amb punt`, `Corxera` i `Blanca`.

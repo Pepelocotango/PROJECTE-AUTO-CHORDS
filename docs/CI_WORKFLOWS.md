@@ -1,6 +1,6 @@
 # CI — els workflows de GitHub Actions
 
-> **2026-10-14 · v0.7.0.** Com funcionen els **5 workflows** de `.github/workflows/`.
+> **2026-11-03 · v0.8.0.** Com funcionen els **6 workflows** de `.github/workflows/`.
 >
 > **Tots són d'execució MANUAL** (`workflow_dispatch`): cap s'activa sol (ni amb
 > tags, ni amb push). Els llances des de GitHub ▸ **Actions** ▸ tries el workflow
@@ -8,7 +8,7 @@
 >
 > _(Actualitzat 13-10 amb l'enduriment de l'auditoria de producció: builds
 > reproduïbles, `concurrency`/`timeout`, verificació de contingut i
-> smoke tests — vegeu §4.)_
+> smoke tests — vegeu §5.)_
 >
 > _(14-10-2026: **retirat Dependabot** per decisió de l'operador — els pins són
 > **deliberats** per compatibilitat (Q9400 sense AVX, macOS 10.13, roda de Windows)
@@ -25,6 +25,7 @@
 | **`build-macos.yml`** | build (macOS) | `.app` per a High Sierra 10.13+ (Intel) | **artefacte** `.dmg` (`.app` + docs) |
 | **`build-all.yml`** | agregador | executa els 3 builds **en paral·lel** | els 3 artefactes alhora |
 | **`release.yml`** | release | agafa els **últims artefactes verds** (build-all o per build) | **Release PUBLICAT** amb **1 paquet per SO** (+ tag) |
+| **`qualitat.yml`** | qualitat (Linux) | fuzzer d'invariants i proves sintètiques, **no bloquejant** | cap artefacte |
 
 ## Noms i formats (canònics per SO)
 
@@ -57,7 +58,7 @@ comparteixen l'esquelet: checkout → cau de baixades → entorn → compilar el
 Vamp → Python (dependències **des de `requirements-build.txt`**, amb pins `==`) →
 **tests (suite completa: `python -m unittest discover -s tests`)** → empaquetar →
 **verificar el contingut del paquet** → **smoke test del paquet** → **pujar
-l'artefacte** → (si falla) pujar els logs de debug. Els 5 workflows tenen
+l'artefacte** → (si falla) pujar els logs de debug. Tots els workflows tenen
 **`concurrency`** (no se solapen) i **`timeout-minutes`** (límits d'execució).
 
 - **`build-appimage.yml`** — runner **`ubuntu-22.04`** (marca la glibc mínima de
@@ -121,7 +122,19 @@ Detalls:
   `::warning::` (el flux segueix sent idempotent) → ajuda a detectar que s'ha
   oblidat pujar la versió de `pyproject.toml`.
 
-## 4. Reproduïbilitat i manteniment
+## 4. Qualitat no bloquejant (`qualitat.yml`)
+
+Workflow **manual** de Linux (Python 3.12) que comprova:
+
+- el **fuzzer d'invariants** (`tests.test_gui.TestFuzzerReglesIVista`);
+- les **proves sintètiques** de tempo (`eines/avalua_tempo.py
+  --prova-sintetica` i `tests.test_avalua_tempo`).
+
+Els passos de comprovació tenen **`continue-on-error: true`**: si fallen, el
+resultat queda visible però **no bloquegen** el build. No usa cap corpus real ni
+cap WAV comercial; el corpus local de l'operador (`CORPUS/`) queda fora del CI.
+
+## 5. Reproduïbilitat i manteniment
 
 - **Builds reproduïbles**: les dependències Python dels builds (Windows i macOS)
   s'instal·len des de **`requirements-build.txt`** (`-r requirements.txt` +

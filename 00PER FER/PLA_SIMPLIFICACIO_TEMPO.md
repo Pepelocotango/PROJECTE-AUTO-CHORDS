@@ -276,11 +276,18 @@ Tasques:
 > (qm, madmom, Beat This!) i el blocatge pel corpus queden a
 > `docs/NOTES_VERIFICACIO.md` › «Fase 10».
 >
-> **Corpus acordat (2026-11-03):** manual i només de **tempo/compàs** (sense
-> acords ni estructura), en una carpeta local `CORPUS/` ignorada per Git. Es
+> **Corpus acordat (2026-11-03):** manual i de **tempo/compàs** (sense acords
+> ni estructura), en una carpeta local `CORPUS/` ignorada per Git. Es
 > començarà amb **3–5 cançons** i s’ampliarà a **15–20** per a l’acceptació.
-> El protocol i el format són a `docs/NOTES_VERIFICACIO.md` › «Corpus manual
-> de tempo».
+> Per al motor de beats/downbeats, les mateixes anotacions poden incloure
+> `beats`, `downbeats` i, opcionalment, `onsets`. El protocol i el format són
+> a `docs/NOTES_VERIFICACIO.md` › «Corpus manual de tempo».
+>
+> **Guia de referència:** [`docs/guia_tecnica_downbeat_onsets_beats.md`](../docs/guia_tecnica_downbeat_onsets_beats.md)
+> (onsets/beats/downbeats, pipeline, model de dades i criteris d’avaluació).
+> L’avaluador ja calcula **beat F**, **downbeat F** i error d’alineació quan
+> l’anotació porta `beats`/`downbeats`; sense eixos camps, estes columnes
+> queden buides.
 
 Tasques:
 - **Puntuació de downbeat amb acords**: aprofitar que els canvis d'acord de Chordino cauen sovint en temps forts. Donats candidats de downbeat i compàs del tracker, puntuar-los per la coincidència amb els canvis d'acord i triar o reordenar. Mesurar sobre el corpus; adoptar només si millora la línia base.
@@ -307,6 +314,12 @@ Quan es reprenga:
 ---
 
 ## Fase 12 — Congelació i higiene
+
+> **Estat (2026-11-03): en curs.** S'ha documentat la congelació de
+> l'afinador de guitarra i `Gt_ALL_Chords_app` al `ROADMAP`; tots els mòduls de
+> test importen `tests/_temporals.py`; i s'ha afegit el workflow manual
+> `qualitat.yml` amb el fuzzer i les proves sintètiques en mode **no
+> bloquejant**. Falta el tancament final quan la fase 10 estiga estable.
 
 - Congelar funcionalitats laterals (afinador, `Gt_ALL_Chords_app`, etc.) fins que les fases actives d'aquest pla siguen estables; deixar-ho escrit al ROADMAP. Les fases ajornades 8, 9 i 11 no bloquegen aquesta acceptació.
 - Higiene dels tests: esborrar els `tempdir` (`addCleanup(shutil.rmtree, …)` o helper comú).
