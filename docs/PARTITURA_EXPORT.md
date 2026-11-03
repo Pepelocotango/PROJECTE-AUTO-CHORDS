@@ -62,6 +62,14 @@ representació derivada, no una detecció.
   lliure no hi ha graella de compassos.
 - És un full de **xifrat**: **no hi ha melodia** (el pipeline no extreu
   alçades), només acords i estructura. La melodia s'afegiria a mà al MuseScore.
+- **Rubato inicial**: la partitura comença al **compàs 1** (primer clip
+  mètric). Els compassos negatius del pre-roll no es noten; per tant, el tram
+  inicial del rubato i les seccions que hi comencen queden fora de la
+  partitura. El `<credit>` «Rubato — graella aproximada» identifica el rubato,
+  però no substitueix eixe tram. És un límit conegut (2026-11-03), pendent de
+  decisió.
+- **Marques de secció**: s'ancoren al compàs. Un inici a `1.2.6` es mostra a
+  l'inici del compàs 1, perquè MusicXML no té marques de secció a mig compàs.
 
 ## Notes tècniques
 

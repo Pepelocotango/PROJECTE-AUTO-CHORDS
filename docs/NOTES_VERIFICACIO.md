@@ -67,6 +67,66 @@ aquest comportament.
   `TestBackups` a `tests/test_gui.py`. L'exportació d'àudio s'ha implementat a
   la Fase 6; la restauració de backup des de la GUI continua sense implementar.
 
+## Fase 10 — motor de detecció (2026-11-03)
+
+- **Estat**: en curs, **bloquejada per corpus real**. `eines/avalua_tempo.py
+  --prova-sintetica` passa; no hi ha cap corpus local autoritzat al
+  repositori ni cap `BASE.csv` inventat.
+- **Projecte de prova**: `AUTOCHORDS_01 POLICE_convertit` serveix per comprovar
+  la coherència del model (format 3, cobertura exacta, rubato inicial), però
+  **no** és una veritat de terreny independent: el model ve de la mateixa
+  anàlisi. No s'usa com a línia base.
+- **Puntuació de downbeat amb acords**: proposta pendent; cal passar els
+  canvis de Chordino al detector i mesurar sobre corpus. No s'ha canviat el
+  detector per defecte.
+- **Alternatives (revisió d'escriptori, sense instal·lar ni integrar)**:
+
+  | Motor | Llicència | Requisits / cost | Q9400 | Decisió |
+  |---|---|---|---|---|
+  | qm actual (`qm-barbeattracker`) | la del projecte/Vamp | ja instal·lat; sense dependència nova | funciona | **default** |
+  | `madmom` | codi BSD; **models CC BY-NC-SA** | PyPI 0.16.1 (2018); el README de Beat This! indica Py<3.10/numpy<1.20 per a eixe paquet; `main` pot requerir compilació | **no provat** | **no adoptar per defecte** (models no comercials + risc) |
+  | Beat This! | **MIT** (codi i pesos) | PyTorch 2.0+; model 78 MB (small 8,1 MB); CPU | **no provat**; risc AVX de PyTorch | **candidat opcional**; cal prova de maquinari i empaquetat |
+
+- **Conclusió**: no s'integra cap motor nou. El següent pas real és rebre un
+  corpus autoritzat i mesurar l'alineació de la graella; després es pot
+  comparar el qm amb Beat This! (opcional) i provar la puntuació de downbeat
+  amb acords.
+
+### Corpus manual de tempo (abast acordat 2026-11-03)
+
+- **Abast**: només **tempo i compàs**; no calen acords, estructura ni
+  partitura. L’avaluador actual mesura BPM, compàs 1 i alineació de la
+  graella.
+- **Ubicació**: carpeta local `CORPUS/` a l’arrel del projecte, **ignorada per
+  Git**; no es versiona cap WAV ni cap anotació. Es pot tindre fora del
+  repositori i passar la ruta amb `--corpus`.
+- **Estructura**:
+
+  ```text
+  CORPUS/
+  ├── 01_artista_titol/
+  │   ├── audio.wav
+  │   └── 01_artista_titol.tempo.json
+  └── README.md
+  ```
+
+- **Anotació independent**: s’ha de fer des de l’àudio, amb DAW/orella/tap,
+  **sense usar la sortida del detector**. Si s’anota dins AUTO CHORDS, no
+  prémer «Analitza» ni acceptar la proposta automàtica; evitar el snap si
+  arrossega a la graella del detector.
+- **Camps mínims** per cançó: `audio`, `bpm` (negres/minut), `num`, `den`,
+  `compas_1_s` (primer downbeat), `canvis` (`[t, bpm, num, den]`) i
+  `rubatos` (`[inici_s, fi_s]`) si n’hi ha. No cal anotar cada beat.
+- **Volum**: **3–5 cançons** per a la primera línia base; **15–20** per a
+  l’acceptació final, amb tempo fix, canvi de tempo, canvi de compàs, rubato,
+  silenci/anacrusi i estils diferents.
+- **Comanda**:
+
+  ```bash
+  .venv/bin/python eines/avalua_tempo.py --corpus CORPUS \
+    --csv /tmp/resultats_tempo.csv
+  ```
+
 ## Seguiment de Pylance
 
 Els diagnòstics `reportArgumentType` venien de llegir camps opcionals del JSON

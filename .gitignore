@@ -37,6 +37,9 @@ releases/
 # CARPETA WAVS PROVES
 WAVS_PROVA/
 
+# Corpus local d'avaluació (WAVs i projectes d'anotació manual)
+CORPUS/
+
 
 # Concatenació de codi generada (regenerable amb concatena.py)
 CODI_concatenat*.txt

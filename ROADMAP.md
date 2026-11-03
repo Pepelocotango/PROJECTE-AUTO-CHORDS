@@ -7,7 +7,7 @@
 > **GPL-3.0-or-later**.
 >
 > **v0.8.0** · Estat: **flux de producte estable i multi-SO** · Suite **verda**
-> (1.441 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
+> (1.518 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -123,7 +123,11 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Fet (2026-11-02)**: **subplà de rubato complet (fases 1–5)** —
   [`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md).
   Inclou la fase 7 del pla de simplificació.
-- **Següent**: **fase 10** (motor de detecció amb corpus real) i **fase 12**
+- **Fet (2026-11-03)**: anàlisi del projecte de prova
+  `AUTOCHORDS_01 POLICE_convertit`; model coherent i límits del pre-roll,
+  notació crua i offset documentats al subplà de rubato.
+- **Següent**: **fase 10** (motor de detecció amb corpus real; **en curs**,
+  pendent del corpus manual de tempo/compàs a `CORPUS/`) i **fase 12**
   (fuzzer al CI, congelació i docs).
 
 ---
@@ -150,10 +154,11 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   Model B (BPM/compàs derivats, `mapa_tempo.csv`, dues graelles, exportació
   marcada, anacrusi). S'ha d'executar **abans** de les fases 10 i 12. Vegeu
   [`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md).
-- **PENDENT (fase 10) — Millorar el motor de detecció**: puntuar downbeats amb
-  els canvis d'acord i avaluar motors alternatius (madmom, Beat This!…) amb
-  l'avaluador de la fase 0. Cap motor nou sense l'OK de l'operador. **Després
-  del subplà de rubato.**
+- **EN CURS (fase 10, 2026-11-03) — Millorar el motor de detecció**: puntuar
+  downbeats amb els canvis d'acord i avaluar motors alternatius (madmom,
+  Beat This!…) amb l'avaluador de la fase 0. Cap motor nou sense l'OK de
+  l'operador. **Bloquejat per corpus real**: sense dades no es pot acceptar
+  cap motor.
 - **PENDENT — Backups: triar/restaurar des de l'app** — llista de còpies
   (`backup/`) amb data-hora → previsualitzar i restaurar (amb confirmació,
   mai destructiu); mostrar què conté cada còpia.

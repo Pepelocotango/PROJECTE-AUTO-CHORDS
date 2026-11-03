@@ -266,6 +266,22 @@ Tasques:
 
 ## Fase 10 — Millorar el motor de detecció (amb mesures)
 
+> **Estat (2026-11-03): en curs, bloquejada per corpus.** S'ha analitzat el
+> projecte de prova `AUTOCHORDS_01 POLICE_convertit` i s'han documentat els
+> límits de la sortida (pre-roll de la partitura, noms crus de l'anàlisi i
+> precisió de l'offset) a `DECISIONS_RUBATO.md`. No s'ha integrat cap motor nou
+> ni s'ha canviat el detector per defecte. Cal corpus real autoritzat per
+> mesurar la línia base; mentres no n'hi haja, només es poden fer proves
+> sintètiques i anàlisi d'alternatives. La revisió d'escriptori dels motors
+> (qm, madmom, Beat This!) i el blocatge pel corpus queden a
+> `docs/NOTES_VERIFICACIO.md` › «Fase 10».
+>
+> **Corpus acordat (2026-11-03):** manual i només de **tempo/compàs** (sense
+> acords ni estructura), en una carpeta local `CORPUS/` ignorada per Git. Es
+> començarà amb **3–5 cançons** i s’ampliarà a **15–20** per a l’acceptació.
+> El protocol i el format són a `docs/NOTES_VERIFICACIO.md` › «Corpus manual
+> de tempo».
+
 Tasques:
 - **Puntuació de downbeat amb acords**: aprofitar que els canvis d'acord de Chordino cauen sovint en temps forts. Donats candidats de downbeat i compàs del tracker, puntuar-los per la coincidència amb els canvis d'acord i triar o reordenar. Mesurar sobre el corpus; adoptar només si millora la línia base.
 - **Avaluar motors alternatius** (madmom, Beat This! o similar) amb l'script de la Fase 0 (mètrica d'alineació de la graella), **un per un i en una branca**: comprovar llicència (models inclosos), compatibilitat amb `numpy<2`, funcionament sense AVX al Q9400, pes de l'AppImage/portable i temps d'execució. Informe amb taula comparativa; **no integrar res** sense l'OK de l'operador.

@@ -74,6 +74,13 @@ N · NC · N.C.     →  N           «solo» / «H7» →  intactes
 3. **Reinicia l'app** després d'actualitzar: la notació canònica s'activa en
    arrencar.
 
+> **Pendent (2026-11-03):** l'anàlisi/`postproc` encara pot escriure els noms
+> crus de Chordino al `acords.csv` (`Fm`, `C#maj7`, `Ebm`…). La normalització
+> s'aplica en editar/renombrar i a la partitura, però no en eixe camí. Cal
+> fer-la també en l'anàlisi/desat perquè el model complisca esta forma
+> canònica; mentres no es fa, un projecte acabat d'analitzar pot tindre el
+> CSV i la partitura amb noms diferents.
+
 ---
 
 > Vegeu també: [`FLUX_DE_DADES.md`](FLUX_DE_DADES.md) (model vs capa crua) ·

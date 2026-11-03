@@ -121,8 +121,8 @@ rubato compleixen igualment:
   **derivats**, de només lectura i es recalculen en un sol punt.
 - **Referència**: clip mètric anterior; si no n'hi ha, el següent; si tampoc,
   el transport.
-- **Família de denominador**: la del compàs de referència; no es barregen
-  denominadors dins d'un rubato.
+- **Denominadors**: es poden barrejar dins d'un rubato; el BPM és en
+  **negres per minut** (correcció del 2026-11-02, decisió 26).
 - **Seqüència**: compàs de referència sempre que es puga; resta amb estàndard
   o parcial; màxim **4 segments**; si no hi ha solució, es rebutja.
 - **Pulsos**: `N = round(D*R/60)` **negres**, mínim 1; `BPM = N*60/D`; si cau fora de
@@ -229,3 +229,40 @@ supera, es rebutja amb avís.
 **Subplà de rubato complet (fases 1–5).** El pla de simplificació pot
 continuar per la **fase 10** (motor de detecció amb corpus) i la **fase 12**
 (CI/congelació). La **fase 7** queda coberta per este subplà.
+
+## Límits coneguts de la sortida (2026-11-03)
+
+S'ha analitzat el projecte de prova `AUTOCHORDS_01 POLICE_convertit`
+(sortida real amb rubato inicial). El model és coherent: `FORMAT = 3`, les
+tres pistes cobreixen `0–255.216327 s` sense forats i el rubato inicial
+`0–4.160585 s` (`4/4*2`, 115.368392 BPM) encaixa amb el tram normal
+`4.160585–255.216327 s` (117.583449 BPM). Els límits següents queden
+**documentats com a pendents**, sense canviar el contracte:
+
+- **Partitura i pre-roll inicial**: la partitura comença al **compàs 1**
+  (`4.160585 s`). Els compassos negatius del rubato inicial no es noten, de
+  manera que queden fora els primers **4,16 s** i la secció `A` que comença a
+  `-1.1.1`. El `<credit>` «Rubato — graella aproximada» identifica el rubato,
+  però no diu explícitament que el pre-roll s'ha omés. Cal decidir si la
+  partitura ha d'incloure el pre-roll (mesures d'anacrusi/compassos negatius)
+  o si el límit s'ha de fer explícit a la documentació d'usuari.
+- **Noms d'acord crus a l'anàlisi**: `acords.csv` pot conservar noms de
+  Chordino que no són canònics (`Fm`, `Fm7`, `C#maj7`, `Ebm`); la
+  normalització sí que s'aplica en editar/renombrar i a la partitura. Cal
+  normalitzar també en l'anàlisi/desat perquè el model complisca
+  `docs/NOTACIO_XIFRAT.md` (28 de 81 clips al projecte de prova).
+- **Precisió de l'offset al `.acproj`**: el document desa `4.161` (3
+  decimals) mentre que `mapa_tempo.csv` comença a `4.160585`; la diferència és
+  de **0,415 ms**. En carregar, el visor ja pren l'inici del primer clip
+  mètric; no afecta les etiquetes, però seria més net desar 6 decimals o
+  derivar-lo del mapa.
+- **Exportació WAV no executada al projecte de prova**: només hi ha
+  `partitura/`; no hi ha `wavs_acords/`, `wavs_estructura/`, `mapa_tempo/`,
+  `guia_acords.html` ni `manifest.csv`. No és un error del model: faltava
+  executar «Exporta WAV's».
+- **Backups**: 5 còpies amb l'àudio (~215 MB). La rotació (màxim 10) funciona;
+  és un cost d'espai, no un defecte.
+
+Aquests límits **no canvien cap regla d'or** ni el format. La fase 10 continua
+oberta; el corpus real de tempo encara és necessari per mesurar qualsevol
+motor nou.

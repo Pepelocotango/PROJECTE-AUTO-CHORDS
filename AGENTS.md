@@ -32,28 +32,34 @@
 5. Comprova que l'entorn funciona: la suite en verd i `pyflakes` net (comandes a
    «Com executar-ho»). Si no ho està, **atura't i avisa** abans de canviar res.
 
-## 📍 Estat actual (relleu de sessió, 2026-11-02)
+## 📍 Estat actual (relleu de sessió, 2026-11-03)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** (reescriure-la, **no** incrementalment:
 > reflectir l'estat actual, no l'historial). L'historial viu al `CHANGELOG.md`.
 
 Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3,
-4, 5, 6** i **7** (coberta pel subplà de rubato). Pendents: **10** (motor de
-detecció) i **12** (fuzzer al CI, congelació i docs). Ajornades: **8** (MIDI),
-**9** (anàlisi guiada) i **11** (flux del 90 %).
+4, 5, 6** i **7** (coberta pel subplà de rubato). La **10** (motor de detecció)
+queda **oberta**; la **12** (fuzzer al CI, congelació i docs) encara no s'ha
+començat. Ajornades: **8** (MIDI), **9** (anàlisi guiada) i **11** (flux del
+90 %).
 
-> **Prioritat actual (2026-11-02):** el **subplà de rubato**
-> (`00PER FER/DECISIONS_RUBATO.md`) està **complet (fases 1–5)**. El pla de
-> simplificació pot continuar per la **fase 10** (motor de detecció amb
-> corpus) i la **fase 12** (CI/congelació); la fase 7 queda coberta pel
-> subplà.
+> **Prioritat actual (2026-11-03):** el **subplà de rubato**
+> (`00PER FER/DECISIONS_RUBATO.md`) està **complet (fases 1–5)** i els seus
+> límits de sortida ja estan documentats. La feina següent és la **fase 10**
+> (motor de detecció), que **necessita corpus real** per mesurar i acceptar
+> qualsevol motor nou; l’operador prepara un **corpus manual només de
+> tempo/compàs** a `CORPUS/` (ignorat per Git). La **fase 12** pot avançar en
+> paral·lel pel que fa a higiene i CI.
 
-Fet recentment (2026-11-01/02):
+Fet recentment (2026-11-02/03):
 - **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
   unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
   projectes vells), visor/graella, accions de crear/convertir rubato i
   exportació amb avís aproximat. Suite completa: **1.518 tests**, 1 omés.
+- **Anàlisi del projecte de prova** `AUTOCHORDS_01 POLICE_convertit`:
+  model coherent i cobertura exacta; documentats els límits del pre-roll a la
+  partitura, els noms d'acord crus de l'anàlisi i la precisió de l'offset.
 - **Fase 6**: `Fitxer ▸ Exporta àudio…` amb diàleg natiu, perfils
   WAV/MP3/FLAC/AAC/OGG/Opus, detecció d'encoders en temps d'execució,
   escriptura atòmica i protecció de la còpia de treball.
@@ -64,7 +70,7 @@ Fet recentment (2026-11-01/02):
 - Fases 4 i 5: compàs ≠ secció i ajust d'un sol BPM per mínims quadrats.
 
 Corpus real de tempo encara pendent (l'avaluador sintètic funciona).
-Commit de referència: `eb5e825` (P0, fase 6 i política de formats).
+Commit de referència: `bfbe4a2` (rubato: accions, exportació i documentació).
 
 ## 🎚️ Qui ets i com has de pensar
 

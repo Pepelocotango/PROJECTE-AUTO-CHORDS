@@ -5,6 +5,28 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Documentació — anàlisi del projecte de prova i límits del rubato (2026-11-03)
+- Analitzat `AUTOCHORDS_01 POLICE_convertit` (format 3): les tres pistes
+  cobreixen `0–255.216327 s` sense forats; rubato inicial `0–4.160585 s`
+  (`4/4*2`, 115.368392 BPM) i tram normal `4.160585–255.216327 s`
+  (117.583449 BPM). Cap canvi de codi.
+- Documentat que la **partitura comença al compàs 1** i no nota els compassos
+  negatius del pre-roll del rubato inicial; el `<credit>` ho identifica com a
+  aproximat, però el tram inicial i la secció `A` queden fora.
+- Documentat que l'**anàlisi encara pot deixar noms crus** al `acords.csv`
+  (`Fm`, `C#maj7`, `Ebm`…) tot i que la notació canònica és el contracte; la
+  normalització s'aplica en editar i a la partitura.
+- Documentada la diferència de precisió de l'offset (`.acproj` `4.161` vs mapa
+  `4.160585`) i que el projecte de prova no tenia l'exportació WAV executada.
+- Documentat el **corpus manual de tempo** de la fase 10: només BPM, compàs 1,
+  canvis i rubatos; sense acords ni estructura. Es començarà amb 3–5 cançons i
+  s'ampliarà a 15–20.
+- Afegit `CORPUS/` al `.gitignore` perquè els WAVs i projectes d'anotació
+  locals no es versionen.
+- Actualitzats `DECISIONS_RUBATO`, `PARTITURA_EXPORT`, `NOTACIO_XIFRAT`,
+  `NOTES_VERIFICACIO`, `PLA_SIMPLIFICACIO_TEMPO`, `AGENTS` i `ROADMAP`.
+- Suite completa: **1.518 tests**, 1 omés; `pyflakes` net.
+
 ### Documentació — rubato: subplà complet (fase 5) (2026-11-02)
 - Actualitzats `REGLES_DE_LA_APP` §13.7, `FLUX_DE_DADES`, `PARTITURA_EXPORT`,
   `EDICIO_OPERACIONS`, `ESQUEMA_UI`, `README`, `AGENTS`, `ROADMAP` i este
