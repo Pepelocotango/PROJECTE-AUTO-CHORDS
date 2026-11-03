@@ -1,0 +1,112 @@
+"""Tests de la capa de dades `mapa_tempo.csv` (subplà de rubato, fase 2)."""
+import os
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _temporals  # noqa: E402
+_ = _temporals
+
+from app import mapa_tempo as M  # noqa: E402
+from app import rubato  # noqa: E402
+
+
+class TestTramMapa(unittest.TestCase):
+    def test_compatible_amb_cinc_tuples(self):
+        tm = M.TramMapa(1.0, 2.0, 120.0, "normal", "3/4")
+        self.assertEqual(tuple(tm), (1.0, 2.0, 120.0, 3, 4))
+        self.assertEqual(tm[2], 120.0)
+        self.assertEqual(len(tm), 5)
+        ini, fi, bpm, num, den = tm
+        self.assertEqual((ini, fi, bpm, num, den), (1.0, 2.0, 120.0, 3, 4))
+        self.assertEqual(tm.payload, (120.0, 3, 4))
+
+    def test_rubato_te_el_primer_compas_a_num_den(self):
+        tm = M.TramMapa(0.0, 15.0, 60.0, "rubato", "4/4*3+3/4")
+        self.assertEqual(tm.num, 4)
+        self.assertEqual(tm.den, 4)
+        self.assertTrue(tm.lliure)
+        self.assertEqual(tm.segments, ((4, 3), (3, 1)))
+
+    def test_normal_no_admet_sequencia(self):
+        with self.assertRaises(rubato.RubatoError):
+            M.TramMapa(0.0, 4.0, 120.0, "normal", "4/4+3/4")
+
+    def test_normal_no_admet_repeticions(self):
+        with self.assertRaises(rubato.RubatoError):
+            M.TramMapa(0.0, 8.0, 120.0, "normal", "4/4*2")
+
+    def test_tipus_invalid(self):
+        with self.assertRaises(rubato.RubatoError):
+            M.TramMapa(0.0, 4.0, 120.0, "lliure", "4/4")
+
+    def test_des_de_tupla(self):
+        tm = M.des_de_tupla((0.0, 4.0, 120.0, 3, 8))
+        self.assertEqual(tm.tipus, "normal")
+        self.assertEqual(tm.compassos, "3/8")
+
+
+class TestFitxer(unittest.TestCase):
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+        self.ruta = os.path.join(self.td, M.NOM_MAPA_TEMPO)
+
+    def test_roundtrip_normal(self):
+        trams = [M.TramMapa(0.0, 4.0, 120.0, "normal", "4/4"),
+                 M.TramMapa(4.0, 8.0, 90.0, "normal", "3/4")]
+        M.desa_mapa_tempo(self.ruta, trams)
+        self.assertEqual(M.llegeix_mapa_tempo(self.ruta), trams)
+
+    def test_roundtrip_rubato(self):
+        trams = [M.TramMapa(0.0, 15.0, 60.0, "rubato", "4/4*3+3/4"),
+                 M.TramMapa(15.0, 20.0, 120.0, "normal", "4/4")]
+        M.desa_mapa_tempo(self.ruta, trams)
+        self.assertEqual(M.llegeix_mapa_tempo(self.ruta), trams)
+
+    def test_llegeix_tuples_antigues(self):
+        M.desa_mapa_tempo(self.ruta, [(0.0, 4.0, 120.0, 4, 4)])
+        llegits = M.llegeix_mapa_tempo(self.ruta)
+        self.assertEqual(len(llegits), 1)
+        self.assertEqual(llegits[0].tipus, "normal")
+        self.assertEqual(llegits[0].compassos, "4/4")
+
+    def test_la_capcalera_es_ignora(self):
+        with open(self.ruta, "w", encoding="utf-8", newline="") as f:
+            f.write("inici,fi,bpm,tipus,compassos\n")
+            f.write("0.000000,4.000000,120.000000,normal,4/4\n")
+        self.assertEqual(len(M.llegeix_mapa_tempo(self.ruta)), 1)
+
+    def test_files_dolentes_es_descarten(self):
+        with open(self.ruta, "w", encoding="utf-8", newline="") as f:
+            f.write("0,4,120,normal,4/4\n")
+            f.write("4,8,120,normal,4/4+3/4\n")     # normal amb seqüència
+            f.write("8,12,120,estrany,4/4\n")       # tipus invàlid
+            f.write("12,16,120,normal\n")           # falten columnes
+            f.write("16,20,120,normal,4/4\n")
+        logs = []
+        out = M.llegeix_mapa_tempo(self.ruta, log=logs.append)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(out[0].ini, 0.0)
+        self.assertEqual(out[1].ini, 16.0)
+        self.assertEqual(len(logs), 3)
+
+    def test_fitxer_absent(self):
+        self.assertEqual(M.llegeix_mapa_tempo(self.ruta), [])
+
+    def test_te_format_antic(self):
+        self.assertFalse(M.te_format_antic(self.td))
+        open(os.path.join(self.td, "tempo.csv"), "w").close()
+        self.assertTrue(M.te_format_antic(self.td))
+
+    def test_a_tuples(self):
+        trams = [M.TramMapa(0.0, 4.0, 120.0, "normal", "4/4"),
+                 M.TramMapa(4.0, 8.0, 120.0, "rubato", "4/4*2")]
+        self.assertEqual(M.a_tuples(trams),
+                         [(0.0, 4.0, 120.0, 4, 4),
+                          (4.0, 8.0, 120.0, 4, 4)])
+
+
+if __name__ == "__main__":      # pragma: no cover
+    unittest.main()

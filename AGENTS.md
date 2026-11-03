@@ -44,16 +44,17 @@ de detecció) i **12** (fuzzer al CI, congelació i docs). Ajornades: **8**
 (MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
 
 > **Prioritat actual (2026-11-02):** el **subplà de rubato**
-> (`00PER FER/DECISIONS_RUBATO.md`) està **en curs**. La **fase 1** (motor pur
-> de derivació) està feta; la següent és la **fase 2** (model i format). S'ha
+> (`00PER FER/DECISIONS_RUBATO.md`) està **en curs**. Les **fases 1 i 2**
+> (motor pur i model/format) estan fetes; la següent és la **fase 3**
+> (visor/timeline). S'ha
 > d'executar **abans** de la fase 7 i, per tant, abans de les fases 10 i 12.
 > No començar cap altra fase del pla de simplificació fins que el subplà
 > estiga complet i verificat.
 
 Fet recentment (2026-11-01/02):
-- **Subplà de rubato — fase 1**: `app/rubato.py` (N/BPM, seqüència de
-  compassos, referència, parser canònic) amb **32 tests** i pressupost
-  anti-hangs. Suite completa: **1.484 tests**, 1 omés.
+- **Subplà de rubato — fases 1-2**: motor pur `app/rubato.py` i model
+  unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
+  projectes vells). Suite completa: **1.499 tests**, 1 omés.
 - **Fase 6**: `Fitxer ▸ Exporta àudio…` amb diàleg natiu, perfils
   WAV/MP3/FLAC/AAC/OGG/Opus, detecció d'encoders en temps d'execució,
   escriptura atòmica i protecció de la còpia de treball.
@@ -103,7 +104,7 @@ visor d'estil DAW amb **TRES pistes editables**:
   `1-1-1_C.wav` (acords) i `1-1-1_3-2-1_A.wav` (seccions) a `wavs_acords/` i
   `wavs_estructura/`;
 - el model en text: `acords.csv`, `estructura_ABC.csv` i — regla d'or #12 — el
-  **mapa a `mapa_tempo/`** (`tempo.csv` + `compas.csv`);
+  **mapa a `mapa_tempo/`** (`mapa_tempo.csv`);
 - una **`guia_acords.html`** per imprimir;
 - **partitura de xifrats** (MusicXML sempre; PDF/MSCZ si hi ha MuseScore).
 
@@ -188,22 +189,21 @@ La meva cançó/
 ├── audio/ tema.wav           ← còpia de l'àudio (mai depèn de fora)
 ├── acords.csv                ← MODEL: `inici,fi,acord`   (2 decimals)
 ├── estructura_ABC.csv        ← MODEL: `inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi`
-├── tempo.csv                 ← MODEL: `inici,fi,bpm`
-├── compas.csv                ← MODEL: `inici,fi,num,den`
+├── mapa_tempo.csv            ← MODEL: `inici,fi,bpm,tipus,compassos`
 └── (exports: wavs_acords/ · wavs_estructura/ · partitura/ · guia_acords.html · mapa_tempo/)
 ```
 
 - **Font de veritat**: el **model viu** (memòria: `Visor.acords`, `Visor.seccions`,
-  `Visor.tempo_trams`) i, al disc, **els 4 CSV**. El `fi` d'`acords.csv` **es
+  `Visor.tempo_trams`) i, al disc, **els 3 CSV**. El `fi` d'`acords.csv` **es
   re-deriva** en carregar (la veritat és la cadena d'inicis).
 - **El `.acproj` no és el model**: és el document (tempo del transport, opcions,
   vista). **Sí** que conté el **cru de l'anàlisi** (`dades["analisi"]`:
   `chords`, `segments`, opcions, data/durada) — tractat com una **caché**:
   lectura tolerant, límit de 512 KB i mai imprescindible.
-- **S'escriu a cada edició**: els 4 CSV (atòmic: tmp+fsync+replace).
+- **S'escriu a cada edició**: els 3 CSV (atòmic: tmp+fsync+replace).
   **S'escriu només amb «Desa»**: el `.acproj`. **Només amb «Exporta»**: exports.
-- **Format 2** del `.acproj`, **sense retrocompatibilitat** (l'app s'està
-  construint; els projectes vells amb `analisi/` o `segments.csv` s'ignoren).
+- **Format 3** del `.acproj`, **sense retrocompatibilitat**: qualsevol
+  projecte d'un format anterior es **rebutja** amb un error clar.
 - Detall i diagrama: **`docs/FLUX_DE_DADES.md`**.
 
 ## 🧪 Com executar-ho
@@ -315,7 +315,7 @@ widgets, netegen amb `tests/_qt_neteja.py`. Si afegeixes un test nou, importa
 - **`acords_locators.txt`**: eliminat; els segments i els events de la partitura
   es calculen **en memòria**.
 - **Carpeta `analisi/` i `segments.csv`**: eliminades; el cru viu dins el
-  `.acproj` (format 2).
+  `.acproj` (format 3).
 - **`sonic-annotator`**: eliminat; l'únic motor és `vamp_host_local`.
 
 ## 🚀 Cap on va (visió)

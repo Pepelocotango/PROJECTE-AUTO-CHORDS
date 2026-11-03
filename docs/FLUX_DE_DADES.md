@@ -1,7 +1,7 @@
 # Flux de dades: el MODEL editable (i el cru dins el document)
 
 > **En una frase:** el **MODEL musical** viu als CSV (`acords.csv`,
-> `estructura_ABC.csv`, `tempo.csv`, `compas.csv`); el **cru de l'anàlisi** (el
+> `estructura_ABC.csv`, `mapa_tempo.csv`); el **cru de l'anàlisi** (el
 > que retorna el motor *abans* de netejar) viu **dins el `.acproj`**, no en
 > fitxers solts. El projecte també conté una còpia WAV de treball.
 
@@ -20,7 +20,7 @@
 
 | Peça | On | Quan s'escriu | Qui la toca |
 |---|---|---|---|
-| **MODEL** | `acords.csv`<br>`estructura_ABC.csv`<br>`tempo.csv` · `compas.csv` | a **cada edició** | el visor, la quantització, l'anàlisi |
+| **MODEL** | `acords.csv`<br>`estructura_ABC.csv`<br>`mapa_tempo.csv` | a **cada edició** | el visor, la quantització, l'anàlisi |
 | **CRU** | dins `<nom>.acproj` → `dades["analisi"]` | a cada «Analitza» | **només `Feina.run`** (i el desat del document) |
 | **ÀUDIO DE TREBALL** | `audio/tema.wav` | en crear/importar el projecte i en editar els extrems | còpia interna editable |
 | **MARCADORS** | `marcadors.csv` | en afegir/moure/eliminar marcadors i en editar l'àudio | referències humanes del mapa |
@@ -36,7 +36,7 @@ La meva cançó/                     ← carpeta autocontinguda (portable)
 │
 ├── acords.csv                    ← MODEL: els acords
 ├── estructura_ABC.csv            ← MODEL: l'estructura A/B/C
-├── tempo.csv · compas.csv        ← MODEL: el mapa de BPM/compàs
+├── mapa_tempo.csv               ← MODEL: el mapa de BPM/compàs
 ├── marcadors.csv               ← marcadors humans del mapa
 │
 ├── wavs_acords/ · wavs_estructura/ · partitura/   ← EXPORTS («Exporta»)
@@ -70,9 +70,9 @@ encara no forma part del codi. Vegeu
                           │   edició en viu    │  ← l'usuari edita al visor
                           │ (acords + seccions)│
                           └─────────┬──────────┘
-                                    │  desa NOMÉS els 4 CSV del MODEL
+                                    │  desa NOMÉS els 3 CSV del MODEL
                                     ▼
-                    acords.csv · estructura_ABC.csv · tempo.csv · compas.csv
+                    acords.csv · estructura_ABC.csv · mapa_tempo.csv
                                     ▲
                                     │  (5) quantització del MODEL
                                     └── quantitza
@@ -89,7 +89,7 @@ es van fer servir.
    La quantització treballa sobre el MODEL i no toca el cru.
 
 2. **El MODEL és la font de veritat de l'edició.** Editar (moure/renombrar/
-   partir/…) reescriu els 4 CSV del MODEL — **mai** el cru.
+   partir/…) reescriu els 3 CSV del MODEL — **mai** el cru.
 
 3. **La quantització treballa sobre el MODEL**, no sobre el cru: només mou
    inicis de clips (acords o estructura) a la graella. No re-deriva l'anàlisi.
@@ -132,7 +132,7 @@ es van fer servir.
 | Reescriu l'ABC des de les seccions | `app/visor.py` → `_regenera_abc_des_de_totes_les_seccions` |
 | Quantització del model (acords/estructura) | `app/visor.py` → `quantitza` · `app/graella.py` → `quantitza_boundaries` |
 | Talls → ABC (en memòria) | `app/pipeline.py` → `fer_abc` |
-| Format del document (`analisi`) | `app/projecte.py` → `FORMAT = 2` |
+| Format del document (`analisi`) | `app/projecte.py` → `FORMAT = 3` |
 
 ## 6. Proteccions del document (el cru és una *cache*)
 

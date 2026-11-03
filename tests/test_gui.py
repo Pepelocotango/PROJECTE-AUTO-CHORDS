@@ -192,14 +192,16 @@ class TestCrea(BaseProjecte):
         _wav(wav, 2.0)
         carp = os.path.join(self.td, "P")
         p = projecte.Projecte.crea(carp, wav, bpm=138.0, bpb=4)
-        for nom in ("acords.csv", "estructura_ABC.csv", "tempo.csv",
-                    "compas.csv"):
+        for nom in ("acords.csv", "estructura_ABC.csv", "mapa_tempo.csv"):
             self.assertTrue(os.path.isfile(os.path.join(carp, nom)),
                             f"falta {nom} en crear el projecte")
         with open(os.path.join(carp, "acords.csv"), encoding="utf-8") as fh:
             self.assertEqual(fh.read().strip(), "0.000000,2.000000,N")
-        with open(os.path.join(carp, "tempo.csv"), encoding="utf-8") as fh:
-            self.assertEqual(fh.read().strip(), "0.000000,2.000000,138.000000")
+        with open(os.path.join(carp, "mapa_tempo.csv"),
+                  encoding="utf-8") as fh:
+            files = fh.read().strip().splitlines()
+        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos")
+        self.assertIn("138.000000,normal,4/4", files[1])
         self.assertTrue(os.path.isfile(p.ruta_acproj))
 
 
@@ -254,15 +256,14 @@ class TestObreDesa(BaseProjecte):
         sobres = [f for f in os.listdir(p.carpeta) if f.endswith(".tmp")]
         self.assertEqual(sobres, [], f"no han de quedar temporals: {sobres}")
 
-    def test_format_antic_es_migra(self):
-        """Un projecte sense `format` (versió 0) s'obre i queda al format viu."""
+    def test_format_antic_es_rebutja(self):
+        """Un projecte sense `format` (versió 0) no es migra."""
         td = tempfile.mkdtemp()
         ap = os.path.join(td, "vell.acproj")
         with open(ap, "w", encoding="utf-8") as f:
             json.dump({"nom": "VELL", "tempo": {"bpm": 120, "bpb": 4}}, f)
-        p = projecte.Projecte.obre(ap)
-        self.assertEqual(p.dades["format"], projecte.FORMAT)
-        self.assertEqual(p.dades["nom"], "VELL")
+        with self.assertRaises(projecte.ProjecteError):
+            projecte.Projecte.obre(ap)
 
     def test_format_mes_nou_peta(self):
         p = self._projecte("FUT")
@@ -4672,8 +4673,7 @@ class TestProjecteAssociat(_Base):
                 f.tria_wav()
 
         self.assertEqual(f.projecte.carpeta, carp)
-        for nom in ("acords.csv", "estructura_ABC.csv", "tempo.csv",
-                    "compas.csv"):
+        for nom in ("acords.csv", "estructura_ABC.csv", "mapa_tempo.csv"):
             self.assertTrue(os.path.isfile(os.path.join(carp, nom)), nom)
         self.assertFalse(os.path.exists(os.path.join(carp, "wavs_acords")),
                          "els derivats vells no poden quedar")

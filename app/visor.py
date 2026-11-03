@@ -1382,8 +1382,8 @@ class Visor(QMainWindow):
         pipeline.desa_tempo_map(carpeta, model["trams"])
         if pipeline.desa_marcadors(carpeta, model["marcadors"]) is None:
             raise OSError("no s'han pogut desar els marcadors")
-        return ("acords.csv", "estructura_ABC.csv", "tempo.csv",
-                "compas.csv", pipeline.NOM_MARCADORS)
+        return ("acords.csv", "estructura_ABC.csv",
+                pipeline.NOM_MAPA_TEMPO, pipeline.NOM_MARCADORS)
 
     def _publica_model_audio(self, temporal, noms, wav_temporal):
         carpeta = self._carpeta_acords()
@@ -2245,7 +2245,7 @@ class Visor(QMainWindow):
         self._sync_timeline_seccions()
         self._undo_commit()
         try:
-            # `_desa_i_regenera` ja escriu els 4 CSV (acords, ABC i mapa de
+            # `_desa_i_regenera` ja escriu els 3 CSV (acords, ABC i mapa de
             # tempo): no cal tornar a regenerar l'ABC ací (eren dos desats).
             self._desa_i_regenera()
             self._sincronitza_vista(preserva=True, difereix=True)

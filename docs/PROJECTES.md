@@ -24,7 +24,7 @@ La meva cançó/                 ← la carpeta del projecte (portable)
 ├── audio/ tema.wav            ← CÒPIA WAV de treball (mai depèn de fora)
 ├── acords.csv                 ← el model (font de veritat)
 ├── estructura_ABC.csv         ← el model (font de veritat)
-├── tempo.csv · compas.csv     ← el model (mapa de BPM/compàs)
+├── mapa_tempo.csv            ← el model (mapa de BPM/compàs)
 ├── marcadors.csv              ← marcadors humans del mapa
 │   (el CRU de l'anàlisi viu DINS el .acproj — no hi ha carpeta analisi/)
 ├── wavs_acords/ …             ← exports (els crea `pipeline.exporta_total`)
@@ -41,7 +41,7 @@ al costat de l'original; vegeu
 
 ## El document `.acproj` (JSON)
 
-- `format` (versió de format; `_migra` **rebutja** una versió més nova) · `app` · `nom`
+- `format` (versió de format; `_migra` **rebutja** qualsevol versió diferent) · `app` · `nom`
   · `creat` / `desat` · `audio` (ruta **relativa** dins el projecte).
 - `tempo` (`bpm` / `bpb` / `offset` / `fix`) · `opcions` (autodetecció) · `vista`.
 - Es desa **atòmicament** (`pipeline.escriu_atomic`: mai queda a mitges).
@@ -86,7 +86,7 @@ al costat de l'original; vegeu
 | Funció | Què fa |
 |---|---|
 | `Projecte.crea(carpeta, wav, …)` | Crea la carpeta, **copia l'àudio** i desa el `.acproj`. |
-| `Projecte.obre(ruta)` | Obre per `.acproj`, carpeta o WAV (migra el format). |
+| `Projecte.obre(ruta)` | Obre per `.acproj`, carpeta o WAV (comprova el format). |
 | `Projecte.desa()` | Desa el `.acproj` **atòmicament**. |
 | `Projecte.duplica(destí)` | **Desa com / còpia**: copia el projecte sencer i renombra el `.acproj`. |
 | `Projecte.fes_backup()` | Còpia versionada a `backup/<data-hora>/` + rotació. |
@@ -101,10 +101,9 @@ al costat de l'original; vegeu
 
 ## Estat
 
-- ~~Migracions de `format` < actual~~ → ✅ **FET**: `_migra` accepta qualsevol
-  `format` anterior (el 0 = projectes sense el camp), migra camp a camp quan
-  calgui i **rebutja** els projectes d'un format MÉS NOU amb un error clar;
-  proveït a `tests/test_gui.py` (`format` 0 i 99).
+- **Sense migracions** (decisió 2026-11-02): `_migra` exigeix el `FORMAT`
+  actual i **rebutja** qualsevol altra versió amb un error clar; proveït a
+  `tests/test_gui.py` (`format` 0 i 99).
 
 ## Edició bàsica d'àudio
 

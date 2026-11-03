@@ -23,7 +23,7 @@
 | `ESQUEMA_UI.md` · `ESQUEMA_UI.html` · `ESQUEMA_UI.svg` | Esquema de la GUI. El `.html` i el `.svg` es **generen** (`eines/genera_esquema_ui.py`) des del `.md` — **no editar-los a mà**. L'**art manual** original es conserva a `ESQUEMA_UI_manual.svg` · `ESQUEMA_UI_manual.html`. |
 | `PROJECTES.md` | **Projectes autocontinguts** («com un DAW»): `.acproj`, `audio/` copiat, «Desa com», backups. |
 | `EDICIO_AUDIO.md` | **Abast i estat** de l'edició bàsica: còpia WAV, retall/allargament dels extrems i **exportació amb FFmpeg** (perfils WAV/MP3/FLAC/AAC/OGG/Opus). |
-| `FLUX_DE_DADES.md` | **Flux de dades**: el **MODEL** (4 CSV) i el **cru** de l'anàlisi, que viu dins el `.acproj`. |
+| `FLUX_DE_DADES.md` | **Flux de dades**: el **MODEL** (3 CSV) i el **cru** de l'anàlisi, que viu dins el `.acproj`. |
 | `NOTACIO_XIFRAT.md` | **Notació del xifrat**: la forma canònica (`Am`→`A-`) i on s'aplica. |
 | `TIPUS_XIFRAT_ACORDS.md` | **Tipus de xifrat**: variants de sintaxi, graus i `<kind>` MusicXML (MuseScore). |
 | `AUDIO.md` | **Àudio**: reproducció (play) i motors per SO (Linux/macOS/Windows). |
@@ -38,7 +38,7 @@
 
 | Doc | Què explica |
 |---|---|
-| `../00PER FER/DECISIONS_RUBATO.md` | **SUBPLÀ PRIORITARI**: model de rubato (B) i doble graella. **Fase 1 (motor pur) feta**; següent: model i format. S'ha d'executar **abans** de la fase 7; atura les fases 7, 10 i 12. |
+| `../00PER FER/DECISIONS_RUBATO.md` | **SUBPLÀ PRIORITARI**: model de rubato (B) i doble graella. **Fases 1-2 fetes** (motor pur i model/format); següent: visor/timeline. S'ha d'executar **abans** de la fase 7; atura les fases 7, 10 i 12. |
 | `../00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` | Pla acordat per fases: **0–6 fetes**; la **fase 7 queda substituïda pel subplà de rubato**; pendents **10** (motor de detecció) i **12** (CI/congelació); **8, 9 i 11 ajornades**. |
 | `NOTES_VERIFICACIO.md` | Verificacions de la fase 0: avaluador, destins TAP/guia i mapa de proves de les regles. |
 

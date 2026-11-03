@@ -78,15 +78,14 @@ l'operador (2026-10-19) de tenir el sistema de fitxers intern més simple.
 ACORDS = "inici_s,fi_s,acord\n0.0,4.0,C\n4.0,8.0,Am\n8.0,12.0,F\n12.0,16.0,G\n"
 
 
-def _carpeta(tempo=None, compas=None):
+def _carpeta(mapa=None):
     td = tempfile.mkdtemp()
     with open(os.path.join(td, "acords.csv"), "w", encoding="utf-8") as f:
         f.write(ACORDS)
-    if tempo:
-        with open(os.path.join(td, "tempo.csv"), "w", encoding="utf-8") as f:
-            f.write(tempo)
-        with open(os.path.join(td, "compas.csv"), "w", encoding="utf-8") as f:
-            f.write(compas)
+    if mapa:
+        with open(os.path.join(td, "mapa_tempo.csv"), "w",
+                  encoding="utf-8") as f:
+            f.write(mapa)
     return td
 
 
@@ -133,11 +132,12 @@ class TestGuiaDaw(unittest.TestCase):
         self.assertAlmostEqual(ev[0][2], 8.0, places=6)
 
     def test_amb_mapa_de_tempo_variable(self):
-        """Amb `tempo.csv`/`compas.csv` de més d'un tram, tot es calcula amb el
-        mapa (posicions compàs.temps.fusa) i no peta."""
-        td = _carpeta(tempo="ini_s,fi_s,bpm\n0.0,8.0,120\n8.0,16.0,90\n",
-                      compas="ini_s,fi_s,beats,beat_type\n0.0,8.0,4,4\n"
-                             "8.0,16.0,3,4\n")
+        """Amb `mapa_tempo.csv` de més d'un tram, tot es calcula amb el mapa
+        (posicions compàs.temps.fusa) i no peta."""
+        td = _carpeta(
+            mapa="inici,fi,bpm,tipus,compassos\n"
+                 "0.0,8.0,120,normal,4/4\n"
+                 "8.0,16.0,90,normal,3/4\n")
         segs = self._segs(td)
         self.assertEqual(len(segs), 4)
         guia = pipeline.genera_guia_html(
@@ -6134,8 +6134,7 @@ part:
 
 - acords: `acords.csv` + `wavs_acords/`
 - estructura: `estructura_ABC.csv` + `wavs_estructura/`
-- mapa de tempo/compàs: **carpeta pròpia** `mapa_tempo/` amb `tempo.csv` i
-  `compas.csv`
+- mapa de tempo/compàs: **carpeta pròpia** `mapa_tempo/` amb `mapa_tempo.csv`
 
 Abans el mapa no s'exportava: el paquet no era paritari.
 """
@@ -6181,8 +6180,7 @@ class TestRegla12ParitatExport(_regla12_export___Base):
         # mapa de BPM/compàs, amb carpeta PRÒPIA
         mapa = os.path.join(sortida, "mapa_tempo")
         self.assertTrue(os.path.isdir(mapa), "falta la carpeta del mapa")
-        self.assertTrue(os.path.isfile(os.path.join(mapa, "tempo.csv")))
-        self.assertTrue(os.path.isfile(os.path.join(mapa, "compas.csv")))
+        self.assertTrue(os.path.isfile(os.path.join(mapa, "mapa_tempo.csv")))
         self.assertEqual(res.get("mapa_tempo_dir"), mapa)
         self.assertEqual(res.get("n_mapa_trams"), len(TRAMS))
 
@@ -6200,14 +6198,14 @@ class TestRegla12ParitatExport(_regla12_export___Base):
         self.assertFalse(os.path.isdir(os.path.join(sortida, "mapa_tempo")))
         self.assertNotIn("mapa_tempo_dir", res)
 
-    def test_el_csv_de_compas_te_els_compassos_del_mapa(self):
-        """El `compas.csv` ha de dur el compàs de cada tram (4/4 i 3/4)."""
+    def test_el_csv_de_mapa_te_els_compassos_del_mapa(self):
+        """El `mapa_tempo.csv` ha de dur el compàs de cada tram (4/4 i 3/4)."""
         sortida, _regla12_export___ = self._exporta(TRAMS)
-        with open(os.path.join(sortida, "mapa_tempo", "compas.csv"),
+        with open(os.path.join(sortida, "mapa_tempo", "mapa_tempo.csv"),
                   encoding="utf-8") as f:
             files = [r for r in csv.reader(f) if r and not r[0][0].isalpha()]
-        valors = [(int(r[2]), int(r[3])) for r in files]
-        self.assertEqual(valors, [(4, 4), (3, 4)])
+        self.assertEqual([r[4] for r in files], ["4/4", "3/4"])
+        self.assertEqual([r[3] for r in files], ["normal", "normal"])
 
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_requirements.py

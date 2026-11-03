@@ -18,6 +18,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import unittest
 import tempfile
 import wave
+from app import mapa_tempo
 from app import pipeline
 from app import visor as visor_mod
 import csv
@@ -4219,9 +4220,10 @@ class TestSenseAnalisi(_sense_analisi___Base):
         self.assertEqual(len(vr.tempo_trams), 2)
         self.assertEqual(vr.tempo_map.label(0.0), "1.1.1")
         self.assertEqual(vr.tempo_map.signatura(3.0), (3, 4))
-        tempo = pipeline.llegeix_tempo_csv(os.path.join(p.carpeta, "tempo.csv"))
-        self.assertEqual(len(tempo), 2)
-        self.assertAlmostEqual(float(tempo[1][2]), 90.0)
+        trams = mapa_tempo.llegeix_mapa_tempo(
+            os.path.join(p.carpeta, "mapa_tempo.csv"))
+        self.assertEqual(len(trams), 2)
+        self.assertAlmostEqual(float(trams[1].bpm), 90.0)
 
     def test_mou_la_frontera_del_mapa(self):
         """Fase 4b: arrossegar una vora de la pista de BPM/compàs mou on canvia."""
@@ -4262,8 +4264,7 @@ class TestSenseAnalisi(_sense_analisi___Base):
         w, p = self._finestra_amb_projecte(amb_csv=False)
         self.assertTrue(w.b_export.isEnabled(), "es pot exportar sense analitzar")
         self.assertTrue(w.b_export_part.isEnabled())
-        for nom in ("acords.csv", "estructura_ABC.csv", "tempo.csv",
-                    "compas.csv"):
+        for nom in ("acords.csv", "estructura_ABC.csv", "mapa_tempo.csv"):
             self.assertTrue(os.path.isfile(os.path.join(p.carpeta, nom)), nom)
 
     def test_sense_analisi_no_cal_la_capa_crua(self):
@@ -4593,7 +4594,7 @@ class TestLlistaTempo(_undo_temps___Base):
         v._desa_i_regenera()
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 140.0, places=6)
         self.assertAlmostEqual(v.tempo_map.bpm(0.0), 140.0, places=6)
-        with open(os.path.join(v._carpeta_acords(), "tempo.csv"),
+        with open(os.path.join(v._carpeta_acords(), "mapa_tempo.csv"),
                   encoding="utf-8") as f:
             self.assertIn("140", f.read())
 

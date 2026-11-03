@@ -7,6 +7,7 @@ import csv
 import os
 import shutil
 
+from . import mapa_tempo
 from . import tempo_map
 import subprocess
 import tempfile
@@ -732,32 +733,17 @@ def normalitza_cobertura(acords, seccions, durada, log=None):
 
 
 def _mapa_tempo_carpeta(carpeta, offset=0.0):
-    """Llegeix `tempo.csv` i `compas.csv` de `carpeta` (o `mapa_tempo/`) i
-    retorna un `TempoMap` si té més d'un tram i no és constant, o `None`.
+    """Llig `mapa_tempo.csv` de `carpeta` (o `mapa_tempo/`) i retorna un
+    `TempoMap` si té més d'un tram i no és constant, o `None`.
     """
     try:
         from app.tempo_map import TempoMap
 
-        def _llegeix(base_dir, nom, ncol):
-            r = os.path.join(base_dir, nom)
-            out = []
-            if os.path.isfile(r):
-                with open(r, encoding="utf-8") as f:
-                    for fila in csv.reader(f):
-                        if len(fila) >= ncol and not fila[0].startswith(("inici", "ini")):
-                            try:
-                                out.append([float(x) for x in fila[:ncol]])
-                            except ValueError:
-                                pass
-            return out
-
         for d in (carpeta, os.path.join(carpeta, "mapa_tempo")):
-            _tempo = _llegeix(d, "tempo.csv", 3)
-            _compas = _llegeix(d, "compas.csv", 4)
-            if len(_tempo) > 1 and len(_tempo) == len(_compas):
-                _trams = [(t[0], t[1], t[2], int(c[2]), int(c[3]))
-                          for t, c in zip(_tempo, _compas)]
-                tm = TempoMap(_trams, offset=offset)
+            trams_map = mapa_tempo.llegeix_mapa_tempo(
+                os.path.join(d, NOM_MAPA_TEMPO))
+            if len(trams_map) > 1:
+                tm = TempoMap([tuple(t) for t in trams_map], offset=offset)
                 if not tm.es_constant():
                     return tm
     except Exception:
@@ -1894,8 +1880,8 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
     `mapa_tempo` = els trossos del mapa de BPM/compàs del **model viu**. Amb ell,
     el paquet exportat tracta els **tres tipus igual** (regla d'or #12): a més
     d'`acords.csv` + `wavs_acords/` i `estructura_ABC.csv` + `wavs_estructura/`,
-    el mapa té la seva **carpeta pròpia** `mapa_tempo/` amb `tempo.csv` i
-    `compas.csv` (els seus derivats, igual que els altres dos).
+    el mapa té la seva **carpeta pròpia** `mapa_tempo/` amb `mapa_tempo.csv`
+    (el seu derivat, igual que els altres dos).
 
     Retorna un diccionari amb les rutes finals (csv + carpetes).
     """
@@ -1990,9 +1976,9 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
 
 
 # Resolució temporal unificada dels CSV: 6 decimals (1 µs). És la MATEIXA
-# unitat per als quatre fitxers editables (`acords.csv`, `estructura_ABC.csv`,
-# `tempo.csv` i `compas.csv`): el model no ha de tindre una resolució per a
-# cada fitxer. La UI en mostra 3 (mil·lisegons); el model en guarda 6.
+# unitat per als tres fitxers editables (`acords.csv`, `estructura_ABC.csv` i
+# `mapa_tempo.csv`): el model no ha de tindre una resolució per a cada fitxer.
+# La UI en mostra 3 (mil·lisegons); el model en guarda 6.
 TEMPS_DEC = 6
 # Distància MÍNIMA entre dos temps del CSV perquè els seus arrodoniments siguin
 # DIFERENTS. Amb menys, dues files cauen al mateix instant del CSV → un clip de
@@ -2053,92 +2039,11 @@ def desa_acords_csv(ruta, clips, durada=0.0):
     escriu_atomic(ruta, _escriu)
 
 
-# --- Mapa de TEMPO i COMPÀS (persistència) -------------------------
-# Dos fitxers, com les dues pistes d'un DAW (tempo track / signature track):
-#   tempo.csv   →  inici,fi,bpm
-#   compas.csv  →  inici,fi,num,den
-# Els trossos són alineats (les mateixes fronteres), així no es desincronitzen.
-NOM_CSV_TEMPO = "tempo.csv"
-NOM_CSV_COMPAS = "compas.csv"
-
-
-def desa_tempo_csv(ruta, trams):
-    """Desa el mapa de tempo com a `inici,fi,bpm` (resolució `TEMPS_DEC`)."""
-    def _escriu(f):
-        w = csv.writer(f)
-        for s in trams:
-            w.writerow([f"{float(s[0]):.{TEMPS_DEC}f}",
-                        f"{float(s[1]):.{TEMPS_DEC}f}",
-                        f"{float(s[2]):.6f}"])
-    escriu_atomic(ruta, _escriu)
-
-
-def desa_compas_csv(ruta, trams):
-    """Desa el mapa de compàs com a `inici,fi,num,den`.
-
-    `trams` són els del mapa: `(ini, fi, bpm, num, den)` (només s'escriuen
-    `ini, fi, num, den`), o també `(ini, fi, num, den)`.
-    """
-    def _escriu(f):
-        w = csv.writer(f)
-        for s in trams:
-            w.writerow([f"{float(s[0]):.{TEMPS_DEC}f}",
-                        f"{float(s[1]):.{TEMPS_DEC}f}",
-                        f"{int(s[-2])}", f"{int(s[-1])}"])
-    escriu_atomic(ruta, _escriu)
-
-
-def llegeix_tempo_csv(ruta, log=None, preserva_invalides=False):
-    """`inici,fi,bpm` → `[(ini, fi, bpm), …]` (buit si no hi és o és dolent)."""
-    out = []
-    if not ruta or not os.path.isfile(ruta):
-        return out
-    with open(ruta, encoding="utf-8") as f:
-        for n, fila in enumerate(csv.reader(f), 1):
-            if fila and fila[0].startswith("inici"):
-                continue
-            if len(fila) < 3:
-                if log:
-                    log(f"tempo.csv fila {n}: s'ha descartat una fila mal formada.")
-                if preserva_invalides:
-                    out.append((float("nan"),) * 3)
-                continue
-            try:
-                out.append((float(fila[0]), float(fila[1]), float(fila[2])))
-            except (ValueError, OverflowError):
-                if log:
-                    log(f"tempo.csv fila {n}: s'ha descartat una fila mal formada.")
-                if preserva_invalides:
-                    out.append((float("nan"),) * 3)
-                continue
-    return out
-
-
-def llegeix_compas_csv(ruta, log=None, preserva_invalides=False):
-    """`inici,fi,num,den` → `[(ini, fi, num, den), …]` (buit si no hi és)."""
-    out = []
-    if not ruta or not os.path.isfile(ruta):
-        return out
-    with open(ruta, encoding="utf-8") as f:
-        for n, fila in enumerate(csv.reader(f), 1):
-            if fila and fila[0].startswith("inici"):
-                continue
-            if len(fila) < 4:
-                if log:
-                    log(f"compas.csv fila {n}: s'ha descartat una fila mal formada.")
-                if preserva_invalides:
-                    out.append((float("nan"),) * 4)
-                continue
-            try:
-                out.append((float(fila[0]), float(fila[1]),
-                            float(fila[2]), float(fila[3])))
-            except (ValueError, OverflowError):
-                if log:
-                    log(f"compas.csv fila {n}: s'ha descartat una fila mal formada.")
-                if preserva_invalides:
-                    out.append((float("nan"),) * 4)
-                continue
-    return out
+# --- Mapa de TEMPO i COMPÀS (model unificat `mapa_tempo.csv`) --------
+# Un sol fitxer, amb una fila per tram:
+#   inici,fi,bpm,tipus,compassos
+# `tipus` = normal | rubato; `compassos` = `4/4` o `4/4*3+3/4`.
+NOM_MAPA_TEMPO = mapa_tempo.NOM_MAPA_TEMPO
 
 
 # --- Marcadors (inici de compàs marcats a mà, en viu) -----------------------
@@ -2221,15 +2126,17 @@ def llegeix_marcadors_tipus(carpeta):
 
 
 def desa_tempo_map(carpeta, trams):
-    """Desa els dos mapes (tempo + compàs) d'una carpeta de projecte."""
+    """Desa el mapa unificat (`mapa_tempo.csv`) d'una carpeta de projecte."""
     os.makedirs(carpeta, exist_ok=True)
-    desa_tempo_csv(os.path.join(carpeta, NOM_CSV_TEMPO), trams)
-    desa_compas_csv(os.path.join(carpeta, NOM_CSV_COMPAS), trams)
+    mapa_tempo.desa_mapa_tempo(os.path.join(carpeta, NOM_MAPA_TEMPO), trams)
 
 
 def llegeix_tempo_map(carpeta, bpm, num, den, durada, log=None):
-    """Trossos del mapa d'una carpeta; si no hi ha fitxers, un sol tros
-    (`bpm`, `num/den`) que cobreix `[0, durada)` — el cas constant d'avui."""
+    """Llig `mapa_tempo.csv`; si no hi ha model, un sol tros constant.
+
+    Els projectes amb el model antic (`tempo.csv` + `compas.csv`) es rebutgen:
+    no hi ha migració. Els rubatos encara no s'interpreten al visor (fase 3).
+    """
     def _constant():
         net, avisos = tempo_map.neteja_trams(
             [(0.0, float(durada or 0.0), bpm, num, den)], durada)
@@ -2238,35 +2145,27 @@ def llegeix_tempo_map(carpeta, bpm, num, den, durada, log=None):
                 log(f"Mapa de tempo: {avís}")
         return net
 
-    tempo = llegeix_tempo_csv(
-        os.path.join(carpeta or "", NOM_CSV_TEMPO), log=log,
-        preserva_invalides=True)
-    compas = llegeix_compas_csv(
-        os.path.join(carpeta or "", NOM_CSV_COMPAS), log=log,
-        preserva_invalides=True)
-    if not tempo or not compas:
-        if tempo or compas:
-            if log:
-                log("El mapa CSV de tempo/compàs és incomplet; "
-                    "s'ha recuperat el valor constant.")
+    if not carpeta:
         return _constant()
-    trams = []
-    for t, c in zip(tempo, compas):
-        trams.append((float(t[0]), float(t[1]), float(t[2]),
-                      c[2], c[3]))
-    if not trams:
+    ruta = os.path.join(carpeta, NOM_MAPA_TEMPO)
+    if mapa_tempo.te_format_antic(carpeta) and not os.path.isfile(ruta):
+        raise ValueError(
+            f"El projecte té el model antic ({mapa_tempo.NOM_CSV_TEMPO_ANTIC}"
+            f" + {mapa_tempo.NOM_CSV_COMPAS_ANTIC}); no suportat. Cal recrear "
+            "el mapa amb el model actual.")
+    trams_map = mapa_tempo.llegeix_mapa_tempo(ruta, log=log)
+    if not trams_map:
         return _constant()
-    # Els CSVs poden haver estat editats a mà: el que ix d'ací és el MODEL, i
-    # ha de complir les regles 1, 2, 4 i 8 (ordre, contigüitat, cobertura de
-    # 0 a la durada i valors vàlids). Es normalitza AQUÍ, que és la porta
-    # d'entrada, igual que fa `normalitza_cobertura` amb els acords.
+    if any(t.tipus == "rubato" for t in trams_map):
+        raise ValueError(
+            "Els rubatos encara no estan suportats al visor (fase 3)")
+    trams = [tuple(t) for t in trams_map]
+    # El CSV pot haver estat editat a mà: el que ix d'ací és el MODEL, i ha de
+    # complir les regles 1, 2, 4 i 8 (ordre, contigüitat, cobertura i valors).
     net, avisos = tempo_map.neteja_trams(trams, durada)
-    if len(tempo) != len(compas) and log:
-        log("El nombre de trams dels CSV de tempo i compàs no coincideix; "
-            "s'han emparellat les files disponibles.")
     if log:
         for avís in avisos:
-            log(f"Mapa CSV: {avís}")
+            log(f"Mapa de tempo: {avís}")
     return net
 
 

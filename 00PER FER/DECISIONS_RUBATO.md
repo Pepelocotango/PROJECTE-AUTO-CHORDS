@@ -139,9 +139,9 @@ supera, es rebutja amb avís.
 ## Pla d'implementació proposat
 
 1. ✅ **Motor pur de derivació** (`app/rubato.py`): fet el 2026-11-02.
-2. **Model i format**: lector/escriptor de `mapa_tempo.csv`, `FORMAT = 3`,
-   rebuig de projectes vells, integració a `projecte`/`pipeline`/`tempo_map`,
-   tests.
+2. ✅ **Model i format**: `mapa_tempo.csv`, `FORMAT = 3`, rebuig de
+   projectes vells i integració dels clips **normals**; els rubatos al visor
+   queden per a la fase 3.
 3. **Visor i timeline**: dues graelles, tipus rubato, crear/convertir,
    fronteres, etiquetes derivades, undo, tests de GUI.
 4. **Exportació**: `mapa_tempo/` unificat, `AVIS_APROXIMACIO.txt`, text al
@@ -160,7 +160,20 @@ supera, es rebutja amb avís.
 - Encara **no** hi ha model `mapa_tempo.csv`, `FORMAT = 3`, UI ni exportació:
   són les fases 2–4.
 
+## Implementació — fase 2 (model i format) ✅
+
+- Model unificat `mapa_tempo.csv` (`inici,fi,bpm,tipus,compassos`) amb
+  `app/mapa_tempo.py` i tests propis.
+- `FORMAT = 3`: qualsevol `.acproj` anterior es **rebutja**; els projectes amb
+  `tempo.csv` + `compas.csv` també.
+- `pipeline`/`projecte`/`visor` desen i lliguen el nou fitxer; `mapa_tempo/`
+  exportat porta un sol `mapa_tempo.csv`.
+- Els clips **normals** ja funcionen de punta a punta. Els rubatos es poden
+  llegir/escriure a la capa de dades, però el visor encara els rebutja amb un
+  error clar fins a la **fase 3**.
+- Suite completa: **1.499 tests**, 1 omés.
+
 ## Estat
 
-**Fase 1 completada.** Següent: **fase 2 — model i format** (`mapa_tempo.csv`,
-`FORMAT = 3`, rebuig de projectes vells i integració).
+**Fases 1 i 2 completades.** Següent: **fase 3 — visor i timeline** (dues
+graelles, crear/convertir rubato, fronteres, undo).

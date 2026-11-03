@@ -10,7 +10,7 @@ Un **projecte** és una carpeta que ho conté tot::
     ├── audio/ tema.wav            ← CÒPIA de l'àudio (mai depèn de fora)
     ├── acords.csv                 ← el model (font de veritat)
     ├── estructura_ABC.csv         ← el model (font de veritat)
-    ├── tempo.csv · compas.csv     ← el model (mapa de BPM/compàs)
+    ├── mapa_tempo.csv             ← el model (mapa de BPM/compàs)
     ├── wavs_acords/ …             ← exports (els crea `pipeline.exporta_total`)
     └── backup/ …                  ← còpies versionades
 
@@ -32,20 +32,19 @@ import tempfile
 from datetime import datetime
 
 from app import pipeline
+from app import mapa_tempo
 
 EXT = ".acproj"
-# 2 (2026-10-19): el CRU de l'anàlisi viu DINS el document (`dades["analisi"]`)
-# en lloc de la carpeta `analisi/` i de `segments.csv`. **Sense migració**: els
-# projectes antics s'obren igual, només sense cru (l'app encara s'està
-# construint; decisió de l'operador).
-FORMAT = 2
+# 3 (2026-11-02): model unificat `mapa_tempo.csv` i subplà de rubato.
+# **Sense retrocompatibilitat**: els projectes de format anterior es rebutgen.
+FORMAT = 3
 NOM_AUDIO_DIR = "audio"
 NOM_BACKUP_DIR = "backup"
 NOM_CSV_ACORDS = "acords.csv"
 NOM_CSV_ESTRUCTURA = "estructura_ABC.csv"
 MAX_BACKUPS = 10
 # El cru de l'anàlisi viatja DINS el document; si és enorme (cançons molt
-# llargues), no es desa: el MODEL (4 CSV) ja és al disc i es pot tornar
+# llargues), no es desa: el MODEL (3 CSV) ja és al disc i es pot tornar
 # a analitzar. Evita que el `.acproj` es convertisca en una base de dades.
 MAX_ANALISI_BYTES = 512 * 1024
 
@@ -306,7 +305,14 @@ class Projecte:
         if not isinstance(dades, dict):
             raise ProjecteError(f"el projecte {ap!r} no és vàlid")
         dades = _migra(dades, ap)
-        return cls(os.path.dirname(ap), dades, ruta_acproj=ap)
+        p = cls(os.path.dirname(ap), dades, ruta_acproj=ap)
+        if (mapa_tempo.te_format_antic(p.carpeta)
+                and not os.path.isfile(
+                    os.path.join(p.carpeta, mapa_tempo.NOM_MAPA_TEMPO))):
+            raise ProjecteError(
+                "el projecte té el model antic (tempo.csv + compas.csv); "
+                "no suportat. Cal recrear-lo amb el model actual.")
+        return p
 
     # -- escriptura -----------------------------------------------------
     def desa(self):
@@ -431,7 +437,7 @@ class Projecte:
 
     # Fitxers del projecte que es guarden a cada còpia (model + anàlisi crua).
     _FITXERS_BACKUP = (NOM_CSV_ACORDS, NOM_CSV_ESTRUCTURA,
-                       pipeline.NOM_CSV_TEMPO, pipeline.NOM_CSV_COMPAS,
+                       mapa_tempo.NOM_MAPA_TEMPO,
                        pipeline.NOM_MARCADORS)
 
     def _materials_backup(self):
@@ -481,16 +487,16 @@ class Projecte:
 
 
 def _migra(dades, ap):
-    """Adapta el diccionari del projecte a la versió de format actual."""
+    """Comprova el format del projecte. **No hi ha migracions.**"""
     fmt = int(dades.get("format") or 0)
     if fmt > FORMAT:
         raise ProjecteError(
             f"el projecte {ap!r} és d'una versió més nova (format {fmt} > "
             f"{FORMAT}); actualitza l'app")
-    # fmt 0 = projectes desats abans que existira el camp `format`: els seus
-    # camps son els mateixos de la versio 1, aixi que no cal canviar-ne cap.
-    # FORMAT 2 (2026-10-19): el cru viu dins `dades["analisi"]`. **Sense
-    # migració**: si ve malmès o és massa gran, es descarta (tolerant).
+    if fmt != FORMAT:
+        raise ProjecteError(
+            f"el projecte {ap!r} és d'un format anterior ({fmt} < {FORMAT}); "
+            "no suportat. Cal recrear el projecte amb el model actual.")
     if "analisi" in dades:
         ana = saneja_analisi(dades.get("analisi"))
         if ana is None:

@@ -42,7 +42,7 @@
 | 8 | **usuari**+app | **Diàleg Analitza** (el de sempre, tab acords) amb el mapa de tempo ja en marxa: acords + estructura sobre el tema. | `Finestra.executa()` → `dialegs.DialegOpcions` |
 
 **Fi del procés.** Tot el que genera l'assistent és el MODEL del mapa de
-tempo (`tempo.csv` + `compas.csv`); **no toca mai el cru** de l'anàlisi.
+tempo (`mapa_tempo.csv`); **no toca mai el cru** de l'anàlisi.
 
 **Detalls de la v1 implementada:**
 - Els diàlegs són **modeless** (pas 1 i pas 2): l'usuari pot moure el

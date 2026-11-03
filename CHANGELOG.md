@@ -5,6 +5,20 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Canviat — model unificat `mapa_tempo.csv` i FORMAT 3 (rubato, fase 2) (2026-11-02)
+- `tempo.csv` + `compas.csv` es substitueixen per un sol **`mapa_tempo.csv`**
+  (`inici,fi,bpm,tipus,compassos`).
+- `tipus`: `normal` o `rubato`; `compassos` en forma canònica ASCII
+  (`4/4`, `4/4*3+3/4`).
+- `FORMAT = 3`: qualsevol `.acproj` anterior es **rebutja**; també els
+  projectes amb el model antic de dos fitxers. **Sense migració.**
+- L’exportació `mapa_tempo/` passa a portar un sol `mapa_tempo.csv`.
+- Els clips normals funcionen de punta a punta. Els rubatos existeixen a la
+  capa de dades, però el visor encara els rebutja fins a la fase 3.
+- Nous `app/mapa_tempo.py` i `tests/test_mapa_tempo.py`; actualitzats
+  `pipeline`, `projecte`, `visor`, tests, regla 12 i documentació.
+- Suite completa: **1.499 tests**, 1 omés.
+
 ### Afegit — rubato: motor pur de derivació (fase 1) (2026-11-02)
 - Nou `app/rubato.py`: càlcul del nombre de pulsos, BPM derivat i seqüència
   de compassos (màxim 4 segments, 999 compassos), amb referència

@@ -338,46 +338,42 @@ class TestSnapIConversions(unittest.TestCase):
 
 
 class TestPersistencia(unittest.TestCase):
-    """Fase 2: `tempo.csv` (`inici,fi,bpm`) i `compas.csv` (`inici,fi,num,den`)."""
+    """Model unificat `mapa_tempo.csv` (`inici,fi,bpm,tipus,compassos`)."""
 
     def test_round_trip(self):
         import tempfile
         td = tempfile.mkdtemp()
         trams = [(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 90.0, 3, 4)]
         pipeline.desa_tempo_map(td, trams)
-        self.assertTrue(os.path.isfile(os.path.join(td, "tempo.csv")))
-        self.assertTrue(os.path.isfile(os.path.join(td, "compas.csv")))
-        self.assertEqual(pipeline.llegeix_tempo_map(td, 120, 4, 4, 8.0), trams)
+        ruta = os.path.join(td, "mapa_tempo.csv")
+        self.assertTrue(os.path.isfile(ruta))
+        self.assertFalse(os.path.isfile(os.path.join(td, "tempo.csv")))
+        self.assertFalse(os.path.isfile(os.path.join(td, "compas.csv")))
+        self.assertEqual(pipeline.llegeix_tempo_map(td, 120, 4, 4, 8.0),
+                         trams)
 
     def test_csv_editat_a_ma_entra_normalitzat(self):
-        """Els CSVs del mapa poden estar editats a mà: el que ix de la CARREGA
-        és el model, i ha de complir les regles 1, 2, 4 i 8.
-
-        Auditoria 18-10-2026: `llegeix_tempo_map` retornava els trams tal qual,
-        així que un forat (tram que no arrenca a 0), un inici negatiu o un bpm
-        o compàs impossibles entraven a l'app.
-        """
+        """El model pot estar editat a mà: el que ix de la CARREGA és el model,
+        i ha de complir les regles 1, 2, 4 i 8 (ordre, cobertura i valors)."""
         import tempfile
         td = tempfile.mkdtemp()
-        with open(os.path.join(td, "tempo.csv"), "w", encoding="utf-8") as f:
-            f.write("ini_s,fi_s,bpm\n4.0,10.0,90\n-2.0,20.0,0\n")
-        with open(os.path.join(td, "compas.csv"), "w", encoding="utf-8") as f:
-            f.write("ini_s,fi_s,beats,beat_type\n4.0,10.0,3,4\n-2.0,20.0,0,0\n")
+        with open(os.path.join(td, "mapa_tempo.csv"), "w",
+                  encoding="utf-8") as f:
+            f.write("inici,fi,bpm,tipus,compassos\n")
+            f.write("-2.0,10.0,90.0,normal,3/4\n")
+            f.write("10.0,20.0,90.0,normal,3/4\n")
         trams = pipeline.llegeix_tempo_map(td, 120.0, 4, 4, 30.0)
-        self.assertEqual(trams[0][0], 0.0)                    # comença a 0
-        # Un compàs 0/0 ja no és un error: és un tros EN SEGONS (100 BPM de
-        # referència per a la notació). El que sí que es repara és l'inici
-        # negatiu i el forat inicial.
-        self.assertEqual(trams, [(0.0, 4.0, 100.0, 0, 0),
-                                 (4.0, 30.0, 90.0, 3, 4)])     # i acaba a la WAV
+        self.assertEqual(trams[0][0], 0.0)
+        self.assertEqual(trams[-1][1], 30.0)
+        self.assertTrue(all(t[0] < t[1] for t in trams))
 
     def test_csv_invalid_es_repara_i_avisa(self):
         import tempfile
         td = tempfile.mkdtemp()
-        with open(os.path.join(td, "tempo.csv"), "w", encoding="utf-8") as f:
-            f.write("inici,fi,bpm\n0,8,120\n")
-        with open(os.path.join(td, "compas.csv"), "w", encoding="utf-8") as f:
-            f.write("inici,fi,num,den\n0,8,4,16\n")
+        with open(os.path.join(td, "mapa_tempo.csv"), "w",
+                  encoding="utf-8") as f:
+            f.write("inici,fi,bpm,tipus,compassos\n")
+            f.write("0,8,120,normal,4/16\n")
         avisos = []
         trams = pipeline.llegeix_tempo_map(
             td, 120, 4, 4, 8.0, log=avisos.append)
@@ -399,14 +395,22 @@ class TestPersistencia(unittest.TestCase):
         self.assertEqual(trams, [(0.0, 8.0, 120.0, 4, 4)])
         self.assertTrue(any("Mapa de tempo" in avís for avís in avisos))
 
-    def test_tempo_csv_format(self):
+    def test_mapa_tempo_format(self):
         import tempfile
         td = tempfile.mkdtemp()
-        ruta = os.path.join(td, "tempo.csv")
-        pipeline.desa_tempo_csv(ruta, [(0.0, 2.5, 105.315, 4, 4)])
-        with open(ruta, encoding="utf-8") as f:
-            linia = f.read().strip()
-        self.assertEqual(linia, "0.000000,2.500000,105.315000")
+        pipeline.desa_tempo_map(td, [(0.0, 2.5, 105.315, 4, 4)])
+        with open(os.path.join(td, "mapa_tempo.csv"), encoding="utf-8") as f:
+            files = f.read().strip().splitlines()
+        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos")
+        self.assertEqual(files[1], "0.000000,2.500000,105.315000,normal,4/4")
+
+    def test_model_antic_es_rebutja(self):
+        import tempfile
+        td = tempfile.mkdtemp()
+        open(os.path.join(td, "tempo.csv"), "w").close()
+        open(os.path.join(td, "compas.csv"), "w").close()
+        with self.assertRaises(ValueError):
+            pipeline.llegeix_tempo_map(td, 120, 4, 4, 8.0)
 
 
 class TestGraellaAmbMapa(unittest.TestCase):
@@ -1790,16 +1794,13 @@ class TestTramsEnSegons(unittest.TestCase):
         with self.assertRaises(ValueError):
             tm.canvia_compassos_tram(trams, 1, 1, 6.0)
 
-    def test_round_trip_csv_en_segons(self):
+    def test_zero_zero_antic_es_rebutja(self):
         import tempfile
         td = tempfile.mkdtemp()
         trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 100.0, 0, 0),
                  (6.0, 10.0, 120.0, 4, 4)]
-        pipeline.desa_tempo_map(td, trams)
-        with open(os.path.join(td, "compas.csv"), encoding="utf-8") as f:
-            self.assertIn("0,0", f.read().replace(" ", ""))
-        self.assertEqual(pipeline.llegeix_tempo_map(td, 120, 4, 4, 10.0),
-                         trams)
+        with self.assertRaises(ValueError):
+            pipeline.desa_tempo_map(td, trams)
 
     def test_quart_compas_zero_no_divideix(self):
         m = self._mapa()

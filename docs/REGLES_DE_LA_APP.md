@@ -187,8 +187,7 @@ es detallen avall). Tota operació d'un tipus ho ha de ser per als altres, i pel
 - **Diferències legítimes del carril de BPM/compàs** (NO són manca de paritat):
   la seva **alçada** és **mitja** (`timeline_base.LANE_TEMPO_H`) i no té edició
   **inline** al timeline ni «Reanomena en bloc» (el contingut és numèric). Sí que
-  té, des del 22-10-2026, **franja Editor** (mode BPM/Compàs, amb `0/0` =
-  segons) i **llista pròpia** (⑭: `Inici (s)` · `Fi (s)` · `BPM` · `Compàs`), amb
+  té, des del 22-10-2026, **franja Editor** (mode BPM/Compàs, amb `tipus=rubato`) i **llista pròpia** (⑭: `Inici (s)` · `Fi (s)` · `BPM` · `Compàs`), amb
   el mateix clic / doble-clic / menú contextual que ⑩ i ⑪.
 - **Semàntica de les operacions**: *partir* un acord = dos trossos amb el
   mateix nom (el de la part nova és editable, per defecte heretat);
@@ -207,7 +206,7 @@ una sola operació, un sol `Ctrl+Z`). La **paritat d'exportació** és la **regl
 El paquet exportat tracta els **tres** tipus igual, cadascun amb la seva part:
 acords (`acords.csv` + `wavs_acords/`) · estructura (`estructura_ABC.csv` +
 `wavs_estructura/`) · **mapa de tempo/compàs** (**carpeta pròpia** `mapa_tempo/`
-amb `tempo.csv` i `compas.csv`).
+amb `mapa_tempo.csv`).
 → `pipeline.exporta_total(..., mapa_tempo=)` — rep el mapa del **model viu** (com
 `acords`/`seccions`); si no se li passa, el paquet queda exactament com era.
 test `tests/test_pipeline.py` › `TestRegla12ParitatExport` — **✅ FET (2026-10-18)**.
@@ -227,7 +226,7 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
 | I4 | Una sola font de veritat al backend, un únic punt de refresc. | `TestElsDosBugsDeLaRonda12h` · `TestFuzzerReglesIVista` (`_viola_vista`). | Sí |
 | I5 | Atòmic, un desfer, sense reparacions silencioses. | `TestValidacioTempoVisor` · `tests/test_edicio.py`. | Parcial |
 | I6 | L'exportació surt del model editat; l'edició no escriu àudio. | `tests/test_pipeline.py` (export). | Sí |
-| I7 | Rubato conservat com `0/0` a l'app; aproximació mètrica a l'exportació (aprovat). | — (pendent d'implementació, Fase 7). | No |
+| I7 | Rubato conservat amb `tipus=rubato` i segons; aproximació mètrica a l'exportació (aprovat). | `tests/test_rubato.py` · `tests/test_mapa_tempo.py`. | Motor i model |
 
 ---
 
@@ -317,8 +316,8 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
   la WAV) poden ser a mig compàs; si un clip va **en segons** (§13.7), la seua
   frontera és lliure i el clip mètric del costat pot acabar o començar amb un
   **compàs parcial** (com el `*` dels marcadors de compàs de REAPER).
-- **Valors**: BPM 30–350, numerador 1–12 i denominador 2, 4 o 8. `0/0` és
-  l'única excepció i representa un tram en segons (rubato; §13.7). Els límits
+- **Valors**: BPM 30–350, numerador 1–12 i denominador 2, 4 o 8. Un tram
+  `tipus=rubato` és l'excepció: els seus valors són derivats (§13.7). Els límits
   d'edició són compartits a `app/limits.py`.
 - Una entrada d'usuari amb BPM o compàs invàlid es rebutja amb avís i sense
   mutació parcial; en carregar un CSV editat fora de l'app, el mapa es repara i
@@ -347,7 +346,7 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
   quedar-se fora de **30–350 BPM** — eixa banda és el que impedix l'estat absurd
   d'un clip d'1 ms a 1.200.000 BPM. Si el gest el deixaria fora, **es rebutja** i
   l'avís diu **entre quins segons** sí que hi cap.
-- Un tram **en segons** (`0/0`, rubato) **no té cap regla** de duració ni de BPM:
+- Un tram **rubato** (`tipus=rubato`) **no té cap regla** de duració ni de BPM:
   es mou lliurement. Però **el seu veí amb compàs sí**: eixe costat conserva N i
   en deriva el BPM (si no, quedaria amb compassos fraccionaris, §13.4) i respecta
   la banda.
@@ -380,7 +379,7 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
   | `fi` de l'**últim** clip | **rebutjat + avís** (és la fi de la WAV) |
   | `ini` de qualsevol altre | mou la frontera `(i-1, i)`; el `fi` del clip **no** es mou; re-tempo del clip i del **veí anterior** |
   | `fi` de qualsevol altre | mou la frontera `(i, i+1)`; l'`ini` del clip **no** es mou; re-tempo del clip i del **veí posterior** |
-  | qualsevol dels dos amb un costat en segons (`0/0`) | es mou la frontera; el costat **rubato** no canvia (ni BPM ni compàs), el costat **amb compàs** conserva N i re-tempa (banda 30–350) |
+  | qualsevol dels dos amb un costat rubato (`tipus=rubato`) | es mou la frontera; el costat **rubato** no canvia (ni BPM ni compàs), el costat **amb compàs** conserva N i re-tempa (banda 30–350) |
 
   Si l'instant demanat no és possible (passaria del veí, o deixaria un tram sense
   durada), s'aplica el més a prop i **s'avisa**.
@@ -393,39 +392,35 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
   `visor._aplica_editor_tempo` · `marcadors`
 - **Test:** `test_despatx_edicio`
 
-### 13.7 Clips en segons (`0/0`, rubato)
+### 13.7 Clips de rubato (`tipus=rubato`)
 
-- **Qualsevol** clip del carril pot existir en segons (no només el primer o
-  l'últim): un passatge rubato al mig del tema.
-- **Com s'escriu**: `num = 0` i `den = 0` a `compas.csv`/`tempo.csv`; al diàleg
-  del clip, la casella **«En segons (sense compàs: rubato)»**; a la franja
-  Editor, el camp **Compàs** amb `0/0` o «segons».
-- **Dura el que diu l'àudio**: no té graella, ni compassos enters, ni obligació de
-  caure en cap línia. Dins del clip, regle i etiquetes mostren **temps**
-  (`m:ss.mmm`) i el `snap` no hi encaixa res.
-- `bpm` es conserva com a **referència de notació** (100 per defecte): no afecta
-  cap graella. La **partitura** l'exporta com a compassos a 100 BPM 4/4 (1 compàs
-  = 2,4 s) i pot acabar amb un compàs **parcial**.
-- **Representació mètrica aproximada a l'exportació (I7)**: el model del projecte
-  conserva el clip com a `0/0` i els seus segons no canvien. Per als formats d'exportació
-  que necessiten una graella mètrica (còpia de `tempo.csv`/`compas.csv` a
-  `mapa_tempo/` i MusicXML), es pot generar una representació mètrica **aproximada**
-  per a cada clip `0/0`: s'usa com a referència el compàs i el tempo del tram
-  mètric anterior (o, si no n'hi ha, el següent; si tampoc, els del transport); es
-  tria el nombre enter de compassos que done un BPM més pròxim a aquesta referència i
-  es calcula el BPM exacte que fa coincidir l'inici i la fi del clip. La durada real
-  no canvia. Aquesta representació s'identifica visiblement com a **aproximada** i no
-  es presenta com una detecció real; els CSV del model del projecte mantenen `0,0`.
-- Els seus compassos **no compten** per a la numeració: el primer clip amb
-  compàs després del rubato continua la sèrie.
-- Les **vores** es mouen sense recalcular **el seu** BPM (el «BPM» d'un rubato
-  és de notació); el **veí amb compàs** sí que re-tempa (§13.5). Canviar-li
-  «compassos» es rebutja amb avís. `tempo.csv`, `compas.csv` i la còpia a `mapa_tempo/` porten
-  `0,0` i res més canvia.
-- La **paritat #11 s'hi aplica igual**: clip, llista ⑭ i franja Editor.
-- **Codi:** `tempo_map.Tram.lliure`/`es_lliure`/`num_ef` · `canvia_bpm_local` ·
-`mou_frontera_retempo` · `visor._secs_a_cb`
-- **Test:** `test_tempo_map::TestTramsEnSegons` · `test_edicio::TestLlistaTempo`
+> **Implementació (2026-11-02):** motor pur i model fets (`app/rubato.py`,
+> `app/mapa_tempo.py`); la integració al visor és la **fase 3** del subplà.
+> Mentre no estiga integrada, el visor rebutja els rubatos amb un error clar.
+
+- **Qualsevol** clip del carril pot ser rubato (inici, mig o final). Els seus
+  **segons són invariables**: cap canvi de BPM o compàs el mou.
+- **Com s'escriu**: al `mapa_tempo.csv`, `tipus=rubato` i `compassos` amb la
+  seqüència derivada (`4/4*3+3/4`). El BPM i la seqüència són **derivats** del
+  clip mètric anterior (si no n'hi ha, el següent; si tampoc, el transport), no
+  una detecció. Són de **només lectura** i es recalculen quan canvia la durada
+  o el veí.
+- **Graella**: la graella mètrica del rubato és una representació derivada; la
+  **graella de temps** sempre és visible i no en depén. Un rubato inicial ocupa
+  compassos negatius (pre-roll) i el primer clip mètric és `1.1`.
+- **Exportació**: la representació mètrica exportada s'identifica visiblement
+  com a aproximada; els CSV del model conserven `tipus=rubato` i els segons.
+  No es converteix mai un rubato en un BPM «real» de manera silenciosa.
+- **Numeració**: els compassos derivats del rubato continuen la sèrie; el clip
+  mètric següent comença en línia de compàs. Els rubatos adjacents es fusionen.
+- **Vores**: es mouen com la resta del mapa; el veí amb compàs conserva els
+  compassos i re-tempa. Un sol desfer.
+- **Convertir a normal**: es parteix en clips normals, un per segment de compàs.
+- **Paritat #11**: s'aplica igual (clip, llista ⑭ i franja Editor).
+- **Codi:** `app/rubato.py` (derivació pura) · `app/mapa_tempo.py` (model) ·
+  `tempo_map.canvia_bpm_local` / `mou_frontera_retempo` (fronteres).
+- **Test:** `tests/test_rubato.py` · `tests/test_mapa_tempo.py` i, quan estiga
+  integrat, `test_tempo_map` / `test_edicio`.
 
 ### 13.8 Detecció i export del mapa
 
@@ -441,8 +436,8 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
 - Per a **tempo variable**, *Analitza ▸ Detecta el tempo per trams…* fa el mapa
   sencer (un BPM cada N compassos, fronteres en línia de compàs) i el valida amb
   estes mateixes regles.
-- L'export porta les **tres parts** (acords, estructura i **mapa**): `tempo.csv` +
-  `compas.csv` + còpia a `mapa_tempo/`; les columnes de compàs de l'ABC en surten
+- L'export porta les **tres parts** (acords, estructura i **mapa**):
+  `mapa_tempo.csv` + còpia a `mapa_tempo/`; les columnes de compàs de l'ABC en surten
   (lligat a #12).
 - **Codi:** `tempo_map.retempo_tram_detectat` · `app/tempo.py` ·
 `pipeline.desa_tempo_map`
