@@ -5,6 +5,25 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit — rubato: visor i graella (fase 3.1) (2026-11-02)
+- `TempoMap` expandix la seqüència d’un rubato en sub-trams de compàs; la
+  graella, el regle i el snap ja la interpreten.
+- `tempo_trams` del visor són `TramMapa` i conserven `tipus`/`compassos` en
+  carregar, normalitzar, desar i editar un veí.
+- La llista ⑭ i l’Editor mostren el rubato com a derivat i de només lectura
+  (`R 4/4 × 8 + 2/4`).
+- El commutador «En segons» i `0/0` manual es rebutgen amb avís; les accions
+  de crear/convertir rubato són la fase 3.2.
+- Suite completa: **1.507 tests**, 1 omés.
+
+### Corregit — rubato: BPM en negres i denominadors barrejables (2026-11-02)
+- El motor de rubato i el model `mapa_tempo.csv` alineen el BPM amb
+  `tempo_map` i el metrònom: **negres per minut**.
+- `6/8` i `2/2` es calculen pel seu equivalent en negres; ja no s'usa el pols
+  del denominador com a unitat.
+- Es poden barrejar denominadors dins d’un rubato (`4/4*2+6/8`).
+- Actualitzats `app/rubato.py`, `app/mapa_tempo.py`, les decisions i els tests.
+
 ### Canviat — model unificat `mapa_tempo.csv` i FORMAT 3 (rubato, fase 2) (2026-11-02)
 - `tempo.csv` + `compas.csv` es substitueixen per un sol **`mapa_tempo.csv`**
   (`inici,fi,bpm,tipus,compassos`).

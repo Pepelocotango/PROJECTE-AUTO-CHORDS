@@ -5,6 +5,12 @@
 > fase del pla de simplificació fins que aquest subplà estiga complet i
 > verificat.
 
+> **Correcció important (2026-11-02):** el BPM del rubato és en **negres per
+> minut**, igual que `app/tempo_map.py` i el metrònom. Per això `6/8` i `2/2`
+> es calculen amb el seu equivalent en negres i es poden **barrejar
+> denominadors** dins d'un rubato. La decisió 26 inicial (famílies separades)
+> queda substituïda per esta.
+>
 > **Estat:** en discussió (2026-11-02). **No implementat.**
 > Document viu per no perdre cap decisió durant la conversa. Cada decisió
 > s'afig ací quan l'operador la confirma. Les preguntes obertes queden al final.
@@ -44,9 +50,9 @@ per llegir, numerar compassos i exportar.
 | 23 | **Etiquetatge de l'exportació = A**: `tipus=rubato` al `mapa_tempo.csv`, `mapa_tempo/AVIS_APROXIMACIO.txt` amb la llista de trams i la referència, i text visible «Rubato — graella aproximada» al MusicXML. | 2026-11-02 |
 | 24 | **Convertir rubato → normal = A**: si el rubato té una seqüència de diversos compassos, es **parteix en clips normals, un per segment** (`4/4*3+3/4` → `4/4*3` + `3/4`), amb el mateix BPM derivat. La graella no canvia. | 2026-11-02 |
 | 25 | **Rubatos adjacents = A**: es **fusionen** en un sol rubato (un BPM i una seqüència). La frontera comuna desapareix; un sol desfer. | 2026-11-02 |
-| 26 | **Denominadors = A**: no es barregen dins d'un rubato. La seqüència usa la mateixa família que el compàs de referència: `x/4` → `2/4`, `3/4`, `4/4`, `5/4`, `6/4`, `7/4`; `x/8` → `3/8`, `6/8`, `9/8`, `12/8`. El BPM continua sent inequívoc. | 2026-11-02 |
+| 26 | **Denominadors (corregit 2026-11-02)**: **es poden barrejar** dins d'un rubato. El BPM és en **negres per minut**, com `tempo_map`; cada compàs aporta `num·4/den` negres. La família de denominador ja no és una restricció. | 2026-11-02 |
 | 27 | **Prioritat de l'algorisme = A**: repetir el compàs de referència tant com es puga; el reste, amb un compàs estàndard del mateix denominador o un parcial. Màxim **4 segments**; si no hi ha solució, provar altres estàndards; si tampoc, rebutjar. | 2026-11-02 |
-| 28 | **Nombre de pulsos = A**: `N = round(D*R/60)`, mínim 1; `BPM = N*60/D`. Si cau fora de 30–350, es proven els enters veïns dins de la banda i es tria el BPM més pròxim a `R`; si no n'hi ha cap, es rebutja. | 2026-11-02 |
+| 28 | **Nombre de pulsos = A**: `N = round(D*R/60)` **negres**, mínim 1; `BPM = N*60/D` (negres/min). Si cau fora de 30–350, es proven els enters veïns dins de la banda i es tria el BPM més pròxim a `R`; si no n'hi ha cap, es rebutja. | 2026-11-02 |
 | 29 | **Format del projecte = A**: `FORMAT = 3`. Qualsevol `.acproj` anterior es **rebutja** amb un error clar. És conseqüència directa de la política de no retrocompatibilitat; **no es torna a preguntar**. | 2026-11-02 |
 
 ## Model B — regles de ferro
@@ -86,7 +92,8 @@ per llegir, numerar compassos i exportar.
   fidelitat al compàs de referència; en cas d'empat, menys compassos/segments;
   parcial final permès; si no hi ha solució, es rebutja.
 - **Fórmula (proposta)**: `N_ideal = D * R / 60` en pulsos del denominador de
-  referència; `N = round(N_ideal)`, mínim 1; `BPM = N * 60 / D`. Si el BPM cau
+  referència; `N = round(N_ideal)` en **negres**, mínim 1; `BPM = N * 60 / D`.
+  Si el BPM cau
   fora de 30–350, es proven els enters veïns dins de la banda i es tria el BPM
   més pròxim a `R`; si no n'hi ha cap, es rebutja. La seqüència ha de sumar
   exactament `N` pulsos.
@@ -118,7 +125,7 @@ rubato compleixen igualment:
   denominadors dins d'un rubato.
 - **Seqüència**: compàs de referència sempre que es puga; resta amb estàndard
   o parcial; màxim **4 segments**; si no hi ha solució, es rebutja.
-- **Pulsos**: `N = round(D*R/60)`, mínim 1; `BPM = N*60/D`; si cau fora de
+- **Pulsos**: `N = round(D*R/60)` **negres**, mínim 1; `BPM = N*60/D`; si cau fora de
   30–350, es proven veïns dins de la banda; si no, es rebutja.
 - **Fronteres compartides**: moure una vora mou la frontera; el veí amb compàs
   conserva els compassos i re-tempa; un sol desfer.
@@ -142,8 +149,8 @@ supera, es rebutja amb avís.
 2. ✅ **Model i format**: `mapa_tempo.csv`, `FORMAT = 3`, rebuig de
    projectes vells i integració dels clips **normals**; els rubatos al visor
    queden per a la fase 3.
-3. **Visor i timeline**: dues graelles, tipus rubato, crear/convertir,
-   fronteres, etiquetes derivades, undo, tests de GUI.
+3. **Visor i timeline**: 3.1 ✅ model al visor, graella i display derivat;
+   3.2 pendent: crear/convertir rubato, fronteres i undo.
 4. **Exportació**: `mapa_tempo/` unificat, `AVIS_APROXIMACIO.txt`, text al
    MusicXML, actualització de la regla 12, tests.
 5. **Docs i CI**: regles, docs, `CHANGELOG`, suite i `pyflakes` verds.
@@ -169,11 +176,24 @@ supera, es rebutja amb avís.
 - `pipeline`/`projecte`/`visor` desen i lliguen el nou fitxer; `mapa_tempo/`
   exportat porta un sol `mapa_tempo.csv`.
 - Els clips **normals** ja funcionen de punta a punta. Els rubatos es poden
-  llegir/escriure a la capa de dades, però el visor encara els rebutja amb un
-  error clar fins a la **fase 3**.
+  llegir/escriure a la capa de dades.
 - Suite completa: **1.499 tests**, 1 omés.
+
+## Implementació — fase 3.1 (visor, graella i display) ✅
+
+- `TempoMap` expandix la seqüència d'un rubato en sub-trams de compàs; la
+  graella, el regle i el snap ja la interpreten (quarts de negra).
+- `tempo_trams` del visor són `TramMapa`: es carreguen, es normalitzen i es
+  desen amb `tipus`/`compassos`; els rubatos no es perden en editar un veí.
+- La llista ⑭ i la franja Editor mostren el rubato com a **derivat i de només
+  lectura** (`R 4/4 × 8 + 2/4`); la creació/conversió és a 3.2.
+- El commutador «En segons» i l'edició manual de `0/0` es rebutgen amb avís:
+  el rubato es crearà amb les accions de 3.2.
+- El BPM s'ha alineat amb `tempo_map`: **negres per minut**; `6/8`, `2/2` i
+  denominadors barrejats ja es calculen bé.
+- Suite completa: **1.507 tests**, 1 omés.
 
 ## Estat
 
-**Fases 1 i 2 completades.** Següent: **fase 3 — visor i timeline** (dues
-graelles, crear/convertir rubato, fronteres, undo).
+**Fases 1, 2 i 3.1 completades.** Següent: **3.2 — accions de rubato**
+(crear/convertir, fronteres, fusionar, convertir a normal i undo).

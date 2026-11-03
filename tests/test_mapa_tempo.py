@@ -28,11 +28,16 @@ class TestTramMapa(unittest.TestCase):
         self.assertEqual(tm.num, 4)
         self.assertEqual(tm.den, 4)
         self.assertTrue(tm.lliure)
-        self.assertEqual(tm.segments, ((4, 3), (3, 1)))
+        self.assertEqual(tm.segments, ((4, 4, 3), (3, 4, 1)))
 
     def test_normal_no_admet_sequencia(self):
         with self.assertRaises(rubato.RubatoError):
             M.TramMapa(0.0, 4.0, 120.0, "normal", "4/4+3/4")
+
+    def test_rubato_admet_denominadors_diferents(self):
+        tm = M.TramMapa(0.0, 4.0, 120.0, "rubato", "4/4+6/8")
+        self.assertEqual(tm.compassos, "4/4+6/8")
+        self.assertEqual(tm.segments, ((4, 4, 1), (6, 8, 1)))
 
     def test_normal_no_admet_repeticions(self):
         with self.assertRaises(rubato.RubatoError):
@@ -46,6 +51,33 @@ class TestTramMapa(unittest.TestCase):
         tm = M.des_de_tupla((0.0, 4.0, 120.0, 3, 8))
         self.assertEqual(tm.tipus, "normal")
         self.assertEqual(tm.compassos, "3/8")
+
+
+class TestNormalitzacio(unittest.TestCase):
+    def test_normal_sense_rubato_delega_en_el_model_antic(self):
+        trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 4.0, 120.0, 4, 4)]
+        out, avisos = M.normalitza_trams_map(trams, 4.0, fusiona=True)
+        self.assertEqual(out, [(0.0, 4.0, 120.0, 4, 4)])
+        self.assertEqual(avisos, [])
+
+    def test_rubato_es_preserva(self):
+        rub = M.TramMapa(0.0, 7.0, 60.0, "rubato", "4/4+6/8")
+        out, _avisos = M.normalitza_trams_map([rub], 7.0)
+        self.assertEqual(out, [rub])
+
+    def test_rubato_amb_durada_canviada_recalcula_bpm(self):
+        rub = M.TramMapa(0.0, 7.0, 60.0, "rubato", "4/4+6/8")
+        out, _avisos = M.normalitza_trams_map([rub], 14.0)
+        self.assertEqual(out[0].compassos, "4/4+6/8")
+        self.assertAlmostEqual(out[0].bpm, 30.0, places=6)
+
+    def test_dos_rubatos_adjacents_es_fusionen(self):
+        a = M.TramMapa(0.0, 4.0, 60.0, "rubato", "4/4")
+        b = M.TramMapa(4.0, 7.0, 60.0, "rubato", "3/4")
+        out, _avisos = M.normalitza_trams_map([a, b], 7.0, fusiona=True)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0].compassos, "4/4+3/4")
+        self.assertAlmostEqual(out[0].bpm, 60.0, places=6)
 
 
 class TestFitxer(unittest.TestCase):

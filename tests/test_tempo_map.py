@@ -17,6 +17,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import unittest
 import unittest.mock  # noqa: F401  (alguns tests fan servir unittest.mock)
+from app import mapa_tempo
 from app import pipeline
 from app.tempo_map import TempoMap
 import numpy as np
@@ -1808,6 +1809,25 @@ class TestTramsEnSegons(unittest.TestCase):
         self.assertGreater(bar_s, 0.0)      # 4/4 a 100 BPM = 2,4 s
         self.assertAlmostEqual(bar_s, 2.4, places=6)
         self.assertAlmostEqual(beat_s, 0.6, places=6)
+
+
+class TestRubatoGraella(unittest.TestCase):
+    """`TempoMap` expandix una seqüència de rubato en sub-trams per compàs."""
+
+    def test_expandeix_compassos_barrejats(self):
+        rub = mapa_tempo.TramMapa(0.0, 7.0, 60.0, "rubato", "4/4+6/8")
+        m = TempoMap([rub])
+        self.assertEqual(m.signatura(1.0), (4, 4))
+        self.assertEqual(m.signatura(5.0), (6, 8))
+        # 4/4 a 60 BPM = 4 s; 6/8 a 60 BPM = 3 s.
+        self.assertAlmostEqual(m.durations(1.0)[0], 4.0, places=6)
+        self.assertAlmostEqual(m.durations(5.0)[0], 3.0, places=6)
+        self.assertAlmostEqual(tm.durada_compas(60.0, 6, 8), 3.0, places=6)
+
+    def test_barreja_4_4_i_6_8_en_el_mateix_rubato(self):
+        rub = mapa_tempo.TramMapa(0.0, 7.0, 60.0, "rubato", "4/4+6/8")
+        m = TempoMap([rub])
+        self.assertAlmostEqual(m.quarters(7.0), 7.0, places=6)
 
 
 if __name__ == "__main__":   # pragma: no cover

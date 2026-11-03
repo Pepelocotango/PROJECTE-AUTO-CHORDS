@@ -128,6 +128,34 @@ def _beat_quarters(den):
     return 4.0 / float(den)
 
 
+def _expandeix_segments(segments):
+    """Expandeix un rubato (`TramMapa`) en sub-trams de compàs per a la graella.
+
+    El model guarda un sol clip amb una seqüència de compassos; `TempoMap`
+    necessita un tram per compàs per calcular línies, durades i numeració.
+    Els clips normals i les tuples de 5 elements passen tal qual.
+    """
+    out = []
+    for s in segments or ():
+        if getattr(s, "tipus", None) != "rubato":
+            out.append(tuple(s)[:5])
+            continue
+        ini = float(s.ini)
+        fi = float(s.fi)
+        bpm = float(s.bpm)
+        segs = list(getattr(s, "segments", ()) or ())
+        if not segs or bpm <= 0:
+            continue
+        t = ini
+        for k, (num, den, count) in enumerate(segs):
+            dur = (float(num) * 4.0 / float(den)) * int(count) * 60.0 / bpm
+            t2 = fi if k == len(segs) - 1 else min(fi, t + dur)
+            if t2 > t + TOL:
+                out.append((t, t2, bpm, int(num), int(den)))
+            t = t2
+    return out
+
+
 class TempoMap:
     """Mapa de tempo i compàs a trossos, amb integració temps↔negres.
 
@@ -141,6 +169,7 @@ class TempoMap:
     _DEFECTE = Tram(0.0, 0.0, 120.0, 4, 4)
 
     def __init__(self, segments, offset=0.0):
+        segments = _expandeix_segments(segments)
         trams = []
         for s in segments or ():
             ini, fi, bpm, num, den = (float(s[0]), float(s[1]), float(s[2]),

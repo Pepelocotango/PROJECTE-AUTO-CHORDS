@@ -5,13 +5,13 @@ Subplà de rubato, fase 2. Este mòdul és la **capa de dades** del model:
     inici,fi,bpm,tipus,compassos
 
 - `tipus`: `normal` o `rubato`.
-- `compassos`: forma canònica ASCII (`4/4` o `4/4*3+3/4`).
+- `compassos`: forma canònica ASCII (`4/4` o `4/4*2+6/8`).
 
 Els clips normals tenen **un sol compàs**; els rubato poden tindre una
 seqüència de fins a 4 compassos, amb un sol BPM derivat.
 
-El mòdul és pur respecte de Qt. La integració amb el visor, el projecte i
-l'exportació es fa en la fase 2b/3; ací només es llig i s'escriu el fitxer.
+El mòdul és pur respecte de Qt. La integració amb el projecte, el visor i
+l'exportació es fa a `pipeline`/`visor`; ací es defineix el model i el fitxer.
 """
 
 from dataclasses import dataclass
@@ -19,6 +19,7 @@ import csv
 import os
 
 from app import rubato
+from app import tempo_map
 
 
 NOM_MAPA_TEMPO = "mapa_tempo.csv"
@@ -57,7 +58,7 @@ class TramMapa:
         object.__setattr__(self, "tipus", tipus)
         text = str(self.compassos or "").strip()
         segs = rubato.text_a_compassos(text)
-        if tipus == "normal" and (len(segs) != 1 or segs[0][1] != 1):
+        if tipus == "normal" and (len(segs) != 1 or segs[0][2] != 1):
             raise rubato.RubatoError(
                 "Un clip normal ha de tindre un sol compàs sense repeticions")
         object.__setattr__(self, "compassos", text)
@@ -68,8 +69,7 @@ class TramMapa:
 
     @property
     def den(self):
-        primer = self.compassos.split("+", 1)[0]
-        return int(primer.split("/", 1)[1].split("*", 1)[0])
+        return int(self.segments[0][1])
 
     @property
     def num(self):
@@ -87,6 +87,18 @@ class TramMapa:
 
     def __len__(self):
         return 5
+
+    def __eq__(self, other):
+        """Compatible amb tuples antigues de 5 elements."""
+        if isinstance(other, TramMapa):
+            return (self.ini, self.fi, self.bpm, self.tipus, self.compassos) == (
+                other.ini, other.fi, other.bpm, other.tipus, other.compassos)
+        if isinstance(other, (tuple, list)) and len(other) == 5:
+            return tuple(self) == tuple(other)
+        return NotImplemented
+
+    def __hash__(self):
+        return hash((self.ini, self.fi, self.bpm, self.tipus, self.compassos))
 
     @property
     def payload(self):
@@ -121,6 +133,86 @@ def des_de_tupla(tram):
 def a_tuples(trams):
     """Vista de 5 tuples (per al codi que encara no coneix `TramMapa`)."""
     return [tuple(t) for t in trams]
+
+
+def normalitza_trams_map(trams, durada, log=None, fusiona=False):
+    """Normalitza el mapa preservant `tipus`/`compassos`.
+
+    Sense rubatos, delega en `tempo_map.neteja_trams` + `fusiona_trams_iguals`
+    (comportament idèntic al model anterior). Amb rubatos, garantix ordre,
+    cobertura i contigüitat; si la durada d'un rubato canvia, recalcula el seu
+    BPM a partir de la seqüència i la durada. Fusiona rubatos adjacents quan
+    la seqüència resultant cap en 4 segments.
+    """
+    trams = [des_de_tupla(t) for t in (trams or ())]
+    if not any(t.tipus == "rubato" for t in trams):
+        net, avisos = tempo_map.neteja_trams(
+            [tuple(t) for t in trams], durada)
+        if fusiona:
+            net = tempo_map.fusiona_trams_iguals(net, durada)
+        return [des_de_tupla(t) for t in net], avisos
+
+    avisos = []
+    durada = float(durada or 0.0)
+    if not trams:
+        return [], avisos
+    trams.sort(key=lambda t: t.ini)
+    # Cobertura dels extrems (el primer a 0, l'últim a la durada).
+    p = trams[0]
+    if p.ini > tempo_map.TOL or p.ini < 0:
+        trams[0] = TramMapa(0.0, p.fi, p.bpm, p.tipus, p.compassos)
+    u = trams[-1]
+    if durada > tempo_map.TOL and (u.fi < durada - tempo_map.TOL
+                                   or u.fi > durada + tempo_map.TOL):
+        trams[-1] = TramMapa(u.ini, durada, u.bpm, u.tipus, u.compassos)
+
+    out = []
+    for t in trams:
+        ini = 0.0 if not out else float(out[-1].fi)
+        fi = float(t.fi)
+        if durada > tempo_map.TOL:
+            fi = min(fi, durada)
+        if fi <= ini + tempo_map.TOL:
+            avisos.append(f"tram buit o invertit a {ini:.3f}s; s'ha descartat")
+            continue
+        tipus = t.tipus
+        bpm = float(t.bpm)
+        compassos = t.compassos
+        if tipus == "rubato":
+            segs = t.segments
+            quarters = sum(n * 4.0 / d * c for n, d, c in segs)
+            if quarters > 0:
+                bpm = quarters * 60.0 / (fi - ini)
+                if not (30.0 - 1e-9 <= bpm <= 350.0 + 1e-9):
+                    avisos.append(
+                        f"rubato {ini:.3f}–{fi:.3f}s: BPM derivat fora de "
+                        "30–350; es conserva el valor antic")
+                    bpm = float(t.bpm)
+                bpm = min(max(bpm, 30.0), 350.0)
+        nou = TramMapa(ini, fi, bpm, tipus, compassos)
+        if fusiona and out:
+            prev = out[-1]
+            if (prev.tipus == "normal" and nou.tipus == "normal"
+                    and abs(prev.bpm - nou.bpm) <= tempo_map.TOL
+                    and (prev.num, prev.den) == (nou.num, nou.den)):
+                out[-1] = TramMapa(prev.ini, nou.fi, prev.bpm,
+                                   "normal", prev.compassos)
+                continue
+            if prev.tipus == "rubato" and nou.tipus == "rubato":
+                segs = rubato._fusiona(list(prev.segments) + list(nou.segments))
+                if len(segs) <= rubato.MAX_SEGMENTS:
+                    quarters = sum(n * 4.0 / d * c for n, d, c in segs)
+                    bpm = quarters * 60.0 / (nou.fi - prev.ini)
+                    if 30.0 - 1e-9 <= bpm <= 350.0 + 1e-9:
+                        out[-1] = TramMapa(
+                            prev.ini, nou.fi, min(max(bpm, 30.0), 350.0),
+                            "rubato", rubato.compassos_a_text(segs))
+                        continue
+                    avisos.append(
+                        "dos rubatos adjacents no s'han pogut fusionar per "
+                        "BPM fora de 30–350")
+        out.append(nou)
+    return out, avisos
 
 
 def desa_mapa_tempo(ruta, trams):

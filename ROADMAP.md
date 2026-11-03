@@ -122,7 +122,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   TAP robust, compàs vs secció i ajust d'un BPM per mínims quadrats.
 - **En curs (prioritari)**: **subplà de rubato**
   ([`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md)).
-  **Fases 1 i 2 fetes**; següent: **fase 3** (visor/timeline). És previ
+  **Fases 1, 2 i 3.1 fetes**; següent: **fase 3.2** (accions de rubato). És previ
   a la fase 7: **no continuar amb les fases 7, 10 ni 12** fins que el subplà
   estiga complet i verificat. Després, la fase 10 (motor de detecció amb
   corpus real).

@@ -3,10 +3,15 @@
 Aquest mòdul és **pur**: no toca Qt, ni el projecte, ni el disc. Rep la durada
 d'un rubato i el tempo/compàs de referència, i calcula:
 
-- el **nombre de pulsos** enters que més s'aproxima a la referència;
-- el **BPM derivat** que fa coincidir eixos pulsos amb la durada;
-- una **seqüència de compassos estàndard** (en la mateixa família de
-  denominador) que suma exactament eixos pulsos.
+- el **nombre de negres** enteres que més s'aproxima a la referència;
+- el **BPM derivat** (negres per minut) que fa coincidir eixes negres amb la
+  durada;
+- una **seqüència de compassos** (fins a 4 segments) que suma exactament eixes
+  negres.
+
+El BPM és sempre **en negres per minut**, com `app/tempo_map.py` i el
+metrònomo. Per això es poden barrejar denominadors dins d'un rubato
+(`4/4*2+6/8`): cada compàs aporta `num·4/den` negres.
 
 Els segons són la veritat: este mòdul només construeix la representació
 mètrica derivada. Si no hi ha cap solució dins del contracte (BPM 30–350,
@@ -21,13 +26,12 @@ import re
 
 from app import limits
 
-#: Famílies de compassos estàndard per al rubato, pel denominador.
-#: La referència sempre és permesa encara que el seu numerador no siga ací.
-FAMILIES = {
-    2: (2, 3, 4),
-    4: (2, 3, 4, 5, 6, 7),
-    8: (3, 6, 9, 12),
-}
+#: Compassos estàndard per a la seqüència: `(numerador, denominador)`.
+ESTANDARDS = (
+    (2, 4), (3, 4), (4, 4), (5, 4), (6, 4), (7, 4),
+    (3, 8), (6, 8), (9, 8), (12, 8),
+    (2, 2), (3, 2), (4, 2),
+)
 
 #: Màxim de segments de compàs dins d'un rubato.
 MAX_SEGMENTS = 4
@@ -58,6 +62,17 @@ class Derivacio:
     ref_num: int
     ref_den: int
 
+    @property
+    def quarters(self):
+        """Negres totals de la seqüència."""
+        return sum(num * 4.0 / den * count
+                   for num, den, count in self.segments)
+
+
+def _pes(num, den):
+    """Negres × 2 (octaves) que fa un compàs `num/den`; enter per a 2/4/8."""
+    return int(num) * 8 // int(den)
+
 
 def _valida_referencia(bpm, num, den):
     try:
@@ -75,9 +90,8 @@ def _valida_referencia(bpm, num, den):
     if not num_f.is_integer() or not den_f.is_integer():
         raise RubatoError("El compàs de referència ha de ser enter")
     num, den = int(num_f), int(den_f)
-    if den not in FAMILIES:
-        raise RubatoError(
-            "El denominador de referència ha de ser 2, 4 o 8")
+    if den not in (2, 4, 8):
+        raise RubatoError("El denominador de referència ha de ser 2, 4 o 8")
     if not limits.NUM_MIN <= num <= limits.NUM_MAX:
         raise RubatoError(
             f"El numerador de referència ha d'estar entre "
@@ -86,7 +100,7 @@ def _valida_referencia(bpm, num, den):
 
 
 def _tria_pulsos(durada, bpm_ref):
-    """Nombre enter de pulsos dins de 30–350, el més pròxim a la referència."""
+    """Nombre enter de negres dins de 30–350, el més pròxim a la referència."""
     if not math.isfinite(durada) or durada <= 0:
         raise RubatoError("La durada del rubato ha de ser positiva")
     ideal = durada * bpm_ref / 60.0
@@ -99,8 +113,6 @@ def _tria_pulsos(durada, bpm_ref):
     n = int(math.floor(ideal + 0.5))          # arrodoniment mig cap amunt
     n = min(max(n, n_min), n_max)
     bpm = n * 60.0 / durada
-    # Ajust de seguretat només si eixim de la banda de debò (no per
-    # arrodoniment de coma flotant, p. ex. 350.00000000000006).
     if bpm < limits.BPM_MIN - 1e-9:
         n += 1
         bpm = n * 60.0 / durada
@@ -109,8 +121,7 @@ def _tria_pulsos(durada, bpm_ref):
         bpm = n * 60.0 / durada
     if not (limits.BPM_MIN - 1e-9 <= bpm <= limits.BPM_MAX + 1e-9):
         raise RubatoError(
-            "No hi ha cap nombre enter de pulsos dins de la banda de BPM")
-    # El valor del model ha de quedar estrictament dins la banda.
+            "No hi ha cap nombre enter de negres dins de la banda de BPM")
     bpm = min(max(bpm, limits.BPM_MIN), limits.BPM_MAX)
     return n, bpm
 
@@ -118,47 +129,48 @@ def _tria_pulsos(durada, bpm_ref):
 def _fusiona(segments):
     """Fusiona segments adjacents del mateix compàs."""
     out = []
-    for num, count in segments:
+    for num, den, count in segments:
         if count <= 0:
             continue
-        if out and out[-1][0] == num:
-            out[-1] = (num, out[-1][1] + count)
+        if out and out[-1][0] == num and out[-1][1] == den:
+            out[-1] = (num, den, out[-1][2] + count)
         else:
-            out.append((num, count))
+            out.append((num, den, count))
     return out
 
 
-def _millor_resta(rest, den, max_parts, ref_num, max_bars=MAX_BARS,
+def _millor_resta(rest, max_parts, ref_num, ref_den, max_bars=MAX_BARS,
                   nodes=None):
     """Millor combinació de fins a `max_parts` compassos que suma `rest`.
 
-    Retorna una llista de `(numerador, repeticions)` o `None`. Els compassos
-    són de la família `den`; la referència també és permesa. `max_bars` limita
-    el nombre total de compassos de la combinació.
-
-    `nodes` és un comptador compartit `[usats, esgotat]`: la cerca pot trobar
-    una solució i continuar buscant-ne una de millor, però si s'esgota el
-    pressupost sense cap solució, marca `esgotat` perquè el cridador puga
-    rebutjar el rubato sense quedar-se penjat.
+    `rest` i els pesos són en **octaves** (negra = 2). Retorna una llista de
+    `(num, den, repeticions)` o `None`.
     """
     if rest == 0:
         return []
     if nodes is None:
         nodes = [0, False]
-    nums = sorted(set(FAMILIES[den]) | {ref_num}, reverse=True)
-    max_num = max(nums)
-    if math.ceil(rest / max_num) > max_bars:
+    metres = list(ESTANDARDS)
+    if (ref_num, ref_den) not in metres:
+        metres.append((ref_num, ref_den))
+    # Pes en octaves i orde: la referència mana; després, els més grans.
+    metres = sorted(
+        metres, key=lambda m: (-(m == (ref_num, ref_den)), -_pes(*m), m))
+    pesos = [(_pes(n, d), n, d) for n, d in metres]
+    max_pes = max(p for p, _n, _d in pesos)
+    if math.ceil(rest / max_pes) > max_bars:
         return None
 
     def _clau(parts):
-        ref_bars = sum(count for num, count in parts if num == ref_num)
-        total = sum(count for _, count in parts)
+        ref_bars = sum(count for n, d, count in parts
+                       if (n, d) == (ref_num, ref_den))
+        total = sum(count for _n, _d, count in parts)
         return (
             -ref_bars,
             total,
             len(parts),
-            len({num for num, _ in parts}),
-            tuple((num, -count) for num, count in parts),
+            len({(n, d) for n, d, _c in parts}),
+            tuple((n, d, -count) for n, d, count in parts),
         )
 
     millor = [None]
@@ -178,46 +190,41 @@ def _millor_resta(rest, den, max_parts, ref_num, max_bars=MAX_BARS,
             return
         if len(parts) >= max_parts:
             return
-        if bars + math.ceil(remaining / max_num) > max_bars:
+        if bars + math.ceil(remaining / max_pes) > max_bars:
             return
-        for i in range(inici, len(nums)):
-            num = nums[i]
-            if num > remaining:
+        for i in range(inici, len(pesos)):
+            pes, num, den = pesos[i]
+            if pes > remaining:
                 continue
-            max_count = min(remaining // num, max_bars - bars)
+            max_count = min(remaining // pes, max_bars - bars)
             for count in range(max_count, 0, -1):
-                _rec(remaining - num * count, i,
-                     parts + [(num, count)], bars + count)
+                _rec(remaining - pes * count, i,
+                     parts + [(num, den, count)], bars + count)
 
     _rec(rest, 0, [], 0)
     return None if millor[0] is None else millor[0][1]
 
 
-def _cerca_segments(n, den, ref_num):
-    """Cerca la seqüència de compassos que cobreix `n` pulsos."""
-    estandards = sorted(set(FAMILIES[den]) | {ref_num})
-    # Si tots els numeradors són múltiples de g, només hi ha solucions per a
-    # n múltiple de g (p. ex. família 8 amb referència 6/8: g = 3).
-    g = 0
-    for num in estandards:
-        g = math.gcd(g, num)
-    if g > 1 and n % g:
-        raise RubatoError(
-            "La durada del rubato no es pot representar amb compassos "
-            f"estàndard (els pulsos han de ser múltiples de {g})")
-    # La referència mana; després, els compassos més pròxims al seu numerador.
-    primaris = [ref_num] + [
-        num for num in sorted(estandards, key=lambda x: (abs(x - ref_num), x))
-        if num != ref_num
-    ]
+def _cerca_segments(negres, ref_num, ref_den):
+    """Cerca la seqüència de compassos que cobreix `negres` negres."""
+    rest_total = 2 * int(negres)          # octaves (negra = 2)
+    ref_pes = _pes(ref_num, ref_den)
+    metres = list(ESTANDARDS)
+    if (ref_num, ref_den) not in metres:
+        metres.append((ref_num, ref_den))
+    # La referència mana; després, els compassos més pròxims en pes.
+    primaris = sorted(
+        metres, key=lambda m: (m != (ref_num, ref_den),
+                               abs(_pes(*m) - ref_pes), -_pes(*m), m))
 
     nodes = [0, False]
-    for primari in primaris:
-        max_q = min(n // primari, MAX_BARS)
+    for pnum, pden in primaris:
+        ppes = _pes(pnum, pden)
+        max_q = min(rest_total // ppes, MAX_BARS)
         for q in range(max_q, -1, -1):
-            rest = n - q * primari
+            rest = rest_total - q * ppes
             max_parts = MAX_SEGMENTS - (1 if q > 0 else 0)
-            parts = _millor_resta(rest, den, max_parts, ref_num,
+            parts = _millor_resta(rest, max_parts, ref_num, ref_den,
                                   MAX_BARS - q, nodes=nodes)
             if nodes[1]:
                 raise RubatoError(
@@ -225,13 +232,13 @@ def _cerca_segments(n, den, ref_num):
                     "estàndard (la cerca ha esgotat el pressupost)")
             if parts is None:
                 continue
-            segs = ([(primari, q)] if q > 0 else []) + list(parts)
+            segs = ([(pnum, pden, q)] if q > 0 else []) + list(parts)
             segs = _fusiona(segs)
             if not segs or len(segs) > MAX_SEGMENTS:
                 continue
-            if sum(count for _, count in segs) > MAX_BARS:
+            if sum(c for _n, _d, c in segs) > MAX_BARS:
                 continue
-            if sum(num * count for num, count in segs) != n:
+            if sum(_pes(n, d) * c for n, d, c in segs) != rest_total:
                 continue
             return segs
     raise RubatoError(
@@ -239,15 +246,12 @@ def _cerca_segments(n, den, ref_num):
         f"i un màxim de {MAX_SEGMENTS} segments")
 
 
-def compassos_a_text(segments, den):
-    """Converteix segments `(num, count)` a la forma canònica ASCII."""
+def compassos_a_text(segments):
+    """Converteix segments `(num, den, count)` a la forma canònica ASCII."""
     try:
-        den = int(den)
-        segs = _fusiona([(int(num), int(count)) for num, count in segments])
+        segs = _fusiona([(int(n), int(d), int(c)) for n, d, c in segments])
     except (TypeError, ValueError) as e:
         raise RubatoError("La seqüència de compassos no és vàlida") from e
-    if den not in FAMILIES:
-        raise RubatoError("El denominador ha de ser 2, 4 o 8")
     if not segs:
         raise RubatoError("La seqüència de compassos és buida")
     if len(segs) > MAX_SEGMENTS:
@@ -256,7 +260,9 @@ def compassos_a_text(segments, den):
             f"{MAX_SEGMENTS} segments")
     total = 0
     parts = []
-    for num, count in segs:
+    for num, den, count in segs:
+        if den not in (2, 4, 8):
+            raise RubatoError("El denominador ha de ser 2, 4 o 8")
         if not limits.NUM_MIN <= num <= limits.NUM_MAX:
             raise RubatoError(
                 f"El numerador ha d'estar entre {limits.NUM_MIN} i "
@@ -272,11 +278,10 @@ def compassos_a_text(segments, den):
 
 
 def text_a_compassos(text):
-    """Llig la forma canònica ASCII (`4/4*3+3/4`) i retorna els segments.
+    """Llig la forma canònica ASCII (`4/4*3+6/8`) i retorna els segments.
 
-    És estricta: no accepta espais, `×`, zeros davanters, `*1`, segments
-    adjacents iguals ni més de 999 compassos en total. Els segments han de
-    tindre el mateix denominador i un màxim de 4.
+    És estricta: no accepta espais, `×`, zeros davanters, `*1` ni segments
+    adjacents iguals. Admet denominadors diferents (el BPM és en negres).
     """
     if not isinstance(text, str) or not text or text != text.strip():
         raise RubatoError("La seqüència de compassos no és vàlida")
@@ -286,21 +291,19 @@ def text_a_compassos(text):
             f"La seqüència de compassos ha de tindre entre 1 i "
             f"{MAX_SEGMENTS} segments")
     out = []
-    den = None
     for part in parts:
         m = _RE_SEGMENT.match(part)
         if not m:
             raise RubatoError(f"Segment de compàs no vàlid: {part!r}")
         num_s, den_s, count_s = m.groups()
-        # Forma canònica: sense zeros davanters i sense `*1`.
         if num_s != str(int(num_s)) or den_s != str(int(den_s)):
             raise RubatoError(f"Segment de compàs no canònic: {part!r}")
         if count_s is not None:
             if count_s != str(int(count_s)) or int(count_s) == 1:
                 raise RubatoError(f"Segment de compàs no canònic: {part!r}")
-        num, d = int(num_s), int(den_s)
+        num, den = int(num_s), int(den_s)
         count = int(count_s) if count_s is not None else 1
-        if d not in FAMILIES:
+        if den not in (2, 4, 8):
             raise RubatoError("El denominador ha de ser 2, 4 o 8")
         if not limits.NUM_MIN <= num <= limits.NUM_MAX:
             raise RubatoError(
@@ -308,29 +311,21 @@ def text_a_compassos(text):
                 f"{limits.NUM_MAX}")
         if count < 1 or count > MAX_BARS:
             raise RubatoError("El nombre de repeticions no és vàlid")
-        if den is None:
-            den = d
-        elif d != den:
-            raise RubatoError(
-                "Tots els compassos d'un rubato han de tindre el mateix "
-                "denominador")
-        out.append((num, count))
+        out.append((num, den, count))
     if _fusiona(out) != out:
         raise RubatoError(
             "La seqüència de compassos ha d'estar compactada (sense segments "
             "adjacents iguals)")
-    if sum(count for _, count in out) > MAX_BARS:
+    if sum(c for _n, _d, c in out) > MAX_BARS:
         raise RubatoError(
             f"Un rubato no pot tindre més de {MAX_BARS} compassos")
     return tuple(out)
 
 
 def presenta_compassos(text):
-    """Forma per a la UI: `4/4 × 3 + 3/4`."""
-    segs = text_a_compassos(text)
-    den = int(text.split("+", 1)[0].split("/", 1)[1].split("*", 1)[0])
+    """Forma per a la UI: `4/4 × 3 + 6/8`."""
     out = []
-    for num, count in segs:
+    for num, den, count in text_a_compassos(text):
         et = f"{num}/{den}"
         if count > 1:
             et += f" × {count}"
@@ -339,7 +334,7 @@ def presenta_compassos(text):
 
 
 def deriva(durada, bpm_ref, num_ref, den_ref):
-    """Deriva el BPM i la seqüència de compassos d'un rubato.
+    """Deriva el BPM (negres/min) i la seqüència de compassos d'un rubato.
 
     `durada` en segons; `bpm_ref`, `num_ref`, `den_ref` del clip mètric de
     referència. Retorna `Derivacio` o aixeca `RubatoError`.
@@ -347,11 +342,11 @@ def deriva(durada, bpm_ref, num_ref, den_ref):
     bpm_ref, num_ref, den_ref = _valida_referencia(
         bpm_ref, num_ref, den_ref)
     n, bpm = _tria_pulsos(float(durada), bpm_ref)
-    segments = _cerca_segments(n, den_ref, num_ref)
-    text = compassos_a_text(segments, den_ref)
+    segments = _cerca_segments(n, num_ref, den_ref)
+    text = compassos_a_text(segments)
     return Derivacio(
         bpm=float(bpm),
-        den=int(den_ref),
+        den=int(segments[0][1]),
         compassos=text,
         pulsos=int(n),
         segments=tuple(segments),

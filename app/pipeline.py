@@ -2135,7 +2135,8 @@ def llegeix_tempo_map(carpeta, bpm, num, den, durada, log=None):
     """Llig `mapa_tempo.csv`; si no hi ha model, un sol tros constant.
 
     Els projectes amb el model antic (`tempo.csv` + `compas.csv`) es rebutgen:
-    no hi ha migració. Els rubatos encara no s'interpreten al visor (fase 3).
+    no hi ha migració. El resultat són `TramMapa`, de manera que el visor pot
+    distingir els clips normals dels rubatos.
     """
     def _constant():
         net, avisos = tempo_map.neteja_trams(
@@ -2143,7 +2144,7 @@ def llegeix_tempo_map(carpeta, bpm, num, den, durada, log=None):
         if log:
             for avís in avisos:
                 log(f"Mapa de tempo: {avís}")
-        return net
+        return [mapa_tempo.des_de_tupla(t) for t in net]
 
     if not carpeta:
         return _constant()
@@ -2156,13 +2157,8 @@ def llegeix_tempo_map(carpeta, bpm, num, den, durada, log=None):
     trams_map = mapa_tempo.llegeix_mapa_tempo(ruta, log=log)
     if not trams_map:
         return _constant()
-    if any(t.tipus == "rubato" for t in trams_map):
-        raise ValueError(
-            "Els rubatos encara no estan suportats al visor (fase 3)")
-    trams = [tuple(t) for t in trams_map]
-    # El CSV pot haver estat editat a mà: el que ix d'ací és el MODEL, i ha de
-    # complir les regles 1, 2, 4 i 8 (ordre, contigüitat, cobertura i valors).
-    net, avisos = tempo_map.neteja_trams(trams, durada)
+    net, avisos = mapa_tempo.normalitza_trams_map(
+        trams_map, durada, log=log, fusiona=True)
     if log:
         for avís in avisos:
             log(f"Mapa de tempo: {avís}")

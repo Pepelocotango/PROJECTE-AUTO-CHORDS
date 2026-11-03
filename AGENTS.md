@@ -44,17 +44,18 @@ de detecció) i **12** (fuzzer al CI, congelació i docs). Ajornades: **8**
 (MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
 
 > **Prioritat actual (2026-11-02):** el **subplà de rubato**
-> (`00PER FER/DECISIONS_RUBATO.md`) està **en curs**. Les **fases 1 i 2**
-> (motor pur i model/format) estan fetes; la següent és la **fase 3**
-> (visor/timeline). S'ha
+> (`00PER FER/DECISIONS_RUBATO.md`) està **en curs**. Les **fases 1, 2 i 3.1**
+> (motor, model/format i visor/graella) estan fetes; la següent és la **fase
+> 3.2** (accions de rubato). S'ha
 > d'executar **abans** de la fase 7 i, per tant, abans de les fases 10 i 12.
 > No començar cap altra fase del pla de simplificació fins que el subplà
 > estiga complet i verificat.
 
 Fet recentment (2026-11-01/02):
-- **Subplà de rubato — fases 1-2**: motor pur `app/rubato.py` i model
+- **Subplà de rubato — fases 1-3.1**: motor pur `app/rubato.py`, model
   unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
-  projectes vells). Suite completa: **1.499 tests**, 1 omés.
+  projectes vells) i visor/graella amb rubatos derivats de només lectura.
+  Suite completa: **1.507 tests**, 1 omés.
 - **Fase 6**: `Fitxer ▸ Exporta àudio…` amb diàleg natiu, perfils
   WAV/MP3/FLAC/AAC/OGG/Opus, detecció d'encoders en temps d'execució,
   escriptura atòmica i protecció de la còpia de treball.

@@ -3134,15 +3134,18 @@ class TestRegla8TempsValids(_regles_or___Base):
         """Construir el mapa (R1/R2/R4/R8) sempre ix normalitzat, vinga d'on
         vinga la còpia: `_refresca_tempo_map` és el punt únic on es fa."""
         v = _regles_or___visor(dur=20.0)
-        v.tempo_trams = [(5.0, 8.0, 0.0, 0, 0), (8.0, 30.0, 90.0, 3, 4)]
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(5.0, 8.0, 120.0, "rubato", "4/4+2/4"),
+            (8.0, 30.0, 90.0, 3, 4),
+        ]
         v._refresca_tempo_map()
         self.assertEqual(float(v.tempo_trams[0][0]), 0.0)          # R1/R4
         self.assertGreater(float(v.tempo_trams[0][2]), 0.0)        # R8
-        # Un 0/0 és un tros EN SEGONS (vàlid des del 22-10-2026), no un
-        # valor trencat: es conserva i el BPM passa a la referència (100).
-        self.assertEqual((int(v.tempo_trams[0][3]),
-                          int(v.tempo_trams[0][4])), (0, 0))
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 100.0)
+        # El rubato conserva tipus i seqüència; el BPM es recalcula per la
+        # durada normalitzada (6 negres en 8 s = 45 BPM).
+        self.assertEqual(v.tempo_trams[0].tipus, "rubato")
+        self.assertEqual(v.tempo_trams[0].compassos, "4/4+2/4")
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 45.0, places=6)
         # I un mapa mètric trencat sí que es repara amb el transport.
         v.tempo_trams = [(5.0, 8.0, 0.0, 4, 4), (8.0, 30.0, 90.0, 3, 4)]
         v._refresca_tempo_map()
@@ -3505,19 +3508,13 @@ class TestUndoTemps(_undo_temps___Base):
         self.assertEqual(int(v.bpb), 4)
 
     def test_posar_el_clip_en_segons_des_de_la_barra(self):
-        """Casella «En segons» de la barra → el clip objectiu queda 0/0."""
+        """La casella «En segons» no crea rubato encara (fase 3.2)."""
         w = _undo_temps___finestra()
         v = w.visor_ref
         w.chk_segons.setChecked(True)
-        self.assertEqual((int(v.tempo_trams[-1][3]),
-                          int(v.tempo_trams[-1][4])), (0, 0))
-        self.assertTrue(v.tempo_map.es_lliure(float(v.pos)))
-        # I el text del compàs queda en 0/0.
-        self.assertEqual(w.bpb.text().strip(), "0/0")
-        # Desfer torna a compàs.
-        w._undo_visor()
-        self.assertNotEqual((int(v.tempo_trams[-1][3]),
-                             int(v.tempo_trams[-1][4])), (0, 0))
+        self.assertFalse(v.tempo_map.es_lliure(float(v.pos)))
+        self.assertNotEqual(w.bpb.text().strip(), "0/0")
+        self.assertFalse(w.chk_segons.isChecked())
 
     def test_bpm_zero_avisa_i_no_aplica_res(self):
         w = _undo_temps___finestra()
@@ -4436,7 +4433,10 @@ class TestLlistaTempo(_undo_temps___Base):
     def _prepara(self):
         w = _undo_temps___finestra()
         v = w.visor_ref
-        v.tempo_trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 100.0, 0, 0)]
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(10.0, 30.0, 100.0, "normal", "3/4"),
+        ]
         v._actualitza_temps()
         return w, v
 
@@ -4451,7 +4451,23 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual(t.item(0, 1).text(), "10.000")
         self.assertEqual(t.item(0, 2).text(), "120.000")
         self.assertEqual(t.item(0, 3).text(), "4/4")
-        self.assertEqual(t.item(1, 3).text(), "segons")
+        self.assertEqual(t.item(1, 3).text(), "3/4")
+
+    def test_rubato_es_mostra_derivat_i_readonly(self):
+        _w, v = self._prepara()
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(10.0, 30.0, 102.0, "rubato",
+                                "4/4*8+2/4"),
+        ]
+        v._actualitza_temps()
+        self.assertEqual(v.llista_tempo.item(1, 3).text(),
+                         "R 4/4 × 8 + 2/4")
+        v._focus_editor("tempo", 1)
+        self.assertAlmostEqual(float(v.ed_nom.text()), 102.0, places=6)
+        self.assertEqual(v.ed_fam.text(), "4/4 × 8 + 2/4")
+        for w in (v.ed_nom, v.ed_fam, v.ed_ini, v.ed_fi, v.ed_aplica):
+            self.assertFalse(w.isEnabled())
 
     def test_clic_selecciona_el_clip_i_hi_porta_el_cursor(self):
         _w, v = self._prepara()
@@ -4467,7 +4483,7 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual(v.ed_nom_lbl.text(), "BPM:")
         self.assertEqual(v.ed_fam_lbl.text(), "Compàs:")
         self.assertEqual(v.ed_nom.text(), "100.000")
-        self.assertEqual(v.ed_fam.text(), "0/0")
+        self.assertEqual(v.ed_fam.text(), "3/4")
         self.assertEqual(v.ed_ini.text(), "10.000")
         # Inici i Fi SÍ que s'editen (mouen la frontera, §13.6); el compàs.beat
         # (≈) és de només lectura perquè el calcula el mapa.
@@ -4492,15 +4508,14 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual(v.llista_tempo.item(1, 3).text(), "3/4")
         self.assertEqual(v.ed_fam.text(), "3/4")
 
-    def test_aplicar_zero_zero_el_deixa_en_segons(self):
+    def test_zero_zero_no_crea_rubato_des_de_l_editor(self):
         _w, v = self._prepara()
         v._focus_editor("tempo", 0)
         v.ed_fam.setText("0/0")
         v._aplica_editor()
         self.assertEqual((int(v.tempo_trams[0][3]),
-                          int(v.tempo_trams[0][4])), (0, 0))
-        self.assertTrue(v.tempo_map.es_lliure(1.0))
-        self.assertEqual(v.llista_tempo.item(0, 3).text(), "segons")
+                          int(v.tempo_trams[0][4])), (4, 4))
+        self.assertEqual(v.llista_tempo.item(0, 3).text(), "4/4")
 
     def _dos_trams(self, v, durada=30.0):
         v.tempo_trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 120.0, 4, 4)]
@@ -4561,22 +4576,24 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual(v.tempo_trams, abans)
         self.assertTrue(avisos and "últim" in avisos[-1])
 
-    def test_el_clip_en_segons_no_es_recalcula_pero_el_vei_metric_si(self):
-        """Rubato = cap regla; el seu VEÍ amb compàs conserva N i re-tempa."""
+    def test_rubato_es_preserva_en_moure_el_vei_metric(self):
+        """El rubato conserva tipus/seqüència; el veí amb compàs re-tempa."""
         w, v = self._prepara()
-        v.tempo_trams = [(0.0, 10.0, 120.0, 0, 0), (10.0, 30.0, 100.0, 4, 4)]
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4*5"),
+            mapa_tempo.TramMapa(10.0, 30.0, 100.0, "normal", "4/4"),
+        ]
         v._actualitza_temps()
         v._focus_editor("tempo", 1)
         v.ed_ini.setText("12.000")
         v._aplica_editor()
         self.assertAlmostEqual(float(v.tempo_trams[0][1]), 12.0, places=6)
-        self.assertEqual((int(v.tempo_trams[0][3]), int(v.tempo_trams[0][4])),
-                         (0, 0))
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 120.0, places=6)
+        self.assertEqual(v.tempo_trams[0].tipus, "rubato")
+        self.assertEqual(v.tempo_trams[0].compassos, "4/4*5")
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 100.0, places=6)
         # El mètric (8 compassos a 100 BPM) passa de 20 s a 18 s → 106,7 BPM.
         self.assertAlmostEqual(float(v.tempo_trams[1][2]), 8 * 4 * 60 / 18.0,
                                places=4)
-        self.assertTrue(v.tempo_map.es_lliure(2.0))
         w.close()
 
     def test_desar_no_deixa_el_mapa_derivat_endarrerit(self):

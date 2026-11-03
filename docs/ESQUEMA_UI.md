@@ -219,7 +219,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 │  ⑫  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
 │      acord/secció: [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│
 │      tempo: [🥁]  [BPM▢] [Compàs▢] [Inici (s)▢] [Fi (s)▢] [≈ ▢] [Aplica]│
-│      (0/0 o «segons» = clip rubato; sense finestres emergents)          │
+│      (RUBATO = clip derivat; crear-lo: fase 3.2)                      │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑩ LLISTA ACORDS    │ ⑪ LLISTA SECCIONS  │ ⑭ LLISTA TEMPO             │
 │  «1.1 N», «8.1 E7»… │ «A(N) 1.1–10.1»…   │ Inici·Fi·BPM·Compàs        │

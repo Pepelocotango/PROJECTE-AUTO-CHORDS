@@ -1425,7 +1425,7 @@ class Finestra(QMainWindow):
     # ---- lectura manual dels camps de text ----
     @staticmethod
     def _parse_compas(text, defecte_num=4, defecte_den=4):
-        """Accepta «4», «4/4», «3/4», «6/8» o «0/0»; rebutja la resta."""
+        """Accepta «4», «4/4», «3/4», «6/8»; `0/0` es reserva al rubato."""
         s = str(text).replace(" ", "").strip()
         if not s:
             raise ValueError("El compàs no pot estar buit")
@@ -2638,6 +2638,11 @@ class Finestra(QMainWindow):
         den0 = int(getattr(vr, "beat_type", 4) or 4)
         trams = getattr(vr, "tempo_trams", None) or [
             (0.0, vr._durada_wav(), float(vr.bpm), int(vr.bpb), den0)]
+        if any(getattr(t, "tipus", None) == "rubato" for t in trams):
+            self._missatge_info(
+                "Aquest mapa té rubatos; l'editor de trams arribarà en la "
+                "fase 3.2. Els rubatos es mostren al visor com a derivats.")
+            return
         dlg = dialegs.DialegTempoMapa(self, trams, vr._durada_wav())
         if dlg.exec_() != QDialog.Accepted:
             return
@@ -3205,6 +3210,13 @@ class Finestra(QMainWindow):
         idx = vr.tempo_objectiu()
         free = bool(getattr(self, "chk_segons", None)
                     and self.chk_segons.isChecked())
+        if free:
+            self._missatge_info(
+                "El rubato es crea amb «Marca com a rubato» o «Converteix a "
+                "rubato»; el commutador «En segons» arribarà en la fase 3.2.")
+            self.chk_segons.setChecked(False)
+            self._sincronitza_temps_del_visor()
+            return
         if not free:
             # Escriure 0 BPM NO s'ha de convertir en 30 en silenci: és el gest
             # natural per demanar un clip en segons.
@@ -3252,7 +3264,7 @@ class Finestra(QMainWindow):
         self._sincronitza_temps_del_visor()
 
     def _segons_top_bar(self, actiu):
-        """Casella «En segons» de la barra: aplica 0/0 (o torna a compàs)."""
+        """Casella «En segons»: a 3.1 es rebutja; el rubato és de 3.2."""
         if getattr(self, "_actualitzant_temps", False):
             return
         if not actiu and self.bpb.text().strip() in ("0/0", "0", ""):

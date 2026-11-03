@@ -620,9 +620,8 @@ class DialegTempoMapa(QDialog):
             "DAW). Cada fila val fins a la següent; la primera («Des de 0 s») "
             "és el valor inicial.\nA «Des de» pots escriure **segons** (p. ex. "
             "`90`) o un **compàs** fent-ho començar per `c` (p. ex. `c33` o "
-            "`c33.1`).\nPer a un passatge **rubato** (en segons, sense "
-            "graella), posa-hi el compàs `0/0`: eixa fila dura el que diuen "
-            "els segons i no compta compassos.")
+            "`c33.1`).\nEls rubatos es creen des del visor amb «Marca com a "
+            "rubato» o «Converteix a rubato» (fase 3.2).")
         avis.setWordWrap(True)
         lay.addWidget(avis)
         self.taula = QTableWidget(0, 3)
@@ -701,11 +700,15 @@ class DialegTempoMapa(QDialog):
                         f"Fila {r + 1}: compàs «{comp}» no vàlid") from e
             else:
                 raise ValueError(
-                    f"Fila {r + 1}: escriu el compàs com num/den o 0/0")
+                    f"Fila {r + 1}: escriu el compàs com num/den")
             try:
                 bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
             except ValueError as e:
                 raise ValueError(f"Fila {r + 1}: {e}") from e
+            if num == 0 and den == 0:
+                raise ValueError(
+                    f"Fila {r + 1}: el rubato es crea des del visor "
+                    "(«Marca com a rubato» / «Converteix a rubato»).")
             out.append((ini, ini, bpm, num, den))
         if not out:
             raise ValueError("El mapa de tempo/compàs és buit")
@@ -822,9 +825,11 @@ class DialegTramTempo(QDialog):
         self.ed_compas.setEnabled(not bool(actiu))
 
     def valors(self):
-        """`(bpm, num, den)`; 0/0 = clip en segons; «num/den» o «num»."""
+        """`(bpm, num, den)`; «num/den» o «num»."""
         if self.chk_segons.isChecked():
-            return tempo_map.valida_tempo(float(self.sp_bpm.value()), 0, 0)
+            raise ValueError(
+                "El rubato es crea amb «Marca com a rubato» o «Converteix a "
+                "rubato» (fase 3.2); no des del diàleg de tram.")
         num, den = 4, self._den_defecte
         txt = (self.ed_compas.text() or "").strip().replace(" ", "")
         if "/" in txt:

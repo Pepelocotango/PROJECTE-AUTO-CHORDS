@@ -10,7 +10,7 @@ class TestDerivacio(unittest.TestCase):
         self.assertAlmostEqual(d.bpm, 60.0, places=6)
         self.assertEqual(d.pulsos, 15)
         self.assertEqual(d.compassos, "4/4*3+3/4")
-        self.assertEqual(d.segments, ((4, 3), (3, 1)))
+        self.assertEqual(d.segments, ((4, 4, 3), (3, 4, 1)))
 
     def test_resta_2(self):
         d = rubato.deriva(14.0, 60.0, 4, 4)
@@ -33,17 +33,20 @@ class TestDerivacio(unittest.TestCase):
 
     def test_referencia_6_8(self):
         d = rubato.deriva(15.0, 60.0, 6, 8)
-        self.assertEqual(d.compassos, "6/8*2+3/8")
+        self.assertEqual(d.compassos, "6/8*5")
         self.assertEqual(d.den, 8)
+        self.assertAlmostEqual(d.quarters, 15.0)
 
     def test_referencia_2_2(self):
         d = rubato.deriva(7.0, 60.0, 2, 2)
-        self.assertEqual(d.compassos, "2/2*2+3/2")
+        self.assertEqual(d.compassos, "2/2+3/4")
+        self.assertAlmostEqual(d.quarters, 7.0)
 
     def test_referencia_9_4(self):
         d = rubato.deriva(17.0, 60.0, 9, 4)
-        self.assertEqual(d.compassos, "9/4+4/4*2")
-        self.assertEqual(d.segments, ((9, 1), (4, 2)))
+        self.assertEqual(d.compassos, "9/4+4/2")
+        self.assertEqual(d.segments, ((9, 4, 1), (4, 2, 1)))
+        self.assertAlmostEqual(d.quarters, 17.0)
 
     def test_cas_b_25_pulsos(self):
         d = rubato.deriva(15.0, 100.0, 4, 4)
@@ -99,10 +102,11 @@ class TestBandes(unittest.TestCase):
         for n in range(2, 301):
             d = rubato.deriva(float(n), 60.0, 4, 4)
             self.assertLessEqual(len(d.segments), 4, n)
-            self.assertEqual(
-                sum(num * count for num, count in d.segments), d.pulsos)
+            self.assertAlmostEqual(
+                sum(num * 4.0 / den * count
+                    for num, den, count in d.segments), d.pulsos)
             self.assertLessEqual(
-                sum(count for _, count in d.segments), rubato.MAX_BARS)
+                sum(count for _, _, count in d.segments), rubato.MAX_BARS)
 
     def test_propietats_en_families(self):
         for bpm, num, den in ((60.0, 4, 4), (60.0, 3, 4), (60.0, 5, 4),
@@ -112,38 +116,38 @@ class TestBandes(unittest.TestCase):
                     d = rubato.deriva(float(n), bpm, num, den)
                 except rubato.RubatoError:
                     continue
-                self.assertEqual(
-                    sum(m * c for m, c in d.segments), d.pulsos, (num, den, n))
+                self.assertAlmostEqual(
+                    sum(m * 4.0 / dd * c for m, dd, c in d.segments),
+                    d.pulsos, msg=(num, den, n))
                 self.assertLessEqual(len(d.segments), 4)
                 self.assertLessEqual(
-                    sum(c for _, c in d.segments), rubato.MAX_BARS)
-                self.assertTrue(all(
-                    m == num or m in rubato.FAMILIES[den]
-                    for m, _ in d.segments))
+                    sum(c for _, _, c in d.segments), rubato.MAX_BARS)
                 self.assertEqual(rubato.text_a_compassos(d.compassos),
                                  d.segments)
                 self.assertEqual(
-                    rubato.compassos_a_text(d.segments, d.den), d.compassos)
+                    rubato.compassos_a_text(d.segments), d.compassos)
 
     def test_litimit_de_999_compassos_no_dona_falsos_negatius(self):
-        for durada, num, den in ((6992.0, 4, 4), (11985.0, 6, 8),
-                                 (8965.0, 9, 4)):
+        for durada, num, den in ((6992.0, 4, 4), (8965.0, 9, 4),
+                                 (4021.0, 4, 4)):
             d = rubato.deriva(durada, 60.0, num, den)
             self.assertLessEqual(
-                sum(c for _, c in d.segments), rubato.MAX_BARS, d.compassos)
-            self.assertEqual(
-                sum(m * c for m, c in d.segments), d.pulsos, d.compassos)
+                sum(c for _, _, c in d.segments), rubato.MAX_BARS,
+                d.compassos)
+            self.assertAlmostEqual(
+                sum(m * 4.0 / dd * c for m, dd, c in d.segments),
+                d.pulsos, msg=d.compassos)
 
     def test_prioritat_de_la_referencia_en_rubatos_llargs(self):
         d = rubato.deriva(4021.0, 60.0, 4, 4)
         self.assertEqual(
-            sum(c for m, c in d.segments if m == 4), 990)
+            sum(c for m, _dd, c in d.segments if (m, _dd) == (4, 4)), 992)
         self.assertLessEqual(
-            sum(c for _, c in d.segments), rubato.MAX_BARS)
+            sum(c for _, _, c in d.segments), rubato.MAX_BARS)
 
     def test_casos_impossibles_llargs_no_penjen(self):
-        for durada, num, den in ((8990.0, 9, 4), (11987.0, 12, 4),
-                                 (5993.0, 6, 2), (11987.0, 1, 8)):
+        for durada, num, den in ((11985.0, 6, 8), (11987.0, 12, 4),
+                                 (11987.0, 1, 8)):
             with self.assertRaises(rubato.RubatoError):
                 rubato.deriva(durada, 60.0, num, den)
 
@@ -151,17 +155,20 @@ class TestBandes(unittest.TestCase):
 class TestSintaxi(unittest.TestCase):
     def test_parseja_la_forma_canonica(self):
         self.assertEqual(rubato.text_a_compassos("4/4*3+3/4"),
-                         ((4, 3), (3, 1)))
-        self.assertEqual(rubato.text_a_compassos("4/4"), ((4, 1),))
+                         ((4, 4, 3), (3, 4, 1)))
+        self.assertEqual(rubato.text_a_compassos("4/4"), ((4, 4, 1),))
+        self.assertEqual(rubato.text_a_compassos("4/4+6/8"),
+                         ((4, 4, 1), (6, 8, 1)))
 
     def test_presenta_per_a_la_ui(self):
         self.assertEqual(rubato.presenta_compassos("4/4*3+3/4"),
                          "4/4 × 3 + 3/4")
-        self.assertEqual(rubato.presenta_compassos("6/8"), "6/8")
+        self.assertEqual(rubato.presenta_compassos("4/4+6/8"),
+                         "4/4 + 6/8")
 
     def test_rebutja_variants_no_canoniques(self):
         for text in ("4/4 × 3+3/4", "4/4 * 3", " 4/4", "4/4*0",
-                     "0/4", "13/4", "4/16", "4/4+6/8",
+                     "0/4", "13/4", "4/16",
                      "4/4*1", "4/4+4/4", "4/4*3+4/4",
                      "04/4", "4/04", "4/4*01",
                      "4/4+4/4+4/4+4/4+4/4",
@@ -170,18 +177,19 @@ class TestSintaxi(unittest.TestCase):
                 rubato.text_a_compassos(text)
 
     def test_compassos_a_text(self):
-        self.assertEqual(rubato.compassos_a_text([(4, 3), (3, 1)], 4),
+        self.assertEqual(rubato.compassos_a_text([(4, 4, 3), (3, 4, 1)]),
                          "4/4*3+3/4")
-        self.assertEqual(rubato.compassos_a_text([(4, 1)], 4), "4/4")
-        self.assertEqual(rubato.compassos_a_text([(4, 1), (4, 2)], 4),
+        self.assertEqual(rubato.compassos_a_text([(4, 4, 1)]), "4/4")
+        self.assertEqual(rubato.compassos_a_text([(4, 4, 1), (4, 4, 2)]),
                          "4/4*3")
+        self.assertEqual(rubato.compassos_a_text([(4, 4, 1), (6, 8, 1)]),
+                         "4/4+6/8")
 
     def test_compassos_a_text_valida(self):
-        for segments, den in (([(4, 1000)], 4), ([(4, 1)], 16),
-                              ([(13, 1)], 4),
-                              ([(4, 999), (3, 999)], 4)):
+        for segments in ([(4, 4, 1000)], [(4, 16, 1)], [(13, 4, 1)],
+                         [(4, 4, 999), (3, 4, 999)]):
             with self.assertRaises(rubato.RubatoError):
-                rubato.compassos_a_text(segments, den)
+                rubato.compassos_a_text(segments)
 
 
 class TestReferencia(unittest.TestCase):

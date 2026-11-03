@@ -40,6 +40,8 @@ import metronom  # noqa: E402
 from . import graella, icones, pipeline, theme  # noqa: F401
 from . import acord_audio  # noqa: E402
 from . import dialegs  # noqa: E402
+from . import mapa_tempo  # noqa: E402
+from . import rubato as rubato_mod  # noqa: E402
 from . import tempo_map  # noqa: E402
 from .timeline import TimelineView  # noqa: E402
 
@@ -235,10 +237,6 @@ class Visor(QMainWindow):
             self._durada_wav(), log=self._avisos_csv_tempo.append)
         for avís in self._avisos_csv_tempo:
             self.log(f"tempo CSV: {avís}")
-        # Neteja els duplicats de l'anàlisi/projectes vells: dos trams
-        # adjacents amb el mateix BPM i compàs no són cap canvi musical.
-        self.tempo_trams = tempo_map.fusiona_trams_iguals(
-            self.tempo_trams, self._durada_wav())
         self.tempo_map = None
         self._refresca_tempo_map()
         # Marcadors humans (inici de compàs marcat a mà, en viu)
@@ -777,6 +775,34 @@ class Visor(QMainWindow):
         s = trams[idx]
         return (idx, float(s[2]), int(s[3]), int(s[4]))
 
+    def _preserva_rubato(self, abans, nous):
+        """Reconstrueix `TramMapa` després d'una operació de tempo.
+
+        Les operacions de `tempo_map` treballen amb 5 tuples i podrien perdre
+        el `tipus`/`compassos` d'un rubato. Ací es reenganxen els rubatos i es
+        recalcula el seu BPM si la durada ha canviat.
+        """
+        out = []
+        abans = [mapa_tempo.des_de_tupla(x) for x in abans]
+        for viejo, nou in zip(abans, nous):
+            ini, fi, bpm = float(nou[0]), float(nou[1]), float(nou[2])
+            if getattr(viejo, "tipus", None) == "rubato":
+                segs = viejo.segments
+                q = sum(n * 4.0 / d * c for n, d, c in segs)
+                if q > 0 and fi > ini:
+                    bpm = q * 60.0 / (fi - ini)
+                bpm = min(max(bpm, 30.0), 350.0)
+                out.append(mapa_tempo.TramMapa(
+                    ini, fi, bpm, "rubato", viejo.compassos))
+            else:
+                out.append(mapa_tempo.TramMapa(
+                    ini, fi, bpm, "normal",
+                    f"{int(nou[3])}/{int(nou[4])}"))
+        # Si la longitud canvia (no hauria), completa amb normals.
+        for nou in nous[len(out):]:
+            out.append(mapa_tempo.des_de_tupla(nou))
+        return out
+
     def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
@@ -791,28 +817,33 @@ class Visor(QMainWindow):
         """
         trams = list(self.tempo_trams or [])
         if not trams:
-            trams = [(0.0, self._durada_wav(), float(bpm), num, den)]
+            trams = [mapa_tempo.TramMapa(
+                0.0, self._durada_wav(), float(bpm), "normal",
+                f"{int(num)}/{int(den)}")]
         idx = min(max(0, int(idx)), len(trams) - 1)
+        if getattr(trams[idx], "tipus", None) == "rubato":
+            self.avis_editor(
+                "El BPM i el compàs d'un rubato són derivats; no s'editen "
+                "directament.")
+            return False
         try:
-            nous = tempo_map.canvia_bpm_local(
-                trams, idx, float(bpm), self._durada_wav(),
-                offset=getattr(self, "offset", 0.0),
+            nous5 = tempo_map.canvia_bpm_local(
+                [tuple(t) for t in trams], idx, float(bpm),
+                self._durada_wav(), offset=getattr(self, "offset", 0.0),
                 num=num, den=den)
         except ValueError as e:
             self.avis_editor(f"Tempo: {e}")
             return False
-        if not nous:
+        if not nous5:
             return False
-        # El transport només pren valors d'un tros AMB compàs: un primer tros
-        # «en segons» (0/0) no ha de deixar `bpb` a zero.
-        if int(nous[0][3]) > 0 and int(nous[0][4]) > 0:
+        nous = self._preserva_rubato(trams, nous5)
+        # El transport només pren valors d'un tros normal.
+        if getattr(nous[0], "tipus", None) != "rubato":
             self.bpm = float(nous[0][2])
             self.bpb = int(nous[0][3])
             self.beat_type = int(nous[0][4])
         if desa:
             return bool(self.aplica_tempo_trams(nous))
-        # En memòria: el mapa es reconstrueix i la vista es refresca, però no
-        # s'escriu cap CSV ni s'emet `canvis` (ho farà el tancament de sessió).
         self.tempo_trams = nous
         self._actualitza_temps()
         return True
@@ -887,14 +918,12 @@ class Visor(QMainWindow):
         snap i els exports en surten. Sense trossos, se'n crea un de sol amb el
         BPM·compàs actual.
         """
-        from app.tempo_map import TempoMap, neteja_trams
+        from app.tempo_map import TempoMap
         d = self._durada_wav()
-        # Regles 1, 2, 4 i 8: aquest és el PUNT ÚNIC on es construeix el mapa,
-        # així que el que hi entra s'hi ha de complir sempre. Si la còpia no ho
-        # complia (CSV editat a mà, un estat vell del desfer, un client extern),
-        # quede arreglada ací abans de construir l'objecte — i s'avisa: la
-        # reparació mai no és silenciosa.
-        trams, avisos = neteja_trams(list(self.tempo_trams or []), d)
+        # Regles 1, 2, 4 i 8: aquest és el PUNT ÚNIC on es construeix el mapa.
+        # El normalitzador preserva `tipus`/`compassos` (rubato inclòs).
+        trams, avisos = mapa_tempo.normalitza_trams_map(
+            list(self.tempo_trams or []), d, log=self.log)
         if avisos and tuple(avisos) != getattr(self, "_avisos_tempo", ()):
             for _a in avisos:
                 self.log(f"tempo: {_a}")
@@ -903,22 +932,24 @@ class Visor(QMainWindow):
         den = int(getattr(self, "beat_type", 4) or 4)
 
         def _lliure(t):
-            return int(t[3]) <= 0 or int(t[4]) <= 0
+            return getattr(t, "tipus", None) == "rubato"
 
         if len(trams) <= 1:
-            # Un sol tros = el cas constant d'avui, EXCEPTE si va en segons
-            # (rubato): llavors el transport no hi té res a dir.
+            # Un sol tros = el cas constant, EXCEPTE si és rubato: llavors el
+            # transport no hi té res a dir.
             if not (trams and _lliure(trams[0])):
-                trams = [(0.0, d, float(self.bpm), int(self.bpb), den)]
+                trams = [mapa_tempo.TramMapa(
+                    0.0, d, float(self.bpm), "normal",
+                    f"{int(self.bpb)}/{den}")]
         elif not _lliure(trams[0]):
-            # El tram 0 és el VALOR INICIAL (el transport mana), però només
-            # si té compàs: un primer clip en segons no s'ha de convertir
-            # en 4/4 al BPM de la barra.
+            # El tram 0 és el VALOR INICIAL (el transport mana).
             t0 = trams[0]
-            trams[0] = (float(t0[0]), float(t0[1]), float(self.bpm),
-                        int(self.bpb), den)
-        self.tempo_trams = trams
-        self.tempo_map = TempoMap(trams, offset=getattr(self, "offset", 0.0))
+            trams[0] = mapa_tempo.TramMapa(
+                0.0, float(t0.fi), float(self.bpm), "normal",
+                f"{int(self.bpb)}/{den}")
+        self.tempo_trams = list(trams)
+        self.tempo_map = TempoMap(self.tempo_trams,
+                                  offset=getattr(self, "offset", 0.0))
         return self.tempo_map
 
     def aplica_tempo_trams(self, trams):
@@ -928,17 +959,31 @@ class Visor(QMainWindow):
         valor inicial, reconstrueix el mapa, refresca el timeline i desa. Retorna
         `True` si s'ha aplicat.
         """
-        from app.tempo_map import normalitza_trams
-        nous = normalitza_trams(trams, self._durada_wav())
+        abans = [mapa_tempo.des_de_tupla(t)
+                 for t in (self.tempo_trams or [])]
+        entrada = list(trams or [])
+        if abans and any(t.tipus == "rubato" for t in abans):
+            if len(abans) != len(entrada):
+                self.avis_editor(
+                    "Aquesta operació canvia el nombre de trams d'un mapa "
+                    "amb rubatos; les accions de rubato arribaran en la "
+                    "fase 3.2.")
+                return False
+            entrada = self._preserva_rubato(
+                abans, [tuple(t) for t in entrada])
+        nous, avisos = mapa_tempo.normalitza_trams_map(
+            entrada, self._durada_wav(), log=self.log)
+        for avís in avisos:
+            self.log(f"tempo: {avís}")
         if not nous:
             return False
-        # El transport només pren valors d'un tros AMB compàs: un primer tros
-        # «en segons» (0/0) no ha de deixar `bpb` a zero.
-        if int(nous[0][3]) > 0 and int(nous[0][4]) > 0:
+        # El transport només pren valors d'un tros normal: un rubato no ha de
+        # canviar el BPM/compàs de la barra.
+        if getattr(nous[0], "tipus", None) != "rubato":
             self.bpm = float(nous[0][2])
             self.bpb = int(nous[0][3])
             self.beat_type = int(nous[0][4])
-        self.tempo_trams = nous
+        self.tempo_trams = list(nous)
         # Refresca mapa + timeline + LLISTES (les etiquetes de compàs depenen
         # de l'offset i del BPM; `_actualitza_temps` és el punt únic).
         self._actualitza_temps()
@@ -4202,33 +4247,41 @@ class Visor(QMainWindow):
         self.ed_fi.setVisible(False)
         self.ed_fi.setEnabled(False)
         if k == "tempo" and 0 <= i < len(getattr(self, "tempo_trams", None) or []):
-            ini, fi, bpm, num, den = self.tempo_trams[i]
-            lliure = int(num) <= 0 or int(den) <= 0
+            tr = self.tempo_trams[i]
+            ini, fi, bpm = float(tr[0]), float(tr[1]), float(tr[2])
+            rubato = getattr(tr, "tipus", None) == "rubato"
             self.ed_icona.setPixmap(icones.ico("metronome", 20).pixmap(20, 20))
             self.ed_gran.setText(
-                f"Tempo · {float(fi) - float(ini):.2f} s"
-                + (" · rubato" if lliure else ""))
+                f"Tempo · {fi - ini:.2f} s"
+                + (" · rubato (derivat)" if rubato else ""))
             self.ed_nom_lbl.setText("BPM:")
-            self.ed_nom.setToolTip("BPM del clip (30–350)")
-            self.ed_nom.setText(f"{float(bpm):.3f}")
+            self.ed_nom.setToolTip(
+                "BPM del clip (30–350)"
+                + (" · derivat del rubato" if rubato else ""))
+            self.ed_nom.setText(f"{bpm:.3f}")
             self.ed_fam_lbl.setText("Compàs:")
-            self.ed_fam.setToolTip(
-                "Compàs num/den · 0/0 = clip en segons (rubato)")
-            self.ed_fam.setText("0/0" if lliure else f"{int(num)}/{int(den)}")
+            if rubato:
+                self.ed_fam.setToolTip(
+                    "Seqüència derivada del rubato (no editable)")
+                self.ed_fam.setText(rubato_mod.presenta_compassos(tr.compassos))
+            else:
+                self.ed_fam.setToolTip("Compàs num/den")
+                self.ed_fam.setText(f"{int(tr[3])}/{int(tr[4])}")
             self.ed_fam.setVisible(True)
             self.ed_fam_lbl.setVisible(True)
-            self.ed_ini.setText(f"{float(ini):.3f}")
-            self.ed_cb.setText(self._secs_a_cb(float(ini)))
-            # Inici i Fi (s) són editables (§13.6): mouen la frontera i es
-            # recalcula el BPM dels dos costats. El compàs.beat (≈) és de
-            # només lectura: el calcula el mapa.
+            self.ed_ini.setText(f"{ini:.3f}")
+            self.ed_cb.setText(self._secs_a_cb(ini))
             self.ed_fi_lbl.setVisible(True)
             self.ed_fi.setVisible(True)
-            self.ed_fi.setEnabled(True)
-            self.ed_fi.setText(f"{float(fi):.3f}")
+            self.ed_fi.setText(f"{fi:.3f}")
             self.ed_cb.setEnabled(False)
-            for w in (self.ed_nom, self.ed_fam, self.ed_aplica):
-                w.setEnabled(True)
+            # Fase 3.1: els rubatos es mostren però no s'editen encara. La
+            # frontera editable arribarà amb les accions de la fase 3.2.
+            for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_fi,
+                      self.ed_aplica):
+                w.setEnabled(not rubato)
+            if rubato:
+                self.ed_fi.setEnabled(False)
         elif k == "chord" and 0 <= i < len(self.acords):
             t, nom = float(self.acords[i][0]), nom_acord(self.acords[i])
             self.ed_icona.setPixmap(icones.ico("music", 20).pixmap(20, 20))
@@ -4312,12 +4365,17 @@ class Visor(QMainWindow):
     def _aplica_editor_tempo(self, i):
         """Aplica BPM/compàs de la franja Editor a un clip de tempo.
 
-        El compàs `0/0` (o buit, o «segons») deixa el clip en mode rubato;
-        qualsevol altre valor ha de ser `num/den`.
+        El rubato ja no es crea amb `0/0`: es mostra derivat i de només
+        lectura. Ací només s'editen clips normals (`num/den`).
         """
         trams = list(getattr(self, "tempo_trams", None) or [])
         if not (0 <= i < len(trams)):
             self.avis_editor("Aquest clip de tempo ja no existeix.")
+            return
+        if getattr(trams[i], "tipus", None) == "rubato":
+            self.avis_editor(
+                "Els valors d'un rubato són derivats i no s'editen ací; "
+                "les fronteres editables arribaran en la fase 3.2.")
             return
         txt = self.ed_nom.text().strip().replace(",", ".")
         try:
@@ -4333,9 +4391,14 @@ class Visor(QMainWindow):
             if not m:
                 self.avis_editor(
                     f"El compàs «{self.ed_fam.text()}» no és vàlid "
-                    "(num/den · 0/0 = segons).")
+                    "(num/den).")
                 return
             num, den = int(m.group(1)), int(m.group(2))
+        if num == 0 and den == 0:
+            self.avis_editor(
+                "El rubato no es crea escrivint 0/0; fes servir «Marca com a "
+                "rubato» o «Converteix a rubato» (fase 3.2).")
+            return
         try:
             bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
         except ValueError as e:
@@ -4388,6 +4451,7 @@ class Visor(QMainWindow):
             self._undo_commit()
             return
         if mapa is not trams:
+            mapa = self._preserva_rubato(trams, mapa)
             self.aplica_tempo_trams(mapa)
         # Després de moure fronteres, si l'usuari HA CANVIAT el BPM/compàs al
         # formulari, manen (re-tempo local sobre el tram ja re-situat). Si no
@@ -5132,11 +5196,14 @@ class Visor(QMainWindow):
         t.blockSignals(True)
         try:
             t.setRowCount(len(trams))
-            for i, (ini, fi, bpm, num, den) in enumerate(trams):
-                lliure = int(num) <= 0 or int(den) <= 0
-                vals = (f"{float(ini):.3f}", f"{float(fi):.3f}",
-                        f"{float(bpm):.3f}",
-                        "segons" if lliure else f"{int(num)}/{int(den)}")
+            for i, tr in enumerate(trams):
+                ini, fi, bpm = float(tr[0]), float(tr[1]), float(tr[2])
+                rubato = getattr(tr, "tipus", None) == "rubato"
+                if rubato:
+                    compas = "R " + rubato_mod.presenta_compassos(tr.compassos)
+                else:
+                    compas = f"{int(tr[3])}/{int(tr[4])}"
+                vals = (f"{ini:.3f}", f"{fi:.3f}", f"{bpm:.3f}", compas)
                 for c, v in enumerate(vals):
                     it = t.item(i, c)
                     if it is None:
