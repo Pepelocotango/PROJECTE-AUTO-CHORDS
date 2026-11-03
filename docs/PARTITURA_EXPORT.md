@@ -24,6 +24,24 @@ Si el model té **rubatos**, el MusicXML inclou un `<credit>` «Rubato — grael
 aproximada» amb els intervals. La graella mètrica d'eixos trams és una
 representació derivada, no una detecció.
 
+### Tempo amb unitat (negra amb punt…)
+
+La unitat global de BPM de l'app s'exporta a la marca de metrònom del
+MusicXML. Per exemple, `12/8` a `82.5` negres/min es pot exportar com:
+
+```xml
+<metronome>
+  <beat-unit>quarter</beat-unit>
+  <beat-unit-dot/>
+  <per-minute>55</per-minute>
+</metronome>
+<sound tempo="82.5"/>
+```
+
+Així MuseScore mostra **negra amb punt = 55** i, alhora, la reproducció i el
+metrònom continuen usant el valor intern correcte (`82.5` negres/min). Els
+altres valors són `negra` (quarter), `corxera` (eighth) i `blanca` (half).
+
 ## Com s'usa
 
 - **CLI**:

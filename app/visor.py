@@ -38,6 +38,7 @@ import metronom  # noqa: E402
 # monkey-patching que no funciona (ho va caçar `test_imports_unificats`).
 # Forma d'execució suportada: `python -m app.visor` (el directe ja demana
 # l'arrel al sys.path per altres imports relatius d'aquest fitxer).
+from . import bpm_unit as bpm_unit_mod  # noqa: E402
 from . import graella, icones, limits, pipeline, theme  # noqa: F401
 from . import acord_audio  # noqa: E402
 from . import dialegs  # noqa: E402
@@ -165,7 +166,7 @@ class Visor(QMainWindow):
     # principal té el seu propi selector i ha d'anar sincronitzada.
     velocitatCanviada = pyqtSignal(float)
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True, sortida=None,
-                 offset=0.0, beat_type=4):
+                 offset=0.0, beat_type=4, bpm_unit="negra"):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
         self._embedded = False
@@ -183,6 +184,7 @@ class Visor(QMainWindow):
         # (`<projecte>/audio/AUTOCHORDS_…/`) → còpia estranya dins `audio/`.
         self.sortida = sortida or pipeline.carpeta_sortida(wav)
         self.bpm, self.bpb = bpm, bpb
+        self.bpm_unit = bpm_unit_mod.normalitza(bpm_unit)
         self.beat_type = int(beat_type or 4)
         self.offset = float(offset or 0.0)
         self.tempo_fix = bool(tempo_fix)
@@ -1059,9 +1061,9 @@ class Visor(QMainWindow):
             lbl = self.tempo_map.label(s[0]).split(".")[0]
         except Exception:  # noqa: BLE001
             lbl = None
-        dlg = dialegs.DialegTramTempo(self, inici=s[0], bpm=s[2], num=s[3],
-                                      den=s[4], inicial=(idx == 0),
-                                      text_inici=lbl)
+        dlg = dialegs.DialegTramTempo(
+            self, inici=s[0], bpm=s[2], num=s[3], den=s[4],
+            inicial=(idx == 0), text_inici=lbl, unit=self.bpm_unit)
         if dlg.exec_() != QDialog.Accepted:
             return
         bpm, num, den = dlg.valors()
@@ -2414,6 +2416,31 @@ class Visor(QMainWindow):
             self.metro_forcat = (bpm, bpb, offset, den, mode)
         self.log(f"metrònom: patró {mode}")
 
+    def bpm_mostra(self, bpm=None, decimals=3):
+        """BPM intern (negres/min) → text en la unitat global del projecte."""
+        b = self.bpm if bpm is None else bpm
+        return bpm_unit_mod.formata(b, self.bpm_unit, decimals)
+
+    def bpm_entrada(self, text):
+        """Text de BPM en la unitat global → BPM intern (negres/min)."""
+        return bpm_unit_mod.a_quarter(
+            float(str(text).replace(",", ".").strip()), self.bpm_unit)
+
+    def set_bpm_unit(self, unit):
+        """Canvia la unitat de visualització del BPM (negra, negra amb punt…).
+
+        No toca cap valor del model: només canvia com es mostra i s'entra el
+        BPM. La graella, el metrònom, els CSV i els càlculs continuen en negres.
+        """
+        self.bpm_unit = bpm_unit_mod.normalitza(unit)
+        if hasattr(self, "timeline"):
+            try:
+                self.timeline.set_bpm_unit(self.bpm_unit)
+            except (AttributeError, RuntimeError):
+                pass
+        self._actualitza_editor()
+        self._omple_llista_tempo()
+
     def _canvia_vol_metro(self, v):
         """Volum del clic (0-100) — **sense tallar la reproducció**.
 
@@ -2458,7 +2485,9 @@ class Visor(QMainWindow):
         self._refresca_tempo_map()
         self.timeline.set_tempo_mode(self.tempo_fix, self.bpm, self.bpb,
                                      getattr(self, "offset", 0.0),
-                                     mapa=self.tempo_map)
+                                     beat_type=getattr(self, "beat_type", 4),
+                                     mapa=self.tempo_map,
+                                     bpm_unit=self.bpm_unit)
         # En mode Lliure el metrònom no té sentit: l'apaguem (i si sona,
         # reengega sense clic des de la posició actual).
         if not self.tempo_fix and getattr(self, "metro_on", False):
@@ -4513,9 +4542,10 @@ class Visor(QMainWindow):
                 + (" · rubato (derivat)" if rubato else ""))
             self.ed_nom_lbl.setText("BPM:")
             self.ed_nom.setToolTip(
-                "BPM del clip (30–350)"
+                "BPM del clip (30–350, en "
+                f"{bpm_unit_mod.etiqueta(self.bpm_unit).lower()})"
                 + (" · derivat del rubato" if rubato else ""))
-            self.ed_nom.setText(f"{bpm:.3f}")
+            self.ed_nom.setText(self.bpm_mostra(bpm))
             self.ed_fam_lbl.setText("Compàs:")
             if rubato:
                 self.ed_fam.setToolTip(
@@ -4636,8 +4666,8 @@ class Visor(QMainWindow):
             return
         txt = self.ed_nom.text().strip().replace(",", ".")
         try:
-            bpm = float(txt)
-        except ValueError:
+            bpm = self.bpm_entrada(txt)
+        except (ValueError, TypeError):
             self.avis_editor(f"El BPM «{self.ed_nom.text()}» no és un número.")
             return
         txt_c = self.ed_fam.text().strip().lower()
@@ -5460,7 +5490,8 @@ class Visor(QMainWindow):
                     compas = "R " + rubato_mod.presenta_compassos(tr.compassos)
                 else:
                     compas = f"{int(tr[3])}/{int(tr[4])}"
-                vals = (f"{ini:.3f}", f"{fi:.3f}", f"{bpm:.3f}", compas)
+                vals = (f"{ini:.3f}", f"{fi:.3f}",
+                        self.bpm_mostra(bpm), compas)
                 for c, v in enumerate(vals):
                     it = t.item(i, c)
                     if it is None:

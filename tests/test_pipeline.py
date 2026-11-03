@@ -2151,6 +2151,16 @@ class TestMusicXmlMapa(unittest.TestCase):
         self.assertIn('<sound tempo="60"', xml)      # canvi al compàs 3
         self.assertIn('<measure number="3">', xml)
 
+    def test_tempo_en_negra_amb_punt(self):
+        """El MusicXML ha de mostrar 55 amb negra amb punt i sonar a 82.5."""
+        xml = partitura.construeix_musicxml(
+            [(0.0, "C", 4.0), (4.0, "G", 4.0)], [], bpb=12, bpm=82.5,
+            beat_type=8, bpm_unit="negra_punt")
+        self.assertIn(
+            "<metronome><beat-unit>quarter</beat-unit><beat-unit-dot/>"
+            "<per-minute>55</per-minute></metronome>", xml)
+        self.assertIn('<sound tempo="82.5"', xml)
+
     def test_canvi_de_compas(self):
         from app.tempo_map import TempoMap
         mapa = TempoMap([(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 120.0, 3, 4)])
@@ -2928,6 +2938,9 @@ class TimelineConstraintTests(unittest.TestCase):
         self.assertEqual(r.mode_label(), "Lliure")
         r.update_mode(True, 90.0, 3)
         self.assertEqual(r.mode_label(), "90 BPM \u00b7 3/4")
+        r.update_mode(True, 82.5, 12, beat_type=8,
+                      bpm_unit="negra_punt")
+        self.assertEqual(r.mode_label(), "55 BPM \u00b7 12/8")
 
     def test_ruler_paint_no_peta(self):
         """El paint del regle (amb l'indicador de mode) no ha de petar mai."""

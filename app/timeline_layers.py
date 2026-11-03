@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import (
     QGraphicsRectItem,
 )
 
-from app import graella, theme      # noqa: E402  (paleta centralitzada)
+from app import bpm_unit, graella, theme  # noqa: E402  (paleta centralitzada)
 from app.timeline_base import (   # noqa: E402
     CHORD_HANDLE, CHORD_HANDLE_ACTIVE, CURSOR_COLOR, LANE_DIVIDER,
     RULER_BG, RULER_TEXT, SECTION_FILLS, SECTION_TEXT, SELECTION_COLOR,
@@ -170,9 +170,10 @@ class GridLayer(QGraphicsItem):
         self.update()
 
     def update_mode(self, tempo_fix, bpm, bpb, offset=0.0, beat_type=4,
-                    mapa=None):
+                    mapa=None, bpm_unit="negra"):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
+        self._bpm_unit = bpm_unit
         self._bpb = int(bpb)
         self._beat_type = int(beat_type or 4)
         self._offset = float(offset)
@@ -233,6 +234,7 @@ class RulerLayer(QGraphicsItem):
         self._view_right = float(view_right)
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
+        self._bpm_unit = "negra"
         self._bpb = int(bpb)
         self._beat_type = 4
         self._mapa = None
@@ -258,9 +260,10 @@ class RulerLayer(QGraphicsItem):
         self.update()
 
     def update_mode(self, tempo_fix, bpm, bpb, offset=0.0, beat_type=4,
-                    mapa=None):
+                    mapa=None, bpm_unit="negra"):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
+        self._bpm_unit = bpm_unit
         self._bpb = int(bpb)
         self._beat_type = int(beat_type or 4)
         self._offset = float(offset)
@@ -279,8 +282,14 @@ class RulerLayer(QGraphicsItem):
         (mode lliure): 'Lliure'.
         """
         if self._tempo_fix:
-            return f"{self._bpm:.0f} BPM \u00b7 {self._bpb}/{self._beat_type}"
+            bpm_mostra = bpm_unit.de_quarter(self._bpm, self._bpm_unit)
+            return (f"{bpm_mostra:.0f} BPM \u00b7 "
+                    f"{self._bpb}/{self._beat_type}")
         return "Lliure"
+
+    def set_bpm_unit(self, unit):
+        self._bpm_unit = bpm_unit.normalitza(unit)
+        self.update()
 
     def paint(self, painter, option, widget=None):
         p = painter
@@ -366,7 +375,8 @@ class RulerLayer(QGraphicsItem):
                 pen = QPen(QColor(theme.TL_GRID_MEASURE), 2)
                 p.setPen(pen)
                 p.drawLine(QPointF(x, 0), QPointF(x, self._height - 1))
-                txt = f"{s.bpm:g} · {s.num}/{s.den}"
+                bpm_mostra = bpm_unit.de_quarter(s.bpm, self._bpm_unit)
+                txt = f"{bpm_mostra:g} · {s.num}/{s.den}"
                 p.setPen(QPen(QColor(RULER_TEXT), 1))
                 p.drawText(QPointF(x + 3, 9), txt)
 
@@ -453,6 +463,7 @@ class TempoLayer(QGraphicsObject):
         self._view_right = float(view_right)
         self._mapa = None
         self._actiu = True
+        self._bpm_unit = "negra"
         self._top = float(top)
         self._press = None
         self._t_guia = None
@@ -499,10 +510,15 @@ class TempoLayer(QGraphicsObject):
             self._sel_multi = set()
             self.update()
 
-    def set_mapa(self, mapa, actiu=True):
+    def set_mapa(self, mapa, actiu=True, bpm_unit="negra"):
         """`mapa` = el TempoMap; `actiu` = mode BPM·compàs (si no, pista buida)."""
         self._mapa = mapa
         self._actiu = bool(actiu)
+        self._bpm_unit = bpm_unit
+        self.update()
+
+    def set_bpm_unit(self, unit):
+        self._bpm_unit = bpm_unit.normalitza(unit)
         self.update()
 
     # -- geometria/hit-test ---------------------------------------------
@@ -693,7 +709,8 @@ class TempoLayer(QGraphicsObject):
             if s.lliure:
                 txt = "segons · %.2f s" % (s.fi - s.ini)
             else:
-                txt = f"{s.bpm:g} · {s.num}/{s.den}"
+                bpm_mostra = bpm_unit.de_quarter(s.bpm, self._bpm_unit)
+                txt = f"{bpm_mostra:g} · {s.num}/{s.den}"
             p.drawText(bx, Qt.AlignCenter, txt)
         if self._t_guia is not None:
             xg = (self._t_guia - self._view_left) * self._pps

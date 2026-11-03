@@ -203,6 +203,7 @@ class TimelineView(QGraphicsView):
         self._view_right = self._durada
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
+        self._bpm_unit = "negra"
         self._bpb = int(bpb)
         self._mapa = None      # mapa de tempo/compàs (None = uniforme)
         self._acords = pipeline.clips_d_acords(acords, self._durada)
@@ -388,18 +389,27 @@ class TimelineView(QGraphicsView):
 
     def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
                        offset: float = 0.0, beat_type: int = 4,
-                       mapa=None) -> None:
+                       mapa=None, bpm_unit: str = "negra") -> None:
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self._beat_type = int(beat_type or 4)
         self._offset = float(offset)
         self._mapa = mapa
+        self._bpm_unit = bpm_unit
         self._ruler.update_mode(self._tempo_fix, self._bpm, self._bpb,
-                                self._offset, self._beat_type, mapa)
+                                self._offset, self._beat_type, mapa,
+                                bpm_unit=bpm_unit)
         self._grid.update_mode(self._tempo_fix, self._bpm, self._bpb,
                                self._offset, self._beat_type, mapa)
-        self._tempo_lane.set_mapa(mapa, self._tempo_fix)
+        self._tempo_lane.set_mapa(mapa, self._tempo_fix, bpm_unit=bpm_unit)
+        self.update()
+
+    def set_bpm_unit(self, bpm_unit: str) -> None:
+        """Canvia només la unitat mostrada pel BPM (no toca el model)."""
+        self._bpm_unit = bpm_unit
+        self._ruler.set_bpm_unit(bpm_unit)
+        self._tempo_lane.set_bpm_unit(bpm_unit)
         self.update()
 
     def set_follow(self, enabled: bool) -> None:

@@ -31,7 +31,7 @@ import shutil
 import subprocess
 from xml.sax.saxutils import escape
 
-from app import xifrat           # notació del xifrat (sense deps del projecte)
+from app import bpm_unit, xifrat           # notació del xifrat (sense deps del projecte)
 
 __all__ = [
     "exporta_partitura", "construeix_musicxml", "harmony_xml",
@@ -205,9 +205,25 @@ def _note_xml(units, rest=False):
 
 
 # --- construcció del MusicXML ----------------------------------------------
+def _metronome_xml(bpm_quarter, unit):
+    """Marca de metrònom MusicXML en la unitat mostrada.
+
+    `<sound tempo>` sempre porta les negres/minut reals; el `<metronome>` pot
+    portar la unitat (negra, negra amb punt…) perquè MuseScore la mostre com
+    al PDF.
+    """
+    unit = bpm_unit.normalitza(unit)
+    beat = {"negra": "quarter", "negra_punt": "quarter",
+            "corxera": "eighth", "blanca": "half"}[unit]
+    dot = "<beat-unit-dot/>" if unit == "negra_punt" else ""
+    minut = bpm_unit.de_quarter(float(bpm_quarter), unit)
+    return (f"<metronome><beat-unit>{beat}</beat-unit>{dot}"
+            f"<per-minute>{minut:g}</per-minute></metronome>")
+
+
 def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
                         new_system_each=None, beat_type=4,
-                        mapa=None, rubatos=None):
+                        mapa=None, rubatos=None, bpm_unit="negra"):
     """Retorna el text MusicXML (partwise) del lead sheet."""
     sec_bar = {bar: let for bar, let in seccions if let}
     fi = max([e[0] + e[2] for e in events] + [0.0])
@@ -276,8 +292,7 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
                      f"<beat-type>{den_m}</beat-type></time>"
                      "<clef><sign>G</sign><line>2</line></clef></attributes>\n")
             x.append('      <direction placement="above"><direction-type>'
-                     f"<metronome><beat-unit>quarter</beat-unit>"
-                     f"<per-minute>{bpm:g}</per-minute></metronome></direction-type>"
+                     f"{_metronome_xml(bpm, bpm_unit)}</direction-type>"
                      f'<sound tempo="{bpm:g}"/></direction>\n')
         elif (num_m, den_m) != sig_ant:
             # canvi de COMPÀS (mapa variable): nova signatura
@@ -289,9 +304,7 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
         if i in canvis_tempo:
             tb = canvis_tempo[i]
             x.append('      <direction placement="above"><direction-type>'
-                     f"<metronome><beat-unit>quarter</beat-unit>"
-                     f"<per-minute>{tb:g}</per-minute></metronome>"
-                     "</direction-type>"
+                     f"{_metronome_xml(tb, bpm_unit)}</direction-type>"
                      f'<sound tempo="{tb:g}"/></direction>\n')
         if i in sec_bar:
             x.append('      <direction placement="above"><direction-type>'
@@ -412,7 +425,8 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
                       titol=None, wav=None,
                       genera_pdf=True, genera_mscz=True, musescore=None,
                       timeout=300, new_system_each=None, beat_type=4,
-                      mapa=None, events=None, durada=None, rubatos=None):
+                      mapa=None, events=None, durada=None, rubatos=None,
+                      bpm_unit="negra"):
     """Genera MusicXML (+ PDF/.mscz amb MuseScore) a `<sortida>/partitura/`.
 
     Retorna un diccionari amb les rutes generades (`musicxml`, `pdf`, `mscz`,
@@ -449,7 +463,8 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
 
     xml = construeix_musicxml(events, seccions, bpb=bpb, bpm=bpm, mapa=mapa,
                               titol=base, new_system_each=new_system_each,
-                              beat_type=beat_type, rubatos=rubatos)
+                              beat_type=beat_type, rubatos=rubatos,
+                              bpm_unit=bpm_unit)
     ruta_xml = os.path.join(dest_dir, base + ".musicxml")
     with open(ruta_xml, "w", encoding="utf-8") as f:
         f.write(xml)

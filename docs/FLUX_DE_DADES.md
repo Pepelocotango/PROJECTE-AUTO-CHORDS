@@ -79,7 +79,7 @@ encara no forma part del codi. Vegeu
 ```
 
 En acabar, el cru es desa **dins el `.acproj`** (un sol fitxer, escriptura
-atòmica), junt amb la data, la durada, el BPM/compàs/offset i les opcions que
+atòmica), junt amb la data, la durada, el BPM/compàs/offset, la unitat de visualització del BPM i les opcions que
 es van fer servir.
 
 ## 4. Regles i conseqüències

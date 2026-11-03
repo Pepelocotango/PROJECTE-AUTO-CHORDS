@@ -21,6 +21,7 @@ from app import mapa_tempo
 from app import pipeline
 from app.tempo_map import TempoMap
 import numpy as np
+from app import bpm_unit
 from app import metronom
 from app import tempo_map as tm
 import tempfile
@@ -814,6 +815,17 @@ def _clics(mono, llindar=1500):
     talls = np.flatnonzero(np.diff(idx) > SR // 50)   # 20 ms de separació
     inicis = np.concatenate(([idx[0]], idx[talls + 1]))
     return [round(i / SR, 2) for i in inicis]
+
+
+class TestBpmUnit(unittest.TestCase):
+    def test_conversio_de_negres(self):
+        self.assertAlmostEqual(bpm_unit.a_quarter(55, "negra_punt"), 82.5)
+        self.assertAlmostEqual(bpm_unit.de_quarter(82.5, "negra_punt"), 55.0)
+        self.assertAlmostEqual(bpm_unit.a_quarter(120, "negra"), 120.0)
+        self.assertAlmostEqual(bpm_unit.a_quarter(120, "corxera"), 60.0)
+        self.assertAlmostEqual(bpm_unit.a_quarter(120, "blanca"), 240.0)
+        self.assertEqual(bpm_unit.formata(82.5, "negra_punt"), "55.000")
+        self.assertEqual(bpm_unit.normalitza("no-existeix"), "negra")
 
 
 class TestMetronom(unittest.TestCase):

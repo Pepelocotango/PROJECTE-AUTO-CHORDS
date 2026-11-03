@@ -5,6 +5,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit — unitat de BPM (negra amb punt, corxera, blanca) (2026-11-03)
+- Selector global de **unitat del BPM** a la barra: `Negra` (per defecte),
+  `Negra amb punt`, `Corxera` i `Blanca`.
+- El model continua en **negres/minut**; canvia només la visualització i
+  l'entrada. `55` negres amb punt equival a `82.5` negres/min.
+- La unitat es desa al `.acproj` (`tempo.unit`) i es conserva en reobrir.
+- La llista de tempo, la franja Editor, el diàleg de tram, el regle i la pista
+  de tempo mostren el BPM en la unitat triada.
+- La graella, el metrònom i els CSV no canvien. La partitura MusicXML
+  exporta la unitat triada: per exemple, `negra amb punt = 55` amb
+  `<sound tempo="82.5">` perquè MuseScore mostre la notació del PDF i mantenir
+  la reproducció correcta.
+- Tests de conversió, diàleg, transport, regle, persistència i MusicXML.
+- Suite completa: **1.533 tests**, 1 omés; `pyflakes` net.
+
 ### Corregit — metrònom amb denominador i compassos compostos (2026-11-03)
 - El metrònom ja no clica sempre negres: el beat és `4/den` negres. `6/8`,
   `9/8` i `12/8` cliquen corxeres; `2/2` clica blanques.

@@ -43,7 +43,7 @@ al costat de l'original; vegeu
 
 - `format` (versió de format; `_migra` **rebutja** qualsevol versió diferent) · `app` · `nom`
   · `creat` / `desat` · `audio` (ruta **relativa** dins el projecte).
-- `tempo` (`bpm` / `bpb` / `offset` / `fix`) · `opcions` (autodetecció) · `vista`.
+- `tempo` (`bpm` / `bpb` / `offset` / `fix` / `unit`) · `opcions` (autodetecció) · `vista`. `unit` és només la unitat de visualització (`negra`, `negra_punt`, `corxera`, `blanca`); `bpm` continua en negres/minut.
 - Es desa **atòmicament** (`pipeline.escriu_atomic`: mai queda a mitges).
 
 ## GUI (fase 2) — cicle de vida (menú **Fitxer**)

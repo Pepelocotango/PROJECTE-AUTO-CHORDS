@@ -34,6 +34,7 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 # UN SOL objecte per mòdul (vegeu visor.py): els imports crus creaven objectes
 # diferents dels que veuen la resta de mòduls i els tests.
+from . import bpm_unit as bpm_unit_mod  # noqa: E402
 from . import ffmpeg, partitura, pipeline, postproc, theme  # noqa: F401
 from . import config  # noqa: E402
 from . import ancoratges as ancoratges_mod  # noqa: E402
@@ -678,6 +679,16 @@ class Finestra(QMainWindow):
         self.bpm.setMaximumWidth(70)
         self.bpm.setPlaceholderText("120.000")
         self.bpm.setToolTip("BPM del tema. Entrada manual (text).")
+        self.cb_bpm_unit = QComboBox()
+        for _clau, _et in bpm_unit_mod.opcions():
+            self.cb_bpm_unit.addItem(_et, _clau)
+        self.cb_bpm_unit.setCurrentIndex(0)
+        self._bpm_unit_anterior = "negra"
+        self.cb_bpm_unit.setMaximumWidth(120)
+        self.cb_bpm_unit.setToolTip(
+            "Unitat del BPM: negra (per defecte), negra amb punt, corxera o "
+            "blanca. El model intern continua en negres/minut.")
+        self.cb_bpm_unit.currentIndexChanged.connect(self._canvia_unitat_bpm)
         self.bpb = QLineEdit("4/4")
         self.bpb.setMaximumWidth(60)
         self.bpb.setPlaceholderText("4/4")
@@ -701,6 +712,7 @@ class Finestra(QMainWindow):
         hp.setSpacing(6)
         hp.addWidget(QLabel("BPM:"))
         hp.addWidget(self.bpm)
+        hp.addWidget(self.cb_bpm_unit)
         self.b_bpm_x2 = QPushButton("×2")
         self.b_bpm_div2 = QPushButton("÷2")
         for b, factor, tip in ((self.b_bpm_x2, 2.0, "Dobla el BPM (×2)"),
@@ -1210,6 +1222,14 @@ class Finestra(QMainWindow):
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             return
+        unit = bpm_unit_mod.normalitza(getattr(vr, "bpm_unit", "negra"))
+        if self._bpm_unit_val() != unit:
+            idx_unit = self.cb_bpm_unit.findData(unit)
+            if idx_unit >= 0:
+                self.cb_bpm_unit.blockSignals(True)
+                self.cb_bpm_unit.setCurrentIndex(idx_unit)
+                self.cb_bpm_unit.blockSignals(False)
+                self._bpm_unit_anterior = unit
         try:
             _idx, bpm, num, den = vr.tempo_objectiu_vals()
         except Exception:  # noqa: BLE001
@@ -1224,7 +1244,8 @@ class Finestra(QMainWindow):
         try:
             for camp, valor, text in (
                     (self.bpm, bpm,
-                     None if bpm is None else f"{float(bpm):.3f}"),
+                     None if bpm is None else
+                     bpm_unit_mod.formata(float(bpm), vr.bpm_unit)),
                     (self.bpb, num, compas),
                     (self.offset, getattr(vr, "offset", None),
                      None if getattr(vr, "offset", None) is None
@@ -1457,11 +1478,48 @@ class Finestra(QMainWindow):
         v = max(minim, min(maxim, v))
         return int(round(v)) if enter else v
 
+    def _bpm_unit_val(self):
+        """Clau de la unitat de BPM triada a la barra (sempre vàlida)."""
+        cb = getattr(self, "cb_bpm_unit", None)
+        return bpm_unit_mod.normalitza(cb.currentData() if cb else None)
+
+    def _posa_bpm_quarter(self, bpm_quarter, decimals=3):
+        """Escriu al camp de BPM un valor INTERN (negres/min) en la unitat triada."""
+        self.bpm.setText(bpm_unit_mod.formata(
+            float(bpm_quarter), self._bpm_unit_val(), decimals))
+
+    def _canvia_unitat_bpm(self, _idx=None):
+        """Canvia la unitat mostrada sense tocar el valor intern del tempo."""
+        vr = getattr(self, "visor_ref", None)
+        unit = self._bpm_unit_val()
+        if vr is not None:
+            vr.set_bpm_unit(unit)
+            try:
+                _idx, q, _num, _den = vr.tempo_objectiu_vals()
+            except Exception:  # noqa: BLE001
+                q = float(getattr(vr, "bpm", 120.0))
+        else:
+            try:
+                q = bpm_unit_mod.a_quarter(
+                    float(self.bpm.text().replace(",", ".").strip()),
+                    getattr(self, "_bpm_unit_anterior", "negra"))
+            except ValueError:
+                q = 120.0
+        self._bpm_unit_anterior = unit
+        # El camp ha de mostrar el mateix valor intern amb la unitat nova.
+        self._actualitzant_temps = True
+        try:
+            self._posa_bpm_quarter(q)
+        finally:
+            self._actualitzant_temps = False
+        self._marca_dirty()
+
     def _bpm_val(self):
         raw = str(self.bpm.text()).replace(",", ".").strip()
         try:
-            return tempo_map.valida_tempo(float(raw), 4, 4)[0]
-        except ValueError as e:
+            quarter = bpm_unit_mod.a_quarter(float(raw), self._bpm_unit_val())
+            return tempo_map.valida_tempo(quarter, 4, 4)[0]
+        except (ValueError, TypeError) as e:
             raise ValueError(f"Tempo: {e}") from e
 
     def _bpb_val(self):
@@ -2319,7 +2377,7 @@ class Finestra(QMainWindow):
                     "Pot ser un tram massa curt o irregular: posa'l a mà.")
             return
         if bpm:
-            self.bpm.setText(f"{bpm:.3f}")
+            self._posa_bpm_quarter(bpm)
             self.registra(f"BPM detectat: {bpm:.3f} (pots editar-lo)")
         else:
             self.avisa_info(
@@ -2688,7 +2746,8 @@ class Finestra(QMainWindow):
                 "Aquest mapa té rubatos; l'editor de trams arribarà en la "
                 "fase 3.2. Els rubatos es mostren al visor com a derivats.")
             return
-        dlg = dialegs.DialegTempoMapa(self, trams, vr._durada_wav())
+        dlg = dialegs.DialegTempoMapa(self, trams, vr._durada_wav(),
+                                      unit=vr.bpm_unit)
         if dlg.exec_() != QDialog.Accepted:
             return
         if not vr.aplica_tempo_validat(dlg.trams(), "Mapa de tempo"):
@@ -3028,7 +3087,7 @@ class Finestra(QMainWindow):
                 f"El resultat ({b:.3f} BPM) queda fora de "
                 f"{limits.BPM_MIN:g}–{limits.BPM_MAX:g} BPM.")
             return
-        self.bpm.setText(f"{b:.3f}")
+        self._posa_bpm_quarter(b)
         self._aplica_parametres_temps()
         self.registra(f"BPM {'×2' if factor > 1 else '÷2'} → {b:.3f}")
 
@@ -3121,7 +3180,7 @@ class Finestra(QMainWindow):
                 self._tap_canviat = True
             self._sincronitza_temps_del_visor()
         else:
-            self.bpm.setText(f"{bpm:.3f}")
+            self._posa_bpm_quarter(bpm)
         self.b_tap.setText(f"TAP ({len(self._taps)}) {bpm:.0f}")
         self.registra(f"tap tempo: {bpm:.3f} BPM · tram {idx} "
                       f"({len(self._taps)} taps)")
@@ -3278,13 +3337,12 @@ class Finestra(QMainWindow):
                 self._sincronitza_temps_del_visor()
                 return
         try:
-            raw_bpm = float(str(self.bpm.text()).replace(",", ".").strip())
+            bpm = self._bpm_val()
             if free:
-                bpm, num, den = tempo_map.valida_tempo(raw_bpm, 0, 0)
+                bpm, num, den = tempo_map.valida_tempo(bpm, 0, 0)
             else:
                 num, den = self._parse_compas(self.bpb.text())
-                bpm, num, den = tempo_map.valida_tempo(
-                    raw_bpm, num, den)
+                bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
         except ValueError as e:
             self.avisa_info("Tempo o compàs invàlid", str(e))
             self._sincronitza_temps_del_visor()
@@ -3328,7 +3386,7 @@ class Finestra(QMainWindow):
         que és el que `_actualitza_temps()` hi llig. (reportat per l'operador,
         19-10-2026: «canvio a hh:mm:ss i torne a BPM i ja no hi ha carril»).
         """
-        for w in (self.bpm, self.bpb, self.offset):
+        for w in (self.bpm, self.cb_bpm_unit, self.bpb, self.offset):
             w.setEnabled(fix)
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
@@ -3404,6 +3462,7 @@ class Finestra(QMainWindow):
                 sortida=self.sortida or pipeline.carpeta_sortida(wav),
                 offset=self._offset_val(),
                 beat_type=self._beat_type_val(),
+                bpm_unit=self._bpm_unit_val(),
             )
             self.visor_ref = visor
             # El visor ha de desar els CSV/export a la carpeta de sortida del
@@ -3677,7 +3736,8 @@ class Finestra(QMainWindow):
             "tempo": {"bpm": bpm, "bpb": bpb,
                       "offset": offset,
                       "fix": self.tempo_fix.isChecked(),
-                      "compas": f"{bpb}/{den}"},
+                      "compas": f"{bpb}/{den}",
+                      "unit": self._bpm_unit_val()},
             "opcions": self.opcions,
         }
 
@@ -3707,7 +3767,14 @@ class Finestra(QMainWindow):
         wav = p.ruta_audio()
         self.wav_edit.setText(wav)
         tempo = p.dades.get("tempo") or {}
-        self.bpm.setText(f"{float(tempo.get('bpm', 120.0)):.3f}")
+        unit = bpm_unit_mod.normalitza(tempo.get("unit"))
+        idx_unit = self.cb_bpm_unit.findData(unit)
+        if idx_unit >= 0:
+            self.cb_bpm_unit.blockSignals(True)
+            self.cb_bpm_unit.setCurrentIndex(idx_unit)
+            self.cb_bpm_unit.blockSignals(False)
+        self._bpm_unit_anterior = unit
+        self._posa_bpm_quarter(float(tempo.get("bpm", 120.0)))
         compas = tempo.get("compas")
         # Format COMPLET (4/4, no «4»): un «4» sol sembla el compàs denormalitzat
         # i confon; el parser accepta els dos, però el camp sempre el mostra bé.
@@ -4044,7 +4111,7 @@ class Finestra(QMainWindow):
         if self.bpm.text().strip() not in ("", "120.0", "120"):
             self.registra("WAV nou → BPM reiniciat a 120.0 "
                           "(detecta'l o posa'l a mà)")
-            self.bpm.setText("120.000")
+            self._posa_bpm_quarter(120.0)
         # Migració: si hi ha una AUTOCHORDS_<nom>/ vella al costat del WAV,
         # n'importem els CSVs (i, si el destí és la mateixa carpeta, in situ).
         antic = projecte.carpeta_autochords(ruta)
@@ -4475,7 +4542,7 @@ class Finestra(QMainWindow):
         (regla de temps) — per a eixe cas hi ha «Detecta el tempo per trams».
         """
         b = float(b)
-        self.bpm.setText(f"{b:.3f}")
+        self._posa_bpm_quarter(b)
         self._marca_dirty()
         self.registra(f"BPM detectat: {b:.3f}")
         vr = getattr(self, "visor_ref", None)
@@ -4788,6 +4855,7 @@ class Finestra(QMainWindow):
                 events=ev,
                 durada=durada,
                 rubatos=rubatos,
+                bpm_unit=self._bpm_unit_val(),
             )
             if res.get("error"):
                 self.registra(f"partitura: sense resultat ({res['error']})")

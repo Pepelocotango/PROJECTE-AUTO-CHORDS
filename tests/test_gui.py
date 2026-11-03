@@ -1766,6 +1766,12 @@ class TestDialegTramTempo(_dialegs___Base):
     def test_el_bpm_surt_del_camp(self):
         self.assertEqual(self._dlg(bpm=97.5).valors()[0], 97.5)
 
+    def test_unitat_negra_amb_punt(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=82.5, num=12, den=8, unit="negra_punt")
+        self.assertAlmostEqual(d.sp_bpm.value(), 55.0, places=3)
+        self.assertEqual(d.valors(), (82.5, 12, 8))
+
     def test_clip_en_segons_es_rebutja_a_31(self):
         """«En segons» no crea rubato des del diàleg de tram (fase 3.2)."""
         d = dialegs.DialegTramTempo(None, inici=4.0, bpm=100.0, num=4, den=4)
@@ -1784,6 +1790,14 @@ class TestDialegTempoMapa(_dialegs___Base):
         return dialegs.DialegTempoMapa(
             None, trams=list(self.TRAMS if trams is None else trams),
             durada=durada)
+
+    def test_unitat_bpm_negra_amb_punt(self):
+        d = dialegs.DialegTempoMapa(
+            None, trams=list(self.TRAMS), durada=8.0, unit="negra_punt")
+        self.assertEqual(d.taula.item(0, 1).text(), "80")
+        self.assertEqual(d.taula.item(1, 1).text(), "60")
+        trams = d.trams()
+        self.assertEqual([round(float(t[2]), 6) for t in trams], [120.0, 90.0])
 
     def test_compas_a_segons(self):
         """Amb 120 BPM i 4/4 el compàs fa 2 s: el 3 comença a 4,0 s."""
@@ -5879,6 +5893,27 @@ class TestGuiatAudicio(unittest.TestCase):
             self.assertGreaterEqual(idx, 0)
             w.cb_metro.setCurrentIndex(idx)
             self.assertEqual(vr.metro_mode, "temps")
+        finally:
+            w._guia_cancel()
+
+    def test_unitat_bpm_negra_amb_punt(self):
+        w, vr = self._arrenca(t=1.0)
+        try:
+            idx = w.cb_bpm_unit.findData("negra_punt")
+            self.assertGreaterEqual(idx, 0)
+            w.cb_bpm_unit.setCurrentIndex(idx)
+            w._posa_bpm_quarter(82.5)
+            self.assertEqual(w.bpm.text(), "55.000")
+            self.assertAlmostEqual(w._bpm_val(), 82.5, places=6)
+            w._aplica_parametres_temps()
+            self.assertAlmostEqual(vr.bpm, 82.5, places=6)
+            self.assertEqual(vr.bpm_mostra(vr.bpm), "55.000")
+            self.assertEqual(w._dades_projecte()["tempo"]["unit"],
+                             "negra_punt")
+            idx = w.cb_bpm_unit.findData("negra")
+            w.cb_bpm_unit.setCurrentIndex(idx)
+            self.assertEqual(w.bpm.text(), "82.500")
+            self.assertAlmostEqual(vr.bpm, 82.5, places=6)
         finally:
             w._guia_cancel()
 

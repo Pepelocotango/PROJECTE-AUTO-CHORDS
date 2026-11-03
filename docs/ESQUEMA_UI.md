@@ -61,7 +61,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.b_obre_carpeta` | **Obre la carpeta de sortida** | `QPushButton` |
 | — | (al transport; `self.b_zs` al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / hh:mm:ss** (abans deia «Lliure») | `QPushButton` (checkable) |
-| — | `self.bpm` · `self.bpb` · `self.offset` · `self.offset_cb` | **BPM**, **Compàs**, **Offset (s)**, **≈ C.B** | `QLineEdit` |
+| — | `self.bpm` · `self.cb_bpm_unit` · `self.bpb` · `self.offset` · `self.offset_cb` | **BPM**, **unitat del BPM** (negra · negra amb punt · corxera · blanca), **Compàs**, **Offset (s)**, **≈ C.B** | `QLineEdit` · `QComboBox` |
 | — | `self.b_detecta` | **Detecta** (icona `target`) → obre el diàleg de BPM | `QPushButton` |
 | — | `self.b_bpm_x2` · `self.b_bpm_div2` | **×2 / ÷2** del BPM | `QPushButton` |
 | — | `self.b_compas_auto` | **Detecta el compàs 1** (icona `compass`) | `QPushButton` |
@@ -85,7 +85,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (barra 1, fila 1) | `Obre àudio` → **Anàlisi guiat** (guia ràpida) → **＋ Marker** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → BPM · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B (`Inclou estructura` és una acció del **menú Analitza**) |
+| **Treball** (barra 1, fila 1) | `Obre àudio` → **Anàlisi guiat** (guia ràpida) → **＋ Marker** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → BPM · **Unitat BPM** · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B (`Inclou estructura` és una acció del **menú Analitza**) |
 | **Accions** (barra 1, fila 2) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Obre la carpeta de sortida** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) |
 | **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup]** · **[Quantitza]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
@@ -320,6 +320,10 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 ## 3. Temps: BPM, offset i tap tempo
 
 - **BPM** = la velocitat (un cop cada `60/BPM` segons).
+- **Unitat del BPM**: el model intern sempre és **negres/minut**. El selector
+  de la barra pot mostrar-lo com a **negra** (per defecte), **negra amb punt**,
+  **corxera** o **blanca**. Per exemple, `55` negres amb punt = `82.5`
+  negres/min; no canvia la graella ni el metrònom.
 - **Offset** = el segon on cau el **compàs 1** (la fase de la graella).
 - **Dos camps sincronitzats**: `Offset` (segons) i `≈ C.B` (compàs.beat,
   **relatiu a la graella original amb offset = 0** → estable, llegible).

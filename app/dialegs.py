@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from app import config, graella, limits, tempo, tempo_map, vamp_params
+from app import bpm_unit, config, graella, limits, tempo, tempo_map, vamp_params
 
 # Traducció al català dels títols dels paràmetres del Chordino (els que dona
 # el plugin son en anglès) + una ajuda curta de quan tocar-los.
@@ -607,8 +607,10 @@ class DialegTempoMapa(QDialog):
     «Compàs» (`num/den`). La primera fila («Des de 0 s») és el valor inicial.
     """
 
-    def __init__(self, parent=None, trams=None, durada=0.0):
+    def __init__(self, parent=None, trams=None, durada=0.0,
+                 unit=bpm_unit.DEFECTE):
         super().__init__(parent)
+        self._unit = bpm_unit.normalitza(unit)
         self.setWindowTitle("Mapa de tempo i compàs")
         self.setMinimumWidth(470)
         self._durada = float(durada or 0.0)
@@ -653,7 +655,8 @@ class DialegTempoMapa(QDialog):
             if i == 0:
                 it0.setFlags(Qt.ItemIsEnabled)      # el valor inicial: fix
             self.taula.setItem(r, 0, it0)
-            self.taula.setItem(r, 1, QTableWidgetItem(f"{float(s[2]):g}"))
+            bpm_mostra = bpm_unit.de_quarter(float(s[2]), self._unit)
+            self.taula.setItem(r, 1, QTableWidgetItem(f"{bpm_mostra:g}"))
             self.taula.setItem(r, 2,
                                QTableWidgetItem(f"{int(s[3])}/{int(s[4])}"))
 
@@ -672,7 +675,8 @@ class DialegTempoMapa(QDialog):
             # exercita el diàleg).
             txt_ini = _t(0).replace(",", ".").strip().lower()
             try:
-                bpm = float(_t(1).replace(",", "."))
+                bpm = bpm_unit.a_quarter(
+                    float(_t(1).replace(",", ".")), self._unit)
                 if r == 0:
                     ini = 0.0
                 elif txt_ini.startswith("c"):
@@ -774,8 +778,9 @@ class DialegTramTempo(QDialog):
     """Edita un **tros** del mapa: BPM i compàs (on comença es mostra)."""
 
     def __init__(self, parent=None, inici=0.0, bpm=120.0, num=4, den=4,
-                 inicial=False, text_inici=None):
+                 inicial=False, text_inici=None, unit=bpm_unit.DEFECTE):
         super().__init__(parent)
+        self._unit = bpm_unit.normalitza(unit)
         self.setWindowTitle("BPM i compàs")
         self.setMinimumWidth(330)
         lay = QVBoxLayout(self)
@@ -790,13 +795,16 @@ class DialegTramTempo(QDialog):
         lay.addWidget(avis)
         form = QFormLayout()
         self.sp_bpm = QDoubleSpinBox()
-        self.sp_bpm.setRange(limits.BPM_MIN, limits.BPM_MAX)
+        _factor = bpm_unit.factor(self._unit)
+        self.sp_bpm.setRange(limits.BPM_MIN / _factor,
+                             limits.BPM_MAX / _factor)
         self.sp_bpm.setDecimals(3)
-        self.sp_bpm.setValue(float(bpm))
+        self.sp_bpm.setValue(bpm_unit.de_quarter(bpm, self._unit))
         self._den_defecte = int(den) if int(den) > 0 else 4
         self.ed_compas = QLineEdit(f"{int(num)}/{int(den)}")
         self.ed_compas.setPlaceholderText("4/4")
-        form.addRow("BPM:", self.sp_bpm)
+        form.addRow(f"BPM ({bpm_unit.etiqueta(self._unit).lower()}):",
+                    self.sp_bpm)
         form.addRow("Compàs:", self.ed_compas)
         lay.addLayout(form)
         self.chk_segons = QCheckBox("En segons (sense compàs: rubato)")
@@ -842,7 +850,9 @@ class DialegTramTempo(QDialog):
             num = int(txt)
         else:
             raise ValueError(f"El compàs «{txt}» no és vàlid")
-        return tempo_map.valida_tempo(float(self.sp_bpm.value()), num, den)
+        return tempo_map.valida_tempo(
+            bpm_unit.a_quarter(float(self.sp_bpm.value()), self._unit),
+            num, den)
 
 
 # ---------------------------------------------------------------------------
