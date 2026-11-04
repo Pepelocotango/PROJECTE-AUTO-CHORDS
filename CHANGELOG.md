@@ -5,6 +5,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Canviat — barres d'eines de dalt més compactes (2026-11-04)
+- Les accions (**Analitza**, exportacions, carpeta, desfer/refer) passen a la
+  fila de treball, després dels botons d'obertura/anàlisi.
+- La fila **Temps** continua tenint BPM/Unitat/Compàs/Offset.
+- La fila **Edició** agrupa **BPM 0,1**, el selector de graella (**Beats QM**)
+  i **Eina: intel·ligent/selecció**.
+- El transport queda separat i deixa de fer una cinquena fila per overflow.
+- Actualitzat `docs/ESQUEMA_UI.md` i les seues vistes generades.
+
 ### Afegit — Analitza BPM separat, motors i sensibilitat (2026-11-04)
 - «Analitza» queda dedicat a **acords + estructura**; el BPM té l’acció
   separada **«Analitza BPM…»** (F7).

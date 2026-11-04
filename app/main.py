@@ -832,6 +832,32 @@ class Finestra(QMainWindow):
         barra.addSeparator()
         barra.addWidget(self.b_mode_bpm)
         barra.addWidget(self.b_mode_lliure)
+        # Accions d'anàlisi/exportació a la mateixa fila: abans tenien una
+        # fila pròpia amb molt d'espai buit.
+        barra.addSeparator()
+        barra.addWidget(self.b_exec)
+        barra.addWidget(self.b_export)
+        barra.addWidget(self.b_export_part)
+        self.b_obre_carpeta = QPushButton("Obre la carpeta de sortida")
+        self.b_obre_carpeta.setObjectName("secundari")
+        self.b_obre_carpeta.setToolTip(
+            "Obre la carpeta on es desen els WAV's exportats")
+        self.b_obre_carpeta.clicked.connect(self.obre_carpeta)
+        barra.addWidget(self.b_obre_carpeta)
+        self.b_desfer = QPushButton()
+        self.b_desfer.setObjectName("secundari")
+        self.b_desfer.setIcon(icones.ico("undo-2", 16))
+        self.b_desfer.setIconSize(icones.pm_mida(16))
+        self.b_desfer.setToolTip("Desfer  (Ctrl+Z)")
+        self.b_desfer.clicked.connect(self._undo_visor)
+        barra.addWidget(self.b_desfer)
+        self.b_refer = QPushButton()
+        self.b_refer.setObjectName("secundari")
+        self.b_refer.setIcon(icones.ico("redo-2", 16))
+        self.b_refer.setIconSize(icones.pm_mida(16))
+        self.b_refer.setToolTip("Refer  (Ctrl+Y)")
+        self.b_refer.clicked.connect(self._redo_visor)
+        barra.addWidget(self.b_refer)
         # El bloc de paràmetres de temps viu en la seua pròpia fila: dins la
         # barra principal superava l'amplada de la finestra i QToolBar el
         # movia a l'overflow, on els QWidgetAction no es pinten (BPM/Unitat/
@@ -848,39 +874,10 @@ class Finestra(QMainWindow):
         self.addToolBar(Qt.TopToolBarArea, barra_temps)
         self.barra_temps = barra_temps
 
-        # 1b. SEGONA FILA de la barra 1: les ACCIONS (Analitza + exportacions).
-        barra_accions = QToolBar("Accions")
+        # 1b. TERCERA FILA: edició de graella (BPM 0,1, Beats QM, eina).
+        barra_accions = QToolBar("Edició")
         barra_accions.setObjectName("barra_accions")
         barra_accions.setMovable(False)
-        barra_accions.addWidget(self.b_exec)
-        barra_accions.addWidget(self.b_export)
-        barra_accions.addWidget(self.b_export_part)
-        # Botons afegits (petició de l'operador): obrir la carpeta de sortida
-        # (just després d'exportar) i desfer/refer (d'ús constant).
-        barra_accions.addSeparator()
-        self.b_obre_carpeta = QPushButton("Obre la carpeta de sortida")
-        self.b_obre_carpeta.setObjectName("secundari")
-        self.b_obre_carpeta.setToolTip(
-            "Obre la carpeta on es desen els WAV's exportats")
-        self.b_obre_carpeta.clicked.connect(self.obre_carpeta)
-        barra_accions.addWidget(self.b_obre_carpeta)
-        barra_accions.addSeparator()
-        self.b_desfer = QPushButton()
-        self.b_desfer.setObjectName("secundari")
-        self.b_desfer.setIcon(icones.ico("undo-2", 16))
-        self.b_desfer.setIconSize(icones.pm_mida(16))
-        self.b_desfer.setToolTip("Desfer  (Ctrl+Z)")
-        self.b_desfer.clicked.connect(self._undo_visor)
-        barra_accions.addWidget(self.b_desfer)
-        self.b_refer = QPushButton()
-        self.b_refer.setObjectName("secundari")
-        self.b_refer.setIcon(icones.ico("redo-2", 16))
-        self.b_refer.setIconSize(icones.pm_mida(16))
-        self.b_refer.setToolTip("Refer  (Ctrl+Y)")
-        self.b_refer.clicked.connect(self._redo_visor)
-        barra_accions.addWidget(self.b_refer)
-        # `addToolBarBreak` força una FILA NOVA (sense això Qt posa les dues
-        # barres en la mateixa línia si hi caben).
         self.addToolBarBreak(Qt.TopToolBarArea)
         self.addToolBar(Qt.TopToolBarArea, barra_accions)
         self.barra_accions = barra_accions
@@ -4386,7 +4383,9 @@ class Finestra(QMainWindow):
             "les fronteres amb compassos enters. Els rubatos no es "
             "quantitzen.")
         self.b_quantitza_bpm.clicked.connect(self._quantitza_bpm_ui)
-        bar.addWidget(self.b_quantitza_bpm)
+        self.barra_accions.addWidget(self.b_quantitza_bpm)
+        self.barra_accions.addSeparator()
+        self.barra_accions.addWidget(QLabel("Graella:"))
         # Graella configurable: interruptor de snap + divisió (habilita el nudge fi).
         self.tb_snap = boto("Snap", "Interruptor de snap (encaixar a la graella)",
                             self._canvia_snap, checkable=True)
@@ -4410,8 +4409,8 @@ class Finestra(QMainWindow):
                 ("64 compassos", "compas64")):
             self.cb_graella.addItem(et, val)
         self.cb_graella.currentIndexChanged.connect(self._canvia_snap)
-        bar.addWidget(self.cb_graella)
-        bar.addSeparator()
+        self.barra_accions.addWidget(self.cb_graella)
+        self.barra_accions.addSeparator()
         # Commutador d'EINA del timeline: «intel·ligent» (per defecte; la fletxa
         # s'adapta al que hi ha sota) o «marc» (arrossegar dibuixa un rectangle
         # de selecció i no mou clips). Viu aquí, darrere del snap, perquè és on
@@ -4428,7 +4427,7 @@ class Finestra(QMainWindow):
             "seleccionat "
             "tot el que hi SONA a dins (només les pistes que cobreixi).")
         self.b_eina.toggled.connect(self._canvia_eina)
-        bar.addWidget(self.b_eina)
+        self.barra_accions.addWidget(self.b_eina)
 
     def _canvia_snap(self):
         """Aplica l'interruptor de snap + la divisió de graella al visor."""

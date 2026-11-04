@@ -85,9 +85,9 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (barra 1, fila 1) | `Obre àudio` → **Anàlisi guiat** (guia ràpida) → **＋ Marker** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) |
+| **Treball** (barra 1, fila 1) | `Obre àudio` → **Anàlisi guiat** (guia ràpida) → **＋ Marker** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Obre la carpeta de sortida** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) |
 | **Temps** (barra 1, fila 2) | BPM · **Unitat BPM** · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B |
-| **Accions** (barra 1, fila 3) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Obre la carpeta de sortida** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) |
+| **Edició** (barra 1, fila 3) | **BPM 0,1** · **Graella:** `Beats QM` / divisions · **Eina: intel·ligent / selecció** |
 | **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup]** · **[unitat de clic]** · **[Quantitza]** · **[BPM 0,1]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
 ### Menús
