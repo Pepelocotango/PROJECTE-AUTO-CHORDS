@@ -47,15 +47,14 @@
 > compàs no reinicia la numeració: el compàs continua i només canvia la seua
 > durada; els canvis de **compàs** (signatura) sí que obrin un compàs nou.
 >
-> **Compassos enters (2026-10-20 · re-tempo 2026-10-21 · arreglat 2026-10-25)**:
-> les fronteres entre trams **interiors** de tempo/compàs cauen en **línies de
-> compàs**, i cada tram interior té un **nombre enter de compassos**. El primer
-> inici i l'últim final de la WAV són les excepcions. **Moure una frontera,
-> canviar els compassos (`+1`/`−1`/`×2`/`÷2`) o canviar el BPM/compàs pel
-> diàleg, la barra o el TAP fa re-tempo local**: **els segons del clip es
-> mantenen**, els compassos dels dos costats es conserven, el BPM en deriva
-> i **els trams següents no es mouen**. En concret, ×2/÷2 no estiren ni
-> encugen el clip: només recalculen el BPM perquè hi cabin els nous compassos
+> **Beats sencers (2026-11-04)**: les fronteres entre clips de tempo/compàs
+> cauen en la **graella del Snap** (QM si és «Beats QM»; BPM/compàs en la
+> resta de modes) i cada clip ha de contindre **almenys un beat sencer**. El
+> primer inici i l'últim final poden ser lliures; amb un sol clip, tots dos.
+> **Moure una frontera o canviar el BPM/compàs** conserva el BPM i ajusta el
+> compàs si cal; els segons dels clips no es mouen i els trams següents no es
+> desplacen. Els canvis explícits de compassos (`+1`/`−1`/`×2`/`÷2`) es
+> mantenen com a reinterpretació mètrica del clip.
 > en la mateixa duració. Contracte complet: `docs/REGLES_DE_LA_APP.md`
 > §13.4–13.6.
 >

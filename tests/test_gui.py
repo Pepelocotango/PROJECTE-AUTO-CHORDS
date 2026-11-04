@@ -1395,6 +1395,63 @@ class TestAvisAudio(unittest.TestCase):
         self.assertEqual(len(n), 1)
 
 
+class TestAjustaGraellaBeats(unittest.TestCase):
+    """L'offset heretat no ha de deixar el mapa fora de graella per sempre."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._app = visor.QApplication.instance() or visor.QApplication([])
+
+    def test_offset_heretat_invalid_tria_primer_marcador(self):
+        td = tempfile.mkdtemp(prefix="ac_graella_")
+        wav = os.path.join(td, "t.wav")
+        try:
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(44100)
+                w.writeframes(b"\x00\x00" * 44100 * 12)
+            v = visor.Visor(wav, None, None, 60.0, 4, True,
+                            sortida=td, offset=0.5)
+            try:
+                # Frontera 3.0 s: amb offset 0.5 NO és línia de compàs.
+                v.tempo_trams = [(0.0, 2.0, 60.0, 4, 4),
+                                 (2.0, 4.0, 60.0, 4, 4),
+                                 (4.0, 6.0, 60.0, 4, 4),
+                                 (6.0, 12.0, 60.0, 4, 4)]
+                v.tempo_map = tm.TempoMap(v.tempo_trams, offset=0.0)
+                v.marcadors = [2.0, 4.0, 6.0]
+                v.marcador_tipus = {m: "seccio" for m in v.marcadors}
+                res = v.ajusta_graella_a_beats(
+                    [2.0, 4.0, 6.0], [], tolerancia=0.12)
+                self.assertIsNotNone(res)
+                self.assertAlmostEqual(v.offset, 2.0, places=6)
+                # El mapa resultant compleix el contracte nou; no cal que
+                # cada marcador caiga en línia de compàs.
+                tm.valida_i_normalitza_compassos(v.tempo_trams, 12.0,
+                                                 offset=v.offset)
+                self.assertEqual(v.tempo_trams[1][2], 60.0)
+            finally:
+                v.close()
+        finally:
+            shutil.rmtree(td, ignore_errors=True)
+
+    def test_snap_qm_o_bpm_decidix_la_graella(self):
+        v = visor.Visor(_wav_silenci(2), None, None, 120.0, 4, True)
+        try:
+            v.set_snap_beats([1.0, 1.5])
+            v.set_snap(on=True, divisio="qm_beats")
+            self.assertEqual(v._beats_per_validacio(), [1.0, 1.5])
+            v.set_snap(on=True, divisio="compas")
+            self.assertIsNone(v._beats_per_validacio())
+            v.set_snap(on=False, divisio="qm_beats")
+            self.assertIsNone(v._beats_per_validacio())
+        finally:
+            v.close()
+
+
+
+
 def _avis_audio_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.
@@ -3532,13 +3589,15 @@ class TestParteixALoop(unittest.TestCase):
         vr.undo()
         self.assertEqual(len(vr.tempo_trams), 3)
 
-    def test_tempo_A_i_B_al_mateix_compas_deixen_un_sol_tall(self):
-        """A i B s'imanten al mateix compàs → un únic tall (no peta)."""
+    def test_tempo_A_i_B_dins_de_dos_beats_qm_deixen_tres_talls(self):
+        """A i B dins d'un mateix beat QM: el clip curt és vàlid per QM."""
         vr = self.vr
-        vr.loop_a, vr.loop_b = 4.9, 5.1    # 120 BPM 4/4: l'únic compàs és 6
+        vr.loop_a, vr.loop_b = 4.9, 5.1
+        vr.set_snap(divisio="qm_beats")
+        vr.set_snap_beats([0.0, 4.0, 4.9, 5.1, 8.0, 12.0, 20.0])
         self.assertTrue(vr.parteix_a_loop("tempo", 1))
         self.assertEqual([round(t[0], 3) for t in vr.tempo_trams],
-                         [0.0, 4.0, 6.0, 8.0])
+                         [0.0, 4.0, 4.9, 5.1, 8.0])
 
     def test_nomes_una_frontera_dins(self):
         """Si només A cau dins del clip, es parteix només allà."""
@@ -5118,17 +5177,19 @@ class TestTempoPerTramsGui(unittest.TestCase):
         vr.undo()
         self.assertNotEqual(len(vr.tempo_trams), 3)
 
-    def test_mapa_invalid_no_s_aplica(self):
+    def test_mapa_amb_frontera_no_compas_s_aplica(self):
         w = self.w
         vr = w.visor_ref
-        abans = list(vr.tempo_trams or [])
         with patch.object(w, "avisa_info") as mock:
-            # dues fronteres: la de 7,3 s no cau en cap línia de compàs
+            # La frontera 7,3 s no és línia de compàs, però els dos clips
+            # tenen més d'un temps complet: el contracte nou l'accepta.
             w._tempo_trams_fet({"trams": [(0.0, 7.3, 121.7, 4, 4),
                                           (7.3, 20.0, 121.7, 4, 4)],
                                 "offset": 0.0, "bpm_base": 121.7})
         self.assertEqual(mock.call_count, 1)
-        self.assertEqual(list(vr.tempo_trams or []), abans)
+        self.assertNotEqual([tuple(t) for t in vr.tempo_trams],
+                            [(0.0, 7.3, 121.7, 4, 4),
+                             (7.3, 20.0, 121.7, 4, 4)])
 
     def test_sense_trams_avisa(self):
         w = self.w
@@ -6665,17 +6726,13 @@ class TestAncoratgesFinestra(unittest.TestCase):
         TM = __import__("app.tempo_map", fromlist=["x"])
         TM.valida_i_normalitza_compassos(vr.tempo_trams, 60.0, vr.offset)
 
-    def test_mapa_invalid_no_toca_res(self):
+    def test_mapa_amb_frontera_no_compas_s_aplica(self):
         vr = self.w.visor_ref
-        abans = [tuple(t) for t in (vr.tempo_trams or [])]
-        # frontera interior que no és línia de compàs (2 s a 120 BPM = 1 compàs,
-        # però el tros 1→2 només en té mig)
-        with patch.object(vr, "avis_editor") as av:
-            self.assertFalse(self.w._aplica_ancoratges(
-                [(1.0, 2.0, 120.0, 4, 4), (2.0, 60.0, 120.0, 4, 4)], 1.0, []))
-        av.assert_called_once()          # avisa pel visor (l'editor del tempo)
-        self.assertEqual([tuple(t) for t in (vr.tempo_trams or [])], abans)
-        self.assertAlmostEqual(vr.offset, 0.0, places=6)
+        # Els dos clips tenen més d'un temps complet: el contracte nou els
+        # accepta encara que la frontera no caiga en línia de compàs.
+        self.assertTrue(self.w._aplica_ancoratges(
+            [(1.0, 2.0, 120.0, 4, 4), (2.0, 60.0, 120.0, 4, 4)], 1.0, []))
+        self.assertEqual(len(vr.tempo_trams), 3)
 
     def test_opcions_del_dialeg_es_desen(self):
         """Regressió 21-10: `_desa_opcions` no existia → AttributeError en
@@ -6764,6 +6821,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
     def test_tecla_mes_crea_marcador_a_la_finestra(self):
         """`+` és un atall de finestra (no depén del focus) que crida l'acció."""
         vr = self.w.visor_ref
+        self.w._beats_actuals = {"beats": [20.0, 30.0], "downbeats": []}
         vr.pos = 20.0
         self.assertTrue(self.w._afegeix_marcador())     # acció de l'atall
         self.assertEqual(len(vr.marcadors), 1)
@@ -6774,6 +6832,21 @@ class TestAncoratgesFinestra(unittest.TestCase):
         # i s'esborra l'últim des del menú
         self.assertTrue(self.w._esborra_ultim_marcador())
         self.assertEqual(len(vr.marcadors), 1)
+
+    def test_tecla_mes_sense_qm_no_crea_marcador(self):
+        vr = self.w.visor_ref
+        self.w._beats_actuals = None
+        with patch.object(self.w, "_missatge_info") as info:
+            self.assertFalse(self.w._afegeix_marcador())
+        self.assertEqual(len(vr.marcadors), 0)
+        self.assertEqual(info.call_count, 1)
+
+    def test_tecla_mes_sempre_usa_el_beat_qm_mes_proper(self):
+        vr = self.w.visor_ref
+        self.w._beats_actuals = {"beats": [20.0, 20.6], "downbeats": []}
+        vr.pos = 20.45             # el més pròxim és 20.6, no 20.0
+        self.assertTrue(self.w._afegeix_marcador())
+        self.assertAlmostEqual(float(vr.marcadors[0]), 20.6, places=6)
 
     def test_escriure_un_plus_en_un_camp_no_crea_marcador(self):
         """Escriure «+» al nom d'un acord no ha d'afegir cap marcador."""
@@ -6822,10 +6895,10 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.edita_tempo_objectiu(1, 100.0, 3, 4))
         self.assertEqual(len(vr.tempo_trams), 3)
         self.assertEqual(vr.tempo_trams[0], trams[0])       # intacte
-        self.assertAlmostEqual(vr.tempo_trams[1][2], 100.0, places=6)
-        self.assertAlmostEqual(vr.tempo_trams[1][1], 28.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 99.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][1], 30.0, places=6)
         # El veí de la dreta (últim) conserva el BPM i el seu final.
-        self.assertAlmostEqual(vr.tempo_trams[2][0], 28.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][0], 30.0, places=6)
         self.assertAlmostEqual(vr.tempo_trams[2][1], 60.0, places=6)
         self.assertAlmostEqual(vr.tempo_trams[2][2], 120.0, places=6)
 
@@ -6838,7 +6911,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.tempo_trams[0], trams[0])
         self.assertEqual(vr.tempo_trams[1][:2], trams[1][:2])
         self.assertEqual(vr.tempo_trams[1][3:], (7, 8))
-        self.assertEqual(vr.tempo_trams[1][2], 94.5)
+        self.assertEqual(vr.tempo_trams[1][2], 90.0)
         self.assertEqual(vr.tempo_trams[2], trams[2])
 
     def test_el_marcador_arrossega_la_frontera_d_estructura(self):
@@ -6886,22 +6959,27 @@ class TestAncoratgesFinestra(unittest.TestCase):
     def test_bpm_manual_funciona_amb_el_primer_i_l_ultim_tram(self):
         """Cas real: pre-roll de 1,99 s (fora de graella) + últim tram."""
         vr = self.w.visor_ref
-        trams = [(0.0, 1.99, 120.0, 4, 4), (1.99, 60.0, 120.0, 4, 4)]
+        trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 60.0, 120.0, 4, 4)]
         self.assertTrue(vr.aplica_tempo_trams(trams))
-        # Primer tram: redimensiona; el veí (últim) conserva BPM i final.
+        # Primer tram: canvia el BPM sense moure la frontera.
         self.assertTrue(vr.edita_tempo_objectiu(0, 100.0, 4, 4))
-        self.assertAlmostEqual(vr.tempo_trams[0][1], 2.4, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[0][1], 2.0, places=6)
         self.assertAlmostEqual(vr.tempo_trams[1][2], 120.0, places=6)
         # Últim tram: canvia el BPM encara que la frontera no ciga en graella.
         vr.aplica_tempo_trams(trams)
         self.assertTrue(vr.edita_tempo_objectiu(1, 100.0, 4, 4))
-        self.assertAlmostEqual(vr.tempo_trams[1][0], 1.99, places=9)
+        self.assertAlmostEqual(vr.tempo_trams[1][0], 2.0, places=9)
         self.assertAlmostEqual(vr.tempo_trams[1][2], 100.0, places=6)
 
     def test_marcador_durant_el_play_usa_el_cursor_del_so(self):
         """El cas real: donar-li a `+` mentre SONA (el cursor és el playhead)."""
         from PyQt5.QtTest import QTest
         vr = self.w.visor_ref
+        # QM sintètic cada 50 ms: el `+` sempre troba el beat més pròxim.
+        self.w._beats_actuals = {
+            "beats": [i * 0.05 for i in range(1, 1200)],
+            "downbeats": [],
+        }
         with patch.object(audio_out, "crea_motor", lambda *a, **k: _MotorMut()):
             vr.play_stop()
             QTest.qWait(400)

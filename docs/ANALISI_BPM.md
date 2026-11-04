@@ -74,10 +74,13 @@ Després del play, l’acció **Ajusta la graella als beats QM…** fa:
 3. només mou els marcadors que cauen dins de la tolerància (per defecte
    120 ms);
 4. els marcadors sense objectiu queden intactes i es marquen com a dubtosos;
-5. mou la secció que encara coincidia amb el marcador; si ja s’havia editat a
+5. prova l’offset actual i el **primer marcador** i tria el que fa que més
+   marcadors caiguen en línia de compàs; si l’offset actual ja és bo, es
+   conserva (és una preferència de presentació, no la validesa);
+6. mou la secció que encara coincidia amb el marcador; si ja s’havia editat a
    mà, no la toca;
-6. recalcula el BPM amb els marcadors resultants;
-7. aplica el mapa amb **un sol desfer**.
+7. recalcula el BPM amb els marcadors resultants;
+8. aplica el mapa amb **un sol desfer**.
 
 No obri cap diàleg mentre sona: la comprovació i la tolerància es demanen
 després d’aturar la reproducció.
@@ -85,10 +88,18 @@ després d’aturar la reproducció.
 `+` continua creant **inici de compàs + inici de secció**. La secció es pot
 editar després sense que desaparega l’ancoratge de compàs.
 
-El selector **Snap → Beats QM** fa que el cursor i els clips s'encaixen a les
-línies de beats de QM; amb el Snap actiu, el `+` també s'hi encaixa abans de
-crear el marcador. Si no hi ha cap beat a prop (120 ms), el `+` conserva el
-temps del cursor.
+El selector **Snap** decidix quina graella valida els clips de BPM/compàs:
+
+- **Snap → Beats QM**: mana la graella de beats QM.
+- **Qualsevol altre mode, o Snap desactivat**: mana la graella BPM/compàs.
+
+Cada clip ha de contindre **almenys un beat sencer** d’eixa graella. Les
+fronteres interiors han de caure a la graella; només l’inici del primer clip i
+la fi de l’últim poden ser lliures (amb un sol clip, tots dos).
+
+`+` **sempre** s’encaixa al beat QM més pròxim, sense tolerància de 120 ms. Si
+no hi ha cap beat QM, no crea el marcador i avisa. Els clips afectats es
+recalculen conservant el BPM i ajustant el compàs si cal.
 
 Els talls que no han trobat cap beat dins de la tolerància es mostren en un
 **diàleg no modal** de revisió; doble clic porta el cursor al tall i el botó

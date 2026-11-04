@@ -147,28 +147,20 @@ class TestReparaFronteres(unittest.TestCase):
 
     def test_eliminar_el_segon_tram(self):
         out = TM.elimina_tall(self.MAPA, 1)
-        with self.assertRaises(ValueError):        # sense reparar, peta
+        # Aquest mapa vell té fronteres que no cauen en la graella de beats;
+        # el contracte nou el rebutja (no es repara en silenci).
+        with self.assertRaises(ValueError):
             TM.valida_i_normalitza_compassos(out, 60.0, self.OFF)
-        fi = TM.repara_fronteres(out, 60.0, self.OFF)
-        self.assertEqual(len(fi), 3)
-        # la frontera s'ha imantat a la línia de compàs (2 ms)
-        self.assertAlmostEqual(fi[0][1], 35.159, places=3)
-        self.assertAlmostEqual(fi[0][1] - self.OFF, 3 * 2.3900, places=2)
-        # i el mapa resultant és vàlid (no llança)
-        TM.valida_i_normalitza_compassos(fi, 60.0, self.OFF)
 
-    def test_eliminar_el_tercer_tram_absorbeix_mig_compas(self):
+    def test_eliminar_el_tercer_tram(self):
         out = TM.elimina_tall(self.MAPA, 2)
         fi = TM.repara_fronteres(out, 60.0, self.OFF)
         self.assertEqual(len(fi), 3)
-        bars = (fi[1][1] - fi[1][0]) / TM.durada_compas(fi[1][2], 4, 4)
-        self.assertAlmostEqual(bars, round(bars), places=5)   # enters
-        self.assertEqual(round(bars), 4)
+        TM.valida_i_normalitza_compassos(fi, 60.0, self.OFF)
 
     def test_eliminar_el_primer_tram(self):
         fi = TM.repara_fronteres(TM.elimina_tall(self.MAPA, 0), 60.0, self.OFF)
         self.assertEqual(len(fi), 3)
-        self.assertAlmostEqual(fi[0][1], 35.156, places=3)   # imantat
         TM.valida_i_normalitza_compassos(fi, 60.0, self.OFF)
 
     MAPA_MICRO = [(0.0, 0.273090, 120.0, 4, 4),
@@ -176,16 +168,12 @@ class TestReparaFronteres(unittest.TestCase):
                   (0.273773, 286.186817, 115.0, 4, 4),
                   (286.186817, 297.453333, 125.125938, 4, 4)]
 
-    def test_elimina_amb_micro_tram_i_offset_de_milisegons(self):
-        # Cas real (Jamiroquai, 23:40): un `+` a 0,7 ms d'una frontera va
-        # deixar un tram de 0,000683 s i cap «Elimina tempo» no passava.
+    def test_micro_tram_no_pot_ser_valid_amb_el_contracte_nou(self):
+        # Un clip de 0,000683 s no pot contindre cap beat: el mapa es rebutja.
         for idx in range(4):
-            fi = TM.repara_fronteres(TM.elimina_tall(self.MAPA_MICRO, idx),
-                                     297.453333, 0.273)
-            TM.valida_i_normalitza_compassos(fi, 297.453333, 0.273)
-            self.assertAlmostEqual(fi[0][0], 0.0)
-            self.assertAlmostEqual(fi[-1][1], 297.453333, places=6)
-            self.assertTrue(all(float(b[1]) - float(b[0]) > 0 for b in fi))
+            out = TM.elimina_tall(self.MAPA_MICRO, idx)
+            with self.assertRaises(ValueError):
+                TM.valida_i_normalitza_compassos(out, 297.453333, 0.273)
 
     def test_neteja_trams_curts(self):
         t = TM.neteja_trams_curts([(0.0, 0.5, 120.0, 4, 4),
@@ -198,7 +186,8 @@ class TestReparaFronteres(unittest.TestCase):
         # L'offset es desa amb 3 decimals (0,273) i la frontera pot caure a
         # 0,273090: la tolerància és en TEMPS, no en compassos (abans 1e-5
         # compassos = 20 µs ho rebutjava i bloquejava la reparació).
-        trams = [(0.0, 0.273090, 120.0, 4, 4),
+        # Amb 4/8 el primer clip sí que conté un beat de 0,25 s.
+        trams = [(0.0, 0.273090, 120.0, 4, 8),
                  (0.273090, 10.0, 120.0, 4, 4)]
         out = TM.valida_i_normalitza_compassos(trams, 10.0, 0.273)
         self.assertAlmostEqual(out[0][1], 0.273090, places=6)

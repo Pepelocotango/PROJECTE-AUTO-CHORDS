@@ -5,14 +5,22 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
-### Canviat — barres d'eines de dalt més compactes (2026-11-04)
-- Les accions (**Analitza**, exportacions, carpeta, desfer/refer) passen a la
-  fila de treball, després dels botons d'obertura/anàlisi.
-- La fila **Temps** continua tenint BPM/Unitat/Compàs/Offset.
-- La fila **Edició** agrupa **BPM 0,1**, el selector de graella (**Beats QM**)
-  i **Eina: intel·ligent/selecció**.
-- El transport queda separat i deixa de fer una cinquena fila per overflow.
-- Actualitzat `docs/ESQUEMA_UI.md` i les seues vistes generades.
+### Canviat — contracte de clips de BPM/compàs per beats (2026-11-04)
+- **Decisió explícita de l’operador**: un clip de BPM/compàs ja no ha de
+  resoldre a compassos sencers. És vàlid si conté **almenys un beat sencer**
+  dins del clip; no basta que la durada siga més gran que un beat.
+- La graella que valida depén del **Snap**: amb **Beats QM** mana QM; amb
+  qualsevol altre mode (o Snap desactivat) mana BPM/compàs.
+- Les fronteres interiors han de caure en una línia de beat de la graella
+  seleccionada. Excepcions: el primer inici i l’últim final poden ser lliures;
+  amb un sol clip, tots dos.
+- L’ajust prioritza **conservar el BPM** i canviar el compàs (`4/4` → `4/8`…);
+  només com a últim recurs s’ajusta el BPM a un valor proper, sense anar a la
+  meitat ni al doble ni fora de 30–350.
+- El `+` **sempre** s’encaixa al beat QM més pròxim; sense beats QM no crea el
+  marcador i avisa. Els clips afectats es recalculen.
+- Actualitzats `docs/REGLES_DE_LA_APP.md` §13.4–13.6, `docs/ANALISI_BPM.md`,
+  el validador, el re-tempo, els marcadors i els tests.
 
 ### Afegit — Analitza BPM separat, motors i sensibilitat (2026-11-04)
 - «Analitza» queda dedicat a **acords + estructura**; el BPM té l’acció
@@ -31,11 +39,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 - Revisió no modal dels talls dubtosos (`DialegRevisioSnap`) i acció
   **Compàs del marcador…** per canviar el metre del clip que comença en un
   marcador.
-- Snap **Beats QM** al selector del transport; amb Snap actiu, el `+` encaixa
-  el marcador a la línia de QM més pròxima dins de 120 ms.
+- Snap **Beats QM** al selector del transport; el `+` encaixa **sempre** el
+  marcador al beat de QM més pròxim.
+- **Ajusta la graella als beats QM** prova l’offset actual i el primer
+  marcador, i tria el que fa que més marcadors caiguen en línies de compàs.
+  També dona missatge quan un `+` no s’afig perquè ja hi ha un marcador a prop.
 - Nous `app/beats.py`, `DialegAnalitzaBPM`, `BeatLayer` i
   `docs/ANALISI_BPM.md`; tests de sensibilitat i motors.
-- Suite completa: **1.563 tests**, 1 omés; `pyflakes` net.
+- Suite completa: **1.577 tests**, 1 omés; `pyflakes` net.
 
 ### Optimitzat — backups d'àudio amb hardlinks (2026-11-04)
 - `Projecte.fes_backup` enllaça el WAV de treball amb **hardlink** quan el
@@ -70,6 +81,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   enllaçada al pla de la fase 10 i a l'índex de documentació.
 - Tests de l'avaluador: **10**; suite completa: **1.541 tests**, 1 omés;
   `pyflakes` net.
+
+### Canviat — barres d'eines de dalt més compactes (2026-11-04)
+- Les accions (**Analitza**, exportacions, carpeta, desfer/refer) passen a la
+  fila de treball, després dels botons d'obertura/anàlisi.
+- La fila **Temps** continua tenint BPM/Unitat/Compàs/Offset.
+- La fila **Edició** agrupa **BPM 0,1**, el selector de graella (**Beats QM**)
+  i **Eina: intel·ligent/selecció**.
+- El transport queda separat i deixa de fer una cinquena fila per overflow.
+- Actualitzat `docs/ESQUEMA_UI.md` i les seues vistes generades.
 
 ### Afegit — graella fixa de temps absolut i quantització BPM (2026-11-04)
 - Nova `TimeRulerLayer` sota l'ona amb temps absolut `hh:mm:ss`.

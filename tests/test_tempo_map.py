@@ -248,10 +248,25 @@ class TestCompassosEnters(unittest.TestCase):
                          [(0.0, 10.0, 120.0, 4, 4),
                           (10.0, 20.0, 90.0, 4, 4)])
 
-    def test_frontera_a_mig_compas_es_rebutja(self):
+    def test_frontera_a_mig_compas_es_valida(self):
+        # Contracte nou: no cal que la frontera caiga en línia de compàs; els
+        # dos clips tenen més d'un temps complet.
+        trams = [(0.0, 4.0, 90.0, 4, 4), (4.0, 10.0, 120.0, 3, 4)]
+        self.assertEqual(tm.valida_i_normalitza_compassos(trams, 10.0), trams)
+
+    def test_clip_curt_entre_beats_qm_no_conte_cap_beat_sencer(self):
+        # Estar dins de dos beats QM no basta: ha de contindre un beat sencer.
+        trams = [(0.0, 1.0, 120.0, 4, 4), (1.0, 1.2, 120.0, 4, 4),
+                 (1.2, 5.0, 120.0, 4, 4)]
         with self.assertRaises(ValueError):
             tm.valida_i_normalitza_compassos(
-                [(0.0, 4.0, 90.0, 4, 4), (4.0, 10.0, 120.0, 3, 4)], 10.0)
+                trams, 5.0, beats_qm=[1.0, 1.2])
+
+    def test_clip_curt_fora_de_qm_es_rebutja(self):
+        trams = [(0.0, 1.0, 120.0, 4, 4), (1.0, 1.2, 120.0, 4, 4),
+                 (1.2, 5.0, 120.0, 4, 4)]
+        with self.assertRaises(ValueError):
+            tm.valida_i_normalitza_compassos(trams, 5.0)
 
     def test_primer_parcial_amb_offset(self):
         # El primer tram comença en un compte enrere parcial; la resta són
@@ -266,13 +281,12 @@ class TestCompassosEnters(unittest.TestCase):
         self.assertEqual(tm.valida_i_normalitza_compassos(
             trams, 17.0, offset=-1.0), trams)
 
-    def test_canviar_bpm_conserva_compassos_i_ajusta_el_vei(self):
-        # Re-tempo local (contracte §7): el tram conserva N; el veí (ací,
-        # l'últim) conserva el BPM i la fi de la WAV i absorbeix la diferència.
+    def test_canviar_bpm_conserva_les_fronteres(self):
+        # El BPM és una etiqueta del clip: canviar-lo no mou fronteres ni
+        # re-tempa el veí. El contracte nou no exigix compassos enters.
         nous = tm.canvia_bpm_local(self.BASE, 0, 100.0, 30.0)
-        self.assertEqual(nous, [(0.0, 12.0, 100.0, 4, 4),
-                                (12.0, 30.0, 90.0, 3, 4)])
-        self.assertAlmostEqual(nous[1][1], self.BASE[1][1], places=9)
+        self.assertEqual(nous, [(0.0, 10.0, 102.0, 4, 4),
+                                (10.0, 30.0, 90.0, 3, 4)])
 
     def test_ultim_tram_conserva_la_fi(self):
         # L'últim tram no pot moure la fi de la WAV: canvia N (excepció §5).
@@ -299,6 +313,46 @@ class TestCompassosEnters(unittest.TestCase):
         trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 120.0, 4, 4)]
         with self.assertRaises(ValueError):
             tm.parteix_a_compas(trams, 0, 1.0, 6.0)
+
+
+class TestContracteBeatsSencers(unittest.TestCase):
+    """Regla 2026-11-04: beat sencer, graella del Snap i extrems lliures."""
+
+    def test_un_clip_amb_beat_sencer(self):
+        trams = [(0.0, 1.0, 120.0, 4, 4)]
+        self.assertEqual(tm.valida_i_normalitza_compassos(trams, 1.0), trams)
+
+    def test_un_clip_sense_beat_sencer_es_rebutja(self):
+        trams = [(0.0, 0.4, 120.0, 4, 4)]
+        with self.assertRaises(ValueError):
+            tm.valida_i_normalitza_compassos(trams, 0.4)
+
+    def test_dos_clips_inici_i_final(self):
+        trams = [(0.0, 1.0, 120.0, 4, 4), (1.0, 5.0, 120.0, 4, 4)]
+        self.assertEqual(tm.valida_i_normalitza_compassos(trams, 5.0), trams)
+
+    def test_frontera_interior_ha_de_ser_graella(self):
+        trams = [(0.0, 1.0, 120.0, 4, 4), (1.1, 5.0, 120.0, 4, 4)]
+        with self.assertRaises(ValueError):
+            tm.valida_i_normalitza_compassos(trams, 5.0)
+
+    def test_clip_interior_curt_amb_qm(self):
+        trams = [(0.0, 1.0, 120.0, 4, 4), (1.0, 1.2, 120.0, 4, 4),
+                 (1.2, 5.0, 120.0, 4, 4)]
+        self.assertEqual(
+            tm.valida_i_normalitza_compassos(
+                trams, 5.0, beats_qm=[0.0, 1.0, 1.2, 5.0]),
+            trams)
+
+    def test_clip_interior_curt_sense_beat_es_rebutja(self):
+        trams = [(0.0, 1.0, 120.0, 4, 4), (1.0, 1.2, 120.0, 4, 4),
+                 (1.2, 5.0, 120.0, 4, 4)]
+        with self.assertRaises(ValueError):
+            tm.valida_i_normalitza_compassos(trams, 5.0)
+
+    def test_dos_per_quatre_amb_beat_sencer(self):
+        trams = [(0.0, 1.0, 120.0, 2, 4), (1.0, 3.0, 120.0, 2, 4)]
+        self.assertEqual(tm.valida_i_normalitza_compassos(trams, 3.0), trams)
 
 
 class TestCombinacio(unittest.TestCase):
@@ -722,7 +776,7 @@ class TestGuia(unittest.TestCase):
         for t in (2.5, 12.1, 21.7):
             r = tm.trams_finestra_guia(trams, t, 100.0, 4, 4, self.DURADA)
             trams, t_seg, m = r
-        self.assertAlmostEqual(t_seg, 21.7 + 9.6, places=6)  # 31.3 > 30
+        self.assertAlmostEqual(t_seg, 30.0, places=6)  # cua absorbida
         # però la durada es retalla: l'últim tram acaba a durada
         self.assertAlmostEqual(trams[-1][1], self.DURADA, places=6)
         v = tm.valida_i_normalitza_compassos(trams, self.DURADA, offset=2.5)
@@ -1809,9 +1863,9 @@ class TestTramsEnSegons(unittest.TestCase):
         self.assertAlmostEqual(out[1][1], 6.0)
         self.assertEqual((out[1][3], out[1][4]), (0, 0))
         self.assertAlmostEqual(out[1][2], 100.0)   # rubato: BPM de notació
-        # El VEÍ amb compàs conserva el seu compàs (N=1) i en deriva el BPM:
-        # 1 compàs 4/4 en 2,7 s (§13.4: compassos enters).
-        self.assertAlmostEqual(out[0][2], 4 * 60 / 2.7, places=4)
+        # El veí amb compàs conserva el seu BPM (contracte nou: no es
+        # recalcula per a mantindre compassos enters).
+        self.assertAlmostEqual(out[0][2], 120.0, places=4)
 
     def test_compassos_dun_clip_en_segons_es_rebutja(self):
         trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 100.0, 0, 0)]

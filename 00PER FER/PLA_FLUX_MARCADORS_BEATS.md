@@ -22,12 +22,16 @@ que desaparega l’ancoratge de compàs.
 - `+` = **compàs + secció**; no es pregunta res durant el play.
 - La secció és independent de l’ancoratge de compàs després de crear-se.
 - El snap es fa **en parar** o amb una acció explícita.
+- En ajustar la graella es prova l’offset actual i el primer marcador, i es
+  tria el que fa que més marcadors caiguen en línia de compàs.
 - El selector Snap incorpora **Beats QM** per al cursor i els clips.
-- Amb Snap actiu, el `+` encaixa el marcador a la línia de QM més pròxima
-  (120 ms); si no n'hi ha cap, conserva el temps del cursor.
-- Només es snapen marcadors que tenen un beat/bar de QM dins de la tolerància.
+- El `+` encaixa **sempre** el marcador al beat de QM més pròxim; si no n'hi ha
+  cap, no crea el marcador i avisa.
+- Cada clip de BPM/compàs ha de contindre almenys un beat sencer de la graella
+  del Snap (QM o BPM/compàs); les fronteres interiors cauen en eixa graella.
 - Els dubtes queden en una llista; no bloquegen.
-- El BPM/compàs es recalcula amb els marcadors snapats; un sol desfer.
+- El BPM/compàs es recalcula amb prioritat de BPM i ajust de compàs; un sol
+  desfer.
 - Els canvis de metre són de l’usuari; QM no els inferix.
 - Si el tall cau al beat 3, pot ser línia de compàs si el metre anterior és
   `2/4`; la validació usa el metre vigent, no una suposició 4/4.
@@ -63,9 +67,9 @@ que desaparega l’ancoratge de compàs.
 
 - `+` continua creant compàs + secció.
 - Editar una secció no mou l’ancoratge de compàs.
-- El snap no mou res si no hi ha un beat dins de la tolerància.
+- El `+` no crea res si no hi ha cap beat QM.
 - Els marcadors snapats queden en ordre i sense duplicats.
-- El mapa resultant cobreix tota la WAV i té compassos enters.
+- El mapa resultant cobreix tota la WAV i cada clip té un beat sencer.
 - Un sol `Ctrl+Z` desfà snap + mapa.
 - Cap diàleg durant el play.
 

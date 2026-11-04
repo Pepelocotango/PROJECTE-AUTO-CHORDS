@@ -29,7 +29,7 @@ from PyQt5.QtGui import QKeyEvent  # noqa: E402
 from PyQt5.QtTest import QTest  # noqa: E402
 from PyQt5.QtWidgets import QApplication  # noqa: E402
 
-from app import main as app_main, mapa_tempo, pipeline, tempo_map  # noqa: E402
+from app import main as app_main, mapa_tempo, pipeline  # noqa: E402
 from app import visor as visor_mod  # noqa: E402
 from app import timeline_base as tb  # noqa: E402
 from app.timeline import TimelineView  # noqa: E402
@@ -449,15 +449,10 @@ class TestFase2Gestos(_Base):
             self.assertAlmostEqual(float(v.tempo_trams[0][1]), 12.0, places=2)
             self.assertAlmostEqual(float(v.tempo_trams[1][0]), 12.0, places=2)
             self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=2)
-            # Re-tempo (docs/REGLES_DE_LA_APP.md §13.5): els COMPASSOS es
-            # conserven (5 a l'esquerre i 10 a la dreta) i el BPM s'adapta.
-            for i, n in ((0, 5), (1, 10)):
-                tr = v.tempo_trams[i]
-                self.assertAlmostEqual(
-                    (float(tr[1]) - float(tr[0])) /
-                    tempo_map.durada_compas(tr[2], tr[3], tr[4]), n, places=4)
-            self.assertAlmostEqual(float(v.tempo_trams[0][2]), 100.0, places=4)
-            self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=4)
+            # El BPM es conserva; el contracte nou no conserva un nombre
+            # fix de compassos ni re-tempa els costats.
+            self.assertAlmostEqual(float(v.tempo_trams[0][2]), 120.0, places=4)
+            self.assertAlmostEqual(float(v.tempo_trams[1][2]), 90.0, places=4)
         finally:
             v.close()
 
@@ -677,9 +672,9 @@ class TestPartirAlClic(_Base):
             t = 15.3
             self.assertTrue(self._parteix(v, "tempo", 1, t))
             starts = [round(float(tr[0]), 6) for tr in v.tempo_trams]
-            # El tram 1 és 10–30 a 90 BPM 3/4 (compàs de 2 s): la línia més
-            # pròxima a 15,3 s és 16 s (10, 12, 14, 16…).
-            self.assertIn(16.0, starts)
+            # El tall respecta el punt del gest (15,333 s després del snap de
+            # la graella); ja no s'imanta a la línia de compàs de 16 s.
+            self.assertIn(15.333333, starts)
             self.assertEqual(len(v.tempo_trams), 3)
         finally:
             v.close()
@@ -732,14 +727,13 @@ class TestPosicionsMusicals(_Base):
         finally:
             v.close()
 
-    def test_aplica_tempo_validat_rebutja_frontera_no_compas(self):
+    def test_aplica_tempo_validat_accepta_frontera_no_compas(self):
         v = _visor()
         try:
-            abans = list(v.tempo_trams)
-            self.assertFalse(v.aplica_tempo_validat(
+            self.assertTrue(v.aplica_tempo_validat(
                 [(0.0, 4.0, 90.0, 4, 4), (4.0, 10.0, 120.0, 3, 4)],
                 "Prova"))
-            self.assertEqual(v.tempo_trams, abans)
+            self.assertEqual(len(v.tempo_trams), 2)
         finally:
             v.close()
 
@@ -953,20 +947,15 @@ class TestMarcadorsTempoEnViu(_Base):
     def tearDown(self):
         self.v.close()
 
-    def test_marcador_parteix_amb_compassos_enters(self):
+    def test_marcador_parteix_conservant_el_bpm(self):
         self.assertTrue(self.v.afegeix_marcador(7.3))
         self.assertEqual(len(self.v.tempo_trams), 3)
         self.assertAlmostEqual(float(self.v.tempo_trams[0][1]), 7.3, places=6)
-        # 7,3 s amb N=4 compassos de 4/4 → 131,51 BPM.
-        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]), 131.5068,
-                               places=3)
-        self.assertAlmostEqual(
-            7.3 / tempo_map.durada_compas(
-                float(self.v.tempo_trams[0][2]), 4, 4), 4.0, places=3)
-        # La resta 7,3→10 queda amb 1 compàs (BPM 88,89) i el pròxim inici
-        # (10 s) no es mou: el marcador no arrossega els trams següents.
-        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]), 88.8889,
-                               places=3)
+        # El BPM es conserva; el contracte nou no exigeix compassos enters.
+        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]),
+                               123.2876712, places=3)
+        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]),
+                               111.1111111, places=3)
         self.assertEqual(tuple(self.v.tempo_trams[2]), self.abans[1])
 
     def test_quantitza_bpm_d_un_decimal(self):
@@ -1054,7 +1043,7 @@ class TestMarcadorsTempoEnViu(_Base):
         self.assertTrue(self.v.afegeix_marcador(0.4))
         self.assertEqual(len(self.v.tempo_trams), 3)
         self.assertAlmostEqual(float(self.v.tempo_trams[0][1]), 0.4, places=6)
-        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]), 120.0,
+        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]), 150.0,
                                places=6)
 
     def test_marcador_es_un_sol_desfer(self):
@@ -1084,11 +1073,11 @@ class TestMarcadorsTempoEnViu(_Base):
                          [0.0, 2.0, 10.5, 20.0])
         self.assertAlmostEqual(float(self.v.tempo_trams[-1][1]), _DUR,
                                places=6)
-        # 8,5 s de 4/4 amb N=4 → 112,94 BPM; 9,5 s de 3/4 amb N=5 →
-        # 94,74 BPM (la referència del tram 2 és el 90 BPM de 3/4).
-        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]), 112.9412,
+        # Els intervals conserven el BPM de referència; no es calcula un
+        # BPM per a quadrar compassos.
+        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]), 120.0,
                                places=3)
-        self.assertAlmostEqual(float(self.v.tempo_trams[2][2]), 94.7368,
+        self.assertAlmostEqual(float(self.v.tempo_trams[2][2]), 88.4210526,
                                places=3)
         self.v.undo()
         self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)

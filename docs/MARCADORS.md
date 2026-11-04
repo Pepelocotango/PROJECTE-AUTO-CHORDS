@@ -37,23 +37,21 @@ Es pinta com una **ratlla groga discontínua** amb banderí, damunt de tot.
 
 ## Del marcador al BPM (el pas que ho fa editable)
 
-Els marcadors són a **inicis de compàs**, així que la distància entre dos ha de
-ser un **nombre enter de compassos**. Amb dos o més marcadors:
+Els marcadors són a **inicis de compàs**, però el contracte actual no exigix
+compassos enters: cada clip ha de contindre **almenys un beat sencer** de la
+graella del Snap (QM si el Snap és «Beats QM»; BPM/compàs en la resta de modes).
+Amb dos o més marcadors:
 
-1. *Analitza ▸ **BPM a partir dels marcadors…***
-2. S'obri la llista de BPM compatibles (tots fan que els talls siguen compassos
-   sencers). L'ambigüitat del doble/meitat és real (10 s poden ser 4 compassos a
-   96 o 6 a 144), així que **triues tu**; el primer de la llista és el més a prop
-   del BPM de la barra.
-3. En aplicar-lo, cada interval passa a tindre **exactament `k` compassos** al
-   BPM d'eixe interval → **totes les fronteres cauen en línia de compàs** i els
-   clips de tempo/compàs **tornen a ser editables** (canviar BPM, moure vores,
-   suprimir, fusionar…). L'offset (downbeat) **no es mou**: continua sent el
-   que hi havia; només canvia si l'edites explícitament.
+1. *Analitza ▸ **BPM a partir dels marcadors…*** o **Ajusta BPMs a partir dels
+   marcadors per trams**.
+2. L'ajust conserva el BPM de referència sempre que pot; si el clip no encaixa,
+   canvia el compàs (`4/4` → `4/8`…) i, només com a últim recurs, acosta el BPM
+   sense anar a la meitat ni al doble.
+3. L'offset (downbeat) **no es mou**: continua sent el que hi havia; només canvia
+   si l'edites explícitament.
 
-Sense este pas, els talls dels marcadors no són línies de compàs (el BPM de la
-barra encara no és el bo) i l'editor estricte els rebutja amb «La frontera … no
-cau en una línia de compàs». **Els marcadors no es toquen**: seguixen on eren.
+El `+` sempre s'encaixa al **beat QM més pròxim**. Si no hi ha beats QM, no crea
+el marcador i avisa.
 
 ## On es guarden
 

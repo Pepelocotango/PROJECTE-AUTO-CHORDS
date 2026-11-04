@@ -874,7 +874,7 @@ class Finestra(QMainWindow):
         self.addToolBar(Qt.TopToolBarArea, barra_temps)
         self.barra_temps = barra_temps
 
-        # 1b. TERCERA FILA: edició de graella (BPM 0,1, Beats QM, eina).
+        # 1b. TERCERA FILA: edició de graella (Snap, Beats QM, eina).
         barra_accions = QToolBar("Edició")
         barra_accions.setObjectName("barra_accions")
         barra_accions.setMovable(False)
@@ -1706,42 +1706,58 @@ class Finestra(QMainWindow):
         return float(bpm) if bpm else None
 
     def _snap_marcador_qm(self, t):
-        """Snap del `+` a un bar/beat de QM si està dins de la tolerància.
+        """Retorna el beat QM més pròxim a `t` (sempre, sense tolerància).
 
-        El `+` és un inici de compàs: si hi ha anàlisi de QM, no té sentit
-        guardar el tap cru si hi ha una línia de QM a prop. Els downbeats
-        manen quan existeixen; si només hi ha beats, s'usa el beat més pròxim.
+        El contracte nou fa que el `+` no es guarde mai a la posició crua del
+        cursor si hi ha anàlisi de QM: el marcador ha de coincidir amb un beat
+        de QM. Si no n'hi ha cap, retorna `None` i el cridador ha d'avisar.
         """
         info = getattr(self, "_beats_actuals", None)
         if not info:
             info = (getattr(getattr(self, "projecte", None), "dades", {})
                     .get("analisi_beats"))
         if not isinstance(info, dict):
-            return float(t)
-        objectius = list(info.get("downbeats") or info.get("beats") or ())
+            return None
+        beats = [float(x) for x in (info.get("beats") or ())]
+        downbeats = [float(x) for x in (info.get("downbeats") or ())]
+        objectius = sorted(set(beats or downbeats))
         if not objectius:
-            return float(t)
-        proper = min((float(x) for x in objectius),
-                     key=lambda x: (abs(x - float(t)), x))
-        if abs(proper - float(t)) <= 0.12:
-            return proper
-        return float(t)
+            return None
+        return min(objectius, key=lambda x: (abs(x - float(t)), x))
 
     def _afegeix_marcador(self, tipus="seccio"):
-        """Marca un inici de compàs al cursor (o mentre sona). Tecla `+`."""
+        """Marca un inici de compàs al cursor (o mentre sona). Tecla `+`.
+
+        Contracte nou: sempre s'encaixa al **beat QM més pròxim**; si no hi ha
+        QM, no es crea el marcador i s'avisa. El visor recalcula els clips
+        afectats amb prioritat de BPM i ajust de compàs.
+        """
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             self.avisa("Marcador", "Primer obri una WAV.")
             return False
-        t = float(vr.pos)
-        if hasattr(self, "tb_snap") and self.tb_snap.isChecked():
-            # El `+` snapeja a QM sempre que hi haja una línia a prop; el
-            # selector «Beats QM» del Snap servix per a ajustos manuals.
-            t = self._snap_marcador_qm(t)
+        t = self._snap_marcador_qm(float(vr.pos))
+        if t is None:
+            msg = ("No s'ha afegit el marcador: calen beats de QM. "
+                   "Executa «Analitza BPM» primer.")
+            self.registra(msg)
+            self._missatge_info(msg)
+            return False
         ok = bool(vr.afegeix_marcador(t=t, tipus=tipus))
         if ok:
-            self.registra(f"Marcador a {vr.pos:.3f}s "
+            self.registra(f"Marcador a {t:.3f}s "
                           f"({len(vr.marcadors)} en total)")
+        else:
+            prop = min((abs(float(m) - t) for m in (vr.marcadors or ())),
+                       default=99.0)
+            if prop < 0.05:
+                msg = ("No s'ha afegit: ja hi ha un marcador a "
+                       f"{t:.3f}s (o a menys de 50 ms).")
+            else:
+                msg = ("No s'ha pogut afegir el marcador: el clip resultant "
+                       "no conté cap beat sencer de la graella del Snap.")
+            self.registra(msg)
+            self._missatge_info(msg)
         return ok
 
     def _bpm_dels_marcadors(self):
@@ -1785,13 +1801,11 @@ class Finestra(QMainWindow):
         return ok
 
     def _ajusta_bpms_marcadors(self):
-        """Acció per lot: compassos enters i BPM derivat a cada interval.
+        """Acció per lot: un beat sencer a cada interval de marcador.
 
-        Recorre els intervals entre marcadors, tria el nombre enter de
-        compassos més pròxim al BPM vigent (referència) i aplica el mapa
-        complet en **una sola operació de desfer**. No detecta àudio ací: si
-        l'operador vol un BPM de referència detectat, primer el pot aplicar
-        amb «Detecta» (o amb el mapa per trams) i després ajustar.
+        Recorre els intervals entre marcadors, conserva el BPM de referència
+        i ajusta el compàs (o, si cal, un BPM proper) perquè cada clip continga
+        almenys un beat sencer. S'aplica en **una sola operació de desfer**.
         """
         vr = getattr(self, "visor_ref", None)
         if vr is None:
@@ -1979,7 +1993,7 @@ class Finestra(QMainWindow):
             self._guia_cancel()
             return
         # Compàs 1 al cursor + tall lliure del carril de tempo (un sol
-        # desfer: el backend és permissiu, encara no hi ha compassos enters).
+        # desfer: el backend encara no ha validat el mapa complet).
         res = self._talla_i_offset(t0)
         if res is None:
             self._guia_cancel()
@@ -4380,7 +4394,7 @@ class Finestra(QMainWindow):
         self.b_quantitza_bpm.setMaximumWidth(86)
         self.b_quantitza_bpm.setToolTip(
             "Quantitza el BPM dels clips normals a 1 decimal i re-encaixa "
-            "les fronteres amb compassos enters. Els rubatos no es "
+            "les fronteres amb beats sencers. Els rubatos no es "
             "quantitzen.")
         self.b_quantitza_bpm.clicked.connect(self._quantitza_bpm_ui)
         self.barra_accions.addWidget(self.b_quantitza_bpm)
@@ -4918,7 +4932,7 @@ class Finestra(QMainWindow):
         """Posa al transport el BPM que ha detectat «Analitza» (etapa BPM).
 
         Si el mapa de tempo té **més d'un tram**, no s'hi toca res: canviar-ne
-        només el primer trencaria el contracte de compassos enters dels trams
+        només el primer trencaria el contracte de beats sencers dels trams
         (regla de temps) — per a eixe cas hi ha «Detecta el tempo per trams».
         """
         b = float(b)

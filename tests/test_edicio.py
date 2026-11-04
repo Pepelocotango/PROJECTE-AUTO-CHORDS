@@ -1723,10 +1723,10 @@ class TestMenusParitat(_regla11_paritat___Base):
         v, _ac, _se, _tp = self._tres_menus()
         self.assertTrue(
             _tria_menu(v._on_tempo_menu, "Afegeix un canvi", 0, 7.0))
-        # El tall s'imanta a la línia de compàs més pròxima (6 s: 0, 2, 4, 6, 8…).
+        # El tall cau exactament al cursor: ja no s'imanta a la línia de compàs.
         self.assertEqual([(round(float(t[0]), 2), round(float(t[1]), 2))
                           for t in v.tempo_trams],
-                         [(0.0, 6.0), (6.0, 10.0), (10.0, _regla11_paritat__DUR)])
+                         [(0.0, 7.0), (7.0, 10.0), (10.0, _regla11_paritat__DUR)])
         # la frontera nova HERETA el tempo/compàs del tros on cau
         self.assertEqual(v.tempo_trams[1][2:4], (120.0, 4))
         v.undo()
@@ -1736,10 +1736,10 @@ class TestMenusParitat(_regla11_paritat___Base):
         v, _ac, _se, _tp = self._tres_menus()
         self.assertTrue(
             _tria_menu(v._on_tempo_menu, "Partir per la meitat", 0, 3.0))
-        # El centre (5 s) s'imanta a la línia de compàs més pròxima (4 s).
+        # El centre (5 s) es respecta: no s'imanta a cap línia de compàs.
         self.assertEqual([(round(float(t[0]), 2), round(float(t[1]), 2), t[2])
                           for t in v.tempo_trams],
-                         [(0.0, 4.0, 120.0), (4.0, 10.0, 120.0),
+                         [(0.0, 5.0, 120.0), (5.0, 10.0, 120.0),
                           (10.0, _regla11_paritat__DUR, 90.0)])
         v.undo()
         self.assertEqual(len(v.tempo_trams), 2)
@@ -4234,10 +4234,8 @@ class TestSenseAnalisi(_sense_analisi___Base):
         vr._on_tempo_mogut(1, "ini", 6.0)          # frontera 4 s -> 6 s
         self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 6.0, places=2)
         self.assertAlmostEqual(float(vr.tempo_trams[0][1]), 6.0, places=2)
-        # Re-tempo (21-10-2026): la frontera segueix el ratolí TAL QUAL (3 s ja
-        # no s'imanta a 2 s); N=2 a l'esquerre → 80 BPM en 6 s, i el tram dret
-        # no es mou del seu lloc (acaba a 8 s).
-        self.assertAlmostEqual(float(vr.tempo_trams[0][2]), 80.0, places=3)
+        # La frontera segueix el ratolí i el BPM es conserva (contracte nou).
+        self.assertAlmostEqual(float(vr.tempo_trams[0][2]), 120.0, places=3)
         fi_dret = float(vr.tempo_trams[1][1])      # el final no s'ha de moure
         vr._on_tempo_mogut(0, "fi", 3.0)           # frontera 6 s -> 3 s
         self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 3.0, places=2)
@@ -4520,8 +4518,9 @@ class TestRubatoAccions(_undo_temps___Base):
         self.assertEqual(v.tempo_trams[1].tipus, "rubato")
         self.assertAlmostEqual(v.tempo_trams[1].ini, 12.0, places=6)
         self.assertAlmostEqual(v.tempo_trams[1].fi, 20.0, places=6)
-        # 5 bars en 12 s → 100 BPM; el rubato conserva 5 bars en 8 s → 150.
-        self.assertAlmostEqual(v.tempo_trams[0].bpm, 100.0, places=4)
+        # El clip normal conserva el BPM; el rubato deriva el seu de la
+        # seqüència de compassos (5 bars en 8 s → 150 BPM).
+        self.assertAlmostEqual(v.tempo_trams[0].bpm, 120.0, places=4)
         self.assertAlmostEqual(v.tempo_trams[1].bpm, 150.0, places=4)
         self.assertAlmostEqual(v.tempo_trams[2].ini, 20.0, places=6)
         w.close()
@@ -4682,10 +4681,9 @@ class TestLlistaTempo(_undo_temps___Base):
         # El FI del clip editat NO s'ha mogut i el seu inici de la WAV tampoc.
         self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=6)
         self.assertAlmostEqual(float(v.tempo_trams[0][0]), 0.0, places=6)
-        # Compassos conservats (5 i 10) i BPM derivat: N·bq·60/Δt.
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 150.0, places=4)
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 10 * 4 * 60 / 22.0,
-                               places=4)
+        # El BPM es conserva; el contracte nou no obliga a quadrar compassos.
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 120.0, places=4)
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=4)
 
     def test_moure_la_fi_d_un_clip_recalcula_els_dos_bpms(self):
         _w, v = self._prepara()
@@ -4696,11 +4694,9 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertAlmostEqual(float(v.tempo_trams[1][0]), 12.0, places=6)
         self.assertAlmostEqual(float(v.tempo_trams[0][0]), 0.0, places=6)
         self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=6)
-        # Compassos conservats: el clip escurçat apuja el BPM, el veí el baixa.
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 5 * 4 * 60 / 12.0,
-                               places=4)
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 10 * 4 * 60 / 18.0,
-                               places=4)
+        # El BPM dels dos clips es conserva.
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 120.0, places=4)
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=4)
 
     def test_l_inici_del_primer_clip_es_rebutja_amb_avis(self):
         _w, v = self._prepara()
@@ -4741,8 +4737,8 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual(v.tempo_trams[1].tipus, "rubato")
         self.assertEqual(v.tempo_trams[1].compassos, "4/4*5")
         self.assertAlmostEqual(float(v.tempo_trams[1].bpm), 100.0, places=6)
-        # El normal 20–30 (5 bars) passa a 22–30 (8 s) → 150 BPM.
-        self.assertAlmostEqual(float(v.tempo_trams[2].bpm), 150.0, places=4)
+        # El normal 22–30 conserva el BPM.
+        self.assertAlmostEqual(float(v.tempo_trams[2].bpm), 120.0, places=4)
         w.close()
 
     def test_desar_no_deixa_el_mapa_derivat_endarrerit(self):
