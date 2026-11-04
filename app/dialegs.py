@@ -16,8 +16,9 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
     QFormLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-    QMessageBox, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget,
-    QVBoxLayout, QWidget,
+    QListWidget, QListWidgetItem, QMessageBox, QPushButton, QSlider,
+    QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout,
+    QWidget,
 )
 
 from app import bpm_unit, config, graella, limits, tempo, tempo_map, vamp_params
@@ -83,6 +84,12 @@ DEFECTES = {
     # per defecte les tres ACTIVADES — «Analitza» detecta també el BPM.
     "analisi": {"bpm": True, "acords": True, "estructura": True},
 }
+
+# Valors per defecte de l'acció separada «Analitza BPM». No formen part del
+# diàleg d'anàlisi d'acords/estructura: són una acció independent.
+BEATS_DEFECTES = {"motor": "nostre", "sensibilitat": 50,
+                  "mode": "beats", "aplica_bpm": True}
+
 
 
 def _spin(minim, maxim, pas, valor, decimals=2):
@@ -1457,3 +1464,172 @@ class DialegTempoPerTrams(QDialog):
         return (int(self.sp_cada.value()),
                 float(self.sp_tol.value()) / 100.0,
                 bool(self.ck_offset.isChecked()))
+
+
+class DialegAnalitzaBPM(QDialog):
+    """Opcions de l'acció separada «Analitza BPM».
+
+    No detecta res: només tria motor i sensibilitat. La detecció la fa la
+    finestra, perquè el diàleg no bloquege el fil de la GUI.
+    """
+
+    def __init__(self, parent=None, opcions=None):
+        super().__init__(parent)
+        self.setWindowTitle("Analitza BPM")
+        self.setMinimumWidth(420)
+        base = opcions or carrega_opcions()
+        d = dict(BEATS_DEFECTES)
+        d.update(base.get("beats") or {})
+        lay = QVBoxLayout(self)
+
+        info = QLabel(
+            "Detecta beats i downbeats i els mostra com a línies sobre "
+            "l'ona. No reanalitza acords ni estructura.")
+        info.setWordWrap(True)
+        info.setStyleSheet("color:#9aa6b8; font-size:11px;")
+        lay.addWidget(info)
+
+        form = QFormLayout()
+        self.cb_mode = QComboBox()
+        self.cb_mode.addItem("Només beats (sense BPM, compàs ni downbeats)",
+                             "beats")
+        self.cb_mode.addItem("BPM + beats + downbeats", "bpm")
+        i = self.cb_mode.findData(d.get("mode", "beats"))
+        self.cb_mode.setCurrentIndex(i if i >= 0 else 0)
+        self.cb_mode.setToolTip(
+            "Només beats: no agrupa en compassos, no mostra BPM ni downbeats. "
+            "És el mode recomanat per a un WAV sense graella prèvia.")
+        form.addRow("Què detects:", self.cb_mode)
+        self.cb_mode.currentIndexChanged.connect(self._actualitza_mode)
+
+        self.cb_motor = QComboBox()
+        self.cb_motor.addItem("Nostre (tempo.py)", "nostre")
+        self.cb_motor.addItem("Queen Mary (qm-barbeattracker)", "qm")
+        i = self.cb_motor.findData(d.get("motor", "nostre"))
+        self.cb_motor.setCurrentIndex(i if i >= 0 else 0)
+        self.cb_motor.setToolTip(
+            "Nostre: onsets + DP d'Ellis. Queen Mary: bar/beat tracker "
+            "de Vamp. La sensibilitat s'adapta a cada motor.")
+        form.addRow("Motor:", self.cb_motor)
+
+        self.sl = QSlider(Qt.Horizontal)
+        self.sl.setRange(0, 100)
+        self.sl.setValue(int(d.get("sensibilitat", 50)))
+        self.lb_sens = QLabel("")
+        self.sl.valueChanged.connect(self._actualitza_sens)
+        self._actualitza_sens()
+        form.addRow("Sensibilitat:", self.sl)
+        form.addRow("", self.lb_sens)
+
+        self.cb_aplica = QCheckBox(
+            "Aplica el BPM detectat al transport (si el mapa és d'un sol tram)")
+        self._aplica_bpm_record = bool(d.get("aplica_bpm", True))
+        self.cb_aplica.setChecked(self._aplica_bpm_record)
+        form.addRow(self.cb_aplica)
+        self._actualitza_mode()
+
+        nota = QLabel(
+            "Sensibilitat baixa = més estable (menys canvis). "
+            "Sensibilitat alta = més flexible (accepta més variació).")
+        nota.setWordWrap(True)
+        nota.setStyleSheet("color:#9aa6b8; font-size:11px;")
+        form.addRow(nota)
+        lay.addLayout(form)
+
+        box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        box.accepted.connect(self.accept)
+        box.rejected.connect(self.reject)
+        lay.addWidget(box)
+
+    def _actualitza_sens(self):
+        v = int(self.sl.value())
+        if v < 34:
+            t = "estable"
+        elif v < 67:
+            t = "equilibrada"
+        else:
+            t = "sensible"
+        self.lb_sens.setText(f"{v}/100 · {t}")
+
+    def _actualitza_mode(self):
+        nomes = self.cb_mode.currentData() == "beats"
+        self.cb_aplica.setEnabled(not nomes)
+        if nomes:
+            self.cb_aplica.setChecked(False)
+        elif hasattr(self, "_aplica_bpm_record"):
+            self.cb_aplica.setChecked(self._aplica_bpm_record)
+
+    def valors(self):
+        mode = self.cb_mode.currentData()
+        return {
+            "motor": self.cb_motor.currentData(),
+            "sensibilitat": int(self.sl.value()),
+            "mode": mode,
+            "aplica_bpm": bool(self.cb_aplica.isChecked()) and mode != "beats",
+        }
+
+
+class DialegRevisioSnap(QDialog):
+    """Llista no modal de marcadors que el snap no ha pogut col·locar.
+
+    No bloqueja ni pregunta res mentre sona: s'obri després del play i es pot
+    deixar oberta. Doble clic en un tall porta el cursor a eixe punt per
+    inspeccionar-lo.
+    """
+
+    def __init__(self, parent=None, ambigus=None, ves_a=None, snap=None):
+        super().__init__(parent)
+        self.setModal(False)
+        self.setWindowTitle("Revisió del snap de compassos")
+        self.setMinimumWidth(520)
+        self._ves_a = ves_a
+        self._snap = snap
+        lay = QVBoxLayout(self)
+        info = QLabel(
+            "Estos marcadors no han trobat un beat/bar de QM dins de la "
+            "tolerància. No s'han mogut. Doble clic per anar-hi.")
+        info.setWordWrap(True)
+        info.setStyleSheet("color:#9aa6b8; font-size:11px;")
+        lay.addWidget(info)
+        self.llista = QListWidget(self)
+        for vell, proper, delta in (ambigus or ()):
+            txt = (f"{float(vell):8.3f}s → {float(proper):8.3f}s "
+                   f"({float(delta) * 1000:+.0f} ms)")
+            item = QListWidgetItem(txt)
+            item.setData(Qt.UserRole, float(vell))
+            item.setData(Qt.UserRole + 1, float(proper))
+            self.llista.addItem(item)
+        self.llista.itemDoubleClicked.connect(self._anar)
+        lay.addWidget(self.llista)
+        box = QDialogButtonBox()
+        self.b_snap = QPushButton("Snap al candidat")
+        self.b_snap.setObjectName("secundari")
+        self.b_snap.setEnabled(False)
+        self.b_snap.clicked.connect(self._snap_seleccionat)
+        box.addButton(self.b_snap, QDialogButtonBox.ActionRole)
+        b_tanca = QPushButton("Tanca")
+        b_tanca.clicked.connect(self.reject)
+        box.addButton(b_tanca, QDialogButtonBox.RejectRole)
+        lay.addWidget(box)
+        self.llista.currentItemChanged.connect(
+            lambda cur, _old: self.b_snap.setEnabled(cur is not None))
+
+    def _anar(self, item):
+        if self._ves_a is not None:
+            try:
+                self._ves_a(float(item.data(Qt.UserRole)))
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _snap_seleccionat(self):
+        item = self.llista.currentItem()
+        if item is None or self._snap is None:
+            return
+        vell = float(item.data(Qt.UserRole))
+        proper = float(item.data(Qt.UserRole + 1))
+        try:
+            ok = bool(self._snap(vell, proper))
+        except Exception:  # noqa: BLE001
+            ok = False
+        if ok:
+            self.llista.takeItem(self.llista.row(item))

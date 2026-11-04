@@ -52,20 +52,29 @@ Ajornades: **8** (MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
 > paral·lel: funcions laterals congelades, tests sense temporals i workflow de
 > qualitat no bloquejant.
 
-Fet recentment (2026-11-02/03):
+Fet recentment (2026-11-02/04):
+- **Analitza BPM** (2026-11-04): acció separada de «Analitza» (que queda per
+  a acords + estructura), motors **nostre**/QM, sensibilitat 0–100 i línies
+  sobre l'ona. El mode per defecte és **només beats** (sense BPM, compàs ni
+  downbeats); l'altre mode afig BPM/downbeats. L'acció **Ajusta la graella
+  als beats QM** snapeja els marcadors de compàs i recalcula el BPM; `+`
+  continua creant compàs + secció; els dubtes del snap es revisen en un
+  diàleg no modal, el metre d’un tram s’edita amb **Compàs del marcador…** i
+  el Snap **Beats QM** encaixa cursor/clips/`+` a les línies de QM.
+  Detall: `docs/ANALISI_BPM.md`.
 - **Fase 12 (en curs)**: afinador i `Gt_ALL_Chords_app` congelats; tots els
   tests importen `_temporals`; `.github/workflows/qualitat.yml` executa fuzzer i
   proves sintètiques sense bloquejar.
 - **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
   unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
   projectes vells), visor/graella, accions de crear/convertir rubato i
-  exportació amb avís aproximat. Suite completa: **1.553 tests**, 1 omés.
+  exportació amb avís aproximat. Suite completa: **1.563 tests**, 1 omés.
 - **Anàlisi del projecte de prova** `AUTOCHORDS_01 POLICE_convertit`:
   model coherent i cobertura exacta; documentats els límits del pre-roll a la
   partitura, els noms d'acord crus de l'anàlisi i la precisió de l'offset.
 - **Unitat de BPM**: selector global negra / negra amb punt / corxera /
   blanca; el metrònom té una unitat de clic independent (auto/negra/negra amb punt/corxera/blanca). El model continua en negres/min i la unitat es desa al `.acproj`.
-  Suite: **1.553 tests**.
+  Suite: **1.563 tests**.
 - **Metrònom per denominador**: el beat és `4/den` negres; `6/8`, `9/8` i
   `12/8` cliquen corxeres, `2/2` blanques; accents de compàs i grup, modes
   Auto/Compàs/Temps/Grup i selector al transport.

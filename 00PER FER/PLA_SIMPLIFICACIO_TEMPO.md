@@ -288,6 +288,16 @@ Tasques:
 > L’avaluador ja calcula **beat F**, **downbeat F** i error d’alineació quan
 > l’anotació porta `beats`/`downbeats`; sense eixos camps, estes columnes
 > queden buides.
+> **Implementat (2026-11-04):** «Analitza» queda només per a **acords +
+> estructura**; «Analitza BPM…» (F7) detecta BPM/beats/downbeats amb motors
+> **nostre** i **QM**, sensibilitat 0–100 i línies de diagnòstic sobre l’ona.
+> El mode per defecte és **només beats** (sense BPM, compàs ni downbeats);
+> el BPM/compàs només s’afig si l’usuari tria l’altre mode i ho demana.
+> Detall: [`docs/ANALISI_BPM.md`](../docs/ANALISI_BPM.md).
+> **Fet (2026-11-04):** «Ajusta la graella als beats QM…» snapeja els
+> marcadors de compàs als bars/beats de QM i recalcula el BPM. `+` continua
+> creant compàs + secció; l’estructura és independent després d’editar-la.
+> **Pendent:** revisió no modal de dubtes i metres variables.
 
 Tasques:
 - **Puntuació de downbeat amb acords**: aprofitar que els canvis d'acord de Chordino cauen sovint en temps forts. Donats candidats de downbeat i compàs del tracker, puntuar-los per la coincidència amb els canvis d'acord i triar o reordenar. Mesurar sobre el corpus; adoptar només si millora la línia base.

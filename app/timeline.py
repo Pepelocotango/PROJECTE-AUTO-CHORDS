@@ -62,7 +62,7 @@ from app import tempo_map  # noqa: E402  (pas de nudge = compàs sencer)
 # -----------------------------------------------------------------------------
 # Es re-exporten per mantenir la compatibilitat (from app.timeline import ...).
 from app.timeline_layers import (   # noqa: E402,F401
-    CursorLine, GridLayer, LaneBackground, RulerLayer, TempoLayer,
+    BeatLayer, CursorLine, GridLayer, LaneBackground, RulerLayer, TempoLayer,
     TimeRulerLayer, WaveformLayer,
     MarcadorsLayer,
 )
@@ -72,7 +72,7 @@ from app.timeline_layers import (   # noqa: E402,F401
 # re-exports no es marquen com a imports no usats.
 __all__ = [
     "TimelineView", "ChordItem", "SectionItem", "RenameEditor",
-    "WaveformLayer", "GridLayer", "RulerLayer", "TimeRulerLayer",
+    "WaveformLayer", "GridLayer", "BeatLayer", "RulerLayer", "TimeRulerLayer",
     "LaneBackground", "CursorLine", "TempoLayer", "MarcadorsLayer",
     "fmt_pos", "snap_time", "grid_levels", "CURSOR_COLOR",
     "CHORD_ACTIVE_FILL", "SELECTION_COLOR",
@@ -216,6 +216,7 @@ class TimelineView(QGraphicsView):
         self._pos_t = 0.0          # temps del cursor (font de veritat)
         self._snap_on = True       # interruptor de snap
         self._snap_div_nom = ""    # "" = automàtic (zoom); o "corxera"…
+        self._snap_qm_beats = []   # beats de QM per al snap «qm_beats»
         self._follow = False       # seguir el cursor durant el play
         self._sel = ("", -1)      # clip seleccionat (kind, index)
         self._multi: set = set()   # multi-selecció: {(kind, index), ...}
@@ -313,6 +314,12 @@ class TimelineView(QGraphicsView):
                                self._tempo_fix, self._bpm, self._bpb, RULER_H)
         self._scene.addItem(self._grid)
 
+        # capa de diagnòstic: beats/downbeats detectats (no és model)
+        self._beat_layer = BeatLayer(
+            WAVEFORM_H, self._pps, self._x_offset, self._view_left,
+            self._view_right, RULER_H)
+        self._scene.addItem(self._beat_layer)
+
         # regle de temps (a dalt)
         self._ruler = RulerLayer(1, RULER_H, self._pps, self._x_offset,
                                  self._view_left, self._view_right,
@@ -392,6 +399,10 @@ class TimelineView(QGraphicsView):
     def set_marcadors(self, marques):
         """Pinta els marcadors humans (llista de temps en segons)."""
         self._marcadors.set_marcadors(marques)
+
+    def set_beats(self, beats=None, downbeats=None):
+        """Pinta/actualitza les línies de beats i downbeats detectats."""
+        self._beat_layer.set_beats(beats, downbeats)
 
     def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
                        offset: float = 0.0, beat_type: int = 4,
@@ -510,6 +521,8 @@ class TimelineView(QGraphicsView):
                                          self._view_left, self._view_right)
         self._grid.update_geometry(self._pps, self._x_offset,
                                    self._view_left, self._view_right)
+        self._beat_layer.update_geometry(self._pps, self._x_offset,
+                                         self._view_left, self._view_right)
         self._waveform.update_geometry(self._pps, self._x_offset,
                                        self._view_left, self._view_right)
         self._tempo_lane.update_geometry(self._pps, self._x_offset,
@@ -2010,6 +2023,12 @@ class TimelineView(QGraphicsView):
                 self._ruler.set_divisio(self._snap_div_nom)
         self.update()
 
+    def set_snap_beats(self, beats=None):
+        """Beats de QM per al mode de snap «qm_beats»."""
+        self._snap_qm_beats = sorted(
+            float(t) for t in (beats or ()) if float(t) >= 0.0)
+        self.update()
+
     def _snap_step(self) -> float:
         """Pas de snap: la divisió triada (BPM·compàs) o la de zoom (auto)."""
         if self._snap_div_nom:
@@ -2033,6 +2052,11 @@ class TimelineView(QGraphicsView):
         """Encaixa `t` a la graella (o el deixa tal qual si el snap és OFF)."""
         if not self._snap_on:
             return float(t)
+        if self._snap_div_nom == "qm_beats" and self._snap_qm_beats:
+            # Snap a la línia de QM més pròxima. És una eina manual: no
+            # canvia el model ni agrupa en compassos.
+            return min(self._snap_qm_beats,
+                       key=lambda b: (abs(float(b) - float(t)), b))
         off = getattr(self, "_offset", 0.0)
         mapa = getattr(self, "_mapa", None)
         if mapa is not None and not mapa.es_constant():

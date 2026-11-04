@@ -587,6 +587,11 @@ class Visor(QMainWindow):
         if hasattr(self, "timeline"):
             self.timeline.set_snap(on=on, divisio=divisio)
 
+    def set_snap_beats(self, beats=None):
+        """Beats de QM per al snap manual («qm_beats»)."""
+        if hasattr(self, "timeline"):
+            self.timeline.set_snap_beats(beats)
+
     def _fmt_compas(self, s):
         if not self.tempo_fix:
             return f"{s:07.3f}s"
@@ -3134,6 +3139,9 @@ class Visor(QMainWindow):
         nou = M.normalitza_marcadors(marques, self._durada_wav())
         if nou == list(self.marcadors or ()):
             return False
+        tipus = self.marcador_tipus.pop(round(float(t_vell), 6), None)
+        if tipus:
+            self.marcador_tipus[round(float(t_nou), 6)] = tipus
         self.marcadors = nou
         self._pinta_marcadors()
         self._mou_seccio_amb_marcador(t_vell, t_nou)
@@ -3419,6 +3427,93 @@ class Visor(QMainWindow):
                      f"({self._compassos_de(idx):g} compassos, sense moure "
                      "les fronteres)")
         return bool(ok)
+
+    def snap_un_marcador(self, vell, nou):
+        """Snap individual d'un marcador i recalcul del mapa (un desfer)."""
+        from app import marcadors as M
+        if self._marcador_a(float(vell)) is None:
+            return False
+        self._undo_marca()
+        try:
+            mogut = self._mou_marcador(float(vell), float(nou))
+            if not mogut:
+                self._undo_commit()
+                return False
+            self.marcadors = M.normalitza_marcadors(
+                list(self.marcadors or ()), self._durada_wav())
+            self._pinta_marcadors()
+            self.ajusta_bpms_marcadors()
+        finally:
+            self._undo_commit()
+        self._sincronitza_vista()
+        return True
+
+    def ajusta_graella_a_beats(self, beats, downbeats=None, tolerancia=0.12):
+        """Snap dels marcadors a beats/bars de QM i ajust del mapa.
+
+        Els marcadors de l'usuari són aproximacions; QM dona la precisió. Per
+        cada marcador es busca el bar (si n'hi ha) o beat més pròxim dins de
+        la tolerància. Els marcadors que no tenen objectiu queden intactes i es
+        retornen com a dubtosos. Després es recalcula el mapa amb
+        `tempo_map.ajusta_trams_a_marcadors`.
+
+        Tot va dins d'un sol desfer. La secció que coincidia amb un marcador
+        es mou amb ell; si ja s'havia editat a mà, no es toca.
+        """
+        from app import marcadors as M
+        durada = self._durada_wav()
+        objectius = list(downbeats or beats or ())
+        if not self.marcadors:
+            self.avis_editor("Ajusta graella: no hi ha marcadors de compàs.")
+            return None
+        if not objectius:
+            self.avis_editor("Ajusta graella: no hi ha beats de QM. "
+                             "Executa «Analitza BPM» primer.")
+            return None
+        snap = M.snap_a_objectius(
+            list(self.marcadors), objectius, tolerancia=float(tolerancia))
+        ms = M.normalitza_marcadors(snap["marques"], durada)
+        if len(ms) < 2:
+            self.avis_editor(
+                "Ajusta graella: calen almenys dos marcadors vàlids.")
+            return None
+        referencies = []
+        for a, b in zip(ms, ms[1:]):
+            try:
+                referencies.append(float(self.tempo_map.bpm((a + b) / 2.0)))
+            except (AttributeError, TypeError, ValueError):
+                referencies.append(float(self.bpm))
+        try:
+            nous = tempo_map.ajusta_trams_a_marcadors(
+                list(self.tempo_trams or []), ms, durada,
+                referencies=referencies,
+                offset=getattr(self, "offset", 0.0))
+        except ValueError as e:
+            self.avis_editor(f"Ajusta graella: {e}")
+            return None
+        abans = [tuple(x) for x in (self.tempo_trams or [])]
+        if [tuple(x) for x in nous] == abans and not snap["moviments"]:
+            return {"moguts": [], "ambigus": snap["ambigus"],
+                    "trams": len(nous)}
+        self._undo_marca()
+        try:
+            for vell, nou in snap["moviments"]:
+                self._mou_marcador(vell, nou)
+            self.marcadors = M.normalitza_marcadors(
+                list(self.marcadors or ()), durada)
+            self._pinta_marcadors()
+            if not self.aplica_tempo_trams(nous):
+                raise ValueError("el mapa no s'ha pogut aplicar")
+            self._sincronitza_vista()
+        except Exception:
+            self._undo_commit()
+            raise
+        self._undo_commit()
+        self.log(
+            f"graella QM: {len(snap['moviments'])} marcador(s) snapats, "
+            f"{len(snap['ambigus'])} dubtós(os), {len(nous)} tram(s)")
+        return {"moguts": snap["moviments"], "ambigus": snap["ambigus"],
+                "trams": len(nous)}
 
     def ajusta_bpms_marcadors(self):
         """Ajusta **tot** el mapa a partir dels marcadors, en un sol desfer.

@@ -73,7 +73,8 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 ## 🎛️ Què fa
 
 - **Importa** WAV, MP3, FLAC i **16 formats més** (vegeu [§ Formats](#-formats-dàudio-acceptats)) convertint-los amb `ffmpeg`.
-- **Analitza** els acords amb **Chordino** (NNLS-Chroma) i l'estructura amb **qm-segmenter** (Queen Mary), tots dos **dins l'app** (Vamp).
+- **Analitza** (`F5`) els acords amb **Chordino** (NNLS-Chroma) i l'estructura amb **qm-segmenter** (Queen Mary), tots dos **dins l'app** (Vamp). El BPM té una acció separada, **Analitza BPM** (`F7`).
+- **Analitza BPM** amb motors **nostre** o **Queen Mary**, sensibilitat ajustable 0–100 i línies de **beats/downbeats** sobre l'ona; el mode per defecte és **només beats** (sense BPM, compàs ni downbeats). Després del play, **Ajusta la graella als beats QM** snapeja els marcadors de compàs i recalcula el BPM; `+` continua creant compàs + secció.
 - **Timeline estil DAW** amb **tres pistes**: **acords**, **estructura** i **BPM/compàs** (mapa de tempo per trams). Ona, regle, cursor, zoom; mode **BPM · compàs** o **Lliure (hh:mm:ss)**; graella fixa de **temps absolut hh:mm:ss** sota l'ona, independent del tempo; metrònom; loop A/B. El BPM es pot mostrar en **negra**, **negra amb punt**, **corxera** o **blanca** (per exemple, `55` amb punt = `82.5` negres/min), i el metrònom pot clicar en eixa unitat o en el denominador del compàs; les subdivisions que no caben en algun compàs es bloquegen.
 - **Edició completa** de les tres pistes: **moure/partir/duplicar/redimensionar** acords i seccions, i **moure/partir/duplicar** els **trams de tempo**; **multi-selecció** (`Ctrl`/`Shift+clic`), **copiar/retallar/enganxar**, **desfer/refer** (`Ctrl+Z`/`Ctrl+Y`). Les tres comparteixen les mateixes eines (regla d'or #11).
 - **Quantitza BPM** a 1 decimal (`BPM 0,1`): conserva barres enteres de cada clip, recalcula finals i desplaça els inicis posteriors; els rubatos no es quantitzen.

@@ -184,3 +184,59 @@ def candidats_bpm(marques, num=4, den=4, bpm_min=60.0, bpm_max=180.0,
                                k * num * (4.0 / den) * 60.0 / g)
                               for g, k in zip(gaps, ks)]}]
     return out[:int(max_candidats)]
+
+
+def snap_a_objectius(marques, objectius, tolerancia=0.12):
+    """Snap reversible de marcadors a una llista de beats/bars.
+
+    Retorna un diccionari:
+
+        {"marques": [...],            # resultat ordenat i sense duplicats
+         "moviments": [(vell, nou)],
+         "ambigus": [(vell, objectiu_mes_proper, delta)],
+         "sense_objectiu": [vell, ...]}
+
+    Un marcador només es mou si el objectiu més proper és dins de
+    `tolerancia`. Si dos marcadors cauen al mateix objectiu, el segon queda
+    ambigu i conserva el seu temps original: no s'inventa una mesura.
+    """
+    try:
+        tol = max(0.0, float(tolerancia))
+    except (TypeError, ValueError):
+        tol = 0.12
+    ms = normalitza_marcadors(marques, 1e12)
+    # Els objectius poden ser beats/bars més junts que els marcadors humans;
+    # no hem d'aplicar la separació mínima de marcador.
+    obj = sorted({round(float(t), 6) for t in (objectius or ())
+                  if math.isfinite(float(t))})
+    if not ms or not obj:
+        return {"marques": ms, "moviments": [],
+                "ambigus": [], "sense_objectiu": list(ms)}
+
+    resultat = []
+    moviments = []
+    ambigus = []
+    usats = set()
+    for vell in ms:
+        proper = min(obj, key=lambda t: (abs(t - vell), t))
+        delta = proper - vell
+        if abs(delta) > tol:
+            resultat.append(vell)
+            ambigus.append((vell, proper, delta))
+            continue
+        clau = round(proper, 6)
+        if clau in usats:
+            resultat.append(vell)
+            ambigus.append((vell, proper, delta))
+            continue
+        usats.add(clau)
+        resultat.append(proper)
+        if abs(delta) > 1e-9:
+            moviments.append((vell, proper))
+    return {
+        "marques": normalitza_marcadors(resultat, 1e12),
+        "moviments": moviments,
+        "ambigus": ambigus,
+        "sense_objectiu": [m for m, p, d in ambigus
+                           if abs(d) > tol],
+    }

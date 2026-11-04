@@ -220,6 +220,70 @@ class GridLayer(QGraphicsItem):
 
 
 # -----------------------------------------------------------------------------
+# BeatLayer — línies de beats/downbeats detectats (capa de diagnòstic)
+# -----------------------------------------------------------------------------
+class BeatLayer(QGraphicsItem):
+    """Línies verticals dels beats i downbeats detectats.
+
+    No és model: és una capa de diagnòstic. Es pot buidar sense tocar cap
+    clip, compàs ni CSV.
+    """
+
+    def __init__(self, height, pps, x_offset, view_left, view_right, top,
+                 parent=None):
+        super().__init__(parent)
+        self._height = int(height)
+        self._pps = float(pps)
+        self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
+        self._view_right = float(view_right)
+        self._top = float(top)
+        self._beats = []
+        self._downbeats = set()
+        self.setZValue(-5)
+        self.setPos(self._x_offset, self._top)
+
+    def boundingRect(self):
+        return QRectF(0, 0, max(1.0, (self._view_right - self._view_left)
+                                * self._pps), self._height)
+
+    def update_geometry(self, pps, x_offset, view_left, view_right):
+        self._pps = float(pps)
+        self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
+        self._view_right = float(view_right)
+        self.prepareGeometryChange()
+        self.setPos(self._x_offset, self._top)
+        self.update()
+
+    def set_beats(self, beats=None, downbeats=None):
+        self._beats = sorted({round(float(t), 6) for t in (beats or ())
+                              if math.isfinite(float(t))})
+        self._downbeats = {round(float(t), 6) for t in (downbeats or ())
+                           if math.isfinite(float(t))}
+        self.update()
+
+    def clear(self):
+        self._beats = []
+        self._downbeats = set()
+        self.update()
+
+    def paint(self, painter, option, widget=None):
+        if not self._beats:
+            return
+        p = painter
+        p.setRenderHint(QPainter.Antialiasing, False)
+        for t in self._beats:
+            if t < self._view_left - 1e-9 or t > self._view_right + 1e-9:
+                continue
+            es_down = t in self._downbeats
+            color = QColor("#ffd166" if es_down else "#e6a23c")
+            p.setPen(QPen(color, 2 if es_down else 1))
+            x = (t - self._view_left) * self._pps
+            p.drawLine(QPointF(x, 0), QPointF(x, self._height))
+
+
+# -----------------------------------------------------------------------------
 # RulerLayer — el regle de temps (a dalt, estil DAW)
 # -----------------------------------------------------------------------------
 class RulerLayer(QGraphicsItem):

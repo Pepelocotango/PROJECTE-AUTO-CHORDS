@@ -30,6 +30,7 @@
 | `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps: **estat actual del codi** (§1) i **proposta pendent** de la capa de *ticks*/PPQ 960 (§8). |
 | `PARTITURA_EXPORT.md` | Exportació de partitura (xifrat: MusicXML/PDF/MSCZ). |
 | `TEMPO_PER_TRAMS.md` | 🥁 **Motor de tempo per trams** (2026-10-21): BPM cada N compassos per a cançons amb tempo variable (DP d'Ellis + alternatives amb fiabilitat), xifres reals i comparativa amb els DAW. |
+| `ANALISI_BPM.md` | 🥁 **Analitza BPM**: detecció separada de BPM/beats/downbeats, motors «nostre»/QM, sensibilitat i línies de diagnòstic sobre l'ona. |
 | `guia_tecnica_downbeat_onsets_beats.md` | 🥁 **Guia tècnica d'onsets, beats i downbeats**: separació de capes, pipeline, model de dades, mètriques i criteris d'implementació. És una especificació de treball per a la fase 10. |
 | `ANALISI_GUIAT.md` | **HISTÒRIC**: anàlisi guiada v1/v2 per trams (substituïda). El treball real és amb **marcadors en viu** (`MARCADORS.md`); la v3 (ancoratges) queda en **stand-by** (`ANALISI_GUIAT_v3.md`). |
 | `MARCADORS.md` | **Marcadors d'inici de compàs en viu**: `+` mentre sona, tipus **compàs/secció**, relació amb les fronteres de tempo i pas a BPM. |

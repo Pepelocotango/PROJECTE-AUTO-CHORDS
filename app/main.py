@@ -34,6 +34,7 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 # UN SOL objecte per mòdul (vegeu visor.py): els imports crus creaven objectes
 # diferents dels que veuen la resta de mòduls i els tests.
+from . import beats as beats_mod  # noqa: E402
 from . import bpm_unit as bpm_unit_mod  # noqa: E402
 from . import ffmpeg, partitura, pipeline, postproc, theme  # noqa: F401
 from . import config  # noqa: E402
@@ -1185,9 +1186,15 @@ class Finestra(QMainWindow):
         self.a_metro.setToolTip("Clic de metrònom (només en mode BPM · compàs)")
         # --- Analitza ---
         m = mb.addMenu("&Analitza")
-        self._act(m, "Analitza l'àudio", "F5", lambda: self.executa())
+        self._act(m, "Analitza l'àudio (acords + estructura)", "F5",
+                  lambda: self.executa())
         self._act(m, "Analitza només els acords…", "F6",
                   lambda: self.executa(nomes_acords=True))
+        self._act(m, "Analitza BPM…", "F7", self._analitza_bpm)
+        self._act(m, "Ajusta la graella als beats QM…", "",
+                  self._ajusta_graella_beats)
+        self._act(m, "Compàs del marcador…", "",
+                  self._compas_del_marcador)
         m.addSeparator()
         self._act(m, "Detecta el compàs 1 automàticament", None,
                     lambda: self._detecta_compas1())
@@ -1701,13 +1708,40 @@ class Finestra(QMainWindow):
         bpm = res.get("bpm")
         return float(bpm) if bpm else None
 
+    def _snap_marcador_qm(self, t):
+        """Snap del `+` a un bar/beat de QM si està dins de la tolerància.
+
+        El `+` és un inici de compàs: si hi ha anàlisi de QM, no té sentit
+        guardar el tap cru si hi ha una línia de QM a prop. Els downbeats
+        manen quan existeixen; si només hi ha beats, s'usa el beat més pròxim.
+        """
+        info = getattr(self, "_beats_actuals", None)
+        if not info:
+            info = (getattr(getattr(self, "projecte", None), "dades", {})
+                    .get("analisi_beats"))
+        if not isinstance(info, dict):
+            return float(t)
+        objectius = list(info.get("downbeats") or info.get("beats") or ())
+        if not objectius:
+            return float(t)
+        proper = min((float(x) for x in objectius),
+                     key=lambda x: (abs(x - float(t)), x))
+        if abs(proper - float(t)) <= 0.12:
+            return proper
+        return float(t)
+
     def _afegeix_marcador(self, tipus="seccio"):
         """Marca un inici de compàs al cursor (o mentre sona). Tecla `+`."""
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             self.avisa("Marcador", "Primer obri una WAV.")
             return False
-        ok = bool(vr.afegeix_marcador(tipus=tipus))
+        t = float(vr.pos)
+        if hasattr(self, "tb_snap") and self.tb_snap.isChecked():
+            # El `+` snapeja a QM sempre que hi haja una línia a prop; el
+            # selector «Beats QM» del Snap servix per a ajustos manuals.
+            t = self._snap_marcador_qm(t)
+        ok = bool(vr.afegeix_marcador(t=t, tipus=tipus))
         if ok:
             self.registra(f"Marcador a {vr.pos:.3f}s "
                           f"({len(vr.marcadors)} en total)")
@@ -3512,6 +3546,7 @@ class Finestra(QMainWindow):
                 bpm_unit=self._bpm_unit_val(),
             )
             self.visor_ref = visor
+            self._aplica_beats_guardats(visor)
             visor.metro_click_unit = self._metro_click_unit_val()
             # El visor ha de desar els CSV/export a la carpeta de sortida del
             # PROJECTE (no derivar-la del WAV, que viu a <projecte>/audio/).
@@ -4359,6 +4394,7 @@ class Finestra(QMainWindow):
         self.cb_graella = QComboBox()
         self.cb_graella.setToolTip("Divisió de la graella: grid visual i snap")
         for et, val in (
+                ("Beats QM", "qm_beats"),
                 ("Auto (zoom)", ""), ("Negra (1/4)", "negra"),
                 ("Corxera (1/8)", "corxera"),
                 ("Semicorxera (1/16)", "semicorxera"),
@@ -4399,8 +4435,17 @@ class Finestra(QMainWindow):
         vr = getattr(self, "visor_ref", None)
         if vr is None or not hasattr(self, "tb_snap"):
             return
-        vr.set_snap(on=self.tb_snap.isChecked(),
-                    divisio=self.cb_graella.currentData() or "")
+        mode = self.cb_graella.currentData() or ""
+        if mode == "qm_beats":
+            info = getattr(self, "_beats_actuals", None)
+            if not info:
+                info = (getattr(getattr(self, "projecte", None), "dades", {})
+                        .get("analisi_beats"))
+            beats = (info or {}).get("beats") if isinstance(info, dict) else []
+            vr.set_snap_beats(beats or [])
+            if not beats:
+                self.registra("Snap QM: no hi ha beats detectats.")
+        vr.set_snap(on=self.tb_snap.isChecked(), divisio=mode)
 
     def _toggle_metro(self, on=None):
         """Activa/desactiva el metrònom (sincronitza botó i acció)."""
@@ -4575,9 +4620,14 @@ class Finestra(QMainWindow):
         if pregunta:
             dlg = dialegs.DialegOpcions(self, tab="acords",
                                         opcions=self.opcions)
+            # «Analitza» és només acords + estructura. El BPM té la seua
+            # acció separada («Analitza BPM…»); no el tornem a oferir ací.
+            if dlg.tabs.count() and dlg.tabs.tabText(0) == "BPM":
+                dlg.tabs.removeTab(0)
             if dlg.exec_() != QDialog.Accepted:
                 return
             self.opcions = dlg.opcions()
+            self.opcions.setdefault("analisi", {})["bpm"] = False
             dialegs.desa_opcions(self.opcions)
             self._marca_dirty()
             # La casella «Només els acords» i l'acció «Inclou estructura» són
@@ -4604,12 +4654,14 @@ class Finestra(QMainWindow):
         self.b_export.setEnabled(False)
         self.b_export_part.setEnabled(False)
         _ana = self.opcions.get("analisi") or {}
+        # Separació d'accions: «Analitza» només fa acords i estructura.
+        # El BPM es detecta amb «Analitza BPM…» i es mostra com a capa.
         self.feina = Feina(wav, self.sortida, self._bpm_val(),
                            self._bpb_val(), self._offset_val(),
                            bool(_ana.get("estructura", True)),
                            self.tempo_fix.isChecked(),
                            opcions=self.opcions,
-                           amb_bpm=bool(_ana.get("bpm", True)),
+                           amb_bpm=False,
                            amb_acords=bool(_ana.get("acords", True)))
         self.feina.missatge.connect(self.registra)
         self.feina.progres.connect(self.barra.setValue)
@@ -4657,6 +4709,211 @@ class Finestra(QMainWindow):
             self.registra(f"ERROR: {dada}")
             self.log_dock.setVisible(True)    # en cas d'error, obrim el log
             self.avisa_crit("Auto Chords", dada)
+
+    def _aplica_beats_guardats(self, visor=None):
+        """Restaura les línies de beats desades al projecte, si n'hi ha."""
+        visor = visor or getattr(self, "visor_ref", None)
+        dades = getattr(getattr(self, "projecte", None), "dades", None) or {}
+        info = dades.get("analisi_beats")
+        if not visor or not isinstance(info, dict):
+            return
+        beats = info.get("beats")
+        downbeats = info.get("downbeats")
+        if not isinstance(beats, list):
+            return
+        try:
+            visor.timeline.set_beats(beats, downbeats if isinstance(
+                downbeats, list) else [])
+            visor.set_snap_beats(beats)
+        except Exception as e:  # noqa: BLE001
+            self.registra(f"beats: no s'han pogut restaurar ({e})")
+
+    def _analitza_bpm(self):
+        """Acció separada «Analitza BPM»: motor, sensibilitat i línies."""
+        wav = self.wav_edit.text().strip()
+        if not wav or not os.path.isfile(wav):
+            self.avisa("Analitza BPM", "Primer tria una WAV.")
+            return
+        dlg = dialegs.DialegAnalitzaBPM(self, opcions=self.opcions)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        cfg = dlg.valors()
+        nomes_beats = cfg.get("mode") == "beats"
+        opcions_bpm = self.opcions.get("bpm") or {}
+        self._atura_si_sona("anàlisi de beats")
+        self.registra(
+            f"Analitzant {'beats' if nomes_beats else 'BPM'}: "
+            f"{cfg['motor']} · sensibilitat {cfg['sensibilitat']}/100…")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            res = beats_mod.detecta(
+                wav,
+                motor=cfg["motor"],
+                sensibilitat=cfg["sensibilitat"],
+                bpb=self._bpb_val(),
+                den=self._beat_type_val(),
+                bpm_hint=self._bpm_val(),
+                bpm_min=opcions_bpm.get("min"),
+                bpm_max=opcions_bpm.get("max"),
+                preferit=(opcions_bpm.get("pref_min"),
+                          opcions_bpm.get("pref_max")),
+                log=self.registra,
+                nomes_beats=nomes_beats,
+            )
+        except Exception as e:  # noqa: BLE001
+            self.registra(f"Analitza BPM ERROR: {e}")
+            self.avisa_crit("Analitza BPM", f"No s'ha pogut detectar: {e}")
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
+
+        self._beats_actuals = res
+        beats = list(res.get("beats") or ())
+        downbeats = list(res.get("downbeats") or ())
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.timeline.set_beats(beats, downbeats)
+            vr.set_snap_beats(beats)
+        self.opcions["beats"] = dict(cfg)
+        dialegs.desa_opcions(self.opcions)
+        self._marca_dirty()
+        bpm = res.get("bpm")
+        if not nomes_beats and cfg.get("aplica_bpm") and bpm:
+            self._aplica_bpm_detectat(float(bpm))
+        if self.projecte is not None:
+            self.projecte.dades["analisi_beats"] = {
+                "motor": res.get("motor"),
+                "sensibilitat": res.get("sensibilitat"),
+                "mode": cfg.get("mode"),
+                "bpm": bpm,
+                "beats": beats,
+                "downbeats": downbeats,
+            }
+            try:
+                self.projecte.desa()
+                self.dirty = False
+                self._actualitza_titol()
+            except OSError as e:
+                self.registra(f"beats: no s'han pogut desar al projecte ({e})")
+        if not beats:
+            self.avisa_info("Analitza BPM",
+                            "No s'ha detectat cap beat amb estes opcions.")
+            return
+        bpm_txt = f"{bpm:.2f}" if bpm is not None else "—"
+        if nomes_beats:
+            self._missatge_info(f"{len(beats)} beats (sense BPM ni compassos)")
+            self.registra(
+                f"{len(beats)} beats · només polsos · motor "
+                f"{res.get('motor')} (sensibilitat "
+                f"{res.get('sensibilitat'):.0f}/100)")
+        else:
+            self._missatge_info(
+                f"BPM: {bpm_txt} · {len(beats)} beats · "
+                f"{len(downbeats)} downbeats")
+            self.registra(
+                f"BPM: {bpm_txt} · {len(beats)} beats · "
+                f"{len(downbeats)} downbeats · motor {res.get('motor')} "
+                f"(sensibilitat {res.get('sensibilitat'):.0f}/100)")
+
+    def _ajusta_graella_beats(self):
+        """Acció de menú: snap dels marcadors a QM i ajust del mapa."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa("Ajusta graella", "Primer obri una WAV.")
+            return
+        info = getattr(self, "_beats_actuals", None)
+        if not info:
+            info = (getattr(getattr(self, "projecte", None), "dades", {})
+                    .get("analisi_beats"))
+        if not isinstance(info, dict) or not info.get("beats"):
+            self.avisa_info(
+                "Ajusta graella",
+                "No hi ha beats detectats. Executa «Analitza BPM» primer.")
+            return
+        beats = list(info.get("beats") or ())
+        downbeats = list(info.get("downbeats") or ())
+        # Ajustar la graella és una operació posterior al play: parem primer
+        # per no mostrar cap diàleg mentre l'usuari està marcant compassos.
+        self._atura_si_sona("ajust de la graella als beats")
+        tolerancia, ok = QInputDialog.getDouble(
+            self, "Ajusta la graella als beats QM",
+            "Tolerància del snap (ms):", 120.0, 10.0, 500.0, 0)
+        if not ok:
+            return
+        try:
+            res = vr.ajusta_graella_a_beats(
+                beats, downbeats, tolerancia=float(tolerancia) / 1000.0)
+        except Exception as e:  # noqa: BLE001
+            self.registra(f"Ajusta graella ERROR: {e}")
+            self.avisa_crit("Ajusta graella", f"No s'ha pogut ajustar: {e}")
+            return
+        if res is None:
+            return
+        self._marca_dirty()
+        self._missatge_info(
+            f"Graella ajustada: {len(res.get('moguts') or [])} marcadors "
+            f"snapats · {len(res.get('ambigus') or [])} dubtosos")
+        self.registra(
+            f"Ajusta graella: {len(res.get('moguts') or [])} snapats, "
+            f"{len(res.get('ambigus') or [])} dubtosos, "
+            f"{res.get('trams')} trams")
+        self._mostra_revisio_snap(res.get("ambigus") or [])
+
+    def _mostra_revisio_snap(self, ambigus):
+        if not ambigus:
+            return
+        vr = getattr(self, "visor_ref", None)
+        dlg = dialegs.DialegRevisioSnap(
+            self, ambigus=ambigus,
+            ves_a=(vr.ves_a if vr is not None else None),
+            snap=self._snap_individual)
+        self._revisio_snap = dlg
+        dlg.show()
+
+    def _snap_individual(self, vell, nou):
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return False
+        try:
+            ok = bool(vr.snap_un_marcador(float(vell), float(nou)))
+        except Exception as e:  # noqa: BLE001
+            self.registra(f"Snap individual ERROR: {e}")
+            return False
+        if ok:
+            self._marca_dirty()
+        return ok
+
+    def _compas_del_marcador(self):
+        """Obfri editar el compàs del tram que comença en un marcador."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa("Compàs del marcador", "Primer obri una WAV.")
+            return
+        self._atura_si_sona("edició del compàs")
+        t = float(getattr(vr, "pos", 0.0))
+        idx_m = None
+        dist = 0.25
+        for i, m in enumerate(getattr(vr, "marcadors", []) or []):
+            d = abs(float(m) - t)
+            if d <= dist:
+                idx_m, dist = i, d
+        if idx_m is None:
+            self.avisa_info(
+                "Compàs del marcador",
+                "Posa el cursor prop d'un marcador de compàs.")
+            return
+        t_m = float(vr.marcadors[idx_m])
+        idx_t = None
+        for i, s in enumerate(getattr(vr, "tempo_trams", []) or []):
+            if abs(float(s[0]) - t_m) <= 0.06:
+                idx_t = i
+                break
+        if idx_t is None:
+            self.avisa_info(
+                "Compàs del marcador",
+                "No hi ha cap tram de tempo que comence en eixe marcador.")
+            return
+        vr._on_tempo_edit(idx_t)
 
     def _aplica_bpm_detectat(self, b):
         """Posa al transport el BPM que ha detectat «Analitza» (etapa BPM).

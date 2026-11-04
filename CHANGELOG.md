@@ -5,6 +5,29 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Afegit — Analitza BPM separat, motors i sensibilitat (2026-11-04)
+- «Analitza» queda dedicat a **acords + estructura**; el BPM té l’acció
+  separada **«Analitza BPM…»** (F7).
+- Nous motors intercanviables: **nostre** (`app/tempo.py`) i **Queen Mary**
+  (`qm-barbeattracker`), amb sensibilitat 0–100 (estable → flexible).
+- Mode **«només beats»** per defecte: només retorna la seqüència de polsos,
+  sense BPM, compàs ni downbeats; QM usa `qm-tempotracker:beats` i no
+  `qm-barbeattracker:bars`.
+- Els beats i downbeats es mostren com a línies de diagnòstic sobre l’ona i es
+  guarden dins el `.acproj` (`analisi_beats`); no modifiquen el model.
+- El BPM només s’aplica al transport si l’usuari ho demana.
+- Nova acció **Ajusta la graella als beats QM…**: snap reversible dels
+  marcadors de compàs als bars/beats de QM, amb tolerància i un sol desfer;
+  `+` continua creant compàs + secció i l’estructura queda independent.
+- Revisió no modal dels talls dubtosos (`DialegRevisioSnap`) i acció
+  **Compàs del marcador…** per canviar el metre del clip que comença en un
+  marcador.
+- Snap **Beats QM** al selector del transport; amb Snap actiu, el `+` encaixa
+  el marcador a la línia de QM més pròxima dins de 120 ms.
+- Nous `app/beats.py`, `DialegAnalitzaBPM`, `BeatLayer` i
+  `docs/ANALISI_BPM.md`; tests de sensibilitat i motors.
+- Suite completa: **1.563 tests**, 1 omés; `pyflakes` net.
+
 ### Optimitzat — backups d'àudio amb hardlinks (2026-11-04)
 - `Projecte.fes_backup` enllaça el WAV de treball amb **hardlink** quan el
   sistema de fitxers ho permet; si no, fa la còpia tradicional.
