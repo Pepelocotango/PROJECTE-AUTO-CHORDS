@@ -1771,13 +1771,25 @@ class Finestra(QMainWindow):
         if vr is None:
             self.avisa("Marcador", "Primer obri una WAV.")
             return False
-        t = self._snap_marcador_qm(float(vr.pos))
-        if t is None:
-            msg = ("No s'ha afegit el marcador: calen beats de QM. "
-                   "Executa «Analitza BPM» primer.")
-            self.registra(msg)
-            self._missatge_info(msg)
-            return False
+        mode = (self.cb_graella.currentData()
+                if hasattr(self, "cb_graella") else "") or ""
+        if mode == "qm_beats":
+            t = self._snap_marcador_qm(float(vr.pos))
+            if t is None:
+                msg = ("No s'ha afegit el marcador: el Snap està en "
+                       "«Beats QM» però no hi ha beats QM. Executa "
+                       "«Analitza BPM» o canvia la graella.")
+                self.registra(msg)
+                self._missatge_info(msg)
+                return False
+        else:
+            # Fora del mode QM, mana la graella BPM/compàs del timeline.
+            t = vr._snap_ui(float(vr.pos))
+            if not (0.0 < t < vr._durada_wav() - 1e-3):
+                msg = "No s'ha afegit el marcador: cau fora del tema."
+                self.registra(msg)
+                self._missatge_info(msg)
+                return False
         ok = bool(vr.afegeix_marcador(t=t, tipus=tipus))
         if ok:
             self.registra(f"Marcador a {t:.3f}s "
@@ -4759,16 +4771,24 @@ class Finestra(QMainWindow):
             self.avisa_crit("Auto Chords", dada)
 
     def _aplica_beats_guardats(self, visor=None):
-        """Restaura les línies de beats desades al projecte, si n'hi ha."""
+        """Restaura els beats QM del projecte i sincronitza l'estat de Finestra.
+
+        `_beats_actuals` és la font que usa el `+` i el Snap QM; si no es
+        neteja en obrir un altre projecte, el projecte nou hereta els beats
+        del projecte anterior.
+        """
         visor = visor or getattr(self, "visor_ref", None)
         dades = getattr(getattr(self, "projecte", None), "dades", None) or {}
         info = dades.get("analisi_beats")
         if not visor or not isinstance(info, dict):
+            self._beats_actuals = None
             return
         beats = info.get("beats")
         downbeats = info.get("downbeats")
         if not isinstance(beats, list):
+            self._beats_actuals = None
             return
+        self._beats_actuals = info
         try:
             visor.timeline.set_beats(beats, downbeats if isinstance(
                 downbeats, list) else [])

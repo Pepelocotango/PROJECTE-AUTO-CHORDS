@@ -6915,6 +6915,21 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(len(vr.marcadors), 0)
         self.assertEqual(info.call_count, 1)
 
+    def test_beats_antics_no_es_hereten_en_carregar_projecte(self):
+        self.w._beats_actuals = {"beats": [1.0, 2.0], "downbeats": []}
+        self.w.projecte.dades.pop("analisi_beats", None)
+        self.w._aplica_beats_guardats(self.w.visor_ref)
+        self.assertIsNone(self.w._beats_actuals)
+
+    def test_tecla_mes_amb_graella_bpm_usa_aquesta_graella(self):
+        vr = self.w.visor_ref
+        self.w._beats_actuals = {"beats": [20.3], "downbeats": []}
+        idx = self.w.cb_graella.findData("negra")
+        self.w.cb_graella.setCurrentIndex(idx)
+        vr.pos = 20.24
+        self.assertTrue(self.w._afegeix_marcador())
+        self.assertAlmostEqual(float(vr.marcadors[0]), 20.0, places=6)
+
     def test_tecla_mes_sempre_usa_el_beat_qm_mes_proper(self):
         vr = self.w.visor_ref
         self.w._beats_actuals = {"beats": [20.0, 20.6], "downbeats": []}

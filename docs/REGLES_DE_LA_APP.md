@@ -400,9 +400,12 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
 
   Si l'instant demanat no és possible (passaria del veí, o deixaria un tram sense
   durada), s'aplica el més a prop i **s'avisa**.
-- **`+` (marcador)**: sempre s'encaixa al **beat QM més pròxim**; no es guarda
-  la posició crua del cursor. Si no hi ha beats QM, no es crea el marcador i
-  s'avisa. Els clips afectats es recalculen amb la prioritat BPM → compàs.
+- **`+` (marcador)**: seguix la **graella del Snap**:
+  - Snap **Beats QM** → sempre s'encaixa al beat QM més pròxim;
+  - qualsevol altra graella → s'encaixa a la graella BPM/compàs;
+  - si Snap està desactivat, es respecta la posició del cursor.
+  Si la graella QM no té beats, no es crea el marcador i s'avisa. Els clips
+  afectats es recalculen amb la prioritat BPM → compàs.
 - La fi del primer pot caure **exactament** en el compàs 1 (pre-roll pur); si el
   primer tram no té cap compàs, moure'n la fi **mou el compàs 1** (offset).
 - El gest és **local**: els **marcadors humans** lligats a la frontera **viatgen
