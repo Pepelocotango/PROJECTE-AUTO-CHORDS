@@ -1,9 +1,9 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
+Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
-## [Unreleased]
+## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
 ### Canviat — contracte de clips de BPM/compàs per beats (2026-11-04)
 - **Decisió explícita de l’operador**: un clip de BPM/compàs ja no ha de
@@ -24,6 +24,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 - **`1/4` és un compàs vàlid a tota l’app**: validador, TempoMap, graella,
   ancoratges, diàlegs de tram/mapa, guiat i metrònom. S’afig als presets i es
   cobreix amb tests (sense canviar el límit general 1–12).
+- Nou botó **«Ajusta BPM al compàs»** a la franja Editor dels clips de tempo:
+  conserva fronteres i compàs i recalcula el BPM perquè el clip tinga un nombre
+  enter de compassos. És explícit; no canvia el flux automàtic.
 
 ### Afegit — Analitza BPM separat, motors i sensibilitat (2026-11-04)
 - «Analitza» queda dedicat a **acords + estructura**; el BPM té l’acció
@@ -49,7 +52,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   També dona missatge quan un `+` no s’afig perquè ja hi ha un marcador a prop.
 - Nous `app/beats.py`, `DialegAnalitzaBPM`, `BeatLayer` i
   `docs/ANALISI_BPM.md`; tests de sensibilitat i motors.
-- Suite completa: **1.583 tests**, 1 omés; `pyflakes` net.
+- Suite completa: **1.586 tests**, 1 omés; `pyflakes` net.
 
 ### Optimitzat — backups d'àudio amb hardlinks (2026-11-04)
 - `Projecte.fes_backup` enllaça el WAV de treball amb **hardlink** quan el

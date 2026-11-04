@@ -56,7 +56,8 @@ Fet recentment (2026-11-02/04):
 - **Contracte de beats sencers** (2026-11-04): els clips de BPM/compàs ja no
   exigeixen compassos enters; han de contindre almenys un beat sencer de la
   graella del Snap (QM o BPM/compàs), inclòs `1/4`. El `+` sempre usa el beat
-  QM més pròxim; l’ajust prioritza conservar el BPM i canviar el compàs. Docs:
+  QM més pròxim; l’ajust prioritza conservar el BPM i canviar el compàs. El botó
+  **«Ajusta BPM al compàs»** força compassos sencers de manera explícita. Docs:
   `docs/REGLES_DE_LA_APP.md` §13.4–13.6 i `docs/ANALISI_BPM.md`.
 - **Analitza BPM** (2026-11-04): acció separada de «Analitza» (que queda per
   a acords + estructura), motors **nostre**/QM, sensibilitat 0–100 i línies
@@ -73,13 +74,13 @@ Fet recentment (2026-11-02/04):
 - **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
   unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
   projectes vells), visor/graella, accions de crear/convertir rubato i
-  exportació amb avís aproximat. Suite completa: **1.583 tests**, 1 omés.
+  exportació amb avís aproximat. Suite completa: **1.586 tests**, 1 omés.
 - **Anàlisi del projecte de prova** `AUTOCHORDS_01 POLICE_convertit`:
   model coherent i cobertura exacta; documentats els límits del pre-roll a la
   partitura, els noms d'acord crus de l'anàlisi i la precisió de l'offset.
 - **Unitat de BPM**: selector global negra / negra amb punt / corxera /
   blanca; el metrònom té una unitat de clic independent (auto/negra/negra amb punt/corxera/blanca). El model continua en negres/min i la unitat es desa al `.acproj`.
-  Suite: **1.583 tests**.
+  Suite: **1.586 tests**.
 - **Metrònom per denominador**: el beat és `4/den` negres; `6/8`, `9/8` i
   `12/8` cliquen corxeres, `2/2` blanques; accents de compàs i grup, modes
   Auto/Compàs/Temps/Grup i selector al transport.

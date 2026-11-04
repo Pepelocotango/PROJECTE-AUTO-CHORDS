@@ -4655,6 +4655,25 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual(v.llista_tempo.item(1, 3).text(), "3/4")
         self.assertEqual(v.ed_fam.text(), "3/4")
 
+    def test_boto_ajusta_bpm_al_compas(self):
+        _w, v = self._prepara()
+        v.offset = 1.207438
+        v.bpm, v.bpb, v.beat_type = 66.731, 1, 4
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 1.207438, 66.731, "normal", "1/4"),
+            mapa_tempo.TramMapa(1.207438, 30.0, 66.730739, "normal", "4/4"),
+        ]
+        v._actualitza_temps()
+        v._focus_editor("tempo", 0)
+        self.assertFalse(v.ed_bpm_compas.isHidden())
+        self.assertTrue(v.ed_bpm_compas.isEnabled())
+        v.ed_bpm_compas.click()
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 49.691992,
+                               places=5)
+        self.assertAlmostEqual(float(v.tempo_trams[0][1]), 1.207438,
+                               places=6)
+        self.assertEqual(v.tempo_trams[0][3:], (1, 4))
+
     def test_zero_zero_no_crea_rubato_des_de_l_editor(self):
         _w, v = self._prepara()
         v._focus_editor("tempo", 0)

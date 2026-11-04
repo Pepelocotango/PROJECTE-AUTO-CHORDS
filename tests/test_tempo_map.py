@@ -341,6 +341,27 @@ class TestCompasUnQuart(unittest.TestCase):
         self.assertEqual(len(out), len(buf))
 
 
+class TestAjustaBpmACompasos(unittest.TestCase):
+    """Acció explícita: BPM perquè un clip tinga compassos sencers."""
+
+    def test_primer_clip_de_preroll(self):
+        trams = [(0.0, 1.207438, 66.731, 1, 4),
+                 (1.207438, 256.534059, 66.730739, 4, 4)]
+        out = tm.ajusta_bpm_a_compassos(
+            trams, 0, 256.534059, offset=1.207438)
+        self.assertAlmostEqual(out[0][2], 49.691992, places=5)
+        self.assertAlmostEqual(out[0][1], 1.207438, places=6)
+        self.assertEqual(out[0][3:], (1, 4))
+        self.assertEqual(out[1], trams[1])
+
+    def test_clip_normal_conserva_fronteres(self):
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 20.0, 120.0, 3, 4)]
+        out = tm.ajusta_bpm_a_compassos(trams, 1, 20.0)
+        self.assertAlmostEqual(out[1][2], 126.0, places=6)
+        self.assertEqual(out[1][:2], (10.0, 20.0))
+        self.assertEqual(out[1][3:], (3, 4))
+
+
 class TestContracteBeatsSencers(unittest.TestCase):
     """Regla 2026-11-04: beat sencer, graella del Snap i extrems lliures."""
 

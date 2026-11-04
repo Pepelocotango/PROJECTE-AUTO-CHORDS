@@ -97,6 +97,10 @@ Cada clip ha de contindre **almenys un beat sencer** d’eixa graella. Les
 fronteres interiors han de caure a la graella; només l’inici del primer clip i
 la fi de l’últim poden ser lliures (amb un sol clip, tots dos).
 
+Si vols forçar un clip a **compassos sencers**, selecciona’l i usa el botó
+**«Ajusta BPM al compàs»** de la franja Editor: conserva les fronteres i el
+compàs, i recalcula el BPM. No s’aplica automàticament.
+
 `+` **sempre** s’encaixa al beat QM més pròxim, sense tolerància de 120 ms. Si
 no hi ha cap beat QM, no crea el marcador i avisa. Els clips afectats es
 recalculen conservant el BPM i ajustant el compàs si cal.

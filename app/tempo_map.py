@@ -1201,6 +1201,52 @@ def _candidats_fit_clip(tram, i, offset):
     return unics
 
 
+def ajusta_bpm_a_compassos(trams, idx, durada, offset=0.0, beats_qm=None):
+    """Recalcula el BPM perquè el clip tinga un nombre enter de compassos.
+
+    Acció **explícita** de la GUI (botó «Ajusta BPM al compàs»): conserva les
+    fronteres en segons i el compàs, i calcula el BPM que fa que el clip tinga
+    `N` compassos sencers, amb `N` el més pròxim possible al BPM actual.
+    És l'única via que força compassos sencers; la resta del contracte només
+    exigeix un beat sencer.
+
+    Per al primer clip, si és tot pre-roll (l'offset cau a la seua fi), els
+    compassos es compten des de l'inici del clip; si l'offset cau dins, es
+    compten des de l'offset.
+    """
+    durada = float(durada or 0.0)
+    nous = normalitza_trams(trams, durada)
+    i = int(idx)
+    if not (0 <= i < len(nous)):
+        raise ValueError("El tram de tempo no existeix")
+    ini, fi, bpm, num, den = nous[i]
+    if int(num) <= 0 or int(den) <= 0:
+        raise ValueError("Un rubato no té compassos per a ajustar")
+    base = float(ini)
+    if i == 0 and float(offset) > float(ini) + TOL:
+        # L'offset es desa amb 3 decimals: si cau a la fi del pre-roll pot
+        # quedar a menys d'1 ms de la frontera. En eixe cas el clip és tot
+        # pre-roll i els compassos compten des de 0.
+        if float(offset) >= float(fi) - 1e-3:
+            base = float(ini)
+        else:
+            base = float(offset)
+    dt = float(fi) - base
+    bq = _bar_quarters(int(num), int(den))
+    if dt <= TOL or bq <= TOL:
+        raise ValueError("El clip no té prou durada per a un compàs")
+    n = max(1, _enter_mes_proper(dt * float(bpm) / (bq * 60.0)))
+    bpm2 = n * bq * 60.0 / dt
+    if not (BPM_EDIT_MIN - TOL <= bpm2 <= BPM_EDIT_MAX + TOL):
+        raise ValueError(
+            f"Amb {n} compàs(s), el BPM seria {bpm2:.1f}, fora de "
+            f"{BPM_EDIT_MIN:g}–{BPM_EDIT_MAX:g}")
+    out = list(nous)
+    out[i] = (float(ini), float(fi), float(bpm2), int(num), int(den))
+    return _mapa_valida_sense_moure(out, durada, offset,
+                                    beats_qm=beats_qm)
+
+
 def _millora_signatures_clips(trams, durada, offset=0.0, beats_qm=None,
                                idxs=None):
     """Ajusta compàs i, si cal, BPM perquè els clips tinguen un beat sencer.

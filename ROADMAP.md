@@ -184,6 +184,27 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 > `/tmp`. Es manté com a norma per a qualsevol test nou.
 
 ### Should
+- **PENDENT — Exportació del mapa de tempo a DAWs** (2026-11-04):
+  - **WAV**: pot portar `cue`/`LIST adtl` (marcadors) i, com a molt, un BPM
+    únic (`ACID`); **no hi ha un mapa de tempo complex estàndard** ni un
+    comportament comú entre DAWs. El `bext`/`iXML` no és un tempo map portable.
+  - **MIDI**: exportar `mapa_tempo.mid` (tipus 1, pista de conductor) amb
+    `Set Tempo`, `Time Signature` i markers. És el format més portable
+    (Cubase/Logic/Pro Tools/Reaper/Studio One…), amb el rubato aproximat per
+    events de tempo densos. L’offset/anacrusi necessita marker o projecte DAW.
+  - **Reaper**: generar un `.rpp` amb l’àudio, `TEMPO`, `TIMESIG`, markers i
+    offset; és el camí exacte per a Reaper, però no intercanviable.
+  - **Cues al WAV** per a compàs/secció, com a complement per als DAWs que
+    importen marcadors.
+  - **Clic de referència WAV** generat amb el mapa, com a alternativa
+    universal que qualsevol DAW pot importar i alinear.
+  - **BPM per clip**: afegir-lo al `manifest.csv`/`ACID`/`iXML` pot ser útil
+    com a metadada, però **no converteix cada clip en un canvi de tempo del
+    DAW**. Els clips (sobretot si són silenciosos) no defineixen el tempo
+    global; el mapa ha d’anar en un MIDI, un `.rpp` o un altre sidecar.
+  - Ordre recomanat: **MIDI + cues + clic** per a multi-DAW; **`.rpp`** per a
+    Reaper; el BPM per clip queda com a metadada opcional, no com a substitut
+    del mapa.
 - **Afinador (tuner) de guitarra** — entrada d'àudio → detecció de to →
   nota + cents (natural/tempered). Reutilitzant `app/audio_out.py`.
 - **Incorporar `Gt_ALL_Chords_app`** — diapasó, identificador d'acords, filtres,

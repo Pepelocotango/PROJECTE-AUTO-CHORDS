@@ -353,6 +353,10 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
 - **Últim recurs: BPM proper.** Si cap compàs admissible ho resol, es pot
   ajustar el BPM al valor més pròxim que faça el clip múltiple de beats, dins de
   **30–350** i sense anar a la meitat ni al doble del BPM de referència.
+- **Acció explícita «Ajusta BPM al compàs»** (franja Editor d’un clip de
+  tempo): conserva les fronteres i el compàs, i recalcula el BPM perquè el clip
+  tinga un **nombre enter de compassos**. És l’única via que força compassos
+  sencers; no s’aplica automàticament a la resta d’edicions.
 - **Fronteres i veïns**: canviar el BPM o el compàs d'un clip **no mou** les
   seues fronteres ni re-tempa els veïns. Els segons són la font de veritat.
 - **Arrossegar**: el punter fixa Δt; s'ajusten les fronteres i, si cal, el
@@ -361,8 +365,9 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
 - Un tram **rubato** (`tipus=rubato`) **no té cap regla** de duració ni de BPM:
   es mou lliurement. El veí amb compàs conserva el BPM i ajusta el compàs si
   cal; la frontera amb el rubato és lliure.
-- **Codi:** `tempo_map.canvia_bpm_local` · `_millora_signatures_clips` ·
-`mou_frontera_retempo` · `ajusta_trams_a_marcadors`
+- **Codi:** `tempo_map.canvia_bpm_local` · `ajusta_bpm_a_compassos` ·
+`_millora_signatures_clips` · `mou_frontera_retempo` ·
+`ajusta_trams_a_marcadors`
 - **Test:** `test_tempo_trams`
 
 ### 13.6 Fronteres a mà i marcadors

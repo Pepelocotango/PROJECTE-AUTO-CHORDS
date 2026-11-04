@@ -19,16 +19,14 @@ acord); les seccions es mantenen. També pots **exportar la còpia editada** a
 WAV, MP3, FLAC, AAC/M4A, OGG o Opus des de `Fitxer ▸ Exporta àudio…`. L'abast
 acordat és a [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
 
-> **Novetats de la v0.8.0 (BETA)** — **mapa de tempo amb compassos enters**
-> (les fronteres de tempo cauen en línies de compàs; primer inici i últim
-> final exceptuats) · **detecció de BPM per tram** (el tram seleccionat, el
-> seu inici és el downbeat) · **tap tempo al tram seleccionat** amb loop
-> automàtic mentre sona · **marcadors de compàs vs secció** · **ajust d'un sol
-> BPM per mínims quadrats** · **validació unificada** de BPM/compàs ·
-> **loop a la selecció** (`L`) · **Quantitza** arranja el model a la graella ·
-> **rubato**: marca un rang A–B o converteix un tram, amb BPM/compàs derivats
-> i graella marcada com a aproximada a l’exportació. Historial complet:
-> [`CHANGELOG.md`](CHANGELOG.md).
+> **Novetats de la v9.0.0 — checkpoint «mapa de temps resolt»** — els clips
+> de BPM/compàs es validen per **beats sencers** de la graella del Snap (QM o
+> BPM/compàs) · fronteres interiors a la graella, amb inici del primer clip i
+> final de l’últim lliures · **1/4 vàlid a tota l’app** · `+` sempre al beat
+> QM més pròxim · ajust que prioritza conservar el BPM i canviar el compàs ·
+> botó explícit **Ajusta BPM al compàs** per forçar compassos sencers ·
+> **rubato**, detecció de BPM per tram, tap tempo, marcadors i quantització
+> conservats. Historial complet: [`CHANGELOG.md`](CHANGELOG.md).
 
 > ⚠️ **Beta:** la retrocompatibilitat de formats **no és una prioritat**. Una
 > versió nova pot rebutjar un projecte vell amb un missatge clar; no es fan
