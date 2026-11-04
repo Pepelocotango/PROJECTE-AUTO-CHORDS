@@ -53,6 +53,11 @@ Ajornades: **8** (MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
 > qualitat no bloquejant.
 
 Fet recentment (2026-11-02/04):
+- **Base d'agents d'OpenCode** (2026-11-04): config a `opencode.json` (l'únic
+  que es llig), `.opencode/` local via `.gitignore`, **6 subagents**
+  (`explorer`, `tester`, `reviewer`, `docs`, `audio-dsp`, `pipeline`) amb
+  `deepseek-v4.1-flash`, **5 skills** amb frontmatter i els commands
+  `/qualitat`, `/estat` i `/regles`. Detall: `.opencode/README.md`.
 - **Contracte de beats sencers** (2026-11-04): els clips de BPM/compàs ja no
   exigeixen compassos enters; han de contindre almenys un beat sencer de la
   graella del Snap (QM o BPM/compàs), inclòs `1/4`. El `+` sempre usa el beat

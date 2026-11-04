@@ -108,7 +108,9 @@ htmlcov/
 .cov-env/
 
 # `AGENTS.md` SÍ que es versiona (és la guia del projecte per a qualsevol agent).
-# La resta de fitxers d'agents són locals de cada entorn i NO es versionen.
+# Els fitxers de configuració d'agents de cada entorn (OpenCode, Claude, Cursor…)
+# són LOCALS i NO es versionen.
+.opencode/
 CLAUDE.md
 .cursorrules
 .cursor/

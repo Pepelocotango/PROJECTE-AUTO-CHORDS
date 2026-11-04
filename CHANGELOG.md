@@ -5,6 +5,18 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Eines — base de subagents i skills d'OpenCode (2026-11-04)
+- Config d'agents a `opencode.json` (l'arrel; és l'únic que OpenCode llig:
+  `.opencode/config.json` era inert) i `.opencode/` passa a ser local
+  (`.gitignore`). **6 subagents** (`explorer`, `tester`, `reviewer`, `docs`,
+  `audio-dsp`, `pipeline`, tots amb `deepseek-v4.1-flash`), **5 skills** amb
+  frontmatter (`name` + `description`; abans es filtraven i no es carregaven) i
+  els commands `/qualitat`, `/estat`, `/regles`.
+- Permisos reescrits amb `"*"` primer i les excepcions després: OpenCode avalua
+  l'**última** regla que casa, i el `"*": deny` final dels esbossos ho denegava
+  tot. `audio-dsp` recupera `ancoratges`/`marcadors`/`limits` i `pipeline` cobrix
+  la cadena d'anàlisi. Detall: `.opencode/README.md`.
+
 ### Canviat — contracte de clips de BPM/compàs per beats (2026-11-04)
 - **Decisió explícita de l’operador**: un clip de BPM/compàs ja no ha de
   resoldre a compassos sencers. És vàlid si conté **almenys un beat sencer**
