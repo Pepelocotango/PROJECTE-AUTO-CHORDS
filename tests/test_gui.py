@@ -1398,6 +1398,33 @@ class TestAvisAudio(unittest.TestCase):
 class TestCentratLlistes(unittest.TestCase):
     """La selecció demana centrar la fila, amb context a dalt i a baix."""
 
+    def test_play_centra_la_fila_que_sona(self):
+        class _Llista:
+            def __init__(self, row):
+                self.row = row
+                self.centrada = None
+
+            def currentRow(self):
+                return self.row
+
+            def setCurrentRow(self, row):
+                self.row = row
+
+        ac = _Llista(0)
+        ab = _Llista(0)
+        centrats = []
+        v = types.SimpleNamespace(
+            acords=[(0.0, 1.0, ("C", "0")), (1.0, 2.0, ("G", "1")),
+                    (2.0, 3.0, ("Am", "2"))],
+            seccions=[(0.0, 1.0, "A", "A"), (1.0, 2.0, "B", "B")],
+            llista_ac=ac, llista_ab=ab,
+            _centra_fila_llista=lambda lista, row: centrats.append((lista, row)))
+        Visor._ressalta(v, 2.5)
+        self.assertEqual(ac.row, 2)
+        self.assertIn((ac, 2), centrats)
+        self.assertEqual(ab.row, 1)
+        self.assertIn((ab, 1), centrats)
+
     def test_centra_la_fila_amb_position_at_center(self):
         class _LlistaFalsa:
             def __init__(self):

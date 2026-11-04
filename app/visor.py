@@ -6169,6 +6169,10 @@ class Visor(QMainWindow):
                     break
             if self.llista_ac.currentRow() != k:
                 self.llista_ac.setCurrentRow(k)
+                # En play, la fila que sona ha de quedar centrada: així es
+                # veuen 2-3 acords anteriors i posteriors, no només el que
+                # acaba d'arribar a la vora inferior.
+                self._centra_fila_llista(self.llista_ac, k)
         if self.seccions:
             k = 0
             for i, (ini, fi, _L, _f) in enumerate(self.seccions):
@@ -6178,6 +6182,7 @@ class Visor(QMainWindow):
                     break
             if self.llista_ab.currentRow() != k:
                 self.llista_ab.setCurrentRow(k)
+                self._centra_fila_llista(self.llista_ab, k)
 
     def exporta(self):
         if not self.acords:
