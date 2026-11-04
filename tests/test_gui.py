@@ -445,9 +445,59 @@ class TestBackups(unittest.TestCase):
         p = self._projecte()
         self.assertIsNotNone(p.fes_backup())
         self.assertIsNone(p.fes_backup())
-        _wav(p.ruta_audio(), dur=3.0)
+        # L'app publica l'àudio amb os.replace; imitem eixa escriptura atòmica
+        # perquè un hardlink de backup no es modifique en lloc.
+        temporal = p.ruta_audio() + ".nou"
+        _wav(temporal, dur=3.0)
+        os.replace(temporal, p.ruta_audio())
         self.assertIsNotNone(p.fes_backup())
         self.assertEqual(len(p.backups()), 2)
+
+    def test_backup_audio_comparteix_inode_si_no_ha_canviat(self):
+        p = self._projecte()
+        primer = p.fes_backup()
+        audio_primer = os.path.join(
+            primer, projecte.NOM_AUDIO_DIR,
+            os.path.basename(p.ruta_audio()))
+        try:
+            mateix = os.path.samefile(p.ruta_audio(), audio_primer)
+        except OSError:
+            self.skipTest("el sistema de fitxers no suporta hardlinks")
+        if not mateix:
+            self.skipTest("hardlinks no disponibles en este entorn")
+        p.dades["tempo"]["bpm"] = 130.0
+        segon = p.fes_backup()
+        audio_segon = os.path.join(
+            segon, projecte.NOM_AUDIO_DIR,
+            os.path.basename(p.ruta_audio()))
+        self.assertTrue(os.path.samefile(p.ruta_audio(), audio_primer))
+        self.assertTrue(os.path.samefile(p.ruta_audio(), audio_segon))
+
+    def test_backup_audio_antic_sobreviu_a_edicio_atomica(self):
+        p = self._projecte()
+        primer = p.fes_backup()
+        audio_primer = os.path.join(
+            primer, projecte.NOM_AUDIO_DIR,
+            os.path.basename(p.ruta_audio()))
+        with open(audio_primer, "rb") as f:
+            abans = f.read()
+        temporal = p.ruta_audio() + ".nou"
+        _wav(temporal, dur=3.0)
+        os.replace(temporal, p.ruta_audio())
+        p.fes_backup()
+        with open(audio_primer, "rb") as f:
+            self.assertEqual(f.read(), abans)
+        with open(p.ruta_audio(), "rb") as f:
+            self.assertNotEqual(f.read(), abans)
+
+    def test_backup_funciona_si_no_hi_ha_hardlinks(self):
+        p = self._projecte()
+        with patch.object(projecte.os, "link", side_effect=OSError("no")):
+            dest = p.fes_backup()
+        self.assertIsNotNone(dest)
+        copia = os.path.join(dest, projecte.NOM_AUDIO_DIR,
+                             os.path.basename(p.ruta_audio()))
+        self.assertTrue(os.path.isfile(copia))
 
     def test_no_duplica_si_no_canvia(self):
         p = self._projecte()

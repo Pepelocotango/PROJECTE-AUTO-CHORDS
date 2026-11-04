@@ -72,6 +72,12 @@ al costat de l'original; vegeu
   contingut no ha canviat des de l'última còpia. El WAV es compara amb mida i
   data de modificació per evitar llegir-lo complet a cada autosave; les còpies
   es preparen en temporal i només es publiquen quan estan completes.
+- **Àudio compartit, no copiat**: quan el sistema de fitxers ho permet
+  (NTFS, APFS, ext4…), el WAV dels backups és un **hardlink** al WAV de treball.
+  Com que l'àudio sempre es publica amb `os.replace` i mai s'escriu en lloc,
+  els backups no es corrompen. Si el hardlink no és possible (FAT/exFAT, alguns
+  volums de xarxa), es fa una còpia normal. Així, un canvi de model no duplica
+  el WAV: només ocupa espai una **versió d'àudio diferent**.
 - La inclusió del WAV i els marcadors està implementada; les edicions actuals
   sincronitzen l'àudio i el model i es poden desfer/refer junts. Encara falta
   implementar el flux de restauració conjunta des d'un backup (§13.9 de

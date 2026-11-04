@@ -110,8 +110,11 @@ es van fer servir.
 
 7. **Les còpies de seguretat inclouen el cru, els marcadors i el WAV.**
    `Projecte.fes_backup` copia el `.acproj` (que ja porta el cru), els CSV del
-   MODEL, `marcadors.csv` i el WAV de treball. La còpia es prepara en una
-   carpeta temporal i només es publica quan està completa. No copia els exports.
+   MODEL, `marcadors.csv` i el WAV de treball. El WAV s'enllaça amb **hardlink**
+   quan el sistema de fitxers ho permet; si no, es copia. Com que l'àudio es
+   publica sempre de manera atòmica (`os.replace`), una edició posterior no
+   modifica els backups antics. La còpia es prepara en una carpeta temporal i
+   només es publica quan està completa. No copia els exports.
 
 8. **Àudio editable (aprovat, parcialment implementat).** La còpia WAV interna
    és el mitjà de treball per a l'edició dels extrems. Cada edició desa l'àudio,

@@ -53,6 +53,35 @@ class ProjecteError(Exception):
     """Error en crear, obrir o desar un projecte."""
 
 
+def _enllaca_o_copia(origen, desti):
+    """Enllaça un fitxer immutable o, si no es pot, el copia.
+
+    Els àudios de treball sempre es publiquen amb `os.replace` (mai
+    s'escriuen en lloc), així que un hardlink pot compartir les dades amb els
+    backups sense risc que una edició posterior els modifique. En sistemes de
+    fitxers sense hardlinks (FAT/exFAT, alguns volums de xarxa…) es fa la
+    còpia tradicional.
+    """
+    try:
+        os.link(origen, desti)
+        return True
+    except (OSError, NotImplementedError):
+        shutil.copy2(origen, desti)
+        return False
+
+
+def _copia_arbre_enllacat(origen, desti):
+    """Còpia un arbre enllaçant els fitxers; si no es pot, els copia."""
+    os.makedirs(desti, exist_ok=True)
+    for arrel, _dirs, fitxers in os.walk(origen):
+        rel = os.path.relpath(arrel, origen)
+        desti_arrel = desti if rel == "." else os.path.join(desti, rel)
+        os.makedirs(desti_arrel, exist_ok=True)
+        for nom in fitxers:
+            _enllaca_o_copia(os.path.join(arrel, nom),
+                             os.path.join(desti_arrel, nom))
+
+
 def saneja_analisi(ana):
     """Valida i neteja el CRU que viatja dins el document. Tolerant.
 
@@ -424,7 +453,11 @@ class Projecte:
             for d in dirs:
                 origen = os.path.join(self.carpeta, d)
                 if os.path.isdir(origen):
-                    shutil.copytree(origen, os.path.join(temporal, d))
+                    if d == NOM_AUDIO_DIR:
+                        _copia_arbre_enllacat(
+                            origen, os.path.join(temporal, d))
+                    else:
+                        shutil.copytree(origen, os.path.join(temporal, d))
             with open(os.path.join(temporal, ".signatura"), "w",
                       encoding="utf-8") as f:
                 f.write(sign)
