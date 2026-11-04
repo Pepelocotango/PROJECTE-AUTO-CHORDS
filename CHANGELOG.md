@@ -646,7 +646,7 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - `7alt` deixa de ser un text opac (`+alt`): `TIPUS["7alt"]` el desplega a
   **b9/#9/#5** (`dominant` + `<degree>`), i l'àudio i la partitura ja no el
   toquen com un `7` sense alteracions.
-- Tests: +2 → **1.598 OK** (1 skip), `pyflakes` net.
+- Tests: +2 → **1.599 OK** (1 skip), `pyflakes` net.
 - Docs: `docs/TIPUS_XIFRAT_ACORDS.md`, `docs/NOTACIO_XIFRAT.md` i
   `docs/ESQUEMA_UI.md` (92 tipus).
 

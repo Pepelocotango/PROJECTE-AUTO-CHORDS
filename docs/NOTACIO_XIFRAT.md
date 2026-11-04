@@ -37,6 +37,7 @@ coincideix i MuseScore ho entén igual.
 | **Suspès** | `sus4` / `sus2` | `sus` (= sus4) |
 | **Sexta** | `6` / `-6` | `m6` |
 | **Extensions** | `9` / `11` / `13` (i `Maj…`/`-…`) | `maj9`, `m9`, `add9`… |
+| **Alterat** | `7alt` | `7alt` (es desplega a `b9`, `#9`, `#5`) |
 | **Graus afegits/trets** | `add9`, `no5` | `9` / `#11` (com a `<degree>` a MusicXML) |
 | **Dobles alteracions** | `##` / `bb` | `x` (= doble sostingut) |
 | **6/9** | `6add9` | `6/9` |
@@ -53,7 +54,7 @@ Am · Amin · ami   →  A-          Am7 · Amin7  →  A-7
 Amaj7 · AM7 · CΔ7 →  AMaj7/CMaj7 Bø · Bm7b5   →  B-7b5
 Cmaj · CM · CΔ    →  C           F#o7         →  F#dim7
 Am/G              →  A-/G        C6/9 · C69    →  C6add9  (no és baix)
-C##7 · Cx7        →  C##7        C7alt         →  C7alt  (l'«alt» es conserva)
+C##7 · Cx7        →  C##7        C7alt         →  C7alt  (es desplega a b9/#9/#5)
 N · NC · N.C.     →  N           «solo» / «H7» →  intactes
 ```
 

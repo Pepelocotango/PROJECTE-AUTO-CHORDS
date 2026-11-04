@@ -41,7 +41,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-> 📐 **Docks** (desacoplables i ocultables des de *Visualitza*): a l'**esquerra**, el panell **Tipus d'acord** (`dock_xifrat`, `app/panell_xifrat.py`: paleta d'arrel + baix + **62 tipus**, ▶ Escoltar i selector de timbre); a **baix**, el dock **Log · Informació** (`log_dock`). El transport i les accions són **barres d'eines** (no movibles), no docks.
+> 📐 **Docks** (desacoplables i ocultables des de *Visualitza*): a l'**esquerra**, el panell **Tipus d'acord** (`dock_xifrat`, `app/panell_xifrat.py`: paleta d'arrel + baix + **92 tipus**, ▶ Escoltar i selector de timbre); a **baix**, el dock **Log · Informació** (`log_dock`). El transport i les accions són **barres d'eines** (no movibles), no docks.
 >
 > 🎨 **Icones REALS**: la UI fa servir icones **Lucide** (`icones/`, llicència ISC) — **no** emojis. El dibuix de dalt n'és una aproximació; el mapa real és: ▶/⏸ → `play`/`pause` · ⏹ → `square` · ⏪/⏩ → `rewind`/`fast-forward` · `A⟨`/`⟩B` → `arrow-left-to-line`/`arrow-right-to-line` · 🔁 → `repeat-2` · (neteja el loop) → `x` · 🔍−/🔍+ → `zoom-out`/`zoom-in` · ⛶ → `maximize` · ⊙ → `focus` · 🔇 → `volume-x` · 🥁 → `metronome` · 🎯 → `target` · 📍 → `map-pin` · 🧭 → `compass` · (Desfer/Refer) → `undo-2`/`redo-2` · 🎵/🎼 (Editor) → `music`/`piano`.
 

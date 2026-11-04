@@ -237,6 +237,11 @@ TIPUS = {
     "7#5b9": ("augmented-seventh", ((9, -1, "alter"),)),
     "7#5#9": ("augmented-seventh", ((9, 1, "alter"),)),
     "-7b5b9": ("half-diminished", ((9, -1, "alter"),)),
+    # «alt» no és un grau: es desplega en les tensions alterades que el
+    # defineixen (b9/#9/#5, com la referència de la casa). Així l'àudio i
+    # MusicXML no perden les alteracions.
+    "7alt": ("dominant", ((9, -1, "alter"), (9, 1, "alter"),
+                          (5, 1, "alter"))),
 }
 
 _RE_GRAU = re.compile(r"(add|no|#|b)?(\d+)")
@@ -391,12 +396,25 @@ TAULA_TIPUS = (
     ("maj7(13)", "Maj7add13", "maj7(13)", "1,3,5,7,13"),
     ("maj7(9,13)", "Maj7add9add13", "maj7(9,13)", "1,3,5,7,9,13"),
     ("-9+7", "-9+7", "-9(maj7)", "1,b3,5,7,9"),
+    # ── Alterats amb 11 i 13 (combinacions de la referència + extres) ─────
+    ("7b9#11", "7b9#11", "", "1,3,5,b7,b9,#11"),
+    ("7#9#11", "7#9#11", "", "1,3,5,b7,#9,#11"),
+    ("7b9b13", "7b9b13", "", "1,3,5,b7,b9,b13"),
+    ("7b5b13", "7b5b13", "", "1,3,b5,b7,b13"),
+    ("7#5b13", "7#5b13", "", "1,3,#5,b7,b13"),
+    ("9b13", "9b13", "", "1,3,5,b7,9,b13"),
+    ("13b5", "13b5", "", "1,3,b5,b7,9,13"),
+    ("13#5", "13#5", "", "1,3,#5,b7,9,13"),
+    ("13b5#9", "13b5#9", "", "1,3,b5,b7,#9,13"),
+    ("13#5b9", "13#5b9", "", "1,3,#5,b7,b9,13"),
+    ("13b9#11", "13b9#11", "", "1,3,5,b7,b9,#11,13"),
+    ("13#9#11", "13#9#11", "", "1,3,5,b7,#9,#11,13"),
     # ── Extres (fora de la referència «acords i tensions») ────────────────
     ("no3", "no3", "", "1,5"),
     ("no5", "no5", "", "1,3"),
     ("add6", "add6", "", "1,3,5,6"),
     ("add11", "add11", "", "1,3,5,11"),
-    ("7alt", "7alt", "alt", "1,3,b7,+alt"),
+    ("7alt", "7alt", "alt", "1,3,b7,b9,#9,#5"),
 )
 
 

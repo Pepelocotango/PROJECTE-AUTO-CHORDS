@@ -185,7 +185,7 @@ class TestNotes(unittest.TestCase):
         self.assertEqual(A.notes_del_tipus("H", "1,3,5"), [])
 
     def test_graus_no_numerics_s_ignoren(self):
-        """`7alt` porta «+alt» → s'ignora i queden 1,3,b7."""
+        """Els trossos que no són graus (p. ex. «+alt») s'ignoren."""
         self.assertEqual(A.notes_del_tipus("C", "1,3,b7,+alt"), [48, 52, 58])
 
     def test_no_surt_del_rang(self):
@@ -1989,10 +1989,16 @@ class HarmonyTests(unittest.TestCase):
         self.assertIn("<root-alter>2</root-alter>", w)
         self.assertIn("<bass-alter>-2</bass-alter>", w)
 
-    def test_qualitat_no_estandard_conserva_el_text(self):
-        """`C7alt`: el `kind` base + el símbol sencer al `text` (no es perd)."""
+    def test_7alt_desplega_les_alteracions(self):
+        """`C7alt` ja no és text: genera els `<degree>` de b9/#9/#5."""
         w = partitura.harmony_xml("C7alt")
-        self.assertIn("<kind text=\"7alt\">dominant</kind>", w)
+        self.assertIn("<kind>dominant</kind>", w)
+        self.assertNotIn('text="7alt"', w)
+        self.assertIn("<degree-value>9</degree-value>", w)
+        self.assertIn("<degree-alter>-1</degree-alter>", w)
+        self.assertIn("<degree-alter>1</degree-alter>", w)
+        self.assertIn("<degree-value>5</degree-value>", w)
+        self.assertIn("<degree-type>alter</degree-type>", w)
 
     def test_no_grau(self):
         """`noN` (sense la 5a, etc.) → `<degree-type>subtract</degree-type>`."""
@@ -6846,11 +6852,51 @@ class TestGraus(unittest.TestCase):
             self.assertEqual(xifrat.normalitza_xifrat(brut), net, brut)
 
     def test_resta_qualitat(self):
-        """El tros no convertible (p. ex. `alt`) es conserva per al `text`."""
-        self.assertEqual(xifrat.resta_qualitat("7alt"), "alt")
+        """El tros no convertible (p. ex. `foo`) es conserva per al `text`."""
+        self.assertEqual(xifrat.resta_qualitat("7alt"), "")   # → `<degree>`
         self.assertEqual(xifrat.resta_qualitat("7#11"), "")   # → `<degree>`
         self.assertEqual(xifrat.resta_qualitat("Maj7"), "")
+        self.assertEqual(xifrat.resta_qualitat("7xyz"), "xyz")
         self.assertEqual(xifrat.resta_qualitat("xyz"), "xyz")
+
+    def test_7alt_te_graus_explicits(self):
+        """`7alt` = b9/#9/#5 (referència de la casa), no un text opac."""
+        k, g = xifrat.kind_i_graus("7alt")
+        self.assertEqual(k, "dominant")
+        self.assertEqual(list(g), [(9, -1, "alter"), (9, 1, "alter"),
+                                   (5, 1, "alter")])
+
+    def test_alterats_amb_11_i_13(self):
+        """Les variants noves d'11/13 es resolen amb `<degree>` (no text)."""
+        for xif, kind, gr in [
+                ("C7b9#11", "dominant",
+                 [(9, -1, "alter"), (11, 1, "alter")]),
+                ("C7#9#11", "dominant",
+                 [(9, 1, "alter"), (11, 1, "alter")]),
+                ("C7b9b13", "dominant",
+                 [(9, -1, "alter"), (13, -1, "alter")]),
+                ("C7b5b13", "dominant",
+                 [(5, -1, "alter"), (13, -1, "alter")]),
+                ("C7#5b13", "augmented-seventh",
+                 [(13, -1, "alter")]),
+                ("C9b13", "dominant-ninth",
+                 [(13, -1, "alter")]),
+                ("C13b5", "dominant-13th",
+                 [(5, -1, "alter")]),
+                ("C13#5", "dominant-13th",
+                 [(5, 1, "alter")]),
+                ("C13b5#9", "dominant-13th",
+                 [(5, -1, "alter"), (9, 1, "alter")]),
+                ("C13#5b9", "dominant-13th",
+                 [(5, 1, "alter"), (9, -1, "alter")]),
+                ("C13b9#11", "dominant-13th",
+                 [(9, -1, "alter"), (11, 1, "alter")]),
+                ("C13#9#11", "dominant-13th",
+                 [(9, 1, "alter"), (11, 1, "alter")])]:
+            q = xifrat.normalitza_xifrat(xif)[1:]
+            k, g = xifrat.kind_i_graus(q)
+            self.assertEqual(k, kind, f"{xif}: kind")
+            self.assertEqual(list(g), [tuple(x) for x in gr], f"{xif}: graus")
 
     def test_paraules_i_parentesis(self):
         """`major`/`minor` senceres i els graus entre parèntesis.

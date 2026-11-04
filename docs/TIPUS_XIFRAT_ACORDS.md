@@ -18,7 +18,7 @@ llista → el xifrat canònic va a la casella **«Nom»** de l'editor (només
 l'omple; tu prems *Aplica*). Sense arrel, s'hi escriu només el tipus
 (`Maj7`) i tu l'acabes.
 
-La llista surt de **`xifrat.TAULA_TIPUS`** (80 files, de menys a més complex,
+La llista surt de **`xifrat.TAULA_TIPUS`** (92 files, de menys a més complex,
 amb els **alternatius** i els **graus** de cada tipus). Maqueta aprovada:
 `archive/PANELL_TIPUS_ACORD_mockup.svg` / `.png`. El botó **▶** (només icona; ja **actiu**)
 sent l'acord amb el **timbre** triat al **desplegable** del costat (**8 presets de
@@ -139,6 +139,29 @@ Columnes: **Tipus** (forma canònica) · **Variants acceptades** · **Graus**
 
 ---
 
+## Ampliació — alterats amb 11 i 13 (fora del PDF)
+
+Aquestes combinacions completen la família dels dominants alterats amb les
+tensions d'11 i 13. Són extres respecte del PDF «acords i tensions», però el
+motor ja les resol amb `<degree>` (àudio i MusicXML).
+
+| Tipus | Variants acceptades | Graus | `<kind>` |
+|---|---|---|---|
+| `C7b9#11` | `C7(b9,#11)` `C7b9#11` | 1 3 5 b7 b9 #11 | `dominant` + `(9,-1)` `(11,+1)` |
+| `C7#9#11` | `C7(#9,#11)` `C7#9#11` | 1 3 5 b7 #9 #11 | `dominant` + `(9,+1)` `(11,+1)` |
+| `C7b9b13` | `C7(b9,b13)` `C7b9b13` | 1 3 5 b7 b9 b13 | `dominant` + `(9,-1)` `(13,-1)` |
+| `C7b5b13` | `C7(b5,b13)` `C7b5b13` | 1 3 b5 b7 b13 | `dominant` + `(5,-1)` `(13,-1)` |
+| `C7#5b13` | `C7(#5,b13)` `C7#5b13` | 1 3 #5 b7 b13 | `augmented-seventh` + `(13,-1)` |
+| `C9b13` | `C9(b13)` `C9b13` | 1 3 5 b7 9 b13 | `dominant-ninth` + `(13,-1)` |
+| `C13b5` | `C13(b5)` `C13b5` | 1 3 b5 b7 9 13 | `dominant-13th` + `(5,-1)` |
+| `C13#5` | `C13(#5)` `C13#5` | 1 3 #5 b7 9 13 | `dominant-13th` + `(5,+1)` |
+| `C13b5#9` | `C13(b5,#9)` `C13b5#9` | 1 3 b5 b7 #9 13 | `dominant-13th` + `(5,-1)` `(9,+1)` |
+| `C13#5b9` | `C13(#5,b9)` `C13#5b9` | 1 3 #5 b7 b9 13 | `dominant-13th` + `(5,+1)` `(9,-1)` |
+| `C13b9#11` | `C13(b9,#11)` `C13b9#11` | 1 3 5 b7 b9 #11 13 | `dominant-13th` + `(9,-1)` `(11,+1)` |
+| `C13#9#11` | `C13(#9,#11)` `C13#9#11` | 1 3 5 b7 #9 #11 13 | `dominant-13th` + `(9,+1)` `(11,+1)` |
+
+---
+
 ## Extres (no són a la referència «acords i tensions»)
 
 | Tipus | Variants acceptades | Què és | `<kind>` / tractament |
@@ -153,7 +176,7 @@ Columnes: **Tipus** (forma canònica) · **Variants acceptades** · **Graus**
 | … | qualsevol `noN` | N ∈ 1–13 | `(N,0,subtract)` |
 | … | qualsevol `addN` | N ∈ 1–13 | `(N,0,add)` |
 | … | qualsevol `#N` / `bN` | N ∈ 1–13 | `(N,±1,alter)` |
-| `C7alt` | `C7alt` | dominant alterat | `dominant` + `text="7alt"` (símbol sencer) |
+| `C7alt` | `C7alt` | dominant alterat: **b9, #9 i #5** | `dominant` + `(9,-1)` `(9,+1)` `(5,+1)` |
 | `C##`/`Cbb` | `C##` `Cx` (♯♯) · `Cbb` (♭♭) | **dobles alteracions** de l'arrel | `<root-alter>±2</root-alter>` |
 | `C/E` | `C/E` `A7/G` `A-7/G` `C6/9/G` | **acord amb baix** | `<bass>` (i la `/` → `_` al nom de fitxer) |
 | `N` | `N` `NC` `N.C.` | **sense acord** | *(no s'escriu cap `<harmony>`)* |
