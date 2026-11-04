@@ -3345,12 +3345,13 @@ class Finestra(QMainWindow):
             return None
         return (max(0.0, a), b)
 
-    def _talla_i_offset(self, t):
+    def _talla_i_offset(self, t, primer_a_compas=False):
         """Offset del compàs 1 al cursor + tall del carril de tempo (1 desfer).
 
         El **clip de tempo** nou (si el cursor no era ja una frontera) arrenca
-        exactament a `t`. Retorna `(trams, idx)` amb l'índex del clip que
-        comença a `t`, o `None` si no hi ha visor.
+        exactament a `t`. Si `primer_a_compas`, el pre-roll es recalcula com
+        un compàs sencer amb el BPM més pròxim al clip musical següent.
+        Retorna `(trams, idx)` o `None` si no hi ha visor.
         """
         vr = getattr(self, "visor_ref", None)
         if vr is None:
@@ -3358,6 +3359,11 @@ class Finestra(QMainWindow):
         durada = vr._durada_wav()
         t = max(0.0, min(float(t), durada))
         nous = tempo_map.parteix_trams_a(list(vr.tempo_trams or []), t, durada)
+        if primer_a_compas:
+            # El primer clip és el pre-roll: en fixar el compàs 1, ha de
+            # quedar com un compàs sencer amb el BPM més pròxim possible al
+            # clip musical següent (p. ex. 2/4 en un pre-roll curt).
+            nous = tempo_map.ajusta_primer_clip_a_compas(nous, durada, t)
         vr._undo_marca()
         vr.offset = t
         vr.aplica_tempo_trams(nous)
@@ -3389,7 +3395,7 @@ class Finestra(QMainWindow):
                        "alinear-hi.")
             return
         cb_original = self._secs_a_cb(t)     # ABANS de moure l'offset
-        res = self._talla_i_offset(t)
+        res = self._talla_i_offset(t, primer_a_compas=True)
         if res is None:
             return
         _nous, idx = res
@@ -3400,9 +3406,10 @@ class Finestra(QMainWindow):
         self.registra(f"Compàs 1 a {t:.3f}s · clip de tempo {idx} des de "
                       f"{t:.3f}s = compàs 1.1 (graella original "
                       f"{cb_original})")
+        # L'offset és part del document (`tempo.offset`), no del CSV de
+        # mapa. Cal desar-lo immediatament perquè reobrir no el perda.
+        self._desa_meta_silencios()
         if len(res[0]) > 2:
-            # El tall és LLIURE (no busca línia de compàs): amb trams
-            # interiors, les fronteres poden quedar fora de compàs.
             self.registra("Atenció: el mapa té trams interiors — comprova "
                           "que les fronteres caiguen en línia de compàs "
                           "(o passa l'Anàlisi guiat).")

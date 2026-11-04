@@ -87,7 +87,7 @@ DEFECTES = {
 
 # Valors per defecte de l'acció separada «Analitza BPM». No formen part del
 # diàleg d'anàlisi d'acords/estructura: són una acció independent.
-BEATS_DEFECTES = {"motor": "nostre", "sensibilitat": 50,
+BEATS_DEFECTES = {"motor": "qm", "sensibilitat": 50,
                   "mode": "beats", "aplica_bpm": True}
 
 
@@ -1505,7 +1505,7 @@ class DialegAnalitzaBPM(QDialog):
         self.cb_motor = QComboBox()
         self.cb_motor.addItem("Nostre (tempo.py)", "nostre")
         self.cb_motor.addItem("Queen Mary (qm-barbeattracker)", "qm")
-        i = self.cb_motor.findData(d.get("motor", "nostre"))
+        i = self.cb_motor.findData(d.get("motor", "qm"))
         self.cb_motor.setCurrentIndex(i if i >= 0 else 0)
         self.cb_motor.setToolTip(
             "Nostre: onsets + DP d'Ellis. Queen Mary: bar/beat tracker "

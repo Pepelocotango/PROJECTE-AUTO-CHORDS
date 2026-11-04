@@ -6,6 +6,11 @@
 > **«Exporta àudio…»** desa la còpia de treball amb FFmpeg a un fitxer nou.
 > Continuen pendents la restauració d'una còpia des de la GUI i la validació
 > funcional dels 3 paquets.
+>
+> **PENDENT EXPLÍCIT (2026-11-04): l'edició automàtica/directa de la WAV per
+> completar el pre-roll o el primer compàs no està implementada i no s'ha
+> d'implementar en esta fase.** L'edició manual de les nanses que ja existix
+> queda congelada: no s'hi han d'introduir canvis que trenquen el flux actual.
 > Aquest document descriu l'abast acordat. No canvia les regles canòniques de
 > [`REGLES_DE_LA_APP.md`](REGLES_DE_LA_APP.md).
 
@@ -35,9 +40,12 @@ flux fàcil d'entendre —importar, veure la forma d'ona, editar, desfer i expor
    triat, arrodonit al fotograma més pròxim; no es mou per buscar un pas per
    zero. S'aplica un fade d'entrada/eixida de **4 ms** a cada nova vora entre
    àudio i silenci per evitar clics. **Implementat i cobert amb proves.**
-4. **Ajustar compassos si l'usuari ho demana.** La proposta d'afegir silenci
-   automàtic per completar compassos es mostra abans d'aplicar-la i necessita
-   confirmació explícita.
+4. **Ajustar compassos si l'usuari ho demana — PENDENT.** La proposta
+   d'afegir silenci automàtic per completar el primer compàs o el pre-roll
+   queda per a més endavant. No està implementada hui. Quan es faça, haurà de
+   mostrar el temps de silenci proposat abans d'aplicar-lo i necessitar
+   confirmació explícita; mentrestant, el codi actual no ha de tocar la WAV
+   per esta via.
 5. **Mantindre l'àudio i la música sincronitzats.** En retallar l'inici,
    s'elimina el que queda abans del tall i l'àudio restant, els acords, les
    seccions, els marcadors i el mapa musical es desplacen junts cap a zero.
@@ -120,6 +128,24 @@ flux fàcil d'entendre —importar, veure la forma d'ona, editar, desfer i expor
   d'encoders, atomicitat i protecció de la còpia de treball).
   Encara falta la **restauració d'una còpia des de la GUI** i les proves
   visuals de previsualització. La regla 6 i la resta del §13 continuen vigents.
+
+## Pendent explícit — edició automàtica de la WAV des del mapa
+
+> **No implementat. No modificar el flux actual d'edició manual.**
+
+- Cas: l'offset (compàs 1) cau massa a prop de l'inici perquè el primer clip
+  puga ser un compàs sencer amb el BPM/compàs adequat.
+- Comportament actual: `Compàs 1 aquí` parteix el mapa i recalcula el pre-roll
+  amb el millor compàs admissible; si no n'hi ha cap, **no afegix silenci** ni
+  modifica la WAV per completar-lo.
+- Proposta futura: oferir un diàleg amb el silenci necessari i, només amb
+  confirmació, inserir-lo amb l'eina d'edició existent i desplaçar de manera
+  atòmica tots els elements musicals.
+- Abans d'implementar-ho cal resoldre: conservació de rubato, tipus de
+  marcador, desplaçament dels beats QM, persistència exacta de l'offset i un
+  únic desfer.
+- **Restricció:** no s'ha de trencar res del flux actual de retall/afegit manual
+  de silenci, desfer/refer, backups ni exportació.
 
 ## Inspiració en Audacity
 

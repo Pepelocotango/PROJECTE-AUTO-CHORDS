@@ -55,6 +55,12 @@ class TestMotors(unittest.TestCase):
         self.assertEqual(res["beats"], [0.0, 0.5, 1.0])
         self.assertEqual(res["downbeats"], [])
 
+    def test_motor_per_defecte_es_qm(self):
+        with patch.object(beats, "_qm_temps", return_value=[0.1, 0.6]) as qm:
+            res = beats.detecta("x.wav", nomes_beats=True)
+        self.assertEqual(res["motor"], "qm")
+        self.assertIn("qm-tempotracker:beats", qm.call_args.args[0])
+
     def test_qm_nomes_beats_usa_tempotracker(self):
         with patch.object(beats, "_qm_temps", return_value=[0.1, 0.6]) as qm:
             res = beats.detecta("x.wav", motor="qm", nomes_beats=True)

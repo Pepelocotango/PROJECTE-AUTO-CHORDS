@@ -408,6 +408,15 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
   afectats es recalculen amb la prioritat BPM → compàs.
 - La fi del primer pot caure **exactament** en el compàs 1 (pre-roll pur); si el
   primer tram no té cap compàs, moure'n la fi **mou el compàs 1** (offset).
+- **Només la frontera 0→1 és pre-roll.** Si el primer clip no té compàs, no
+  s'ha de confondre amb les fronteres 2–3, 3–4…: eixes són fronteres interiors
+  normals i s'editen amb `mou_frontera_retempo`. El test
+  `test_es_frontera_preroll_nomes_es_la_primera` blinda este cas.
+- En fixar l’offset amb **Compàs 1 aquí**, el clip de pre-roll es recalcula com
+  **un compàs sencer** triant el compàs admissible que deixa el BPM més pròxim
+  al primer clip de música. Exemple real: pre-roll de `0,742667 s` i segon clip
+  a `147,056 BPM` → `2/4` a `161,58 BPM`. L’offset es desa immediatament al
+  `.acproj`.
 - El gest és **local**: els **marcadors humans** lligats a la frontera **viatgen
   amb ella** (i s'esborren amb ella), i el clip d'estructura creat en eixe punt la
   seguix per coincidència de temps (±5 ms) fins que s'edite a mà.
@@ -473,6 +482,11 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
 > importació, backups, retall/afegit als extrems, sincronització del model,
 > desfer/refer i **exportació d'àudio amb FFmpeg**. La restauració d'una còpia
 > des de la GUI i les proves visuals continuen pendents.
+>
+> **Pendent explícit (2026-11-04):** l'edició automàtica/directa de la WAV per
+> completar el pre-roll o el primer compàs **no està implementada**. No s'ha
+> d'afegir silenci automàticament des de `Compàs 1 aquí` ni modificar el flux
+> manual de nanses mentre no es decidisca esta funcionalitat.
 
 - L'edició afecta només la **còpia WAV de treball** dins del projecte; l'original
   importat es conserva. Els WAVs silenciosos generats per als acords/seccions no
@@ -501,7 +515,8 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
 - Cada operació mostra una previsualització durant l'arrossegament i s'aplica en
   deixar anar; àudio i model són **atòmics** i una sola acció de desfer/refer.
   L'ajust a línies de compàs és commutable; la proposta automàtica de silenci
-  per completar compassos necessita confirmació. El tall es fa al punt exacte
+  per completar compassos queda **pendent** i, quan existisca, necessitarà
+  confirmació. El tall es fa al punt exacte
   triat, arrodonit al fotograma més pròxim; no es mou a un pas per zero. Cada
   nova vora entre àudio i silenci rep un fade curt d'entrada o eixida de **4 ms**
   per reduir clics. El crossfade entre dos clips d'àudio queda fora de l'abast

@@ -161,7 +161,7 @@ def _detecta_qm(wav, log, sensibilitat, bpb, bpm_hint,
     }
 
 
-def detecta(wav, motor="nostre", sensibilitat=50.0, bpb=4, den=4,
+def detecta(wav, motor="qm", sensibilitat=50.0, bpb=4, den=4,
             bpm_hint=None, bpm_min=None, bpm_max=None, preferit=None,
             log=None, nomes_beats=False):
     """Detecta BPM, beats i downbeats.
@@ -170,7 +170,7 @@ def detecta(wav, motor="nostre", sensibilitat=50.0, bpb=4, den=4,
     `sensibilitat` i el paràmetre intern aplicat. Els temps són segons.
     """
     log = log or (lambda *a: None)
-    motor = str(motor or "nostre")
+    motor = str(motor or "qm")
     if motor not in MOTORS:
         raise ValueError(f"motor de beats desconegut: {motor!r}")
     sens = _limita_sensibilitat(sensibilitat)

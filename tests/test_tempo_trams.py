@@ -383,6 +383,18 @@ class RetempoTests(unittest.TestCase):
         # La dreta conserva el BPM; no es recalcula per a quadrar compassos.
         self.assertAlmostEqual(out[1][2], 120.858, places=3)
 
+    def test_es_frontera_preroll_nomes_es_la_primera(self):
+        trams = [(0.0, 0.742667, 161.579820, 2, 4),
+                 (0.742667, 4.107875, 142.636057, 4, 4),
+                 (4.107875, 7.380250, 146.682455, 4, 4),
+                 (7.380250, 30.0, 147.056000, 4, 4)]
+        self.assertTrue(tempo_map.es_frontera_preroll(
+            trams, 1, 0.742667))
+        self.assertFalse(tempo_map.es_frontera_preroll(
+            trams, 2, 0.742667))
+        self.assertFalse(tempo_map.es_frontera_preroll(
+            trams, 3, 0.742667))
+
     def test_preroll_zero_compassos_es_el_compas_1(self):
         # Cas real (Get Lucky, 22-10): compàs 1 a 0,036 s i el primer tram
         # sense cap compàs. Arrossegar eixa frontera = moure el compàs 1; el

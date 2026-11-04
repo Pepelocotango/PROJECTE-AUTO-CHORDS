@@ -29,6 +29,15 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - L’ajust prioritza **conservar el BPM** i canviar el compàs (`4/4` → `4/8`…);
   només com a últim recurs s’ajusta el BPM a un valor proper, sense anar a la
   meitat ni al doble ni fora de 30–350.
+- **Analitza BPM** arranca per defecte amb el motor **Queen Mary**; «Nostre»
+  queda com a alternativa.
+- **Fronteres de tempo 2–3 i 3–4**: ja no es confonen amb el pre-roll; només
+  la frontera 0→1 es tracta com a «Compàs 1». Això permet moure lliurement
+  qualsevol frontera interior quan el Snap està desactivat.
+- En fixar l’offset, el **primer clip** es recalcula com un compàs sencer amb
+  el compàs admissible que deixa el BPM més pròxim al clip següent. Per al
+  pre-roll real de `0,742667 s`, tria `2/4` a `161,58 BPM` (no `4/4` a
+  `323 BPM`). L’offset es desa immediatament al `.acproj`.
 - El `+` seguix la graella del Snap: amb **Beats QM** usa el beat QM més
   pròxim; amb una altra graella usa BPM/compàs. Sense beats QM en mode QM no
   crea res i avisa. Els clips afectats es recalculen.
@@ -74,7 +83,7 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   També dona missatge quan un `+` no s’afig perquè ja hi ha un marcador a prop.
 - Nous `app/beats.py`, `DialegAnalitzaBPM`, `BeatLayer` i
   `docs/ANALISI_BPM.md`; tests de sensibilitat i motors.
-- Suite completa: **1.592 tests**, 1 omés; `pyflakes` net.
+- Suite completa: **1.599 tests**, 1 omés; `pyflakes` net.
 
 ### Optimitzat — backups d'àudio amb hardlinks (2026-11-04)
 - `Projecte.fes_backup` enllaça el WAV de treball amb **hardlink** quan el
@@ -629,6 +638,24 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - Docs: `REGLES_TEMPS_GRID.md` §4, §5 i §10 reescrita.
 
 ## [Unreleased]
+
+### Afegit — alterats amb 11 i 13 i `7alt` explícit (2026-11-04)
+- `TAULA_TIPUS` passa de **80 a 92 tipus** amb 12 variants noves d'11/13:
+  `7b9#11`, `7#9#11`, `7b9b13`, `7b5b13`, `7#5b13`, `9b13`, `13b5`,
+  `13#5`, `13b5#9`, `13#5b9`, `13b9#11` i `13#9#11`.
+- `7alt` deixa de ser un text opac (`+alt`): `TIPUS["7alt"]` el desplega a
+  **b9/#9/#5** (`dominant` + `<degree>`), i l'àudio i la partitura ja no el
+  toquen com un `7` sense alteracions.
+- Tests: +2 → **1.598 OK** (1 skip), `pyflakes` net.
+- Docs: `docs/TIPUS_XIFRAT_ACORDS.md`, `docs/NOTACIO_XIFRAT.md` i
+  `docs/ESQUEMA_UI.md` (92 tipus).
+
+### Documentat — edició automàtica de la WAV pendent (2026-11-04)
+- L’edició automàtica/directa de la WAV per completar el pre-roll o el primer
+  compàs queda **pendent**. No s’ha implementat cap inserció automàtica de
+  silenci ni cap canvi al flux manual de retall/afegit de les nanses.
+- Documentat a `docs/EDICIO_AUDIO.md`, `docs/REGLES_DE_LA_APP.md` §13.9,
+  `ROADMAP.md` i `AGENTS.md`.
 
 ### Canviat (2026-10-22, 11m) — regla: edició lliure dels talls de tempo
 - **Regla nova de l'operador**: tots els clips de tempo/compàs admeten moure

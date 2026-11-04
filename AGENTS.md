@@ -62,12 +62,15 @@ Fet recentment (2026-11-02/04):
   exigeixen compassos enters; han de contindre almenys un beat sencer de la
   graella del Snap (QM o BPM/compàs), inclòs `1/4`. El `+` sempre usa el beat
   QM més pròxim; l’ajust prioritza conservar el BPM i canviar el compàs. El botó
-  **«Ajusta BPM al compàs»** força compassos sencers de manera explícita. Docs:
+  **«Ajusta BPM al compàs»** força compassos sencers de manera explícita. En
+  fixar l’offset, el pre-roll es recalcula com un compàs sencer amb el compàs
+  que deixa el BPM més pròxim al clip següent. Docs:
   `docs/REGLES_DE_LA_APP.md` §13.4–13.6 i `docs/ANALISI_BPM.md`.
 - **Analitza BPM** (2026-11-04): acció separada de «Analitza» (que queda per
   a acords + estructura), motors **nostre**/QM, sensibilitat 0–100 i línies
-  sobre l'ona. El mode per defecte és **només beats** (sense BPM, compàs ni
-  downbeats); l'altre mode afig BPM/downbeats. L'acció **Ajusta la graella
+  sobre l'ona. El motor per defecte és **Queen Mary**; el mode per defecte és
+  **només beats** (sense BPM, compàs ni downbeats); l'altre mode afig
+  BPM/downbeats. L'acció **Ajusta la graella
   als beats QM** snapeja els marcadors de compàs i recalcula el BPM; `+`
   continua creant compàs + secció; els dubtes del snap es revisen en un
   diàleg no modal, el metre d’un tram s’edita amb **Compàs del marcador…** i
@@ -79,16 +82,22 @@ Fet recentment (2026-11-02/04):
 - **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
   unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
   projectes vells), visor/graella, accions de crear/convertir rubato i
-  exportació amb avís aproximat. Suite completa: **1.592 tests**, 1 omés.
+  exportació amb avís aproximat. Suite completa: **1.599 tests**, 1 omés.
 - **Anàlisi del projecte de prova** `AUTOCHORDS_01 POLICE_convertit`:
   model coherent i cobertura exacta; documentats els límits del pre-roll a la
   partitura, els noms d'acord crus de l'anàlisi i la precisió de l'offset.
 - **Unitat de BPM**: selector global negra / negra amb punt / corxera /
   blanca; el metrònom té una unitat de clic independent (auto/negra/negra amb punt/corxera/blanca). El model continua en negres/min i la unitat es desa al `.acproj`.
-  Suite: **1.592 tests**.
+  Suite: **1.599 tests**.
 - **Metrònom per denominador**: el beat és `4/den` negres; `6/8`, `9/8` i
   `12/8` cliquen corxeres, `2/2` blanques; accents de compàs i grup, modes
   Auto/Compàs/Temps/Grup i selector al transport.
+- **Regressió blindada (2026-11-04)**: només la frontera **0→1** és pre-roll.
+  Les fronteres 2–3 i 3–4 no s'han de tornar a enviar a
+  `mou_frontera_preroll`; tenen test propi.
+- **Pendent explícit (2026-11-04)**: l'edició automàtica/directa de la WAV per
+  completar el pre-roll o el primer compàs **no està implementada**; no s'ha
+  d'afegir silenci automàticament ni trencar el flux manual de nanses.
 - **Fase 6**: `Fitxer ▸ Exporta àudio…` amb diàleg natiu, perfils
   WAV/MP3/FLAC/AAC/OGG/Opus, detecció d'encoders en temps d'execució,
   escriptura atòmica i protecció de la còpia de treball.

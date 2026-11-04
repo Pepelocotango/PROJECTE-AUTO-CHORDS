@@ -1888,6 +1888,13 @@ class TestDialegTempoMapaEnSegons(_dialegs___Base):
             d.trams()
 
 
+class TestDialegAnalitzaBPM(_dialegs___Base):
+    def test_motor_per_defecte_es_qm(self):
+        d = dialegs.DialegAnalitzaBPM(None, opcions={})
+        self.assertEqual(d.cb_motor.currentData(), "qm")
+        self.assertEqual(d.valors()["motor"], "qm")
+
+
 class TestDialegTramTempo(_dialegs___Base):
     """`valors()` — el compàs s'escriu «num/den» o «num»."""
 
@@ -5555,6 +5562,25 @@ class TestSeleccioBpmICompas1(unittest.TestCase):
         vr.undo()
         self.assertAlmostEqual(float(vr.offset), 0.0, places=6)
         self.assertEqual(len(vr.tempo_trams), 1)
+
+    def test_compas1_recalcula_primer_clip_a_compas_sencer(self):
+        w = self.w
+        vr = w.visor_ref
+        durada = vr._durada_wav()
+        vr.bpm, vr.bpb, vr.beat_type = 147.055646, 4, 4
+        vr.offset = 0.0
+        vr.tempo_trams = [(0.0, durada, 147.055646, 4, 4)]
+        vr._actualitza_temps()
+        vr.pos = 0.742667
+        w._marca_compas_1()
+        self.assertAlmostEqual(float(vr.offset), 0.742667, places=6)
+        self.assertEqual(vr.tempo_trams[0][3:], (2, 4))
+        self.assertAlmostEqual(float(vr.tempo_trams[0][2]),
+                               2 * 60.0 / 0.742667, places=5)
+        self.assertAlmostEqual(float(vr.tempo_trams[1][2]),
+                               147.055646, places=6)
+        self.assertAlmostEqual(
+            float(w.projecte.dades["tempo"]["offset"]), 0.742667, places=6)
 
     def test_compas1_sobre_una_frontera_no_afegeix_tall(self):
         w = self.w

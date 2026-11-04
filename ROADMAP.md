@@ -73,9 +73,12 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Projectes** — autocontinguts (`.acproj` + `audio/` + CSVs + `backup/`),
   autosave i recuperació de sessió.
 - **Àudio** — importació convertida a l'única còpia WAV del projecte;
-  **retall/afegit de silenci als extrems** amb previsualització, snap, fades
-  de 4 ms i desfer/refer conjunt amb el model; **exportació** de la còpia
+  **retall/afegit manual de silenci als extrems** amb previsualització, snap,
+  fades de 4 ms i desfer/refer conjunt amb el model; **exportació** de la còpia
   editada (WAV 16/24/32, MP3, FLAC, AAC/M4A, OGG, Opus) amb FFmpeg.
+  **Pendent explícit:** l'edició automàtica/directa de la WAV per completar el
+  pre-roll o el primer compàs no s'implementa en esta fase i no ha de trencar
+  el flux manual actual.
 - **Export** — paquet de WAVs per DAW + **partitura** (MusicXML sempre;
   PDF/MSCZ si hi ha MuseScore) + `mapa_tempo/` + guia HTML.
 - **Multi-SO** — AppImage (Linux) · ZIP (Windows x64) · `.app`/DMG (macOS

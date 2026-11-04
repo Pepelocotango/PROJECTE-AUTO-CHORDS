@@ -964,6 +964,53 @@ def parteix_trams_a(trams, t, durada):
     return normalitza_trams(out, durada)
 
 
+def ajusta_primer_clip_a_compas(trams, durada, offset=0.0):
+    """Fa que el primer clip siga **un compàs sencer** en fixar l'offset.
+
+    El primer clip és el pre-roll (0 → offset). Quan l'operador marra el
+    compàs 1, es tria el compàs admissible que deixa el BPM més pròxim al
+    primer clip de música (el segon), evitant dobles/meitats. Així, per a un
+    pre-roll de 0.742667 s i un segon clip a 147.056 BPM, ix `2/4` a 161.58
+    BPM, no un `4/4` a 323 BPM.
+    """
+    durada = float(durada or 0.0)
+    nous = normalitza_trams(trams, durada)
+    if len(nous) < 2:
+        return nous
+    ini, fi, bpm_vell, num_vell, den_vell = nous[0]
+    if _es_lliure_tram(nous[0]) or _es_lliure_tram(nous[1]):
+        return nous
+    if abs(float(fi) - float(offset)) > 1e-3:
+        return nous
+    dt = float(fi) - float(ini)
+    ref = float(nous[1][2])
+    if dt <= TOL or ref <= 0:
+        return nous
+    candidats = []
+    for num in range(limits.NUM_MIN, limits.NUM_MAX + 1):
+        for den in limits.DENOMINADORS_ADMESOS:
+            bq = _bar_quarters(num, den)
+            bpm = bq * 60.0 / dt
+            if not (BPM_EDIT_MIN - TOL <= bpm <= BPM_EDIT_MAX + TOL):
+                continue
+            ratio = bpm / ref
+            if not (0.5 + 1e-9 < ratio < 2.0 - 1e-9):
+                continue
+            # A igualtat de BPM, preferix conservar el denominador i després
+            # el numerador més simple (2/4 abans que 4/8).
+            score = (abs(math.log(ratio)),
+                     abs(int(den) - int(den_vell)),
+                     abs(int(num) - int(num_vell)),
+                     int(num))
+            candidats.append((score, bpm, int(num), int(den)))
+    if not candidats:
+        return nous
+    _score, bpm, num, den = min(candidats)
+    out = list(nous)
+    out[0] = (float(ini), float(fi), float(bpm), int(num), int(den))
+    return out
+
+
 def trams_finestra_guia(trams, t_inici, bpm, num, den, durada, beats=16,
                        n_compassos=None):
     """Nou mapa després de CONFIRMAR una finestra de l'«Anàlisi guiat».
@@ -1503,7 +1550,10 @@ def es_frontera_preroll(trams, idx_frontera, offset=0.0):
     El primer tram no té cap compàs (regla §5): la seua fi és el compàs 1.
     """
     i = int(idx_frontera)
-    if not (0 < i < len(trams or ())):
+    # Només la frontera 0→1 és el pre-roll. Abans qualsevol frontera amb un
+    # primer tram sense cap compàs es tractava com a «Compàs 1», i per això
+    # les fronteres 2–3 i 3–4 es rebutjaven com si foren l'offset.
+    if i != 1 or not (0 < i < len(trams or ())):
         return False
     off = float(offset or 0.0)
     if off <= float(trams[0][0]) + TOL or _es_lliure_tram(trams[0]):
@@ -1523,7 +1573,7 @@ def mou_frontera_preroll(trams, idx_frontera, nou_offset, durada, offset=0.0):
     durada = float(durada or 0.0)
     nous = normalitza_trams(trams, durada)
     i = int(idx_frontera)
-    if not (0 < i < len(nous)):
+    if i != 1 or not (0 < i < len(nous)):
         raise ValueError("No hi ha cap frontera de pre-roll per a moure")
     off = float(nou_offset)
     ini_a = float(nous[0][0])

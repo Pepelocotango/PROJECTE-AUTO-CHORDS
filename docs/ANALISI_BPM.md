@@ -43,6 +43,9 @@ com a BPM ni com a graella.
 | **Nostre** | `app/tempo.py`: envolupant d'onsets + DP d'Ellis | `tightness`: 100 (estable) → 10 (flexible) |
 | **Queen Mary** | `qm-barbeattracker` via `vamp_host_local` | `alpha`: 0.99 (estable) → 0.10 (flexible) |
 
+El motor per defecte del diàleg és **Queen Mary**. «Nostre» queda disponible
+com a alternativa per a comparar o quan QM no done resultat.
+
 El valor de sensibilitat és una **comoditat d'usuari** 0–100, no una mesura
 comparable entre motors. Cada motor té la seua escala interna:
 

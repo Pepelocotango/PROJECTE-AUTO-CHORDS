@@ -316,6 +316,18 @@ class TestCompassosEnters(unittest.TestCase):
             tm.parteix_a_compas(trams, 0, 1.0, 6.0)
 
 
+class TestAjustaPrimerClipACompas(unittest.TestCase):
+    def test_pre_roll_curt_tria_2_4(self):
+        d = 230.753854
+        t = 0.742667
+        trams = tm.parteix_trams_a([(0.0, d, 147.055646, 4, 4)], t, d)
+        out = tm.ajusta_primer_clip_a_compas(trams, d, t)
+        self.assertEqual(out[0][3:], (2, 4))
+        self.assertAlmostEqual(out[0][2], 2 * 60.0 / t, places=5)
+        self.assertAlmostEqual(out[1][2], 147.055646, places=6)
+        self.assertAlmostEqual(out[0][1], t, places=6)
+
+
 class TestCompasUnQuart(unittest.TestCase):
     """El compàs 1/4 ha de ser vàlid en totes les capes pures."""
 
