@@ -39,6 +39,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 - Tests de l'avaluador: **10**; suite completa: **1.541 tests**, 1 omés;
   `pyflakes` net.
 
+### Afegit — graella fixa de temps absolut i quantització BPM (2026-11-04)
+- Nova `TimeRulerLayer` sota l'ona amb temps absolut `hh:mm:ss`.
+- És independent de BPM, offset, compàs i rubato; només el zoom canvia la
+  resolució visual dels tics i les etiquetes.
+- La graella mètrica de dalt continua sent la de BPM/compàs.
+- Nou botó **BPM 0,1** i acció **Analitza ▸ Quantitza BPM a 1 decimal**:
+  arredoneix el BPM dels clips normals, conserva barres enteres, recalcula
+  finals i desplaça els inicis posteriors. Els rubatos no es quantitzen.
+- Tests de format `hh:mm:ss`, pas per zoom, presència al timeline i
+  quantització BPM.
+
 ### Afegit — unitat de BPM (negra amb punt, corxera, blanca) (2026-11-03)
 - Selector global de **unitat del BPM** a la barra: `Negra` (per defecte),
   `Negra amb punt`, `Corxera` i `Blanca`.
@@ -64,7 +75,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   `<sound tempo="82.5">` perquè MuseScore mostre la notació del PDF i mantenir
   la reproducció correcta.
 - Tests de conversió, diàleg, transport, regle, persistència i MusicXML.
-- Suite completa: **1.548 tests**, 1 omés; `pyflakes` net.
+- Suite completa: **1.553 tests**, 1 omés; `pyflakes` net.
 
 ### Corregit — metrònom amb denominador i compassos compostos (2026-11-03)
 - El metrònom ja no clica sempre negres: el beat és `4/den` negres. `6/8`,

@@ -14,6 +14,7 @@ de `timeline.py` per alleugerir-lo:
 
 Tot en català. Sense dependències noves.
 """
+import math
 from typing import Optional
 
 import numpy as np
@@ -393,6 +394,82 @@ class RulerLayer(QGraphicsItem):
                        QColor(theme.TL_WAVE_MID))
             p.setPen(QPen(QColor(RULER_TEXT), 1))
             p.drawText(QPointF(xb + 6.0, self._height - 7), etq)
+
+
+# -----------------------------------------------------------------------------
+# TimeRulerLayer — regle fix de hh:mm:ss a sota de l'ona
+# -----------------------------------------------------------------------------
+class TimeRulerLayer(QGraphicsItem):
+    """Regle/grid de TEMPS ABSOLUT (segons), independent de BPM i compàs.
+
+    És la segona graella de la UI: les seues posicions són sempre `t` en
+    segons des de l'inici del fitxer; el tempo, l'offset, els rubatos i el
+    compàs no el mouen. Només canvia la seua resolució visual amb el zoom.
+    """
+
+    _PASSOS = (1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600)
+
+    def __init__(self, height, pps, x_offset, view_left, view_right, top=0,
+                 parent=None):
+        super().__init__(parent)
+        self._height = int(height)
+        self._pps = float(pps)
+        self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
+        self._view_right = float(view_right)
+        self._top = float(top)
+        self.setZValue(-3)
+        self.setPos(self._x_offset, self._top)
+
+    def boundingRect(self):
+        return QRectF(0, 0, max(1.0, (self._view_right - self._view_left) *
+                                self._pps), self._height)
+
+    def update_geometry(self, pps, x_offset, view_left, view_right):
+        self._pps = float(pps)
+        self._x_offset = float(x_offset)
+        self._view_left = float(view_left)
+        self._view_right = float(view_right)
+        self.prepareGeometryChange()
+        self.setPos(self._x_offset, self._top)
+        self.update()
+
+    def _pas(self):
+        pps = max(float(self._pps), 1e-9)
+        for pas in self._PASSOS:
+            if pas * pps >= 90.0:
+                return pas
+        return self._PASSOS[-1]
+
+    @staticmethod
+    def format_hms(t):
+        t = max(0.0, float(t))
+        h = int(t // 3600)
+        m = int((t % 3600) // 60)
+        s = int(t % 60 + 1e-7)
+        return f"{h:02d}:{m:02d}:{s:02d}"
+
+    def paint(self, painter, option, widget=None):
+        p = painter
+        p.fillRect(self.boundingRect(), QColor(RULER_BG))
+        p.setPen(QPen(QColor(theme.TL_GRID_MEASURE), 1))
+        p.drawLine(QPointF(0, 0), QPointF(self.boundingRect().width(), 0))
+        pas = self._pas()
+        font = QFont("Sans Serif", 8)
+        p.setFont(font)
+        p.setPen(QPen(QColor(RULER_TEXT), 1))
+        i0 = int(math.ceil(self._view_left / pas))
+        i1 = int(math.floor(self._view_right / pas))
+        for i in range(i0, i1 + 1):
+            t = i * pas
+            if t < 0:
+                continue
+            x = (t - self._view_left) * self._pps
+            p.setPen(QPen(QColor(theme.TL_GRID_MEASURE), 1))
+            p.drawLine(QPointF(x, 0), QPointF(x, 5))
+            p.setPen(QPen(QColor(RULER_TEXT), 1))
+            p.drawText(QPointF(x + 3, self._height - 5),
+                       self.format_hms(t))
 
 
 # -----------------------------------------------------------------------------

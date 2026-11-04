@@ -88,7 +88,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Treball** (barra 1, fila 1) | `Obre àudio` → **Anàlisi guiat** (guia ràpida) → **＋ Marker** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) |
 | **Temps** (barra 1, fila 2) | BPM · **Unitat BPM** · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B |
 | **Accions** (barra 1, fila 3) | **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Obre la carpeta de sortida** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) |
-| **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup]** · **[unitat de clic]** · **[Quantitza]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
+| **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup]** · **[unitat de clic]** · **[Quantitza]** · **[BPM 0,1]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
 ### Menús
 
@@ -98,7 +98,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (F5) · **Analitza només els acords… (F6)** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
+| **Analitza** | Analitza l'àudio (F5) · **Analitza només els acords… (F6)** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · **Quantitza BPM a 1 decimal** · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Exporta àudio… (Fase 6)
@@ -240,6 +240,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | Ref | Nom al **codi** | Nom a la **UI** | Tipus |
 |-----|-----------------|-----------------|-------|
 | ① | `RulerLayer` / `self._ruler` | **regle de temps** | `QGraphicsItem` |
+| ①b | `TimeRulerLayer` / `self._time_ruler` | **graella fixa de temps absolut `hh:mm:ss`**, sota l'ona; no depén de BPM, offset ni rubato; el zoom només canvia la resolució | `QGraphicsItem` |
 | ② | `WaveformLayer` / `self._waveform` | **forma d'ona** | `QGraphicsPixmapItem` |
 | — | `self._audio_handles` / `self._audio_preview` | **nanses i previsualització** de retall/afegit als extrems; snap compartit amb el timeline | `QGraphicsRectItem` |
 | ③ | `TempoLayer` / `self._tempo_lane` | **pista de BPM/compàs** (trams de tempo; només en mode BPM · compàs) | `QGraphicsObject` |
@@ -386,6 +387,13 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 - Sense clics per sobre de **400 BPM** (`metronom.BPM_MAX`).
 
 ---
+
+### Graella fixa de temps
+
+A sota de l'ona hi ha una segona graella independent, en **temps absolut**
+(`hh:mm:ss`). Els seus tics són sempre segons des de l'inici del WAV; no es
+mouen amb el BPM, l'offset, els compassos ni els rubatos. Només el zoom canvia
+la resolució visual (1, 2, 5, 10, 15, 30 s…), no les posicions temporals.
 
 ## 5. Mides i constants (`app/timeline_base.py`)
 

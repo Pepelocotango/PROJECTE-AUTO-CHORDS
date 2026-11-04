@@ -48,8 +48,8 @@ from app.timeline_base import (   # noqa: E402,F401
     LANE_BG_B, LANE_H, LANE_SEC_TOP, LANE_TEMPO_H, LANE_TEMPO_TOP,
     LEFT_PAD, LOOP_GRAB_PX, MIN_GAP_S,
     MIN_SEC_LEN_S, PIXELS_PER_SECOND_DEFAULT, RIGHT_PAD, RULER_H,
-    SELECTION_COLOR, SNAP_MARCA_PX, TOTAL_H, WAVEFORM_H, fmt_pos, grid_levels,
-    loop_after_drag, snap_step, snap_time,
+    SELECTION_COLOR, SNAP_MARCA_PX, TIME_RULER_H, TIME_RULER_TOP, TOTAL_H,
+    WAVEFORM_H, fmt_pos, grid_levels, loop_after_drag, snap_step, snap_time,
 )
 from app import audio_edit  # noqa: E402
 from app import graella  # noqa: E402
@@ -63,7 +63,7 @@ from app import tempo_map  # noqa: E402  (pas de nudge = compàs sencer)
 # Es re-exporten per mantenir la compatibilitat (from app.timeline import ...).
 from app.timeline_layers import (   # noqa: E402,F401
     CursorLine, GridLayer, LaneBackground, RulerLayer, TempoLayer,
-    WaveformLayer,
+    TimeRulerLayer, WaveformLayer,
     MarcadorsLayer,
 )
 
@@ -72,8 +72,8 @@ from app.timeline_layers import (   # noqa: E402,F401
 # re-exports no es marquen com a imports no usats.
 __all__ = [
     "TimelineView", "ChordItem", "SectionItem", "RenameEditor",
-    "WaveformLayer", "GridLayer", "RulerLayer", "LaneBackground", "CursorLine",
-    "TempoLayer", "MarcadorsLayer",
+    "WaveformLayer", "GridLayer", "RulerLayer", "TimeRulerLayer",
+    "LaneBackground", "CursorLine", "TempoLayer", "MarcadorsLayer",
     "fmt_pos", "snap_time", "grid_levels", "CURSOR_COLOR",
     "CHORD_ACTIVE_FILL", "SELECTION_COLOR",
 ]
@@ -318,6 +318,12 @@ class TimelineView(QGraphicsView):
                                  self._view_left, self._view_right,
                                  self._tempo_fix, self._bpm, self._bpb, top=0)
         self._scene.addItem(self._ruler)
+        # Segona graella: TEMPS ABSOLUT hh:mm:ss, SOTA l'ona. No depén del
+        # tempo ni de l'offset; només canvia la resolució amb el zoom.
+        self._time_ruler = TimeRulerLayer(
+            TIME_RULER_H, self._pps, self._x_offset, self._view_left,
+            self._view_right, top=TIME_RULER_TOP)
+        self._scene.addItem(self._time_ruler)
 
         # pista de TEMPO i COMPÀS (blocs; només amb mapa variable)
         self._tempo_lane = TempoLayer(LANE_TEMPO_H, self._pps,
@@ -500,6 +506,8 @@ class TimelineView(QGraphicsView):
         # actualitza items
         self._ruler.update_geometry(self._pps, self._x_offset,
                                     self._view_left, self._view_right)
+        self._time_ruler.update_geometry(self._pps, self._x_offset,
+                                         self._view_left, self._view_right)
         self._grid.update_geometry(self._pps, self._x_offset,
                                    self._view_left, self._view_right)
         self._waveform.update_geometry(self._pps, self._x_offset,

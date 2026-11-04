@@ -3361,6 +3361,33 @@ class Visor(QMainWindow):
                  f"{len(trams)} trams · {len(ms)} marcadors")
         return True
 
+    def quantitza_bpm(self, decimals=1):
+        """Quantitza el BPM dels clips normals i re-encaixa les fronteres.
+
+        Els rubatos no es quantitzen; la seua finestra es pot desplaçar per
+        mantindre el mapa contigu. Una sola operació de desfer.
+        """
+        abans = [tuple(t) for t in (self.tempo_trams or [])]
+        if not abans:
+            self.avis_editor("Quantitza BPM: el mapa és buit.")
+            return False
+        try:
+            nous = mapa_tempo.quantitza_bpm(
+                self.tempo_trams, self._durada_wav(), decimals=decimals)
+        except ValueError as e:
+            self.avis_editor(f"Quantitza BPM: {e}")
+            return False
+        if [tuple(t) for t in nous] == abans:
+            self.log("Quantitza BPM: sense canvis")
+            return False
+        self._undo_marca()
+        ok = self.aplica_tempo_trams(nous, forcat=True)
+        self._undo_commit()
+        if ok:
+            self.log(f"Quantitza BPM: {len(nous)} tram(s) · "
+                     f"{int(decimals)} decimal(s)")
+        return bool(ok)
+
     def retempo_tram_detectat(self, idx, bpm_detectat):
         """«Detecta» sobre un tram seleccionat: BPM nou **sense ripple**.
 
@@ -3585,9 +3612,19 @@ class Visor(QMainWindow):
             try:
                 fi = tempo_map.repara_fronteres(nous, durada, offset)
             except ValueError:
-                self.avis_editor(f"{msg}: {e}")
-                return False
-            self.log(f"{msg}: fronteres imantades a la línia de compàs")
+                # El mapa heretat pot tindre una frontera antiga invàlida en
+                # un tram que esta operació no toca (p. ex. un pre-roll abans
+                # de l'offset). No bloquegem eliminar/fusionar per això: el
+                # gest de l'usuari s'aplica, però queda un avís visible i la
+                # frontera heretada continua pendent de reparar.
+                if not str(msg).lower().startswith(("elimina", "fusiona")):
+                    self.avis_editor(f"{msg}: {e}")
+                    return False
+                self.log(f"{msg}: mapa heretat amb una frontera invàlida "
+                         f"({e}); s'aplica el canvi i queda pendent de reparar")
+                fi = tempo_map.normalitza_trams(nous, durada)
+            else:
+                self.log(f"{msg}: fronteres imantades a la línia de compàs")
         if preserva_rubato:
             fi = self._preserva_rubato(self.tempo_trams or [], fi)
         # Estes operacions (elimina/fusiona) poden canviar el nombre de trams

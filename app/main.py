@@ -1193,6 +1193,8 @@ class Finestra(QMainWindow):
                     lambda: self._detecta_compas1())
         self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
         self._act(m, "Quantitza el model…", "", self._quantitza_ui)
+        self._act(m, "Quantitza BPM a 1 decimal", "",
+                  self._quantitza_bpm_ui)
         self._act(m, "Mapa de tempo i compàs…", "",
                   self._tempo_mapa_ui)
         self._act(m, "Marca el rang A–B com a rubato", "",
@@ -1297,6 +1299,26 @@ class Finestra(QMainWindow):
         self._on_loop_state(getattr(vr, "loop_on", False))
         self._actualitza_desti_accions()
         self._actualitza_metro_ui()
+
+    def _quantitza_bpm_ui(self):
+        """Quantitza només els clips normals de BPM a 1 decimal."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa_info("Quantitza BPM", "Obre un projecte primer.")
+            return False
+        if not getattr(vr, "tempo_fix", False):
+            self.avisa_info("Quantitza BPM",
+                            "Cal el mode BPM · compàs.")
+            return False
+        ok = bool(vr.quantitza_bpm(1))
+        if ok:
+            self._sincronitza_temps_del_visor()
+            self._missatge_info(
+                "BPM quantitzat a 1 decimal; els rubatos no s'han "
+                "quantitzat i les fronteres s'han reencaixat.")
+        else:
+            self._missatge_info("Quantitza BPM: sense canvis.")
+        return ok
 
     def _actualitza_desti_accions(self):
         vr = getattr(self, "visor_ref", None)
@@ -4321,6 +4343,15 @@ class Finestra(QMainWindow):
             "ni el cru; es pot desfer i refer.")
         self.b_quantitza.clicked.connect(self._quantitza_ui)
         bar.addWidget(self.b_quantitza)
+        self.b_quantitza_bpm = QPushButton("BPM 0,1")
+        self.b_quantitza_bpm.setObjectName("secundari")
+        self.b_quantitza_bpm.setMaximumWidth(86)
+        self.b_quantitza_bpm.setToolTip(
+            "Quantitza el BPM dels clips normals a 1 decimal i re-encaixa "
+            "les fronteres amb compassos enters. Els rubatos no es "
+            "quantitzen.")
+        self.b_quantitza_bpm.clicked.connect(self._quantitza_bpm_ui)
+        bar.addWidget(self.b_quantitza_bpm)
         # Graella configurable: interruptor de snap + divisió (habilita el nudge fi).
         self.tb_snap = boto("Snap", "Interruptor de snap (encaixar a la graella)",
                             self._canvia_snap, checkable=True)

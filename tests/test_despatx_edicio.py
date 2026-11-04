@@ -969,6 +969,27 @@ class TestMarcadorsTempoEnViu(_Base):
                                places=3)
         self.assertEqual(tuple(self.v.tempo_trams[2]), self.abans[1])
 
+    def test_quantitza_bpm_d_un_decimal(self):
+        d1 = 4 * 4 * 60.0 / 145.023
+        d2 = 4 * 4 * 60.0 / 143.984
+        d3 = 4 * 4 * 60.0 / 144.348
+        self.v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, d1, 145.023, "normal", "4/4"),
+            mapa_tempo.TramMapa(d1, d1 + d2, 143.984, "normal", "4/4"),
+            mapa_tempo.TramMapa(d1 + d2, d1 + d2 + d3, 144.348,
+                                "normal", "4/4"),
+        ]
+        self.v.bpm = 145.023
+        self.v._refresca_tempo_map()
+        self.v._undo_touch_base()
+        self.assertTrue(self.v.quantitza_bpm(1))
+        self.assertEqual([round(t.bpm, 1) for t in self.v.tempo_trams],
+                         [145.0, 144.0, 144.3])
+        self.assertAlmostEqual(self.v.tempo_trams[-1].fi, 30.0, places=6)
+        self.v.undo()
+        self.assertEqual([round(t.bpm, 3) for t in self.v.tempo_trams],
+                         [145.023, 143.984, 144.348])
+
     def test_marcador_amb_rubato_parteix_i_conserva_el_rubato(self):
         self.v.tempo_trams = [
             mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
@@ -1004,6 +1025,18 @@ class TestMarcadorsTempoEnViu(_Base):
         self.assertTrue(self.v._fusiona_tram(1, "seguent"))
         self.assertEqual(len(self.v.tempo_trams), 2)
         self.assertEqual(self.v.tempo_trams[0].tipus, "rubato")
+
+    def test_elimina_tram_amb_frontera_heretada_invalida(self):
+        self.v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 7.373843, 143.74, "normal", "7/4"),
+            mapa_tempo.TramMapa(7.373843, 13.186992, 144.5, "normal", "7/4"),
+            mapa_tempo.TramMapa(13.186992, 23.129480, 145.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(23.129480, 30.0, 156.253618, "normal", "4/4"),
+        ]
+        self.v.offset = 23.15
+        self.v._refresca_tempo_map()
+        self.assertTrue(self.v._elimina_tram(3))
+        self.assertEqual(len(self.v.tempo_trams), 3)
 
     def test_elimina_normal_amb_rubato_preserva_el_rubato(self):
         self.v.tempo_trams = [

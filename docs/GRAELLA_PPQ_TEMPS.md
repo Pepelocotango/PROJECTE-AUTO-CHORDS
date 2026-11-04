@@ -30,6 +30,9 @@ el BPM són "vistes" calculades a sobre.
   (compàs/temps/subdivisió) i les posicions surten de `TempoMap`; les llistes,
   l'editor i les columnes de compàs de l'ABC també.
 - Metrònom amb la mateixa graella (`app/metronom.py`, `beat = (4/den)*60/bpm`; `12/8` clica corxeres).
+- **Graella fixa de temps** (`TimeRulerLayer`): a sota de l'ona, en segons absoluts
+  (`hh:mm:ss`), independent de BPM/offset/rubato; el zoom només canvia la
+  resolució visual.
 - **Offset** = segon on cau el compàs 1; abans, la graella és **negativa**
   (count-in).
 - Export a Live: els noms `1-1-1_C.wav` es quantitzen a **1/32**

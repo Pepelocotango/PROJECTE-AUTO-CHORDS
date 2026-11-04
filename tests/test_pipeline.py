@@ -2942,6 +2942,16 @@ class TimelineConstraintTests(unittest.TestCase):
                       bpm_unit="negra_punt")
         self.assertEqual(r.mode_label(), "55 BPM \u00b7 12/8")
 
+    def test_time_ruler_es_fix_i_formata_hms(self):
+        from app.timeline_layers import TimeRulerLayer
+        r = TimeRulerLayer(20, 60.0, 0.0, 0.0, 30.0, top=196)
+        self.assertEqual(r.format_hms(0.0), "00:00:00")
+        self.assertEqual(r.format_hms(3661.2), "01:01:01")
+        self.assertEqual(r._pas(), 2)       # 60 px/s: cada 2 s
+        r.update_geometry(10.0, 0.0, 0.0, 30.0)
+        self.assertEqual(r._pas(), 10)      # 10 px/s: cada 10 s
+        self.assertEqual(r._top, 196)
+
     def test_ruler_paint_no_peta(self):
         """El paint del regle (amb l'indicador de mode) no ha de petar mai."""
         from PyQt5.QtGui import QImage, QPainter

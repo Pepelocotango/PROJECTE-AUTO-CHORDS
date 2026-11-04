@@ -215,6 +215,55 @@ def normalitza_trams_map(trams, durada, log=None, fusiona=False):
     return out, avisos
 
 
+def quantitza_bpm(trams, durada, decimals=1):
+    """Quantitza el BPM dels trams **normals** a `decimals` decimals.
+
+    Conserva el nombre enter de compassos de cada clip normal i recalcula el
+    seu fi; els inicis dels clips següents es desplacen en conseqüència. Els
+    rubatos **no es quantitzen**: conserven el BPM i la seqüència, però la seua
+    finestra es pot desplaçar perquè el mapa continue contigu. L'últim tram
+    acaba a `durada` (excepció permesa a l'últim final).
+    """
+    durada = float(durada or 0.0)
+    decimals = max(0, int(decimals))
+    net = [des_de_tupla(t) for t in (trams or ())]
+    if not net:
+        raise ValueError("El mapa de tempo/compàs és buit")
+    out = []
+    cursor = 0.0
+    for tr in net:
+        dur = max(0.0, float(tr.fi) - float(tr.ini))
+        if tr.tipus == "rubato":
+            fi = cursor + dur
+            out.append(TramMapa(cursor, fi, float(tr.bpm), "rubato",
+                                tr.compassos))
+            cursor = fi
+            continue
+        bq = float(tr.num) * 4.0 / float(tr.den)
+        if bq <= 0:
+            raise ValueError("Hi ha un compàs sense durada vàlida")
+        n = max(1, int(round(dur * float(tr.bpm) / (bq * 60.0))))
+        bpm = round(float(tr.bpm), decimals)
+        if bpm <= 0:
+            raise ValueError("Hi ha un BPM no vàlid")
+        fi = cursor + n * bq * 60.0 / bpm
+        out.append(TramMapa(cursor, fi, bpm, "normal",
+                            f"{int(tr.num)}/{int(tr.den)}"))
+        cursor = fi
+    if durada > 0:
+        last = out[-1]
+        if last.ini >= durada - 1e-6:
+            raise ValueError(
+                "La quantització deixa l'últim clip fora de la WAV; "
+                "reduïx el nombre de compassos o el BPM.")
+        # L'últim final pot ser parcial (excepció de la regla §13.4): la
+        # quantització no ha d'inventar un tram fora de la WAV.
+        if abs(last.fi - durada) > 1e-9:
+            out[-1] = TramMapa(last.ini, durada, last.bpm, last.tipus,
+                               last.compassos)
+    return out
+
+
 def desa_mapa_tempo(ruta, trams):
     """Escriu `mapa_tempo.csv` de manera atòmica.
 

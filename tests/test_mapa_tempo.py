@@ -142,3 +142,41 @@ class TestFitxer(unittest.TestCase):
 
 if __name__ == "__main__":      # pragma: no cover
     unittest.main()
+
+
+class TestQuantitzaBpm(unittest.TestCase):
+    def test_quantitza_tres_normals_a_un_decimal(self):
+        bq = 4.0
+        bpms = (145.023, 143.984, 144.348)
+        trams = []
+        ini = 0.0
+        for bpm in bpms:
+            fi = ini + 4 * bq * 60.0 / bpm
+            trams.append(M.TramMapa(ini, fi, bpm, "normal", "4/4"))
+            ini = fi
+        durada = ini
+        out = M.quantitza_bpm(trams, durada, decimals=1)
+        self.assertEqual([round(t.bpm, 1) for t in out],
+                         [145.0, 144.0, 144.3])
+        self.assertAlmostEqual(out[-1].fi, durada, places=9)
+        for t in out[:-1]:
+            self.assertAlmostEqual(
+                (t.fi - t.ini) * t.bpm / (4 * 60.0), 4.0, places=6)
+
+    def test_rubato_no_es_quantitza_pero_es_desplaça(self):
+        bq = 4.0
+        d1 = 4 * bq * 60.0 / 145.023
+        dur_rub = 2.5
+        d2 = 4 * bq * 60.0 / 143.984
+        trams = [
+            M.TramMapa(0.0, d1, 145.023, "normal", "4/4"),
+            M.TramMapa(d1, d1 + dur_rub, 100.0, "rubato", "4/4*2"),
+            M.TramMapa(d1 + dur_rub, d1 + dur_rub + d2, 143.984,
+                       "normal", "4/4"),
+        ]
+        out = M.quantitza_bpm(trams, trams[-1].fi, decimals=1)
+        self.assertEqual(out[0].bpm, 145.0)
+        self.assertEqual(out[1].tipus, "rubato")
+        self.assertAlmostEqual(out[1].fi - out[1].ini, dur_rub, places=9)
+        self.assertAlmostEqual(out[1].ini, out[0].fi, places=9)
+        self.assertEqual(out[2].bpm, 144.0)
