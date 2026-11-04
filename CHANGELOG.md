@@ -43,12 +43,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   desactiven; si un canvi de compàs les invalida, es torna a `auto` amb avís.
 - El bloc **BPM / Unitat / Compàs / TAP** s'ha separat en una fila pròpia:
   abans superava l'amplada de la barra i `QToolBar` l'amagava a l'overflow.
+- Corregit el `+` en mapes amb rubato: el guard d'operacions ja no bloqueja
+  el tall, i el rubato es conserva per interval temporal (no per índex).
+- Corregida una concatenació accidental del docstring de `afegeix_marcador`
+  dins del camp `tipus` dels marcadors.
 - La graella i els CSV no canvien. La partitura MusicXML
   exporta la unitat triada: per exemple, `negra amb punt = 55` amb
   `<sound tempo="82.5">` perquè MuseScore mostre la notació del PDF i mantenir
   la reproducció correcta.
 - Tests de conversió, diàleg, transport, regle, persistència i MusicXML.
-- Suite completa: **1.541 tests**, 1 omés; `pyflakes` net.
+- Suite completa: **1.543 tests**, 1 omés; `pyflakes` net.
 
 ### Corregit — metrònom amb denominador i compassos compostos (2026-11-03)
 - El metrònom ja no clica sempre negres: el beat és `4/den` negres. `6/8`,

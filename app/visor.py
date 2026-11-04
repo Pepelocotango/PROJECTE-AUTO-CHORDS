@@ -787,28 +787,38 @@ class Visor(QMainWindow):
         """Reconstrueix `TramMapa` després d'una operació de tempo.
 
         Les operacions de `tempo_map` treballen amb 5 tuples i podrien perdre
-        el `tipus`/`compassos` d'un rubato. Ací es reenganxen els rubatos i es
-        recalcula el seu BPM si la durada ha canviat.
+        el `tipus`/`compassos` d'un rubato. Ací es reenganxen els rubatos per
+        **interval temporal**, no per índex: un marcador pot afegir un tram
+        abans o després d'un rubato i desplaçar tots els índexs.
         """
-        out = []
         abans = [mapa_tempo.des_de_tupla(x) for x in abans]
-        for viejo, nou in zip(abans, nous):
+        rubatos = [t for t in abans if t.tipus == "rubato"]
+        out = []
+        for nou in nous:
             ini, fi, bpm = float(nou[0]), float(nou[1]), float(nou[2])
-            if getattr(viejo, "tipus", None) == "rubato":
-                segs = viejo.segments
+            triat, millor = None, 0.0
+            for v in rubatos:
+                vini, vfi = float(v.ini), float(v.fi)
+                # Un tram nou dins un rubato (o que el conté) el conserva.
+                dins = (ini >= vini - 1e-9 and fi <= vfi + 1e-9)
+                conte = (vini >= ini - 1e-9 and vfi <= fi + 1e-9)
+                solap = max(0.0, min(fi, vfi) - max(ini, vini))
+                frac = solap / max(vfi - vini, 1e-9)
+                if dins or conte or frac > 0.5:
+                    if frac >= millor:
+                        triat, millor = v, frac
+            if triat is not None:
+                segs = triat.segments
                 q = sum(n * 4.0 / d * c for n, d, c in segs)
                 if q > 0 and fi > ini:
                     bpm = q * 60.0 / (fi - ini)
                 bpm = min(max(bpm, 30.0), 350.0)
                 out.append(mapa_tempo.TramMapa(
-                    ini, fi, bpm, "rubato", viejo.compassos))
+                    ini, fi, bpm, "rubato", triat.compassos))
             else:
                 out.append(mapa_tempo.TramMapa(
                     ini, fi, bpm, "normal",
                     f"{int(nou[3])}/{int(nou[4])}"))
-        # Si la longitud canvia (no hauria), completa amb normals.
-        for nou in nous[len(out):]:
-            out.append(mapa_tempo.des_de_tupla(nou))
         return out
 
     def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True):
@@ -3200,7 +3210,7 @@ class Visor(QMainWindow):
         return True
 
     def afegeix_marcador(self, t=None, tipus="seccio"):
-        tipus = tipus if tipus in ("compas", "seccio") else "seccio"        """Marca l'instant actual (o `t`) com a **inici de compàs**.
+        """Marca l'instant actual (o `t`) com a **inici de compàs**.
 
         Crea, en eixe punt, un **inici de clip al carril de BPM/compàs i al
         d'estructura**. El marcador queda **lligat a la frontera de tempo**
@@ -3215,6 +3225,7 @@ class Visor(QMainWindow):
         tram quedaria amb fraccions de compàs i bloquejaria qualsevol
         validació posterior (el bug que aturava el flux de tempo variable).
         """
+        tipus = tipus if tipus in ("compas", "seccio") else "seccio"
         from app import marcadors as M
         durada = self._durada_wav()
         t = float(self.pos if t is None else t)
@@ -3254,7 +3265,12 @@ class Visor(QMainWindow):
         self.marcador_tipus[round(float(t), 6)] = tipus
         if [tuple(x) for x in trams] != [tuple(x) for x in
                                          (self.tempo_trams or [])]:
-            self.aplica_tempo_trams(trams)
+            # El marcador pot afegir un tram a un mapa que ja té rubatos:
+            # el guard genèric no ha de bloquejar un tall explícit de l'usuari.
+            # `parteix_tram_marcador` treballa amb 5 tuples i perd el tipus;
+            # reenganxem els rubatos abans d'aplicar el mapa.
+            trams = self._preserva_rubato(self.tempo_trams or [], trams)
+            self.aplica_tempo_trams(trams, forcat=True)
         if seccions != list(self.seccions or []):
             self.seccions = self._normalitza_seccions(seccions)
         self._undo_commit()

@@ -29,7 +29,7 @@ from PyQt5.QtGui import QKeyEvent  # noqa: E402
 from PyQt5.QtTest import QTest  # noqa: E402
 from PyQt5.QtWidgets import QApplication  # noqa: E402
 
-from app import main as app_main, pipeline, tempo_map  # noqa: E402
+from app import main as app_main, mapa_tempo, pipeline, tempo_map  # noqa: E402
 from app import visor as visor_mod  # noqa: E402
 from app import timeline_base as tb  # noqa: E402
 from app.timeline import TimelineView  # noqa: E402
@@ -968,6 +968,31 @@ class TestMarcadorsTempoEnViu(_Base):
         self.assertAlmostEqual(float(self.v.tempo_trams[1][2]), 88.8889,
                                places=3)
         self.assertEqual(tuple(self.v.tempo_trams[2]), self.abans[1])
+
+    def test_marcador_amb_rubato_parteix_i_conserva_el_rubato(self):
+        self.v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
+            mapa_tempo.TramMapa(10.0, 30.0, 90.0, "normal", "4/4"),
+        ]
+        self.v._refresca_tempo_map()
+        self.assertTrue(self.v.afegeix_marcador(15.0))
+        self.assertEqual(len(self.v.tempo_trams), 3)
+        self.assertEqual(self.v.tempo_trams[0].tipus, "rubato")
+        self.assertAlmostEqual(self.v.tempo_trams[2].ini, 15.0, places=6)
+        self.assertEqual(self.v.marcador_tipus[15.0], "seccio")
+
+    def test_marcador_abans_d_un_rubato_no_el_converteix(self):
+        self.v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(10.0, 20.0, 100.0, "rubato", "4/4"),
+            mapa_tempo.TramMapa(20.0, 30.0, 90.0, "normal", "4/4"),
+        ]
+        self.v._refresca_tempo_map()
+        self.assertTrue(self.v.afegeix_marcador(5.0))
+        self.assertEqual(len(self.v.tempo_trams), 4)
+        self.assertEqual([t.tipus for t in self.v.tempo_trams],
+                         ["normal", "normal", "rubato", "normal"])
+        self.assertAlmostEqual(self.v.tempo_trams[2].ini, 10.0, places=6)
 
     def test_marcador_massa_a_prop_no_es_bloqueja(self):
         # El `+` del play pot caure a 0,4 s: abans el validador el rebutjava.
