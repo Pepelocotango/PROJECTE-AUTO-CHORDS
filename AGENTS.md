@@ -57,7 +57,7 @@ Fet recentment (2026-11-02/04):
   que es llig), `.opencode/` local via `.gitignore`, **6 subagents**
   (`explorer`, `tester`, `reviewer`, `docs`, `audio-dsp`, `pipeline`) amb
   `deepseek-v4.1-flash`, **5 skills** amb frontmatter i els commands
-  `/qualitat`, `/estat` i `/regles`. Detall: `.opencode/README.md`.
+  `/qualitat`, `/estat` i `/regles`. Detall: `.opencode/README.md` (local, no versionat).
 - **Contracte de beats sencers** (2026-11-04): els clips de BPM/compàs ja no
   exigeixen compassos enters; han de contindre almenys un beat sencer de la
   graella del Snap (QM o BPM/compàs), inclòs `1/4`. El `+` sempre usa el beat
@@ -79,13 +79,13 @@ Fet recentment (2026-11-02/04):
 - **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
   unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
   projectes vells), visor/graella, accions de crear/convertir rubato i
-  exportació amb avís aproximat. Suite completa: **1.590 tests**, 1 omés.
+  exportació amb avís aproximat. Suite completa: **1.592 tests**, 1 omés.
 - **Anàlisi del projecte de prova** `AUTOCHORDS_01 POLICE_convertit`:
   model coherent i cobertura exacta; documentats els límits del pre-roll a la
   partitura, els noms d'acord crus de l'anàlisi i la precisió de l'offset.
 - **Unitat de BPM**: selector global negra / negra amb punt / corxera /
   blanca; el metrònom té una unitat de clic independent (auto/negra/negra amb punt/corxera/blanca). El model continua en negres/min i la unitat es desa al `.acproj`.
-  Suite: **1.590 tests**.
+  Suite: **1.592 tests**.
 - **Metrònom per denominador**: el beat és `4/den` negres; `6/8`, `9/8` i
   `12/8` cliquen corxeres, `2/2` blanques; accents de compàs i grup, modes
   Auto/Compàs/Temps/Grup i selector al transport.

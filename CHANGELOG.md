@@ -15,7 +15,7 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - Permisos reescrits amb `"*"` primer i les excepcions després: OpenCode avalua
   l'**última** regla que casa, i el `"*": deny` final dels esbossos ho denegava
   tot. `audio-dsp` recupera `ancoratges`/`marcadors`/`limits` i `pipeline` cobrix
-  la cadena d'anàlisi. Detall: `.opencode/README.md`.
+  la cadena d'anàlisi. Detall: `.opencode/README.md` (local, no versionat).
 
 ### Canviat — contracte de clips de BPM/compàs per beats (2026-11-04)
 - **Decisió explícita de l’operador**: un clip de BPM/compàs ja no ha de
@@ -29,8 +29,9 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - L’ajust prioritza **conservar el BPM** i canviar el compàs (`4/4` → `4/8`…);
   només com a últim recurs s’ajusta el BPM a un valor proper, sense anar a la
   meitat ni al doble ni fora de 30–350.
-- El `+` **sempre** s’encaixa al beat QM més pròxim; sense beats QM no crea el
-  marcador i avisa. Els clips afectats es recalculen.
+- El `+` seguix la graella del Snap: amb **Beats QM** usa el beat QM més
+  pròxim; amb una altra graella usa BPM/compàs. Sense beats QM en mode QM no
+  crea res i avisa. Els clips afectats es recalculen.
 - Actualitzats `docs/REGLES_DE_LA_APP.md` §13.4–13.6, `docs/ANALISI_BPM.md`,
   el validador, el re-tempo, els marcadors i els tests.
 - **`1/4` és un compàs vàlid a tota l’app**: validador, TempoMap, graella,
@@ -73,7 +74,7 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   També dona missatge quan un `+` no s’afig perquè ja hi ha un marcador a prop.
 - Nous `app/beats.py`, `DialegAnalitzaBPM`, `BeatLayer` i
   `docs/ANALISI_BPM.md`; tests de sensibilitat i motors.
-- Suite completa: **1.590 tests**, 1 omés; `pyflakes` net.
+- Suite completa: **1.592 tests**, 1 omés; `pyflakes` net.
 
 ### Optimitzat — backups d'àudio amb hardlinks (2026-11-04)
 - `Projecte.fes_backup` enllaça el WAV de treball amb **hardlink** quan el

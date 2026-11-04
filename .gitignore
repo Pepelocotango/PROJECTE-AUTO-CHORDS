@@ -111,6 +111,8 @@ htmlcov/
 # Els fitxers de configuració d'agents de cada entorn (OpenCode, Claude, Cursor…)
 # són LOCALS i NO es versionen.
 .opencode/
+/opencode.json
+/opencode.jsonc
 CLAUDE.md
 .cursorrules
 .cursor/
