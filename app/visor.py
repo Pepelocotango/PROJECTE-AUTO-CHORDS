@@ -4756,8 +4756,10 @@ class Visor(QMainWindow):
             return
         if kind == "chord" and 0 <= index < self.llista_ac.count():
             self.llista_ac.setCurrentRow(index)
+            self._centra_fila_llista(self.llista_ac, index)
         elif kind == "section" and 0 <= index < self.llista_ab.count():
             self.llista_ab.setCurrentRow(index)
+            self._centra_fila_llista(self.llista_ab, index)
         elif kind == "tempo":
             # El clip de tempo/compàs també s'edita a la franja Editor (BPM +
             # compàs). Es buiden les altres llistes perquè no quede un
@@ -4766,6 +4768,7 @@ class Visor(QMainWindow):
             self.llista_ab.setCurrentRow(-1)
             if hasattr(self, "llista_tempo"):
                 self.llista_tempo.setCurrentCell(int(index), 0)
+                self._centra_fila_llista(self.llista_tempo, int(index))
             self._ed_kind, self._ed_idx = "tempo", int(index)
             self._actualitza_editor()
             return
@@ -5195,14 +5198,47 @@ class Visor(QMainWindow):
         (en comptes d'obrir cap finestra emergent)."""
         self._ed_kind, self._ed_idx = kind, idx
         self.timeline.select_clip(kind, idx)
+        if kind == "chord":
+            self._centra_fila_llista(self.llista_ac, idx)
+        elif kind == "section":
+            self._centra_fila_llista(self.llista_ab, idx)
+        elif kind == "tempo":
+            self._centra_fila_llista(self.llista_tempo, idx)
         self._actualitza_editor()
         self.ed_nom.setFocus()
         self.ed_nom.selectAll()
+
+    @staticmethod
+    def _centra_fila_llista(llista, row):
+        """Deixa la fila seleccionada al centre del viewport de la llista.
+
+        Si no hi ha prou files abans o després, Qt la deixa el més a prop
+        possible del centre. Així sempre es veuen unes quantes files
+        anteriors i posteriors, i la selecció blava no queda amagada a la
+        vora inferior.
+        """
+        row = int(row)
+        if llista is None or row < 0:
+            return
+        # Si la llista encara no s'ha mostrat (tests, canvi de layout), Qt no
+        # pot calcular el viewport; no hi ha res a centrar.
+        if not bool(getattr(llista, "isVisible", lambda: True)()):
+            return
+        if isinstance(llista, QTableWidget):
+            # Amb ScrollPerItem, Qt no pot centrar una fila; en píxels sí.
+            if llista.verticalScrollMode() != QAbstractItemView.ScrollPerPixel:
+                llista.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+            item = llista.item(row, 0)
+        else:
+            item = llista.item(row)
+        if item is not None:
+            llista.scrollToItem(item, QAbstractItemView.PositionAtCenter)
 
     def _salt_acord(self, item):
         row = self.llista_ac.row(item)
         if row >= 0:
             self.timeline.select_clip("chord", row)
+        self._centra_fila_llista(self.llista_ac, row)
         self.ves_a(self._parse_pos_label(item.text()))
         # Desplaça la vista cap al cursor NOMÉS si cal (manté el zoom).
         self.timeline.ensure_cursor_visible()
@@ -5764,6 +5800,7 @@ class Visor(QMainWindow):
         row = self.llista_ab.row(item)
         if row >= 0:
             self.timeline.select_clip("section", row)
+        self._centra_fila_llista(self.llista_ab, row)
         self.ves_a(self._parse_pos_label(item.text()))
         # Desplaça la vista cap al cursor NOMÉS si cal (manté el zoom).
         self.timeline.ensure_cursor_visible()
@@ -5818,6 +5855,7 @@ class Visor(QMainWindow):
             return
         self._ed_kind, self._ed_idx = "tempo", row
         self.timeline.select_clip("tempo", row)
+        self._centra_fila_llista(self.llista_tempo, row)
         self._actualitza_editor()
         trams = getattr(self, "tempo_trams", None) or []
         if 0 <= row < len(trams):

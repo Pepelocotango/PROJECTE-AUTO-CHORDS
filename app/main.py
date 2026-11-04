@@ -701,6 +701,11 @@ class Finestra(QMainWindow):
         self.offset.setFixedWidth(60)
         self.offset.setPlaceholderText("0.000")
         self.offset.setToolTip("Offset del compàs 1, en segons.")
+        # La GUI mostra 3 decimals, però el model pot tindre microsegons
+        # (p. ex. 1.207438). Guardem el text exacte que hem pintat per no
+        # arredonir l'offset quan es recarrega el visor o s'analitza.
+        self._offset_ui_text = None
+        self._offset_ui_exact = None
         self.b_detecta = QPushButton(" Detecta")
         self.b_detecta.setIcon(icones.ico("target"))
         self.b_detecta.setIconSize(icones.pm_mida(16))
@@ -1289,6 +1294,13 @@ class Finestra(QMainWindow):
                 except (TypeError, ValueError):
                     pass
                 camp.setText(text)
+            # Recorda el text exacte pintat per a l'offset. Així `_offset_val`
+            # pot retornar el valor intern (1.207438) encara que la GUI mostre
+            # 3 decimals (1.207), sense arredonir-lo en recarregar/analitzar.
+            off_exact = getattr(vr, "offset", None)
+            if off_exact is not None:
+                self._offset_ui_text = f"{float(off_exact):.3f}"
+                self._offset_ui_exact = float(off_exact)
             try:
                 self.chk_segons.setChecked(num is not None and int(num) <= 0)
             except (TypeError, ValueError):
@@ -1579,7 +1591,30 @@ class Finestra(QMainWindow):
         num, den = self._parse_compas(self.bpb.text())
         return tempo_map.valida_tempo(self._bpm_val(), num, den)[2]
 
+    def _posa_offset_camp(self, valor):
+        """Escriu l'offset amb 3 decimals, però conserva el valor exacte.
+
+        També s'usa en carregar un projecte: el text de la GUI no pot ser la
+        font de veritat de l'offset (1.207438 es veu com 1.207).
+        """
+        exact = float(valor)
+        text = f"{exact:.3f}"
+        self.offset.setText(text)
+        self._offset_ui_text = text
+        self._offset_ui_exact = exact
+
     def _offset_val(self):
+        """Offset en segons sense perdre la precisió que no cap a la GUI.
+
+        El camp mostra 3 decimals (`1.207`), però el model pot tindre
+        `1.207438`. Si l'usuari no ha tocat el text que va pintar
+        `_sincronitza_temps_del_visor`, es recupera el valor intern exacte.
+        """
+        text = str(self.offset.text()).strip()
+        exact = getattr(self, "_offset_ui_exact", None)
+        if (exact is not None
+                and getattr(self, "_offset_ui_text", None) == text):
+            return float(exact)
         return self._llegeix_num(self.offset, 0.0, 0.0, 60.0)
 
     def _cb_a_secs(self, text):
@@ -1614,7 +1649,7 @@ class Finestra(QMainWindow):
         s = self._cb_a_secs(self.offset_cb.text())
         if s is None:
             return
-        self.offset.setText(f"{s:.3f}")
+        self._posa_offset_camp(s)
         self._aplica_parametres_temps()
 
     def _canvia_mode_temps(self, bpm_compas):
@@ -3386,7 +3421,7 @@ class Finestra(QMainWindow):
                 "No s'ha pogut detectar el compàs 1.\n"
                 "Pots posar-lo a mà amb el botó 📍 (al cursor).")
             return
-        self.offset.setText(f"{seg:.3f}")
+        self._posa_offset_camp(seg)
         self._aplica_parametres_temps()
         self.registra(f"Compàs 1 detectat a {seg:.3f}s ✔")
 
@@ -3881,7 +3916,7 @@ class Finestra(QMainWindow):
         # i confon; el parser accepta els dos, però el camp sempre el mostra bé.
         self.bpb.setText(str(compas) if compas
                          else f"{int(tempo.get('bpb', 4))}/4")
-        self.offset.setText(f"{float(tempo.get('offset', 0.0)):.3f}")
+        self._posa_offset_camp(float(tempo.get("offset", 0.0)))
         self.tempo_fix.setChecked(bool(tempo.get("fix", False)))
         self._canvia_mode_temps(bool(tempo.get("fix", False)))
         if isinstance(p.dades.get("opcions"), dict) and p.dades["opcions"]:

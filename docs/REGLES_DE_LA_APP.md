@@ -278,6 +278,9 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
 - Només es recalcula la **posició musical** (etiquetes de compàs de la UI i
   columnes `compas_ini`/`compas_fi` de `estructura_ABC.csv`). Alinear a la
   graella és **Quantitza**, explícit; res no es mou sol.
+- **Precisió de l’offset**: la GUI en mostra 3 decimals, però el model conserva
+  el valor intern (p. ex. `1.207438`). Recarregar el visor, analitzar només
+  acords o canviar el BPM no ha d’arredonir-lo a `1.207`.
 - **Codi:** `visor._regenera_posicions_musicals` · `tempo_map`
 - **Test:** `test_edicio` (regla 10) · `test_tempo_map`
 

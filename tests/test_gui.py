@@ -1395,6 +1395,28 @@ class TestAvisAudio(unittest.TestCase):
         self.assertEqual(len(n), 1)
 
 
+class TestCentratLlistes(unittest.TestCase):
+    """La selecció demana centrar la fila, amb context a dalt i a baix."""
+
+    def test_centra_la_fila_amb_position_at_center(self):
+        class _LlistaFalsa:
+            def __init__(self):
+                self.item_demanat = None
+                self.posicio = None
+
+            def item(self, fila):
+                self.item_demanat = fila
+                return object()
+
+            def scrollToItem(self, item, posicio):
+                self.posicio = posicio
+
+        llista = _LlistaFalsa()
+        Visor._centra_fila_llista(llista, 20)
+        self.assertEqual(llista.item_demanat, 20)
+        self.assertEqual(llista.posicio, QW.QAbstractItemView.PositionAtCenter)
+
+
 class TestAjustaGraellaBeats(unittest.TestCase):
     """L'offset heretat no ha de deixar el mapa fora de graella per sempre."""
 
@@ -6670,6 +6692,22 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual([tuple(t) for t in (vr.tempo_trams or [])], abans)
         self.assertAlmostEqual(vr.offset, 0.0, places=6)
         self.assertEqual([tuple(s) for s in vr.seccions], sec0)
+
+    def test_posa_offset_conserva_precisio_en_carregar(self):
+        self.w._posa_offset_camp(1.207438)
+        self.assertEqual(self.w.offset.text(), "1.207")
+        self.assertAlmostEqual(self.w._offset_val(), 1.207438, places=9)
+
+    def test_offset_conserva_precisio_malgrat_la_gui(self):
+        """La GUI mostra 3 decimals, pero no ha de destruir 1.207438."""
+        vr = self.w.visor_ref
+        vr.offset = 1.207438
+        self.w._sincronitza_temps_del_visor()
+        self.assertEqual(self.w.offset.text(), "1.207")
+        self.assertAlmostEqual(self.w._offset_val(), 1.207438, places=9)
+        # Si l'usuari escriu un valor diferent, mana el text.
+        self.w.offset.setText("1.208")
+        self.assertAlmostEqual(self.w._offset_val(), 1.208, places=9)
 
     def test_elimina_i_fusiona_despres_del_guiat(self):
         """Bug 21-10: després d'aplicar ancoratges, eliminar/fusionar un tram
