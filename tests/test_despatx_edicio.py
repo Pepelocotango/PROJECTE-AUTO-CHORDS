@@ -994,6 +994,28 @@ class TestMarcadorsTempoEnViu(_Base):
                          ["normal", "normal", "rubato", "normal"])
         self.assertAlmostEqual(self.v.tempo_trams[2].ini, 10.0, places=6)
 
+    def test_fusiona_normals_amb_rubato_preserva_el_rubato(self):
+        self.v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
+            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+        ]
+        self.v._refresca_tempo_map()
+        self.assertTrue(self.v._fusiona_tram(1, "seguent"))
+        self.assertEqual(len(self.v.tempo_trams), 2)
+        self.assertEqual(self.v.tempo_trams[0].tipus, "rubato")
+
+    def test_elimina_normal_amb_rubato_preserva_el_rubato(self):
+        self.v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
+            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+        ]
+        self.v._refresca_tempo_map()
+        self.assertTrue(self.v._elimina_tram(1))
+        self.assertEqual(len(self.v.tempo_trams), 2)
+        self.assertEqual(self.v.tempo_trams[0].tipus, "rubato")
+
     def test_marcador_massa_a_prop_no_es_bloqueja(self):
         # El `+` del play pot caure a 0,4 s: abans el validador el rebutjava.
         self.assertTrue(self.v.afegeix_marcador(0.4))

@@ -3573,7 +3573,7 @@ class Visor(QMainWindow):
                  f"{len(sec) if sec else len(self.seccions)} seccions")
         return True
 
-    def _aplica_mapa_reparat(self, nous, msg):
+    def _aplica_mapa_reparat(self, nous, msg, preserva_rubato=True):
         """Aplica un mapa i, si les fronteres hereten mil·lèsimes fora de
         graella, les imanta abans de rebutjar (bug 21-10: eliminar/fusionar/
         duplicar un tram fallava després de l'Anàlisi guiat)."""
@@ -3588,7 +3588,12 @@ class Visor(QMainWindow):
                 self.avis_editor(f"{msg}: {e}")
                 return False
             self.log(f"{msg}: fronteres imantades a la línia de compàs")
-        return bool(self.aplica_tempo_trams(fi))
+        if preserva_rubato:
+            fi = self._preserva_rubato(self.tempo_trams or [], fi)
+        # Estes operacions (elimina/fusiona) poden canviar el nombre de trams
+        # encara que el mapa tinga rubatos; la preservació de dalt manté el
+        # tipus i el guard genèric no ha de bloquejar el gest de l'usuari.
+        return bool(self.aplica_tempo_trams(fi, forcat=True))
 
     def _elimina_tram(self, idx):
         """Elimina un tram del mapa (els veïns n'ocupen l'espai)."""
@@ -3596,8 +3601,11 @@ class Visor(QMainWindow):
         if not (0 <= idx < len(trams)) or len(trams) <= 1:
             return False
         self._undo_marca()
+        # Si s'elimina el mateix rubato, no el re-enganxem a un tram veí.
+        preserva = getattr(trams[idx], "tipus", None) != "rubato"
         ok = self._aplica_mapa_reparat(
-            tempo_map.elimina_tall(trams, idx), "Elimina tempo")
+            tempo_map.elimina_tall(trams, idx), "Elimina tempo",
+            preserva_rubato=preserva)
         if ok:
             # §4.C: la frontera desapareix → el marcador que hi ancorava, també.
             self._esborra_marcador_a(float(trams[idx][0]))

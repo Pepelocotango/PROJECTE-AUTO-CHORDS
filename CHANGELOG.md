@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
 
 ## [Unreleased]
 
+### Optimitzat — backups d'àudio amb hardlinks (2026-11-04)
+- `Projecte.fes_backup` enllaça el WAV de treball amb **hardlink** quan el
+  sistema de fitxers ho permet; si no, fa la còpia tradicional.
+- Els canvis de model (acords, estructura, tempo) ja no dupliquen el WAV: les
+  còpies comparteixen el mateix inode.
+- L'àudio es publica sempre amb `os.replace`, de manera que una edició no pot
+  modificar un backup hardlinkat.
+- Tests: inode compartit, supervivència del backup antic després d'una edició
+  atòmica i fallback sense hardlinks.
+
 ### Afegit — fase 12: congelació, higiene i CI no bloquejant (2026-11-03)
 - Congelades les funcions laterals **afinador de guitarra** i
   **`Gt_ALL_Chords_app`** fins que la fase 10 estiga estable; no s'eliminen.
@@ -45,6 +55,8 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   abans superava l'amplada de la barra i `QToolBar` l'amagava a l'overflow.
 - Corregit el `+` en mapes amb rubato: el guard d'operacions ja no bloqueja
   el tall, i el rubato es conserva per interval temporal (no per índex).
+- Eliminar o fusionar trams normals en un mapa amb rubato tampoc no queda
+  bloquejat; el rubato es conserva.
 - Corregida una concatenació accidental del docstring de `afegeix_marcador`
   dins del camp `tipus` dels marcadors.
 - La graella i els CSV no canvien. La partitura MusicXML
@@ -52,7 +64,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   `<sound tempo="82.5">` perquè MuseScore mostre la notació del PDF i mantenir
   la reproducció correcta.
 - Tests de conversió, diàleg, transport, regle, persistència i MusicXML.
-- Suite completa: **1.543 tests**, 1 omés; `pyflakes` net.
+- Suite completa: **1.548 tests**, 1 omés; `pyflakes` net.
 
 ### Corregit — metrònom amb denominador i compassos compostos (2026-11-03)
 - El metrònom ja no clica sempre negres: el beat és `4/den` negres. `6/8`,
