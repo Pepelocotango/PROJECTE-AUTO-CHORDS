@@ -809,7 +809,7 @@ class DialegTramTempo(QDialog):
         self.sp_bpm.setValue(bpm_unit.de_quarter(bpm, self._unit))
         self._den_defecte = int(den) if int(den) > 0 else 4
         self.ed_compas = QLineEdit(f"{int(num)}/{int(den)}")
-        self.ed_compas.setPlaceholderText("4/4")
+        self.ed_compas.setPlaceholderText("4/4, 3/4, 2/4, 1/4…")
         form.addRow(f"BPM ({bpm_unit.etiqueta(self._unit).lower()}):",
                     self.sp_bpm)
         form.addRow("Compàs:", self.ed_compas)
@@ -999,7 +999,7 @@ class DialegGuiaBpm(QDialog):
         fila_m = QHBoxLayout()
         fila_m.addWidget(QLabel("Compàs:"))
         self.cb_metrica = QComboBox()
-        for n_, d_ in ((4, 4), (3, 4), (2, 4), (6, 8), (12, 8)):
+        for n_, d_ in ((4, 4), (3, 4), (2, 4), (1, 4), (6, 8), (12, 8)):
             self.cb_metrica.addItem(f"{n_}/{d_}", (n_, d_))
         # si la mètrica vigent no és cap preset, s'afegeix (no es perd res)
         # per TEXT: `findData` amb una tupla no casa mai a PyQt5 i afegia
@@ -1011,8 +1011,8 @@ class DialegGuiaBpm(QDialog):
             idx = self.cb_metrica.count() - 1
         self.cb_metrica.setCurrentIndex(idx)
         self.cb_metrica.setToolTip(
-            "Mètrica del tram. Canviar-la recalcula la llargada perquè siguen "
-            "compassos SENCERS (la graella no accepta mig compàs).")
+            "Mètrica del tram. Canviar-la ajusta el clip al contracte de "
+            "beats sencers; el compàs 1/4 és vàlid.")
         fila_m.addWidget(self.cb_metrica)
         fila_m.addSpacing(12)
         fila_m.addWidget(QLabel("Tram:"))

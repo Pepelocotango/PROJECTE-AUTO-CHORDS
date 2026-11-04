@@ -329,8 +329,8 @@ Invariants candidats i la seua cobertura actual (detall fusionat en aquesta secc
     de fronteres cauen a la graella.
 - Si un clip va **en segons/rubato** (§13.7), la seua frontera és lliure i no
   entra en la regla dels beats.
-- **Valors**: BPM 30–350, numerador 1–12 i denominador 2, 4 o 8. Els límits
-  d'edició són compartits a `app/limits.py`.
+- **Valors**: BPM 30–350, numerador **1–12** (inclòs `1/4`) i denominador
+  2, 4 o 8. Els límits d'edició són compartits a `app/limits.py`.
 - Una entrada d'usuari amb BPM o compàs invàlid es rebutja amb avís i sense
   mutació parcial; en carregar un CSV editat fora de l'app, el mapa es repara i
   s'informa de què s'ha corregit.

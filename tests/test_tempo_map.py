@@ -118,6 +118,7 @@ class TestConstant(unittest.TestCase):
 class TestValidaTempo(unittest.TestCase):
     def test_accepta_limits_i_rubato(self):
         self.assertEqual(tm.valida_tempo(30, 1, 2), (30.0, 1, 2))
+        self.assertEqual(tm.valida_tempo(120, 1, 4), (120.0, 1, 4))
         self.assertEqual(tm.valida_tempo(350, 12, 8), (350.0, 12, 8))
         self.assertEqual(tm.valida_tempo(100, 0, 0), (100.0, 0, 0))
 
@@ -313,6 +314,31 @@ class TestCompassosEnters(unittest.TestCase):
         trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 120.0, 4, 4)]
         with self.assertRaises(ValueError):
             tm.parteix_a_compas(trams, 0, 1.0, 6.0)
+
+
+class TestCompasUnQuart(unittest.TestCase):
+    """El compàs 1/4 ha de ser vàlid en totes les capes pures."""
+
+    def test_valida_tempo_i_mapa(self):
+        self.assertEqual(tm.valida_tempo(120, 1, 4), (120.0, 1, 4))
+        trams = [(0.0, 4.0, 120.0, 1, 4)]
+        self.assertEqual(tm.valida_i_normalitza_compassos(trams, 4.0), trams)
+
+    def test_tempo_map_numeracio(self):
+        mapa = TempoMap([(0.0, 4.0, 120.0, 1, 4)])
+        self.assertEqual(mapa.label(0.0), "1.1.1")
+        self.assertEqual(mapa.label(0.5), "2.1.1")
+        self.assertEqual(mapa.label(1.0), "3.1.1")
+        self.assertEqual(mapa.durations(0.0)[0], 0.5)
+
+    def test_pipeline_pos_compas(self):
+        self.assertEqual(pipeline.pos_compas(0.5, 120.0, bpb=1), "2.1.1")
+        self.assertEqual(pipeline.pos_compas(1.0, 120.0, bpb=1), "3.1.1")
+
+    def test_metronom_accepta_1_4(self):
+        buf = b"\x00\x00" * 4410
+        out = metronom.mescla_metronom(buf, 44100, 0.0, 120.0, 1, den=4)
+        self.assertEqual(len(out), len(buf))
 
 
 class TestContracteBeatsSencers(unittest.TestCase):

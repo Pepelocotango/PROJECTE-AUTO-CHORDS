@@ -31,7 +31,7 @@ from app import ancoratges as ANC
 from app import audio_out, ffmpeg, plataforma
 from app import tempo_map
 
-PRESETS_COMPAS = ("4/4", "3/4", "2/4", "5/4", "6/8", "7/8", "9/8", "12/8")
+PRESETS_COMPAS = ("4/4", "3/4", "2/4", "1/4", "5/4", "6/8", "7/8", "9/8", "12/8")
 VELOCITATS = ffmpeg.VELOCITATS
 #: Etiqueta i tecla de cada velocitat (l'ordre mana al teclat 1…6).
 ETIQUETES_VELOCITAT = ((0.5, "½"), (1.0 / 1.5, "⅔"), (1.0, "1×"),

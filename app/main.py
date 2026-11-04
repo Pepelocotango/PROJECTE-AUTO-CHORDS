@@ -696,7 +696,7 @@ class Finestra(QMainWindow):
         self.bpb = QLineEdit("4/4")
         self.bpb.setFixedWidth(60)
         self.bpb.setPlaceholderText("4/4")
-        self.bpb.setToolTip("Compàs manual: 4/4, 3/4, 6/8, etc.")
+        self.bpb.setToolTip("Compàs manual: 4/4, 3/4, 2/4, 1/4, 6/8, etc.")
         self.offset = QLineEdit("0.000")
         self.offset.setFixedWidth(60)
         self.offset.setPlaceholderText("0.000")
@@ -1501,7 +1501,7 @@ class Finestra(QMainWindow):
     # ---- lectura manual dels camps de text ----
     @staticmethod
     def _parse_compas(text, defecte_num=4, defecte_den=4):
-        """Accepta «4», «4/4», «3/4», «6/8»; `0/0` es reserva al rubato."""
+        """Accepta «4», «4/4», «3/4», «2/4», «1/4», «6/8»; `0/0` és rubato."""
         s = str(text).replace(" ", "").strip()
         if not s:
             raise ValueError("El compàs no pot estar buit")

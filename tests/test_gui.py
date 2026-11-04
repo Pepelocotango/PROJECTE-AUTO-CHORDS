@@ -1870,6 +1870,15 @@ class TestDialegTramTempo(_dialegs___Base):
         with self.assertRaisesRegex(ValueError, "denominador"):
             self._dlg("4/16").valors()
 
+    def test_compas_1_4_es_valid(self):
+        self.assertEqual(self._dlg("1/4").valors(), (120.0, 1, 4))
+
+    def test_dialeg_mapa_accepta_1_4(self):
+        d = dialegs.DialegTempoMapa(
+            None, trams=[(0.0, 4.0, 120.0, 4, 4)], durada=4.0)
+        d.taula.item(0, 2).setText("1/4")
+        self.assertEqual(d.trams()[0][3:], (1, 4))
+
     def test_el_bpm_surt_del_camp(self):
         self.assertEqual(self._dlg(bpm=97.5).valors()[0], 97.5)
 
@@ -5737,9 +5746,9 @@ class TestDialegGuiaAudicio(unittest.TestCase):
         d = self._dlg(num=3, den=4)
         self.assertEqual(d.metrica(), (3, 4))      # la vigent, encara que
         self.assertEqual(d.compassos(), 4)         # no siga al catàleg
-        for txt in ("4/4", "3/4", "2/4", "6/8", "12/8"):
+        for txt in ("4/4", "3/4", "2/4", "1/4", "6/8", "12/8"):
             self.assertGreaterEqual(d.cb_metrica.findText(txt), 0, txt)
-        self.assertEqual(d.cb_metrica.count(), 5)     # sense duplicats
+        self.assertEqual(d.cb_metrica.count(), 6)     # sense duplicats
 
     def test_metrica_no_preset_s_afegeix(self):
         d = self._dlg(num=5, den=8)

@@ -21,6 +21,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   marcador i avisa. Els clips afectats es recalculen.
 - Actualitzats `docs/REGLES_DE_LA_APP.md` §13.4–13.6, `docs/ANALISI_BPM.md`,
   el validador, el re-tempo, els marcadors i els tests.
+- **`1/4` és un compàs vàlid a tota l’app**: validador, TempoMap, graella,
+  ancoratges, diàlegs de tram/mapa, guiat i metrònom. S’afig als presets i es
+  cobreix amb tests (sense canviar el límit general 1–12).
 
 ### Afegit — Analitza BPM separat, motors i sensibilitat (2026-11-04)
 - «Analitza» queda dedicat a **acords + estructura**; el BPM té l’acció
@@ -46,7 +49,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.8.0`).
   També dona missatge quan un `+` no s’afig perquè ja hi ha un marcador a prop.
 - Nous `app/beats.py`, `DialegAnalitzaBPM`, `BeatLayer` i
   `docs/ANALISI_BPM.md`; tests de sensibilitat i motors.
-- Suite completa: **1.577 tests**, 1 omés; `pyflakes` net.
+- Suite completa: **1.583 tests**, 1 omés; `pyflakes` net.
 
 ### Optimitzat — backups d'àudio amb hardlinks (2026-11-04)
 - `Projecte.fes_backup` enllaça el WAV de treball amb **hardlink** quan el
