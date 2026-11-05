@@ -1,0 +1,2846 @@
+diff --git a/app/tempo_csv.py b/app/tempo_csv.py
+new file mode 100644
+--- /dev/null
++++ b/app/tempo_csv.py
+--- /dev/null
++++ b/app/tempo_csv.py
+@@ -0,0 +1,328 @@
++"""Model unificat del mapa de tempo/compàs (`mapa_tempo.csv`).
+
++
+
++Subplà de rubato, fase 2. Este mòdul és la **capa de dades** del model:
+
++
+
++    inici,fi,bpm,tipus,compassos
+
++
+
++- `tipus`: `normal` o `rubato`.
+
++- `compassos`: forma canònica ASCII (`4/4` o `4/4*2+6/8`).
+
++
+
++Els clips normals tenen **un sol compàs**; els rubato poden tindre una
+
++seqüència de fins a 4 compassos, amb un sol BPM derivat.
+
++
+
++El mòdul és pur respecte de Qt. La integració amb el projecte, el visor i
+
++l'exportació es fa a `pipeline`/`visor`; ací es defineix el model i el fitxer.
+
++"""
+
++
+
++from dataclasses import dataclass
+
++import csv
+
++import os
+
++
+
++from app import rubato
+
++from app import tempo_map
+
++
+
++
+
++NOM_MAPA_TEMPO = "mapa_tempo.csv"
+
++NOM_CSV_TEMPO_ANTIC = "tempo.csv"
+
++NOM_CSV_COMPAS_ANTIC = "compas.csv"
+
++
+
++#: Capçalera del fitxer (es llig i s'ignora en carregar).
+
++CAPCALERA = ("inici", "fi", "bpm", "tipus", "compassos")
+
++
+
++#: Decimals de temps i BPM (els mateixos que el model anterior).
+
++TEMPS_DEC = 6
+
++BPM_DEC = 6
+
++
+
++
+
++@dataclass(frozen=True)
+
++class TramMapa:
+
++    """Un tram del mapa de tempo/compàs.
+
++
+
++    És compatible amb el model antic de 5 tuples: `iter()` i `[]` retornen
+
++    `(ini, fi, bpm, num, den)`, on `num`/`den` són el **primer** compàs de la
+
++    seqüència. Això permet que el codi existent seguisca funcionant mentre la
+
++    fase 3 incorpora la graella completa dels rubatos.
+
++    """
+
++
+
++    ini: float
+
++    fi: float
+
++    bpm: float
+
++    tipus: str = "normal"
+
++    compassos: str = "4/4"
+
++
+
++    def __post_init__(self):
+
++        tipus = str(self.tipus or "").strip().lower()
+
++        if tipus not in ("normal", "rubato"):
+
++            raise rubato.RubatoError(
+
++                f"Tipus de tram no vàlid: {self.tipus!r}")
+
++        object.__setattr__(self, "tipus", tipus)
+
++        text = str(self.compassos or "").strip()
+
++        segs = rubato.text_a_compassos(text)
+
++        if tipus == "normal" and (len(segs) != 1 or segs[0][2] != 1):
+
++            raise rubato.RubatoError(
+
++                "Un clip normal ha de tindre un sol compàs sense repeticions")
+
++        object.__setattr__(self, "compassos", text)
+
++
+
++    @property
+
++    def segments(self):
+
++        return rubato.text_a_compassos(self.compassos)
+
++
+
++    @property
+
++    def den(self):
+
++        return int(self.segments[0][1])
+
++
+
++    @property
+
++    def num(self):
+
++        return int(self.segments[0][0])
+
++
+
++    def __iter__(self):
+
++        yield float(self.ini)
+
++        yield float(self.fi)
+
++        yield float(self.bpm)
+
++        yield self.num
+
++        yield self.den
+
++
+
++    def __getitem__(self, idx):
+
++        return tuple(self)[idx]
+
++
+
++    def __len__(self):
+
++        return 5
+
++
+
++    def __eq__(self, other):
+
++        """Compatible amb tuples antigues de 5 elements."""
+
++        if isinstance(other, TramMapa):
+
++            return (self.ini, self.fi, self.bpm, self.tipus, self.compassos) == (
+
++                other.ini, other.fi, other.bpm, other.tipus, other.compassos)
+
++        if isinstance(other, (tuple, list)) and len(other) == 5:
+
++            return tuple(self) == tuple(other)
+
++        return NotImplemented
+
++
+
++    def __hash__(self):
+
++        return hash((self.ini, self.fi, self.bpm, self.tipus, self.compassos))
+
++
+
++    @property
+
++    def payload(self):
+
++        return (self.bpm, self.num, self.den)
+
++
+
++    @property
+
++    def lliure(self):
+
++        return self.tipus == "rubato"
+
++
+
++    @property
+
++    def num_ef(self):
+
++        return self.num
+
++
+
++    @property
+
++    def den_ef(self):
+
++        return self.den
+
++
+
++    @property
+
++    def bpm_ef(self):
+
++        return float(self.bpm)
+
++
+
++
+
++def des_de_tupla(tram):
+
++    """Converteix una tupla antiga `(ini, fi, bpm, num, den)` en `TramMapa`."""
+
++    if isinstance(tram, TramMapa):
+
++        return tram
+
++    ini, fi, bpm, num, den = tram
+
++    return TramMapa(float(ini), float(fi), float(bpm), "normal",
+
++                    f"{int(num)}/{int(den)}")
+
++
+
++
+
++def a_tuples(trams):
+
++    """Vista de 5 tuples (per al codi que encara no coneix `TramMapa`)."""
+
++    return [tuple(t) for t in trams]
+
++
+
++
+
++def normalitza_trams_map(trams, durada, log=None, fusiona=False):
+
++    """Normalitza el mapa preservant `tipus`/`compassos`.
+
++
+
++    Sense rubatos, delega en `tempo_map.neteja_trams` + `fusiona_trams_iguals`
+
++    (comportament idèntic al model anterior). Amb rubatos, garantix ordre,
+
++    cobertura i contigüitat; si la durada d'un rubato canvia, recalcula el seu
+
++    BPM a partir de la seqüència i la durada. Fusiona rubatos adjacents quan
+
++    la seqüència resultant cap en 4 segments.
+
++    """
+
++    trams = [des_de_tupla(t) for t in (trams or ())]
+
++    if not any(t.tipus == "rubato" for t in trams):
+
++        net, avisos = tempo_map.neteja_trams(
+
++            [tuple(t) for t in trams], durada)
+
++        if fusiona:
+
++            net = tempo_map.fusiona_trams_iguals(net, durada)
+
++        return [des_de_tupla(t) for t in net], avisos
+
++
+
++    avisos = []
+
++    durada = float(durada or 0.0)
+
++    if not trams:
+
++        return [], avisos
+
++    trams.sort(key=lambda t: t.ini)
+
++    # Cobertura dels extrems (el primer a 0, l'últim a la durada).
+
++    p = trams[0]
+
++    if p.ini > tempo_map.TOL or p.ini < 0:
+
++        trams[0] = TramMapa(0.0, p.fi, p.bpm, p.tipus, p.compassos)
+
++    u = trams[-1]
+
++    if durada > tempo_map.TOL and (u.fi < durada - tempo_map.TOL
+
++                                   or u.fi > durada + tempo_map.TOL):
+
++        trams[-1] = TramMapa(u.ini, durada, u.bpm, u.tipus, u.compassos)
+
++
+
++    out = []
+
++    for t in trams:
+
++        ini = 0.0 if not out else float(out[-1].fi)
+
++        fi = float(t.fi)
+
++        if durada > tempo_map.TOL:
+
++            fi = min(fi, durada)
+
++        if fi <= ini + tempo_map.TOL:
+
++            avisos.append(f"tram buit o invertit a {ini:.3f}s; s'ha descartat")
+
++            continue
+
++        tipus = t.tipus
+
++        bpm = float(t.bpm)
+
++        compassos = t.compassos
+
++        if tipus == "rubato":
+
++            segs = t.segments
+
++            quarters = sum(n * 4.0 / d * c for n, d, c in segs)
+
++            if quarters > 0:
+
++                bpm = quarters * 60.0 / (fi - ini)
+
++                if not (30.0 - 1e-9 <= bpm <= 350.0 + 1e-9):
+
++                    avisos.append(
+
++                        f"rubato {ini:.3f}–{fi:.3f}s: BPM derivat fora de "
+
++                        "30–350; es conserva el valor antic")
+
++                    bpm = float(t.bpm)
+
++                bpm = min(max(bpm, 30.0), 350.0)
+
++        nou = TramMapa(ini, fi, bpm, tipus, compassos)
+
++        if fusiona and out:
+
++            prev = out[-1]
+
++            if (prev.tipus == "normal" and nou.tipus == "normal"
+
++                    and abs(prev.bpm - nou.bpm) <= tempo_map.TOL
+
++                    and (prev.num, prev.den) == (nou.num, nou.den)):
+
++                out[-1] = TramMapa(prev.ini, nou.fi, prev.bpm,
+
++                                   "normal", prev.compassos)
+
++                continue
+
++            if prev.tipus == "rubato" and nou.tipus == "rubato":
+
++                segs = rubato._fusiona(list(prev.segments) + list(nou.segments))
+
++                if len(segs) <= rubato.MAX_SEGMENTS:
+
++                    quarters = sum(n * 4.0 / d * c for n, d, c in segs)
+
++                    bpm = quarters * 60.0 / (nou.fi - prev.ini)
+
++                    if 30.0 - 1e-9 <= bpm <= 350.0 + 1e-9:
+
++                        out[-1] = TramMapa(
+
++                            prev.ini, nou.fi, min(max(bpm, 30.0), 350.0),
+
++                            "rubato", rubato.compassos_a_text(segs))
+
++                        continue
+
++                    avisos.append(
+
++                        "dos rubatos adjacents no s'han pogut fusionar per "
+
++                        "BPM fora de 30–350")
+
++        out.append(nou)
+
++    return out, avisos
+
++
+
++
+
++def quantitza_bpm(trams, durada, decimals=1):
+
++    """Quantitza el BPM dels trams **normals** a `decimals` decimals.
+
++
+
++    Conserva el nombre enter de compassos de cada clip normal i recalcula el
+
++    seu fi; els inicis dels clips següents es desplacen en conseqüència. Els
+
++    rubatos **no es quantitzen**: conserven el BPM i la seqüència, però la seua
+
++    finestra es pot desplaçar perquè el mapa continue contigu. L'últim tram
+
++    acaba a `durada` (excepció permesa a l'últim final).
+
++    """
+
++    durada = float(durada or 0.0)
+
++    decimals = max(0, int(decimals))
+
++    net = [des_de_tupla(t) for t in (trams or ())]
+
++    if not net:
+
++        raise ValueError("El mapa de tempo/compàs és buit")
+
++    out = []
+
++    cursor = 0.0
+
++    for tr in net:
+
++        dur = max(0.0, float(tr.fi) - float(tr.ini))
+
++        if tr.tipus == "rubato":
+
++            fi = cursor + dur
+
++            out.append(TramMapa(cursor, fi, float(tr.bpm), "rubato",
+
++                                tr.compassos))
+
++            cursor = fi
+
++            continue
+
++        bq = float(tr.num) * 4.0 / float(tr.den)
+
++        if bq <= 0:
+
++            raise ValueError("Hi ha un compàs sense durada vàlida")
+
++        n = max(1, int(round(dur * float(tr.bpm) / (bq * 60.0))))
+
++        bpm = round(float(tr.bpm), decimals)
+
++        if bpm <= 0:
+
++            raise ValueError("Hi ha un BPM no vàlid")
+
++        fi = cursor + n * bq * 60.0 / bpm
+
++        out.append(TramMapa(cursor, fi, bpm, "normal",
+
++                            f"{int(tr.num)}/{int(tr.den)}"))
+
++        cursor = fi
+
++    if durada > 0:
+
++        last = out[-1]
+
++        if last.ini >= durada - 1e-6:
+
++            raise ValueError(
+
++                "La quantització deixa l'últim clip fora de la WAV; "
+
++                "reduïx el nombre de compassos o el BPM.")
+
++        # L'últim final pot ser parcial (excepció de la regla §13.4): la
+
++        # quantització no ha d'inventar un tram fora de la WAV.
+
++        if abs(last.fi - durada) > 1e-9:
+
++            out[-1] = TramMapa(last.ini, durada, last.bpm, last.tipus,
+
++                               last.compassos)
+
++    return out
+
++
+
++
+
++def desa_tempo_csv(ruta, trams):
+
++    """Escriu `mapa_tempo.csv` de manera atòmica.
+
++
+
++    Accepta `TramMapa` o tuples antigues `(ini, fi, bpm, num, den)`; en este
+
++    segon cas s'escriuen com a `normal` amb el compàs `num/den`.
+
++    """
+
++    from app import pipeline       # import diferit: evita el cicle
+
++
+
++    def _escriu(f):
+
++        w = csv.writer(f)
+
++        w.writerow(CAPCALERA)
+
++        for t in trams or ():
+
++            tm = des_de_tupla(t)
+
++            w.writerow([
+
++                f"{float(tm.ini):.{TEMPS_DEC}f}",
+
++                f"{float(tm.fi):.{TEMPS_DEC}f}",
+
++                f"{float(tm.bpm):.{BPM_DEC}f}",
+
++                tm.tipus,
+
++                tm.compassos,
+
++            ])
+
++
+
++    pipeline.escriu_atomic(ruta, _escriu)
+
++    return ruta
+
++
+
++
+
++def llegeix_tempo_csv(ruta, log=None):
+
++    """Llig `mapa_tempo.csv` i retorna una llista de `TramMapa`.
+
++
+
++    Les files mal formades es descarten amb una traça al log. La reparació de
+
++    cobertura/ordre la fa la capa de mapa (`tempo_map`), com abans.
+
++    """
+
++    out = []
+
++    if not ruta or not os.path.isfile(ruta):
+
++        return out
+
++    with open(ruta, encoding="utf-8") as f:
+
++        for n, fila in enumerate(csv.reader(f), 1):
+
++            if not fila:
+
++                continue
+
++            if str(fila[0]).strip().lower() == "inici":
+
++                continue
+
++            if len(fila) != 5:
+
++                if log:
+
++                    log(f"{NOM_MAPA_TEMPO} fila {n}: columnes incorrectes; "
+
++                        "s'ha descartat")
+
++                continue
+
++            try:
+
++                tm = TramMapa(float(fila[0]), float(fila[1]), float(fila[2]),
+
++                              fila[3], fila[4])
+
++            except (ValueError, rubato.RubatoError) as e:
+
++                if log:
+
++                    log(f"{NOM_MAPA_TEMPO} fila {n}: {e}; s'ha descartat")
+
++                continue
+
++            out.append(tm)
+
++    return out
+
++
+
++
+
++def te_format_antic(carpeta):
+
++    """Hi ha el model antic (`tempo.csv` + `compas.csv`) en una carpeta?"""
+
++    if not carpeta:
+
++        return False
+
++    return (os.path.isfile(os.path.join(carpeta, NOM_CSV_TEMPO_ANTIC))
+
++            or os.path.isfile(os.path.join(carpeta, NOM_CSV_COMPAS_ANTIC)))
+
+diff --git a/app/main.py b/app/main.py
+--- a/app/main.py
++++ b/app/main.py
+@@ -4289,7 +4289,7 @@
+             acords=acords_model,
+
+             seccions=seccions_model,
+
+             total_s=total_s,
+
+-            mapa_tempo=mapa_model,
+
++            tempo_csv=mapa_model,
+
+         )
+
+ 
+
+     def _neteja_estructura_vella(self, sortida):
+
+diff --git a/app/pipeline.py b/app/pipeline.py
+--- a/app/pipeline.py
++++ b/app/pipeline.py
+@@ -7,7 +7,7 @@
+ import os
+
+ import shutil
+
+ 
+
+-from . import mapa_tempo
+
++from . import tempo_csv
+
+ from . import tempo_map
+
+ import subprocess
+
+ import tempfile
+
+@@ -401,7 +401,7 @@
+         kw["bpm_max"] = bpm_max
+
+     if preferit is not None:
+
+         kw["preferit"] = preferit
+
+-    trams, offset, base = tempo.mapa_tempo_automatic(
+
++    trams, offset, base = tempo.tempo_csv_automatic(
+
+         wav_path, log, durada=durada, num=num, den=den,
+
+         cada_compassos=cada_compassos, tolerancia=tolerancia,
+
+         tightness=tightness, bpm=bpm, offset=offset, **kw)
+
+@@ -737,15 +737,15 @@
+     return ac_out, sec_out
+
+ 
+
+ 
+
+-def _mapa_tempo_carpeta(carpeta, offset=0.0):
+
++def _tempo_csv_carpeta(carpeta, offset=0.0):
+
+     """Llig `mapa_tempo.csv` de `carpeta` (o `mapa_tempo/`) i retorna un
+
+     `TempoMap` si té més d'un tram i no és constant, o `None`.
+
+     """
+
+     try:
+
+         from app.tempo_map import TempoMap
+
+ 
+
+-        for d in (carpeta, os.path.join(carpeta, "mapa_tempo")):
+
+-            trams_map = mapa_tempo.llegeix_mapa_tempo(
+
++        for d in (carpeta, os.path.join(carpeta, "tempo_csv")):
+
++            trams_map = tempo_csv.llegeix_tempo_csv(
+
+                 os.path.join(d, NOM_MAPA_TEMPO))
+
+             if len(trams_map) > 1:
+
+                 tm = TempoMap([tuple(t) for t in trams_map], offset=offset)
+
+@@ -770,7 +770,7 @@
+     slots_bar = bpb * 8                      # fuses per compàs
+
+ 
+
+     if mapa is None:
+
+-        mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)),
+
++        mapa = _tempo_csv_carpeta(os.path.dirname(os.path.abspath(csv_path)),
+
+                                    offset=offset)
+
+     elif hasattr(mapa, "es_constant") and mapa.es_constant():
+
+         mapa = None
+
+@@ -911,7 +911,7 @@
+     offset = float(offset or 0.0)
+
+     durada = float(durada or 0.0)
+
+     if mapa is None:
+
+-        mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)),
+
++        mapa = _tempo_csv_carpeta(os.path.dirname(os.path.abspath(csv_path)),
+
+                                    offset=offset)
+
+     elif hasattr(mapa, "es_constant") and mapa.es_constant():
+
+         mapa = None
+
+@@ -1873,7 +1873,7 @@
+ 
+
+ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
+
+                  tempo_fix=True, amb_estructura=True, total_s=None,
+
+-                 acords=None, seccions=None, mapa_tempo=None):
+
++                 acords=None, seccions=None, tempo_csv=None):
+
+     """Exporta el flux complet.
+
+ 
+
+     Si es passen `acords`/`seccions` (el **model VIU** del visor), s'usen ELLS
+
+@@ -1882,7 +1882,7 @@
+     **no perd les edicions manuals** (finals de secció, capçalera «N», etc.).
+
+     Si no es passen, es comporta exactament com abans (llegeix els CSV).
+
+ 
+
+-    `mapa_tempo` = els trossos del mapa de BPM/compàs del **model viu**. Amb ell,
+
++    `tempo_csv` = els trossos del mapa de BPM/compàs del **model viu**. Amb ell,
+
+     el paquet exportat tracta els **tres tipus igual** (regla d'or #12): a més
+
+     d'`acords.csv` + `wavs_acords/` i `estructura_ABC.csv` + `wavs_estructura/`,
+
+     el mapa té la seva **carpeta pròpia** `mapa_tempo/` amb `mapa_tempo.csv`
+
+@@ -1961,12 +1961,12 @@
+ 
+
+     # Regla d'or #12 (paritat a l'exportació): el mapa de BPM/compàs també surt
+
+     # al paquet, amb la seva carpeta pròpia, com els altres dos tipus.
+
+-    if mapa_tempo:
+
++    if tempo_csv:
+
+         # No convertir a tuples: es perdrien `tipus`/`compassos` dels rubatos.
+
+-        trams = list(mapa_tempo)
+
+-        dest_mapa = os.path.join(sortida, "mapa_tempo")
+
++        trams = list(tempo_csv)
+
++        dest_mapa = os.path.join(sortida, "tempo_csv")
+
+         desa_tempo_map(dest_mapa, trams)
+
+-        result["mapa_tempo_dir"] = dest_mapa
+
++        result["tempo_csv_dir"] = dest_mapa
+
+         result["n_mapa_trams"] = len(trams)
+
+         rubatos = [t for t in trams
+
+                    if getattr(t, "tipus", None) == "rubato"]
+
+@@ -1985,7 +1985,7 @@
+                     f.write(f"{float(tr.ini):.6f}\t{float(tr.fi):.6f}\t"
+
+                             f"{float(tr.bpm):.6f}\t{tr.compassos}\n")
+
+             escriu_atomic(ruta_avis, _escriu_avis)
+
+-            result["mapa_tempo_avis"] = ruta_avis
+
++            result["tempo_csv_avis"] = ruta_avis
+
+             if log:
+
+                 log(f"mapa de tempo/compàs: {len(rubatos)} rubato(s) marcats "
+
+                     "com a graella aproximada")
+
+@@ -2070,7 +2070,7 @@
+ # Un sol fitxer, amb una fila per tram:
+
+ #   inici,fi,bpm,tipus,compassos
+
+ # `tipus` = normal | rubato; `compassos` = `4/4` o `4/4*3+3/4`.
+
+-NOM_MAPA_TEMPO = mapa_tempo.NOM_MAPA_TEMPO
+
++NOM_MAPA_TEMPO = tempo_csv.NOM_MAPA_TEMPO
+
+ 
+
+ 
+
+ # --- Marcadors (inici de compàs marcats a mà, en viu) -----------------------
+
+@@ -2155,7 +2155,7 @@
+ def desa_tempo_map(carpeta, trams):
+
+     """Desa el mapa unificat (`mapa_tempo.csv`) d'una carpeta de projecte."""
+
+     os.makedirs(carpeta, exist_ok=True)
+
+-    mapa_tempo.desa_mapa_tempo(os.path.join(carpeta, NOM_MAPA_TEMPO), trams)
+
++    tempo_csv.desa_tempo_csv(os.path.join(carpeta, NOM_MAPA_TEMPO), trams)
+
+ 
+
+ 
+
+ def llegeix_tempo_map(carpeta, bpm, num, den, durada, log=None):
+
+@@ -2171,20 +2171,20 @@
+         if log:
+
+             for avís in avisos:
+
+                 log(f"Mapa de tempo: {avís}")
+
+-        return [mapa_tempo.des_de_tupla(t) for t in net]
+
++        return [tempo_csv.des_de_tupla(t) for t in net]
+
+ 
+
+     if not carpeta:
+
+         return _constant()
+
+     ruta = os.path.join(carpeta, NOM_MAPA_TEMPO)
+
+-    if mapa_tempo.te_format_antic(carpeta) and not os.path.isfile(ruta):
+
++    if tempo_csv.te_format_antic(carpeta) and not os.path.isfile(ruta):
+
+         raise ValueError(
+
+-            f"El projecte té el model antic ({mapa_tempo.NOM_CSV_TEMPO_ANTIC}"
+
+-            f" + {mapa_tempo.NOM_CSV_COMPAS_ANTIC}); no suportat. Cal recrear "
+
++            f"El projecte té el model antic ({tempo_csv.NOM_CSV_TEMPO_ANTIC}"
+
++            f" + {tempo_csv.NOM_CSV_COMPAS_ANTIC}); no suportat. Cal recrear "
+
+             "el mapa amb el model actual.")
+
+-    trams_map = mapa_tempo.llegeix_mapa_tempo(ruta, log=log)
+
++    trams_map = tempo_csv.llegeix_tempo_csv(ruta, log=log)
+
+     if not trams_map:
+
+         return _constant()
+
+-    net, avisos = mapa_tempo.normalitza_trams_map(
+
++    net, avisos = tempo_csv.normalitza_trams_map(
+
+         trams_map, durada, log=log, fusiona=True)
+
+     if log:
+
+         for avís in avisos:
+
+diff --git a/app/projecte.py b/app/projecte.py
+--- a/app/projecte.py
++++ b/app/projecte.py
+@@ -32,7 +32,7 @@
+ from datetime import datetime
+
+ 
+
+ from app import pipeline
+
+-from app import mapa_tempo
+
++from app import tempo_csv
+
+ 
+
+ EXT = ".acproj"
+
+ # 3 (2026-11-02): model unificat `mapa_tempo.csv` i subplà de rubato.
+
+@@ -335,9 +335,9 @@
+             raise ProjecteError(f"el projecte {ap!r} no és vàlid")
+
+         dades = _migra(dades, ap)
+
+         p = cls(os.path.dirname(ap), dades, ruta_acproj=ap)
+
+-        if (mapa_tempo.te_format_antic(p.carpeta)
+
++        if (tempo_csv.te_format_antic(p.carpeta)
+
+                 and not os.path.isfile(
+
+-                    os.path.join(p.carpeta, mapa_tempo.NOM_MAPA_TEMPO))):
+
++                    os.path.join(p.carpeta, tempo_csv.NOM_MAPA_TEMPO))):
+
+             raise ProjecteError(
+
+                 "el projecte té el model antic (tempo.csv + compas.csv); "
+
+                 "no suportat. Cal recrear-lo amb el model actual.")
+
+@@ -470,7 +470,7 @@
+ 
+
+     # Fitxers del projecte que es guarden a cada còpia (model + anàlisi crua).
+
+     _FITXERS_BACKUP = (NOM_CSV_ACORDS, NOM_CSV_ESTRUCTURA,
+
+-                       mapa_tempo.NOM_MAPA_TEMPO,
+
++                       tempo_csv.NOM_MAPA_TEMPO,
+
+                        pipeline.NOM_MARCADORS)
+
+ 
+
+     def _materials_backup(self):
+
+diff --git a/app/tempo.py b/app/tempo.py
+--- a/app/tempo.py
++++ b/app/tempo.py
+@@ -445,7 +445,7 @@
+     return trams, offset
+
+ 
+
+ 
+
+-def mapa_tempo_automatic(wav_path, log=None, durada=None, num=4, den=4,
+
++def tempo_csv_automatic(wav_path, log=None, durada=None, num=4, den=4,
+
+                          cada_compassos=4, tolerancia=0.01,
+
+                          bpm_min=BPM_MIN, bpm_max=BPM_MAX,
+
+                          preferit=BPM_PREFERIT, tightness=30.0, bpm=None,
+
+diff --git a/app/visor.py b/app/visor.py
+--- a/app/visor.py
++++ b/app/visor.py
+@@ -42,7 +42,7 @@
+ from . import graella, icones, limits, pipeline, theme  # noqa: F401
+
+ from . import acord_audio  # noqa: E402
+
+ from . import dialegs  # noqa: E402
+
+-from . import mapa_tempo  # noqa: E402
+
++from . import tempo_csv  # noqa: E402
+
+ from . import rubato as rubato_mod  # noqa: E402
+
+ from . import tempo_map  # noqa: E402
+
+ from .timeline import TimelineView  # noqa: E402
+
+@@ -824,7 +824,7 @@
+         **interval temporal**, no per índex: un marcador pot afegir un tram
+
+         abans o després d'un rubato i desplaçar tots els índexs.
+
+         """
+
+-        abans = [mapa_tempo.des_de_tupla(x) for x in abans]
+
++        abans = [tempo_csv.des_de_tupla(x) for x in abans]
+
+         rubatos = [t for t in abans if t.tipus == "rubato"]
+
+         out = []
+
+         for nou in nous:
+
+@@ -846,10 +846,10 @@
+                 if q > 0 and fi > ini:
+
+                     bpm = q * 60.0 / (fi - ini)
+
+                 bpm = min(max(bpm, 30.0), 350.0)
+
+-                out.append(mapa_tempo.TramMapa(
+
++                out.append(tempo_csv.TramMapa(
+
+                     ini, fi, bpm, "rubato", triat.compassos))
+
+             else:
+
+-                out.append(mapa_tempo.TramMapa(
+
++                out.append(tempo_csv.TramMapa(
+
+                     ini, fi, bpm, "normal",
+
+                     f"{int(nou[3])}/{int(nou[4])}"))
+
+         return out
+
+@@ -868,7 +868,7 @@
+         """
+
+         trams = list(self.tempo_trams or [])
+
+         if not trams:
+
+-            trams = [mapa_tempo.TramMapa(
+
++            trams = [tempo_csv.TramMapa(
+
+                 0.0, self._durada_wav(), float(bpm), "normal",
+
+                 f"{int(num)}/{int(den)}")]
+
+         idx = min(max(0, int(idx)), len(trams) - 1)
+
+@@ -974,7 +974,7 @@
+         d = self._durada_wav()
+
+         # Regles 1, 2, 4 i 8: aquest és el PUNT ÚNIC on es construeix el mapa.
+
+         # El normalitzador preserva `tipus`/`compassos` (rubato inclòs).
+
+-        trams, avisos = mapa_tempo.normalitza_trams_map(
+
++        trams, avisos = tempo_csv.normalitza_trams_map(
+
+             list(self.tempo_trams or []), d, log=self.log)
+
+         if avisos and tuple(avisos) != getattr(self, "_avisos_tempo", ()):
+
+             for _a in avisos:
+
+@@ -990,13 +990,13 @@
+             # Un sol tros = el cas constant, EXCEPTE si és rubato: llavors el
+
+             # transport no hi té res a dir.
+
+             if not (trams and _lliure(trams[0])):
+
+-                trams = [mapa_tempo.TramMapa(
+
++                trams = [tempo_csv.TramMapa(
+
+                     0.0, d, float(self.bpm), "normal",
+
+                     f"{int(self.bpb)}/{den}")]
+
+         elif not _lliure(trams[0]):
+
+             # El tram 0 és el VALOR INICIAL (el transport mana).
+
+             t0 = trams[0]
+
+-            trams[0] = mapa_tempo.TramMapa(
+
++            trams[0] = tempo_csv.TramMapa(
+
+                 0.0, float(t0.fi), float(self.bpm), "normal",
+
+                 f"{int(self.bpb)}/{den}")
+
+         self.tempo_trams = list(trams)
+
+@@ -1014,7 +1014,7 @@
+         valor inicial, reconstrueix el mapa, refresca el timeline i desa. Retorna
+
+         `True` si s'ha aplicat.
+
+         """
+
+-        abans = [mapa_tempo.des_de_tupla(t)
+
++        abans = [tempo_csv.des_de_tupla(t)
+
+                  for t in (self.tempo_trams or [])]
+
+         entrada = list(trams or [])
+
+         if (not forcat and abans
+
+@@ -1027,7 +1027,7 @@
+                 return False
+
+             entrada = self._preserva_rubato(
+
+                 abans, [tuple(t) for t in entrada])
+
+-        nous, avisos = mapa_tempo.normalitza_trams_map(
+
++        nous, avisos = tempo_csv.normalitza_trams_map(
+
+             entrada, self._durada_wav(), log=self.log)
+
+         for avís in avisos:
+
+             self.log(f"tempo: {avís}")
+
+@@ -1254,7 +1254,7 @@
+     def _crea_tram_rubato(self, ini, fi):
+
+         ref = self._ref_rubato(ini, fi)
+
+         d = rubato_mod.deriva(float(fi) - float(ini), *ref)
+
+-        return mapa_tempo.TramMapa(
+
++        return tempo_csv.TramMapa(
+
+             float(ini), float(fi), float(d.bpm), "rubato", d.compassos)
+
+ 
+
+     def _offset_rubato_inicial(self, trams):
+
+@@ -1285,7 +1285,7 @@
+         n = int(math.floor(dur / vell_bar + 0.5)) if vell_bar > 0 else n_min
+
+         n = min(max(n, n_min), n_max)
+
+         bpm = min(max(n * bq * 60.0 / dur, 30.0), 350.0)
+
+-        return mapa_tempo.TramMapa(ini, fi, bpm, "normal", tr.compassos)
+
++        return tempo_csv.TramMapa(ini, fi, bpm, "normal", tr.compassos)
+
+ 
+
+     def crea_rubato_rang(self, ini, fi):
+
+         """Marca com a rubato un interval [ini, fi], en un sol desfer."""
+
+@@ -1345,7 +1345,7 @@
+                          int(getattr(self, "beat_type", 4) or 4))
+
+             ref = rubato_mod.tria_referencia(anteriors, posteriors, transport)
+
+             d = rubato_mod.deriva(fi - ini, *ref)
+
+-            rub = mapa_tempo.TramMapa(
+
++            rub = tempo_csv.TramMapa(
+
+                 ini, fi, float(d.bpm), "rubato", d.compassos)
+
+         except (ValueError, rubato_mod.RubatoError) as e:
+
+             self.avis_editor(f"Rubato: {e}")
+
+@@ -1353,7 +1353,7 @@
+         nous.append(rub)
+
+         nous.sort(key=lambda x: x.ini)
+
+         try:
+
+-            nous, _avisos = mapa_tempo.normalitza_trams_map(
+
++            nous, _avisos = tempo_csv.normalitza_trams_map(
+
+                 nous, durada, fusiona=True)
+
+         except (ValueError, rubato_mod.RubatoError) as e:
+
+             self.avis_editor(f"Rubato: {e}")
+
+@@ -1385,7 +1385,7 @@
+         nous = list(trams)
+
+         nous[idx] = rub
+
+         try:
+
+-            nous, _avisos = mapa_tempo.normalitza_trams_map(
+
++            nous, _avisos = tempo_csv.normalitza_trams_map(
+
+                 nous, self._durada_wav(), fusiona=True)
+
+         except (ValueError, rubato_mod.RubatoError) as e:
+
+             self.avis_editor(f"Rubato: {e}")
+
+@@ -1418,12 +1418,12 @@
+             t2 = fi if k == len(tr.segments) - 1 else min(fi, t + dur)
+
+             if t2 <= t + self._EPS_RUBATO:
+
+                 continue
+
+-            nous_t.append(mapa_tempo.TramMapa(
+
++            nous_t.append(tempo_csv.TramMapa(
+
+                 t, t2, bpm, "normal", f"{num}/{den}"))
+
+             t = t2
+
+         nous = trams[:idx] + nous_t + trams[idx + 1:]
+
+         try:
+
+-            nous, _avisos = mapa_tempo.normalitza_trams_map(
+
++            nous, _avisos = tempo_csv.normalitza_trams_map(
+
+                 nous, self._durada_wav(), fusiona=False)
+
+         except (ValueError, rubato_mod.RubatoError) as e:
+
+             self.avis_editor(f"Rubato: {e}")
+
+@@ -3413,7 +3413,7 @@
+             self.avis_editor("Quantitza BPM: el mapa és buit.")
+
+             return False
+
+         try:
+
+-            nous = mapa_tempo.quantitza_bpm(
+
++            nous = tempo_csv.quantitza_bpm(
+
+                 self.tempo_trams, self._durada_wav(), decimals=decimals)
+
+         except ValueError as e:
+
+             self.avis_editor(f"Quantitza BPM: {e}")
+
+@@ -6221,7 +6221,7 @@
+                                        sortida, self.bpm, self.bpb, self.offset,
+
+                                        44100, self.log, tempo_fix=self.tempo_fix,
+
+                                        amb_estructura=False,
+
+-                                       mapa_tempo=list(self.tempo_trams or []))
+
++                                       tempo_csv=list(self.tempo_trams or []))
+
+             self.log(f"exporta FET: {sortida}")
+
+             QMessageBox.information(self, "Visor",
+
+                                     f"Exportació feta a:\n{sortida}")
+
+diff --git a/tests/test_despatx_edicio.py b/tests/test_despatx_edicio.py
+--- a/tests/test_despatx_edicio.py
++++ b/tests/test_despatx_edicio.py
+@@ -29,7 +29,7 @@
+ from PyQt5.QtTest import QTest  # noqa: E402
+
+ from PyQt5.QtWidgets import QApplication  # noqa: E402
+
+ 
+
+-from app import main as app_main, mapa_tempo, pipeline  # noqa: E402
+
++from app import main as app_main, tempo_csv, pipeline  # noqa: E402
+
+ from app import visor as visor_mod  # noqa: E402
+
+ from app import timeline_base as tb  # noqa: E402
+
+ from app.timeline import TimelineView  # noqa: E402
+
+@@ -963,9 +963,9 @@
+         d2 = 4 * 4 * 60.0 / 143.984
+
+         d3 = 4 * 4 * 60.0 / 144.348
+
+         self.v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, d1, 145.023, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(d1, d1 + d2, 143.984, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(d1 + d2, d1 + d2 + d3, 144.348,
+
++            tempo_csv.TramMapa(0.0, d1, 145.023, "normal", "4/4"),
+
++            tempo_csv.TramMapa(d1, d1 + d2, 143.984, "normal", "4/4"),
+
++            tempo_csv.TramMapa(d1 + d2, d1 + d2 + d3, 144.348,
+
+                                 "normal", "4/4"),
+
+         ]
+
+         self.v.bpm = 145.023
+
+@@ -981,8 +981,8 @@
+ 
+
+     def test_marcador_amb_rubato_parteix_i_conserva_el_rubato(self):
+
+         self.v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
+
+-            mapa_tempo.TramMapa(10.0, 30.0, 90.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
+
++            tempo_csv.TramMapa(10.0, 30.0, 90.0, "normal", "4/4"),
+
+         ]
+
+         self.v._refresca_tempo_map()
+
+         self.assertTrue(self.v.afegeix_marcador(15.0))
+
+@@ -993,9 +993,9 @@
+ 
+
+     def test_marcador_abans_d_un_rubato_no_el_converteix(self):
+
+         self.v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(10.0, 20.0, 100.0, "rubato", "4/4"),
+
+-            mapa_tempo.TramMapa(20.0, 30.0, 90.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(10.0, 20.0, 100.0, "rubato", "4/4"),
+
++            tempo_csv.TramMapa(20.0, 30.0, 90.0, "normal", "4/4"),
+
+         ]
+
+         self.v._refresca_tempo_map()
+
+         self.assertTrue(self.v.afegeix_marcador(5.0))
+
+@@ -1006,9 +1006,9 @@
+ 
+
+     def test_fusiona_normals_amb_rubato_preserva_el_rubato(self):
+
+         self.v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
+
+-            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
+
++            tempo_csv.TramMapa(10.0, 20.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+
+         ]
+
+         self.v._refresca_tempo_map()
+
+         self.assertTrue(self.v._fusiona_tram(1, "seguent"))
+
+@@ -1017,10 +1017,10 @@
+ 
+
+     def test_elimina_tram_amb_frontera_heretada_invalida(self):
+
+         self.v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 7.373843, 143.74, "normal", "7/4"),
+
+-            mapa_tempo.TramMapa(7.373843, 13.186992, 144.5, "normal", "7/4"),
+
+-            mapa_tempo.TramMapa(13.186992, 23.129480, 145.0, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(23.129480, 30.0, 156.253618, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 7.373843, 143.74, "normal", "7/4"),
+
++            tempo_csv.TramMapa(7.373843, 13.186992, 144.5, "normal", "7/4"),
+
++            tempo_csv.TramMapa(13.186992, 23.129480, 145.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(23.129480, 30.0, 156.253618, "normal", "4/4"),
+
+         ]
+
+         self.v.offset = 23.15
+
+         self.v._refresca_tempo_map()
+
+@@ -1029,9 +1029,9 @@
+ 
+
+     def test_elimina_normal_amb_rubato_preserva_el_rubato(self):
+
+         self.v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
+
+-            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
+
++            tempo_csv.TramMapa(10.0, 20.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+
+         ]
+
+         self.v._refresca_tempo_map()
+
+         self.assertTrue(self.v._elimina_tram(1))
+
+diff --git a/tests/test_edicio.py b/tests/test_edicio.py
+--- a/tests/test_edicio.py
++++ b/tests/test_edicio.py
+@@ -18,7 +18,7 @@
+ import unittest
+
+ import tempfile
+
+ import wave
+
+-from app import mapa_tempo
+
++from app import tempo_csv
+
+ from app import pipeline
+
+ from app import visor as visor_mod
+
+ import csv
+
+@@ -3139,7 +3139,7 @@
+         vinga la còpia: `_refresca_tempo_map` és el punt únic on es fa."""
+
+         v = _regles_or___visor(dur=20.0)
+
+         v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(5.0, 8.0, 120.0, "rubato", "4/4+2/4"),
+
++            tempo_csv.TramMapa(5.0, 8.0, 120.0, "rubato", "4/4+2/4"),
+
+             (8.0, 30.0, 90.0, 3, 4),
+
+         ]
+
+         v._refresca_tempo_map()
+
+@@ -4211,7 +4211,7 @@
+ 
+
+ 
+
+ class TestSenseAnalisi(_sense_analisi___Base):
+
+-    def test_mapa_tempo_compas(self):
+
++    def test_tempo_csv_compas(self):
+
+         """Fase 4: `aplica_tempo_trams` (des del diàleg) actualitza el model,
+
+         el mapa i el disc."""
+
+         w, p = self._finestra_amb_projecte()
+
+@@ -4221,7 +4221,7 @@
+         self.assertEqual(len(vr.tempo_trams), 2)
+
+         self.assertEqual(vr.tempo_map.label(0.0), "1.1.1")
+
+         self.assertEqual(vr.tempo_map.signatura(3.0), (3, 4))
+
+-        trams = mapa_tempo.llegeix_mapa_tempo(
+
++        trams = tempo_csv.llegeix_tempo_csv(
+
+             os.path.join(p.carpeta, "mapa_tempo.csv"))
+
+         self.assertEqual(len(trams), 2)
+
+         self.assertAlmostEqual(float(trams[1].bpm), 90.0)
+
+@@ -4436,8 +4436,8 @@
+         w = _undo_temps___finestra()
+
+         v = w.visor_ref
+
+         v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(10.0, 30.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(10.0, 30.0, 120.0, "normal", "4/4"),
+
+         ]
+
+         v._actualitza_temps()
+
+         v._undo_touch_base()
+
+@@ -4462,7 +4462,7 @@
+     def test_crea_rang_desalineat_retempa_els_veins(self):
+
+         w, v = self._prepara()
+
+         v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 30.0, 120.0, "normal", "4/4")]
+
++            tempo_csv.TramMapa(0.0, 30.0, 120.0, "normal", "4/4")]
+
+         v._actualitza_temps()
+
+         v._undo_touch_base()
+
+         self.assertTrue(v.crea_rubato_rang(10.5, 20.5))
+
+@@ -4489,9 +4489,9 @@
+     def test_converteix_rubato_mixt_a_normals_per_segment(self):
+
+         w, v = self._prepara()
+
+         v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(10.0, 14.2, 100.0, "rubato", "4/4+6/8"),
+
+-            mapa_tempo.TramMapa(14.2, 30.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(10.0, 14.2, 100.0, "rubato", "4/4+6/8"),
+
++            tempo_csv.TramMapa(14.2, 30.0, 120.0, "normal", "4/4"),
+
+         ]
+
+         v._actualitza_temps()
+
+         self.assertTrue(v.converteix_normal(1))
+
+@@ -4507,9 +4507,9 @@
+     def test_moure_la_vora_dun_rubato_retempa_el_vei(self):
+
+         w, v = self._prepara()
+
+         v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "rubato", "4/4*5"),
+
+-            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(10.0, 20.0, 120.0, "rubato", "4/4*5"),
+
++            tempo_csv.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+
+         ]
+
+         v._actualitza_temps()
+
+         v._undo_touch_base()
+
+@@ -4528,8 +4528,8 @@
+     def test_moure_la_fi_dun_rubato_inicial_mou_l_offset(self):
+
+         w, v = self._prepara()
+
+         v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4*5"),
+
+-            mapa_tempo.TramMapa(10.0, 30.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4*5"),
+
++            tempo_csv.TramMapa(10.0, 30.0, 120.0, "normal", "4/4"),
+
+         ]
+
+         v._actualitza_temps()
+
+         self.assertAlmostEqual(v.offset, 10.0, places=6)
+
+@@ -4581,8 +4581,8 @@
+         w = _undo_temps___finestra()
+
+         v = w.visor_ref
+
+         v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(10.0, 30.0, 100.0, "normal", "3/4"),
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(10.0, 30.0, 100.0, "normal", "3/4"),
+
+         ]
+
+         v._actualitza_temps()
+
+         return w, v
+
+@@ -4603,8 +4603,8 @@
+     def test_rubato_es_mostra_derivat_i_readonly(self):
+
+         _w, v = self._prepara()
+
+         v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(10.0, 30.0, 102.0, "rubato",
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(10.0, 30.0, 102.0, "rubato",
+
+                                 "4/4*8+2/4"),
+
+         ]
+
+         v._actualitza_temps()
+
+@@ -4660,8 +4660,8 @@
+         v.offset = 1.207438
+
+         v.bpm, v.bpb, v.beat_type = 66.731, 1, 4
+
+         v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 1.207438, 66.731, "normal", "1/4"),
+
+-            mapa_tempo.TramMapa(1.207438, 30.0, 66.730739, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 1.207438, 66.731, "normal", "1/4"),
+
++            tempo_csv.TramMapa(1.207438, 30.0, 66.730739, "normal", "4/4"),
+
+         ]
+
+         v._actualitza_temps()
+
+         v._focus_editor("tempo", 0)
+
+@@ -4743,9 +4743,9 @@
+         """El rubato conserva tipus/seqüència; el veí amb compàs re-tempa."""
+
+         w, v = self._prepara()
+
+         v.tempo_trams = [
+
+-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
+-            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "rubato", "4/4*5"),
+
+-            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(10.0, 20.0, 120.0, "rubato", "4/4*5"),
+
++            tempo_csv.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+
+         ]
+
+         v._actualitza_temps()
+
+         v._undo_touch_base()
+
+diff --git a/tests/test_gui.py b/tests/test_gui.py
+--- a/tests/test_gui.py
++++ b/tests/test_gui.py
+@@ -4876,7 +4876,7 @@
+             log=lambda *_: None, tempo_fix=True, amb_estructura=True,
+
+             total_s=2.0,
+
+             acords=f.visor_ref.acords, seccions=f.visor_ref.seccions,
+
+-            mapa_tempo=list(f.visor_ref.tempo_trams))
+
++            tempo_csv=list(f.visor_ref.tempo_trams))
+
+         self.assertEqual(res["n_acords_wavs"], 1)
+
+         self.assertEqual(res["n_estructura_wavs"], 1)
+
+         self.assertTrue(any("C" in n for n in
+
+diff --git a/tests/test_mapa_tempo.py b/tests/test_mapa_tempo.py
+--- a/tests/test_mapa_tempo.py
++++ b/tests/test_mapa_tempo.py
+@@ -9,7 +9,7 @@
+ import _temporals  # noqa: E402
+
+ _ = _temporals
+
+ 
+
+-from app import mapa_tempo as M  # noqa: E402
+
++from app import tempo_csv as M  # noqa: E402
+
+ from app import rubato  # noqa: E402
+
+ 
+
+ 
+
+@@ -88,18 +88,18 @@
+     def test_roundtrip_normal(self):
+
+         trams = [M.TramMapa(0.0, 4.0, 120.0, "normal", "4/4"),
+
+                  M.TramMapa(4.0, 8.0, 90.0, "normal", "3/4")]
+
+-        M.desa_mapa_tempo(self.ruta, trams)
+
+-        self.assertEqual(M.llegeix_mapa_tempo(self.ruta), trams)
+
++        M.desa_tempo_csv(self.ruta, trams)
+
++        self.assertEqual(M.llegeix_tempo_csv(self.ruta), trams)
+
+ 
+
+     def test_roundtrip_rubato(self):
+
+         trams = [M.TramMapa(0.0, 15.0, 60.0, "rubato", "4/4*3+3/4"),
+
+                  M.TramMapa(15.0, 20.0, 120.0, "normal", "4/4")]
+
+-        M.desa_mapa_tempo(self.ruta, trams)
+
+-        self.assertEqual(M.llegeix_mapa_tempo(self.ruta), trams)
+
++        M.desa_tempo_csv(self.ruta, trams)
+
++        self.assertEqual(M.llegeix_tempo_csv(self.ruta), trams)
+
+ 
+
+     def test_llegeix_tuples_antigues(self):
+
+-        M.desa_mapa_tempo(self.ruta, [(0.0, 4.0, 120.0, 4, 4)])
+
+-        llegits = M.llegeix_mapa_tempo(self.ruta)
+
++        M.desa_tempo_csv(self.ruta, [(0.0, 4.0, 120.0, 4, 4)])
+
++        llegits = M.llegeix_tempo_csv(self.ruta)
+
+         self.assertEqual(len(llegits), 1)
+
+         self.assertEqual(llegits[0].tipus, "normal")
+
+         self.assertEqual(llegits[0].compassos, "4/4")
+
+@@ -108,7 +108,7 @@
+         with open(self.ruta, "w", encoding="utf-8", newline="") as f:
+
+             f.write("inici,fi,bpm,tipus,compassos\n")
+
+             f.write("0.000000,4.000000,120.000000,normal,4/4\n")
+
+-        self.assertEqual(len(M.llegeix_mapa_tempo(self.ruta)), 1)
+
++        self.assertEqual(len(M.llegeix_tempo_csv(self.ruta)), 1)
+
+ 
+
+     def test_files_dolentes_es_descarten(self):
+
+         with open(self.ruta, "w", encoding="utf-8", newline="") as f:
+
+@@ -118,14 +118,14 @@
+             f.write("12,16,120,normal\n")           # falten columnes
+
+             f.write("16,20,120,normal,4/4\n")
+
+         logs = []
+
+-        out = M.llegeix_mapa_tempo(self.ruta, log=logs.append)
+
++        out = M.llegeix_tempo_csv(self.ruta, log=logs.append)
+
+         self.assertEqual(len(out), 2)
+
+         self.assertEqual(out[0].ini, 0.0)
+
+         self.assertEqual(out[1].ini, 16.0)
+
+         self.assertEqual(len(logs), 3)
+
+ 
+
+     def test_fitxer_absent(self):
+
+-        self.assertEqual(M.llegeix_mapa_tempo(self.ruta), [])
+
++        self.assertEqual(M.llegeix_tempo_csv(self.ruta), [])
+
+ 
+
+     def test_te_format_antic(self):
+
+         self.assertFalse(M.te_format_antic(self.td))
+
+diff --git a/tests/test_pipeline.py b/tests/test_pipeline.py
+--- a/tests/test_pipeline.py
++++ b/tests/test_pipeline.py
+@@ -17,7 +17,7 @@
+ 
+
+ import unittest
+
+ import tempfile
+
+-from app import mapa_tempo
+
++from app import tempo_csv
+
+ from app import pipeline
+
+ import numpy as np
+
+ from app import acord_audio as A
+
+@@ -6305,7 +6305,7 @@
+         res = pipeline.exporta_total(
+
+             csv_ac, None, sortida, 120.0, 4, 0.0, 44100, lambda *a: None,
+
+             tempo_fix=True, amb_estructura=True, total_s=DURADA,
+
+-            acords=list(_regla12_export__ACORDS), seccions=list(SECCIONS), mapa_tempo=trams)
+
++            acords=list(_regla12_export__ACORDS), seccions=list(SECCIONS), tempo_csv=trams)
+
+         return sortida, res
+
+ 
+
+ 
+
+@@ -6322,24 +6322,24 @@
+             os.path.join(sortida, "estructura_ABC.csv")))
+
+         self.assertTrue(os.path.isdir(os.path.join(sortida, "wavs_estructura")))
+
+         # mapa de BPM/compàs, amb carpeta PRÒPIA
+
+-        mapa = os.path.join(sortida, "mapa_tempo")
+
++        mapa = os.path.join(sortida, "tempo_csv")
+
+         self.assertTrue(os.path.isdir(mapa), "falta la carpeta del mapa")
+
+         self.assertTrue(os.path.isfile(os.path.join(mapa, "mapa_tempo.csv")))
+
+-        self.assertEqual(res.get("mapa_tempo_dir"), mapa)
+
++        self.assertEqual(res.get("tempo_csv_dir"), mapa)
+
+         self.assertEqual(res.get("n_mapa_trams"), len(TRAMS))
+
+ 
+
+     def test_rubato_exporta_avis_i_conserva_tipus(self):
+
+         trams = [
+
+-            mapa_tempo.TramMapa(0.0, 8.0, 120.0, "rubato", "4/4*4"),
+
+-            mapa_tempo.TramMapa(8.0, 16.0, 120.0, "normal", "4/4"),
+
++            tempo_csv.TramMapa(0.0, 8.0, 120.0, "rubato", "4/4*4"),
+
++            tempo_csv.TramMapa(8.0, 16.0, 120.0, "normal", "4/4"),
+
+         ]
+
+         sortida, res = self._exporta(trams)
+
+-        ruta = os.path.join(sortida, "mapa_tempo", "mapa_tempo.csv")
+
++        ruta = os.path.join(sortida, "tempo_csv", "mapa_tempo.csv")
+
+         with open(ruta, encoding="utf-8") as f:
+
+             text = f.read()
+
+         self.assertIn("rubato", text)
+
+         self.assertIn("4/4*4", text)
+
+-        avis = res.get("mapa_tempo_avis")
+
++        avis = res.get("tempo_csv_avis")
+
+         self.assertTrue(avis and os.path.isfile(avis))
+
+         with open(avis, encoding="utf-8") as f:
+
+             text_avis = f.read()
+
+@@ -6350,20 +6350,20 @@
+         """El que s'exporta és el MODEL (no una còpia vella del disc)."""
+
+         sortida, _regla12_export___ = self._exporta(TRAMS)
+
+         trams = pipeline.llegeix_tempo_map(
+
+-            os.path.join(sortida, "mapa_tempo"), 120.0, 4, 4, DURADA)
+
++            os.path.join(sortida, "tempo_csv"), 120.0, 4, 4, DURADA)
+
+         self.assertEqual([(float(t[0]), float(t[1]), float(t[2]), int(t[3]),
+
+                            int(t[4])) for t in trams], TRAMS)
+
+ 
+
+     def test_sense_mapa_no_hi_ha_carpeta(self):
+
+         """Sense mapa al model (flux antic), el paquet queda com era."""
+
+         sortida, res = self._exporta(None)
+
+-        self.assertFalse(os.path.isdir(os.path.join(sortida, "mapa_tempo")))
+
+-        self.assertNotIn("mapa_tempo_dir", res)
+
++        self.assertFalse(os.path.isdir(os.path.join(sortida, "tempo_csv")))
+
++        self.assertNotIn("tempo_csv_dir", res)
+
+ 
+
+     def test_el_csv_de_mapa_te_els_compassos_del_mapa(self):
+
+         """El `mapa_tempo.csv` ha de dur el compàs de cada tram (4/4 i 3/4)."""
+
+         sortida, _regla12_export___ = self._exporta(TRAMS)
+
+-        with open(os.path.join(sortida, "mapa_tempo", "mapa_tempo.csv"),
+
++        with open(os.path.join(sortida, "tempo_csv", "mapa_tempo.csv"),
+
+                   encoding="utf-8") as f:
+
+             files = [r for r in csv.reader(f) if r and not r[0][0].isalpha()]
+
+         self.assertEqual([r[4] for r in files], ["4/4", "3/4"])
+
+diff --git a/tests/test_tempo_map.py b/tests/test_tempo_map.py
+--- a/tests/test_tempo_map.py
++++ b/tests/test_tempo_map.py
+@@ -17,7 +17,7 @@
+ 
+
+ import unittest
+
+ import unittest.mock  # noqa: F401  (alguns tests fan servir unittest.mock)
+
+-from app import mapa_tempo
+
++from app import tempo_csv
+
+ from app import pipeline
+
+ from app.tempo_map import TempoMap
+
+ import numpy as np
+
+@@ -498,7 +498,7 @@
+         self.assertEqual(trams, [(0.0, 8.0, 120.0, 4, 4)])
+
+         self.assertTrue(any("Mapa de tempo" in avís for avís in avisos))
+
+ 
+
+-    def test_mapa_tempo_format(self):
+
++    def test_tempo_csv_format(self):
+
+         import tempfile
+
+         td = tempfile.mkdtemp()
+
+         pipeline.desa_tempo_map(td, [(0.0, 2.5, 105.315, 4, 4)])
+
+@@ -1939,7 +1939,7 @@
+     """`TempoMap` expandix una seqüència de rubato en sub-trams per compàs."""
+
+ 
+
+     def test_expandeix_compassos_barrejats(self):
+
+-        rub = mapa_tempo.TramMapa(0.0, 7.0, 60.0, "rubato", "4/4+6/8")
+
++        rub = tempo_csv.TramMapa(0.0, 7.0, 60.0, "rubato", "4/4+6/8")
+
+         m = TempoMap([rub])
+
+         self.assertEqual(m.signatura(1.0), (4, 4))
+
+         self.assertEqual(m.signatura(5.0), (6, 8))
+
+@@ -1949,7 +1949,7 @@
+         self.assertAlmostEqual(tm.durada_compas(60.0, 6, 8), 3.0, places=6)
+
+ 
+
+     def test_barreja_4_4_i_6_8_en_el_mateix_rubato(self):
+
+-        rub = mapa_tempo.TramMapa(0.0, 7.0, 60.0, "rubato", "4/4+6/8")
+
++        rub = tempo_csv.TramMapa(0.0, 7.0, 60.0, "rubato", "4/4+6/8")
+
+         m = TempoMap([rub])
+
+         self.assertAlmostEqual(m.quarters(7.0), 7.0, places=6)
+
+ 
+
+diff --git a/tests/test_tempo_trams.py b/tests/test_tempo_trams.py
+--- a/tests/test_tempo_trams.py
++++ b/tests/test_tempo_trams.py
+@@ -198,7 +198,7 @@
+     def test_mapa_sintetic(self):
+
+         with tempfile.TemporaryDirectory() as td:
+
+             ruta = wav_clics(td, 110.0, 30.0, silenci_ini=1.0)
+
+-            trams, off, base = tempo.mapa_tempo_automatic(
+
++            trams, off, base = tempo.tempo_csv_automatic(
+
+                 ruta, None, durada=30.0, cada_compassos=4)
+
+             self.assertTrue(trams)
+
+             self.assertLess(abs(base - 110.0), 3.0, base)
+
+@@ -210,7 +210,7 @@
+         with tempfile.TemporaryDirectory() as td:
+
+             ruta = wav_clics(td, 100.0, 40.0, silenci_ini=0.5,
+
+                              canvi=(20.0, 132.0))
+
+-            trams, off, _base = tempo.mapa_tempo_automatic(
+
++            trams, off, _base = tempo.tempo_csv_automatic(
+
+                 ruta, None, durada=40.0, cada_compassos=4)
+
+             self.assertGreaterEqual(len(trams), 2)
+
+             self.assertLess(abs(trams[0][2] - 100.0), 4.0, trams)
+
+diff --git a/app/mapa_tempo.py b/app/mapa_tempo.py
+deleted file mode 100644
+--- a/app/mapa_tempo.py
++++ /dev/null
+--- a/app/mapa_tempo.py
++++ /dev/null
+@@ -1,328 +0,0 @@
+-"""Model unificat del mapa de tempo/compàs (`mapa_tempo.csv`).
+
+-
+
+-Subplà de rubato, fase 2. Este mòdul és la **capa de dades** del model:
+
+-
+
+-    inici,fi,bpm,tipus,compassos
+
+-
+
+-- `tipus`: `normal` o `rubato`.
+
+-- `compassos`: forma canònica ASCII (`4/4` o `4/4*2+6/8`).
+
+-
+
+-Els clips normals tenen **un sol compàs**; els rubato poden tindre una
+
+-seqüència de fins a 4 compassos, amb un sol BPM derivat.
+
+-
+
+-El mòdul és pur respecte de Qt. La integració amb el projecte, el visor i
+
+-l'exportació es fa a `pipeline`/`visor`; ací es defineix el model i el fitxer.
+
+-"""
+
+-
+
+-from dataclasses import dataclass
+
+-import csv
+
+-import os
+
+-
+
+-from app import rubato
+
+-from app import tempo_map
+
+-
+
+-
+
+-NOM_MAPA_TEMPO = "mapa_tempo.csv"
+
+-NOM_CSV_TEMPO_ANTIC = "tempo.csv"
+
+-NOM_CSV_COMPAS_ANTIC = "compas.csv"
+
+-
+
+-#: Capçalera del fitxer (es llig i s'ignora en carregar).
+
+-CAPCALERA = ("inici", "fi", "bpm", "tipus", "compassos")
+
+-
+
+-#: Decimals de temps i BPM (els mateixos que el model anterior).
+
+-TEMPS_DEC = 6
+
+-BPM_DEC = 6
+
+-
+
+-
+
+-@dataclass(frozen=True)
+
+-class TramMapa:
+
+-    """Un tram del mapa de tempo/compàs.
+
+-
+
+-    És compatible amb el model antic de 5 tuples: `iter()` i `[]` retornen
+
+-    `(ini, fi, bpm, num, den)`, on `num`/`den` són el **primer** compàs de la
+
+-    seqüència. Això permet que el codi existent seguisca funcionant mentre la
+
+-    fase 3 incorpora la graella completa dels rubatos.
+
+-    """
+
+-
+
+-    ini: float
+
+-    fi: float
+
+-    bpm: float
+
+-    tipus: str = "normal"
+
+-    compassos: str = "4/4"
+
+-
+
+-    def __post_init__(self):
+
+-        tipus = str(self.tipus or "").strip().lower()
+
+-        if tipus not in ("normal", "rubato"):
+
+-            raise rubato.RubatoError(
+
+-                f"Tipus de tram no vàlid: {self.tipus!r}")
+
+-        object.__setattr__(self, "tipus", tipus)
+
+-        text = str(self.compassos or "").strip()
+
+-        segs = rubato.text_a_compassos(text)
+
+-        if tipus == "normal" and (len(segs) != 1 or segs[0][2] != 1):
+
+-            raise rubato.RubatoError(
+
+-                "Un clip normal ha de tindre un sol compàs sense repeticions")
+
+-        object.__setattr__(self, "compassos", text)
+
+-
+
+-    @property
+
+-    def segments(self):
+
+-        return rubato.text_a_compassos(self.compassos)
+
+-
+
+-    @property
+
+-    def den(self):
+
+-        return int(self.segments[0][1])
+
+-
+
+-    @property
+
+-    def num(self):
+
+-        return int(self.segments[0][0])
+
+-
+
+-    def __iter__(self):
+
+-        yield float(self.ini)
+
+-        yield float(self.fi)
+
+-        yield float(self.bpm)
+
+-        yield self.num
+
+-        yield self.den
+
+-
+
+-    def __getitem__(self, idx):
+
+-        return tuple(self)[idx]
+
+-
+
+-    def __len__(self):
+
+-        return 5
+
+-
+
+-    def __eq__(self, other):
+
+-        """Compatible amb tuples antigues de 5 elements."""
+
+-        if isinstance(other, TramMapa):
+
+-            return (self.ini, self.fi, self.bpm, self.tipus, self.compassos) == (
+
+-                other.ini, other.fi, other.bpm, other.tipus, other.compassos)
+
+-        if isinstance(other, (tuple, list)) and len(other) == 5:
+
+-            return tuple(self) == tuple(other)
+
+-        return NotImplemented
+
+-
+
+-    def __hash__(self):
+
+-        return hash((self.ini, self.fi, self.bpm, self.tipus, self.compassos))
+
+-
+
+-    @property
+
+-    def payload(self):
+
+-        return (self.bpm, self.num, self.den)
+
+-
+
+-    @property
+
+-    def lliure(self):
+
+-        return self.tipus == "rubato"
+
+-
+
+-    @property
+
+-    def num_ef(self):
+
+-        return self.num
+
+-
+
+-    @property
+
+-    def den_ef(self):
+
+-        return self.den
+
+-
+
+-    @property
+
+-    def bpm_ef(self):
+
+-        return float(self.bpm)
+
+-
+
+-
+
+-def des_de_tupla(tram):
+
+-    """Converteix una tupla antiga `(ini, fi, bpm, num, den)` en `TramMapa`."""
+
+-    if isinstance(tram, TramMapa):
+
+-        return tram
+
+-    ini, fi, bpm, num, den = tram
+
+-    return TramMapa(float(ini), float(fi), float(bpm), "normal",
+
+-                    f"{int(num)}/{int(den)}")
+
+-
+
+-
+
+-def a_tuples(trams):
+
+-    """Vista de 5 tuples (per al codi que encara no coneix `TramMapa`)."""
+
+-    return [tuple(t) for t in trams]
+
+-
+
+-
+
+-def normalitza_trams_map(trams, durada, log=None, fusiona=False):
+
+-    """Normalitza el mapa preservant `tipus`/`compassos`.
+
+-
+
+-    Sense rubatos, delega en `tempo_map.neteja_trams` + `fusiona_trams_iguals`
+
+-    (comportament idèntic al model anterior). Amb rubatos, garantix ordre,
+
+-    cobertura i contigüitat; si la durada d'un rubato canvia, recalcula el seu
+
+-    BPM a partir de la seqüència i la durada. Fusiona rubatos adjacents quan
+
+-    la seqüència resultant cap en 4 segments.
+
+-    """
+
+-    trams = [des_de_tupla(t) for t in (trams or ())]
+
+-    if not any(t.tipus == "rubato" for t in trams):
+
+-        net, avisos = tempo_map.neteja_trams(
+
+-            [tuple(t) for t in trams], durada)
+
+-        if fusiona:
+
+-            net = tempo_map.fusiona_trams_iguals(net, durada)
+
+-        return [des_de_tupla(t) for t in net], avisos
+
+-
+
+-    avisos = []
+
+-    durada = float(durada or 0.0)
+
+-    if not trams:
+
+-        return [], avisos
+
+-    trams.sort(key=lambda t: t.ini)
+
+-    # Cobertura dels extrems (el primer a 0, l'últim a la durada).
+
+-    p = trams[0]
+
+-    if p.ini > tempo_map.TOL or p.ini < 0:
+
+-        trams[0] = TramMapa(0.0, p.fi, p.bpm, p.tipus, p.compassos)
+
+-    u = trams[-1]
+
+-    if durada > tempo_map.TOL and (u.fi < durada - tempo_map.TOL
+
+-                                   or u.fi > durada + tempo_map.TOL):
+
+-        trams[-1] = TramMapa(u.ini, durada, u.bpm, u.tipus, u.compassos)
+
+-
+
+-    out = []
+
+-    for t in trams:
+
+-        ini = 0.0 if not out else float(out[-1].fi)
+
+-        fi = float(t.fi)
+
+-        if durada > tempo_map.TOL:
+
+-            fi = min(fi, durada)
+
+-        if fi <= ini + tempo_map.TOL:
+
+-            avisos.append(f"tram buit o invertit a {ini:.3f}s; s'ha descartat")
+
+-            continue
+
+-        tipus = t.tipus
+
+-        bpm = float(t.bpm)
+
+-        compassos = t.compassos
+
+-        if tipus == "rubato":
+
+-            segs = t.segments
+
+-            quarters = sum(n * 4.0 / d * c for n, d, c in segs)
+
+-            if quarters > 0:
+
+-                bpm = quarters * 60.0 / (fi - ini)
+
+-                if not (30.0 - 1e-9 <= bpm <= 350.0 + 1e-9):
+
+-                    avisos.append(
+
+-                        f"rubato {ini:.3f}–{fi:.3f}s: BPM derivat fora de "
+
+-                        "30–350; es conserva el valor antic")
+
+-                    bpm = float(t.bpm)
+
+-                bpm = min(max(bpm, 30.0), 350.0)
+
+-        nou = TramMapa(ini, fi, bpm, tipus, compassos)
+
+-        if fusiona and out:
+
+-            prev = out[-1]
+
+-            if (prev.tipus == "normal" and nou.tipus == "normal"
+
+-                    and abs(prev.bpm - nou.bpm) <= tempo_map.TOL
+
+-                    and (prev.num, prev.den) == (nou.num, nou.den)):
+
+-                out[-1] = TramMapa(prev.ini, nou.fi, prev.bpm,
+
+-                                   "normal", prev.compassos)
+
+-                continue
+
+-            if prev.tipus == "rubato" and nou.tipus == "rubato":
+
+-                segs = rubato._fusiona(list(prev.segments) + list(nou.segments))
+
+-                if len(segs) <= rubato.MAX_SEGMENTS:
+
+-                    quarters = sum(n * 4.0 / d * c for n, d, c in segs)
+
+-                    bpm = quarters * 60.0 / (nou.fi - prev.ini)
+
+-                    if 30.0 - 1e-9 <= bpm <= 350.0 + 1e-9:
+
+-                        out[-1] = TramMapa(
+
+-                            prev.ini, nou.fi, min(max(bpm, 30.0), 350.0),
+
+-                            "rubato", rubato.compassos_a_text(segs))
+
+-                        continue
+
+-                    avisos.append(
+
+-                        "dos rubatos adjacents no s'han pogut fusionar per "
+
+-                        "BPM fora de 30–350")
+
+-        out.append(nou)
+
+-    return out, avisos
+
+-
+
+-
+
+-def quantitza_bpm(trams, durada, decimals=1):
+
+-    """Quantitza el BPM dels trams **normals** a `decimals` decimals.
+
+-
+
+-    Conserva el nombre enter de compassos de cada clip normal i recalcula el
+
+-    seu fi; els inicis dels clips següents es desplacen en conseqüència. Els
+
+-    rubatos **no es quantitzen**: conserven el BPM i la seqüència, però la seua
+
+-    finestra es pot desplaçar perquè el mapa continue contigu. L'últim tram
+
+-    acaba a `durada` (excepció permesa a l'últim final).
+
+-    """
+
+-    durada = float(durada or 0.0)
+
+-    decimals = max(0, int(decimals))
+
+-    net = [des_de_tupla(t) for t in (trams or ())]
+
+-    if not net:
+
+-        raise ValueError("El mapa de tempo/compàs és buit")
+
+-    out = []
+
+-    cursor = 0.0
+
+-    for tr in net:
+
+-        dur = max(0.0, float(tr.fi) - float(tr.ini))
+
+-        if tr.tipus == "rubato":
+
+-            fi = cursor + dur
+
+-            out.append(TramMapa(cursor, fi, float(tr.bpm), "rubato",
+
+-                                tr.compassos))
+
+-            cursor = fi
+
+-            continue
+
+-        bq = float(tr.num) * 4.0 / float(tr.den)
+
+-        if bq <= 0:
+
+-            raise ValueError("Hi ha un compàs sense durada vàlida")
+
+-        n = max(1, int(round(dur * float(tr.bpm) / (bq * 60.0))))
+
+-        bpm = round(float(tr.bpm), decimals)
+
+-        if bpm <= 0:
+
+-            raise ValueError("Hi ha un BPM no vàlid")
+
+-        fi = cursor + n * bq * 60.0 / bpm
+
+-        out.append(TramMapa(cursor, fi, bpm, "normal",
+
+-                            f"{int(tr.num)}/{int(tr.den)}"))
+
+-        cursor = fi
+
+-    if durada > 0:
+
+-        last = out[-1]
+
+-        if last.ini >= durada - 1e-6:
+
+-            raise ValueError(
+
+-                "La quantització deixa l'últim clip fora de la WAV; "
+
+-                "reduïx el nombre de compassos o el BPM.")
+
+-        # L'últim final pot ser parcial (excepció de la regla §13.4): la
+
+-        # quantització no ha d'inventar un tram fora de la WAV.
+
+-        if abs(last.fi - durada) > 1e-9:
+
+-            out[-1] = TramMapa(last.ini, durada, last.bpm, last.tipus,
+
+-                               last.compassos)
+
+-    return out
+
+-
+
+-
+
+-def desa_mapa_tempo(ruta, trams):
+
+-    """Escriu `mapa_tempo.csv` de manera atòmica.
+
+-
+
+-    Accepta `TramMapa` o tuples antigues `(ini, fi, bpm, num, den)`; en este
+
+-    segon cas s'escriuen com a `normal` amb el compàs `num/den`.
+
+-    """
+
+-    from app import pipeline       # import diferit: evita el cicle
+
+-
+
+-    def _escriu(f):
+
+-        w = csv.writer(f)
+
+-        w.writerow(CAPCALERA)
+
+-        for t in trams or ():
+
+-            tm = des_de_tupla(t)
+
+-            w.writerow([
+
+-                f"{float(tm.ini):.{TEMPS_DEC}f}",
+
+-                f"{float(tm.fi):.{TEMPS_DEC}f}",
+
+-                f"{float(tm.bpm):.{BPM_DEC}f}",
+
+-                tm.tipus,
+
+-                tm.compassos,
+
+-            ])
+
+-
+
+-    pipeline.escriu_atomic(ruta, _escriu)
+
+-    return ruta
+
+-
+
+-
+
+-def llegeix_mapa_tempo(ruta, log=None):
+
+-    """Llig `mapa_tempo.csv` i retorna una llista de `TramMapa`.
+
+-
+
+-    Les files mal formades es descarten amb una traça al log. La reparació de
+
+-    cobertura/ordre la fa la capa de mapa (`tempo_map`), com abans.
+
+-    """
+
+-    out = []
+
+-    if not ruta or not os.path.isfile(ruta):
+
+-        return out
+
+-    with open(ruta, encoding="utf-8") as f:
+
+-        for n, fila in enumerate(csv.reader(f), 1):
+
+-            if not fila:
+
+-                continue
+
+-            if str(fila[0]).strip().lower() == "inici":
+
+-                continue
+
+-            if len(fila) != 5:
+
+-                if log:
+
+-                    log(f"{NOM_MAPA_TEMPO} fila {n}: columnes incorrectes; "
+
+-                        "s'ha descartat")
+
+-                continue
+
+-            try:
+
+-                tm = TramMapa(float(fila[0]), float(fila[1]), float(fila[2]),
+
+-                              fila[3], fila[4])
+
+-            except (ValueError, rubato.RubatoError) as e:
+
+-                if log:
+
+-                    log(f"{NOM_MAPA_TEMPO} fila {n}: {e}; s'ha descartat")
+
+-                continue
+
+-            out.append(tm)
+
+-    return out
+
+-
+
+-
+
+-def te_format_antic(carpeta):
+
+-    """Hi ha el model antic (`tempo.csv` + `compas.csv`) en una carpeta?"""
+
+-    if not carpeta:
+
+-        return False
+
+-    return (os.path.isfile(os.path.join(carpeta, NOM_CSV_TEMPO_ANTIC))
+
+-            or os.path.isfile(os.path.join(carpeta, NOM_CSV_COMPAS_ANTIC)))
+

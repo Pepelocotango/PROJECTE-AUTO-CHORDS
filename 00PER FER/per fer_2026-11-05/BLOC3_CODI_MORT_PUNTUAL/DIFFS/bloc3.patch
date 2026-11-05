@@ -1,0 +1,889 @@
+diff --git a/app/pipeline.py b/app/pipeline.py
+--- a/app/pipeline.py
++++ b/app/pipeline.py
+@@ -1323,28 +1323,6 @@
+                                Clip(mig, c.fi, c.payload)] + list(out[idx + 1:]))
+
+ 
+
+ 
+
+-def duplica_acord(acords, idx, durada, marge=MIN_GAP_TEMPS):
+
+-    """Duplica l'acord `idx` (wrapper de `duplica_clips`; #11).
+
+-
+
+-    El 2n tros (el nou) pren el seu inici com a `tsrc` (temps font), com fan la
+
+-    resta de marques noves; l'original conserva el seu.
+
+-    """
+
+-    clips = clips_d_acords(acords, durada)
+
+-    nou = duplica_clips(clips, idx, marge)
+
+-    if len(nou) == len(clips) + 1:
+
+-        s = nou[idx + 1]
+
+-        p = tuple(s.payload)
+
+-        nou = list(nou)
+
+-        nou[idx + 1] = Clip(s.ini, s.fi, (p[0], f"{s.ini:.9f}") + p[2:])
+
+-    return acords_de_clips(nou)
+
+-
+
+-
+
+-def duplica_seccio(seccions, idx, marge=MIN_GAP_TEMPS):
+
+-    """Duplica la secció `idx` (mateix nucli que els acords; #11)."""
+
+-    return seccions_de_clips(duplica_clips(
+
+-        clips_de_seccions(seccions), idx, marge))
+
+-
+
+-
+
+ def duplica_bloc_clips(clips, first, last, desti, durada, forat):
+
+     """Nucli de DUPLICAR un BLOC a un DESTÍ (sobreescrivint, §6.3/#11).
+
+ 
+
+diff --git a/app/plataforma.py b/app/plataforma.py
+--- a/app/plataforma.py
++++ b/app/plataforma.py
+@@ -251,50 +251,6 @@
+     except Exception:  # noqa: BLE001
+
+         # alliberar el lock és best-effort; silenciós intencionat
+
+         pass
+
+-
+
+-
+
+-def proces_viu(pid):
+
+-    """Cert si `pid` és un procés VIU (cross-platform).
+
+-
+
+-    ⚠️ A **Windows**, `os.kill(pid, 0)` **NO és una sonda**: acaba cridant
+
+-    `TerminateProcess` (podria MATAR el procés!) i, per a un pid inexistent,
+
+-    llança `OSError` → es confonia amb «mort». Per això, allà es consulta amb
+
+-    `OpenProcess` + `GetExitCodeProcess` (només lectura, mai mata res).
+
+-    """
+
+-    try:
+
+-        pid = int(pid)
+
+-    except (TypeError, ValueError):
+
+-        return False
+
+-    if pid <= 0:
+
+-        return False
+
+-    if not ES_WINDOWS:
+
+-        try:
+
+-            os.kill(pid, 0)          # senyal 0: només comprova que existeixi
+
+-            return True
+
+-        except ProcessLookupError:
+
+-            return False
+
+-        except PermissionError:
+
+-            return True              # existeix (d'un altre usuari)
+
+-        except OSError:
+
+-            return False
+
+-    try:
+
+-        import ctypes
+
+-        from ctypes import wintypes
+
+-        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+
+-        STILL_ACTIVE = 259
+
+-        k = ctypes.windll.kernel32
+
+-        h = k.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+
+-        if not h:
+
+-            return False
+
+-        try:
+
+-            codi = wintypes.DWORD()
+
+-            if not k.GetExitCodeProcess(h, ctypes.byref(codi)):
+
+-                return False
+
+-            return codi.value == STILL_ACTIVE
+
+-        finally:
+
+-            k.CloseHandle(h)
+
+-    except Exception:  # noqa: BLE001
+
+-        return False
+
+ 
+
+ 
+
+ def a_la_paperera(ruta):
+
+diff --git a/app/tempo_map.py b/app/tempo_map.py
+--- a/app/tempo_map.py
++++ b/app/tempo_map.py
+@@ -847,15 +847,6 @@
+             if -TOL <= base + k * beat <= float(durada) + TOL]
+
+ 
+
+ 
+
+-def clip_te_temps_sencer(tram, graella=None):
+
+-    """Compatibilitat: amb graella, comprova un beat complet; sense, durada."""
+
+-    if graella is not None:
+
+-        return clip_conte_beat_sencer(tram, graella)
+
+-    ini, fi = float(tram[0]), float(tram[1])
+
+-    beat = _beat_segons_tram(tram)
+
+-    return beat > TOL and (float(fi) - ini) + TOL_COMPAS >= beat
+
+-
+
+-
+
+ def valida_i_normalitza_compassos(trams, durada, offset=0.0,
+
+                                   preserva_fi_idx=None, beats_qm=None):
+
+     """Valida el contracte de clips de tempo i retorna el mapa normalitzat.
+
+diff --git a/app/metronom.py b/app/metronom.py
+--- a/app/metronom.py
++++ b/app/metronom.py
+@@ -96,35 +96,6 @@
+     """True si `beat` (1-based) és l'inici d'un grup compost."""
+
+     return (_es_compost(num, den) and beat > 1
+
+             and (beat - 1) % 3 == 0)
+
+-
+
+-
+
+-def _ha_de_sonar(mode, beat, num, den):
+
+-    """Decideix si hi ha clic en este beat segons el patró."""
+
+-    mode = _normalitza_mode(mode)
+
+-    if mode == "compas":
+
+-        return beat == 1
+
+-    if mode == "grup":
+
+-        return beat == 1 or _accent_grup(beat, num, den)
+
+-    # `auto` i `temps`: tots els temps.
+
+-    return True
+
+-
+
+-
+
+-def _es_accent(mode, beat, num, den):
+
+-    """True per al clic fort (compàs) o per a l'accent secundari de grup."""
+
+-    mode = _normalitza_mode(mode)
+
+-    if beat == 1:
+
+-        return True
+
+-    return mode in ("auto", "grup") and _accent_grup(beat, num, den)
+
+-
+
+-
+
+-def beats_a_temps(k, bpm, offset=0.0, den=4):
+
+-    """Temps (s) del beat global `k` segons la graella.
+
+-
+
+-    `den` és el denominador del compàs; per defecte 4 (negra), que és la unitat
+
+-    de BPM de l'app. Amb den=8, cada beat és una corxera.
+
+-    """
+
+-    beat_len = (4.0 / float(den)) * 60.0 / float(bpm)
+
+-    return k * beat_len + float(offset)
+
+ 
+
+ 
+
+ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
+
+diff --git a/app/main.py b/app/main.py
+--- a/app/main.py
++++ b/app/main.py
+@@ -64,7 +64,6 @@
+ _INFO_ROTACIO_S = 8.0
+
+ _INFO_PAUSA_S = 30.0        # clic a la caixa → el rotatori es para aquest temps
+
+ 
+
+-
+
+ def _instal·la_captura_excepcions():
+
+     """Registra al log qualsevol excepcio no gestionada (evita crashes muts)."""
+
+     import traceback
+
+@@ -77,7 +76,6 @@
+         logger.error("EXCEPCIO NO GESTIONADA:\n%s",
+
+                      "".join(traceback.format_exception(tipus, valor, tb)))
+
+     sys.excepthook = _hook
+
+-
+
+ 
+
+ def setup_logging(log_path=None):
+
+     log_file = log_path or DEFAULT_LOG_PATH
+
+@@ -104,13 +102,11 @@
+     logger.info("Auto Chords startup | log=%s", log_file)
+
+     return logger
+
+ 
+
+-
+
+ FOSC = theme.app_stylesheet()
+
+ 
+
+ # El fitxer del faulthandler ha de viure TOT el procés (faulthandler no el tanca
+
+ # ni en guarda cap referència: si el GC el tanqués, el crash no deixaria res).
+
+ _FH_FITXER = None
+
+-
+
+ 
+
+ def activa_faulthandler(log_path, logger=None):
+
+     """Deixa la traça dels crashes NADIUS (SIGSEGV / access violation) a disc.
+
+@@ -147,7 +143,6 @@
+             pass
+
+     return ruta
+
+ 
+
+-
+
+ class FeinaExporta(QThread):
+
+     """Exporta el paquet de WAV's en un FIL (A5).
+
+ 
+
+@@ -176,7 +171,6 @@
+             self.log(f"ERROR a l'exportar: {e}")
+
+             self.feta.emit(False, str(e))
+
+ 
+
+-
+
+ class FeinaExportaAudio(QThread):
+
+     """Exporta la còpia WAV de treball a un altre format (Fase 6).
+
+ 
+
+@@ -203,7 +197,6 @@
+         except Exception as e:  # noqa: BLE001
+
+             self.log(f"ERROR a l'exportar àudio: {e}")
+
+             self.feta.emit(False, str(e), "")
+
+-
+
+ 
+
+ class FilTempoTrams(QThread):
+
+     """«Detecta el tempo per trams» en un fil (no bloqueja la GUI).
+
+@@ -244,7 +237,6 @@
+         except Exception as e:  # noqa: BLE001
+
+             self.log(f"tempo per trams: ERROR ({e})")
+
+         self.feta.emit(res)
+
+-
+
+ 
+
+ class Feina(QThread):
+
+     missatge = pyqtSignal(str)
+
+@@ -420,7 +412,6 @@
+             self.log(f"ERROR a l'analisi: {e}")
+
+             self.feta.emit(False, str(e))
+
+ 
+
+-
+
+ def _llegeix_cru_acords(ruta):
+
+     """CSV del host -> `[(t, acord), …]` (el CRU que es guarda al projecte)."""
+
+     out = []
+
+@@ -436,7 +427,6 @@
+     except OSError:
+
+         return []
+
+     return out
+
+-
+
+ 
+
+ def _llegeix_cru_segments(ruta):
+
+     """CSV del qm-segmenter -> `[(ini, durada, idx, etiqueta), …]`."""
+
+@@ -454,7 +444,6 @@
+     except OSError:
+
+         return []
+
+     return out
+
+-
+
+ 
+
+ class Finestra(QMainWindow):
+
+     # Els `except Exception` d'aquesta classe protegeixen accions de l'usuari:
+
+@@ -2295,7 +2284,6 @@
+                     and self.b_eina.isChecked())
+
+         vr.timeline.set_tool("marc" if marc else "intel·ligent")
+
+ 
+
+-
+
+     def _canvia_eina(self, activat):
+
+         """Commutador d'eina del timeline: intel·ligent ⇄ marc."""
+
+         marc = bool(activat)
+
+@@ -2345,11 +2333,6 @@
+             return vr.executa_edicio("reanomena")
+
+         return False
+
+ 
+
+-    def _idx_acord_del_cursor(self):
+
+-        """Índex de l'acord que conté el cursor (o `None`). Regla d'or #11."""
+
+-        vr = getattr(self, "visor_ref", None)
+
+-        return vr._idx_a_t("chord", vr.pos) if vr is not None else None
+
+-
+
+     def _parteix_acord_ui(self):
+
+         """Parteix l'acord que conté el cursor pel punt del cursor (regla #11)."""
+
+         vr = getattr(self, "visor_ref", None)
+
+@@ -2362,11 +2345,6 @@
+         self.registra("Parteix: el cursor no és dins cap acord")
+
+         return False
+
+ 
+
+-    def _idx_seccio_del_cursor(self):
+
+-        """Índex de la secció que CONTÉ el cursor (o `None`). A2."""
+
+-        vr = getattr(self, "visor_ref", None)
+
+-        return vr._idx_a_t("section", vr.pos) if vr is not None else None
+
+-
+
+     def _parteix_seccio_ui(self):
+
+         """Parteix la secció que conté el cursor pel punt del cursor (A2)."""
+
+         vr = getattr(self, "visor_ref", None)
+
+@@ -2378,11 +2356,6 @@
+             return True
+
+         self.registra("Parteix: el cursor no és dins cap secció")
+
+         return False
+
+-
+
+-    def _idx_tram_del_cursor(self):
+
+-        """Índex del tram de BPM/compàs que CONTÉ el cursor (o `None`). #11."""
+
+-        vr = getattr(self, "visor_ref", None)
+
+-        return vr._idx_a_t("tempo", vr.pos) if vr is not None else None
+
+ 
+
+     def _afegeix_tram_ui(self):
+
+         """«Afegeix un canvi de tempo/compàs» al cursor (despatx únic)."""
+
+@@ -4673,7 +4646,6 @@
+             self.avisa_info("Auto Chords",
+
+                                     "Encara no hi ha cap resultat.")
+
+ 
+
+-
+
+ def main():
+
+     # A Windows la consola sol ser cp1252 i els missatges porten emojis i
+
+     # fletxes: sense això un simple print() peta amb UnicodeEncodeError
+
+@@ -4743,6 +4715,5 @@
+         plataforma.desbloqueja(lock_file)
+
+         lock_file.close()
+
+ 
+
+-
+
+ if __name__ == "__main__":
+
+     raise SystemExit(main())
+
+diff --git a/app/ffmpeg.py b/app/ffmpeg.py
+--- a/app/ffmpeg.py
++++ b/app/ffmpeg.py
+@@ -55,7 +55,6 @@
+     "opus", "wma", "mp2", "caf", "w64", "au", "wv", "ape", "alac",
+
+ ]
+
+ 
+
+-
+
+ def disponible():
+
+     """Hi ha ffmpeg? (ffprobe és OPCIONAL: només el fa servir info())."""
+
+     try:
+
+@@ -64,13 +63,10 @@
+     except (OSError, subprocess.SubprocessError):
+
+         return False
+
+ 
+
+-
+
+ def extensions():
+
+     return list(EXTENSIONS)
+
+ 
+
+-
+
+ _RE_ENCODER = re.compile(r"^\s*A[A-Z.]{5}\s+(\S+)")
+
+-
+
+ 
+
+ def encoders():
+
+     """Conjunt d'encoders d'àudio que ofereix aquest ffmpeg (`-encoders`).
+
+@@ -93,7 +89,6 @@
+             noms.add(m.group(1))
+
+     return noms
+
+ 
+
+-
+
+ def comanda_exporta(origen, desti, codec, extra=()):
+
+     """Comanda d'ffmpeg per exportar `origen` amb un còdec concret.
+
+ 
+
+@@ -103,14 +98,12 @@
+     return [FFMPEG, *_OPCIONS_ENTRADA, "-y", "-i", _ruta_arg(origen),
+
+             "-vn", "-map_metadata", "-1", "-c:a", str(codec),
+
+             *[str(x) for x in extra], _ruta_arg(desti)]
+
+-
+
+ 
+
+ def filtre():
+
+     """Filtre per al QFileDialog (tots els formats acceptats)."""
+
+     pats = " ".join(f"*.{e}" for e in EXTENSIONS)
+
+     return f"Àudio ({pats});;WAV (*.wav);;Tots els fitxers (*)"
+
+ 
+
+-
+
+ def es_wav_pcm16(ruta):
+
+     """Cert si `ruta` és un WAV PCM 16 bits (el que l'app necessita)."""
+
+     if not str(ruta).lower().endswith(".wav"):
+
+@@ -121,14 +114,12 @@
+     except (wave.Error, OSError, EOFError):
+
+         return False
+
+ 
+
+-
+
+ def _no_opcio(ruta):
+
+     """Evita que una ruta es llegeixi com una opció d'ffmpeg (comença amb `-`).
+
+ 
+
+     NO filtra cap caràcter de la ruta; només hi anteposa `./` si cal.
+
+     """
+
+     return os.path.join(".", ruta) if ruta.startswith("-") else ruta
+
+-
+
+ 
+
+ def _ruta_arg(ruta):
+
+     """Ruta absoluta per passar a ffmpeg/ffprobe (sense filtrar res).
+
+@@ -139,7 +130,6 @@
+     amb `-` (`_no_opcio`).
+
+     """
+
+     return _no_opcio(os.path.abspath(ruta))
+
+-
+
+ 
+
+ def _opcions_a_treure(stderr):
+
+     """Opcions de seguretat que el binari ha rebutjat (per al fallback)."""
+
+@@ -149,7 +139,6 @@
+         if nom:
+
+             fora.add("-" + nom)
+
+     return fora & set(_OPCIONS_FALLBACK)
+
+-
+
+ 
+
+ def _treu_opcions(cmd, fora):
+
+     """Còpia de `cmd` sense les opcions de `fora` (i el seu valor, si en té)."""
+
+@@ -163,7 +152,6 @@
+         i += 1
+
+     return out
+
+ 
+
+-
+
+ def _executa(cmd, timeout, log=None):
+
+     """Executa `cmd` amb fallback de seguretat.
+
+ 
+
+@@ -184,19 +172,16 @@
+                            text=True, timeout=timeout)
+
+     return p
+
+ 
+
+-
+
+ def _cmd_converteix(ruta, dest):
+
+     """Comanda d'ffmpeg per convertir `ruta` a WAV PCM 16 bits."""
+
+     return [FFMPEG, *_OPCIONS_ENTRADA, "-y", "-i", _ruta_arg(ruta),
+
+             "-vn", "-c:a", "pcm_s16le", _ruta_arg(dest)]
+
+-
+
+ 
+
+ def _cmd_info(ruta):
+
+     """Comanda de ffprobe per llegir durada/mostreig/canals."""
+
+     return [FFPROBE, *_OPCIONS_ENTRADA, "-v", "error", "-show_entries",
+
+             "format=duration:stream=sample_rate,channels",
+
+             "-of", "json", _ruta_arg(ruta)]
+
+-
+
+ 
+
+ def info(ruta, log=None):
+
+     """Durada/mostreig/canals d'un àudio qualsevol (via ffprobe).
+
+@@ -222,7 +207,6 @@
+         "durada": float(dur) if dur else None,
+
+     }
+
+ 
+
+-
+
+ def converteix_a_wav(ruta, log=None, dest=None):
+
+     """Converteix `ruta` a WAV PCM 16 bits (manté mostreig i canals).
+
+ 
+
+@@ -256,13 +240,9 @@
+     _log(f"convertit → {os.path.basename(dest)}")
+
+     return dest
+
+ 
+
+-
+
+ # --- Velocitat amb el to mantingut (Anàlisi guiat v3, R11) -------------------
+
+-#: Velocitats que ofereix el diàleg d'ancoratges: ½ · ⅔ (1÷1,5) · 1 · 1,5 · 2 · 4.
+
+-VELOCITATS = (0.5, 1.0 / 1.5, 1.0, 1.5, 2.0, 4.0)
+
+ #: Prefix dels temporals d'estirament (R19: viuen al directori temporal).
+
+ PREFIX_VELOCITAT = "auto_chords_vel_"
+
+-
+
+ 
+
+ def cadena_atempo(factor):
+
+     """Cadena de filtres `atempo` per a un factor qualsevol (to mantingut).
+
+@@ -286,7 +266,6 @@
+     parts.append(f"atempo={f:.6f}")
+
+     return ",".join(parts)
+
+ 
+
+-
+
+ def ruta_velocitat(ruta, factor, carpeta=None):
+
+     """Ruta del temporal d'estirament per a `ruta` a `factor` (determinista)."""
+
+     import hashlib
+
+@@ -302,7 +281,6 @@
+     return os.path.join(carpeta, f"{PREFIX_VELOCITAT}{base}_{h}_"
+
+                                  f"{float(factor):g}x.wav")
+
+ 
+
+-
+
+ def _es_mono_pcm16(ruta):
+
+     """True si el WAV és mono PCM 16 bits (el que mengen els reproductors)."""
+
+     try:
+
+@@ -311,7 +289,6 @@
+             return int(wf.getnchannels()) == 1 and int(wf.getsampwidth()) == 2
+
+     except (OSError, EOFError, ValueError, ImportError):
+
+         return False
+
+-
+
+ 
+
+ def prepara_escolta(ruta, factor=1.0, log=None, carpeta=None):
+
+     """Còpia **mono PCM16** reproduïble a `factor`×, per al diàleg del guiat.
+
+@@ -329,25 +306,6 @@
+     if abs(f - 1.0) < 1e-9 and _es_mono_pcm16(ruta):
+
+         return ruta
+
+     return _render(ruta, f, log, carpeta)
+
+-
+
+-
+
+-def estira_a_wav(ruta, factor, log=None, carpeta=None):
+
+-    """Còpia de `ruta` reproduïble a `factor`× **mantenint el to** (R11).
+
+-
+
+-    A 1,0× torna la mateixa ruta. La resta es renderitzen amb `ffmpeg atempo` a
+
+-    un WAV PCM 16 del directori temporal (caché: es reutilitza si ja hi és i és
+
+-    més nou que l'original). La relació amb el temps real és
+
+-    ``t_real = t_estirat × factor`` (a ½, 1 s de música ocupa 2 s de fitxer).
+
+-    """
+
+-    if not ruta or not os.path.isfile(str(ruta)):
+
+-        raise ValueError(f"Fitxer d'àudio no trobat: {ruta!r}")
+
+-    f = float(factor)
+
+-    if f <= 0:
+
+-        raise ValueError("El factor de velocitat ha de ser > 0")
+
+-    if abs(f - 1.0) < 1e-9:
+
+-        return ruta
+
+-    return _render(ruta, f, log, carpeta)
+
+-
+
+ 
+
+ def _render(ruta, f, log=None, carpeta=None):
+
+     """Renderitza `ruta` a `f`× en mono PCM16 (caché). Vore `estira_a_wav`."""
+

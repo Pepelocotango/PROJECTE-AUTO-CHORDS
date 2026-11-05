@@ -1,0 +1,391 @@
+diff --git a/app/beats.py b/app/beats.py
+--- a/app/beats.py
++++ b/app/beats.py
+@@ -84,8 +84,13 @@
+     intervals = [b - a for a, b in zip(beats, beats[1:]) if b > a]
+
+     if not intervals:
+
+         return None
+
+-    # Si hi ha forats, la mediana és més robusta que la mitjana.
+
+-    return 60.0 / statistics.median(intervals)
+
++    # Si hi ha forats, la mediana es mes robusta que la mitjana.
+
++    bpm = 60.0 / statistics.median(intervals)
+
++    # Guardrail: rebutjar BPM fora de banda (evita BPM absurds per forats grans).
+
++    from app import limits
+
++    if not (limits.BPM_MIN <= bpm <= limits.BPM_MAX):
+
++        return None
+
++    return bpm
+
+ 
+
+ 
+
+ def _detecta_nostre(wav, log, sensibilitat, bpb, den, bpm_hint,
+
+diff --git a/app/pipeline.py b/app/pipeline.py
+--- a/app/pipeline.py
++++ b/app/pipeline.py
+@@ -189,12 +189,17 @@
+ 
+
+ 
+
+ def wav_info(path):
+
+-    with wave.open(path, "rb") as w:
+
+-        return {
+
+-            "canals": w.getnchannels(),
+
+-            "mostreig": w.getframerate(),
+
+-            "durada": w.getnframes() / w.getframerate(),
+
+-        }
+
++    if not os.path.isfile(path):
+
++        raise ValueError("Fitxer d'audio no trobat: %r" % path)
+
++    try:
+
++        with wave.open(path, "rb") as w:
+
++            return {
+
++                "canals": w.getnchannels(),
+
++                "mostreig": w.getframerate(),
+
++                "durada": w.getnframes() / w.getframerate(),
+
++            }
+
++    except (wave.Error, EOFError, OSError) as e:
+
++        raise ValueError("No es un WAV valid (%r): %s" % (path, e)) from e
+
+ 
+
+ 
+
+ # --- Host Vamp propi (vamp_host_local) ------------------------------------
+
+diff --git a/tests/test_tempo_map_guardrails.py b/tests/test_tempo_map_guardrails.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_tempo_map_guardrails.py
+--- /dev/null
++++ b/tests/test_tempo_map_guardrails.py
+@@ -0,0 +1,65 @@
++﻿import os
+
++import sys
+
++
+
++sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
++sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
++import _temporals  # noqa: E402
+
++_ = _temporals
+
++
+
++os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
++
+
++import unittest
+
++from app import tempo_map as tm
+
++from app import limits
+
++
+
++
+
++class TestTempoMapGuardrails(unittest.TestCase):
+
++    """Guardrails del flux principal: mapa de tempo/compas."""
+
++
+
++    def test_valida_tempo_rubato_0_0_valid(self):
+
++        bpm, num, den = tm.valida_tempo(120.0, 0, 0)
+
++        self.assertEqual((num, den), (0, 0))
+
++
+
++    def test_valida_tempo_0_4_invalid(self):
+
++        with self.assertRaises(ValueError):
+
++            tm.valida_tempo(120.0, 0, 4)
+
++
+
++    def test_valida_tempo_4_0_invalid(self):
+
++        with self.assertRaises(ValueError):
+
++            tm.valida_tempo(120.0, 4, 0)
+
++
+
++    def test_tempo_map_buit_no_crasha(self):
+
++        m = tm.TempoMap([])
+
++        self.assertIsNotNone(m)
+
++        self.assertEqual(m.tram(0.0).bpm, 120.0)
+
++
+
++    def test_tempo_map_extrapola_fora(self):
+
++        m = tm.TempoMap([(0.0, 10.0, 120.0, 4, 4)])
+
++        t = m.tram(100.0)
+
++        self.assertIsNotNone(t)
+
++        self.assertEqual(t.bpm, 120.0)
+
++
+
++    def test_clip_conte_beat_sencer_false_si_massa_curt(self):
+
++        tram = (0.0, 0.3, 120.0, 4, 4)
+
++        graella = [0.0, 0.5, 1.0]
+
++        self.assertFalse(tm.clip_conte_beat_sencer(tram, graella))
+
++
+
++    def test_clip_conte_beat_sencer_true_si_beat_complet(self):
+
++        tram = (0.0, 1.0, 120.0, 4, 4)
+
++        graella = [0.0, 0.5, 1.0]
+
++        self.assertTrue(tm.clip_conte_beat_sencer(tram, graella))
+
++
+
++    def test_valida_i_normalitza_compassos_rebutja_clip_sense_beat(self):
+
++        trams = [(0.0, 5.0, 0.0, 4, 4), (5.0, 10.0, 120.0, 4, 4)]
+
++        with self.assertRaises(ValueError):
+
++            tm.valida_i_normalitza_compassos(trams, 10.0)
+
++
+
++    def test_repara_fronteres_no_bpm_fora_banda(self):
+
++        trams = [(0.0, 5.0, 120.0, 4, 4), (5.0, 10.0, 120.0, 4, 4)]
+
++        out = tm.repara_fronteres(trams, 10.0)
+
++        for t in out:
+
++            self.assertTrue(limits.BPM_MIN <= t[2] <= limits.BPM_MAX)
+
++
+
++
+
++if __name__ == "__main__":
+
++    unittest.main()
+
+diff --git a/tests/test_beats_guardrails.py b/tests/test_beats_guardrails.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_beats_guardrails.py
+--- /dev/null
++++ b/tests/test_beats_guardrails.py
+@@ -0,0 +1,42 @@
++import os
+
++import sys
+
++
+
++sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
++sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
++import _temporals  # noqa: E402
+
++_ = _temporals
+
++
+
++os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
++
+
++import unittest
+
++from app import beats
+
++from app import limits
+
++
+
++
+
++class TestBeatsGuardrails(unittest.TestCase):
+
++    """Guardrails del flux principal: deteccio de beats."""
+
++
+
++    def test_bpm_de_beats_retorna_none_si_fora_banda(self):
+
++        # beats espaiats 10s -> BPM ~6, fora de banda
+
++        beats = [0.0, 10.0, 20.0, 30.0]
+
++        self.assertIsNone(beats._bpm_de_beats(beats) if False else None)
+
++        # crida directa a la funcio privada
+
++        self.assertIsNone(__import__("app.beats", fromlist=["_bpm_de_beats"])._bpm_de_beats(beats))
+
++
+
++    def test_bpm_de_beats_retorna_bpm_valid(self):
+
++        beats = [0.0, 0.5, 1.0, 1.5, 2.0]
+
++        bpm = beats._bpm_de_beats(beats) if False else None
+
++        bpm = __import__("app.beats", fromlist=["_bpm_de_beats"])._bpm_de_beats(beats)
+
++        self.assertIsNotNone(bpm)
+
++        self.assertTrue(limits.BPM_MIN <= bpm <= limits.BPM_MAX)
+
++
+
++    def test_bpm_de_beats_none_si_menys_de_2(self):
+
++        self.assertIsNone(__import__("app.beats", fromlist=["_bpm_de_beats"])._bpm_de_beats([1.0]))
+
++
+
++    def test_detecta_motor_desconegut(self):
+
++        with self.assertRaises(ValueError):
+
++            beats.detecta("x.wav", motor="foo")
+
++
+
++
+
++if __name__ == "__main__":
+
++    unittest.main()
+
+diff --git a/tests/test_pipeline_guardrails.py b/tests/test_pipeline_guardrails.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_pipeline_guardrails.py
+--- /dev/null
++++ b/tests/test_pipeline_guardrails.py
+@@ -0,0 +1,36 @@
++import os
+
++import sys
+
++import tempfile
+
++
+
++sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
++sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
++import _temporals  # noqa: E402
+
++_ = _temporals
+
++
+
++os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
++
+
++import unittest
+
++from app import pipeline
+
++
+
++
+
++class TestPipelineGuardrails(unittest.TestCase):
+
++    """Guardrails del flux principal: pipeline.wav_info."""
+
++
+
++    def test_wav_info_fitxer_inexistent(self):
+
++        with self.assertRaises(ValueError):
+
++            pipeline.wav_info("no_existeix.wav")
+
++
+
++    def test_wav_info_no_wav(self):
+
++        fd, p = tempfile.mkstemp(suffix=".wav")
+
++        os.close(fd)
+
++        with open(p, "w") as f:
+
++            f.write("no es wav")
+
++        try:
+
++            with self.assertRaises(ValueError):
+
++                pipeline.wav_info(p)
+
++        finally:
+
++            os.remove(p)
+
++
+
++
+
++if __name__ == "__main__":
+
++    unittest.main()
+

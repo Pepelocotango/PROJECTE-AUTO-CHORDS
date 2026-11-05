@@ -43,6 +43,7 @@ from . import dialeg_ancoratges  # noqa: E402
 from . import dialeg_bpm_marcadors  # noqa: E402
 from . import dialeg_guia_rapida  # noqa: E402
 from . import dialegs  # noqa: E402
+from . import drag_drop  # noqa: E402
 from . import exporta_audio as exporta_audio_mod  # noqa: E402
 from . import icones  # noqa: E402
 from . import panell_xifrat  # noqa: E402
@@ -623,6 +624,11 @@ class Finestra(QMainWindow):
         capa.addWidget(self._stack, stretch=1)
         self.visor_widget = None
         self._mostra_placeholder_visor()
+        # Arrossegar un àudio des de l'explorador de fitxers obre'l. Els
+        # esdeveniments de drag es reben a la finestra i, si cauen sobre un
+        # fill que accepta drops (camps de text, log…), l'eventFilter els
+        # desvia igualment (vegeu `_drag_*`).
+        self.setAcceptDrops(True)
 
         # botó «Obre» (l'afegirem a la barra única, en ordre de flux)
         b_obre = QPushButton("Obre àudio")
@@ -2531,7 +2537,31 @@ class Finestra(QMainWindow):
            mentre sona. Si s'està escrivint en un camp, el `+` s'hi escriu.
         2. **Clic** dins la caixa d'informació (només lectura): pausa el
            rotatori i passa de pantalla sense esperar.
+        3. **Drag & drop d'àudio** sobre qualsevol fill que accepte drops
+           (camps de text, log…): el desviem a l'obertura d'àudio en lloc de
+           deixar que s'hi enganxe la ruta com a text. La finestra principal
+           (quan el destí és ella) va pels seus `drag*Event`.
         """
+        tipus_drag = (QEvent.DragEnter, QEvent.DragMove, QEvent.Drop,
+                      QEvent.DragLeave)
+        if (ev.type() in tipus_drag
+                and isinstance(obj, QWidget)
+                and obj is not self
+                and obj.window() is self):
+            try:
+                if ev.type() == QEvent.DragEnter:
+                    if self._drag_entra(ev):
+                        return True
+                elif ev.type() == QEvent.DragMove:
+                    if self._drag_mou(ev):
+                        return True
+                elif ev.type() == QEvent.Drop:
+                    if self._drag_deixa(ev):
+                        return True
+                else:
+                    self.statusBar().clearMessage()
+            except (RuntimeError, AttributeError):
+                pass
         try:
             if (ev.type() == QEvent.KeyPress
                     and getattr(self, "visor_ref", None) is not None):
@@ -4160,6 +4190,66 @@ class Finestra(QMainWindow):
         box.exec_()
         if box.clickedButton() is b_ok:
             self._obre_ruta_projecte(acproj)
+
+    # ---- Drag & drop d'àudio des de l'explorador de fitxers -----------------
+    @staticmethod
+    def _accepta_copia(ev):
+        """Accepta el drag com a CÒPIA (mai movem ni esborrem l'original)."""
+        if ev.possibleActions() & Qt.CopyAction:
+            ev.setDropAction(Qt.CopyAction)
+        ev.accept()
+
+    def _drag_entra(self, ev):
+        """DragEnter amb almenys un àudio: l'acceptem i mostrem l'avís."""
+        if not drag_drop.te_audio(ev.mimeData()):
+            return False
+        self._accepta_copia(ev)
+        self.statusBar().showMessage(
+            "Deixa anar el fitxer d'àudio per obrir-lo")
+        return True
+
+    def _drag_mou(self, ev):
+        if not drag_drop.te_audio(ev.mimeData()):
+            return False
+        self._accepta_copia(ev)
+        return True
+
+    def _drag_deixa(self, ev):
+        """Drop: obre el primer àudio. La feina grossa es fa FORA del drop.
+
+        Els gestors de fitxers dels 3 SO esperen que el dropEvent torne de
+        seguida; obrir diàlegs o convertir l'àudio ací faria que el drag
+        d'origen es quedara penjat. Per això es diferencia amb el cicle
+        d'esdeveniments (`QTimer.singleShot`).
+        """
+        rutes = drag_drop.rutes_audio(ev.mimeData())
+        if not rutes:
+            ev.ignore()
+            return False
+        self._accepta_copia(ev)
+        self.statusBar().clearMessage()
+        if len(rutes) > 1:
+            self.registra(
+                "Drag & drop: hi ha %d àudios; s'obre només «%s»"
+                % (len(rutes), os.path.basename(rutes[0])))
+        QTimer.singleShot(0, lambda r=rutes[0]: self._obri_des_de_wav(r))
+        return True
+
+    def dragEnterEvent(self, ev):
+        if not self._drag_entra(ev):
+            super().dragEnterEvent(ev)
+
+    def dragMoveEvent(self, ev):
+        if not self._drag_mou(ev):
+            super().dragMoveEvent(ev)
+
+    def dragLeaveEvent(self, ev):
+        self.statusBar().clearMessage()
+        super().dragLeaveEvent(ev)
+
+    def dropEvent(self, ev):
+        if not self._drag_deixa(ev):
+            super().dropEvent(ev)
 
     def tria_wav(self):
         ruta, _ = QFileDialog.getOpenFileName(

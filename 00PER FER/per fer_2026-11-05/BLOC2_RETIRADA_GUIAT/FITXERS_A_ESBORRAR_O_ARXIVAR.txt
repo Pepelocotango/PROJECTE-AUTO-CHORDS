@@ -1,0 +1,20 @@
+# LLISTA DE FITXERS A ESBORRAR O ARXIVAR — BLOC 2
+# Data: 2026-11-05
+# Aquests fitxers pertanyen exclusivament a l'antic subsistema d'anàlisi guiat v2/v3
+# que ha estat retirat i desacoblat del projecte.
+
+# 1. Codi de producció mort (esborrar via gio trash o git rm):
+app/ancoratges.py
+app/dialeg_ancoratges.py
+
+# 2. Tests morts (esborrar via gio trash o git rm):
+tests/test_ancoratges.py
+
+# 3. Documents de disseny i propostes obsoletes (arxivar a docs/archive/ o esborrar):
+docs/ANALISI_GUIAT.md
+docs/ANALISI_GUIAT_v2.md
+docs/ANALISI_GUIAT_v3.md
+docs/ANALISI_GUIAT_PROPOSTA.md
+docs/ANALISI_GUIAT_DISCUSSIO.md
+docs/PLA_GUIAT_V2.md
+docs/PLA_GUIAT_V3.md

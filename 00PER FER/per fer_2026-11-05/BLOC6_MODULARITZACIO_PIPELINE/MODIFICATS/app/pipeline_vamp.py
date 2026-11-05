@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+# pipeline_vamp.py - motor Vamp (subprocess, transforms, deteccio)
+# Extret de pipeline.py (BLOC 6). Re-exportat per pipeline.py (fassana).
+import csv
+import os
+import shutil
+import subprocess
+import tempfile
+import time
+import wave
+
+from app import plataforma, tempo, tempo_map
+
+__all__ = ['APP_DIR', 'CHORDS_TRANSFORM', 'HOST', 'MOTORS_BPM', 'MOTORS_ESTRUCTURA', 'PREFIXOS_TMP', 'PROJ_DIR', 'QM', 'STEPS', 'VAMP_DIRS', '_RESERVATS_WINDOWS', '_bpm_consens', '_cmd_host', '_qm_temps', '_qm_valors', '_vamp_env', 'detecta_beats', 'detecta_bpm', 'detecta_bpm_detallat', 'detecta_bpm_qm', 'detecta_bpm_tram', 'detecta_bpm_tram_detallat', 'detecta_compas1', 'detecta_tempo_per_trams', 'esborra_tmp', 'executa_transform', 'extract_chords', 'extract_segments', 'run', 'wav_info']
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+PROJ_DIR = os.path.dirname(APP_DIR)
+
+VAMP_DIRS = plataforma.dirs_plugins(PROJ_DIR)
+
+_RESERVATS_WINDOWS = frozenset(
+    ["CON", "PRN", "AUX", "NUL"]
+    + [f"COM{i}" for i in range(0, 10)]
+    + [f"LPT{i}" for i in range(0, 10)])
+
+PREFIXOS_TMP = ("ac_ttl_", "ac_qm_", "ac_key_")
+
+def esborra_tmp(dirs):
+    """Esborra directoris temporals creats per l'app (mai llança).
+
+    Només esborra els que comencen per un dels prefixos propis: així, passi el
+    que passi, no es pot esborrar una ruta arbitrària. Aplica reintents breus
+    per resistir bloquejos temporals de fitxers a Windows.
+    """
+    for d in dirs or ():
+        try:
+            p = str(d).rstrip("/\\")
+            if os.path.basename(p).startswith(PREFIXOS_TMP):
+                for intent in range(5):
+                    try:
+                        shutil.rmtree(p, ignore_errors=False)
+                        break
+                    except OSError:
+                        if intent == 4:
+                            shutil.rmtree(p, ignore_errors=True)
+                        else:
+                            time.sleep(0.05 * (intent + 1))
+        except OSError:
+            pass
+
+def _vamp_env():
+    env = dict(os.environ)
+    env["VAMP_PATH"] = plataforma.path_env_vamp(VAMP_DIRS)
+    return env
+
+def run(cmd, log, cwd=None, timeout=600, silenci=False):
+    """Executa una comanda externa. `timeout` evita penjaments indefinits.
+
+    Sense timeout, si un subprocés es queda encallat (esperant stdin, un
+    dispositiu d'àudio inexistent...) l'app i els tests es penjarien.
+    """
+    if not silenci:
+        log("$ " + " ".join(cmd))
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, env=_vamp_env(),
+                           cwd=cwd, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        log(f"  ⏱️ TIMEOUT ({timeout}s): {cmd[0]} no ha respost")
+        raise
+    if not silenci:
+        for line in (p.stdout + p.stderr).splitlines():
+            line = line.strip()
+            if line and "Extracting features..." not in line:
+                log("  " + line)
+    if p.returncode != 0:
+        # Inclou la cua de stderr: si el log és un no-op (p. ex. dins els tests)
+        # la causa es perdia i només es veia "codi 1", sense cap pista.
+        cua = [l.strip() for l in (p.stderr or "").splitlines() if l.strip()]
+        raise RuntimeError(f"ha fallat: {cmd[0]} (codi {p.returncode})"
+                           + (": " + " | ".join(cua[-3:]) if cua else ""))
+    return p
+
+def wav_info(path):
+    if not os.path.isfile(path):
+        raise ValueError("Fitxer d'audio no trobat: %r" % path)
+    try:
+        with wave.open(path, "rb") as w:
+            return {
+                "canals": w.getnchannels(),
+                "mostreig": w.getframerate(),
+                "durada": w.getnframes() / w.getframerate(),
+            }
+    except (wave.Error, EOFError, OSError) as e:
+        raise ValueError("No es un WAV valid (%r): %s" % (path, e)) from e
+
+HOST = os.path.join(PROJ_DIR, plataforma.NOM_HOST)   # .exe a Windows
+
+STEPS = {
+    "vamp:nnls-chroma:chordino:simplechord": (2048, 16384),
+    "vamp:nnls-chroma:chordino:loglikelihood": (2048, 16384),
+    "vamp:nnls-chroma:chordino:chordnotes": (2048, 16384),
+    "vamp:qm-vamp-plugins:qm-segmenter:segmentation": (8820, 26460),
+    "vamp:qm-vamp-plugins:qm-tempotracker:tempo": (512, 1024),
+    "vamp:qm-vamp-plugins:qm-tempotracker:beats": (512, 1024),
+    "vamp:qm-vamp-plugins:qm-onsetdetector:onsets": (512, 1024),
+    "vamp:qm-vamp-plugins:qm-barbeattracker:bars": (512, 1024),
+    "vamp:qm-vamp-plugins:qm-barbeattracker:beats": (512, 1024),
+}
+
+def _cmd_host(transform, out_csv, wav, params=None):
+    """Comanda per executar un transform amb el nostre host Vamp."""
+    cmd = [HOST, "--plugin", transform.replace("vamp:", ""), "--csv", out_csv]
+    st = STEPS.get(transform)
+    if st:
+        # Les mides de la taula son per 44100 Hz; els plugins les volen
+        # escalades al mostreig real (p. ex. el barbeattracker vol 256 a
+        # 22050 i 512 a 44100).
+        try:
+            sr = wav_info(wav)["mostreig"]
+        except Exception:  # noqa: BLE001
+            # fallback: si no puc llegir el mostreig, assumeixo 44100
+            sr = 44100
+        esc = (sr / 44100.0) if sr else 1.0
+        stp = max(1, int(round(st[0] * esc)))
+        blk = max(1, int(round(st[1] * esc)))
+        cmd += ["--step", str(stp), "--block", str(blk)]
+    for k, v in (params or {}).items():
+        cmd += ["--param", f"{k}={v}"]
+    cmd.append(wav)
+    return cmd
+
+def executa_transform(transform, out_csv, wav, log, params=None):
+    """Executa un transform Vamp (host propi) i desa el CSV.
+
+    Primer amb el step/block de la taula; si el plugin els refusa (depenen del
+    mostreig), reintenta amb els seus valors preferits (sempre funcionen).
+    """
+    cmd = _cmd_host(transform, out_csv, wav, params)
+    try:
+        return run(cmd, log)
+    except RuntimeError:
+        if "--step" not in cmd:
+            raise
+        cmd2 = _cmd_host(transform, out_csv, wav, params)
+        i = cmd2.index("--step")
+        del cmd2[i:i + 4]                     # treu --step N --block M
+        if log:
+            log("  (step/block de la taula refusats; uso els del plugin)")
+        return run(cmd2, log)
+
+CHORDS_TRANSFORM = "vamp:nnls-chroma:chordino:simplechord"
+
+def extract_chords(wav_path, out_csv, log, params=None):
+    """Acords via Chordino (host propi; `params` son els parametres .n3)."""
+    return executa_transform(CHORDS_TRANSFORM, out_csv, wav_path, log, params)
+
+MOTORS_BPM = ("nostre", "qm", "consens")
+
+MOTORS_ESTRUCTURA = ("qm",)
+
+def _qm_valors(transform, wav_path, col=1, timeout=1800):
+    """Valors numerics d'una columna d'un transform del qm."""
+    d = tempfile.mkdtemp(prefix="ac_qm_")
+    try:
+        out = os.path.join(d, "x.csv")
+        executa_transform(transform, out, wav_path, lambda *a: None)
+        vals = []
+        if os.path.exists(out):
+            with open(out, newline="", encoding="utf-8") as f:
+                for r in csv.reader(f):
+                    try:
+                        vals.append(float(r[col]))
+                    except (ValueError, IndexError):
+                        continue
+        return vals
+    finally:
+        esborra_tmp([d])
+
+def detecta_bpm_qm(wav_path, log=None):
+    """BPM amb el qm-tempotracker (mediana dels valors per fotograma)."""
+    import statistics
+    vals = _qm_valors("vamp:qm-vamp-plugins:qm-tempotracker:tempo",
+                      wav_path)
+    if not vals:
+        return None
+    bpm = statistics.median(vals)
+    if log:
+        log(f"BPM (qm-tempotracker): {bpm:.1f}")
+    return bpm
+
+def detecta_bpm(wav_path, log, bpm_min=None, bpm_max=None, preferit=None,
+                motor="nostre"):
+    """Estima el BPM d'una WAV (numpy pur, vegeu app/tempo.py).
+
+    Substitueix l'antic metode basat en el beat tracker d'aubio, que
+    s'enganxava a un pols erroni en trossos del tema (p. ex. amb silenci
+    inicial o directes). El nou mesura la periodicitat real de la musica.
+    `bpm_min`/`bpm_max`/`preferit` son opcionals (dialeg d'opcions).
+    """
+    if motor == "qm":
+        return detecta_bpm_qm(wav_path, log)
+    if motor == "consens":
+        return _bpm_consens(wav_path, log, bpm_min, bpm_max, preferit)
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    return tempo.detecta_bpm(wav_path, log, **kw)
+
+def detecta_bpm_tram(wav_path, inici, fi, log, bpm_min=None, bpm_max=None,
+                     preferit=None):
+    """BPM **dins d'un tram** (interval de segons), amb el motor intern.
+
+    És la detecció local que usa el botó quan hi ha un tram de tempo
+    seleccionat. El downbeat és l'inici del tram, per això no es busca un
+    downbeat a part. El motor qm/consens és global i no s'aplica ací.
+    """
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    return tempo.detecta_bpm(wav_path, log, inici=float(inici), fi=float(fi),
+                             **kw)
+
+def detecta_bpm_tram_detallat(wav_path, inici, fi, log, bpm_min=None,
+                              bpm_max=None, preferit=None, n=3):
+    """Com `detecta_bpm_tram`, però amb **alternatives i fiabilitat**.
+
+    Retorna el diccionari de `tempo.detecta_bpm_candidats` (bpm, candidats,
+    alternatives). El diàleg del guiat l'usa per a ensenyar les 3 millors
+    opcions, com fa Logic amb les seues propostes.
+    """
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    return tempo.detecta_bpm_candidats(wav_path, log, inici=float(inici),
+                                       fi=float(fi), n=n, **kw)
+
+def detecta_bpm_detallat(wav_path, log, bpm_min=None, bpm_max=None,
+                         preferit=None, n=3):
+    """BPM del fitxer **sencer** amb alternatives (sense tros concret)."""
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    return tempo.detecta_bpm_candidats(wav_path, log, n=n, **kw)
+
+def detecta_tempo_per_trams(wav_path, log, durada, num=4, den=4,
+                            cada_compassos=4, tolerancia=0.02,
+                            bpm_min=None, bpm_max=None, preferit=None,
+                            tightness=30.0, bpm=None, offset=None):
+    """Mapa de tempo complet: beats seguits + un BPM cada N compassos.
+
+    Motor intern (numpy), pensat per a cançons amb **tempo variable**: cada
+    bloc de `cada_compassos` compassos mesura el seu propi BPM i la frontera
+    cau sempre en una línia de compàs. Retorna `(trams, offset, bpm_base)`;
+    el mapa ja compleix el contracte de compassos enters.
+    """
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    trams, offset, base = tempo.tempo_csv_automatic(
+        wav_path, log, durada=durada, num=num, den=den,
+        cada_compassos=cada_compassos, tolerancia=tolerancia,
+        tightness=tightness, bpm=bpm, offset=offset, **kw)
+    if trams:
+        try:
+            trams = tempo_map.valida_i_normalitza_compassos(
+                trams, durada, offset=offset)
+        except ValueError as e:  # noqa: BLE001
+            log(f"mapa: el resultat no complix el contracte ({e})")
+            return [], 0.0, base
+    return trams, offset, base
+
+def _bpm_consens(wav_path, log, bpm_min, bpm_max, preferit):
+    """Consens: si el nostre motor i el qm coincideixen, confiança alta.
+
+    Si difereixen mes d'un 4 %, guanya el nostre (afinat) i s'avisa.
+    """
+    kw = {}
+    if bpm_min is not None:
+        kw["bpm_min"] = bpm_min
+    if bpm_max is not None:
+        kw["bpm_max"] = bpm_max
+    if preferit is not None:
+        kw["preferit"] = preferit
+    nostre = tempo.detecta_bpm(wav_path, log, **kw)
+    qm = detecta_bpm_qm(wav_path, log)
+    if not nostre:
+        return qm
+    if not qm:
+        return nostre
+    # coincideixen (mateix tempo o doble/meitat exactes)?
+    ratio = max(nostre, qm) / min(nostre, qm)
+    for r in (1.0, 2.0):
+        if abs(ratio - r) < 0.045 * r:
+            log(f"consens: els dos motors coincideixen ({nostre:.1f} / "
+                f"{qm:.1f}) → {nostre:.1f}")
+            return nostre
+    log(f"⚠️ consens: els motors NO coincideixen (nostre {nostre:.1f} vs "
+        f"qm {qm:.1f}) → em quedo el nostre")
+    return nostre
+
+QM = {
+    "onsets": "vamp:qm-vamp-plugins:qm-onsetdetector:onsets",
+    "bars": "vamp:qm-vamp-plugins:qm-barbeattracker:bars",
+    "beats": "vamp:qm-vamp-plugins:qm-barbeattracker:beats",
+    "segments": "vamp:qm-vamp-plugins:qm-segmenter:segmentation",
+}
+
+def detecta_beats(wav_path, log=None):
+    """Temps dels TEMPS (beats) detectats pel qm-barbeattracker (segons).
+
+    El fa servir la inferència del mapa de tempo.
+    """
+    return _qm_temps(QM["beats"], wav_path, log=log)
+
+def _qm_temps(transform, wav_path, timeout=1800, log=None):
+    """Primera columna (segons) d'un transform del qm (onsets/bars/beats).
+
+    `log` (opcional) rep la sortida del host; si no es passa, es descarta.
+    """
+    d = tempfile.mkdtemp(prefix="ac_qm_")
+    try:
+        out = os.path.join(d, "x.csv")
+        executa_transform(transform, out, wav_path, log or (lambda *a: None))
+        temps = []
+        if os.path.exists(out):
+            with open(out, newline="", encoding="utf-8") as f:
+                for r in csv.reader(f):
+                    try:
+                        temps.append(float(r[0]))
+                    except (ValueError, IndexError):
+                        continue
+        return temps
+    finally:
+        esborra_tmp([d])
+
+def detecta_compas1(wav_path, log=None):
+    """Segon on cau el COMPÀS 1 (primer downbeat real de la cançó).
+
+    Usa el qm: el **primer onset** marca l'inici de la música i el **primer
+    bar** (downbeat) a partir d'aquí és el compàs 1. Al tema de 101 (9,5 s de
+    silenci) dona 9,49 s — exacte. Retorna el segon (float) o None.
+    """
+    def _log(t):
+        if log:
+            log(t)
+    ons = _qm_temps(QM["onsets"], wav_path, log=_log)
+    bars = _qm_temps(QM["bars"], wav_path, log=_log)
+    if not bars:
+        _log("compàs 1: no he pogut detectar els compassos")
+        return None
+    inici = ons[0] if ons else 0.0
+    marge = 0.35                       # tolerància (el bar pot caure just abans)
+    cand = [b for b in bars if b >= inici - marge]
+    compas = cand[0] if cand else bars[0]
+    _log(f"compàs 1: {compas:.2f}s (inici de música {inici:.2f}s, "
+         f"{len(bars)} compassos)")
+    return compas
+
+def extract_segments(wav_path, out_csv, log, params=None, motor="qm"):
+    """Estructura via qm-segmenter (unic motor des de v0.5).
+
+    El Segmentino s'ha retirat: el qm-segmenter el substitueix i, a mes, troba
+    les repeticions (A...A). Format (inici, durada, index, etiqueta) -> fer_abc.
+    """
+    return executa_transform(QM["segments"], out_csv, wav_path, log)
+
