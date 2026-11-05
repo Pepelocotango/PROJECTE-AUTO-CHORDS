@@ -4263,11 +4263,14 @@ class Finestra(QMainWindow):
                 "Crea el projecte")
             if not desti:
                 return
-        # Un WAV NOU no ha d'heretar el BPM del tema anterior (OC-6/415).
-        if self.bpm.text().strip() not in ("", "120.0", "120"):
-            self.registra("WAV nou → BPM reiniciat a 120.0 "
-                          "(detecta'l o posa'l a mà)")
-            self._posa_bpm_quarter(120.0)
+        # Un WAV/projecte nou no hereta RES del tema anterior (OC-6/415):
+        # ni BPM, ni compàs, ni offset. No hi ha excepcions per a compàs.
+        self._posa_bpm_quarter(120.0)
+        self.bpb.setText("4/4")
+        self._posa_offset_camp(0.0)
+        self.registra("WAV nou → tempo inicial 120 BPM · 4/4 · offset 0 "
+                      "(detecta'l o posa'l a mà)")
+        bpm, bpb, offset, compas = 120.0, 4, 0.0, "4/4"
         # Migració: si hi ha una AUTOCHORDS_<nom>/ vella al costat del WAV,
         # n'importem els CSVs (i, si el destí és la mateixa carpeta, in situ).
         antic = projecte.carpeta_autochords(ruta)
@@ -4282,9 +4285,9 @@ class Finestra(QMainWindow):
         try:
             p = projecte.Projecte.crea(
                 desti, ruta, nom=os.path.basename(desti),
-                bpm=self._bpm_val(), bpb=self._bpb_val(),
-                offset=self._offset_val(), fix=self.tempo_fix.isChecked(),
-                opcions=self.opcions, compas=self.bpb.text().strip(),
+                bpm=bpm, bpb=bpb, offset=offset,
+                fix=self.tempo_fix.isChecked(),
+                opcions=self.opcions, compas=compas,
                 csv_acords=ca if ca and os.path.isfile(ca) else None,
                 csv_estructura=sa if sa and os.path.isfile(sa) else None,
                 permet_existent=in_situ, log=self.registra)

@@ -729,24 +729,27 @@ class TestObreWavCreaProjecte(_Base):
         self.assertTrue(f2.projecte.audio_present())
 
 
-    def test_compas_complet_preservat(self):
-        """El compàs «6/8» (amb denominador) ha de sobreviure desar/reobrir."""
+    def test_compas_i_offset_es_reinicia_en_wav_nou(self):
+        """Obrir un WAV nou no hereta compàs ni offset de la barra anterior."""
         f = _projectes_gui___finestra()
         wav = _projectes_gui___wav()
         f.bpb.setText("6/8")
+        f._posa_offset_camp(1.234)
         acproj = os.path.join(os.path.dirname(wav), "C.acproj")
         with patch.object(QFileDialog, "getOpenFileName",
                           return_value=(wav, "")), \
                 patch.object(QFileDialog, "getSaveFileName",
                              return_value=(acproj, "")):
             f.tria_wav()
-        self.assertEqual(f.bpb.text(), "6/8")
+        self.assertEqual(f._bpb_val(), 4)
+        self.assertEqual(f.offset.text(), "0.000")
         p = f.projecte
         f._marca_dirty()
         f._desa_projecte()
         f2 = _projectes_gui___finestra()
         f2._obre_ruta_projecte(p.ruta_acproj)
-        self.assertEqual(f2.bpb.text(), "6/8")
+        self.assertEqual(f2._bpb_val(), 4)
+        self.assertEqual(f2.offset.text(), "0.000")
 
 
 class TestDesa(_Base):
@@ -1315,6 +1318,7 @@ class TestCanviWavReiniciaTempo(_canvi_wav___Base):
         self.assertEqual(f.bpm.text(), "120.000")
         self._obre(f, _canvi_wav___wav())
         self.assertEqual(f.bpm.text(), "120.000")
+
 
 
 def _canvi_wav_tearDownModule():
@@ -4843,6 +4847,11 @@ class TestProjecteAssociat(_Base):
         os.makedirs(os.path.join(carp, "analisi"), exist_ok=True)
         with open(os.path.join(carp, "acords.csv"), "w", encoding="utf-8") as fh:
             fh.write("0.00,1.00,Z\n")
+        # La barra encara mostra el tempo vell: no s'ha d'heretar al projecte
+        # recreat (BPM, compàs ni offset).
+        f.bpm.setText("117.0")
+        f.bpb.setText("3/4")
+        f._posa_offset_camp(1.984)
 
         def _fake_paperera(ruta):
             shutil.rmtree(ruta, ignore_errors=True)
@@ -4865,6 +4874,14 @@ class TestProjecteAssociat(_Base):
         with open(os.path.join(carp, "acords.csv"), encoding="utf-8") as fh:
             self.assertEqual(fh.read().strip(), "0.000000,2.000000,N",
                              "el model s'ha de reinicialitzar")
+        with open(os.path.join(carp, "mapa_tempo.csv"), encoding="utf-8") as fh:
+            self.assertEqual(
+                fh.read().splitlines()[1],
+                "0.000000,2.000000,120.000000,normal,4/4",
+                "el mapa nou no pot heretar el tempo vell")
+        self.assertEqual(f.bpm.text(), "120.000")
+        self.assertEqual(f._bpb_val(), 4)
+        self.assertEqual(f.offset.text(), "0.000")
 
     def test_projecte_nou_serveix_per_exportar_sense_analitzar(self):
         f = _projectes_gui___finestra()
