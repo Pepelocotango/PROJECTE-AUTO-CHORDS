@@ -639,6 +639,27 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [Unreleased]
 
+### Afegit — arrossegar un àudio a la finestra (drag & drop) (2026-11-05)
+- Es pot **arrossegar un fitxer d'àudio des de l'explorador del sistema**
+  (Explorer, Finder, Nautilus, Dolphin, Thunar…) directament sobre
+  AUTO CHORDS. S'obre amb el mateix flux que `Fitxer ▸ Obre àudio…`
+  (conversió amb ffmpeg si cal, pregunta on crear el projecte i reutilització
+  del projecte existent).
+- **Compatibilitat amb els 3 SO**: es llig `text/uri-list` via
+  `QMimeData.urls()` + `QUrl.toLocalFile()` (rutes natives, amb accents i
+  espais desescapats) i hi ha *fallback* per a apps que només publiquen la
+  ruta com a text pla. Només s'accepten fitxers locals existents amb una
+  extensió de la llista d'`app.ffmpeg`.
+- El drag s'accepta com a **còpia** (mai es mou ni s'esborra l'original) i la
+  feina s'executa **fora del `dropEvent`** (`QTimer.singleShot`): els gestors
+  de fitxers dels 3 SO no es queden penjats mentre l'app obri diàlegs o
+  convertisca l'àudio.
+- Funciona sobre qualsevol part de la finestra: els camps de text i el log
+  **no accepten drops** (així no hi enganxen la ruta) i l'`eventFilter` també
+  desvia qualsevol fill que, per alguna raó, els acceptara.
+- Mòdul nou `app/drag_drop.py` (lectura del MIME, sense GUI) i 11 tests
+  (`tests/test_drag_drop.py`). Suite: **1.610 OK** (1 skip), `pyflakes` net.
+
 ### Afegit — alterats amb 11 i 13 i `7alt` explícit (2026-11-04)
 - `TAULA_TIPUS` passa de **80 a 92 tipus** amb 12 variants noves d'11/13:
   `7b9#11`, `7#9#11`, `7b9b13`, `7b5b13`, `7#5b13`, `9b13`, `13b5`,

@@ -60,17 +60,17 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 >
 > 📄 **Guia de validació pas a pas** (checklist de 5 min): [`docs/PROVES_FUNCIONALS_3SO.md`](docs/PROVES_FUNCIONALS_3SO.md).
 
-## 🚀 Ús en 4 passos
+## 🚀 Flux de treball (5 passos)
 
-1. **Obre l'àudio** (`Fitxer ▸ Obre…`, `Ctrl+O`) — si no és WAV, es converteix sol amb **ffmpeg**.
-2. **Ajusta el temps**: selecciona el tram de **BPM/compàs** i fes-lo servir amb **🎯 Detecta** o **TAP** (el TAP només actua amb un tram seleccionat). Després, **Analitza** (`F5`, obre el diàleg d'opcions).
-3. **Revisa i edita** els acords, les seccions i el **mapa de BPM/compàs** al visor
-   (timeline estil DAW amb **tres pistes**, llistes i franja Editor).
-4. **`Exporta WAV's…`** (`Ctrl+E`) — i, si vols, **`Exporta partitura`**. Per a una còpia en un altre format, **`Fitxer ▸ Exporta àudio…`**.
+1. **Obre l'àudio** (`Fitxer ▸ Obre…`, `Ctrl+O`, o **arrossegant-lo** des de l'explorador de fitxers) — si no és WAV, es converteix sol amb **ffmpeg** i en queda una còpia dins el projecte.
+2. **Opcional: ajusta el temps i analitza** — **Analitza BPM** (`F7`) per a BPM/beats i **Analitza** (`F5`) per a acords + estructura. També pots treballar a mà des del model inicial (1 acord `N` + 1 secció `A`).
+3. **Revisa i edita** els acords, les seccions i el **mapa de BPM/compàs** al visor (timeline estil DAW amb **tres pistes**, llistes i franja Editor).
+4. **`Exporta WAV's…`** (`Ctrl+E`): WAVs silenciosos, CSV, `mapa_tempo/`, guia i, si vols, **`Exporta partitura`**. Per a una còpia en un altre format, **`Fitxer ▸ Exporta àudio…`**.
+5. **Desa el projecte** (`Ctrl+S`) quan vulguis: `.acproj` + `audio/` + CSV + backups; l'autosave i la recuperació són automàtics.
 
 ## 🎛️ Què fa
 
-- **Importa** WAV, MP3, FLAC i **16 formats més** (vegeu [§ Formats](#-formats-dàudio-acceptats)) convertint-los amb `ffmpeg`.
+- **Importa** WAV, MP3, FLAC i **16 formats més** (vegeu [§ Formats](#-formats-dàudio-acceptats)) convertint-los amb `ffmpeg`. També pots **arrossegar la cançó des de l'explorador de fitxers** directament sobre la finestra (Windows, macOS i Linux).
 - **Analitza** (`F5`) els acords amb **Chordino** (NNLS-Chroma) i l'estructura amb **qm-segmenter** (Queen Mary), tots dos **dins l'app** (Vamp). El BPM té una acció separada, **Analitza BPM** (`F7`).
 - **Analitza BPM** amb motors **nostre** o **Queen Mary**, sensibilitat ajustable 0–100 i línies de **beats/downbeats** sobre l'ona; el mode per defecte és **només beats** (sense BPM, compàs ni downbeats). Després del play, **Ajusta la graella als beats QM** snapeja els marcadors de compàs i recalcula el BPM; `+` continua creant compàs + secció.
 - **Timeline estil DAW** amb **tres pistes**: **acords**, **estructura** i **BPM/compàs** (mapa de tempo per trams). Ona, regle, cursor, zoom; mode **BPM · compàs** o **Lliure (hh:mm:ss)**; graella fixa de **temps absolut hh:mm:ss** sota l'ona, independent del tempo; metrònom; loop A/B. El BPM es pot mostrar en **negra**, **negra amb punt**, **corxera** o **blanca** (per exemple, `55` amb punt = `82.5` negres/min), i el metrònom pot clicar en eixa unitat o en el denominador del compàs; les subdivisions que no caben en algun compàs es bloquegen.

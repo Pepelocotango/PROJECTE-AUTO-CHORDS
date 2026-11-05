@@ -177,6 +177,7 @@
 <p>El <b><code>🧭</code></b> (i Analitza ▸ «Detecta el compàs 1 automàticament») usa <code>qm-onsetdetector</code> + <code>qm-barbeattracker</code> per posar l&#x27;offset sol (al tema de 101 dona 9,49 s).</p>
 <h3>6.3 Import de formats (<code>app/ffmpeg.py</code>)</h3>
 <p><code>Obre àudio</code> accepta <b>wav, mp3, aif/aiff, flac, m4a, ogg, opus, wma…</b>. Si el fitxer no és <b>WAV PCM 16 bits</b>, es converteix automàticament amb <code>ffmpeg -vn -c:a pcm_s16le</code> directament en un temporal dins <code>audio/</code> del projecte. No es crea cap WAV convertit al costat de l&#x27;original.</p>
+<p>També es pot <b>arrossegar el fitxer des de l&#x27;explorador del sistema</b> i deixar-lo anar sobre qualsevol part de la finestra: fa exactament el mateix flux. La lectura del drag &amp; drop és al mòdul <code>app/drag_drop.py</code> (URLs natives <code>text/uri-list</code> amb <i>fallback</i> de text pla) i només accepta fitxers locals amb una extensió d&#x27;àudio de la llista.</p>
 <hr>
 <h2>7. Documents relacionats</h2>
 <ul><li><code>docs/ESQUEMA_UI.html</code> i <code>docs/ESQUEMA_UI.svg</code> — aquest mateix esquema en</li></ul>

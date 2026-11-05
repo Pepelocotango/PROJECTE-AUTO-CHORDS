@@ -1019,6 +1019,8 @@ class Finestra(QMainWindow):
         if not ffmpeg.disponible():
             self.registra("AVÍS: no trobo ffmpeg — només podré obrir WAV PCM "
                           "16 bits (mp3/flac/m4a/ogg… no)")
+        # Els camps de text no han de capturar el drop d'àudio.
+        self._desactiva_drops_fills()
 
     def showEvent(self, event):
         """Assegura que els paràmetres de temps es veuen en obrir la finestra.
@@ -2537,7 +2539,7 @@ class Finestra(QMainWindow):
            mentre sona. Si s'està escrivint en un camp, el `+` s'hi escriu.
         2. **Clic** dins la caixa d'informació (només lectura): pausa el
            rotatori i passa de pantalla sense esperar.
-        3. **Drag & drop d'àudio** sobre qualsevol fill que accepte drops
+        3. **Drag & drop d'àudio** sobre qualsevol fill que accepti drops
            (camps de text, log…): el desviem a l'obertura d'àudio en lloc de
            deixar que s'hi enganxe la ruta com a text. La finestra principal
            (quan el destí és ella) va pels seus `drag*Event`.
@@ -3719,6 +3721,8 @@ class Finestra(QMainWindow):
             # Els camps BPM/compàs han de mostrar el transport fins que es
             # seleccione un tram de tempo concret (2B).
             self._sincronitza_temps_del_visor()
+            # El visor acaba de crear camps de text: que tampoc capturen drops.
+            self._desactiva_drops_fills()
         except Exception:  # noqa: BLE001
             self.logger.exception("Crash en carregar el visor per %s", wav)
             self.registra(f"Visor ERROR: {traceback.format_exc()}")
@@ -4192,6 +4196,21 @@ class Finestra(QMainWindow):
             self._obre_ruta_projecte(acproj)
 
     # ---- Drag & drop d'àudio des de l'explorador de fitxers -----------------
+    def _desactiva_drops_fills(self):
+        """Fa que els fills no capturen el drop (que arribe a la finestra).
+
+        `QLineEdit`, `QTextEdit` i els seus viewports accepten drops de text
+        per defecte; si l'usuari deixa anar un àudio damunt, hi enganxarien la
+        ruta. Amb `acceptDrops` desactivat, Qt propaga el drag al
+        `QMainWindow`, que és qui obri l'àudio.
+        """
+        for w in self.findChildren(QWidget):
+            if w is not self and w.acceptDrops():
+                try:
+                    w.setAcceptDrops(False)
+                except RuntimeError:
+                    pass
+
     @staticmethod
     def _accepta_copia(ev):
         """Accepta el drag com a CÒPIA (mai movem ni esborrem l'original)."""
@@ -4219,7 +4238,7 @@ class Finestra(QMainWindow):
 
         Els gestors de fitxers dels 3 SO esperen que el dropEvent torne de
         seguida; obrir diàlegs o convertir l'àudio ací faria que el drag
-        d'origen es quedara penjat. Per això es diferencia amb el cicle
+        d'origen es quedara penjat. Per això s'ajorna al cicle
         d'esdeveniments (`QTimer.singleShot`).
         """
         rutes = drag_drop.rutes_audio(ev.mimeData())

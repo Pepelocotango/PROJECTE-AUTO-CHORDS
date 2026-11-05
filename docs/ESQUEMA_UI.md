@@ -500,6 +500,12 @@ fitxer no és **WAV PCM 16 bits**, es converteix automàticament amb
 `ffmpeg -vn -c:a pcm_s16le` directament en un temporal dins `audio/` del
 projecte. No es crea cap WAV convertit al costat de l'original.
 
+També es pot **arrossegar el fitxer des de l'explorador del sistema** i deixar-lo
+anar sobre qualsevol part de la finestra: fa exactament el mateix flux. La
+lectura del drag & drop és al mòdul `app/drag_drop.py` (URLs natives
+`text/uri-list` amb *fallback* de text pla) i només accepta fitxers locals amb
+una extensió d'àudio de la llista.
+
 ---
 
 ## 7. Documents relacionats

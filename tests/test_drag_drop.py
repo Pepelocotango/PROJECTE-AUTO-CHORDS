@@ -103,8 +103,11 @@ class TestDropGui(unittest.TestCase):
         import _qt_neteja
         _qt_neteja.tanca_i_destrueix(self.w)
 
-    def test_finestra_accepta_drops(self):
+    def test_finestra_accepta_drops_i_els_fills_no(self):
         self.assertTrue(self.w.acceptDrops())
+        # Si un camp de text acceptara drops, s'hi enganxaria la ruta.
+        self.assertFalse(self.w.bpm.acceptDrops())
+        self.assertFalse(self.w.log.acceptDrops())
 
     def test_enter_accepta_i_avisa(self):
         md = _mime(self.wav)          # viu mentre viu l'esdeveniment
