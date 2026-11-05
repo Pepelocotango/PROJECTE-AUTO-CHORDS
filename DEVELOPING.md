@@ -129,6 +129,11 @@ per usar-lo en un altre sistema, fes servir els **paquets del CI**
 
 ## Lògica de producte i flux de treball
 
+> L'**abast i el flux d'usuari vigent** és a
+> [`AGENTS.md` §Abast i flux](AGENTS.md#-abast-i-flux-de-lusuari--font-única).
+> Aquesta secció descriu només el **flux intern del backend** i les regles de
+> consistència; no redefineix el producte.
+
 La base del projecte és senzilla i molt important: no hauríem de tenir un “analitzador” separat, un “editor” separat i un “exportador” separat que no comparteixen model.
 
 ### Model de dades

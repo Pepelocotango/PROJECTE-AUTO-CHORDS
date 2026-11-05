@@ -32,8 +32,10 @@ durades**, deliberadament simple i per això compatible amb qualsevol DAW.
 L'edició bàsica del fitxer d'àudio carregat és una funció complementària
 parcialment implementada, amb un abast molt més limitat que un editor general.
 
-**Cas d'ús**: obrir WAV → analitzar (Chordino + qm) o **treballar a mà** →
-editar visualment → exportar → arrossegar al DAW.
+**Cas d'ús oficial**: vegeu el **flux de l'usuari** a
+[`AGENTS.md` §Abast i flux](AGENTS.md#-abast-i-flux-de-lusuari--font-única)
+(obrir WAV → analitzar o treballar a mà → editar visualment → exportar →
+arrossegar al DAW).
 
 **Línia de producte complementària (implementada)**: la importació
 ja desa una única còpia WAV de treball dins del projecte i els backups també la
@@ -48,44 +50,91 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual (2026-11-02 · v0.8.0)
+## 2. Estat actual i relleu de sessió (2026-11-05)
 
-> Detall de canvis: [`CHANGELOG.md`](CHANGELOG.md). Detall històric:
-> [`ROADMAP_HISTORIA.md`](ROADMAP_HISTORIA.md).
+> **Norma per a agents:** qualsevol agent que treballi en el codi ha
+> d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
+> incrementalment: reflectir l'estat actual, no l'historial). L'historial viu al
+> [`CHANGELOG.md`](CHANGELOG.md). La definició de **què fa l'app i què queda
+> fora** és a [`AGENTS.md`](AGENTS.md#-abast-i-flux-de-lusuari--font-única).
 
-- **Anàlisi** — Chordino (acords) + qm-segmenter (estructura), **opcions reals**
-  del detector, BPM (amb `consens`), compàs 1 automàtic (`🧭`), import de
-  formats via `ffmpeg`. **L'anàlisi és OPCIONAL**:
-  es pot **treballar sense analitzar** (model inicial 1+1 clips editables).
-- **Mapa de tempo/compàs** — trams editables amb **compassos enters**,
-  re-tempo local, `0/0` per al rubato, **marcadors de compàs vs secció**,
-  ajust d'un sol BPM per **mínims quadrats** i **validació unificada**
-  (BPM 30–350, numerador 1–12, denominador 2/4/8).
-- **Visor DAW-like** — ona, ruler BPM/segons, 3 carrils, **constraint
-  propagation** en viu, nanses de resize, **rename inline**, **snap**
-  configurable, zoom/pan, play/loop, **multi-selecció**, porta-retalls.
-- **Edició** — desfer/refer, **partir/fusionar/duplicar/eliminar**, **renom en
-  bloc**, **troba-i-reemplaça** (`Ctrl+H`), **nudge**, **graella configurable**,
-  **eina del timeline** (intel·ligent / **marc**), **modes de temps** i
-  **Quantitza**.
-- **Xifrat** — **notació canònica** (font única `app/xifrat.py`), **panell de
-  tipus d'acord** (80 tipus) amb **audició** (e-piano, **8 timbres**).
-- **Projectes** — autocontinguts (`.acproj` + `audio/` + CSVs + `backup/`),
-  autosave i recuperació de sessió.
-- **Àudio** — importació convertida a l'única còpia WAV del projecte;
-  **retall/afegit manual de silenci als extrems** amb previsualització, snap,
-  fades de 4 ms i desfer/refer conjunt amb el model; **exportació** de la còpia
-  editada (WAV 16/24/32, MP3, FLAC, AAC/M4A, OGG, Opus) amb FFmpeg.
-  **Pendent explícit:** l'edició automàtica/directa de la WAV per completar el
-  pre-roll o el primer compàs no s'implementa en esta fase i no ha de trencar
-  el flux manual actual.
-- **Export** — paquet de WAVs per DAW + **partitura** (MusicXML sempre;
-  PDF/MSCZ si hi ha MuseScore) + `mapa_tempo/` + guia HTML.
-- **Multi-SO** — AppImage (Linux) · ZIP (Windows x64) · `.app`/DMG (macOS
-  10.13+) — tot amb GitHub Actions. Sense signar (assumit).
-- **Qualitat** — suite completa als 3 CI; pyflakes net; **1.452 tests** locals.
-- **Pla de tempo** — fases **0–6 fetes**; pendents **7, 10 i 12**;
-  ajornades **8, 9 i 11** (vegeu §5).
+Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3,
+4, 5, 6** i **7** (coberta pel subplà de rubato). La **10** (motor de detecció)
+queda **oberta**; la **12** (congelació, higiene i CI) està **en curs**.
+Ajornades: **8** (MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
+
+> **Prioritat actual (2026-11-05): simplificar el producte.** L'abast vigent és
+> a [`AGENTS.md` §Abast i flux](AGENTS.md#-abast-i-flux-de-lusuari--font-única):
+> només el nucli (obrir → analitzar opcional → editar 3 pistes → exportar →
+> desar). La **fase 10**, el **rubato avançat** i l'**export MIDI/DAW** queden
+> **ajornats sense data**; no s'hi treballa fins que el nucli estiga estable i
+> l'operador ho decidisca. Les funcions congelades són al mateix document.
+
+Fet recentment (2026-11-02/05):
+- **Drag & drop d'àudio** (2026-11-05): es pot arrossegar una cançó des de
+  l'explorador (Windows/macOS/Linux) sobre qualsevol part de la finestra i
+  s'obre amb el flux de `Obre àudio…` (conversió ffmpeg, projecte existent o
+  ubicació nova). Llig `text/uri-list` (`QMimeData.urls()` +
+  `QUrl.toLocalFile()`) amb fallback de text pla; accepta només fitxers
+  locals existents de la llista d'`app.ffmpeg`, com a còpia, i fa la feina
+  fora del `dropEvent`. Mòdul `app/drag_drop.py`; tests a
+  `tests/test_drag_drop.py`. Suite: **1.610 tests**, 1 omés.
+- **Base d'agents d'OpenCode** (2026-11-04): config a `opencode.json` (l'únic
+  que es llig), `.opencode/` local via `.gitignore`, **6 subagents**
+  (`explorer`, `tester`, `reviewer`, `docs`, `audio-dsp`, `pipeline`) amb
+  `deepseek-v4.1-flash`, **5 skills** amb frontmatter i els commands
+  `/qualitat`, `/estat` i `/regles`. Detall: `.opencode/README.md` (local, no versionat).
+- **Contracte de beats sencers** (2026-11-04): els clips de BPM/compàs ja no
+  exigeixen compassos enters; han de contindre almenys un beat sencer de la
+  graella del Snap (QM o BPM/compàs), inclòs `1/4`. El `+` sempre usa el beat
+  QM més pròxim; l’ajust prioritza conservar el BPM i canviar el compàs. El botó
+  **«Ajusta BPM al compàs»** força compassos sencers de manera explícita. En
+  fixar l’offset, el pre-roll es recalcula com un compàs sencer amb el compàs
+  que deixa el BPM més pròxim al clip següent. Docs:
+  `docs/REGLES_DE_LA_APP.md` §13.4–13.6 i `docs/ANALISI_BPM.md`.
+- **Analitza BPM** (2026-11-04): acció separada de «Analitza» (que queda per
+  a acords + estructura), motors **nostre**/QM, sensibilitat 0–100 i línies
+  sobre l'ona. El motor per defecte és **Queen Mary**; el mode per defecte és
+  **només beats** (sense BPM, compàs ni downbeats); l'altre mode afig
+  BPM/downbeats. L'acció **Ajusta la graella
+  als beats QM** snapeja els marcadors de compàs i recalcula el BPM; `+`
+  continua creant compàs + secció; els dubtes del snap es revisen en un
+  diàleg no modal, el metre d’un tram s’edita amb **Compàs del marcador…** i
+  el Snap **Beats QM** encaixa cursor/clips/`+` a les línies de QM.
+  Detall: `docs/ANALISI_BPM.md`.
+- **Fase 12 (en curs)**: afinador i `Gt_ALL_Chords_app` congelats; tots els
+  tests importen `_temporals`; `.github/workflows/qualitat.yml` executa fuzzer i
+  proves sintètiques sense bloquejar.
+- **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
+  unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
+  projectes vells), visor/graella, accions de crear/convertir rubato i
+  exportació amb avís aproximat. Suite completa: **1.610 tests**, 1 omés.
+- **Anàlisi del projecte de prova** `AUTOCHORDS_01 POLICE_convertit`:
+  model coherent i cobertura exacta; documentats els límits del pre-roll a la
+  partitura, els noms d'acord crus de l'anàlisi i la precisió de l'offset.
+- **Unitat de BPM**: selector global negra / negra amb punt / corxera /
+  blanca; el metrònom té una unitat de clic independent (auto/negra/negra amb punt/corxera/blanca). El model continua en negres/min i la unitat es desa al `.acproj`.
+  Suite: **1.610 tests**, 1 omés.
+- **Metrònom per denominador**: el beat és `4/den` negres; `6/8`, `9/8` i
+  `12/8` cliquen corxeres, `2/2` blanques; accents de compàs i grup, modes
+  Auto/Compàs/Temps/Grup i selector al transport.
+- **Regressió blindada (2026-11-04)**: només la frontera **0→1** és pre-roll.
+  Les fronteres 2–3 i 3–4 no s'han de tornar a enviar a
+  `mou_frontera_preroll`; tenen test propi.
+- **Pendent explícit (2026-11-04)**: l'edició automàtica/directa de la WAV per
+  completar el pre-roll o el primer compàs **no està implementada**; no s'ha
+  d'afegir silenci automàticament ni trencar el flux manual de nanses.
+- **Fase 6**: `Fitxer ▸ Exporta àudio…` amb diàleg natiu, perfils
+  WAV/MP3/FLAC/AAC/OGG/Opus, detecció d'encoders en temps d'execució,
+  escriptura atòmica i protecció de la còpia de treball.
+- **P0**: suite verda, `pyflakes` net, vistes `ESQUEMA_UI` al dia i indicador
+  del TAP coherent amb el comportament real.
+- Downbeat (offset) absolut: no es mou en ajustar BPM.
+- T (tap tempo): només amb clip de tempo seleccionat.
+- Fases 4 i 5: compàs ≠ secció i ajust d'un sol BPM per mínims quadrats.
+
+Corpus real de tempo encara pendent (l'avaluador sintètic funciona).
+Commit de referència: `cbf9e6f` (drag & drop d'àudio i documentació).
 
 ---
 
@@ -129,13 +178,13 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Fet (2026-11-03)**: anàlisi del projecte de prova
   `AUTOCHORDS_01 POLICE_convertit`; model coherent i límits del pre-roll,
   notació crua i offset documentats al subplà de rubato.
-- **Següent**: **fase 10** (motor de detecció amb corpus real; **en curs**,
-  pendent del corpus manual de tempo/compàs a `CORPUS/`) i **fase 12**
-  (fuzzer al CI, congelació i docs).
+- **Següent (2026-11-05)**: **consolidar el nucli** i simplificar (abast a
+  [`AGENTS.md`](AGENTS.md#-abast-i-flux-de-lusuari--font-única)). La **fase 10**
+  (motor de detecció) i el **rubato avançat** queden **ajornats sense data**.
 - **EN CURS (2026-11-03) — fase 12: congelació i higiene**:
   - **congelades** les funcions laterals **afinador de guitarra** i
     **`Gt_ALL_Chords_app`**; no s'eliminen, només no es desenvolupen fins que
-    la fase 10 estiga estable;
+    l'operador ho decidisca;
   - higiene de tests: `tests/_temporals.py` és obligatori a tots els mòduls de
     test; la suite no deixa temporals;
   - nou workflow manual **`qualitat.yml`** amb fuzzer i proves sintètiques
@@ -163,15 +212,12 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   còdecs que el `ffmpeg` del paquet pot escriure (`-encoders`). Escriptura
   atòmica, log visible i protecció de la còpia de treball. Vegeu
   [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
-- **SUBPLÀ PRIORITARI — Rubato i doble graella**: substitueix la fase 7.
-  Model B (BPM/compàs derivats, `mapa_tempo.csv`, dues graelles, exportació
-  marcada, anacrusi). S'ha d'executar **abans** de les fases 10 i 12. Vegeu
+- **AJORNAT (sense data) — Rubato i doble graella avançada**: el que ja hi ha
+  implementat es conserva; no s'amplia fins que l'operador ho decidisca. Vegeu
   [`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md).
-- **EN CURS (fase 10, 2026-11-03) — Millorar el motor de detecció**: puntuar
-  downbeats amb els canvis d'acord i avaluar motors alternatius (madmom,
-  Beat This!…) amb l'avaluador de la fase 0. Cap motor nou sense l'OK de
-  l'operador. **Bloquejat per corpus real**: sense dades no es pot acceptar
-  cap motor.
+- **AJORNAT (sense data) — Millorar el motor de detecció (fase 10)**: puntuar
+  downbeats amb els canvis d'acord i avaluar motors alternatius. Cap motor nou
+  sense l'OK de l'operador. No es treballa ara.
 - **PENDENT — Backups: triar/restaurar des de l'app** — llista de còpies
   (`backup/`) amb data-hora → previsualitzar i restaurar (amb confirmació,
   mai destructiu); mostrar què conté cada còpia.
@@ -187,7 +233,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 > `/tmp`. Es manté com a norma per a qualsevol test nou.
 
 ### Should
-- **PENDENT — Exportació del mapa de tempo a DAWs** (2026-11-04):
+- **AJORNAT (sense data) — Exportació del mapa de tempo a DAWs** (2026-11-04):
   - **WAV**: pot portar `cue`/`LIST adtl` (marcadors) i, com a molt, un BPM
     únic (`ACID`); **no hi ha un mapa de tempo complex estàndard** ni un
     comportament comú entre DAWs. El `bext`/`iXML` no és un tempo map portable.
@@ -208,12 +254,9 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
   - Ordre recomanat: **MIDI + cues + clic** per a multi-DAW; **`.rpp`** per a
     Reaper; el BPM per clip queda com a metadada opcional, no com a substitut
     del mapa.
-- **Afinador (tuner) de guitarra** — entrada d'àudio → detecció de to →
-  nota + cents (natural/tempered). Reutilitzant `app/audio_out.py`.
-- **Incorporar `Gt_ALL_Chords_app`** — diapasó, identificador d'acords, filtres,
-  centre d'estudi, cercle de quintes, diccionari flamenc… **per fases** i
-  **reimplementant** (⚠️ llicència **Polyform Noncommercial** vs **GPL-3.0**).
- 
+> **Fora d'abast (congelat):** afinador de guitarra i `Gt_ALL_Chords_app`. No
+> es planifiquen; vegeu `AGENTS.md` §Fora d'abast.
+
 - **Confiança dels acords** (`loglikelihood` del Chordino) → **ressaltar a la UI**
   els acords dubtosos per revisar-los.
 - **Tonalitat** → si mai cal, mostrar-la i, si escau, **paleta d'acords**
@@ -255,15 +298,13 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Selecció de rang temporal** (arrossegar el regle) per limitar-hi accions.
 
 ### So, edició d'àudio i anàlisi
-- **Conversió avançada d'àudio** (aprofitar l'`ffmpeg` intern): més formats,
-  processament en lot, normalització **LUFS**, remostreig i mono/stereo.
-- **Edició avançada** més enllà dels extrems: tallar/enganxar al mig,
-  **fades ajustables/crossfade** i processament de clips.
-- **Guany per clip** (sense tocar la WAV mare) i **fades amb nanses**.
 - Els talls continuaran al fotograma triat (sense moure'ls a un zero-crossing);
   els fades automàtics de 4 ms protegeixen les vores.
-- **Loudness (LUFS) + espectrograma** i **anàlisi en lot** (informe de carpetes).
 - **A/B de dues anàlisis** (detectors/paràmetres) amb commutador.
+
+> **Fora d'abast (congelat):** edició avançada d'àudio (fades ajustables,
+> guany per clip, crossfade i snap a zero-crossings). Vegeu `AGENTS.md`
+> §Fora d'abast.
 
 ### Export i partitura
 - **Export MIDI** (acords/seccions com a notes o marcadors + **mapa de
@@ -274,13 +315,12 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Export alternatiu**: **PDF de l'ona+acords**, **Markdown/HTML**,
   **Lyrics+Chords** i **plantilles de paquet** configurables.
 - **CSV intel·ligible**, **ABC/LilyPond** i **imatges resumides** de partitura.
-- **Cua de render (batch)**: exportar diversos projectes/rangs d'un cop.
 
 ### Projectes i flux
 - **Pantalla d'inici** (Recents: WAV + projectes · «Nou» · «Obre…»).
-- **Arrossega-i-deixa-anar** un WAV/`.acproj` damunt la finestra per obrir-lo.
+- **Arrossega-i-deixa-anar** un `.acproj` damunt la finestra per obrir-lo (els
+  àudios ja s'hi poden arrossegar des del 2026-11-05).
 - **Explorador multimèdia integrat** (arbre + audició ràpida).
-- **Documents amb pestanyes** (diverses cançons alhora).
 - **Copiar/enganxar entre projectes** (buffer persistent).
 - **«Repeteix l'última acció»** (`Ctrl+R`) i **plantilles de projecte**.
 - **Presets d'export** i **CLI/headless** (`auto-chords analitza tema.wav`).
@@ -299,7 +339,9 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 - **Barra de transport configurable** i **peu d'estat** (motor, sr, CPU, autosave).
 - **Paleta de comandes** (`Ctrl+K`) i **rellotge gran** (big clock).
 - **Accessibilitat** (navegació completa per teclat + lectors de pantalla).
-- **Multi-idioma (i18n)** de la UI (`gettext`/`QTranslator`) i **docs en anglès**.
+
+> **Fora d'abast (congelat):** i18n, multi-pestanya i batch/render queue. No es
+> planifiquen; vegeu `AGENTS.md` §Fora d'abast.
 
 ### El que encara queda obert de l'edició
 - **Snap a esdeveniments** — ja **fet**; queden **fonts de snap commutables** i

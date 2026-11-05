@@ -10,7 +10,8 @@
 
 | Doc | Què explica |
 |---|---|
-| **`../README.md`** | Visió general, instal·lació i «estat actual». |
+| **`../README.md`** | Visió general, instal·lació i flux de treball (5 passos). |
+| **`../AGENTS.md`** | 🎯 **Abast i flux de l'usuari (font única)** i orientació per a agents. |
 | **`../DEVELOPING.md`** | Entorn de desenvolupament i mapa del codi. |
 | **`REGLES_DE_LA_APP.md`** | 🔴 **Les regles d'or (invariants)** — llegir **abans** de tocar codi. Inclou el **§13: temps, compàs i graella** (segon vs compassos, beats sencers, **re-tempo local**, fronteres i marcadors, **clips en segons**, detecció i export del mapa). |
 | **`ESQUEMA_UI.md`** (`.html` · `.svg`) | Esquema visual de la interfície: zones, icones reals i colors. |
