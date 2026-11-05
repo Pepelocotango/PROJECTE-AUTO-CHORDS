@@ -22,7 +22,7 @@ Al PC Linux (amb entorn complet, Git i Python):
    ```bash
    git status
    ```
-2. **Crear una branca o tag de seguretat:**
+2. **Crear  tag de seguretat:**
    ```bash
    git tag abans-neteja-2026-11-05
    ```

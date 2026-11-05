@@ -134,7 +134,7 @@ Fet recentment (2026-11-02/05):
 - Fases 4 i 5: compàs ≠ secció i ajust d'un sol BPM per mínims quadrats.
 
 Corpus real de tempo encara pendent (l'avaluador sintètic funciona).
-Commit de referència: `cbf9e6f` (drag & drop d'àudio i documentació).
+Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i docs al dia).
 
 ---
 

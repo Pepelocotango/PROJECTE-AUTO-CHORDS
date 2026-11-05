@@ -47,8 +47,8 @@ s'edita una còpia de treball dins el projecte.
 ### FORA d'abast (congelat)
 
 - Afinador de guitarra i `Gt_ALL_Chords_app`.
-- Edició d'àudio avançada: fades, guany per clip, crossfade i snap a
-  zero-crossings.
+- Edició d'àudio avançada: fades ajustables/manuals, guany per clip, crossfade
+  i snap a zero-crossings.
 - i18n, multi-pestanya i batch/render queue.
 
 ### Ajornat (sense data; no es treballa ara)
@@ -319,11 +319,15 @@ widgets, netegen amb `tests/_qt_neteja.py`. Si afegeixes un test nou, importa
 
 ## 🚀 Cap on va (visió)
 
-- **Import universal** (l'`ffmpeg` intern ja hi és) i **export MIDI**.
-- **Exportació d'àudio amb FFmpeg**; l'edició actual dels extrems sempre treballa
-  sobre una còpia, mai sobre l'original.
-- **Multilingüe (i18n)** i millores de UI.
-- **Eines per a DAWs i directes** (plantilles, CLI/headless, *cue-sheets*).
+> **No és un permís per ampliar l'abast.** El contracte vigent és la secció
+> «Abast i flux de l'usuari» d'este mateix fitxer; si una idea no hi és, no es fa
+> sense OK de l'operador.
+
+- **Consolidar el nucli**: obrir → analitzar (opcional) → editar 3 pistes →
+  exportar → desar, amb **menys complexitat accidental**.
+- **Qualitat i estabilitat**: menys regressions, menys opcions i el mateix
+  resultat predictible.
+- **Eines per a DAWs i directes** només si **no amplien** l'abast congelat.
 - **Criteri**: cap idea de futur pot **trencar una regla d'or**; el que afegeixes
   ha de mantenir l'app **simple, coherent i predictible**.
 

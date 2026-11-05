@@ -1,8 +1,9 @@
 # Índex de la documentació (`docs/`)
 
-> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-11-03.**
-> L'estat *actual* del projecte és a **`../README.md`** i **`../ROADMAP.md`**;
-> aquí hi ha el **detall temàtic**. Els documents d'**`archive/`** (marcats
+> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-11-05.**
+> L'estat *actual* i el relleu de sessió són a **`../ROADMAP.md` §2**; la
+> definició de producte (abast i flux) és a **`../AGENTS.md`**; aquí hi ha el
+> **detall temàtic**. Els documents d'**`archive/`** (marcats
 > **[HISTÒRIC]**, **[ANÀLISI]** o **[COMPLETAT]**) es conserven com a referència,
 > però ja **no** descriuen el projecte actual.
 
