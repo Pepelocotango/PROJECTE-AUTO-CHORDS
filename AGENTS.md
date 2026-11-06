@@ -119,6 +119,9 @@ funcionalitat (mai la regla); si hi ha conflicte, mana la regla.
 - Si creus que cal un doc nou, **proposa-ho** (objectiu, abast i lloc) i espera
   l'OK; no el crees per iniciativa pròpia.
 
+**Abans de tancar:** `make lint`, `make test` i `make docs-check` han de passar.
+Si `docs-check` falla, executa `make docs` i revisa el diff.
+
 **Normes de l'operador:** tot en català · paperera sempre (`gio trash`, mai `rm`)
 · cap secret al repo · no deixar processos ni temporals · per a diàlegs o menús
 de GUI, demana ajuda a l'operador.
