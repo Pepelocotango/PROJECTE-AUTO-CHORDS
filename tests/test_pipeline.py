@@ -6673,6 +6673,19 @@ class TestVampParams(unittest.TestCase):
             self.assertIsInstance(vd, dict)
             self.assertEqual(set(vd), {p["id"] for p in ps})
 
+    def test_params_de_resol_la_carpeta_del_so(self):
+        d = tempfile.mkdtemp()
+        n3 = os.path.join(d, "prova.n3")
+        with open(n3, "w", encoding="utf-8") as f:
+            f.write(N3_PROVA)
+        self.addCleanup(lambda: os.remove(n3))
+        with patch.object(vamp_params, "PLUGINS",
+                          {"chords": ("prova.n3", "test")}), \
+                patch.object(pipeline, "VAMP_DIRS", [d]):
+            self.assertEqual(
+                [p["id"] for p in vamp_params.params_de("chords")],
+                ["alpha", "beta"])
+
 
 class _vamp_params_icones__TestIcones(unittest.TestCase):
     """Icones SVG + colors de la UI."""

@@ -98,35 +98,6 @@ def _accent_grup(beat, num, den):
             and (beat - 1) % 3 == 0)
 
 
-def _ha_de_sonar(mode, beat, num, den):
-    """Decideix si hi ha clic en este beat segons el patró."""
-    mode = _normalitza_mode(mode)
-    if mode == "compas":
-        return beat == 1
-    if mode == "grup":
-        return beat == 1 or _accent_grup(beat, num, den)
-    # `auto` i `temps`: tots els temps.
-    return True
-
-
-def _es_accent(mode, beat, num, den):
-    """True per al clic fort (compàs) o per a l'accent secundari de grup."""
-    mode = _normalitza_mode(mode)
-    if beat == 1:
-        return True
-    return mode in ("auto", "grup") and _accent_grup(beat, num, den)
-
-
-def beats_a_temps(k, bpm, offset=0.0, den=4):
-    """Temps (s) del beat global `k` segons la graella.
-
-    `den` és el denominador del compàs; per defecte 4 (negra), que és la unitat
-    de BPM de l'app. Amb den=8, cada beat és una corxera.
-    """
-    beat_len = (4.0 / float(den)) * 60.0 / float(bpm)
-    return k * beat_len + float(offset)
-
-
 def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
                     volum=0.6, offset=0.0, mapa=None, factor=1.0,
                     den=4, mode="auto", click_unit="auto"):

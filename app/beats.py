@@ -26,7 +26,7 @@ import os
 import statistics
 import tempfile
 
-from . import pipeline, tempo, tempo_map
+from . import limits, pipeline, tempo, tempo_map
 
 MOTORS = ("nostre", "qm")
 
@@ -85,7 +85,10 @@ def _bpm_de_beats(beats):
     if not intervals:
         return None
     # Si hi ha forats, la mediana és més robusta que la mitjana.
-    return 60.0 / statistics.median(intervals)
+    bpm = 60.0 / statistics.median(intervals)
+    if not (limits.BPM_MIN <= bpm <= limits.BPM_MAX):
+        return None
+    return bpm
 
 
 def _detecta_nostre(wav, log, sensibilitat, bpb, den, bpm_hint,

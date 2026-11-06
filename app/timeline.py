@@ -46,7 +46,7 @@ from app import theme      # noqa: E402  (paleta centralitzada)
 from app.timeline_base import (   # noqa: E402,F401
     CHORD_ACTIVE_FILL, CURSOR_COLOR, GUIDE_COLOR, LANE_ACC_TOP, LANE_BG_A,
     LANE_BG_B, LANE_H, LANE_SEC_TOP, LANE_TEMPO_H, LANE_TEMPO_TOP,
-    LEFT_PAD, LOOP_GRAB_PX, MIN_GAP_S,
+    LEFT_PAD, MIN_GAP_S,
     MIN_SEC_LEN_S, PIXELS_PER_SECOND_DEFAULT, RIGHT_PAD, RULER_H,
     SELECTION_COLOR, SNAP_MARCA_PX, TIME_RULER_H, TIME_RULER_TOP, TOTAL_H,
     WAVEFORM_H, fmt_pos, grid_levels, loop_after_drag, snap_step, snap_time,
@@ -55,6 +55,7 @@ from app import audio_edit  # noqa: E402
 from app import graella  # noqa: E402
 from app import pipeline  # noqa: E402  (DESTÍ del moviment d'un bloc, §6.3)
 from app import tempo_map  # noqa: E402  (pas de nudge = compàs sencer)
+from app import timeline_geometry as geo  # noqa: E402
 
 
 # -----------------------------------------------------------------------------
@@ -545,7 +546,7 @@ class TimelineView(QGraphicsView):
         self._actualitza_nanses_audio()
 
     def _temps_a_x(self, t):
-        return self._x_offset + (float(t) - self._view_left) * self._pps
+        return geo.time_to_x(t, self._view_left, self._x_offset, self._pps)
 
     def _actualitza_nanses_audio(self, moviment=None):
         posicions = {"start": 0.0, "end": self._durada}
@@ -712,7 +713,7 @@ class TimelineView(QGraphicsView):
 
     def _loop_px(self, t: float) -> float:
         """Coordinada x d'escena per a un temps (per a la hit-test del loop)."""
-        return self._x_offset + (t - self._view_left) * self._pps
+        return geo.loop_px(t, self._view_left, self._x_offset, self._pps)
 
     def _tempo_zona(self, x_vista: float):
         """`(índex, zona)` del carril de BPM/compàs a partir d'una x de la VISTA.
@@ -745,22 +746,9 @@ class TimelineView(QGraphicsView):
         return t_final
 
     def _loop_mode_at(self, x: float):
-        """Què farà un clic al regle segons l'x (o None = crear loop nou).
-
-        'a'/'b' = vores (dins de ±LOOP_GRAB_PX) → redimensionar; 'move' = dins
-        del loop → desplaçar-lo; None = fora → començar un loop nou.
-        """
-        if self._loop_a is None or self._loop_b is None:
-            return None
-        xa = self._loop_px(self._loop_a)
-        xb = self._loop_px(self._loop_b)
-        if abs(x - xa) <= LOOP_GRAB_PX:
-            return "a"
-        if abs(x - xb) <= LOOP_GRAB_PX:
-            return "b"
-        if xa < x < xb:
-            return "move"
-        return None
+        """Què farà un clic al regle segons l'x (o None = crear loop nou)."""
+        return geo.loop_mode_at(x, self._loop_a, self._loop_b,
+                                self._view_left, self._x_offset, self._pps)
 
     def _cursor_regle(self, x: float):
         """Cursor de feedback sobre el regle (vores = ↔, cos = ✥)."""
@@ -779,7 +767,7 @@ class TimelineView(QGraphicsView):
 
     def _x_to_time(self, x: float) -> float:
         """De x de la vista a temps (coords relatives a la vista)."""
-        return self._view_left + (x - self._x_offset) / max(self._pps, 1e-9)
+        return geo.x_to_time(x, self._view_left, self._x_offset, self._pps)
 
     def snap(self, t: float) -> float:
         """Arrodoneix `t` a la graella de snap actual (BPM/offset o segons)."""
@@ -831,14 +819,8 @@ class TimelineView(QGraphicsView):
 
     def selected_center(self) -> Optional[float]:
         """Centre temporal del clip seleccionat (o None)."""
-        kind, idx = getattr(self, "_sel", ("", -1))
-        if kind == "chord" and 0 <= idx < len(self._chord_items):
-            it = self._chord_items[idx]
-            return (it.t + it._next_t) / 2.0
-        if kind == "section" and 0 <= idx < len(self._section_items):
-            it = self._section_items[idx]
-            return (it.ini + it.fi) / 2.0
-        return None
+        return geo.selected_center(getattr(self, "_sel", ("", -1)),
+                                   self._chord_items, self._section_items)
 
     def rang_seleccio(self):
         """Rang temporal `(inici, fi)` de TOTS els clips seleccionats, o `None`.
@@ -1041,15 +1023,8 @@ class TimelineView(QGraphicsView):
 
     def _temps_item(self, kind: str, idx: int):
         """Temps d'inici del clip (kind, idx), o `None` si no existeix."""
-        if kind == "chord" and 0 <= idx < len(self._acords):
-            return float(self._acords[idx][0])
-        if kind == "section" and 0 <= idx < len(self._seccions):
-            return float(self._seccions[idx][0])
-        if kind == "tempo":
-            tr = self._trams_tempo()
-            if 0 <= idx < len(tr):
-                return float(tr[idx][0])
-        return None
+        return geo.temps_item(kind, idx, self._acords, self._seccions,
+                              self._trams_tempo())
 
     def extend_selection(self, kind: str, index: int) -> None:
         """Shift+clic: selecciona el RANG de clips entre l'àncora i el clicat.
@@ -1075,80 +1050,23 @@ class TimelineView(QGraphicsView):
         self.clipSelected.emit(kind, index)
 
     def _trams_tempo(self) -> list:
-        """Trossos del mapa de BPM/compàs com a tuples `(ini, fi, bpm, num, den)`.
-
-        Buit si la pista no està activa (mode lliure o sense mapa). És la font
-        de la selecció per **rang** i pel **marquee** (i de `_temps_item`).
-        """
-        mapa = getattr(self, "_mapa", None)
-        return [tuple(t) for t in mapa.trams] if mapa is not None else []
+        """Trossos del mapa de BPM/compàs com a tuples `(ini, fi, bpm, num, den)`."""
+        return geo.trams_tempo(getattr(self, "_mapa", None))
 
     def keys_dins_rang(self, lo: float, hi: float, inclou_fi: bool = True,
                        tempo: bool = False) -> set:
-        """Clips (acords i seccions) l'INICI dels quals cau dins `[lo, hi]`.
-
-        Rang per TEMPS que abraça les dues pistes (Shift+clic i loop A/B).
-
-        `inclou_fi=False` → interval **semi-obert** `[lo, hi)`: un clip que
-        comenci EXACTAMENT a `hi` NO s'hi compta. És el que vol el loop (acaba
-        a `hi`; el clip d'allà ja és fora); el Shift+clic, en canvi, ha
-        d'incloure el clip clicat → `inclou_fi=True` (per defecte).
-        """
-        lo, hi = sorted((float(lo), float(hi)))
-        tol = 1e-6            # «mateix instant» (la resolució del CSV és 10 ms)
-
-        def _dins(t):
-            if t < lo - tol:
-                return False
-            return (t <= hi + tol) if inclou_fi else (t < hi - tol)
-
-        keys = set()
-        for i, ac in enumerate(self._acords):
-            if _dins(float(ac[0])):
-                keys.add(("chord", i))
-        for i, sec in enumerate(self._seccions):
-            if _dins(float(sec[0])):
-                keys.add(("section", i))
-        if tempo:              # trams de BPM/compàs (només si els demanen)
-            for i, tr in enumerate(self._trams_tempo()):
-                if _dins(float(tr[0])):
-                    keys.add(("tempo", i))
-        return keys
+        """Clips l'inici dels quals cau dins `[lo, hi]` (vegeu `timeline_geometry`)."""
+        return geo.keys_dins_rang(self._acords, self._seccions,
+                                  self._trams_tempo(), lo, hi,
+                                  inclou_fi=inclou_fi, tempo=tempo)
 
     def keys_dins_marc(self, t0: float, t1: float, chords: bool = True,
                        sections: bool = True, tempo: bool = True) -> set:
-        """Clips que **SONEN** dins la finestra `[t0, t1]` (marquee/rubber-band).
-
-        A diferència de `keys_dins_rang` (que mira els INICIS dels clips), aquí
-        mana el **SOLAPAMENT**: un clip que comença abans de `t0` però hi sona a
-        dins també hi entra — és el que fa el marquee dels DAWs.
-
-        `chords`/`sections` decideixen quines pistes participen: el rectangle
-        només agafa les pistes que cobreix verticalment, i així un marc només
-        damunt dels acords agafa **només acords**.
-        """
-        t0, t1 = sorted((float(t0), float(t1)))
-        durada = float(self._durada)
-        tol = 1e-6
-        keys = set()
-        if chords:
-            for i, a in enumerate(self._acords):
-                ini = float(a[0])
-                fi = (float(self._acords[i + 1][0])
-                      if i + 1 < len(self._acords) else durada)
-                if fi > t0 + tol and ini < t1 - tol:
-                    keys.add(("chord", i))
-        if sections:
-            for i, s in enumerate(self._seccions):
-                ini, fi = float(s[0]), float(s[1])
-                if fi > t0 + tol and ini < t1 - tol:
-                    keys.add(("section", i))
-        if tempo:
-            for i, tr in enumerate(self._trams_tempo()):
-                ini, fi = float(tr[0]), float(tr[1])
-                if fi > t0 + tol and ini < t1 - tol:
-                    keys.add(("tempo", i))
-        return keys
+        """Clips que SONEN dins `[t0, t1]` (marquee; vegeu `timeline_geometry`)."""
+        return geo.keys_dins_marc(self._acords, self._seccions,
+                                  self._trams_tempo(), self._durada, t0, t1,
+                                  chords=chords, sections=sections,
+                                  tempo=tempo)
 
     # -- eina del timeline (fletxa intel·ligent / marc de selecció) -----------
     def set_tool(self, nom: str) -> None:
@@ -1354,22 +1272,8 @@ class TimelineView(QGraphicsView):
 
     # -- gestió d'events dels items (constraint + propagació) -----------------
     def _bloc_del_gest(self, idx: int, kind: str = "chord"):
-        """Bloc **consecutiu** de clips del tipus `kind` que arrossega el gest.
-
-        El gest mou el cos d'un clip; si forma part d'una multi-selecció
-        contigua del seu tipus, el bloc és tot el que queda a cada banda
-        (mateixa durada, §6.3). Els índexs llunyans o trencats no entren al bloc
-        (només la correguda que conté `idx`)."""
-        sel = sorted(i for (k, i) in self._multi if k == kind)
-        if idx not in sel:
-            return idx, idx
-        first = idx
-        while first - 1 in sel:
-            first -= 1
-        last = idx
-        while last + 1 in sel:
-            last += 1
-        return first, last
+        """Bloc **consecutiu** de clips del tipus `kind` que arrossega el gest."""
+        return geo.bloc_del_gest(self._multi, idx, kind)
 
     def _on_chord_body_drag(self, idx: int, new_t: float) -> None:
         """Arrossegar el COS d'un clip d'acord = moure el BLOC (§6.3).

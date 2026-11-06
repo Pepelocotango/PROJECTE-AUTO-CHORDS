@@ -846,15 +846,6 @@ def _graella_tram(tram, idx, offset=0.0, durada=0.0):
             if -TOL <= base + k * beat <= float(durada) + TOL]
 
 
-def clip_te_temps_sencer(tram, graella=None):
-    """Compatibilitat: amb graella, comprova un beat complet; sense, durada."""
-    if graella is not None:
-        return clip_conte_beat_sencer(tram, graella)
-    ini, fi = float(tram[0]), float(tram[1])
-    beat = _beat_segons_tram(tram)
-    return beat > TOL and (float(fi) - ini) + TOL_COMPAS >= beat
-
-
 def valida_i_normalitza_compassos(trams, durada, offset=0.0,
                                   preserva_fi_idx=None, beats_qm=None):
     """Valida el contracte de clips de tempo i retorna el mapa normalitzat.
@@ -1941,7 +1932,7 @@ def avalua_confirmacio(bpm, prev=None, banda=None, llarga=None,
                        tol=0.5, tol_prev_pct=3.0):
     """Decideix si el BPM detectat és **fiable** o **dubtós** (guiat v2).
 
-    Tres mesures del mateix tram, fetes per `main.FilGuiaBpm`:
+    Tres mesures del mateix tram:
 
     - `bpm`: la detecció normal (lliure) sobre la finestra del tram.
     - `banda`: la mateixa finestra buscant **només** dins del ±8 % del BPM

@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _temporals  # noqa: E402
 _ = _temporals
 
-from app import beats  # noqa: E402
+from app import beats, limits  # noqa: E402
 
 
 class TestSensibilitat(unittest.TestCase):
@@ -32,6 +32,17 @@ class TestSensibilitat(unittest.TestCase):
 
 
 class TestMotors(unittest.TestCase):
+    def test_bpm_de_beats_fora_de_banda_retorna_none(self):
+        self.assertIsNone(beats._bpm_de_beats([0.0, 10.0, 20.0, 30.0]))
+
+    def test_bpm_de_beats_dins_de_banda(self):
+        bpm = beats._bpm_de_beats([0.0, 0.5, 1.0, 1.5, 2.0])
+        self.assertAlmostEqual(bpm, 120.0)
+        self.assertTrue(limits.BPM_MIN <= bpm <= limits.BPM_MAX)
+
+    def test_bpm_de_beats_menys_de_dos(self):
+        self.assertIsNone(beats._bpm_de_beats([1.0]))
+
     def test_resultat_nostre(self):
         with patch.object(beats.tempo, "detecta_bpm", return_value=120.0), \
                 patch.object(beats.tempo, "segueix_beats",

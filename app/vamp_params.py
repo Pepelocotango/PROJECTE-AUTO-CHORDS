@@ -14,12 +14,12 @@ import re
 
 from . import pipeline
 
-# Nom del plugin (dins el .n3) per a cada transform que fem servir.
+# Nom del descriptor `.n3` i del plugin (dins el descriptor) per a cada
+# transform. El directori es resol segons el SO amb `pipeline.VAMP_DIRS`.
 PLUGINS = {
-    "chords": ("nnls-chroma-linux64-local/nnls-chroma.n3", "chordino"),
+    "chords": ("nnls-chroma.n3", "chordino"),
     # El qm-segmenter no té paràmetres ajustables (es neteja amb postproc).
-    "structure": ("qm-vamp-plugins-linux64-local/qm-vamp-plugins.n3",
-                  "qm-segmenter"),
+    "structure": ("qm-vamp-plugins.n3", "qm-segmenter"),
 }
 
 
@@ -81,10 +81,11 @@ def llegeix_params(n3_path, nom_plugin):
 def params_de(clau):
     """Paràmetres del transform `clau` ('chords' | 'structure')."""
     n3, plugin = PLUGINS[clau]
-    ruta = os.path.join(pipeline.PROJ_DIR, n3)
-    if not os.path.exists(ruta):
-        return []
-    return llegeix_params(ruta, plugin)
+    for carpeta in pipeline.VAMP_DIRS:
+        ruta = os.path.join(carpeta, n3)
+        if os.path.isfile(ruta):
+            return llegeix_params(ruta, plugin)
+    return []
 
 
 def valors_per_defecte(clau):

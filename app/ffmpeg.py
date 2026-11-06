@@ -257,9 +257,7 @@ def converteix_a_wav(ruta, log=None, dest=None):
     return dest
 
 
-# --- Velocitat amb el to mantingut (Anàlisi guiat v3, R11) -------------------
-#: Velocitats que ofereix el diàleg d'ancoratges: ½ · ⅔ (1÷1,5) · 1 · 1,5 · 2 · 4.
-VELOCITATS = (0.5, 1.0 / 1.5, 1.0, 1.5, 2.0, 4.0)
+# --- Velocitat amb el to mantingut (transport del visor) ---------------------
 #: Prefix dels temporals d'estirament (R19: viuen al directori temporal).
 PREFIX_VELOCITAT = "auto_chords_vel_"
 
@@ -314,12 +312,12 @@ def _es_mono_pcm16(ruta):
 
 
 def prepara_escolta(ruta, factor=1.0, log=None, carpeta=None):
-    """Còpia **mono PCM16** reproduïble a `factor`×, per al diàleg del guiat.
+    """Còpia **mono PCM16** reproduïble a `factor`× (transport del visor).
 
-    El transport del guiat envia PCM mono als reproductors (`paplay`/`aplay` i el
-    motor natiu), així que un WAV original **estèreo** (la majoria) s'ha de
-    convertir: si ja és mono a 1,0× es torna la mateixa ruta; si no, es
-    renderitza (una sola vegada: caché per mtime+mida+factor).
+    El reproductor envia PCM mono als reproductors (`paplay`/`aplay` i el motor
+    natiu), així que un WAV original **estèreo** (la majoria) s'ha de convertir:
+    si ja és mono a 1,0× es torna la mateixa ruta; si no, es renderitza (una
+    sola vegada: caché per mtime+mida+factor).
     """
     if not ruta or not os.path.isfile(str(ruta)):
         raise ValueError(f"Fitxer d'àudio no trobat: {ruta!r}")
@@ -331,26 +329,8 @@ def prepara_escolta(ruta, factor=1.0, log=None, carpeta=None):
     return _render(ruta, f, log, carpeta)
 
 
-def estira_a_wav(ruta, factor, log=None, carpeta=None):
-    """Còpia de `ruta` reproduïble a `factor`× **mantenint el to** (R11).
-
-    A 1,0× torna la mateixa ruta. La resta es renderitzen amb `ffmpeg atempo` a
-    un WAV PCM 16 del directori temporal (caché: es reutilitza si ja hi és i és
-    més nou que l'original). La relació amb el temps real és
-    ``t_real = t_estirat × factor`` (a ½, 1 s de música ocupa 2 s de fitxer).
-    """
-    if not ruta or not os.path.isfile(str(ruta)):
-        raise ValueError(f"Fitxer d'àudio no trobat: {ruta!r}")
-    f = float(factor)
-    if f <= 0:
-        raise ValueError("El factor de velocitat ha de ser > 0")
-    if abs(f - 1.0) < 1e-9:
-        return ruta
-    return _render(ruta, f, log, carpeta)
-
-
 def _render(ruta, f, log=None, carpeta=None):
-    """Renderitza `ruta` a `f`× en mono PCM16 (caché). Vore `estira_a_wav`."""
+    """Renderitza `ruta` a `f`× en mono PCM16 (caché). Vore `prepara_escolta`."""
     if not disponible():
         raise RuntimeError("Cal ffmpeg per a canviar la velocitat")
     dest = ruta_velocitat(ruta, f, carpeta)
