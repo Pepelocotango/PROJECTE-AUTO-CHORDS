@@ -172,7 +172,7 @@
 <p><b>Neteja posterior</b> (<code>app/postproc.py</code>): treure el baix (<code>A/E</code>→<code>A</code>), reduir (<code>Cmaj7</code>→<code>C</code>), fusionar iguals, durada mínima i encaixar a la graella.</p>
 <p>Les opcions es <b>recorden</b> a <code>opcions_detecta.json</code> (gitignored).</p>
 <h3>6.2 Motors d&#x27;autodetecció (Queen Mary)</h3>
-<p><code>docs/QM_VAMP.md</code>: s&#x27;han <b>compilat</b> els plugins <b><code>qm-vamp-plugins</code></b> de Queen Mary (els d&#x27;Audacity/Mixxx), <b>sense AVX</b>.</p>
+<p>S&#x27;han <b>compilat</b> els plugins <b><code>qm-vamp-plugins</code></b> de Queen Mary (els d&#x27;Audacity/Mixxx), <b>sense AVX</b> (<code>eines/compila_vamp_plugins.sh</code>).</p>
 <table><tr><th>Pestanya</th><th>Motor per defecte</th><th>Altre motor</th></tr><tr><td><b>BPM</b></td><td><code>nostre</code> (<code>app/tempo.py</code>)</td><td><code>qm</code>, <b><code>consens</code></b></td></tr><tr><td><b>Estructura</b></td><td><b><code>qm</code></b> (qm-segmenter) — únic motor</td><td>—</td></tr></table>
 <p>El <b><code>🧭</code></b> (i Analitza ▸ «Detecta el compàs 1 automàticament») usa <code>qm-onsetdetector</code> + <code>qm-barbeattracker</code> per posar l&#x27;offset sol (al tema de 101 dona 9,49 s).</p>
 <h3>6.3 Import de formats (<code>app/ffmpeg.py</code>)</h3>
@@ -181,8 +181,8 @@
 <hr>
 <h2>7. Documents relacionats</h2>
 <ul><li><code>docs/ESQUEMA_UI.html</code> i <code>docs/ESQUEMA_UI.svg</code> — aquest mateix esquema en</li></ul>
-<p><b>HTML</b> i <b>vectorial</b>, <b>GENERATS</b> d&#x27;aquest <code>.md</code> amb <b><code>python3 eines/genera_esquema_ui.py</code></b> (<b>no editar-los a mà</b>; el test <code>tests/test_pipeline.py</code> › <code>TestEsquemaUiGenerat</code> ho blinda → si edites aquest <code>.md</code>, regenera&#x27;ls). L&#x27;<b>art manual</b> original es conserva a <code>ESQUEMA_UI_manual.svg</code>/<code>.html</code>.</p>
-<ul><li><code>docs/archive/AUBIO_TEMPO.md</code> — <b>[històric]</b> plugin d&#x27;aubio (tempo/beats), retirat.</li><li><code>docs/AUTODETECCIO_OPCIONS.md</code> — motors d&#x27;autodetecció, opcions i post-processat.</li><li><code>README.md</code> — «Estat actual» de l&#x27;app.</li></ul>
+<p><b>HTML</b> i <b>vectorial</b>, <b>GENERATS</b> d&#x27;aquest <code>.md</code> amb <b><code>python3 eines/genera_esquema_ui.py</code></b> (<b>no editar-los a mà</b>; el test <code>tests/test_pipeline.py</code> › <code>TestEsquemaUiGenerat</code> ho blinda → si edites aquest <code>.md</code>, regenera&#x27;ls).</p>
+<ul><li><code>docs/recerca/AUTODETECCIO_OPCIONS.md</code> — motors d&#x27;autodetecció, opcions i post-processat.</li><li><code>README.md</code> — «Estat actual» de l&#x27;app.</li></ul>
 <div class="peu">Generat per eines/genera_esquema_ui.py a partir de docs/ESQUEMA_UI.md — NO editar a mà.</div>
 </body>
 </html>

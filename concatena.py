@@ -31,11 +31,9 @@ INCLOU = [
     "ROADMAP.md",           # full de ruta (abast, fases, futur)
     "DEVELOPING.md",        # setup, entorn i desenvolupament
     "docs/REGLES_DE_LA_APP.md",   # ⚠️ regles d'or (invariants) — IMPRESCINDIBLE
-    # 3b. Context Tier A — contractes de comportament (docs revisats 20-10-2026)
-    "docs/FLUX_DE_DADES.md",      # el MODEL editable i el cru dins el .acproj
+    # 3b. Context Tier A — contractes de comportament
     "docs/EDICIO_OPERACIONS.md",  # totes les formes d'edició (GUI ↔ codi)
-    "docs/ANALISI_GUIAT.md",      # assistent de mapa de tempo (BPM no constant)
-    "docs/NOTACIO_XIFRAT.md",     # forma canònica del xifrat
+    "docs/recerca/NOTACIO_XIFRAT.md",  # forma canònica del xifrat
     "docs/TIPUS_XIFRAT_ACORDS.md",  # els 80 tipus + graus + <kind> MusicXML
     # 4+. El codi i la resta
     "app",                  # codi de l'aplicació (Python)

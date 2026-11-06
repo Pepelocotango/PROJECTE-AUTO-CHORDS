@@ -30,8 +30,8 @@ import numpy as np
 
 from app import plataforma
 
-# Els errors d'àudio NO han de quedar en silenci (AUDITORIA_PRODUCCIO 1.6/4.3):
-# es registren al log de l'app (filename + stderr) en comtes de `pass`.
+# Els errors d'àudio NO han de quedar en silenci: es registren al log de l'app
+# (filename + stderr) en comtes de `pass`.
 logger = logging.getLogger("auto_chords")
 
 # Nom del «player» que indica el motor natiu (sounddevice).

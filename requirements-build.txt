@@ -5,11 +5,10 @@
 # El runtime de l'app és NOMÉS `requirements.txt` (aquí s'inclou amb -r).
 #
 # ⚠️ TOTES les versions van fixades amb `==`. No pujar-ne cap sense comprovar-ho
-# (vegeu `docs/SEGURETAT.md`).
+# (vegeu `SECURITY.md`).
 #
 # `pyinstaller==6.22.3` és la versió que els CI resolien (sense pin) el
 # 2026-10-13; fixar-la evita que un build futur canviï de comportament sol.
-# Vegeu `docs/archive/AUDITORIA_PRODUCCIO.md` (A.2/D.1).
 -r requirements.txt
 pyinstaller==6.22.3
 # Mesura de cobertura de la suite al CI (llindar a build-* i build-all).

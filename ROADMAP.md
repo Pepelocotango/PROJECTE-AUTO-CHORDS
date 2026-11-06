@@ -42,7 +42,7 @@ ja desa una única còpia WAV de treball dins del projecte i els backups també 
 inclouen; l'original es conserva. Les nanses permeten retallar o allargar amb
 silenci els extrems i desfer/refer l'edició junt amb el model musical.
 `Fitxer ▸ Exporta àudio…` desa el resultat en WAV, MP3, FLAC, AAC/M4A, OGG o
-Opus. L'abast és a [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+Opus. L'abast és a [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 
 **Arquitectura oberta**: el **core** (pipeline + plugins Vamp) és **independent
 de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
@@ -91,7 +91,7 @@ Fet recentment (2026-11-02/05):
   **«Ajusta BPM al compàs»** força compassos sencers de manera explícita. En
   fixar l’offset, el pre-roll es recalcula com un compàs sencer amb el compàs
   que deixa el BPM més pròxim al clip següent. Docs:
-  `docs/REGLES_DE_LA_APP.md` §13.4–13.6 i `docs/ANALISI_BPM.md`.
+  `docs/REGLES_DE_LA_APP.md` §13.4–13.6 i `app/beats.py`.
 - **Analitza BPM** (2026-11-04): acció separada de «Analitza» (que queda per
   a acords + estructura), motors **nostre**/QM, sensibilitat 0–100 i línies
   sobre l'ona. El motor per defecte és **Queen Mary**; el mode per defecte és
@@ -101,7 +101,7 @@ Fet recentment (2026-11-02/05):
   continua creant compàs + secció; els dubtes del snap es revisen en un
   diàleg no modal, el metre d’un tram s’edita amb **Compàs del marcador…** i
   el Snap **Beats QM** encaixa cursor/clips/`+` a les línies de QM.
-  Detall: `docs/ANALISI_BPM.md`.
+  Detall: `app/beats.py` i `app/main.py`.
 - **Fase 12 (en curs)**: afinador i `Gt_ALL_Chords_app` congelats; tots els
   tests importen `_temporals`; `.github/workflows/qualitat.yml` executa fuzzer i
   proves sintètiques sense bloquejar.
@@ -211,7 +211,7 @@ Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i 
   kHz), MP3 128/192/320, FLAC, AAC/M4A, OGG i Opus. Només s'ofereixen els
   còdecs que el `ffmpeg` del paquet pot escriure (`-encoders`). Escriptura
   atòmica, log visible i protecció de la còpia de treball. Vegeu
-  [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+  [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 - **AJORNAT (sense data) — Rubato i doble graella avançada**: el que ja hi ha
   implementat es conserva; no s'amplia fins que l'operador ho decidisca. Vegeu
   [`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md).

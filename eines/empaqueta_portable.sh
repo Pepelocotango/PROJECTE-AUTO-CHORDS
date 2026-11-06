@@ -98,7 +98,7 @@ IMPORTAR ALTRES FORMATS (mp3, aif, flac...): ja va inclos (ffmpeg del paquet).
 
 Codi font i AppImage publicada:
     https://github.com/Pepelocotango/PROJECTE-AUTO-CHORDS
-Mes informacio: docs/archive/PORTABILITAT.md dins aquesta carpeta.
+Mes informacio: README.md dins aquesta carpeta.
 TXT
 
 echo "Fet. Mida: $(du -sh "$DEST" | cut -f1)"

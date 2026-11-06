@@ -17,7 +17,7 @@ el BPM són "vistes" calculades a sobre.
 
 ## 1. On som ara (estat actual del codi)
 
-- Posicions en **segons** (`float`) amb **6 decimals (1 µs)** als tres CSV del
+- Posicions en **segons** (`float`) amb **6 decimals (1 µs)** als quatre CSV del
   MODEL; la UI en mostra **3 (ms)**. Es converteix a `compàs.beat` (C.B) amb
   `beat = 60/bpm` i el compàs cada `bpb` temps.
 - Grid **unificat** (`grid_plan` a `app/timeline_base.py`): grid, regle i snap

@@ -738,9 +738,9 @@ class TestExportsMapa(unittest.TestCase):
 class TestGuia(unittest.TestCase):
     """Anàlisi guiat: el tall lliure del carril i les finestres de 16 temps.
 
-    Disseny: `docs/ANALISI_GUIAT.md`. Cada resultat ha de passar el contracte
-    de compassos enters (`valida_i_normalitza_compassos`) amb l'offset del
-    compàs 1, que és com el consumirà l'app.
+    Cada resultat ha de passar el contracte de compassos enters
+    (`valida_i_normalitza_compassos`) amb l'offset del compàs 1, que és com el
+    consumirà l'app.
     """
 
     DURADA = 30.0

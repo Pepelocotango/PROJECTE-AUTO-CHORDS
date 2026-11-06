@@ -1,103 +1,36 @@
 # Índex de la documentació (`docs/`)
 
-> Guia de navegació dels documents d'AUTO CHORDS. **Actualitzat: 2026-11-05.**
-> L'estat *actual* i el relleu de sessió són a **`../ROADMAP.md` §2**; la
-> definició de producte (abast i flux) és a **`../AGENTS.md`**; aquí hi ha el
-> **detall temàtic**. Els documents d'**`archive/`** (marcats
-> **[HISTÒRIC]**, **[ANÀLISI]** o **[COMPLETAT]**) es conserven com a referència,
-> però ja **no** descriuen el projecte actual.
+> **El codi és la font de veritat.** Aquesta carpeta només conté el contracte i
+> els documents amb informació que no es pot derivar del codi. La resta de
+> documentació (història, plans executats, guies operatives) viu al
+> `CHANGELOG.md`, `ROADMAP_HISTORIA.md` i els docstrings dels mòduls.
+>
+> L'estat de la sessió és a **`../ROADMAP.md` §2**; l'abast del producte, a
+> **`../AGENTS.md`**.
 
-## Com començar
-
-| Doc | Què explica |
-|---|---|
-| **`../README.md`** | Visió general, instal·lació i flux de treball (5 passos). |
-| **`../AGENTS.md`** | 🎯 **Abast i flux de l'usuari (font única)** i orientació per a agents. |
-| **`../DEVELOPING.md`** | Entorn de desenvolupament i mapa del codi. |
-| **`REGLES_DE_LA_APP.md`** | 🔴 **Les regles d'or (invariants)** — llegir **abans** de tocar codi. Inclou el **§13: temps, compàs i graella** (segon vs compassos, beats sencers, **re-tempo local**, fronteres i marcadors, **clips en segons**, detecció i export del mapa). |
-| **`ESQUEMA_UI.md`** (`.html` · `.svg`) | Esquema visual de la interfície: zones, icones reals i colors. |
-
-## Funcionament de l'app
+## Contracte i documents vius
 
 | Doc | Què explica |
 |---|---|
-| `REGLES_DE_LA_APP.md` | Regles d'or: ordre estricte, contigüitat, cobertura total… |
-| `ESQUEMA_UI.md` · `ESQUEMA_UI.html` · `ESQUEMA_UI.svg` | Esquema de la GUI. El `.html` i el `.svg` es **generen** (`eines/genera_esquema_ui.py`) des del `.md` — **no editar-los a mà**. L'**art manual** original es conserva a `ESQUEMA_UI_manual.svg` · `ESQUEMA_UI_manual.html`. |
-| `PROJECTES.md` | **Projectes autocontinguts** («com un DAW»): `.acproj`, `audio/` copiat, «Desa com», backups. |
-| `EDICIO_AUDIO.md` | **Abast i estat** de l'edició bàsica: còpia WAV, retall/allargament dels extrems i **exportació amb FFmpeg** (perfils WAV/MP3/FLAC/AAC/OGG/Opus). |
-| `FLUX_DE_DADES.md` | **Flux de dades**: el **MODEL** (3 CSV) i el **cru** de l'anàlisi, que viu dins el `.acproj`. |
-| `NOTACIO_XIFRAT.md` | **Notació del xifrat**: la forma canònica (`Am`→`A-`) i on s'aplica. |
-| `TIPUS_XIFRAT_ACORDS.md` | **Tipus de xifrat**: variants de sintaxi, graus i `<kind>` MusicXML (MuseScore). |
-| `AUDIO.md` | **Àudio**: reproducció (play) i motors per SO (Linux/macOS/Windows). |
-| `GRAELLA_PPQ_TEMPS.md` | Graella, PPQ i formats de temps: **estat actual del codi** (§1) i **proposta pendent** de la capa de *ticks*/PPQ 960 (§8). |
-| `PARTITURA_EXPORT.md` | Exportació de partitura (xifrat: MusicXML/PDF/MSCZ). |
-| `TEMPO_PER_TRAMS.md` | 🥁 **Motor de tempo per trams** (2026-10-21): BPM cada N compassos per a cançons amb tempo variable (DP d'Ellis + alternatives amb fiabilitat), xifres reals i comparativa amb els DAW. |
-| `ANALISI_BPM.md` | 🥁 **Analitza BPM**: detecció separada de BPM/beats/downbeats, motors «nostre»/QM, sensibilitat i línies de diagnòstic sobre l'ona. |
-| `guia_tecnica_downbeat_onsets_beats.md` | 🥁 **Guia tècnica d'onsets, beats i downbeats**: separació de capes, pipeline, model de dades, mètriques i criteris d'implementació. És una especificació de treball per a la fase 10. |
-| `ANALISI_GUIAT.md` | **HISTÒRIC**: anàlisi guiada v1/v2 per trams (substituïda). El treball real és amb **marcadors en viu** (`MARCADORS.md`); la v3 (ancoratges) queda en **stand-by** (`ANALISI_GUIAT_v3.md`). |
-| `MARCADORS.md` | **Marcadors d'inici de compàs en viu**: `+` mentre sona, tipus **compàs/secció**, relació amb les fronteres de tempo i pas a BPM. |
-| `EDICIO_OPERACIONS.md` | **Taula única** de totes les formes d'edició: operació × **GUI** × paritat acords/estructura (**#11**) × estat (FET/pendent). El test `TestDocEdicioOperacions` la manté al dia. |
+| **`REGLES_DE_LA_APP.md`** | 🔴 **Regles d'or (invariants)**: 1–12 i el §13 (temps, compàs i graella). Si el codi no les compleix, és un bug del codi. |
+| `ESQUEMA_UI.md` (`.html` · `.svg`) | Esquema de la interfície. Les vistes `.html`/`.svg` es **generen** (`eines/genera_esquema_ui.py`) — no editar-les a mà. |
+| `EDICIO_OPERACIONS.md` | Taula única d'operacions d'edició: GUI × paritat acords/estructura × estat. |
+| `TIPUS_XIFRAT_ACORDS.md` | Catàleg de tipus d'acord, variants, graus i `<kind>` MusicXML. |
+| `COMPONENTS_I_VERSIONS.md` | Inventari de components i versions. El **genera** `eines/genera_inventari.py` — no editar-lo a mà. |
 
-## Plans i refactors **en curs**
+## Recerca (`recerca/`)
+
+Documents de referència i propostes que **no** descriuen l'estat actual del codi:
 
 | Doc | Què explica |
 |---|---|
-| `../00PER FER/DECISIONS_RUBATO.md` | **SUBPLÀ PRIORITARI**: model de rubato (B) i doble graella. **Subplà complet (fases 1-5)**: motor, model/format, visor/graella, accions, exportació i docs. S'ha d'executar **abans** de la fase 7; atura les fases 7, 10 i 12. |
-| `../00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` | Pla acordat per fases: **0–7 fetes**; la **fase 10** (motor de detecció) està **en curs i bloquejada pel corpus manual**; la **fase 12** (congelació, higiene i CI) està **en curs**; **8, 9 i 11 ajornades**. |
-| `NOTES_VERIFICACIO.md` | Verificacions de la fase 0 i estat de la fase 10: avaluador, corpus manual, destins TAP/guia i mapa de proves de les regles. |
-
-> Els refactors **acabats** viuen a `archive/` (p. ex. `REFACTOR_INICI_FI.md`):
-> es conserven com a contracte i rastre, però ja no descriuen estat viu.
-
-## Autodetecció (motors i opcions)
-
-| Doc | Què explica |
-|---|---|
-| `AUTODETECCIO_OPCIONS.md` **[HISTÒRIC]** | Exploració de motors d'autodetecció i **mesuraments reals** del 07-10-2026 (superada per `QM_VAMP.md` i `ESQUEMA_UI.md` §6). |
-| `QM_VAMP.md` | Plugins QM Vamp (Queen Mary) compilats localment. |
-
-## Portabilitat i compilació (3 SO)
-
-| Doc | Què explica |
-|---|---|
-| `ESTAT_MULTI_SO.md` | 🎯 **Foto actual** del desplegament a Linux/Windows/macOS. |
-| `PORTABILITAT_WINDOWS.md` | Com es construeix el paquet portable de Windows. |
-| `PROVES_FUNCIONALS_3SO.md` | Com validar els 3 paquets en un sistema real. |
-
-## CI/CD, versions i seguretat
-
-| Doc | Què explica |
-|---|---|
-| `CI_WORKFLOWS.md` | Els workflows de GitHub Actions i el flux de Release. |
-| `COMPONENTS_I_VERSIONS.md` | Inventari de components i versions (per vigilar CVE). El **genera** `eines/genera_inventari.py` des de `requirements.txt` i `eines/deps_fixades.env` — **no editar-lo a mà** (el CI comprova que estiga al dia). |
-| `SEGURETAT.md` · `../SECURITY.md` | Enduriment de seguretat i canal de report. |
-
-## Auditoria
-
-| Doc | Què explica |
-|---|---|
-| `archive/INFORME_INCOHERENCIES_2026-10-16.md` | **Auditoria de coherència** (docs + codi), del 16-10-2026: **tots els punts resolts**; arxivada (vegeu `archive/AUDITORIA_REGLES.md`, Ronda 13). |
-
-## Arxiu — superats o de referència (`archive/`)
-
-| Doc | Què explica |
-|---|---|
-| `archive/REFACTOR_INICI_FI.md` **[COMPLETAT]** | 🏗️ Refactor de base **inici+fi** (model únic de clips amb `ini`+`fi` per a acords i estructura): contracte i pla per fases. **Acabat** el 17-10-2026 (`refactor-fi-fet`). |
-| `archive/AUDITORIA_PRODUCCIO.md` **[HISTÒRIC]** | Auditoria de producció (OC-5+OC-6, 10-2026): estat i bugs trobats/arreglats. |
-| `archive/REFERENCIA_PILES_PROGRAMES_REFERENCIA.md` **[REFERÈNCIA]** | Piles tecnològiques/gràfiques d'altres programes (REAPER, Audacity…). |
-| `archive/PANELL_TIPUS_ACORD_mockup.svg` · `.png` **[DISSENY]** | Maqueta **aprovada** del panell de tipus d'acord (ja implementat). |
-| `archive/AUDITORIA_REGLES.md` **[ARXIVAT]** | 🔍 Registre de l'auditoria de les regles d'or (rondes 1–54), **tancada**: mapa regla→validació→test, trobades i cua. |
-| `archive/PLA_TEMPO_COMPAS.md` **[FET]** | 🎚️ Pla del mapa de tempo i compàs variables (motor `app/tempo_map.py`). |
-| `archive/REGLES_TEMPS_GRID.md` **[FUSIONAT]** | 🕒 Antic contracte de temps, compàs i graella: **fusionat** a `REGLES_DE_LA_APP.md` **§13** el 23-10-2026. Es conserva pel detall llarg (exemples i casos extrems). |
-| `archive/FLUX DE TEMPO VARIABLE.md` **[HISTÒRIC]** | 🎚️ Especificació del re-tempo basat en marcacions (model mental, matemàtica i pla de proves). Regles vigents a `REGLES_DE_LA_APP.md` §13.5–13.6; el seu §5 (mínim de 0,5 s) està **superat**. |
-| `archive/PLA_EDICIO_LLIURE.md` **[FET]** | ✂️ Pla de l'edició lliure (§2, §6): la regla #4 com a contracte **posterior** a cada operació. |
-| `archive/AUBIO_TEMPO.md` **[HISTÒRIC]** | Plugin d'aubio (tempo/beats), **retirat** — substituït per `app/tempo.py`. |
-| `archive/PORTABILITAT.md` **[ANÀLISI]** | Anàlisi original de què calia per ser autocontingut (ja fet). |
-| `archive/PLA_PORTABILITAT.md` **[COMPLETAT]** | Pla per fases (2026-10-07) — ja executat. |
-| `archive/PLANIFICACIO_MACOS.md` **[FET]** | Pla per a macOS High Sierra 10.13+ — ja executat. |
+| `recerca/guia_tecnica_downbeat_onsets_beats.md` | Teoria d'onsets, beats i downbeats; criteris per a la detecció. |
+| `recerca/NOTACIO_XIFRAT.md` | Forma canònica del xifrat i les seues variants. |
+| `recerca/GRAELLA_PPQ_TEMPS.md` | Proposta de PPQ/ticks i swing (no implementada). |
+| `recerca/AUTODETECCIO_OPCIONS.md` | Mesuraments reals dels motors d'autodetecció. |
 
 ---
 
-> 📌 **Convencions**: documentació **en català**; les regles d'or
-> (`REGLES_DE_LA_APP.md`) són **invariants**; cada doc porta a dalt la
-> data/versió. En moure/renombrar un doc, actualitzeu els enllaços i aquest índex.
+> 📌 **Convencions**: documentació en català; cada doc porta data/versió a dalt.
+> Si un document descriu codi que ja no existeix, **s'esborra**: no es mantenen
+> documents històrics dins `docs/`.

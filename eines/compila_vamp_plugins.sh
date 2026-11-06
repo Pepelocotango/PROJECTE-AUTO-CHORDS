@@ -249,7 +249,7 @@ compila_macos() {
 
     # --- 2) qm-vamp-plugins (COMPILAT des de font, target 10.13) -----------
     # PER QUÈ NO el binari oficial: code.soundsoftware.ac.uk és inaccessible
-    # (com diu docs/QM_VAMP.md) -> no es pot baixar. Compilant-lo aquí amb els
+    # -> no es pot baixar. Compilant-lo aquí amb els
     # clapack/cblas INCLOSOS (com a Linux/Windows) queda autocontingut.
     echo "== [2/2] qm-vamp-plugins macOS (des de font) =="
     OSXARCH="-mmacosx-version-min=$DEP -arch $ARCH -stdlib=libc++"

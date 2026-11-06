@@ -5,8 +5,7 @@
 repositori** (`requirements.txt`, `eines/deps_fixades.env` i els globs dels
 plugins), MAI l'entorn local (venv, `portable/`). Així el document es pot
 **regenerar al CI i comprovar-lo amb `git diff --exit-code`** (si algú canvia
-una versió i no regenera el document, el CI peta). Vegeu
-`docs/archive/AUDITORIA_PRODUCCIO.md` (D.5).
+una versió i no regenera el document, el CI peta).
 
 ⚠️ Conseqüència: si canvies una versió a `requirements.txt` o a
 `deps_fixades.env`, HAS de tornar a córrer aquest script i commitejar el .md.
@@ -172,7 +171,7 @@ def construeix():
              "(i commiteja'l).")
     L.append("4. Comprova que el build segueix funcionant (i, a macOS, el mínim 10.13).")
     L.append("")
-    L.append("> Detall complet: `docs/SEGURETAT.md`.")
+    L.append("> Detall complet: `SECURITY.md`.")
     L.append("")
     return "\n".join(L)
 

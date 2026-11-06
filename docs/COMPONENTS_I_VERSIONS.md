@@ -73,4 +73,4 @@
 3. Regenera aquest document: `python3 eines/genera_inventari.py` (i commiteja'l).
 4. Comprova que el build segueix funcionant (i, a macOS, el mínim 10.13).
 
-> Detall complet: `docs/SEGURETAT.md`.
+> Detall complet: `SECURITY.md`.

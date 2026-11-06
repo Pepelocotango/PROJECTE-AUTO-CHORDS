@@ -481,8 +481,8 @@ Les opcions es **recorden** a `opcions_detecta.json` (gitignored).
 
 ### 6.2 Motors d'autodetecció (Queen Mary)
 
-`docs/QM_VAMP.md`: s'han **compilat** els plugins **`qm-vamp-plugins`** de Queen
-Mary (els d'Audacity/Mixxx), **sense AVX**.
+S'han **compilat** els plugins **`qm-vamp-plugins`** de Queen Mary (els
+d'Audacity/Mixxx), **sense AVX** (`eines/compila_vamp_plugins.sh`).
 
 | Pestanya | Motor per defecte | Altre motor |
 |----------|-------------------|-------------|
@@ -514,7 +514,5 @@ una extensió d'àudio de la llista.
   **`python3 eines/genera_esquema_ui.py`** (**no editar-los a mà**; el test
   `tests/test_pipeline.py` › `TestEsquemaUiGenerat` ho blinda → si edites aquest
   `.md`, regenera'ls).
-  L'**art manual** original es conserva a `ESQUEMA_UI_manual.svg`/`.html`.
-- `docs/archive/AUBIO_TEMPO.md` — **[històric]** plugin d'aubio (tempo/beats), retirat.
-- `docs/AUTODETECCIO_OPCIONS.md` — motors d'autodetecció, opcions i post-processat.
+- `docs/recerca/AUTODETECCIO_OPCIONS.md` — motors d'autodetecció, opcions i post-processat.
 - `README.md` — «Estat actual» de l'app.

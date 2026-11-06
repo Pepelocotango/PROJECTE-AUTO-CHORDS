@@ -19,8 +19,7 @@ l'omple; tu prems *Aplica*). Sense arrel, s'hi escriu només el tipus
 (`Maj7`) i tu l'acabes.
 
 La llista surt de **`xifrat.TAULA_TIPUS`** (92 files, de menys a més complex,
-amb els **alternatius** i els **graus** de cada tipus). Maqueta aprovada:
-`archive/PANELL_TIPUS_ACORD_mockup.svg` / `.png`. El botó **▶** (només icona; ja **actiu**)
+amb els **alternatius** i els **graus** de cada tipus). El botó **▶** (només icona; ja **actiu**)
 sent l'acord amb el **timbre** triat al **desplegable** del costat (**8 presets de
 família piano**, `app/acord_audio.py`; per defecte **E-piano Rhodes**): **primer
 l'arpegi** (els graus per separat) **i després el bloc** (tots alhora), amb un
@@ -209,6 +208,5 @@ motor ja les resol amb `<degree>` (àudio i MusicXML).
   `app/pipeline.py` (`saneja_nom_acord`, `safe_filename`).
 - Tests: `tests/test_pipeline.py` — xifrat (`normalitza_xifrat`, `TIPUS`,
   `TAULA_TIPUS`), partitura (`events_partitura`) i `TestDocXifrat` (aquest fitxer).
-- Vegeu també: [`NOTACIO_XIFRAT.md`](NOTACIO_XIFRAT.md) (**les regles** de la
-  forma canònica i on s'aplica) · [`FLUX_DE_DADES.md`](FLUX_DE_DADES.md) ·
-  [`PARTITURA_EXPORT.md`](PARTITURA_EXPORT.md).
+- Vegeu també: [`recerca/NOTACIO_XIFRAT.md`](recerca/NOTACIO_XIFRAT.md)
+  (**les regles** de la forma canònica i on s'aplica).

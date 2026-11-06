@@ -13,7 +13,7 @@ Tot en català. Llicència: GPL-3.0-or-later (vegeu `LICENSE`).
   usar PySide6/PyQt6.
 - **plugins Vamp** a les carpetes `*-local/`: **`nnls-chroma`** (Chordino,
   acords) i **`qm-vamp-plugins`** (Queen Mary: tempo/beats/bars/segmenter/key
-  — `docs/QM_VAMP.md`). El **Segmentino** i l'**aubio** s'han retirat
+  — `app/pipeline.py`). El **Segmentino** i l'**aubio** s'han retirat
   (v0.5): l'estructura la fa el `qm-segmenter` i el BPM el `tempo.py`/`qm`.
 - **`ffmpeg`** — opcional, només per importar formats que no siguin WAV
   (`app/ffmpeg.py`); s'embega a `portable/bin/ffmpeg` (fase 3).
@@ -48,8 +48,8 @@ aquest filtre o mor al SIGILL / violació de segment.
 | `paplay --raw` (libpulse → PipeWire) | ✅ fem servir | Camí natiu Ubuntu 24 amb mescla; `aplay` (ALSA directe) només de reserva |
 | `QAudioOutput` QtMultimedia | ❌ aparcat | Les rodes SÍ porten plugins (`libqtaudio_alsa.so`); el segfault era format/QBuffer, però `paplay` té stderr visible i zero acoblament Qt — no es reobre sense motiu |
 | `sounddevice` (PortAudio) | ✅ fem servir a macOS/Win | Motor natiu d'àudio (`app/audio_out.py`) per a CoreAudio (macOS) i WASAPI/MME (Windows). A Linux es manté `paplay`. |
-| Chordino + QM (`qm-segmenter`…) via **host propi** | ✅ fem servir | Únic motor: `vamp_host_local` (`docs/QM_VAMP.md`) |
-| **`qm-vamp-plugins`** (Queen Mary) | ✅ fem servir | Compilats del codi font amb `-msse -msse2` (**sense AVX**); `docs/QM_VAMP.md` |
+| Chordino + QM (`qm-segmenter`…) via **host propi** | ✅ fem servir | Únic motor: `vamp_host_local` (`app/pipeline.py`) |
+| **`qm-vamp-plugins`** (Queen Mary) | ✅ fem servir | Compilats del codi font amb `-msse -msse2` (**sense AVX**); `eines/compila_vamp_plugins.sh` |
 | **`ffmpeg`/`ffprobe`** del sistema | ✅ fem servir | Import d'altres formats → WAV PCM16; no cal per WAV |
 | `librosa` / `madmom` / `essentia` (pip) | ❌ no provat | El `tempo.py` propi + el `qm-tempotracker` ja cobreixen el BPM (5/5 i 4/5 amb 11 temes reals) |
 | `librosa` / `Essentia` | ❌ descartats | `llvmlite`/AVX (SIGILL) i AGPL3 respectivament |
@@ -209,8 +209,7 @@ Aquesta llista recull els temes que no són bloquejos del flux actual, però que
 > **Fet (v0.7.0+)**: enduriment de seguretat de l'app i de la cadena de
 > subministrament (10 punts: ffmpeg/ffprobe, instància única,
 > `safe_filename`, temporals, `baixa_verificat.py`+`deps_fixades.env`, accions
-> de GitHub per SHA, pins, inventari). Detall: `docs/SEGURETAT.md` +
-> `SECURITY.md`; auditoria de producció: `docs/archive/AUDITORIA_PRODUCCIO.md`.
+> de GitHub per SHA, pins, inventari). Detall: `SECURITY.md`.
 
 - revisar tots els punts d’entrada de fitxers i subprocessos
 - validar que no hi hagi execucions no controlades ni paths vulnerables
@@ -239,7 +238,7 @@ Aquesta llista recull els temes que no són bloquejos del flux actual, però que
 
 > **Fet (v0.5.1)**: `app/plataforma.py` separa la “glue” per SO i el CI
 > construeix **Windows x64** i **macOS 10.13+** (a més de la Linux AppImage).
-> Detall: `docs/ESTAT_MULTI_SO.md`.
+> Detall: `.github/workflows/`.
 
 - comprovar compatibilitats de Qt, Python i plugins en Linux, Windows i macOS
 - separar la part “núcleo del producte” de la part “platform-specific glue”
@@ -311,7 +310,7 @@ Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
 ## Estructura del codi (mapa ràpid)
 
 - `app/main.py` — finestra principal i flux d'usuari (inclou la gestió de **projectes**)
-- `app/projecte.py` — **projectes autocontinguts** («com un DAW»): carpeta `.acproj` + `audio/` copiat + `backup/` (vegeu `docs/PROJECTES.md`)
+- `app/projecte.py` — **projectes autocontinguts** («com un DAW»): carpeta `.acproj` + `audio/` copiat + `backup/` (docstring de `app/projecte.py`)
 - `app/visor.py` — visor integrat, llistes, navegació, edició manual
 - `app/timeline.py` · `timeline_base.py` · `timeline_items.py` · `timeline_layers.py` — el timeline (orquestrador, vista, clips, regle/graella/ona)
 - `app/pipeline.py` — extracció, exportació i normalització
@@ -340,7 +339,7 @@ python -m app.visor tema.wav
 eines/empaqueta_portable.sh      # -> ../AUTO_CHORDS_PORTABLE/
 cd ../AUTO_CHORDS_PORTABLE && ./AUTO_CHORDS.sh
 ```
-El paquet **no s'edita mai** (és un artefacte de build): el codi viu al repo i es regenera. Detall: `docs/ESTAT_MULTI_SO.md` (i `docs/archive/PORTABILITAT.md`).
+El paquet **no s'edita mai** (és un artefacte de build): el codi viu al repo i es regenera. Detall: `.github/workflows/`.
 
 ## AppImage
 
@@ -366,5 +365,5 @@ Sis workflows a `.github/workflows/` (tots d'**execució manual**):
 | **`release.yml`** | Agafa els **últims artefactes verds** dels 3 SO i crea/actualitza el **Release** (idempotent) amb les notes en català i el `SHA256SUMS.txt` |
 | **`qualitat.yml`** | Fuzzer d'invariants i proves sintètiques, **no bloquejant**; no usa cap corpus real |
 
-> Cap workflow fa `git push` ni s'activa sol. Els paquets només porten `README.md` + `LICENSE` + `LLICENCIES_TERCERS.md`. Detall: `docs/CI_WORKFLOWS.md`.
-> ⚠️ Els runners de Linux són `ubuntu-22.04` (allà s'hi compila `vamp_host_local`; la glibc marca l'abast mínim de l'AppImage). Detall: `docs/ESTAT_MULTI_SO.md`.
+> Cap workflow fa `git push` ni s'activa sol. Els paquets només porten `README.md` + `LICENSE` + `LLICENCIES_TERCERS.md`. Detall: `.github/workflows/`.
+> ⚠️ Els runners de Linux són `ubuntu-22.04` (allà s'hi compila `vamp_host_local`; la glibc marca l'abast mínim de l'AppImage). Detall: `.github/workflows/`.

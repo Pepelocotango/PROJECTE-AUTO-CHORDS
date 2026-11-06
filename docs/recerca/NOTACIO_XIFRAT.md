@@ -84,6 +84,5 @@ N · NC · N.C.     →  N           «solo» / «H7» →  intactes
 
 ---
 
-> Vegeu també: [`FLUX_DE_DADES.md`](FLUX_DE_DADES.md) (model vs capa crua) ·
-> [`PARTITURA_EXPORT.md`](PARTITURA_EXPORT.md) (xifrat → MusicXML) ·
-> [`REGLES_DE_LA_APP.md`](REGLES_DE_LA_APP.md).
+> Vegeu també: [`REGLES_DE_LA_APP.md`](../REGLES_DE_LA_APP.md) i el codi de
+> `app/xifrat.py` (notació) i `app/partitura.py` (xifrat → MusicXML).

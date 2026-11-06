@@ -83,7 +83,8 @@ s'edita una còpia de treball dins el projecte.
    el contracte de producte.
 2. **`docs/REGLES_DE_LA_APP.md`** — les regles d'or (contracte; canvis només
    amb consentiment explícit de l'operador).
-3. `docs/FLUX_DE_DADES.md` — què és el MODEL, què és el cru i on viu cada cosa.
+3. `app/projecte.py` i `app/pipeline.py` — què és el MODEL, què és el cru i on
+   viu cada cosa.
 4. `git status` — mira si hi ha feina d'altres agents o canvis sense commitejar
    (**no els descartes ni els refacis**: pregunta a l'operador).
 5. Comprova que l'entorn funciona: la suite en verd i `pyflakes` net (comandes a
@@ -203,7 +204,7 @@ La meva cançó/
   **S'escriu només amb «Desa»**: el `.acproj`. **Només amb «Exporta»**: exports.
 - **Format 3** del `.acproj`, **sense retrocompatibilitat**: qualsevol
   projecte d'un format anterior es **rebutja** amb un error clar.
-- Detall i diagrama: **`docs/FLUX_DE_DADES.md`**.
+- Detall i diagrama: docstring de **`app/projecte.py`**.
 
 ## 🧪 Com executar-ho
 
@@ -226,7 +227,7 @@ AUTO_CHORDS_SMOKE=1 QT_QPA_PLATFORM=offscreen .venv/bin/python -m app.main
 
 # Utilitats
 .venv/bin/python eines/genera_inventari.py     # docs/COMPONENTS_I_VERSIONS.md
-.venv/bin/python eines/genera_esquema_ui.py    # docs/ESQUEMA_UI.html/.svg
+.venv/bin/python eines/genera_esquema_ui.py    # docs/ESQUEMA_UI.html i .svg
 .venv/bin/python eines/ordre_aleatori.py 3     # tests en ordre aleatori
 ```
 
@@ -337,7 +338,7 @@ widgets, netegen amb `tests/_qt_neteja.py`. Si afegeixes un test nou, importa
 |-----------|----------|---------------------|
 | Entendre el projecte, l'abast i el flux | `AGENTS.md` | Si canvia l'abast, el flux o l'arquitectura |
 | Contracte (regles d'or) | `docs/REGLES_DE_LA_APP.md` | Només amb aprovació explícita de l'operador |
-| Flux de dades (model, cru) | `docs/FLUX_DE_DADES.md` | Si canvia el model o els fitxers |
+| Flux de dades (model, cru) | `app/projecte.py` | Si canvia el model o els fitxers |
 | Historial de canvis | `CHANGELOG.md` | Cada canvi de comportament (amb data) |
 | Full de ruta i fases | `ROADMAP.md` | Si canvia l'estat de les fases |
 | Estat actual i relleu de sessió | `ROADMAP.md` §2 | En plegar cada sessió (reescriure, no incremental) |
@@ -352,8 +353,8 @@ widgets, netegen amb `tests/_qt_neteja.py`. Si afegeixes un test nou, importa
 - **`docs/REGLES_DE_LA_APP.md`** — **les regles d'or (canònic)**: 1–12 i, al
   **§13**, tot el contracte de **temps, compàs i graella** (beats sencers,
   re-tempo local, fronteres i marcadors, clips en segons, detecció i export).
-- `docs/FLUX_DE_DADES.md` — model, cru, fitxers i proteccions.
 - `docs/ESQUEMA_UI.md` (+ `.html`/`.svg` generats) — la interfície.
-- `docs/PROJECTES.md` · `docs/EDICIO_OPERACIONS.md` · `docs/PARTITURA_EXPORT.md`.
+- `docs/EDICIO_OPERACIONS.md` · `docs/TIPUS_XIFRAT_ACORDS.md`.
+- `docs/recerca/` — onsets/beats, PPQ, xifrat i mesuraments de motors.
 - `DEVELOPING.md` — entorn, mapa del codi, build i CI.
 - `CHANGELOG.md` · `ROADMAP.md` — historial i full de ruta.

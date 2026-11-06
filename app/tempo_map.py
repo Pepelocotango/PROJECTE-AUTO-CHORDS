@@ -18,8 +18,7 @@ implementa aquest mapa per a AUTO CHORDS.
 
 Tot és stdlib pur (immune a AVX/SIGILL al Q9400) i sense dependències d'app.
 
-Vegeu el contracte del refactor a `docs/REFACTOR_INICI_FI.md` i el pla del mapa
-a `docs/archive/PLA_TEMPO_COMPAS.md`.
+El contracte vigent és a `docs/REGLES_DE_LA_APP.md` §13.
 """
 from __future__ import annotations
 
@@ -933,7 +932,7 @@ def valida_i_normalitza_compassos(trams, durada, offset=0.0,
     return nous
 
 
-# --- Anàlisi guiat (docs/ANALISI_GUIAT.md) ----------------------------------
+# --- Anàlisi guiat -----------------------------------------------------------
 def parteix_trams_a(trams, t, durada):
     """Talla el mapa a la posició `t` (mateix bpm/compàs als dos trossos).
 

@@ -46,4 +46,5 @@ mateix contacte que surt al `README`).
     té AVX; la 2.x faria petar l'app).
   - A **macOS High Sierra (10.13)** hi ha versions concretes que no es poden
     pujar (p. ex. PyQt5 5.15.10, ffmpeg amb mínim 10.13).
-- Detall tècnic de tot plegat: **`docs/SEGURETAT.md`**.
+- Detall tècnic de tot plegat: **`docs/COMPONENTS_I_VERSIONS.md`** i el codi de
+  `app/plataforma.py`, `app/ffmpeg.py` i `app/pipeline_io.py`.

@@ -17,7 +17,7 @@ projecte, sense haver d'analitzar acords: retallar-los o afegir-hi silenci amb
 nanses, previsualització i desfer/refer. El silenci afegit es marca «N» (sense
 acord); les seccions es mantenen. També pots **exportar la còpia editada** a
 WAV, MP3, FLAC, AAC/M4A, OGG o Opus des de `Fitxer ▸ Exporta àudio…`. L'abast
-acordat és a [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+acordat és a [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 
 > **Novetats de la v9.0.0 — checkpoint «mapa de temps resolt»** — els clips
 > de BPM/compàs es validen per **beats sencers** de la graella del Snap (QM o
@@ -58,7 +58,7 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 > 🎼 **Partitura**: **MusicXML sempre**; **PDF i MSCZ només si tens [MuseScore](https://musescore.org)**
 > instal·lat (en aquest projecte s'ha provat amb **MuseScore 4.6.x**; el 4.7+ no hi va).
 >
-> 📄 **Guia de validació pas a pas** (checklist de 5 min): [`docs/PROVES_FUNCIONALS_3SO.md`](docs/PROVES_FUNCIONALS_3SO.md).
+> 📄 **Build, CI i validació**: [`DEVELOPING.md`](DEVELOPING.md).
 
 ## 🚀 Flux de treball (5 passos)
 
@@ -79,8 +79,8 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 - **Exporta clips WAV silenciosos** ordenats i nomenats per acord (`1-1-1_C.wav`) i per secció (`1-1-1_3-2-1_A.wav`) → els arrossegues al teu DAW i hi tens l'harmonia marcada.
 - **Exporta el mapa de tempo** a `mapa_tempo/` (`mapa_tempo.csv`) i una **guia d'acords** (`guia_acords.html`) per imprimir. La partitura MusicXML conserva la unitat de tempo triada (`negra`, `negra amb punt`, `corxera` o `blanca`).
 - **Rubato**: selecciona un rang A–B o un clip del carril de BPM/compàs i marca’l com a rubato; l’app deriva BPM i compassos, conserva els segons i identifica la graella exportada com a aproximada (`mapa_tempo/AVIS_APROXIMACIO.txt` i text al MusicXML).
-- **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: [`docs/PROJECTES.md`](docs/PROJECTES.md).
-- **Edició d'àudio bàsica**: nanses per retallar els extrems o afegir-hi silenci a la còpia del projecte, amb snap commutable, previsualització i desfer/refer sincronitzat amb el model; l'original queda intacte. **`Exporta àudio…`** desa la còpia editada a WAV (16/24/32 bits), MP3, FLAC, AAC/M4A, OGG o Opus, amb els perfils que el `ffmpeg` del paquet sap escriure; vegeu [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+- **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: `app/projecte.py`.
+- **Edició d'àudio bàsica**: nanses per retallar els extrems o afegir-hi silenci a la còpia del projecte, amb snap commutable, previsualització i desfer/refer sincronitzat amb el model; l'original queda intacte. **`Exporta àudio…`** desa la còpia editada a WAV (16/24/32 bits), MP3, FLAC, AAC/M4A, OGG o Opus, amb els perfils que el `ffmpeg` del paquet sap escriure; vegeu [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 - **Partitura de xifrats**: MusicXML sempre; PDF/MSCZ amb MuseScore.
 - La interfície (menús, barres, dreceres) és a [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md).
 
@@ -105,23 +105,19 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 - **`ffmpeg`** (opcional, només per importar formats que no siguin WAV).
 
 Els requisits de **build** (compilador, SDK, llibreries natives, `appimagetool`) i tot el
-procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i **[`docs/ESTAT_MULTI_SO.md`](docs/ESTAT_MULTI_SO.md)**.
+procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i a `.github/workflows/`.
 
 ## 📚 Documentació
 
 | Document | Què hi trobaràs |
 |---|---|
-| [`docs/README.md`](docs/README.md) | **Índex complet** de tota la documentació |
+| [`docs/README.md`](docs/README.md) | **Índex** de la documentació |
 | [`DEVELOPING.md`](DEVELOPING.md) | Entorn, eines, flux de treball i com construir-ho |
 | [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md) | **Invariants** del producte («s'ha de complir sempre») |
 | [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md) | Esquema de la interfície (menús, barres, dreceres) |
-| [`docs/PROJECTES.md`](docs/PROJECTES.md) | **Projectes autocontinguts** («com un DAW»): `.acproj`, «Desa com», autosave/backups i recuperació |
-| [`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md) | Abast i estat de l'edició bàsica d'àudio: còpia WAV, extrems i exportació amb FFmpeg |
-| [`docs/FLUX_DE_DADES.md`](docs/FLUX_DE_DADES.md) | **Flux de dades**: el MODEL (3 CSV) i el cru de l'anàlisi (dins el `.acproj`); per què editar o quantitzar no el destrueixen |
-| [`docs/NOTACIO_XIFRAT.md`](docs/NOTACIO_XIFRAT.md) | **Notació del xifrat**: la **forma canònica** (`Am`→`A-`, `Cmaj7`→`CMaj7`, `Bø`→`B-7b5`) i on s'aplica (model, noms de fitxer, partitura) |
-| [`docs/TIPUS_XIFRAT_ACORDS.md`](docs/TIPUS_XIFRAT_ACORDS.md) | **Catàleg de tipus d'acord**: variants de sintaxi, graus i `<kind>` MusicXML (per nivells + extres) |
-| [`docs/ESTAT_MULTI_SO.md`](docs/ESTAT_MULTI_SO.md) | Com es construeixen i l'estat dels 3 paquets (Linux/Windows/macOS) |
-| [`docs/CI_WORKFLOWS.md`](docs/CI_WORKFLOWS.md) | Els workflows de GitHub Actions (build + release) |
+| [`docs/EDICIO_OPERACIONS.md`](docs/EDICIO_OPERACIONS.md) | Totes les operacions d'edició: GUI, paritat acords/estructura i estat |
+| [`docs/TIPUS_XIFRAT_ACORDS.md`](docs/TIPUS_XIFRAT_ACORDS.md) | **Catàleg de tipus d'acord**: variants de sintaxi, graus i `<kind>` MusicXML |
+| [`docs/recerca/`](docs/recerca/) | Documents de recerca (onsets/beats, PPQ, xifrat i mesuraments de motors) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de versions |
 
 ## 🎼 Formats d'àudio acceptats (importació actual)
@@ -137,7 +133,7 @@ converteix l'original directament en un temporal dins del projecte, sense crear
 `<nom>_convertit.wav` al costat de l'original. L'original no es modifica. La
 retallada dels extrems i l'exportació de la còpia editada (WAV, MP3, FLAC,
 AAC/M4A, OGG o Opus) ja estan implementades. Vegeu
-[`docs/EDICIO_AUDIO.md`](docs/EDICIO_AUDIO.md).
+[`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 
 ## 👤 Autoria
 

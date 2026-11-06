@@ -5,8 +5,7 @@
 > si valen per a **acords** i **estructura** (paritat d'edició **#11**) i el seu
 > **estat**.
 >
-> Fonts que creua: `docs/archive/PLA_EDICIO_LLIURE.md` (§2, §6) · `docs/ESQUEMA_UI.md`
-> (gestos i dreceres) ·
+> Fonts que creua: `docs/ESQUEMA_UI.md` (gestos i dreceres) ·
 > `docs/REGLES_DE_LA_APP.md` (regles d'or).
 >
 > **No pot quedar desfasat**: el test `TestDocEdicioOperacions` comprova que la
@@ -16,7 +15,7 @@
 > Aquest inventari cobreix les operacions del **model musical** (acords,
 > estructura i tempo/compàs). L'edició de la còpia WAV del projecte —nanses als
 > extrems, fades i desfer/refer conjunt— es descriu a
-> [`EDICIO_AUDIO.md`](EDICIO_AUDIO.md).
+> [`REGLES_DE_LA_APP.md` §13.9](REGLES_DE_LA_APP.md).
 
 > **Despatx únic (2026-10-19)**: totes les superfícies (menú contextual,
 > llistes, menú principal, teclat del timeline i menú del loop) envien la

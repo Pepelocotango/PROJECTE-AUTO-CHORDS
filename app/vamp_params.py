@@ -6,7 +6,7 @@ des, els noms de valor). Aquesta peça els converteix en estructures simples
 perquè la UI pugui construir un diàleg i el pipeline els pugui passar al
 motor amb el transform corresponent (host propi, `vamp_host_local`).
 
-Vegeu `docs/AUTODETECCIO_OPCIONS.md` per al context.
+Vegeu `docs/recerca/AUTODETECCIO_OPCIONS.md` per al context.
 """
 
 import os

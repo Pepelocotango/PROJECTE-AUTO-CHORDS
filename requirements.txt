@@ -4,7 +4,7 @@
 # ⚠️ Q9400 sense SSE4.2: numpy<2 obligatori (numpy 2.x demana x86_64-v2).
 #
 # TOTES les versions van FIXADES amb `==`: són les que resolen i funcionen ara.
-# NO s'ha de pujar cap versió sense comprovar-ho (vegeu `docs/SEGURETAT.md`).
+# NO s'ha de pujar cap versió sense comprovar-ho (vegeu `SECURITY.md`).
 # Hi ha un test que peta si algú hi introdueix `numpy>=2` o `PyQt6`:
 # `tests/test_requirements.py`.
 # ⚠️ PyQt5 depèn de la plataforma: a macOS High Sierra (10.13) ha de ser
