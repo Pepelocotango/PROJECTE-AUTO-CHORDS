@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # instal·la_local.sh — deixa el projecte llest SENSE sudo ni apt.
-# Crea .venv/ (aïllat) + pip install PyQt5 + verifica binaris i headers.
+# Crea .venv/ (aïllat) + pip install runtime i eines de qualitat + verifica binaris i headers.
 # Ús: bash instal·la_local.sh
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -10,11 +10,11 @@ if [ ! -x .venv/bin/python ]; then
   python3 -m venv .venv
 fi
 .venv/bin/pip install --upgrade pip
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r requirements-dev.txt
 
 echo "== 2/6 Python =="
 .venv/bin/python -c "from PyQt5.QtCore import QT_VERSION_STR; print('PyQt5 Qt', QT_VERSION_STR)"
-.venv/bin/python -m py_compile wav_a_wavs.py app/main.py app/pipeline.py
+.venv/bin/python -m py_compile wav_a_wavs.py app/*.py
 echo "py_compile OK"
 
 echo "== 3/6 binaris (lectura, sense instal·lar) =="

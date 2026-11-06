@@ -639,6 +639,42 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [Unreleased]
 
+### Refactor — modularització completa (2026-11-06)
+- `app/main.py`: 4.858 → **1.511 línies**; extret a `*_ui` (`analisi_ui`,
+  `barres`, `edicio_ui`, `export_ui`, `marcadors_ui`, `menus`, `opcions`,
+  `projecte_ui`, `tap_ui`, `temps_ui`), `feines.py`, `info_box.py` i
+  `drag_drop_ui.py`. Els overrides de Qt es queden a `Finestra`.
+- `app/pipeline.py`: 2.235 → **89 línies** (façana); dividit en
+  `pipeline_model/io/vamp/edicio/mapa/derivats/estructura/export`.
+- `app/visor.py`: 5.602 → **4.447 línies**; extret a `visor_editor`,
+  `visor_io`, `visor_llistes`, `visor_marcadors`, `visor_tempo`,
+  `visor_transport` i `visor_ui`.
+- `app/timeline.py`: 2.189 → **2.135 línies**; extret `timeline_geometry.py`.
+- `app/dialegs.py`: queda en **25 línies** (façana); extret a `dialeg_*`.
+- Tests de contracte: `test_pipeline_contracte.py` i
+  `test_timeline_contracte.py`.
+- Suite: **1.490 tests OK** (1 skip), `pyflakes` net i smoke OK.
+
+### Canviat — neteja de codi mort, fix multiplataforma i guardrail de BPM (2026-11-06)
+- `app/vamp_params.py` resol els descriptors `.n3` amb `pipeline.VAMP_DIRS`
+  (Linux/Windows/macOS) en lloc de rutes Linux hardcodejades. A Windows i
+  macOS els paràmetres del Chordino ja no queden buits en silenci.
+- Retirat el subsistema d'anàlisi guiat v1/v2/v3: `_guia_*`,
+  `_analisi_guitat`, `_analisi_ancoratges`, `FilGuiaBpm`,
+  `DialegGuiaDownbeat`, `DialegGuiaBpm`, `app/ancoratges.py` i
+  `app/dialeg_ancoratges.py`. El flux viu són els **marcadors en viu** (`+`).
+- El botó de la barra passa a dir **«Guia ràpida»** i obri
+  `DialegGuiaRapida` (només informació, no toca el model).
+- Eliminats orfes: `pipeline.duplica_acord`/`duplica_seccio`,
+  `plataforma.proces_viu`, `tempo_map.clip_te_temps_sencer`,
+  `metronom._ha_de_sonar`/`_es_accent`/`beats_a_temps`, `main._idx_*`,
+  `ffmpeg.VELOCITATS`/`estira_a_wav` i `Visor.aplica_ancoratges`.
+- `beats._bpm_de_beats` descarta BPM fora de `limits.BPM_MIN..BPM_MAX`
+  (evita mapes amb BPM absurd per beats dispersos).
+- Docs: model de **4 CSV** (`marcadors.csv` inclòs), `docs/ESQUEMA_UI`
+  regenerat i documents de guiat marcats com a **històrics/retirats**.
+- Suite: **1478 OK** (1 skip), `pyflakes` net.
+
 ### Afegit — arrossegar un àudio a la finestra (drag & drop) (2026-11-05)
 - Es pot **arrossegar un fitxer d'àudio des de l'explorador del sistema**
   (Explorer, Finder, Nautilus, Dolphin, Thunar…) directament sobre

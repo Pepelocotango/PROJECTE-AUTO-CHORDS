@@ -4,7 +4,7 @@
 PY := .venv/bin/python
 OFFSCREEN := QT_QPA_PLATFORM=offscreen
 
-.PHONY: help entorn app compile test lint smoke docs docs-check aleatori check
+.PHONY: help entorn app compile test lint smoke docs docs-check aleatori coverage check
 
 help:
 	@echo "make entorn      instal·la l'entorn local (sense sudo)"
@@ -16,7 +16,8 @@ help:
 	@echo "make docs        regenera les vistes i els documents generats"
 	@echo "make docs-check  comprova que els documents generats estan al dia"
 	@echo "make aleatori    suite en ordre aleatori"
-	@echo "make check       lint + test"
+	@echo "make coverage    suite amb informe de cobertura"
+	@echo "make check       compile + lint + test + docs-check"
 
 entorn:
 	bash instal·la_local.sh
@@ -49,4 +50,8 @@ docs-check:
 aleatori:
 	$(PY) eines/ordre_aleatori.py 3
 
-check: lint test
+coverage:
+	$(OFFSCREEN) $(PY) -m coverage run --source=app -m unittest discover -s tests
+	$(PY) -m coverage report
+
+check: compile lint test docs-check

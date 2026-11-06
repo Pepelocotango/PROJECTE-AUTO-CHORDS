@@ -28,7 +28,7 @@ Tot en català. Llicència: GPL-3.0-or-later (vegeu `LICENSE`).
 ## Entorn aïllat (Ubuntu, sense sudo)
 
 ```bash
-bash instal·la_local.sh   # crea .venv/ + pip PyQt5 + .deps/ (headers via apt download, sense instal·lar)
+bash instal·la_local.sh   # crea .venv/ + runtime + eines de qualitat (pyflakes/coverage)
 .venv/bin/python app/main.py
 .venv/bin/python wav_a_wavs.py tema.wav 138 4 [offset]
 ```
@@ -96,7 +96,8 @@ make smoke       # smoke de l'app
 make docs        # regenera vistes i documents generats
 make docs-check  # comprova que estan al dia
 make aleatori    # suite en ordre aleatori
-make check       # lint + test
+make coverage    # suite amb informe de cobertura
+make check       # compile + lint + test + docs-check
 ```
 
 **Higiene dels temporals**: la suite **no ha de deixar res** al disc. Tots els
@@ -188,43 +189,78 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | Mòdul | Responsabilitat |
 |-------|-----------------|
 | `acord_audio.py` | Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur). |
-| `ancoratges.py` | — |
+| `analisi_ui.py` | Accions d'anàlisi de la finestra (F3). |
 | `audio_edit.py` | Edició destructiva i segura dels extrems d'una WAV PCM 16 bits. |
 | `audio_out.py` | Sortida d'àudio: motors de reproducció (un per SO, mateixa interfície). |
+| `barres.py` | Barra de transport, snap i metrònom (F3). |
 | `beats.py` | Detecció de beats amb motors intercanviables i sensibilitat ajustable. |
 | `bpm_unit.py` | bpm_unit.py — unitat de visualització del BPM (negra, negra amb punt…). |
 | `config.py` | Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE. |
-| `dialeg_ancoratges.py` | — |
+| `dialeg_analitza_bpm.py` | Diàleg d'anàlisi de BPM/beats. |
 | `dialeg_bpm_marcadors.py` | Triar el BPM deduït dels marcadors (llista de candidats). |
 | `dialeg_guia_rapida.py` | Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas. |
+| `dialeg_opcions.py` | Diàleg d'opcions d'autodetecció (BPM/acords/estructura). |
+| `dialeg_quantitza.py` | Diàleg de quantització a la graella. |
+| `dialeg_revisio_snap.py` | Diàleg de revisió dels dubtes del snap. |
+| `dialeg_tempo_mapa.py` | Diàleg del mapa de tempo per trams. |
+| `dialeg_tempo_per_trams.py` | Diàleg de detecció de tempo per trams. |
+| `dialeg_tram_tempo.py` | Diàleg per editar un tram de tempo/compàs. |
+| `dialeg_troba.py` | Diàleg de trobar i reemplaçar xifrats o etiquetes. |
 | `dialegs.py` | Façana dels diàlegs d'AUTO CHORDS. |
 | `drag_drop.py` | Fitxers d'àudio que es poden arrossegar des del gestor de fitxers. |
+| `drag_drop_ui.py` | Helpers de drag & drop de la finestra (F3). |
+| `edicio_ui.py` | Accions d'edició de la finestra (F3). |
+| `export_ui.py` | Exportació de la finestra (F3). |
 | `exporta_audio.py` | Exportació de l'àudio de treball a altres formats (Fase 6). |
+| `feines.py` | Workers de fils de la finestra (F3). |
 | `ffmpeg.py` | Import d'altres formats d'àudio via ffmpeg. |
 | `graella.py` | Graella musical — divisions, snap i quantització (stdlib pur). |
 | `icones.py` | Icones de la UI: SVG de Lucide (llicència ISC, https://lucide.dev). |
+| `info_box.py` | Caixa d'informació i rotatori de consells de la finestra (F3). |
 | `limits.py` | Límits compartits per a l'edició del tempo i el compàs. |
 | `main.py` | finestra principal, menús, barres, flux d'usuari i projectes |
 | `mapa_tempo.py` | Model unificat del mapa de tempo/compàs (`mapa_tempo.csv`). |
 | `marcadors.py` | Marcadors humans de la cançó (inici de compàs, en viu). |
+| `marcadors_ui.py` | Marcadors en viu de la finestra (F3). |
+| `menus.py` | Menús, dreceres i ajuda de la finestra (F3). |
 | `metronom.py` | metronom.py — generador de clics de metrònom (numpy pur, sense Qt). |
+| `opcions.py` | Opcions persistents i valors per defecte dels diàlegs. |
 | `panell_xifrat.py` | Panell «Tipus d'acord» — construeix un xifrat clicant (dock de l'esquerra). |
 | `partitura.py` | Exportació de partitura (xifrat) des dels resultats d'Auto Chords. |
 | `pipeline.py` | façana del backend (re-exporta els símbols públics) |
+| `pipeline_derivats.py` | Derivats de guia i exportació (F1): segments, locators i guia HTML. |
+| `pipeline_edicio.py` | Operacions d'edició i validació del model de clips (F1). |
+| `pipeline_estructura.py` | Estructura ABC i WAVs de seccions (F1). |
+| `pipeline_export.py` | Exportació de WAVs silenciosos i paquet complet (F1). |
+| `pipeline_io.py` | Fitxers, noms segurs i escriptura atòmica d'AUTO CHORDS (F1). |
+| `pipeline_mapa.py` | Mapa de tempo i marcadors del projecte (F1). |
+| `pipeline_model.py` | Model pur de clips d'AUTO CHORDS (refactor F1 de `pipeline.py`). |
+| `pipeline_vamp.py` | Motor Vamp d'AUTO CHORDS (F1): host, subprocess i detectors. |
 | `plataforma.py` | Abstracció de plataforma: tot el que canvia entre Linux, Windows i macOS. |
 | `postproc.py` | Post-processat de les deteccions (opcions del diàleg d'autodetecció). |
 | `projecte.py` | Projectes d'AUTO CHORDS — carpeta **autocontinguda**, com un DAW. |
+| `projecte_ui.py` | Gestió de projectes de la finestra (F3). |
 | `rubato.py` | Derivació mètrica dels clips de rubato (subplà de rubato, fase 1). |
+| `tap_ui.py` | Tap tempo de la finestra (F3). |
 | `tempo.py` | tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt). |
 | `tempo_ajust.py` | Ajust d'un sol BPM a partir de marcadors de compàs (Fase 5). |
 | `tempo_map.py` | Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur). |
+| `temps_ui.py` | UI de temps de la finestra (F3): BPM, compàs i offset. |
 | `theme.py` | tema centralitzat (colors i estils Qt) |
 | `timeline.py` | timeline.py — Editor visual de la pista tipus DAW (QGraphicsView). |
 | `timeline_base.py` | timeline_base.py — Base compartida de l'editor de timeline (DAW). |
+| `timeline_geometry.py` | Geometria pura del timeline (F2). |
 | `timeline_items.py` | timeline_items.py — Elements editables de l'editor de timeline (DAW). |
 | `timeline_layers.py` | timeline_layers.py — Capes de fons de l'editor de timeline (DAW). |
 | `vamp_params.py` | Llegeix els paràmetres ajustables dels plugins Vamp (descriptors .n3). |
 | `visor.py` | visor DAW: ona, llistes, edició, reproducció i loop |
+| `visor_editor.py` | Franja Editor del visor (F4). |
+| `visor_io.py` | Lectura de WAV i CSV del visor (F4). |
+| `visor_llistes.py` | Poblament i handlers de les llistes del visor (F4). |
+| `visor_marcadors.py` | Marcadors humans del visor (F4). |
+| `visor_tempo.py` | Tempo i rubato del visor (F4). |
+| `visor_transport.py` | Transport, loop, zoom, velocitat i metrònom del visor (F4). |
+| `visor_ui.py` | Càrrega del visor i estat d'exportació (F3). |
 | `xifrat.py` | Notació del xifrat d'acords — font ÚNICA (parseig + forma canònica). |
 <!-- /GENERAT: moduls -->
 

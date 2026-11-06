@@ -1,0 +1,10 @@
+# requirements-dev.txt — eines de desenvolupament i qualitat (NO runtime).
+# Inclou el runtime perquè `instal·la_local.sh` ho instal·la tot d'una vegada.
+
+-r requirements.txt
+
+# Linter de `make lint`.
+pyflakes==4.0.3
+
+# Cobertura (`make coverage` i els workflows de build).
+coverage==7.16.2

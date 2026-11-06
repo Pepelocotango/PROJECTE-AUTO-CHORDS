@@ -1,34 +1,40 @@
 # ARBRE DE DIRECTORIS — PROJECTE AUTO CHORDS
 
-> **Per a agents:** aquest fitxer és el mapa de navegació del repositori. No és un
-> `tree` exhaustiu: descriu **tot el que és rellevant** i resumeix les carpetes
-> generades o binàries (`.venv/`, `.deps/`, `portable/`, `CORPUS/`, `node_modules/`)
-> amb el recompte de fitxers, perquè no amaguen res important.
+> **Per a agents:** llegeix només aquesta primera part. L'arbre complet és al
+> final, plegat, per quan necessitis localitzar un fitxer concret.
 >
-> **Font de veritat:** el codi. Els `.md` expliquen intenció; si divergeixen, mana
-> el codi. L'abast del producte és a `AGENTS.md`; el contracte, a
-> `docs/REGLES_DE_LA_APP.md`.
->
-> **Omissió deliberada:** `.git/` (intern de Git) i el contingut profund de les
-> carpetes generades/binàries, que se citen amb el recompte de fitxers.
->
-> **Actualitzat:** 2026-11-06. Convencions: 🟢 versionat · 🟡 local/generat (no versionat).
+> **Abast i font de veritat:** vegeu `AGENTS.md`. Aquest arbre és una **foto** i
+> pot quedar desfasat; verifica-ho al disc (`git status`, `find`).
 
-## 1. Mapa ràpid: on mirar segons la tasca
+## On començar
+
+> Ordre de lectura: vegeu `AGENTS.md` §«Primers 5 minuts».
+
+## Mapa per tasca
 
 | Tasca | Comença per |
 |---|---|
-| Entendre l'abast i les regles | `AGENTS.md` → `docs/REGLES_DE_LA_APP.md` |
-| Estat actual / relleu de sessió | `ROADMAP.md` §2 · `CHANGELOG.md` |
-| Entorn, build i CI | `DEVELOPING.md` · `eines/` · `.github/workflows/` |
-| GUI i interacció | `app/main.py` · `app/visor.py` · `app/timeline*.py` · `app/*_ui.py` |
-| Tempo, compàs, graella i metrònom | `app/tempo*.py` · `app/beats.py` · `app/graella.py` · `app/metronom.py` · `app/mapa_tempo.py` |
-| Acords, estructura i export | `app/pipeline*.py` · `app/xifrat.py` · `app/partitura.py` · `app/projecte.py` |
-| Reproducció i edició d'àudio | `app/audio_out.py` · `app/audio_edit.py` · `app/exporta_audio.py` |
-| Tests i regressions | `tests/` |
-| Documentació viva | `docs/` (5 docs de contracte + `docs/recerca/`) |
+| Abast i regles | `AGENTS.md` → `docs/REGLES_DE_LA_APP.md` |
+| Estat actual | `ROADMAP.md` §2 · `CHANGELOG.md` |
+| GUI | `app/main.py` · `app/visor.py` · `app/timeline*.py` · `app/*_ui.py` |
+| Tempo/compàs/graella | `app/tempo*.py` · `app/beats.py` · `app/graella.py` · `app/metronom.py` |
+| Acords/estructura/export | `app/pipeline*.py` · `app/xifrat.py` · `app/partitura.py` · `app/projecte.py` |
+| Àudio | `app/audio_out.py` · `app/audio_edit.py` · `app/exporta_audio.py` |
+| Tests | `tests/` |
+| Entorn i build | `DEVELOPING.md` · `eines/` · `.github/workflows/` |
+| Docs vives | `docs/` (5 de contracte + `docs/recerca/`) |
 
-## 2. Arbre del projecte
+## Convencions
+
+- 🟢 versionat · 🟡 local/generat (no versionat).
+- **No editar a mà:** `docs/ESQUEMA_UI.html`/`.svg` (`eines/genera_esquema_ui.py`), `docs/COMPONENTS_I_VERSIONS.md` (`eines/genera_inventari.py`) ni la taula de mòduls de `DEVELOPING.md` (`eines/genera_moduls.py`).
+- **No versionar ni tocar:** `.venv/`, `.deps/`, `portable/`, `temp/`, `CORPUS/`, `.opencode/`, `*.log`, `recents.json`, `opcions_detecta.json`.
+- `.git/` s'omet; les carpetes grans es resumeixen amb recompte de fitxers.
+
+> **Comandes:** vegeu `DEVELOPING.md` §«Comandes essencials».
+
+<details>
+<summary><b>Arbre complet del projecte</b> (desplega)</summary>
 
 ```text
 PROJECTE AUTO CHORDS/
@@ -59,62 +65,83 @@ PROJECTE AUTO CHORDS/
 │   ├── README.md · package.json · package-lock.json · .gitignore
 │   └── node_modules/ 🟡            # ~3.649 fitxers de dependències locals (no versionat).
 │
-├── app/ 🟢                         # Codi de l'aplicació (54 fitxers Python + PyQt5).
-│   ├── __init__.py                 # Paquet de l'aplicació.
-│   ├── main.py                     # Finestra principal (`Finestra`): menús, barres, flux i projectes.
-│   ├── visor.py                    # Visor DAW: ona, llistes, edició, reproducció i loop.
-│   ├── timeline.py                 # Orquestrador del timeline (QGraphicsView).
-│   ├── timeline_base.py            # Base compartida: geometria i snap.
-│   ├── timeline_items.py           # Clips editables.
-│   ├── timeline_layers.py          # Regle, graella i forma d'ona.
-│   ├── temps_ui.py                 # UI de temps: BPM, compàs i offset.
-│   ├── barres.py                   # Transport, snap i metrònom (F3).
-│   ├── menus.py                    # Menús, dreceres i ajuda (F3).
-│   ├── edicio_ui.py                # Accions d'edició delegades al visor (F3).
-│   ├── projecte_ui.py              # Projectes, desat, recents, autosave i sessió (F3).
-│   ├── info_box.py                 # Caixa d'informació i rotatori de consells (F3).
-│   ├── feines.py                   # Workers de fils (`Feina`, `FeinaExporta`, `FilTempoTrams`).
-│   ├── drag_drop_ui.py             # Helpers de drag & drop de la finestra (F3).
-│   ├── dialegs.py                  # Diàleg d'opcions d'autodetecció.
-│   ├── dialeg_guia_rapida.py       # Guia ràpida d'anàlisi (només informació).
-│   ├── dialeg_bpm_marcadors.py     # Tria del BPM deduït dels marcadors.
-│   ├── panell_xifrat.py            # Panell «Tipus d'acord».
-│   ├── acord_audio.py              # Audició sintetitzada d'un tipus d'acord.
-│   ├── theme.py                    # Tema centralitzat (colors i estils Qt).
-│   ├── icones.py                   # Icones SVG de Lucide recolorejades.
-│   ├── config.py                   # Camins i directori d'estat escrivible.
-│   ├── plataforma.py               # Abstracció per SO.
-│   ├── limits.py                   # Límits compartits de tempo i compàs.
-│   ├── bpm_unit.py                 # Unitats de visualització del BPM.
-│   ├── graella.py                  # Graella musical, snap i quantització.
-│   ├── tempo.py                    # Detecció de BPM i mapa de tempo (numpy pur).
-│   ├── tempo_map.py                # Motor del mapa de tempo/compàs per trams.
-│   ├── tempo_ajust.py              # Ajust d'un BPM a partir de marcadors.
-│   ├── beats.py                    # Detecció de beats amb motors intercanviables.
-│   ├── mapa_tempo.py               # Model de `mapa_tempo.csv`.
-│   ├── marcadors.py                # Marcadors humans d'inici de compàs.
-│   ├── rubato.py                   # Derivació mètrica dels clips de rubato.
-│   ├── metronom.py                 # Generació de clics de metrònom.
-│   ├── audio_out.py                # Motors de reproducció per SO.
-│   ├── audio_edit.py               # Edició segura dels extrems del WAV.
-│   ├── exporta_audio.py            # Exportació de l'àudio de treball.
-│   ├── ffmpeg.py                   # Import d'altres formats via ffmpeg.
-│   ├── drag_drop.py                # Lectura dels fitxers d'un drag & drop.
-│   ├── postproc.py                 # Neteja i post-processat de deteccions.
-│   ├── projecte.py                 # Projectes autocontinguts (`.acproj`, `audio/`, backups).
-│   ├── pipeline.py                 # Façana del backend.
-│   ├── pipeline_model.py           # Model pur de clips i invariants.
-│   ├── pipeline_io.py              # Noms segurs, escriptura atòmica i CSV.
-│   ├── pipeline_vamp.py            # Host Vamp, subprocess i detectors.
-│   ├── pipeline_edicio.py          # Operacions d'edició i validació.
-│   ├── pipeline_mapa.py            # `mapa_tempo.csv` i `marcadors.csv`.
-│   ├── pipeline_derivats.py        # Segments, locators i guia HTML.
-│   ├── pipeline_estructura.py      # `estructura_ABC.csv` i WAVs de secció.
-│   ├── pipeline_export.py          # WAVs d'acords, manifest i `exporta_total`.
-│   ├── partitura.py                # MusicXML/PDF/MSCZ.
-│   ├── xifrat.py                   # Notació canònica del xifrat (font única).
-│   ├── vamp_params.py              # Paràmetres `.n3` dels plugins Vamp.
-│   └── __pycache__/ 🟡              # Bytecode Python (generat).
+├── app/ 🟢                         # Codi de l'aplicació (75 fitxers Python + PyQt5).
+│   ├── __init__.py                  # Auto Chords — paquet de l'aplicació.
+│   ├── acord_audio.py               # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
+│   ├── analisi_ui.py                # Accions d'anàlisi de la finestra (F3).
+│   ├── audio_edit.py                # Edició destructiva i segura dels extrems d'una WAV PCM 16 bits.
+│   ├── audio_out.py                 # Sortida d'àudio: motors de reproducció (un per SO, mateixa interfície).
+│   ├── barres.py                    # Barra de transport, snap i metrònom (F3).
+│   ├── beats.py                     # Detecció de beats amb motors intercanviables i sensibilitat ajustable.
+│   ├── bpm_unit.py                  # bpm_unit.py — unitat de visualització del BPM (negra, negra amb punt…).
+│   ├── config.py                    # Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE.
+│   ├── dialeg_analitza_bpm.py       # Diàleg d'anàlisi de BPM/beats.
+│   ├── dialeg_bpm_marcadors.py      # Triar el BPM deduït dels marcadors (llista de candidats).
+│   ├── dialeg_guia_rapida.py        # Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas.
+│   ├── dialeg_opcions.py            # Diàleg d'opcions d'autodetecció (BPM/acords/estructura).
+│   ├── dialeg_quantitza.py          # Diàleg de quantització a la graella.
+│   ├── dialeg_revisio_snap.py       # Diàleg de revisió dels dubtes del snap.
+│   ├── dialeg_tempo_mapa.py         # Diàleg del mapa de tempo per trams.
+│   ├── dialeg_tempo_per_trams.py    # Diàleg de detecció de tempo per trams.
+│   ├── dialeg_tram_tempo.py         # Diàleg per editar un tram de tempo/compàs.
+│   ├── dialeg_troba.py              # Diàleg de trobar i reemplaçar xifrats o etiquetes.
+│   ├── dialegs.py                   # Façana dels diàlegs d'AUTO CHORDS.
+│   ├── drag_drop.py                 # Fitxers d'àudio que es poden arrossegar des del gestor de fitxers.
+│   ├── drag_drop_ui.py              # Helpers de drag & drop de la finestra (F3).
+│   ├── edicio_ui.py                 # Accions d'edició de la finestra (F3).
+│   ├── export_ui.py                 # Exportació de la finestra (F3).
+│   ├── exporta_audio.py             # Exportació de l'àudio de treball a altres formats (Fase 6).
+│   ├── feines.py                    # Workers de fils de la finestra (F3).
+│   ├── ffmpeg.py                    # Import d'altres formats d'àudio via ffmpeg.
+│   ├── graella.py                   # Graella musical — divisions, snap i quantització (stdlib pur).
+│   ├── icones.py                    # Icones de la UI: SVG de Lucide (llicència ISC, https://lucide.dev).
+│   ├── info_box.py                  # Caixa d'informació i rotatori de consells de la finestra (F3).
+│   ├── limits.py                    # Límits compartits per a l'edició del tempo i el compàs.
+│   ├── main.py                      # finestra principal, menús, barres, flux d'usuari i projectes
+│   ├── mapa_tempo.py                # Model unificat del mapa de tempo/compàs (`mapa_tempo.csv`).
+│   ├── marcadors.py                 # Marcadors humans de la cançó (inici de compàs, en viu).
+│   ├── marcadors_ui.py              # Marcadors en viu de la finestra (F3).
+│   ├── menus.py                     # Menús, dreceres i ajuda de la finestra (F3).
+│   ├── metronom.py                  # metronom.py — generador de clics de metrònom (numpy pur, sense Qt).
+│   ├── opcions.py                   # Opcions persistents i valors per defecte dels diàlegs.
+│   ├── panell_xifrat.py             # Panell «Tipus d'acord» — construeix un xifrat clicant (dock de l'esquerra).
+│   ├── partitura.py                 # Exportació de partitura (xifrat) des dels resultats d'Auto Chords.
+│   ├── pipeline.py                  # façana del backend (re-exporta els símbols públics)
+│   ├── pipeline_derivats.py         # Derivats de guia i exportació (F1): segments, locators i guia HTML.
+│   ├── pipeline_edicio.py           # Operacions d'edició i validació del model de clips (F1).
+│   ├── pipeline_estructura.py       # Estructura ABC i WAVs de seccions (F1).
+│   ├── pipeline_export.py           # Exportació de WAVs silenciosos i paquet complet (F1).
+│   ├── pipeline_io.py               # Fitxers, noms segurs i escriptura atòmica d'AUTO CHORDS (F1).
+│   ├── pipeline_mapa.py             # Mapa de tempo i marcadors del projecte (F1).
+│   ├── pipeline_model.py            # Model pur de clips d'AUTO CHORDS (refactor F1 de `pipeline.py`).
+│   ├── pipeline_vamp.py             # Motor Vamp d'AUTO CHORDS (F1): host, subprocess i detectors.
+│   ├── plataforma.py                # Abstracció de plataforma: tot el que canvia entre Linux, Windows i macOS.
+│   ├── postproc.py                  # Post-processat de les deteccions (opcions del diàleg d'autodetecció).
+│   ├── projecte.py                  # Projectes d'AUTO CHORDS — carpeta **autocontinguda**, com un DAW.
+│   ├── projecte_ui.py               # Gestió de projectes de la finestra (F3).
+│   ├── rubato.py                    # Derivació mètrica dels clips de rubato (subplà de rubato, fase 1).
+│   ├── tap_ui.py                    # Tap tempo de la finestra (F3).
+│   ├── tempo.py                     # tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt).
+│   ├── tempo_ajust.py               # Ajust d'un sol BPM a partir de marcadors de compàs (Fase 5).
+│   ├── tempo_map.py                 # Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur).
+│   ├── temps_ui.py                  # UI de temps de la finestra (F3): BPM, compàs i offset.
+│   ├── theme.py                     # tema centralitzat (colors i estils Qt)
+│   ├── timeline.py                  # timeline.py — Editor visual de la pista tipus DAW (QGraphicsView).
+│   ├── timeline_base.py             # timeline_base.py — Base compartida de l'editor de timeline (DAW).
+│   ├── timeline_geometry.py         # Geometria pura del timeline (F2).
+│   ├── timeline_items.py            # timeline_items.py — Elements editables de l'editor de timeline (DAW).
+│   ├── timeline_layers.py           # timeline_layers.py — Capes de fons de l'editor de timeline (DAW).
+│   ├── vamp_params.py               # Llegeix els paràmetres ajustables dels plugins Vamp (descriptors .n3).
+│   ├── visor.py                     # visor DAW: ona, llistes, edició, reproducció i loop
+│   ├── visor_editor.py              # Franja Editor del visor (F4).
+│   ├── visor_io.py                  # Lectura de WAV i CSV del visor (F4).
+│   ├── visor_llistes.py             # Poblament i handlers de les llistes del visor (F4).
+│   ├── visor_marcadors.py           # Marcadors humans del visor (F4).
+│   ├── visor_tempo.py               # Tempo i rubato del visor (F4).
+│   ├── visor_transport.py           # Transport, loop, zoom, velocitat i metrònom del visor (F4).
+│   ├── visor_ui.py                  # Càrrega del visor i estat d'exportació (F3).
+│   ├── xifrat.py                    # Notació del xifrat d'acords — font ÚNICA (parseig + forma canònica).
+│   └── __pycache__/ 🟡             # Bytecode (generat).
 │
 ├── codi_font_chordino/ 🟢          # Codi font del plugin Chordino (NNLS-Chroma; 40 fitxers).
 │   ├── README · CITATION · COPYING · .hgignore · .hgtags · .travis.yml
@@ -178,6 +205,7 @@ PROJECTE AUTO CHORDS/
 │   ├── baixa_verificat.py · baixa_icones.sh · deps_fixades.env
 │   ├── genera_inventari.py         # Genera `docs/COMPONENTS_I_VERSIONS.md`.
 │   ├── genera_esquema_ui.py        # Genera `docs/ESQUEMA_UI.html` i `.svg`.
+│   ├── genera_moduls.py            # Genera la taula de mòduls de `DEVELOPING.md`.
 │   ├── notes_release.py            # Notes de release des del CHANGELOG.
 │   ├── avalua_tempo.py · explica_bpm.py · exporta_partitura.py
 │   └── ordre_aleatori.py           # Suite en ordre aleatori.
@@ -203,26 +231,27 @@ PROJECTE AUTO CHORDS/
 ├── qm-vamp-plugins-linux64-local/ 🟢 # Plugins Queen Mary compilats (local).
 │   ├── qm-vamp-plugins.so · qm-vamp-plugins.n3 · qm-vamp-plugins.cat
 │
-├── tests/ 🟢                       # Suite unittest offscreen (19 fitxers).
-│   ├── _temporals.py               # Neteja de temporals en plegar.
-│   ├── _qt_neteja.py               # Neteja de widgets Qt (evita segfaults).
-│   ├── test_pipeline.py            # Pipeline, xifrat, partitura, export i contractes.
-│   ├── test_pipeline_contracte.py  # Contractes del backend modular.
-│   ├── test_tempo_map.py           # Mapa de tempo/compàs i validesa.
-│   ├── test_tempo_trams.py         # Tempo per trams i re-tempo local.
-│   ├── test_tempo_ajust.py         # Ajust de BPM amb marcadors.
-│   ├── test_mapa_tempo.py          # `mapa_tempo.csv` i marcadors.
-│   ├── test_beats.py               # Beats i snap.
-│   ├── test_rubato.py              # Model de rubato.
-│   ├── test_ancoratges.py          # Marcadors en viu.
-│   ├── test_edicio.py              # Edició de clips, undo/redo i paritat #11.
-│   ├── test_despatx_edicio.py      # Matriu operacions × carrils.
-│   ├── test_audio_edit.py          # Edició dels extrems del WAV.
-│   ├── test_exporta_audio.py       # Exportació d'àudio.
-│   ├── test_drag_drop.py           # Drag & drop.
-│   ├── test_avalua_tempo.py        # Avaluador de tempo.
-│   ├── test_gui.py                 # GUI, avisos, projectes i esquema UI.
-│   ├── test_timeline_contracte.py  # Contractes del timeline.
+├── tests/ 🟢                       # Suite unittest offscreen (20 fitxers).
+│   ├── _qt_neteja.py                # Neteja ORDENADA dels objectes Qt entre tests.
+│   ├── _temporals.py                # Higiene dels tests: cap temporal no s'ha de quedar pel disc.
+│   ├── test_ancoratges.py           # Suite de test — Marcadors humans i velocitat de reproducció.
+│   ├── test_audio_edit.py           # Regressions de les edicions bàsiques d'àudio.
+│   ├── test_avalua_tempo.py         # Proves sintètiques per a l'avaluador de tempo.
+│   ├── test_beats.py                # Tests del motor de beats i de la sensibilitat.
+│   ├── test_despatx_edicio.py       # Despatx ÚNIC d'edició (regla d'or #11) — contracte de superfícies.
+│   ├── test_drag_drop.py            # Drag & drop d'àudio des del gestor de fitxers (Linux, Windows i macOS).
+│   ├── test_edicio.py               # Suite de test — Edicio
+│   ├── test_exporta_audio.py        # Tests de l'exportació de la còpia de treball (Fase 6).
+│   ├── test_gui.py                  # Suite de test — Gui
+│   ├── test_mapa_tempo.py           # Tests de la capa de dades `mapa_tempo.csv` (subplà de rubato, fase 2).
+│   ├── test_moduls_al_dia.py        # Test: la taula de mòduls de `DEVELOPING.md` ha d'estar al dia.
+│   ├── test_pipeline.py             # Suite de test — Pipeline
+│   ├── test_pipeline_contracte.py   # Contracte de superfície de `app.pipeline` (refactor F0).
+│   ├── test_rubato.py               # Tests del motor pur de derivació de rubato (subplà de rubato, fase 1).
+│   ├── test_tempo_ajust.py          # —
+│   ├── test_tempo_map.py            # Suite de test — Tempo Map
+│   ├── test_tempo_trams.py          # Motor de tempo per trams (app/tempo.py): candidats, beats i mapa.
+│   ├── test_timeline_contracte.py   # Contracte de superfície de `app.timeline` (refactor F0).
 │   └── __pycache__/ 🟡             # Bytecode (generat).
 │
 ├── portable/ 🟡 (~5.157 fitxers)   # Entorn portable local (regenerable).
@@ -253,6 +282,8 @@ PROJECTE AUTO CHORDS/
 ├── pyproject.toml 🟢               # Metadades i pins del paquet.
 ├── requirements.txt 🟢             # Dependències de Python (pins).
 ├── requirements-build.txt 🟢       # Pins addicionals del build.
+├── requirements-dev.txt 🟢         # Eines de qualitat: pyflakes i coverage.
+├── Makefile 🟢                     # Comandes del projecte (test, lint, docs…).
 ├── instal·la_local.sh 🟢           # Instal·lació local sense sudo.
 ├── AUTO_CHORDS.sh 🟢               # Llançador principal.
 ├── AUTO_CHORDS_dev.sh 🟢           # Llançador de desenvolupament.
@@ -268,42 +299,17 @@ PROJECTE AUTO CHORDS/
 └── crash_nadiu.log 🟡              # Traces de crash natiu.
 ```
 
-## 3. Què és generat i què no s'ha de tocar
+### Què és generat i què no s'ha de tocar
 
 | Ruta | Origen | Acció |
 |---|---|---|
 | `docs/ESQUEMA_UI.html` · `.svg` | `eines/genera_esquema_ui.py` des de `ESQUEMA_UI.md` | Regenerar, no editar a mà |
 | `docs/COMPONENTS_I_VERSIONS.md` | `eines/genera_inventari.py` | Regenerar si canvien pins |
+| `DEVELOPING.md` (taula de mòduls) | `eines/genera_moduls.py` des de `app/*.py` | Regenerar si canvia `app/` |
 | `app/__pycache__/` · `tests/__pycache__/` | Python | Ignorar |
 | `portable/` · `.venv/` · `.deps/` | Entorn local | No versionar ni incloure al codi |
 | `CORPUS/` | Corpus local d'avaluació | No versionar |
 | `.opencode/` · `opencode.json` | Config local d'agents | No versionar |
 | `*.log` · `recents.json` · `opcions_detecta.json` · `crash_nadiu.log` | Estat local | No versionar |
 
-## 4. Ordre de lectura recomanat per a un agent
-
-1. `AGENTS.md` (abast, fora d'abast i decisions congelades).
-2. `docs/REGLES_DE_LA_APP.md` (contracte; si el codi no el compleix, és un bug).
-3. `app/projecte.py` i `app/pipeline_model.py` (model, cru i projecte).
-4. `ROADMAP.md` §2 (estat i relleu de sessió).
-5. El mòdul concret que toqui; després, els tests que el fixen.
-
-## 5. Ordres ràpides
-
-```bash
-# Suite (ha d'estar verda)
-QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests
-
-# Estil
-.venv/bin/python -m pyflakes app/*.py tests/*.py
-
-# Smoke de l'app
-AUTO_CHORDS_SMOKE=1 QT_QPA_PLATFORM=offscreen .venv/bin/python -m app.main
-
-# Regenerar artefactes de docs
-.venv/bin/python eines/genera_esquema_ui.py
-.venv/bin/python eines/genera_inventari.py
-
-# Tests en ordre aleatori
-.venv/bin/python eines/ordre_aleatori.py 3
-```
+</details>

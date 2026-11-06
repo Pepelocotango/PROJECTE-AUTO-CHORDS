@@ -50,7 +50,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-05)
+## 2. Estat actual i relleu de sessió (2026-11-06)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -58,83 +58,38 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 > [`CHANGELOG.md`](CHANGELOG.md). La definició de **què fa l'app i què queda
 > fora** és a [`AGENTS.md`](AGENTS.md#-abast-i-flux-de-lusuari--font-única).
 
-Fases del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md` completades: **0, 1, 2, 3,
-4, 5, 6** i **7** (coberta pel subplà de rubato). La **10** (motor de detecció)
-queda **oberta**; la **12** (congelació, higiene i CI) està **en curs**.
-Ajornades: **8** (MIDI), **9** (anàlisi guiada) i **11** (flux del 90 %).
+**Fases** del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md`: **0–7 fetes**. La **10**
+(motor de detecció amb corpus real) està **oberta i bloquejada pel corpus
+manual**; la **12** (congelació, higiene i CI) està **en curs**. **8** (MIDI),
+**9** (anàlisi guiada) i **11** (flux del 90 %) queden **ajornades**.
 
-> **Prioritat actual (2026-11-05): simplificar el producte.** L'abast vigent és
-> a [`AGENTS.md` §Abast i flux](AGENTS.md#-abast-i-flux-de-lusuari--font-única):
+> **Prioritat:** simplificar el producte. L'abast vigent és a
+> [`AGENTS.md` §Abast i flux](AGENTS.md#-abast-i-flux-de-lusuari--font-única):
 > només el nucli (obrir → analitzar opcional → editar 3 pistes → exportar →
 > desar). La **fase 10**, el **rubato avançat** i l'**export MIDI/DAW** queden
-> **ajornats sense data**; no s'hi treballa fins que el nucli estiga estable i
-> l'operador ho decidisca. Les funcions congelades són al mateix document.
+> **ajornats sense data**.
 
-Fet recentment (2026-11-02/05):
-- **Drag & drop d'àudio** (2026-11-05): es pot arrossegar una cançó des de
-  l'explorador (Windows/macOS/Linux) sobre qualsevol part de la finestra i
-  s'obre amb el flux de `Obre àudio…` (conversió ffmpeg, projecte existent o
-  ubicació nova). Llig `text/uri-list` (`QMimeData.urls()` +
-  `QUrl.toLocalFile()`) amb fallback de text pla; accepta només fitxers
-  locals existents de la llista d'`app.ffmpeg`, com a còpia, i fa la feina
-  fora del `dropEvent`. Mòdul `app/drag_drop.py`; tests a
-  `tests/test_drag_drop.py`. Suite: **1.610 tests**, 1 omés.
-- **Base d'agents d'OpenCode** (2026-11-04): config a `opencode.json` (l'únic
-  que es llig), `.opencode/` local via `.gitignore`, **6 subagents**
-  (`explorer`, `tester`, `reviewer`, `docs`, `audio-dsp`, `pipeline`) amb
-  `deepseek-v4.1-flash`, **5 skills** amb frontmatter i els commands
-  `/qualitat`, `/estat` i `/regles`. Detall: `.opencode/README.md` (local, no versionat).
-- **Contracte de beats sencers** (2026-11-04): els clips de BPM/compàs ja no
-  exigeixen compassos enters; han de contindre almenys un beat sencer de la
-  graella del Snap (QM o BPM/compàs), inclòs `1/4`. El `+` sempre usa el beat
-  QM més pròxim; l’ajust prioritza conservar el BPM i canviar el compàs. El botó
-  **«Ajusta BPM al compàs»** força compassos sencers de manera explícita. En
-  fixar l’offset, el pre-roll es recalcula com un compàs sencer amb el compàs
-  que deixa el BPM més pròxim al clip següent. Docs:
-  `docs/REGLES_DE_LA_APP.md` §13.4–13.6 i `app/beats.py`.
-- **Analitza BPM** (2026-11-04): acció separada de «Analitza» (que queda per
-  a acords + estructura), motors **nostre**/QM, sensibilitat 0–100 i línies
-  sobre l'ona. El motor per defecte és **Queen Mary**; el mode per defecte és
-  **només beats** (sense BPM, compàs ni downbeats); l'altre mode afig
-  BPM/downbeats. L'acció **Ajusta la graella
-  als beats QM** snapeja els marcadors de compàs i recalcula el BPM; `+`
-  continua creant compàs + secció; els dubtes del snap es revisen en un
-  diàleg no modal, el metre d’un tram s’edita amb **Compàs del marcador…** i
-  el Snap **Beats QM** encaixa cursor/clips/`+` a les línies de QM.
-  Detall: `app/beats.py` i `app/main.py`.
-- **Fase 12 (en curs)**: afinador i `Gt_ALL_Chords_app` fora d'abast (vigent); tots els
-  tests importen `_temporals`; `.github/workflows/qualitat.yml` executa fuzzer i
-  proves sintètiques sense bloquejar.
-- **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
-  unificat `app/mapa_tempo.py` (`mapa_tempo.csv`, `FORMAT = 3`, rebuig de
-  projectes vells), visor/graella, accions de crear/convertir rubato i
-  exportació amb avís aproximat. Suite completa: **1.610 tests**, 1 omés.
-- **Anàlisi del projecte de prova** `AUTOCHORDS_01 POLICE_convertit`:
-  model coherent i cobertura exacta; documentats els límits del pre-roll a la
-  partitura, els noms d'acord crus de l'anàlisi i la precisió de l'offset.
-- **Unitat de BPM**: selector global negra / negra amb punt / corxera /
-  blanca; el metrònom té una unitat de clic independent (auto/negra/negra amb punt/corxera/blanca). El model continua en negres/min i la unitat es desa al `.acproj`.
-  Suite: **1.610 tests**, 1 omés.
-- **Metrònom per denominador**: el beat és `4/den` negres; `6/8`, `9/8` i
-  `12/8` cliquen corxeres, `2/2` blanques; accents de compàs i grup, modes
-  Auto/Compàs/Temps/Grup i selector al transport.
-- **Regressió blindada (2026-11-04)**: només la frontera **0→1** és pre-roll.
-  Les fronteres 2–3 i 3–4 no s'han de tornar a enviar a
-  `mou_frontera_preroll`; tenen test propi.
-- **Pendent explícit (2026-11-04)**: l'edició automàtica/directa de la WAV per
-  completar el pre-roll o el primer compàs **no està implementada**; no s'ha
-  d'afegir silenci automàticament ni trencar el flux manual de nanses.
-- **Fase 6**: `Fitxer ▸ Exporta àudio…` amb diàleg natiu, perfils
-  WAV/MP3/FLAC/AAC/OGG/Opus, detecció d'encoders en temps d'execució,
-  escriptura atòmica i protecció de la còpia de treball.
-- **P0**: suite verda, `pyflakes` net, vistes `ESQUEMA_UI` al dia i indicador
-  del TAP coherent amb el comportament real.
-- Downbeat (offset) absolut: no es mou en ajustar BPM.
-- T (tap tempo): només amb clip de tempo seleccionat.
-- Fases 4 i 5: compàs ≠ secció i ajust d'un sol BPM per mínims quadrats.
+**Fet (2026-11-06):**
+- **Refactor complet**: `pipeline.py` queda en **89 línies** (façana) +
+  `pipeline_*`; `main.py` **1.511** + `*_ui`/`feines`/`opcions`; `visor.py`
+  **4.447** + `visor_*`; `timeline.py` **2.135** + `timeline_geometry`;
+  `dialegs.py` **25** + `dialeg_*`. Tests de contracte a
+  `test_pipeline_contracte` i `test_timeline_contracte`.
+- **Guiat v2/v3 retirat**: codi d'ancoratges eliminat; el flux viu són els
+  **marcadors en viu** (`+`) i la **Guia ràpida**.
+- **Docs al mínim**: `AGENTS`/`DEVELOPING` escurçats; `Makefile`, generadors de
+  la taula de mòduls i `make docs-check`.
+- **Suite**: **1.490 tests OK** (1 skip), `pyflakes` net i smoke OK.
 
-Corpus real de tempo encara pendent (l'avaluador sintètic funciona).
-Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i docs al dia).
+**Pendent:**
+- **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
+- **Fase 12**: congelació, higiene i CI; inclou el **CI automàtic en push/PR**
+  (proposat, encara no activat).
+- **Rubato avançat** i **MIDI/export de projecte DAW**: ajornats sense data.
+- **`ARBRE_DIRECTORIS.md`**: encara snapshot manual; pendent generador + test.
+- Corpus real de tempo pendent (l'avaluador sintètic funciona).
+
+Commit de referència: `31d23df` (refactor modular).
 
 ---
 
@@ -347,18 +302,21 @@ Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i 
 
 ## 7. Deute tècnic
 
-- **Refactor de `app/main.py`** (4.746 línies, `Finestra` = 202 mètodes) en
-  mòduls dedicats → **mixins**, per fases. **No urgent** (decisió de l'operador,
-  16-10). ✅ *Ben organitzat de moment*; l'històric del disseny és a l'arxiu.
-  *(1a extracció proposada: la caixa d'informació.)*
-- **`app/visor.py`** (5.602 línies, 211 mètodes) tindria un tractament semblant
-  si mai calgués; `app/timeline.py` ja és a 2.189 línies.
-- **Codi d'anàlisi guiada en stand-by**: v2 (`_analisi_guitat`) i v3
-  (`_analisi_ancoratges` + `dialeg_ancoratges.py`, ~957 línies) es conserven
-  sense entrada a la UI (decisió 21-10-2026). No és un bug; es revisarà si es
-  reprén el flux (fase 9).
+- ~~**Refactor de `app/main.py`**~~ → ✅ **FET** (2026-11-06): 4.858 → **1.511
+  línies**; extret a `*_ui`, `feines`, `opcions`, `info_box` i `drag_drop_ui`.
+- ~~**`app/visor.py`**~~ → ✅ **FET** (2026-11-06): 5.602 → **4.447 línies**;
+  extret a `visor_*`.
+- ~~**`app/timeline.py`**~~ → ✅ **FET** (2026-11-06): extret
+  `timeline_geometry.py`.
+- ~~**Codi d'anàlisi guiada en stand-by**~~ → ✅ **RETIRAT** (2026-11-06):
+  s'han eliminat la cadena `_guia_*`/`_analisi_guitat`/`_analisi_ancoratges`,
+  `FilGuiaBpm`, els diàlegs `DialegGuiaDownbeat`/`DialegGuiaBpm` i els mòduls
+  `app/ancoratges.py`/`app/dialeg_ancoratges.py`. Els marcadors en viu (`+`)
+  cobreixen el flux. Detall al `CHANGELOG.md`.
 - ~~**Higiene dels tests**~~ → ✅ **FET** (2026-10-18/19): `tests/_temporals.py`
   esborra els temporals en plegar; la suite no deixa GB a `/tmp`.
+- **`ARBRE_DIRECTORIS.md`**: encara és un snapshot manual; pendent generador +
+  test perquè no es desfasï.
 
 ---
 
