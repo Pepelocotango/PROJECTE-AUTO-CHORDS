@@ -3,7 +3,10 @@
 Tot en català. Llicència: GPL-3.0-or-later (vegeu `LICENSE`).
 
 > 🔴 **ABANS DE TOCAR CODI**: les **regles d'or (invariants)** de l'app són totes
-> a **`docs/REGLES_DE_LA_APP.md`**. Cap canvi no les pot trencar.
+> a **`docs/REGLES_DE_LA_APP.md`**. Cap canvi no les pot trencar; només es canvien
+> amb **OK explícit de l'operador** i queda constància al `CHANGELOG`.
+>
+> ⚠️ Document orientatiu: **vegeu `AGENTS.md`**.
 
 ## Requisits
 
@@ -79,17 +82,21 @@ print(p.segments_locators('acords.csv', 138, 4, 0.0, durada=180.0))"
 > `app/pipeline.py` (`segments_locators` / `genera_guia_html`): no hi ha cap
 > fitxer intermedi (`acords_locators.txt`) ni cap subprocés de Python.
 
-## Verificar canvis
+## Comandes essencials
+
+> La font de veritat és el **`Makefile`**. Ací només el resum; `make help` en
+> llista totes.
 
 ```bash
-# compilació ràpida (no arrenca l'app)
-.venv/bin/python -m py_compile wav_a_wavs.py app/main.py app/pipeline.py app/visor.py
-
-# la suite sencera (ha d'estar sempre verda; offscreen = cap diàleg)
-QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests
-
-# estil
-.venv/bin/python -m pyflakes app/*.py tests/*.py
+make entorn      # instal·la l'entorn local (sense sudo)
+make app         # arrenca l'app
+make test        # suite completa (offscreen)
+make lint        # pyflakes
+make smoke       # smoke de l'app
+make docs        # regenera vistes i documents generats
+make docs-check  # comprova que estan al dia
+make aleatori    # suite en ordre aleatori
+make check       # lint + test
 ```
 
 **Higiene dels temporals**: la suite **no ha de deixar res** al disc. Tots els
@@ -99,50 +106,51 @@ esborra en plegar el procés (`atexit`). Abans una tongada deixava ~1.000 carpet
 i ~1,3 GB, i se n'hi van acumular **57 GB** (disc al 97%). **Si afegeixes un test
 nou, importa'l també** (dues línies al costat del `sys.path.insert`).
 
-## Trampes conegudes (provar canvis)
+## Paranys i trampes conegudes
 
 - **Si hi ha una app viva, porta el codi vell en memòria**: cal **reiniciar-la**
   perquè els canvis del disc hi entren.
 - **Missatges en català dins comandes `bash`** amb accents o *backticks*: fes
   servir **heredocs** (`python3 - <<'PY' … PY`), no `-c "..."` (els *backticks*
   es substitueixen i mutilen el text).
+- **CPU Core 2 Quad Q9400, sense AVX/SSE4.2**: qualsevol binari modern pot fer
+  **SIGILL**. `numpy < 2` és **obligatori** (numpy 2.x demana `x86_64-v2`).
+  Comprova `grep -o avx /proc/cpuinfo` (buit = sense) abans d'instal·lar res.
+- **PyQt5 i el Garbage Collector**: un objecte Qt destruït en ordre arbitrari pot
+  fer **segfault intermitent** (als tests, `_qt_neteja`).
+- **`QMessageBox.show()` als tests a Windows** → **access violation**: patxega
+  sempre `QMessageBox` quan l'app pugui avisar.
+- **`os.kill(pid, 0)` NO és una sonda a Windows** (acaba en `TerminateProcess`):
+  si cal saber si un procés viu, fes servir l'API de Windows
+  (`OpenProcess`/`GetExitCodeProcess`).
+- **`/releases/latest` (GitHub) EXCLOU les pre-releases**: per a les betes,
+  consulta la llista `/releases` i agafa la primera.
+- **La GUI es mou sota els peus**: els WID canvien entre sessions → re-comprova'ls
+  abans d'automatitzar clics.
+- **`pgrep -f <patró>` es troba a si mateix** i pot matar el teu shell: fes servir
+  `ps -eo pid,cmd | grep "[p]atró"` i exclou `$$`.
+- **El build de Windows** és el més fràgil dels 3 (MSYS2 + PyInstaller): mira el
+  **pas exacte** i el log del workflow.
+- **`OLD/` és gitignored**: material retirat que no es puja al repo.
 
-## Retrocompatibilitat — no és prioritat (2026-11-02)
+## Retrocompatibilitat
 
-- **Cap canvi de codi no ha de mantindre** formats, fitxers, camps o
-  comportaments antics si això complica el model o alenteix una millora.
-- Els canvis de format poden **rebutjar** projectes vells amb un **error clar**;
-  no es fan migracions, lectors tolerants ni carpetes de compatibilitat.
-- **No es mantenen dos formats en paral·lel.** Si un canvi necessita un format
-  nou, el vell deixa d'existir.
-- **No es pregunta per retrocompatibilitat** en una modificació de codi: la
-  resposta per defecte és **no** i el canvi es documenta al `CHANGELOG.md`.
-- **Excepció de seguretat**: no es destrueix mai un fitxer de l'usuari. Un
-  projecte no suportat es rebutja **sense tocar-lo** i s'explica el motiu.
-
-## VM Debian (fora d'abast)
-
-La VM Debian **ja no es fa servir per a l'app** (era massa limitada): l'antic
-`instal·la_vm_debian.sh` **s'ha retirat**. Aquest repo viu al `/home` de l'host;
-per usar-lo en un altre sistema, fes servir els **paquets del CI**
-(AppImage de Linux o ZIP de Windows/macOS) o copia la carpeta / deixa-la a l'exFAT.
+Vegeu **`AGENTS.md`** (decisió vigent, no invariant).
 
 ## Lògica de producte i flux de treball
 
 > L'**abast i el flux d'usuari vigent** és a
 > [`AGENTS.md` §Abast i flux](AGENTS.md#-abast-i-flux-de-lusuari--font-única).
-> Aquesta secció descriu només el **flux intern del backend** i les regles de
-> consistència; no redefineix el producte.
+> Aquesta secció descriu només el **flux intern del backend**; no redefineix el
+> producte.
 
 La base del projecte és senzilla i molt important: no hauríem de tenir un “analitzador” separat, un “editor” separat i un “exportador” separat que no comparteixen model.
 
-### Model de dades
+### Model i regles
 
-- els CSVs d’acords i estructura són la font de veritat
-- cada registre és un interval temporal
-- el temps es guarda en segons al backend
-- el mode compàs/BPM és només una vista derivada, per a navegació humana i presentació del projecte
-- els acords i les seccions sempre s’ordenen cronològicament abans de ser persistits
+> El model (CSVs, intervals i segons) i les regles de consistència viuen als
+> docstrings de **`app/projecte.py`** i **`app/pipeline_model.py`**, i al
+> contracte **`docs/REGLES_DE_LA_APP.md`**. No es dupliquen ací.
 
 ### Flux implementat
 
@@ -153,14 +161,6 @@ La base del projecte és senzilla i molt important: no hauríem de tenir un “a
 5. cada canvi es valida: no solapaments, no ordre invers, no duplicats lògics
 6. el visor regenerat els clips i les sortides associades
 7. `Exporta WAV's` genera el paquet final per a DAW
-
-### Regles de consistència
-
-- no es barregen segons i BPM en la mateixa base de dades
-- no es deixen intervals inconsistents en el CSV
-- no es permeten edicions que comportin solapaments o anàlisis contradictòries
-- el fi del segment es deriva del següent inici, perquè és la forma més robusta de representar intervals continus
-- els valors no coneguts no se’ls tracta com a “males dades”; en aquest producte, `N` és un acord vàlid i ha de poder circular sense ser reinterpretat com a error
 
 ### Filosofia de disseny
 
@@ -174,129 +174,63 @@ L’arquitectura està pensada perquè el producte sigui un flux de treball cohe
 
 El resultat és un sistema fàcil d’entendre, reproduïble i segur d’editar.
 
-## Àrees de futur: investigar, valorar i prioritzar
+## Àrees de futur
 
-Aquesta llista recull els temes que no són bloquejos del flux actual, però que tenen molt potencial i cal valorar amb criteri de producte i de manteniment.
+> La llista viva és a **`ROADMAP.md` §5–§6**. No es duplica ací.
 
-### 1) Representació de compassos amb 3 xifres
+## Agraïments
 
-- estudiar si el sistema ha de mostrar `1.1.3`, `1.1.50` o variants similars en la UI
-- decidir si aquest format és només visual o si forma part del llegible de sortida i del CSV d’entrada
-- definir un esquema de metadades per a compàs, beat i subdivisió sense confondre el model de temps intern
-- protegir la compatibilitat amb el model actual en segons
-
-### 2) Control avançat del processament automàtic
-
-- investigar la configuració real de `Chordino` i els plugins QM
-- valorar un panell d’algoritmes amb sensibilitat, llindars i paràmetres d’autogeneració
-- discutir si el model ideal és “l’usuari no toca res” o “l’usuari expert ajusta llindars”
-- definir un mode per defecte estable i un mode avançat opcional
-
-### 3) Millora del tema visual i colors
-
-- simplificar la paleta global i fer-la coherent a tots els components
-- valorar una escala de grisos amb contrast millor i accents selectius
-- decidir si el color s’usa exclusivament com a suport visual o si cada estat ha de tenir un significat semàntic clar
-
-### 4) Gràfica amb línia temps segons/BPM
-
-- afegir una línia de temps visual que mostri tant segons com compàs/BPM segons el mode actiu
-- revisar si cal mostrar diferents escales o si una sola vista és suficient
-- decidir si el cursor de temps s’ha de sincronitzar amb la posició de reproducció i amb la selecció de segments
-
-### 5) Auditoria de seguretat — ✅ FET (2026-10-13)
-
-> **Fet (v0.7.0+)**: enduriment de seguretat de l'app i de la cadena de
-> subministrament (10 punts: ffmpeg/ffprobe, instància única,
-> `safe_filename`, temporals, `baixa_verificat.py`+`deps_fixades.env`, accions
-> de GitHub per SHA, pins, inventari). Detall: `SECURITY.md`.
-
-- revisar tots els punts d’entrada de fitxers i subprocessos
-- validar que no hi hagi execucions no controlades ni paths vulnerables
-- definir una política de logs i de gestió d’errors per a entorns reals
-- verificar que els exportats no pateixen injecció de ruta, noms o contingut
-
-### 6) Nomenclatura de fitxers i ordres d’export
-
-- decidir una convenció semàntica que permeti ordenar de forma fàcil els clips finals
-- procurar que el nom principal contengui la informació més important al principi
-- revisar si els noms de acords i de seccions han d’indicar secció, ordre o temps inicial
-
-### 7) Altres formats de partitura / sortida musical
-
-- estudiar MusicXML, ABC, LilyPond o exportació de partitura en altres formats
-- valorar si aquests formats són producte core o eines de postproducció
-- decidir quins exportables tenen valor real per a usuaris de música i producció
-
-### 8) Desplegament real de l’app
-
-- definir un canal de distribució fiable per a usuaris finals
-- preparar packaging, instal·ladors o bundles per a un sistema real
-- pensar en versions, canvis, rollback i validació d’instal·lació
-
-### 9) Desplegament a altres SO — ✅ FET (v0.5.1)
-
-> **Fet (v0.5.1)**: `app/plataforma.py` separa la “glue” per SO i el CI
-> construeix **Windows x64** i **macOS 10.13+** (a més de la Linux AppImage).
-> Detall: `.github/workflows/`.
-
-- comprovar compatibilitats de Qt, Python i plugins en Linux, Windows i macOS
-- separar la part “núcleo del producte” de la part “platform-specific glue”
-- definir els punts de risc a cada OS: audio, subprocessos, paths, permisos, drivers, llicències
-
-### 10) Criteri per prioritzar el futur
-
-La regla sana és aquesta: no s’ha d’afegir complexitat fins que la base funcional no estigui molt estable. Per tant, el futur s’ha de prioritzar amb aquesta lògica:
-
-- primer estabilitat i claredat del flux
-- després UX i visualització
-- després configuració avançada i automatització
-- després exportacions més riques i desplegament generalitzat
-
-Aquesta llista és una guia de futur, no una promesa de feina immediata.
-
-## Agraïments i reconeixement a eines de tercers
-
-Aquest projecte és un assemblatge de feina pròpia i de tecnologia de tercers. És important deixar-ho escrit explícitament:
-
-- agraïments al projecte Python i a la seva comunitat
-- agraïments a PyQt5 i Qt5 per la base d’UI i gràfics
-- agraïments a NumPy per la manipulació eficient de dades d’àudio i de temps
-- agraïments a Chordino, Sonic Annotator i Vamp per la detecció automàtica d’acords
-- agraïments als plugins Vamp de Queen Mary per la generació d’estructura
-- agraïments a les llibreries i components del sistema operatiu que fan possible la reproducció i la conversió d’àudio
-- agraïments a totes les persones i equips que han publicat biblioteques, plug-ins, tutorials i solucions que ens han ajudat a construir aquesta app
-
-La nostra feina és construir i integrar, però no és “des de zero” en el sentit absolut: hi ha moltes bases creades per altres projectes i persones. Reconèixer-ho és una bona pràctica, un signe de respecte i un acte de transparència técnica.
+Vegeu **`LLICENCIES_TERCERS.md`**.
 
 ## Mòduls de l'app (`app/`)
 
+<!-- GENERAT: moduls — no editar a mà -->
 | Mòdul | Responsabilitat |
 |-------|-----------------|
-| `main.py` | finestra principal, menús, barres, diàleg de flux, `Finestra` |
-| `visor.py` | visor (timeline + llistes + Editor + transport), `Visor` |
-| `timeline.py` | orquestrador del timeline i re-exportacions publics |
-| `timeline_base.py` | vista base i escena de QGraphicsView (`TimelineView`, `TimelineScene`) |
-| `timeline_items.py` | clips d'acords i seccions (`ChordItem`, `SectionItem`) |
-| `timeline_layers.py` | capes visuals del regle, graella i forma d'ona (`RulerLayer`, `GridLayer`, `WaveformLayer`) |
-| `pipeline.py` | extracció (Chordino, QM), export, normalització, TTL |
-| `audio_out.py` | motor d'àudio natiu (PortAudio / sounddevice / CoreAudio / WASAPI) |
-| `plataforma.py` | abstracció multi-SO (Linux / Windows / macOS) |
-| `config.py` | configuració centralitzada de la aplicació |
-| `tempo.py` | detecció de BPM (numpy pur, prior de plateau) — `docs/` |
-| `vamp_params.py` | paràmetres dels plugins Vamp (descriptors `.n3`) |
-| `dialegs.py` | diàleg d'opcions d'autodetecció |
-| `postproc.py` | neteja posterior dels acords |
-| `ffmpeg.py` | import d'altres formats (conversió a WAV) |
-| `partitura.py` | export de partitura (xifrat): MusicXML (+ PDF/MSCZ si hi ha MuseScore) |
-| `metronom.py` | clic del metrònom mesclat al buffer |
-| `theme.py` | tema centralitzat (colors) |
-| `icones.py` | icones SVG de **Lucide** (ISC) recolorejades (`icones/`, `eines/baixa_icones.sh`) |
+| `acord_audio.py` | Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur). |
+| `ancoratges.py` | — |
+| `audio_edit.py` | Edició destructiva i segura dels extrems d'una WAV PCM 16 bits. |
+| `audio_out.py` | Sortida d'àudio: motors de reproducció (un per SO, mateixa interfície). |
+| `beats.py` | Detecció de beats amb motors intercanviables i sensibilitat ajustable. |
+| `bpm_unit.py` | bpm_unit.py — unitat de visualització del BPM (negra, negra amb punt…). |
+| `config.py` | Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE. |
+| `dialeg_ancoratges.py` | — |
+| `dialeg_bpm_marcadors.py` | Triar el BPM deduït dels marcadors (llista de candidats). |
+| `dialeg_guia_rapida.py` | Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas. |
+| `dialegs.py` | Façana dels diàlegs d'AUTO CHORDS. |
+| `drag_drop.py` | Fitxers d'àudio que es poden arrossegar des del gestor de fitxers. |
+| `exporta_audio.py` | Exportació de l'àudio de treball a altres formats (Fase 6). |
+| `ffmpeg.py` | Import d'altres formats d'àudio via ffmpeg. |
+| `graella.py` | Graella musical — divisions, snap i quantització (stdlib pur). |
+| `icones.py` | Icones de la UI: SVG de Lucide (llicència ISC, https://lucide.dev). |
+| `limits.py` | Límits compartits per a l'edició del tempo i el compàs. |
+| `main.py` | finestra principal, menús, barres, flux d'usuari i projectes |
+| `mapa_tempo.py` | Model unificat del mapa de tempo/compàs (`mapa_tempo.csv`). |
+| `marcadors.py` | Marcadors humans de la cançó (inici de compàs, en viu). |
+| `metronom.py` | metronom.py — generador de clics de metrònom (numpy pur, sense Qt). |
+| `panell_xifrat.py` | Panell «Tipus d'acord» — construeix un xifrat clicant (dock de l'esquerra). |
+| `partitura.py` | Exportació de partitura (xifrat) des dels resultats d'Auto Chords. |
+| `pipeline.py` | façana del backend (re-exporta els símbols públics) |
+| `plataforma.py` | Abstracció de plataforma: tot el que canvia entre Linux, Windows i macOS. |
+| `postproc.py` | Post-processat de les deteccions (opcions del diàleg d'autodetecció). |
+| `projecte.py` | Projectes d'AUTO CHORDS — carpeta **autocontinguda**, com un DAW. |
+| `rubato.py` | Derivació mètrica dels clips de rubato (subplà de rubato, fase 1). |
+| `tempo.py` | tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt). |
+| `tempo_ajust.py` | Ajust d'un sol BPM a partir de marcadors de compàs (Fase 5). |
+| `tempo_map.py` | Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur). |
+| `theme.py` | tema centralitzat (colors i estils Qt) |
+| `timeline.py` | timeline.py — Editor visual de la pista tipus DAW (QGraphicsView). |
+| `timeline_base.py` | timeline_base.py — Base compartida de l'editor de timeline (DAW). |
+| `timeline_items.py` | timeline_items.py — Elements editables de l'editor de timeline (DAW). |
+| `timeline_layers.py` | timeline_layers.py — Capes de fons de l'editor de timeline (DAW). |
+| `vamp_params.py` | Llegeix els paràmetres ajustables dels plugins Vamp (descriptors .n3). |
+| `visor.py` | visor DAW: ona, llistes, edició, reproducció i loop |
+| `xifrat.py` | Notació del xifrat d'acords — font ÚNICA (parseig + forma canònica). |
+<!-- /GENERAT: moduls -->
 
-Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
-(motors i opcions), `QM_VAMP.md` (Queen Mary), `AUDIO.md` (reproducció),
-`PARTITURA_EXPORT.md` (partitura/MuseScore), `archive/AUBIO_TEMPO.md` (històric),
-`SEGURETAT.md` (**què s'ha endurit i com es manté**).
+Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `EDICIO_OPERACIONS.md`
+(edició), `TIPUS_XIFRAT_ACORDS.md` (xifrat) i `recerca/` (onsets/beats, PPQ,
+mesuraments de motors).
 
 ## Convencions
 
@@ -307,21 +241,9 @@ Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `AUTODETECCIO_OPCIONS.md`
 - **`OLD/`** (gitignorat) és l'**arxiu local** del que no és necessari però es
   vol conservar (p. ex. versions retirades). **No es puja al repo.**
 
-## Estructura del codi (mapa ràpid)
+## Estructura del codi
 
-- `app/main.py` — finestra principal i flux d'usuari (inclou la gestió de **projectes**)
-- `app/projecte.py` — **projectes autocontinguts** («com un DAW»): carpeta `.acproj` + `audio/` copiat + `backup/` (docstring de `app/projecte.py`)
-- `app/visor.py` — visor integrat, llistes, navegació, edició manual
-- `app/timeline.py` · `timeline_base.py` · `timeline_items.py` · `timeline_layers.py` — el timeline (orquestrador, vista, clips, regle/graella/ona)
-- `app/pipeline.py` — extracció, exportació i normalització
-- `app/audio_out.py` — motor d'àudio natiu (PortAudio / sounddevice / CoreAudio / WASAPI)
-- `app/plataforma.py` — abstracció multi-SO (Linux / Windows / macOS)
-- `app/tempo.py` — detecció de BPM (numpy, sense AVX)
-- `app/metronom.py` · `partitura.py` · `ffmpeg.py` · `vamp_params.py` · `postproc.py` · `dialegs.py` · `config.py` · `theme.py`
-- `eines/vamp_host.cpp` — **host Vamp propi** (`vamp_host_local`), sense Qt6
-- `eines/` — build i cadena de subministrament: `crea_portable.sh`, `compila_vamp_host.sh`, `compila_vamp_plugins.sh`, `empaqueta_portable.sh`, `crea_appimage.sh`, `libreries_natives.sh`; descàrregues verificades (`baixa_verificat.py` + `deps_fixades.env`); packaging (`AutoChords-win.spec`, `launcher_pyinstaller.py`, `crea_icona.py`); release (`notes_release.py`) i inventari (`genera_inventari.py`); **vistes de l'esquema de la UI** (`genera_esquema_ui.py`: `.md` → `docs/ESQUEMA_UI.html`/`.svg`)
-- `portable/` — Python + ffmpeg portables (entrada de build, gitignorat)
-- `AUTO_CHORDS.sh` — llançador (prefereix el Python portable)
+Vegeu **`ARBRE_DIRECTORIS.md`** (arbre complet) i la taula de mòduls d'ademunt.
 
 ## Configuració
 

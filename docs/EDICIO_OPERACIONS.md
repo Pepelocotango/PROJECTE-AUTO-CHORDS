@@ -76,27 +76,18 @@
 
 ## 1. Regles que manen
 
-- **#1–#4** ordre, contigüitat, durades derivades i **cobertura total** (0 → durada;
-  el forat explícit és **`N`** als acords i **`-`** a l'estructura, §6.1).
-- **#11 paritat d'edició**: **acords**, **estructura** i **trams de BPM/compàs**
-  tenen **les mateixes eines i el mateix tracte**; només canvia el contingut
-  semàntic (i el tram de BPM/compàs no té inline ni «reanomena en bloc»: s'edita
-  amb el diàleg, comú a tots els trams).
-- **§6.3 (edició lliure)**: en moure un bloc, **mana l'últim editat**; es **preserva la
-  durada** del bloc; al **destí** el que queda a sota es **talla o s'elimina**; el que
-  hi ha **entremig no es toca**. Cap operació es refusa per la #4.
+> Les regles d'or (#1–#4, #11 i §6.3) són a `docs/REGLES_DE_LA_APP.md`. Ací
+> només recollim les implicacions operatives que no hi són.
+
 - **«Afegir» en un model saturat**: com que els clips cobreixen **tota** la WAV
   (#4), afegir **no** és inserir un tros nou, sinó **obrir un clip nou** en eixe
   instant: **acord** = una **marca** nova (l'anterior s'hi acaba); **secció** =
   **partir** la secció que conté l'instant (la meitat dreta rep la
   lletra/família). Un **únic camí** (`visor._afegeix_a_la_posicio()`) per a la
   llista, el menú contextual del timeline i el menú principal.
-  🐞 **Arreglat el 19-10-2026**: la versió anterior creava una **secció de 2 s**
-  que la validació **rebutjava sempre** per solapament → «Afegeix secció aquí»
-  petava **sempre** dins la cançó, als **tres** llocs.
-  Si el carril ve **buit** (estat excepcional), l'alta crea el clip i tapa els
-  forats amb **`N`/`-`** perquè torne a cobrir `0..durada`; en carregar, el
-  visor també completa qualsevol pista buida (regla #4).
+- **Carril buit** (estat excepcional): l'alta crea el clip i tapa els forats amb
+  **`N`/`-`** perquè torne a cobrir `0..durada`; en carregar, el visor també
+  completa qualsevol pista buida (regla #4).
 
 ## 2. Edició de clips (acords · estructura · BPM/compàs)
 

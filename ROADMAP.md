@@ -102,7 +102,7 @@ Fet recentment (2026-11-02/05):
   diàleg no modal, el metre d’un tram s’edita amb **Compàs del marcador…** i
   el Snap **Beats QM** encaixa cursor/clips/`+` a les línies de QM.
   Detall: `app/beats.py` i `app/main.py`.
-- **Fase 12 (en curs)**: afinador i `Gt_ALL_Chords_app` congelats; tots els
+- **Fase 12 (en curs)**: afinador i `Gt_ALL_Chords_app` fora d'abast (vigent); tots els
   tests importen `_temporals`; `.github/workflows/qualitat.yml` executa fuzzer i
   proves sintètiques sense bloquejar.
 - **Subplà de rubato — fases 1-5**: motor pur `app/rubato.py`, model
@@ -143,17 +143,13 @@ Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i 
 - **Les regles d'or** (invariants) són a
   **[`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md)** → **cap canvi no les
   pot trencar**. Si una idea hi xoca, es canvia **la funcionalitat**, no la regla.
-- **#4 — cobertura total**: la suma dels clips (acords i estructura) = la
-  **durada de la WAV**, en qualsevol mode; ho garanteix
-  `pipeline.normalitza_cobertura()`.
-- **Retrocompatibilitat = NO és prioritat** (decisió 2026-11-02): els canvis
-  de format poden rebutjar projectes vells amb un error clar; no es fan
-  migracions ni es mantenen dos formats. Vegeu `AGENTS.md` i `DEVELOPING.md`.
 - **Criteri de «producte preparat»**: *obrir WAV → analitzar sense terminal →
   veure/editar acords i estructura → corregir/afegir/eliminar → exportar per
   DAW, tot en una sola app.* → **✅ cobert** (validat per regressions).
 - **«Fet»** = hi ha test (smoke + unittest), la **suite és verda** i el
   comportament respecta les regles d'or.
+- **Prioritat**: estabilitat → UX/visualització → configuració/automatització →
+  export/desplegament.
 
 ---
 
@@ -254,9 +250,6 @@ Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i 
   - Ordre recomanat: **MIDI + cues + clic** per a multi-DAW; **`.rpp`** per a
     Reaper; el BPM per clip queda com a metadada opcional, no com a substitut
     del mapa.
-> **Fora d'abast (congelat):** afinador de guitarra i `Gt_ALL_Chords_app`. No
-> es planifiquen; vegeu `AGENTS.md` §Fora d'abast.
-
 - **Confiança dels acords** (`loglikelihood` del Chordino) → **ressaltar a la UI**
   els acords dubtosos per revisar-los.
 - **Tonalitat** → si mai cal, mostrar-la i, si escau, **paleta d'acords**
@@ -276,6 +269,7 @@ Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i 
 ## 6. MÉS ENDAVANT (Later) — idees en un sol lloc, per temes
 
 > Cap **no és planificada**; es valoraran. Cap no pot trencar les regles d'or.
+> Fora d'abast vigent: `AGENTS.md` §«FORA d'abast».
 
 ### Edició i graella
 - **Ripple edit explícit** (commutador: en moure/inserir, la resta s'arrossega o no).
@@ -283,6 +277,8 @@ Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i 
 - **Modes de graella** (`straight` · **tresets** · **puntets** · `swing` ·
   `custom`) al `grid_plan` + **display `compàs.temps.tick`**.
 - **Tempo map / rampes** (BPM variable, compassos 4/4→3/4).
+- **Representació de compàs amb 3 xifres** (`1.1.3`…) i decidir si és només
+  visual o també al CSV/export.
 - **Selecció per rectangle** ja existeix («marc») → afinar-la.
 
 ### Navegació i vista
@@ -291,6 +287,7 @@ Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i 
 - **Zoom a la selecció/loop** i **auto-scroll** fi.
 - **Tema clar/fosc** (amb opció de seguir el sistema) i **paleta de colors**
   per acords/seccions; **ona amb gradient** per secció.
+- **Línia de temps dual segons/BPM**, sincronitzada amb el cursor i la selecció.
 
 ### Marques i rang
 - **Marcadors amb nom** («solo», «pont»…) + **llista** per saltar-hi (`Tab`) i
@@ -301,10 +298,8 @@ Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i 
 - Els talls continuaran al fotograma triat (sense moure'ls a un zero-crossing);
   els fades automàtics de 4 ms protegeixen les vores.
 - **A/B de dues anàlisis** (detectors/paràmetres) amb commutador.
-
-> **Fora d'abast (congelat):** edició avançada d'àudio (fades ajustables,
-> guany per clip, crossfade i snap a zero-crossings). Vegeu `AGENTS.md`
-> §Fora d'abast.
+- **Panell avançat de paràmetres del processament** (Chordino/QM) amb mode
+  bàsic/avançat.
 
 ### Export i partitura
 - **Export MIDI** (acords/seccions com a notes o marcadors + **mapa de
@@ -315,6 +310,7 @@ Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i 
 - **Export alternatiu**: **PDF de l'ona+acords**, **Markdown/HTML**,
   **Lyrics+Chords** i **plantilles de paquet** configurables.
 - **CSV intel·ligible**, **ABC/LilyPond** i **imatges resumides** de partitura.
+- **Convenció semàntica de noms i ordre** dels clips exportats.
 
 ### Projectes i flux
 - **Pantalla d'inici** (Recents: WAV + projectes · «Nou» · «Obre…»).
@@ -339,9 +335,6 @@ Commit de referència: `22affe2` (drag & drop: els fills no capturen l'àudio i 
 - **Barra de transport configurable** i **peu d'estat** (motor, sr, CPU, autosave).
 - **Paleta de comandes** (`Ctrl+K`) i **rellotge gran** (big clock).
 - **Accessibilitat** (navegació completa per teclat + lectors de pantalla).
-
-> **Fora d'abast (congelat):** i18n, multi-pestanya i batch/render queue. No es
-> planifiquen; vegeu `AGENTS.md` §Fora d'abast.
 
 ### El que encara queda obert de l'edició
 - **Snap a esdeveniments** — ja **fet**; queden **fonts de snap commutables** i

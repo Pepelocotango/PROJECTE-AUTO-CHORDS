@@ -28,9 +28,9 @@ acordat és a [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 > **rubato**, detecció de BPM per tram, tap tempo, marcadors i quantització
 > conservats. Historial complet: [`CHANGELOG.md`](CHANGELOG.md).
 
-> ⚠️ **Beta:** la retrocompatibilitat de formats **no és una prioritat**. Una
-> versió nova pot rebutjar un projecte vell amb un missatge clar; no es fan
-> migracions automàtiques. L'app no modifica ni esborra el projecte rebutjat.
+> ⚠️ **Beta:** una versió nova pot rebutjar un projecte vell amb un missatge
+> clar. L'app no modifica ni esborra mai el projecte rebutjat. Detall:
+> [`AGENTS.md`](AGENTS.md).
 
 <p align="center">
   <img src="icona/captura.png" alt="El visor d'AUTO CHORDS: el timeline amb l'ona, els acords (C, G, F, G) i les seccions (A, B: intro, tornada, final), el regle amb el BPM i el compàs, les llistes i el transport">
@@ -62,11 +62,11 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 
 ## 🚀 Flux de treball (5 passos)
 
-1. **Obre l'àudio** (`Fitxer ▸ Obre…`, `Ctrl+O`, o **arrossegant-lo** des de l'explorador de fitxers) — si no és WAV, es converteix sol amb **ffmpeg** i en queda una còpia dins el projecte.
-2. **Opcional: ajusta el temps i analitza** — **Analitza BPM** (`F7`) per a BPM/beats i **Analitza** (`F5`) per a acords + estructura. També pots treballar a mà des del model inicial (1 acord `N` + 1 secció `A`).
+1. **Obre l'àudio** (`Fitxer ▸ Obre…`, `Ctrl+O`, o **arrossegant-lo** des de l'explorador de fitxers) — si no és WAV, es converteix sol amb **ffmpeg** i en queda una còpia dins el projecte. En obrir-lo es crea/obre el **projecte** (et demana la carpeta si cal).
+2. **Opcional: ajusta el temps i analitza** — **Analitza BPM** (`F7`) per a BPM/beats i **Analitza** (`F5`) per a acords + estructura, en l'ordre que vulguis. També pots treballar a mà des del model inicial (1 acord `N` + 1 secció `A`). **L'anàlisi i l'edició manual són complementaris**: l'anàlisi proposa i tu corregeixes, o al revés, fins al mapa final.
 3. **Revisa i edita** els acords, les seccions i el **mapa de BPM/compàs** al visor (timeline estil DAW amb **tres pistes**, llistes i franja Editor).
 4. **`Exporta WAV's…`** (`Ctrl+E`): WAVs silenciosos, CSV, `mapa_tempo/`, guia i, si vols, **`Exporta partitura`**. Per a una còpia en un altre format, **`Fitxer ▸ Exporta àudio…`**.
-5. **Desa el projecte** (`Ctrl+S`) quan vulguis: `.acproj` + `audio/` + CSV + backups; l'autosave i la recuperació són automàtics.
+5. **Desa el projecte** (`Ctrl+S`): `.acproj` + `audio/` + CSV + backups. Els **CSV del model es desen a cada edició**; `Ctrl+S` desa el document i el backup, i l'autosave/recuperació són automàtics.
 
 ## 🎛️ Què fa
 
@@ -111,13 +111,9 @@ procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i a `.github/workflows/`.
 
 | Document | Què hi trobaràs |
 |---|---|
-| [`docs/README.md`](docs/README.md) | **Índex** de la documentació |
-| [`DEVELOPING.md`](DEVELOPING.md) | Entorn, eines, flux de treball i com construir-ho |
-| [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md) | **Invariants** del producte («s'ha de complir sempre») |
-| [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md) | Esquema de la interfície (menús, barres, dreceres) |
-| [`docs/EDICIO_OPERACIONS.md`](docs/EDICIO_OPERACIONS.md) | Totes les operacions d'edició: GUI, paritat acords/estructura i estat |
-| [`docs/TIPUS_XIFRAT_ACORDS.md`](docs/TIPUS_XIFRAT_ACORDS.md) | **Catàleg de tipus d'acord**: variants de sintaxi, graus i `<kind>` MusicXML |
-| [`docs/recerca/`](docs/recerca/) | Documents de recerca (onsets/beats, PPQ, xifrat i mesuraments de motors) |
+| [`docs/README.md`](docs/README.md) | **Índex** de tota la documentació |
+| [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md) | **Invariants** del producte |
+| [`DEVELOPING.md`](DEVELOPING.md) | Entorn, build i CI |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de versions |
 
 ## 🎼 Formats d'àudio acceptats (importació actual)
@@ -161,27 +157,10 @@ reconèixer-ho explícitament:
 ## 📜 Agraïments i llicències de tercers
 
 Aquest projecte depèn de treballs previs d'altres persones i equips. **El detall
-complet de llicències és a [`LLICENCIES_TERCERS.md`](LLICENCIES_TERCERS.md).**
-
-| Component | Llicència | Autoria |
-|-----------|-----------|---------|
-| **[Python](https://www.python.org)** | PSF-2.0 | Python Software Foundation |
-| **[PyQt5](https://riverbankcomputing.com/software/pyqt)** / **[Qt5](https://www.qt.io)** | GPL-3.0 / LGPL-3.0 | Riverbank / The Qt Company |
-| **[NumPy](https://numpy.org)** | BSD-3-Clause | NumPy Developers |
-| **[Chordino / NNLS-Chroma](https://code.soundsoftware.ac.uk/projects/nnls-chroma)** | GPL-2.0+ | Matthias Mauch (C4DM, Queen Mary) |
-| **[QM Vamp Plugins](https://github.com/c4dm/qm-vamp-plugins)** | GPL-2.0+ | Centre for Digital Music (Queen Mary) |
-| **[Vamp Plugin SDK](https://github.com/c4dm/vamp-plugin-sdk)** | MIT / BSD-3 | C4DM |
-| **[FFmpeg](https://ffmpeg.org)** | GPL-3.0 | FFmpeg team |
-| **[Lucide](https://lucide.dev)** (icones) | **ISC** (+ MIT de **[Feather](https://feathericons.com)**, © Cole Bemis) | Lucide contributors |
-| **[libsndfile](https://libsndfile.github.io/libsndfile)** | LGPL-2.1+ | Erik de Castro Lopo |
-| **[libvamp-hostsdk](https://github.com/c4dm/vamp-plugin-sdk)** | MIT / BSD-3 | C4DM |
-| **[libFLAC](https://xiph.org/flac)** · **[libogg](https://xiph.org/ogg)** · **[libvorbis](https://xiph.org/vorbis)** · **[libopus](https://opus-codec.org)** | BSD-3-Clause | Xiph.Org |
-| **[mpg123](https://www.mpg123.de)** · **[LAME](https://lame.sourceforge.io)** | LGPL-2.1 / LGPL-2.0 | mpg123 / LAME project |
-| **[AppImageKit](https://github.com/AppImage/AppImageKit)** | MIT | AppImage comunitat |
-
-> Les icones de la UI són de **Lucide** (**ISC**); algunes deriven de **Feather**
-> (**MIT**, © 2013-present Cole Bemis). El text complet de totes dues llicències és a
-> [`icones/LICENSE`](icones/LICENSE).
+complet de components, llicències i autoria és a
+[`LLICENCIES_TERCERS.md`](LLICENCIES_TERCERS.md).** Les icones de la UI són de
+**Lucide** (ISC) i algunes deriven de **Feather** (MIT); el text és a
+[`icones/LICENSE`](icones/LICENSE).
 
 Sense aquest ecosistema, aquest projecte no seria possible. Els agraïments i el
 reconeixement formal són part de la forma de treball i del respecte que es mereixen

@@ -1,12 +1,13 @@
 # Índex de la documentació (`docs/`)
 
-> **El codi és la font de veritat.** Aquesta carpeta només conté el contracte i
-> els documents amb informació que no es pot derivar del codi. La resta de
-> documentació (història, plans executats, guies operatives) viu al
-> `CHANGELOG.md`, `ROADMAP_HISTORIA.md` i els docstrings dels mòduls.
+> Aquesta carpeta només conté el contracte i els documents que no es poden
+> derivar del codi. Per a l'abast, la font de veritat i l'excepció de les regles
+> d'or, vegeu **`../AGENTS.md`**. La resta de documentació (història, plans
+> executats, guies operatives) viu al `CHANGELOG.md`, `ROADMAP_HISTORIA.md` i els
+> docstrings dels mòduls.
 >
-> L'estat de la sessió és a **`../ROADMAP.md` §2**; l'abast del producte, a
-> **`../AGENTS.md`**.
+> L'estat de la sessió és a **`../ROADMAP.md` §2**. Per crear o moure
+> documentació, vegeu **`../AGENTS.md` §«Crear documentació nova»**.
 
 ## Contracte i documents vius
 

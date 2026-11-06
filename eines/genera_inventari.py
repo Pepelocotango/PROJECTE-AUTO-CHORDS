@@ -13,6 +13,7 @@ una versió i no regenera el document, el CI peta).
 Ús:
     python3 eines/genera_inventari.py            # escriu el document
     python3 eines/genera_inventari.py -          # ho imprimeix per pantalla
+    python3 eines/genera_inventari.py --check    # diu si està al dia
 """
 import glob
 import os
@@ -180,6 +181,18 @@ def main(argv):
     text = construeix()
     if len(argv) > 1 and argv[1] == "-":
         print(text)
+        return 0
+    if len(argv) > 1 and argv[1] == "--check":
+        if not os.path.isfile(DESTI):
+            print(f"falta: {os.path.relpath(DESTI, ARREL)}")
+            return 1
+        with open(DESTI, encoding="utf-8") as f:
+            actual = f.read()
+        if actual != text:
+            print(f"desactualitzat: {os.path.relpath(DESTI, ARREL)} "
+                  "(corre: python3 eines/genera_inventari.py)")
+            return 1
+        print(f"OK: {os.path.relpath(DESTI, ARREL)}")
         return 0
     os.makedirs(os.path.dirname(DESTI), exist_ok=True)
     with open(DESTI, "w", encoding="utf-8") as f:
