@@ -1404,7 +1404,7 @@ def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
         if permissiu:
             if recalculca:
                 out = _recalcula_costats(out, [(i, s), (i + 1, s)],
-                                         durada, offset)
+                                         durada, offset, beats_qm=beats_qm)
             return valida_i_normalitza_permissiu(out, durada, offset)
         out = _millora_signatures_clips(out, durada, offset, beats_qm,
                                         {i, i + 1})
@@ -1565,7 +1565,7 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
     out[i] = (float(t), float(fi_b), float(b[2]), int(b[3]), int(b[4]))
     if permissiu:
         out = _recalcula_costats(out, [(i - 1, a), (i, b)],
-                                 durada, offset)
+                                 durada, offset, beats_qm=beats_qm)
         return valida_i_normalitza_permissiu(out, durada, offset)
     out = _millora_signatures_clips(out, durada, offset, beats_qm,
                                     {i - 1, i})
@@ -1573,19 +1573,25 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
                                     beats_qm=beats_qm)
 
 
-def _recalcula_costats(out, refs, durada, offset=0.0):
+def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None):
     """Recalcula BPM/compàs dels costats amb la referència que tenien.
 
     `refs`: `[(idx, tram_referencia), …]`. S'ometen els rubatos, el pre-roll
-    del primer clip i els trams on no hi ha cap combinació vàlida.
+    del primer clip i els trams on no hi ha cap combinació vàlida. Si hi ha
+    beats detectats dins del clip, el seu nombre restringix `N` i el compàs.
     """
+    beats = [float(b) for b in (beats_qm or ())]
     for idx, ref in refs:
         if not (0 <= idx < len(out)) or _es_lliure_tram(out[idx]):
             continue
         ini, fi = float(out[idx][0]), float(out[idx][1])
         if int(idx) == 0 and float(offset) > ini + TOL:
             continue                     # pre-roll: el clip no és musical
-        r = tempo_recalc.recalculca_tram(fi - ini, ref[2], ref[3], ref[4])
+        n_beats = None
+        if beats:
+            n_beats = sum(1 for b in beats if ini - TOL <= b < fi - TOL)
+        r = tempo_recalc.recalculca_tram(
+            fi - ini, ref[2], ref[3], ref[4], n_beats=n_beats)
         if r is None:
             continue
         out[idx] = (ini, fi, float(r["bpm"]), int(r["num"]), int(r["den"]))

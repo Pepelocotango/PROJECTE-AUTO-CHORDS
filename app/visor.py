@@ -2112,7 +2112,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             nous = tempo_map.parteix_tram_marcador(
                 trams, float(t), self._durada_wav(),
                 offset=getattr(self, "offset", 0.0),
-                beats_qm=self._beats_per_validacio(), permissiu=True)
+                beats_qm=getattr(self, "qm_beats", None), permissiu=True)
         except ValueError as e:
             self.avis_editor(f"Afegeix tempo: {e}")
             return False
@@ -3438,7 +3438,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, int(idx_frontera), float(t), durada, offset=offset,
-                beats_qm=self._beats_per_validacio(), permissiu=True)
+                beats_qm=getattr(self, "qm_beats", None), permissiu=True)
         except ValueError as e:
             self.avis_editor(f"Frontera: {e}")
             return None

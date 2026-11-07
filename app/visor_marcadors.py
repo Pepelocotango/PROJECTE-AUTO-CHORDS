@@ -148,7 +148,7 @@ class MarcadorsMixin:
         try:
             trams = tempo_map.parteix_tram_marcador(
                 trams, t, durada, offset=getattr(self, "offset", 0.0),
-                bpm_ref=bpm_ref, beats_qm=self._beats_per_validacio(),
+                bpm_ref=bpm_ref, beats_qm=getattr(self, "qm_beats", None),
                 permissiu=True, recalculca=True)
         except ValueError as e:
             self.avis_editor(f"Marcador: {e}")
@@ -241,9 +241,15 @@ class MarcadorsMixin:
             return False
         # Els marcadors fixen el nombre de compassos de cada interval; el
         # recalcul només pot moure BPM i compàs.
-        def _tram(dt, k, bpm_i):
+        beats = sorted(float(b) for b in
+                       (getattr(self, "qm_beats", None) or ()))
+
+        def _tram(dt, k, bpm_i, nb=None):
+            # Si hi ha beats detectats, manen sobre el nombre de compassos
+            # estimat pels marcadors: 7 beats són 7/4, no 2×4/4.
             r = tempo_recalc.recalculca_tram(
-                dt, float(bpm_i), int(num), int(den), n_ref=int(k))
+                dt, float(bpm_i), int(num), int(den),
+                n_ref=None if nb else int(k), n_beats=nb)
             if r is None:
                 return (float(bpm_i), int(num), int(den))
             return (float(r["bpm"]), int(r["num"]), int(r["den"]))
@@ -254,7 +260,10 @@ class MarcadorsMixin:
         ini = float(ms[0])
         for dt, k, bpm_i in inter:
             fi = ini + float(dt)
-            bpm_i, num_i, den_i = _tram(float(dt), int(k), float(bpm_i))
+            nb = (sum(1 for b in beats if ini - 1e-6 <= b < fi - 1e-6)
+                  if beats else None)
+            bpm_i, num_i, den_i = _tram(
+                float(dt), int(k), float(bpm_i), nb=nb)
             trams.append((ini, fi, bpm_i, num_i, den_i))
             ini = fi
         bpm_last, num_last, den_last = _tram(

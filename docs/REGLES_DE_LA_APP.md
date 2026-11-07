@@ -181,7 +181,13 @@ La referència la posa el músic: el BPM i el compàs que cada costat tenia aban
 del gest. En moure una frontera, el punter fixa els **segons** i
 `tempo_recalc.recalculca_tram()` busca la combinació de **compassos sencers**
 que més s'acosta a eixa referència: pot canviar el **BPM**, el **compàs** o el
-**nombre de compassos** (`N`). Si no hi ha cap combinació, es conserva el valor
+**nombre de compassos** (`N`). Si hi ha **beats detectats** dins del clip, el
+seu nombre és una **restricció forta**: 7 beats han de ser `7/4` (o una
+combinació equivalent), no 2 compassos de `4/4` amb 8 beats. El BPM s'ajusta
+per encaixar eixa xifra. Si **no hi ha beats detectats**, s'intenta inferir el
+nombre de negres a partir de la referència (`D × BPM_ref / 60`); si cau a prop
+d'un enter (±0,2), s'aplica la mateixa restricció; si no, es recorre al càlcul
+per durada. Si no hi ha cap combinació, es conserva el valor
 anterior; si el resultat incompleix el mínim de durada (o qualsevol altra regla
 permissiva), el gest es rebutja amb **avís** (mai un canvi silenciós).
 
@@ -267,8 +273,10 @@ sola operació de desfer.
 
 Els **marcadors** són una referència de l'usuari: *BPM dels marcadors* usa el
 **nombre de compassos de cada interval** com a `N` **fix**; el recalcul només
-tria **BPM i compàs** (no canvia el nombre de compassos). Així els marcadors
-manen sobre l'estructura de compassos i el tempo s'hi adapta.
+tria **BPM i compàs** (no canvia el nombre de compassos). Si hi ha **beats
+detectats** dins l'interval, el seu nombre **mana** sobre el `N` estimat: 7
+beats són `7/4`, no 2×`4/4`. Així els marcadors i els beats manen sobre
+l'estructura de compassos i el tempo s'hi adapta.
 
 Per a tempo variable, *Analitza ▸ Detecta el tempo per trams…* fa el mapa sencer
 (un BPM cada N compassos, amb els criteris musicals del detector) i el valida de

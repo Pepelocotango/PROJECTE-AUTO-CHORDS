@@ -92,11 +92,16 @@ es mouen BPM i compàs.
 - **F2 — FET (2026-11-06).** Model permissiu: mínim de 86 ms, fronteres
   lliures i validació de GUI sense «beat sencer». La validació estricta es
   conserva per als detectors i les accions explícites.
-- **F3 — FET (2026-11-06).** En moure una frontera, el recalcul busca
+- **F3 — FET (2026-11-07).** En moure una frontera, el recalcul busca
   compassos sencers amb el BPM/compàs que tenia cada costat com a referència.
+  Si hi ha beats detectats dins del clip, el seu nombre restringix `N` i el
+  compàs (7 beats → `7/4`, no 2×`4/4`). Sense beats detectats, s'inferixen a
+  partir de la referència (`D × BPM_ref / 60`) quan cauen a prop d'un enter
+  (±0,2).
 - **F4 — FET (2026-11-07).** L'acció `+` recalcula els dos costats del tall
   perquè queden en compassos sencers; «BPM dels marcadors» usa el nombre de
-  compassos de cada interval com a `N` fix i només tria BPM i compàs.
+  compassos de cada interval com a `N` fix i només tria BPM i compàs. Si hi ha
+  beats detectats, el seu nombre mana sobre el `N` estimat.
 - **F5 — FET (2026-11-07).** Contracte i documentació: `REGLES_DE_LA_APP.md`
   §13 actualitzat al model nou, entrada al `CHANGELOG`, `ROADMAP` i taula de
   mòduls. Ho ha fet l'agent de documentació.

@@ -1937,16 +1937,29 @@ class TestTramsEnSegons(unittest.TestCase):
         with self.assertRaises(ValueError):
             tm.valida_i_normalitza_permissiu(trams, 10.0)
 
+    def test_parteix_marcador_amb_beats_tria_7_4(self):
+        trams = [(0.0, 10.0, 144.569633, 4, 4)]
+        # 7 beats detectats dins del primer interval.
+        beats = [i * 0.4157 for i in range(7)]
+        out = tm.parteix_tram_marcador(
+            trams, 2.912646, 10.0, 0.0, permissiu=True, recalculca=True,
+            beats_qm=beats)
+        self.assertEqual((out[0][3], out[0][4]), (7, 4))
+        self.assertAlmostEqual(out[0][2], 7 * 60.0 / 2.912646, places=4)
+
     def test_parteix_marcador_recalcula_compassos(self):
         trams = [(0.0, 10.0, 120.0, 4, 4)]
         out = tm.parteix_tram_marcador(
             trams, 5.5, 10.0, 0.0, permissiu=True, recalculca=True)
         self.assertEqual(len(out), 2)
         self.assertAlmostEqual(out[0][1], 5.5, places=6)
-        self.assertAlmostEqual(out[0][2], 3 * 4 * 60.0 / 5.5, places=4)
-        self.assertAlmostEqual(out[1][2], 2 * 4 * 60.0 / 4.5, places=4)
-        self.assertEqual(out[0][3:], (4, 4))
-        self.assertEqual(out[1][3:], (4, 4))
+        # 5,5 s a 120 BPM = 11 negres; 4,5 s = 9 negres. La inferència de
+        # beats tria 11/4 i 9/4 en compte de forçar 4/4.
+        self.assertAlmostEqual(out[0][2], 120.0, places=6)
+        self.assertAlmostEqual(out[1][2], 120.0, places=6)
+        self.assertEqual(out[0][3:], (11, 4))
+        # 9 negres = 3 compassos de 3/4 (més natural que un 9/4).
+        self.assertEqual(out[1][3:], (3, 4))
 
     def test_moure_frontera_permissiu_recalcula_compassos(self):
         trams = [(0.0, 8.0, 120.0, 4, 4), (8.0, 20.0, 120.0, 4, 4)]
@@ -1954,9 +1967,12 @@ class TestTramsEnSegons(unittest.TestCase):
             trams, 1, 5.5, 20.0, 0.0, permissiu=True)
         self.assertAlmostEqual(out[0][1], 5.5, places=6)
         self.assertAlmostEqual(out[1][0], 5.5, places=6)
-        self.assertAlmostEqual(out[0][2], 3 * 4 * 60.0 / 5.5, places=4)
+        # Costat esquerre: 11 negres → 11/4 a 120.
+        self.assertAlmostEqual(out[0][2], 120.0, places=6)
+        self.assertEqual(out[0][3:], (11, 4))
+        # Costat dret: 29 negres no caben en cap compàs natural; es recorre
+        # al càlcul per durada (7 compassos de 4/4).
         self.assertAlmostEqual(out[1][2], 7 * 4 * 60.0 / 14.5, places=4)
-        self.assertEqual(out[0][3:], (4, 4))
         self.assertEqual(out[1][3:], (4, 4))
 
     def test_compassos_dun_clip_en_segons_es_rebutja(self):

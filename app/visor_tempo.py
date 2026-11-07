@@ -317,7 +317,7 @@ class TempoMixin:
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, p_idx, float(t), self._durada_wav(), offset=offset,
-                beats_qm=self._beats_per_validacio(), permissiu=True)
+                beats_qm=getattr(self, "qm_beats", None), permissiu=True)
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return

@@ -653,11 +653,15 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - **Recalcul guiat per referència**: en moure una frontera, cada costat conserva
   el seu BPM/compàs com a referència i `tempo_recalc.recalculca_tram()` busca
   compassos sencers. Pot canviar BPM, compàs o `N`; si no hi ha solució, es
-  queda el valor anterior i s'avisa.
+  queda el valor anterior i s'avisa. Si hi ha **beats detectats** dins del clip,
+  el seu nombre és una restricció forta: 7 beats → `7/4`, no 2×`4/4`. Sense
+  beats detectats, s'inferixen de la referència BPM (`D × BPM_ref / 60`) quan
+  cauen a prop d'un enter (±0,2); si no, es calcula per durada.
 - **Marcadors com a `N` fix**: «BPM dels marcadors» usa el nombre de compassos de
-  cada interval de marcadors com a `N` fix; només ajusta BPM/compàs. L'acció
-  `+` també recalcula els dos costats del tall perquè queden en compassos
-  sencers.
+  cada interval de marcadors com a `N` fix; només ajusta BPM/compàs. Si hi ha
+  beats detectats dins l'interval, el seu nombre mana sobre el `N` estimat
+  (7 beats → `7/4`, no 2×`4/4`). L'acció `+` també recalcula els dos costats
+  del tall perquè queden en compassos sencers.
 - La validació estricta (`valida_i_normalitza_compassos`,
   `_millora_signatures_clips`, `ajusta_bpm_a_compassos`,
   `retempo_tram_detectat`) es conserva per a detectors i accions explícites, però

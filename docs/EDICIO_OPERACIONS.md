@@ -53,7 +53,10 @@
 > pre-roll i els rubatos en queden exempts. Els compassos sencers són
 > l'**objectiu del recalcul**, no una barrera: en moure una frontera, cada
 > costat conserva el seu BPM/compàs com a referència i el motor pot ajustar
-> BPM, compàs o `N`. Els canvis explícits de BPM/compàs respecten el valor
+> BPM, compàs o `N`. Si hi ha **beats detectats** dins del clip, el seu nombre
+> mana (7 beats → `7/4`, no 2×`4/4`); si no n'hi ha, s'inferixen de la
+> referència BPM (`D × BPM_ref / 60`) quan cauen a prop d'un enter (±0,2).
+> Els canvis explícits de BPM/compàs respecten el valor
 > escrit; si el resultat no és vàlid, es rebutja amb avís. Els canvis explícits
 > de compassos (`+1`/`−1`/`×2`/`÷2`) es mantenen com a reinterpretació mètrica
 > del clip. Contracte complet: `docs/REGLES_DE_LA_APP.md` §13.4–13.6 i

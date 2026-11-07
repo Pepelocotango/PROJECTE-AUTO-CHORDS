@@ -21,20 +21,22 @@ class TestRecalculcaTram(unittest.TestCase):
         self.assertEqual((r["n"], r["num"], r["den"]), (4, 4, 4))
         self.assertAlmostEqual(r["bpm"], 4 * 4 * 60.0 / 7.8, places=6)
 
-    def test_tram_3_compassos(self):
+    def test_onze_beats_trien_11_4(self):
         r = self._cas(5.5)
-        self.assertEqual((r["n"], r["num"], r["den"]), (3, 4, 4))
-        self.assertAlmostEqual(r["bpm"], 3 * 4 * 60.0 / 5.5, places=6)
+        self.assertEqual((r["n"], r["num"], r["den"]), (1, 11, 4))
+        self.assertAlmostEqual(r["bpm"], 120.0, places=6)
+        self.assertTrue(r["beats_inferits"])
 
     def test_un_segon_prefereix_canviar_compas(self):
         r = self._cas(1.0)
         self.assertEqual((r["n"], r["num"], r["den"]), (1, 2, 4))
         self.assertAlmostEqual(r["bpm"], 120.0, places=6)
 
-    def test_tres_segons_i_mig(self):
+    def test_set_beats_inferits_trien_7_4(self):
         r = self._cas(3.5)
-        self.assertEqual((r["n"], r["num"], r["den"]), (2, 4, 4))
-        self.assertAlmostEqual(r["bpm"], 2 * 4 * 60.0 / 3.5, places=6)
+        self.assertEqual((r["n"], r["num"], r["den"]), (1, 7, 4))
+        self.assertAlmostEqual(r["bpm"], 120.0, places=6)
+        self.assertTrue(r["beats_inferits"])
 
     def test_dos_segons_es_un_compas(self):
         r = self._cas(2.0)
@@ -54,6 +56,22 @@ class TestRecalculcaTram(unittest.TestCase):
 
     def test_per_sota_del_minim_no_hi_ha_solucio(self):
         self.assertIsNone(self._cas(0.08))
+
+    def test_set_beats_forcen_7_4(self):
+        r = tr.recalculca_tram(2.912646, 144.569633, 4, 4, n_beats=7)
+        self.assertEqual((r["n"], r["num"], r["den"]), (1, 7, 4))
+        self.assertTrue(r["beats_usats"])
+        self.assertAlmostEqual(r["bpm"], 7 * 60.0 / 2.912646, places=4)
+
+    def test_vuit_beats_son_dos_compassos_de_4_4(self):
+        r = tr.recalculca_tram(3.365208, 144.569633, 4, 4, n_beats=8)
+        self.assertEqual((r["n"], r["num"], r["den"]), (2, 4, 4))
+        self.assertAlmostEqual(r["bpm"], 2 * 4 * 60.0 / 3.365208, places=4)
+
+    def test_set_beats_en_el_segon_clip(self):
+        r = tr.recalculca_tram(2.901042, 144.569633, 4, 4, n_beats=7)
+        self.assertEqual((r["n"], r["num"], r["den"]), (1, 7, 4))
+        self.assertAlmostEqual(r["bpm"], 7 * 60.0 / 2.901042, places=4)
 
     def test_referencia_invalida(self):
         with self.assertRaises(ValueError):
