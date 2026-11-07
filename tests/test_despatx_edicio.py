@@ -947,15 +947,17 @@ class TestMarcadorsTempoEnViu(_Base):
     def tearDown(self):
         self.v.close()
 
-    def test_marcador_parteix_conservant_el_bpm(self):
+    def test_marcador_parteix_i_recalcula_compassos(self):
         self.assertTrue(self.v.afegeix_marcador(7.3))
         self.assertEqual(len(self.v.tempo_trams), 3)
         self.assertAlmostEqual(float(self.v.tempo_trams[0][1]), 7.3, places=6)
-        # El BPM es conserva; el contracte nou no exigeix compassos enters.
+        # El marcador recalcul·la els dos costats a compassos sencers.
         self.assertAlmostEqual(float(self.v.tempo_trams[0][2]),
-                               123.2876712, places=3)
+                               4 * 4 * 60.0 / 7.3, places=4)
         self.assertAlmostEqual(float(self.v.tempo_trams[1][2]),
-                               111.1111111, places=3)
+                               1 * 4 * 60.0 / 2.7, places=4)
+        self.assertEqual(self.v.tempo_trams[0][3:], (4, 4))
+        self.assertEqual(self.v.tempo_trams[1][3:], (4, 4))
         self.assertEqual(tuple(self.v.tempo_trams[2]), self.abans[1])
 
     def test_quantitza_bpm_d_un_decimal(self):
@@ -1043,7 +1045,9 @@ class TestMarcadorsTempoEnViu(_Base):
         self.assertTrue(self.v.afegeix_marcador(0.4))
         self.assertEqual(len(self.v.tempo_trams), 3)
         self.assertAlmostEqual(float(self.v.tempo_trams[0][1]), 0.4, places=6)
-        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]), 150.0,
+        t = self.v.tempo_trams[0]
+        bar = int(t[3]) * (4.0 / int(t[4])) * 60.0 / float(t[2])
+        self.assertAlmostEqual((float(t[1]) - float(t[0])) / bar, 1.0,
                                places=6)
 
     def test_marcador_es_un_sol_desfer(self):

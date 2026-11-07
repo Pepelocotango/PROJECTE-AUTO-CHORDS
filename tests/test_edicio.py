@@ -4760,6 +4760,15 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertAlmostEqual(float(v.tempo_trams[2].bpm), 120.0, places=4)
         w.close()
 
+    def test_transport_no_sobreescriu_el_tram_0(self):
+        _w, v = self._prepara()
+        v.tempo_trams = [(0.0, 30.0, 120.0, 4, 4)]
+        v._actualitza_temps()
+        v.bpm = 140.0
+        v._refresca_tempo_map()
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 120.0, places=6)
+        self.assertAlmostEqual(float(v.bpm), 120.0, places=6)
+
     def test_desar_no_deixa_el_mapa_derivat_endarrerit(self):
         """Regla #5: la UI no fabrica trams; el punt únic rederiva model i mapa.
 
@@ -4771,7 +4780,7 @@ class TestLlistaTempo(_undo_temps___Base):
         _w, v = self._prepara()
         v.tempo_trams = [(0.0, 30.0, 120.0, 4, 4)]
         v._actualitza_temps()
-        v.bpm = 140.0
+        v.aplica_tempo_trams([(0.0, 30.0, 140.0, 4, 4)])
         v._desa_i_regenera()
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 140.0, places=6)
         self.assertAlmostEqual(v.tempo_map.bpm(0.0), 140.0, places=6)

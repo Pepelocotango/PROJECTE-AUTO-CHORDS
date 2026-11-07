@@ -37,7 +37,8 @@
 >
 > **Tempo objectiu (2026-10-19 · TAP 2026-11-01)**: si hi ha un tram de tempo
 > seleccionat, els camps BPM/compàs de la barra editen eixe tram; si no, el
-> transport (tram 0). El **tap tempo** només actua amb un tram de tempo
+> **clip 0**. El transport és només una vista/editor del clip. El **tap tempo**
+> només actua amb un tram de tempo
 > seleccionat: sense selecció no fa res. Mentre sona, el tap crea el **loop**
 > d'eixe tram.
 > Els canvis de BPM no mouen els clips en segons: només recalculen les
@@ -46,16 +47,17 @@
 > compàs no reinicia la numeració: el compàs continua i només canvia la seua
 > durada; els canvis de **compàs** (signatura) sí que obrin un compàs nou.
 >
-> **Beats sencers (2026-11-04)**: les fronteres entre clips de tempo/compàs
-> cauen en la **graella del Snap** (QM si és «Beats QM»; BPM/compàs en la
-> resta de modes) i cada clip ha de contindre **almenys un beat sencer**. El
-> primer inici i l'últim final poden ser lliures; amb un sol clip, tots dos.
-> **Moure una frontera o canviar el BPM/compàs** conserva el BPM i ajusta el
-> compàs si cal; els segons dels clips no es mouen i els trams següents no es
-> desplacen. Els canvis explícits de compassos (`+1`/`−1`/`×2`/`÷2`) es
-> mantenen com a reinterpretació mètrica del clip.
-> en la mateixa duració. Contracte complet: `docs/REGLES_DE_LA_APP.md`
-> §13.4–13.6.
+> **Model permissiu (2026-11-07)**: les fronteres dels clips de tempo/compàs
+> són **lliures**; el snap és opcional i no s'exigeix cap línia de beat. Només
+> cal BPM/compàs vàlids i una durada mínima de **86 ms** (`1/8` a 350 BPM); el
+> pre-roll i els rubatos en queden exempts. Els compassos sencers són
+> l'**objectiu del recalcul**, no una barrera: en moure una frontera, cada
+> costat conserva el seu BPM/compàs com a referència i el motor pot ajustar
+> BPM, compàs o `N`. Els canvis explícits de BPM/compàs respecten el valor
+> escrit; si el resultat no és vàlid, es rebutja amb avís. Els canvis explícits
+> de compassos (`+1`/`−1`/`×2`/`÷2`) es mantenen com a reinterpretació mètrica
+> del clip. Contracte complet: `docs/REGLES_DE_LA_APP.md` §13.4–13.6 i
+> `docs/recerca/PLA_MAPA_TEMPS.md`.
 >
 > **Clic a un tram de tempo (2026-10-20, paritat #11)**: el clic **selecciona**
 > el tram i posa el cursor **exactament al seu inici** (sense snap: les
@@ -156,7 +158,7 @@ superar el límit, la més antiga es descarta i l'app ho comunica.
 
 | # | Operació | GUI | Estat |
 |---|---|---|---|
-| 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | **FET**: amb un tram de tempo seleccionat, els camps editen **eixe tram** (2B); si no, el transport. L'offset és global. Canviar el BPM/compàs (barra, diàleg del tram o TAP) fa **re-tempo local** (`canvia_bpm_local`): Δt mana, els compassos es conserven, el BPM en deriva i cap altre tram no es mou; si no es pot, es rebutja |
+| 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | **FET**: amb un tram de tempo seleccionat, els camps editen **eixe tram** (2B); si no, el **clip 0**. L'offset és global. Canviar el BPM/compàs (barra, diàleg del tram o TAP) respecta el valor escrit (validació permissiva); en moure una frontera, el recalcul guiat pot ajustar BPM/compàs/N; si no hi ha solució, s'avisa i es rebutja el gest |
 | 36b | **Tap tempo** | `T` · botó **TAP** | **FET**: només al tram de tempo **seleccionat** (sense selecció no fa res); **una sola operació d'undo per sessió**; mentre sona, crea el **loop** d'eixe tram i alinea el cursor. Amb un tram seleccionat, el botó **Detecta** analitza només eixe tram i n'ajusta el BPM **sense moure les fronteres** (el detectat tria N i Δt mana) |
 | 37 | **Analitzar** (acords + estructura) | `F5` · *Analitza* | **FET** |
 | 38 | **Opcions d'anàlisi** | *Paràmetres…* · *Inclou estructura* | **FET** |

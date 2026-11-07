@@ -1926,6 +1926,39 @@ class TestTramsEnSegons(unittest.TestCase):
         # recalcula per a mantindre compassos enters).
         self.assertAlmostEqual(out[0][2], 120.0, places=4)
 
+    def test_validacio_permissiva_accepta_compas_parcial(self):
+        trams = [(0.0, 0.6, 120.0, 4, 4), (0.6, 10.0, 120.0, 4, 4)]
+        out = tm.valida_i_normalitza_permissiu(trams, 10.0)
+        self.assertEqual(len(out), 2)
+        self.assertAlmostEqual(out[0][1], 0.6, places=6)
+
+    def test_validacio_permissiva_rebutja_mes_curt_de_86_ms(self):
+        trams = [(0.0, 0.05, 120.0, 4, 4), (0.05, 10.0, 120.0, 4, 4)]
+        with self.assertRaises(ValueError):
+            tm.valida_i_normalitza_permissiu(trams, 10.0)
+
+    def test_parteix_marcador_recalcula_compassos(self):
+        trams = [(0.0, 10.0, 120.0, 4, 4)]
+        out = tm.parteix_tram_marcador(
+            trams, 5.5, 10.0, 0.0, permissiu=True, recalculca=True)
+        self.assertEqual(len(out), 2)
+        self.assertAlmostEqual(out[0][1], 5.5, places=6)
+        self.assertAlmostEqual(out[0][2], 3 * 4 * 60.0 / 5.5, places=4)
+        self.assertAlmostEqual(out[1][2], 2 * 4 * 60.0 / 4.5, places=4)
+        self.assertEqual(out[0][3:], (4, 4))
+        self.assertEqual(out[1][3:], (4, 4))
+
+    def test_moure_frontera_permissiu_recalcula_compassos(self):
+        trams = [(0.0, 8.0, 120.0, 4, 4), (8.0, 20.0, 120.0, 4, 4)]
+        out = tm.mou_frontera_retempo(
+            trams, 1, 5.5, 20.0, 0.0, permissiu=True)
+        self.assertAlmostEqual(out[0][1], 5.5, places=6)
+        self.assertAlmostEqual(out[1][0], 5.5, places=6)
+        self.assertAlmostEqual(out[0][2], 3 * 4 * 60.0 / 5.5, places=4)
+        self.assertAlmostEqual(out[1][2], 7 * 4 * 60.0 / 14.5, places=4)
+        self.assertEqual(out[0][3:], (4, 4))
+        self.assertEqual(out[1][3:], (4, 4))
+
     def test_compassos_dun_clip_en_segons_es_rebutja(self):
         trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 100.0, 0, 0)]
         with self.assertRaises(ValueError):

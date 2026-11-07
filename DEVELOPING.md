@@ -245,6 +245,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `tempo.py` | tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt). |
 | `tempo_ajust.py` | Ajust d'un sol BPM a partir de marcadors de compàs (Fase 5). |
 | `tempo_map.py` | Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur). |
+| `tempo_recalc.py` | Motor pur de recalcul del mapa de temps (F0). |
 | `temps_ui.py` | UI de temps de la finestra (F3): BPM, compàs i offset. |
 | `theme.py` | tema centralitzat (colors i estils Qt) |
 | `timeline.py` | timeline.py — Editor visual de la pista tipus DAW (QGraphicsView). |

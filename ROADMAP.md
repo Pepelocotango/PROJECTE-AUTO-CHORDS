@@ -81,6 +81,12 @@ manual**; la **12** (congelació, higiene i CI) està **en curs**. **8** (MIDI),
   la taula de mòduls i `make docs-check`.
 - **Suite**: **1.490 tests OK** (1 skip), `pyflakes` net i smoke OK.
 
+**Fet recentment (2026-11-07):** simplificació del mapa de temps (fases F0–F5
+del [`PLA_MAPA_TEMPS`](docs/recerca/PLA_MAPA_TEMPS.md)): el **tram 0 és un clip**
+(el transport és només una vista), **model permissiu** amb mínim de **86 ms**,
+**recalcul guiat** per la referència i **marcadors com a `N` fix**. Suite
+**1504 OK** (1 skip), `pyflakes` net.
+
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
 - **Fase 12**: congelació, higiene i CI; inclou el **CI automàtic en push/PR**

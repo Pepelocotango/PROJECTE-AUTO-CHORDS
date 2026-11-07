@@ -4975,7 +4975,7 @@ class TapTempoTests(unittest.TestCase):
         v.timeline.clear_selection()
         w.bpm.setText("110")
         w._aplica_parametres_temps()
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 112.5, places=6)
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 110.0, places=6)
         self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=6)
         w.close()
 

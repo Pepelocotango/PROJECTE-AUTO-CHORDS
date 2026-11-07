@@ -639,6 +639,35 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [Unreleased]
 
+### Canviat — model de tempo simplificat (2026-11-07)
+- **El tram 0 és un clip normal**: `_refresca_tempo_map` ja no el sobreescriu
+  amb el transport. El transport (`bpm`, `bpb`, `beat_type`) és només una
+  vista/editor que se sincronitza des del clip 0; només es crea un tram des del
+  transport si el mapa és buit.
+- **Model permissiu**: `aplica_tempo_validat`, `_normalitza_mapa_viu` i
+  `mou_frontera_retempo(..., permissiu=True)` només exigixen BPM/compàs vàlids,
+  contigüitat, cobertura i una durada mínima de **86 ms** (`1/8` a 350 BPM,
+  `limits.TEMPS_MIN_CLIP`). Ja no cal «almenys un beat sencer» ni que les
+  fronteres interiors caiguen en una línia de beat: són lliures i el snap és
+  opcional. El primer clip pot ser pre-roll i queda exempt del mínim.
+- **Recalcul guiat per referència**: en moure una frontera, cada costat conserva
+  el seu BPM/compàs com a referència i `tempo_recalc.recalculca_tram()` busca
+  compassos sencers. Pot canviar BPM, compàs o `N`; si no hi ha solució, es
+  queda el valor anterior i s'avisa.
+- **Marcadors com a `N` fix**: «BPM dels marcadors» usa el nombre de compassos de
+  cada interval de marcadors com a `N` fix; només ajusta BPM/compàs. L'acció
+  `+` també recalcula els dos costats del tall perquè queden en compassos
+  sencers.
+- La validació estricta (`valida_i_normalitza_compassos`,
+  `_millora_signatures_clips`, `ajusta_bpm_a_compassos`,
+  `retempo_tram_detectat`) es conserva per a detectors i accions explícites, però
+  **no** és el camí general d'edició.
+- **Rubato i pre-roll** continuen com estaven: segons invariables, BPM/compàs
+  derivats i pre-roll només a la frontera `0→1`.
+- Docs: `docs/REGLES_DE_LA_APP.md` §5, §8 i §13 reescrits al model nou;
+  `docs/recerca/PLA_MAPA_TEMPS.md` marca F5 com a fet.
+- Suite: **1504 OK** (1 skip), `pyflakes` net.
+
 ### Refactor — modularització completa (2026-11-06)
 - `app/main.py`: 4.858 → **1.511 línies**; extret a `*_ui` (`analisi_ui`,
   `barres`, `edicio_ui`, `export_ui`, `marcadors_ui`, `menus`, `opcions`,

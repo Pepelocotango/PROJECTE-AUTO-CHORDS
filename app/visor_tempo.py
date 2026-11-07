@@ -101,7 +101,7 @@ class TempoMixin:
                 [tuple(t) for t in trams], idx, float(bpm),
                 self._durada_wav(), offset=getattr(self, "offset", 0.0),
                 num=num, den=den,
-                beats_qm=self._beats_per_validacio())
+                beats_qm=self._beats_per_validacio(), permissiu=True)
         except ValueError as e:
             self.avis_editor(f"Tempo: {e}")
             return False
@@ -142,19 +142,17 @@ class TempoMixin:
         def _lliure(t):
             return getattr(t, "tipus", None) == "rubato"
 
-        if len(trams) <= 1:
-            # Un sol tros = el cas constant, EXCEPTE si és rubato: llavors el
-            # transport no hi té res a dir.
-            if not (trams and _lliure(trams[0])):
-                trams = [mapa_tempo.TramMapa(
-                    0.0, d, float(self.bpm), "normal",
-                    f"{int(self.bpb)}/{den}")]
-        elif not _lliure(trams[0]):
-            # El tram 0 és el VALOR INICIAL (el transport mana).
-            t0 = trams[0]
-            trams[0] = mapa_tempo.TramMapa(
-                0.0, float(t0.fi), float(self.bpm), "normal",
-                f"{int(self.bpb)}/{den}")
+        if not trams:
+            # Mapa buit: se'n crea un de sol amb el transport (regla §13.3).
+            trams = [mapa_tempo.TramMapa(
+                0.0, d, float(self.bpm), "normal",
+                f"{int(self.bpb)}/{den}")]
+        # El tram 0 és un clip més: NO se sobreescriu amb el transport. La
+        # barra és una vista i se sincronitza des del clip 0.
+        if trams and not _lliure(trams[0]):
+            self.bpm = float(trams[0][2])
+            self.bpb = int(trams[0][3])
+            self.beat_type = int(trams[0][4])
         self.tempo_trams = list(trams)
         offset_rub = self._offset_rubato_inicial(self.tempo_trams)
         if offset_rub is not None:
@@ -217,35 +215,34 @@ class TempoMixin:
         return True
 
     def aplica_tempo_validat(self, trams, msg="Tempo"):
-        """Aplica un mapa només si compleix el contracte de beats sencers.
+        """Aplica un mapa amb la validació permissiva del model (F2).
 
-        Punt d'entrada de la GUI per als canvis de mapa (diàleg, eliminar,
-        fusionar, duplicar…). El backend `aplica_tempo_trams` continua
-        permissiu per a càrregues de projectes vells i tests.
+        Només exigeix BPM/compàs vàlids, contigüitat, cobertura i el mínim de
+        86 ms per clip normal. Les fronteres poden ser lliures i els compassos
+        poden ser parcials. Els detectors i les accions explícites mantenen la
+        validació estricta pel seu compte.
         """
         try:
-            nous = tempo_map.valida_i_normalitza_compassos(
+            nous = tempo_map.valida_i_normalitza_permissiu(
                 trams, self._durada_wav(),
-                offset=getattr(self, "offset", 0.0),
-                beats_qm=self._beats_per_validacio())
+                offset=getattr(self, "offset", 0.0))
         except ValueError as e:
             self.avis_editor(f"{msg}: {e}")
             return False
         return bool(self.aplica_tempo_trams(nous))
 
     def _normalitza_mapa_viu(self, trams, msg=None):
-        """Mapa validat per a un gest en viu, sense reparacions silencioses.
+        """Mapa validat per a un gest en viu (permissiu, F2).
 
-        Els gestos de tempo (marcador `+`, re-tempo pel ratolí, «Detecta»)
-        han de complir el contracte de beats sencers. Si el mapa no val, el
-        gest es rebutja amb un avís: no es desa un mapa invàlid.
+        Només comprova BPM/compàs, contigüitat, cobertura i el mínim de 86 ms.
+        Les fronteres i els compassos parcials són permesos; si el mapa no val,
+        el gest es rebutja amb un avís.
         """
         durada = self._durada_wav()
         offset = getattr(self, "offset", 0.0)
         try:
-            return tempo_map.valida_i_normalitza_compassos(
-                trams, durada, offset,
-                beats_qm=self._beats_per_validacio())
+            return tempo_map.valida_i_normalitza_permissiu(
+                trams, durada, offset)
         except ValueError as e:
             if msg:
                 self.log(f"{msg}: el mapa no complix el contracte de clips "
@@ -275,13 +272,11 @@ class TempoMixin:
     def _on_tempo_mogut(self, idx, vora, t):
         """Vora d'un bloc de BPM/compàs arrossegada → **re-tempo** (el ratolí mana).
 
-        Des del 21-10-2026 (`docs/REGLES_DE_LA_APP.md` §13.5) la jerarquia
-        està invertida: el punter fixa **Δt**, els **compassos N** dels dos
-        costats es conserven i el **BPM** es recalcula. Per això ja no s'imanta
-        a la línia de compàs del tram anterior ni s'arrosseguen els trams
-        següents (`_ripple_des_de`): **cap altre tram no es mou** i la frontera
-        cau sempre en línia de compàs per construcció (el validador de
-        beats sencers no ha de bloquejar el gest).
+        El punter fixa els **segons**. Cada costat conserva el seu BPM/compàs
+        com a referència i el motor de recalcul busca compassos sencers: pot
+        ajustar el BPM, el compàs o el nombre de compassos. Si no hi ha cap
+        combinació vàlida, es queda el valor anterior i s'avisa. Els trams
+        posteriors no es mouen (sense *ripple*).
 
         Si el marcador humà d'eixa frontera coincidia, es mou amb ella (§4.C),
         tot dins del **mateix** desfer.
@@ -322,7 +317,7 @@ class TempoMixin:
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, p_idx, float(t), self._durada_wav(), offset=offset,
-                beats_qm=self._beats_per_validacio())
+                beats_qm=self._beats_per_validacio(), permissiu=True)
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return

@@ -3,7 +3,7 @@
 Extret de `app/visor.py`: alta, moviment, esborrat, snap i BPM derivat dels
 marcadors.
 """
-from . import pipeline, tempo_map
+from . import pipeline, tempo_map, tempo_recalc
 
 class MarcadorsMixin:
     """Marcadors humans i BPM derivat."""
@@ -148,7 +148,8 @@ class MarcadorsMixin:
         try:
             trams = tempo_map.parteix_tram_marcador(
                 trams, t, durada, offset=getattr(self, "offset", 0.0),
-                bpm_ref=bpm_ref, beats_qm=self._beats_per_validacio())
+                bpm_ref=bpm_ref, beats_qm=self._beats_per_validacio(),
+                permissiu=True, recalculca=True)
         except ValueError as e:
             self.avis_editor(f"Marcador: {e}")
             return False
@@ -238,17 +239,30 @@ class MarcadorsMixin:
         if len(inter) != len(ms) - 1:
             self.log("BPM marcadors: els intervals no quadren amb els marcadors")
             return False
-        trams = [(0.0, float(ms[0]), float(inter[0][2]), num, den)]
+        # Els marcadors fixen el nombre de compassos de cada interval; el
+        # recalcul només pot moure BPM i compàs.
+        def _tram(dt, k, bpm_i):
+            r = tempo_recalc.recalculca_tram(
+                dt, float(bpm_i), int(num), int(den), n_ref=int(k))
+            if r is None:
+                return (float(bpm_i), int(num), int(den))
+            return (float(r["bpm"]), int(r["num"]), int(r["den"]))
+
+        bpm0, num0, den0 = _tram(float(inter[0][0]), int(inter[0][1]),
+                                 float(inter[0][2]))
+        trams = [(0.0, float(ms[0]), bpm0, num0, den0)]
         ini = float(ms[0])
-        for dt, _k, bpm_i in inter:
+        for dt, k, bpm_i in inter:
             fi = ini + float(dt)
-            trams.append((ini, fi, float(bpm_i), num, den))
+            bpm_i, num_i, den_i = _tram(float(dt), int(k), float(bpm_i))
+            trams.append((ini, fi, bpm_i, num_i, den_i))
             ini = fi
-        trams.append((ini, durada, float(inter[-1][2]), num, den))
+        bpm_last, num_last, den_last = _tram(
+            float(inter[-1][0]), int(inter[-1][1]), float(inter[-1][2]))
+        trams.append((ini, durada, bpm_last, num_last, den_last))
         try:
-            trams = tempo_map.valida_i_normalitza_compassos(
-                trams, durada, offset=getattr(self, "offset", 0.0),
-                beats_qm=self._beats_per_validacio())
+            trams = tempo_map.valida_i_normalitza_permissiu(
+                trams, durada, offset=getattr(self, "offset", 0.0))
         except ValueError as e:
             self.avis_editor(f"BPM marcadors: {e}")
             return False

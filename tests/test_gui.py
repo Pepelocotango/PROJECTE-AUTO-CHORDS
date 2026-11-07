@@ -807,6 +807,7 @@ class TestDesa(_Base):
         f = _projectes_gui___finestra()
         _projectes_gui___obre_wav(f, _projectes_gui___wav())
         f.bpm.setText("99.0")
+        f._aplica_parametres_temps()
         f._desa_projecte()
         f.bpm.setText("150.0")
         f._marca_dirty()
@@ -5537,7 +5538,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.edita_tempo_objectiu(1, 100.0, 3, 4))
         self.assertEqual(len(vr.tempo_trams), 3)
         self.assertEqual(vr.tempo_trams[0], trams[0])       # intacte
-        self.assertAlmostEqual(vr.tempo_trams[1][2], 99.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 100.0, places=6)
         self.assertAlmostEqual(vr.tempo_trams[1][1], 30.0, places=6)
         # El veí de la dreta (últim) conserva el BPM i el seu final.
         self.assertAlmostEqual(vr.tempo_trams[2][0], 30.0, places=6)

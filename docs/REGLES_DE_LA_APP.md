@@ -45,11 +45,14 @@ de la WAV** en qualsevol mode i amb o sense snap: el primer clip arrenca a **0**
 snap**, que només quantitza límits **interiors**. → `pipeline.normalitza_cobertura()`.
 
 ### 5. Una sola font de veritat
-El model viu al **backend**: `app.pipeline` (acords i estructura) i
-`app.tempo_map` (BPM/compàs). El visor en guarda una **còpia** que **mai no
-mana**; tota mutació passa primer pel backend. Les còpies derivades (mapa,
-transport, llista, graella) es reconstrueixen en un **sol punt**:
-`visor._refresca_tempo_map`. La UI mai munta ni muta trams a mà.
+El model viu al **backend**: `app.pipeline` (acords i estructura) i el mapa de
+tempo/compàs (`visor.tempo_trams` + `mapa_tempo.csv`, amb `app.mapa_tempo` com a
+model). `app.tempo_map.TempoMap` és el **motor derivat** que calcula graella,
+posicions i conversions; no és la font. El visor en guarda una **còpia** que
+**mai no mana**; tota mutació passa primer pel backend. Les còpies derivades
+(mapa, transport, llista, graella) es reconstrueixen en un **sol punt**:
+`visor._refresca_tempo_map`. La UI mai fabrica ni muta trams a mà: només crea un
+tram inicial si el mapa és buit.
 
 ### 6. WAVs musicals només via `pipeline.exporta_total()`
 L'edició no toca mai els WAVs silenciosos d'acords i seccions; només s'escriuen
@@ -62,7 +65,9 @@ No poden córrer dues instàncies. El bloqueig és un lock **del sistema operati
 PID. El nom inclou l'usuari. → `plataforma.bloqueja_instancia_unica`.
 
 ### 8. Temps vàlids
-Cap temps negatiu ni durada **≤ 0**. Els validadors de la UI ho rebutgen; les
+Els **segons** no poden ser negatius ni les durades **≤ 0**. La **numeració de
+compàs** sí que pot ser `≤ 0` quan hi ha **pre-roll** (compte enrere abans del
+compàs 1); no és un temps negatiu. Els validadors de la UI ho rebutgen; les
 xarxes de seguretat (CSV a mà, projectes vells) ho reparen.
 → `visor._valida_canvis_*` · `pipeline.normalitza_cobertura` ·
 `tempo_map.normalitza_trams`.
@@ -111,10 +116,12 @@ se li passa, el paquet queda com era. La graella mètrica exportada pot ser
 
 ## 13. Temps, compàs i graella
 
-**Resum**: *els segons manen per a l'àudio; els clips de tempo/compàs han de
-contindre almenys un beat sencer de la graella del Snap; es conserva el BPM i
-s'ajusta el compàs abans d'allunyar el tempo; el primer inici i l'últim final
-poden ser lliures.*
+**Resum**: *els segons manen per a l'àudio; els clips de tempo/compàs són el
+model (el tram 0 inclòs) i el transport només n'és una vista; la referència la
+posa el músic (BPM/compàs) i el recalcul guiat busca compassos sencers; les
+fronteres són lliures (snap opcional) i només cal una durada mínima de 86 ms;
+els compassos sencers són l'objectiu del recalcul, no una barrera; el primer
+inici i l'últim final poden ser lliures.*
 
 ### 13.1 Els segons són la font de veritat de l'àudio
 Acords i seccions es guarden en **segons**: canviar BPM o compàs **no els mou**.
@@ -124,77 +131,100 @@ L'offset conserva el valor intern (p. ex. `1.207438`) tot i que la GUI en mostre
 3 decimals. → `visor._regenera_posicions_musicals` · `tempo_map`.
 
 ### 13.2 Els trams de tempo/compàs manen sobre la graella
-El mapa definix BPM i compàs a cada instant; graella, regle, snap, metrònom,
-numeració i exports **en deriven**. `app/tempo_map.py` és l'**únic motor** del
-temps; el visor només n'aplica el resultat. → `tempo_map.TempoMap` ·
+Els clips de tempo/compàs manen **sempre**, inclòs el **tram 0**: el mapa definix
+BPM i compàs a cada instant i graella, regle, snap, metrònom, numeració i
+exports **en deriven**. El **transport** (camps de BPM/compàs de la barra) és
+només una **vista i un editor** que se sincronitza des del clip 0; no és una
+segona font de veritat. `app/tempo_map.py` és l'**únic motor** del temps; el
+visor només n'aplica el resultat. → `tempo_map.TempoMap` ·
 `visor._refresca_tempo_map`.
 
 ### 13.3 Cobertura, ordre i contigüitat del mapa
 Els trams cobreixen **tota la WAV**, de 0 a la durada, contigus i ordenats
 (`Σ trams = durada`), sense forats, solapaments ni durades nul·les o negatives.
-El mapa buit no existix: se'n crea un de sol amb el transport. Si **no se sap la
-durada** (`durada == 0`), la cobertura no s'imposa i es conserva el `fi` de
-l'últim tram. → `tempo_map.neteja_trams` · `TempoMap.__init__`.
+El mapa buit no existix: se'n crea un de sol amb el transport. Si ja hi ha
+trams, el transport **no els sobreescriu** (el tram 0 és un clip més). Si **no
+se sap la durada** (`durada == 0`), la cobertura no s'imposa i es conserva el
+`fi` de l'últim tram. → `tempo_map.neteja_trams` · `TempoMap.__init__` ·
+`visor._refresca_tempo_map`.
 
-### 13.4 Beats sencers i valors vàlids
-Cada clip de BPM/compàs ha de contindre **almenys un beat sencer** de la graella
-que decidix el **Snap** (Beats QM → QM; qualsevol altre mode o snap desactivat →
-BPM/compàs). Cal un interval `[beat_i, beat_i+1]` complet dins del clip; no basta
-que dure més d'un beat. Les **fronteres interiors** han de caure en una línia de
-beat de la graella seleccionada.
+### 13.4 Model permissiu: valors vàlids i durada mínima
+L'edició general de la GUI **no bloqueja** un clip perquè no coincidisca amb
+compassos sencers. El model és permissiu:
 
-- **Excepcions d'extrems**: el **primer inici** i l'**últim final** poden ser
-  lliures (amb un sol clip, tots dos).
-- Un clip **rubato** té frontera lliure i no entra en la regla dels beats.
 - **Valors**: BPM **30–350**, numerador **1–12** (inclòs `1/4`), denominador
-  **2, 4 o 8** (`app/limits.py`).
+  **2, 4 o 8** (`app/limits.py`); un rubato va en segons (`0/0`).
+- **Durada mínima**: cap clip normal pot ser més curt que
+  `limits.TEMPS_MIN_CLIP` = un compàs `1/8` a 350 BPM (≈ **86 ms**).
+- **Fronteres interiors lliures**: poden caure on vulga l'usuari; el **snap és
+  opcional** i no s'exigeix cap línia de beat.
+- **Excepcions d'extrems**: el **primer inici** i l'**últim final** poden ser
+  lliures (amb un sol clip, tots dos). El **primer clip** pot ser pre-roll i
+  queda **exempt** del mínim de durada.
+- Un clip **rubato** va en segons i també queda exempt.
+- Els **compassos sencers són l'objectiu del recalcul** (§13.5), no una
+  barrera: si no s'assoleixen, s'avisa. Si el clip incompleix el mínim de
+  durada, el gest es rebutja.
 - Entrada invàlida: es rebutja amb avís i sense mutació parcial. CSV extern
   invàlid: es repara i s'informa.
 
-→ `tempo_map.valida_tempo` · `neteja_trams` · `valida_i_normalitza_compassos`.
+La validació **estricta** (`valida_i_normalitza_compassos`,
+`_millora_signatures_clips`, `ajusta_bpm_a_compassos`, `retempo_tram_detectat`)
+es conserva per als **detectors** i les **accions explícites**, però **no és el
+camí general d'edició**.
 
-### 13.5 Ajust de BPM i compàs
-Prioritat: **1) conservar el BPM**; **2) canviar el compàs** (`4/4` → `4/8`…);
-**3) últim recurs**, ajustar el BPM al valor més pròxim dins 30–350, sense anar a
-la meitat ni al doble del BPM de referència.
+→ `tempo_map.valida_tempo` · `valida_i_normalitza_permissiu` ·
+`limits.TEMPS_MIN_CLIP` · `neteja_trams`.
 
-- **«Ajusta BPM al compàs»** (franja Editor): conserva fronteres i compàs i
-  recalcula el BPM perquè el clip tinga un nombre enter de compassos. És l'única
-  via que força compassos sencers; no s'aplica automàticament.
+### 13.5 Ajust de BPM i compàs: recalcul guiat per la referència
+La referència la posa el músic: el BPM i el compàs que cada costat tenia abans
+del gest. En moure una frontera, el punter fixa els **segons** i
+`tempo_recalc.recalculca_tram()` busca la combinació de **compassos sencers**
+que més s'acosta a eixa referència: pot canviar el **BPM**, el **compàs** o el
+**nombre de compassos** (`N`). Si no hi ha cap combinació, es conserva el valor
+anterior; si el resultat incompleix el mínim de durada (o qualsevol altra regla
+permissiva), el gest es rebutja amb **avís** (mai un canvi silenciós).
+
+- Un canvi **explícit** de BPM o compàs (diàleg o franja Editor) respecta el
+  valor escrit per l'usuari; només s'ajusta si el resultat no és vàlid.
+- **«Ajusta BPM al compàs»** continua sent una **acció explícita**: conserva
+  fronteres i compàs i recalcula el BPM perquè el clip tinga un nombre enter de
+  compassos. No s'aplica automàticament.
 - Canviar BPM o compàs **no mou** les fronteres ni re-tempa els veïns.
-- **Arrossegar**: el punter fixa Δt; s'ajusten fronteres i, si cal, compàs/BPM
-  dels costats. No hi ha mínim de 0,5 s; només s'evita durada zero o BPM
-  impossible.
-- Un tram **rubato** es mou lliurement; el veí amb compàs conserva el BPM i
-  ajusta el compàs si cal.
+- **Arrossegar**: el punter fixa Δt; s'ajusten les fronteres i el recalcul
+  guiat decideix BPM/compàs/N dels costats.
+- Un tram **rubato** es mou lliurement; el costat amb compàs conserva la seua
+  referència i el recalcul l'ajusta si cal.
 
-→ `tempo_map.canvia_bpm_local` · `ajusta_bpm_a_compassos` ·
-`_millora_signatures_clips` · `mou_frontera_retempo` · `ajusta_trams_a_marcadors`.
+→ `tempo_recalc.recalculca_tram` · `tempo_map.mou_frontera_retempo` ·
+`canvia_bpm_local` · `ajusta_bpm_a_compassos` · `_millora_signatures_clips`.
 
 ### 13.6 Fronteres a mà i marcadors
 La frontera la col·loca el músic; el snap és **opcional** i és el snap normal del
-timeline. La graella de validació és la del **Snap** (§13.4). Amb el snap apagat,
-inici i fi es mouen lliurement dins la WAV; el que no pot passar és que un clip
-quede **sense durada** o sense cap beat.
+timeline. No hi ha obligació que les fronteres caiguen en una línia de beat.
+Amb el snap apagat, inici i fi es mouen lliurement dins la WAV; el que no pot
+passar és que un clip quede per davall del **mínim de 86 ms** (§13.4) o que un
+extrem isca de la WAV. El **pre-roll** (només la frontera `0→1`) i el **rubato**
+en queden exempts.
 
 `Inici (s)` i `Fi (s)` són editables. Com que la frontera és única, moure'n un
-mou **eixa** frontera; l'extrem contrari no es mou i es recalcula el BPM del clip
-i, si cal, el del veí:
+mou **eixa** frontera; l'extrem contrari no es mou i s'aplica el **recalcul
+guiat** del clip i, si cal, del veí:
 
 | Gest | Resultat |
 |---|---|
 | `ini` del **1r** clip | **rebutjat + avís** (inici de la WAV) |
 | `fi` de l'**últim** clip | **rebutjat + avís** (fi de la WAV) |
-| `ini` de qualsevol altre | mou la frontera `(i-1, i)`; el `fi` no es mou; ajusta compàs/BPM |
-| `fi` de qualsevol altre | mou la frontera `(i, i+1)`; l'`ini` no es mou; ajusta compàs/BPM |
-| costat rubato | es mou la frontera; el rubato no canvia; el costat amb compàs conserva BPM i ajusta compàs |
+| `ini` de qualsevol altre | mou la frontera `(i-1, i)`; el `fi` no es mou; recalcul guiat |
+| `fi` de qualsevol altre | mou la frontera `(i, i+1)`; l'`ini` no es mou; recalcul guiat |
+| costat rubato | es mou la frontera; el rubato no canvia; el costat amb compàs conserva la referència i el recalcul l'ajusta |
 
 Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
 
 - **`+` (marcador)**: amb Snap **Beats QM**, s'encaixa al beat QM més pròxim;
   amb qualsevol altra graella, a la graella BPM/compàs; amb snap desactivat, es
   respecta el cursor. Sense beats QM no es crea i s'avisa. Els clips afectats es
-  recalculen amb prioritat BPM → compàs.
+  recalculen amb el **recalcul guiat** (§13.5).
 - **Només la frontera 0→1 és pre-roll.** Les fronteres 2–3, 3–4… són interiors
   normals (`mou_frontera_retempo`).
 - En fixar l'offset amb **Compàs 1 aquí**, el pre-roll es recalcula com **un
@@ -225,7 +255,8 @@ de BPM o compàs.
 → `app/rubato.py` · `app/mapa_tempo.py` · `tempo_map.canvia_bpm_local` /
 `mou_frontera_retempo`.
 
-### 13.8 Detecció i export del mapa
+### 13.8 Detecció i marcadors
+La **detecció** conserva els seus criteris musicals i la validació estricta.
 Amb un **tram seleccionat**, *Detecta* analitza només eixe tram i el downbeat és
 el seu inici. En un tram delimitat per marcadors, **Δt és fix**: el BPM detectat
 només compta compassos (`N = round(Δt · BPM_ref / (bq · 60))`, mínim 1) i
@@ -234,11 +265,18 @@ entre els dos punts. La fi del tram i els següents no es mouen; si el BPM deriv
 cau fora de 30–350 o no hi cap cap compàs sencer, **s'avisa**. S'aplica en una
 sola operació de desfer.
 
-Per a tempo variable, *Analitza ▸ Detecta el tempo per trams…* fa el mapa sencer
-(un BPM cada N compassos, fronteres en línia de beat) i el valida amb estes
-regles. L'export porta les tres parts (acords, estructura i mapa).
+Els **marcadors** són una referència de l'usuari: *BPM dels marcadors* usa el
+**nombre de compassos de cada interval** com a `N` **fix**; el recalcul només
+tria **BPM i compàs** (no canvia el nombre de compassos). Així els marcadors
+manen sobre l'estructura de compassos i el tempo s'hi adapta.
 
-→ `tempo_map.retempo_tram_detectat` · `app/tempo.py` · `pipeline.desa_tempo_map`.
+Per a tempo variable, *Analitza ▸ Detecta el tempo per trams…* fa el mapa sencer
+(un BPM cada N compassos, amb els criteris musicals del detector) i el valida de
+manera estricta. L'export porta les tres parts (acords, estructura i mapa).
+
+→ `tempo_map.retempo_tram_detectat` · `tempo_map.ajusta_trams_a_marcadors` ·
+`tempo_recalc.recalculca_tram` · `visor_marcadors.aplica_bpm_marcadors` ·
+`app/tempo.py` · `pipeline.desa_tempo_map`.
 
 ### 13.9 Edició de l'àudio del projecte
 > **Estat**: implementat quant a importació, backups, retall/afegit als extrems,
