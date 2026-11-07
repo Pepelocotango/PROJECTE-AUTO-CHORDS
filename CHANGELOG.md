@@ -650,18 +650,23 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   `limits.TEMPS_MIN_CLIP`). Ja no cal «almenys un beat sencer» ni que les
   fronteres interiors caiguen en una línia de beat: són lliures i el snap és
   opcional. El primer clip pot ser pre-roll i queda exempt del mínim.
-- **Recalcul guiat per referència**: en moure una frontera, cada costat conserva
-  el seu BPM/compàs com a referència i `tempo_recalc.recalculca_tram()` busca
-  compassos sencers. Pot canviar BPM, compàs o `N`; si no hi ha solució, es
-  queda el valor anterior i s'avisa. Si hi ha **beats detectats** dins del clip,
-  el seu nombre és una restricció forta: 7 beats → `7/4`, no 2×`4/4`. Sense
-  beats detectats, s'inferixen de la referència BPM (`D × BPM_ref / 60`) quan
-  cauen a prop d'un enter (±0,2); si no, es calcula per durada.
+- **Referència base manual per al recalcul**: la barra 2 té `Ref. recalc`
+  (BPM + compàs `x/x`). És una referència **global i manual** per a tots els
+  recalcs; ja no s'agafa el BPM/compàs del clip pare, del veí ni del transport.
+  Es desa a `tempo.ref` del `.acproj` i, si no hi és, s'hereta el tempo/compàs
+  del projecte. `tempo_recalc.recalculca_tram()` busca compassos sencers i pot
+  canviar BPM, compàs o `N`; si no hi ha solució, es queda el valor anterior i
+  s'avisa. Si hi ha **beats detectats** dins del clip, el seu nombre és una
+  restricció forta i **pot corregir la base**: 7 beats → `7/4`; 14 → `7/4`
+  N=2 (no `2/4` N=7); 8 → `4/4` N=2 (no `8/4` N=1). Sense beats detectats,
+  s'inferixen de la referència BPM (`D × BPM_ref / 60`) quan cauen a prop d'un
+  enter (±0,2); si no, es calcula per durada.
 - **Marcadors com a `N` fix**: «BPM dels marcadors» usa el nombre de compassos de
-  cada interval de marcadors com a `N` fix; només ajusta BPM/compàs. Si hi ha
-  beats detectats dins l'interval, el seu nombre mana sobre el `N` estimat
-  (7 beats → `7/4`, no 2×`4/4`). L'acció `+` també recalcula els dos costats
-  del tall perquè queden en compassos sencers.
+  cada interval de marcadors com a `N` fix i la **referència base** per al
+  BPM/compàs. Si hi ha beats detectats dins l'interval, el seu nombre mana
+  sobre el `N` estimat i pot corregir el compàs (7 beats → `7/4`; 14 → `7/4`
+  N=2; 8 → `4/4` N=2). L'acció `+` també recalcula els dos costats del tall
+  amb la referència base.
 - La validació estricta (`valida_i_normalitza_compassos`,
   `_millora_signatures_clips`, `ajusta_bpm_a_compassos`,
   `retempo_tram_detectat`) es conserva per a detectors i accions explícites, però
@@ -669,8 +674,9 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - **Rubato i pre-roll** continuen com estaven: segons invariables, BPM/compàs
   derivats i pre-roll només a la frontera `0→1`.
 - Docs: `docs/REGLES_DE_LA_APP.md` §5, §8 i §13 reescrits al model nou;
-  `docs/recerca/PLA_MAPA_TEMPS.md` marca F5 com a fet.
-- Suite: **1504 OK** (1 skip), `pyflakes` net.
+  `docs/EDICIO_OPERACIONS.md` i `docs/recerca/PLA_MAPA_TEMPS.md` actualitzats
+  amb la referència base manual.
+- Suite: **1517 OK** (1 skip), `pyflakes` net.
 
 ### Refactor — modularització completa (2026-11-06)
 - `app/main.py`: 4.858 → **1.511 línies**; extret a `*_ui` (`analisi_ui`,

@@ -271,6 +271,20 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.bpb.setFixedWidth(60)
         self.bpb.setPlaceholderText("4/4")
         self.bpb.setToolTip("Compàs manual: 4/4, 3/4, 2/4, 1/4, 6/8, etc.")
+        # Referència MANUAL del recalcul (no canvia el transport ni els clips).
+        self.ref_bpm = QLineEdit("120.000")
+        self.ref_bpm.setFixedWidth(64)
+        self.ref_bpm.setPlaceholderText("120.000")
+        self.ref_bpm.setToolTip(
+            "BPM de referència per a tots els recalcs. No canvia el clip: "
+            "només és l'àncora de la cerca de BPM/compàs/N.")
+        self.ref_bpb = QLineEdit("4/4")
+        self.ref_bpb.setFixedWidth(46)
+        self.ref_bpb.setPlaceholderText("4/4")
+        self.ref_bpb.setToolTip(
+            "Compàs de referència (x/y) per als recalcs. Els beats detectats "
+            "poden corregir-lo si cal (p. ex. 14 beats → 7/4).")
+        self._ref_manual = False
         self.offset = QLineEdit("0.000")
         self.offset.setFixedWidth(60)
         self.offset.setPlaceholderText("0.000")
@@ -288,6 +302,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_detecta.clicked.connect(lambda: self._detecta_bpm())
         for camp in (self.bpm, self.bpb, self.offset):
             camp.editingFinished.connect(self._aplica_parametres_temps)
+        for camp in (self.ref_bpm, self.ref_bpb):
+            camp.editingFinished.connect(self._aplica_ref_recalc)
 
         self._params_temps = QWidget()      # s'amaga sencer en mode Lliure
         hp = QHBoxLayout(self._params_temps)
@@ -318,6 +334,9 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         hp.addWidget(self.lb_desti_accions)
         hp.addWidget(QLabel("Compàs:"))
         hp.addWidget(self.bpb)
+        hp.addWidget(QLabel("Ref. recalc:"))
+        hp.addWidget(self.ref_bpm)
+        hp.addWidget(self.ref_bpb)
         self.chk_segons = QCheckBox("En segons")
         self.chk_segons.setToolTip(
             "El clip de tempo objectiu va en segons (rubato): sense compàs ni "

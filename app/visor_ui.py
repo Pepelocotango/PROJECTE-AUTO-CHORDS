@@ -65,6 +65,13 @@ class VisorUIMixin:
                 self.logger.info("Sense resultat processat per %s; obro el visor amb pistes buides", wav)
 
             self.logger.info("Carregant visor per %s | sortida=%s", wav, self.sortida)
+            if getattr(self, "_ref_manual", False):
+                try:
+                    _rb, _rn, _rd = self._ref_vals()
+                except ValueError:
+                    _rb, _rn, _rd = None, None, None
+            else:
+                _rb, _rn, _rd = None, None, None
             visor = visor_mod.Visor(
                 os.path.abspath(wav),
                 acords_csv,
@@ -79,8 +86,13 @@ class VisorUIMixin:
                 offset=self._offset_val(),
                 beat_type=self._beat_type_val(),
                 bpm_unit=self._bpm_unit_val(),
+                ref_bpm=_rb,
+                ref_bpb=_rn,
+                ref_beat_type=_rd,
             )
             self.visor_ref = visor
+            if _rb is None or not getattr(self, "_ref_manual", False):
+                self._sincronitza_ref_des_del_visor()
             self._aplica_beats_guardats(visor)
             visor.metro_click_unit = self._metro_click_unit_val()
             # El visor ha de desar els CSV/export a la carpeta de sortida del

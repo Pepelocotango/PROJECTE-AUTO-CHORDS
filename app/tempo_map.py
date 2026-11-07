@@ -1376,7 +1376,8 @@ def _millora_signatures_clips(trams, durada, offset=0.0, beats_qm=None,
 
 
 def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
-                          beats_qm=None, permissiu=False, recalculca=False):
+                          beats_qm=None, permissiu=False, recalculca=False,
+                          ref_base=None):
     """Parteix el mapa a `t` conservant el BPM i el compàs del clip.
 
     Contracte nou (§13.4): ja no cal que les dos parts tinguen compassos enters
@@ -1404,7 +1405,8 @@ def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
         if permissiu:
             if recalculca:
                 out = _recalcula_costats(out, [(i, s), (i + 1, s)],
-                                         durada, offset, beats_qm=beats_qm)
+                                         durada, offset, beats_qm=beats_qm,
+                                         ref_base=ref_base)
             return valida_i_normalitza_permissiu(out, durada, offset)
         out = _millora_signatures_clips(out, durada, offset, beats_qm,
                                         {i, i + 1})
@@ -1521,7 +1523,7 @@ def ajusta_trams_a_marcadors(trams, marcadors, durada, offset=None,
 
 
 def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
-                         beats_qm=None, permissiu=False):
+                         beats_qm=None, permissiu=False, ref_base=None):
     """Mou una frontera interior.
 
     Dos camins:
@@ -1565,7 +1567,8 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
     out[i] = (float(t), float(fi_b), float(b[2]), int(b[3]), int(b[4]))
     if permissiu:
         out = _recalcula_costats(out, [(i - 1, a), (i, b)],
-                                 durada, offset, beats_qm=beats_qm)
+                                 durada, offset, beats_qm=beats_qm,
+                                 ref_base=ref_base)
         return valida_i_normalitza_permissiu(out, durada, offset)
     out = _millora_signatures_clips(out, durada, offset, beats_qm,
                                     {i - 1, i})
@@ -1573,12 +1576,16 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
                                     beats_qm=beats_qm)
 
 
-def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None):
-    """Recalcula BPM/compàs dels costats amb la referència que tenien.
+def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
+                       ref_base=None):
+    """Recalcula BPM/compàs dels costats amb una referència.
 
-    `refs`: `[(idx, tram_referencia), …]`. S'ometen els rubatos, el pre-roll
-    del primer clip i els trams on no hi ha cap combinació vàlida. Si hi ha
-    beats detectats dins del clip, el seu nombre restringix `N` i el compàs.
+    `refs`: `[(idx, tram_referencia), …]`. Si `ref_base=(bpm, num, den)` no és
+    `None`, **tots** els costats usen eixa referència manual (BPM/compàs base
+    del tema); si no, cada costat conserva la referència del seu clip. S'ometen
+    els rubatos, el pre-roll del primer clip i els trams on no hi ha cap
+    combinació vàlida. Si hi ha beats detectats dins del clip, el seu nombre
+    restringix `N` i el compàs (i poden corregir la referència base).
     """
     beats = [float(b) for b in (beats_qm or ())]
     for idx, ref in refs:
@@ -1590,8 +1597,19 @@ def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None):
         n_beats = None
         if beats:
             n_beats = sum(1 for b in beats if ini - TOL <= b < fi - TOL)
-        r = tempo_recalc.recalculca_tram(
-            fi - ini, ref[2], ref[3], ref[4], n_beats=n_beats)
+        if ref_base is None:
+            bpm_ref, num_ref, den_ref = ref[2], ref[3], ref[4]
+        else:
+            bpm_ref, num_ref, den_ref = ref_base
+        try:
+            r = tempo_recalc.recalculca_tram(
+                fi - ini, bpm_ref, num_ref, den_ref, n_beats=n_beats)
+        except (TypeError, ValueError):
+            if ref_base is None:
+                raise
+            # Referència base heretada/invàlida: no bloquegem el gest.
+            r = tempo_recalc.recalculca_tram(
+                fi - ini, ref[2], ref[3], ref[4], n_beats=n_beats)
         if r is None:
             continue
         out[idx] = (ini, fi, float(r["bpm"]), int(r["num"]), int(r["den"]))

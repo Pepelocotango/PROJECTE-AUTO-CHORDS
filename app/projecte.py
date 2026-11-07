@@ -307,7 +307,11 @@ class Projecte:
             "audio": os.path.join(NOM_AUDIO_DIR, os.path.basename(dest_wav)),
             "tempo": {"bpm": float(bpm), "bpb": int(bpb),
                       "offset": float(offset), "fix": bool(fix),
-                      "compas": str(compas).strip() if compas else ""},
+                      "compas": str(compas).strip() if compas else "",
+                      "ref": {"bpm": float(bpm),
+                              "compas": (str(compas).strip()
+                                         if compas and "/" in str(compas)
+                                         else f"{int(bpb)}/4")}},
             "opcions": copy.deepcopy(opcions) if opcions else {},
             "vista": copy.deepcopy(vista) if vista else {},
         }

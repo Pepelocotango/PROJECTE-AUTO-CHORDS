@@ -449,10 +449,10 @@ class TestFase2Gestos(_Base):
             self.assertAlmostEqual(float(v.tempo_trams[0][1]), 12.0, places=2)
             self.assertAlmostEqual(float(v.tempo_trams[1][0]), 12.0, places=2)
             self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=2)
-            # El BPM es conserva; el contracte nou no conserva un nombre
-            # fix de compassos ni re-tempa els costats.
+            # Amb la referència base manual (120 4/4), els dos costats es
+            # recalculem amb eixa referència; ja no mana el BPM del clip veí.
             self.assertAlmostEqual(float(v.tempo_trams[0][2]), 120.0, places=4)
-            self.assertAlmostEqual(float(v.tempo_trams[1][2]), 90.0, places=4)
+            self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=4)
         finally:
             v.close()
 

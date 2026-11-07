@@ -128,13 +128,19 @@ class ProjecteMixin:
             # desa el que hi ha escrit (encara que no s'haja premut Enter).
             bpm, bpb = self._bpm_val(), self._bpb_val()
             den, offset = self._beat_type_val(), self._offset_val()
+        try:
+            ref_bpm, ref_num, ref_den = self._ref_vals()
+        except (AttributeError, TypeError, ValueError):
+            ref_bpm, ref_num, ref_den = bpm, bpb, den
         return {
             "tempo": {"bpm": bpm, "bpb": bpb,
                       "offset": offset,
                       "fix": self.tempo_fix.isChecked(),
                       "compas": f"{bpb}/{den}",
                       "unit": self._bpm_unit_val(),
-                      "metro_unit": self._metro_click_unit_val()},
+                      "metro_unit": self._metro_click_unit_val(),
+                      "ref": {"bpm": float(ref_bpm),
+                              "compas": f"{int(ref_num)}/{int(ref_den)}"}},
             "opcions": self.opcions,
         }
 
@@ -183,6 +189,19 @@ class ProjecteMixin:
         # i confon; el parser accepta els dos, però el camp sempre el mostra bé.
         self.bpb.setText(str(compas) if compas
                          else f"{int(tempo.get('bpb', 4))}/4")
+        ref = tempo.get("ref") or {}
+        ref_bpm = float(ref.get("bpm", tempo.get("bpm", 120.0)))
+        ref_compas = ref.get("compas") or self.bpb.text() or "4/4"
+        self._actualitzant_temps = True
+        try:
+            try:
+                self._posa_ref_recalc(ref_bpm, ref_compas)
+            except ValueError:
+                self._posa_ref_recalc(
+                    float(tempo.get("bpm", 120.0)), self.bpb.text())
+        finally:
+            self._actualitzant_temps = False
+        self._ref_manual = True
         self._posa_offset_camp(float(tempo.get("offset", 0.0)))
         self.tempo_fix.setChecked(bool(tempo.get("fix", False)))
         self._canvia_mode_temps(bool(tempo.get("fix", False)))

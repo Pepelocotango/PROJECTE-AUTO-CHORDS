@@ -149,7 +149,8 @@ class MarcadorsMixin:
             trams = tempo_map.parteix_tram_marcador(
                 trams, t, durada, offset=getattr(self, "offset", 0.0),
                 bpm_ref=bpm_ref, beats_qm=getattr(self, "qm_beats", None),
-                permissiu=True, recalculca=True)
+                permissiu=True, recalculca=True,
+                ref_base=self.ref_tempo_base())
         except ValueError as e:
             self.avis_editor(f"Marcador: {e}")
             return False
@@ -240,15 +241,18 @@ class MarcadorsMixin:
             self.log("BPM marcadors: els intervals no quadren amb els marcadors")
             return False
         # Els marcadors fixen el nombre de compassos de cada interval; el
-        # recalcul només pot moure BPM i compàs.
+        # recalcul només pot moure BPM i compàs. La referència és la MANUAL de
+        # la barra 2, no la del clip ni el compàs del diàleg.
         beats = sorted(float(b) for b in
                        (getattr(self, "qm_beats", None) or ()))
+        ref_bpm, ref_num, ref_den = self.ref_tempo_base()
 
         def _tram(dt, k, bpm_i, nb=None):
             # Si hi ha beats detectats, manen sobre el nombre de compassos
             # estimat pels marcadors: 7 beats són 7/4, no 2×4/4.
+            _ = float(bpm_i)      # el candidat dels marcadors ja no és la ref
             r = tempo_recalc.recalculca_tram(
-                dt, float(bpm_i), int(num), int(den),
+                dt, ref_bpm, int(ref_num), int(ref_den),
                 n_ref=None if nb else int(k), n_beats=nb)
             if r is None:
                 return (float(bpm_i), int(num), int(den))

@@ -84,8 +84,10 @@ manual**; la **12** (congelació, higiene i CI) està **en curs**. **8** (MIDI),
 **Fet recentment (2026-11-07):** simplificació del mapa de temps (fases F0–F5
 del [`PLA_MAPA_TEMPS`](docs/recerca/PLA_MAPA_TEMPS.md)): el **tram 0 és un clip**
 (el transport és només una vista), **model permissiu** amb mínim de **86 ms**,
-**recalcul guiat** per la referència i **marcadors com a `N` fix**. Suite
-**1504 OK** (1 skip), `pyflakes` net.
+**recalcul guiat** per una **referència base manual** de la barra 2 (BPM +
+compàs `x/x`, desada a `tempo.ref`) i **marcadors com a `N` fix**. Els beats
+detectats poden corregir el compàs/X-X i `N` de la base (14 → `7/4` N=2; 8 →
+`4/4` N=2). Suite **1517 OK** (1 skip), `pyflakes` net.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).

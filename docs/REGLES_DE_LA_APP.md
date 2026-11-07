@@ -198,9 +198,9 @@ permissiva), el gest es rebutja amb **avís** (mai un canvi silenciós).
   compassos. No s'aplica automàticament.
 - Canviar BPM o compàs **no mou** les fronteres ni re-tempa els veïns.
 - **Arrossegar**: el punter fixa Δt; s'ajusten les fronteres i el recalcul
-  guiat decideix BPM/compàs/N dels costats.
-- Un tram **rubato** es mou lliurement; el costat amb compàs conserva la seua
-  referència i el recalcul l'ajusta si cal.
+  guiat decideix BPM/compàs/N dels dos costats amb la **referència base**.
+- Un tram **rubato** es mou lliurement; el costat amb compàs conserva la
+  referència base i el recalcul l'ajusta si cal.
 
 → `tempo_recalc.recalculca_tram` · `tempo_map.mou_frontera_retempo` ·
 `canvia_bpm_local` · `ajusta_bpm_a_compassos` · `_millora_signatures_clips`.
@@ -272,10 +272,11 @@ cau fora de 30–350 o no hi cap cap compàs sencer, **s'avisa**. S'aplica en un
 sola operació de desfer.
 
 Els **marcadors** són una referència de l'usuari: *BPM dels marcadors* usa el
-**nombre de compassos de cada interval** com a `N` **fix**; el recalcul només
-tria **BPM i compàs** (no canvia el nombre de compassos). Si hi ha **beats
-detectats** dins l'interval, el seu nombre **mana** sobre el `N` estimat: 7
-beats són `7/4`, no 2×`4/4`. Així els marcadors i els beats manen sobre
+**nombre de compassos de cada interval** com a `N` **fix**; el recalcul usa la
+**referència base de la barra 2** per al BPM/compàs (no la del clip). Si hi ha
+**beats detectats** dins l'interval, el seu nombre **mana** sobre el `N`
+estimat i pot corregir el compàs: 7 beats són `7/4`, no 2×`4/4`; 14 beats
+`7/4` N=2 i 8 beats `4/4` N=2. Així els marcadors i els beats manen sobre
 l'estructura de compassos i el tempo s'hi adapta.
 
 Per a tempo variable, *Analitza ▸ Detecta el tempo per trams…* fa el mapa sencer

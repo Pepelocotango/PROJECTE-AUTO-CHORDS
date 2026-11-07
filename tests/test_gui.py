@@ -157,6 +157,15 @@ class TestCrea(BaseProjecte):
                 projecte.Projecte.crea(desti, origen)
         self.assertFalse(os.path.exists(os.path.join(desti, "audio")))
 
+    def test_crea_guarda_referencia_recalc(self):
+        wav = os.path.join(self.td, "tema.wav")
+        _wav(wav)
+        p = projecte.Projecte.crea(
+            os.path.join(self.td, "Ref"), wav, bpm=144.5, bpb=4,
+            compas="7/4")
+        self.assertEqual(p.dades["tempo"]["ref"]["bpm"], 144.5)
+        self.assertEqual(p.dades["tempo"]["ref"]["compas"], "7/4")
+
     def test_carpeta_autocontinguda(self):
         wav = os.path.join(self.td, "tema.wav")
         _wav(wav)
@@ -238,6 +247,14 @@ class TestObreDesa(BaseProjecte):
         per_fitxer = projecte.Projecte.obre(p.ruta_acproj)
         self.assertEqual(per_carpeta.dades["tempo"]["bpb"], 3)
         self.assertEqual(per_fitxer.dades["tempo"]["bpb"], 3)
+
+    def test_roundtrip_referencia_recalc(self):
+        p = self._projecte("RefRT")
+        p.dades["tempo"]["ref"] = {"bpm": 144.5, "compas": "7/4"}
+        p.desa()
+        q = projecte.Projecte.obre(p.ruta_acproj)
+        self.assertEqual(q.dades["tempo"]["ref"],
+                         {"bpm": 144.5, "compas": "7/4"})
 
     def test_roundtrip_tempo_opcions_vista(self):
         p = self._projecte("RT")
@@ -5502,6 +5519,22 @@ class TestAncoratgesFinestra(unittest.TestCase):
         QTest.keyClick(vr.ed_nom, Qt.Key_Equal, Qt.ShiftModifier)
         self.assertEqual(len(vr.marcadors), 0)
         self.assertIn("+", vr.ed_nom.text())     # el «+» s'ha escrit
+
+    def test_referencia_recalc_barra_2(self):
+        vr = self.w.visor_ref
+        self.assertEqual(vr.ref_tempo_base(), (120.0, 4, 4))
+        self.w.ref_bpm.setText("144.5")
+        self.w.ref_bpb.setText("7/4")
+        self.w._aplica_ref_recalc()
+        self.assertEqual(vr.ref_tempo_base(), (144.5, 7, 4))
+        self.w._refresca_dades_projecte()
+        self.assertEqual(self.w.projecte.dades["tempo"]["ref"],
+                         {"bpm": 144.5, "compas": "7/4"})
+        # I en tornar a carregar el projecte, la referència arriba al visor.
+        self.w.projecte.desa()
+        self.w._activa_projecte(
+            projecte.Projecte.obre(self.w.projecte.ruta_acproj))
+        self.assertEqual(self.w.visor_ref.ref_tempo_base(), (144.5, 7, 4))
 
     def test_bpm_dels_marcadors_deixa_els_clips_editables(self):
         """El flux real: marcadors → BPM dels marcadors → clips editables."""

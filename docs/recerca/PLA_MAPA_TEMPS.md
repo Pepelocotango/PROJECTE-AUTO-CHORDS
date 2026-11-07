@@ -5,13 +5,17 @@
 >
 > **Nota (2026-11-07):** el contracte ja s'ha actualitzat a
 > `docs/REGLES_DE_LA_APP.md` §13 (model permissiu, recalcul guiat, mínim de
-> 86 ms i clips sempre manen). Este pla queda com a registre de les decisions.
+> 86 ms i clips sempre manen). La referència del recalcul és la **base manual
+> de la barra 2** (`BPM ref` + `compàs ref`), no la dels clips veïns; els beats
+> detectats poden corregir compàs/X-X i `N`. Este pla queda com a registre de
+> les decisions.
 
 ## Decisions
 
 1. **La referència la posa el músic.** En obrir una cançó, escolta, marca un
-   BPM aproximat amb el tap tempo i tria un compàs `x/x`. Això és el centre
-   de la cerca, no una regla tancada.
+   BPM aproximat amb el tap tempo i tria un compàs `x/x` a la **barra 2**
+   (`Ref. recalc`). És una referència manual i global per al recalcul, no la
+   dels clips veïns; els beats poden corregir-la.
 2. **Els clips de temps són el model.** Es comporten com els clips d'acords i
    estructura: afegir, partir, fusionar, moure, redimensionar i eliminar.
    Cada edició actualitza la graella.
@@ -23,10 +27,12 @@
    (≈ 86 ms).
 5. **Els compassos sencers són l'objectiu del recalcul, no una barrera.**
    Si no es poden aconseguir, l'app avisa i aplica la solució menys agressiva.
-6. **El recalcul decideix què tocar.** Amb la referència de BPM i compàs,
-   calcula quants compassos «espera» el tram i tria la combinació que menys
-   s'allunya de la referència: conservar BPM i compàs, canviar el compàs,
-   ajustar el BPM o canviar el nombre de compassos.
+6. **El recalcul decideix què tocar.** Amb la referència base de BPM i
+   compàs, calcula quants compassos «espera» el tram i tria la combinació que
+   menys s'allunya de la referència: conservar BPM i compàs, canviar el compàs,
+   ajustar el BPM o canviar el nombre de compassos. Amb beats detectats, la
+   selecció prefereix signatures naturals amb el mateix denominador i el mínim
+   de compassos (14 beats → `7/4` N=2; 8 → `4/4` N=2).
 7. **Si l'usuari marca els compassos, aquests manen.** Amb marcadors als
    inicis de compàs, el nombre de compassos es conserva i l'app ajusta BPM o
    compàs per encaixar-hi.
@@ -34,7 +40,8 @@
    però BPM i compàs derivats i de només lectura. Els segons no ballen.
 9. **El pre-roll automàtic es conserva**, limitat a l'inici de la cançó.
 10. **El transport no és una segona veritat.** Els clips de temps manen; els
-    camps de BPM/compàs de la barra són una referència i un editor.
+    camps de BPM/compàs de la barra són un editor. La **referència base** de
+    recalcul és independent del transport i dels clips.
 11. **Si no hi ha cap solució raonable**, l'app no fa canvis silenciosos:
     avisa i tria el mal menor (ajustar la frontera o deixar el tram com està).
 
@@ -60,7 +67,10 @@ cost = w_bpm     · |log2(BPM / BPM_ref)|
 
 Guanya el cost més baix. `distancia_compas` penalitza menys els canvis de
 numerador que els de denominador. `penalitzacio_compas` afavoreix les
-signatures habituals (`4/4`, `3/4`, `2/4`, `6/8`, `12/8`).
+signatures habituals (`4/4`, `3/4`, `2/4`, `6/8`, `12/8`). Amb beats
+detectats, abans del cost es filtra per `N × bq = beats` i es prefereix una
+signatura natural amb el mateix denominador i el mínim `N`; així els beats
+poden corregir el compàs/X-X i `N` de la base.
 
 Si `N_ref` ve fixat pels marcadors, el cost de canviar-lo és infinit: només
 es mouen BPM i compàs.

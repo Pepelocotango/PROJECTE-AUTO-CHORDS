@@ -89,7 +89,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
     # principal té el seu propi selector i ha d'anar sincronitzada.
     velocitatCanviada = pyqtSignal(float)
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True, sortida=None,
-                 offset=0.0, beat_type=4, bpm_unit="negra"):
+                 offset=0.0, beat_type=4, bpm_unit="negra", ref_bpm=None,
+                 ref_bpb=None, ref_beat_type=None):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
         self._embedded = False
@@ -109,6 +110,20 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.bpm, self.bpb = bpm, bpb
         self.bpm_unit = bpm_unit_mod.normalitza(bpm_unit)
         self.beat_type = int(beat_type or 4)
+        # Referència MANUAL del recalcul (barra 2): no canvia el transport ni
+        # els clips; només és l'àncora de `recalculca_tram`. Si no arriba,
+        # hereta el tempo/compàs inicial per no canviar el flux existent.
+        self.ref_bpm = float(self.bpm if ref_bpm is None else ref_bpm)
+        self.ref_bpb = int(self.bpb if ref_bpb is None else ref_bpb)
+        self.ref_beat_type = int(
+            self.beat_type if ref_beat_type is None else ref_beat_type)
+        try:
+            _rb, _rn, _rd = tempo_map.valida_tempo(
+                self.ref_bpm, self.ref_bpb, self.ref_beat_type)
+        except (TypeError, ValueError):
+            _rb, _rn, _rd = float(self.bpm), int(self.bpb), self.beat_type
+        self.ref_bpm, self.ref_bpb, self.ref_beat_type = (
+            float(_rb), int(_rn), int(_rd))
         self.offset = float(offset or 0.0)
         self.tempo_fix = bool(tempo_fix)
         self.csv_acords = os.path.abspath(acords) if acords else None
@@ -3438,7 +3453,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, int(idx_frontera), float(t), durada, offset=offset,
-                beats_qm=getattr(self, "qm_beats", None), permissiu=True)
+                beats_qm=getattr(self, "qm_beats", None), permissiu=True,
+                ref_base=self.ref_tempo_base())
         except ValueError as e:
             self.avis_editor(f"Frontera: {e}")
             return None

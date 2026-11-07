@@ -13,6 +13,19 @@ from . import dialegs, mapa_tempo, pipeline, rubato as rubato_mod, tempo_map
 class TempoMixin:
     """Mapa de tempo, rubato i edició del tempo objectiu."""
 
+    def ref_tempo_base(self):
+        """Referència manual (bpm, num, den) per a tots els recalcs."""
+        return (float(self.ref_bpm), int(self.ref_bpb),
+                int(self.ref_beat_type))
+
+    def set_ref_tempo(self, bpm, num, den):
+        """Fixa la referència manual del recalcul, validada."""
+        bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
+        self.ref_bpm = float(bpm)
+        self.ref_bpb = int(num)
+        self.ref_beat_type = int(den)
+        return self.ref_tempo_base()
+
     def tempo_objectiu(self):
         """Índex del tram de tempo objectiu.
 
@@ -317,7 +330,8 @@ class TempoMixin:
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, p_idx, float(t), self._durada_wav(), offset=offset,
-                beats_qm=getattr(self, "qm_beats", None), permissiu=True)
+                beats_qm=getattr(self, "qm_beats", None), permissiu=True,
+                ref_base=self.ref_tempo_base())
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return

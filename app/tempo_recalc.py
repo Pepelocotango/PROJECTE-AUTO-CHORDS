@@ -15,7 +15,8 @@ from . import limits
 
 # Penalitzacions de signatures poc habituals.
 _COMUNS = {(4, 4), (3, 4), (2, 4), (6, 8), (12, 8)}
-_MENYS_COMUNS = {(5, 4), (7, 4), (7, 8), (9, 8), (5, 8), (6, 4), (2, 2), (3, 8)}
+_MENYS_COMUNS = {(5, 4), (7, 4), (11, 4), (7, 8), (9, 8), (5, 8),
+                 (6, 4), (2, 2), (3, 8)}
 
 
 def _bar_quarters(num, den):
@@ -95,7 +96,10 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
 
     # Si tenim els beats detectats, el nombre de negres del clip és una
     # restricció forta: 7 beats han de ser 7/4 (o una combinació equivalent),
-    # no 2 compassos de 4/4.
+    # no 2 compassos de 4/4. Quan hi ha beats, poden corregir el compàs i `N`
+    # respecte de la referència base: es prefereix una signatura natural amb
+    # el mínim de compassos (14 beats → 7/4 N=2, no 2/4 N=7; 8 beats → 4/4
+    # N=2, no 8/4 N=1). La referència base decidix només els empats.
     if n_beats is not None:
         beats_candidats = []
         for den in limits.DENOMINADORS_ADMESOS:
@@ -127,7 +131,33 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                     _distancia_compas(num, den, num_ref, den_ref),
                     bpm, num, den, n))
         if beats_candidats:
-            cost, _db, _dc, bpm, num, den, n = min(beats_candidats)
+            # Prioritat 1: signatures COMUNES amb el MATEIX denominador que
+            # la base i pocs compassos (8 beats → 4/4 N=2; 9 → 3/4 N=3; 6 →
+            # 3/4 N=2, no 12/8 N=1). Prioritat 2: qualsevol signatura natural
+            # amb el mateix denominador (14 → 7/4 N=2, no 2/4 N=7). Prioritat
+            # 3: qualsevol natural. Si no, cost.
+            def _natural(c):
+                return (c[4], c[5]) in _COMUNS or (c[4], c[5]) in _MENYS_COMUNS
+            comuns_den = [
+                c for c in beats_candidats
+                if c[6] <= 4 and c[5] == den_ref and (c[4], c[5]) in _COMUNS
+            ]
+            naturals_den = [
+                c for c in beats_candidats if c[5] == den_ref and _natural(c)
+            ]
+            naturals = [c for c in beats_candidats if _natural(c)]
+            if comuns_den:
+                tria = comuns_den
+            elif naturals_den:
+                tria = naturals_den
+            elif naturals:
+                tria = naturals
+            else:
+                tria = beats_candidats
+            # Menys compassos primer; el cost decidix empats (p. ex. 4/4 vs
+            # 2/2 per a 8 beats, o 3/4 vs 6/8 per a 9).
+            cost, _db, _dc, bpm, num, den, n = min(
+                tria, key=lambda c: (c[6], c[0], c[1], c[2]))
             return {
                 "bpm": float(bpm),
                 "num": int(num),

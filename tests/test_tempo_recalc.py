@@ -63,6 +63,20 @@ class TestRecalculcaTram(unittest.TestCase):
         self.assertTrue(r["beats_usats"])
         self.assertAlmostEqual(r["bpm"], 7 * 60.0 / 2.912646, places=4)
 
+    def test_14_beats_amb_base_4_4_son_dos_7_4(self):
+        r = tr.recalculca_tram(5.813688, 144.569633, 4, 4, n_beats=14)
+        self.assertEqual((r["n"], r["num"], r["den"]), (2, 7, 4))
+        self.assertAlmostEqual(r["bpm"], 14 * 60.0 / 5.813688, places=4)
+
+    def test_beats_corregixen_compas_base_7_4(self):
+        r = tr.recalculca_tram(3.365208, 144.569633, 7, 4, n_beats=8)
+        self.assertEqual((r["n"], r["num"], r["den"]), (2, 4, 4))
+        self.assertAlmostEqual(r["bpm"], 8 * 60.0 / 3.365208, places=4)
+
+    def test_22_beats_amb_base_4_4_son_onze_quarts(self):
+        r = tr.recalculca_tram(9.120, 144.569633, 4, 4, n_beats=22)
+        self.assertEqual((r["n"], r["num"], r["den"]), (2, 11, 4))
+
     def test_vuit_beats_son_dos_compassos_de_4_4(self):
         r = tr.recalculca_tram(3.365208, 144.569633, 4, 4, n_beats=8)
         self.assertEqual((r["n"], r["num"], r["den"]), (2, 4, 4))

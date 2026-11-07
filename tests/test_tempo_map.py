@@ -1961,6 +1961,26 @@ class TestTramsEnSegons(unittest.TestCase):
         # 9 negres = 3 compassos de 3/4 (més natural que un 9/4).
         self.assertEqual(out[1][3:], (3, 4))
 
+    def test_parteix_amb_ref_base_sobreescriu_el_pare(self):
+        trams = [(0.0, 10.0, 120.0, 11, 4)]
+        beats = [i * 0.5 for i in range(21)]
+        out = tm.parteix_tram_marcador(
+            trams, 7.0, 10.0, 0.0, beats_qm=beats, permissiu=True,
+            recalculca=True, ref_base=(120.0, 4, 4))
+        self.assertEqual(out[0][3:], (7, 4))
+        # 6 negres: 3/4 N=2 (el que importa és que no herete el 8/4 del pare).
+        self.assertEqual(out[1][3:], (3, 4))
+        self.assertAlmostEqual(out[0][2], 120.0, places=6)
+
+    def test_moure_frontera_amb_ref_base_sobreescriu_els_clips(self):
+        trams = [(0.0, 5.0, 120.0, 7, 2), (5.0, 10.0, 120.0, 8, 4)]
+        beats = [i * 0.5 for i in range(21)]
+        out = tm.mou_frontera_retempo(
+            trams, 1, 7.0, 10.0, 0.0, beats_qm=beats, permissiu=True,
+            ref_base=(120.0, 4, 4))
+        self.assertEqual(out[0][3:], (7, 4))
+        self.assertEqual(out[1][3:], (3, 4))
+
     def test_moure_frontera_permissiu_recalcula_compassos(self):
         trams = [(0.0, 8.0, 120.0, 4, 4), (8.0, 20.0, 120.0, 4, 4)]
         out = tm.mou_frontera_retempo(
