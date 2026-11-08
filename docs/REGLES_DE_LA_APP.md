@@ -196,6 +196,17 @@ permissiva), el gest es rebutja amb **avís** (mai un canvi silenciós).
   12/36 amb base 3/4 → 3/4 N=4/12; 6/12 amb base 6/8 → 6/8 N=2/4. Amb `n_fix`
   només val si `N` coincidix amb el fixat; la signatura base n'està exempta de
   `n_max` (clips llargs).
+- **K no factoritzable**: s'exclouen els compassos degenerats (`2/8`, `1/8`,
+  `1/4` amb `N>1`) i es prova `K−1`/`K+1`; es prefereix el que encaixa amb la
+  signatura base i, si no, el de BPM més pròxim. El resultat indica
+  `beats_ajustats` i `beats_detectats`.
+- **Avisos de BPM**: cada recalcul pot adjuntar una desviació de BPM >12 % i
+  una sospita d'octava (ratio ≈2 o ≈0,5, marge 8 %). Són avisos, no canvien la
+  decisió.
+- **N compassos manual**: al diàleg del clip, `N compassos` i el compàs `x/x`
+  poden ser l'entrada principal; el BPM es calcula (`N · bq · 60 / durada`) i
+  les fronteres **no es mouen**. És el mode A; el mode B (mantindre BPM i moure
+  la frontera del veí) queda pendent.
 - Un canvi **explícit** de BPM o compàs (diàleg o franja Editor) respecta el
   valor escrit per l'usuari; només s'ajusta si el resultat no és vàlid. Si el
   canvi de compàs deixa un **N no enter**, es **rebutja** i s'obri un diàleg de

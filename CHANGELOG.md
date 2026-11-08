@@ -697,9 +697,26 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - **Canvi manual de compàs amb N no enter**: es rebutja i s'obri un diàleg amb
   opcions per reparar-lo (ajustar el BPM a N enter o canviar a la signatura
   canònica del recalcul). Així una edició manual no deixa el clip fraccionari.
+- **Candidats degenerats i K±1**: s'exclouen `2/8`/`1/8`/`1/4` amb `N>1`; si
+  `K` no factoritza (13, 17, 19, 23…), es prova `K−1`/`K+1`, es prefereix el
+  múltiple de la referència i s'informa amb `beats_detectats`/`beats_ajustats`.
+- **Avisos de BPM i octava**: cada recalcul informa de desviacions >12 % i de
+  sospita d'octava (ratio ≈2 o ≈0,5); les GUI ho mostren amb `avis_editor` i
+  també s'aplica a «BPM dels marcadors».
 - Tests de regressió amb canvis de compàs a ±0,1 ms i ±10 ms, canvi de tempo a
   mig compàs, regla del múltiple, fusió de 40 beats i diàleg de reparació.
-- Suite: **1528 OK** (1 skip), `pyflakes` i `docs-check` nets.
+- Suite: **1534 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
+### Afegit — N compassos al diàleg de tempo (2026-11-08)
+- El diàleg d'un clip de tempo incorpora **N compassos**. Quan «N mana», N i
+  el compàs `x/x` són l'entrada i el BPM es recalcula automàticament
+  (`N · bq · 60 / durada`); les fronteres en segons no es mouen i els veïns no
+  es toquen. És el mode A; el mode B (mantindre BPM i moure la frontera del
+  veí) queda pendent.
+- Tests del diàleg i de `edita_n_compassos`; suite **1537 OK** (1 skip).
+- `edita_n_compassos` valida **localment** el clip editat (permisiu) i no es
+  bloqueja per altres clips del mapa que estiguen fora de graella; el
+  grid/metrònom robustos toleren la resta.
 
 ### Refactor — modularització completa (2026-11-06)
 - `app/main.py`: 4.858 → **1.511 línies**; extret a `*_ui` (`analisi_ui`,

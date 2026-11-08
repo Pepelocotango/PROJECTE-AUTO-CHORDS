@@ -63,6 +63,53 @@ class TestRecalculcaTram(unittest.TestCase):
         self.assertTrue(r["beats_usats"])
         self.assertAlmostEqual(r["bpm"], 7 * 60.0 / 2.912646, places=4)
 
+    def test_fallback_k_mes_menys_u(self):
+        casos = ((13, 4, 4, 12), (17, 4, 4, 16), (19, 4, 4, 20),
+                 (23, 4, 4, 24), (17, 3, 4, 18))
+        for k, num, den, k_usat in casos:
+            with self.subTest(k=k, ref=(num, den)):
+                r = tr.recalculca_tram(k * 0.5, 120.0, num, den, n_beats=k)
+                self.assertEqual((r["num"], r["den"]), (num, den))
+                self.assertEqual(r["beats"], k_usat)
+                self.assertEqual(r["beats_detectats"], k)
+                self.assertTrue(r["beats_ajustats"])
+                self.assertTrue(r["beats_usats"])
+
+    def test_fallback_k_no_accepta_2_8_degenerat(self):
+        r = tr.recalculca_tram(6.5, 120.0, 4, 4, n_beats=13)
+        self.assertNotEqual((r["num"], r["den"]), (2, 8))
+        self.assertEqual((r["num"], r["den"], r["n"]), (4, 4, 3))
+
+    def test_fallback_k_respecta_n_fix(self):
+        r = tr.recalculca_tram(6.0, 120.0, 4, 4, n_ref=4, n_beats=12)
+        self.assertFalse(r["beats_ajustats"])
+        self.assertEqual((r["n"], r["num"], r["den"], r["beats"]),
+                         (4, 3, 4, 12))
+        r = tr.recalculca_tram(6.0, 120.0, 4, 4, n_ref=3, n_beats=12)
+        self.assertFalse(r["beats_ajustats"])
+        self.assertEqual((r["n"], r["num"], r["den"], r["beats"]),
+                         (3, 4, 4, 12))
+
+    def test_avisos_de_bpm_i_octava(self):
+        r = tr.recalculca_tram(6.0, 120.0, 4, 4, n_beats=8)
+        self.assertAlmostEqual(r["desviacio_bpm"], -1.0 / 3.0, places=6)
+        self.assertFalse(r["sospita_octava"])
+        self.assertIn("BPM desviat", tr.avis_de_resultat(r))
+        r = tr.recalculca_tram(2.0, 120.0, 4, 4, n_beats=8)
+        self.assertTrue(r["sospita_octava"])
+        self.assertIn("sospita d'octava", tr.avis_de_resultat(r))
+        r = tr.recalculca_tram(8.0 / 3.0, 120.0, 4, 4, n_beats=8)
+        self.assertFalse(r["sospita_octava"])
+        self.assertIn("BPM desviat", tr.avis_de_resultat(r))
+
+    def test_avisos_i_beats_en_el_cami_per_durada(self):
+        r = tr.recalculca_tram(2.8, 120.0, 4, 4)
+        self.assertFalse(r["beats_usats"])
+        self.assertFalse(r["beats_ajustats"])
+        self.assertIsNone(r["beats_detectats"])
+        self.assertIn("desviacio_bpm", r)
+        self.assertIn("sospita_octava", r)
+
     def test_regla_del_multiple_4_4(self):
         for k, n in ((20, 5), (24, 6), (28, 7), (40, 10)):
             with self.subTest(k=k):

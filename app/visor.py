@@ -3500,14 +3500,17 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         Retorna el mapa nou o `None` si no es pot (amb avís). Si el punter
         demanava un instant impossible, s'aplica el més a prop i s'avisa.
         """
+        avisos = []
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, int(idx_frontera), float(t), durada, offset=offset,
                 beats_qm=getattr(self, "qm_beats", None), permissiu=True,
-                ref_base=self.ref_tempo_base())
+                ref_base=self.ref_tempo_base(), avisos=avisos)
         except ValueError as e:
             self.avis_editor(f"Frontera: {e}")
             return None
+        for avis in avisos:
+            self.avis_editor(f"Frontera: {avis}")
         real = float(nous[int(idx_frontera)][0])
         if abs(real - float(t)) > 1e-3:
             self.avis_editor(

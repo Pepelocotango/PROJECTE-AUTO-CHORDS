@@ -18,6 +18,10 @@ _COMUNS = {(4, 4), (3, 4), (2, 4), (6, 8), (12, 8)}
 _MENYS_COMUNS = {(5, 4), (7, 4), (11, 4), (7, 8), (9, 8), (5, 8),
                  (6, 4), (2, 2), (3, 8)}
 
+# Avisos (no canvien la decisió): desviació de BPM i sospita d'octava.
+LLINDAR_DESVIACIO_BPM = 0.12
+MARGE_SOSPITA_OCTAVA = 0.08
+
 
 def _bar_quarters(num, den):
     return float(num) * (4.0 / float(den))
@@ -63,7 +67,7 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                     n_beats=None, bpm_min=None, bpm_max=None,
                     n_ventana=3,
                     w_bpm=1.0, w_compas=1.5, w_n=3.0, w_natural=0.1,
-                    w_den=1.5, n_max=16):
+                    w_den=1.5, n_max=16, ajusta_beats=True):
     """Busca la millor combinació (BPM, compàs, N) per a un tram.
 
     `n_ref` fixat = el nombre de compassos és una restricció (marcadors).
@@ -78,6 +82,14 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
         bpm_ref, num_ref, den_ref)
     bpm_min = limits.BPM_MIN if bpm_min is None else float(bpm_min)
     bpm_max = limits.BPM_MAX if bpm_max is None else float(bpm_max)
+
+    def _amb_avisos(res):
+        ratio = float(res["bpm"]) / float(bpm_ref)
+        res["desviacio_bpm"] = ratio - 1.0
+        res["sospita_octava"] = (
+            abs(ratio - 2.0) <= 2.0 * MARGE_SOSPITA_OCTAVA
+            or abs(ratio - 0.5) <= 0.5 * MARGE_SOSPITA_OCTAVA)
+        return res
 
     bar_ref = _bar_quarters(num_ref, den_ref) * 60.0 / bpm_ref
     n_previst = max(1, int(round(durada / bar_ref)))
@@ -115,7 +127,7 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                     and (not n_fix or n_ref_mult == int(n_ref))):
                 bpm_ref_mult = 60.0 * n_ref_mult * bq_ref / durada
                 if bpm_min - 1e-9 <= bpm_ref_mult <= bpm_max + 1e-9:
-                    return {
+                    return _amb_avisos({
                         "bpm": float(bpm_ref_mult),
                         "num": int(num_ref),
                         "den": int(den_ref),
@@ -125,6 +137,8 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                         "bpm_ref": float(bpm_ref),
                         "compas_ref": (int(num_ref), int(den_ref)),
                         "beats": int(n_beats),
+                        "beats_detectats": int(n_beats),
+                        "beats_ajustats": False,
                         "beats_usats": True,
                         "beats_inferits": beats_inferits,
                         "canvis": {
@@ -132,7 +146,7 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                             "compas": False,
                             "n": (not n_fix) and n_ref_mult != n_previst,
                         },
-                    }
+                    })
         beats_candidats = []
         for den in limits.DENOMINADORS_ADMESOS:
             for num in range(limits.NUM_MIN, limits.NUM_MAX + 1):
@@ -143,9 +157,9 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                     continue
                 if abs(n * bq - float(n_beats)) > 0.25:
                     continue
-                # Evita solucions absurdes del tipus 29 compassos d'1/4 quan
-                # el nombre de beats no cap en un compàs natural.
-                if int(num) == 1 and int(n) > 1:
+                # Evita solucions degenerades: un compàs de 1/4, 1/8 o 2/8
+                # repetit moltes vegades (p. ex. 2/8 N=13 per a K=13).
+                if bq <= 1.0 + 1e-9 and int(n) > 1:
                     continue
                 if n_fix and n != int(n_ref):
                     continue
@@ -190,7 +204,7 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
             # 2/2 per a 8 beats, o 3/4 vs 6/8 per a 9).
             cost, _db, _dc, bpm, num, den, n = min(
                 tria, key=lambda c: (c[6], c[0], c[1], c[2]))
-            return {
+            return _amb_avisos({
                 "bpm": float(bpm),
                 "num": int(num),
                 "den": int(den),
@@ -200,6 +214,8 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                 "bpm_ref": float(bpm_ref),
                 "compas_ref": (int(num_ref), int(den_ref)),
                 "beats": int(n_beats),
+                "beats_detectats": int(n_beats),
+                "beats_ajustats": False,
                 "beats_usats": True,
                 "beats_inferits": beats_inferits,
                 "canvis": {
@@ -207,7 +223,38 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                     "compas": (num, den) != (num_ref, den_ref),
                     "n": (not n_fix) and n != n_previst,
                 },
-            }
+            })
+        # Fallback K±1: si K no es pot factoritzar en cap compàs, provem un
+        # beat amunt/avall. Prioritat al K' que encaixa amb la signatura de la
+        # referència; si no, al BPM més pròxim. No s'aplica amb n_fix.
+        if ajusta_beats and not n_fix and int(n_beats) > 0:
+            candidats = []
+            for k2 in (int(n_beats) - 1, int(n_beats) + 1):
+                if k2 < 1:
+                    continue
+                r2 = recalculca_tram(
+                    durada, bpm_ref, num_ref, den_ref, n_ref=None,
+                    n_beats=k2, bpm_min=bpm_min, bpm_max=bpm_max,
+                    ajusta_beats=False)
+                if r2 is not None and r2.get("beats_usats"):
+                    candidats.append((k2, r2))
+            if candidats:
+                def _mult_ref(k2):
+                    if bq_ref <= 1.0 + 1e-9:
+                        return False
+                    n2 = int(round(float(k2) / bq_ref))
+                    return (n2 >= 1
+                            and abs(n2 * bq_ref - float(k2)) <= 0.25)
+                refs = [c for c in candidats if _mult_ref(c[0])]
+                pool = refs or candidats
+                k2, r = min(
+                    pool,
+                    key=lambda c: abs(math.log(c[1]["bpm"] / bpm_ref)))
+                r["beats"] = int(k2)
+                r["beats_detectats"] = int(n_beats)
+                r["beats_ajustats"] = True
+                r["beats_inferits"] = beats_inferits
+                return _amb_avisos(r)
     if n_fix:
         n_valors = [int(n_ref)]
         n_cost_ref = int(n_ref)
@@ -237,7 +284,7 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
     if millor is None:
         return None
     cost, _dn, _db, _dc, bpm, num, den, n = millor
-    return {
+    return _amb_avisos({
         "bpm": float(bpm),
         "num": int(num),
         "den": int(den),
@@ -247,6 +294,8 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
         "bpm_ref": float(bpm_ref),
         "compas_ref": (int(num_ref), int(den_ref)),
         "beats": None if n_beats is None else int(n_beats),
+        "beats_detectats": None if n_beats is None else int(n_beats),
+        "beats_ajustats": False,
         "beats_usats": False,
         "beats_inferits": False,
         "canvis": {
@@ -254,4 +303,25 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
             "compas": (num, den) != (num_ref, den_ref),
             "n": (not n_fix) and n != n_previst,
         },
-    }
+    })
+
+
+def avis_de_resultat(resultat):
+    """Text combinat d'avisos d'un resultat de `recalculca_tram`.
+
+    No decidix res: només descriu beats ajustats, desviació de BPM i sospita
+    d'octava. Retorna "" si no hi ha cap avís.
+    """
+    if not resultat:
+        return ""
+    parts = []
+    if resultat.get("beats_ajustats"):
+        parts.append(
+            f"beats ajustats {resultat.get('beats_detectats')}→"
+            f"{resultat.get('beats')}")
+    desviacio = float(resultat.get("desviacio_bpm") or 0.0)
+    if abs(desviacio) > LLINDAR_DESVIACIO_BPM:
+        parts.append(f"BPM desviat {desviacio * 100.0:+.1f}%")
+    if resultat.get("sospita_octava"):
+        parts.append("sospita d'octava")
+    return "; ".join(parts)

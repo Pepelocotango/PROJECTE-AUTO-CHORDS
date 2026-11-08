@@ -89,8 +89,11 @@ compàs `x/x`, desada a `tempo.ref`) i **marcadors com a `N` fix**. Els beats
 detectats poden corregir el compàs/X-X i `N` de la base (14 → `7/4` N=2; 8 →
 `4/4` N=2). També: **regla del múltiple**, **recalcul automàtic en
 fusionar/eliminar**, **rebuig + diàleg de reparació** per a un compàs que deixa
-N no enter, i **graella/metrònom robustos** a edicions a pocs ms. Suite
-**1528 OK** (1 skip), `pyflakes` i `docs-check` nets.
+N no enter, i **graella/metrònom robustos** a edicions a pocs ms. També s'ha
+afegit el camp **N compassos** al diàleg de tempo (mode A: N + compàs → BPM
+automàtic, fronteres fixes), amb validació local perquè un clip aliè fora de
+graella no bloquege l'edició. Suite **1537 OK** (1 skip), `pyflakes` i
+`docs-check` nets.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
@@ -99,6 +102,8 @@ N no enter, i **graella/metrònom robustos** a edicions a pocs ms. Suite
 - **Rubato avançat** i **MIDI/export de projecte DAW**: ajornats sense data.
 - **`ARBRE_DIRECTORIS.md`**: encara snapshot manual; pendent generador + test.
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
+- **Mode B del camp N compassos**: mantindre el BPM i moure la frontera del
+  veí, recalculant-ne el BPM perquè els seus compassos continuen sencers.
 
 ### Pendent de discutir/aprovar — recalcul de tempo (2026-11-08)
 
@@ -127,20 +132,20 @@ desviació de BPM gran (p. ex. 8 beats en 6 s amb ref 120 → 80 BPM) no avisa.
    mantenen `n_max`. No tocar `_COMUNS`/`_MENYS_COMUNS` (11/4 es queda com
    està). Tests: els casos de dalt, `n_fix`, `n_max`, i que continuen igual
    14→7/4 N=2, 8→4/4 N=2, 22→11/4 N=2, 6→3/4 N=2, 9→3/4 N=3, 12→4/4 N=3.
-2. **Candidats degenerats.** Excloure `bq ≤ 1` amb `N > 1` (2/8, 1/8, 1/4
-   amb N>1); mantindre `1/4 N=1` i `1/8 N=1`.
-3. **Fallback K±1.** Només amb beats, sense `n_fix` i sense cap candidat:
-   provar `K−1` i `K+1` (`K' ≥ 1`; K=0 com ara), aplicar la regla del múltiple
-   i els nivells, i prioritzar el `K'` que encaixa amb la referència; si no,
-   el de menor `|ln(bpm'/bpm_ref)|`. Si tampoc, camí per durada **marcat**.
-   Claus sempre presents a tots els retorns: `beats` = K usat (significat
-   actual), `beats_detectats` = K original, `beats_ajustats` = bool.
-4. **Avisos, no decisions.** Afegir a tots els retorns `desviacio_bpm`
-   (`bpm/bpm_ref − 1`) i `sospita_octava` (ratio ≈2 o ≈0,5, marge 8 %);
-   constants: llindar de desviació 0,12 i marge d'octava 0,08. A
+2. **Candidats degenerats — FET (2026-11-08).** Excloure `bq ≤ 1` amb `N > 1`
+   (2/8, 1/8, 1/4 amb N>1); mantindre `1/4 N=1` i `1/8 N=1`.
+3. **Fallback K±1 — FET (2026-11-08).** Només amb beats, sense `n_fix` i sense
+   cap candidat: provar `K−1` i `K+1` (`K' ≥ 1`; K=0 com ara), aplicar la regla
+   del múltiple i els nivells, i prioritzar el `K'` que encaixa amb la
+   referència; si no, el de menor `|ln(bpm'/bpm_ref)|`. Si tampoc, camí per
+   durada **marcat**. Claus sempre presents a tots els retorns: `beats` = K
+   usat, `beats_detectats` = K original, `beats_ajustats` = bool.
+4. **Avisos, no decisions — FET (2026-11-08).** Afegir a tots els retorns
+   `desviacio_bpm` (`bpm/bpm_ref − 1`) i `sospita_octava` (ratio ≈2 o ≈0,5,
+   marge 8 %); constants: llindar de desviació 0,12 i marge d'octava 0,08. A
    `_recalcula_costats` i a `aplica_bpm_marcadors`, un avís combinat per clip
    (beats ajustats + desviació + octava), sense avisar pre-roll/rubato; les
-   GUI el mostren amb `avis_editor` (no només al log). Cal propagar la llista
+   GUI el mostren amb `avis_editor` (no només al log). Propagada la llista
    opcional `avisos` per `parteix_tram_marcador` i `mou_frontera_retempo`.
 5. **Ajornat (no implementar encara):**
    - Recompte robust de beats per a talls sense snap: una sola tolerància
@@ -184,13 +189,13 @@ canònica.
 
 **Dubtes oberts a decidir abans de codi:** una base per cançó vs per secció;
 11/4 com a natural (ara és `_MENYS_COMUNS`); referència x/8 i unitat del beat;
-`n_max` per a clips llargs; semàntica de les claus `beats`; propagació
-d'`avisos`; tolerància 0,25 beat vs ~50 ms al recompte robust; abast de la
-fase 4; si els canvis **només de BPM** també han de passar pel diàleg de
-reparació (ara només es valida el compàs).
+`n_max` per als candidats que no són la signatura base; tolerància 0,25 beat
+vs ~50 ms al recompte robust (fase 2c); abast de la fase 4; si els canvis
+**només de BPM** també han de passar pel diàleg de reparació (ara només es
+valida el compàs).
 
-**No implementat en este punt:** fases 2a, 2b, 3, 2c i 4, i la conversió
-d'unitat del beat 6/8. Les fases 1, fusió/eliminació i diàleg de reparació sí
+**No implementat en este punt:** fases 2c i 4, i la conversió d'unitat del
+beat 6/8. Les fases 1, 2a, 2b, 3, fusió/eliminació i diàleg de reparació sí
 que estan implementades (2026-11-08).
 
 Commit de referència: `31d23df` (refactor modular).

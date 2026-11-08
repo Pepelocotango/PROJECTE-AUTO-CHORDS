@@ -1396,7 +1396,7 @@ def _millora_signatures_clips(trams, durada, offset=0.0, beats_qm=None,
 
 def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
                           beats_qm=None, permissiu=False, recalculca=False,
-                          ref_base=None):
+                          ref_base=None, avisos=None):
     """Parteix el mapa a `t` conservant el BPM i el compàs del clip.
 
     Contracte nou (§13.4): ja no cal que les dos parts tinguen compassos enters
@@ -1425,7 +1425,7 @@ def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
             if recalculca:
                 out = _recalcula_costats(out, [(i, s), (i + 1, s)],
                                          durada, offset, beats_qm=beats_qm,
-                                         ref_base=ref_base)
+                                         ref_base=ref_base, avisos=avisos)
             return valida_i_normalitza_permissiu(out, durada, offset)
         out = _millora_signatures_clips(out, durada, offset, beats_qm,
                                         {i, i + 1})
@@ -1542,7 +1542,8 @@ def ajusta_trams_a_marcadors(trams, marcadors, durada, offset=None,
 
 
 def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
-                         beats_qm=None, permissiu=False, ref_base=None):
+                         beats_qm=None, permissiu=False, ref_base=None,
+                         avisos=None):
     """Mou una frontera interior.
 
     Dos camins:
@@ -1587,7 +1588,7 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
     if permissiu:
         out = _recalcula_costats(out, [(i - 1, a), (i, b)],
                                  durada, offset, beats_qm=beats_qm,
-                                 ref_base=ref_base)
+                                 ref_base=ref_base, avisos=avisos)
         return valida_i_normalitza_permissiu(out, durada, offset)
     out = _millora_signatures_clips(out, durada, offset, beats_qm,
                                     {i - 1, i})
@@ -1596,7 +1597,7 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
 
 
 def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
-                       ref_base=None):
+                       ref_base=None, avisos=None):
     """Recalcula BPM/compàs dels costats amb una referència.
 
     `refs`: `[(idx, tram_referencia), …]`. Si `ref_base=(bpm, num, den)` no és
@@ -1631,6 +1632,11 @@ def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
                 fi - ini, ref[2], ref[3], ref[4], n_beats=n_beats)
         if r is None:
             continue
+        if avisos is not None:
+            text = tempo_recalc.avis_de_resultat(r)
+            if text:
+                avisos.append(
+                    f"Clip {int(idx) + 1} ({float(ini):.3f}s): {text}")
         out[idx] = (ini, fi, float(r["bpm"]), int(r["num"]), int(r["den"]))
     return out
 
@@ -1695,7 +1701,8 @@ def mou_frontera_preroll(trams, idx_frontera, nou_offset, durada, offset=0.0):
 
 
 def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
-                          offset=0.0, factor=None):
+                          offset=0.0, factor=None, n_new=None,
+                          num=None, den=None, permissiu=False):
     """Reinterpreta el tram `idx` amb més/menys compassos, **sense moure'l**.
 
     Els segons (`ini`, `fi`) queden intactes, els veïns no es toquen i el BPM
@@ -1704,6 +1711,8 @@ def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
 
     - `delta_compassos`: suma algebraica (+1, −1…).
     - `factor`: multiplica N (2 = ×2, 0.5 = ÷2), arredonit a l'enter més pròxim.
+    - `n_new`: fixa directament el nombre de compassos (camp «N compassos»).
+    - `num`/`den`: compàs nou opcional; si no, es conserva el del clip.
 
     Retorna el mapa normalitzat i validat; `ValueError` si N baixa d'1 o el BPM
     ix de la banda raonable.
@@ -1716,26 +1725,35 @@ def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
     if _es_lliure_tram(nous[i]):
         raise ValueError(
             "Aquest clip va en segons: no té compassos per a canviar")
-    ini, fi, _bpm, num, den = nous[i]
-    bq = _bar_quarters(num, den)
+    ini, fi, _bpm, num0, den0 = nous[i]
     dt = float(fi) - _base_tram(nous[i], i, offset)
     if dt <= TOL:
         raise ValueError("El tram no té durada")
     n_act = _enter_mes_proper(max(1.0, _compassos_del_tram(nous[i], i, offset)))
-    if factor is not None:
+    if n_new is not None:
+        n_final = int(n_new)
+    elif factor is not None:
         f = float(factor)
         if f <= 0:
             raise ValueError("El factor de compassos ha de ser positiu")
-        n_new = _enter_mes_proper(n_act * f)
+        n_final = _enter_mes_proper(n_act * f)
     else:
-        n_new = n_act + int(delta_compassos)
-    if n_new < 1:
+        n_final = n_act + int(delta_compassos)
+    if n_final < 1:
         raise ValueError("El tram ha de tindre com a mínim un compàs")
-    if n_new == n_act:
+    num_final = int(num) if num is not None else int(num0)
+    den_final = int(den) if den is not None else int(den0)
+    bq = _bar_quarters(num_final, den_final)
+    if n_final == n_act and (num_final, den_final) == (int(num0), int(den0)):
         return nous
-    bpm_new = _valida_bpm_edicio(n_new * bq * 60.0 / dt, "triat")
+    bpm_new = _valida_bpm_edicio(n_final * bq * 60.0 / dt, "triat")
+    bpm_new, num_final, den_final = valida_tempo(
+        bpm_new, num_final, den_final)
     out = list(nous)
-    out[i] = (float(ini), float(fi), bpm_new, int(num), int(den))
+    out[i] = (float(ini), float(fi), float(bpm_new),
+              int(num_final), int(den_final))
+    if permissiu:
+        return valida_i_normalitza_permissiu(out, durada, offset)
     return valida_i_normalitza_compassos(out, durada, offset, preserva_fi_idx=i)
 
 

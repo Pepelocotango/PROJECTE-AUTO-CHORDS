@@ -1965,6 +1965,20 @@ class TestDialegTramTempo(_dialegs___Base):
         self.assertAlmostEqual(d.sp_bpm.value(), 55.0, places=3)
         self.assertEqual(d.valors(), (82.5, 12, 8))
 
+    def test_n_mana_recalcula_el_bpm(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4,
+            n_actual=8, durada=16.582354)
+        self.assertTrue(d.n_auto())
+        bpm, num, den, n = d.valors_n()
+        self.assertEqual((num, den, n), (4, 4, 8))
+        self.assertAlmostEqual(bpm, 8 * 4 * 60.0 / 16.582354, places=3)
+        d.sp_n.setValue(10)
+        d.ed_compas.setText("3/4")
+        bpm, num, den, n = d.valors_n()
+        self.assertEqual((num, den, n), (3, 4, 10))
+        self.assertAlmostEqual(bpm, 10 * 3 * 60.0 / 16.582354, places=3)
+
     def test_clip_en_segons_es_rebutja_a_31(self):
         """«En segons» no crea rubato des del diàleg de tram (fase 3.2)."""
         d = dialegs.DialegTramTempo(None, inici=4.0, bpm=100.0, num=4, den=4)
@@ -5594,6 +5608,35 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.w._activa_projecte(
             projecte.Projecte.obre(self.w.projecte.ruta_acproj))
         self.assertEqual(self.w.visor_ref.ref_tempo_base(), (144.5, 7, 4))
+
+    def test_edita_n_compassos_mante_les_fronteres(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        self.assertTrue(vr.edita_n_compassos(1, 12, 3, 4))
+        self.assertEqual(vr.tempo_trams[0], trams[0])
+        self.assertEqual(vr.tempo_trams[2], trams[2])
+        self.assertEqual(vr.tempo_trams[1][:2], trams[1][:2])
+        self.assertEqual(vr.tempo_trams[1][3:], (3, 4))
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 108.0, places=6)
+        self.assertAlmostEqual(
+            tm._compassos_del_tram(vr.tempo_trams[1], 1, vr.offset),
+            12.0, places=6)
+
+    def test_edita_n_compassos_no_es_bloqueja_per_altres_clips(self):
+        vr = self.w.visor_ref
+        # El tercer clip és deliberadament fora de graella; editar l'N del
+        # segon no s'ha de bloquejar per un clip aliè.
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 40.0, 130.0, 7, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        self.assertTrue(vr.edita_n_compassos(1, 12, 3, 4))
+        self.assertEqual(vr.tempo_trams[1][3:], (3, 4))
+        self.assertAlmostEqual(float(vr.tempo_trams[1][2]), 108.0, places=6)
+        self.assertEqual(vr.tempo_trams[2][3:], (7, 4))
 
     def test_eliminar_frontera_recalcula_el_clip_fusionat(self):
         vr = self.w.visor_ref

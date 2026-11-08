@@ -145,12 +145,13 @@ class MarcadorsMixin:
             bpm_ref = float(self.tempo_map.bpm(t))
         except (AttributeError, TypeError, ValueError):
             bpm_ref = float(self.bpm)
+        avisos = []
         try:
             trams = tempo_map.parteix_tram_marcador(
                 trams, t, durada, offset=getattr(self, "offset", 0.0),
                 bpm_ref=bpm_ref, beats_qm=getattr(self, "qm_beats", None),
                 permissiu=True, recalculca=True,
-                ref_base=self.ref_tempo_base())
+                ref_base=self.ref_tempo_base(), avisos=avisos)
         except ValueError as e:
             self.avis_editor(f"Marcador: {e}")
             return False
@@ -181,6 +182,8 @@ class MarcadorsMixin:
             # reenganxem els rubatos abans d'aplicar el mapa.
             trams = self._preserva_rubato(self.tempo_trams or [], trams)
             self.aplica_tempo_trams(trams, forcat=True)
+            for avis in avisos:
+                self.avis_editor(f"Marcador: {avis}")
         if seccions != list(self.seccions or []):
             self.seccions = self._normalitza_seccions(seccions)
         self._undo_commit()
@@ -246,6 +249,7 @@ class MarcadorsMixin:
         beats = sorted(float(b) for b in
                        (getattr(self, "qm_beats", None) or ()))
         ref_bpm, ref_num, ref_den = self.ref_tempo_base()
+        avisos = []
 
         def _tram(dt, k, bpm_i, nb=None):
             # Si hi ha beats detectats, manen sobre el nombre de compassos
@@ -256,6 +260,9 @@ class MarcadorsMixin:
                 n_ref=None if nb else int(k), n_beats=nb)
             if r is None:
                 return (float(bpm_i), int(num), int(den))
+            texto = tempo_recalc.avis_de_resultat(r)
+            if texto:
+                avisos.append(f"Interval {int(k)} ({float(dt):.3f}s): {texto}")
             return (float(r["bpm"]), int(r["num"]), int(r["den"]))
 
         bpm0, num0, den0 = _tram(float(inter[0][0]), int(inter[0][1]),
@@ -286,6 +293,8 @@ class MarcadorsMixin:
                 return False
         finally:
             self._undo_commit()
+        for avis in avisos:
+            self.avis_editor(f"BPM dels marcadors: {avis}")
         self.bpm = bpm_ref
         self.bpb = num
         self.beat_type = den

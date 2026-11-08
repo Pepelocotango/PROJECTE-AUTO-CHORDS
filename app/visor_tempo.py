@@ -150,6 +150,48 @@ class TempoMixin:
         self._actualitza_temps()
         return True
 
+    def edita_n_compassos(self, idx, n, num, den, desa=True):
+        """Edita **N compassos** i compàs; el BPM es recalcula automàticament.
+
+        Les fronteres en segons **no es mouen** i els veïns no es toquen. És el
+        mode A del camp «N compassos»: N i compàs manen, BPM = N·bq·60/durada.
+        """
+        trams = list(self.tempo_trams or [])
+        if not trams:
+            return False
+        idx = min(max(0, int(idx)), len(trams) - 1)
+        if getattr(trams[idx], "tipus", None) == "rubato":
+            self.avis_editor(
+                "Un rubato no té compassos per a editar directament.")
+            return False
+        try:
+            nous5 = tempo_map.canvia_compassos_tram(
+                [tuple(t) for t in trams], idx, n_new=int(n),
+                num=int(num), den=int(den),
+                durada=self._durada_wav(),
+                offset=getattr(self, "offset", 0.0))
+        except ValueError as e:
+            self.avis_editor(f"Compassos: {e}")
+            return False
+        if not nous5:
+            return False
+        nous = self._preserva_rubato(trams, nous5)
+        if getattr(nous[0], "tipus", None) != "rubato":
+            self.bpm = float(nous[0][2])
+            self.bpb = int(nous[0][3])
+            self.beat_type = int(nous[0][4])
+        if desa:
+            ok = bool(self.aplica_tempo_trams(nous))
+        else:
+            self.tempo_trams = nous
+            self._actualitza_temps()
+            ok = True
+        if ok:
+            self.log(f"compassos tram {idx}: {trams[idx][2]:g} → "
+                     f"{self.tempo_trams[idx][2]:.2f} BPM "
+                     f"({int(n)} compassos de {int(num)}/{int(den)})")
+        return ok
+
     def _repara_compas_no_enter(self, idx, bpm, num, den, n_compas,
                                 trams, desa=True):
         """Diàleg per reparar un canvi de compàs que deixa N no enter.
@@ -358,14 +400,28 @@ class TempoMixin:
             lbl = self.tempo_map.label(s[0]).split(".")[0]
         except Exception:  # noqa: BLE001
             lbl = None
+        try:
+            base = tempo_map._base_tram(
+                s, idx, getattr(self, "offset", 0.0))
+            durada = float(s[1]) - float(base)
+            n_actual = tempo_map._compassos_del_tram(
+                s, idx, getattr(self, "offset", 0.0))
+        except (TypeError, ValueError):
+            durada = 0.0
+            n_actual = None
         dlg = dialegs.DialegTramTempo(
             self, inici=s[0], bpm=s[2], num=s[3], den=s[4],
-            inicial=(idx == 0), text_inici=lbl, unit=self.bpm_unit)
+            inicial=(idx == 0), text_inici=lbl, unit=self.bpm_unit,
+            n_actual=n_actual, durada=durada)
         if dlg.exec_() != QDialog.Accepted:
             return
-        bpm, num, den = dlg.valors()
         self._undo_marca()
-        self.edita_tempo_objectiu(idx, bpm, num, den)
+        if dlg.n_auto():
+            bpm, num, den, n = dlg.valors_n()
+            self.edita_n_compassos(idx, n, num, den)
+        else:
+            bpm, num, den = dlg.valors()
+            self.edita_tempo_objectiu(idx, bpm, num, den)
         self._undo_commit()
 
     def _on_tempo_mogut(self, idx, vora, t):
@@ -413,11 +469,12 @@ class TempoMixin:
                 self._mou_marcador(vell, float(self.tempo_trams[p_idx][0]))
             self._undo_commit()
             return
+        avisos = []
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, p_idx, float(t), self._durada_wav(), offset=offset,
                 beats_qm=getattr(self, "qm_beats", None), permissiu=True,
-                ref_base=self.ref_tempo_base())
+                ref_base=self.ref_tempo_base(), avisos=avisos)
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return
@@ -425,6 +482,8 @@ class TempoMixin:
         if self.aplica_tempo_trams(nous):
             self._mou_marcador(vell, float(self.tempo_trams[p_idx][0]))
         self._undo_commit()
+        for avis in avisos:
+            self.avis_editor(f"Frontera: {avis}")
 
     def canvia_compassos_tram(self, idx, delta_compassos=0, factor=None):
         """Correcció **mètrica** discreta d'un tram de tempo (§4.C del flux).

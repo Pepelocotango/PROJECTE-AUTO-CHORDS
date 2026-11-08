@@ -2011,6 +2011,16 @@ class TestTramsEnSegons(unittest.TestCase):
         self.assertEqual(out[1][3:], (3, 4))
         self.assertAlmostEqual(out[0][2], 120.0, places=6)
 
+    def test_avisos_del_recalcul_arriben_a_la_llista(self):
+        trams = [(0.0, 5.0, 120.0, 4, 4), (5.0, 10.0, 120.0, 4, 4)]
+        beats = [i * 0.75 for i in range(9)]   # 8 beats en 0-6 s → 80 BPM
+        avisos = []
+        out = tm.mou_frontera_retempo(
+            trams, 1, 6.0, 10.0, 0.0, beats_qm=beats, permissiu=True,
+            ref_base=(120.0, 4, 4), avisos=avisos)
+        self.assertEqual(out[0][3:], (4, 4))
+        self.assertTrue(any("BPM desviat" in a for a in avisos), avisos)
+
     def test_moure_frontera_amb_ref_base_sobreescriu_els_clips(self):
         trams = [(0.0, 5.0, 120.0, 7, 2), (5.0, 10.0, 120.0, 8, 4)]
         beats = [i * 0.5 for i in range(21)]
