@@ -122,6 +122,8 @@ class MenusMixin:
                   lambda: self.executa())
         self._act(m, "Analitza només els acords…", "F6",
                   lambda: self.executa(nomes_acords=True))
+        self._act(m, "Analitza acords al rang A–B…", "",
+                  self._analitza_acords_rang)
         self._act(m, "Analitza BPM…", "F7", self._analitza_bpm)
         self._act(m, "Ajusta la graella als beats QM…", "",
                   self._ajusta_graella_beats)

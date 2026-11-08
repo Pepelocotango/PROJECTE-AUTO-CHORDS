@@ -70,6 +70,31 @@ def wav_info(path):
         }
 
 
+def retalla_wav(origen, desti, inici, fi):
+    """Copia el tram PCM16 `[inici, fi)` d'un WAV a `desti`.
+
+    No re-mostreja ni converteix: conserva canals, mostreig i amplada. Els
+    límits s'arredoneixen a fotograma i es retallen a la durada real.
+    """
+    with wave.open(origen, "rb") as w:
+        sw, ch, sr, n = (w.getsampwidth(), w.getnchannels(),
+                         w.getframerate(), w.getnframes())
+        if sw != 2:
+            raise ValueError("només wav PCM 16 bits")
+        f0 = max(0, int(round(float(inici) * sr)))
+        f1 = min(n, int(round(float(fi) * sr)))
+        if f1 <= f0:
+            raise ValueError("el tram és buit")
+        w.setpos(f0)
+        dades = w.readframes(f1 - f0)
+    with wave.open(desti, "wb") as o:
+        o.setnchannels(ch)
+        o.setsampwidth(sw)
+        o.setframerate(sr)
+        o.writeframes(dades)
+    return desti
+
+
 # --- Host Vamp propi (vamp_host_local) ------------------------------------
 # L'ÚNIC motor d'anàlisi: no arrossega Qt6/ICU/glib, només libc/libstdc++/
 # sndfile. Vegeu eines/vamp_host.cpp.

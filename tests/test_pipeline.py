@@ -4538,6 +4538,110 @@ class PostprocTests(unittest.TestCase):
         f = Feina("tema.wav", "/tmp", 120.0, 4, 0.0, False, mapa=mapa)
         self.assertIs(f.mapa, mapa)
 
+    def test_snap_a_graella_rang_sense_capcalera(self):
+        r = postproc._snap_a_graella(
+            [(5.1, "C")], 12.0, "corxera", 120, 4, 0.0, None, None,
+            inici=5.0, fi=7.0, capcalera=False)
+        self.assertEqual([nom for _t, nom in r], ["C"])
+        self.assertEqual(r[0][0], 5.0)
+        # Un onset just després d'«a» no pot retrocedir fora del rang.
+        r = postproc._snap_a_graella(
+            [(5.1, "C")], 12.0, "negra", 60, 4, 0.0, None, None,
+            inici=5.1, fi=7.0, capcalera=False)
+        self.assertEqual(r[0][0], 5.1)
+
+    def test_fusiona_acords_rang_conserva_fora(self):
+        ex = [pipeline.Clip(0, 4, ("A",)),
+              pipeline.Clip(4, 8, ("B",)),
+              pipeline.Clip(8, 12, ("C",))]
+        r = postproc.fusiona_acords_rang(
+            ex, [(4.1, "D"), (6.0, "E")], 4.0, 8.0, 12.0)
+        self.assertEqual([c.nom for c in r], ["A", "B", "D", "E", "C"])
+        self.assertEqual([(round(c.ini, 2), round(c.fi, 2)) for c in r],
+                         [(0.0, 4.0), (4.0, 4.1), (4.1, 6.0),
+                          (6.0, 8.0), (8.0, 12.0)])
+
+    def test_fusiona_acords_rang_conserva_frontera_amb_mateix_nom(self):
+        ex = [pipeline.Clip(0, 4, ("A",)),
+              pipeline.Clip(4, 8, ("B",)),
+              pipeline.Clip(8, 12, ("C",))]
+        r = postproc.fusiona_acords_rang(
+            ex, [(4.1, "B"), (6.0, "E")], 4.0, 8.0, 12.0)
+        self.assertEqual([c.nom for c in r], ["A", "B", "E", "C"])
+        self.assertEqual((r[1].ini, r[1].fi), (4.0, 6.0))
+        self.assertEqual((r[-1].ini, r[-1].fi), (8.0, 12.0))
+
+    def test_fusiona_acords_rang_a_zero_conserva_el_primer(self):
+        ex = [pipeline.Clip(0, 4, ("A",)),
+              pipeline.Clip(4, 8, ("B",))]
+        r = postproc.fusiona_acords_rang(
+            ex, [(1.0, "A"), (2.0, "C")], 0.0, 4.0, 8.0)
+        self.assertEqual([c.nom for c in r], ["A", "C", "B"])
+        self.assertEqual((r[0].ini, r[0].fi), (0.0, 2.0))
+
+    def test_fusiona_acords_rang_sense_deteccio_no_canvia_res(self):
+        ex = [pipeline.Clip(0, 4, ("A",)),
+              pipeline.Clip(4, 8, ("B",))]
+        r = postproc.fusiona_acords_rang(ex, [], 4.0, 8.0, 8.0)
+        self.assertEqual([c.nom for c in r], ["A", "B"])
+        self.assertEqual([(c.ini, c.fi) for c in r], [(0, 4), (4, 8)])
+
+    def test_feina_rang_fusiona_el_model(self):
+        import tempfile
+        from app.feines import Feina
+        with tempfile.TemporaryDirectory() as d:
+            wav = os.path.join(d, "tema.wav")
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(8000)
+                w.writeframes(b"\x00\x00" * 96000)
+            csv_ac = os.path.join(d, "acords.csv")
+            pipeline.desa_acords_csv(
+                csv_ac,
+                [pipeline.Clip(0, 4, ("A",)),
+                 pipeline.Clip(4, 8, ("B",)),
+                 pipeline.Clip(8, 12, ("C",))], 12.0)
+
+            def _retalla(_src, dest, _a, _b):
+                with open(dest, "wb"):
+                    pass
+                return dest
+
+            def _extreu(_wav, dest, _log, params=None):
+                with open(dest, "w", encoding="utf-8") as f:
+                    f.write("2.1,D\n4.0,E\n")
+
+            f = Feina(wav, d, 120.0, 4, 0.0, False,
+                      opcions={"clean": {"snap": False,
+                                         "fusiona_iguals": True}},
+                      mapa=None, rang=(4.0, 8.0),
+                      acords=[pipeline.Clip(0, 4, ("A",)),
+                              pipeline.Clip(4, 8, ("B",)),
+                              pipeline.Clip(8, 12, ("C",))])
+            with patch.object(pipeline, "retalla_wav", _retalla), \
+                    patch.object(pipeline, "extract_chords", _extreu):
+                f._analitza_acords_rang(csv_ac, 12.0)
+            with open(csv_ac, encoding="utf-8") as fh:
+                noms = [r[2] for r in csv.reader(fh)]
+            self.assertEqual(noms, ["A", "B", "D", "E", "C"])
+
+    def test_retalla_wav_pcm16(self):
+        import tempfile
+        import wave
+        with tempfile.TemporaryDirectory() as d:
+            src = os.path.join(d, "a.wav")
+            dst = os.path.join(d, "b.wav")
+            with wave.open(src, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(8000)
+                w.writeframes(b"\x00\x00" * 8000)
+            pipeline.retalla_wav(src, dst, 0.25, 0.75)
+            info = pipeline.wav_info(dst)
+            self.assertAlmostEqual(info["durada"], 0.5, places=3)
+            self.assertEqual(info["mostreig"], 8000)
+
     def test_snap_a_graella_corxera_amb_mapa(self):
         from app.tempo_map import TempoMap
         mapa = TempoMap.constant(120, 4, 4, durada=8.0)

@@ -739,6 +739,16 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   `negra`.
 - Suite: **1542 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
+### Afegit — anàlisi d'acords al rang A–B (2026-11-08)
+- Nova acció **Analitza ▸ Analitza acords al rang A–B…**: amb un loop A–B
+  marcat, analitza només eixe tram (retall PCM amb 2 s de pre-roll i 1 s de
+  post-roll), aplica la neteja i la graella de «Quantitza» i **fusiona només
+  els acords del rang**. No toca BPM, estructura ni els acords de fora.
+- Actualització en viu del visor amb **una sola operació de desfer** (no
+  recarrega el projecte ni buida l'historial).
+- Mínim 0,5 s de rang; el model resultant continua cobrint 0 → durada.
+- Suite: **1551 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
 ### Canviat — encaix de l'anàlisi unificat amb Quantitza (2026-11-08)
 - «Encaixar a graella» de l'anàlisi d'acords usa el **mateix nucli**
   (`graella.quantitza_boundaries`) i les **mateixes graelles** que «Quantitza el

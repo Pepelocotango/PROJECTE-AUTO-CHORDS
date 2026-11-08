@@ -98,7 +98,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… · Retard global de reproducció… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza BPM… (F7)** · **Ajusta la graella als beats QM…** · **Compàs del marcador…** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · **Quantitza BPM a 1 decimal** · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
+| **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza BPM… (F7)** · **Ajusta la graella als beats QM…** · **Compàs del marcador…** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · **Quantitza BPM a 1 decimal** · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Exporta àudio… (Fase 6)
@@ -479,6 +479,12 @@ estructura* del menú (es sincronitzen).
 les mateixes graelles que «Quantitza» (per defecte **corxera = 1/2 temps**,
 és a dir, 2 posicions per temps). Usa el `TempoMap` vigent en llançar
 l'anàlisi.
+
+**Anàlisi per rang A–B** (*Analitza ▸ Analitza acords al rang A–B…*): amb un
+loop A–B marcat, extreu només eixe tram (amb 2 s de pre-roll i 1 s de
+post-roll), hi passa Chordino, aplica la mateixa neteja/graella i **fusiona
+només els acords del rang**; la resta del model, el BPM i l'estructura no es
+toquen. El mínim és 0,5 s.
 
 Les opcions es **recorden** a `opcions_detecta.json` (gitignored).
 

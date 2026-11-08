@@ -117,7 +117,7 @@ class Feina(QThread):
 
     def __init__(self, wav, sortida, bpm, bpb, offset, amb_estructura,
                  tempo_fix=True, opcions=None, amb_bpm=True, amb_acords=True,
-                 mapa=None):
+                 mapa=None, rang=None, acords=None):
         super().__init__()
         # CRU de l'anàlisi EN MEMÒRIA: es desa dins el `.acproj` en acabar
         # (decisió 2026-10-19: ni `analisi/` ni `segments.csv` al disc).
@@ -133,15 +133,84 @@ class Feina(QThread):
         self.tempo_fix = tempo_fix
         self.opcions = opcions or {}
         self.mapa = mapa
+        self.rang = (tuple(float(x) for x in rang) if rang else None)
+        self.acords = list(acords or ())
         # QUÈ S'ANALITZA (3 etapes independents, decisió 21-10-2026): el que
         # està desactivat NO es toca — es conserva el model que ja hi ha.
         self.amb_bpm = bool(amb_bpm)
         self.amb_acords = bool(amb_acords)
+        if self.rang is not None:
+            # L'acció de rang NOMÉS re-analitza acords: la resta del model no
+            # es toca (ni BPM ni estructura).
+            self.amb_bpm = False
+            self.amb_estructura = False
+            self.amb_acords = True
         #: BPM detectat en esta passada (None = no s'ha detectat o no tocava)
         self.bpm_detectat = None
 
     def log(self, t):
         self.missatge.emit(t)
+
+    def _neteja_rang(self, items, a, b, durada):
+        """Neteja i quantitza els onsets absoluts d'un rang A–B."""
+        cl = self.opcions.get("clean") or {}
+        if not cl:
+            return items
+        beat = (60.0 / float(self.bpm)) if self.bpm else 0.0
+        items = postproc.processa_acords(
+            items,
+            durada_min=float(cl.get("durada_min", 0.0)) * beat,
+            fusiona_iguals=bool(cl.get("fusiona_iguals", True)),
+            sense_baix=bool(cl.get("sense_baix", False)),
+            reduir=bool(cl.get("reduir", False)))
+        if bool(cl.get("snap", False)):
+            g = postproc.grid_de_opcions(cl)
+            items = postproc._snap_a_graella(
+                items, durada, g, self.bpm, self.bpb, self.offset,
+                self.mapa, self.log, inici=a, fi=b, capcalera=False)
+        return items
+
+    def _analitza_acords_rang(self, csv_ac, durada_wav):
+        """Re-analitza NOMÉS el rang A–B i fusiona amb el model actual."""
+        if not durada_wav:
+            raise ValueError("no es pot llegir la durada de la WAV")
+        a, b = self.rang
+        a, b = max(0.0, float(a)), min(float(b), float(durada_wav))
+        if b <= a:
+            raise ValueError("el rang A–B és buit")
+        tmpd = tempfile.mkdtemp(prefix="ac_rang_")
+        try:
+            # 2 s de pre-roll i 1 s de post-roll: Chordino necessita context
+            # per encertar el primer/últim acord; després es descarta.
+            t0 = max(0.0, a - 2.0)
+            t1 = min(float(durada_wav), b + 1.0)
+            wav_rang = os.path.join(tmpd, "rang.wav")
+            csv_rang = os.path.join(tmpd, "rang.csv")
+            pipeline.retalla_wav(self.wav, wav_rang, t0, t1)
+            pipeline.extract_chords(
+                wav_rang, csv_rang, self.log,
+                params=(self.opcions.get("chords") or None))
+            raw = _llegeix_cru_acords(csv_rang)
+            items = [(t0 + float(t), nom) for t, nom in raw
+                     if a - 1e-9 <= t0 + float(t) < b - 1e-9]
+            items = self._neteja_rang(items, a, b, durada_wav)
+            existents = self.acords
+            if not existents and os.path.isfile(csv_ac):
+                from .visor_io import llegeix_acords
+                existents = llegeix_acords(csv_ac)
+            if not existents:
+                existents = [pipeline.Clip(0.0, float(durada_wav),
+                                           pipeline.FORAT_ACORD)]
+            clips = postproc.fusiona_acords_rang(
+                existents, items, a, b, durada_wav, log=self.log)
+            pipeline.desa_acords_csv(csv_ac, clips, durada_wav)
+            self.acords_result = clips
+            self.raw_chords = []
+            self.analisi = None
+            self.log(f"rang A–B: {len(items)} acords detectats "
+                     f"({a:.3f}–{b:.3f}s); fora del rang no s'ha tocat res")
+        finally:
+            pipeline.esborra_tmp([tmpd])
 
     def _detecta_bpm(self, durada_wav=None):
         """BPM del tema **sencer** amb les opcions del diàleg (motor + rang).
@@ -213,6 +282,14 @@ class Feina(QThread):
 
             # ── 2) acords ─────────────────────────────────────────────────
             beat = (60.0 / float(self.bpm)) if self.bpm else 0.0
+            if self.rang is not None:
+                self.log(_pas("extreu acords (rang A–B)..."))
+                self._analitza_acords_rang(csv_ac, durada_wav)
+                self.progres.emit(100)
+                self.log("Analisi del rang feta. Les wavs es generaran "
+                         "en 'Exporta'.")
+                self.feta.emit(True, self.sortida)
+                return
             if self.amb_acords:
                 self.log(_pas("extreu acords (Chordino)..."))
                 pipeline.extract_chords(

@@ -46,7 +46,8 @@ from .pipeline_export import (
 )
 from .pipeline_vamp import (
     APP_DIR, PROJ_DIR, VAMP_DIRS, HOST, STEPS, CHORDS_TRANSFORM, MOTORS_BPM, MOTORS_ESTRUCTURA,
-    QM, run, wav_info, executa_transform, extract_chords, detecta_bpm_qm,
+    QM, run, wav_info, retalla_wav, executa_transform, extract_chords,
+    detecta_bpm_qm,
     detecta_bpm, detecta_bpm_tram, detecta_bpm_tram_detallat,
     detecta_bpm_detallat, detecta_tempo_per_trams, detecta_beats,
     detecta_compas1, extract_segments,
@@ -65,7 +66,7 @@ __all__ = [
     "seccions_de_clips", "normalitza_clips", "model_inicial",
     "normalitza_cobertura",
     "safe_filename", "saneja_nom_acord", "carpeta_sortida", "esborra_tmp",
-    "run", "wav_info", "executa_transform",
+    "run", "wav_info", "retalla_wav", "executa_transform",
     "extract_chords", "detecta_bpm_qm", "detecta_bpm", "detecta_bpm_tram",
     "detecta_bpm_tram_detallat", "detecta_bpm_detallat",
     "detecta_tempo_per_trams", "detecta_beats", "detecta_compas1",

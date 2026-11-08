@@ -108,7 +108,7 @@ def carpeta_sortida(wav):
 # NO la toquen l'edició, ni la quantització, ni els canvis de compàs/BPM/mode.
 # És el «primer autoanàlisi» que es pot reintrepretar amb la graella.
 # Prefixos dels directoris temporals que crea l'app (per netejar-los sempre).
-PREFIXOS_TMP = ("ac_ttl_", "ac_qm_", "ac_key_")
+PREFIXOS_TMP = ("ac_ttl_", "ac_qm_", "ac_key_", "ac_rang_")
 
 
 def esborra_tmp(dirs):

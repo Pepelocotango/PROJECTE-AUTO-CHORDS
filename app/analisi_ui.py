@@ -3,6 +3,7 @@
 Extret de `app/main.py`: anàlisi d'acords/estructura, BPM/beats, revisió del
 snap, compàs del marcador i aplicació del BPM detectat.
 """
+import copy
 import os
 
 from PyQt5.QtCore import Qt
@@ -144,6 +145,75 @@ class AnalisiMixin:
         self.feina.feta.connect(self.acabada)
         self.feina.start()
 
+    def _analitza_acords_rang(self):
+        """Re-analitza NOMÉS els acords del loop A–B, conservant la resta.
+
+        No toca BPM, estructura ni els acords de fora del rang. El resultat
+        passa per les mateixes opcions de neteja i graella que «Analitza».
+        """
+        wav = self.wav_edit.text().strip()
+        if not wav or not os.path.isfile(wav):
+            self.avisa("Analitza acords A–B", "Tria un àudio vàlid primer.")
+            return
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            self.avisa("Analitza acords A–B", "Primer obri una WAV.")
+            return
+        rang = vr._loop_vals()
+        if rang is None or (rang[1] - rang[0]) < 0.5:
+            self.avisa_info(
+                "Analitza acords A–B",
+                "Marca un rang A–B vàlid (mínim 0,5 s) al regle o amb "
+                "A/B abans d'analitzar.")
+            return
+        if not ffmpeg.es_wav_pcm16(wav):
+            try:
+                wav = self._assegura_wav(wav)
+                self.wav_edit.setText(wav)
+            except Exception as e:  # noqa: BLE001
+                self.avisa_crit("Analitza acords A–B",
+                                f"No s'ha pogut convertir: {e}")
+                return
+        dlg = dialegs.DialegOpcions(self, tab="acords",
+                                    opcions=self.opcions)
+        for i in reversed(range(dlg.tabs.count())):
+            if dlg.tabs.tabText(i) != "Acords":
+                dlg.tabs.removeTab(i)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        # No es toquen els flags globals de «Analitza»: esta acció només
+        # re-analitza acords al rang, independentment de F5/F6.
+        self.opcions = dlg.opcions()
+        dialegs.desa_opcions(self.opcions)
+        self._marca_dirty()
+        self._atura_si_sona("anàlisi d'acords al rang A–B")
+        if self.projecte is not None:
+            self.sortida = self.projecte.carpeta
+        else:
+            self.sortida = pipeline.carpeta_sortida(wav)
+        self.log.clear()
+        self.barra.setValue(0)
+        a, b = rang
+        self.registra(f"Analitzant acords al rang A–B "
+                      f"({a:.3f}–{b:.3f}s)…")
+        self.b_exec.setEnabled(False)
+        self.b_guia.setEnabled(False)
+        self.b_marker.setEnabled(False)
+        self.b_marker_compas.setEnabled(False)
+        self.b_export.setEnabled(False)
+        self.b_export_part.setEnabled(False)
+        self.feina = Feina(
+            wav, self.sortida, self._bpm_val(), self._bpb_val(),
+            self._offset_val(), False, self.tempo_fix.isChecked(),
+            opcions=self.opcions, amb_bpm=False, amb_acords=True,
+            amb_estructura=False,
+            mapa=getattr(vr, "tempo_map", None),
+            rang=rang, acords=list(getattr(vr, "acords", []) or []))
+        self.feina.missatge.connect(self.registra)
+        self.feina.progres.connect(self.barra.setValue)
+        self.feina.feta.connect(self.acabada)
+        self.feina.start()
+
     def acabada(self, be, dada):
         self.b_exec.setEnabled(True)
         self.b_guia.setEnabled(True)
@@ -171,6 +241,26 @@ class AnalisiMixin:
                 except OSError as e:
                     self.registra(f"AVÍS: no s'ha pogut desar l'anàlisi al "
                                   f"projecte: {e}")
+        rang = getattr(self.feina, "rang", None)
+        nou = getattr(self.feina, "acords_result", None)
+        if rang is not None and be and nou is not None:
+            # Actualització EN VIU (una sola operació d'undo): no cal
+            # recarregar tot el visor ni perdre l'historial.
+            vr = getattr(self, "visor_ref", None)
+            if vr is not None:
+                vr._undo_marca()
+                vr.acords = copy.deepcopy(nou)
+                vr._undo_commit()
+                vr._sincronitza_vista(preserva=True)
+                try:
+                    vr._desa_i_regenera()
+                except Exception as e:  # noqa: BLE001
+                    self.registra(f"rang A–B: error en desar el model: {e}")
+            self._marca_dirty()
+            self.registra("Acords del rang A–B desats al model; la resta "
+                          "no s'ha tocat.")
+            self.barra.setValue(100)
+            return
         wav = self.wav_edit.text().strip()
         if wav and os.path.isfile(wav):
             self._carrega_visor(wav)
