@@ -639,6 +639,15 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [Unreleased]
 
+### Documentació — mapa complet de funcionalitats (2026-11-09)
+- Nou `docs/FUNCIONALITATS_AUTO_CHORDS.ods`: 9 fulls (resum, llegenda, mapa
+  mental, 198 fitxes d'acció, menús, botons, dreceres, diàlegs i flux de
+  treball) amb què fa cada acció, des d'on s'executa (menú, botó, drecera,
+  contextual, ratolí, diàleg o automàtic), disponibilitat i límits.
+- El full **Funcionalitats** té autofiltre a la capçalera i el **Mapa mental**
+  presenta la jerarquia àrea → grup → acció. Generat a partir del codi
+  (menús, barres, visor, timeline, diàlegs i export).
+
 ### Canviat — model de tempo simplificat (2026-11-07)
 - **El tram 0 és un clip normal**: `_refresca_tempo_map` ja no el sobreescriu
   amb el transport. El transport (`bpm`, `bpb`, `beat_type`) és només una

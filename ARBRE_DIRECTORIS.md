@@ -22,7 +22,7 @@
 | Àudio | `app/audio_out.py` · `app/audio_edit.py` · `app/exporta_audio.py` |
 | Tests | `tests/` |
 | Entorn i build | `DEVELOPING.md` · `eines/` · `.github/workflows/` |
-| Docs vives | `docs/` (5 de contracte + `docs/recerca/`) |
+| Docs vives | `docs/` (contracte + mapa de funcionalitats + `docs/recerca/`) |
 
 ## Convencions
 
@@ -175,7 +175,7 @@ PROJECTE AUTO CHORDS/
 │   └── The Chemical Brothers - All Rights Reversed (feat. The Klaxons)/
 │       # Cada tema conté AUTOCHORDS_<tema>/ amb el projecte autocontingut.
 │
-├── docs/ 🟢                        # Contracte i documentació viva (12 fitxers).
+├── docs/ 🟢                        # Contracte i documentació viva (13 fitxers).
 │   ├── README.md                   # Índex de la documentació.
 │   ├── REGLES_DE_LA_APP.md         # Regles d'or (1–12) i §13 (temps, compàs i graella).
 │   ├── ESQUEMA_UI.md               # Font de l'esquema visual de la UI.
@@ -183,6 +183,7 @@ PROJECTE AUTO CHORDS/
 │   ├── ESQUEMA_UI.svg 🟡           # Generat des del `.md` (no editar).
 │   ├── EDICIO_OPERACIONS.md        # Taula única d'operacions d'edició.
 │   ├── TIPUS_XIFRAT_ACORDS.md      # Catàleg de tipus, graus i `<kind>` MusicXML.
+│   ├── FUNCIONALITATS_AUTO_CHORDS.ods # Mapa complet de funcionalitats d'usuari (ODF).
 │   ├── COMPONENTS_I_VERSIONS.md 🟡 # Inventari generat (`eines/genera_inventari.py`).
 │   └── recerca/                    # Documents de recerca (no descriuen l'estat viu).
 │       ├── guia_tecnica_downbeat_onsets_beats.md

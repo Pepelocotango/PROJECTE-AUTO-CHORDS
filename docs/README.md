@@ -1,10 +1,10 @@
 # Índex de la documentació (`docs/`)
 
-> Aquesta carpeta només conté el contracte i els documents que no es poden
-> derivar del codi. Per a l'abast, la font de veritat i l'excepció de les regles
-> d'or, vegeu **`../AGENTS.md`**. La resta de documentació (història, plans
-> executats, guies operatives) viu al `CHANGELOG.md`, `ROADMAP_HISTORIA.md` i els
-> docstrings dels mòduls.
+> Aquesta carpeta conté el contracte, els documents que no es poden derivar del
+> codi i el mapa d'ús de l'aplicació. Per a l'abast, la font de veritat i
+> l'excepció de les regles d'or, vegeu **`../AGENTS.md`**. La resta de
+> documentació (història, plans executats, guies operatives) viu al
+> `CHANGELOG.md`, `ROADMAP_HISTORIA.md` i els docstrings dels mòduls.
 >
 > L'estat de la sessió és a **`../ROADMAP.md` §2**. Per crear o moure
 > documentació, vegeu **`../AGENTS.md` §«Crear documentació nova»**.
@@ -18,6 +18,7 @@
 | `EDICIO_OPERACIONS.md` | Taula única d'operacions d'edició: GUI × paritat acords/estructura × estat. |
 | `TIPUS_XIFRAT_ACORDS.md` | Catàleg de tipus d'acord, variants, graus i `<kind>` MusicXML. |
 | `COMPONENTS_I_VERSIONS.md` | Inventari de components i versions. El **genera** `eines/genera_inventari.py` — no editar-lo a mà. |
+| **`FUNCIONALITATS_AUTO_CHORDS.ods`** | Mapa complet d'ús: totes les accions d'usuari, què fan, des d'on s'executen (menú, botó, drecera, contextual, ratolí, diàleg o automàtic), disponibilitat i límits. 9 fulls: resum, llegenda, mapa mental, 198 fitxes, menús, botons, dreceres, diàlegs i flux de treball. |
 
 ## Recerca (`recerca/`)
 
