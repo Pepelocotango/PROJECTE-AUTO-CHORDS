@@ -225,6 +225,20 @@ class TestCanviDeCompas(unittest.TestCase):
         self.assertEqual(tm.label(3.0), "3.1.1")
         self.assertEqual(tm.label(4.5), "4.1.1")
 
+    def test_canvi_de_compas_a_prop_de_la_linia_no_duplica(self):
+        """Un canvi de compàs a pocs ms de la línia s'imanta a la línia."""
+        for delta in (0.0001, -0.0001, 0.01, -0.01):
+            with self.subTest(delta=delta):
+                tall = 4.0 + delta
+                tm = TempoMap([(0.0, tall, 120, 4, 4),
+                               (tall, 8.0, 120, 7, 4)])
+                starts = [t for _q, t, _n, _d in tm.compassos()
+                          if 3.9 < t < 4.1]
+                self.assertEqual(len(starts), 1, starts)
+                self.assertEqual(tm.label(4.0), "3.1.1")
+                self.assertEqual(tm.pos(tall)[1:], (1, 1))
+                self.assertEqual(tm.signatura(tall), (7, 4))
+
     def test_6_8(self):
         # 6/8 → compàs de 3 negres (1,5 s a 120) i temps de 0,5 negres
         tm = TempoMap.constant(120, 6, 8, durada=10.0)
@@ -983,6 +997,31 @@ class TestMetronom(unittest.TestCase):
         b = metronom.mescla_metronom(_silenci(2), SR, 0.0, 120.0, 4,
                                      mapa=mapa)
         self.assertEqual(a, b)
+
+    def test_canvi_de_compas_a_prop_de_la_linia_no_atura_el_metronom(self):
+        """El metrònom ha de clicar encara que el canvi 4/4→7/4 caiga a pocs ms
+        de la línia de compàs (cas real d'una edició manual)."""
+        for delta in (0.0001, -0.0001, 0.01, -0.01):
+            with self.subTest(delta=delta):
+                tall = 4.0 + delta
+                mapa = tm.TempoMap([(0.0, tall, 120.0, 4, 4),
+                                    (tall, 8.0, 120.0, 7, 4)])
+                out = metronom.mescla_metronom(
+                    _silenci(2.0), SR, 4.0, 120.0, 7,
+                    mapa=mapa, offset=0.0)
+                self.assertTrue(_clics(out), f"delta={delta}")
+
+    def test_canvi_de_tempo_a_mig_compas_no_atura_el_metronom(self):
+        """Un canvi de tempo a mig compàs (clip no enter) no ha de tallar la
+        graella ni el metrònom."""
+        mapa = tm.TempoMap([(0.0, 4.2, 120.0, 4, 4),
+                            (4.2, 8.0, 120.0, 4, 4)])
+        out = metronom.mescla_metronom(
+            _silenci(4.0), SR, 4.0, 120.0, 4, mapa=mapa, offset=0.0)
+        clics = _clics(out)
+        # `_clics` retorna temps relatius a la rodanxa (t_inici=4.0 s).
+        self.assertTrue(clics, clics)
+        self.assertTrue(any(t > 0.2 for t in clics), clics)
 
     def test_amb_mapa_12_8_clica_les_corxeres_del_compas(self):
         """El mapa 4/4 → 12/8 ha de canviar de negres a corxeres."""

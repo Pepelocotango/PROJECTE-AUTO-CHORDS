@@ -31,6 +31,10 @@ from app import limits, tempo_recalc
 TOL = 1e-9
 # Tolerància per a les fronteres de compàs en segons (els CSV guarden 1 µs).
 TOL_COMPAS = 1e-4
+# Un canvi de compàs a menys d'esta tolerància (s) d'una línia de compàs
+# s'imanta a la línia: una edició manual de mil·lisegons no ha de crear dos
+# compassos quasi iguals ni desplaçar la graella/metrònom.
+TOL_GRID_S = 0.02
 # BPM de seguretat (regla d'or #8): un valor no positiu no és vàlid i es
 # substitueix per aquest (el mateix que fa servir `TempoMap`).
 BPM_DEFECTE = 120.0
@@ -461,13 +465,23 @@ class TempoMap:
             if t_end <= t_bar + TOL:
                 break
             canvi = self._canvi_compas_entre(t_bar, t_end, sig)
+            if canvi is None:
+                # Un canvi just DESPRÉS de la línia (per una edició manual de
+                # pocs ms) també s'ha d'imantar a la línia; si no, el compàs
+                # actual s'afegiria i després el canvi crearia un duplicat.
+                canvi = self._canvi_compas_entre(
+                    t_end, t_end + TOL_GRID_S, sig)
             if canvi is not None:
                 # Canvi de compàs a mig compàs: es tanca el compàs ahí i se'n
-                # comença un altre amb la signatura nova.
+                # comença un altre amb la signatura nova. Si cau a tocar de la
+                # línia, s'imanta a la línia (q_end/t_end) per mantindre la
+                # numeració i la graella alineades.
                 t_nou, sig_nou = canvi
                 q_nou = self.quarters(t_nou)
                 if q_nou <= q_bar + TOL:
                     break
+                if abs(float(t_nou) - float(t_end)) <= TOL_GRID_S:
+                    q_nou, t_nou = q_end, t_end
                 talls.append((q_nou, t_nou, sig_nou[0], sig_nou[1]))
                 q_bar, t_bar, sig = q_nou, t_nou, sig_nou
                 continue
@@ -514,6 +528,11 @@ class TempoMap:
             num, den = s.num_ef, s.den_ef
         beat_q = _beat_quarters(den)
         dins = q - q_ini
+        # La integració del tempo pot deixar offsets de fraccions de fusa a
+        # les línies de compàs. Arrodonim la distància a la subdivisió de
+        # 1/32 (1/8 de negra) perquè un clic o una etiqueta a la vora no es
+        # quede un sample abans del beat.
+        dins = round(dins * 8.0) / 8.0
         if dins < -TOL:
             dins = 0.0
         b = int(dins // beat_q + TOL)

@@ -4617,6 +4617,65 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         self.assertEqual([tuple(t) for t in v.tempo_trams], abans)
         v.close()
 
+    def test_edita_tempo_rebutja_compas_no_enter(self):
+        v = _vista_segueix_model___visor()
+        try:
+            trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
+                     (30.0, 40.0, 120.0, 4, 4)]
+            self.assertTrue(v.aplica_tempo_trams(trams))
+
+            class _Boto:
+                def text(self):
+                    return ""
+
+            with patch.object(QMessageBox, "addButton",
+                              lambda self, *a, **k: _Boto()), \
+                    patch.object(QMessageBox, "setDefaultButton",
+                                 lambda self, *a, **k: None), \
+                    patch.object(QMessageBox, "exec_", return_value=0), \
+                    patch.object(QMessageBox, "clickedButton",
+                                 return_value=None):
+                self.assertFalse(v.edita_tempo_objectiu(1, 90.0, 7, 8))
+            self.assertEqual([tuple(t) for t in v.tempo_trams],
+                             [tuple(t) for t in trams])
+        finally:
+            v.close()
+
+
+
+    def test_edita_tempo_repara_amb_bpm_enter(self):
+        v = _vista_segueix_model___visor()
+        capt = {}
+        o_add, o_exec, o_cb = (QMessageBox.addButton, QMessageBox.exec_,
+                               QMessageBox.clickedButton)
+
+        def fake_add(self, *a):
+            b = o_add(self, *a)
+            try:
+                capt[b.text()] = b
+            except Exception:  # noqa: BLE001
+                pass
+            return b
+
+        QMessageBox.addButton = fake_add
+        QMessageBox.exec_ = lambda self: 0
+        QMessageBox.clickedButton = lambda self: next(
+            (b for txt, b in capt.items() if txt.startswith("Ajusta BPM")),
+            None)
+        try:
+            trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
+                     (30.0, 40.0, 120.0, 4, 4)]
+            self.assertTrue(v.aplica_tempo_trams(trams))
+            self.assertTrue(v.edita_tempo_objectiu(1, 90.0, 7, 8))
+            tram = v.tempo_trams[1]
+            self.assertEqual(tram[3:], (7, 8))
+            n = tm._compassos_del_tram(tram, 1, v.offset)
+            self.assertAlmostEqual(n, round(n), places=6)
+        finally:
+            QMessageBox.addButton, QMessageBox.exec_, QMessageBox.clickedButton = (
+                o_add, o_exec, o_cb)
+            v.close()
+
 
 class TestFuzzerReglesIVista(_vista_segueix_model___Base):
     """Tongada pseudo-aleatòria, amb seeds FIXOS (reproduïble, no flaky)."""
@@ -5536,6 +5595,27 @@ class TestAncoratgesFinestra(unittest.TestCase):
             projecte.Projecte.obre(self.w.projecte.ruta_acproj))
         self.assertEqual(self.w.visor_ref.ref_tempo_base(), (144.5, 7, 4))
 
+    def test_eliminar_frontera_recalcula_el_clip_fusionat(self):
+        vr = self.w.visor_ref
+        vr.offset = 0.0
+        b1, final = 3.330396, 16.582354
+        beats = ([i * b1 / 8 for i in range(8)]
+                 + [b1 + i * (final - b1) / 32 for i in range(32)])
+        vr.snap_mode = "qm_beats"
+        vr.qm_beats = beats
+        vr.set_ref_tempo(144.127, 4, 4)
+        trams = [(0.0, b1, 144.127, 4, 4),
+                 (b1, final, 144.127, 4, 4),
+                 (final, 60.0, 138.561, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        self.assertTrue(vr._elimina_tram(1))
+        merged = vr.tempo_trams[0]
+        self.assertAlmostEqual(float(merged[1]), final, places=6)
+        self.assertEqual(merged[3:], (4, 4))
+        self.assertAlmostEqual(float(merged[2]), 144.732, places=3)
+        self.assertAlmostEqual(
+            tm._compassos_del_tram(merged, 0, vr.offset), 10.0, places=3)
+
     def test_bpm_dels_marcadors_deixa_els_clips_editables(self):
         """El flux real: marcadors → BPM dels marcadors → clips editables."""
         from app import tempo_map as TM
@@ -5583,11 +5663,12 @@ class TestAncoratgesFinestra(unittest.TestCase):
         trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
                  (30.0, 60.0, 120.0, 4, 4)]
         self.assertTrue(vr.aplica_tempo_trams(trams))
-        self.assertTrue(vr.edita_tempo_objectiu(1, 90.0, 7, 8))
+        # 7/8 a 84 BPM sobre 20 s = 8 compassos enters (N=8).
+        self.assertTrue(vr.edita_tempo_objectiu(1, 84.0, 7, 8))
         self.assertEqual(vr.tempo_trams[0], trams[0])
         self.assertEqual(vr.tempo_trams[1][:2], trams[1][:2])
         self.assertEqual(vr.tempo_trams[1][3:], (7, 8))
-        self.assertEqual(vr.tempo_trams[1][2], 90.0)
+        self.assertEqual(vr.tempo_trams[1][2], 84.0)
         self.assertEqual(vr.tempo_trams[2], trams[2])
 
     def test_el_marcador_arrossega_la_frontera_d_estructura(self):

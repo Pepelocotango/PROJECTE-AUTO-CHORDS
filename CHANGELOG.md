@@ -678,6 +678,29 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   amb la referència base manual.
 - Suite: **1517 OK** (1 skip), `pyflakes` net.
 
+### Corregit — graella i metrònom amb edicions manuals (2026-11-08)
+- Un canvi de compàs a **≤20 ms** d'una línia de compàs s'imanta a la línia:
+  no es duplica el compàs, no salta la numeració i el metrònom continua. El
+  cas real era un canvi 4/4→7/4 a `125.998042 s` quan la línia 4/4 era a
+  `125.997924 s`.
+- `TempoMap.pos()` arredoneix la distància a la subdivisió de 1/32 abans de
+  calcular beat/subdivisió; així els offsets d'integració (~1e-8 negra) no
+  fan que `metronom.mescla_metronom()` perda el sample de beat.
+- **Regla del múltiple al recalcul**: si la signatura de la referència base
+  encaixa exacta amb els beats del clip, mana ella. 20/24/28 beats amb base
+  4/4 → 4/4 N=5/6/7 (no 5/4/6/4/7/4); 12/36 amb base 3/4 → 3/4 N=4/12; 6/12
+  amb base 6/8 → 6/8 N=2/4. Amb `n_fix`, només val si `N` coincidix; la
+  signatura base n'està exempta de `n_max` (clips llargs).
+- **Fusionar/eliminar una frontera recalcula el clip afectat** amb la
+  referència base i els beats. Cas real: 40 beats fusionats a 4/4 → 4/4 N=10 a
+  144.732 BPM, sense moure la frontera. Si no pot quedar sencer, avisa.
+- **Canvi manual de compàs amb N no enter**: es rebutja i s'obri un diàleg amb
+  opcions per reparar-lo (ajustar el BPM a N enter o canviar a la signatura
+  canònica del recalcul). Així una edició manual no deixa el clip fraccionari.
+- Tests de regressió amb canvis de compàs a ±0,1 ms i ±10 ms, canvi de tempo a
+  mig compàs, regla del múltiple, fusió de 40 beats i diàleg de reparació.
+- Suite: **1528 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
 ### Refactor — modularització completa (2026-11-06)
 - `app/main.py`: 4.858 → **1.511 línies**; extret a `*_ui` (`analisi_ui`,
   `barres`, `edicio_ui`, `export_ui`, `marcadors_ui`, `menus`, `opcions`,

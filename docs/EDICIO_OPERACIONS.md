@@ -57,9 +57,14 @@
 > clip, el seu nombre mana i pot corregir la base (7 beats → `7/4`; 14 →
 > `7/4` N=2; 8 → `4/4` N=2); si no n'hi ha, s'inferixen de la referència BPM
 > (`D × BPM_ref / 60`) quan cauen a prop d'un enter (±0,2).
-> Els canvis explícits de BPM/compàs respecten el valor
-> escrit; si el resultat no és vàlid, es rebutja amb avís. Els canvis explícits
-> de compassos (`+1`/`−1`/`×2`/`÷2`) es mantenen com a reinterpretació mètrica
+> Els canvis explícits de BPM/compàs respecten el valor escrit; si el resultat
+> no és vàlid, es rebutja amb avís. Si un **canvi de compàs** deixa un `N` no
+> enter, es rebutja i s'obri un diàleg per reparar-lo (ajustar el BPM a `N`
+> enter o canviar a la signatura canònica). **Fusionar o eliminar** una
+> frontera recalcula el clip afectat amb la referència base i els beats; si no
+> pot quedar sencer, avisa. La **regla del múltiple** fa que la signatura base
+> mane quan `K/bq_ref` és enter. Els canvis explícits de compassos
+> (`+1`/`−1`/`×2`/`÷2`) es mantenen com a reinterpretació mètrica
 > del clip. Contracte complet: `docs/REGLES_DE_LA_APP.md` §13.4–13.6 i
 > `docs/recerca/PLA_MAPA_TEMPS.md`.
 >

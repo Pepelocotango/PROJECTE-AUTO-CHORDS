@@ -2335,12 +2335,20 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         return bool(ok)
 
 
-    def _aplica_mapa_reparat(self, nous, msg, preserva_rubato=True):
+    def _aplica_mapa_reparat(self, nous, msg, preserva_rubato=True,
+                             recalcul_idx=None):
         """Aplica un mapa i, si les fronteres hereten mil·lèsimes fora de
         graella, les imanta abans de rebutjar (bug 21-10: eliminar/fusionar/
         duplicar un tram fallava després de l'Anàlisi guiat)."""
         durada = self._durada_wav()
         offset = getattr(self, "offset", 0.0)
+        # El recalcul va ABANS de validar/reparar fronteres, però DESPRÉS de
+        # normalitzar: una eliminació deixa un forat i el clip afectat només
+        # és el fusionat quan `normalitza_trams` l'ha estés. Així pot ajustar
+        # el BPM (40 beats → 4/4 N=10) en compte de moure la frontera.
+        nous = tempo_map.normalitza_trams(nous, durada)
+        if recalcul_idx is not None:
+            nous = self._recalcula_clip_tempo(nous, recalcul_idx, msg)
         try:
             fi = tempo_map.valida_i_normalitza_compassos(
                 nous, durada, offset,
@@ -2369,6 +2377,44 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # tipus i el guard genèric no ha de bloquejar el gest de l'usuari.
         return bool(self.aplica_tempo_trams(fi, forcat=True))
 
+    def _recalcula_clip_tempo(self, trams, idx, msg):
+        """Recalcula un clip afectat per una fusió/eliminació.
+
+        Usa la **referència base manual** i els beats detectats; si el clip no
+        pot quedar en compassos sencers, avisa i el deixa com està. Així una
+        eliminació de frontera no deixa un N fraccionari heretat del clip veí.
+        """
+        trams = [tuple(t) for t in (trams or [])]
+        i = int(idx)
+        if not (0 <= i < len(trams)):
+            return trams
+        tram = trams[i]
+        if int(tram[3]) <= 0 or int(tram[4]) <= 0:
+            return trams              # rubato: sense recalcul
+        try:
+            out = tempo_map._recalcula_costats(
+                trams, [(i, tram)], self._durada_wav(),
+                offset=getattr(self, "offset", 0.0),
+                beats_qm=getattr(self, "qm_beats", None),
+                ref_base=self.ref_tempo_base())
+        except Exception as e:  # noqa: BLE001
+            self.log(f"{msg}: recalcul del clip {i + 1} no aplicat ({e})")
+            return trams
+        try:
+            n = tempo_map._compassos_del_tram(
+                out[i], i, getattr(self, "offset", 0.0))
+        except (TypeError, ValueError):
+            n = None
+        if n is not None and abs(n - round(n)) > 1e-3:
+            self.avis_editor(
+                f"{msg}: el clip {i + 1} no ha pogut quedar en compassos "
+                f"sencers ({n:.3f}); revisa'l.")
+        else:
+            self.log(f"{msg}: recalcul clip {i + 1} → "
+                     f"{float(out[i][2]):.3f} BPM · "
+                     f"{int(out[i][3])}/{int(out[i][4])}")
+        return out
+
     def _elimina_tram(self, idx):
         """Elimina un tram del mapa (els veïns n'ocupen l'espai)."""
         trams = list(self.tempo_trams or [])
@@ -2379,7 +2425,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         preserva = getattr(trams[idx], "tipus", None) != "rubato"
         ok = self._aplica_mapa_reparat(
             tempo_map.elimina_tall(trams, idx), "Elimina tempo",
-            preserva_rubato=preserva)
+            preserva_rubato=preserva,
+            recalcul_idx=max(0, int(idx) - 1))
         if ok:
             # §4.C: la frontera desapareix → el marcador que hi ancorava, també.
             self._esborra_marcador_a(float(trams[idx][0]))
@@ -2396,7 +2443,10 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         frontera = float(trams[idx][0]) if str(amb) == "anterior" \
             else float(trams[idx][1])
         self._undo_marca()
-        ok = self._aplica_mapa_reparat(nou, "Fusiona tempo")
+        ok = self._aplica_mapa_reparat(
+            nou, "Fusiona tempo",
+            recalcul_idx=(int(idx) if str(amb) == "seguent"
+                          else max(0, int(idx) - 1)))
         if ok:
             self._esborra_marcador_a(frontera)
         self._undo_commit()

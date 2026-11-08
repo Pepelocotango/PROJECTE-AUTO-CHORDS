@@ -101,6 +101,38 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
     # el mínim de compassos (14 beats → 7/4 N=2, no 2/4 N=7; 8 beats → 4/4
     # N=2, no 8/4 N=1). La referència base decidix només els empats.
     if n_beats is not None:
+        # Regla del múltiple: si la signatura de la referència encaixa exacta
+        # amb el nombre de negres del clip, mana ella. Així 20/24/28 beats amb
+        # base 4/4 són 4/4 N=5/6/7 (no 5/4/6/4/7/4); 12/36 amb base 3/4 són
+        # 3/4 N=4/12; 6/12 amb base 6/8 són 6/8 N=2/4. La signatura de la
+        # referència està exempta de `n_max` (clips llargs), però no de la
+        # banda de BPM. Amb `n_fix`, només val si `N` coincidix amb el fixat.
+        bq_ref = _bar_quarters(num_ref, den_ref)
+        if bq_ref > 1.0 + 1e-9:
+            n_ref_mult = int(round(float(n_beats) / bq_ref))
+            if (n_ref_mult >= 1
+                    and abs(n_ref_mult * bq_ref - float(n_beats)) <= 0.25
+                    and (not n_fix or n_ref_mult == int(n_ref))):
+                bpm_ref_mult = 60.0 * n_ref_mult * bq_ref / durada
+                if bpm_min - 1e-9 <= bpm_ref_mult <= bpm_max + 1e-9:
+                    return {
+                        "bpm": float(bpm_ref_mult),
+                        "num": int(num_ref),
+                        "den": int(den_ref),
+                        "n": int(n_ref_mult),
+                        "cost": 0.0,
+                        "n_ref": int(n_previst),
+                        "bpm_ref": float(bpm_ref),
+                        "compas_ref": (int(num_ref), int(den_ref)),
+                        "beats": int(n_beats),
+                        "beats_usats": True,
+                        "beats_inferits": beats_inferits,
+                        "canvis": {
+                            "bpm": abs(bpm_ref_mult - bpm_ref) > 1e-9,
+                            "compas": False,
+                            "n": (not n_fix) and n_ref_mult != n_previst,
+                        },
+                    }
         beats_candidats = []
         for den in limits.DENOMINADORS_ADMESOS:
             for num in range(limits.NUM_MIN, limits.NUM_MAX + 1):

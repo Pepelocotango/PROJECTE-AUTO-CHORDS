@@ -6,9 +6,10 @@ validació, edició, rubato i conversió a trams normals.
 import math
 
 from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QDialog
+from PyQt5.QtWidgets import QDialog, QMessageBox
 
 from . import dialegs, mapa_tempo, pipeline, rubato as rubato_mod, tempo_map
+from . import tempo_recalc
 
 class TempoMixin:
     """Mapa de tempo, rubato i edició del tempo objectiu."""
@@ -86,7 +87,7 @@ class TempoMixin:
                     f"{int(nou[3])}/{int(nou[4])}"))
         return out
 
-    def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True):
+    def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True, repara=True):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
         Re-tempo local (`docs/REGLES_DE_LA_APP.md` §13.5): el tram conserva el
@@ -109,6 +110,23 @@ class TempoMixin:
                 "El BPM i el compàs d'un rubato són derivats; no s'editen "
                 "directament.")
             return False
+        # Un canvi de compàs que deixa N fraccionari no s'aplica directament:
+        # es mostra un diàleg de reparació perquè la graella quede vàlida.
+        if repara:
+            num_old, den_old = int(trams[idx][3]), int(trams[idx][4])
+            if (int(num), int(den)) != (num_old, den_old):
+                temp = (float(trams[idx][0]), float(trams[idx][1]),
+                        float(bpm), int(num), int(den))
+                try:
+                    n_compas = tempo_map._compassos_del_tram(
+                        temp, idx, getattr(self, "offset", 0.0))
+                except (TypeError, ValueError):
+                    n_compas = None
+                if (n_compas is not None
+                        and abs(n_compas - round(n_compas)) > 1e-3):
+                    return self._repara_compas_no_enter(
+                        idx, float(bpm), int(num), int(den), n_compas,
+                        trams, desa=desa)
         try:
             nous5 = tempo_map.canvia_bpm_local(
                 [tuple(t) for t in trams], idx, float(bpm),
@@ -131,6 +149,74 @@ class TempoMixin:
         self.tempo_trams = nous
         self._actualitza_temps()
         return True
+
+    def _repara_compas_no_enter(self, idx, bpm, num, den, n_compas,
+                                trams, desa=True):
+        """Diàleg per reparar un canvi de compàs que deixa N no enter.
+
+        Opcions: ajustar el BPM perquè N siga enter amb el compàs triat,
+        canviar a la signatura canònica que proposa el recalcul (base + beats),
+        o cancel·lar. Retorna el resultat de l'opció aplicada.
+        """
+        tram = trams[int(idx)]
+        ini, fi = float(tram[0]), float(tram[1])
+        base = tempo_map._base_tram(
+            tram, int(idx), getattr(self, "offset", 0.0))
+        dt = fi - base
+        num, den = int(num), int(den)
+        bq = tempo_map._bar_quarters(num, den)
+        n_enter = max(1, int(round(float(n_compas))))
+        bpm_ajust = None
+        if dt > 0 and bq > 0:
+            candidat = n_enter * bq * 60.0 / dt
+            try:
+                bpm_ajust = tempo_map.valida_tempo(candidat, num, den)[0]
+            except ValueError:
+                bpm_ajust = None
+
+        ref_bpm, ref_num, ref_den = self.ref_tempo_base()
+        beats = [float(b) for b in (getattr(self, "qm_beats", None) or ())]
+        n_beats = sum(1 for b in beats if ini - 1e-9 <= b < fi - 1e-9)
+        canon = None
+        try:
+            canon = tempo_recalc.recalculca_tram(
+                dt, ref_bpm, ref_num, ref_den,
+                n_beats=n_beats if beats else None)
+        except (TypeError, ValueError):
+            canon = None
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("Compàs no sencer")
+        box.setText(
+            f"El clip {int(idx) + 1} tindria {float(n_compas):.3f} compassos "
+            f"amb {num}/{den} a {float(bpm):.3f} BPM.")
+        box.setInformativeText(
+            "Tria com reparar-lo perquè la graella i el metrònom quedin "
+            "vàlids:")
+        b_ajusta = None
+        b_canvia = None
+        if bpm_ajust is not None:
+            b_ajusta = box.addButton(
+                f"Ajusta BPM a {bpm_ajust:.3f} ({n_enter} compassos)",
+                QMessageBox.AcceptRole)
+        if canon is not None:
+            b_canvia = box.addButton(
+                f"Canvia a {int(canon['num'])}/{int(canon['den'])} "
+                f"N={int(canon['n'])} ({float(canon['bpm']):.3f} BPM)",
+                QMessageBox.ActionRole)
+        b_cancel = box.addButton("Cancel·la", QMessageBox.RejectRole)
+        box.setDefaultButton(b_ajusta or b_cancel)
+        box.exec_()
+        triat = box.clickedButton()
+        if triat is b_ajusta and b_ajusta is not None:
+            return self.edita_tempo_objectiu(
+                idx, bpm_ajust, num, den, desa=desa, repara=False)
+        if triat is b_canvia and b_canvia is not None:
+            return self.edita_tempo_objectiu(
+                idx, float(canon["bpm"]), int(canon["num"]),
+                int(canon["den"]), desa=desa, repara=False)
+        return False
 
     def _refresca_tempo_map(self):
         """(Re)construeix `self.tempo_map` a partir de `self.tempo_trams`.

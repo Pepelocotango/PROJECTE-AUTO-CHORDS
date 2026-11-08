@@ -191,8 +191,16 @@ per durada. Si no hi ha cap combinació, es conserva el valor
 anterior; si el resultat incompleix el mínim de durada (o qualsevol altra regla
 permissiva), el gest es rebutja amb **avís** (mai un canvi silenciós).
 
+- **Regla del múltiple**: si la signatura base encaixa exacta amb els beats
+  (`K/bq_ref` enter), mana ella; 20/24/28 beats amb base 4/4 → 4/4 N=5/6/7;
+  12/36 amb base 3/4 → 3/4 N=4/12; 6/12 amb base 6/8 → 6/8 N=2/4. Amb `n_fix`
+  només val si `N` coincidix amb el fixat; la signatura base n'està exempta de
+  `n_max` (clips llargs).
 - Un canvi **explícit** de BPM o compàs (diàleg o franja Editor) respecta el
-  valor escrit per l'usuari; només s'ajusta si el resultat no és vàlid.
+  valor escrit per l'usuari; només s'ajusta si el resultat no és vàlid. Si el
+  canvi de compàs deixa un **N no enter**, es **rebutja** i s'obri un diàleg de
+  reparació: ajustar el BPM a N enter o canviar a la signatura canònica del
+  recalcul. Així no es creen clips fraccionaris.
 - **«Ajusta BPM al compàs»** continua sent una **acció explícita**: conserva
   fronteres i compàs i recalcula el BPM perquè el clip tinga un nombre enter de
   compassos. No s'aplica automàticament.
@@ -239,6 +247,14 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
   `161,58 BPM`). L'offset es desa immediatament al `.acproj`.
 - El gest és **local**: els marcadors humans lligats a la frontera viatgen amb
   ella (i s'esborren amb ella).
+- **Graella robusta**: un canvi de compàs a menys de **20 ms** d'una línia de
+  compàs s'imanta a la línia; no es creen dos compassos quasi iguals ni salta
+  la numeració. Les etiquetes i el metrònom toleren els offsets d'integració
+  de fraccions de fusa (resolució 1/32), de manera que una edició manual de
+  mil·lisegons no atura el metrònom.
+- **Fusionar o eliminar una frontera** recalcula el clip afectat amb la
+  referència base i els beats. Si no pot quedar en compassos sencers, avisa i
+  el deixa com està; no hereta el N fraccionari del clip que desapareix.
 
 → `tempo_map.mou_frontera_retempo` · `visor._on_tempo_mogut` ·
 `visor._aplica_editor_tempo` · `marcadors`.

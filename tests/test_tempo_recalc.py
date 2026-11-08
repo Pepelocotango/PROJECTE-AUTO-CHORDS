@@ -63,6 +63,34 @@ class TestRecalculcaTram(unittest.TestCase):
         self.assertTrue(r["beats_usats"])
         self.assertAlmostEqual(r["bpm"], 7 * 60.0 / 2.912646, places=4)
 
+    def test_regla_del_multiple_4_4(self):
+        for k, n in ((20, 5), (24, 6), (28, 7), (40, 10)):
+            with self.subTest(k=k):
+                r = tr.recalculca_tram(k * 0.5, 120.0, 4, 4, n_beats=k)
+                self.assertEqual((r["n"], r["num"], r["den"]), (n, 4, 4))
+
+    def test_regla_del_multiple_3_4(self):
+        for k, n in ((12, 4), (36, 12)):
+            with self.subTest(k=k):
+                r = tr.recalculca_tram(k * 0.5, 120.0, 3, 4, n_beats=k)
+                self.assertEqual((r["n"], r["num"], r["den"]), (n, 3, 4))
+
+    def test_regla_del_multiple_6_8(self):
+        for k, n in ((6, 2), (12, 4)):
+            with self.subTest(k=k):
+                r = tr.recalculca_tram(k * 0.5, 120.0, 6, 8, n_beats=k)
+                self.assertEqual((r["n"], r["num"], r["den"]), (n, 6, 8))
+
+    def test_regla_del_multiple_respecta_n_fix(self):
+        r = tr.recalculca_tram(6.0, 120.0, 4, 4, n_ref=4, n_beats=12)
+        self.assertEqual((r["n"], r["num"], r["den"]), (4, 3, 4))
+        r = tr.recalculca_tram(6.0, 120.0, 4, 4, n_ref=3, n_beats=12)
+        self.assertEqual((r["n"], r["num"], r["den"]), (3, 4, 4))
+
+    def test_regla_del_multiple_exempta_n_max(self):
+        r = tr.recalculca_tram(240.0, 120.0, 4, 4, n_beats=480)
+        self.assertEqual((r["n"], r["num"], r["den"]), (120, 4, 4))
+
     def test_14_beats_amb_base_4_4_son_dos_7_4(self):
         r = tr.recalculca_tram(5.813688, 144.569633, 4, 4, n_beats=14)
         self.assertEqual((r["n"], r["num"], r["den"]), (2, 7, 4))
