@@ -8,6 +8,7 @@ import math
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QDialog, QMessageBox
 
+from . import bpm_unit as bpm_unit_mod
 from . import dialegs, mapa_tempo, pipeline, rubato as rubato_mod, tempo_map
 from . import tempo_recalc
 
@@ -18,6 +19,13 @@ class TempoMixin:
         """Referència manual (bpm, num, den) per a tots els recalcs."""
         return (float(self.ref_bpm), int(self.ref_bpb),
                 int(self.ref_beat_type))
+
+    def beat_factor(self):
+        """Negres que val el beat detectat (negra=1, punt=1.5, corxera=0.5)."""
+        return bpm_unit_mod.factor(getattr(self, "beat_unit", "negra"))
+
+    def set_beat_unit(self, unit):
+        self.beat_unit = bpm_unit_mod.normalitza(unit)
 
     def set_ref_tempo(self, bpm, num, den):
         """Fixa la referència manual del recalcul, validada."""
@@ -474,7 +482,8 @@ class TempoMixin:
             nous = tempo_map.mou_frontera_retempo(
                 trams, p_idx, float(t), self._durada_wav(), offset=offset,
                 beats_qm=getattr(self, "qm_beats", None), permissiu=True,
-                ref_base=self.ref_tempo_base(), avisos=avisos)
+                ref_base=self.ref_tempo_base(), avisos=avisos,
+                beat_factor=self.beat_factor())
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return

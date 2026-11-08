@@ -2185,7 +2185,7 @@ ESPERATS = {
                "whitening": 1.0, "s": 0.7},
     "structure": {"motor": "qm", "durada_min": 2.0, "fusiona_iguals": True},
     "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
-              "reduir": False, "snap": True, "divisio": 4},
+              "reduir": False, "snap": True, "grid": "corxera"},
     # anàlisi guiat: mida del tram i doble comprovació (21-10)
     "guiat": {"compassos": 4, "confirma": True},
     # QUÈ S'ANALITZA: les 3 etapes, activables per separat (21-10)
@@ -2243,7 +2243,7 @@ class TestDialogDefectes(unittest.TestCase):
         b["min"].setValue(80)
         c = dlg._controls["clean"]
         c["snap"].setChecked(False)
-        c["divisio"].setValue(4)
+        c["grid"].setCurrentIndex(c["grid"].findData("negra"))
         c["durada_min"].setValue(0.0)
         cl_chord = dlg._controls["chords"]["useHMM"]
         cl_chord.setChecked(False)
@@ -5867,6 +5867,21 @@ class TestAncoratgesFinestra(unittest.TestCase):
             self.assertAlmostEqual(vr.pos, 2.0, delta=0.15)
         finally:
             vr.velocitat = 1.0
+
+    def test_beat_unit_es_desa_i_arriba_al_visor(self):
+        vr = self.w.visor_ref
+        try:
+            idx = self.w.cb_beat.findData("negra_punt")
+            self.w.cb_beat.setCurrentIndex(idx)
+            self.w._canvia_beat_unit()
+            self.assertAlmostEqual(vr.beat_factor(), 1.5, places=6)
+            self.w._refresca_dades_projecte()
+            self.assertEqual(self.w.projecte.dades["tempo"]["beat_unit"],
+                             "negra_punt")
+        finally:
+            self.w.cb_beat.setCurrentIndex(
+                self.w.cb_beat.findData("negra"))
+            self.w._canvia_beat_unit()
 
     def test_latencia_del_cursor_compensa_el_retard(self):
         """El cursor pot anar 100 ms per darrere del rellotge d'àudio."""

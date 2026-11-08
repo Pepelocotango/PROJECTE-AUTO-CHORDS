@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QLabel, QPushButton, QTabWidget, QVBoxLayout, QWidget,
 )
 
-from app import limits, vamp_params
+from app import graella, limits, vamp_params
 from .opcions import (
     AJUDA_CA, DEFECTES, NOMS_CA, _checkbox, _combo, _spin,
     carrega_opcions,
@@ -233,11 +233,23 @@ class DialegOpcions(QDialog):
         c = _checkbox(dnet.get("snap", False))
         c.setToolTip("Mou l'inici de cada acord a la graella (BPM/compàs).")
         self._controls["clean"]["snap"] = c
+        fn.addRow(QLabel("Activa l'encaix a la graella"), c)
+        c = QComboBox()
+        for et, clau in graella.GRID_ACORDS:
+            c.addItem(et, clau)
+        valor = dnet.get("grid")
+        if valor not in {clau for _et, clau in graella.GRID_ACORDS}:
+            # Migració dels projectes/opcions vells per subdivisions.
+            valor = {1: "negra", 2: "corxera",
+                     4: "semicorxera", 8: "fusa"}.get(
+                         int(dnet.get("divisio", 2) or 2), "corxera")
+        i = c.findData(valor)
+        if i >= 0:
+            c.setCurrentIndex(i)
+        c.setToolTip("Graella on encaixar l'inici de cada acord (la mateixa "
+                     "que «Quantitza el model»).")
+        self._controls["clean"]["grid"] = c
         fn.addRow(QLabel("Encaixar a la graella"), c)
-        s = _spin(1, 8, 1, dnet.get("divisio", 1), 0)
-        s.setToolTip("Subdivisions per temps on encaixar (1 = temps).")
-        self._controls["clean"]["divisio"] = s
-        fn.addRow(QLabel("Subdivisions per temps"), s)
         f.addRow(net)
         return w
 
@@ -306,7 +318,9 @@ class DialegOpcions(QDialog):
         cl["fusiona_iguals"].setChecked(bool(dc["fusiona_iguals"]))
         cl["durada_min"].setValue(float(dc["durada_min"]))
         cl["snap"].setChecked(bool(dc["snap"]))
-        cl["divisio"].setValue(float(dc["divisio"]))
+        idx = cl["grid"].findData(dc["grid"])
+        if idx >= 0:
+            cl["grid"].setCurrentIndex(idx)
         # QUÈ S'ANALITZA (les 3 etapes): també torna a la fàbrica.
         da = DEFECTES["analisi"]
         for clau in ("bpm", "acords", "estructura"):
@@ -340,7 +354,7 @@ class DialegOpcions(QDialog):
             "fusiona_iguals": bool(cl["fusiona_iguals"].isChecked()),
             "durada_min": round(float(cl["durada_min"].value()), 2),
             "snap": bool(cl["snap"].isChecked()),
-            "divisio": int(cl["divisio"].value()),
+            "grid": cl["grid"].currentData(),
         }
         fora = {k: v for k, v in self._base.items()
                 if k not in ("bpm", "chords", "structure", "clean",

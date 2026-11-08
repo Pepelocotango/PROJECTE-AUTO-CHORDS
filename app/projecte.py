@@ -308,6 +308,7 @@ class Projecte:
             "tempo": {"bpm": float(bpm), "bpb": int(bpb),
                       "offset": float(offset), "fix": bool(fix),
                       "compas": str(compas).strip() if compas else "",
+                      "beat_unit": "negra",
                       "ref": {"bpm": float(bpm),
                               "compas": (str(compas).strip()
                                          if compas and "/" in str(compas)

@@ -138,6 +138,7 @@ class ProjecteMixin:
                       "fix": self.tempo_fix.isChecked(),
                       "compas": f"{bpb}/{den}",
                       "unit": self._bpm_unit_val(),
+                      "beat_unit": self._beat_unit_val(),
                       "metro_unit": self._metro_click_unit_val(),
                       "ref": {"bpm": float(ref_bpm),
                               "compas": f"{int(ref_num)}/{int(ref_den)}"}},
@@ -184,6 +185,7 @@ class ProjecteMixin:
             self.cb_metro_unit.blockSignals(True)
             self.cb_metro_unit.setCurrentIndex(idx_m)
             self.cb_metro_unit.blockSignals(False)
+        self._posa_beat_unit(tempo.get("beat_unit", "negra"))
         compas = tempo.get("compas")
         # Format COMPLET (4/4, no «4»): un «4» sol sembla el compàs denormalitzat
         # i confon; el parser accepta els dos, però el camp sempre el mostra bé.

@@ -1396,7 +1396,7 @@ def _millora_signatures_clips(trams, durada, offset=0.0, beats_qm=None,
 
 def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
                           beats_qm=None, permissiu=False, recalculca=False,
-                          ref_base=None, avisos=None):
+                          ref_base=None, avisos=None, beat_factor=1.0):
     """Parteix el mapa a `t` conservant el BPM i el compàs del clip.
 
     Contracte nou (§13.4): ja no cal que les dos parts tinguen compassos enters
@@ -1425,7 +1425,8 @@ def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
             if recalculca:
                 out = _recalcula_costats(out, [(i, s), (i + 1, s)],
                                          durada, offset, beats_qm=beats_qm,
-                                         ref_base=ref_base, avisos=avisos)
+                                         ref_base=ref_base, avisos=avisos,
+                                         beat_factor=beat_factor)
             return valida_i_normalitza_permissiu(out, durada, offset)
         out = _millora_signatures_clips(out, durada, offset, beats_qm,
                                         {i, i + 1})
@@ -1543,7 +1544,7 @@ def ajusta_trams_a_marcadors(trams, marcadors, durada, offset=None,
 
 def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
                          beats_qm=None, permissiu=False, ref_base=None,
-                         avisos=None):
+                         avisos=None, beat_factor=1.0):
     """Mou una frontera interior.
 
     Dos camins:
@@ -1588,7 +1589,8 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
     if permissiu:
         out = _recalcula_costats(out, [(i - 1, a), (i, b)],
                                  durada, offset, beats_qm=beats_qm,
-                                 ref_base=ref_base, avisos=avisos)
+                                 ref_base=ref_base, avisos=avisos,
+                                 beat_factor=beat_factor)
         return valida_i_normalitza_permissiu(out, durada, offset)
     out = _millora_signatures_clips(out, durada, offset, beats_qm,
                                     {i - 1, i})
@@ -1597,7 +1599,7 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
 
 
 def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
-                       ref_base=None, avisos=None):
+                       ref_base=None, avisos=None, beat_factor=1.0):
     """Recalcula BPM/compàs dels costats amb una referència.
 
     `refs`: `[(idx, tram_referencia), …]`. Si `ref_base=(bpm, num, den)` no és
@@ -1616,7 +1618,11 @@ def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
             continue                     # pre-roll: el clip no és musical
         n_beats = None
         if beats:
-            n_beats = sum(1 for b in beats if ini - TOL <= b < fi - TOL)
+            n_detectats = sum(1 for b in beats if ini - TOL <= b < fi - TOL)
+            if (n_detectats and abs(float(beat_factor) - 1.0) > 1e-9):
+                n_beats = int(round(n_detectats * float(beat_factor)))
+            else:
+                n_beats = n_detectats
         if ref_base is None:
             bpm_ref, num_ref, den_ref = ref[2], ref[3], ref[4]
         else:

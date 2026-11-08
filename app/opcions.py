@@ -60,7 +60,7 @@ DEFECTES = {
                   "fusiona_iguals": True},
     # Neteja posterior dels acords (post-processat, app/postproc.py)
     "clean": {"durada_min": 0.15, "fusiona_iguals": True, "sense_baix": False,
-              "reduir": False, "snap": True, "divisio": 4},
+              "reduir": False, "snap": True, "grid": "corxera"},
     # Anàlisi guiat: mida del tram i si es confirma la detecció amb el BPM
     # del tram anterior.
     "guiat": {"compassos": 4, "confirma": True},

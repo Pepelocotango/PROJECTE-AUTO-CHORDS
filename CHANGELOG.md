@@ -729,6 +729,28 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   seek o loop.
 - Suite: **1539 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
+### Afegit — unitat del beat detectat (2026-11-08)
+- Nou selector **Beat detectat** a la barra 2: `negra` (defecte), `negra amb
+  punt`, `corxera` o `blanca`. El recalcul convertix K a negres abans de
+  repartir compassos; per defecte el comportament és idèntic a l'anterior.
+- Permet treballar 6/8 amb el detector en negra amb punt (2 beats → 3 negres
+  → 6/8 N=1) sense que els compassos estàndard canvien.
+- Es desa a `tempo.beat_unit` del `.acproj`; els projectes vells queden en
+  `negra`.
+- Suite: **1542 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
+### Canviat — encaix de l'anàlisi unificat amb Quantitza (2026-11-08)
+- «Encaixar a graella» de l'anàlisi d'acords usa el **mateix nucli**
+  (`graella.quantitza_boundaries`) i les **mateixes graelles** que «Quantitza el
+  model»: absorció de col·lisions, finals derivats i cobertura.
+- La graella per defecte passa a **corxera = 1/2 temps** (2 posicions per
+  temps). Els projectes/opcions vells amb `divisio` es migren.
+- L'anàlisi rep una **còpia del `TempoMap`** en llançar-se; si és variable,
+  cada acord es quantitza amb la graella del seu tram.
+- Corregit: `Feina` no guardava eixa còpia (`self.mapa`) i l'encaix petava
+  amb `'Feina' object has no attribute 'mapa'`.
+- Suite: **1544 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
 ### Refactor — modularització completa (2026-11-06)
 - `app/main.py`: 4.858 → **1.511 línies**; extret a `*_ui` (`analisi_ui`,
   `barres`, `edicio_ui`, `export_ui`, `marcadors_ui`, `menus`, `opcions`,

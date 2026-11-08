@@ -19,6 +19,8 @@ _TOL_Q = 1e-6
 #   Acords: de corxera a 1 compàs (l'harmonia no canvia a 1/32 ni a 64 compassos).
 #   Estructura: de 1 a 64 compassos (frases i blocs).
 GRID_ACORDS = (
+    ("Fusa (1/32)", "fusa"),
+    ("Semicorxera (1/16)", "semicorxera"),
     ("Corxera (1/8)", "corxera"),
     ("Treset de corxera (1/3)", "treset_corxera"),
     ("Negra (1/4)", "negra"),

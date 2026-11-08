@@ -116,7 +116,8 @@ class Feina(QThread):
     feta = pyqtSignal(bool, str)
 
     def __init__(self, wav, sortida, bpm, bpb, offset, amb_estructura,
-                 tempo_fix=True, opcions=None, amb_bpm=True, amb_acords=True):
+                 tempo_fix=True, opcions=None, amb_bpm=True, amb_acords=True,
+                 mapa=None):
         super().__init__()
         # CRU de l'anàlisi EN MEMÒRIA: es desa dins el `.acproj` en acabar
         # (decisió 2026-10-19: ni `analisi/` ni `segments.csv` al disc).
@@ -131,6 +132,7 @@ class Feina(QThread):
         self.amb_estructura = amb_estructura
         self.tempo_fix = tempo_fix
         self.opcions = opcions or {}
+        self.mapa = mapa
         # QUÈ S'ANALITZA (3 etapes independents, decisió 21-10-2026): el que
         # està desactivat NO es toca — es conserva el model que ja hi ha.
         self.amb_bpm = bool(amb_bpm)
@@ -232,8 +234,9 @@ class Feina(QThread):
                         reduir=bool(cl.get("reduir", False)),
                         snap=bool(cl.get("snap", False)),
                         bpm=self.bpm, bpb=self.bpb, offset=self.offset,
-                        divisio=int(cl.get("divisio", 1)), log=self.log,
-                        durada=durada_wav)
+                        divisio=int(cl.get("divisio", 1)),
+                        grid=cl.get("grid"), mapa=self.mapa,
+                        log=self.log, durada=durada_wav)
             else:
                 self.log("acords: OMESOS (es conserva el model actual)")
             self.progres.emit(55)

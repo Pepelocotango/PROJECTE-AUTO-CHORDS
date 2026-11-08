@@ -65,7 +65,11 @@
 > pot quedar sencer, avisa. La **regla del múltiple** fa que la signatura base
 > mane quan `K/bq_ref` és enter; si `K` no factoritza, es prova `K±1` (amb
 > avís) i s'eviten els `2/8`/`1/8`/`1/4` repetits. Els avisos de desviació de
-> BPM (>12 %) i de sospita d'octava es mostren a l'editor. Al diàleg del clip
+> BPM (>12 %) i de sospita d'octava es mostren a l'editor. «Encaixar a
+> graella» de l'anàlisi fa servir el mateix nucli i graelles que «Quantitza»;
+> per defecte, **corxera** (1/2 temps, 2 acords per temps). El selector
+> **Beat detectat** de la barra 2 indica la unitat del detector (negra per
+> defecte; negra amb punt per a 6/8). Al diàleg del clip
 > hi ha **N compassos** (mode A): N i compàs manen, el BPM es recalcula i les
 > fronteres no es mouen. La validació d'este canvi és **local** al clip editat;
 > un altre clip fora de graella no bloqueja l'edició. Els canvis explícits de

@@ -285,6 +285,19 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             "Compàs de referència (x/y) per als recalcs. Els beats detectats "
             "poden corregir-lo si cal (p. ex. 14 beats → 7/4).")
         self._ref_manual = False
+        self.cb_beat = QComboBox()
+        for _clau, _et in bpm_unit_mod.opcions():
+            self.cb_beat.addItem(_et, _clau)
+        self.cb_beat.setCurrentIndex(0)
+        self.cb_beat.setFixedWidth(118)
+        self.cb_beat.setSizeAdjustPolicy(
+            QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.cb_beat.setMinimumContentsLength(10)
+        self.cb_beat.setToolTip(
+            "Unitat del beat que retorna el detector (negra, negra amb punt, "
+            "corxera o blanca). El recalcul convertix K a negres. Per defecte "
+            "negra: no canvia res dels compassos estàndard.")
+        self.cb_beat.currentIndexChanged.connect(self._canvia_beat_unit)
         self.offset = QLineEdit("0.000")
         self.offset.setFixedWidth(60)
         self.offset.setPlaceholderText("0.000")
@@ -337,6 +350,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         hp.addWidget(QLabel("Ref. recalc:"))
         hp.addWidget(self.ref_bpm)
         hp.addWidget(self.ref_bpb)
+        hp.addWidget(QLabel("Beat:"))
+        hp.addWidget(self.cb_beat)
         self.chk_segons = QCheckBox("En segons")
         self.chk_segons.setToolTip(
             "El clip de tempo objectiu va en segons (rubato): sense compàs ni "
@@ -673,6 +688,27 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             QDesktopServices.openUrl(QUrl.fromLocalFile(d))
         else:
             self.avisa_info("Auto Chords", f"No trobo la carpeta del registre:\n{d}")
+
+    def _beat_unit_val(self):
+        cb = getattr(self, "cb_beat", None)
+        return bpm_unit_mod.normalitza(cb.currentData() if cb else None)
+
+    def _posa_beat_unit(self, unit):
+        cb = getattr(self, "cb_beat", None)
+        if cb is None:
+            return
+        idx = cb.findData(bpm_unit_mod.normalitza(unit))
+        if idx >= 0:
+            cb.blockSignals(True)
+            cb.setCurrentIndex(idx)
+            cb.blockSignals(False)
+
+    def _canvia_beat_unit(self, _idx=None):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            vr.set_beat_unit(self._beat_unit_val())
+        self._marca_dirty()
+        self.registra(f"Beat detectat: {self._beat_unit_val()}")
 
     def _latencia_cursor_val(self):
         """Retard visual del cursor (ms) desat a les opcions del projecte."""

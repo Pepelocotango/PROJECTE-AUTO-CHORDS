@@ -92,8 +92,9 @@ fusionar/eliminar**, **rebuig + diàleg de reparació** per a un compàs que dei
 N no enter, i **graella/metrònom robustos** a edicions a pocs ms. També s'ha
 afegit el camp **N compassos** al diàleg de tempo (mode A: N + compàs → BPM
 automàtic, fronteres fixes), amb validació local perquè un clip aliè fora de
-graella no bloquege l'edició. Suite **1539 OK** (1 skip), `pyflakes` i
-`docs-check` nets.
+graella no bloquege l'edició. També s'ha unificat l'encaix de l'anàlisi amb
+«Quantitza» (default **corxera = 1/2 temps**) i amb el `TempoMap` vigent.
+Suite **1544 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
@@ -179,10 +180,15 @@ desviació de BPM gran (p. ex. 8 beats en 6 s amb ref 120 → 80 BPM) no avisa.
      d'alternatives canòniques amb una tecla (6/4 ↔ 3/4×2), recompte en viu al
      clip (7 beats → 7/4).
 
-**Bloqueig 6/8 — unitat del beat.** `app/bpm_unit.py` és **només de
-presentació**: el model i tot el recalcul treballen sempre en negres/minut. El
-detector QM no exposa si el beat és negra, negra amb punt o corxera; `K` sempre
-s'interpreta com a negres. Per a un compàs 6/8 (`bq=3`):
+**6/8 — unitat del beat.** `app/bpm_unit.py` continua sent només de
+presentació, però la barra 2 té ara un selector **Beat detectat** (negra per
+defecte) que convertix `K` a negres al recalcul: negra amb punt ×1,5,
+corxera ×0,5. Els compassos estàndard no canvien si el selector queda en
+**negra**. Amb `cop de sort` (55 negres amb punt = 82,5 negres/min), els trams
+de 17,45–52,36 s (32 beats amb punt) i 52,36–56,73 s (4) passen a **6/8 N=16**
+i **6/8 N=2** a 82,5 BPM. Queda pendent el **pickup inicial** (el primer beat
+cau a 1,08 s) i decidir si el metrònom deu seguir automàticament la unitat.
+Per a un compàs 6/8 (`bq=3`):
 
 | Beat detectat | K=6 | Negres | 6/8 |
 |---|---:|---:|---|

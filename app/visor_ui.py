@@ -90,6 +90,7 @@ class VisorUIMixin:
                 ref_bpb=_rn,
                 ref_beat_type=_rd,
                 latencia_cursor_ms=self._latencia_cursor_val(),
+                beat_unit=self._beat_unit_val(),
             )
             self.visor_ref = visor
             if _rb is None or not getattr(self, "_ref_manual", False):

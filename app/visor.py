@@ -90,7 +90,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
     velocitatCanviada = pyqtSignal(float)
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True, sortida=None,
                  offset=0.0, beat_type=4, bpm_unit="negra", ref_bpm=None,
-                 ref_bpb=None, ref_beat_type=None, latencia_cursor_ms=0.0):
+                 ref_bpb=None, ref_beat_type=None, latencia_cursor_ms=0.0,
+                 beat_unit="negra"):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
         self._embedded = False
@@ -125,6 +126,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ref_bpm, self.ref_bpb, self.ref_beat_type = (
             float(_rb), int(_rn), int(_rd))
         self.set_latencia_cursor_ms(latencia_cursor_ms)
+        self.beat_unit = bpm_unit_mod.normalitza(beat_unit)
         self.offset = float(offset or 0.0)
         self.tempo_fix = bool(tempo_fix)
         self.csv_acords = os.path.abspath(acords) if acords else None
@@ -2399,7 +2401,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 trams, [(i, tram)], self._durada_wav(),
                 offset=getattr(self, "offset", 0.0),
                 beats_qm=getattr(self, "qm_beats", None),
-                ref_base=self.ref_tempo_base())
+                ref_base=self.ref_tempo_base(),
+                beat_factor=self.beat_factor())
         except Exception as e:  # noqa: BLE001
             self.log(f"{msg}: recalcul del clip {i + 1} no aplicat ({e})")
             return trams
@@ -3508,7 +3511,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             nous = tempo_map.mou_frontera_retempo(
                 trams, int(idx_frontera), float(t), durada, offset=offset,
                 beats_qm=getattr(self, "qm_beats", None), permissiu=True,
-                ref_base=self.ref_tempo_base(), avisos=avisos)
+                ref_base=self.ref_tempo_base(), avisos=avisos,
+                beat_factor=self.beat_factor())
         except ValueError as e:
             self.avis_editor(f"Frontera: {e}")
             return None

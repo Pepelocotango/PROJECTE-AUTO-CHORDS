@@ -61,7 +61,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.b_obre_carpeta` | **Obre la carpeta de sortida** | `QPushButton` |
 | — | (al transport; `self.b_zs` al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / hh:mm:ss** (abans deia «Lliure») | `QPushButton` (checkable) |
-| — | `self.bpm` · `self.cb_bpm_unit` · `self.bpb` · `self.offset` · `self.offset_cb` | **BPM**, **unitat del BPM** (negra · negra amb punt · corxera · blanca), **Compàs**, **Offset (s)**, **≈ C.B** | `QLineEdit` · `QComboBox` |
+| — | `self.bpm` · `self.cb_bpm_unit` · `self.bpb` · `self.ref_bpm` · `self.ref_bpb` · `self.cb_beat` · `self.offset` · `self.offset_cb` | **BPM**, **unitat del BPM** (negra · negra amb punt · corxera · blanca), **Compàs**, **Ref. recalc** (BPM + compàs), **Beat detectat** (negra · negra amb punt · corxera · blanca), **Offset (s)**, **≈ C.B** | `QLineEdit` · `QComboBox` |
 | — | `self.b_detecta` | **Detecta** (icona `target`) → obre el diàleg de BPM | `QPushButton` |
 | — | `self.b_bpm_x2` · `self.b_bpm_div2` | **×2 / ÷2** del BPM | `QPushButton` |
 | — | `self.b_compas_auto` | **Detecta el compàs 1** (icona `compass`) | `QPushButton` |
@@ -475,7 +475,10 @@ La casella **«Detecta l'estructura»** és el MATEIX estat que l'acció *Inclou
 estructura* del menú (es sincronitzen).
 
 **Neteja posterior** (`app/postproc.py`): treure el baix (`A/E`→`A`), reduir
-(`Cmaj7`→`C`), fusionar iguals, durada mínima i encaixar a la graella.
+(`Cmaj7`→`C`), fusionar iguals, durada mínima i **encaixar a la graella** amb
+les mateixes graelles que «Quantitza» (per defecte **corxera = 1/2 temps**,
+és a dir, 2 posicions per temps). Usa el `TempoMap` vigent en llançar
+l'anàlisi.
 
 Les opcions es **recorden** a `opcions_detecta.json` (gitignored).
 

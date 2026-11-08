@@ -1112,8 +1112,9 @@ class TestDivisionsQuantitza(unittest.TestCase):
 
     def test_graelles_logiques(self):
         self.assertEqual([c for _e, c in graella.GRID_ACORDS],
-                         ["corxera", "treset_corxera", "negra",
-                          "treset_negra", "blanca", "compas1"])
+                         ["fusa", "semicorxera", "corxera",
+                          "treset_corxera", "negra", "treset_negra",
+                          "blanca", "compas1"])
         self.assertEqual([c for _e, c in graella.GRID_ESTRUCTURA],
                          [f"compas{n}" for n in
                           (1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64)])
@@ -2021,6 +2022,32 @@ class TestTramsEnSegons(unittest.TestCase):
         self.assertEqual(out[0][3:], (11, 4))
         # 9 negres = 3 compassos de 3/4 (més natural que un 9/4).
         self.assertEqual(out[1][3:], (3, 4))
+
+    def test_parteix_amb_beat_unit_negra_amb_punt(self):
+        trams = [(0.0, 4.363636, 82.5, 6, 8)]
+        beats = [0.0, 1.090909, 2.181818, 3.272727]
+        out = tm.parteix_tram_marcador(
+            trams, 2.181818, 4.363636, 0.0, beats_qm=beats,
+            permissiu=True, recalculca=True, ref_base=(82.5, 6, 8),
+            beat_factor=1.5)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(out[0][3:], (6, 8))
+        self.assertEqual(out[1][3:], (6, 8))
+        self.assertAlmostEqual(out[0][2], 82.5, places=4)
+        self.assertAlmostEqual(out[1][2], 82.5, places=4)
+
+    def test_beat_unit_negra_amb_punt_6_8(self):
+        """2 beats amb punt per compàs 6/8 = 3 negres → 6/8 N=1."""
+        trams = [(0.0, 2.181818, 82.5, 6, 8),
+                 (2.181818, 4.363636, 82.5, 6, 8)]
+        beats = [0.0, 1.090909, 2.181818, 3.272727]
+        out = tm.mou_frontera_retempo(
+            trams, 1, 2.181818, 4.363636, 0.0, beats_qm=beats,
+            permissiu=True, ref_base=(82.5, 6, 8), beat_factor=1.5)
+        self.assertEqual(out[0][3:], (6, 8))
+        self.assertEqual(out[1][3:], (6, 8))
+        self.assertAlmostEqual(out[0][2], 82.5, places=4)
+        self.assertAlmostEqual(out[1][2], 82.5, places=4)
 
     def test_parteix_amb_ref_base_sobreescriu_el_pare(self):
         trams = [(0.0, 10.0, 120.0, 11, 4)]

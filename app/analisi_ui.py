@@ -136,7 +136,9 @@ class AnalisiMixin:
                            self.tempo_fix.isChecked(),
                            opcions=self.opcions,
                            amb_bpm=False,
-                           amb_acords=bool(_ana.get("acords", True)))
+                           amb_acords=bool(_ana.get("acords", True)),
+                           mapa=getattr(getattr(self, "visor_ref", None),
+                                        "tempo_map", None))
         self.feina.missatge.connect(self.registra)
         self.feina.progres.connect(self.barra.setValue)
         self.feina.feta.connect(self.acabada)

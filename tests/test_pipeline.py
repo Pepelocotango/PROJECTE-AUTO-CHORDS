@@ -4532,6 +4532,22 @@ class PostprocTests(unittest.TestCase):
                                  bpm=60, divisio=1)
         self.assertEqual([round(x[0], 2) for x in r], [0.0, 1.0, 2.0])
 
+    def test_feina_guarda_el_mapa_per_a_l_analisi(self):
+        from app.feines import Feina
+        mapa = object()
+        f = Feina("tema.wav", "/tmp", 120.0, 4, 0.0, False, mapa=mapa)
+        self.assertIs(f.mapa, mapa)
+
+    def test_snap_a_graella_corxera_amb_mapa(self):
+        from app.tempo_map import TempoMap
+        mapa = TempoMap.constant(120, 4, 4, durada=8.0)
+        r = postproc._snap_a_graella(
+            [(0.13, "C"), (0.4, "G"), (1.1, "Am")],
+            8.0, "corxera", 120, 4, 0.0, mapa, None)
+        self.assertEqual([nom for _t, nom in r], ["N", "C", "G", "Am"])
+        self.assertEqual([round(t, 2) for t, _n in r],
+                         [0.0, 0.25, 0.5, 1.0])
+
     def test_processa_acords_csv(self):
         import tempfile
         d = tempfile.mkdtemp()

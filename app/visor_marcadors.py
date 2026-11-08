@@ -3,6 +3,7 @@
 Extret de `app/visor.py`: alta, moviment, esborrat, snap i BPM derivat dels
 marcadors.
 """
+from . import bpm_unit as bpm_unit_mod
 from . import pipeline, tempo_map, tempo_recalc
 
 class MarcadorsMixin:
@@ -151,7 +152,8 @@ class MarcadorsMixin:
                 trams, t, durada, offset=getattr(self, "offset", 0.0),
                 bpm_ref=bpm_ref, beats_qm=getattr(self, "qm_beats", None),
                 permissiu=True, recalculca=True,
-                ref_base=self.ref_tempo_base(), avisos=avisos)
+                ref_base=self.ref_tempo_base(), avisos=avisos,
+                beat_factor=self.beat_factor())
         except ValueError as e:
             self.avis_editor(f"Marcador: {e}")
             return False
@@ -249,12 +251,15 @@ class MarcadorsMixin:
         beats = sorted(float(b) for b in
                        (getattr(self, "qm_beats", None) or ()))
         ref_bpm, ref_num, ref_den = self.ref_tempo_base()
+        factor = bpm_unit_mod.factor(getattr(self, "beat_unit", "negra"))
         avisos = []
 
         def _tram(dt, k, bpm_i, nb=None):
             # Si hi ha beats detectats, manen sobre el nombre de compassos
             # estimat pels marcadors: 7 beats són 7/4, no 2×4/4.
             _ = float(bpm_i)      # el candidat dels marcadors ja no és la ref
+            if nb is not None and abs(float(factor) - 1.0) > 1e-9:
+                nb = int(round(float(nb) * float(factor)))
             r = tempo_recalc.recalculca_tram(
                 dt, ref_bpm, int(ref_num), int(ref_den),
                 n_ref=None if nb else int(k), n_beats=nb)
