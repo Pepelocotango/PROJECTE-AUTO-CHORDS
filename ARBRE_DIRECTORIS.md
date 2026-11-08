@@ -27,7 +27,7 @@
 ## Convencions
 
 - 🟢 versionat · 🟡 local/generat (no versionat).
-- **No editar a mà:** `docs/ESQUEMA_UI.html`/`.svg` (`eines/genera_esquema_ui.py`), `docs/COMPONENTS_I_VERSIONS.md` (`eines/genera_inventari.py`) ni la taula de mòduls de `DEVELOPING.md` (`eines/genera_moduls.py`).
+- **No editar a mà:** `docs/ESQUEMA_UI.html`/`.svg` (`eines/genera_esquema_ui.py`), `docs/COMPONENTS_I_VERSIONS.md` (`eines/genera_inventari.py`), la taula de mòduls de `DEVELOPING.md` (`eines/genera_moduls.py`) ni `docs/FUNCIONALITATS_AUTO_CHORDS.ods` (`eines/genera_funcionalitats.py`).
 - **No versionar ni tocar:** `.venv/`, `.deps/`, `portable/`, `temp/`, `CORPUS/`, `.opencode/`, `*.log`, `recents.json`, `opcions_detecta.json`.
 - `.git/` s'omet; les carpetes grans es resumeixen amb recompte de fitxers.
 
@@ -183,7 +183,7 @@ PROJECTE AUTO CHORDS/
 │   ├── ESQUEMA_UI.svg 🟡           # Generat des del `.md` (no editar).
 │   ├── EDICIO_OPERACIONS.md        # Taula única d'operacions d'edició.
 │   ├── TIPUS_XIFRAT_ACORDS.md      # Catàleg de tipus, graus i `<kind>` MusicXML.
-│   ├── FUNCIONALITATS_AUTO_CHORDS.ods # Mapa complet de funcionalitats d'usuari (ODF).
+│   ├── FUNCIONALITATS_AUTO_CHORDS.ods # Mapa complet de funcionalitats (generat; ODF).
 │   ├── COMPONENTS_I_VERSIONS.md 🟡 # Inventari generat (`eines/genera_inventari.py`).
 │   └── recerca/                    # Documents de recerca (no descriuen l'estat viu).
 │       ├── guia_tecnica_downbeat_onsets_beats.md
@@ -191,7 +191,7 @@ PROJECTE AUTO CHORDS/
 │       ├── GRAELLA_PPQ_TEMPS.md
 │       └── AUTODETECCIO_OPCIONS.md
 │
-├── eines/ 🟢                       # Build, empaquetat i cadena de subministrament (23 fitxers).
+├── eines/ 🟢                       # Build, empaquetat i cadena de subministrament (26 fitxers).
 │   ├── AutoChords-win.spec         # PyInstaller (Windows).
 │   ├── launcher_pyinstaller.py     # Punt d'entrada del paquet congelat.
 │   ├── crea_icona.py               # Genera `.ico`/`.icns`.
@@ -206,6 +206,8 @@ PROJECTE AUTO CHORDS/
 │   ├── baixa_verificat.py · baixa_icones.sh · deps_fixades.env
 │   ├── genera_inventari.py         # Genera `docs/COMPONENTS_I_VERSIONS.md`.
 │   ├── genera_esquema_ui.py        # Genera `docs/ESQUEMA_UI.html` i `.svg`.
+│   ├── genera_funcionalitats.py    # Genera `docs/FUNCIONALITATS_AUTO_CHORDS.ods`.
+│   ├── funcionalitats_dades.json   # Font de dades del mapa de funcionalitats.
 │   ├── genera_moduls.py            # Genera la taula de mòduls de `DEVELOPING.md`.
 │   ├── notes_release.py            # Notes de release des del CHANGELOG.
 │   ├── avalua_tempo.py · explica_bpm.py · exporta_partitura.py

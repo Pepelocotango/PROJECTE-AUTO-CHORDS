@@ -18,7 +18,7 @@
 | `EDICIO_OPERACIONS.md` | Taula única d'operacions d'edició: GUI × paritat acords/estructura × estat. |
 | `TIPUS_XIFRAT_ACORDS.md` | Catàleg de tipus d'acord, variants, graus i `<kind>` MusicXML. |
 | `COMPONENTS_I_VERSIONS.md` | Inventari de components i versions. El **genera** `eines/genera_inventari.py` — no editar-lo a mà. |
-| **`FUNCIONALITATS_AUTO_CHORDS.ods`** | Mapa complet d'ús: totes les accions d'usuari, què fan, des d'on s'executen (menú, botó, drecera, contextual, ratolí, diàleg o automàtic), disponibilitat i límits. 9 fulls: resum, llegenda, mapa mental, 198 fitxes, menús, botons, dreceres, diàlegs i flux de treball. |
+| **`FUNCIONALITATS_AUTO_CHORDS.ods`** | Mapa complet d'ús: totes les accions d'usuari, què fan, des d'on s'executen (menú, botó, drecera, contextual, ratolí, diàleg o automàtic), disponibilitat i límits. 9 fulls: resum, llegenda, mapa mental, 198 fitxes, menús, botons, dreceres, diàlegs i flux de treball. El **genera** `eines/genera_funcionalitats.py` des de `eines/funcionalitats_dades.json` — no editar l'ODS a mà. |
 
 ## Recerca (`recerca/`)
 

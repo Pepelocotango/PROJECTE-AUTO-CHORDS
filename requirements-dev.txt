@@ -8,3 +8,6 @@ pyflakes==4.0.3
 
 # Cobertura (`make coverage` i els workflows de build).
 coverage==7.16.2
+
+# Generació del mapa de funcionalitats en ODF (`make docs`).
+odfpy==1.4.1

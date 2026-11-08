@@ -647,6 +647,11 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - El full **Funcionalitats** té autofiltre a la capçalera i el **Mapa mental**
   presenta la jerarquia àrea → grup → acció. Generat a partir del codi
   (menús, barres, visor, timeline, diàlegs i export).
+- **Automatitzat**: `eines/genera_funcionalitats.py` genera l'ODS des de
+  `eines/funcionalitats_dades.json` (una fila per línia, editable). Integrat a
+  `make docs` i `make docs-check`; el guardat és determinista (dates fixes al
+  ZIP), així que regenerar sense canvis no deixa diff binari.
+- Nova dependència de desenvolupament: `odfpy==1.4.1`.
 
 ### Canviat — model de tempo simplificat (2026-11-07)
 - **El tram 0 és un clip normal**: `_refresca_tempo_map` ja no el sobreescriu
