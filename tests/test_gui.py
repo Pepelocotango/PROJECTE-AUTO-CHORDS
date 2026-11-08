@@ -5868,6 +5868,29 @@ class TestAncoratgesFinestra(unittest.TestCase):
         finally:
             vr.velocitat = 1.0
 
+    def test_latencia_del_cursor_compensa_el_retard(self):
+        """El cursor pot anar 100 ms per darrere del rellotge d'àudio."""
+        import time as _t
+        vr = self.w.visor_ref
+        try:
+            vr.velocitat = 1.0
+            vr.loop_on = False
+            vr.proc = None
+            vr.set_latencia_cursor_ms(100)
+            vr.t0_pos = 0.0
+            vr.t0_mono = _t.monotonic() - 1.0
+            vr._tiquet()
+            self.assertAlmostEqual(vr.pos, 0.9, delta=0.05)
+            # En un seek, el cursor no ha de retrocedir per davall de l'àncora.
+            vr.t0_pos = 10.0
+            vr.t0_mono = _t.monotonic()
+            vr._tiquet()
+            self.assertAlmostEqual(vr.pos, 10.0, delta=0.02)
+            self.assertEqual(vr.rellotge.interval(), 16)
+        finally:
+            vr.set_latencia_cursor_ms(0)
+            vr.velocitat = 1.0
+
     @unittest.skipUnless(app_visor.ffmpeg.disponible(),
                          "cal ffmpeg per canviar la velocitat")
     def test_selector_de_la_barra_mou_el_visor(self):

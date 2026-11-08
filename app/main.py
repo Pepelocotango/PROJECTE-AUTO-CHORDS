@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QAction, QApplication, QButtonGroup, QCheckBox, QDockWidget,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QComboBox,
     QMessageBox, QProgressBar, QPushButton, QShortcut,
-    QDialog,
+    QDialog, QInputDialog,
     QAbstractSpinBox,
     QPlainTextEdit,
     QTextEdit,
@@ -673,6 +673,35 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             QDesktopServices.openUrl(QUrl.fromLocalFile(d))
         else:
             self.avisa_info("Auto Chords", f"No trobo la carpeta del registre:\n{d}")
+
+    def _latencia_cursor_val(self):
+        """Retard visual del cursor (ms) desat a les opcions del projecte."""
+        rep = self.opcions.get("reproduccio") or {}
+        try:
+            return max(0.0, min(1000.0, float(
+                rep.get("latencia_cursor_ms", 0.0))))
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _ajusta_latencia_cursor(self):
+        """Calibratge manual del cursor respecte al so (un sol valor)."""
+        vr = getattr(self, "visor_ref", None)
+        actual = self._latencia_cursor_val()
+        val, ok = QInputDialog.getDouble(
+            self, "Retard global de reproducció",
+            "Mil·lisegons de retard global per a cursor, llistes, temps i "
+            "ressaltat (0 = sense compensació; apuja'l si el que es veu va "
+            "per davant del so):",
+            actual, 0.0, 500.0, 1)
+        if not ok:
+            return
+        self.opcions.setdefault("reproduccio", {})[
+            "latencia_cursor_ms"] = float(val)
+        dialegs.desa_opcions(self.opcions)
+        if vr is not None:
+            vr.set_latencia_cursor_ms(val)
+        self._marca_dirty()
+        self.registra(f"Reproducció: retard global de {float(val):.0f} ms")
 
     def _sincronitza_temps_del_visor(self):
         """Refresca els camps de temps/loop des del visor.

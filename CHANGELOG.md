@@ -718,6 +718,17 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   bloqueja per altres clips del mapa que estiguen fora de graella; el
   grid/metrònom robustos toleren la resta.
 
+### Millorat — sincronització global de reproducció (2026-11-08)
+- El cursor, el lliscador, el temps, el ressaltat i les llistes d'acords,
+  estructura i tempo s'actualitzen a **16 ms** (~60 fps). `_tiquet` ja no
+  repobla el model: només llig l'estat viu i pinta, perquè 16 ms siga viable.
+- Nou calibratge **«Retard global de reproducció…»** al menú Edita: el mateix
+  desplaçament s'aplica a tot el que seguix el play (cursor, llistes, temps i
+  ressaltat), per compensar el buffer de cada equip; es desa a les opcions del
+  projecte. El cursor no retrocedix per davall de l'àncora de reproducció,
+  seek o loop.
+- Suite: **1539 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
 ### Refactor — modularització completa (2026-11-06)
 - `app/main.py`: 4.858 → **1.511 línies**; extret a `*_ui` (`analisi_ui`,
   `barres`, `edicio_ui`, `export_ui`, `marcadors_ui`, `menus`, `opcions`,

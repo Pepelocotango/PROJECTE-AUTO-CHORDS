@@ -569,6 +569,28 @@ class TestGraellaAmbMapa(unittest.TestCase):
         self.assertEqual(f(2.0, True, 120, 4, 0.0, mapa=self.mapa), "2.1")
         self.assertEqual(f(4.0, True, 120, 4, 0.0, mapa=self.mapa), "3.1")
 
+    def test_fmt_pos_etiqueta_global_no_depen_del_clip(self):
+        """Dos BPM veïns no han de canviar el format de l'etiqueta al mateix
+        zoom: el nivell global (beat/sub) mana sobre la duració de cada clip."""
+        mapa = TempoMap([(0.0, 10.0, 144.969, 4, 4),
+                         (10.0, 20.0, 144.631, 4, 4)])
+        t_esq = mapa.t_de_quarters(1.0)
+        t_dret = mapa.t_de_quarters(mapa.quarters(10.0) + 1.0)
+        step = 0.4144          # entre els dos beats (0.41388 / 0.41485)
+        # Sense `kind`, el BPM del clip decidix el format (el bug de la imatge).
+        self.assertEqual(len(self.tb.fmt_pos(
+            t_esq, True, 120, 4, 0.0, step, mapa=mapa).split(".")), 2)
+        self.assertEqual(len(self.tb.fmt_pos(
+            t_dret, True, 120, 4, 0.0, step, mapa=mapa).split(".")), 3)
+        # Amb el nivell global, tots dos clips mostren el mateix format.
+        for t in (t_esq, t_dret):
+            lab = self.tb.fmt_pos(t, True, 120, 4, 0.0, step,
+                                  mapa=mapa, kind=("beat", 1.0))
+            self.assertEqual(len(lab.split(".")), 2)
+            lab = self.tb.fmt_pos(t, True, 120, 4, 0.0, step,
+                                  mapa=mapa, kind=("sub", 0.5))
+            self.assertEqual(len(lab.split(".")), 3)
+
     def test_snap_mapa(self):
         st = self.tb.snap_time
         self.assertAlmostEqual(st(1.7, True, 120, 4, 60.0, 0.0,

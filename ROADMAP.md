@@ -92,7 +92,7 @@ fusionar/eliminar**, **rebuig + diàleg de reparació** per a un compàs que dei
 N no enter, i **graella/metrònom robustos** a edicions a pocs ms. També s'ha
 afegit el camp **N compassos** al diàleg de tempo (mode A: N + compàs → BPM
 automàtic, fronteres fixes), amb validació local perquè un clip aliè fora de
-graella no bloquege l'edició. Suite **1537 OK** (1 skip), `pyflakes` i
+graella no bloquege l'edició. Suite **1539 OK** (1 skip), `pyflakes` i
 `docs-check` nets.
 
 **Pendent:**
@@ -104,6 +104,27 @@ graella no bloquege l'edició. Suite **1537 OK** (1 skip), `pyflakes` i
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
 - **Mode B del camp N compassos**: mantindre el BPM i moure la frontera del
   veí, recalculant-ne el BPM perquè els seus compassos continuen sencers.
+- **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
+
+### Futures iteracions — motor d'àudio natiu (2026-11-08)
+
+> **Per què:** a Linux la reproducció va amb `paplay`/`aplay` extern. Estos
+> programes **no exposen** quantes mostres ha reproduït el dispositiu ni la
+> latència real. Per això el cursor, les llistes, el temps i el ressaltat van
+> amb un rellotge de paret + un **retard global manual** (16 ms d'actualització).
+> És suficient per a editar, però no és la sincronia de mostra d'un DAW.
+
+- **Objectiu:** un motor d'àudio natiu (ALSA/JACK/PipeWire o PortAudio) que
+  reporte la **posició real reproduïda**, la **latència del dispositiu** i
+  l'estat del buffer.
+- **Què permetria:** cursor i llistes lligats al rellotge d'àudio; compensació
+  automàtica de latència; loop i seek sense deriva; un únic camí Linux/mac/win.
+- **Requisits:** OK explícit per a dependències noves, fallback si el motor
+  falla, proves d'estabilitat i de latència, i mantindre `paplay`/`aplay` com a
+  alternativa.
+- **Referència conceptual:** REAPER lliga el cursor al rellotge del motor
+  d'àudio, no a un cronòmetre de paret; usa buffers/períodes baixos i compensa
+  la latència del dispositiu.
 
 ### Pendent de discutir/aprovar — recalcul de tempo (2026-11-08)
 

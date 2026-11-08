@@ -325,12 +325,15 @@ def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
 
 
 def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
-            offset: float = 0.0, step=None, mapa=None) -> str:
+            offset: float = 0.0, step=None, mapa=None, kind=None) -> str:
     """Formata t per al regle: 'm:ss[.d]' (temps) o 'compàs.beat[.subdivisió]' (tempo).
 
     `offset` = segon on cau el compàs 1 (la graella hi comença).
     `step` = pas de l'etiqueta. Quan és més fi que el beat, es mostra el 3r
-    camp (`compàs.beat.fusa`), com en DAWs professionals.
+    camp (`compàs.beat.fusa`), com en DAWs professionals. `kind` és el nivell
+    global del pla de graella (`bar`, `beat`, `sub` o una tupla); si arriba,
+    mana sobre la comparació per clip, perquè dos clips amb BPM distintos no
+    canvien el format de les etiquetes al mateix zoom.
     """
     if not tempo_fix:
         neg = t < -1e-9
@@ -352,6 +355,11 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
                    else f"{m}:{int(round(sec)):02d}")
             return ("-" if neg else "") + txt
         c, b, sub = mapa.pos(t)
+        if kind is not None:
+            kind_name = kind[0] if isinstance(kind, tuple) else kind
+            if kind_name == "sub":
+                return f"{c}.{b}.{sub}"
+            return f"{c}.{b}"
         _bar_s, beat_s, _sub_s = mapa.durations(t)
         if step is not None and 0 < step < beat_s - 1e-9:
             return f"{c}.{b}.{sub}"

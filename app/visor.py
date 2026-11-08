@@ -90,7 +90,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
     velocitatCanviada = pyqtSignal(float)
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True, sortida=None,
                  offset=0.0, beat_type=4, bpm_unit="negra", ref_bpm=None,
-                 ref_bpb=None, ref_beat_type=None):
+                 ref_bpb=None, ref_beat_type=None, latencia_cursor_ms=0.0):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
         self._embedded = False
@@ -124,6 +124,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             _rb, _rn, _rd = float(self.bpm), int(self.bpb), self.beat_type
         self.ref_bpm, self.ref_bpb, self.ref_beat_type = (
             float(_rb), int(_rn), int(_rd))
+        self.set_latencia_cursor_ms(latencia_cursor_ms)
         self.offset = float(offset or 0.0)
         self.tempo_fix = bool(tempo_fix)
         self.csv_acords = os.path.abspath(acords) if acords else None
@@ -517,7 +518,9 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.t0_mono = 0.0
         self.t0_pos = 0.0
         self.rellotge = QTimer()
-        self.rellotge.setInterval(50)
+        # 16 ms (~60 fps): cursor, llistes, ressaltat, temps i lliscador.
+        # `_tiquet` no repobla el model: només llig l'estat viu i pinta.
+        self.rellotge.setInterval(16)
         self.rellotge.timeout.connect(self._tiquet)
         self.sona = False
         self.player, self.player_args = self._tria_player()
@@ -4291,6 +4294,20 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 return
         proc.atura()
 
+    def set_latencia_cursor_ms(self, ms):
+        """Retard global de la UI per compensar el buffer d'àudio (ms)."""
+        try:
+            v = float(ms)
+        except (TypeError, ValueError):
+            v = 0.0
+        self.latencia_cursor = max(0.0, min(1000.0, v)) / 1000.0
+
+    def _temps_cursor(self, t_audio):
+        """Temps de cançó que ha de mostrar el cursor (amb latència)."""
+        # No retrocedim per davall de l'àncora de reproducció/seek/loop.
+        return max(float(self.t0_pos),
+                   float(t_audio) - float(getattr(self, "latencia_cursor", 0.0)))
+
     def play_stop(self):
         if self.sona:
             self.log(f"stop a {self.pos:.3f}s")
@@ -4357,11 +4374,14 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 self.play_stop()
                 return
             t = fi
-        self.pos = t
+        # El cursor visual pot anar uns ms per darrere del rellotge d'àudio
+        # per compensar el buffer; la resta d'actualitzacions (tempo,
+        # ressaltat) usen el temps d'àudio real.
+        self.pos = self._temps_cursor(t)
         self.timeline.set_position(self.pos, emit=False, snap=False)
-        self.lliscador.setValue(int(t * 100))
-        self._actualitza_temps()
-        self._ressalta(t)
+        self.lliscador.setValue(int(self.pos * 100))
+        self.temps.setText(self._fmt_timeline(self.pos))
+        self._ressalta(self.pos)
 
     def _ressalta(self, t):
         # il·lumina l'acord i la secció que sonen (cerca lineal: prou ràpid)
@@ -4388,6 +4408,16 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             if self.llista_ab.currentRow() != k:
                 self.llista_ab.setCurrentRow(k)
                 self._centra_fila_llista(self.llista_ab, k)
+        if getattr(self, "tempo_trams", None) and hasattr(self, "llista_tempo"):
+            k = 0
+            for i, tram in enumerate(self.tempo_trams):
+                if float(tram[0]) <= t:
+                    k = i
+                else:
+                    break
+            if self.llista_tempo.currentRow() != k:
+                self.llista_tempo.setCurrentCell(k, 0)
+                self._centra_fila_llista(self.llista_tempo, k)
 
     def exporta(self):
         if not self.acords:

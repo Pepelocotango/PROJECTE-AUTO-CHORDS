@@ -75,6 +75,8 @@ class MenusMixin:
         self._act(m, "Troba i reemplaça…", "Ctrl+H", self._troba_i_reemplaca_ui)
         m.addSeparator()
         self._act(m, "Paràmetres…", "", self._focus_parametres)
+        self._act(m, "Retard global de reproducció…", "",
+                  self._ajusta_latencia_cursor)
         # --- Selecciona ---
         m = mb.addMenu("&Selecciona")
         self._act(m, "Selecciona l'acord del cursor", "", self._sel_acord_cursor)

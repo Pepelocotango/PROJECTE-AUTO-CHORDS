@@ -401,7 +401,7 @@ class RulerLayer(QGraphicsItem):
                 p.drawLine(QPointF(x, self._height - 8),
                            QPointF(x, self._height - 1))
                 lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb, off,
-                              step, mapa=self._mapa)
+                              step, mapa=self._mapa, kind=step_kind)
                 is_bar = is_bar_start_label(lab)
                 label_font = QFont("Sans Serif", 9 if is_bar else 8,
                                    QFont.Bold if is_bar else QFont.Normal)
