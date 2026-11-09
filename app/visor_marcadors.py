@@ -12,9 +12,8 @@ class MarcadorsMixin:
     def _marcador_a(self, t, tol=0.05):
         """Índex del marcador humà que coincideix amb `t` (o `None`).
 
-        Els marcadors es creen amb `+` i els seus ancestres són les fronteres
-        de tempo; 0,05 s és prou per a emparellar-los sense confondre dos
-        marcadors distints (entre ells sempre hi ha ≥ `SEPARACIO_MIN`).
+        0,05 s és prou per a emparellar-los sense confondre dos marcadors
+        distints (entre ells sempre hi ha ≥ `SEPARACIO_MIN`).
         """
         t = float(t)
         for i, m in enumerate(self.marcadors or ()):
@@ -23,11 +22,10 @@ class MarcadorsMixin:
         return None
 
     def _mou_marcador(self, t_vell, t_nou):
-        """Mou el marcador ancorat a una frontera que s'ha mogut (§4.C).
+        """Mou un marcador de manera independent (snap o edició manual).
 
-        Va DINS de l'operació de desfer del gest: el marcador, la frontera
-        d'**estructura** que va crear i el mapa es desfan junts. Retorna `True`
-        si n'hi havia cap.
+        No toca cap clip de tempo ni d'estructura. Retorna `True` si el
+        marcador existia i ha canviat.
         """
         from app import marcadors as M
         i = self._marcador_a(t_vell)
@@ -43,7 +41,6 @@ class MarcadorsMixin:
             self.marcador_tipus[round(float(t_nou), 6)] = tipus
         self.marcadors = nou
         self._pinta_marcadors()
-        self._mou_seccio_amb_marcador(t_vell, t_nou)
         try:
             pipeline.desa_marcadors(
                 self._carpeta_acords(),
@@ -51,84 +48,15 @@ class MarcadorsMixin:
                  for m in (self.marcadors or [])])
         except OSError as e:
             self.log(f"marcadors: no s'han pogut desar ({e})")
-        self.log(f"marcador mogut amb la frontera: {t_vell:.3f} → {t_nou:.3f}s")
-        return True
-
-    def _mou_seccio_amb_marcador(self, t_vell, t_nou):
-        """Mou la frontera d'**estructura** que coincidia amb el marcador.
-
-        El `+` crea alhora un inici de clip de BPM/compàs **i** d'estructura:
-        si després es mou la frontera de tempo (i el marcador viatja amb ella,
-        §4.C), el clip de secció també ha de seguir el marcador que el va
-        crear. El vincle es resol per **coincidència de temps** (5 ms), sense
-        desar cap identificador nou al projecte.
-
-        Mou només les **dues** seccions que toquen la frontera (la de
-        l'esquerra estira la fi i la de la dreta mou l'inici) i respecta
-        `MIN_SECCIO_S`; si no hi cap, no toca res i ho deixa al registre.
-        """
-        seccions = list(self.seccions or [])
-        if len(seccions) < 2:
-            return False
-        idx = next((j for j in range(1, len(seccions))
-                    if abs(float(seccions[j][0]) - float(t_vell)) <= 0.005),
-                   None)
-        if idx is None:
-            return False
-        nou = float(t_nou)
-        ini_a = float(seccions[idx - 1][0])
-        fi_b = float(seccions[idx][1])
-        if not (ini_a + self.MIN_SECCIO_S <= nou <= fi_b - self.MIN_SECCIO_S):
-            self.log(f"marcador: la secció no pot seguir-lo ({nou:.3f}s)")
-            return False
-        nova = list(seccions)
-        nova[idx - 1] = (ini_a, nou) + tuple(seccions[idx - 1][2:])
-        nova[idx] = (nou, fi_b) + tuple(seccions[idx][2:])
-        self.seccions = self._normalitza_seccions(nova)
-        # El gest acaba al `release` del carril de tempo: NO podem re-sincronitzar
-        # model←timeline (tornaria les seccions velles). Passem les dades noves
-        # al timeline (sense reconstruir items ací mateix, que seria insegur
-        # dins de l'esdeveniment) i deixem el re-render al cicle següent.
-        tl = getattr(self, "timeline", None)
-        if tl is not None:
-            tl._seccions = [tuple(s) for s in self.seccions]
-        self._actualitza_llista_abc()
-        self._sincronitza_vista(preserva=True, difereix=True)
-        self.log(f"estructura moguda amb el marcador: {t_vell:.3f} → "
-                 f"{nou:.3f}s")
-        return True
-
-    def _esborra_marcador_a(self, t, tol=0.05):
-        """Esborra el marcador d'una frontera que ha desaparegut (§4.C)."""
-        from app import marcadors as M
-        i = self._marcador_a(t, tol)
-        if i is None:
-            return False
-        self.marcadors = M.elimina(list(self.marcadors or ()), i)
-        self._pinta_marcadors()
-        try:
-            pipeline.desa_marcadors(
-                self._carpeta_acords(),
-                [(m, self.marcador_tipus.get(round(float(m), 6), "seccio"))
-                 for m in (self.marcadors or [])])
-        except OSError as e:
-            self.log(f"marcadors: no s'han pogut desar ({e})")
-        self.log(f"marcador esborrat amb la frontera de {float(t):.3f}s")
+        self.log(f"marcador mogut: {t_vell:.3f} → {t_nou:.3f}s")
         return True
 
     def afegeix_marcador(self, t=None, tipus="seccio"):
-        """Marca l'instant actual (o `t`) com a **inici de compàs**.
+        """Crea un marcador i parteix tempo+estructura (camí de compatibilitat).
 
-        Crea, en eixe punt, un **inici de clip al carril de BPM/compàs i al
-        d'estructura**. El marcador queda **lligat a la frontera de tempo**
-        (la segueix si s'arrossega i s'esborra amb ella, §4.C del flux de tempo
-        variable) i el **clip d'estructura** que naix ací el seguix també
-        (`_mou_seccio_amb_marcador`, vincle per coincidència de temps: si
-        després s'edita la secció a mà i deixa de coincidir, deixa de seguir-lo).
-        Es pot cridar mentre sona (tecla `+`). Un sol desfer ho desfà tot.
-
-        El tram que es tanca conserva el BPM; si cal, s'ajusta el compàs per
-       què continga un beat sencer (`tempo_map.parteix_tram_marcador`).
+        La UI nova no usa este mètode: `+` parteix tempo+estructura sense
+        marcador, `M` crea només el marcador i `Enter`/`0` fan talls parcials.
+        Els marcadors creats ací ja no queden lligats a cap frontera.
         """
         tipus = tipus if tipus in ("compas", "seccio") else "seccio"
         from app import marcadors as M
@@ -150,7 +78,7 @@ class MarcadorsMixin:
         try:
             trams = tempo_map.parteix_tram_marcador(
                 trams, t, durada, offset=getattr(self, "offset", 0.0),
-                bpm_ref=bpm_ref, beats_qm=getattr(self, "qm_beats", None),
+                bpm_ref=bpm_ref, beats_qm=self._beats_per_validacio(),
                 permissiu=True, recalculca=True,
                 ref_base=self.ref_tempo_base(), avisos=avisos,
                 beat_factor=self.beat_factor())
@@ -199,6 +127,98 @@ class MarcadorsMixin:
         except Exception as e:  # noqa: BLE001
             self.log(f"marcadors: no s'han pogut desar ({e})")
         self.log(f"marcador a {t:.3f}s (n'hi ha {len(self.marcadors)})")
+        return True
+
+
+    def _parteix_tempo_nou(self, t):
+        """Retorna el mapa partit a `t` o `None` si no cal/possible."""
+        trams = list(self.tempo_trams or [])
+        durada = self._durada_wav()
+        kw = dict(offset=getattr(self, "offset", 0.0),
+                  beats_qm=self._beats_per_validacio(),
+                  permissiu=True, ref_base=None,
+                  beat_factor=self.beat_factor())
+        try:
+            out = tempo_map.parteix_tram_marcador(
+                trams, float(t), durada, recalculca=False, **kw)
+        except ValueError:
+            try:
+                out = tempo_map.parteix_tram_marcador(
+                    trams, float(t), durada, recalculca=True, **kw)
+            except ValueError:
+                return None
+        return out if len(out) != len(trams) else None
+
+    def _parteix_estructura_noves(self, t):
+        """Retorna les seccions partides a `t` o `None` si no cal/possible."""
+        t = float(t)
+        for i, (ini, fi, _l, _f) in enumerate(self.seccions or ()):
+            if float(ini) + self.MIN_SECCIO_S <= t <= float(fi) - self.MIN_SECCIO_S:
+                try:
+                    return self._normalitza_seccions(
+                        pipeline.parteix_seccio(self.seccions, i, t))
+                except ValueError:
+                    return None
+        return None
+
+    def _talla(self, t, tempo=False, estructura=False):
+        """Talla tempo i/o estructura en una sola operació d'undo."""
+        t = float(t)
+        nous_trams = self._parteix_tempo_nou(t) if tempo else None
+        noves_seccions = self._parteix_estructura_noves(t) if estructura else None
+        if nous_trams is None and noves_seccions is None:
+            return False
+        self._undo_marca()
+        try:
+            if nous_trams is not None:
+                if not self.aplica_tempo_trams(nous_trams):
+                    self._undo_commit()
+                    return False
+            if noves_seccions is not None:
+                self.seccions = noves_seccions
+                self._sincronitza_vista()
+                if hasattr(self, "llista_ab"):
+                    self._actualitza_llista_abc()
+            self._desa_i_regenera()
+        finally:
+            self._undo_commit()
+        return True
+
+    def talla_tempo(self, t):
+        """Enter: parteix només el clip de tempo (sense marcador/estructura)."""
+        return self._talla(t, tempo=True)
+
+    def talla_estructura(self, t):
+        """0: parteix només el clip d'estructura (sense tempo/marcador)."""
+        return self._talla(t, estructura=True)
+
+    def talla_tempo_i_estructura(self, t):
+        """+: parteix tempo i estructura, sense crear cap marcador."""
+        return self._talla(t, tempo=True, estructura=True)
+
+    def afegeix_marcador_lliure(self, t=None, tipus="marcador"):
+        """M: afig només un marcador; no toca tempo ni estructura."""
+        from app import marcadors as M
+        t = float(self.pos if t is None else t)
+        if not (0.0 < t < self._durada_wav() - 1e-3):
+            return False
+        abans = list(self.marcadors or ())
+        marques = M.afegeix(abans, t, self._durada_wav())
+        if marques == abans:
+            return False
+        tipus = tipus if tipus in ("marcador", "compas", "seccio") else "marcador"
+        self._undo_marca()
+        self.marcadors = marques
+        self.marcador_tipus[round(float(t), 6)] = tipus
+        self._undo_commit()
+        self._pinta_marcadors()
+        try:
+            pipeline.desa_marcadors(
+                self._carpeta_acords(),
+                [(m, self.marcador_tipus.get(round(float(m), 6), "marcador"))
+                 for m in (self.marcadors or ())])
+        except OSError:
+            pass
         return True
 
     def candidats_bpm_marcadors(self, preferit=None, num=None, den=None,
@@ -276,8 +296,19 @@ class MarcadorsMixin:
         ini = float(ms[0])
         for dt, k, bpm_i in inter:
             fi = ini + float(dt)
+            if beats:
+                for b in tempo_recalc.beats_a_la_frontera(beats, ini, fi):
+                    x = ini if abs(b - ini) <= abs(b - fi) else fi
+                    text = (
+                        f"Frontera {x:.3f}s: beat a {b:.3f}s dins la "
+                        f"tolerància de "
+                        f"{tempo_recalc.TOL_TALL * 1000:.0f} ms; recompte "
+                        "ambigu (activa snap o ajusta el tall)")
+                    if text not in avisos:
+                        avisos.append(text)
             nb = (tempo_recalc.n_negres_del_clip(
-                beats, ini, fi, factor) if beats else None)
+                beats, ini, fi, factor, tol=tempo_recalc.TOL_TALL)
+                if beats else None)
             bpm_i, num_i, den_i = _tram(
                 float(dt), int(k), float(bpm_i), nb=nb)
             trams.append((ini, fi, bpm_i, num_i, den_i))
@@ -424,9 +455,91 @@ class MarcadorsMixin:
         self.log(f"marcador convertit a {tipus_nou}")
         return True
 
+
+    def _canvia_marcador_llista(self, item):
+        """Edita el temps o el tipus d'un marcador des de la llista."""
+        if getattr(self, "_omplint_marcadors", False):
+            return
+        from app import marcadors as M
+        fila = int(item.row())
+        marques = list(self.marcadors or ())
+        if not (0 <= fila < len(marques)):
+            return
+        vell = float(marques[fila])
+        tipus = dict(getattr(self, "marcador_tipus", {}) or {})
+        if int(item.column()) == 0:
+            try:
+                nou = float(str(item.text()).replace(",", "."))
+            except ValueError:
+                self._pinta_marcadors()
+                return
+            if not (0.0 < nou < self._durada_wav() - 1e-3):
+                self._pinta_marcadors()
+                return
+            marques[fila] = nou
+            marques = M.normalitza_marcadors(marques, self._durada_wav())
+            vell_t = tipus.pop(round(vell, 6), None)
+            if vell_t:
+                tipus[round(nou, 6)] = vell_t
+        else:
+            nou_t = str(item.text()).strip()
+            if nou_t not in ("marcador", "compas", "seccio"):
+                self._pinta_marcadors()
+                return
+            tipus[round(vell, 6)] = nou_t
+        self._undo_marca()
+        self.marcadors = marques
+        self.marcador_tipus = tipus
+        self._undo_commit()
+        self._pinta_marcadors()
+        try:
+            pipeline.desa_marcadors(
+                self._carpeta_acords(),
+                [(m, self.marcador_tipus.get(round(float(m), 6), "marcador"))
+                 for m in (self.marcadors or ())])
+        except OSError:
+            pass
+
+    def _elimina_marcador_llista(self):
+        """Elimina el marcador seleccionat a la llista (tecla Del)."""
+        t = getattr(self, "llista_marcadors", None)
+        if t is None:
+            return False
+        fila = t.currentRow()
+        if fila < 0:
+            return False
+        return bool(self.elimina_marcador(fila))
+
+    def _menu_marcador_llista(self, pos):
+        """Menú contextual de la llista de marcadors."""
+        from PyQt5.QtWidgets import QMenu
+        from app import marcadors as M
+        item = self.llista_marcadors.itemAt(pos)
+        if item is None:
+            return
+        fila = int(item.row())
+        menu = QMenu(self)
+        act = menu.addAction("Elimina el marcador")
+        triat = menu.exec_(self.llista_marcadors.viewport().mapToGlobal(pos))
+        if triat is act:
+            self._undo_marca()
+            self.marcadors = M.elimina(list(self.marcadors or ()), fila)
+            self._undo_commit()
+            self._pinta_marcadors()
+            try:
+                pipeline.desa_marcadors(
+                    self._carpeta_acords(),
+                    [(m, self.marcador_tipus.get(round(float(m), 6),
+                                                 "marcador"))
+                     for m in (self.marcadors or ())])
+            except OSError:
+                pass
+
     def _pinta_marcadors(self):
         tl = getattr(self, "timeline", None)
         if tl is not None and hasattr(tl, "set_marcadors"):
             marques = [(m, self.marcador_tipus.get(round(float(m), 6), "seccio"))
                        for m in (self.marcadors or [])]
             tl.set_marcadors(marques)
+        if hasattr(self, "_omple_llista_marcadors"):
+            self._omple_llista_marcadors()

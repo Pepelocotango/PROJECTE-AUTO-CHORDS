@@ -60,14 +60,17 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 **Fases** del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md`: **0–7 fetes**. La **10**
 (motor de detecció amb corpus real) està **oberta i bloquejada pel corpus
-manual**; la **12** (congelació, higiene i CI) està **en curs**. **8** (MIDI),
-**9** (anàlisi guiada) i **11** (flux del 90 %) queden **ajornades**.
+manual**; la **12** (congelació, higiene i CI) està **en curs**. La **8**
+(export MIDI del mapa de tempo) queda **pendent (TODO)**; **9** (anàlisi
+guiada) i **11** (flux del 90 %) queden **ajornades**.
 
 > **Prioritat:** simplificar el producte. L'abast vigent és a
 > [`AGENTS.md` §Abast i flux](AGENTS.md#-abast-i-flux-de-lusuari--font-única):
 > només el nucli (obrir → analitzar opcional → editar 3 pistes → exportar →
-> desar). La **fase 10**, el **rubato avançat** i l'**export MIDI/DAW** queden
-> **ajornats sense data**.
+> desar). La **fase 10** i el **rubato avançat** queden **ajornats sense data**.
+> L'**export MIDI del mapa de tempo** (`mapa_tempo.mid`) queda **pendent
+> (TODO)**, no prioritari, però amb l'abast i els criteris d'acceptació fixats
+> davall.
 
 **Fet (2026-11-06):**
 - **Refactor complet**: `pipeline.py` queda en **89 línies** (façana) +
@@ -94,13 +97,16 @@ afegit el camp **N compassos** al diàleg de tempo (mode A: N + compàs → BPM
 automàtic, fronteres fixes), amb validació local perquè un clip aliè fora de
 graella no bloquege l'edició. També s'ha unificat l'encaix de l'anàlisi amb
 «Quantitza» (default **corxera = 1/2 temps**) i amb el `TempoMap` vigent.
-Suite **1562 OK** (1 skip), `pyflakes` i `docs-check` nets.
+Suite **1571 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
 - **Fase 12**: congelació, higiene i CI; inclou el **CI automàtic en push/PR**
   (proposat, encara no activat).
-- **Rubato avançat** i **MIDI/export de projecte DAW**: ajornats sense data.
+- **Rubato avançat** i **export de projecte DAW**: ajornats sense data.
+- **Export MIDI del mapa de tempo**: `mapa_tempo.mid` tipus 1 amb `Set Tempo`,
+  `Time Signature`, marcadors i offset/anacrusi; rubato aproximat per events.
+  Detall i criteris d'acceptació a «Exportació del mapa de tempo a DAWs».
 - **`ARBRE_DIRECTORIS.md`**: encara snapshot manual; pendent generador + test.
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
 - **Mode B del camp N compassos**: mantindre el BPM i moure la frontera del
@@ -132,9 +138,9 @@ Suite **1562 OK** (1 skip), `pyflakes` i `docs-check` nets.
 > **Estat:** implementació pràcticament tancada (2026-11-08). Fets: regla del
 > múltiple, candidats degenerats, fallback d'un **beat detectat**, avisos de
 > BPM/octava, recalcul automàtic en fusionar/eliminar clips, diàleg de
-> reparació, unitat del beat 6/8/9/8 i helper únic de recompte de beats.
-> Pendent: fase 2c (recompte robust per a talls sense snap), cost gaussià,
-> pickup inicial i validació amb una cançó real 6/8 o 9/8. Partix del commit
+> reparació, unitat del beat 6/8/9/8, helper únic de recompte i tolerància
+> operativa de 50 ms per als talls sense snap. Pendent: cost gaussià, pickup
+> inicial i validació completa amb una cançó real 6/8 o 9/8. Partix del commit
 > `12654a4` (referència base manual «Ref. recalc»); una fase per commit i
 > suite verda abans de la següent.
 
@@ -173,10 +179,12 @@ desviació de BPM gran (p. ex. 8 beats en 6 s amb ref 120 → 80 BPM) no avisa.
    detectats i el nombre de negres és inferit, l'avís diu «sense beats
    detectats» en compte de «beats ajustats». Propagada la llista opcional
    `avisos` per `parteix_tram_marcador` i `mou_frontera_retempo`.
-5. **Ajornat (no implementar encara):**
-   - Recompte robust de beats per a talls sense snap: una sola tolerància
-     compartida per operació, fixa i xicoteta (~50 ms), amb avís si canvia el
-     recompte; unificar `tempo_map.py` i `visor_marcadors.py`.
+5. **Recompte robust en talls sense snap — FET (2026-11-08).** Tolerància
+   operativa única `TOL_TALL = 50 ms` per classificar els beats de frontera i
+   avís quan un beat cau dins la franja (o quan el recompte exacte canvia en
+   moure la vora). Els camins de `_recalcula_costats`, `aplica_bpm_marcadors` i
+   la reparació comparteixen el helper.
+6. **Ajornat (no implementar encara):**
    - Cost gaussià al camí sense beats (σ≈0,04, recalibrar `w_compas`/`w_n`/
      `w_natural` i matriu de casos); només esborrany a `docs/recerca/`, amb OK
      explícit.
@@ -217,12 +225,11 @@ canònica.
 
 **Dubtes oberts a decidir abans de codi:** una base per cançó vs per secció;
 11/4 com a natural (ara és `_MENYS_COMUNS`); `n_max` per als candidats que no
-són la signatura base; tolerància 0,25 beat vs ~50 ms al recompte robust
-(fase 2c); si els canvis **només de BPM** també han de passar pel diàleg de
-reparació (ara només es valida el compàs).
+són la signatura base; si els canvis **només de BPM** també han de passar pel
+diàleg de reparació (ara només es valida el compàs).
 
-**No implementat en este punt:** fase 2c (recompte robust per a talls sense
-snap), cost gaussià, pickup inicial i validació amb una cançó real 6/8/9/8.
+**No implementat en este punt:** cost gaussià, pickup inicial i validació
+completa amb una cançó real 6/8/9/8.
 La resta de fases, la unitat del beat i el diàleg de reparació sí que estan
 implementats (2026-11-08).
 
@@ -321,12 +328,24 @@ Commit de referència: `68dcde1` (checkpoint v9.2).
 > `/tmp`. Es manté com a norma per a qualsevol test nou.
 
 ### Should
-- **AJORNAT (sense data) — Exportació del mapa de tempo a DAWs** (2026-11-04):
+
+#### Pendent (TODO) — Exportació del mapa de tempo a MIDI/DAWs (2026-11-04)
+
+> **Abast mínim:** generar `mapa_tempo.mid` (tipus 1, pista de conductor) amb
+> els canvis de tempo (`Set Tempo`), els canvis de compàs (`Time Signature`),
+> els marcadors de compàs/secció i l'offset/anacrusi. Cada tram del
+> `mapa_tempo.csv` ha de tindre el seu event MIDI; el rubato s'aproxima amb
+> events densos i s'ha d'avisar que és aproximat. **Criteri d'acceptació:** el
+> MIDI es pot importar en un DAW i el tempo/timesig/marcadors quadren amb el
+> mapa; test de generació i de lectura del fitxer. L'export de `.rpp`/DAW i
+> els cues WAV són complements, no substituts del MIDI.
+
+- **PENDENT (TODO) — Exportació del mapa de tempo a DAWs**:
   - **WAV**: pot portar `cue`/`LIST adtl` (marcadors) i, com a molt, un BPM
     únic (`ACID`); **no hi ha un mapa de tempo complex estàndard** ni un
     comportament comú entre DAWs. El `bext`/`iXML` no és un tempo map portable.
-  - **MIDI**: exportar `mapa_tempo.mid` (tipus 1, pista de conductor) amb
-    `Set Tempo`, `Time Signature` i markers. És el format més portable
+  - **MIDI** (abast mínim): exportar `mapa_tempo.mid` (tipus 1, pista de
+    conductor) amb `Set Tempo`, `Time Signature` i markers. És el format més portable
     (Cubase/Logic/Pro Tools/Reaper/Studio One…), amb el rubato aproximat per
     events de tempo densos. L’offset/anacrusi necessita marker o projecte DAW.
   - **Reaper**: generar un `.rpp` amb l’àudio, `TEMPO`, `TIMESIG`, markers i

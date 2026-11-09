@@ -52,8 +52,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | ⓪ | `Finestra` | finestra principal | `QMainWindow` |
 | — | `self.offset` · `self.offset_cb` | **dos camps d'offset** (segons · compàs.beat) | `QLineEdit` |
 | — | `b_obre` (local) | **Obre àudio** | `QPushButton` |
-| — | `self.b_marker` | **＋ Marker**: crea un **inici de compàs** (clip de BPM/compàs + clip d'estructura) en el punt del cursor, també durant el play; el marcador **viatja amb la frontera de tempo** i s'esborra amb ella (§13.6; ratlla groga al visor). Tecla `+` (dalt o teclat numèric). Sense WAV, desactivat | `QPushButton` |
-| — | `self.b_guia` | **Guia ràpida**: obri `DialegGuiaRapida` (informació, no toca el model). El treball real es fa amb marcadors en viu (`＋` / `self.b_marker`). Sense WAV, desactivat | `QPushButton` |
+| — | `self.b_marker` · `self.b_marker_compas` | **＋ Temps+Secció** (tecla `+`): parteix **tempo i estructura** al cursor, sense crear cap marcador. **＋ Marcador** (tecla `M`): crea només un marcador independent; no talla res. Sense WAV, desactivats | `QPushButton` |
+| — | `self.b_guia` | **Guia ràpida**: obri `DialegGuiaRapida` (informació, no toca el model). Els talls es fan amb `＋` / `Enter` / `0`; `M` afig marcadors independents. Sense WAV, desactivat | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |
 | — | `self.b_export_part` | **Exporta partitura** (MusicXML; PDF/MSCZ si hi ha MuseScore) | `QPushButton` |
@@ -73,7 +73,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self._params_temps` | contenidor dels **paràmetres de temps** (BPM · ×2/÷2 · Detecta · TAP · Compàs · Offset · ≈ C.B) | `QWidget` |
 | — | `self.panell_xifrat` · `self.dock_xifrat` | **panell «Tipus d'acord»** (arrel · baix · 62 tipus · ▶ Escoltar · timbre) | `PanellXifrat` en un `QDockWidget` |
 | — | `self.tb_loop` · `self.tb_neteja_loop` · `self.tb_mut` | **loop** (icona `repeat-2`) · **neteja el loop** (icona `x`) · **mute** (icona `volume-x`) | `QPushButton` |
-| — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió del grid i del snap**: **Beats QM** · Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · **Treset de negra (2/3) · Treset de corxera (1/3) · Treset de semicorxera (1/6)** · **1 · 2 · 4 · 6 · 8 · 12 · 16 · 24 · 32 · 48 · 64 compassos**. El selector **força el grid** encara que el snap estigui apagat; «Auto» torna a manar pel zoom. **Beats QM** fa que el cursor, els clips i el `+` s'encaixen a les línies de beats de QM. | `QPushButton` (checkable) · `QComboBox` |
+| — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió del grid i del snap**: **Beats QM** · Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · **Treset de negra (2/3) · Treset de corxera (1/3) · Treset de semicorxera (1/6)** · **1 · 2 · 4 · 6 · 8 · 12 · 16 · 24 · 32 · 48 · 64 compassos**. El selector **força el grid** encara que el snap estigui apagat; «Auto» torna a manar pel zoom. **Beats QM** fa que el cursor, els clips i els talls (`+`/`Enter`/`0`) s'encaixen a les línies de beats de QM; `M` també respecta el Snap actiu. | `QPushButton` (checkable) · `QComboBox` |
 | — | `self.b_metro` · `self.vol_metro` · `self.cb_metro` · `self.cb_metro_unit` | **metrònom** (icona `metronome`) · volum del clic · **patró** (Auto · Compàs · Temps · Grup) · **unitat de clic** (Denominador · Negra · Negra amb punt · Corxera · Blanca) amb etiqueta `Clic:` | `QPushButton` · `QSlider` · `QComboBox` · `QComboBox` |
 | — | `self.b_play_tb` | **play / pause** transport (icones `play` / `pause`) | `QPushButton` |
 | — | `self.cmb_vel_tb` · `visor.cmb_vel` | **velocitat de reproducció** (0,5 · 0,75 · 1 · 1,25 · 1,5 · 2 · 3×) amb el **to mantingut** (`ffmpeg atempo`); els dos selectors van sincronitzats per `velocitatCanviada` | `QComboBox` |
@@ -95,10 +95,10 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | Menú | Accions |
 |------|---------|
 | **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… · Obre recent… · Desa (Ctrl+S) · Desa com… · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta àudio… · Exporta la partitura… · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
-| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… · Retard global de reproducció… |
+| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · **Parteix el tempo al cursor** (Enter) · **Parteix l'estructura al cursor** (0) · **Parteix tempo i estructura al cursor** (+) · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… · Retard global de reproducció… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza BPM… (F7)** · **Ajusta la graella als beats QM…** · **Compàs del marcador…** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · **Quantitza BPM a 1 decimal** · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (inici de compàs) (+) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
+| **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza BPM… (F7)** · **Ajusta la graella als beats QM…** · **Compàs del marcador…** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · **Quantitza BPM a 1 decimal** · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (M) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Exporta àudio… (Fase 6)
@@ -166,7 +166,9 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 > **←/→** = **nudge** un pas de graella (**Alt+←/→** = vora dreta) ·
 > **Ctrl+O** = obrir WAV · **Ctrl+S** = desar · **Ctrl+E** = exportar ·
 > **Ctrl+[ / Ctrl+]** = loop A/B ·
-> **F5** = Analitza · **Ctrl++ / Ctrl+− / Ctrl+0** = zoom +/− / total.
+> **F5** = Analitza · **Ctrl++ / Ctrl+− / Ctrl+0** = zoom +/− / total ·
+> **`+`** = parteix tempo i estructura · **Enter** = parteix només tempo ·
+> **`0`** = parteix només estructura · **`M`** = marcador independent.
 >
 > **Multi-selecció (timeline)**: **Ctrl+clic** afegeix/treu un clip ·
 > **Shift+clic** = rang **per temps, sempre del carril del clip clicat** (per agafar
@@ -255,6 +257,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | ⑪ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
 | ⑫ | `ed_icona` · `ed_gran` · `ed_nom` · `ed_fam` · `ed_ini` · `ed_cb` · **`ed_fi`** · `ed_aplica` | **franja Editor** (acord/secció i, amb etiquetes pròpies, **tempo: BPM + compàs**; `ed_fi` —«Fi (s)»— només en mode tempo: mou la frontera, §13.6) | `QLabel`/`QLineEdit`/`QPushButton` |
 | ⑭ | `self.llista_tempo` | **llista de clips de tempo/compàs** (`Inici (s)` · `Fi (s)` · `BPM` · `Compàs`; «segons» als rubato) | `QTableWidget` |
+| ⑮ | `self.llista_marcadors` | **llista de marcadors independents** (`Temps (s)` · `Tipus`): doble-clic edita, menú contextual elimina; no està lligada al tempo ni a l'estructura | `QTableWidget` |
 | ⑬ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
 
 > 🥁 **El transport principal** (`b_play`, `b_stop`, `b_menys`, `b_mes`, `b_A`,
@@ -282,13 +285,15 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Vora esquerra ④⑤** | arrossegar → **mou l'inici** · `hover` = ↔ |
 | **Clic (sense moure)** | **posa el cursor vermell** a l'inici del clip |
 | **Doble-clic ④⑤ / llistes ⑩⑪** | **selecciona i enfoca l'Editor ⑫** |
-| **Clic llista ⑩⑪⑭** | salta + **ressalta la fila** (i selecciona el clip al carril) |
+| **Clic llista ⑩⑪⑭⑮** | salta + **ressalta la fila** (i selecciona el clip al carril) |
 | **Doble-clic llista ⑭** | porta el clip de tempo a la franja Editor (BPM + compàs) |
+| **Doble-clic llista ⑮** | edita el temps o el tipus del marcador |
+| **Botó dret llista ⑮** / **Del** | elimina el marcador seleccionat |
 | **Zona buida ② + botó dret** | **pan** (desplaçar la vista) |
 | **Botó dret SOBRE un clip** | **selecciona** el clip i obri el **menú contextual** — **el mateix joc a les 3 pistes** (regla #11): **Afegeix acord/secció aquí** · Duplica · Elimina · Reanomena · Parteix l'acord/la secció… · Partir per la meitat · **Parteix a la selecció A–B** (només amb loop marcat) · Retalla · Copia · Enganxa |
 | **Pista de tempo ③ — clic** | **selecciona** el tram de tempo/compàs i hi posa el cursor **exactament al seu inici** (paritat amb els clips ④⑤; sense snap, perquè les fronteres del mapa poden ser lliures) |
 | **Pista de tempo ③ — doble-clic** | **diàleg** per editar-ne el valor (`_on_tempo_edit`) |
-| **Pista de tempo ③ — vores** | arrossegar → **re-tempo**: la frontera va **on deixa anar el ratolí** (amb l'Snap normal, que es pot apagar), es conserven els **compassos** dels dos costats i el **BPM** es recalcula; **cap altre tram no es mou** (`_on_tempo_mogut` → `tempo_map.mou_frontera_retempo`; ±5 px i cursor ↔ com als clips — regla #11). El marcador de la frontera **es mou amb ella** |
+| **Pista de tempo ③ — vores** | arrossegar → **re-tempo**: la frontera va **on deixa anar el ratolí** (amb l'Snap normal, que es pot apagar), es conserven els **compassos** dels dos costats i el **BPM** es recalcula; **cap altre tram no es mou** (`_on_tempo_mogut` → `tempo_map.mou_frontera_retempo`; ±5 px i cursor ↔ com als clips — regla #11). Els marcadors són independents i **no es mouen** amb la frontera |
 | **Pista de tempo ③ — botó dret** | **selecciona** el tram i obri **el mateix joc de menú que els clips** (regla #11): **Afegeix un canvi aquí** (el seu «afegir» propi) · Duplica (només si hi ha lloc després) · Elimina (només si hi ha més d'un tram) · Reanomena (BPM/compàs)… · Parteix aquest tros aquí · Partir per la meitat · **Parteix a la selecció A–B** (s'imanta a línia de compàs) · **Afegir 1 compàs (+1)** · **Restar 1 compàs (−1)** · **Doblar compassos (×2)** · **Dividir compassos (÷2)** (aquestes 4, només a ③: canvien els compassos amb els **segons immòbils** i el BPM s'adapta) · Retalla · Copia · Enganxa |
 | **Nansa esquerra de l'àudio ②** | arrossegar cap a dins → retalla l'inici · cap a fora → afegeix silenci |
 | **Nansa dreta de l'àudio ②** | arrossegar cap a dins → retalla el final · cap a fora → afegeix silenci |

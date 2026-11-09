@@ -99,8 +99,8 @@ def llegeix_marcadors_tipus(carpeta):
                 except ValueError:
                     continue
                 tipus = parts[1].strip() if len(parts) > 1 else "seccio"
-                if tipus not in ("compas", "seccio"):
-                    tipus = "seccio"
+                if tipus not in ("compas", "seccio", "marcador"):
+                    tipus = "marcador"
                 out[round(t, 6)] = tipus
     except OSError:
         return {}

@@ -378,6 +378,40 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             lambda it: self._focus_editor("tempo", self.llista_tempo.row(it)))
         self.llista_tempo.customContextMenuRequested.connect(self._menu_tempo)
         div.addWidget(self.llista_tempo)
+        # Llista de marcadors humans: només anotacions, independents del
+        # tempo i de l'estructura. Doble-clic edita temps/tipus; el menú
+        # contextual permet eliminar.
+        self.llista_marcadors = QTableWidget(0, 2)
+        self.llista_marcadors.setHorizontalHeaderLabels(
+            ["Temps (s)", "Tipus"])
+        self.llista_marcadors.verticalHeader().setVisible(False)
+        self.llista_marcadors.setSelectionBehavior(
+            QAbstractItemView.SelectRows)
+        self.llista_marcadors.setSelectionMode(
+            QAbstractItemView.SingleSelection)
+        self.llista_marcadors.setEditTriggers(
+            QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed)
+        self.llista_marcadors.setShowGrid(False)
+        self.llista_marcadors.setMaximumHeight(120)
+        self.llista_marcadors.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.llista_marcadors.setToolTip(
+            "Marcadors independents: doble-clic edita el temps/tipus; "
+            "botó dret elimina.")
+        self.llista_marcadors.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeToContents)
+        self.llista_marcadors.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.Stretch)
+        self._omple_llista_marcadors()
+        self.llista_marcadors.itemClicked.connect(self._salt_marcador)
+        self.llista_marcadors.itemChanged.connect(
+            self._canvia_marcador_llista)
+        self.llista_marcadors.customContextMenuRequested.connect(
+            self._menu_marcador_llista)
+        self._sc_del_marcador = QShortcut(
+            QKeySequence(Qt.Key_Delete), self.llista_marcadors)
+        self._sc_del_marcador.setContext(Qt.WidgetWithChildrenShortcut)
+        self._sc_del_marcador.activated.connect(
+            self._elimina_marcador_llista)
         # La taula de tempo necessita més amplada que una llista de noms.
         div.setStretchFactor(0, 3)
         div.setStretchFactor(1, 3)
@@ -388,7 +422,9 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.inspector = QWidget()
         _lay_insp = QVBoxLayout(self.inspector)
         _lay_insp.setContentsMargins(0, 0, 0, 0)
-        _lay_insp.addWidget(div)
+        _lay_insp.addWidget(div, stretch=3)
+        _lay_insp.addWidget(QLabel("Marcadors"))
+        _lay_insp.addWidget(self.llista_marcadors, stretch=1)
         capa.addWidget(self.inspector, stretch=2)
 
         fila = QHBoxLayout()
@@ -850,6 +886,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             "tempo_trams": copy.deepcopy(list(self.tempo_trams or [])),
             # Els marcadors humans també es desfan (es creen amb `+` en viu).
             "marcadors": list(getattr(self, "marcadors", []) or []),
+            "marcador_tipus": dict(getattr(self, "marcador_tipus", {}) or {}),
         }
 
     def _estat_complet(self):
@@ -863,6 +900,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 setattr(self, k, temps[k])
         if "marcadors" in temps and temps.get("marcadors") is not None:
             self.marcadors = list(temps["marcadors"])
+            self.marcador_tipus = dict(temps.get("marcador_tipus") or {})
             self._pinta_marcadors()
         tt = temps.get("tempo_trams")
         if tt is not None:
@@ -2132,7 +2170,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             nous = tempo_map.parteix_tram_marcador(
                 trams, float(t), self._durada_wav(),
                 offset=getattr(self, "offset", 0.0),
-                beats_qm=getattr(self, "qm_beats", None), permissiu=True)
+                beats_qm=self._beats_per_validacio(), permissiu=True)
         except ValueError as e:
             self.avis_editor(f"Afegeix tempo: {e}")
             return False
@@ -2400,7 +2438,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             out = tempo_map._recalcula_costats(
                 trams, [(i, tram)], self._durada_wav(),
                 offset=getattr(self, "offset", 0.0),
-                beats_qm=getattr(self, "qm_beats", None),
+                beats_qm=self._beats_per_validacio(),
                 ref_base=self.ref_tempo_base(),
                 beat_factor=self.beat_factor())
         except Exception as e:  # noqa: BLE001
@@ -2433,9 +2471,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             tempo_map.elimina_tall(trams, idx), "Elimina tempo",
             preserva_rubato=preserva,
             recalcul_idx=max(0, int(idx) - 1))
-        if ok:
-            # §4.C: la frontera desapareix → el marcador que hi ancorava, també.
-            self._esborra_marcador_a(float(trams[idx][0]))
         self._undo_commit()
         return ok
 
@@ -2445,16 +2480,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         nou = tempo_map.fusiona_trams(trams, idx, amb)
         if len(nou) == len(trams):
             return False
-        # La frontera que desapareix depén de amb qui es fusiona.
-        frontera = float(trams[idx][0]) if str(amb) == "anterior" \
-            else float(trams[idx][1])
         self._undo_marca()
         ok = self._aplica_mapa_reparat(
             nou, "Fusiona tempo",
             recalcul_idx=(int(idx) if str(amb) == "seguent"
                           else max(0, int(idx) - 1)))
-        if ok:
-            self._esborra_marcador_a(frontera)
         self._undo_commit()
         return ok
 
@@ -3510,7 +3540,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, int(idx_frontera), float(t), durada, offset=offset,
-                beats_qm=getattr(self, "qm_beats", None), permissiu=True,
+                beats_qm=self._beats_per_validacio(), permissiu=True,
                 ref_base=self.ref_tempo_base(), avisos=avisos,
                 beat_factor=self.beat_factor())
         except ValueError as e:

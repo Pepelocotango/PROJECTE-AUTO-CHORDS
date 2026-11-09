@@ -29,7 +29,10 @@ class MarcadorsMixin:
         return min(objectius, key=lambda x: (abs(x - float(t)), x))
 
     def _afegeix_marcador(self, tipus="seccio"):
-        """Marca un inici de compàs al cursor (o mentre sona). Tecla `+`.
+        """Camí de compatibilitat: marcador + tall de tempo/estructura.
+
+        La UI nova fa servir `_marcador_cursor`, `_talla_tempo_cursor`,
+        `_talla_estructura_cursor` i `_talla_tempo_i_estructura_cursor`.
 
         Contracte nou: sempre s'encaixa al **beat QM més pròxim**; si no hi ha
         QM, no es crea el marcador i s'avisa. El visor recalcula els clips
@@ -73,6 +76,81 @@ class MarcadorsMixin:
                        "no conté cap beat sencer de la graella del Snap.")
             self.registra(msg)
             self._missatge_info(msg)
+        return ok
+
+
+    def _t_from_cursor_ui(self):
+        """Temps del cursor per a les accions M/Enter/0/+ de la Finestra."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return None
+        mode = (self.cb_graella.currentData()
+                if hasattr(self, "cb_graella") else "") or ""
+        if mode == "qm_beats":
+            t = self._snap_marcador_qm(float(vr.pos))
+        else:
+            t = float(vr._snap_ui(float(vr.pos)))
+        if t is None or not (0.0 < t < vr._durada_wav() - 1e-3):
+            msg = "El cursor no cau dins el tema; no s'ha fet cap acció."
+            self.registra(msg)
+            self._missatge_info(msg)
+            return None
+        return float(t)
+
+    def _marcador_cursor(self):
+        """M: crea un marcador lliure al cursor."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return False
+        t = self._t_from_cursor_ui()
+        if t is None:
+            return False
+        ok = bool(vr.afegeix_marcador_lliure(t))
+        self.registra(
+            f"Marcador lliure a {t:.3f}s" if ok
+            else f"No s'ha afegit el marcador a {t:.3f}s")
+        return ok
+
+    def _talla_tempo_cursor(self):
+        """Enter: talla només el tempo al cursor."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return False
+        t = self._t_from_cursor_ui()
+        if t is None:
+            return False
+        ok = bool(vr.talla_tempo(t))
+        self.registra(
+            f"Tempo tallat a {t:.3f}s" if ok
+            else f"No s'ha pogut tallar el tempo a {t:.3f}s")
+        return ok
+
+    def _talla_estructura_cursor(self):
+        """0: talla només l'estructura al cursor."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return False
+        t = self._t_from_cursor_ui()
+        if t is None:
+            return False
+        ok = bool(vr.talla_estructura(t))
+        self.registra(
+            f"Estructura tallada a {t:.3f}s" if ok
+            else f"No s'ha pogut tallar l'estructura a {t:.3f}s")
+        return ok
+
+    def _talla_tempo_i_estructura_cursor(self):
+        """+: talla tempo i estructura al cursor, sense marcador."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return False
+        t = self._t_from_cursor_ui()
+        if t is None:
+            return False
+        ok = bool(vr.talla_tempo_i_estructura(t))
+        self.registra(
+            f"Tempo i estructura tallats a {t:.3f}s" if ok
+            else f"No s'ha pogut tallar a {t:.3f}s")
         return ok
 
     def _bpm_dels_marcadors(self):

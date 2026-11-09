@@ -2316,7 +2316,7 @@ class EsquemaUiDocTests(unittest.TestCase):
         # es fa amb marcadors en viu. Sense WAV el botó està desactivat.
         self.assertIsNotNone(getattr(self.w, "b_guia", None))
         self.assertFalse(self.w.b_guia.isEnabled())
-        self.assertIn("＋ Secció", texts)        # el botó del marcador hi és
+        self.assertIn("＋ Temps+Secció", texts)  # el botó del tall hi és
         self.assertFalse(self.w.b_marker.isEnabled())
         with patch.object(app_main, "dialeg_guia_rapida") as mod:
             self.w._obre_guia_rapida()
@@ -5486,11 +5486,8 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.w.offset.setText("1.208")
         self.assertAlmostEqual(self.w._offset_val(), 1.208, places=9)
 
-    def test_marcador_crea_inicis_de_clip_i_va_lligat_a_la_frontera(self):
-        """Un marcador = inici de clip a BPM/compàs I a estructura; després
-        **viatja amb la frontera** i desapareix si la frontera desapareix
-        (decisió de l'operador 21-10-2026, `docs/REGLES_DE_LA_APP.md`
-        §13.6)."""
+    def test_el_marcador_es_independent_del_tempo_i_de_l_estructura(self):
+        """Els marcadors són anotacions: no viatgen amb fronteres ni moren amb elles."""
         vr = self.w.visor_ref
         vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
         vr.seccions = [(0.0, 60.0, "A", "A")]
@@ -5509,20 +5506,20 @@ class TestAncoratgesFinestra(unittest.TestCase):
         # MOURE la frontera arrossega el marcador (dins del mateix desfer)
         vr._on_tempo_mogut(1, "ini", 13.0)
         self.assertAlmostEqual(vr.tempo_trams[1][0], 13.0, places=6)
-        self.assertAlmostEqual(vr.marcadors[0], 13.0, places=6)
+        self.assertAlmostEqual(vr.marcadors[0], 12.0, places=6)
         vr.undo()
         self.assertAlmostEqual(vr.marcadors[0], 12.0, places=6)
-        # ELIMINAR la frontera s'endú el marcador associat
+        # ELIMINAR la frontera NO s'endú el marcador: és independent
         self.assertTrue(vr._elimina_tram(1))
         self.assertEqual(len(vr.tempo_trams), 1)
-        self.assertEqual(len(vr.marcadors), 0, "la frontera se l'ha endut")
-        # es desfà tot (mapa, marcador i clau) en un sol pas
+        self.assertEqual(len(vr.marcadors), 1)
+        # es desfà el mapa, però el marcador no hi era lligat
         vr.undo()
         self.assertEqual(len(vr.marcadors), 1)
         self.assertEqual(len(vr.tempo_trams), 2)
 
-    def test_fusionar_una_frontera_amb_marcador_esborra_el_marcador(self):
-        """§4.C: la frontera que desapareix s'endú el seu marcador (i es desfà)."""
+    def test_fusionar_una_frontera_no_esborra_el_marcador(self):
+        """La frontera desapareix, però el marcador independent es queda."""
         vr = self.w.visor_ref
         vr.tempo_trams = [(0.0, 30.0, 120.0, 4, 4),
                           (30.0, 60.0, 120.0, 4, 4)]
@@ -5530,7 +5527,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr._undo_touch_base()          # estat de partida consolidat
         self.assertTrue(vr._fusiona_tram(0, "seguent"))
         self.assertEqual(len(vr.tempo_trams), 1)
-        self.assertEqual(vr.marcadors, [])
+        self.assertEqual(vr.marcadors, [30.0])
         vr.undo()
         self.assertEqual(len(vr.tempo_trams), 2)
         self.assertEqual(len(vr.marcadors), 1)
@@ -5722,6 +5719,8 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr = self.w.visor_ref
         vr.offset = 0.0
         vr.beat_unit = "negra_punt"
+        vr.snap_on = True
+        vr.snap_mode = "qm_beats"
         vr.set_ref_tempo(120.0, 9, 8)
         vr.qm_beats = [0.0, 0.75, 1.5]
         trams = [(0.0, 2.25, 120.0, 9, 8)]
@@ -5787,19 +5786,17 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.tempo_trams[1][2], 84.0)
         self.assertEqual(vr.tempo_trams[2], trams[2])
 
-    def test_el_marcador_arrossega_la_frontera_d_estructura(self):
-        """El clip de secció que va crear el `+` seguix el marcador (§4.C)."""
+    def test_el_marcador_no_arrossega_la_frontera_d_estructura(self):
+        """Moure un marcador no canvia cap clip d'estructura."""
         vr = self.w.visor_ref
         vr.seccions = [(0.0, 10.0, "A", "A"), (10.0, 20.0, "B", "B"),
                        (20.0, 60.0, "A", "A")]
         vr.marcadors = [10.0]
         vr.timeline.set_data(vr.acords, vr.seccions)
+        before = list(vr.seccions)
         self.assertTrue(vr._mou_marcador(10.0, 12.0))
         self.assertAlmostEqual(float(vr.marcadors[0]), 12.0, places=6)
-        self.assertAlmostEqual(float(vr.seccions[0][1]), 12.0, places=6)
-        self.assertAlmostEqual(float(vr.seccions[1][0]), 12.0, places=6)
-        self.assertEqual(vr.seccions[0][2:], ("A", "A"))
-        self.assertEqual(vr.seccions[1][2:], ("B", "B"))
+        self.assertEqual(vr.seccions, before)
 
     def test_el_marcador_no_buida_una_seccio_que_no_hi_cap(self):
         """Si la secció no pot seguir el marcador, no es toca (no queda buida)."""
@@ -5813,8 +5810,95 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(float(vr.marcadors[0]), 10.6, places=6)
         self.assertEqual(vr.seccions, before)
 
-    def test_frontera_de_tempo_arrossega_marcador_i_estructura(self):
-        """El gest complet: frontera → marcador → inici del clip de secció."""
+    def test_enter_talla_nomes_el_tempo(self):
+        vr = self.w.visor_ref
+        vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
+        vr.seccions = [(0.0, 60.0, "A", "A")]
+        vr.marcadors = []
+        vr.timeline.set_data(vr.acords, vr.seccions)
+        vr._undo_touch_base()
+        self.assertTrue(vr.talla_tempo(12.0))
+        self.assertEqual(len(vr.tempo_trams), 2)
+        self.assertEqual(len(vr.seccions), 1)
+        self.assertEqual(vr.marcadors, [])
+        vr.undo()
+        self.assertEqual(len(vr.tempo_trams), 1)
+
+    def test_zero_talla_nomes_l_estructura(self):
+        vr = self.w.visor_ref
+        vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
+        vr.seccions = [(0.0, 60.0, "A", "A")]
+        vr.timeline.set_data(vr.acords, vr.seccions)
+        vr._undo_touch_base()
+        self.assertTrue(vr.talla_estructura(12.0))
+        self.assertEqual(len(vr.tempo_trams), 1)
+        self.assertEqual(len(vr.seccions), 2)
+        vr.undo()
+        self.assertEqual(len(vr.seccions), 1)
+
+    def test_plus_talla_tempo_i_estructura_sense_marcador(self):
+        vr = self.w.visor_ref
+        vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
+        vr.seccions = [(0.0, 60.0, "A", "A")]
+        vr.marcadors = []
+        vr.timeline.set_data(vr.acords, vr.seccions)
+        vr._undo_touch_base()
+        self.assertTrue(vr.talla_tempo_i_estructura(12.0))
+        self.assertEqual(len(vr.tempo_trams), 2)
+        self.assertEqual(len(vr.seccions), 2)
+        self.assertEqual(vr.marcadors, [])
+        vr.undo()
+        self.assertEqual(len(vr.tempo_trams), 1)
+        self.assertEqual(len(vr.seccions), 1)
+
+    def test_m_crea_un_marcador_lliure(self):
+        vr = self.w.visor_ref
+        vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
+        vr.seccions = [(0.0, 60.0, "A", "A")]
+        vr.marcadors = []
+        vr._undo_touch_base()
+        self.assertTrue(vr.afegeix_marcador_lliure(12.0))
+        self.assertEqual(len(vr.marcadors), 1)
+        self.assertEqual(len(vr.tempo_trams), 1)
+        self.assertEqual(len(vr.seccions), 1)
+        self.assertEqual(vr.marcador_tipus[12.0], "marcador")
+
+    def test_llista_de_marcadors_edita_i_elimina(self):
+        vr = self.w.visor_ref
+        vr.marcadors = [10.0, 20.0]
+        vr.marcador_tipus = {10.0: "marcador", 20.0: "seccio"}
+        vr._pinta_marcadors()
+        self.assertEqual(self.w.visor_ref.llista_marcadors.rowCount(), 2)
+        self.assertEqual(
+            self.w.visor_ref.llista_marcadors.item(0, 1).text(), "marcador")
+        self.w.visor_ref.llista_marcadors.item(0, 0).setText("12.000")
+        self.assertEqual(vr.marcadors, [12.0, 20.0])
+        vr.elimina_marcador(0)
+        self.assertEqual(vr.marcadors, [20.0])
+        self.assertEqual(vr.llista_marcadors.rowCount(), 1)
+
+    def test_tall_amb_snap_auto_no_usa_els_beats_qm(self):
+        """Amb Snap Auto mana BPM/compàs; els beats QM no s'han de passar."""
+        vr = self.w.visor_ref
+        vr.offset = 0.0
+        vr.snap_on = True
+        vr.snap_mode = ""
+        vr.qm_beats = [1.0, 2.0, 3.0]
+        vr.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
+                               (10.0, 60.0, 120.0, 4, 4)])
+        vist = {}
+        original = tm.mou_frontera_retempo
+
+        def _fake(*args, **kwargs):
+            vist["beats"] = kwargs.get("beats_qm")
+            return original(*args, **kwargs)
+
+        with patch.object(tm, "mou_frontera_retempo", _fake):
+            vr._on_tempo_mogut(0, "fi", 10.5)
+        self.assertIsNone(vist["beats"])
+
+    def test_frontera_de_tempo_no_arrossega_marcador_ni_estructura(self):
+        """Moure una frontera de tempo no toca marcadors ni seccions."""
         vr = self.w.visor_ref
         trams = [(0.0, 16.0, 120.0, 4, 4), (16.0, 32.0, 120.0, 4, 4),
                  (32.0, 60.0, 120.0, 4, 4)]
@@ -5823,11 +5907,11 @@ class TestAncoratgesFinestra(unittest.TestCase):
                        (32.0, 60.0, "A", "A")]
         vr.marcadors = [16.0]
         vr.timeline.set_data(vr.acords, vr.seccions)
+        before_sec = list(vr.seccions)
         vr._on_tempo_mogut(0, "fi", 18.0)
         self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 18.0, places=6)
-        self.assertAlmostEqual(float(vr.marcadors[0]), 18.0, places=6)
-        self.assertAlmostEqual(float(vr.seccions[0][1]), 18.0, places=6)
-        self.assertAlmostEqual(float(vr.seccions[1][0]), 18.0, places=6)
+        self.assertAlmostEqual(float(vr.marcadors[0]), 16.0, places=6)
+        self.assertEqual(vr.seccions, before_sec)
 
     def test_bpm_manual_funciona_amb_el_primer_i_l_ultim_tram(self):
         """Cas real: pre-roll de 1,99 s (fora de graella) + últim tram."""

@@ -3,14 +3,12 @@
 """Marcadors humans de la cançó (inici de compàs, en viu).
 
 Un **marcador** és només un instant marcat per l'operador mentre escolta
-(tecla `+` o botó «Afegeix marker»). Quan es crea, **talla** el carril de
-BPM/compàs i el d'estructura en eixe punt (comença un clip nou a cada un).
+(tecla `M` o botó «Afegeix marcador»). No talla cap carril ni forma part del
+mapa de tempo.
 
-Des del 21-10-2026 (`docs/REGLES_DE_LA_APP.md` §13.6) el marcador
-**viatja amb la seua frontera de tempo**: si s'arrossega la frontera, el
-marcador s'hi mou; si la frontera desapareix (eliminar o fusionar el tram), el
-marcador **s'esborra**. Els clips d'estructura, en canvi, continuen sent
-independents.
+Els marcadors són **anotacions independents**: no viatgen amb les fronteres
+de tempo ni amb les seccions, i no s'esborren quan una frontera desapareix.
+Per a recalcular el tempo només manen els inicis i finals dels clips.
 
 Este mòdul és **pur** (sense Qt ni fitxers): llista de temps ordenada, amb
 alta, baixa i consulta. La persistència i el model viu són a `pipeline` i

@@ -743,6 +743,40 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   seek o loop.
 - Suite: **1539 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
+### Canviat — marcadors independents i talls separats (2026-11-09)
+- Els **marcadors ja no estan lligats** al tempo ni a l'estructura: no es mouen
+  amb les fronteres ni s'esborren quan una frontera desapareix.
+- **`M`** crea només un marcador lliure; **`Enter`** parteix només el tempo;
+  **`0`** parteix només l'estructura; **`+`** parteix tempo i estructura.
+  Cap d'estes accions crea marcadors automàticament.
+- Nova **llista de marcadors** (`Temps (s)`, `Tipus`) amb doble-clic per editar
+  i menú contextual per eliminar; els canvis entren a desfer/refer.
+- `marcador_tipus` s'inclou a l'estat de desfer; tipus nou `marcador`.
+- `afegeix_marcador` antic queda només com a camí de compatibilitat intern.
+- Suite: **1571 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
+### Corregit — Snap Auto no ha d'usar els beats QM (2026-11-09)
+- Els talls, canvis de frontera, afegir tram, partir i recalcular clips
+  passaven els beats QM encara que el Snap estiguera en **Auto**. Ara només
+  s'usen amb **Snap Beats QM**; en Auto mana la graella BPM/compàs.
+- Això evita que un tall a una línia de compàs d'un tema a 55 negres amb punt
+  canvie el BPM (p. ex. 82,522 o 73,324) només perquè hi ha un beat QM prop.
+- La reparació de compàs també respecta el mode de Snap.
+- Test de regressió: amb Snap Auto, `mou_frontera_retempo` rep
+  `beats_qm=None`.
+- Suite: **1566 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
+### Corregit — recompte robust en talls sense snap (2026-11-08)
+- Nova tolerància operativa `TOL_TALL = 50 ms` per classificar els beats
+  pròxims a una frontera moguda sense snap. Així un moviment d'1 ms no canvia
+  el nombre de negres d'un clip.
+- Si un beat cau dins la franja de 50 ms, s'avisa del recompte ambigu; si el
+  recompte exacte abans/després canvia en moure la vora, també s'avisa.
+- El criteri és únic a `_recalcula_costats`, marcadors i reparació; el snap
+  continua sent opcional i no es mou cap frontera automàticament.
+- Tests de tolerància, frontera exacta i avisos de tall.
+- Suite: **1565 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
 ### Corregit — unitat del beat en el recalcul (2026-11-08)
 - El recompte de beats d'un clip passa per un helper únic
   (`tempo_recalc.n_negres_del_clip`) amb una sola tolerància de frontera i

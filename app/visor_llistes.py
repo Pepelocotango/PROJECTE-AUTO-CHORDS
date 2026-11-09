@@ -121,6 +121,44 @@ class LlistesMixin:
         if 0 <= cur < t.rowCount():
             t.setCurrentCell(cur, 0)
 
+    def _omple_llista_marcadors(self):
+        """Taula de marcadors: temps i tipus, preservant la fila."""
+        t = getattr(self, "llista_marcadors", None)
+        if t is None:
+            return
+        cur = t.currentRow()
+        marques = list(getattr(self, "marcadors", None) or ())
+        tipus = dict(getattr(self, "marcador_tipus", None) or {})
+        t.blockSignals(True)
+        try:
+            t.setRowCount(len(marques))
+            for i, m in enumerate(marques):
+                mt = float(m)
+                vals = (f"{mt:.3f}",
+                        tipus.get(round(mt, 6), "marcador"))
+                for c, v in enumerate(vals):
+                    it = t.item(i, c)
+                    if it is None:
+                        it = QTableWidgetItem()
+                        it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable
+                                    | Qt.ItemIsEditable)
+                        it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                        t.setItem(i, c, it)
+                    if it.text() != v:
+                        it.setText(v)
+        finally:
+            t.blockSignals(False)
+        if 0 <= cur < t.rowCount():
+            t.setCurrentCell(cur, 0)
+
+    def _salt_marcador(self, item):
+        """Clic a la llista de marcadors: hi porta el cursor."""
+        row = self.llista_marcadors.row(item)
+        marques = list(getattr(self, "marcadors", None) or ())
+        if 0 <= row < len(marques):
+            self.ves_a(float(marques[row]))
+            self.timeline.ensure_cursor_visible()
+
     def _salt_tempo(self, item):
         """Clic a la llista de tempo → selecciona el clip i hi porta el cursor."""
         row = self.llista_tempo.row(item)

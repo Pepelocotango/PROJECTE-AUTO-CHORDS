@@ -913,7 +913,12 @@ class MarcadorsLayer(QGraphicsObject):
         painter.setRenderHint(QPainter.Antialiasing, False)
         for m in self._marques:
             t, tipus = (m[0], m[1]) if isinstance(m, tuple) else (float(m), "seccio")
-            color = "#4da6e8" if tipus == "compas" else MARCADOR_COLOR
+            if tipus == "compas":
+                color = "#4da6e8"
+            elif tipus == "marcador":
+                color = "#e8c04a"
+            else:
+                color = MARCADOR_COLOR
             x = self._x_offset + (t - self._view_left) * self._pps
             if x < -2 or x > 1e6:
                 continue

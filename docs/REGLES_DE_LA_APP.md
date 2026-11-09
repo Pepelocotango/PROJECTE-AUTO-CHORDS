@@ -157,7 +157,12 @@ compassos sencers. El model és permissiu:
 - **Durada mínima**: cap clip normal pot ser més curt que
   `limits.TEMPS_MIN_CLIP` = un compàs `1/8` a 350 BPM (≈ **86 ms**).
 - **Fronteres interiors lliures**: poden caure on vulga l'usuari; el **snap és
-  opcional** i no s'exigeix cap línia de beat.
+  opcional** i no s'exigeix cap línia de beat. **Només amb Snap Beats QM** els
+  beats detectats intervenen en els talls i recalcs; amb Snap Auto o qualsevol
+  altra graella mana el BPM/compàs i els QM no canvien el resultat. Quan un tall sense snap cau a
+  prop d'un beat, el recompte usa una **tolerància operativa de 50 ms** i
+  avisa si el beat és ambigu o si el recompte exacte canvia; no s'imposa cap
+  desplaçament de la frontera.
 - **Excepcions d'extrems**: el **primer inici** i l'**últim final** poden ser
   lliures (amb un sol clip, tots dos). El **primer clip** pot ser pre-roll i
   queda **exempt** del mínim de durada.
@@ -186,7 +191,10 @@ nombre de **negres** (`K`, ja amb la unitat del beat aplicada) és una
 **restricció forta**: 7 negres han de ser `7/4` (o una combinació equivalent),
 no 2 compassos de `4/4` amb 8 negres. El recompte el fa
 `tempo_recalc.n_negres_del_clip()` amb una tolerància única de frontera; si no
-hi ha cap beat dins el clip retorna `None` (no `0`). El BPM s'ajusta per
+hi ha cap beat dins el clip retorna `None` (no `0`). Per als talls manuals
+sense snap, la tolerància operativa és **50 ms** (`TOL_TALL`): un beat dins
+d'eixa franja es classifica de manera estable i s'avisa (activa snap si vols
+una frontera inequívoca). El BPM s'ajusta per
 encaixar eixa xifra. Si **no hi ha beats detectats**, s'intenta inferir el
 nombre de negres a partir de la referència (`D × BPM_ref / 60`); si cau a prop
 d'un enter (±0,2), s'aplica la mateixa restricció; si no, es recorre al càlcul
@@ -252,18 +260,21 @@ guiat** del clip i, si cal, del veí:
 
 Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
 
-- **`+` (marcador)**: amb Snap **Beats QM**, s'encaixa al beat QM més pròxim;
-  amb qualsevol altra graella, a la graella BPM/compàs; amb snap desactivat, es
-  respecta el cursor. Sense beats QM no es crea i s'avisa. Els clips afectats es
-  recalculen amb el **recalcul guiat** (§13.5).
+- **`+`**: parteix **tempo i estructura** al cursor, sense crear cap marcador.
+  **Enter**: parteix només el tempo. **`0`**: parteix només l'estructura.
+  Amb Snap actiu s'encaixa a la graella; amb Snap desactivat es respecta el
+  cursor. Si el tall necessita ajust, s'aplica el recalcul guiat (§13.5).
+- **`M`**: crea només un **marcador independent**; no talla tempo ni
+  estructura i no està lligat a cap frontera.
 - **Només la frontera 0→1 és pre-roll.** Les fronteres 2–3, 3–4… són interiors
   normals (`mou_frontera_retempo`).
 - En fixar l'offset amb **Compàs 1 aquí**, el pre-roll es recalcula com **un
   compàs sencer** amb el compàs admissible que deixa el BPM més pròxim al clip
   següent (exemple: pre-roll `0,742667 s` + segon clip `147,056 BPM` → `2/4` a
   `161,58 BPM`). L'offset es desa immediatament al `.acproj`.
-- El gest és **local**: els marcadors humans lligats a la frontera viatgen amb
-  ella (i s'esborren amb ella).
+- **Els marcadors són anotacions independents**: no viatgen amb les fronteres
+  de tempo ni amb les seccions, i no s'esborren quan una frontera desapareix.
+  Per a ajustar el tempo només manen els inicis i finals dels clips.
 - **Graella robusta**: un canvi de compàs a menys de **20 ms** d'una línia de
   compàs s'imanta a la línia; no es creen dos compassos quasi iguals ni salta
   la numeració. Les etiquetes i el metrònom toleren els offsets d'integració
@@ -304,12 +315,16 @@ entre els dos punts. La fi del tram i els següents no es mouen; si el BPM deriv
 cau fora de 30–350 o no hi cap cap compàs sencer, **s'avisa**. S'aplica en una
 sola operació de desfer.
 
-Els **marcadors** són una referència de l'usuari: *BPM dels marcadors* usa el
+Els **marcadors** són anotacions independents del model. Les accions
+explícites *BPM dels marcadors* i *Ajusta BPMs a partir dels marcadors* poden
+usar-los com a referència manual, però cap operació automàtica de tempo els
+consulta. *BPM dels marcadors* usa el
 **nombre de compassos de cada interval** com a `N` **fix**; el recalcul usa la
 **referència base de la barra 2** per al BPM/compàs (no la del clip). Si hi ha
 **beats detectats** dins l'interval, el seu nombre de **negres** **mana**
 sobre el `N` estimat i pot corregir el compàs: 7 negres són `7/4`, no 2×`4/4`;
-14 negres `7/4` N=2 i 8 negres `4/4` N=2. Així els marcadors i els beats manen sobre
+14 negres `7/4` N=2 i 8 negres `4/4` N=2. En estes accions explícites, els
+intervals dels marcadors i els beats manen sobre
 l'estructura de compassos i el tempo s'hi adapta.
 
 Per a tempo variable, *Analitza ▸ Detecta el tempo per trams…* fa el mapa sencer

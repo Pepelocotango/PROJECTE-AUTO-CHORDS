@@ -22,6 +22,25 @@ class TestRecalculcaTram(unittest.TestCase):
         self.assertIsNone(tr.n_negres_del_clip(beats, 5.0, 6.0, 1.0))
         self.assertIsNone(tr.n_negres_del_clip([], 0.0, 1.0, 1.0))
 
+    def test_tolerancia_operativa_de_tall(self):
+        beats = [2.96, 3.04]
+        # Amb la tolerància de 50 ms, un beat 40 ms abans del tall no entra
+        # al clip esquerre: la classificació és estable.
+        self.assertIsNone(tr.n_negres_del_clip(
+            beats, 1.0, 3.0, tol=tr.TOL_TALL))
+        self.assertIsNone(tr.n_negres_del_clip(
+            beats, 1.0, 3.0004, tol=tr.TOL_TALL))
+        self.assertEqual(tr.n_negres_del_clip(
+            beats, 2.95, 4.0, tol=tr.TOL_TALL), 2.0)
+        self.assertEqual(
+            tr.beats_a_la_frontera(beats, 1.0, 3.0, tol=tr.TOL_TALL),
+            [2.96, 3.04])
+        # El beat exactament a la frontera no és ambigu: va al clip de la dreta.
+        self.assertEqual(tr.n_negres_del_clip(
+            [3.0], 1.0, 3.0, tol=tr.TOL_BEATS), None)
+        self.assertEqual(tr.n_negres_del_clip(
+            [3.0], 3.0, 4.0, tol=tr.TOL_BEATS), 1.0)
+
     def _cas(self, durada, bpm=120.0, num=4, den=4, n_ref=None):
         return tr.recalculca_tram(durada, bpm, num, den, n_ref=n_ref)
 

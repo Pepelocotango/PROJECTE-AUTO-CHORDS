@@ -1587,10 +1587,38 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
     out[i - 1] = (float(ini_a), float(t), float(a[2]), int(a[3]), int(a[4]))
     out[i] = (float(t), float(fi_b), float(b[2]), int(b[3]), int(b[4]))
     if permissiu:
+        beats = [float(x) for x in (beats_qm or ())]
+        abans = None
+        if beats:
+            abans = (
+                tempo_recalc.n_negres_del_clip(
+                    beats, a[0], a[1], beat_factor,
+                    tol=tempo_recalc.TOL_BEATS),
+                tempo_recalc.n_negres_del_clip(
+                    beats, b[0], b[1], beat_factor,
+                    tol=tempo_recalc.TOL_BEATS))
         out = _recalcula_costats(out, [(i - 1, a), (i, b)],
                                  durada, offset, beats_qm=beats_qm,
                                  ref_base=ref_base, avisos=avisos,
                                  beat_factor=beat_factor)
+        if abans is not None and avisos is not None:
+            ara = (
+                tempo_recalc.n_negres_del_clip(
+                    beats, out[i - 1][0], out[i - 1][1], beat_factor,
+                    tol=tempo_recalc.TOL_BEATS),
+                tempo_recalc.n_negres_del_clip(
+                    beats, out[i][0], out[i][1], beat_factor,
+                    tol=tempo_recalc.TOL_BEATS))
+            if ara != abans and any(
+                    0.0 < abs(float(x) - t) <= tempo_recalc.TOL_TALL
+                    for x in beats):
+                text = (
+                    f"Frontera {t:.3f}s: el recompte exacte de beats ha "
+                    f"canviat ({abans[0]}→{ara[0]} / {abans[1]}→{ara[1]}); "
+                    "s'ha estabilitzat amb la tolerància de 50 ms; revisa "
+                    "el tall o activa snap")
+                if text not in avisos:
+                    avisos.append(text)
         return valida_i_normalitza_permissiu(out, durada, offset)
     out = _millora_signatures_clips(out, durada, offset, beats_qm,
                                     {i - 1, i})
@@ -1617,7 +1645,17 @@ def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
         if int(idx) == 0 and float(offset) > ini + TOL:
             continue                     # pre-roll: el clip no és musical
         n_beats = tempo_recalc.n_negres_del_clip(
-            beats, ini, fi, beat_factor) if beats else None
+            beats, ini, fi, beat_factor, tol=tempo_recalc.TOL_TALL) if beats else None
+        if avisos is not None and beats:
+            for b in tempo_recalc.beats_a_la_frontera(
+                    beats, ini, fi, tol=tempo_recalc.TOL_TALL):
+                x = ini if abs(b - ini) <= abs(b - fi) else fi
+                text = (
+                    f"Frontera {x:.3f}s: beat a {b:.3f}s dins la tolerància "
+                    f"de {tempo_recalc.TOL_TALL * 1000:.0f} ms; recompte "
+                    "ambigu (activa snap o ajusta el tall)")
+                if text not in avisos:
+                    avisos.append(text)
         if ref_base is None:
             bpm_ref, num_ref, den_ref = ref[2], ref[3], ref[4]
         else:

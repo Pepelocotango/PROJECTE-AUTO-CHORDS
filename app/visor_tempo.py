@@ -225,7 +225,7 @@ class TempoMixin:
                 bpm_ajust = None
 
         ref_bpm, ref_num, ref_den = self.ref_tempo_base()
-        beats = [float(b) for b in (getattr(self, "qm_beats", None) or ())]
+        beats = [float(b) for b in (self._beats_per_validacio() or ())]
         factor = self.beat_factor()
         n_beats = tempo_recalc.n_negres_del_clip(
             beats, ini, fi, factor) if beats else None
@@ -462,7 +462,6 @@ class TempoMixin:
                 self.avis_editor(
                     "La fi de l'últim clip marca el final de la WAV")
             return
-        vell = float(trams[p_idx][0])
         offset = float(getattr(self, "offset", 0.0))
         if tempo_map.es_frontera_preroll(trams, p_idx, offset):
             # El tall és el COMPÀS 1 (el primer tram no té cap compàs): el gest
@@ -475,23 +474,21 @@ class TempoMixin:
                 return
             self._undo_marca()
             self.offset = float(nou_off)
-            if self.aplica_tempo_trams(nous):
-                self._mou_marcador(vell, float(self.tempo_trams[p_idx][0]))
+            self.aplica_tempo_trams(nous)
             self._undo_commit()
             return
         avisos = []
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, p_idx, float(t), self._durada_wav(), offset=offset,
-                beats_qm=getattr(self, "qm_beats", None), permissiu=True,
+                beats_qm=self._beats_per_validacio(), permissiu=True,
                 ref_base=self.ref_tempo_base(), avisos=avisos,
                 beat_factor=self.beat_factor())
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return
         self._undo_marca()
-        if self.aplica_tempo_trams(nous):
-            self._mou_marcador(vell, float(self.tempo_trams[p_idx][0]))
+        self.aplica_tempo_trams(nous)
         self._undo_commit()
         for avis in avisos:
             self.avis_editor(f"Frontera: {avis}")

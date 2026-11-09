@@ -74,6 +74,13 @@ class MenusMixin:
         self._act(m, "Reanomena element", "F2", self._renomena_element)
         self._act(m, "Troba i reemplaça…", "Ctrl+H", self._troba_i_reemplaca_ui)
         m.addSeparator()
+        self._act(m, "Parteix el tempo al cursor", "",
+                  self._talla_tempo_cursor)
+        self._act(m, "Parteix l'estructura al cursor", "",
+                  self._talla_estructura_cursor)
+        self._act(m, "Parteix tempo i estructura al cursor", "",
+                  self._talla_tempo_i_estructura_cursor)
+        m.addSeparator()
         self._act(m, "Paràmetres…", "", self._focus_parametres)
         self._act(m, "Retard global de reproducció…", "",
                   self._ajusta_latencia_cursor)
@@ -149,8 +156,8 @@ class MenusMixin:
         self._act(m, "Detecta el mapa de tempo (per beats)…", "",
                   self._detecta_tempo_mapa)
         m.addSeparator()
-        self._act(m, "Afegeix un marcador (inici de compàs)", "+",
-                  self._afegeix_marcador)
+        self._act(m, "Afegeix un marcador (M)", "",
+                  self._marcador_cursor)
         self._act(m, "Esborra l'últim marcador", "",
                   self._esborra_ultim_marcador)
         self._act(m, "BPM a partir dels marcadors…", "",

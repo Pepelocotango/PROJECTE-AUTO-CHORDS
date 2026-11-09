@@ -213,23 +213,23 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_guia = QPushButton("Guia ràpida")
         self.b_guia.setObjectName("secundari")
         self.b_guia.setToolTip(
-            "Guia ràpida del flux de treball. Per marcar compassos i seccions "
-            "en viu, fes servir ＋ o la tecla +.")
+            "Guia ràpida del flux de treball. Per tallar tempo i estructura "
+            "en viu, fes servir ＋ o la tecla +; M afig només un marcador.")
         self.b_guia.setEnabled(False)          # fins que hi hagi WAV
         self.b_guia.clicked.connect(self._obre_guia_rapida)
-        self.b_marker = QPushButton("＋ Secció")
+        self.b_marker = QPushButton("＋ Temps+Secció")
         self.b_marker.setObjectName("secundari")
         self.b_marker.setToolTip(
-            "Marca un compàs i una secció en el punt del cursor (tecla +).")
+            "Parteix el tempo i l'estructura al cursor (tecla +).")
         self.b_marker.setEnabled(False)
-        self.b_marker.clicked.connect(lambda: self._afegeix_marcador("seccio"))
+        self.b_marker.clicked.connect(self._talla_tempo_i_estructura_cursor)
 
-        self.b_marker_compas = QPushButton("＋ Compàs")
+        self.b_marker_compas = QPushButton("＋ Marcador")
         self.b_marker_compas.setObjectName("secundari")
         self.b_marker_compas.setToolTip(
-            "Marca només un compàs en el punt del cursor (sense secció).")
+            "Afig només un marcador al cursor (tecla M); no talla res.")
         self.b_marker_compas.setEnabled(False)
-        self.b_marker_compas.clicked.connect(lambda: self._afegeix_marcador("compas"))
+        self.b_marker_compas.clicked.connect(self._marcador_cursor)
 
         # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
         #    (abans era un QGroupBox «2 · Temps i paràmetres»)
@@ -1004,8 +1004,9 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
     def eventFilter(self, obj, ev):
         """Filtre d'esdeveniments de la finestra.
 
-        1. **`+`** (de dalt o del teclat numèric) → **marcador** en viu, també
-           mentre sona. Si s'està escrivint en un camp, el `+` s'hi escriu.
+        1. Tecles de tall: **`+`** (tempo + estructura), **`Enter`** (només
+           tempo), **`0`** (només estructura) i **`M`** (marcador lliure). Si
+           s'està escrivint en un camp, la tecla s'hi escriu normalment.
         2. **Clic** dins la caixa d'informació (només lectura): pausa el
            rotatori i passa de pantalla sense esperar.
         3. **Drag & drop d'àudio** sobre qualsevol fill que accepti drops
@@ -1035,8 +1036,21 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                 pass
         try:
             if (ev.type() == QEvent.KeyPress
-                    and getattr(self, "visor_ref", None) is not None):
+                    and getattr(self, "visor_ref", None) is not None
+                    and isinstance(obj, QWidget)
+                    and obj.window() is self):
                 tecla, txt, mods = ev.key(), ev.text(), ev.modifiers()
+                w = obj if isinstance(obj, QWidget) \
+                    else QApplication.focusWidget()
+                escrivint = False
+                while w is not None:
+                    if isinstance(w, (QLineEdit, QAbstractSpinBox,
+                                      QTextEdit, QPlainTextEdit)):
+                        escrivint = True
+                        break
+                    w = w.parentWidget()
+                if escrivint:
+                    return False
                 es_plus = (tecla == Qt.Key_Plus
                            or (tecla == Qt.Key_Equal
                                and (txt == "+" or mods & Qt.ShiftModifier)))
@@ -1046,21 +1060,24 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                     if getattr(self, "_plus_ev", None) is ev:
                         return True
                     self._plus_ev = ev
-                    # Qui rep la tecla (o qui té el focus) manarà: si és un
-                    # camp d'escriptura, el «+» s'hi escriu i no marca res.
-                    w = obj if isinstance(obj, QWidget) \
-                        else QApplication.focusWidget()
-                    escrivint = False
-                    while w is not None:
-                        if isinstance(w, (QLineEdit, QAbstractSpinBox,
-                                          QTextEdit, QPlainTextEdit)):
-                            escrivint = True
-                            break
-                        w = w.parentWidget()
-                    if escrivint:
-                        return False        # que s'escriga el «+» al camp
-                    self._afegeix_marcador()
+                    self._talla_tempo_i_estructura_cursor()
                     return True
+                if tecla == Qt.Key_M:
+                    self._marcador_cursor()
+                    return True
+                if tecla == Qt.Key_0:
+                    self._talla_estructura_cursor()
+                    return True
+                if tecla in (Qt.Key_Return, Qt.Key_Enter):
+                    # Enter només al timeline/visor: en formularis i diàlegs
+                    # ha de continuar confirmant el camp o el botó.
+                    vr = getattr(self, "visor_ref", None)
+                    w2 = obj
+                    while w2 is not None:
+                        if w2 is getattr(vr, "timeline", None):
+                            self._talla_tempo_cursor()
+                            return True
+                        w2 = w2.parentWidget()
         except (RuntimeError, AttributeError):
             pass
         caixa = getattr(self, "info_box", None)

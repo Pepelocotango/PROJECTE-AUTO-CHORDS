@@ -2093,6 +2093,25 @@ class TestTramsEnSegons(unittest.TestCase):
         self.assertEqual(out[1][3:], (3, 4))
         self.assertAlmostEqual(out[0][2], 120.0, places=6)
 
+    def test_tall_sense_snap_avisa_beat_a_la_frontera(self):
+        trams = [(0.0, 5.0, 120.0, 4, 4), (5.0, 10.0, 120.0, 4, 4)]
+        beats = [1.0, 2.0, 3.0, 4.0, 4.98, 5.02]
+        avisos = []
+        tm.mou_frontera_retempo(
+            trams, 1, 5.02, 10.0, beats_qm=beats, permissiu=True,
+            ref_base=(120.0, 4, 4), avisos=avisos)
+        self.assertTrue(any("tolerància" in a for a in avisos), avisos)
+        self.assertTrue(any("recompte" in a for a in avisos), avisos)
+
+    def test_tall_que_canvia_el_recompte_exacte_avisa(self):
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 20.0, 120.0, 4, 4)]
+        beats = [i * 0.5 for i in range(21)]       # 0,0 … 10,0
+        avisos = []
+        tm.mou_frontera_retempo(
+            trams, 1, 10.0004, 20.0, beats_qm=beats, permissiu=True,
+            ref_base=(120.0, 4, 4), avisos=avisos)
+        self.assertTrue(any("recompte exacte" in a for a in avisos), avisos)
+
     def test_avisos_del_recalcul_arriben_a_la_llista(self):
         trams = [(0.0, 5.0, 120.0, 4, 4), (5.0, 10.0, 120.0, 4, 4)]
         beats = [i * 0.75 for i in range(9)]   # 8 beats en 0-6 s → 80 BPM

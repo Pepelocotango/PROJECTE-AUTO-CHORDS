@@ -22,19 +22,25 @@ _MENYS_COMUNS = {(5, 4), (7, 4), (11, 4), (7, 8), (9, 8), (5, 8),
 LLINDAR_DESVIACIO_BPM = 0.12
 MARGE_SOSPITA_OCTAVA = 0.08
 
-# Tolerància única per comptar un beat dins [ini, fi). El beat exactament a la
-# frontera pertany al clip de la DRETA (b < fi - TOL); així dos clips
-# adjacents no el compten tots dos ni cap.
+# Tolerància exacta per a fronteres calculades (tests i snap).
 TOL_BEATS = 1e-6
+# Tolerància OPERATIVA dels talls manuals sense snap: un beat dins d'esta
+# franja es considera de frontera. Evita que moure la vora 1 ms canvie K i,
+# amb ell, la signatura o el BPM.
+TOL_TALL = 0.05
 
 
-def n_negres_del_clip(beats, ini, fi, beat_factor=1.0):
+def n_negres_del_clip(beats, ini, fi, beat_factor=1.0, tol=TOL_TALL):
     """Negres (float) dels beats detectats dins `[ini, fi)`, o `None`.
 
     `beats` són els temps del detector (tactus); `beat_factor` els convertix a
     negres (negra=1, negra amb punt=1.5, corxera=0.5). Si no hi ha cap beat
     dins el clip retorna `None` (no `0`), perquè el recalcul puga inferir el
     nombre de negres des de la durada i la referència.
+
+    `tol` és la tolerància operativa (50 ms per defecte): un beat dins d'eixa
+    franja al voltant d'una frontera es classifica de manera estable. Els tests
+    de frontera exacta poden passar `tol=TOL_BEATS`.
     """
     ini = float(ini)
     fi = float(fi)
@@ -43,11 +49,30 @@ def n_negres_del_clip(beats, ini, fi, beat_factor=1.0):
     factor = float(beat_factor or 1.0)
     if factor <= 0:
         return None
+    tol = float(tol)
     n = sum(1 for b in (beats or ())
-            if ini - TOL_BEATS <= float(b) < fi - TOL_BEATS)
+            if ini - tol <= float(b) < fi - tol)
     if not n:
         return None
     return float(n) * factor
+
+
+def beats_a_la_frontera(beats, ini, fi, tol=TOL_TALL):
+    """Beats que queden dins la franja ambigua d'algun extrem del clip.
+
+    No inclou els que cauen exactament damunt la frontera: eixos tenen una
+    classificació clara (clip de la dreta). Serveix per a avisar que un tall
+    sense snap està massa prop d'un beat i que el recompte depén de la
+    tolerància.
+    """
+    ini = float(ini)
+    fi = float(fi)
+    tol = float(tol)
+    if tol <= 0 or fi <= ini:
+        return []
+    return sorted({float(b) for b in (beats or ())
+                   if 0.0 < abs(float(b) - ini) <= tol
+                   or 0.0 < abs(float(b) - fi) <= tol})
 
 
 def _bar_quarters(num, den):

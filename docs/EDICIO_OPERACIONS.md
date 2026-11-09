@@ -54,7 +54,8 @@
 > l'**objectiu del recalcul**, no una barrera: la referència és la **manual i
 > global de la barra 2** (`BPM ref` + `compàs ref`), no la dels clips veïns, i
 > el motor pot ajustar BPM, compàs o `N`. Si hi ha **beats detectats** dins del
-> clip, el seu nombre de negres mana i pot corregir la base (7 negres → `7/4`; 14 →
+> clip, **amb Snap Beats QM**, el seu nombre de negres mana i pot corregir la
+> base (7 negres → `7/4`; 14 →
 > `7/4` N=2; 8 → `4/4` N=2); si no n'hi ha, s'inferixen de la referència BPM
 > (`D × BPM_ref / 60`) quan cauen a prop d'un enter (±0,2).
 > Els canvis explícits de BPM/compàs respecten el valor escrit; si el resultat
@@ -65,8 +66,10 @@
 > pot quedar sencer, avisa. La **regla del múltiple** fa que la signatura base
 > mana quan `K/bq_ref` és enter; si `K` no factoritza, es prova un beat
 > detectat amunt/avall (`K ± beat_factor`; 1,0 si els beats són inferits; amb
-> avís) i s'eviten els `2/8`/`1/8`/`1/4` repetits. Els avisos de desviació de
-> BPM (>12 %) i de sospita d'octava es mostren a l'editor. «Encaixar a
+> avís) i s'eviten els `2/8`/`1/8`/`1/4` repetits. En talls sense snap, un
+> beat dins de **50 ms** de la frontera es classifica de manera estable i
+> s'avisa del recompte ambigu. Els avisos de desviació de BPM (>12 %) i de
+> sospita d'octava es mostren a l'editor. «Encaixar a
 > graella» de l'anàlisi fa servir el mateix nucli i graelles que «Quantitza»;
 > per defecte, **corxera** (1/2 temps, 2 acords per temps). El selector
 > **Beat detectat** de la barra 2 indica la unitat del detector (negra per
@@ -169,7 +172,8 @@
 |---|---|---|---|
 | 33 | **Desfer / Refer** | `Ctrl+Z` · `Ctrl+Y` | **FET** |
 | 34 | **Estat complet de l'app** | — | **FET** |
-| 35 | **Llistar el model** | llistes del visor: acords ⑩, seccions ⑪ i **clips de tempo/compàs ⑭** (`Inici (s)`·`Fi (s)`·`BPM`·`Compàs`; «segons» als rubato). Clic = salta, doble-clic = franja Editor, botó dret = el mateix menú del carril | **FET** |
+| 35 | **Llistar el model** | llistes del visor: acords ⑩, seccions ⑪, **clips de tempo/compàs ⑭** (`Inici (s)`·`Fi (s)`·`BPM`·`Compàs`; «segons» als rubato) i **marcadors ⑮** (`Temps (s)`·`Tipus`). Clic = salta, doble-clic = editar/franja Editor, botó dret = menú del carril | **FET** |
+| 35b | **Talls i marcadors independents** | `Enter` = només tempo · `0` = només estructura · `+` = tempo + estructura · `M` = només marcador; llista ⑮ per editar/eliminar | **FET**: els marcadors són anotacions independents del tempo i de l'estructura |
 
 L'historial de desfer/refer conserva les **10 últimes accions totals**. En
 superar el límit, la més antiga es descarta i l'app ho comunica.
