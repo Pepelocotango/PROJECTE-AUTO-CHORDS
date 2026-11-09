@@ -100,6 +100,14 @@ make coverage    # suite amb informe de cobertura
 make check       # compile + lint + test + docs-check
 ```
 
+**Mapa de funcionalitats (ODF).** `make docs` també regenera
+`docs/FUNCIONALITATS_AUTO_CHORDS.ods` a partir de
+`eines/funcionalitats_dades.json` (una fila per línia, editable). No editis
+l'ODS a mà: canvia el JSON i torna a executar `make docs`; `make docs-check`
+falla si l'ODS no hi coincideix. Cal `odfpy` (ja és a
+`requirements-dev.txt`). El ZIP es reescriu amb dates fixes perquè el guardat
+siga determinista i no genere diffs binaris innecessaris.
+
 **Higiene dels temporals**: la suite **no ha de deixar res** al disc. Tots els
 fitxers de test importen **`tests/_temporals.py`**, que intercepta
 `tempfile.mkdtemp` / `mkstemp` / `NamedTemporaryFile`, anota el que es crea i ho
