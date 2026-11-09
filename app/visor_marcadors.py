@@ -131,10 +131,16 @@ class MarcadorsMixin:
 
 
     def _parteix_tempo_nou(self, t):
-        """Retorna el mapa partit a `t` o `None` si no cal/possible."""
+        """Retorna el mapa partit a `t` o `None` si no cal/possible.
+
+        Primer intenta conservar el BPM/compàs. Si el tall deixa un dels
+        clips afectats amb un nombre no enter de compassos, torna a partir
+        amb el recalcul guiat (referència del mateix clip, no la global).
+        """
         trams = list(self.tempo_trams or [])
         durada = self._durada_wav()
-        kw = dict(offset=getattr(self, "offset", 0.0),
+        offset = getattr(self, "offset", 0.0)
+        kw = dict(offset=offset,
                   beats_qm=self._beats_per_validacio(),
                   permissiu=True, ref_base=None,
                   beat_factor=self.beat_factor())
@@ -142,11 +148,34 @@ class MarcadorsMixin:
             out = tempo_map.parteix_tram_marcador(
                 trams, float(t), durada, recalculca=False, **kw)
         except ValueError:
-            try:
-                out = tempo_map.parteix_tram_marcador(
-                    trams, float(t), durada, recalculca=True, **kw)
-            except ValueError:
-                return None
+            out = None
+        if out is not None and len(out) != len(trams):
+            # Si els dos costats queden en compassos sencers, no cal tocar
+            # el BPM. Si no, apliquem el recalcul guiat.
+            idx = next((i for i, tr in enumerate(trams)
+                        if float(tr[0]) + 1e-9 < float(t)
+                        < float(tr[1]) - 1e-9), None)
+            if idx is not None:
+                afectats = (idx, idx + 1)
+                fraccionari = False
+                for i in afectats:
+                    if i >= len(out) or int(out[i][3]) <= 0:
+                        continue
+                    try:
+                        nb = tempo_map._compassos_del_tram(
+                            out[i], i, offset)
+                    except (TypeError, ValueError):
+                        continue
+                    if abs(nb - round(nb)) > 1e-6:
+                        fraccionari = True
+                        break
+                if not fraccionari:
+                    return out
+        try:
+            out = tempo_map.parteix_tram_marcador(
+                trams, float(t), durada, recalculca=True, **kw)
+        except ValueError:
+            return None
         return out if len(out) != len(trams) else None
 
     def _parteix_estructura_noves(self, t):

@@ -97,7 +97,7 @@ afegit el camp **N compassos** al diàleg de tempo (mode A: N + compàs → BPM
 automàtic, fronteres fixes), amb validació local perquè un clip aliè fora de
 graella no bloquege l'edició. També s'ha unificat l'encaix de l'anàlisi amb
 «Quantitza» (default **corxera = 1/2 temps**) i amb el `TempoMap` vigent.
-Suite **1571 OK** (1 skip), `pyflakes` i `docs-check` nets.
+Suite **1574 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).

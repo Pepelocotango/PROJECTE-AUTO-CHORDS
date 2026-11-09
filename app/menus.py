@@ -141,8 +141,13 @@ class MenusMixin:
                     lambda: self._detecta_compas1())
         self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
         self._act(m, "Quantitza el model…", "", self._quantitza_ui)
-        self._act(m, "Quantitza BPM a 1 decimal", "",
-                  self._quantitza_bpm_ui)
+        sub_q = m.addMenu("Quantitza BPM")
+        self._act(sub_q, "Sense decimals", "",
+                  lambda: self._quantitza_bpm_ui(0))
+        self._act(sub_q, "1 decimal", "",
+                  lambda: self._quantitza_bpm_ui(1))
+        self._act(sub_q, "2 decimals", "",
+                  lambda: self._quantitza_bpm_ui(2))
         self._act(m, "Mapa de tempo i compàs…", "",
                   self._tempo_mapa_ui)
         self._act(m, "Marca el rang A–B com a rubato", "",

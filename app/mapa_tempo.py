@@ -17,6 +17,7 @@ l'exportació es fa a `pipeline`/`visor`; ací es defineix el model i el fitxer.
 from dataclasses import dataclass
 import csv
 import os
+from decimal import Decimal, ROUND_HALF_UP
 
 from app import rubato
 from app import tempo_map
@@ -215,6 +216,14 @@ def normalitza_trams_map(trams, durada, log=None, fusiona=False):
     return out, avisos
 
 
+def _arrodoneix_bpm(bpm, decimals):
+    """Arredonix un BPM positiu amb ROUND_HALF_UP (0,5 sempre cap amunt)."""
+    decimals = max(0, int(decimals))
+    quant = Decimal(1).scaleb(-decimals) if decimals else Decimal(1)
+    return float(Decimal(str(float(bpm))).quantize(
+        quant, rounding=ROUND_HALF_UP))
+
+
 def quantitza_bpm(trams, durada, decimals=1):
     """Quantitza el BPM dels trams **normals** a `decimals` decimals.
 
@@ -243,7 +252,7 @@ def quantitza_bpm(trams, durada, decimals=1):
         if bq <= 0:
             raise ValueError("Hi ha un compàs sense durada vàlida")
         n = max(1, int(round(dur * float(tr.bpm) / (bq * 60.0))))
-        bpm = round(float(tr.bpm), decimals)
+        bpm = _arrodoneix_bpm(float(tr.bpm), decimals)
         if bpm <= 0:
             raise ValueError("Hi ha un BPM no vàlid")
         fi = cursor + n * bq * 60.0 / bpm

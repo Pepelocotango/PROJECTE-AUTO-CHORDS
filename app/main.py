@@ -811,8 +811,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self._actualitza_desti_accions()
         self._actualitza_metro_ui()
 
-    def _quantitza_bpm_ui(self):
-        """Quantitza només els clips normals de BPM a 1 decimal."""
+    def _quantitza_bpm_ui(self, decimals=None):
+        """Quantitza només els clips normals de BPM amb 0, 1 o 2 decimals."""
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             self.avisa_info("Quantitza BPM", "Obre un projecte primer.")
@@ -821,12 +821,24 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             self.avisa_info("Quantitza BPM",
                             "Cal el mode BPM · compàs.")
             return False
-        ok = bool(vr.quantitza_bpm(1))
+        if decimals is None:
+            opcions = ("Sense decimals", "1 decimal", "2 decimals")
+            triat, ok = QInputDialog.getItem(
+                self, "Quantitza BPM",
+                "Decimals del BPM:", opcions, 1, False)
+            if not ok:
+                return False
+            decimals = {"Sense decimals": 0, "1 decimal": 1,
+                        "2 decimals": 2}[triat]
+        decimals = max(0, min(2, int(decimals)))
+        ok = bool(vr.quantitza_bpm(decimals))
         if ok:
             self._sincronitza_temps_del_visor()
+            txt = ("sense decimals" if decimals == 0
+                   else f"{decimals} decimal" + ("" if decimals == 1 else "s"))
             self._missatge_info(
-                "BPM quantitzat a 1 decimal; els rubatos no s'han "
-                "quantitzat i les fronteres s'han reencaixat.")
+                f"BPM quantitzat {txt}; els rubatos no s'han quantitzat i "
+                "les fronteres s'han reencaixat.")
         else:
             self._missatge_info("Quantitza BPM: sense canvis.")
         return ok

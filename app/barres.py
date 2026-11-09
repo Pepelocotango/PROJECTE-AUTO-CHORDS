@@ -154,12 +154,12 @@ class BarresMixin:
             "ni el cru; es pot desfer i refer.")
         self.b_quantitza.clicked.connect(self._quantitza_ui)
         bar.addWidget(self.b_quantitza)
-        self.b_quantitza_bpm = QPushButton("BPM 0,1")
+        self.b_quantitza_bpm = QPushButton("BPM…")
         self.b_quantitza_bpm.setObjectName("secundari")
         self.b_quantitza_bpm.setMaximumWidth(86)
         self.b_quantitza_bpm.setToolTip(
-            "Quantitza el BPM dels clips normals a 1 decimal i re-encaixa "
-            "les fronteres amb beats sencers. Els rubatos no es "
+            "Quantitza el BPM dels clips normals amb 0, 1 o 2 decimals i "
+            "re-encaixa les fronteres amb beats sencers. Els rubatos no es "
             "quantitzen.")
         self.b_quantitza_bpm.clicked.connect(self._quantitza_bpm_ui)
         self.barra_accions.addWidget(self.b_quantitza_bpm)

@@ -163,6 +163,38 @@ class TestQuantitzaBpm(unittest.TestCase):
             self.assertAlmostEqual(
                 (t.fi - t.ini) * t.bpm / (4 * 60.0), 4.0, places=6)
 
+    def test_quantitza_arrodoneix_mig_cap_amunt(self):
+        def trams(bpms):
+            ini = 0.0
+            out = []
+            for bpm in bpms:
+                fi = ini + 4 * 4 * 60.0 / bpm
+                out.append(M.TramMapa(ini, fi, bpm, "normal", "4/4"))
+                ini = fi
+            return out, ini
+
+        ts, d = trams((145.5, 144.5))
+        out = M.quantitza_bpm(ts, d, decimals=0)
+        self.assertEqual([t.bpm for t in out], [146.0, 145.0])
+
+        ts, d = trams((145.25, 144.25))
+        out = M.quantitza_bpm(ts, d, decimals=1)
+        self.assertEqual([t.bpm for t in out], [145.3, 144.3])
+
+    def test_quantitza_zero_i_dos_decimals(self):
+        bq = 4.0
+        trams = []
+        ini = 0.0
+        for bpm in (145.023, 143.984, 144.348):
+            fi = ini + 4 * bq * 60.0 / bpm
+            trams.append(M.TramMapa(ini, fi, bpm, "normal", "4/4"))
+            ini = fi
+        out0 = M.quantitza_bpm(trams, ini, decimals=0)
+        self.assertEqual([t.bpm for t in out0], [145.0, 144.0, 144.0])
+        out2 = M.quantitza_bpm(trams, ini, decimals=2)
+        self.assertEqual([round(t.bpm, 2) for t in out2],
+                         [145.02, 143.98, 144.35])
+
     def test_rubato_no_es_quantitza_pero_es_desplaça(self):
         bq = 4.0
         d1 = 4 * bq * 60.0 / 145.023

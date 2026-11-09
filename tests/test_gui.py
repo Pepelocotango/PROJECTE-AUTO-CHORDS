@@ -5824,6 +5824,24 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr.undo()
         self.assertEqual(len(vr.tempo_trams), 1)
 
+    def test_enter_recalcula_si_queden_compassos_fraccionaris(self):
+        vr = self.w.visor_ref
+        vr.offset = 0.0
+        vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
+        vr.seccions = [(0.0, 60.0, "A", "A")]
+        vr.timeline.set_data(vr.acords, vr.seccions)
+        vr._undo_touch_base()
+        self.assertTrue(vr.talla_tempo(12.5))
+        self.assertEqual(len(vr.tempo_trams), 2)
+        for i, tr in enumerate(vr.tempo_trams):
+            nb = tm._compassos_del_tram(tr, i, vr.offset)
+            self.assertAlmostEqual(nb, round(nb), places=5)
+        # El recalcul ha pogut canviar la signatura (ací 4/4 → 5/4) o el BPM.
+        self.assertTrue(
+            tuple(vr.tempo_trams[0][3:]) != (4, 4)
+            or round(float(vr.tempo_trams[0][2]), 3) != 120.0
+            or round(float(vr.tempo_trams[1][2]), 3) != 120.0)
+
     def test_zero_talla_nomes_l_estructura(self):
         vr = self.w.visor_ref
         vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]

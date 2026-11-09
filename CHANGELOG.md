@@ -743,6 +743,21 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   seek o loop.
 - Suite: **1539 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
+### Afegit — quantització de BPM amb 0, 1 o 2 decimals (2026-11-09)
+- L'acció **Quantitza BPM** ara oferix **Sense decimals**, **1 decimal** i
+  **2 decimals**, tant al submenú com al botó **BPM…**.
+- `quantitza_bpm(0/1/2)` continua conservant els compassos i reencaixant les
+  fronteres; els rubatos no es quantitzen.
+- Els empats s'arredonixen amb **ROUND_HALF_UP**: `144,5 → 145`, `145,25 → 145,3`.
+- Suite: **1574 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
+### Corregit — Enter/+ tornen a recalcular si el tall deixa compassos fraccionaris (2026-11-09)
+- `talla_tempo()` intenta primer conservar BPM/compàs; si el tall deixa un
+  clip amb un nombre no enter de compassos, aplica el recalcul guiat amb la
+  referència del clip (no la referència global).
+- Així `Enter` i `+` no es queden amb clips fraccionaris quan cal ajustar-los.
+- Test de regressió: tall a `12,5 s` en un clip de `60 s` a 120 BPM.
+
 ### Canviat — marcadors independents i talls separats (2026-11-09)
 - Els **marcadors ja no estan lligats** al tempo ni a l'estructura: no es mouen
   amb les fronteres ni s'esborren quan una frontera desapareix.
