@@ -2049,6 +2049,39 @@ class TestTramsEnSegons(unittest.TestCase):
         self.assertAlmostEqual(out[0][2], 82.5, places=4)
         self.assertAlmostEqual(out[1][2], 82.5, places=4)
 
+    def test_recalcula_costats_zero_beats_infereix(self):
+        out = tm._recalcula_costats(
+            [(0.0, 3.5, 120.0, 4, 4)], [(0, (0.0, 3.5, 120.0, 4, 4))],
+            3.5, beats_qm=[10.0], beat_factor=1.0)
+        self.assertEqual(out[0][3:], (7, 4))
+        self.assertAlmostEqual(out[0][2], 120.0, places=6)
+
+    def test_parteix_amb_beat_unit_9_8(self):
+        """3 beats de negra amb punt = 4,5 negres → 9/8 N=1, no 4/4."""
+        trams = [(0.0, 4.5, 120.0, 9, 8)]
+        beats = [i * 0.75 for i in range(6)]
+        out = tm.parteix_tram_marcador(
+            trams, 2.25, 4.5, 0.0, beats_qm=beats, permissiu=True,
+            recalculca=True, ref_base=(120.0, 9, 8), beat_factor=1.5)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(out[0][3:], (9, 8))
+        self.assertEqual(out[1][3:], (9, 8))
+        self.assertAlmostEqual(out[0][2], 120.0, places=6)
+        self.assertAlmostEqual(out[1][2], 120.0, places=6)
+
+    def test_parteix_amb_beat_unit_5_8(self):
+        """5 corxeres = 2,5 negres → 5/8 N=1, no 2/4."""
+        trams = [(0.0, 2.5, 120.0, 5, 8)]
+        beats = [i * 0.25 for i in range(10)]
+        out = tm.parteix_tram_marcador(
+            trams, 1.25, 2.5, 0.0, beats_qm=beats, permissiu=True,
+            recalculca=True, ref_base=(120.0, 5, 8), beat_factor=0.5)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(out[0][3:], (5, 8))
+        self.assertEqual(out[1][3:], (5, 8))
+        self.assertAlmostEqual(out[0][2], 120.0, places=6)
+        self.assertAlmostEqual(out[1][2], 120.0, places=6)
+
     def test_parteix_amb_ref_base_sobreescriu_el_pare(self):
         trams = [(0.0, 10.0, 120.0, 11, 4)]
         beats = [i * 0.5 for i in range(21)]

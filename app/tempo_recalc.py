@@ -22,6 +22,33 @@ _MENYS_COMUNS = {(5, 4), (7, 4), (11, 4), (7, 8), (9, 8), (5, 8),
 LLINDAR_DESVIACIO_BPM = 0.12
 MARGE_SOSPITA_OCTAVA = 0.08
 
+# Tolerància única per comptar un beat dins [ini, fi). El beat exactament a la
+# frontera pertany al clip de la DRETA (b < fi - TOL); així dos clips
+# adjacents no el compten tots dos ni cap.
+TOL_BEATS = 1e-6
+
+
+def n_negres_del_clip(beats, ini, fi, beat_factor=1.0):
+    """Negres (float) dels beats detectats dins `[ini, fi)`, o `None`.
+
+    `beats` són els temps del detector (tactus); `beat_factor` els convertix a
+    negres (negra=1, negra amb punt=1.5, corxera=0.5). Si no hi ha cap beat
+    dins el clip retorna `None` (no `0`), perquè el recalcul puga inferir el
+    nombre de negres des de la durada i la referència.
+    """
+    ini = float(ini)
+    fi = float(fi)
+    if fi <= ini:
+        return None
+    factor = float(beat_factor or 1.0)
+    if factor <= 0:
+        return None
+    n = sum(1 for b in (beats or ())
+            if ini - TOL_BEATS <= float(b) < fi - TOL_BEATS)
+    if not n:
+        return None
+    return float(n) * factor
+
 
 def _bar_quarters(num, den):
     return float(num) * (4.0 / float(den))
@@ -67,7 +94,8 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                     n_beats=None, bpm_min=None, bpm_max=None,
                     n_ventana=3,
                     w_bpm=1.0, w_compas=1.5, w_n=3.0, w_natural=0.1,
-                    w_den=1.5, n_max=16, ajusta_beats=True):
+                    w_den=1.5, n_max=16, ajusta_beats=True,
+                    pas_beat=1.0):
     """Busca la millor combinació (BPM, compàs, N) per a un tram.
 
     `n_ref` fixat = el nombre de compassos és una restricció (marcadors).
@@ -78,6 +106,13 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
     durada = float(durada)
     if durada <= 0:
         raise ValueError("La durada del tram ha de ser positiva")
+    if n_beats is not None:
+        n_beats = float(n_beats)
+        if n_beats <= 0:
+            n_beats = None
+    pas_beat = float(pas_beat or 1.0)
+    if pas_beat <= 0:
+        pas_beat = 1.0
     bpm_ref, num_ref, den_ref = _valida_referencia(
         bpm_ref, num_ref, den_ref)
     bpm_min = limits.BPM_MIN if bpm_min is None else float(bpm_min)
@@ -103,7 +138,7 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
         beats_ref = durada * bpm_ref / 60.0
         n_round = int(round(beats_ref))
         if n_round >= 1 and abs(beats_ref - n_round) <= 0.2:
-            n_beats = n_round
+            n_beats = float(n_round)
             beats_inferits = True
 
     # Si tenim els beats detectats, el nombre de negres del clip és una
@@ -136,8 +171,8 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                         "n_ref": int(n_previst),
                         "bpm_ref": float(bpm_ref),
                         "compas_ref": (int(num_ref), int(den_ref)),
-                        "beats": int(n_beats),
-                        "beats_detectats": int(n_beats),
+                        "beats": float(n_beats),
+                        "beats_detectats": float(n_beats),
                         "beats_ajustats": False,
                         "beats_usats": True,
                         "beats_inferits": beats_inferits,
@@ -213,8 +248,8 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                 "n_ref": int(n_previst),
                 "bpm_ref": float(bpm_ref),
                 "compas_ref": (int(num_ref), int(den_ref)),
-                "beats": int(n_beats),
-                "beats_detectats": int(n_beats),
+                "beats": float(n_beats),
+                "beats_detectats": float(n_beats),
                 "beats_ajustats": False,
                 "beats_usats": True,
                 "beats_inferits": beats_inferits,
@@ -224,18 +259,23 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                     "n": (not n_fix) and n != n_previst,
                 },
             })
-        # Fallback K±1: si K no es pot factoritzar en cap compàs, provem un
-        # beat amunt/avall. Prioritat al K' que encaixa amb la signatura de la
-        # referència; si no, al BPM més pròxim. No s'aplica amb n_fix.
-        if ajusta_beats and not n_fix and int(n_beats) > 0:
+        # Fallback d'un beat detectat: si K no es pot factoritzar en cap
+        # compàs, provem un tacte amunt/avall. `pas_beat` val 1,5 negres amb
+        # negra amb punt i 0,5 amb corxera; si els beats són inferits, el pas
+        # és una negra (no hi ha cap tacte detectat). Prioritat al K' que
+        # encaixa amb la signatura de la referència; si no, al BPM més pròxim.
+        # No s'aplica amb n_fix.
+        if (ajusta_beats and not n_fix
+                and n_beats is not None and float(n_beats) > 0):
+            pas = 1.0 if beats_inferits else pas_beat
             candidats = []
-            for k2 in (int(n_beats) - 1, int(n_beats) + 1):
+            for k2 in (n_beats - pas, n_beats + pas):
                 if k2 < 1:
                     continue
                 r2 = recalculca_tram(
                     durada, bpm_ref, num_ref, den_ref, n_ref=None,
                     n_beats=k2, bpm_min=bpm_min, bpm_max=bpm_max,
-                    ajusta_beats=False)
+                    ajusta_beats=False, pas_beat=pas)
                 if r2 is not None and r2.get("beats_usats"):
                     candidats.append((k2, r2))
             if candidats:
@@ -250,8 +290,8 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                 k2, r = min(
                     pool,
                     key=lambda c: abs(math.log(c[1]["bpm"] / bpm_ref)))
-                r["beats"] = int(k2)
-                r["beats_detectats"] = int(n_beats)
+                r["beats"] = float(k2)
+                r["beats_detectats"] = float(n_beats)
                 r["beats_ajustats"] = True
                 r["beats_inferits"] = beats_inferits
                 return _amb_avisos(r)
@@ -293,8 +333,8 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
         "n_ref": int(n_previst),
         "bpm_ref": float(bpm_ref),
         "compas_ref": (int(num_ref), int(den_ref)),
-        "beats": None if n_beats is None else int(n_beats),
-        "beats_detectats": None if n_beats is None else int(n_beats),
+        "beats": None if n_beats is None else float(n_beats),
+        "beats_detectats": None if n_beats is None else float(n_beats),
         "beats_ajustats": False,
         "beats_usats": False,
         "beats_inferits": False,
@@ -315,10 +355,20 @@ def avis_de_resultat(resultat):
     if not resultat:
         return ""
     parts = []
+
+    def _fmt(v):
+        return "—" if v is None else f"{float(v):g}"
+
     if resultat.get("beats_ajustats"):
-        parts.append(
-            f"beats ajustats {resultat.get('beats_detectats')}→"
-            f"{resultat.get('beats')}")
+        if resultat.get("beats_inferits"):
+            parts.append(
+                "sense beats detectats; durada incompatible amb compassos "
+                f"sencers ({_fmt(resultat.get('beats_detectats'))}→"
+                f"{_fmt(resultat.get('beats'))} negres)")
+        else:
+            parts.append(
+                f"beats ajustats {_fmt(resultat.get('beats_detectats'))}→"
+                f"{_fmt(resultat.get('beats'))}")
     desviacio = float(resultat.get("desviacio_bpm") or 0.0)
     if abs(desviacio) > LLINDAR_DESVIACIO_BPM:
         parts.append(f"BPM desviat {desviacio * 100.0:+.1f}%")

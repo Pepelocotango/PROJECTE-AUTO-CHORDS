@@ -54,7 +54,7 @@
 > l'**objectiu del recalcul**, no una barrera: la referència és la **manual i
 > global de la barra 2** (`BPM ref` + `compàs ref`), no la dels clips veïns, i
 > el motor pot ajustar BPM, compàs o `N`. Si hi ha **beats detectats** dins del
-> clip, el seu nombre mana i pot corregir la base (7 beats → `7/4`; 14 →
+> clip, el seu nombre de negres mana i pot corregir la base (7 negres → `7/4`; 14 →
 > `7/4` N=2; 8 → `4/4` N=2); si no n'hi ha, s'inferixen de la referència BPM
 > (`D × BPM_ref / 60`) quan cauen a prop d'un enter (±0,2).
 > Els canvis explícits de BPM/compàs respecten el valor escrit; si el resultat
@@ -63,7 +63,8 @@
 > enter o canviar a la signatura canònica). **Fusionar o eliminar** una
 > frontera recalcula el clip afectat amb la referència base i els beats; si no
 > pot quedar sencer, avisa. La **regla del múltiple** fa que la signatura base
-> mane quan `K/bq_ref` és enter; si `K` no factoritza, es prova `K±1` (amb
+> mana quan `K/bq_ref` és enter; si `K` no factoritza, es prova un beat
+> detectat amunt/avall (`K ± beat_factor`; 1,0 si els beats són inferits; amb
 > avís) i s'eviten els `2/8`/`1/8`/`1/4` repetits. Els avisos de desviació de
 > BPM (>12 %) i de sospita d'octava es mostren a l'editor. «Encaixar a
 > graella» de l'anàlisi fa servir el mateix nucli i graelles que «Quantitza»;

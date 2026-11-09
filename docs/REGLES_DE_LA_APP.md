@@ -182,9 +182,12 @@ del gest. En moure una frontera, el punter fixa els **segons** i
 `tempo_recalc.recalculca_tram()` busca la combinació de **compassos sencers**
 que més s'acosta a eixa referència: pot canviar el **BPM**, el **compàs** o el
 **nombre de compassos** (`N`). Si hi ha **beats detectats** dins del clip, el
-seu nombre és una **restricció forta**: 7 beats han de ser `7/4` (o una
-combinació equivalent), no 2 compassos de `4/4` amb 8 beats. El BPM s'ajusta
-per encaixar eixa xifra. Si **no hi ha beats detectats**, s'intenta inferir el
+nombre de **negres** (`K`, ja amb la unitat del beat aplicada) és una
+**restricció forta**: 7 negres han de ser `7/4` (o una combinació equivalent),
+no 2 compassos de `4/4` amb 8 negres. El recompte el fa
+`tempo_recalc.n_negres_del_clip()` amb una tolerància única de frontera; si no
+hi ha cap beat dins el clip retorna `None` (no `0`). El BPM s'ajusta per
+encaixar eixa xifra. Si **no hi ha beats detectats**, s'intenta inferir el
 nombre de negres a partir de la referència (`D × BPM_ref / 60`); si cau a prop
 d'un enter (±0,2), s'aplica la mateixa restricció; si no, es recorre al càlcul
 per durada. Si no hi ha cap combinació, es conserva el valor
@@ -197,9 +200,12 @@ permissiva), el gest es rebutja amb **avís** (mai un canvi silenciós).
   només val si `N` coincidix amb el fixat; la signatura base n'està exempta de
   `n_max` (clips llargs).
 - **K no factoritzable**: s'exclouen els compassos degenerats (`2/8`, `1/8`,
-  `1/4` amb `N>1`) i es prova `K−1`/`K+1`; es prefereix el que encaixa amb la
-  signatura base i, si no, el de BPM més pròxim. El resultat indica
-  `beats_ajustats` i `beats_detectats`.
+  `1/4` amb `N>1`) i es prova **un beat detectat** amunt/avall
+  (`K ± beat_factor`; 1,5 negres amb negra amb punt, 0,5 amb corxera, i 1,0
+  si els beats són inferits). Es prefereix el que encaixa amb la signatura
+  base i, si no, el de BPM més pròxim. El resultat indica `beats_ajustats`,
+  `beats_detectats` i `beats_inferits`; amb beats inferits l'avís diu «sense
+  beats detectats», no «beats ajustats».
 - **Avisos de BPM**: cada recalcul pot adjuntar una desviació de BPM >12 % i
   una sospita d'octava (ratio ≈2 o ≈0,5, marge 8 %). Són avisos, no canvien la
   decisió.
@@ -301,9 +307,9 @@ sola operació de desfer.
 Els **marcadors** són una referència de l'usuari: *BPM dels marcadors* usa el
 **nombre de compassos de cada interval** com a `N` **fix**; el recalcul usa la
 **referència base de la barra 2** per al BPM/compàs (no la del clip). Si hi ha
-**beats detectats** dins l'interval, el seu nombre **mana** sobre el `N`
-estimat i pot corregir el compàs: 7 beats són `7/4`, no 2×`4/4`; 14 beats
-`7/4` N=2 i 8 beats `4/4` N=2. Així els marcadors i els beats manen sobre
+**beats detectats** dins l'interval, el seu nombre de **negres** **mana**
+sobre el `N` estimat i pot corregir el compàs: 7 negres són `7/4`, no 2×`4/4`;
+14 negres `7/4` N=2 i 8 negres `4/4` N=2. Així els marcadors i els beats manen sobre
 l'estructura de compassos i el tempo s'hi adapta.
 
 Per a tempo variable, *Analitza ▸ Detecta el tempo per trams…* fa el mapa sencer

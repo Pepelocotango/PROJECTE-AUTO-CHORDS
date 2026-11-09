@@ -256,13 +256,13 @@ class MarcadorsMixin:
 
         def _tram(dt, k, bpm_i, nb=None):
             # Si hi ha beats detectats, manen sobre el nombre de compassos
-            # estimat pels marcadors: 7 beats són 7/4, no 2×4/4.
+            # estimat pels marcadors: 7 beats són 7/4, no 2×4/4. `nb` ja ve
+            # en NEGRES (factor de la unitat aplicat pel helper).
             _ = float(bpm_i)      # el candidat dels marcadors ja no és la ref
-            if nb is not None and abs(float(factor) - 1.0) > 1e-9:
-                nb = int(round(float(nb) * float(factor)))
             r = tempo_recalc.recalculca_tram(
                 dt, ref_bpm, int(ref_num), int(ref_den),
-                n_ref=None if nb else int(k), n_beats=nb)
+                n_ref=int(k) if nb is None else None, n_beats=nb,
+                pas_beat=factor)
             if r is None:
                 return (float(bpm_i), int(num), int(den))
             texto = tempo_recalc.avis_de_resultat(r)
@@ -276,8 +276,8 @@ class MarcadorsMixin:
         ini = float(ms[0])
         for dt, k, bpm_i in inter:
             fi = ini + float(dt)
-            nb = (sum(1 for b in beats if ini - 1e-6 <= b < fi - 1e-6)
-                  if beats else None)
+            nb = (tempo_recalc.n_negres_del_clip(
+                beats, ini, fi, factor) if beats else None)
             bpm_i, num_i, den_i = _tram(
                 float(dt), int(k), float(bpm_i), nb=nb)
             trams.append((ini, fi, bpm_i, num_i, den_i))

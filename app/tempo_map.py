@@ -1616,26 +1616,23 @@ def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
         ini, fi = float(out[idx][0]), float(out[idx][1])
         if int(idx) == 0 and float(offset) > ini + TOL:
             continue                     # pre-roll: el clip no és musical
-        n_beats = None
-        if beats:
-            n_detectats = sum(1 for b in beats if ini - TOL <= b < fi - TOL)
-            if (n_detectats and abs(float(beat_factor) - 1.0) > 1e-9):
-                n_beats = int(round(n_detectats * float(beat_factor)))
-            else:
-                n_beats = n_detectats
+        n_beats = tempo_recalc.n_negres_del_clip(
+            beats, ini, fi, beat_factor) if beats else None
         if ref_base is None:
             bpm_ref, num_ref, den_ref = ref[2], ref[3], ref[4]
         else:
             bpm_ref, num_ref, den_ref = ref_base
         try:
             r = tempo_recalc.recalculca_tram(
-                fi - ini, bpm_ref, num_ref, den_ref, n_beats=n_beats)
+                fi - ini, bpm_ref, num_ref, den_ref, n_beats=n_beats,
+                pas_beat=beat_factor)
         except (TypeError, ValueError):
             if ref_base is None:
                 raise
             # Referència base heretada/invàlida: no bloquegem el gest.
             r = tempo_recalc.recalculca_tram(
-                fi - ini, ref[2], ref[3], ref[4], n_beats=n_beats)
+                fi - ini, ref[2], ref[3], ref[4], n_beats=n_beats,
+                pas_beat=beat_factor)
         if r is None:
             continue
         if avisos is not None:

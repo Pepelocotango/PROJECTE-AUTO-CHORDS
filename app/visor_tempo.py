@@ -226,12 +226,14 @@ class TempoMixin:
 
         ref_bpm, ref_num, ref_den = self.ref_tempo_base()
         beats = [float(b) for b in (getattr(self, "qm_beats", None) or ())]
-        n_beats = sum(1 for b in beats if ini - 1e-9 <= b < fi - 1e-9)
+        factor = self.beat_factor()
+        n_beats = tempo_recalc.n_negres_del_clip(
+            beats, ini, fi, factor) if beats else None
         canon = None
         try:
             canon = tempo_recalc.recalculca_tram(
-                dt, ref_bpm, ref_num, ref_den,
-                n_beats=n_beats if beats else None)
+                dt, ref_bpm, ref_num, ref_den, n_beats=n_beats,
+                pas_beat=factor)
         except (TypeError, ValueError):
             canon = None
 

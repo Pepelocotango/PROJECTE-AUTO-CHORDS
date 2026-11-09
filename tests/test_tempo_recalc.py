@@ -13,6 +13,15 @@ from app import tempo_recalc as tr  # noqa: E402
 
 
 class TestRecalculcaTram(unittest.TestCase):
+    def test_n_negres_del_clip_factor_i_frontera(self):
+        beats = [1.0, 2.0, 3.0, 4.0]
+        # El beat de la frontera (3.0) només compta al clip de la dreta.
+        self.assertEqual(tr.n_negres_del_clip(beats, 1.0, 3.0, 1.0), 2.0)
+        self.assertEqual(tr.n_negres_del_clip(beats, 3.0, 5.0, 1.0), 2.0)
+        self.assertEqual(tr.n_negres_del_clip(beats, 1.0, 3.0, 1.5), 3.0)
+        self.assertIsNone(tr.n_negres_del_clip(beats, 5.0, 6.0, 1.0))
+        self.assertIsNone(tr.n_negres_del_clip([], 0.0, 1.0, 1.0))
+
     def _cas(self, durada, bpm=120.0, num=4, den=4, n_ref=None):
         return tr.recalculca_tram(durada, bpm, num, den, n_ref=n_ref)
 
@@ -101,6 +110,41 @@ class TestRecalculcaTram(unittest.TestCase):
         r = tr.recalculca_tram(8.0 / 3.0, 120.0, 4, 4, n_beats=8)
         self.assertFalse(r["sospita_octava"])
         self.assertIn("BPM desviat", tr.avis_de_resultat(r))
+
+    def test_9_8_amb_tres_beats_de_negra_amb_punt(self):
+        r = tr.recalculca_tram(2.25, 120.0, 9, 8, n_beats=4.5)
+        self.assertEqual((r["n"], r["num"], r["den"]), (1, 9, 8))
+        self.assertAlmostEqual(r["bpm"], 120.0, places=6)
+        self.assertEqual(r["beats"], 4.5)
+        self.assertEqual(r["beats_detectats"], 4.5)
+
+    def test_5_8_amb_cinc_corxeres(self):
+        r = tr.recalculca_tram(1.25, 120.0, 5, 8, n_beats=2.5)
+        self.assertEqual((r["n"], r["num"], r["den"]), (1, 5, 8))
+        self.assertAlmostEqual(r["bpm"], 120.0, places=6)
+        self.assertEqual(r["beats"], 2.5)
+
+    def test_fallback_avança_un_beat_detectat(self):
+        # Amb pas 1,5 (negra amb punt), 19 no prova 18/20 sinó 17,5/20,5.
+        r = tr.recalculca_tram(6.5, 120.0, 4, 4, n_beats=19,
+                              pas_beat=1.5)
+        self.assertEqual(r["beats"], 17.5)
+        self.assertTrue(r["beats_ajustats"])
+        r = tr.recalculca_tram(6.5, 120.0, 4, 4, n_beats=19,
+                              pas_beat=1.0)
+        self.assertEqual(r["beats"], 20.0)
+        self.assertTrue(r["beats_ajustats"])
+
+    def test_zero_beats_no_bloqueja_la_inferència(self):
+        r = tr.recalculca_tram(3.5, 120.0, 4, 4, n_beats=0)
+        self.assertEqual((r["n"], r["num"], r["den"]), (1, 7, 4))
+        self.assertAlmostEqual(r["bpm"], 120.0, places=6)
+
+    def test_avis_de_beats_inferits(self):
+        r = tr.recalculca_tram(6.5, 120.0, 4, 4)
+        text = tr.avis_de_resultat(r)
+        self.assertIn("sense beats detectats", text)
+        self.assertNotIn("beats ajustats", text)
 
     def test_avisos_i_beats_en_el_cami_per_durada(self):
         r = tr.recalculca_tram(2.8, 120.0, 4, 4)

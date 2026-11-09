@@ -5659,6 +5659,79 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(
             tm._compassos_del_tram(merged, 0, vr.offset), 10.0, places=3)
 
+    def test_bpm_dels_marcadors_amb_negra_amb_punt_9_8(self):
+        """Els marcadors i la unitat del beat donen 9/8, no 4/4 arrodonit."""
+        vr = self.w.visor_ref
+        vr.offset = 0.0
+        vr.beat_unit = "negra_punt"
+        vr.set_ref_tempo(120.0, 9, 8)
+        vr.qm_beats = [0.1, 0.85, 1.6, 2.35, 3.1, 3.85]
+        vr.marcadors = [0.1, 2.35, 4.6]
+        candidat = {"bpm": 120.0,
+                    "intervals": [(2.25, 1, 120.0), (2.25, 1, 120.0)]}
+        self.assertTrue(vr.aplica_bpm_marcadors(candidat, 9, 8))
+        self.assertAlmostEqual(vr.bpm, 120.0, places=6)
+        self.assertTrue(vr.tempo_trams)
+        self.assertEqual(tuple(vr.tempo_trams[1][3:]), (9, 8))
+        self.assertEqual(tuple(vr.tempo_trams[2][3:]), (9, 8))
+
+    def test_reparacio_amb_negra_amb_punt_9_8(self):
+        """La reparació també ha d'aplicar la unitat del beat (4,5 negres)."""
+        from app import visor_tempo as VT
+
+        class _Boto:
+            pass
+
+        class _Caixa:
+            AcceptRole = 0
+            ActionRole = 1
+            RejectRole = 2
+            Warning = 3
+
+            def __init__(self, *_a, **_k):
+                self.botons = []
+
+            def setIcon(self, *_a):
+                pass
+
+            def setWindowTitle(self, *_a):
+                pass
+
+            def setText(self, *_a):
+                pass
+
+            def setInformativeText(self, *_a):
+                pass
+
+            def addButton(self, text, _role):
+                b = _Boto()
+                b.text = text
+                self.botons.append(b)
+                return b
+
+            def setDefaultButton(self, *_a):
+                pass
+
+            def exec_(self):
+                pass
+
+            def clickedButton(self):
+                return next(b for b in self.botons
+                            if b.text.startswith("Canvia a"))
+
+        vr = self.w.visor_ref
+        vr.offset = 0.0
+        vr.beat_unit = "negra_punt"
+        vr.set_ref_tempo(120.0, 9, 8)
+        vr.qm_beats = [0.0, 0.75, 1.5]
+        trams = [(0.0, 2.25, 120.0, 9, 8)]
+        vr.tempo_trams = list(trams)
+        with patch.object(VT, "QMessageBox", _Caixa):
+            self.assertTrue(vr._repara_compas_no_enter(
+                0, 120.0, 4, 4, 1.5, trams, desa=False))
+        self.assertEqual(tuple(vr.tempo_trams[0][3:]), (9, 8))
+        self.assertAlmostEqual(vr.tempo_trams[0][2], 120.0, places=6)
+
     def test_bpm_dels_marcadors_deixa_els_clips_editables(self):
         """El flux real: marcadors → BPM dels marcadors → clips editables."""
         from app import tempo_map as TM

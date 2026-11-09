@@ -743,6 +743,24 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   seek o loop.
 - Suite: **1539 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
+### Corregit — unitat del beat en el recalcul (2026-11-08)
+- El recompte de beats d'un clip passa per un helper únic
+  (`tempo_recalc.n_negres_del_clip`) amb una sola tolerància de frontera i
+  retorna `None` si no hi ha cap beat, en compte de `0`.
+- S'eliminen els arredoniments prematurs de `K`: 3 beats de negra amb punt
+  (4,5 negres) donen **9/8 N=1**, i 5 corxeres (2,5 negres) donen **5/8 N=1**.
+- La reparació de compàs també aplica el `beat_factor`; abans no ho feia.
+- El fallback avança un **beat detectat** (1,5 negres amb negra amb punt,
+  0,5 amb corxera; 1,0 si els beats són inferits), no una negra fixa.
+- L'avís distingix els beats inferits: «sense beats detectats; durada
+  incompatible amb compassos sencers» en compte de «beats ajustats».
+- Tests de contracte entre `_recalcula_costats`, marcadors i reparació, més
+  9/8, 5/8, frontera i `n_beats=0`.
+- Validació inicial amb `De res - cop de sort_55bpm_C12_8`: QM dona 273
+  beats amb intervals de ~1,091 s (54,98 negres amb punt/min), coherent amb
+  el 6/8 real; queda provar el flux complet de mapa/reparació.
+- Suite: **1562 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
 ### Afegit — unitat del beat detectat (2026-11-08)
 - Nou selector **Beat detectat** a la barra 2: `negra` (defecte), `negra amb
   punt`, `corxera` o `blanca`. El recalcul convertix K a negres abans de
