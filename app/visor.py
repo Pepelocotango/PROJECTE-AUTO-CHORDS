@@ -2193,7 +2193,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             return False
         try:
             nous = mapa_tempo.quantitza_bpm(
-                self.tempo_trams, self._durada_wav(), decimals=decimals)
+                self.tempo_trams, self._durada_wav(), decimals=decimals,
+                offset=getattr(self, "offset", 0.0))
         except ValueError as e:
             self.avis_editor(f"Quantitza BPM: {e}")
             return False

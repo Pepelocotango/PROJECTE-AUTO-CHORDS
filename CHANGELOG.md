@@ -743,6 +743,16 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   seek o loop.
 - Suite: **1539 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
+### Corregit — Quantitza BPM preserva el pre-roll i l'offset (2026-11-09)
+- La quantització de BPM ja **no tracta el pre-roll com un compàs musical**:
+  conserva el primer clip `0 → offset` i comença a quantitzar a l'offset.
+- Això evita que el compàs 1 quede dins el segon clip, que el grid es trenque
+  i que el metrònom accentue malament.
+- Si el pre-roll acaba abans de l'offset (mapa ja inconsistent), s'avisa i no
+  es toca res.
+- Tests de pre-roll preservat i de pre-roll inconsistent.
+- Suite: **1576 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
 ### Afegit — quantització de BPM amb 0, 1 o 2 decimals (2026-11-09)
 - L'acció **Quantitza BPM** ara oferix **Sense decimals**, **1 decimal** i
   **2 decimals**, tant al submenú com al botó **BPM…**.

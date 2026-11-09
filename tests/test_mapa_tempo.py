@@ -163,6 +163,21 @@ class TestQuantitzaBpm(unittest.TestCase):
             self.assertAlmostEqual(
                 (t.fi - t.ini) * t.bpm / (4 * 60.0), 4.0, places=6)
 
+    def test_quantitza_preserva_el_preroll(self):
+        pre = M.TramMapa(0.0, 2.0, 108.738, "normal", "3/4")
+        music = M.TramMapa(2.0, 2.0 + 4 * 3 * 60.0 / 105.918,
+                           105.918, "normal", "3/4")
+        out = M.quantitza_bpm([pre, music], 30.0, decimals=2, offset=2.0)
+        self.assertEqual(tuple(out[0]), tuple(pre))
+        self.assertAlmostEqual(out[1].ini, 2.0, places=9)
+        self.assertEqual(out[1].bpm, 105.92)
+
+    def test_quantitza_preroll_inconsistent_avisa(self):
+        pre = M.TramMapa(0.0, 1.655325, 108.74, "normal", "3/4")
+        music = M.TramMapa(1.655325, 8.0, 105.92, "normal", "3/4")
+        with self.assertRaises(ValueError):
+            M.quantitza_bpm([pre, music], 30.0, decimals=2, offset=2.20714)
+
     def test_quantitza_arrodoneix_mig_cap_amunt(self):
         def trams(bpms):
             ini = 0.0

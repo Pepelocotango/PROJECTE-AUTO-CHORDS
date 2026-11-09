@@ -140,7 +140,7 @@
 | 16 | **Copiar / Retallar / Enganxar** | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` (`Ctrl+Alt+V` = sense snap) | ✓ | ✓ | ✓ | **FET** (sobreescriu el tram; als trams obre les fronteres i hi canvia el BPM/compàs) |
 | 17 | **Copiar/retallar el LOOP** | doble clic al regle · menú contextual de la banda | ✓ | ✓ | ✓ | **FET** (composable; la selecció del LOOP ja inclou els trams) |
 | 18 | **Quantitza** (inicis de clips) | *Analitza ▸ Quantitza el model…* · botó **Quantitza** | ✓ | ✓ | — | **FET** (abast: tot · selecció · només acords · només estructura) |
-| 18b | **Quantitza BPM** | *Analitza ▸ Quantitza BPM* · botó **BPM…** | — | — | ✓ | **FET**: tria **Sense decimals**, **1 decimal** o **2 decimals**; conserva compassos, reencaixa fronteres i arredonix els empats amb `ROUND_HALF_UP`; els rubatos no es quantitzen |
+| 18b | **Quantitza BPM** | *Analitza ▸ Quantitza BPM* · botó **BPM…** | — | — | ✓ | **FET**: tria **Sense decimals**, **1 decimal** o **2 decimals**; conserva compassos, reencaixa fronteres i arredonix els empats amb `ROUND_HALF_UP`; els rubatos no es quantitzen. **El pre-roll 0 → offset es conserva intacte** |
 
 ## 3. Selecció i vista
 
