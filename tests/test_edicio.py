@@ -4263,8 +4263,8 @@ class TestSenseAnalisi(_sense_analisi___Base):
 
     def test_export_habilitat_i_csvs_desats(self):
         w, p = self._finestra_amb_projecte(amb_csv=False)
-        self.assertTrue(w.b_export.isEnabled(), "es pot exportar sense analitzar")
-        self.assertTrue(w.b_export_part.isEnabled())
+        self.assertTrue(w.a_exporta.isEnabled(), "es pot exportar sense analitzar")
+        self.assertTrue(w.a_exporta_part.isEnabled())
         for nom in ("acords.csv", "estructura_ABC.csv", "mapa_tempo.csv"):
             self.assertTrue(os.path.isfile(os.path.join(p.carpeta, nom)), nom)
 

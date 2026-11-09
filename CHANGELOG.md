@@ -743,6 +743,40 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   seek o loop.
 - Suite: **1539 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
+### Afegit — avís emergent de grid trencat (2026-11-09)
+- `tempo_map.problemes_compassos_sencers()` detecta clips normals amb `N`
+  fraccionari, sense comptar rubatos ni el pre-roll vàlid.
+- El visor comprova el mapa **cada vegada que reconstrueix la graella**
+  (`_refresca_tempo_map`) i emet `mapaInconsistent`.
+- La finestra mostra un `QMessageBox` amb els clips afectats, BPM/compàs i
+  `N`; s'executa en carregar i després de cada canvi de mapa. Només es repeteix
+  quan el text de l'estat trencat canvia.
+- El diàleg permet **conservar el canvi** o **descartar-lo**: descartar executa
+  l'undo de tota l'operació que va deixar el mapa trencat.
+- Tests del diagnòstic i del senyal; suite: **1579 OK** (1 skip), `pyflakes` i
+  `docs-check` nets.
+
+### Netejat — botó «Obre àudio» retirat de la barra (2026-11-09)
+- **Obre àudio** desapareix de la barra de Treball; continua a
+  **Fitxer ▸ Obre àudio…** (`Ctrl+O`).
+- La guia ràpida ja indica el camí del menú.
+- Suite: **1577 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
+### Netejat — botons sense equivalent propi, icones als talls (2026-11-09)
+- Retirats de la barra els botons **Detecta el compàs 1**, **Exporta WAV's**,
+  **Exporta partitura** i **Obre la carpeta de sortida**; les funcions
+  continuen als menús **Analitza** i **Fitxer**.
+- **＋ Temps+Secció** i **＋ Marcador** ara tenen icones (`compass` i
+  `map-pin`) sense perdre el text.
+- Suite: **1577 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
+### Canviat — quatre llistes en una fila i panell d'acords tancat (2026-11-09)
+- Les llistes d'acords, seccions, tempo i marcadors comparteixen **una sola
+  fila**, en compte de tres dalt i els marcadors davall.
+- El panell **Tipus d'acord** arrenca **tancat per defecte**; s'obri des de
+  *Visualitza ▸ Mostra els tipus d'acord*.
+- Suite: **1577 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
 ### Corregit — Quantitza BPM preserva el pre-roll i l'offset (2026-11-09)
 - La quantització de BPM ja **no tracta el pre-roll com un compàs musical**:
   conserva el primer clip `0 → offset` i comença a quantitzar a l'offset.

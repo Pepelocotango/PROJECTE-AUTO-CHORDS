@@ -21,10 +21,10 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [Obre àudio][Anàlisi guiat][BPM·compàs][Lliure] BPM:[101][×2][÷2] ◎Detecta TAP Compàs:[4]     │  ← BARRA 1a
+│ [Anàlisi guiat][BPM·compàs][Lliure] BPM:[101][×2][÷2] ◎Detecta TAP Compàs:[4]                 │  ← BARRA 1a
 │   Offset:[0.0] 📍 🧭 ≈[1.1]                                                 │     (treball)
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [Analitza] [Exporta WAV's] [Exporta partitura]                              │  ← BARRA 1b
+│ [Analitza]                                                                  │  ← BARRA 1b
 ├────────────────────────────────────────────────────────────────────────────┤     (accions)
 │ ▶/⏸ □ ⏪ ⏩ ↤ ↦ ↻  🔍− 🔍+ ⛶ ⊙  🔇 🥁 ▬▬●▬                                  │  ← BARRA 2
 ├────────────────────────────────────────────────────────────────────────────┤     (transport)
@@ -41,7 +41,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-> 📐 **Docks** (desacoplables i ocultables des de *Visualitza*): a l'**esquerra**, el panell **Tipus d'acord** (`dock_xifrat`, `app/panell_xifrat.py`: paleta d'arrel + baix + **92 tipus**, ▶ Escoltar i selector de timbre); a **baix**, el dock **Log · Informació** (`log_dock`). El transport i les accions són **barres d'eines** (no movibles), no docks.
+> 📐 **Docks** (desacoplables i ocultables des de *Visualitza*): a l'**esquerra**, el panell **Tipus d'acord** (`dock_xifrat`, `app/panell_xifrat.py`: paleta d'arrel + baix + **92 tipus**, ▶ Escoltar i selector de timbre), **tancat per defecte**; a **baix**, el dock **Log · Informació** (`log_dock`). El transport i les accions són **barres d'eines** (no movibles), no docks.
 >
 > 🎨 **Icones REALS**: la UI fa servir icones **Lucide** (`icones/`, llicència ISC) — **no** emojis. El dibuix de dalt n'és una aproximació; el mapa real és: ▶/⏸ → `play`/`pause` · ⏹ → `square` · ⏪/⏩ → `rewind`/`fast-forward` · `A⟨`/`⟩B` → `arrow-left-to-line`/`arrow-right-to-line` · 🔁 → `repeat-2` · (neteja el loop) → `x` · 🔍−/🔍+ → `zoom-out`/`zoom-in` · ⛶ → `maximize` · ⊙ → `focus` · 🔇 → `volume-x` · 🥁 → `metronome` · 🎯 → `target` · 📍 → `map-pin` · 🧭 → `compass` · (Desfer/Refer) → `undo-2`/`redo-2` · 🎵/🎼 (Editor) → `music`/`piano`.
 
@@ -51,14 +51,10 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 |-----|-----------------|-----------------|-------|
 | ⓪ | `Finestra` | finestra principal | `QMainWindow` |
 | — | `self.offset` · `self.offset_cb` | **dos camps d'offset** (segons · compàs.beat) | `QLineEdit` |
-| — | `b_obre` (local) | **Obre àudio** | `QPushButton` |
-| — | `self.b_marker` · `self.b_marker_compas` | **＋ Temps+Secció** (tecla `+`): parteix **tempo i estructura** al cursor, sense crear cap marcador. **＋ Marcador** (tecla `M`): crea només un marcador independent; no talla res. Sense WAV, desactivats | `QPushButton` |
+| — | `self.b_marker` · `self.b_marker_compas` | **＋ Temps+Secció** (icona `compass`, tecla `+`): parteix **tempo i estructura** al cursor, sense crear cap marcador. **＋ Marcador** (icona `map-pin`, tecla `M`): crea només un marcador independent; no talla res. Sense WAV, desactivats | `QPushButton` |
 | — | `self.b_guia` | **Guia ràpida**: obri `DialegGuiaRapida` (informació, no toca el model). Els talls es fan amb `＋` / `Enter` / `0`; `M` afig marcadors independents. Sense WAV, desactivat | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
-| — | `self.b_export` | **Exporta WAV's** (Ctrl+E) | `QPushButton` |
-| — | `self.b_export_part` | **Exporta partitura** (MusicXML; PDF/MSCZ si hi ha MuseScore) | `QPushButton` |
 | — | `self.b_desfer` · `self.b_refer` | **Desfer** · **Refer** (icones `undo-2` / `redo-2`) | `QPushButton` |
-| — | `self.b_obre_carpeta` | **Obre la carpeta de sortida** | `QPushButton` |
 | — | (al transport; `self.b_zs` al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / hh:mm:ss** (abans deia «Lliure») | `QPushButton` (checkable) |
 | — | `self.bpm` · `self.cb_bpm_unit` · `self.bpb` · `self.ref_bpm` · `self.ref_bpb` · `self.cb_beat` · `self.offset` · `self.offset_cb` | **BPM**, **unitat del BPM** (negra · negra amb punt · corxera · blanca), **Compàs**, **Ref. recalc** (BPM + compàs), **Beat detectat** (negra · negra amb punt · corxera · blanca), **Offset (s)**, **≈ C.B** | `QLineEdit` · `QComboBox` |
@@ -85,7 +81,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (barra 1, fila 1) | `Obre àudio` → **Anàlisi guiat** (guia ràpida) → **＋ Marker** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → **Analitza** → **Exporta WAV's** → **Exporta partitura** → **Obre la carpeta de sortida** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`) |
+| **Treball** (barra 1, fila 1) | **Anàlisi guiat** (guia ràpida) → **＋ Temps+Secció** → **＋ Marcador** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → **Analitza** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`). Obrir i exportar viuen al menú **Fitxer** |
 | **Temps** (barra 1, fila 2) | BPM · **Unitat BPM** · **×2/÷2** · ◎ Detecta · **TAP** · Compàs · Offset (s) · **📍** · **🧭** · ≈ C.B |
 | **Edició** (barra 1, fila 3) | **BPM…** · **Graella:** `Beats QM` / divisions · **Eina: intel·ligent / selecció** |
 | **Transport** | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup]** · **[unitat de clic]** · **[Quantitza]** · **[BPM…]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
@@ -257,7 +253,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | ⑪ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
 | ⑫ | `ed_icona` · `ed_gran` · `ed_nom` · `ed_fam` · `ed_ini` · `ed_cb` · **`ed_fi`** · `ed_aplica` | **franja Editor** (acord/secció i, amb etiquetes pròpies, **tempo: BPM + compàs**; `ed_fi` —«Fi (s)»— només en mode tempo: mou la frontera, §13.6) | `QLabel`/`QLineEdit`/`QPushButton` |
 | ⑭ | `self.llista_tempo` | **llista de clips de tempo/compàs** (`Inici (s)` · `Fi (s)` · `BPM` · `Compàs`; «segons» als rubato) | `QTableWidget` |
-| ⑮ | `self.llista_marcadors` | **llista de marcadors independents** (`Temps (s)` · `Tipus`): doble-clic edita, menú contextual elimina; no està lligada al tempo ni a l'estructura | `QTableWidget` |
+| ⑮ | `self.llista_marcadors` | **llista de marcadors independents** (`Temps (s)` · `Tipus`): doble-clic edita, menú contextual elimina; no està lligada al tempo ni a l'estructura. Les quatre llistes ⑩⑪⑭⑮ comparteixen **una sola fila** | `QTableWidget` |
 | ⑬ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
 
 > 🥁 **El transport principal** (`b_play`, `b_stop`, `b_menys`, `b_mes`, `b_A`,
@@ -430,7 +426,7 @@ la resolució visual (1, 2, 5, 10, 15, 30 s…), no les posicions temporals.
 
 | Estat | Color | Botons |
 |-------|-------|--------|
-| **Base (apagat)** | gris «Obre àudio» `SURFACE #2a2c30` | **tots** |
+| **Base (apagat)** | gris `SURFACE #2a2c30` | **tots** |
 | **Encès** | **blau** `ACTIU #2563eb` (+ vora `#1e40af`) | `🔁 loop`, modes `BPM·compàs`/`Lliure` |
 | **Encès (especial)** | **taronja suau** `ACTIU_GROC #ffb26b` (vora `#b36a2a`) | `mute` (icona `volume-x`), `metrònom` (icona `metronome`) |
 | **Acció principal** | blanc `#ffffff` | `Analitza` (`#principal`) |

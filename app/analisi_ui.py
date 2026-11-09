@@ -126,8 +126,8 @@ class AnalisiMixin:
         self.b_guia.setEnabled(False)        # res de guiat mentre s'analitza
         self.b_marker.setEnabled(False)
         self.b_marker_compas.setEnabled(False)
-        self.b_export.setEnabled(False)
-        self.b_export_part.setEnabled(False)
+        self.a_exporta.setEnabled(False)
+        self.a_exporta_part.setEnabled(False)
         _ana = self.opcions.get("analisi") or {}
         # Separació d'accions: «Analitza» només fa acords i estructura.
         # El BPM es detecta amb «Analitza BPM…» i es mostra com a capa.
@@ -200,8 +200,8 @@ class AnalisiMixin:
         self.b_guia.setEnabled(False)
         self.b_marker.setEnabled(False)
         self.b_marker_compas.setEnabled(False)
-        self.b_export.setEnabled(False)
-        self.b_export_part.setEnabled(False)
+        self.a_exporta.setEnabled(False)
+        self.a_exporta_part.setEnabled(False)
         self.feina = Feina(
             wav, self.sortida, self._bpm_val(), self._bpb_val(),
             self._offset_val(), False, self.tempo_fix.isChecked(),
@@ -219,8 +219,8 @@ class AnalisiMixin:
         self.b_guia.setEnabled(True)
         self.b_marker.setEnabled(True)
         self.b_marker_compas.setEnabled(True)
-        self.b_export.setEnabled(True)
-        self.b_export_part.setEnabled(True)
+        self.a_exporta.setEnabled(True)
+        self.a_exporta_part.setEnabled(True)
         self.registra("FET ✅ — ara pots revisar el visor i fer «Exporta WAV's».")
         self.barra.setValue(100)
         # El CRU de l'anàlisi es desa DINS el document (un sol fitxer).
@@ -270,8 +270,8 @@ class AnalisiMixin:
             if b_det:
                 self._aplica_bpm_detectat(float(b_det))
         else:
-            self.b_export.setEnabled(False)
-            self.b_export_part.setEnabled(False)
+            self.a_exporta.setEnabled(False)
+            self.a_exporta_part.setEnabled(False)
             self.registra(f"ERROR: {dada}")
             self.log_dock.setVisible(True)    # en cas d'error, obrim el log
             self.avisa_crit("Auto Chords", dada)

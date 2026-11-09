@@ -85,6 +85,9 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
     # El mapa de tempo/compàs ha canviat (diàleg, drag, undo…): la finestra
     # principal ha de refrescar els camps BPM/compàs del clip objectiu.
     tempoCanviat = pyqtSignal()
+    # El mapa ha quedat amb clips que no donen compassos sencers. La finestra
+    # principal mostra una finestra emergent; el visor només emet l'estat.
+    mapaInconsistent = pyqtSignal(str)
     # Velocitat de reproducció canviada (0,5–3×): la barra de la finestra
     # principal té el seu propi selector i ha d'anar sincronitzada.
     velocitatCanviada = pyqtSignal(float)
@@ -392,7 +395,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.llista_marcadors.setEditTriggers(
             QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed)
         self.llista_marcadors.setShowGrid(False)
-        self.llista_marcadors.setMaximumHeight(120)
         self.llista_marcadors.setContextMenuPolicy(Qt.CustomContextMenu)
         self.llista_marcadors.setToolTip(
             "Marcadors independents: doble-clic edita el temps/tipus; "
@@ -412,10 +414,12 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self._sc_del_marcador.setContext(Qt.WidgetWithChildrenShortcut)
         self._sc_del_marcador.activated.connect(
             self._elimina_marcador_llista)
-        # La taula de tempo necessita més amplada que una llista de noms.
+        div.addWidget(self.llista_marcadors)
+        # Les quatre llistes comparteixen una sola fila.
         div.setStretchFactor(0, 3)
         div.setStretchFactor(1, 3)
         div.setStretchFactor(2, 4)
+        div.setStretchFactor(3, 3)
         # Les llistes viuen en un contenidor propi perque la finestra les
         # pugui posar en un tauler lateral («Inspector»). Si el visor va sol,
         # queden al mateix lloc de sempre.
@@ -423,8 +427,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         _lay_insp = QVBoxLayout(self.inspector)
         _lay_insp.setContentsMargins(0, 0, 0, 0)
         _lay_insp.addWidget(div, stretch=3)
-        _lay_insp.addWidget(QLabel("Marcadors"))
-        _lay_insp.addWidget(self.llista_marcadors, stretch=1)
         capa.addWidget(self.inspector, stretch=2)
 
         fila = QHBoxLayout()

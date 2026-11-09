@@ -43,7 +43,9 @@
 > d'eixe tram.
 > Els canvis de BPM no mouen els clips en segons: només recalculen les
 > posicions musicals (etiquetes i columnes de compàs de l'ABC); per alinear
-> clips a la graella es fa servir **Quantitza**. Un canvi de **tempo** a mig
+> clips a la graella es fa servir **Quantitza**. Si un canvi deixa clips sense
+compassos sencers, apareix un diàleg per **conservar o descartar** l'operació.
+Un canvi de **tempo** a mig
 > compàs no reinicia la numeració: el compàs continua i només canvia la seua
 > durada; els canvis de **compàs** (signatura) sí que obrin un compàs nou.
 >

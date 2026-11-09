@@ -202,12 +202,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         # desvia igualment (vegeu `_drag_*`).
         self.setAcceptDrops(True)
 
-        # botó «Obre» (l'afegirem a la barra única, en ordre de flux)
-        b_obre = QPushButton("Obre àudio")
-        b_obre.setObjectName("secundari")
-        b_obre.setToolTip("Obre un àudio: WAV/MP3/FLAC/AIFF… (Ctrl+O)")
-        b_obre.clicked.connect(self.tria_wav)
-
         # Botó «Guia ràpida»: explicació del flux (només informació, no toca
         # el model). El treball real es fa amb marcadors en viu: `+`.
         self.b_guia = QPushButton("Guia ràpida")
@@ -219,6 +213,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_guia.clicked.connect(self._obre_guia_rapida)
         self.b_marker = QPushButton("＋ Temps+Secció")
         self.b_marker.setObjectName("secundari")
+        self.b_marker.setIcon(icones.ico("compass", 16))
+        self.b_marker.setIconSize(icones.pm_mida(16))
         self.b_marker.setToolTip(
             "Parteix el tempo i l'estructura al cursor (tecla +).")
         self.b_marker.setEnabled(False)
@@ -226,6 +222,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
 
         self.b_marker_compas = QPushButton("＋ Marcador")
         self.b_marker_compas.setObjectName("secundari")
+        self.b_marker_compas.setIcon(icones.ico("map-pin", 16))
+        self.b_marker_compas.setIconSize(icones.pm_mida(16))
         self.b_marker_compas.setToolTip(
             "Afig només un marcador al cursor (tecla M); no talla res.")
         self.b_marker_compas.setEnabled(False)
@@ -369,14 +367,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             "(es mostra en segons i en compàs.beat)")
         self.b_offset_cursor.clicked.connect(self._marca_compas_1)
         hp.addWidget(self.b_offset_cursor)
-        self.b_compas_auto = QPushButton()
-        self.b_compas_auto.setIcon(icones.ico("compass"))
-        self.b_compas_auto.setObjectName("secundari")
-        self.b_compas_auto.setToolTip(
-            "Detecta el COMPÀS 1 automàticament (primer downbeat): posa "
-            "l'offset on comença la música. Útil per a temes amb silenci inicial.")
-        self.b_compas_auto.clicked.connect(lambda: self._detecta_compas1())
-        hp.addWidget(self.b_compas_auto)
         hp.addWidget(QLabel("≈"))
         self.offset_cb = QLineEdit("1.1")         # el mateix, en compàs.beat
         self.offset_cb.setMaximumWidth(46)
@@ -420,25 +410,12 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_exec.setToolTip("Extreu acords i estructura de la WAV (F5)")
         self.b_exec.clicked.connect(lambda: self.executa())
         self.b_exec.setEnabled(False)          # fins que hi hagi WAV
-        self.b_export = QPushButton("Exporta WAV's")
-        self.b_export.setToolTip("Exporta el paquet final de WAV's (Ctrl+E)")
-        self.b_export.setEnabled(False)       # fins que hi hagi pistes
-        self.b_export.clicked.connect(self.exporta)
-        self.b_export_part = QPushButton("Exporta partitura")
-        self.b_export_part.setToolTip(
-            "Genera la partitura (xifrat). El MusicXML es genera SEMPRE; el "
-            "PDF i el MSCZ NOMÉS si tens MuseScore instal·lat.\n"
-            "Fes «Analitza» primer: mentre no hi hagi resultats el botó queda "
-            "apagat (i un clic en un botó apagat no fa res).")
-        self.b_export_part.setEnabled(False)  # fins que hi hagi resultats
-        self.b_export_part.clicked.connect(self.exporta_partitura_ara)
 
         # 1a BARRA: en ORDRE DE FLUX de treball →
         #   1) Obre  ·  2) opcions de temps  ·  3) Analitza i Exporta (al final)
         barra = QToolBar("Treball")
         barra.setObjectName("barra_principal")
         barra.setMovable(False)
-        barra.addWidget(b_obre)
         barra.addWidget(self.b_guia)
         barra.addWidget(self.b_marker)
         barra.addWidget(self.b_marker_compas)
@@ -449,14 +426,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         # fila pròpia amb molt d'espai buit.
         barra.addSeparator()
         barra.addWidget(self.b_exec)
-        barra.addWidget(self.b_export)
-        barra.addWidget(self.b_export_part)
-        self.b_obre_carpeta = QPushButton("Obre la carpeta de sortida")
-        self.b_obre_carpeta.setObjectName("secundari")
-        self.b_obre_carpeta.setToolTip(
-            "Obre la carpeta on es desen els WAV's exportats")
-        self.b_obre_carpeta.clicked.connect(self.obre_carpeta)
-        barra.addWidget(self.b_obre_carpeta)
         self.b_desfer = QPushButton()
         self.b_desfer.setObjectName("secundari")
         self.b_desfer.setIcon(icones.ico("undo-2", 16))
@@ -562,6 +531,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.panell_xifrat.avis.connect(
             lambda t: self.avisa_info("Tipus d'acord", t))
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_xifrat)
+        # El panell de tipus d'acord arrenca tancat; s'obri des de Visualitza.
+        self.dock_xifrat.setVisible(False)
 
         # (L'inspector lateral s'ha retirat: les llistes tornen sota l'ona,
         #  dins el visor, que és on tenen l'espai natural.)
@@ -579,8 +550,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.barra_transport = barra_transport
 
         self.sortida = ""
-        self.b_export.setEnabled(False)
-        self.b_export_part.setEnabled(False)
         # Drecera: espai = play/pausa (a la finestra principal, perquè el
         # visor està incrustat i el seu propi QShortcut no s'activaria).
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)

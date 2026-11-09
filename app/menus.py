@@ -33,17 +33,22 @@ class MenusMixin:
         self._act(m, "Desa una còpia…", "", self._desa_copia)
         self._act(m, "Reverteix", "", self._reverteix)
         m.addSeparator()
-        self._act(m, "Exporta WAV's…", "Ctrl+E", self.exporta)
+        self.a_exporta = self._act(m, "Exporta WAV's…", "Ctrl+E",
+                                   self.exporta)
         self.a_exporta_audio = self._act(
             m, "Exporta àudio…", "", self._exporta_audio_ui)
         self.a_exporta_audio.setStatusTip(
             "Exporta la còpia WAV de treball (ja editada) a WAV, MP3, FLAC, "
             "AAC/M4A, OGG o Opus.")
         self.a_exporta_audio.setEnabled(False)
-        a_part = self._act(m, "Exporta la partitura…", "",
-                           self.exporta_partitura_ara)
-        a_part.setStatusTip("Genera la partitura (xifrat). El MusicXML sempre; "
-                            "el PDF i el MSCZ NOMÉS si hi ha MuseScore instal·lat.")
+        self.a_exporta_part = self._act(m, "Exporta la partitura…", "",
+                                        self.exporta_partitura_ara)
+        self.a_exporta_part.setStatusTip(
+            "Genera la partitura (xifrat). El MusicXML sempre; el PDF i el "
+            "MSCZ NOMÉS si hi ha MuseScore instal·lat.")
+        self.a_exporta_part.setToolTip(self.a_exporta_part.statusTip())
+        self.a_exporta.setEnabled(False)
+        self.a_exporta_part.setEnabled(False)
         m.addAction(self.amb_part)      # Inclou la partitura (commutable)
         self._act(m, "Obre la carpeta de sortida", "", self.obre_carpeta)
         m.addSeparator()
@@ -137,8 +142,9 @@ class MenusMixin:
         self._act(m, "Compàs del marcador…", "",
                   self._compas_del_marcador)
         m.addSeparator()
-        self._act(m, "Detecta el compàs 1 automàticament", None,
-                    lambda: self._detecta_compas1())
+        self.a_compas_auto = self._act(
+            m, "Detecta el compàs 1 automàticament", None,
+            lambda: self._detecta_compas1())
         self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
         self._act(m, "Quantitza el model…", "", self._quantitza_ui)
         sub_q = m.addMenu("Quantitza BPM")

@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QLabel, QPushButton,
 
 PASSOS = (
     ("1 · Obri l'àudio i dona una pista",
-     "Prem <b>Obre àudio…</b> i tria la cançó. L'app la copia dins del "
+     "Prem <b>Fitxer ▸ Obre àudio…</b> i tria la cançó. L'app la copia dins del "
      "projecte (pots moure-la de lloc quan vulgues).<br><br>"
      "A dalt, indica el <b>compàs</b> (per defecte <b>4/4</b>) i dona-li un "
      "<b>BPM orientatiu</b>:<br>"

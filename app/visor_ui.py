@@ -6,8 +6,8 @@ disponible, WAV de treball, editor de nom, audició i conversió amb ffmpeg.
 import os
 import traceback
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import QApplication, QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from . import ffmpeg, pipeline, theme, visor as visor_mod
 
@@ -131,6 +131,12 @@ class VisorUIMixin:
             except (TypeError, AttributeError, RuntimeError):
                 pass
             visor.tempoCanviat.connect(self._sincronitza_temps_del_visor)
+            try:
+                visor.mapaInconsistent.disconnect(self._avis_mapa_inconsistent)
+            except (TypeError, AttributeError, RuntimeError):
+                pass
+            visor.mapaInconsistent.connect(self._avis_mapa_inconsistent)
+            visor.comprova_mapa_sencers(forca=True)
             avisos_tempo = getattr(visor, "_avisos_csv_tempo", ())
             if avisos_tempo:
                 self._missatge_info(
@@ -190,11 +196,48 @@ class VisorUIMixin:
         vr = getattr(self, "visor_ref", None)
         te_model = vr is not None and bool(getattr(vr, "acords", None)
                                            or getattr(vr, "seccions", None))
-        self.b_export.setEnabled(te_model)
-        self.b_export_part.setEnabled(te_model)
+        self.a_exporta.setEnabled(te_model)
+        self.a_exporta_part.setEnabled(te_model)
         accio = getattr(self, "a_exporta_audio", None)
         if accio is not None:
             accio.setEnabled(bool(self._wav_treball()))
+
+    def _avis_mapa_inconsistent(self, text):
+        """Avis emergent: el grid BPM/compàs té clips sense compassos sencers.
+
+        Si l'avís ve d'una operació que encara es pot desfer, l'usuari pot
+        conservar el canvi o descartar-lo (s'executa l'undo de tota l'operació).
+        En carregar un projecte sense historial només es pot acceptar.
+        """
+        self.logger.warning("mapa de tempo inconsistent: %s", text)
+        self.registra("Mapa de tempo: " + str(text).replace("\n", " "))
+        if not self._interactiu():
+            return
+        vr = getattr(self, "visor_ref", None)
+        pot_descartar = bool(vr is not None and (
+            getattr(vr, "_undo_pending", None) is not None
+            or getattr(vr, "_undo_stack", None)))
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("Mapa de tempo/compàs")
+        box.setText(str(text))
+        box.setInformativeText(
+            "El canvi deixa clips sense compassos sencers. Pots conservar-lo "
+            "o descartar tota l'operació." if pot_descartar else
+            "El projecte té clips sense compassos sencers. Ajusta el BPM, el "
+            "compàs o les fronteres del clip.")
+        b_aplica = box.addButton("Conserva el canvi", QMessageBox.AcceptRole)
+        b_descarta = None
+        if pot_descartar:
+            b_descarta = box.addButton("Descarta el canvi",
+                                       QMessageBox.RejectRole)
+        box.setDefaultButton(b_aplica)
+        box.exec_()
+        if b_descarta is not None and box.clickedButton() is b_descarta:
+            # El senyal s'emet dins l'operació; l'undo s'ha de fer quan
+            # `_undo_commit` haja tancat la transacció.
+            self.registra("Mapa de tempo: canvi descartat per l'usuari")
+            QTimer.singleShot(0, self._undo_visor)
 
     def _wav_treball(self):
         """Ruta de la còpia WAV de treball del projecte (o del WAV obert)."""

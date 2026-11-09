@@ -1192,6 +1192,44 @@ def valida_i_normalitza_permissiu(trams, durada, offset=0.0):
     return nous
 
 
+def problemes_compassos_sencers(trams, durada=0.0, offset=0.0,
+                                 tolerancia=1e-3):
+    """Llista els clips normals que no donen un nombre enter de compassos.
+
+    S'exclouen els rubatos i el pre-roll vàlid (`0 → offset`). Cada element
+    és un diccionari amb índex, rang, BPM, compàs i `N` fraccionari.
+    """
+    durada = float(durada or 0.0)
+    offset = max(0.0, float(offset or 0.0))
+    issues = []
+    net = normalitza_trams(list(trams or ()), durada)
+    for i, tr in enumerate(net):
+        ini, fi, bpm, num, den = (float(tr[0]), float(tr[1]), float(tr[2]),
+                                  int(tr[3]), int(tr[4]))
+        if num <= 0 or den <= 0:
+            continue                    # rubato / tram en segons
+        if (i == 0 and offset > 1e-6
+                and abs(ini) <= 1e-9
+                and abs(fi - offset) <= 1e-6):
+            continue                    # pre-roll vàlid
+        try:
+            n = _compassos_del_tram(tr, i, offset)
+        except (TypeError, ValueError):
+            continue
+        if abs(n - round(n)) <= float(tolerancia):
+            continue
+        issues.append({
+            "idx": i,
+            "ini": ini,
+            "fi": fi,
+            "bpm": bpm,
+            "num": num,
+            "den": den,
+            "n": float(n),
+        })
+    return issues
+
+
 def _compassos_del_tram(tram, idx, offset=0.0):
     """Compasos (pot ser fraccionari) que conté el tram segons durada i BPM."""
     fi, bpm, num, den = (float(tram[1]), float(tram[2]),

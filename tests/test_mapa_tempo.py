@@ -11,6 +11,7 @@ _ = _temporals
 
 from app import mapa_tempo as M  # noqa: E402
 from app import rubato  # noqa: E402
+from app import tempo_map as tm  # noqa: E402
 
 
 class TestTramMapa(unittest.TestCase):
@@ -142,6 +143,19 @@ class TestFitxer(unittest.TestCase):
 
 if __name__ == "__main__":      # pragma: no cover
     unittest.main()
+
+
+class TestDiagnosticCompassos(unittest.TestCase):
+    def test_detecta_n_fraccionari_i_ignora_preroll(self):
+        trams = [
+            M.TramMapa(0.0, 2.0, 120.0, "normal", "4/4"),
+            M.TramMapa(2.0, 14.5, 120.0, "normal", "4/4"),
+        ]
+        issues = tm.problemes_compassos_sencers(
+            trams, 14.5, offset=2.0)
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0]["idx"], 1)
+        self.assertAlmostEqual(issues[0]["n"], 6.25, places=6)
 
 
 class TestQuantitzaBpm(unittest.TestCase):

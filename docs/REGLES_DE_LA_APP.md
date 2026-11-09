@@ -169,7 +169,10 @@ compassos sencers. El model és permissiu:
 - Un clip **rubato** va en segons i també queda exempt.
 - Els **compassos sencers són l'objectiu del recalcul** (§13.5), no una
   barrera: si no s'assoleixen, s'avisa. Si el clip incompleix el mínim de
-  durada, el gest es rebutja.
+  durada, el gest es rebutja. Quan un clip normal queda amb `N` fraccionari,
+  el visor mostra un **avís emergent** amb el clip, el rang, el compàs i el
+  BPM; es comprova cada vegada que es reconstrueix la graella i es pot
+  **conservar o descartar** l'operació.
 - Entrada invàlida: es rebutja amb avís i sense mutació parcial. CSV extern
   invàlid: es repara i s'informa.
 

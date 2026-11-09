@@ -9,10 +9,10 @@
   <text x="18" y="84.0" fill="#cdd6e4" font-size="12" xml:space="preserve">┌────────────────────────────────────────────────────────────────────────────┐</text>
   <text x="18" y="98.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú</text>
   <text x="18" y="113.0" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────────┤</text>
-  <text x="18" y="127.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│ [Obre àudio][Anàlisi guiat][BPM·compàs][Lliure] BPM:[101][×2][÷2] ◎Detecta TAP Compàs:[4]     │  ← BARRA 1a</text>
+  <text x="18" y="127.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│ [Anàlisi guiat][BPM·compàs][Lliure] BPM:[101][×2][÷2] ◎Detecta TAP Compàs:[4]                 │  ← BARRA 1a</text>
   <text x="18" y="142.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│   Offset:[0.0] 📍 🧭 ≈[1.1]                                                 │     (treball)</text>
   <text x="18" y="156.5" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────────┤</text>
-  <text x="18" y="171.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│ [Analitza] [Exporta WAV&#x27;s] [Exporta partitura]                              │  ← BARRA 1b</text>
+  <text x="18" y="171.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│ [Analitza]                                                                  │  ← BARRA 1b</text>
   <text x="18" y="185.5" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────────┤     (accions)</text>
   <text x="18" y="200.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│ ▶/⏸ □ ⏪ ⏩ ↤ ↦ ↻  🔍− 🔍+ ⛶ ⊙  🔇 🥁 ▬▬●▬                                  │  ← BARRA 2</text>
   <text x="18" y="214.5" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────────┤     (transport)</text>

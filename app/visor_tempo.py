@@ -310,7 +310,34 @@ class TempoMixin:
             self.offset = offset_rub
         self.tempo_map = TempoMap(self.tempo_trams,
                                   offset=getattr(self, "offset", 0.0))
+        self.comprova_mapa_sencers()
         return self.tempo_map
+
+    def comprova_mapa_sencers(self, forca=False):
+        """Emite `mapaInconsistent` si algun clip no dona compassos sencers.
+
+        S'executa cada vegada que es reconstrueix el `TempoMap`; `forca=True`
+        fa que el senyal s'emeta encara que el text coincidisca amb l'anterior
+        (en carregar un projecte o en connectar la finestra).
+        """
+        issues = tempo_map.problemes_compassos_sencers(
+            self.tempo_trams, self._durada_wav(),
+            offset=getattr(self, "offset", 0.0))
+        if not issues:
+            self._mapa_avis_actual = ""
+            return []
+        parts = ["El mapa de tempo/compàs té clips que no donen compassos "
+                 "sencers:"]
+        for p in issues:
+            parts.append(
+                f"· Clip {int(p['idx']) + 1}: {p['ini']:.3f}–{p['fi']:.3f}s "
+                f"· {p['num']}/{p['den']} a {p['bpm']:.3f} BPM "
+                f"→ {p['n']:.3f} compassos")
+        text = "\n".join(parts)
+        if forca or text != getattr(self, "_mapa_avis_actual", None):
+            self._mapa_avis_actual = text
+            self.mapaInconsistent.emit(text)
+        return issues
 
     def aplica_tempo_trams(self, trams, forcat=False):
         """Aplica un mapa de tempo/compàs nou (des del diàleg).

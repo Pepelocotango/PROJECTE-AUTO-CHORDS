@@ -2554,10 +2554,10 @@ class ExportPipelineTests(unittest.TestCase):
         app = app_main.QApplication.instance() or app_main.QApplication([])
         window = app_main.Finestra()
         self.assertTrue(hasattr(window, "b_exec"))
-        self.assertTrue(hasattr(window, "b_export"))
+        self.assertTrue(hasattr(window, "a_exporta"))
         self.assertEqual(window.b_exec.text(), "Analitza")
-        self.assertEqual(window.b_export.text(), "Exporta WAV's")
-        self.assertTrue(hasattr(window, "b_export_part"))
+        self.assertIn("Exporta WAV", window.a_exporta.text())
+        self.assertTrue(hasattr(window, "a_exporta_part"))
         self.assertTrue(hasattr(window, "barra_accions"))   # 2a fila de la barra 1
         app.quit()
 
@@ -4044,9 +4044,9 @@ class Compas1Tests(unittest.TestCase):
 
     def test_boto_i_accio_existeixen(self):
         w = app_main.Finestra()
-        # compas 1 automatic: ara es una ICONA (Lucide compass)
-        self.assertFalse(w.b_compas_auto.icon().isNull())
-        self.assertIn("compàs 1", w.b_compas_auto.toolTip().lower())
+        # compas 1 automatic: és una acció de menú (botó retirat)
+        self.assertTrue(hasattr(w, "a_compas_auto"))
+        self.assertIn("compàs 1", w.a_compas_auto.text().lower())
         # res del que ja hi havia s'ha perdut
         self.assertFalse(w.b_offset_cursor.icon().isNull())   # map-pin
         self.assertEqual(w.b_tap.text(), "TAP")
@@ -6146,11 +6146,11 @@ class BotonsExportTests(unittest.TestCase):
         # cal mantenir la referència a la QApplication (si no, el GC la mata)
         self._app = app_main.QApplication.instance() or app_main.QApplication([])
         w = app_main.Finestra()
-        self.assertIn("WAV", w.b_export.text())
-        self.assertEqual(w.b_export_part.text(), "Exporta partitura")
-        self.assertFalse(w.b_export_part.isEnabled())
+        self.assertIn("WAV", w.a_exporta.text())
+        self.assertIn("partitura", w.a_exporta_part.text())
+        self.assertFalse(w.a_exporta_part.isEnabled())
         # el tooltip de la partitura ha d'esmentar MuseScore
-        self.assertIn("MuseScore", w.b_export_part.toolTip())
+        self.assertIn("MuseScore", w.a_exporta_part.toolTip())
 
     def test_transport_te_zoom_seleccio(self):
         """El transport de la finestra ha de tenir el botó de zoom a la selecció

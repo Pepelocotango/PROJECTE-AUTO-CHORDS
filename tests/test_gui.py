@@ -891,13 +891,13 @@ class TestObrirProjecteHabilitaExport(_Base):
             fh.write("0.0,2.0,C\n2.0,4.0,G\n")
         f = _projectes_gui___finestra()
         f.avisa = lambda *a, **k: None
-        self.assertFalse(f.b_export.isEnabled(), "abans d'obrir, apagat")
+        self.assertFalse(f.a_exporta.isEnabled(), "abans d'obrir, apagat")
         self.assertFalse(f.a_exporta_audio.isEnabled(),
                          "sense àudio, exporta àudio apagat")
         f._activa_projecte(projecte.Projecte.obre(p.ruta_acproj))
-        self.assertTrue(f.b_export.isEnabled(),
+        self.assertTrue(f.a_exporta.isEnabled(),
                         "amb projecte obert l'export ha d'estar activa")
-        self.assertTrue(f.b_export_part.isEnabled())
+        self.assertTrue(f.a_exporta_part.isEnabled())
         self.assertTrue(f.a_exporta_audio.isEnabled(),
                         "amb àudio, exporta àudio ha d'estar actiu")
 
@@ -2289,11 +2289,11 @@ class EsquemaUiDocTests(unittest.TestCase):
             self.assertIn(tb.windowTitle(), self.doc,
                           f"la barra «{tb.windowTitle()}» no surt a la doc")
 
-    def test_botons_obre_audio_i_quantitza(self):
-        """«Obre àudio» a Treball i «Quantitza» just abans de «Snap» a Transport."""
+    def test_botons_quantitza_i_snap(self):
+        """«Quantitza» just abans de «Snap» al Transport; Obre viu al menú."""
         texts = [b.text()
                  for b in self.w.barra_principal.findChildren(QPushButton)]
-        self.assertIn("Obre àudio", texts)
+        self.assertNotIn("Obre àudio", texts)
         transport = [b.text()
                      for b in self.w.barra_transport.findChildren(QPushButton)]
         self.assertIn("Quantitza", transport)
@@ -2302,14 +2302,11 @@ class EsquemaUiDocTests(unittest.TestCase):
         self.assertIsNotNone(getattr(self.w, "b_quantitza", None))
 
     def test_boto_guia_rapida_muntat(self):
-        """«Guia ràpida» viu a Treball, entre «Obre àudio» i el mode BPM."""
+        """«Guia ràpida» viu a Treball, abans del mode BPM."""
         texts = [b.text()
                  for b in self.w.barra_principal.findChildren(QPushButton)]
-        self.assertIn("Obre àudio", texts)
         self.assertIn("Guia ràpida", texts)
         self.assertIn("BPM · compàs", texts)
-        self.assertLess(texts.index("Obre àudio"),
-                        texts.index("Guia ràpida"))
         self.assertLess(texts.index("Guia ràpida"),
                         texts.index("BPM · compàs"))
         # des del 21-10 el botó obri la GUIA (només informació); el treball
@@ -2317,6 +2314,8 @@ class EsquemaUiDocTests(unittest.TestCase):
         self.assertIsNotNone(getattr(self.w, "b_guia", None))
         self.assertFalse(self.w.b_guia.isEnabled())
         self.assertIn("＋ Temps+Secció", texts)  # el botó del tall hi és
+        self.assertFalse(self.w.b_marker.icon().isNull())
+        self.assertFalse(self.w.b_marker_compas.icon().isNull())
         self.assertFalse(self.w.b_marker.isEnabled())
         with patch.object(app_main, "dialeg_guia_rapida") as mod:
             self.w._obre_guia_rapida()
@@ -3221,6 +3220,7 @@ class TestPanell(_panell_xifrat___Base):
         textos = [a.text() for m in w.menuBar().findChildren(QMenu)
                   for a in m.actions()]
         self.assertIn("Mostra els tipus d'acord", textos)
+        self.assertTrue(w.dock_xifrat.isHidden(), "ha d'arrengar tancat")
 
     def test_llista_i_boto_escoltar(self):
         w = self._finestra(amb_visor=False)
@@ -4977,8 +4977,8 @@ class TestProjecteAssociat(_Base):
         f = _projectes_gui___finestra()
         wav = _projectes_gui___wav()
         p = self._crea(f, wav)
-        self.assertTrue(f.b_export.isEnabled(), "Exporta WAV's ha d'estar actiu")
-        self.assertTrue(f.b_export_part.isEnabled(),
+        self.assertTrue(f.a_exporta.isEnabled(), "Exporta WAV's ha d'estar actiu")
+        self.assertTrue(f.a_exporta_part.isEnabled(),
                         "Exporta partitura ha d'estar actiu")
         self.assertTrue(f.a_exporta_audio.isEnabled(),
                         "Exporta àudio ha d'estar actiu")
@@ -5824,6 +5824,16 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr.undo()
         self.assertEqual(len(vr.tempo_trams), 1)
 
+    def test_avis_de_mapa_amb_compassos_fraccionaris(self):
+        vr = self.w.visor_ref
+        vist = []
+        vr.mapaInconsistent.connect(vist.append)
+        vr.tempo_trams = [(0.0, 12.5, 120.0, 4, 4),
+                          (12.5, 60.0, 120.0, 4, 4)]
+        vr.comprova_mapa_sencers(forca=True)
+        self.assertTrue(vist)
+        self.assertIn("6.250 compassos", vist[-1])
+
     def test_enter_recalcula_si_queden_compassos_fraccionaris(self):
         vr = self.w.visor_ref
         vr.offset = 0.0
@@ -5880,6 +5890,13 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(len(vr.tempo_trams), 1)
         self.assertEqual(len(vr.seccions), 1)
         self.assertEqual(vr.marcador_tipus[12.0], "marcador")
+
+    def test_les_quatre_llistes_comparteixen_una_fila(self):
+        vr = self.w.visor_ref
+        parent = vr.llista_ac.parentWidget()
+        self.assertIs(vr.llista_ab.parentWidget(), parent)
+        self.assertIs(vr.llista_tempo.parentWidget(), parent)
+        self.assertIs(vr.llista_marcadors.parentWidget(), parent)
 
     def test_llista_de_marcadors_edita_i_elimina(self):
         vr = self.w.visor_ref
