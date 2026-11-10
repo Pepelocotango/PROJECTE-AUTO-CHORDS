@@ -15,11 +15,12 @@ from __future__ import annotations
 
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont
-from PyQt5.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QLineEdit,
+from PyQt5.QtWidgets import (QComboBox, QHBoxLayout, QLabel,
                              QListWidget,
                              QListWidgetItem, QPushButton, QStyle,
                              QStyledItemDelegate, QVBoxLayout, QWidget)
 
+from app.camp_text import CampText
 from app import acord_audio, theme, xifrat
 
 # Colors (theme, amb els del mockup aprovat)
@@ -88,14 +89,14 @@ class PanellXifrat(QWidget):
         fila = QHBoxLayout()
         fila.setSpacing(6)
         fila.addWidget(QLabel("Arrel"))
-        self.arrel = QLineEdit()
+        self.arrel = CampText()
         self.arrel.setMaximumWidth(64)
         self.arrel.setPlaceholderText("C")
         self.arrel.setToolTip("Arrel de l'acord (text lliure: C, F#, Bb…). "
                               "Pot quedar buit.")
         fila.addWidget(self.arrel)
         fila.addWidget(QLabel("Baix"))
-        self.baix = QLineEdit()
+        self.baix = CampText()
         self.baix.setMaximumWidth(64)
         self.baix.setPlaceholderText("—")
         self.baix.setToolTip("Nota del baix per a un acord amb inversió "
@@ -117,7 +118,7 @@ class PanellXifrat(QWidget):
         capa.addWidget(QLabel("▼ clic → s'escriu a la casella «Nom»"))
         peu = QHBoxLayout()
         peu.setSpacing(6)
-        self.previsio = QLineEdit()
+        self.previsio = CampText()
         self.previsio.setReadOnly(True)
         self.previsio.setObjectName("previsio_xifrat")
         self.previsio.setToolTip("Com quedarà el nom de l'acord.")

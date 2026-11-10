@@ -1,9 +1,10 @@
 """Diàleg per editar un tram de tempo/compàs."""
 from PyQt5.QtWidgets import (
     QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QLabel,
-    QLineEdit, QMessageBox, QSpinBox, QVBoxLayout,
+    QMessageBox, QSpinBox, QVBoxLayout,
 )
 
+from app.camp_text import CampText
 from app import bpm_unit, limits, tempo_map
 
 class DialegTramTempo(QDialog):
@@ -36,7 +37,7 @@ class DialegTramTempo(QDialog):
         self.sp_bpm.setDecimals(3)
         self.sp_bpm.setValue(bpm_unit.de_quarter(bpm, self._unit))
         self._den_defecte = int(den) if int(den) > 0 else 4
-        self.ed_compas = QLineEdit(f"{int(num)}/{int(den)}")
+        self.ed_compas = CampText(f"{int(num)}/{int(den)}")
         self.ed_compas.setPlaceholderText("4/4, 3/4, 2/4, 1/4…")
         self.sp_n = QSpinBox()
         self.sp_n.setRange(1, 9999)

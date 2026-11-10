@@ -28,6 +28,7 @@ if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 # UN SOL objecte per mòdul (vegeu visor.py): els imports crus creaven objectes
 # diferents dels que veuen la resta de mòduls i els tests.
+from app.camp_text import CampText
 from . import bpm_unit as bpm_unit_mod  # noqa: E402
 from . import ffmpeg, partitura, pipeline, postproc, theme  # noqa: F401
 from . import config  # noqa: E402
@@ -184,7 +185,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
 
         # El VISOR és el widget central (abans era un QDockWidget a la dreta).
         # Fem servir un QStackedWidget: pàgina 0 = placeholder, pàgina 1 = visor.
-        self.wav_edit = QLineEdit()      # només com a magatzem de la ruta
+        self.wav_edit = CampText()      # només com a magatzem de la ruta
         self.wav_edit.setVisible(False)
         self.wav_info = QLabel("")
         self.statusBar().addPermanentWidget(self.wav_info)
@@ -249,23 +250,23 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_mode_lliure.clicked.connect(lambda: self._canvia_mode_temps(False))
 
         # camps d'entrada MANUAL de text (sense fletxes ▲▼)
-        self.bpm = QLineEdit("120.000")
+        self.bpm = CampText("120.000")
         self.bpm.setFixedWidth(70)
         self.bpm.setPlaceholderText("120.000")
         self.bpm.setToolTip(
             "BPM del tema en negres/minut, com als DAW. Entrada manual (text).")
-        self.bpb = QLineEdit("4/4")
+        self.bpb = CampText("4/4")
         self.bpb.setFixedWidth(60)
         self.bpb.setPlaceholderText("4/4")
         self.bpb.setToolTip("Compàs manual: 4/4, 3/4, 2/4, 1/4, 6/8, etc.")
         # Referència MANUAL del recalcul (no canvia el transport ni els clips).
-        self.ref_bpm = QLineEdit("120.000")
+        self.ref_bpm = CampText("120.000")
         self.ref_bpm.setFixedWidth(64)
         self.ref_bpm.setPlaceholderText("120.000")
         self.ref_bpm.setToolTip(
             "BPM de referència per a tots els recalcs. No canvia el clip: "
             "només és l'àncora de la cerca de BPM/compàs/N.")
-        self.ref_bpb = QLineEdit("4/4")
+        self.ref_bpb = CampText("4/4")
         self.ref_bpb.setFixedWidth(46)
         self.ref_bpb.setPlaceholderText("4/4")
         self.ref_bpb.setToolTip(
@@ -286,7 +287,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             "TAP multiplica els taps/min pel valor triat. En 6/8, tria negra "
             "amb punt si toques cada grup de 3 corxeres.")
         self.cb_beat.currentIndexChanged.connect(self._canvia_beat_unit)
-        self.offset = QLineEdit("0.000")
+        self.offset = CampText("0.000")
         self.offset.setFixedWidth(60)
         self.offset.setPlaceholderText("0.000")
         self.offset.setToolTip("Offset del compàs 1, en segons.")
@@ -356,7 +357,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_offset_cursor.clicked.connect(self._marca_compas_1)
         hp.addWidget(self.b_offset_cursor)
         hp.addWidget(QLabel("≈"))
-        self.offset_cb = QLineEdit("1.1")         # el mateix, en compàs.beat
+        self.offset_cb = CampText("1.1")         # el mateix, en compàs.beat
         self.offset_cb.setMaximumWidth(46)
         self.offset_cb.setPlaceholderText("1.1")
         self.offset_cb.setToolTip(

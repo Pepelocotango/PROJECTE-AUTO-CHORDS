@@ -4501,20 +4501,18 @@ class TestLlistaTempo(_undo_temps___Base):
         v._focus_editor("tempo", 1)
         self.assertEqual(v.ed_gran.text(), "TOTAL: 20.00 s")
 
-    def test_editor_mostra_n_tipus_i_rol(self):
+    def test_editor_mostra_n_i_rol(self):
         _w, v = self._prepara()
         v.tempo_trams = [
             mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
-            mapa_tempo.TramMapa(10.0, 30.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "normal", "4/4"),
             mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
         ]
         v._actualitza_temps()
         v._focus_editor("tempo", 1)
         self.assertAlmostEqual(float(v.ed_n.text()), 5.0, places=3)
-        self.assertEqual(v.ed_tipus.currentData(), "normal")
         self.assertIn("interior", v.ed_rol_lbl.text())
         self.assertFalse(v.ed_n.isHidden())
-        self.assertFalse(v.ed_tipus.isHidden())
 
     def test_editor_canvia_n_i_mou_la_fi(self):
         _w, v = self._prepara()
@@ -4530,17 +4528,6 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertAlmostEqual(v.tempo_trams[1].fi, 22.0, places=6)
         self.assertAlmostEqual(v.tempo_trams[2].ini, 22.0, places=6)
         self.assertAlmostEqual(v.tempo_trams[2].bpm, 150.0, places=6)
-
-    def test_editor_canvia_tipus_sense_tocar_geometria(self):
-        _w, v = self._prepara()
-        v._focus_editor("tempo", 1)
-        ini, fi = v.tempo_trams[1].ini, v.tempo_trams[1].fi
-        idx = v.ed_tipus.findData("rubato")
-        v.ed_tipus.setCurrentIndex(idx)
-        v._aplica_editor()
-        self.assertEqual(v.tempo_trams[1].tipus, "rubato")
-        self.assertAlmostEqual(v.tempo_trams[1].ini, ini)
-        self.assertAlmostEqual(v.tempo_trams[1].fi, fi)
 
     def test_editor_rebutja_n_fraccionari_en_interior(self):
         _w, v = self._prepara()
@@ -4571,14 +4558,37 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual(v.ed_fam_lbl.text(), "Compàs:")
         self.assertEqual(v.ed_nom.text(), "100.000")
         self.assertEqual(v.ed_fam.text(), "3/4")
-        self.assertEqual(v.ed_ini.text(), "10.000")
-        # Inici i Fi SÍ que s'editen (mouen la frontera, §13.6); el compàs.beat
-        # (≈) és de només lectura perquè el calcula el mapa.
-        self.assertTrue(v.ed_ini.isEnabled())
-        self.assertFalse(v.ed_fi.isHidden())
-        self.assertTrue(v.ed_fi.isEnabled())
-        self.assertEqual(v.ed_fi.text(), "30.000")
-        self.assertFalse(v.ed_cb.isEnabled())
+        self.assertTrue(v.ed_ini.isHidden())
+        self.assertEqual(v.ed_cb_lbl.text(), "Ini (c):")
+        self.assertTrue(v.ed_cb.isEnabled())
+        self.assertEqual(v.ed_cb_fi_lbl.text(), "Fi (c):")
+        self.assertFalse(v.ed_cb_fi.isHidden())
+        self.assertTrue(v.ed_cb_fi.isEnabled())
+        self.assertEqual(v.ed_cb_fi.text(), v._secs_a_cb(30.0))
+
+    def test_editor_mou_la_frontera_amb_compassos(self):
+        _w, v = self._prepara()
+        v._focus_editor("tempo", 1)
+        v.ed_cb.setText("5.1")
+        v._aplica_editor()
+        self.assertAlmostEqual(v.tempo_trams[0].fi, 8.0, places=2)
+        self.assertAlmostEqual(v.tempo_trams[1].ini, 8.0, places=2)
+        self.assertAlmostEqual(v.tempo_trams[1].fi, 30.0, places=2)
+
+    def test_editor_rebutja_inici_del_primer_i_fi_de_l_ultim(self):
+        _w, v = self._prepara()
+        with patch.object(v, "avis_editor") as av:
+            v._focus_editor("tempo", 0)
+            v.ed_cb.setText("2.1")
+            v._aplica_editor()
+            self.assertIn("primer clip", av.call_args[0][0])
+        with patch.object(v, "avis_editor") as av:
+            v._focus_editor("tempo", 1)
+            v.ed_cb_fi.setText("15.1")
+            v._aplica_editor()
+            self.assertIn("últim clip", av.call_args[0][0])
+        self.assertAlmostEqual(v.tempo_trams[0].ini, 0.0, places=6)
+        self.assertAlmostEqual(v.tempo_trams[1].fi, 30.0, places=2)
 
     def test_aplicar_des_de_l_editor_canvia_bpm_i_compas(self):
         _w, v = self._prepara()
@@ -4627,57 +4637,6 @@ class TestLlistaTempo(_undo_temps___Base):
         v.tempo_trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 120.0, 4, 4)]
         v._actualitza_temps()
         self.assertEqual(v._durada_wav(), durada)
-
-    def test_moure_l_inici_d_un_clip_recalcula_els_dos_bpms(self):
-        _w, v = self._prepara()
-        self._dos_trams(v)
-        v._focus_editor("tempo", 1)
-        v.ed_ini.setText("8.000")
-        v._aplica_editor()
-        # La frontera és única: el fi del clip anterior s'hi ha mogut també.
-        self.assertAlmostEqual(float(v.tempo_trams[0][1]), 8.0, places=6)
-        self.assertAlmostEqual(float(v.tempo_trams[1][0]), 8.0, places=6)
-        # El FI del clip editat NO s'ha mogut i el seu inici de la WAV tampoc.
-        self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=6)
-        self.assertAlmostEqual(float(v.tempo_trams[0][0]), 0.0, places=6)
-        # El BPM es conserva; el contracte nou no obliga a quadrar compassos.
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 120.0, places=4)
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=4)
-
-    def test_moure_la_fi_d_un_clip_recalcula_els_dos_bpms(self):
-        _w, v = self._prepara()
-        self._dos_trams(v)
-        v._focus_editor("tempo", 0)
-        v.ed_fi.setText("12.000")
-        v._aplica_editor()
-        self.assertAlmostEqual(float(v.tempo_trams[1][0]), 12.0, places=6)
-        self.assertAlmostEqual(float(v.tempo_trams[0][0]), 0.0, places=6)
-        self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=6)
-        # El BPM dels dos clips es conserva.
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 120.0, places=4)
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=4)
-
-    def test_l_inici_del_primer_clip_es_rebutja_amb_avis(self):
-        _w, v = self._prepara()
-        abans = list(v.tempo_trams)
-        avisos = []
-        v.avis_editor = lambda txt: avisos.append(txt)
-        v._focus_editor("tempo", 0)
-        v.ed_ini.setText("2.000")
-        v._aplica_editor()
-        self.assertEqual(v.tempo_trams, abans)
-        self.assertTrue(avisos and "primer" in avisos[-1])
-
-    def test_la_fi_de_l_ultim_clip_es_rebutja_amb_avis(self):
-        _w, v = self._prepara()
-        abans = list(v.tempo_trams)
-        avisos = []
-        v.avis_editor = lambda txt: avisos.append(txt)
-        v._focus_editor("tempo", 1)
-        v.ed_fi.setText("29.000")
-        v._aplica_editor()
-        self.assertEqual(v.tempo_trams, abans)
-        self.assertTrue(avisos and "últim" in avisos[-1])
 
     def test_transport_no_sobreescriu_el_tram_0(self):
         _w, v = self._prepara()

@@ -20,8 +20,8 @@ from PyQt5.QtWidgets import (
     QAbstractItemView, QApplication, QFileDialog, QHBoxLayout,
     QInputDialog, QLabel, QListWidget, QMainWindow, QMenu, QMessageBox,
     QPushButton, QShortcut, QSlider, QSplitter, QTableWidget,
-    QTextEdit, QVBoxLayout, QWidget, QComboBox,
-    QLineEdit, QHeaderView,
+    QTextEdit, QVBoxLayout, QWidget,
+    QHeaderView,
 )
 
 import numpy as np
@@ -35,6 +35,7 @@ import metronom  # noqa: E402
 # monkey-patching que no funciona (ho va caçar `test_imports_unificats`).
 # Forma d'execució suportada: `python -m app.visor` (el directe ja demana
 # l'arrel al sys.path per altres imports relatius d'aquest fitxer).
+from app.camp_text import CampText
 from . import bpm_unit as bpm_unit_mod  # noqa: E402
 from . import graella, icones, pipeline, theme  # noqa: F401
 from . import acord_audio  # noqa: E402
@@ -280,18 +281,18 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         _eh.addSpacing(12)
         self.ed_nom_lbl = QLabel("Nom:")
         _eh.addWidget(self.ed_nom_lbl)
-        self.ed_nom = QLineEdit()
+        self.ed_nom = CampText()
         self.ed_nom.setMaximumWidth(90)
         self.ed_nom.setToolTip("Nom de l'acord o lletra de la secció")
         _eh.addWidget(self.ed_nom)
         self.ed_fam_lbl = QLabel("Família:")
-        self.ed_fam = QLineEdit()
+        self.ed_fam = CampText()
         self.ed_fam.setMaximumWidth(50)
         self.ed_fam.setToolTip("Família de la secció (p. ex. N, A, B)")
         _eh.addWidget(self.ed_fam_lbl)
         _eh.addWidget(self.ed_fam)
         self.ed_agr_lbl = QLabel("Agrupació:")
-        self.ed_agr = QLineEdit()
+        self.ed_agr = CampText()
         self.ed_agr.setMaximumWidth(64)
         self.ed_agr.setPlaceholderText("Auto")
         self.ed_agr.setToolTip(
@@ -301,7 +302,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ed_agr_lbl.setVisible(False)
         self.ed_agr.setVisible(False)
         self.ed_n_lbl = QLabel("N:")
-        self.ed_n = QLineEdit()
+        self.ed_n = CampText()
         self.ed_n.setMaximumWidth(54)
         self.ed_n.setToolTip(
             "Nombre de compassos. En interiors ha de ser enter; l'últim/únic "
@@ -310,42 +311,30 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         _eh.addWidget(self.ed_n)
         self.ed_n_lbl.setVisible(False)
         self.ed_n.setVisible(False)
-        self.ed_tipus_lbl = QLabel("Tipus:")
-        self.ed_tipus = QComboBox()
-        self.ed_tipus.addItem("Normal", "normal")
-        self.ed_tipus.addItem("Rubato", "rubato")
-        self.ed_tipus.setMaximumWidth(84)
-        self.ed_tipus.setToolTip(
-            "Rubato només afecta la notació/exportació; les regles del tram "
-            "són les mateixes que les d'un normal.")
-        _eh.addWidget(self.ed_tipus_lbl)
-        _eh.addWidget(self.ed_tipus)
-        self.ed_tipus_lbl.setVisible(False)
-        self.ed_tipus.setVisible(False)
         self.ed_rol_lbl = QLabel("")
         self.ed_rol_lbl.setObjectName("desti_accions")
         _eh.addWidget(self.ed_rol_lbl)
         self.ed_rol_lbl.setVisible(False)
-        _eh.addWidget(QLabel("Inici (s):"))
-        self.ed_ini = QLineEdit()
+        self.ed_ini_lbl = QLabel("Inici (s):")
+        _eh.addWidget(self.ed_ini_lbl)
+        self.ed_ini = CampText()
         self.ed_ini.setMaximumWidth(70)
         self.ed_ini.setToolTip("Inici en segons")
         _eh.addWidget(self.ed_ini)
-        _eh.addWidget(QLabel("≈"))
-        self.ed_cb = QLineEdit()
+        self.ed_cb_lbl = QLabel("≈")
+        _eh.addWidget(self.ed_cb_lbl)
+        self.ed_cb = CampText()
         self.ed_cb.setMaximumWidth(50)
         self.ed_cb.setToolTip("Inici en compàs.beat (graella original)")
         _eh.addWidget(self.ed_cb)
-        # Fi (s): només per als clips de tempo/compàs (§13.6). A acords i
-        # seccions el fi se'n deriva de la contigüitat (regla #2) i no s'edita.
-        self.ed_fi_lbl = QLabel("Fi (s):")
-        self.ed_fi = QLineEdit()
-        self.ed_fi.setMaximumWidth(70)
-        self.ed_fi.setToolTip("Fi del clip en segons (mou la frontera)")
-        _eh.addWidget(self.ed_fi_lbl)
-        _eh.addWidget(self.ed_fi)
-        self.ed_fi_lbl.setVisible(False)
-        self.ed_fi.setVisible(False)
+        self.ed_cb_fi_lbl = QLabel("Fi (c):")
+        _eh.addWidget(self.ed_cb_fi_lbl)
+        self.ed_cb_fi = CampText()
+        self.ed_cb_fi.setMaximumWidth(50)
+        self.ed_cb_fi.setToolTip("Fi en compàs.beat (graella original)")
+        _eh.addWidget(self.ed_cb_fi)
+        self.ed_cb_fi_lbl.setVisible(False)
+        self.ed_cb_fi.setVisible(False)
         self.ed_aplica = QPushButton("Aplica")
         self.ed_aplica.setObjectName("principal")
         self.ed_aplica.setToolTip("Aplica els canvis (Enter)")
@@ -364,7 +353,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         _eh.addWidget(self.ed_bpm_compas)
         _eh.addStretch(1)
         for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_n,
-                  self.ed_ini, self.ed_cb, self.ed_fi):
+                  self.ed_ini, self.ed_cb, self.ed_cb_fi):
             w.returnPressed.connect(self._aplica_editor)
         capa.addWidget(self.editor)
         self._ed_kind = None

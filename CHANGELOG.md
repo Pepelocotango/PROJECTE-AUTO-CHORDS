@@ -6,6 +6,15 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
 ### Canviat — franja Editor del clip de tempo (2026-11-10)
+- Treta la icona del clip i, en mode tempo, els camps **Tipus**, **Inici (s)**
+  i **Fi (s)**: estes dades ja es veuen a la llista/carril.
+- La franja de tempo queda amb BPM, compàs, agrupació, N, rol, **Ini (c)** i
+  **Fi (c)** (editables per moure les fronteres en compàs.beat), Aplica i
+  Ajusta BPM al compàs.
+- Tots els camps de text de l'app mostren **l'inici** del contingut quan la
+  dada no hi cap (abans s'amagaven les xifres senceres i es veien els decimals:
+  `83.000` es llegia `3.000`).
+- Eliminats els SVG `music` i `piano`, que ja no tenien referència.
 - Afegits a la franja Editor: **N compassos**, selector **Normal/Rubato** i
   **rol derivat** (`primer`, `últim`, `únic`, `interior`, `preroll`).
 - BPM/Compàs/N usen el motor C/B/A; Inici/Fi continuen movent la frontera.

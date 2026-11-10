@@ -219,7 +219,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑫  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
 │      acord/secció: [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│
-│      tempo: [BPM▢] [Compàs▢] [Agrupació▢] [N▢] [Tipus▾] [Rol] [Inici (s)▢] [Fi (s)▢] [≈ ▢] [Aplica] [Ajusta BPM al compàs]│
+│      tempo: [BPM▢] [Compàs▢] [Agrupació▢] [N▢] [Rol] [Ini (c)▢] [Fi (c)▢] [Aplica] [Ajusta BPM al compàs]│
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑩ LLISTA ACORDS    │ ⑪ LLISTA SECCIONS  │ ⑭ LLISTA TEMPO             │
 │  «1.1 N», «8.1 E7»… │ «A(N) 1.1–10.1»…   │ Inici·Fi·BPM·Compàs        │
@@ -252,7 +252,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `TimelineView` | tot el bloc ①–⑨ | `QGraphicsView` |
 | ⑩ | `self.llista_ac` | **llista d'acords** | `QListWidget` |
 | ⑪ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
-| ⑫ | `ed_gran` · `ed_nom` · `ed_fam` · `ed_agr` · `ed_n` · `ed_tipus` · `ed_rol_lbl` · `ed_ini` · `ed_cb` · **`ed_fi`** · `ed_aplica` | **franja Editor** (acord/secció i, amb etiquetes pròpies, **tempo: BPM + compàs + agrupació + N + tipus normal/rubato + rol derivat**; `ed_fi` —«Fi (s)»— només en mode tempo: mou la frontera, §13.6) | `QLabel`/`QLineEdit`/`QComboBox`/`QPushButton` |
+| ⑫ | `ed_gran` · `ed_nom` · `ed_fam` · `ed_agr` · `ed_n` · `ed_rol_lbl` · `ed_ini` · `ed_cb` · `ed_aplica` | **franja Editor** (acord/secció: nom/família/inici; **tempo: BPM + compàs + agrupació + N + rol derivat + Ini (c) + Fi (c)**, estes dos últimes editables per moure les fronteres en compàs.beat) | `QLabel`/`QLineEdit`/`QPushButton` |
 | ⑭ | `self.llista_tempo` | **llista de clips de tempo/compàs** (`Inici (s)` · `Fi (s)` · `BPM` · `Compàs`; «segons» als rubato) | `QTableWidget` |
 | ⑮ | `self.llista_marcadors` | **llista de marcadors independents** (`Temps (s)` · `Tipus`): doble-clic edita, menú contextual elimina; no està lligada al tempo ni a l'estructura. Les quatre llistes ⑩⑪⑭⑮ comparteixen **una sola fila** | `QTableWidget` |
 | ⑬ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |

@@ -4642,8 +4642,6 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         abans = [tuple(t) for t in v.tempo_trams]
         v.ed_nom.setText("120")
         v.ed_fam.setText("4/16")
-        v.ed_ini.setText("0.000")
-        v.ed_fi.setText("20.000")
         v._aplica_editor_tempo(0)
         self.assertEqual([tuple(t) for t in v.tempo_trams], abans)
         v.close()

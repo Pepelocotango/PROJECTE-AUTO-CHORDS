@@ -1,6 +1,7 @@
 """Diàleg de trobar i reemplaçar xifrats o etiquetes."""
+from app.camp_text import CampText
 from PyQt5.QtWidgets import (
-    QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QLineEdit,
+    QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel,
     QVBoxLayout,
 )
 
@@ -17,9 +18,9 @@ class DialegTrobaReemplaca(QDialog):
         self.cb_camp.addItem("Acords (xifrats)", "acords")
         self.cb_camp.addItem("Estructura (etiquetes)", "estructura")
         self.cb_camp.setCurrentIndex(1 if camp == "estructura" else 0)
-        self.ed_troba = QLineEdit()
+        self.ed_troba = CampText()
         self.ed_troba.setPlaceholderText("p. ex. Cmaj7   ·   D")
-        self.ed_reemplaca = QLineEdit()
+        self.ed_reemplaca = CampText()
         self.ed_reemplaca.setPlaceholderText("p. ex. C9   ·   estribillo")
         form.addRow("Camp:", self.cb_camp)
         form.addRow("Troba:", self.ed_troba)
