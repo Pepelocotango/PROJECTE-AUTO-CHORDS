@@ -63,16 +63,20 @@ guiada; rubato i doble graella avançada; MIDI i export de projecte DAW.
 - **Excepció:** `docs/REGLES_DE_LA_APP.md` és **contracte**; si el codi no el
   compleix, és un bug. Només es canvia amb OK de l'operador i queda al `CHANGELOG`.
 
-## ⏱️ Primers 5 minuts
+## ⏱️ Primers 5 minuts (Protocol d'arrencada)
 
 1. Aquest fitxer (secció «Abast i flux»).
-2. **`docs/REGLES_DE_LA_APP.md`** sencer (1–12 + §13).
-3. **`app/projecte.py`** i **`app/pipeline_model.py`** (model, cru i clips);
-   `ARBRE_DIRECTORIS.md` si necessites orientar-te.
-4. **`git status`**: no descartes ni refaces feina d'altres agents.
-5. Suite verda i `pyflakes` net (comandes a `DEVELOPING.md`). Si no ho estan,
-   **atura't i avisa**. Si la falla és d'un **refactor en curs d'un altre agent**,
-   no l'arreglis sense OK: distingeix-la de la teva feina.
+2. **`docs/REGLES_DE_LA_APP.md`** sencer (l'únic contracte invariant intocable).
+3. **Mapeig viu del codi (sense assumir res):**
+   * Consulta `DEVELOPING.md` › «Mòduls de l'app» (taula sincronitzada amb el codi per CI).
+   * Fes `git status` i `git diff` per veure si hi ha feina a mitges d'un altre agent.
+4. **Verificació d'estat:**
+   * Executa `make check` (o `python3 -m unittest discover -s tests`).
+   * Si la suite no és verda, **atura't i avisa abans de tocar res**.
+5. **Per a la tasca concreta:**
+   * Localitza el fitxer a editar a `app/` i el seu test a `tests/`.
+   * Llegeix el test per entendre el contracte real vigent, no assumeixis el que fa pel nom.
+
 
 ## 📍 Estat actual
 
