@@ -85,7 +85,6 @@ class VisorUIMixin:
                 sortida=self.sortida or pipeline.carpeta_sortida(wav),
                 offset=self._offset_val(),
                 beat_type=self._beat_type_val(),
-                bpm_unit=self._bpm_unit_val(),
                 ref_bpm=_rb,
                 ref_bpb=_rn,
                 ref_beat_type=_rd,
@@ -96,7 +95,6 @@ class VisorUIMixin:
             if _rb is None or not getattr(self, "_ref_manual", False):
                 self._sincronitza_ref_des_del_visor()
             self._aplica_beats_guardats(visor)
-            visor.metro_click_unit = self._metro_click_unit_val()
             # El visor ha de desar els CSV/export a la carpeta de sortida del
             # PROJECTE (no derivar-la del WAV, que viu a <projecte>/audio/).
             visor.sortida = self.sortida or pipeline.carpeta_sortida(wav)

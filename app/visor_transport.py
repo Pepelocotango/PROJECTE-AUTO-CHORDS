@@ -253,7 +253,7 @@ class TransportMixin:
                 f"{bpm_unit_mod.etiqueta(self.bpm_unit).lower()} "
                 f"({float(self.bpm):.3f} negres/min) · compàs "
                 f"{int(self.bpb)}/{int(self.beat_type)} · patró "
-                f"{self.metro_mode} · clic {self.metro_click_unit}")
+                f"{self.metro_mode}")
         else:
             self.log("metrònom OFF")
 
@@ -302,42 +302,6 @@ class TransportMixin:
             bpm, bpb, offset, den, _mode = self.metro_forcat
             self.metro_forcat = (bpm, bpb, offset, den, mode)
         self.log(f"metrònom: patró {mode}")
-
-    def click_unit_encaixa(self, unit):
-        """True si la unitat de clic dividix tots els compassos del mapa."""
-        unit = (bpm_unit_mod.normalitza(unit)
-                if unit not in (None, "", "auto") else "auto")
-        if unit == "auto":
-            return True
-        trams = list(getattr(self, "tempo_trams", None) or [])
-        if not trams:
-            return bpm_unit_mod.encaixa_en_compas(
-                unit, self.bpb, self.beat_type)
-        for tr in trams:
-            segs = getattr(tr, "segments", None)
-            if segs:
-                for num, den, _count in segs:
-                    if not bpm_unit_mod.encaixa_en_compas(unit, num, den):
-                        return False
-            else:
-                num, den = int(tr[3]), int(tr[4])
-                if not bpm_unit_mod.encaixa_en_compas(unit, num, den):
-                    return False
-        return True
-
-    def set_metro_click_unit(self, unit):
-        """Canvia la unitat de clic en viu, si dividix tots els compassos."""
-        unit = (bpm_unit_mod.normalitza(unit)
-                if unit not in (None, "", "auto") else "auto")
-        if not self.click_unit_encaixa(unit):
-            msg = (f"La unitat de clic «{bpm_unit_mod.etiqueta(unit).lower()}» "
-                   "no encaixa en tots els compassos del mapa.")
-            self.log(f"metrònom: {msg}")
-            self.infoMissatge.emit(msg)
-            return False
-        self.metro_click_unit = unit
-        self.log(f"metrònom: unitat de clic {self.metro_click_unit}")
-        return True
 
     def _canvia_vol_metro(self, v):
         """Volum del clic (0-100) — **sense tallar la reproducció**.

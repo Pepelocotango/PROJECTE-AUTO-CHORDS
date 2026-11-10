@@ -1,9 +1,9 @@
 """UI de temps de la finestra (F3): BPM, compàs i offset.
 
 Extret de `app/main.py`. `TempsMixin` treballa amb els widgets de la barra i
-delega la validació a `tempo_map`/`limits`/`bpm_unit`.
+delega la validació a `tempo_map`/`limits`.
 """
-from . import bpm_unit as bpm_unit_mod, limits, tempo_map
+from . import limits, tempo_map
 
 class TempsMixin:
     """Camps de BPM/compàs/offset i aplicació al visor."""
@@ -36,15 +36,9 @@ class TempsMixin:
         v = max(minim, min(maxim, v))
         return int(round(v)) if enter else v
 
-    def _bpm_unit_val(self):
-        """Clau de la unitat de BPM triada a la barra (sempre vàlida)."""
-        cb = getattr(self, "cb_bpm_unit", None)
-        return bpm_unit_mod.normalitza(cb.currentData() if cb else None)
-
     def _posa_bpm_quarter(self, bpm_quarter, decimals=3):
-        """Escriu al camp de BPM un valor INTERN (negres/min) en la unitat triada."""
-        self.bpm.setText(bpm_unit_mod.formata(
-            float(bpm_quarter), self._bpm_unit_val(), decimals))
+        """Escriu al camp de BPM un valor intern en negres/minut."""
+        self.bpm.setText(f"{float(bpm_quarter):.{int(decimals)}f}")
 
     def _posa_ref_recalc(self, bpm_quarter, compas=None, den=None):
         """Escriu la referència manual de recalcul (BPM en la unitat activa).
@@ -56,15 +50,13 @@ class TempsMixin:
             compas = f"{int(compas)}/{int(den)}"
         text = self.ref_bpb.text() if compas is None else str(compas)
         num, den = self._parse_compas(text)
-        self.ref_bpm.setText(
-            bpm_unit_mod.formata(bpm, self._bpm_unit_val()))
+        self.ref_bpm.setText(f"{bpm:.3f}")
         self.ref_bpb.setText(f"{num}/{den}")
 
     def _ref_bpm_val(self):
         raw = str(self.ref_bpm.text()).replace(",", ".").strip()
         try:
-            quarter = bpm_unit_mod.a_quarter(float(raw), self._bpm_unit_val())
-            return tempo_map.valida_tempo(quarter, 4, 4)[0]
+            return tempo_map.valida_tempo(float(raw), 4, 4)[0]
         except (ValueError, TypeError) as e:
             raise ValueError(f"Referència: {e}") from e
 
@@ -106,58 +98,10 @@ class TempsMixin:
         self._marca_dirty()
         self.registra(f"Referència recalc: {bpm:g} BPM · {num}/{den}")
 
-    def _canvia_unitat_bpm(self, _idx=None):
-        """Canvia la unitat mostrada sense tocar el valor intern del tempo."""
-        vr = getattr(self, "visor_ref", None)
-        unit = self._bpm_unit_val()
-        old_unit = getattr(self, "_bpm_unit_anterior", "negra")
-        if vr is not None:
-            vr.set_bpm_unit(unit)
-            try:
-                _idx, q, _num, _den = vr.tempo_objectiu_vals()
-            except Exception:  # noqa: BLE001
-                q = float(getattr(vr, "bpm", 120.0))
-        else:
-            try:
-                q = bpm_unit_mod.a_quarter(
-                    float(self.bpm.text().replace(",", ".").strip()),
-                    getattr(self, "_bpm_unit_anterior", "negra"))
-            except ValueError:
-                q = 120.0
-        self._bpm_unit_anterior = unit
-        # El camp ha de mostrar el mateix valor intern amb la unitat nova.
-        self._actualitzant_temps = True
-        try:
-            self._posa_bpm_quarter(q)
-        finally:
-            self._actualitzant_temps = False
-        # La referència també es mostra en la unitat nova, però conserva el
-        # valor intern en negres/min.
-        if hasattr(self, "ref_bpm"):
-            ref_q = None
-            if vr is not None:
-                ref_q = float(vr.ref_tempo_base()[0])
-            else:
-                try:
-                    ref_q = bpm_unit_mod.a_quarter(
-                        float(str(self.ref_bpm.text()).replace(",", ".")),
-                        old_unit)
-                except (TypeError, ValueError):
-                    ref_q = None
-            if ref_q is not None:
-                self._actualitzant_temps = True
-                try:
-                    self.ref_bpm.setText(
-                        bpm_unit_mod.formata(ref_q, unit))
-                finally:
-                    self._actualitzant_temps = False
-        self._marca_dirty()
-
     def _bpm_val(self):
         raw = str(self.bpm.text()).replace(",", ".").strip()
         try:
-            quarter = bpm_unit_mod.a_quarter(float(raw), self._bpm_unit_val())
-            return tempo_map.valida_tempo(quarter, 4, 4)[0]
+            return tempo_map.valida_tempo(float(raw), 4, 4)[0]
         except (ValueError, TypeError) as e:
             raise ValueError(f"Tempo: {e}") from e
 
@@ -326,7 +270,7 @@ class TempsMixin:
         que és el que `_actualitza_temps()` hi llig. (reportat per l'operador,
         19-10-2026: «canvio a hh:mm:ss i torne a BPM i ja no hi ha carril»).
         """
-        for w in (self.bpm, self.cb_bpm_unit, self.bpb, self.offset):
+        for w in (self.bpm, self.bpb, self.offset):
             w.setEnabled(fix)
         vr = getattr(self, "visor_ref", None)
         if vr is not None:

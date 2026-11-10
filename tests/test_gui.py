@@ -209,7 +209,7 @@ class TestCrea(BaseProjecte):
         with open(os.path.join(carp, "mapa_tempo.csv"),
                   encoding="utf-8") as fh:
             files = fh.read().strip().splitlines()
-        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos")
+        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos,agrupacio")
         self.assertIn("138.000000,normal,4/4", files[1])
         self.assertTrue(os.path.isfile(p.ruta_acproj))
 
@@ -4613,6 +4613,30 @@ class _vista_segueix_model___Base(unittest.TestCase):
 
 
 class TestValidacioTempoVisor(_vista_segueix_model___Base):
+    def test_editor_aplica_agrupacio_per_tram(self):
+        v = _vista_segueix_model___visor()
+        try:
+            self.assertTrue(v.aplica_tempo_trams([(0.0, 20.0, 120.0, 7, 8)]))
+            v._focus_editor("tempo", 0)
+            self.assertEqual(v.ed_agr.text(), "")
+            v.ed_agr.setText("3+2+2")
+            v._aplica_editor()
+            self.assertEqual(v.tempo_trams[0].agrupacio, "3+2+2")
+            self.assertEqual(v.ed_agr.text(), "3+2+2")
+        finally:
+            v.close()
+
+    def test_editor_rebutja_agrupacio_que_no_suma(self):
+        v = _vista_segueix_model___visor()
+        try:
+            self.assertTrue(v.aplica_tempo_trams([(0.0, 20.0, 120.0, 7, 8)]))
+            v._focus_editor("tempo", 0)
+            v.ed_agr.setText("3+3")
+            v._aplica_editor()
+            self.assertEqual(v.tempo_trams[0].agrupacio, "")
+        finally:
+            v.close()
+
     def test_editor_rebutja_metre_invalid_sense_mutar_model(self):
         v = _vista_segueix_model___visor()
         abans = [tuple(t) for t in v.tempo_trams]
@@ -4967,7 +4991,7 @@ class TestProjecteAssociat(_Base):
         with open(os.path.join(carp, "mapa_tempo.csv"), encoding="utf-8") as fh:
             self.assertEqual(
                 fh.read().splitlines()[1],
-                "0.000000,2.000000,120.000000,normal,4/4",
+                "0.000000,2.000000,120.000000,normal,4/4,",
                 "el mapa nou no pot heretar el tempo vell")
         self.assertEqual(f.bpm.text(), "120.000")
         self.assertEqual(f._bpb_val(), 4)

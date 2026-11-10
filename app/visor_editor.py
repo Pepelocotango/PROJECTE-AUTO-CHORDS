@@ -18,6 +18,8 @@ class EditorMixin:
         # La franja és compartida: cada mode hi posa les seues etiquetes.
         self.ed_nom_lbl.setText("Nom:")
         self.ed_fam_lbl.setText("Família:")
+        self.ed_agr_lbl.setVisible(False)
+        self.ed_agr.setVisible(False)
         self.ed_ini.setEnabled(True)
         self.ed_cb.setEnabled(True)
         self.ed_fi_lbl.setVisible(False)
@@ -49,6 +51,13 @@ class EditorMixin:
                 self.ed_fam.setText(f"{int(tr[3])}/{int(tr[4])}")
             self.ed_fam.setVisible(True)
             self.ed_fam_lbl.setVisible(True)
+            if not rubato:
+                self.ed_agr_lbl.setVisible(True)
+                self.ed_agr.setVisible(True)
+                self.ed_agr.setText(getattr(tr, "agrupacio", ""))
+                self.ed_agr.setToolTip(
+                    "Grups de temps del compàs (p. ex. 3+3, 2+2+3). "
+                    "Buit = automàtic.")
             self.ed_ini.setText(f"{ini:.3f}")
             self.ed_cb.setText(self._secs_a_cb(ini))
             self.ed_fi_lbl.setVisible(True)
@@ -59,8 +68,8 @@ class EditorMixin:
             self.ed_bpm_compas.setEnabled(not rubato)
             # Fase 3.1: els rubatos es mostren però no s'editen encara. La
             # frontera editable arribarà amb les accions de la fase 3.2.
-            for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_fi,
-                      self.ed_aplica):
+            for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_ini,
+                      self.ed_fi, self.ed_aplica):
                 w.setEnabled(not rubato)
             if rubato:
                 self.ed_fi.setEnabled(False)
@@ -74,6 +83,7 @@ class EditorMixin:
             self.ed_ini.setText(f"{float(t):.3f}")
             self.ed_cb.setText(self._secs_a_cb(float(t)))
             self.ed_fam.setVisible(False); self.ed_fam_lbl.setVisible(False)
+            self.ed_agr_lbl.setVisible(False); self.ed_agr.setVisible(False)
             for w in (self.ed_nom, self.ed_ini, self.ed_cb, self.ed_aplica):
                 w.setEnabled(True)
         elif k == "section" and 0 <= i < len(self.seccions):
@@ -85,18 +95,19 @@ class EditorMixin:
             self.ed_ini.setText(f"{float(ini):.3f}")
             self.ed_cb.setText(self._secs_a_cb(float(ini)))
             self.ed_fam.setVisible(True); self.ed_fam_lbl.setVisible(True)
+            self.ed_agr_lbl.setVisible(False); self.ed_agr.setVisible(False)
             for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
                       self.ed_aplica):
                 w.setEnabled(True)
         else:
             self.ed_icona.clear()
             self.ed_gran.setText("Selecciona un acord o una secció")
-            for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
-                      self.ed_aplica):
+            for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_ini,
+                      self.ed_cb, self.ed_aplica):
                 w.setEnabled(False)
             self.ed_bpm_compas.setVisible(False)
             self.ed_bpm_compas.setEnabled(False)
-            self.ed_nom.clear(); self.ed_fam.clear()
+            self.ed_nom.clear(); self.ed_fam.clear(); self.ed_agr.clear()
             self.ed_ini.clear(); self.ed_cb.clear()
 
     def avis_editor(self, text):
@@ -147,6 +158,7 @@ class EditorMixin:
             return
         try:
             bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
+            agr = tempo_map.valida_agrupacio(self.ed_agr.text(), num, den)
         except ValueError as e:
             self.avis_editor(str(e))
             return
@@ -154,8 +166,10 @@ class EditorMixin:
         ini, fi = float(trams[i][0]), float(trams[i][1])
         bpm0, num0, den0 = (float(trams[i][2]), int(trams[i][3]),
                             int(trams[i][4]))
+        agr0 = getattr(trams[i], "agrupacio", "")
         canvi_bpm = (abs(bpm - bpm0) > 5e-4
                      or (num, den) != (num0, den0))
+        canvi_agr = agr != agr0
         ini_nou, fi_nou = ini, fi
         for camp, actual in ((self.ed_ini, ini), (self.ed_fi, fi)):
             txt_t = camp.text().strip().replace(",", ".")
@@ -203,8 +217,8 @@ class EditorMixin:
         # formulari, manen (re-tempo local sobre el tram ja re-situat). Si no
         # els ha tocat, el BPM que hi ha és el que ha derivat la frontera: no
         # se li ha de tornar a imposar el valor vell (desfaria el moviment).
-        if canvi_bpm:
-            self.edita_tempo_objectiu(i, bpm, num, den)
+        if canvi_bpm or canvi_agr:
+            self.edita_tempo_objectiu(i, bpm, num, den, agrupacio=agr)
         self._undo_commit()
         self._actualitza_editor()
 

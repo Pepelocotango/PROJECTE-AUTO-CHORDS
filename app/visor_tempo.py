@@ -95,7 +95,8 @@ class TempoMixin:
                     f"{int(nou[3])}/{int(nou[4])}"))
         return out
 
-    def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True, repara=True):
+    def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True, repara=True,
+                             agrupacio=None):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
         Re-tempo local (`docs/REGLES_DE_LA_APP.md` §13.5): el tram conserva el
@@ -147,6 +148,13 @@ class TempoMixin:
         if not nous5:
             return False
         nous = self._preserva_rubato(trams, nous5)
+        nous = mapa_tempo.hereta_agrupacio(trams, nous)
+        if agrupacio is not None:
+            agr = tempo_map.valida_agrupacio(
+                agrupacio, nous[idx].num, nous[idx].den)
+            nou = nous[idx]
+            nous[idx] = mapa_tempo.TramMapa(
+                nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos, agr)
         # El transport només pren valors d'un tros normal.
         if getattr(nous[0], "tipus", None) != "rubato":
             self.bpm = float(nous[0][2])
@@ -184,6 +192,7 @@ class TempoMixin:
         if not nous5:
             return False
         nous = self._preserva_rubato(trams, nous5)
+        nous = mapa_tempo.hereta_agrupacio(trams, nous)
         if getattr(nous[0], "tipus", None) != "rubato":
             self.bpm = float(nous[0][2])
             self.bpb = int(nous[0][3])
@@ -361,6 +370,7 @@ class TempoMixin:
                 abans, [tuple(t) for t in entrada])
         nous, avisos = mapa_tempo.normalitza_trams_map(
             entrada, self._durada_wav(), log=self.log)
+        nous = mapa_tempo.hereta_agrupacio(abans, nous)
         for avís in avisos:
             self.log(f"tempo: {avís}")
         if not nous:

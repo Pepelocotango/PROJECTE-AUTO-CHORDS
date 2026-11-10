@@ -48,6 +48,10 @@ class TestTramMapa(unittest.TestCase):
         with self.assertRaises(rubato.RubatoError):
             M.TramMapa(0.0, 4.0, 120.0, "lliure", "4/4")
 
+    def test_agrupacio_invalida(self):
+        with self.assertRaises(ValueError):
+            M.TramMapa(0.0, 4.0, 120.0, "normal", "7/8", "3+3")
+
     def test_des_de_tupla(self):
         tm = M.des_de_tupla((0.0, 4.0, 120.0, 3, 8))
         self.assertEqual(tm.tipus, "normal")
@@ -80,6 +84,25 @@ class TestNormalitzacio(unittest.TestCase):
         self.assertEqual(out[0].compassos, "4/4+3/4")
         self.assertAlmostEqual(out[0].bpm, 60.0, places=6)
 
+    def test_agrupacio_es_preserva_en_normalitzar(self):
+        trams = [M.TramMapa(0.0, 4.0, 120.0, "normal", "7/8", "3+2+2")]
+        out, _avisos = M.normalitza_trams_map(trams, 4.0, fusiona=True)
+        self.assertEqual(out[0].agrupacio, "3+2+2")
+
+    def test_agrupacio_no_impedix_fusionar_iguals(self):
+        trams = [M.TramMapa(0.0, 2.0, 120.0, "normal", "6/8", "3+3"),
+                 M.TramMapa(2.0, 4.0, 120.0, "normal", "6/8", "3+3")]
+        out, _avisos = M.normalitza_trams_map(trams, 4.0, fusiona=True)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0].agrupacio, "3+3")
+
+    def test_agrupacions_diferents_no_es_fusionen(self):
+        trams = [M.TramMapa(0.0, 2.0, 120.0, "normal", "7/8", "2+2+3"),
+                 M.TramMapa(2.0, 4.0, 120.0, "normal", "7/8", "3+2+2")]
+        out, _avisos = M.normalitza_trams_map(trams, 4.0, fusiona=True)
+        self.assertEqual(len(out), 2)
+        self.assertEqual([t.agrupacio for t in out], ["2+2+3", "3+2+2"])
+
 
 class TestFitxer(unittest.TestCase):
     def setUp(self):
@@ -95,6 +118,11 @@ class TestFitxer(unittest.TestCase):
     def test_roundtrip_rubato(self):
         trams = [M.TramMapa(0.0, 15.0, 60.0, "rubato", "4/4*3+3/4"),
                  M.TramMapa(15.0, 20.0, 120.0, "normal", "4/4")]
+        M.desa_mapa_tempo(self.ruta, trams)
+        self.assertEqual(M.llegeix_mapa_tempo(self.ruta), trams)
+
+    def test_roundtrip_agrupacio(self):
+        trams = [M.TramMapa(0.0, 4.0, 120.0, "normal", "7/8", "3+2+2")]
         M.desa_mapa_tempo(self.ruta, trams)
         self.assertEqual(M.llegeix_mapa_tempo(self.ruta), trams)
 

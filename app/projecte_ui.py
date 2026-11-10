@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QApplication, QFileDialog, QInputDialog, QMessageBox,
 )
 
-from . import bpm_unit as bpm_unit_mod, config, ffmpeg, pipeline, plataforma, projecte
+from . import config, ffmpeg, pipeline, plataforma, projecte
 
 class ProjecteMixin:
     """Projectes, desat, recents i sessió."""
@@ -137,9 +137,7 @@ class ProjecteMixin:
                       "offset": offset,
                       "fix": self.tempo_fix.isChecked(),
                       "compas": f"{bpb}/{den}",
-                      "unit": self._bpm_unit_val(),
                       "beat_unit": self._beat_unit_val(),
-                      "metro_unit": self._metro_click_unit_val(),
                       "ref": {"bpm": float(ref_bpm),
                               "compas": f"{int(ref_num)}/{int(ref_den)}"}},
             "opcions": self.opcions,
@@ -171,20 +169,7 @@ class ProjecteMixin:
         wav = p.ruta_audio()
         self.wav_edit.setText(wav)
         tempo = p.dades.get("tempo") or {}
-        unit = bpm_unit_mod.normalitza(tempo.get("unit"))
-        idx_unit = self.cb_bpm_unit.findData(unit)
-        if idx_unit >= 0:
-            self.cb_bpm_unit.blockSignals(True)
-            self.cb_bpm_unit.setCurrentIndex(idx_unit)
-            self.cb_bpm_unit.blockSignals(False)
-        self._bpm_unit_anterior = unit
         self._posa_bpm_quarter(float(tempo.get("bpm", 120.0)))
-        munit = tempo.get("metro_unit", "auto")
-        idx_m = self.cb_metro_unit.findData(munit)
-        if idx_m >= 0:
-            self.cb_metro_unit.blockSignals(True)
-            self.cb_metro_unit.setCurrentIndex(idx_m)
-            self.cb_metro_unit.blockSignals(False)
         self._posa_beat_unit(tempo.get("beat_unit", "negra"))
         compas = tempo.get("compas")
         # Format COMPLET (4/4, no «4»): un «4» sol sembla el compàs denormalitzat

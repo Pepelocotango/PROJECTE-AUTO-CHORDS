@@ -251,20 +251,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.bpm = QLineEdit("120.000")
         self.bpm.setFixedWidth(70)
         self.bpm.setPlaceholderText("120.000")
-        self.bpm.setToolTip("BPM del tema. Entrada manual (text).")
-        self.cb_bpm_unit = QComboBox()
-        for _clau, _et in bpm_unit_mod.opcions():
-            self.cb_bpm_unit.addItem(_et, _clau)
-        self.cb_bpm_unit.setCurrentIndex(0)
-        self._bpm_unit_anterior = "negra"
-        self.cb_bpm_unit.setFixedWidth(118)
-        self.cb_bpm_unit.setSizeAdjustPolicy(
-            QComboBox.AdjustToMinimumContentsLengthWithIcon)
-        self.cb_bpm_unit.setMinimumContentsLength(10)
-        self.cb_bpm_unit.setToolTip(
-            "Unitat del BPM: negra (per defecte), negra amb punt, corxera o "
-            "blanca. El model intern continua en negres/minut.")
-        self.cb_bpm_unit.currentIndexChanged.connect(self._canvia_unitat_bpm)
+        self.bpm.setToolTip(
+            "BPM del tema en negres/minut, com als DAW. Entrada manual (text).")
         self.bpb = QLineEdit("4/4")
         self.bpb.setFixedWidth(60)
         self.bpb.setPlaceholderText("4/4")
@@ -292,9 +280,10 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             QComboBox.AdjustToMinimumContentsLengthWithIcon)
         self.cb_beat.setMinimumContentsLength(10)
         self.cb_beat.setToolTip(
-            "Unitat del beat que retorna el detector (negra, negra amb punt, "
-            "corxera o blanca). El recalcul convertix K a negres. Per defecte "
-            "negra: no canvia res dels compassos estàndard.")
+            "Unitat del beat detectat i valor dels taps (negra, negra amb "
+            "punt, corxera o blanca). El recalcul convertix K a negres i el "
+            "TAP multiplica els taps/min pel valor triat. En 6/8, tria negra "
+            "amb punt si toques cada grup de 3 corxeres.")
         self.cb_beat.currentIndexChanged.connect(self._canvia_beat_unit)
         self.offset = QLineEdit("0.000")
         self.offset.setFixedWidth(60)
@@ -322,8 +311,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         hp.setSpacing(6)
         hp.addWidget(QLabel("BPM:"))
         hp.addWidget(self.bpm)
-        hp.addWidget(QLabel("Unitat:"))
-        hp.addWidget(self.cb_bpm_unit)
         self.b_bpm_x2 = QPushButton("×2")
         self.b_bpm_div2 = QPushButton("÷2")
         for b, factor, tip in ((self.b_bpm_x2, 2.0, "Dobla el BPM (×2)"),
@@ -348,7 +335,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         hp.addWidget(QLabel("Ref. recalc:"))
         hp.addWidget(self.ref_bpm)
         hp.addWidget(self.ref_bpb)
-        hp.addWidget(QLabel("Beat:"))
+        hp.addWidget(QLabel("Beat/TAP:"))
         hp.addWidget(self.cb_beat)
         self.chk_segons = QCheckBox("En segons")
         self.chk_segons.setToolTip(
@@ -677,7 +664,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         if vr is not None:
             vr.set_beat_unit(self._beat_unit_val())
         self._marca_dirty()
-        self.registra(f"Beat detectat: {self._beat_unit_val()}")
+        self.registra(f"Beat/TAP: {self._beat_unit_val()}")
 
     def _latencia_cursor_val(self):
         """Retard visual del cursor (ms) desat a les opcions del projecte."""
@@ -719,14 +706,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             return
-        unit = bpm_unit_mod.normalitza(getattr(vr, "bpm_unit", "negra"))
-        if self._bpm_unit_val() != unit:
-            idx_unit = self.cb_bpm_unit.findData(unit)
-            if idx_unit >= 0:
-                self.cb_bpm_unit.blockSignals(True)
-                self.cb_bpm_unit.setCurrentIndex(idx_unit)
-                self.cb_bpm_unit.blockSignals(False)
-                self._bpm_unit_anterior = unit
         try:
             _idx, bpm, num, den = vr.tempo_objectiu_vals()
         except Exception:  # noqa: BLE001
@@ -741,8 +720,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         try:
             for camp, valor, text in (
                     (self.bpm, bpm,
-                     None if bpm is None else
-                     bpm_unit_mod.formata(float(bpm), vr.bpm_unit)),
+                     None if bpm is None else f"{float(bpm):.3f}"),
                     (self.bpb, num, compas),
                     (self.offset, getattr(vr, "offset", None),
                      None if getattr(vr, "offset", None) is None
@@ -1125,8 +1103,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                 "Aquest mapa té rubatos; l'editor de trams arribarà en la "
                 "fase 3.2. Els rubatos es mostren al visor com a derivats.")
             return
-        dlg = dialegs.DialegTempoMapa(self, trams, vr._durada_wav(),
-                                      unit=vr.bpm_unit)
+        dlg = dialegs.DialegTempoMapa(self, trams, vr._durada_wav())
         if dlg.exec_() != QDialog.Accepted:
             return
         if not vr.aplica_tempo_validat(dlg.trams(), "Mapa de tempo"):

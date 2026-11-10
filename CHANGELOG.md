@@ -5,6 +5,54 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Canviat — BPM sempre en negres/minut (2026-11-09)
+- Eliminat el selector **Unitat BPM** i el camp `unit` del `.acproj`. El BPM
+  del transport, els clips, els diàlegs i el regle sempre es mostren i
+  s’entren en **negres/minut**, com Cubase/Logic/Pro Tools.
+- En `6/8`, una negra amb punt a `80` s’escriu `120` BPM; el compàs i
+  l’agrupació continuen decidint el grid i els accents.
+- `Beat/TAP` es manté com a valor de nota dels taps/detector, separat del BPM.
+- La partitura MusicXML ix amb el tempo en negres/minut.
+- Actualitzats `README.md`, `docs/ESQUEMA_UI.md` i les vistes generades.
+
+### Canviat — fora la unitat de clic global del metrònom (2026-11-09)
+- Eliminat el selector **`Clic:`** i el camp `metro_unit` del `.acproj`. El
+  metrònom no té cap unitat global: el beat és sempre el **denominador** del
+  compàs (`4/den`) i els accents de **Grup** ixen de l’agrupació efectiva de
+  cada tram.
+- `Auto` = Compàs + Grup + Temps; `Compàs` = només el primer temps;
+  `Temps` = Compàs + Temps; `Grup` = Compàs + inici de cada grup.
+- Es conserva la API interna `click_unit` de `metronom.mescla_metronom` per als
+  tests de baix nivell, però la GUI i el projecte ja no l’exposen ni la desen.
+- Actualitzats `docs/ESQUEMA_UI.md` i les vistes generades.
+
+### Afegit — agrupació de temps per compàs i per tram (2026-11-09)
+- El metrònom ja no assumix que tot grup de corxeres és de 3. L’agrupació pot
+  ser **explícita per tram** (`TramMapa.agrupacio`, p. ex. `3+2+2`) o quedar
+  buida per heretar el valor automàtic: `6/8 = 3+3`, `9/8 = 3+3+3`,
+  `12/8 = 3+3+3+3`, `7/8 = 2+2+3`, `5/8 = 3+2`, `8/8 = 3+3+2`; la resta de
+  compassos només accentuen el compàs.
+- `mapa_tempo.csv` afegix la columna opcional **`agrupacio`**; els fitxers de
+  5 columnes continuen carregant-se amb agrupació automàtica.
+- La franja Editor del clip de tempo té el camp **Agrupació** (buit = Auto);
+  `DialegTempoMapa`, els rubatos i les operacions de re-tempo preserven el
+  valor per solapament temporal.
+- `Auto` i `Grup` del metrònom usen estos inicis de grup; `Temps` continua
+  sense accents de grup i `Compàs` només accentua el primer temps.
+- Afegits tests de `7/8` (`2+2+3` i override `3+2+2`), `5/8` (`3+2`),
+  round-trip CSV, normalització i editor.
+
+### Corregit — TAP respecta el valor del beat/TAP (2026-11-09)
+- El TAP de la barra 2 multiplica els taps/min pel valor de **Beat/TAP**
+  (`negra`, `negra amb punt`, `corxera` o `blanca`) abans d’escriure el BPM
+  intern en negres/min. Així, en `6/8`, **80 taps/min** cada grup de 3 corxeres
+  donen **120 BPM**, no 80.
+- El selector existent **Beat detectat** passa a mostrar-se com **Beat/TAP**:
+  continua governant el recalcul de beats i ara també el TAP. El TAP no llig el
+  patró del metrònom; només el valor de nota triat.
+- Actualitzats `docs/ESQUEMA_UI.md`, `docs/EDICIO_OPERACIONS.md` i el test de
+  regressió del TAP en `6/8`.
+
 ### Eines — base de subagents i skills d'OpenCode (2026-11-04)
 - Config d'agents a `opencode.json` (l'arrel; és l'únic que OpenCode llig:
   `.opencode/config.json` era inert) i `.opencode/` passa a ser local

@@ -6,7 +6,7 @@ de tempo seleccionat.
 import statistics
 import time
 
-from . import limits
+from . import bpm_unit as bpm_unit_mod, limits
 
 class TapMixin:
     """Tap tempo robust."""
@@ -93,7 +93,9 @@ class TapMixin:
                         if mediana * 0.7 <= x <= mediana * 1.3]
         if not ivs_robustos:
             ivs_robustos = [mediana]
-        bpm = 60.0 / statistics.median(ivs_robustos)
+        taps_bpm = 60.0 / statistics.median(ivs_robustos)
+        factor = float(vr.beat_factor()) if vr is not None else 1.0
+        bpm = taps_bpm * factor
         if vr is not None:
             _, _bpm, num, den = vr.tempo_objectiu_vals()
             if vr.edita_tempo_objectiu(idx, bpm, num, den, desa=False):
@@ -101,8 +103,11 @@ class TapMixin:
             self._sincronitza_temps_del_visor()
         else:
             self._posa_bpm_quarter(bpm)
-        self.b_tap.setText(f"TAP ({len(self._taps)}) {bpm:.0f}")
-        self.registra(f"tap tempo: {bpm:.3f} BPM · tram {idx} "
+        unit = getattr(vr, "bpm_unit", "negra") if vr is not None else "negra"
+        self.b_tap.setText(
+            f"TAP ({len(self._taps)}) {bpm_unit_mod.de_quarter(bpm, unit):.0f}")
+        self.registra(f"tap tempo: {taps_bpm:.3f} taps/min · "
+                      f"{factor:g} negres/beat → {bpm:.3f} BPM · tram {idx} "
                       f"({len(self._taps)} taps)")
         self._tap_timer.start()
         self._actualitza_desti_accions()

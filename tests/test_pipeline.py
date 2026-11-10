@@ -3400,6 +3400,52 @@ class MetronomTests(unittest.TestCase):
         i = int(0.75 * self.SR)      # inici del segon grup
         self.assertGreater(self._freq(arr[i:i + n]), 1300)
 
+    def test_7_8_accentua_2_2_3(self):
+        from app import metronom
+        out = metronom.mescla_metronom(self._silenci(3.6), self.SR,
+                                       0.0, 120.0, 7, volum=1.0, den=8)
+        arr = self._a_array(out)
+        n = int(self.SR * 0.02)
+        # 7/8 a 120 BPM: una corxera cada 0,25 s; grups 2+2+3.
+        for t in (0.0, 0.5, 1.0, 1.75):
+            i = int(t * self.SR)
+            self.assertGreater(self._freq(arr[i:i + n]), 1300, t)
+        for t in (0.25, 0.75, 1.25):
+            i = int(t * self.SR)
+            self.assertLess(self._freq(arr[i:i + n]), 1100, t)
+
+    def test_5_8_accentua_3_2(self):
+        from app import metronom
+        out = metronom.mescla_metronom(self._silenci(2.6), self.SR,
+                                       0.0, 120.0, 5, volum=1.0, den=8)
+        arr = self._a_array(out)
+        n = int(self.SR * 0.02)
+        # 5/8 a 120 BPM: 3+2 → accents a 0, 0,75 i 1,25 s.
+        for t in (0.0, 0.75, 1.25, 2.5):
+            i = int(t * self.SR)
+            self.assertGreater(self._freq(arr[i:i + n]), 1300, t)
+        for t in (0.25, 0.5, 1.0):
+            i = int(t * self.SR)
+            self.assertLess(self._freq(arr[i:i + n]), 1100, t)
+
+    def test_7_8_agrupacio_explicita_3_2_2(self):
+        from app import metronom
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([
+            mapa_tempo.TramMapa(0.0, 3.6, 120.0, "normal", "7/8", "3+2+2")])
+        out = metronom.mescla_metronom(
+            self._silenci(3.6), self.SR, 0.0, 120.0, 7, volum=1.0, den=8,
+            mapa=mapa)
+        arr = self._a_array(out)
+        n = int(self.SR * 0.02)
+        # 3+2+2 a 120 BPM: accents a 0, 0,75 i 1,25 s.
+        for t in (0.0, 0.75, 1.25, 1.75):
+            i = int(t * self.SR)
+            self.assertGreater(self._freq(arr[i:i + n]), 1300, t)
+        for t in (0.25, 0.5, 1.0):
+            i = int(t * self.SR)
+            self.assertLess(self._freq(arr[i:i + n]), 1100, t)
+
     def test_2_2_clica_blanques(self):
         from app import metronom
         out = metronom.mescla_metronom(self._silenci(3.0), self.SR,
@@ -5044,6 +5090,24 @@ class TapTempoTests(unittest.TestCase):
         self._taps_en(w, 0.5)
         self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=3.0)
         w.close()
+
+    def test_tap_6_8_amb_negra_amb_punt_dona_negra_minut(self):
+        """6/8: 80 taps/min cada grup de 3 corxeres = 120 negres/min."""
+        w = self._finestra()
+        try:
+            idx = w.cb_beat.findData("negra_punt")
+            w.cb_beat.setCurrentIndex(idx)
+            w._canvia_beat_unit()
+            w.visor_ref.aplica_tempo_trams([(0.0, 9.0, 120.0, 6, 8)])
+            w.visor_ref.timeline.select_clip("tempo", 0)
+            self._taps_en(w, 0.75)  # 80 taps/min
+            self.assertAlmostEqual(w._bpm_val(), 120.0, delta=3.0)
+            self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=3.0)
+            self.assertIn("120", w.b_tap.text())
+        finally:
+            w.cb_beat.setCurrentIndex(w.cb_beat.findData("negra"))
+            w._canvia_beat_unit()
+            w.close()
 
     def test_reset_per_timeout(self):
         from unittest.mock import patch

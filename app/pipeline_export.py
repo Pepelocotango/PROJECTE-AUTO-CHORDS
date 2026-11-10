@@ -243,7 +243,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
 
 # --- Mapa de TEMPO i COMPÀS (model unificat `mapa_tempo.csv`) --------
 # Un sol fitxer, amb una fila per tram:
-#   inici,fi,bpm,tipus,compassos
+#   inici,fi,bpm,tipus,compassos,agrupacio
 # `tipus` = normal | rubato; `compassos` = `4/4` o `4/4*3+3/4`.
 
 

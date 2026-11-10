@@ -56,6 +56,34 @@ temps↔negres amb canvis de tempo, canvis de compàs (amb el compàs correcte
 
 
 
+class TestAgrupacioCompas(unittest.TestCase):
+    """Agrupació de temps per compàs (beat grouping) dels DAW."""
+
+    def test_grups_per_defecte(self):
+        self.assertEqual(tm.agrupacio_compas(6, 8), (3, 3))
+        self.assertEqual(tm.agrupacio_compas(9, 8), (3, 3, 3))
+        self.assertEqual(tm.agrupacio_compas(12, 8), (3, 3, 3, 3))
+        self.assertEqual(tm.agrupacio_compas(5, 8), (3, 2))
+        self.assertEqual(tm.agrupacio_compas(7, 8), (2, 2, 3))
+        self.assertEqual(tm.agrupacio_compas(8, 8), (3, 3, 2))
+        self.assertEqual(tm.agrupacio_compas(4, 4), (4,))
+        self.assertEqual(tm.agrupacio_compas(3, 4), (3,))
+
+    def test_inicis_i_accent_de_grup(self):
+        self.assertEqual(tm.inicis_grups(6, 8), (0, 3))
+        self.assertEqual(tm.inicis_grups(7, 8), (0, 2, 4))
+        self.assertTrue(tm.es_inici_grup(1, 7, 8))
+        self.assertTrue(tm.es_inici_grup(3, 7, 8))
+        self.assertTrue(tm.es_inici_grup(5, 7, 8))
+        self.assertFalse(tm.es_inici_grup(2, 7, 8))
+        self.assertFalse(tm.es_inici_grup(2, 4, 4))
+
+    def test_tempo_map_agrupacio_explicita(self):
+        mapa = TempoMap([(0.0, 4.0, 120.0, 7, 8, "3+2+2")])
+        self.assertEqual(mapa.agrupacio(0.0), (3, 2, 2))
+        self.assertTrue(mapa.te_agrupacions_explicites())
+
+
 class TestConstant(unittest.TestCase):
     """El cas BPM·compàs constant ha de coincidir amb l'app actual."""
 
@@ -467,7 +495,7 @@ class TestSnapIConversions(unittest.TestCase):
 
 
 class TestPersistencia(unittest.TestCase):
-    """Model unificat `mapa_tempo.csv` (`inici,fi,bpm,tipus,compassos`)."""
+    """Model unificat `mapa_tempo.csv` (`inici,fi,bpm,tipus,compassos,agrupacio`)."""
 
     def test_round_trip(self):
         import tempfile
@@ -530,8 +558,9 @@ class TestPersistencia(unittest.TestCase):
         pipeline.desa_tempo_map(td, [(0.0, 2.5, 105.315, 4, 4)])
         with open(os.path.join(td, "mapa_tempo.csv"), encoding="utf-8") as f:
             files = f.read().strip().splitlines()
-        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos")
-        self.assertEqual(files[1], "0.000000,2.500000,105.315000,normal,4/4")
+        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos,agrupacio")
+        self.assertEqual(files[1],
+                         "0.000000,2.500000,105.315000,normal,4/4,")
 
     def test_model_antic_es_rebutja(self):
         import tempfile

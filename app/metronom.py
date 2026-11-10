@@ -7,9 +7,11 @@ cançó). Veure `app/visor.py` (_engega_des_de / _mono_bytes).
 La graella és la MATEIXA que la del regle del visor: el beat és el que defineix
 el **denominador** del compàs (`4/den` negres) i el compàs té `num` beats. Així
 `4/4` clica negres, `6/8` i `12/8` cliquen corxeres, i `2/2` clica blanques.
+Els accents de grup ixen de `tempo_map.agrupacio_compas()`: `6/8` → `3+3`,
+`7/8` → `2+2+3`, `5/8` → `3+2`, etc.
 """
 import numpy as np
-from app import bpm_unit, limits
+from app import bpm_unit, limits, tempo_map
 
 # El metrònom rebutja els valors fora de la banda d'edició compartida.
 BPM_MAX = limits.BPM_MAX
@@ -66,16 +68,24 @@ def _normalitza_click_unit(click_unit):
             else "auto")
 
 
-def _grups_alineats(click_unit, num, den):
-    """True si la unitat de clic cau damunt dels inicis de grup compost."""
-    if not _es_compost(num, den):
-        return False
-    pas = _click_quarters(click_unit, den)
-    grup = 3.0 * 4.0 / float(den)
+def _inicis_grups(num, den, agrupacio=None):
+    """Inicis de grup (unitats de denominador) per a una agrupació concreta."""
+    agr = agrupacio or tempo_map.agrupacio_compas(num, den)
+    out = []
+    q = 0
+    for mida in agr:
+        out.append(q)
+        q += int(mida)
+    return tuple(out)
+
+
+def _grups_alineats(click_unit, num, den, agrupacio=None):
+    """True si la unitat de clic cau damunt dels inicis de grup."""
+    pas = _click_quarters(click_unit, den) / _beat_quarters(den)
     if pas <= 0:
         return False
-    quocient = grup / pas
-    return abs(quocient - round(quocient)) <= 1e-9
+    return all(abs(inici / pas - round(inici / pas)) <= 1e-9
+               for inici in _inicis_grups(num, den, agrupacio))
 
 
 def _normalitza_mode(mode):
@@ -83,19 +93,15 @@ def _normalitza_mode(mode):
     return mode if mode in MODES else "auto"
 
 
-def _es_compost(num, den):
-    """`6/8`, `9/8` i `12/8` tenen grups de 3 corxeres.
-
-    Els compassos de denominador 8 amb numerador múltiple de 3 (excepte 3/8,
-    que només té un grup) reben accent secundari cada 3 beats.
-    """
-    return int(den) == 8 and int(num) >= 6 and int(num) % 3 == 0
+def _beat_quarters(den):
+    """Negres que fa un temps de denominador `den` (4→1, 8→0.5)."""
+    return 4.0 / float(den)
 
 
-def _accent_grup(beat, num, den):
-    """True si `beat` (1-based) és l'inici d'un grup compost."""
-    return (_es_compost(num, den) and beat > 1
-            and (beat - 1) % 3 == 0)
+def _accent_grup(beat, num, den, agrupacio=None):
+    """True si `beat` (1-based) és l'inici d'un grup (no el compàs)."""
+    return (int(beat) > 1
+            and (int(beat) - 1) in _inicis_grups(num, den, agrupacio))
 
 
 def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
@@ -150,7 +156,9 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
     dur = buf.size / sr * factor
     click_len = _click_quarters(click_unit, _den) * 60.0 / float(bpm)
     bar_q = float(_bpb) * 4.0 / float(_den)
-    group_q = 3.0 * 4.0 / float(_den)
+    beat_q = _beat_quarters(_den)
+    starts_q = [inici * beat_q
+                for inici in tempo_map.inicis_grups(_bpb, _den)]
 
     def _decideix(es_bar, es_grup, grup_auto):
         """Retorna `(hi_ha_clic, es_accent)` per al patró triat."""
@@ -179,7 +187,8 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
     # font), els clics van als TEMPS DEL MAPA. Recorrem la graella a resolució
     # de corxera (0,5 negres) i filtrem els punts que són inici de beat; així
     # funciona amb qualsevol denominador 2/4/8, canvis de compàs i rubato.
-    if mapa is not None and not mapa.es_constant():
+    if mapa is not None and (not mapa.es_constant()
+                             or mapa.te_agrupacions_explicites()):
         q = float(mapa.quarters(float(t_inici)))
         if click_unit == "auto":
             # Graella del denominador: hi ha clic a cada beat (s == 1).
@@ -193,12 +202,13 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
                     _c, b, s = mapa.pos(t_abs)
                     if s == 1:
                         num_m, den_m = mapa.signatura(t_abs)
+                        agr_m = mapa.agrupacio(t_abs)
                         b = max(1, int(b))
                         es_bar = (b == 1)
-                        es_grup = _accent_grup(b, num_m, den_m)
+                        es_grup = _accent_grup(b, num_m, den_m, agr_m)
                         clica, accent = _decideix(
                             es_bar, es_grup,
-                            _grups_alineats(click_unit, num_m, den_m))
+                            _grups_alineats(click_unit, num_m, den_m, agr_m))
                         if clica:
                             _posa(t_b, accent)
                 q += 0.5
@@ -213,12 +223,13 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
                 if t_b >= 0.0:
                     _c, b, s = mapa.pos(t_abs)
                     num_m, den_m = mapa.signatura(t_abs)
+                    agr_m = mapa.agrupacio(t_abs)
                     b = max(1, int(b))
                     es_bar = (b == 1 and s == 1)
-                    es_grup = _accent_grup(b, num_m, den_m)
+                    es_grup = _accent_grup(b, num_m, den_m, agr_m)
                     clica, accent = _decideix(
                         es_bar, es_grup,
-                        _grups_alineats(click_unit, num_m, den_m))
+                        _grups_alineats(click_unit, num_m, den_m, agr_m))
                     if clica:
                         _posa(t_b, accent)
                 q += paso
@@ -238,9 +249,10 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
             break
         if t_b >= 0.0:
             pos_q = (k * click_len) * float(bpm) / 60.0
-            es_bar = abs(pos_q % bar_q) < 1e-6
-            es_grup = (_es_compost(_bpb, _den) and not es_bar
-                       and abs(pos_q % group_q) < 1e-6)
+            in_bar = pos_q % bar_q
+            es_bar = abs(in_bar) < 1e-6
+            es_grup = (not es_bar
+                       and any(abs(in_bar - q) < 1e-6 for q in starts_q))
             clica, accent = _decideix(
                 es_bar, es_grup,
                 _grups_alineats(click_unit, _bpb, _den))

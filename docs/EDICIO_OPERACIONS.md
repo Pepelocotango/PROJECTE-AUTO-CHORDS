@@ -74,8 +74,11 @@ Un canvi de **tempo** a mig
 > sospita d'octava es mostren a l'editor. «Encaixar a
 > graella» de l'anàlisi fa servir el mateix nucli i graelles que «Quantitza»;
 > per defecte, **corxera** (1/2 temps, 2 acords per temps). El selector
-> **Beat detectat** de la barra 2 indica la unitat del detector (negra per
-> defecte; negra amb punt per a 6/8). Al diàleg del clip
+> **Beat/TAP** de la barra 2 indica la unitat del detector **i el valor de
+> cada tap** (negra per defecte; negra amb punt per a 6/8). El TAP multiplica
+> `taps/min × negres per beat` abans d'escriure el BPM intern. La franja
+> Editor del clip de tempo té **Agrupació** (`3+3`, `2+2+3`…; buit =
+> automàtica). Al diàleg del clip
 > hi ha **N compassos** (mode A): N i compàs manen, el BPM es recalcula i les
 > fronteres no es mouen. La validació d'este canvi és **local** al clip editat;
 > un altre clip fora de graella no bloqueja l'edició. Els canvis explícits de

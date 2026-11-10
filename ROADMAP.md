@@ -50,7 +50,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-06)
+## 2. Estat actual i relleu de sessió (2026-11-10)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -84,20 +84,20 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   la taula de mòduls i `make docs-check`.
 - **Suite**: **1.490 tests OK** (1 skip), `pyflakes` net i smoke OK.
 
-**Fet recentment (2026-11-08):** simplificació del mapa de temps (fases F0–F5
-del [`PLA_MAPA_TEMPS`](docs/recerca/PLA_MAPA_TEMPS.md)): el **tram 0 és un clip**
-(el transport és només una vista), **model permissiu** amb mínim de **86 ms**,
-**recalcul guiat** per una **referència base manual** de la barra 2 (BPM +
-compàs `x/x`, desada a `tempo.ref`) i **marcadors com a `N` fix**. Els beats
-detectats poden corregir el compàs/X-X i `N` de la base (14 → `7/4` N=2; 8 →
-`4/4` N=2). També: **regla del múltiple**, **recalcul automàtic en
-fusionar/eliminar**, **rebuig + diàleg de reparació** per a un compàs que deixa
-N no enter, i **graella/metrònom robustos** a edicions a pocs ms. També s'ha
-afegit el camp **N compassos** al diàleg de tempo (mode A: N + compàs → BPM
-automàtic, fronteres fixes), amb validació local perquè un clip aliè fora de
-graella no bloquege l'edició. També s'ha unificat l'encaix de l'anàlisi amb
-«Quantitza» (default **corxera = 1/2 temps**) i amb el `TempoMap` vigent.
-Suite **1579 OK** (1 skip), `pyflakes` i `docs-check` nets.
+**Fet recentment (2026-11-09/10):** model de temps alineat amb els DAW.
+El **BPM és sempre en negres/minut** (fora el selector d’unitat del BPM); el
+**TAP** usa **Beat/TAP** com a valor de nota, independent del BPM. L’**agrupació
+de temps és per tram** (`TramMapa.agrupacio`, p. ex. `7/8 = 3+2+2`) i es desa a
+la columna opcional `agrupacio` de `mapa_tempo.csv`; els fitxers de 5 columnes
+carreguen amb agrupació automàtica. El **metrònom no té unitat de clic global**:
+el beat és el denominador i els accents de `Grup` ixen de l’agrupació de cada
+tram. La franja Editor del clip de tempo permet editar l’agrupació; les
+operacions de re-tempo, talls i rubatos la preserven per solapament temporal.
+Es mantenen la simplificació F0–F5 del
+[`PLA_MAPA_TEMPS`](docs/recerca/PLA_MAPA_TEMPS.md) (tram 0 = clip, model
+permissiu de 86 ms, recalcul guiat, marcadors `N` fix, mode A de N compassos) i
+l’encaix de l’anàlisi amb «Quantitza». Suite **1593 OK** (1 skip), `pyflakes`,
+`docs-check` nets.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).

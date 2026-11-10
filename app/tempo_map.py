@@ -84,7 +84,10 @@ def valida_tempo(bpm, num, den):
 
 # Un tros del mapa: temps i compàs constants dins `[ini, fi)`.
 #   bpm = negres per minut · num/den = compàs (p. ex. 4/4, 6/8, 12/8)
-_TramBase = namedtuple("Tram", ("ini", "fi", "bpm", "num", "den"))
+#   agrupacio = `3+3` per a `6/8`; buit = agrupació automàtica per signatura.
+_TramBase = namedtuple(
+    "Tram", ("ini", "fi", "bpm", "num", "den", "agrupacio"),
+    defaults=("",))
 
 
 class Tram(_TramBase):
@@ -93,6 +96,12 @@ class Tram(_TramBase):
     @property
     def payload(self):
         return (self.bpm, self.num, self.den)
+
+    @property
+    def agrupacio_efectiva(self):
+        """Grups de temps efectius (explícits o deduïts de la signatura)."""
+        agr = text_a_agrupacio(self.agrupacio)
+        return agr or agrupacio_compas(self.num, self.den)
 
     @property
     def lliure(self):
@@ -131,6 +140,85 @@ def _beat_quarters(den):
     return 4.0 / float(den)
 
 
+def agrupacio_compas(num, den):
+    """Grups de temps dins del compàs, en unitats del denominador.
+
+    És el `beat grouping` dels DAW: la suma de la tupla és sempre `num`.
+    Per defecte:
+      - `6/8`, `9/8`, `12/8` → grups de 3;
+      - `5/8` → `3+2`; `7/8` → `2+2+3`; `8/8` → `3+3+2`;
+      - la resta → un sol grup (`num`), és a dir només accent de compàs.
+    """
+    try:
+        num, den = int(num), int(den)
+    except (TypeError, ValueError):
+        return (4,)
+    if num <= 0 or den <= 0:
+        return (4,)
+    if den == 8 and num >= 6 and num % 3 == 0:
+        return tuple([3] * (num // 3))
+    return {
+        (5, 8): (3, 2),
+        (7, 8): (2, 2, 3),
+        (8, 8): (3, 3, 2),
+    }.get((num, den), (num,))
+
+
+def inicis_grups(num, den):
+    """Inicis de grup (0-based, en unitats del denominador) dins del compàs."""
+    out = []
+    q = 0
+    for mida in agrupacio_compas(num, den):
+        out.append(q)
+        q += int(mida)
+    return tuple(out)
+
+
+def es_inici_grup(beat, num, den):
+    """True si `beat` (1-based) és l'inici d'un grup del compàs."""
+    try:
+        beat = int(beat)
+    except (TypeError, ValueError):
+        return False
+    return beat > 0 and (beat - 1) in inicis_grups(num, den)
+
+
+def text_a_agrupacio(text):
+    """`"3+3"` → `(3, 3)`; buit/`auto` → `()` (agrupació per defecte)."""
+    s = str(text or "").strip().lower().replace(" ", "")
+    if not s or s == "auto":
+        return ()
+    parts = s.split("+")
+    try:
+        valors = tuple(int(p) for p in parts)
+    except (TypeError, ValueError):
+        raise ValueError(f"L'agrupació «{text}» no és vàlida") from None
+    if not valors or any(v <= 0 for v in valors):
+        raise ValueError(f"L'agrupació «{text}» ha de tindre grups positius")
+    return valors
+
+
+def agrupacio_a_text(agrupacio):
+    """`(3, 3)` → `"3+3"`; `()` → `""` (automàtica)."""
+    return "+".join(str(int(v)) for v in (agrupacio or ()))
+
+
+def valida_agrupacio(text, num, den):
+    """Normalitza una agrupació per a un compàs; retorna `""` si és auto."""
+    agr = text_a_agrupacio(text)
+    if not agr:
+        return ""
+    try:
+        num = int(num)
+    except (TypeError, ValueError):
+        raise ValueError("El compàs no és vàlid per a l'agrupació") from None
+    if sum(agr) != num:
+        raise ValueError(
+            f"L'agrupació «{text}» suma {sum(agr)} temps, però el compàs "
+            f"{num}/{int(den)} en té {num}")
+    return agrupacio_a_text(agr)
+
+
 def _expandeix_segments(segments):
     """Expandeix un rubato (`TramMapa`) en sub-trams de compàs per a la graella.
 
@@ -140,8 +228,9 @@ def _expandeix_segments(segments):
     """
     out = []
     for s in segments or ():
+        agr = s[5] if len(s) > 5 else getattr(s, "agrupacio", "")
         if getattr(s, "tipus", None) != "rubato":
-            out.append(tuple(s)[:5])
+            out.append(tuple(s)[:5] + (agr,))
             continue
         ini = float(s.ini)
         fi = float(s.fi)
@@ -154,7 +243,7 @@ def _expandeix_segments(segments):
             dur = (float(num) * 4.0 / float(den)) * int(count) * 60.0 / bpm
             t2 = fi if k == len(segs) - 1 else min(fi, t + dur)
             if t2 > t + TOL:
-                out.append((t, t2, bpm, int(num), int(den)))
+                out.append((t, t2, bpm, int(num), int(den), ""))
             t = t2
     return out
 
@@ -169,7 +258,7 @@ class TempoMap:
     """
 
     # Valor per defecte si no hi ha cap tros (defensa).
-    _DEFECTE = Tram(0.0, 0.0, 120.0, 4, 4)
+    _DEFECTE = Tram(0.0, 0.0, 120.0, 4, 4, "")
 
     def __init__(self, segments, offset=0.0):
         segments = _expandeix_segments(segments)
@@ -177,20 +266,27 @@ class TempoMap:
         for s in segments or ():
             ini, fi, bpm, num, den = (float(s[0]), float(s[1]), float(s[2]),
                                       int(s[3]), int(s[4]))
+            agr = getattr(s, "agrupacio", "") if len(s) <= 5 else s[5]
             if num <= 0 or den <= 0:
                 # Tros EN SEGONS: no té compàs. El BPM només és la referència
                 # de notació (100 per defecte).
                 num = den = 0
                 bpm = bpm if bpm > 0 else 100.0
+                agr = ""
             elif den <= 0:
                 den = 4
             if bpm <= 0:
                 bpm = 120.0
-            trams.append(Tram(ini, fi, bpm, num, den))
+            try:
+                agr = valida_agrupacio(agr, num, den)
+            except ValueError:
+                agr = ""
+            trams.append(Tram(ini, fi, bpm, num, den, agr))
         trams.sort(key=lambda x: x.ini)
         if trams and trams[0].ini > TOL:
             s0 = trams[0]
-            trams.insert(0, Tram(0.0, s0.ini, s0.bpm, s0.num, s0.den))
+            trams.insert(0, Tram(0.0, s0.ini, s0.bpm, s0.num, s0.den,
+                                 s0.agrupacio))
         if not trams:
             trams = [self._DEFECTE]
         # Regla #2: en un mapa de tempo/compàs la contigüitat no és una
@@ -201,7 +297,7 @@ class TempoMap:
         for _i in range(len(trams) - 1):
             _t = trams[_i]
             trams[_i] = Tram(_t.ini, trams[_i + 1].ini, _t.bpm, _t.num,
-                             _t.den)
+                             _t.den, _t.agrupacio)
         self._trams = trams
         self._offset = float(offset or 0.0)
 
@@ -282,6 +378,14 @@ class TempoMap:
         s = self.tram(t)
         return (s.num_ef, s.den_ef)
 
+    def agrupacio(self, t):
+        """Grups de temps efectius a `t` (explícits o per signatura)."""
+        return self.tram(t).agrupacio_efectiva
+
+    def te_agrupacions_explicites(self):
+        """True si algun tram té una agrupació explícita."""
+        return any(bool(s.agrupacio) for s in self._trams)
+
     def es_lliure(self, t):
         """True si `t` cau en un tros **en segons** (sense compàs)."""
         return self.tram(t).lliure
@@ -298,6 +402,7 @@ class TempoMap:
         s0 = self._trams[0]
         return all(abs(s.bpm_ef - s0.bpm_ef) < 1e-9
                    and s.num_ef == s0.num_ef and s.den_ef == s0.den_ef
+                   and s.agrupacio == s0.agrupacio
                    and s.lliure == s0.lliure for s in self._trams)
 
     def durations(self, t):

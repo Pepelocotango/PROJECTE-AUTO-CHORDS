@@ -112,7 +112,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # (`<projecte>/audio/AUTOCHORDS_…/`) → còpia estranya dins `audio/`.
         self.sortida = sortida or pipeline.carpeta_sortida(wav)
         self.bpm, self.bpb = bpm, bpb
-        self.bpm_unit = bpm_unit_mod.normalitza(bpm_unit)
+        self.bpm_unit = "negra"
         self.beat_type = int(beat_type or 4)
         # Referència MANUAL del recalcul (barra 2): no canvia el transport ni
         # els clips; només és l'àncora de `recalculca_tram`. Si no arriba,
@@ -290,6 +290,16 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ed_fam.setToolTip("Família de la secció (p. ex. N, A, B)")
         _eh.addWidget(self.ed_fam_lbl)
         _eh.addWidget(self.ed_fam)
+        self.ed_agr_lbl = QLabel("Agrupació:")
+        self.ed_agr = QLineEdit()
+        self.ed_agr.setMaximumWidth(64)
+        self.ed_agr.setPlaceholderText("Auto")
+        self.ed_agr.setToolTip(
+            "Grups de temps del compàs (p. ex. 3+3, 2+2+3). Buit = automàtic.")
+        _eh.addWidget(self.ed_agr_lbl)
+        _eh.addWidget(self.ed_agr)
+        self.ed_agr_lbl.setVisible(False)
+        self.ed_agr.setVisible(False)
         _eh.addWidget(QLabel("Inici (s):"))
         self.ed_ini = QLineEdit()
         self.ed_ini.setMaximumWidth(70)
@@ -327,8 +337,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ed_bpm_compas.setVisible(False)
         _eh.addWidget(self.ed_bpm_compas)
         _eh.addStretch(1)
-        for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
-                  self.ed_fi):
+        for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_ini,
+                  self.ed_cb, self.ed_fi):
             w.returnPressed.connect(self._aplica_editor)
         capa.addWidget(self.editor)
         self._ed_kind = None
@@ -523,8 +533,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # Patró del clic: auto (temps + accents de compàs/grup), compas,
         # temps o grup. El fil d'àudio el llig a cada tros.
         self.metro_mode = "auto"
-        # Unitat de clic: "auto" = denominador; o negra/negra_punt/corxera/blanca.
-        self.metro_click_unit = "auto"
         # Metrònom FORÇAT (None = normal): `(bpm, bpb, offset, den, mode)`
         # fa sonar el clic sobre una graella pròpia, alineada a `offset`,
         # sense passar pel mapa de tempo. És el que permet escoltar un tram
@@ -1578,22 +1586,17 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
 
 
     def bpm_mostra(self, bpm=None, decimals=3):
-        """BPM intern (negres/min) → text en la unitat global del projecte."""
+        """BPM intern (negres/min) → text. Sempre en negres/minut."""
         b = self.bpm if bpm is None else bpm
-        return bpm_unit_mod.formata(b, self.bpm_unit, decimals)
+        return f"{float(b):.{int(decimals)}f}"
 
     def bpm_entrada(self, text):
-        """Text de BPM en la unitat global → BPM intern (negres/min)."""
-        return bpm_unit_mod.a_quarter(
-            float(str(text).replace(",", ".").strip()), self.bpm_unit)
+        """Text de BPM → BPM intern (negres/min). Sempre negres/minut."""
+        return float(str(text).replace(",", ".").strip())
 
     def set_bpm_unit(self, unit):
-        """Canvia la unitat de visualització del BPM (negra, negra amb punt…).
-
-        No toca cap valor del model: només canvia com es mostra i s'entra el
-        BPM. La graella, el metrònom, els CSV i els càlculs continuen en negres.
-        """
-        self.bpm_unit = bpm_unit_mod.normalitza(unit)
+        """Compatibilitat: el BPM sempre es mostra en negres/minut."""
+        self.bpm_unit = "negra"
         if hasattr(self, "timeline"):
             try:
                 self.timeline.set_bpm_unit(self.bpm_unit)
@@ -4278,8 +4281,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), mbpm, mbpb,
                             volum=self.metro_vol, offset=moff, mapa=None,
-                            factor=factor, den=mden, mode=mmode,
-                            click_unit=self.metro_click_unit)
+                            factor=factor, den=mden, mode=mmode)
                     else:
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), self.bpm, self.bpb,
@@ -4288,9 +4290,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                             mapa=getattr(self, "tempo_map", None),
                             factor=factor,
                             den=getattr(self, "beat_type", 4),
-                            mode=getattr(self, "metro_mode", "auto"),
-                            click_unit=getattr(self, "metro_click_unit",
-                                               "auto"))
+                            mode=getattr(self, "metro_mode", "auto"))
                 try:
                     proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):

@@ -2,10 +2,11 @@
 
 Subplà de rubato, fase 2. Este mòdul és la **capa de dades** del model:
 
-    inici,fi,bpm,tipus,compassos
+    inici,fi,bpm,tipus,compassos,agrupacio
 
 - `tipus`: `normal` o `rubato`.
 - `compassos`: forma canònica ASCII (`4/4` o `4/4*2+6/8`).
+- `agrupacio`: `3+3` (opcional) o buit per a l’agrupació automàtica.
 
 Els clips normals tenen **un sol compàs**; els rubato poden tindre una
 seqüència de fins a 4 compassos, amb un sol BPM derivat.
@@ -14,7 +15,7 @@ El mòdul és pur respecte de Qt. La integració amb el projecte, el visor i
 l'exportació es fa a `pipeline`/`visor`; ací es defineix el model i el fitxer.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import csv
 import os
 from decimal import Decimal, ROUND_HALF_UP
@@ -28,7 +29,8 @@ NOM_CSV_TEMPO_ANTIC = "tempo.csv"
 NOM_CSV_COMPAS_ANTIC = "compas.csv"
 
 #: Capçalera del fitxer (es llig i s'ignora en carregar).
-CAPCALERA = ("inici", "fi", "bpm", "tipus", "compassos")
+CAPCALERA = ("inici", "fi", "bpm", "tipus", "compassos",
+             "agrupacio")
 
 #: Decimals de temps i BPM (els mateixos que el model anterior).
 TEMPS_DEC = 6
@@ -50,6 +52,7 @@ class TramMapa:
     bpm: float
     tipus: str = "normal"
     compassos: str = "4/4"
+    agrupacio: str = ""
 
     def __post_init__(self):
         tipus = str(self.tipus or "").strip().lower()
@@ -63,6 +66,9 @@ class TramMapa:
             raise rubato.RubatoError(
                 "Un clip normal ha de tindre un sol compàs sense repeticions")
         object.__setattr__(self, "compassos", text)
+        agr = "" if tipus == "rubato" else tempo_map.valida_agrupacio(
+            self.agrupacio, segs[0][0], segs[0][1])
+        object.__setattr__(self, "agrupacio", agr)
 
     @property
     def segments(self):
@@ -92,14 +98,17 @@ class TramMapa:
     def __eq__(self, other):
         """Compatible amb tuples antigues de 5 elements."""
         if isinstance(other, TramMapa):
-            return (self.ini, self.fi, self.bpm, self.tipus, self.compassos) == (
-                other.ini, other.fi, other.bpm, other.tipus, other.compassos)
+            return (self.ini, self.fi, self.bpm, self.tipus, self.compassos,
+                    self.agrupacio) == (
+                other.ini, other.fi, other.bpm, other.tipus, other.compassos,
+                other.agrupacio)
         if isinstance(other, (tuple, list)) and len(other) == 5:
             return tuple(self) == tuple(other)
         return NotImplemented
 
     def __hash__(self):
-        return hash((self.ini, self.fi, self.bpm, self.tipus, self.compassos))
+        return hash((self.ini, self.fi, self.bpm, self.tipus,
+                      self.compassos, self.agrupacio))
 
     @property
     def payload(self):
@@ -126,14 +135,58 @@ def des_de_tupla(tram):
     """Converteix una tupla antiga `(ini, fi, bpm, num, den)` en `TramMapa`."""
     if isinstance(tram, TramMapa):
         return tram
-    ini, fi, bpm, num, den = tram
+    agr = tram[5] if len(tram) > 5 else ""
+    ini, fi, bpm, num, den = tram[:5]
     return TramMapa(float(ini), float(fi), float(bpm), "normal",
-                    f"{int(num)}/{int(den)}")
+                    f"{int(num)}/{int(den)}", agr)
 
 
 def a_tuples(trams):
     """Vista de 5 tuples (per al codi que encara no coneix `TramMapa`)."""
     return [tuple(t) for t in trams]
+
+
+def hereta_agrupacio(antics, nous):
+    """Passa l'agrupació dels trams antics als nous per solapament temporal."""
+    antics = [des_de_tupla(t) for t in (antics or ())]
+    out = []
+    for n in (nous or ()):
+        if (n.tipus != "normal" or n.agrupacio):
+            out.append(n)
+            continue
+        millor = None
+        millor_solap = 0.0
+        for a in antics:
+            if a.tipus != "normal" or not a.agrupacio:
+                continue
+            solap = max(0.0, min(n.fi, a.fi) - max(n.ini, a.ini))
+            if solap > millor_solap + tempo_map.TOL:
+                millor, millor_solap = a, solap
+        if millor is not None:
+            try:
+                agr = tempo_map.valida_agrupacio(
+                    millor.agrupacio, n.num, n.den)
+            except ValueError:
+                agr = ""
+            if agr:
+                n = replace(n, agrupacio=agr)
+        out.append(n)
+    return out
+
+
+def _fusiona_amb_agrupacio(trams):
+    """Fusiona veïns idèntics només si també coincidix l'agrupació."""
+    out = []
+    for t in trams or ():
+        if out:
+            p = out[-1]
+            if (abs(p.bpm - t.bpm) <= tempo_map.TOL
+                    and (p.num, p.den) == (t.num, t.den)
+                    and p.agrupacio == t.agrupacio):
+                out[-1] = replace(p, fi=t.fi)
+                continue
+        out.append(t)
+    return out
 
 
 def normalitza_trams_map(trams, durada, log=None, fusiona=False):
@@ -149,9 +202,10 @@ def normalitza_trams_map(trams, durada, log=None, fusiona=False):
     if not any(t.tipus == "rubato" for t in trams):
         net, avisos = tempo_map.neteja_trams(
             [tuple(t) for t in trams], durada)
+        net = hereta_agrupacio(trams, [des_de_tupla(t) for t in net])
         if fusiona:
-            net = tempo_map.fusiona_trams_iguals(net, durada)
-        return [des_de_tupla(t) for t in net], avisos
+            net = _fusiona_amb_agrupacio(net)
+        return net, avisos
 
     avisos = []
     durada = float(durada or 0.0)
@@ -161,11 +215,13 @@ def normalitza_trams_map(trams, durada, log=None, fusiona=False):
     # Cobertura dels extrems (el primer a 0, l'últim a la durada).
     p = trams[0]
     if p.ini > tempo_map.TOL or p.ini < 0:
-        trams[0] = TramMapa(0.0, p.fi, p.bpm, p.tipus, p.compassos)
+        trams[0] = TramMapa(0.0, p.fi, p.bpm, p.tipus, p.compassos,
+                            p.agrupacio)
     u = trams[-1]
     if durada > tempo_map.TOL and (u.fi < durada - tempo_map.TOL
                                    or u.fi > durada + tempo_map.TOL):
-        trams[-1] = TramMapa(u.ini, durada, u.bpm, u.tipus, u.compassos)
+        trams[-1] = TramMapa(u.ini, durada, u.bpm, u.tipus, u.compassos,
+                             u.agrupacio)
 
     out = []
     for t in trams:
@@ -190,14 +246,17 @@ def normalitza_trams_map(trams, durada, log=None, fusiona=False):
                         "30–350; es conserva el valor antic")
                     bpm = float(t.bpm)
                 bpm = min(max(bpm, 30.0), 350.0)
-        nou = TramMapa(ini, fi, bpm, tipus, compassos)
+        agr = t.agrupacio if tipus == "normal" else ""
+        nou = TramMapa(ini, fi, bpm, tipus, compassos, agr)
         if fusiona and out:
             prev = out[-1]
             if (prev.tipus == "normal" and nou.tipus == "normal"
                     and abs(prev.bpm - nou.bpm) <= tempo_map.TOL
-                    and (prev.num, prev.den) == (nou.num, nou.den)):
+                    and (prev.num, prev.den) == (nou.num, nou.den)
+                    and prev.agrupacio == nou.agrupacio):
                 out[-1] = TramMapa(prev.ini, nou.fi, prev.bpm,
-                                   "normal", prev.compassos)
+                                   "normal", prev.compassos,
+                                   prev.agrupacio)
                 continue
             if prev.tipus == "rubato" and nou.tipus == "rubato":
                 segs = rubato._fusiona(list(prev.segments) + list(nou.segments))
@@ -312,6 +371,7 @@ def desa_mapa_tempo(ruta, trams):
                 f"{float(tm.bpm):.{BPM_DEC}f}",
                 tm.tipus,
                 tm.compassos,
+                tm.agrupacio,
             ])
 
     pipeline.escriu_atomic(ruta, _escriu)
@@ -333,14 +393,15 @@ def llegeix_mapa_tempo(ruta, log=None):
                 continue
             if str(fila[0]).strip().lower() == "inici":
                 continue
-            if len(fila) != 5:
+            if len(fila) not in (5, 6):
                 if log:
                     log(f"{NOM_MAPA_TEMPO} fila {n}: columnes incorrectes; "
                         "s'ha descartat")
                 continue
             try:
                 tm = TramMapa(float(fila[0]), float(fila[1]), float(fila[2]),
-                              fila[3], fila[4])
+                              fila[3], fila[4],
+                              fila[5] if len(fila) > 5 else "")
             except (ValueError, rubato.RubatoError) as e:
                 if log:
                     log(f"{NOM_MAPA_TEMPO} fila {n}: {e}; s'ha descartat")

@@ -319,7 +319,6 @@ class ExportMixin:
                 events=ev,
                 durada=durada,
                 rubatos=rubatos,
-                bpm_unit=self._bpm_unit_val(),
             )
             if res.get("error"):
                 self.registra(f"partitura: sense resultat ({res['error']})")
