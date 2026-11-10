@@ -16,7 +16,7 @@ class DialegAnalitzaBPM(QDialog):
 
     def __init__(self, parent=None, opcions=None):
         super().__init__(parent)
-        self.setWindowTitle("Analitza BPM")
+        self.setWindowTitle("Analitza beats, downbeats i BPM")
         self.setMinimumWidth(420)
         base = opcions or carrega_opcions()
         d = dict(BEATS_DEFECTES)

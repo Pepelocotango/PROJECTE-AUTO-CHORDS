@@ -140,6 +140,38 @@ def _beat_quarters(den):
     return 4.0 / float(den)
 
 
+def rol_tram(trams, idx):
+    """Rol estructural derivat d'un tram: `unic`, `primer`, `ultim`, `interior`."""
+    n = len(trams or ())
+    try:
+        idx = int(idx)
+    except (TypeError, ValueError):
+        return "interior"
+    if n <= 0 or idx < 0 or idx >= n:
+        return "interior"
+    if n == 1:
+        return "unic"
+    if idx == 0:
+        return "primer"
+    if idx == n - 1:
+        return "ultim"
+    return "interior"
+
+
+def es_preroll_tram(trams, idx, offset=0.0):
+    """True si el tram és el pre-roll inicial (0 → compàs 1)."""
+    trams = list(trams or ())
+    if not trams or int(idx) != 0 or float(offset or 0.0) <= TOL:
+        return False
+    try:
+        return float(trams[0].fi) <= float(offset) + TOL
+    except (AttributeError, TypeError, ValueError, IndexError):
+        try:
+            return float(trams[0][1]) <= float(offset) + TOL
+        except (TypeError, ValueError, IndexError):
+            return False
+
+
 def agrupacio_compas(num, den):
     """Grups de temps dins del compàs, en unitats del denominador.
 
@@ -220,31 +252,15 @@ def valida_agrupacio(text, num, den):
 
 
 def _expandeix_segments(segments):
-    """Expandeix un rubato (`TramMapa`) en sub-trams de compàs per a la graella.
+    """Normalitza els segments d'entrada a tuples de 6 elements.
 
-    El model guarda un sol clip amb una seqüència de compassos; `TempoMap`
-    necessita un tram per compàs per calcular línies, durades i numeració.
-    Els clips normals i les tuples de 5 elements passen tal qual.
+    El model nou no té rubatos expandits: tots els trams són una graella
+    mètrica única. Les tuples antigues de 5 elements es mantenen.
     """
     out = []
     for s in segments or ():
         agr = s[5] if len(s) > 5 else getattr(s, "agrupacio", "")
-        if getattr(s, "tipus", None) != "rubato":
-            out.append(tuple(s)[:5] + (agr,))
-            continue
-        ini = float(s.ini)
-        fi = float(s.fi)
-        bpm = float(s.bpm)
-        segs = list(getattr(s, "segments", ()) or ())
-        if not segs or bpm <= 0:
-            continue
-        t = ini
-        for k, (num, den, count) in enumerate(segs):
-            dur = (float(num) * 4.0 / float(den)) * int(count) * 60.0 / bpm
-            t2 = fi if k == len(segs) - 1 else min(fi, t + dur)
-            if t2 > t + TOL:
-                out.append((t, t2, bpm, int(num), int(den), ""))
-            t = t2
+        out.append(tuple(s)[:5] + (agr,))
     return out
 
 
@@ -731,14 +747,8 @@ class TempoMap:
 
 # --- edició del mapa (utilitats pures per a la GUI) ------------------------
 def _com_a_tuples(trams):
-    """Converteix `TramMapa` a tuples preservant els rubatos com a 0/0."""
-    out = []
-    for t in (trams or ()):
-        if getattr(t, "tipus", None) == "rubato":
-            out.append((float(t.ini), float(t.fi), float(t.bpm), 0, 0))
-        else:
-            out.append(tuple(t)[:5])
-    return out
+    """Converteix `TramMapa` a tuples de 5 elements (sense metadades)."""
+    return [tuple(t)[:5] for t in (trams or ())]
 
 
 def neteja_trams(trams, durada, preserva_fi_idx=None):
@@ -1455,8 +1465,6 @@ def ajusta_bpm_a_compassos(trams, idx, durada, offset=0.0, beats_qm=None):
     if not (0 <= i < len(nous)):
         raise ValueError("El tram de tempo no existeix")
     ini, fi, bpm, num, den = nous[i]
-    if int(num) <= 0 or int(den) <= 0:
-        raise ValueError("Un rubato no té compassos per a ajustar")
     base = float(ini)
     if i == 0 and float(offset) > float(ini) + TOL:
         # L'offset es desa amb 3 decimals: si cau a la fi del pre-roll pot
@@ -1471,11 +1479,17 @@ def ajusta_bpm_a_compassos(trams, idx, durada, offset=0.0, beats_qm=None):
     if dt <= TOL or bq <= TOL:
         raise ValueError("El clip no té prou durada per a un compàs")
     n = max(1, _enter_mes_proper(dt * float(bpm) / (bq * 60.0)))
-    bpm2 = n * bq * 60.0 / dt
-    if not (BPM_EDIT_MIN - TOL <= bpm2 <= BPM_EDIT_MAX + TOL):
+    try:
+        res = tempo_recalc.recalculca_tram(
+            dt, bpm, int(num), int(den), n_ref=n, mode="graella",
+            bloca_compas=True)
+    except ValueError as e:
+        raise ValueError(f"Amb {n} compàs(s): {e}") from e
+    if res is None:
         raise ValueError(
-            f"Amb {n} compàs(s), el BPM seria {bpm2:.1f}, fora de "
-            f"{BPM_EDIT_MIN:g}–{BPM_EDIT_MAX:g}")
+            f"Amb {n} compàs(s), no hi ha cap BPM vàlid entre "
+            f"{BPM_EDIT_MIN:g} i {BPM_EDIT_MAX:g}")
+    bpm2 = float(res["bpm"])
     out = list(nous)
     out[i] = (float(ini), float(fi), float(bpm2), int(num), int(den))
     return _mapa_valida_sense_moure(out, durada, offset,
@@ -1608,7 +1622,16 @@ def retempo_tram_detectat(trams, idx, bpm_detectat, durada, offset=0.0):
     if bq <= TOL or dt <= TOL:
         raise ValueError("El tram no té durada suficient")
     n = max(1, _enter_mes_proper(dt * bpm_det / (bq * 60.0)))
-    bpm_final = _valida_bpm_edicio(n * bq * 60.0 / dt, "detectat")
+    try:
+        res = tempo_recalc.recalculca_tram(
+            dt, bpm_det, int(num), int(den), n_ref=n, mode="graella",
+            bloca_compas=True)
+    except ValueError as e:
+        raise ValueError(f"BPM detectat: {e}") from e
+    if res is None:
+        raise ValueError(
+            f"El BPM detectat no dona cap valor vàlid per a {n} compàs(s)")
+    bpm_final = _valida_bpm_edicio(float(res["bpm"]), "detectat")
     out = list(nous)
     out[i] = (float(ini), float(fi), bpm_final, int(num), int(den))
     return _mapa_valida_sense_moure(out, durada, offset)
@@ -1927,10 +1950,17 @@ def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
         raise ValueError("El tram ha de tindre com a mínim un compàs")
     num_final = int(num) if num is not None else int(num0)
     den_final = int(den) if den is not None else int(den0)
-    bq = _bar_quarters(num_final, den_final)
     if n_final == n_act and (num_final, den_final) == (int(num0), int(den0)):
         return nous
-    bpm_new = _valida_bpm_edicio(n_final * bq * 60.0 / dt, "triat")
+    try:
+        res = tempo_recalc.recalculca_tram(
+            dt, _bpm, int(num_final), int(den_final), n_ref=n_final,
+            mode="graella", bloca_compas=True)
+    except ValueError as e:
+        raise ValueError(f"Compàs triat: {e}") from e
+    if res is None:
+        raise ValueError("El compàs triat no dona cap BPM vàlid")
+    bpm_new = _valida_bpm_edicio(float(res["bpm"]), "triat")
     bpm_new, num_final, den_final = valida_tempo(
         bpm_new, num_final, den_final)
     out = list(nous)

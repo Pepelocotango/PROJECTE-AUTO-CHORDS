@@ -2182,7 +2182,7 @@ class TestMusicXmlMapa(unittest.TestCase):
         xml = partitura.construeix_musicxml(
             events, [], bpb=4, bpm=120.0,
             rubatos=[(0.0, 4.0, "4/4*2")])
-        self.assertIn("Rubato — graella aproximada", xml)
+        self.assertIn("Rubato:", xml)
         self.assertIn("4/4*2", xml)
 
     def test_constant_no_afegeix_res(self):
@@ -2556,6 +2556,10 @@ class ExportPipelineTests(unittest.TestCase):
         self.assertTrue(hasattr(window, "b_exec"))
         self.assertTrue(hasattr(window, "a_exporta"))
         self.assertEqual(window.b_exec.text(), "Analitza")
+        self.assertTrue(hasattr(window, "b_analitza_beats"))
+        self.assertEqual(window.b_analitza_beats.text(), "Beats/BPM")
+        self.assertIn("Analitza beats, downbeats i BPM",
+                      window.b_analitza_beats.toolTip())
         self.assertIn("Exporta WAV", window.a_exporta.text())
         self.assertTrue(hasattr(window, "a_exporta_part"))
         self.assertTrue(hasattr(window, "barra_accions"))   # 2a fila de la barra 1
@@ -2605,6 +2609,7 @@ class ExportPipelineTests(unittest.TestCase):
         app = app_main.QApplication.instance() or app_main.QApplication([])
         window = app_main.Finestra()
         self.assertFalse(window.b_exec.isEnabled())
+        self.assertFalse(window.b_analitza_beats.isEnabled())
         app.quit()
 
     def test_log_dock_amagat_per_defecte(self):
@@ -5216,7 +5221,8 @@ class TapTempoTests(unittest.TestCase):
         w.bpm.setText("110")
         w._aplica_parametres_temps()
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 110.0, places=6)
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=6)
+        # Regla A: el veí conserva N i x/x i recalcula el BPM.
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 57.894736, places=5)
         w.close()
 
     def test_tap_va_al_tram_seleccionat_i_undo_per_sessio(self):
@@ -6576,7 +6582,7 @@ class TestRegla12ParitatExport(_regla12_export___Base):
 
     def test_rubato_exporta_avis_i_conserva_tipus(self):
         trams = [
-            mapa_tempo.TramMapa(0.0, 8.0, 120.0, "rubato", "4/4*4"),
+            mapa_tempo.TramMapa(0.0, 8.0, 120.0, "rubato", "4/4"),
             mapa_tempo.TramMapa(8.0, 16.0, 120.0, "normal", "4/4"),
         ]
         sortida, res = self._exporta(trams)
@@ -6584,13 +6590,13 @@ class TestRegla12ParitatExport(_regla12_export___Base):
         with open(ruta, encoding="utf-8") as f:
             text = f.read()
         self.assertIn("rubato", text)
-        self.assertIn("4/4*4", text)
+        self.assertIn("4/4", text)
         avis = res.get("mapa_tempo_avis")
         self.assertTrue(avis and os.path.isfile(avis))
         with open(avis, encoding="utf-8") as f:
             text_avis = f.read()
-        self.assertIn("GRAELLA APROXIMADA", text_avis)
-        self.assertIn("4/4*4", text_avis)
+        self.assertIn("TRAMS MARCADES PER A NOTACIÓ", text_avis)
+        self.assertIn("4/4", text_avis)
 
     def test_el_mapa_exportat_es_el_del_model(self):
         """El que s'exporta és el MODEL (no una còpia vella del disc)."""

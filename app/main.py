@@ -398,6 +398,15 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_exec.setToolTip("Extreu acords i estructura de la WAV (F5)")
         self.b_exec.clicked.connect(lambda: self.executa())
         self.b_exec.setEnabled(False)          # fins que hi hagi WAV
+        self.b_analitza_beats = QPushButton("Beats/BPM")
+        self.b_analitza_beats.setObjectName("secundari")
+        self.b_analitza_beats.setIcon(icones.ico("target", 16))
+        self.b_analitza_beats.setIconSize(icones.pm_mida(16))
+        self.b_analitza_beats.setToolTip(
+            "Analitza beats, downbeats i BPM de la WAV (F7). No toca acords "
+            "ni estructura.")
+        self.b_analitza_beats.clicked.connect(self._analitza_bpm)
+        self.b_analitza_beats.setEnabled(False)  # fins que hi haja WAV
 
         # 1a BARRA: en ORDRE DE FLUX de treball →
         #   1) Obre  ·  2) opcions de temps  ·  3) Analitza i Exporta (al final)
@@ -414,6 +423,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         # fila pròpia amb molt d'espai buit.
         barra.addSeparator()
         barra.addWidget(self.b_exec)
+        barra.addWidget(self.b_analitza_beats)
         self.b_desfer = QPushButton()
         self.b_desfer.setObjectName("secundari")
         self.b_desfer.setIcon(icones.ico("undo-2", 16))

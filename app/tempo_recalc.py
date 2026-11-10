@@ -5,6 +5,11 @@ el músic amb el tap tempo i el compàs), busca la combinació de BPM, compàs i
 nombre de compassos que més s'hi acosta i que fa que el tram tinga compassos
 sencers.
 
+És l'**únic motor** de decisió `N/BPM/compàs`. `mode` fa explícites les dos
+fonts de veritat —`graella`/segons o `beats` detectats— i `mixt` les combina.
+Les operacions del mapa (BPM explícit, N compassos, detectat, fronteres,
+marcadors, rubato) han de reduir-se a una crida amb estes opcions.
+
 No depén de Qt ni del model de clips: és una funció pura i testable.
 """
 from __future__ import annotations
@@ -28,6 +33,33 @@ TOL_BEATS = 1e-6
 # franja es considera de frontera. Evita que moure la vora 1 ms canvie K i,
 # amb ell, la signatura o el BPM.
 TOL_TALL = 0.05
+
+
+def bpm_de_n(n, num, den, durada):
+    """BPM que fa que `n` compassos `num/den` caben en `durada` segons."""
+    durada = float(durada)
+    if durada <= 0:
+        raise ValueError("La durada ha de ser positiva")
+    return float(n) * _bar_quarters(num, den) * 60.0 / durada
+
+
+def durada_de_n(n, bpm, num, den):
+    """Segons que ocupen `n` compassos `num/den` a `bpm`."""
+    bpm = float(bpm)
+    if bpm <= 0:
+        raise ValueError("El BPM ha de ser positiu")
+    return float(n) * _bar_quarters(num, den) * 60.0 / bpm
+
+
+def n_de_durada(durada, bpm, num, den):
+    """Nombre de compassos (pot ser fraccionari) en `durada` segons."""
+    bpm = float(bpm)
+    if bpm <= 0:
+        raise ValueError("El BPM ha de ser positiu")
+    bq = _bar_quarters(num, den)
+    if bq <= 0:
+        raise ValueError("El compàs no és vàlid")
+    return float(durada) * bpm / (bq * 60.0)
 
 
 def n_negres_del_clip(beats, ini, fi, beat_factor=1.0, tol=TOL_TALL):
@@ -116,8 +148,8 @@ def _valida_referencia(bpm_ref, num_ref, den_ref):
 
 
 def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
-                    n_beats=None, bpm_min=None, bpm_max=None,
-                    n_ventana=3,
+                    n_beats=None, mode="mixt", bloca_compas=False,
+                    bpm_min=None, bpm_max=None, n_ventana=3,
                     w_bpm=1.0, w_compas=1.5, w_n=3.0, w_natural=0.1,
                     w_den=1.5, n_max=16, ajusta_beats=True,
                     pas_beat=1.0):
@@ -126,15 +158,32 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
     `n_ref` fixat = el nombre de compassos és una restricció (marcadors).
     Si no es passa, es calcula a partir de la referència i la durada.
 
-    Retorna un diccionari o `None` si no hi ha cap combinació dins dels límits.
+    `mode` fa explícites les dos fonts de veritat:
+      - ``graella``: només durada + BPM/compàs de referència (segons/graella);
+      - ``beats``: obliga `n_beats` (beats detectats) i no infereix res;
+      - ``mixt`` (defecte): usa els beats si n'hi ha; si no, infereix negres
+        de la referència quan és a prop d'un enter i, si cal, cau a graella.
+
+    `bloca_compas=True` impedix canviar la signatura de referència; és el que
+    fan les accions explícites que només volen recalcular el BPM amb el
+    compàs triat. Retorna un diccionari o `None` si no hi ha cap combinació.
     """
     durada = float(durada)
     if durada <= 0:
         raise ValueError("La durada del tram ha de ser positiva")
+    mode = str(mode or "mixt").strip().lower()
+    if mode not in ("graella", "beats", "mixt"):
+        mode = "mixt"
+    if mode == "graella":
+        n_beats = None
+    elif mode == "beats" and n_beats is None:
+        return None
     if n_beats is not None:
         n_beats = float(n_beats)
         if n_beats <= 0:
             n_beats = None
+        if mode == "beats" and n_beats is None:
+            return None
     pas_beat = float(pas_beat or 1.0)
     if pas_beat <= 0:
         pas_beat = 1.0
@@ -159,7 +208,7 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
     # Sense beats detectats, si la referència BPM dona un nombre de negres
     # pràcticament enter, l'usem com a pista (7,02 → 7). No ho fem si el
     # nombre de compassos ve fixat pels marcadors.
-    if n_beats is None and not n_fix:
+    if n_beats is None and not n_fix and mode == "mixt":
         beats_ref = durada * bpm_ref / 60.0
         n_round = int(round(beats_ref))
         if n_round >= 1 and abs(beats_ref - n_round) <= 0.2:
@@ -208,8 +257,11 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                         },
                     })
         beats_candidats = []
-        for den in limits.DENOMINADORS_ADMESOS:
-            for num in range(limits.NUM_MIN, limits.NUM_MAX + 1):
+        dens = (den_ref,) if bloca_compas else limits.DENOMINADORS_ADMESOS
+        nums = ((num_ref,) if bloca_compas
+                else range(limits.NUM_MIN, limits.NUM_MAX + 1))
+        for den in dens:
+            for num in nums:
                 bq = _bar_quarters(num, den)
                 n_exact = float(n_beats) / bq
                 n = int(round(n_exact))
@@ -299,7 +351,8 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
                     continue
                 r2 = recalculca_tram(
                     durada, bpm_ref, num_ref, den_ref, n_ref=None,
-                    n_beats=k2, bpm_min=bpm_min, bpm_max=bpm_max,
+                    n_beats=k2, mode="beats", bloca_compas=bloca_compas,
+                    bpm_min=bpm_min, bpm_max=bpm_max,
                     ajusta_beats=False, pas_beat=pas)
                 if r2 is not None and r2.get("beats_usats"):
                     candidats.append((k2, r2))
@@ -329,9 +382,12 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
         n_cost_ref = n_previst
 
     millor = None
+    dens = (den_ref,) if bloca_compas else limits.DENOMINADORS_ADMESOS
+    nums = ((num_ref,) if bloca_compas
+            else range(limits.NUM_MIN, limits.NUM_MAX + 1))
     for n in n_valors:
-        for den in limits.DENOMINADORS_ADMESOS:
-            for num in range(limits.NUM_MIN, limits.NUM_MAX + 1):
+        for den in dens:
+            for num in nums:
                 bpm = 60.0 * n * num * (4.0 / den) / durada
                 if not (bpm_min - 1e-9 <= bpm <= bpm_max + 1e-9):
                     continue

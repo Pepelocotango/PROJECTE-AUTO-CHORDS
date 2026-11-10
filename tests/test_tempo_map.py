@@ -17,7 +17,6 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import unittest
 import unittest.mock  # noqa: F401  (alguns tests fan servir unittest.mock)
-from app import mapa_tempo
 from app import pipeline
 from app.tempo_map import TempoMap
 import numpy as np
@@ -82,6 +81,35 @@ class TestAgrupacioCompas(unittest.TestCase):
         mapa = TempoMap([(0.0, 4.0, 120.0, 7, 8, "3+2+2")])
         self.assertEqual(mapa.agrupacio(0.0), (3, 2, 2))
         self.assertTrue(mapa.te_agrupacions_explicites())
+
+
+class TestRubatoComANormal(unittest.TestCase):
+    def test_mateixa_graella_i_posicio(self):
+        from app import mapa_tempo
+        normal = TempoMap([
+            mapa_tempo.TramMapa(0.0, 8.0, 120.0, "normal", "4/4")])
+        rubato = TempoMap([
+            mapa_tempo.TramMapa(0.0, 8.0, 120.0, "rubato", "4/4")])
+        self.assertEqual(normal.pos(2.0), rubato.pos(2.0))
+        self.assertEqual(normal.compassos(), rubato.compassos())
+
+
+class TestRolsTram(unittest.TestCase):
+    """Rols estructurals derivats: no són camps editables del model."""
+
+    def test_rols_per_posicio(self):
+        self.assertEqual(tm.rol_tram([1], 0), "unic")
+        self.assertEqual(tm.rol_tram([1, 2], 0), "primer")
+        self.assertEqual(tm.rol_tram([1, 2], 1), "ultim")
+        self.assertEqual(tm.rol_tram([1, 2, 3], 1), "interior")
+        self.assertEqual(tm.rol_tram([], 0), "interior")
+
+    def test_preroll_derivat(self):
+        trams = [(0.0, 0.742667, 120.0, 4, 4),
+                 (0.742667, 10.0, 120.0, 4, 4)]
+        self.assertTrue(tm.es_preroll_tram(trams, 0, 0.742667))
+        self.assertFalse(tm.es_preroll_tram(trams, 1, 0.742667))
+        self.assertFalse(tm.es_preroll_tram(trams, 0, 0.0))
 
 
 class TestConstant(unittest.TestCase):
@@ -495,7 +523,7 @@ class TestSnapIConversions(unittest.TestCase):
 
 
 class TestPersistencia(unittest.TestCase):
-    """Model unificat `mapa_tempo.csv` (`inici,fi,bpm,tipus,compassos,agrupacio`)."""
+    """Model unificat `mapa_tempo.csv` (`inici,fi,bpm,tipus,compassos,agrupacio,n`)."""
 
     def test_round_trip(self):
         import tempfile
@@ -558,9 +586,9 @@ class TestPersistencia(unittest.TestCase):
         pipeline.desa_tempo_map(td, [(0.0, 2.5, 105.315, 4, 4)])
         with open(os.path.join(td, "mapa_tempo.csv"), encoding="utf-8") as f:
             files = f.read().strip().splitlines()
-        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos,agrupacio")
+        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos,agrupacio,n")
         self.assertEqual(files[1],
-                         "0.000000,2.500000,105.315000,normal,4/4,")
+                         "0.000000,2.500000,105.315000,normal,4/4,,")
 
     def test_model_antic_es_rebutja(self):
         import tempfile
@@ -2193,26 +2221,3 @@ class TestTramsEnSegons(unittest.TestCase):
         self.assertGreater(bar_s, 0.0)      # 4/4 a 100 BPM = 2,4 s
         self.assertAlmostEqual(bar_s, 2.4, places=6)
         self.assertAlmostEqual(beat_s, 0.6, places=6)
-
-
-class TestRubatoGraella(unittest.TestCase):
-    """`TempoMap` expandix una seqüència de rubato en sub-trams per compàs."""
-
-    def test_expandeix_compassos_barrejats(self):
-        rub = mapa_tempo.TramMapa(0.0, 7.0, 60.0, "rubato", "4/4+6/8")
-        m = TempoMap([rub])
-        self.assertEqual(m.signatura(1.0), (4, 4))
-        self.assertEqual(m.signatura(5.0), (6, 8))
-        # 4/4 a 60 BPM = 4 s; 6/8 a 60 BPM = 3 s.
-        self.assertAlmostEqual(m.durations(1.0)[0], 4.0, places=6)
-        self.assertAlmostEqual(m.durations(5.0)[0], 3.0, places=6)
-        self.assertAlmostEqual(tm.durada_compas(60.0, 6, 8), 3.0, places=6)
-
-    def test_barreja_4_4_i_6_8_en_el_mateix_rubato(self):
-        rub = mapa_tempo.TramMapa(0.0, 7.0, 60.0, "rubato", "4/4+6/8")
-        m = TempoMap([rub])
-        self.assertAlmostEqual(m.quarters(7.0), 7.0, places=6)
-
-
-if __name__ == "__main__":   # pragma: no cover
-    unittest.main()

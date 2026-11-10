@@ -248,7 +248,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `postproc.py` | Post-processat de les deteccions (opcions del diàleg d'autodetecció). |
 | `projecte.py` | Projectes d'AUTO CHORDS — carpeta **autocontinguda**, com un DAW. |
 | `projecte_ui.py` | Gestió de projectes de la finestra (F3). |
-| `rubato.py` | Derivació mètrica dels clips de rubato (subplà de rubato, fase 1). |
+| `rubato.py` | — |
 | `tap_ui.py` | Tap tempo de la finestra (F3). |
 | `tempo.py` | tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt). |
 | `tempo_ajust.py` | Ajust d'un sol BPM a partir de marcadors de compàs (Fase 5). |

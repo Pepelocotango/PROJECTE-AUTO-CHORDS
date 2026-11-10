@@ -209,7 +209,7 @@ class TestCrea(BaseProjecte):
         with open(os.path.join(carp, "mapa_tempo.csv"),
                   encoding="utf-8") as fh:
             files = fh.read().strip().splitlines()
-        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos,agrupacio")
+        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos,agrupacio,n")
         self.assertIn("138.000000,normal,4/4", files[1])
         self.assertTrue(os.path.isfile(p.ruta_acproj))
 
@@ -4655,27 +4655,17 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         self.assertEqual([tuple(t) for t in v.tempo_trams], abans)
         v.close()
 
-    def test_edita_tempo_rebutja_compas_no_enter(self):
+    def test_edita_tempo_amb_compas_nou_mou_la_fi(self):
         v = _vista_segueix_model___visor()
         try:
             trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
                      (30.0, 40.0, 120.0, 4, 4)]
             self.assertTrue(v.aplica_tempo_trams(trams))
-
-            class _Boto:
-                def text(self):
-                    return ""
-
-            with patch.object(QMessageBox, "addButton",
-                              lambda self, *a, **k: _Boto()), \
-                    patch.object(QMessageBox, "setDefaultButton",
-                                 lambda self, *a, **k: None), \
-                    patch.object(QMessageBox, "exec_", return_value=0), \
-                    patch.object(QMessageBox, "clickedButton",
-                                 return_value=None):
-                self.assertFalse(v.edita_tempo_objectiu(1, 90.0, 7, 8))
-            self.assertEqual([tuple(t) for t in v.tempo_trams],
-                             [tuple(t) for t in trams])
+            self.assertTrue(v.edita_tempo_objectiu(1, 90.0, 7, 8))
+            self.assertEqual(v.tempo_trams[1][3:], (7, 8))
+            self.assertAlmostEqual(v.tempo_trams[1][2], 90.0, places=6)
+            self.assertAlmostEqual(v.tempo_trams[1][1], 33.333333, places=5)
+            self.assertAlmostEqual(v.tempo_trams[2][0], 33.333333, places=5)
         finally:
             v.close()
 
@@ -4991,7 +4981,7 @@ class TestProjecteAssociat(_Base):
         with open(os.path.join(carp, "mapa_tempo.csv"), encoding="utf-8") as fh:
             self.assertEqual(
                 fh.read().splitlines()[1],
-                "0.000000,2.000000,120.000000,normal,4/4,",
+                "0.000000,2.000000,120.000000,normal,4/4,,",
                 "el mapa nou no pot heretar el tempo vell")
         self.assertEqual(f.bpm.text(), "120.000")
         self.assertEqual(f._bpb_val(), 4)
@@ -5630,7 +5620,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
             projecte.Projecte.obre(self.w.projecte.ruta_acproj))
         self.assertEqual(self.w.visor_ref.ref_tempo_base(), (144.5, 7, 4))
 
-    def test_edita_n_compassos_mante_les_fronteres(self):
+    def test_edita_n_compassos_mou_la_fi_i_recalcula_el_vei(self):
         vr = self.w.visor_ref
         trams = [(0.0, 10.0, 120.0, 4, 4),
                  (10.0, 30.0, 90.0, 3, 4),
@@ -5638,13 +5628,12 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.aplica_tempo_trams(trams))
         self.assertTrue(vr.edita_n_compassos(1, 12, 3, 4))
         self.assertEqual(vr.tempo_trams[0], trams[0])
-        self.assertEqual(vr.tempo_trams[2], trams[2])
-        self.assertEqual(vr.tempo_trams[1][:2], trams[1][:2])
+        self.assertEqual(vr.tempo_trams[1][:2], (10.0, 34.0))
         self.assertEqual(vr.tempo_trams[1][3:], (3, 4))
-        self.assertAlmostEqual(vr.tempo_trams[1][2], 108.0, places=6)
-        self.assertAlmostEqual(
-            tm._compassos_del_tram(vr.tempo_trams[1], 1, vr.offset),
-            12.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 90.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][0], 34.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][1], 60.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][2], 138.461538, places=5)
 
     def test_edita_n_compassos_no_es_bloqueja_per_altres_clips(self):
         vr = self.w.visor_ref
@@ -5656,8 +5645,9 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.aplica_tempo_trams(trams))
         self.assertTrue(vr.edita_n_compassos(1, 12, 3, 4))
         self.assertEqual(vr.tempo_trams[1][3:], (3, 4))
-        self.assertAlmostEqual(float(vr.tempo_trams[1][2]), 108.0, places=6)
+        self.assertEqual(vr.tempo_trams[1][:2], (10.0, 34.0))
         self.assertEqual(vr.tempo_trams[2][3:], (7, 4))
+        self.assertAlmostEqual(vr.tempo_trams[2][0], 34.0, places=6)
 
     def test_eliminar_frontera_recalcula_el_clip_fusionat(self):
         vr = self.w.visor_ref
@@ -5781,34 +5771,34 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr.undo()
         self.assertEqual(len(vr.tempo_trams), len(ks) + 1)
 
-    def test_edita_tempo_objectiu_no_arrossega_els_trams(self):
-        """Diàleg/transport = re-tempo local (§7): només es mou la frontera."""
+    def test_edita_tempo_objectiu_mou_la_fi_i_recalcula_el_vei(self):
+        """Regla C+A: el tram editat fixa fi; el veí conserva N/x i recalcula BPM."""
         vr = self.w.visor_ref
         trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
                  (30.0, 60.0, 120.0, 4, 4)]
         self.assertTrue(vr.aplica_tempo_trams(trams))
         self.assertTrue(vr.edita_tempo_objectiu(1, 100.0, 3, 4))
-        self.assertEqual(len(vr.tempo_trams), 3)
         self.assertEqual(vr.tempo_trams[0], trams[0])       # intacte
         self.assertAlmostEqual(vr.tempo_trams[1][2], 100.0, places=6)
-        self.assertAlmostEqual(vr.tempo_trams[1][1], 30.0, places=6)
-        # El veí de la dreta (últim) conserva el BPM i el seu final.
-        self.assertAlmostEqual(vr.tempo_trams[2][0], 30.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][1], 28.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][0], 28.0, places=6)
         self.assertAlmostEqual(vr.tempo_trams[2][1], 60.0, places=6)
-        self.assertAlmostEqual(vr.tempo_trams[2][2], 120.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][2], 112.5, places=6)
 
-    def test_edita_tempo_objectiu_canviar_signatura_no_mou_els_segons(self):
+    def test_edita_tempo_objectiu_canviar_signatura_mou_la_fi(self):
         vr = self.w.visor_ref
         trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
                  (30.0, 60.0, 120.0, 4, 4)]
         self.assertTrue(vr.aplica_tempo_trams(trams))
-        # 7/8 a 84 BPM sobre 20 s = 8 compassos enters (N=8).
+        # N=10 es conserva; 7/8 a 84 BPM → 25 s, fi=35.
         self.assertTrue(vr.edita_tempo_objectiu(1, 84.0, 7, 8))
         self.assertEqual(vr.tempo_trams[0], trams[0])
-        self.assertEqual(vr.tempo_trams[1][:2], trams[1][:2])
+        self.assertEqual(vr.tempo_trams[1][0], 10.0)
         self.assertEqual(vr.tempo_trams[1][3:], (7, 8))
         self.assertEqual(vr.tempo_trams[1][2], 84.0)
-        self.assertEqual(vr.tempo_trams[2], trams[2])
+        self.assertAlmostEqual(vr.tempo_trams[1][1], 35.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][0], 35.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][2], 144.0, places=6)
 
     def test_el_marcador_no_arrossega_la_frontera_d_estructura(self):
         """Moure un marcador no canvia cap clip d'estructura."""
@@ -5973,19 +5963,22 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.seccions, before_sec)
 
     def test_bpm_manual_funciona_amb_el_primer_i_l_ultim_tram(self):
-        """Cas real: pre-roll de 1,99 s (fora de graella) + últim tram."""
+        """C+A al primer; regla B a l'últim (N pot ser fraccionari)."""
         vr = self.w.visor_ref
         trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 60.0, 120.0, 4, 4)]
         self.assertTrue(vr.aplica_tempo_trams(trams))
-        # Primer tram: canvia el BPM sense moure la frontera.
+        # Primer tram: BPM exacte, fi derivada; el veí recalcula BPM.
         self.assertTrue(vr.edita_tempo_objectiu(0, 100.0, 4, 4))
-        self.assertAlmostEqual(vr.tempo_trams[0][1], 2.0, places=6)
-        self.assertAlmostEqual(vr.tempo_trams[1][2], 120.0, places=6)
-        # Últim tram: canvia el BPM encara que la frontera no ciga en graella.
+        self.assertAlmostEqual(vr.tempo_trams[0][1], 2.4, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][0], 2.4, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 120.833333, places=5)
+        # Últim tram: BPM exacte, N derivat amb final fix.
         vr.aplica_tempo_trams(trams)
         self.assertTrue(vr.edita_tempo_objectiu(1, 100.0, 4, 4))
         self.assertAlmostEqual(vr.tempo_trams[1][0], 2.0, places=9)
+        self.assertAlmostEqual(vr.tempo_trams[1][1], 60.0, places=9)
         self.assertAlmostEqual(vr.tempo_trams[1][2], 100.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1].n, 24.166667, places=5)
 
     def test_marcador_durant_el_play_usa_el_cursor_del_so(self):
         """El cas real: donar-li a `+` mentre SONA (el cursor és el playhead)."""
@@ -6264,6 +6257,11 @@ class TestDestiAccionsFase3(unittest.TestCase):
             txt = f.lb_desti_accions.text()
             self.assertIn("Detecta:", txt)
             self.assertIn("TAP:", txt)
+            self.assertIn("BPM/Compàs: transport", txt)
+            f.visor_ref.timeline.select_clip("tempo", 0)
+            f._actualitza_desti_accions()
+            self.assertIn("BPM/Compàs: tram 0",
+                          f.lb_desti_accions.text())
         finally:
             _tanca(f)
 

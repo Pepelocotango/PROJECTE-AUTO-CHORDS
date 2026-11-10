@@ -3,13 +3,11 @@
 Extret de `app/visor.py`: objectiu de tempo, mapa de tempo per trams,
 validació, edició, rubato i conversió a trams normals.
 """
-import math
-
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QDialog, QMessageBox
 
 from . import bpm_unit as bpm_unit_mod
-from . import dialegs, mapa_tempo, pipeline, rubato as rubato_mod, tempo_map
+from . import dialegs, mapa_tempo, pipeline, tempo_map
 from . import tempo_recalc
 
 class TempoMixin:
@@ -57,56 +55,17 @@ class TempoMixin:
         s = trams[idx]
         return (idx, float(s[2]), int(s[3]), int(s[4]))
 
-    def _preserva_rubato(self, abans, nous):
-        """Reconstrueix `TramMapa` després d'una operació de tempo.
-
-        Les operacions de `tempo_map` treballen amb 5 tuples i podrien perdre
-        el `tipus`/`compassos` d'un rubato. Ací es reenganxen els rubatos per
-        **interval temporal**, no per índex: un marcador pot afegir un tram
-        abans o després d'un rubato i desplaçar tots els índexs.
-        """
-        abans = [mapa_tempo.des_de_tupla(x) for x in abans]
-        rubatos = [t for t in abans if t.tipus == "rubato"]
-        out = []
-        for nou in nous:
-            ini, fi, bpm = float(nou[0]), float(nou[1]), float(nou[2])
-            triat, millor = None, 0.0
-            for v in rubatos:
-                vini, vfi = float(v.ini), float(v.fi)
-                # Un tram nou dins un rubato (o que el conté) el conserva.
-                dins = (ini >= vini - 1e-9 and fi <= vfi + 1e-9)
-                conte = (vini >= ini - 1e-9 and vfi <= fi + 1e-9)
-                solap = max(0.0, min(fi, vfi) - max(ini, vini))
-                frac = solap / max(vfi - vini, 1e-9)
-                if dins or conte or frac > 0.5:
-                    if frac >= millor:
-                        triat, millor = v, frac
-            if triat is not None:
-                segs = triat.segments
-                q = sum(n * 4.0 / d * c for n, d, c in segs)
-                if q > 0 and fi > ini:
-                    bpm = q * 60.0 / (fi - ini)
-                bpm = min(max(bpm, 30.0), 350.0)
-                out.append(mapa_tempo.TramMapa(
-                    ini, fi, bpm, "rubato", triat.compassos))
-            else:
-                out.append(mapa_tempo.TramMapa(
-                    ini, fi, bpm, "normal",
-                    f"{int(nou[3])}/{int(nou[4])}"))
-        return out
-
     def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True, repara=True,
                              agrupacio=None):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
-        Re-tempo local (`docs/REGLES_DE_LA_APP.md` §13.5): el tram conserva el
-        seu nombre de compassos, la seua durada passa a `N · bq · 60 / BPM` i
-        el veí de la dreta conserva els compassos i el seu final recalculant el
-        BPM. Els trams posteriors **no es mouen** (sense *ripple*). Si el canvi
-        no és vàlid, es rebutja amb un avís.
+        Regla C (`docs/REGLES_DE_LA_APP.md` §13.5): BPM i compàs són exactes;
+        en un tram interior `N` i `x/x` també, i es deriva `fi`; el veí de la
+        dreta conserva `N`/`x/x` i recalcula el BPM. En l'últim/únic, BPM i
+        `x/x` són exactes i `N` es deriva (pot ser fraccionari).
 
-        Amb `desa=False` (tap en viu) el canvi queda només en memòria; el desat
-        es fa en tancar la sessió de taps.
+        Amb `desa=False` (TAP en viu) es manté el camí antic que conserva les
+        fronteres i només canvia el BPM.
         """
         trams = list(self.tempo_trams or [])
         if not trams:
@@ -114,41 +73,29 @@ class TempoMixin:
                 0.0, self._durada_wav(), float(bpm), "normal",
                 f"{int(num)}/{int(den)}")]
         idx = min(max(0, int(idx)), len(trams) - 1)
-        if getattr(trams[idx], "tipus", None) == "rubato":
-            self.avis_editor(
-                "El BPM i el compàs d'un rubato són derivats; no s'editen "
-                "directament.")
-            return False
-        # Un canvi de compàs que deixa N fraccionari no s'aplica directament:
-        # es mostra un diàleg de reparació perquè la graella quede vàlida.
-        if repara:
-            num_old, den_old = int(trams[idx][3]), int(trams[idx][4])
-            if (int(num), int(den)) != (num_old, den_old):
-                temp = (float(trams[idx][0]), float(trams[idx][1]),
-                        float(bpm), int(num), int(den))
-                try:
-                    n_compas = tempo_map._compassos_del_tram(
-                        temp, idx, getattr(self, "offset", 0.0))
-                except (TypeError, ValueError):
-                    n_compas = None
-                if (n_compas is not None
-                        and abs(n_compas - round(n_compas)) > 1e-3):
-                    return self._repara_compas_no_enter(
-                        idx, float(bpm), int(num), int(den), n_compas,
-                        trams, desa=desa)
-        try:
-            nous5 = tempo_map.canvia_bpm_local(
-                [tuple(t) for t in trams], idx, float(bpm),
-                self._durada_wav(), offset=getattr(self, "offset", 0.0),
-                num=num, den=den,
-                beats_qm=self._beats_per_validacio(), permissiu=True)
-        except ValueError as e:
-            self.avis_editor(f"Tempo: {e}")
-            return False
-        if not nous5:
-            return False
-        nous = self._preserva_rubato(trams, nous5)
-        nous = mapa_tempo.hereta_agrupacio(trams, nous)
+        if desa:
+            try:
+                nous = mapa_tempo.recalcula_tram_c(
+                    trams, idx, self._durada_wav(),
+                    offset=getattr(self, "offset", 0.0),
+                    bpm=float(bpm), num=int(num), den=int(den),
+                    camp="bpm")
+            except ValueError as e:
+                self.avis_editor(f"Tempo: {e}")
+                return False
+        else:
+            try:
+                nous5 = tempo_map.canvia_bpm_local(
+                    [tuple(t) for t in trams], idx, float(bpm),
+                    self._durada_wav(), offset=getattr(self, "offset", 0.0),
+                    num=num, den=den,
+                    beats_qm=self._beats_per_validacio(), permissiu=True)
+            except ValueError as e:
+                self.avis_editor(f"Tempo: {e}")
+                return False
+            if not nous5:
+                return False
+            nous = mapa_tempo.reenganxa_metadades(trams, nous5)
         if agrupacio is not None:
             agr = tempo_map.valida_agrupacio(
                 agrupacio, nous[idx].num, nous[idx].den)
@@ -156,10 +103,9 @@ class TempoMixin:
             nous[idx] = mapa_tempo.TramMapa(
                 nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos, agr)
         # El transport només pren valors d'un tros normal.
-        if getattr(nous[0], "tipus", None) != "rubato":
-            self.bpm = float(nous[0][2])
-            self.bpb = int(nous[0][3])
-            self.beat_type = int(nous[0][4])
+        self.bpm = float(nous[0][2])
+        self.bpb = int(nous[0][3])
+        self.beat_type = int(nous[0][4])
         if desa:
             return bool(self.aplica_tempo_trams(nous))
         self.tempo_trams = nous
@@ -169,34 +115,26 @@ class TempoMixin:
     def edita_n_compassos(self, idx, n, num, den, desa=True):
         """Edita **N compassos** i compàs; el BPM es recalcula automàticament.
 
-        Les fronteres en segons **no es mouen** i els veïns no es toquen. És el
-        mode A del camp «N compassos»: N i compàs manen, BPM = N·bq·60/durada.
+        Regla C: N i compàs són exactes; en interiors es deriva `fi` i el veí
+        recalcula el BPM. En l'últim/únic, N exacte i BPM recalculat amb el
+        final fix.
         """
         trams = list(self.tempo_trams or [])
         if not trams:
             return False
         idx = min(max(0, int(idx)), len(trams) - 1)
-        if getattr(trams[idx], "tipus", None) == "rubato":
-            self.avis_editor(
-                "Un rubato no té compassos per a editar directament.")
-            return False
         try:
-            nous5 = tempo_map.canvia_compassos_tram(
-                [tuple(t) for t in trams], idx, n_new=int(n),
-                num=int(num), den=int(den),
-                durada=self._durada_wav(),
-                offset=getattr(self, "offset", 0.0))
+            nous = mapa_tempo.recalcula_tram_c(
+                trams, idx, self._durada_wav(),
+                offset=getattr(self, "offset", 0.0),
+                n=int(n), bpm=float(trams[idx].bpm), num=int(num),
+                den=int(den), camp="n")
         except ValueError as e:
             self.avis_editor(f"Compassos: {e}")
             return False
-        if not nous5:
-            return False
-        nous = self._preserva_rubato(trams, nous5)
-        nous = mapa_tempo.hereta_agrupacio(trams, nous)
-        if getattr(nous[0], "tipus", None) != "rubato":
-            self.bpm = float(nous[0][2])
-            self.bpb = int(nous[0][3])
-            self.beat_type = int(nous[0][4])
+        self.bpm = float(nous[0][2])
+        self.bpb = int(nous[0][3])
+        self.beat_type = int(nous[0][4])
         if desa:
             ok = bool(self.aplica_tempo_trams(nous))
         else:
@@ -299,9 +237,6 @@ class TempoMixin:
         self._avisos_tempo = tuple(avisos)
         den = int(getattr(self, "beat_type", 4) or 4)
 
-        def _lliure(t):
-            return getattr(t, "tipus", None) == "rubato"
-
         if not trams:
             # Mapa buit: se'n crea un de sol amb el transport (regla §13.3).
             trams = [mapa_tempo.TramMapa(
@@ -309,14 +244,11 @@ class TempoMixin:
                 f"{int(self.bpb)}/{den}")]
         # El tram 0 és un clip més: NO se sobreescriu amb el transport. La
         # barra és una vista i se sincronitza des del clip 0.
-        if trams and not _lliure(trams[0]):
+        if trams:
             self.bpm = float(trams[0][2])
             self.bpb = int(trams[0][3])
             self.beat_type = int(trams[0][4])
         self.tempo_trams = list(trams)
-        offset_rub = self._offset_rubato_inicial(self.tempo_trams)
-        if offset_rub is not None:
-            self.offset = offset_rub
         self.tempo_map = TempoMap(self.tempo_trams,
                                   offset=getattr(self, "offset", 0.0))
         self.comprova_mapa_sencers()
@@ -360,32 +292,18 @@ class TempoMixin:
         valor inicial, reconstrueix el mapa, refresca el timeline i desa. Retorna
         `True` si s'ha aplicat.
         """
-        abans = [mapa_tempo.des_de_tupla(t)
-                 for t in (self.tempo_trams or [])]
         entrada = list(trams or [])
-        if (not forcat and abans
-                and any(t.tipus == "rubato" for t in abans)):
-            if len(abans) != len(entrada):
-                self.avis_editor(
-                    "Aquesta operació canvia el nombre de trams d'un mapa "
-                    "amb rubatos; les accions de rubato arribaran en la "
-                    "fase 3.2.")
-                return False
-            entrada = self._preserva_rubato(
-                abans, [tuple(t) for t in entrada])
         nous, avisos = mapa_tempo.normalitza_trams_map(
             entrada, self._durada_wav(), log=self.log)
-        nous = mapa_tempo.hereta_agrupacio(abans, nous)
         for avís in avisos:
             self.log(f"tempo: {avís}")
         if not nous:
             return False
         # El transport només pren valors d'un tros normal: un rubato no ha de
         # canviar el BPM/compàs de la barra.
-        if getattr(nous[0], "tipus", None) != "rubato":
-            self.bpm = float(nous[0][2])
-            self.bpb = int(nous[0][3])
-            self.beat_type = int(nous[0][4])
+        self.bpm = float(nous[0][2])
+        self.bpb = int(nous[0][3])
+        self.beat_type = int(nous[0][4])
         self.tempo_trams = list(nous)
         # Refresca mapa + timeline + LLISTES (les etiquetes de compàs depenen
         # de l'offset i del BPM; `_actualitza_temps` és el punt únic).
@@ -592,63 +510,8 @@ class TempoMixin:
     # ---------------- RUBATO (fase 3.2) ----------------
     _EPS_RUBATO = 1e-6
 
-    def _ref_rubato(self, ini, fi, exclude=None):
-        """Referència per a un rubato: normal anterior, després següent."""
-        ini, fi = float(ini), float(fi)
-        anteriors = []
-        posteriors = []
-        for i, tr in enumerate(self.tempo_trams or []):
-            if exclude is not None and i == exclude:
-                continue
-            if getattr(tr, "tipus", None) != "normal":
-                continue
-            d = (float(tr.bpm), int(tr.num), int(tr.den))
-            if float(tr.ini) < ini - self._EPS_RUBATO:
-                anteriors.append(d)
-            elif float(tr.ini) >= fi - self._EPS_RUBATO:
-                posteriors.append(d)
-        transport = (float(self.bpm), int(self.bpb),
-                     int(getattr(self, "beat_type", 4) or 4))
-        return rubato_mod.tria_referencia(anteriors, posteriors, transport)
-
-    def _crea_tram_rubato(self, ini, fi):
-        ref = self._ref_rubato(ini, fi)
-        d = rubato_mod.deriva(float(fi) - float(ini), *ref)
-        return mapa_tempo.TramMapa(
-            float(ini), float(fi), float(d.bpm), "rubato", d.compassos)
-
-    def _offset_rubato_inicial(self, trams):
-        """Si el primer tram és rubato, el compàs 1 és el primer normal."""
-        if trams and getattr(trams[0], "tipus", None) == "rubato":
-            for tr in trams:
-                if getattr(tr, "tipus", None) == "normal":
-                    return float(tr.ini)
-        return None
-
-    def _part_normal_retempo(self, tr, tall, esquerra):
-        """Retalla un tram normal en una vora i re-tempa perquè tinga N bars."""
-        ini, fi = (float(tr.ini), float(tall)) if esquerra else (
-            float(tall), float(tr.fi))
-        dur = fi - ini
-        if dur <= self._EPS_RUBATO:
-            return None
-        bq = int(tr.num) * 4.0 / int(tr.den)
-        if bq <= 0:
-            raise ValueError("El compàs del veí no és vàlid")
-        n_min = max(1, int(math.ceil(dur * 30.0 / (bq * 60.0) - 1e-9)))
-        n_max = int(math.floor(dur * 350.0 / (bq * 60.0) + 1e-9))
-        if n_max < n_min:
-            raise ValueError(
-                "El tall deixa un veí massa curt per a un compàs "
-                "entre 30 i 350 BPM")
-        vell_bar = bq * 60.0 / float(tr.bpm) if float(tr.bpm) > 0 else 0.0
-        n = int(math.floor(dur / vell_bar + 0.5)) if vell_bar > 0 else n_min
-        n = min(max(n, n_min), n_max)
-        bpm = min(max(n * bq * 60.0 / dur, 30.0), 350.0)
-        return mapa_tempo.TramMapa(ini, fi, bpm, "normal", tr.compassos)
-
     def crea_rubato_rang(self, ini, fi):
-        """Marca com a rubato un interval [ini, fi], en un sol desfer."""
+        """Partix el mapa als extrems del rang i marca els trams com a rubato."""
         durada = self._durada_wav()
         try:
             ini, fi = float(ini), float(fi)
@@ -660,140 +523,79 @@ class TempoMixin:
             return False
         fi = min(fi, durada)
         trams = list(self.tempo_trams or [])
-        for tr in trams:
-            if (getattr(tr, "tipus", None) == "rubato"
-                    and float(tr.fi) > ini + self._EPS_RUBATO
-                    and float(tr.ini) < fi - self._EPS_RUBATO):
-                self.avis_editor(
-                    "El rang travessa un rubato existent; ajusta'l o "
-                    "converteix-lo primer.")
+        if not trams:
+            return False
+        for tall in (ini, fi):
+            if tall <= tempo_map.TOL or tall >= durada - tempo_map.TOL:
+                continue
+            try:
+                trams = tempo_map.parteix_tram_marcador(
+                    trams, tall, durada,
+                    offset=getattr(self, "offset", 0.0), permissiu=True)
+            except ValueError as e:
+                self.avis_editor(f"Rubato: {e}")
                 return False
         nous = []
-        anteriors = []
-        posteriors = []
-        try:
-            for tr in trams:
-                if (float(tr.fi) <= ini + self._EPS_RUBATO
-                        or float(tr.ini) >= fi - self._EPS_RUBATO):
-                    nous.append(tr)
-                    if getattr(tr, "tipus", None) == "normal":
-                        if float(tr.fi) <= ini + self._EPS_RUBATO:
-                            anteriors.append(
-                                (float(tr.bpm), int(tr.num), int(tr.den)))
-                        elif float(tr.ini) >= fi - self._EPS_RUBATO:
-                            posteriors.append(
-                                (float(tr.bpm), int(tr.num), int(tr.den)))
-                    continue
-                if getattr(tr, "tipus", None) == "rubato":
-                    self.avis_editor(
-                        "El rang travessa un rubato existent; ajusta'l o "
-                        "converteix-lo primer.")
-                    return False
-                if float(tr.ini) < ini - self._EPS_RUBATO:
-                    peça = self._part_normal_retempo(tr, ini, True)
-                    if peça is not None:
-                        nous.append(peça)
-                        anteriors.append(
-                            (float(peça.bpm), int(peça.num), int(peça.den)))
-                if float(tr.fi) > fi + self._EPS_RUBATO:
-                    peça = self._part_normal_retempo(tr, fi, False)
-                    if peça is not None:
-                        nous.append(peça)
-                        posteriors.append(
-                            (float(peça.bpm), int(peça.num), int(peça.den)))
-            transport = (float(self.bpm), int(self.bpb),
-                         int(getattr(self, "beat_type", 4) or 4))
-            ref = rubato_mod.tria_referencia(anteriors, posteriors, transport)
-            d = rubato_mod.deriva(fi - ini, *ref)
-            rub = mapa_tempo.TramMapa(
-                ini, fi, float(d.bpm), "rubato", d.compassos)
-        except (ValueError, rubato_mod.RubatoError) as e:
-            self.avis_editor(f"Rubato: {e}")
+        tocat = False
+        for tr in trams:
+            dins = (float(tr[0]) >= ini - tempo_map.TOL
+                    and float(tr[1]) <= fi + tempo_map.TOL)
+            if dins:
+                tocat = True
+                nous.append(mapa_tempo.TramMapa(
+                    float(tr[0]), float(tr[1]), float(tr[2]), "rubato",
+                    f"{int(tr[3])}/{int(tr[4])}"))
+            else:
+                nous.append(mapa_tempo.TramMapa(
+                    float(tr[0]), float(tr[1]), float(tr[2]),
+                    getattr(tr, "tipus", "normal"),
+                    f"{int(tr[3])}/{int(tr[4])}",
+                    getattr(tr, "agrupacio", ""),
+                    getattr(tr, "n", None)))
+        if not tocat:
+            self.avis_editor("El rang no conté cap tram de tempo.")
             return False
-        nous.append(rub)
-        nous.sort(key=lambda x: x.ini)
-        try:
-            nous, _avisos = mapa_tempo.normalitza_trams_map(
-                nous, durada, fusiona=True)
-        except (ValueError, rubato_mod.RubatoError) as e:
-            self.avis_editor(f"Rubato: {e}")
-            return False
-        offset = self._offset_rubato_inicial(nous)
         self._undo_marca()
-        if offset is not None:
-            self.offset = offset
         ok = self.aplica_tempo_trams(nous, forcat=True)
         self._undo_commit()
         if ok:
-            self.log(f"rubato: rang {ini:.3f}–{fi:.3f}s "
-                     f"({rub.compassos} · {rub.bpm:.3f} BPM)")
+            self.log(f"rubato: rang {ini:.3f}–{fi:.3f}s marcat")
         return bool(ok)
 
     def converteix_rubato(self, idx):
-        """Converteix un tram normal en rubato (mateixa durada)."""
+        """Marca el tram com a rubato conservant tots els camps."""
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)):
             return False
-        if getattr(trams[idx], "tipus", None) == "rubato":
-            return False
         tr = trams[idx]
-        try:
-            rub = self._crea_tram_rubato(tr.ini, tr.fi)
-        except rubato_mod.RubatoError as e:
-            self.avis_editor(f"Rubato: {e}")
+        if getattr(tr, "tipus", None) == "rubato":
             return False
         nous = list(trams)
-        nous[idx] = rub
-        try:
-            nous, _avisos = mapa_tempo.normalitza_trams_map(
-                nous, self._durada_wav(), fusiona=True)
-        except (ValueError, rubato_mod.RubatoError) as e:
-            self.avis_editor(f"Rubato: {e}")
-            return False
-        offset = self._offset_rubato_inicial(nous)
+        nous[idx] = mapa_tempo.TramMapa(
+            tr.ini, tr.fi, tr.bpm, "rubato", tr.compassos,
+            tr.agrupacio, getattr(tr, "n", None))
         self._undo_marca()
-        if offset is not None:
-            self.offset = offset
         ok = self.aplica_tempo_trams(nous, forcat=True)
         self._undo_commit()
         if ok:
-            self.log(f"rubato: tram {idx} convertit "
-                     f"({rub.compassos} · {rub.bpm:.3f} BPM)")
+            self.log(f"rubato: tram {idx} marcat (només flag de notació)")
         return bool(ok)
 
     def converteix_normal(self, idx):
-        """Converteix un rubato en clips normals, un per segment."""
+        """Treu el flag de rubato conservant tots els camps."""
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)):
             return False
         tr = trams[idx]
         if getattr(tr, "tipus", None) != "rubato":
             return False
-        bpm = float(tr.bpm)
-        t = float(tr.ini)
-        fi = float(tr.fi)
-        nous_t = []
-        for k, (num, den, count) in enumerate(tr.segments):
-            dur = (num * 4.0 / den) * count * 60.0 / bpm
-            t2 = fi if k == len(tr.segments) - 1 else min(fi, t + dur)
-            if t2 <= t + self._EPS_RUBATO:
-                continue
-            nous_t.append(mapa_tempo.TramMapa(
-                t, t2, bpm, "normal", f"{num}/{den}"))
-            t = t2
-        nous = trams[:idx] + nous_t + trams[idx + 1:]
-        try:
-            nous, _avisos = mapa_tempo.normalitza_trams_map(
-                nous, self._durada_wav(), fusiona=False)
-        except (ValueError, rubato_mod.RubatoError) as e:
-            self.avis_editor(f"Rubato: {e}")
-            return False
+        nous = list(trams)
+        nous[idx] = mapa_tempo.TramMapa(
+            tr.ini, tr.fi, tr.bpm, "normal", tr.compassos,
+            tr.agrupacio, getattr(tr, "n", None))
         self._undo_marca()
-        if idx == 0:
-            self.offset = 0.0
         ok = self.aplica_tempo_trams(nous, forcat=True)
         self._undo_commit()
         if ok:
-            self.log(f"rubato: tram {idx} convertit a {len(nous_t)} clip(s) "
-                     "normals")
+            self.log(f"rubato: tram {idx} desmarcat (tram normal)")
         return bool(ok)

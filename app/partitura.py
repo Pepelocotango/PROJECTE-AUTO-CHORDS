@@ -259,7 +259,7 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
         x.append(
             '  <credit page="1"><credit-words default-x="600" default-y="40" '
             'justify="center" font-size="9">'
-            f"Rubato — graella aproximada: {escape(detalls)}"
+            f"Rubato: {escape(detalls)}"
             "</credit-words></credit>\n")
     x += ['  <part-list><score-part id="P1"><part-name>Chords</part-name>'
             "</score-part></part-list>\n",

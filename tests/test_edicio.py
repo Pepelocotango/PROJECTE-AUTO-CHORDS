@@ -3139,17 +3139,14 @@ class TestRegla8TempsValids(_regles_or___Base):
         vinga la còpia: `_refresca_tempo_map` és el punt únic on es fa."""
         v = _regles_or___visor(dur=20.0)
         v.tempo_trams = [
-            mapa_tempo.TramMapa(5.0, 8.0, 120.0, "rubato", "4/4+2/4"),
+            mapa_tempo.TramMapa(5.0, 8.0, 120.0, "normal", "4/4"),
             (8.0, 30.0, 90.0, 3, 4),
         ]
         v._refresca_tempo_map()
         self.assertEqual(float(v.tempo_trams[0][0]), 0.0)          # R1/R4
         self.assertGreater(float(v.tempo_trams[0][2]), 0.0)        # R8
-        # El rubato conserva tipus i seqüència; el BPM es recalcula per la
-        # durada normalitzada (6 negres en 8 s = 45 BPM).
-        self.assertEqual(v.tempo_trams[0].tipus, "rubato")
-        self.assertEqual(v.tempo_trams[0].compassos, "4/4+2/4")
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 45.0, places=6)
+        self.assertEqual(v.tempo_trams[0].tipus, "normal")
+        self.assertEqual(v.tempo_trams[0].compassos, "4/4")
         # I un mapa mètric trencat sí que es repara amb el transport.
         v.tempo_trams = [(5.0, 8.0, 0.0, 4, 4), (8.0, 30.0, 90.0, 3, 4)]
         v._refresca_tempo_map()
@@ -4445,110 +4442,12 @@ class TestRubatoAccions(_undo_temps___Base):
         v._undo_touch_base()
         return w, v
 
-    def test_crea_rubato_al_mig(self):
-        w, v = self._prepara()
-        self.assertTrue(v.crea_rubato_rang(10.0, 20.0))
-        self.assertEqual(len(v.tempo_trams), 3)
-        rub = v.tempo_trams[1]
-        self.assertEqual(rub.tipus, "rubato")
-        self.assertAlmostEqual(rub.ini, 10.0)
-        self.assertAlmostEqual(rub.fi, 20.0)
-        self.assertEqual(rub.compassos, "4/4*5")
-        self.assertAlmostEqual(rub.bpm, 120.0, places=6)
-        self.assertAlmostEqual(v.tempo_map.bpm(15.0), 120.0, places=6)
-        v.undo()
-        self.assertEqual(len(v.tempo_trams), 2)
-        self.assertTrue(all(tr.tipus == "normal" for tr in v.tempo_trams))
-        w.close()
-
-    def test_crea_rang_desalineat_retempa_els_veins(self):
-        w, v = self._prepara()
-        v.tempo_trams = [
-            mapa_tempo.TramMapa(0.0, 30.0, 120.0, "normal", "4/4")]
-        v._actualitza_temps()
-        v._undo_touch_base()
-        self.assertTrue(v.crea_rubato_rang(10.5, 20.5))
-        # 5 bars a cada costat: 10,5 s → 114,2857 BPM; 9,5 s → 126,3158.
-        self.assertAlmostEqual(v.tempo_trams[0].bpm, 5 * 4 * 60 / 10.5,
-                               places=4)
-        self.assertAlmostEqual(v.tempo_trams[-1].bpm, 5 * 4 * 60 / 9.5,
-                               places=4)
-        self.assertEqual(v.tempo_trams[1].tipus, "rubato")
-        self.assertAlmostEqual(v.tempo_trams[1].ini, 10.5, places=6)
-        self.assertAlmostEqual(v.tempo_trams[1].fi, 20.5, places=6)
-        self.assertAlmostEqual(v.tempo_trams[1].bpm, 114.0, places=3)
-        w.close()
-
-    def test_crea_rubato_inicial_mou_l_offset(self):
-        w, v = self._prepara()
-        self.assertTrue(v.crea_rubato_rang(0.0, 10.0))
-        self.assertEqual(v.tempo_trams[0].tipus, "rubato")
-        self.assertAlmostEqual(v.offset, 10.0, places=6)
-        v.undo()
-        self.assertAlmostEqual(v.offset, 0.0, places=6)
-        w.close()
-
-    def test_converteix_rubato_mixt_a_normals_per_segment(self):
-        w, v = self._prepara()
-        v.tempo_trams = [
-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
-            mapa_tempo.TramMapa(10.0, 14.2, 100.0, "rubato", "4/4+6/8"),
-            mapa_tempo.TramMapa(14.2, 30.0, 120.0, "normal", "4/4"),
-        ]
-        v._actualitza_temps()
-        self.assertTrue(v.converteix_normal(1))
-        self.assertEqual(len(v.tempo_trams), 4)
-        self.assertEqual(v.tempo_trams[1].compassos, "4/4")
-        self.assertEqual(v.tempo_trams[2].compassos, "6/8")
-        self.assertAlmostEqual(v.tempo_trams[1].ini, 10.0, places=6)
-        self.assertAlmostEqual(v.tempo_trams[1].fi, 12.4, places=6)
-        self.assertAlmostEqual(v.tempo_trams[2].ini, 12.4, places=6)
-        self.assertAlmostEqual(v.tempo_trams[2].fi, 14.2, places=6)
-        w.close()
-
-    def test_moure_la_vora_dun_rubato_retempa_el_vei(self):
-        w, v = self._prepara()
-        v.tempo_trams = [
-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
-            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "rubato", "4/4*5"),
-            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
-        ]
-        v._actualitza_temps()
-        v._undo_touch_base()
-        v._on_tempo_mogut(1, "ini", 12.0)
-        self.assertAlmostEqual(v.tempo_trams[0].fi, 12.0, places=6)
-        self.assertEqual(v.tempo_trams[1].tipus, "rubato")
-        self.assertAlmostEqual(v.tempo_trams[1].ini, 12.0, places=6)
-        self.assertAlmostEqual(v.tempo_trams[1].fi, 20.0, places=6)
-        # El clip normal conserva el BPM; el rubato deriva el seu de la
-        # seqüència de compassos (5 bars en 8 s → 150 BPM).
-        self.assertAlmostEqual(v.tempo_trams[0].bpm, 120.0, places=4)
-        self.assertAlmostEqual(v.tempo_trams[1].bpm, 150.0, places=4)
-        self.assertAlmostEqual(v.tempo_trams[2].ini, 20.0, places=6)
-        w.close()
-
-    def test_moure_la_fi_dun_rubato_inicial_mou_l_offset(self):
-        w, v = self._prepara()
-        v.tempo_trams = [
-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4*5"),
-            mapa_tempo.TramMapa(10.0, 30.0, 120.0, "normal", "4/4"),
-        ]
-        v._actualitza_temps()
-        self.assertAlmostEqual(v.offset, 10.0, places=6)
-        v._undo_touch_base()
-        v._on_tempo_mogut(0, "fi", 12.0)
-        self.assertAlmostEqual(v.offset, 12.0, places=6)
-        self.assertAlmostEqual(v.tempo_trams[0].fi, 12.0, places=6)
-        self.assertEqual(v.tempo_trams[0].tipus, "rubato")
-        self.assertAlmostEqual(v.tempo_trams[0].bpm, 100.0, places=4)
-        w.close()
-
     def test_converteix_a_rubato_i_torna(self):
         w, v = self._prepara()
         self.assertTrue(v.converteix_rubato(1))
         rub = v.tempo_trams[1]
         self.assertEqual(rub.tipus, "rubato")
-        self.assertEqual(rub.compassos, "4/4*10")
+        self.assertEqual(rub.compassos, "4/4")
         self.assertAlmostEqual(rub.bpm, 120.0, places=6)
         self.assertTrue(v.converteix_normal(1))
         normal = v.tempo_trams[1]
@@ -4559,22 +4458,17 @@ class TestRubatoAccions(_undo_temps___Base):
         self.assertAlmostEqual(normal.fi, 30.0)
         w.close()
 
-    def test_dos_rubatos_adjacents_es_fusionen(self):
+    def test_converteix_rubato_nomes_canvia_el_flag(self):
         w, v = self._prepara()
-        self.assertTrue(v.crea_rubato_rang(0.0, 20.0))
-        self.assertTrue(v.crea_rubato_rang(20.0, 30.0))
-        self.assertEqual(len(v.tempo_trams), 1)
-        self.assertEqual(v.tempo_trams[0].tipus, "rubato")
-        self.assertEqual(v.tempo_trams[0].compassos, "4/4*15")
+        abans = v.tempo_trams[1]
+        camps = (abans.ini, abans.fi, abans.bpm, abans.compassos,
+                 abans.agrupacio, abans.n)
+        self.assertTrue(v.converteix_rubato(1))
+        rub = v.tempo_trams[1]
+        self.assertEqual(rub.tipus, "rubato")
+        self.assertEqual((rub.ini, rub.fi, rub.bpm, rub.compassos,
+                          rub.agrupacio, rub.n), camps)
         w.close()
-
-    def test_rubato_no_representable_no_muta(self):
-        w, v = self._prepara()
-        abans = list(v.tempo_trams)
-        self.assertFalse(v.crea_rubato_rang(0.0, 0.1))
-        self.assertEqual(v.tempo_trams, abans)
-        w.close()
-
 
 class TestLlistaTempo(_undo_temps___Base):
     """La tercera llista (clips de tempo/compàs): taula + franja Editor."""
@@ -4602,21 +4496,65 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual(t.item(0, 3).text(), "4/4")
         self.assertEqual(t.item(1, 3).text(), "3/4")
 
-    def test_rubato_es_mostra_derivat_i_readonly(self):
+    def test_editor_mostra_total_del_clip(self):
+        _w, v = self._prepara()
+        v._focus_editor("tempo", 1)
+        self.assertEqual(v.ed_gran.text(), "TOTAL: 20.00 s")
+
+    def test_editor_mostra_n_tipus_i_rol(self):
         _w, v = self._prepara()
         v.tempo_trams = [
             mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
-            mapa_tempo.TramMapa(10.0, 30.0, 102.0, "rubato",
-                                "4/4*8+2/4"),
+            mapa_tempo.TramMapa(10.0, 30.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
         ]
         v._actualitza_temps()
-        self.assertEqual(v.llista_tempo.item(1, 3).text(),
-                         "R 4/4 × 8 + 2/4")
         v._focus_editor("tempo", 1)
-        self.assertAlmostEqual(float(v.ed_nom.text()), 102.0, places=6)
-        self.assertEqual(v.ed_fam.text(), "4/4 × 8 + 2/4")
-        for w in (v.ed_nom, v.ed_fam, v.ed_ini, v.ed_fi, v.ed_aplica):
-            self.assertFalse(w.isEnabled())
+        self.assertAlmostEqual(float(v.ed_n.text()), 5.0, places=3)
+        self.assertEqual(v.ed_tipus.currentData(), "normal")
+        self.assertIn("interior", v.ed_rol_lbl.text())
+        self.assertFalse(v.ed_n.isHidden())
+        self.assertFalse(v.ed_tipus.isHidden())
+
+    def test_editor_canvia_n_i_mou_la_fi(self):
+        _w, v = self._prepara()
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(10.0, 30.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+        ]
+        v._actualitza_temps()
+        v._focus_editor("tempo", 1)
+        v.ed_n.setText("6")
+        v._aplica_editor()
+        self.assertAlmostEqual(v.tempo_trams[1].fi, 22.0, places=6)
+        self.assertAlmostEqual(v.tempo_trams[2].ini, 22.0, places=6)
+        self.assertAlmostEqual(v.tempo_trams[2].bpm, 150.0, places=6)
+
+    def test_editor_canvia_tipus_sense_tocar_geometria(self):
+        _w, v = self._prepara()
+        v._focus_editor("tempo", 1)
+        ini, fi = v.tempo_trams[1].ini, v.tempo_trams[1].fi
+        idx = v.ed_tipus.findData("rubato")
+        v.ed_tipus.setCurrentIndex(idx)
+        v._aplica_editor()
+        self.assertEqual(v.tempo_trams[1].tipus, "rubato")
+        self.assertAlmostEqual(v.tempo_trams[1].ini, ini)
+        self.assertAlmostEqual(v.tempo_trams[1].fi, fi)
+
+    def test_editor_rebutja_n_fraccionari_en_interior(self):
+        _w, v = self._prepara()
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(10.0, 30.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
+        ]
+        v._actualitza_temps()
+        v._focus_editor("tempo", 1)
+        abans = tuple(v.tempo_trams[1])
+        v.ed_n.setText("5.5")
+        v._aplica_editor()
+        self.assertEqual(tuple(v.tempo_trams[1]), abans)
 
     def test_clic_selecciona_el_clip_i_hi_porta_el_cursor(self):
         _w, v = self._prepara()
@@ -4740,27 +4678,6 @@ class TestLlistaTempo(_undo_temps___Base):
         v._aplica_editor()
         self.assertEqual(v.tempo_trams, abans)
         self.assertTrue(avisos and "últim" in avisos[-1])
-
-    def test_rubato_es_preserva_en_moure_el_vei_metric(self):
-        """El rubato conserva tipus/seqüència; el veí amb compàs re-tempa."""
-        w, v = self._prepara()
-        v.tempo_trams = [
-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
-            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "rubato", "4/4*5"),
-            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4"),
-        ]
-        v._actualitza_temps()
-        v._undo_touch_base()
-        v._focus_editor("tempo", 2)
-        v.ed_ini.setText("22.000")
-        v._aplica_editor()
-        self.assertAlmostEqual(float(v.tempo_trams[1].fi), 22.0, places=6)
-        self.assertEqual(v.tempo_trams[1].tipus, "rubato")
-        self.assertEqual(v.tempo_trams[1].compassos, "4/4*5")
-        self.assertAlmostEqual(float(v.tempo_trams[1].bpm), 100.0, places=6)
-        # El normal 22–30 conserva el BPM.
-        self.assertAlmostEqual(float(v.tempo_trams[2].bpm), 120.0, places=4)
-        w.close()
 
     def test_transport_no_sobreescriu_el_tram_0(self):
         _w, v = self._prepara()

@@ -153,7 +153,7 @@ L'edició general de la GUI **no bloqueja** un clip perquè no coincidisca amb
 compassos sencers. El model és permissiu:
 
 - **Valors**: BPM **30–350**, numerador **1–12** (inclòs `1/4`), denominador
-  **2, 4 o 8** (`app/limits.py`); un rubato va en segons (`0/0`).
+  **2, 4 o 8** (`app/limits.py`). Un rubato no va en segons ni en `0/0`.
 - **Durada mínima**: cap clip normal pot ser més curt que
   `limits.TEMPS_MIN_CLIP` = un compàs `1/8` a 350 BPM (≈ **86 ms**).
 - **Fronteres interiors lliures**: poden caure on vulga l'usuari; el **snap és
@@ -166,7 +166,6 @@ compassos sencers. El model és permissiu:
 - **Excepcions d'extrems**: el **primer inici** i l'**últim final** poden ser
   lliures (amb un sol clip, tots dos). El **primer clip** pot ser pre-roll i
   queda **exempt** del mínim de durada.
-- Un clip **rubato** va en segons i també queda exempt.
 - Els **compassos sencers són l'objectiu del recalcul** (§13.5), no una
   barrera: si no s'assoleixen, s'avisa. Si el clip incompleix el mínim de
   durada, el gest es rebutja. Quan un clip normal queda amb `N` fraccionari,
@@ -220,34 +219,35 @@ permissiva), el gest es rebutja amb **avís** (mai un canvi silenciós).
 - **Avisos de BPM**: cada recalcul pot adjuntar una desviació de BPM >12 % i
   una sospita d'octava (ratio ≈2 o ≈0,5, marge 8 %). Són avisos, no canvien la
   decisió.
-- **N compassos manual**: al diàleg del clip, `N compassos` i el compàs `x/x`
-  poden ser l'entrada principal; el BPM es calcula (`N · bq · 60 / durada`) i
-  les fronteres **no es mouen**. És el mode A; el mode B (mantindre BPM i moure
-  la frontera del veí) queda pendent.
-- Un canvi **explícit** de BPM o compàs (diàleg o franja Editor) respecta el
-  valor escrit per l'usuari; només s'ajusta si el resultat no és vàlid. Si el
-  canvi de compàs deixa un **N no enter**, es **rebutja** i s'obri un diàleg de
-  reparació: ajustar el BPM a N enter o canviar a la signatura canònica del
-  recalcul. Així no es creen clips fraccionaris.
+- **Edició directa C**: si l'usuari edita `N`, BPM o `x/x` d'un tram
+  **interior**, els tres valors són exactes i es recalcula `fi`
+  (`base + N · bq · 60 / BPM`). La frontera del veí de la dreta passa a eixa
+  `fi`; el veí conserva `N` i `x/x` i **recalcula el BPM** (regla A).
+- **Últim i únic B**: el final de la WAV no es mou. BPM i `x/x` són exactes i
+  `N` es deriva; pot quedar **fraccionari**. És l'única excepció permesa.
+- Si en l'últim/únic s'escriu `N` explícitament, `N` és exacte i es recalcula
+  el BPM amb el final fix.
+- Si el resultat ix de 30–350 BPM, no cap abans del veí o deixa un tram massa
+  curt, l'edició es rebutja amb avís.
 - **«Ajusta BPM al compàs»** continua sent una **acció explícita**: conserva
   fronteres i compàs i recalcula el BPM perquè el clip tinga un nombre enter de
   compassos. No s'aplica automàticament.
-- Canviar BPM o compàs **no mou** les fronteres ni re-tempa els veïns.
+- **Arrossegar una frontera** continua usant el recalcul guiat amb segons com a
+  entrada; no és una edició directa de camps.
 - **Arrossegar**: el punter fixa Δt; s'ajusten les fronteres i el recalcul
   guiat decideix BPM/compàs/N dels dos costats amb la **referència base**.
-- Un tram **rubato** es mou lliurement; el costat amb compàs conserva la
-  referència base i el recalcul l'ajusta si cal.
+- Un tram **rubato** es mou i es re-tempa com qualsevol tram normal; només canvia
+  el flag de notació.
 
-→ `tempo_recalc.recalculca_tram` · `tempo_map.mou_frontera_retempo` ·
-`canvia_bpm_local` · `ajusta_bpm_a_compassos` · `_millora_signatures_clips`.
+→ `mapa_tempo.recalcula_tram_c` · `tempo_recalc.recalculca_tram` ·
+`tempo_map.mou_frontera_retempo` · `ajusta_bpm_a_compassos`.
 
 ### 13.6 Fronteres a mà i marcadors
 La frontera la col·loca el músic; el snap és **opcional** i és el snap normal del
 timeline. No hi ha obligació que les fronteres caiguen en una línia de beat.
 Amb el snap apagat, inici i fi es mouen lliurement dins la WAV; el que no pot
 passar és que un clip quede per davall del **mínim de 86 ms** (§13.4) o que un
-extrem isca de la WAV. El **pre-roll** (només la frontera `0→1`) i el **rubato**
-en queden exempts.
+extrem isca de la WAV. El **pre-roll** (només la frontera `0→1`) en queda exempt.
 
 `Inici (s)` i `Fi (s)` són editables. Com que la frontera és única, moure'n un
 mou **eixa** frontera; l'extrem contrari no es mou i s'aplica el **recalcul
@@ -259,7 +259,7 @@ guiat** del clip i, si cal, del veí:
 | `fi` de l'**últim** clip | **rebutjat + avís** (fi de la WAV) |
 | `ini` de qualsevol altre | mou la frontera `(i-1, i)`; el `fi` no es mou; recalcul guiat |
 | `fi` de qualsevol altre | mou la frontera `(i, i+1)`; l'`ini` no es mou; recalcul guiat |
-| costat rubato | es mou la frontera; el rubato no canvia; el costat amb compàs conserva la referència i el recalcul l'ajusta |
+| costat rubato | es mou com un tram normal; el flag `tipus` no canvia |
 
 Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
 
@@ -291,22 +291,19 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
 `visor._aplica_editor_tempo` · `marcadors`.
 
 ### 13.7 Clips de rubato (`tipus=rubato`)
-Qualsevol clip pot ser rubato. Els seus **segons són invariables** davant canvis
-de BPM o compàs.
+El rubato és **només un flag de notació**: un tram rubato és idèntic a un tram
+normal pel que fa a camps, graella, validació, edició i exportació de dades.
 
-- Al `mapa_tempo.csv`: `tipus=rubato` i `compassos` amb la seqüència derivada
-  (`4/4*3+3/4`). BPM i seqüència són **derivats** del clip mètric anterior (o el
-  següent, o el transport), de només lectura.
-- La graella mètrica és una representació derivada; la graella de temps sempre
-  és visible. Un rubato inicial ocupa compassos negatius (pre-roll).
-- L'exportació s'identifica com a **aproximada**; els CSV conserven
-  `tipus=rubato` i els segons. Mai es converteix en un BPM «real» en silenci.
-- Els rubatos adjacents es fusionen; les vores es mouen com la resta i un sol
-  desfer. Convertir a normal = partir en clips normals per segment de compàs.
-- Paritat #11: s'aplica igual (clip, llista ⑭ i franja Editor).
+- Al `mapa_tempo.csv`: `tipus=rubato` i un **sol compàs** (`4/4`, `6/8`…).
+  No s'admeten `0/0` ni seqüències (`4/4*3+3/4`).
+- BPM, N, compàs, agrupació, inici i fi són els mateixos camps que un tram
+  normal i es poden editar directament.
+- La marca “Rubato” només afecta la partitura/exportació de notació.
+- Convertir a rubato o a normal només canvia `tipus`; no deriva BPM ni parteix
+  el clip.
+- Un projecte amb rubatos antics de seqüència es rebutja amb error clar.
 
-→ `app/rubato.py` · `app/mapa_tempo.py` · `tempo_map.canvia_bpm_local` /
-`mou_frontera_retempo`.
+→ `app/mapa_tempo.py` · `tempo_map` · `visor_tempo` · `partitura`.
 
 ### 13.8 Detecció i marcadors
 La **detecció** conserva els seus criteris musicals i la validació estricta.

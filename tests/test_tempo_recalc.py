@@ -44,6 +44,27 @@ class TestRecalculcaTram(unittest.TestCase):
     def _cas(self, durada, bpm=120.0, num=4, den=4, n_ref=None):
         return tr.recalculca_tram(durada, bpm, num, den, n_ref=n_ref)
 
+    def test_mode_graella_ignora_beats(self):
+        sense = tr.recalculca_tram(3.5, 120.0, 4, 4, mode="graella")
+        amb = tr.recalculca_tram(3.5, 120.0, 4, 4, n_beats=7,
+                                 mode="graella")
+        self.assertEqual(sense, amb)
+
+    def test_mode_beats_exigeix_beats(self):
+        self.assertIsNone(
+            tr.recalculca_tram(3.5, 120.0, 4, 4, mode="beats"))
+        r = tr.recalculca_tram(3.5, 120.0, 4, 4, n_beats=7,
+                               mode="beats")
+        self.assertIsNotNone(r)
+        self.assertTrue(r["beats_usats"])
+
+    def test_bloca_compas_mante_la_signatura(self):
+        r = tr.recalculca_tram(
+            1.0, 120.0, 4, 4, n_ref=1, mode="graella",
+            bloca_compas=True)
+        self.assertEqual((r["num"], r["den"]), (4, 4))
+        self.assertAlmostEqual(r["bpm"], 240.0, places=6)
+
     def test_tram_4_compassos(self):
         r = self._cas(7.8)
         self.assertEqual((r["n"], r["num"], r["den"]), (4, 4, 4))

@@ -5,6 +5,66 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Canviat — franja Editor del clip de tempo (2026-11-10)
+- Afegits a la franja Editor: **N compassos**, selector **Normal/Rubato** i
+  **rol derivat** (`primer`, `últim`, `únic`, `interior`, `preroll`).
+- BPM/Compàs/N usen el motor C/B/A; Inici/Fi continuen movent la frontera.
+- Barrejar canvis de BPM/N amb canvis d’Inici/Fi en un mateix Aplica es rebutja
+  amb un avís per no tenir dos criteris contradictoris.
+- En interiors, N fraccionari es rebutja; l’últim/únic el permet.
+- Rubato es pot canviar des de l’editor: només afecta el flag de notació.
+
+### Canviat — «Analitza beats, downbeats i BPM» (2026-11-10)
+- El menú **Analitza** ja no diu «Analitza BPM»: ara diu **Analitza beats,
+  downbeats i BPM** (`F7`), que és el que realment fa.
+- Afegit el botó visible **Beats/BPM** a la barra de treball, al costat
+  d’Analitza, amb la mateixa acció i desactivat fins que hi ha WAV.
+- Actualitzats el títol del diàleg, missatges d’usuari, `README` i docs de GUI.
+
+### Canviat — motor C/B/A per editar trams de temps (2026-11-10)
+- Edició directa de `N`, BPM o `x/x` d’un tram **interior**: els tres camps són
+  exactes i es recalcula `fi`; el veí conserva `N`/`x/x` i recalcula el BPM.
+- **Últim/únic**: BPM i `x/x` exactes i `N` derivat (pot ser fraccionari). Si
+  s’escriu `N`, N és exacte i es recalcula el BPM amb el final fix.
+- El TAP en viu continua conservant les fronteres; l’edició manual de camps usa
+  el motor C/B/A.
+- `mapa_tempo.recalcula_tram_c()` i helpers de `tempo_recalc` per a les tres
+  magnituds. Actualitzades regles §13.5, tests de GUI i tests unitaris.
+- Suite: **1558 OK** (1 skip).
+
+### Canviat — rubato com a flag i N per tram (2026-11-10)
+- El rubato deixa de ser un model derivat: `tipus=rubato` només marca la
+  notació/exportació. Mateixos camps, mateixa graella i mateixes regles que un
+  tram normal.
+- Fora `0/0` i seqüències (`4/4*3+3/4`); els projectes antics amb estes dades es
+  rebutgen amb error clar.
+- Eliminats `app/rubato.py` i `tests/test_rubato.py`; conversió a rubato/normal
+  només canvia el flag.
+- `mapa_tempo.csv` afegix la columna `n` i `TramMapa` guarda el nombre de
+  compassos. Rols `unic`/`primer`/`ultim`/`interior` i preroll són derivats.
+- La partitura continua marcant “Rubato”, però sense graella aproximada.
+- Actualitzats regles, README, docs d’edició i tests. Suite: **1555 OK** (1
+  skip).
+
+### Canviat — destí visible de BPM/Compàs (2026-11-10)
+- La barra mostra `BPM/Compàs: tram N` o `BPM/Compàs: transport (tram 0)` al
+  costat de `Detecta:` i `TAP:`, perquè no es confonga quin clip s’edita quan
+  no hi ha cap tram de tempo seleccionat.
+- Actualitzat el docstring de `edita_tempo_objectiu`: conserva fronteres, no
+  mou veïns i no força compassos sencers.
+
+### Unificat — motor de recalcul amb modes graella/beats/mixt (2026-11-10)
+- `tempo_recalc.recalculca_tram()` és l’únic motor de decisió `N/BPM/compàs`.
+  `mode="graella"` ignora beats i treballa amb durada + BPM/compàs;
+  `mode="beats"` obliga els beats detectats; `mode="mixt"` és el
+  comportament anterior (beats si n’hi ha, inferència si és a prop, o graella).
+- `bloca_compas=True` impedix canviar la signatura; les accions que només
+  recalculen BPM amb el compàs triat el fan servir.
+- `ajusta_bpm_a_compassos`, `retempo_tram_detectat`,
+  `canvia_compassos_tram` i `_part_normal_retempo` deleguen en el motor únic.
+- Tests dels tres modes i de `bloca_compas`; la resta de tests de recalcul
+  continuen verds.
+
 ### Corregit — el TAP no obri l’avís de mapa inconsistent (2026-11-10)
 - Durant una sessió de TAP el visor no emet `mapaInconsistent`: el BPM en viu
   pot deixar clips fraccionaris a posta i el diàleg modal bloquejava els taps

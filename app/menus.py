@@ -136,7 +136,8 @@ class MenusMixin:
                   lambda: self.executa(nomes_acords=True))
         self._act(m, "Analitza acords al rang A–B…", "",
                   self._analitza_acords_rang)
-        self._act(m, "Analitza BPM…", "F7", self._analitza_bpm)
+        self._act(m, "Analitza beats, downbeats i BPM", "F7",
+                  self._analitza_bpm)
         self._act(m, "Ajusta la graella als beats QM…", "",
                   self._ajusta_graella_beats)
         self._act(m, "Compàs del marcador…", "",
@@ -209,10 +210,12 @@ class MenusMixin:
             kind, idx = vr.seleccio_activa()
             if kind == "tempo" and vr._index_valid("tempo", idx):
                 desti_tap = f"TAP: tram {idx}"
+                desti_temps = f"BPM/Compàs: tram {idx}"
             else:
                 desti_tap = "TAP: tria un tram de tempo"
+                desti_temps = "BPM/Compàs: transport (tram 0)"
             self.lb_desti_accions.setText(
-                f"{desti_detecta} · {desti_tap}")
+                f"{desti_detecta} · {desti_tap} · {desti_temps}")
         except Exception:  # noqa: BLE001
             pass
 

@@ -4,7 +4,7 @@ Extret de `app/visor.py`: alta, moviment, esborrat, snap i BPM derivat dels
 marcadors.
 """
 from . import bpm_unit as bpm_unit_mod
-from . import pipeline, tempo_map, tempo_recalc
+from . import mapa_tempo, pipeline, tempo_map, tempo_recalc
 
 class MarcadorsMixin:
     """Marcadors humans i BPM derivat."""
@@ -110,7 +110,7 @@ class MarcadorsMixin:
             # el guard genèric no ha de bloquejar un tall explícit de l'usuari.
             # `parteix_tram_marcador` treballa amb 5 tuples i perd el tipus;
             # reenganxem els rubatos abans d'aplicar el mapa.
-            trams = self._preserva_rubato(self.tempo_trams or [], trams)
+            trams = mapa_tempo.reenganxa_metadades(self.tempo_trams or [], trams)
             self.aplica_tempo_trams(trams, forcat=True)
             for avis in avisos:
                 self.avis_editor(f"Marcador: {avis}")

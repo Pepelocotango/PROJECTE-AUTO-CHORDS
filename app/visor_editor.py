@@ -6,7 +6,7 @@ d'acords, estructura i tempo/rubato.
 import re
 
 from . import bpm_unit as bpm_unit_mod
-from . import icones, pipeline, rubato as rubato_mod, tempo_map
+from . import mapa_tempo, pipeline, tempo_map
 from .visor_io import nom_acord
 
 class EditorMixin:
@@ -20,6 +20,11 @@ class EditorMixin:
         self.ed_fam_lbl.setText("Família:")
         self.ed_agr_lbl.setVisible(False)
         self.ed_agr.setVisible(False)
+        self.ed_n_lbl.setVisible(False)
+        self.ed_n.setVisible(False)
+        self.ed_tipus_lbl.setVisible(False)
+        self.ed_tipus.setVisible(False)
+        self.ed_rol_lbl.setVisible(False)
         self.ed_ini.setEnabled(True)
         self.ed_cb.setEnabled(True)
         self.ed_fi_lbl.setVisible(False)
@@ -30,34 +35,46 @@ class EditorMixin:
         if k == "tempo" and 0 <= i < len(getattr(self, "tempo_trams", None) or []):
             tr = self.tempo_trams[i]
             ini, fi, bpm = float(tr[0]), float(tr[1]), float(tr[2])
-            rubato = getattr(tr, "tipus", None) == "rubato"
-            self.ed_icona.setPixmap(icones.ico("metronome", 20).pixmap(20, 20))
-            self.ed_gran.setText(
-                f"Tempo · {fi - ini:.2f} s"
-                + (" · rubato (derivat)" if rubato else ""))
+            self.ed_gran.setText(f"TOTAL: {fi - ini:.2f} s")
             self.ed_nom_lbl.setText("BPM:")
             self.ed_nom.setToolTip(
                 "BPM del clip (30–350, en "
-                f"{bpm_unit_mod.etiqueta(self.bpm_unit).lower()})"
-                + (" · derivat del rubato" if rubato else ""))
+                f"{bpm_unit_mod.etiqueta(self.bpm_unit).lower()})")
             self.ed_nom.setText(self.bpm_mostra(bpm))
             self.ed_fam_lbl.setText("Compàs:")
-            if rubato:
-                self.ed_fam.setToolTip(
-                    "Seqüència derivada del rubato (no editable)")
-                self.ed_fam.setText(rubato_mod.presenta_compassos(tr.compassos))
-            else:
-                self.ed_fam.setToolTip("Compàs num/den")
-                self.ed_fam.setText(f"{int(tr[3])}/{int(tr[4])}")
+            self.ed_fam.setToolTip("Compàs num/den")
+            self.ed_fam.setText(f"{int(tr[3])}/{int(tr[4])}")
             self.ed_fam.setVisible(True)
             self.ed_fam_lbl.setVisible(True)
-            if not rubato:
-                self.ed_agr_lbl.setVisible(True)
-                self.ed_agr.setVisible(True)
-                self.ed_agr.setText(getattr(tr, "agrupacio", ""))
-                self.ed_agr.setToolTip(
-                    "Grups de temps del compàs (p. ex. 3+3, 2+2+3). "
-                    "Buit = automàtic.")
+            self.ed_agr_lbl.setVisible(True)
+            self.ed_agr.setVisible(True)
+            self.ed_agr.setText(getattr(tr, "agrupacio", ""))
+            self.ed_agr.setToolTip(
+                "Grups de temps del compàs (p. ex. 3+3, 2+2+3). "
+                "Buit = automàtic.")
+            self.ed_n_lbl.setVisible(True)
+            self.ed_n.setVisible(True)
+            n_val = getattr(tr, "n", None)
+            if n_val is None:
+                try:
+                    n_val = tempo_map._compassos_del_tram(
+                        tr, i, getattr(self, "offset", 0.0))
+                except (TypeError, ValueError):
+                    n_val = 0.0
+            self.ed_n.setText(f"{float(n_val):.3f}")
+            self.ed_n.setToolTip(
+                "Nombre de compassos. En interiors ha de ser enter; "
+                "l'últim/únic pot ser fraccionari.")
+            self.ed_tipus_lbl.setVisible(True)
+            self.ed_tipus.setVisible(True)
+            idx_t = self.ed_tipus.findData(getattr(tr, "tipus", "normal"))
+            self.ed_tipus.setCurrentIndex(idx_t if idx_t >= 0 else 0)
+            rol = tempo_map.rol_tram(self.tempo_trams, i)
+            if tempo_map.es_preroll_tram(
+                    self.tempo_trams, i, getattr(self, "offset", 0.0)):
+                rol = "preroll"
+            self.ed_rol_lbl.setText(f"Rol: {rol}")
+            self.ed_rol_lbl.setVisible(True)
             self.ed_ini.setText(f"{ini:.3f}")
             self.ed_cb.setText(self._secs_a_cb(ini))
             self.ed_fi_lbl.setVisible(True)
@@ -65,17 +82,13 @@ class EditorMixin:
             self.ed_fi.setText(f"{fi:.3f}")
             self.ed_cb.setEnabled(False)
             self.ed_bpm_compas.setVisible(True)
-            self.ed_bpm_compas.setEnabled(not rubato)
-            # Fase 3.1: els rubatos es mostren però no s'editen encara. La
-            # frontera editable arribarà amb les accions de la fase 3.2.
-            for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_ini,
-                      self.ed_fi, self.ed_aplica):
-                w.setEnabled(not rubato)
-            if rubato:
-                self.ed_fi.setEnabled(False)
+            self.ed_bpm_compas.setEnabled(True)
+            for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_n,
+                      self.ed_tipus, self.ed_ini, self.ed_fi,
+                      self.ed_aplica):
+                w.setEnabled(True)
         elif k == "chord" and 0 <= i < len(self.acords):
             t, nom = float(self.acords[i][0]), nom_acord(self.acords[i])
-            self.ed_icona.setPixmap(icones.ico("music", 20).pixmap(20, 20))
             self.ed_gran.setText(nom)
             self.ed_nom.setText(nom)
             self.ed_nom.setToolTip("Nom de l'acord o lletra de la secció")
@@ -84,11 +97,13 @@ class EditorMixin:
             self.ed_cb.setText(self._secs_a_cb(float(t)))
             self.ed_fam.setVisible(False); self.ed_fam_lbl.setVisible(False)
             self.ed_agr_lbl.setVisible(False); self.ed_agr.setVisible(False)
+            self.ed_n_lbl.setVisible(False); self.ed_n.setVisible(False)
+            self.ed_tipus_lbl.setVisible(False); self.ed_tipus.setVisible(False)
+            self.ed_rol_lbl.setVisible(False)
             for w in (self.ed_nom, self.ed_ini, self.ed_cb, self.ed_aplica):
                 w.setEnabled(True)
         elif k == "section" and 0 <= i < len(self.seccions):
             ini, fi, lletra, fam = self.seccions[i]
-            self.ed_icona.setPixmap(icones.ico("piano", 20).pixmap(20, 20))
             self.ed_gran.setText(f"{lletra} ({fam})")
             self.ed_nom.setText(lletra)
             self.ed_fam.setText(fam)
@@ -96,18 +111,22 @@ class EditorMixin:
             self.ed_cb.setText(self._secs_a_cb(float(ini)))
             self.ed_fam.setVisible(True); self.ed_fam_lbl.setVisible(True)
             self.ed_agr_lbl.setVisible(False); self.ed_agr.setVisible(False)
+            self.ed_n_lbl.setVisible(False); self.ed_n.setVisible(False)
+            self.ed_tipus_lbl.setVisible(False); self.ed_tipus.setVisible(False)
+            self.ed_rol_lbl.setVisible(False)
             for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
                       self.ed_aplica):
                 w.setEnabled(True)
         else:
-            self.ed_icona.clear()
             self.ed_gran.setText("Selecciona un acord o una secció")
-            for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_ini,
-                      self.ed_cb, self.ed_aplica):
+            for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_n,
+                      self.ed_tipus, self.ed_ini, self.ed_cb,
+                      self.ed_aplica):
                 w.setEnabled(False)
             self.ed_bpm_compas.setVisible(False)
             self.ed_bpm_compas.setEnabled(False)
             self.ed_nom.clear(); self.ed_fam.clear(); self.ed_agr.clear()
+            self.ed_n.clear()
             self.ed_ini.clear(); self.ed_cb.clear()
 
     def avis_editor(self, text):
@@ -120,20 +139,12 @@ class EditorMixin:
         self.infoMissatge.emit(text)
 
     def _aplica_editor_tempo(self, i):
-        """Aplica BPM/compàs de la franja Editor a un clip de tempo.
-
-        El rubato ja no es crea amb `0/0`: es mostra derivat i de només
-        lectura. Ací només s'editen clips normals (`num/den`).
-        """
+        """Aplica els camps de la franja Editor a un clip de tempo."""
         trams = list(getattr(self, "tempo_trams", None) or [])
         if not (0 <= i < len(trams)):
             self.avis_editor("Aquest clip de tempo ja no existeix.")
             return
-        if getattr(trams[i], "tipus", None) == "rubato":
-            self.avis_editor(
-                "Els valors d'un rubato són derivats; fes servir les accions "
-                "«Converteix a normal» o «Marca el rang A–B».")
-            return
+        tr = trams[i]
         txt = self.ed_nom.text().strip().replace(",", ".")
         try:
             bpm = self.bpm_entrada(txt)
@@ -141,20 +152,16 @@ class EditorMixin:
             self.avis_editor(f"El BPM «{self.ed_nom.text()}» no és un número.")
             return
         txt_c = self.ed_fam.text().strip().lower()
-        if txt_c in ("", "—", "-", "segons"):
-            num = den = 0
-        else:
-            m = re.match(r"^\s*(\d+)\s*[/:]\s*(\d+)\s*$", txt_c)
-            if not m:
-                self.avis_editor(
-                    f"El compàs «{self.ed_fam.text()}» no és vàlid "
-                    "(num/den).")
-                return
-            num, den = int(m.group(1)), int(m.group(2))
-        if num == 0 and den == 0:
+        m = re.match(r"^\s*(\d+)\s*[/:]\s*(\d+)\s*$", txt_c)
+        if not m:
             self.avis_editor(
-                "El rubato no es crea escrivint 0/0; fes servir «Marca com a "
-                "rubato» o «Converteix a rubato» (fase 3.2).")
+                f"El compàs «{self.ed_fam.text()}» no és vàlid (num/den).")
+            return
+        num, den = int(m.group(1)), int(m.group(2))
+        if num <= 0 or den <= 0:
+            self.avis_editor(
+                "El compàs ha de ser num/den positiu; el rubato és només "
+                "un flag i no s'escriu 0/0.")
             return
         try:
             bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
@@ -162,14 +169,39 @@ class EditorMixin:
         except ValueError as e:
             self.avis_editor(str(e))
             return
-        # ---- Inici / Fi (s): moure la FRONTERA (§13.6) --------------------
-        ini, fi = float(trams[i][0]), float(trams[i][1])
-        bpm0, num0, den0 = (float(trams[i][2]), int(trams[i][3]),
-                            int(trams[i][4]))
-        agr0 = getattr(trams[i], "agrupacio", "")
+        try:
+            n_val = float(self.ed_n.text().strip().replace(",", "."))
+        except (ValueError, TypeError):
+            self.avis_editor(f"El N «{self.ed_n.text()}» no és un número.")
+            return
+        if n_val <= 0:
+            self.avis_editor("N ha de ser positiu.")
+            return
+        n_actual = getattr(tr, "n", None)
+        if n_actual is None:
+            try:
+                n_actual = tempo_map._compassos_del_tram(
+                    tr, i, getattr(self, "offset", 0.0))
+            except (TypeError, ValueError):
+                n_actual = 0.0
+        canvi_n = abs(n_val - float(n_actual)) > 1e-3
+        if (canvi_n and i != len(trams) - 1
+                and abs(n_val - round(n_val)) > 1e-3):
+            self.avis_editor(
+                "Només l'últim o el tram únic poden tindre N fraccionari.")
+            return
+        tipus = self.ed_tipus.currentData() or "normal"
+        if tipus not in ("normal", "rubato"):
+            tipus = "normal"
+        canvi_tipus = tipus != getattr(tr, "tipus", "normal")
+        bpm0, num0, den0 = (float(tr[2]), int(tr[3]), int(tr[4]))
+        agr0 = getattr(tr, "agrupacio", "")
         canvi_bpm = (abs(bpm - bpm0) > 5e-4
                      or (num, den) != (num0, den0))
         canvi_agr = agr != agr0
+
+        # ---- Inici / Fi (s): moure la FRONTERA (§13.6) --------------------
+        ini, fi = float(tr[0]), float(tr[1])
         ini_nou, fi_nou = ini, fi
         for camp, actual in ((self.ed_ini, ini), (self.ed_fi, fi)):
             txt_t = camp.text().strip().replace(",", ".")
@@ -186,8 +218,11 @@ class EditorMixin:
                 fi_nou = val
         mou_ini = abs(ini_nou - ini) > 5e-3
         mou_fi = abs(fi_nou - fi) > 5e-3
-        # El principi de la WAV i la seua fi no es poden moure: es rebutja i
-        # s'avisa (no s'ha d'aplicar res més del formulari).
+        if (mou_ini or mou_fi) and (canvi_bpm or canvi_n):
+            self.avis_editor(
+                "No barreges fronteres amb BPM/N en un mateix Aplica: "
+                "canvia els camps o mou les fronteres, no les dues coses.")
+            return
         if mou_ini and i == 0:
             self.avis_editor("L'inici del primer clip és l'inici de la WAV: "
                              "no es pot moure.")
@@ -196,30 +231,44 @@ class EditorMixin:
             self.avis_editor("La fi de l'últim clip és la fi de la WAV: "
                              "no es pot moure.")
             return
+
         d = self._durada_wav()
         off = float(getattr(self, "offset", 0.0) or 0.0)
         self._undo_marca()
-        mapa = trams
-        if mou_ini:
-            mapa = self._mou_frontera_ui(mapa, i, ini_nou, d, off)
-        if mapa is None:
+        try:
+            mapa = trams
+            if mou_ini:
+                mapa = self._mou_frontera_ui(mapa, i, ini_nou, d, off)
+            if mapa is None:
+                return
+            if mou_fi:
+                mapa = self._mou_frontera_ui(mapa, i + 1, fi_nou, d, off)
+            if mapa is None:
+                return
+            if mapa is not trams:
+                mapa = mapa_tempo.reenganxa_metadades(trams, mapa)
+            if canvi_bpm or canvi_n:
+                try:
+                    mapa = mapa_tempo.recalcula_tram_c(
+                        mapa, i, d, offset=off, n=n_val if canvi_n else None,
+                        bpm=bpm, num=num, den=den,
+                        camp="n" if canvi_n else "bpm")
+                except ValueError as e:
+                    self.avis_editor(f"Tempo: {e}")
+                    return
+            if canvi_agr or canvi_tipus:
+                mapa = list(mapa)
+                tr2 = mapa[i]
+                mapa[i] = mapa_tempo.TramMapa(
+                    tr2.ini, tr2.fi, tr2.bpm,
+                    tipus if canvi_tipus else tr2.tipus,
+                    tr2.compassos,
+                    agr if canvi_agr else tr2.agrupacio,
+                    getattr(tr2, "n", None))
+            if mapa is not trams or canvi_agr or canvi_tipus:
+                self.aplica_tempo_trams(mapa)
+        finally:
             self._undo_commit()
-            return
-        if mou_fi:
-            mapa = self._mou_frontera_ui(mapa, i + 1, fi_nou, d, off)
-        if mapa is None:
-            self._undo_commit()
-            return
-        if mapa is not trams:
-            mapa = self._preserva_rubato(trams, mapa)
-            self.aplica_tempo_trams(mapa)
-        # Després de moure fronteres, si l'usuari HA CANVIAT el BPM/compàs al
-        # formulari, manen (re-tempo local sobre el tram ja re-situat). Si no
-        # els ha tocat, el BPM que hi ha és el que ha derivat la frontera: no
-        # se li ha de tornar a imposar el valor vell (desfaria el moviment).
-        if canvi_bpm or canvi_agr:
-            self.edita_tempo_objectiu(i, bpm, num, den, agrupacio=agr)
-        self._undo_commit()
         self._actualitza_editor()
 
     def _aplica_editor(self):

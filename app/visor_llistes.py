@@ -6,7 +6,6 @@ preservació de la fila seleccionada.
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QAbstractItemView, QTableWidget, QTableWidgetItem
 
-from . import rubato as rubato_mod
 from .visor_io import nom_acord
 
 class LlistesMixin:
@@ -102,7 +101,7 @@ class LlistesMixin:
                 ini, fi, bpm = float(tr[0]), float(tr[1]), float(tr[2])
                 rubato = getattr(tr, "tipus", None) == "rubato"
                 if rubato:
-                    compas = "R " + rubato_mod.presenta_compassos(tr.compassos)
+                    compas = "R " + str(tr.compassos)
                 else:
                     compas = f"{int(tr[3])}/{int(tr[4])}"
                 vals = (f"{ini:.3f}", f"{fi:.3f}",

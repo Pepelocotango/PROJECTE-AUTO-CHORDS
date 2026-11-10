@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 804 1032.5" width="804" height="1032.5" font-family="ui-monospace,Consolas,monospace">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 917 1018.0" width="917" height="1018.0" font-family="ui-monospace,Consolas,monospace">
   <title>ESQUEMA VISUAL DE LA INTERFÍCIE — PROJECTE AUTO CHORDS</title>
-  <rect width="804" height="1032.5" fill="#15181d"/>
+  <rect width="917" height="1018.0" fill="#15181d"/>
   <text x="18" y="26" fill="#e8edf5" font-size="15" font-weight="700" font-family="system-ui,sans-serif">ESQUEMA VISUAL DE LA INTERFÍCIE — PROJECTE AUTO CHORDS</text>
   <text x="18" y="43" fill="#9aa6b8" font-size="11" font-family="system-ui,sans-serif">Font única: docs/ESQUEMA_UI.md · generat (no editar a mà)</text>
   <text x="18" y="54" fill="#7db1f5" font-size="12" font-weight="700" font-family="system-ui,sans-serif">0. Finestra principal (Finestra, app/main.py)</text>
-  <rect x="12" y="66" width="780" height="318.5" rx="7" fill="#0f1218" stroke="#3a4150"/>
+  <rect x="12" y="66" width="893" height="318.5" rx="7" fill="#0f1218" stroke="#3a4150"/>
   <text x="18" y="84.0" fill="#cdd6e4" font-size="12" xml:space="preserve">┌────────────────────────────────────────────────────────────────────────────┐</text>
   <text x="18" y="98.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú</text>
   <text x="18" y="113.0" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────────┤</text>
@@ -28,7 +28,7 @@
   <text x="18" y="359.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│ 223.4 s · 2 canals · 44100 Hz                              [▓▓▓▓░░] progrés  │  ← BARRA D&#x27;ESTAT</text>
   <text x="18" y="374.0" fill="#cdd6e4" font-size="12" xml:space="preserve">└────────────────────────────────────────────────────────────────────────────┘</text>
   <text x="18" y="410.5" fill="#7db1f5" font-size="12" font-weight="700" font-family="system-ui,sans-serif">1. Visor (Visor, app/visor.py) — widget central</text>
-  <rect x="12" y="422.5" width="780" height="594.0" rx="7" fill="#0f1218" stroke="#3a4150"/>
+  <rect x="12" y="422.5" width="893" height="579.5" rx="7" fill="#0f1218" stroke="#3a4150"/>
   <text x="18" y="440.5" fill="#cdd6e4" font-size="12" xml:space="preserve">┌────────────────────────────────────────────────────────────────────────┐</text>
   <text x="18" y="455.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ①  REGLE DE TEMPS        (RulerLayer)      y 0–26    · 26 px          │</text>
   <text x="18" y="469.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│      etiquetes compàs.beat (o gt; amb offset, abans del compàs 1 són   │</text>
@@ -56,18 +56,17 @@
   <text x="18" y="788.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑨  GUIA DE SNAP          línia que apareix en arrossegar               │</text>
   <text x="18" y="803.0" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────┤</text>
   <text x="18" y="817.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑫  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │</text>
-  <text x="18" y="832.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│      acord/secció: [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│</text>
-  <text x="18" y="846.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│      tempo: [🥁] [BPM▢] [Compàs▢] [Agrupació▢] [Inici (s)▢] [Fi (s)▢] [≈ ▢] [Aplica] [Ajusta BPM al compàs]│</text>
-  <text x="18" y="861.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│      (RUBATO = clip derivat; crear-lo amb «Marca/Converteix a rubato»)                      │</text>
-  <text x="18" y="875.5" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────┤</text>
-  <text x="18" y="890.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑩ LLISTA ACORDS    │ ⑪ LLISTA SECCIONS  │ ⑭ LLISTA TEMPO             │</text>
-  <text x="18" y="904.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  «1.1 N», «8.1 E7»… │ «A(N) 1.1–10.1»…   │ Inici·Fi·BPM·Compàs        │</text>
-  <text x="18" y="919.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│  clic=salta (i ressalta la fila) · doble=edita (Editor)                │</text>
-  <text x="18" y="933.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  dret=menú contextual (el mateix del carril)                          │</text>
-  <text x="18" y="948.0" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────┤</text>
-  <text x="18" y="962.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑬  LLISCADOR ──────●────────  │ 9.4 / 95.1 │ [🔇] │ [volum] │ stats    │</text>
-  <text x="18" y="977.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│      (posició + estatus del transport; el transport principal és a la  │</text>
-  <text x="18" y="991.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│       barra de la finestra)                                            │</text>
-  <text x="18" y="1006.0" fill="#cdd6e4" font-size="12" xml:space="preserve">└────────────────────────────────────────────────────────────────────────┘</text>
-  <text x="18" y="1020.5" fill="#9aa6b8" font-size="10.5" font-family="system-ui,sans-serif">Esquema regenerable (no editar a mà) — eines/genera_esquema_ui.py</text>
+  <text x="18" y="832.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│      acord/secció: [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│</text>
+  <text x="18" y="846.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│      tempo: [BPM▢] [Compàs▢] [Agrupació▢] [N▢] [Tipus▾] [Rol] [Inici (s)▢] [Fi (s)▢] [≈ ▢] [Aplica] [Ajusta BPM al compàs]│</text>
+  <text x="18" y="861.0" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────┤</text>
+  <text x="18" y="875.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑩ LLISTA ACORDS    │ ⑪ LLISTA SECCIONS  │ ⑭ LLISTA TEMPO             │</text>
+  <text x="18" y="890.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│  «1.1 N», «8.1 E7»… │ «A(N) 1.1–10.1»…   │ Inici·Fi·BPM·Compàs        │</text>
+  <text x="18" y="904.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│  clic=salta (i ressalta la fila) · doble=edita (Editor)                │</text>
+  <text x="18" y="919.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│  dret=menú contextual (el mateix del carril)                          │</text>
+  <text x="18" y="933.5" fill="#cdd6e4" font-size="12" xml:space="preserve">├────────────────────────────────────────────────────────────────────────┤</text>
+  <text x="18" y="948.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│  ⑬  LLISCADOR ──────●────────  │ 9.4 / 95.1 │ [🔇] │ [volum] │ stats    │</text>
+  <text x="18" y="962.5" fill="#cdd6e4" font-size="12" xml:space="preserve">│      (posició + estatus del transport; el transport principal és a la  │</text>
+  <text x="18" y="977.0" fill="#cdd6e4" font-size="12" xml:space="preserve">│       barra de la finestra)                                            │</text>
+  <text x="18" y="991.5" fill="#cdd6e4" font-size="12" xml:space="preserve">└────────────────────────────────────────────────────────────────────────┘</text>
+  <text x="18" y="1006.0" fill="#9aa6b8" font-size="10.5" font-family="system-ui,sans-serif">Esquema regenerable (no editar a mà) — eines/genera_esquema_ui.py</text>
 </svg>

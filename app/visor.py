@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import (
     QAbstractItemView, QApplication, QFileDialog, QHBoxLayout,
     QInputDialog, QLabel, QListWidget, QMainWindow, QMenu, QMessageBox,
     QPushButton, QShortcut, QSlider, QSplitter, QTableWidget,
-    QTextEdit, QVBoxLayout, QWidget,
+    QTextEdit, QVBoxLayout, QWidget, QComboBox,
     QLineEdit, QHeaderView,
 )
 
@@ -274,11 +274,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         _eh = QHBoxLayout(self.editor)
         _eh.setContentsMargins(8, 4, 8, 4)
         _eh.setSpacing(8)
-        self.ed_icona = QLabel("—")
-        self.ed_icona.setObjectName("ed_icona")
         self.ed_gran = QLabel("Selecciona un acord o una secció")
         self.ed_gran.setObjectName("ed_gran")
-        _eh.addWidget(self.ed_icona)
         _eh.addWidget(self.ed_gran)
         _eh.addSpacing(12)
         self.ed_nom_lbl = QLabel("Nom:")
@@ -303,6 +300,32 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         _eh.addWidget(self.ed_agr)
         self.ed_agr_lbl.setVisible(False)
         self.ed_agr.setVisible(False)
+        self.ed_n_lbl = QLabel("N:")
+        self.ed_n = QLineEdit()
+        self.ed_n.setMaximumWidth(54)
+        self.ed_n.setToolTip(
+            "Nombre de compassos. En interiors ha de ser enter; l'últim/únic "
+            "pot ser fraccionari.")
+        _eh.addWidget(self.ed_n_lbl)
+        _eh.addWidget(self.ed_n)
+        self.ed_n_lbl.setVisible(False)
+        self.ed_n.setVisible(False)
+        self.ed_tipus_lbl = QLabel("Tipus:")
+        self.ed_tipus = QComboBox()
+        self.ed_tipus.addItem("Normal", "normal")
+        self.ed_tipus.addItem("Rubato", "rubato")
+        self.ed_tipus.setMaximumWidth(84)
+        self.ed_tipus.setToolTip(
+            "Rubato només afecta la notació/exportació; les regles del tram "
+            "són les mateixes que les d'un normal.")
+        _eh.addWidget(self.ed_tipus_lbl)
+        _eh.addWidget(self.ed_tipus)
+        self.ed_tipus_lbl.setVisible(False)
+        self.ed_tipus.setVisible(False)
+        self.ed_rol_lbl = QLabel("")
+        self.ed_rol_lbl.setObjectName("desti_accions")
+        _eh.addWidget(self.ed_rol_lbl)
+        self.ed_rol_lbl.setVisible(False)
         _eh.addWidget(QLabel("Inici (s):"))
         self.ed_ini = QLineEdit()
         self.ed_ini.setMaximumWidth(70)
@@ -340,8 +363,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ed_bpm_compas.setVisible(False)
         _eh.addWidget(self.ed_bpm_compas)
         _eh.addStretch(1)
-        for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_ini,
-                  self.ed_cb, self.ed_fi):
+        for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_n,
+                  self.ed_ini, self.ed_cb, self.ed_fi):
             w.returnPressed.connect(self._aplica_editor)
         capa.addWidget(self.editor)
         self._ed_kind = None
@@ -2270,7 +2293,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             return None
         if not objectius:
             self.avis_editor("Ajusta graella: no hi ha beats de QM. "
-                             "Executa «Analitza BPM» primer.")
+                             "Executa «Analitza beats, downbeats i BPM» primer.")
             return None
         snap = M.snap_a_objectius(
             list(self.marcadors), objectius, tolerancia=float(tolerancia))
@@ -2423,7 +2446,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             else:
                 self.log(f"{msg}: fronteres imantades a la línia de compàs")
         if preserva_rubato:
-            fi = self._preserva_rubato(self.tempo_trams or [], fi)
+            fi = mapa_tempo.reenganxa_metadades(self.tempo_trams or [], fi)
         # Estes operacions (elimina/fusiona) poden canviar el nombre de trams
         # encara que el mapa tinga rubatos; la preservació de dalt manté el
         # tipus i el guard genèric no ha de bloquejar el gest de l'usuari.
@@ -3512,9 +3535,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if not (0 <= idx < len(trams)):
             self.avis_editor("Ajusta BPM al compàs: selecciona un clip de tempo.")
             return False
-        if getattr(trams[idx], "tipus", None) == "rubato":
-            self.avis_editor("Un rubato no té compassos per a ajustar.")
-            return False
         try:
             # Acció explícita de compassos sencers: valida amb la graella
             # BPM/compàs, no amb la de QM (el que es vol és un compàs mètric).
@@ -3524,7 +3544,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         except ValueError as e:
             self.avis_editor(f"Ajusta BPM al compàs: {e}")
             return False
-        nous = self._preserva_rubato(trams, nous5)
+        nous = mapa_tempo.reenganxa_metadades(trams, nous5)
         self._undo_marca()
         try:
             if not self.aplica_tempo_trams(nous):

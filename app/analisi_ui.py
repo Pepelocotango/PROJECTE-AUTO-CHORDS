@@ -303,10 +303,10 @@ class AnalisiMixin:
             self.registra(f"beats: no s'han pogut restaurar ({e})")
 
     def _analitza_bpm(self):
-        """Acció separada «Analitza BPM»: motor, sensibilitat i línies."""
+        """Acció separada «Analitza beats, downbeats i BPM»: motor, sensibilitat i línies."""
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
-            self.avisa("Analitza BPM", "Primer tria una WAV.")
+            self.avisa("Analitza beats, downbeats i BPM", "Primer tria una WAV.")
             return
         dlg = dialegs.DialegAnalitzaBPM(self, opcions=self.opcions)
         if dlg.exec_() != QDialog.Accepted:
@@ -335,8 +335,8 @@ class AnalisiMixin:
                 nomes_beats=nomes_beats,
             )
         except Exception as e:  # noqa: BLE001
-            self.registra(f"Analitza BPM ERROR: {e}")
-            self.avisa_crit("Analitza BPM", f"No s'ha pogut detectar: {e}")
+            self.registra(f"Analitza beats/BPM ERROR: {e}")
+            self.avisa_crit("Analitza beats, downbeats i BPM", f"No s'ha pogut detectar: {e}")
             return
         finally:
             QApplication.restoreOverrideCursor()
@@ -370,7 +370,7 @@ class AnalisiMixin:
             except OSError as e:
                 self.registra(f"beats: no s'han pogut desar al projecte ({e})")
         if not beats:
-            self.avisa_info("Analitza BPM",
+            self.avisa_info("Analitza beats, downbeats i BPM",
                             "No s'ha detectat cap beat amb estes opcions.")
             return
         bpm_txt = f"{bpm:.2f}" if bpm is not None else "—"
@@ -402,7 +402,7 @@ class AnalisiMixin:
         if not isinstance(info, dict) or not info.get("beats"):
             self.avisa_info(
                 "Ajusta graella",
-                "No hi ha beats detectats. Executa «Analitza BPM» primer.")
+                "No hi ha beats detectats. Executa «Analitza beats, downbeats i BPM» primer.")
             return
         beats = list(info.get("beats") or ())
         downbeats = list(info.get("downbeats") or ())

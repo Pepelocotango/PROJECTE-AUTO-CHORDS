@@ -54,10 +54,12 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.b_marker` · `self.b_marker_compas` | **＋ Temps+Secció** (icona `compass`, tecla `+`): parteix **tempo i estructura** al cursor, sense crear cap marcador. **＋ Marcador** (icona `map-pin`, tecla `M`): crea només un marcador independent; no talla res. Sense WAV, desactivats | `QPushButton` |
 | — | `self.b_guia` | **Guia ràpida**: obri `DialegGuiaRapida` (informació, no toca el model). Els talls es fan amb `＋` / `Enter` / `0`; `M` afig marcadors independents. Sense WAV, desactivat | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
+| — | `self.b_analitza_beats` | **Beats/BPM** (icona `target`): obri **Analitza beats, downbeats i BPM** (F7) | `QPushButton` |
 | — | `self.b_desfer` · `self.b_refer` | **Desfer** · **Refer** (icones `undo-2` / `redo-2`) | `QPushButton` |
 | — | (al transport; `self.b_zs` al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / hh:mm:ss** (abans deia «Lliure») | `QPushButton` (checkable) |
 | — | `self.bpm` · `self.bpb` · `self.ref_bpm` · `self.ref_bpb` · `self.cb_beat` · `self.offset` · `self.offset_cb` | **BPM** (sempre negres/minut), **Compàs**, **Ref. recalc** (BPM + compàs), **Beat/TAP** (negra · negra amb punt · corxera · blanca), **Offset (s)**, **≈ C.B** | `QLineEdit` · `QComboBox` |
+| — | `self.lb_desti_accions` | **destí visible**: `Detecta: … · TAP: … · BPM/Compàs: …`; indica si s’edita un tram o el transport (tram 0) | `QLabel` |
 | — | `self.b_detecta` | **Detecta** (icona `target`) → obre el diàleg de BPM | `QPushButton` |
 | — | `self.b_bpm_x2` · `self.b_bpm_div2` | **×2 / ÷2** del BPM | `QPushButton` |
 | — | `self.b_compas_auto` | **Detecta el compàs 1** (icona `compass`) | `QPushButton` |
@@ -94,7 +96,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · **Parteix el tempo al cursor** (Enter) · **Parteix l'estructura al cursor** (0) · **Parteix tempo i estructura al cursor** (+) · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… · Retard global de reproducció… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza BPM… (F7)** · **Ajusta la graella als beats QM…** · **Compàs del marcador…** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · **Quantitza BPM** (Sense decimals · 1 decimal · 2 decimals) · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (M) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
+| **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza beats, downbeats i BPM (F7)** · **Ajusta la graella als beats QM…** · **Compàs del marcador…** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · **Quantitza BPM** (Sense decimals · 1 decimal · 2 decimals) · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (M) · Esborra l'últim marcador · BPM a partir dels marcadors… · Ajusta BPMs a partir dels marcadors per trams · Ajusta un BPM (mínims quadrats) a partir dels marcadors · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Exporta àudio… (Fase 6)
@@ -216,9 +218,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 │  ⑨  GUIA DE SNAP          línia que apareix en arrossegar               │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑫  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
-│      acord/secció: [🎵/🎼] [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│
-│      tempo: [🥁] [BPM▢] [Compàs▢] [Agrupació▢] [Inici (s)▢] [Fi (s)▢] [≈ ▢] [Aplica] [Ajusta BPM al compàs]│
-│      (RUBATO = clip derivat; crear-lo amb «Marca/Converteix a rubato»)                      │
+│      acord/secció: [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│
+│      tempo: [BPM▢] [Compàs▢] [Agrupació▢] [N▢] [Tipus▾] [Rol] [Inici (s)▢] [Fi (s)▢] [≈ ▢] [Aplica] [Ajusta BPM al compàs]│
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑩ LLISTA ACORDS    │ ⑪ LLISTA SECCIONS  │ ⑭ LLISTA TEMPO             │
 │  «1.1 N», «8.1 E7»… │ «A(N) 1.1–10.1»…   │ Inici·Fi·BPM·Compàs        │
@@ -251,7 +252,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `TimelineView` | tot el bloc ①–⑨ | `QGraphicsView` |
 | ⑩ | `self.llista_ac` | **llista d'acords** | `QListWidget` |
 | ⑪ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
-| ⑫ | `ed_icona` · `ed_gran` · `ed_nom` · `ed_fam` · `ed_agr` · `ed_ini` · `ed_cb` · **`ed_fi`** · `ed_aplica` | **franja Editor** (acord/secció i, amb etiquetes pròpies, **tempo: BPM + compàs + agrupació**; `ed_fi` —«Fi (s)»— només en mode tempo: mou la frontera, §13.6) | `QLabel`/`QLineEdit`/`QPushButton` |
+| ⑫ | `ed_gran` · `ed_nom` · `ed_fam` · `ed_agr` · `ed_n` · `ed_tipus` · `ed_rol_lbl` · `ed_ini` · `ed_cb` · **`ed_fi`** · `ed_aplica` | **franja Editor** (acord/secció i, amb etiquetes pròpies, **tempo: BPM + compàs + agrupació + N + tipus normal/rubato + rol derivat**; `ed_fi` —«Fi (s)»— només en mode tempo: mou la frontera, §13.6) | `QLabel`/`QLineEdit`/`QComboBox`/`QPushButton` |
 | ⑭ | `self.llista_tempo` | **llista de clips de tempo/compàs** (`Inici (s)` · `Fi (s)` · `BPM` · `Compàs`; «segons» als rubato) | `QTableWidget` |
 | ⑮ | `self.llista_marcadors` | **llista de marcadors independents** (`Temps (s)` · `Tipus`): doble-clic edita, menú contextual elimina; no està lligada al tempo ni a l'estructura. Les quatre llistes ⑩⑪⑭⑮ comparteixen **una sola fila** | `QTableWidget` |
 | ⑬ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
@@ -500,7 +501,7 @@ d'Audacity/Mixxx), **sense AVX** (`eines/compila_vamp_plugins.sh`).
 | **Estructura** | **`qm`** (qm-segmenter) — únic motor | — |
 
 El **`🧭`** (i Analitza ▸ «Detecta el compàs 1 automàticament») usa el
-**primer downbeat del resultat d’Analitza BPM** si ja existeix; si no, cau a
+**primer downbeat del resultat d’Analitza beats, downbeats i BPM** si ja existeix; si no, cau a
 `qm-onsetdetector` + `qm-barbeattracker` (al tema de 101 dona 9,49 s). Així
 l’offset i les línies de downbeats ixen de la mateixa detecció.
 

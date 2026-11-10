@@ -84,25 +84,27 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   la taula de mòduls i `make docs-check`.
 - **Suite**: **1.490 tests OK** (1 skip), `pyflakes` net i smoke OK.
 
-**Fet recentment (2026-11-09/10):** model de temps alineat amb els DAW.
-El **BPM és sempre en negres/minut** (fora el selector d’unitat del BPM); el
-**TAP** usa **Beat/TAP** com a valor de nota, independent del BPM. L’**agrupació
-de temps és per tram** (`TramMapa.agrupacio`, p. ex. `7/8 = 3+2+2`) i es desa a
-la columna opcional `agrupacio` de `mapa_tempo.csv`; els fitxers de 5 columnes
-carreguen amb agrupació automàtica. El **metrònom no té unitat de clic global**:
-el beat és el denominador i els accents de `Grup` ixen de l’agrupació de cada
-tram. La franja Editor del clip de tempo permet editar l’agrupació; les
-operacions de re-tempo, talls i rubatos la preserven per solapament temporal.
-També s’ha unificat l’**extracció QM i els downbeats**:
-`pipeline_vamp.qm_temps()` és l’única font de temps QM, el mapa de tempo
-reutilitza els beats d’Analitza BPM i el compàs 1 reutilitza el primer downbeat
-del mateix resultat. El **TAP en viu no obri l’avís de mapa inconsistent** (els
-compassos fraccionaris intermedis són normals); la resta d’edicions el mantenen.
-Es conserven la simplificació F0–F5 del
-[`PLA_MAPA_TEMPS`](docs/recerca/PLA_MAPA_TEMPS.md) (tram 0 = clip, model
-permissiu de 86 ms, recalcul guiat, marcadors `N` fix, mode A de N compassos) i
-l’encaix de l’anàlisi amb «Quantitza». Suite **1597 OK** (1 skip), `pyflakes`,
-`docs-check` nets.
+**Fet recentment (2026-11-09/10):** model de temps alineat amb els DAW i
+simplificació del rubato.
+- **BPM sempre en negres/minut**; fora el selector d’unitat del BPM.
+- **Rubato = només flag de notació**: mateixos camps i regles que un tram
+  normal; fora `0/0` i seqüències. `app/rubato.py` i els seus tests eliminats.
+- **`N` per tram** a `mapa_tempo.csv`; rols derivats (`unic`, `primer`,
+  `ultim`, `interior`, `preroll`).
+- **Motor C/B/A**: en interiors, `N`/BPM/`x/x` exactes → `fi` derivada i veí
+  amb BPM recalculat; en l’últim/únic, BPM/`x/x` exactes i `N` derivat (pot ser
+  fraccionari). El TAP en viu conserva fronteres.
+- **Franja Editor**: BPM, compàs, agrupació, `N`, tipus normal/rubato, rol,
+  inici/fi, «Ajusta BPM al compàs». Eliminada la icona per guanyar espai.
+- **`Analitza beats, downbeats i BPM`** (`F7`) amb botó **Beats/BPM** a la
+  barra de treball.
+- **QM/downbeats unificats**: `pipeline_vamp.qm_temps()` és l’única extracció
+  QM; el mapa de tempo reutilitza els beats i el compàs 1 el primer downbeat.
+- El **TAP en viu no obri l’avís de mapa inconsistent**.
+- Es conserven la simplificació F0–F5 del
+  [`PLA_MAPA_TEMPS`](docs/recerca/PLA_MAPA_TEMPS.md), el model permissiu de
+  86 ms, els marcadors `N` fix i l’encaix amb «Quantitza».
+- Suite **1563 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
@@ -114,8 +116,9 @@ l’encaix de l’anàlisi amb «Quantitza». Suite **1597 OK** (1 skip), `pyfla
   Detall i criteris d'acceptació a «Exportació del mapa de tempo a DAWs».
 - **`ARBRE_DIRECTORIS.md`**: encara snapshot manual; pendent generador + test.
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
-- **Mode B del camp N compassos**: mantindre el BPM i moure la frontera del
-  veí, recalculant-ne el BPM perquè els seus compassos continuen sencers.
+- **Pendents del motor C/B/A**: connectar `+1`/`−1`/`×2`/`÷2` i «Ajusta BPM
+  al compàs» al mateix motor; decidir si «Quantitza BPM» continua sent una
+  operació separada.
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
 
 ### Futures iteracions — motor d'àudio natiu (2026-11-08)

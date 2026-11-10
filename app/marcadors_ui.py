@@ -49,7 +49,7 @@ class MarcadorsMixin:
             if t is None:
                 msg = ("No s'ha afegit el marcador: el Snap està en "
                        "«Beats QM» però no hi ha beats QM. Executa "
-                       "«Analitza BPM» o canvia la graella.")
+                       "«Analitza beats, downbeats i BPM» o canvia la graella.")
                 self.registra(msg)
                 self._missatge_info(msg)
                 return False

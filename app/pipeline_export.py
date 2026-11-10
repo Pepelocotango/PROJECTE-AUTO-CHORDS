@@ -208,20 +208,18 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
 
             def _escriu_avis(f):
                 f.write(
-                    "RUBATO — GRAELLA APROXIMADA\n"
-                    "================================\n\n"
-                    "Estos trams no són una detecció de tempo: el BPM i els\n"
-                    "compassos són una representació derivada per a DAW i\n"
-                    "partitura. Els segons del model són la veritat.\n\n"
-                    "inici_s\tfi_s\tbpm_derivat\tcompassos\n")
+                    "RUBATO — TRAMS MARCADES PER A NOTACIÓ\n"
+                    "=====================================\n\n"
+                    "El rubato només canvia la notació/exportació; el tempo\n"
+                    "i els compassos són els mateixos que els d'un tram normal.\n\n"
+                    "inici_s\tfi_s\tbpm\tcompassos\n")
                 for tr in rubatos:
                     f.write(f"{float(tr.ini):.6f}\t{float(tr.fi):.6f}\t"
                             f"{float(tr.bpm):.6f}\t{tr.compassos}\n")
             escriu_atomic(ruta_avis, _escriu_avis)
             result["mapa_tempo_avis"] = ruta_avis
             if log:
-                log(f"mapa de tempo/compàs: {len(rubatos)} rubato(s) marcats "
-                    "com a graella aproximada")
+                log(f"mapa de tempo/compàs: {len(rubatos)} rubato(s) marcats")
         if log:
             log(f"mapa de tempo/compàs exportat: {len(trams)} tram(s) a "
                 f"{dest_mapa}")
@@ -243,7 +241,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
 
 # --- Mapa de TEMPO i COMPÀS (model unificat `mapa_tempo.csv`) --------
 # Un sol fitxer, amb una fila per tram:
-#   inici,fi,bpm,tipus,compassos,agrupacio
+#   inici,fi,bpm,tipus,compassos,agrupacio,n
 # `tipus` = normal | rubato; `compassos` = `4/4` o `4/4*3+3/4`.
 
 

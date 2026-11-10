@@ -43,6 +43,7 @@ class VisorUIMixin:
             self.logger.warning("No s'ha pogut carregar la WAV: %s", wav)
             self.visor_ref = None
             self.b_exec.setEnabled(False)
+            self.b_analitza_beats.setEnabled(False)
             self.b_guia.setEnabled(False)
             self.b_marker.setEnabled(False)
             self.b_marker_compas.setEnabled(False)
@@ -156,6 +157,7 @@ class VisorUIMixin:
             self._stack.setCurrentWidget(self.visor_widget)
             self.visor_widget.show()
             self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
+            self.b_analitza_beats.setEnabled(True)
             self.b_guia.setEnabled(True)
             self.b_marker.setEnabled(True)
             self.b_marker_compas.setEnabled(True)
