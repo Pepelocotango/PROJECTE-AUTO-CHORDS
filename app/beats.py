@@ -20,11 +20,8 @@ absoluta: cada motor té la seua escala interna.
 """
 from __future__ import annotations
 
-import csv
 import math
-import os
 import statistics
-import tempfile
 
 from . import limits, pipeline, tempo, tempo_map
 
@@ -35,6 +32,10 @@ _QM_BARS = "vamp:qm-vamp-plugins:qm-barbeattracker:bars"
 # Per al mode «només beats» no demanem bars: el tempotracker no agrupa en
 # compassos ni necessita bpb.
 _QM_ONLY_BEATS = "vamp:qm-vamp-plugins:qm-tempotracker:beats"
+
+# Alias estable: històricament `beats._qm_temps` era una còpia local. Ara tota
+# l'extracció QM passa pel mateix helper de `pipeline_vamp`.
+_qm_temps = pipeline.qm_temps
 
 
 def _limita_sensibilitat(valor):
@@ -57,25 +58,6 @@ def alpha_de_sensibilitat(sensibilitat):
     """0 = estable (0.99), 100 = flexible (0.10)."""
     s = _limita_sensibilitat(sensibilitat)
     return 0.99 - 0.89 * s / 100.0
-
-
-def _qm_temps(transform, wav, params, log):
-    """Primera columna d'un output QM amb paràmetres (.n3)."""
-    d = tempfile.mkdtemp(prefix="ac_qm_")
-    out = os.path.join(d, "x.csv")
-    try:
-        pipeline.executa_transform(transform, out, wav, log, params)
-        temps = []
-        if os.path.exists(out):
-            with open(out, newline="", encoding="utf-8") as f:
-                for fila in csv.reader(f):
-                    try:
-                        temps.append(float(fila[0]))
-                    except (ValueError, IndexError):
-                        continue
-        return sorted({round(t, 6) for t in temps if math.isfinite(t)})
-    finally:
-        pipeline.esborra_tmp([d])
 
 
 def _bpm_de_beats(beats):

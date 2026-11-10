@@ -36,7 +36,8 @@ NOMS_PUBLICS = (
     # Vamp i detectors
     "extract_chords", "detecta_bpm_qm", "detecta_bpm", "detecta_bpm_tram",
     "detecta_bpm_tram_detallat", "detecta_bpm_detallat",
-    "detecta_tempo_per_trams", "detecta_beats", "detecta_compas1",
+    "detecta_tempo_per_trams", "detecta_beats", "qm_temps",
+    "detecta_compas1",
     "extract_segments", "filtra_seccions",
     # Derivats de guia/export
     "segments_locators", "events_partitura", "segments_exactes",

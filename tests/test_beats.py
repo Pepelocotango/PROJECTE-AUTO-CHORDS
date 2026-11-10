@@ -31,6 +31,19 @@ class TestSensibilitat(unittest.TestCase):
             beats.detecta("x.wav", motor="inexistent")
 
 
+class TestQMExtraccioUnica(unittest.TestCase):
+    def test_qm_temps_normalitza_i_deduplica(self):
+        from app import pipeline_vamp
+
+        def _fake(transform, out, wav, log, params=None):
+            with open(out, "w", encoding="utf-8") as f:
+                f.write("0.600000,0\n0.100000,0\n0.600000,0\n")
+
+        with patch.object(pipeline_vamp, "executa_transform",
+                          side_effect=_fake):
+            self.assertEqual(beats._qm_temps("t", "x.wav"), [0.1, 0.6])
+
+
 class TestMotors(unittest.TestCase):
     def test_bpm_de_beats_fora_de_banda_retorna_none(self):
         self.assertIsNone(beats._bpm_de_beats([0.0, 10.0, 20.0, 30.0]))

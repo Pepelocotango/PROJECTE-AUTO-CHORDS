@@ -185,6 +185,9 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         for avís in self._avisos_csv_tempo:
             self.log(f"tempo CSV: {avís}")
         self.tempo_map = None
+        # Durant una sessió de TAP el mapa pot quedar fraccionari a posta:
+        # no s'ha d'emetre l'avís modal, que bloquejaria els taps següents.
+        self._tap_en_curs = False
         self._refresca_tempo_map()
         # Marcadors humans (inici de compàs marcat a mà, en viu)
         self.marcadors = pipeline.llegeix_marcadors(

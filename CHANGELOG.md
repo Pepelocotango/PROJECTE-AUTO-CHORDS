@@ -5,6 +5,27 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Corregit — el TAP no obri l’avís de mapa inconsistent (2026-11-10)
+- Durant una sessió de TAP el visor no emet `mapaInconsistent`: el BPM en viu
+  pot deixar clips fraccionaris a posta i el diàleg modal bloquejava els taps
+  següents. L’avís continua actiu per a la resta d’edicions.
+- `Visor._tap_en_curs` es tanca en finalitzar la sessió; `comprova_mapa_sencers`
+  actualitza l’estat sense emetre el senyal mentre el TAP està obert.
+- Test de regressió: TAP a 101 BPM sobre 10 s no emet l’avís; fora del TAP,
+  `comprova_mapa_sencers(forca=True)` continua emetent-lo.
+
+### Unificat — extracció QM i downbeats (2026-11-10)
+- `pipeline_vamp.qm_temps()` és l’**única** extracció de temps QM: ordena,
+  deduplica i arredona a 6 decimals. La comparteixen `beats`, `detecta_beats`,
+  `detecta_compas1`, els onsets i els bars.
+- `beats._qm_temps` queda com a àlies del helper únic; s’elimina la còpia local.
+- «Detecta el mapa de tempo (per beats)» reutilitza els beats d’Analitza BPM si
+  ja existeixen, sense tornar a detectar.
+- «Detecta el compàs 1» usa el primer downbeat del resultat d’Analitza BPM; si
+  no n’hi ha, manté el camí QM d’onsets + bars.
+- Tests de normalització QM, caché de beats per al mapa i caché de downbeat per
+  al compàs 1. Sense canvis en el model ni en els CSV.
+
 ### Canviat — BPM sempre en negres/minut (2026-11-09)
 - Eliminat el selector **Unitat BPM** i el camp `unit` del `.acproj`. El BPM
   del transport, els clips, els diàlegs i el regle sempre es mostren i

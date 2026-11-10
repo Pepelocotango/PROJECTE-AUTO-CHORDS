@@ -33,6 +33,8 @@ class TapMixin:
                 vr._undo_commit()
             except Exception as e:  # noqa: BLE001
                 self.registra(f"tap tempo: no s'ha pogut tancar la sessió ({e})")
+            finally:
+                vr._tap_en_curs = False
             self._sincronitza_temps_del_visor()
         self._tap_canviat = False
 
@@ -63,6 +65,7 @@ class TapMixin:
         if vr is not None and not self._tap_sessio_oberta:
             self._tap_sessio_oberta = True
             self._tap_canviat = False
+            vr._tap_en_curs = True
             vr._undo_marca()
             # Decisió 3: si està SONANT, el tap tanca el loop al clip de tempo
             # seleccionat.

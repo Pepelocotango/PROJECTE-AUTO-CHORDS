@@ -4,6 +4,7 @@ Extret de `app/pipeline.py`. No depén de Qt ni del model de clips. La façana
 `app.pipeline` re-exporta els símbols públics.
 """
 import csv
+import math
 import os
 import subprocess
 import tempfile
@@ -350,27 +351,33 @@ def detecta_beats(wav_path, log=None):
 
     El fa servir la inferència del mapa de tempo.
     """
-    return _qm_temps(QM["beats"], wav_path, log=log)
+    return qm_temps(QM["beats"], wav_path, log=log)
 
 
-def _qm_temps(transform, wav_path, timeout=1800, log=None):
-    """Primera columna (segons) d'un transform del qm (onsets/bars/beats).
+def qm_temps(transform, wav_path, params=None, log=None, timeout=1800):
+    """Temps (primera columna) d'un transform QM, ordenats i sense duplicats.
 
-    `log` (opcional) rep la sortida del host; si no es passa, es descarta.
+    És l'**única** extracció QM de temps de l'app: la comparteixen la detecció
+    de beats, els downbeats, el compàs 1 i els mapes de tempo. `params` són
+    els paràmetres `.n3` opcionals (alpha, bpb…). Els temps es normalitzen a
+    6 decimals perquè totes les rutes vegen exactament els mateixos instants.
     """
     d = tempfile.mkdtemp(prefix="ac_qm_")
     try:
         out = os.path.join(d, "x.csv")
-        executa_transform(transform, out, wav_path, log or (lambda *a: None))
+        executa_transform(transform, out, wav_path, log or (lambda *a: None),
+                          params)
         temps = []
         if os.path.exists(out):
             with open(out, newline="", encoding="utf-8") as f:
                 for r in csv.reader(f):
                     try:
-                        temps.append(float(r[0]))
+                        t = float(r[0])
                     except (ValueError, IndexError):
                         continue
-        return temps
+                    if math.isfinite(t):
+                        temps.append(round(t, 6))
+        return sorted(set(temps))
     finally:
         esborra_tmp([d])
 
@@ -385,8 +392,8 @@ def detecta_compas1(wav_path, log=None):
     def _log(t):
         if log:
             log(t)
-    ons = _qm_temps(QM["onsets"], wav_path, log=_log)
-    bars = _qm_temps(QM["bars"], wav_path, log=_log)
+    ons = qm_temps(QM["onsets"], wav_path, log=_log)
+    bars = qm_temps(QM["bars"], wav_path, log=_log)
     if not bars:
         _log("compàs 1: no he pogut detectar els compassos")
         return None

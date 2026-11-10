@@ -350,7 +350,9 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   (grup de 3 corxeres en `6/8`). **Només actua amb un tram de tempo
   seleccionat**: sense selecció, `T` no fa res. Propaga BPM al regle i al
   metrònom **sense reengegar l'àudio**. El botó mostra `TAP (n) BPM` amb el
-  BPM intern final.
+  BPM intern final. Durant la sessió de TAP **no s'emet l'avís modal** de mapa
+  inconsistent (els compassos fraccionaris intermedis són normals); la resta
+  d'edicions el continuen mostrant.
 
 ### Rubato
 
@@ -497,9 +499,10 @@ d'Audacity/Mixxx), **sense AVX** (`eines/compila_vamp_plugins.sh`).
 | **BPM** | `nostre` (`app/tempo.py`) | `qm`, **`consens`** |
 | **Estructura** | **`qm`** (qm-segmenter) — únic motor | — |
 
-El **`🧭`** (i Analitza ▸ «Detecta el compàs 1 automàticament») usa
-`qm-onsetdetector` + `qm-barbeattracker` per posar l'offset sol (al tema de
-101 dona 9,49 s).
+El **`🧭`** (i Analitza ▸ «Detecta el compàs 1 automàticament») usa el
+**primer downbeat del resultat d’Analitza BPM** si ja existeix; si no, cau a
+`qm-onsetdetector` + `qm-barbeattracker` (al tema de 101 dona 9,49 s). Així
+l’offset i les línies de downbeats ixen de la mateixa detecció.
 
 ### 6.3 Import de formats (`app/ffmpeg.py`)
 

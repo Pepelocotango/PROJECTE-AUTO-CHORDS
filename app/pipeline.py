@@ -50,7 +50,7 @@ from .pipeline_vamp import (
     detecta_bpm_qm,
     detecta_bpm, detecta_bpm_tram, detecta_bpm_tram_detallat,
     detecta_bpm_detallat, detecta_tempo_per_trams, detecta_beats,
-    detecta_compas1, extract_segments,
+    qm_temps, detecta_compas1, extract_segments,
 )
 
 # Superfície pública del mòdul. Inclou els re-exports del model i la resta de
@@ -69,7 +69,8 @@ __all__ = [
     "run", "wav_info", "retalla_wav", "executa_transform",
     "extract_chords", "detecta_bpm_qm", "detecta_bpm", "detecta_bpm_tram",
     "detecta_bpm_tram_detallat", "detecta_bpm_detallat",
-    "detecta_tempo_per_trams", "detecta_beats", "detecta_compas1",
+    "detecta_tempo_per_trams", "detecta_beats", "qm_temps",
+    "detecta_compas1",
     "extract_segments", "filtra_seccions",
     "segments_locators", "events_partitura", "segments_exactes",
     "segments_export", "genera_guia_html", "pos_compas", "seq_abc",

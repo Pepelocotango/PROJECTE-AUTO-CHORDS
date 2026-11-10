@@ -93,10 +93,15 @@ carreguen amb agrupació automàtica. El **metrònom no té unitat de clic globa
 el beat és el denominador i els accents de `Grup` ixen de l’agrupació de cada
 tram. La franja Editor del clip de tempo permet editar l’agrupació; les
 operacions de re-tempo, talls i rubatos la preserven per solapament temporal.
-Es mantenen la simplificació F0–F5 del
+També s’ha unificat l’**extracció QM i els downbeats**:
+`pipeline_vamp.qm_temps()` és l’única font de temps QM, el mapa de tempo
+reutilitza els beats d’Analitza BPM i el compàs 1 reutilitza el primer downbeat
+del mateix resultat. El **TAP en viu no obri l’avís de mapa inconsistent** (els
+compassos fraccionaris intermedis són normals); la resta d’edicions el mantenen.
+Es conserven la simplificació F0–F5 del
 [`PLA_MAPA_TEMPS`](docs/recerca/PLA_MAPA_TEMPS.md) (tram 0 = clip, model
 permissiu de 86 ms, recalcul guiat, marcadors `N` fix, mode A de N compassos) i
-l’encaix de l’anàlisi amb «Quantitza». Suite **1593 OK** (1 skip), `pyflakes`,
+l’encaix de l’anàlisi amb «Quantitza». Suite **1597 OK** (1 skip), `pyflakes`,
 `docs-check` nets.
 
 **Pendent:**

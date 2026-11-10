@@ -3,6 +3,7 @@
 #           wav -> acords + estructura -> carpetes. Tot en català.
 import faulthandler
 import logging
+import math
 import os
 import sys
 import time  # patch("app.main.time.monotonic") als tests de TAP
@@ -1126,15 +1127,22 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                 raise RuntimeError("Cal obrir un tema primer.")
             self.avisa_info("Auto Chords", "Obre un tema primer.")
             return 0
-        try:
-            temps = pipeline.detecta_beats(wav, log=self.registra)
-        except Exception as e:  # noqa: BLE001
-            if not avis:
-                raise
-            self.avisa_info("Auto Chords",
-                            f"No s'han pogut detectar els temps: {e}")
-            return 0
-        self.registra(f"detecta tempo: {len(temps)} temps trobats")
+        info = getattr(self, "_beats_actuals", None)
+        temps = list(info.get("beats") or ()) if isinstance(info, dict) else []
+        if temps:
+            self.registra(
+                f"detecta tempo: {len(temps)} beats del resultat d'Analitza "
+                "BPM (sense tornar a detectar)")
+        else:
+            try:
+                temps = pipeline.detecta_beats(wav, log=self.registra)
+            except Exception as e:  # noqa: BLE001
+                if not avis:
+                    raise
+                self.avisa_info("Auto Chords",
+                                f"No s'han pogut detectar els temps: {e}")
+                return 0
+            self.registra(f"detecta tempo: {len(temps)} temps trobats")
         trams = tempo_map.infereix_trams_beat(
             temps, vr._durada_wav(), int(vr.bpb),
             int(getattr(vr, "beat_type", 4) or 4))
@@ -1383,10 +1391,44 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                           "que les fronteres caiguen en línia de compàs "
                           "(o passa l'Anàlisi guiat).")
 
+    def _downbeat_del_resultat(self):
+        """Primer downbeat del resultat d'Analitza BPM, si n'hi ha.
+
+        Mateixa regla que `pipeline.detecta_compas1`: el primer bar a partir
+        del primer beat (marge 0,35 s). Així el compàs 1 i les línies de
+        downbeats ixen del **mateix** resultat de detecció.
+        """
+        info = getattr(self, "_beats_actuals", None)
+        if not isinstance(info, dict):
+            return None
+        bars = []
+        for b in (info.get("downbeats") or ()):
+            try:
+                b = float(b)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(b):
+                bars.append(b)
+        if not bars:
+            return None
+        inici = 0.0
+        for b in (info.get("beats") or ()):
+            try:
+                b = float(b)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(b):
+                inici = b
+                break
+        marge = 0.35
+        cand = [b for b in bars if b >= inici - marge]
+        return float(cand[0] if cand else bars[0])
+
     def _detecta_compas1(self):
         """Detecta el compàs 1 (primer downbeat) i hi posa l'offset.
 
-        Usa el detector d'onsets + el de compassos del Queen Mary
+        Si hi ha un resultat d'Analitza BPM, usa el seu primer downbeat. Si no,
+        usa el detector d'onsets + compassos del Queen Mary
         (`pipeline.detecta_compas1`). No toca el BPM.
         """
         wav = self.wav_edit.text().strip()
@@ -1394,15 +1436,21 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             self.avisa("Compàs 1", "Primer tria un àudio.")
             return
         self._atura_si_sona("detecció del compàs 1")
-        self.registra("Detectant el compàs 1 (downbeat)…")
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        try:
-            seg = pipeline.detecta_compas1(wav, self.registra)
-        except Exception as e:  # noqa: BLE001
-            seg = None
-            self.registra(f"compàs 1: error ({e})")
-        finally:
-            QApplication.restoreOverrideCursor()
+        seg = self._downbeat_del_resultat()
+        if seg is not None:
+            self.registra(
+                f"compàs 1: downbeat guardat a {seg:.3f}s "
+                "(resultat d'Analitza BPM)")
+        else:
+            self.registra("Detectant el compàs 1 (downbeat)…")
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            try:
+                seg = pipeline.detecta_compas1(wav, self.registra)
+            except Exception as e:  # noqa: BLE001
+                seg = None
+                self.registra(f"compàs 1: error ({e})")
+            finally:
+                QApplication.restoreOverrideCursor()
         if seg is None:
             self.avisa_info(
                 "Compàs 1",

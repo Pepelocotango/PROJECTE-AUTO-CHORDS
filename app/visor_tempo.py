@@ -343,6 +343,11 @@ class TempoMixin:
                 f"· {p['num']}/{p['den']} a {p['bpm']:.3f} BPM "
                 f"→ {p['n']:.3f} compassos")
         text = "\n".join(parts)
+        if getattr(self, "_tap_en_curs", False):
+            # El TAP en viu pot deixar clips fraccionaris; l'avís es torna a
+            # comprovar quan la sessió es tanca, sense interrompre els taps.
+            self._mapa_avis_actual = text
+            return issues
         if forca or text != getattr(self, "_mapa_avis_actual", None):
             self._mapa_avis_actual = text
             self.mapaInconsistent.emit(text)

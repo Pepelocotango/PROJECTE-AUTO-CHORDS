@@ -5091,6 +5091,26 @@ class TapTempoTests(unittest.TestCase):
         self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=3.0)
         w.close()
 
+    def test_tap_no_emet_avis_de_mapa_inconsistent(self):
+        """El TAP en viu no ha de bloquejar amb el diàleg de mapa."""
+        w = self._finestra()
+        try:
+            w.visor_ref.timeline.select_clip("tempo", 0)
+            vist = []
+            w.visor_ref.mapaInconsistent.connect(vist.append)
+            self._taps_en(w, 0.594)          # 101 BPM → 10 s no fan 5/4
+            self.assertTrue(w._tap_sessio_oberta)
+            self.assertTrue(w.visor_ref._tap_en_curs)
+            self.assertEqual(vist, [])
+            w._tanca_sessio_tap()
+            self.assertFalse(w.visor_ref._tap_en_curs)
+            self.assertEqual(vist, [])
+            # Fora del TAP, l'avís continua existint.
+            w.visor_ref.comprova_mapa_sencers(forca=True)
+            self.assertTrue(vist)
+        finally:
+            w.close()
+
     def test_tap_6_8_amb_negra_amb_punt_dona_negra_minut(self):
         """6/8: 80 taps/min cada grup de 3 corxeres = 120 negres/min."""
         w = self._finestra()
@@ -5117,6 +5137,42 @@ class TapTempoTests(unittest.TestCase):
             w._tap_tempo()
         self.assertEqual(len(w._taps), 1)      # s'ha reiniciat
         w.close()
+
+    def test_compas1_usa_downbeat_guardat_sense_redetectar(self):
+        w = self._finestra()
+        try:
+            w._beats_actuals = {
+                "beats": [0.2, 0.7, 1.2],
+                "downbeats": [0.2, 2.2],
+            }
+            with patch.object(app_main.pipeline, "detecta_compas1",
+                              side_effect=AssertionError(
+                                  "no s'ha de tornar a detectar")):
+                w._detecta_compas1()
+            self.assertAlmostEqual(w.visor_ref.offset, 0.2, places=6)
+        finally:
+            w.close()
+
+    def test_tempo_mapa_usa_beats_guardats_sense_redetectar(self):
+        from app import tempo_map as tm_map
+        w = self._finestra()
+        try:
+            w._beats_actuals = {
+                "beats": [i * 0.5 for i in range(20)],
+                "downbeats": [0.0, 2.0, 4.0, 6.0, 8.0],
+            }
+            trams = [(0.0, 5.0, 96.0, 4, 4),
+                     (5.0, 10.0, 96.0, 4, 4)]
+            with patch.object(app_main.pipeline, "detecta_beats",
+                              side_effect=AssertionError(
+                                  "no s'ha de tornar a detectar")), \
+                    patch.object(tm_map, "infereix_trams_beat",
+                                 return_value=trams) as infereix:
+                n = w.detecta_tempo_mapa(avis=False)
+            self.assertEqual(n, 2)
+            infereix.assert_called_once()
+        finally:
+            w.close()
 
     def test_intervals_absurds_descartats(self):
         """Un doble-tap accidental (interval <0.2s) s'ignora."""
