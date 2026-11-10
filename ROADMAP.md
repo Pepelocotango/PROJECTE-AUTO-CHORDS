@@ -94,8 +94,11 @@ simplificació del rubato.
 - **Motor C/B/A**: en interiors, `N`/BPM/`x/x` exactes → `fi` derivada i veí
   amb BPM recalculat; en l’últim/únic, BPM/`x/x` exactes i `N` derivat (pot ser
   fraccionari). El TAP en viu conserva fronteres.
-- **Franja Editor**: BPM, compàs, agrupació, `N`, tipus normal/rubato, rol,
-  inici/fi, «Ajusta BPM al compàs». Eliminada la icona per guanyar espai.
+- **Franja Editor**: BPM, compàs, agrupació, `N`, rol derivat, **Ini (c)** i
+  **Fi (c)** editables en compàs.beat, «Ajusta BPM al compàs». Fora el tipus i
+  els extrems en segons (es veuen a la llista/carril). Eliminada la icona.
+- **Camps de text**: `CampText` mostra l’inici si la dada no hi cap (abans
+  s’amagaven els enters i es veien només els decimals).
 - **`Analitza beats, downbeats i BPM`** (`F7`) amb botó **Beats/BPM** a la
   barra de treball.
 - **QM/downbeats unificats**: `pipeline_vamp.qm_temps()` és l’única extracció
@@ -104,7 +107,7 @@ simplificació del rubato.
 - Es conserven la simplificació F0–F5 del
   [`PLA_MAPA_TEMPS`](docs/recerca/PLA_MAPA_TEMPS.md), el model permissiu de
   86 ms, els marcadors `N` fix i l’encaix amb «Quantitza».
-- Suite **1563 OK** (1 skip), `pyflakes` i `docs-check` nets.
+- Suite **1562 OK** (1 skip), `pyflakes` i `docs-check` nets.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).

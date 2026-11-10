@@ -203,6 +203,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `barres.py` | Barra de transport, snap i metrònom (F3). |
 | `beats.py` | Detecció de beats amb motors intercanviables i sensibilitat ajustable. |
 | `bpm_unit.py` | bpm_unit.py — unitat de visualització del BPM (negra, negra amb punt…). |
+| `camp_text.py` | Camps de text de l'app amb l'inici sempre visible. |
 | `config.py` | Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE. |
 | `dialeg_analitza_bpm.py` | Diàleg d'anàlisi de BPM/beats. |
 | `dialeg_bpm_marcadors.py` | Triar el BPM deduït dels marcadors (llista de candidats). |

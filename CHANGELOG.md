@@ -15,9 +15,9 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   dada no hi cap (abans s'amagaven les xifres senceres i es veien els decimals:
   `83.000` es llegia `3.000`).
 - Eliminats els SVG `music` i `piano`, que ja no tenien referència.
-- Afegits a la franja Editor: **N compassos**, selector **Normal/Rubato** i
-  **rol derivat** (`primer`, `últim`, `únic`, `interior`, `preroll`).
-- BPM/Compàs/N usen el motor C/B/A; Inici/Fi continuen movent la frontera.
+- Afegits a la franja Editor: **N compassos** i **rol derivat** (`primer`,
+  `últim`, `únic`, `interior`, `preroll`).
+- BPM/Compàs/N usen el motor C/B/A; **Ini (c)** i **Fi (c)** mouen la frontera.
 - Barrejar canvis de BPM/N amb canvis d’Inici/Fi en un mateix Aplica es rebutja
   amb un avís per no tenir dos criteris contradictoris.
 - En interiors, N fraccionari es rebutja; l’últim/únic el permet.
