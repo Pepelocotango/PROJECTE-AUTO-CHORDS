@@ -195,7 +195,7 @@ PROJECTE AUTO CHORDS/
 │       ├── expected-v0.2.1.csv 🟢
 │       ├── expected.csv        🟢
 │       └── regression.sh       🟢
-├── CORPUS/                        🟡  # Corpus local d'avaluació (no versionat) (807 fitxers)
+├── CORPUS/                        🟡  # Corpus local d'avaluació (no versionat) (819 fitxers)
 │   ├── ANALISI_CORPUS.md                  🟡
 │   ├── Alabama Shakes - Gimme All Your Love/ 🟡  # (78 fitxers)
 │   ├── click contrafase/                  🟡  # (38 fitxers)
@@ -209,7 +209,7 @@ PROJECTE AUTO CHORDS/
 │   ├── Jamiroquai - Feels Just Like It Should/ 🟡  # (1 fitxer)
 │   ├── MIREX06_BEAT/                      🟡  # (87 fitxers)
 │   ├── Radiohead - High and Dry/          🟡  # (67 fitxers)
-│   ├── Sitting On The Dock Of The Bay - Otis Redding -/ 🟡  # (30 fitxers)
+│   ├── Sitting On The Dock Of The Bay - Otis Redding -/ 🟡  # (42 fitxers)
 │   └── The Chemical Brothers - All Rights Reversed (feat. The Klaxons)/ 🟡  # (78 fitxers)
 ├── docs/                          🟢  # Contracte i documentació viva (14 fitxers)
 │   ├── COMPONENTS_I_VERSIONS.md       🟢  # Inventari generat (`eines/genera_inventari.py`)
@@ -227,7 +227,7 @@ PROJECTE AUTO CHORDS/
 │       ├── guia_tecnica_downbeat_onsets_beats.md 🟢
 │       ├── NOTACIO_XIFRAT.md                  🟢
 │       └── PLA_MAPA_TEMPS.md                  🟢
-├── eines/                         🟢  # Build, empaquetat i cadena de subministrament (27 fitxers)
+├── eines/                         🟢  # Build, empaquetat i cadena de subministrament (30 fitxers)
 │   ├── AutoChords-win.spec       🟢  # PyInstaller (Windows)
 │   ├── avalua_tempo.py           🟢  # Avaluador sintètic del mapa de tempo
 │   ├── baixa_icones.sh           🟢  # Baixa les icones de Lucide
@@ -242,9 +242,12 @@ PROJECTE AUTO CHORDS/
 │   ├── explica_bpm.py            🟢
 │   ├── exporta_partitura.py      🟢
 │   ├── funcionalitats_dades.json 🟢  # Font de dades del mapa de funcionalitats
-│   ├── genera_arbre.py           🟡  # Genera l'arbre d'aquest fitxer
+│   ├── genera_arbre.py           🟢  # Genera l'arbre d'aquest fitxer
+│   ├── genera_comandes.py        🟡
 │   ├── genera_esquema_ui.py      🟢  # Genera `docs/ESQUEMA_UI.html` i `.svg`
+│   ├── genera_formats.py         🟡
 │   ├── genera_funcionalitats.py  🟢  # Genera `docs/FUNCIONALITATS_AUTO_CHORDS.ods`
+│   ├── genera_index_docs.py      🟡
 │   ├── genera_inventari.py       🟢  # Genera `docs/COMPONENTS_I_VERSIONS.md`
 │   ├── genera_moduls.py          🟢  # Genera la taula de mòduls de `DEVELOPING.md`
 │   ├── launcher_pyinstaller.py   🟢  # Punt d'entrada del paquet congelat
@@ -305,16 +308,17 @@ PROJECTE AUTO CHORDS/
 │   └── qm-vamp-plugins.so  🟢
 ├── temp/                          🟡  # Temporals de l'app (no versionat) (2 fitxers)
 │   └── visor_player.log 🟡  # Log del reproductor
-├── tests/                         🟢  # Suite unittest offscreen (22 fitxers)
+├── tests/                         🟢  # Suite unittest offscreen (23 fitxers)
 │   ├── _qt_neteja.py              🟢  # Neteja ORDENADA dels objectes Qt entre tests.
 │   ├── _temporals.py              🟢  # Higiene dels tests: cap temporal no s'ha de quedar pel disc.
 │   ├── test_ancoratges.py         🟢  # Suite de test — Marcadors humans i velocitat de reproducció.
-│   ├── test_arbre_al_dia.py       🟡  # Test: l'arbre de `ARBRE_DIRECTORIS.md` ha d'estar al dia.
+│   ├── test_arbre_al_dia.py       🟢  # Test: l'arbre de `ARBRE_DIRECTORIS.md` ha d'estar al dia.
 │   ├── test_audio_edit.py         🟢  # Regressions de les edicions bàsiques d'àudio.
 │   ├── test_avalua_tempo.py       🟢  # Proves sintètiques per a l'avaluador de tempo.
 │   ├── test_beats.py              🟢  # Tests del motor de beats i de la sensibilitat.
 │   ├── test_camp_text.py          🟢  # Tests — Camps de text que mostren l'inici del contingut.
 │   ├── test_despatx_edicio.py     🟢  # Despatx ÚNIC d'edició (regla d'or #11) — contracte de superfícies.
+│   ├── test_docs_al_dia.py        🟡  # Test: la documentació generada ha d'estar al dia.
 │   ├── test_drag_drop.py          🟢  # Drag & drop d'àudio des del gestor de fitxers (Linux, Windows i macOS).
 │   ├── test_edicio.py             🟢  # Suite de test — Edicio
 │   ├── test_exporta_audio.py      🟢  # Tests de l'exportació de la còpia de treball (Fase 6).

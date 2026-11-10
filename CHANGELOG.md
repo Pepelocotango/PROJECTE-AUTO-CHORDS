@@ -5,6 +5,23 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Afegit — més documentació generada (2026-11-11)
+- **`README.md` › formats d'àudio**: el recompte i la llista d'extensions surten
+  de `app/ffmpeg.EXTENSIONS` amb `eines/genera_formats.py` (`--check` a
+  `make docs-check`); si el codi afig un format, el README s'actualitza amb
+  `make docs`.
+- **`DEVELOPING.md` › comandes essencials**: el bloc es genera de l'objectiu
+  `help` del `Makefile` amb `eines/genera_comandes.py`; ja no pot quedar-se
+  sense cap comanda ni amb textos antics.
+- **`docs/README.md` › índex**: les taules del contracte i de `docs/recerca/`
+  es generen amb `eines/genera_index_docs.py`; els recomptes (`9 fulls`,
+  `198 fitxes`) surten de `eines/funcionalitats_dades.json` i qualsevol `.md`
+  nou de `docs/` apareix automàticament a l'índex.
+- Nou test `tests/test_docs_al_dia.py`: els tres generadors (`--check`) i el
+  recompte de formats han de coincidir amb `AGENTS.md`, `README.md` i el JSON
+  de funcionalitats.
+- Suite: **1568 OK** (1 skip), `pyflakes` net i `docs-check` verd (8 generadors).
+
 ### Afegit — `ARBRE_DIRECTORIS.md` generat (2026-11-10)
 - Nou generador **`eines/genera_arbre.py`**: l'arbre complet del projecte dins
   `ARBRE_DIRECTORIS.md` ja no és un snapshot manual; es genera entre els

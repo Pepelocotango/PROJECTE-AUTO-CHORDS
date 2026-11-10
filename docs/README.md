@@ -9,6 +9,7 @@
 > L'estat de la sessió és a **`../ROADMAP.md` §2**. Per crear o moure
 > documentació, vegeu **`../AGENTS.md` §«Crear documentació nova»**.
 
+<!-- GENERAT: index_docs — no editar a mà -->
 ## Contracte i documents vius
 
 | Doc | Què explica |
@@ -31,6 +32,7 @@ Documents de referència i propostes que **no** descriuen l'estat actual del cod
 | `recerca/GRAELLA_PPQ_TEMPS.md` | Proposta de PPQ/ticks i swing (no implementada). |
 | `recerca/AUTODETECCIO_OPCIONS.md` | Mesuraments reals dels motors d'autodetecció. |
 | `recerca/PLA_MAPA_TEMPS.md` | Pla de simplificació del mapa de temps: referència manual, recalcul guiat i model permissiu. |
+<!-- /GENERAT: index_docs -->
 
 ---
 

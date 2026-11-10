@@ -118,11 +118,13 @@ procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i a `.github/workflows/`.
 
 ## 🎼 Formats d'àudio acceptats (importació actual)
 
+<!-- GENERAT: formats — no editar a mà -->
 L'app treballa amb **WAV PCM 16 bits** internament, però `Obre…` accepta **19 formats**
 i els converteix automàticament amb **ffmpeg** (vegeu `app/ffmpeg.py`):
 
-`WAV` · `MP3` · `AIFF`/`AIF`/`AIFC` · `FLAC` · `M4A` · `AAC` · `OGG`/`OGA` · `Opus` ·
-`WMA` · `MP2` · `CAF` · `W64` · `AU` · `WV` · `APE` · `ALAC`
+`WAV` · `MP3` · `AIFF/AIF/AIFC` · `FLAC` · `M4A` · `AAC` · `OGG/OGA` · `Opus` · `WMA` ·
+`MP2` · `CAF` · `W64` · `AU` · `WV` · `APE` · `ALAC`
+<!-- /GENERAT: formats -->
 
 En obrir un àudio, el projecte desa la WAV PCM 16 bits a `audio/`: si cal,
 converteix l'original directament en un temporal dins del projecte, sense crear

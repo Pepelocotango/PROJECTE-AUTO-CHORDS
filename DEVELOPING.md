@@ -87,18 +87,21 @@ print(p.segments_locators('acords.csv', 138, 4, 0.0, durada=180.0))"
 > La font de veritat és el **`Makefile`**. Ací només el resum; `make help` en
 > llista totes.
 
+<!-- GENERAT: comandes — no editar a mà -->
 ```bash
 make entorn      # instal·la l'entorn local (sense sudo)
 make app         # arrenca l'app
+make compile     # compilació ràpida (no arrenca l'app)
 make test        # suite completa (offscreen)
 make lint        # pyflakes
 make smoke       # smoke de l'app
-make docs        # regenera vistes i documents generats
-make docs-check  # comprova que estan al dia
+make docs        # regenera les vistes i els documents generats
+make docs-check  # comprova que els documents generats estan al dia
 make aleatori    # suite en ordre aleatori
 make coverage    # suite amb informe de cobertura
 make check       # compile + lint + test + docs-check
 ```
+<!-- /GENERAT: comandes -->
 
 **Mapa de funcionalitats (ODF).** `make docs` també regenera
 `docs/FUNCIONALITATS_AUTO_CHORDS.ods` a partir de

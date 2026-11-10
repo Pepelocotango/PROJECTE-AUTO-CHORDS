@@ -42,6 +42,9 @@ docs:
 	$(PY) eines/genera_inventari.py
 	$(PY) eines/genera_moduls.py
 	$(PY) eines/genera_arbre.py
+	$(PY) eines/genera_formats.py
+	$(PY) eines/genera_comandes.py
+	$(PY) eines/genera_index_docs.py
 	$(PY) eines/genera_funcionalitats.py
 
 docs-check:
@@ -49,6 +52,9 @@ docs-check:
 	$(PY) eines/genera_inventari.py --check
 	$(PY) eines/genera_moduls.py --check
 	$(PY) eines/genera_arbre.py --check
+	$(PY) eines/genera_formats.py --check
+	$(PY) eines/genera_comandes.py --check
+	$(PY) eines/genera_index_docs.py --check
 	$(PY) eines/genera_funcionalitats.py --check
 
 aleatori:

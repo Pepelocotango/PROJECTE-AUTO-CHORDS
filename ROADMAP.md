@@ -7,7 +7,7 @@
 > **GPL-3.0-or-later**.
 >
 > **v0.8.0** · Estat: **flux de producte estable i multi-SO** · Suite **verda**
-> (1.564 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
+> (1.568 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
