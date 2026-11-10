@@ -93,11 +93,6 @@ Un canvi de **tempo** a mig
 > cursor»). Igual que els clips d'acords/seccions ④⑤; arrossegar una vora
 > **no** mou el cursor.
 >
-> **Detecció per tram (2026-10-20)**: amb un tram de tempo seleccionat, el
-> botó **Detecta** analitza només l'àudio d'eixe tram i aplica el BPM
-> directament (una sola operació de desfer); el seu inici és el downbeat.
-> Sense tram seleccionat, es manté la detecció global.
->
 > **Sincronització (2026-10-20)**: quan el model es reconstrueix (quantitzar,
 > desfer, etc.), l'editor integrat es buida/refresca. Després de quantitzar es
 > recupera el clip editat (si encara existeix) amb el **temps nou**; no es pot
@@ -189,7 +184,7 @@ superar el límit, la més antiga es descarta i l'app ho comunica.
 | # | Operació | GUI | Estat |
 |---|---|---|---|
 | 36 | **Tempo · compàs · offset** | camps de la barra · *Analitza ▸ Mapa de tempo i compàs…* · *Analitza ▸ Detecta el mapa de tempo (per beats)…* | **FET**: amb un tram de tempo seleccionat, els camps editen **eixe tram** (2B); si no, el **clip 0**. L'offset és global. Canviar el BPM/compàs (barra, diàleg del tram o TAP) respecta el valor escrit (validació permissiva); en moure una frontera, el recalcul guiat pot ajustar BPM/compàs/N; si no hi ha solució, s'avisa i es rebutja el gest |
-| 36b | **Tap tempo** | `T` · botó **TAP** | **FET**: només al tram de tempo **seleccionat** (sense selecció no fa res); **una sola operació d'undo per sessió**; mentre sona, crea el **loop** d'eixe tram i alinea el cursor. Amb un tram seleccionat, el botó **Detecta** analitza només eixe tram i n'ajusta el BPM **sense moure les fronteres** (el detectat tria N i Δt mana) |
+| 36b | **Tap tempo** | `T` · botó **TAP** | **FET**: només al tram de tempo **seleccionat** (sense selecció no fa res); **una sola operació d'undo per sessió**; mentre sona, crea el **loop** d'eixe tram i alinea el cursor |
 | 37 | **Analitzar** (acords + estructura) | `F5` · *Analitza* | **FET** |
 | 37b | **Analitzar acords al rang A–B** | *Analitza ▸ Analitza acords al rang A–B…* | **FET**: només substitueix els acords dins el loop A–B; conserva la resta del model, el BPM i l'estructura; una sola operació de desfer |
 | 38 | **Opcions d'anàlisi** | *Paràmetres…* · *Inclou estructura* | **FET** |

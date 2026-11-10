@@ -12,7 +12,7 @@
 
 | Detecció | Motor actual | On |
 |----------|--------------|----|
-| **BPM** | `app/tempo.py` (numpy: envolupant d'onsets + autocorrelació + puntuació «comb» + **prior de plateau 85–150**) · motors alternatius: `qm-tempotracker`, **consens** | `🎯 Detecta` |
+| **BPM** | `app/tempo.py` (numpy: envolupant d'onsets + autocorrelació + puntuació «comb» + **prior de plateau 85–150**) · motors alternatius: `qm-tempotracker`, **consens** | `Analitza` |
 | **Acords** | Vamp **`nnls-chroma:chordino:simplechord`** (paràmetres per defecte) | `Analitza` |
 | **Estructura** | Vamp **`qm-segmenter`** (únic motor des de v0.5) | `Analitza` (+ `Inclou estructura`) |
 | **Compàs 1** | `qm-onsetdetector` + `qm-barbeattracker` (downbeats) | `🧭` |
@@ -28,7 +28,7 @@
 
 ---
 
-## 1. BPM (`🎯 Detecta`)
+## 1. BPM (`Analitza`)
 
 ### Mesures reals
 | Fitxer | `tempo.py` (actual) | aubio `tempo` (plugin) | aubio `beats`+mediana (vell) |

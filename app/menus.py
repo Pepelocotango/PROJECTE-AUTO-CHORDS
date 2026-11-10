@@ -192,20 +192,6 @@ class MenusMixin:
         if vr is None:
             return
         try:
-            # Detecta: prioritat A-B, tram seleccionat, tema sencer.
-            loop = None
-            try:
-                loop = self._loop_actiu()
-            except Exception:  # noqa: BLE001
-                loop = None
-            if loop is not None:
-                desti_detecta = "Detecta: selecció A–B"
-            else:
-                kind, idx = vr.seleccio_activa()
-                if kind == "tempo":
-                    desti_detecta = f"Detecta: tram {idx}"
-                else:
-                    desti_detecta = "Detecta: tema sencer"
             # TAP: només amb un tram de tempo seleccionat (2026-11-01).
             kind, idx = vr.seleccio_activa()
             if kind == "tempo" and vr._index_valid("tempo", idx):
@@ -214,8 +200,7 @@ class MenusMixin:
             else:
                 desti_tap = "TAP: tria un tram de tempo"
                 desti_temps = "BPM/Compàs: transport (tram 0)"
-            self.lb_desti_accions.setText(
-                f"{desti_detecta} · {desti_tap} · {desti_temps}")
+            self.lb_desti_accions.setText(f"{desti_tap} · {desti_temps}")
         except Exception:  # noqa: BLE001
             pass
 

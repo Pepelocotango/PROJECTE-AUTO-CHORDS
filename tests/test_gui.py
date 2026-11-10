@@ -2290,16 +2290,21 @@ class EsquemaUiDocTests(unittest.TestCase):
                           f"la barra «{tb.windowTitle()}» no surt a la doc")
 
     def test_botons_quantitza_i_snap(self):
-        """«Quantitza» just abans de «Snap» al Transport; Obre viu al menú."""
+        """«Quantitza», «BPM…», «Snap», «Graella» i «Eina» al Transport."""
         texts = [b.text()
                  for b in self.w.barra_principal.findChildren(QPushButton)]
         self.assertNotIn("Obre àudio", texts)
         transport = [b.text()
                      for b in self.w.barra_transport.findChildren(QPushButton)]
         self.assertIn("Quantitza", transport)
+        self.assertIn("BPM…", transport)
         self.assertIn("Snap", transport)
+        self.assertIn("Eina: intel·ligent", transport)
         self.assertLess(transport.index("Quantitza"), transport.index("Snap"))
+        self.assertLess(transport.index("BPM…"), transport.index("Snap"))
         self.assertIsNotNone(getattr(self.w, "b_quantitza", None))
+        self.assertIsNotNone(getattr(self.w, "b_quantitza_bpm", None))
+        self.assertIsNotNone(getattr(self.w, "b_eina", None))
 
     def test_boto_guia_rapida_muntat(self):
         """«Guia ràpida» viu a Treball, abans del mode BPM."""
@@ -2351,6 +2356,8 @@ class EsquemaUiDocTests(unittest.TestCase):
         """Les 3 barres han d'ocupar files (y) diferents (cal `addToolBarBreak`)."""
         ys = {tb.windowTitle(): tb.geometry().y()
               for tb in self.w.findChildren(QToolBar)}
+        self.assertEqual(len(ys), 3,
+                         f"l'app ha de tindre 3 files de barres: {ys}")
         self.assertEqual(len(set(ys.values())), len(ys),
                          f"hi ha barres a la mateixa fila: {ys}")
 
@@ -6253,9 +6260,9 @@ class TestDestiAccionsFase3(unittest.TestCase):
         try:
             f._actualitza_desti_accions()
             txt = f.lb_desti_accions.text()
-            self.assertIn("Detecta:", txt)
             self.assertIn("TAP:", txt)
             self.assertIn("BPM/Compàs: transport", txt)
+            self.assertNotIn("Detecta:", txt)
             f.visor_ref.timeline.select_clip("tempo", 0)
             f._actualitza_desti_accions()
             self.assertIn("BPM/Compàs: tram 0",

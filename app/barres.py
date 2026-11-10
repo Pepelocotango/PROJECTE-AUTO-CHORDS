@@ -149,15 +149,19 @@ class BarresMixin:
             "re-encaixa les fronteres amb beats sencers. Els rubatos no es "
             "quantitzen.")
         self.b_quantitza_bpm.clicked.connect(self._quantitza_bpm_ui)
-        self.barra_accions.addWidget(self.b_quantitza_bpm)
-        self.barra_accions.addSeparator()
-        self.barra_accions.addWidget(QLabel("Graella:"))
+        bar.addWidget(self.b_quantitza_bpm)
+        bar.addSeparator()
+        bar.addWidget(QLabel("Graella:"))
         # Graella configurable: interruptor de snap + divisió (habilita el nudge fi).
         self.tb_snap = boto("Snap", "Interruptor de snap (encaixar a la graella)",
                             self._canvia_snap, checkable=True)
         self.tb_snap.setChecked(True)
         self.cb_graella = QComboBox()
         self.cb_graella.setToolTip("Divisió de la graella: grid visual i snap")
+        self.cb_graella.setSizeAdjustPolicy(
+            QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.cb_graella.setMinimumContentsLength(10)
+        self.cb_graella.setMaximumWidth(150)
         for et, val in (
                 ("Beats QM", "qm_beats"),
                 ("Auto (zoom)", ""), ("Negra (1/4)", "negra"),
@@ -175,8 +179,8 @@ class BarresMixin:
                 ("64 compassos", "compas64")):
             self.cb_graella.addItem(et, val)
         self.cb_graella.currentIndexChanged.connect(self._canvia_snap)
-        self.barra_accions.addWidget(self.cb_graella)
-        self.barra_accions.addSeparator()
+        bar.addWidget(self.cb_graella)
+        bar.addSeparator()
         # Commutador d'EINA del timeline: «intel·ligent» (per defecte; la fletxa
         # s'adapta al que hi ha sota) o «marc» (arrossegar dibuixa un rectangle
         # de selecció i no mou clips). Viu aquí, darrere del snap, perquè és on
@@ -193,7 +197,7 @@ class BarresMixin:
             "seleccionat "
             "tot el que hi SONA a dins (només les pistes que cobreixi).")
         self.b_eina.toggled.connect(self._canvia_eina)
-        self.barra_accions.addWidget(self.b_eina)
+        bar.addWidget(self.b_eina)
 
     def _canvia_snap(self):
         """Aplica l'interruptor de snap + la divisió de graella al visor."""

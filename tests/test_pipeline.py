@@ -2562,7 +2562,12 @@ class ExportPipelineTests(unittest.TestCase):
                       window.b_analitza_beats.toolTip())
         self.assertIn("Exporta WAV", window.a_exporta.text())
         self.assertTrue(hasattr(window, "a_exporta_part"))
-        self.assertTrue(hasattr(window, "barra_accions"))   # 2a fila de la barra 1
+        self.assertTrue(hasattr(window, "barra_transport"))
+        textos = [b.text()
+                  for b in window.barra_transport.findChildren(app_main.QPushButton)]
+        self.assertIn("BPM…", textos)
+        self.assertIn("Eina: intel·ligent", textos)
+        self.assertFalse(hasattr(window, "barra_accions"))
         app.quit()
 
     def test_metro_desactivat_en_mode_lliure(self):

@@ -296,12 +296,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         # arredonir l'offset quan es recarrega el visor o s'analitza.
         self._offset_ui_text = None
         self._offset_ui_exact = None
-        self.b_detecta = QPushButton(" Detecta")
-        self.b_detecta.setIcon(icones.ico("target"))
-        self.b_detecta.setIconSize(icones.pm_mida(16))
-        self.b_detecta.setObjectName("secundari")
-        self.b_detecta.setToolTip("Detecta el BPM. Amb un tram de tempo seleccionat, analitza només eixe tram (el seu inici és el downbeat).")
-        self.b_detecta.clicked.connect(lambda: self._detecta_bpm())
         for camp in (self.bpm, self.bpb, self.offset):
             camp.editingFinished.connect(self._aplica_parametres_temps)
         for camp in (self.ref_bpm, self.ref_bpb):
@@ -322,7 +316,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             b.setToolTip(tip + "  ·  útil quan la detecció agafa el doble/meitat")
             b.clicked.connect(lambda _=False, f=factor: self._dobla_bpm(f))
             hp.addWidget(b)
-        hp.addWidget(self.b_detecta)
         self.b_tap = QPushButton("TAP")
         self.b_tap.setObjectName("secundari")
         self.b_tap.setToolTip("Tap tempo: marca el pols amb clics (o la tecla T). "
@@ -455,13 +448,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.addToolBar(Qt.TopToolBarArea, barra_temps)
         self.barra_temps = barra_temps
 
-        # 1b. TERCERA FILA: edició de graella (Snap, Beats QM, eina).
-        barra_accions = QToolBar("Edició")
-        barra_accions.setObjectName("barra_accions")
-        barra_accions.setMovable(False)
-        self.addToolBarBreak(Qt.TopToolBarArea)
-        self.addToolBar(Qt.TopToolBarArea, barra_accions)
-        self.barra_accions = barra_accions
+        # 1b. No hi ha barra d'edició pròpia: Snap, Graella, Eina i BPM… viuen
+        # a la barra de Transport (3a fila), perquè l'app tinga només 3 files.
 
         # progrés → barra d'estat (permanent)
         self.barra = QProgressBar()
