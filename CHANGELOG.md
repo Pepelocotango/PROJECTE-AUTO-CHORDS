@@ -5,6 +5,40 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Afegit — `ARBRE_DIRECTORIS.md` generat (2026-11-10)
+- Nou generador **`eines/genera_arbre.py`**: l'arbre complet del projecte dins
+  `ARBRE_DIRECTORIS.md` ja no és un snapshot manual; es genera entre els
+  marcadors `<!-- GENERAT: arbre -->` i `<!-- /GENERAT: arbre -->`.
+- Estructura i 🟢/🟡 (versionat) des del disc + `git ls-files`; les carpetes
+  grans o locals (`00PER FER`, `.opencode`, `CORPUS`, `portable`, `temp`,
+  `.venv`, `.deps`) es resumen amb recurs directe i recompte de fitxers; els
+  fitxers efímers de l'arrel (logs, recents…) no es llisten.
+- Descripcions: diccionari del generador per als fitxers no-Python i docstring
+  per als `app/*.py` i `tests/*.py` (com `genera_moduls.py`); les entrades que
+  ja no existeixen al disc s'ignoren.
+- `--check` per a `make docs-check` i inclusió a `make docs`; nou test
+  `tests/test_arbre_al_dia.py` amb el patró de `test_moduls_al_dia.py`.
+- Immediatament útil: la versió anterior estava desfasada (`app/rubato.py` i
+  `tests/test_rubato.py` encara hi apareixien, `vamp_host_local` constava com
+  a local, el recompte de `CORPUS` era 623 vs 783 reals…).
+- Suite: **1564 OK** (1 skip), `pyflakes` net i `docs-check` verd.
+
+### Tret — botó «Detecta» de la barra de temps (2026-11-10)
+- Eliminat el botó **◎ Detecta** (després de **×2/÷2**). La detecció de BPM
+  continua disponible amb **Analitza** (etapa de BPM) i **Beats/BPM** (`F7`).
+- El destí visible de la barra ja no mostra `Detecta:`; queda **TAP** i
+  **BPM/Compàs**.
+- Actualitzats `docs/ESQUEMA_UI.md`, `docs/EDICIO_OPERACIONS.md` i la doc de
+  recerca.
+
+### Canviat — la GUI torna a tindre 3 files de barres (2026-11-10)
+- Eliminada la barra **Edició** (4a fila): **BPM…**, **Graella:** (Snap +
+  selector de divisió) i **Eina: intel·ligent** passen a la barra de
+  **Transport**, que torna a ser la **3a fila**.
+- El selector de divisió de la graella s'ha compactat perquè el Transport
+  capiga a l'ample habitual de la finestra.
+- Actualitzats `docs/ESQUEMA_UI.md` i les vistes generades.
+
 ### Canviat — franja Editor del clip de tempo (2026-11-10)
 - Treta la icona del clip i, en mode tempo, els camps **Tipus**, **Inici (s)**
   i **Fi (s)**: estes dades ja es veuen a la llista/carril.

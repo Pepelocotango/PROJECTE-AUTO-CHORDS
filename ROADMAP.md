@@ -7,7 +7,7 @@
 > **GPL-3.0-or-later**.
 >
 > **v0.8.0** · Estat: **flux de producte estable i multi-SO** · Suite **verda**
-> (1.563 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
+> (1.564 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -117,7 +117,6 @@ simplificació del rubato.
 - **Export MIDI del mapa de tempo**: `mapa_tempo.mid` tipus 1 amb `Set Tempo`,
   `Time Signature`, marcadors i offset/anacrusi; rubato aproximat per events.
   Detall i criteris d'acceptació a «Exportació del mapa de tempo a DAWs».
-- **`ARBRE_DIRECTORIS.md`**: encara snapshot manual; pendent generador + test.
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
 - **Pendents del motor C/B/A**: connectar `+1`/`−1`/`×2`/`÷2` i «Ajusta BPM
   al compàs» al mateix motor; decidir si «Quantitza BPM» continua sent una
@@ -482,8 +481,10 @@ Commit de referència: `68dcde1` (checkpoint v9.2).
   cobreixen el flux. Detall al `CHANGELOG.md`.
 - ~~**Higiene dels tests**~~ → ✅ **FET** (2026-10-18/19): `tests/_temporals.py`
   esborra els temporals en plegar; la suite no deixa GB a `/tmp`.
-- **`ARBRE_DIRECTORIS.md`**: encara és un snapshot manual; pendent generador +
-  test perquè no es desfasï.
+- ~~**`ARBRE_DIRECTORIS.md`**~~ → ✅ **FET** (2026-11-10): generat amb
+  `eines/genera_arbre.py` (marcadors `GENERAT: arbre`, `--check` a
+  `make docs-check`, test `tests/test_arbre_al_dia.py`). Detall al
+  `CHANGELOG.md`.
 
 ---
 

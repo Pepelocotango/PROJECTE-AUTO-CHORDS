@@ -41,12 +41,14 @@ docs:
 	$(PY) eines/genera_esquema_ui.py
 	$(PY) eines/genera_inventari.py
 	$(PY) eines/genera_moduls.py
+	$(PY) eines/genera_arbre.py
 	$(PY) eines/genera_funcionalitats.py
 
 docs-check:
 	$(PY) eines/genera_esquema_ui.py --check
 	$(PY) eines/genera_inventari.py --check
 	$(PY) eines/genera_moduls.py --check
+	$(PY) eines/genera_arbre.py --check
 	$(PY) eines/genera_funcionalitats.py --check
 
 aleatori:
