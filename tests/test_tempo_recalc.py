@@ -264,3 +264,28 @@ class TestRecalculcaTram(unittest.TestCase):
         r = self._cas(1.0, n_ref=2)
         self.assertEqual((r["n"], r["num"], r["den"]), (2, 2, 4))
         self.assertAlmostEqual(r["bpm"], 240.0, places=6)
+
+
+class TestRecalculcaVeiRef(unittest.TestCase):
+    """Recalc del veí: primer la signatura de Ref. recalc, després BPM/N."""
+
+    def test_conserva_la_signatura_i_ajusta_el_bpm_minim(self):
+        r = tr.recalculca_vei_ref(10.5, 120.0, 4, 4)
+        self.assertEqual((r["num"], r["den"]), (4, 4))
+        self.assertEqual(r["n"], 5)
+        self.assertAlmostEqual(r["bpm"], 5 * 4 * 60.0 / 10.5, places=6)
+
+    def test_si_la_signatura_encaixa_no_la_canvia(self):
+        r = tr.recalculca_vei_ref(10.0, 120.0, 4, 4)
+        self.assertEqual((r["n"], r["num"], r["den"]), (5, 4, 4))
+        self.assertAlmostEqual(r["bpm"], 120.0, places=6)
+
+    def test_si_no_cap_canvia_de_signatura(self):
+        r = tr.recalculca_vei_ref(0.3, 120.0, 4, 4)
+        self.assertIsNotNone(r)
+        self.assertNotEqual((r["num"], r["den"]), (4, 4))
+        self.assertGreaterEqual(r["bpm"], 30.0)
+        self.assertLessEqual(r["bpm"], 350.0)
+
+    def test_sense_cap_combinacio_retorna_none(self):
+        self.assertIsNone(tr.recalculca_vei_ref(0.01, 120.0, 4, 4))

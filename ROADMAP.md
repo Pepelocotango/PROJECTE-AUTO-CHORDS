@@ -50,7 +50,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-11)
+## 2. Estat actual i relleu de sessió (2026-11-12)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -75,18 +75,23 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 **Estat actual:**
 - **Nucli**: obrir → analitzar opcional → editar 3 pistes → exportar → desar.
   Visor DAW amb acords, estructura i tempo/compàs; desfer/refer complet.
-- **Tempo/compàs**: mapa per trams amb `N` per tram, rols derivats, model
-  permissiu de 86 ms, rubato com a flag i motor C/B/A. El **BPM sempre és en
-  negres/minut** (sense selector d'unitat).
+- **Tempo/compàs**: mapa per trams amb `N` per tram, rols derivats, mínim
+  d'**1/16 a 350 BPM** (≈43 ms), rubato com a flag i motor C/B/A. El **BPM
+  sempre és en negres/minut** (sense selector d'unitat). Terminologia
+  canònica: **«recalc fix»** (fronteres fixes) i **«recalc mòbil»** (una
+  frontera compartida) a `docs/REGLES_DE_LA_APP.md` §13.6.
 - **GUI de tempo**: BPM i compàs **no** viuen a la barra «Temps»; es veuen i
-  s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs). El
-  **TAP** aplica al clip seleccionat i **re-ancora el BPM de Ref. recalc**;
-  la referència entra al desfer/refer.
+  s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
+  **Aplica** fa **recalc mòbil** (clip exacte + veí des de Ref. recalc);
+  **Ajusta** obre el mateix diàleg que el doble clic (BPM, compàs i
+  compassos). Aplica està deshabilitat a l'últim/únic clip. El **TAP** aplica
+  al clip seleccionat i **re-ancora el BPM de Ref. recalc**; la referència
+  entra al desfer/refer.
 - **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
   `Analitza beats, downbeats i BPM` (F7) i **Beats/BPM** a la barra.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
-- **Suite**: **1570 OK** (1 skip), `pyflakes` net i `docs-check` verd.
+- **Suite**: **1563 OK** (1 skip), `pyflakes` net i `docs-check` verd.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
@@ -97,9 +102,12 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   `Time Signature`, marcadors i offset/anacrusi; rubato aproximat per events.
   Detall i criteris d'acceptació a «Exportació del mapa de tempo a DAWs».
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
-- **Pendents del motor C/B/A**: connectar `+1`/`−1`/`×2`/`÷2` i «Ajusta BPM
-  al compàs» al mateix motor; decidir si «Quantitza BPM» continua sent una
-  operació separada.
+- **Pendents del motor C/B/A**: connectar `+1`/`−1`/`×2`/`÷2` al mateix
+  motor; decidir si «Quantitza BPM» continua sent una operació separada.
+- **Propera sessió (2026-11-12)**: arreglar el diàleg/finestra de **BPM,
+  compàs i compassos**, i netejar `docs/REGLES_DE_LA_APP.md` amb un subagent:
+  hi han d'anar **només regles**; moure la informació que no siga regla a un
+  document existent.
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
 
 ### Futures iteracions — motor d'àudio natiu (2026-11-08)

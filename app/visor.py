@@ -337,17 +337,17 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ed_cb_fi.setVisible(False)
         self.ed_aplica = QPushButton("Aplica")
         self.ed_aplica.setObjectName("principal")
-        self.ed_aplica.setToolTip("Aplica els canvis (Enter)")
+        self.ed_aplica.setToolTip("Recalc mòbil: aplica els canvis (Enter)")
         self.ed_aplica.clicked.connect(self._aplica_editor)
         _eh.addWidget(self.ed_aplica)
         # Acció explícita: conserva fronteres i compàs, i recalcula el BPM
         # perquè el clip tinga compassos sencers. Només en clips de tempo
         # normals; no canvia el comportament automàtic de la resta d'edició.
-        self.ed_bpm_compas = QPushButton("Ajusta BPM al compàs")
+        self.ed_bpm_compas = QPushButton("Ajusta")
         self.ed_bpm_compas.setObjectName("secundari")
         self.ed_bpm_compas.setToolTip(
-            "Recalcula el BPM d'este clip perquè tinga un nombre enter de "
-            "compassos, conservant les fronteres i el compàs.")
+            "Obre el diàleg de BPM, compàs i compassos del clip seleccionat "
+            "(el mateix que el doble clic sobre el tram).")
         self.ed_bpm_compas.clicked.connect(self._ajusta_bpm_compas)
         self.ed_bpm_compas.setVisible(False)
         _eh.addWidget(self.ed_bpm_compas)
@@ -3385,36 +3385,15 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
 
 
     def _ajusta_bpm_compas(self):
-        """Botó explícit: BPM perquè el clip tinga compassos sencers."""
+        """Obre el diàleg de tram de tempo del clip seleccionat."""
         kind, idx = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
         if kind != "tempo" or not (0 <= idx < len(self.tempo_trams or [])):
             idx = self.tempo_objectiu()
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)):
-            self.avis_editor("Ajusta BPM al compàs: selecciona un clip de tempo.")
+            self.avis_editor("Ajusta: selecciona un clip de tempo.")
             return False
-        try:
-            # Acció explícita de compassos sencers: valida amb la graella
-            # BPM/compàs, no amb la de QM (el que es vol és un compàs mètric).
-            nous5 = tempo_map.ajusta_bpm_a_compassos(
-                [tuple(t) for t in trams], idx, self._durada_wav(),
-                offset=getattr(self, "offset", 0.0))
-        except ValueError as e:
-            self.avis_editor(f"Ajusta BPM al compàs: {e}")
-            return False
-        nous = mapa_tempo.reenganxa_metadades(trams, nous5)
-        self._undo_marca()
-        try:
-            if not self.aplica_tempo_trams(nous):
-                raise ValueError("no s'ha pogut aplicar el mapa")
-            self._sincronitza_vista()
-        except Exception:
-            self._undo_commit()
-            raise
-        self._undo_commit()
-        self.log(f"Ajusta BPM al compàs: tram {idx} → "
-                 f"{float(self.tempo_trams[idx][2]):.3f} BPM")
-        return True
+        return bool(self._on_tempo_edit(idx))
 
 
     def _mou_frontera_ui(self, trams, idx_frontera, t, durada, offset):

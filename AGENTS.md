@@ -87,8 +87,14 @@ incrementalment). L'historial és al `CHANGELOG.md`.
 
 Les regles d'or (1–12 i §13) són invariants. Llegeix `docs/REGLES_DE_LA_APP.md`
 abans de tocar codi; s'han de complir als **4 punts** (**edició en viu, visor,
-CSV desat i exportació**). Si una funcionalitat xoca amb una regla, es canvia la
-funcionalitat (mai la regla); si hi ha conflicte, mana la regla.
+CSV desat i exportació**). Si una funcionalitat xoca amb una regla, es canvia
+la funcionalitat (mai la regla); si hi ha conflicte, mana la regla.
+
+**Terminologia de tempo:** **«recalc fix»** = recalcul amb fronteres fixes (no
+mou cap frontera; deriva BPM o `N`). **«recalc mòbil»** = recalcul amb **una
+sola** frontera compartida mòbil (mou el `fi` del clip seleccionat i l'`ini` del
+veí dret, o la simetria esquerra). Mai dues fronteres alhora. Definició
+canònica: `docs/REGLES_DE_LA_APP.md` §13.6.
 
 ## 🧭 Com es treballa
 

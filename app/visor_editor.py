@@ -6,7 +6,7 @@ d'acords, estructura i tempo/rubato.
 import re
 
 from . import bpm_unit as bpm_unit_mod
-from . import mapa_tempo, pipeline, tempo_map
+from . import mapa_tempo, pipeline, tempo_map, tempo_recalc
 from .visor_io import nom_acord
 
 class EditorMixin:
@@ -84,6 +84,12 @@ class EditorMixin:
             for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_n,
                       self.ed_aplica):
                 w.setEnabled(True)
+            ultim = (i == len(self.tempo_trams) - 1)
+            self.ed_aplica.setEnabled(not ultim)
+            self.ed_aplica.setToolTip(
+                ("Aplica no està disponible a l'últim clip: la fi de la WAV "
+                 "és fixa. Usa «Ajusta» per obrir el diàleg del tram.")
+                if ultim else "Recalc mòbil: aplica els canvis (Enter)")
         elif k == "chord" and 0 <= i < len(self.acords):
             t, nom = float(self.acords[i][0]), nom_acord(self.acords[i])
             self.ed_gran.setText(nom)
@@ -101,6 +107,7 @@ class EditorMixin:
             self.ed_rol_lbl.setVisible(False)
             for w in (self.ed_nom, self.ed_ini, self.ed_cb, self.ed_aplica):
                 w.setEnabled(True)
+            self.ed_aplica.setToolTip("Aplica els canvis (Enter)")
         elif k == "section" and 0 <= i < len(self.seccions):
             ini, fi, lletra, fam = self.seccions[i]
             self.ed_gran.setText(f"{lletra} ({fam})")
@@ -118,11 +125,13 @@ class EditorMixin:
             for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
                       self.ed_aplica):
                 w.setEnabled(True)
+            self.ed_aplica.setToolTip("Aplica els canvis (Enter)")
         else:
             self.ed_gran.setText("Selecciona un acord o una secció")
             for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_n,
                       self.ed_ini, self.ed_cb, self.ed_aplica):
                 w.setEnabled(False)
+            self.ed_aplica.setToolTip("Recalc mòbil: aplica els canvis (Enter)")
             self.ed_bpm_compas.setVisible(False)
             self.ed_bpm_compas.setEnabled(False)
             self.ed_nom.clear(); self.ed_fam.clear(); self.ed_agr.clear()
@@ -139,10 +148,21 @@ class EditorMixin:
         self.infoMissatge.emit(text)
 
     def _aplica_editor_tempo(self, i):
-        """Aplica BPM, compàs, agrupació i N a un clip de tempo."""
+        """Aplica BPM/compàs/N exactes i recalcula el veí (recalc mòbil).
+
+        El clip seleccionat rep exactament el que ha escrit l'usuari. El veí
+        dret conserva la signatura de Ref. recalc si pot i ajusta BPM/N; només
+        si no hi ha cap combinació vàlida canvia de signatura. En l'últim/únic
+        clip Aplica no està disponible: la fi de la WAV és fixa.
+        """
         trams = list(getattr(self, "tempo_trams", None) or [])
         if not (0 <= i < len(trams)):
             self.avis_editor("Aquest clip de tempo ja no existeix.")
+            return
+        if i == len(trams) - 1:
+            self.avis_editor(
+                "Aplica no està disponible a l'últim clip: la fi de la WAV "
+                "és fixa. Usa «Ajusta» per obrir el diàleg del tram.")
             return
         tr = trams[i]
         try:
@@ -190,17 +210,6 @@ class EditorMixin:
             return
         canvi_bpm = (abs(bpm - float(tr.bpm)) > 5e-4
                      or (num, den) != (int(tr.num), int(tr.den)))
-        if canvi_bpm and not canvi_n:
-            # El BPM és derivat: amb fronteres fixes ha de donar N enter.
-            dt = float(tr.fi) - float(tr.ini)
-            bq = tempo_map._bar_quarters(num, den)
-            n_real = dt * bpm / (bq * 60.0) if bq > 0 else 0.0
-            if abs(n_real - round(n_real)) > 1e-3 or round(n_real) < 1:
-                self.avis_editor(
-                    f"El BPM {bpm:.3f} amb {num}/{den} no dona un nombre "
-                    f"enter de compassos ({n_real:.3f}). Canvia el BPM, el "
-                    "compàs o N.")
-                return
         canvi_agr = agr != getattr(tr, "agrupacio", "")
 
         ini_nou = self._cb_a_secs(self.ed_cb.text())
@@ -245,15 +254,47 @@ class EditorMixin:
             if mapa is not trams:
                 mapa = mapa_tempo.reenganxa_metadades(trams, mapa)
             if canvi_bpm or canvi_n:
-                try:
-                    mapa = mapa_tempo.recalcula_tram_c(
-                        mapa, i, d, offset=off,
-                        n=n_val if canvi_n else None, bpm=bpm,
-                        num=num, den=den,
-                        camp="n" if canvi_n else "bpm")
-                except ValueError as e:
-                    self.avis_editor(f"Tempo: {e}")
+                bq = tempo_map._bar_quarters(num, den)
+                if bq <= 0 or bpm <= 0:
+                    self.avis_editor("Tempo: BPM o compàs no vàlids.")
                     return
+                dur_sel = float(n_val) * bq * 60.0 / float(bpm)
+                fi_sel = float(tr.ini) + dur_sel
+                vei = trams[i + 1]
+                if fi_sel <= float(tr.ini) + tempo_map.TOL:
+                    self.avis_editor("Tempo: el clip seleccionat no té durada.")
+                    return
+                if fi_sel >= float(vei.fi) - tempo_map.TOL:
+                    self.avis_editor(
+                        "Tempo: el clip seleccionat no cap abans del veí "
+                        "de la dreta.")
+                    return
+                dur_vei = float(vei.fi) - fi_sel
+                if dur_vei <= tempo_map.TOL:
+                    self.avis_editor(
+                        "Tempo: el veí de la dreta quedaria sense durada.")
+                    return
+                ref_bpm, ref_num, ref_den = self.ref_tempo_base()
+                recalc = tempo_recalc.recalculca_vei_ref(
+                    dur_vei, ref_bpm, ref_num, ref_den)
+                if recalc is None:
+                    self.avis_editor(
+                        "Tempo: el veí de la dreta no cap amb cap combinació "
+                        "vàlida a partir de Ref. recalc.")
+                    return
+                nous = list(mapa)
+                nous[i] = mapa_tempo.TramMapa(
+                    float(tr.ini), fi_sel, float(bpm), tr.tipus,
+                    f"{int(num)}/{int(den)}", agr, float(n_val))
+                agr_vei = (
+                    vei.agrupacio
+                    if (int(recalc["num"]), int(recalc["den"]))
+                    == (int(vei.num), int(vei.den)) else "")
+                nous[i + 1] = mapa_tempo.TramMapa(
+                    fi_sel, float(vei.fi), float(recalc["bpm"]), vei.tipus,
+                    f"{int(recalc['num'])}/{int(recalc['den'])}",
+                    agr_vei, float(recalc["n"]))
+                mapa = nous
             if canvi_agr:
                 mapa = list(mapa)
                 tr2 = mapa[i]

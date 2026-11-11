@@ -365,7 +365,7 @@ class TempoMixin:
         """Clic a un bloc de BPM/compàs → diàleg per editar-ne el valor."""
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)):
-            return
+            return False
         s = trams[idx]
         try:
             lbl = self.tempo_map.label(s[0]).split(".")[0]
@@ -382,15 +382,19 @@ class TempoMixin:
             inicial=(idx == 0), text_inici=lbl, unit=self.bpm_unit,
             n_actual=n_actual, durada=durada)
         if dlg.exec_() != QDialog.Accepted:
-            return
+            return False
         self._undo_marca()
-        if dlg.n_auto():
-            bpm, num, den, n = dlg.valors_n()
-            self.edita_n_compassos(idx, n, num, den)
-        else:
-            bpm, num, den = dlg.valors()
-            self.edita_tempo_objectiu(idx, bpm, num, den)
-        self._undo_commit()
+        ok = False
+        try:
+            if dlg.n_auto():
+                bpm, num, den, n = dlg.valors_n()
+                ok = bool(self.edita_n_compassos(idx, n, num, den))
+            else:
+                bpm, num, den = dlg.valors()
+                ok = bool(self.edita_tempo_objectiu(idx, bpm, num, den))
+        finally:
+            self._undo_commit()
+        return ok
 
     def _on_tempo_mogut(self, idx, vora, t):
         """Vora d'un bloc de BPM/compàs arrossegada → **re-tempo** (el ratolí mana).

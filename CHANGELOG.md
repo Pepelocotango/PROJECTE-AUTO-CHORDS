@@ -5,6 +5,21 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Canviat — Aplica recalc mòbil i botó Ajusta amb diàleg (2026-11-11)
+- **Aplica** és ara **recalc mòbil**: el clip seleccionat rep exactament el
+  BPM, compàs i `N`; la seua `fi` passa a l'`ini` del veí dret. El veí es
+  recalcula des de **Ref. recalc** conservant `x/x` si pot i ajustant BPM/`N`;
+  només canvia de signatura si no hi ha cap `N` vàlid. Si no hi ha combinació,
+  es rebutja tota l'operació.
+- **Aplica** està deshabilitat a l'últim/únic clip (la fi de la WAV és fixa);
+  Enter també ho respecta.
+- El botó **«Ajusta BPM al compàs»** passa a dir-se **«Ajusta»** i obre el
+  mateix diàleg que el doble clic sobre el tram (BPM, compàs i compassos).
+- El diàleg de tram de tempo s'obri **centrat a la pantalla** i per damunt de
+  l'app.
+- Documentada la terminologia **«recalc fix» / «recalc mòbil»** a §13.6 i a
+  `AGENTS.md`.
+
 ### Arreglat — Snap QM desactivat bloquejava el cursor (2026-11-11)
 - Amb el **Snap desactivat** i la graella en «Beats QM» sense beats detectats,
   `M`/Enter/`0`/`+` rebutjaven l'acció amb «El cursor no cau dins el tema».

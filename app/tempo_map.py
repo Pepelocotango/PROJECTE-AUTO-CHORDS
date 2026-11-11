@@ -1511,9 +1511,9 @@ def _candidats_fit_clip(tram, i, offset):
 def ajusta_bpm_a_compassos(trams, idx, durada, offset=0.0, beats_qm=None):
     """Recalcula el BPM perquè el clip tinga un nombre enter de compassos.
 
-    Acció **explícita** de la GUI (botó «Ajusta BPM al compàs»): conserva les
-    fronteres en segons i el compàs, i calcula el BPM que fa que el clip tinga
-    `N` compassos sencers, amb `N` el més pròxim possible al BPM actual.
+    Càlcul **explícit** de recalc fix: conserva les fronteres en segons i el
+    compàs, i calcula el BPM que fa que el clip tinga `N` compassos sencers,
+    amb `N` el més pròxim possible al BPM actual.
     És l'única via que força compassos sencers; la resta del contracte només
     exigeix un beat sencer.
 

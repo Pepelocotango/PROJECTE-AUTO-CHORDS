@@ -228,20 +228,19 @@ permissiva), el gest es rebutja amb **avís** (mai un canvi silenciós).
 - **Avisos de BPM**: cada recalcul pot adjuntar una desviació de BPM >12 % i
   una sospita d'octava (ratio ≈2 o ≈0,5, marge 8 %). Són avisos, no canvien la
   decisió.
-- **Edició directa de `N`**: `N` és exacte i **enter**. Es recalcula el BPM
-  perquè `N` compassos hi caben. En interiors també es deriva `fi`
-  (`base + N · bq · 60 / BPM`); la frontera del veí de la dreta passa a eixa
-  `fi`, i el veí conserva el seu `N` enter i **recalcula el BPM**.
-- **Edició directa de BPM o `x/x`**: les fronteres **no es mouen**. El valor
-  ha de donar un `N` enter amb la duració actual (`N = Δt · BPM / (bq · 60)`);
-  si no, es **rebutja amb avís**. El BPM és una vista derivada, no una segona
-  font de veritat.
+- **Aplica** (**recalc mòbil**): el clip seleccionat rep exactament el BPM,
+  compàs i `N` del formulari, i la seua `fi` passa a ser l'`ini` del veí dret.
+  El veí es recalcula a partir de **Ref. recalc**: conserva la signatura `x/x`
+  si pot i busca l'`N` enter que deixa el BPM més a prop possible; només si no
+  hi ha cap `N` vàlid amb eixa signatura canvia `x/x`. Si no hi ha cap
+  combinació vàlida, es rebutja **tota** l'operació. En l'últim/únic clip
+  Aplica està deshabilitat (la fi de la WAV és fixa).
 - **Últim i únic**: el final de la WAV no es mou i `N` ha de ser enter. Si una
   edició de frontera o una càrrega deixa `N` fraccionari, s'arrodoneix `N` i
   es recalcula el BPM amb el final fix. Si el BPM resultant ix de 30–350 o el
   clip queda massa curt, l'operació es rebutja amb avís.
-- **«Ajusta BPM al compàs»** continua sent una **acció explícita**: conserva
-  fronteres, compàs i `N` enter, i recalcula el BPM. No s'aplica
+- **Ajusta** obre el mateix diàleg que el doble clic sobre el tram (BPM,
+  compàs i `N`); el resultat s'aplica pel mateix camí del diàleg. No s'aplica
   automàticament.
 - **Arrossegar una frontera** continua usant el recalcul guiat amb segons com a
   entrada; no és una edició directa de camps.
@@ -262,6 +261,27 @@ passar és que un clip quede per davall del **mínim d'un compàs 1/16 a 350 BPM
 (§13.4), que `N` no siga enter o que un extrem isca de la WAV. El **pre-roll**
 (només la frontera `0→1`) **no** exempta de `N` enter: el primer clip també ha
 de tindre un nombre enter de compassos.
+
+**Terminologia obligatòria:** **«recalc fix»** i **«recalc mòbil»**. Són les
+dos úniques famílies de recalcul manual; qualsevol agent ha d'usar estos noms
+tal qual.
+
+1. **recalc fix** (durada fixa): les fronteres **no es mouen**. Es fixa el
+   BPM/compàs (o el nombre de compassos) i es deriva l'altre; si no hi ha
+   combinació vàlida, es rebutja amb avís.
+2. **recalc mòbil** (una frontera compartida): es mou **exactament una**
+   frontera i es recalculen els **dos clips adjacents**. Editar el `fi` del clip
+   seleccionat i editar l'`ini` del clip de la dreta són la **mateixa**
+   operació. No es mouen l'altre extrem del clip seleccionat ni cap frontera no
+   adjacent.
+
+**Mai es mouen dues fronteres en una sola operació manual.** Les operacions
+estructurals (partir, fusionar, eliminar o duplicar) i la reparació/càrrega
+poden reajustar diverses fronteres per restaurar `N` enter; **no són ni
+«recalc fix» ni «recalc mòbil»** i no es presenten com a tals.
+
+A la franja Editor, **Aplica** és l'operació de **recalc mòbil**. **Ajusta**
+obre el mateix diàleg de BPM/compàs/`N` que el doble clic sobre el tram.
 
 `Inici (s)` i `Fi (s)` són editables. Com que la frontera és única, moure'n un
 mou **eixa** frontera; l'extrem contrari no es mou i s'aplica el **recalcul

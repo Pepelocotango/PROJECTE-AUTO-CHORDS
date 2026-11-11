@@ -4531,7 +4531,9 @@ class TestLlistaTempo(_undo_temps___Base):
         v._aplica_editor()
         self.assertAlmostEqual(v.tempo_trams[1].fi, 22.0, places=6)
         self.assertAlmostEqual(v.tempo_trams[2].ini, 22.0, places=6)
-        self.assertAlmostEqual(v.tempo_trams[2].bpm, 150.0, places=6)
+        # El veí conserva 4/4 de Ref. recalc; 8 s → N=4 i BPM 120.
+        self.assertAlmostEqual(v.tempo_trams[2].bpm, 120.0, places=6)
+        self.assertEqual(v.tempo_trams[2].n, 4)
 
     def test_editor_rebutja_n_fraccionari_en_interior(self):
         _w, v = self._prepara()
@@ -4574,12 +4576,18 @@ class TestLlistaTempo(_undo_temps___Base):
 
     def test_editor_mou_la_frontera_amb_compassos(self):
         _w, v = self._prepara()
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4", n=5),
+            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "normal", "4/4", n=5),
+            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4", n=5),
+        ]
+        v._actualitza_temps()
         v._focus_editor("tempo", 1)
         v.ed_cb.setText("5.1")
         v._aplica_editor()
         self.assertAlmostEqual(v.tempo_trams[0].fi, 8.0, places=2)
         self.assertAlmostEqual(v.tempo_trams[1].ini, 8.0, places=2)
-        self.assertAlmostEqual(v.tempo_trams[1].fi, 30.0, places=2)
+        self.assertAlmostEqual(v.tempo_trams[1].fi, 20.0, places=2)
 
     def test_editor_rebutja_inici_del_primer_i_fi_de_l_ultim(self):
         _w, v = self._prepara()
@@ -4596,22 +4604,54 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertAlmostEqual(v.tempo_trams[0].ini, 0.0, places=6)
         self.assertAlmostEqual(v.tempo_trams[1].fi, 30.0, places=2)
 
-    def test_aplicar_des_de_l_editor_canvia_bpm_i_compas(self):
+    def test_aplicar_des_de_l_editor_es_recalc_mobil(self):
+        """Aplica imposa BPM/compàs/N i recalcula el veí des de Ref. recalc."""
         _w, v = self._prepara()
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4", n=5),
+            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "normal", "4/4", n=5),
+            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4", n=5),
+        ]
+        v._actualitza_temps()
         v._focus_editor("tempo", 1)
-        # Contracte nou: amb fronteres fixes (10–30 s) el BPM ha de donar un
-        # N enter. 120 BPM a 4/4 sobre 20 s són exactament 10 compassos.
-        v.ed_nom.setText("120")
+        v.ed_nom.setText("150")
         v.ed_fam.setText("4/4")
         v._aplica_editor()
-        self.assertEqual((int(v.tempo_trams[1][3]),
-                          int(v.tempo_trams[1][4])), (4, 4))
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=6)
-        self.assertAlmostEqual(float(v.tempo_trams[1][0]), 10.0, places=6)
-        self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=6)
+        # Seleccionat: exactament 5 compassos a 150 BPM → fi 18.
+        self.assertEqual(v.tempo_trams[1].n, 5)
+        self.assertAlmostEqual(float(v.tempo_trams[1].fi), 18.0, places=6)
+        self.assertAlmostEqual(float(v.tempo_trams[1].bpm), 150.0, places=6)
+        # Veí: conserva 4/4 de Ref. recalc i ajusta BPM/N (12 s → N=6).
+        self.assertEqual((int(v.tempo_trams[2].num),
+                          int(v.tempo_trams[2].den)), (4, 4))
+        self.assertEqual(v.tempo_trams[2].n, 6)
+        self.assertAlmostEqual(float(v.tempo_trams[2].ini), 18.0, places=6)
+        self.assertAlmostEqual(float(v.tempo_trams[2].bpm), 120.0, places=6)
         # La llista s'ha refrescat i la franja mostra el valor aplicat.
+        self.assertIn("150", v.llista_tempo.item(1, 2).text())
         self.assertEqual(v.llista_tempo.item(1, 3).text(), "4/4")
-        self.assertEqual(v.ed_fam.text(), "4/4")
+
+    def test_aplicar_al_vei_canvia_de_signatura_si_no_cap(self):
+        """Si no hi ha N vàlid amb el x/x de Ref. recalc, canvia de signatura."""
+        _w, v = self._prepara()
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4", n=5),
+            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "normal", "4/4", n=5),
+            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4", n=5),
+        ]
+        v._actualitza_temps()
+        v._focus_editor("tempo", 1)
+        # 5 compassos de 4/4 en 19,7 s → fi 29,7; el veí queda amb 0,3 s.
+        bpm = 5 * 4 * 60.0 / 19.7
+        v.ed_nom.setText(f"{bpm:.6f}")
+        v.ed_fam.setText("4/4")
+        v._aplica_editor()
+        self.assertAlmostEqual(float(v.tempo_trams[1].fi), 29.7, places=5)
+        self.assertNotEqual((int(v.tempo_trams[2].num),
+                             int(v.tempo_trams[2].den)), (4, 4))
+        self.assertGreaterEqual(float(v.tempo_trams[2].bpm), 30.0)
+        self.assertLessEqual(float(v.tempo_trams[2].bpm), 350.0)
+        self.assertAlmostEqual(float(v.tempo_trams[2].fi), 30.0, places=6)
 
     def test_talla_tempo_i_afegeix_tall_son_el_mateix_motor(self):
         """Enter (talla_tempo) i «Afegeix/Parteix aquí» han de coincidir."""
@@ -4632,36 +4672,57 @@ class TestLlistaTempo(_undo_temps___Base):
             w1.close()
             w2.close()
 
-    def test_editor_rebutja_bpm_que_no_dona_n_enter(self):
-        """Un BPM amb fronteres fixes ha de donar N enter; si no, es rebutja."""
+    def test_editor_rebutja_bpm_mobil_si_no_cap(self):
+        """Aplica rebutja l'operació si el clip seleccionat no cap."""
         _w, v = self._prepara()
-        v._focus_editor("tempo", 1)
-        abans = tuple(v.tempo_trams[1])
-        with patch.object(v, "avis_editor") as av:
-            v.ed_nom.setText("101")
-            v._aplica_editor()
-            self.assertIn("no dona un nombre enter", av.call_args[0][0])
-        self.assertEqual(tuple(v.tempo_trams[1]), abans,
-                         "el rebuig no ha de mutar el clip")
-
-    def test_boto_ajusta_bpm_al_compas(self):
-        _w, v = self._prepara()
-        v.offset = 1.207438
-        v.bpm, v.bpb, v.beat_type = 66.731, 1, 4
         v.tempo_trams = [
-            mapa_tempo.TramMapa(0.0, 1.207438, 66.731, "normal", "1/4"),
-            mapa_tempo.TramMapa(1.207438, 30.0, 66.730739, "normal", "4/4"),
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4", n=5),
+            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "normal", "4/4", n=5),
+            mapa_tempo.TramMapa(20.0, 30.0, 120.0, "normal", "4/4", n=5),
+        ]
+        v._actualitza_temps()
+        v._focus_editor("tempo", 1)
+        abans = [tuple(t) for t in v.tempo_trams]
+        with patch.object(v, "avis_editor") as av:
+            # 5 compassos de 4/4 a 40 BPM = 30 s: no cap abans del veí.
+            v.ed_nom.setText("40")
+            v._aplica_editor()
+            self.assertIn("no cap", av.call_args[0][0])
+        self.assertEqual([tuple(t) for t in v.tempo_trams], abans,
+                         "el rebuig no ha de mutar cap clip")
+
+    def test_aplica_deshabilitat_a_l_ultim_i_unic(self):
+        _w, v = self._prepara()
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4", n=5),
+            mapa_tempo.TramMapa(10.0, 30.0, 120.0, "normal", "4/4", n=10),
         ]
         v._actualitza_temps()
         v._focus_editor("tempo", 0)
+        self.assertTrue(v.ed_aplica.isEnabled())
+        v._focus_editor("tempo", 1)
+        self.assertFalse(v.ed_aplica.isEnabled())
+        abans = [tuple(t) for t in v.tempo_trams]
+        with patch.object(v, "avis_editor") as av:
+            v._aplica_editor_tempo(1)
+            self.assertIn("últim clip", av.call_args[0][0])
+        self.assertEqual([tuple(t) for t in v.tempo_trams], abans)
+        # Amb un sol clip, també està deshabilitat.
+        v.tempo_trams = [mapa_tempo.TramMapa(
+            0.0, 30.0, 120.0, "normal", "4/4", n=15)]
+        v._actualitza_temps()
+        v._focus_editor("tempo", 0)
+        self.assertFalse(v.ed_aplica.isEnabled())
+
+    def test_boto_ajusta_obre_el_dialeg_del_tram(self):
+        _w, v = self._prepara()
+        v._focus_editor("tempo", 0)
         self.assertFalse(v.ed_bpm_compas.isHidden())
         self.assertTrue(v.ed_bpm_compas.isEnabled())
-        v.ed_bpm_compas.click()
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 49.691992,
-                               places=5)
-        self.assertAlmostEqual(float(v.tempo_trams[0][1]), 1.207438,
-                               places=6)
-        self.assertEqual(v.tempo_trams[0][3:], (1, 4))
+        self.assertEqual(v.ed_bpm_compas.text(), "Ajusta")
+        with patch.object(v, "_on_tempo_edit", return_value=True) as edit:
+            v.ed_bpm_compas.click()
+        edit.assert_called_once_with(0)
 
     def test_zero_zero_no_crea_rubato_des_de_l_editor(self):
         _w, v = self._prepara()
@@ -4733,8 +4794,8 @@ class TestLlistaTempo(_undo_temps___Base):
         _comprova("desfer")
         v.redo()
         _comprova("refer")
-        v._focus_editor("tempo", 2)
-        v.ed_ini.setText("14.000")
+        v._focus_editor("tempo", 1)
+        v.ed_cb.setText(v._secs_a_cb(12.0))
         v._aplica_editor()
         _comprova("mou la frontera")
         from app import tempo_map as tmm

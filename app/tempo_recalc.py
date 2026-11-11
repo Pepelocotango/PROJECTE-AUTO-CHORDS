@@ -427,6 +427,32 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
     })
 
 
+def recalculca_vei_ref(durada, bpm_ref, num_ref, den_ref, *,
+                       bpm_min=None, bpm_max=None):
+    """Recalcula el veí amb el mínim moviment respecte de Ref. recalc.
+
+    Prioritat:
+    1. Conserva la signatura `num_ref/den_ref` i busca l'`N` enter que deixa
+       el BPM més a prop possible de `bpm_ref` (ajust xicotet de BPM).
+    2. Només si no hi ha cap `N` vàlid amb eixa signatura, permet canviar
+       `x/x` i torna a buscar la combinació més pròxima a la referència.
+
+    Retorna el diccionari de `recalculca_tram` o `None` si no hi ha cap
+    combinació vàlida.
+    """
+    durada = float(durada)
+    bpm_ref, num_ref, den_ref = _valida_referencia(bpm_ref, num_ref, den_ref)
+    bmin = limits.BPM_MIN if bpm_min is None else float(bpm_min)
+    bmax = limits.BPM_MAX if bpm_max is None else float(bpm_max)
+    kw = dict(mode="graella", bpm_min=bmin, bpm_max=bmax, n_ventana=8)
+    r = recalculca_tram(durada, bpm_ref, num_ref, den_ref,
+                        bloca_compas=True, **kw)
+    if r is not None:
+        return r
+    return recalculca_tram(durada, bpm_ref, num_ref, den_ref,
+                           bloca_compas=False, **kw)
+
+
 def avis_de_resultat(resultat):
     """Text combinat d'avisos d'un resultat de `recalculca_tram`.
 

@@ -1955,6 +1955,22 @@ class TestDialegTramTempo(_dialegs___Base):
         with self.assertRaises(ValueError):
             d.valors()
 
+    def test_show_centra_el_dialeg_a_la_pantalla(self):
+        d = dialegs.DialegTramTempo(None, inici=4.0, bpm=120.0, num=4,
+                                    den=4)
+        try:
+            d.show()
+            QApplication.processEvents()
+            pantalla = d.screen() or QApplication.primaryScreen()
+            self.assertIsNotNone(pantalla)
+            centre = pantalla.availableGeometry().center()
+            self.assertLessEqual(
+                abs(d.frameGeometry().center().x() - centre.x()), 2)
+            self.assertLessEqual(
+                abs(d.frameGeometry().center().y() - centre.y()), 2)
+        finally:
+            d.close()
+
 
 class TestDialegTempoMapa(_dialegs___Base):
     """Parsing compàs→segons i add/delete de trams (el que fa el diàleg)."""
@@ -4610,7 +4626,10 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
     def test_editor_aplica_agrupacio_per_tram(self):
         v = _vista_segueix_model___visor()
         try:
-            self.assertTrue(v.aplica_tempo_trams([(0.0, 20.0, 120.0, 7, 8)]))
+            # Dos clips: Aplica no està disponible a l'últim/únic.
+            self.assertTrue(v.aplica_tempo_trams([
+                (0.0, 7.0, 120.0, 7, 8),
+                (7.0, 20.0, 113.076923, 7, 8)]))
             v._focus_editor("tempo", 0)
             self.assertEqual(v.ed_agr.text(), "")
             v.ed_agr.setText("3+2+2")
@@ -5773,6 +5792,35 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(vr.tempo_trams[2][0], 35.0, places=6)
         self.assertAlmostEqual(vr.tempo_trams[2][2], 144.0, places=6)
 
+    def test_edicio_manual_mou_com_a_màxim_una_frontera(self):
+        """Editar N mou només la frontera compartida seleccionat/veí dret."""
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        abans = ([float(t[0]) for t in vr.tempo_trams]
+                 + [float(vr.tempo_trams[-1][1])])
+        self.assertTrue(vr.edita_n_compassos(1, 12, 3, 4))
+        despres = ([float(t[0]) for t in vr.tempo_trams]
+                   + [float(vr.tempo_trams[-1][1])])
+        canviades = [i for i, (a, b) in enumerate(zip(abans, despres))
+                     if abs(a - b) > 1e-6]
+        self.assertEqual(canviades, [2])
+
+    def test_recalcul_de_durada_fixa_no_mou_cap_frontera(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        abans = ([float(t[0]) for t in vr.tempo_trams]
+                 + [float(vr.tempo_trams[-1][1])])
+        self.assertTrue(vr.canvia_compassos_tram(1, 1))
+        despres = ([float(t[0]) for t in vr.tempo_trams]
+                   + [float(vr.tempo_trams[-1][1])])
+        self.assertEqual(despres, abans)
+
     def test_el_marcador_no_arrossega_la_frontera_d_estructura(self):
         """Moure un marcador no canvia cap clip d'estructura."""
         vr = self.w.visor_ref
@@ -5966,6 +6014,9 @@ class TestAncoratgesFinestra(unittest.TestCase):
         before_sec = list(vr.seccions)
         vr._on_tempo_mogut(0, "fi", 18.0)
         self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 18.0, places=6)
+        # Només mou la frontera compartida: la resta no es desplaça.
+        self.assertAlmostEqual(float(vr.tempo_trams[1][1]), 32.0, places=6)
+        self.assertAlmostEqual(float(vr.tempo_trams[2][0]), 32.0, places=6)
         self.assertAlmostEqual(float(vr.marcadors[0]), 16.0, places=6)
         self.assertEqual(vr.seccions, before_sec)
 

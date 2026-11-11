@@ -24,7 +24,7 @@ acordat és a [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 > BPM/compàs) · fronteres interiors a la graella, amb inici del primer clip i
 > final de l’últim lliures · **1/4 vàlid a tota l’app** · `+` sempre al beat
 > QM més pròxim · ajust que prioritza conservar el BPM i canviar el compàs ·
-> botó explícit **Ajusta BPM al compàs** per forçar compassos sencers ·
+> botó explícit **Ajusta** per obrir el diàleg de BPM, compàs i compassos ·
 > **rubato**, detecció de BPM per tram, tap tempo, marcadors i quantització
 > conservats. Historial complet: [`CHANGELOG.md`](CHANGELOG.md).
 

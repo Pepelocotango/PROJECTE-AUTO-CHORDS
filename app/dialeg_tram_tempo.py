@@ -1,7 +1,7 @@
 """Diàleg per editar un tram de tempo/compàs."""
 from PyQt5.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QLabel,
-    QMessageBox, QSpinBox, QVBoxLayout,
+    QApplication, QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
+    QFormLayout, QLabel, QMessageBox, QSpinBox, QVBoxLayout,
 )
 
 from app.camp_text import CampText
@@ -75,6 +75,16 @@ class DialegTramTempo(QDialog):
         botons.accepted.connect(self.accept)
         botons.rejected.connect(self.reject)
         lay.addWidget(botons)
+
+    def showEvent(self, event):
+        """Centra el diàleg a la pantalla i el deixa damunt de l'app."""
+        super().showEvent(event)
+        pantalla = self.screen() or QApplication.primaryScreen()
+        if pantalla is not None:
+            geo = pantalla.availableGeometry()
+            self.move(geo.center() - self.rect().center())
+        self.raise_()
+        self.activateWindow()
 
     def accept(self):
         try:
