@@ -5,6 +5,21 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Canviat — tots els clips de temps amb compassos sencers (2026-11-11)
+- **Contracte nou** (`docs/REGLES_DE_LA_APP.md` §13.4–§13.6): **tots** els
+  clips de tempo/compàs —primer, interiors, últim/únic i rubato— han de tindre
+  un **nombre enter de compassos** (`N ≥ 1`). Ja no existix l'estat amb `N`
+  fraccionari ni l'excepció de pre-roll.
+- **Primer inici i últim final fixes**: el primer clip comença a **0** i
+  l'últim acaba a la **durada de la WAV**; no s'editen. L'offset/pre-roll és
+  independent i **no** eximeix de `N` enter.
+- **BPM derivat**: si l'usuari escriu un BPM o un compàs que no dona `N` enter
+  amb la duració actual, es **rebutja amb avís**. En canvis de frontera o
+  càrrega, si `N` queda fraccionari s'arrodoneix i es recalcula el BPM; si ix
+  de 30–350 BPM o el clip queda massa curt, es rebutja.
+- **Nou mínim**: un compàs **`1/16` a 350 BPM** (≈43 ms) en lloc de `1/8`
+  (≈86 ms). S'afig el denominador **16** als compàs admesos.
+
 ### Canviat — `CORPUS/` fora de l'arbre generat (2026-11-11)
 - `eines/genera_arbre.py` **exclou `CORPUS/`** del tot: és una carpeta local
   d'avaluació (1,4 GB, no versionada) que canvia sovint i feia ballar

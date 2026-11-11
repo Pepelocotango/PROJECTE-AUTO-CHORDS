@@ -99,12 +99,14 @@ class TestRecalculcaTram(unittest.TestCase):
         self.assertFalse(r["canvis"]["n"])
 
     def test_minim_de_la_app(self):
-        r = self._cas(30.0 / 350.0)
-        self.assertEqual((r["n"], r["num"], r["den"]), (1, 1, 8))
+        # El mínim nou és un compàs 1/16 a 350 BPM (≈ 42,857 ms).
+        r = self._cas(60.0 * 0.25 / 350.0)
+        self.assertEqual((r["n"], r["num"], r["den"]), (1, 1, 16))
         self.assertAlmostEqual(r["bpm"], 350.0, places=5)
 
     def test_per_sota_del_minim_no_hi_ha_solucio(self):
-        self.assertIsNone(self._cas(0.08))
+        # 40 ms queden per sota del compàs 1/16 a 350 BPM.
+        self.assertIsNone(self._cas(0.04))
 
     def test_set_beats_forcen_7_4(self):
         r = tr.recalculca_tram(2.912646, 144.569633, 4, 4, n_beats=7)
@@ -113,8 +115,10 @@ class TestRecalculcaTram(unittest.TestCase):
         self.assertAlmostEqual(r["bpm"], 7 * 60.0 / 2.912646, places=4)
 
     def test_fallback_k_mes_menys_u(self):
-        casos = ((13, 4, 4, 12), (17, 4, 4, 16), (19, 4, 4, 20),
-                 (23, 4, 4, 24), (17, 3, 4, 18))
+        # Amb el denominador 16 admissible, K=19 i K=23 ja encaixen en una
+        # signatura directa (11/16 i 7/16); el fallback cal per a K més llargs.
+        casos = ((13, 4, 4, 12), (17, 4, 4, 16), (17, 3, 4, 18),
+                 (51, 4, 4, 52), (53, 4, 4, 52))
         for k, num, den, k_usat in casos:
             with self.subTest(k=k, ref=(num, den)):
                 r = tr.recalculca_tram(k * 0.5, 120.0, num, den, n_beats=k)
@@ -165,14 +169,16 @@ class TestRecalculcaTram(unittest.TestCase):
         self.assertEqual(r["beats"], 2.5)
 
     def test_fallback_avança_un_beat_detectat(self):
-        # Amb pas 1,5 (negra amb punt), 19 no prova 18/20 sinó 17,5/20,5.
-        r = tr.recalculca_tram(6.5, 120.0, 4, 4, n_beats=19,
+        # K=51 no cap en cap signatura directa (el màxim és 48 amb 1/16
+        # N=16). Amb pas 1,5 (negra amb punt) prova 49,5/52,5 i tria 49,5;
+        # amb pas 1,0 prova 50/52 i prioritza la signatura de referència (52).
+        r = tr.recalculca_tram(10.0, 120.0, 4, 4, n_beats=51,
                               pas_beat=1.5)
-        self.assertEqual(r["beats"], 17.5)
+        self.assertEqual(r["beats"], 49.5)
         self.assertTrue(r["beats_ajustats"])
-        r = tr.recalculca_tram(6.5, 120.0, 4, 4, n_beats=19,
+        r = tr.recalculca_tram(10.0, 120.0, 4, 4, n_beats=51,
                               pas_beat=1.0)
-        self.assertEqual(r["beats"], 20.0)
+        self.assertEqual(r["beats"], 52.0)
         self.assertTrue(r["beats_ajustats"])
 
     def test_zero_beats_no_bloqueja_la_inferència(self):

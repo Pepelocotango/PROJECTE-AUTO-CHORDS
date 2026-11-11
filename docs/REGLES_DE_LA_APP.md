@@ -119,9 +119,10 @@ se li passa, el paquet queda com era. La graella mètrica exportada pot ser
 **Resum**: *els segons manen per a l'àudio; els clips de tempo/compàs són el
 model (el tram 0 inclòs) i el transport només n'és una vista; la referència la
 posa el músic (BPM/compàs) i el recalcul guiat busca compassos sencers; les
-fronteres són lliures (snap opcional) i només cal una durada mínima de 86 ms;
-els compassos sencers són l'objectiu del recalcul, no una barrera; el primer
-inici i l'últim final poden ser lliures.*
+fronteres interiors són lliures (snap opcional) i només cal una durada mínima
+d'un compàs 1/16 a 350 BPM (≈43 ms); **tots** els clips de tempo/compàs tenen
+un nombre enter de compassos (`N`), i el primer inici (0) i l'últim final
+(durada de la WAV) són fixes.*
 
 ### 13.1 Els segons són la font de veritat de l'àudio
 Acords i seccions es guarden en **segons**: canviar BPM o compàs **no els mou**.
@@ -153,9 +154,26 @@ L'edició general de la GUI **no bloqueja** un clip perquè no coincidisca amb
 compassos sencers. El model és permissiu:
 
 - **Valors**: BPM **30–350**, numerador **1–12** (inclòs `1/4`), denominador
-  **2, 4 o 8** (`app/limits.py`). Un rubato no va en segons ni en `0/0`.
-- **Durada mínima**: cap clip normal pot ser més curt que
-  `limits.TEMPS_MIN_CLIP` = un compàs `1/8` a 350 BPM (≈ **86 ms**).
+  **2, 4, 8 o 16** (`app/limits.py`). Un rubato no va en segons ni en `0/0`.
+- **Durada mínima**: cap clip pot ser més curt que
+  `limits.TEMPS_MIN_CLIP` = un compàs **`1/16`** a 350 BPM (≈ **43 ms**).
+- **N enter sempre**: tots els clips de tempo/compàs (primer, interiors,
+  últim i únic, rubato inclòs) han de contindre un **nombre enter de
+  compassos** (`N ≥ 1`). No existix l'estat amb `N` fraccionari: si una
+  edició o una càrrega el produïx, s'**arrodoneix `N`** i es **recalcula el
+  BPM** perquè la duració quede exacta; si el BPM resultant ix de 30–350 o el
+  clip queda per davall del mínim, l'operació es **rebutja amb avís**.
+- **Extrems fixes**: l'**inici del primer clip** és sempre **0** i el **final
+  de l'últim** és sempre la **durada de la WAV**; no s'editen. La resta de
+  fronteres són interiors i lliures.
+- **BPM derivat**: el BPM es deriva de `N`, el compàs i la duració. Si
+  l'usuari escriu un BPM que no dona `N` enter amb la duració actual, es
+  **rebutja amb avís** (no es deixa `N` fraccionari ni es mou la frontera).
+- **Offset i pre-roll**: l'offset és la fase de la graella (on cau el compàs
+  1) i el pre-roll és el tram de temps abans d'eixe compàs. Cap dels dos
+  **no eximeix** el primer clip de tindre `N` enter: el seu `N` es compta
+  sobre la **duració completa** del clip (`fi − ini`), no sobre el tros
+  posterior a l'offset.
 - **Fronteres interiors lliures**: poden caure on vulga l'usuari; el **snap és
   opcional** i no s'exigeix cap línia de beat. **Només amb Snap Beats QM** els
   beats detectats intervenen en els talls i recalcs; amb Snap Auto o qualsevol
@@ -163,17 +181,8 @@ compassos sencers. El model és permissiu:
   prop d'un beat, el recompte usa una **tolerància operativa de 50 ms** i
   avisa si el beat és ambigu o si el recompte exacte canvia; no s'imposa cap
   desplaçament de la frontera.
-- **Excepcions d'extrems**: el **primer inici** i l'**últim final** poden ser
-  lliures (amb un sol clip, tots dos). El **primer clip** pot ser pre-roll i
-  queda **exempt** del mínim de durada.
-- Els **compassos sencers són l'objectiu del recalcul** (§13.5), no una
-  barrera: si no s'assoleixen, s'avisa. Si el clip incompleix el mínim de
-  durada, el gest es rebutja. Quan un clip normal queda amb `N` fraccionari,
-  el visor mostra un **avís emergent** amb el clip, el rang, el compàs i el
-  BPM; es comprova cada vegada que es reconstrueix la graella i es pot
-  **conservar o descartar** l'operació.
 - Entrada invàlida: es rebutja amb avís i sense mutació parcial. CSV extern
-  invàlid: es repara i s'informa.
+  invàlid: es repara i s'informa (incloent-hi l'ajust de `N`/BPM).
 
 La validació **estricta** (`valida_i_normalitza_compassos`,
 `_millora_signatures_clips`, `ajusta_bpm_a_compassos`, `retempo_tram_detectat`)
@@ -219,23 +228,26 @@ permissiva), el gest es rebutja amb **avís** (mai un canvi silenciós).
 - **Avisos de BPM**: cada recalcul pot adjuntar una desviació de BPM >12 % i
   una sospita d'octava (ratio ≈2 o ≈0,5, marge 8 %). Són avisos, no canvien la
   decisió.
-- **Edició directa C**: si l'usuari edita `N`, BPM o `x/x` d'un tram
-  **interior**, els tres valors són exactes i es recalcula `fi`
-  (`base + N · bq · 60 / BPM`). La frontera del veí de la dreta passa a eixa
-  `fi`; el veí conserva `N` i `x/x` i **recalcula el BPM** (regla A).
-- **Últim i únic B**: el final de la WAV no es mou. BPM i `x/x` són exactes i
-  `N` es deriva; pot quedar **fraccionari**. És l'única excepció permesa.
-- Si en l'últim/únic s'escriu `N` explícitament, `N` és exacte i es recalcula
-  el BPM amb el final fix.
-- Si el resultat ix de 30–350 BPM, no cap abans del veí o deixa un tram massa
-  curt, l'edició es rebutja amb avís.
+- **Edició directa de `N`**: `N` és exacte i **enter**. Es recalcula el BPM
+  perquè `N` compassos hi caben. En interiors també es deriva `fi`
+  (`base + N · bq · 60 / BPM`); la frontera del veí de la dreta passa a eixa
+  `fi`, i el veí conserva el seu `N` enter i **recalcula el BPM**.
+- **Edició directa de BPM o `x/x`**: les fronteres **no es mouen**. El valor
+  ha de donar un `N` enter amb la duració actual (`N = Δt · BPM / (bq · 60)`);
+  si no, es **rebutja amb avís**. El BPM és una vista derivada, no una segona
+  font de veritat.
+- **Últim i únic**: el final de la WAV no es mou i `N` ha de ser enter. Si una
+  edició de frontera o una càrrega deixa `N` fraccionari, s'arrodoneix `N` i
+  es recalcula el BPM amb el final fix. Si el BPM resultant ix de 30–350 o el
+  clip queda massa curt, l'operació es rebutja amb avís.
 - **«Ajusta BPM al compàs»** continua sent una **acció explícita**: conserva
-  fronteres i compàs i recalcula el BPM perquè el clip tinga un nombre enter de
-  compassos. No s'aplica automàticament.
+  fronteres, compàs i `N` enter, i recalcula el BPM. No s'aplica
+  automàticament.
 - **Arrossegar una frontera** continua usant el recalcul guiat amb segons com a
   entrada; no és una edició directa de camps.
 - **Arrossegar**: el punter fixa Δt; s'ajusten les fronteres i el recalcul
-  guiat decideix BPM/compàs/N dels dos costats amb la **referència base**.
+  guiat decideix BPM/compàs/N enters dels dos costats amb la **referència
+  base**.
 - Un tram **rubato** es mou i es re-tempa com qualsevol tram normal; només canvia
   el flag de notació.
 
@@ -246,8 +258,10 @@ permissiva), el gest es rebutja amb **avís** (mai un canvi silenciós).
 La frontera la col·loca el músic; el snap és **opcional** i és el snap normal del
 timeline. No hi ha obligació que les fronteres caiguen en una línia de beat.
 Amb el snap apagat, inici i fi es mouen lliurement dins la WAV; el que no pot
-passar és que un clip quede per davall del **mínim de 86 ms** (§13.4) o que un
-extrem isca de la WAV. El **pre-roll** (només la frontera `0→1`) en queda exempt.
+passar és que un clip quede per davall del **mínim d'un compàs 1/16 a 350 BPM**
+(§13.4), que `N` no siga enter o que un extrem isca de la WAV. El **pre-roll**
+(només la frontera `0→1`) **no** exempta de `N` enter: el primer clip també ha
+de tindre un nombre enter de compassos.
 
 `Inici (s)` i `Fi (s)` són editables. Com que la frontera és única, moure'n un
 mou **eixa** frontera; l'extrem contrari no es mou i s'aplica el **recalcul
@@ -271,10 +285,10 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
   estructura i no està lligat a cap frontera.
 - **Només la frontera 0→1 és pre-roll.** Les fronteres 2–3, 3–4… són interiors
   normals (`mou_frontera_retempo`).
-- En fixar l'offset amb **Compàs 1 aquí**, el pre-roll es recalcula com **un
-  compàs sencer** amb el compàs admissible que deixa el BPM més pròxim al clip
-  següent (exemple: pre-roll `0,742667 s` + segon clip `147,056 BPM` → `2/4` a
-  `161,58 BPM`). L'offset es desa immediatament al `.acproj`.
+- En fixar l'offset amb **Compàs 1 aquí**, el pre-roll es recalcula amb un
+  **nombre enter de compassos** (`N ≥ 1`) i el BPM es deriva per encaixar-hi;
+  el clip de música següent també conserva `N` enter i recalcula el seu BPM.
+  L'offset es desa immediatament al `.acproj`.
 - **Els marcadors són anotacions independents**: no viatgen amb les fronteres
   de tempo ni amb les seccions, i no s'esborren quan una frontera desapareix.
   Per a ajustar el tempo només manen els inicis i finals dels clips.
@@ -353,8 +367,8 @@ manera estricta. L'export porta les tres parts (acords, estructura i mapa).
 - **Afegir silenci al final**: la cobertura s'estén fins a la nova durada amb
   acord `N`; secció i últim tram cobrixen l'extensió.
 - Després de cada operació, acords, seccions i mapa continuen ordenats, contigus
-  i cobrint `[0, durada]`. El pre-roll i el final poden continuar sent parcials
-  (§13.4).
+  i cobrint `[0, durada]`. Els trams de tempo/compàs resultants mantenen `N`
+  enter a tots els clips, primer i últim inclosos (§13.4).
 - L'edició d'àudio és una acció explícita diferent d'un canvi de tempo: §13.1
   continua vigent per al tempo, però retallar/inserir transforma els temps perquè
   les marques seguisquen el mateix so. Les restriccions de §13.6 no autoritzen ni

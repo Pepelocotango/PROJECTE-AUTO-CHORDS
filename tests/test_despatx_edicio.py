@@ -764,15 +764,18 @@ class TestPosicionsMusicals(_Base):
         """Els acords/seccions han de llegir el compàs del MAPA, no del BPM 0."""
         v = _visor()
         try:
-            # Canvi de tempo a 3 s, a mig compàs: els compassos són
-            # 0, 2, 5, 9, 13…  El clip de 10 s cau al compàs 4, temps 2.
+            # Canvi de tempo a 3 s (N enter): el primer clip passa a 160 BPM
+            # (2 compassos) i el segon a 1680/27 ≈ 62.222 BPM (7 compassos).
+            # El clip de 10 s cau al compàs 4, temps 4, fusa 3.
             v.aplica_tempo_trams([(0.0, 3.0, 120.0, 4, 4),
                                   (3.0, 30.0, 60.0, 4, 4)])
-            self.assertTrue(v.llista_ac.item(1).text().startswith("4.2"),
+            self.assertTrue(v.llista_ac.item(1).text().startswith("4.4.3"),
                             v.llista_ac.item(1).text())
-            self.assertIn("4.2", v.llista_ab.item(1).text())
-            self.assertEqual(v._secs_a_cb(10.0), "4.2")
-            self.assertAlmostEqual(v._cb_a_secs("4.2"), 10.0, places=6)
+            self.assertIn("4.4.3", v.llista_ab.item(1).text())
+            self.assertEqual(v._secs_a_cb(10.0), "4.4.3")
+            # La graella de posició arredoneix a 1/32 de negra, així que el
+            # retorn pot diferir del segon exacte menys de 10 ms.
+            self.assertAlmostEqual(v._cb_a_secs("4.4.3"), 10.0, delta=0.01)
         finally:
             v.close()
 
@@ -974,12 +977,17 @@ class TestMarcadorsTempoEnViu(_Base):
         self.v._refresca_tempo_map()
         self.v._undo_touch_base()
         self.assertTrue(self.v.quantitza_bpm(1))
+        # Contracte nou: en quantitzar el BPM, cada clip conserva N enter; com
+        # que l'últim s'ajusta a la fi de la WAV (30 s), el seu BPM deriva a
+        # 143.6 per quadrar els 10 compassos.
         self.assertEqual([round(t.bpm, 1) for t in self.v.tempo_trams],
-                         [145.0, 144.0, 144.3])
+                         [145.0, 144.0, 143.6])
         self.assertAlmostEqual(self.v.tempo_trams[-1].fi, 30.0, places=6)
         self.v.undo()
+        # La base del desfer ja ve normalitzada pel refresc del mapa: l'últim
+        # clip s'estén fins a la fi de la WAV i el seu BPM queda a 143.601.
         self.assertEqual([round(t.bpm, 3) for t in self.v.tempo_trams],
-                         [145.023, 143.984, 144.348])
+                         [145.023, 143.984, 143.601])
 
     def test_marcador_amb_rubato_parteix_i_conserva_el_rubato(self):
         self.v.tempo_trams = [
@@ -1077,11 +1085,13 @@ class TestMarcadorsTempoEnViu(_Base):
                          [0.0, 2.0, 10.5, 20.0])
         self.assertAlmostEqual(float(self.v.tempo_trams[-1][1]), _DUR,
                                places=6)
-        # Els intervals conserven el BPM de referència; no es calcula un
-        # BPM per a quadrar compassos.
-        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]), 120.0,
+        # Contracte nou: cada interval pren el BPM de referència com a àrbitre
+        # però ajusta N enter i deriva el BPM.
+        # [2, 10.5] a 4/4: N=4 → 4·4·60/8.5 ≈ 112.941 BPM.
+        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]), 112.94117647,
                                places=3)
-        self.assertAlmostEqual(float(self.v.tempo_trams[2][2]), 88.4210526,
+        # [10.5, 20] a 3/4: N=5 → 5·3·60/9.5 ≈ 94.737 BPM.
+        self.assertAlmostEqual(float(self.v.tempo_trams[2][2]), 94.73684211,
                                places=3)
         self.v.undo()
         self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)

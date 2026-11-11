@@ -298,6 +298,13 @@ def detecta_tempo_per_trams(wav_path, log, durada, num=4, den=4,
         cada_compassos=cada_compassos, tolerancia=tolerancia,
         tightness=tightness, bpm=bpm, offset=offset, **kw)
     if trams:
+        # Contracte §13.4: el detector pot deixar la cua amb N fraccionari
+        # (l'últim tram s'allarga fins a la durada); s'arrodoneix N i es
+        # recalcula el BPM abans de validar.
+        trams, _ns, avisos_n = tempo_map.ajusta_compassos_sencers(
+            trams, estricte=False)
+        for aviso in avisos_n:
+            log(f"mapa: {aviso}")
         try:
             trams = tempo_map.valida_i_normalitza_compassos(
                 trams, durada, offset=offset)

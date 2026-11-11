@@ -186,8 +186,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         for avís in self._avisos_csv_tempo:
             self.log(f"tempo CSV: {avís}")
         self.tempo_map = None
-        # Durant una sessió de TAP el mapa pot quedar fraccionari a posta:
-        # no s'ha d'emetre l'avís modal, que bloquejaria els taps següents.
+        # Durant una sessió de TAP no s'ha d'emetre l'avís modal: el mapa
+        # s'ajusta a N enter a cada tap, però bloquejar-lo faria perdre el pols.
         self._tap_en_curs = False
         self._refresca_tempo_map()
         # Marcadors humans (inici de compàs marcat a mà, en viu)
@@ -305,8 +305,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ed_n = CampText()
         self.ed_n.setMaximumWidth(54)
         self.ed_n.setToolTip(
-            "Nombre de compassos. En interiors ha de ser enter; l'últim/únic "
-            "pot ser fraccionari.")
+            "Nombre de compassos: sempre un enter (tots els clips, primer i "
+            "últim inclosos).")
         _eh.addWidget(self.ed_n_lbl)
         _eh.addWidget(self.ed_n)
         self.ed_n_lbl.setVisible(False)
@@ -2193,13 +2193,13 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             self.avis_editor("Afegeix tempo: el punt no cau dins cap tram")
             return False
         abans = len(trams)
-        try:
-            nous = tempo_map.parteix_tram_marcador(
-                trams, float(t), self._durada_wav(),
-                offset=getattr(self, "offset", 0.0),
-                beats_qm=self._beats_per_validacio(), permissiu=True)
-        except ValueError as e:
-            self.avis_editor(f"Afegeix tempo: {e}")
+        # MATEIX motor que Enter i «+»: `_parteix_tempo_nou` fa el primer
+        # intent (conserva BPM/compàs) i, si cal, el recalcul guiat. Així
+        # «Afegeix/Parteix aquí» i les dreceres no poden divergir.
+        nous = self._parteix_tempo_nou(float(t))
+        if nous is None:
+            self.avis_editor(
+                "Afegeix tempo: el tall no pot quedar amb compassos sencers")
             return False
         self._undo_marca()
         self.aplica_tempo_trams(nous)
@@ -2473,8 +2473,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             self.log(f"{msg}: recalcul del clip {i + 1} no aplicat ({e})")
             return trams
         try:
-            n = tempo_map._compassos_del_tram(
-                out[i], i, getattr(self, "offset", 0.0))
+            n = tempo_map.compassos_del_clip(out[i])
         except (TypeError, ValueError):
             n = None
         if n is not None and abs(n - round(n)) > 1e-3:

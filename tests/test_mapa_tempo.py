@@ -72,16 +72,19 @@ class TestReglaCBA(unittest.TestCase):
         self.assertAlmostEqual(out[2].ini, 28.0, places=6)
         self.assertAlmostEqual(out[2].bpm, 112.5, places=6)
 
-    def test_ultim_bpm_fixa_n_fraccionari(self):
+    def test_ultim_bpm_arrodoneix_n_i_recalcula_bpm(self):
+        # Contracte nou: l'últim clip mai queda amb N fraccionari. Amb
+        # 2 s a 3/4, el BPM demanat (100) donaria N=10/9; s'arredoneix a
+        # N=1 i es deriva el BPM que clava eixa durada: 90 BPM.
         trams = [
             M.TramMapa(0.0, 8.0, 120.0, "normal", "4/4"),
             M.TramMapa(8.0, 10.0, 120.0, "normal", "3/4"),
         ]
         out = M.recalcula_tram_c(
             trams, 1, 10.0, bpm=100.0, num=3, den=4, camp="bpm")
-        self.assertAlmostEqual(out[1].bpm, 100.0, places=6)
+        self.assertAlmostEqual(out[1].bpm, 90.0, places=6)
         self.assertAlmostEqual(out[1].fi, 10.0, places=6)
-        self.assertAlmostEqual(out[1].n, 10.0 / 9.0, places=6)
+        self.assertEqual(out[1].n, 1.0)
 
     def test_ultim_n_fixa_i_recalcula_bpm(self):
         trams = [
@@ -206,20 +209,31 @@ class TestQuantitzaBpm(unittest.TestCase):
         durada = ini
         out = M.quantitza_bpm(trams, durada, decimals=1)
         self.assertEqual([round(t.bpm, 1) for t in out],
-                         [145.0, 144.0, 144.3])
+                         [145.0, 144.0, 144.4])
         self.assertAlmostEqual(out[-1].fi, durada, places=9)
         for t in out[:-1]:
             self.assertAlmostEqual(
                 (t.fi - t.ini) * t.bpm / (4 * 60.0), 4.0, places=6)
+        # L'últim final és la WAV i N hi ha de ser enter; per això el seu
+        # BPM es deriva de la durada restant (no és el valor quantitzat pur).
+        for t in out:
+            n = (t.fi - t.ini) * t.bpm / (4 * 60.0)
+            self.assertAlmostEqual(n, round(n), places=6)
 
     def test_quantitza_preserva_el_preroll(self):
+        # El pre-roll conserva les seues fronteres (0 → 2 s) però, com la
+        # resta de clips, ha de tindre N enter: el BPM de notació s'ajusta
+        # a 90 per a clavar 1 compàs de 3/4 en 2 s.
         pre = M.TramMapa(0.0, 2.0, 108.738, "normal", "3/4")
         music = M.TramMapa(2.0, 2.0 + 4 * 3 * 60.0 / 105.918,
                            105.918, "normal", "3/4")
         out = M.quantitza_bpm([pre, music], 30.0, decimals=2, offset=2.0)
-        self.assertEqual(tuple(out[0]), tuple(pre))
+        self.assertEqual((out[0].ini, out[0].fi), (0.0, 2.0))
+        self.assertEqual(out[0].n, 1.0)
+        self.assertAlmostEqual(out[0].bpm, 90.0, places=6)
         self.assertAlmostEqual(out[1].ini, 2.0, places=9)
-        self.assertEqual(out[1].bpm, 105.92)
+        self.assertAlmostEqual(out[1].bpm, 102.85714285714286, places=6)
+        self.assertEqual(out[1].n, 16.0)
 
     def test_quantitza_preroll_inconsistent_avisa(self):
         pre = M.TramMapa(0.0, 1.655325, 108.74, "normal", "3/4")
@@ -237,13 +251,20 @@ class TestQuantitzaBpm(unittest.TestCase):
                 ini = fi
             return out, ini
 
+        # El primer clip conserva el valor quantitzat (146.0 / 145.3): això
+        # prova l'arrodoniment half-up. L'últim ha d'ajustar el BPM perquè
+        # el seu final és la WAV i N ha de quedar enter.
         ts, d = trams((145.5, 144.5))
         out = M.quantitza_bpm(ts, d, decimals=0)
-        self.assertEqual([t.bpm for t in out], [146.0, 145.0])
+        self.assertEqual(out[0].bpm, 146.0)
+        self.assertAlmostEqual(out[1].bpm, 144.0102039619521, places=6)
+        self.assertEqual(out[1].n, 4.0)
 
         ts, d = trams((145.25, 144.25))
         out = M.quantitza_bpm(ts, d, decimals=1)
-        self.assertEqual([t.bpm for t in out], [145.3, 144.3])
+        self.assertEqual(out[0].bpm, 145.3)
+        self.assertAlmostEqual(out[1].bpm, 144.2007199091987, places=6)
+        self.assertEqual(out[1].n, 4.0)
 
     def test_quantitza_zero_i_dos_decimals(self):
         bq = 4.0
@@ -254,7 +275,11 @@ class TestQuantitzaBpm(unittest.TestCase):
             trams.append(M.TramMapa(ini, fi, bpm, "normal", "4/4"))
             ini = fi
         out0 = M.quantitza_bpm(trams, ini, decimals=0)
-        self.assertEqual([t.bpm for t in out0], [145.0, 144.0, 144.0])
+        self.assertEqual([round(t.bpm, 6) for t in out0],
+                         [145.0, 144.0, 144.354711])
         out2 = M.quantitza_bpm(trams, ini, decimals=2)
         self.assertEqual([round(t.bpm, 2) for t in out2],
                          [145.02, 143.98, 144.35])
+        for t in out0 + out2:
+            n = (t.fi - t.ini) * t.bpm / (4 * 60.0)
+            self.assertAlmostEqual(n, round(n), places=6)

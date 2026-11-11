@@ -182,12 +182,14 @@ def a_tuples(trams):
 
 def recalcula_tram_c(trams, idx, durada, offset=0.0, *, n=None, bpm=None,
                      num=None, den=None, camp="bpm"):
-    """Regla C: edita camps exactes i deriva la frontera `fi`.
+    """Edita un clip mantenint **sempre `N` enter** (§13.4).
 
-    - Trams interiors: `n`, BPM i `x/x` exactes → `fi` derivada. El veí de la
-      dreta conserva `n` i `x/x` i **recalcula el BPM** (regla A).
-    - Últim/únic: BPM i `x/x` exactes → `n` derivat (pot ser fraccionari). Si
-      `camp="n"`, `n` és exacte i es recalcula el BPM amb el `fi` fix.
+    - Trams interiors: `n` exacte (enter) → `fi` derivada; el veí conserva el
+      seu `N` enter i **recalcula el BPM** (regla A). Si el canvi és de BPM o
+      `x/x`, el clip conserva les fronteres i `N` s'arrodoneix si cal.
+    - Últim/únic: el final no es mou. Amb `camp="n"`, `n` és exacte i es
+      recalcula el BPM. En la resta, `N` s'arrodoneix a l'enter més pròxim i el
+      BPM es deriva per encaixar-hi (mai queda `N` fraccionari).
     """
     net = [des_de_tupla(t) for t in (trams or ())]
     if not net:
@@ -207,12 +209,14 @@ def recalcula_tram_c(trams, idx, durada, offset=0.0, *, n=None, bpm=None,
     num = int(tr.num if num is None else num)
     den = int(tr.den if den is None else den)
     bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
-    base = float(offset) if i == 0 else float(tr.ini)
+    # El N es compta sobre la duració completa (fi − ini) a tots els clips;
+    # l'offset només mou la graella (contracte §13.4).
+    base = float(tr.ini)
     ultim = (i == len(net) - 1)
 
     if ultim:
-        # El final de la WAV no es mou.
-        dur_fix = float(tr.fi) - base
+        # El final de la WAV no es mou. N sempre és enter.
+        dur_fix = float(tr.fi) - float(tr.ini)
         if dur_fix <= tempo_map.TOL:
             raise ValueError("El tram no té durada suficient")
         if camp == "n":
@@ -221,10 +225,14 @@ def recalcula_tram_c(trams, idx, durada, offset=0.0, *, n=None, bpm=None,
                 tempo_recalc.n_de_durada(dur_fix, bpm, num, den)))
             if n_final <= 0:
                 raise ValueError("N ha de ser positiu")
+            n_final = float(max(1, tempo_map._enter_mes_proper(n_final)))
             bpm_final = tempo_recalc.bpm_de_n(n_final, num, den, dur_fix)
         else:
-            bpm_final = bpm
-            n_final = tempo_recalc.n_de_durada(dur_fix, bpm_final, num, den)
+            # BPM/compàs demanats: es tria l'N enter més pròxim i es deriva
+            # el BPM perquè la fi (fixa) coincidisca.
+            n_final = max(1, tempo_map._enter_mes_proper(
+                tempo_recalc.n_de_durada(dur_fix, bpm, num, den)))
+            bpm_final = tempo_recalc.bpm_de_n(n_final, num, den, dur_fix)
         if not (limits.BPM_MIN <= bpm_final <= limits.BPM_MAX):
             raise ValueError("El BPM resultant ix de la banda permesa")
         fi_final = float(tr.fi)
@@ -235,8 +243,10 @@ def recalcula_tram_c(trams, idx, durada, offset=0.0, *, n=None, bpm=None,
             n_final = max(1.0, float(tr.n))
         else:
             # N actual es deriva de la referència ANTIGA, no del BPM nou.
-            n_final = max(1.0, float(round(tempo_recalc.n_de_durada(
-                float(tr.fi) - base, tr.bpm, tr.num, tr.den))))
+            n_final = max(1.0, float(tempo_map._enter_mes_proper(
+                tempo_recalc.n_de_durada(
+                    float(tr.fi) - base, tr.bpm, tr.num, tr.den))))
+        n_final = float(max(1, tempo_map._enter_mes_proper(n_final)))
         try:
             dur_nou = tempo_recalc.durada_de_n(n_final, bpm, num, den)
         except ValueError as e:
@@ -263,6 +273,7 @@ def recalcula_tram_c(trams, idx, durada, offset=0.0, *, n=None, bpm=None,
                      seg.num, seg.den))
         if n_seg <= 0:
             raise ValueError("El tram següent no té cap compàs")
+        n_seg = float(max(1, tempo_map._enter_mes_proper(n_seg)))
         dur_seg = float(seg.fi) - fi_final
         if dur_seg <= tempo_map.TOL:
             raise ValueError("El veí de la dreta quedaria sense durada")
@@ -387,6 +398,14 @@ def normalitza_trams_map(trams, durada, log=None, fusiona=False):
     base, avisos = tempo_map.neteja_trams(
         [tuple(t) for t in trams_in], durada)
     net = reenganxa_metadades(trams_in, base)
+    # Contracte §13.4: N enter a tots els clips. Si una duració deixa N
+    # fraccionari, s'arrodoneix i es recalcula el BPM (amb avís).
+    base5, ns, avisos_aj = tempo_map.ajusta_compassos_sencers(
+        [tuple(t) for t in net], estricte=False)
+    net = [replace(t, bpm=float(t5[2]),
+                   compassos=f"{int(t5[3])}/{int(t5[4])}", n=float(n))
+           for t, t5, n in zip(net, base5, ns)]
+    avisos.extend(avisos_aj)
     if fusiona:
         net = _fusiona_amb_agrupacio(net)
     return net, avisos
@@ -441,7 +460,8 @@ def quantitza_bpm(trams, durada, decimals=1, offset=0.0):
         bq = float(tr.num) * 4.0 / float(tr.den)
         if bq <= 0:
             raise ValueError("Hi ha un compàs sense durada vàlida")
-        n = max(1, int(round(dur * float(tr.bpm) / (bq * 60.0))))
+        n = max(1, tempo_map._enter_mes_proper(
+            dur * float(tr.bpm) / (bq * 60.0)))
         bpm = _arrodoneix_bpm(float(tr.bpm), decimals)
         if bpm <= 0:
             raise ValueError("Hi ha un BPM no vàlid")
@@ -456,12 +476,16 @@ def quantitza_bpm(trams, durada, decimals=1, offset=0.0):
             raise ValueError(
                 "La quantització deixa l'últim clip fora de la WAV; "
                 "reduïx el nombre de compassos o el BPM.")
-        # L'últim final pot ser parcial (excepció de la regla §13.4): la
-        # quantització no ha d'inventar un tram fora de la WAV.
+        # L'últim final és la WAV; si el BPM quantitzat deixa N fraccionari,
+        # el normalitzador ajusta el BPM perquè complica el contracte §13.4.
         if abs(last.fi - durada) > 1e-9:
             out[-1] = TramMapa(last.ini, durada, last.bpm, last.tipus,
                                last.compassos, last.agrupacio, last.n)
-    return out
+    base5, ns, _avisos = tempo_map.ajusta_compassos_sencers(
+        [tuple(t) for t in out])
+    return [replace(t, bpm=float(t5[2]),
+                    compassos=f"{int(t5[3])}/{int(t5[4])}", n=float(n))
+            for t, t5, n in zip(out, base5, ns)]
 
 
 def desa_mapa_tempo(ruta, trams):

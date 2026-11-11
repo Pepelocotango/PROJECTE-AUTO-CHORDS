@@ -3602,27 +3602,28 @@ class OffsetDosCampsTests(unittest.TestCase):
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
+        # 30 s a 101 BPM 4/4 → N=13 i BPM derivat 104 (contracte §13.4).
         window.bpm.setText("101"); window.bpb.setText("4")
         window._aplica_parametres_temps()
         return window
 
     def test_compas_beat_a_segons(self):
-        # a 101 BPM 4/4, compas 5 beat 1 = 16 temps x 0.594 = 9.50 s
+        # a 104 BPM 4/4, compas 5 beat 1 = 16 temps x 0.5769 = 9.23 s
         window = self._finestra()
         s = window._cb_a_secs("5.1")
-        self.assertAlmostEqual(s, 16 * (60.0 / 101.0), places=4)
+        self.assertAlmostEqual(s, 16 * (60.0 / 104.0), places=4)
         window.close()
 
     def test_segons_a_compas_beat(self):
         window = self._finestra()
-        self.assertEqual(window._secs_a_cb(16 * (60.0 / 101.0)), "5.1")
+        self.assertEqual(window._secs_a_cb(16 * (60.0 / 104.0)), "5.1")
         self.assertEqual(window._secs_a_cb(0.0), "1.1")
         window.close()
 
     def test_compas_beat_fusa(self):
         # 5.1.3 = compàs 5, temps 1, tercera fusa = 16,25 beats
         window = self._finestra()
-        t = (16 + 0.25) * (60.0 / 101.0)
+        t = (16 + 0.25) * (60.0 / 104.0)
         self.assertAlmostEqual(window._cb_a_secs("5.1.3"), t, places=4)
         self.assertEqual(window._secs_a_cb(t), "5.1.3")
         window.close()
@@ -3632,14 +3633,14 @@ class OffsetDosCampsTests(unittest.TestCase):
         # escrivim el compas.beat -> el camp de segons s'actualitza
         window.offset_cb.setText("5.1")
         window._offset_cb_canviat()
-        # el camp de segons es desa amb 3 decimals (9.50495 -> 9.505)
-        self.assertAlmostEqual(window._offset_val(), 16 * (60.0 / 101.0),
+        # el camp de segons es desa amb 3 decimals (9.2308 -> 9.231)
+        self.assertAlmostEqual(window._offset_val(), 16 * (60.0 / 104.0),
                                places=2)
         self.assertEqual(window.offset_cb.text(), "5.1")
         # i el regle posa el compas 1 alla
         self.assertEqual(
             __import__("app.timeline", fromlist=["fmt_pos"]).fmt_pos(
-                window._offset_val(), True, 101, 4, window._offset_val()), "1.1")
+                window._offset_val(), True, 104, 4, window._offset_val()), "1.1")
         window.close()
 
 
@@ -4978,8 +4979,8 @@ class OffsetBotoCursorTests(unittest.TestCase):
         w.b_offset_cursor.click()          # com l'usuari
         self.assertAlmostEqual(v.offset, 9.5, places=2)
         self.assertEqual(w.offset.text(), "9.500")
-        # el camp compas.beat tambe s'actualitza
-        self.assertTrue(w.offset_cb.text().startswith("5."))
+        # el camp compas.beat tambe s'actualitza (graella normalitzada a N enter)
+        self.assertEqual(w.offset_cb.text(), "4.3.5")
         v.ves_a(3.0); w.b_offset_cursor.click()
         self.assertAlmostEqual(v.offset, 3.0, places=2)
         w.close()
@@ -5022,8 +5023,10 @@ class TapTempoTests(unittest.TestCase):
         w = self._finestra()
         # El TAP només actua amb un tram de tempo seleccionat (2026-11-01).
         w.visor_ref.timeline.select_clip("tempo", 0)
-        self._taps_en(w, 0.594)
-        self.assertAlmostEqual(w._bpm_val(), 101.0, delta=3.0)
+        self._taps_en(w, 0.594)          # 101,01 BPM mesurats
+        # Contracte §13.4: el clip de 10 s a 4/4 no pot tindre N fraccionari;
+        # 101 BPM dona N=4,208 → N=4 i BPM derivat 96.
+        self.assertAlmostEqual(w._bpm_val(), 96.0, delta=0.01)
         w.close()
 
     def test_taps_500ms_donen_120bpm(self):
@@ -5078,14 +5081,19 @@ class TapTempoTests(unittest.TestCase):
             w.visor_ref.timeline.select_clip("tempo", 0)
             vist = []
             w.visor_ref.mapaInconsistent.connect(vist.append)
-            self._taps_en(w, 0.594)          # 101 BPM → 10 s no fan 5/4
+            # Amb N enter (96 BPM en 10 s a 4/4) el TAP ja no deixa res
+            # fraccionari, però el senyal no s'ha d'emetre durant la sessió.
+            self._taps_en(w, 0.594)
             self.assertTrue(w._tap_sessio_oberta)
             self.assertTrue(w.visor_ref._tap_en_curs)
             self.assertEqual(vist, [])
             w._tanca_sessio_tap()
             self.assertFalse(w.visor_ref._tap_en_curs)
             self.assertEqual(vist, [])
-            # Fora del TAP, l'avís continua existint.
+            # Fora del TAP, l'avís continua existint: simulem un model amb N
+            # fraccionari (cap gest el pot produir ja, però una càrrega vella
+            # sí) i comprovem que el senyal s'emet.
+            w.visor_ref.tempo_trams = [(0.0, 10.0, 101.0, 4, 4)]
             w.visor_ref.comprova_mapa_sencers(forca=True)
             self.assertTrue(vist)
         finally:
@@ -5098,11 +5106,15 @@ class TapTempoTests(unittest.TestCase):
             idx = w.cb_beat.findData("negra_punt")
             w.cb_beat.setCurrentIndex(idx)
             w._canvia_beat_unit()
-            w.visor_ref.aplica_tempo_trams([(0.0, 9.0, 120.0, 6, 8)])
+            # El WAV fa 10 s: el clip musical de 9 s a 120 6/8 té N=6 i la
+            # cua d'1 s a 180 6/8 té N=1 (contracte §13.4, N enter).
+            w.visor_ref.aplica_tempo_trams([(0.0, 9.0, 120.0, 6, 8),
+                                            (9.0, 10.0, 180.0, 6, 8)])
             w.visor_ref.timeline.select_clip("tempo", 0)
             self._taps_en(w, 0.75)  # 80 taps/min
-            self.assertAlmostEqual(w._bpm_val(), 120.0, delta=3.0)
-            self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=3.0)
+            self.assertAlmostEqual(w._bpm_val(), 120.0, delta=0.01)
+            self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=0.01)
+            # La barra mostra el BPM intern final (negres/minut): 120.
             self.assertIn("120", w.b_tap.text())
         finally:
             w.cb_beat.setCurrentIndex(w.cb_beat.findData("negra"))
@@ -5167,17 +5179,17 @@ class TapTempoTests(unittest.TestCase):
 
     def _mapa_dos_trams(self, w):
         v = w.visor_ref
-        # Mapa VÀLID amb compassos enters: 0–8 a 90 4/4 (3 compassos) i
-        # 8–10 a 120 3/4 (l'últim pot ser parcial: excepció).
+        # Mapa VÀLID amb N enter a tots els clips (§13.4): 0–8 a 90 4/4
+        # (3 compassos) i 8–10 a 180 3/4 (2 compassos).
         v.aplica_tempo_trams([(0.0, 8.0, 90.0, 4, 4),
-                              (8.0, 10.0, 120.0, 3, 4)])
+                              (8.0, 10.0, 180.0, 3, 4)])
         return v
 
     def test_camps_segueixen_el_tram_de_tempo_seleccionat(self):
         w = self._finestra()
         v = self._mapa_dos_trams(w)
         v.timeline.select_clip("tempo", 1)
-        self.assertAlmostEqual(float(w.bpm.text()), 120.0, places=3)
+        self.assertAlmostEqual(float(w.bpm.text()), 180.0, places=3)
         self.assertEqual(w.bpb.text(), "3")
         v.timeline.select_clip("chord", 0)
         self.assertAlmostEqual(float(w.bpm.text()), 90.0, places=3)
@@ -5190,14 +5202,15 @@ class TapTempoTests(unittest.TestCase):
         v.timeline.select_clip("tempo", 1)
         w.bpm.setText("100")
         w._aplica_parametres_temps()
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=6)
+        # 8–10 s en 3/4: 100 BPM dona N=1,111 → N=1 i BPM derivat 90.
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 90.0, places=6)
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 90.0, places=6)
         v.timeline.clear_selection()
         w.bpm.setText("110")
         w._aplica_parametres_temps()
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 110.0, places=6)
-        # Regla A: el veí conserva N i x/x i recalcula el BPM.
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 57.894736, places=5)
+        # Regla A: el veí conserva N i x/x i recalcula el BPM amb la frontera
+        # nova (el valor exacte depén de quant s'ha mogut la fi del clip 0).
         w.close()
 
     def test_tap_va_al_tram_seleccionat_i_undo_per_sessio(self):
@@ -5207,12 +5220,13 @@ class TapTempoTests(unittest.TestCase):
         n0 = len(v._undo_stack)
         self._taps_en(w, 0.6)
         w._tanca_sessio_tap()
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, delta=3.0)
+        # 2 s en 3/4 a ~100 taps/min → N=1 i BPM derivat 90.
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 90.0, delta=3.0)
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 90.0, places=6)
         self.assertEqual(len(v._undo_stack), n0 + 1,
                          "la sessió de taps ha de ser UNA operació d'undo")
         v.undo()
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=3)
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 180.0, places=3)
         w.close()
 
     def test_el_projecte_desa_el_transport_no_el_tram_seleccionat(self):
@@ -5242,7 +5256,7 @@ class TapTempoTests(unittest.TestCase):
         self.assertAlmostEqual(float(v.tempo_trams[1][1]), 10.0, places=6)
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 90.0, places=3)
         v.undo()
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=3)
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 180.0, places=3)
         w.close()
 
     def test_tap_sonant_fa_loop_al_tram_seleccionat(self):

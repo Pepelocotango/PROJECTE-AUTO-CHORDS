@@ -162,8 +162,7 @@ class MarcadorsMixin:
                     if i >= len(out) or int(out[i][3]) <= 0:
                         continue
                     try:
-                        nb = tempo_map._compassos_del_tram(
-                            out[i], i, offset)
+                        nb = tempo_map.compassos_del_clip(out[i])
                     except (TypeError, ValueError):
                         continue
                     if abs(nb - round(nb)) > 1e-6:

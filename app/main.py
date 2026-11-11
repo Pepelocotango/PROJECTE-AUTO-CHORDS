@@ -1030,15 +1030,32 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                     w = w.parentWidget()
                 if escrivint:
                     return False
+                # Enter i «+» només s'intercepten amb el focus al timeline.
+                # En formularis, llistes, editor o diàlegs han de fer la seua
+                # funció normal (confirmar, activar, escriure…).
+                vr = getattr(self, "visor_ref", None)
+                en_timeline = False
+                w2 = obj
+                while w2 is not None:
+                    if w2 is getattr(vr, "timeline", None):
+                        en_timeline = True
+                        break
+                    w2 = w2.parentWidget()
                 es_plus = (tecla == Qt.Key_Plus
                            or (tecla == Qt.Key_Equal
                                and (txt == "+" or mods & Qt.ShiftModifier)))
                 if es_plus:
+                    if not en_timeline:
+                        return False
                     # El MATEIX esdeveniment pot passar dos voltes pel filtre
-                    # (el camp el rebutja i puja al pare): la segona no compta.
+                    # en el mateix despatx: la segona no compta. La marca es
+                    # neteja al següent cicle perquè una pulsació nova de «+»
+                    # torne a funcionar (abans quedava enganxada per sempre).
                     if getattr(self, "_plus_ev", None) is ev:
                         return True
                     self._plus_ev = ev
+                    QTimer.singleShot(
+                        0, lambda: setattr(self, "_plus_ev", None))
                     self._talla_tempo_i_estructura_cursor()
                     return True
                 if tecla == Qt.Key_M:
@@ -1048,15 +1065,10 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                     self._talla_estructura_cursor()
                     return True
                 if tecla in (Qt.Key_Return, Qt.Key_Enter):
-                    # Enter només al timeline/visor: en formularis i diàlegs
-                    # ha de continuar confirmant el camp o el botó.
-                    vr = getattr(self, "visor_ref", None)
-                    w2 = obj
-                    while w2 is not None:
-                        if w2 is getattr(vr, "timeline", None):
-                            self._talla_tempo_cursor()
-                            return True
-                        w2 = w2.parentWidget()
+                    if not en_timeline:
+                        return False
+                    self._talla_tempo_cursor()
+                    return True
         except (RuntimeError, AttributeError):
             pass
         caixa = getattr(self, "info_box", None)

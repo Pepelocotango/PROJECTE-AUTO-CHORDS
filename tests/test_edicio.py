@@ -1727,8 +1727,10 @@ class TestMenusParitat(_regla11_paritat___Base):
         self.assertEqual([(round(float(t[0]), 2), round(float(t[1]), 2))
                           for t in v.tempo_trams],
                          [(0.0, 7.0), (7.0, 10.0), (10.0, _regla11_paritat__DUR)])
-        # la frontera nova HERETA el tempo/compàs del tros on cau
-        self.assertEqual(v.tempo_trams[1][2:4], (120.0, 4))
+        # La frontera nova HERETA el compàs del tros on cau, però N ha de ser
+        # enter: el clip [7,10] a 4/4 tenia N=1.5 (120 BPM) i passa a N=2 amb
+        # el BPM derivat 160.
+        self.assertEqual(v.tempo_trams[1][2:4], (160.0, 4))
         v.undo()
         self.assertEqual(len(v.tempo_trams), 2)
 
@@ -3482,7 +3484,9 @@ class TestUndoTemps(_undo_temps___Base):
         self.assertAlmostEqual(float(v.bpm), 120.0, places=3)
         w.bpm.setText("101")
         w._aplica_parametres_temps()
-        self.assertAlmostEqual(float(v.bpm), 101.0, places=3)
+        # Contracte nou: 101 BPM a 4/4 sobre 30 s donaria N=12.625; s'arredoneix
+        # a N=13 i el BPM derivat és 104.
+        self.assertAlmostEqual(float(v.bpm), 104.0, places=3)
         w._undo_visor()
         self.assertAlmostEqual(float(v.bpm), 120.0, places=3,
                                msg="el BPM no s'ha desfet")
@@ -4556,7 +4560,9 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual((v._ed_kind, v._ed_idx), ("tempo", 1))
         self.assertEqual(v.ed_nom_lbl.text(), "BPM:")
         self.assertEqual(v.ed_fam_lbl.text(), "Compàs:")
-        self.assertEqual(v.ed_nom.text(), "100.000")
+        # Contracte nou: N enter. El tram 10–30 s a 3/4 amb 100 BPM tenia
+        # N=11.111; en normalitzar-se queda N=11 i el BPM derivat 99.
+        self.assertEqual(v.ed_nom.text(), "99.000")
         self.assertEqual(v.ed_fam.text(), "3/4")
         self.assertTrue(v.ed_ini.isHidden())
         self.assertEqual(v.ed_cb_lbl.text(), "Ini (c):")
@@ -4593,17 +4599,50 @@ class TestLlistaTempo(_undo_temps___Base):
     def test_aplicar_des_de_l_editor_canvia_bpm_i_compas(self):
         _w, v = self._prepara()
         v._focus_editor("tempo", 1)
-        v.ed_nom.setText("96")
-        v.ed_fam.setText("3/4")
+        # Contracte nou: amb fronteres fixes (10–30 s) el BPM ha de donar un
+        # N enter. 120 BPM a 4/4 sobre 20 s són exactament 10 compassos.
+        v.ed_nom.setText("120")
+        v.ed_fam.setText("4/4")
         v._aplica_editor()
         self.assertEqual((int(v.tempo_trams[1][3]),
-                          int(v.tempo_trams[1][4])), (3, 4))
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 96.0, places=6)
+                          int(v.tempo_trams[1][4])), (4, 4))
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=6)
         self.assertAlmostEqual(float(v.tempo_trams[1][0]), 10.0, places=6)
         self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=6)
         # La llista s'ha refrescat i la franja mostra el valor aplicat.
-        self.assertEqual(v.llista_tempo.item(1, 3).text(), "3/4")
-        self.assertEqual(v.ed_fam.text(), "3/4")
+        self.assertEqual(v.llista_tempo.item(1, 3).text(), "4/4")
+        self.assertEqual(v.ed_fam.text(), "4/4")
+
+    def test_talla_tempo_i_afegeix_tall_son_el_mateix_motor(self):
+        """Enter (talla_tempo) i «Afegeix/Parteix aquí» han de coincidir."""
+        w1 = _undo_temps___finestra()
+        w2 = _undo_temps___finestra()
+        try:
+            mapa = [(0.0, 10.0, 120.0, 4, 4),
+                    (10.0, 20.0, 120.0, 4, 4),
+                    (20.0, 30.0, 120.0, 4, 4)]
+            for w in (w1, w2):
+                self.assertTrue(w.visor_ref.aplica_tempo_trams(mapa))
+            self.assertTrue(w1.visor_ref.talla_tempo(15.0))
+            self.assertTrue(w2.visor_ref._afegeix_tall(15.0))
+            self.assertEqual(
+                [tuple(t) for t in w1.visor_ref.tempo_trams],
+                [tuple(t) for t in w2.visor_ref.tempo_trams])
+        finally:
+            w1.close()
+            w2.close()
+
+    def test_editor_rebutja_bpm_que_no_dona_n_enter(self):
+        """Un BPM amb fronteres fixes ha de donar N enter; si no, es rebutja."""
+        _w, v = self._prepara()
+        v._focus_editor("tempo", 1)
+        abans = tuple(v.tempo_trams[1])
+        with patch.object(v, "avis_editor") as av:
+            v.ed_nom.setText("101")
+            v._aplica_editor()
+            self.assertIn("no dona un nombre enter", av.call_args[0][0])
+        self.assertEqual(tuple(v.tempo_trams[1]), abans,
+                         "el rebuig no ha de mutar el clip")
 
     def test_boto_ajusta_bpm_al_compas(self):
         _w, v = self._prepara()
@@ -4660,11 +4699,13 @@ class TestLlistaTempo(_undo_temps___Base):
         v._actualitza_temps()
         v.aplica_tempo_trams([(0.0, 30.0, 140.0, 4, 4)])
         v._desa_i_regenera()
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 140.0, places=6)
-        self.assertAlmostEqual(v.tempo_map.bpm(0.0), 140.0, places=6)
+        # Contracte nou: 140 BPM sobre 30 s a 4/4 donaria N=17.5; es fixa N=18
+        # i el BPM derivat és 144 (també al mapa i al CSV).
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 144.0, places=6)
+        self.assertAlmostEqual(v.tempo_map.bpm(0.0), 144.0, places=6)
         with open(os.path.join(v._carpeta_acords(), "mapa_tempo.csv"),
                   encoding="utf-8") as f:
-            self.assertIn("140", f.read())
+            self.assertIn("144", f.read())
 
     def test_el_mapa_viu_sempre_es_contigu_i_cobert(self):
         """Regla #2: cap operació del visor deixa forats ni encavalcaments.

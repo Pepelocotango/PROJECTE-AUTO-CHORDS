@@ -186,7 +186,7 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
     # ── Amb un mapa de tempo/compàs VARIABLE (regla d'or #5: el mapa és la
     # font), els clics van als TEMPS DEL MAPA. Recorrem la graella a resolució
     # de corxera (0,5 negres) i filtrem els punts que són inici de beat; així
-    # funciona amb qualsevol denominador 2/4/8, canvis de compàs i rubato.
+    # funciona amb qualsevol denominador 2/4/8/16, canvis de compàs i rubato.
     if mapa is not None and (not mapa.es_constant()
                              or mapa.te_agrupacions_explicites()):
         q = float(mapa.quarters(float(t_inici)))

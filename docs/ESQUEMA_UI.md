@@ -351,9 +351,9 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   seleccionat**: sense selecció, `T` no fa res. Propaga BPM al regle i al
   metrònom **sense reengegar l'àudio**, i **re-ancora el BPM de Ref. recalc**
   (el compàs de referència es conserva). El botó mostra `TAP (n) BPM` amb el
-  BPM intern final. Durant la sessió de TAP **no s'emet l'avís modal** de mapa
-  inconsistent (els compassos fraccionaris intermedis són normals); la resta
-  d'edicions el continuen mostrant.
+  BPM intern final. El clip sempre queda amb `N` enter (el TAP arrodoneix `N`
+  i ajusta el BPM). Durant la sessió de TAP **no s'emet l'avís modal** de mapa
+  inconsistent; la resta d'edicions el continuen mostrant.
 
 ### Rubato
 

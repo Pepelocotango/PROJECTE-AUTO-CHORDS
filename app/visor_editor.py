@@ -57,14 +57,13 @@ class EditorMixin:
             n_val = getattr(tr, "n", None)
             if n_val is None:
                 try:
-                    n_val = tempo_map._compassos_del_tram(
-                        tr, i, getattr(self, "offset", 0.0))
+                    n_val = tempo_map.compassos_del_clip(tr)
                 except (TypeError, ValueError):
                     n_val = 0.0
             self.ed_n.setText(f"{float(n_val):.3f}")
             self.ed_n.setToolTip(
-                "Nombre de compassos. En interiors ha de ser enter; "
-                "l'últim/únic pot ser fraccionari.")
+                "Nombre de compassos: sempre un enter (tots els clips, "
+                "primer i últim inclosos).")
             rol = tempo_map.rol_tram(self.tempo_trams, i)
             if tempo_map.es_preroll_tram(
                     self.tempo_trams, i, getattr(self, "offset", 0.0)):
@@ -180,18 +179,28 @@ class EditorMixin:
         n_actual = getattr(tr, "n", None)
         if n_actual is None:
             try:
-                n_actual = tempo_map._compassos_del_tram(
-                    tr, i, getattr(self, "offset", 0.0))
+                n_actual = tempo_map.compassos_del_clip(tr)
             except (TypeError, ValueError):
                 n_actual = 0.0
         canvi_n = abs(n_val - float(n_actual)) > 1e-3
-        if (canvi_n and i != len(trams) - 1
-                and abs(n_val - round(n_val)) > 1e-3):
+        if abs(n_val - round(n_val)) > 1e-3:
             self.avis_editor(
-                "Només l'últim o el tram únic poden tindre N fraccionari.")
+                "N ha de ser un nombre enter de compassos (cap clip pot "
+                "quedar amb N fraccionari).")
             return
         canvi_bpm = (abs(bpm - float(tr.bpm)) > 5e-4
                      or (num, den) != (int(tr.num), int(tr.den)))
+        if canvi_bpm and not canvi_n:
+            # El BPM és derivat: amb fronteres fixes ha de donar N enter.
+            dt = float(tr.fi) - float(tr.ini)
+            bq = tempo_map._bar_quarters(num, den)
+            n_real = dt * bpm / (bq * 60.0) if bq > 0 else 0.0
+            if abs(n_real - round(n_real)) > 1e-3 or round(n_real) < 1:
+                self.avis_editor(
+                    f"El BPM {bpm:.3f} amb {num}/{den} no dona un nombre "
+                    f"enter de compassos ({n_real:.3f}). Canvia el BPM, el "
+                    "compàs o N.")
+                return
         canvi_agr = agr != getattr(tr, "agrupacio", "")
 
         ini_nou = self._cb_a_secs(self.ed_cb.text())

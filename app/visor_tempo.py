@@ -59,13 +59,13 @@ class TempoMixin:
                              agrupacio=None):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
-        Regla C (`docs/REGLES_DE_LA_APP.md` §13.5): BPM i compàs són exactes;
-        en un tram interior `N` i `x/x` també, i es deriva `fi`; el veí de la
-        dreta conserva `N`/`x/x` i recalcula el BPM. En l'últim/únic, BPM i
-        `x/x` són exactes i `N` es deriva (pot ser fraccionari).
+        Contracte §13.4/§13.5: **tots** els clips mantenen `N` enter. En un
+        tram interior, `N` exacte deriva `fi`; el veí conserva el seu `N` enter
+        i recalcula el BPM. En l'últim/únic, el final no es mou: `N`
+        s'arrodoneix a l'enter més pròxim i el BPM es deriva.
 
-        Amb `desa=False` (TAP en viu) es manté el camí antic que conserva les
-        fronteres i només canvia el BPM.
+        Amb `desa=False` (TAP en viu) s'usa el camí permissiu: arrodoneix `N`
+        i ajusta el BPM, sense moure les fronteres.
         """
         trams = list(self.tempo_trams or [])
         if not trams:
@@ -162,7 +162,7 @@ class TempoMixin:
         dt = fi - base
         num, den = int(num), int(den)
         bq = tempo_map._bar_quarters(num, den)
-        n_enter = max(1, int(round(float(n_compas))))
+        n_enter = max(1, tempo_map._enter_mes_proper(float(n_compas)))
         bpm_ajust = None
         if dt > 0 and bq > 0:
             candidat = n_enter * bq * 60.0 / dt
@@ -276,8 +276,8 @@ class TempoMixin:
                 f"→ {p['n']:.3f} compassos")
         text = "\n".join(parts)
         if getattr(self, "_tap_en_curs", False):
-            # El TAP en viu pot deixar clips fraccionaris; l'avís es torna a
-            # comprovar quan la sessió es tanca, sense interrompre els taps.
+            # No s'interromp la sessió de taps amb l'avís modal; es torna a
+            # comprovar en tancar-la.
             self._mapa_avis_actual = text
             return issues
         if forca or text != getattr(self, "_mapa_avis_actual", None):
@@ -328,10 +328,11 @@ class TempoMixin:
     def aplica_tempo_validat(self, trams, msg="Tempo"):
         """Aplica un mapa amb la validació permissiva del model (F2).
 
-        Només exigeix BPM/compàs vàlids, contigüitat, cobertura i el mínim de
-        86 ms per clip normal. Les fronteres poden ser lliures i els compassos
-        poden ser parcials. Els detectors i les accions explícites mantenen la
-        validació estricta pel seu compte.
+        Exigeix BPM/compàs vàlids, contigüitat, cobertura, el mínim d'un
+        compàs 1/16 a 350 BPM i **N enter a tots els clips** (si cal,
+        s'arrodoneix `N` i s'ajusta el BPM). Les fronteres interiors poden ser
+        lliures. Els detectors i les accions explícites mantenen la validació
+        estricta pel seu compte.
         """
         try:
             nous = tempo_map.valida_i_normalitza_permissiu(
@@ -345,9 +346,9 @@ class TempoMixin:
     def _normalitza_mapa_viu(self, trams, msg=None):
         """Mapa validat per a un gest en viu (permissiu, F2).
 
-        Només comprova BPM/compàs, contigüitat, cobertura i el mínim de 86 ms.
-        Les fronteres i els compassos parcials són permesos; si el mapa no val,
-        el gest es rebutja amb un avís.
+        Comprova BPM/compàs, contigüitat, cobertura, el mínim d'un compàs
+        1/16 a 350 BPM i **N enter**; si cal, arrodoneix `N` i ajusta el BPM.
+        Si el mapa no val, el gest es rebutja amb un avís.
         """
         durada = self._durada_wav()
         offset = getattr(self, "offset", 0.0)
@@ -371,11 +372,8 @@ class TempoMixin:
         except Exception:  # noqa: BLE001
             lbl = None
         try:
-            base = tempo_map._base_tram(
-                s, idx, getattr(self, "offset", 0.0))
-            durada = float(s[1]) - float(base)
-            n_actual = tempo_map._compassos_del_tram(
-                s, idx, getattr(self, "offset", 0.0))
+            durada = float(s[1]) - float(s[0])
+            n_actual = tempo_map.compassos_del_clip(s)
         except (TypeError, ValueError):
             durada = 0.0
             n_actual = None
@@ -489,8 +487,7 @@ class TempoMixin:
         if not (0 <= int(idx) < len(trams)):
             return 0
         try:
-            n = tempo_map._compassos_del_tram(
-                trams[int(idx)], int(idx), getattr(self, "offset", 0.0))
+            n = tempo_map.compassos_del_clip(trams[int(idx)])
         except ValueError:
             return 0
         return tempo_map._enter_mes_proper(max(1.0, n))

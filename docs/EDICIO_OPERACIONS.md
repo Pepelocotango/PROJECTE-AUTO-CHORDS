@@ -49,13 +49,14 @@ Un canvi de **tempo** a mig
 > compàs no reinicia la numeració: el compàs continua i només canvia la seua
 > durada; els canvis de **compàs** (signatura) sí que obrin un compàs nou.
 >
-> **Model permissiu (2026-11-07)**: les fronteres dels clips de tempo/compàs
-> són **lliures**; el snap és opcional i no s'exigeix cap línia de beat. Només
-> cal BPM/compàs vàlids i una durada mínima de **86 ms** (`1/8` a 350 BPM); el
-> pre-roll i els rubatos en queden exempts. Els compassos sencers són
-> l'**objectiu del recalcul**, no una barrera: la referència és la **manual i
-> global de la barra 2** (`BPM ref` + `compàs ref`), no la dels clips veïns, i
-> el motor pot ajustar BPM, compàs o `N`. Si hi ha **beats detectats** dins del
+> **Model actual (2026-11-11)**: les fronteres interiors dels clips de
+> tempo/compàs són **lliures**; el snap és opcional i no s'exigeix cap línia de
+> beat. Cal BPM/compàs vàlids, una durada mínima d'un compàs **`1/16` a 350 BPM
+> (≈43 ms)** i **`N` enter a tots els clips** (primer i últim inclosos, sense
+> exempció de pre-roll ni de rubato). El primer inici és 0 i l'últim final és la
+> durada de la WAV. La referència és la **manual i global de la barra 2**
+> (`BPM ref` + `compàs ref`), no la dels clips veïns, i el motor pot ajustar
+> BPM, compàs o `N` enters. Si hi ha **beats detectats** dins del
 > clip, **amb Snap Beats QM**, el seu nombre de negres mana i pot corregir la
 > base (7 negres → `7/4`; 14 →
 > `7/4` N=2; 8 → `4/4` N=2); si no n'hi ha, s'inferixen de la referència BPM
