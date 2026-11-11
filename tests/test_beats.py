@@ -115,21 +115,3 @@ class TestMotors(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-class TestSnapMarcadors(unittest.TestCase):
-    def test_snap_dins_tolerancia_i_ambigus(self):
-        from app import marcadors as M
-        res = M.snap_a_objectius([1.0, 2.0, 5.0],
-                                 [1.03, 2.2, 4.98, 5.0], tolerancia=0.12)
-        self.assertEqual(res["marques"], [1.03, 2.0, 5.0])
-        self.assertEqual(res["moviments"], [(1.0, 1.03)])
-        self.assertEqual(len(res["ambigus"]), 1)
-        self.assertEqual(res["sense_objectiu"], [2.0])
-
-    def test_no_duplica_objectiu(self):
-        from app import marcadors as M
-        res = M.snap_a_objectius([1.0, 1.1], [1.0], tolerancia=0.12)
-        self.assertEqual(len(res["marques"]), 2)
-        self.assertEqual(res["moviments"], [])
-        self.assertEqual(len(res["ambigus"]), 1)

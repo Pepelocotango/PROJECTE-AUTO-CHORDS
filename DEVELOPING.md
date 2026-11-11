@@ -211,11 +211,9 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `camp_text.py` | Camps de text de l'app amb l'inici sempre visible. |
 | `config.py` | Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE. |
 | `dialeg_analitza_bpm.py` | Diàleg d'anàlisi de BPM/beats. |
-| `dialeg_bpm_marcadors.py` | Triar el BPM deduït dels marcadors (llista de candidats). |
 | `dialeg_guia_rapida.py` | Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas. |
 | `dialeg_opcions.py` | Diàleg d'opcions d'autodetecció (BPM/acords/estructura). |
 | `dialeg_quantitza.py` | Diàleg de quantització a la graella. |
-| `dialeg_revisio_snap.py` | Diàleg de revisió dels dubtes del snap. |
 | `dialeg_tempo_mapa.py` | Diàleg del mapa de tempo per trams. |
 | `dialeg_tempo_per_trams.py` | Diàleg de detecció de tempo per trams. |
 | `dialeg_tram_tempo.py` | Diàleg per editar un tram de tempo/compàs. |
@@ -256,7 +254,6 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `projecte_ui.py` | Gestió de projectes de la finestra (F3). |
 | `tap_ui.py` | Tap tempo de la finestra (F3). |
 | `tempo.py` | tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt). |
-| `tempo_ajust.py` | Ajust d'un sol BPM a partir de marcadors de compàs (Fase 5). |
 | `tempo_map.py` | Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur). |
 | `tempo_recalc.py` | Motor pur de recalcul del mapa de temps (F0). |
 | `temps_ui.py` | UI de temps de la finestra (F3): BPM, compàs i offset. |

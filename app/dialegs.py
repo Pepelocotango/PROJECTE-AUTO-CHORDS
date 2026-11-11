@@ -14,12 +14,11 @@ from .dialeg_tempo_mapa import DialegTempoMapa  # noqa: F401
 from .dialeg_tram_tempo import DialegTramTempo  # noqa: F401
 from .dialeg_tempo_per_trams import DialegTempoPerTrams  # noqa: F401
 from .dialeg_analitza_bpm import DialegAnalitzaBPM  # noqa: F401
-from .dialeg_revisio_snap import DialegRevisioSnap  # noqa: F401
 
 __all__ = [
     "DialegOpcions", "DialegTrobaReemplaca", "DialegQuantitza",
     "DialegTempoMapa", "DialegTramTempo", "DialegTempoPerTrams",
-    "DialegAnalitzaBPM", "DialegRevisioSnap",
+    "DialegAnalitzaBPM",
     "DEFECTES", "BEATS_DEFECTES", "FITXER_OPCIONS", "NOMS_CA", "AJUDA_CA",
     "VALORS_CA", "carrega_opcions", "desa_opcions",
 ]

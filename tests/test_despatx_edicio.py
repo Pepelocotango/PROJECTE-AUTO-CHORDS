@@ -1075,28 +1075,3 @@ class TestMarcadorsTempoEnViu(_Base):
         self.v.undo()
         self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)
 
-    def test_ajusta_els_bpms_dels_marcadors(self):
-        self.v.marcadors = [2.0, 10.5, 20.0]
-        self.assertTrue(self.v.ajusta_bpms_marcadors())
-        # L'offset (downbeat) és absolut: ajustar els BPMs no el mou
-        # (decisió 2026-11-01). Només canvia quan l'usuari l'edita.
-        self.assertAlmostEqual(float(self.v.offset), 0.0, places=6)
-        self.assertEqual([round(float(t[0]), 6) for t in self.v.tempo_trams],
-                         [0.0, 2.0, 10.5, 20.0])
-        self.assertAlmostEqual(float(self.v.tempo_trams[-1][1]), _DUR,
-                               places=6)
-        # Contracte nou: cada interval pren el BPM de referència com a àrbitre
-        # però ajusta N enter i deriva el BPM.
-        # [2, 10.5] a 4/4: N=4 → 4·4·60/8.5 ≈ 112.941 BPM.
-        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]), 112.94117647,
-                               places=3)
-        # [10.5, 20] a 3/4: N=5 → 5·3·60/9.5 ≈ 94.737 BPM.
-        self.assertAlmostEqual(float(self.v.tempo_trams[2][2]), 94.73684211,
-                               places=3)
-        self.v.undo()
-        self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)
-        self.assertAlmostEqual(float(self.v.offset), 0.0, places=6)
-
-
-if __name__ == "__main__":
-    unittest.main()

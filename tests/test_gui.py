@@ -1474,41 +1474,6 @@ class TestAjustaGraellaBeats(unittest.TestCase):
     def setUpClass(cls):
         cls._app = visor.QApplication.instance() or visor.QApplication([])
 
-    def test_offset_heretat_invalid_tria_primer_marcador(self):
-        td = tempfile.mkdtemp(prefix="ac_graella_")
-        wav = os.path.join(td, "t.wav")
-        try:
-            with wave.open(wav, "wb") as w:
-                w.setnchannels(1)
-                w.setsampwidth(2)
-                w.setframerate(44100)
-                w.writeframes(b"\x00\x00" * 44100 * 12)
-            v = visor.Visor(wav, None, None, 60.0, 4, True,
-                            sortida=td, offset=0.5)
-            try:
-                # Frontera 3.0 s: amb offset 0.5 NO és línia de compàs.
-                v.tempo_trams = [(0.0, 2.0, 60.0, 4, 4),
-                                 (2.0, 4.0, 60.0, 4, 4),
-                                 (4.0, 6.0, 60.0, 4, 4),
-                                 (6.0, 12.0, 60.0, 4, 4)]
-                v.tempo_map = tm.TempoMap(v.tempo_trams, offset=0.0)
-                v.marcadors = [2.0, 4.0, 6.0]
-                v.marcador_tipus = {m: "seccio" for m in v.marcadors}
-                res = v.ajusta_graella_a_beats(
-                    [2.0, 4.0, 6.0], [], tolerancia=0.12)
-                self.assertIsNotNone(res)
-                self.assertAlmostEqual(v.offset, 2.0, places=6)
-                # El mapa resultant compleix el contracte nou; no cal que
-                # cada marcador caiga en línia de compàs.
-                tm.valida_i_normalitza_compassos(v.tempo_trams, 12.0,
-                                                 offset=v.offset)
-                # 2–4 s en 4/4: N=0,5 a 60 BPM → N=1 i BPM derivat 120.
-                self.assertEqual(v.tempo_trams[1][2], 120.0)
-            finally:
-                v.close()
-        finally:
-            shutil.rmtree(td, ignore_errors=True)
-
     def test_snap_qm_o_bpm_decidix_la_graella(self):
         v = visor.Visor(_wav_silenci(2), None, None, 120.0, 4, True)
         try:
@@ -5697,22 +5662,6 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(
             tm._compassos_del_tram(merged, 0, vr.offset), 10.0, places=3)
 
-    def test_bpm_dels_marcadors_amb_negra_amb_punt_9_8(self):
-        """Els marcadors i la unitat del beat donen 9/8, no 4/4 arrodonit."""
-        vr = self.w.visor_ref
-        vr.offset = 0.0
-        vr.beat_unit = "negra_punt"
-        vr.set_ref_tempo(120.0, 9, 8)
-        vr.qm_beats = [0.0, 0.75, 1.5, 2.25, 3.0, 3.75]
-        vr.marcadors = [2.25, 4.5]
-        candidat = {"bpm": 120.0,
-                    "intervals": [(2.25, 1, 120.0)]}
-        self.assertTrue(vr.aplica_bpm_marcadors(candidat, 9, 8))
-        self.assertAlmostEqual(vr.bpm, 120.0, places=6)
-        self.assertTrue(vr.tempo_trams)
-        self.assertEqual(tuple(vr.tempo_trams[1][3:]), (9, 8))
-        self.assertEqual(tuple(vr.tempo_trams[2][3:]), (9, 8))
-
     def test_reparacio_amb_negra_amb_punt_9_8(self):
         """La reparació també ha d'aplicar la unitat del beat (4,5 negres)."""
         from app import visor_tempo as VT
@@ -5772,34 +5721,6 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(tuple(vr.tempo_trams[0][3:]), (9, 8))
         # 60 s en 9/8: N=26,667 → N=27 i BPM derivat 121,5.
         self.assertAlmostEqual(vr.tempo_trams[0][2], 121.5, places=6)
-
-    def test_bpm_dels_marcadors_deixa_els_clips_editables(self):
-        """El flux real: marcadors → BPM dels marcadors → clips editables."""
-        from app import tempo_map as TM
-        vr = self.w.visor_ref
-        # tema a 96 BPM 4/4 (compàs 2,5 s), marcadors a 4/8/16 compassos
-        t, ks = 8.1, (4, 4, 8, 4)          # 8.1, 18.1, 28.1, 48.1 (< 60 s)
-        for k in ks:
-            vr.pos = t
-            self.assertTrue(vr.afegeix_marcador())
-            t += k * 2.5
-        self.assertEqual(len(vr.marcadors), len(ks))
-        cands = vr.candidats_bpm_marcadors(120.0, 4, 4)
-        triat = next(c for c in cands if abs(c["bpm"] - 96.0) < 0.2)
-        vr.offset = 8.1
-        self.assertTrue(vr.aplica_bpm_marcadors(triat, 4, 4))
-        # La cua 48,1→60 s no és un nombre enter de compassos: s'arrodoneix N
-        # i el BPM derivat del clip principal queda en 88,889.
-        self.assertAlmostEqual(vr.bpm, 88.88888888888889, places=2)
-        self.assertAlmostEqual(vr.offset, 8.1, places=3)
-        # el mapa complix el contracte de compassos enters...
-        TM.valida_i_normalitza_compassos(vr.tempo_trams, 60.0, vr.offset)
-        # ...i per tant els clips es poden editar i suprimir
-        self.assertTrue(vr.edita_tempo_objectiu(1, 97.0, 4, 4))
-        self.assertTrue(vr._elimina_tram(1))
-        # tot és un sol desfer per operació
-        vr.undo()
-        self.assertEqual(len(vr.tempo_trams), len(ks) + 1)
 
     def test_edita_tempo_objectiu_mou_la_fi_i_recalcula_el_vei(self):
         """Regla C+A: el tram editat fixa fi; el veí conserva N/x i recalcula BPM."""

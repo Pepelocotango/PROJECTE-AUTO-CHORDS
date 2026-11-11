@@ -51,37 +51,6 @@ class TestMarcadors(unittest.TestCase):
         self.assertEqual(M.normalitza_marcadors([3, 1.0, 1.0000001, 2], 10),
                          [1.0, 2.0, 3.0])
 
-    def test_candidats_bpm_de_marcadors_sintetics(self):
-        """Marcadors a 4/8/16 compassos d'un tema a 96 BPM (compàs 2,5 s)."""
-        ms, t = [], 8.1
-        for k in (4, 4, 8, 4, 16, 4):
-            ms.append(round(t, 3))
-            t += k * 2.5
-        cands = M.candidats_bpm(ms, 4, 4, 60, 180, preferit=94.0)
-        self.assertTrue(cands)
-        # amb dades perfectes l'ambigüitat doble/meitat és real: 96 ha d'estar
-        # entre els candidats, amb els compassos correctes
-        dinou = next(c for c in cands if abs(c["bpm"] - 96.0) < 0.2)
-        self.assertEqual(dinou["compassos"], [4, 4, 8, 4, 16])
-        self.assertLess(dinou["residu"], 1e-6)
-        # i amb el BPM de la barra a prop de 96, eixe va primer
-        cands = M.candidats_bpm(ms, 4, 4, 60, 180, preferit=96.0)
-        self.assertAlmostEqual(cands[0]["bpm"], 96.0, delta=0.2)
-
-    def test_candidats_bpm_amb_soroll_huma(self):
-        """Marcacions reals: ±30 ms i intervals d'1, 2, 3, 4 i 8 compassos."""
-        import random
-        random.seed(7)
-        bar = 2.75                       # ~87,3 BPM 4/4
-        ms, t = [], 3.289
-        for k in (1, 1, 1, 1, 1, 1, 1, 2, 1, 3, 3, 1, 2, 2, 1, 1, 2, 2, 2, 2,
-                  2, 4, 4, 8, 4, 4, 4, 4, 4, 3, 1, 4, 4, 4, 4, 2):
-            ms.append(round(t + random.uniform(-0.03, 0.03), 3))
-            t += k * bar
-        c = M.candidats_bpm(ms, 4, 4, 50, 200, preferit=120.0, tol=0.12)[0]
-        self.assertAlmostEqual(c["bpm"], 240 / bar, delta=3.0)
-        self.assertLessEqual(max(c["compassos"]), 9)
-
     def test_desa_i_llegeix_al_projecte(self):
         d = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, d, True)

@@ -76,7 +76,7 @@ PROJECTE AUTO CHORDS/
 │   ├── PLA_SIMPLIFICACIO_TEMPO.md         🟢  # Pla per fases de simplificació del tempo
 │   ├── TORNAR A REVISAR AVANS AQUEST PLA.TXT 🟢
 │   └── per fer_2026-11-05/                🟢  # (54 fitxers)
-├── app/                           🟢  # Codi de l'aplicació (PyQt5) (76 fitxers)
+├── app/                           🟢  # Codi de l'aplicació (PyQt5) (73 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
 │   ├── analisi_ui.py             🟢  # Accions d'anàlisi de la finestra (F3).
@@ -88,11 +88,9 @@ PROJECTE AUTO CHORDS/
 │   ├── camp_text.py              🟢  # Camps de text de l'app amb l'inici sempre visible.
 │   ├── config.py                 🟢  # Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE.
 │   ├── dialeg_analitza_bpm.py    🟢  # Diàleg d'anàlisi de BPM/beats.
-│   ├── dialeg_bpm_marcadors.py   🟢  # Triar el BPM deduït dels marcadors (llista de candidats).
 │   ├── dialeg_guia_rapida.py     🟢  # Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas.
 │   ├── dialeg_opcions.py         🟢  # Diàleg d'opcions d'autodetecció (BPM/acords/estructura).
 │   ├── dialeg_quantitza.py       🟢  # Diàleg de quantització a la graella.
-│   ├── dialeg_revisio_snap.py    🟢  # Diàleg de revisió dels dubtes del snap.
 │   ├── dialeg_tempo_mapa.py      🟢  # Diàleg del mapa de tempo per trams.
 │   ├── dialeg_tempo_per_trams.py 🟢  # Diàleg de detecció de tempo per trams.
 │   ├── dialeg_tram_tempo.py      🟢  # Diàleg per editar un tram de tempo/compàs.
@@ -133,7 +131,6 @@ PROJECTE AUTO CHORDS/
 │   ├── projecte_ui.py            🟢  # Gestió de projectes de la finestra (F3).
 │   ├── tap_ui.py                 🟢  # Tap tempo de la finestra (F3).
 │   ├── tempo.py                  🟢  # tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt).
-│   ├── tempo_ajust.py            🟢  # Ajust d'un sol BPM a partir de marcadors de compàs (Fase 5).
 │   ├── tempo_map.py              🟢  # Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur).
 │   ├── tempo_recalc.py           🟢  # Motor pur de recalcul del mapa de temps (F0).
 │   ├── temps_ui.py               🟢  # UI de temps de la finestra (F3): BPM, compàs i offset.
@@ -292,7 +289,7 @@ PROJECTE AUTO CHORDS/
 │   └── qm-vamp-plugins.so  🟢
 ├── temp/                          🟡  # Temporals de l'app (no versionat) (1 fitxer)
 │   └── visor_player.log 🟡  # Log del reproductor
-├── tests/                         🟢  # Suite unittest offscreen (23 fitxers)
+├── tests/                         🟢  # Suite unittest offscreen (22 fitxers)
 │   ├── _qt_neteja.py              🟢  # Neteja ORDENADA dels objectes Qt entre tests.
 │   ├── _temporals.py              🟢  # Higiene dels tests: cap temporal no s'ha de quedar pel disc.
 │   ├── test_ancoratges.py         🟢  # Suite de test — Marcadors humans i velocitat de reproducció.
@@ -311,7 +308,6 @@ PROJECTE AUTO CHORDS/
 │   ├── test_moduls_al_dia.py      🟢  # Test: la taula de mòduls de `DEVELOPING.md` ha d'estar al dia.
 │   ├── test_pipeline.py           🟢  # Suite de test — Pipeline
 │   ├── test_pipeline_contracte.py 🟢  # Contracte de superfície de `app.pipeline` (refactor F0).
-│   ├── test_tempo_ajust.py        🟢  # —
 │   ├── test_tempo_map.py          🟢  # Suite de test — Tempo Map
 │   ├── test_tempo_recalc.py       🟢  # Tests del motor pur de recalcul del mapa de temps (F0).
 │   ├── test_tempo_trams.py        🟢  # Motor de tempo per trams (app/tempo.py): candidats, beats i mapa.

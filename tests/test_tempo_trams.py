@@ -677,23 +677,6 @@ class MarcadorsTempoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             tempo_map.retempo_tram_detectat(trams, 0, 0.0, 32.0)
 
-    def test_ajusta_un_tram_per_interval_de_marcador(self):
-        out = tempo_map.ajusta_trams_a_marcadors(
-            [(0.0, 30.0, 120.0, 4, 4)], [2.0, 10.5, 20.0], 30.0)
-        self.assertEqual(len(out), 4)
-        self.assertEqual([round(float(t[0]), 6) for t in out],
-                         [0.0, 2.0, 10.5, 20.0])
-        self.assertAlmostEqual(out[-1][1], 30.0, places=9)
-        # Cada interval deriva el BPM per a tindre N enter.
-        self.assertEqual([t[2] for t in out],
-                         [120.0, 112.94117647058823,
-                          126.3157894736842, 120.0])
-
-    def test_ajusta_amb_menys_de_dos_marcadors_falla(self):
-        with self.assertRaises(ValueError):
-            tempo_map.ajusta_trams_a_marcadors(
-                [(0.0, 30.0, 120.0, 4, 4)], [5.0], 30.0)
-
     def test_una_frontera_heretada_no_bloqueja_el_re_tempo(self):
         # Tram 0 amb 10,3 s (5,15 compassos a 120): desviació vella. Moure la
         # frontera 2 (trams 1 i 2) no ha de quedar bloquejat pel tram 0.

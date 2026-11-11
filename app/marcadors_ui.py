@@ -1,12 +1,11 @@
 """Marcadors en viu de la finestra (F3).
 
-Extret de `app/main.py`: encaix al beat QM, alta de marcadors, BPM derivat
-dels marcadors i ajustos per lots.
+Extret de `app/main.py`: encaix al beat QM i alta de marcadors. Els marcadors
+són anotacions visuals: no participen en cap recalcul de tempo.
 """
-from . import dialeg_bpm_marcadors
 
 class MarcadorsMixin:
-    """Marcadors en viu i BPM derivat."""
+    """Marcadors en viu."""
 
     def _snap_marcador_qm(self, t):
         """Retorna el beat QM més pròxim a `t` (sempre, sense tolerància).
@@ -151,97 +150,6 @@ class MarcadorsMixin:
         self.registra(
             f"Tempo i estructura tallats a {t:.3f}s" if ok
             else f"No s'ha pogut tallar a {t:.3f}s")
-        return ok
-
-    def _bpm_dels_marcadors(self):
-        """Deduu el BPM dels marcadors i reescriu el mapa (clips editables)."""
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            self.avisa("BPM dels marcadors", "Primer obri una WAV.")
-            return False
-        if len(vr.marcadors or ()) < 2:
-            self.avisa("BPM dels marcadors",
-                       "Calen almenys dos marcadors (prem + al compàs 1 i a un "
-                       "altre compàs).")
-            return False
-        try:
-            cands = vr.candidats_bpm_marcadors(self._bpm_val(),
-                                               self._bpb_val(),
-                                               self._beat_type_val())
-        except ValueError as e:
-            self.avisa("BPM dels marcadors", str(e))
-            return False
-        if not cands:
-            self.avisa("BPM dels marcadors",
-                       "Els marcadors no quadren amb cap BPM entre 60 i 180.")
-            return False
-        dlg = dialeg_bpm_marcadors.DialegBpmMarcadors(
-            cands, self, self._bpb_val(), self._beat_type_val())
-        if dlg.exec_() != dlg.Accepted:
-            return False
-        triat = dlg.triat()
-        if not triat:
-            return False
-        ok = bool(vr.aplica_bpm_marcadors(triat, self._bpb_val(),
-                                          self._beat_type_val()))
-        if ok:
-            self._sincronitza_temps_del_visor()
-            self._desa_meta_silencios()
-            self.registra(
-                f"BPM dels marcadors: {triat['bpm']:.2f} · "
-                f"{len(triat.get('intervals') or ())} trams · "
-                f"compassos {triat.get('compassos')}")
-        return ok
-
-    def _ajusta_bpms_marcadors(self):
-        """Acció per lot: un beat sencer a cada interval de marcador.
-
-        Recorre els intervals entre marcadors, conserva el BPM de referència
-        i ajusta el compàs (o, si cal, un BPM proper) perquè cada clip continga
-        almenys un beat sencer. S'aplica en **una sola operació de desfer**.
-        """
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            self.avisa("Ajusta BPMs", "Primer obri una WAV.")
-            return False
-        if len(vr.marcadors or ()) < 2:
-            self.avisa("Ajusta BPMs",
-                       "Calen almenys dos marcadors (prem + a cada inici de "
-                       "compàs que vulgues ajustar).")
-            return False
-        self._atura_si_sona("ajust dels BPMs pels marcadors")
-        abans = len(vr.tempo_trams or ())
-        ok = bool(vr.ajusta_bpms_marcadors())
-        if ok:
-            self._sincronitza_temps_del_visor()
-            self.registra(
-                f"Ajusta BPMs pels marcadors: {len(vr.tempo_trams)} trams "
-                f"(abans {abans}), compàs 1 a {float(vr.offset):.3f}s")
-            self._missatge_info(
-                f"BPMs ajustats amb {len(vr.marcadors)} marcadors "
-                f"({len(vr.tempo_trams)} trams). Ctrl+Z ho desfà tot.")
-        return ok
-
-    def _ajusta_bpm_minims_quadrats(self):
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            self.avisa("Ajusta BPM", "Primer obri una WAV.")
-            return False
-        if len(vr.marcadors or ()) < 2:
-            self.avisa("Ajusta BPM",
-                       "Calen almenys dos marcadors.")
-            return False
-        self._atura_si_sona("ajust del BPM per mínims quadrats")
-        abans = len(vr.tempo_trams or ())
-        ok = bool(vr.ajusta_bpm_minims_quadrats())
-        if ok:
-            self._sincronitza_temps_del_visor()
-            self.registra(
-                f"Ajusta BPM mínims quadrats: {len(vr.tempo_trams)} trams "
-                f"(abans {abans})")
-            self._missatge_info(
-                f"BPM ajustat per mínims quadrats "
-                f"({len(vr.tempo_trams)} trams). Ctrl+Z ho desfà tot.")
         return ok
 
     def _esborra_ultim_marcador(self):

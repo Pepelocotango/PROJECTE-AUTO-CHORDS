@@ -322,31 +322,23 @@ normal pel que fa a camps, graella, validació, edició i exportació de dades.
 ### 13.8 Detecció i marcadors
 La **detecció** conserva els seus criteris musicals i la validació estricta.
 Amb un **tram seleccionat**, *Detecta* analitza només eixe tram i el downbeat és
-el seu inici. En un tram delimitat per marcadors, **Δt és fix**: el BPM detectat
+el seu inici. En un tram amb els extrems fixos, **Δt és fix**: el BPM detectat
 només compta compassos (`N = round(Δt · BPM_ref / (bq · 60))`, mínim 1) i
 s'aplica el **BPM derivat exacte** (`N · bq · 60 / Δt`), que clava les barres
 entre els dos punts. La fi del tram i els següents no es mouen; si el BPM derivat
 cau fora de 30–350 o no hi cap cap compàs sencer, **s'avisa**. S'aplica en una
 sola operació de desfer.
 
-Els **marcadors** són anotacions independents del model. Les accions
-explícites *BPM dels marcadors* i *Ajusta BPMs a partir dels marcadors* poden
-usar-los com a referència manual, però cap operació automàtica de tempo els
-consulta. *BPM dels marcadors* usa el
-**nombre de compassos de cada interval** com a `N` **fix**; el recalcul usa la
-**referència base de la barra 2** per al BPM/compàs (no la del clip). Si hi ha
-**beats detectats** dins l'interval, el seu nombre de **negres** **mana**
-sobre el `N` estimat i pot corregir el compàs: 7 negres són `7/4`, no 2×`4/4`;
-14 negres `7/4` N=2 i 8 negres `4/4` N=2. En estes accions explícites, els
-intervals dels marcadors i els beats manen sobre
-l'estructura de compassos i el tempo s'hi adapta.
+Els **marcadors** són només **anotacions visuals independents** del model. Cap
+operació de tempo —ni automàtica ni explícita— els consulta ni en deriva BPM,
+compassos o intervals. No es mouen amb les fronteres de tempo ni amb les
+seccions, i no s'esborren quan una frontera desapareix.
 
 Per a tempo variable, *Analitza ▸ Detecta el tempo per trams…* fa el mapa sencer
 (un BPM cada N compassos, amb els criteris musicals del detector) i el valida de
 manera estricta. L'export porta les tres parts (acords, estructura i mapa).
 
-→ `tempo_map.retempo_tram_detectat` · `tempo_map.ajusta_trams_a_marcadors` ·
-`tempo_recalc.recalculca_tram` · `visor_marcadors.aplica_bpm_marcadors` ·
+→ `tempo_map.retempo_tram_detectat` · `tempo_recalc.recalculca_tram` ·
 `app/tempo.py` · `pipeline.desa_tempo_map`.
 
 ### 13.9 Edició de l'àudio del projecte

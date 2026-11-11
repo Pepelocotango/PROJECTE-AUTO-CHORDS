@@ -138,10 +138,6 @@ class MenusMixin:
                   self._analitza_acords_rang)
         self._act(m, "Analitza beats, downbeats i BPM", "F7",
                   self._analitza_bpm)
-        self._act(m, "Ajusta la graella als beats QM…", "",
-                  self._ajusta_graella_beats)
-        self._act(m, "Compàs del marcador…", "",
-                  self._compas_del_marcador)
         m.addSeparator()
         self.a_compas_auto = self._act(
             m, "Detecta el compàs 1 automàticament", None,
@@ -172,12 +168,6 @@ class MenusMixin:
                   self._marcador_cursor)
         self._act(m, "Esborra l'últim marcador", "",
                   self._esborra_ultim_marcador)
-        self._act(m, "BPM a partir dels marcadors…", "",
-                  self._bpm_dels_marcadors)
-        self._act(m, "Ajusta BPMs a partir dels marcadors per trams", "",
-                  self._ajusta_bpms_marcadors)
-        self._act(m, "Ajusta un BPM (mínims quadrats) a partir dels marcadors",
-                  "", self._ajusta_bpm_minims_quadrats)
         m.addSeparator()
         m.addAction(self.amb_est)      # Inclou estructura (commutable)
         # --- Ajuda ---

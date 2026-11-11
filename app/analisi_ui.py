@@ -1,13 +1,13 @@
 """Accions d'anàlisi de la finestra (F3).
 
-Extret de `app/main.py`: anàlisi d'acords/estructura, BPM/beats, revisió del
-snap, compàs del marcador i aplicació del BPM detectat.
+Extret de `app/main.py`: anàlisi d'acords/estructura, BPM/beats i aplicació
+del BPM detectat.
 """
 import copy
 import os
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QDialog, QInputDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox
 
 from . import beats as beats_mod, dialegs, ffmpeg, pipeline, projecte
 from .feines import Feina
@@ -388,106 +388,6 @@ class AnalisiMixin:
                 f"BPM: {bpm_txt} · {len(beats)} beats · "
                 f"{len(downbeats)} downbeats · motor {res.get('motor')} "
                 f"(sensibilitat {res.get('sensibilitat'):.0f}/100)")
-
-    def _ajusta_graella_beats(self):
-        """Acció de menú: snap dels marcadors a QM i ajust del mapa."""
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            self.avisa("Ajusta graella", "Primer obri una WAV.")
-            return
-        info = getattr(self, "_beats_actuals", None)
-        if not info:
-            info = (getattr(getattr(self, "projecte", None), "dades", {})
-                    .get("analisi_beats"))
-        if not isinstance(info, dict) or not info.get("beats"):
-            self.avisa_info(
-                "Ajusta graella",
-                "No hi ha beats detectats. Executa «Analitza beats, downbeats i BPM» primer.")
-            return
-        beats = list(info.get("beats") or ())
-        downbeats = list(info.get("downbeats") or ())
-        # Ajustar la graella és una operació posterior al play: parem primer
-        # per no mostrar cap diàleg mentre l'usuari està marcant compassos.
-        self._atura_si_sona("ajust de la graella als beats")
-        tolerancia, ok = QInputDialog.getDouble(
-            self, "Ajusta la graella als beats QM",
-            "Tolerància del snap (ms):", 120.0, 10.0, 500.0, 0)
-        if not ok:
-            return
-        try:
-            res = vr.ajusta_graella_a_beats(
-                beats, downbeats, tolerancia=float(tolerancia) / 1000.0)
-        except Exception as e:  # noqa: BLE001
-            self.registra(f"Ajusta graella ERROR: {e}")
-            self.avisa_crit("Ajusta graella", f"No s'ha pogut ajustar: {e}")
-            return
-        if res is None:
-            return
-        self._marca_dirty()
-        self._missatge_info(
-            f"Graella ajustada: {len(res.get('moguts') or [])} marcadors "
-            f"snapats · {len(res.get('ambigus') or [])} dubtosos")
-        self.registra(
-            f"Ajusta graella: {len(res.get('moguts') or [])} snapats, "
-            f"{len(res.get('ambigus') or [])} dubtosos, "
-            f"{res.get('trams')} trams")
-        self._mostra_revisio_snap(res.get("ambigus") or [])
-
-    def _mostra_revisio_snap(self, ambigus):
-        if not ambigus:
-            return
-        vr = getattr(self, "visor_ref", None)
-        dlg = dialegs.DialegRevisioSnap(
-            self, ambigus=ambigus,
-            ves_a=(vr.ves_a if vr is not None else None),
-            snap=self._snap_individual)
-        self._revisio_snap = dlg
-        dlg.show()
-
-    def _snap_individual(self, vell, nou):
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            return False
-        try:
-            ok = bool(vr.snap_un_marcador(float(vell), float(nou)))
-        except Exception as e:  # noqa: BLE001
-            self.registra(f"Snap individual ERROR: {e}")
-            return False
-        if ok:
-            self._marca_dirty()
-        return ok
-
-    def _compas_del_marcador(self):
-        """Obfri editar el compàs del tram que comença en un marcador."""
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            self.avisa("Compàs del marcador", "Primer obri una WAV.")
-            return
-        self._atura_si_sona("edició del compàs")
-        t = float(getattr(vr, "pos", 0.0))
-        idx_m = None
-        dist = 0.25
-        for i, m in enumerate(getattr(vr, "marcadors", []) or []):
-            d = abs(float(m) - t)
-            if d <= dist:
-                idx_m, dist = i, d
-        if idx_m is None:
-            self.avisa_info(
-                "Compàs del marcador",
-                "Posa el cursor prop d'un marcador de compàs.")
-            return
-        t_m = float(vr.marcadors[idx_m])
-        idx_t = None
-        for i, s in enumerate(getattr(vr, "tempo_trams", []) or []):
-            if abs(float(s[0]) - t_m) <= 0.06:
-                idx_t = i
-                break
-        if idx_t is None:
-            self.avisa_info(
-                "Compàs del marcador",
-                "No hi ha cap tram de tempo que comence en eixe marcador.")
-            return
-        vr._on_tempo_edit(idx_t)
 
     def _aplica_bpm_detectat(self, b):
         """Posa al transport el BPM que ha detectat «Analitza» (etapa BPM).
