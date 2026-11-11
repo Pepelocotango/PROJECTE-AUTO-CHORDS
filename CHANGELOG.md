@@ -5,6 +5,22 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Canviat — `CORPUS/` fora de l'arbre generat (2026-11-11)
+- `eines/genera_arbre.py` **exclou `CORPUS/`** del tot: és una carpeta local
+  d'avaluació (1,4 GB, no versionada) que canvia sovint i feia ballar
+  `ARBRE_DIRECTORIS.md` i `docs-check` sense cap canvi de codi.
+- No afecta l'app ni els tests: cap test no usa `CORPUS/`, i
+  `eines/avalua_tempo.py` continua acceptant `--corpus <ruta>`.
+- Nou test de regressió a `tests/test_arbre_al_dia.py`.
+
+### Tret — botons ×2/÷2 de la barra «Temps» (2026-11-11)
+- Eliminats els botons **×2** i **÷2** de la barra. La mateixa funció ja és al
+  **menú contextual del clip de tempo** («Doblar compassos (×2)» / «Dividir
+  compassos (÷2)»), que canvia els compassos amb els **segons fixos** i el BPM
+  s'adapta.
+- Eliminat el codi mort associat (`_dobla_bpm`); actualitzats
+  `docs/ESQUEMA_UI.md`, els tests i els missatges de la GUI.
+
 ### Canviat — fora els camps BPM i Compàs de la barra «Temps» (2026-11-11)
 - La barra **Temps** ja no mostra els camps `BPM:` ni `Compàs:`. Es veuen i
   s'editen a la **franja Editor** en seleccionar el clip de tempo (tram 0

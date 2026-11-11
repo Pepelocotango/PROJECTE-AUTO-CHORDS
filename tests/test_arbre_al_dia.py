@@ -30,6 +30,14 @@ class TestArbreAlDia(unittest.TestCase):
     def test_document_existeix(self):
         self.assertTrue(os.path.isfile(DOC))
 
+    def test_corpus_local_no_contamina_l_arbre(self):
+        """CORPUS/ és local i canvia sol: no ha d'entrar al bloc generat."""
+        with open(DOC, encoding="utf-8") as f:
+            text = f.read()
+        bloc = text.split("<!-- GENERAT: arbre", 1)[-1]
+        bloc = bloc.split("<!-- /GENERAT: arbre", 1)[0]
+        self.assertNotIn("CORPUS/", bloc)
+
 
 if __name__ == "__main__":
     unittest.main()

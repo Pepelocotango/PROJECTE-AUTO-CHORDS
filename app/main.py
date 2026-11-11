@@ -38,7 +38,6 @@ from . import icones  # noqa: E402
 from . import panell_xifrat  # noqa: E402
 from . import plataforma  # noqa: E402
 from . import tempo_map  # noqa: E402
-from . import limits  # noqa: E402
 
 # Sempre a un directori ESCRIPTIBLE: en una AppImage muntada la carpeta del
 # projecte és de només lectura i escriure-hi el log petava a l'arrencada.
@@ -307,7 +306,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             camp.editingFinished.connect(self._aplica_ref_recalc)
 
         # Barra «Temps»: BPM i Compàs NO hi són (s'editen a la franja Editor).
-        # Es queda TAP · ×2/÷2 · Ref. recalc · Beat/TAP · En segons · Offset.
+        # Es queda TAP · Ref. recalc · Beat/TAP · En segons · Offset. El ×2/÷2
+        # viu al menú contextual del clip de tempo (compassos, segons fixos).
         self._params_temps = QWidget()      # s'amaga sencer en mode Lliure
         # Els camps interns de BPM/compàs pengen del contenidor (cicle de vida
         # lligat a la finestra) però no van al layout ni es mostren.
@@ -317,15 +317,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         hp = QHBoxLayout(self._params_temps)
         hp.setContentsMargins(0, 0, 0, 0)
         hp.setSpacing(6)
-        self.b_bpm_x2 = QPushButton("×2")
-        self.b_bpm_div2 = QPushButton("÷2")
-        for b, factor, tip in ((self.b_bpm_x2, 2.0, "Dobla el BPM (×2)"),
-                               (self.b_bpm_div2, 0.5, "Meitat del BPM (÷2)")):
-            b.setObjectName("secundari")
-            b.setFixedWidth(46)
-            b.setToolTip(tip + "  ·  útil quan la detecció agafa el doble/meitat")
-            b.clicked.connect(lambda _=False, f=factor: self._dobla_bpm(f))
-            hp.addWidget(b)
         self.b_tap = QPushButton("TAP")
         self.b_tap.setObjectName("secundari")
         self.b_tap.setToolTip("Tap tempo: marca el pols amb clics (o la tecla T). "
@@ -1311,24 +1302,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         """
         if hasattr(self, "b_eina"):
             self.b_eina.setChecked(not self.b_eina.isChecked())
-
-
-    def _dobla_bpm(self, factor):
-        """Multiplica (×2) o divideix (÷2) el BPM actual."""
-        try:
-            b = self._bpm_val() * float(factor)
-        except ValueError as e:
-            self.avisa_info("Tempo invàlid", str(e))
-            return
-        if not limits.BPM_MIN <= b <= limits.BPM_MAX:
-            self.avisa_info(
-                "Tempo invàlid",
-                f"El resultat ({b:.3f} BPM) queda fora de "
-                f"{limits.BPM_MIN:g}–{limits.BPM_MAX:g} BPM.")
-            return
-        self._posa_bpm_quarter(b)
-        self._aplica_parametres_temps()
-        self.registra(f"BPM {'×2' if factor > 1 else '÷2'} → {b:.3f}")
 
 
     def _loop_actiu(self, minim=1.0):

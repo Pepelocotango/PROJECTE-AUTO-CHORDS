@@ -37,7 +37,6 @@ from app import xifrat
 import xml.etree.ElementTree as ET
 import wave
 import PyQt5.QtWidgets as QW
-from PyQt5.QtWidgets import QMessageBox
 from app import main as app_main
 import faulthandler
 import glob
@@ -4106,8 +4105,9 @@ class Compas1Tests(unittest.TestCase):
         # res del que ja hi havia s'ha perdut
         self.assertFalse(w.b_offset_cursor.icon().isNull())   # map-pin
         self.assertEqual(w.b_tap.text(), "TAP")
-        self.assertEqual(w.b_bpm_x2.text(), "×2")
-        self.assertEqual(w.b_bpm_div2.text(), "÷2")
+        # ×2/÷2 ja no són botons de barra: viuen al menú del clip de tempo.
+        self.assertFalse(hasattr(w, "b_bpm_x2"))
+        self.assertFalse(hasattr(w, "b_bpm_div2"))
         w.close()
 
     def test_transforms_qm_disponibles(self):
@@ -4288,61 +4288,6 @@ class PlayCoherenciaTests(unittest.TestCase):
                    app_main.Finestra._detecta_bpm,
                    app_main.Finestra._carrega_visor):
             self.assertIn("_atura_si_sona", inspect.getsource(fn))
-
-
-class BpmDoblaTests(unittest.TestCase):
-    """Botons ×2 / ÷2 del BPM."""
-
-    @classmethod
-    def setUpClass(cls):
-        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-        cls._app = visor.QApplication.instance() or visor.QApplication([])
-
-    def _finestra(self):
-        import tempfile, wave
-        td = tempfile.mkdtemp()
-        wav = os.path.join(td, "t.wav")
-        with wave.open(wav, "wb") as w:
-            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
-            w.writeframes(b"\x00\x00" * 44100 * 5)
-        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,4.0,C\n")
-        window = app_main.Finestra()
-        window.wav_edit.setText(wav)
-        window._carrega_visor(wav)
-        return window
-
-    def test_botons_existeixen(self):
-        w = self._finestra()
-        self.assertEqual(w.b_bpm_x2.text(), "×2")
-        self.assertEqual(w.b_bpm_div2.text(), "÷2")
-        w.close()
-
-    def test_dobla_i_meitat(self):
-        w = self._finestra()
-        w.bpm.setText("101.0")
-        w.b_bpm_x2.click()
-        self.assertAlmostEqual(w._bpm_val(), 202.0, places=1)
-        w.b_bpm_div2.click()
-        self.assertAlmostEqual(w._bpm_val(), 101.0, places=1)
-        w.close()
-
-    def test_limits(self):
-        w = self._finestra()
-        with patch.object(QMessageBox, "information",
-                          return_value=QMessageBox.Ok) as avisa:
-            w.bpm.setText("300.0"); w.b_bpm_x2.click()
-            self.assertAlmostEqual(w._bpm_val(), 300.0, places=1)
-            w.bpm.setText("50.0"); w.b_bpm_div2.click()
-            self.assertAlmostEqual(w._bpm_val(), 50.0, places=1)
-        self.assertEqual(avisa.call_count, 2)
-        w.close()
-
-    def test_propaga_al_visor(self):
-        w = self._finestra()
-        w.bpm.setText("101.0"); w.b_bpm_x2.click()
-        self.assertAlmostEqual(w.visor_ref.bpm, 202.0, places=1)
-        w.close()
 
 
 class FfmpegTests(unittest.TestCase):

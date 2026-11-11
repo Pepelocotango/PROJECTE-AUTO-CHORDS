@@ -2299,6 +2299,10 @@ class EsquemaUiDocTests(unittest.TestCase):
                   self.w._params_temps.findChildren(QLabel)]
         self.assertNotIn("BPM:", textos)
         self.assertNotIn("Compàs:", textos)
+        botons = [b.text() for b in
+                  self.w._params_temps.findChildren(QPushButton)]
+        self.assertNotIn("×2", botons)
+        self.assertNotIn("÷2", botons)
 
     def test_botons_quantitza_i_snap(self):
         """«Quantitza», «BPM…», «Snap», «Graella» i «Eina» al Transport."""

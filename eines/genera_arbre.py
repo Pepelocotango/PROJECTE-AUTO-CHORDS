@@ -13,6 +13,8 @@
   Les entrades del diccionari que no existeixen al disc s'ignoren.
 - **Fitxers efímers** de l'arrel (logs, recents, opcions locals…) no es
   llisten: la sortida no depén de la sessió de treball.
+- **`CORPUS/` s'exclou del tot** (dades locals d'avaluació, no versionades):
+  canvia sovint i no ha de fer ballar `ARBRE_DIRECTORIS.md` ni `docs-check`.
 
 Ús:
     python3 eines/genera_arbre.py            # escriu el bloc
@@ -40,12 +42,12 @@ EXCLOSOS_DIRS = {
     ".cov-env",
     "htmlcov",
     "squashfs-root",
+    "CORPUS",
 }
 
 DIRS_RESUM = {
     "00PER FER",
     ".opencode",
-    "CORPUS",
     "portable",
     "temp",
     ".venv",
@@ -86,7 +88,6 @@ DESCRIPCIONS = {
     "app": "Codi de l'aplicació (PyQt5)",
     "codi_font_chordino": "Codi font del plugin Chordino (NNLS-Chroma)",
     "codi_font_chordino/regression": "Tests de regressió del plugin",
-    "CORPUS": "Corpus local d'avaluació (no versionat)",
     "docs": "Contracte i documentació viva",
     "docs/README.md": "Índex de la documentació",
     "docs/REGLES_DE_LA_APP.md": "Regles d'or (1–12) i §13 (temps, compàs i graella)",
