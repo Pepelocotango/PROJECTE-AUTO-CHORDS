@@ -89,17 +89,19 @@ print(p.segments_locators('acords.csv', 138, 4, 0.0, durada=180.0))"
 
 <!-- GENERAT: comandes — no editar a mà -->
 ```bash
-make entorn      # instal·la l'entorn local (sense sudo)
-make app         # arrenca l'app
-make compile     # compilació ràpida (no arrenca l'app)
-make test        # suite completa (offscreen)
-make lint        # pyflakes
-make smoke       # smoke de l'app
-make docs        # regenera les vistes i els documents generats
-make docs-check  # comprova que els documents generats estan al dia
-make aleatori    # suite en ordre aleatori
-make coverage    # suite amb informe de cobertura
-make check       # compile + lint + test + docs-check
+make entorn        # instal·la l'entorn local (sense sudo)
+make app           # arrenca l'app
+make compile       # compilació ràpida (no arrenca l'app)
+make test          # suite completa (offscreen)
+make lint          # pyflakes
+make smoke         # smoke de l'app
+make docs          # regenera les vistes i els documents generats
+make docs-check    # comprova que els documents generats estan al dia
+make aleatori      # suite en ordre aleatori
+make coverage      # suite amb informe de cobertura
+make check         # compile + lint + suite sencera + docs-check (lent)
+make commit-check  # compile + lint + docs-check (ràpid, per commit)
+make commit        # afegeix-ho tot, regenera docs, commit-check i commit (MSG=\"...\")
 ```
 <!-- /GENERAT: comandes -->
 

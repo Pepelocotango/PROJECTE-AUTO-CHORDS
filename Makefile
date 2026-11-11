@@ -4,7 +4,7 @@
 PY := .venv/bin/python
 OFFSCREEN := QT_QPA_PLATFORM=offscreen
 
-.PHONY: help entorn app compile test lint smoke docs docs-check aleatori coverage check
+.PHONY: help entorn app compile test lint smoke docs docs-check aleatori coverage check commit-check commit
 
 help:
 	@echo "make entorn      instal·la l'entorn local (sense sudo)"
@@ -17,7 +17,9 @@ help:
 	@echo "make docs-check  comprova que els documents generats estan al dia"
 	@echo "make aleatori    suite en ordre aleatori"
 	@echo "make coverage    suite amb informe de cobertura"
-	@echo "make check       compile + lint + test + docs-check"
+	@echo "make check       compile + lint + suite sencera + docs-check (lent)"
+	@echo "make commit-check  compile + lint + docs-check (ràpid, per commit)"
+	@echo "make commit      afegeix-ho tot, regenera docs, commit-check i commit (MSG=\"...\")"
 
 entorn:
 	bash instal·la_local.sh
@@ -65,3 +67,14 @@ coverage:
 	$(PY) -m coverage report
 
 check: compile lint test docs-check
+
+commit-check: compile lint docs-check
+
+commit:
+	@test -n "$(MSG)" || { echo "Falta el missatge: make commit MSG=\"...\""; exit 1; }
+	@test -n "$$(git status --porcelain)" || { echo "No hi ha canvis per commitejar."; exit 1; }
+	git add -A
+	$(MAKE) docs
+	git add -A
+	$(MAKE) commit-check
+	git commit -m "$(MSG)"

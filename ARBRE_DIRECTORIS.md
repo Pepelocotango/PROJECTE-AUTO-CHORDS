@@ -243,11 +243,11 @@ PROJECTE AUTO CHORDS/
 │   ├── exporta_partitura.py      🟢
 │   ├── funcionalitats_dades.json 🟢  # Font de dades del mapa de funcionalitats
 │   ├── genera_arbre.py           🟢  # Genera l'arbre d'aquest fitxer
-│   ├── genera_comandes.py        🟡
+│   ├── genera_comandes.py        🟢
 │   ├── genera_esquema_ui.py      🟢  # Genera `docs/ESQUEMA_UI.html` i `.svg`
-│   ├── genera_formats.py         🟡
+│   ├── genera_formats.py         🟢
 │   ├── genera_funcionalitats.py  🟢  # Genera `docs/FUNCIONALITATS_AUTO_CHORDS.ods`
-│   ├── genera_index_docs.py      🟡
+│   ├── genera_index_docs.py      🟢
 │   ├── genera_inventari.py       🟢  # Genera `docs/COMPONENTS_I_VERSIONS.md`
 │   ├── genera_moduls.py          🟢  # Genera la taula de mòduls de `DEVELOPING.md`
 │   ├── launcher_pyinstaller.py   🟢  # Punt d'entrada del paquet congelat
@@ -306,7 +306,7 @@ PROJECTE AUTO CHORDS/
 │   ├── qm-vamp-plugins.cat 🟢
 │   ├── qm-vamp-plugins.n3  🟢
 │   └── qm-vamp-plugins.so  🟢
-├── temp/                          🟡  # Temporals de l'app (no versionat) (2 fitxers)
+├── temp/                          🟡  # Temporals de l'app (no versionat) (1 fitxer)
 │   └── visor_player.log 🟡  # Log del reproductor
 ├── tests/                         🟢  # Suite unittest offscreen (23 fitxers)
 │   ├── _qt_neteja.py              🟢  # Neteja ORDENADA dels objectes Qt entre tests.
@@ -318,7 +318,7 @@ PROJECTE AUTO CHORDS/
 │   ├── test_beats.py              🟢  # Tests del motor de beats i de la sensibilitat.
 │   ├── test_camp_text.py          🟢  # Tests — Camps de text que mostren l'inici del contingut.
 │   ├── test_despatx_edicio.py     🟢  # Despatx ÚNIC d'edició (regla d'or #11) — contracte de superfícies.
-│   ├── test_docs_al_dia.py        🟡  # Test: la documentació generada ha d'estar al dia.
+│   ├── test_docs_al_dia.py        🟢  # Test: la documentació generada ha d'estar al dia.
 │   ├── test_drag_drop.py          🟢  # Drag & drop d'àudio des del gestor de fitxers (Linux, Windows i macOS).
 │   ├── test_edicio.py             🟢  # Suite de test — Edicio
 │   ├── test_exporta_audio.py      🟢  # Tests de l'exportació de la còpia de treball (Fase 6).

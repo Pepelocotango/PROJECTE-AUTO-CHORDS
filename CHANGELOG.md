@@ -21,6 +21,14 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   recompte de formats han de coincidir amb `AGENTS.md`, `README.md` i el JSON
   de funcionalitats.
 - Suite: **1568 OK** (1 skip), `pyflakes` net i `docs-check` verd (8 generadors).
+- **`make commit MSG="..."`**: una sola ordre local que afegix tots els canvis,
+  regenera la documentació amb `make docs`, passa `make commit-check` (compile +
+  pyflakes + docs-check) i només aleshores fa el commit; si falla, no commiteja.
+  La suite sencera queda per a `make check` (abans de pujar o plegar) i cap agent
+  la llança sense avisar l'operador.
+- **`AGENTS.md`**: documenta `make commit` (ordre `git add` → `make docs` →
+  `make commit-check` → commit, sense push), el protocol «tanca sessió» i la
+  taula de subagents/skills de `.opencode/` (config local, no versionada).
 
 ### Afegit — `ARBRE_DIRECTORIS.md` generat (2026-11-10)
 - Nou generador **`eines/genera_arbre.py`**: l'arbre complet del projecte dins

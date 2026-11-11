@@ -97,6 +97,9 @@ funcionalitat (mai la regla); si hi ha conflicte, mana la regla.
 3. Comprova les regles als 4 punts.
 4. **Documenta** segons la taula de sota.
 5. **Commits** descriptius en català; **mai push** i **mai commit** sense ordre.
+   Usa `make commit MSG="..."`: afegeix-ho tot, regenera la documentació, passa
+   `make commit-check` (compile + lint + docs-check) i només aleshores commiteja
+   (si alguna cosa falla, no commiteja). No fa push.
 6. Release: només `README.md`, `LICENSE`, `LLICENCIES_TERCERS.md` i les 2 imatges.
 
 ### Documentació: què cal tocar
@@ -123,12 +126,57 @@ funcionalitat (mai la regla); si hi ha conflicte, mana la regla.
 - Si creus que cal un doc nou, **proposa-ho** (objectiu, abast i lloc) i espera
   l'OK; no el crees per iniciativa pròpia.
 
-**Abans de tancar:** `make check` ha de passar (compile + lint + test +
-docs-check). Si `docs-check` falla, executa `make docs` i revisa el diff.
+**Abans de tancar / abans de pujar:** `make check` sencer (compile + lint +
+**suite completa** + docs-check; ~6 min) ha de passar. **Cap agent el llança
+sense avisar l'operador i esperar OK.** Si `docs-check` falla, executa
+`make docs` i revisa el diff.
+
+**Si commitejas a mà** (sense `make commit`): `git add` primer —l'arbre es
+genera amb `git ls-files` i, si no, els fitxers nous surten 🟡—, després
+`make docs` i finalment `git commit`.
 
 **Normes de l'operador:** tot en català · paperera sempre (`gio trash`, mai `rm`)
 · cap secret al repo · no deixar processos ni temporals · per a diàlegs o menús
 de GUI, demana ajuda a l'operador.
+
+## 🚪 «Tanca sessió» (protocol)
+
+Quan l'operador diu **«tanca sessió»** (o «tanca sessio»), executa això en ordre:
+
+1. **Estat**: `git status --short` i `git diff`. Si hi ha una altra sessió o agent
+   actiu (mtimes recents, tests en marxa o canvis que no són teus), **atura't i
+   avisa**; no commitegis feina barrejada.
+2. **Neteja**: fora processos i temporals/logs locals; paperera sempre
+   (`gio trash`, mai `rm`).
+3. **Documenta**: `ROADMAP.md` §2 (reescriure, no incrementalment) i
+   `CHANGELOG.md` si hi ha canvis de comportament.
+4. **Commit**: si hi ha canvis i cap blocatge, `make commit MSG="..."` (fa
+   `git add`, `make docs`, `make commit-check` i commit). És l'única ordre que
+   autoritza el commit; **mai push**.
+5. **Verificació**: `make check` sencer (~6 min) només amb avís previ i OK de
+   l'operador. Si no s'ha pogut fer, digues-ho al resum.
+6. **Resum final**: què s'ha fet, què queda pendent i estat del repo (commit i
+   `git status`).
+
+## 🤖 Subagents i skills (`.opencode/`)
+
+Els subagents d'OpenCode estan configurats a `.opencode/agents/` per repartir la
+feina per domini amb un abast tancat. Són **config local (no versionada) i no són
+font de veritat**; si la carpeta no hi és, ignora-ho.
+
+| Subagent | Abast |
+|---|---|
+| `audio-dsp` | Tempo/compàs/graella: `tempo*`, `mapa_tempo`, `tempo_recalc`, `graella`, `metronom`, `beats`, `marcadors`, `limits`. |
+| `pipeline` | Anàlisi i export: pipeline Vamp, `postproc`, `xifrat`, paràmetres `.n3`, import `ffmpeg`. |
+| `tester` | Només `tests/`: suite, `pyflakes`, ordre aleatori, smoke i regressions. |
+| `docs` | Només `.md` i `docs/`: `CHANGELOG`, `ROADMAP`, `AGENTS.md` i regenerar amb `make docs`. |
+| `explorer` | Només lectura: cerca símbols i traça fluxos; respon amb `fitxer:línia`. |
+| `reviewer` | Només lectura: revisa el diff contra les regles d'or, `pyflakes` i higiene; no edita. |
+
+També hi ha **skills** a `.opencode/skills/` (`audio-tempo`, `flux-dades`,
+`regles-app`, `release-higiene`, `suite-tests`) i **comandes** a
+`.opencode/command/` (`/estat`, `/qualitat`, `/regles`). Delega al subagent que
+correspongui i no ampliïs el seu abast.
 
 ## 🔁 Retrocompatibilitat — decisió vigent (2026-11-02, no invariant)
 

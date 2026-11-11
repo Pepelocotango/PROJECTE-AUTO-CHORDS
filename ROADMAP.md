@@ -50,7 +50,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-10)
+## 2. Estat actual i relleu de sessió (2026-11-11)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -108,6 +108,21 @@ simplificació del rubato.
   [`PLA_MAPA_TEMPS`](docs/recerca/PLA_MAPA_TEMPS.md), el model permissiu de
   86 ms, els marcadors `N` fix i l’encaix amb «Quantitza».
 - Suite **1562 OK** (1 skip), `pyflakes` i `docs-check` nets.
+
+**Fet (2026-11-11):**
+- **Documentació generada**: `README` (formats des de `app/ffmpeg.EXTENSIONS`),
+  `DEVELOPING` (comandes des del `Makefile`) i `docs/README` (índex) amb
+  `genera_formats.py`, `genera_comandes.py` i `genera_index_docs.py`; nou
+  `test_docs_al_dia.py` i `docs-check` amb 8 generadors.
+- **`make commit MSG="..."`**: ordre única local `git add` → `make docs` →
+  `make commit-check` (compile + lint + docs-check) → `git commit`; la suite
+  sencera és a `make check` (abans de pujar/plegar) i cap agent la llança sense
+  avisar; mai push.
+- **`AGENTS.md`**: documenta `make commit`, l'ordre de commit manual i la taula
+  de subagents/skills de `.opencode/` (config local no versionada).
+- **Config d'agents alineada amb el codi actual**: `tempo_recalc`, els
+  `pipeline_*`, rubato com a flag i marcadors com a anotacions independents.
+- Suite **1568 OK** (1 skip), `pyflakes` net i `docs-check` verd.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
