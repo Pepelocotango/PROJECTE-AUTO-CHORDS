@@ -195,7 +195,7 @@ PROJECTE AUTO CHORDS/
 │       ├── expected-v0.2.1.csv 🟢
 │       ├── expected.csv        🟢
 │       └── regression.sh       🟢
-├── CORPUS/                        🟡  # Corpus local d'avaluació (no versionat) (819 fitxers)
+├── CORPUS/                        🟡  # Corpus local d'avaluació (no versionat) (801 fitxers)
 │   ├── ANALISI_CORPUS.md                  🟡
 │   ├── Alabama Shakes - Gimme All Your Love/ 🟡  # (78 fitxers)
 │   ├── click contrafase/                  🟡  # (38 fitxers)
@@ -209,7 +209,7 @@ PROJECTE AUTO CHORDS/
 │   ├── Jamiroquai - Feels Just Like It Should/ 🟡  # (1 fitxer)
 │   ├── MIREX06_BEAT/                      🟡  # (87 fitxers)
 │   ├── Radiohead - High and Dry/          🟡  # (67 fitxers)
-│   ├── Sitting On The Dock Of The Bay - Otis Redding -/ 🟡  # (42 fitxers)
+│   ├── Sitting On The Dock Of The Bay - Otis Redding -/ 🟡  # (24 fitxers)
 │   └── The Chemical Brothers - All Rights Reversed (feat. The Klaxons)/ 🟡  # (78 fitxers)
 ├── docs/                          🟢  # Contracte i documentació viva (14 fitxers)
 │   ├── COMPONENTS_I_VERSIONS.md       🟢  # Inventari generat (`eines/genera_inventari.py`)

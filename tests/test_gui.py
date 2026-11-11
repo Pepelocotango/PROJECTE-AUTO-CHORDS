@@ -55,7 +55,7 @@ from PyQt5.QtWidgets import QApplication
 from app import dialegs
 from app import graella
 import copy
-from PyQt5.QtWidgets import QMenu, QPushButton, QToolBar
+from PyQt5.QtWidgets import QLabel, QMenu, QPushButton, QToolBar
 from app import visor as visor_mod
 import numpy as np
 from app.visor import Visor
@@ -2288,6 +2288,17 @@ class EsquemaUiDocTests(unittest.TestCase):
         for tb in self.w.findChildren(QToolBar):
             self.assertIn(tb.windowTitle(), self.doc,
                           f"la barra «{tb.windowTitle()}» no surt a la doc")
+
+    def test_barra_temps_sense_bpm_ni_compas(self):
+        """BPM i Compàs no es munten a la barra: s'editen a la franja Editor."""
+        lay = self.w._params_temps.layout()
+        for camp in (self.w.bpm, self.w.bpb):
+            self.assertEqual(lay.indexOf(camp), -1,
+                             f"{camp} encara és a la barra «Temps»")
+        textos = [w.text() for w in
+                  self.w._params_temps.findChildren(QLabel)]
+        self.assertNotIn("BPM:", textos)
+        self.assertNotIn("Compàs:", textos)
 
     def test_botons_quantitza_i_snap(self):
         """«Quantitza», «BPM…», «Snap», «Graella» i «Eina» al Transport."""
@@ -6261,11 +6272,11 @@ class TestDestiAccionsFase3(unittest.TestCase):
             f._actualitza_desti_accions()
             txt = f.lb_desti_accions.text()
             self.assertIn("TAP:", txt)
-            self.assertIn("BPM/Compàs: transport", txt)
+            self.assertIn("Edita a la franja: transport", txt)
             self.assertNotIn("Detecta:", txt)
             f.visor_ref.timeline.select_clip("tempo", 0)
             f._actualitza_desti_accions()
-            self.assertIn("BPM/Compàs: tram 0",
+            self.assertIn("Edita a la franja: tram 0",
                           f.lb_desti_accions.text())
         finally:
             _tanca(f)

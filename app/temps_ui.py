@@ -78,6 +78,9 @@ class TempsMixin:
         finally:
             self._actualitzant_temps = False
         self._ref_manual = True
+        # La referència forma part de l'estat de desfer: si no hi ha cap
+        # operació oberta, la base s'ha de quedar al dia amb este valor.
+        vr._undo_touch_base()
 
     def _aplica_ref_recalc(self):
         """Aplica la referència manual de recalcul (només recalcul, no clips)."""
@@ -92,6 +95,7 @@ class TempsMixin:
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
             vr.set_ref_tempo(bpm, num, den)
+            vr._undo_touch_base()
         else:
             self._posa_ref_recalc(bpm, f"{num}/{den}")
         self._ref_manual = True

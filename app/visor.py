@@ -892,7 +892,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 copy.deepcopy(list(self.seccions)))
 
     def _estat_temps(self):
-        """Estat de la GRAELLA (BPM/compàs/offset) i del LOOP A-B.
+        """Estat de la GRAELLA (BPM/compàs/offset, referència de recalc) i
+        del LOOP A-B.
 
         A1: desfer/refer també ha de tornar enrere aquests canvis (abans només
         el model, i canviar el BPM era irreversible).
@@ -901,6 +902,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             "bpm": float(getattr(self, "bpm", 120.0)),
             "bpb": int(getattr(self, "bpb", 4)),
             "beat_type": int(getattr(self, "beat_type", 4)),
+            # La referència de recalc també es desfà (el TAP la re-ancora).
+            "ref_bpm": float(getattr(self, "ref_bpm", self.bpm)),
+            "ref_bpb": int(getattr(self, "ref_bpb", self.bpb)),
+            "ref_beat_type": int(getattr(self, "ref_beat_type",
+                                         getattr(self, "beat_type", 4))),
             "offset": float(getattr(self, "offset", 0.0)),
             "tempo_fix": bool(getattr(self, "tempo_fix", True)),
             "loop_a": getattr(self, "loop_a", None),
@@ -920,7 +926,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
 
     def _aplica_temps(self, temps):
         """Restaura la graella/loop desats (i refresca la UI si ja existeix)."""
-        for k in ("bpm", "bpb", "beat_type", "offset", "tempo_fix"):
+        for k in ("bpm", "bpb", "beat_type", "ref_bpm", "ref_bpb",
+                  "ref_beat_type", "offset", "tempo_fix"):
             if temps.get(k) is not None:
                 setattr(self, k, temps[k])
         if "marcadors" in temps and temps.get("marcadors") is not None:

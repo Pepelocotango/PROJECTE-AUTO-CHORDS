@@ -5,6 +5,22 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Canviat — fora els camps BPM i Compàs de la barra «Temps» (2026-11-11)
+- La barra **Temps** ja no mostra els camps `BPM:` ni `Compàs:`. Es veuen i
+  s'editen a la **franja Editor** en seleccionar el clip de tempo (tram 0
+  inclòs), igual que la resta de camps del clip.
+- Es queden a la barra **×2/÷2**, **TAP**, **Ref. recalc**, **Beat/TAP**,
+  **En segons** i **Offset**. El destí visible passa a `Edita a la franja:
+  tram N` / `transport (tram 0)`.
+- Els camps BPM/compàs continuen com a **estat intern del transport** (no
+  visibles) perquè obrir projecte i analitzar encara en llig el tempo abans
+  de crear el visor.
+- **TAP tempo** (`T`) ara també **re-ancora el BPM de Ref. recalc** amb el
+  valor mesurat (el compàs de referència no canvia), a més d'aplicar-lo al
+  clip de tempo seleccionat. La referència entra al desfer/refer.
+- Actualitzats `docs/ESQUEMA_UI.md`, `docs/REGLES_DE_LA_APP.md` (§13.2) i el
+  test d'auditoria de la barra.
+
 ### Afegit — més documentació generada (2026-11-11)
 - **`README.md` › formats d'àudio**: el recompte i la llista d'extensions surten
   de `app/ffmpeg.EXTENSIONS` amb `eines/genera_formats.py` (`--check` a

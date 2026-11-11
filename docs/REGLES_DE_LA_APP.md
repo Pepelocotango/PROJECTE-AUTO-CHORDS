@@ -133,11 +133,11 @@ L'offset conserva el valor intern (p. ex. `1.207438`) tot i que la GUI en mostre
 ### 13.2 Els trams de tempo/compàs manen sobre la graella
 Els clips de tempo/compàs manen **sempre**, inclòs el **tram 0**: el mapa definix
 BPM i compàs a cada instant i graella, regle, snap, metrònom, numeració i
-exports **en deriven**. El **transport** (camps de BPM/compàs de la barra) és
-només una **vista i un editor** que se sincronitza des del clip 0; no és una
-segona font de veritat. `app/tempo_map.py` és l'**únic motor** del temps; el
-visor només n'aplica el resultat. → `tempo_map.TempoMap` ·
-`visor._refresca_tempo_map`.
+exports **en deriven**. El **transport** (BPM/compàs del tram 0) és només una
+**vista** que se sincronitza des del clip 0; no és una segona font de veritat.
+L'edició visible de BPM/compàs es fa a la **franja Editor** del clip de tempo
+seleccionat. `app/tempo_map.py` és l'**únic motor** del temps; el visor només
+n'aplica el resultat. → `tempo_map.TempoMap` · `visor._refresca_tempo_map`.
 
 ### 13.3 Cobertura, ordre i contigüitat del mapa
 Els trams cobreixen **tota la WAV**, de 0 a la durada, contigus i ordenats

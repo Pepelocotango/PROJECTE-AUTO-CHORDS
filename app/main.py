@@ -249,16 +249,21 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_mode_bpm.clicked.connect(lambda: self._canvia_mode_temps(True))
         self.b_mode_lliure.clicked.connect(lambda: self._canvia_mode_temps(False))
 
-        # camps d'entrada MANUAL de text (sense fletxes ▲▼)
+        # Estat INTERN del transport (BPM/compàs de referència del tram 0).
+        # No es munta a cap barra: l'edició visible es fa a la franja Editor
+        # en seleccionar el clip de tempo (tram 0 inclòs). Estos camps
+        # continuen existint com a magatzem perquè obrir un projecte o una
+        # anàlisi encara en llig el tempo abans que el visor existisca.
         self.bpm = CampText("120.000")
         self.bpm.setFixedWidth(70)
         self.bpm.setPlaceholderText("120.000")
         self.bpm.setToolTip(
-            "BPM del tema en negres/minut, com als DAW. Entrada manual (text).")
+            "BPM intern del transport (no visible a la barra).")
         self.bpb = CampText("4/4")
         self.bpb.setFixedWidth(60)
         self.bpb.setPlaceholderText("4/4")
-        self.bpb.setToolTip("Compàs manual: 4/4, 3/4, 2/4, 1/4, 6/8, etc.")
+        self.bpb.setToolTip(
+            "Compàs intern del transport (no visible a la barra).")
         # Referència MANUAL del recalcul (no canvia el transport ni els clips).
         self.ref_bpm = CampText("120.000")
         self.ref_bpm.setFixedWidth(64)
@@ -301,12 +306,17 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         for camp in (self.ref_bpm, self.ref_bpb):
             camp.editingFinished.connect(self._aplica_ref_recalc)
 
+        # Barra «Temps»: BPM i Compàs NO hi són (s'editen a la franja Editor).
+        # Es queda TAP · ×2/÷2 · Ref. recalc · Beat/TAP · En segons · Offset.
         self._params_temps = QWidget()      # s'amaga sencer en mode Lliure
+        # Els camps interns de BPM/compàs pengen del contenidor (cicle de vida
+        # lligat a la finestra) però no van al layout ni es mostren.
+        for camp in (self.bpm, self.bpb):
+            camp.setParent(self._params_temps)
+            camp.hide()
         hp = QHBoxLayout(self._params_temps)
         hp.setContentsMargins(0, 0, 0, 0)
         hp.setSpacing(6)
-        hp.addWidget(QLabel("BPM:"))
-        hp.addWidget(self.bpm)
         self.b_bpm_x2 = QPushButton("×2")
         self.b_bpm_div2 = QPushButton("÷2")
         for b, factor, tip in ((self.b_bpm_x2, 2.0, "Dobla el BPM (×2)"),
@@ -325,8 +335,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.lb_desti_accions = QLabel("")
         self.lb_desti_accions.setObjectName("desti_accions")
         hp.addWidget(self.lb_desti_accions)
-        hp.addWidget(QLabel("Compàs:"))
-        hp.addWidget(self.bpb)
         hp.addWidget(QLabel("Ref. recalc:"))
         hp.addWidget(self.ref_bpm)
         hp.addWidget(self.ref_bpb)
@@ -757,6 +765,12 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self._on_loop_state(getattr(vr, "loop_on", False))
         self._actualitza_desti_accions()
         self._actualitza_metro_ui()
+        # La franja Editor és l'única vista de BPM/compàs: si mostra un clip de
+        # tempo, refresca-la amb el model després de qualsevol canvi extern
+        # (TAP, ×2/÷2, anàlisi, undo…). Si no hi ha cap clip seleccionat, no
+        # toquem res.
+        if getattr(vr, "_ed_kind", None) == "tempo":
+            vr._actualitza_editor()
 
     def _quantitza_bpm_ui(self, decimals=None):
         """Quantitza només els clips normals de BPM amb 0, 1 o 2 decimals."""
@@ -797,6 +811,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         if vr is not None:
             vr.undo()
             self._sincronitza_temps_del_visor()
+            self._sincronitza_ref_des_del_visor()
         else:
             self.registra("Edita: no hi ha visor carregat")
 
@@ -806,6 +821,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         if vr is not None:
             vr.redo()
             self._sincronitza_temps_del_visor()
+            self._sincronitza_ref_des_del_visor()
         else:
             self.registra("Edita: no hi ha visor carregat")
 
@@ -835,7 +851,20 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             vr.commuta_loop()
 
     def _focus_parametres(self):
-        self.bpm.setFocus()
+        """Porta el focus a l'edició de tempo visible.
+
+        El camp BPM de la barra ja no existix: si hi ha un clip de tempo
+        seleccionat, el focus va al BPM de la franja Editor; si no, a l'offset,
+        que és el paràmetre de la barra que queda.
+        """
+        vr = getattr(self, "visor_ref", None)
+        if (vr is not None and getattr(vr, "_ed_kind", None) == "tempo"
+                and getattr(vr, "ed_nom", None) is not None):
+            vr.ed_nom.setFocus()
+            vr.ed_nom.selectAll()
+            return
+        self.offset.setFocus()
+        self.offset.selectAll()
 
 
     # ---------- Avisos ---------------------------------------------------------

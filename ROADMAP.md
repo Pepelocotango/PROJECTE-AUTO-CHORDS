@@ -72,57 +72,21 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 > (TODO)**, no prioritari, però amb l'abast i els criteris d'acceptació fixats
 > davall.
 
-**Fet (2026-11-06):**
-- **Refactor complet**: `pipeline.py` queda en **89 línies** (façana) +
-  `pipeline_*`; `main.py` **1.511** + `*_ui`/`feines`/`opcions`; `visor.py`
-  **4.447** + `visor_*`; `timeline.py` **2.135** + `timeline_geometry`;
-  `dialegs.py` **25** + `dialeg_*`. Tests de contracte a
-  `test_pipeline_contracte` i `test_timeline_contracte`.
-- **Guiat v2/v3 retirat**: codi d'ancoratges eliminat; el flux viu són els
-  **marcadors en viu** (`+`) i la **Guia ràpida**.
-- **Docs al mínim**: `AGENTS`/`DEVELOPING` escurçats; `Makefile`, generadors de
-  la taula de mòduls i `make docs-check`.
-- **Suite**: **1.490 tests OK** (1 skip), `pyflakes` net i smoke OK.
-
-**Fet recentment (2026-11-09/10):** model de temps alineat amb els DAW i
-simplificació del rubato.
-- **BPM sempre en negres/minut**; fora el selector d’unitat del BPM.
-- **Rubato = només flag de notació**: mateixos camps i regles que un tram
-  normal; fora `0/0` i seqüències. `app/rubato.py` i els seus tests eliminats.
-- **`N` per tram** a `mapa_tempo.csv`; rols derivats (`unic`, `primer`,
-  `ultim`, `interior`, `preroll`).
-- **Motor C/B/A**: en interiors, `N`/BPM/`x/x` exactes → `fi` derivada i veí
-  amb BPM recalculat; en l’últim/únic, BPM/`x/x` exactes i `N` derivat (pot ser
-  fraccionari). El TAP en viu conserva fronteres.
-- **Franja Editor**: BPM, compàs, agrupació, `N`, rol derivat, **Ini (c)** i
-  **Fi (c)** editables en compàs.beat, «Ajusta BPM al compàs». Fora el tipus i
-  els extrems en segons (es veuen a la llista/carril). Eliminada la icona.
-- **Camps de text**: `CampText` mostra l’inici si la dada no hi cap (abans
-  s’amagaven els enters i es veien només els decimals).
-- **`Analitza beats, downbeats i BPM`** (`F7`) amb botó **Beats/BPM** a la
-  barra de treball.
-- **QM/downbeats unificats**: `pipeline_vamp.qm_temps()` és l’única extracció
-  QM; el mapa de tempo reutilitza els beats i el compàs 1 el primer downbeat.
-- El **TAP en viu no obri l’avís de mapa inconsistent**.
-- Es conserven la simplificació F0–F5 del
-  [`PLA_MAPA_TEMPS`](docs/recerca/PLA_MAPA_TEMPS.md), el model permissiu de
-  86 ms, els marcadors `N` fix i l’encaix amb «Quantitza».
-- Suite **1562 OK** (1 skip), `pyflakes` i `docs-check` nets.
-
-**Fet (2026-11-11):**
-- **Documentació generada**: `README` (formats des de `app/ffmpeg.EXTENSIONS`),
-  `DEVELOPING` (comandes des del `Makefile`) i `docs/README` (índex) amb
-  `genera_formats.py`, `genera_comandes.py` i `genera_index_docs.py`; nou
-  `test_docs_al_dia.py` i `docs-check` amb 8 generadors.
-- **`make commit MSG="..."`**: ordre única local `git add` → `make docs` →
-  `make commit-check` (compile + lint + docs-check) → `git commit`; la suite
-  sencera és a `make check` (abans de pujar/plegar) i cap agent la llança sense
-  avisar; mai push.
-- **`AGENTS.md`**: documenta `make commit`, l'ordre de commit manual i la taula
-  de subagents/skills de `.opencode/` (config local no versionada).
-- **Config d'agents alineada amb el codi actual**: `tempo_recalc`, els
-  `pipeline_*`, rubato com a flag i marcadors com a anotacions independents.
-- Suite **1568 OK** (1 skip), `pyflakes` net i `docs-check` verd.
+**Estat actual:**
+- **Nucli**: obrir → analitzar opcional → editar 3 pistes → exportar → desar.
+  Visor DAW amb acords, estructura i tempo/compàs; desfer/refer complet.
+- **Tempo/compàs**: mapa per trams amb `N` per tram, rols derivats, model
+  permissiu de 86 ms, rubato com a flag i motor C/B/A. El **BPM sempre és en
+  negres/minut** (sense selector d'unitat).
+- **GUI de tempo**: BPM i compàs **no** viuen a la barra «Temps»; es veuen i
+  s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs). El
+  **TAP** aplica al clip seleccionat i **re-ancora el BPM de Ref. recalc**;
+  la referència entra al desfer/refer.
+- **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
+  `Analitza beats, downbeats i BPM` (F7) i **Beats/BPM** a la barra.
+- **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
+  commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
+- **Suite**: **1570 OK** (1 skip), `pyflakes` net i `docs-check` verd.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).

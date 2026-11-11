@@ -21,8 +21,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [Anàlisi guiat][BPM·compàs][Lliure] BPM:[101][×2][÷2] TAP Compàs:[4]                          │  ← BARRA 1a
-│   Offset:[0.0] 📍 🧭 ≈[1.1]                                                 │     (treball)
+│ [Anàlisi guiat][BPM·compàs][Lliure] [×2][÷2] TAP Ref. recalc:[120.000][4/4]                │  ← BARRA 1a
+│   Beat/TAP:[negra] ☐ En segons  Offset:[0.0] 📍 🧭 ≈[1.1]                   │     (treball)
 ├────────────────────────────────────────────────────────────────────────────┤
 │ [Analitza]                                                                  │  ← BARRA 1b
 ├────────────────────────────────────────────────────────────────────────────┤     (accions)
@@ -58,8 +58,9 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.b_desfer` · `self.b_refer` | **Desfer** · **Refer** (icones `undo-2` / `redo-2`) | `QPushButton` |
 | — | (al transport; `self.b_zs` al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / hh:mm:ss** (abans deia «Lliure») | `QPushButton` (checkable) |
-| — | `self.bpm` · `self.bpb` · `self.ref_bpm` · `self.ref_bpb` · `self.cb_beat` · `self.offset` · `self.offset_cb` | **BPM** (sempre negres/minut), **Compàs**, **Ref. recalc** (BPM + compàs), **Beat/TAP** (negra · negra amb punt · corxera · blanca), **Offset (s)**, **≈ C.B** | `QLineEdit` · `QComboBox` |
-| — | `self.lb_desti_accions` | **destí visible**: `TAP: … · BPM/Compàs: …`; indica si s’edita un tram o el transport (tram 0) | `QLabel` |
+| — | `self.ref_bpm` · `self.ref_bpb` · `self.cb_beat` · `self.offset` · `self.offset_cb` | **Ref. recalc** (BPM + compàs), **Beat/TAP** (negra · negra amb punt · corxera · blanca), **Offset (s)**, **≈ C.B** | `QLineEdit` · `QComboBox` |
+| — | `self.bpm` · `self.bpb` | **BPM** i **Compàs** **interns del transport**: NO es munten a cap barra; l'edició visible és a la **franja Editor** del clip de tempo seleccionat (tram 0 inclòs) | `QLineEdit` (no visible) |
+| — | `self.lb_desti_accions` | **destí visible**: `TAP: … · Edita a la franja: …`; indica si s’edita un tram o el transport (tram 0) | `QLabel` |
 | — | `self.b_bpm_x2` · `self.b_bpm_div2` | **×2 / ÷2** del BPM | `QPushButton` |
 | — | `self.b_compas_auto` | **Detecta el compàs 1** (icona `compass`) | `QPushButton` |
 | — | `self.b_tap` | **TAP** (tecla **T**) | `QPushButton` |
@@ -67,7 +68,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.amb_est` · `self.a_metro` · `self.a_eina_marc` | **Inclou estructura** · **Metrònom** · **Eina de marc** | `QAction` (checkable, menús) |
 | — | `self.amb_part` | **Inclou la partitura (xifrat)** | `QAction` (checkable, menú Fitxer) |
 | — | `self.b_eina` | **Eina: intel·ligent / Eina: marc** | `QPushButton` (checkable) |
-| — | `self._params_temps` | contenidor dels **paràmetres de temps** (BPM · ×2/÷2 · TAP · Compàs · Offset · ≈ C.B) | `QWidget` |
+| — | `self._params_temps` | contenidor dels **paràmetres de temps** (×2/÷2 · TAP · Ref. recalc · Beat/TAP · En segons · Offset · ≈ C.B); **BPM i Compàs no hi són** (franja Editor) | `QWidget` |
 | — | `self.panell_xifrat` · `self.dock_xifrat` | **panell «Tipus d'acord»** (arrel · baix · 62 tipus · ▶ Escoltar · timbre) | `PanellXifrat` en un `QDockWidget` |
 | — | `self.tb_loop` · `self.tb_neteja_loop` · `self.tb_mut` | **loop** (icona `repeat-2`) · **neteja el loop** (icona `x`) · **mute** (icona `volume-x`) | `QPushButton` |
 | — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió del grid i del snap**: **Beats QM** · Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · **Treset de negra (2/3) · Treset de corxera (1/3) · Treset de semicorxera (1/6)** · **1 · 2 · 4 · 6 · 8 · 12 · 16 · 24 · 32 · 48 · 64 compassos**. El selector **força el grid** encara que el snap estigui apagat; «Auto» torna a manar pel zoom. **Beats QM** fa que el cursor, els clips i els talls (`+`/`Enter`/`0`) s'encaixen a les línies de beats de QM; `M` també respecta el Snap actiu. | `QPushButton` (checkable) · `QComboBox` |
@@ -83,7 +84,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | Barra | Contingut |
 |-------|-----------|
 | **Treball** (barra 1, fila 1) | **Anàlisi guiat** (guia ràpida) → **＋ Temps+Secció** → **＋ Marcador** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → **Analitza** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`). Obrir i exportar viuen al menú **Fitxer** |
-| **Temps** (barra 1, fila 2) | BPM · **×2/÷2** · **TAP** · Compàs · **Ref. recalc** · **Beat/TAP** · Offset (s) · **📍** · **🧭** · ≈ C.B |
+| **Temps** (barra 1, fila 2) | **×2/÷2** · **TAP** · **Ref. recalc** · **Beat/TAP** · **En segons** · Offset (s) · **📍** · **🧭** · ≈ C.B. **BPM i Compàs no hi són**: es veuen i s'editen a la **franja Editor** en seleccionar el clip de tempo (tram 0 inclòs) |
 | **Transport** (fila 3) | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup]** · **[Quantitza]** · **[BPM…]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
 ### Menús
@@ -322,8 +323,13 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 ## 3. Temps: BPM, offset i tap tempo
 
 - **BPM** = la velocitat en **negres/minut**, com als DAW. No hi ha selector
-  d’unitat: el camp sempre mostra i entra negres/min. En `6/8`, una negra amb
-  punt a `80` s’escriu `120` BPM.
+  d’unitat: la **franja Editor** sempre mostra i entra negres/min. En `6/8`,
+  una negra amb punt a `80` s’escriu `120` BPM.
+- **On s'edita**: la barra «Temps» **no** té camps de BPM ni de Compàs. Se
+  selecciona el clip de tempo (tram 0 inclòs) al carril ③ o a la llista ⑭ i
+  s'editen a la **franja Editor** (BPM · Compàs · Agrupació · N · Ini/Fi). El
+  transport intern del tram 0 se sincronitza des del model (`_sincronitza_temps_del_visor`),
+  mai al revés.
 - **Offset** = el segon on cau el **compàs 1** (la fase de la graella).
 - **Dos camps sincronitzats**: `Offset` (segons) i `≈ C.B` (compàs.beat,
   **relatiu a la graella original amb offset = 0** → estable, llegible).
@@ -344,7 +350,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   `120 taps/min = 120 BPM`; amb `negra amb punt`, `80 taps/min = 120 BPM`
   (grup de 3 corxeres en `6/8`). **Només actua amb un tram de tempo
   seleccionat**: sense selecció, `T` no fa res. Propaga BPM al regle i al
-  metrònom **sense reengegar l'àudio**. El botó mostra `TAP (n) BPM` amb el
+  metrònom **sense reengegar l'àudio**, i **re-ancora el BPM de Ref. recalc**
+  (el compàs de referència es conserva). El botó mostra `TAP (n) BPM` amb el
   BPM intern final. Durant la sessió de TAP **no s'emet l'avís modal** de mapa
   inconsistent (els compassos fraccionaris intermedis són normals); la resta
   d'edicions el continuen mostrant.

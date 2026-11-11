@@ -5099,7 +5099,32 @@ class TapTempoTests(unittest.TestCase):
         w.visor_ref.timeline.select_clip("tempo", 0)
         self._taps_en(w, 0.5)
         self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=3.0)
+        # Sense camp BPM a la barra, la franja Editor és la vista viva del
+        # tempo: el TAP ha de refrescar-la, no només el model intern.
+        self.assertAlmostEqual(float(w.visor_ref.ed_nom.text()), 120.0,
+                               delta=3.0)
         w.close()
+
+    def test_tap_actualitza_la_referencia_de_recalc(self):
+        """El TAP re-ancora el BPM de Ref. recalc (sense tocar-ne el compàs)."""
+        w = self._finestra()
+        try:
+            w.visor_ref.set_ref_tempo(90.0, 7, 4)
+            w._sincronitza_ref_des_del_visor()
+            w.visor_ref.timeline.select_clip("tempo", 0)
+            self._taps_en(w, 0.5)
+            bpm_ref, num_ref, den_ref = w.visor_ref.ref_tempo_base()
+            self.assertAlmostEqual(bpm_ref, 120.0, delta=3.0)
+            self.assertEqual((num_ref, den_ref), (7, 4))
+            self.assertAlmostEqual(float(w.ref_bpm.text()), 120.0, delta=3.0)
+            # El desfer de la sessió també torna enrere la referència.
+            w._tanca_sessio_tap()
+            w._undo_visor()
+            self.assertAlmostEqual(w.visor_ref.ref_bpm, 90.0, places=6)
+            self.assertEqual((w.visor_ref.ref_bpb,
+                              w.visor_ref.ref_beat_type), (7, 4))
+        finally:
+            w.close()
 
     def test_tap_no_emet_avis_de_mapa_inconsistent(self):
         """El TAP en viu no ha de bloquejar amb el diàleg de mapa."""
