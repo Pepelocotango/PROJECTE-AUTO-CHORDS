@@ -934,12 +934,12 @@ class TestCompassosTempo(_Base):
             tl._snap_on = antic
 
 
-class TestMarcadorsTempoEnViu(_Base):
-    """`+` i «Detecta»: el gest mana i el mapa queda mètricament coherent.
+class TestTempoEnViu(_Base):
+    """«Detecta» i quantització: el mapa queda mètricament coherent.
 
-    Regressió del flux de tempo variable: el marcador naix damunt d'una línia
-    de compàs i «Detecta» no arrossega els trams següents. Cada operació és un
-    sol desfer.
+    Regressió del flux de tempo variable: «Detecta» no arrossega els trams
+    següents i cada operació és un sol desfer. Els marcadors són només
+    anotacions i no toquen el model.
     """
 
     def setUp(self):
@@ -950,18 +950,11 @@ class TestMarcadorsTempoEnViu(_Base):
     def tearDown(self):
         self.v.close()
 
-    def test_marcador_parteix_i_recalcula_compassos(self):
-        self.assertTrue(self.v.afegeix_marcador(7.3))
-        self.assertEqual(len(self.v.tempo_trams), 3)
-        self.assertAlmostEqual(float(self.v.tempo_trams[0][1]), 7.3, places=6)
-        # El marcador recalcul·la els dos costats a compassos sencers.
-        self.assertAlmostEqual(float(self.v.tempo_trams[0][2]),
-                               4 * 4 * 60.0 / 7.3, places=4)
-        self.assertAlmostEqual(float(self.v.tempo_trams[1][2]),
-                               1 * 4 * 60.0 / 2.7, places=4)
-        self.assertEqual(self.v.tempo_trams[0][3:], (4, 4))
-        self.assertEqual(self.v.tempo_trams[1][3:], (4, 4))
-        self.assertEqual(tuple(self.v.tempo_trams[2]), self.abans[1])
+    def test_marcador_lliure_no_toca_tempo_ni_estructura(self):
+        self.assertTrue(self.v.afegeix_marcador_lliure(7.3))
+        self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)
+        self.assertEqual([tuple(s) for s in self.v.seccions], self.sec0)
+        self.assertIn(7.3, [round(float(m), 6) for m in self.v.marcadors])
 
     def test_quantitza_bpm_d_un_decimal(self):
         d1 = 4 * 4 * 60.0 / 145.023
@@ -988,31 +981,6 @@ class TestMarcadorsTempoEnViu(_Base):
         # clip s'estén fins a la fi de la WAV i el seu BPM queda a 143.601.
         self.assertEqual([round(t.bpm, 3) for t in self.v.tempo_trams],
                          [145.023, 143.984, 143.601])
-
-    def test_marcador_amb_rubato_parteix_i_conserva_el_rubato(self):
-        self.v.tempo_trams = [
-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "4/4"),
-            mapa_tempo.TramMapa(10.0, 30.0, 90.0, "normal", "4/4"),
-        ]
-        self.v._refresca_tempo_map()
-        self.assertTrue(self.v.afegeix_marcador(15.0))
-        self.assertEqual(len(self.v.tempo_trams), 3)
-        self.assertEqual(self.v.tempo_trams[0].tipus, "rubato")
-        self.assertAlmostEqual(self.v.tempo_trams[2].ini, 15.0, places=6)
-        self.assertEqual(self.v.marcador_tipus[15.0], "seccio")
-
-    def test_marcador_abans_d_un_rubato_no_el_converteix(self):
-        self.v.tempo_trams = [
-            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4"),
-            mapa_tempo.TramMapa(10.0, 20.0, 100.0, "rubato", "4/4"),
-            mapa_tempo.TramMapa(20.0, 30.0, 90.0, "normal", "4/4"),
-        ]
-        self.v._refresca_tempo_map()
-        self.assertTrue(self.v.afegeix_marcador(5.0))
-        self.assertEqual(len(self.v.tempo_trams), 4)
-        self.assertEqual([t.tipus for t in self.v.tempo_trams],
-                         ["normal", "normal", "rubato", "normal"])
-        self.assertAlmostEqual(self.v.tempo_trams[2].ini, 10.0, places=6)
 
     def test_fusiona_normals_amb_rubato_preserva_el_rubato(self):
         self.v.tempo_trams = [
@@ -1047,22 +1015,6 @@ class TestMarcadorsTempoEnViu(_Base):
         self.assertTrue(self.v._elimina_tram(1))
         self.assertEqual(len(self.v.tempo_trams), 2)
         self.assertEqual(self.v.tempo_trams[0].tipus, "rubato")
-
-    def test_marcador_massa_a_prop_no_es_bloqueja(self):
-        # El `+` del play pot caure a 0,4 s: abans el validador el rebutjava.
-        self.assertTrue(self.v.afegeix_marcador(0.4))
-        self.assertEqual(len(self.v.tempo_trams), 3)
-        self.assertAlmostEqual(float(self.v.tempo_trams[0][1]), 0.4, places=6)
-        t = self.v.tempo_trams[0]
-        bar = int(t[3]) * (4.0 / int(t[4])) * 60.0 / float(t[2])
-        self.assertAlmostEqual((float(t[1]) - float(t[0])) / bar, 1.0,
-                               places=6)
-
-    def test_marcador_es_un_sol_desfer(self):
-        self.assertTrue(self.v.afegeix_marcador(7.3))
-        self.v.undo()
-        self.assertEqual([tuple(t) for t in self.v.tempo_trams], self.abans)
-        self.assertEqual([tuple(s) for s in self.v.seccions], self.sec0)
 
     def test_detecta_no_mou_les_fronteres(self):
         self.assertTrue(self.v.retempo_tram_detectat(0, 100.0))

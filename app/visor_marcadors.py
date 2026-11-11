@@ -3,7 +3,7 @@
 Extret de `app/visor.py`: alta, moviment i esborrat. Els marcadors són
 anotacions independents: no participen en cap recalcul de tempo.
 """
-from . import mapa_tempo, pipeline, tempo_map
+from . import pipeline, tempo_map
 
 class MarcadorsMixin:
     """Marcadors humans (anotacions)."""
@@ -49,85 +49,6 @@ class MarcadorsMixin:
             self.log(f"marcadors: no s'han pogut desar ({e})")
         self.log(f"marcador mogut: {t_vell:.3f} → {t_nou:.3f}s")
         return True
-
-    def afegeix_marcador(self, t=None, tipus="seccio"):
-        """Crea un marcador i parteix tempo+estructura (camí de compatibilitat).
-
-        La UI nova no usa este mètode: `+` parteix tempo+estructura sense
-        marcador, `M` crea només el marcador i `Enter`/`0` fan talls parcials.
-        Els marcadors creats ací ja no queden lligats a cap frontera.
-        """
-        tipus = tipus if tipus in ("compas", "seccio") else "seccio"
-        from app import marcadors as M
-        durada = self._durada_wav()
-        t = float(self.pos if t is None else t)
-        if not (0.0 < t < durada - 1e-3):
-            return False
-        abans = list(self.marcadors or [])
-        marques = M.afegeix(abans, t, durada)
-        if marques == abans:
-            return False
-        trams = list(self.tempo_trams or [(0.0, durada, self.bpm, self.bpb,
-                                           getattr(self, "beat_type", 4))])
-        try:
-            bpm_ref = float(self.tempo_map.bpm(t))
-        except (AttributeError, TypeError, ValueError):
-            bpm_ref = float(self.bpm)
-        avisos = []
-        try:
-            trams = tempo_map.parteix_tram_marcador(
-                trams, t, durada, offset=getattr(self, "offset", 0.0),
-                bpm_ref=bpm_ref, beats_qm=self._beats_per_validacio(),
-                permissiu=True, recalculca=True,
-                ref_base=self.ref_tempo_base(), avisos=avisos,
-                beat_factor=self.beat_factor())
-        except ValueError as e:
-            self.avis_editor(f"Marcador: {e}")
-            return False
-        try:
-            trams = self._normalitza_mapa_viu(trams, "Marcador")
-        except ValueError as e:
-            self.avis_editor(f"Marcador: {e}")
-            return False
-        seccions = list(self.seccions or [])
-        if tipus == "seccio":
-            idx = next((i for i, s in enumerate(seccions)
-                        if float(s[0]) + 1e-6 < t < float(s[1]) - 1e-6), None)
-            if idx is not None:
-                try:
-                    seccions = pipeline.parteix_seccio(
-                        seccions, idx, t, marge=self.MIN_SECCIO_S)
-                except ValueError as e:
-                    self.log(f"marcador: no s'ha pogut partir l'estructura ({e})")
-                    seccions = list(self.seccions or [])
-        self._undo_marca()
-        self.marcadors = marques
-        self.marcador_tipus[round(float(t), 6)] = tipus
-        if [tuple(x) for x in trams] != [tuple(x) for x in
-                                         (self.tempo_trams or [])]:
-            # El marcador pot afegir un tram a un mapa que ja té rubatos:
-            # el guard genèric no ha de bloquejar un tall explícit de l'usuari.
-            # `parteix_tram_marcador` treballa amb 5 tuples i perd el tipus;
-            # reenganxem els rubatos abans d'aplicar el mapa.
-            trams = mapa_tempo.reenganxa_metadades(self.tempo_trams or [], trams)
-            self.aplica_tempo_trams(trams, forcat=True)
-            for avis in avisos:
-                self.avis_editor(f"Marcador: {avis}")
-        if seccions != list(self.seccions or []):
-            self.seccions = self._normalitza_seccions(seccions)
-        self._undo_commit()
-        self._pinta_marcadors()
-        self._sincronitza_vista()
-        try:
-            pipeline.desa_marcadors(
-                self._carpeta_acords(),
-                [(m, self.marcador_tipus.get(round(float(m), 6), "seccio"))
-                 for m in (self.marcadors or [])])
-        except Exception as e:  # noqa: BLE001
-            self.log(f"marcadors: no s'han pogut desar ({e})")
-        self.log(f"marcador a {t:.3f}s (n'hi ha {len(self.marcadors)})")
-        return True
-
 
     def _parteix_tempo_nou(self, t):
         """Retorna el mapa partit a `t` o `None` si no cal/possible.

@@ -12,8 +12,9 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   als beats QM» i «Compàs del marcador».
 - Eliminats `app/tempo_ajust.py`, `app/dialeg_bpm_marcadors.py`,
   `app/dialeg_revisio_snap.py`, `marcadors.candidats_bpm`,
-  `marcadors.snap_a_objectius`, `tempo_map.ajusta_trams_a_marcadors` i els
-  mètodes associats del visor i de la finestra.
+  `marcadors.snap_a_objectius`, `tempo_map.ajusta_trams_a_marcadors`, el camí
+  de compatibilitat `afegeix_marcador`/`_afegeix_marcador` i els mètodes
+  associats del visor i de la finestra.
 - Els **marcadors queden com a anotacions visuals**: M, llista, moure i
   esborrar. Cap recalcul de tempo els consulta.
 

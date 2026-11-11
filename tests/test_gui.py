@@ -5495,21 +5495,18 @@ class TestAncoratgesFinestra(unittest.TestCase):
     def test_el_marcador_es_independent_del_tempo_i_de_l_estructura(self):
         """Els marcadors són anotacions: no viatgen amb fronteres ni moren amb elles."""
         vr = self.w.visor_ref
-        vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
-        vr.seccions = [(0.0, 60.0, "A", "A")]
+        vr.tempo_trams = [(0.0, 12.0, 120.0, 4, 4),
+                          (12.0, 60.0, 120.0, 4, 4)]
+        vr.seccions = [(0.0, 12.0, "A", "A"), (12.0, 60.0, "B", "B")]
         vr.timeline.set_data(vr.acords, vr.seccions)
         vr.marcadors = []
         vr._undo_touch_base()          # estat de partida consolidat
-        vr.pos = 12.0
-        self.assertTrue(vr.afegeix_marcador())
+        self.assertTrue(vr.afegeix_marcador_lliure(12.0))
         self.assertEqual(len(vr.marcadors), 1)
         self.assertAlmostEqual(vr.marcadors[0], 12.0, places=6)
-        # inicia un clip de tempo a 12 s i una secció a 12 s
         self.assertEqual(len(vr.tempo_trams), 2)
-        self.assertAlmostEqual(vr.tempo_trams[1][0], 12.0, places=6)
         self.assertEqual(len(vr.seccions), 2)
-        self.assertAlmostEqual(vr.seccions[1][0], 12.0, places=6)
-        # MOURE la frontera arrossega el marcador (dins del mateix desfer)
+        # MOURE la frontera no arrossega el marcador
         vr._on_tempo_mogut(1, "ini", 13.0)
         self.assertAlmostEqual(vr.tempo_trams[1][0], 13.0, places=6)
         self.assertAlmostEqual(vr.marcadors[0], 12.0, places=6)
@@ -5539,26 +5536,29 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(len(vr.marcadors), 1)
         self.assertAlmostEqual(vr.marcadors[0], 30.0, places=6)
 
-    def test_tecla_mes_crea_marcador_a_la_finestra(self):
-        """`+` és un atall de finestra (no depén del focus) que crida l'acció."""
+    def test_tecla_mes_talla_tempo_i_estructura(self):
+        """`+` talla tempo i estructura al cursor, sense crear cap marcador."""
         vr = self.w.visor_ref
-        self.w._beats_actuals = {"beats": [20.0, 30.0], "downbeats": []}
+        idx = self.w.cb_graella.findData("qm_beats")
+        self.w.cb_graella.setCurrentIndex(idx)
+        self.w._beats_actuals = {"beats": [10.0, 20.0], "downbeats": []}
+        vr.pos = 10.0
+        self.assertTrue(self.w._talla_tempo_i_estructura_cursor())
+        self.assertEqual(len(vr.marcadors), 0)
+        self.assertIn(10.0, [round(float(t[0]), 6) for t in vr.tempo_trams])
+        self.assertFalse(self.w._talla_tempo_i_estructura_cursor())
         vr.pos = 20.0
-        self.assertTrue(self.w._afegeix_marcador())     # acció de l'atall
-        self.assertEqual(len(vr.marcadors), 1)
-        self.assertFalse(self.w._afegeix_marcador())    # mateix punt: rebot
-        vr.pos = 30.0
-        self.assertTrue(self.w._afegeix_marcador())
-        self.assertEqual(len(vr.marcadors), 2)
-        # i s'esborra l'últim des del menú
-        self.assertTrue(self.w._esborra_ultim_marcador())
-        self.assertEqual(len(vr.marcadors), 1)
+        self.assertTrue(self.w._talla_tempo_i_estructura_cursor())
+        self.assertIn(20.0, [round(float(t[0]), 6) for t in vr.tempo_trams])
+        self.assertEqual(len(vr.marcadors), 0)
 
-    def test_tecla_mes_sense_qm_no_crea_marcador(self):
+    def test_tecla_mes_sense_qm_no_talla(self):
         vr = self.w.visor_ref
+        idx = self.w.cb_graella.findData("qm_beats")
+        self.w.cb_graella.setCurrentIndex(idx)
         self.w._beats_actuals = None
         with patch.object(self.w, "_missatge_info") as info:
-            self.assertFalse(self.w._afegeix_marcador())
+            self.assertFalse(self.w._talla_tempo_i_estructura_cursor())
         self.assertEqual(len(vr.marcadors), 0)
         self.assertEqual(info.call_count, 1)
 
@@ -5574,15 +5574,19 @@ class TestAncoratgesFinestra(unittest.TestCase):
         idx = self.w.cb_graella.findData("negra")
         self.w.cb_graella.setCurrentIndex(idx)
         vr.pos = 20.24
-        self.assertTrue(self.w._afegeix_marcador())
-        self.assertAlmostEqual(float(vr.marcadors[0]), 20.0, places=6)
+        self.assertTrue(self.w._talla_tempo_i_estructura_cursor())
+        self.assertIn(20.0, [round(float(t[0]), 6) for t in vr.tempo_trams])
+        self.assertEqual(len(vr.marcadors), 0)
 
     def test_tecla_mes_sempre_usa_el_beat_qm_mes_proper(self):
         vr = self.w.visor_ref
+        idx = self.w.cb_graella.findData("qm_beats")
+        self.w.cb_graella.setCurrentIndex(idx)
         self.w._beats_actuals = {"beats": [20.0, 20.6], "downbeats": []}
         vr.pos = 20.45             # el més pròxim és 20.6, no 20.0
-        self.assertTrue(self.w._afegeix_marcador())
-        self.assertAlmostEqual(float(vr.marcadors[0]), 20.6, places=6)
+        self.assertTrue(self.w._talla_tempo_i_estructura_cursor())
+        self.assertIn(20.6, [round(float(t[0]), 6) for t in vr.tempo_trams])
+        self.assertEqual(len(vr.marcadors), 0)
 
     def test_escriure_un_plus_en_un_camp_no_crea_marcador(self):
         """Escriure «+» al nom d'un acord no ha d'afegir cap marcador."""
@@ -5968,10 +5972,12 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(vr.tempo_trams[1].n, 24.0, places=5)
 
     def test_marcador_durant_el_play_usa_el_cursor_del_so(self):
-        """El cas real: donar-li a `+` mentre SONA (el cursor és el playhead)."""
+        """El cas real: prémer `M` mentre SONA (el cursor és el playhead)."""
         from PyQt5.QtTest import QTest
         vr = self.w.visor_ref
-        # QM sintètic cada 50 ms: el `+` sempre troba el beat més pròxim.
+        idx = self.w.cb_graella.findData("qm_beats")
+        self.w.cb_graella.setCurrentIndex(idx)
+        # QM sintètic cada 50 ms: `M` sempre troba el beat més pròxim.
         self.w._beats_actuals = {
             "beats": [i * 0.05 for i in range(1, 1200)],
             "downbeats": [],
@@ -5981,17 +5987,15 @@ class TestAncoratgesFinestra(unittest.TestCase):
             QTest.qWait(400)
             pos = float(vr.pos)
             self.assertGreater(pos, 0.05)       # el cursor s'ha mogut
-            self.assertTrue(self.w._afegeix_marcador())
+            self.assertTrue(self.w._marcador_cursor())
             vr.play_stop()
         self.assertAlmostEqual(vr.marcadors[0], pos, places=1)
 
-    def test_marcador_no_talla_dues_vegades_el_mateix_punt(self):
+    def test_marcador_lliure_no_duplica(self):
         vr = self.w.visor_ref
-        vr.pos = 10.0
-        self.assertTrue(vr.afegeix_marcador())
-        self.assertFalse(vr.afegeix_marcador())     # mateix instant
-        vr.pos = 0.0
-        self.assertFalse(vr.afegeix_marcador())     # no es pot a l'inici
+        self.assertTrue(vr.afegeix_marcador_lliure(10.0))
+        self.assertFalse(vr.afegeix_marcador_lliure(10.0))  # mateix instant
+        self.assertFalse(vr.afegeix_marcador_lliure(0.0))   # no es pot a l'inici
 
     def test_analitzar_nomes_acords_omet_l_estructura(self):
         """F6 / «Només els acords»: no passa el qm-segmenter ni toca l'ABC."""

@@ -1,7 +1,8 @@
 """Marcadors en viu de la finestra (F3).
 
-Extret de `app/main.py`: encaix al beat QM i alta de marcadors. Els marcadors
-són anotacions visuals: no participen en cap recalcul de tempo.
+Extret de `app/main.py`: encaix al beat QM de les accions de cursor i alta de
+marcadors. Els marcadors són anotacions visuals: no participen en cap recalcul
+de tempo.
 """
 
 class MarcadorsMixin:
@@ -10,9 +11,9 @@ class MarcadorsMixin:
     def _snap_marcador_qm(self, t):
         """Retorna el beat QM més pròxim a `t` (sempre, sense tolerància).
 
-        El contracte nou fa que el `+` no es guarde mai a la posició crua del
-        cursor si hi ha anàlisi de QM: el marcador ha de coincidir amb un beat
-        de QM. Si no n'hi ha cap, retorna `None` i el cridador ha d'avisar.
+        Amb la graella en mode QM, les accions de cursor (`M`, Enter, `0`, `+`)
+        no treballen mai a la posició crua: han de coincidir amb un beat de QM.
+        Si no n'hi ha cap, retorna `None` i el cridador ha d'avisar.
         """
         info = getattr(self, "_beats_actuals", None)
         if not info:
@@ -26,57 +27,6 @@ class MarcadorsMixin:
         if not objectius:
             return None
         return min(objectius, key=lambda x: (abs(x - float(t)), x))
-
-    def _afegeix_marcador(self, tipus="seccio"):
-        """Camí de compatibilitat: marcador + tall de tempo/estructura.
-
-        La UI nova fa servir `_marcador_cursor`, `_talla_tempo_cursor`,
-        `_talla_estructura_cursor` i `_talla_tempo_i_estructura_cursor`.
-
-        Contracte nou: sempre s'encaixa al **beat QM més pròxim**; si no hi ha
-        QM, no es crea el marcador i s'avisa. El visor recalcula els clips
-        afectats amb prioritat de BPM i ajust de compàs.
-        """
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            self.avisa("Marcador", "Primer obri una WAV.")
-            return False
-        mode = (self.cb_graella.currentData()
-                if hasattr(self, "cb_graella") else "") or ""
-        if mode == "qm_beats":
-            t = self._snap_marcador_qm(float(vr.pos))
-            if t is None:
-                msg = ("No s'ha afegit el marcador: el Snap està en "
-                       "«Beats QM» però no hi ha beats QM. Executa "
-                       "«Analitza beats, downbeats i BPM» o canvia la graella.")
-                self.registra(msg)
-                self._missatge_info(msg)
-                return False
-        else:
-            # Fora del mode QM, mana la graella BPM/compàs del timeline.
-            t = vr._snap_ui(float(vr.pos))
-            if not (0.0 < t < vr._durada_wav() - 1e-3):
-                msg = "No s'ha afegit el marcador: cau fora del tema."
-                self.registra(msg)
-                self._missatge_info(msg)
-                return False
-        ok = bool(vr.afegeix_marcador(t=t, tipus=tipus))
-        if ok:
-            self.registra(f"Marcador a {t:.3f}s "
-                          f"({len(vr.marcadors)} en total)")
-        else:
-            prop = min((abs(float(m) - t) for m in (vr.marcadors or ())),
-                       default=99.0)
-            if prop < 0.05:
-                msg = ("No s'ha afegit: ja hi ha un marcador a "
-                       f"{t:.3f}s (o a menys de 50 ms).")
-            else:
-                msg = ("No s'ha pogut afegir el marcador: el clip resultant "
-                       "no conté cap beat sencer de la graella del Snap.")
-            self.registra(msg)
-            self._missatge_info(msg)
-        return ok
-
 
     def _t_from_cursor_ui(self):
         """Temps del cursor per a les accions M/Enter/0/+ de la Finestra."""
