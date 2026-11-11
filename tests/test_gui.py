@@ -5556,11 +5556,29 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr = self.w.visor_ref
         idx = self.w.cb_graella.findData("qm_beats")
         self.w.cb_graella.setCurrentIndex(idx)
+        self.w.tb_snap.setChecked(True)
+        self.w._canvia_snap()
         self.w._beats_actuals = None
+        abans = [tuple(t) for t in vr.tempo_trams]
         with patch.object(self.w, "_missatge_info") as info:
             self.assertFalse(self.w._talla_tempo_i_estructura_cursor())
+        self.assertIn("Beats QM", info.call_args.args[0])
+        self.assertEqual([tuple(t) for t in vr.tempo_trams], abans)
         self.assertEqual(len(vr.marcadors), 0)
-        self.assertEqual(info.call_count, 1)
+
+    def test_snap_off_usa_el_cursor_cru_sense_qm(self):
+        """Amb Snap desactivat, M usa el cursor encara que la graella siga QM."""
+        vr = self.w.visor_ref
+        idx = self.w.cb_graella.findData("qm_beats")
+        self.w.cb_graella.setCurrentIndex(idx)
+        self.w.tb_snap.setChecked(False)
+        self.w._canvia_snap()
+        self.w._beats_actuals = None
+        vr.pos = 1.202
+        with patch.object(self.w, "_missatge_info") as info:
+            self.assertTrue(self.w._marcador_cursor())
+        self.assertAlmostEqual(vr.marcadors[0], 1.202, places=6)
+        self.assertEqual(info.call_count, 0)
 
     def test_beats_antics_no_es_hereten_en_carregar_projecte(self):
         self.w._beats_actuals = {"beats": [1.0, 2.0], "downbeats": []}

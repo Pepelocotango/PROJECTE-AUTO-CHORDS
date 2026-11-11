@@ -35,8 +35,17 @@ class MarcadorsMixin:
             return None
         mode = (self.cb_graella.currentData()
                 if hasattr(self, "cb_graella") else "") or ""
-        if mode == "qm_beats":
+        snap_on = (bool(self.tb_snap.isChecked())
+                   if hasattr(self, "tb_snap") else True)
+        if snap_on and mode == "qm_beats":
             t = self._snap_marcador_qm(float(vr.pos))
+            if t is None:
+                msg = ("El Snap està en «Beats QM» però no hi ha beats QM. "
+                       "Executa «Analitza beats, downbeats i BPM» o canvia "
+                       "la graella.")
+                self.registra(msg)
+                self._missatge_info(msg)
+                return None
         else:
             t = float(vr._snap_ui(float(vr.pos)))
         if t is None or not (0.0 < t < vr._durada_wav() - 1e-3):

@@ -5,6 +5,13 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Arreglat — Snap QM desactivat bloquejava el cursor (2026-11-11)
+- Amb el **Snap desactivat** i la graella en «Beats QM» sense beats detectats,
+  `M`/Enter/`0`/`+` rebutjaven l'acció amb «El cursor no cau dins el tema».
+  Ara, amb Snap desactivat, s'usa el cursor cru.
+- Amb Snap actiu i «Beats QM» sense beats, l'avís és específic: cal analitzar
+  els beats o canviar la graella.
+
 ### Tret — funcions de tempo a partir de marcadors (2026-11-11)
 - Eliminades les accions que calculaven o ajustaven el tempo amb els
   **marcadors**: «BPM a partir dels marcadors…», «Ajusta BPMs a partir dels
