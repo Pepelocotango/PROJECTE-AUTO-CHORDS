@@ -12,6 +12,63 @@ from app import bpm_unit, limits, tempo_map, tempo_recalc, theme
 
 from app.finestres import GeometriaMixin
 
+
+#: Ajuda de cada casella del bloc «Opcions»: `(nom, activada, desactivada)`.
+#: S'usa com a tooltip i, per tant, també com a text de la secció «Ajuda».
+AJUDA_OPCIONS = {
+    "chk_beats": (
+        "Beats QM",
+        "usa els beats QM detectats dins el tram com a restricció forta per "
+        "triar N i compàs (poden corregir la signatura).",
+        "ignora els beats QM; N i compàs es deriven només de la durada, el "
+        "BPM i la Ref. recalc.",
+    ),
+    "chk_ref": (
+        "Ref. recalc",
+        "usa la Ref. recalc (BPM i compàs globals) com a àncora del càlcul.",
+        "usa el BPM i el compàs dels camps del bloc de recalcul com a "
+        "referència.",
+    ),
+    "chk_segons_durada": (
+        "Segons del tram",
+        "usa la durada real del clip (fi − ini) com a referència.",
+        "deriva la durada de referència de N, compàs i BPM dels camps.",
+    ),
+    "chk_unitat_beat": (
+        "Unitat del beat",
+        "interpreta els beats QM amb la unitat de Beat/TAP activa (negra, "
+        "negra amb punt, corxera o blanca).",
+        "tracta els beats QM sempre com a negres.",
+    ),
+    "chk_compas_lliure": (
+        "Canviar compàs",
+        "el recalcul pot triar una signatura diferent de la de referència.",
+        "manté fixa la signatura de referència i només ajusta N i BPM.",
+    ),
+    "chk_n": (
+        "N fix",
+        "pren els compassos del camp com a restricció i deriva el BPM quan "
+        "cal.",
+        "deixa que el recalcul trie N per encaixar la durada i els beats.",
+    ),
+    "chk_segons": (
+        "En segons (rubato)",
+        "el clip dura el que diu l'àudio, sense graella ni compassos enters "
+        "(la partitura es pren a 100 BPM); desactiva els botons Recalcula i "
+        "l'edició del compàs.",
+        "el clip s'interpreta amb compàs i BPM normals.",
+    ),
+}
+
+
+def _ajuda_opcio(clau):
+    """Text d'ajuda d'una casella amb l'estat activat i desactivat."""
+    nom, activada, desactivada = AJUDA_OPCIONS[clau]
+    return (f"{nom}\n"
+            f"Activada: {activada}\n"
+            f"Desactivada: {desactivada}")
+
+
 class DialegTramTempo(GeometriaMixin, QDialog):
     """Edita un **tros** del mapa: BPM i compàs (on comença es mostra)."""
 
@@ -118,41 +175,27 @@ QCheckBox::indicator:disabled {{
         _etq.setWordWrap(True)
         lay_opc.addWidget(_etq)
         self.chk_beats = QCheckBox("Beats QM")
-        self.chk_beats.setToolTip(
-            "Usa els beats QM dins el tram (si n'hi ha) com a restricció "
-            "forta per triar N i compàs.")
+        self.chk_beats.setToolTip(_ajuda_opcio("chk_beats"))
         self.chk_beats.setChecked(True)
         self.chk_ref = QCheckBox("Ref. recalc")
-        self.chk_ref.setToolTip(
-            "Usa la Ref. recalc com a àncora; si no, usa el BPM/compàs del "
-            "bloc de recalcul.")
+        self.chk_ref.setToolTip(_ajuda_opcio("chk_ref"))
         self.chk_ref.setChecked(True)
         self.chk_segons_durada = QCheckBox("Segons del tram")
-        self.chk_segons_durada.setToolTip(
-            "Usa la durada actual (fi − ini) com a referència; si no, "
-            "deriva-la de N, compàs i BPM del bloc.")
+        self.chk_segons_durada.setToolTip(_ajuda_opcio("chk_segons_durada"))
         self.chk_segons_durada.setChecked(True)
         self.chk_unitat_beat = QCheckBox("Unitat del beat")
-        self.chk_unitat_beat.setToolTip(
-            "Interpreta els beats QM amb la unitat de beat activa; si no, "
-            "els tracta com a negres.")
+        self.chk_unitat_beat.setToolTip(_ajuda_opcio("chk_unitat_beat"))
         self.chk_unitat_beat.setChecked(True)
         self.chk_compas_lliure = QCheckBox("Canviar compàs")
-        self.chk_compas_lliure.setToolTip(
-            "Permet que el recalcul trie un compàs diferent del del bloc; "
-            "si no, queda fixat.")
+        self.chk_compas_lliure.setToolTip(_ajuda_opcio("chk_compas_lliure"))
         self.chk_compas_lliure.setChecked(True)
         self.chk_n = QCheckBox("N fix")
-        self.chk_n.setToolTip(
-            "Fixa N: el recalcul respecta els compassos del camp i deriva "
-            "el BPM quan cal.")
+        self.chk_n.setToolTip(_ajuda_opcio("chk_n"))
         _te_n = (n_actual is not None and self._durada > 0)
         self.chk_n.setChecked(_te_n)
         self.chk_n.setEnabled(_te_n)
         self.chk_segons = QCheckBox("En segons (rubato)")
-        self.chk_segons.setToolTip(
-            "El clip dura el que diu l'àudio, sense graella ni compassos "
-            "enters. Per a la partitura es pren a 100 BPM.")
+        self.chk_segons.setToolTip(_ajuda_opcio("chk_segons"))
         self.chk_segons.setChecked(int(num) <= 0 or int(den) <= 0)
         grid_opc = QGridLayout()
         grid_opc.setHorizontalSpacing(12)
@@ -242,7 +285,8 @@ QCheckBox::indicator:disabled {{
         grup_ajuda = QGroupBox("Ajuda")
         lay_ajuda = QVBoxLayout(grup_ajuda)
         self.ajuda = QLabel(
-            "Passa el ratolí per un camp, botó o casella per vore què fa.")
+            "Passa el ratolí per un camp, botó o casella per vore què fa. "
+            "Cada casella explica què fa activada i desactivada.")
         self.ajuda.setWordWrap(True)
         self.ajuda.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.ajuda.setMinimumHeight(72)

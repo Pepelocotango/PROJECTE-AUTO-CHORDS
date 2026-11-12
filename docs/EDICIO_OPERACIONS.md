@@ -274,7 +274,8 @@ pendents:
 - Les **Opcions** són comunes als dos recalcs: **Beats QM**, **Ref. recalc**,
   **Segons del tram**, **Unitat del beat**, **Canviar compàs**, **N fix** i
   **En segons (rubato)**. Indiquen què ha de tindre en compte el càlcul. Les
-  caselles tenen un **indicador visible** (quadre buit/ple) sobre fons fosc.
+  caselles tenen un **indicador visible** (quadre buit/ple) sobre fons fosc i
+  la secció **Ajuda** explica què fa cada opció **activada i desactivada**.
 - La **Ref. recalc** es pot canviar des del mateix diàleg amb **BPM ref**,
   **Compàs ref** i **Aplica ref.**; el canvi va al visor i a la barra 2, i no
   recalcula cap clip per si sol.
