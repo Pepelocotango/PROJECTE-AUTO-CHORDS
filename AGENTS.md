@@ -143,7 +143,8 @@ genera amb `git ls-files` i, si no, els fitxers nous surten 🟡—, després
 
 **Normes de l'operador:** tot en català · paperera sempre (`gio trash`, mai `rm`)
 · cap secret al repo · no deixar processos ni temporals · per a diàlegs o menús
-de GUI, demana ajuda a l'operador.
+de GUI, demana ajuda a l'operador · **control de ratolí/teclat només dins del
+guard** (`Agents_IA_i_IDEs/mouse_control_wrapper.sh`), mai `xdotool` directe.
 
 ## 🚪 «Tanca sessió» (protocol)
 
@@ -183,6 +184,31 @@ També hi ha **skills** a `.opencode/skills/` (`audio-tempo`, `flux-dades`,
 `regles-app`, `release-higiene`, `suite-tests`) i **comandes** a
 `.opencode/command/` (`/estat`, `/qualitat`, `/regles`). Delega al subagent que
 correspongui i no ampliïs el seu abast.
+
+### Skills compartides (`opencode.json` › `skills.paths`)
+
+`opencode.json` carrega, a més, les skills de la carpeta compartida
+`/mnt/F5EB-8EFE/CARPETA_IA_AGENTS/skills/` (**font canònica; no es copien ací**).
+Si una skill xoca amb les regles d'aquest projecte, **manen les regles d'aquest
+projecte** (`docs/REGLES_DE_LA_APP.md`).
+
+La rellevant per coordinar-se és **`oc-oc-dialeg`** (avisos GUI entre **pestanyes**
+d'OpenCode, un agent per pestanya):
+
+- **Només host Ubuntu** amb X11 (`DISPLAY=:0`); a la VM Debian o al Mac no funciona.
+- Ratolí/teclat **només dins del guard** (`Agents_IA_i_IDEs/mouse_control_wrapper.sh`).
+- **Canal formal = `LOG_DIALEGS_AGENTS.txt`** (`CODI-N/NNNN` + `.pcc.lock`, append-only).
+  La GUI només **avisa**; cap decisió es pren pel xat teclejat.
+- El **mapatge pestanya ↔ agent és viu** (1 = primera per l'esquerra): no l'endevinis,
+  pregunta a l'operador o mira els títols. Passa `--self M` per no enviar-te a tu mateix.
+- Missatge **ASCII, curt (1-3 línies)**; tipat lent + `Enter`; **fire-and-forget**
+  (enviar és l'última acció, no esperis resposta en bucle) i **mai clicar enviar/stop**.
+- Una sola finestra `OpenCode`: si n'hi ha dues, l'helper agafa la primera (risc
+  d'enviar a l'altra instància).
+
+Les **P0** que porta la skill (control d'entrada dins del guard, paperera sempre,
+mai `push`, cap secret al repo, català) **manen sobre qualsevol costum local**.
+Detall canònic: `CARPETA_IA_AGENTS/AGENTS.md` §0.
 
 ## 🔁 Retrocompatibilitat — decisió vigent (2026-11-02, no invariant)
 
