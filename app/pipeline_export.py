@@ -106,7 +106,7 @@ def escriu_manifest(ruta, files):
 
 def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
                  tempo_fix=True, amb_estructura=True, total_s=None,
-                 acords=None, seccions=None, mapa_tempo=None):
+                 acords=None, seccions=None, mapa_tempo=None, den=4):
     """Exporta el flux complet.
 
     Si es passen `acords`/`seccions` (el **model VIU** del visor), s'usen ELLS
@@ -144,11 +144,12 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
     manifest = []
     if tempo_fix:
         dades_guia = _segments_guia_daw(csv_ac, bpm, bpb, offset=offset,
-                                        durada=total_s)
+                                        durada=total_s, den=den)
         segs = segments_export(csv_ac, bpm, bpb, offset=offset,
-                               durada=total_s, mapa=dades_guia[4])
+                               durada=total_s, mapa=dades_guia[4], den=den)
         guia = genera_guia_html(csv_ac, bpm, bpb, offset=offset, workdir=sortida,
-                                durada=total_s, log=log, _dades=dades_guia)
+                                durada=total_s, log=log, _dades=dades_guia,
+                                den=den)
         result["guia_html"] = guia
         dest = os.path.join(sortida, "wavs_acords")
         neteja_wavs(dest)
@@ -248,17 +249,17 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
 
 
 def regenera_wavs_acords(csv_path, sortida, bpm, bpb, offset, total_s, sr, log,
-                         tempo_fix=True, manifest=None):
+                         tempo_fix=True, manifest=None, den=4):
     # Recalcula guia + wavs_acords/ a partir del csv ja editat.
     dest = os.path.join(sortida, "wavs_acords")
     neteja_wavs(dest)
     if tempo_fix:
         dades_guia = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
-                                        durada=total_s)
+                                        durada=total_s, den=den)
         segs = segments_export(csv_path, bpm, bpb, offset=offset,
-                               durada=total_s, mapa=dades_guia[4])
+                               durada=total_s, mapa=dades_guia[4], den=den)
         genera_guia_html(csv_path, bpm, bpb, offset=offset, workdir=sortida,
-                         durada=total_s, log=log, _dades=dades_guia)
+                         durada=total_s, log=log, _dades=dades_guia, den=den)
         return fer_wavs_acords(segs, dest, sr, log, manifest=manifest)
     return fer_wavs_acords_lliures(csv_path, total_s, dest, sr, log,
                                    manifest=manifest)

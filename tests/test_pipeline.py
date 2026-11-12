@@ -135,9 +135,9 @@ class TestGuiaDaw(unittest.TestCase):
         """Amb `mapa_tempo.csv` de més d'un tram, tot es calcula amb el mapa
         (posicions compàs.temps.fusa) i no peta."""
         td = _carpeta(
-            mapa="inici,fi,bpm,tipus,compassos\n"
-                 "0.0,8.0,120,normal,4/4\n"
-                 "8.0,16.0,90,normal,3/4\n")
+            mapa="inici,fi,bpm,tipus,compassos,agrupacio,n,beat_unit\n"
+                 "0.0,8.0,120,normal,4/4,,,negra\n"
+                 "8.0,16.0,90,normal,3/4,,,negra\n")
         segs = self._segs(td)
         self.assertEqual(len(segs), 4)
         guia = pipeline.genera_guia_html(
@@ -2054,6 +2054,31 @@ class MusicXmlTests(unittest.TestCase):
             new_system_each=2, beat_type=8)
         self.assertIn("<beat-type>8</beat-type>", xml)
         self.assertIn('new-system="yes"', xml)
+
+
+class TestMetricaCompasCompost(unittest.TestCase):
+    """A5: cap `bpb` tractat com a negres en el camí constant."""
+
+    def test_pos_compas_6_8(self):
+        self.assertEqual(
+            pipeline.pos_compas(1.5, 120.0, bpb=6, den=8), "2.1.1")
+        self.assertEqual(
+            pipeline.pos_compas(3.0, 120.0, bpb=6, den=8), "3.1.1")
+
+    def test_musicxml_6_8_constant(self):
+        xml = partitura.construeix_musicxml(
+            [(0.0, "C", 3.0)], [], bpb=6, bpm=120.0, beat_type=8,
+            bpm_unit="negra_punt")
+        self.assertIn("<beats>6</beats><beat-type>8</beat-type>", xml)
+        self.assertIn("<beat-unit>quarter</beat-unit><beat-unit-dot/>",
+                      xml)
+        self.assertIn("<per-minute>80</per-minute>", xml)
+        self.assertIn('<sound tempo="120"', xml)
+
+    def test_fallback_constant_6_8_te_3_negres_per_compas(self):
+        # 6/8 a 120: un compàs = 3 negres = 1,5 s (no 6 negres = 3 s).
+        from app.tempo_map import durada_compas
+        self.assertAlmostEqual(durada_compas(120.0, 6, 8), 1.5, places=9)
 
 
 class ExportaTests(unittest.TestCase):
@@ -5053,8 +5078,8 @@ class TapTempoTests(unittest.TestCase):
                                delta=3.0)
         w.close()
 
-    def test_tap_actualitza_la_referencia_de_recalc(self):
-        """El TAP re-ancora el BPM de Ref. recalc (sense tocar-ne el compàs)."""
+    def test_tap_no_actualitza_ref_si_el_compas_difereix(self):
+        """L1 estricte: si la Ref. té un altre compàs, el TAP no la toca."""
         w = self._finestra()
         try:
             w.visor_ref.set_ref_tempo(90.0, 7, 4)
@@ -5062,15 +5087,12 @@ class TapTempoTests(unittest.TestCase):
             w.visor_ref.timeline.select_clip("tempo", 0)
             self._taps_en(w, 0.5)
             bpm_ref, num_ref, den_ref = w.visor_ref.ref_tempo_base()
-            self.assertAlmostEqual(bpm_ref, 120.0, delta=3.0)
+            self.assertAlmostEqual(bpm_ref, 90.0, places=6)
             self.assertEqual((num_ref, den_ref), (7, 4))
-            self.assertAlmostEqual(float(w.ref_bpm.text()), 120.0, delta=3.0)
-            # El desfer de la sessió també torna enrere la referència.
+            self.assertAlmostEqual(float(w.ref_bpm.text()), 90.0, delta=0.01)
+            # El clip sí que ha canviat; la Ref. no.
+            self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=3.0)
             w._tanca_sessio_tap()
-            w._undo_visor()
-            self.assertAlmostEqual(w.visor_ref.ref_bpm, 90.0, places=6)
-            self.assertEqual((w.visor_ref.ref_bpb,
-                              w.visor_ref.ref_beat_type), (7, 4))
         finally:
             w.close()
 
@@ -5114,8 +5136,8 @@ class TapTempoTests(unittest.TestCase):
             self._taps_en(w, 0.75)  # 80 taps/min
             self.assertAlmostEqual(w._bpm_val(), 120.0, delta=0.01)
             self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=0.01)
-            # La barra mostra el BPM intern final (negres/minut): 120.
-            self.assertIn("120", w.b_tap.text())
+            # La barra mostra el TAP en la unitat activa (negra amb punt): 80.
+            self.assertIn("80", w.b_tap.text())
         finally:
             w.cb_beat.setCurrentIndex(w.cb_beat.findData("negra"))
             w._canvia_beat_unit()

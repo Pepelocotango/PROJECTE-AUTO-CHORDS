@@ -209,7 +209,7 @@ class TestCrea(BaseProjecte):
         with open(os.path.join(carp, "mapa_tempo.csv"),
                   encoding="utf-8") as fh:
             files = fh.read().strip().splitlines()
-        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos,agrupacio,n")
+        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos,agrupacio,n,beat_unit")
         self.assertIn("138.000000,normal,4/4", files[1])
         self.assertTrue(os.path.isfile(p.ruta_acproj))
 
@@ -2070,7 +2070,7 @@ class TestDialegTramTempo(_dialegs___Base):
         d.ref_bpm.setText("150")
         d.ref_compas.setText("7/8")
         d.b_ref.click()
-        self.assertEqual(rebuts, [(150.0, 7, 8)])
+        self.assertEqual(rebuts, [(150.0, 7, 8, "negra")])
         d.actualitza_ref(140.0, 3, 4)
         self.assertEqual(d.ref_bpm.text(), "140.000")
         self.assertEqual(d.ref_compas.text(), "3/4")
@@ -2079,7 +2079,7 @@ class TestDialegTramTempo(_dialegs___Base):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
             n_actual=2.0, beat_unit="corxera")
-        self.assertEqual(d.cb_beat.count(), 4)
+        self.assertEqual(d.cb_beat.count(), 5)
         self.assertEqual(d.cb_beat.currentData(), "corxera")
         rebuts = []
         d.beatUnitRequested.connect(rebuts.append)
@@ -5136,7 +5136,7 @@ class TestProjecteAssociat(_Base):
         with open(os.path.join(carp, "mapa_tempo.csv"), encoding="utf-8") as fh:
             self.assertEqual(
                 fh.read().splitlines()[1],
-                "0.000000,2.000000,120.000000,normal,4/4,,",
+                "0.000000,2.000000,120.000000,normal,4/4,,,negra",
                 "el mapa nou no pot heretar el tempo vell")
         self.assertEqual(f.bpm.text(), "120.000")
         self.assertEqual(f._bpb_val(), 4)
@@ -5790,7 +5790,8 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.ref_tempo_base(), (144.5, 7, 4))
         self.w._refresca_dades_projecte()
         self.assertEqual(self.w.projecte.dades["tempo"]["ref"],
-                         {"bpm": 144.5, "compas": "7/4"})
+                         {"bpm": 144.5, "compas": "7/4",
+                          "beat_unit": "negra"})
         # I en tornar a carregar el projecte, la referència arriba al visor.
         self.w.projecte.desa()
         self.w._activa_projecte(
@@ -6384,13 +6385,62 @@ class TestAncoratgesFinestra(unittest.TestCase):
             self.w.cb_beat.setCurrentIndex(idx)
             self.w._canvia_beat_unit()
             self.assertAlmostEqual(vr.beat_factor(), 1.5, places=6)
-            self.w._refresca_dades_projecte()
-            self.assertEqual(self.w.projecte.dades["tempo"]["beat_unit"],
+            self.assertEqual(vr.unitat_objectiu(), "negra_punt")
+            self.assertEqual(vr.tempo_trams[vr.tempo_objectiu()].beat_unit,
                              "negra_punt")
+            self.w._refresca_dades_projecte()
+            self.assertNotIn("beat_unit", self.w.projecte.dades["tempo"])
         finally:
             self.w.cb_beat.setCurrentIndex(
                 self.w.cb_beat.findData("negra"))
             self.w._canvia_beat_unit()
+
+    def test_referencia_recalc_amb_unitat(self):
+        vr = self.w.visor_ref
+        try:
+            vr.set_ref_tempo(120.0, 4, 4, "negra")
+            self.w._sincronitza_ref_des_del_visor()
+            idx = self.w.cb_ref_beat.findData("negra_punt")
+            self.w.cb_ref_beat.setCurrentIndex(idx)
+            self.w._canvia_ref_beat()
+            self.assertEqual(vr.ref_tempo_unit(), "negra_punt")
+            self.assertAlmostEqual(vr.ref_bpm, 120.0, places=6)
+            self.assertEqual(self.w.ref_bpm.text(), "80.000")
+            self.w._refresca_dades_projecte()
+            self.assertEqual(
+                self.w.projecte.dades["tempo"]["ref"]["beat_unit"],
+                "negra_punt")
+        finally:
+            self.w.cb_ref_beat.setCurrentIndex(
+                self.w.cb_ref_beat.findData("negra"))
+            self.w._canvia_ref_beat()
+
+    def test_rang_intern_de_ref_amb_unitat(self):
+        vr = self.w.visor_ref
+        try:
+            vr.set_ref_tempo(120.0, 4, 4, "negra_punt")
+            self.w._sincronitza_ref_des_del_visor()
+            self.w.ref_bpm.setText("20")       # 20 ♩. = 30 intern: vàlid
+            self.w._aplica_ref_recalc()
+            self.assertAlmostEqual(vr.ref_bpm, 30.0, places=6)
+            self.w.ref_bpm.setText("240")      # 240 ♩. = 360 intern: invàlid
+            with patch.object(self.w, "avisa_info") as avis:
+                self.w._aplica_ref_recalc()
+            self.assertEqual(avis.call_count, 1)
+            self.assertAlmostEqual(vr.ref_bpm, 30.0, places=6)
+        finally:
+            vr.set_ref_tempo(120.0, 4, 4, "negra")
+            self.w._sincronitza_ref_des_del_visor()
+
+    def test_undo_unitat_tram(self):
+        vr = self.w.visor_ref
+        vr.aplica_tempo_trams([(0.0, 10.0, 120.0, 6, 8)])
+        vr._undo_stack.clear()
+        self.assertTrue(vr.canvia_unitat_tram(0, "corxera",
+                                              mode="mantenir_tempo"))
+        self.assertEqual(vr.tempo_trams[0].beat_unit, "corxera")
+        vr.undo()
+        self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
 
     def test_latencia_del_cursor_compensa_el_retard(self):
         """El cursor pot anar 100 ms per darrere del rellotge d'àudio."""

@@ -129,17 +129,17 @@ class ProjecteMixin:
             bpm, bpb = self._bpm_val(), self._bpb_val()
             den, offset = self._beat_type_val(), self._offset_val()
         try:
-            ref_bpm, ref_num, ref_den = self._ref_vals()
+            ref_bpm, ref_num, ref_den, ref_unit = self._ref_vals()
         except (AttributeError, TypeError, ValueError):
-            ref_bpm, ref_num, ref_den = bpm, bpb, den
+            ref_bpm, ref_num, ref_den, ref_unit = bpm, bpb, den, "negra"
         return {
             "tempo": {"bpm": bpm, "bpb": bpb,
                       "offset": offset,
                       "fix": self.tempo_fix.isChecked(),
                       "compas": f"{bpb}/{den}",
-                      "beat_unit": self._beat_unit_val(),
                       "ref": {"bpm": float(ref_bpm),
-                              "compas": f"{int(ref_num)}/{int(ref_den)}"}},
+                              "compas": f"{int(ref_num)}/{int(ref_den)}",
+                              "beat_unit": ref_unit}},
             "opcions": self.opcions,
         }
 
@@ -170,7 +170,6 @@ class ProjecteMixin:
         self.wav_edit.setText(wav)
         tempo = p.dades.get("tempo") or {}
         self._posa_bpm_quarter(float(tempo.get("bpm", 120.0)))
-        self._posa_beat_unit(tempo.get("beat_unit", "negra"))
         compas = tempo.get("compas")
         # Format COMPLET (4/4, no «4»): un «4» sol sembla el compàs denormalitzat
         # i confon; el parser accepta els dos, però el camp sempre el mostra bé.
@@ -179,13 +178,16 @@ class ProjecteMixin:
         ref = tempo.get("ref") or {}
         ref_bpm = float(ref.get("bpm", tempo.get("bpm", 120.0)))
         ref_compas = ref.get("compas") or self.bpb.text() or "4/4"
+        ref_unit = ref.get("beat_unit")
         self._actualitzant_temps = True
         try:
             try:
-                self._posa_ref_recalc(ref_bpm, ref_compas)
+                self._posa_ref_recalc(ref_bpm, ref_compas,
+                                      beat_unit=ref_unit)
             except ValueError:
                 self._posa_ref_recalc(
-                    float(tempo.get("bpm", 120.0)), self.bpb.text())
+                    float(tempo.get("bpm", 120.0)), self.bpb.text(),
+                    beat_unit=ref_unit)
         finally:
             self._actualitzant_temps = False
         self._ref_manual = True

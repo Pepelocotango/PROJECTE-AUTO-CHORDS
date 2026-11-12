@@ -68,11 +68,11 @@ class VisorUIMixin:
             self.logger.info("Carregant visor per %s | sortida=%s", wav, self.sortida)
             if getattr(self, "_ref_manual", False):
                 try:
-                    _rb, _rn, _rd = self._ref_vals()
+                    _rb, _rn, _rd, _ru = self._ref_vals()
                 except ValueError:
-                    _rb, _rn, _rd = None, None, None
+                    _rb, _rn, _rd, _ru = None, None, None, None
             else:
-                _rb, _rn, _rd = None, None, None
+                _rb, _rn, _rd, _ru = None, None, None, None
             visor = visor_mod.Visor(
                 os.path.abspath(wav),
                 acords_csv,
@@ -89,8 +89,9 @@ class VisorUIMixin:
                 ref_bpm=_rb,
                 ref_bpb=_rn,
                 ref_beat_type=_rd,
+                ref_beat_unit=_ru,
                 latencia_cursor_ms=self._latencia_cursor_val(),
-                beat_unit=self._beat_unit_val(),
+                beat_unit=_ru or "negra",
             )
             self.visor_ref = visor
             if _rb is None or not getattr(self, "_ref_manual", False):

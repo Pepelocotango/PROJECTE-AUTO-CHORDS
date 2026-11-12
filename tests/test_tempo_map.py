@@ -171,6 +171,29 @@ class TestConstant(unittest.TestCase):
         self.assertEqual(tm.pos(1.0), (2, 1, 1))
 
 
+class TestUnitatPolsTram(unittest.TestCase):
+    """`beat_unit` per tram i consultes derivades de `TempoMap`."""
+
+    def test_beat_unit_per_tram_i_consulta(self):
+        from app import mapa_tempo
+        t0 = mapa_tempo.TramMapa(0.0, 3.0, 120.0, "normal", "6/8",
+                                 "3+3", None, "corxera")
+        t1 = mapa_tempo.TramMapa(3.0, 6.0, 120.0, "normal", "4/4")
+        mapa = TempoMap([t0, t1])
+        self.assertEqual(mapa.unitat(0.0), "corxera")
+        self.assertEqual(mapa.unitat(3.0), "negra")
+        self.assertEqual(mapa.unitat_de_compas(0), "corxera")
+        self.assertEqual(mapa.unitat_de_compas(2), "negra")
+
+    def test_tram_itera_i_indexa_cinc(self):
+        from app import mapa_tempo
+        t = mapa_tempo.TramMapa(0.0, 4.0, 120.0, "normal", "6/8",
+                                "3+3", None, "negra_punt")
+        self.assertEqual(len(t), 5)
+        self.assertEqual(tuple(t), (0.0, 4.0, 120.0, 6, 8))
+        self.assertEqual(t[3:], (6, 8))
+
+
 class TestValidaTempo(unittest.TestCase):
     def test_accepta_limits_i_rubato(self):
         self.assertEqual(tm.valida_tempo(30, 1, 2), (30.0, 1, 2))
@@ -559,26 +582,23 @@ class TestPersistencia(unittest.TestCase):
         td = tempfile.mkdtemp()
         with open(os.path.join(td, "mapa_tempo.csv"), "w",
                   encoding="utf-8") as f:
-            f.write("inici,fi,bpm,tipus,compassos\n")
-            f.write("-2.0,10.0,90.0,normal,3/4\n")
-            f.write("10.0,20.0,90.0,normal,3/4\n")
+            f.write("inici,fi,bpm,tipus,compassos,agrupacio,n,beat_unit\n")
+            f.write("-2.0,10.0,90.0,normal,3/4,,,negra\n")
+            f.write("10.0,20.0,90.0,normal,3/4,,,negra\n")
         trams = pipeline.llegeix_tempo_map(td, 120.0, 4, 4, 30.0)
         self.assertEqual(trams[0][0], 0.0)
         self.assertEqual(trams[-1][1], 30.0)
         self.assertTrue(all(t[0] < t[1] for t in trams))
 
-    def test_csv_invalid_es_repara_i_avisa(self):
+    def test_csv_invalid_es_rebutja(self):
         import tempfile
         td = tempfile.mkdtemp()
         with open(os.path.join(td, "mapa_tempo.csv"), "w",
                   encoding="utf-8") as f:
-            f.write("inici,fi,bpm,tipus,compassos\n")
-            f.write("0,8,120,normal,4/32\n")
-        avisos = []
-        trams = pipeline.llegeix_tempo_map(
-            td, 120, 4, 4, 8.0, log=avisos.append)
-        self.assertEqual(trams, [(0.0, 8.0, 120.0, 4, 4)])
-        self.assertTrue(any("denominador" in avís for avís in avisos))
+            f.write("inici,fi,bpm,tipus,compassos,agrupacio,n,beat_unit\n")
+            f.write("0,8,120,normal,4/32,,,negra\n")
+        with self.assertRaises(ValueError):
+            pipeline.llegeix_tempo_map(td, 120, 4, 4, 8.0)
 
     def test_sense_fitxers_es_constant(self):
         import tempfile
@@ -601,9 +621,9 @@ class TestPersistencia(unittest.TestCase):
         pipeline.desa_tempo_map(td, [(0.0, 2.5, 105.315, 4, 4)])
         with open(os.path.join(td, "mapa_tempo.csv"), encoding="utf-8") as f:
             files = f.read().strip().splitlines()
-        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos,agrupacio,n")
+        self.assertEqual(files[0], "inici,fi,bpm,tipus,compassos,agrupacio,n,beat_unit")
         self.assertEqual(files[1],
-                         "0.000000,2.500000,105.315000,normal,4/4,,")
+                         "0.000000,2.500000,105.315000,normal,4/4,,,negra")
 
     def test_model_antic_es_rebutja(self):
         import tempfile

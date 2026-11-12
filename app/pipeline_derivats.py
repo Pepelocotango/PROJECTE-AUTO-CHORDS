@@ -6,9 +6,11 @@ tempo; no depén de Qt ni del motor Vamp.
 import csv
 import os
 
+from . import limits
 from .pipeline_mapa import _mapa_tempo_carpeta
 
-def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
+def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None,
+                      den=4):
     """Calcula els segments quantitzats a **1/32** per als locators i la guia HTML.
 
     Retorna `(segs, end, step, slots_bar, mapa, pos_de_p)`, on cada segment és
@@ -19,7 +21,7 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
     offset = float(offset or 0.0)
     durada = float(durada or 0.0)
     step = 60.0 / bpm / 8.0                  # fusa (1/32)
-    slots_bar = bpb * 8                      # fuses per compàs
+    slots_bar = int(round(limits.bar_quarters(bpb, den) * 8))
 
     if mapa is None:
         mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)),
@@ -72,7 +74,7 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None):
 
 
 def segments_locators(csv_path, bpm, bpb, offset=0.0, durada=None,
-                      mapa=None, _dades=None):
+                      mapa=None, _dades=None, den=4):
     """Guia DAW **en memòria**: `[(posició_1/32, acord, durada_en_beats), …]`.
 
     És un DERIVAT del model: **no es desa en cap fitxer** (decisió de
@@ -82,7 +84,7 @@ def segments_locators(csv_path, bpm, bpb, offset=0.0, durada=None,
     """
     if _dades is None:
         _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
-                                    durada=durada, mapa=mapa)
+                                    durada=durada, mapa=mapa, den=den)
     segs, end, _step, _slots_bar, _mapa, _pos_de_p = _dades
     out = []
     for i, (_t, p, c) in enumerate(segs):
@@ -92,7 +94,7 @@ def segments_locators(csv_path, bpm, bpb, offset=0.0, durada=None,
 
 
 def events_partitura(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
-                     _dades=None):
+                     _dades=None, den=4):
     """Acords per a la PARTITURA en memòria: `[(beat_inici, acord, beats), …]`.
 
     Mateixa font que la guia (`_segments_guia_daw`): el model quantitzat a
@@ -100,7 +102,7 @@ def events_partitura(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
     """
     if _dades is None:
         _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
-                                    durada=durada, mapa=mapa)
+                                    durada=durada, mapa=mapa, den=den)
     segs, end, _step, _slots_bar, _mapa, _pos_de_p = _dades
     out = []
     for i, (_t, p, c) in enumerate(segs):
@@ -151,7 +153,8 @@ def segments_exactes(csv_path, durada=0.0):
     return out
 
 
-def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None):
+def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
+                    den=4):
     """`[(posicio_1/32, acord, ini_s, fi_s)]` per als WAVs i el manifest.
 
     El nom és la posició musical quantitzada a 1/32; els temps són els EXACTES
@@ -168,7 +171,7 @@ def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None):
     elif hasattr(mapa, "es_constant") and mapa.es_constant():
         mapa = None
     step = 60.0 / bpm / 8.0                  # fusa (1/32)
-    slots_bar = bpb * 8
+    slots_bar = int(round(limits.bar_quarters(bpb, den) * 8))
 
     def _q(t):
         if mapa is not None:
@@ -198,7 +201,7 @@ def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None):
 
 
 def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
-                     mapa=None, log=None, _dades=None):
+                     mapa=None, log=None, _dades=None, den=4):
     """Genera `guia_acords.html` en memòria i en retorna la ruta."""
     import html as _html
     workdir = workdir or os.path.dirname(os.path.abspath(csv_path))
@@ -208,7 +211,7 @@ def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
     durada_val = float(durada or 0.0)
     if _dades is None:
         _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
-                                    durada=durada_val, mapa=mapa)
+                                    durada=durada_val, mapa=mapa, den=den)
     segs, end, step, slots_bar, mapa_resolt, _pos = _dades
 
     if mapa_resolt is not None:
@@ -256,7 +259,8 @@ def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
     return guia_path
 
 
-def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0, mapa=None):
+def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0, mapa=None,
+               den=4):
     """Posició en format compàs.temps.fusa (qualsevol compàs).
 
     Graella = **1/32** (fusa). El tercer camp és la fusa dins del temps
@@ -267,7 +271,7 @@ def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0, mapa=None):
     if mapa is not None and not mapa.es_constant():
         return mapa.label(t)           # mateixa forma (compàs.temps.fusa)
     step = 60.0 / bpm / 8              # fusa (1/32)
-    SB = max(1, int(bpb)) * 8          # fuses per compàs
+    SB = max(1, int(round(limits.bar_quarters(bpb, den) * 8)))
     # Sense clampar: abans de l'offset (compàs 1) les posicions son negatives
     # -> el silenci inicial queda com un compte enrere (compàs -1, -2...).
     p = round((float(t) - float(offset)) / step)

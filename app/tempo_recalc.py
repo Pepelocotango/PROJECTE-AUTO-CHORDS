@@ -108,7 +108,7 @@ def beats_a_la_frontera(beats, ini, fi, tol=TOL_TALL):
 
 
 def _bar_quarters(num, den):
-    return float(num) * (4.0 / float(den))
+    return limits.bar_quarters(num, den)
 
 
 def _distancia_compas(num, den, num_ref, den_ref):

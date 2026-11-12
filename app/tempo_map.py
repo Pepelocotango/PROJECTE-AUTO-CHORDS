@@ -23,9 +23,8 @@ El contracte vigent és a `docs/REGLES_DE_LA_APP.md` §13.
 from __future__ import annotations
 
 import math
-from collections import namedtuple
 
-from app import limits, tempo_recalc
+from app import bpm_unit, limits, tempo_recalc
 
 # Tolerància temporal (evita falsos positius de coma flotant).
 TOL = 1e-9
@@ -85,13 +84,67 @@ def valida_tempo(bpm, num, den):
 # Un tros del mapa: temps i compàs constants dins `[ini, fi)`.
 #   bpm = negres per minut · num/den = compàs (p. ex. 4/4, 6/8, 12/8)
 #   agrupacio = `3+3` per a `6/8`; buit = agrupació automàtica per signatura.
-_TramBase = namedtuple(
-    "Tram", ("ini", "fi", "bpm", "num", "den", "agrupacio"),
-    defaults=("",))
+#   beat_unit = unitat de pols (negra, negra_punt, corxera, semicorxera,
+#               blanca). Si falta, es deriva de l'agrupació efectiva.
+class Tram:
+    """Tram de tempo/compàs amb interfície compatible amb `Clip`.
 
+    `len()`/iteració/indexació continuen donant els **5 camps històrics**
+    (`ini, fi, bpm, num, den`); `agrupacio` i `beat_unit` són atributs.
+    """
 
-class Tram(_TramBase):
-    """Tram de tempo/compàs amb interfície compatible amb `Clip(ini, fi, payload)`."""
+    __slots__ = ("ini", "fi", "bpm", "num", "den", "agrupacio", "beat_unit")
+
+    def __init__(self, ini, fi, bpm, num, den, agrupacio="", beat_unit=None):
+        self.ini = float(ini)
+        self.fi = float(fi)
+        self.bpm = float(bpm)
+        self.num = int(num)
+        self.den = int(den)
+        self.agrupacio = str(agrupacio or "")
+        unitat = str(beat_unit or "").strip()
+        if not unitat:
+            unitat = bpm_unit.unitat_per_defecte(
+                self.num, self.den, self.agrupacio)
+        elif unitat not in bpm_unit.UNITATS:
+            raise ValueError(f"Unitat de beat no vàlida: {beat_unit!r}")
+        self.beat_unit = unitat
+
+    def __iter__(self):
+        yield self.ini
+        yield self.fi
+        yield self.bpm
+        yield self.num
+        yield self.den
+
+    def __len__(self):
+        return 5
+
+    def __getitem__(self, idx):
+        return tuple(self)[idx]
+
+    def __eq__(self, other):
+        if isinstance(other, Tram):
+            return (self.ini, self.fi, self.bpm, self.num, self.den,
+                    self.agrupacio, self.beat_unit) == (
+                        other.ini, other.fi, other.bpm, other.num, other.den,
+                        other.agrupacio, other.beat_unit)
+        if isinstance(other, (tuple, list)):
+            vals = tuple(self)
+            if len(other) <= 5:
+                return vals == tuple(other)
+            if len(other) in (6, 7):
+                return vals + (self.agrupacio,) == tuple(other)[:6]
+        return NotImplemented
+
+    def __hash__(self):
+        return hash((self.ini, self.fi, self.bpm, self.num, self.den,
+                     self.agrupacio, self.beat_unit))
+
+    def __repr__(self):
+        return (f"Tram({self.ini!r}, {self.fi!r}, {self.bpm!r}, "
+                f"{self.num!r}, {self.den!r}, {self.agrupacio!r}, "
+                f"{self.beat_unit!r})")
 
     @property
     def payload(self):
@@ -125,19 +178,13 @@ class Tram(_TramBase):
 
 
 def _bar_quarters(num, den):
-    """Negres que fa un compàs `num/den` (4/4→4, 3/4→3, 6/8→3, 12/8→6).
-
-    Un tram EN SEGONS (`0/0`) no té compàs: 4 (el valor de notació) evita el
-    `ZeroDivisionError` i no s'usa per a res (eixe costat no es re-tempa).
-    """
-    if int(num) <= 0 or int(den) <= 0:
-        return 4.0
-    return float(num) * 4.0 / float(den)
+    """Negres que fa un compàs `num/den` (4/4→4, 3/4→3, 6/8→3, 12/8→6)."""
+    return limits.bar_quarters(num, den)
 
 
 def _beat_quarters(den):
     """Negres que fa un temps d'un compàs de denominador `den` (4→1, 8→0.5)."""
-    return 4.0 / float(den)
+    return limits.beat_quarters(den)
 
 
 def rol_tram(trams, idx):
@@ -252,15 +299,21 @@ def valida_agrupacio(text, num, den):
 
 
 def _expandeix_segments(segments):
-    """Normalitza els segments d'entrada a tuples de 6 elements.
+    """Normalitza els segments d'entrada a 7 elements amb `beat_unit`.
 
-    El model nou no té rubatos expandits: tots els trams són una graella
-    mètrica única. Les tuples antigues de 5 elements es mantenen.
+    Accepta objectes (`Tram`/`TramMapa`), tuples de 5/6 i tuples de 7 on el
+    seté camp és la unitat de beat. La compatibilitat de 5 camps es manté.
     """
     out = []
     for s in segments or ():
-        agr = s[5] if len(s) > 5 else getattr(s, "agrupacio", "")
-        out.append(tuple(s)[:5] + (agr,))
+        base = tuple(s)[:5]
+        agr = getattr(s, "agrupacio", None)
+        if agr is None:
+            agr = s[5] if len(s) > 5 else ""
+        beat_unit = getattr(s, "beat_unit", None)
+        if beat_unit is None:
+            beat_unit = s[6] if len(s) > 6 else None
+        out.append(tuple(base) + (agr, beat_unit))
     return out
 
 
@@ -282,7 +335,8 @@ class TempoMap:
         for s in segments or ():
             ini, fi, bpm, num, den = (float(s[0]), float(s[1]), float(s[2]),
                                       int(s[3]), int(s[4]))
-            agr = getattr(s, "agrupacio", "") if len(s) <= 5 else s[5]
+            agr = s[5] if len(s) > 5 else ""
+            beat_unit = s[6] if len(s) > 6 else None
             if num <= 0 or den <= 0:
                 # Tros EN SEGONS: no té compàs. El BPM només és la referència
                 # de notació (100 per defecte).
@@ -297,12 +351,12 @@ class TempoMap:
                 agr = valida_agrupacio(agr, num, den)
             except ValueError:
                 agr = ""
-            trams.append(Tram(ini, fi, bpm, num, den, agr))
+            trams.append(Tram(ini, fi, bpm, num, den, agr, beat_unit))
         trams.sort(key=lambda x: x.ini)
         if trams and trams[0].ini > TOL:
             s0 = trams[0]
             trams.insert(0, Tram(0.0, s0.ini, s0.bpm, s0.num, s0.den,
-                                 s0.agrupacio))
+                                 s0.agrupacio, s0.beat_unit))
         if not trams:
             trams = [self._DEFECTE]
         # Regla #2: en un mapa de tempo/compàs la contigüitat no és una
@@ -313,7 +367,7 @@ class TempoMap:
         for _i in range(len(trams) - 1):
             _t = trams[_i]
             trams[_i] = Tram(_t.ini, trams[_i + 1].ini, _t.bpm, _t.num,
-                             _t.den, _t.agrupacio)
+                             _t.den, _t.agrupacio, _t.beat_unit)
         self._trams = trams
         self._offset = float(offset or 0.0)
 
@@ -703,7 +757,7 @@ class TempoMap:
         """`[(compàs, inici_en_negres, num, den), …]` — per a la notació.
 
         El «beat» és la **negra** (la unitat del MusicXML); cada compàs fa
-        `num·4/den` negres. El compàs 1 arrenca a la negra 0.
+        `num·4/den` negres. El compàs 1 arranca a la negra 0.
         """
         talls = self._talls_de_compas()
         if not talls:
@@ -711,6 +765,18 @@ class TempoMap:
         q0 = talls[0][0]
         return [(k + 1, q - q0, num, den)
                 for k, (q, _t, num, den) in enumerate(talls)]
+
+    def unitat(self, t):
+        """Unitat de pols (`negra`, `negra_punt`…) del tram actiu a `t`."""
+        return self.tram(t).beat_unit
+
+    def unitat_de_compas(self, i):
+        """Unitat de pols del compàs `i` (0-based), derivada del seu inici."""
+        talls = self.compassos_beats()
+        if not talls:
+            return bpm_unit.DEFECTE
+        i = max(0, min(int(i), len(talls) - 1))
+        return self.unitat(self.t_de_quarters(talls[i][1]))
 
     def snap(self, t, divisio=("beat", 1.0)):
         """Encaixa `t` a la subdivisió més propera de la graella del mapa.

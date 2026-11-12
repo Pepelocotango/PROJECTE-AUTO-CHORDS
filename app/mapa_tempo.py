@@ -21,7 +21,7 @@ import os
 import re
 from decimal import Decimal, ROUND_HALF_UP
 
-from app import limits, tempo_recalc
+from app import bpm_unit, limits, tempo_recalc
 from app import tempo_map
 
 
@@ -29,9 +29,9 @@ NOM_MAPA_TEMPO = "mapa_tempo.csv"
 NOM_CSV_TEMPO_ANTIC = "tempo.csv"
 NOM_CSV_COMPAS_ANTIC = "compas.csv"
 
-#: Capçalera del fitxer (es llig i s'ignora en carregar).
+#: Capçalera del fitxer (lector per noms; `beat_unit` és obligatòria).
 CAPCALERA = ("inici", "fi", "bpm", "tipus", "compassos",
-             "agrupacio", "n")
+             "agrupacio", "n", "beat_unit")
 
 #: Decimals de temps i BPM (els mateixos que el model anterior).
 TEMPS_DEC = 6
@@ -80,6 +80,7 @@ class TramMapa:
     compassos: str = "4/4"
     agrupacio: str = ""
     n: float | None = None
+    beat_unit: str | None = None
 
     def __post_init__(self):
         tipus = str(self.tipus or "").strip().lower()
@@ -101,6 +102,14 @@ class TramMapa:
             if n is not None and (not math.isfinite(n) or n <= 0):
                 n = None
         object.__setattr__(self, "n", n)
+        unitat = str(self.beat_unit or "").strip()
+        if not unitat:
+            unitat = bpm_unit.unitat_per_defecte(
+                segs[0][0], segs[0][1], agr)
+        elif unitat not in bpm_unit.UNITATS:
+            raise ValueError(
+                f"Unitat de beat no vàlida: {self.beat_unit!r}")
+        object.__setattr__(self, "beat_unit", unitat)
 
     @property
     def segments(self):
@@ -128,19 +137,32 @@ class TramMapa:
         return 5
 
     def __eq__(self, other):
-        """Compatible amb tuples antigues de 5 elements."""
+        """Compatible amb tuples antigues de 5/6/7/8 elements."""
         if isinstance(other, TramMapa):
             return (self.ini, self.fi, self.bpm, self.tipus, self.compassos,
-                    self.agrupacio, self.n) == (
+                    self.agrupacio, self.n, self.beat_unit) == (
                 other.ini, other.fi, other.bpm, other.tipus, other.compassos,
-                other.agrupacio, other.n)
-        if isinstance(other, (tuple, list)) and len(other) == 5:
-            return tuple(self) == tuple(other)
+                other.agrupacio, other.n, other.beat_unit)
+        if isinstance(other, (tuple, list)):
+            vals = tuple(self)
+            if len(other) <= 5:
+                return vals == tuple(other)
+            if len(other) == 6:
+                return vals + (self.agrupacio,) == tuple(other)
+            if len(other) == 7:
+                if str(other[6]) in bpm_unit.UNITATS:
+                    return (vals + (self.agrupacio, self.beat_unit)
+                            == tuple(other))
+                return (vals + (self.agrupacio, self.n)) == tuple(other)
+            if len(other) >= 8:
+                return (self.ini, self.fi, self.bpm, self.tipus,
+                        self.compassos, self.agrupacio, self.n,
+                        self.beat_unit) == tuple(other)
         return NotImplemented
 
     def __hash__(self):
         return hash((self.ini, self.fi, self.bpm, self.tipus,
-                      self.compassos, self.agrupacio, self.n))
+                      self.compassos, self.agrupacio, self.n, self.beat_unit))
 
     @property
     def payload(self):
@@ -165,14 +187,39 @@ class TramMapa:
 
 
 def des_de_tupla(tram):
-    """Converteix una tupla antiga `(ini, fi, bpm, num, den)` en `TramMapa`."""
+    """Converteix una tupla antiga o un objecte amb atributs en `TramMapa`."""
     if isinstance(tram, TramMapa):
         return tram
+    if (not isinstance(tram, (tuple, list))
+            and hasattr(tram, "ini") and hasattr(tram, "beat_unit")):
+        return TramMapa(
+            float(tram.ini), float(tram.fi), float(tram.bpm),
+            getattr(tram, "tipus", "normal"),
+            f"{int(tram.num)}/{int(tram.den)}",
+            getattr(tram, "agrupacio", ""),
+            getattr(tram, "n", None),
+            getattr(tram, "beat_unit", None))
     agr = tram[5] if len(tram) > 5 else ""
     n = tram[6] if len(tram) > 6 else None
+    beat_unit = tram[7] if len(tram) > 7 else None
+    # Tuples de 7 amb l'últim camp com a unitat (format nou de `Tram`).
+    if len(tram) == 7 and str(tram[6]) in bpm_unit.UNITATS:
+        n, beat_unit = None, tram[6]
     ini, fi, bpm, num, den = tram[:5]
     return TramMapa(float(ini), float(fi), float(bpm), "normal",
-                    f"{int(num)}/{int(den)}", agr, n)
+                    f"{int(num)}/{int(den)}", agr, n, beat_unit)
+
+
+def a_tupla_completa(tram):
+    """Serialització completa d'un tram, `beat_unit` inclòs."""
+    t = des_de_tupla(tram)
+    return (float(t.ini), float(t.fi), float(t.bpm), t.tipus, t.compassos,
+            t.agrupacio, t.n, t.beat_unit)
+
+
+def a_tuples_complets(trams):
+    """Vista completa (8 camps) per als camins que han de preservar metadades."""
+    return [a_tupla_completa(t) for t in (trams or ())]
 
 
 def a_tuples(trams):
@@ -261,7 +308,7 @@ def recalcula_tram_c(trams, idx, durada, offset=0.0, *, n=None, bpm=None,
 
     nou_tr = TramMapa(
         float(tr.ini), float(fi_final), float(bpm_final), tr.tipus,
-        f"{int(num)}/{int(den)}", tr.agrupacio, n_final)
+        f"{int(num)}/{int(den)}", tr.agrupacio, n_final, tr.beat_unit)
     out = list(net)
     out[i] = nou_tr
 
@@ -284,7 +331,7 @@ def recalcula_tram_c(trams, idx, durada, offset=0.0, *, n=None, bpm=None,
                 "El veí de la dreta quedaria fora de la banda de BPM")
         out[i + 1] = TramMapa(
             fi_final, float(seg.fi), bpm_seg, seg.tipus, seg.compassos,
-            seg.agrupacio, n_seg)
+            seg.agrupacio, n_seg, seg.beat_unit)
     return out
 
 
@@ -359,12 +406,14 @@ def reenganxa_metadades(antics, nous):
         tipus = getattr(triat, "tipus", "normal") if triat else "normal"
         agr = getattr(triat, "agrupacio", "") if triat else ""
         n = getattr(triat, "n", None) if triat else None
+        beat_unit = getattr(triat, "beat_unit", None) if triat else None
         try:
             agr = tempo_map.valida_agrupacio(agr, int(nou[3]), int(nou[4]))
         except (ValueError, TypeError):
             agr = ""
         out.append(TramMapa(float(nou[0]), float(nou[1]), float(nou[2]),
-                            tipus, f"{int(nou[3])}/{int(nou[4])}", agr, n))
+                            tipus, f"{int(nou[3])}/{int(nou[4])}", agr, n,
+                            beat_unit))
     return out
 
 
@@ -377,7 +426,8 @@ def _fusiona_amb_agrupacio(trams):
             if (p.tipus == t.tipus
                     and abs(p.bpm - t.bpm) <= tempo_map.TOL
                     and (p.num, p.den) == (t.num, t.den)
-                    and p.agrupacio == t.agrupacio):
+                    and p.agrupacio == t.agrupacio
+                    and p.beat_unit == t.beat_unit):
                 n = (p.n + t.n) if (p.n is not None and t.n is not None) else None
                 out[-1] = replace(p, fi=t.fi, n=n)
                 continue
@@ -468,7 +518,7 @@ def quantitza_bpm(trams, durada, decimals=1, offset=0.0):
         fi = cursor + n * bq * 60.0 / bpm
         out.append(TramMapa(cursor, fi, bpm, tr.tipus,
                             f"{int(tr.num)}/{int(tr.den)}",
-                            tr.agrupacio, tr.n))
+                            tr.agrupacio, tr.n, tr.beat_unit))
         cursor = fi
     if durada > 0:
         last = out[-1]
@@ -480,7 +530,8 @@ def quantitza_bpm(trams, durada, decimals=1, offset=0.0):
         # el normalitzador ajusta el BPM perquè complica el contracte §13.4.
         if abs(last.fi - durada) > 1e-9:
             out[-1] = TramMapa(last.ini, durada, last.bpm, last.tipus,
-                               last.compassos, last.agrupacio, last.n)
+                               last.compassos, last.agrupacio, last.n,
+                               last.beat_unit)
     base5, ns, _avisos = tempo_map.ajusta_compassos_sencers(
         [tuple(t) for t in out])
     return [replace(t, bpm=float(t5[2]),
@@ -509,6 +560,7 @@ def desa_mapa_tempo(ruta, trams):
                 tm.compassos,
                 tm.agrupacio,
                 "" if tm.n is None else f"{float(tm.n):.{BPM_DEC}f}",
+                tm.beat_unit,
             ])
 
     pipeline.escriu_atomic(ruta, _escriu)
@@ -516,42 +568,62 @@ def desa_mapa_tempo(ruta, trams):
 
 
 def llegeix_mapa_tempo(ruta, log=None):
-    """Llig `mapa_tempo.csv` i retorna una llista de `TramMapa`.
+    """Llig `mapa_tempo.csv` per **noms de columna** i retorna `TramMapa`.
 
-    Les files mal formades es descarten amb una traça al log. La reparació de
-    cobertura/ordre la fa la capa de mapa (`tempo_map`), com abans.
+    El format és el de `CAPCALERA`: `beat_unit` és obligatòria. Si falta la
+    capçalera o una columna requerida, o un valor de `beat_unit` no és vàlid,
+    es rebutja amb `ValueError` sense reparar en silenci. Un `beat_unit` buit
+    sí que es deriva de l'agrupació/compàs i s'avisa pel `log`.
     """
     out = []
     if not ruta or not os.path.isfile(ruta):
         return out
     with open(ruta, encoding="utf-8") as f:
-        for n, fila in enumerate(csv.reader(f), 1):
-            if not fila:
-                continue
-            if str(fila[0]).strip().lower() == "inici":
-                continue
-            if len(fila) not in (5, 6, 7):
-                if log:
-                    log(f"{NOM_MAPA_TEMPO} fila {n}: columnes incorrectes; "
-                        "s'ha descartat")
-                continue
-            comp = str(fila[4]).strip()
-            if ("+" in comp or "*" in comp
-                    or comp.replace(" ", "") in ("0/0", "0")):
-                raise ValueError(
-                    f"{NOM_MAPA_TEMPO} fila {n}: rubato antic amb seqüència "
-                    f"«{comp}»; este projecte no és compatible. Cal recrear "
-                    "el mapa amb rubato com a flag.")
-            try:
-                tm = TramMapa(float(fila[0]), float(fila[1]), float(fila[2]),
-                              fila[3], fila[4],
-                              fila[5] if len(fila) > 5 else "",
-                              fila[6] if len(fila) > 6 else None)
-            except ValueError as e:
-                if log:
-                    log(f"{NOM_MAPA_TEMPO} fila {n}: {e}; s'ha descartat")
-                continue
-            out.append(tm)
+        files = list(csv.reader(f))
+    if not files:
+        return out
+    cap = [str(c).strip().lower() for c in files[0]]
+    for col in CAPCALERA:
+        if col not in cap:
+            raise ValueError(
+                f"{NOM_MAPA_TEMPO}: falta la columna «{col}». El format "
+                f"actual exigix: {', '.join(CAPCALERA)}")
+    idx = {col: cap.index(col) for col in CAPCALERA}
+    for n, fila in enumerate(files[1:], 2):
+        if not fila or not any(str(c).strip() for c in fila):
+            continue
+        if len(fila) < len(cap):
+            raise ValueError(
+                f"{NOM_MAPA_TEMPO} fila {n}: falten columnes "
+                f"({len(fila)} de {len(cap)})")
+        def _camp(col):
+            return str(fila[idx[col]]).strip()
+        comp = _camp("compassos")
+        if ("+" in comp or "*" in comp
+                or comp.replace(" ", "") in ("0/0", "0")):
+            raise ValueError(
+                f"{NOM_MAPA_TEMPO} fila {n}: rubato antic amb seqüència "
+                f"«{comp}»; este projecte no és compatible. Cal recrear "
+                "el mapa amb rubato com a flag.")
+        bu = _camp("beat_unit").lower()
+        if bu and bu not in bpm_unit.UNITATS:
+            raise ValueError(
+                f"{NOM_MAPA_TEMPO} fila {n}: beat_unit «{bu}» desconegut; "
+                f"vàlids: {', '.join(bpm_unit.UNITATS)}")
+        try:
+            tm = TramMapa(
+                float(_camp("inici")), float(_camp("fi")),
+                float(_camp("bpm")), _camp("tipus"), comp,
+                _camp("agrupacio"),
+                _camp("n") if _camp("n") else None,
+                bu or None)
+        except ValueError as e:
+            raise ValueError(
+                f"{NOM_MAPA_TEMPO} fila {n}: {e}") from e
+        if not bu and log:
+            log(f"{NOM_MAPA_TEMPO} fila {n}: beat_unit buit; "
+                f"derivat a {tm.beat_unit}")
+        out.append(tm)
     return out
 
 

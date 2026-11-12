@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _temporals  # noqa: E402
 _ = _temporals
 
+from app import bpm_unit  # noqa: E402
 from app import mapa_tempo as M  # noqa: E402
 from app import tempo_map as tm  # noqa: E402
 
@@ -16,12 +17,25 @@ from app import tempo_map as tm  # noqa: E402
 class TestTramMapa(unittest.TestCase):
     def test_compatible_amb_cinc_tuples(self):
         tm = M.TramMapa(1.0, 2.0, 120.0, "normal", "3/4")
+        self.assertEqual(len(tm), 5)
         self.assertEqual(tuple(tm), (1.0, 2.0, 120.0, 3, 4))
         self.assertEqual(tm[2], 120.0)
-        self.assertEqual(len(tm), 5)
         ini, fi, bpm, num, den = tm
         self.assertEqual((ini, fi, bpm, num, den), (1.0, 2.0, 120.0, 3, 4))
         self.assertEqual(tm.payload, (120.0, 3, 4))
+
+    def test_beat_unit_per_defecte_l6(self):
+        self.assertEqual(bpm_unit.unitat_per_defecte(6, 8), "negra_punt")
+        self.assertEqual(bpm_unit.unitat_per_defecte(9, 8), "negra_punt")
+        self.assertEqual(bpm_unit.unitat_per_defecte(3, 8, "1+1+1"),
+                         "corxera")
+        self.assertEqual(bpm_unit.unitat_per_defecte(5, 8), "corxera")
+        self.assertEqual(bpm_unit.unitat_per_defecte(7, 8, "2+2+3"),
+                         "corxera")
+        self.assertEqual(bpm_unit.unitat_per_defecte(4, 4), "negra")
+        self.assertEqual(bpm_unit.unitat_per_defecte(2, 2), "blanca")
+        self.assertEqual(bpm_unit.unitat_per_defecte(1, 16),
+                         "semicorxera")
 
 
     def test_normal_no_admet_sequencia(self):
@@ -144,6 +158,12 @@ class TestFitxer(unittest.TestCase):
         M.desa_mapa_tempo(self.ruta, trams)
         self.assertEqual(M.llegeix_mapa_tempo(self.ruta), trams)
 
+    def test_roundtrip_beat_unit(self):
+        trams = [M.TramMapa(0.0, 4.0, 120.0, "normal", "6/8", "3+3",
+                            None, "corxera")]
+        M.desa_mapa_tempo(self.ruta, trams)
+        self.assertEqual(M.llegeix_mapa_tempo(self.ruta), trams)
+
     def test_llegeix_tuples_antigues(self):
         M.desa_mapa_tempo(self.ruta, [(0.0, 4.0, 120.0, 4, 4)])
         llegits = M.llegeix_mapa_tempo(self.ruta)
@@ -153,9 +173,32 @@ class TestFitxer(unittest.TestCase):
 
     def test_la_capcalera_es_ignora(self):
         with open(self.ruta, "w", encoding="utf-8", newline="") as f:
-            f.write("inici,fi,bpm,tipus,compassos\n")
-            f.write("0.000000,4.000000,120.000000,normal,4/4\n")
+            f.write("inici,fi,bpm,tipus,compassos,agrupacio,n,beat_unit\n")
+            f.write("0.000000,4.000000,120.000000,normal,4/4,,,negra\n")
         self.assertEqual(len(M.llegeix_mapa_tempo(self.ruta)), 1)
+
+    def test_csv_sense_beat_unit_es_rebutja(self):
+        with open(self.ruta, "w", encoding="utf-8", newline="") as f:
+            f.write("inici,fi,bpm,tipus,compassos,agrupacio,n\n")
+            f.write("0,4,120,normal,4/4,,\n")
+        with self.assertRaises(ValueError):
+            M.llegeix_mapa_tempo(self.ruta)
+
+    def test_csv_beat_unit_buit_deriva_i_avisa(self):
+        avisos = []
+        with open(self.ruta, "w", encoding="utf-8", newline="") as f:
+            f.write("inici,fi,bpm,tipus,compassos,agrupacio,n,beat_unit\n")
+            f.write("0,4,120,normal,6/8,3+3,,\n")
+        trams = M.llegeix_mapa_tempo(self.ruta, log=avisos.append)
+        self.assertEqual(trams[0].beat_unit, "negra_punt")
+        self.assertTrue(avisos)
+
+    def test_csv_beat_unit_desconegut_es_rebutja(self):
+        with open(self.ruta, "w", encoding="utf-8", newline="") as f:
+            f.write("inici,fi,bpm,tipus,compassos,agrupacio,n,beat_unit\n")
+            f.write("0,4,120,normal,4/4,,,foo\n")
+        with self.assertRaises(ValueError):
+            M.llegeix_mapa_tempo(self.ruta)
 
     def test_rubato_antic_es_rebutja(self):
         with open(self.ruta, "w", encoding="utf-8", newline="") as f:

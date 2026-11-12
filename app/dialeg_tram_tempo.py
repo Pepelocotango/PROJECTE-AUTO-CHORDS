@@ -77,14 +77,14 @@ class DialegTramTempo(GeometriaMixin, QDialog):
     #: «Recalcula»: mode «fix» o «mobil», amb les opcions del bloc Opcions.
     recalculRequested = pyqtSignal(str)
     #: Nova Ref. recalc demanada des del diàleg: `(bpm, num, den)`.
-    refRequested = pyqtSignal(float, int, int)
+    refRequested = pyqtSignal(float, int, int, str)
     #: Nova unitat de Beat/TAP demanada des del diàleg.
     beatUnitRequested = pyqtSignal(str)
 
     def __init__(self, parent=None, inici=0.0, bpm=120.0, num=4, den=4,
                  inicial=False, text_inici=None, unit=bpm_unit.DEFECTE,
                  n_actual=None, durada=None, info=None, ref=None,
-                 beat_unit=bpm_unit.DEFECTE):
+                 ref_unit=bpm_unit.DEFECTE, beat_unit=bpm_unit.DEFECTE):
         super().__init__(parent)
         self._unit = bpm_unit.normalitza(unit)
         self._durada = float(durada) if durada is not None else 0.0
@@ -97,6 +97,7 @@ class DialegTramTempo(GeometriaMixin, QDialog):
         self._inicial = bool(inicial)
         self._ref = (tuple(ref) if ref is not None
                      else (float(bpm), int(num), int(den)))
+        self._ref_unit = bpm_unit.normalitza(ref_unit)
         self._beat_unit = bpm_unit.normalitza(beat_unit)
         self.setWindowTitle("BPM, compàs i compassos")
         self.setMinimumWidth(1000)
@@ -211,7 +212,8 @@ QCheckBox::indicator:disabled {{
         # Referència manual de recalcul editable des d'ací.
         ref_row = QHBoxLayout()
         l_ref_bpm = QLabel("BPM ref:")
-        self.ref_bpm = CampText(f"{float(self._ref[0]):.3f}")
+        self.ref_bpm = CampText(bpm_unit.formata(
+            float(self._ref[0]), self._ref_unit))
         self.ref_bpm.setFixedWidth(72)
         self.ref_bpm.setToolTip(
             "BPM de la Ref. recalc (intern, negres/minut). És l'àncora dels "
@@ -638,13 +640,14 @@ QCheckBox::indicator:disabled {{
         """Valida i demana canviar la Ref. recalc del visor."""
         try:
             raw = str(self.ref_bpm.text()).replace(",", ".").strip()
-            bpm = float(raw)
+            bpm = bpm_unit.a_quarter(float(raw), self._ref_unit)
             num, den = self._parse_compas_ref()
             bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
         except (TypeError, ValueError) as e:
             QMessageBox.warning(self, "Ref. recalc invàlida", str(e))
             return
-        self.refRequested.emit(float(bpm), int(num), int(den))
+        self.refRequested.emit(float(bpm), int(num), int(den),
+                               self._ref_unit)
 
     def _ajusta(self):
         """Aplica els canvis sense tancar el diàleg (emet `aplicaRequested`)."""
@@ -729,10 +732,13 @@ QCheckBox::indicator:disabled {{
         self._info = info
         self._refresca_graella_info()
 
-    def actualitza_ref(self, bpm, num, den):
+    def actualitza_ref(self, bpm, num, den, unit=None):
         """Refresca els camps de Ref. recalc amb els valors aplicats."""
         self._ref = (float(bpm), int(num), int(den))
-        self.ref_bpm.setText(f"{float(bpm):.3f}")
+        if unit is not None:
+            self._ref_unit = bpm_unit.normalitza(unit)
+        self.ref_bpm.setText(bpm_unit.formata(
+            float(bpm), self._ref_unit))
         self.ref_compas.setText(f"{int(num)}/{int(den)}")
 
     def accept(self):

@@ -285,7 +285,8 @@ class EditorMixin:
                 nous = list(mapa)
                 nous[i] = mapa_tempo.TramMapa(
                     float(tr.ini), fi_sel, float(bpm), tr.tipus,
-                    f"{int(num)}/{int(den)}", agr, float(n_val))
+                    f"{int(num)}/{int(den)}", agr, float(n_val),
+                    tr.beat_unit)
                 agr_vei = (
                     vei.agrupacio
                     if (int(recalc["num"]), int(recalc["den"]))
@@ -293,14 +294,14 @@ class EditorMixin:
                 nous[i + 1] = mapa_tempo.TramMapa(
                     fi_sel, float(vei.fi), float(recalc["bpm"]), vei.tipus,
                     f"{int(recalc['num'])}/{int(recalc['den'])}",
-                    agr_vei, float(recalc["n"]))
+                    agr_vei, float(recalc["n"]), vei.beat_unit)
                 mapa = nous
             if canvi_agr:
                 mapa = list(mapa)
                 tr2 = mapa[i]
                 mapa[i] = mapa_tempo.TramMapa(
                     tr2.ini, tr2.fi, tr2.bpm, tr2.tipus, tr2.compassos,
-                    agr, getattr(tr2, "n", None))
+                    agr, getattr(tr2, "n", None), tr2.beat_unit)
             self.aplica_tempo_trams(mapa)
         finally:
             self._undo_commit()

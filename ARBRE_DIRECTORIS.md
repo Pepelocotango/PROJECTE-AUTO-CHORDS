@@ -76,7 +76,7 @@ PROJECTE AUTO CHORDS/
 │   ├── PLA_SIMPLIFICACIO_TEMPO.md         🟢  # Pla per fases de simplificació del tempo
 │   ├── TORNAR A REVISAR AVANS AQUEST PLA.TXT 🟢
 │   └── per fer_2026-11-05/                🟢  # (54 fitxers)
-├── app/                           🟢  # Codi de l'aplicació (PyQt5) (74 fitxers)
+├── app/                           🟢  # Codi de l'aplicació (PyQt5) (75 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
 │   ├── analisi_ui.py             🟢  # Accions d'anàlisi de la finestra (F3).
@@ -88,6 +88,7 @@ PROJECTE AUTO CHORDS/
 │   ├── camp_text.py              🟢  # Camps de text de l'app amb l'inici sempre visible.
 │   ├── config.py                 🟢  # Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE.
 │   ├── dialeg_analitza_bpm.py    🟢  # Diàleg d'anàlisi de BPM/beats.
+│   ├── dialeg_canvi_unitat.py    🟢  # Canvi explícit d'unitat de pols (clip o Ref. recalc).
 │   ├── dialeg_guia_rapida.py     🟢  # Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas.
 │   ├── dialeg_opcions.py         🟢  # Diàleg d'opcions d'autodetecció (BPM/acords/estructura).
 │   ├── dialeg_quantitza.py       🟢  # Diàleg de quantització a la graella.

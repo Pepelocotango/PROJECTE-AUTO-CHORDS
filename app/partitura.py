@@ -31,7 +31,7 @@ import shutil
 import subprocess
 from xml.sax.saxutils import escape
 
-from app import bpm_unit, xifrat           # notació del xifrat (sense deps del projecte)
+from app import bpm_unit, limits, xifrat           # notació del xifrat (sense deps del projecte)
 
 __all__ = [
     "exporta_partitura", "construeix_musicxml", "harmony_xml",
@@ -214,7 +214,8 @@ def _metronome_xml(bpm_quarter, unit):
     """
     unit = bpm_unit.normalitza(unit)
     beat = {"negra": "quarter", "negra_punt": "quarter",
-            "corxera": "eighth", "blanca": "half"}[unit]
+            "corxera": "eighth", "semicorxera": "16th",
+            "blanca": "half"}[unit]
     dot = "<beat-unit-dot/>" if unit == "negra_punt" else ""
     minut = bpm_unit.de_quarter(float(bpm_quarter), unit)
     return (f"<metronome><beat-unit>{beat}</beat-unit>{dot}"
@@ -236,9 +237,11 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
         if compasos and i <= len(compasos):
             _bar, b0, num, den = compasos[i - 1]
             return (float(b0), float(b0) + num * 4.0 / den, int(num), int(den))
-        return (float(i - 1) * bpb, float(i) * bpb, int(bpb), int(beat_type))
+        bq = limits.bar_quarters(bpb, beat_type)
+        return (float(i - 1) * bq, float(i) * bq, int(bpb), int(beat_type))
 
-    n_bars = int(fi // bpb) + (1 if fi % bpb else 0)
+    bq = limits.bar_quarters(bpb, beat_type)
+    n_bars = int(fi // bq) + (1 if fi % bq else 0)
     if compasos:
         n_bars = max(n_bars, len(compasos))
     if seccions:
@@ -448,7 +451,8 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
         try:
             events = pipeline.events_partitura(
                 os.path.join(sortida, "acords.csv"), bpm, bpb,
-                offset=offset, durada=durada, mapa=mapa)
+                offset=offset, durada=durada, mapa=mapa,
+                den=beat_type)
         except (RuntimeError, OSError) as e:
             log(f"partitura: no hi ha acords per escriure ({e})")
             events = []

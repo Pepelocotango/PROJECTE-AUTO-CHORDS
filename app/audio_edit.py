@@ -6,7 +6,7 @@ import wave
 
 import numpy as np
 
-from app import pipeline
+from app import bpm_unit, mapa_tempo, pipeline
 from app.tempo_map import TempoMap
 
 RETALLA_INICI = "retalla_inici"
@@ -160,9 +160,17 @@ def transforma_model(acords, seccions, trams, marcadors, offset, durada,
 
     clips_acord = pipeline.clips_d_acords(acords, durada)
     clips_seccio = pipeline.clips_de_seccions(seccions)
-    trams = [tuple(t) for t in (trams or ())]
+    trams_in = list(trams or [])
+    units = []
+    for t in trams_in:
+        try:
+            units.append(mapa_tempo.des_de_tupla(t).beat_unit)
+        except (TypeError, ValueError):
+            units.append("negra")
+    trams = [tuple(t) for t in trams_in]
     if not trams:
         trams = [(0.0, durada, 120.0, 4, 4)]
+        units = ["negra"]
     marcadors = [float(t) for t in (marcadors or ())]
     nou_offset = float(offset)
     nova_pos = float(pos)
@@ -254,10 +262,17 @@ def transforma_model(acords, seccions, trams, marcadors, offset, durada,
         nou_loop_a = nou_loop_b = None
         nou_loop_on = False
 
+    trams_meta = []
+    for i, t in enumerate(trams):
+        unit = units[i] if i < len(units) else bpm_unit.unitat_per_defecte(
+            int(t[3]), int(t[4]))
+        trams_meta.append(mapa_tempo.TramMapa(
+            float(t[0]), float(t[1]), float(t[2]), "normal",
+            f"{int(t[3])}/{int(t[4])}", "", None, unit))
     return {
         "acords": acords_nous,
         "seccions": pipeline.seccions_de_clips(seccions_noves),
-        "trams": trams,
+        "trams": trams_meta,
         "marcadors": marcadors,
         "offset": nou_offset,
         "durada": nou_final,

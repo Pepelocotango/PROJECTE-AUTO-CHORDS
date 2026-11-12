@@ -31,13 +31,13 @@ import shutil
 import tempfile
 from datetime import datetime
 
-from app import pipeline
+from app import bpm_unit, pipeline
 from app import mapa_tempo
 
 EXT = ".acproj"
-# 3 (2026-11-02): model unificat `mapa_tempo.csv` i subplà de rubato.
+# 4 (2026-11-XX): `beat_unit` per tram i `ref.beat_unit`.
 # **Sense retrocompatibilitat**: els projectes de format anterior es rebutgen.
-FORMAT = 3
+FORMAT = 4
 NOM_AUDIO_DIR = "audio"
 NOM_BACKUP_DIR = "backup"
 NOM_CSV_ACORDS = "acords.csv"
@@ -308,11 +308,12 @@ class Projecte:
             "tempo": {"bpm": float(bpm), "bpb": int(bpb),
                       "offset": float(offset), "fix": bool(fix),
                       "compas": str(compas).strip() if compas else "",
-                      "beat_unit": "negra",
                       "ref": {"bpm": float(bpm),
                               "compas": (str(compas).strip()
                                          if compas and "/" in str(compas)
-                                         else f"{int(bpb)}/4")}},
+                                         else f"{int(bpb)}/4"),
+                              "beat_unit": bpm_unit.unitat_per_defecte(
+                                  int(bpb), int(den or 4))}},
             "opcions": copy.deepcopy(opcions) if opcions else {},
             "vista": copy.deepcopy(vista) if vista else {},
         }

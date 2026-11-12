@@ -254,6 +254,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `camp_text.py` | Camps de text de l'app amb l'inici sempre visible. |
 | `config.py` | Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE. |
 | `dialeg_analitza_bpm.py` | Diàleg d'anàlisi de BPM/beats. |
+| `dialeg_canvi_unitat.py` | Canvi explícit d'unitat de pols (clip o Ref. recalc). |
 | `dialeg_guia_rapida.py` | Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas. |
 | `dialeg_opcions.py` | Diàleg d'opcions d'autodetecció (BPM/acords/estructura). |
 | `dialeg_quantitza.py` | Diàleg de quantització a la graella. |

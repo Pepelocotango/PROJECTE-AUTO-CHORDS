@@ -98,8 +98,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
     velocitatCanviada = pyqtSignal(float)
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True, sortida=None,
                  offset=0.0, beat_type=4, bpm_unit="negra", ref_bpm=None,
-                 ref_bpb=None, ref_beat_type=None, latencia_cursor_ms=0.0,
-                 beat_unit="negra"):
+                 ref_bpb=None, ref_beat_type=None, ref_beat_unit=None,
+                 latencia_cursor_ms=0.0, beat_unit="negra"):
         super().__init__()
         self.logger = logging.getLogger("auto_chords")
         self._embedded = False
@@ -117,7 +117,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # (`<projecte>/audio/AUTOCHORDS_…/`) → còpia estranya dins `audio/`.
         self.sortida = sortida or pipeline.carpeta_sortida(wav)
         self.bpm, self.bpb = bpm, bpb
-        self.bpm_unit = "negra"
         self.beat_type = int(beat_type or 4)
         # Referència MANUAL del recalcul (barra 2): no canvia el transport ni
         # els clips; només és l'àncora de `recalculca_tram`. Si no arriba,
@@ -133,6 +132,9 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             _rb, _rn, _rd = float(self.bpm), int(self.bpb), self.beat_type
         self.ref_bpm, self.ref_bpb, self.ref_beat_type = (
             float(_rb), int(_rn), int(_rd))
+        self.ref_beat_unit = bpm_unit_mod.normalitza(
+            ref_beat_unit or bpm_unit_mod.unitat_per_defecte(
+                self.ref_bpb, self.ref_beat_type))
         self.set_latencia_cursor_ms(latencia_cursor_ms)
         self.beat_unit = bpm_unit_mod.normalitza(beat_unit)
         self.offset = float(offset or 0.0)
@@ -911,6 +913,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             "ref_bpb": int(getattr(self, "ref_bpb", self.bpb)),
             "ref_beat_type": int(getattr(self, "ref_beat_type",
                                          getattr(self, "beat_type", 4))),
+            "ref_beat_unit": getattr(
+                self, "ref_tempo_unit", lambda: bpm_unit_mod.DEFECTE)(),
             "offset": float(getattr(self, "offset", 0.0)),
             "tempo_fix": bool(getattr(self, "tempo_fix", True)),
             "loop_a": getattr(self, "loop_a", None),
@@ -931,7 +935,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
     def _aplica_temps(self, temps):
         """Restaura la graella/loop desats (i refresca la UI si ja existeix)."""
         for k in ("bpm", "bpb", "beat_type", "ref_bpm", "ref_bpb",
-                  "ref_beat_type", "offset", "tempo_fix"):
+                  "ref_beat_type", "ref_beat_unit", "offset", "tempo_fix"):
             if temps.get(k) is not None:
                 setattr(self, k, temps[k])
         if "marcadors" in temps and temps.get("marcadors") is not None:
@@ -1611,21 +1615,38 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
 
 
 
-    def bpm_mostra(self, bpm=None, decimals=3):
-        """BPM intern (negres/min) → text. Sempre en negres/minut."""
+    def unitat_objectiu(self):
+        """Unitat de pols del clip objectiu (o del tram 0 si no n'hi ha)."""
+        kind, idx = self.seleccio_activa()
+        trams = list(self.tempo_trams or [])
+        if kind == "tempo" and 0 <= int(idx) < len(trams):
+            return self.unitat_de_tram(trams[int(idx)])
+        if trams:
+            return self.unitat_de_tram(trams[0])
+        return bpm_unit_mod.DEFECTE
+
+    def bpm_mostra(self, bpm=None, decimals=3, unit=None):
+        """BPM intern (negres/min) → text en la unitat activa."""
         b = self.bpm if bpm is None else bpm
-        return f"{float(b):.{int(decimals)}f}"
+        u = self.unitat_objectiu() if unit is None else unit
+        return bpm_unit_mod.formata(b, u, decimals)
 
-    def bpm_entrada(self, text):
-        """Text de BPM → BPM intern (negres/min). Sempre negres/minut."""
-        return float(str(text).replace(",", ".").strip())
+    def bpm_entrada(self, text, unit=None):
+        """Text de BPM en la unitat activa → BPM intern (negres/min)."""
+        u = self.unitat_objectiu() if unit is None else unit
+        return bpm_unit_mod.a_quarter(
+            float(str(text).replace(",", ".").strip()), u)
 
-    def set_bpm_unit(self, unit):
-        """Compatibilitat: el BPM sempre es mostra en negres/minut."""
-        self.bpm_unit = "negra"
+    @property
+    def bpm_unit(self):
+        """Compatibilitat:unitat activa (ja no és estat global)."""
+        return self.unitat_objectiu()
+
+    def set_bpm_unit(self, unit=None):
+        """Compatibilitat: refresca les vistes que mostren la unitat."""
         if hasattr(self, "timeline"):
             try:
-                self.timeline.set_bpm_unit(self.bpm_unit)
+                self.timeline.set_bpm_unit(self.unitat_objectiu())
             except (AttributeError, RuntimeError):
                 pass
         self._actualitza_editor()
@@ -2260,6 +2281,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         except ValueError as e:
             self.avis_editor(f"Detecta BPM: {e}")
             return False
+        nous = mapa_tempo.reenganxa_metadades(trams, nous)
         if [tuple(x) for x in nous] == [tuple(x) for x in trams]:
             return False
         self._undo_marca()
@@ -3733,6 +3755,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 f"Parteix a A–B: ni A ni B cauen dins del tram {idx + 1} "
                 f"({ini:.2f}–{fi:.2f}s); no hi ha res a partir.")
             return False
+        orig_trams = list(trams)
         i = idx
         talls = []
         err = None
@@ -3757,6 +3780,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if not talls:
             self.avis_editor(f"Parteix a A–B (compàs): {err}")
             return False
+        trams = mapa_tempo.reenganxa_metadades(orig_trams, trams)
         self._undo_marca()
         self.aplica_tempo_trams(trams)
         self._undo_commit()
@@ -3791,6 +3815,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             self.log(f"partir per la meitat: {e}")
             self.avis_editor(f"Partir tempo: {e}")
             return False
+        nous = mapa_tempo.reenganxa_metadades(trams, nous)
         self._undo_marca()
         self.aplica_tempo_trams(nous)
         self._undo_commit()
@@ -4154,7 +4179,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                             mapa=getattr(self, "tempo_map", None),
                             factor=factor,
                             den=getattr(self, "beat_type", 4),
-                            mode=getattr(self, "metro_mode", "auto"))
+                            mode=getattr(self, "metro_mode", "auto"),
+                            click_unit=self.unitat_objectiu())
                 try:
                     proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):
@@ -4338,14 +4364,16 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                                       self.log, lliure=not self.tempo_fix,
                                       bpb=self.bpb,
                                       offset=getattr(self, "offset", 0.0),
-                                      mapa=getattr(self, "tempo_map", None))
+                                      mapa=getattr(self, "tempo_map", None),
+                                      den=getattr(self, "beat_type", 4))
                 manifest = []
                 pipeline.regenera_wavs_acords(self.csv_acords, sortida,
                                               self.bpm, self.bpb,
                                               self.offset, self.audio["durada"],
                                               44100, self.log,
                                               self.tempo_fix,
-                                              manifest=manifest)
+                                              manifest=manifest,
+                                              den=getattr(self, "beat_type", 4))
                 pipeline.regenera_wavs_estructura(abc, sortida, 44100,
                                                   self.log,
                                                   manifest=manifest)
@@ -4357,7 +4385,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                                        sortida, self.bpm, self.bpb, self.offset,
                                        44100, self.log, tempo_fix=self.tempo_fix,
                                        amb_estructura=False,
-                                       mapa_tempo=list(self.tempo_trams or []))
+                                       mapa_tempo=list(self.tempo_trams or []),
+                                       den=getattr(self, "beat_type", 4))
             self.log(f"exporta FET: {sortida}")
             QMessageBox.information(self, "Visor",
                                     f"Exportació feta a:\n{sortida}")

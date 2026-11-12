@@ -3525,10 +3525,10 @@ class TestUndoTemps(_undo_temps___Base):
         w = _undo_temps___finestra()
         v = w.visor_ref
         abans = [tuple(t) for t in v.tempo_trams]
-        w.avis_info = __import__("unittest.mock", fromlist=["Mock"]).Mock()
+        w.avisa_info = __import__("unittest.mock", fromlist=["Mock"]).Mock()
         w.bpm.setText("0")
         w._aplica_parametres_temps()
-        self.assertTrue(w.avis_info.called)
+        self.assertTrue(w.avisa_info.called)
         self.assertEqual([tuple(t) for t in v.tempo_trams], abans)
 
     def test_activar_el_loop_es_pot_desfer(self):

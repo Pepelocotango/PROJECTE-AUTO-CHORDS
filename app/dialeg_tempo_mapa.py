@@ -3,11 +3,11 @@ import math
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QDialog, QDialogButtonBox, QHBoxLayout, QHeaderView, QLabel, QMessageBox,
-    QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QHeaderView, QLabel,
+    QMessageBox, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout,
 )
 
-from app import bpm_unit, tempo_map
+from app import bpm_unit, mapa_tempo, tempo_map
 
 from app.finestres import GeometriaMixin
 
@@ -27,6 +27,17 @@ class DialegTempoMapa(GeometriaMixin, QDialog):
         self._durada = float(durada or 0.0)
         self._trams = tempo_map.normalitza_trams(list(trams or []),
                                                  self._durada)
+        self._unitats = []
+        for t in (trams or ()):
+            try:
+                self._unitats.append(
+                    mapa_tempo.des_de_tupla(t).beat_unit)
+            except (TypeError, ValueError):
+                self._unitats.append(bpm_unit.DEFECTE)
+        while len(self._unitats) < len(self._trams):
+            t = self._trams[len(self._unitats)]
+            self._unitats.append(bpm_unit.unitat_per_defecte(
+                t[3], t[4], ""))
         lay = QVBoxLayout(self)
         avis = QLabel(
             "El tempo i el compàs poden **canviar** al llarg del tema (com un "
@@ -37,8 +48,9 @@ class DialegTempoMapa(GeometriaMixin, QDialog):
             "rubato» o «Converteix a rubato».")
         avis.setWordWrap(True)
         lay.addWidget(avis)
-        self.taula = QTableWidget(0, 3)
-        self.taula.setHorizontalHeaderLabels(["Des de (s)", "BPM", "Compàs"])
+        self.taula = QTableWidget(0, 4)
+        self.taula.setHorizontalHeaderLabels(
+            ["Des de (s)", "BPM", "Compàs", "Unitat"])
         self.taula.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         lay.addWidget(self.taula)
         fila = QHBoxLayout()
@@ -70,6 +82,15 @@ class DialegTempoMapa(GeometriaMixin, QDialog):
             self.taula.setItem(r, 1, QTableWidgetItem(f"{bpm_mostra:g}"))
             self.taula.setItem(r, 2,
                                QTableWidgetItem(f"{int(s[3])}/{int(s[4])}"))
+            cb = QComboBox()
+            for _clau, _et in bpm_unit.opcions():
+                cb.addItem(_et, _clau)
+            unit = (self._unitats[i] if i < len(self._unitats)
+                    else bpm_unit.unitat_per_defecte(int(s[3]), int(s[4])))
+            idx = cb.findData(unit)
+            if idx >= 0:
+                cb.setCurrentIndex(idx)
+            self.taula.setCellWidget(r, 3, cb)
 
     def _sync(self):
         """Llegeix la taula cap a `self._trams` (encara per normalitzar)."""
@@ -124,7 +145,14 @@ class DialegTempoMapa(GeometriaMixin, QDialog):
                 raise ValueError(
                     f"Fila {r + 1}: el rubato es crea des del visor "
                     "(«Marca com a rubato» / «Converteix a rubato»).")
+            cb = self.taula.cellWidget(r, 3)
+            unit = (cb.currentData() if cb is not None
+                    else bpm_unit.unitat_per_defecte(num, den))
             out.append((ini, ini, bpm, num, den))
+            if r < len(self._unitats):
+                self._unitats[r] = unit
+            else:
+                self._unitats.append(unit)
         if not out:
             raise ValueError("El mapa de tempo/compàs és buit")
         self._trams = out
@@ -180,6 +208,14 @@ class DialegTempoMapa(GeometriaMixin, QDialog):
         self._omple()
 
     def trams(self):
-        """Els trossos editats (`(ini, fi, bpm, num, den)`, contigus)."""
+        """Trossos editats (`TramMapa`, contigus i amb `beat_unit`)."""
         self._sync()
-        return tempo_map.normalitza_trams(self._trams, self._durada)
+        base = tempo_map.normalitza_trams(self._trams, self._durada)
+        out = []
+        for i, t in enumerate(base):
+            unit = (self._unitats[i] if i < len(self._unitats)
+                    else bpm_unit.unitat_per_defecte(int(t[3]), int(t[4])))
+            out.append(mapa_tempo.TramMapa(
+                float(t[0]), float(t[1]), float(t[2]), "normal",
+                f"{int(t[3])}/{int(t[4])}", "", None, unit))
+        return out

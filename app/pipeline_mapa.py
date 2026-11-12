@@ -19,7 +19,7 @@ def _mapa_tempo_carpeta(carpeta, offset=0.0):
             trams_map = mapa_tempo.llegeix_mapa_tempo(
                 os.path.join(d, NOM_MAPA_TEMPO))
             if len(trams_map) > 1:
-                tm = TempoMap([tuple(t) for t in trams_map], offset=offset)
+                tm = TempoMap(list(trams_map), offset=offset)
                 if not tm.es_constant():
                     return tm
     except Exception:

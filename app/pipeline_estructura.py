@@ -55,7 +55,7 @@ def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
                 i += 1
     return seccions_de_clips(clips)
 def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0,
-                 mapa=None):
+                 mapa=None, den=4):
     def _escriu(f):
         w = csv.writer(f)
         w.writerow(["inici_s", "fi_s", "durada_s", "lletra", "família",
@@ -65,8 +65,10 @@ def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0,
             w.writerow([f"{float(ini):.{TEMPS_DEC}f}",
                         f"{float(fi):.{TEMPS_DEC}f}",
                         f"{float(dur):.{TEMPS_DEC}f}", L, fam,
-                        pos_compas(ini, bpm, bpb, lliure, offset, mapa),
-                        pos_compas(fi, bpm, bpb, lliure, offset, mapa)])
+                        pos_compas(ini, bpm, bpb, lliure, offset, mapa,
+                                   den=den),
+                        pos_compas(fi, bpm, bpb, lliure, offset, mapa,
+                                   den=den)])
     escriu_atomic(ruta, _escriu)
     seq = seq_abc(seccions)
     log(f"ABC: {len(seccions)} trossos, seqüència {seq}")
@@ -80,7 +82,7 @@ def regenera_wavs_estructura(abc_csv, sortida, sr, log, manifest=None):
 
 
 def fer_abc(trossos, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
-            durada_min=0.0, fusiona_iguals=True, durada=None):
+            durada_min=0.0, fusiona_iguals=True, durada=None, den=4):
     """Talls (en memòria o camí a un CSV) -> `estructura_ABC.csv`.
 
     `trossos`: llista `[(ini, durada, index, etiqueta), …]` (el que retorna el
@@ -127,7 +129,8 @@ def fer_abc(trossos, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
         rows.append((ini, fi, L, fam))
     # INVARIANT de COBERTURA: les seccions cobreixen tota la WAV (0 → durada).
     _, rows = normalitza_cobertura([], rows, durada, log=log)
-    desa_abc_csv(abc_csv, rows, bpm, log, lliure=lliure, bpb=bpb, offset=offset)
+    desa_abc_csv(abc_csv, rows, bpm, log, lliure=lliure, bpb=bpb,
+                   offset=offset, den=den)
     seq = seq_abc(rows)
     rep = ", ".join(f"{L}×{seq.count(L)}" for L in sorted(set(seq)))
     log(f"ABC famílies {len(lletres)} ({rep})")

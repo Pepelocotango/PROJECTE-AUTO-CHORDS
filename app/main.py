@@ -33,11 +33,13 @@ from . import bpm_unit as bpm_unit_mod  # noqa: E402
 from . import ffmpeg, partitura, pipeline, postproc, theme  # noqa: F401
 from . import finestres  # noqa: E402
 from . import config  # noqa: E402
+from . import dialeg_canvi_unitat  # noqa: E402
 from . import dialeg_guia_rapida  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402
 from . import panell_xifrat  # noqa: E402
 from . import plataforma  # noqa: E402
+from . import mapa_tempo
 from . import tempo_map  # noqa: E402
 
 # Sempre a un directori ESCRIPTIBLE: en una AppImage muntada la carpeta del
@@ -278,6 +280,17 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             "Compàs de referència (x/y) per als recalcs. Els beats detectats "
             "poden corregir-lo si cal (p. ex. 14 beats → 7/4).")
         self._ref_manual = False
+        self.cb_ref_beat = QComboBox()
+        for _clau, _et in bpm_unit_mod.opcions():
+            self.cb_ref_beat.addItem(_et, _clau)
+        self.cb_ref_beat.setFixedWidth(118)
+        self.cb_ref_beat.setSizeAdjustPolicy(
+            QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.cb_ref_beat.setMinimumContentsLength(10)
+        self.cb_ref_beat.setToolTip(
+            "Unitat de pols de la Ref. recalc. El número de la Ref. es "
+            "mostra en esta unitat; el quarter intern no canvia sol.")
+        self.cb_ref_beat.currentIndexChanged.connect(self._canvia_ref_beat)
         self.cb_beat = QComboBox()
         for _clau, _et in bpm_unit_mod.opcions():
             self.cb_beat.addItem(_et, _clau)
@@ -330,6 +343,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         hp.addWidget(QLabel("Ref. recalc:"))
         hp.addWidget(self.ref_bpm)
         hp.addWidget(self.ref_bpb)
+        hp.addWidget(self.cb_ref_beat)
         hp.addWidget(QLabel("Beat/TAP:"))
         hp.addWidget(self.cb_beat)
         self.chk_segons = QCheckBox("En segons")
@@ -664,10 +678,62 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
 
     def _canvia_beat_unit(self, _idx=None):
         vr = getattr(self, "visor_ref", None)
-        if vr is not None:
-            vr.set_beat_unit(self._beat_unit_val())
+        if vr is None:
+            return
+        unit_nova = self._beat_unit_val()
+        unit_vella = vr.unitat_objectiu()
+        if unit_nova == unit_vella:
+            return
+        idx = vr.tempo_objectiu()
+        trams = list(vr.tempo_trams or [])
+        bpm = (float(trams[idx].bpm) if 0 <= idx < len(trams)
+               else float(vr.bpm))
+        if (os.environ.get("AUTO_CHORDS_TEST")
+                or os.environ.get("QT_QPA_PLATFORM") == "offscreen"):
+            _bpm, unit, mode = bpm, unit_nova, "mantenir_tempo"
+        else:
+            dlg = dialeg_canvi_unitat.DialegCanviUnitat(
+                self, "Beat/TAP", bpm, unit_vella, unit_nova)
+            if dlg.exec_() != QDialog.Accepted:
+                self._posa_beat_unit(unit_vella)
+                return
+            _bpm, unit, mode = dlg.resultat()
+        if vr.canvia_unitat_tram(idx, unit, mode=mode):
+            self._posa_beat_unit(unit)
+            self._marca_dirty()
+            self.registra(f"Beat/TAP: {unit} ({mode})")
+        else:
+            self._posa_beat_unit(unit_vella)
+
+    def _canvia_ref_beat(self, _idx=None):
+        vr = getattr(self, "visor_ref", None)
+        if vr is None:
+            return
+        unit_nova = self._ref_beat_unit_val()
+        unit_vella = vr.ref_tempo_unit()
+        if unit_nova == unit_vella:
+            return
+        bpm, num, den = vr.ref_tempo_base()
+        if (os.environ.get("AUTO_CHORDS_TEST")
+                or os.environ.get("QT_QPA_PLATFORM") == "offscreen"):
+            bpm_nou, unit, mode = bpm, unit_nova, "mantenir_tempo"
+        else:
+            dlg = dialeg_canvi_unitat.DialegCanviUnitat(
+                self, "Ref. recalc", bpm, unit_vella, unit_nova)
+            if dlg.exec_() != QDialog.Accepted:
+                self._posa_ref_beat_unit(unit_vella)
+                return
+            bpm_nou, unit, mode = dlg.resultat()
+        vr._undo_marca()
+        try:
+            vr.set_ref_tempo(bpm_nou, num, den, unit)
+        finally:
+            vr._undo_commit()
+        self._posa_ref_beat_unit(unit)
+        self._sincronitza_ref_des_del_visor()
         self._marca_dirty()
-        self.registra(f"Beat/TAP: {self._beat_unit_val()}")
+        self.registra(f"Ref. recalc: {bpm_nou:g} negres/min · "
+                      f"{num}/{den} · {unit} ({mode})")
 
     def _latencia_cursor_val(self):
         """Retard visual del cursor (ms) desat a les opcions del projecte."""
@@ -1358,6 +1424,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             # quedar com un compàs sencer amb el BPM més pròxim possible al
             # clip musical següent (p. ex. 2/4 en un pre-roll curt).
             nous = tempo_map.ajusta_primer_clip_a_compas(nous, durada, t)
+        nous = mapa_tempo.reenganxa_metadades(vr.tempo_trams, nous)
         vr._undo_marca()
         vr.offset = t
         vr.aplica_tempo_trams(nous)

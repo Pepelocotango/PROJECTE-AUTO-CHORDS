@@ -18,27 +18,115 @@ class TempoMixin:
         return (float(self.ref_bpm), int(self.ref_bpb),
                 int(self.ref_beat_type))
 
-    def beat_factor(self):
-        """Negres que val el beat detectat (negra=1, punt=1.5, corxera=0.5)."""
-        return bpm_unit_mod.factor(getattr(self, "beat_unit", "negra"))
+    def unitat_de_tram(self, tram):
+        """Unitat de pols d'un tram (objecte o tuple antiga de 5 camps)."""
+        bu = getattr(tram, "beat_unit", None)
+        if bu:
+            return bpm_unit_mod.normalitza(bu)
+        try:
+            num, den = int(tram[3]), int(tram[4])
+            agr = getattr(tram, "agrupacio", "")
+        except (TypeError, ValueError, IndexError):
+            return bpm_unit_mod.DEFECTE
+        return bpm_unit_mod.unitat_per_defecte(num, den, agr)
+
+    def beat_factor(self, unit=None):
+        """Negres que val el pols detectat (negra=1, punt=1.5, corxera=0.5)."""
+        u = self.unitat_objectiu() if unit is None else unit
+        return bpm_unit_mod.factor(u)
 
     def set_beat_unit(self, unit):
+        """Compatibilitat: canvia la unitat del tram objectiu (mantén tempo)."""
         unit = bpm_unit_mod.normalitza(unit)
         self.beat_unit = unit
+        kind, idx = self.seleccio_activa()
+        trams = list(self.tempo_trams or [])
+        if kind == "tempo" and 0 <= int(idx) < len(trams):
+            self.canvia_unitat_tram(int(idx), unit, mode="mantenir_tempo")
         senyal = getattr(self, "beatUnitCanviat", None)
         if senyal is not None:
             senyal.emit(unit)
 
-    def set_ref_tempo(self, bpm, num, den):
-        """Fixa la referència manual del recalcul, validada."""
+    def canvia_unitat_tram(self, idx, unit, mode="mantenir_tempo",
+                           desa=True):
+        """Canvia la unitat de pols d'un tram mantenint les fronteres.
+
+        `mode="mantenir_tempo"` conserva el BPM intern (el so no canvia).
+        `mode="mantenir_numero"` conserva el número visible i recalcula el
+        BPM intern; el recalc fix manté N enter i fronteres.
+        """
+        trams = list(self.tempo_trams or [])
+        idx = int(idx)
+        if not (0 <= idx < len(trams)):
+            return False
+        tr = trams[idx]
+        unit = bpm_unit_mod.normalitza(unit)
+        unit_actual = self.unitat_de_tram(tr)
+        if unit == unit_actual:
+            return False
+        if mode == "mantenir_numero":
+            visible = bpm_unit_mod.de_quarter(tr.bpm, unit_actual)
+            target = bpm_unit_mod.a_quarter(visible, unit)
+            try:
+                target, num, den = tempo_map.valida_tempo(
+                    target, tr.num, tr.den)
+            except ValueError as e:
+                self.avis_editor(f"Unitat: {e}")
+                return False
+            tmp = list(trams)
+            tmp[idx] = mapa_tempo.TramMapa(
+                tr.ini, tr.fi, target, tr.tipus, tr.compassos,
+                tr.agrupacio, tr.n, unit)
+            try:
+                nous5 = tempo_map.ajusta_bpm_a_compassos(
+                    tmp, idx, self._durada_wav(),
+                    offset=getattr(self, "offset", 0.0),
+                    beats_qm=self._beats_per_validacio())
+            except ValueError as e:
+                self.avis_editor(f"Unitat: {e}")
+                return False
+            nous = mapa_tempo.reenganxa_metadades(tmp, nous5)
+            nou = nous[idx]
+            nous[idx] = mapa_tempo.TramMapa(
+                nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos,
+                nou.agrupacio, nou.n, unit)
+        else:
+            nous = list(trams)
+            nous[idx] = mapa_tempo.TramMapa(
+                tr.ini, tr.fi, tr.bpm, tr.tipus, tr.compassos,
+                tr.agrupacio, tr.n, unit)
+        self._undo_marca()
+        ok = bool(self.aplica_tempo_trams(nous))
+        self._undo_commit()
+        if ok:
+            self.log(f"unitat tram {idx}: {unit_actual} → {unit} "
+                     f"({mode})")
+        return ok
+
+    def set_ref_tempo(self, bpm, num, den, unit=None):
+        """Fixa la referència manual del recalcul, validada i amb unitat."""
         bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
         self.ref_bpm = float(bpm)
         self.ref_bpb = int(num)
         self.ref_beat_type = int(den)
+        if unit is not None:
+            self.ref_beat_unit = bpm_unit_mod.normalitza(unit)
+        self.ref_beat_unit = bpm_unit_mod.normalitza(
+            getattr(self, "ref_beat_unit", bpm_unit_mod.DEFECTE))
         senyal = getattr(self, "refCanviat", None)
         if senyal is not None:
             senyal.emit()
         return self.ref_tempo_base()
+
+    def ref_tempo_unit(self):
+        """Unitat de la Ref. recalc."""
+        return bpm_unit_mod.normalitza(
+            getattr(self, "ref_beat_unit", bpm_unit_mod.DEFECTE))
+
+    def ref_tempo_complet(self):
+        """`(bpm, num, den, unitat)` de la Ref. recalc."""
+        bpm, num, den = self.ref_tempo_base()
+        return bpm, num, den, self.ref_tempo_unit()
 
     def tempo_objectiu(self):
         """Índex del tram de tempo objectiu.
@@ -108,7 +196,8 @@ class TempoMixin:
                 agrupacio, nous[idx].num, nous[idx].den)
             nou = nous[idx]
             nous[idx] = mapa_tempo.TramMapa(
-                nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos, agr)
+                nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos, agr,
+                getattr(nou, "n", None), nou.beat_unit)
         # El transport només pren valors d'un tros normal.
         self.bpm = float(nous[0][2])
         self.bpb = int(nous[0][3])
@@ -341,13 +430,15 @@ class TempoMixin:
         lliures. Els detectors i les accions explícites mantenen la validació
         estricta pel seu compte.
         """
+        entrada = list(trams or [])
         try:
             nous = tempo_map.valida_i_normalitza_permissiu(
-                trams, self._durada_wav(),
+                entrada, self._durada_wav(),
                 offset=getattr(self, "offset", 0.0))
         except ValueError as e:
             self.avis_editor(f"{msg}: {e}")
             return False
+        nous = mapa_tempo.reenganxa_metadades(entrada, nous)
         return bool(self.aplica_tempo_trams(nous))
 
     def _normalitza_mapa_viu(self, trams, msg=None):
@@ -458,14 +549,15 @@ class TempoMixin:
             "n": n_desat, "n_real": n_real, "n_enter": n_enter,
             "n_valid": n_valid,
             "bpm": bpm,
-            "bpm_mostra": bpm_unit_mod.de_quarter(bpm, self.bpm_unit),
+            "bpm_mostra": bpm_unit_mod.de_quarter(
+                bpm, self.unitat_de_tram(tr)),
             "bpm_unit": bpm_unit_mod.etiqueta(self.bpm_unit),
             "offset": offset,
             "ref_bpm": ref_bpm, "ref_compas": f"{int(ref_num)}/{int(ref_den)}",
             "desviacio": desviacio,
             "sospita_octava": sospita_octava,
             "beat_unit": bpm_unit_mod.etiqueta(
-                getattr(self, "beat_unit", "negra")),
+                self.unitat_de_tram(tr)),
             "snap": snap, "n_qm": n_qm, "negres_qm": negres,
             "primer_beat": primer, "ultim_beat": ultim,
             "beats_frontera": frontera,
@@ -583,12 +675,13 @@ class TempoMixin:
         except (TypeError, ValueError):
             durada = 0.0
             n_actual = None
+        unit_tram = self.unitat_de_tram(s)
         dlg = dialegs.DialegTramTempo(
             self, inici=s[0], bpm=s[2], num=s[3], den=s[4],
-            inicial=(idx == 0), text_inici=lbl, unit=self.bpm_unit,
+            inicial=(idx == 0), text_inici=lbl, unit=unit_tram,
             n_actual=n_actual, durada=durada,
             info=self._info_clip_tempo(idx), ref=self.ref_tempo_base(),
-            beat_unit=getattr(self, "beat_unit", bpm_unit_mod.DEFECTE))
+            ref_unit=self.ref_tempo_unit(), beat_unit=unit_tram)
         darrers = {"valors": None}
 
         def _valors_dialeg():
@@ -648,15 +741,15 @@ class TempoMixin:
                 "No s'ha pogut recalcular el tram amb estes opcions.")
             return False
 
-        def _on_ref(bpm, num, den):
+        def _on_ref(bpm, num, den, unit):
             """«Aplica ref.»: canvia la Ref. recalc del visor."""
             try:
-                self.set_ref_tempo(bpm, num, den)
+                self.set_ref_tempo(bpm, num, den, unit)
             except ValueError as e:
                 QMessageBox.warning(dlg, "Ref. recalc invàlida", str(e))
                 return False
             self._undo_touch_base()
-            dlg.actualitza_ref(bpm, num, den)
+            dlg.actualitza_ref(bpm, num, den, unit)
             dlg.actualitza_info(self._info_clip_tempo(idx))
             self.log(f"Ref. recalc: {float(bpm):.3f} BPM · "
                      f"{int(num)}/{int(den)}")
@@ -667,6 +760,14 @@ class TempoMixin:
             self.set_beat_unit(unit)
             self._undo_touch_base()
             dlg.actualitza_beat_unit(unit)
+            tr = self.tempo_trams[idx]
+            for sp in (dlg.sp_bpm, dlg.sp_bpm_mob):
+                sp.blockSignals(True)
+                try:
+                    sp.setValue(bpm_unit_mod.de_quarter(
+                        float(tr.bpm), unit))
+                finally:
+                    sp.blockSignals(False)
             dlg.actualitza_info(self._info_clip_tempo(idx))
             senyal = getattr(self, "canvis", None)
             if senyal is not None:
@@ -734,6 +835,7 @@ class TempoMixin:
             except ValueError as e:
                 self.avis_editor(f"Compàs 1: {e}")
                 return
+            nous = mapa_tempo.reenganxa_metadades(trams, nous)
             self._undo_marca()
             self.offset = float(nou_off)
             self.aplica_tempo_trams(nous)
@@ -749,6 +851,7 @@ class TempoMixin:
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return
+        nous = mapa_tempo.reenganxa_metadades(trams, nous)
         self._undo_marca()
         self.aplica_tempo_trams(nous)
         self._undo_commit()
@@ -774,6 +877,7 @@ class TempoMixin:
         except ValueError as e:
             self.avis_editor(f"Compassos: {e}")
             return False
+        nous = mapa_tempo.reenganxa_metadades(trams, nous)
         if [tuple(x) for x in nous] == [tuple(x) for x in trams]:
             return False
         self._undo_marca()
@@ -845,14 +949,15 @@ class TempoMixin:
                 tocat = True
                 nous.append(mapa_tempo.TramMapa(
                     float(tr[0]), float(tr[1]), float(tr[2]), "rubato",
-                    f"{int(tr[3])}/{int(tr[4])}"))
+                    f"{int(tr[3])}/{int(tr[4])}", "",
+                    getattr(tr, "n", None), tr.beat_unit))
             else:
                 nous.append(mapa_tempo.TramMapa(
                     float(tr[0]), float(tr[1]), float(tr[2]),
                     getattr(tr, "tipus", "normal"),
                     f"{int(tr[3])}/{int(tr[4])}",
                     getattr(tr, "agrupacio", ""),
-                    getattr(tr, "n", None)))
+                    getattr(tr, "n", None), tr.beat_unit))
         if not tocat:
             self.avis_editor("El rang no conté cap tram de tempo.")
             return False
@@ -874,7 +979,7 @@ class TempoMixin:
         nous = list(trams)
         nous[idx] = mapa_tempo.TramMapa(
             tr.ini, tr.fi, tr.bpm, "rubato", tr.compassos,
-            tr.agrupacio, getattr(tr, "n", None))
+            tr.agrupacio, getattr(tr, "n", None), tr.beat_unit)
         self._undo_marca()
         ok = self.aplica_tempo_trams(nous, forcat=True)
         self._undo_commit()
@@ -893,7 +998,7 @@ class TempoMixin:
         nous = list(trams)
         nous[idx] = mapa_tempo.TramMapa(
             tr.ini, tr.fi, tr.bpm, "normal", tr.compassos,
-            tr.agrupacio, getattr(tr, "n", None))
+            tr.agrupacio, getattr(tr, "n", None), tr.beat_unit)
         self._undo_marca()
         ok = self.aplica_tempo_trams(nous, forcat=True)
         self._undo_commit()

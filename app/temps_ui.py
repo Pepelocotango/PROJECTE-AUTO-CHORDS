@@ -3,7 +3,7 @@
 Extret de `app/main.py`. `TempsMixin` treballa amb els widgets de la barra i
 delega la validació a `tempo_map`/`limits`.
 """
-from . import limits, tempo_map
+from . import bpm_unit, limits, tempo_map
 
 class TempsMixin:
     """Camps de BPM/compàs/offset i aplicació al visor."""
@@ -40,32 +40,54 @@ class TempsMixin:
         """Escriu al camp de BPM un valor intern en negres/minut."""
         self.bpm.setText(f"{float(bpm_quarter):.{int(decimals)}f}")
 
-    def _posa_ref_recalc(self, bpm_quarter, compas=None, den=None):
-        """Escriu la referència manual de recalcul (BPM en la unitat activa).
-
-        Accepta `(bpm, "4/4")` o `(bpm, num, den)`.
-        """
+    def _posa_ref_recalc(self, bpm_quarter, compas=None, den=None,
+                        beat_unit=None):
+        """Escriu la Ref. recalc amb el BPM en la **unitat de la Ref.**"""
         bpm = float(bpm_quarter)
         if den is not None:
             compas = f"{int(compas)}/{int(den)}"
         text = self.ref_bpb.text() if compas is None else str(compas)
         num, den = self._parse_compas(text)
-        self.ref_bpm.setText(f"{bpm:.3f}")
+        unit = (bpm_unit.normalitza(beat_unit)
+                if beat_unit is not None else self._ref_beat_unit_val())
+        self._posa_ref_beat_unit(unit)
+        self.ref_bpm.setText(bpm_unit.formata(bpm, unit))
         self.ref_bpb.setText(f"{num}/{den}")
+
+    def _ref_beat_unit_val(self):
+        cb = getattr(self, "cb_ref_beat", None)
+        if cb is None:
+            return bpm_unit.DEFECTE
+        return bpm_unit.normalitza(cb.currentData())
+
+    def _posa_ref_beat_unit(self, unit):
+        cb = getattr(self, "cb_ref_beat", None)
+        if cb is None:
+            return
+        idx = cb.findData(bpm_unit.normalitza(unit))
+        if idx >= 0:
+            cb.blockSignals(True)
+            cb.setCurrentIndex(idx)
+            cb.blockSignals(False)
 
     def _ref_bpm_val(self):
         raw = str(self.ref_bpm.text()).replace(",", ".").strip()
+        unit = self._ref_beat_unit_val()
         try:
-            return tempo_map.valida_tempo(float(raw), 4, 4)[0]
+            # L11: el rang 30–350 es valida en l'espai INTERN (negres/min).
+            bpm = bpm_unit.a_quarter(float(raw), unit)
+            return tempo_map.valida_tempo(bpm, 4, 4)[0]
         except (ValueError, TypeError) as e:
-            raise ValueError(f"Referència: {e}") from e
+            raise ValueError(
+                f"Referència: {raw} {bpm_unit.etiqueta(unit).lower()} → {e}"
+            ) from e
 
     def _ref_vals(self):
-        """Referència manual validada: `(bpm_quarter, num, den)`."""
+        """Referència validada: `(bpm_quarter, num, den, unitat)`."""
         bpm = self._ref_bpm_val()
         num, den = self._parse_compas(self.ref_bpb.text())
         bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
-        return float(bpm), int(num), int(den)
+        return float(bpm), int(num), int(den), self._ref_beat_unit_val()
 
     def _sincronitza_ref_des_del_visor(self):
         """Copia la referència efectiva del visor als camps de la barra 2."""
@@ -74,12 +96,15 @@ class TempsMixin:
             return
         self._actualitzant_temps = True
         try:
-            self._posa_ref_recalc(*vr.ref_tempo_base())
+            bpm, num, den = vr.ref_tempo_base()
+            unit = getattr(vr, "ref_tempo_unit",
+                           lambda: bpm_unit.DEFECTE)()
+            self._posa_ref_recalc(bpm, f"{int(num)}/{int(den)}",
+                                  beat_unit=unit)
         finally:
             self._actualitzant_temps = False
         self._ref_manual = True
-        # La referència forma part de l'estat de desfer: si no hi ha cap
-        # operació oberta, la base s'ha de quedar al dia amb este valor.
+        # La referència forma part de l'estat de desfer.
         vr._undo_touch_base()
 
     def _aplica_ref_recalc(self):
@@ -87,20 +112,30 @@ class TempsMixin:
         if getattr(self, "_actualitzant_temps", False):
             return
         try:
-            bpm, num, den = self._ref_vals()
+            bpm, num, den, unit = self._ref_vals()
         except ValueError as e:
-            self.avis_info("Referència de recalcul invàlida", str(e))
+            self.avisa_info("Referència de recalcul invàlida", str(e))
             self._sincronitza_ref_des_del_visor()
             return
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
-            vr.set_ref_tempo(bpm, num, den)
-            vr._undo_touch_base()
+            self._undo_tram_marca = getattr(vr, "_undo_marca", None)
+            self._undo_tram_commit = getattr(vr, "_undo_commit", None)
+            if callable(self._undo_tram_marca) and callable(
+                    self._undo_tram_commit):
+                self._undo_tram_marca()
+            try:
+                vr.set_ref_tempo(bpm, num, den, unit)
+            finally:
+                if callable(self._undo_tram_commit):
+                    self._undo_tram_commit()
         else:
-            self._posa_ref_recalc(bpm, f"{num}/{den}")
+            self._posa_ref_recalc(bpm, f"{num}/{den}", beat_unit=unit)
         self._ref_manual = True
         self._marca_dirty()
-        self.registra(f"Referència recalc: {bpm:g} BPM · {num}/{den}")
+        self.registra(
+            f"Referència recalc: {bpm:g} negres/min · {num}/{den} · "
+            f"{bpm_unit.etiqueta(unit)}")
 
     def _bpm_val(self):
         raw = str(self.bpm.text()).replace(",", ".").strip()
@@ -218,7 +253,7 @@ class TempsMixin:
             except ValueError:
                 zero = False
             if zero:
-                self.avis_info(
+                self.avisa_info(
                     "Auto Chords",
                     "Un BPM de 0 no és vàlid. Per a un passatge rubato, marca "
                     "«En segons» al costat del compàs.")
