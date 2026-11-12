@@ -87,6 +87,8 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   compassos). Aplica està deshabilitat a l'últim/únic clip. El **TAP** aplica
   al clip seleccionat i **re-ancora el BPM de Ref. recalc**; la referència
   entra al desfer/refer.
+- **Edició d'àudio (§13.9)**: importació, backups, retall/afegir als extrems,
+  sincronització del model, desfer/refer i export amb FFmpeg implementats.
 - **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
   `Analitza beats, downbeats i BPM` (F7) i **Beats/BPM** a la barra.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
@@ -104,10 +106,11 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
 - **Pendents del motor C/B/A**: connectar `+1`/`−1`/`×2`/`÷2` al mateix
   motor; decidir si «Quantitza BPM» continua sent una operació separada.
+- **Edició d'àudio**: restauració des de la GUI i proves visuals; **no
+  implementat** el silenci automàtic per completar el pre-roll o el primer
+  compàs.
 - **Propera sessió (2026-11-12)**: arreglar el diàleg/finestra de **BPM,
-  compàs i compassos**, i netejar `docs/REGLES_DE_LA_APP.md` amb un subagent:
-  hi han d'anar **només regles**; moure la informació que no siga regla a un
-  document existent.
+  compàs i compassos**.
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
 
 ### Futures iteracions — motor d'àudio natiu (2026-11-08)

@@ -13,9 +13,10 @@
 > val (paritat #11).
 >
 > Aquest inventari cobreix les operacions del **model musical** (acords,
-> estructura i tempo/compàs). L'edició de la còpia WAV del projecte —nanses als
-> extrems, fades i desfer/refer conjunt— es descriu a
-> [`REGLES_DE_LA_APP.md` §13.9](REGLES_DE_LA_APP.md).
+> estructura i tempo/compàs). El **detall operatiu** de tempo/compàs i de
+> l'edició de la còpia WAV del projecte —nanses als extrems, fades i
+> desfer/refer conjunt— és a **§9 d'este mateix document**; les regles i
+> invariants són a [`REGLES_DE_LA_APP.md` §13](REGLES_DE_LA_APP.md).
 
 > **Despatx únic (2026-10-19)**: totes les superfícies (menú contextual,
 > llistes, menú principal, teclat del timeline i menú del loop) envien la
@@ -45,7 +46,7 @@
 > posicions musicals (etiquetes i columnes de compàs de l'ABC); per alinear
 > clips a la graella es fa servir **Quantitza**. Si un canvi deixa clips sense
 compassos sencers, apareix un diàleg per **conservar o descartar** l'operació.
-Un canvi de **tempo** a mig
+> Un canvi de **tempo** a mig
 > compàs no reinicia la numeració: el compàs continua i només canvia la seua
 > durada; els canvis de **compàs** (signatura) sí que obrin un compàs nou.
 >
@@ -54,25 +55,12 @@ Un canvi de **tempo** a mig
 > beat. Cal BPM/compàs vàlids, una durada mínima d'un compàs **`1/16` a 350 BPM
 > (≈43 ms)** i **`N` enter a tots els clips** (primer i últim inclosos, sense
 > exempció de pre-roll ni de rubato). El primer inici és 0 i l'últim final és la
-> durada de la WAV. La referència és la **manual i global de la barra 2**
-> (`BPM ref` + `compàs ref`), no la dels clips veïns, i el motor pot ajustar
-> BPM, compàs o `N` enters. Si hi ha **beats detectats** dins del
-> clip, **amb Snap Beats QM**, el seu nombre de negres mana i pot corregir la
-> base (7 negres → `7/4`; 14 →
-> `7/4` N=2; 8 → `4/4` N=2); si no n'hi ha, s'inferixen de la referència BPM
-> (`D × BPM_ref / 60`) quan cauen a prop d'un enter (±0,2).
+> durada de la WAV. El **detall del recalcul guiat, la referència i els avisos**
+> és a **§9.1–§9.2**.
 > Els canvis explícits de BPM/compàs respecten el valor escrit; si el resultat
 > no és vàlid, es rebutja amb avís. Si un **canvi de compàs** deixa un `N` no
 > enter, es rebutja i s'obri un diàleg per reparar-lo (ajustar el BPM a `N`
-> enter o canviar a la signatura canònica). **Fusionar o eliminar** una
-> frontera recalcula el clip afectat amb la referència base i els beats; si no
-> pot quedar sencer, avisa. La **regla del múltiple** fa que la signatura base
-> mana quan `K/bq_ref` és enter; si `K` no factoritza, es prova un beat
-> detectat amunt/avall (`K ± beat_factor`; 1,0 si els beats són inferits; amb
-> avís) i s'eviten els `2/8`/`1/8`/`1/4` repetits. En talls sense snap, un
-> beat dins de **50 ms** de la frontera es classifica de manera estable i
-> s'avisa del recompte ambigu. Els avisos de desviació de BPM (>12 %) i de
-> sospita d'octava es mostren a l'editor. «Encaixar a
+> enter o canviar a la signatura canònica). «Encaixar a
 > graella» de l'anàlisi fa servir el mateix nucli i graelles que «Quantitza»;
 > per defecte, **corxera** (1/2 temps, 2 acords per temps). El selector
 > **Beat/TAP** de la barra 2 indica la unitat del detector **i el valor de
@@ -243,3 +231,127 @@ pendents:
 > **paritat d'estructura** (`mou_bloc_seccions`, gest del visor i  amb
 > `kind`); el símbol **`-`** a **tota** l'estructura (també a `normalitza_cobertura`);
 > i la neteja del codi mort (`_move_section_group`).
+
+## 9. Detall operatiu de tempo/compàs i edició d'àudio
+
+> Les regles i invariants són a `docs/REGLES_DE_LA_APP.md` §13. Ací només hi ha
+> el detall operatiu de la GUI i de les accions.
+
+### 9.1 Offset i referència
+
+- L'**offset** conserva el valor intern (p. ex. `1.207438`); la GUI en mostra
+  **3 decimals**.
+- La referència del recalcul és la **manual i global** de «Ref. recalc» (barra
+  2: `BPM ref` + `compàs ref`), no la dels clips veïns. El motor pot ajustar
+  BPM, compàs o `N` enters per acostar-s'hi.
+- **Compàs 1 aquí**: en fixar l'offset, el pre-roll es recalcula amb un nombre
+  enter de compassos (`N ≥ 1`) i el BPM es deriva per encaixar-hi; el clip de
+  música següent també conserva `N` enter i recalcula el seu BPM. L'offset es
+  desa immediatament al `.acproj`.
+- El **pre-roll** és només la frontera `0→1`; les fronteres `2–3`, `3–4`… són
+  interiors normals.
+
+### 9.2 Recalcul guiat i botons Aplica/Ajusta
+
+- **Aplica** = **recalc mòbil**: el clip seleccionat rep exactament el BPM,
+  compàs i `N` del formulari, i la seua `fi` passa a ser l'`ini` del veí dret.
+  El veí es recalcula a partir de **Ref. recalc**: conserva la signatura `x/x`
+  si pot i busca l'`N` enter que deixa el BPM més a prop possible; només si no
+  hi ha cap `N` vàlid amb eixa signatura canvia `x/x`. Si no hi ha cap
+  combinació vàlida, es rebutja **tota** l'operació. En l'últim/únic clip
+  Aplica està deshabilitat (la fi de la WAV és fixa).
+- **Ajusta** obre el mateix diàleg que el doble clic sobre el tram (BPM,
+  compàs i `N`); el resultat s'aplica pel mateix camí del diàleg. No s'aplica
+  automàticament.
+- **Arrossegar una frontera** continua usant el recalcul guiat amb segons com a
+  entrada; no és una edició directa de camps. El punter fixa Δt; s'ajusten les
+  fronteres i el recalcul decideix BPM/compàs/`N` enters dels dos costats amb
+  la referència base.
+- **Regla del múltiple**: si la signatura base encaixa exacta amb els beats
+  (`K/bq_ref` enter), mana ella; 20/24/28 beats amb base 4/4 → 4/4 N=5/6/7;
+  12/36 amb base 3/4 → 3/4 N=4/12; 6/12 amb base 6/8 → 6/8 N=2/4. Amb `n_fix`
+  només val si `N` coincidix amb el fixat; la signatura base n'està exempta de
+  `n_max` (clips llargs).
+- **K no factoritzable**: s'exclouen els compassos degenerats (`2/8`, `1/8`,
+  `1/4` amb `N>1`) i es prova **un beat detectat** amunt/avall (`K ± beat_factor`;
+  1,5 negres amb negra amb punt, 0,5 amb corxera, i 1,0 si els beats són
+  inferits). Es prefereix el que encaixa amb la signatura base i, si no, el de
+  BPM més pròxim. El resultat indica `beats_ajustats`, `beats_detectats` i
+  `beats_inferits`; amb beats inferits l'avís diu «sense beats detectats», no
+  «beats ajustats».
+- **Beats**: amb **Snap Beats QM**, si n'hi ha dins del clip, el nombre de
+  negres és una restricció forta per al BPM. Sense beats (o sense usar-los),
+  s'inferix `D × BPM_ref / 60` i, si cau a prop d'un enter (±0,2), s'aplica la
+  mateixa restricció. En talls sense
+  snap, un beat dins de **50 ms** (`TOL_TALL`) de la frontera es classifica de
+  manera estable i s'avisa del recompte ambigu.
+- **Avisos de BPM**: cada recalcul pot adjuntar una desviació de BPM >12 % i una
+  sospita d'octava (ratio ≈2 o ≈0,5, marge 8 %). Són avisos, no canvien la
+  decisió.
+- **Fusionar o eliminar una frontera** recalcula el clip afectat amb la
+  referència base i els beats. Si no pot quedar en compassos sencers, avisa i
+  el deixa com està; no hereta el `N` fraccionari del clip que desapareix.
+- Un tram **rubato** es mou i es re-tempa com qualsevol tram normal; només
+  canvia el flag de notació.
+
+### 9.3 Fronteres a mà (`Inici (s)` / `Fi (s)`)
+
+`Inici (s)` i `Fi (s)` són editables. Com que la frontera és única, moure'n un
+mou **eixa** frontera; l'extrem contrari no es mou i s'aplica el **recalcul
+guiat** del clip i, si cal, del veí:
+
+| Gest | Resultat |
+|---|---|
+| `ini` del **1r** clip | **rebutjat + avís** (inici de la WAV) |
+| `fi` de l'**últim** clip | **rebutjat + avís** (fi de la WAV) |
+| `ini` de qualsevol altre | mou la frontera `(i-1, i)`; el `fi` no es mou; recalcul guiat |
+| `fi` de qualsevol altre | mou la frontera `(i, i+1)`; l'`ini` no es mou; recalcul guiat |
+| costat rubato | es mou com un tram normal; el flag `tipus` no canvia |
+
+Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
+
+- **`+`**: parteix **tempo i estructura** al cursor, sense crear cap marcador.
+  **Enter**: parteix només el tempo. **`0`**: parteix només l'estructura.
+  Amb Snap actiu s'encaixa a la graella; amb Snap desactivat es respecta el
+  cursor. Si el tall necessita ajust, s'aplica el recalcul guiat
+  (`REGLES_DE_LA_APP.md` §13.5).
+- **`M`**: crea només un **marcador independent**; no talla tempo ni
+  estructura i no està lligat a cap frontera.
+- **Graella robusta**: un canvi de compàs a menys de **20 ms** d'una línia de
+  compàs s'imanta a la línia; no es creen dos compassos quasi iguals ni salta
+  la numeració. Les etiquetes i el metrònom toleren els offsets d'integració
+  de fraccions de fusa (resolució 1/32), de manera que una edició manual de
+  mil·lisegons no atura el metrònom.
+
+### 9.4 Detecció amb tram seleccionat
+
+- Amb un **tram seleccionat**, **Detecta** analitza només eixe tram i el
+  downbeat és el seu inici. En un tram amb els extrems fixos, **Δt és fix**: el
+  BPM detectat només compta compassos (`N = round(Δt · BPM_ref / (bq · 60))`,
+  mínim 1) i s'aplica el **BPM derivat exacte** (`N · bq · 60 / Δt`), que clava
+  les barres entre els dos punts. La fi del tram i els següents no es mouen; si
+  el BPM derivat cau fora de 30–350 o no hi cap cap compàs sencer, **s'avisa**.
+  S'aplica en una sola operació de desfer.
+- Per a tempo variable, **Analitza ▸ Detecta el tempo per trams…** fa el mapa
+  sencer (un BPM cada N compassos, amb els criteris musicals del detector) i el
+  valida de manera estricta.
+
+### 9.5 Edició de l'àudio del projecte
+
+- **Retallar l'inici `t`**: s'elimina l'àudio anterior; elements, marcadors,
+  fronteres i offset es desplacen `−t`; el contingut anterior desapareix.
+- **Retallar el final a `D`**: s'eliminen els elements posteriors, s'escurcen
+  els intervals que travessen `D` i la durada nova és `D`.
+- **Afegir silenci al inici `t`**: so i referències es desplacen `+t`; offset
+  `+t`; es crea un acord `N` per al silenci i la secció existent el cobrix.
+- **Afegir silenci al final**: la cobertura s'estén fins a la nova durada amb
+  acord `N`; secció i últim tram cobrixen l'extensió.
+- Previsualització en arrossegar, aplicació en deixar anar; àudio i model
+  **atòmics** i un sol desfer/refer. Tall al fotograma més pròxim, sense moure a
+  un pas per zero. Cada vora àudio/silenci rep un **fade de 4 ms**. El crossfade
+  entre clips queda fora de l'abast inicial (només hi ha un WAV).
+- L'historial conjunt conserva les **10 últimes accions** (musicals i d'àudio) i
+  comunica quan descarta la més antiga.
+- S'escriu primer en un temporal i es valida abans de substituir la còpia. Un
+  error no pot deixar àudio i model en estats diferents.
+- Les còpies de seguretat versionades inclouen el WAV de treball i els marcadors.

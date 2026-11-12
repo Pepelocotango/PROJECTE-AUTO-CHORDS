@@ -5,6 +5,17 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Canviat — REGLES només amb invariants (2026-11-12)
+- `docs/REGLES_DE_LA_APP.md` queda **només amb regles i invariants** (regles
+  1–12 i §13.1–§13.9): s'hi ha tret la narrativa, els exemples llargs, els noms
+  de funcions i els detalls d'implementació.
+- Els **detalls operatius** de tempo/compàs i d'edició d'àudio passen a
+  `docs/EDICIO_OPERACIONS.md` §9; el **mapa regla → codi → test** i les notes
+  d'implementació, a `DEVELOPING.md`; l'**estat de §13.9**, a `ROADMAP.md` §2.
+- **Correcció de contradicció**: §13.5 ara diu que la referència del recalcul és
+  la **manual/global de «Ref. recalc»**, no la dels clips veïns, d'acord amb el
+  codi i `EDICIO_OPERACIONS.md`.
+
 ### Canviat — Aplica recalc mòbil i botó Ajusta amb diàleg (2026-11-11)
 - **Aplica** és ara **recalc mòbil**: el clip seleccionat rep exactament el
   BPM, compàs i `N`; la seua `fi` passa a l'`ini` del veí dret. El veí es

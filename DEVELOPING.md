@@ -166,6 +166,49 @@ La base del projecte és senzilla i molt important: no hauríem de tenir un “a
 > docstrings de **`app/projecte.py`** i **`app/pipeline_model.py`**, i al
 > contracte **`docs/REGLES_DE_LA_APP.md`**. No es dupliquen ací.
 
+### Implementació del contracte de temps
+
+> El contracte (què és invariant) és a `docs/REGLES_DE_LA_APP.md` §13. Ací hi ha
+> el mapa regla → codi → test i les notes d'implementació.
+
+| Regla / secció | Codi | Test |
+|---|---|---|
+| #1 ordre estricte | `visor._valida_canvis_*`, `tempo_map.neteja_trams`, `afegeix_tall` | `test_edicio.py::TestRegla1OrdreEstricte`, `test_tempo_map.py::TestEdicioMapa` |
+| #2 contigüitat | `timeline.py`, `pipeline.filtra_seccions`, `tempo_map.neteja_trams` | `test_edicio.py` (contigüitat), `test_tempo_map.py::TestEdicioMapa` |
+| #3 durades derivades | model de clips (`pipeline_model.py`, `mapa_tempo.py`) | `test_edicio.py::TestRegla3DuradesDerivades` |
+| #4 cobertura total | `pipeline.normalitza_cobertura()` | `test_edicio.py::TestCoberturaViu` |
+| #5 font de veritat | `visor.py` (refresc únic del mapa) | `test_edicio.py::TestRegla5FontDeVeritat` |
+| #6 WAVs musicals | `pipeline_export.py` (`exporta_total`) | `test_edicio.py::TestRegla6WavsNomesViaExporta`, `test_pipeline_contracte.py` |
+| #7 instància única | `plataforma.bloqueja_instancia_unica` | `test_edicio.py::TestRegla7InstanciaUnica` |
+| #8 temps vàlids | `visor._valida_canvis_*`, `pipeline.normalitza_cobertura`, `tempo_map.normalitza_trams` | `test_edicio.py::TestRegla8TempsValids` |
+| #9 portabilitat | `eines/verifica_minos_macos.py`; builds sense AVX | `test_pipeline.py::GuardAvxTests` |
+| #10 estat escriptible | `app/config.py` (`DADES_DIR`) | `test_edicio.py::TestRegla10EstatEscriptible` |
+| #11 paritat d'edició | `visor.executa_edicio` i nuclis d'edició | `test_despatx_edicio.py`, `test_edicio.py::TestBackendParitat` |
+| #12 paritat d'exportació | `pipeline.exporta_total(..., mapa_tempo=)` | `test_pipeline.py::TestRegla12ParitatExport` |
+| §13.1 segons | `visor._regenera_posicions_musicals`, `tempo_map` | `test_despatx_edicio.py::TestPosicionsMusicals` |
+| §13.2 clips manen | `tempo_map.TempoMap`, `visor._refresca_tempo_map` | `test_tempo_map.py::TestCanviDeTempo`, `test_tempo_map.py::TestCanviDeCompas` |
+| §13.3 cobertura del mapa | `tempo_map.neteja_trams`, `TempoMap.__init__`, `visor._refresca_tempo_map` | `test_tempo_map.py::TestEdicioMapa`, `test_tempo_map.py::TestCompassosEnters` |
+| §13.4 valors, mínim i `N` | `tempo_map.valida_tempo`, `valida_i_normalitza_permissiu`, `limits.TEMPS_MIN_CLIP`, `neteja_trams` | `test_tempo_map.py::TestValidaTempo`, `test_tempo_map.py::TestCompassosEnters` |
+| §13.5 recalcul guiat | `mapa_tempo.recalcula_tram_c`, `tempo_recalc.recalculca_tram`, `tempo_map.mou_frontera_retempo`, `ajusta_bpm_a_compassos` | `test_tempo_recalc.py`, `test_tempo_trams.py`, `test_despatx_edicio.py::TestCompassosTempo` |
+| §13.6 fronteres i marcadors | `tempo_map.mou_frontera_retempo`, `visor._on_tempo_mogut`, `visor._aplica_editor_tempo`, `marcadors` | `test_tempo_trams.py`, `test_edicio.py` (undo/marcadors) |
+| §13.7 rubato | `mapa_tempo.py`, `tempo_map`, `visor_tempo`, `partitura` | `test_tempo_map.py::TestRubatoComANormal`, `test_edicio.py::TestRubatoAccions` |
+| §13.8 detecció | `tempo_map.retempo_tram_detectat`, `tempo_recalc.recalculca_tram`, `tempo.py`, `pipeline.desa_tempo_map` | `test_tempo_trams.py` (retempo detectat), `test_tempo_map.py` |
+| §13.9 edició d'àudio | `audio_edit.py`, `exporta_audio.py`, `projecte.py` | `test_audio_edit.py`, `test_exporta_audio.py`, `test_edicio.py::TestUndoTemps` |
+
+La **validació estricta** (`valida_i_normalitza_compassos`,
+`_millora_signatures_clips`, `ajusta_bpm_a_compassos`, `retempo_tram_detectat`)
+es reserva per als **detectors** i les **accions explícites**; **no és el camí
+general d'edició**.
+
+Notes d'implementació:
+
+- En **carregar** un projecte es fusionen els trams adjacents amb el mateix BPM
+  i compàs; una partició manual de dos trams iguals es respecta mentre s'edita.
+- Totes les edicions de la GUI que re-temporitzen passen pel **re-tempo local**;
+  si el resultat no complix el contracte, no es toca res i s'avisa.
+- Quan el model es reconstrueix (quantitzar, desfer…), la selecció es notifica
+  buida i l'editor es buida o refresca: mai el temps vell d'un clip mogut.
+
 ### Flux implementat
 
 1. la WAV s’obre a l’app principal
