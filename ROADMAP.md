@@ -77,9 +77,12 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   Visor DAW amb acords, estructura i tempo/compàs; desfer/refer complet.
 - **Tempo/compàs**: mapa per trams amb `N` per tram, rols derivats, mínim
   d'**1/16 a 350 BPM** (≈43 ms), rubato com a flag i motor C/B/A. El **BPM
-  sempre és en negres/minut** (sense selector d'unitat). Terminologia
-  canònica: **«recalc fix»** (fronteres fixes) i **«recalc mòbil»** (una
-  frontera compartida) a `docs/REGLES_DE_LA_APP.md` §13.6.
+  intern és sempre en negres/minut**; hui la UI encara no té selector d'unitat.
+  Terminologia canònica: **«recalc fix»** (fronteres fixes) i **«recalc
+  mòbil»** (una frontera compartida) a `docs/REGLES_DE_LA_APP.md` §13.6.
+  **Pla aprovat (2026-11-12)**: unitat de pols per tram (`beat_unit`),
+  presentació/Ref./export en la unitat activa i recalc amb compàs local +
+  prior global; detall davall.
 - **GUI de tempo**: BPM i compàs **no** viuen a la barra «Temps»; es veuen i
   s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
   **Aplica** fa **recalc mòbil** (clip exacte + veí des de Ref. recalc);
@@ -112,9 +115,33 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 - **Edició d'àudio**: restauració des de la GUI i proves visuals; **no
   implementat** el silenci automàtic per completar el pre-roll o el primer
   compàs.
-- **Propera sessió (2026-11-12)**: arreglar el diàleg/finestra de **BPM,
-  compàs i compassos**.
+- **Propera sessió**: implementar **S1** del pla de compassos compostos
+  (model `beat_unit` per tram + format + presentació/Ref./TAP + rang +
+  Assistència). Detall i decisions a `LOG_DIALEGS_AGENTS.txt` OC/543–OC/567.
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
+
+### Pla de compassos compostos (aprovat 2026-11-12)
+
+> **Objectiu:** que un 6/8, 9/8 o 12/8 es puga tocar/exportar amb el pols que
+> el músic sent (negra amb punt) sense perdre la veritat interna en
+> negres/minut. Decisions tancades amb l'operador: `beat_unit` per tram;
+> `quarter_bpm` canònic i `tap_bpm` derivat; Ref. `(bpm, compàs, beat_unit)`;
+> BPM/TAP/Ref. en la unitat activa; export `sound tempo` sempre quarter +
+> `metronome` unitat+tap + `time` per tram; rang intern 30–350; avís 1,5×/2/3;
+> format `.acproj` 3→4 i `beat_unit` al CSV; projectes vells es rebutgen;
+> manifest autocontingut; `semicorxera` per a x/16.
+>
+> **UX:** Assistència amb severitat i accions, termes «Mantén el tempo (canvia
+> el número)» / «Mantén el número (canvia el tempo)», preview amb les dues
+> xifres i factor, i audició opcional («Escolta la proposta»). L'app no
+> endevina: automatitza el que és segur, proposa alternatives i marca el que
+> no pot saber; el músic decidix.
+>
+> **Implementació per fulls:** **S1** model+format+presentació+Ref.+TAP+
+> rang+BAIX dur+Assistència; **S2** export (partitura, guia, WAV, manifest);
+> **S3** recalc (`meter_prior`, compàs local, classificador ALT/MITJÀ/BAIX,
+> candidats i alternatives) + §13.5. Portes: suite pròpia + docs + commit
+> local a cada full; `make check` amb OK de l'operador a S3; cap push.
 
 ### Futures iteracions — motor d'àudio natiu (2026-11-08)
 
