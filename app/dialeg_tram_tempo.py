@@ -2,9 +2,9 @@
 from PyQt5.QtCore import QEvent, Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
-    QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox, QPushButton,
-    QSpinBox, QVBoxLayout, QWidget,
+    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
+    QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox,
+    QPushButton, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from app.camp_text import CampText
@@ -21,10 +21,13 @@ class DialegTramTempo(GeometriaMixin, QDialog):
     recalculRequested = pyqtSignal(str)
     #: Nova Ref. recalc demanada des del diàleg: `(bpm, num, den)`.
     refRequested = pyqtSignal(float, int, int)
+    #: Nova unitat de Beat/TAP demanada des del diàleg.
+    beatUnitRequested = pyqtSignal(str)
 
     def __init__(self, parent=None, inici=0.0, bpm=120.0, num=4, den=4,
                  inicial=False, text_inici=None, unit=bpm_unit.DEFECTE,
-                 n_actual=None, durada=None, info=None, ref=None):
+                 n_actual=None, durada=None, info=None, ref=None,
+                 beat_unit=bpm_unit.DEFECTE):
         super().__init__(parent)
         self._unit = bpm_unit.normalitza(unit)
         self._durada = float(durada) if durada is not None else 0.0
@@ -37,6 +40,7 @@ class DialegTramTempo(GeometriaMixin, QDialog):
         self._inicial = bool(inicial)
         self._ref = (tuple(ref) if ref is not None
                      else (float(bpm), int(num), int(den)))
+        self._beat_unit = bpm_unit.normalitza(beat_unit)
         self.setWindowTitle("BPM, compàs i compassos")
         self.setMinimumWidth(1000)
         # Indicador de les caselles visible sobre fons fosc (quadre buit /
@@ -190,6 +194,23 @@ QCheckBox::indicator:disabled {{
         ref_row.addWidget(self.b_ref)
         ref_row.addStretch(1)
         lay_opc.addLayout(ref_row)
+        beat_row = QHBoxLayout()
+        l_beat = QLabel("Beat/TAP:")
+        self.cb_beat = QComboBox()
+        for _clau, _et in bpm_unit.opcions():
+            self.cb_beat.addItem(_et, _clau)
+        _idx = self.cb_beat.findData(self._beat_unit)
+        if _idx >= 0:
+            self.cb_beat.setCurrentIndex(_idx)
+        self.cb_beat.setToolTip(
+            "Unitat del beat detectat i del TAP: negra, negra amb punt, "
+            "corxera o blanca.")
+        l_beat.setToolTip(self.cb_beat.toolTip())
+        self.cb_beat.currentIndexChanged.connect(self._canvia_beat)
+        beat_row.addWidget(l_beat)
+        beat_row.addWidget(self.cb_beat)
+        beat_row.addStretch(1)
+        lay_opc.addLayout(beat_row)
         col_ed.addWidget(grup_opc)
         col_ed.addStretch(1)
 
@@ -224,7 +245,7 @@ QCheckBox::indicator:disabled {{
             "Passa el ratolí per un camp, botó o casella per vore què fa.")
         self.ajuda.setWordWrap(True)
         self.ajuda.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.ajuda.setMinimumHeight(54)
+        self.ajuda.setMinimumHeight(72)
         lay_ajuda.addWidget(self.ajuda)
         col_info.addWidget(grup_ajuda)
         col_info.addStretch(1)
@@ -533,6 +554,24 @@ QCheckBox::indicator:disabled {{
             QMessageBox.warning(self, "Tempo invàlid", str(e))
             return
         self.recalculRequested.emit(str(mode))
+
+    def _canvia_beat(self, _idx=None):
+        """Demana canviar la unitat de Beat/TAP del visor."""
+        unit = self.cb_beat.currentData()
+        if unit:
+            self.beatUnitRequested.emit(str(unit))
+
+    def actualitza_beat_unit(self, unit):
+        """Refresca el selector de Beat/TAP amb la unitat aplicada."""
+        unit = bpm_unit.normalitza(unit)
+        self._beat_unit = unit
+        idx = self.cb_beat.findData(unit)
+        if idx >= 0:
+            self.cb_beat.blockSignals(True)
+            try:
+                self.cb_beat.setCurrentIndex(idx)
+            finally:
+                self.cb_beat.blockSignals(False)
 
     def _parse_compas_ref(self):
         """Compàs de la Ref. recalc: `num/den` o `num` (den 4)."""

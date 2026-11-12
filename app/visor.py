@@ -88,6 +88,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
     tempoCanviat = pyqtSignal()
     # La Ref. recalc (BPM/compàs) ha canviat: la barra 2 s'ha de sincronitzar.
     refCanviat = pyqtSignal()
+    # La unitat de Beat/TAP ha canviat: la barra 2 s'ha de sincronitzar.
+    beatUnitCanviat = pyqtSignal(str)
     # El mapa ha quedat amb clips que no donen compassos sencers. La finestra
     # principal mostra una finestra emergent; el visor només emet l'estat.
     mapaInconsistent = pyqtSignal(str)

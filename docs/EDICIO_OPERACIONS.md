@@ -278,6 +278,9 @@ pendents:
 - La **Ref. recalc** es pot canviar des del mateix diàleg amb **BPM ref**,
   **Compàs ref** i **Aplica ref.**; el canvi va al visor i a la barra 2, i no
   recalcula cap clip per si sol.
+- El selector **Beat/TAP** (negra, negra amb punt, corxera o blanca) canvia la
+  unitat del beat detectat i del TAP al visor, i queda sincronitzat amb la
+  barra 2.
 - **Recalcula (fix)**: manté `ini` i `fi` i deriva el BPM amb l'`N`/compàs
   resultants de les opcions.
 - **Recalcula (mòbil)**: mou la frontera compartida (`fi` del clip seleccionat

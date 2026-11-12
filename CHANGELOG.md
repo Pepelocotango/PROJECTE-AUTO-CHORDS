@@ -29,6 +29,8 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - La **Ref. recalc** es pot editar des del diàleg (**BPM ref**, **Compàs ref**
   i **Aplica ref.**). El canvi actualitza el visor i la barra 2, i no
   recalcula cap clip per si sol.
+- Afegit el selector **Beat/TAP** al diàleg (negra, negra amb punt, corxera o
+  blanca), sincronitzat amb la barra 2.
 - Nou botó **Ajusta** al costat d'**OK** i **Cancel**: aplica els canvis
   d'edició/recalcul **sense tancar** el diàleg i refresca el panell
   d'informació (i els camps) amb l'estat real del model. Si després d'un

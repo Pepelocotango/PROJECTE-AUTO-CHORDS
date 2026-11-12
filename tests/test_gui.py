@@ -2075,6 +2075,19 @@ class TestDialegTramTempo(_dialegs___Base):
         self.assertEqual(d.ref_bpm.text(), "140.000")
         self.assertEqual(d.ref_compas.text(), "3/4")
 
+    def test_beat_tap_selector_emet_unitat(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0, beat_unit="corxera")
+        self.assertEqual(d.cb_beat.count(), 4)
+        self.assertEqual(d.cb_beat.currentData(), "corxera")
+        rebuts = []
+        d.beatUnitRequested.connect(rebuts.append)
+        d.cb_beat.setCurrentIndex(d.cb_beat.findData("blanca"))
+        self.assertEqual(rebuts, ["blanca"])
+        d.actualitza_beat_unit("negra_punt")
+        self.assertEqual(d.cb_beat.currentData(), "negra_punt")
+
     def test_ajuda_mostra_el_tooltip_del_giny(self):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
@@ -6028,6 +6041,25 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.ref_tempo_base(), (150.0, 7, 8))
         self.assertEqual(self.w.ref_bpm.text(), "150.000")
         self.assertEqual(self.w.ref_bpb.text(), "7/8")
+
+    def test_beat_tap_des_del_dialeg_actualitza_visor_i_barra(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.cb_beat.setCurrentIndex(
+                    self.cb_beat.findData("negra_punt"))
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg):
+            vr._on_tempo_edit(1)
+        self.assertEqual(vr.beat_unit, "negra_punt")
+        self.assertEqual(self.w.cb_beat.currentData(), "negra_punt")
 
     def test_el_marcador_no_arrossega_la_frontera_d_estructura(self):
         """Moure un marcador no canvia cap clip d'estructura."""

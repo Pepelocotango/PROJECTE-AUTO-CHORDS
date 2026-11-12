@@ -23,7 +23,11 @@ class TempoMixin:
         return bpm_unit_mod.factor(getattr(self, "beat_unit", "negra"))
 
     def set_beat_unit(self, unit):
-        self.beat_unit = bpm_unit_mod.normalitza(unit)
+        unit = bpm_unit_mod.normalitza(unit)
+        self.beat_unit = unit
+        senyal = getattr(self, "beatUnitCanviat", None)
+        if senyal is not None:
+            senyal.emit(unit)
 
     def set_ref_tempo(self, bpm, num, den):
         """Fixa la referència manual del recalcul, validada."""
@@ -583,7 +587,8 @@ class TempoMixin:
             self, inici=s[0], bpm=s[2], num=s[3], den=s[4],
             inicial=(idx == 0), text_inici=lbl, unit=self.bpm_unit,
             n_actual=n_actual, durada=durada,
-            info=self._info_clip_tempo(idx), ref=self.ref_tempo_base())
+            info=self._info_clip_tempo(idx), ref=self.ref_tempo_base(),
+            beat_unit=getattr(self, "beat_unit", bpm_unit_mod.DEFECTE))
         darrers = {"valors": None}
 
         def _valors_dialeg():
@@ -657,9 +662,22 @@ class TempoMixin:
                      f"{int(num)}/{int(den)}")
             return True
 
+        def _on_beat_unit(unit):
+            """Canvia la unitat de Beat/TAP del visor des del diàleg."""
+            self.set_beat_unit(unit)
+            self._undo_touch_base()
+            dlg.actualitza_beat_unit(unit)
+            dlg.actualitza_info(self._info_clip_tempo(idx))
+            senyal = getattr(self, "canvis", None)
+            if senyal is not None:
+                senyal.emit()
+            self.log(f"Beat/TAP: {getattr(self, 'beat_unit', unit)}")
+            return True
+
         dlg.aplicaRequested.connect(_on_aplica)
         dlg.recalculRequested.connect(_on_recalcul)
         dlg.refRequested.connect(_on_ref)
+        dlg.beatUnitRequested.connect(_on_beat_unit)
         if dlg.exec_() != QDialog.Accepted:
             return False
         try:
