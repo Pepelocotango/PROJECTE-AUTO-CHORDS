@@ -1955,6 +1955,137 @@ class TestDialegTramTempo(_dialegs___Base):
         with self.assertRaises(ValueError):
             d.valors()
 
+    def test_info_clip_es_nomes_lectura_i_mostra_dades(self):
+        info = {
+            "idx": 2, "total": 5, "rol": "interior", "tipus": "normal",
+            "ini": 12.345, "fi": 20.0, "durada": 7.655,
+            "compassos": "4/4", "agrupacio": "3+2", "agrupacio_ef": "3+2",
+            "n": 4.0, "n_real": 3.827, "n_enter": 4, "n_valid": False,
+            "bpm": 120.0, "bpm_mostra": 120.0, "bpm_unit": "Negra",
+            "ref_bpm": 118.0, "ref_compas": "4/4", "desviacio": 1.7,
+            "beat_unit": "Negra", "snap": "actiu · Beats QM",
+            "n_qm": 12, "negres_qm": 12.0,
+            "bpm_ok": True, "durada_ok": True,
+            "min_durada": 0.042857,
+        }
+        d = dialegs.DialegTramTempo(
+            None, inici=12.345, bpm=120.0, num=4, den=4, durada=7.655,
+            n_actual=3.827, info=info)
+        txt = " ".join(lbl.text()
+                       for lbl in d.info_clip.findChildren(QLabel))
+        for frag in ("Clip 2 de 5", "interior", "12.345", "3.827",
+                     "NO VÀLID", "Ref. recalc", "Beats QM", "VALIDACIÓ"):
+            self.assertIn(frag, txt)
+
+    def test_boto_ajusta_emet_senyal_sense_tancar(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        rebut = []
+        d.aplicaRequested.connect(lambda: rebut.append(True))
+        d.b_ajusta.click()
+        self.assertEqual(rebut, [True])
+        self.assertNotEqual(d.result(), QW.QDialog.Accepted)
+
+    def test_actualitza_estat_refresca_camps_i_info(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        d.actualitza_estat({
+            "idx": 1, "total": 2, "rol": "primer", "tipus": "normal",
+            "ini": 0.0, "fi": 10.0, "durada": 10.0,
+            "compassos": "3/4", "n": 5.0, "n_real": 5.0, "n_enter": 5,
+            "n_valid": True, "bpm": 90.0, "bpm_mostra": 90.0,
+            "bpm_unit": "Negra", "ref_bpm": 90.0, "ref_compas": "3/4",
+            "beat_unit": "Negra", "snap": "—", "n_qm": None,
+            "bpm_ok": True, "durada_ok": True, "min_durada": 0.042857,
+        })
+        for sp in (d.sp_bpm, d.sp_bpm_mob):
+            self.assertAlmostEqual(sp.value(), 90.0, places=3)
+        for ed in (d.ed_compas, d.ed_compas_mob):
+            self.assertEqual(ed.text(), "3/4")
+        for sp in (d.sp_n, d.sp_n_mob):
+            self.assertEqual(sp.value(), 5)
+        txt = " ".join(lbl.text()
+                       for lbl in d.info_clip.findChildren(QLabel))
+        self.assertIn("90.000", txt)
+        self.assertIn("3/4", txt)
+
+    def test_camps_fix_i_mobil_estan_sincronitzats(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        d.sp_n.setValue(6)
+        self.assertEqual(d.sp_n_mob.value(), 6)
+        d.ed_compas_mob.setText("5/4")
+        self.assertEqual(d.ed_compas.text(), "5/4")
+        self.assertAlmostEqual(d.sp_bpm.value(), d.sp_bpm_mob.value(),
+                               places=6)
+
+    def test_botons_recalcula_emeten_el_mode(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        rebuts = []
+        d.recalculRequested.connect(rebuts.append)
+        d.b_recalc_fix.click()
+        d.b_recalc_mob.click()
+        self.assertEqual(rebuts, ["fix", "mobil"])
+        self.assertNotEqual(d.result(), QW.QDialog.Accepted)
+
+    def test_opcions_recalc_per_defecte(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        self.assertEqual(d.opcions_recalc(), {
+            "beats": True, "ref": True, "segons": True, "unitat": True,
+            "compas": True, "n_fix": True, "rubato": False,
+        })
+        d.chk_segons.setChecked(True)
+        self.assertFalse(d.b_recalc_fix.isEnabled())
+        self.assertFalse(d.b_recalc_mob.isEnabled())
+
+    def test_tres_blocs_de_la_columna_esquerra(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        titols = [g.title() for g in d.findChildren(QW.QGroupBox)]
+        for titol in ("Recalcul fix", "Recalcul mòbil", "Opcions",
+                      "Informació del clip (no editable)"):
+            self.assertIn(titol, titols)
+
+    def test_caselles_tenen_indicador_visible(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        self.assertIn("QCheckBox::indicator", d.styleSheet())
+        self.assertIn("QCheckBox::indicator:checked", d.styleSheet())
+
+    def test_aplica_ref_emet_la_nova_referencia(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0, ref=(120.0, 4, 4))
+        rebuts = []
+        d.refRequested.connect(lambda *args: rebuts.append(args))
+        d.ref_bpm.setText("150")
+        d.ref_compas.setText("7/8")
+        d.b_ref.click()
+        self.assertEqual(rebuts, [(150.0, 7, 8)])
+        d.actualitza_ref(140.0, 3, 4)
+        self.assertEqual(d.ref_bpm.text(), "140.000")
+        self.assertEqual(d.ref_compas.text(), "3/4")
+
+    def test_ajuda_mostra_el_tooltip_del_giny(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        titols = [g.title() for g in d.findChildren(QW.QGroupBox)]
+        self.assertIn("Ajuda", titols)
+        QApplication.sendEvent(d.b_recalc_fix, QEvent(QEvent.Enter))
+        self.assertIn("Recalcul fix", d.ajuda.text())
+        QApplication.sendEvent(d.chk_beats, QEvent(QEvent.Enter))
+        self.assertIn("beats QM", d.ajuda.text())
+
     def test_show_centra_el_dialeg_a_la_pantalla(self):
         d = dialegs.DialegTramTempo(None, inici=4.0, bpm=120.0, num=4,
                                     den=4)
@@ -5820,6 +5951,83 @@ class TestAncoratgesFinestra(unittest.TestCase):
         despres = ([float(t[0]) for t in vr.tempo_trams]
                    + [float(vr.tempo_trams[-1][1])])
         self.assertEqual(despres, abans)
+
+    def test_boto_recalcul_fix_des_del_dialeg_no_mou_fronteres(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        vistos = []
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                vistos.append(self)
+                self.chk_ref.setChecked(False)
+                self.chk_compas_lliure.setChecked(False)
+                self.chk_n.setChecked(True)
+                self.sp_n.setValue(12)
+                self.ed_compas.setText("3/4")
+                self.b_recalc_fix.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg):
+            vr._on_tempo_edit(1)
+        self.assertEqual(vistos[0]._info["n_enter"], 12)
+        self.assertEqual(vr.tempo_trams[1][:2], (10.0, 30.0))
+        self.assertEqual(vr.tempo_trams[1][3:], (3, 4))
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 108.0, places=6)
+        self.assertEqual(vr.tempo_trams[2], trams[2])
+
+    def test_boto_recalcul_mobil_des_del_dialeg_mou_una_frontera(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.chk_ref.setChecked(False)
+                self.chk_compas_lliure.setChecked(False)
+                self.chk_n.setChecked(True)
+                self.sp_n.setValue(12)
+                self.ed_compas.setText("3/4")
+                self.sp_bpm.setValue(100.0)
+                self.b_recalc_mob.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg):
+            vr._on_tempo_edit(1)
+        self.assertAlmostEqual(vr.tempo_trams[1][1], 31.6, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[2][0], 31.6, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 100.0, places=6)
+        self.assertEqual(vr.tempo_trams[1][3:], (3, 4))
+        self.assertAlmostEqual(vr.tempo_trams[2][2], 15 * 4 * 60 / 28.4,
+                               places=5)
+
+    def test_aplica_ref_des_del_dialeg_actualitza_visor_i_barra(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.ref_bpm.setText("150")
+                self.ref_compas.setText("7/8")
+                self.b_ref.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg):
+            vr._on_tempo_edit(1)
+        self.assertEqual(vr.ref_tempo_base(), (150.0, 7, 8))
+        self.assertEqual(self.w.ref_bpm.text(), "150.000")
+        self.assertEqual(self.w.ref_bpb.text(), "7/8")
 
     def test_el_marcador_no_arrossega_la_frontera_d_estructura(self):
         """Moure un marcador no canvia cap clip d'estructura."""

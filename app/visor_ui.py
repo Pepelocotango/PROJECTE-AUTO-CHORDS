@@ -131,6 +131,12 @@ class VisorUIMixin:
                 pass
             visor.tempoCanviat.connect(self._sincronitza_temps_del_visor)
             try:
+                visor.refCanviat.disconnect(
+                    self._sincronitza_ref_des_del_visor)
+            except (TypeError, AttributeError, RuntimeError):
+                pass
+            visor.refCanviat.connect(self._sincronitza_ref_des_del_visor)
+            try:
                 visor.mapaInconsistent.disconnect(self._avis_mapa_inconsistent)
             except (TypeError, AttributeError, RuntimeError):
                 pass

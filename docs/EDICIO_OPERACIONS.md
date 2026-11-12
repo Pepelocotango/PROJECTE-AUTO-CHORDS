@@ -263,6 +263,34 @@ pendents:
 - **Ajusta** obre el mateix diàleg que el doble clic sobre el tram (BPM,
   compàs i `N`); el resultat s'aplica pel mateix camí del diàleg. No s'aplica
   automàticament.
+- El diàleg té **2 columnes**: a l'esquerra, l'edició/recalcul dividida en
+  **3 blocs** —**Recalcul fix** (N/compàs/BPM + botó **Recalcula**),
+  **Recalcul mòbil** (N/compàs/BPM + botó **Recalcula**) i **Opcions**—;
+  a la dreta, un panell compacte de **només lectura** amb la informació
+  completa del clip (rol, inici/fi, durada, compàs, agrupació, `N` real i
+  enter, BPM intern, offset, Ref. recalc, unitats, snap i beats QM, veïns i
+  validació), sense scroll. Este panell no participa en l'acceptació ni mou
+  cap frontera.
+- Les **Opcions** són comunes als dos recalcs: **Beats QM**, **Ref. recalc**,
+  **Segons del tram**, **Unitat del beat**, **Canviar compàs**, **N fix** i
+  **En segons (rubato)**. Indiquen què ha de tindre en compte el càlcul. Les
+  caselles tenen un **indicador visible** (quadre buit/ple) sobre fons fosc.
+- La **Ref. recalc** es pot canviar des del mateix diàleg amb **BPM ref**,
+  **Compàs ref** i **Aplica ref.**; el canvi va al visor i a la barra 2, i no
+  recalcula cap clip per si sol.
+- **Recalcula (fix)**: manté `ini` i `fi` i deriva el BPM amb l'`N`/compàs
+  resultants de les opcions.
+- **Recalcula (mòbil)**: mou la frontera compartida (`fi` del clip seleccionat
+  = `ini` del veí dret) amb l'`N`/compàs resultants i el BPM del camp; el veí
+  es recalcula.
+- Els dos jocs de camps (fix i mòbil) estan **sincronitzats**; el mode el tria
+  el botó, no el bloc on s'escriu.
+- Sota la informació del clip hi ha una fila **Ajuda** que mostra el tooltip
+  del camp, botó o casella sota el ratolí (la mateixa informació que la infobox
+  de la finestra).
+- **Ajusta** (al costat d'OK i Cancel) aplica els canvis d'edició/recalcul
+  sense tancar el diàleg i refresca el panell d'informació amb l'estat real
+  del model. OK després d'un Ajusta només tanca si no hi ha canvis nous.
 - **Arrossegar una frontera** continua usant el recalcul guiat amb segons com a
   entrada; no és una edició directa de camps. El punter fixa Δt; s'ajusten les
   fronteres i el recalcul decideix BPM/compàs/`N` enters dels dos costats amb

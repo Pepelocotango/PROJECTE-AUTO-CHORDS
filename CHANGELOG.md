@@ -5,6 +5,37 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Afegit — informació completa del clip al diàleg de tram de tempo (2026-11-12)
+- El diàleg **BPM, compàs i compassos** es divideix en **2 columnes**: a
+  l'esquerra, l'edició/recalcul; a la dreta, un panell compacte de **només
+  lectura** amb tota la informació derivada del clip: rol, inici/fi (s i
+  compàs), durada, compàs i agrupació efectiva, `N` real/enter i camp desat,
+  BPM en la unitat visible i intern, offset, Ref. recalc i desviació, unitats
+  de BPM/beat, snap i beats QM del clip, veïns i validació (BPM, durada mínima
+  i `N` enter). El panell es mostra **sense scroll**.
+- La columna esquerra es presenta en **3 blocs**: **Recalcul fix** i
+  **Recalcul mòbil** (tots dos amb N, compàs, BPM i botó **Recalcula**) i
+  **Opcions** (Beats QM, Ref. recalc, Segons del tram, Unitat del beat,
+  Canviar compàs, N fix, En segons). Els dos jocs de camps estan
+  **sincronitzats**; el mode el tria el botó.
+- **Recalcula (fix)** manté `ini`/`fi` i deriva el BPM; **Recalcula (mòbil)**
+  mou la frontera compartida amb l'N/compàs resultants i el BPM del camp. Les
+  opcions són comunes i indiquen què ha de tindre en compte cada càlcul.
+- Sota la informació del clip hi ha una fila **Ajuda** que mostra el tooltip
+  del camp, botó o casella sota el ratolí (la mateixa informació que la
+  infobox de la finestra).
+- Les caselles d'**Opcions** tenen un **indicador visible** (quadre buit/ple)
+  sobre fons fosc, perquè es vega clar on s'activa cada opció.
+- La **Ref. recalc** es pot editar des del diàleg (**BPM ref**, **Compàs ref**
+  i **Aplica ref.**). El canvi actualitza el visor i la barra 2, i no
+  recalcula cap clip per si sol.
+- Nou botó **Ajusta** al costat d'**OK** i **Cancel**: aplica els canvis
+  d'edició/recalcul **sense tancar** el diàleg i refresca el panell
+  d'informació (i els camps) amb l'estat real del model. Si després d'un
+  Ajusta no es toca res, OK només tanca.
+- El panell és informatiu: no participa en l'acceptació del diàleg ni mou cap
+  frontera. El comportament d'edició existent no canvia.
+
 ### Canviat — REGLES només amb invariants (2026-11-12)
 - `docs/REGLES_DE_LA_APP.md` queda **només amb regles i invariants** (regles
   1–12 i §13.1–§13.9): s'hi ha tret la narrativa, els exemples llargs, els noms
