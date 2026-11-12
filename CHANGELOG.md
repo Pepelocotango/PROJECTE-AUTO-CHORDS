@@ -16,6 +16,16 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   la **manual/global de «Ref. recalc»**, no la dels clips veïns, d'acord amb el
   codi i `EDICIO_OPERACIONS.md`.
 
+### Canviat — geometria persistent de finestres (2026-11-12)
+- La **finestra principal** recorda posició, mida, estat maximitzat i layout de
+  docks/toolbars entre sessions.
+- Els **diàlegs propis** recorden la seua geometria per classe. Si no n'hi ha
+  o queda fora de pantalla, es **centren** a la pantalla actual.
+- L'estat viu a `finestres.json` dins `config.DADES_DIR`; és local (ignorat per
+  git) i no s'escriu en la suite offscreen.
+- El diàleg de **BPM, compàs i compassos** centra després que el gestor de
+  finestres haja aplicat la mida final (`QTimer.singleShot(0, …)`).
+
 ### Canviat — Aplica recalc mòbil i botó Ajusta amb diàleg (2026-11-11)
 - **Aplica** és ara **recalc mòbil**: el clip seleccionat rep exactament el
   BPM, compàs i `N`; la seua `fi` passa a l'`ini` del veí dret. El veí es

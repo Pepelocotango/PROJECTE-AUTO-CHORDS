@@ -4,7 +4,9 @@ from PyQt5.QtWidgets import (
     QSpinBox, QVBoxLayout,
 )
 
-class DialegTempoPerTrams(QDialog):
+from app.finestres import GeometriaMixin
+
+class DialegTempoPerTrams(GeometriaMixin, QDialog):
     """«Detecta el tempo per trams»: mapa de BPM cada N compassos.
 
     És l'acció automàtica per a cançons amb **tempo variable**: es detecta un

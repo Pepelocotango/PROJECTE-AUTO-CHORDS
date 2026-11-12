@@ -11,7 +11,9 @@ from .opcions import (
     carrega_opcions,
 )
 
-class DialegOpcions(QDialog):
+from app.finestres import GeometriaMixin
+
+class DialegOpcions(GeometriaMixin, QDialog):
     """Diàleg amb pestanyes BPM / Acords / Estructura."""
 
     def __init__(self, parent=None, tab="acords", opcions=None):

@@ -5,7 +5,9 @@ from PyQt5.QtWidgets import (
 
 from app import graella
 
-class DialegQuantitza(QDialog):
+from app.finestres import GeometriaMixin
+
+class DialegQuantitza(GeometriaMixin, QDialog):
     """Quantització del model: abast + graella d'acords i d'estructura.
 
     No toca BPM, compàs, offset ni el cru. Només decideix QUÈ es quantitza i

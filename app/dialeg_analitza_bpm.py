@@ -7,7 +7,9 @@ from PyQt5.QtWidgets import (
 
 from .opcions import BEATS_DEFECTES, carrega_opcions
 
-class DialegAnalitzaBPM(QDialog):
+from app.finestres import GeometriaMixin
+
+class DialegAnalitzaBPM(GeometriaMixin, QDialog):
     """Opcions de l'acció separada «Analitza BPM».
 
     No detecta res: només tria motor i sensibilitat. La detecció la fa la

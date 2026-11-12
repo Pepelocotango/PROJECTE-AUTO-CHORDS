@@ -61,7 +61,9 @@ PASSOS = (
 )
 
 
-class DialegGuiaRapida(QDialog):
+from app.finestres import GeometriaMixin
+
+class DialegGuiaRapida(GeometriaMixin, QDialog):
     """Welcome de 5 pantalles amb «Anterior» / «Següent» / «Tanca»."""
 
     def __init__(self, parent=None):

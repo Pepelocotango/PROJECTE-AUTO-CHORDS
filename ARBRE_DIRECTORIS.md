@@ -76,7 +76,7 @@ PROJECTE AUTO CHORDS/
 │   ├── PLA_SIMPLIFICACIO_TEMPO.md         🟢  # Pla per fases de simplificació del tempo
 │   ├── TORNAR A REVISAR AVANS AQUEST PLA.TXT 🟢
 │   └── per fer_2026-11-05/                🟢  # (54 fitxers)
-├── app/                           🟢  # Codi de l'aplicació (PyQt5) (73 fitxers)
+├── app/                           🟢  # Codi de l'aplicació (PyQt5) (74 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
 │   ├── analisi_ui.py             🟢  # Accions d'anàlisi de la finestra (F3).
@@ -103,6 +103,7 @@ PROJECTE AUTO CHORDS/
 │   ├── exporta_audio.py          🟢  # Exportació de l'àudio de treball a altres formats (Fase 6).
 │   ├── feines.py                 🟢  # Workers de fils de la finestra (F3).
 │   ├── ffmpeg.py                 🟢  # Import d'altres formats d'àudio via ffmpeg.
+│   ├── finestres.py              🟢  # Geometria persistent de la finestra principal i dels diàlegs.
 │   ├── graella.py                🟢  # Graella musical — divisions, snap i quantització (stdlib pur).
 │   ├── icones.py                 🟢  # Icones de la UI: SVG de Lucide (llicència ISC, https://lucide.dev).
 │   ├── info_box.py               🟢  # Caixa d'informació i rotatori de consells de la finestra (F3).
@@ -289,7 +290,7 @@ PROJECTE AUTO CHORDS/
 │   └── qm-vamp-plugins.so  🟢
 ├── temp/                          🟡  # Temporals de l'app (no versionat) (1 fitxer)
 │   └── visor_player.log 🟡  # Log del reproductor
-├── tests/                         🟢  # Suite unittest offscreen (22 fitxers)
+├── tests/                         🟢  # Suite unittest offscreen (23 fitxers)
 │   ├── _qt_neteja.py              🟢  # Neteja ORDENADA dels objectes Qt entre tests.
 │   ├── _temporals.py              🟢  # Higiene dels tests: cap temporal no s'ha de quedar pel disc.
 │   ├── test_ancoratges.py         🟢  # Suite de test — Marcadors humans i velocitat de reproducció.
@@ -303,6 +304,7 @@ PROJECTE AUTO CHORDS/
 │   ├── test_drag_drop.py          🟢  # Drag & drop d'àudio des del gestor de fitxers (Linux, Windows i macOS).
 │   ├── test_edicio.py             🟢  # Suite de test — Edicio
 │   ├── test_exporta_audio.py      🟢  # Tests de l'exportació de la còpia de treball (Fase 6).
+│   ├── test_finestres.py          🟢  # Geometria persistent de finestres (estat local, no del projecte).
 │   ├── test_gui.py                🟢  # Suite de test — Gui
 │   ├── test_mapa_tempo.py         🟢  # Tests de la capa de dades `mapa_tempo.csv` (subplà de rubato, fase 2).
 │   ├── test_moduls_al_dia.py      🟢  # Test: la taula de mòduls de `DEVELOPING.md` ha d'estar al dia.
@@ -321,6 +323,7 @@ PROJECTE AUTO CHORDS/
 ├── concatena.py                   🟢  # Genera un sol fitxer amb el codi indispensable
 ├── dev_reload.py                  🟢  # Recàrrega automàtica en dev
 ├── DEVELOPING.md                  🟢  # Entorn, mapa del codi, build i CI
+├── finestres.json                 🟡
 ├── instal·la_local.sh             🟢  # Instal·lació local sense sudo
 ├── LICENSE                        🟢  # GPL-3.0-or-later
 ├── LLICENCIES_TERCERS.md          🟢  # Llicències de tercers

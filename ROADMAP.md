@@ -91,9 +91,12 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   sincronització del model, desfer/refer i export amb FFmpeg implementats.
 - **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
   `Analitza beats, downbeats i BPM` (F7) i **Beats/BPM** a la barra.
+- **Finestres**: la finestra principal i els diàlegs propis recorden geometria
+  i estat entre sessions (`finestres.json` local); si no n'hi ha o queden fora
+  de pantalla, es centren.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
-- **Suite**: **1563 OK** (1 skip), `pyflakes` net i `docs-check` verd.
+- **Suite**: **1566 OK** (1 skip), `pyflakes` net i `docs-check` verd.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).

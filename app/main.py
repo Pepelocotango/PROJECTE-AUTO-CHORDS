@@ -31,6 +31,7 @@ if APP_DIR not in sys.path:
 from app.camp_text import CampText
 from . import bpm_unit as bpm_unit_mod  # noqa: E402
 from . import ffmpeg, partitura, pipeline, postproc, theme  # noqa: F401
+from . import finestres  # noqa: E402
 from . import config  # noqa: E402
 from . import dialeg_guia_rapida  # noqa: E402
 from . import dialegs  # noqa: E402
@@ -587,6 +588,9 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         visualment fins que l'usuari canvia de mode.
         """
         super().showEvent(event)
+        if not getattr(self, "_geometria_restaurada", False):
+            finestres.restaura(self, "Finestra", centra_si_falta=False)
+            self._geometria_restaurada = True
         QTimer.singleShot(0, lambda: self._canvia_mode_temps(
             self.tempo_fix.isChecked()))
 
@@ -1523,6 +1527,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         if not self._pot_descartar():
             ev.ignore()
             return
+        finestres.desa(self, "Finestra")
         self._tanca_sessio_tap()
         ft = getattr(self, "_fil_trams", None)
         try:

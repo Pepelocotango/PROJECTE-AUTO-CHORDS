@@ -269,6 +269,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `exporta_audio.py` | Exportació de l'àudio de treball a altres formats (Fase 6). |
 | `feines.py` | Workers de fils de la finestra (F3). |
 | `ffmpeg.py` | Import d'altres formats d'àudio via ffmpeg. |
+| `finestres.py` | Geometria persistent de la finestra principal i dels diàlegs. |
 | `graella.py` | Graella musical — divisions, snap i quantització (stdlib pur). |
 | `icones.py` | Icones de la UI: SVG de Lucide (llicència ISC, https://lucide.dev). |
 | `info_box.py` | Caixa d'informació i rotatori de consells de la finestra (F3). |

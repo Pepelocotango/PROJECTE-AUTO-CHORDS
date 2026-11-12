@@ -5,7 +5,9 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-class DialegTrobaReemplaca(QDialog):
+from app.finestres import GeometriaMixin
+
+class DialegTrobaReemplaca(GeometriaMixin, QDialog):
     """Troba i reemplaça un xifrat (acords) o una etiqueta (estructura), a tot el tema."""
 
     def __init__(self, parent=None, camp="acords"):

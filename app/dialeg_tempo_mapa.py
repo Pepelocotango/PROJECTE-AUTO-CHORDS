@@ -9,7 +9,9 @@ from PyQt5.QtWidgets import (
 
 from app import bpm_unit, tempo_map
 
-class DialegTempoMapa(QDialog):
+from app.finestres import GeometriaMixin
+
+class DialegTempoMapa(GeometriaMixin, QDialog):
     """Editor del mapa de **tempo i compàs** (canvis al llarg del tema).
 
     Cada fila és un tros que val fins a la següent: «Des de (s)», «BPM» i
