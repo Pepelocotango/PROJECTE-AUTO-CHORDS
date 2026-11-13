@@ -399,10 +399,11 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
 - **Presentació**: el BPM del clip i el TAP es mostren en la unitat del tram;
   la Ref. en la seua unitat; el transport/barra sense clip en el tram 0 o
   `negra`. El selector **Beat/TAP** de la barra és una drecera del tram
-  seleccionat; `cb_ref_beat` és el de la Ref. El canvi d'unitat és explícit:
-  «Mantén el tempo (canvia el número)» o «Mantén el número (canvia el tempo)»,
-  amb preview de les dues xifres i Cancel·la. TAP = Mantén el número; BPM
-  manual = Mantén el tempo.
+  seleccionat; `cb_ref_beat` és el de la Ref. Al **diàleg**, el canvi d'unitat
+  del clip és **inline** (radios «Mantén el tempo (canvia el número)» /
+  «Mantén el número (canvia el tempo)», preview de les dues xifres) i no
+  s'aplica fins **Ajusta/OK**; la Ref. té el seu selector i un modal amb les
+  mateixes opcions. TAP = Mantén el número; BPM manual = Mantén el tempo.
 - **TAP/Ref. (L1)**: si el compàs de la Ref. difereix del clip, el TAP aplica
   el clip però **no toca la Ref.**: mostra «TAP aplicat; Ref. no actualitzada
   (compàs diferent)». Si coincideix, actualitza BPM+unitat de la Ref. Canviar
@@ -422,8 +423,10 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
   alternatives o canvi estructural; BAIX només per condició dura (cap
   candidat, rang, octava, conflicte real unitat/compàs, frontera ambigua o
   beats no resolubles). Cost alt amb candidat factible = MITJÀ. La sospita
-  1,5×/2/3 és MITJÀ i no s'auto-aplica. L'Assistència és per context (info box
-  + fila Ajuda del diàleg).
+  1,5×/2/3 és MITJÀ i no s'auto-aplica; es pot **silenciar per tram/sessió**
+  amb la casella del diàleg (el resum continua dient que l'avís està
+  silenciat). L'Assistència és per context (info box + fila Ajuda del diàleg)
+  i les alternatives es poden carregar amb doble-clic.
 - **Export (S2)**: `manifest.csv` té 10 columnes (les 7 històriques +
   `bpm_quarter`, `beat_unit`, `bpm_mostra` al final; estat a l'inici del
   segment; `mapa_tempo.csv` canònic). La guia HTML mostra les dues xifres. La

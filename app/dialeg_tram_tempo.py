@@ -3,11 +3,13 @@ from PyQt5.QtCore import QEvent, Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
-    QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox,
-    QPushButton, QSpinBox, QVBoxLayout, QWidget,
+    QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QListWidget,
+    QListWidgetItem, QMessageBox, QPushButton, QSpinBox, QVBoxLayout,
+    QWidget,
 )
 
 from app.camp_text import CampText
+from app.dialeg_canvi_unitat import DialegCanviUnitat, PanellCanviUnitat
 from app import bpm_unit, limits, tempo_map, tempo_recalc, theme
 
 from app.finestres import GeometriaMixin
@@ -51,6 +53,12 @@ AJUDA_OPCIONS = {
         "cal.",
         "deixa que el recalcul trie N per encaixar la durada i els beats.",
     ),
+    "chk_silencia_factor": (
+        "Silencia avís 1,5×",
+        "els avisos de factor 1,5×/2/3 d'este tram no es mostren; el "
+        "resultat continua sent MITJÀ i no s'auto-aplica.",
+        "es mostra l'avís de factor 1,5×/2/3 i cal revisar-lo.",
+    ),
     "chk_segons": (
         "En segons (rubato)",
         "el clip dura el que diu l'àudio, sense graella ni compassos enters "
@@ -78,13 +86,11 @@ class DialegTramTempo(GeometriaMixin, QDialog):
     recalculRequested = pyqtSignal(str)
     #: Nova Ref. recalc demanada des del diàleg: `(bpm, num, den)`.
     refRequested = pyqtSignal(float, int, int, str)
-    #: Nova unitat de Beat/TAP demanada des del diàleg.
-    beatUnitRequested = pyqtSignal(str)
-
     def __init__(self, parent=None, inici=0.0, bpm=120.0, num=4, den=4,
                  inicial=False, text_inici=None, unit=bpm_unit.DEFECTE,
                  n_actual=None, durada=None, info=None, ref=None,
-                 ref_unit=bpm_unit.DEFECTE, beat_unit=bpm_unit.DEFECTE):
+                 ref_unit=bpm_unit.DEFECTE, beat_unit=bpm_unit.DEFECTE,
+                 silencia_factor=False):
         super().__init__(parent)
         self._unit = bpm_unit.normalitza(unit)
         self._durada = float(durada) if durada is not None else 0.0
@@ -99,6 +105,7 @@ class DialegTramTempo(GeometriaMixin, QDialog):
                      else (float(bpm), int(num), int(den)))
         self._ref_unit = bpm_unit.normalitza(ref_unit)
         self._beat_unit = bpm_unit.normalitza(beat_unit)
+        self._silencia_factor = bool(silencia_factor)
         self.setWindowTitle("BPM, compàs i compassos")
         self.setMinimumWidth(1000)
         # Indicador de les caselles visible sobre fons fosc (quadre buit /
@@ -198,6 +205,10 @@ QCheckBox::indicator:disabled {{
         self.chk_segons = QCheckBox("En segons (rubato)")
         self.chk_segons.setToolTip(_ajuda_opcio("chk_segons"))
         self.chk_segons.setChecked(int(num) <= 0 or int(den) <= 0)
+        self.chk_silencia_factor = QCheckBox("Silencia avís 1,5×")
+        self.chk_silencia_factor.setToolTip(
+            _ajuda_opcio("chk_silencia_factor"))
+        self.chk_silencia_factor.setChecked(self._silencia_factor)
         grid_opc = QGridLayout()
         grid_opc.setHorizontalSpacing(12)
         grid_opc.setVerticalSpacing(2)
@@ -208,6 +219,7 @@ QCheckBox::indicator:disabled {{
         grid_opc.addWidget(self.chk_compas_lliure, 2, 0)
         grid_opc.addWidget(self.chk_n, 2, 1)
         grid_opc.addWidget(self.chk_segons, 3, 0, 1, 2)
+        grid_opc.addWidget(self.chk_silencia_factor, 4, 0, 1, 2)
         lay_opc.addLayout(grid_opc)
         # Referència manual de recalcul editable des d'ací.
         ref_row = QHBoxLayout()
@@ -231,6 +243,18 @@ QCheckBox::indicator:disabled {{
         l_ref_compas.setToolTip(self.ref_compas.toolTip())
         ref_row.addWidget(l_ref_compas)
         ref_row.addWidget(self.ref_compas)
+        self.cb_ref_beat = QComboBox()
+        for _clau, _et in bpm_unit.opcions():
+            self.cb_ref_beat.addItem(_et, _clau)
+        _idxr = self.cb_ref_beat.findData(self._ref_unit)
+        if _idxr >= 0:
+            self.cb_ref_beat.setCurrentIndex(_idxr)
+        self.cb_ref_beat.setToolTip(
+            "Unitat de la Ref. recalc; el número de la Ref. es mostra en "
+            "esta unitat.")
+        self.cb_ref_beat.currentIndexChanged.connect(self._canvia_ref_unitat)
+        ref_row.addWidget(QLabel("Unitat ref.:"))
+        ref_row.addWidget(self.cb_ref_beat)
         self.b_ref = QPushButton("Aplica ref.")
         self.b_ref.setToolTip(
             "Aplica esta Ref. recalc al visor i actualitza la informació "
@@ -256,6 +280,17 @@ QCheckBox::indicator:disabled {{
         beat_row.addWidget(self.cb_beat)
         beat_row.addStretch(1)
         lay_opc.addLayout(beat_row)
+        self.grup_unitat = QGroupBox("Canvi d'unitat")
+        lay_unitat = QVBoxLayout(self.grup_unitat)
+        self.panell_unitat = PanellCanviUnitat(self)
+        for _w in self.panell_unitat._widgets:
+            lay_unitat.addWidget(_w)
+        self.panell_unitat.rb_tempo.toggled.connect(
+            self._actualitza_panell_unitat)
+        self.panell_unitat.rb_numero.toggled.connect(
+            self._actualitza_panell_unitat)
+        self.grup_unitat.setVisible(False)
+        lay_opc.addWidget(self.grup_unitat)
         col_ed.addWidget(grup_opc)
         col_ed.addStretch(1)
 
@@ -293,6 +328,14 @@ QCheckBox::indicator:disabled {{
         self.ajuda.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.ajuda.setMinimumHeight(72)
         lay_ajuda.addWidget(self.ajuda)
+        self.alternatives = QListWidget()
+        self.alternatives.setMaximumHeight(72)
+        self.alternatives.setVisible(False)
+        self.alternatives.setToolTip(
+            "Alternatives del recalcul; doble-clic per carregar-ne una als "
+            "camps (després Ajusta/OK per aplicar).")
+        self.alternatives.itemDoubleClicked.connect(self._triar_alternativa)
+        lay_ajuda.addWidget(self.alternatives)
         col_info.addWidget(grup_ajuda)
         col_info.addStretch(1)
 
@@ -584,6 +627,7 @@ QCheckBox::indicator:disabled {{
             "compas": self.chk_compas_lliure.isChecked(),
             "n_fix": self.chk_n.isChecked(),
             "rubato": self.chk_segons.isChecked(),
+            "silencia_factor": self.chk_silencia_factor.isChecked(),
         }
 
     def _recalcula(self, mode):
@@ -601,16 +645,53 @@ QCheckBox::indicator:disabled {{
             return
         self.recalculRequested.emit(str(mode))
 
+    def _posa_bpm_unitat(self, bpm_quarter, unit):
+        """Escriu el BPM en la unitat donada als dos jocs de camps."""
+        val = bpm_unit.de_quarter(float(bpm_quarter), unit)
+        for sp in (self.sp_bpm, self.sp_bpm_mob):
+            sp.blockSignals(True)
+            try:
+                sp.setValue(val)
+            finally:
+                sp.blockSignals(False)
+
     def _canvia_beat(self, _idx=None):
-        """Demana canviar la unitat de Beat/TAP del visor."""
-        unit = self.cb_beat.currentData()
-        if unit:
-            self.beatUnitRequested.emit(str(unit))
+        """Mostra el panell inline de canvi d'unitat (no aplica encara)."""
+        unit = bpm_unit.normalitza(
+            self.cb_beat.currentData() or self._beat_unit)
+        if unit == self._beat_unit:
+            self.grup_unitat.setVisible(False)
+            return
+        bpm_int = bpm_unit.a_quarter(float(self.sp_bpm.value()), self._unit)
+        self.panell_unitat.set_dades(
+            "Beat/TAP", bpm_int, self._beat_unit, unit)
+        self.panell_unitat.rb_tempo.setChecked(True)
+        self.grup_unitat.setVisible(True)
+        self._actualitza_panell_unitat()
+
+    def _actualitza_panell_unitat(self, *_a):
+        if not getattr(self, "grup_unitat", None) or \
+                self.grup_unitat.isHidden():
+            return
+        bpm, unit = self.panell_unitat.resultat()
+        self._beat_unit = unit
+        self._unit = unit
+        self._posa_bpm_unitat(bpm, unit)
+
+    def unitat(self):
+        """Unitat de pols que s'aplicarà amb Aplicar/OK."""
+        return self._beat_unit
+
+    def silencia_factor(self):
+        return bool(self.chk_silencia_factor.isChecked())
 
     def actualitza_beat_unit(self, unit):
-        """Refresca el selector de Beat/TAP amb la unitat aplicada."""
+        """Refresca el selector i els camps amb la unitat aplicada."""
         unit = bpm_unit.normalitza(unit)
+        bpm_int = bpm_unit.a_quarter(float(self.sp_bpm.value()), self._unit)
         self._beat_unit = unit
+        self._unit = unit
+        self._posa_bpm_unitat(bpm_int, unit)
         idx = self.cb_beat.findData(unit)
         if idx >= 0:
             self.cb_beat.blockSignals(True)
@@ -618,6 +699,34 @@ QCheckBox::indicator:disabled {{
                 self.cb_beat.setCurrentIndex(idx)
             finally:
                 self.cb_beat.blockSignals(False)
+        self.grup_unitat.setVisible(False)
+
+    def _canvia_ref_unitat(self, _idx=None):
+        """Canvi explícit de la unitat de la Ref. (modal reutilitzat)."""
+        nova = bpm_unit.normalitza(
+            self.cb_ref_beat.currentData() or self._ref_unit)
+        if nova == self._ref_unit:
+            return
+        try:
+            bpm_int = bpm_unit.a_quarter(
+                float(str(self.ref_bpm.text()).replace(",", ".")),
+                self._ref_unit)
+        except (TypeError, ValueError):
+            bpm_int = float(self._ref[0])
+        dlg = DialegCanviUnitat(
+            self, "Ref. recalc", bpm_int, self._ref_unit, nova)
+        if dlg.exec_() != QDialog.Accepted:
+            idx = self.cb_ref_beat.findData(self._ref_unit)
+            if idx >= 0:
+                self.cb_ref_beat.blockSignals(True)
+                try:
+                    self.cb_ref_beat.setCurrentIndex(idx)
+                finally:
+                    self.cb_ref_beat.blockSignals(False)
+            return
+        bpm, unit, _mode = dlg.resultat()
+        self._ref_unit = unit
+        self.ref_bpm.setText(bpm_unit.formata(bpm, unit))
 
     def _parse_compas_ref(self):
         """Compàs de la Ref. recalc: `num/den` o `num` (den 4)."""
@@ -724,9 +833,45 @@ QCheckBox::indicator:disabled {{
                 w.deleteLater()
         self._omple_info(self._valors_info())
 
-    def set_assistencia(self, text):
-        """Mostra a la fila Ajuda el resum/assistència del recalcul."""
+    def set_assistencia(self, text, alternatives=None):
+        """Mostra el resum del recalcul i, si cal, alternatives triables."""
         self.ajuda.setText(str(text or ""))
+        self.alternatives.clear()
+        alts = list(alternatives or ())
+        for c in alts:
+            try:
+                item = QListWidgetItem(
+                    f"{float(c['bpm']):.3f} BPM · {int(c['num'])}/"
+                    f"{int(c['den'])} · N={int(c['n'])}")
+            except (KeyError, TypeError, ValueError):
+                continue
+            item.setData(Qt.UserRole, dict(c))
+            self.alternatives.addItem(item)
+        self.alternatives.setVisible(bool(self.alternatives.count()))
+
+    def _triar_alternativa(self, item):
+        """Carrega una alternativa als camps (no l'aplica automàticament)."""
+        c = item.data(Qt.UserRole)
+        if not c:
+            return
+        unit = self._beat_unit
+        for sp in (self.sp_n, self.sp_n_mob):
+            sp.blockSignals(True)
+            try:
+                sp.setValue(max(1, int(c.get("n") or 1)))
+            finally:
+                sp.blockSignals(False)
+        for ed in (self.ed_compas, self.ed_compas_mob):
+            ed.blockSignals(True)
+            try:
+                ed.setText(f"{int(c['num'])}/{int(c['den'])}")
+            finally:
+                ed.blockSignals(False)
+        self._posa_bpm_unitat(float(c["bpm"]), unit)
+        self.set_assistencia(
+            f"Alternativa carregada: {float(c['bpm']):.3f} BPM · "
+            f"{int(c['num'])}/{int(c['den'])} · N={int(c['n'])}. "
+            "Prem Ajusta/OK per aplicar.")
 
     def actualitza_info(self, info):
         """Refresca només la graella d'informació, sense tocar els camps."""
@@ -741,6 +886,13 @@ QCheckBox::indicator:disabled {{
         self._ref = (float(bpm), int(num), int(den))
         if unit is not None:
             self._ref_unit = bpm_unit.normalitza(unit)
+        idx = self.cb_ref_beat.findData(self._ref_unit)
+        if idx >= 0:
+            self.cb_ref_beat.blockSignals(True)
+            try:
+                self.cb_ref_beat.setCurrentIndex(idx)
+            finally:
+                self.cb_ref_beat.blockSignals(False)
         self.ref_bpm.setText(bpm_unit.formata(
             float(bpm), self._ref_unit))
         self.ref_compas.setText(f"{int(num)}/{int(den)}")

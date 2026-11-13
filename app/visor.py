@@ -200,6 +200,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.marcadors = pipeline.llegeix_marcadors(
             self._carpeta_acords(), self._durada_wav())
         self.qm_beats = []
+        # Avís de factor 1,5×/2/3 silenciat per a este tram en esta sessió.
+        self._factor_sospitos_silenciats = set()
         # Mode de snap que decidix quina graella valida els clips: amb
         # «qm_beats» mana QM; en qualsevol altre mode mana BPM/compàs.
         self.snap_on = True

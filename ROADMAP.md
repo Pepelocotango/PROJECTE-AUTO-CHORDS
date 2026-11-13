@@ -113,15 +113,12 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   `Time Signature`, marcadors i offset/anacrusi; rubato aproximat per events.
   Detall i criteris d'acceptació a «Exportació del mapa de tempo a DAWs».
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
-- **Pendents del motor C/B/A**: connectar `+1`/`−1`/`×2`/`÷2` al mateix
-  motor; decidir si «Quantitza BPM» continua sent una operació separada.
+- **Quantitza BPM** continua sent una operació separada del recalc guiat.
 - **Edició d'àudio**: restauració des de la GUI i proves visuals; **no
   implementat** el silenci automàtic per completar el pre-roll o el primer
   compàs.
 - **Audició de la proposta (P6/S1.5)**: opcional; si no està llesta, el botó
   s'amaga i no bloqueja S1.
-- **Export MIDI del mapa de tempo** i **restauració de backups des de la GUI**
-  continuen pendents.
 - **Detall de la ronda S1–S3**: decisions i abast a
   `LOG_DIALEGS_AGENTS.txt` OC/533–OC/567 i `docs/EDICIO_OPERACIONS.md` §9.6.
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).

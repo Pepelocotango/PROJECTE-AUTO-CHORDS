@@ -2040,7 +2040,10 @@ class TestDialegTramTempo(_dialegs___Base):
         self.assertEqual(d.opcions_recalc(), {
             "beats": True, "ref": True, "segons": True, "unitat": True,
             "compas": True, "n_fix": True, "rubato": False,
+            "silencia_factor": False,
         })
+        d.chk_silencia_factor.setChecked(True)
+        self.assertTrue(d.opcions_recalc()["silencia_factor"])
         d.chk_segons.setChecked(True)
         self.assertFalse(d.b_recalc_fix.isEnabled())
         self.assertFalse(d.b_recalc_mob.isEnabled())
@@ -2071,20 +2074,25 @@ class TestDialegTramTempo(_dialegs___Base):
         d.ref_compas.setText("7/8")
         d.b_ref.click()
         self.assertEqual(rebuts, [(150.0, 7, 8, "negra")])
-        d.actualitza_ref(140.0, 3, 4)
+        self.assertEqual(d.cb_ref_beat.count(), 5)
+        d.actualitza_ref(150.0, 7, 8, "corxera")
+        self.assertEqual(d.ref_bpm.text(), "300.000")
+        self.assertEqual(d.cb_ref_beat.currentData(), "corxera")
+        d.actualitza_ref(140.0, 3, 4, "negra")
         self.assertEqual(d.ref_bpm.text(), "140.000")
         self.assertEqual(d.ref_compas.text(), "3/4")
 
-    def test_beat_tap_selector_emet_unitat(self):
+    def test_beat_tap_selector_mostra_panell_inline(self):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0, beat_unit="corxera")
+            n_actual=2.0, beat_unit="corxera", unit="corxera")
         self.assertEqual(d.cb_beat.count(), 5)
         self.assertEqual(d.cb_beat.currentData(), "corxera")
-        rebuts = []
-        d.beatUnitRequested.connect(rebuts.append)
         d.cb_beat.setCurrentIndex(d.cb_beat.findData("blanca"))
-        self.assertEqual(rebuts, ["blanca"])
+        self.assertFalse(d.grup_unitat.isHidden())
+        d.panell_unitat.rb_tempo.setChecked(True)
+        d._actualitza_panell_unitat()
+        self.assertAlmostEqual(d.sp_bpm.value(), 60.0, places=3)
         d.actualitza_beat_unit("negra_punt")
         self.assertEqual(d.cb_beat.currentData(), "negra_punt")
 
@@ -6053,17 +6061,20 @@ class TestAncoratgesFinestra(unittest.TestCase):
                  (10.0, 30.0, 90.0, 3, 4),
                  (30.0, 60.0, 120.0, 4, 4)]
         self.assertTrue(vr.aplica_tempo_trams(trams))
+        vr.timeline.select_clip("tempo", 1)
 
         class _Dlg(dialegs.DialegTramTempo):
             def exec_(self):
                 self.cb_beat.setCurrentIndex(
                     self.cb_beat.findData("negra_punt"))
+                self.b_ajusta.click()
                 self.reject()
                 return QW.QDialog.Rejected
 
         with patch.object(dialegs, "DialegTramTempo", _Dlg):
             vr._on_tempo_edit(1)
-        self.assertEqual(vr.beat_unit, "negra_punt")
+        self.assertEqual(vr.tempo_trams[1].beat_unit, "negra_punt")
+        self.assertEqual(vr.unitat_objectiu(), "negra_punt")
         self.assertEqual(self.w.cb_beat.currentData(), "negra_punt")
 
     def test_el_marcador_no_arrossega_la_frontera_d_estructura(self):

@@ -18,6 +18,17 @@ class TempoMixin:
         return (float(self.ref_bpm), int(self.ref_bpb),
                 int(self.ref_beat_type))
 
+    def silencia_factor_sospitos(self, idx, on=True):
+        """Silencia/activa l'avís de factor 1,5×/2/3 d'un tram (sessió)."""
+        idx = int(idx)
+        silenciats = getattr(self, "_factor_sospitos_silenciats", set())
+        if on:
+            silenciats.add(idx)
+        else:
+            silenciats.discard(idx)
+        self._factor_sospitos_silenciats = silenciats
+        return idx in silenciats
+
     def unitat_de_tram(self, tram):
         """Unitat de pols d'un tram (objecte o tuple antiga de 5 camps)."""
         bu = getattr(tram, "beat_unit", None)
@@ -176,8 +187,27 @@ class TempoMixin:
         s = trams[idx]
         return (idx, float(s[2]), int(s[3]), int(s[4]))
 
+    def _amb_unitat(self, nous, idx, beat_unit):
+        """Retorna el mapa amb la unitat de pols del tram `idx` canviada."""
+        if beat_unit is None:
+            return nous
+        trams = list(nous or [])
+        i = int(idx)
+        if not (0 <= i < len(trams)):
+            return trams
+        unit = bpm_unit_mod.normalitza(beat_unit)
+        tr = trams[i]
+        if getattr(tr, "beat_unit", None) == unit:
+            return trams
+        trams[i] = mapa_tempo.TramMapa(
+            float(tr[0]), float(tr[1]), float(tr[2]),
+            getattr(tr, "tipus", "normal"),
+            f"{int(tr[3])}/{int(tr[4])}",
+            getattr(tr, "agrupacio", ""), getattr(tr, "n", None), unit)
+        return trams
+
     def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True, repara=True,
-                             agrupacio=None):
+                             agrupacio=None, beat_unit=None):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
         Contracte §13.4/§13.5: **tots** els clips mantenen `N` enter. En un
@@ -217,6 +247,7 @@ class TempoMixin:
             if not nous5:
                 return False
             nous = mapa_tempo.reenganxa_metadades(trams, nous5)
+        nous = self._amb_unitat(nous, idx, beat_unit)
         if not self._valida_unitat_tram(nous[idx], "Tempo"):
             return False
         if agrupacio is not None:
@@ -236,7 +267,7 @@ class TempoMixin:
         self._actualitza_temps()
         return True
 
-    def edita_n_compassos(self, idx, n, num, den, desa=True):
+    def edita_n_compassos(self, idx, n, num, den, desa=True, beat_unit=None):
         """Edita **N compassos** i compàs; el BPM es recalcula automàticament.
 
         Regla C: N i compàs són exactes; en interiors es deriva `fi` i el veí
@@ -256,6 +287,7 @@ class TempoMixin:
         except ValueError as e:
             self.avis_editor(f"Compassos: {e}")
             return False
+        nous = self._amb_unitat(nous, idx, beat_unit)
         if not self._valida_unitat_tram(nous[idx], "Compassos"):
             return False
         self.bpm = float(nous[0][2])
@@ -448,6 +480,9 @@ class TempoMixin:
         self._undo_touch_base()
         self.canvis.emit()   # el mapa ha canviat → el projecte queda «brut»
         self.tempoCanviat.emit()   # la barra ha de refrescar BPM/compàs
+        senyal = getattr(self, "beatUnitCanviat", None)
+        if senyal is not None:
+            senyal.emit(self.unitat_objectiu())
         self.log(f"mapa de tempo/compàs: {len(nous)} tros(s)")
         return True
 
@@ -612,6 +647,8 @@ class TempoMixin:
             self.avis_editor("Recalcul: el clip no existeix.")
             return False
         opcions = dlg.opcions_recalc()
+        self.silencia_factor_sospitos(
+            idx, bool(opcions.get("silencia_factor")))
         if opcions.get("rubato"):
             self.avis_editor("Recalcul: el rubato no es recalcula ací.")
             return False
@@ -647,7 +684,7 @@ class TempoMixin:
             n_beats = tempo_recalc.n_negres_del_clip(
                 beats, ini, fi, factor)
             pas_beat = factor
-        unit_tram = self.unitat_de_tram(tr)
+        unit_tram = dlg.unitat()
         try:
             classif = tempo_recalc.recalculca_tram_amb_candidats(
                 durada, bpm_ref, num_ref, den_ref,
@@ -672,6 +709,14 @@ class TempoMixin:
             dlg.set_assistencia(text)
             self.avis_editor(text)
             return False
+        if idx in getattr(self, "_factor_sospitos_silenciats", set()):
+            motius_list = [m for m in (classif.get("motius") or [])
+                           if "factor" not in m]
+            if not motius_list:
+                nivell = "ALT"
+                motius = "avís de factor silenciat"
+            else:
+                motius = "; ".join(motius_list)
         if nivell != "ALT":
             alts = []
             for c in (classif.get("candidats") or [])[1:3]:
@@ -681,7 +726,8 @@ class TempoMixin:
             text = f"Recalcul {nivell}: {motius}"
             if alts:
                 text += " · alternatives: " + " | ".join(alts)
-            dlg.set_assistencia(text)
+            dlg.set_assistencia(
+                text, alternatives=(classif.get("candidats") or [])[1:4])
         else:
             dlg.set_assistencia(
                 f"Recalcul ALT: {float(res['bpm']):.3f} BPM · "
@@ -734,18 +780,23 @@ class TempoMixin:
             inicial=(idx == 0), text_inici=lbl, unit=unit_tram,
             n_actual=n_actual, durada=durada,
             info=self._info_clip_tempo(idx), ref=self.ref_tempo_base(),
-            ref_unit=self.ref_tempo_unit(), beat_unit=unit_tram)
+            ref_unit=self.ref_tempo_unit(), beat_unit=unit_tram,
+            silencia_factor=(idx in getattr(
+                self, "_factor_sospitos_silenciats", set())))
         darrers = {"valors": None}
 
         def _valors_dialeg():
             return dlg.valors_n() if dlg.n_auto() else dlg.valors()
 
         def _aplica_actuals():
+            unit = dlg.unitat()
             if dlg.n_auto():
                 bpm, num, den, n = dlg.valors_n()
-                return bool(self.edita_n_compassos(idx, n, num, den))
+                return bool(self.edita_n_compassos(
+                    idx, n, num, den, beat_unit=unit))
             bpm, num, den = dlg.valors()
-            return bool(self.edita_tempo_objectiu(idx, bpm, num, den))
+            return bool(self.edita_tempo_objectiu(
+                idx, bpm, num, den, beat_unit=unit))
 
         def _executa(accio):
             """Fa una acció amb desfer i captura els avisos per al diàleg."""
@@ -808,30 +859,9 @@ class TempoMixin:
                      f"{int(num)}/{int(den)}")
             return True
 
-        def _on_beat_unit(unit):
-            """Canvia la unitat de Beat/TAP del visor des del diàleg."""
-            self.set_beat_unit(unit)
-            self._undo_touch_base()
-            dlg.actualitza_beat_unit(unit)
-            tr = self.tempo_trams[idx]
-            for sp in (dlg.sp_bpm, dlg.sp_bpm_mob):
-                sp.blockSignals(True)
-                try:
-                    sp.setValue(bpm_unit_mod.de_quarter(
-                        float(tr.bpm), unit))
-                finally:
-                    sp.blockSignals(False)
-            dlg.actualitza_info(self._info_clip_tempo(idx))
-            senyal = getattr(self, "canvis", None)
-            if senyal is not None:
-                senyal.emit()
-            self.log(f"Beat/TAP: {getattr(self, 'beat_unit', unit)}")
-            return True
-
         dlg.aplicaRequested.connect(_on_aplica)
         dlg.recalculRequested.connect(_on_recalcul)
         dlg.refRequested.connect(_on_ref)
-        dlg.beatUnitRequested.connect(_on_beat_unit)
         if dlg.exec_() != QDialog.Accepted:
             return False
         try:
