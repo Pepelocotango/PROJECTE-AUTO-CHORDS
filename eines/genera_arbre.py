@@ -43,13 +43,13 @@ EXCLOSOS_DIRS = {
     "htmlcov",
     "squashfs-root",
     "CORPUS",
+    "temp",
 }
 
 DIRS_RESUM = {
     "00PER FER",
     ".opencode",
     "portable",
-    "temp",
     ".venv",
     ".deps",
 }
@@ -241,6 +241,7 @@ def _linia(linies: list, prefix: str, ram: str, nom: str, flag: str,
 
 
 def _amplada(entrades) -> int:
+    entrades = list(entrades)
     return min(max(len(nom) for nom in entrades) if entrades else 0, 34)
 
 
