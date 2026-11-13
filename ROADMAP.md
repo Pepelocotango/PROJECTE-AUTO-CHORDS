@@ -7,7 +7,7 @@
 > **GPL-3.0-or-later**.
 >
 > **v0.8.0** · Estat: **flux de producte estable i multi-SO** · Suite **verda**
-> (1.568 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
+> (1.609 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -50,7 +50,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-13)
+## 2. Estat actual i relleu de sessió (2026-11-14)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -77,14 +77,19 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   Visor DAW amb acords, estructura i tempo/compàs; desfer/refer complet.
 - **Tempo/compàs**: mapa per trams amb `N` per tram, rols derivats, mínim
   d'**1/16 a 350 BPM** (≈43 ms), rubato com a flag i motor C/B/A. El **BPM
-  intern és sempre en negres/minut**. **S1/S2/S3 fets (2026-11-13)**: unitat de
-  pols per tram (`beat_unit`), `semicorxera`, presentació/TAP/Ref. en la unitat
-  activa, rang intern 30–350, format `.acproj` 4 i CSV amb `beat_unit`,
-  exportació amb manifest de 10 columnes i partitura/metrònom per unitat, i
-  recalc amb **compàs local + prior global** (BPM global). Classificador
-  **ALT/MITJÀ/BAIX** amb candidats/alternatives i Assistència; L3/L4.
-  Terminologia canònica: **«recalc fix»** (fronteres fixes) i **«recalc
-  mòbil»** (una frontera compartida) a `docs/REGLES_DE_LA_APP.md` §13.6.
+  intern és sempre en negres/minut**. **S1/S2/S3 i P6 tancats (2026-11-13/14)**:
+  unitat de pols per tram (`beat_unit`), `semicorxera`, presentació/TAP/Ref. en
+  la unitat activa, rang intern 30–350, format `.acproj` 4 i CSV amb
+  `beat_unit`, exportació amb manifest de 10 columnes i partitura/metrònom per
+  unitat, i recalc amb **compàs local + prior global** (BPM global).
+  Classificador **ALT/MITJÀ/BAIX** amb candidats/alternatives i Assistència;
+  L3/L4. Diàleg amb canvi d'unitat **inline**, selector d'unitat de la Ref.,
+  **silenci 1,5×/2/3**, **alternatives clicables** i **«Escolta la proposta»**
+  (bucle + metrònom proposat, amb restauració de l'estat previ). Terminologia
+  canònica: **«recalc fix»** (fronteres fixes) i **«recalc mòbil»** (una
+  frontera compartida) a `docs/REGLES_DE_LA_APP.md` §13.6. Detall de decisions a
+  `LOG_DIALEGS_AGENTS.txt` OC/533–OC/567 i
+  `docs/EDICIO_OPERACIONS.md` §9.6.
 - **GUI de tempo**: BPM i compàs **no** viuen a la barra «Temps»; es veuen i
   s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
   **Aplica** fa **recalc mòbil**; **Ajusta** obre el diàleg del tram (N,
@@ -102,7 +107,7 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   de pantalla, es centren.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
-- **Suite**: **1606 OK** (1 skip), `pyflakes` net i `docs-check` verd.
+- **Suite**: **1609 OK** (1 skip), `pyflakes` net i `docs-check` verd.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
@@ -117,12 +122,9 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 - **Edició d'àudio**: restauració des de la GUI i proves visuals; **no
   implementat** el silenci automàtic per completar el pre-roll o el primer
   compàs.
-- **Detall de la ronda S1–S3 (tancada)**: decisions i abast a
-  `LOG_DIALEGS_AGENTS.txt` OC/533–OC/567 i `docs/EDICIO_OPERACIONS.md` §9.6.
-  Inclou l'audició «Escolta la proposta» (P6/S1.5).
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
 
-### Pla de compassos compostos (aprovat 2026-11-12)
+### Pla de compassos compostos (tancat 2026-11-13)
 
 > **Objectiu:** que un 6/8, 9/8 o 12/8 es puga tocar/exportar amb el pols que
 > el músic sent (negra amb punt) sense perdre la veritat interna en
@@ -139,11 +141,12 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 > endevina: automatitza el que és segur, proposa alternatives i marca el que
 > no pot saber; el músic decidix.
 >
-> **Implementació per fulls:** **S1** model+format+presentació+Ref.+TAP+
-> rang+BAIX dur+Assistència; **S2** export (partitura, guia, WAV, manifest);
-> **S3** recalc (`meter_prior`, compàs local, classificador ALT/MITJÀ/BAIX,
-> candidats i alternatives) + §13.5. Portes: suite pròpia + docs + commit
-> local a cada full; `make check` amb OK de l'operador a S3; cap push.
+> **Implementació:** **S1** model+format+presentació+Ref.+TAP+rang+BAIX
+> dur+Assistència; **S2** export (partitura, guia, WAV, manifest); **S3**
+> recalc (`meter_prior`, compàs local, classificador ALT/MITJÀ/BAIX, candidats
+> i alternatives) + §13.5; **P6** audició «Escolta la proposta». Tot **tancat**;
+> detall al `CHANGELOG`. Portes complides: suite pròpia + docs + commit local a
+> cada full; `make check` verd a S3/P6; cap push.
 
 ### Futures iteracions — motor d'àudio natiu (2026-11-08)
 

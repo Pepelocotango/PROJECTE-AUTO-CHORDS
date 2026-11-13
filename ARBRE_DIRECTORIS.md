@@ -289,8 +289,6 @@ PROJECTE AUTO CHORDS/
 │   ├── qm-vamp-plugins.cat 🟢
 │   ├── qm-vamp-plugins.n3  🟢
 │   └── qm-vamp-plugins.so  🟢
-├── temp/                          🟡  # Temporals de l'app (no versionat) (1 fitxer)
-│   └── visor_player.log 🟡  # Log del reproductor
 ├── tests/                         🟢  # Suite unittest offscreen (23 fitxers)
 │   ├── _qt_neteja.py              🟢  # Neteja ORDENADA dels objectes Qt entre tests.
 │   ├── _temporals.py              🟢  # Higiene dels tests: cap temporal no s'ha de quedar pel disc.
