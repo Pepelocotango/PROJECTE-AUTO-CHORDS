@@ -684,6 +684,10 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         unit_vella = vr.unitat_objectiu()
         if unit_nova == unit_vella:
             return
+        # Si hi ha una sessió de TAP oberta, es tanca ABANS del canvi
+        # d'unitat: el TAP és un undo i el canvi n'és un altre.
+        if getattr(self, "_tap_sessio_oberta", False):
+            self._tanca_sessio_tap()
         idx = vr.tempo_objectiu()
         trams = list(vr.tempo_trams or [])
         bpm = (float(trams[idx].bpm) if 0 <= idx < len(trams)

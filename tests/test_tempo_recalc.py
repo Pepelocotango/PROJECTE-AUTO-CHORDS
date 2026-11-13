@@ -289,3 +289,59 @@ class TestRecalculcaVeiRef(unittest.TestCase):
 
     def test_sense_cap_combinacio_retorna_none(self):
         self.assertIsNone(tr.recalculca_vei_ref(0.01, 120.0, 4, 4))
+
+
+class TestClassificacioS3(unittest.TestCase):
+    """S3: compàs local/global, L3 i classificador ALT/MITJÀ/BAIX."""
+
+    def test_meter_prior_no_desplaça_el_compas_local(self):
+        a = tr.recalculca_tram(3.0, 120.0, 6, 8, n_beats=6)
+        b = tr.recalculca_tram(3.0, 120.0, 6, 8, n_beats=6,
+                               meter_prior=(4, 4))
+        self.assertEqual((a["num"], a["den"]), (6, 8))
+        self.assertEqual((b["num"], b["den"]), (6, 8))
+        self.assertEqual(b["compas_local"], (6, 8))
+        self.assertEqual(b["meter_prior"], (4, 4))
+
+    def test_meter_prior_none_es_compatible(self):
+        a = tr.recalculca_tram(2.0, 120.0, 4, 4, n_beats=4)
+        b = tr.recalculca_tram(2.0, 120.0, 4, 4, n_beats=4,
+                               meter_prior=None)
+        for k in ("bpm", "num", "den", "n", "cost", "canvis"):
+            self.assertEqual(a[k], b[k])
+
+    def test_alt_en_4_4_i_6_8(self):
+        self.assertEqual(
+            tr.recalculca_tram_amb_candidats(
+                2.0, 120.0, 4, 4, n_beats=4)["nivell"], tr.NIVELL_ALT)
+        self.assertEqual(
+            tr.recalculca_tram_amb_candidats(
+                3.0, 120.0, 6, 8, n_beats=6)["nivell"], tr.NIVELL_ALT)
+
+    def test_mitja_per_factor_1_5(self):
+        out = tr.recalculca_tram_amb_candidats(
+            2.0, 120.0, 4, 4, n_beats=6)
+        self.assertEqual(out["nivell"], tr.NIVELL_MITJA)
+        self.assertIn("1.5", " ".join(out["motius"]))
+
+    def test_baix_per_conflicte_real_d_unitat(self):
+        out = tr.recalculca_tram_amb_candidats(
+            3.0, 120.0, 6, 8, n_beats=6, unitat_actual="blanca")
+        self.assertEqual(out["nivell"], tr.NIVELL_BAIX)
+        self.assertIsNone(out["millor"])
+        self.assertEqual(out["unitat_suggerida"], "negra_punt")
+        self.assertIn("conflicte real unitat/compàs",
+                      " ".join(out["motius"]))
+
+    def test_l3_accepta_negra_en_6_8_perque_encaixa(self):
+        # 6/8 = 3 negres; negra hi encaixa (encara que l'agrupació preferisca
+        # negra amb punt): L3 no la rebutja, només ho ha d'avisar L4.
+        out = tr.recalculca_tram_amb_candidats(
+            3.0, 120.0, 6, 8, n_beats=6, unitat_actual="negra")
+        self.assertNotEqual(out["nivell"], tr.NIVELL_BAIX)
+        self.assertIsNotNone(out["millor"])
+
+    def test_baix_per_rang_invalid(self):
+        out = tr.recalculca_tram_amb_candidats(
+            2.0, 400.0, 4, 4, n_beats=4)
+        self.assertEqual(out["nivell"], tr.NIVELL_BAIX)

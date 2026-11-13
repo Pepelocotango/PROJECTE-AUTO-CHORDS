@@ -5,6 +5,42 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Canviat — unitat de pols per tram, Ref. amb unitat i format 4 (2026-11-13)
+- **S1 — model i format (breaking)**: cada tram té `beat_unit` (`negra`,
+  `negra_punt`, `corxera`, `semicorxera`, `blanca`); el BPM canònic continua
+  sent negres/minut i el BPM de TAP és derivat. `mapa_tempo.csv` afig
+  `beat_unit` al final i es llig **per noms**; columna absent o valor
+  desconegut = rebuig, valor buit = derivar+avisar. `.acproj` passa a
+  **FORMAT 4** amb `tempo.ref.beat_unit`; els projectes de format 3 es
+  rebutgen sense tocar-los.
+- **S1 — presentació i Ref.**: BPM/TAP del clip es mostren en la unitat del
+  tram; la Ref. té selectors d'unitat propis (`cb_ref_beat`) i es mostra en la
+  seua unitat. Canvi d'unitat explícit amb «Mantén el tempo (canvia el
+  número)» / «Mantén el número (canvia el tempo)»; TAP = Mantén el número,
+  BPM manual = Mantén el tempo. El TAP no toca la Ref. si el compàs és
+  diferent (L1); el rang 30–350 es valida en l'espai intern i s'informa amb
+  les dues xifres. `semicorxera` afegida per a `x/16`.
+- **S3 — recalc**: `recalculca_tram(..., meter_prior=None)` separa el compàs
+  **local** de cada costat (mana en `n_previst`, regla del múltiple i
+  `bloca_compas`) del compàs **global** de la Ref. (només desempata el cost).
+  Classificador **ALT/MITJÀ/BAIX** i candidats/alternatives: ALT només en
+  acció explícita; MITJÀ amb alternatives o canvi estructural; BAIX només per
+  condició dura (cap candidat, rang, octava, conflicte real unitat/compàs,
+  frontera ambigua o beats no resolubles). La sospita 1,5×/2/3 és MITJÀ i no
+  s'auto-aplica. L3 no canvia la unitat en silenci; L4 avisa si no alinea amb
+  l'agrupació.
+- **S2 — export**: `manifest.csv` passa a **10 columnes** (les 7 històriques +
+  `bpm_quarter`, `beat_unit`, `bpm_mostra` al final; estat a l'inici del
+  segment; `mapa_tempo.csv` canònic). La guia HTML mostra les dues xifres. La
+  partitura usa la unitat de cada mesura (`TempoMap.unitat`), emet
+  `<metronome>` en canvi de compàs o d'unitat encara que no canvie el BPM, i
+  `<sound tempo>` només quan canvia el BPM; `semicorxera` → `16th`. El
+  fallback constant usa `bar_quarters(num,den)` i `beat_type` (6/8 no es
+  converteix en 6/4).
+- **Docs/UX**: terminologia «pols/unitat del pols»; Assistència per context
+  amb motius i alternatives; un sol desfer per acció; `bar_quarters`/
+  `beat_quarters` públics a `limits`. Suite: **1606 OK** (1 skip).
+
 ### Afegit — informació completa del clip al diàleg de tram de tempo (2026-11-12)
 - El diàleg **BPM, compàs i compassos** es divideix en **2 columnes**: a
   l'esquerra, l'edició/recalcul; a la dreta, un panell compacte de **només

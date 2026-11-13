@@ -48,6 +48,7 @@ class ExportMixin:
         # (A) Si hi ha visor, l'export usa el MODEL VIU (no els CSV del disc):
         # així no es perden les edicions manuals de seccions (ni la cobertura).
         vr = getattr(self, "visor_ref", None)
+        vre = vr
         acords_model = list(vr.acords) if vr is not None else None
         seccions_model = list(vr.seccions) if vr is not None else None
         total_s = (float(vr.audio.get("durada", 0.0))
@@ -68,6 +69,10 @@ class ExportMixin:
             bpm=self._bpm_val(),
             bpb=self._bpb_val(),
             den=self._beat_type_val(),
+            beat_unit=((vre.unitat_objectiu() if vre is not None
+                        else self._beat_unit_val())),
+            bpm_unit=((vre.unitat_objectiu() if vre is not None
+                       else self._beat_unit_val())),
             offset=self._offset_val(),
             sr=44100,
             tempo_fix=self.tempo_fix.isChecked(),
@@ -315,6 +320,9 @@ class ExportMixin:
                 bpm=self._bpm_val(),
                 bpb=self._bpb_val(),
                 beat_type=self._beat_type_val(),
+                bpm_unit=(getattr(getattr(self, "visor_ref", None),
+                                  "unitat_objectiu",
+                                  lambda: "negra")()),
                 offset=self._offset_val(),
                 wav=wav,
                 new_system_each=4,     # 4 compassos per línia (lead sheet)

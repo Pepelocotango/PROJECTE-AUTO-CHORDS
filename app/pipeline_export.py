@@ -6,6 +6,7 @@ import csv
 import os
 import wave
 
+from . import bpm_unit as _bpm_unit
 from .pipeline_derivats import (
     _segments_guia_daw, segments_export, genera_guia_html,
 )
@@ -87,26 +88,107 @@ def fer_wavs_acords(segments, dest_dir, sr, log, manifest=None):
     return n
 
 
+CAPÇALERA_MANIFEST = (
+    "tipus", "fitxer", "inici_s", "fi_s", "durada_s", "contingut", "posicio",
+    "bpm_quarter", "beat_unit", "bpm_mostra",
+)
+
+
+def _mapa_export(mapa_tempo):
+    """Normalitza `mapa_tempo` a un `TempoMap` (o `None`).
+
+    Accepta el `TempoMap` viu del visor o una llista de `TramMapa`/tuples.
+    """
+    if mapa_tempo is None:
+        return None
+    if (hasattr(mapa_tempo, "bpm") and hasattr(mapa_tempo, "unitat")
+            and hasattr(mapa_tempo, "tram")):
+        return mapa_tempo
+    try:
+        from .tempo_map import TempoMap
+        trams = list(mapa_tempo)
+        return TempoMap(trams) if trams else None
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
+def enriqueix_manifest(manifest, mapa_tempo=None, bpm=120.0,
+                       beat_unit="negra"):
+    """Completa files de `manifest.csv` amb el BPM/unitat del segment.
+
+    Les files d'entrada són les 7 columnes històriques
+    `(tipus, fitxer, ini_s, fi_s, durada_s, contingut, posicio)`. S'hi afigen
+    `bpm_quarter`, `beat_unit` i `bpm_mostra` calculats a l'**inici** de cada
+    segment (`ini_s`), amb el mapa de tempo/compàs com a font canònica. Si no
+    hi ha mapa, s'usa el `bpm` i el `beat_unit` de fallback (transport).
+
+    És una funció **pura**: no muta l'entrada i retorna una llista nova. Les
+    files que ja porten 10 camps es retornen tal qual (idempotent).
+    """
+    mapa = _mapa_export(mapa_tempo)
+    fallback_unit = _bpm_unit.normalitza(beat_unit)
+    fallback_bpm = float(bpm)
+    out = []
+    for fila in manifest or ():
+        vals = list(fila)
+        if len(vals) >= 10:
+            out.append(tuple(vals[:10]))
+            continue
+        # Completa fins a 7 (una fila curta no ha de fer petar l'export).
+        if len(vals) < 7:
+            vals += [""] * (7 - len(vals))
+        try:
+            ini = float(vals[2])
+        except (TypeError, ValueError):
+            ini = 0.0
+        if mapa is not None:
+            bq = float(mapa.bpm(ini))
+            unit = mapa.unitat(ini)
+        else:
+            bq = fallback_bpm
+            unit = fallback_unit
+        mostra = _bpm_unit.de_quarter(bq, unit)
+        out.append(tuple(vals[:7]) + (bq, unit, mostra))
+    return out
+
+
 def escriu_manifest(ruta, files):
     """Escriu `manifest.csv` amb els temps EXACTES de cada WAV exportat.
 
-    `files`: `[(tipus, fitxer, ini_s, fi_s, durada_s, contingut, posicio), …]`.
-    Els temps es desen amb 6 decimals (1 µs), igual que el MODEL.
+    `files`: files de 7 camps
+    `(tipus, fitxer, ini_s, fi_s, durada_s, contingut, posicio)` o de 10, amb
+    `bpm_quarter`, `beat_unit` i `bpm_mostra` al final. Les files de 7 camps
+    s'escriuen amb els tres extres buits (compatibilitat). Els temps i els BPM
+    es desen amb 6 decimals (1 µs), igual que el MODEL.
     """
+    def _fmt(valor):
+        if valor in (None, ""):
+            return ""
+        try:
+            return f"{float(valor):.6f}"
+        except (TypeError, ValueError):
+            return str(valor)
+
     def _escriu(f):
         w = csv.writer(f)
-        w.writerow(["tipus", "fitxer", "inici_s", "fi_s", "durada_s",
-                    "contingut", "posicio"])
-        for tipus, fn, ini, fi, dur, contingut, pos in files:
-            w.writerow([tipus, fn, f"{float(ini):.6f}", f"{float(fi):.6f}",
-                        f"{float(dur):.6f}", contingut, pos])
+        w.writerow(CAPÇALERA_MANIFEST)
+        for fila in files:
+            vals = list(fila)
+            if len(vals) < 7:
+                vals += [""] * (7 - len(vals))
+            base = [vals[0], vals[1], _fmt(vals[2]), _fmt(vals[3]),
+                    _fmt(vals[4]), vals[5], vals[6]]
+            extres = list(vals[7:10]) + [""] * max(0, 10 - len(vals))
+            base += [_fmt(extres[0]), extres[1], _fmt(extres[2])]
+            w.writerow(base[:10])
     escriu_atomic(ruta, _escriu)
     return ruta
 
 
 def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
                  tempo_fix=True, amb_estructura=True, total_s=None,
-                 acords=None, seccions=None, mapa_tempo=None, den=4):
+                 acords=None, seccions=None, mapa_tempo=None, den=4,
+                 beat_unit=None, bpm_unit=None):
     """Exporta el flux complet.
 
     Si es passen `acords`/`seccions` (el **model VIU** del visor), s'usen ELLS
@@ -126,6 +208,10 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
     sortida = os.path.abspath(sortida)
     os.makedirs(sortida, exist_ok=True)
     csv_ac = os.path.abspath(csv_ac)
+    unit_defecte = _bpm_unit.normalitza(
+        beat_unit or bpm_unit) if (beat_unit or bpm_unit) else (
+            _bpm_unit.unitat_per_defecte(bpb, den))
+    mapa_viu = _mapa_export(mapa_tempo)
     # (A)+(B) Si ens donen el MODEL, mana ell: normalitzem la cobertura i
     # re-escrivim el CSV d'acords ABANS de comprovar-lo/fer-lo servir.
     if acords is not None or seccions is not None:
@@ -144,12 +230,13 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
     manifest = []
     if tempo_fix:
         dades_guia = _segments_guia_daw(csv_ac, bpm, bpb, offset=offset,
-                                        durada=total_s, den=den)
+                                        durada=total_s, mapa=mapa_viu, den=den)
         segs = segments_export(csv_ac, bpm, bpb, offset=offset,
                                durada=total_s, mapa=dades_guia[4], den=den)
         guia = genera_guia_html(csv_ac, bpm, bpb, offset=offset, workdir=sortida,
                                 durada=total_s, log=log, _dades=dades_guia,
-                                den=den)
+                                den=den, beat_unit=unit_defecte,
+                                bpm_unit=unit_defecte)
         result["guia_html"] = guia
         dest = os.path.join(sortida, "wavs_acords")
         neteja_wavs(dest)
@@ -226,6 +313,8 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
                 f"{dest_mapa}")
 
     if manifest:
+        manifest = enriqueix_manifest(
+            manifest, mapa_viu, bpm=bpm, beat_unit=unit_defecte)
         result["manifest_csv"] = escriu_manifest(
             os.path.join(sortida, "manifest.csv"), manifest)
         if log:
@@ -249,17 +338,19 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
 
 
 def regenera_wavs_acords(csv_path, sortida, bpm, bpb, offset, total_s, sr, log,
-                         tempo_fix=True, manifest=None, den=4):
+                         tempo_fix=True, manifest=None, den=4, mapa=None,
+                         beat_unit=None, bpm_unit=None):
     # Recalcula guia + wavs_acords/ a partir del csv ja editat.
     dest = os.path.join(sortida, "wavs_acords")
     neteja_wavs(dest)
     if tempo_fix:
         dades_guia = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
-                                        durada=total_s, den=den)
+                                        durada=total_s, mapa=mapa, den=den)
         segs = segments_export(csv_path, bpm, bpb, offset=offset,
                                durada=total_s, mapa=dades_guia[4], den=den)
         genera_guia_html(csv_path, bpm, bpb, offset=offset, workdir=sortida,
-                         durada=total_s, log=log, _dades=dades_guia, den=den)
+                         durada=total_s, log=log, _dades=dades_guia, den=den,
+                         beat_unit=beat_unit, bpm_unit=bpm_unit)
         return fer_wavs_acords(segs, dest, sr, log, manifest=manifest)
     return fer_wavs_acords_lliures(csv_path, total_s, dest, sr, log,
                                    manifest=manifest)

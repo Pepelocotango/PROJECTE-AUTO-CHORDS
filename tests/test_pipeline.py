@@ -2075,6 +2075,60 @@ class TestMetricaCompasCompost(unittest.TestCase):
         self.assertIn("<per-minute>80</per-minute>", xml)
         self.assertIn('<sound tempo="120"', xml)
 
+    def test_manifest_10_columnes_i_bpm_a_l_inici(self):
+        from app import mapa_tempo
+        trams = [mapa_tempo.TramMapa(0.0, 3.0, 120.0, "normal", "6/8",
+                                     "3+3", None, "negra_punt"),
+                 mapa_tempo.TramMapa(3.0, 6.0, 90.0, "normal", "4/4")]
+        manifest = [("acord", "x.wav", 0.0, 1.0, 1.0, "C", "1.1.1"),
+                    ("acord", "y.wav", 3.0, 4.0, 1.0, "G", "3.1.1")]
+        files = pipeline.enriqueix_manifest(manifest, trams, bpm=120.0,
+                                            beat_unit="negra_punt")
+        self.assertEqual(len(files[0]), 10)
+        self.assertAlmostEqual(files[0][7], 120.0, places=6)
+        self.assertEqual(files[0][8], "negra_punt")
+        self.assertAlmostEqual(files[0][9], 80.0, places=6)
+        self.assertAlmostEqual(files[1][7], 90.0, places=6)
+        self.assertEqual(files[1][8], "negra")
+        import tempfile
+        td = tempfile.mkdtemp()
+        ruta = os.path.join(td, "manifest.csv")
+        pipeline.escriu_manifest(ruta, files)
+        with open(ruta, encoding="utf-8") as f:
+            lines = f.read().strip().splitlines()
+        self.assertEqual(lines[0].split(",")[-3:],
+                         ["bpm_quarter", "beat_unit", "bpm_mostra"])
+        self.assertEqual(len(lines[1].split(",")), 10)
+
+    def test_partitura_emet_metronom_en_canvi_de_compas_i_unitat(self):
+        from app import mapa_tempo
+        from app.tempo_map import TempoMap
+        t0 = mapa_tempo.TramMapa(0.0, 3.0, 120.0, "normal", "6/8",
+                                 "3+3", None, "negra_punt")
+        t1 = mapa_tempo.TramMapa(3.0, 5.0, 120.0, "normal", "4/4")
+        mapa = TempoMap([t0, t1])
+        xml = partitura.construeix_musicxml(
+            [(0.0, "C", 7.0)], [], bpb=6, bpm=120.0, beat_type=8,
+            mapa=mapa, bpm_unit="negra_punt")
+        self.assertIn("<beats>6</beats><beat-type>8</beat-type>", xml)
+        self.assertIn("<beats>4</beats><beat-type>4</beat-type>", xml)
+        self.assertEqual(xml.count("<metronome>"), 2)
+        self.assertEqual(xml.count('<sound tempo="120"'), 1)
+
+    def test_guia_6_8_mostra_les_dues_xifres(self):
+        import tempfile
+        td = tempfile.mkdtemp()
+        ruta = os.path.join(td, "acords.csv")
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write("inici,fi,acord\n0.0,3.0,C\n")
+        pipeline.genera_guia_html(
+            ruta, 120.0, 6, durada=3.0, den=8, beat_unit="negra_punt")
+        with open(os.path.join(td, "guia_acords.html"), encoding="utf-8") as f:
+            html = f.read()
+        self.assertIn("120 BPM", html)
+        self.assertIn("80.000", html)
+        self.assertIn("negra amb punt", html)
+
     def test_fallback_constant_6_8_te_3_negres_per_compas(self):
         # 6/8 a 120: un compàs = 3 negres = 1,5 s (no 6 negres = 3 s).
         from app.tempo_map import durada_compas
@@ -5138,6 +5192,21 @@ class TapTempoTests(unittest.TestCase):
             self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=0.01)
             # La barra mostra el TAP en la unitat activa (negra amb punt): 80.
             self.assertIn("80", w.b_tap.text())
+        finally:
+            w.cb_beat.setCurrentIndex(w.cb_beat.findData("negra"))
+            w._canvia_beat_unit()
+            w.close()
+
+    def test_canvi_unitat_tanca_la_sessio_de_tap(self):
+        w = self._finestra()
+        try:
+            w.visor_ref.timeline.select_clip("tempo", 0)
+            self._taps_en(w, 0.5)
+            self.assertTrue(w._tap_sessio_oberta)
+            idx = w.cb_beat.findData("negra_punt")
+            w.cb_beat.setCurrentIndex(idx)
+            w._canvia_beat_unit()
+            self.assertFalse(w._tap_sessio_oberta)
         finally:
             w.cb_beat.setCurrentIndex(w.cb_beat.findData("negra"))
             w._canvia_beat_unit()

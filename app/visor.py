@@ -2277,7 +2277,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         try:
             nous = tempo_map.retempo_tram_detectat(
                 trams, idx, float(bpm_detectat), self._durada_wav(),
-                offset=getattr(self, "offset", 0.0))
+                offset=getattr(self, "offset", 0.0),
+                unitat_actual=self.unitat_de_tram(trams[idx]))
         except ValueError as e:
             self.avis_editor(f"Detecta BPM: {e}")
             return False
@@ -4373,11 +4374,18 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                                               44100, self.log,
                                               self.tempo_fix,
                                               manifest=manifest,
-                                              den=getattr(self, "beat_type", 4))
+                                              den=getattr(self, "beat_type", 4),
+                                              mapa=getattr(self, "tempo_map",
+                                                           None),
+                                              beat_unit=self.unitat_objectiu(),
+                                              bpm_unit=self.unitat_objectiu())
                 pipeline.regenera_wavs_estructura(abc, sortida, 44100,
                                                   self.log,
                                                   manifest=manifest)
                 if manifest:
+                    manifest = pipeline.enriqueix_manifest(
+                        manifest, getattr(self, "tempo_map", None),
+                        bpm=self.bpm, beat_unit=self.unitat_objectiu())
                     pipeline.escriu_manifest(
                         os.path.join(sortida, "manifest.csv"), manifest)
             else:

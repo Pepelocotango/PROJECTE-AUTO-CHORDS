@@ -302,6 +302,8 @@ class EditorMixin:
                 mapa[i] = mapa_tempo.TramMapa(
                     tr2.ini, tr2.fi, tr2.bpm, tr2.tipus, tr2.compassos,
                     agr, getattr(tr2, "n", None), tr2.beat_unit)
+            if not self._valida_unitat_tram(mapa[i], "Editor"):
+                return
             self.aplica_tempo_trams(mapa)
         finally:
             self._undo_commit()

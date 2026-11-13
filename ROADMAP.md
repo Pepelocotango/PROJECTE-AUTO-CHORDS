@@ -50,7 +50,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-12)
+## 2. Estat actual i relleu de sessió (2026-11-13)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -77,19 +77,22 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   Visor DAW amb acords, estructura i tempo/compàs; desfer/refer complet.
 - **Tempo/compàs**: mapa per trams amb `N` per tram, rols derivats, mínim
   d'**1/16 a 350 BPM** (≈43 ms), rubato com a flag i motor C/B/A. El **BPM
-  intern és sempre en negres/minut**; hui la UI encara no té selector d'unitat.
+  intern és sempre en negres/minut**. **S1/S2/S3 fets (2026-11-13)**: unitat de
+  pols per tram (`beat_unit`), `semicorxera`, presentació/TAP/Ref. en la unitat
+  activa, rang intern 30–350, format `.acproj` 4 i CSV amb `beat_unit`,
+  exportació amb manifest de 10 columnes i partitura/metrònom per unitat, i
+  recalc amb **compàs local + prior global** (BPM global). Classificador
+  **ALT/MITJÀ/BAIX** amb candidats/alternatives i Assistència; L3/L4.
   Terminologia canònica: **«recalc fix»** (fronteres fixes) i **«recalc
   mòbil»** (una frontera compartida) a `docs/REGLES_DE_LA_APP.md` §13.6.
-  **Pla aprovat (2026-11-12)**: unitat de pols per tram (`beat_unit`),
-  presentació/Ref./export en la unitat activa i recalc amb compàs local +
-  prior global; detall davall.
 - **GUI de tempo**: BPM i compàs **no** viuen a la barra «Temps»; es veuen i
   s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
-  **Aplica** fa **recalc mòbil** (clip exacte + veí des de Ref. recalc);
-  **Ajusta** obre el mateix diàleg que el doble clic (BPM, compàs i
-  compassos). Aplica està deshabilitat a l'últim/únic clip. El **TAP** aplica
-  al clip seleccionat i **re-ancora el BPM de Ref. recalc**; la referència
-  entra al desfer/refer.
+  **Aplica** fa **recalc mòbil**; **Ajusta** obre el diàleg del tram (N,
+  compàs, BPM, unitat, Ref.). El **Beat/TAP** de la barra és una drecera del
+  tram seleccionat i `cb_ref_beat` és la unitat de la Ref. El **TAP** aplica
+  al clip i, només si el compàs de la Ref. coincidix, actualitza la Ref.;
+  canviar la unitat amb TAP obert tanca la sessió (1 undo) i el canvi és un
+  altre undo. `Aplica ref.` i els canvis d'unitat tenen undo real.
 - **Edició d'àudio (§13.9)**: importació, backups, retall/afegir als extrems,
   sincronització del model, desfer/refer i export amb FFmpeg implementats.
 - **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
@@ -99,7 +102,7 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   de pantalla, es centren.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
-- **Suite**: **1566 OK** (1 skip), `pyflakes` net i `docs-check` verd.
+- **Suite**: **1606 OK** (1 skip), `pyflakes` net i `docs-check` verd.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
@@ -115,9 +118,12 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 - **Edició d'àudio**: restauració des de la GUI i proves visuals; **no
   implementat** el silenci automàtic per completar el pre-roll o el primer
   compàs.
-- **Propera sessió**: implementar **S1** del pla de compassos compostos
-  (model `beat_unit` per tram + format + presentació/Ref./TAP + rang +
-  Assistència). Detall i decisions a `LOG_DIALEGS_AGENTS.txt` OC/543–OC/567.
+- **Audició de la proposta (P6/S1.5)**: opcional; si no està llesta, el botó
+  s'amaga i no bloqueja S1.
+- **Export MIDI del mapa de tempo** i **restauració de backups des de la GUI**
+  continuen pendents.
+- **Detall de la ronda S1–S3**: decisions i abast a
+  `LOG_DIALEGS_AGENTS.txt` OC/533–OC/567 i `docs/EDICIO_OPERACIONS.md` §9.6.
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
 
 ### Pla de compassos compostos (aprovat 2026-11-12)

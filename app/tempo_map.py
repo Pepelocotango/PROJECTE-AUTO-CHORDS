@@ -1672,7 +1672,9 @@ def _millora_signatures_clips(trams, durada, offset=0.0, beats_qm=None,
 
 def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
                           beats_qm=None, permissiu=False, recalculca=False,
-                          ref_base=None, avisos=None, beat_factor=1.0):
+                          ref_base=None, avisos=None, beat_factor=1.0,
+                          meter_prior=None, unitats=None, classificacions=None,
+                          suggerides=None):
     """Parteix el mapa a `t` conservant BPM i compàs com a referència.
 
     Contracte nou (§13.4): **les dos parts han de tindre `N` enter**. El
@@ -1698,10 +1700,12 @@ def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
                         (t, fi, bpm, num, den)]
         if permissiu:
             if recalculca:
-                out = _recalcula_costats(out, [(i, s), (i + 1, s)],
-                                         durada, offset, beats_qm=beats_qm,
-                                         ref_base=ref_base, avisos=avisos,
-                                         beat_factor=beat_factor)
+                out = _recalcula_costats(
+                    out, [(i, s), (i + 1, s)], durada, offset,
+                    beats_qm=beats_qm, ref_base=ref_base, avisos=avisos,
+                    beat_factor=beat_factor, meter_prior=meter_prior,
+                    unitats=unitats, classificacions=classificacions,
+                    suggerides=suggerides)
             return valida_i_normalitza_permissiu(out, durada, offset)
         out = _millora_signatures_clips(out, durada, offset, beats_qm,
                                         {i, i + 1})
@@ -1710,7 +1714,8 @@ def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
     return net
 
 
-def retempo_tram_detectat(trams, idx, bpm_detectat, durada, offset=0.0):
+def retempo_tram_detectat(trams, idx, bpm_detectat, durada, offset=0.0,
+                          unitat_actual=None, suggerides=None):
     """Ajusta el BPM d'un tram **sense moure cap frontera** («Detecta»).
 
     El tram conserva `ini` i `fi` (els marcadors delimitadors manen) i els
@@ -1750,6 +1755,14 @@ def retempo_tram_detectat(trams, idx, bpm_detectat, durada, offset=0.0):
         raise ValueError(
             f"El BPM detectat no dona cap valor vàlid per a {n} compàs(s)")
     bpm_final = _valida_bpm_edicio(float(res["bpm"]), "detectat")
+    if (unitat_actual is not None and not bpm_unit.encaixa_en_compas(
+            unitat_actual, int(res["num"]), int(res["den"]))):
+        sugg = bpm_unit.unitat_per_defecte(int(res["num"]), int(res["den"]))
+        if suggerides is not None:
+            suggerides[int(i)] = sugg
+        raise ValueError(
+            f"la unitat {unitat_actual} no encaixa amb "
+            f"{int(res['num'])}/{int(res['den'])}; suggerida {sugg}")
     out = list(nous)
     out[i] = (float(ini), float(fi), bpm_final, int(num), int(den))
     return _mapa_valida_sense_moure(out, durada, offset)
@@ -1757,7 +1770,8 @@ def retempo_tram_detectat(trams, idx, bpm_detectat, durada, offset=0.0):
 
 def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
                          beats_qm=None, permissiu=False, ref_base=None,
-                         avisos=None, beat_factor=1.0):
+                         avisos=None, beat_factor=1.0, meter_prior=None,
+                         unitats=None, classificacions=None, suggerides=None):
     """Mou una frontera interior.
 
     Dos camins:
@@ -1810,10 +1824,11 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
                 tempo_recalc.n_negres_del_clip(
                     beats, b[0], b[1], beat_factor,
                     tol=tempo_recalc.TOL_BEATS))
-        out = _recalcula_costats(out, [(i - 1, a), (i, b)],
-                                 durada, offset, beats_qm=beats_qm,
-                                 ref_base=ref_base, avisos=avisos,
-                                 beat_factor=beat_factor)
+        out = _recalcula_costats(
+            out, [(i - 1, a), (i, b)], durada, offset, beats_qm=beats_qm,
+            ref_base=ref_base, avisos=avisos, beat_factor=beat_factor,
+            meter_prior=meter_prior, unitats=unitats,
+            classificacions=classificacions, suggerides=suggerides)
         if abans is not None and avisos is not None:
             ara = (
                 tempo_recalc.n_negres_del_clip(
@@ -1841,7 +1856,9 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
 
 
 def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
-                       ref_base=None, avisos=None, beat_factor=1.0):
+                       ref_base=None, avisos=None, beat_factor=1.0,
+                       meter_prior=None, unitats=None, classificacions=None,
+                       suggerides=None):
     """Recalcula BPM/compàs dels costats amb una referència.
 
     `refs`: `[(idx, tram_referencia), …]`. Si `ref_base=(bpm, num, den)` no és
@@ -1872,12 +1889,18 @@ def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
                     avisos.append(text)
         if ref_base is None:
             bpm_ref, num_ref, den_ref = ref[2], ref[3], ref[4]
+            prior = meter_prior
         else:
-            bpm_ref, num_ref, den_ref = ref_base
+            # BPM global; el compàs LOCAL de cada costat mana en n_previst,
+            # bloca_compas i la regla del múltiple. El compàs global només
+            # entra al cost com a prior.
+            bpm_ref = ref_base[0]
+            num_ref, den_ref = ref[3], ref[4]
+            prior = meter_prior if meter_prior is not None else ref_base[1:]
         try:
             r = tempo_recalc.recalculca_tram(
                 fi - ini, bpm_ref, num_ref, den_ref, n_beats=n_beats,
-                pas_beat=beat_factor)
+                pas_beat=beat_factor, meter_prior=prior)
         except (TypeError, ValueError):
             if ref_base is None:
                 raise
@@ -1886,7 +1909,24 @@ def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
                 fi - ini, ref[2], ref[3], ref[4], n_beats=n_beats,
                 pas_beat=beat_factor)
         if r is None:
+            if classificacions is not None:
+                classificacions[int(idx)] = "BAIX"
             continue
+        unitat = (unitats or {}).get(int(idx))
+        if (unitat is not None
+                and not bpm_unit.encaixa_en_compas(unitat, r["num"], r["den"])):
+            sugg = bpm_unit.unitat_per_defecte(r["num"], r["den"])
+            if classificacions is not None:
+                classificacions[int(idx)] = "BAIX"
+            if suggerides is not None:
+                suggerides[int(idx)] = sugg
+            if avisos is not None:
+                avisos.append(
+                    f"Clip {int(idx) + 1}: la unitat {unitat} no encaixa "
+                    f"amb {int(r['num'])}/{int(r['den'])}; suggerida {sugg}")
+            continue
+        if classificacions is not None:
+            classificacions[int(idx)] = "ALT"
         if avisos is not None:
             text = tempo_recalc.avis_de_resultat(r)
             if text:

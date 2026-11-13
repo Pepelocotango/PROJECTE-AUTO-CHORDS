@@ -42,7 +42,7 @@ from .pipeline_estructura import (
 )
 from .pipeline_export import (
     fer_wavs_acords_lliures, fer_wavs_acords, escriu_manifest,
-    exporta_total, regenera_wavs_acords,
+    exporta_total, regenera_wavs_acords, enriqueix_manifest,
 )
 from .pipeline_vamp import (
     APP_DIR, PROJ_DIR, VAMP_DIRS, HOST, STEPS, CHORDS_TRANSFORM, MOTORS_BPM, MOTORS_ESTRUCTURA,
@@ -84,7 +84,7 @@ __all__ = [
     "renomena_seccions_model", "substitueix_en_model",
     "desa_abc_csv", "regenera_wavs_estructura", "fer_abc", "style",
     "segments_lliures", "fer_wavs_acords_lliures", "fer_wavs_acords",
-    "escriu_manifest", "exporta_total", "escriu_atomic", "desa_acords_csv",
+    "escriu_manifest", "exporta_total", "enriqueix_manifest", "escriu_atomic", "desa_acords_csv",
     "desa_marcadors", "llegeix_marcadors", "llegeix_marcadors_tipus",
     "desa_tempo_map", "llegeix_tempo_map", "neteja_wavs",
     "regenera_wavs_acords", "fer_wavs_estructura",

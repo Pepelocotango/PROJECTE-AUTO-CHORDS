@@ -137,7 +137,18 @@ L'edició general de la GUI **no bloqueja** un clip perquè no coincidisca amb
 compassos sencers. El model és permissiu:
 
 - **Valors**: BPM **30–350**, numerador **1–12** (inclòs `1/4`), denominador
-  **2, 4, 8 o 16**. Un rubato no va en segons ni en `0/0`.
+  **2, 4, 8 o 16**. Un rubato no va en segons ni en `0/0`. El rang de BPM es
+  valida sempre en **negres/minut** (espai intern), no en el número mostrat.
+- **Unitat de pols per tram**: cada clip té `beat_unit` (`negra`,
+  `negra_punt`, `corxera`, `semicorxera`, `blanca`). El BPM canònic continua
+  sent **negres/minut**; la unitat només canvia la presentació i la conversió
+  dels beats detectats/TAP, no el so. Si falta, es deriva de l'agrupació
+  efectiva (`6/8`, `9/8`, `12/8` amb grups de 3 → `negra_punt`; `x/4` →
+  `negra`; `x/8` → `corxera`; `x/16` → `semicorxera`; `2/2` → `blanca`).
+- **Persistència**: `mapa_tempo.csv` porta `beat_unit` al final i es llig per
+  noms; columna absent o valor desconegut = **rebuig**, valor buit =
+  derivar+avisar. `.acproj` **FORMAT 4** desa `tempo.ref.beat_unit`; els
+  projectes de format anterior es rebutgen sense tocar-los.
 - **Durada mínima**: cap clip pot ser més curt que un compàs **`1/16`** a 350
   BPM (≈ **43 ms**).
 - **N enter sempre**: tots els clips de tempo/compàs (primer, interiors,
@@ -164,11 +175,14 @@ compassos sencers. El model és permissiu:
   invàlid: es repara i s'informa (incloent-hi l'ajust de `N`/BPM).
 
 ### 13.5 Ajust de BPM i compàs: recalcul guiat per la referència
-La referència és la **manual i global** de «Ref. recalc» (BPM i compàs de
-referència), no la dels clips veïns. En moure una frontera, els **segons** són
-fixos i el recalcul busca la combinació de **compassos sencers** que més
-s'acosta a eixa referència: pot canviar el **BPM**, el **compàs** o el
-**nombre de compassos** (`N`). Quan els **beats detectats** s'usen per validar
+La referència té dues parts. El **BPM** és **global** (la «Ref. recalc»
+manual); el **compàs** és el **local de cada costat**. En moure una frontera,
+els **segons** són fixos i el recalcul busca la combinació de **compassos
+sencers** que més s'acosta a eixa referència: pot canviar el **BPM**, el
+**compàs** o el **nombre de compassos** (`N`). El compàs local mana en
+`n_previst`, en la regla del múltiple i en `bloca_compas`; el compàs global de
+la Ref. només **desempata el cost**, de manera que un costat en `6/8` no hereta
+el `4/4` global si la seua mètrica local ja és vàlida. Quan els **beats detectats** s'usen per validar
 (**Snap Beats QM**), el nombre de **negres** (ja amb la unitat del beat
 aplicada) és una **restricció forta**: 7 negres han de ser `7/4` (o una
 combinació equivalent), no 2 compassos de `4/4` amb 8 negres. Si no s'usen o no
@@ -206,6 +220,13 @@ estructurals (partir, fusionar, eliminar o duplicar) i la reparació/càrrega
 poden reajustar diverses fronteres per restaurar `N` enter; **no són ni
 «recalc fix» ni «recalc mòbil»** i no es presenten com a tals.
 
+- **Unitat incompatible**: si un canvi de compàs (manual o per recalc) deixa
+  la unitat del clip fora de `encaixa_en_compas`, **no s'aplica res**; es
+  proposa la unitat derivada i l'usuari decideix. En recalc automàtic es
+  filtren els candidats per la unitat actual i, si no n'hi ha cap, es conserva
+  el valor anterior amb avís. L'avís d'alineació amb l'agrupació és
+  **no bloquejant**.
+
 **Els marcadors són anotacions independents**: no viatgen amb les fronteres
 de tempo ni amb les seccions, i no s'esborren quan una frontera desapareix.
 Cap operació de tempo —ni automàtica ni explícita— els consulta ni en deriva
@@ -223,6 +244,8 @@ normal pel que fa a camps, graella, validació, edició i exportació de dades.
 - La marca “Rubato” només afecta la partitura/exportació de notació.
 - Convertir a rubato o a normal només canvia `tipus`; no deriva BPM ni parteix
   el clip.
+- El **pre-roll** i els rubatos **hereten la unitat del primer tram musical**;
+  `beat_unit` és un camp més i no canvia el flag `tipus`.
 - Un projecte amb rubatos antics de seqüència es rebutja amb error clar.
 
 ### 13.8 Detecció i marcadors

@@ -278,37 +278,60 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
         if canvis_tempo:               # calen compassos fins al darrer canvi
             n_bars = max(n_bars, max(canvis_tempo))
 
+    from app import bpm_unit as _bu
+    unit_defecte = _bu.normalitza(bpm_unit)
+    unit_ant = None
+    bpm_ant = float(bpm)
+
+    def _unitat_a(bs):
+        if mapa is not None and not mapa.es_constant():
+            try:
+                return mapa.unitat(mapa.t_de_quarters(float(bs)))
+            except (TypeError, ValueError, AttributeError):
+                pass
+        return unit_defecte
+
     darrera = None
     sig_ant = None
     for i in range(1, n_bars + 1):
         bs, be, num_m, den_m = _mesura(i)
+        t_seg = bs * 60.0 / float(bpm) if bpm else 0.0
+        if mapa is not None and not mapa.es_constant():
+            try:
+                t_seg = mapa.t_de_quarters(bs)
+            except (TypeError, ValueError, AttributeError):
+                pass
+        unit_m = _unitat_a(t_seg)
+        bpm_m = float(canvis_tempo.get(i, bpm_ant))
         x.append(f'    <measure number="{i}">\n')
         # Salt de sistema: a l'inici de cada secció i, si es vol, cada N
         # compassos (per tenir línies regulars, estil lead sheet).
         if i != 1 and (i in sec_bar or
                        (new_system_each and (i - 1) % new_system_each == 0)):
             x.append('      <print new-system="yes"/>\n')
+        canvi_compas = (i == 1) or ((num_m, den_m) != sig_ant)
+        canvi_tempo = i in canvis_tempo
+        canvi_unitat = (unit_ant is not None and unit_m != unit_ant)
         if i == 1:
             x.append(f"      <attributes><divisions>{DIV}</divisions>"
                      "<key><fifths>0</fifths></key>"
                      f"<time><beats>{num_m}</beats>"
                      f"<beat-type>{den_m}</beat-type></time>"
                      "<clef><sign>G</sign><line>2</line></clef></attributes>\n")
-            x.append('      <direction placement="above"><direction-type>'
-                     f"{_metronome_xml(bpm, bpm_unit)}</direction-type>"
-                     f'<sound tempo="{bpm:g}"/></direction>\n')
-        elif (num_m, den_m) != sig_ant:
-            # canvi de COMPÀS (mapa variable): nova signatura
+        elif canvi_compas:
             x.append("      <attributes><time>"
                      f"<beats>{num_m}</beats>"
                      f"<beat-type>{den_m}</beat-type>"
                      "</time></attributes>\n")
-        sig_ant = (num_m, den_m)
-        if i in canvis_tempo:
-            tb = canvis_tempo[i]
+        if i == 1 or canvi_compas or canvi_tempo or canvi_unitat:
             x.append('      <direction placement="above"><direction-type>'
-                     f"{_metronome_xml(tb, bpm_unit)}</direction-type>"
-                     f'<sound tempo="{tb:g}"/></direction>\n')
+                     f"{_metronome_xml(bpm_m, unit_m)}</direction-type>"
+                     + (f'<sound tempo="{bpm_m:g}"/>' if (i == 1 or canvi_tempo)
+                        else "")
+                     + "</direction>\n")
+        sig_ant = (num_m, den_m)
+        unit_ant = unit_m
+        bpm_ant = bpm_m
         if i in sec_bar:
             x.append('      <direction placement="above"><direction-type>'
                      f"<rehearsal>{escape(sec_bar[i])}</rehearsal>"

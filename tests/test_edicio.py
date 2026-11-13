@@ -4241,9 +4241,9 @@ class TestSenseAnalisi(_sense_analisi___Base):
         vr._on_tempo_mogut(0, "fi", 3.0)           # frontera 6 s -> 3 s
         self.assertAlmostEqual(float(vr.tempo_trams[1][0]), 3.0, places=2)
         self.assertAlmostEqual(float(vr.tempo_trams[1][1]), fi_dret, places=3)
-        # Amb la referència base 120 4/4, 18 negres (9 s) no caben en 4/4
-        # enters; el motor tria 6/4 N=3 (no hereta el 3/4 del clip vell).
-        self.assertEqual(vr.tempo_map.signatura(4.0), (6, 4))
+        # S3: el compàs LOCAL del costat (3/4) mana; la Ref. global 4/4
+        # només desempata el cost. No s'hereta el 6/4 de la versió antiga.
+        self.assertEqual(vr.tempo_map.signatura(4.0), (3, 4))
 
     def test_audio_nou_neix_amb_1_acord_i_1_seccio(self):
         w, _p = self._finestra_amb_projecte(amb_csv=False)

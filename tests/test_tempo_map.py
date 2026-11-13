@@ -2231,13 +2231,15 @@ class TestTramsEnSegons(unittest.TestCase):
         self.assertEqual(out[0][3:], (4, 4))
         self.assertTrue(any("BPM desviat" in a for a in avisos), avisos)
 
-    def test_moure_frontera_amb_ref_base_sobreescriu_els_clips(self):
+    def test_moure_frontera_ref_base_global_pero_compas_local(self):
+        # S3: el BPM de la Ref. és global, però el compàs LOCAL de cada
+        # costat mana en n_previst/bloca_compas; el 4/4 global només desempata.
         trams = [(0.0, 5.0, 120.0, 7, 2), (5.0, 10.0, 120.0, 8, 4)]
         beats = [i * 0.5 for i in range(21)]
         out = tm.mou_frontera_retempo(
             trams, 1, 7.0, 10.0, 0.0, beats_qm=beats, permissiu=True,
             ref_base=(120.0, 4, 4))
-        self.assertEqual(out[0][3:], (7, 4))
+        self.assertEqual(out[0][3:], (7, 2))
         self.assertEqual(out[1][3:], (3, 4))
 
     def test_moure_frontera_permissiu_recalcula_compassos(self):

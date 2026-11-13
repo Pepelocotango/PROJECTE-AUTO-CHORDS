@@ -30,6 +30,23 @@ class TempoMixin:
             return bpm_unit_mod.DEFECTE
         return bpm_unit_mod.unitat_per_defecte(num, den, agr)
 
+    def _valida_unitat_tram(self, tram, context="Tempo"):
+        """L3: la unitat del tram ha d'encaixar amb el compàs resultant."""
+        unit = self.unitat_de_tram(tram)
+        try:
+            num, den = int(tram[3]), int(tram[4])
+        except (TypeError, ValueError, IndexError):
+            return True
+        if bpm_unit_mod.encaixa_en_compas(unit, num, den):
+            return True
+        sugg = bpm_unit_mod.unitat_per_defecte(
+            num, den, getattr(tram, "agrupacio", "") or "")
+        self.avis_editor(
+            f"{context}: el compàs {num}/{den} no encaixa amb la unitat "
+            f"{unit}; canvia la unitat a {sugg} abans d'aplicar "
+            "(no s'ha tocat res).")
+        return False
+
     def beat_factor(self, unit=None):
         """Negres que val el pols detectat (negra=1, punt=1.5, corxera=0.5)."""
         u = self.unitat_objectiu() if unit is None else unit
@@ -99,8 +116,17 @@ class TempoMixin:
         ok = bool(self.aplica_tempo_trams(nous))
         self._undo_commit()
         if ok:
-            self.log(f"unitat tram {idx}: {unit_actual} → {unit} "
-                     f"({mode})")
+            agr = getattr(tr, "agrupacio", "") or ""
+            preferida = bpm_unit_mod.unitat_per_defecte(
+                int(tr.num), int(tr.den), agr)
+            if preferida != unit:
+                self.avis_editor(
+                    f"Unitat tram {idx + 1}: {unit} no alinea amb "
+                    f"l'agrupació (preferida {preferida}); es respecta la "
+                    "tria.")
+            else:
+                self.log(f"unitat tram {idx}: {unit_actual} → {unit} "
+                         f"({mode})")
         return ok
 
     def set_ref_tempo(self, bpm, num, den, unit=None):
@@ -191,6 +217,8 @@ class TempoMixin:
             if not nous5:
                 return False
             nous = mapa_tempo.reenganxa_metadades(trams, nous5)
+        if not self._valida_unitat_tram(nous[idx], "Tempo"):
+            return False
         if agrupacio is not None:
             agr = tempo_map.valida_agrupacio(
                 agrupacio, nous[idx].num, nous[idx].den)
@@ -227,6 +255,8 @@ class TempoMixin:
                 den=int(den), camp="n")
         except ValueError as e:
             self.avis_editor(f"Compassos: {e}")
+            return False
+        if not self._valida_unitat_tram(nous[idx], "Compassos"):
             return False
         self.bpm = float(nous[0][2])
         self.bpb = int(nous[0][3])
@@ -617,22 +647,45 @@ class TempoMixin:
             n_beats = tempo_recalc.n_negres_del_clip(
                 beats, ini, fi, factor)
             pas_beat = factor
+        unit_tram = self.unitat_de_tram(tr)
         try:
-            res = tempo_recalc.recalculca_tram(
+            classif = tempo_recalc.recalculca_tram_amb_candidats(
                 durada, bpm_ref, num_ref, den_ref,
                 n_ref=int(n_camp) if opcions["n_fix"] else None,
                 n_beats=n_beats,
                 mode="mixt" if n_beats is not None else "graella",
                 bloca_compas=not opcions["compas"],
                 pas_beat=pas_beat,
-                ajusta_beats=bool(opcions["beats"]))
+                ajusta_beats=bool(opcions["beats"]),
+                unitat_actual=unit_tram)
         except ValueError as e:
             self.avis_editor(f"Recalcul: {e}")
             return False
+        res = classif.get("millor")
+        nivell = classif.get("nivell") or "BAIX"
+        motius = classif.get("avis") or ""
         if res is None:
-            self.avis_editor(
-                "Recalcul: no hi ha cap combinació vàlida amb estes opcions.")
+            sugg = classif.get("unitat_suggerida")
+            text = "Recalcul BAIX: " + (motius or "cap combinació vàlida")
+            if sugg:
+                text += f" · unitat suggerida: {sugg}"
+            dlg.set_assistencia(text)
+            self.avis_editor(text)
             return False
+        if nivell != "ALT":
+            alts = []
+            for c in (classif.get("candidats") or [])[1:3]:
+                alts.append(
+                    f"{float(c['bpm']):.3f} {int(c['num'])}/"
+                    f"{int(c['den'])} N={int(c['n'])}")
+            text = f"Recalcul {nivell}: {motius}"
+            if alts:
+                text += " · alternatives: " + " | ".join(alts)
+            dlg.set_assistencia(text)
+        else:
+            dlg.set_assistencia(
+                f"Recalcul ALT: {float(res['bpm']):.3f} BPM · "
+                f"{int(res['num'])}/{int(res['den'])} · N={int(res['n'])}")
         try:
             if mode == "fix":
                 nous = tempo_map.canvia_compassos_tram(
@@ -842,12 +895,14 @@ class TempoMixin:
             self._undo_commit()
             return
         avisos = []
+        unitats = {j: self.unitat_de_tram(tr)
+                   for j, tr in enumerate(trams)}
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, p_idx, float(t), self._durada_wav(), offset=offset,
                 beats_qm=self._beats_per_validacio(), permissiu=True,
                 ref_base=self.ref_tempo_base(), avisos=avisos,
-                beat_factor=self.beat_factor())
+                beat_factor=self.beat_factor(), unitats=unitats)
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
             return
@@ -879,6 +934,20 @@ class TempoMixin:
             return False
         nous = mapa_tempo.reenganxa_metadades(trams, nous)
         if [tuple(x) for x in nous] == [tuple(x) for x in trams]:
+            return False
+        # L3: un canvi de compàs no pot deixar la unitat del tram sense
+        # encaixar. No s'aplica res (atòmic); es proposa la unitat derivada.
+        nou = nous[idx]
+        unit_actual = self.unitat_de_tram(nou)
+        if not bpm_unit_mod.encaixa_en_compas(
+                unit_actual, int(nou.num), int(nou.den)):
+            sugg = bpm_unit_mod.unitat_per_defecte(
+                int(nou.num), int(nou.den),
+                getattr(nou, "agrupacio", "") or "")
+            self.avis_editor(
+                f"Compassos: el compàs {int(nou.num)}/{int(nou.den)} no "
+                f"encaixa amb la unitat {unit_actual}; canvia la unitat a "
+                f"{sugg} abans d'aplicar (no s'ha tocat res).")
             return False
         self._undo_marca()
         ok = self.aplica_tempo_trams(nous)

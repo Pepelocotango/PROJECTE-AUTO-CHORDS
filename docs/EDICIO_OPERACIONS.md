@@ -387,3 +387,47 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
 - S'escriu primer en un temporal i es valida abans de substituir la còpia. Un
   error no pot deixar àudio i model en estats diferents.
 - Les còpies de seguretat versionades inclouen el WAV de treball i els marcadors.
+
+### 9.6 Unitat de pols, Ref., classificació i export (S1–S3)
+
+- **Model**: cada tram té `beat_unit` (`negra`, `negra_punt`, `corxera`,
+  `semicorxera`, `blanca`). El BPM canònic continua sent negres/minut i el TAP
+  es deriva. `mapa_tempo.csv` porta `beat_unit` al final i es llig per noms;
+  columna absent o valor desconegut = rebuig; valor buit = derivar+avisar.
+  `.acproj` FORMAT 4 desa `tempo.ref.beat_unit`; el format 3 es rebutja sense
+  tocar-lo.
+- **Presentació**: el BPM del clip i el TAP es mostren en la unitat del tram;
+  la Ref. en la seua unitat; el transport/barra sense clip en el tram 0 o
+  `negra`. El selector **Beat/TAP** de la barra és una drecera del tram
+  seleccionat; `cb_ref_beat` és el de la Ref. El canvi d'unitat és explícit:
+  «Mantén el tempo (canvia el número)» o «Mantén el número (canvia el tempo)»,
+  amb preview de les dues xifres i Cancel·la. TAP = Mantén el número; BPM
+  manual = Mantén el tempo.
+- **TAP/Ref. (L1)**: si el compàs de la Ref. difereix del clip, el TAP aplica
+  el clip però **no toca la Ref.**: mostra «TAP aplicat; Ref. no actualitzada
+  (compàs diferent)». Si coincideix, actualitza BPM+unitat de la Ref. Canviar
+  la unitat amb un TAP obert tanca la sessió (1 undo) i el canvi és un altre
+  undo; `Aplica ref.` i el canvi d'unitat tenen undo real.
+- **Rang**: es valida el BPM **intern** 30–350; missatges amb les dues xifres
+  (`20 ♩. = 30 intern` vàlid; `240 ♩. = 360 intern` rebutjat).
+- **L3/L4**: un canvi de compàs o recalc que deixa la unitat fora de
+  `encaixa_en_compas` no s'aplica (atòmic); es proposa la unitat derivada. El
+  recalc automàtic filtra candidats per la unitat actual i, si no n'hi ha,
+  conserva+avisa. L4 avisa si la unitat no alinea amb l'agrupació, sense
+  bloquejar.
+- **Classificador (S3)**: `recalculca_tram(..., meter_prior=None)` separa BPM
+  global + compàs local per costat; el compàs global de la Ref. només
+  desempata. `classifica_recalc`/`recalculca_tram_amb_candidats` donen
+  **ALT/MITJÀ/BAIX** i alternatives. ALT només en acció explícita; MITJÀ amb
+  alternatives o canvi estructural; BAIX només per condició dura (cap
+  candidat, rang, octava, conflicte real unitat/compàs, frontera ambigua o
+  beats no resolubles). Cost alt amb candidat factible = MITJÀ. La sospita
+  1,5×/2/3 és MITJÀ i no s'auto-aplica. L'Assistència és per context (info box
+  + fila Ajuda del diàleg).
+- **Export (S2)**: `manifest.csv` té 10 columnes (les 7 històriques +
+  `bpm_quarter`, `beat_unit`, `bpm_mostra` al final; estat a l'inici del
+  segment; `mapa_tempo.csv` canònic). La guia HTML mostra les dues xifres. La
+  partitura usa la unitat de cada mesura, emet `<metronome>` en canvi de
+  compàs o d'unitat encara que no canvie el BPM, `<sound tempo>` només en
+  canvi de BPM, i `semicorxera` → `16th`. El fallback constant usa
+  `bar_quarters(num,den)` i `beat_type`.

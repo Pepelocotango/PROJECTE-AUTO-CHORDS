@@ -724,6 +724,10 @@ QCheckBox::indicator:disabled {{
                 w.deleteLater()
         self._omple_info(self._valors_info())
 
+    def set_assistencia(self, text):
+        """Mostra a la fila Ajuda el resum/assistència del recalcul."""
+        self.ajuda.setText(str(text or ""))
+
     def actualitza_info(self, info):
         """Refresca només la graella d'informació, sense tocar els camps."""
         info = dict(info or {})

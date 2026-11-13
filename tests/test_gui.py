@@ -4816,6 +4816,7 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
                      (30.0, 40.0, 120.0, 4, 4)]
             self.assertTrue(v.aplica_tempo_trams(trams))
+            self.assertTrue(v.canvia_unitat_tram(1, "corxera"))
             self.assertTrue(v.edita_tempo_objectiu(1, 90.0, 7, 8))
             self.assertEqual(v.tempo_trams[1][3:], (7, 8))
             self.assertAlmostEqual(v.tempo_trams[1][2], 90.0, places=6)
@@ -4849,6 +4850,7 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
                      (30.0, 40.0, 120.0, 4, 4)]
             self.assertTrue(v.aplica_tempo_trams(trams))
+            self.assertTrue(v.canvia_unitat_tram(1, "corxera"))
             self.assertTrue(v.edita_tempo_objectiu(1, 90.0, 7, 8))
             tram = v.tempo_trams[1]
             self.assertEqual(tram[3:], (7, 8))
@@ -5927,6 +5929,8 @@ class TestAncoratgesFinestra(unittest.TestCase):
         trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 3, 4),
                  (30.0, 60.0, 120.0, 4, 4)]
         self.assertTrue(vr.aplica_tempo_trams(trams))
+        # S3/L3: 7/8 necessita una unitat que dividix el compàs (corxera).
+        self.assertTrue(vr.canvia_unitat_tram(1, "corxera"))
         # N=10 es conserva; 7/8 a 84 BPM → 25 s, fi=35.
         self.assertTrue(vr.edita_tempo_objectiu(1, 84.0, 7, 8))
         self.assertEqual(vr.tempo_trams[0], trams[0])
@@ -6441,6 +6445,15 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.tempo_trams[0].beat_unit, "corxera")
         vr.undo()
         self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
+
+    def test_l3_rebutja_compas_incompatible_amb_la_unitat(self):
+        vr = self.w.visor_ref
+        vr.aplica_tempo_trams([(0.0, 10.0, 120.0, 6, 8)])
+        abans = [tuple(t) for t in vr.tempo_trams]
+        with patch.object(vr, "avis_editor") as avis:
+            self.assertFalse(vr.edita_tempo_objectiu(0, 120.0, 4, 4))
+        self.assertEqual([tuple(t) for t in vr.tempo_trams], abans)
+        self.assertEqual(avis.call_count, 1)
 
     def test_latencia_del_cursor_compensa_el_retard(self):
         """El cursor pot anar 100 ms per darrere del rellotge d'àudio."""

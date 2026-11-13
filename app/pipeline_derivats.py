@@ -6,7 +6,7 @@ tempo; no depén de Qt ni del motor Vamp.
 import csv
 import os
 
-from . import limits
+from . import bpm_unit as bpm_unit_mod, limits
 from .pipeline_mapa import _mapa_tempo_carpeta
 
 def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None,
@@ -201,14 +201,24 @@ def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
 
 
 def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
-                     mapa=None, log=None, _dades=None, den=4):
-    """Genera `guia_acords.html` en memòria i en retorna la ruta."""
+                     mapa=None, log=None, _dades=None, den=4,
+                     beat_unit=None, bpm_unit=None):
+    """Genera `guia_acords.html` en memòria i en retorna la ruta.
+
+    Mostra sempre les **dues xifres** del tempo: negres/minut (intern) i el
+    número en la unitat de pols activa/global. `beat_unit`/`bpm_unit` són
+    àlies per al fallback; amb mapa variable, cada compàs usa el seu tram.
+    """
     import html as _html
     workdir = workdir or os.path.dirname(os.path.abspath(csv_path))
     bpm = float(bpm)
     bpb = int(bpb)
     offset = float(offset or 0.0)
     durada_val = float(durada or 0.0)
+    unit_defecte = bpm_unit_mod.normalitza(
+        beat_unit or bpm_unit
+        or bpm_unit_mod.unitat_per_defecte(bpb, den))
+    bpm_mostra = bpm_unit_mod.de_quarter(bpm, unit_defecte)
     if _dades is None:
         _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
                                     durada=durada_val, mapa=mapa, den=den)
@@ -240,7 +250,19 @@ def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
                 items.append(
                     '<span class="%s">%s</span>'
                     % ("" if _bar_de(t) >= b else "k", _html.escape(c)))
-        cells.append('<div class="b"><i>%d</i>%s</div>' % (b + 1, " ".join(items)))
+        if mapa_resolt is not None:
+            try:
+                b_bpm = float(mapa_resolt.bpm(talls[b] if b < len(talls) else 0.0))
+                b_unit = mapa_resolt.unitat(talls[b] if b < len(talls) else 0.0)
+            except (IndexError, TypeError, ValueError):
+                b_bpm, b_unit = bpm, unit_defecte
+        else:
+            b_bpm, b_unit = bpm, unit_defecte
+        meta = (f"{b_bpm:g} ♩ · "
+                f"{bpm_unit_mod.de_quarter(b_bpm, b_unit):g} "
+                f"{bpm_unit_mod.etiqueta(b_unit).lower()}")
+        cells.append('<div class="b" title="%s"><i>%d</i><em class="m">%s</em>%s</div>'
+                     % (meta, b + 1, meta, " ".join(items)))
 
     guia_path = os.path.join(workdir, "guia_acords.html")
     with open(guia_path, "w", encoding="utf-8") as f:
@@ -249,10 +271,12 @@ def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
 <style>body{font:20px system-ui;margin:20px;background:#fff;color:#111}
 .g{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid #999;border-left:1px solid #999}
 .b{position:relative;min-height:56px;padding:22px 8px 6px;border-right:1px solid #999;border-bottom:1px solid #999;font-weight:600}
-.b i{position:absolute;top:3px;left:6px;font:12px system-ui;color:#888}.b span{margin-right:10px}.k{color:#aaa;font-weight:400}
+.b i{position:absolute;top:3px;left:6px;font:12px system-ui;color:#888}.b em{position:absolute;top:3px;right:6px;font:11px system-ui;color:#777;font-style:normal}.b span{margin-right:10px}.k{color:#aaa;font-weight:400}
 @media(prefers-color-scheme:dark){body{background:#111;color:#eee}}</style>
-<h3>%d BPM · %d temps/compàs · gris = acord que ve del compàs anterior</h3><div class="g">%s</div>"""
-            % (bpm, bpb, "".join(cells))
+<h3>%d BPM · %.3f negres/min · %.3f %s/min · %d/%d · gris = acord que ve del compàs anterior</h3><div class="g">%s</div>"""
+            % (bpm, bpm, bpm_mostra,
+               bpm_unit_mod.etiqueta(unit_defecte).lower(), bpb, den,
+               "".join(cells))
         )
     if log:
         log(f"  {len(segs)} acords, {nbars} compassos")
