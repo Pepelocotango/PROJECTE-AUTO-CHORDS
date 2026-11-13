@@ -336,6 +336,15 @@ QCheckBox::indicator:disabled {{
             "camps (després Ajusta/OK per aplicar).")
         self.alternatives.itemDoubleClicked.connect(self._triar_alternativa)
         lay_ajuda.addWidget(self.alternatives)
+        self.b_escolta = QPushButton("Escolta la proposta")
+        self.b_escolta.setToolTip(
+            "Reprodueix el clip en bucle amb el metrònom al BPM, compàs i "
+            "unitat proposats, sense aplicar cap canvi. Torna a prémer per "
+            "aturar-ho; Ajusta/OK ho atura abans d'aplicar.")
+        self.b_escolta.clicked.connect(self._escolta)
+        self.b_escolta.setVisible(hasattr(parent, "escolta_tram"))
+        self._audicio_activa = False
+        lay_ajuda.addWidget(self.b_escolta)
         col_info.addWidget(grup_ajuda)
         col_info.addStretch(1)
 
@@ -758,8 +767,48 @@ QCheckBox::indicator:disabled {{
         self.refRequested.emit(float(bpm), int(num), int(den),
                                self._ref_unit)
 
+    def _escolta(self):
+        """Escolta la proposta en bucle (sense aplicar-la) o l'atura."""
+        if self._audicio_activa:
+            self._atura_escolta()
+            return
+        vr = self.parent()
+        if not hasattr(vr, "escolta_tram"):
+            return
+        try:
+            bpm, num, den = self.valors()
+        except ValueError as e:
+            QMessageBox.warning(self, "Tempo invàlid", str(e))
+            return
+        fi = self._ini0 + self._durada
+        if fi <= self._ini0:
+            return
+        ok = bool(vr.escolta_tram(
+            self._ini0, fi, bpm, num, den, self._beat_unit))
+        self._audicio_activa = ok
+        self.b_escolta.setText(
+            "Atura l'escolta" if ok else "Escolta la proposta")
+        if ok:
+            self.set_assistencia(
+                "Escoltant la proposta en bucle. Ajusta/OK l'aplica; "
+                "Atura o Cancel només para l'àudio.")
+        else:
+            self.set_assistencia(
+                "No s'ha pogut iniciar l'àudio per escoltar la proposta.")
+
+    def _atura_escolta(self):
+        """Atura l'audició i restaura l'estat previ del visor."""
+        if not self._audicio_activa:
+            return
+        self._audicio_activa = False
+        vr = self.parent()
+        if hasattr(vr, "atura_escolta_tram"):
+            vr.atura_escolta_tram()
+        self.b_escolta.setText("Escolta la proposta")
+
     def _ajusta(self):
         """Aplica els canvis sense tancar el diàleg (emet `aplicaRequested`)."""
+        self._atura_escolta()
         try:
             self.valors()
         except ValueError as e:
@@ -898,12 +947,21 @@ QCheckBox::indicator:disabled {{
         self.ref_compas.setText(f"{int(num)}/{int(den)}")
 
     def accept(self):
+        self._atura_escolta()
         try:
             self.valors()
         except ValueError as e:
             QMessageBox.warning(self, "Tempo invàlid", str(e))
             return
         super().accept()
+
+    def reject(self):
+        self._atura_escolta()
+        super().reject()
+
+    def closeEvent(self, ev):
+        self._atura_escolta()
+        super().closeEvent(ev)
 
     def _segons_canviat(self, actiu):
         """En segons el compàs no té sentit: s'apaga l'edició dels camps."""

@@ -43,7 +43,9 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - **Refinaments UX**: canvi d'unitat **inline** al diàleg del tram (radios +
   preview; s'aplica amb Ajusta/OK), selector d'unitat de la Ref. dins el
   diàleg, casella per **silenciar l'avís 1,5×/2/3 per tram/sessió** i llista
-  d'**alternatives clicable** a l'Assistència. Suite: **1606 OK** (1 skip).
+  d'**alternatives clicable** a l'Assistència i botó **«Escolta la
+  proposta»** (bucle + metrònom amb el BPM/compàs/unitat proposats, que
+  restaura l'estat previ en aturar o aplicar). Suite: **1609 OK** (1 skip).
 
 ### Afegit — informació completa del clip al diàleg de tram de tempo (2026-11-12)
 - El diàleg **BPM, compàs i compassos** es divideix en **2 columnes**: a

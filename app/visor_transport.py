@@ -261,13 +261,15 @@ class TransportMixin:
         """Activa/desactiva el metrònom (sense tallar la reproducció)."""
         self.set_metro(not self.metro_on)
 
-    def set_metro_forcat(self, bpm=None, bpb=4, offset=0.0, den=4, mode=None):
+    def set_metro_forcat(self, bpm=None, bpb=4, offset=0.0, den=4, mode=None,
+                         click_unit="auto"):
         """Metrònom sobre una graella pròpia: `bpm` + `bpb`/`den` des de `offset`.
 
         Amb `bpm=None` es torna al metrònom normal (mapa de tempo o BPM de la
-        barra). El fil d'àudio ho llig **a cada tros**, així que el canvi de
-        BPM o l'encesa/apagada s'apliquen a l'instant i **sense reiniciar** el
-        reproductor (cap micro-tall).
+        barra). `click_unit` permet escoltar la unitat de pols proposada
+        (`auto` = denominador del compàs). El fil d'àudio ho llig **a cada
+        tros**, així que el canvi de BPM o l'encesa/apagada s'apliquen a
+        l'instant i **sense reiniciar** el reproductor (cap micro-tall).
         """
         if bpm is None:
             self.metro_forcat = None
@@ -287,11 +289,13 @@ class TransportMixin:
             mode = getattr(self, "metro_mode", "auto")
         if mode not in metronom.MODES:
             mode = "auto"
+        if click_unit not in ("auto",) and click_unit not in bpm_unit_mod.UNITATS:
+            click_unit = "auto"
         self.metro_forcat = (bpm, max(1, int(bpb)), float(offset),
-                             den, mode)
+                             den, mode, click_unit)
         self.log(f"metrònom forçat: {bpm:.2f} BPM · compàs "
                  f"{int(bpb)}/{den} · patró {mode} · "
-                 f"des de {float(offset):.3f}s")
+                 f"unitat {click_unit} · des de {float(offset):.3f}s")
 
     def set_metro_mode(self, mode):
         """Canvia el patró del metrònom sense tallar la reproducció."""
@@ -299,8 +303,10 @@ class TransportMixin:
             mode = "auto"
         self.metro_mode = mode
         if self.metro_forcat is not None:
-            bpm, bpb, offset, den, _mode = self.metro_forcat
-            self.metro_forcat = (bpm, bpb, offset, den, mode)
+            forc = self.metro_forcat
+            bpm, bpb, offset, den, _mode = forc[:5]
+            click_unit = forc[5] if len(forc) > 5 else "auto"
+            self.metro_forcat = (bpm, bpb, offset, den, mode, click_unit)
         self.log(f"metrònom: patró {mode}")
 
     def _canvia_vol_metro(self, v):

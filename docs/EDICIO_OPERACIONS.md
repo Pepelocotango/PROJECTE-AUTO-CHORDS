@@ -404,6 +404,9 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
   «Mantén el número (canvia el tempo)», preview de les dues xifres) i no
   s'aplica fins **Ajusta/OK**; la Ref. té el seu selector i un modal amb les
   mateixes opcions. TAP = Mantén el número; BPM manual = Mantén el tempo.
+  **Escolta la proposta** reprodueix el clip en bucle amb el metrònom al BPM,
+  compàs i unitat proposats, sense aplicar res; guarda i restaura loop,
+  metrònom i reproducció en aturar o en Ajusta/OK/Cancel.
 - **TAP/Ref. (L1)**: si el compàs de la Ref. difereix del clip, el TAP aplica
   el clip però **no toca la Ref.**: mostra «TAP aplicat; Ref. no actualitzada
   (compàs diferent)». Si coincideix, actualitza BPM+unitat de la Ref. Canviar

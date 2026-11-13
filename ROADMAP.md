@@ -117,10 +117,9 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 - **Edició d'àudio**: restauració des de la GUI i proves visuals; **no
   implementat** el silenci automàtic per completar el pre-roll o el primer
   compàs.
-- **Audició de la proposta (P6/S1.5)**: opcional; si no està llesta, el botó
-  s'amaga i no bloqueja S1.
-- **Detall de la ronda S1–S3**: decisions i abast a
+- **Detall de la ronda S1–S3 (tancada)**: decisions i abast a
   `LOG_DIALEGS_AGENTS.txt` OC/533–OC/567 i `docs/EDICIO_OPERACIONS.md` §9.6.
+  Inclou l'audició «Escolta la proposta» (P6/S1.5).
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
 
 ### Pla de compassos compostos (aprovat 2026-11-12)

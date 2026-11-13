@@ -68,6 +68,7 @@ import re
 from app import theme
 from app import timeline_items
 from app import tempo_map as tm
+from app.visor_tempo import TempoMixin
 from app import timeline_layers as L
 from app.timeline_base import LOOP_GRAB_PX, loop_after_drag
 import random
@@ -2032,6 +2033,110 @@ class TestDialegTramTempo(_dialegs___Base):
         d.b_recalc_mob.click()
         self.assertEqual(rebuts, ["fix", "mobil"])
         self.assertNotEqual(d.result(), QW.QDialog.Accepted)
+
+    def test_escolta_proposta_usa_els_valors_i_atura(self):
+        class _Pare(QW.QWidget):
+            def __init__(self):
+                super().__init__()
+                self.crides = []
+
+            def escolta_tram(self, *args):
+                self.crides.append(("escolta", args))
+                return True
+
+            def atura_escolta_tram(self):
+                self.crides.append(("atura",))
+                return True
+
+        pare = _Pare()
+        d = dialegs.DialegTramTempo(
+            pare, inici=10.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0, beat_unit="negra", unit="negra")
+        self.assertFalse(d.b_escolta.isHidden())
+        d.b_escolta.click()
+        self.assertEqual(pare.crides[0][0], "escolta")
+        args = pare.crides[0][1]
+        self.assertAlmostEqual(args[0], 10.0)
+        self.assertAlmostEqual(args[1], 14.0)
+        self.assertAlmostEqual(args[2], 120.0)
+        self.assertEqual(args[3:], (4, 4, "negra"))
+        self.assertEqual(d.b_escolta.text(), "Atura l'escolta")
+        d.b_escolta.click()
+        self.assertEqual(pare.crides[-1], ("atura",))
+        self.assertEqual(d.b_escolta.text(), "Escolta la proposta")
+        d.b_escolta.click()
+        d.accept()
+        self.assertEqual(pare.crides[-1], ("atura",))
+        self.assertEqual(d.result(), QW.QDialog.Accepted)
+
+    def test_escolta_amagada_sense_visor(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        self.assertTrue(d.b_escolta.isHidden())
+
+    def test_escolta_tram_restaura_loop_metronom_i_reproduccio(self):
+        class _Timeline:
+            def set_position(self, t, *a, **k):
+                self.pos = t
+
+        class _Visor(TempoMixin):
+            def __init__(self):
+                self.player = object()
+                self.proc = object()
+                self.sona = True
+                self.pos = 3.0
+                self.loop_a, self.loop_b, self.loop_on = 1.0, 9.0, True
+                self.metro_on = True
+                self.metro_forcat = (100.0, 4, 0.0, 4, "auto", "auto")
+                self.timeline = _Timeline()
+                self.crides = []
+
+            def log(self, *_a, **_k):
+                pass
+
+            def _fixa_loop(self, a, b, activa=True, alinea=True):
+                self.loop_a, self.loop_b = a, b
+                self.loop_on = bool(activa and a is not None
+                                    and b is not None and b > a)
+                self.crides.append(("loop", a, b, activa, alinea))
+
+            def set_metro_forcat(self, bpm=None, bpb=4, offset=0.0, den=4,
+                                 mode=None, click_unit="auto"):
+                self.metro_forcat = (None if bpm is None else
+                                     (bpm, bpb, offset, den, mode,
+                                      click_unit))
+                self.crides.append(("forcat", bpm, bpb, offset, den, mode,
+                                    click_unit))
+
+            def set_metro(self, on):
+                self.metro_on = bool(on)
+                self.crides.append(("metro", on))
+
+            def ves_a(self, t):
+                self.pos = float(t)
+                self.crides.append(("ves", t))
+
+            def play_stop(self):
+                self.sona = not self.sona
+                self.crides.append(("play", self.sona))
+
+        v = _Visor()
+        self.assertTrue(v.escolta_tram(2.0, 6.0, 120.0, 4, 4, "negra"))
+        self.assertEqual(v.loop_a, 2.0)
+        self.assertEqual(v.loop_b, 6.0)
+        self.assertEqual(v.metro_forcat[:5], (120.0, 4, 2.0, 4, "auto"))
+        self.assertEqual(v.metro_forcat[5], "negra")
+        self.assertTrue(v.metro_on)
+        self.assertEqual(v.pos, 2.0)
+        self.assertTrue(v.atura_escolta_tram())
+        self.assertEqual(v.loop_a, 1.0)
+        self.assertEqual(v.loop_b, 9.0)
+        self.assertTrue(v.loop_on)
+        self.assertEqual(v.metro_forcat, (100.0, 4, 0.0, 4, "auto", "auto"))
+        self.assertTrue(v.metro_on)
+        self.assertEqual(v.pos, 3.0)
+        self.assertTrue(v.sona)
 
     def test_opcions_recalc_per_defecte(self):
         d = dialegs.DialegTramTempo(

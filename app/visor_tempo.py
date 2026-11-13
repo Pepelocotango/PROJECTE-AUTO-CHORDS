@@ -29,6 +29,66 @@ class TempoMixin:
         self._factor_sospitos_silenciats = silenciats
         return idx in silenciats
 
+    def escolta_tram(self, ini, fi, bpm, num, den,
+                     beat_unit=bpm_unit_mod.DEFECTE):
+        """Escolta una proposta (loop + metrònom propi) sense aplicar res.
+
+        Guarda l'estat de reproducció, loop i metrònom i el restaura amb
+        `atura_escolta_tram()`. Retorna `False` si no hi ha reproductor.
+        """
+        self.atura_escolta_tram()
+        ini = float(ini)
+        fi = float(fi)
+        if fi <= ini or getattr(self, "player", None) is None:
+            return False
+        self._escolta_estat = {
+            "sona": bool(getattr(self, "sona", False)),
+            "pos": float(getattr(self, "pos", 0.0)),
+            "loop": (getattr(self, "loop_a", None),
+                     getattr(self, "loop_b", None),
+                     bool(getattr(self, "loop_on", False))),
+            "metro": (bool(getattr(self, "metro_on", False)),
+                      getattr(self, "metro_forcat", None)),
+        }
+        self._fixa_loop(ini, fi, activa=True, alinea=False)
+        self.set_metro_forcat(float(bpm), int(num), ini, int(den), "auto",
+                              bpm_unit_mod.normalitza(beat_unit))
+        self.set_metro(True)
+        if getattr(self, "sona", False):
+            self.ves_a(ini)
+        else:
+            self.pos = ini
+            self.timeline.set_position(ini)
+            self.play_stop()
+        if getattr(self, "proc", None) is None:
+            self.atura_escolta_tram()
+            return False
+        return True
+
+    def atura_escolta_tram(self):
+        """Atura l'audició i restaura loop, metrònom i reproducció previs."""
+        estat = getattr(self, "_escolta_estat", None)
+        if not estat:
+            return False
+        self._escolta_estat = None
+        sona = bool(getattr(self, "sona", False))
+        if sona and not estat["sona"]:
+            self.play_stop()
+        la, lb, lon = estat["loop"]
+        self._fixa_loop(la, lb, activa=lon, alinea=False)
+        m_on, m_forc = estat["metro"]
+        if m_forc is None:
+            self.set_metro_forcat(None)
+        else:
+            vals = list(m_forc)
+            if len(vals) == 5:
+                vals.append("auto")
+            self.set_metro_forcat(*vals)
+        self.set_metro(m_on)
+        if estat["sona"]:
+            self.ves_a(float(estat["pos"]))
+        return True
+
     def unitat_de_tram(self, tram):
         """Unitat de pols d'un tram (objecte o tuple antiga de 5 camps)."""
         bu = getattr(tram, "beat_unit", None)

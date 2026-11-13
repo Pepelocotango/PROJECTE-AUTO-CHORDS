@@ -561,6 +561,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # sense passar pel mapa de tempo. És el que permet escoltar un tram
         # del guiat **encara no aplicat** (i moure'n el BPM en viu).
         self.metro_forcat = None
+        self._escolta_estat = None
         self.loop_a = None
         self.loop_b = None
         self.loop_on = False
@@ -4169,11 +4170,13 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                     if forc is not None:
                         # graella pròpia (guiat): el clic s'alinea a `offset`
                         # encara que el mapa diga una altra cosa
-                        mbpm, mbpb, moff, mden, mmode = forc
+                        mbpm, mbpb, moff, mden, mmode = forc[:5]
+                        mclick = forc[5] if len(forc) > 5 else "auto"
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), mbpm, mbpb,
                             volum=self.metro_vol, offset=moff, mapa=None,
-                            factor=factor, den=mden, mode=mmode)
+                            factor=factor, den=mden, mode=mmode,
+                            click_unit=mclick)
                     else:
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), self.bpm, self.bpb,
