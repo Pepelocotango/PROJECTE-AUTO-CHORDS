@@ -167,6 +167,34 @@ def escriu_atomic(ruta, escriu):
         except OSError:
             pass
         raise
+
+
+def escriu_atomic_bytes(ruta, dades):
+    """Escriu bytes de forma atòmica (MIDI, imatges, etc.)."""
+    ruta = os.path.abspath(ruta)
+    os.makedirs(os.path.dirname(ruta) or ".", exist_ok=True)
+    tmp = f"{ruta}.{os.getpid()}.{threading.get_ident()}.tmp"
+    try:
+        with open(tmp, "wb") as f:
+            f.write(bytes(dades))
+            f.flush()
+            os.fsync(f.fileno())
+        for intent in range(6):
+            try:
+                os.replace(tmp, ruta)
+                return
+            except PermissionError:
+                if intent == 5:
+                    raise
+                time.sleep(0.05 * (intent + 1))
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def desa_acords_csv(ruta, clips, durada=0.0):
     """Desa el model d'acords (`Clip(ini, fi, payload)`) com a `inici,fi,acord`."""
     clips = list(clips or ())

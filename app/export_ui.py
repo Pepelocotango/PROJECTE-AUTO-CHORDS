@@ -12,7 +12,7 @@ from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 from . import (
-    exporta_audio as exporta_audio_mod, partitura, pipeline,
+    exporta_audio as exporta_audio_mod, partitura, pipeline, tempo_midi,
 )
 from .feines import FeinaExporta, FeinaExportaAudio
 
@@ -56,6 +56,11 @@ class ExportMixin:
         # Regla d'or #12: el mapa de BPM/compàs del model viu també s'exporta.
         mapa_model = list(vr.tempo_trams) if vr is not None else None
         amb_estructura = self.amb_est.isChecked() and seccions_model is not None
+        marques = []
+        if vr is not None:
+            tipus = pipeline.llegeix_marcadors_tipus(self.sortida)
+            marques = [(float(t), tipus.get(round(float(t), 6), "marcador"))
+                       for t in (vr.marcadors or ())]
         # (2) Amb «Inclou estructura» OFF, les restes d'un export ANTERIOR
         # (`wavs_estructura/`) quedaven a la carpeta i semblava que l'export
         # actual hagués inclòs estructura → s'ofereix treure-les (amb
@@ -81,6 +86,7 @@ class ExportMixin:
             seccions=seccions_model,
             total_s=total_s,
             mapa_tempo=mapa_model,
+            marques=marques,
         )
 
     def _neteja_estructura_vella(self, sortida):
@@ -284,6 +290,35 @@ class ExportMixin:
             return
         res_part = self._exporta_partitura() if self.amb_part.isChecked() else None
         self._exporta_acabada(res_part)
+
+    def exporta_mapa_midi_ara(self):
+        """Exporta només el mapa de tempo/compàs a un `.mid` triat per l'usuari."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None or not getattr(vr, "tempo_trams", None):
+            self.avisa_info("Exporta MIDI",
+                            "Obre un projecte amb mapa de tempo primer.")
+            return
+        base = self.sortida or os.getcwd()
+        ruta, _ = QFileDialog.getSaveFileName(
+            self, "Exporta el mapa de tempo (MIDI)",
+            os.path.join(base, tempo_midi.NOM_MAPA_MIDI),
+            "MIDI (*.mid)")
+        if not ruta:
+            return
+        if not ruta.lower().endswith((".mid", ".midi")):
+            ruta += ".mid"
+        try:
+            tipus = pipeline.llegeix_marcadors_tipus(self.sortida)
+            marques = [(float(t), tipus.get(round(float(t), 6), "marcador"))
+                       for t in (vr.marcadors or ())]
+            tempo_midi.desa_mapa_midi(
+                ruta, list(vr.tempo_trams), offset=float(vr.offset or 0.0),
+                marques=marques, log=self.registra)
+        except (OSError, ValueError) as e:
+            self.avisa("Exporta MIDI", f"No s'ha pogut exportar el MIDI:\n{e}")
+            return
+        self.registra(f"MIDI del mapa exportat: {ruta}")
+        self._missatge_info(f"MIDI exportat: {os.path.basename(ruta)}")
 
     def _exporta_partitura(self):
         """Genera el lead sheet de xifrats de la carpeta de sortida.

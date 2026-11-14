@@ -76,7 +76,7 @@ PROJECTE AUTO CHORDS/
 │   ├── PLA_SIMPLIFICACIO_TEMPO.md         🟢  # Pla per fases de simplificació del tempo
 │   ├── TORNAR A REVISAR AVANS AQUEST PLA.TXT 🟢
 │   └── per fer_2026-11-05/                🟢  # (54 fitxers)
-├── app/                           🟢  # Codi de l'aplicació (PyQt5) (75 fitxers)
+├── app/                           🟢  # Codi de l'aplicació (PyQt5) (76 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
 │   ├── analisi_ui.py             🟢  # Accions d'anàlisi de la finestra (F3).
@@ -134,6 +134,7 @@ PROJECTE AUTO CHORDS/
 │   ├── tap_ui.py                 🟢  # Tap tempo de la finestra (F3).
 │   ├── tempo.py                  🟢  # tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt).
 │   ├── tempo_map.py              🟢  # Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur).
+│   ├── tempo_midi.py             🟢  # Exportació del mapa de tempo/compàs a MIDI (Standard MIDI File tipus 1).
 │   ├── tempo_recalc.py           🟢  # Motor pur de recalcul del mapa de temps (F0).
 │   ├── temps_ui.py               🟢  # UI de temps de la finestra (F3): BPM, compàs i offset.
 │   ├── theme.py                  🟢  # tema centralitzat (colors i estils Qt)
@@ -289,7 +290,7 @@ PROJECTE AUTO CHORDS/
 │   ├── qm-vamp-plugins.cat 🟢
 │   ├── qm-vamp-plugins.n3  🟢
 │   └── qm-vamp-plugins.so  🟢
-├── tests/                         🟢  # Suite unittest offscreen (23 fitxers)
+├── tests/                         🟢  # Suite unittest offscreen (24 fitxers)
 │   ├── _qt_neteja.py              🟢  # Neteja ORDENADA dels objectes Qt entre tests.
 │   ├── _temporals.py              🟢  # Higiene dels tests: cap temporal no s'ha de quedar pel disc.
 │   ├── test_ancoratges.py         🟢  # Suite de test — Marcadors humans i velocitat de reproducció.
@@ -310,6 +311,7 @@ PROJECTE AUTO CHORDS/
 │   ├── test_pipeline.py           🟢  # Suite de test — Pipeline
 │   ├── test_pipeline_contracte.py 🟢  # Contracte de superfície de `app.pipeline` (refactor F0).
 │   ├── test_tempo_map.py          🟢  # Suite de test — Tempo Map
+│   ├── test_tempo_midi.py         🟢  # Exportació del mapa de tempo/compàs a MIDI (pista de conductor).
 │   ├── test_tempo_recalc.py       🟢  # Tests del motor pur de recalcul del mapa de temps (F0).
 │   ├── test_tempo_trams.py        🟢  # Motor de tempo per trams (app/tempo.py): candidats, beats i mapa.
 │   └── test_timeline_contracte.py 🟢  # Contracte de superfície de `app.timeline` (refactor F0).

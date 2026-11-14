@@ -189,8 +189,8 @@ superar el límit, la més antiga es descarta i l'app ho comunica.
 | 43 | **Projecte**: crear/obrir/desar/desar com/còpia | *Fitxer ▸* | **FET** |
 | 44 | **Recents** | *Fitxer ▸ Obre recent…* | **FET** |
 | 45 | **Revertir** | *Fitxer ▸ Reverteix* | **FET** (amb confirmació modal) |
-| 46 | **Còpia versionada (backup)** | automàtic (autosave) | **FET** |
-| 47 | **Exportar WAVs** | `Ctrl+E` | **FET** — el paquet hi porta les **tres parts** (regla #12): `acords.csv`+`wavs_acords/`, `estructura_ABC.csv`+`wavs_estructura/` i **`mapa_tempo/mapa_tempo.csv`** (+ `AVIS_APROXIMACIO.txt` si hi ha trams rubato) |
+| 46 | **Còpia versionada (backup)** | automàtic (autosave) + **Fitxer ▸ Restaura una còpia de seguretat…** | **FET** |
+| 47 | **Exportar WAVs** | `Ctrl+E` | **FET** — el paquet hi porta les **tres parts** (regla #12): `acords.csv`+`wavs_acords/`, `estructura_ABC.csv`+`wavs_estructura/` i **`mapa_tempo/mapa_tempo.csv` + `mapa_tempo/mapa_tempo.mid`** (+ `AVIS_APROXIMACIO.txt` si hi ha trams rubato). També es pot exportar només el MIDI des de **Fitxer ▸ Exporta mapa de tempo (MIDI)…** |
 | 48 | **Exportar la partitura** | *Fitxer ▸ Exporta la partitura…* | **FET** |
 | 49 | **Obrir la carpeta de sortida** | *Fitxer ▸ Obre la carpeta de sortida* | **FET** |
 | 50 | **Exportar l'àudio editat** | *Fitxer ▸ Exporta àudio…* | **FET** (Fase 6): diàleg natiu de desar; perfils WAV 16/24/32 bits, MP3 128/192/320, FLAC, AAC/M4A, OGG i Opus; només els còdecs que el `ffmpeg` del paquet pot escriure; escriptura atòmica i protecció de la còpia de treball |

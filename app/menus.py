@@ -32,6 +32,8 @@ class MenusMixin:
         self._act(m, "Desa com…", "", self._desa_projecte_com)
         self._act(m, "Desa una còpia…", "", self._desa_copia)
         self._act(m, "Reverteix", "", self._reverteix)
+        self._act(m, "Restaura una còpia de seguretat…", "",
+                  self._restaura_backup_ui)
         m.addSeparator()
         self.a_exporta = self._act(m, "Exporta WAV's…", "Ctrl+E",
                                    self.exporta)
@@ -47,6 +49,13 @@ class MenusMixin:
             "Genera la partitura (xifrat). El MusicXML sempre; el PDF i el "
             "MSCZ NOMÉS si hi ha MuseScore instal·lat.")
         self.a_exporta_part.setToolTip(self.a_exporta_part.statusTip())
+        self.a_exporta_midi = self._act(
+            m, "Exporta mapa de tempo (MIDI)…", "",
+            self.exporta_mapa_midi_ara)
+        self.a_exporta_midi.setStatusTip(
+            "Exporta només el mapa de tempo/compàs (Set Tempo, Time "
+            "Signature i markers) a un fitxer MIDI tipus 1.")
+        self.a_exporta_midi.setToolTip(self.a_exporta_midi.statusTip())
         self.a_exporta.setEnabled(False)
         self.a_exporta_part.setEnabled(False)
         m.addAction(self.amb_part)      # Inclou la partitura (commutable)

@@ -61,13 +61,26 @@ def _enllaca_o_copia(origen, desti):
     backups sense risc que una edició posterior els modifique. En sistemes de
     fitxers sense hardlinks (FAT/exFAT, alguns volums de xarxa…) es fa la
     còpia tradicional.
+
+    Es publica amb un temporal + `os.replace`: el destí pot existir (restauració
+    d'una còpia) i pot ser el mateix inode (backup enllaçat a l'àudio actual).
     """
+    tmp = f"{desti}.{os.getpid()}.{os.urandom(4).hex()}.tmp"
     try:
-        os.link(origen, desti)
-        return True
-    except (OSError, NotImplementedError):
-        shutil.copy2(origen, desti)
-        return False
+        try:
+            os.link(origen, tmp)
+            enllac = True
+        except (OSError, NotImplementedError):
+            shutil.copy2(origen, tmp)
+            enllac = False
+        os.replace(tmp, desti)
+        return enllac
+    finally:
+        if os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
 
 
 def _copia_arbre_enllacat(origen, desti):
@@ -473,6 +486,49 @@ class Projecte:
                 shutil.rmtree(temporal)
         self._rota_backups(max_backups)
         return dest
+
+    def restaura_backup(self, ruta_backup, max_backups=MAX_BACKUPS):
+        """Restaura una còpia versionada sobre este projecte.
+
+        Abans de tocar res, crea una còpia de seguretat de l'estat actual (si
+        ha canviat). Després copia el document, els CSV/marcadors i `audio/`
+        de la còpia. **No esborra els exports** (`wavs_*`, `partitura/`), que
+        es deriven. Retorna el `Projecte` recarregat.
+        """
+        arrel = os.path.abspath(self.dir_backup())
+        backup = os.path.abspath(ruta_backup)
+        try:
+            if os.path.commonpath([backup, arrel]) != arrel:
+                raise ProjecteError(
+                    f"la còpia no és dins {arrel!r}: {backup!r}")
+        except ValueError as e:
+            raise ProjecteError(
+                f"la còpia no és dins {arrel!r}: {backup!r}") from e
+        if not os.path.isdir(backup):
+            raise ProjecteError(f"la còpia no existeix: {backup!r}")
+        ap_b = _acproj_de_carpeta(backup)
+        if not ap_b:
+            raise ProjecteError(f"la còpia no té cap .acproj: {backup!r}")
+        pb = Projecte.obre(ap_b)
+        if not pb.audio_present():
+            raise ProjecteError(
+                f"la còpia no té l'àudio de treball: {backup!r}")
+        # Xarxa de seguretat: l'estat actual es pot recuperar si algo falla.
+        # No rotar encara: la còpia triada podria ser la més antiga i cal
+        # copiar-la abans de fer neteja.
+        self.fes_backup(max_backups=0)
+        os.makedirs(self.carpeta, exist_ok=True)
+        shutil.copy2(ap_b, self.ruta_acproj)
+        for n in self._FITXERS_BACKUP:
+            origen = os.path.join(backup, n)
+            if os.path.isfile(origen):
+                shutil.copy2(origen, os.path.join(self.carpeta, n))
+        origen_audio = os.path.join(backup, NOM_AUDIO_DIR)
+        if os.path.isdir(origen_audio):
+            _copia_arbre_enllacat(
+                origen_audio, os.path.join(self.carpeta, NOM_AUDIO_DIR))
+        self._rota_backups(max_backups)
+        return Projecte.obre(self.carpeta)
 
     # Fitxers del projecte que es guarden a cada còpia (model + anàlisi crua).
     _FITXERS_BACKUP = (NOM_CSV_ACORDS, NOM_CSV_ESTRUCTURA,

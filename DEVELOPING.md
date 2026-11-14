@@ -300,6 +300,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `tap_ui.py` | Tap tempo de la finestra (F3). |
 | `tempo.py` | tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt). |
 | `tempo_map.py` | Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur). |
+| `tempo_midi.py` | Exportació del mapa de tempo/compàs a MIDI (Standard MIDI File tipus 1). |
 | `tempo_recalc.py` | Motor pur de recalcul del mapa de temps (F0). |
 | `temps_ui.py` | UI de temps de la finestra (F3): BPM, compàs i offset. |
 | `theme.py` | tema centralitzat (colors i estils Qt) |

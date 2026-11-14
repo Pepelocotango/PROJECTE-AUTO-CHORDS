@@ -17,6 +17,7 @@ from .pipeline_io import (
     safe_filename, escriu_atomic, desa_acords_csv, neteja_wavs,
 )
 from .pipeline_mapa import desa_tempo_map
+from . import tempo_midi
 from .pipeline_model import (
     FORAT_ACORD, clips_d_acords, normalitza_clips, normalitza_cobertura,
 )
@@ -188,7 +189,7 @@ def escriu_manifest(ruta, files):
 def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
                  tempo_fix=True, amb_estructura=True, total_s=None,
                  acords=None, seccions=None, mapa_tempo=None, den=4,
-                 beat_unit=None, bpm_unit=None):
+                 beat_unit=None, bpm_unit=None, marques=None):
     """Exporta el flux complet.
 
     Si es passen `acords`/`seccions` (el **model VIU** del visor), s'usen ELLS
@@ -289,6 +290,9 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         desa_tempo_map(dest_mapa, trams)
         result["mapa_tempo_dir"] = dest_mapa
         result["n_mapa_trams"] = len(trams)
+        result["mapa_tempo_midi"] = tempo_midi.desa_mapa_midi(
+            os.path.join(dest_mapa, tempo_midi.NOM_MAPA_MIDI), trams,
+            offset=offset, marques=marques or (), log=log)
         rubatos = [t for t in trams
                    if getattr(t, "tipus", None) == "rubato"]
         if rubatos:

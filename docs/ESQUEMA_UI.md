@@ -90,7 +90,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 | Menú | Accions |
 |------|---------|
-| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… · Obre recent… · Desa (Ctrl+S) · Desa com… · Desa una còpia… · Reverteix · Exporta WAV's… (Ctrl+E) · Exporta àudio… · Exporta la partitura… · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
+| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… · Obre recent… · Desa (Ctrl+S) · Desa com… · Desa una còpia… · Reverteix · **Restaura una còpia de seguretat…** · Exporta WAV's… (Ctrl+E) · Exporta àudio… · Exporta la partitura… · **Exporta mapa de tempo (MIDI)…** · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · **Parteix el tempo al cursor** (Enter) · **Parteix l'estructura al cursor** (0) · **Parteix tempo i estructura al cursor** (+) · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… · Retard global de reproducció… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
@@ -115,6 +115,18 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   en un avís, sense deixar fitxers a mitges.
 - L'exportació va en un **fil** i l'estat es veu al log (inici, comandament i
   resultat).
+
+### Exporta mapa de tempo (MIDI) i restauració de còpies
+
+- **`Fitxer ▸ Exporta mapa de tempo (MIDI)…`** desa només el mapa de
+  tempo/compàs com a **Standard MIDI File tipus 1** (pista de conductor):
+  `Set Tempo`, `Time Signature`, markers de tram i marcadors de compàs/secció;
+  l'offset/anacrusi s'anota amb un marker. El paquet de `Ctrl+E` també genera
+  `mapa_tempo/mapa_tempo.mid` automàticament.
+- **`Fitxer ▸ Restaura una còpia de seguretat…`** llista les carpetes de
+  `backup/` (les més noves primer). Abans de restaurar crea una còpia de
+  l'estat actual; després recupera el document, els CSV/marcadors i `audio/`.
+  **No toca els exports** (`wavs_*`, `partitura/`, MIDI).
 
 ### Eina del timeline i abast del rang
 

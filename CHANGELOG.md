@@ -5,6 +5,20 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Afegit — export MIDI del mapa i restauració de còpies (2026-11-14)
+- **Export MIDI**: `mapa_tempo.mid` (Standard MIDI File tipus 1, pista de
+  conductor) amb `Set Tempo`, `Time Signature`, markers de tram i marcadors de
+  compàs/secció; l'offset/anacrusi s'anota amb un marker. S'inclou
+  automàticament a `mapa_tempo/` del paquet de `Ctrl+E` i també es pot
+  exportar sol amb **Fitxer ▸ Exporta mapa de tempo (MIDI)…**. Lector propi
+  per validar el fitxer.
+- **Restauració de backups**: **Fitxer ▸ Restaura una còpia de seguretat…**
+  llista `backup/`, crea una còpia de l'estat actual abans de tocar res i
+  restaura document, model i `audio/`; els exports no es toquen. Els enllaços
+  de audio es publiquen amb temporal + `os.replace` perquè la restauració
+  funcione amb hardlinks i amb el destí ja existent. Suite: **1615 OK**
+  (1 skip).
+
 ### Canviat — unitat de pols per tram, Ref. amb unitat i format 4 (2026-11-13)
 - **S1 — model i format (breaking)**: cada tram té `beat_unit` (`negra`,
   `negra_punt`, `corxera`, `semicorxera`, `blanca`); el BPM canònic continua

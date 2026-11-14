@@ -321,6 +321,54 @@ class ProjecteMixin:
         self._activa_projecte(p)
         self.registra("Projecte reverit a l'últim desat.")
 
+    def _restaura_backup_ui(self):
+        """Tria una còpia de `backup/` i la restaura sobre el projecte obert."""
+        if self.projecte is None:
+            self.avisa_info("Auto Chords", "No hi ha cap projecte obert.")
+            return
+        backups = self.projecte.backups()
+        if not backups:
+            self.avisa_info(
+                "Restaura una còpia",
+                "Encara no hi ha cap còpia de seguretat. L'autosave en crea "
+                "quan hi ha canvis.")
+            return
+        etiquetes = [os.path.basename(b) for b in reversed(backups)]
+        etiqueta, ok = QInputDialog.getItem(
+            self, "Restaura una còpia de seguretat",
+            "Tria la còpia (les més noves primer):", etiquetes, 0, False)
+        if not ok or not etiqueta:
+            return
+        ruta = os.path.join(self.projecte.dir_backup(), etiqueta)
+        if self._interactiu():
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Warning)
+            box.setWindowTitle("Restaura una còpia de seguretat")
+            box.setText(
+                f"Vols restaurar la còpia «{etiqueta}» sobre el projecte "
+                f"«{self.projecte.nom}»?")
+            box.setInformativeText(
+                "Abans es desarà una còpia de l'estat actual. Els exports "
+                "(WAVs, partitura, MIDI) no es toquen.")
+            b_si = box.addButton("Restaura", QMessageBox.DestructiveRole)
+            b_no = box.addButton("Cancel·la", QMessageBox.RejectRole)
+            box.setDefaultButton(b_no)
+            box.exec_()
+            if box.clickedButton() is not b_si:
+                return
+        else:
+            self.registra("restauració de còpia (sense sessió interactiva): "
+                          f"es continua amb {etiqueta}")
+        self._refresca_dades_projecte()
+        try:
+            p = self.projecte.restaura_backup(ruta)
+        except (projecte.ProjecteError, OSError) as e:
+            self.avisa("Restaura una còpia",
+                       f"No s'ha pogut restaurar la còpia:\n{e}")
+            return
+        self._activa_projecte(p)
+        self.registra(f"Còpia restaurada: {etiqueta}")
+
     # -- Autosave + sessió (recuperació després d'un tancament brusc) --------
     AUTOSAVE_MS = 60000
 

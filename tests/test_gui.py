@@ -569,6 +569,27 @@ class TestBackups(unittest.TestCase):
         esperats = {os.path.abspath(c) for c in creats[-10:]}
         self.assertEqual({os.path.abspath(b) for b in queden}, esperats)
 
+    def test_restaura_backup_recupera_model_i_crea_xarxa(self):
+        p = self._projecte()
+        with open(p.ruta_csv_acords(), "w", encoding="utf-8") as f:
+            f.write("0.0,1.0,C\n")
+        primer = p.fes_backup()
+        with open(p.ruta_csv_acords(), "w", encoding="utf-8") as f:
+            f.write("0.0,1.0,G\n")
+        p2 = p.restaura_backup(primer)
+        with open(p2.ruta_csv_acords(), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "0.0,1.0,C\n")
+        self.assertGreaterEqual(len(p2.backups()), 2)
+        # La còpia de seguretat conté l'estat que hi havia ABANS de restaurar.
+        with open(os.path.join(p2.backups()[-1], "acords.csv"),
+                  encoding="utf-8") as f:
+            self.assertEqual(f.read(), "0.0,1.0,G\n")
+
+    def test_restaura_backup_fora_de_backup_es_rebutja(self):
+        p = self._projecte()
+        with self.assertRaises(projecte.ProjecteError):
+            p.restaura_backup(self.td)
+
 
 # ── Sessió + autosave (GUI) ──────────────────────────────────────────────────
 class _BaseGUI(unittest.TestCase):
@@ -592,6 +613,23 @@ class _BaseGUI(unittest.TestCase):
         for w in ws:
             w.dirty = False
         _qt_neteja.tanca_i_destrueix(*ws)
+
+
+class TestRestauraBackupGUI(_BaseGUI):
+    def test_restaura_des_de_la_gui(self):
+        f = _finestra()
+        p = _obre_wav(f, _projecte_backups___wav())
+        with open(p.ruta_csv_acords(), "w", encoding="utf-8") as fh:
+            fh.write("0.0,2.0,C\n")
+        b = p.fes_backup()
+        with open(p.ruta_csv_acords(), "w", encoding="utf-8") as fh:
+            fh.write("0.0,2.0,G\n")
+        with patch.object(QInputDialog, "getItem",
+                          return_value=(os.path.basename(b), True)):
+            f._restaura_backup_ui()
+        with open(f.projecte.ruta_csv_acords(), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "0.0,2.0,C\n")
+        self.assertGreaterEqual(len(f.projecte.backups()), 2)
 
 
 class TestSessio(_BaseGUI):

@@ -7,7 +7,7 @@
 > **GPL-3.0-or-later**.
 >
 > **v0.8.0** · Estat: **flux de producte estable i multi-SO** · Suite **verda**
-> (1.609 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
+> (1.615 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -61,16 +61,16 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 **Fases** del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md`: **0–7 fetes**. La **10**
 (motor de detecció amb corpus real) està **oberta i bloquejada pel corpus
 manual**; la **12** (congelació, higiene i CI) està **en curs**. La **8**
-(export MIDI del mapa de tempo) queda **pendent (TODO)**; **9** (anàlisi
+(export MIDI del mapa de tempo) queda **feta (2026-11-14)**; **9** (anàlisi
 guiada) i **11** (flux del 90 %) queden **ajornades**.
 
 > **Prioritat:** simplificar el producte. L'abast vigent és a
 > [`AGENTS.md` §Abast i flux](AGENTS.md#-abast-i-flux-de-lusuari--font-única):
 > només el nucli (obrir → analitzar opcional → editar 3 pistes → exportar →
 > desar). La **fase 10** i el **rubato avançat** queden **ajornats sense data**.
-> L'**export MIDI del mapa de tempo** (`mapa_tempo.mid`) queda **pendent
-> (TODO)**, no prioritari, però amb l'abast i els criteris d'acceptació fixats
-> davall.
+> L'**export MIDI del mapa de tempo** (`mapa_tempo.mid`) i la **restauració de
+> backups** ja estan implementats (2026-11-14); `.rpp`, cues WAV i clic de
+> referència queden com a complements opcionals.
 
 **Estat actual:**
 - **Nucli**: obrir → analitzar opcional → editar 3 pistes → exportar → desar.
@@ -107,21 +107,17 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   de pantalla, es centren.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
-- **Suite**: **1609 OK** (1 skip), `pyflakes` net i `docs-check` verd.
+- **Suite**: **1615 OK** (1 skip), `pyflakes` net i `docs-check` verd.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
 - **Fase 12**: congelació, higiene i CI; inclou el **CI automàtic en push/PR**
   (proposat, encara no activat).
 - **Rubato avançat** i **export de projecte DAW**: ajornats sense data.
-- **Export MIDI del mapa de tempo**: `mapa_tempo.mid` tipus 1 amb `Set Tempo`,
-  `Time Signature`, marcadors i offset/anacrusi; rubato aproximat per events.
-  Detall i criteris d'acceptació a «Exportació del mapa de tempo a DAWs».
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
 - **Quantitza BPM** continua sent una operació separada del recalc guiat.
-- **Edició d'àudio**: restauració des de la GUI i proves visuals; **no
-  implementat** el silenci automàtic per completar el pre-roll o el primer
-  compàs.
+- **Edició d'àudio**: proves visuals i el silenci automàtic per completar el
+  pre-roll o el primer compàs (la restauració de backups ja és a la GUI).
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
 
 ### Pla de compassos compostos (tancat 2026-11-13)
@@ -364,7 +360,7 @@ Commit de referència: `68dcde1` (checkpoint v9.2).
 
 ### Should
 
-#### Pendent (TODO) — Exportació del mapa de tempo a MIDI/DAWs (2026-11-04)
+#### Fet (2026-11-14) — Exportació del mapa de tempo a MIDI/DAWs
 
 > **Abast mínim:** generar `mapa_tempo.mid` (tipus 1, pista de conductor) amb
 > els canvis de tempo (`Set Tempo`), els canvis de compàs (`Time Signature`),
@@ -375,14 +371,15 @@ Commit de referència: `68dcde1` (checkpoint v9.2).
 > mapa; test de generació i de lectura del fitxer. L'export de `.rpp`/DAW i
 > els cues WAV són complements, no substituts del MIDI.
 
-- **PENDENT (TODO) — Exportació del mapa de tempo a DAWs**:
+- **FET — Exportació del mapa de tempo a DAWs**:
   - **WAV**: pot portar `cue`/`LIST adtl` (marcadors) i, com a molt, un BPM
     únic (`ACID`); **no hi ha un mapa de tempo complex estàndard** ni un
     comportament comú entre DAWs. El `bext`/`iXML` no és un tempo map portable.
-  - **MIDI** (abast mínim): exportar `mapa_tempo.mid` (tipus 1, pista de
-    conductor) amb `Set Tempo`, `Time Signature` i markers. És el format més portable
-    (Cubase/Logic/Pro Tools/Reaper/Studio One…), amb el rubato aproximat per
-    events de tempo densos. L’offset/anacrusi necessita marker o projecte DAW.
+  - **MIDI** (implementat): `mapa_tempo.mid` (tipus 1, pista de conductor)
+    amb `Set Tempo`, `Time Signature` i markers; també dins
+    `mapa_tempo/` del paquet de `Ctrl+E`. És el format més portable
+    (Cubase/Logic/Pro Tools/Reaper/Studio One…). L’offset/anacrusi s’anota
+    amb un marker.
   - **Reaper**: generar un `.rpp` amb l’àudio, `TEMPO`, `TIMESIG`, markers i
     offset; és el camí exacte per a Reaper, però no intercanviable.
   - **Cues al WAV** per a compàs/secció, com a complement per als DAWs que
