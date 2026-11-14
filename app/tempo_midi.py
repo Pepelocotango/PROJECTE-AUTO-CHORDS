@@ -87,19 +87,19 @@ def _events_base(trams, offset=0.0, marques=()):
     trams = list(trams or ())
     if not trams:
         raise ValueError("El mapa de tempo és buit; no hi ha res a exportar.")
-    first_bpm, first_num, first_den, _first_unit = _tram_camps(trams[0])
+    first_bpm, first_num, first_den, first_unit = _tram_camps(trams[0])
     events = []
     if float(getattr(trams[0], "ini", trams[0][0])) > 1e-9:
         events.append((0.0, 0, "tempo", first_bpm))
-        events.append((0.0, 1, "timesig", (first_num, first_den)))
+        events.append((0.0, 1, "timesig", (first_num, first_den, first_unit)))
     if float(offset or 0.0) > 0:
         events.append((0.0, 4, "marker",
                        f"Anacrusi: {float(offset):.6f} s"))
     for i, tr in enumerate(trams):
-        bpm, num, den, _unit = _tram_camps(tr)
+        bpm, num, den, unit = _tram_camps(tr)
         t = max(0.0, float(getattr(tr, "ini", tr[0])))
         events.append((t, 0, "tempo", bpm))
-        events.append((t, 1, "timesig", (num, den)))
+        events.append((t, 1, "timesig", (num, den, unit)))
         text = f"Tram {i + 1} · {num}/{den}"
         if getattr(tr, "tipus", "normal") == "rubato":
             text += " · rubato"
@@ -112,9 +112,11 @@ def _events_base(trams, offset=0.0, marques=()):
     end_t = float(getattr(trams[-1], "fi", trams[-1][1]))
     for m in marques or ():
         end_t = max(end_t, _text_marcador(m)[0])
-    # Marker de final: alguns DAW (REAPER) dimensionen l'item MIDI pel darrer
-    # event, no per l'EOT; este marker fa que el clip arribe fins a la WAV.
-    events.append((max(0.0, end_t), 8, "marker", "Fi"))
+    # Alguns DAW (REAPER) dimensionen l'item MIDI pel darrer event, no per
+    # l'EOT. Un `Set Tempo` redundant al final (mateix BPM) allarga l'item
+    # sense crear cap marker que després es puga desplaçar.
+    last_bpm = float(getattr(trams[-1], "bpm", trams[-1][2]))
+    events.append((max(0.0, end_t), 0, "tempo", last_bpm))
     events.append((max(0.0, end_t), 9, "end", None))
     # Orde estable: a igual temps, tempo → compàs → markers → final.
     events.sort(key=lambda e: (e[0], e[1]))
@@ -161,11 +163,17 @@ def _events_de_conductor(trams, offset=0.0, marques=()):
             n_tempo += 1
         elif tipus == "timesig":
             num, den = int(valor[0]), int(valor[1])
+            unit = valor[2] if len(valor) > 2 else None
             if num <= 0 or den <= 0 or (den & (den - 1)):
                 raise ValueError(f"Compàs no vàlid per a MIDI: {num}/{den}")
             dd = den.bit_length() - 1
+            # `cc` = clocks MIDI per clic de metrònom (24 = negra; 36 =
+            # negra amb punt). És un hint: alguns DAWs l'ignoren.
+            factor = bpm_unit.factor(
+                unit or bpm_unit.unitat_per_defecte(num, den))
+            cc = max(1, min(255, int(round(24 * factor))))
             out.append((tick, _meta(META_TIMESIG,
-                                    bytes((num & 0x7F, dd & 0x7F, 24, 8)))))
+                                    bytes((num & 0x7F, dd & 0x7F, cc, 8)))))
         elif tipus == "marker":
             text = str(valor).encode("utf-8")
             out.append((tick, _meta(META_MARKER, text)))
@@ -292,7 +300,9 @@ def _meta_llegida(tick, meta, dades, info):
     elif meta == META_TIMESIG and len(dades) >= 2:
         info["timesig"].append({
             "tick": tick, "num": int(dades[0]),
-            "den": 2 ** int(dades[1])})
+            "den": 2 ** int(dades[1]),
+            "cc": int(dades[2]) if len(dades) >= 3 else None,
+            "bb": int(dades[3]) if len(dades) >= 4 else None})
     elif meta == META_MARKER:
         info["markers"].append({
             "tick": tick, "text": dades.decode("utf-8", "replace")})

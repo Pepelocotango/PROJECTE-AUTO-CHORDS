@@ -27,6 +27,10 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   `KeypadModifier`) i el dels layouts que l'envien com a `Key_Plus` +
   `Shift` ja es reconeixen; abans només funcionava el `+` sense modificadors
   o `Shift`+`=`. `Ctrl`/`Alt`/`Meta`+`+` continuen sense disparar-lo.
+- **Corregit**: la partitura amb canvi de compàs/unitat calculava la unitat
+  del tram a partir de segons en lloc de negres; el 4/4 després d'un 6/8 podia
+  mostrar `♩. = 80` en compte de `♩ = 120`. També s'evita un compàs final
+  buit quan el mapa acaba exactament a l'últim compàs.
 
 ### Afegit — export MIDI del mapa i restauració de còpies (2026-11-14)
 - **Export MIDI**: `mapa_tempo.mid` (Standard MIDI File tipus 1, pista de
@@ -36,11 +40,17 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   exportar sol amb **Fitxer ▸ Exporta mapa de tempo (MIDI)…**. Lector propi
   per validar el fitxer. **Corregit**: el `End of Track` cau al **final de
   l'últim tram** (no al seu inici), de manera que el MIDI dura el mateix que
-  la WAV; s'hi afig un marker **«Fi»** perquè els DAW que dimensionen l'item
-  pel darrer event (REAPER) també arriben fins al final. Flux DAW verificat
-  amb REAPER 7.80: importar **primer** el MIDI, acceptar «Importar mapa de
-  tempo» i després la WAV; així WAV i MIDI queden a **256,534 s**. Si la WAV
-  va primer, el *timebase* Beats pot canviar-ne la longitud.
+  la WAV. Perquè els DAW que dimensionen l'item pel darrer event (REAPER)
+  arriben fins al final, s'hi afig un **`Set Tempo` redundant al final** amb
+  el mateix BPM; el marker **«Fi»** s'ha eliminat perquè REAPER el desplaçava
+  a un altre compàs. Flux DAW verificat amb REAPER 7.80: importar **primer**
+  el MIDI, acceptar «Importar mapa de tempo» i després la WAV; així WAV i
+  MIDI queden a **256,534 s**. Si la WAV va primer, el *timebase* Beats pot
+  canviar-ne la longitud.
+- **MIDI**: el `cc` del `Time Signature` ara ix de `beat_unit` (24 negra,
+  36 negra amb punt, 12 corxera…), no fix a 24. Així un 6/8 pot indicar al DAW
+  que el clic és de negra amb punt; alguns DAWs l'ignoren, però el hint és
+  correcte.
 - **Restauració de backups**: **Fitxer ▸ Restaura una còpia de seguretat…**
   llista `backup/`, crea una còpia de l'estat actual abans de tocar res i
   restaura document, model i `audio/`; els exports no es toquen. Els enllaços

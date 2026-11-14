@@ -2113,7 +2113,26 @@ class TestMetricaCompasCompost(unittest.TestCase):
         self.assertIn("<beats>6</beats><beat-type>8</beat-type>", xml)
         self.assertIn("<beats>4</beats><beat-type>4</beat-type>", xml)
         self.assertEqual(xml.count("<metronome>"), 2)
+        self.assertEqual(xml.count("<per-minute>80</per-minute>"), 1)
+        self.assertEqual(xml.count("<per-minute>120</per-minute>"), 1)
         self.assertEqual(xml.count('<sound tempo="120"'), 1)
+        self.assertIn("<words>♩ = ♩.</words>", xml)
+        self.assertNotIn('<measure number="4">', xml)
+
+    def test_musicxml_4_compassos_sense_compas_final_buit(self):
+        from app import mapa_tempo
+        from app.tempo_map import TempoMap
+        t0 = mapa_tempo.TramMapa(0.0, 3.0, 120.0, "normal", "6/8",
+                                 "3+3", 2, "negra_punt")
+        t1 = mapa_tempo.TramMapa(3.0, 9.0, 80.0, "normal", "4/4", "", 2,
+                                 "negra")
+        mapa = TempoMap([t0, t1])
+        xml = partitura.construeix_musicxml(
+            [(0.0, "C", 3.0), (3.0, "G", 3.0),
+             (6.0, "Am", 4.0), (10.0, "F", 4.0)],
+            [], bpb=4, bpm=120.0, beat_type=4, mapa=mapa)
+        self.assertIn('<measure number="4">', xml)
+        self.assertNotIn('<measure number="5"', xml)
 
     def test_guia_6_8_mostra_les_dues_xifres(self):
         import tempfile

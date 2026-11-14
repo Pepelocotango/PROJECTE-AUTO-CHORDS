@@ -75,6 +75,32 @@ Bq = suma de polsos × factor d'unitat
 Els càlculs de compassos han de treballar amb eixe valor exacte, no amb enters
 forçats.
 
+### 3.4 Tempo intern, unitat i canvi de compàs
+
+- El **BPM intern** de l'app i del MIDI és sempre en **negres/minut**.
+- `beat_unit` és la unitat de presentació/comptatge de cada tram:
+  - `6/8` → `negra_punt` per defecte;
+  - `4/4` → `negra`;
+  - la unitat es pot canviar manualment per tram.
+- Exemple d'equivalència:
+  - `6/8` a **80 negres amb punt/min** = **120 negres/min** internes.
+  - `4/4` a **120 negres/min** = **120 negres/min** internes.
+  - És el mateix pols de negra: el MIDI pot portar 120 en els dos trams i
+    només canviar la Time Signature.
+- El motor **no infereix modulació mètrica** ni decideix si el canvi és
+  `♩ = ♩`, `♩. = ♩` o una altra relació.
+- Si un candidat canvia de compàs i la relació de tempo no està definida,
+  el tall **no s'aplica automàticament**: l'usuari l'ha de definir manualment
+  fora del motor (editor de tempo o diàleg previ). El motor pot mostrar un
+  avís i reprendre després.
+- MIDI:
+  - `Set Tempo` sempre en negres/minut;
+  - `Time Signature` per tram;
+  - `beat_unit` no és un camp estàndard; com a molt s'exporta al `cc` del
+    Time Signature (24 negra, 36 negra amb punt, 12 corxera…);
+  - molts DAWs ignoren el `cc` i mostren el tempo segons la seua configuració
+    (120 negres o 80 negres amb punt). El compàs sí que el respecten.
+
 ---
 
 ## 4. Referència i bases
@@ -125,9 +151,15 @@ Condicions:
 - l'extrany és exactament un compàs, no una repetició;
 - `1 <= num_extrany <= 12`;
 - denominador preferent: el mateix que la base;
-- altres denominadors només si no hi ha cap candidat amb el mateix;
+- **a més**, s'afigen sempre les opcions amb **denominador 4** que encaixen,
+  encara que ja hi haja candidats amb el mateix denominador. Només es permet
+  canviar a denominador 4, no a 2, 16 ni altres;
+- les opcions de denominador 4 han de ser `base + 1 compàs /4`; no es permet
+  `/4 + /8` sense cap clip de la base;
 - l'extrany va al final per defecte;
 - també s'ha de generar la variant amb l'extrany al principi.
+- `4/8` i `2/4` són duracions equivalents, però es mantenen com a **opcions
+  separades** (igual que `10/8` i `5/4`). No es dedupliquen per duració.
 
 ### 5.3 Secció sencera extranya
 
@@ -140,7 +172,9 @@ Bq = N × bar_quarters(extrany)
 - `N >= 1`;
 - `1 <= num_extrany <= 12`;
 - denominador preferent: el mateix que la base;
-- altres denominadors només si no hi ha cap candidat amb el mateix.
+- el canvi a denominador 4 es fa només per la via `base + 1 compàs /4`
+  (secció 5.2), no com a secció sencera;
+- altres denominadors no s'afegeixen.
 
 ### 5.4 Límits
 
@@ -165,11 +199,19 @@ Un candidat només és aplicable si:
 - cada clip respecta la durada mínima vigent;
 - no se superen 2 clips per costat;
 - no hi ha dos compassos extranys diferents;
+- les opcions amb denominador 4 s'afigen sempre que encaixen, encara que hi
+  haja opcions del mateix denominador;
+- al diàleg es reserven com a mínim **2 opcions amb denominador 4** per costat
+  si n'hi ha;
+- `4/8` i `2/4`, i `10/8` i `5/4`, es mostren com a opcions separades;
 - `1/4` (i compassos molt diminuts) es filtra si hi ha una alternativa.
   - S'accepta `1/4` només si el costat sencer fa menys d'un compàs de la base
     o si no hi ha cap altra opció.
 
-Els candidats duplicats (mateixos clips, BPM, compàs i `N`) s'eliminen.
+Els candidats duplicats exactes (mateixos clips, BPM, compàs i `N`)
+s'eliminen. Les equivalències de duració amb **notació diferent** (`4/8` vs
+`2/4`, `10/8` vs `5/4`) **no** es dedupliquen: es mostren com a opcions
+separades.
 
 ---
 
@@ -213,7 +255,9 @@ Ordenació lexicogràfica:
 2. més compassos de la base;
 3. menys clips;
 4. compàs extrany més proper a la base;
-5. evitar compassos massa curts.
+5. evitar compassos massa curts;
+6. a igualtat, es prefereix un denominador 4 comú (`2/4`, `3/4`, `4/4`,
+   `5/4`…) abans que un `/8` equivalent, però les dos notacions es mostren.
 
 Si hi ha empat, es manté l'orde estable de generació.
 
@@ -234,6 +278,9 @@ Si hi ha empat, es manté l'orde estable de generació.
 - **Un sol diàleg conjunt** per als dos costats.
 - Dues columnes: esquerra i dreta.
 - Màxim **6 opcions per costat**.
+- Es reserven com a mínim **2 opcions amb denominador 4** per costat si
+  n'hi ha.
+- `4/8` i `2/4`, i `10/8` i `5/4`, es mostren com a opcions separades.
 - Si un costat només té una opció, es mostra com a resum fix (BPM, compàs, N)
   i no cal triar-lo.
 - Cap opció preseleccionada.
@@ -249,8 +296,15 @@ Si hi ha empat, es manté l'orde estable de generació.
 
 ### 9.3 Reproducció
 
-- En obrir el diàleg, es **pausa** la reproducció.
-- En aplicar o cancel·lar, es queda pausada.
+- En obrir el diàleg, si la reproducció estava activa, es **pausa** i es
+  recorda la posició i que estava sonant.
+- En **cancel·lar**, tancar o fallar l'aplicació, es queda **en pausa**.
+- En **aplicar correctament**, la reproducció **continua des de la pausa**
+  (reprén la posició on s'havia pausat), sempre que estiguera sonant abans
+  d'obrir el diàleg.
+- Si ja estava en pausa abans d'obrir el diàleg, continua en pausa.
+- Si no hi ha diàleg (aplicació directa d'una sola opció), no es toca l'estat
+  de reproducció.
 
 ### 9.4 Atomicitat
 
@@ -267,7 +321,8 @@ Si hi ha empat, es manté l'orde estable de generació.
 - `tipus`: sempre `normal`.
   - Si el clip original era rubato, el tall el tracta com a normal i els clips
     resultants perden el flag.
-- `beat_unit`: es deriva del compàs resultant.
+- `beat_unit`: es deriva del compàs resultant. L'usuari el pot canviar
+  manualment per tram; el motor no infereix cap modulació mètrica.
 - `agrupació`: es deriva del compàs resultant.
 - `N`: el del candidat.
 - No s'hereten metadades antigues que no encaixen amb el compàs nou.
@@ -295,6 +350,31 @@ Exemple detallat de 17:
 total    → 17 beats
 ```
 
+### Exemple 7/8 amb denominador 4
+
+Ref. i local `7/8` (bar = 3,5 negres), `beat_unit=corxera`. Costat esquerre
+`Bq=5,5`, costat dret `Bq=8,5`.
+
+Esquerra:
+
+- `7/8 N=1` + `2/4 N=1` (3,5 + 2)
+- `2/4 N=1` + `7/8 N=1`
+- `7/8 N=1` + `4/8 N=1` (equivalent a 2/4, però es mostra separat)
+- `4/8 N=1` + `7/8 N=1`
+- `11/8 N=1`
+
+Dreta:
+
+- `7/8 N=2` + `3/8 N=1` (7 + 1,5)
+- `3/8 N=1` + `7/8 N=2`
+- `7/8 N=1` + `5/4 N=1` (3,5 + 5)
+- `5/4 N=1` + `7/8 N=1`
+- `7/8 N=1` + `10/8 N=1` (equivalent a 5/4, però es mostra separat)
+- `10/8 N=1` + `7/8 N=1`
+
+El mínim de 2 opcions `/4` per costat es complix. No es genera `4/4 + 3/8`
+perquè no inclou cap clip de la base `7/8`.
+
 ---
 
 ## 12. Integració als gestos
@@ -310,6 +390,11 @@ Tots estos camins han de passar pel mateix motor quan Snap = QM:
 `+` i Enter han de produir exactament el mateix resultat de tempo; `+` afig
 només el tall d'estructura. Si el tempo falla o es cancel·la, no es parteix
 l'estructura.
+
+Si un candidat canvia de compàs i la relació de tempo (`♩ = ♩`, `♩. = ♩`…)
+no està definida per l'usuari, el motor no l'inventa: avisa i deixa la decisió
+a l'editor de tempo o al diàleg previ. El tall es reprén quan la relació
+existeix.
 
 ---
 
@@ -341,6 +426,11 @@ l'estructura.
 - Base pura única → aplicació directa.
 - Dues bases pures diferents → diàleg.
 - Base + extrany: final i principi.
+- Opcions amb denominador 4 sempre que encaixen, encara que hi haja mateix
+  denominador.
+- Mínim 2 opcions `/4` per costat si n'hi ha.
+- `4/8` i `2/4`, i `10/8` i `5/4`, es mantenen com a opcions separades.
+- No es permet `/4 + /8` sense cap clip de la base.
 - Secció sencera extranya.
 - Filtre de `1/4` quan hi ha alternativa.
 - Màxim 2 clips per costat.
@@ -348,6 +438,11 @@ l'estructura.
 - Cap candidat → no es toca res.
 - Rubato tractat com a normal.
 - `beat_unit` i agrupació derivades.
+- `6/8` a 80 negres amb punt/min equival a 120 negres/min internes.
+- `4/4` a 120 negres/min i `6/8` a 80 negres amb punt comparteixen pols de
+  negra; el MIDI pot mantindre 120 i canviar només la Time Signature.
+- Canvi de compàs sense relació de tempo definida → no s'aplica
+  automàticament; es demana manualment.
 - Sense beats → Ref. pura amb `N` arrodonit i BPM derivat.
 - BPM fora de 30–350 → candidat descartat.
 
@@ -359,6 +454,7 @@ l'estructura.
 - Costat fix + costat ambigu.
 - Cap preselecció; Aplica desactivat fins triar.
 - Pausa en obrir el diàleg.
+- Si s'aplica, reprén des de la pausa; si es cancel·la, queda en pausa.
 - Diferència de BPM mostrada.
 - Tots els gestos QM usen el mateix motor.
 - Undo únic per al tall complet.
@@ -377,7 +473,8 @@ l'estructura.
 
 - Comptatge de beats/polsos i conversió a `Bq`.
 - Generació de candidats (pura, base+extrany, secció sencera).
-- Filtres, ordenació i límits.
+- Opcions creuades amb denominador 4 (base + 1 compàs `/4`, dos ordres).
+- Filtres, ordenació i límits (mínim 2 `/4` si n'hi ha).
 - Fallback sense beats.
 - Tests unitaris sense Qt.
 
@@ -387,7 +484,8 @@ l'estructura.
 - Costat fix si només té una opció.
 - Sense preselecció; Aplica desactivat fins triar.
 - Diferència de BPM.
-- Pausa de reproducció.
+- Pausa de reproducció en obrir; aplicar reprén des de la pausa; cancel·lar
+  deixa en pausa.
 
 ### Fase 3 — integració
 
@@ -414,13 +512,20 @@ l'estructura.
 - [ ] Dues pures diferents pregunten.
 - [ ] Sense pura es generen base+extrany i secció sencera.
 - [ ] Màxim 2 clips per costat i 4 en total.
+- [ ] Opcions `/4` sempre que encaixen; mínim 2 per costat si n'hi ha.
+- [ ] `4/8`/`2/4` i `10/8`/`5/4` es mostren com a opcions separades.
 - [ ] `1/4` filtrat si hi ha alternativa.
 - [ ] Sense K±1 ni residu arbitrari.
 - [ ] BPM per clip a partir dels temps reals.
 - [ ] Sense beats: Ref. pura, N arrodonit, BPM derivat.
 - [ ] Diàleg conjunt, màxim 6 per costat, sense preselecció.
 - [ ] Cancel·lar no aplica res; undo únic.
+- [ ] Pausa en obrir; aplicar reprén des de la pausa; cancel·lar deixa en pausa.
 - [ ] Rubato tractat com a normal; unitat/agrupació derivades.
+- [ ] `6/8` a 80 negres amb punt = 120 negres/min internes.
+- [ ] Canvi de compàs sense relació de tempo definida → manual, no automàtic.
+- [ ] MIDI exporta `Set Tempo` en negres/minut i `Time Signature` per tram;
+  `beat_unit` no s'inventa.
 - [ ] `+` i Enter comparteixen el resultat de tempo.
 - [ ] Tests dirigits i suite completa verdes.
 - [ ] `CHANGELOG` i documentació actualitzats.
@@ -432,8 +537,12 @@ l'estructura.
 - No K±1.
 - No residu arbitrari.
 - No dos compassos extranys diferents per costat.
+- No `/4 + /8` sense cap clip de la base.
+- No deduplicar `4/8` amb `2/4` ni `10/8` amb `5/4`; es mostren separats.
 - No prioritat automàtica Ref. vs local.
 - No downbeats.
 - No `13/4` amb `NUM_MAX=12`.
 - No forçar el BPM de la Ref. si els beats donen un altre BPM.
+- No inferir modulació mètrica (`♩ = ♩`, `♩. = ♩`…) automàticament; és manual.
+- No exportar `beat_unit` com si fóra un camp MIDI estàndard.
 - No aplicar res si no hi ha cap candidat exacte.

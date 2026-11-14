@@ -32,22 +32,25 @@ class TestTempoMidi(unittest.TestCase):
         self.assertEqual(info["ppq"], tempo_midi.PPQ)
         self.assertEqual(
             [(e["tick"], round(e["bpm"], 6)) for e in info["tempo"]],
-            [(0, 120.0), (3840, 60.0)])
+            [(0, 120.0), (3840, 60.0), (5760, 60.0)])
         self.assertEqual(
             [(e["tick"], e["num"], e["den"]) for e in info["timesig"]],
             [(0, 4, 4), (3840, 6, 8)])
+        self.assertEqual(
+            [(e["cc"], e["bb"]) for e in info["timesig"]],
+            [(24, 8), (36, 8)])
         textos = [e["text"] for e in info["markers"]]
         self.assertIn("Tram 1 · 4/4", textos)
         self.assertIn("Tram 2 · 6/8", textos)
         self.assertIn("Anacrusi: 0.500000 s", textos)
         self.assertIn("Secció", textos)
         self.assertIn("Marcador", textos)
-        self.assertIn("Fi", textos)
+        self.assertNotIn("Fi", textos)
         ticks = {e["text"]: e["tick"] for e in info["markers"]
-                 if e["text"] in ("Secció", "Marcador", "Fi")}
+                 if e["text"] in ("Secció", "Marcador")}
         self.assertEqual(ticks["Secció"], 960)
         self.assertEqual(ticks["Marcador"], 4800)
-        self.assertEqual(ticks["Fi"], info["end_tick"])
+        self.assertEqual(info["tempo"][-1]["tick"], info["end_tick"])
         self.assertAlmostEqual(
             tempo_midi.tick_a_segons(info, 3840), 4.0, places=6)
         self.assertAlmostEqual(

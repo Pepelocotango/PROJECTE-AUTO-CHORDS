@@ -230,7 +230,10 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
     fi = max([e[0] + e[2] for e in events] + [0.0])
     compasos = None
     if mapa is not None and not mapa.es_constant():
-        compasos = mapa.compassos_beats()
+        compasos = [
+            c for c in mapa.compassos_beats()
+            if c[1] < max(fi, 0.0) - 1e-9
+        ]
 
     def _mesura(i):
         """(negra_ini, negra_fi, num, den) de la mesura `i` (1-based)."""
@@ -295,13 +298,7 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
     sig_ant = None
     for i in range(1, n_bars + 1):
         bs, be, num_m, den_m = _mesura(i)
-        t_seg = bs * 60.0 / float(bpm) if bpm else 0.0
-        if mapa is not None and not mapa.es_constant():
-            try:
-                t_seg = mapa.t_de_quarters(bs)
-            except (TypeError, ValueError, AttributeError):
-                pass
-        unit_m = _unitat_a(t_seg)
+        unit_m = _unitat_a(bs)
         bpm_m = float(canvis_tempo.get(i, bpm_ant))
         x.append(f'    <measure number="{i}">\n')
         # Salt de sistema: a l'inici de cada secció i, si es vol, cada N
@@ -329,6 +326,10 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
                      + (f'<sound tempo="{bpm_m:g}"/>' if (i == 1 or canvi_tempo)
                         else "")
                      + "</direction>\n")
+        if (canvi_unitat and unit_ant == "negra_punt"
+                and unit_m == "negra"):
+            x.append('      <direction placement="above"><direction-type>'
+                     "<words>♩ = ♩.</words></direction-type></direction>\n")
         sig_ant = (num_m, den_m)
         unit_ant = unit_m
         bpm_ant = bpm_m
@@ -354,10 +355,11 @@ def construeix_musicxml(events, seccions, bpb=4, bpm=120.0, titol="Partitura",
             cur = b
         if be - cur > 1e-9:
             x.append(_note_xml(round((be - cur) * DIV), rest=True))
+        if i == n_bars:
+            x.append('      <barline location="right">'
+                     "<bar-style>light-heavy</bar-style></barline>\n")
         x.append("    </measure>\n")
 
-    x.append(f'    <measure number="{n_bars + 1}"><barline location="right">'
-             "<bar-style>light-heavy</bar-style></barline></measure>\n")
     x.append("  </part>\n</score-partwise>\n")
     return "".join(x)
 
