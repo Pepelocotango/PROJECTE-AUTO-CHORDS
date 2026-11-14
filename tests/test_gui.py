@@ -6329,6 +6329,21 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(len(vr.tempo_trams), n_t + 1)
         self.assertEqual(len(vr.seccions), n_s)
 
+    def test_plus_teclat_numeric_talla_tempo_i_estructura(self):
+        """El «+» del teclat numèric ha de fer el mateix que el de dalt."""
+        from PyQt5.QtTest import QTest
+        from PyQt5.QtCore import Qt
+        self.w.cb_graella.setCurrentIndex(self.w.cb_graella.findData(""))
+        vr = self.w.visor_ref
+        vr.pos = 12.0
+        n_t, n_s = len(vr.tempo_trams), len(vr.seccions)
+        vr.timeline.setFocus()
+        QTest.keyClick(vr.timeline, Qt.Key_Plus, Qt.KeypadModifier)
+        QTest.qWait(1)
+        self.assertEqual(len(vr.tempo_trams), n_t + 1)
+        self.assertEqual(len(vr.seccions), n_s + 1)
+        self.assertEqual(len(vr.marcadors), 0)
+
     def test_zero_talla_nomes_l_estructura(self):
         vr = self.w.visor_ref
         vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]

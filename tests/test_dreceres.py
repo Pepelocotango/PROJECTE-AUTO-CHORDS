@@ -87,6 +87,21 @@ class TestDreceres(unittest.TestCase):
     def test_equivalencies_plus_return_i_delete(self):
         plus = QKeyEvent(QEvent.KeyPress, Qt.Key_Equal, Qt.ShiftModifier)
         self.assertTrue(dreceres.coincideix("+", plus))
+        plus_shift = QKeyEvent(
+            QEvent.KeyPress, Qt.Key_Plus, Qt.ShiftModifier, "+")
+        self.assertTrue(dreceres.coincideix("+", plus_shift))
+        plus_keypad = QKeyEvent(
+            QEvent.KeyPress, Qt.Key_Plus, Qt.KeypadModifier, "+")
+        self.assertTrue(dreceres.coincideix("+", plus_keypad))
+        self.assertFalse(dreceres.coincideix(
+            "+", QKeyEvent(QEvent.KeyPress, Qt.Key_Equal,
+                           Qt.NoModifier, "=")))
+        self.assertFalse(dreceres.coincideix(
+            "+", QKeyEvent(QEvent.KeyPress, Qt.Key_Plus,
+                           Qt.ControlModifier, "+")))
+        self.assertFalse(dreceres.coincideix(
+            "+", QKeyEvent(QEvent.KeyPress, Qt.Key_Plus,
+                           Qt.AltModifier, "+")))
         enter = QKeyEvent(QEvent.KeyPress, Qt.Key_Enter, Qt.NoModifier)
         self.assertTrue(dreceres.coincideix("Return", enter))
         ret = QKeyEvent(QEvent.KeyPress, Qt.Key_Return, Qt.NoModifier)

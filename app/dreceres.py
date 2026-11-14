@@ -130,7 +130,8 @@ def coincideix(seq, event, ignora_mods=0):
     """Cert si `event` correspon a la seqüència d'una sola tecla `seq`.
 
     Admet les equivalències habituals: Return/Enter i Del/Retrocés. El `+`
-    també accepta Maj+`=` (teclat principal), com feia el filtre antic.
+    també accepta el teclat numèric (`Key_Plus` + `KeypadModifier`) i els
+    layouts que l'envien com a `Shift`+`=` o `Key_Plus` + `Shift`.
     """
     seq = normalitza(seq)
     if not seq:
@@ -150,7 +151,17 @@ def coincideix(seq, event, ignora_mods=0):
     del_ = int(QKeySequence("Del")[0])
     if combo == del_ and event.key() == Qt.Key_Backspace:
         return True
-    if seq == "+" and event.key() == Qt.Key_Equal \
-            and (event.modifiers() & Qt.ShiftModifier):
-        return True
+    # El «+» pot arribar de tres maneres segons el teclat: Key_Plus sense
+    # modificadors (fila superior del layout es), Key_Plus + KeypadModifier
+    # (teclat numèric) o Key_Plus/Key_Equal + Shift (layouts on + és Shift+=).
+    # Shift i Keypad són part de la mateixa tecla; Ctrl/Alt/Meta no.
+    if seq == "+":
+        extra = int(event.modifiers()) & ~(
+            int(Qt.ShiftModifier) | int(Qt.KeypadModifier) | int(ignora_mods))
+        if extra == 0:
+            if event.key() == Qt.Key_Plus:
+                return True
+            if event.key() == Qt.Key_Equal \
+                    and (event.modifiers() & Qt.ShiftModifier):
+                return True
     return False

@@ -70,12 +70,8 @@ PROJECTE AUTO CHORDS/
 │   ├── lib/       🟡  # (4.469 fitxers)
 │   ├── lib64/     🟡  # (4.469 fitxers)
 │   └── share/     🟡  # (11 fitxers)
-├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (58 fitxers)
-│   ├── DECISIONS_RUBATO.md                🟢  # Subplà de rubato i doble graella
-│   ├── PLA_FLUX_MARCADORS_BEATS.md        🟢  # Pla del flux de marcadors i beats
-│   ├── PLA_SIMPLIFICACIO_TEMPO.md         🟢  # Pla per fases de simplificació del tempo
-│   ├── TORNAR A REVISAR AVANS AQUEST PLA.TXT 🟢
-│   └── per fer_2026-11-05/                🟢  # (54 fitxers)
+├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (1 fitxer)
+│   └── PLA_MOTOR_TALLS_QM.md 🟢
 ├── app/                           🟢  # Codi de l'aplicació (PyQt5) (79 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).

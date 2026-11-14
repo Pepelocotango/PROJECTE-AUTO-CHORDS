@@ -23,6 +23,10 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   qualsevol racó de la finestra. Es mantenen les excepcions dels **camps de
   text** (no s'hi intercepta res) i, per a Enter, dels **botons, combos i
   diàlegs** que tenen una acció pròpia.
+- **Corregit**: el `+` del **teclat numèric** (`Key_Plus` +
+  `KeypadModifier`) i el dels layouts que l'envien com a `Key_Plus` +
+  `Shift` ja es reconeixen; abans només funcionava el `+` sense modificadors
+  o `Shift`+`=`. `Ctrl`/`Alt`/`Meta`+`+` continuen sense disparar-lo.
 
 ### Afegit — export MIDI del mapa i restauració de còpies (2026-11-14)
 - **Export MIDI**: `mapa_tempo.mid` (Standard MIDI File tipus 1, pista de
