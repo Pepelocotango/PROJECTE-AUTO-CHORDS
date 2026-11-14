@@ -55,16 +55,60 @@ def _compta_beats(beats, ini, fi, tol=TOL):
                if ini - tol <= float(b) < fi - tol)
 
 
-def _clips_de_costats(ini, fi, bq, parts):
+def _knots_temps(ini, fi, bq, beats, factor):
+    """Knots `(negres, temps)` amb els beats QM reals, si n'hi ha."""
+    ini, fi, bq = float(ini), float(fi), float(bq)
+    beats = [float(b) for b in (beats or ())
+             if ini - TOL <= float(b) < fi - TOL]
+    if not beats:
+        return [(0.0, ini), (bq, fi)]
+    # Si el primer beat no cau a l'inici, compta'l al primer pols.
+    dep = 0.0 if abs(beats[0] - ini) <= TOL else float(factor)
+    knots = [(0.0, ini)]
+    for i, b in enumerate(beats):
+        q = dep + i * float(factor)
+        if q <= TOL or q >= bq - TOL:
+            continue
+        t = float(b)
+        if t <= ini + TOL or t >= fi - TOL:
+            continue
+        knots.append((q, t))
+    knots.append((bq, fi))
+    # Elimina q duplicats i assegura monotonia.
+    out = []
+    for q, t in sorted(knots, key=lambda x: x[0]):
+        if out and abs(q - out[-1][0]) <= TOL:
+            continue
+        if out and t < out[-1][1] - TOL:
+            continue
+        out.append((q, t))
+    if out[0][0] > TOL:
+        out.insert(0, (0.0, ini))
+    if out[-1][0] < bq - TOL:
+        out.append((bq, fi))
+    return out
+
+
+def _temps_de_q(q, knots, ini, fi):
+    q = max(0.0, min(float(q), knots[-1][0]))
+    for (q0, t0), (q1, t1) in zip(knots, knots[1:]):
+        if q <= q1 + TOL:
+            if q1 <= q0 + TOL:
+                return t1
+            return t0 + (t1 - t0) * (q - q0) / (q1 - q0)
+    return float(fi)
+
+
+def _clips_de_costats(ini, fi, bq, parts, beats=None, factor=1.0):
     """Construeix clips a partir de `[(quarters, num, den), …]`.
 
-    Les fronteres es reparteixen proporcionalment a les negres de cada part.
-    El BPM de cada clip es deriva de la seua duració; amb beats regulars tots
-    els clips queden al mateix BPM.
+    Les fronteres cauen als temps reals dels beats QM si se'n passen; si no,
+    es reparteixen proporcionalment a les negres de cada part.
     """
     dt = float(fi) - float(ini)
     if dt <= TOL or bq <= TOL:
         return None
+    knots = _knots_temps(ini, fi, bq, beats, factor)
     clips = []
     q_acum = 0.0
     t_acum = float(ini)
@@ -73,24 +117,27 @@ def _clips_de_costats(ini, fi, bq, parts):
         n = float(part[3]) if len(part) > 3 else 1.0
         if q <= TOL:
             continue
-        dur = dt * q / float(bq)
+        q_fi = q_acum + q
+        fi_clip = (float(fi) if abs(q_fi - bq) <= TOL
+                   else _temps_de_q(q_fi, knots, ini, fi))
+        dur = fi_clip - t_acum
         bpm = 60.0 * q / dur if dur > 0 else 0.0
         if not (limits.BPM_MIN - TOL <= bpm <= limits.BPM_MAX + TOL):
             return None
         if dur < limits.TEMPS_MIN_CLIP - TOL:
             return None
-        fi_clip = float(fi) if abs(q_acum + q - bq) <= TOL else t_acum + dur
         clips.append(mapa_tempo.TramMapa(
             t_acum, fi_clip, bpm, "normal", f"{int(num)}/{int(den)}",
             "", n, bpm_unit.unitat_per_defecte(int(num), int(den))))
-        q_acum += q
+        q_acum = q_fi
         t_acum = fi_clip
     if abs(q_acum - float(bq)) > 1e-4 or abs(t_acum - float(fi)) > 1e-4:
         return None
     return clips
 
 
-def _opcio(ini, fi, bq, parts, base_bars=0, cross=False):
+def _opcio(ini, fi, bq, parts, base_bars=0, cross=False, beats=None,
+           factor=1.0):
     # `n` de cada part = compassos sencers que ocupa.
     parts_amb_n = []
     for q, num, den in parts:
@@ -98,7 +145,8 @@ def _opcio(ini, fi, bq, parts, base_bars=0, cross=False):
         if n is None or n < 1:
             return None
         parts_amb_n.append((q, num, den, n))
-    clips = _clips_de_costats(ini, fi, bq, parts_amb_n)
+    clips = _clips_de_costats(ini, fi, bq, parts_amb_n,
+                               beats=beats, factor=factor)
     if not clips:
         return None
     # Base+extrany: una excepció. Secció sencera: N compassos extranys.
@@ -142,7 +190,7 @@ def _pures(bq, bases):
     return out
 
 
-def _opcions_costat(ini, fi, bq, bases):
+def _opcions_costat(ini, fi, bq, bases, beats=None, factor=1.0):
     """Candidats per a un costat, sense aplicar el filtre de 1/4."""
     ini, fi, bq = float(ini), float(fi), float(bq)
     out = []
@@ -151,7 +199,8 @@ def _opcions_costat(ini, fi, bq, bases):
         # Si hi ha pura, no es proposen alternatives exòtiques.
         for num, den, n in pures:
             _afegeix(out, _opcio(
-                ini, fi, bq, [(bq, num, den)], base_bars=n))
+                ini, fi, bq, [(bq, num, den)], base_bars=n,
+                beats=beats, factor=factor))
         return out
 
     for base_num, base_den in bases:
@@ -167,17 +216,20 @@ def _opcions_costat(ini, fi, bq, bases):
                 continue
             parts = [(n_base * base_bar, base_num, base_den),
                      (odd_q, num, base_den)]
-            _afegeix(out, _opcio(ini, fi, bq, parts, base_bars=n_base))
+            _afegeix(out, _opcio(ini, fi, bq, parts, base_bars=n_base,
+                                 beats=beats, factor=factor))
             parts_rev = [(odd_q, num, base_den),
                          (n_base * base_bar, base_num, base_den)]
-            _afegeix(out, _opcio(ini, fi, bq, parts_rev, base_bars=n_base))
+            _afegeix(out, _opcio(ini, fi, bq, parts_rev, base_bars=n_base,
+                                 beats=beats, factor=factor))
         # Secció sencera en un compàs extrany.
         for num in range(1, NUM_MAX + 1):
             bar = _bar_quarters(num, base_den)
             n = _enter(bq / bar)
             if n is not None and n >= 1:
                 _afegeix(out, _opcio(
-                    ini, fi, bq, [(bq, num, base_den)], base_bars=0))
+                    ini, fi, bq, [(bq, num, base_den)], base_bars=0,
+                    beats=beats, factor=factor))
         # Canvi a denominador 4: només base + un compàs /4, mai /4 sol.
         if int(base_den) != 4:
             for n_base in range(max_n, 0, -1):
@@ -188,11 +240,13 @@ def _opcions_costat(ini, fi, bq, bases):
                 parts = [(n_base * base_bar, base_num, base_den),
                          (odd_q, num, 4)]
                 _afegeix(out, _opcio(
-                    ini, fi, bq, parts, base_bars=n_base, cross=True))
+                    ini, fi, bq, parts, base_bars=n_base, cross=True,
+                    beats=beats, factor=factor))
                 parts_rev = [(odd_q, num, 4),
                              (n_base * base_bar, base_num, base_den)]
                 _afegeix(out, _opcio(
-                    ini, fi, bq, parts_rev, base_bars=n_base, cross=True))
+                    ini, fi, bq, parts_rev, base_bars=n_base, cross=True,
+                    beats=beats, factor=factor))
 
     # Filtra 1/4 si hi ha cap alternativa sense numerador 1.
     te_alternativa = any(
@@ -253,7 +307,11 @@ def opcions_tall(trams, t, durada, offset, beats, ref_base, beat_factor):
                 opcions = _opcio_sense_beats(a, b, ref_base)
             else:
                 bq = float(n) * float(beat_factor)
-                opcions = _opcions_costat(a, b, bq, bases)
+                beats_costat = [x for x in beats
+                                if a - TOL <= float(x) < b - TOL]
+                opcions = _opcions_costat(
+                    a, b, bq, bases, beats=beats_costat,
+                    factor=beat_factor)
             if not opcions:
                 return None
             sides.append(opcions)

@@ -2234,6 +2234,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self._undo_commit()
         if ok:
             self._reprén_tall_qm()
+        else:
+            self._tall_qm_reprendre = False
         return ok and len(self.tempo_trams or []) > abans
 
     # ---------------- MARCADORS (inici de compàs, en viu) ----------------
@@ -3847,6 +3849,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self._undo_commit()
         if ok:
             self._reprén_tall_qm()
+        else:
+            self._tall_qm_reprendre = False
         self.log(f"partit per la meitat el tram de BPM/compàs {idx} a "
                  f"{t:.3f}s")
         return idx + 1

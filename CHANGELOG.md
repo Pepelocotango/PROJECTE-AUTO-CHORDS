@@ -22,7 +22,9 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   convertix a negres (`Bq`) i proposa BPM, compàs i `N` exactes. Inclou base
   pura, base + un compàs extrany, secció sencera extranya i canvi a
   denominador 4 (base + `/4`), amb màxim 2 clips per costat, filtre de `1/4`,
-  mínim 2 opcions `/4` al diàleg i ordre per musicalitat.
+  mínim 2 opcions `/4` al diàleg i ordre per musicalitat. Les fronteres
+  internes cauen als **temps reals dels beats QM** (interpolació si cal) i el
+  diàleg mostra la diferència de BPM respecte de la Ref.
 - **Diàleg conjunt** (`app/dialeg_tall_qm.py`): dues columnes, fins a 6
   opcions per costat, costat fix si només n'hi ha una, sense preselecció i
   Aplica desactivat fins triar els costats ambigus.

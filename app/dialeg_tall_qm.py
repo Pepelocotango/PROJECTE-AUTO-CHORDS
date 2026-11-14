@@ -15,19 +15,23 @@ class DialegTallQM(QDialog):
     selecció inicial: Aplica s'activa quan cada costat ambigu té una opció.
     """
 
-    def __init__(self, parent, esquerra, dreta):
+    def __init__(self, parent, esquerra, dreta, ref_bpm=None):
         super().__init__(parent)
         self.setWindowTitle("Tall de tempo — Beats QM")
         self._esquerra = list(esquerra or ())
         self._dreta = list(dreta or ())
         self._lista_esq = None
         self._lista_dreta = None
+        self._ref_bpm = float(ref_bpm) if ref_bpm else None
 
         lay = QGridLayout(self)
-        lay.addWidget(QLabel("<b>Costat esquerre</b>"), 0, 0)
-        lay.addWidget(QLabel("<b>Costat dret</b>"), 0, 1)
-        lay.addWidget(self._columna(self._esquerra, "esq"), 1, 0)
-        lay.addWidget(self._columna(self._dreta, "dreta"), 1, 1)
+        if self._ref_bpm:
+            lay.addWidget(QLabel(
+                f"Ref. recalc: <b>{self._ref_bpm:.3f} BPM</b>"), 0, 0, 1, 2)
+        lay.addWidget(QLabel("<b>Costat esquerre</b>"), 1, 0)
+        lay.addWidget(QLabel("<b>Costat dret</b>"), 1, 1)
+        lay.addWidget(self._columna(self._esquerra, "esq"), 2, 0)
+        lay.addWidget(self._columna(self._dreta, "dreta"), 2, 1)
 
         self._botons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=self)
@@ -35,7 +39,7 @@ class DialegTallQM(QDialog):
         self._botons.button(QDialogButtonBox.Cancel).setText("Cancel·la")
         self._botons.accepted.connect(self.accept)
         self._botons.rejected.connect(self.reject)
-        lay.addWidget(self._botons, 2, 0, 1, 2)
+        lay.addWidget(self._botons, 3, 0, 1, 2)
         self._actualitza_boto()
         self.resize(760, 320)
 
@@ -44,7 +48,7 @@ class DialegTallQM(QDialog):
         v = QGridLayout(w)
         v.setContentsMargins(0, 0, 0, 0)
         if len(opcions) <= 1:
-            text = opcions[0]["etiqueta"] if opcions else "Sense opcions"
+            text = self._text(opcions[0]) if opcions else "Sense opcions"
             lab = QLabel(text, w)
             lab.setWordWrap(True)
             lab.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -52,7 +56,7 @@ class DialegTallQM(QDialog):
             return w
         lista = QListWidget(w)
         for o in opcions:
-            lista.addItem(o["etiqueta"])
+            lista.addItem(self._text(o))
         lista.setSelectionMode(QListWidget.SingleSelection)
         lista.itemSelectionChanged.connect(self._actualitza_boto)
         v.addWidget(lista, 0, 0)
@@ -61,6 +65,15 @@ class DialegTallQM(QDialog):
         else:
             self._lista_dreta = lista
         return w
+
+    def _text(self, opcio):
+        text = opcio["etiqueta"]
+        if self._ref_bpm:
+            difs = [abs(float(c.bpm) / self._ref_bpm - 1.0) * 100.0
+                    for c in opcio.get("clips", ())]
+            if difs:
+                text += f" · Δ Ref {max(difs):.3f}%"
+        return text
 
     def _actualitza_boto(self):
         ok = True

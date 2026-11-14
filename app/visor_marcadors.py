@@ -97,7 +97,9 @@ class MarcadorsMixin:
             if any(len(o) > 1 for o in costats):
                 self._pausa_tall_qm()
                 from .dialeg_tall_qm import DialegTallQM
-                dlg = DialegTallQM(self, costats[0], costats[1])
+                dlg = DialegTallQM(
+                    self, costats[0], costats[1],
+                    ref_bpm=float(self.ref_tempo_base()[0]))
                 if not dlg.exec_():
                     self._tall_qm_reprendre = False
                     return None
@@ -106,6 +108,10 @@ class MarcadorsMixin:
                 sel_esq = sel_dreta = 0
             triades = (list(costats[0][sel_esq]["clips"])
                        + list(costats[1][sel_dreta]["clips"]))
+            self.log(
+                "Tall QM: " + " | ".join(
+                    costats[j][sel]["etiqueta"]
+                    for j, sel in ((0, sel_esq), (1, sel_dreta))))
             return trams[:idx] + triades + trams[idx + 1:]
         kw = dict(offset=offset,
                   beats_qm=None,

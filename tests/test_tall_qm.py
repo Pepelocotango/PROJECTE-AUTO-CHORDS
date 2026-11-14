@@ -54,6 +54,15 @@ class TestTallQM(unittest.TestCase):
         self.assertEqual(int(opts[0]["clips"][0].n), 1)
         self.assertAlmostEqual(float(opts[0]["clips"][0].bpm), 120.0)
 
+    def test_fronteres_als_beats_reals(self):
+        clips = tall_qm._clips_de_costats(
+            0.0, 4.0, 4.0,
+            [(2.0, 4, 4, 2.0), (2.0, 4, 4, 2.0)],
+            beats=[0.0, 1.0, 2.5, 3.0], factor=1.0)
+        self.assertIsNotNone(clips)
+        self.assertAlmostEqual(float(clips[0].fi), 2.5, places=6)
+        self.assertAlmostEqual(float(clips[1].ini), 2.5, places=6)
+
     def test_opcions_tall_separa_esquerra_i_dreta(self):
         from app import mapa_tempo
         trams = [mapa_tempo.TramMapa(
