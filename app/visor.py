@@ -2226,6 +2226,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # «Afegeix/Parteix aquí» i les dreceres no poden divergir.
         nous = self._parteix_tempo_nou(float(t))
         if nous is None:
+            if getattr(self, "_tall_qm_cancelat", False):
+                return False
             self.avis_editor(
                 "Afegeix tempo: el tall no pot quedar amb compassos sencers")
             return False
@@ -2235,7 +2237,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if ok:
             self._reprén_tall_qm()
         else:
-            self._tall_qm_reprendre = False
+            self._cancel·la_tall_qm()
         return ok and len(self.tempo_trams or []) > abans
 
     # ---------------- MARCADORS (inici de compàs, en viu) ----------------
@@ -3770,7 +3772,13 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         for t in sorted(cands):
             if qm:
                 nous = self._parteix_tempo_nou(t, trams=trams)
-                if nous is None or len(nous) <= len(trams):
+                if nous is None:
+                    if getattr(self, "_tall_qm_cancelat", False):
+                        return False
+                    err = err or ValueError(
+                        "el tall QM no ha pogut crear una frontera")
+                    continue
+                if len(nous) <= len(trams):
                     err = err or ValueError(
                         "el tall QM no ha pogut crear una frontera")
                     continue
@@ -3802,7 +3810,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if ok:
             self._reprén_tall_qm()
         else:
-            self._tall_qm_reprendre = False
+            self._cancel·la_tall_qm()
         if not ok:
             return False
         sel = min(self._sel_despres_dels_talls(idx, talls),
@@ -3849,11 +3857,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self._undo_commit()
         if ok:
             self._reprén_tall_qm()
-        else:
-            self._tall_qm_reprendre = False
-        self.log(f"partit per la meitat el tram de BPM/compàs {idx} a "
-                 f"{t:.3f}s")
-        return idx + 1
+            self.log(f"partit per la meitat el tram de BPM/compàs {idx} a "
+                     f"{t:.3f}s")
+            return idx + 1
+        self._cancel·la_tall_qm()
+        return False
 
     def _parteix_acord_dialog(self, idx, t=None):
         """Parteix l'acord `idx` pel punt del clic (o el cursor), preguntant el nom.

@@ -438,6 +438,17 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
   **256,534098 s**. Si la WAV s'importa primer, el *timebase* per defecte
   (**Beats**) pot ajustar-ne la longitud/velocitat; l'alternativa és posar el
   projecte o l'item en **Time**.
+- **Talls QM (+/Enter/Afegeix/meitat/A–B)**: amb Snap QM es compten els
+  beats de cada meitat (el beat del tall pertany a la dreta) i es convertixen a
+  negres (`Bq`). El motor proposa BPM, compàs i `N` exactes: base pura, base +
+  un compàs extrany o secció sencera; si cal, també `base + /4`. Màxim 2 clips
+  per costat, `1/4` filtrat si hi ha alternativa i mínim 2 opcions `/4` al
+  diàleg. Les fronteres internes cauen als temps reals dels beats QM. Si hi ha
+  2+ opcions, un diàleg conjunt (màxim 6 per costat, sense preselecció) les
+  mostra amb la diferència de BPM respecte de la Ref.; cancel·lar no toca res.
+  El play es pausa en obrir el diàleg i es reprén en aplicar; cancel·lar el
+  deixa en pausa. Si es cancel·la o falla el tempo, no es parteix
+  l'estructura (`+` és atòmic).
 - **Export (S2)**: `manifest.csv` té 10 columnes (les 7 històriques +
   `bpm_quarter`, `beat_unit`, `bpm_mostra` al final; estat a l'inici del
   segment; `mapa_tempo.csv` canònic). La guia HTML mostra les dues xifres. La

@@ -291,7 +291,7 @@ PROJECTE AUTO CHORDS/
 │   ├── qm-vamp-plugins.cat 🟢
 │   ├── qm-vamp-plugins.n3  🟢
 │   └── qm-vamp-plugins.so  🟢
-├── tests/                         🟢  # Suite unittest offscreen (26 fitxers)
+├── tests/                         🟢  # Suite unittest offscreen (27 fitxers)
 │   ├── _qt_neteja.py              🟢  # Neteja ORDENADA dels objectes Qt entre tests.
 │   ├── _temporals.py              🟢  # Higiene dels tests: cap temporal no s'ha de quedar pel disc.
 │   ├── test_ancoratges.py         🟢  # Suite de test — Marcadors humans i velocitat de reproducció.
@@ -301,6 +301,7 @@ PROJECTE AUTO CHORDS/
 │   ├── test_beats.py              🟢  # Tests del motor de beats i de la sensibilitat.
 │   ├── test_camp_text.py          🟢  # Tests — Camps de text que mostren l'inici del contingut.
 │   ├── test_despatx_edicio.py     🟢  # Despatx ÚNIC d'edició (regla d'or #11) — contracte de superfícies.
+│   ├── test_dialeg_tall_qm.py     🟢  # Diàleg conjunt de talls QM.
 │   ├── test_docs_al_dia.py        🟢  # Test: la documentació generada ha d'estar al dia.
 │   ├── test_drag_drop.py          🟢  # Drag & drop d'àudio des del gestor de fitxers (Linux, Windows i macOS).
 │   ├── test_dreceres.py           🟢  # Configuració persistent de dreceres de teclat.

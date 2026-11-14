@@ -6364,6 +6364,102 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(float(out[0].ini), 0.0)
         self.assertAlmostEqual(float(out[-1].fi), 60.0)
 
+    def test_tall_qm_cancel_atomic_i_play(self):
+        """Cancel·lar el diàleg no toca res i el play queda en pausa."""
+        from app import mapa_tempo
+
+        class _DialegFals:
+            def __init__(self, *a, **k):
+                pass
+
+            def exec_(self):
+                return False
+
+            def seleccions(self):
+                return 0, 0
+
+        vr = self.w.visor_ref
+        vr.tempo_trams = [mapa_tempo.TramMapa(
+            0.0, 60.0, 120.0, "normal", "4/4", "", 30, "negra")]
+        vr.seccions = [(0.0, 60.0, "A", "A")]
+        vr.snap_on = True
+        vr.snap_mode = "qm_beats"
+        vr.qm_beats = [i * 0.5 for i in range(120)]
+        vr.sona = True
+        crides = []
+
+        def _play_stop():
+            crides.append(vr.sona)
+            vr.sona = not vr.sona
+
+        with patch.object(vr, "play_stop", side_effect=_play_stop):
+            with patch("app.dialeg_tall_qm.DialegTallQM", _DialegFals):
+                self.assertFalse(vr.talla_tempo_i_estructura(10.5))
+        self.assertEqual(len(vr.tempo_trams), 1)
+        self.assertEqual(len(vr.seccions), 1)
+        self.assertFalse(vr.sona)
+        self.assertEqual(crides, [True])
+
+    def test_tall_qm_aplicar_reprèn_play(self):
+        """Si s'aplica, el play es reprén des de la pausa."""
+        from app import mapa_tempo
+
+        class _DialegFals:
+            def __init__(self, *a, **k):
+                pass
+
+            def exec_(self):
+                return True
+
+            def seleccions(self):
+                return 0, 0
+
+        vr = self.w.visor_ref
+        vr.tempo_trams = [mapa_tempo.TramMapa(
+            0.0, 60.0, 120.0, "normal", "4/4", "", 30, "negra")]
+        vr.snap_on = True
+        vr.snap_mode = "qm_beats"
+        vr.qm_beats = [i * 0.5 for i in range(120)]
+        vr.sona = True
+        crides = []
+
+        def _play_stop():
+            crides.append(vr.sona)
+            vr.sona = not vr.sona
+
+        with patch.object(vr, "play_stop", side_effect=_play_stop):
+            with patch("app.dialeg_tall_qm.DialegTallQM", _DialegFals):
+                self.assertTrue(vr.talla_tempo(10.5))
+        self.assertTrue(vr.sona)
+        self.assertEqual(crides, [True, False])
+
+    def test_tall_qm_ab_cancel·la_despres_del_primer(self):
+        """Si es cancel·la el segon tall A–B, no s'aplica cap dels dos."""
+        from app import mapa_tempo
+
+        class _DialegFals:
+            resposta = [True, False]
+
+            def __init__(self, *a, **k):
+                pass
+
+            def exec_(self):
+                return self.resposta.pop(0)
+
+            def seleccions(self):
+                return 0, 0
+
+        vr = self.w.visor_ref
+        vr.tempo_trams = [mapa_tempo.TramMapa(
+            0.0, 60.0, 120.0, "normal", "4/4", "", 30, "negra")]
+        vr.snap_on = True
+        vr.snap_mode = "qm_beats"
+        vr.qm_beats = [i * 0.5 for i in range(120)]
+        vr.loop_a, vr.loop_b = 10.5, 20.5
+        with patch("app.dialeg_tall_qm.DialegTallQM", _DialegFals):
+            self.assertFalse(vr._parteix_tram_a_loop(0))
+        self.assertEqual(len(vr.tempo_trams), 1)
+
     def test_plus_teclat_numeric_talla_tempo_i_estructura(self):
         """El «+» del teclat numèric ha de fer el mateix que el de dalt."""
         from PyQt5.QtTest import QTest

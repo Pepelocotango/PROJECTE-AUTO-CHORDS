@@ -32,7 +32,8 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   Partir A–B; si el tempo falla o es cancel·la, no es parteix l'estructura.
   El play es pausa en obrir el diàleg i es reprén en aplicar; cancel·lar el
   deixa en pausa.
-- **Tests**: `tests/test_tall_qm.py` i prova GUI del motor i del diàleg.
+- **Tests**: `tests/test_tall_qm.py`, `tests/test_dialeg_tall_qm.py` i proves
+  GUI de motor, diàleg, cancel·lació atòmica i represa del play.
 
 ### Canviat — dreceres `+` i Enter des de qualsevol focus (2026-11-14)
 - **`+`** (parteix tempo i estructura) i **Enter** (parteix només tempo) ja no

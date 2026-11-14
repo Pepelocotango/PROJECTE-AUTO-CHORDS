@@ -1,7 +1,7 @@
 # Pla — motor de talls amb Snap QM
 
 **Data:** 2026-11-14  
-**Estat:** pendent d'implementar  
+**Estat:** implementat (2026-11-14); pendents a §18  
 **Abast:** talls de tempo/compàs amb Snap QM (`+`, Enter, Afegeix/Parteix aquí, Partir per la meitat i Parteix A–B).
 
 > Document de treball local. No és font de veritat del producte; el contracte
@@ -546,3 +546,29 @@ existeix.
 - No inferir modulació mètrica (`♩ = ♩`, `♩. = ♩`…) automàticament; és manual.
 - No exportar `beat_unit` com si fóra un camp MIDI estàndard.
 - No aplicar res si no hi ha cap candidat exacte.
+
+---
+
+## 18. Estat d'implementació (2026-11-14)
+
+**Implementat:**
+
+- `app/tall_qm.py`: comptatge QM, `Bq`, base pura, base + extrany, secció
+  sencera extranya, canvi a `/4`, filtres, límit de 2 clips per costat,
+  mínim 2 opcions `/4` i ordenació.
+- `app/dialeg_tall_qm.py`: diàleg conjunt, dues columnes, costat fix, sense
+  preselecció i diferència de BPM respecte de la Ref.
+- `app/visor_marcadors.py`: integració amb Beats QM, pausa/reprén del play i
+  atomicitat.
+- `app/visor.py`: `+`, Enter, Afegeix/Parteix aquí, Partir per la meitat i
+  Partir A–B.
+- Fronteres internes amb interpolació sobre els temps reals dels beats QM.
+- Tests: `tests/test_tall_qm.py`, `tests/test_dialeg_tall_qm.py` i proves GUI
+  de motor, cancel·lació atòmica i represa del play.
+
+**Pendent:**
+
+- Fallback de graella quan no hi ha QM (actualment el motor QM només
+  s'activa amb beats QM; fora de Snap QM es manté el camí anterior).
+- Proves d'àudio real de pausa/reprén (els tests actuals simulen play_stop).
+- Suite completa i revisió final.

@@ -50,18 +50,40 @@ class MarcadorsMixin:
         self.log(f"marcador mogut: {t_vell:.3f} → {t_nou:.3f}s")
         return True
 
+    def _inicia_tall_qm(self):
+        """Guarda l'estat de play abans de qualsevol diàleg del tall QM."""
+        if getattr(self, "_tall_qm_actiu", False):
+            return
+        self._tall_qm_actiu = True
+        self._tall_qm_sonava = bool(getattr(self, "sona", False))
+        self._tall_qm_pos = float(getattr(self, "pos", 0.0))
+        self._tall_qm_pausat = False
+
     def _pausa_tall_qm(self):
-        """Pausa el play si cal obrir el diàleg del tall QM."""
-        if getattr(self, "sona", False):
+        """Pausa el play una sola vegada per operació de tall QM."""
+        self._inicia_tall_qm()
+        if getattr(self, "sona", False) and not getattr(
+                self, "_tall_qm_pausat", False):
             self.play_stop()
-            self._tall_qm_reprendre = True
+            self._tall_qm_pausat = True
+
+    def _cancel·la_tall_qm(self):
+        """Cancel·la la intenció de reprendre; deixa el play en pausa."""
+        self._tall_qm_actiu = False
+        self._tall_qm_sonava = False
+        self._tall_qm_pausat = False
 
     def _reprén_tall_qm(self):
-        """Reprén el play només si s'havia pausat per al tall QM."""
-        if not getattr(self, "_tall_qm_reprendre", False):
+        """Reprén des de la posició guardada, només si sonava abans."""
+        if not getattr(self, "_tall_qm_actiu", False):
             return
-        self._tall_qm_reprendre = False
-        if not getattr(self, "sona", False):
+        sonava = bool(getattr(self, "_tall_qm_sonava", False))
+        pos = float(getattr(self, "_tall_qm_pos", 0.0))
+        self._tall_qm_actiu = False
+        self._tall_qm_pausat = False
+        self._tall_qm_sonava = False
+        if sonava and not getattr(self, "sona", False):
+            self.ves_a(pos)
             self.play_stop()
 
     def _parteix_tempo_nou(self, t, trams=None):
@@ -76,8 +98,10 @@ class MarcadorsMixin:
         durada = self._durada_wav()
         offset = getattr(self, "offset", 0.0)
         beats = list(self._beats_per_validacio() or ())
+        self._tall_qm_cancelat = False
         if beats:
             from . import tall_qm
+            self._inicia_tall_qm()
             try:
                 idx = next(i for i, tr in enumerate(trams)
                            if float(tr[0]) + 1e-9 < float(t)
@@ -90,6 +114,7 @@ class MarcadorsMixin:
                 trams, float(t), durada, offset, beats,
                 self.ref_tempo_base(), factor)
             if costats is None:
+                self._cancel·la_tall_qm()
                 self.avis_editor(
                     "Tall QM: no hi ha cap combinació exacta per a este punt.")
                 return None
@@ -101,7 +126,8 @@ class MarcadorsMixin:
                     self, costats[0], costats[1],
                     ref_bpm=float(self.ref_tempo_base()[0]))
                 if not dlg.exec_():
-                    self._tall_qm_reprendre = False
+                    self._tall_qm_cancelat = True
+                    self._cancel·la_tall_qm()
                     return None
                 sel_esq, sel_dreta = dlg.seleccions()
             else:
@@ -177,8 +203,7 @@ class MarcadorsMixin:
         try:
             if nous_trams is not None:
                 if not self.aplica_tempo_trams(nous_trams):
-                    self._tall_qm_reprendre = False
-                    self._undo_commit()
+                    self._cancel·la_tall_qm()
                     return False
             if noves_seccions is not None:
                 self.seccions = noves_seccions
@@ -187,7 +212,7 @@ class MarcadorsMixin:
                     self._actualitza_llista_abc()
             self._desa_i_regenera()
         except Exception:
-            self._tall_qm_reprendre = False
+            self._cancel·la_tall_qm()
             raise
         finally:
             self._undo_commit()
