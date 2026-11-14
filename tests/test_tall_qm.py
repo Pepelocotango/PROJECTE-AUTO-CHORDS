@@ -63,6 +63,26 @@ class TestTallQM(unittest.TestCase):
         self.assertAlmostEqual(float(clips[0].fi), 2.5, places=6)
         self.assertAlmostEqual(float(clips[1].ini), 2.5, places=6)
 
+    def test_graella_actual_quan_no_hi_ha_qm(self):
+        from app import mapa_tempo, tempo_map
+        trams = [mapa_tempo.TramMapa(
+            0.0, 8.0, 120.0, "normal", "4/4", "", 4, "negra")]
+        mapa = tempo_map.TempoMap([(0.0, 8.0, 120.0, 4, 4, "", "negra")])
+        sides = tall_qm.opcions_tall_graella(
+            trams, mapa, 2.0, 8.0, 0.0, (120.0, 4, 4))
+        self.assertIsNotNone(sides)
+        self.assertEqual(sides[0][0]["clips"][0].num, 4)
+        self.assertAlmostEqual(float(sides[0][0]["clips"][0].fi), 2.0)
+
+    def test_polsos_graella_6_8_usa_negra_punt(self):
+        from app import tempo_map
+        mapa = tempo_map.TempoMap([(0.0, 3.0, 120.0, 6, 8, "3+3",
+                                    "negra_punt")])
+        times, factor, bq = tall_qm.polsos_graella(mapa, 0.0, 3.0)
+        self.assertEqual(len(times), 4)
+        self.assertAlmostEqual(factor, 1.5)
+        self.assertAlmostEqual(bq, 6.0)
+
     def test_opcions_tall_separa_esquerra_i_dreta(self):
         from app import mapa_tempo
         trams = [mapa_tempo.TramMapa(

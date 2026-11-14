@@ -568,7 +568,7 @@ existeix.
 
 **Pendent:**
 
-- Fallback de graella quan no hi ha QM (actualment el motor QM només
-  s'activa amb beats QM; fora de Snap QM es manté el camí anterior).
+- Fallback de graella implementat: amb Snap QM sense beats, el cursor usa la
+  graella actual i el motor compta els polsos de metrònom del mapa.
 - Proves d'àudio real de pausa/reprén (els tests actuals simulen play_stop).
 - Suite completa i revisió final.

@@ -6460,6 +6460,20 @@ class TestAncoratgesFinestra(unittest.TestCase):
             self.assertFalse(vr._parteix_tram_a_loop(0))
         self.assertEqual(len(vr.tempo_trams), 1)
 
+    def test_tall_qm_sense_beats_usa_graella_actual(self):
+        """Snap QM sense beats: el motor compta els polsos del mapa actual."""
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        vr.tempo_trams = [mapa_tempo.TramMapa(
+            0.0, 60.0, 120.0, "normal", "4/4", "", 30, "negra")]
+        vr._refresca_tempo_map()
+        vr.snap_on = True
+        vr.snap_mode = "qm_beats"
+        vr.qm_beats = []
+        self.assertTrue(vr.talla_tempo(10.0))
+        self.assertEqual(len(vr.tempo_trams), 2)
+        self.assertAlmostEqual(float(vr.tempo_trams[0].fi), 10.0)
+
     def test_plus_teclat_numeric_talla_tempo_i_estructura(self):
         """El «+» del teclat numèric ha de fer el mateix que el de dalt."""
         from PyQt5.QtTest import QTest

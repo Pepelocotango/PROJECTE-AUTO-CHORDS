@@ -40,12 +40,11 @@ class MarcadorsMixin:
         if snap_on and mode == "qm_beats":
             t = self._snap_marcador_qm(float(vr.pos))
             if t is None:
-                msg = ("El Snap està en «Beats QM» però no hi ha beats QM. "
-                       "Executa «Analitza beats, downbeats i BPM» o canvia "
-                       "la graella.")
-                self.registra(msg)
-                self._missatge_info(msg)
-                return None
+                # Sense QM, el motor de talls fa servir els polsos del mapa
+                # actual; el cursor s'encaixa a la graella normal.
+                self.registra(
+                    "Snap QM sense beats detectats: uso la graella actual.")
+                t = float(vr._snap_ui(float(vr.pos)))
         else:
             t = float(vr._snap_ui(float(vr.pos)))
         if t is None or not (0.0 < t < vr._durada_wav() - 1e-3):

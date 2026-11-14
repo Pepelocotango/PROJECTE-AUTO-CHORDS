@@ -440,7 +440,8 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
   projecte o l'item en **Time**.
 - **Talls QM (+/Enter/Afegeix/meitat/A–B)**: amb Snap QM es compten els
   beats de cada meitat (el beat del tall pertany a la dreta) i es convertixen a
-  negres (`Bq`). El motor proposa BPM, compàs i `N` exactes: base pura, base +
+  negres (`Bq`). Si no hi ha beats QM, el cursor usa la graella actual i es
+  compten els polsos de metrònom del mapa. El motor proposa BPM, compàs i `N` exactes: base pura, base +
   un compàs extrany o secció sencera; si cal, també `base + /4`. Màxim 2 clips
   per costat, `1/4` filtrat si hi ha alternativa i mínim 2 opcions `/4` al
   diàleg. Les fronteres internes cauen als temps reals dels beats QM. Si hi ha

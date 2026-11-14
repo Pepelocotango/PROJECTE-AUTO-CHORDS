@@ -32,6 +32,9 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   Partir A–B; si el tempo falla o es cancel·la, no es parteix l'estructura.
   El play es pausa en obrir el diàleg i es reprén en aplicar; cancel·lar el
   deixa en pausa.
+- **Sense QM**: amb Snap QM i cap beat detectat, el cursor usa la graella
+  actual i el motor compta els polsos de metrònom del mapa; si no n'hi ha,
+  cau a la Ref. pura amb `N` arrodonit.
 - **Tests**: `tests/test_tall_qm.py`, `tests/test_dialeg_tall_qm.py` i proves
   GUI de motor, diàleg, cancel·lació atòmica i represa del play.
 

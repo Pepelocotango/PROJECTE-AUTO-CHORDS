@@ -118,27 +118,26 @@ class MarcadorsMixin:
                 self.avis_editor(
                     "Tall QM: no hi ha cap combinació exacta per a este punt.")
                 return None
-            costats = [tall_qm.selecciona_opcions(o) for o in costats]
-            if any(len(o) > 1 for o in costats):
-                self._pausa_tall_qm()
-                from .dialeg_tall_qm import DialegTallQM
-                dlg = DialegTallQM(
-                    self, costats[0], costats[1],
-                    ref_bpm=float(self.ref_tempo_base()[0]))
-                if not dlg.exec_():
-                    self._tall_qm_cancelat = True
-                    self._cancel·la_tall_qm()
-                    return None
-                sel_esq, sel_dreta = dlg.seleccions()
-            else:
-                sel_esq = sel_dreta = 0
-            triades = (list(costats[0][sel_esq]["clips"])
-                       + list(costats[1][sel_dreta]["clips"]))
-            self.log(
-                "Tall QM: " + " | ".join(
-                    costats[j][sel]["etiqueta"]
-                    for j, sel in ((0, sel_esq), (1, sel_dreta))))
-            return trams[:idx] + triades + trams[idx + 1:]
+            return self._tria_opcions_tall_qm(trams, idx, costats)
+        if (getattr(self, "snap_on", False)
+                and getattr(self, "snap_mode", "") == "qm_beats"):
+            from . import tall_qm
+            self._inicia_tall_qm()
+            try:
+                idx = next(i for i, tr in enumerate(trams)
+                           if float(tr[0]) + 1e-9 < float(t)
+                           < float(tr[1]) - 1e-9)
+            except StopIteration:
+                return None
+            costats = tall_qm.opcions_tall_graella(
+                trams, getattr(self, "tempo_map", None),
+                float(t), durada, offset, self.ref_tempo_base())
+            if costats is None:
+                self._cancel·la_tall_qm()
+                self.avis_editor(
+                    "Tall QM: no hi ha cap combinació vàlida amb la graella.")
+                return None
+            return self._tria_opcions_tall_qm(trams, idx, costats)
         kw = dict(offset=offset,
                   beats_qm=None,
                   permissiu=True, ref_base=None,
@@ -175,6 +174,31 @@ class MarcadorsMixin:
         except ValueError:
             return None
         return out if len(out) != len(trams) else None
+
+    def _tria_opcions_tall_qm(self, trams, idx, costats):
+        """Filtra, pregunta si cal i retorna el mapa amb els clips triats."""
+        from . import tall_qm
+        costats = [tall_qm.selecciona_opcions(o) for o in costats]
+        if any(len(o) > 1 for o in costats):
+            self._pausa_tall_qm()
+            from .dialeg_tall_qm import DialegTallQM
+            dlg = DialegTallQM(
+                self, costats[0], costats[1],
+                ref_bpm=float(self.ref_tempo_base()[0]))
+            if not dlg.exec_():
+                self._tall_qm_cancelat = True
+                self._cancel·la_tall_qm()
+                return None
+            sel_esq, sel_dreta = dlg.seleccions()
+        else:
+            sel_esq = sel_dreta = 0
+        triades = (list(costats[0][sel_esq]["clips"])
+                   + list(costats[1][sel_dreta]["clips"]))
+        self.log(
+            "Tall QM: " + " | ".join(
+                costats[j][sel]["etiqueta"]
+                for j, sel in ((0, sel_esq), (1, sel_dreta))))
+        return trams[:idx] + triades + trams[idx + 1:]
 
     def _parteix_estructura_noves(self, t):
         """Retorna les seccions partides a `t` o `None` si no cal/possible."""

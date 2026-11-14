@@ -282,6 +282,82 @@ def _opcio_sense_beats(ini, fi, ref_base):
              "es_4": int(den) == 4, "cross": False}]
 
 
+def polsos_graella(mapa, ini, fi):
+    """Polsos de metrònom del mapa actual dins `[ini, fi)`.
+
+    Retorna `(times, factor, bq)`. Si el costat travessa trams amb unitats
+    distintes, `factor` és 1.0 i les fronteres es reparteixen proporcionalment.
+    """
+    if mapa is None:
+        return [], 1.0, 0.0
+    ini, fi = float(ini), float(fi)
+    times, factors = [], []
+    try:
+        bars = mapa.compassos_beats()
+    except (AttributeError, TypeError, ValueError):
+        bars = []
+    for _bar, b0q, num, den in bars:
+        bar_q = _bar_quarters(num, den)
+        if bar_q <= TOL:
+            continue
+        t_bar = mapa.t_de_quarters(b0q)
+        if t_bar >= fi - TOL:
+            continue
+        try:
+            unit = mapa.unitat(t_bar + 1e-6)
+        except (AttributeError, TypeError, ValueError):
+            unit = bpm_unit.unitat_per_defecte(num, den)
+        factor = float(bpm_unit.factor(unit))
+        if factor <= TOL:
+            continue
+        n = int(round(bar_q / factor))
+        for j in range(max(0, n)):
+            q = b0q + j * factor
+            t = mapa.t_de_quarters(q)
+            if t < ini - TOL:
+                continue
+            if t >= fi - TOL:
+                break
+            times.append(float(t))
+            factors.append(factor)
+    if not times:
+        return [], 1.0, 0.0
+    unics = sorted(set(round(f, 6) for f in factors))
+    factor = unics[0] if len(unics) == 1 else 1.0
+    bq = sum(factors)
+    return times, factor, bq
+
+
+def opcions_tall_graella(trams, mapa, t, durada, offset, ref_base):
+    """Com `opcions_tall`, però amb els polsos del mapa actual."""
+    t = float(t)
+    for i, tr in enumerate(trams or ()):
+        ini = float(getattr(tr, "ini", tr[0]))
+        fi = float(getattr(tr, "fi", tr[1]))
+        if not (ini + TOL < t < fi - TOL):
+            continue
+        _bpm, local_num, local_den, _unit = _camps(tr)
+        ref_bpm, ref_num, ref_den = ref_base
+        bases = []
+        for m in ((local_num, local_den), (int(ref_num), int(ref_den))):
+            if m[0] > 0 and m[1] > 0 and m not in bases:
+                bases.append(m)
+        sides = []
+        for a, b in ((ini, t), (t, fi)):
+            times, factor, bq = polsos_graella(mapa, a, b)
+            if bq <= TOL:
+                opcions = _opcio_sense_beats(a, b, ref_base)
+            else:
+                opcions = _opcions_costat(
+                    a, b, bq, bases, beats=times,
+                    factor=factor)
+            if not opcions:
+                return None
+            sides.append(opcions)
+        return sides
+    return None
+
+
 def opcions_tall(trams, t, durada, offset, beats, ref_base, beat_factor):
     """Retorna `[opcions_esquerra, opcions_dreta]` o `None`.
 
