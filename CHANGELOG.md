@@ -30,7 +30,13 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   compàs/secció; l'offset/anacrusi s'anota amb un marker. S'inclou
   automàticament a `mapa_tempo/` del paquet de `Ctrl+E` i també es pot
   exportar sol amb **Fitxer ▸ Exporta mapa de tempo (MIDI)…**. Lector propi
-  per validar el fitxer.
+  per validar el fitxer. **Corregit**: el `End of Track` cau al **final de
+  l'últim tram** (no al seu inici), de manera que el MIDI dura el mateix que
+  la WAV; s'hi afig un marker **«Fi»** perquè els DAW que dimensionen l'item
+  pel darrer event (REAPER) també arriben fins al final. Flux DAW verificat
+  amb REAPER 7.80: importar **primer** el MIDI, acceptar «Importar mapa de
+  tempo» i després la WAV; així WAV i MIDI queden a **256,534 s**. Si la WAV
+  va primer, el *timebase* Beats pot canviar-ne la longitud.
 - **Restauració de backups**: **Fitxer ▸ Restaura una còpia de seguretat…**
   llista `backup/`, crea una còpia de l'estat actual abans de tocar res i
   restaura document, model i `audio/`; els exports no es toquen. Els enllaços

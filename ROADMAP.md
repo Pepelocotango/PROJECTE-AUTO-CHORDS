@@ -105,6 +105,12 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 - **Finestres**: la finestra principal i els diàlegs propis recorden geometria
   i estat entre sessions (`finestres.json` local); si no n'hi ha o queden fora
   de pantalla, es centren.
+- **Export / DAW**: `mapa_tempo.mid` (SMF tipus 1 amb `Set Tempo`,
+  `Time Signature`, markers i **«Fi»** al final) surt dins `mapa_tempo/` o sol
+  des del menú; flux REAPER verificat (importar **primer** el MIDI, acceptar el
+  mapa de tempo i després la WAV). Backups restauráveis des de la GUI.
+- **Configuració d'usuari**: totes les dreceres són editables a **Ajuda ▸
+  Configura les dreceres…** i es desen a `dreceres.json`.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
 - **Suite**: **1619 OK** (1 skip), `pyflakes` net i `docs-check` verd.

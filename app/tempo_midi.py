@@ -41,7 +41,7 @@ def _meta(tipus, dades=b""):
     return bytes((0xFF, tipus)) + _vlq(len(dades)) + dades
 
 
-def _track(events):
+def _track(events, end_tick=None):
     """Construeix un `MTrk` a partir de `(tick_absolut, bytes_event)`."""
     cos = bytearray()
     ultim = 0
@@ -50,7 +50,12 @@ def _track(events):
         cos += _vlq(tick - ultim)
         cos += ev
         ultim = tick
-    cos += _vlq(0) + _meta(META_END)
+    if end_tick is not None and int(end_tick) > ultim:
+        cos += _vlq(int(end_tick) - ultim)
+        ultim = int(end_tick)
+        cos += _meta(META_END)
+    else:
+        cos += _vlq(0) + _meta(META_END)
     return b"MTrk" + struct.pack(">I", len(cos)) + bytes(cos)
 
 
@@ -102,7 +107,16 @@ def _events_base(trams, offset=0.0, marques=()):
     for m in marques or ():
         t, text = _text_marcador(m)
         events.append((max(0.0, t), 5, "marker", text))
-    # Orde estable: a igual temps, tempo → compàs → markers.
+    # El MIDI ha de durar fins al final de l'últim tram (no només fins al
+    # seu inici): si no, importat en un DAW queda més curt que la WAV.
+    end_t = float(getattr(trams[-1], "fi", trams[-1][1]))
+    for m in marques or ():
+        end_t = max(end_t, _text_marcador(m)[0])
+    # Marker de final: alguns DAW (REAPER) dimensionen l'item MIDI pel darrer
+    # event, no per l'EOT; este marker fa que el clip arribe fins a la WAV.
+    events.append((max(0.0, end_t), 8, "marker", "Fi"))
+    events.append((max(0.0, end_t), 9, "end", None))
+    # Orde estable: a igual temps, tempo → compàs → markers → final.
     events.sort(key=lambda e: (e[0], e[1]))
     return events, first_bpm
 
@@ -131,7 +145,11 @@ def _events_de_conductor(trams, offset=0.0, marques=()):
     out = [(0, _meta(META_TRACK_NAME,
                      "AUTO CHORDS — Tempo Map".encode("utf-8")))]
     n_tempo = 0
+    end_tick = None
     for tick, tipus, valor in ticks:
+        if tipus == "end":
+            end_tick = tick
+            continue
         if tipus == "tempo":
             bpm = float(valor)
             if not (bpm > 0):
@@ -152,7 +170,7 @@ def _events_de_conductor(trams, offset=0.0, marques=()):
             text = str(valor).encode("utf-8")
             out.append((tick, _meta(META_MARKER, text)))
     out.sort(key=lambda e: e[0])
-    return out, n_tempo
+    return out, n_tempo, end_tick
 
 
 def desa_mapa_midi(ruta, trams, offset=0.0, marques=(), log=None):
@@ -165,8 +183,8 @@ def desa_mapa_midi(ruta, trams, offset=0.0, marques=(), log=None):
         marques: markers addicionals: `t` o `(t, tipus)`.
     Retorna la ruta escrita.
     """
-    events, n_tempo = _events_de_conductor(trams, offset, marques)
-    track = _track(events)
+    events, n_tempo, end_tick = _events_de_conductor(trams, offset, marques)
+    track = _track(events, end_tick)
     cap = b"MThd" + struct.pack(">IHHH", 6, 1, 1, PPQ)
     escriu_atomic_bytes(ruta, cap + track)
     if log:
@@ -201,7 +219,8 @@ def llegeix_mapa_midi(ruta):
         raise ValueError("Capçalera MIDI invàlida.")
     fmt, n_tracks, divisio = struct.unpack(">HHH", dades[8:14])
     info = {"format": fmt, "ppq": divisio, "n_tracks": n_tracks,
-            "tempo": [], "timesig": [], "markers": [], "track_names": []}
+            "tempo": [], "timesig": [], "markers": [], "track_names": [],
+            "end_tick": 0}
     pos = 8 + cap_len
     while pos + 8 <= len(dades):
         tipus = dades[pos:pos + 4]
@@ -264,7 +283,9 @@ def _llegeix_pista(pista, info):
 
 
 def _meta_llegida(tick, meta, dades, info):
-    if meta == META_TEMPO and len(dades) >= 3:
+    if meta == META_END:
+        info["end_tick"] = max(int(info.get("end_tick") or 0), int(tick))
+    elif meta == META_TEMPO and len(dades) >= 3:
         us = int.from_bytes(dades[:3], "big")
         if us > 0:
             info["tempo"].append({"tick": tick, "bpm": 60_000_000.0 / us})

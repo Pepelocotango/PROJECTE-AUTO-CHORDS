@@ -42,14 +42,18 @@ class TestTempoMidi(unittest.TestCase):
         self.assertIn("Anacrusi: 0.500000 s", textos)
         self.assertIn("Secció", textos)
         self.assertIn("Marcador", textos)
+        self.assertIn("Fi", textos)
         ticks = {e["text"]: e["tick"] for e in info["markers"]
-                 if e["text"] in ("Secció", "Marcador")}
+                 if e["text"] in ("Secció", "Marcador", "Fi")}
         self.assertEqual(ticks["Secció"], 960)
         self.assertEqual(ticks["Marcador"], 4800)
+        self.assertEqual(ticks["Fi"], info["end_tick"])
         self.assertAlmostEqual(
             tempo_midi.tick_a_segons(info, 3840), 4.0, places=6)
         self.assertAlmostEqual(
             tempo_midi.tick_a_segons(info, 4800), 6.0, places=6)
+        self.assertAlmostEqual(
+            tempo_midi.tick_a_segons(info, info["end_tick"]), 8.0, places=6)
 
     def test_exporta_total_inclou_mapa_midi(self):
         td = tempfile.mkdtemp()
@@ -74,6 +78,8 @@ class TestTempoMidi(unittest.TestCase):
                          os.path.join(td, "mapa_tempo"))
         info = tempo_midi.llegeix_mapa_midi(ruta)
         self.assertIn("Marcador", [m["text"] for m in info["markers"]])
+        self.assertAlmostEqual(
+            tempo_midi.tick_a_segons(info, info["end_tick"]), 2.0, places=6)
 
     def test_mapa_buit_es_rebutja(self):
         ruta = os.path.join(tempfile.mkdtemp(), "buit.mid")

@@ -431,6 +431,13 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
   amb la casella del diàleg (el resum continua dient que l'avís està
   silenciat). L'Assistència és per context (info box + fila Ajuda del diàleg)
   i les alternatives es poden carregar amb doble-clic.
+- **DAW (REAPER)**: flux provat (2026-11-14) amb `mapa_tempo.mid`: importa
+  **primer** el MIDI, accepta el diàleg **«Importar mapa de tempo al
+  proyecto»** (+ marcadors) i després importa la WAV en una segona pista.
+  Resultat: 17 markers de tempo/compàs, WAV **256,534059 s** i MIDI
+  **256,534098 s**. Si la WAV s'importa primer, el *timebase* per defecte
+  (**Beats**) pot ajustar-ne la longitud/velocitat; l'alternativa és posar el
+  projecte o l'item en **Time**.
 - **Export (S2)**: `manifest.csv` té 10 columnes (les 7 històriques +
   `bpm_quarter`, `beat_unit`, `bpm_mostra` al final; estat a l'inici del
   segment; `mapa_tempo.csv` canònic). La guia HTML mostra les dues xifres. La
