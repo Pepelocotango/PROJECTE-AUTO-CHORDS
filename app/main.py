@@ -11,8 +11,8 @@ import time  # patch("app.main.time.monotonic") als tests de TAP
 from PyQt5.QtCore import QCoreApplication, QEvent, Qt, QTimer, QUrl
 from PyQt5.QtGui import QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
-    QAction, QApplication, QButtonGroup, QCheckBox, QDockWidget,
-    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QComboBox,
+    QAction, QApplication, QAbstractButton, QButtonGroup, QCheckBox,
+    QDockWidget, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QComboBox,
     QMessageBox, QProgressBar, QPushButton, QShortcut,
     QDialog, QInputDialog,
     QAbstractSpinBox,
@@ -60,6 +60,7 @@ from .tap_ui import TapMixin
 from .visor_ui import VisorUIMixin
 from .analisi_ui import AnalisiMixin
 from .export_ui import ExportMixin
+from .dreceres_ui import DreceresMixin
 
 # Re-export de mòduls que els tests comproven com a objecte únic.
 _MODULS_REEXPORTATS = (postproc, Feina, partitura, time)
@@ -159,7 +160,7 @@ def activa_faulthandler(log_path, logger=None):
 class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                 EdicioMixin, BarresMixin, ProjecteMixin, TempsMixin,
                 MarcadorsMixin, TapMixin, VisorUIMixin, AnalisiMixin,
-                ExportMixin):
+                ExportMixin, DreceresMixin):
     # Els `except Exception` d'aquesta classe protegeixen accions de l'usuari:
     # sempre registren l'error i/o mostren un diàleg, mai l'amaguen.
     def __init__(self):
@@ -551,10 +552,12 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.barra_transport = barra_transport
 
         self.sortida = ""
+        self._inicialitza_dreceres()
         # Drecera: espai = play/pausa (a la finestra principal, perquè el
         # visor està incrustat i el seu propi QShortcut no s'activaria).
         self._sc_play = QShortcut(QKeySequence(Qt.Key_Space), self)
         self._sc_play.activated.connect(self._toggle_play)
+        self._vincula_drecera("global.play", self._sc_play)
         self._taps = []                       # instants dels taps (tap tempo)
         # Estat de la sessió de tap tempo: destí, undo obert i timer de
         # tancament (2 s sense tocar → una sola operació de desfer).
@@ -567,11 +570,13 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self._tap_timer.setInterval(2000)
         self._tap_timer.timeout.connect(self._tanca_sessio_tap)
         self._sc_tap = QShortcut(QKeySequence(Qt.Key_T), self)
+        self._vincula_drecera("global.tap", self._sc_tap)
         # `E`: commuta l'EINA del timeline (intel·ligent ⇄ marc). És un TOGGLE:
         # cada pulsació canvia d'estat; per defecte sempre s'arrenca en
         # intel·ligent (no hi ha estat «off»).
         self._sc_eina = QShortcut(QKeySequence(Qt.Key_E), self)
         self._sc_eina.activated.connect(self._toggle_eina_tecla)
+        self._vincula_drecera("global.eina", self._sc_eina)
         self._sc_tap.activated.connect(self._tap_tempo)
         # `+` (de dalt i del teclat numèric) = **marcador** en viu, també
         # mentre sona. Va per un FILTRE d'esdeveniments (no un QShortcut):
@@ -579,6 +584,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         # s'escriu normalment i NO afig cap marcador.
         QApplication.instance().installEventFilter(self)
         self._crea_menus()
+        self._aplica_dreceres()
         self._canvia_mode_temps(True)
         # Autocomprovació dels fitxers que l'app NECESSITA per analitzar
         # (els plugins Vamp; l'host és `vamp_host_local`).
@@ -1054,6 +1060,16 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                 "No s'ha pogut estimar el BPM.\n"
                 "Pot ser un tema en directe o molt irregular: escriu-lo a mà.")
 
+    def _intro_te_funcio_propia(self, obj):
+        """True si el giny sota el focus fa servir Enter per a ell mateix."""
+        w = obj if isinstance(obj, QWidget) else QApplication.focusWidget()
+        while w is not None and w is not self:
+            if isinstance(w, (QAbstractButton, QComboBox, QDialog,
+                              QAbstractSpinBox)):
+                return True
+            w = w.parentWidget()
+        return False
+
     def eventFilter(self, obj, ev):
         """Filtre d'esdeveniments de la finestra.
 
@@ -1092,7 +1108,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                     and getattr(self, "visor_ref", None) is not None
                     and isinstance(obj, QWidget)
                     and obj.window() is self):
-                tecla, txt, mods = ev.key(), ev.text(), ev.modifiers()
                 w = obj if isinstance(obj, QWidget) \
                     else QApplication.focusWidget()
                 escrivint = False
@@ -1104,23 +1119,12 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                     w = w.parentWidget()
                 if escrivint:
                     return False
-                # Enter i «+» només s'intercepten amb el focus al timeline.
-                # En formularis, llistes, editor o diàlegs han de fer la seua
-                # funció normal (confirmar, activar, escriure…).
-                vr = getattr(self, "visor_ref", None)
-                en_timeline = False
-                w2 = obj
-                while w2 is not None:
-                    if w2 is getattr(vr, "timeline", None):
-                        en_timeline = True
-                        break
-                    w2 = w2.parentWidget()
-                es_plus = (tecla == Qt.Key_Plus
-                           or (tecla == Qt.Key_Equal
-                               and (txt == "+" or mods & Qt.ShiftModifier)))
-                if es_plus:
-                    if not en_timeline:
-                        return False
+                # «+»/Enter són dreceres de la FINESTRA, no només del
+                # timeline: funcionen des de llistes, editor o qualsevol
+                # racó, tret dels camps de text (ja filtrats) i dels ginys
+                # que tenen una funció pròpia per a Enter (botons, combos,
+                # diàlegs).
+                if self._coincideix_drecera("talla.plus", ev):
                     # El MATEIX esdeveniment pot passar dos voltes pel filtre
                     # en el mateix despatx: la segona no compta. La marca es
                     # neteja al següent cicle perquè una pulsació nova de «+»
@@ -1132,14 +1136,14 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                         0, lambda: setattr(self, "_plus_ev", None))
                     self._talla_tempo_i_estructura_cursor()
                     return True
-                if tecla == Qt.Key_M:
+                if self._coincideix_drecera("marcador", ev):
                     self._marcador_cursor()
                     return True
-                if tecla == Qt.Key_0:
+                if self._coincideix_drecera("talla.estructura", ev):
                     self._talla_estructura_cursor()
                     return True
-                if tecla in (Qt.Key_Return, Qt.Key_Enter):
-                    if not en_timeline:
+                if self._coincideix_drecera("talla.tempo", ev):
+                    if self._intro_te_funcio_propia(obj):
                         return False
                     self._talla_tempo_cursor()
                     return True

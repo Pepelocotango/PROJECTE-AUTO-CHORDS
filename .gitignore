@@ -56,6 +56,9 @@ sessio.json
 # Geometria recordada de la finestra principal i els diàlegs
 finestres.json
 
+# Dreceres de teclat configurades per l'usuari
+dreceres.json
+
 # Traces natives de crash (el .log ja cau a *.log; el .anterior no)
 crash_nadiu.log*
 

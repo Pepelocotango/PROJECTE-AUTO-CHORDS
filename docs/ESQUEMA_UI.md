@@ -95,7 +95,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
 | **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza beats, downbeats i BPM (F7)** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · **Quantitza BPM** (Sense decimals · 1 decimal · 2 decimals) · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (M) · Esborra l'últim marcador · Inclou estructura |
-| **Ajuda** | Dreceres de teclat · Obre la carpeta del registre · Quant a Auto Chords |
+| **Ajuda** | Dreceres de teclat · **Configura les dreceres…** · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Exporta àudio… (Fase 6)
 
@@ -127,6 +127,20 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   `backup/` (les més noves primer). Abans de restaurar crea una còpia de
   l'estat actual; després recupera el document, els CSV/marcadors i `audio/`.
   **No toca els exports** (`wavs_*`, `partitura/`, MIDI).
+
+### Configuració de dreceres
+
+- **`Ajuda ▸ Configura les dreceres…`** obri una taula amb **totes les
+  dreceres**: accions de menú, globals (play, TAP, eina), editor (`+`,
+  Enter, `0`, `M`) i timeline (Esc, nudge). Té **cerca**, edició amb
+  `QKeySequenceEdit`, **Esborra**, **Restaura la seleccionada**, **Restaura
+  totes** i **Desa**.
+- En desar es comproven els **conflictes** (una mateixa combinació per a dues
+  accions) i, si n'hi ha, no es desa i s'indica quines xoquen.
+- Les dreceres es guarden a `dreceres.json` dins `DADES_DIR` i es tornen a
+  aplicar en obrir l'app. Un valor buit deixa l'acció sense drecera.
+- Els camps de text no s'intercepten; Enter respecta botons, combos i
+  diàlegs amb acció pròpia.
 
 ### Eina del timeline i abast del rang
 
@@ -177,6 +191,9 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 > **F5** = Analitza · **Ctrl++ / Ctrl+− / Ctrl+0** = zoom +/− / total ·
 > **`+`** = parteix tempo i estructura · **Enter** = parteix només tempo ·
 > **`0`** = parteix només estructura · **`M`** = marcador independent.
+> `+`, `Enter`, `0` i `M` funcionen des de **qualsevol focus de la finestra**
+> (llistes, editor, timeline…), tret dels **camps de text**; `Enter` respecta
+> botons, combos i diàlegs que tenen la seua pròpia acció.
 >
 > **Multi-selecció (timeline)**: **Ctrl+clic** afegeix/treu un clip ·
 > **Shift+clic** = rang **per temps, sempre del carril del clip clicat** (per agafar

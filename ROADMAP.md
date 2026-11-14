@@ -7,7 +7,7 @@
 > **GPL-3.0-or-later**.
 >
 > **v0.8.0** · Estat: **flux de producte estable i multi-SO** · Suite **verda**
-> (1.615 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
+> (1.619 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -107,7 +107,7 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   de pantalla, es centren.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
-- **Suite**: **1615 OK** (1 skip), `pyflakes` net i `docs-check` verd.
+- **Suite**: **1619 OK** (1 skip), `pyflakes` net i `docs-check` verd.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).

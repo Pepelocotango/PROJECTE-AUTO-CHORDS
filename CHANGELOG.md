@@ -5,6 +5,25 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Afegit — dreceres configurables i persistents (2026-11-14)
+- **Ajuda ▸ Configura les dreceres…**: taula amb totes les dreceres (menú,
+  globals, editor i timeline), cerca, edició amb `QKeySequenceEdit`,
+  esborrar, restaurar una/totes i control de conflictes.
+- Es desen a `dreceres.json` dins `DADES_DIR` i es tornen a aplicar en
+  obrir l'app; un valor buit deixa l'acció sense drecera.
+- `+`, Enter, `0`, `M`, `Space`, `T`, `E`, nudge, Esc i les accions de menú
+  (`Copia`, `Retalla`, `Enganxa`, `Duplica`, `Elimina`…) comparteixen el mapa
+  configurable; el timeline i els `QAction`/`QShortcut` s'actualitzen alhora.
+- Es mantenen les excepcions de context: els camps de text no s'intercepten
+  i Enter respecta botons, combos i diàlegs. Suite: **1619 OK** (1 skip).
+
+### Canviat — dreceres `+` i Enter des de qualsevol focus (2026-11-14)
+- **`+`** (parteix tempo i estructura) i **Enter** (parteix només tempo) ja no
+  exigixen que el focus siga al timeline: funcionen des de llistes, l'editor o
+  qualsevol racó de la finestra. Es mantenen les excepcions dels **camps de
+  text** (no s'hi intercepta res) i, per a Enter, dels **botons, combos i
+  diàlegs** que tenen una acció pròpia.
+
 ### Afegit — export MIDI del mapa i restauració de còpies (2026-11-14)
 - **Export MIDI**: `mapa_tempo.mid` (Standard MIDI File tipus 1, pista de
   conductor) amb `Set Tempo`, `Time Signature`, markers de tram i marcadors de

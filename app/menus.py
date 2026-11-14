@@ -8,16 +8,25 @@ from PyQt5.QtWidgets import QAction, QMessageBox
 
 from . import __version__
 
+
+def _slug(text):
+    import re
+    return re.sub(r"\W+", "_", str(text or "").replace("&", "")).strip("_").lower()
+
 class MenusMixin:
     """Menús, dreceres i diàlegs d'ajuda."""
 
-    def _act(self, menu, text, shortcut, slot, checkable=False):
+    def _act(self, menu, text, shortcut, slot, checkable=False, id_=None):
         a = QAction(text, self)
         if shortcut:
             a.setShortcut(QKeySequence(shortcut))
         a.setCheckable(checkable)
         a.triggered.connect(slot)
         menu.addAction(a)
+        clau = id_ or f"menu.{_slug(menu.title())}.{_slug(text)}"
+        self._registra_drecera(
+            clau, text, f"Menú {menu.title().replace('&', '')}",
+            shortcut or "", "menu", a)
         return a
 
     def _crea_menus(self):
@@ -64,13 +73,18 @@ class MenusMixin:
         self._act(m, "Surt", "Ctrl+Q", self.close)
         # --- Edita ---
         m = mb.addMenu("&Edita")
-        self._act(m, "Desfer", "Ctrl+Z", self._undo_visor)
-        self._act(m, "Refer", "Ctrl+Y", self._redo_visor)
+        self._act(m, "Desfer", "Ctrl+Z", self._undo_visor,
+                  id_="edita.desfer")
+        self._act(m, "Refer", "Ctrl+Y", self._redo_visor,
+                  id_="edita.refer")
         self._act(m, "Refer (alternatiu)", "", self._redo_visor)
         m.addSeparator()
-        self._act(m, "Retalla", "Ctrl+X", self._retalla_clips)
-        self._act(m, "Copia", "Ctrl+C", self._copia_clips)
-        self._act(m, "Enganxa", "Ctrl+V", self._enganxa_clips)
+        self._act(m, "Retalla", "Ctrl+X", self._retalla_clips,
+                  id_="edita.retalla")
+        self._act(m, "Copia", "Ctrl+C", self._copia_clips,
+                  id_="edita.copia")
+        self._act(m, "Enganxa", "Ctrl+V", self._enganxa_clips,
+                  id_="edita.enganxa")
         m.addSeparator()
         self._act(m, "Afegeix acord…", "", self._afegeix_acord_ui)
         self._act(m, "Afegeix secció…", "", self._afegeix_seccio_ui)
@@ -83,9 +97,12 @@ class MenusMixin:
                   self._afegeix_tram_ui)
         self._act(m, "Parteix el tram al cursor…", "", self._parteix_tram_ui)
         m.addSeparator()
-        self._act(m, "Elimina element", "Del", self._elimina_element)
-        self._act(m, "Duplica element", "Ctrl+D", self._duplica_element)
-        self._act(m, "Reanomena element", "F2", self._renomena_element)
+        self._act(m, "Elimina element", "Del", self._elimina_element,
+                  id_="edita.elimina")
+        self._act(m, "Duplica element", "Ctrl+D", self._duplica_element,
+                  id_="edita.duplica")
+        self._act(m, "Reanomena element", "F2", self._renomena_element,
+                  id_="edita.renomena")
         self._act(m, "Troba i reemplaça…", "Ctrl+H", self._troba_i_reemplaca_ui)
         m.addSeparator()
         self._act(m, "Parteix el tempo al cursor", "",
@@ -182,6 +199,8 @@ class MenusMixin:
         # --- Ajuda ---
         m = mb.addMenu("A&juda")
         self._act(m, "Dreceres de teclat", "", self._mostra_dreceres)
+        self._act(m, "Configura les dreceres…", "",
+                  self._obre_config_dreceres)
         self._act(m, "Obre la carpeta del registre", "",
                   self.obre_carpeta_registre)
         self._act(m, "Quant a Auto Chords", "", self._quant_a)
@@ -225,6 +244,10 @@ class MenusMixin:
                     parells.append((a.text().replace("&", ""), drecera))
             if parells:
                 grups.append((accio.text().replace("&", ""), parells))
+        def mostra(clau):
+            seq = self._valor_drecera(clau)
+            return {"Space": "Espai", "Return": "Enter"}.get(seq, seq)
+
         grups.append(("Ratolí i tecles del visor (combinacions)", [
             ("seleccionar un clip", "Clic a un clip"),
             ("afegir / treure un clip de la selecció (disjunt)", "Ctrl+clic"),
@@ -238,25 +261,39 @@ class MenusMixin:
             ("redimensionar (inici / final)", "Arrossega una vora"),
             ("rectangle de selecció (marquee)",
              "Ctrl+arrossega (temporal) o Eina marc ▸ arrossega"),
-            ("canviar d'eina del timeline (intel·ligent ⇄ marc)", "E"),
+            ("canviar d'eina del timeline (intel·ligent ⇄ marc)",
+             mostra("global.eina")),
             ("cursor al punt clicat / buidar la selecció", "Clic al fons"),
             ("seleccionar TOT el que hi ha dins el loop", "Doble-clic al loop"),
             ("marcar / editar el loop A-B", "Arrossega sobre el regle"),
             ("menú d'accions del clip", "Botó dret a un clip"),
             ("desplaçar la vista (pan)", "Botó dret arrossegant"),
             ("zoom", "Roda del ratolí"),
-            ("play / pausa", "Espai"),
-            ("TAP del temps (tap tempo)", "T"),
+            ("play / pausa", mostra("global.play")),
+            ("TAP del temps (tap tempo)", mostra("global.tap")),
             ("copiar / retallar / enganxar al cursor",
-             "Ctrl+C / Ctrl+X / Ctrl+V"),
+             f"{mostra('edita.copia')} / {mostra('edita.retalla')} / "
+             f"{mostra('edita.enganxa')}"),
             ("enganxar SALTANT-SE el snap", "Ctrl+Alt+V"),
             ("moure un clip un pas de graella (Alt = vora dreta)",
              "← / →"),
             ("Alt+clic", "cap acció de l'app (el sistema pot interceptar-lo)"),
             ("cancel·lar: rang en curs · loop · selecció", "Esc"),
-            ("desfer / refer", "Ctrl+Z / Ctrl+Y"),
-            ("reanomenar (clip o grup del tipus actiu)", "F2"),
-            ("esborrar la selecció", "Del"),
+            ("desfer / refer",
+             f"{mostra('edita.desfer')} / {mostra('edita.refer')}"),
+            ("reanomenar (clip o grup del tipus actiu)",
+             mostra("edita.renomena")),
+            ("esborrar la selecció", mostra("edita.elimina")),
+        ]))
+        grups.append(("Dreceres configurables (Ajuda ▸ Configura…)", [
+            ("partir tempo i estructura", mostra("talla.plus")),
+            ("partir només el tempo", mostra("talla.tempo")),
+            ("partir només l'estructura", mostra("talla.estructura")),
+            ("afegir un marcador", mostra("marcador")),
+            ("cancel·lar rang/loop/selecció", mostra("timeline.esc")),
+            ("nudge esquerra / dreta",
+             f"{mostra('timeline.nudge_esq')} / "
+             f"{mostra('timeline.nudge_dret')}"),
         ]))
         return grups
 

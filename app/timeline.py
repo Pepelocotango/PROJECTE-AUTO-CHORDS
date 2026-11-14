@@ -55,6 +55,7 @@ from app import audio_edit  # noqa: E402
 from app import graella  # noqa: E402
 from app import pipeline  # noqa: E402  (DESTÍ del moviment d'un bloc, §6.3)
 from app import tempo_map  # noqa: E402  (pas de nudge = compàs sencer)
+from app import dreceres  # noqa: E402
 from app import timeline_geometry as geo  # noqa: E402
 
 
@@ -243,6 +244,7 @@ class TimelineView(QGraphicsView):
         # `_tempo_mogut` = el layer ha emès `tramMoved` (moviment real). Sense
         # això, un simple clic hi obria/desava una operació buida.
         self._tempo_gest = False
+        self._dreceres = {}
         self._tempo_mogut = False
         self._loop_item = None     # banda de loop A/B
         self._loop_a = None
@@ -2056,6 +2058,15 @@ class TimelineView(QGraphicsView):
         finally:
             it._drag_mode = previ
 
+    def set_dreceres(self, bindings):
+        """Actualitza les dreceres configurables del timeline."""
+        self._dreceres = dict(bindings or {})
+
+    def _tecla(self, clau, event, ignora_mods=0):
+        meta = dreceres.DEFECTES.get(clau) or {}
+        seq = self._dreceres.get(clau, meta.get("defecte", ""))
+        return dreceres.coincideix(seq, event, ignora_mods=ignora_mods)
+
     def keyPressEvent(self, event) -> None:
         mods = event.modifiers()
         # Qt no inclou en `modifiers()` la tecla que s'acaba de prémer: si és
@@ -2068,50 +2079,55 @@ class TimelineView(QGraphicsView):
         if ((mods_tots & Qt.ControlModifier)
                 and (mods_tots & Qt.ShiftModifier)):
             self._activa_eina_temporal()
-        if event.key() == Qt.Key_Escape:
+        if self._tecla("timeline.esc", event):
             # Esc: el resol el VISOR, per ordre — (1) el RANG en curs, (2) el
             # LOOP, (3) la SELECCIÓ. Si no es compleix cap, no fa res.
             self.escapePressed.emit()
             event.accept()
             return
-        if event.key() == Qt.Key_Space:
+        if self._tecla("global.play", event):
             self.playRequested.emit()
             event.accept()
             return
-        if (event.key() in (Qt.Key_Left, Qt.Key_Right) and self._sel[0]
-                and not (mods & Qt.ControlModifier)):
-            self._despatxa("nudge",
-                           direccio=(-1 if event.key() == Qt.Key_Left else 1),
+        direccio = 0
+        if not (mods & Qt.ControlModifier):
+            if self._tecla("timeline.nudge_esq", event,
+                           ignora_mods=Qt.AltModifier):
+                direccio = -1
+            elif self._tecla("timeline.nudge_dret", event,
+                             ignora_mods=Qt.AltModifier):
+                direccio = 1
+        if direccio and self._sel[0]:
+            self._despatxa("nudge", direccio=direccio,
                            estira=bool(mods & Qt.AltModifier),
                            pas=self._pas_nudge())
             event.accept()
             return
-        if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+        if self._tecla("edita.elimina", event):
             # Esborra la selecció. Els items no reben tecles (no son
             # focusables), per tant ho gestionem aquí, que si tenim el focus.
             if self.selected_keys():
                 self._despatxa("elimina")
                 event.accept()
                 return
-        if mods & Qt.ControlModifier:
-            # Dreceres estàndard de DAW: totes passen pel despatx ÚNIC del
-            # Visor (que resol els tres carrils i la multi-selecció).
-            if event.key() == Qt.Key_C:
-                self._despatxa("copia")
-                event.accept()
-                return
-            if event.key() == Qt.Key_X:
-                self._despatxa("retalla")
-                event.accept()
-                return
-            if event.key() == Qt.Key_V:
-                self._despatxa("enganxa")
-                event.accept()
-                return
-            if event.key() == Qt.Key_D:
-                self._despatxa("duplica")
-                event.accept()
-                return
+        # Dreceres estàndard de DAW: totes passen pel despatx ÚNIC del
+        # Visor (que resol els tres carrils i la multi-selecció).
+        if self._tecla("edita.copia", event):
+            self._despatxa("copia")
+            event.accept()
+            return
+        if self._tecla("edita.retalla", event):
+            self._despatxa("retalla")
+            event.accept()
+            return
+        if self._tecla("edita.enganxa", event):
+            self._despatxa("enganxa")
+            event.accept()
+            return
+        if self._tecla("edita.duplica", event):
+            self._despatxa("duplica")
+            event.accept()
+            return
         super().keyPressEvent(event)
 
     def keyReleaseEvent(self, event) -> None:

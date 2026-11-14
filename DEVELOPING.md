@@ -255,6 +255,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `config.py` | Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE. |
 | `dialeg_analitza_bpm.py` | Diàleg d'anàlisi de BPM/beats. |
 | `dialeg_canvi_unitat.py` | Canvi explícit d'unitat de pols (clip o Ref. recalc). |
+| `dialeg_dreceres.py` | Diàleg per veure i canviar totes les dreceres de teclat. |
 | `dialeg_guia_rapida.py` | Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas. |
 | `dialeg_opcions.py` | Diàleg d'opcions d'autodetecció (BPM/acords/estructura). |
 | `dialeg_quantitza.py` | Diàleg de quantització a la graella. |
@@ -265,6 +266,8 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `dialegs.py` | Façana dels diàlegs d'AUTO CHORDS. |
 | `drag_drop.py` | Fitxers d'àudio que es poden arrossegar des del gestor de fitxers. |
 | `drag_drop_ui.py` | Helpers de drag & drop de la finestra (F3). |
+| `dreceres.py` | Dreceres de teclat: valors per defecte, càrrega i desat. |
+| `dreceres_ui.py` | Configuració de dreceres de la finestra (menú, globals i timeline). |
 | `edicio_ui.py` | Accions d'edició de la finestra (F3). |
 | `export_ui.py` | Exportació de la finestra (F3). |
 | `exporta_audio.py` | Exportació de l'àudio de treball a altres formats (Fase 6). |

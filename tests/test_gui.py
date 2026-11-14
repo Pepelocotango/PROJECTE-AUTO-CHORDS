@@ -5928,10 +5928,13 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr = self.w.visor_ref
         vr.pos = 15.0
         vr.ed_nom.setEnabled(True)      # (amb un clip seleccionat ho està)
+        n_t = len(vr.tempo_trams)
         vr.ed_nom.setFocus()
         QTest.keyClick(vr.ed_nom, Qt.Key_Plus)
         QTest.keyClick(vr.ed_nom, Qt.Key_Equal, Qt.ShiftModifier)
+        QTest.keyClick(vr.ed_nom, Qt.Key_Return)
         self.assertEqual(len(vr.marcadors), 0)
+        self.assertEqual(len(vr.tempo_trams), n_t)
         self.assertIn("+", vr.ed_nom.text())     # el «+» s'ha escrit
 
     def test_referencia_recalc_barra_2(self):
@@ -6286,8 +6289,8 @@ class TestAncoratgesFinestra(unittest.TestCase):
             or round(float(vr.tempo_trams[0][2]), 3) != 120.0
             or round(float(vr.tempo_trams[1][2]), 3) != 120.0)
 
-    def test_plus_i_enter_nomes_amb_focus_al_timeline(self):
-        """Enter i «+» no s'han d'interceptar des de llistes/editor."""
+    def test_plus_i_enter_funcionen_des_de_qualsevol_focus(self):
+        """«+» i Enter són dreceres de finestra; els camps de text manen."""
         from PyQt5.QtTest import QTest
         from PyQt5.QtCore import Qt
         # Graella Auto (sense dependre de beats QM) perquè el cursor tinga snap.
@@ -6295,25 +6298,31 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr = self.w.visor_ref
         vr.pos = 12.0
         n_t, n_s = len(vr.tempo_trams), len(vr.seccions)
+        # Des d'una llista (no és un camp de text): «+» talla les dos pistes.
         vr.llista_ac.setFocus()
         QTest.keyClick(vr.llista_ac, Qt.Key_Plus)
-        self.assertEqual(len(vr.tempo_trams), n_t)
-        self.assertEqual(len(vr.seccions), n_s)
-        QTest.keyClick(vr.llista_ac, Qt.Key_Return)
-        self.assertEqual(len(vr.tempo_trams), n_t)
-        # Amb el focus al timeline sí que actuen, i cada pulsació nova conta.
-        vr.timeline.setFocus()
-        QTest.keyClick(vr.timeline, Qt.Key_Plus)
         QTest.qWait(1)              # deixa córrer el singleShot del guard
         self.assertEqual(len(vr.tempo_trams), n_t + 1)
         self.assertEqual(len(vr.seccions), n_s + 1)
+        vr.undo()
+        QTest.qWait(1)
+        # Enter des de la mateixa llista talla només el tempo.
+        vr.pos = 12.0
+        vr.llista_ac.setFocus()
+        QTest.keyClick(vr.llista_ac, Qt.Key_Return)
+        self.assertEqual(len(vr.tempo_trams), n_t + 1)
+        self.assertEqual(len(vr.seccions), n_s)
+        vr.undo()
+        QTest.qWait(1)
+        # I des del timeline continuen funcionant, amb pulsacions noves.
         vr.pos = 18.0
+        vr.timeline.setFocus()
         QTest.keyClick(vr.timeline, Qt.Key_Plus)
         QTest.qWait(1)
-        self.assertEqual(len(vr.tempo_trams), n_t + 2)
-        self.assertEqual(len(vr.seccions), n_s + 2)
+        self.assertEqual(len(vr.tempo_trams), n_t + 1)
+        self.assertEqual(len(vr.seccions), n_s + 1)
         vr.undo()
-        vr.undo()
+        QTest.qWait(1)
         vr.pos = 12.0
         vr.timeline.setFocus()
         QTest.keyClick(vr.timeline, Qt.Key_Return)

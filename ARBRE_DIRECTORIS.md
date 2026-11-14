@@ -76,7 +76,7 @@ PROJECTE AUTO CHORDS/
 │   ├── PLA_SIMPLIFICACIO_TEMPO.md         🟢  # Pla per fases de simplificació del tempo
 │   ├── TORNAR A REVISAR AVANS AQUEST PLA.TXT 🟢
 │   └── per fer_2026-11-05/                🟢  # (54 fitxers)
-├── app/                           🟢  # Codi de l'aplicació (PyQt5) (76 fitxers)
+├── app/                           🟢  # Codi de l'aplicació (PyQt5) (79 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
 │   ├── analisi_ui.py             🟢  # Accions d'anàlisi de la finestra (F3).
@@ -89,6 +89,7 @@ PROJECTE AUTO CHORDS/
 │   ├── config.py                 🟢  # Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE.
 │   ├── dialeg_analitza_bpm.py    🟢  # Diàleg d'anàlisi de BPM/beats.
 │   ├── dialeg_canvi_unitat.py    🟢  # Canvi explícit d'unitat de pols (clip o Ref. recalc).
+│   ├── dialeg_dreceres.py        🟢  # Diàleg per veure i canviar totes les dreceres de teclat.
 │   ├── dialeg_guia_rapida.py     🟢  # Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas.
 │   ├── dialeg_opcions.py         🟢  # Diàleg d'opcions d'autodetecció (BPM/acords/estructura).
 │   ├── dialeg_quantitza.py       🟢  # Diàleg de quantització a la graella.
@@ -99,6 +100,8 @@ PROJECTE AUTO CHORDS/
 │   ├── dialegs.py                🟢  # Façana dels diàlegs d'AUTO CHORDS.
 │   ├── drag_drop.py              🟢  # Fitxers d'àudio que es poden arrossegar des del gestor de fitxers.
 │   ├── drag_drop_ui.py           🟢  # Helpers de drag & drop de la finestra (F3).
+│   ├── dreceres.py               🟢  # Dreceres de teclat: valors per defecte, càrrega i desat.
+│   ├── dreceres_ui.py            🟢  # Configuració de dreceres de la finestra (menú, globals i timeline).
 │   ├── edicio_ui.py              🟢  # Accions d'edició de la finestra (F3).
 │   ├── export_ui.py              🟢  # Exportació de la finestra (F3).
 │   ├── exporta_audio.py          🟢  # Exportació de l'àudio de treball a altres formats (Fase 6).
@@ -290,7 +293,7 @@ PROJECTE AUTO CHORDS/
 │   ├── qm-vamp-plugins.cat 🟢
 │   ├── qm-vamp-plugins.n3  🟢
 │   └── qm-vamp-plugins.so  🟢
-├── tests/                         🟢  # Suite unittest offscreen (24 fitxers)
+├── tests/                         🟢  # Suite unittest offscreen (25 fitxers)
 │   ├── _qt_neteja.py              🟢  # Neteja ORDENADA dels objectes Qt entre tests.
 │   ├── _temporals.py              🟢  # Higiene dels tests: cap temporal no s'ha de quedar pel disc.
 │   ├── test_ancoratges.py         🟢  # Suite de test — Marcadors humans i velocitat de reproducció.
@@ -302,6 +305,7 @@ PROJECTE AUTO CHORDS/
 │   ├── test_despatx_edicio.py     🟢  # Despatx ÚNIC d'edició (regla d'or #11) — contracte de superfícies.
 │   ├── test_docs_al_dia.py        🟢  # Test: la documentació generada ha d'estar al dia.
 │   ├── test_drag_drop.py          🟢  # Drag & drop d'àudio des del gestor de fitxers (Linux, Windows i macOS).
+│   ├── test_dreceres.py           🟢  # Configuració persistent de dreceres de teclat.
 │   ├── test_edicio.py             🟢  # Suite de test — Edicio
 │   ├── test_exporta_audio.py      🟢  # Tests de l'exportació de la còpia de treball (Fase 6).
 │   ├── test_finestres.py          🟢  # Geometria persistent de finestres (estat local, no del projecte).

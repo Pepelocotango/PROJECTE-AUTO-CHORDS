@@ -94,6 +94,15 @@ class VisorUIMixin:
                 beat_unit=_ru or "negra",
             )
             self.visor_ref = visor
+            if hasattr(self, "_registra_drecera") \
+                    and hasattr(visor, "_sc_del_marcador"):
+                self._registra_drecera(
+                    "visor.elimina_marcador",
+                    "Esborra el marcador seleccionat", "Visor",
+                    "Del", "shortcut", visor._sc_del_marcador,
+                    conflicte=False)
+            if hasattr(self, "_aplica_dreceres"):
+                self._aplica_dreceres()
             if _rb is None or not getattr(self, "_ref_manual", False):
                 self._sincronitza_ref_des_del_visor()
             self._aplica_beats_guardats(visor)

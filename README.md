@@ -65,6 +65,8 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 1. **Obre l'àudio** (`Fitxer ▸ Obre…`, `Ctrl+O`, o **arrossegant-lo** des de l'explorador de fitxers) — si no és WAV, es converteix sol amb **ffmpeg** i en queda una còpia dins el projecte. En obrir-lo es crea/obre el **projecte** (et demana la carpeta si cal).
 2. **Opcional: ajusta el temps i analitza** — **Analitza beats, downbeats i BPM** (`F7`) per a beats/downbeats/BPM i **Analitza** (`F5`) per a acords + estructura, en l'ordre que vulguis. També pots treballar a mà des del model inicial (1 acord `N` + 1 secció `A`). **L'anàlisi i l'edició manual són complementaris**: l'anàlisi proposa i tu corregeixes, o al revés, fins al mapa final.
 3. **Revisa i edita** els acords, les seccions i el **mapa de BPM/compàs** al visor (timeline estil DAW amb **tres pistes**, llistes i franja Editor).
+Les **dreceres** es poden veure i canviar a **Ajuda ▸ Configura les dreceres…**; es desen entre sessions.
+
 4. **`Exporta WAV's…`** (`Ctrl+E`): WAVs silenciosos, CSV, `mapa_tempo/` (CSV + **MIDI**), guia i, si vols, **`Exporta partitura`**. Per a una còpia en un altre format, **`Fitxer ▸ Exporta àudio…`**; per al mapa sol, **`Fitxer ▸ Exporta mapa de tempo (MIDI)…`**.
 5. **Desa el projecte** (`Ctrl+S`): `.acproj` + `audio/` + CSV + backups. Els **CSV del model es desen a cada edició**; `Ctrl+S` desa el document i el backup, i l'autosave/recuperació són automàtics.
 

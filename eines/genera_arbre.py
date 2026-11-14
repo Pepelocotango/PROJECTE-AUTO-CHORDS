@@ -60,6 +60,7 @@ EXCLOSOS_ARXIU = {
     "opcions_detecta.json",
     "recents.json",
     "sessio.json",
+    "dreceres.json",
     ".coverage",
 }
 

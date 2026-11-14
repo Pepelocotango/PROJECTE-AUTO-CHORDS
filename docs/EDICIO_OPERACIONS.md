@@ -164,6 +164,7 @@ compassos sencers, apareix un diàleg per **conservar o descartar** l'operació.
 | 34 | **Estat complet de l'app** | — | **FET** |
 | 35 | **Llistar el model** | llistes del visor: acords ⑩, seccions ⑪, **clips de tempo/compàs ⑭** (`Inici (s)`·`Fi (s)`·`BPM`·`Compàs`; el flag rubato) i **marcadors ⑮** (`Temps (s)`·`Tipus`). Clic = salta, doble-clic = editar/franja Editor, botó dret = menú del carril | **FET** |
 | 35b | **Talls i marcadors independents** | `Enter` = només tempo · `0` = només estructura · `+` = tempo + estructura · `M` = només marcador; llista ⑮ per editar/eliminar | **FET**: els marcadors són anotacions independents del tempo i de l'estructura |
+| 35c | **Configurar dreceres** | *Ajuda ▸ Configura les dreceres…* | **FET**: taula amb totes les dreceres, cerca, edició, restauració i control de conflictes; es desa a `dreceres.json` |
 
 L'historial de desfer/refer conserva les **10 últimes accions totals**. En
 superar el límit, la més antiga es descarta i l'app ho comunica.
@@ -437,3 +438,21 @@ Si l'instant no és possible, s'aplica el més a prop i **s'avisa**.
   compàs o d'unitat encara que no canvie el BPM, `<sound tempo>` només en
   canvi de BPM, i `semicorxera` → `16th`. El fallback constant usa
   `bar_quarters(num,den)` i `beat_type`.
+
+### 9.7 Dreceres configurables (2026-11-14)
+
+- **Catàleg únic**: les accions de menú amb drecera, les globals (`Space`,
+  `T`, `E`), les de l'editor (`+`, Enter, `0`, `M`) i les del timeline (Esc,
+  nudge) es poden editar des de **Ajuda ▸ Configura les dreceres…**.
+- **Aplicació immediata**: en desar, s'actualitzen els `QAction`, els
+  `QShortcut` i el mapa que consulta el timeline; els canvis de `Copia`,
+  `Retalla`, `Enganxa`, `Duplica`, `Elimina` i `Space` valen també al
+  timeline perquè comparteixen identificador.
+- **Persistència**: `dreceres.json` dins `DADES_DIR`; es carrega a
+  l'arrencada. Un valor buit desactiva la drecera. Si el fitxer no existeix o
+  és invàlid, s'usen els valors per defecte.
+- **Conflictes**: no es desa cap combinació repetida; el diàleg mostra les
+  dues accions en xoc. Les equivalències Return/Enter, Del/Retrocés i
+  `+`/Maj+`=` es mantenen.
+- **Context**: els camps de text no s'intercepten; Enter respecta botons,
+  combos i diàlegs que tenen acció pròpia.
