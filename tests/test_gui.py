@@ -6329,6 +6329,41 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(len(vr.tempo_trams), n_t + 1)
         self.assertEqual(len(vr.seccions), n_s)
 
+    def test_tall_qm_motor_i_dialeg_conjunt(self):
+        """El tall QM usa el motor i el diàleg conjunt sense aplicar encara."""
+        from app import mapa_tempo
+
+        class _DialegFals:
+            def __init__(self, *a, **k):
+                pass
+
+            def exec_(self):
+                return True
+
+            def seleccions(self):
+                return 0, 0
+
+        vr = self.w.visor_ref
+        vr.tempo_trams = [mapa_tempo.TramMapa(
+            0.0, 60.0, 120.0, "normal", "4/4", "", 30, "negra")]
+        vr.snap_on = True
+        vr.snap_mode = "qm_beats"
+        vr.qm_beats = [i * 0.5 for i in range(120)]
+        # 20 + 40 beats: els dos costats són purs; no cal diàleg.
+        self.assertTrue(vr.talla_tempo(10.0))
+        self.assertEqual(len(vr.tempo_trams), 2)
+        self.assertAlmostEqual(float(vr.tempo_trams[0].fi), 10.0)
+        vr.undo()
+        # 21 + 39 beats: cap costat és pura; el motor ha de proposar opcions.
+        vr.tempo_trams = [mapa_tempo.TramMapa(
+            0.0, 60.0, 120.0, "normal", "4/4", "", 30, "negra")]
+        with patch("app.dialeg_tall_qm.DialegTallQM", _DialegFals):
+            out = vr._parteix_tempo_nou(10.5)
+        self.assertIsNotNone(out)
+        self.assertGreater(len(out), 2)
+        self.assertAlmostEqual(float(out[0].ini), 0.0)
+        self.assertAlmostEqual(float(out[-1].fi), 60.0)
+
     def test_plus_teclat_numeric_talla_tempo_i_estructura(self):
         """El «+» del teclat numèric ha de fer el mateix que el de dalt."""
         from PyQt5.QtTest import QTest

@@ -50,18 +50,65 @@ class MarcadorsMixin:
         self.log(f"marcador mogut: {t_vell:.3f} → {t_nou:.3f}s")
         return True
 
-    def _parteix_tempo_nou(self, t):
+    def _pausa_tall_qm(self):
+        """Pausa el play si cal obrir el diàleg del tall QM."""
+        if getattr(self, "sona", False):
+            self.play_stop()
+            self._tall_qm_reprendre = True
+
+    def _reprén_tall_qm(self):
+        """Reprén el play només si s'havia pausat per al tall QM."""
+        if not getattr(self, "_tall_qm_reprendre", False):
+            return
+        self._tall_qm_reprendre = False
+        if not getattr(self, "sona", False):
+            self.play_stop()
+
+    def _parteix_tempo_nou(self, t, trams=None):
         """Retorna el mapa partit a `t` o `None` si no cal/possible.
 
-        Primer intenta conservar el BPM/compàs. Si el tall deixa un dels
-        clips afectats amb un nombre no enter de compassos, torna a partir
-        amb el recalcul guiat (referència del mateix clip, no la global).
+        Amb Snap QM usa el motor de candidats de `tall_qm`: beats per costat,
+        BPM/compàs/N i diàleg si hi ha més d'una opció. Sense QM conserva el
+        camí anterior. `trams` permet encadenar talls sense aplicar-los.
         """
-        trams = list(self.tempo_trams or [])
+        base = self.tempo_trams if trams is None else trams
+        trams = list(base or [])
         durada = self._durada_wav()
         offset = getattr(self, "offset", 0.0)
+        beats = list(self._beats_per_validacio() or ())
+        if beats:
+            from . import tall_qm
+            try:
+                idx = next(i for i, tr in enumerate(trams)
+                           if float(tr[0]) + 1e-9 < float(t)
+                           < float(tr[1]) - 1e-9)
+            except StopIteration:
+                return None
+            tr = trams[idx]
+            factor = self.beat_factor(self.unitat_de_tram(tr))
+            costats = tall_qm.opcions_tall(
+                trams, float(t), durada, offset, beats,
+                self.ref_tempo_base(), factor)
+            if costats is None:
+                self.avis_editor(
+                    "Tall QM: no hi ha cap combinació exacta per a este punt.")
+                return None
+            costats = [tall_qm.selecciona_opcions(o) for o in costats]
+            if any(len(o) > 1 for o in costats):
+                self._pausa_tall_qm()
+                from .dialeg_tall_qm import DialegTallQM
+                dlg = DialegTallQM(self, costats[0], costats[1])
+                if not dlg.exec_():
+                    self._tall_qm_reprendre = False
+                    return None
+                sel_esq, sel_dreta = dlg.seleccions()
+            else:
+                sel_esq = sel_dreta = 0
+            triades = (list(costats[0][sel_esq]["clips"])
+                       + list(costats[1][sel_dreta]["clips"]))
+            return trams[:idx] + triades + trams[idx + 1:]
         kw = dict(offset=offset,
-                  beats_qm=self._beats_per_validacio(),
+                  beats_qm=None,
                   permissiu=True, ref_base=None,
                   beat_factor=self.beat_factor())
         try:
@@ -113,6 +160,10 @@ class MarcadorsMixin:
         """Talla tempo i/o estructura en una sola operació d'undo."""
         t = float(t)
         nous_trams = self._parteix_tempo_nou(t) if tempo else None
+        if tempo and nous_trams is None:
+            # Atòmic: si el tempo no s'ha pogut tallar (o s'ha cancel·lat el
+            # diàleg), no es parteix només l'estructura.
+            return False
         noves_seccions = self._parteix_estructura_noves(t) if estructura else None
         if nous_trams is None and noves_seccions is None:
             return False
@@ -120,6 +171,7 @@ class MarcadorsMixin:
         try:
             if nous_trams is not None:
                 if not self.aplica_tempo_trams(nous_trams):
+                    self._tall_qm_reprendre = False
                     self._undo_commit()
                     return False
             if noves_seccions is not None:
@@ -128,8 +180,12 @@ class MarcadorsMixin:
                 if hasattr(self, "llista_ab"):
                     self._actualitza_llista_abc()
             self._desa_i_regenera()
+        except Exception:
+            self._tall_qm_reprendre = False
+            raise
         finally:
             self._undo_commit()
+        self._reprén_tall_qm()
         return True
 
     def talla_tempo(self, t):

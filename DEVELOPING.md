@@ -259,6 +259,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `dialeg_guia_rapida.py` | Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas. |
 | `dialeg_opcions.py` | Diàleg d'opcions d'autodetecció (BPM/acords/estructura). |
 | `dialeg_quantitza.py` | Diàleg de quantització a la graella. |
+| `dialeg_tall_qm.py` | Diàleg conjunt per triar les opcions d'un tall amb Beats QM. |
 | `dialeg_tempo_mapa.py` | Diàleg del mapa de tempo per trams. |
 | `dialeg_tempo_per_trams.py` | Diàleg de detecció de tempo per trams. |
 | `dialeg_tram_tempo.py` | Diàleg per editar un tram de tempo/compàs. |
@@ -300,6 +301,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `postproc.py` | Post-processat de les deteccions (opcions del diàleg d'autodetecció). |
 | `projecte.py` | Projectes d'AUTO CHORDS — carpeta **autocontinguda**, com un DAW. |
 | `projecte_ui.py` | Gestió de projectes de la finestra (F3). |
+| `tall_qm.py` | Motor de talls de tempo/compàs amb Snap de Beats QM. |
 | `tap_ui.py` | Tap tempo de la finestra (F3). |
 | `tempo.py` | tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt). |
 | `tempo_map.py` | Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur). |

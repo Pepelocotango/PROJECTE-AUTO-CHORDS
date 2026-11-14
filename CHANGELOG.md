@@ -17,6 +17,21 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - Es mantenen les excepcions de context: els camps de text no s'intercepten
   i Enter respecta botons, combos i diàlegs. Suite: **1619 OK** (1 skip).
 
+### Afegit — motor de talls amb Snap QM (2026-11-14)
+- **`app/tall_qm.py`**: motor pur que compta els beats QM de cada costat, els
+  convertix a negres (`Bq`) i proposa BPM, compàs i `N` exactes. Inclou base
+  pura, base + un compàs extrany, secció sencera extranya i canvi a
+  denominador 4 (base + `/4`), amb màxim 2 clips per costat, filtre de `1/4`,
+  mínim 2 opcions `/4` al diàleg i ordre per musicalitat.
+- **Diàleg conjunt** (`app/dialeg_tall_qm.py`): dues columnes, fins a 6
+  opcions per costat, costat fix si només n'hi ha una, sense preselecció i
+  Aplica desactivat fins triar els costats ambigus.
+- **Integració**: `+`, Enter, Afegeix/Parteix aquí, Partir per la meitat i
+  Partir A–B; si el tempo falla o es cancel·la, no es parteix l'estructura.
+  El play es pausa en obrir el diàleg i es reprén en aplicar; cancel·lar el
+  deixa en pausa.
+- **Tests**: `tests/test_tall_qm.py` i prova GUI del motor i del diàleg.
+
 ### Canviat — dreceres `+` i Enter des de qualsevol focus (2026-11-14)
 - **`+`** (parteix tempo i estructura) i **Enter** (parteix només tempo) ja no
   exigixen que el focus siga al timeline: funcionen des de llistes, l'editor o

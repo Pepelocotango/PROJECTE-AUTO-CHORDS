@@ -111,6 +111,9 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   flux REAPER verificat (importar **primer** el MIDI, acceptar el mapa de tempo
   i després la WAV). La partitura amb canvi de compàs/unitat calcula bé la
   unitat i no afig un compàs final buit. Backups restauráveis des de la GUI.
+- **Talls QM**: motor de candidats per a Snap QM (`base` pura, base +
+  extrany, secció sencera i canvi a `/4`), diàleg conjunt i integració a `+`,
+  Enter, Afegeix, meitat i A–B; màxim 2 clips per costat.
 - **Configuració d'usuari**: totes les dreceres són editables a **Ajuda ▸
   Configura les dreceres…** i es desen a `dreceres.json`.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →

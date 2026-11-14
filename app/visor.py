@@ -2230,9 +2230,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 "Afegeix tempo: el tall no pot quedar amb compassos sencers")
             return False
         self._undo_marca()
-        self.aplica_tempo_trams(nous)
+        ok = bool(self.aplica_tempo_trams(nous))
         self._undo_commit()
-        return len(self.tempo_trams or []) > abans
+        if ok:
+            self._reprén_tall_qm()
+        return ok and len(self.tempo_trams or []) > abans
 
     # ---------------- MARCADORS (inici de compàs, en viu) ----------------
 
@@ -3760,34 +3762,47 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 f"({ini:.2f}–{fi:.2f}s); no hi ha res a partir.")
             return False
         orig_trams = list(trams)
-        i = idx
+        qm = bool(self._beats_per_validacio())
         talls = []
         err = None
         for t in sorted(cands):
-            try:
-                trams = tempo_map.parteix_tram_marcador(
-                    trams, t, self._durada_wav(),
-                    offset=float(getattr(self, "offset", 0.0) or 0.0),
-                    beats_qm=self._beats_per_validacio())
+            if qm:
+                nous = self._parteix_tempo_nou(t, trams=trams)
+                if nous is None or len(nous) <= len(trams):
+                    err = err or ValueError(
+                        "el tall QM no ha pogut crear una frontera")
+                    continue
+                trams = nous
                 tall = t
-            except ValueError as e:
-                # Normalment vol dir que A i B s'imanten al MATEIX compàs
-                # (el segon tall ja és una frontera): es descarta.
-                err = e
-                continue
+            else:
+                try:
+                    trams = tempo_map.parteix_tram_marcador(
+                        trams, t, self._durada_wav(),
+                        offset=float(getattr(self, "offset", 0.0) or 0.0),
+                        beats_qm=None)
+                    tall = t
+                except ValueError as e:
+                    # Normalment vol dir que A i B s'imanten al MATEIX
+                    # compàs (el segon tall ja és una frontera): es descarta.
+                    err = e
+                    continue
             if talls and abs(tall - talls[-1]) <= 1e-6:
                 continue
             talls.append(tall)
-            i += 1
-            if i >= len(trams):
-                break
         if not talls:
             self.avis_editor(f"Parteix a A–B (compàs): {err}")
             return False
-        trams = mapa_tempo.reenganxa_metadades(orig_trams, trams)
+        if not qm:
+            trams = mapa_tempo.reenganxa_metadades(orig_trams, trams)
         self._undo_marca()
-        self.aplica_tempo_trams(trams)
+        ok = bool(self.aplica_tempo_trams(trams))
         self._undo_commit()
+        if ok:
+            self._reprén_tall_qm()
+        else:
+            self._tall_qm_reprendre = False
+        if not ok:
+            return False
         sel = min(self._sel_despres_dels_talls(idx, talls),
                   len(self.tempo_trams) - 1)
         if hasattr(self, "timeline"):
@@ -3810,19 +3825,28 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             return False
         ini, fi = float(trams[idx][0]), float(trams[idx][1])
         t = (ini + fi) / 2.0
-        try:
-            nous = tempo_map.parteix_tram_marcador(
-                trams, t, self._durada_wav(),
-                offset=getattr(self, "offset", 0.0),
-                beats_qm=self._beats_per_validacio())
-        except ValueError as e:
-            self.log(f"partir per la meitat: {e}")
-            self.avis_editor(f"Partir tempo: {e}")
-            return False
-        nous = mapa_tempo.reenganxa_metadades(trams, nous)
+        if self._beats_per_validacio():
+            nous = self._parteix_tempo_nou(t, trams=trams)
+            if nous is None:
+                self.avis_editor(
+                    "Partir tempo: no hi ha cap combinació QM aplicable.")
+                return False
+        else:
+            try:
+                nous = tempo_map.parteix_tram_marcador(
+                    trams, t, self._durada_wav(),
+                    offset=getattr(self, "offset", 0.0),
+                    beats_qm=None)
+            except ValueError as e:
+                self.log(f"partir per la meitat: {e}")
+                self.avis_editor(f"Partir tempo: {e}")
+                return False
+            nous = mapa_tempo.reenganxa_metadades(trams, nous)
         self._undo_marca()
-        self.aplica_tempo_trams(nous)
+        ok = bool(self.aplica_tempo_trams(nous))
         self._undo_commit()
+        if ok:
+            self._reprén_tall_qm()
         self.log(f"partit per la meitat el tram de BPM/compàs {idx} a "
                  f"{t:.3f}s")
         return idx + 1

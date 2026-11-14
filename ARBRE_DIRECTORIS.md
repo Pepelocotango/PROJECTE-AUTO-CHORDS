@@ -72,7 +72,7 @@ PROJECTE AUTO CHORDS/
 │   └── share/     🟡  # (11 fitxers)
 ├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (1 fitxer)
 │   └── PLA_MOTOR_TALLS_QM.md 🟢
-├── app/                           🟢  # Codi de l'aplicació (PyQt5) (79 fitxers)
+├── app/                           🟢  # Codi de l'aplicació (PyQt5) (81 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
 │   ├── analisi_ui.py             🟢  # Accions d'anàlisi de la finestra (F3).
@@ -89,6 +89,7 @@ PROJECTE AUTO CHORDS/
 │   ├── dialeg_guia_rapida.py     🟢  # Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas.
 │   ├── dialeg_opcions.py         🟢  # Diàleg d'opcions d'autodetecció (BPM/acords/estructura).
 │   ├── dialeg_quantitza.py       🟢  # Diàleg de quantització a la graella.
+│   ├── dialeg_tall_qm.py         🟢  # Diàleg conjunt per triar les opcions d'un tall amb Beats QM.
 │   ├── dialeg_tempo_mapa.py      🟢  # Diàleg del mapa de tempo per trams.
 │   ├── dialeg_tempo_per_trams.py 🟢  # Diàleg de detecció de tempo per trams.
 │   ├── dialeg_tram_tempo.py      🟢  # Diàleg per editar un tram de tempo/compàs.
@@ -130,6 +131,7 @@ PROJECTE AUTO CHORDS/
 │   ├── postproc.py               🟢  # Post-processat de les deteccions (opcions del diàleg d'autodetecció).
 │   ├── projecte.py               🟢  # Projectes d'AUTO CHORDS — carpeta **autocontinguda**, com un DAW.
 │   ├── projecte_ui.py            🟢  # Gestió de projectes de la finestra (F3).
+│   ├── tall_qm.py                🟢  # Motor de talls de tempo/compàs amb Snap de Beats QM.
 │   ├── tap_ui.py                 🟢  # Tap tempo de la finestra (F3).
 │   ├── tempo.py                  🟢  # tempo.py — detecció de BPM i mapa de tempo (numpy pur, sense Qt).
 │   ├── tempo_map.py              🟢  # Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur).
@@ -289,7 +291,7 @@ PROJECTE AUTO CHORDS/
 │   ├── qm-vamp-plugins.cat 🟢
 │   ├── qm-vamp-plugins.n3  🟢
 │   └── qm-vamp-plugins.so  🟢
-├── tests/                         🟢  # Suite unittest offscreen (25 fitxers)
+├── tests/                         🟢  # Suite unittest offscreen (26 fitxers)
 │   ├── _qt_neteja.py              🟢  # Neteja ORDENADA dels objectes Qt entre tests.
 │   ├── _temporals.py              🟢  # Higiene dels tests: cap temporal no s'ha de quedar pel disc.
 │   ├── test_ancoratges.py         🟢  # Suite de test — Marcadors humans i velocitat de reproducció.
@@ -310,6 +312,7 @@ PROJECTE AUTO CHORDS/
 │   ├── test_moduls_al_dia.py      🟢  # Test: la taula de mòduls de `DEVELOPING.md` ha d'estar al dia.
 │   ├── test_pipeline.py           🟢  # Suite de test — Pipeline
 │   ├── test_pipeline_contracte.py 🟢  # Contracte de superfície de `app.pipeline` (refactor F0).
+│   ├── test_tall_qm.py            🟢  # Motor pur de talls amb Snap QM.
 │   ├── test_tempo_map.py          🟢  # Suite de test — Tempo Map
 │   ├── test_tempo_midi.py         🟢  # Exportació del mapa de tempo/compàs a MIDI (pista de conductor).
 │   ├── test_tempo_recalc.py       🟢  # Tests del motor pur de recalcul del mapa de temps (F0).
