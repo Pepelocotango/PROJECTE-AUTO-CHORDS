@@ -113,12 +113,15 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   unitat i no afig un compàs final buit. Backups restauráveis des de la GUI.
 - **Talls QM**: motor de candidats per a Snap QM (`base` pura, base +
   extrany, secció sencera i canvi a `/4`), diàleg conjunt i integració a `+`,
-  Enter, Afegeix, meitat i A–B; màxim 2 clips per costat.
+  Enter, Afegeix, meitat i A–B; màxim 2 clips per costat. Inclou fallback de
+  graella sense QM, interpolació dels beats reals, pausa/reprén atòmics del
+  play i cancel·lació sense aplicar res.
 - **Configuració d'usuari**: totes les dreceres són editables a **Ajuda ▸
   Configura les dreceres…** i es desen a `dreceres.json`.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
-- **Suite**: **1619 OK** (1 skip), `pyflakes` net i `docs-check` verd.
+- **Suite**: darrera completa **1619 OK** (1 skip); els canvis dels talls QM
+  tenen tests dirigits verds. `pyflakes` net i `docs-check` verd.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
