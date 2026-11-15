@@ -5,6 +5,17 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Corregit — l'export torna a incloure l'estructura (2026-11-15)
+- **«Inclou estructura» és una opció d'ANÀLISI, no d'exportació.** Si el model
+  té estructura, `Ctrl+E` torna a generar `estructura_ABC.csv` +
+  `wavs_estructura/` encara que l'opció d'anàlisi estiga desactivada (p. ex.
+  després d'usar «Analitza només els acords»/F6). Abans l'export només traïa
+  els acords i el mapa, incomplint la paritat de la regla d'or #12.
+- Ja no s'ofereix esborrar `wavs_estructura/` segons eixa opció: l'export no
+  toca mai els derivats existents si no els ha de regenerar.
+- Tests: `TestExportEstructuraIndependentDeAnalisi` (export amb l'opció
+  d'anàlisi OFF → estructura generada).
+
 ### Afegit — dreceres configurables i persistents (2026-11-14)
 - **Ajuda ▸ Configura les dreceres…**: taula amb totes les dreceres (menú,
   globals, editor i timeline), cerca, edició amb `QKeySequenceEdit`,

@@ -1307,15 +1307,15 @@ class TestExportLimits(unittest.TestCase):
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_export_neteja_estructura.py
 # ══════════════════════════════════════════════════════════════════════════
-"""(2) Amb «Inclou estructura» OFF: el MODEL mai s'esborra.
+"""«Inclou estructura» és una opció d'ANÀLISI, no d'exportació.
 
-`estructura_ABC.csv` és el MODEL del projecte i **no es toca mai** (la marca
-decideix què s'EXPORTA, no què es conserva). Només s'ofereixen treure les restes
-de l'export anterior (`wavs_estructura/`), i **sempre amb confirmació**.
+L'export ha de traure el model sencer (regla d'or #12): si hi ha estructura,
+`wavs_estructura/` s'ha de generar igualment, encara que l'opció d'anàlisi
+estiga desactivada.
 """
 
 
-class TestNetejaEstructura(unittest.TestCase):
+class TestExportEstructuraIndependentDeAnalisi(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls._app = QW.QApplication.instance() or QW.QApplication([])
@@ -1327,37 +1327,27 @@ class TestNetejaEstructura(unittest.TestCase):
         p.start()
         self.addCleanup(p.stop)
 
-    def test_amb_la_marca_off_es_netegen_els_wavs_pero_MAI_el_model(self):
+    def test_marca_d_analisi_off_no_treu_estructura_de_l_export(self):
         w, s = _export_neteja_estructura___finestra(amb_estructura=False)
-        with patch.object(pipeline, "exporta_total", return_value={}), \
-                patch.object(w, "obre_carpeta"), \
-                patch.object(type(w), "_ho_confirma", return_value=True):
-            w.exporta()
+        kw = w._prepara_export()
+        self.assertTrue(kw["amb_estructura"],
+                        "l'export ha d'incloure l'estructura del model")
+        self.assertTrue(kw["seccions"])
+        res = pipeline.exporta_total(log=lambda *_: None, **kw)
+        self.assertGreaterEqual(res["n_estructura_wavs"], 1)
+        wavs = os.listdir(os.path.join(s, "wavs_estructura"))
+        self.assertTrue(any(n.endswith(".wav") for n in wavs),
+                        f"falta el WAV d'estructura: {wavs}")
         self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")),
-                        "el MODEL de l'estructura NO s'ha d'esborrar mai")
-        self.assertFalse(os.path.isdir(os.path.join(s, "wavs_estructura")),
-                         "la carpeta de wavs d'estructura vella hi és")
-        self.assertIn("tret l'export anterior", w.log.toPlainText())
+                        "el MODEL no es toca")
         w.close()
 
-    def test_amb_la_marca_off_sense_confirmacio_no_esborra_res(self):
-        w, s = _export_neteja_estructura___finestra(amb_estructura=False)
-        with patch.object(pipeline, "exporta_total", return_value={}), \
-                patch.object(w, "obre_carpeta"), \
-                patch.object(type(w), "_ho_confirma", return_value=False):
-            w.exporta()
-        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")))
-        self.assertTrue(os.path.isdir(os.path.join(s, "wavs_estructura")))
-        self.assertIn("es conserven els derivats", w.log.toPlainText())
-        w.close()
-
-
-    def test_amb_la_marca_on_es_respecten(self):
+    def test_marca_d_analisi_on_tambe_exporta_estructura(self):
         w, s = _export_neteja_estructura___finestra(amb_estructura=True)
-        with patch.object(pipeline, "exporta_total", return_value={}), \
+        with patch.object(pipeline, "exporta_total", return_value={}) as m, \
                 patch.object(w, "obre_carpeta"):
             w.exporta()
-        self.assertTrue(os.path.isfile(os.path.join(s, "estructura_ABC.csv")))
+        self.assertTrue(m.call_args.kwargs["amb_estructura"])
         self.assertTrue(os.path.isdir(os.path.join(s, "wavs_estructura")))
         w.close()
 

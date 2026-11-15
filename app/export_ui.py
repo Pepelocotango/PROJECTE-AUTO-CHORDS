@@ -4,12 +4,11 @@ Extret de `app/main.py`: preparació, export d'àudio amb ffmpeg, WAVs,
 partitura i obertura de la carpeta de sortida.
 """
 import os
-import shutil
 import time
 
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QFileDialog
 
 from . import (
     exporta_audio as exporta_audio_mod, partitura, pipeline, tempo_midi,
@@ -55,18 +54,14 @@ class ExportMixin:
                    if vr is not None else None)
         # Regla d'or #12: el mapa de BPM/compàs del model viu també s'exporta.
         mapa_model = list(vr.tempo_trams) if vr is not None else None
-        amb_estructura = self.amb_est.isChecked() and seccions_model is not None
+        # L'export és INDEPENDENT de «Inclou estructura» (opció d'ANÀLISI):
+        # si el model té estructura, s'exporta sempre amb els altres tipus.
+        amb_estructura = seccions_model is not None
         marques = []
         if vr is not None:
             tipus = pipeline.llegeix_marcadors_tipus(self.sortida)
             marques = [(float(t), tipus.get(round(float(t), 6), "marcador"))
                        for t in (vr.marcadors or ())]
-        # (2) Amb «Inclou estructura» OFF, les restes d'un export ANTERIOR
-        # (`wavs_estructura/`) quedaven a la carpeta i semblava que l'export
-        # actual hagués inclòs estructura → s'ofereix treure-les (amb
-        # confirmació). El MODEL (`estructura_ABC.csv`) NO es toca mai.
-        if not amb_estructura:
-            self._neteja_estructura_vella(self.sortida)
         return dict(
             csv_ac=csv_ac,
             csv_seg=None,
@@ -88,52 +83,6 @@ class ExportMixin:
             mapa_tempo=mapa_model,
             marques=marques,
         )
-
-    def _neteja_estructura_vella(self, sortida):
-        """Treu les restes d'un export ANTERIOR quan l'actual NO inclou estructura.
-
-        **(a) MAI toca el MODEL del projecte** (`estructura_ABC.csv`): la marca
-        «Inclou estructura» decideix què s'**exporta**, no què es **conserva**.
-        Només s'ofereix treure els **derivats de l'export** (`wavs_estructura/`).
-
-        **(c) Sempre amb confirmació**: només es pregunta si hi ha restes a
-        treure, i res no s'esborra sense un «sí» explícit.
-        """
-        wavs = os.path.join(sortida, "wavs_estructura")
-        if not os.path.isdir(wavs):
-            return
-        if not self._ho_confirma(
-                "Exporta sense estructura",
-                "Aquest export no inclou l'estructura.\n\n"
-                "El MODEL del projecte (estructura_ABC.csv) es conserva SEMPRE.\n"
-                "Només es poden treure els WAVs de l'export anterior "
-                "(wavs_estructura/).\n\nVols treure'ls?",
-                "Treu-los"):
-            self.registra("estructura: es conserven els derivats de l'export "
-                          "anterior (wavs_estructura/)")
-            return
-        try:
-            shutil.rmtree(wavs)
-            self.registra("«Inclou estructura» OFF → tret l'export anterior: "
-                          "wavs_estructura/ (el model estructura_ABC.csv es "
-                          "conserva)")
-        except OSError as e:
-            self.registra(f"AVÍS: no he pogut treure {wavs}: {e}")
-
-    def _ho_confirma(self, titol, text, boto_si):
-        """Demana confirmació (Sí/No). Sense sessió interactiva (`offscreen`,
-        CI) respon **No** i no mostra cap diàleg modal."""
-        if not self._interactiu():
-            return False
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Question)
-        box.setWindowTitle(titol)
-        box.setText(text)
-        b_si = box.addButton(boto_si, QMessageBox.DestructiveRole)
-        b_no = box.addButton("Cancel·la", QMessageBox.RejectRole)
-        box.setDefaultButton(b_no)
-        box.exec_()
-        return box.clickedButton() is b_si
 
     def _exporta_audio_ui(self):
         """Tria format i destí i exporta la còpia WAV de treball (Fase 6).
