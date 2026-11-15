@@ -189,6 +189,27 @@ class ExportMixin:
         self.avisa_info("Auto Chords", msg)
         self.obre_carpeta()
 
+    def desa_i_exporta(self):
+        """Desa el projecte i exporta el paquet complet + partitura.
+
+        Acció de «Fitxer ▸ Desa i exporta-ho tot…». Primer desa (si falla, no
+        s'exporta res) i després llança l'export en fil amb la partitura
+        FORÇADA: MusicXML sempre i PDF/MSCZ si hi ha MuseScore. No exporta la
+        WAV sencera (per a això hi ha «Exporta àudio…»). Els derivats existents
+        se sobreescriuen i, en acabar, s'obri la carpeta del projecte.
+        """
+        fe = getattr(self, "feina_export", None)
+        if fe is not None and fe.isRunning():
+            self.avisa_info("Auto Chords", "Ja hi ha una exportació en curs.")
+            return False
+        if getattr(self, "projecte", None) is None:
+            self.avisa_info("Auto Chords",
+                            "No hi ha cap projecte obert. Obre un àudio primer.")
+            return False
+        if not self._desa_projecte():
+            return False
+        return self.exporta_async(forca_partitura=True)
+
     def exporta(self):
         """Exporta de forma SÍNCRONA (la UI espera). Vegeu `exporta_async`."""
         kwargs = self._prepara_export()
@@ -206,11 +227,13 @@ class ExportMixin:
             self.avisa_crit("Auto Chords",
                             f"No s'ha pogut exportar:\n{e}")
 
-    def exporta_async(self):
+    def exporta_async(self, forca_partitura=None):
         """Exporta en un FIL (A5). Retorna True si ha arrencat.
 
-        La partitura (si la marca hi és) es fa DESPRÉS, al fil de la UI, quan el
-        fil acaba. El progrés es veu a la barra i a `self.exportant`.
+        La partitura es fa DESPRÉS, al fil de la UI, quan el fil acaba. Amb
+        `forca_partitura=True` es genera SEMPRE (MusicXML, i PDF/MSCZ si es pot)
+        encara que «Inclou la partitura» estiga desmarcada; amb `None` mana la
+        marca. El progrés es veu a la barra i a `self.exportant`.
         """
         fe = getattr(self, "feina_export", None)
         if fe is not None and fe.isRunning():
@@ -218,6 +241,9 @@ class ExportMixin:
         kwargs = self._prepara_export()
         if kwargs is None:
             return False
+        self._exporta_amb_partitura = (
+            self.amb_part.isChecked() if forca_partitura is None
+            else bool(forca_partitura))
         self.registra(f"Exportant a: {self.sortida}")
         self.exporta_error = ""
         self.exportant = True
@@ -237,7 +263,9 @@ class ExportMixin:
             self.registra(f"exporta ERROR: {error}")
             self.avisa_crit("Auto Chords", f"No s'ha pogut exportar:\n{error}")
             return
-        res_part = self._exporta_partitura() if self.amb_part.isChecked() else None
+        amb_part = getattr(self, "_exporta_amb_partitura",
+                           self.amb_part.isChecked())
+        res_part = self._exporta_partitura() if amb_part else None
         self._exporta_acabada(res_part)
 
     def exporta_mapa_midi_ara(self):

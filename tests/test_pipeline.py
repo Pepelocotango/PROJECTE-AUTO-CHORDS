@@ -1232,6 +1232,61 @@ class TestExportAsync(_Base):
         w.close()
 
 
+class TestDesaIExportaTot(_Base):
+    """«Desa i exporta-ho tot…»: desa primer i després exporta tot + partitura."""
+
+    def test_desa_primer_i_exporta_amb_partitura_forcada(self):
+        w = _finestra()
+        w.projecte = object()          # només cal que existisca
+        crides = []
+
+        def _desa():
+            crides.append("desa")
+            return True
+
+        def _exporta(**kw):
+            crides.append(("exporta", kw))
+            return True
+
+        with patch.object(w, "_desa_projecte", side_effect=_desa), \
+                patch.object(w, "exporta_async", side_effect=_exporta):
+            self.assertTrue(w.desa_i_exporta())
+        self.assertEqual(crides[0], "desa")
+        self.assertEqual(crides[1][0], "exporta")
+        self.assertTrue(crides[1][1]["forca_partitura"])
+        w.close()
+
+    def test_si_falla_el_desat_no_exporta(self):
+        w = _finestra()
+        w.projecte = object()
+        with patch.object(w, "_desa_projecte", return_value=False), \
+                patch.object(w, "exporta_async") as exporta:
+            self.assertFalse(w.desa_i_exporta())
+        exporta.assert_not_called()
+        w.close()
+
+    def test_sense_projecte_no_desa_ni_exporta(self):
+        w = _finestra()
+        with patch.object(w, "_desa_projecte") as desa, \
+                patch.object(w, "exporta_async") as exporta:
+            self.assertFalse(w.desa_i_exporta())
+        desa.assert_not_called()
+        exporta.assert_not_called()
+        w.close()
+
+    def test_partitura_forcada_encara_que_la_marca_estiga_off(self):
+        w = _finestra()
+        w.amb_part.setChecked(False)
+        with patch.object(pipeline, "exporta_total", return_value={}), \
+                patch.object(w, "obre_carpeta"), \
+                patch.object(w, "_exporta_partitura",
+                             return_value={"musicxml": "x"}) as part:
+            self.assertTrue(w.exporta_async(forca_partitura=True))
+            self._espera(w)
+        part.assert_called_once()
+        w.close()
+
+
 def _export_async_tearDownModule():
     # Neteja ORDENADA dels objectes Qt del mòdul (evita destrucció pel GC en un
     # test posterior -> access violation intermitent). Vegeu tests/_qt_neteja.py.

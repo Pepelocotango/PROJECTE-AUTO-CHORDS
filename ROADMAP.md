@@ -50,7 +50,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-14)
+## 2. Estat actual i relleu de sessió (2026-11-15)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -109,8 +109,14 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   `Time Signature` i markers; **sense «Fi»**, amb un `Set Tempo` redundant al
   final per dimensionar l'item) surt dins `mapa_tempo/` o sol des del menú;
   flux REAPER verificat (importar **primer** el MIDI, acceptar el mapa de tempo
-  i després la WAV). La partitura amb canvi de compàs/unitat calcula bé la
-  unitat i no afig un compàs final buit. Backups restauráveis des de la GUI.
+  i després la WAV). El paquet de `Ctrl+E` inclou **sempre** l'estructura si el
+  model en té (regla #12), independentment de «Inclou estructura» (opció
+  d'anàlisi). **`Fitxer ▸ Desa i exporta-ho tot…` (`Ctrl+Shift+E`)** desa el
+  projecte i, en un fil, exporta el paquet complet + **partitura sempre**
+  (MusicXML; PDF/MSCZ si hi ha MuseScore), sense la WAV sencera, sobreescrivint
+  els derivats i obrint la carpeta del projecte. La partitura amb canvi de
+  compàs/unitat calcula bé la unitat i no afig un compàs final buit. Backups
+  restauráveis des de la GUI.
 - **Talls QM**: motor de candidats per a Snap QM (`base` pura, base +
   extrany, secció sencera i canvi a `/4`), diàleg conjunt i integració a `+`,
   Enter, Afegeix, meitat i A–B; màxim 2 clips per costat. Inclou fallback de
@@ -120,8 +126,9 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   Configura les dreceres…** i es desen a `dreceres.json`.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
-- **Suite**: darrera completa **1619 OK** (1 skip); els canvis dels talls QM
-  tenen tests dirigits verds. `pyflakes` net i `docs-check` verd.
+- **Suite**: darrera completa **1619 OK** (1 skip); els canvis dels talls QM,
+  de l'export amb estructura i de «Desa i exporta-ho tot…» tenen tests dirigits
+  verds. `pyflakes` net i `docs-check` verd.
 
 **Pendent:**
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).

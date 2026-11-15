@@ -5,6 +5,19 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Afegit — «Desa i exporta-ho tot…» (2026-11-15)
+- **`Fitxer ▸ Desa i exporta-ho tot…`** (`Ctrl+Shift+E`): desa primer el
+  projecte i, si el desat va bé, exporta **en un fil** el paquet complet
+  (`acords.csv` + `wavs_acords/`, `estructura_ABC.csv` + `wavs_estructura/`,
+  `mapa_tempo/` amb CSV i MIDI, guia i manifest) i la **partitura sempre**
+  (MusicXML; PDF/MSCZ si hi ha MuseScore), encara que «Inclou la partitura»
+  estiga desmarcada.
+- **No exporta la WAV sencera** (per a això hi ha `Exporta àudio…`). Els
+  derivats existents se sobreescriuen i, en acabar, s'obri la carpeta del
+  projecte. Si no hi ha projecte o el desat falla, no s'exporta res.
+- Tests: `TestDesaIExportaTot` (ordre desa→exporta, desat fallit, sense
+  projecte i partitura forçada amb la marca OFF).
+
 ### Corregit — l'export torna a incloure l'estructura (2026-11-15)
 - **«Inclou estructura» és una opció d'ANÀLISI, no d'exportació.** Si el model
   té estructura, `Ctrl+E` torna a generar `estructura_ABC.csv` +

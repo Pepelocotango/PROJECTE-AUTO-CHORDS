@@ -90,12 +90,26 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 | Menú | Accions |
 |------|---------|
-| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… · Obre recent… · Desa (Ctrl+S) · Desa com… · Desa una còpia… · Reverteix · **Restaura una còpia de seguretat…** · Exporta WAV's… (Ctrl+E) · Exporta àudio… · Exporta la partitura… · **Exporta mapa de tempo (MIDI)…** · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
+| **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… · Obre recent… · Desa (Ctrl+S) · Desa com… · Desa una còpia… · Reverteix · **Restaura una còpia de seguretat…** · **Desa i exporta-ho tot…** (Ctrl+Shift+E) · Exporta WAV's… (Ctrl+E) · Exporta àudio… · Exporta la partitura… · **Exporta mapa de tempo (MIDI)…** · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · **Parteix el tempo al cursor** (Enter) · **Parteix l'estructura al cursor** (0) · **Parteix tempo i estructura al cursor** (+) · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… · Retard global de reproducció… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
 | **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza beats, downbeats i BPM (F7)** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · **Quantitza BPM** (Sense decimals · 1 decimal · 2 decimals) · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (M) · Esborra l'últim marcador · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · **Configura les dreceres…** · Obre la carpeta del registre · Quant a Auto Chords |
+
+### Desa i exporta-ho tot… (Ctrl+Shift+E)
+
+- **`Fitxer ▸ Desa i exporta-ho tot…`** desa primer el projecte (`.acproj` +
+  `.bak`); si el desat falla, **no exporta res**. Després llança l'export en un
+  **fil** i genera el paquet complet: `acords.csv` + `wavs_acords/`,
+  `estructura_ABC.csv` + `wavs_estructura/`, `mapa_tempo/`
+  (`mapa_tempo.csv` + `.mid`), guia, manifest i **partitura sempre**
+  (MusicXML; PDF/MSCZ si hi ha MuseScore), encara que «Inclou la partitura»
+  estiga desmarcada.
+- **No exporta la WAV sencera**: per a una còpia en un altre format es fa
+  servir **`Fitxer ▸ Exporta àudio…`**.
+- Els derivats existents (`wavs_*`, `partitura/`, `mapa_tempo/`, CSVs) es
+  **sobreescriuen**. En acabar s'obri la **carpeta del projecte**.
 
 ### Exporta àudio… (Fase 6)
 

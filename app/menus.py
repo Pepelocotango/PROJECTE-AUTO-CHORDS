@@ -44,6 +44,15 @@ class MenusMixin:
         self._act(m, "Restaura una còpia de seguretat…", "",
                   self._restaura_backup_ui)
         m.addSeparator()
+        self.a_desa_exporta_tot = self._act(
+            m, "Desa i exporta-ho tot…", "Ctrl+Shift+E",
+            self.desa_i_exporta)
+        self.a_desa_exporta_tot.setStatusTip(
+            "Desa el projecte i exporta el paquet complet (CSVs, WAVs "
+            "d'acords i estructura, mapa de tempo/MIDI, guia i partitura). "
+            "No exporta la WAV sencera; sobreescriu els derivats existents.")
+        self.a_desa_exporta_tot.setToolTip(
+            self.a_desa_exporta_tot.statusTip())
         self.a_exporta = self._act(m, "Exporta WAV's…", "Ctrl+E",
                                    self.exporta)
         self.a_exporta_audio = self._act(
