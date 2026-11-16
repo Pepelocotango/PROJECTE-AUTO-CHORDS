@@ -8,12 +8,14 @@
 
 ## On començar
 
-> Ordre de lectura: vegeu `AGENTS.md` §«Primers 5 minuts».
+> Ordre de lectura: comença per **`README.md`** (vista de producte) i continua
+> per **`AGENTS.md` §«Primers 5 minuts»** (contracte operatiu per a agents).
 
 ## Mapa per tasca
 
 | Tasca | Comença per |
 |---|---|
+| Entendre el producte | `README.md` → `AGENTS.md` §«Abast i flux» |
 | Abast i regles | `AGENTS.md` → `docs/REGLES_DE_LA_APP.md` |
 | Estat actual | `ROADMAP.md` §2 · `CHANGELOG.md` |
 | GUI | `app/main.py` · `app/visor.py` · `app/timeline*.py` · `app/*_ui.py` |

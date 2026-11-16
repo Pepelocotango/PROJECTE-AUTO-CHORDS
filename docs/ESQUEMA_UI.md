@@ -558,4 +558,4 @@ una extensió d'àudio de la llista.
   **`python3 eines/genera_esquema_ui.py`** (**no editar-los a mà**; el test
   `tests/test_pipeline.py` › `TestEsquemaUiGenerat` ho blinda → si edites aquest
   `.md`, regenera'ls).
-- `README.md` — «Estat actual» de l'app.
+- `README.md` — vista de producte: què és i què fa l'app.

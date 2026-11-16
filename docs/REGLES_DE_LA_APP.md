@@ -8,6 +8,9 @@
 > Cada regla (1–12 i §13) té **validació al codi** i **test** a `tests/`; el
 > mapa regla → codi → test és a `DEVELOPING.md` §«Implementació del contracte de
 > temps».
+>
+> 📖 Nota no normativa: vista de producte a [`../README.md`](../README.md) i
+> abast canònic a [`../AGENTS.md`](../AGENTS.md) §«Abast i flux».
 
 ## S'ha de complir SEMPRE — a estos 4 punts
 

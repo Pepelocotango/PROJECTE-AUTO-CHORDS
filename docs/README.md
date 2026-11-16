@@ -8,6 +8,9 @@
 >
 > L'estat de la sessió és a **`../ROADMAP.md` §2**. Per crear o moure
 > documentació, vegeu **`../AGENTS.md` §«Crear documentació nova»**.
+>
+> 📖 **Punt d'entrada de producte:** [`../README.md`](../README.md) ·
+> **Contracte operatiu:** [`../AGENTS.md`](../AGENTS.md).
 
 <!-- GENERAT: index_docs — no editar a mà -->
 ## Contracte i documents vius

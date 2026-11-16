@@ -1,9 +1,36 @@
 # Registre de canvis — PROJECTE AUTO CHORDS
 
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
-Versions amb tag git (`v0.1-punt-control` … `v9.0`).
+Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
-## [No publicat] — 2026-11-16
+## [0.9.3] — 2026-11-16
+
+### Canviat — renumeració de la línia 9.x a 0.9.x (2026-11-16)
+- El projecte passa a numerar-se **0.9.x** (versió actual **0.9.3**) perquè encara
+  és beta; `pyproject.toml`, `app/__init__.py`, `README.md` i `ROADMAP.md` s'hi
+  alineen.
+- La línia 9.x s'ha renumerat a 0.9.x: `v9.0` → `v0.9.0`, `v9.1-checkpoint` →
+  `v0.9.1-checkpoint` i `v9.2-checkpoint` → `v0.9.2-checkpoint`. Són tags
+  **locals**: cap era al remot ni tenia release a GitHub.
+
+### Canviat — README com a vista de producte i mapa de docs (2026-11-16)
+- `README.md` queda com a **punt d'entrada de producte** (què és i què fa l'app);
+  l'abast canònic i el flux viuen a `AGENTS.md` §«Abast i flux» i els invariants a
+  `docs/REGLES_DE_LA_APP.md`.
+- La resta de docs principals (`DEVELOPING`, `ROADMAP`, `ARBRE_DIRECTORIS`,
+  `docs/README.md` i el capçal de les regles) hi apunten amb punters, sense
+  duplicar la descripció de producte.
+
+### Corregit — coherència entre documentació i codi (2026-11-16)
+- `AGENTS.md` alineat amb la realitat: el **mapa de tempo a MIDI**
+  (`mapa_tempo.mid`) és **dins d'abast**; l'ajornat és l'**export MIDI
+  d'acords/seccions** i l'export de projecte DAW.
+- `README.md`: el model es **persisteix en CSV** (no hi «viu»): el model viu al
+  backend (regla #5) i els CSV en són la serialització.
+- `ROADMAP.md`: l'export MIDI d'acords/seccions queda com a pendent, separat del
+  mapa de tempo ja implementat.
+- `docs/ESQUEMA_UI.md`: el README és **vista de producte**, no l'«Estat actual»
+  (que viu a `ROADMAP.md` §2).
 
 ### Corregit — graella i metrònom amb el compàs del mapa (2026-11-16)
 - `grid_plan` i el snap usen el **mapa de tempo/compàs** també quan el mapa és
@@ -52,7 +79,7 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
   `test_canvi_de_compas_deriva_la_unitat_de_pols`.
 
 
-## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
+## [9.0.0] — 2026-11-04 · tag `v9.0` (renumerat a `v0.9.0`) — checkpoint «mapa de temps resolt»
 
 ### Afegit — «Desa i exporta-ho tot…» (2026-11-15)
 - **`Fitxer ▸ Desa i exporta-ho tot…`** (`Ctrl+Shift+E`): desa primer el

@@ -4,13 +4,21 @@
   <img src="icona/auto-chords-512.png" width="170" alt="AUTO CHORDS">
 </p>
 
-**AUTO CHORDS** és una aplicació d'escriptori (**Linux · Windows · macOS**) que
-**analitza una cançó i n'extreu els acords i l'estructura**. Els pots **revisar i
-editar** en un visor d'estil DAW i **exportar el resultat com a clips WAV
-silenciosos** —un per **acord** i un per **secció**, amb **el nom de l'acord al
-fitxer**— llestos per **arrossegar-los ordenats en una sola pista a qualsevol DAW**
-(Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…). Opcionalment genera
-també la **partitura de xifrats** (MusicXML; PDF/MSCZ si tens MuseScore).
+**AUTO CHORDS** és una aplicació d'escriptori (**Linux · Windows · macOS**) que, a
+partir d'una cançó, construeix un **mapa editable de temps/tempo/compàs,
+estructura i acords**. L'edició és **conjunta**: tu hi poses el criteri de músic i
+els **motors d'autodetecció i recalcul** de l'app hi posen la primera proposta;
+l'anàlisi i l'edició manual es van corregint les unes a les altres fins al mapa
+final. El model es **persisteix en CSV** i es pot exportar de tres maneres:
+
+- el **mapa de tempo/compàs → MIDI**, importable i llegible per la majoria de DAWs;
+- l'**estructura i els acords → clips WAV silenciosos**, ordenats i nomenats, per
+  importar-los en **dues pistes** (una per acords, una per estructura) a qualsevol
+  DAW (Live, Reaper, Logic, Bitwig, Studio One, Pro Tools, Cubase…);
+- el resultat → **partitura de xifrats** (MusicXML; PDF/MSCZ si tens MuseScore).
+
+L'**àudio original no es toca mai**: només s'edita una **còpia de treball** dins el
+projecte.
 
 També permet **editar els extrems de la còpia WAV de treball** dins d'un
 projecte, sense haver d'analitzar acords: retallar-los o afegir-hi silenci amb
@@ -19,7 +27,12 @@ acord); les seccions es mantenen. També pots **exportar la còpia editada** a
 WAV, MP3, FLAC, AAC/M4A, OGG o Opus des de `Fitxer ▸ Exporta àudio…`. L'abast
 acordat és a [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 
-> **Novetats de la v9.0.0 — checkpoint «mapa de temps resolt»** — els clips
+> 📖 **Aquest README és la vista de producte.** L'abast canònic és
+> [`AGENTS.md` §«Abast i flux»](AGENTS.md#-abast-i-flux-de-lusuari--font-única) i les
+> regles invariants són a [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md).
+> Si divergeixen, manen aquests i el codi.
+
+> **Novetats de la v0.9.0 — checkpoint «mapa de temps resolt»** — els clips
 > de BPM/compàs es validen per **beats sencers** de la graella del Snap (QM o
 > BPM/compàs) · fronteres interiors a la graella, amb inici del primer clip i
 > final de l’últim lliures · **1/4 vàlid a tota l’app** · `+` sempre al beat
@@ -67,7 +80,10 @@ Tot és a **➡️ [Releases](https://github.com/Pepelocotango/PROJECTE-AUTO-CHO
 3. **Revisa i edita** els acords, les seccions i el **mapa de BPM/compàs** al visor (timeline estil DAW amb **tres pistes**, llistes i franja Editor).
 Les **dreceres** es poden veure i canviar a **Ajuda ▸ Configura les dreceres…**; es desen entre sessions.
 
-4. **`Exporta WAV's…`** (`Ctrl+E`): WAVs silenciosos, CSV, `mapa_tempo/` (CSV + **MIDI**), guia i, si vols, **`Exporta partitura`**. Per a una còpia en un altre format, **`Fitxer ▸ Exporta àudio…`**; per al mapa sol, **`Fitxer ▸ Exporta mapa de tempo (MIDI)…`**.
+4. **`Exporta WAV's…`** (`Ctrl+E`): WAVs silenciosos en **dues carpetes** (acords i
+   estructura), CSV, `mapa_tempo/` (CSV + **MIDI**), guia i, si vols,
+   **`Exporta partitura`**. Per a una còpia en un altre format, **`Fitxer ▸ Exporta
+   àudio…`**; per al mapa sol, **`Fitxer ▸ Exporta mapa de tempo (MIDI)…`**.
 5. **Desa el projecte** (`Ctrl+S`): `.acproj` + `audio/` + CSV + backups. Els **CSV del model es desen a cada edició**; `Ctrl+S` desa el document i el backup, i l'autosave/recuperació són automàtics.
 
 ## 🎛️ Què fa
@@ -78,7 +94,14 @@ Les **dreceres** es poden veure i canviar a **Ajuda ▸ Configura les dreceres�
 - **Timeline estil DAW** amb **tres pistes**: **acords**, **estructura** i **BPM/compàs** (mapa de tempo per trams). Ona, regle, cursor, zoom; mode **BPM · compàs** o **Lliure (hh:mm:ss)**; graella fixa de **temps absolut hh:mm:ss** sota l'ona, independent del tempo; metrònom; loop A/B. El **BPM intern sempre és en negres/minut**, com als DAW, però es mostra en la **unitat de pols de cada tram** (`beat_unit`): en `6/8` una negra amb punt a `60` equival a `90` negres/min. El metrònom, per defecte, clica el **denominador** de cada tram i accentua els inicis de grup de l’agrupació (`6/8 = 3+3` → 6 corxeres amb accents a 1 i 4; `9/8` → 9; `12/8` → 12; `4/4` → 4 negres; `2/2` → 2 blanques).
 - **Edició completa** de les tres pistes: **moure/partir/duplicar/redimensionar** acords i seccions, i **moure/partir/duplicar** els **trams de tempo**; **multi-selecció** (`Ctrl`/`Shift+clic`), **copiar/retallar/enganxar**, **desfer/refer** (`Ctrl+Z`/`Ctrl+Y`). Les tres comparteixen les mateixes eines (regla d'or #11).
 - **Quantitza BPM** a 1 decimal (`BPM 0,1`): conserva barres enteres de cada clip, recalcula finals i desplaça els inicis posteriors; els rubatos no es quantitzen.
-- **Exporta clips WAV silenciosos** ordenats i nomenats per acord (`1-1-1_C.wav`) i per secció (`1-1-1_3-2-1_A.wav`) → els arrossegues al teu DAW i hi tens l'harmonia marcada.
+- **El model es persisteix en CSV**: `acords.csv`, `estructura_ABC.csv` i
+  `mapa_tempo.csv` són les tres capes editables; el visor hi treballa a sobre, es
+  desen a cada edició i són el que s'exporta. El `.acproj` és el **document** que
+  les acompanya i fa de caché de l'anàlisi.
+- **Exporta clips WAV silenciosos** ordenats i nomenats per acord (`1-1-1_C.wav`, a
+  `wavs_acords/`) i per secció (`1-1-1_3-2-1_A.wav`, a `wavs_estructura/`) → els
+  importes en **dues pistes** del teu DAW (una per acords, una per estructura) i hi
+  tens l'harmonia i la forma marcades.
 - **Exporta el mapa de tempo** a `mapa_tempo/` (`mapa_tempo.csv` + `mapa_tempo.mid`) i una **guia d'acords** (`guia_acords.html`) per imprimir. La partitura MusicXML mostra el tempo en negres/minut.
 - **REAPER / DAW**: per conservar la durada de la WAV, importa **primer** `mapa_tempo.mid`, accepta **«Importar mapa de tempo al proyecto»** i després importa la WAV en una segona pista. Si importes la WAV abans del MIDI, el *timebase* per defecte (**Beats**) pot canviar-ne la longitud/velocitat.
 - **Rubato**: selecciona un rang A–B o un clip del carril de BPM/compàs i marca’l com a rubato; l’app deriva BPM i compassos, conserva els segons i identifica la graella exportada com a aproximada (`mapa_tempo/AVIS_APROXIMACIO.txt` i text al MusicXML).
@@ -114,6 +137,9 @@ procés són a **[`DEVELOPING.md`](DEVELOPING.md)** i a `.github/workflows/`.
 
 | Document | Què hi trobaràs |
 |---|---|
+| [`AGENTS.md`](AGENTS.md) | Contracte operatiu per a agents i **font única d'abast i flux** |
+| [`ROADMAP.md`](ROADMAP.md) | Estat actual i full de ruta |
+| [`ARBRE_DIRECTORIS.md`](ARBRE_DIRECTORIS.md) | Mapa de carpetes i fitxers |
 | [`docs/README.md`](docs/README.md) | **Índex** de tota la documentació |
 | [`docs/REGLES_DE_LA_APP.md`](docs/REGLES_DE_LA_APP.md) | **Invariants** del producte |
 | [`DEVELOPING.md`](DEVELOPING.md) | Entorn, build i CI |

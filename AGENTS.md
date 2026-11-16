@@ -1,6 +1,7 @@
 # AGENTS.md — guia per a agents d'IA · PROJECTE AUTO CHORDS
 
-> **Primera lectura:** aquest fitxer + els 3 fitxers de «Primers 5 minuts».
+> **Primera lectura:** comença per **`README.md`** (vista de producte: què és i
+> què fa l'app) i continua amb aquest fitxer + els passos de «Primers 5 minuts».
 > Les regles de l'app NO són ací: la font canònica és **`docs/REGLES_DE_LA_APP.md`**.
 >
 > ⚠️ **El codi mana sobre la documentació** (detall a «Font de veritat», avall).
@@ -15,8 +16,8 @@
 
 **Propòsit:** convertir una cançó en un **mapa editable d'acords, estructura i
 tempo/compàs** i exportar-lo com a **clips WAV silenciosos** (més CSV, mapa de
-tempo, guia i partitura) per muntar-lo en qualsevol DAW. L'àudio original no es
-toca: només s'edita una còpia de treball dins el projecte.
+tempo —CSV i MIDI—, guia i partitura) per muntar-lo en qualsevol DAW. L'àudio
+original no es toca: només s'edita una còpia de treball dins el projecte.
 
 **Flux:** 1) **Obre l'àudio** (`Ctrl+O` o drag & drop; si no és WAV, `ffmpeg` el
 converteix dins `audio/`). En obrir-lo es crea/obre el **projecte**. 2)
@@ -34,8 +35,9 @@ model es desen a cada edició** i l'autosave/recuperació són automàtics.
 - Import de **19 formats** → WAV de treball; projecte autocontingut.
 - **Anàlisi** Chordino + qm-segmenter + BPM/beats QM; únic motor `vamp_host_local`.
 - **Visor DAW de 3 pistes** amb edició completa i desfer/refer.
-- **Mapa de tempo/compàs** per trams, tap tempo i metrònom.
-- **Export** WAVs + CSV + `mapa_tempo/` + guia + MusicXML/PDF/MSCZ.
+- **Mapa de tempo/compàs** per trams, tap tempo, metrònom i **export MIDI**
+  (`mapa_tempo.mid`).
+- **Export** WAVs + CSV + `mapa_tempo/` (CSV + **MIDI**) + guia + MusicXML/PDF/MSCZ.
 - **Retall/afegir silenci** als extrems + export d'àudio amb `ffmpeg`.
 
 **FORA d'abast (ara; decisió vigent, no invariant):** afinador i
@@ -43,7 +45,8 @@ model es desen a cada edició** i l'autosave/recuperació són automàtics.
 snap a zero-crossings); i18n, multi-pestanya i batch/render queue.
 
 **Ajornat (sense data):** fase 10 (motor de detecció amb corpus real) i anàlisi
-guiada; rubato i doble graella avançada; MIDI i export de projecte DAW.
+guiada; rubato i doble graella avançada; **export MIDI d'acords/seccions** (el
+mapa de tempo ja és dins) i **export de projecte DAW**.
 
 > Si una tasca no és a «DINS», no es fa sense OK de l'operador.
 
@@ -65,7 +68,9 @@ guiada; rubato i doble graella avançada; MIDI i export de projecte DAW.
 
 ## ⏱️ Primers 5 minuts (Protocol d'arrencada)
 
-1. Aquest fitxer (secció «Abast i flux»).
+1. **`README.md`** — vista de producte: què és i què fa l'app. No és contracte; si
+   divergeix, manen aquest fitxer i el codi. Continua amb **aquest fitxer**
+   (secció «Abast i flux»).
 2. **`docs/REGLES_DE_LA_APP.md`** sencer (l'únic contracte invariant intocable).
 3. **Mapeig viu del codi (sense assumir res):**
    * Consulta `DEVELOPING.md` › «Mòduls de l'app» (taula sincronitzada amb el codi per CI).
@@ -233,6 +238,7 @@ smoke, generadors i ordre aleatori).
 
 ## 🗺️ On anar per a la resta
 
+- **`README.md`** — vista de producte / punt d'entrada humà: què és i què fa l'app.
 - **`ARBRE_DIRECTORIS.md`** — mapa de carpetes i fitxers.
 - **`docs/README.md`** — índex de tota la documentació.
 - **`DEVELOPING.md`** — entorn, arquitectura, build i CI.

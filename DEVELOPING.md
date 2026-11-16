@@ -6,7 +6,8 @@ Tot en català. Llicència: GPL-3.0-or-later (vegeu `LICENSE`).
 > a **`docs/REGLES_DE_LA_APP.md`**. Cap canvi no les pot trencar; només es canvien
 > amb **OK explícit de l'operador** i queda constància al `CHANGELOG`.
 >
-> ⚠️ Document orientatiu: **vegeu `AGENTS.md`**.
+> ⚠️ Document orientatiu. **Vista de producte:** `README.md` · **contracte
+> operatiu i abast canònic:** `AGENTS.md` §«Abast i flux».
 
 ## Requisits
 

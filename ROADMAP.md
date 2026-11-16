@@ -1,12 +1,11 @@
 # Full de ruta — PROJECTE AUTO CHORDS
 
-> Eina per a **músics multi-DAW**: analitza una cançó (WAV), en deixa **editar
-> visualment** els acords i l'estructura, i n'exporta el resultat com a **clips
-> WAV** llestos per arrossegar a qualsevol DAW. També es vol que permeta
-> **edicions d'àudio bàsiques** sobre una còpia del projecte. Tot en català ·
-> **GPL-3.0-or-later**.
+> 📖 **Vista de producte:** **[`README.md`](README.md)** · **Abast canònic:**
+> **[`AGENTS.md` §«Abast i flux»](AGENTS.md#-abast-i-flux-de-lusuari--font-única)**.
+> Aquest fitxer descriu **estat i full de ruta**; no és el contracte ni la
+> descripció de producte. Tot en català · **GPL-3.0-or-later**.
 >
-> **v0.8.0** · Estat: **flux de producte estable i multi-SO** · Suite **verda**
+> **v0.9.3** · Estat: **flux de producte estable i multi-SO** · Suite **verda**
 > (1.619 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
@@ -292,7 +291,7 @@ validació completa amb una cançó real 6/8/9/8.
 La resta de fases, la unitat del beat i el diàleg de reparació sí que estan
 implementats (2026-11-08).
 
-Commit de referència: `68dcde1` (checkpoint v9.2).
+Commit de referència: `68dcde1` (checkpoint v0.9.2).
 
 ---
 
@@ -473,8 +472,9 @@ Commit de referència: `68dcde1` (checkpoint v9.2).
   bàsic/avançat.
 
 ### Export i partitura
-- **Export MIDI** (acords/seccions com a notes o marcadors + **mapa de
-  tempo/timesig**); el **PPQ/ticks** només caldria en aquest cas.
+- **Export MIDI d'acords/seccions** (com a notes o marcadors); el **mapa de
+  tempo/timesig** ja s'exporta (`mapa_tempo.mid`) i el **PPQ/ticks** només
+  caldria per a aquest cas.
 - **Generar un projecte de DAW** (`.rpp` de REAPER, `.als` de Live…) amb els
   clips **ja col·locats a la graella** (el «pont» definitiu per a multi-DAW).
 - **Plantilles d'export per DAW** (Reaper/Live/Logic) amb noms i carpeta coneguts.
