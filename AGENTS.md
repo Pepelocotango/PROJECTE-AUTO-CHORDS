@@ -34,7 +34,7 @@ model es desen a cada edició** i l'autosave/recuperació són automàtics.
 - Import de **19 formats** → WAV de treball; projecte autocontingut.
 - **Anàlisi** Chordino + qm-segmenter + BPM/beats QM; únic motor `vamp_host_local`.
 - **Visor DAW de 3 pistes** amb edició completa i desfer/refer.
-- **Mapa de tempo/compàs** per trams, offset, tap tempo i metrònom.
+- **Mapa de tempo/compàs** per trams, tap tempo i metrònom.
 - **Export** WAVs + CSV + `mapa_tempo/` + guia + MusicXML/PDF/MSCZ.
 - **Retall/afegir silenci** als extrems + export d'àudio amb `ffmpeg`.
 
@@ -112,8 +112,7 @@ canònica: `docs/REGLES_DE_LA_APP.md` §13.6.
 
 - **Obligatori (ho enforça la suite/CI):** `CHANGELOG.md` per comportament;
   `docs/TIPUS_XIFRAT_ACORDS.md` si toques `xifrat.py`; `docs/ESQUEMA_UI.md`
-  (+ regenerar `.html`/`.svg`) si toques GUI; `docs/EDICIO_OPERACIONS.md` si
-  toques edició; **regenerar** amb `make docs` (vistes, inventari o taula de
+  (+ regenerar `.html`/`.svg`) si toques GUI; **regenerar** amb `make docs` (vistes, inventari o taula de
   mòduls) si canvien GUI, pins o `app/`; `ROADMAP.md` §2 en plegar.
 - **Ideal si queden mentint:** `README.md` (producte), `DEVELOPING.md`
   (entorn/build/CI), `ARBRE_DIRECTORIS.md` (fitxers), docstrings i `docs/recerca/`.

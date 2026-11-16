@@ -184,7 +184,7 @@ def transforma_model(acords, seccions, trams, marcadors, offset, durada,
         clips_seccio = [
             pipeline.Clip(max(0.0, s.ini - delta), s.fi - delta, s.payload)
             for s in clips_seccio if s.fi > delta]
-        mapa = TempoMap(trams, nou_offset)
+        mapa = TempoMap(trams)
         actiu = mapa.tram(delta)
         nou_trams = [(0.0, actiu.fi - delta, actiu.bpm,
                       actiu.num, actiu.den)]

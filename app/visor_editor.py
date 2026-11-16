@@ -32,6 +32,9 @@ class EditorMixin:
         self.ed_cb.setEnabled(True)
         self.ed_bpm_compas.setVisible(False)
         self.ed_bpm_compas.setEnabled(False)
+        for w in (self.ed_bpm_aplica, self.ed_compas_aplica,
+                  self.ed_n_aplica):
+            w.setVisible(False)
         if k == "tempo" and 0 <= i < len(getattr(self, "tempo_trams", None) or []):
             tr = self.tempo_trams[i]
             ini, fi, bpm = float(tr[0]), float(tr[1]), float(tr[2])
@@ -65,9 +68,6 @@ class EditorMixin:
                 "Nombre de compassos: sempre un enter (tots els clips, "
                 "primer i últim inclosos).")
             rol = tempo_map.rol_tram(self.tempo_trams, i)
-            if tempo_map.es_preroll_tram(
-                    self.tempo_trams, i, getattr(self, "offset", 0.0)):
-                rol = "preroll"
             self.ed_rol_lbl.setText(f"Rol: {rol}")
             self.ed_rol_lbl.setVisible(True)
             self.ed_cb_lbl.setText("Ini (c):")
@@ -82,8 +82,12 @@ class EditorMixin:
             self.ed_bpm_compas.setVisible(True)
             self.ed_bpm_compas.setEnabled(True)
             for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_n,
-                      self.ed_aplica):
+                      self.ed_aplica, self.ed_bpm_aplica,
+                      self.ed_compas_aplica, self.ed_n_aplica):
                 w.setEnabled(True)
+            self.ed_bpm_aplica.setVisible(True)
+            self.ed_compas_aplica.setVisible(True)
+            self.ed_n_aplica.setVisible(True)
             ultim = (i == len(self.tempo_trams) - 1)
             self.ed_aplica.setEnabled(not ultim)
             self.ed_aplica.setToolTip(
@@ -147,11 +151,50 @@ class EditorMixin:
         self.log(f"editor: {text}")
         self.infoMissatge.emit(text)
 
+    def _aplica_editor_var(self, camp):
+        """Aplica només una variable del clip de tempo seleccionat.
+
+        `camp`: `"bpm"`, `"compas"` o `"n"`. Els altres camps de l'Editor
+        s'ignoren totalment; el model aplica les seues regles de N enter.
+        """
+        k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
+        if k != "tempo" or not (0 <= i < len(self.tempo_trams or [])):
+            self.avis_editor("Selecciona un clip de tempo abans d'aplicar.")
+            return False
+        tr = self.tempo_trams[i]
+        try:
+            if camp == "bpm":
+                bpm = self.bpm_entrada(self.ed_nom.text())
+                bpm, num, den = tempo_map.valida_tempo(
+                    bpm, int(tr.num), int(tr.den))
+                ok = self.edita_tempo_objectiu(i, bpm, num, den)
+            elif camp == "compas":
+                m = re.match(r"^\s*(\d+)\s*[/:]\s*(\d+)\s*$",
+                             self.ed_fam.text().strip())
+                if not m:
+                    raise ValueError("El compàs ha de ser num/den (p. ex. 6/8).")
+                num, den = int(m.group(1)), int(m.group(2))
+                bpm, num, den = tempo_map.valida_tempo(
+                    float(tr.bpm), num, den)
+                ok = self.edita_tempo_objectiu(i, bpm, num, den)
+            elif camp == "n":
+                n = float(self.ed_n.text().strip().replace(",", "."))
+                if n <= 0 or abs(n - round(n)) > 1e-3:
+                    raise ValueError("N ha de ser un enter positiu.")
+                ok = self.edita_n_compassos(i, n, int(tr.num), int(tr.den))
+            else:
+                return False
+        except (TypeError, ValueError, AttributeError) as e:
+            self.avis_editor(str(e))
+            return False
+        self._actualitza_editor()
+        return bool(ok)
+
     def _aplica_editor_tempo(self, i):
         """Aplica BPM/compàs/N exactes i recalcula el veí (recalc mòbil).
 
         El clip seleccionat rep exactament el que ha escrit l'usuari. El veí
-        dret conserva la signatura de Ref. recalc si pot i ajusta BPM/N; només
+        dret conserva la signatura del veí esquerre si pot i ajusta BPM/N; només
         si no hi ha cap combinació vàlida canvia de signatura. En l'últim/únic
         clip Aplica no està disponible: la fi de la WAV és fixa.
         """
@@ -274,13 +317,13 @@ class EditorMixin:
                     self.avis_editor(
                         "Tempo: el veí de la dreta quedaria sense durada.")
                     return
-                ref_bpm, ref_num, ref_den = self.ref_tempo_base()
+                bpm_vei, num_vei, den_vei = self.referencia_tempo_base(i)
                 recalc = tempo_recalc.recalculca_vei_ref(
-                    dur_vei, ref_bpm, ref_num, ref_den)
+                    dur_vei, bpm_vei, num_vei, den_vei)
                 if recalc is None:
                     self.avis_editor(
                         "Tempo: el veí de la dreta no cap amb cap combinació "
-                        "vàlida a partir de Ref. recalc.")
+                        "vàlida a partir del veí esquerre.")
                     return
                 nous = list(mapa)
                 nous[i] = mapa_tempo.TramMapa(

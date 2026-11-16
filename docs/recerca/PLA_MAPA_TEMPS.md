@@ -5,17 +5,17 @@
 >
 > **Nota (2026-11-07):** el contracte ja s'ha actualitzat a
 > `docs/REGLES_DE_LA_APP.md` §13 (model permissiu, recalcul guiat, mínim de
-> 86 ms i clips sempre manen). La referència del recalcul és la **base manual
-> de la barra 2** (`BPM ref` + `compàs ref`), no la dels clips veïns; els beats
-> detectats poden corregir compàs/X-X i `N`. Este pla queda com a registre de
-> les decisions.
+> 86 ms i clips sempre manen). La referència del recalcul és el **veí esquerre**
+> del clip; els beats detectats poden corregir compàs/X-X i `N`. Este pla queda
+> com a registre de les decisions.
 
 ## Decisions
 
-1. **La referència la posa el músic.** En obrir una cançó, escolta, marca un
-   BPM aproximat amb el tap tempo i tria un compàs `x/x` a la **barra 2**
-   (`Ref. recalc`). És una referència manual i global per al recalcul, no la
-   dels clips veïns; els beats poden corregir-la.
+1. **La referència és el veí esquerre.** El recalcul agafa el BPM i el compàs
+   del clip immediatament anterior al seleccionat; si no n'hi ha, el propi
+   clip. El veí de la dreta que es recalcula també s'ancora a eixa referència
+   (el clip anterior al seleccionat), no al clip seleccionat. Els beats poden
+   corregir el compàs/X-X i `N`.
 2. **Els clips de temps són el model.** Es comporten com els clips d'acords i
    estructura: afegir, partir, fusionar, moure, redimensionar i eliminar.
    Cada edició actualitza la graella.
@@ -27,7 +27,7 @@
    (≈ 86 ms).
 5. **Els compassos sencers són l'objectiu del recalcul, no una barrera.**
    Si no es poden aconseguir, l'app avisa i aplica la solució menys agressiva.
-6. **El recalcul decideix què tocar.** Amb la referència base de BPM i
+6. **El recalcul decideix què tocar.** Amb la referència de BPM i
    compàs, calcula quants compassos «espera» el tram i tria la combinació que
    menys s'allunya de la referència: conservar BPM i compàs, canviar el compàs,
    ajustar el BPM o canviar el nombre de compassos. Amb beats detectats, la
@@ -38,10 +38,9 @@
    compàs per encaixar-hi.
 8. **El rubato continua existint com a tipus de clip.** Mateixes operacions,
    però BPM i compàs derivats i de només lectura. Els segons no ballen.
-9. **El pre-roll automàtic es conserva**, limitat a l'inici de la cançó.
 10. **El transport no és una segona veritat.** Els clips de temps manen; els
-    camps de BPM/compàs de la barra són un editor. La **referència base** de
-    recalcul és independent del transport i dels clips.
+    camps de BPM/compàs de la barra són un editor. La referència del recalcul
+    és el clip veí, no el transport.
 11. **Si no hi ha cap solució raonable**, l'app no fa canvis silenciosos:
     avisa i tria el mal menor (ajustar la frontera o deixar el tram com està).
 
@@ -122,5 +121,5 @@ es mouen BPM i compàs.
 - Cap canvi silenciós: si el recalcul ha de canviar BPM, compàs o `N`, es veu
   al log i, si és gran, s'avisa.
 - El mínim de clip és `1/8` a 350 BPM (≈ 86 ms).
-- Rubato i pre-roll continuen funcionant.
+- Rubato continua funcionant.
 - Els exports i la graella continuen derivant del mapa.

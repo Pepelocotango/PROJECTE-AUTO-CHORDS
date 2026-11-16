@@ -31,13 +31,13 @@ import shutil
 import tempfile
 from datetime import datetime
 
-from app import bpm_unit, pipeline
+from app import pipeline
 from app import mapa_tempo
 
 EXT = ".acproj"
-# 4 (2026-11-XX): `beat_unit` per tram i `ref.beat_unit`.
+# 5 (2026-11-16): fora `offset` i `ref`; el recalcul usa el veí esquerre.
 # **Sense retrocompatibilitat**: els projectes de format anterior es rebutgen.
-FORMAT = 4
+FORMAT = 5
 NOM_AUDIO_DIR = "audio"
 NOM_BACKUP_DIR = "backup"
 NOM_CSV_ACORDS = "acords.csv"
@@ -106,8 +106,7 @@ def saneja_analisi(ana):
     if not isinstance(ana, dict):
         return None
     net = {k: v for k, v in ana.items()
-           if k in ("data", "durada", "bpm", "bpb", "offset", "tempo_fix",
-                    "opcions")}
+           if k in ("data", "durada", "bpm", "bpb", "tempo_fix", "opcions")}
     chords = []
     for it in (ana.get("chords") or ()):
         try:
@@ -215,7 +214,7 @@ class Projecte:
 
     # -- creació --------------------------------------------------------
     @classmethod
-    def crea(cls, carpeta, wav_origen, nom=None, bpm=120.0, bpb=4, offset=0.0,
+    def crea(cls, carpeta, wav_origen, nom=None, bpm=120.0, bpb=4,
              fix=False, opcions=None, vista=None, csv_acords=None,
              csv_estructura=None, permet_existent=False, compas=None,
              log=None):
@@ -302,8 +301,7 @@ class Projecte:
         if not os.path.isfile(csv_s):
             pipeline.desa_abc_csv(
                 csv_s, [(0.0, durada, "A", "A")], float(bpm),
-                lambda *_a: None, lliure=not fix, bpb=int(bpb),
-                offset=float(offset))
+                lambda *_a: None, lliure=not fix, bpb=int(bpb))
         den = 4
         if compas and "/" in str(compas):
             try:
@@ -319,14 +317,8 @@ class Projecte:
             "creat": _ara(),
             "audio": os.path.join(NOM_AUDIO_DIR, os.path.basename(dest_wav)),
             "tempo": {"bpm": float(bpm), "bpb": int(bpb),
-                      "offset": float(offset), "fix": bool(fix),
-                      "compas": str(compas).strip() if compas else "",
-                      "ref": {"bpm": float(bpm),
-                              "compas": (str(compas).strip()
-                                         if compas and "/" in str(compas)
-                                         else f"{int(bpb)}/4"),
-                              "beat_unit": bpm_unit.unitat_per_defecte(
-                                  int(bpb), int(den or 4))}},
+                      "fix": bool(fix),
+                      "compas": str(compas).strip() if compas else ""},
             "opcions": copy.deepcopy(opcions) if opcions else {},
             "vista": copy.deepcopy(vista) if vista else {},
         }

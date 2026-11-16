@@ -205,20 +205,6 @@ def rol_tram(trams, idx):
     return "interior"
 
 
-def es_preroll_tram(trams, idx, offset=0.0):
-    """True si el tram és el pre-roll inicial (0 → compàs 1)."""
-    trams = list(trams or ())
-    if not trams or int(idx) != 0 or float(offset or 0.0) <= TOL:
-        return False
-    try:
-        return float(trams[0].fi) <= float(offset) + TOL
-    except (AttributeError, TypeError, ValueError, IndexError):
-        try:
-            return float(trams[0][1]) <= float(offset) + TOL
-        except (TypeError, ValueError, IndexError):
-            return False
-
-
 def agrupacio_compas(num, den):
     """Grups de temps dins del compàs, en unitats del denominador.
 
@@ -997,19 +983,6 @@ def _graella_beats(trams, durada, offset=0.0, beats_qm=None):
     mapa = TempoMap(trams, offset=offset)
     grid = [float(t) for t in mapa.grid_lines(0.0, float(durada),
                                                kind="beat")]
-    # El primer clip pot tindre pre-roll abans de l'offset. La graella de
-    # beats continua cap enrere amb el BPM/compàs del primer tram: eixos
-    # beats també compten per a la regla del primer clip.
-    if float(offset) > TOL and trams:
-        base_tram = trams[0]
-        beat = _beat_segons_tram(base_tram)
-        if beat > TOL:
-            lo = float(offset) + math.floor((0.0 - float(offset)) / beat) * beat
-            t = lo
-            while t <= float(offset) + TOL:
-                if -TOL <= t <= float(durada) + TOL:
-                    grid.append(float(t))
-                t += beat
     return sorted(set(round(float(t), 9) for t in grid))
 
 
@@ -1030,15 +1003,14 @@ def clip_conte_beat_sencer(tram, graella, tol=TOL_COMPAS):
 def _graella_tram(tram, idx, offset=0.0, durada=0.0):
     """Línies de beat d'un clip, ancorades al seu inici musical.
 
-    El primer clip compta des de l'offset (pot incloure pre-roll negatiu); la
-    resta des del seu propi inici. Així una frontera de tempo no es converteix
-    artificialment en una línia de beat.
+    Cada clip compta des del seu propi inici. Així una frontera de tempo no es
+    converteix artificialment en una línia de beat.
     """
     num, den = int(tram[3]), int(tram[4])
     beat = _beat_segons_tram(tram)
     if beat <= TOL or num <= 0 or den <= 0:
         return []
-    base = float(offset) if int(idx) == 0 else float(tram[0])
+    base = float(tram[0])
     ini, fi = float(tram[0]), float(tram[1])
     k0 = int(math.floor((ini - base) / beat)) - 2
     k1 = int(math.ceil((fi - base) / beat)) + 2
@@ -1157,70 +1129,16 @@ def parteix_trams_a(trams, t, durada):
     return normalitza_trams(out, durada)
 
 
-def ajusta_primer_clip_a_compas(trams, durada, offset=0.0):
-    """Fa que el primer clip siga **un compàs sencer** en fixar l'offset.
-
-    El primer clip és el pre-roll (0 → offset). Quan l'operador marra el
-    compàs 1, es tria el compàs admissible que deixa el BPM més pròxim al
-    primer clip de música (el segon), evitant dobles/meitats. Així, per a un
-    pre-roll de 0.742667 s i un segon clip a 147.056 BPM, ix `2/4` a 161.58
-    BPM, no un `4/4` a 323 BPM.
-    """
-    durada = float(durada or 0.0)
-    nous = normalitza_trams(trams, durada)
-    if len(nous) < 2:
-        return nous
-    ini, fi, bpm_vell, num_vell, den_vell = nous[0]
-    if _es_lliure_tram(nous[0]) or _es_lliure_tram(nous[1]):
-        return nous
-    if abs(float(fi) - float(offset)) > 1e-3:
-        return nous
-    dt = float(fi) - float(ini)
-    ref = float(nous[1][2])
-    if dt <= TOL or ref <= 0:
-        return nous
-    candidats = []
-    for num in range(limits.NUM_MIN, limits.NUM_MAX + 1):
-        for den in limits.DENOMINADORS_ADMESOS:
-            bq = _bar_quarters(num, den)
-            bpm = bq * 60.0 / dt
-            if not (BPM_EDIT_MIN - TOL <= bpm <= BPM_EDIT_MAX + TOL):
-                continue
-            ratio = bpm / ref
-            if not (0.5 + 1e-9 < ratio < 2.0 - 1e-9):
-                continue
-            # A igualtat de BPM, preferix conservar el denominador i després
-            # el numerador més simple (2/4 abans que 4/8).
-            score = (abs(math.log(ratio)),
-                     abs(int(den) - int(den_vell)),
-                     abs(int(num) - int(num_vell)),
-                     int(num))
-            candidats.append((score, bpm, int(num), int(den)))
-    if not candidats:
-        return nous
-    _score, bpm, num, den = min(candidats)
-    out = list(nous)
-    out[0] = (float(ini), float(fi), float(bpm), int(num), int(den))
-    return out
-
-
 def trams_finestra_guia(trams, t_inici, bpm, num, den, durada, beats=16,
                        n_compassos=None):
     """Nou mapa després de CONFIRMAR una finestra de l'«Anàlisi guiat».
 
-    `t_inici` = inici del tram de cua (pendent de detectar). El tram
-    confirmat acaba a la primera quantitat **entera de compassos** que més
-    s'acosta a `beats` temps del nou BPM (a 4/4, 16 temps = 4 compassos);
-    amb `n_compassos` s'imposa el nombre de compassos directament (és el que
-    fa servir el guiat: 4 compassos **de la mètrica vigent**, no 16 temps —
-    en 3/4, `beats=16` donava 5 compassos);
-    la cua que queda després va amb el BPM confirmat (es re-detectarà a la
-    finestra següent, o es queda com a últim tram si ja som al final).
+    `t_inici` = inici del tram de cua (pendent de detectar). El tram confirmat
+    acaba a la primera quantitat **entera de compassos** que més s'apropa a
+    `beats` temps del nou BPM; amb `n_compassos` s'imposa el nombre de
+    compassos. La cua que queda després va amb el BPM confirmat.
 
-    Retorna `(nous, t_seguent, m)` amb `nous` la llista de trams nova
-    (normalitzada), `t_seguent` la frontera confirmada i `m` el nombre de
-    compassos del tram confirmat. No muta l'entrada. Retorna `None` si no
-    hi ha res a detectar (`t_inici` al final de la WAV o BPM invàlid).
+    Retorna `(nous, t_seguent, m)` o `None` si no hi ha res a detectar.
     """
     durada = float(durada or 0.0)
     t = float(t_inici)
@@ -1231,7 +1149,6 @@ def trams_finestra_guia(trams, t_inici, bpm, num, den, durada, beats=16,
     b_len = durada_compas(bpm, num, den)
     if b_len <= TOL:
         return None
-    # el càlcul assumeix que `t` és una frontera; si no ho fos, la creem
     base = parteix_trams_a(trams, t, durada)
     if not base:
         base = [(0.0, durada, bpm, num, den)]
@@ -1246,8 +1163,6 @@ def trams_finestra_guia(trams, t_inici, bpm, num, den, durada, beats=16,
         t_seg = durada
         nous = abans + [(t, durada, bpm, num, den)]
     elif durada - t_seg < beat - TOL:
-        # La cua seria més curta que un beat: el contracte nou la rebutjaria.
-        # Absorbim la cua dins del tram confirmat (l'últim final és lliure).
         t_seg = durada
         nous = abans + [(t, durada, bpm, num, den)]
     else:
@@ -1379,7 +1294,7 @@ def problemes_compassos_sencers(trams, durada=0.0, offset=0.0,
                                  tolerancia=1e-3):
     """Llista els clips que no donen un nombre enter de compassos.
 
-    **No hi ha excepció de pre-roll**: el primer clip també ha de tindre `N`
+    **El primer clip també ha de tindre `N`
     enter (contracte §13.4). Cada element és un diccionari amb índex, rang,
     BPM, compàs i `N` fraccionari.
     """
@@ -1423,7 +1338,7 @@ def compassos_del_clip(tram):
     """`N` d'un clip comptant la seua **duració completa** (`fi − ini`).
 
     És la magnitud del contracte nou: tots els clips de tempo/compàs han de
-    tindre un `N` enter, inclòs el primer (encara que hi haja offset/pre-roll).
+    tindre un `N` enter, inclòs el primer.
     No depén de l'offset: eixe només mou la graella.
     """
     ini, fi, bpm, num, den = (float(tram[0]), float(tram[1]), float(tram[2]),
@@ -1864,7 +1779,7 @@ def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
     `refs`: `[(idx, tram_referencia), …]`. Si `ref_base=(bpm, num, den)` no és
     `None`, **tots** els costats usen eixa referència manual (BPM/compàs base
     del tema); si no, cada costat conserva la referència del seu clip. S'ometen
-    els rubatos, el pre-roll del primer clip i els trams on no hi ha cap
+    els rubatos i els trams on no hi ha cap
     combinació vàlida. Si hi ha beats detectats dins del clip, el seu nombre
     restringix `N` i el compàs (i poden corregir la referència base).
     """
@@ -1873,8 +1788,6 @@ def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
         if not (0 <= idx < len(out)) or _es_lliure_tram(out[idx]):
             continue
         ini, fi = float(out[idx][0]), float(out[idx][1])
-        if int(idx) == 0 and float(offset) > ini + TOL:
-            continue                     # pre-roll: el clip no és musical
         n_beats = tempo_recalc.n_negres_del_clip(
             beats, ini, fi, beat_factor, tol=tempo_recalc.TOL_TALL) if beats else None
         if avisos is not None and beats:
@@ -1944,59 +1857,6 @@ def _bpm_de_n(n, bq, dt):
     if not (bpm > 0 and bpm == bpm and bpm != float("inf")):
         raise ValueError("El BPM calculat no és vàlid")
     return bpm
-
-
-def es_frontera_preroll(trams, idx_frontera, offset=0.0):
-    """Cert si la frontera `idx_frontera` tanca el **pre-roll**.
-
-    El pre-roll és el clip `0 → offset` (el compàs 1 cau a la seua fi). No es
-    decidix pel nombre de compassos: el primer clip també ha de tindre `N`
-    enter (§13.4), però això no el convertix en música.
-    """
-    i = int(idx_frontera)
-    # Només la frontera 0→1 és el pre-roll. Abans qualsevol frontera amb un
-    # primer tram sense cap compàs es tractava com a «Compàs 1», i per això
-    # les fronteres 2–3, 3–4… es rebutjaven com si foren l'offset.
-    if i != 1 or not (0 < i < len(trams or ())):
-        return False
-    off = float(offset or 0.0)
-    if off <= float(trams[0][0]) + TOL or _es_lliure_tram(trams[0]):
-        return False
-    return es_preroll_tram(trams, 0, off)
-
-
-def mou_frontera_preroll(trams, idx_frontera, nou_offset, durada, offset=0.0):
-    """Arrossegar la frontera del **pre-roll** = moure el **compàs 1**.
-
-    Canvia l'`offset`; el primer clip (`0 → offset`) i el de música conserven
-    `N` enter i recalculen el BPM si la nova duració ho exigix. És el que fa
-    📍, però arrossegant el tall.
-
-    Retorna `(trams, nou_offset)`.
-    """
-    durada = float(durada or 0.0)
-    nous = normalitza_trams(trams, durada)
-    i = int(idx_frontera)
-    if i != 1 or not (0 < i < len(nous)):
-        raise ValueError("No hi ha cap frontera de pre-roll per a moure")
-    off = float(nou_offset)
-    ini_a = float(nous[0][0])
-    fi_b = float(nous[i][1])
-    if off <= ini_a + TOL:
-        raise ValueError("El compàs 1 no pot quedar a l'inici de la WAV")
-    if off >= fi_b - TOL:
-        raise ValueError("El compàs 1 quedaria més enllà del tram de música")
-    b = nous[i]
-    n_b = max(1, _enter_mes_proper(compassos_del_clip(b)))
-    bq_b = _bar_quarters(int(b[3]), int(b[4]))
-    bpm_b = _bpm_de_n(n_b, bq_b, fi_b - off)
-    out = list(nous)
-    out[0] = (ini_a, off, float(nous[0][2]), int(nous[0][3]), int(nous[0][4]))
-    out[i] = (off, fi_b, bpm_b, int(b[3]), int(b[4]))
-    # Contracte §13.4: el primer clip (0 → offset) també ha de tindre N enter;
-    # s'ajusta el seu BPM si cal. El segon ja s'ha recalculat amb N enter.
-    out, _ns, _avisos = ajusta_compassos_sencers(out)
-    return _mapa_valida_sense_moure(out, durada, off), off
 
 
 def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
@@ -2101,7 +1961,7 @@ def refit_trams(trams, durada, offset=0.0):
     l'últim recurs de `repara_fronteres` quan imantar la frontera faria curt
     un dels dos costats.
 
-    L'últim tram i el pre-roll pur conserven el BPM (excepcions §5).
+    L'últim tram conserva el BPM (excepció §5).
     """
     durada = float(durada or 0.0)
     out = normalitza_trams(trams, durada)

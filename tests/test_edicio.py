@@ -3493,15 +3493,6 @@ class TestUndoTemps(_undo_temps___Base):
         # i el camp de la barra queda sincronitzat amb el visor
         self.assertAlmostEqual(float(w.bpm.text()), 120.0, places=3)
 
-    def test_canviar_l_offset_es_pot_desfer(self):
-        w = _undo_temps___finestra()
-        v = w.visor_ref
-        w.offset.setText("1.5")
-        w._aplica_parametres_temps()
-        self.assertAlmostEqual(float(v.offset), 1.5, places=3)
-        w._undo_visor()
-        self.assertAlmostEqual(float(v.offset), 0.0, places=3)
-        self.assertAlmostEqual(float(w.offset.text()), 0.0, places=3)
 
     def test_canviar_el_compas_es_pot_desfer(self):
         w = _undo_temps___finestra()

@@ -469,7 +469,7 @@ def _arrodoneix_bpm(bpm, decimals):
         quant, rounding=ROUND_HALF_UP))
 
 
-def quantitza_bpm(trams, durada, decimals=1, offset=0.0):
+def quantitza_bpm(trams, durada, decimals=1):
     """Quantitza el BPM de **tots** els trams a `decimals` decimals.
 
     Conserva el nombre enter de compassos de cada clip i recalcula el seu fi;
@@ -477,34 +477,15 @@ def quantitza_bpm(trams, durada, decimals=1, offset=0.0):
     quantitzen igual que els normals: només es conserva el flag `tipus` i la
     resta de metadades. L'últim tram acaba a `durada` (excepció permesa a
     l'últim final).
-
-    Si hi ha un **pre-roll** (primer clip 0 → offset), es conserva intacte:
-    no és música i no ha de moure el compàs 1. Els clips musicals es
-    quantitzen a partir d'eixe offset.
     """
     durada = float(durada or 0.0)
     decimals = max(0, int(decimals))
-    offset = max(0.0, float(offset or 0.0))
     net = [des_de_tupla(t) for t in (trams or ())]
     if not net:
         raise ValueError("El mapa de tempo/compàs és buit")
     out = []
     cursor = 0.0
     inici_loop = 0
-    if offset > 1e-6 and net:
-        first = net[0]
-        if (abs(float(first.ini)) <= 1e-9
-                and abs(float(first.fi) - offset) <= 1e-6):
-            # Pre-roll: es conserva sencer (BPM, compàs i fi). La música
-            # comença exactament a l'offset.
-            out.append(first)
-            cursor = float(first.fi)
-            inici_loop = 1
-        elif (abs(float(first.ini)) <= 1e-9
-              and float(first.fi) < offset - 1e-6):
-            raise ValueError(
-                "El pre-roll acaba abans de l'offset; no es pot quantitzar "
-                "sense moure el compàs 1. Restaura el mapa o ajusta l'offset.")
     for tr in net[inici_loop:]:
         dur = max(0.0, float(tr.fi) - float(tr.ini))
         bq = float(tr.num) * 4.0 / float(tr.den)

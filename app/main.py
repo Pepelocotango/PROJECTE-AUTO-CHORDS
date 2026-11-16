@@ -3,7 +3,6 @@
 #           wav -> acords + estructura -> carpetes. Tot en català.
 import faulthandler
 import logging
-import math
 import os
 import sys
 import time  # patch("app.main.time.monotonic") als tests de TAP
@@ -33,13 +32,11 @@ from . import bpm_unit as bpm_unit_mod  # noqa: E402
 from . import ffmpeg, partitura, pipeline, postproc, theme  # noqa: F401
 from . import finestres  # noqa: E402
 from . import config  # noqa: E402
-from . import dialeg_canvi_unitat  # noqa: E402
 from . import dialeg_guia_rapida  # noqa: E402
 from . import dialegs  # noqa: E402
 from . import icones  # noqa: E402
 from . import panell_xifrat  # noqa: E402
 from . import plataforma  # noqa: E402
-from . import mapa_tempo
 from . import tempo_map  # noqa: E402
 
 # Sempre a un directori ESCRIPTIBLE: en una AppImage muntada la carpeta del
@@ -267,112 +264,46 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.bpb.setPlaceholderText("4/4")
         self.bpb.setToolTip(
             "Compàs intern del transport (no visible a la barra).")
-        # Referència MANUAL del recalcul (no canvia el transport ni els clips).
-        self.ref_bpm = CampText("120.000")
-        self.ref_bpm.setFixedWidth(64)
-        self.ref_bpm.setPlaceholderText("120.000")
-        self.ref_bpm.setToolTip(
-            "BPM de referència per a tots els recalcs. No canvia el clip: "
-            "només és l'àncora de la cerca de BPM/compàs/N.")
-        self.ref_bpb = CampText("4/4")
-        self.ref_bpb.setFixedWidth(46)
-        self.ref_bpb.setPlaceholderText("4/4")
-        self.ref_bpb.setToolTip(
-            "Compàs de referència (x/y) per als recalcs. Els beats detectats "
-            "poden corregir-lo si cal (p. ex. 14 beats → 7/4).")
-        self._ref_manual = False
-        self.cb_ref_beat = QComboBox()
-        for _clau, _et in bpm_unit_mod.opcions():
-            self.cb_ref_beat.addItem(_et, _clau)
-        self.cb_ref_beat.setFixedWidth(118)
-        self.cb_ref_beat.setSizeAdjustPolicy(
-            QComboBox.AdjustToMinimumContentsLengthWithIcon)
-        self.cb_ref_beat.setMinimumContentsLength(10)
-        self.cb_ref_beat.setToolTip(
-            "Unitat de pols de la Ref. recalc. El número de la Ref. es "
-            "mostra en esta unitat; el quarter intern no canvia sol.")
-        self.cb_ref_beat.currentIndexChanged.connect(self._canvia_ref_beat)
-        self.cb_beat = QComboBox()
-        for _clau, _et in bpm_unit_mod.opcions():
-            self.cb_beat.addItem(_et, _clau)
-        self.cb_beat.setCurrentIndex(0)
-        self.cb_beat.setFixedWidth(118)
-        self.cb_beat.setSizeAdjustPolicy(
-            QComboBox.AdjustToMinimumContentsLengthWithIcon)
-        self.cb_beat.setMinimumContentsLength(10)
-        self.cb_beat.setToolTip(
-            "Unitat del beat detectat i valor dels taps (negra, negra amb "
-            "punt, corxera o blanca). El recalcul convertix K a negres i el "
-            "TAP multiplica els taps/min pel valor triat. En 6/8, tria negra "
-            "amb punt si toques cada grup de 3 corxeres.")
-        self.cb_beat.currentIndexChanged.connect(self._canvia_beat_unit)
-        self.offset = CampText("0.000")
-        self.offset.setFixedWidth(60)
-        self.offset.setPlaceholderText("0.000")
-        self.offset.setToolTip("Offset del compàs 1, en segons.")
-        # La GUI mostra 3 decimals, però el model pot tindre microsegons
-        # (p. ex. 1.207438). Guardem el text exacte que hem pintat per no
-        # arredonir l'offset quan es recarrega el visor o s'analitza.
-        self._offset_ui_text = None
-        self._offset_ui_exact = None
-        for camp in (self.bpm, self.bpb, self.offset):
-            camp.editingFinished.connect(self._aplica_parametres_temps)
-        for camp in (self.ref_bpm, self.ref_bpb):
-            camp.editingFinished.connect(self._aplica_ref_recalc)
 
-        # Barra «Temps»: BPM i Compàs NO hi són (s'editen a la franja Editor).
-        # Es queda TAP · Ref. recalc · Beat/TAP · En segons · Offset. El ×2/÷2
-        # viu al menú contextual del clip de tempo (compassos, segons fixos).
-        self._params_temps = QWidget()      # s'amaga sencer en mode Lliure
-        # Els camps interns de BPM/compàs pengen del contenidor (cicle de vida
-        # lligat a la finestra) però no van al layout ni es mostren.
+        # Barra «Temps»: TAP · BPM del clip · Compàs.
+        # La unitat de pols es deriva del compàs; no hi ha selector Beat/TAP.
+        self._params_temps = QWidget()
         for camp in (self.bpm, self.bpb):
             camp.setParent(self._params_temps)
             camp.hide()
         hp = QHBoxLayout(self._params_temps)
         hp.setContentsMargins(0, 0, 0, 0)
-        hp.setSpacing(6)
+        hp.setSpacing(10)
         self.b_tap = QPushButton("TAP")
         self.b_tap.setObjectName("secundari")
         self.b_tap.setToolTip("Tap tempo: marca el pols amb clics (o la tecla T). "
                               "2 s sense tocar = reinicia.")
         self.b_tap.clicked.connect(self._tap_tempo)
         hp.addWidget(self.b_tap)
+        self.bpm_intern_bar = QLabel("BPM intern: —")
+        self.bpm_intern_bar.setObjectName("secundari")
+        self.bpm_intern_bar.setMinimumWidth(128)
+        self.bpm_intern_bar.setToolTip(
+            "BPM intern del clip seleccionat, sempre en negres/minut "
+            "(només lectura).")
+        hp.addWidget(self.bpm_intern_bar)
+        self.bpm_bar = QLabel("BPM: —")
+        self.bpm_bar.setObjectName("secundari")
+        self.bpm_bar.setMinimumWidth(190)
+        self.bpm_bar.setToolTip(
+            "BPM del clip seleccionat en la seua unitat de pols "
+            "(només lectura).")
+        hp.addWidget(self.bpm_bar)
+        self.compas_bar = QLabel("Compàs: —")
+        self.compas_bar.setObjectName("secundari")
+        self.compas_bar.setMinimumWidth(92)
+        self.compas_bar.setToolTip(
+            "Compàs del clip de tempo seleccionat (només lectura).")
+        hp.addWidget(self.compas_bar)
         self.lb_desti_accions = QLabel("")
         self.lb_desti_accions.setObjectName("desti_accions")
+        self.lb_desti_accions.setMaximumWidth(260)
         hp.addWidget(self.lb_desti_accions)
-        hp.addWidget(QLabel("Ref. recalc:"))
-        hp.addWidget(self.ref_bpm)
-        hp.addWidget(self.ref_bpb)
-        hp.addWidget(self.cb_ref_beat)
-        hp.addWidget(QLabel("Beat/TAP:"))
-        hp.addWidget(self.cb_beat)
-        self.chk_segons = QCheckBox("En segons")
-        self.chk_segons.setToolTip(
-            "El clip de tempo objectiu va en segons (rubato): sense compàs ni "
-            "graella, dura el que diu l'àudio. A la partitura es pren a 100 BPM.")
-        self.chk_segons.toggled.connect(self._segons_top_bar)
-        hp.addWidget(self.chk_segons)
-        hp.addWidget(QLabel("Offset:"))
-        hp.addWidget(self.offset)                 # segons
-        self.b_offset_cursor = QPushButton()
-        self.b_offset_cursor.setIcon(icones.ico("map-pin"))
-        self.b_offset_cursor.setObjectName("secundari")
-        self.b_offset_cursor.setToolTip(
-            "Compàs 1 al cursor: posa l'offset, TALLA el carril de tempo "
-            "aquí i fa començar el clip de tempo en aquesta posició "
-            "(es mostra en segons i en compàs.beat)")
-        self.b_offset_cursor.clicked.connect(self._marca_compas_1)
-        hp.addWidget(self.b_offset_cursor)
-        hp.addWidget(QLabel("≈"))
-        self.offset_cb = CampText("1.1")         # el mateix, en compàs.beat
-        self.offset_cb.setMaximumWidth(46)
-        self.offset_cb.setPlaceholderText("1.1")
-        self.offset_cb.setToolTip(
-            "Posició del compàs 1 en compàs.beat (graella original, offset=0).\n"
-            "Ex. 5.1 = el compàs 1 va on la graella diu 5.1")
-        hp.addWidget(self.offset_cb)
-        self.offset_cb.editingFinished.connect(self._offset_cb_canviat)
 
         # "Inclou estructura": abans era un QCheckBox a la barra d'eines; ara
         # es una ACCIO commutable al menu Analitza (la funcio es la mateixa).
@@ -452,7 +383,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         # movia a l'overflow, on els QWidgetAction no es pinten (BPM/Unitat/
         # Compàs/TAP desapareixien visualment).
         self._params_temps.setFixedHeight(36)
-        self._params_temps.setFixedWidth(self._params_temps.sizeHint().width())
         self.addToolBar(Qt.TopToolBarArea, barra)
         self.barra_principal = barra
         self.addToolBarBreak(Qt.TopToolBarArea)
@@ -668,83 +598,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         else:
             self.avisa_info("Auto Chords", f"No trobo la carpeta del registre:\n{d}")
 
-    def _beat_unit_val(self):
-        cb = getattr(self, "cb_beat", None)
-        return bpm_unit_mod.normalitza(cb.currentData() if cb else None)
-
-    def _posa_beat_unit(self, unit):
-        cb = getattr(self, "cb_beat", None)
-        if cb is None:
-            return
-        idx = cb.findData(bpm_unit_mod.normalitza(unit))
-        if idx >= 0:
-            cb.blockSignals(True)
-            cb.setCurrentIndex(idx)
-            cb.blockSignals(False)
-
-    def _canvia_beat_unit(self, _idx=None):
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            return
-        unit_nova = self._beat_unit_val()
-        unit_vella = vr.unitat_objectiu()
-        if unit_nova == unit_vella:
-            return
-        # Si hi ha una sessió de TAP oberta, es tanca ABANS del canvi
-        # d'unitat: el TAP és un undo i el canvi n'és un altre.
-        if getattr(self, "_tap_sessio_oberta", False):
-            self._tanca_sessio_tap()
-        idx = vr.tempo_objectiu()
-        trams = list(vr.tempo_trams or [])
-        bpm = (float(trams[idx].bpm) if 0 <= idx < len(trams)
-               else float(vr.bpm))
-        if (os.environ.get("AUTO_CHORDS_TEST")
-                or os.environ.get("QT_QPA_PLATFORM") == "offscreen"):
-            _bpm, unit, mode = bpm, unit_nova, "mantenir_tempo"
-        else:
-            dlg = dialeg_canvi_unitat.DialegCanviUnitat(
-                self, "Beat/TAP", bpm, unit_vella, unit_nova)
-            if dlg.exec_() != QDialog.Accepted:
-                self._posa_beat_unit(unit_vella)
-                return
-            _bpm, unit, mode = dlg.resultat()
-        if vr.canvia_unitat_tram(idx, unit, mode=mode):
-            self._posa_beat_unit(unit)
-            self._marca_dirty()
-            self.registra(f"Beat/TAP: {unit} ({mode})")
-        else:
-            self._posa_beat_unit(unit_vella)
-
-    def _canvia_ref_beat(self, _idx=None):
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            return
-        unit_nova = self._ref_beat_unit_val()
-        unit_vella = vr.ref_tempo_unit()
-        if unit_nova == unit_vella:
-            return
-        bpm, num, den = vr.ref_tempo_base()
-        if (os.environ.get("AUTO_CHORDS_TEST")
-                or os.environ.get("QT_QPA_PLATFORM") == "offscreen"):
-            bpm_nou, unit, mode = bpm, unit_nova, "mantenir_tempo"
-        else:
-            dlg = dialeg_canvi_unitat.DialegCanviUnitat(
-                self, "Ref. recalc", bpm, unit_vella, unit_nova)
-            if dlg.exec_() != QDialog.Accepted:
-                self._posa_ref_beat_unit(unit_vella)
-                return
-            bpm_nou, unit, mode = dlg.resultat()
-        vr._undo_marca()
-        try:
-            vr.set_ref_tempo(bpm_nou, num, den, unit)
-        finally:
-            vr._undo_commit()
-        self._posa_ref_beat_unit(unit)
-        self._sincronitza_ref_des_del_visor()
-        self._marca_dirty()
-        self.registra(f"Ref. recalc: {bpm_nou:g} negres/min · "
-                      f"{num}/{den} · {unit} ({mode})")
-
     def _latencia_cursor_val(self):
         """Retard visual del cursor (ms) desat a les opcions del projecte."""
         rep = self.opcions.get("reproduccio") or {}
@@ -778,9 +631,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         """Refresca els camps de temps/loop des del visor.
 
         El BPM i el compàs mostren el **clip de tempo seleccionat** (2B); si no
-        n'hi ha cap, el transport (tram 0). L'offset és global. Només reescriu
-        el text si el valor difereix, per no reformatejar el que l'usuari hi ha
-        escrit.
+        n'hi ha cap, el transport (tram 0). Només reescriu el text si el valor
+        difereix, per no reformatejar el que l'usuari hi ha escrit.
         """
         vr = getattr(self, "visor_ref", None)
         if vr is None:
@@ -800,10 +652,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             for camp, valor, text in (
                     (self.bpm, bpm,
                      None if bpm is None else f"{float(bpm):.3f}"),
-                    (self.bpb, num, compas),
-                    (self.offset, getattr(vr, "offset", None),
-                     None if getattr(vr, "offset", None) is None
-                     else f"{float(vr.offset):.3f}")):
+                    (self.bpb, num, compas)):
                 if valor is None or text is None:
                     continue
                 if camp.text().strip() == text:
@@ -815,33 +664,25 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                 except (TypeError, ValueError):
                     pass
                 camp.setText(text)
-            # Recorda el text exacte pintat per a l'offset. Així `_offset_val`
-            # pot retornar el valor intern (1.207438) encara que la GUI mostre
-            # 3 decimals (1.207), sense arredonir-lo en recarregar/analitzar.
-            off_exact = getattr(vr, "offset", None)
-            if off_exact is not None:
-                self._offset_ui_text = f"{float(off_exact):.3f}"
-                self._offset_ui_exact = float(off_exact)
-            try:
-                self.chk_segons.setChecked(num is not None and int(num) <= 0)
-            except (TypeError, ValueError):
-                pass
-            try:
-                self.offset_cb.setText(
-                    self._secs_a_cb(float(getattr(vr, "offset", 0.0))))
-            except (TypeError, ValueError, AttributeError):
-                pass
         finally:
             self._actualitzant_temps = False
         self._on_loop_state(getattr(vr, "loop_on", False))
         self._actualitza_desti_accions()
         self._actualitza_metro_ui()
-        # El selector Beat/TAP és una drecera del clip seleccionat: en canviar
-        # de tram ha de mostrar la unitat de pols d'eixe tram, no la darrera
-        # que s'haja triat (6/8 → negra amb punt; 4/4 → negra).
         try:
-            self._posa_beat_unit(vr.unitat_objectiu())
-        except (AttributeError, RuntimeError):
+            unit = vr.unitat_objectiu()
+            etiqueta = bpm_unit_mod.etiqueta(unit).lower()
+            self.bpm_intern_bar.setText(f"BPM intern: {float(bpm):.3f}")
+            self.bpm_bar.setText(
+                f"BPM: {bpm_unit_mod.formata(float(bpm), unit)}"
+                f" ({etiqueta})")
+            self.bpm_bar.setToolTip(
+                f"BPM del clip seleccionat en {etiqueta}; "
+                f"intern {float(bpm):.3f} negres/min.")
+            self.compas_bar.setText(
+                f"Compàs: {int(num)}/{int(den)}"
+                if num and den else "Compàs: —")
+        except (AttributeError, TypeError, ValueError):
             pass
         # La franja Editor és l'única vista de BPM/compàs: si mostra un clip de
         # tempo, refresca-la amb el model després de qualsevol canvi extern
@@ -889,7 +730,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         if vr is not None:
             vr.undo()
             self._sincronitza_temps_del_visor()
-            self._sincronitza_ref_des_del_visor()
         else:
             self.registra("Edita: no hi ha visor carregat")
 
@@ -899,7 +739,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         if vr is not None:
             vr.redo()
             self._sincronitza_temps_del_visor()
-            self._sincronitza_ref_des_del_visor()
         else:
             self.registra("Edita: no hi ha visor carregat")
 
@@ -932,8 +771,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         """Porta el focus a l'edició de tempo visible.
 
         El camp BPM de la barra ja no existix: si hi ha un clip de tempo
-        seleccionat, el focus va al BPM de la franja Editor; si no, a l'offset,
-        que és el paràmetre de la barra que queda.
+        seleccionat, el focus va al BPM de la franja Editor; si no, no hi ha
+        cap camp focable propi de la barra.
         """
         vr = getattr(self, "visor_ref", None)
         if (vr is not None and getattr(vr, "_ed_kind", None) == "tempo"
@@ -941,8 +780,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             vr.ed_nom.setFocus()
             vr.ed_nom.selectAll()
             return
-        self.offset.setFocus()
-        self.offset.selectAll()
 
 
     # ---------- Avisos ---------------------------------------------------------
@@ -1289,7 +1126,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             den=int(getattr(vr, "beat_type", 4) or 4))
         if dlg.exec_() != QDialog.Accepted:
             return
-        cada, tol, offset_auto = dlg.valors()
+        cada, tol = dlg.valors()
         self._atura_si_sona("detecció de tempo per trams")
         b = self.opcions.get("bpm", {})
         self.registra(f"Detectant el tempo per trams (1 BPM cada {cada} "
@@ -1298,7 +1135,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             wav, durada, int(vr.bpb), int(getattr(vr, "beat_type", 4) or 4),
             cada, tol, bpm_min=b.get("min"), bpm_max=b.get("max"),
             preferit=(b.get("pref_min"), b.get("pref_max")),
-            offset=None if offset_auto else 0.0, parent=self)
+            offset=0.0, parent=self)
         fil.feta.connect(self._tempo_trams_fet)
         fil.missatge.connect(self.registra)
         fil.finished.connect(
@@ -1310,7 +1147,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         """Arriba el mapa de tempo per trams: s'aplica amb UN sol desfer."""
         vr = getattr(self, "visor_ref", None)
         trams = (res or {}).get("trams") or []
-        offset = float((res or {}).get("offset") or 0.0)
         base = (res or {}).get("bpm_base")
         if vr is None or not trams:
             self.avisa_info("Tempo per trams",
@@ -1318,8 +1154,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                             "(potser l'àudio no té pols clar).")
             return
         vr._undo_marca()
-        if offset > 0:
-            vr.offset = offset
         ok = vr.aplica_tempo_validat(trams, "Mapa de tempo per trams")
         vr._undo_commit()
         if not ok:
@@ -1328,12 +1162,10 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                             "compassos: no s'ha aplicat.")
             return
         self._sincronitza_temps_del_visor()
-        if offset > 0:
-            self.offset_cb.setText(self._secs_a_cb(offset))
         bpms = sorted({round(float(t[2]), 2) for t in trams})
         self.registra(
-            f"mapa de tempo per trams: {len(trams)} trams, compàs 1 a "
-            f"{offset:.3f}s, BPM base {base if base is None else round(base, 2)}"
+            f"mapa de tempo per trams: {len(trams)} trams, BPM base "
+            f"{base if base is None else round(base, 2)}"
             f" (rang {bpms[0]}–{bpms[-1]})")
 
     def _detecta_tempo_mapa(self):
@@ -1419,149 +1251,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         if b - a < float(minim):
             return None
         return (max(0.0, a), b)
-
-    def _talla_i_offset(self, t, primer_a_compas=False):
-        """Offset del compàs 1 al cursor + tall del carril de tempo (1 desfer).
-
-        El **clip de tempo** nou (si el cursor no era ja una frontera) arrenca
-        exactament a `t`. Si `primer_a_compas`, el pre-roll es recalcula com
-        un compàs sencer amb el BPM més pròxim al clip musical següent.
-        Retorna `(trams, idx)` o `None` si no hi ha visor.
-        """
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            return None
-        durada = vr._durada_wav()
-        t = max(0.0, min(float(t), durada))
-        nous = tempo_map.parteix_trams_a(list(vr.tempo_trams or []), t, durada)
-        if primer_a_compas:
-            # El primer clip és el pre-roll: en fixar el compàs 1, ha de
-            # quedar com un compàs sencer amb el BPM més pròxim possible al
-            # clip musical següent (p. ex. 2/4 en un pre-roll curt).
-            nous = tempo_map.ajusta_primer_clip_a_compas(nous, durada, t)
-        nous = mapa_tempo.reenganxa_metadades(vr.tempo_trams, nous)
-        vr._undo_marca()
-        vr.offset = t
-        vr.aplica_tempo_trams(nous)
-        vr._undo_commit()
-        self._sincronitza_temps_del_visor()
-        self.offset_cb.setText(self._secs_a_cb(t))
-        idx = next((i for i, s in enumerate(nous)
-                    if abs(float(s[0]) - t) <= 1e-6), 0)
-        return (nous, idx)
-
-    def _marca_compas_1(self):
-        """Compàs 1 al cursor: offset + tall + inici del clip de tempo.
-
-        Un sol pas de desfer fa les tres coses (si el cursor ja era una
-        frontera del mapa no hi ha tall: només canvia l'offset). El clip de
-        tempo que arrenca al cursor es mostra en **segons** i en
-        **compàs.beat** (la graella original, abans de moure l'offset), i es
-        deixa seleccionat perquè els camps BPM/compàs l'editen.
-        """
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            self.avisa("Compàs 1", "Primer obri un àudio.")
-            return
-        t = float(vr.pos)
-        durada = vr._durada_wav()
-        if t >= durada - 1e-3:
-            self.avisa("Compàs 1",
-                       "El cursor és al final de la WAV: no hi ha res a "
-                       "alinear-hi.")
-            return
-        cb_original = self._secs_a_cb(t)     # ABANS de moure l'offset
-        res = self._talla_i_offset(t, primer_a_compas=True)
-        if res is None:
-            return
-        _nous, idx = res
-        try:
-            vr.timeline.selecciona("tempo", idx)
-        except Exception:  # noqa: BLE001
-            pass
-        self.registra(f"Compàs 1 a {t:.3f}s · clip de tempo {idx} des de "
-                      f"{t:.3f}s = compàs 1.1 (graella original "
-                      f"{cb_original})")
-        # L'offset és part del document (`tempo.offset`), no del CSV de
-        # mapa. Cal desar-lo immediatament perquè reobrir no el perda.
-        self._desa_meta_silencios()
-        if len(res[0]) > 2:
-            self.registra("Atenció: el mapa té trams interiors — comprova "
-                          "que les fronteres caiguen en línia de compàs "
-                          "(o passa l'Anàlisi guiat).")
-
-    def _downbeat_del_resultat(self):
-        """Primer downbeat del resultat d'Analitza BPM, si n'hi ha.
-
-        Mateixa regla que `pipeline.detecta_compas1`: el primer bar a partir
-        del primer beat (marge 0,35 s). Així el compàs 1 i les línies de
-        downbeats ixen del **mateix** resultat de detecció.
-        """
-        info = getattr(self, "_beats_actuals", None)
-        if not isinstance(info, dict):
-            return None
-        bars = []
-        for b in (info.get("downbeats") or ()):
-            try:
-                b = float(b)
-            except (TypeError, ValueError):
-                continue
-            if math.isfinite(b):
-                bars.append(b)
-        if not bars:
-            return None
-        inici = 0.0
-        for b in (info.get("beats") or ()):
-            try:
-                b = float(b)
-            except (TypeError, ValueError):
-                continue
-            if math.isfinite(b):
-                inici = b
-                break
-        marge = 0.35
-        cand = [b for b in bars if b >= inici - marge]
-        return float(cand[0] if cand else bars[0])
-
-    def _detecta_compas1(self):
-        """Detecta el compàs 1 (primer downbeat) i hi posa l'offset.
-
-        Si hi ha un resultat d'Analitza BPM, usa el seu primer downbeat. Si no,
-        usa el detector d'onsets + compassos del Queen Mary
-        (`pipeline.detecta_compas1`). No toca el BPM.
-        """
-        wav = self.wav_edit.text().strip()
-        if not wav or not os.path.isfile(wav):
-            self.avisa("Compàs 1", "Primer tria un àudio.")
-            return
-        self._atura_si_sona("detecció del compàs 1")
-        seg = self._downbeat_del_resultat()
-        if seg is not None:
-            self.registra(
-                f"compàs 1: downbeat guardat a {seg:.3f}s "
-                "(resultat d'Analitza BPM)")
-        else:
-            self.registra("Detectant el compàs 1 (downbeat)…")
-            QApplication.setOverrideCursor(Qt.WaitCursor)
-            try:
-                seg = pipeline.detecta_compas1(wav, self.registra)
-            except Exception as e:  # noqa: BLE001
-                seg = None
-                self.registra(f"compàs 1: error ({e})")
-            finally:
-                QApplication.restoreOverrideCursor()
-        if seg is None:
-            self.avisa_info(
-                "Compàs 1",
-                "No s'ha pogut detectar el compàs 1.\n"
-                "Pots posar-lo a mà amb el botó 📍 (al cursor).")
-            return
-        self._posa_offset_camp(seg)
-        self._aplica_parametres_temps()
-        self.registra(f"Compàs 1 detectat a {seg:.3f}s ✔")
-
-
-
 
     # ---- Drag & drop d'àudio des de l'explorador de fitxers -----------------
     def dragEnterEvent(self, ev):

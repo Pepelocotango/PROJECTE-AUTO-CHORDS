@@ -31,10 +31,9 @@ el BPM són "vistes" calculades a sobre.
   l'editor i les columnes de compàs de l'ABC també.
 - Metrònom amb la mateixa graella (`app/metronom.py`, `beat = (4/den)*60/bpm`); per defecte clica la unitat de pols del tram (`12/8` → 4 cops `3+3+3+3`).
 - **Graella fixa de temps** (`TimeRulerLayer`): a sota de l'ona, en segons absoluts
-  (`hh:mm:ss`), independent de BPM/offset/rubato; el zoom només canvia la
+  (`hh:mm:ss`), independent de BPM/rubato; el zoom només canvia la
   resolució visual.
-- **Offset** = segon on cau el compàs 1; abans, la graella és **negativa**
-  (count-in).
+- El **compàs 1** cau sempre a **0 s**; no hi ha count-in.
 - Export a Live: els noms `1-1-1_C.wav` es quantitzen a **1/32**
   (`pipeline._segments_guia_daw`); les **durades** dels WAV surten dels segons
   exactes del model i l'exportació escriu **`manifest.csv`** amb els temps
@@ -123,7 +122,8 @@ segons → tick     : tick = round( s · BPM / 60 · PPQ )
 - **Tempo constant:** conversió lineal (regla de tres).
 - **Tempo map / rampes** (BPM variable): beat→segons requereix **integrar**
   `60/BPM` tram a tram; segons→beat, la **inversa**.
-- Considerar: pickup / count-in / compassos negatius (ja suportats).
+- Considerar: pickup / anacrusi / count-in (fora del model actual: el compàs 1
+  cau sempre a **0 s** i no hi ha compassos negatius).
 
 ## 6. Export (on el PPQ es torna crític)
 
@@ -163,4 +163,4 @@ Export MIDI: ticks_per_beat = 960
 2. Posar el **mode de graella** (straight/triplet/dotted/swing) al `grid_plan`.
 3. Snap, regle i grid ja surten del `grid_plan` → només cal ampliar-lo.
 4. Export MIDI amb `ticks_per_beat=960` (i validar tresets).
-5. Conservar l'offset de compàs 1 i els compassos negatius (count-in).
+5. Conservar el compàs 1 ancorat a 0 s.

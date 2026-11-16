@@ -9,8 +9,8 @@ from PyQt5.QtWidgets import (
 )
 
 from app.camp_text import CampText
-from app.dialeg_canvi_unitat import DialegCanviUnitat, PanellCanviUnitat
-from app import bpm_unit, limits, tempo_map, tempo_recalc, theme
+from app.dialeg_canvi_unitat import PanellCanviUnitat
+from app import bpm_unit, limits, tempo_map, theme
 
 from app.finestres import GeometriaMixin
 
@@ -23,13 +23,7 @@ AJUDA_OPCIONS = {
         "usa els beats QM detectats dins el tram com a restricció forta per "
         "triar N i compàs (poden corregir la signatura).",
         "ignora els beats QM; N i compàs es deriven només de la durada, el "
-        "BPM i la Ref. recalc.",
-    ),
-    "chk_ref": (
-        "Ref. recalc",
-        "usa la Ref. recalc (BPM i compàs globals) com a àncora del càlcul.",
-        "usa el BPM i el compàs dels camps del bloc de recalcul com a "
-        "referència.",
+        "BPM i el veí esquerre.",
     ),
     "chk_segons_durada": (
         "Segons del tram",
@@ -84,12 +78,10 @@ class DialegTramTempo(GeometriaMixin, QDialog):
     aplicaRequested = pyqtSignal()
     #: «Recalcula»: mode «fix» o «mobil», amb les opcions del bloc Opcions.
     recalculRequested = pyqtSignal(str)
-    #: Nova Ref. recalc demanada des del diàleg: `(bpm, num, den)`.
-    refRequested = pyqtSignal(float, int, int, str)
     def __init__(self, parent=None, inici=0.0, bpm=120.0, num=4, den=4,
                  inicial=False, text_inici=None, unit=bpm_unit.DEFECTE,
-                 n_actual=None, durada=None, info=None, ref=None,
-                 ref_unit=bpm_unit.DEFECTE, beat_unit=bpm_unit.DEFECTE,
+                 n_actual=None, durada=None, info=None,
+                 beat_unit=bpm_unit.DEFECTE,
                  silencia_factor=False):
         super().__init__(parent)
         self._unit = bpm_unit.normalitza(unit)
@@ -101,9 +93,6 @@ class DialegTramTempo(GeometriaMixin, QDialog):
         self._num0 = int(num)
         self._den0 = int(den)
         self._inicial = bool(inicial)
-        self._ref = (tuple(ref) if ref is not None
-                     else (float(bpm), int(num), int(den)))
-        self._ref_unit = bpm_unit.normalitza(ref_unit)
         self._beat_unit = bpm_unit.normalitza(beat_unit)
         self._silencia_factor = bool(silencia_factor)
         self.setWindowTitle("BPM, compàs i compassos")
@@ -185,9 +174,6 @@ QCheckBox::indicator:disabled {{
         self.chk_beats = QCheckBox("Beats QM")
         self.chk_beats.setToolTip(_ajuda_opcio("chk_beats"))
         self.chk_beats.setChecked(True)
-        self.chk_ref = QCheckBox("Ref. recalc")
-        self.chk_ref.setToolTip(_ajuda_opcio("chk_ref"))
-        self.chk_ref.setChecked(True)
         self.chk_segons_durada = QCheckBox("Segons del tram")
         self.chk_segons_durada.setToolTip(_ajuda_opcio("chk_segons_durada"))
         self.chk_segons_durada.setChecked(True)
@@ -213,56 +199,13 @@ QCheckBox::indicator:disabled {{
         grid_opc.setHorizontalSpacing(12)
         grid_opc.setVerticalSpacing(2)
         grid_opc.addWidget(self.chk_beats, 0, 0)
-        grid_opc.addWidget(self.chk_ref, 0, 1)
-        grid_opc.addWidget(self.chk_segons_durada, 1, 0)
+        grid_opc.addWidget(self.chk_segons_durada, 0, 1)
         grid_opc.addWidget(self.chk_unitat_beat, 1, 1)
         grid_opc.addWidget(self.chk_compas_lliure, 2, 0)
         grid_opc.addWidget(self.chk_n, 2, 1)
         grid_opc.addWidget(self.chk_segons, 3, 0, 1, 2)
         grid_opc.addWidget(self.chk_silencia_factor, 4, 0, 1, 2)
         lay_opc.addLayout(grid_opc)
-        # Referència manual de recalcul editable des d'ací.
-        ref_row = QHBoxLayout()
-        l_ref_bpm = QLabel("BPM ref:")
-        self.ref_bpm = CampText(bpm_unit.formata(
-            float(self._ref[0]), self._ref_unit))
-        self.ref_bpm.setFixedWidth(72)
-        self.ref_bpm.setToolTip(
-            "BPM de la Ref. recalc (intern, negres/minut). És l'àncora dels "
-            "recalculs; no canvia cap clip per si sol.")
-        l_ref_bpm.setToolTip(self.ref_bpm.toolTip())
-        ref_row.addWidget(l_ref_bpm)
-        ref_row.addWidget(self.ref_bpm)
-        l_ref_compas = QLabel("Compàs ref:")
-        self.ref_compas = CampText(
-            f"{int(self._ref[1])}/{int(self._ref[2])}")
-        self.ref_compas.setFixedWidth(54)
-        self.ref_compas.setToolTip(
-            "Compàs de la Ref. recalc (num/den). Els beats detectats el "
-            "poden corregir segons les opcions del recalc.")
-        l_ref_compas.setToolTip(self.ref_compas.toolTip())
-        ref_row.addWidget(l_ref_compas)
-        ref_row.addWidget(self.ref_compas)
-        self.cb_ref_beat = QComboBox()
-        for _clau, _et in bpm_unit.opcions():
-            self.cb_ref_beat.addItem(_et, _clau)
-        _idxr = self.cb_ref_beat.findData(self._ref_unit)
-        if _idxr >= 0:
-            self.cb_ref_beat.setCurrentIndex(_idxr)
-        self.cb_ref_beat.setToolTip(
-            "Unitat de la Ref. recalc; el número de la Ref. es mostra en "
-            "esta unitat.")
-        self.cb_ref_beat.currentIndexChanged.connect(self._canvia_ref_unitat)
-        ref_row.addWidget(QLabel("Unitat ref.:"))
-        ref_row.addWidget(self.cb_ref_beat)
-        self.b_ref = QPushButton("Aplica ref.")
-        self.b_ref.setToolTip(
-            "Aplica esta Ref. recalc al visor i actualitza la informació "
-            "del clip. No recalcula el tram per si sol.")
-        self.b_ref.clicked.connect(self._aplica_ref)
-        ref_row.addWidget(self.b_ref)
-        ref_row.addStretch(1)
-        lay_opc.addLayout(ref_row)
         beat_row = QHBoxLayout()
         l_beat = QLabel("Beat/TAP:")
         self.cb_beat = QComboBox()
@@ -449,15 +392,10 @@ QCheckBox::indicator:disabled {{
         if num > 0 and den > 0:
             agr_ef = tempo_map.agrupacio_a_text(
                 tempo_map.agrupacio_compas(num, den))
-        ref_bpm = float(self._ref[0])
-        ref_num, ref_den = int(self._ref[1]), int(self._ref[2])
-        desviacio = ((bpm / ref_bpm) - 1.0) * 100.0 if ref_bpm else 0.0
-        ratio = (bpm / ref_bpm) if ref_bpm else None
-        sospita = bool(
-            ratio is not None
-            and (abs(ratio - 2.0) <= 2.0 * tempo_recalc.MARGE_SOSPITA_OCTAVA
-                 or abs(ratio - 0.5)
-                 <= 0.5 * tempo_recalc.MARGE_SOSPITA_OCTAVA))
+        vei_bpm = None
+        ref_num, ref_den = 0, 0
+        desviacio = None
+        sospita = False
         return {
             "idx": 1, "total": 1,
             "rol": "unic" if self._inicial else "clip",
@@ -473,8 +411,8 @@ QCheckBox::indicator:disabled {{
             "bpm": bpm,
             "bpm_mostra": bpm_unit.de_quarter(bpm, self._unit),
             "bpm_unit": bpm_unit.etiqueta(self._unit),
-            "offset": 0.0, "ref_bpm": ref_bpm,
-            "ref_compas": f"{ref_num}/{ref_den}",
+            "vei_bpm": vei_bpm,
+            "vei_compas": "—" if vei_bpm is None else f"{ref_num}/{ref_den}",
             "desviacio": desviacio, "sospita_octava": sospita,
             "beat_unit": bpm_unit.etiqueta(bpm_unit.DEFECTE),
             "snap": "—", "n_qm": None, "negres_qm": None,
@@ -482,7 +420,7 @@ QCheckBox::indicator:disabled {{
             "beats_frontera": [],
             "extrem_ini": ("fix (inici de la WAV)" if self._inicial
                            else "lliure"),
-            "extrem_fi": "lliure", "preroll": False,
+            "extrem_fi": "lliure",
             "vei_esq": None, "vei_dret": None,
             "bpm_ok": limits.BPM_MIN <= bpm <= limits.BPM_MAX,
             "durada_ok": durada >= limits.TEMPS_MIN_CLIP,
@@ -542,7 +480,6 @@ QCheckBox::indicator:disabled {{
             ("Durada", f"{num_txt(durada, 3)} s",
              "Extrems", f"inici {info.get('extrem_ini')} ·"
                         f" fi {info.get('extrem_fi')}"),
-            ("Preroll", si_no(info.get("preroll")), None, None),
             ("H", "MÈTRICA"),
             ("Compàs", f"{info.get('compassos')} ·"
                        f" {num_txt(dur_compas, 3)} s/compàs"
@@ -555,9 +492,6 @@ QCheckBox::indicator:disabled {{
             ("BPM", f"{num_txt(info.get('bpm_mostra'), 3)} {unit.lower()}",
              "Intern", f"{num_txt(info.get('bpm'), 3)} negres/min"),
             ("H", "CONTEXT"),
-            ("Offset", f"{num_txt(info.get('offset'), 3)} s (compàs 1)",
-             "Ref. recalc", f"{num_txt(info.get('ref_bpm'), 3)} BPM ·"
-                            f" {info.get('ref_compas')} · {desv_txt}"),
             ("Octava", "sospita (×2/÷2)" if info.get("sospita_octava")
                        else "sense sospita",
              "Unitats", f"BPM {unit} · beat {info.get('beat_unit')}"),
@@ -565,6 +499,10 @@ QCheckBox::indicator:disabled {{
              "Beats QM", ("cap (sense anàlisi)" if n_qm is None
                           else f"{n_qm} dins · {num_txt(negres, 1)} negres")),
         ]
+        if idx > 1 and info.get("vei_bpm") is not None:
+            files.append(("Veí esquerre", f"{num_txt(info.get('vei_bpm'), 3)} "
+                          f"BPM · {info.get('vei_compas')} · {desv_txt}",
+                          None, None))
         if n_qm is not None:
             files.append(("Primer beat", f"{num_txt(primer, 3)} s",
                           "Últim beat", f"{num_txt(ultim, 3)} s"))
@@ -630,7 +568,6 @@ QCheckBox::indicator:disabled {{
         """Opcions comunes que ha de tindre en compte cada recalcul."""
         return {
             "beats": self.chk_beats.isChecked(),
-            "ref": self.chk_ref.isChecked(),
             "segons": self.chk_segons_durada.isChecked(),
             "unitat": self.chk_unitat_beat.isChecked(),
             "compas": self.chk_compas_lliure.isChecked(),
@@ -709,63 +646,6 @@ QCheckBox::indicator:disabled {{
             finally:
                 self.cb_beat.blockSignals(False)
         self.grup_unitat.setVisible(False)
-
-    def _canvia_ref_unitat(self, _idx=None):
-        """Canvi explícit de la unitat de la Ref. (modal reutilitzat)."""
-        nova = bpm_unit.normalitza(
-            self.cb_ref_beat.currentData() or self._ref_unit)
-        if nova == self._ref_unit:
-            return
-        try:
-            bpm_int = bpm_unit.a_quarter(
-                float(str(self.ref_bpm.text()).replace(",", ".")),
-                self._ref_unit)
-        except (TypeError, ValueError):
-            bpm_int = float(self._ref[0])
-        dlg = DialegCanviUnitat(
-            self, "Ref. recalc", bpm_int, self._ref_unit, nova)
-        if dlg.exec_() != QDialog.Accepted:
-            idx = self.cb_ref_beat.findData(self._ref_unit)
-            if idx >= 0:
-                self.cb_ref_beat.blockSignals(True)
-                try:
-                    self.cb_ref_beat.setCurrentIndex(idx)
-                finally:
-                    self.cb_ref_beat.blockSignals(False)
-            return
-        bpm, unit, _mode = dlg.resultat()
-        self._ref_unit = unit
-        self.ref_bpm.setText(bpm_unit.formata(bpm, unit))
-
-    def _parse_compas_ref(self):
-        """Compàs de la Ref. recalc: `num/den` o `num` (den 4)."""
-        txt = (self.ref_compas.text() or "").strip().replace(" ", "")
-        if "/" in txt:
-            try:
-                a, b = txt.split("/", 1)
-                num, den = int(a), int(b)
-            except ValueError as e:
-                raise ValueError(
-                    f"El compàs de referència «{txt}» no és vàlid") from e
-        elif txt.isdigit():
-            num, den = int(txt), 4
-        else:
-            raise ValueError(
-                f"El compàs de referència «{txt}» no és vàlid")
-        return num, den
-
-    def _aplica_ref(self):
-        """Valida i demana canviar la Ref. recalc del visor."""
-        try:
-            raw = str(self.ref_bpm.text()).replace(",", ".").strip()
-            bpm = bpm_unit.a_quarter(float(raw), self._ref_unit)
-            num, den = self._parse_compas_ref()
-            bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
-        except (TypeError, ValueError) as e:
-            QMessageBox.warning(self, "Ref. recalc invàlida", str(e))
-            return
-        self.refRequested.emit(float(bpm), int(num), int(den),
-                               self._ref_unit)
 
     def _escolta(self):
         """Escolta la proposta en bucle (sense aplicar-la) o l'atura."""
@@ -929,22 +809,6 @@ QCheckBox::indicator:disabled {{
             return
         self._info = info
         self._refresca_graella_info()
-
-    def actualitza_ref(self, bpm, num, den, unit=None):
-        """Refresca els camps de Ref. recalc amb els valors aplicats."""
-        self._ref = (float(bpm), int(num), int(den))
-        if unit is not None:
-            self._ref_unit = bpm_unit.normalitza(unit)
-        idx = self.cb_ref_beat.findData(self._ref_unit)
-        if idx >= 0:
-            self.cb_ref_beat.blockSignals(True)
-            try:
-                self.cb_ref_beat.setCurrentIndex(idx)
-            finally:
-                self.cb_ref_beat.blockSignals(False)
-        self.ref_bpm.setText(bpm_unit.formata(
-            float(bpm), self._ref_unit))
-        self.ref_compas.setText(f"{int(num)}/{int(den)}")
 
     def accept(self):
         self._atura_escolta()

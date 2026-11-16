@@ -83,7 +83,7 @@ PROJECTE AUTO CHORDS/
 │   ├── camp_text.py              🟢  # Camps de text de l'app amb l'inici sempre visible.
 │   ├── config.py                 🟢  # Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE.
 │   ├── dialeg_analitza_bpm.py    🟢  # Diàleg d'anàlisi de BPM/beats.
-│   ├── dialeg_canvi_unitat.py    🟢  # Canvi explícit d'unitat de pols (clip o Ref. recalc).
+│   ├── dialeg_canvi_unitat.py    🟢  # Canvi explícit d'unitat de pols (clip).
 │   ├── dialeg_dreceres.py        🟢  # Diàleg per veure i canviar totes les dreceres de teclat.
 │   ├── dialeg_guia_rapida.py     🟢  # Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas.
 │   ├── dialeg_opcions.py         🟢  # Diàleg d'opcions d'autodetecció (BPM/acords/estructura).
@@ -136,7 +136,7 @@ PROJECTE AUTO CHORDS/
 │   ├── tempo_map.py              🟢  # Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur).
 │   ├── tempo_midi.py             🟢  # Exportació del mapa de tempo/compàs a MIDI (Standard MIDI File tipus 1).
 │   ├── tempo_recalc.py           🟢  # Motor pur de recalcul del mapa de temps (F0).
-│   ├── temps_ui.py               🟢  # UI de temps de la finestra (F3): BPM, compàs i offset.
+│   ├── temps_ui.py               🟢  # UI de temps de la finestra (F3): BPM i compàs.
 │   ├── theme.py                  🟢  # tema centralitzat (colors i estils Qt)
 │   ├── timeline.py               🟢  # timeline.py — Editor visual de la pista tipus DAW (QGraphicsView).
 │   ├── timeline_base.py          🟢  # timeline_base.py — Base compartida de l'editor de timeline (DAW).
@@ -195,14 +195,17 @@ PROJECTE AUTO CHORDS/
 │       ├── expected-v0.2.1.csv 🟢
 │       ├── expected.csv        🟢
 │       └── regression.sh       🟢
-├── docs/                          🟢  # Contracte i documentació viva (10 fitxers)
-│   ├── COMPONENTS_I_VERSIONS.md 🟢  # Inventari generat (`eines/genera_inventari.py`)
-│   ├── ESQUEMA_UI.html          🟢  # Generat des del `.md` (no editar)
-│   ├── ESQUEMA_UI.md            🟢  # Font de l'esquema visual de la UI
-│   ├── ESQUEMA_UI.svg           🟢  # Generat des del `.md` (no editar)
-│   ├── REGLES_DE_LA_APP.md      🟢  # Regles d'or (1–12) i §13 (temps, compàs i graella)
-│   ├── TIPUS_XIFRAT_ACORDS.md   🟢  # Catàleg de tipus, graus i `<kind>` MusicXML
-│   └── recerca/                 🟢  # Documents de recerca (no descriuen l'estat viu)
+├── docs/                          🟢  # Contracte i documentació viva (13 fitxers)
+│   ├── COMPONENTS_I_VERSIONS.md       🟢  # Inventari generat (`eines/genera_inventari.py`)
+│   ├── ESQUEMA_UI.html                🟢  # Generat des del `.md` (no editar)
+│   ├── ESQUEMA_UI.md                  🟢  # Font de l'esquema visual de la UI
+│   ├── ESQUEMA_UI.svg                 🟢  # Generat des del `.md` (no editar)
+│   ├── FUNCIONALITATS_AUTO_CHORDS.ods 🟢  # Mapa complet de funcionalitats (generat; ODF)
+│   ├── README.md                      🟢  # Índex de la documentació
+│   ├── REGLES_DE_LA_APP.md            🟢  # Regles d'or (1–12) i §13 (temps, compàs i graella)
+│   ├── TIPUS_XIFRAT_ACORDS.md         🟢  # Catàleg de tipus, graus i `<kind>` MusicXML
+│   └── recerca/                       🟢  # Documents de recerca (no descriuen l'estat viu)
+│       ├── COMPASSOS_COMPOSTOS_BPM_METRONOM.md 🟢
 │       ├── GRAELLA_PPQ_TEMPS.md               🟢
 │       ├── guia_tecnica_downbeat_onsets_beats.md 🟢
 │       ├── NOTACIO_XIFRAT.md                  🟢

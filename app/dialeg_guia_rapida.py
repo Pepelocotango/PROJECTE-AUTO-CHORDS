@@ -22,12 +22,9 @@ PASSOS = (
      "ràpida.<br><br>"
      "No cal que siga exacte: només és la referència perquè l'app entenga "
      "les <b>frases musicals</b>."),
-    ("2 · Marca el compàs 1",
-     "Moltes cançons tenen uns segons de silenci o una anacrusi al "
-     "principi.<br><br>"
-     "1. Posa el cursor vermell just al <b>primer cop fort</b> on comença el "
-     "ritme de la cançó.<br>"
-     "2. Prem el botó <b>📍</b> (<i>Compàs 1 al cursor</i>)."),
+    ("2 · Afina el compàs",
+     "Selecciona el clip de tempo i ajusta'n el <b>BPM</b>, el <b>compàs</b> "
+     "i la <b>unitat de pols</b> a la franja Editor o al diàleg del clip."),
     ("3 · Escolta i marca les parts",
      "Prem <b>Espai</b> per escoltar. Cada vegada que comence una "
      "<b>secció nova</b> o una <b>frase musical</b> (cada 4, 8 o 16 "

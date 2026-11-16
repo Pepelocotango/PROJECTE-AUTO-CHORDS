@@ -122,24 +122,15 @@ class ProjecteMixin:
             bpm = float(getattr(vr, "bpm", 120.0))
             bpb = int(getattr(vr, "bpb", 4) or 4)
             den = int(getattr(vr, "beat_type", 4) or 4)
-            offset = float(getattr(vr, "offset", 0.0) or 0.0)
         else:
             # Sense clip de tempo seleccionat, la barra ÉS el transport: es
             # desa el que hi ha escrit (encara que no s'haja premut Enter).
             bpm, bpb = self._bpm_val(), self._bpb_val()
-            den, offset = self._beat_type_val(), self._offset_val()
-        try:
-            ref_bpm, ref_num, ref_den, ref_unit = self._ref_vals()
-        except (AttributeError, TypeError, ValueError):
-            ref_bpm, ref_num, ref_den, ref_unit = bpm, bpb, den, "negra"
+            den = self._beat_type_val()
         return {
             "tempo": {"bpm": bpm, "bpb": bpb,
-                      "offset": offset,
                       "fix": self.tempo_fix.isChecked(),
-                      "compas": f"{bpb}/{den}",
-                      "ref": {"bpm": float(ref_bpm),
-                              "compas": f"{int(ref_num)}/{int(ref_den)}",
-                              "beat_unit": ref_unit}},
+                      "compas": f"{bpb}/{den}"},
             "opcions": self.opcions,
         }
 
@@ -175,23 +166,6 @@ class ProjecteMixin:
         # i confon; el parser accepta els dos, però el camp sempre el mostra bé.
         self.bpb.setText(str(compas) if compas
                          else f"{int(tempo.get('bpb', 4))}/4")
-        ref = tempo.get("ref") or {}
-        ref_bpm = float(ref.get("bpm", tempo.get("bpm", 120.0)))
-        ref_compas = ref.get("compas") or self.bpb.text() or "4/4"
-        ref_unit = ref.get("beat_unit")
-        self._actualitzant_temps = True
-        try:
-            try:
-                self._posa_ref_recalc(ref_bpm, ref_compas,
-                                      beat_unit=ref_unit)
-            except ValueError:
-                self._posa_ref_recalc(
-                    float(tempo.get("bpm", 120.0)), self.bpb.text(),
-                    beat_unit=ref_unit)
-        finally:
-            self._actualitzant_temps = False
-        self._ref_manual = True
-        self._posa_offset_camp(float(tempo.get("offset", 0.0)))
         self.tempo_fix.setChecked(bool(tempo.get("fix", False)))
         self._canvia_mode_temps(bool(tempo.get("fix", False)))
         if isinstance(p.dades.get("opcions"), dict) and p.dades["opcions"]:
@@ -381,7 +355,7 @@ class ProjecteMixin:
         self.projecte.dades["opcions"] = d["opcions"]
 
     def _desa_meta_silencios(self):
-        """Desa el document del projecte (tempo/offset/opcions) sense avisos."""
+        """Desa el document del projecte (tempo/opcions) sense avisos."""
         if getattr(self, "projecte", None) is None:
             return
         try:
@@ -568,13 +542,12 @@ class ProjecteMixin:
             if not desti:
                 return
         # Un WAV/projecte nou no hereta RES del tema anterior (OC-6/415):
-        # ni BPM, ni compàs, ni offset. No hi ha excepcions per a compàs.
+        # ni BPM, ni compàs. No hi ha excepcions per a compàs.
         self._posa_bpm_quarter(120.0)
         self.bpb.setText("4/4")
-        self._posa_offset_camp(0.0)
-        self.registra("WAV nou → tempo inicial 120 BPM · 4/4 · offset 0 "
+        self.registra("WAV nou → tempo inicial 120 BPM · 4/4 "
                       "(detecta'l o posa'l a mà)")
-        bpm, bpb, offset, compas = 120.0, 4, 0.0, "4/4"
+        bpm, bpb, compas = 120.0, 4, "4/4"
         # Migració: si hi ha una AUTOCHORDS_<nom>/ vella al costat del WAV,
         # n'importem els CSVs (i, si el destí és la mateixa carpeta, in situ).
         antic = projecte.carpeta_autochords(ruta)
@@ -589,7 +562,7 @@ class ProjecteMixin:
         try:
             p = projecte.Projecte.crea(
                 desti, ruta, nom=os.path.basename(desti),
-                bpm=bpm, bpb=bpb, offset=offset,
+                bpm=bpm, bpb=bpb,
                 fix=self.tempo_fix.isChecked(),
                 opcions=self.opcions, compas=compas,
                 csv_acords=ca if ca and os.path.isfile(ca) else None,

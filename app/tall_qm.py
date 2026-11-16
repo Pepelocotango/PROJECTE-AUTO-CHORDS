@@ -263,9 +263,9 @@ def _ordena(out):
         1 if o["cross"] else 0, o["etiqueta"]))
 
 
-def _opcio_sense_beats(ini, fi, ref_base):
+def _opcio_sense_beats(ini, fi, referencia):
     """Fallback: Ref. pura amb N arrodonit i BPM derivat."""
-    bpm_ref, num, den = ref_base
+    bpm_ref, num, den = referencia
     bar = _bar_quarters(num, den)
     dt = float(fi) - float(ini)
     if dt <= TOL or bar <= TOL:
@@ -328,7 +328,7 @@ def polsos_graella(mapa, ini, fi):
     return times, factor, bq
 
 
-def opcions_tall_graella(trams, mapa, t, durada, offset, ref_base):
+def opcions_tall_graella(trams, mapa, t, durada, offset, referencia):
     """Com `opcions_tall`, però amb els polsos del mapa actual."""
     t = float(t)
     for i, tr in enumerate(trams or ()):
@@ -337,16 +337,16 @@ def opcions_tall_graella(trams, mapa, t, durada, offset, ref_base):
         if not (ini + TOL < t < fi - TOL):
             continue
         _bpm, local_num, local_den, _unit = _camps(tr)
-        ref_bpm, ref_num, ref_den = ref_base
+        bpm_vei, num_vei, den_vei = referencia
         bases = []
-        for m in ((local_num, local_den), (int(ref_num), int(ref_den))):
+        for m in ((local_num, local_den), (int(num_vei), int(den_vei))):
             if m[0] > 0 and m[1] > 0 and m not in bases:
                 bases.append(m)
         sides = []
         for a, b in ((ini, t), (t, fi)):
             times, factor, bq = polsos_graella(mapa, a, b)
             if bq <= TOL:
-                opcions = _opcio_sense_beats(a, b, ref_base)
+                opcions = _opcio_sense_beats(a, b, referencia)
             else:
                 opcions = _opcions_costat(
                     a, b, bq, bases, beats=times,
@@ -358,7 +358,7 @@ def opcions_tall_graella(trams, mapa, t, durada, offset, ref_base):
     return None
 
 
-def opcions_tall(trams, t, durada, offset, beats, ref_base, beat_factor):
+def opcions_tall(trams, t, durada, offset, beats, referencia, beat_factor):
     """Retorna `[opcions_esquerra, opcions_dreta]` o `None`.
 
     `beats` són els beats QM detectats. `beat_factor` convertix cada beat a
@@ -371,16 +371,16 @@ def opcions_tall(trams, t, durada, offset, beats, ref_base, beat_factor):
         if not (ini + TOL < t < fi - TOL):
             continue
         _bpm, local_num, local_den, _unit = _camps(tr)
-        ref_bpm, ref_num, ref_den = ref_base
+        bpm_vei, num_vei, den_vei = referencia
         bases = []
-        for m in ((local_num, local_den), (int(ref_num), int(ref_den))):
+        for m in ((local_num, local_den), (int(num_vei), int(den_vei))):
             if m[0] > 0 and m[1] > 0 and m not in bases:
                 bases.append(m)
         sides = []
         for a, b in ((ini, t), (t, fi)):
             n = _compta_beats(beats, a, b)
             if n <= 0:
-                opcions = _opcio_sense_beats(a, b, ref_base)
+                opcions = _opcio_sense_beats(a, b, referencia)
             else:
                 bq = float(n) * float(beat_factor)
                 beats_costat = [x for x in beats

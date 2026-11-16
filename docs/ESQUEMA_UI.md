@@ -4,7 +4,7 @@
 > noms «humans» de cada zona, mides reals i interaccions.
 > **Actualitzat: 2026-10-18 · v0.7.0** (GUI reordenada:
 > timeline al centre, barres d'eines, **pista de BPM/compàs**, franja Editor,
-> metrònom, count-in, caixa d'informació, tap tempo, panell **Tipus d'acord**
+> metrònom, caixa d'informació, tap tempo, panell **Tipus d'acord**
 > i paleta de botons unificada).
 
 L'app és **una sola finestra** (`Finestra`, `app/main.py`) amb el **visor**
@@ -21,8 +21,8 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  Fitxer   Edita   Selecciona   Visualitza   Analitza   Ajuda               │  ← menú
 ├────────────────────────────────────────────────────────────────────────────┤
-│ [Anàlisi guiat][BPM·compàs][Lliure] TAP Ref. recalc:[120.000][4/4][negra]               │  ← BARRA 1a
-│   Beat/TAP:[negra] ☐ En segons  Offset:[0.0] 📍 🧭 ≈[1.1]                   │     (treball)
+│ [Anàlisi guiat][BPM·compàs][Lliure] TAP BPM:80.000 (negra amb punt)         │  ← BARRA 1a
+│   Compàs:6/8                                                               │     (treball)
 ├────────────────────────────────────────────────────────────────────────────┤
 │ [Analitza]                                                                  │  ← BARRA 1b
 ├────────────────────────────────────────────────────────────────────────────┤     (accions)
@@ -50,7 +50,6 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | Ref | Nom al **codi** | Nom a la **UI** | Tipus |
 |-----|-----------------|-----------------|-------|
 | ⓪ | `Finestra` | finestra principal | `QMainWindow` |
-| — | `self.offset` · `self.offset_cb` | **dos camps d'offset** (segons · compàs.beat) | `QLineEdit` |
 | — | `self.b_marker` · `self.b_marker_compas` | **＋ Temps+Secció** (icona `compass`, tecla `+`): parteix **tempo i estructura** al cursor, sense crear cap marcador. **＋ Marcador** (icona `map-pin`, tecla `M`): crea només un marcador independent; no talla res. Sense WAV, desactivats | `QPushButton` |
 | — | `self.b_guia` | **Guia ràpida**: obri `DialegGuiaRapida` (informació, no toca el model). Els talls es fan amb `＋` / `Enter` / `0`; `M` afig marcadors independents. Sense WAV, desactivat | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
@@ -58,16 +57,14 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.b_desfer` · `self.b_refer` | **Desfer** · **Refer** (icones `undo-2` / `redo-2`) | `QPushButton` |
 | — | (al transport; `self.b_zs` al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / hh:mm:ss** (abans deia «Lliure») | `QPushButton` (checkable) |
-| — | `self.ref_bpm` · `self.ref_bpb` · `self.cb_ref_beat` · `self.cb_beat` · `self.offset` · `self.offset_cb` | **Ref. recalc** (BPM + compàs + unitat), **Beat/TAP** (negra · negra amb punt · corxera · semicorxera · blanca; drecera del tram seleccionat/tram 0), **Offset (s)**, **≈ C.B** | `QLineEdit` · `QComboBox` |
+| — | `self.bpm_bar` · `self.compas_bar` | **BPM del clip** (en la seua unitat de pols) i **Compàs** del clip, tots dos **només lectura**. La unitat de pols es deriva del compàs; l'opció avançada viu al diàleg del clip | `QLabel` ×2 |
 | — | `self.bpm` · `self.bpb` | **BPM** i **Compàs** **interns del transport**: NO es munten a cap barra; l'edició visible és a la **franja Editor** del clip de tempo seleccionat (tram 0 inclòs) | `QLineEdit` (no visible) |
 | — | `self.lb_desti_accions` | **destí visible**: `TAP: … · Edita a la franja: …`; indica si s’edita un tram o el transport (tram 0) | `QLabel` |
-| — | `self.b_compas_auto` | **Detecta el compàs 1** (icona `compass`) | `QPushButton` |
 | — | `self.b_tap` | **TAP** (tecla **T**) | `QPushButton` |
-| — | `self.b_offset_cursor` | **Marca el compàs 1 aquí** (icona `map-pin`) → compàs 1 + tall + inici del clip de tempo al cursor | `QPushButton` |
 | — | `self.amb_est` · `self.a_metro` · `self.a_eina_marc` | **Inclou estructura** · **Metrònom** · **Eina de marc** | `QAction` (checkable, menús) |
 | — | `self.amb_part` | **Inclou la partitura (xifrat)** | `QAction` (checkable, menú Fitxer) |
 | — | `self.b_eina` | **Eina: intel·ligent / Eina: marc** | `QPushButton` (checkable) |
-| — | `self._params_temps` | contenidor dels **paràmetres de temps** (TAP · Ref. recalc · Beat/TAP · En segons · Offset · ≈ C.B); **BPM, Compàs i ×2/÷2 no hi són** (BPM/compàs a la franja Editor; ×2/÷2 al menú del clip de tempo) | `QWidget` |
+| — | `self._params_temps` | contenidor dels **paràmetres de temps** (TAP · BPM del clip · Compàs); BPM i Compàs són **només lectura**; l'edició és a la franja Editor; **×2/÷2** viu al menú del clip de tempo | `QWidget` |
 | — | `self.panell_xifrat` · `self.dock_xifrat` | **panell «Tipus d'acord»** (arrel · baix · 62 tipus · ▶ Escoltar · timbre) | `PanellXifrat` en un `QDockWidget` |
 | — | `self.tb_loop` · `self.tb_neteja_loop` · `self.tb_mut` | **loop** (icona `repeat-2`) · **neteja el loop** (icona `x`) · **mute** (icona `volume-x`) | `QPushButton` |
 | — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió del grid i del snap**: **Beats QM** · Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · **Treset de negra (2/3) · Treset de corxera (1/3) · Treset de semicorxera (1/6)** · **1 · 2 · 4 · 6 · 8 · 12 · 16 · 24 · 32 · 48 · 64 compassos**. El selector **força el grid** encara que el snap estigui apagat; «Auto» torna a manar pel zoom. **Beats QM** fa que el cursor, els clips i els talls (`+`/`Enter`/`0`) s'encaixen a les línies de beats de QM; `M` també respecta el Snap actiu. | `QPushButton` (checkable) · `QComboBox` |
@@ -83,7 +80,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | Barra | Contingut |
 |-------|-----------|
 | **Treball** (barra 1, fila 1) | **Anàlisi guiat** (guia ràpida) → **＋ Temps+Secció** → **＋ Marcador** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → **Analitza** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`). Obrir i exportar viuen al menú **Fitxer** |
-| **Temps** (barra 1, fila 2) | **TAP** · **Ref. recalc** (BPM + compàs + `cb_ref_beat`) · **Beat/TAP** (drecera del tram seleccionat) · **En segons** · Offset (s) · **📍** · **🧭** · ≈ C.B. **BPM i Compàs no hi són**: es veuen i s'editen a la **franja Editor** en seleccionar el clip de tempo (tram 0 inclòs). **×2/÷2** tampoc: viu al **menú contextual del clip de tempo** (canvia compassos amb els segons fixos) |
+| **Temps** (barra 1, fila 2) | **TAP** · **BPM del clip** en la seua unitat de pols (només lectura; p. ex. `80` en `6/8` amb `negra amb punt`) · **Compàs** del clip (només lectura, p. ex. `6/8`). L'edició del BPM i del Compàs és a la **franja Editor**; la unitat de pols es deriva del compàs i es pot canviar al diàleg del clip. **×2/÷2** viu al **menú contextual del clip de tempo** |
 | **Transport** (fila 3) | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup]** · **[Quantitza]** · **[BPM…]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
 ### Menús
@@ -94,7 +91,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · **Parteix el tempo al cursor** (Enter) · **Parteix l'estructura al cursor** (0) · **Parteix tempo i estructura al cursor** (+) · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… · Retard global de reproducció… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza beats, downbeats i BPM (F7)** · Detecta el compàs 1 automàticament · Marca el compàs 1 aquí · Quantitza el model… · **Quantitza BPM** (Sense decimals · 1 decimal · 2 decimals) · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (M) · Esborra l'últim marcador · Inclou estructura |
+| **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza beats, downbeats i BPM (F7)** · Quantitza el model… · **Quantitza BPM** (Sense decimals · 1 decimal · 2 decimals) · Mapa de tempo i compàs… · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (M) · Esborra l'últim marcador · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · **Configura les dreceres…** · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Desa i exporta-ho tot… (Ctrl+Shift+E)
@@ -135,7 +132,6 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 - **`Fitxer ▸ Exporta mapa de tempo (MIDI)…`** desa només el mapa de
   tempo/compàs com a **Standard MIDI File tipus 1** (pista de conductor):
   `Set Tempo`, `Time Signature`, markers de tram i marcadors de compàs/secció;
-  l'offset/anacrusi s'anota amb un marker. El paquet de `Ctrl+E` també genera
   `mapa_tempo/mapa_tempo.mid` automàticament.
 - **`Fitxer ▸ Restaura una còpia de seguretat…`** llista les carpetes de
   `backup/` (les més noves primer). Abans de restaurar crea una còpia de
@@ -222,7 +218,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 ### ✅ P1 (A1–A3) — **IMPLEMENTAT i COMMITEJAT** (v0.7.0)
 
 > Al **codi** ja hi és (committejat; suite verda):
-> - ✅ **A1 — Desfer/Refer del temps i del loop**: `undo`/`redo` ara també cobreix **BPM, compàs, offset** i el **loop A-B** (nou estat de temps), no només acords/seccions.
+> - ✅ **A1 — Desfer/Refer del temps i del loop**: `undo`/`redo` ara també cobreix **BPM, compàs** i el **loop A-B** (nou estat de temps), no només acords/seccions.
 > - ✅ **A2 — Partir una secció — FET**: acció **Edita ▸ Parteix la secció al cursor…** i entrada **«Parteix la secció…»** al menú contextual de la secció (s'activa només si el clic és en una secció i el cursor hi cau a dins). Parteix la secció que conté el cursor en dues: la meitat esquerra conserva lletra i família i la nova rep la lletra que es tria (per defecte, la mateixa). És la manera natural d'afegir secció en un model **saturat** (les seccions cobreixen tota la WAV, regla #4).
 > - ✅ **Regla d'or #11 — paritat acords ↔ estructura**: els acords tenen ara les **mateixes eines** que les seccions — **Edita ▸ Parteix l'acord al cursor…**, **«Parteix l'acord…»** al menú contextual del clip i **menú de la llista d'acords** amb *Afegeix/Partir/Fusionar amb anterior/Fusionar amb següent/Elimina* (idèntic al de les seccions). El tall deixa l'esquerra amb el nom i el clip nou (dreta) amb el nom triat (per defecte, el mateix). Darrere: `pipeline.parteix_acord`/`fusiona_acords` i `visor.parteix_acord`/`fusiona_acord` (mirall dels de secció).
 > - ✅ **A3 — Dreceres completes — FET**: el diàleg **Ajuda ▸ Dreceres de teclat** ara **dedueix totes les dreceres dels menús reals** (abans només en llistava 6).
@@ -234,8 +230,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │  ①  REGLE DE TEMPS        (RulerLayer)      y 0–26    · 26 px          │
-│      etiquetes compàs.beat (o gt; amb offset, abans del compàs 1 són   │
-│      NEGATIVES = compte enrere / count-in)                             │
+│      etiquetes compàs.beat (el compàs 1 és sempre a 0 s)                 │
 │      ◄── arrossega AQUÍ el ratolí per crear un LOOP A/B ──►            │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ②  FORMA D'ONA           (WaveformLayer)   fons #0f1218               │
@@ -260,7 +255,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑫  FRANJA EDITOR (ed_*)  edició directa del clip seleccionat:         │
 │      acord/secció: [Nom▢] [Família▢] [Inici (s)▢] [≈ ▢] [Aplica]│
-│      tempo: [BPM▢] [Compàs▢] [Agrupació▢] [N▢] [Rol] [Ini (c)▢] [Fi (c)▢] [Aplica] [Ajusta]│
+│      tempo: [BPM▢][Aplica] [Compàs▢][Aplica] [Agrupació▢] [N▢][Aplica] [Rol] [Ini(c)▢] [Fi(c)▢] [Aplica tot] [Ajusta]│
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⑩ LLISTA ACORDS    │ ⑪ LLISTA SECCIONS  │ ⑭ LLISTA TEMPO             │
 │  «1.1 N», «8.1 E7»… │ «A(N) 1.1–10.1»…   │ Inici·Fi·BPM·Compàs        │
@@ -280,7 +275,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | Ref | Nom al **codi** | Nom a la **UI** | Tipus |
 |-----|-----------------|-----------------|-------|
 | ① | `RulerLayer` / `self._ruler` | **regle de temps** | `QGraphicsItem` |
-| ①b | `TimeRulerLayer` / `self._time_ruler` | **graella fixa de temps absolut `hh:mm:ss`**, sota l'ona; no depén de BPM, offset ni rubato; el zoom només canvia la resolució | `QGraphicsItem` |
+| ①b | `TimeRulerLayer` / `self._time_ruler` | **graella fixa de temps absolut `hh:mm:ss`**, sota l'ona; no depén de BPM ni rubato; el zoom només canvia la resolució | `QGraphicsItem` |
 | ② | `WaveformLayer` / `self._waveform` | **forma d'ona** | `QGraphicsPixmapItem` |
 | — | `self._audio_handles` / `self._audio_preview` | **nanses i previsualització** de retall/afegit als extrems; snap compartit amb el timeline | `QGraphicsRectItem` |
 | ③ | `TempoLayer` / `self._tempo_lane` | **pista de BPM/compàs** (trams de tempo; només en mode BPM · compàs) | `QGraphicsObject` |
@@ -293,7 +288,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `TimelineView` | tot el bloc ①–⑨ | `QGraphicsView` |
 | ⑩ | `self.llista_ac` | **llista d'acords** | `QListWidget` |
 | ⑪ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
-| ⑫ | `ed_gran` · `ed_nom` · `ed_fam` · `ed_agr` · `ed_n` · `ed_rol_lbl` · `ed_ini` · `ed_cb` · `ed_aplica` | **franja Editor** (acord/secció: nom/família/inici; **tempo: BPM + compàs + agrupació + N + rol derivat + Ini (c) + Fi (c)**, estes dos últimes editables per moure les fronteres en compàs.beat) | `QLabel`/`QLineEdit`/`QPushButton` |
+| ⑫ | `ed_gran` · `ed_nom` · `ed_fam` · `ed_agr` · `ed_n` · `ed_rol_lbl` · `ed_ini` · `ed_cb` · `ed_aplica` · `ed_bpm_aplica` · `ed_compas_aplica` · `ed_n_aplica` | **franja Editor** (acord/secció: nom/família/inici; **tempo: BPM + compàs + agrupació + N + rol derivat + Ini (c) + Fi (c)**, amb **Aplica** propi al costat de BPM, Compàs i N per aplicar només eixa variable) | `QLabel`/`QLineEdit`/`QPushButton` |
 | ⑭ | `self.llista_tempo` | **llista de clips de tempo/compàs** (`Inici (s)` · `Fi (s)` · `BPM` · `Compàs`; «segons» als rubato) | `QTableWidget` |
 | ⑮ | `self.llista_marcadors` | **llista de marcadors independents** (`Temps (s)` · `Tipus`): doble-clic edita, menú contextual elimina; no està lligada al tempo ni a l'estructura. Les quatre llistes ⑩⑪⑭⑮ comparteixen **una sola fila** | `QTableWidget` |
 | ⑬ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
@@ -330,7 +325,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Zona buida ② + botó dret** | **pan** (desplaçar la vista) |
 | **Botó dret SOBRE un clip** | **selecciona** el clip i obri el **menú contextual** — **el mateix joc a les 3 pistes** (regla #11): **Afegeix acord/secció aquí** · Duplica · Elimina · Reanomena · Parteix l'acord/la secció… · Partir per la meitat · **Parteix a la selecció A–B** (només amb loop marcat) · Retalla · Copia · Enganxa |
 | **Pista de tempo ③ — clic** | **selecciona** el tram de tempo/compàs i hi posa el cursor **exactament al seu inici** (paritat amb els clips ④⑤; sense snap, perquè les fronteres del mapa poden ser lliures) |
-| **Pista de tempo ③ — doble-clic** | **diàleg** per editar-ne el valor (`_on_tempo_edit`). Dividit en **2 columnes**: esquerra d'**edició/recalcul** amb **3 blocs** —**Recalcul fix** (N/compàs/BPM + **Recalcula**), **Recalcul mòbil** (N/compàs/BPM + **Recalcula**) i **Opcions** (Beats QM, Ref. recalc, Segons, Unitat, Canviar compàs, N fix, En segons, Silencia avís 1,5×)— i dreta amb **Informació del clip** i **Ajuda/Assistència**. El canvi d'unitat del clip és **inline** (radios «Mantén el tempo» / «Mantén el número», preview, sense aplicar fins Ajusta/OK); la **Ref.** té el seu selector i modal. **Recalcula** classifica **ALT/MITJÀ/BAIX**, mostra motius i una **llista d'alternatives** (doble-clic per carregar-les); no canvia la unitat en silenci. Les caselles tenen **indicador visible**. **Escolta la proposta** posa el clip en bucle amb el metrònom proposat (es torna a prémer per aturar; Ajusta/OK l'atura abans d'aplicar). Botons **OK / Ajusta / Cancel** |
+| **Pista de tempo ③ — doble-clic** | **diàleg** per editar-ne el valor (`_on_tempo_edit`). Dividit en **2 columnes**: esquerra d'**edició/recalcul** amb **3 blocs** —**Recalcul fix** (N/compàs/BPM + **Recalcula**), **Recalcul mòbil** (N/compàs/BPM + **Recalcula**) i **Opcions** (Beats QM, Segons, Unitat, Canviar compàs, N fix, En segons, Silencia avís 1,5×)— i dreta amb **Informació del clip** i **Ajuda/Assistència**. El canvi d'unitat del clip és **inline** (radios «Mantén el tempo» / «Mantén el número», preview, sense aplicar fins Ajusta/OK). **Recalcula** classifica **ALT/MITJÀ/BAIX**, mostra motius i una **llista d'alternatives** (doble-clic per carregar-les); no canvia la unitat en silenci. Les caselles tenen **indicador visible**. **Escolta la proposta** posa el clip en bucle amb el metrònom proposat (es torna a prémer per aturar; Ajusta/OK l'atura abans d'aplicar). Botons **OK / Ajusta / Cancel** |
 | **Pista de tempo ③ — vores** | arrossegar → **re-tempo**: la frontera va **on deixa anar el ratolí** (amb l'Snap normal, que es pot apagar), es conserven els **compassos** dels dos costats i el **BPM** es recalcula; **cap altre tram no es mou** (`_on_tempo_mogut` → `tempo_map.mou_frontera_retempo`; ±5 px i cursor ↔ com als clips — regla #11). Els marcadors són independents i **no es mouen** amb la frontera |
 | **Pista de tempo ③ — botó dret** | **selecciona** el tram i obri **el mateix joc de menú que els clips** (regla #11): **Afegeix un canvi aquí** (el seu «afegir» propi) · Duplica (només si hi ha lloc després) · Elimina (només si hi ha més d'un tram) · Reanomena (BPM/compàs)… · Parteix aquest tros aquí · Partir per la meitat · **Parteix a la selecció A–B** (s'imanta a línia de compàs) · **Afegir 1 compàs (+1)** · **Restar 1 compàs (−1)** · **Doblar compassos (×2)** · **Dividir compassos (÷2)** (aquestes 4, només a ③: canvien els compassos amb els **segons immòbils** i el BPM s'adapta) · Retalla · Copia · Enganxa |
 | **Nansa esquerra de l'àudio ②** | arrossegar cap a dins → retalla l'inici · cap a fora → afegeix silenci |
@@ -346,7 +341,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Ctrl+D** | **duplica** el clip o **tot el grup** seleccionat |
 | **Ctrl+C / Ctrl+X / Ctrl+V** | **copiar / retallar / enganxar** la selecció — l'enganxat **sobreescriu** el tram (regla #4: la cançó no pot créixer); si no mous el cursor, enganxa just **després** del bloc i deixa el bloc enganxat **seleccionat** |
 | **F2** | **reanomena** el clip seleccionat, o **tot el grup del tipus actiu** (N acords → un nom · M seccions → una lletra); amb selecció **mixta** es renombren només els del tipus del clip actiu (opció A), i el bloc queda **seleccionat** |
-| **Editor ⑫ + «Aplica»** | amb **multi-selecció**, el camp **Nom** s'aplica a **tots els seleccionats del tipus actiu** (estil fulla de càlcul); l'inici NO s'aplica en bloc |
+| **Editor ⑫ + «Aplica»** | amb **multi-selecció**, el camp **Nom** s'aplica a **tots els seleccionats del tipus actiu** (estil fulla de càlcul); l'inici NO s'aplica en bloc. En un clip de tempo, **Aplica** al costat de **BPM**, **Compàs** o **N** aplica només eixa variable; el botó **Aplica** general aplica tots els camps |
 | **Ctrl+Z / Ctrl+Y** | **desfer / refer** |
 | **Ctrl+H** | **troba i reemplaça** xifrats (acords) o etiquetes (estructura) a **tot el tema**; una sola operació de desfer i **no canvia cap temps** |
 | **← / →** | **nudge**: mou la **vora esquerra** (l'inici) del clip seleccionat **un pas de graella**; **Alt+←/→** mou la **vora dreta** (estirar/encongir). Una sola operació de desfer; sense selecció no fa res. |
@@ -358,48 +353,36 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 > **obrir un clip nou** en eixe instant — **acord** = una **marca** nova (l'anterior
 > s'hi acaba); **secció** = **partir** la secció que conté l'instant (la meitat
 > dreta rep la lletra/família). Un **únic camí** (`visor._afegeix_a_la_posicio()`)
-> per a la llista i el timeline. Detall: `docs/EDICIO_OPERACIONS.md` §1.
+> per a la llista i el timeline.
 
 ---
 
-## 3. Temps: BPM, offset i tap tempo
+## 3. Temps: BPM i tap tempo
 
 - **BPM** = la velocitat en **negres/minut**, com als DAW. La **unitat de pols**
   (`beat_unit`) és per tram i només canvia la presentació: en `6/8`, una negra
-  amb punt a `80` s’escriu `120` negres/min internes i `80` en la unitat. El
-  selector **Beat/TAP** de la barra és una drecera del tram seleccionat (tram 0
-  si no n’hi ha); el diàleg del tram té el mateix selector. La **Ref. recalc**
-  té la seua pròpia unitat (`cb_ref_beat`).
-- **On s'edita**: la barra «Temps» **no** té camps de BPM ni de Compàs. Se
-  selecciona el clip de tempo (tram 0 inclòs) al carril ③ o a la llista ⑭ i
-  s'editen a la **franja Editor** (BPM · Compàs · Agrupació · N · Ini/Fi). El
+  amb punt a `80` s’escriu `120` negres/min internes i `80` en la unitat. La
+  unitat es deriva del compàs i de l'agrupació; el diàleg del tram conserva
+  l'opció avançada per canviar-la.
+- **On s'edita**: la barra «Temps» mostra **el BPM del clip** en la seua
+  unitat de pols i el **Compàs** del clip, tots dos de només lectura. L'edició
+  del BPM i del Compàs es fa a la **franja Editor** del clip de tempo
+  seleccionat. La unitat de pols es deriva automàticament del compàs, amb
+  l'opció avançada al diàleg del clip. La resta de camps
+  (Agrupació · N · Ini/Fi) també s'editen a la franja Editor. El
   transport intern del tram 0 se sincronitza des del model (`_sincronitza_temps_del_visor`),
   mai al revés.
-- **Offset** = el segon on cau el **compàs 1** (la fase de la graella).
-- **Dos camps sincronitzats**: `Offset` (segons) i `≈ C.B` (compàs.beat,
-  **relatiu a la graella original amb offset = 0** → estable, llegible).
-- **📍 botó** (i **Analitza ▸ «Marca el compàs 1 aquí»**) → fa **tres coses en
-  un sol desfer**: hi posa l'offset, hi **talla** el carril de tempo (clip de
-  tempo nou des del cursor si no hi havia frontera) i deixa eixe clip
-  **seleccionat**, amb la posició mostrada en **segons** i en **compàs.beat**
-  de la graella original (p. ex. `5.1`). El tall és **lliure** (no busca
-  línia de compàs): amb trams interiors, comprova que les fronteres hi
-  caiguen (o passa l'Anàlisi guiat).
-- Abans de l'offset la graella és **negativa** (`-3.1 … -1.3`) = **count-in**
-  (i el metrònom també el clica).
 - **TAP** (tecla **T**): patró estàndard dels DAWs — guarda els instants dels
   últims taps, **mediana dels intervals** → `60/∅`; **reset als 2 s** (LMMS);
   **descarta intervals fora de 30–350 BPM** i els clarament anòmals (±30 % de
-  la mediana). **Beat/TAP** indica el valor de nota de cada tap:
+  la mediana). La **unitat de pols del clip** indica el valor de cada tap:
   `BPM intern = taps/min × negres per beat`. El botó mostra **taps/min en la
   unitat del tram** (`TAP (n) 80`), no el quarter intern. **Només actua amb un
   tram de tempo seleccionat**. Propaga BPM al regle i al metrònom **sense
-  reengegar l'àudio**. **L1 estricte**: si el compàs de la Ref. coincidix amb
-  el clip, actualitza BPM+unitat de la Ref.; si no, **no toca la Ref.** i
-  mostra «TAP aplicat; Ref. no actualitzada (compàs diferent)». El clip sempre
-  queda amb `N` enter. Canviar la unitat amb un TAP obert tanca la sessió
-  (1 undo) i el canvi és un altre undo. Durant la sessió de TAP **no s'emet
-  l'avís modal** de mapa inconsistent.
+  reengegar l'àudio**. No hi ha cap Ref. recalc: el TAP només toca el clip
+  seleccionat. El clip sempre queda amb `N` enter. Canviar la unitat amb un
+  TAP obert tanca la sessió (1 undo) i el canvi és un altre undo. Durant la
+  sessió de TAP **no s'emet l'avís modal** de mapa inconsistent.
 
 ### Rubato
 
@@ -417,9 +400,9 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 - Només en mode **BPM · compàs** (gris a Lliure).
 - Volum propi (60 % per defecte); el mute/volum de la cançó **no** l'afecta.
-- El clic per defecte segueix la **unitat de pols del tram** (`beat_unit`), no
-  el denominador: `6/8` amb `negra_punt` clica 2 cops per compàs; amb
-  `corxera`, 6. La **subdivisió** de grup és un control a part. Accent de
+- El clic per defecte segueix el **denominador del tram**: `6/8` clica 6
+  corxeres amb accents a 1 i 4. La **subdivisió** de grup és un control a
+  part. Accent de
   compàs (temps 1) ≈ 1500 Hz; resta ≈ 1000 Hz.
 - **Patrons**: `Auto` (per defecte) = pols del tram + accents de compàs i grup; `Compàs` =
   només el primer temps; `Temps` = Compàs + Temps, sense accents de grup;
@@ -443,7 +426,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 A sota de l'ona hi ha una segona graella independent, en **temps absolut**
 (`hh:mm:ss`). Els seus tics són sempre segons des de l'inici del WAV; no es
-mouen amb el BPM, l'offset, els compassos ni els rubatos. Només el zoom canvia
+mouen amb el BPM, els compassos ni els rubatos. Només el zoom canvia
 la resolució visual (1, 2, 5, 10, 15, 30 s…), no les posicions temporals.
 
 ## 5. Mides i constants (`app/timeline_base.py`)
@@ -532,8 +515,8 @@ les mateixes graelles que «Quantitza» (per defecte **corxera = 1/2 temps**,
 l'anàlisi.
 
 **Anàlisi per rang A–B** (*Analitza ▸ Analitza acords al rang A–B…*): amb un
-loop A–B marcat, extreu només eixe tram (amb 2 s de pre-roll i 1 s de
-post-roll), hi passa Chordino, aplica la mateixa neteja/graella i **fusiona
+loop A–B marcat, extreu només eixe tram (amb 2 s de context abans i 1 s
+després), hi passa Chordino, aplica la mateixa neteja/graella i **fusiona
 només els acords del rang**; la resta del model, el BPM i l'estructura no es
 toquen. El mínim és 0,5 s.
 
@@ -549,10 +532,10 @@ d'Audacity/Mixxx), **sense AVX** (`eines/compila_vamp_plugins.sh`).
 | **BPM** | `nostre` (`app/tempo.py`) | `qm`, **`consens`** |
 | **Estructura** | **`qm`** (qm-segmenter) — únic motor | — |
 
-El **`🧭`** (i Analitza ▸ «Detecta el compàs 1 automàticament») usa el
+La detecció de beats usa el
 **primer downbeat del resultat d’Analitza beats, downbeats i BPM** si ja existeix; si no, cau a
 `qm-onsetdetector` + `qm-barbeattracker` (al tema de 101 dona 9,49 s). Així
-l’offset i les línies de downbeats ixen de la mateixa detecció.
+les línies de downbeats ixen de la mateixa detecció.
 
 ### 6.3 Import de formats (`app/ffmpeg.py`)
 
@@ -575,5 +558,4 @@ una extensió d'àudio de la llista.
   **`python3 eines/genera_esquema_ui.py`** (**no editar-los a mà**; el test
   `tests/test_pipeline.py` › `TestEsquemaUiGenerat` ho blinda → si edites aquest
   `.md`, regenera'ls).
-- `docs/recerca/AUTODETECCIO_OPCIONS.md` — motors d'autodetecció, opcions i post-processat.
 - `README.md` — «Estat actual» de l'app.

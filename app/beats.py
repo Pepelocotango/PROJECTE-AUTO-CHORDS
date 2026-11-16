@@ -100,7 +100,7 @@ def _detecta_nostre(wav, log, sensibilitat, bpb, den, bpm_hint,
                 beats, durada, num=int(bpb), den=int(den), offset=None)
             if trams:
                 bars = [float(b[1]) for b in
-                        tempo_map.TempoMap(trams, offset=offset).compassos()]
+                        tempo_map.TempoMap(trams).compassos()]
         except Exception as e:  # noqa: BLE001
             log(f"beats: no s'han pogut derivar els compassos ({e})")
     return {

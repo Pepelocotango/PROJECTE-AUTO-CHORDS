@@ -194,8 +194,8 @@ class GridLayer(QGraphicsItem):
         div = graella.DIVISIONS.get(self._divisio) if self._divisio else None
         plan = grid_plan(self._tempo_fix, self._bpm, self._bpb, self._pps,
                          view_px, mapa=self._mapa, divisio=div)
-        col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
-               "sub": theme.TL_GRID_SUB}
+        col = {"bar": theme.TL_GRID_MEASURE, "pulse": theme.TL_GRID_BEAT,
+               "beat": theme.TL_GRID_BEAT, "sub": theme.TL_GRID_SUB}
 
         def _col(k):
             return col[k[0] if isinstance(k, tuple) else k]
@@ -373,8 +373,8 @@ class RulerLayer(QGraphicsItem):
         div = graella.DIVISIONS.get(self._divisio) if self._divisio else None
         plan = grid_plan(self._tempo_fix, self._bpm, self._bpb, self._pps,
                          view_px, mapa=self._mapa, divisio=div)
-        col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
-               "sub": theme.TL_GRID_SUB}
+        col = {"bar": theme.TL_GRID_MEASURE, "pulse": theme.TL_GRID_BEAT,
+               "beat": theme.TL_GRID_BEAT, "sub": theme.TL_GRID_SUB}
         # ticks dels nivells secundaris (els més fins que el d'etiqueta)
         for (sub, kind) in plan["lines"]:
             if sub <= 1e-9 or sub >= plan["label"] - 1e-9:

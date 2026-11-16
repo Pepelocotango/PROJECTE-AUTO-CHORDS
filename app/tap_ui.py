@@ -102,19 +102,11 @@ class TapMixin:
         unit = tr.beat_unit if tr is not None else "negra"
         factor = float(bpm_unit_mod.factor(unit)) if vr is not None else 1.0
         bpm = taps_bpm * factor
-        ref_no = False
         if vr is not None:
             _, _bpm, num, den = vr.tempo_objectiu_vals()
             if vr.edita_tempo_objectiu(idx, bpm, num, den, desa=False):
                 self._tap_canviat = True
-            # L1 estricte: la Ref. només s'actualitza si el compàs coincidix.
-            _ref_bpm, ref_num, ref_den = vr.ref_tempo_base()
-            if (int(ref_num), int(ref_den)) == (int(num), int(den)):
-                vr.set_ref_tempo(bpm, ref_num, ref_den, unit)
-            else:
-                ref_no = True
             self._sincronitza_temps_del_visor()
-            self._sincronitza_ref_des_del_visor()
         else:
             self._posa_bpm_quarter(bpm)
         self.b_tap.setText(
@@ -123,9 +115,5 @@ class TapMixin:
         self.registra(f"tap tempo: {taps_bpm:.3f} taps/min · "
                       f"{factor:g} negres/beat → {bpm:.3f} BPM · tram {idx} "
                       f"({len(self._taps)} taps) · unitat {unit}")
-        if ref_no:
-            self.registra(
-                "TAP: Ref. no actualitzada (compàs diferent); "
-                "el clip sí que s'ha aplicat")
         self._tap_timer.start()
         self._actualitza_desti_accions()

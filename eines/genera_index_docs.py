@@ -65,6 +65,7 @@ ORDRE_RECERCA = [
     "GRAELLA_PPQ_TEMPS.md",
     "AUTODETECCIO_OPCIONS.md",
     "PLA_MAPA_TEMPS.md",
+    "COMPASSOS_COMPOSTOS_BPM_METRONOM.md",
 ]
 
 DESCRIPCIONS_RECERCA = {
@@ -74,7 +75,10 @@ DESCRIPCIONS_RECERCA = {
     "GRAELLA_PPQ_TEMPS.md": "Proposta de PPQ/ticks i swing (no implementada).",
     "AUTODETECCIO_OPCIONS.md": "Mesuraments reals dels motors d'autodetecció.",
     "PLA_MAPA_TEMPS.md": "Pla de simplificació del mapa de temps: referència "
-                         "manual, recalcul guiat i model permissiu.",
+                         "del veí esquerre, recalcul guiat i model permissiu.",
+    "COMPASSOS_COMPOSTOS_BPM_METRONOM.md":
+        "Recerca sobre compassos compostos, BPM (negra vs negra amb punt) i "
+        "metrònom en DAWs i editors de partitures.",
 }
 
 # Noms de la columna «Doc» que no són el nom del fitxer.

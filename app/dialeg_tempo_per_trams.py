@@ -1,6 +1,6 @@
 """Diàleg de detecció de tempo per trams."""
 from PyQt5.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QLabel,
+    QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QLabel,
     QSpinBox, QVBoxLayout,
 )
 
@@ -15,7 +15,7 @@ class DialegTempoPerTrams(GeometriaMixin, QDialog):
     """
 
     def __init__(self, parent, durada=0.0, num=4, den=4, cada=4,
-                 tolerancia=2, offset_auto=True):
+                 tolerancia=2):
         super().__init__(parent)
         self.setWindowTitle("Detecta el tempo per trams")
         self.setMinimumWidth(460)
@@ -46,13 +46,6 @@ class DialegTempoPerTrams(GeometriaMixin, QDialog):
             "sol (evita mapes de mil trams per vibrato o micro-deriva).")
         form.addRow("Fusiona si el BPM difereix menys de:", self.sp_tol)
         lay.addLayout(form)
-        self.ck_offset = QCheckBox(
-            "Mou el compàs 1 al primer temps detectat (recomanat)")
-        self.ck_offset.setChecked(bool(offset_auto))
-        self.ck_offset.setToolTip(
-            "Si la cançó comença amb anacrusi o silenci, el compàs 1 no cau a "
-            "0 s: es col·loca al primer temps fort detectat.")
-        lay.addWidget(self.ck_offset)
         self.lb_info = QLabel(
             f"Durada del tema: {float(durada):.2f}s · compàs {int(num)}/"
             f"{int(den)}")
@@ -68,7 +61,6 @@ class DialegTempoPerTrams(GeometriaMixin, QDialog):
         lay.addWidget(botons)
 
     def valors(self):
-        """`(cada_compassos, tolerancia_fraccio, offset_auto)`."""
+        """`(cada_compassos, tolerancia_fraccio)`."""
         return (int(self.sp_cada.value()),
-                float(self.sp_tol.value()) / 100.0,
-                bool(self.ck_offset.isChecked()))
+                float(self.sp_tol.value()) / 100.0)

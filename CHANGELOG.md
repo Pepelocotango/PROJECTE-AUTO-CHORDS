@@ -3,7 +3,35 @@
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
 Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
-## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
+## [No publicat] — 2026-11-16
+
+### Corregit — graella i metrònom amb el compàs del mapa (2026-11-16)
+- `grid_plan` i el snap usen el **mapa de tempo/compàs** també quan el mapa és
+  constant; abans podien caure en el BPM/compàs global i dibuixar un compàs de
+  `6/8` com si fóra de negres (barra de 3,417 s en lloc d'1,708 s).
+- Els clics del metrònom continuen usant la unitat de pols del tram; ara cada
+  clic cau sobre la graella del mapa.
+- Test de regressió: `6/8` amb barra d'1,5 s i subdivisions de corxera.
+
+### Afegit — botons d'aplicació per variable a l'Editor (2026-11-16)
+- A la franja Editor del clip de tempo, **Aplica** al costat de **BPM**,
+  **Compàs** i **N** aplica només eixa variable; els altres camps de la fila
+  s'ignoren. El botó **Aplica** general continua aplicant tots els camps.
+- En `BPM` i `Compàs`, el model conserva les regles de `N` enter i recalc mòbil;
+  en `N`, el BPM es deriva i el compàs es conserva.
+
+### Canviat — fora pre-roll, offset i Ref. recalc (2026-11-16)
+- **Eliminats** el **pre-roll**, l'**offset** i la **Ref. recalc** de la UI, del
+  model, del projecte i de la documentació. El compàs 1 cau sempre a **0 s**.
+- El recalcul usa com a referència el **veí esquerre** del clip seleccionat
+  (`clip − 1`); si el clip és el primer, s'usa ell mateix. No hi ha cap
+  BPM/compàs global.
+- `.acproj` puja a **FORMAT 5** i rebutja els projectes amb format anterior
+  sense tocar-los.
+- Eliminats els botons/dreceres de «Marca el compàs 1», «Detecta el compàs 1»
+  i els camps `offset`/`Ref. recalc` de la barra Temps.
+- Tests: s'han retirat les proves de les funcions eliminades i s'ha afegit la
+  referència del veí esquerre.
 
 ### Corregit — pols percebut en compassos compostos (2026-11-16)
 - **BPM i metrònom en 6/8, 9/8 i 12/8**: el camp mostra el BPM en la unitat de
@@ -22,6 +50,9 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 - Tests: `MetronomTests` (6/8, 9/8, 12/8, mapa mixt i corxera explícita),
   `TestDialegTempoMapa.test_unitat_bpm_per_fila` i
   `test_canvi_de_compas_deriva_la_unitat_de_pols`.
+
+
+## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
 ### Afegit — «Desa i exporta-ho tot…» (2026-11-15)
 - **`Fitxer ▸ Desa i exporta-ho tot…`** (`Ctrl+Shift+E`): desa primer el

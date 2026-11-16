@@ -10,7 +10,7 @@ from app.finestres import GeometriaMixin
 class DialegQuantitza(GeometriaMixin, QDialog):
     """Quantització del model: abast + graella d'acords i d'estructura.
 
-    No toca BPM, compàs, offset ni el cru. Només decideix QUÈ es quantitza i
+    No toca BPM, compàs ni el cru. Només decideix QUÈ es quantitza i
     amb quina graella; l'operació és una sola i es pot desfer/refer.
     """
 
@@ -56,7 +56,7 @@ class DialegQuantitza(GeometriaMixin, QDialog):
 
         avis = QLabel("Només es mouen els INICIS dels clips. El final de cada "
                       "clip es deriva del següent i l'últim arriba a la durada "
-                      "del WAV. No es toca BPM, compàs, offset ni el cru de "
+                      "del WAV. No es toca BPM, compàs ni el cru de "
                       "l'anàlisi. Tot és una sola operació de desfer.")
         avis.setWordWrap(True)
         lay.addWidget(avis)

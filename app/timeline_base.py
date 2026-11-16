@@ -12,7 +12,7 @@ Tot en català. Sense dependències noves.
 """
 import math
 
-from app import theme      # noqa: E402  (paleta centralitzada)
+from app import bpm_unit, theme      # noqa: E402  (paleta centralitzada)
 
 
 # -----------------------------------------------------------------------------
@@ -91,7 +91,7 @@ def _divisions(tempo_fix, bpm, bpb, mapa=None):
     de sempre (idèntica).
     """
     if tempo_fix:
-        if mapa is not None and not mapa.es_constant():
+        if mapa is not None:
             bar, beat, _sub = mapa.durations(mapa.offset)
             # Múltiples de compàs per al zoom molt allunyat (min zoom): amb un
             # compàs de 2 s i una vista de 10 min, una línia cada compàs seria
@@ -124,6 +124,17 @@ def snap_step(tempo_fix, bpm, bpb, pps, mapa=None):
     return fit[-1] if fit else divs[0][0]
 
 
+def _pulse_step(mapa):
+    """Durada de la pols percebuda del mapa (0 si no es pot calcular)."""
+    if mapa is None:
+        return 0.0
+    try:
+        unit = mapa.unitat(0.0)
+        return bpm_unit.factor(unit) * 60.0 / float(mapa.bpm(0.0))
+    except (AttributeError, TypeError, ValueError, ZeroDivisionError):
+        return 0.0
+
+
 def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
               min_label_px=MIN_LABEL_PX, mapa=None, divisio=None):
     """Pla ÚNIC de grid (font de veritat per a grid, regle i snap).
@@ -145,7 +156,7 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
     if divisio and tempo_fix:
         mena, val = divisio
         variable = mapa is not None and not mapa.es_constant()
-        if variable:
+        if mapa is not None:
             bar_s, beat_s, _sub_s = mapa.durations(mapa.offset)
         else:
             beat_s = 60.0 / max(float(bpm), 1e-9)
@@ -184,6 +195,12 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
         # Una divisió MANUAL mana sempre: no caiem a l'automàtic encara que
         # siga molt fina o que no capa a la vista. L'usuari l'ha forçada des
         # del selector de snap (independentment de si el snap està activat).
+        pulse = _pulse_step(mapa)
+        if pulse > 1e-9 and mapa is not None and mapa.es_constant() \
+                and pulse * pps >= min_line_px \
+                and all(abs(pulse - x) > 1e-9 for x, _k in lines):
+            lines.append((pulse, "pulse"))
+            lines.sort(key=lambda x: -x[0])
         return {"snap": step, "lines": lines, "label": label,
                 "label_kind": label_kind}
     divs = _divisions(tempo_fix, bpm, bpb, mapa)
@@ -215,6 +232,12 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
     # a més, salta les etiquetes que no hi caben segons l'amplada del text.
     cands = [(s, k) for (s, k) in divs if s * pps >= min_label_px]
     lab, lab_kind = cands[-1] if cands else major
+    pulse = _pulse_step(mapa)
+    if pulse > 1e-9 and mapa is not None and mapa.es_constant() \
+            and pulse * pps >= min_line_px \
+            and all(abs(pulse - x) > 1e-9 for x, _k in lines):
+        lines.append((pulse, "pulse"))
+        lines.sort(key=lambda x: -x[0])
     return {"snap": snap, "lines": lines, "label": lab,
             "label_kind": lab_kind}
 
@@ -408,8 +431,8 @@ def grid_levels(tempo_fix, bpm, bpb, pps, view_px, mapa=None, divisio=None):
     `color` és un valor de color REAL (resolt de `theme`). Deriva del **pla
     únic** (`grid_plan`), així el grid i el regle sempre coincideixen.
     """
-    col = {"bar": theme.TL_GRID_MEASURE, "beat": theme.TL_GRID_BEAT,
-           "sub": theme.TL_GRID_SUB}
+    col = {"bar": theme.TL_GRID_MEASURE, "pulse": theme.TL_GRID_BEAT,
+           "beat": theme.TL_GRID_BEAT, "sub": theme.TL_GRID_SUB}
     plan = grid_plan(tempo_fix, bpm, bpb, pps, view_px, mapa=mapa,
                      divisio=divisio)
 

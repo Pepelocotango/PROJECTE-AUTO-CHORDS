@@ -174,10 +174,6 @@ class MenusMixin:
         self._act(m, "Analitza beats, downbeats i BPM", "F7",
                   self._analitza_bpm)
         m.addSeparator()
-        self.a_compas_auto = self._act(
-            m, "Detecta el compàs 1 automàticament", None,
-            lambda: self._detecta_compas1())
-        self._act(m, "Marca el compàs 1 aquí", "", self._marca_compas_1)
         self._act(m, "Quantitza el model…", "", self._quantitza_ui)
         sub_q = m.addMenu("Quantitza BPM")
         self._act(sub_q, "Sense decimals", "",

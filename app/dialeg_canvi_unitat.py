@@ -1,4 +1,4 @@
-"""Canvi explícit d'unitat de pols (clip o Ref. recalc)."""
+"""Canvi explícit d'unitat de pols (clip)."""
 from PyQt5.QtWidgets import (
     QDialog, QDialogButtonBox, QLabel, QRadioButton, QVBoxLayout,
 )

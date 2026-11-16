@@ -59,9 +59,9 @@ No poden córrer dues instàncies. El bloqueig és un lock **del sistema operati
 
 ### 8. Temps vàlids
 Els **segons** no poden ser negatius ni les durades **≤ 0**. La **numeració de
-compàs** sí que pot ser `≤ 0` quan hi ha **pre-roll** (compte enrere abans del
-compàs 1); no és un temps negatiu. Els validadors de la UI ho rebutgen; les
-xarxes de seguretat (CSV a mà, projectes vells) ho reparen.
+compàs** comença sempre a **1** en el segon 0; no existeix cap compte enrere.
+Els validadors de la UI ho rebutgen; les xarxes de seguretat (CSV a mà) ho
+reparen.
 
 ### 9. Portabilitat i maquinari objectiu
 Ha de córrer a **Linux** (AppImage x86_64), **Windows** (portable x64) i
@@ -104,8 +104,8 @@ mantenen `0,0`.
 ## 13. Temps, compàs i graella
 
 **Resum**: *els segons manen per a l'àudio; els clips de tempo/compàs són el
-model (el tram 0 inclòs) i el transport només n'és una vista; la referència la
-posa el músic (BPM/compàs) i el recalcul guiat busca compassos sencers; les
+model (el tram 0 inclòs) i el transport només n'és una vista; el recalcul usa
+el **veí esquerre** com a referència i busca compassos sencers; les
 fronteres interiors són lliures (snap opcional) i només cal una durada mínima
 d'un compàs 1/16 a 350 BPM (≈43 ms); **tots** els clips de tempo/compàs tenen
 un nombre enter de compassos (`N`), i el primer inici (0) i l'últim final
@@ -145,15 +145,15 @@ compassos sencers. El model és permissiu:
   dels beats detectats/TAP, no el so. Si falta, es deriva de l'agrupació
   efectiva (`6/8`, `9/8`, `12/8` amb grups de 3 → `negra_punt`; `x/4` →
   `negra`; `x/8` → `corxera`; `x/16` → `semicorxera`; `2/2` → `blanca`).
-  El **BPM visible** i el **clic per defecte del metrònom** seguixen esta
-  unitat de pols: `6/8` mostra i clica negra amb punt (2 cops, `3+3`), `9/8`
-  3 cops (`3+3+3`) i `12/8` 4 cops (`3+3+3+3`). Una unitat explícita
+  El **BPM visible** seguix esta unitat de pols; el **metrònom per defecte
+  clica el denominador** i accentua els inicis de grup: `6/8` → 6 corxeres amb
+  accents a 1 i 4, `9/8` → 9, `12/8` → 12. Una unitat explícita
   (`corxera`, `semicorxera`…) mana sobre la derivada; el denominador només és
   el fallback si la unitat no encaixa en el compàs. Canviar la signatura
   actualitza la unitat si esta era la derivada.
 - **Persistència**: `mapa_tempo.csv` porta `beat_unit` al final i es llig per
   noms; columna absent o valor desconegut = **rebuig**, valor buit =
-  derivar+avisar. `.acproj` **FORMAT 4** desa `tempo.ref.beat_unit`; els
+  derivar+avisar. `.acproj` **FORMAT 5** només desa el model actual; els
   projectes de format anterior es rebutgen sense tocar-los.
 - **Durada mínima**: cap clip pot ser més curt que un compàs **`1/16`** a 350
   BPM (≈ **43 ms**).
@@ -169,44 +169,39 @@ compassos sencers. El model és permissiu:
 - **BPM derivat**: el BPM es deriva de `N`, el compàs i la duració. Si
   l'usuari escriu un BPM que no dona `N` enter amb la duració actual, es
   **rebutja amb avís** (no es deixa `N` fraccionari ni es mou la frontera).
-- **Offset i pre-roll**: l'offset és la fase de la graella (on cau el compàs
-  1) i el pre-roll és el tram de temps abans d'eixe compàs. Cap dels dos
-  **no eximeix** el primer clip de tindre `N` enter: el seu `N` es compta
-  sobre la **duració completa** del clip (`fi − ini`), no sobre el tros
-  posterior a l'offset.
 - **Fronteres interiors lliures**: poden caure on vulga l'usuari; el **snap és
   opcional** i no s'exigeix cap línia de beat. Els beats detectats només
   intervenen com a restricció amb **Snap Beats QM**.
 - Entrada invàlida: es rebutja amb avís i sense mutació parcial. CSV extern
   invàlid: es repara i s'informa (incloent-hi l'ajust de `N`/BPM).
 
-### 13.5 Ajust de BPM i compàs: recalcul guiat per la referència
-La referència té dues parts. El **BPM** és **global** (la «Ref. recalc»
-manual); el **compàs** és el **local de cada costat**. En moure una frontera,
-els **segons** són fixos i el recalcul busca la combinació de **compassos
-sencers** que més s'acosta a eixa referència: pot canviar el **BPM**, el
-**compàs** o el **nombre de compassos** (`N`). El compàs local mana en
-`n_previst`, en la regla del múltiple i en `bloca_compas`; el compàs global de
-la Ref. només **desempata el cost**, de manera que un costat en `6/8` no hereta
-el `4/4` global si la seua mètrica local ja és vàlida. Quan els **beats detectats** s'usen per validar
-(**Snap Beats QM**), el nombre de **negres** (ja amb la unitat del beat
-aplicada) és una **restricció forta**: 7 negres han de ser `7/4` (o una
-combinació equivalent), no 2 compassos de `4/4` amb 8 negres. Si no s'usen o no
-n'hi ha, s'intenta inferir el nombre de negres a partir de la referència; si cau
-a prop d'un enter, s'aplica la mateixa restricció; si no, es recorre al càlcul
-per durada. Si no hi ha cap
-combinació, es conserva el valor anterior; si el resultat incomplix el mínim de
-durada (o qualsevol altra regla permissiva), el gest es rebutja amb **avís**
-(mai un canvi silenciós).
+### 13.5 Ajust de BPM i compàs: recalcul guiat pel veí esquerre
+La referència és sempre el **clip immediatament a l'esquerra** del clip
+seleccionat (`clip seleccionat − 1`); si el seleccionat és el primer o l'únic,
+s'usa el propi clip. El **veí de la dreta** que es recalcula en editar el clip
+seleccionat també s'ancora a eixa referència (el clip anterior al seleccionat),
+no al clip seleccionat. No hi ha cap BPM/compàs global.
+En moure una frontera, els **segons** són fixos i el recalcul busca la
+combinació de **compassos sencers** que més s'acosta a eixa referència: pot
+canviar el **BPM**, el **compàs** o el **nombre de compassos** (`N`). El compàs
+local mana en `n_previst`, en la regla del múltiple i en `bloca_compas`.
+
+Quan els **beats detectats** s'usen per validar (**Snap Beats QM**), el nombre
+de **negres** (ja amb la unitat del beat aplicada) és una **restricció forta**:
+7 negres han de ser `7/4` (o una combinació equivalent), no 2 compassos de
+`4/4` amb 8 negres. Si no s'usen o no n'hi ha, s'intenta inferir el nombre de
+negres a partir de la referència; si cau a prop d'un enter, s'aplica la mateixa
+restricció; si no, es recorre al càlcul per durada. Si no hi ha cap combinació,
+es conserva el valor anterior; si el resultat incomplix el mínim de durada (o
+qualsevol altra regla permissiva), el gest es rebutja amb **avís** (mai un
+canvi silenciós).
 
 ### 13.6 Fronteres a mà i marcadors
 La frontera la col·loca el músic; el snap és **opcional** i és el snap normal del
 timeline. No hi ha obligació que les fronteres caiguen en una línia de beat.
 Amb el snap apagat, inici i fi es mouen lliurement dins la WAV; el que no pot
 passar és que un clip quede per davall del **mínim d'un compàs 1/16 a 350 BPM**
-(§13.4), que `N` no siga enter o que un extrem isca de la WAV. El **pre-roll**
-(només la primera frontera) **no** exempta de `N` enter: el primer clip també ha
-de tindre un nombre enter de compassos.
+(§13.4), que `N` no siga enter o que un extrem isca de la WAV.
 
 **Terminologia obligatòria:** **«recalc fix»** i **«recalc mòbil»**. Són les
 dos úniques famílies de recalcul manual; qualsevol agent ha d'usar estos noms
@@ -250,8 +245,8 @@ normal pel que fa a camps, graella, validació, edició i exportació de dades.
 - La marca “Rubato” només afecta la partitura/exportació de notació.
 - Convertir a rubato o a normal només canvia `tipus`; no deriva BPM ni parteix
   el clip.
-- El **pre-roll** i els rubatos **hereten la unitat del primer tram musical**;
-  `beat_unit` és un camp més i no canvia el flag `tipus`.
+- Els rubatos **hereten la unitat del primer tram musical**; `beat_unit` és
+  un camp més i no canvia el flag `tipus`.
 - Un projecte amb rubatos antics de seqüència es rebutja amb error clar.
 
 ### 13.8 Detecció i marcadors

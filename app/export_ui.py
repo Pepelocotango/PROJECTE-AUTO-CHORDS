@@ -70,10 +70,10 @@ class ExportMixin:
             bpb=self._bpb_val(),
             den=self._beat_type_val(),
             beat_unit=((vre.unitat_objectiu() if vre is not None
-                        else self._beat_unit_val())),
+                        else "negra")),
             bpm_unit=((vre.unitat_objectiu() if vre is not None
-                       else self._beat_unit_val())),
-            offset=self._offset_val(),
+                       else "negra")),
+            offset=0.0,
             sr=44100,
             tempo_fix=self.tempo_fix.isChecked(),
             amb_estructura=amb_estructura,
@@ -289,7 +289,7 @@ class ExportMixin:
             marques = [(float(t), tipus.get(round(float(t), 6), "marcador"))
                        for t in (vr.marcadors or ())]
             tempo_midi.desa_mapa_midi(
-                ruta, list(vr.tempo_trams), offset=float(vr.offset or 0.0),
+                ruta, list(vr.tempo_trams), offset=0.0,
                 marques=marques, log=self.registra)
         except (OSError, ValueError) as e:
             self.avisa("Exporta MIDI", f"No s'ha pogut exportar el MIDI:\n{e}")
@@ -315,7 +315,7 @@ class ExportMixin:
         try:
             ev = pipeline.events_partitura(
                 os.path.join(self.sortida, "acords.csv"),
-                self._bpm_val(), self._bpb_val(), self._offset_val(),
+                self._bpm_val(), self._bpb_val(), 0.0,
                 durada=durada, mapa=mapa,
                 den=self._beat_type_val())
         except (RuntimeError, OSError) as e:
@@ -335,7 +335,7 @@ class ExportMixin:
                 bpm_unit=(getattr(getattr(self, "visor_ref", None),
                                   "unitat_objectiu",
                                   lambda: "negra")()),
-                offset=self._offset_val(),
+                offset=0.0,
                 wav=wav,
                 new_system_each=4,     # 4 compassos per línia (lead sheet)
                 mapa=mapa,

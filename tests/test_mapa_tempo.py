@@ -11,7 +11,6 @@ _ = _temporals
 
 from app import bpm_unit  # noqa: E402
 from app import mapa_tempo as M  # noqa: E402
-from app import tempo_map as tm  # noqa: E402
 
 
 class TestTramMapa(unittest.TestCase):
@@ -226,19 +225,6 @@ if __name__ == "__main__":      # pragma: no cover
     unittest.main()
 
 
-class TestDiagnosticCompassos(unittest.TestCase):
-    def test_detecta_n_fraccionari_i_ignora_preroll(self):
-        trams = [
-            M.TramMapa(0.0, 2.0, 120.0, "normal", "4/4"),
-            M.TramMapa(2.0, 14.5, 120.0, "normal", "4/4"),
-        ]
-        issues = tm.problemes_compassos_sencers(
-            trams, 14.5, offset=2.0)
-        self.assertEqual(len(issues), 1)
-        self.assertEqual(issues[0]["idx"], 1)
-        self.assertAlmostEqual(issues[0]["n"], 6.25, places=6)
-
-
 class TestQuantitzaBpm(unittest.TestCase):
     def test_quantitza_tres_normals_a_un_decimal(self):
         bq = 4.0
@@ -262,27 +248,6 @@ class TestQuantitzaBpm(unittest.TestCase):
         for t in out:
             n = (t.fi - t.ini) * t.bpm / (4 * 60.0)
             self.assertAlmostEqual(n, round(n), places=6)
-
-    def test_quantitza_preserva_el_preroll(self):
-        # El pre-roll conserva les seues fronteres (0 → 2 s) però, com la
-        # resta de clips, ha de tindre N enter: el BPM de notació s'ajusta
-        # a 90 per a clavar 1 compàs de 3/4 en 2 s.
-        pre = M.TramMapa(0.0, 2.0, 108.738, "normal", "3/4")
-        music = M.TramMapa(2.0, 2.0 + 4 * 3 * 60.0 / 105.918,
-                           105.918, "normal", "3/4")
-        out = M.quantitza_bpm([pre, music], 30.0, decimals=2, offset=2.0)
-        self.assertEqual((out[0].ini, out[0].fi), (0.0, 2.0))
-        self.assertEqual(out[0].n, 1.0)
-        self.assertAlmostEqual(out[0].bpm, 90.0, places=6)
-        self.assertAlmostEqual(out[1].ini, 2.0, places=9)
-        self.assertAlmostEqual(out[1].bpm, 102.85714285714286, places=6)
-        self.assertEqual(out[1].n, 16.0)
-
-    def test_quantitza_preroll_inconsistent_avisa(self):
-        pre = M.TramMapa(0.0, 1.655325, 108.74, "normal", "3/4")
-        music = M.TramMapa(1.655325, 8.0, 105.92, "normal", "3/4")
-        with self.assertRaises(ValueError):
-            M.quantitza_bpm([pre, music], 30.0, decimals=2, offset=2.20714)
 
     def test_quantitza_arrodoneix_mig_cap_amunt(self):
         def trams(bpms):

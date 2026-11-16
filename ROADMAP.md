@@ -50,7 +50,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-15)
+## 2. Estat actual i relleu de sessió (2026-11-16)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -78,26 +78,27 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 - **Tempo/compàs**: mapa per trams amb `N` per tram, rols derivats, mínim
   d'**1/16 a 350 BPM** (≈43 ms), rubato com a flag i motor C/B/A. El **BPM
   intern és sempre en negres/minut**. **S1/S2/S3 i P6 tancats (2026-11-13/14)**:
-  unitat de pols per tram (`beat_unit`), `semicorxera`, presentació/TAP/Ref. en
-  la unitat activa, rang intern 30–350, format `.acproj` 4 i CSV amb
+  unitat de pols per tram (`beat_unit`), `semicorxera`, presentació/TAP en la
+  unitat activa, rang intern 30–350, format `.acproj` **5** i CSV amb
   `beat_unit`, exportació amb manifest de 10 columnes i partitura/metrònom per
-  unitat, i recalc amb **compàs local + prior global** (BPM global).
+  unitat, i recalc amb **compàs local i referència del veí esquerre** (sense
+  BPM global). **2026-11-16: fora pre-roll, offset i Ref. recalc**; el compàs 1
+  cau sempre a **0 s** i el primer clip també ha de tindre `N` enter.
   Classificador **ALT/MITJÀ/BAIX** amb candidats/alternatives i Assistència;
-  L3/L4. Diàleg amb canvi d'unitat **inline**, selector d'unitat de la Ref.,
-  **silenci 1,5×/2/3**, **alternatives clicables** i **«Escolta la proposta»**
+  L3/L4. Diàleg amb canvi d'unitat **inline**, **silenci 1,5×/2/3**,
+  **alternatives clicables** i **«Escolta la proposta»**
   (bucle + metrònom proposat, amb restauració de l'estat previ). Terminologia
   canònica: **«recalc fix»** (fronteres fixes) i **«recalc mòbil»** (una
   frontera compartida) a `docs/REGLES_DE_LA_APP.md` §13.6. Detall de decisions a
   `LOG_DIALEGS_AGENTS.txt` OC/533–OC/567 i
-  `docs/EDICIO_OPERACIONS.md` §9.6.
+  `docs/REGLES_DE_LA_APP.md` §13.
 - **GUI de tempo**: BPM i compàs **no** viuen a la barra «Temps»; es veuen i
   s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
   **Aplica** fa **recalc mòbil**; **Ajusta** obre el diàleg del tram (N,
-  compàs, BPM, unitat, Ref.). El **Beat/TAP** de la barra és una drecera del
-  tram seleccionat i `cb_ref_beat` és la unitat de la Ref. El **TAP** aplica
-  al clip i, només si el compàs de la Ref. coincidix, actualitza la Ref.;
-  canviar la unitat amb TAP obert tanca la sessió (1 undo) i el canvi és un
-  altre undo. `Aplica ref.` i els canvis d'unitat tenen undo real.
+  compàs, BPM i unitat). El **Beat/TAP** de la barra és una drecera del
+  tram seleccionat; el **TAP** aplica al clip. Canviar la unitat amb TAP
+  obert tanca la sessió (1 undo) i el canvi és un altre undo. Els canvis
+  d'unitat tenen undo real.
 - **Edició d'àudio (§13.9)**: importació, backups, retall/afegir als extrems,
   sincronització del model, desfer/refer i export amb FFmpeg implementats.
 - **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
@@ -134,11 +135,14 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
 - **Fase 12**: congelació, higiene i CI; inclou el **CI automàtic en push/PR**
   (proposat, encara no activat).
+- **Purga interna de l'`offset=0`**: encara queden paràmetres interns a
+  `pipeline_*`, `timeline*` i `tempo_map` que ja no s'alimenten des de la UI.
+  No afecten l'usuari; cal eliminar-los en una passada pròpia amb suite verda.
 - **Rubato avançat** i **export de projecte DAW**: ajornats sense data.
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
 - **Quantitza BPM** continua sent una operació separada del recalc guiat.
 - **Edició d'àudio**: proves visuals i el silenci automàtic per completar el
-  pre-roll o el primer compàs (la restauració de backups ja és a la GUI).
+  primer compàs (la restauració de backups ja és a la GUI).
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
 
 ### Pla de compassos compostos (tancat 2026-11-13)
@@ -146,10 +150,11 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 > **Objectiu:** que un 6/8, 9/8 o 12/8 es puga tocar/exportar amb el pols que
 > el músic sent (negra amb punt) sense perdre la veritat interna en
 > negres/minut. Decisions tancades amb l'operador: `beat_unit` per tram;
-> `quarter_bpm` canònic i `tap_bpm` derivat; Ref. `(bpm, compàs, beat_unit)`;
-> BPM/TAP/Ref. en la unitat activa; export `sound tempo` sempre quarter +
+> `quarter_bpm` canònic i `tap_bpm` derivat; referència del recalcul =
+> **veí esquerre** (des del 2026-11-16 no hi ha Ref. global);
+> BPM/TAP en la unitat activa; export `sound tempo` sempre quarter +
 > `metronome` unitat+tap + `time` per tram; rang intern 30–350; avís 1,5×/2/3;
-> format `.acproj` 3→4 i `beat_unit` al CSV; projectes vells es rebutgen;
+> format `.acproj` 3→4→5 i `beat_unit` al CSV; projectes vells es rebutgen;
 > manifest autocontingut; `semicorxera` per a x/16.
 >
 > **UX:** Assistència amb severitat i accions, termes «Mantén el tempo (canvia
@@ -158,7 +163,7 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 > endevina: automatitza el que és segur, proposa alternatives i marca el que
 > no pot saber; el músic decidix.
 >
-> **Implementació:** **S1** model+format+presentació+Ref.+TAP+rang+BAIX
+> **Implementació:** **S1** model+format+presentació+TAP+rang+BAIX
 > dur+Assistència; **S2** export (partitura, guia, WAV, manifest); **S3**
 > recalc (`meter_prior`, compàs local, classificador ALT/MITJÀ/BAIX, candidats
 > i alternatives) + §13.5; **P6** audició «Escolta la proposta». Tot **tancat**;
@@ -192,11 +197,11 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 > BPM/octava, recalcul automàtic en fusionar/eliminar clips, diàleg de
 > reparació, unitat del beat 6/8/9/8, helper únic de recompte i tolerància
 > operativa de 50 ms per als talls sense snap. Pendent: cost gaussià, pickup
-> inicial i validació completa amb una cançó real 6/8 o 9/8. Partix del commit
-> `12654a4` (referència base manual «Ref. recalc»); una fase per commit i
-> suite verda abans de la següent.
+> inicial (fora de l'abast actual des del 2026-11-16, sense offset/pre-roll) i
+> validació completa amb una cançó real 6/8 o 9/8. La referència és el **veí
+> esquerre** del clip; una fase per commit i suite verda abans de la següent.
 
-**Problema detectat:** amb beats, la referència base només desempata i mana
+**Problema detectat (històric):** amb beats, la referència només desempata i mana
 «menys compassos primer». Això produïx resultats no canònics: ref 4/4 amb
 K=20/24/28 → 5/4/6/4/7/4 N=4 (haurien de ser 4/4 N=5/6/7); ref 3/4 amb
 K=12/36 → 4/4 N=3 / 6/4 N=6; ref 6/8 amb K=6/12 → 12/8 N=1/2; K=13 →
@@ -226,7 +231,7 @@ desviació de BPM gran (p. ex. 8 beats en 6 s amb ref 120 → 80 BPM) no avisa.
    `desviacio_bpm` (`bpm/bpm_ref − 1`) i `sospita_octava` (ratio ≈2 o ≈0,5,
    marge 8 %); constants: llindar de desviació 0,12 i marge d'octava 0,08. A
    `_recalcula_costats` i a `aplica_bpm_marcadors`, un avís combinat per clip
-   (beats ajustats + desviació + octava), sense avisar pre-roll/rubato; les
+   (beats ajustats + desviació + octava), sense avisar rubato; les
    GUI el mostren amb `avis_editor` (no només al log). Quan no hi ha beats
    detectats i el nombre de negres és inferit, l'avís diu «sense beats
    detectats» en compte de «beats ajustats». Propagada la llista opcional
@@ -254,8 +259,9 @@ i **6/8 N=2** a 82,5 BPM.
 
 El helper `n_negres_del_clip` aplica el factor una sola vegada i no
 arredoneix a negres senceres: 3 beats amb punt són **4,5 negres** (9/8 N=1) i
-5 corxeres són **2,5 negres** (5/8 N=1). Queda pendent el **pickup inicial**
-(el primer beat cau a 1,08 s), decidir si el metrònom ha de seguir
+5 corxeres són **2,5 negres** (5/8 N=1). El **pickup inicial** queda fora de
+l'abast actual (des del 2026-11-16 no hi ha offset/pre-roll; el primer beat
+detectat cau a 1,08 s). Queda decidir si el metrònom ha de seguir
 automàticament la unitat i **validar el detector amb una cançó real** 6/8 o
 9/8: el `CORPUS` actual no en té cap d'etiquetat (els loops GMD són 4/4; els
 MIREX no porten compàs). La prova sintètica amb QM no va distingir
@@ -267,7 +273,8 @@ i el primer a 1,0797 s: confirma que el detector marca negres amb punt en eixe
 6/8. Queda provar el flux complet de mapa/reparació amb eixa cançó.
 
 **Fet el 2026-11-08 — fusió/eliminació de clips:** `elimina_tall` i
-`fusiona_trams` ara **recalculen el clip afectat** amb la referència base i
+`fusiona_trams` ara **recalculen el clip afectat** amb la referència del veí
+esquerre i
 els beats abans de validar. Cas real: `149.218–165.800` té K=40; el merge
 deixava 4/4 a 144.127 → **9,958 compassos**; ara dona **4/4 N=10 a 144.732**
 sense moure la frontera. Si no pot quedar sencer, avisa. Un canvi manual de
@@ -280,8 +287,8 @@ canònica.
 són la signatura base; si els canvis **només de BPM** també han de passar pel
 diàleg de reparació (ara només es valida el compàs).
 
-**No implementat en este punt:** cost gaussià, pickup inicial i validació
-completa amb una cançó real 6/8/9/8.
+**No implementat en este punt:** cost gaussià, pickup inicial (fora d'abast) i
+validació completa amb una cançó real 6/8/9/8.
 La resta de fases, la unitat del beat i el diàleg de reparació sí que estan
 implementats (2026-11-08).
 
@@ -323,8 +330,8 @@ Commit de referència: `68dcde1` (checkpoint v9.2).
   [`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md).
   Inclou la fase 7 del pla de simplificació.
 - **Fet (2026-11-03)**: anàlisi del projecte de prova
-  `AUTOCHORDS_01 POLICE_convertit`; model coherent i límits del pre-roll,
-  notació crua i offset documentats al subplà de rubato.
+  `AUTOCHORDS_01 POLICE_convertit`; model coherent, notació crua i límits del
+  primer compàs documentats al subplà de rubato.
 - **Següent (2026-11-05)**: **consolidar el nucli** i simplificar (abast a
   [`AGENTS.md`](AGENTS.md#-abast-i-flux-de-lusuari--font-única)). La **fase 10**
   (motor de detecció) i el **rubato avançat** queden **ajornats sense data**.
@@ -384,8 +391,8 @@ Commit de referència: `68dcde1` (checkpoint v9.2).
 #### Fet (2026-11-14) — Exportació del mapa de tempo a MIDI/DAWs
 
 > **Abast mínim:** generar `mapa_tempo.mid` (tipus 1, pista de conductor) amb
-> els canvis de tempo (`Set Tempo`), els canvis de compàs (`Time Signature`),
-> els marcadors de compàs/secció i l'offset/anacrusi. Cada tram del
+> els canvis de tempo (`Set Tempo`), els canvis de compàs (`Time Signature`) i
+> els marcadors de compàs/secció. Cada tram del
 > `mapa_tempo.csv` ha de tindre el seu event MIDI; el rubato s'aproxima amb
 > events densos i s'ha d'avisar que és aproximat. **Criteri d'acceptació:** el
 > MIDI es pot importar en un DAW i el tempo/timesig/marcadors quadren amb el
@@ -399,10 +406,10 @@ Commit de referència: `68dcde1` (checkpoint v9.2).
   - **MIDI** (implementat): `mapa_tempo.mid` (tipus 1, pista de conductor)
     amb `Set Tempo`, `Time Signature` i markers; també dins
     `mapa_tempo/` del paquet de `Ctrl+E`. És el format més portable
-    (Cubase/Logic/Pro Tools/Reaper/Studio One…). L’offset/anacrusi s’anota
-    amb un marker.
-  - **Reaper**: generar un `.rpp` amb l’àudio, `TEMPO`, `TIMESIG`, markers i
-    offset; és el camí exacte per a Reaper, però no intercanviable.
+    (Cubase/Logic/Pro Tools/Reaper/Studio One…). Els marcadors de compàs/secció
+    s’anoten com a markers.
+  - **Reaper**: generar un `.rpp` amb l’àudio, `TEMPO`, `TIMESIG` i markers;
+    és el camí exacte per a Reaper, però no intercanviable.
   - **Cues al WAV** per a compàs/secció, com a complement per als DAWs que
     importen marcadors.
   - **Clic de referència WAV** generat amb el mapa, com a alternativa

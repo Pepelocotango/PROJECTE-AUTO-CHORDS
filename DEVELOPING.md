@@ -30,7 +30,7 @@ Tot en català. Llicència: GPL-3.0-or-later (vegeu `LICENSE`).
 ```bash
 bash instal·la_local.sh   # crea .venv/ + runtime + eines de qualitat (pyflakes/coverage)
 .venv/bin/python app/main.py
-.venv/bin/python wav_a_wavs.py tema.wav 138 4 [offset]
+.venv/bin/python wav_a_wavs.py tema.wav 138 4
 ```
 
 * Python: stdlib + PyQt5 en `.venv/` (rodes, sense apt).
@@ -254,7 +254,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `camp_text.py` | Camps de text de l'app amb l'inici sempre visible. |
 | `config.py` | Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE. |
 | `dialeg_analitza_bpm.py` | Diàleg d'anàlisi de BPM/beats. |
-| `dialeg_canvi_unitat.py` | Canvi explícit d'unitat de pols (clip o Ref. recalc). |
+| `dialeg_canvi_unitat.py` | Canvi explícit d'unitat de pols (clip). |
 | `dialeg_dreceres.py` | Diàleg per veure i canviar totes les dreceres de teclat. |
 | `dialeg_guia_rapida.py` | Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas. |
 | `dialeg_opcions.py` | Diàleg d'opcions d'autodetecció (BPM/acords/estructura). |
@@ -307,7 +307,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `tempo_map.py` | Mapa de TEMPO i COMPÀS variables — el «motor» (stdlib pur). |
 | `tempo_midi.py` | Exportació del mapa de tempo/compàs a MIDI (Standard MIDI File tipus 1). |
 | `tempo_recalc.py` | Motor pur de recalcul del mapa de temps (F0). |
-| `temps_ui.py` | UI de temps de la finestra (F3): BPM, compàs i offset. |
+| `temps_ui.py` | UI de temps de la finestra (F3): BPM i compàs. |
 | `theme.py` | tema centralitzat (colors i estils Qt) |
 | `timeline.py` | timeline.py — Editor visual de la pista tipus DAW (QGraphicsView). |
 | `timeline_base.py` | timeline_base.py — Base compartida de l'editor de timeline (DAW). |
@@ -326,7 +326,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `xifrat.py` | Notació del xifrat d'acords — font ÚNICA (parseig + forma canònica). |
 <!-- /GENERAT: moduls -->
 
-Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI), `EDICIO_OPERACIONS.md`
+Docs de detall a `docs/`: `ESQUEMA_UI.md` (GUI)
 (edició), `TIPUS_XIFRAT_ACORDS.md` (xifrat) i `recerca/` (onsets/beats, PPQ,
 mesuraments de motors).
 

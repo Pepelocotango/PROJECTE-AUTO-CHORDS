@@ -104,14 +104,6 @@ class TestRolsTram(unittest.TestCase):
         self.assertEqual(tm.rol_tram([1, 2, 3], 1), "interior")
         self.assertEqual(tm.rol_tram([], 0), "interior")
 
-    def test_preroll_derivat(self):
-        trams = [(0.0, 0.742667, 120.0, 4, 4),
-                 (0.742667, 10.0, 120.0, 4, 4)]
-        self.assertTrue(tm.es_preroll_tram(trams, 0, 0.742667))
-        self.assertFalse(tm.es_preroll_tram(trams, 1, 0.742667))
-        self.assertFalse(tm.es_preroll_tram(trams, 0, 0.0))
-
-
 class TestConstant(unittest.TestCase):
     """El cas BPM·compàs constant ha de coincidir amb l'app actual."""
 
@@ -154,22 +146,6 @@ class TestConstant(unittest.TestCase):
         self.assertAlmostEqual(tm.snap(0.6, ("beat", 1.0)), 0.5)
         self.assertAlmostEqual(tm.snap(2.1, ("bars", 1)), 2.0)
         self.assertAlmostEqual(tm.snap(0.6, ("beat", 0.5)), 0.5)
-
-    def test_offset(self):
-        tm = TempoMap.constant(120, 4, 4, durada=10.0, offset=1.0)
-        self.assertEqual(tm.pos(1.0), (1, 1, 1))
-        c, _b, _s = tm.pos(0.5)                     # compte enrere: compàs ≤ 0
-        self.assertLessEqual(c, 0)
-
-    def test_offset_negatiu_conserva_la_graella_variable(self):
-        tm = TempoMap([(0.0, 5.0, 120, 4, 4),
-                       (5.0, 17.0, 100, 4, 4)], offset=-1.0)
-
-        self.assertAlmostEqual(tm.t_de_quarters(12.0), 5.0)
-        self.assertIn((12.0, 5.0, 4, 4), tm.compassos())
-        self.assertEqual(tm.pos(0.0), (1, 3, 1))
-        self.assertEqual(tm.pos(1.0), (2, 1, 1))
-
 
 class TestUnitatPolsTram(unittest.TestCase):
     """`beat_unit` per tram i consultes derivades de `TempoMap`."""
@@ -366,19 +342,6 @@ class TestCompassosEnters(unittest.TestCase):
         with self.assertRaises(ValueError):
             tm.valida_i_normalitza_compassos(trams, 5.0)
 
-    def test_primer_clip_amb_offset_tambe_exigix_n_enter(self):
-        # L'offset no eximeix el primer clip: el compte enrere també ha de
-        # tindre N enter (0 → 4 s = 2 compassos de 4/4 a 120).
-        trams = [(0.0, 4.0, 120.0, 4, 4), (4.0, 10.0, 120.0, 4, 4)]
-        self.assertEqual(tm.valida_i_normalitza_compassos(
-            trams, 10.0, offset=1.0), trams)
-
-    def test_primer_clip_amb_offset_negatiu_tambe_exigix_n_enter(self):
-        trams = [(0.0, 4.0, 120.0, 4, 4),
-                 (4.0, 16.0, 100.0, 4, 4)]
-        self.assertEqual(tm.valida_i_normalitza_compassos(
-            trams, 16.0, offset=-1.0), trams)
-
     def test_canviar_bpm_conserva_les_fronteres(self):
         # El BPM demanat (100) és una referència: com que 10 s no donen N
         # enter a 100 BPM, es deriva el BPM de l'N més pròxim (4 compassos
@@ -415,20 +378,6 @@ class TestCompassosEnters(unittest.TestCase):
             tm.parteix_a_compas(trams, 0, 1.0, 6.0)
 
 
-class TestAjustaPrimerClipACompas(unittest.TestCase):
-    def test_pre_roll_curt_tria_el_compas_valid_mes_simple(self):
-        # Amb el denominador 16 admissible, el candidat que deixa el BPM
-        # més proper al clip de música és 7/16 (1 compàs en 0,742667 s).
-        d = 230.753854
-        t = 0.742667
-        trams = tm.parteix_trams_a([(0.0, d, 147.055646, 4, 4)], t, d)
-        out = tm.ajusta_primer_clip_a_compas(trams, d, t)
-        self.assertEqual(out[0][3:], (7, 16))
-        self.assertAlmostEqual(out[0][2], 7 * 4 / 16 * 60.0 / t, places=5)
-        self.assertAlmostEqual(out[1][2], 147.055646, places=6)
-        self.assertAlmostEqual(out[0][1], t, places=6)
-
-
 class TestCompasUnQuart(unittest.TestCase):
     """El compàs 1/4 ha de ser vàlid en totes les capes pures."""
 
@@ -456,18 +405,6 @@ class TestCompasUnQuart(unittest.TestCase):
 
 class TestAjustaBpmACompasos(unittest.TestCase):
     """Acció explícita: BPM perquè un clip tinga compassos sencers."""
-
-    def test_primer_clip_de_preroll(self):
-        # El segon clip s'ha ajustat a 71 compassos enters de 4/4 perquè el
-        # mapa sencer complica el contracte (el pre-roll no n'està exempt).
-        trams = [(0.0, 1.207438, 66.731, 1, 4),
-                 (1.207438, 256.562021, 66.730739, 4, 4)]
-        out = tm.ajusta_bpm_a_compassos(
-            trams, 0, 256.562021, offset=1.207438)
-        self.assertAlmostEqual(out[0][2], 49.691992, places=5)
-        self.assertAlmostEqual(out[0][1], 1.207438, places=6)
-        self.assertEqual(out[0][3:], (1, 4))
-        self.assertEqual(out[1], trams[1])
 
     def test_clip_normal_conserva_fronteres(self):
         trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 20.0, 120.0, 3, 4)]
@@ -1309,16 +1246,6 @@ class TestQuantitzaVisor(unittest.TestCase):
         self.assertEqual(len(v._undo_stack), 1)
         v.close()
 
-    def test_no_toca_bpm_compas_offset_ni_cru(self):
-        v = _quantitza___visor()
-        abans = (v.bpm, v.bpb, getattr(v, "beat_type", 4), v.offset,
-                 list(v.tempo_trams or ()))
-        v.quantitza("tot", "compas1", "compas1")
-        self.assertEqual(abans, (v.bpm, v.bpb, getattr(v, "beat_type", 4),
-                                 v.offset, list(v.tempo_trams or ())))
-        self.assertFalse(hasattr(v, "raw_acords"))
-        v.close()
-
     def test_seleccio_mixta_una_sola_operacio(self):
         v = _quantitza___visor()
         v.timeline.select_multi({("chord", 2), ("section", 1)})
@@ -1681,34 +1608,6 @@ class TestCanviModeTemps(_canvi_mode_temps___Base):
         self.assertTrue(tl._tempo_fix)
         self.assertTrue(v.tempo_fix)
 
-    def test_la_commutacio_actualitza_l_offset(self):
-        """`_actualitza_temps()` llig `visor.offset`: el camp de la GUI hi ha
-        d'arribar (abans ho feia la crida redundant que s'ha tret)."""
-        f, v = self._muntar()
-        f.offset.setText("2.5")
-        f._canvia_mode_temps(False)
-        f._canvia_mode_temps(True)
-        self.assertAlmostEqual(v.offset, 2.5, places=6)
-
-# ══════════════════════════════════════════════════════════════════════════
-# ORIGEN: test_timeline_base.py
-# ══════════════════════════════════════════════════════════════════════════
-"""Funcions PURES de `app/timeline_base.py`: el pla de graella, el snap i les
-posicions.
-
-Són la base del grid, del regle i del snap del timeline, i fins ara només
-s'exercitaven **indirectament** des del `TimelineView` (auditoria 18-10-2026,
-que hi va veure zero referències directes a `snap_step`).
-
-Es proven els **contractes**, no els números concrets de cada zoom: la divisió
-de snap compleix la seua invariant, el pla i el snap coincideixen, i les
-posicions es calculen per índex (mai acumulant, que era el bug del regle).
-"""
-
-
-
-
-
 class TestSnapStep(unittest.TestCase):
 
     def test_la_divisio_de_snap_compleix_la_seua_invariant(self):
@@ -1758,6 +1657,15 @@ class TestSnapStep(unittest.TestCase):
 
 
 class TestGridPlan(unittest.TestCase):
+
+    def test_grid_plan_6_8_usa_el_compas_del_mapa(self):
+        mapa = TempoMap([(0.0, 3.0, 120.0, 6, 8)])
+        plan = tb.grid_plan(True, 120.0, 6, 60.0, 800.0, mapa=mapa)
+        self.assertAlmostEqual(plan["label"], 1.5, places=6)
+        self.assertIn(1.5, [round(s, 6) for s, _k in plan["lines"]])
+        self.assertAlmostEqual(plan["snap"], 0.25, places=6)
+        self.assertIn(0.75, [round(x, 6) for x in list(
+            tb.grid_positions(0.0, 1.5, plan["snap"], mapa=mapa))])
 
     def test_el_pla_i_el_snap_coincideixen(self):
         """`grid_plan` és la font única: el seu snap ha de ser el de `snap_step`."""
@@ -1874,12 +1782,6 @@ class TestGridPlan(unittest.TestCase):
 
 class TestGridPositions(unittest.TestCase):
 
-    def test_les_posicions_son_offset_mes_k_per_pas(self):
-        """`grid_positions` és un GENERADOR (el timeline el consumeix)."""
-        pos = list(tb.grid_positions(0.0, 10.0, 1.0, offset=0.0))
-        self.assertEqual(pos, [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0,
-                               8.0, 9.0, 10.0])
-
     def test_no_acumula_error_de_coma_flotant(self):
         """El cor del contracte: `t = offset + k*step` per ÍNDEX.
 
@@ -1952,12 +1854,6 @@ class TestGridPositionsSenseDeriva(unittest.TestCase):
         for t in tb.grid_positions(0.0, 200 * self.STEP, self.STEP, 0.0):
             lab = tb.fmt_pos(t, True, 125.4, 4, 0.0, self.STEP)
             self.assertTrue(lab.endswith(".1"), f"t={t!r} -> {lab!r}")
-
-    def test_amb_offset(self):
-        step, off = 0.5, 3.0
-        pos = list(tb.grid_positions(off, off + 20 * step, step, off))
-        for i, t in enumerate(pos):
-            self.assertAlmostEqual(t, off + i * step, places=9)
 
     def test_step_invalid(self):
         self.assertEqual(list(tb.grid_positions(0.0, 10.0, 0.0)), [])
@@ -2191,17 +2087,6 @@ class TestTramsEnSegons(unittest.TestCase):
         self.assertAlmostEqual(out[0][2], 120.0, places=6)
         self.assertAlmostEqual(out[1][2], 120.0, places=6)
 
-    def test_parteix_amb_ref_base_sobreescriu_el_pare(self):
-        trams = [(0.0, 10.0, 120.0, 11, 4)]
-        beats = [i * 0.5 for i in range(21)]
-        out = tm.parteix_tram_marcador(
-            trams, 7.0, 10.0, 0.0, beats_qm=beats, permissiu=True,
-            recalculca=True, ref_base=(120.0, 4, 4))
-        self.assertEqual(out[0][3:], (7, 4))
-        # 6 negres: 3/4 N=2 (el que importa és que no herete el 8/4 del pare).
-        self.assertEqual(out[1][3:], (3, 4))
-        self.assertAlmostEqual(out[0][2], 120.0, places=6)
-
     def test_tall_sense_snap_avisa_beat_a_la_frontera(self):
         trams = [(0.0, 5.0, 120.0, 4, 4), (5.0, 10.0, 120.0, 4, 4)]
         beats = [1.0, 2.0, 3.0, 4.0, 4.98, 5.02]
@@ -2230,17 +2115,6 @@ class TestTramsEnSegons(unittest.TestCase):
             ref_base=(120.0, 4, 4), avisos=avisos)
         self.assertEqual(out[0][3:], (4, 4))
         self.assertTrue(any("BPM desviat" in a for a in avisos), avisos)
-
-    def test_moure_frontera_ref_base_global_pero_compas_local(self):
-        # S3: el BPM de la Ref. és global, però el compàs LOCAL de cada
-        # costat mana en n_previst/bloca_compas; el 4/4 global només desempata.
-        trams = [(0.0, 5.0, 120.0, 7, 2), (5.0, 10.0, 120.0, 8, 4)]
-        beats = [i * 0.5 for i in range(21)]
-        out = tm.mou_frontera_retempo(
-            trams, 1, 7.0, 10.0, 0.0, beats_qm=beats, permissiu=True,
-            ref_base=(120.0, 4, 4))
-        self.assertEqual(out[0][3:], (7, 2))
-        self.assertEqual(out[1][3:], (3, 4))
 
     def test_moure_frontera_permissiu_recalcula_compassos(self):
         trams = [(0.0, 8.0, 120.0, 4, 4), (8.0, 20.0, 120.0, 4, 4)]

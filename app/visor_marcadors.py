@@ -112,7 +112,7 @@ class MarcadorsMixin:
             factor = self.beat_factor(self.unitat_de_tram(tr))
             costats = tall_qm.opcions_tall(
                 trams, float(t), durada, offset, beats,
-                self.ref_tempo_base(), factor)
+                self.referencia_tempo_a(t), factor)
             if costats is None:
                 self._cancel·la_tall_qm()
                 self.avis_editor(
@@ -131,7 +131,7 @@ class MarcadorsMixin:
                 return None
             costats = tall_qm.opcions_tall_graella(
                 trams, getattr(self, "tempo_map", None),
-                float(t), durada, offset, self.ref_tempo_base())
+                float(t), durada, offset, self.referencia_tempo_a(t))
             if costats is None:
                 self._cancel·la_tall_qm()
                 self.avis_editor(
@@ -182,9 +182,7 @@ class MarcadorsMixin:
         if any(len(o) > 1 for o in costats):
             self._pausa_tall_qm()
             from .dialeg_tall_qm import DialegTallQM
-            dlg = DialegTallQM(
-                self, costats[0], costats[1],
-                ref_bpm=float(self.ref_tempo_base()[0]))
+            dlg = DialegTallQM(self, costats[0], costats[1])
             if not dlg.exec_():
                 self._tall_qm_cancelat = True
                 self._cancel·la_tall_qm()

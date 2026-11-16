@@ -123,13 +123,6 @@ class SegueixBeatsTests(unittest.TestCase):
             self.assertGreater(d.max(), 0.45)
             self.assertAlmostEqual(float(np.median(d)), 0.5, delta=0.02)
 
-    def test_envolupant_retorna_offset(self):
-        with tempfile.TemporaryDirectory() as td:
-            ruta = wav_clics(td, 100.0, 10.0, silenci_ini=3.0)
-            env, _sr, t0 = tempo._envolupant_onsets(ruta, retorna_offset=True)
-            self.assertGreater(env.size, 0)
-            self.assertLess(abs(t0 - 3.0), 0.15, t0)
-
     def test_silenci_no_dona_beats(self):
         with tempfile.TemporaryDirectory() as td:
             ruta = os.path.join(td, "silenci.wav")
@@ -173,13 +166,6 @@ class BeatsATramsTests(unittest.TestCase):
         self.assertLess(abs(trams[0][2] - 100.0), 3.0, trams)
         self.assertLess(abs(trams[1][2] - 130.0), 4.0, trams)
         valida_n_enter(trams, 40.0, offset=off)
-
-    def test_offset_zero_no_mou_el_compas1(self):
-        beats = self._beats(110.0, 24.0, ini=0.7)
-        trams, off = tempo.beats_a_trams(beats, 24.0, offset=0.0)
-        self.assertEqual(off, 0.0)
-        self.assertEqual(trams[0][0], 0.0)
-        valida_n_enter(trams, 24.0, offset=0.0)
 
     def test_massa_pocs_beats(self):
         trams, off = tempo.beats_a_trams([0.0, 0.5, 1.0], 10.0)
@@ -366,99 +352,6 @@ class RetempoTests(unittest.TestCase):
             n = tempo_map.compassos_del_clip(clip)
             self.assertAlmostEqual(n, round(n), places=6, msg=clip)
 
-    def test_primer_tram_amb_premusica_conserva_l_offset(self):
-        # L'offset (3 s de pre-música) no es toca: els compassos compten des d'ell.
-        trams = [(0.0, 19.0, 120.0, 4, 4), (19.0, self.DU, 120.0, 4, 4)]
-        out = tempo_map.mou_frontera_retempo(trams, 1, 21.0, self.DU,
-                                            offset=3.0)
-        # La pre-música (0 → 3 s) no es toca mai: només canvia la frontera.
-        self.assertAlmostEqual(out[0][0], 0.0, places=6)
-        self.assertAlmostEqual(out[0][1], 21.0, places=6)
-        # El BPM es conserva; no es re-tempa per quadrar compassos.
-        self.assertAlmostEqual(out[0][2], 120.0, places=3)
-
-    def test_retempo_primer_tram_amb_offset_negatiu_conserva_compassos(self):
-        # Un offset negatiu no eximeix el primer clip de N enter: 4,5 s a
-        # 100 BPM no quadra i el canvi es rebutja.
-        trams = [(0.0, 4.5, 120.0, 4, 4),
-                 (4.5, 16.5, 100.0, 4, 4)]
-        with self.assertRaises(ValueError):
-            tempo_map.canvia_bpm_local(
-                trams, 0, 100.0, 16.5, offset=-1.5)
-
-    def test_primer_tram_pot_acabar_al_compas_1(self):
-        # Pre-roll pur: la fi del primer clip pot caure EXACTAMENT al compàs 1
-        # (abans s'exigia offset + 0,5 s i era impossible tornar-hi).
-        trams = [(0.0, 6.778, 50.0, 4, 4),
-                 (6.778, 165.733854, 120.858, 4, 4)]
-        out = tempo_map.mou_frontera_retempo(trams, 1, 1.978, 165.733854,
-                                            offset=1.978)
-        self.assertAlmostEqual(out[0][0], 0.0, places=6)
-        self.assertAlmostEqual(out[0][1], 1.978, places=6)
-        # També el primer clip deriva el BPM per a tindre N enter (1 compàs).
-        self.assertAlmostEqual(out[0][2], 121.33468149646107, places=6)
-        self.assertAlmostEqual(out[1][0], 1.978, places=6)
-        self.assertAlmostEqual(out[1][1], 165.733854, places=6)
-        self.assertAlmostEqual(out[1][2], 120.17890975671624, places=6)
-
-    def test_es_frontera_preroll_nomes_es_la_primera(self):
-        trams = [(0.0, 0.742667, 161.579820, 2, 4),
-                 (0.742667, 4.107875, 142.636057, 4, 4),
-                 (4.107875, 7.380250, 146.682455, 4, 4),
-                 (7.380250, 30.0, 147.056000, 4, 4)]
-        self.assertTrue(tempo_map.es_frontera_preroll(
-            trams, 1, 0.742667))
-        self.assertFalse(tempo_map.es_frontera_preroll(
-            trams, 2, 0.742667))
-        self.assertFalse(tempo_map.es_frontera_preroll(
-            trams, 3, 0.742667))
-
-    def test_preroll_zero_compassos_es_el_compas_1(self):
-        # Cas real (Get Lucky, 22-10): compàs 1 a 0,036 s i el primer tram
-        # sense cap compàs. Arrossegar eixa frontera = moure el compàs 1; el
-        # tram de música conserva els seus 112 compassos.
-        trams = [(0.0, 0.036162, 116.0, 4, 4),
-                 (0.036162, 231.672536, 116.043951, 4, 4),
-                 (231.672536, 248.407075, 115.898692, 4, 4)]
-        self.assertTrue(tempo_map.es_frontera_preroll(trams, 1, 0.036162))
-        out, off = tempo_map.mou_frontera_preroll(
-            trams, 1, 2.105, 248.407075, 0.036162)
-        self.assertAlmostEqual(off, 2.105, places=6)
-        self.assertAlmostEqual(out[0][0], 0.0, places=6)
-        self.assertAlmostEqual(out[0][1], 2.105, places=6)
-        # El pre-roll també ha de tindre N enter: BPM derivat (1 compàs).
-        self.assertAlmostEqual(out[0][2], 114.01425178147268, places=6)
-        self.assertAlmostEqual(out[1][0], 2.105, places=6)
-        self.assertAlmostEqual(out[1][1], 231.672536, places=6)
-        bars = (out[1][1] - out[1][0]) / tempo_map.durada_compas(
-            out[1][2], 4, 4)
-        self.assertAlmostEqual(bars, 112.0, places=6)
-        self.assertAlmostEqual(out[2][1], 248.407075, places=6)
-
-    def test_preroll_no_accepta_offset_fora_del_tram_de_musica(self):
-        trams = [(0.0, 0.036162, 116.0, 4, 4),
-                 (0.036162, 20.0, 116.0, 4, 4)]
-        with self.assertRaises(ValueError):
-            tempo_map.mou_frontera_preroll(trams, 1, 0.0, 20.0, 0.036162)
-        with self.assertRaises(ValueError):
-            tempo_map.mou_frontera_preroll(trams, 1, 25.0, 20.0, 0.036162)
-
-    def test_retempo_no_veu_el_compas1_com_a_frontera_especial(self):
-        # La frontera 0→1 no té cap excepció: un clip esquerre de 0,5 s a
-        # 116 BPM no cap en cap N enter i el gest es rebutja.
-        trams = [(0.0, 0.036162, 116.0, 4, 4),
-                 (0.036162, 20.0, 116.0, 4, 4)]
-        with self.assertRaises(ValueError):
-            tempo_map.mou_frontera_retempo(trams, 1, 0.5, 20.0, 0.036162)
-
-    def test_frontera_no_passa_abans_del_compas_1(self):
-        trams = [(0.0, 6.778, 50.0, 4, 4),
-                 (6.778, 165.733854, 120.858, 4, 4)]
-        with self.assertRaises(ValueError) as cm:
-            tempo_map.mou_frontera_retempo(trams, 1, 1.5, 165.733854,
-                                          offset=1.978)
-        self.assertIn("compàs 1", str(cm.exception))
-
     def test_compassos_mes_menys_i_doblar(self):
         un = [(0.0, 8.0, 120.0, 4, 4)]
         out = tempo_map.canvia_compassos_tram(un, 0, 1, 8.0)
@@ -522,14 +415,6 @@ class RetempoTests(unittest.TestCase):
         # El BPM es deriva de N enter (8 s = 4 compassos de 4/4).
         self.assertAlmostEqual(out[0][2], 120.0, places=6)
         self.assertEqual(out[1], (8.0, 11.0, 120.0, 3, 4))
-
-    def test_canviar_bpm_local_respecta_la_premusica(self):
-        trams = [(0.0, 15.0, 120.0, 4, 4), (15.0, 31.0, 120.0, 4, 4)]
-        out = tempo_map.canvia_bpm_local(trams, 0, 100.0, 31.0, offset=3.0)
-        # La pre-música no eximeix de N enter: el clip sencer (15 s) ha de
-        # quadrar. Amb 4/16 i 100 BPM en fa 25.
-        self.assertEqual(out[0], (0.0, 15.0, 100.0, 4, 16))
-        self.assertEqual(out[1], (15.0, 31.0, 120.0, 4, 4))
 
     def test_canviar_bpm_local_rebutja_bpm_fora_de_rang(self):
         trams = [(0.0, 8.0, 120.0, 4, 4), (8.0, 16.0, 120.0, 4, 4)]
@@ -634,17 +519,6 @@ class MarcadorsTempoTests(unittest.TestCase):
         self.assertEqual(out[1], (15.0, 30.0, 128.0, 4, 4))
         self.assertAlmostEqual(out[0][1], out[1][0], places=9)
         self.assertAlmostEqual(out[1][1], 30.0, places=9)
-
-    def test_parteix_respecta_l_offset(self):
-        # Pre-música de 2 s: els compassos del primer tram compten des de 2 s.
-        out = tempo_map.parteix_tram_marcador(
-            [(0.0, 30.0, 120.0, 4, 4)], 10.0, 30.0, offset=2.0,
-            bpm_ref=120.0)
-        # 8 s de música → N=4 compassos de 4/4 → 120 BPM.
-        self.assertAlmostEqual(out[0][2], 120.0, places=4)
-        self.assertAlmostEqual(
-            (10.0 - 2.0) / tempo_map.durada_compas(out[0][2], 4, 4), 4.0,
-            places=4)
 
     def test_marcador_massa_a_prop_no_bloqueja(self):
         # `+` a 0,4 s (el cas del play): 1 compàs donaria 600 BPM, fora de

@@ -3598,6 +3598,27 @@ class MetronomTests(unittest.TestCase):
             i = int(t * self.SR)
             self.assertLess(self._freq(arr[i:i + n]), 1100, t)
 
+    def test_6_8_per_defecte_clica_sis_corxeres_amb_accents_3_3(self):
+        from app import metronom
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([
+            mapa_tempo.TramMapa(0.0, 1.6, 120.0, "normal", "6/8", "",
+                                None, "negra_punt")])
+        out = metronom.mescla_metronom(
+            self._silenci(1.6), self.SR, 0.0, 120.0, 6, volum=1.0, den=8,
+            mapa=mapa, click_unit="auto")
+        self.assertEqual(
+            [round(t, 3) for t in self._onsets(self._a_array(out))],
+            [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5])
+        arr = self._a_array(out)
+        n = int(self.SR * 0.02)
+        for t in (0.0, 0.75):
+            i = int(t * self.SR)
+            self.assertGreater(self._freq(arr[i:i + n]), 1300, t)
+        for t in (0.25, 0.5, 1.0):
+            i = int(t * self.SR)
+            self.assertLess(self._freq(arr[i:i + n]), 1100, t)
+
     def test_pols_per_tram_6_8_clica_els_grups_3_3(self):
         from app import metronom
         from app.tempo_map import TempoMap
@@ -3841,22 +3862,6 @@ class OffsetDosCampsTests(unittest.TestCase):
         self.assertEqual(window._secs_a_cb(t), "5.1.3")
         window.close()
 
-    def test_els_dos_camps_queden_sincronitzats(self):
-        window = self._finestra()
-        # escrivim el compas.beat -> el camp de segons s'actualitza
-        window.offset_cb.setText("5.1")
-        window._offset_cb_canviat()
-        # el camp de segons es desa amb 3 decimals (9.2308 -> 9.231)
-        self.assertAlmostEqual(window._offset_val(), 16 * (60.0 / 104.0),
-                               places=2)
-        self.assertEqual(window.offset_cb.text(), "5.1")
-        # i el regle posa el compas 1 alla
-        self.assertEqual(
-            __import__("app.timeline", fromlist=["fmt_pos"]).fmt_pos(
-                window._offset_val(), True, 104, 4, window._offset_val()), "1.1")
-        window.close()
-
-
 class OffsetLlistesTests(unittest.TestCase):
     """Les llistes (etiquetes de compas) han de seguir l'offset."""
 
@@ -3878,27 +3883,6 @@ class OffsetLlistesTests(unittest.TestCase):
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
         return window
-
-    def test_llistes_segueixen_l_offset(self):
-        window = self._finestra()
-        v = window.visor_ref
-        window.bpm.setText("101")
-        window._aplica_parametres_temps()
-        # INVARIANT de cobertura: el 1r element és la capçalera «N» a 0s.
-        self.assertTrue(v.llista_ac.item(0).text().endswith("N"),
-                        v.llista_ac.item(0).text())
-        # amb offset 0, l'acord de 9.5s (ara l'element 1) surt com a compas 5
-        self.assertTrue(v.llista_ac.item(1).text().startswith("5."),
-                        v.llista_ac.item(1).text())
-        # amb offset 9.5, ha de sortir com a compas 1
-        window.offset.setText("9.50")
-        window._aplica_parametres_temps()
-        self.assertTrue(v.llista_ac.item(1).text().startswith("1.1"),
-                        v.llista_ac.item(1).text())
-        self.assertTrue(v.llista_ac.item(2).text().startswith("2.1"),
-                        v.llista_ac.item(2).text())
-        window.close()
-
 
 class TempoTests(unittest.TestCase):
     """Detecció de BPM (app/tempo.py) — autocorrelacio + comb, numpy pur."""
@@ -3984,12 +3968,6 @@ class OffsetTests(unittest.TestCase):
 
     SR = 44100
 
-    def test_fmt_pos_amb_offset(self):
-        from app.timeline import fmt_pos
-        # a 120 BPM (beat=0.5s), offset=1.0 -> t=2.0 es el compas 1 beat 3
-        self.assertEqual(fmt_pos(2.0, True, 120, 4, 1.0), "1.3")
-        self.assertEqual(fmt_pos(2.0, True, 120, 4, 0.0), "2.1")
-
     def test_fmt_pos_amb_subdivisio_adaptativa(self):
         from app.timeline import fmt_pos
         # amb zoom prou gran, el regle mostra compàs.temps.subdivisió, com en DAW
@@ -4046,61 +4024,11 @@ class OffsetTests(unittest.TestCase):
                                places=6)          # 30 s x 0,85
         app.quit()
 
-    def test_snap_time_amb_offset(self):
-        from app.timeline import snap_time
-        # pps=64 -> snap 0.125 (1/16 a 120 BPM; 1/32 = 4 px, no hi cap); offset 1.0
-        self.assertAlmostEqual(snap_time(1.13, True, 120, 4, 64.0, 1.0),
-                               1.125, places=4)
-        self.assertAlmostEqual(snap_time(1.13, True, 120, 4, 64.0, 0.0),
-                               1.125, places=4)
-
-    def test_pos_compas_amb_offset(self):
-        from app.pipeline import pos_compas
-        # 120 BPM: el compas 1 cau a t=offset; sense offset, a t=0
-        self.assertEqual(pos_compas(0.0, 120, 4, False, 0.0), "1.1.1")
-        self.assertEqual(pos_compas(1.0, 120, 4, False, 1.0), "1.1.1")
-        self.assertEqual(pos_compas(2.0, 120, 4, False, 1.0), "1.3.1")
-
     def _onsets_metronom(self, out):
         arr = np.frombuffer(out, dtype=np.int16).astype(np.int32)
         idx = np.where(np.abs(arr) > 1000)[0]
         gaps = np.where(np.diff(idx) > 0.05 * self.SR)[0]
         return np.concatenate(([idx[0]], idx[gaps + 1])) / self.SR
-
-    def test_metronom_amb_offset(self):
-        from app import metronom
-        base = b"\x00\x00" * int(self.SR * 2)
-        out = metronom.mescla_metronom(base, self.SR, 0.0, 120.0, 4,
-                                       volum=1.0, offset=1.0)
-        onsets = self._onsets_metronom(out)
-        # hi ha d'haver un clic JUST a l'offset (1.0)
-        self.assertTrue(any(abs(o - 1.0) < 0.03 for o in onsets),
-                        f"cap clic a l'offset: {onsets[:6]}")
-
-    def test_count_in_abans_de_l_offset(self):
-        """El silenci inicial s'omple amb el compte enrere (count-in)."""
-        from app import metronom
-        base = b"\x00\x00" * int(self.SR * 2)
-        out = metronom.mescla_metronom(base, self.SR, 0.0, 120.0, 4,
-                                       volum=1.0, offset=1.0)
-        onsets = self._onsets_metronom(out)
-        # hi ha clics ABANS de l'offset (count-in) i a l'offset
-        self.assertTrue(any(o < 0.95 for o in onsets),
-                        f"sense count-in: {onsets[:6]}")
-        self.assertTrue(any(abs(o - 1.0) < 0.03 for o in onsets))
-
-    def test_compas_negatiu_abans_de_l_offset(self):
-        """Abans de l'offset (compas 1) la graella es negativa (count-in)."""
-        from app.timeline import fmt_pos
-        from app.pipeline import pos_compas
-        # 120 BPM 4/4 -> compas = 2,0 s. Amb offset=3.0 (compas 1 a 3,0 s),
-        # t=0 cau al compas -1 (beat 3).
-        self.assertEqual(fmt_pos(0.0, True, 120, 4, 3.0), "-1.3")
-        self.assertEqual(pos_compas(0.0, 120, 4, False, 3.0), "-1.3.1")
-        # i el compas 1 si que es positiu a l'offset
-        self.assertEqual(fmt_pos(3.0, True, 120, 4, 3.0), "1.1")
-        # sense offset, tot positiu (comportament antic)
-        self.assertEqual(fmt_pos(0.0, True, 120, 4, 0.0), "1.1")
 
     def test_metronom_limita_bpm(self):
         from app import metronom
@@ -4311,18 +4239,6 @@ class Compas1Tests(unittest.TestCase):
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
         cls._app = visor.QApplication.instance() or visor.QApplication([])
 
-    def test_boto_i_accio_existeixen(self):
-        w = app_main.Finestra()
-        # compas 1 automatic: és una acció de menú (botó retirat)
-        self.assertTrue(hasattr(w, "a_compas_auto"))
-        self.assertIn("compàs 1", w.a_compas_auto.text().lower())
-        # res del que ja hi havia s'ha perdut
-        self.assertFalse(w.b_offset_cursor.icon().isNull())   # map-pin
-        self.assertEqual(w.b_tap.text(), "TAP")
-        # ×2/÷2 ja no són botons de barra: viuen al menú del clip de tempo.
-        self.assertFalse(hasattr(w, "b_bpm_x2"))
-        self.assertFalse(hasattr(w, "b_bpm_div2"))
-        w.close()
 
     def test_transforms_qm_disponibles(self):
         # (El qm-keydetector es va retirar amb la tonalitat automàtica.)
@@ -5186,19 +5102,6 @@ class OffsetBotoCursorTests(unittest.TestCase):
         window._aplica_parametres_temps()
         return window
 
-    def test_boto_llegeix_cursor_i_aplica_offset(self):
-        w = self._finestra(); v = w.visor_ref
-        v.ves_a(9.5)                       # "cursor vermell" a 9.5s
-        w.b_offset_cursor.click()          # com l'usuari
-        self.assertAlmostEqual(v.offset, 9.5, places=2)
-        self.assertEqual(w.offset.text(), "9.500")
-        # el camp compas.beat tambe s'actualitza (graella normalitzada a N enter)
-        self.assertEqual(w.offset_cb.text(), "4.3.5")
-        v.ves_a(3.0); w.b_offset_cursor.click()
-        self.assertAlmostEqual(v.offset, 3.0, places=2)
-        w.close()
-
-
 class TapTempoTests(unittest.TestCase):
     """Tap tempo (patro estandard: ultims taps -> mitjana -> 60/interval)."""
 
@@ -5266,24 +5169,6 @@ class TapTempoTests(unittest.TestCase):
                                delta=3.0)
         w.close()
 
-    def test_tap_no_actualitza_ref_si_el_compas_difereix(self):
-        """L1 estricte: si la Ref. té un altre compàs, el TAP no la toca."""
-        w = self._finestra()
-        try:
-            w.visor_ref.set_ref_tempo(90.0, 7, 4)
-            w._sincronitza_ref_des_del_visor()
-            w.visor_ref.timeline.select_clip("tempo", 0)
-            self._taps_en(w, 0.5)
-            bpm_ref, num_ref, den_ref = w.visor_ref.ref_tempo_base()
-            self.assertAlmostEqual(bpm_ref, 90.0, places=6)
-            self.assertEqual((num_ref, den_ref), (7, 4))
-            self.assertAlmostEqual(float(w.ref_bpm.text()), 90.0, delta=0.01)
-            # El clip sí que ha canviat; la Ref. no.
-            self.assertAlmostEqual(w.visor_ref.bpm, 120.0, delta=3.0)
-            w._tanca_sessio_tap()
-        finally:
-            w.close()
-
     def test_tap_no_emet_avis_de_mapa_inconsistent(self):
         """El TAP en viu no ha de bloquejar amb el diàleg de mapa."""
         w = self._finestra()
@@ -5313,9 +5198,6 @@ class TapTempoTests(unittest.TestCase):
         """6/8: 80 taps/min cada grup de 3 corxeres = 120 negres/min."""
         w = self._finestra()
         try:
-            idx = w.cb_beat.findData("negra_punt")
-            w.cb_beat.setCurrentIndex(idx)
-            w._canvia_beat_unit()
             # El WAV fa 10 s: el clip musical de 9 s a 120 6/8 té N=6 i la
             # cua d'1 s a 180 6/8 té N=1 (contracte §13.4, N enter).
             w.visor_ref.aplica_tempo_trams([(0.0, 9.0, 120.0, 6, 8),
@@ -5327,24 +5209,8 @@ class TapTempoTests(unittest.TestCase):
             # La barra mostra el TAP en la unitat activa (negra amb punt): 80.
             self.assertIn("80", w.b_tap.text())
         finally:
-            w.cb_beat.setCurrentIndex(w.cb_beat.findData("negra"))
-            w._canvia_beat_unit()
             w.close()
 
-    def test_canvi_unitat_tanca_la_sessio_de_tap(self):
-        w = self._finestra()
-        try:
-            w.visor_ref.timeline.select_clip("tempo", 0)
-            self._taps_en(w, 0.5)
-            self.assertTrue(w._tap_sessio_oberta)
-            idx = w.cb_beat.findData("negra_punt")
-            w.cb_beat.setCurrentIndex(idx)
-            w._canvia_beat_unit()
-            self.assertFalse(w._tap_sessio_oberta)
-        finally:
-            w.cb_beat.setCurrentIndex(w.cb_beat.findData("negra"))
-            w._canvia_beat_unit()
-            w.close()
 
     def test_reset_per_timeout(self):
         from unittest.mock import patch
@@ -5354,21 +5220,6 @@ class TapTempoTests(unittest.TestCase):
             w._tap_tempo()
         self.assertEqual(len(w._taps), 1)      # s'ha reiniciat
         w.close()
-
-    def test_compas1_usa_downbeat_guardat_sense_redetectar(self):
-        w = self._finestra()
-        try:
-            w._beats_actuals = {
-                "beats": [0.2, 0.7, 1.2],
-                "downbeats": [0.2, 2.2],
-            }
-            with patch.object(app_main.pipeline, "detecta_compas1",
-                              side_effect=AssertionError(
-                                  "no s'ha de tornar a detectar")):
-                w._detecta_compas1()
-            self.assertAlmostEqual(w.visor_ref.offset, 0.2, places=6)
-        finally:
-            w.close()
 
     def test_tempo_mapa_usa_beats_guardats_sense_redetectar(self):
         from app import tempo_map as tm_map

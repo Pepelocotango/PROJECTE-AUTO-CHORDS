@@ -5,11 +5,11 @@ de fer servir un segon reproductor o un QTimer (que derivaria respecte a la
 cançó). Veure `app/visor.py` (_engega_des_de / _mono_bytes).
 
 La graella base és la del regle del visor: el beat és el **denominador** del
-compàs (`4/den` negres). Per defecte (`click_unit="pols"`) el clic segueix la
-**unitat de pols de cada tram** (`beat_unit`), que és el pols que percep el
-músic: `6/8` amb negra amb punt → 2 clics (`3+3`), `9/8` → 3 (`3+3+3`), `12/8`
-→ 4 (`3+3+3+3`), `4/4` → 4 negres i `2/2` → 2 blanques. `click_unit="auto"`
-manté el comportament històric de clicar el denominador (6 corxeres en `6/8`).
+compàs (`4/den` negres). La GUI usa `click_unit="auto"`: clica el
+**denominador** de cada tram i accentua els inicis de grup (`6/8` → 6
+corxeres amb accents a 1 i 4, `9/8` → 9, `12/8` → 12, `4/4` → 4 negres,
+`2/2` → 2 blanques). `click_unit="pols"` queda com a mode alternatiu per
+clicar només la unitat de pols del tram.
 Els accents de grup ixen de `tempo_map.agrupacio_compas()`: `6/8` → `3+3`,
 `7/8` → `2+2+3`, `5/8` → `3+2`, etc.
 """

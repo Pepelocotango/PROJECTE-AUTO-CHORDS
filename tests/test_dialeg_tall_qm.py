@@ -31,7 +31,7 @@ class TestDialegTallQM(unittest.TestCase):
         cls._app = QApplication.instance() or QApplication([])
 
     def test_sense_preseleccio_fins_triar_les_dos(self):
-        d = DialegTallQM(None, _opcions(), _opcions(), ref_bpm=120.0)
+        d = DialegTallQM(None, _opcions(), _opcions())
         ok = d._botons.button(d._botons.Ok)
         self.assertFalse(ok.isEnabled())
         self.assertEqual(d._lista_esq.currentRow(), -1)
@@ -44,7 +44,7 @@ class TestDialegTallQM(unittest.TestCase):
         d.close()
 
     def test_costat_fix(self):
-        d = DialegTallQM(None, _opcions(), _opcions()[:1], ref_bpm=120.0)
+        d = DialegTallQM(None, _opcions(), _opcions()[:1])
         self.assertIsNone(d._lista_dreta)
         ok = d._botons.button(d._botons.Ok)
         self.assertFalse(ok.isEnabled())

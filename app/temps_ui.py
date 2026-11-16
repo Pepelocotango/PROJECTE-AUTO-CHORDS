@@ -1,12 +1,12 @@
-"""UI de temps de la finestra (F3): BPM, compàs i offset.
+"""UI de temps de la finestra (F3): BPM i compàs.
 
 Extret de `app/main.py`. `TempsMixin` treballa amb els widgets de la barra i
 delega la validació a `tempo_map`/`limits`.
 """
-from . import bpm_unit, limits, tempo_map
+from . import limits, tempo_map
 
 class TempsMixin:
-    """Camps de BPM/compàs/offset i aplicació al visor."""
+    """Camps de BPM/compàs i aplicació al visor."""
 
     @staticmethod
     def _parse_compas(text, defecte_num=4, defecte_den=4):
@@ -40,103 +40,6 @@ class TempsMixin:
         """Escriu al camp de BPM un valor intern en negres/minut."""
         self.bpm.setText(f"{float(bpm_quarter):.{int(decimals)}f}")
 
-    def _posa_ref_recalc(self, bpm_quarter, compas=None, den=None,
-                        beat_unit=None):
-        """Escriu la Ref. recalc amb el BPM en la **unitat de la Ref.**"""
-        bpm = float(bpm_quarter)
-        if den is not None:
-            compas = f"{int(compas)}/{int(den)}"
-        text = self.ref_bpb.text() if compas is None else str(compas)
-        num, den = self._parse_compas(text)
-        unit = (bpm_unit.normalitza(beat_unit)
-                if beat_unit is not None else self._ref_beat_unit_val())
-        self._posa_ref_beat_unit(unit)
-        self.ref_bpm.setText(bpm_unit.formata(bpm, unit))
-        self.ref_bpb.setText(f"{num}/{den}")
-
-    def _ref_beat_unit_val(self):
-        cb = getattr(self, "cb_ref_beat", None)
-        if cb is None:
-            return bpm_unit.DEFECTE
-        return bpm_unit.normalitza(cb.currentData())
-
-    def _posa_ref_beat_unit(self, unit):
-        cb = getattr(self, "cb_ref_beat", None)
-        if cb is None:
-            return
-        idx = cb.findData(bpm_unit.normalitza(unit))
-        if idx >= 0:
-            cb.blockSignals(True)
-            cb.setCurrentIndex(idx)
-            cb.blockSignals(False)
-
-    def _ref_bpm_val(self):
-        raw = str(self.ref_bpm.text()).replace(",", ".").strip()
-        unit = self._ref_beat_unit_val()
-        try:
-            # L11: el rang 30–350 es valida en l'espai INTERN (negres/min).
-            bpm = bpm_unit.a_quarter(float(raw), unit)
-            return tempo_map.valida_tempo(bpm, 4, 4)[0]
-        except (ValueError, TypeError) as e:
-            raise ValueError(
-                f"Referència: {raw} {bpm_unit.etiqueta(unit).lower()} → {e}"
-            ) from e
-
-    def _ref_vals(self):
-        """Referència validada: `(bpm_quarter, num, den, unitat)`."""
-        bpm = self._ref_bpm_val()
-        num, den = self._parse_compas(self.ref_bpb.text())
-        bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
-        return float(bpm), int(num), int(den), self._ref_beat_unit_val()
-
-    def _sincronitza_ref_des_del_visor(self):
-        """Copia la referència efectiva del visor als camps de la barra 2."""
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            return
-        self._actualitzant_temps = True
-        try:
-            bpm, num, den = vr.ref_tempo_base()
-            unit = getattr(vr, "ref_tempo_unit",
-                           lambda: bpm_unit.DEFECTE)()
-            self._posa_ref_recalc(bpm, f"{int(num)}/{int(den)}",
-                                  beat_unit=unit)
-        finally:
-            self._actualitzant_temps = False
-        self._ref_manual = True
-        # La referència forma part de l'estat de desfer.
-        vr._undo_touch_base()
-
-    def _aplica_ref_recalc(self):
-        """Aplica la referència manual de recalcul (només recalcul, no clips)."""
-        if getattr(self, "_actualitzant_temps", False):
-            return
-        try:
-            bpm, num, den, unit = self._ref_vals()
-        except ValueError as e:
-            self.avisa_info("Referència de recalcul invàlida", str(e))
-            self._sincronitza_ref_des_del_visor()
-            return
-        vr = getattr(self, "visor_ref", None)
-        if vr is not None:
-            self._undo_tram_marca = getattr(vr, "_undo_marca", None)
-            self._undo_tram_commit = getattr(vr, "_undo_commit", None)
-            if callable(self._undo_tram_marca) and callable(
-                    self._undo_tram_commit):
-                self._undo_tram_marca()
-            try:
-                vr.set_ref_tempo(bpm, num, den, unit)
-            finally:
-                if callable(self._undo_tram_commit):
-                    self._undo_tram_commit()
-        else:
-            self._posa_ref_recalc(bpm, f"{num}/{den}", beat_unit=unit)
-        self._ref_manual = True
-        self._marca_dirty()
-        self.registra(
-            f"Referència recalc: {bpm:g} negres/min · {num}/{den} · "
-            f"{bpm_unit.etiqueta(unit)}")
-
     def _bpm_val(self):
         raw = str(self.bpm.text()).replace(",", ".").strip()
         try:
@@ -152,34 +55,8 @@ class TempsMixin:
         num, den = self._parse_compas(self.bpb.text())
         return tempo_map.valida_tempo(self._bpm_val(), num, den)[2]
 
-    def _posa_offset_camp(self, valor):
-        """Escriu l'offset amb 3 decimals, però conserva el valor exacte.
-
-        També s'usa en carregar un projecte: el text de la GUI no pot ser la
-        font de veritat de l'offset (1.207438 es veu com 1.207).
-        """
-        exact = float(valor)
-        text = f"{exact:.3f}"
-        self.offset.setText(text)
-        self._offset_ui_text = text
-        self._offset_ui_exact = exact
-
-    def _offset_val(self):
-        """Offset en segons sense perdre la precisió que no cap a la GUI.
-
-        El camp mostra 3 decimals (`1.207`), però el model pot tindre
-        `1.207438`. Si l'usuari no ha tocat el text que va pintar
-        `_sincronitza_temps_del_visor`, es recupera el valor intern exacte.
-        """
-        text = str(self.offset.text()).strip()
-        exact = getattr(self, "_offset_ui_exact", None)
-        if (exact is not None
-                and getattr(self, "_offset_ui_text", None) == text):
-            return float(exact)
-        return self._llegeix_num(self.offset, 0.0, 0.0, 60.0)
-
     def _cb_a_secs(self, text):
-        """'C.B' o 'C.B.S' (compàs.beat.fusa) -> segons (offset=0)."""
+        """'C.B' o 'C.B.S' (compàs.beat.fusa) -> segons."""
         import re
         m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)"
                      r"(?:\s*[.,]\s*(\d+))?\s*$", str(text))
@@ -205,14 +82,6 @@ class TempsMixin:
         sub = dins % 8 + 1
         return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
 
-    def _offset_cb_canviat(self):
-        """L'usuari ha escrit el camp compàs.beat -> passa-ho a segons."""
-        s = self._cb_a_secs(self.offset_cb.text())
-        if s is None:
-            return
-        self._posa_offset_camp(s)
-        self._aplica_parametres_temps()
-
     def _canvia_mode_temps(self, bpm_compas):
         """Canvia entre mode BPM·compàs i mode Lliure (hh:mm:ss)."""
         self._params_temps.setVisible(bool(bpm_compas))
@@ -222,12 +91,12 @@ class TempsMixin:
         self._actualitza_metro_ui()
 
     def _aplica_parametres_temps(self):
-        """Aplica BPM/compàs/offset al VISOR, al clip de tempo objectiu.
+        """Aplica BPM/compàs al VISOR, al clip de tempo objectiu.
 
         Decisió 2B (2026-10-19): si hi ha un tram de tempo seleccionat, els
         camps de dalt editen **eixe tram**; si no, el transport (tram 0).
-        L'offset continua sent global. No es reinicia l'àudio: el fil
-        d'alimentació llig el BPM/mapa a cada tros.
+        No es reinicia l'àudio: el fil d'alimentació llig el BPM/mapa a cada
+        tros.
         """
         if getattr(self, "_actualitzant_temps", False):
             return
@@ -235,67 +104,42 @@ class TempsMixin:
         if vr is None:
             return
         idx = vr.tempo_objectiu()
-        free = bool(getattr(self, "chk_segons", None)
-                    and self.chk_segons.isChecked())
-        if free:
-            self._missatge_info(
-                "El rubato es crea amb «Marca com a rubato» o «Converteix a "
-                "rubato», no amb el commutador «En segons».")
-            self.chk_segons.setChecked(False)
+        # Escriure 0 BPM no és vàlid. El rubato es crea amb les accions del
+        # menú del clip, no des d'esta barra.
+        raw = str(self.bpm.text()).replace(",", ".").strip()
+        try:
+            zero = abs(float(raw)) <= 1e-9
+        except ValueError:
+            zero = False
+        if zero:
+            self.avisa_info(
+                "Auto Chords",
+                "Un BPM de 0 no és vàlid. Per a un passatge rubato, usa el "
+                "menú del clip de tempo.")
             self._sincronitza_temps_del_visor()
             return
-        if not free:
-            # Escriure 0 BPM NO s'ha de convertir en 30 en silenci: és el gest
-            # natural per demanar un clip en segons.
-            raw = str(self.bpm.text()).replace(",", ".").strip()
-            try:
-                zero = abs(float(raw)) <= 1e-9
-            except ValueError:
-                zero = False
-            if zero:
-                self.avisa_info(
-                    "Auto Chords",
-                    "Un BPM de 0 no és vàlid. Per a un passatge rubato, marca "
-                    "«En segons» al costat del compàs.")
-                self._sincronitza_temps_del_visor()
-                return
         try:
             bpm = self._bpm_val()
-            if free:
-                bpm, num, den = tempo_map.valida_tempo(bpm, 0, 0)
-            else:
-                num, den = self._parse_compas(self.bpb.text())
-                bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
+            num, den = self._parse_compas(self.bpb.text())
+            bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
         except ValueError as e:
             self.avisa_info("Tempo o compàs invàlid", str(e))
             self._sincronitza_temps_del_visor()
             return
-        offset = self._offset_val()
         try:
             _idx, _bpm, _num, _den = vr.tempo_objectiu_vals()
         except Exception:  # noqa: BLE001
             _bpm, _num, _den = vr.bpm, vr.bpb, getattr(vr, "beat_type", 4)
         if (abs(bpm - float(_bpm)) <= 1e-9 and num == int(_num)
-                and den == int(_den)
-                and abs(offset - float(getattr(vr, "offset", 0.0))) <= 1e-9):
+                and den == int(_den)):
             return
         vr._undo_marca()
-        vr.offset = offset
         ok = vr.edita_tempo_objectiu(idx, bpm, num, den)
         vr._undo_commit()
-        self.offset_cb.setText(self._secs_a_cb(offset))
         if ok:
             self.registra(f"tempo: tram {idx} → {bpm:.3f} BPM · "
-                          f"{num}/{den} (offset {offset:.3f}s)")
+                          f"{num}/{den}")
         self._sincronitza_temps_del_visor()
-
-    def _segons_top_bar(self, actiu):
-        """Casella «En segons»: a 3.1 es rebutja; el rubato és de 3.2."""
-        if getattr(self, "_actualitzant_temps", False):
-            return
-        if not actiu and self.bpb.text().strip() in ("0/0", "0", ""):
-            self.bpb.setText("4/4")     # tornar a compàs: un valor real
-        self._aplica_parametres_temps()
 
     def _canvia_tempo(self, fix):
         """Commuta BPM·compàs ↔ Lliure i refresca el visor.
@@ -305,18 +149,15 @@ class TempsMixin:
         `mapa=`, deixava el timeline amb `_mapa = None`. Això apagava la pista
         de BPM/compàs (`TempoLayer._visible()`) i la graella/regle tornaven a
         la graella constant. `_actualitza_temps()` ja fa la crida correcta
-        (amb `mapa=self.tempo_map`); ací només cal deixar-hi l'offset al dia,
-        que és el que `_actualitza_temps()` hi llig. (reportat per l'operador,
+        (amb `mapa=self.tempo_map`). (reportat per l'operador,
         19-10-2026: «canvio a hh:mm:ss i torne a BPM i ja no hi ha carril»).
         """
-        for w in (self.bpm, self.bpb, self.offset):
+        for w in (self.bpm, self.bpb):
             w.setEnabled(fix)
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
-            # Els camps poden estar mostrant un tram interior (2B): el canvi de
-            # MODE no ha de copiar-los al transport. L'offset, però, és global
-            # i el camp n'és la font (el test de commutació ho exigeix).
-            vr.offset = self._offset_val()
+            # Els camps poden estar mostrant un tram interior (2B): el canvi
+            # de MODE no ha de copiar-los al transport.
             vr.tempo_fix = bool(fix)
             vr._actualitza_temps()
             self._sincronitza_temps_del_visor()

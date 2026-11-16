@@ -190,7 +190,7 @@ class InfoBoxMixin:
                  "però només estructura", ""),
                 ("Graella d'acords: de corxera a 1 compàs. Graella "
                  "d'estructura: d'1 a 64 compassos", ""),
-                ("No toca BPM, compàs, offset ni el cru de l'anàlisi: "
+                ("No toca BPM, compàs ni el cru de l'anàlisi: "
                  "treballa sobre el model que veus", ""),
                 ("És una sola operació: Ctrl+Z la desfà i Ctrl+Y la refer", ""),
             ]),

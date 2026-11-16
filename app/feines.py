@@ -180,7 +180,7 @@ class Feina(QThread):
             raise ValueError("el rang A–B és buit")
         tmpd = tempfile.mkdtemp(prefix="ac_rang_")
         try:
-            # 2 s de pre-roll i 1 s de post-roll: Chordino necessita context
+            # 2 s de context abans i 1 s després: Chordino necessita context
             # per encertar el primer/últim acord; després es descarta.
             t0 = max(0.0, a - 2.0)
             t1 = min(float(durada_wav), b + 1.0)

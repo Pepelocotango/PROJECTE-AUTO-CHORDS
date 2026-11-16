@@ -66,13 +66,6 @@ class VisorUIMixin:
                 self.logger.info("Sense resultat processat per %s; obro el visor amb pistes buides", wav)
 
             self.logger.info("Carregant visor per %s | sortida=%s", wav, self.sortida)
-            if getattr(self, "_ref_manual", False):
-                try:
-                    _rb, _rn, _rd, _ru = self._ref_vals()
-                except ValueError:
-                    _rb, _rn, _rd, _ru = None, None, None, None
-            else:
-                _rb, _rn, _rd, _ru = None, None, None, None
             visor = visor_mod.Visor(
                 os.path.abspath(wav),
                 acords_csv,
@@ -84,14 +77,8 @@ class VisorUIMixin:
                 # el visor no desa mai cap CSV a `audio/…` (carpeta derivada
                 # del WAV).
                 sortida=self.sortida or pipeline.carpeta_sortida(wav),
-                offset=self._offset_val(),
                 beat_type=self._beat_type_val(),
-                ref_bpm=_rb,
-                ref_bpb=_rn,
-                ref_beat_type=_rd,
-                ref_beat_unit=_ru,
                 latencia_cursor_ms=self._latencia_cursor_val(),
-                beat_unit=_ru or "negra",
             )
             self.visor_ref = visor
             if hasattr(self, "_registra_drecera") \
@@ -103,8 +90,6 @@ class VisorUIMixin:
                     conflicte=False)
             if hasattr(self, "_aplica_dreceres"):
                 self._aplica_dreceres()
-            if _rb is None or not getattr(self, "_ref_manual", False):
-                self._sincronitza_ref_des_del_visor()
             self._aplica_beats_guardats(visor)
             # El visor ha de desar els CSV/export a la carpeta de sortida del
             # PROJECTE (no derivar-la del WAV, que viu a <projecte>/audio/).
@@ -140,17 +125,6 @@ class VisorUIMixin:
             except (TypeError, AttributeError, RuntimeError):
                 pass
             visor.tempoCanviat.connect(self._sincronitza_temps_del_visor)
-            try:
-                visor.refCanviat.disconnect(
-                    self._sincronitza_ref_des_del_visor)
-            except (TypeError, AttributeError, RuntimeError):
-                pass
-            visor.refCanviat.connect(self._sincronitza_ref_des_del_visor)
-            try:
-                visor.beatUnitCanviat.disconnect(self._posa_beat_unit)
-            except (TypeError, AttributeError, RuntimeError):
-                pass
-            visor.beatUnitCanviat.connect(self._posa_beat_unit)
             try:
                 visor.mapaInconsistent.disconnect(self._avis_mapa_inconsistent)
             except (TypeError, AttributeError, RuntimeError):

@@ -556,7 +556,7 @@ def recalculca_tram(durada, bpm_ref, num_ref, den_ref, n_ref=None, *,
 
 def recalculca_vei_ref(durada, bpm_ref, num_ref, den_ref, *,
                        bpm_min=None, bpm_max=None, meter_prior=None):
-    """Recalcula el veí amb el mínim moviment respecte de Ref. recalc.
+    """Recalcula el veí amb el mínim moviment respecte del veí esquerre.
 
     Prioritat:
     1. Conserva la signatura `num_ref/den_ref` i busca l'`N` enter que deixa
