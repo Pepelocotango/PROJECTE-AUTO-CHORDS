@@ -71,6 +71,14 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 > backups** ja estan implementats (2026-11-14); `.rpp`, cues WAV i clic de
 > referència queden com a complements opcionals.
 
+**Versió i documentació (2026-11-16):** el projecte passa a **0.9.3** (renumeració
+de la línia 9.x a 0.9.x; tags locals `v0.9.0`, `v0.9.1-checkpoint` i
+`v0.9.2-checkpoint`; el remot no en tenia cap i l'última release pública és
+`v0.7.1`). `README.md` és la **vista de producte**; `AGENTS.md` §«Abast i flux»
+mana sobre abast i flux; els invariants són a `docs/REGLES_DE_LA_APP.md`. El
+**mapa de tempo a MIDI** és **dins d'abast**; l'export MIDI d'acords/seccions i
+el projecte de DAW queden ajornats.
+
 **Estat actual:**
 - **Nucli**: obrir → analitzar opcional → editar 3 pistes → exportar → desar.
   Visor DAW amb acords, estructura i tempo/compàs; desfer/refer complet.
@@ -126,11 +134,17 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
   Configura les dreceres…** i es desen a `dreceres.json`.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
-- **Suite**: darrera completa **1619 OK** (1 skip); els canvis dels talls QM,
-  de l'export amb estructura i de «Desa i exporta-ho tot…» tenen tests dirigits
-  verds. `pyflakes` net i `docs-check` verd.
+  Tags locals renumerats a `v0.9.x`; **cap push**.
+- **Suite**: darrera completa **1619 OK** (1 skip), abans del plegament de
+  documentació/versió. En aquest plegament: `make commit-check` verd (compile +
+  pyflakes + docs-check) i tests dirigits de versió app↔pyproject i de
+  `tests/test_docs_al_dia.py` verds. **`make check` complet pendent** (cal OK de
+  l'operador).
 
 **Pendent:**
+- **Publicar la release `v0.9.3`** quan l'operador ho ordene; `release.yml` crearà
+  el tag des de `pyproject.toml`. Pujar els tags locals `v0.9.x` al remot només
+  amb ordre explícita (mai push per iniciativa pròpia).
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
 - **Fase 12**: congelació, higiene i CI; inclou el **CI automàtic en push/PR**
   (proposat, encara no activat).
