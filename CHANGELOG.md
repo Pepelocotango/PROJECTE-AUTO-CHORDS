@@ -5,6 +5,24 @@ Versions amb tag git (`v0.1-punt-control` … `v9.0`).
 
 ## [9.0.0] — 2026-11-04 · tag `v9.0` — checkpoint «mapa de temps resolt»
 
+### Corregit — pols percebut en compassos compostos (2026-11-16)
+- **BPM i metrònom en 6/8, 9/8 i 12/8**: el camp mostra el BPM en la unitat de
+  pols de cada tram (negra amb punt) i el metrònom clica eixa unitat per
+  defecte: `6/8 = 3+3` (2 clics), `9/8 = 3+3+3` (3) i `12/8 = 3+3+3+3` (4).
+  L'intern continua en negres/minut (`60 ♩. = 90 negres/min`) i una unitat
+  explícita (`corxera`, etc.) mana sobre la derivada.
+- **Independència de la selecció**: el clic del metrònom i les etiquetes de
+  BPM ixen de la unitat de cada tram, no de la del clip seleccionat al visor.
+  El selector Beat/TAP se sincronitza en canviar de clip.
+- **Canvi de signatura**: si la unitat era la derivada (p. ex. un 4/4 en
+  negra), passar a 6/8 l'actualitza a negra amb punt; una tria explícita es
+  conserva si encaixa.
+- **Diàleg del mapa**: cada fila mostra i interpreta el BPM amb la seua unitat
+  (abans totes les files usaven la unitat global).
+- Tests: `MetronomTests` (6/8, 9/8, 12/8, mapa mixt i corxera explícita),
+  `TestDialegTempoMapa.test_unitat_bpm_per_fila` i
+  `test_canvi_de_compas_deriva_la_unitat_de_pols`.
+
 ### Afegit — «Desa i exporta-ho tot…» (2026-11-15)
 - **`Fitxer ▸ Desa i exporta-ho tot…`** (`Ctrl+Shift+E`): desa primer el
   projecte i, si el desat va bé, exporta **en un fil** el paquet complet

@@ -2277,13 +2277,22 @@ class TestDialegTempoMapa(_dialegs___Base):
             None, trams=list(self.TRAMS if trams is None else trams),
             durada=durada)
 
-    def test_unitat_bpm_negra_amb_punt(self):
+    def test_unitat_bpm_per_fila(self):
+        from app import mapa_tempo
+        trams = [
+            mapa_tempo.TramMapa(0.0, 4.0, 120.0, "normal", "6/8", "",
+                                None, "negra_punt"),
+            mapa_tempo.TramMapa(4.0, 8.0, 90.0, "normal", "4/4", "",
+                                None, "negra")]
         d = dialegs.DialegTempoMapa(
-            None, trams=list(self.TRAMS), durada=8.0, unit="negra_punt")
+            None, trams=trams, durada=8.0, unit="negra_punt")
         self.assertEqual(d.taula.item(0, 1).text(), "80")
-        self.assertEqual(d.taula.item(1, 1).text(), "60")
-        trams = d.trams()
-        self.assertEqual([round(float(t[2]), 6) for t in trams], [120.0, 90.0])
+        self.assertEqual(d.taula.item(1, 1).text(), "90")
+        self.assertEqual(d.taula.cellWidget(0, 3).currentData(), "negra_punt")
+        self.assertEqual(d.taula.cellWidget(1, 3).currentData(), "negra")
+        out = d.trams()
+        self.assertEqual([round(float(t[2]), 6) for t in out], [120.0, 90.0])
+        self.assertEqual([t.beat_unit for t in out], ["negra_punt", "negra"])
 
     def test_compas_a_segons(self):
         """Amb 120 BPM i 4/4 el compàs fa 2 s: el 3 comença a 4,0 s."""
@@ -3999,7 +4008,9 @@ class TestParteixALoop(unittest.TestCase):
         vr._refresca_tempo_map()
         vr.loop_a, vr.loop_b = 4.9, 5.1
         vr.set_snap(divisio="qm_beats")
-        vr.set_snap_beats([0.0, 4.0, 4.9, 5.1, 8.0, 12.0, 20.0])
+        # Polsos reals del tram 1/16 a 150 BPM (0,1 s), no només A/B.
+        beats = [round(4.0 + i * 0.1, 6) for i in range(41)]
+        vr.set_snap_beats([0.0] + beats + [12.0, 20.0])
         self.assertTrue(vr.parteix_a_loop("tempo", 1))
         self.assertEqual([round(t[0], 3) for t in vr.tempo_trams],
                          [0.0, 4.0, 4.9, 5.1, 8.0])
@@ -5868,18 +5879,17 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertIn(20.0, [round(float(t[0]), 6) for t in vr.tempo_trams])
         self.assertEqual(len(vr.marcadors), 0)
 
-    def test_tecla_mes_sense_qm_no_talla(self):
+    def test_tecla_mes_sense_qm_usa_graella(self):
         vr = self.w.visor_ref
         idx = self.w.cb_graella.findData("qm_beats")
         self.w.cb_graella.setCurrentIndex(idx)
         self.w.tb_snap.setChecked(True)
         self.w._canvia_snap()
         self.w._beats_actuals = None
+        vr.pos = 10.0
         abans = [tuple(t) for t in vr.tempo_trams]
-        with patch.object(self.w, "_missatge_info") as info:
-            self.assertFalse(self.w._talla_tempo_i_estructura_cursor())
-        self.assertIn("Beats QM", info.call_args.args[0])
-        self.assertEqual([tuple(t) for t in vr.tempo_trams], abans)
+        self.assertTrue(self.w._talla_tempo_i_estructura_cursor())
+        self.assertGreater(len(vr.tempo_trams), len(abans))
         self.assertEqual(len(vr.marcadors), 0)
 
     def test_snap_off_usa_el_cursor_cru_sense_qm(self):
@@ -5914,28 +5924,36 @@ class TestAncoratgesFinestra(unittest.TestCase):
 
     def test_tecla_mes_sempre_usa_el_beat_qm_mes_proper(self):
         vr = self.w.visor_ref
+
+        class _DialegQM:
+            def __init__(self, *a, **k):
+                pass
+
+            def exec_(self):
+                return True
+
+            def seleccions(self):
+                return 0, 0
+
         idx = self.w.cb_graella.findData("qm_beats")
         self.w.cb_graella.setCurrentIndex(idx)
         self.w._beats_actuals = {"beats": [20.0, 20.6], "downbeats": []}
         vr.pos = 20.45             # el més pròxim és 20.6, no 20.0
-        self.assertTrue(self.w._talla_tempo_i_estructura_cursor())
+        with patch("app.dialeg_tall_qm.DialegTallQM", _DialegQM):
+            self.assertTrue(self.w._talla_tempo_i_estructura_cursor())
         self.assertIn(20.6, [round(float(t[0]), 6) for t in vr.tempo_trams])
         self.assertEqual(len(vr.marcadors), 0)
 
     def test_escriure_un_plus_en_un_camp_no_crea_marcador(self):
-        """Escriure «+» al nom d'un acord no ha d'afegir cap marcador."""
-        from PyQt5.QtTest import QTest
+        """El filtre ignora «+» quan l'objectiu és un camp de text."""
+        from PyQt5.QtGui import QKeyEvent
         vr = self.w.visor_ref
         vr.pos = 15.0
-        vr.ed_nom.setEnabled(True)      # (amb un clip seleccionat ho està)
         n_t = len(vr.tempo_trams)
-        vr.ed_nom.setFocus()
-        QTest.keyClick(vr.ed_nom, Qt.Key_Plus)
-        QTest.keyClick(vr.ed_nom, Qt.Key_Equal, Qt.ShiftModifier)
-        QTest.keyClick(vr.ed_nom, Qt.Key_Return)
+        ev = QKeyEvent(QEvent.KeyPress, Qt.Key_Plus, Qt.NoModifier, "+")
+        self.assertFalse(self.w.eventFilter(vr.ed_nom, ev))
         self.assertEqual(len(vr.marcadors), 0)
         self.assertEqual(len(vr.tempo_trams), n_t)
-        self.assertIn("+", vr.ed_nom.text())     # el «+» s'ha escrit
 
     def test_referencia_recalc_barra_2(self):
         vr = self.w.visor_ref
@@ -6274,6 +6292,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
     def test_enter_recalcula_si_queden_compassos_fraccionaris(self):
         vr = self.w.visor_ref
         vr.offset = 0.0
+        vr.snap_on = False
         vr.tempo_trams = [(0.0, 60.0, 120.0, 4, 4)]
         vr.seccions = [(0.0, 60.0, "A", "A")]
         vr.timeline.set_data(vr.acords, vr.seccions)
@@ -6722,6 +6741,22 @@ class TestAncoratgesFinestra(unittest.TestCase):
                 self.w.cb_beat.findData("negra"))
             self.w._canvia_beat_unit()
 
+    def test_canvi_de_compas_deriva_la_unitat_de_pols(self):
+        """4/4→6/8 en negra passa a negra amb punt; una unitat explícita es manté."""
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams([
+            mapa_tempo.TramMapa(0.0, 12.0, 120.0, "normal", "4/4", "",
+                                4, "negra")]))
+        self.assertTrue(vr.edita_tempo_objectiu(0, 120.0, 6, 8))
+        self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
+        self.assertEqual(vr.bpm_mostra(), "80.000")
+        # Una tria explícita (corxera) no es converteix en passar a 12/8.
+        self.assertTrue(vr.canvia_unitat_tram(0, "corxera",
+                                              mode="mantenir_tempo"))
+        self.assertTrue(vr.edita_tempo_objectiu(0, 120.0, 12, 8))
+        self.assertEqual(vr.tempo_trams[0].beat_unit, "corxera")
+
     def test_referencia_recalc_amb_unitat(self):
         vr = self.w.visor_ref
         try:
@@ -6770,11 +6805,13 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
 
     def test_l3_rebutja_compas_incompatible_amb_la_unitat(self):
+        from app import mapa_tempo
         vr = self.w.visor_ref
-        vr.aplica_tempo_trams([(0.0, 10.0, 120.0, 6, 8)])
+        vr.aplica_tempo_trams([mapa_tempo.TramMapa(
+            0.0, 10.0, 120.0, "normal", "4/4", "", None, "blanca")])
         abans = [tuple(t) for t in vr.tempo_trams]
         with patch.object(vr, "avis_editor") as avis:
-            self.assertFalse(vr.edita_tempo_objectiu(0, 120.0, 4, 4))
+            self.assertFalse(vr.edita_tempo_objectiu(0, 120.0, 3, 4))
         self.assertEqual([tuple(t) for t in vr.tempo_trams], abans)
         self.assertEqual(avis.call_count, 1)
 

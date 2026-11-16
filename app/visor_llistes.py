@@ -104,8 +104,9 @@ class LlistesMixin:
                     compas = "R " + str(tr.compassos)
                 else:
                     compas = f"{int(tr[3])}/{int(tr[4])}"
+                unit = self.unitat_de_tram(tr)
                 vals = (f"{ini:.3f}", f"{fi:.3f}",
-                        self.bpm_mostra(bpm), compas)
+                        self.bpm_mostra(bpm, unit=unit), compas)
                 for c, v in enumerate(vals):
                     it = t.item(i, c)
                     if it is None:

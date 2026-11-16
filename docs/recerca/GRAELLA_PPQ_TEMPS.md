@@ -29,7 +29,7 @@ el BPM són "vistes" calculades a sobre.
   compàs nou. El grid conserva el `kind` del nivell
   (compàs/temps/subdivisió) i les posicions surten de `TempoMap`; les llistes,
   l'editor i les columnes de compàs de l'ABC també.
-- Metrònom amb la mateixa graella (`app/metronom.py`, `beat = (4/den)*60/bpm`; `12/8` clica corxeres).
+- Metrònom amb la mateixa graella (`app/metronom.py`, `beat = (4/den)*60/bpm`); per defecte clica la unitat de pols del tram (`12/8` → 4 cops `3+3+3+3`).
 - **Graella fixa de temps** (`TimeRulerLayer`): a sota de l'ona, en segons absoluts
   (`hh:mm:ss`), independent de BPM/offset/rubato; el zoom només canvia la
   resolució visual.

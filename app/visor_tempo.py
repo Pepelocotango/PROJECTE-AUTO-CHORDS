@@ -266,6 +266,30 @@ class TempoMixin:
             getattr(tr, "agrupacio", ""), getattr(tr, "n", None), unit)
         return trams
 
+    def _unitat_en_canvi_compas(self, vell, nou, beat_unit):
+        """Manté la unitat explícita; si era la derivada, deriva la nova.
+
+        Així un clip 4/4 en negra que passa a 6/8 mostra i clica negra amb
+        punt (3+3), però un 6/8 que l'usuari ha posat explícitament en corxera
+        no es converteix a negra amb punt en passar a 9/8.
+        """
+        def _n(t, i):
+            return int(getattr(t, "num" if i == 3 else "den", t[i]))
+
+        agr_vell = getattr(vell, "agrupacio", "") or ""
+        agr_nou = getattr(nou, "agrupacio", "") or ""
+        if ((_n(vell, 3), _n(vell, 4), agr_vell)
+                == (_n(nou, 3), _n(nou, 4), agr_nou)):
+            return beat_unit
+        actual = (self.unitat_de_tram(vell) if beat_unit is None
+                  else bpm_unit_mod.normalitza(beat_unit))
+        derivada_vella = bpm_unit_mod.unitat_per_defecte(
+            _n(vell, 3), _n(vell, 4), agr_vell)
+        if actual != derivada_vella:
+            return actual
+        return bpm_unit_mod.unitat_per_defecte(
+            _n(nou, 3), _n(nou, 4), agr_nou)
+
     def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True, repara=True,
                              agrupacio=None, beat_unit=None):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
@@ -307,7 +331,8 @@ class TempoMixin:
             if not nous5:
                 return False
             nous = mapa_tempo.reenganxa_metadades(trams, nous5)
-        nous = self._amb_unitat(nous, idx, beat_unit)
+        unit = self._unitat_en_canvi_compas(trams[idx], nous[idx], beat_unit)
+        nous = self._amb_unitat(nous, idx, unit)
         if not self._valida_unitat_tram(nous[idx], "Tempo"):
             return False
         if agrupacio is not None:
@@ -347,7 +372,8 @@ class TempoMixin:
         except ValueError as e:
             self.avis_editor(f"Compassos: {e}")
             return False
-        nous = self._amb_unitat(nous, idx, beat_unit)
+        unit = self._unitat_en_canvi_compas(trams[idx], nous[idx], beat_unit)
+        nous = self._amb_unitat(nous, idx, unit)
         if not self._valida_unitat_tram(nous[idx], "Compassos"):
             return False
         self.bpm = float(nous[0][2])

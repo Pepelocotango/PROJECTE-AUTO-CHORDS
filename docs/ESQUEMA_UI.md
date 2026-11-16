@@ -421,14 +421,14 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   el denominador: `6/8` amb `negra_punt` clica 2 cops per compàs; amb
   `corxera`, 6. La **subdivisió** de grup és un control a part. Accent de
   compàs (temps 1) ≈ 1500 Hz; resta ≈ 1000 Hz.
-- **Patrons**: `Auto` (per defecte) = Compàs + Grup + Temps; `Compàs` =
+- **Patrons**: `Auto` (per defecte) = pols del tram + accents de compàs i grup; `Compàs` =
   només el primer temps; `Temps` = Compàs + Temps, sense accents de grup;
   `Grup` = Compàs + inicis de grup. Els inicis de grup ixen de l’agrupació
   efectiva de **cada tram** (`3+3`, `2+2+3`, `3+2`…), no d’una unitat global.
-- No hi ha **unitat de clic global**: la unitat és la del tram. Si no n’hi ha
-  (o no encaixa), s’usa el denominador (`4/den`) com a fallback; la subdivisió
-  de grup ve de l’agrupació del tram. El TAP no força el mode de grup: són
-  controls separats.
+- No hi ha **unitat de clic global**: la unitat és la del tram i no depén de
+  la selecció del visor. Si no n’hi ha (o no encaixa), s’usa el denominador
+  (`4/den`) com a fallback; la subdivisió de grup ve de l’agrupació del tram.
+  El TAP no força el mode de grup: són controls separats.
 - El clic es **mescla al mateix buffer** que s'envia al reproductor (sense
   QTimer ni segon procés → no deriva).
 - **Commutar-lo** (o canviar-ne el volum o el patró) **no** reinicia el

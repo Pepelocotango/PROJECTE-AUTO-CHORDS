@@ -4222,7 +4222,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                             factor=factor,
                             den=getattr(self, "beat_type", 4),
                             mode=getattr(self, "metro_mode", "auto"),
-                            click_unit=self.unitat_objectiu())
+                            click_unit="pols")
                 try:
                     proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):

@@ -347,7 +347,11 @@ class RulerLayer(QGraphicsItem):
         (mode lliure): 'Lliure'.
         """
         if self._tempo_fix:
-            bpm_mostra = bpm_unit.de_quarter(self._bpm, self._bpm_unit)
+            unit = self._bpm_unit
+            mapa = getattr(self, "_mapa", None)
+            if mapa is not None and getattr(mapa, "trams", None):
+                unit = mapa.unitat(0.0)
+            bpm_mostra = bpm_unit.de_quarter(self._bpm, unit)
             return (f"{bpm_mostra:.0f} BPM \u00b7 "
                     f"{self._bpb}/{self._beat_type}")
         return "Lliure"
@@ -440,7 +444,11 @@ class RulerLayer(QGraphicsItem):
                 pen = QPen(QColor(theme.TL_GRID_MEASURE), 2)
                 p.setPen(pen)
                 p.drawLine(QPointF(x, 0), QPointF(x, self._height - 1))
-                bpm_mostra = bpm_unit.de_quarter(s.bpm, self._bpm_unit)
+                unit_s = (getattr(s, "beat_unit", None)
+                          or bpm_unit.unitat_per_defecte(
+                              int(s.num), int(s.den),
+                              getattr(s, "agrupacio", "")))
+                bpm_mostra = bpm_unit.de_quarter(s.bpm, unit_s)
                 txt = f"{bpm_mostra:g} · {s.num}/{s.den}"
                 p.setPen(QPen(QColor(RULER_TEXT), 1))
                 p.drawText(QPointF(x + 3, 9), txt)
@@ -850,7 +858,11 @@ class TempoLayer(QGraphicsObject):
             if s.lliure:
                 txt = "segons · %.2f s" % (s.fi - s.ini)
             else:
-                bpm_mostra = bpm_unit.de_quarter(s.bpm, self._bpm_unit)
+                unit_s = (getattr(s, "beat_unit", None)
+                          or bpm_unit.unitat_per_defecte(
+                              int(s.num), int(s.den),
+                              getattr(s, "agrupacio", "")))
+                bpm_mostra = bpm_unit.de_quarter(s.bpm, unit_s)
                 txt = f"{bpm_mostra:g} · {s.num}/{s.den}"
             p.drawText(bx, Qt.AlignCenter, txt)
         if self._t_guia is not None:

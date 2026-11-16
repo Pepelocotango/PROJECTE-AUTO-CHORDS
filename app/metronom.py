@@ -4,9 +4,12 @@ Els clics es MESCLEN al buffer d'àudio que s'envia al reproductor, en comptes
 de fer servir un segon reproductor o un QTimer (que derivaria respecte a la
 cançó). Veure `app/visor.py` (_engega_des_de / _mono_bytes).
 
-La graella és la MATEIXA que la del regle del visor: el beat és el que defineix
-el **denominador** del compàs (`4/den` negres) i el compàs té `num` beats. Així
-`4/4` clica negres, `6/8` i `12/8` cliquen corxeres, i `2/2` clica blanques.
+La graella base és la del regle del visor: el beat és el **denominador** del
+compàs (`4/den` negres). Per defecte (`click_unit="pols"`) el clic segueix la
+**unitat de pols de cada tram** (`beat_unit`), que és el pols que percep el
+músic: `6/8` amb negra amb punt → 2 clics (`3+3`), `9/8` → 3 (`3+3+3`), `12/8`
+→ 4 (`3+3+3+3`), `4/4` → 4 negres i `2/2` → 2 blanques. `click_unit="auto"`
+manté el comportament històric de clicar el denominador (6 corxeres en `6/8`).
 Els accents de grup ixen de `tempo_map.agrupacio_compas()`: `6/8` → `3+3`,
 `7/8` → `2+2+3`, `5/8` → `3+2`, etc.
 """
@@ -64,8 +67,11 @@ def _click_quarters(click_unit, den):
 
 
 def _normalitza_click_unit(click_unit):
-    return (click_unit if click_unit in ("auto",) or click_unit in bpm_unit.UNITATS
-            else "auto")
+    """`pols` = unitat del tram; `auto` = denominador (històric)."""
+    if click_unit == "tram":
+        click_unit = "pols"
+    return (click_unit if click_unit in ("auto", "pols")
+            or click_unit in bpm_unit.UNITATS else "auto")
 
 
 def _inicis_grups(num, den, agrupacio=None):
@@ -111,8 +117,9 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
     `t_inici` segons de la cançó) i retorna els bytes int16 resultants.
 
     - `bpb` és el **numerador** del compàs i `den` el **denominador**. El beat
-      fa `(4/den) * 60/bpm` segons; per això `12/8` clica 12 corxeres, no 12
-      negres.
+      fa `(4/den) * 60/bpm` segons. Amb `click_unit="pols"` (el que usa la GUI)
+      el clic és la unitat de cada tram (`12/8` → 4 negres amb punt); amb
+      `click_unit="auto"` es manté el denominador (`12/8` → 12 corxeres).
     - `mode`: `auto` (tots els temps + accents de compàs i grup), `compas`
       (només el primer temps), `temps` (tots els temps, sense accents de grup)
       o `grup` (només compàs i inicis de grup en compassos compostos).
@@ -131,7 +138,9 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
     _bpb, _den = valid
     mode = _normalitza_mode(mode)
     click_unit = _normalitza_click_unit(click_unit)
-    if click_unit != "auto":
+    if click_unit == "pols" and mapa is None:
+        click_unit = "auto"
+    if click_unit not in ("auto", "pols"):
         signatures = [(_bpb, _den)]
         if mapa is not None:
             signatures = [(int(t.num_ef), int(t.den_ef))
@@ -182,6 +191,55 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
         n = min(clic.size, buf.size - i)
         if n > 0:
             buf[i:i + n] += clic[:n]
+
+    # ── Amb `pols`, el clic és la unitat de cada tram (no una unitat global).
+    # És el pols que percep el músic: 6/8 → 2 clics, 9/8 → 3, 12/8 → 4.
+    # Recorrem la graella fina (1/32) per trobar els inicis de beat reals i
+    # comprovem si el beat és múltiple de la unitat del tram.
+    if click_unit == "pols" and mapa is not None:
+        # `TempoMap.pos()` treballa a 1/32 de nota (0,125 negres): esta és la
+        # graella mínima comuna per a denominadors 4/8/16.
+        pas_q = 0.125
+        q = float(mapa.quarters(float(t_inici)))
+        q = float(np.floor(q / pas_q) * pas_q - pas_q)
+        while True:
+            t_abs = float(mapa.t_de_quarters(q))
+            t_b = t_abs - float(t_inici)
+            if t_b >= dur:
+                break
+            if t_b >= 0.0:
+                _c, b, s = mapa.pos(t_abs)
+                num_m, den_m = mapa.signatura(t_abs)
+                agr_m = mapa.agrupacio(t_abs)
+                unit_m = mapa.unitat(t_abs)
+                if not bpm_unit.encaixa_en_compas(unit_m, num_m, den_m):
+                    unit_m = bpm_unit.unitat_per_defecte(
+                        num_m, den_m, agr_m)
+                beat_q = _beat_quarters(den_m)
+                rel = bpm_unit.factor(unit_m) / beat_q
+                clica_pos = False
+                if rel >= 1.0:
+                    pas_beats = int(round(rel))
+                    clica_pos = (s == 1 and pas_beats >= 1
+                                 and abs(rel - pas_beats) <= 1e-9
+                                 and (max(1, int(b)) - 1) % pas_beats == 0)
+                else:
+                    # La unitat és més curta que el beat (corxera en 4/4…):
+                    # 8 subdivisions per beat → cada `8·rel` subdivisions.
+                    pas_sub = int(round(8.0 * rel))
+                    clica_pos = (pas_sub >= 1
+                                 and abs(8.0 * rel - pas_sub) <= 1e-9
+                                 and (int(s) - 1) % pas_sub == 0)
+                if clica_pos:
+                    b = max(1, int(b))
+                    es_bar = (b == 1 and s == 1)
+                    es_grup = _accent_grup(b, num_m, den_m, agr_m)
+                    clica, accent = _decideix(es_bar, es_grup, True)
+                    if clica:
+                        _posa(t_b, accent)
+            q += pas_q
+        np.clip(buf, -32768.0, 32767.0, out=buf)
+        return buf.astype(np.int16).tobytes()
 
     # ── Amb un mapa de tempo/compàs VARIABLE (regla d'or #5: el mapa és la
     # font), els clics van als TEMPS DEL MAPA. Recorrem la graella a resolució

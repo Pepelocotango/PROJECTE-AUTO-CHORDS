@@ -836,6 +836,13 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self._on_loop_state(getattr(vr, "loop_on", False))
         self._actualitza_desti_accions()
         self._actualitza_metro_ui()
+        # El selector Beat/TAP és una drecera del clip seleccionat: en canviar
+        # de tram ha de mostrar la unitat de pols d'eixe tram, no la darrera
+        # que s'haja triat (6/8 → negra amb punt; 4/4 → negra).
+        try:
+            self._posa_beat_unit(vr.unitat_objectiu())
+        except (AttributeError, RuntimeError):
+            pass
         # La franja Editor és l'única vista de BPM/compàs: si mostra un clip de
         # tempo, refresca-la amb el model després de qualsevol canvi extern
         # (TAP, ×2/÷2, anàlisi, undo…). Si no hi ha cap clip seleccionat, no

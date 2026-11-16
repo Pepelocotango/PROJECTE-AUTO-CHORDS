@@ -70,8 +70,7 @@ PROJECTE AUTO CHORDS/
 │   ├── lib/       🟡  # (4.469 fitxers)
 │   ├── lib64/     🟡  # (4.469 fitxers)
 │   └── share/     🟡  # (11 fitxers)
-├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (1 fitxer)
-│   └── PLA_MOTOR_TALLS_QM.md 🟢
+├── 00PER FER/                     🟡  # Plans, auditories i instruccions pendents (0 fitxers)
 ├── app/                           🟢  # Codi de l'aplicació (PyQt5) (81 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
@@ -196,18 +195,14 @@ PROJECTE AUTO CHORDS/
 │       ├── expected-v0.2.1.csv 🟢
 │       ├── expected.csv        🟢
 │       └── regression.sh       🟢
-├── docs/                          🟢  # Contracte i documentació viva (14 fitxers)
-│   ├── COMPONENTS_I_VERSIONS.md       🟢  # Inventari generat (`eines/genera_inventari.py`)
-│   ├── EDICIO_OPERACIONS.md           🟢  # Taula única d'operacions d'edició
-│   ├── ESQUEMA_UI.html                🟢  # Generat des del `.md` (no editar)
-│   ├── ESQUEMA_UI.md                  🟢  # Font de l'esquema visual de la UI
-│   ├── ESQUEMA_UI.svg                 🟢  # Generat des del `.md` (no editar)
-│   ├── FUNCIONALITATS_AUTO_CHORDS.ods 🟢  # Mapa complet de funcionalitats (generat; ODF)
-│   ├── README.md                      🟢  # Índex de la documentació
-│   ├── REGLES_DE_LA_APP.md            🟢  # Regles d'or (1–12) i §13 (temps, compàs i graella)
-│   ├── TIPUS_XIFRAT_ACORDS.md         🟢  # Catàleg de tipus, graus i `<kind>` MusicXML
-│   └── recerca/                       🟢  # Documents de recerca (no descriuen l'estat viu)
-│       ├── AUTODETECCIO_OPCIONS.md            🟢
+├── docs/                          🟢  # Contracte i documentació viva (10 fitxers)
+│   ├── COMPONENTS_I_VERSIONS.md 🟢  # Inventari generat (`eines/genera_inventari.py`)
+│   ├── ESQUEMA_UI.html          🟢  # Generat des del `.md` (no editar)
+│   ├── ESQUEMA_UI.md            🟢  # Font de l'esquema visual de la UI
+│   ├── ESQUEMA_UI.svg           🟢  # Generat des del `.md` (no editar)
+│   ├── REGLES_DE_LA_APP.md      🟢  # Regles d'or (1–12) i §13 (temps, compàs i graella)
+│   ├── TIPUS_XIFRAT_ACORDS.md   🟢  # Catàleg de tipus, graus i `<kind>` MusicXML
+│   └── recerca/                 🟢  # Documents de recerca (no descriuen l'estat viu)
 │       ├── GRAELLA_PPQ_TEMPS.md               🟢
 │       ├── guia_tecnica_downbeat_onsets_beats.md 🟢
 │       ├── NOTACIO_XIFRAT.md                  🟢

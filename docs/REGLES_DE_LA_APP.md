@@ -145,6 +145,12 @@ compassos sencers. El model és permissiu:
   dels beats detectats/TAP, no el so. Si falta, es deriva de l'agrupació
   efectiva (`6/8`, `9/8`, `12/8` amb grups de 3 → `negra_punt`; `x/4` →
   `negra`; `x/8` → `corxera`; `x/16` → `semicorxera`; `2/2` → `blanca`).
+  El **BPM visible** i el **clic per defecte del metrònom** seguixen esta
+  unitat de pols: `6/8` mostra i clica negra amb punt (2 cops, `3+3`), `9/8`
+  3 cops (`3+3+3`) i `12/8` 4 cops (`3+3+3+3`). Una unitat explícita
+  (`corxera`, `semicorxera`…) mana sobre la derivada; el denominador només és
+  el fallback si la unitat no encaixa en el compàs. Canviar la signatura
+  actualitza la unitat si esta era la derivada.
 - **Persistència**: `mapa_tempo.csv` porta `beat_unit` al final i es llig per
   noms; columna absent o valor desconegut = **rebuig**, valor buit =
   derivar+avisar. `.acproj` **FORMAT 4** desa `tempo.ref.beat_unit`; els

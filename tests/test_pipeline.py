@@ -3598,6 +3598,76 @@ class MetronomTests(unittest.TestCase):
             i = int(t * self.SR)
             self.assertLess(self._freq(arr[i:i + n]), 1100, t)
 
+    def test_pols_per_tram_6_8_clica_els_grups_3_3(self):
+        from app import metronom
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([
+            mapa_tempo.TramMapa(0.0, 1.6, 120.0, "normal", "6/8", "",
+                                None, "negra_punt")])
+        out = metronom.mescla_metronom(
+            self._silenci(1.6), self.SR, 0.0, 120.0, 6, volum=1.0, den=8,
+            mapa=mapa, click_unit="pols")
+        self.assertEqual(
+            [round(t, 3) for t in self._onsets(self._a_array(out))],
+            [0.0, 0.75, 1.5])
+
+    def test_pols_per_tram_9_8_i_12_8(self):
+        from app import metronom
+        from app.tempo_map import TempoMap
+        for num, fi, esperat in (
+                (9, 2.3, [0.0, 0.75, 1.5, 2.25]),
+                (12, 3.1, [0.0, 0.75, 1.5, 2.25, 3.0])):
+            mapa = TempoMap([
+                mapa_tempo.TramMapa(0.0, fi, 120.0, "normal", f"{num}/8",
+                                    "", None, "negra_punt")])
+            out = metronom.mescla_metronom(
+                self._silenci(fi), self.SR, 0.0, 120.0, num, volum=1.0,
+                den=8, mapa=mapa, click_unit="pols")
+            self.assertEqual(
+                [round(t, 3) for t in self._onsets(self._a_array(out))],
+                esperat)
+
+    def test_pols_per_tram_mixt_6_8_i_4_4(self):
+        from app import metronom
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([
+            mapa_tempo.TramMapa(0.0, 1.5, 120.0, "normal", "6/8", "",
+                                None, "negra_punt"),
+            mapa_tempo.TramMapa(1.5, 4.5, 120.0, "normal", "4/4", "",
+                                None, "negra")])
+        out = metronom.mescla_metronom(
+            self._silenci(4.5), self.SR, 0.0, 120.0, 4, volum=1.0, den=4,
+            mapa=mapa, click_unit="pols")
+        self.assertEqual(
+            [round(t, 3) for t in self._onsets(self._a_array(out))],
+            [0.0, 0.75, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0])
+
+    def test_pols_corxera_en_4_4(self):
+        from app import metronom
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([
+            mapa_tempo.TramMapa(0.0, 2.1, 120.0, "normal", "4/4", "",
+                                None, "corxera")])
+        out = metronom.mescla_metronom(
+            self._silenci(2.1), self.SR, 0.0, 120.0, 4, volum=1.0, den=4,
+            mapa=mapa, click_unit="pols")
+        self.assertEqual(
+            [round(t, 3) for t in self._onsets(self._a_array(out))],
+            [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0])
+
+    def test_click_unit_corxera_en_6_8_mante_els_grups(self):
+        from app import metronom
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([
+            mapa_tempo.TramMapa(0.0, 1.6, 120.0, "normal", "6/8", "",
+                                None, "corxera")])
+        out = metronom.mescla_metronom(
+            self._silenci(1.6), self.SR, 0.0, 120.0, 6, volum=1.0, den=8,
+            mapa=mapa, click_unit="pols")
+        self.assertEqual(
+            [round(t, 3) for t in self._onsets(self._a_array(out))],
+            [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5])
+
     def test_2_2_clica_blanques(self):
         from app import metronom
         out = metronom.mescla_metronom(self._silenci(3.0), self.SR,

@@ -78,15 +78,15 @@ class DialegTempoMapa(GeometriaMixin, QDialog):
             if i == 0:
                 it0.setFlags(Qt.ItemIsEnabled)      # el valor inicial: fix
             self.taula.setItem(r, 0, it0)
-            bpm_mostra = bpm_unit.de_quarter(float(s[2]), self._unit)
+            unit = (self._unitats[i] if i < len(self._unitats)
+                    else bpm_unit.unitat_per_defecte(int(s[3]), int(s[4])))
+            bpm_mostra = bpm_unit.de_quarter(float(s[2]), unit)
             self.taula.setItem(r, 1, QTableWidgetItem(f"{bpm_mostra:g}"))
             self.taula.setItem(r, 2,
                                QTableWidgetItem(f"{int(s[3])}/{int(s[4])}"))
             cb = QComboBox()
             for _clau, _et in bpm_unit.opcions():
                 cb.addItem(_et, _clau)
-            unit = (self._unitats[i] if i < len(self._unitats)
-                    else bpm_unit.unitat_per_defecte(int(s[3]), int(s[4])))
             idx = cb.findData(unit)
             if idx >= 0:
                 cb.setCurrentIndex(idx)
@@ -106,9 +106,12 @@ class DialegTempoMapa(GeometriaMixin, QDialog):
             # prémer OK (auditoria 18-10-2026, destapat pel primer test que
             # exercita el diàleg).
             txt_ini = _t(0).replace(",", ".").strip().lower()
+            cb = self.taula.cellWidget(r, 3)
+            unit = (cb.currentData() if cb is not None
+                    else bpm_unit.unitat_per_defecte(4, 4))
             try:
                 bpm = bpm_unit.a_quarter(
-                    float(_t(1).replace(",", ".")), self._unit)
+                    float(_t(1).replace(",", ".")), unit)
                 if r == 0:
                     ini = 0.0
                 elif txt_ini.startswith("c"):
@@ -145,9 +148,6 @@ class DialegTempoMapa(GeometriaMixin, QDialog):
                 raise ValueError(
                     f"Fila {r + 1}: el rubato es crea des del visor "
                     "(«Marca com a rubato» / «Converteix a rubato»).")
-            cb = self.taula.cellWidget(r, 3)
-            unit = (cb.currentData() if cb is not None
-                    else bpm_unit.unitat_per_defecte(num, den))
             out.append((ini, ini, bpm, num, den))
             if r < len(self._unitats):
                 self._unitats[r] = unit
