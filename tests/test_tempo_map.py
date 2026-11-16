@@ -67,6 +67,10 @@ class TestAgrupacioCompas(unittest.TestCase):
         self.assertEqual(tm.agrupacio_compas(8, 8), (3, 3, 2))
         self.assertEqual(tm.agrupacio_compas(4, 4), (4,))
         self.assertEqual(tm.agrupacio_compas(3, 4), (3,))
+        for den in (2, 4, 8, 16):
+            self.assertEqual(tm.agrupacio_compas(6, den), (3, 3))
+            self.assertEqual(tm.agrupacio_compas(9, den), (3, 3, 3))
+            self.assertEqual(tm.agrupacio_compas(12, den), (3, 3, 3, 3))
 
     def test_inicis_i_accent_de_grup(self):
         self.assertEqual(tm.inicis_grups(6, 8), (0, 3))
@@ -607,7 +611,7 @@ class TestGraellaAmbMapa(unittest.TestCase):
         t_dret = mapa.t_de_quarters(mapa.quarters(10.0) + 1.0)
         step = 0.4144          # entre els dos beats (0.41388 / 0.41485)
         # Sense `kind`, el BPM del clip decidix el format (el bug de la imatge).
-        self.assertEqual(len(self.tb.fmt_pos(
+        self.assertEqual(len(tb.fmt_pos(
             t_esq, True, 120, 4, 0.0, step, mapa=mapa).split(".")), 2)
         self.assertEqual(len(self.tb.fmt_pos(
             t_dret, True, 120, 4, 0.0, step, mapa=mapa).split(".")), 3)
@@ -638,7 +642,7 @@ class TestGraellaAmbMapa(unittest.TestCase):
     def test_plan_constant_identic(self):
         const = TempoMap.constant(120, 4, 4, durada=10.0)
         self.assertEqual(
-            self.tb.grid_plan(True, 120, 4, 60.0, 800.0, mapa=const),
+            tb.grid_plan(True, 120, 4, 60.0, 800.0, mapa=const),
             self.tb.grid_plan(True, 120, 4, 60.0, 800.0))
 
 
@@ -1009,6 +1013,38 @@ class TestBpmUnit(unittest.TestCase):
         self.assertAlmostEqual(bpm_unit.a_quarter(120, "blanca"), 240.0)
         self.assertEqual(bpm_unit.formata(82.5, "negra_punt"), "55.000")
         self.assertEqual(bpm_unit.normalitza("no-existeix"), "negra")
+
+    def test_tots_els_compassos_acceptats_tenen_unitat_valida(self):
+        for den in (2, 4, 8, 16):
+            for num in range(1, 13):
+                unit = bpm_unit.unitat_per_defecte(num, den)
+                with self.subTest(compas=f"{num}/{den}"):
+                    self.assertIn(unit, bpm_unit.UNITATS)
+                    self.assertGreater(bpm_unit.factor(unit), 0.0)
+                    self.assertTrue(
+                        bpm_unit.encaixa_en_compas(unit, num, den))
+                    self.assertTrue(
+                        bpm_unit.unitat_per_defecte(
+                            num, den, "3+3" if num in (6, 9, 12) else None))
+
+    def test_unitat_per_defecte_de_tots_els_compassos(self):
+        esperat = {
+            (2, 6): "rodona_punt", (4, 6): "blanca_punt",
+            (8, 6): "negra_punt", (16, 6): "corxera_punt",
+        }
+        for (den, num), unit in esperat.items():
+            self.assertEqual(bpm_unit.unitat_per_defecte(num, den), unit)
+        for den, simple in ((2, "blanca"), (4, "negra"),
+                            (8, "corxera"), (16, "semicorxera")):
+            self.assertEqual(bpm_unit.unitat_per_defecte(3, den), simple)
+        # Una agrupació explícita que no és de tres deixa de ser composta.
+        self.assertEqual(bpm_unit.unitat_per_defecte(6, 8, "2+2+2"),
+                         "corxera")
+        self.assertEqual(bpm_unit.unitat_per_defecte(6, 4, "2+2+2"),
+                         "negra")
+        self.assertAlmostEqual(bpm_unit.factor("rodona_punt"), 6.0)
+        self.assertAlmostEqual(bpm_unit.factor("blanca_punt"), 3.0)
+        self.assertAlmostEqual(bpm_unit.factor("corxera_punt"), 0.75)
 
 
 class TestMetronom(unittest.TestCase):
@@ -1678,6 +1714,26 @@ class TestGridPlan(unittest.TestCase):
                                      kind="pulse"))
         self.assertEqual([round(t, 6) for t in pos],
                          [0.0, 0.75, 1.5, 2.25, 3.0, 4.5])
+
+    def test_fmt_pos_amb_mapa_constant_tots_els_denominadors(self):
+        """La barra constant ha de numerar cada compàs amb qualsevol x/x."""
+        for den in (2, 4, 8, 16):
+            for num in range(1, 13):
+                with self.subTest(compas=f"{num}/{den}"):
+                    mapa = TempoMap([(0.0, 60.0, 120.0, num, den)])
+                    bar = mapa.durations(0.0)[0]
+                    for k in range(3):
+                        self.assertEqual(
+                            tb.fmt_pos(k * bar, True, 120.0, num, 0.0,
+                                       mapa=mapa),
+                            f"{k + 1}.1")
+
+    def test_divisio_manual_en_6_8_es_en_figures_absolutes(self):
+        """En 6/8, «Negra» és una negra (2 corxeres), no una corxera."""
+        mapa = TempoMap([(0.0, 6.0, 120.0, 6, 8)])
+        plan = tb.grid_plan(True, 120.0, 6, 60.0, 800.0, mapa=mapa,
+                            divisio=("beat", 1.0))
+        self.assertAlmostEqual(plan["snap"], 0.5, places=6)
 
     def test_el_pla_i_el_snap_coincideixen(self):
         """`grid_plan` és la font única: el seu snap ha de ser el de `snap_step`."""

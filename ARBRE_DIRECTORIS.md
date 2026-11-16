@@ -197,7 +197,7 @@ PROJECTE AUTO CHORDS/
 │       ├── expected-v0.2.1.csv 🟢
 │       ├── expected.csv        🟢
 │       └── regression.sh       🟢
-├── docs/                          🟢  # Contracte i documentació viva (13 fitxers)
+├── docs/                          🟢  # Contracte i documentació viva (14 fitxers)
 │   ├── COMPONENTS_I_VERSIONS.md       🟢  # Inventari generat (`eines/genera_inventari.py`)
 │   ├── ESQUEMA_UI.html                🟢  # Generat des del `.md` (no editar)
 │   ├── ESQUEMA_UI.md                  🟢  # Font de l'esquema visual de la UI
@@ -211,7 +211,8 @@ PROJECTE AUTO CHORDS/
 │       ├── GRAELLA_PPQ_TEMPS.md               🟢
 │       ├── guia_tecnica_downbeat_onsets_beats.md 🟢
 │       ├── NOTACIO_XIFRAT.md                  🟢
-│       └── PLA_MAPA_TEMPS.md                  🟢
+│       ├── PLA_MAPA_TEMPS.md                  🟢
+│       └── TAULA_COMPASSOS_X_X.md             🟢
 ├── eines/                         🟢  # Build, empaquetat i cadena de subministrament (30 fitxers)
 │   ├── AutoChords-win.spec       🟢  # PyInstaller (Windows)
 │   ├── avalua_tempo.py           🟢  # Avaluador sintètic del mapa de tempo

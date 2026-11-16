@@ -84,8 +84,9 @@ def valida_tempo(bpm, num, den):
 # Un tros del mapa: temps i compàs constants dins `[ini, fi)`.
 #   bpm = negres per minut · num/den = compàs (p. ex. 4/4, 6/8, 12/8)
 #   agrupacio = `3+3` per a `6/8`; buit = agrupació automàtica per signatura.
-#   beat_unit = unitat de pols (negra, negra_punt, corxera, semicorxera,
-#               blanca). Si falta, es deriva de l'agrupació efectiva.
+#   beat_unit = unitat de pols (rodona_punt, blanca_punt, blanca, negra_punt,
+#               negra, corxera_punt, corxera, semicorxera). Si falta, es
+#               deriva de l'agrupació efectiva.
 class Tram:
     """Tram de tempo/compàs amb interfície compatible amb `Clip`.
 
@@ -220,7 +221,7 @@ def agrupacio_compas(num, den):
         return (4,)
     if num <= 0 or den <= 0:
         return (4,)
-    if den == 8 and num >= 6 and num % 3 == 0:
+    if num in (6, 9, 12):
         return tuple([3] * (num // 3))
     return {
         (5, 8): (3, 2),

@@ -103,7 +103,11 @@ def _grid_target(t, grid, bpm, bpb, offset, mapa):
     if d is None:
         return float(t)
     if mapa is not None:
-        return float(mapa.snap(float(t), d))
+        if d[0] == "bars":
+            return float(mapa.snap(float(t), ("bars", int(d[1]))))
+        _num, den = mapa.signatura(float(t))
+        frac = float(d[1]) * (float(den) / 4.0)
+        return float(mapa.snap(float(t), ("beat", frac)))
     step = graella.divisio_segons(
         grid, bpm, True, bpb, 4)
     if step <= 0:

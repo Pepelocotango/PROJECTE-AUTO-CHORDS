@@ -49,7 +49,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-16)
+## 2. Estat actual i relleu de sessió (2026-11-17)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -85,27 +85,33 @@ el projecte de DAW queden ajornats.
 - **Tempo/compàs**: mapa per trams amb `N` per tram, rols derivats, mínim
   d'**1/16 a 350 BPM** (≈43 ms), rubato com a flag i motor C/B/A. El **BPM
   intern és sempre en negres/minut**. **S1/S2/S3 i P6 tancats (2026-11-13/14)**:
-  unitat de pols per tram (`beat_unit`), `semicorxera`, presentació/TAP en la
-  unitat activa, rang intern 30–350, format `.acproj` **5** i CSV amb
-  `beat_unit`, exportació amb manifest de 10 columnes i partitura/metrònom per
-  unitat, i recalc amb **compàs local i referència del veí esquerre** (sense
-  BPM global). **2026-11-16: fora pre-roll, offset i Ref. recalc**; el compàs 1
-  cau sempre a **0 s** i el primer clip també ha de tindre `N` enter.
-  Classificador **ALT/MITJÀ/BAIX** amb candidats/alternatives i Assistència;
-  L3/L4. Diàleg amb canvi d'unitat **inline**, **silenci 1,5×/2/3**,
-  **alternatives clicables** i **«Escolta la proposta»**
-  (bucle + metrònom proposat, amb restauració de l'estat previ). Terminologia
-  canònica: **«recalc fix»** (fronteres fixes) i **«recalc mòbil»** (una
-  frontera compartida) a `docs/REGLES_DE_LA_APP.md` §13.6. Detall de decisions a
-  `LOG_DIALEGS_AGENTS.txt` OC/533–OC/567 i
+  unitat de pols per tram (`beat_unit`), presentació/TAP en la unitat activa,
+  rang intern 30–350, format `.acproj` **5** i CSV amb `beat_unit`, exportació
+  amb manifest de 10 columnes i partitura/metrònom per unitat, i recalc amb
+  **compàs local i referència del veí esquerre** (sense BPM global).
+  **2026-11-16: fora pre-roll, offset i Ref. recalc**; el compàs 1 cau sempre a
+  **0 s** i el primer clip també ha de tindre `N` enter.
+  **2026-11-17:** pols completa per a tots els compassos acceptats
+  (`1…12` / `2, 4, 8, 16`): `rodona_punt`, `blanca_punt`, `negra_punt` i
+  `corxera_punt`; `3/8` és simple triple; els compostos amb denominador 2/4/16
+  reben la pols amb punt i l'agrupació `3+3…`; el metrònom continua clicant el
+  denominador. La graella i el regle deixen de numerar `x/8`/`x/16` com si
+  foren `x/4`; el canvi de compàs conserva el BPM visible per defecte (Cas B)
+  amb opció explícita de Cas A. Classificador **ALT/MITJÀ/BAIX** amb
+  candidats/alternatives i Assistència; L3/L4. Diàleg amb canvi d'unitat
+  **inline**, **silenci 1,5×/2/3**, **alternatives clicables** i **«Escolta la
+  proposta»** (bucle + metrònom proposat, amb restauració de l'estat previ).
+  Terminologia canònica: **«recalc fix»** (fronteres fixes) i **«recalc mòbil»**
+  (una frontera compartida) a `docs/REGLES_DE_LA_APP.md` §13.6. Detall de
+  decisions a `LOG_DIALEGS_AGENTS.txt` OC/533–OC/567 i
   `docs/REGLES_DE_LA_APP.md` §13.
-- **GUI de tempo**: BPM i compàs **no** viuen a la barra «Temps»; es veuen i
-  s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
+- **GUI de tempo**: la barra «Temps» mostra **BPM intern** (negres/minut),
+  **BPM del clip** en la seua unitat i **Compàs**, tots només lectura; els
+  valors s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
   **Aplica** fa **recalc mòbil**; **Ajusta** obre el diàleg del tram (N,
-  compàs, BPM i unitat). El **Beat/TAP** de la barra és una drecera del
-  tram seleccionat; el **TAP** aplica al clip. Canviar la unitat amb TAP
-  obert tanca la sessió (1 undo) i el canvi és un altre undo. Els canvis
-  d'unitat tenen undo real.
+  compàs, BPM i unitat) amb **Mantenir la pulsació** activat per defecte. El
+  **TAP** aplica al clip. Canviar la unitat amb TAP obert tanca la sessió
+  (1 undo) i el canvi és un altre undo. Els canvis d'unitat tenen undo real.
 - **Edició d'àudio (§13.9)**: importació, backups, retall/afegir als extrems,
   sincronització del model, desfer/refer i export amb FFmpeg implementats.
 - **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
@@ -135,10 +141,10 @@ el projecte de DAW queden ajornats.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
   Tags locals renumerats a `v0.9.x`; **cap push**.
-- **Suite**: darrera completa **1619 OK** (1 skip), abans del plegament de
-  documentació/versió. En aquest plegament: `make commit-check` verd (compile +
-  pyflakes + docs-check) i tests dirigits de versió app↔pyproject i de
-  `tests/test_docs_al_dia.py` verds. **`make check` complet pendent** (cal OK de
+- **Suite**: darrera completa **1619 OK** (1 skip), abans dels canvis de
+  compassos de 2026-11-17. En aquesta sessió: `make commit-check` verd
+  (compile + pyflakes + docs-check), 240 tests de tempo/metrònom/mètrica i 90
+  tests de GUI dirigits verds. **`make check` complet pendent** (cal OK de
   l'operador).
 
 **Pendent:**
@@ -151,6 +157,9 @@ el projecte de DAW queden ajornats.
 - **Purga interna de l'`offset=0`**: encara queden paràmetres interns a
   `pipeline_*`, `timeline*` i `tempo_map` que ja no s'alimenten des de la UI.
   No afecten l'usuari; cal eliminar-los en una passada pròpia amb suite verda.
+- **Agrupació explícita dels compassos irregulars** (`5/8`, `7/8`, `8/8`,
+  `10/8`, `11/8`, `5/4`…): el model i el metrònom ja accepten l'agrupació, però
+  falta decidir-la a la UI en lloc d'oferir només els valors per defecte.
 - **Rubato avançat** i **export de projecte DAW**: ajornats sense data.
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
 - **Quantitza BPM** continua sent una operació separada del recalc guiat.

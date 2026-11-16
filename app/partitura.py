@@ -213,10 +213,11 @@ def _metronome_xml(bpm_quarter, unit):
     al PDF.
     """
     unit = bpm_unit.normalitza(unit)
-    beat = {"negra": "quarter", "negra_punt": "quarter",
-            "corxera": "eighth", "semicorxera": "16th",
-            "blanca": "half"}[unit]
-    dot = "<beat-unit-dot/>" if unit == "negra_punt" else ""
+    beat = {"rodona_punt": "whole", "blanca_punt": "half",
+            "blanca": "half", "negra_punt": "quarter", "negra": "quarter",
+            "corxera_punt": "eighth", "corxera": "eighth",
+            "semicorxera": "16th"}[unit]
+    dot = "<beat-unit-dot/>" if unit.endswith("_punt") else ""
     minut = bpm_unit.de_quarter(float(bpm_quarter), unit)
     return (f"<metronome><beat-unit>{beat}</beat-unit>{dot}"
             f"<per-minute>{minut:g}</per-minute></metronome>")

@@ -220,8 +220,8 @@ QCheckBox::indicator:disabled {{
         if _idx >= 0:
             self.cb_beat.setCurrentIndex(_idx)
         self.cb_beat.setToolTip(
-            "Unitat del beat detectat i del TAP: negra, negra amb punt, "
-            "corxera o blanca.")
+            "Unitat del beat detectat i del TAP: qualsevol figura simple "
+            "o amb punt (rodona, blanca, negra, corxera, semicorxera).")
         l_beat.setToolTip(self.cb_beat.toolTip())
         self.cb_beat.currentIndexChanged.connect(self._canvia_beat)
         beat_row.addWidget(l_beat)

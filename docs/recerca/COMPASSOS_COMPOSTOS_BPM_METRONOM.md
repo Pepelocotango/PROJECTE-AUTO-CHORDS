@@ -4,7 +4,8 @@
 > mostra, el rellotge intern, el pols percebut i el clic del metrònom en
 > compassos compostos (`6/8`, `9/8`, `12/8`) i en compassos irregulars
 > (`5/8`, `7/8`, `8/8`). **No és un contracte:** el contracte és
-> `docs/REGLES_DE_LA_APP.md` §13.
+> `docs/REGLES_DE_LA_APP.md` §13. Per a la taula de **tots** els compassos que
+> accepta l'app, vegeu `TAULA_COMPASSOS_X_X.md`.
 
 ## 1. Conclusió curta
 

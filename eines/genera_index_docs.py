@@ -66,6 +66,7 @@ ORDRE_RECERCA = [
     "AUTODETECCIO_OPCIONS.md",
     "PLA_MAPA_TEMPS.md",
     "COMPASSOS_COMPOSTOS_BPM_METRONOM.md",
+    "TAULA_COMPASSOS_X_X.md",
 ]
 
 DESCRIPCIONS_RECERCA = {
@@ -79,6 +80,9 @@ DESCRIPCIONS_RECERCA = {
     "COMPASSOS_COMPOSTOS_BPM_METRONOM.md":
         "Recerca sobre compassos compostos, BPM (negra vs negra amb punt) i "
         "metrònom en DAWs i editors de partitures.",
+    "TAULA_COMPASSOS_X_X.md":
+        "Mapa complet dels compassos acceptats (`1…12` / `2, 4, 8, 16`): "
+        "BPM intern, BPM percebut, pols, metrònom, exportació i buits actuals.",
 }
 
 # Noms de la columna «Doc» que no són el nom del fitxer.

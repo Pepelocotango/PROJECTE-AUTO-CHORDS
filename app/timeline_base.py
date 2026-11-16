@@ -160,8 +160,11 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
         variable = mapa is not None and not mapa.es_constant()
         if mapa is not None:
             bar_s, beat_s, _sub_s = mapa.durations(mapa.offset)
+            num_m, den_m = mapa.signatura(mapa.offset)
+            quarter_s = beat_s * (float(den_m) / 4.0)
         else:
-            beat_s = 60.0 / max(float(bpm), 1e-9)
+            quarter_s = 60.0 / max(float(bpm), 1e-9)
+            beat_s = quarter_s
             bar_s = beat_s * max(int(bpb), 1)
         lines = []
         if mena == "bars":
@@ -175,24 +178,30 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
             if bar_s < step - 1e-9 and bar_s * pps >= min_line_px:
                 lines.append((bar_s, ("bar", 1) if variable else "bar"))
         else:
-            step = beat_s * float(val)
+            # `DIVISIONS` és en figures ABSOLUTES (negra, corxera…), no en
+            # fraccions del denominador: en 6/8 una negra és 2 corxeres.
+            step = quarter_s * float(val)
             es_treset = any(abs(float(val) - x) < 1e-9
                             for x in (2.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0))
             if variable:
-                kind = (("beat", 1.0) if abs(float(val) - 1.0) < 1e-9
-                        else ("sub", float(val)))
+                # `val` és en figures absolutes (negra=1, corxera=0.5…); el
+                # mapa treballa en fraccions del denominador (en 6/8 una
+                # negra = 2 corxeres).
+                frac = float(val) * (float(den_m) / 4.0)
+                kind = (("beat", 1.0) if abs(frac - 1.0) < 1e-9
+                        else ("sub", frac))
             else:
                 kind = "beat" if abs(float(val) - 1.0) < 1e-9 else "sub"
             # Un treset no es pot etiquetar amb la graella binària de 1/32:
             # deixem les etiquetes al TEMPS i les línies fines al treset.
-            label = beat_s if es_treset else step
+            label = quarter_s if es_treset else step
             label_kind = (("beat", 1.0) if variable else "beat") \
                 if es_treset else kind
             # Context: compàs i temps (si hi caben i són més gruixuts).
-            if bar_s > beat_s + 1e-9 and bar_s * pps >= min_line_px:
+            if bar_s > quarter_s + 1e-9 and bar_s * pps >= min_line_px:
                 lines.append((bar_s, ("bar", 1) if variable else "bar"))
-            if beat_s > step + 1e-9 and beat_s * pps >= min_line_px:
-                lines.append((beat_s, ("beat", 1.0) if variable else "beat"))
+            if quarter_s > step + 1e-9 and quarter_s * pps >= min_line_px:
+                lines.append((quarter_s, ("beat", 1.0) if variable else "beat"))
             lines.append((step, kind))
         # Una divisió MANUAL mana sempre: no caiem a l'automàtic encara que
         # siga molt fina o que no capa a la vista. L'usuari l'ha forçada des
@@ -370,7 +379,7 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
         else:
             txt = f"{m}:{int(round(s)):02d}"    # m:ss
         return ("-" if neg else "") + txt
-    if mapa is not None and not mapa.es_constant():
+    if mapa is not None:
         if mapa.es_lliure(t):
             neg = t < -1e-9
             tt = abs(float(t))

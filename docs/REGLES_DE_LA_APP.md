@@ -142,12 +142,17 @@ compassos sencers. El model és permissiu:
 - **Valors**: BPM **30–350**, numerador **1–12** (inclòs `1/4`), denominador
   **2, 4, 8 o 16**. Un rubato no va en segons ni en `0/0`. El rang de BPM es
   valida sempre en **negres/minut** (espai intern), no en el número mostrat.
-- **Unitat de pols per tram**: cada clip té `beat_unit` (`negra`,
-  `negra_punt`, `corxera`, `semicorxera`, `blanca`). El BPM canònic continua
+- **Unitat de pols per tram**: cada clip té `beat_unit` (`rodona_punt`,
+  `blanca_punt`, `blanca`, `negra_punt`, `negra`, `corxera_punt`, `corxera`,
+  `semicorxera`). El BPM canònic continua
   sent **negres/minut**; la unitat només canvia la presentació i la conversió
   dels beats detectats/TAP, no el so. Si falta, es deriva de l'agrupació
-  efectiva (`6/8`, `9/8`, `12/8` amb grups de 3 → `negra_punt`; `x/4` →
-  `negra`; `x/8` → `corxera`; `x/16` → `semicorxera`; `2/2` → `blanca`).
+  efectiva: els numeradors **6, 9 i 12** amb grups de 3 són compostos i la
+  pols és la figura del denominador amb punt (`x/2` → `rodona_punt`, `x/4` →
+  `blanca_punt`, `x/8` → `negra_punt`, `x/16` → `corxera_punt`); la resta de
+  numeradors usa la figura simple del denominador (`x/2` → `blanca`, `x/4` →
+  `negra`, `x/8` → `corxera`, `x/16` → `semicorxera`). `3/8` és simple triple,
+  no compost.
   El **BPM visible** seguix esta unitat de pols; el **metrònom per defecte
   clica el denominador** i accentua els inicis de grup: `6/8` → 6 corxeres amb
   accents a 1 i 4, `9/8` → 9, `12/8` → 12. Una unitat explícita

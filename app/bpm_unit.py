@@ -14,12 +14,16 @@ DEFECTE = "negra"
 
 #: `clau: (etiqueta, negres per unitat)`.
 UNITATS = {
-    "negra": ("Negra", 1.0),
+    "rodona_punt": ("Rodona amb punt", 6.0),
+    "blanca_punt": ("Blanca amb punt", 3.0),
+    "blanca": ("Blanca", 2.0),
     "negra_punt": ("Negra amb punt", 1.5),
+    "negra": ("Negra", 1.0),
+    "corxera_punt": ("Corxera amb punt", 0.75),
     "corxera": ("Corxera", 0.5),
     "semicorxera": ("Semicorxera", 0.25),
-    "blanca": ("Blanca", 2.0),
 }
+
 
 
 def _grups_per_defecte(num, den):
@@ -30,7 +34,7 @@ def _grups_per_defecte(num, den):
         return (4,)
     if num <= 0 or den <= 0:
         return (4,)
-    if den == 8 and num >= 6 and num % 3 == 0:
+    if num in (6, 9, 12):
         return tuple([3] * (num // 3))
     return {
         (5, 8): (3, 2),
@@ -59,11 +63,26 @@ def _parse_grups(agrupacio):
     return valors if valors and all(v > 0 for v in valors) else None
 
 
+def _simple_per_den(den):
+    return {2: "blanca", 4: "negra", 8: "corxera",
+            16: "semicorxera"}.get(int(den), DEFECTE)
+
+
+def _compost_per_den(den):
+    return {2: "rodona_punt", 4: "blanca_punt", 8: "negra_punt",
+            16: "corxera_punt"}.get(int(den), DEFECTE)
+
+
 def unitat_per_defecte(num, den, agrupacio=None):
     """Unitat de pols suggerida per a un compàs i una agrupació (L6).
 
     És una funció **pura** (no importa `tempo_map`). Si `agrupacio` és buida,
     usa la taula per defecte local, equivalent a `tempo_map.agrupacio_compas`.
+
+    Només els compassos amb numerador **6, 9 o 12** poden ser compostos. La
+    pols d'un compost és la figura del denominador **amb punt**; si l'usuari
+    ha triat una agrupació que no és de tres, es respecta i es torna a la
+    figura simple del denominador.
     """
     try:
         num, den = int(num), int(den)
@@ -71,18 +90,12 @@ def unitat_per_defecte(num, den, agrupacio=None):
         return DEFECTE
     if num <= 0 or den <= 0:
         return DEFECTE
-    if den == 2:
-        return "blanca"
-    if den == 4:
-        return "negra"
-    if den == 16:
-        return "semicorxera"
-    if den == 8:
+    if num in (6, 9, 12):
         grups = _parse_grups(agrupacio) or _grups_per_defecte(num, den)
         if all(g % 3 == 0 for g in grups):
-            return "negra_punt"
-        return "corxera"
-    return DEFECTE
+            return _compost_per_den(den)
+        return _simple_per_den(den)
+    return _simple_per_den(den)
 
 
 def normalitza(unitat):

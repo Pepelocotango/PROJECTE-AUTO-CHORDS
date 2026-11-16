@@ -1658,9 +1658,14 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if not self.tempo_fix:
             return f"{self._fmt(s)} / {self._fmt(self.audio['durada'])}"
 
+        mapa = getattr(self, "tempo_map", None)
+
         def _compas_beat(val):
             if val <= 0:
                 return 1, 1
+            if mapa is not None and not mapa.es_lliure(val):
+                c, b, _sub = mapa.pos(val)
+                return c, b
             beats = val * self.bpm / 60.0
             rem = beats % self.bpb
             if rem == 0:
@@ -3190,8 +3195,12 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if d is None:
             return t
         mapa = getattr(self, "tempo_map", None)
-        if mapa is not None and not mapa.es_constant():
-            return mapa.snap(t, d)
+        if mapa is not None:
+            if d[0] == "bars":
+                return mapa.snap(t, ("bars", int(d[1])))
+            _num, den = mapa.signatura(t)
+            frac = float(d[1]) * (float(den) / 4.0)
+            return mapa.snap(t, ("beat", frac))
         step = graella.divisio_segons(grid, self.bpm, self.tempo_fix,
                                       self.bpb, getattr(self, "beat_type", 4))
         if step <= 0:

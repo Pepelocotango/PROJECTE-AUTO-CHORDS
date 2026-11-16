@@ -2120,6 +2120,21 @@ class TestMetricaCompasCompost(unittest.TestCase):
         self.assertIn("<per-minute>80</per-minute>", xml)
         self.assertIn('<sound tempo="120"', xml)
 
+    def test_musicxml_6_4_i_6_16_amb_figures_amb_punt(self):
+        casos = (
+            (6, 4, "blanca_punt", "half", 40),
+            (6, 16, "corxera_punt", "eighth", 160),
+        )
+        for num, den, unit, beat, minut in casos:
+            with self.subTest(compas=f"{num}/{den}"):
+                xml = partitura.construeix_musicxml(
+                    [(0.0, "C", 3.0)], [], bpb=num, bpm=120.0,
+                    beat_type=den, bpm_unit=unit)
+                self.assertIn(
+                    f"<beat-unit>{beat}</beat-unit><beat-unit-dot/>"
+                    f"<per-minute>{minut}</per-minute>", xml)
+                self.assertIn('<sound tempo="120"', xml)
+
     def test_manifest_10_columnes_i_bpm_a_l_inici(self):
         from app import mapa_tempo
         trams = [mapa_tempo.TramMapa(0.0, 3.0, 120.0, "normal", "6/8",
@@ -3099,6 +3114,11 @@ class TimelineConstraintTests(unittest.TestCase):
         r.update_mode(True, 82.5, 12, beat_type=8,
                       bpm_unit="negra_punt")
         self.assertEqual(r.mode_label(), "55 BPM \u00b7 12/8")
+        from app.tempo_map import TempoMap
+        r.update_mode(True, 120.0, 6, beat_type=8,
+                      mapa=TempoMap([(0.0, 10.0, 120.0, 6, 8)]),
+                      bpm_unit="negra_punt")
+        self.assertEqual(r.mode_label(), "80 BPM · 6/8")
 
     def test_time_ruler_es_fix_i_formata_hms(self):
         from app.timeline_layers import TimeRulerLayer
@@ -3597,6 +3617,25 @@ class MetronomTests(unittest.TestCase):
         for t in (0.25, 0.5, 1.0):
             i = int(t * self.SR)
             self.assertLess(self._freq(arr[i:i + n]), 1100, t)
+
+    def test_6_4_per_defecte_clica_sis_negres_amb_accents_3_3(self):
+        from app import metronom
+        from app.tempo_map import TempoMap
+        mapa = TempoMap([
+            mapa_tempo.TramMapa(0.0, 2.8, 120.0, "normal", "6/4", "",
+                                None, "blanca_punt")])
+        out = metronom.mescla_metronom(
+            self._silenci(2.8), self.SR, 0.0, 120.0, 6, volum=1.0, den=4,
+            mapa=mapa, click_unit="auto")
+        self.assertEqual(
+            [round(t, 3) for t in self._onsets(self._a_array(out))],
+            [0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+        arr = self._a_array(out)
+        n = int(self.SR * 0.02)
+        for t in (0.0, 1.5):
+            self.assertGreater(self._freq(arr[int(t * self.SR):int(t * self.SR) + n]), 1300, t)
+        for t in (0.5, 1.0, 2.0, 2.5):
+            self.assertLess(self._freq(arr[int(t * self.SR):int(t * self.SR) + n]), 1100, t)
 
     def test_6_8_per_defecte_clica_sis_corxeres_amb_accents_3_3(self):
         from app import metronom

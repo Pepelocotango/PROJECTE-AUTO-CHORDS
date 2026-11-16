@@ -5,6 +5,25 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.3] — 2026-11-16
 
+### Corregit — numeració de la graella en x/8 i x/16 (2026-11-16)
+- La numeració del regle usava el BPM intern com si tots els compassos foren
+  `x/4`: en `6/8` la línia de compàs sortia cada dos compassos (efecte `12/8`),
+  i en `x/16` pitjor. Ara `fmt_pos` usa el `TempoMap` també quan el mapa és
+  constant, i les divisions manuals i el snap entenen les figures absolutes
+  (`negra`, `corxera`…) sobre qualsevol denominador.
+- El rètol de mode del regle mostra el compàs del mapa (`6/8`, `12/8`…) i no
+  un transport `4/4` alié.
+
+### Canviat — unitats de pols per a tots els compassos acceptats (2026-11-16)
+- Afegides `rodona_punt`, `blanca_punt` i `corxera_punt` a `bpm_unit`, i la
+  derivació de la pols ara té en compte `6/9/12` amb **qualsevol** denominador
+  (`6/4` = blanca amb punt, `6/16` = corxera amb punt, `6/2` = rodona amb punt).
+- `3/8` ja no es tracta com a compost: és simple triple i la pols és la corxera.
+- `agrupacio_compas` agrupa en `3+3…` tots els compostos, no només els `x/8`;
+  el metrònom i la graella reben els accents correctes.
+- Nova recerca completa: `docs/recerca/TAULA_COMPASSOS_X_X.md` (48 compassos
+  acceptats, BPM intern/percebut, pols, clics i exportació).
+
 ### Canviat — Cas B per defecte en canviar el compàs (2026-11-16)
 - En canviar només el **compàs** des de la franja Editor o el diàleg del clip,
   per defecte es conserva el **BPM visible** (la pulsació) i es recalcula el

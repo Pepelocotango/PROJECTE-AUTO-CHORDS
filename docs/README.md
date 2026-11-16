@@ -34,6 +34,7 @@ Documents de referència i propostes que **no** descriuen l'estat actual del cod
 | `recerca/GRAELLA_PPQ_TEMPS.md` | Proposta de PPQ/ticks i swing (no implementada). |
 | `recerca/PLA_MAPA_TEMPS.md` | Pla de simplificació del mapa de temps: referència del veí esquerre, recalcul guiat i model permissiu. |
 | `recerca/COMPASSOS_COMPOSTOS_BPM_METRONOM.md` | Recerca sobre compassos compostos, BPM (negra vs negra amb punt) i metrònom en DAWs i editors de partitures. |
+| `recerca/TAULA_COMPASSOS_X_X.md` | Mapa complet dels compassos acceptats (`1…12` / `2, 4, 8, 16`): BPM intern, BPM percebut, pols, metrònom, exportació i buits actuals. |
 <!-- /GENERAT: index_docs -->
 
 ---

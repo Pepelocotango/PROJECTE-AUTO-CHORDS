@@ -2181,10 +2181,11 @@ class TestDialegTramTempo(_dialegs___Base):
         self.assertIn("QCheckBox::indicator:checked", d.styleSheet())
 
     def test_beat_tap_selector_mostra_panell_inline(self):
+        from app import bpm_unit
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
             n_actual=2.0, beat_unit="corxera", unit="corxera")
-        self.assertEqual(d.cb_beat.count(), 5)
+        self.assertEqual(d.cb_beat.count(), len(bpm_unit.UNITATS))
         self.assertEqual(d.cb_beat.currentData(), "corxera")
         d.cb_beat.setCurrentIndex(d.cb_beat.findData("blanca"))
         self.assertFalse(d.grup_unitat.isHidden())

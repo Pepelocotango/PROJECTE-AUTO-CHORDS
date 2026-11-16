@@ -1940,12 +1940,14 @@ class TimelineView(QGraphicsView):
         if self._snap_div_nom:
             d = graella.DIVISIONS.get(self._snap_div_nom)
             mapa = getattr(self, "_mapa", None)
-            if d and mapa is not None and not mapa.es_constant():
-                # Amb mapa variable, el compàs/temps no és constant: el pas
-                # es pren del tram on cau el cursor.
+            if d and mapa is not None:
+                # El mapa mana també quan és constant: pot ser 6/8 o 5/16.
                 bar_s, beat_s, _sub_s = mapa.durations(self._pos_t)
-                return (bar_s * int(d[1]) if d[0] == "bars"
-                        else beat_s * float(d[1]))
+                if d[0] == "bars":
+                    return bar_s * int(d[1])
+                _num, den = mapa.signatura(self._pos_t)
+                quarter_s = beat_s * (float(den) / 4.0)
+                return quarter_s * float(d[1])
             s = graella.divisio_segons(self._snap_div_nom, self._bpm,
                                        self._tempo_fix, self._bpb,
                                        getattr(self, "_beat_type", 4))
@@ -1965,13 +1967,15 @@ class TimelineView(QGraphicsView):
                        key=lambda b: (abs(float(b) - float(t)), b))
         off = getattr(self, "_offset", 0.0)
         mapa = getattr(self, "_mapa", None)
-        if mapa is not None and not mapa.es_constant():
+        if mapa is not None:
             if self._snap_div_nom:
                 d = graella.DIVISIONS.get(self._snap_div_nom)
                 if d:
                     if d[0] == "bars":
                         return mapa.snap(float(t), ("bars", int(d[1])))
-                    return mapa.snap(float(t), ("beat", float(d[1])))
+                    _num, den = mapa.signatura(float(t))
+                    frac = float(d[1]) * (float(den) / 4.0)
+                    return mapa.snap(float(t), ("beat", frac))
             return snap_time(float(t), self._tempo_fix, self._bpm, self._bpb,
                              self._pps, off, mapa=mapa)
         step = self._snap_step()

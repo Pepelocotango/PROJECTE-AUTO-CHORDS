@@ -351,12 +351,17 @@ class RulerLayer(QGraphicsItem):
         """
         if self._tempo_fix:
             unit = self._bpm_unit
+            bpm = self._bpm
+            num, den = self._bpb, self._beat_type
             mapa = getattr(self, "_mapa", None)
             if mapa is not None and getattr(mapa, "trams", None):
+                # El rètol ha de descriure el compàs del MAPA (x/8 i x/16
+                # inclosos), no un transport 4/4 alié al clip.
                 unit = mapa.unitat(0.0)
-            bpm_mostra = bpm_unit.de_quarter(self._bpm, unit)
-            return (f"{bpm_mostra:.0f} BPM \u00b7 "
-                    f"{self._bpb}/{self._beat_type}")
+                bpm = mapa.bpm(0.0)
+                num, den = mapa.signatura(0.0)
+            bpm_mostra = bpm_unit.de_quarter(bpm, unit)
+            return f"{bpm_mostra:.0f} BPM · {num}/{den}"
         return "Lliure"
 
     def set_bpm_unit(self, unit):
