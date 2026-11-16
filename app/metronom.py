@@ -117,9 +117,10 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
     `t_inici` segons de la cançó) i retorna els bytes int16 resultants.
 
     - `bpb` és el **numerador** del compàs i `den` el **denominador**. El beat
-      fa `(4/den) * 60/bpm` segons. Amb `click_unit="pols"` (el que usa la GUI)
-      el clic és la unitat de cada tram (`12/8` → 4 negres amb punt); amb
-      `click_unit="auto"` es manté el denominador (`12/8` → 12 corxeres).
+      fa `(4/den) * 60/bpm` segons. La GUI usa `click_unit="auto"` i clica el
+      denominador (`12/8` → 12 corxeres); `click_unit="pols"` és el mode
+      alternatiu per clicar només la unitat de cada tram (`12/8` → 4 negres
+      amb punt).
     - `mode`: `auto` (tots els temps + accents de compàs i grup), `compas`
       (només el primer temps), `temps` (tots els temps, sense accents de grup)
       o `grup` (només compàs i inicis de grup en compassos compostos).

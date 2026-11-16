@@ -471,8 +471,9 @@ class TempoMap:
     def grid_lines(self, t0, t1, kind="bar", n=1, frac=None):
         """Temps de les línies de graella de `kind` dins `[t0, t1]` (mapa-aware).
 
-        `kind`: `"bar"` (cada `n` compassos), `"beat"` (temps) o `"sub"`
-        (fracció de temps). `frac` permet graelles de treset (1/3, 2/3, 1/6)
+        `kind`: `"bar"` (cada `n` compassos), `"beat"` (temps), `"pulse"`
+        (pols musical `beat_unit`) o `"sub"` (fracció de temps). `frac` permet
+        graelles de treset (1/3, 2/3, 1/6)
         o qualsevol altra subdivisió; si no es passa, 0,5 per a `"sub"` i 1,0
         per a `"beat"`. Les línies són **musicals** (bar/beat), per tant el seu
         espaiat en segons varia amb el mapa.
@@ -491,6 +492,27 @@ class TempoMap:
             # Els trossos en segons no dibuixen res (rubato); la línia que
             # obri el tros lliure sí que es conserva (límit del clip).
             return [t for t in out if not self.es_lliure(t - TOL_COMPAS)]
+        if kind == "pulse":
+            # Pols musical (beat_unit) dins de cada tram: en 6/8, negra amb
+            # punt (2 per compàs), independentment dels 6 clics del metrònom.
+            for tr in self._trams:
+                if tr.lliure or tr.fi <= t0 + TOL or tr.ini >= t1 - TOL:
+                    continue
+                unit = tr.beat_unit or bpm_unit.unitat_per_defecte(
+                    tr.num_ef, tr.den_ef, tr.agrupacio)
+                pas_q = max(TOL, float(bpm_unit.factor(unit)))
+                q_ini = self.quarters(max(float(tr.ini), t0))
+                q_fi = self.quarters(min(float(tr.fi), t1))
+                k = int(math.ceil((q_ini - TOL) / pas_q))
+                while True:
+                    q = k * pas_q
+                    if q >= q_fi - TOL:
+                        break
+                    t = self.t_de_quarters(q)
+                    if t0 - TOL <= t <= t1 + TOL:
+                        out.append(t)
+                    k += 1
+            return sorted(set(round(t, 9) for t in out))
         if frac is None:
             frac = 0.5 if kind == "sub" else 1.0
         if frac <= 0:

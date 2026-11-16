@@ -194,14 +194,17 @@ class GridLayer(QGraphicsItem):
         div = graella.DIVISIONS.get(self._divisio) if self._divisio else None
         plan = grid_plan(self._tempo_fix, self._bpm, self._bpb, self._pps,
                          view_px, mapa=self._mapa, divisio=div)
-        col = {"bar": theme.TL_GRID_MEASURE, "pulse": theme.TL_GRID_BEAT,
+        col = {"bar": theme.TL_GRID_MEASURE, "pulse": theme.TL_GRID_PULSE,
                "beat": theme.TL_GRID_BEAT, "sub": theme.TL_GRID_SUB}
 
         def _col(k):
             return col[k[0] if isinstance(k, tuple) else k]
 
         # de fi a gruixut, perquè els nivells gruixuts es pintin al damunt
-        nivells = [(s, k, _col(k), 1) for (s, k) in reversed(plan["lines"])]
+        nivells = [(s, k, _col(k),
+                    2 if ((k[0] if isinstance(k, tuple) else k) == "pulse")
+                    else 1)
+                   for (s, k) in reversed(plan["lines"])]
         if plan["label"] > nivells[-1][0] + 1e-9:
             nivells.append((plan["label"], plan.get("label_kind"),
                             col["bar"], 2))
@@ -373,7 +376,7 @@ class RulerLayer(QGraphicsItem):
         div = graella.DIVISIONS.get(self._divisio) if self._divisio else None
         plan = grid_plan(self._tempo_fix, self._bpm, self._bpb, self._pps,
                          view_px, mapa=self._mapa, divisio=div)
-        col = {"bar": theme.TL_GRID_MEASURE, "pulse": theme.TL_GRID_BEAT,
+        col = {"bar": theme.TL_GRID_MEASURE, "pulse": theme.TL_GRID_PULSE,
                "beat": theme.TL_GRID_BEAT, "sub": theme.TL_GRID_SUB}
         # ticks dels nivells secundaris (els més fins que el d'etiqueta)
         for (sub, kind) in plan["lines"]:

@@ -176,7 +176,9 @@ class EditorMixin:
                 num, den = int(m.group(1)), int(m.group(2))
                 bpm, num, den = tempo_map.valida_tempo(
                     float(tr.bpm), num, den)
-                ok = self.edita_tempo_objectiu(i, bpm, num, den)
+                # Cas B per defecte: en canviar només el compàs, es conserva
+                # el BPM visible (la pulsació), no el número intern.
+                ok = self.edita_compas_objectiu(i, num, den)
             elif camp == "n":
                 n = float(self.ed_n.text().strip().replace(",", "."))
                 if n <= 0 or abs(n - round(n)) > 1e-3:

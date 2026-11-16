@@ -102,7 +102,7 @@ Les **dreceres** es poden veure i canviar a **Ajuda ▸ Configura les dreceres�
   `wavs_acords/`) i per secció (`1-1-1_3-2-1_A.wav`, a `wavs_estructura/`) → els
   importes en **dues pistes** del teu DAW (una per acords, una per estructura) i hi
   tens l'harmonia i la forma marcades.
-- **Exporta el mapa de tempo** a `mapa_tempo/` (`mapa_tempo.csv` + `mapa_tempo.mid`) i una **guia d'acords** (`guia_acords.html`) per imprimir. La partitura MusicXML mostra el tempo en negres/minut.
+- **Exporta el mapa de tempo** a `mapa_tempo/` (`mapa_tempo.csv` + `mapa_tempo.mid`) i una **guia d'acords** (`guia_acords.html`) per imprimir. La partitura MusicXML desa el tempo **intern** a `<sound tempo>` (negres/minut) i mostra la **unitat de pulsació** del tram a `<metronome>` (p. ex. `♩.=80` en `6/8`).
 - **REAPER / DAW**: per conservar la durada de la WAV, importa **primer** `mapa_tempo.mid`, accepta **«Importar mapa de tempo al proyecto»** i després importa la WAV en una segona pista. Si importes la WAV abans del MIDI, el *timebase* per defecte (**Beats**) pot canviar-ne la longitud/velocitat.
 - **Rubato**: selecciona un rang A–B o un clip del carril de BPM/compàs i marca’l com a rubato; l’app deriva BPM i compassos, conserva els segons i identifica la graella exportada com a aproximada (`mapa_tempo/AVIS_APROXIMACIO.txt` i text al MusicXML).
 - **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: `app/projecte.py`.

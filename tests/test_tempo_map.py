@@ -1664,8 +1664,20 @@ class TestGridPlan(unittest.TestCase):
         self.assertAlmostEqual(plan["label"], 1.5, places=6)
         self.assertIn(1.5, [round(s, 6) for s, _k in plan["lines"]])
         self.assertAlmostEqual(plan["snap"], 0.25, places=6)
+        self.assertIn(0.75, [round(s, 6) for s, _k in plan["lines"]])
         self.assertIn(0.75, [round(x, 6) for x in list(
             tb.grid_positions(0.0, 1.5, plan["snap"], mapa=mapa))])
+
+    def test_la_pols_musical_6_8_es_una_linia_propia(self):
+        """La graella marca la negra amb punt, no només les 6 corxeres."""
+        mapa = TempoMap([(0.0, 3.0, 120.0, 6, 8),
+                         (3.0, 6.0, 60.0, 6, 8)])
+        plan = tb.grid_plan(True, 120.0, 6, 60.0, 800.0, mapa=mapa)
+        self.assertIn("pulse", [k for _s, k in plan["lines"]])
+        pos = list(tb.grid_positions(0.0, 6.0, 0.75, mapa=mapa,
+                                     kind="pulse"))
+        self.assertEqual([round(t, 6) for t in pos],
+                         [0.0, 0.75, 1.5, 2.25, 3.0, 4.5])
 
     def test_el_pla_i_el_snap_coincideixen(self):
         """`grid_plan` és la font única: el seu snap ha de ser el de `snap_step`."""

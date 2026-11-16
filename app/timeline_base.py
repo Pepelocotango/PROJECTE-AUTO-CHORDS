@@ -124,13 +124,13 @@ def snap_step(tempo_fix, bpm, bpb, pps, mapa=None):
     return fit[-1] if fit else divs[0][0]
 
 
-def _pulse_step(mapa):
-    """Durada de la pols percebuda del mapa (0 si no es pot calcular)."""
+def _pulse_step(mapa, t=0.0):
+    """Durada de la pols percebuda del mapa a `t` (0 si no es pot calcular)."""
     if mapa is None:
         return 0.0
     try:
-        unit = mapa.unitat(0.0)
-        return bpm_unit.factor(unit) * 60.0 / float(mapa.bpm(0.0))
+        unit = mapa.unitat(t)
+        return bpm_unit.factor(unit) * 60.0 / float(mapa.bpm(t))
     except (AttributeError, TypeError, ValueError, ZeroDivisionError):
         return 0.0
 
@@ -142,7 +142,9 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
     Es decideix segons el **zoom en píxels** (com els DAWs), no per segons:
       - 'snap':  divisió de snap = la més fina que hi cap (px >= min_line_px).
       - 'lines': [(step, kind), ...] de gruixut a fi: el nivell gran més gruixut
-                 **encara visible** (px <= view_px) + un de mig + el snap.
+                 **encara visible** (px <= view_px) + un de mig + el snap;
+                 amb un mapa, s'afig la **pols musical** (`beat_unit`) si és
+                 més fina que el compàs i no coincidix amb el temps.
       - 'label': nivell de les etiquetes = el més gruixut que hi cap
                  (px >= min_label_px).
 
@@ -195,8 +197,8 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
         # Una divisió MANUAL mana sempre: no caiem a l'automàtic encara que
         # siga molt fina o que no capa a la vista. L'usuari l'ha forçada des
         # del selector de snap (independentment de si el snap està activat).
-        pulse = _pulse_step(mapa)
-        if pulse > 1e-9 and mapa is not None and mapa.es_constant() \
+        pulse = _pulse_step(mapa, mapa.offset if mapa is not None else 0.0)
+        if pulse > 1e-9 and mapa is not None \
                 and pulse * pps >= min_line_px \
                 and all(abs(pulse - x) > 1e-9 for x, _k in lines):
             lines.append((pulse, "pulse"))
@@ -232,8 +234,8 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
     # a més, salta les etiquetes que no hi caben segons l'amplada del text.
     cands = [(s, k) for (s, k) in divs if s * pps >= min_label_px]
     lab, lab_kind = cands[-1] if cands else major
-    pulse = _pulse_step(mapa)
-    if pulse > 1e-9 and mapa is not None and mapa.es_constant() \
+    pulse = _pulse_step(mapa, mapa.offset if mapa is not None else 0.0)
+    if pulse > 1e-9 and mapa is not None \
             and pulse * pps >= min_line_px \
             and all(abs(pulse - x) > 1e-9 for x, _k in lines):
         lines.append((pulse, "pulse"))
@@ -431,7 +433,7 @@ def grid_levels(tempo_fix, bpm, bpb, pps, view_px, mapa=None, divisio=None):
     `color` és un valor de color REAL (resolt de `theme`). Deriva del **pla
     únic** (`grid_plan`), així el grid i el regle sempre coincideixen.
     """
-    col = {"bar": theme.TL_GRID_MEASURE, "pulse": theme.TL_GRID_BEAT,
+    col = {"bar": theme.TL_GRID_MEASURE, "pulse": theme.TL_GRID_PULSE,
            "beat": theme.TL_GRID_BEAT, "sub": theme.TL_GRID_SUB}
     plan = grid_plan(tempo_fix, bpm, bpb, pps, view_px, mapa=mapa,
                      divisio=divisio)
@@ -440,7 +442,10 @@ def grid_levels(tempo_fix, bpm, bpb, pps, view_px, mapa=None, divisio=None):
         return col[k[0] if isinstance(k, tuple) else k]
 
     # de fi a gruixut, perquè els nivells gruixuts es pintin al damunt
-    levels = [(s, _col(k), 1) for (s, k) in reversed(plan["lines"])]
+    levels = [(s, _col(k),
+               2 if ((k[0] if isinstance(k, tuple) else k) == "pulse")
+               else 1)
+              for (s, k) in reversed(plan["lines"])]
     # Al min zoom, la línia de l'etiqueta (cada N compassos) ha de ser més
     # forta que el grid de base; si no, totes les línies semblen iguals.
     if plan["label"] > levels[-1][0] + 1e-9:

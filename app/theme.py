@@ -37,6 +37,7 @@ TL_RULER_BG = "#10131a"
 TL_SCENE_BG = "#0f0f10"
 TL_GUIDE = "#ffb26b"           # guia de snap / loop A-B (taronja suau)
 TL_GRID_MEASURE = "#55677f"    # linia de compas
+TL_GRID_PULSE = "#6f839e"      # pols musical (negra amb punt en 6/8)
 TL_GRID_BEAT = "#3d4c60"       # linia de temps
 TL_GRID_SUB = "#303a48"        # subdivisio
 TL_WAVE_MID = "#2f3640"        # linia central de l'ona

@@ -94,6 +94,11 @@ class DialegTramTempo(GeometriaMixin, QDialog):
         self._den0 = int(den)
         self._inicial = bool(inicial)
         self._beat_unit = bpm_unit.normalitza(beat_unit)
+        self._unit_inicial = self._unit
+        self._bpm_manual = False
+        info_dict = dict(info or {})
+        self._agr0 = str(info_dict.get("agrupacio")
+                         or info_dict.get("agrupacio_ef") or "")
         self._silencia_factor = bool(silencia_factor)
         self.setWindowTitle("BPM, compàs i compassos")
         self.setMinimumWidth(1000)
@@ -223,6 +228,18 @@ QCheckBox::indicator:disabled {{
         beat_row.addWidget(self.cb_beat)
         beat_row.addStretch(1)
         lay_opc.addLayout(beat_row)
+        self.chk_mantenir_pulsacio = QCheckBox(
+            "Mantenir la pulsació (BPM visible) en canviar el compàs")
+        self.chk_mantenir_pulsacio.setChecked(True)
+        self.chk_mantenir_pulsacio.setToolTip(
+            "Per defecte, en canviar el compàs es conserva el número de BPM "
+            "visible en la unitat de pulsació (Cas B). Desactiva-ho per "
+            "conservar el BPM intern en negres/minut (Cas A).")
+        lay_opc.addWidget(self.chk_mantenir_pulsacio)
+        self.lbl_previsio_pulsacio = QLabel("")
+        self.lbl_previsio_pulsacio.setWordWrap(True)
+        self.lbl_previsio_pulsacio.setObjectName("secundari")
+        lay_opc.addWidget(self.lbl_previsio_pulsacio)
         self.grup_unitat = QGroupBox("Canvi d'unitat")
         lay_unitat = QVBoxLayout(self.grup_unitat)
         self.panell_unitat = PanellCanviUnitat(self)
@@ -244,6 +261,14 @@ QCheckBox::indicator:disabled {{
             ed.textChanged.connect(self._actualitza_bpm_n)
         self.chk_segons.toggled.connect(self._segons_canviat)
         self._segons_canviat(self.chk_segons.isChecked())
+        for ed in (self.ed_compas, self.ed_compas_mob):
+            ed.textChanged.connect(self._actualitza_previsio_pulsacio)
+        for sp in (self.sp_bpm, self.sp_bpm_mob):
+            sp.valueChanged.connect(self._actualitza_previsio_pulsacio)
+            sp.valueChanged.connect(self._marca_bpm_manual)
+        self.chk_mantenir_pulsacio.toggled.connect(
+            self._actualitza_previsio_pulsacio)
+        self._actualitza_previsio_pulsacio()
 
         # --- columna dreta: informació completa, NOMÉS lectura.
         # No participa en l'acceptació del diàleg ni en cap càlcul d'edició.
@@ -614,6 +639,7 @@ QCheckBox::indicator:disabled {{
         self.panell_unitat.rb_tempo.setChecked(True)
         self.grup_unitat.setVisible(True)
         self._actualitza_panell_unitat()
+        self._actualitza_previsio_pulsacio()
 
     def _actualitza_panell_unitat(self, *_a):
         if not getattr(self, "grup_unitat", None) or \
@@ -623,6 +649,7 @@ QCheckBox::indicator:disabled {{
         self._beat_unit = unit
         self._unit = unit
         self._posa_bpm_unitat(bpm, unit)
+        self._actualitza_previsio_pulsacio()
 
     def unitat(self):
         """Unitat de pols que s'aplicarà amb Aplicar/OK."""
@@ -876,6 +903,70 @@ QCheckBox::indicator:disabled {{
                 sp.setValue(bpm_unit.de_quarter(bpm, self._unit))
             finally:
                 sp.blockSignals(False)
+
+    def mantenir_pulsacio(self):
+        """True si en canviar el compàs s'ha de conservar el BPM visible."""
+        return bool(getattr(self, "chk_mantenir_pulsacio", None)
+                    and self.chk_mantenir_pulsacio.isChecked())
+
+    def _unitat_objectiu_compas(self):
+        """Unitat que correspondrà al compàs escrit, respectant una tria explícita."""
+        try:
+            num, den = self._parse_compas()
+        except ValueError:
+            return self._beat_unit
+        if (num, den) == (self._num0, self._den0):
+            return self._beat_unit
+        actual = bpm_unit.normalitza(self._beat_unit)
+        derivada_vella = bpm_unit.unitat_per_defecte(
+            self._num0, self._den0, self._agr0)
+        if actual != derivada_vella:
+            return actual
+        return bpm_unit.unitat_per_defecte(num, den, "")
+
+    def _marca_bpm_manual(self, *_a):
+        """Recorda que l'usuari ha tocat el BPM (no el recalc de N)."""
+        self._bpm_manual = True
+
+    def bpm_visible(self):
+        """BPM visible de referència per al Cas B, en la unitat inicial."""
+        if getattr(self, "_bpm_manual", False):
+            return self._bpm_visible_actual()
+        return bpm_unit.de_quarter(self._bpm0, self._unit_inicial)
+
+    def _bpm_visible_actual(self):
+        """BPM visible equivalent al camp, expressat en la unitat inicial."""
+        try:
+            intern = bpm_unit.a_quarter(float(self.sp_bpm.value()), self._unit)
+            return bpm_unit.de_quarter(intern, self._unit_inicial)
+        except (AttributeError, TypeError, ValueError, ZeroDivisionError):
+            return bpm_unit.de_quarter(self._bpm0, self._unit_inicial)
+
+    def _actualitza_previsio_pulsacio(self, *_a):
+        """Mostra els dos BPM (visible i intern) abans d'aplicar el compàs."""
+        lbl = getattr(self, "lbl_previsio_pulsacio", None)
+        if lbl is None:
+            return
+        if not self.mantenir_pulsacio():
+            lbl.setText(
+                f"Cas A: es conserva el tempo intern "
+                f"({self._bpm0:.3f} negres/min); canviarà el BPM visible.")
+            return
+        try:
+            num, den = self._parse_compas()
+        except ValueError:
+            lbl.setText("Pulsació: compàs encara no vàlid.")
+            return
+        if (num, den) == (self._num0, self._den0):
+            lbl.setText("Pulsació: sense canvi de compàs.")
+            return
+        unit_nova = self._unitat_objectiu_compas()
+        visible = self.bpm_visible()
+        intern_nou = bpm_unit.a_quarter(visible, unit_nova)
+        lbl.setText(
+            f"Cas B: {visible:.3f} {bpm_unit.etiqueta(self._unit_inicial).lower()}"
+            f" → {visible:.3f} {bpm_unit.etiqueta(unit_nova).lower()} · "
+            f"intern {self._bpm0:.3f} → {intern_nou:.3f} negres/min.")
 
     def _n_canviat(self, actiu):
         actiu = bool(actiu) and self._durada > 0

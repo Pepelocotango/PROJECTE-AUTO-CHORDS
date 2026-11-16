@@ -353,6 +353,47 @@ class TempoMixin:
         self._actualitza_temps()
         return True
 
+    def edita_compas_objectiu(self, idx, num, den, desa=True,
+                              beat_unit=None, bpm_visible=None):
+        """Canvia el compàs conservant la **pulsació** (Cas B) per defecte.
+
+        La referència és el BPM visible del clip en la seua unitat actual. Si
+        la unitat era la derivada del compàs, es deriva la nova (`4/4` →
+        `6/8` = negra → negra amb punt); si era explícita, es respecta. El BPM
+        intern es recalcula perquè el número visible no canvie.
+
+        `bpm_visible` s'expressa en la unitat antiga. Si és `None`, s'usa el
+        BPM visible actual del clip. Per al Cas A (conservar el BPM intern),
+        cal cridar `edita_tempo_objectiu` directament.
+        """
+        trams = list(self.tempo_trams or [])
+        idx = int(idx)
+        if not (0 <= idx < len(trams)):
+            return False
+        tr = trams[idx]
+        try:
+            num, den = int(num), int(den)
+            tempo_map.valida_tempo(float(tr.bpm), num, den)
+        except (TypeError, ValueError) as e:
+            self.avis_editor(f"Compàs: {e}")
+            return False
+        unit_vella = self.unitat_de_tram(tr)
+        if bpm_visible is None:
+            bpm_visible = bpm_unit_mod.de_quarter(float(tr.bpm), unit_vella)
+        try:
+            provisional = mapa_tempo.TramMapa(
+                float(tr.ini), float(tr.fi), float(tr.bpm),
+                getattr(tr, "tipus", "normal"), f"{num}/{den}",
+                getattr(tr, "agrupacio", ""), getattr(tr, "n", None),
+                unit_vella)
+        except (TypeError, ValueError) as e:
+            self.avis_editor(f"Compàs: {e}")
+            return False
+        unit_nova = self._unitat_en_canvi_compas(tr, provisional, beat_unit)
+        bpm_intern = bpm_unit_mod.a_quarter(float(bpm_visible), unit_nova)
+        return bool(self.edita_tempo_objectiu(
+            idx, bpm_intern, num, den, desa=desa, beat_unit=unit_nova))
+
     def edita_n_compassos(self, idx, n, num, den, desa=True, beat_unit=None):
         """Edita **N compassos** i compàs; el BPM es recalcula automàticament.
 
@@ -869,9 +910,23 @@ class TempoMixin:
             unit = dlg.unitat()
             if dlg.n_auto():
                 bpm, num, den, n = dlg.valors_n()
+            else:
+                bpm, num, den = dlg.valors()
+            canvi_compas = (int(num), int(den)) != (
+                int(s.num), int(s.den))
+            if canvi_compas and not dlg.mantenir_pulsacio():
+                # Cas A explícit: conserva el BPM intern del clip.
+                return bool(self.edita_tempo_objectiu(
+                    idx, float(s.bpm), num, den, beat_unit=unit))
+            if dlg.mantenir_pulsacio() and canvi_compas:
+                # Cas B per defecte: el número visible mana; convertim el BPM
+                # del diàleg a la unitat antiga i en derivem la nova.
+                return bool(self.edita_compas_objectiu(
+                    idx, num, den, beat_unit=unit,
+                    bpm_visible=dlg.bpm_visible()))
+            if dlg.n_auto():
                 return bool(self.edita_n_compassos(
                     idx, n, num, den, beat_unit=unit))
-            bpm, num, den = dlg.valors()
             return bool(self.edita_tempo_objectiu(
                 idx, bpm, num, den, beat_unit=unit))
 

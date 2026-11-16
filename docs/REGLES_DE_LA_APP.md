@@ -153,7 +153,10 @@ compassos sencers. El model és permissiu:
   accents a 1 i 4, `9/8` → 9, `12/8` → 12. Una unitat explícita
   (`corxera`, `semicorxera`…) mana sobre la derivada; el denominador només és
   el fallback si la unitat no encaixa en el compàs. Canviar la signatura
-  actualitza la unitat si esta era la derivada.
+  actualitza la unitat si esta era la derivada. En canviar només el compàs,
+  per defecte es conserva el **BPM visible** (pulsació, Cas B) i es recalcula
+  el BPM intern; conservar el BPM intern (Cas A) és una opció explícita del
+  diàleg.
 - **Persistència**: `mapa_tempo.csv` porta `beat_unit` al final i es llig per
   noms; columna absent o valor desconegut = **rebuig**, valor buit =
   derivar+avisar. `.acproj` **FORMAT 5** només desa el model actual; els

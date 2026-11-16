@@ -1926,6 +1926,19 @@ class TestDialegTramTempo(_dialegs___Base):
     def test_el_bpm_surt_del_camp(self):
         self.assertEqual(self._dlg(bpm=97.5).valors()[0], 97.5)
 
+    def test_mantenir_pulsacio_es_per_defecte_i_mostra_els_dos_bpm(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=90.0, num=4, den=4, unit="negra",
+            durada=16.0)
+        self.assertTrue(d.mantenir_pulsacio())
+        d.ed_compas.setText("6/8")
+        text = d.lbl_previsio_pulsacio.text()
+        self.assertIn("Cas B", text)
+        self.assertIn("135", text)
+        self.assertIn("negra amb punt", text)
+        d.chk_mantenir_pulsacio.setChecked(False)
+        self.assertIn("Cas A", d.lbl_previsio_pulsacio.text())
+
     def test_unitat_negra_amb_punt(self):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=82.5, num=12, den=8, unit="negra_punt")
@@ -4864,6 +4877,20 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         finally:
             v.close()
 
+    def test_editor_canvi_compas_conserva_pulsacio_per_defecte(self):
+        """El botó Compàs de l'Editor aplica el Cas B per defecte."""
+        v = _vista_segueix_model___visor()
+        try:
+            v._focus_editor("tempo", 0)
+            v.ed_fam.setText("6/8")
+            v.ed_compas_aplica.click()
+            tr = v.tempo_trams[0]
+            self.assertEqual(tr.beat_unit, "negra_punt")
+            self.assertAlmostEqual(float(tr.bpm), 180.0, places=6)
+            self.assertAlmostEqual(float(v.bpm_mostra()), 120.0, places=6)
+        finally:
+            v.close()
+
     def test_botons_apliquen_nomes_la_seua_variable(self):
         v = _vista_segueix_model___visor()
         try:
@@ -6033,6 +6060,45 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(vr.tempo_trams[2][2], 15 * 4 * 60 / 28.4,
                                places=5)
 
+    def test_dialeg_canvi_compas_cas_b_per_defecte(self):
+        """En prémer Ajusta, el diàleg conserva el BPM visible (Cas B)."""
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams([(0.0, 60.0, 120.0, 4, 4)]))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.ed_compas.setText("6/8")
+                self.b_ajusta.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg):
+            vr._on_tempo_edit(0)
+        tr = vr.tempo_trams[0]
+        self.assertEqual(tr.beat_unit, "negra_punt")
+        self.assertAlmostEqual(float(tr.bpm), 180.0, places=6)
+        self.assertAlmostEqual(float(vr.bpm_mostra()), 120.0, places=6)
+
+    def test_dialeg_canvi_compas_cas_a_explicit(self):
+        """Desactivar «Mantenir la pulsació» conserva el BPM intern."""
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams([(0.0, 60.0, 120.0, 4, 4)]))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.chk_mantenir_pulsacio.setChecked(False)
+                self.ed_compas.setText("6/8")
+                self.b_ajusta.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg):
+            vr._on_tempo_edit(0)
+        tr = vr.tempo_trams[0]
+        self.assertEqual(tr.beat_unit, "negra_punt")
+        self.assertAlmostEqual(float(tr.bpm), 120.0, places=6)
+        self.assertAlmostEqual(float(vr.bpm_mostra()), 80.0, places=6)
+
     def test_beat_tap_des_del_dialeg_actualitza_visor_i_barra(self):
         vr = self.w.visor_ref
         trams = [(0.0, 10.0, 120.0, 4, 4),
@@ -6553,6 +6619,46 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertIn("BPM: 240.000", self.w.bpm_bar.text())
         self.assertIn("corxera", self.w.bpm_bar.text())
 
+
+    def test_canvi_de_compas_cas_b_per_defecte_conserva_la_pulsacio(self):
+        """4/4 120 → 6/8: el visible continua a 120 i l'intern passa a 180."""
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams([
+            mapa_tempo.TramMapa(0.0, 60.0, 120.0, "normal", "4/4", "",
+                                None, "negra")]))
+        self.assertTrue(vr.edita_compas_objectiu(0, 6, 8))
+        tr = vr.tempo_trams[0]
+        self.assertEqual(tr.beat_unit, "negra_punt")
+        self.assertAlmostEqual(float(tr.bpm), 180.0, places=6)
+        self.assertAlmostEqual(float(vr.bpm_mostra()), 120.0, places=6)
+
+    def test_canvi_de_compas_cas_b_6_8_a_4_4(self):
+        """6/8 ♩.80 (intern 120) → 4/4: el visible continua a 80 i l'intern baixa a 80."""
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams([
+            mapa_tempo.TramMapa(0.0, 60.0, 120.0, "normal", "6/8", "",
+                                None, "negra_punt")]))
+        self.assertTrue(vr.edita_compas_objectiu(0, 4, 4))
+        tr = vr.tempo_trams[0]
+        self.assertEqual(tr.beat_unit, "negra")
+        self.assertAlmostEqual(float(tr.bpm), 80.0, places=6)
+        self.assertAlmostEqual(float(vr.bpm_mostra()), 80.0, places=6)
+
+    def test_canvi_unitat_mantenir_numero(self):
+        """Flux «Mantén el número»: 6/8 ♩.60 → negra 60, intern 60."""
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams([
+            mapa_tempo.TramMapa(0.0, 60.0, 90.0, "normal", "6/8", "",
+                                None, "negra_punt")]))
+        self.assertTrue(vr.canvia_unitat_tram(
+            0, "negra", mode="mantenir_numero"))
+        tr = vr.tempo_trams[0]
+        self.assertEqual(tr.beat_unit, "negra")
+        self.assertAlmostEqual(float(tr.bpm), 60.0, places=6)
+        self.assertAlmostEqual(float(vr.bpm_mostra()), 60.0, places=6)
 
     def test_canvi_de_compas_deriva_la_unitat_de_pols(self):
         """4/4→6/8 en negra passa a negra amb punt; una unitat explícita es manté."""

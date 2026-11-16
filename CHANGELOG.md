@@ -5,6 +5,19 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.3] — 2026-11-16
 
+### Canviat — Cas B per defecte en canviar el compàs (2026-11-16)
+- En canviar només el **compàs** des de la franja Editor o el diàleg del clip,
+  per defecte es conserva el **BPM visible** (la pulsació) i es recalcula el
+  BPM intern. Exemple: `4/4` a 90 → `6/8` amb `♩.=90` i **135 negres/min**.
+- El diàleg del clip afig «Mantenir la pulsació (BPM visible)», activat per
+  defecte, i una previsualització dels dos BPM. Desactivar-lo conserva el
+  tempo intern (Cas A).
+- El metrònom continua clicant el **denominador** amb accents d’agrupació:
+  `6/8` → 6 corxeres amb accents a 1 i 4.
+- La **graella** afig una línia pròpia de **pols musical** (`beat_unit`) a més
+  del compàs i les subdivisions: en `6/8` marca la negra amb punt (2 pulsacions)
+  i manté les corxeres com a subdivisions. També funciona amb mapa variable.
+
 ### Canviat — renumeració de la línia 9.x a 0.9.x (2026-11-16)
 - El projecte passa a numerar-se **0.9.x** (versió actual **0.9.3**) perquè encara
   és beta; `pyproject.toml`, `app/__init__.py`, `README.md` i `ROADMAP.md` s'hi
@@ -62,8 +75,9 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ### Corregit — pols percebut en compassos compostos (2026-11-16)
 - **BPM i metrònom en 6/8, 9/8 i 12/8**: el camp mostra el BPM en la unitat de
-  pols de cada tram (negra amb punt) i el metrònom clica eixa unitat per
-  defecte: `6/8 = 3+3` (2 clics), `9/8 = 3+3+3` (3) i `12/8 = 3+3+3+3` (4).
+  pols de cada tram (negra amb punt) i el metrònom clica el denominador amb
+  accents de grup: `6/8` → 6 corxeres (accents a 1 i 4), `9/8` → 9 i `12/8`
+  → 12.
   L'intern continua en negres/minut (`60 ♩. = 90 negres/min`) i una unitat
   explícita (`corxera`, etc.) mana sobre la derivada.
 - **Independència de la selecció**: el clic del metrònom i les etiquetes de
