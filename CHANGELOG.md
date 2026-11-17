@@ -5,6 +5,17 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.3] — 2026-11-16
 
+### Canviat — `3/8` amb pols de negra amb punt (2026-11-17)
+- `3/8` ara deriva **una sola pols de negra amb punt** (`negra_punt`) en
+  lloc de tres corxeres: 1 pols per compàs i BPM visible a 1,5 negres per pols.
+  Afecta la unitat per defecte del clip, el TAP, la graella de pols, el CSV
+  quan `beat_unit` és buit i l'exportació MIDI/MusicXML.
+- Una agrupació explícita que no siga de 3 (p. ex. `1+1+1`) continua derivant
+  `corxera`, i una `beat_unit` explícita sempre mana.
+- Reconcilia el canvi anterior del 2026-11-16 («`3/8` simple triple →
+  corxera») amb esta decisió de producte; el metrònom continua clicant el
+  denominador (3 corxeres) amb accent al pols de negra amb punt.
+
 ### Corregit — numeració de la graella en x/8 i x/16 (2026-11-16)
 - La numeració del regle usava el BPM intern com si tots els compassos foren
   `x/4`: en `6/8` la línia de compàs sortia cada dos compassos (efecte `12/8`),

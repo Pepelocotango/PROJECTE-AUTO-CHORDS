@@ -69,16 +69,25 @@ def _compost_per_den(den):
             16: "corxera_punt"}.get(int(den), DEFECTE)
 
 
+def _es_compost(num, den):
+    """True si la pols es deriva amb figura amb punt.
+
+    Els numeradors **6, 9 i 12** ho són per definició (compostos). A més,
+    **3/8** es tracta explícitament com una sola pols de negra amb punt
+    (decisió de producte, 2026-11-17).
+    """
+    return num in (6, 9, 12) or (num == 3 and den == 8)
+
+
 def unitat_per_defecte(num, den, agrupacio=None):
     """Unitat de pols suggerida per a un compàs i una agrupació (L6).
 
     És una funció **pura** (no importa `tempo_map`). Si `agrupacio` és buida,
     usa la taula per defecte local, equivalent a `tempo_map.agrupacio_compas`.
 
-    Només els compassos amb numerador **6, 9 o 12** poden ser compostos. La
-    pols d'un compost és la figura del denominador **amb punt**; si l'usuari
-    ha triat una agrupació que no és de tres, es respecta i es torna a la
-    figura simple del denominador.
+    La pols dels compassos compostos (**6**, **9** i **12**, i **3/8**) és la
+    figura del denominador **amb punt**; si l'usuari ha triat una agrupació que
+    no és de tres, es respecta i es torna a la figura simple del denominador.
     """
     try:
         num, den = int(num), int(den)
@@ -86,7 +95,7 @@ def unitat_per_defecte(num, den, agrupacio=None):
         return DEFECTE
     if num <= 0 or den <= 0:
         return DEFECTE
-    if num in (6, 9, 12):
+    if _es_compost(num, den):
         grups = _parse_grups(agrupacio) or _grups_per_defecte(num, den)
         if all(g % 3 == 0 for g in grups):
             return _compost_per_den(den)

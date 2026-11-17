@@ -151,8 +151,10 @@ compassos sencers. El model és permissiu:
   pols és la figura del denominador amb punt (`x/2` → `rodona_punt`, `x/4` →
   `blanca_punt`, `x/8` → `negra_punt`, `x/16` → `corxera_punt`); la resta de
   numeradors usa la figura simple del denominador (`x/2` → `blanca`, `x/4` →
-  `negra`, `x/8` → `corxera`, `x/16` → `semicorxera`). `3/8` és simple triple,
-  no compost.
+  `negra`, `x/8` → `corxera`, `x/16` → `semicorxera`). Excepció explícita
+  (2026-11-17): **`3/8`** es tracta com una sola pols de **negra amb punt**
+  (`negra_punt`); només una agrupació explícita que no siga de 3 el torna a
+  `corxera`.
   El **BPM visible** seguix esta unitat de pols; el **metrònom per defecte
   clica el denominador** i accentua els inicis de grup: `6/8` → 6 corxeres amb
   accents a 1 i 4, `9/8` → 9, `12/8` → 12. Una unitat explícita

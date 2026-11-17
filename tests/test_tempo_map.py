@@ -1034,8 +1034,12 @@ class TestBpmUnit(unittest.TestCase):
         for (den, num), unit in esperat.items():
             self.assertEqual(bpm_unit.unitat_per_defecte(num, den), unit)
         for den, simple in ((2, "blanca"), (4, "negra"),
-                            (8, "corxera"), (16, "semicorxera")):
+                            (16, "semicorxera")):
             self.assertEqual(bpm_unit.unitat_per_defecte(3, den), simple)
+        # 3/8 és l'excepció explícita: una sola pols de negra amb punt.
+        self.assertEqual(bpm_unit.unitat_per_defecte(3, 8), "negra_punt")
+        self.assertEqual(bpm_unit.unitat_per_defecte(3, 8, "1+1+1"),
+                         "corxera")
         # Una agrupació explícita que no és de tres deixa de ser composta.
         self.assertEqual(bpm_unit.unitat_per_defecte(6, 8, "2+2+2"),
                          "corxera")

@@ -49,8 +49,10 @@ La classificació no depén només del denominador:
 
 Conseqüències:
 
-- `3/8` és **simple triple**: la pols és la corxera. No és un `6/8` ni un
-  compost.
+- `3/8` és **simple triple** en teoria: la pols estàndard és la corxera. No és
+  un `6/8` ni un compost. **Decisió de l'app (2026-11-17):** per defecte es
+  tracta com una sola pols de **negra amb punt** (1 pols per compàs); només una
+  agrupació explícita que no siga de 3 el torna a corxera.
 - `6/8` és **compost duple**: la divisió és la corxera, la pols és la negra amb
   punt (`3+3`).
 - `6/4` és **compost duple**: la divisió és la negra, la pols és la **blanca
@@ -114,7 +116,7 @@ accents actuals ixen de l'agrupació per defecte de l'app.
 | 12/4 | compost quàdruple | blanca amb punt | 3 | 40 | 12 | 1,4,7,10 | blanca punt | 40 | 1,4,7,10 | 6 |  |
 | 1/8 | simple d'un temps (rar) | corxera | 0.5 | 240 | 1 | 1 | corxera | 240 | 1 | 0.25 |  |
 | 2/8 | simple duple | corxera | 0.5 | 240 | 2 | 1 | corxera | 240 | 1 | 0.5 |  |
-| 3/8 | simple triple | corxera | 0.5 | 240 | 3 | 1 | corxera | 240 | 1 | 0.75 |  |
+| 3/8 | simple triple | corxera | 0.5 | 240 | 3 | 1 | negra punt | 80 | 1 | 0.75 | decisió de producte: 3/8 = 1 pols de negra amb punt |
 | 4/8 | simple quàdruple | corxera | 0.5 | 240 | 4 | 1 | corxera | 240 | 1 | 1 |  |
 | 5/8 | irregular/compost | grup variable | — | — | 5 | — | corxera | 240 | 1,4 | 1.25 | cal agrupació explícita; l'app usa 3+2 |
 | 6/8 | compost duple | negra amb punt | 1.5 | 80 | 6 | 1,4 | negra punt | 80 | 1,4 | 1.5 |  |
@@ -160,8 +162,9 @@ accents actuals ixen de l'agrupació per defecte de l'app.
 2. **El model ja té les figures necessàries.** `bpm_unit.UNITATS` inclou
    `rodona_punt`, `blanca_punt`, `negra_punt` i `corxera_punt`, a més de les
    figures simples.
-3. **`3/8` no és compost.** És simple triple i la pols és la corxera; el
-   sistema no l'ha de confondre amb un compost.
+3. **`3/8` no és compost en teoria.** És simple triple i la pols estàndard és
+   la corxera; l'app, però, el tracta per defecte com a **1 pols de negra amb
+   punt** (2026-11-17) i no l'ha de confondre amb un `6/8`.
 4. **Els irregulars no tenen una agrupació única.** `5/8`, `7/8`, `8/8`,
    `10/8`, `11/8`, `5/4`… necessiten una agrupació explícita o una decisió de
    producte; no s'ha de presentar una tria com a estàndard universal.
@@ -178,7 +181,7 @@ accents actuals ixen de l'agrupació per defecte de l'app.
 
 - **Fet:** unitats amb punt `rodona_punt`, `blanca_punt`, `negra_punt` i
   `corxera_punt`; derivació de la pols per a `6`, `9` i `12` amb qualsevol
-  denominador; `3/8` derivat a corxera; agrupació per defecte `3+3…` en tots
+  denominador; `3/8` derivat a negra amb punt (1 pols); agrupació per defecte `3+3…` en tots
   els compassos compostos; `5/8` i `7/8` amb agrupació per defecte `5` i `7`;
   accents del metrònom i de la graella alineats.
 - **Fet:** tests que recorren tots els `1…12` × `2, 4, 8, 16` i comproven

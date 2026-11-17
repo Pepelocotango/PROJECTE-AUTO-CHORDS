@@ -93,7 +93,7 @@ el projecte de DAW queden ajornats.
   **0 s** i el primer clip també ha de tindre `N` enter.
   **2026-11-17:** pols completa per a tots els compassos acceptats
   (`1…12` / `2, 4, 8, 16`): `rodona_punt`, `blanca_punt`, `negra_punt` i
-  `corxera_punt`; `3/8` és simple triple; els compostos amb denominador 2/4/16
+  `corxera_punt`; `3/8` és 1 pols de negra amb punt; els compostos amb denominador 2/4/16
   reben la pols amb punt i l'agrupació `3+3…`; `5/8`, `7/8` i `8/8` tenen
   agrupació per defecte `5`, `7` i `8`; el metrònom continua clicant el
   denominador. La graella i el regle deixen de numerar `x/8`/`x/16` com si

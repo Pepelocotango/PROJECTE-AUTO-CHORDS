@@ -26,6 +26,9 @@ class TestTramMapa(unittest.TestCase):
     def test_beat_unit_per_defecte_l6(self):
         self.assertEqual(bpm_unit.unitat_per_defecte(6, 8), "negra_punt")
         self.assertEqual(bpm_unit.unitat_per_defecte(9, 8), "negra_punt")
+        self.assertEqual(bpm_unit.unitat_per_defecte(3, 8), "negra_punt")
+        self.assertEqual(bpm_unit.unitat_per_defecte(3, 8, "3"),
+                         "negra_punt")
         self.assertEqual(bpm_unit.unitat_per_defecte(3, 8, "1+1+1"),
                          "corxera")
         self.assertEqual(bpm_unit.unitat_per_defecte(5, 8), "corxera")
