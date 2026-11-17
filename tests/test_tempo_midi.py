@@ -24,8 +24,7 @@ class TestTempoMidi(unittest.TestCase):
         ]
         ruta = os.path.join(tempfile.mkdtemp(), tempo_midi.NOM_MAPA_MIDI)
         tempo_midi.desa_mapa_midi(
-            ruta, trams, offset=0.5,
-            marques=[(1.0, "seccio"), 6.0])
+            ruta, trams, marques=[(1.0, "seccio"), 6.0])
         info = tempo_midi.llegeix_mapa_midi(ruta)
         self.assertEqual(info["format"], 1)
         self.assertEqual(info["n_tracks"], 1)
@@ -42,7 +41,6 @@ class TestTempoMidi(unittest.TestCase):
         textos = [e["text"] for e in info["markers"]]
         self.assertIn("Tram 1 · 4/4", textos)
         self.assertIn("Tram 2 · 6/8", textos)
-        self.assertIn("Anacrusi: 0.500000 s", textos)
         self.assertIn("Secció", textos)
         self.assertIn("Marcador", textos)
         self.assertNotIn("Fi", textos)
@@ -71,7 +69,7 @@ class TestTempoMidi(unittest.TestCase):
         trams = [mapa_tempo.TramMapa(0.0, 2.0, 120.0, "normal", "4/4")]
         res = pipeline.exporta_total(
             csv_ac=csv_ac, csv_seg=None, sortida=td, bpm=120.0, bpb=4,
-            offset=0.0, sr=44100, log=lambda *_a: None, tempo_fix=True,
+            sr=44100, log=lambda *_a: None, tempo_fix=True,
             amb_estructura=False, total_s=2.0,
             acords=[pipeline.Clip(0.0, 2.0, "C")], seccions=[],
             mapa_tempo=trams, marques=[0.5])

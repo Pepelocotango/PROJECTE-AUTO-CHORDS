@@ -14,6 +14,27 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - El rètol de mode del regle mostra el compàs del mapa (`6/8`, `12/8`…) i no
   un transport `4/4` alié.
 
+### Canviat — agrupació explícita a l'Editor i purga d'offset (2026-11-17)
+- La franja Editor té un **Aplica** propi per a **Agrupació**; canviar-la només
+  actualitza eixa variable i, si la unitat era automàtica, deriva la pols
+  corresponent.
+- Suggeriments d'agrupació per als compassos irregulars (`5/8`, `7/8`, `8/8`,
+  `10/8`, `11/8`, `5/4`, `7/4`); no s'imposa cap agrupació universal.
+- Tret l'**offset de tempo** de la UI, `TimelineView`, el pipeline de derivats,
+  l'exportació i la construcció de `TempoMap`: el compàs 1 sempre és a **0 s**.
+  Els helpers de detecció, metrònom forçat i la feina d'anàlisi encara tenen
+  paràmetres auxiliars que sempre reben 0; `tempo_map` i `audio_edit` ja no
+  tenen offset de compàs.
+- Corregida la prova de MusicXML `test_canvi_de_compas`: els events van en
+  negres i el mapa en segons; ara el canvi `4/4 → 3/4` s'exporta al compàs 3.
+- En canviar el compàs des de la franja Editor, l'agrupació passa al valor per
+  defecte del compàs nou (`7/8` → `7`, `3/4` → `3`, etc.).
+- `5/8`, `7/8` i `8/8` tenen agrupació per defecte `5`, `7` i `8`, a
+  corxera; les agrupacions irregulars (`3+2`, `2+2+3`, `3+3+2`…) queden com a
+  tries explícites.
+- El regle evita repetir la mateixa etiqueta en línies consecutives; això
+  elimina els casos de `7.1 7.1 7.1` que podien aparéixer en alguns zooms.
+
 ### Canviat — unitats de pols per a tots els compassos acceptats (2026-11-16)
 - Afegides `rodona_punt`, `blanca_punt` i `corxera_punt` a `bpm_unit`, i la
   derivació de la pols ara té en compte `6/9/12` amb **qualsevol** denominador

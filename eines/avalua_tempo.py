@@ -235,10 +235,7 @@ def compassos_referencia(dades, durada):
             num, den = 0, 0
         trams.append((inici, fi, bpm, num, den))
 
-    offset = float(dades.get("compas_1_s", 0.0))
-    if not math.isfinite(offset):
-        raise ValueError("compas_1_s ha de ser un temps finit")
-    bars = [bar[1] for bar in TempoMap(trams, offset=offset).compassos()]
+    bars = [bar[1] for bar in TempoMap(trams).compassos()]
     return [t for t in bars
             if not any(inici <= t < fi for inici, fi in rubatos)]
 
@@ -323,8 +320,7 @@ def avalua_canço(ruta_anotacio, num=4, den=4, cada_compassos=4,
         ruta_audio, registre, durada, num=sig[0], den=sig[1],
         cada_compassos=cada_compassos, offset=downbeat)
     trams, offset = mapa_detectat[0], mapa_detectat[1]
-    detectats = ([bar[1] for bar in
-                  TempoMap(trams, offset=offset).compassos()]
+    detectats = ([bar[1] for bar in TempoMap(trams).compassos()]
                  if trams else [])
     graella = avalua_graella(esperats, detectats)
 

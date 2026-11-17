@@ -338,7 +338,6 @@ class Feina(QThread):
                 compas = beat * max(1, int(self.bpb or 4))
                 pipeline.fer_abc(self.raw_segments, abc, self.bpm, self.log,
                                  lliure=not self.tempo_fix, bpb=self.bpb,
-                                 offset=self.offset,
                                  # `durada_min` s'expressa en COMPASSOS → a segons
                                  durada_min=float(_est.get("durada_min", 0.0)) * compas,
                                  fusiona_iguals=bool(_est.get("fusiona_iguals", True)),

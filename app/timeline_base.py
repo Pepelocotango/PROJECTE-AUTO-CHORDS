@@ -92,7 +92,7 @@ def _divisions(tempo_fix, bpm, bpb, mapa=None):
     """
     if tempo_fix:
         if mapa is not None:
-            bar, beat, _sub = mapa.durations(mapa.offset)
+            bar, beat, _sub = mapa.durations(0.0)
             # Múltiples de compàs per al zoom molt allunyat (min zoom): amb un
             # compàs de 2 s i una vista de 10 min, una línia cada compàs seria
             # una taca. El `n` s'usa a `mapa.grid_lines(..., n=n)`.
@@ -159,8 +159,8 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
         mena, val = divisio
         variable = mapa is not None and not mapa.es_constant()
         if mapa is not None:
-            bar_s, beat_s, _sub_s = mapa.durations(mapa.offset)
-            num_m, den_m = mapa.signatura(mapa.offset)
+            bar_s, beat_s, _sub_s = mapa.durations(0.0)
+            num_m, den_m = mapa.signatura(0.0)
             quarter_s = beat_s * (float(den_m) / 4.0)
         else:
             quarter_s = 60.0 / max(float(bpm), 1e-9)
@@ -206,7 +206,7 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
         # Una divisió MANUAL mana sempre: no caiem a l'automàtic encara que
         # siga molt fina o que no capa a la vista. L'usuari l'ha forçada des
         # del selector de snap (independentment de si el snap està activat).
-        pulse = _pulse_step(mapa, mapa.offset if mapa is not None else 0.0)
+        pulse = _pulse_step(mapa, 0.0)
         if pulse > 1e-9 and mapa is not None \
                 and pulse * pps >= min_line_px \
                 and all(abs(pulse - x) > 1e-9 for x, _k in lines):
@@ -243,7 +243,7 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
     # a més, salta les etiquetes que no hi caben segons l'amplada del text.
     cands = [(s, k) for (s, k) in divs if s * pps >= min_label_px]
     lab, lab_kind = cands[-1] if cands else major
-    pulse = _pulse_step(mapa, mapa.offset if mapa is not None else 0.0)
+    pulse = _pulse_step(mapa, 0.0)
     if pulse > 1e-9 and mapa is not None \
             and pulse * pps >= min_line_px \
             and all(abs(pulse - x) > 1e-9 for x, _k in lines):
@@ -253,9 +253,9 @@ def grid_plan(tempo_fix, bpm, bpb, pps, view_px, min_line_px=MIN_LINE_PX,
             "label_kind": lab_kind}
 
 
-def grid_positions(view_left, view_right, step, offset=0.0, tol=1e-9,
+def grid_positions(view_left, view_right, step, tol=1e-9,
                    mapa=None, kind=None):
-    """Genera les posicions de graella ``t = offset + k*step`` dins de la vista.
+    """Genera les posicions de graella ``t = k*step`` dins de la vista.
 
     Cada posició es calcula a partir de l'**índex enter** ``k`` — MAI acumulant
     ``t += step``. Amb acumulació, l'error de coma flotant es va sumant i, al
@@ -290,12 +290,12 @@ def grid_positions(view_left, view_right, step, offset=0.0, tol=1e-9,
         return
     if step is None or step <= tol:
         return
-    k = math.floor((view_left - float(offset)) / step)
-    t = float(offset) + k * step
+    k = math.floor(view_left / step)
+    t = k * step
     while t <= view_right + tol:
         yield t
         k += 1
-        t = float(offset) + k * step
+        t = k * step
 
 
 # Tolerància (en píxels) per agafar les vores del loop A/B al regle.
@@ -331,7 +331,7 @@ def loop_after_drag(mode, t, t0, a0, b0, durada, min_len=0.05):
 
 
 def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
-              pps: float, offset: float = 0.0, mapa=None) -> float:
+              pps: float, mapa=None) -> float:
     """Arrodoneix t a la divisió de grid actual (que depèn del zoom, en px).
 
     Fa servir el MATEIX `grid_plan` que el grid i el regle → sempre quadren.
@@ -354,15 +354,13 @@ def snap_time(t: float, tempo_fix: bool, bpm: float, bpb: int,
     step = snap_step(tempo_fix, bpm, bpb, pps)
     if step <= 0:
         return t
-    off = float(offset)
-    return round((t - off) / step) * step + off
+    return round(float(t) / step) * step
 
 
 def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
-            offset: float = 0.0, step=None, mapa=None, kind=None) -> str:
+            step=None, mapa=None, kind=None) -> str:
     """Formata t per al regle: 'm:ss[.d]' (temps) o 'compàs.beat[.subdivisió]' (tempo).
 
-    `offset` = segon on cau el compàs 1 (la graella hi comença).
     `step` = pas de l'etiqueta. Quan és més fi que el beat, es mostra el 3r
     camp (`compàs.beat.fusa`), com en DAWs professionals. `kind` és el nivell
     global del pla de graella (`bar`, `beat`, `sub` o una tupla); si arriba,
@@ -399,12 +397,12 @@ def fmt_pos(t: float, tempo_fix: bool, bpm: float, bpb: int,
             return f"{c}.{b}.{sub}"
         return f"{c}.{b}"
     beat = 60.0 / max(bpm, 1e-9)
-    # Sense clampar: abans de l'offset (el compàs 1) la graella és NEGATIVA
+    # Sense clampar: abans del compàs 1 la graella és NEGATIVA
     # -> el silenci inicial es llegeix com un compte enrere (-1, -2...).
     # `round(...,6)` neteja el soroll de coma flotant (ex. 27.999999999999996):
     # sense això, una posició d'INICI de compàs faria `floor(beats % bpb) ==
     # bpb-1` i l'etiqueta sortiria com «7.4» en lloc de «8.1» (bug del regle).
-    beats = round((t - float(offset)) / beat, 6)
+    beats = round(float(t) / beat, 6)
     compas = math.floor(beats / bpb) + 1
     beat_idx = int(math.floor(beats % bpb)) + 1
     if beat_idx > bpb:

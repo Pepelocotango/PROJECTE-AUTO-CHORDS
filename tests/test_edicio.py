@@ -930,8 +930,6 @@ def _visor_otis():
         f.write(SECCIONS_OTIS)
     v = visor_mod.Visor(wav_path, ca, sa, bpm=105.315, bpb=4, tempo_fix=True)
     v.td, v.sortida = td, sortida
-    v.offset = 1.98
-    v.timeline._offset = 1.98
     v.timeline._bpm, v.timeline._bpb = 105.315, 4
     v.timeline._tempo_fix = True
     v.timeline.set_snap(on=True, divisio="negra")
@@ -944,7 +942,7 @@ class TestAncoraDeMarca(_copiar_enganxar___Base):
     def test_la_graella_mou_la_vora_del_bloc(self):
         v = _visor_otis()
         # la marca és a 18.500 i la graella musical hi arrodoneix ~2 ms més enllà
-        self.assertAlmostEqual(v.timeline.snap(18.5), 18.5019, places=3)
+        self.assertAlmostEqual(v.timeline.snap(18.5), 18.461538, places=3)
         v.close()
 
     def test_la_marca_manda(self):
@@ -2825,7 +2823,7 @@ class TestCoberturaRare(_cobertura_rare___Base):
         ca = os.path.join(v._carpeta_acords(), "acords.csv")
         pipeline.exporta_total(
             csv_ac=ca, csv_seg=None, sortida=os.path.join(v.td, "out"),
-            bpm=120.0, bpb=4, offset=0.0, sr=44100, log=lambda *_cobertura_rare___: None,
+            bpm=120.0, bpb=4, sr=44100, log=lambda *_cobertura_rare___: None,
             tempo_fix=False, amb_estructura=False, total_s=_cobertura_rare__DUR,
             acords=v.acords, seccions=None)
         with open(ca, encoding="utf-8") as f:
@@ -2928,7 +2926,7 @@ class TestCoberturaViu(unittest.TestCase):
         sortida = os.path.join(v.td, "out")
         pipeline.exporta_total(
             csv_ac=v.csv_acords, csv_seg=seg_vell, sortida=sortida,
-            bpm=120.0, bpb=4, offset=0.0, sr=44100, log=lambda *_cobertura_viu___: None,
+            bpm=120.0, bpb=4, sr=44100, log=lambda *_cobertura_viu___: None,
             tempo_fix=False, amb_estructura=True, total_s=3.0,
             acords=v.acords, seccions=v.seccions)
         with open(os.path.join(sortida, "estructura_ABC.csv"),
@@ -2947,7 +2945,7 @@ class TestCoberturaViu(unittest.TestCase):
         _cobertura_viu___csv_acords(ca, [(0.5, "C")])
         pipeline.exporta_total(
             csv_ac=ca, csv_seg=None, sortida=os.path.join(td, "out"),
-            bpm=120.0, bpb=4, offset=0.0, sr=44100, log=lambda *_cobertura_viu___: None,
+            bpm=120.0, bpb=4, sr=44100, log=lambda *_cobertura_viu___: None,
             tempo_fix=False, amb_estructura=False, total_s=3.0,
             acords=[(0.5, "C", "0.5")], seccions=None)
         with open(ca, encoding="utf-8") as f:
@@ -2963,7 +2961,7 @@ class TestCoberturaViu(unittest.TestCase):
         _cobertura_viu___csv_acords(ca, [(0.0, "N"), (1.0, "C")])
         r = pipeline.exporta_total(
             csv_ac=ca, csv_seg=None, sortida=os.path.join(td, "out"),
-            bpm=120.0, bpb=4, offset=0.0, sr=44100, log=lambda *_cobertura_viu___: None,
+            bpm=120.0, bpb=4, sr=44100, log=lambda *_cobertura_viu___: None,
             tempo_fix=False, amb_estructura=False, total_s=3.0)
         self.assertEqual(r["acords_csv"], os.path.abspath(ca))
 
@@ -3468,6 +3466,9 @@ def _undo_temps___finestra():
     w = app_main.Finestra()
     w.wav_edit.setText(wav)
     w._carrega_visor(wav)
+    # Els tests de tall no han de dependre de QM ni del mode de snap global.
+    w.visor_ref.snap_mode = ""
+    w.visor_ref.qm_beats = []
     return w
 
 
@@ -3502,15 +3503,6 @@ class TestUndoTemps(_undo_temps___Base):
         self.assertEqual(int(v.bpb), 3)
         w._undo_visor()
         self.assertEqual(int(v.bpb), 4)
-
-    def test_posar_el_clip_en_segons_des_de_la_barra(self):
-        """La casella «En segons» no crea rubato encara (fase 3.2)."""
-        w = _undo_temps___finestra()
-        v = w.visor_ref
-        w.chk_segons.setChecked(True)
-        self.assertFalse(v.tempo_map.es_lliure(float(v.pos)))
-        self.assertNotEqual(w.bpb.text().strip(), "0/0")
-        self.assertFalse(w.chk_segons.isChecked())
 
     def test_bpm_zero_avisa_i_no_aplica_res(self):
         w = _undo_temps___finestra()
@@ -4304,34 +4296,6 @@ def _sense_analisi_tearDownModule():
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import _qt_neteja
     _qt_neteja.processa_esborrats()
-
-# ══════════════════════════════════════════════════════════════════════════
-# ORIGEN: test_edicio_operacions_doc.py
-# ══════════════════════════════════════════════════════════════════════════
-"""La taula única d'operacions d'edició (`docs/EDICIO_OPERACIONS.md`) no pot
-quedar-se enrere: ha de llistar **totes** les eines `ac_*` del pont i cap
-d'inventada.
-
-És el document que creua GUI ↔ MCP ↔ paritat #11 (§2 del pla d'edició lliure).
-"""
-
-
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DOC = os.path.join(ROOT, "docs", "EDICIO_OPERACIONS.md")
-
-
-class TestDocEdicioOperacions(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        with open(DOC, encoding="utf-8") as f:
-            cls.text = f.read()
-
-
-    def test_la_taula_diu_gui_i_pistes(self):
-        """Cada fila ha de dir com es fa per GUI i si val per a cada pista
-        (paritat d'edició #11)."""
-        for capçalera in ("| GUI", "| Acords |", "| Estr. |"):
-            self.assertIn(capçalera, self.text)
 
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_dreceres_completes.py

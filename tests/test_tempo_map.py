@@ -62,9 +62,9 @@ class TestAgrupacioCompas(unittest.TestCase):
         self.assertEqual(tm.agrupacio_compas(6, 8), (3, 3))
         self.assertEqual(tm.agrupacio_compas(9, 8), (3, 3, 3))
         self.assertEqual(tm.agrupacio_compas(12, 8), (3, 3, 3, 3))
-        self.assertEqual(tm.agrupacio_compas(5, 8), (3, 2))
-        self.assertEqual(tm.agrupacio_compas(7, 8), (2, 2, 3))
-        self.assertEqual(tm.agrupacio_compas(8, 8), (3, 3, 2))
+        self.assertEqual(tm.agrupacio_compas(5, 8), (5,))
+        self.assertEqual(tm.agrupacio_compas(7, 8), (7,))
+        self.assertEqual(tm.agrupacio_compas(8, 8), (8,))
         self.assertEqual(tm.agrupacio_compas(4, 4), (4,))
         self.assertEqual(tm.agrupacio_compas(3, 4), (3,))
         for den in (2, 4, 8, 16):
@@ -74,10 +74,10 @@ class TestAgrupacioCompas(unittest.TestCase):
 
     def test_inicis_i_accent_de_grup(self):
         self.assertEqual(tm.inicis_grups(6, 8), (0, 3))
-        self.assertEqual(tm.inicis_grups(7, 8), (0, 2, 4))
+        self.assertEqual(tm.inicis_grups(7, 8), (0,))
         self.assertTrue(tm.es_inici_grup(1, 7, 8))
-        self.assertTrue(tm.es_inici_grup(3, 7, 8))
-        self.assertTrue(tm.es_inici_grup(5, 7, 8))
+        self.assertFalse(tm.es_inici_grup(3, 7, 8))
+        self.assertFalse(tm.es_inici_grup(5, 7, 8))
         self.assertFalse(tm.es_inici_grup(2, 7, 8))
         self.assertFalse(tm.es_inici_grup(2, 4, 4))
 
@@ -125,7 +125,7 @@ class TestConstant(unittest.TestCase):
         for k in range(0, 40):                     # cada corxera (0,25 s)
             t = 0.25 * k
             self.assertEqual(tm.label(t),
-                             pipeline.pos_compas(t, 120, 4, False, 0.0),
+                             pipeline.pos_compas(t, 120, 4, False),
                              f"t={t}")
 
     def test_pos_basica(self):
@@ -612,23 +612,23 @@ class TestGraellaAmbMapa(unittest.TestCase):
         step = 0.4144          # entre els dos beats (0.41388 / 0.41485)
         # Sense `kind`, el BPM del clip decidix el format (el bug de la imatge).
         self.assertEqual(len(tb.fmt_pos(
-            t_esq, True, 120, 4, 0.0, step, mapa=mapa).split(".")), 2)
+            t_esq, True, 120, 4, step, mapa=mapa).split(".")), 2)
         self.assertEqual(len(self.tb.fmt_pos(
-            t_dret, True, 120, 4, 0.0, step, mapa=mapa).split(".")), 3)
+            t_dret, True, 120, 4, step, mapa=mapa).split(".")), 3)
         # Amb el nivell global, tots dos clips mostren el mateix format.
         for t in (t_esq, t_dret):
-            lab = self.tb.fmt_pos(t, True, 120, 4, 0.0, step,
+            lab = self.tb.fmt_pos(t, True, 120, 4, step,
                                   mapa=mapa, kind=("beat", 1.0))
             self.assertEqual(len(lab.split(".")), 2)
-            lab = self.tb.fmt_pos(t, True, 120, 4, 0.0, step,
+            lab = self.tb.fmt_pos(t, True, 120, 4, step,
                                   mapa=mapa, kind=("sub", 0.5))
             self.assertEqual(len(lab.split(".")), 3)
 
     def test_snap_mapa(self):
         st = self.tb.snap_time
-        self.assertAlmostEqual(st(1.7, True, 120, 4, 60.0, 0.0,
+        self.assertAlmostEqual(st(1.7, True, 120, 4, 60.0,
                                   mapa=self.mapa), 1.75)
-        self.assertAlmostEqual(st(4.1, True, 120, 4, 60.0, 0.0,
+        self.assertAlmostEqual(st(4.1, True, 120, 4, 60.0,
                                   mapa=self.mapa), 4.0)
 
     def test_constant_identic(self):
@@ -636,8 +636,8 @@ class TestGraellaAmbMapa(unittest.TestCase):
         const = TempoMap.constant(120, 4, 4, durada=10.0)
         for t in (0.0, 0.25, 1.7, 3.9, 7.05):
             self.assertEqual(
-                self.tb.fmt_pos(t, True, 120, 4, 0.0, mapa=const),
-                self.tb.fmt_pos(t, True, 120, 4, 0.0))
+                self.tb.fmt_pos(t, True, 120, 4, mapa=const),
+                self.tb.fmt_pos(t, True, 120, 4))
 
     def test_plan_constant_identic(self):
         const = TempoMap.constant(120, 4, 4, durada=10.0)
@@ -663,12 +663,12 @@ class TestEdicioMapa(unittest.TestCase):
         trencada: `TempoMap` re-deriva les fronteres en construir-se.
         """
         from app.tempo_map import TempoMap
-        tm = TempoMap([(0.0, 3.0, 120.0, 4, 4), (5.0, 9.0, 90.0, 3, 4)], 0.0)
+        tm = TempoMap([(0.0, 3.0, 120.0, 4, 4), (5.0, 9.0, 90.0, 3, 4)])
         trams = list(tm.trams)
         self.assertEqual([t.ini for t in trams], [0.0, 5.0])
         self.assertEqual([t.fi for t in trams], [5.0, 9.0])
         # L'encavalcament també es resol (mana l'inici del següent).
-        tm2 = TempoMap([(0.0, 7.0, 120.0, 4, 4), (5.0, 9.0, 90.0, 3, 4)], 0.0)
+        tm2 = TempoMap([(0.0, 7.0, 120.0, 4, 4), (5.0, 9.0, 90.0, 3, 4)])
         self.assertEqual([t.fi for t in tm2.trams], [5.0, 9.0])
 
     def test_neteja_avisa_quan_repara(self):
@@ -789,19 +789,19 @@ class TestExportsMapa(unittest.TestCase):
 
     def test_pos_compas_mapa(self):
         mapa = TempoMap([(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 60.0, 3, 4)])
-        self.assertEqual(pipeline.pos_compas(0.0, 120, 4, False, 0.0, mapa),
+        self.assertEqual(pipeline.pos_compas(0.0, 120, 4, False, mapa),
                          "1.1.1")
-        self.assertEqual(pipeline.pos_compas(4.0, 120, 4, False, 0.0, mapa),
+        self.assertEqual(pipeline.pos_compas(4.0, 120, 4, False, mapa),
                          "3.1.1")
-        self.assertEqual(pipeline.pos_compas(6.0, 120, 4, False, 0.0, mapa),
+        self.assertEqual(pipeline.pos_compas(6.0, 120, 4, False, mapa),
                          "3.3.1")
 
     def test_pos_compas_constant_identic(self):
         const = TempoMap.constant(120, 4, 4, durada=10.0)
         for t in (0.0, 0.5, 2.0):
             self.assertEqual(
-                pipeline.pos_compas(t, 120, 4, False, 0.0, const),
-                pipeline.pos_compas(t, 120, 4, False, 0.0))
+                pipeline.pos_compas(t, 120, 4, False, const),
+                pipeline.pos_compas(t, 120, 4, False))
 
 
 class TestGuia(unittest.TestCase):
@@ -814,11 +814,10 @@ class TestGuia(unittest.TestCase):
 
     DURADA = 30.0
 
-    def _valida_n_enter(self, trams, offset):
+    def _valida_n_enter(self, trams, offset=None):
         """Ajusta N/BPM (contracte §13.4) i després valida estrictament."""
         trams, _ns, _avisos = tm.ajusta_compassos_sencers(trams)
-        return tm.valida_i_normalitza_compassos(
-            trams, self.DURADA, offset=offset)
+        return tm.valida_i_normalitza_compassos(trams, self.DURADA)
 
     def test_parteix_al_mig_mateixos_valors(self):
         p = tm.parteix_trams_a([(0.0, 10.0, 120.0, 4, 4)], 2.5, 10.0)
@@ -1100,7 +1099,7 @@ class TestMetronom(unittest.TestCase):
                                     (tall, 8.0, 120.0, 7, 4)])
                 out = metronom.mescla_metronom(
                     _silenci(2.0), SR, 4.0, 120.0, 7,
-                    mapa=mapa, offset=0.0)
+                    mapa=mapa)
                 self.assertTrue(_clics(out), f"delta={delta}")
 
     def test_canvi_de_tempo_a_mig_compas_no_atura_el_metronom(self):
@@ -1109,7 +1108,7 @@ class TestMetronom(unittest.TestCase):
         mapa = tm.TempoMap([(0.0, 4.2, 120.0, 4, 4),
                             (4.2, 8.0, 120.0, 4, 4)])
         out = metronom.mescla_metronom(
-            _silenci(4.0), SR, 4.0, 120.0, 4, mapa=mapa, offset=0.0)
+            _silenci(4.0), SR, 4.0, 120.0, 4, mapa=mapa)
         clics = _clics(out)
         # `_clics` retorna temps relatius a la rodanxa (t_inici=4.0 s).
         self.assertTrue(clics, clics)
@@ -1724,7 +1723,7 @@ class TestGridPlan(unittest.TestCase):
                     bar = mapa.durations(0.0)[0]
                     for k in range(3):
                         self.assertEqual(
-                            tb.fmt_pos(k * bar, True, 120.0, num, 0.0,
+                            tb.fmt_pos(k * bar, True, 120.0, num,
                                        mapa=mapa),
                             f"{k + 1}.1")
 
@@ -1893,7 +1892,7 @@ class TestFmtPosIniciDeCompas(unittest.TestCase):
                 measure = beat * bpb
                 for k in range(0, 250):
                     t = k * measure
-                    lab = tb.fmt_pos(t, True, bpm, bpb, 0.0, measure)
+                    lab = tb.fmt_pos(t, True, bpm, bpb, measure)
                     self.assertTrue(
                         lab.endswith(".1"),
                         f"bpm={bpm} bpb={bpb} k={k} t={t!r} -> {lab!r}")
@@ -1903,10 +1902,10 @@ class TestFmtPosIniciDeCompas(unittest.TestCase):
         beat = 60.0 / 125.4
         measure = beat * 4
         net = measure * 7
-        self.assertEqual(tb.fmt_pos(net, True, 125.4, 4, 0.0, measure), "8.1")
+        self.assertEqual(tb.fmt_pos(net, True, 125.4, 4, measure), "8.1")
         # amb el soroll típic d'acumulació, abans sortia «7.4»; ara «8.1»
         brut = net - 1e-12
-        self.assertEqual(tb.fmt_pos(brut, True, 125.4, 4, 0.0, measure), "8.1")
+        self.assertEqual(tb.fmt_pos(brut, True, 125.4, 4, measure), "8.1")
 
 
 class TestGridPositionsSenseDeriva(unittest.TestCase):
@@ -1920,7 +1919,7 @@ class TestGridPositionsSenseDeriva(unittest.TestCase):
 
     def test_cap_inici_de_compas_deriva(self):
         for t in tb.grid_positions(0.0, 200 * self.STEP, self.STEP, 0.0):
-            lab = tb.fmt_pos(t, True, 125.4, 4, 0.0, self.STEP)
+            lab = tb.fmt_pos(t, True, 125.4, 4, self.STEP)
             self.assertTrue(lab.endswith(".1"), f"t={t!r} -> {lab!r}")
 
     def test_step_invalid(self):
@@ -2016,7 +2015,7 @@ class TestTramsEnSegons(unittest.TestCase):
         trams = [(0.0, 2.1, 240.0 / 2.1, 4, 4),
                  (2.1, 5.47, 100.0, 0, 0),
                  (5.47, 10.0, 480.0 / 4.53, 4, 4)]
-        out = tm.valida_i_normalitza_compassos(trams, 10.0, offset=0.0)
+        out = tm.valida_i_normalitza_compassos(trams, 10.0)
         self.assertEqual(out[1][3:], (0, 0))
 
     def test_canvia_bpm_local_el_deixa_en_segons(self):
@@ -2115,7 +2114,7 @@ class TestTramsEnSegons(unittest.TestCase):
                  (2.181818, 4.363636, 82.5, 6, 8)]
         beats = [0.0, 1.090909, 2.181818, 3.272727]
         out = tm.mou_frontera_retempo(
-            trams, 1, 2.181818, 4.363636, 0.0, beats_qm=beats,
+            trams, 1, 2.181818, 4.363636, beats_qm=beats,
             permissiu=True, ref_base=(82.5, 6, 8), beat_factor=1.5)
         self.assertEqual(out[0][3:], (6, 8))
         self.assertEqual(out[1][3:], (6, 8))
@@ -2179,7 +2178,7 @@ class TestTramsEnSegons(unittest.TestCase):
         beats = [i * 0.75 for i in range(9)]   # 8 beats en 0-6 s → 80 BPM
         avisos = []
         out = tm.mou_frontera_retempo(
-            trams, 1, 6.0, 10.0, 0.0, beats_qm=beats, permissiu=True,
+            trams, 1, 6.0, 10.0, beats_qm=beats, permissiu=True,
             ref_base=(120.0, 4, 4), avisos=avisos)
         self.assertEqual(out[0][3:], (4, 4))
         self.assertTrue(any("BPM desviat" in a for a in avisos), avisos)

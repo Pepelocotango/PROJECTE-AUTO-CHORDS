@@ -227,7 +227,7 @@ def a_tuples(trams):
     return [tuple(t) for t in trams]
 
 
-def recalcula_tram_c(trams, idx, durada, offset=0.0, *, n=None, bpm=None,
+def recalcula_tram_c(trams, idx, durada, *, n=None, bpm=None,
                      num=None, den=None, camp="bpm"):
     """Edita un clip mantenint **sempre `N` enter** (§13.4).
 
@@ -256,8 +256,7 @@ def recalcula_tram_c(trams, idx, durada, offset=0.0, *, n=None, bpm=None,
     num = int(tr.num if num is None else num)
     den = int(tr.den if den is None else den)
     bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
-    # El N es compta sobre la duració completa (fi − ini) a tots els clips;
-    # l'offset només mou la graella (contracte §13.4).
+    # El N es compta sobre la duració completa (fi − ini) a tots els clips.
     base = float(tr.ini)
     ultim = (i == len(net) - 1)
 

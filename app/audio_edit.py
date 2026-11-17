@@ -139,7 +139,7 @@ def _escriu_silenci(wav, frames, canals):
         pendents -= quants
 
 
-def transforma_model(acords, seccions, trams, marcadors, offset, durada,
+def transforma_model(acords, seccions, trams, marcadors, durada,
                      operacio, delta, pos=0.0, loop_a=None, loop_b=None,
                      loop_on=False):
     """Transforma el model: delta és el tall inicial, fi objectiu o silenci."""
@@ -172,7 +172,6 @@ def transforma_model(acords, seccions, trams, marcadors, offset, durada,
         trams = [(0.0, durada, 120.0, 4, 4)]
         units = ["negra"]
     marcadors = [float(t) for t in (marcadors or ())]
-    nou_offset = float(offset)
     nova_pos = float(pos)
     nou_loop_a, nou_loop_b = loop_a, loop_b
     nou_loop_on = bool(loop_on)
@@ -194,7 +193,6 @@ def transforma_model(acords, seccions, trams, marcadors, offset, durada,
                                   t[2], t[3], t[4]))
         trams = nou_trams
         marcadors = [t - delta for t in marcadors if t >= delta]
-        nou_offset -= delta
         nova_pos = max(0.0, nova_pos - delta)
         if nou_loop_a is not None and nou_loop_b is not None:
             nou_loop_a = max(0.0, float(nou_loop_a) - delta)
@@ -231,7 +229,6 @@ def transforma_model(acords, seccions, trams, marcadors, offset, durada,
                 (t[0] + delta, t[1] + delta, *t[2:])
                 for t in trams[1:]]
         marcadors = [t + delta for t in marcadors]
-        nou_offset += delta
         nova_pos += delta
         if nou_loop_a is not None and nou_loop_b is not None:
             nou_loop_a = float(nou_loop_a) + delta
@@ -274,7 +271,6 @@ def transforma_model(acords, seccions, trams, marcadors, offset, durada,
         "seccions": pipeline.seccions_de_clips(seccions_noves),
         "trams": trams_meta,
         "marcadors": marcadors,
-        "offset": nou_offset,
         "durada": nou_final,
         "pos": nova_pos,
         "loop_a": nou_loop_a,

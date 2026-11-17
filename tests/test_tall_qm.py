@@ -69,7 +69,7 @@ class TestTallQM(unittest.TestCase):
             0.0, 8.0, 120.0, "normal", "4/4", "", 4, "negra")]
         mapa = tempo_map.TempoMap([(0.0, 8.0, 120.0, 4, 4, "", "negra")])
         sides = tall_qm.opcions_tall_graella(
-            trams, mapa, 2.0, 8.0, 0.0, (120.0, 4, 4))
+            trams, mapa, 2.0, 8.0, (120.0, 4, 4))
         self.assertIsNotNone(sides)
         self.assertEqual(sides[0][0]["clips"][0].num, 4)
         self.assertAlmostEqual(float(sides[0][0]["clips"][0].fi), 2.0)
@@ -89,7 +89,7 @@ class TestTallQM(unittest.TestCase):
             0.0, 8.0, 120.0, "normal", "4/4", "", None, "negra")]
         beats = [i * 0.5 for i in range(16)]
         sides = tall_qm.opcions_tall(
-            trams, 2.0, 8.0, 0.0, beats, (120.0, 4, 4), 1.0)
+            trams, 2.0, 8.0, beats, (120.0, 4, 4), 1.0)
         self.assertIsNotNone(sides)
         self.assertEqual(len(sides), 2)
         self.assertEqual(sides[0][0]["clips"][0].num, 4)

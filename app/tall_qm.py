@@ -328,7 +328,7 @@ def polsos_graella(mapa, ini, fi):
     return times, factor, bq
 
 
-def opcions_tall_graella(trams, mapa, t, durada, offset, referencia):
+def opcions_tall_graella(trams, mapa, t, durada, referencia):
     """Com `opcions_tall`, però amb els polsos del mapa actual."""
     t = float(t)
     for i, tr in enumerate(trams or ()):
@@ -358,7 +358,7 @@ def opcions_tall_graella(trams, mapa, t, durada, offset, referencia):
     return None
 
 
-def opcions_tall(trams, t, durada, offset, beats, referencia, beat_factor):
+def opcions_tall(trams, t, durada, beats, referencia, beat_factor):
     """Retorna `[opcions_esquerra, opcions_dreta]` o `None`.
 
     `beats` són els beats QM detectats. `beat_factor` convertix cada beat a

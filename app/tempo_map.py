@@ -14,7 +14,7 @@ implementa aquest mapa per a AUTO CHORDS.
 - **Conversions**: `quarters(t)` (negres des de l'origen) i la seua inversa
   `t_de_quarters(q)`, obtingudes per **integració** (no amb un BPM fix).
 - **Posició**: `pos(t)` → `(compàs, temps, subdivisió)`, amb el compàs 1 a
-  l'`offset` (l'origen de la numeració; abans seu el compte enrere és ≤ 0).
+  **0 s** (abans seu la numeració és ≤ 0).
 
 Tot és stdlib pur (immune a AVX/SIGILL al Q9400) i sense dependències d'app.
 
@@ -212,7 +212,7 @@ def agrupacio_compas(num, den):
     És el `beat grouping` dels DAW: la suma de la tupla és sempre `num`.
     Per defecte:
       - `6/8`, `9/8`, `12/8` → grups de 3;
-      - `5/8` → `3+2`; `7/8` → `2+2+3`; `8/8` → `3+3+2`;
+      - `5/8` → `5`; `7/8` → `7`; `8/8` → `8`;
       - la resta → un sol grup (`num`), és a dir només accent de compàs.
     """
     try:
@@ -223,11 +223,7 @@ def agrupacio_compas(num, den):
         return (4,)
     if num in (6, 9, 12):
         return tuple([3] * (num // 3))
-    return {
-        (5, 8): (3, 2),
-        (7, 8): (2, 2, 3),
-        (8, 8): (3, 3, 2),
-    }.get((num, den), (num,))
+    return (num,)
 
 
 def inicis_grups(num, den):
@@ -310,13 +306,13 @@ class TempoMap:
     `segments`: `[(ini, fi, bpm, num, den), …]` — trossos contigus i ordenats.
     Si no cobreixen des de 0 s'estén el primer cap a l'esquerra; per a instants
     més enllà de l'últim s'extrapola amb el seu tempo.
-    `offset`: instant del **compàs 1** (origen de la numeració).
+    El compàs 1 comença sempre a **0 s**.
     """
 
     # Valor per defecte si no hi ha cap tros (defensa).
     _DEFECTE = Tram(0.0, 0.0, 120.0, 4, 4, "")
 
-    def __init__(self, segments, offset=0.0):
+    def __init__(self, segments):
         segments = _expandeix_segments(segments)
         trams = []
         for s in segments or ():
@@ -356,16 +352,15 @@ class TempoMap:
             trams[_i] = Tram(_t.ini, trams[_i + 1].ini, _t.bpm, _t.num,
                              _t.den, _t.agrupacio, _t.beat_unit)
         self._trams = trams
-        self._offset = float(offset or 0.0)
 
     # ── constructors còmodes ────────────────────────────────────────────────
     @classmethod
-    def constant(cls, bpm, num=4, den=4, durada=0.0, offset=0.0):
+    def constant(cls, bpm, num=4, den=4, durada=0.0):
         """Mapa d'un sol tros (l'app actual: BPM·compàs constant)."""
-        return cls([(0.0, float(durada or 0.0), bpm, num, den)], offset=offset)
+        return cls([(0.0, float(durada or 0.0), bpm, num, den)])
 
     @classmethod
-    def des_de_maps(cls, tempo, compas, offset=0.0):
+    def des_de_maps(cls, tempo, compas):
         """Combina un mapa de **tempo** `[(ini, fi, bpm)]` i un de **compàs**
         `[(ini, fi, num, den)]` en un sol mapa de trossos alineats (fronteres
         de tots dos)."""
@@ -386,7 +381,7 @@ class TempoMap:
             bpm = cls._valor_a(tempo, (a + b) / 2.0, 120.0)
             num, den = cls._compas_a(compas, (a + b) / 2.0)
             segs.append((a, b, bpm, num, den))
-        return cls(segs, offset=offset)
+        return cls(segs)
 
     @staticmethod
     def _valor_a(llista, t, defecte):
@@ -405,10 +400,6 @@ class TempoMap:
         return num, den
 
     # ── consultes ───────────────────────────────────────────────────────────
-    @property
-    def offset(self):
-        return self._offset
-
     @property
     def trams(self):
         return tuple(self._trams)
@@ -562,16 +553,16 @@ class TempoMap:
 
     def quarters(self, t):
         """Negres des de l'origen (compàs 1) fins a `t` (signe; pot ser < 0)."""
-        return self._quarters_entre(self._offset, t)
+        return self._quarters_entre(0.0, t)
 
     def t_de_quarters(self, q):
         """Instant en què s'assoleixen `q` negres des de l'origen (inversa)."""
         q = float(q)
         if abs(q) <= TOL:
-            return self._offset
+            return 0.0
         if q > 0:
-            i = self._index(self._offset)
-            t = self._offset
+            i = self._index(0.0)
+            t = 0.0
             restant = q
             while i < len(self._trams):
                 s = self._trams[i]
@@ -583,8 +574,8 @@ class TempoMap:
                 i += 1
             return t
         # q < 0: cap enrere
-        i = self._index(self._offset)
-        t = self._offset
+        i = self._index(0.0)
+        t = 0.0
         restant = -q
         while i >= 0:
             s = self._trams[i]
@@ -632,12 +623,11 @@ class TempoMap:
         l'espai de negres i es converteixen a segons amb `t_de_quarters`, així
         la integració del tempo variable és la correcta.
         """
-        offset = float(self._offset)
         durada = float(self._trams[-1].fi)
-        s = self.tram(offset)
+        s = self.tram(0.0)
         sig = (s.num_ef, s.den_ef)
-        talls = [(0.0, offset, sig[0], sig[1])]
-        q_bar, t_bar = 0.0, offset
+        talls = [(0.0, 0.0, sig[0], sig[1])]
+        q_bar, t_bar = 0.0, 0.0
         limit = 100000                     # salvavides
         while t_bar < durada - TOL and limit > 0:
             limit -= 1
@@ -686,7 +676,7 @@ class TempoMap:
     def pos(self, t):
         """`(compàs, temps, subdivisió)` d'un instant.
 
-        El **compàs 1** és a l'offset; abans seu la numeració és ≤ 0 (compte
+        El **compàs 1** cau a **0 s**; abans seu la numeració és ≤ 0 (compte
         enrere). `subdivisió` és la **fusa** dins del temps (1..8).
         """
         t = float(t)
@@ -705,7 +695,7 @@ class TempoMap:
             compas = idx + 1
         else:
             # compte enrere: el primer tros cap enrere
-            s = self.tram(self._offset)
+            s = self.tram(0.0)
             bq = _bar_quarters(s.num_ef, s.den_ef)
             compas = int((q + TOL) // bq) + 1        # ≤ 0
             q_ini = (compas - 1) * bq
@@ -743,7 +733,7 @@ class TempoMap:
         compas, temps = int(compas), int(temps)
         talls = self._talls_de_compas()
         if not talls:
-            return self._offset
+            return 0.0
         if compas >= 1:
             idx = compas - 1
             if idx < len(talls):
@@ -971,16 +961,14 @@ def durada_compas(bpm, num, den):
     return _bar_quarters(num, den) * 60.0 / float(bpm)
 
 
-def _bar_lines_tram(tram, offset=0.0):
+def _bar_lines_tram(tram):
     """Línies de compàs d'un tram, en segons (inclou les dels extrems)."""
     ini, fi, bpm, num, den = (float(tram[0]), float(tram[1]), float(tram[2]),
                               int(tram[3]), int(tram[4]))
     b = durada_compas(bpm, num, den)
     if b <= TOL:
         return []
-    # El primer tram pot tindre un tros de compte enrere abans del compàs 1
-    # (offset): les seues línies Parteixen de l'offset, no de 0.
-    base = float(offset) if abs(ini) <= TOL and offset > TOL else ini
+    base = ini
     k0 = int(math.floor((ini - base) / b)) - 2
     k1 = int(math.ceil((fi - base) / b)) + 2
     return [base + k * b for k in range(k0, k1 + 1)]
@@ -994,7 +982,7 @@ def _beat_segons_tram(tram):
     return _beat_quarters(den) * 60.0 / bpm
 
 
-def _graella_beats(trams, durada, offset=0.0, beats_qm=None):
+def _graella_beats(trams, durada, beats_qm=None):
     """Línies de beat que validen el mapa.
 
     Si `beats_qm` té valors, mana la graella QM (mode Snap «Beats QM»). Si no,
@@ -1003,7 +991,7 @@ def _graella_beats(trams, durada, offset=0.0, beats_qm=None):
     qm = sorted({float(b) for b in (beats_qm or ())})
     if qm:
         return qm
-    mapa = TempoMap(trams, offset=offset)
+    mapa = TempoMap(trams)
     grid = [float(t) for t in mapa.grid_lines(0.0, float(durada),
                                                kind="beat")]
     return sorted(set(round(float(t), 9) for t in grid))
@@ -1023,7 +1011,7 @@ def clip_conte_beat_sencer(tram, graella, tol=TOL_COMPAS):
                for a, b in zip(graella, graella[1:]))
 
 
-def _graella_tram(tram, idx, offset=0.0, durada=0.0):
+def _graella_tram(tram, idx, durada=0.0):
     """Línies de beat d'un clip, ancorades al seu inici musical.
 
     Cada clip compta des del seu propi inici. Així una frontera de tempo no es
@@ -1041,7 +1029,7 @@ def _graella_tram(tram, idx, offset=0.0, durada=0.0):
             if -TOL <= base + k * beat <= float(durada) + TOL]
 
 
-def valida_i_normalitza_compassos(trams, durada, offset=0.0,
+def valida_i_normalitza_compassos(trams, durada,
                                   preserva_fi_idx=None, beats_qm=None):
     """Valida el contracte de clips de tempo i retorna el mapa normalitzat.
 
@@ -1087,18 +1075,17 @@ def valida_i_normalitza_compassos(trams, durada, offset=0.0,
     for i, tram in enumerate(nous):
         if _lliure(tram):
             continue                       # rubato / en segons: lliure
-        graella = (_graella_beats(nous, durada, offset, beats_qm)
-                   if beats_qm else _graella_tram(tram, i, offset, durada))
+        graella = (_graella_beats(nous, durada, beats_qm)
+                   if beats_qm else _graella_tram(tram, i, durada))
         if len(graella) < 2:
             raise ValueError(
                 f"El tram {i + 1} no té cap graella de beats per a validar")
         inici_lliure = (i == 0) or (i > 0 and _lliure(nous[i - 1]))
         fi_lliure = (i == n - 1) or (i + 1 < n and _lliure(nous[i + 1]))
         if not inici_lliure:
-            graella_esq = (_graella_beats(nous, durada, offset, beats_qm)
+            graella_esq = (_graella_beats(nous, durada, beats_qm)
                            if beats_qm
-                           else _graella_tram(nous[i - 1], i - 1,
-                                              offset, durada))
+                           else _graella_tram(nous[i - 1], i - 1, durada))
             if not any(abs(float(tram[0]) - float(b)) <= TOL_COMPAS
                        for b in graella_esq):
                 raise ValueError(
@@ -1209,7 +1196,7 @@ def _ripple_des_de(trams, idx, nou_fi, durada):
     return [tuple(t) for t in out]
 
 
-def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0, direccio=None):
+def snap_frontera_compas(trams, p_idx, t, durada, direccio=None):
     """Imanta la FI del tram `p_idx` a la línia de compàs més pròxima.
 
     `direccio` ("dreta"/"esquerra") limita les candidates al sentit del gest:
@@ -1230,10 +1217,9 @@ def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0, direccio=None):
     b = durada_compas(bpm, num, den)
     if b <= TOL:
         raise ValueError("El compàs té una durada nul·la")
-    base = float(offset) if (p_idx == 0 and float(offset) > float(ini) + TOL) \
-        else float(ini)
-    minim = base + (b if (p_idx > 0 or base <= float(ini) + TOL) else 0.0)
-    cands = [c for c in _bar_lines_tram(tram, offset)
+    base = float(ini)
+    minim = base + (b if p_idx > 0 else 0.0)
+    cands = [c for c in _bar_lines_tram(tram)
              if minim - TOL_COMPAS <= c <= durada + TOL_COMPAS]
     d = str(direccio or "").lower()
     if d == "dreta":
@@ -1247,7 +1233,7 @@ def snap_frontera_compas(trams, p_idx, t, durada, offset=0.0, direccio=None):
     for c in sorted(cands, key=lambda x: abs(x - float(t))):
         out = _ripple_des_de(nous, p_idx, c, durada)
         try:
-            return float(c), valida_i_normalitza_compassos(out, durada, offset)
+            return float(c), valida_i_normalitza_compassos(out, durada)
         except ValueError:
             continue
     raise ValueError("No hi ha cap línia de compàs vàlida a prop")
@@ -1263,16 +1249,12 @@ def _enter_mes_proper(x):
     return int(math.floor(float(x) + 0.5))
 
 
-def _base_tram(tram, idx, offset=0.0):
+def _base_tram(tram, idx=None):
     """Instant on comença a comptar el compàs 1 **dins** del tram.
 
-    Només el PRIMER tram es compta des de l'offset, que pot quedar abans del
-    WAV quan s'ha retallat el so anterior al compàs 1. La resta compta des del
-    propi inici.
+    Cada tram compta des del seu propi inici; el compàs 1 és a 0 s.
     """
-    ini = float(tram[0])
-    off = float(offset or 0.0)
-    return off if int(idx) == 0 else ini
+    return float(tram[0])
 
 
 def _es_lliure_tram(tram):
@@ -1280,7 +1262,7 @@ def _es_lliure_tram(tram):
     return int(tram[3]) <= 0 or int(tram[4]) <= 0
 
 
-def valida_i_normalitza_permissiu(trams, durada, offset=0.0):
+def valida_i_normalitza_permissiu(trams, durada):
     """Valida el mapa amb les regles permissives del model (F2).
 
     - BPM i compàs vàlids (30–350 i 1–12 / 2,4,8,16).
@@ -1313,7 +1295,7 @@ def valida_i_normalitza_permissiu(trams, durada, offset=0.0):
     return nous
 
 
-def problemes_compassos_sencers(trams, durada=0.0, offset=0.0,
+def problemes_compassos_sencers(trams, durada=0.0,
                                  tolerancia=1e-3):
     """Llista els clips que no donen un nombre enter de compassos.
 
@@ -1347,14 +1329,14 @@ def problemes_compassos_sencers(trams, durada=0.0, offset=0.0,
     return issues
 
 
-def _compassos_del_tram(tram, idx, offset=0.0):
+def _compassos_del_tram(tram, idx=None):
     """Compasos (pot ser fraccionari) que conté el tram segons durada i BPM."""
     fi, bpm, num, den = (float(tram[1]), float(tram[2]),
                          int(tram[3]), int(tram[4]))
     b = durada_compas(bpm, num, den)
     if b <= TOL:
         raise ValueError("El compàs té una durada nul·la")
-    return (float(fi) - _base_tram(tram, idx, offset)) / b
+    return (float(fi) - _base_tram(tram, idx)) / b
 
 
 def compassos_del_clip(tram):
@@ -1362,7 +1344,6 @@ def compassos_del_clip(tram):
 
     És la magnitud del contracte nou: tots els clips de tempo/compàs han de
     tindre un `N` enter, inclòs el primer.
-    No depén de l'offset: eixe només mou la graella.
     """
     ini, fi, bpm, num, den = (float(tram[0]), float(tram[1]), float(tram[2]),
                               int(tram[3]), int(tram[4]))
@@ -1383,7 +1364,6 @@ def ajusta_compassos_sencers(trams, tolerancia=1e-9, estricte=True):
       (per a càrregues/refrescos de la GUI: mai un crash, però l'avís és
       visible i `problemes_compassos_sencers` el continuarà detectant).
 
-    No depén de l'offset: el `N` es compta sobre `fi − ini` (contracte §13.4).
     """
     out, ns, avisos = [], [], []
     for i, t in enumerate(trams or ()):
@@ -1436,7 +1416,7 @@ def _valida_bpm_edicio(bpm, costat):
     return b
 
 
-def _mapa_valida_sense_moure(out, durada, offset, preserva_fi_idx=None,
+def _mapa_valida_sense_moure(out, durada, preserva_fi_idx=None,
                              beats_qm=None):
     """Valida el mapa **sense moure cap frontera**.
 
@@ -1447,11 +1427,11 @@ def _mapa_valida_sense_moure(out, durada, offset, preserva_fi_idx=None,
     un missatge (no es deixa cap clip fraccionari en silenci).
     """
     return valida_i_normalitza_compassos(
-        out, durada, offset, preserva_fi_idx=preserva_fi_idx,
+        out, durada, preserva_fi_idx=preserva_fi_idx,
         beats_qm=beats_qm)
 
 
-def canvia_bpm_local(trams, idx, bpm, durada, offset=0.0, num=None, den=None,
+def canvia_bpm_local(trams, idx, bpm, durada, num=None, den=None,
                      beats_qm=None, permissiu=False):
     """Canvia el BPM/compàs d'un tram sense moure fronteres ni veïns.
 
@@ -1475,16 +1455,16 @@ def canvia_bpm_local(trams, idx, bpm, durada, offset=0.0, num=None, den=None,
     out = list(nous)
     out[i] = (float(ini), float(fi), float(bpm), int(num), int(den))
     if permissiu:
-        return valida_i_normalitza_permissiu(out, durada, offset)
-    out = _millora_signatures_clips(out, durada, offset, beats_qm, {i})
-    return _mapa_valida_sense_moure(out, durada, offset,
+        return valida_i_normalitza_permissiu(out, durada)
+    out = _millora_signatures_clips(out, durada, beats_qm, {i})
+    return _mapa_valida_sense_moure(out, durada,
                                     beats_qm=beats_qm)
 
 
-def _candidats_fit_clip(tram, i, offset):
+def _candidats_fit_clip(tram, i):
     """Candidats (score, bpm, den) per a un clip, sense moure fronteres."""
     ini, fi, bpm0, num, den0 = tram
-    dt = float(fi) - (float(offset) if i == 0 else float(ini))
+    dt = float(fi) - float(ini)
     if dt <= TOL or int(num) <= 0 or int(den0) <= 0:
         return [(0.0, float(bpm0), int(den0))]
     out = [(0.0, float(bpm0), int(den0))]
@@ -1512,7 +1492,7 @@ def _candidats_fit_clip(tram, i, offset):
     return unics
 
 
-def ajusta_bpm_a_compassos(trams, idx, durada, offset=0.0, beats_qm=None):
+def ajusta_bpm_a_compassos(trams, idx, durada, beats_qm=None):
     """Recalcula el BPM perquè el clip tinga un nombre enter de compassos.
 
     Càlcul **explícit** de recalc fix: conserva les fronteres en segons i el
@@ -1549,11 +1529,11 @@ def ajusta_bpm_a_compassos(trams, idx, durada, offset=0.0, beats_qm=None):
     bpm2 = float(res["bpm"])
     out = list(nous)
     out[i] = (float(ini), float(fi), float(bpm2), int(num), int(den))
-    return _mapa_valida_sense_moure(out, durada, offset,
+    return _mapa_valida_sense_moure(out, durada,
                                     beats_qm=beats_qm)
 
 
-def _millora_signatures_clips(trams, durada, offset=0.0, beats_qm=None,
+def _millora_signatures_clips(trams, durada, beats_qm=None,
                                idxs=None):
     """Ajusta compàs i, si cal, BPM perquè els clips tinguen un beat sencer.
 
@@ -1572,7 +1552,7 @@ def _millora_signatures_clips(trams, durada, offset=0.0, beats_qm=None,
     if not idxs:
         return out
     try:
-        valida_i_normalitza_compassos(out, durada, offset)
+        valida_i_normalitza_compassos(out, durada)
         return out
     except ValueError:
         pass
@@ -1580,11 +1560,11 @@ def _millora_signatures_clips(trams, durada, offset=0.0, beats_qm=None,
     # les combinacions de candidats; així la frontera compartida pot encaixar
     # en totes dues bandes alhora.
     if len(idxs) <= 3:
-        llistes = [_candidats_fit_clip(out[i], i, offset) for i in idxs]
+        llistes = [_candidats_fit_clip(out[i], i) for i in idxs]
         def _prova(k, actual):
             if k == len(idxs):
                 try:
-                    valida_i_normalitza_compassos(actual, durada, offset)
+                    valida_i_normalitza_compassos(actual, durada)
                 except ValueError:
                     return None
                 return actual
@@ -1608,7 +1588,7 @@ def _millora_signatures_clips(trams, durada, offset=0.0, beats_qm=None,
     return out
 
 
-def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
+def parteix_tram_marcador(trams, t, durada, bpm_ref=None,
                           beats_qm=None, permissiu=False, recalculca=False,
                           ref_base=None, avisos=None, beat_factor=1.0,
                           meter_prior=None, unitats=None, classificacions=None,
@@ -1639,20 +1619,20 @@ def parteix_tram_marcador(trams, t, durada, offset=0.0, bpm_ref=None,
         if permissiu:
             if recalculca:
                 out = _recalcula_costats(
-                    out, [(i, s), (i + 1, s)], durada, offset,
+                    out, [(i, s), (i + 1, s)], durada,
                     beats_qm=beats_qm, ref_base=ref_base, avisos=avisos,
                     beat_factor=beat_factor, meter_prior=meter_prior,
                     unitats=unitats, classificacions=classificacions,
                     suggerides=suggerides)
-            return valida_i_normalitza_permissiu(out, durada, offset)
-        out = _millora_signatures_clips(out, durada, offset, beats_qm,
+            return valida_i_normalitza_permissiu(out, durada)
+        out = _millora_signatures_clips(out, durada, beats_qm,
                                         {i, i + 1})
-        return _mapa_valida_sense_moure(out, durada, offset,
+        return _mapa_valida_sense_moure(out, durada,
                                         beats_qm=beats_qm)
     return net
 
 
-def retempo_tram_detectat(trams, idx, bpm_detectat, durada, offset=0.0,
+def retempo_tram_detectat(trams, idx, bpm_detectat, durada,
                           unitat_actual=None, suggerides=None):
     """Ajusta el BPM d'un tram **sense moure cap frontera** («Detecta»).
 
@@ -1679,7 +1659,7 @@ def retempo_tram_detectat(trams, idx, bpm_detectat, durada, offset=0.0,
     if bpm_det <= 0:
         raise ValueError("El BPM detectat no és vàlid")
     bq = _bar_quarters(int(num), int(den))
-    dt = float(fi) - _base_tram(nous[i], i, offset)
+    dt = float(fi) - _base_tram(nous[i], i)
     if bq <= TOL or dt <= TOL:
         raise ValueError("El tram no té durada suficient")
     n = max(1, _enter_mes_proper(dt * bpm_det / (bq * 60.0)))
@@ -1703,10 +1683,10 @@ def retempo_tram_detectat(trams, idx, bpm_detectat, durada, offset=0.0,
             f"{int(res['num'])}/{int(res['den'])}; suggerida {sugg}")
     out = list(nous)
     out[i] = (float(ini), float(fi), bpm_final, int(num), int(den))
-    return _mapa_valida_sense_moure(out, durada, offset)
+    return _mapa_valida_sense_moure(out, durada)
 
 
-def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
+def mou_frontera_retempo(trams, idx_frontera, nou_t, durada,
                          beats_qm=None, permissiu=False, ref_base=None,
                          avisos=None, beat_factor=1.0, meter_prior=None,
                          unitats=None, classificacions=None, suggerides=None):
@@ -1733,15 +1713,10 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
     a, b = nous[i - 1], nous[i]
     ini_a, fi_b = float(a[0]), float(b[1])
     minim = ini_a + TOL
-    if (i - 1) == 0 and float(offset or 0.0) > ini_a + TOL:
-        minim = max(minim, float(offset or 0.0))
     maxim = fi_b - TOL
     if maxim <= minim:
         raise ValueError("Els trams són massa curts per a moure la frontera")
     t = float(nou_t)
-    if ((i - 1) == 0 and float(offset or 0.0) > ini_a + TOL
-            and t < float(offset) - TOL):
-        raise ValueError("La frontera no pot quedar abans del compàs 1")
     if t <= ini_a + TOL:
         raise ValueError("La frontera deixaria el tram esquerre sense durada")
     if t >= fi_b - TOL:
@@ -1763,7 +1738,7 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
                     beats, b[0], b[1], beat_factor,
                     tol=tempo_recalc.TOL_BEATS))
         out = _recalcula_costats(
-            out, [(i - 1, a), (i, b)], durada, offset, beats_qm=beats_qm,
+            out, [(i - 1, a), (i, b)], durada, beats_qm=beats_qm,
             ref_base=ref_base, avisos=avisos, beat_factor=beat_factor,
             meter_prior=meter_prior, unitats=unitats,
             classificacions=classificacions, suggerides=suggerides)
@@ -1785,15 +1760,15 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada, offset=0.0,
                     "el tall o activa snap")
                 if text not in avisos:
                     avisos.append(text)
-        return valida_i_normalitza_permissiu(out, durada, offset)
-    out = _millora_signatures_clips(out, durada, offset, beats_qm,
+        return valida_i_normalitza_permissiu(out, durada)
+    out = _millora_signatures_clips(out, durada, beats_qm,
                                     {i - 1, i})
     out, _ns, _avisos = ajusta_compassos_sencers(out)
-    return _mapa_valida_sense_moure(out, durada, offset,
+    return _mapa_valida_sense_moure(out, durada,
                                     beats_qm=beats_qm)
 
 
-def _recalcula_costats(out, refs, durada, offset=0.0, beats_qm=None,
+def _recalcula_costats(out, refs, durada, beats_qm=None,
                        ref_base=None, avisos=None, beat_factor=1.0,
                        meter_prior=None, unitats=None, classificacions=None,
                        suggerides=None):
@@ -1883,7 +1858,7 @@ def _bpm_de_n(n, bq, dt):
 
 
 def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
-                          offset=0.0, factor=None, n_new=None,
+                          factor=None, n_new=None,
                           num=None, den=None, permissiu=False):
     """Reinterpreta el tram `idx` amb més/menys compassos, **sense moure'l**.
 
@@ -1942,8 +1917,8 @@ def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
     out[i] = (float(ini), float(fi), float(bpm_new),
               int(num_final), int(den_final))
     if permissiu:
-        return valida_i_normalitza_permissiu(out, durada, offset)
-    return valida_i_normalitza_compassos(out, durada, offset, preserva_fi_idx=i)
+        return valida_i_normalitza_permissiu(out, durada)
+    return valida_i_normalitza_compassos(out, durada, preserva_fi_idx=i)
 
 
 #: Un tram més curt que això (50 ms) no té cap sentit musical: naix d'un `+`
@@ -1975,7 +1950,7 @@ def neteja_trams_curts(trams, minim=NETEJA_TRAM_S):
     return out
 
 
-def refit_trams(trams, durada, offset=0.0):
+def refit_trams(trams, durada):
     """Repara el mapa **recalculant** el BPM de cada tram amb N enter.
 
     Cada frontera és la fi del tram de l'esquerra: si es conserva el nombre de
@@ -1993,7 +1968,7 @@ def refit_trams(trams, durada, offset=0.0):
         if i == len(out) - 1:
             res.append((ini, fi, bpm, num, den))
             continue
-        base = _base_tram(out[i], i, offset)
+        base = _base_tram(out[i], i)
         bq = _bar_quarters(num, den)
         dt = float(fi) - base
         if dt <= TOL or bq <= TOL:
@@ -2005,10 +1980,10 @@ def refit_trams(trams, durada, offset=0.0):
             res.append((ini, fi, bpm, num, den))
             continue
         res.append((ini, fi, bpm2, num, den))
-    return valida_i_normalitza_compassos(res, durada, offset)
+    return valida_i_normalitza_compassos(res, durada)
 
 
-def repara_fronteres(trams, durada, offset=0.0):
+def repara_fronteres(trams, durada):
     """Fa vàlid un mapa **imantant** les fronteres que no cauen a la graella.
 
     Les operacions sobre el mapa (eliminar, fusionar o duplicar un tram)
@@ -2031,13 +2006,13 @@ def repara_fronteres(trams, durada, offset=0.0):
     for _ in range(2 * len(out) + 2):
         try:
             return _comprova_banda(
-                valida_i_normalitza_compassos(out, durada, offset))
+                valida_i_normalitza_compassos(out, durada))
         except ValueError as e:
             error = e
         pitjor = None
         for i in range(1, len(out)):
             t = float(out[i][0])
-            linies = _bar_lines_tram(out[i - 1], offset)
+            linies = _bar_lines_tram(out[i - 1])
             if not linies:
                 continue
             millor = min(linies, key=lambda c: abs(float(c) - t))
@@ -2048,12 +2023,12 @@ def repara_fronteres(trams, durada, offset=0.0):
             break
         _d, p_idx, t = pitjor
         try:
-            _tall, out = snap_frontera_compas(out, p_idx, t, durada, offset)
+            _tall, out = snap_frontera_compas(out, p_idx, t, durada)
         except ValueError:
             break
     # Últim recurs: conservar les fronteres i recalcular els BPM (N enter).
     try:
-        return _comprova_banda(refit_trams(out, durada, offset))
+        return _comprova_banda(refit_trams(out, durada))
     except ValueError:
         pass
     raise error if error is not None else ValueError("Mapa de tempo invàlid")
@@ -2075,7 +2050,7 @@ def _comprova_banda(trams):
     return trams
 
 
-def parteix_a_compas(trams, idx, t, durada, offset=0.0):
+def parteix_a_compas(trams, idx, t, durada):
     """Parteix el tram `idx` per la línia de compàs més pròxima a `t`.
 
     Retorna `(tall, mapa_normalitzat)` o aixeca `ValueError` si el tall deixaria
@@ -2091,14 +2066,14 @@ def parteix_a_compas(trams, idx, t, durada, offset=0.0):
     b = durada_compas(bpm, num, den)
     if b <= TOL:
         raise ValueError("El compàs té una durada nul·la")
-    cands = [c for c in _bar_lines_tram(tram, offset)
+    cands = [c for c in _bar_lines_tram(tram)
              if float(ini) + TOL_COMPAS < c < float(fi) - TOL_COMPAS]
     for c in sorted(cands, key=lambda x: abs(x - float(t))):
         out = list(nous)
         out[idx:idx + 1] = [(float(ini), float(c), bpm, num, den),
                             (float(c), float(fi), bpm, num, den)]
         try:
-            return float(c), valida_i_normalitza_compassos(out, durada, offset)
+            return float(c), valida_i_normalitza_compassos(out, durada)
         except ValueError:
             continue
     raise ValueError("No hi ha cap línia de compàs vàlida per a este tall")

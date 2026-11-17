@@ -450,7 +450,7 @@ def _renderitza(binari, entrada, sortida, log, timeout=300):
 
 
 # --- export principal ------------------------------------------------------
-def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
+def exporta_partitura(sortida, log=None, bpm=None, bpb=None,
                       titol=None, wav=None,
                       genera_pdf=True, genera_mscz=True, musescore=None,
                       timeout=300, new_system_each=None, beat_type=4,
@@ -477,8 +477,7 @@ def exporta_partitura(sortida, log=None, bpm=None, bpb=None, offset=0.0,
         try:
             events = pipeline.events_partitura(
                 os.path.join(sortida, "acords.csv"), bpm, bpb,
-                offset=offset, durada=durada, mapa=mapa,
-                den=beat_type)
+                durada=durada, mapa=mapa, den=beat_type)
         except (RuntimeError, OSError) as e:
             log(f"partitura: no hi ha acords per escriure ({e})")
             events = []

@@ -96,7 +96,6 @@ class MarcadorsMixin:
         base = self.tempo_trams if trams is None else trams
         trams = list(base or [])
         durada = self._durada_wav()
-        offset = getattr(self, "offset", 0.0)
         beats = list(self._beats_per_validacio() or ())
         self._tall_qm_cancelat = False
         if beats:
@@ -111,7 +110,7 @@ class MarcadorsMixin:
             tr = trams[idx]
             factor = self.beat_factor(self.unitat_de_tram(tr))
             costats = tall_qm.opcions_tall(
-                trams, float(t), durada, offset, beats,
+                trams, float(t), durada, beats,
                 self.referencia_tempo_a(t), factor)
             if costats is None:
                 self._cancel·la_tall_qm()
@@ -131,15 +130,14 @@ class MarcadorsMixin:
                 return None
             costats = tall_qm.opcions_tall_graella(
                 trams, getattr(self, "tempo_map", None),
-                float(t), durada, offset, self.referencia_tempo_a(t))
+                float(t), durada, self.referencia_tempo_a(t))
             if costats is None:
                 self._cancel·la_tall_qm()
                 self.avis_editor(
                     "Tall QM: no hi ha cap combinació vàlida amb la graella.")
                 return None
             return self._tria_opcions_tall_qm(trams, idx, costats)
-        kw = dict(offset=offset,
-                  beats_qm=None,
+        kw = dict(beats_qm=None,
                   permissiu=True, ref_base=None,
                   beat_factor=self.beat_factor())
         try:

@@ -186,7 +186,7 @@ def escriu_manifest(ruta, files):
     return ruta
 
 
-def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
+def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, sr, log,
                  tempo_fix=True, amb_estructura=True, total_s=None,
                  acords=None, seccions=None, mapa_tempo=None, den=4,
                  beat_unit=None, bpm_unit=None, marques=None):
@@ -230,11 +230,11 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
     result = {"acords_csv": csv_ac, "sortida": sortida}
     manifest = []
     if tempo_fix:
-        dades_guia = _segments_guia_daw(csv_ac, bpm, bpb, offset=offset,
+        dades_guia = _segments_guia_daw(csv_ac, bpm, bpb,
                                         durada=total_s, mapa=mapa_viu, den=den)
-        segs = segments_export(csv_ac, bpm, bpb, offset=offset,
+        segs = segments_export(csv_ac, bpm, bpb,
                                durada=total_s, mapa=dades_guia[4], den=den)
-        guia = genera_guia_html(csv_ac, bpm, bpb, offset=offset, workdir=sortida,
+        guia = genera_guia_html(csv_ac, bpm, bpb, workdir=sortida,
                                 durada=total_s, log=log, _dades=dades_guia,
                                 den=den, beat_unit=unit_defecte,
                                 bpm_unit=unit_defecte)
@@ -267,7 +267,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
             # des de `segments.csv` (que és el resultat CRU de l'anàlisi), sinó
             # del model editat → les edicions de seccions no es perden.
             desa_abc_csv(abc, seccions, bpm, log, lliure=not tempo_fix,
-                         bpb=bpb, offset=offset)
+                         bpb=bpb)
             result["segments_csv"] = None
         else:
             csv_seg = os.path.abspath(csv_seg)
@@ -275,7 +275,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
                 raise FileNotFoundError(f"No trobo segments.csv: {csv_seg}")
             result["segments_csv"] = csv_seg
             fer_abc(csv_seg, abc, bpm, log, lliure=not tempo_fix, bpb=bpb,
-                    offset=offset, durada=total_s)
+                    durada=total_s)
         dest_abc = os.path.join(sortida, "wavs_estructura")
         neteja_wavs(dest_abc)
         result["n_estructura_wavs"] = fer_wavs_estructura(
@@ -292,7 +292,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
         result["n_mapa_trams"] = len(trams)
         result["mapa_tempo_midi"] = tempo_midi.desa_mapa_midi(
             os.path.join(dest_mapa, tempo_midi.NOM_MAPA_MIDI), trams,
-            offset=offset, marques=marques or (), log=log)
+            marques=marques or (), log=log)
         rubatos = [t for t in trams
                    if getattr(t, "tipus", None) == "rubato"]
         if rubatos:
@@ -341,18 +341,18 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, offset, sr, log,
 
 
 
-def regenera_wavs_acords(csv_path, sortida, bpm, bpb, offset, total_s, sr, log,
+def regenera_wavs_acords(csv_path, sortida, bpm, bpb, total_s, sr, log,
                          tempo_fix=True, manifest=None, den=4, mapa=None,
                          beat_unit=None, bpm_unit=None):
     # Recalcula guia + wavs_acords/ a partir del csv ja editat.
     dest = os.path.join(sortida, "wavs_acords")
     neteja_wavs(dest)
     if tempo_fix:
-        dades_guia = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
+        dades_guia = _segments_guia_daw(csv_path, bpm, bpb,
                                         durada=total_s, mapa=mapa, den=den)
-        segs = segments_export(csv_path, bpm, bpb, offset=offset,
+        segs = segments_export(csv_path, bpm, bpb,
                                durada=total_s, mapa=dades_guia[4], den=den)
-        genera_guia_html(csv_path, bpm, bpb, offset=offset, workdir=sortida,
+        genera_guia_html(csv_path, bpm, bpb, workdir=sortida,
                          durada=total_s, log=log, _dades=dades_guia, den=den,
                          beat_unit=beat_unit, bpm_unit=bpm_unit)
         return fer_wavs_acords(segs, dest, sr, log, manifest=manifest)

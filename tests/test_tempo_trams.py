@@ -27,11 +27,10 @@ from app import tempo, tempo_map  # noqa: E402
 SR = 22050
 
 
-def valida_n_enter(trams, durada, offset=0.0):
+def valida_n_enter(trams, durada):
     """Ajusta N/BPM (contracte §13.4) i valida estrictament el resultat."""
     trams, _ns, _avisos = tempo_map.ajusta_compassos_sencers(trams)
-    return tempo_map.valida_i_normalitza_compassos(
-        trams, durada, offset=offset)
+    return tempo_map.valida_i_normalitza_compassos(trams, durada)
 
 
 def wav_clics(td, bpm, dur=20.0, silenci_ini=2.0, nom="clics.wav",
@@ -151,7 +150,7 @@ class BeatsATramsTests(unittest.TestCase):
         for t in trams:
             self.assertLess(abs(t[2] - 120.0), 2.0, t)
         # el contracte de la graella s'ha de complir (N enter a tots els clips)
-        val = valida_n_enter(trams, 32.0, offset=off)
+        val = valida_n_enter(trams, 32.0)
         self.assertEqual(len(val), len(trams))
 
     def test_mapa_segueix_un_canvi_de_tempo(self):
@@ -165,7 +164,7 @@ class BeatsATramsTests(unittest.TestCase):
         self.assertGreaterEqual(len(trams), 2)
         self.assertLess(abs(trams[0][2] - 100.0), 3.0, trams)
         self.assertLess(abs(trams[1][2] - 130.0), 4.0, trams)
-        valida_n_enter(trams, 40.0, offset=off)
+        valida_n_enter(trams, 40.0)
 
     def test_massa_pocs_beats(self):
         trams, off = tempo.beats_a_trams([0.0, 0.5, 1.0], 10.0)
@@ -197,7 +196,7 @@ class MapaAutomaticTests(unittest.TestCase):
             self.assertLess(abs(base - 110.0), 3.0, base)
             self.assertLess(abs(off - 1.0), 0.2, off)
             self.assertLess(abs(trams[0][2] - 110.0), 3.0, trams)
-            valida_n_enter(trams, 30.0, offset=off)
+            valida_n_enter(trams, 30.0)
 
     def test_mapa_en_dos_tempos(self):
         with tempfile.TemporaryDirectory() as td:
@@ -211,7 +210,7 @@ class MapaAutomaticTests(unittest.TestCase):
             # N es compta sobre la duració del clip i no depén de l'offset:
             # validem des de 0 perquè el BPM derivat també deixe la frontera
             # en una línia de beat (amb offset 0,5 s no pot quadrar tot).
-            valida_n_enter(trams, 40.0, offset=0.0)
+            valida_n_enter(trams, 40.0)
 
 
 class PistesTempoTests(unittest.TestCase):
@@ -457,7 +456,7 @@ class RetempoTests(unittest.TestCase):
                  (0.5, 289.781330, 114.194, 1, 4),
                  (289.781330, 297.453333, 117.303262, 1, 4)]
         out = tempo_map.canvia_bpm_local(trams, 1, 114.194, 297.453333,
-                                         offset=0.5, num=4, den=4)
+                                         num=4, den=4)
         self.assertAlmostEqual(out[1][0], 0.5, places=6)
         self.assertAlmostEqual(out[1][1], 289.781330, places=6)
         self.assertAlmostEqual(out[1][2], 114.49062405790238, places=6)
@@ -481,7 +480,7 @@ class RetempoTests(unittest.TestCase):
         # sense cap combinació vàlida, el canvi de BPM es rebutja.
         trams = [(0.0, 1.99, 120.0, 4, 4), (1.99, 60.0, 120.0, 4, 4)]
         with self.assertRaises(ValueError):
-            tempo_map.canvia_bpm_local(trams, 0, 100.0, 60.0, offset=1.99)
+            tempo_map.canvia_bpm_local(trams, 0, 100.0, 60.0)
 
     def test_canviar_bpm_local_no_deixa_un_clip_interior_sense_temps(self):
         # Un clip interior de 1 ms no cap ni amb 4/8: es rebutja.

@@ -189,8 +189,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # no complirà la regla de beats sencers fins que l'edite.
         try:
             tempo_map.valida_i_normalitza_compassos(
-                self.tempo_trams, self._durada_wav(),
-                offset=0.0)
+                self.tempo_trams, self._durada_wav())
         except ValueError as e:
             self.log(f"AVÍS: el mapa de tempo/compàs no complix els compassos "
                      f"enters: {e}")
@@ -304,6 +303,16 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             "Grups de temps del compàs (p. ex. 3+3, 2+2+3). Buit = automàtic.")
         _eh.addWidget(self.ed_agr_lbl)
         _eh.addWidget(self.ed_agr)
+        self.ed_agr_aplica = QPushButton("Aplica")
+        self.ed_agr_aplica.setObjectName("secundari")
+        self.ed_agr_aplica.setMaximumWidth(60)
+        self.ed_agr_aplica.setToolTip(
+            "Aplica només l'Agrupació del clip seleccionat (ignora BPM, "
+            "Compàs, N i la resta de camps).")
+        self.ed_agr_aplica.clicked.connect(
+            lambda: self._aplica_editor_var("agr"))
+        self.ed_agr_aplica.setVisible(False)
+        _eh.addWidget(self.ed_agr_aplica)
         self.ed_agr_lbl.setVisible(False)
         self.ed_agr.setVisible(False)
         self.ed_n_lbl = QLabel("N:")
@@ -883,7 +892,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             pipeline.desa_abc_csv(os.path.join(sortida, "estructura_ABC.csv"),
                                   self.seccions, self.bpm, self.log,
                                   lliure=not self.tempo_fix, bpb=self.bpb,
-                                  offset=0.0,
                                   mapa=getattr(self, "tempo_map", None))
         except Exception as e:  # noqa: BLE001
             self.log(f"desat ABC ERROR: {e}")
@@ -1117,8 +1125,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         pipeline.desa_abc_csv(
             os.path.join(carpeta, "estructura_ABC.csv"),
             model["seccions"], model["bpm"], self.log,
-            lliure=not self.tempo_fix, bpb=model["bpb"],
-            offset=0.0, mapa=mapa)
+            lliure=not self.tempo_fix, bpb=model["bpb"], mapa=mapa)
         pipeline.desa_tempo_map(carpeta, model["trams"])
         if pipeline.desa_marcadors(carpeta, model["marcadors"]) is None:
             raise OSError("no s'han pogut desar els marcadors")
@@ -1171,7 +1178,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             durada = float(self.audio["durada"])
             tr = audio_edit.transforma_model(
                 self.acords, self.seccions, self.tempo_trams, self.marcadors,
-                0.0, durada, operacio, delta, pos=self.pos,
+                durada, operacio, delta, pos=self.pos,
                 loop_a=self.loop_a, loop_b=self.loop_b,
                 loop_on=self.loop_on)
             if operacio == audio_edit.RETALLA_FINAL:
@@ -1658,7 +1665,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if not self.tempo_fix:
             return f"{self._fmt(s)} / {self._fmt(self.audio['durada'])}"
 
-        mapa = getattr(self, "tempo_map", None)
+        mapa = self.__dict__.get("tempo_map")
 
         def _compas_beat(val):
             if val <= 0:
@@ -1679,7 +1686,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
     def _actualitza_temps(self):
         self._refresca_tempo_map()
         self.timeline.set_tempo_mode(self.tempo_fix, self.bpm, self.bpb,
-                                     0.0,
                                      beat_type=getattr(self, "beat_type", 4),
                                      mapa=self.tempo_map,
                                      bpm_unit=self.bpm_unit)
@@ -2283,7 +2289,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         try:
             nous = tempo_map.retempo_tram_detectat(
                 trams, idx, float(bpm_detectat), self._durada_wav(),
-                offset=0.0,
                 unitat_actual=self.unitat_de_tram(trams[idx]))
         except ValueError as e:
             self.avis_editor(f"Detecta BPM: {e}")
@@ -2308,7 +2313,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         graella, les imanta abans de rebutjar (bug 21-10: eliminar/fusionar/
         duplicar un tram fallava després de l'Anàlisi guiat)."""
         durada = self._durada_wav()
-        offset = 0.0
         # El recalcul va ABANS de validar/reparar fronteres, però DESPRÉS de
         # normalitzar: una eliminació deixa un forat i el clip afectat només
         # és el fusionat quan `normalitza_trams` l'ha estés. Així pot ajustar
@@ -2318,11 +2322,10 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             nous = self._recalcula_clip_tempo(nous, recalcul_idx, msg)
         try:
             fi = tempo_map.valida_i_normalitza_compassos(
-                nous, durada, offset,
-                beats_qm=self._beats_per_validacio())
+                nous, durada, beats_qm=self._beats_per_validacio())
         except ValueError as e:
             try:
-                fi = tempo_map.repara_fronteres(nous, durada, offset)
+                fi = tempo_map.repara_fronteres(nous, durada)
             except ValueError:
                 # El mapa heretat pot tindre una frontera antiga invàlida en
                 # un tram que esta operació no toca. No bloquegem eliminar/
@@ -2361,7 +2364,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         try:
             out = tempo_map._recalcula_costats(
                 trams, [(i, tram)], self._durada_wav(),
-                offset=0.0,
                 beats_qm=self._beats_per_validacio(),
                 ref_base=self.referencia_tempo_base(i),
                 beat_factor=self.beat_factor())
@@ -2783,8 +2785,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             if cand_tp is not None:
                 # Les fronteres heretades poden quedar a unes mil·lèsimes de
                 # la línia de compàs: s'imanten abans de rebutjar (21-10).
-                cand_tp = tempo_map.repara_fronteres(
-                    cand_tp, durada, offset=0.0)
+                cand_tp = tempo_map.repara_fronteres(cand_tp, durada)
         except ValueError as e:
             self.log(f"duplica selecció: canvi invalid, no s'ha fet res ({e})")
             self.avis_editor(f"Duplica: {e}")
@@ -2852,8 +2853,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             try:
                 # Les fronteres heretades poden quedar a mil·lèsimes de la
                 # graella: s'imanten abans de rebutjar (21-10).
-                cand_tp = tempo_map.repara_fronteres(
-                    trams, durada, offset=0.0)
+                cand_tp = tempo_map.repara_fronteres(trams, durada)
             except ValueError as e:
                 self.avis_editor(f"Elimina tempo: {e}")
                 return
@@ -2956,7 +2956,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             cand_sec = (self._valida_canvis_seccions(noves_seccions)
                         if noves_seccions is not None else list(self.seccions))
             cand_tp = (tempo_map.valida_i_normalitza_compassos(
-                noves_trams, durada, offset=0.0)
+                noves_trams, durada)
                 if noves_trams is not None
                 else list(self.tempo_trams or []))
         except ValueError as e:
@@ -3433,7 +3433,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         return bool(self._on_tempo_edit(idx))
 
 
-    def _mou_frontera_ui(self, trams, idx_frontera, t, durada, offset):
+    def _mou_frontera_ui(self, trams, idx_frontera, t, durada):
         """Mou una frontera des de la franja Editor (re-tempo §13.6).
 
         Retorna el mapa nou o `None` si no es pot (amb avís). Si el punter
@@ -3442,7 +3442,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         avisos = []
         try:
             nous = tempo_map.mou_frontera_retempo(
-                trams, int(idx_frontera), float(t), durada, offset=offset,
+                trams, int(idx_frontera), float(t), durada,
                 beats_qm=self._beats_per_validacio(), permissiu=True,
                 ref_base=self.referencia_tempo_base(idx_frontera),
                 avisos=avisos,
@@ -3789,9 +3789,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             else:
                 try:
                     trams = tempo_map.parteix_tram_marcador(
-                        trams, t, self._durada_wav(),
-                        offset=float(0.0 or 0.0),
-                        beats_qm=None)
+                        trams, t, self._durada_wav(), beats_qm=None)
                     tall = t
                 except ValueError as e:
                     # Normalment vol dir que A i B s'imanten al MATEIX
@@ -3846,9 +3844,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         else:
             try:
                 nous = tempo_map.parteix_tram_marcador(
-                    trams, t, self._durada_wav(),
-                    offset=0.0,
-                    beats_qm=None)
+                    trams, t, self._durada_wav(), beats_qm=None)
             except ValueError as e:
                 self.log(f"partir per la meitat: {e}")
                 self.avis_editor(f"Partir tempo: {e}")
@@ -4069,7 +4065,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         abc = os.path.join(sortida, "estructura_ABC.csv")
         pipeline.desa_abc_csv(abc, self.seccions, self.bpm, self.log,
                               lliure=not self.tempo_fix, bpb=self.bpb,
-                              offset=0.0,
                               mapa=getattr(self, "tempo_map", None))
         self.canvis.emit()   # l'estructura ha canviat → el projecte queda «brut»
         self.log(f"ABC recalculat (només CSV): {msg}")
@@ -4407,13 +4402,12 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 pipeline.desa_abc_csv(abc, self.seccions, self.bpm,
                                       self.log, lliure=not self.tempo_fix,
                                       bpb=self.bpb,
-                                      offset=0.0,
                                       mapa=getattr(self, "tempo_map", None),
                                       den=getattr(self, "beat_type", 4))
                 manifest = []
                 pipeline.regenera_wavs_acords(self.csv_acords, sortida,
                                               self.bpm, self.bpb,
-                                              0.0, self.audio["durada"],
+                                              self.audio["durada"],
                                               44100, self.log,
                                               self.tempo_fix,
                                               manifest=manifest,
@@ -4433,7 +4427,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                         os.path.join(sortida, "manifest.csv"), manifest)
             else:
                 pipeline.exporta_total(self.csv_acords, None,
-                                       sortida, self.bpm, self.bpb, 0.0,
+                                       sortida, self.bpm, self.bpb,
                                        44100, self.log, tempo_fix=self.tempo_fix,
                                        amb_estructura=False,
                                        mapa_tempo=list(self.tempo_trams or []),

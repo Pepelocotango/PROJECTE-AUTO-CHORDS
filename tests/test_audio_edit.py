@@ -109,7 +109,7 @@ class TestTransformaModelAudio(unittest.TestCase):
     def transforma(self, operacio, delta):
         return edita.transforma_model(
             self.acords, self.seccions, self.trams, [1.0, 5.0],
-            offset=2.0, durada=8.0, operacio=operacio, delta=delta,
+            durada=8.0, operacio=operacio, delta=delta,
             pos=3.0, loop_a=1.0, loop_b=6.0, loop_on=True)
 
     def test_retalla_inici_desplaca_model_offset_i_loop(self):
@@ -120,7 +120,6 @@ class TestTransformaModelAudio(unittest.TestCase):
                                            (2.0, 6.0, "B", "B")])
         self.assertEqual(nou["trams"], [(0.0, 2.0, 120.0, 4, 4),
                                         (2.0, 6.0, 90.0, 3, 4)])
-        self.assertEqual(nou["offset"], 0.0)
         self.assertEqual(nou["marcadors"], [3.0])
         self.assertEqual((nou["pos"], nou["loop_a"], nou["loop_b"]),
                          (1.0, 0.0, 4.0))
@@ -142,8 +141,8 @@ class TestTransformaModelAudio(unittest.TestCase):
                                            (6.0, 10.0, "B", "B")])
         self.assertEqual(nou["trams"], [(0.0, 6.0, 120.0, 4, 4),
                                         (6.0, 10.0, 90.0, 3, 4)])
-        self.assertEqual((nou["offset"], nou["marcadors"], nou["pos"]),
-                         (4.0, [3.0, 7.0], 5.0))
+        self.assertEqual((nou["marcadors"], nou["pos"]),
+                         ([3.0, 7.0], 5.0))
 
     def test_silenci_final_estén_tots_els_carrils(self):
         nou = self.transforma(edita.SILENCI_FINAL, 2.0)
@@ -151,4 +150,3 @@ class TestTransformaModelAudio(unittest.TestCase):
         self.assertEqual(nou["acords"][-1].payload, pipeline.FORAT_ACORD)
         self.assertEqual(nou["seccions"][-1], (4.0, 10.0, "B", "B"))
         self.assertEqual(nou["trams"][-1], (4.0, 10.0, 90.0, 3, 4))
-        self.assertEqual(nou["offset"], 2.0)

@@ -1000,7 +1000,6 @@ class TestTempoEnViu(_Base):
             mapa_tempo.TramMapa(13.186992, 23.129480, 145.0, "normal", "4/4"),
             mapa_tempo.TramMapa(23.129480, 30.0, 156.253618, "normal", "4/4"),
         ]
-        self.v.offset = 23.15
         self.v._refresca_tempo_map()
         self.assertTrue(self.v._elimina_tram(3))
         self.assertEqual(len(self.v.tempo_trams), 3)

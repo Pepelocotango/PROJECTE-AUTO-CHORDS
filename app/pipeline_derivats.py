@@ -9,7 +9,7 @@ import os
 from . import bpm_unit as bpm_unit_mod, limits
 from .pipeline_mapa import _mapa_tempo_carpeta
 
-def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None,
+def _segments_guia_daw(csv_path, bpm, bpb, durada=0.0, mapa=None,
                       den=4):
     """Calcula els segments quantitzats a **1/32** per als locators i la guia HTML.
 
@@ -18,14 +18,12 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None,
     """
     bpm = float(bpm)
     bpb = int(bpb)
-    offset = float(offset or 0.0)
     durada = float(durada or 0.0)
     step = 60.0 / bpm / 8.0                  # fusa (1/32)
     slots_bar = int(round(limits.bar_quarters(bpb, den) * 8))
 
     if mapa is None:
-        mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)),
-                                   offset=offset)
+        mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)))
     elif hasattr(mapa, "es_constant") and mapa.es_constant():
         mapa = None
 
@@ -37,12 +35,12 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None,
     def _q(t):
         if mapa is not None:
             return mapa.quarters(t)
-        return (float(t) - offset) / (60.0 / bpm)
+        return float(t) / (60.0 / bpm)
 
     def _t_de_p(p):
         if mapa is not None:
             return mapa.t_de_quarters(p / 8.0)
-        return offset + p * step
+        return p * step
 
     def _pos_de_p(p):
         if mapa is not None:
@@ -73,7 +71,7 @@ def _segments_guia_daw(csv_path, bpm, bpb, offset=0.0, durada=0.0, mapa=None,
     return segs, end, step, slots_bar, mapa, _pos_de_p
 
 
-def segments_locators(csv_path, bpm, bpb, offset=0.0, durada=None,
+def segments_locators(csv_path, bpm, bpb, durada=None,
                       mapa=None, _dades=None, den=4):
     """Guia DAW **en memòria**: `[(posició_1/32, acord, durada_en_beats), …]`.
 
@@ -83,7 +81,7 @@ def segments_locators(csv_path, bpm, bpb, offset=0.0, durada=None,
     usen `segments_export` (temps exactes) i el `manifest.csv`.
     """
     if _dades is None:
-        _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
+        _dades = _segments_guia_daw(csv_path, bpm, bpb,
                                     durada=durada, mapa=mapa, den=den)
     segs, end, _step, _slots_bar, _mapa, _pos_de_p = _dades
     out = []
@@ -93,7 +91,7 @@ def segments_locators(csv_path, bpm, bpb, offset=0.0, durada=None,
     return out
 
 
-def events_partitura(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
+def events_partitura(csv_path, bpm, bpb, durada=None, mapa=None,
                      _dades=None, den=4):
     """Acords per a la PARTITURA en memòria: `[(beat_inici, acord, beats), …]`.
 
@@ -101,7 +99,7 @@ def events_partitura(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
     **1/32**. Així la partitura no depèn de cap fitxer intermedi.
     """
     if _dades is None:
-        _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
+        _dades = _segments_guia_daw(csv_path, bpm, bpb,
                                     durada=durada, mapa=mapa, den=den)
     segs, end, _step, _slots_bar, _mapa, _pos_de_p = _dades
     out = []
@@ -153,7 +151,7 @@ def segments_exactes(csv_path, durada=0.0):
     return out
 
 
-def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
+def segments_export(csv_path, bpm, bpb, durada=None, mapa=None,
                     den=4):
     """`[(posicio_1/32, acord, ini_s, fi_s)]` per als WAVs i el manifest.
 
@@ -163,11 +161,9 @@ def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
     """
     bpm = float(bpm)
     bpb = int(bpb)
-    offset = float(offset or 0.0)
     durada = float(durada or 0.0)
     if mapa is None:
-        mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)),
-                                   offset=offset)
+        mapa = _mapa_tempo_carpeta(os.path.dirname(os.path.abspath(csv_path)))
     elif hasattr(mapa, "es_constant") and mapa.es_constant():
         mapa = None
     step = 60.0 / bpm / 8.0                  # fusa (1/32)
@@ -176,12 +172,12 @@ def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
     def _q(t):
         if mapa is not None:
             return mapa.quarters(t)
-        return (float(t) - offset) / (60.0 / bpm)
+        return float(t) / (60.0 / bpm)
 
     def _t_de_p(p):
         if mapa is not None:
             return mapa.t_de_quarters(p / 8.0)
-        return offset + p * step
+        return p * step
 
     def _pos(p):
         if mapa is not None:
@@ -200,7 +196,7 @@ def segments_export(csv_path, bpm, bpb, offset=0.0, durada=None, mapa=None,
     return out
 
 
-def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
+def genera_guia_html(csv_path, bpm, bpb, workdir=None, durada=None,
                      mapa=None, log=None, _dades=None, den=4,
                      beat_unit=None, bpm_unit=None):
     """Genera `guia_acords.html` en memòria i en retorna la ruta.
@@ -213,14 +209,13 @@ def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
     workdir = workdir or os.path.dirname(os.path.abspath(csv_path))
     bpm = float(bpm)
     bpb = int(bpb)
-    offset = float(offset or 0.0)
     durada_val = float(durada or 0.0)
     unit_defecte = bpm_unit_mod.normalitza(
         beat_unit or bpm_unit
         or bpm_unit_mod.unitat_per_defecte(bpb, den))
     bpm_mostra = bpm_unit_mod.de_quarter(bpm, unit_defecte)
     if _dades is None:
-        _dades = _segments_guia_daw(csv_path, bpm, bpb, offset=offset,
+        _dades = _segments_guia_daw(csv_path, bpm, bpb,
                                     durada=durada_val, mapa=mapa, den=den)
     segs, end, step, slots_bar, mapa_resolt, _pos = _dades
 
@@ -229,7 +224,7 @@ def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
         nbars = len(talls)
     else:
         nbars = (end + slots_bar - 1) // slots_bar
-        talls = [offset + b * slots_bar * step for b in range(nbars)]
+        talls = [b * slots_bar * step for b in range(nbars)]
 
     def _bar_de(t):
         k = 0
@@ -283,7 +278,7 @@ def genera_guia_html(csv_path, bpm, bpb, offset=0.0, workdir=None, durada=None,
     return guia_path
 
 
-def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0, mapa=None,
+def pos_compas(t, bpm, bpb=4, lliure=False, mapa=None,
                den=4):
     """Posició en format compàs.temps.fusa (qualsevol compàs).
 
@@ -296,9 +291,9 @@ def pos_compas(t, bpm, bpb=4, lliure=False, offset=0.0, mapa=None,
         return mapa.label(t)           # mateixa forma (compàs.temps.fusa)
     step = 60.0 / bpm / 8              # fusa (1/32)
     SB = max(1, int(round(limits.bar_quarters(bpb, den) * 8)))
-    # Sense clampar: abans de l'offset (compàs 1) les posicions son negatives
+    # Sense clampar: abans del compàs 1 les posicions son negatives
     # -> el silenci inicial queda com un compte enrere (compàs -1, -2...).
-    p = round((float(t) - float(offset)) / step)
+    p = round(float(t) / step)
     return "%d.%d.%d" % (p // SB + 1, (p % SB) // 8 + 1, 1 + (p % 8))
 
 

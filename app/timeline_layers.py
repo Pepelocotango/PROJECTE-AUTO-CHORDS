@@ -170,14 +170,13 @@ class GridLayer(QGraphicsItem):
         self.setPos(self._x_offset, self._top)
         self.update()
 
-    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0, beat_type=4,
+    def update_mode(self, tempo_fix, bpm, bpb, beat_type=4,
                     mapa=None, bpm_unit="negra"):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpm_unit = bpm_unit
         self._bpb = int(bpb)
         self._beat_type = int(beat_type or 4)
-        self._offset = float(offset)
         self._mapa = mapa
         self.update()
 
@@ -189,7 +188,6 @@ class GridLayer(QGraphicsItem):
     def paint(self, painter, option, widget=None):
         p = painter
         p.setRenderHint(QPainter.Antialiasing, False)
-        off = getattr(self, "_offset", 0.0)
         view_px = max(self._view_right - self._view_left, 1e-6) * self._pps
         div = graella.DIVISIONS.get(self._divisio) if self._divisio else None
         plan = grid_plan(self._tempo_fix, self._bpm, self._bpb, self._pps,
@@ -215,7 +213,7 @@ class GridLayer(QGraphicsItem):
             # El `kind` (bar/beat/sub o («bar», n)) s'ha de passar EXPLÍCIT:
             # si es deixa inferir per la mida del pas, amb un mapa variable
             # s'equivoca i el grid no quadra amb els canvis de tempo/compàs.
-            for t in grid_positions(self._view_left, self._view_right, step, off,
+            for t in grid_positions(self._view_left, self._view_right, step,
                                     mapa=self._mapa, kind=kind):
                 if t >= 0:
                     x = (t - self._view_left) * self._pps
@@ -327,14 +325,13 @@ class RulerLayer(QGraphicsItem):
         self.setPos(self._x_offset, self._top)
         self.update()
 
-    def update_mode(self, tempo_fix, bpm, bpb, offset=0.0, beat_type=4,
+    def update_mode(self, tempo_fix, bpm, bpb, beat_type=4,
                     mapa=None, bpm_unit="negra"):
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpm_unit = bpm_unit
         self._bpb = int(bpb)
         self._beat_type = int(beat_type or 4)
-        self._offset = float(offset)
         self._mapa = mapa
         self.update()
 
@@ -371,7 +368,6 @@ class RulerLayer(QGraphicsItem):
     def paint(self, painter, option, widget=None):
         p = painter
         p.setRenderHint(QPainter.Antialiasing, False)
-        off = getattr(self, "_offset", 0.0)
         rect = self.boundingRect()
         p.fillRect(rect, QColor(RULER_BG))
         p.setPen(QPen(QColor(theme.TL_WAVE_MID), 1))
@@ -389,7 +385,7 @@ class RulerLayer(QGraphicsItem):
                 continue
             kind_name = kind[0] if isinstance(kind, tuple) else kind
             p.setPen(QPen(QColor(col[kind_name]), 1))
-            for t in grid_positions(self._view_left, self._view_right, sub, off,
+            for t in grid_positions(self._view_left, self._view_right, sub,
                                     mapa=self._mapa, kind=kind):
                 if t >= 0:
                     x = (t - self._view_left) * self._pps
@@ -403,16 +399,17 @@ class RulerLayer(QGraphicsItem):
         p.setFont(font)
         fm = QFontMetricsF(font)
         last_label_x = -1e9
+        last_label = None
         # posicions per índex (sense acumular → les etiquetes d'inici de compàs
         # ja no deriven a «(N-1).4»)
-        for t in grid_positions(self._view_left, self._view_right, step, off,
+        for t in grid_positions(self._view_left, self._view_right, step,
                                 mapa=self._mapa, kind=step_kind):
             if t >= 0:
                 x = (t - self._view_left) * self._pps
                 p.setPen(QPen(QColor(theme.TL_GRID_MEASURE), 1))
                 p.drawLine(QPointF(x, self._height - 8),
                            QPointF(x, self._height - 1))
-                lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb, off,
+                lab = fmt_pos(t, self._tempo_fix, self._bpm, self._bpb,
                               step, mapa=self._mapa, kind=step_kind)
                 is_bar = is_bar_start_label(lab)
                 label_font = QFont("Sans Serif", 9 if is_bar else 8,
@@ -423,7 +420,7 @@ class RulerLayer(QGraphicsItem):
                 # La col·lisió es calcula amb la posició SENSE clamp; si no,
                 # la primera etiqueta (desplaçada a x=2) feia saltar la segona.
                 label_left = x - wlab / 2
-                if label_left > last_label_x:
+                if lab != last_label and label_left > last_label_x:
                     tx = label_left
                     if tx < 2.0:
                         tx = 2.0
@@ -437,6 +434,7 @@ class RulerLayer(QGraphicsItem):
                     p.setPen(QPen(QColor(theme.TL_GRID_MEASURE if is_bar else RULER_TEXT), 1))
                     p.drawText(QPointF(tx, self._height - 11), lab)
                     last_label_x = label_left + wlab + 4.0
+                    last_label = lab
 
         # CANVIS de tempo/compàs (com la «tempo track» d'un DAW): un marcador a
         # cada frontera del mapa, amb el valor nou.

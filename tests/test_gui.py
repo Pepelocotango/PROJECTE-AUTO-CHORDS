@@ -4878,6 +4878,44 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         finally:
             v.close()
 
+    def test_editor_aplica_agrupacio_explicita(self):
+        """El botó propi d'Agrupació aplica només eixa variable."""
+        v = _vista_segueix_model___visor()
+        try:
+            self.assertTrue(v.aplica_tempo_trams([(0.0, 40.0, 120.0, 7, 8)]))
+            v._focus_editor("tempo", 0)
+            v.ed_agr.setText("3+2+2")
+            v.ed_agr_aplica.click()
+            self.assertEqual(v.tempo_trams[0].agrupacio, "3+2+2")
+            self.assertEqual(v.tempo_trams[0].num, 7)
+            self.assertEqual(v.tempo_trams[0].den, 8)
+        finally:
+            v.close()
+
+    def test_editor_agrupacio_deriva_la_unitat_si_era_automatica(self):
+        v = _vista_segueix_model___visor()
+        try:
+            self.assertTrue(v.aplica_tempo_trams([(0.0, 40.0, 120.0, 6, 8)]))
+            v._focus_editor("tempo", 0)
+            v.ed_agr.setText("2+2+2")
+            v.ed_agr_aplica.click()
+            self.assertEqual(v.tempo_trams[0].agrupacio, "2+2+2")
+            self.assertEqual(v.tempo_trams[0].beat_unit, "corxera")
+        finally:
+            v.close()
+
+    def test_editor_canvi_compas_actualitza_agrupacio_per_defecte(self):
+        v = _vista_segueix_model___visor()
+        try:
+            v.aplica_tempo_trams([(0.0, 40.0, 120.0, 4, 4)])
+            v._focus_editor("tempo", 0)
+            v.ed_fam.setText("7/8")
+            v.ed_compas_aplica.click()
+            self.assertEqual(v.tempo_trams[0].agrupacio, "7")
+            self.assertEqual(v.tempo_trams[0].beat_unit, "corxera")
+        finally:
+            v.close()
+
     def test_editor_canvi_compas_conserva_pulsacio_per_defecte(self):
         """El botó Compàs de l'Editor aplica el Cas B per defecte."""
         v = _vista_segueix_model___visor()
@@ -5288,7 +5326,7 @@ class TestProjecteAssociat(_Base):
         self.assertTrue(f.visor_ref._renomena_acords([0], "C"))
         res = pipeline.exporta_total(
             csv_ac=os.path.join(p.carpeta, "acords.csv"), csv_seg=None,
-            sortida=p.carpeta, bpm=120.0, bpb=4, offset=0.0, sr=44100,
+            sortida=p.carpeta, bpm=120.0, bpb=4, sr=44100,
             log=lambda *_: None, tempo_fix=True, amb_estructura=True,
             total_s=2.0,
             acords=f.visor_ref.acords, seccions=f.visor_ref.seccions,
@@ -5304,7 +5342,7 @@ class TestProjecteAssociat(_Base):
         with self.assertRaises(RuntimeError) as ctx:
             pipeline.exporta_total(
                 csv_ac=os.path.join(p.carpeta, "acords.csv"), csv_seg=None,
-                sortida=p.carpeta, bpm=120.0, bpb=4, offset=0.0, sr=44100,
+                sortida=p.carpeta, bpm=120.0, bpb=4, sr=44100,
                 log=lambda *_: None, tempo_fix=True, amb_estructura=True,
                 total_s=2.0,
                 acords=f.visor_ref.acords, seccions=f.visor_ref.seccions)
@@ -5887,7 +5925,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(merged[3:], (4, 4))
         self.assertAlmostEqual(float(merged[2]), 144.732, places=3)
         self.assertAlmostEqual(
-            tm._compassos_del_tram(merged, 0, vr.offset), 10.0, places=3)
+            tm._compassos_del_tram(merged, 0), 10.0, places=3)
 
     def test_reparacio_amb_negra_amb_punt_9_8(self):
         """La reparació també ha d'aplicar la unitat del beat (4,5 negres)."""
@@ -6179,7 +6217,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.talla_tempo(12.5))
         self.assertEqual(len(vr.tempo_trams), 2)
         for i, tr in enumerate(vr.tempo_trams):
-            nb = tm._compassos_del_tram(tr, i, vr.offset)
+            nb = tm._compassos_del_tram(tr, i)
             self.assertAlmostEqual(nb, round(nb), places=5)
         # El recalcul ha pogut canviar la signatura (ací 4/4 → 5/4) o el BPM.
         self.assertTrue(

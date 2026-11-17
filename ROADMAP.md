@@ -94,7 +94,8 @@ el projecte de DAW queden ajornats.
   **2026-11-17:** pols completa per a tots els compassos acceptats
   (`1…12` / `2, 4, 8, 16`): `rodona_punt`, `blanca_punt`, `negra_punt` i
   `corxera_punt`; `3/8` és simple triple; els compostos amb denominador 2/4/16
-  reben la pols amb punt i l'agrupació `3+3…`; el metrònom continua clicant el
+  reben la pols amb punt i l'agrupació `3+3…`; `5/8`, `7/8` i `8/8` tenen
+  agrupació per defecte `5`, `7` i `8`; el metrònom continua clicant el
   denominador. La graella i el regle deixen de numerar `x/8`/`x/16` com si
   foren `x/4`; el canvi de compàs conserva el BPM visible per defecte (Cas B)
   amb opció explícita de Cas A. Classificador **ALT/MITJÀ/BAIX** amb
@@ -141,11 +142,9 @@ el projecte de DAW queden ajornats.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
   Tags locals renumerats a `v0.9.x`; **cap push**.
-- **Suite**: darrera completa **1619 OK** (1 skip), abans dels canvis de
-  compassos de 2026-11-17. En aquesta sessió: `make commit-check` verd
-  (compile + pyflakes + docs-check), 240 tests de tempo/metrònom/mètrica i 90
-  tests de GUI dirigits verds. **`make check` complet pendent** (cal OK de
-  l'operador).
+- **Suite**: `make check` complet executat (2026-11-17) amb **1608 tests**
+  (1 skip) i **tot OK**. Inclou la prova de canvi 4/4→3/4 de MusicXML i la
+  regressió d'agrupació en canviar el compàs.
 
 **Pendent:**
 - **Publicar la release `v0.9.3`** quan l'operador ho ordene; `release.yml` crearà
@@ -154,12 +153,15 @@ el projecte de DAW queden ajornats.
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
 - **Fase 12**: congelació, higiene i CI; inclou el **CI automàtic en push/PR**
   (proposat, encara no activat).
-- **Purga interna de l'`offset=0`**: encara queden paràmetres interns a
-  `pipeline_*`, `timeline*` i `tempo_map` que ja no s'alimenten des de la UI.
-  No afecten l'usuari; cal eliminar-los en una passada pròpia amb suite verda.
-- **Agrupació explícita dels compassos irregulars** (`5/8`, `7/8`, `8/8`,
-  `10/8`, `11/8`, `5/4`…): el model i el metrònom ja accepten l'agrupació, però
-  falta decidir-la a la UI en lloc d'oferir només els valors per defecte.
+- **Purga interna de l'`offset=0`**: feta a la UI, `TimelineView`, pipeline de
+  derivats, exportació, `TempoMap` i les funcions de càlcul de `tempo_map`.
+  Queden paràmetres auxiliars a la detecció de tempo (`pipeline_vamp`), el
+  metrònom forçat i la feina d'anàlisi; no els alimenta la UI (deute intern
+  sense efecte visible).
+- **Agrupació explícita dels compassos irregulars**: feta a la franja Editor
+  amb camp + botó **Aplica** propi; per defecte `5/8` → `5`, `7/8` → `7` i
+  `8/8` → `8`. Les altres agrupacions (`3+2`, `2+2+3`, `3+3+2`…) es poden
+  triar explícitament.
 - **Rubato avançat** i **export de projecte DAW**: ajornats sense data.
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
 - **Quantitza BPM** continua sent una operació separada del recalc guiat.

@@ -194,7 +194,6 @@ class TempoMixin:
             try:
                 nous5 = tempo_map.ajusta_bpm_a_compassos(
                     tmp, idx, self._durada_wav(),
-                    offset=0.0,
                     beats_qm=self._beats_per_validacio())
             except ValueError as e:
                 self.avis_editor(f"Unitat: {e}")
@@ -313,7 +312,6 @@ class TempoMixin:
             try:
                 nous = mapa_tempo.recalcula_tram_c(
                     trams, idx, self._durada_wav(),
-                    offset=0.0,
                     bpm=float(bpm), num=int(num), den=int(den),
                     camp="bpm")
             except ValueError as e:
@@ -323,8 +321,7 @@ class TempoMixin:
             try:
                 nous5 = tempo_map.canvia_bpm_local(
                     [tuple(t) for t in trams], idx, float(bpm),
-                    self._durada_wav(), offset=0.0,
-                    num=num, den=den,
+                    self._durada_wav(), num=num, den=den,
                     beats_qm=self._beats_per_validacio(), permissiu=True)
             except ValueError as e:
                 self.avis_editor(f"Tempo: {e}")
@@ -354,13 +351,18 @@ class TempoMixin:
         return True
 
     def edita_compas_objectiu(self, idx, num, den, desa=True,
-                              beat_unit=None, bpm_visible=None):
+                              beat_unit=None, bpm_visible=None,
+                              agrupacio=None):
         """Canvia el compàs conservant la **pulsació** (Cas B) per defecte.
 
         La referència és el BPM visible del clip en la seua unitat actual. Si
         la unitat era la derivada del compàs, es deriva la nova (`4/4` →
         `6/8` = negra → negra amb punt); si era explícita, es respecta. El BPM
         intern es recalcula perquè el número visible no canvie.
+
+        En canviar el compàs, l'agrupació passa al **valor per defecte** del
+        compàs nou (`7/8` → `7`, `3/4` → `3`…); es pot passar una
+        `agrupacio` explícita si el cridador ja ha triat una altra.
 
         `bpm_visible` s'expressa en la unitat antiga. Si és `None`, s'usa el
         BPM visible actual del clip. Per al Cas A (conservar el BPM intern),
@@ -391,8 +393,12 @@ class TempoMixin:
             return False
         unit_nova = self._unitat_en_canvi_compas(tr, provisional, beat_unit)
         bpm_intern = bpm_unit_mod.a_quarter(float(bpm_visible), unit_nova)
+        if agrupacio is None and (num, den) != (int(tr.num), int(tr.den)):
+            agrupacio = tempo_map.agrupacio_a_text(
+                tempo_map.agrupacio_compas(num, den))
         return bool(self.edita_tempo_objectiu(
-            idx, bpm_intern, num, den, desa=desa, beat_unit=unit_nova))
+            idx, bpm_intern, num, den, desa=desa, beat_unit=unit_nova,
+            agrupacio=agrupacio))
 
     def edita_n_compassos(self, idx, n, num, den, desa=True, beat_unit=None):
         """Edita **N compassos** i compàs; el BPM es recalcula automàticament.
@@ -408,7 +414,6 @@ class TempoMixin:
         try:
             nous = mapa_tempo.recalcula_tram_c(
                 trams, idx, self._durada_wav(),
-                offset=0.0,
                 n=int(n), bpm=float(trams[idx].bpm), num=int(num),
                 den=int(den), camp="n")
         except ValueError as e:
@@ -443,8 +448,7 @@ class TempoMixin:
         """
         tram = trams[int(idx)]
         ini, fi = float(tram[0]), float(tram[1])
-        base = tempo_map._base_tram(
-            tram, int(idx), 0.0)
+        base = tempo_map._base_tram(tram, int(idx))
         dt = fi - base
         num, den = int(num), int(den)
         bq = tempo_map._bar_quarters(num, den)
@@ -547,8 +551,7 @@ class TempoMixin:
         (en carregar un projecte o en connectar la finestra).
         """
         issues = tempo_map.problemes_compassos_sencers(
-            self.tempo_trams, self._durada_wav(),
-            offset=0.0)
+            self.tempo_trams, self._durada_wav())
         if not issues:
             self._mapa_avis_actual = ""
             return []
@@ -622,8 +625,7 @@ class TempoMixin:
         entrada = list(trams or [])
         try:
             nous = tempo_map.valida_i_normalitza_permissiu(
-                entrada, self._durada_wav(),
-                offset=0.0)
+                entrada, self._durada_wav())
         except ValueError as e:
             self.avis_editor(f"{msg}: {e}")
             return False
@@ -638,10 +640,8 @@ class TempoMixin:
         Si el mapa no val, el gest es rebutja amb un avís.
         """
         durada = self._durada_wav()
-        offset = 0.0
         try:
-            return tempo_map.valida_i_normalitza_permissiu(
-                trams, durada, offset)
+            return tempo_map.valida_i_normalitza_permissiu(trams, durada)
         except ValueError as e:
             if msg:
                 self.log(f"{msg}: el mapa no complix el contracte de clips "
@@ -855,12 +855,10 @@ class TempoMixin:
             if mode == "fix":
                 nous = tempo_map.canvia_compassos_tram(
                     trams, idx, n_new=int(res["n"]), num=int(res["num"]),
-                    den=int(res["den"]), durada=self._durada_wav(),
-                    offset=0.0)
+                    den=int(res["den"]), durada=self._durada_wav())
             else:
                 nous = mapa_tempo.recalcula_tram_c(
                     trams, idx, self._durada_wav(),
-                    offset=0.0,
                     n=int(res["n"]), bpm=float(bpm_camp),
                     num=int(res["num"]), den=int(res["den"]), camp="n")
         except ValueError as e:
@@ -1025,13 +1023,12 @@ class TempoMixin:
                 self.avis_editor(
                     "La fi de l'últim clip marca el final de la WAV")
             return
-        offset = float(0.0)
         avisos = []
         unitats = {j: self.unitat_de_tram(tr)
                    for j, tr in enumerate(trams)}
         try:
             nous = tempo_map.mou_frontera_retempo(
-                trams, p_idx, float(t), self._durada_wav(), offset=offset,
+                trams, p_idx, float(t), self._durada_wav(),
                 beats_qm=self._beats_per_validacio(), permissiu=True,
                 ref_base=self.referencia_tempo_base(p_idx), avisos=avisos,
                 beat_factor=self.beat_factor(), unitats=unitats)
@@ -1059,8 +1056,7 @@ class TempoMixin:
         try:
             nous = tempo_map.canvia_compassos_tram(
                 trams, idx, delta_compassos=delta_compassos,
-                durada=self._durada_wav(),
-                offset=0.0, factor=factor)
+                durada=self._durada_wav(), factor=factor)
         except ValueError as e:
             self.avis_editor(f"Compassos: {e}")
             return False
@@ -1136,8 +1132,7 @@ class TempoMixin:
                 continue
             try:
                 trams = tempo_map.parteix_tram_marcador(
-                    trams, tall, durada,
-                    offset=0.0, permissiu=True)
+                    trams, tall, durada, permissiu=True)
             except ValueError as e:
                 self.avis_editor(f"Rubato: {e}")
                 return False

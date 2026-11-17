@@ -6,7 +6,7 @@ integrant el BPM de cada tram, de manera que un DAW els llig en la mateixa
 posició que el mapa.
 
 El rubato és només un flag de notació en este projecte (no una corba de BPM):
-s'exporta amb els mateixos events i el marker ho indica. L'offset/anacrusi
+s'exporta amb els mateixos events.
 s'anota amb un marker a l'inici.
 """
 from __future__ import annotations
@@ -82,7 +82,7 @@ def _text_marcador(m):
     return t, text
 
 
-def _events_base(trams, offset=0.0, marques=()):
+def _events_base(trams, marques=()):
     """Events `(t, prioritat, tipus, valor)` abans de convertir a ticks."""
     trams = list(trams or ())
     if not trams:
@@ -92,9 +92,6 @@ def _events_base(trams, offset=0.0, marques=()):
     if float(getattr(trams[0], "ini", trams[0][0])) > 1e-9:
         events.append((0.0, 0, "tempo", first_bpm))
         events.append((0.0, 1, "timesig", (first_num, first_den, first_unit)))
-    if float(offset or 0.0) > 0:
-        events.append((0.0, 4, "marker",
-                       f"Anacrusi: {float(offset):.6f} s"))
     for i, tr in enumerate(trams):
         bpm, num, den, unit = _tram_camps(tr)
         t = max(0.0, float(getattr(tr, "ini", tr[0])))
@@ -140,9 +137,9 @@ def _a_ticks(events, bpm_inicial):
     return out
 
 
-def _events_de_conductor(trams, offset=0.0, marques=()):
+def _events_de_conductor(trams, marques=()):
     """Retorna `(events_meta, n_tempo)` per a la pista de conductor."""
-    base, bpm_inicial = _events_base(trams, offset=offset, marques=marques)
+    base, bpm_inicial = _events_base(trams, marques=marques)
     ticks = _a_ticks(base, bpm_inicial)
     out = [(0, _meta(META_TRACK_NAME,
                      "AUTO CHORDS — Tempo Map".encode("utf-8")))]
@@ -181,17 +178,16 @@ def _events_de_conductor(trams, offset=0.0, marques=()):
     return out, n_tempo, end_tick
 
 
-def desa_mapa_midi(ruta, trams, offset=0.0, marques=(), log=None):
+def desa_mapa_midi(ruta, trams, marques=(), log=None):
     """Escriu `mapa_tempo.mid` (tipus 1, una pista de conductor).
 
     Args:
         ruta: destí `.mid`.
         trams: `TramMapa`/tuples del mapa, en orde.
-        offset: offset/anacrusi en segons (s'anota amb un marker).
         marques: markers addicionals: `t` o `(t, tipus)`.
     Retorna la ruta escrita.
     """
-    events, n_tempo, end_tick = _events_de_conductor(trams, offset, marques)
+    events, n_tempo, end_tick = _events_de_conductor(trams, marques)
     track = _track(events, end_tick)
     cap = b"MThd" + struct.pack(">IHHH", 6, 1, 1, PPQ)
     escriu_atomic_bytes(ruta, cap + track)

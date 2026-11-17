@@ -68,7 +68,7 @@ def processa_acords(acords, durada_min=0.0, fusiona_iguals=True,
     return out
 
 
-def snap_acords(acords, bpm, bpb=4, offset=0.0, divisio=1):
+def snap_acords(acords, bpm, bpb=4, divisio=1):
     """Mou l'inici de cada acord a la subdivisió més propera de la graella.
 
     `divisio` = subdivisions per temps (1 = temps, 2 = corxera…).
@@ -79,8 +79,8 @@ def snap_acords(acords, bpm, bpb=4, offset=0.0, divisio=1):
     out = []
     for it in acords:
         t = float(it[0])
-        p = round((t - float(offset)) / beat)
-        nou = max(0.0, float(offset) + p * beat)
+        p = round(t / beat)
+        nou = max(0.0, p * beat)
         if out and abs(nou - out[-1][0]) < 1e-9:
             continue                     # dos acords al mateix punt -> un
         out.append((nou, *list(it[1:])))
@@ -97,7 +97,7 @@ def grid_de_opcions(cl, divisio=1):
                            "corxera")
 
 
-def _grid_target(t, grid, bpm, bpb, offset, mapa):
+def _grid_target(t, grid, bpm, bpb, mapa):
     """Instant de graella més pròxim; amb mapa variable, mana el mapa."""
     d = graella.DIVISIONS.get(grid)
     if d is None:
@@ -112,11 +112,10 @@ def _grid_target(t, grid, bpm, bpb, offset, mapa):
         grid, bpm, True, bpb, 4)
     if step <= 0:
         return float(t)
-    off = float(offset or 0.0)
-    return max(0.0, off + round((float(t) - off) / step) * step)
+    return max(0.0, round(float(t) / step) * step)
 
 
-def _snap_a_graella(items, durada, grid, bpm, bpb, offset, mapa, log,
+def _snap_a_graella(items, durada, grid, bpm, bpb, mapa, log,
                     inici=0.0, fi=None, capcalera=True):
     """Aplica el mateix nucli de Quantitza a una llista d'onsets d'acords.
 
@@ -147,7 +146,7 @@ def _snap_a_graella(items, durada, grid, bpm, bpb, offset, mapa, log,
     for i, (t, nom) in enumerate(items):
         fi_i = items[i + 1][0] if i + 1 < len(items) else fi
         clips.append((max(inici, t), max(inici, fi_i), (nom,)))
-    starts = [max(inici, _grid_target(t, grid, bpm, bpb, offset, mapa))
+    starts = [max(inici, _grid_target(t, grid, bpm, bpb, mapa))
               for t, _fi, _p in clips]
     res = graella.quantitza_boundaries(
         clips, starts, set(range(len(clips))), fi, log=log)
@@ -247,7 +246,7 @@ def fusiona_acords_rang(existents, nous, inici, fi, durada, log=None):
 
 def processa_acords_csv(ruta, durada_min=0.0, fusiona_iguals=True,
                         sense_baix=False, reduir=False,
-                        snap=False, bpm=None, bpb=4, offset=0.0, divisio=1,
+                        snap=False, bpm=None, bpb=4, divisio=1,
                         grid=None, mapa=None, log=None, durada=None):
     """Llegeix un CSV (temps, acord), el neteja i el reescriu al mateix lloc."""
     with open(ruta, encoding="utf-8") as f:
@@ -267,7 +266,7 @@ def processa_acords_csv(ruta, durada_min=0.0, fusiona_iguals=True,
         g = grid if grid in graella.DIVISIONS else grid_de_opcions(
             {"grid": grid, "divisio": divisio}, divisio)
         items = _snap_a_graella(
-            items, durada, g, bpm, bpb, offset, mapa, log)
+            items, durada, g, bpm, bpb, mapa, log)
     # INVARIANT de COBERTURA: els acords cobreixen tota la WAV (0 → durada).
     from app import pipeline           # import local: evita cicle d'imports
     clips = pipeline.clips_d_acords(items, durada)

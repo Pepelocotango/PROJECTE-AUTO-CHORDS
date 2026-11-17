@@ -33,7 +33,7 @@ class EditorMixin:
         self.ed_bpm_compas.setVisible(False)
         self.ed_bpm_compas.setEnabled(False)
         for w in (self.ed_bpm_aplica, self.ed_compas_aplica,
-                  self.ed_n_aplica):
+                  self.ed_n_aplica, self.ed_agr_aplica):
             w.setVisible(False)
         if k == "tempo" and 0 <= i < len(getattr(self, "tempo_trams", None) or []):
             tr = self.tempo_trams[i]
@@ -52,9 +52,11 @@ class EditorMixin:
             self.ed_agr_lbl.setVisible(True)
             self.ed_agr.setVisible(True)
             self.ed_agr.setText(getattr(tr, "agrupacio", ""))
+            self.ed_agr.setPlaceholderText(
+                self._suggeriment_agrupacio(int(tr.num), int(tr.den)))
             self.ed_agr.setToolTip(
                 "Grups de temps del compàs (p. ex. 3+3, 2+2+3). "
-                "Buit = automàtic.")
+                "Buit = automàtic; per als irregulars, tria l'agrupació.")
             self.ed_n_lbl.setVisible(True)
             self.ed_n.setVisible(True)
             n_val = getattr(tr, "n", None)
@@ -83,11 +85,13 @@ class EditorMixin:
             self.ed_bpm_compas.setEnabled(True)
             for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_n,
                       self.ed_aplica, self.ed_bpm_aplica,
-                      self.ed_compas_aplica, self.ed_n_aplica):
+                      self.ed_compas_aplica, self.ed_n_aplica,
+                      self.ed_agr_aplica):
                 w.setEnabled(True)
             self.ed_bpm_aplica.setVisible(True)
             self.ed_compas_aplica.setVisible(True)
             self.ed_n_aplica.setVisible(True)
+            self.ed_agr_aplica.setVisible(True)
             ultim = (i == len(self.tempo_trams) - 1)
             self.ed_aplica.setEnabled(not ultim)
             self.ed_aplica.setToolTip(
@@ -111,6 +115,7 @@ class EditorMixin:
             self.ed_rol_lbl.setVisible(False)
             for w in (self.ed_nom, self.ed_ini, self.ed_cb, self.ed_aplica):
                 w.setEnabled(True)
+            self.ed_agr_aplica.setVisible(False)
             self.ed_aplica.setToolTip("Aplica els canvis (Enter)")
         elif k == "section" and 0 <= i < len(self.seccions):
             ini, fi, lletra, fam = self.seccions[i]
@@ -129,11 +134,13 @@ class EditorMixin:
             for w in (self.ed_nom, self.ed_fam, self.ed_ini, self.ed_cb,
                       self.ed_aplica):
                 w.setEnabled(True)
+            self.ed_agr_aplica.setVisible(False)
             self.ed_aplica.setToolTip("Aplica els canvis (Enter)")
         else:
             self.ed_gran.setText("Selecciona un acord o una secció")
             for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_n,
-                      self.ed_ini, self.ed_cb, self.ed_aplica):
+                      self.ed_ini, self.ed_cb, self.ed_aplica,
+                      self.ed_agr_aplica):
                 w.setEnabled(False)
             self.ed_aplica.setToolTip("Recalc mòbil: aplica els canvis (Enter)")
             self.ed_bpm_compas.setVisible(False)
@@ -150,6 +157,21 @@ class EditorMixin:
         """
         self.log(f"editor: {text}")
         self.infoMissatge.emit(text)
+
+    @staticmethod
+    def _suggeriment_agrupacio(num, den):
+        """Text d'ajuda per a l'agrupació; no és una agrupació imposada."""
+        return {
+            (5, 8): "5 (o una altra agrupació)",
+            (7, 8): "7 (o una altra agrupació)",
+            (8, 8): "8 (o una altra agrupació)",
+            (5, 4): "p. ex. 3+2 o 2+3",
+            (7, 4): "p. ex. 4+3 o 3+4",
+            (10, 8): "p. ex. 3+3+2+2",
+            (11, 8): "p. ex. 3+3+3+2",
+            (9, 8): "3+3+3",
+            (12, 8): "3+3+3+3",
+        }.get((num, den), "3+3" if num in (6, 9, 12) else "Auto")
 
     def _aplica_editor_var(self, camp):
         """Aplica només una variable del clip de tempo seleccionat.
@@ -179,6 +201,21 @@ class EditorMixin:
                 # Cas B per defecte: en canviar només el compàs, es conserva
                 # el BPM visible (la pulsació), no el número intern.
                 ok = self.edita_compas_objectiu(i, num, den)
+            elif camp == "agr":
+                agr = tempo_map.valida_agrupacio(
+                    self.ed_agr.text(), int(tr.num), int(tr.den))
+                unit_vella = self.unitat_de_tram(tr)
+                derivada_vella = bpm_unit_mod.unitat_per_defecte(
+                    int(tr.num), int(tr.den),
+                    getattr(tr, "agrupacio", ""))
+                unit_nova = (bpm_unit_mod.unitat_per_defecte(
+                    int(tr.num), int(tr.den), agr)
+                    if unit_vella == derivada_vella else unit_vella)
+                nous = list(self.tempo_trams)
+                nous[i] = mapa_tempo.TramMapa(
+                    tr.ini, tr.fi, tr.bpm, tr.tipus, tr.compassos, agr,
+                    getattr(tr, "n", None), unit_nova)
+                ok = bool(self.aplica_tempo_trams(nous))
             elif camp == "n":
                 n = float(self.ed_n.text().strip().replace(",", "."))
                 if n <= 0 or abs(n - round(n)) > 1e-3:
@@ -255,6 +292,12 @@ class EditorMixin:
             return
         canvi_bpm = (abs(bpm - float(tr.bpm)) > 5e-4
                      or (num, den) != (int(tr.num), int(tr.den)))
+        # En canviar el compàs, l'agrupació automàtica ha de passar a la del
+        # compàs nou, encara que el camp no s'haja tocat.
+        if ((num, den) != (int(tr.num), int(tr.den))
+                and agr == getattr(tr, "agrupacio", "")):
+            agr = tempo_map.agrupacio_a_text(
+                tempo_map.agrupacio_compas(num, den))
         canvi_agr = agr != getattr(tr, "agrupacio", "")
 
         ini_nou = self._cb_a_secs(self.ed_cb.text())
@@ -284,16 +327,15 @@ class EditorMixin:
             return
 
         d = self._durada_wav()
-        off = float(getattr(self, "offset", 0.0) or 0.0)
         self._undo_marca()
         try:
             mapa = trams
             if mou_ini:
-                mapa = self._mou_frontera_ui(mapa, i, ini_nou, d, off)
+                mapa = self._mou_frontera_ui(mapa, i, ini_nou, d)
             if mapa is None:
                 return
             if mou_fi:
-                mapa = self._mou_frontera_ui(mapa, i + 1, fi_nou, d, off)
+                mapa = self._mou_frontera_ui(mapa, i + 1, fi_nou, d)
             if mapa is None:
                 return
             if mapa is not trams:

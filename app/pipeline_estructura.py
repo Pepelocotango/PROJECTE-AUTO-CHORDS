@@ -54,7 +54,7 @@ def filtra_seccions(seccions, durada_min=0.0, fusiona_iguals=False):
             else:
                 i += 1
     return seccions_de_clips(clips)
-def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0,
+def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4,
                  mapa=None, den=4):
     def _escriu(f):
         w = csv.writer(f)
@@ -65,9 +65,9 @@ def desa_abc_csv(ruta, seccions, bpm, log, lliure=False, bpb=4, offset=0.0,
             w.writerow([f"{float(ini):.{TEMPS_DEC}f}",
                         f"{float(fi):.{TEMPS_DEC}f}",
                         f"{float(dur):.{TEMPS_DEC}f}", L, fam,
-                        pos_compas(ini, bpm, bpb, lliure, offset, mapa,
+                        pos_compas(ini, bpm, bpb, lliure, mapa,
                                    den=den),
-                        pos_compas(fi, bpm, bpb, lliure, offset, mapa,
+                        pos_compas(fi, bpm, bpb, lliure, mapa,
                                    den=den)])
     escriu_atomic(ruta, _escriu)
     seq = seq_abc(seccions)
@@ -81,7 +81,7 @@ def regenera_wavs_estructura(abc_csv, sortida, sr, log, manifest=None):
     return fer_wavs_estructura(abc_csv, dest, sr, log, manifest=manifest)
 
 
-def fer_abc(trossos, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
+def fer_abc(trossos, abc_csv, bpm, log, lliure=False, bpb=4,
             durada_min=0.0, fusiona_iguals=True, durada=None, den=4):
     """Talls (en memòria o camí a un CSV) -> `estructura_ABC.csv`.
 
@@ -130,7 +130,7 @@ def fer_abc(trossos, abc_csv, bpm, log, lliure=False, bpb=4, offset=0.0,
     # INVARIANT de COBERTURA: les seccions cobreixen tota la WAV (0 → durada).
     _, rows = normalitza_cobertura([], rows, durada, log=log)
     desa_abc_csv(abc_csv, rows, bpm, log, lliure=lliure, bpb=bpb,
-                   offset=offset, den=den)
+                   den=den)
     seq = seq_abc(rows)
     rep = ", ".join(f"{L}×{seq.count(L)}" for L in sorted(set(seq)))
     log(f"ABC famílies {len(lletres)} ({rep})")

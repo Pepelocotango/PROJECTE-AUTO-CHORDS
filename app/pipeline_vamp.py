@@ -307,7 +307,7 @@ def detecta_tempo_per_trams(wav_path, log, durada, num=4, den=4,
             log(f"mapa: {aviso}")
         try:
             trams = tempo_map.valida_i_normalitza_compassos(
-                trams, durada, offset=offset)
+                trams, durada)
         except ValueError as e:  # noqa: BLE001
             log(f"mapa: el resultat no complix el contracte ({e})")
             return [], 0.0, base

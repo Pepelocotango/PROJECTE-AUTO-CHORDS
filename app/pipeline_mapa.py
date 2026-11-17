@@ -8,7 +8,7 @@ import os
 from . import mapa_tempo, tempo_map
 from .pipeline_io import escriu_atomic
 
-def _mapa_tempo_carpeta(carpeta, offset=0.0):
+def _mapa_tempo_carpeta(carpeta):
     """Llig `mapa_tempo.csv` de `carpeta` (o `mapa_tempo/`) i retorna un
     `TempoMap` si té més d'un tram i no és constant, o `None`.
     """

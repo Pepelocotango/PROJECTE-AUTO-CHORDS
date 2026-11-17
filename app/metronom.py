@@ -11,7 +11,7 @@ corxeres amb accents a 1 i 4, `9/8` → 9, `12/8` → 12, `4/4` → 4 negres,
 `2/2` → 2 blanques). `click_unit="pols"` queda com a mode alternatiu per
 clicar només la unitat de pols del tram.
 Els accents de grup ixen de `tempo_map.agrupacio_compas()`: `6/8` → `3+3`,
-`7/8` → `2+2+3`, `5/8` → `3+2`, etc.
+`7/8` → `7`, `5/8` → `5`, `8/8` → `8`, etc.
 """
 import numpy as np
 from app import bpm_unit, limits, tempo_map

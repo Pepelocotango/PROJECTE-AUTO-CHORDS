@@ -408,20 +408,18 @@ class TimelineView(QGraphicsView):
         self._beat_layer.set_beats(beats, downbeats)
 
     def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
-                       offset: float = 0.0, beat_type: int = 4,
-                       mapa=None, bpm_unit: str = "negra") -> None:
+                       beat_type: int = 4, mapa=None,
+                       bpm_unit: str = "negra") -> None:
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self._beat_type = int(beat_type or 4)
-        self._offset = float(offset)
         self._mapa = mapa
         self._bpm_unit = bpm_unit
         self._ruler.update_mode(self._tempo_fix, self._bpm, self._bpb,
-                                self._offset, self._beat_type, mapa,
-                                bpm_unit=bpm_unit)
+                                self._beat_type, mapa, bpm_unit=bpm_unit)
         self._grid.update_mode(self._tempo_fix, self._bpm, self._bpb,
-                               self._offset, self._beat_type, mapa)
+                               self._beat_type, mapa)
         self._tempo_lane.set_mapa(mapa, self._tempo_fix, bpm_unit=bpm_unit)
         self.update()
 
@@ -1965,7 +1963,6 @@ class TimelineView(QGraphicsView):
             # canvia el model ni agrupa en compassos.
             return min(self._snap_qm_beats,
                        key=lambda b: (abs(float(b) - float(t)), b))
-        off = getattr(self, "_offset", 0.0)
         mapa = getattr(self, "_mapa", None)
         if mapa is not None:
             if self._snap_div_nom:
@@ -1977,11 +1974,11 @@ class TimelineView(QGraphicsView):
                     frac = float(d[1]) * (float(den) / 4.0)
                     return mapa.snap(float(t), ("beat", frac))
             return snap_time(float(t), self._tempo_fix, self._bpm, self._bpb,
-                             self._pps, off, mapa=mapa)
+                             self._pps, mapa=mapa)
         step = self._snap_step()
         if step <= 0:
             return float(t)
-        return round((float(t) - off) / step) * step + off
+        return round(float(t) / step) * step
 
     def _pas_nudge(self) -> float:
         """Pas del nudge = la DIVISIÓ de graella vigent (la mateixa que el snap)."""

@@ -61,8 +61,8 @@ Conseqüències:
   habitual i no tots els programes el mostren així.
 - `5/8`, `7/8`, `8/8`, `10/8`, `11/8`, `5/4`… no tenen una agrupació única
   universal. `5/8` pot ser `3+2` o `2+3`; `7/8` pot ser `2+2+3`, `3+2+2` o
-  `2+3+2`; `8/8` sovint és un `4/4` escrit en vuitens. L'app no ha d'inventar
-  una agrupació i presentar-la com a estàndard.
+  `2+3+2`; `8/8` sovint és un `4/4` escrit en vuitens. L'app usa per defecte
+  `5`, `7` i `8` respectivament; les altres agrupacions són tries explícites.
 
 ## 3. Comportament actual d'AUTO CHORDS
 
@@ -119,7 +119,7 @@ accents actuals ixen de l'agrupació per defecte de l'app.
 | 5/8 | irregular/compost | grup variable | — | — | 5 | — | corxera | 240 | 1,4 | 1.25 | cal agrupació explícita; l'app usa 3+2 |
 | 6/8 | compost duple | negra amb punt | 1.5 | 80 | 6 | 1,4 | negra punt | 80 | 1,4 | 1.5 |  |
 | 7/8 | irregular/compost | grup variable | — | — | 7 | — | corxera | 240 | 1,3,5 | 1.75 | cal agrupació explícita; l'app usa 2+2+3 |
-| 8/8 | irregular/compost | grup variable | — | — | 8 | — | corxera | 240 | 1,4,7 | 2 | cal agrupació explícita; l'app usa 3+3+2 |
+| 8/8 | irregular/compost | grup variable | — | — | 8 | — | corxera | 240 | 1 | 2 | l'app usa 8 per defecte; es pot triar 3+3+2 o 4+4 |
 | 9/8 | compost triple | negra amb punt | 1.5 | 80 | 9 | 1,4,7 | negra punt | 80 | 1,4,7 | 2.25 |  |
 | 10/8 | irregular/compost | grup variable | — | — | 10 | — | corxera | 240 | 1 | 2.5 | cal agrupació explícita; l'app usa 10 |
 | 11/8 | irregular/compost | grup variable | — | — | 11 | — | corxera | 240 | 1 | 2.75 | cal agrupació explícita; l'app usa 11 |
@@ -148,8 +148,8 @@ accents actuals ixen de l'agrupació per defecte de l'app.
 | `12/8` | negra amb punt | 120 | 80 | 12 corxeres, accents a 1, 4, 7 i 10 | 3,00 s |
 | `6/4` | blanca amb punt | 120 | 40 | 6 negres, accents a 1 i 4 | 3,00 s |
 | `6/16` | corxera amb punt | 120 | 160 | 6 semicorxeres, accents a 1 i 4 | 0,75 s |
-| `5/8` | corxera (o grup) | 120 | 240 (o grup) | 5 corxeres; agrupació a decidir | 1,25 s |
-| `7/8` | corxera (o grup) | 120 | 240 (o grup) | 7 corxeres; agrupació a decidir | 1,75 s |
+| `5/8` | corxera (o grup) | 120 | 240 (o grup) | 5 corxeres; agrupació per defecte `5` | 1,25 s |
+| `7/8` | corxera (o grup) | 120 | 240 (o grup) | 7 corxeres; agrupació per defecte `7` | 1,75 s |
 | `5/16` | semicorxera (o grup) | 120 | 480 (o grup) | 5 semicorxeres; agrupació a decidir | 0,625 s |
 
 ## 4. Conseqüències per a AUTO CHORDS
@@ -179,7 +179,8 @@ accents actuals ixen de l'agrupació per defecte de l'app.
 - **Fet:** unitats amb punt `rodona_punt`, `blanca_punt`, `negra_punt` i
   `corxera_punt`; derivació de la pols per a `6`, `9` i `12` amb qualsevol
   denominador; `3/8` derivat a corxera; agrupació per defecte `3+3…` en tots
-  els compostos; accents del metrònom i de la graella alineats.
+  els compassos compostos; `5/8` i `7/8` amb agrupació per defecte `5` i `7`;
+  accents del metrònom i de la graella alineats.
 - **Fet:** tests que recorren tots els `1…12` × `2, 4, 8, 16` i comproven
   unitat, factor, encaix i agrupació; a més dels casos `6/4`, `6/16`, `6/2`,
   `3/8`, `5/8`, `7/8` i `8/8`.

@@ -93,7 +93,7 @@ class TestGuiaDaw(unittest.TestCase):
 
     def _segs(self, td, durada=16.0):
         return pipeline.segments_locators(
-            os.path.join(td, "acords.csv"), 120.0, 4, 0.0, durada=durada)
+            os.path.join(td, "acords.csv"), 120.0, 4, durada=durada)
 
     def test_segments_en_memoria(self):
         td = _carpeta()
@@ -105,7 +105,7 @@ class TestGuiaDaw(unittest.TestCase):
     def test_genera_guia_html(self):
         td = _carpeta()
         guia = pipeline.genera_guia_html(
-            os.path.join(td, "acords.csv"), 120.0, 4, 0.0, workdir=td,
+            os.path.join(td, "acords.csv"), 120.0, 4, workdir=td,
             durada=16.0)
         self.assertTrue(os.path.isfile(guia), "ha de generar guia_acords.html")
         with open(guia, encoding="utf-8") as f:
@@ -118,7 +118,7 @@ class TestGuiaDaw(unittest.TestCase):
         td = _carpeta()
         self._segs(td)
         pipeline.genera_guia_html(os.path.join(td, "acords.csv"), 120.0, 4,
-                                  0.0, workdir=td, durada=16.0)
+                                  workdir=td, durada=16.0)
         self.assertFalse(os.path.exists(os.path.join(td, "acords_locators.txt")),
                          "el locator intermedi ja no s'ha de crear mai")
 
@@ -126,7 +126,7 @@ class TestGuiaDaw(unittest.TestCase):
         """Els beats de la partitura surten del mateix model (sense fitxers)."""
         td = _carpeta()
         ev = pipeline.events_partitura(
-            os.path.join(td, "acords.csv"), 120.0, 4, 0.0, durada=16.0)
+            os.path.join(td, "acords.csv"), 120.0, 4, durada=16.0)
         self.assertEqual([e[1] for e in ev], ["C", "Am", "F", "G"])
         self.assertAlmostEqual(ev[0][0], 0.0)
         self.assertAlmostEqual(ev[0][2], 8.0, places=6)
@@ -141,7 +141,7 @@ class TestGuiaDaw(unittest.TestCase):
         segs = self._segs(td)
         self.assertEqual(len(segs), 4)
         guia = pipeline.genera_guia_html(
-            os.path.join(td, "acords.csv"), 120.0, 4, 0.0, workdir=td,
+            os.path.join(td, "acords.csv"), 120.0, 4, workdir=td,
             durada=16.0)
         with open(guia, encoding="utf-8") as f:
             self.assertIn("G", f.read())
@@ -153,7 +153,7 @@ class TestGuiaDaw(unittest.TestCase):
         with open(csv_path, "w", encoding="utf-8") as f:
             f.write("inici_s,fi_s,acord\n0.0,4.0,N\n")
         with self.assertRaises(RuntimeError) as ctx:
-            pipeline.segments_locators(csv_path, 120.0, 4, 0.0, durada=4.0)
+            pipeline.segments_locators(csv_path, 120.0, 4, durada=4.0)
         self.assertIn("cap acord per exportar", str(ctx.exception))
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1315,7 +1315,7 @@ def _export(acords, total_s):
     ca = os.path.join(td, "acords.csv")
     out = os.path.join(td, "out")
     r = pipeline.exporta_total(
-        csv_ac=ca, csv_seg=None, sortida=out, bpm=120.0, bpb=4, offset=0.0,
+        csv_ac=ca, csv_seg=None, sortida=out, bpm=120.0, bpb=4,
         sr=44100, log=lambda *_export_limits___: None, tempo_fix=False, amb_estructura=False,
         total_s=total_s, acords=acords, seccions=None)
     dest = os.path.join(out, "wavs_acords")
@@ -2326,8 +2326,10 @@ class TestMusicXmlMapa(unittest.TestCase):
 
     def test_canvi_de_compas(self):
         from app.tempo_map import TempoMap
+        # `events` va en negres; el mapa va en segons. A 120 BPM, el 4/4
+        # ocupa 8 negres (4 s) i el 3/4 comença a la negra 8.
         mapa = TempoMap([(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 120.0, 3, 4)])
-        events = [(0.0, "C", 4.0), (4.0, "G", 3.0)]
+        events = [(0.0, "C", 8.0), (8.0, "G", 3.0)]
         xml = partitura.construeix_musicxml(events, [], bpb=4, bpm=120.0,
                                             mapa=mapa)
         self.assertIn("<beats>4</beats><beat-type>4</beat-type>", xml)
@@ -2563,7 +2565,6 @@ class ExportPipelineTests(unittest.TestCase):
                 sortida=str(base),
                 bpm=120.0,
                 bpb=4,
-                offset=0.0,
                 sr=44100,
                 log=lambda msg: None,
                 tempo_fix=True,
@@ -2593,7 +2594,7 @@ class ExportPipelineTests(unittest.TestCase):
                 w.writerow(["3.0", "7.0", "1", "A"])   # últim fi < durada
             pipeline.exporta_total(
                 csv_ac=str(csv_ac), csv_seg=str(csv_seg), sortida=str(base),
-                bpm=120.0, bpb=4, offset=0.0, sr=44100, log=lambda m: None,
+                bpm=120.0, bpb=4, sr=44100, log=lambda m: None,
                 tempo_fix=True, amb_estructura=True, total_s=10.0)
 
             def suma(carpeta):
@@ -3572,31 +3573,27 @@ class MetronomTests(unittest.TestCase):
         i = int(0.75 * self.SR)      # inici del segon grup
         self.assertGreater(self._freq(arr[i:i + n]), 1300)
 
-    def test_7_8_accentua_2_2_3(self):
+    def test_7_8_per_defecte_clica_7_corxeres_amb_nomes_accent_de_compas(self):
         from app import metronom
         out = metronom.mescla_metronom(self._silenci(3.6), self.SR,
                                        0.0, 120.0, 7, volum=1.0, den=8)
         arr = self._a_array(out)
         n = int(self.SR * 0.02)
-        # 7/8 a 120 BPM: una corxera cada 0,25 s; grups 2+2+3.
-        for t in (0.0, 0.5, 1.0, 1.75):
-            i = int(t * self.SR)
-            self.assertGreater(self._freq(arr[i:i + n]), 1300, t)
-        for t in (0.25, 0.75, 1.25):
+        # 7/8 a 120 BPM: 7 corxeres; sense agrupació explícita, accent a 1.
+        self.assertGreater(self._freq(arr[0:n]), 1300)
+        for t in (0.25, 0.5, 0.75, 1.0, 1.25, 1.5):
             i = int(t * self.SR)
             self.assertLess(self._freq(arr[i:i + n]), 1100, t)
 
-    def test_5_8_accentua_3_2(self):
+    def test_5_8_per_defecte_clica_5_corxeres_amb_nomes_accent_de_compas(self):
         from app import metronom
         out = metronom.mescla_metronom(self._silenci(2.6), self.SR,
                                        0.0, 120.0, 5, volum=1.0, den=8)
         arr = self._a_array(out)
         n = int(self.SR * 0.02)
-        # 5/8 a 120 BPM: 3+2 → accents a 0, 0,75 i 1,25 s.
-        for t in (0.0, 0.75, 1.25, 2.5):
-            i = int(t * self.SR)
-            self.assertGreater(self._freq(arr[i:i + n]), 1300, t)
-        for t in (0.25, 0.5, 1.0):
+        # 5/8 a 120 BPM: 5 corxeres; sense agrupació explícita, accent a 1.
+        self.assertGreater(self._freq(arr[0:n]), 1300)
+        for t in (0.25, 0.5, 0.75, 1.0):
             i = int(t * self.SR)
             self.assertLess(self._freq(arr[i:i + n]), 1100, t)
 
@@ -3855,8 +3852,8 @@ class MetronomTests(unittest.TestCase):
         self.assertEqual(len(self._onsets(self._a_array(out))), 3)
 
 
-class OffsetDosCampsTests(unittest.TestCase):
-    """Offset amb DOS camps sincronitzats: compas.beat <-> segons."""
+class CompasBeatSegonsTests(unittest.TestCase):
+    """Conversió entre compàs.temps i segons."""
 
     @classmethod
     def setUpClass(cls):
@@ -3900,28 +3897,6 @@ class OffsetDosCampsTests(unittest.TestCase):
         self.assertAlmostEqual(window._cb_a_secs("5.1.3"), t, places=4)
         self.assertEqual(window._secs_a_cb(t), "5.1.3")
         window.close()
-
-class OffsetLlistesTests(unittest.TestCase):
-    """Les llistes (etiquetes de compas) han de seguir l'offset."""
-
-    @classmethod
-    def setUpClass(cls):
-        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-        cls._app = visor.QApplication.instance() or visor.QApplication([])
-
-    def _finestra(self):
-        import tempfile, wave
-        td = tempfile.mkdtemp()
-        wav = os.path.join(td, "t.wav")
-        with wave.open(wav, "wb") as w:
-            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
-            w.writeframes(b"\x00\x00" * 44100 * 30)
-        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "9.5,12.0,Am\n12.0,15.0,C\n")
-        window = app_main.Finestra()
-        window.wav_edit.setText(wav)
-        window._carrega_visor(wav)
-        return window
 
 class TempoTests(unittest.TestCase):
     """Detecció de BPM (app/tempo.py) — autocorrelacio + comb, numpy pur."""
@@ -4002,17 +3977,17 @@ class TempoTests(unittest.TestCase):
             self.assertIsNone(tempo.detecta_bpm(ruta, lambda m: None))
 
 
-class OffsetTests(unittest.TestCase):
-    """L'offset (segon del compàs 1) ha d'aplicar-se a graella, clic i export."""
+class TimelineFormatTests(unittest.TestCase):
+    """Format de la graella i del regle."""
 
     SR = 44100
 
     def test_fmt_pos_amb_subdivisio_adaptativa(self):
         from app.timeline import fmt_pos
         # amb zoom prou gran, el regle mostra compàs.temps.subdivisió, com en DAW
-        self.assertEqual(fmt_pos(0.0, True, 120, 4, 0.0, step=0.25), "1.1.1")
-        self.assertEqual(fmt_pos(0.25, True, 120, 4, 0.0, step=0.25), "1.1.5")
-        self.assertEqual(fmt_pos(0.75, True, 120, 4, 0.0, step=0.25), "1.2.5")
+        self.assertEqual(fmt_pos(0.0, True, 120, 4, step=0.25), "1.1.1")
+        self.assertEqual(fmt_pos(0.25, True, 120, 4, step=0.25), "1.1.5")
+        self.assertEqual(fmt_pos(0.75, True, 120, 4, step=0.25), "1.2.5")
 
     def test_compas_manual_accepta_fraccio(self):
         from app.main import Finestra
@@ -4710,13 +4685,13 @@ class PostprocTests(unittest.TestCase):
 
     def test_snap_a_graella_rang_sense_capcalera(self):
         r = postproc._snap_a_graella(
-            [(5.1, "C")], 12.0, "corxera", 120, 4, 0.0, None, None,
+            [(5.1, "C")], 12.0, "corxera", 120, 4, None, None,
             inici=5.0, fi=7.0, capcalera=False)
         self.assertEqual([nom for _t, nom in r], ["C"])
         self.assertEqual(r[0][0], 5.0)
         # Un onset just després d'«a» no pot retrocedir fora del rang.
         r = postproc._snap_a_graella(
-            [(5.1, "C")], 12.0, "negra", 60, 4, 0.0, None, None,
+            [(5.1, "C")], 12.0, "negra", 60, 4, None, None,
             inici=5.1, fi=7.0, capcalera=False)
         self.assertEqual(r[0][0], 5.1)
 
@@ -4817,7 +4792,7 @@ class PostprocTests(unittest.TestCase):
         mapa = TempoMap.constant(120, 4, 4, durada=8.0)
         r = postproc._snap_a_graella(
             [(0.13, "C"), (0.4, "G"), (1.1, "Am")],
-            8.0, "corxera", 120, 4, 0.0, mapa, None)
+            8.0, "corxera", 120, 4, mapa, None)
         self.assertEqual([nom for _t, nom in r], ["N", "C", "G", "Am"])
         self.assertEqual([round(t, 2) for t, _n in r],
                          [0.0, 0.25, 0.5, 1.0])
@@ -5116,30 +5091,6 @@ class LlistaSeleccioTests(unittest.TestCase):
         self.assertEqual(v.llista_ac.currentRow(), 1)
         w.close()
 
-
-class OffsetBotoCursorTests(unittest.TestCase):
-    """Boto a Offset: llegeix el cursor vermell i hi posa el compas 1."""
-
-    @classmethod
-    def setUpClass(cls):
-        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-        cls._app = visor.QApplication.instance() or visor.QApplication([])
-
-    def _finestra(self):
-        import tempfile, wave
-        td = tempfile.mkdtemp()
-        wav = os.path.join(td, "t.wav")
-        with wave.open(wav, "wb") as w:
-            w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
-            w.writeframes(b"\x00\x00" * 44100 * 20)
-        ac = os.path.join(td, "AUTOCHORDS_t"); os.makedirs(ac)
-        _escriu_fitxer(os.path.join(ac, "acords.csv"), "0.0,4.0,C\n")
-        window = app_main.Finestra()
-        window.wav_edit.setText(wav)
-        window._carrega_visor(wav)
-        window.bpm.setText("101"); window.bpb.setText("4")
-        window._aplica_parametres_temps()
-        return window
 
 class TapTempoTests(unittest.TestCase):
     """Tap tempo (patro estandard: ultims taps -> mitjana -> 60/interval)."""
@@ -5963,7 +5914,7 @@ class Resolucio1_32IExportTests(unittest.TestCase):
             w.writerow(["0.000000", "0.123456", "C"])
             w.writerow(["0.123456", "0.260000", "G"])
             w.writerow(["0.260000", "2.000000", "Am"])
-        segs = pipeline.segments_export(ca, 120.0, 4, 0.0, durada=2.0)
+        segs = pipeline.segments_export(ca, 120.0, 4, durada=2.0)
         self.assertEqual([s[0] for s in segs], ["1.1.1", "1.1.3", "1.1.5"])
         self.assertEqual([s[1] for s in segs], ["C", "G", "Am"])
         self.assertAlmostEqual(segs[0][2], 0.0, places=9)
@@ -5977,7 +5928,7 @@ class Resolucio1_32IExportTests(unittest.TestCase):
         out = os.path.join(td, "out")
         r = pipeline.exporta_total(
             csv_ac=ca, csv_seg=None, sortida=out, bpm=120.0, bpb=4,
-            offset=0.0, sr=44100, log=lambda *_a: None, tempo_fix=True,
+            sr=44100, log=lambda *_a: None, tempo_fix=True,
             amb_estructura=True, total_s=2.0,
             acords=[(0.0, "C", "0"), (0.123456, "G", "0.123456"),
                     (0.26, "Am", "0.26")],
@@ -6659,7 +6610,7 @@ class _regla12_export___Base(unittest.TestCase):
             for t, n, ts in _regla12_export__ACORDS:
                 f.write(f"{t},{t + 4.0},{n}\n")
         res = pipeline.exporta_total(
-            csv_ac, None, sortida, 120.0, 4, 0.0, 44100, lambda *a: None,
+            csv_ac, None, sortida, 120.0, 4, 44100, lambda *a: None,
             tempo_fix=True, amb_estructura=True, total_s=DURADA,
             acords=list(_regla12_export__ACORDS), seccions=list(SECCIONS), mapa_tempo=trams)
         return sortida, res

@@ -36,11 +36,7 @@ def _grups_per_defecte(num, den):
         return (4,)
     if num in (6, 9, 12):
         return tuple([3] * (num // 3))
-    return {
-        (5, 8): (3, 2),
-        (7, 8): (2, 2, 3),
-        (8, 8): (3, 3, 2),
-    }.get((num, den), (num,))
+    return (num,)
 
 
 def _parse_grups(agrupacio):
