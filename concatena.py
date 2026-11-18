@@ -4,17 +4,16 @@
 #
 # Ús: python3 concatena.py [sortida.txt]   (defecte: CODI_concatenat.txt)
 #
-# INCLOU (whitelist), EN ORDRE: primer el CONTEXT (`README.md`, `ROADMAP.md`,
-#   `DEVELOPING.md`, les regles d'or i els docs Tier A — contractes de
-#   comportament), després el CODI: `app/`, `eines/`
-#   (scripts de build + host C++ + `deps_fixades.env`), `.github/workflows/`
-#   (CI), les dades de build (`pyproject.toml`, `requirements*.txt`,
-#   `instal·la_local.sh`), els llançadors, els scripts CLI i `tests/`.
+# INCLOU (whitelist), EN ORDRE: primer el CONTEXT (`AGENTS.md`, `README.md`,
+#   `ROADMAP.md`, `DEVELOPING.md`, les regles d'or, l'esquema d'UI i els docs
+#   de comportament), després el CODI: `app/`, `eines/` (scripts de build +
+#   host C++ + `deps_fixades.env`), `.github/workflows/` (CI), les dades de
+#   build (`pyproject.toml`, `requirements*.txt`, `instal·la_local.sh`), els
+#   llançadors, els scripts CLI i `tests/`.
 #
-# EXCLOU la resta (no indispensable): CHANGELOG/LLICENCIES, `docs/` detallats,
-#   `tests/`, el codi de tercers (`codi_font_chordino/`), binaris i plugins,
-#   logs, i arxius locals (`OLD/`, `opcions_detecta.json`,
-#   `LOGS GITHUB ACTIONS/`, `00last_artifacts_githubactions/`, `portable/`,
+# EXCLOU la resta (no indispensable): CHANGELOG/LLICENCIES, els docs no
+#   essencials, el codi de tercers (`codi_font_chordino/`), binaris i plugins,
+#   logs i arxius locals (`OLD/`, `opcions_detecta.json`, `portable/`,
 #   `.venv/`, `.deps/`, `temp/`).
 import os
 import sys
@@ -26,15 +25,17 @@ SORTIDA = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
 
 # --- Què SÍ que hi va (whitelist, relatiu a l'arrel) -----------------------
 INCLOU = [
-    # 1-3. Context del producte (perquè un LLM entengui QUÈ és i cap on va)
+    # 1-3. Context del producte i normes de treball
+    "AGENTS.md",            # abast, protocols i regles d'equip
     "README.md",            # visió general + com executar
     "ROADMAP.md",           # full de ruta (abast, fases, futur)
     "DEVELOPING.md",        # setup, entorn i desenvolupament
     "docs/REGLES_DE_LA_APP.md",   # ⚠️ regles d'or (invariants) — IMPRESCINDIBLE
+    "docs/ESQUEMA_UI.md",   # menús, botons, dreceres i diàlegs reals
     # 3b. Context Tier A — contractes de comportament
-    "docs/EDICIO_OPERACIONS.md",  # totes les formes d'edició (GUI ↔ codi)
     "docs/recerca/NOTACIO_XIFRAT.md",  # forma canònica del xifrat
-    "docs/TIPUS_XIFRAT_ACORDS.md",  # els 80 tipus + graus + <kind> MusicXML
+    "docs/TIPUS_XIFRAT_ACORDS.md",  # els tipus + graus + <kind> MusicXML
+    "docs/recerca/TAULA_COMPASSOS_X_X.md",  # compassos, pols i metrònom
     # 4+. El codi i la resta
     "app",                  # codi de l'aplicació (Python)
     "eines",                # scripts de build/empaquetat + host C++ (vamp_host.cpp)
@@ -42,6 +43,7 @@ INCLOU = [
     "pyproject.toml",       # paquet + metadades
     "requirements.txt",     # dependències del venv
     "requirements-build.txt",  # pins del build (font única pels 3 workflows CI)
+    "requirements-dev.txt", # eines de desenvolupament i tests
     "instal·la_local.sh",   # setup local (sense sudo)
     "AUTO_CHORDS.sh",       # llançador
     "AUTO_CHORDS.desktop",  # drecera d'escriptori
