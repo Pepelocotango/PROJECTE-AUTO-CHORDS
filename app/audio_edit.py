@@ -290,7 +290,8 @@ def _frames(delta, sr):
 def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
                       t_ultim_fort=None, n_fi=1, aplica_inici=True,
                       aplica_final=False, bpm_ini=None, num_ini=None,
-                      den_ini=None, t_final=None):
+                      den_ini=None, t_final=None, bpm_fi=None,
+                      num_fi=None, den_fi=None):
     """Calcula un pla d'extrems **sense tocar** àudio ni model.
 
     Retorna deltes exactes per al model i fotogrames per a la WAV. Les
@@ -361,13 +362,22 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
             if not (float(ult.ini) - _TOL_PLA <= tf <= durada + _TOL_PLA):
                 raise ValueError(
                     "El final de la música ha de ser dins l'últim tram")
+            bpm_tail = ult.bpm if bpm_fi is None else bpm_fi
+            num_tail = ult.num if num_fi is None else num_fi
+            den_tail = ult.den if den_fi is None else den_fi
+            bpm_tail, num_tail, den_tail = _valida_tram_tempo(
+                bpm_tail, num_tail, den_tail)
             compas = tempo_map.durada_compas(ult.bpm, ult.num, ult.den)
             n_abans = max(0, int(round((tf - float(ult.ini)) / compas)))
-            tf_alin = float(ult.ini) + n_abans * compas
+            # El punt és el que ha marcat l'usuari: no es mou. El tram normal
+            # de l'esquerra es recalcula (N/BPM) perquè tinga compassos sencers.
+            tf_alin = tf
             if not (1 <= int(n_fi) <= 9999):
                 raise ValueError("N de cua ha de ser un enter ≥ 1")
             n_cua = int(n_fi)
-            target_fi = tf_alin + n_cua * compas
+            compas_cua = tempo_map.durada_compas(
+                bpm_tail, num_tail, den_tail)
+            target_fi = tf_alin + n_cua * compas_cua
             delta_fi = target_fi - (durada + delta_ini)
             frames = _frames(delta_fi, sr)
             if frames > 0:
@@ -384,23 +394,28 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
             pla["t_final"] = tf
             pla["delta_fi"] = delta_fi
             pla["target_fi"] = target_fi + delta_ini
-            pla["bpm_fi"] = float(ult.bpm)
-            pla["num_fi"] = int(ult.num)
-            pla["den_fi"] = int(ult.den)
+            pla["bpm_fi"] = bpm_tail
+            pla["num_fi"] = num_tail
+            pla["den_fi"] = den_tail
             pla["beat_unit_fi"] = ult.beat_unit
             pla["agrupacio_fi"] = ult.agrupacio
         else:
             start_fi = float(ult.ini) + delta_ini
             if aplica_inici and int(n_ini) > 0:
                 start_fi = max(start_fi, float(pla["target_ini"]))
-            minim = n_min_fi(t_ultim_fort, start_fi, ult.bpm,
-                             ult.num, ult.den)
+            bpm_tail = ult.bpm if bpm_fi is None else bpm_fi
+            num_tail = ult.num if num_fi is None else num_fi
+            den_tail = ult.den if den_fi is None else den_fi
+            bpm_tail, num_tail, den_tail = _valida_tram_tempo(
+                bpm_tail, num_tail, den_tail)
+            minim = n_min_fi(t_ultim_fort, start_fi, bpm_tail,
+                             num_tail, den_tail)
             if isinstance(n_fi, bool) or not isinstance(n_fi, int) \
                     or n_fi < minim:
                 raise ValueError(
                     f"N final ha de ser un enter ≥ {minim} "
                     "(protecció del fort)")
-            compas = tempo_map.durada_compas(ult.bpm, ult.num, ult.den)
+            compas = tempo_map.durada_compas(bpm_tail, num_tail, den_tail)
             target_orig = start_fi + int(n_fi) * compas
             if t_ultim_fort is not None and target_orig < float(t_ultim_fort):
                 raise ValueError("El final retallaria el temps fort protegit")
@@ -416,9 +431,9 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
             pla["n_fi"] = int(n_fi)
             pla["delta_fi"] = delta_fi
             pla["target_fi"] = target_orig
-            pla["bpm_fi"] = float(ult.bpm)
-            pla["num_fi"] = int(ult.num)
-            pla["den_fi"] = int(ult.den)
+            pla["bpm_fi"] = bpm_tail
+            pla["num_fi"] = num_tail
+            pla["den_fi"] = den_tail
             pla["beat_unit_fi"] = ult.beat_unit
             pla["agrupacio_fi"] = ult.agrupacio
 
@@ -614,15 +629,22 @@ def transforma_model_extrems(acords, seccions, trams, marcadors, durada, pla,
             punt = float(pla["target_final_point"])
             ult = trams[-1]
             if punt > float(ult.ini) + _TOL_PLA:
-                esquerra = replace(ult, fi=punt,
-                                   n=int(pla.get("n_fi_abans", 0)) or None)
-                dreta = replace(ult, ini=punt, fi=target_fi,
-                                n=int(pla.get("n_cua", 1)))
+                esquerra = replace(ult, fi=punt, n=None)
+                dreta = replace(
+                    ult, ini=punt, fi=target_fi,
+                    bpm=float(pla.get("bpm_fi", ult.bpm)),
+                    compassos=f"{int(pla.get('num_fi', ult.num))}/"
+                              f"{int(pla.get('den_fi', ult.den))}",
+                    n=int(pla.get("n_cua", 1)))
                 trams[-1] = esquerra
                 trams.append(dreta)
             else:
-                trams[-1] = replace(ult, fi=target_fi,
-                                    n=int(pla.get("n_cua", 1)))
+                trams[-1] = replace(
+                    ult, fi=target_fi,
+                    bpm=float(pla.get("bpm_fi", ult.bpm)),
+                    compassos=f"{int(pla.get('num_fi', ult.num))}/"
+                              f"{int(pla.get('den_fi', ult.den))}",
+                    n=int(pla.get("n_cua", 1)))
         elif trams and float(trams[-1].ini) < target_fi - _TOL_PLA:
             trams[-1] = replace(trams[-1], fi=target_fi,
                                 n=int(pla["n_fi"]))

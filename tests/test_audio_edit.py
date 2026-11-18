@@ -408,6 +408,41 @@ class TestQuadraturaExtrems(unittest.TestCase):
         self.assertEqual(tr["trams"][-1].n, 9)
 
 
+    def test_model_final_recalcula_el_tram_normal_de_l_esquerra(self):
+        trams = [(0.0, 16.0, 120.0, 4, 4)]
+        acords = [pipeline.Clip(0.0, 16.0, ("C", "0"))]
+        seccions = [(0.0, 16.0, "A", "A")]
+        p = edita.planifica_extrems(
+            16.0, 1000, trams, aplica_inici=False, aplica_final=True,
+            t_final=11.0, n_fi=1)
+        tr = edita.transforma_model_extrems(
+            acords, seccions, trams, [], 16.0, p)
+        esquerra, cua = tr["trams"]
+        self.assertAlmostEqual(esquerra.fi, 11.0, 9)
+        self.assertEqual(esquerra.n, 6.0)
+        self.assertAlmostEqual(
+            esquerra.bpm, 6 * 4 * 60.0 / 11.0, 9)
+        self.assertEqual(cua.n, 1.0)
+
+    def test_model_final_admet_bpm_i_compas_propis_de_la_cua(self):
+        trams = [(0.0, 16.0, 120.0, 4, 4)]
+        acords = [pipeline.Clip(0.0, 16.0, ("C", "0"))]
+        seccions = [(0.0, 16.0, "A", "A")]
+        p = edita.planifica_extrems(
+            16.0, 1000, trams, aplica_inici=False, aplica_final=True,
+            t_final=12.0, n_fi=1, bpm_fi=90.0, num_fi=3, den_fi=4)
+        tr = edita.transforma_model_extrems(
+            acords, seccions, trams, [], 16.0, p)
+        self.assertAlmostEqual(tr["durada"], 14.0, 9)
+        self.assertEqual(tr["trams"][0].n, 6)
+        cua = tr["trams"][-1]
+        self.assertAlmostEqual(cua.ini, 12.0, 9)
+        self.assertAlmostEqual(cua.fi, 14.0, 9)
+        self.assertEqual(cua.n, 1)
+        self.assertAlmostEqual(cua.bpm, 90.0, 9)
+        self.assertEqual(cua.compassos, "3/4")
+
+
 class TestWavExtrems(unittest.TestCase):
     def setUp(self):
         self.td = tempfile.mkdtemp()

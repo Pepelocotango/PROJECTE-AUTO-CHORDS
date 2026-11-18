@@ -24,13 +24,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ### Canviat — el final es quadra com una cua independent (2026-11-18)
 - `Ajusta final WAV` ara demana **on s’acaba la música** i quants compassos
-  de **cua** es volen. L’app talla l’últim tram en eixe punt (alineat al
-  compàs), deixa un tram normal + el tram final de cua, i ajusta la WAV pel
-  final.
+  de **cua** es volen. L’app talla l’últim tram exactament en eixe
+  punt, recalcula el tram normal de l’esquerra a compassos sencers i deixa el
+  tram final de cua; després ajusta la WAV pel final.
 - `N final` passa a ser el nombre de compassos **de la cua** (1, 2…), no el
   total del tram de tempo.
 - El marcador **Final** es posa a l’inici de la cua, igual que **Inici** es
   posa al temps 1.
+- El **BPM i el compàs de la cua** són editables, com els de l’inici; el tram
+  normal de l’esquerra es recalcula perquè tinga compassos sencers.
 - Presets i previsualització actualitzats; el cas real amb 6 s de cua dona
   **1–2 compassos**, no 67.
 

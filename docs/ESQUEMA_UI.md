@@ -115,10 +115,11 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   l'inici (silenci d'estudi, anacrusi, introducció o aplaudiments) i/o el final
   (cua, *fade-out* o aplaudiments) a **N compassos sencers**. L'inici usa per
   defecte el BPM/compàs del primer tram (es pot canviar al diàleg); el final
-  usa sempre els de l'últim tram.
+  usa per defecte els de l'últim tram, però el BPM i el compàs de la cua també
+  són editables.
 - Els botons **Ajusta inici WAV** i **Ajusta final WAV** de la barra **Treball**
   obrin el mateix diàleg amb només la part corresponent activada.
-- Marca **«On comença la cançó (temps 1)»** i, al final, **«On s'acaba la música (inici de la cua)»**. Presets clars: **Conserva el so i afig silenci**, **Retalla el tros sobrant**, **Deixa 1 compàs d'introducció** i **Comença directament al temps 1**; al final, **Conserva tota la cua i afig silenci**, **Retalla la cua sobrant** i **Deixa K compassos de cua**. El final es tracta com una cua independent: es talla l'últim tram al punt marcat (alineat al compàs), queden un tram normal + el tram final de cua, i la WAV s'allarga o es retalla pel final. S'afigen els marcadors **Inici** (al temps 1) i **Final** (a l'inici de la cua), visibles com a text al timeline. Els **beats/downbeats QM** es desplacen amb l'àudio i s'actualitzen a la còpia del projecte.
+- Marca **«On comença la cançó (temps 1)»** i, al final, **«On s'acaba la música (inici de la cua)»**. Presets clars: **Conserva el so i afig silenci**, **Retalla el tros sobrant**, **Deixa 1 compàs d'introducció** i **Comença directament al temps 1**; al final, **Conserva tota la cua i afig silenci**, **Retalla la cua sobrant** i **Deixa K compassos de cua**. El final es tracta com una cua independent: es talla l'últim tram exactament al punt marcat; el tram normal de l'esquerra es recalcula (N/BPM) a compassos sencers, queda el tram final de cua i la WAV s'allarga o es retalla pel final. S'afigen els marcadors **Inici** (al temps 1) i **Final** (a l'inici de la cua), visibles com a text al timeline. Els **beats/downbeats QM** es desplacen amb l'àudio i s'actualitzen a la còpia del projecte.
 - La previsualització mostra segons i **mostres** afegides/retallades, la nova
   durada i els compassos/BPM resultants abans d'aplicar.
 - L'original no es toca: s'edita només la còpia de treball. L'operació és **atòmica** (WAV + acords + seccions + mapa + marcadors + CSVs) i un sol `Ctrl+Z`/`Ctrl+Y`.

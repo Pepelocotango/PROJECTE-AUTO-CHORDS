@@ -4421,7 +4421,9 @@ class TestEdicioAudioVisor(unittest.TestCase):
             d.sp_fort.setValue(258.856471 - 6.0)
             d.sp_n_fi.setValue(2)
             self.assertEqual(d.plan()["n_cua"], 2)
-            self.assertEqual(d.plan()["target_fi"], 258.85647153553737)
+            self.assertAlmostEqual(
+                d.plan()["target_fi"],
+                258.856471 - 6.0 + 2 * (4 * 60.0 / 68.617874), 9)
         finally:
             d.close()
 

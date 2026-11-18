@@ -127,12 +127,10 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         self.sp_bpm_fi.setToolTip("BPM de l'últim tram, en negres/minut.")
         self.ed_compas_fi = CampText(
             f"{int(self._ultim.num)}/{int(self._ultim.den)}")
-        self.sp_bpm_fi.setReadOnly(True)
-        self.ed_compas_fi.setReadOnly(True)
         self.sp_bpm_fi.setToolTip(
-            "BPM de l'últim tram (es canvia al mapa abans de quadrar).")
+            "BPM del tram de cua. Pot ser diferent del tram normal anterior.")
         self.ed_compas_fi.setToolTip(
-            "Compàs de l'últim tram (es canvia al mapa abans de quadrar).")
+            "Compàs del tram de cua (4/4, 3/4, 6/8…).")
         f_fi.addRow("BPM de l'últim tram:", self.sp_bpm_fi)
         f_fi.addRow("Compàs de l'últim tram:", self.ed_compas_fi)
 
@@ -229,8 +227,8 @@ class DialegQuadratura(GeometriaMixin, QDialog):
 
     def _n_fi(self, mode):
         try:
-            bpm, num, den = (float(self._ultim.bpm),
-                             int(self._ultim.num), int(self._ultim.den))
+            bpm, num, den = self._bpm(self.ed_compas_fi,
+                                      self.sp_bpm_fi)
             return audio_edit.calcula_n_cua(
                 self.durada, self.sp_fort.value(), bpm, num, den, mode)
         except Exception:
@@ -270,7 +268,8 @@ class DialegQuadratura(GeometriaMixin, QDialog):
                 if pla.get("target_final_point") is not None:
                     text.append(
                         f"La cua començarà a "
-                        f"{pla['target_final_point']:.3f} s (compàs alineat).")
+                        f"{pla['target_final_point']:.3f} s; el tram normal "
+                        "anterior es recalcula a compassos sencers.")
             tr = audio_edit.transforma_model_extrems(
                 [pipeline.Clip(0.0, self.durada, ("C", "0"))],
                 [(0.0, self.durada, "A", "A")], self.trams, [],
@@ -299,8 +298,10 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         if self.g_ini.isChecked():
             bpm_ini, num_ini, den_ini = self._bpm(
                 self.ed_compas_ini, self.sp_bpm_ini)
-        # Els camps del final són només lectura: `planifica_extrems` usa el
-        # tram exacte, no el valor arrodonit que mostra el QDoubleSpinBox.
+        bpm_fi = num_fi = den_fi = None
+        if self.g_fi.isChecked():
+            bpm_fi, num_fi, den_fi = self._bpm(
+                self.ed_compas_fi, self.sp_bpm_fi)
         fort = self.sp_fort.value() if self.g_fi.isChecked() else None
         return audio_edit.planifica_extrems(
             self.durada, self.sr, self.trams,
@@ -311,7 +312,7 @@ class DialegQuadratura(GeometriaMixin, QDialog):
             aplica_inici=self.g_ini.isChecked(),
             aplica_final=self.g_fi.isChecked(),
             bpm_ini=bpm_ini, num_ini=num_ini, den_ini=den_ini,
-            t_final=fort)
+            t_final=fort, bpm_fi=bpm_fi, num_fi=num_fi, den_fi=den_fi)
 
     def plan(self):
         if self._pla is None:
