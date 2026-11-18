@@ -48,6 +48,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - Els clips de tempo que quedaven després del tall s’eliminen; només queda el
   tram normal anterior + el tram final de cua.
 
+### Canviat — el TAP mana i l’últim clip pot ser fraccionari (2026-11-18)
+- El TAP ja no consulta ni bloqueja per QM: sempre aplica el BPM percebut.
+- L’últim clip de tempo pot quedar amb `N` fraccionari perquè el final de la
+  WAV és fix; la resta de clips continuen exigint `N` enter.
+- Ajustat el contracte §13.4 i els normalitzadors per a esta excepció.
+
 ### Canviat — el tall final deixa només el clip final (2026-11-18)
 - En aplicar `Ajusta final WAV`, a partir del punt de tall es descarten els
   clips d’acords i seccions que hi havia (es retallen els que creuen el punt)

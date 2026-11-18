@@ -311,13 +311,27 @@ class TempoMixin:
                 nous5 = tempo_map.canvia_bpm_local(
                     [tuple(t) for t in trams], idx, float(bpm),
                     self._durada_wav(), num=num, den=den,
-                    beats_qm=self._beats_per_validacio(), permissiu=True)
+                    beats_qm=self._beats_per_validacio(), permissiu=True,
+                    permet_ultim_fraccionari=True)
             except ValueError as e:
                 self.avis_editor(f"Tempo: {e}")
                 return False
             if not nous5:
                 return False
             nous = mapa_tempo.reenganxa_metadades(trams, nous5)
+            # En el TAP, `n` és el resultat nou (pot ser fraccionari a
+            # l'últim clip); no el reenganxem del tram vell.
+            t5 = nous5[idx]
+            bq = float(t5[3]) * 4.0 / float(t5[4])
+            dt = float(t5[1]) - float(t5[0])
+            if bq > 0 and dt > 0:
+                nous[idx] = mapa_tempo.TramMapa(
+                    float(t5[0]), float(t5[1]), float(t5[2]),
+                    getattr(nous[idx], "tipus", "normal"),
+                    f"{int(t5[3])}/{int(t5[4])}",
+                    getattr(nous[idx], "agrupacio", ""),
+                    float(dt) * float(t5[2]) / (bq * 60.0),
+                    getattr(nous[idx], "beat_unit", None))
         unit = self._unitat_en_canvi_compas(trams[idx], nous[idx], beat_unit)
         nous = self._amb_unitat(nous, idx, unit)
         if not self._valida_unitat_tram(nous[idx], "Tempo"):
@@ -618,7 +632,7 @@ class TempoMixin:
             entrada.append(t)
         try:
             trams, avisos = mapa_tempo.normalitza_trams_map(
-                entrada, d, log=self.log)
+                entrada, d, log=self.log, permet_ultim_fraccionari=True)
         except ValueError as e:
             self.log(f"tempo: mapa no vàlid: {e}")
             trams, avisos = [], [str(e)]
@@ -685,7 +699,8 @@ class TempoMixin:
         entrada = list(trams or [])
         try:
             nous, avisos = mapa_tempo.normalitza_trams_map(
-                entrada, self._durada_wav(), log=self.log)
+                entrada, self._durada_wav(), log=self.log,
+                permet_ultim_fraccionari=True)
         except ValueError as e:
             self.log(f"tempo: mapa no vàlid: {e}")
             return False

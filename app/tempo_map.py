@@ -1242,7 +1242,8 @@ def _base_tram(tram, idx=None):
     return float(tram[0])
 
 
-def valida_i_normalitza_permissiu(trams, durada):
+def valida_i_normalitza_permissiu(trams, durada,
+                                   permet_ultim_fraccionari=False):
     """Valida el mapa amb les regles permissives del model (F2).
 
     - BPM i compàs vàlids (30–350 i 1–12 / 2,4,8,16).
@@ -1264,7 +1265,8 @@ def valida_i_normalitza_permissiu(trams, durada):
     nous = normalitza_trams(trams, durada)
     if not nous:
         raise ValueError("El mapa de tempo/compàs és buit")
-    nous, _ns, _avisos = ajusta_compassos_sencers(nous)
+    nous, _ns, _avisos = ajusta_compassos_sencers(
+        nous, permet_ultim_fraccionari=permet_ultim_fraccionari)
     for i, t in enumerate(nous):
         ini, fi = float(t[0]), float(t[1])
         if fi - ini < limits.TEMPS_MIN_CLIP - TOL:
@@ -1297,6 +1299,8 @@ def problemes_compassos_sencers(trams, durada=0.0,
             continue
         if abs(n - round(n)) <= float(tolerancia):
             continue
+        if i == len(net) - 1:
+            continue                 # excepció: l'últim pot ser fraccionari
         issues.append({
             "idx": i,
             "ini": ini,
@@ -1333,7 +1337,8 @@ def compassos_del_clip(tram):
     return (fi - ini) / b
 
 
-def ajusta_compassos_sencers(trams, tolerancia=1e-9, estricte=True):
+def ajusta_compassos_sencers(trams, tolerancia=1e-9, estricte=True,
+                             permet_ultim_fraccionari=False):
     """Fa que **tots** els clips tinguen `N` enter; retorna `(trams, ns, avisos)`.
 
     - Si `N` ja és enter (dins `tolerancia`), es conserva el BPM exacte.
@@ -1346,6 +1351,7 @@ def ajusta_compassos_sencers(trams, tolerancia=1e-9, estricte=True):
 
     """
     out, ns, avisos = [], [], []
+    total = len(trams or ())
     for i, t in enumerate(trams or ()):
         ini, fi, bpm, num, den = (float(t[0]), float(t[1]), float(t[2]),
                                   int(t[3]), int(t[4]))
@@ -1358,6 +1364,12 @@ def ajusta_compassos_sencers(trams, tolerancia=1e-9, estricte=True):
         n = dt / (bq * 60.0 / bpm)
         n_int = max(1, _enter_mes_proper(n))
         if abs(n - n_int) > float(tolerancia):
+            # Excepció de producte: l'últim clip pot tindre N fraccionari
+            # (TAP sobre una WAV de duració fixa). Els altres, N enter.
+            if i == total - 1 and permet_ultim_fraccionari:
+                out.append((ini, fi, float(bpm), num, den))
+                ns.append(float(n))
+                continue
             n_min = max(1, int(math.ceil(
                 limits.BPM_MIN * dt / (bq * 60.0) - 1e-9)))
             n_max = int(math.floor(
@@ -1412,7 +1424,8 @@ def _mapa_valida_sense_moure(out, durada, preserva_fi_idx=None,
 
 
 def canvia_bpm_local(trams, idx, bpm, durada, num=None, den=None,
-                     beats_qm=None, permissiu=False):
+                     beats_qm=None, permissiu=False,
+                     permet_ultim_fraccionari=False):
     """Canvia el BPM/compàs d'un tram sense moure fronteres ni veïns.
 
     Contracte nou (§13.4/§13.5): el clip ha de contindre un **N enter** de
@@ -1435,7 +1448,9 @@ def canvia_bpm_local(trams, idx, bpm, durada, num=None, den=None,
     out = list(nous)
     out[i] = (float(ini), float(fi), float(bpm), int(num), int(den))
     if permissiu:
-        return valida_i_normalitza_permissiu(out, durada)
+        return valida_i_normalitza_permissiu(
+            out, durada,
+            permet_ultim_fraccionari=permet_ultim_fraccionari)
     out = _millora_signatures_clips(out, durada, beats_qm, {i})
     return _mapa_valida_sense_moure(out, durada,
                                     beats_qm=beats_qm)

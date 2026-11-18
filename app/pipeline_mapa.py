@@ -141,7 +141,8 @@ def llegeix_tempo_map(carpeta, bpm, num, den, durada, log=None):
     if not trams_map:
         return _constant()
     net, avisos = mapa_tempo.normalitza_trams_map(
-        trams_map, durada, log=log, fusiona=True)
+        trams_map, durada, log=log, fusiona=True,
+        permet_ultim_fraccionari=True)
     if log:
         for avís in avisos:
             log(f"Mapa de tempo: {avís}")

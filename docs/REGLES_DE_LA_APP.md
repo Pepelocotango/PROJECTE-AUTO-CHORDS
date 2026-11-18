@@ -109,9 +109,10 @@ exportada coincidix amb el model; els CSV del projecte mantenen `0,0`.
 model (el tram 0 inclòs) i el transport només n'és una vista; el recalcul usa
 el **veí esquerre** com a referència i busca compassos sencers; les
 fronteres interiors són lliures (snap opcional) i només cal una durada mínima
-d'un compàs 1/16 a 350 BPM (≈43 ms); **tots** els clips de tempo/compàs tenen
-un nombre enter de compassos (`N`), i el primer inici (0) i l'últim final
-(durada de la WAV) són fixes.*
+d'un compàs 1/16 a 350 BPM (≈43 ms); els clips de tempo/compàs tenen un
+nombre enter de compassos (`N`), **excepte l'últim**, que pot quedar fraccionari
+quan el final de la WAV és fix (TAP i ajustos de BPM); el primer inici (0) i
+l'últim final (durada de la WAV) són fixes.*
 
 ### 13.1 Els segons són la font de veritat de l'àudio
 Acords i seccions es guarden en **segons**: canviar BPM o compàs **no els mou**.
@@ -169,12 +170,14 @@ compassos sencers. El model és permissiu:
   projectes de format anterior es rebutgen sense tocar-los.
 - **Durada mínima**: cap clip pot ser més curt que un compàs **`1/16`** a 350
   BPM (≈ **43 ms**).
-- **N enter sempre**: tots els clips de tempo/compàs (primer, interiors,
-  últim i únic, rubato inclòs) han de contindre un **nombre enter de
-  compassos** (`N ≥ 1`). No existix l'estat amb `N` fraccionari: si una
-  edició o una càrrega el produïx, s'**arrodoneix `N`** i es **recalcula el
-  BPM** perquè la duració quede exacta; si el BPM resultant ix de 30–350 o el
-  clip queda per davall del mínim, l'operació es **rebutja amb avís**.
+- **N enter sempre, excepte l'últim**: tots els clips de tempo/compàs
+  (primer, interiors i rubato inclòs) han de contindre un **nombre enter de
+  compassos** (`N ≥ 1`). L'**últim clip** pot quedar amb `N` fraccionari
+  perquè el final de la WAV és fix: és el cas del **TAP** i dels ajustos de
+  BPM. Si una altra edició deixa `N` fraccionari en un clip no final,
+  s'**arrodoneix `N`** i es **recalcula el BPM**; si el BPM resultant ix de
+  30–350 o el clip queda per davall del mínim, l'operació es **rebutja amb
+  avís**.
 - **Extrems fixes**: l'**inici del primer clip** és sempre **0** i el **final
   de l'últim** és sempre la **durada de la WAV**; no s'editen. La resta de
   fronteres són interiors i lliures.
@@ -270,7 +273,7 @@ Els **marcadors** són anotacions visuals independents del model, segons §13.6.
   WAVs silenciosos no es modifiquen (regla #6).
 - Després de cada operació, acords, seccions i mapa continuen ordenats, contigus
   i cobrint `[0, durada]`. Els trams de tempo/compàs resultants mantenen `N`
-  enter a tots els clips, primer i últim inclosos (§13.4).
+  enter a tots els clips; l'últim pot quedar fraccionari (§13.4).
 - L'edició d'àudio és una acció explícita diferent d'un canvi de tempo: §13.1
   continua vigent per al tempo, però retallar/inserir transforma els temps perquè
   les marques seguisquen el mateix so. Les restriccions de §13.6 no autoritzen ni

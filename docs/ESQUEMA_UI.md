@@ -357,7 +357,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Ctrl+D** | **duplica** el clip o **tot el grup** seleccionat |
 | **Ctrl+C / Ctrl+X / Ctrl+V** | **copiar / retallar / enganxar** la selecció — l'enganxat **sobreescriu** el tram (regla #4: la cançó no pot créixer); si no mous el cursor, enganxa just **després** del bloc i deixa el bloc enganxat **seleccionat** |
 | **F2** | **reanomena** el clip seleccionat, o **tot el grup del tipus actiu** (N acords → un nom · M seccions → una lletra); amb selecció **mixta** es renombren només els del tipus del clip actiu (opció A), i el bloc queda **seleccionat** |
-| **Editor ⑫ + «Aplica»** | amb **multi-selecció**, el camp **Nom** s'aplica a **tots els seleccionats del tipus actiu** (estil fulla de càlcul); l'inici NO s'aplica en bloc. En un clip de tempo, **Aplica** al costat de **BPM**, **Compàs** o **N** aplica eixa variable i **recalcula les altres** amb prioritat compàs > BPM > N; el botó **Aplica** general fa el mateix si només ha canviat un camp. Amb **Snap = Beats QM**, els beats són una restricció forta per a totes les edicions (Editor, TAP, talls, fronteres i diàlegs); si no, no intervenen |
+| **Editor ⑫ + «Aplica»** | amb **multi-selecció**, el camp **Nom** s'aplica a **tots els seleccionats del tipus actiu** (estil fulla de càlcul); l'inici NO s'aplica en bloc. En un clip de tempo, **Aplica** al costat de **BPM**, **Compàs** o **N** aplica eixa variable i **recalcula les altres** amb prioritat compàs > BPM > N; el botó **Aplica** general fa el mateix si només ha canviat un camp. Amb **Snap = Beats QM**, els beats són una restricció forta per a les edicions d’estructura de tempo (Editor, talls, fronteres i diàlegs); el **TAP sempre mana** i no consulta QM. L’últim clip pot quedar amb `N` fraccionari perquè el final de la WAV és fix |
 | **Ctrl+Z / Ctrl+Y** | **desfer / refer** |
 | **Ctrl+H** | **troba i reemplaça** xifrats (acords) o etiquetes (estructura) a **tot el tema**; una sola operació de desfer i **no canvia cap temps** |
 | **← / →** | **nudge**: mou la **vora esquerra** (l'inici) del clip seleccionat **un pas de graella**; **Alt+←/→** mou la **vora dreta** (estirar/encongir). Una sola operació de desfer; sense selecció no fa res. |
@@ -388,7 +388,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   (Agrupació · N · Ini/Fi) també s'editen a la franja Editor. El
   transport intern del tram 0 se sincronitza des del model (`_sincronitza_temps_del_visor`),
   mai al revés.
-- **TAP** (tecla **T**): patró estàndard dels DAWs — guarda els instants dels
+- **TAP** (tecla **T**): sempre mana i no té restricció QM; pot deixar l’últim clip amb `N` fraccionari. Patró estàndard dels DAWs — guarda els instants dels
   últims taps, **mediana dels intervals** → `60/∅`; **reset als 2 s** (LMMS);
   **descarta intervals fora de 30–350 BPM** i els clarament anòmals (±30 % de
   la mediana). La **unitat de pols del clip** indica el valor de cada tap:

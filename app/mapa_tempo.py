@@ -434,7 +434,8 @@ def _fusiona_amb_agrupacio(trams):
     return out
 
 
-def normalitza_trams_map(trams, durada, log=None, fusiona=False):
+def normalitza_trams_map(trams, durada, log=None, fusiona=False,
+                         permet_ultim_fraccionari=False):
     """Normalitza el mapa preservant `tipus`, `agrupacio` i `n`.
 
     Tots els trams (normals i rubatos) passen pel **mateix camí**: ordre,
@@ -450,7 +451,8 @@ def normalitza_trams_map(trams, durada, log=None, fusiona=False):
     # Contracte §13.4: N enter a tots els clips. Si una duració deixa N
     # fraccionari, s'arrodoneix i es recalcula el BPM (amb avís).
     base5, ns, avisos_aj = tempo_map.ajusta_compassos_sencers(
-        [tuple(t) for t in net], estricte=True)
+        [tuple(t) for t in net], estricte=True,
+        permet_ultim_fraccionari=permet_ultim_fraccionari)
     net = [replace(t, bpm=float(t5[2]),
                    compassos=f"{int(t5[3])}/{int(t5[4])}", n=float(n))
            for t, t5, n in zip(net, base5, ns)]

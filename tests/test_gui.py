@@ -6181,8 +6181,10 @@ class TestAncoratgesFinestra(unittest.TestCase):
             self.assertTrue(vr._repara_compas_no_enter(
                 0, 120.0, 4, 4, 1.5, trams, desa=False))
         self.assertEqual(tuple(vr.tempo_trams[0][3:]), (9, 8))
-        # 60 s en 9/8: N=26,667 → N=27 i BPM derivat 121,5.
-        self.assertAlmostEqual(vr.tempo_trams[0][2], 121.5, places=6)
+        # 60 s en 9/8 a 120 BPM = 26,667 compassos; l'últim pot ser
+        # fraccionari perquè el final de la WAV és fix.
+        self.assertAlmostEqual(vr.tempo_trams[0][2], 120.0, places=6)
+        self.assertAlmostEqual(float(vr.tempo_trams[0].n), 26.666666, places=5)
 
     def test_edita_tempo_objectiu_mou_la_fi_i_recalcula_el_vei(self):
         """Regla C+A: el tram editat fixa fi; el veí conserva N/x i recalcula BPM."""
@@ -6583,6 +6585,21 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.tempo_trams[0].n, 30.0)
         self.assertFalse(vr.edita_tempo_guiat(0, bpm=100.0))
         self.assertAlmostEqual(vr.tempo_trams[0].bpm, 120.0, 6)
+
+    def test_tap_mana_i_el_ultim_clip_pot_quedar_fraccionari(self):
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        trams = [mapa_tempo.TramMapa(
+            0.0, 50.0, 120.0, "normal", "4/4", n=25)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        vr.set_snap(on=True, divisio="qm_beats")
+        self.assertTrue(vr.edita_tempo_objectiu(
+            0, 110.0, 4, 4, desa=False))
+        tr = vr.tempo_trams[0]
+        self.assertAlmostEqual(tr.bpm, 110.0, 6)
+        self.assertAlmostEqual(tr.n, 60.0 * 110.0 / (4 * 60.0), 6)
+        self.assertAlmostEqual(float(tr.n), round(float(tr.n)), 0)
+        self.assertNotAlmostEqual(float(tr.n), round(float(tr.n)), 2)
 
     def test_beats_qm_actualitzen_projecte_en_editar_audio(self):
         vr = self.w.visor_ref
