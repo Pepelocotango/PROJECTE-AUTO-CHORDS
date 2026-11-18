@@ -303,6 +303,18 @@ class TestQuadraturaExtrems(unittest.TestCase):
                 self.durada, 44100, self.trams, aplica_inici=False,
                 aplica_final=True, n_fi=8, t_ultim_fort=19.0)
 
+    def test_ceil_no_salta_de_compas_per_soroll_de_coma_flotant(self):
+        bpm = 68.617874
+        durada = 258.856471
+        start = 3.529412
+        D = 4 * 60.0 / bpm
+        self.assertEqual(edita.calcula_n_fi(
+            durada, start, bpm, 4, 4, "ceil"), 73)
+        self.assertEqual(edita.calcula_n_inici(
+            2 * D, bpm, 4, 4, "ceil"), 2)
+        self.assertEqual(edita.calcula_n_inici(
+            2 * D, bpm, 4, 4, "floor"), 2)
+
     def test_k_compassos_despres_del_fort(self):
         n = edita.n_fi_despres_fort(
             15.0, 0.0, self.bpm, 4, 4, 2)
@@ -350,6 +362,22 @@ class TestQuadraturaExtrems(unittest.TestCase):
         self.assertGreaterEqual(float(tr["trams"][-1].fi), 15.0)
         self.assertEqual(tr["trams"][-1].n, 9)
         self.assertAlmostEqual(float(tr["acords"][-1].fi), tr["durada"], 9)
+
+    def test_model_final_talla_el_tram_i_deixa_la_cua_demanada(self):
+        trams = [(0.0, 16.0, 120.0, 4, 4)]
+        acords = [pipeline.Clip(0.0, 16.0, ("C", "0"))]
+        seccions = [(0.0, 16.0, "A", "A")]
+        p = edita.planifica_extrems(
+            16.0, 1000, trams, aplica_inici=False, aplica_final=True,
+            t_final=12.0, n_fi=1)
+        self.assertEqual(p["n_cua"], 1)
+        self.assertEqual(p["n_fi"], 7)
+        tr = edita.transforma_model_extrems(
+            acords, seccions, trams, [], 16.0, p)
+        self.assertAlmostEqual(tr["durada"], 14.0, 9)
+        self.assertEqual([(t.ini, t.fi, t.n) for t in tr["trams"]],
+                         [(0.0, 12.0, 6.0), (12.0, 14.0, 1.0)])
+        self.assertAlmostEqual(tr["acords"][-1].fi, 14.0, 9)
 
     def test_model_final_ceil_conserva_bpm_i_tota_la_cua(self):
         trams = [(0.0, 20.0, self.bpm, 4, 4)]

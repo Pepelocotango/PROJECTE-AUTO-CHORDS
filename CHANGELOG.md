@@ -7,7 +7,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ### Afegit — marcadors «Inici» i «Final» de la quadratura (2026-11-18)
 - En aplicar la quadratura, s’afig un marcador **`inici`** al temps 1 i/o un
-  marcador **`final`** al final de la WAV, amb text visible al timeline.
+  marcador **`final`** a l'inici de la cua, amb text visible al timeline.
 - Els marcadors poden caure als extrems `0` i `durada` (només la quadratura els
   crea ahí; `M` continua refusant els extrems).
 - Els tipus de marcador es conserven en desar, en desfer/refer i en editar
@@ -17,10 +17,37 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - Afegits a la barra **Treball** els botons **Ajusta inici WAV** i **Ajusta
   final WAV**; obrin `DialegQuadratura` amb només la part corresponent activa.
 - El rotatori de la caixa d’informació explica estos botons i les opcions del
-  diàleg (temps 1, temps fort, presets i previsualització).
+  diàleg (temps 1, final de la música, cua, presets i previsualització).
 - Textos del diàleg reescrits per a músics: «On comença la cançó», «Quants
   compassos abans de la cançó», «Conserva el so i afig silenci», «Retalla el
   tros sobrant», «Conserva tota la cua i afig silenci», etc.
+
+### Canviat — el final es quadra com una cua independent (2026-11-18)
+- `Ajusta final WAV` ara demana **on s’acaba la música** i quants compassos
+  de **cua** es volen. L’app talla l’últim tram en eixe punt (alineat al
+  compàs), deixa un tram normal + el tram final de cua, i ajusta la WAV pel
+  final.
+- `N final` passa a ser el nombre de compassos **de la cua** (1, 2…), no el
+  total del tram de tempo.
+- El marcador **Final** es posa a l’inici de la cua, igual que **Inici** es
+  posa al temps 1.
+- Presets i previsualització actualitzats; el cas real amb 6 s de cua dona
+  **1–2 compassos**, no 67.
+
+### Corregit — quadratura final rebutjada i 74 compassos per defecte (2026-11-18)
+- El final es rebutjava falsament perquè comparava el BPM exacte del tram amb
+  el valor arrodonit que mostrava el camp de només lectura.
+- `ceil`/`floor` ara toleren el soroll de coma flotant: un final que ja és
+  exactament `73` compassos no es convertix en `74`.
+- Regressions amb el cas real `68.617874 BPM` / `258.856471 s`.
+- El diàleg mostra com a `N final` els **compassos de cua** i la previsualització
+  separa l’objectiu del resultat real.
+
+### Corregit — els beats QM es desplacen amb l’àudio (2026-11-18)
+- En afegir/retallar al inici, els beats i downbeats QM es desplacen el mateix
+  `Δ` que l’àudio; en retallar el final s’eliminen els que queden fora.
+- També s’actualitza la còpia del projecte (`analisi_beats`), no només la línia
+  visual, i tot entra al mateix `Ctrl+Z`/`Ctrl+Y`.
 
 ### Corregit — primer play desincronitzat amb l’ona (2026-11-18)
 - La primera reproducció tardava perquè `_mono_bytes()` tornava a convertir

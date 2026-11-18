@@ -94,6 +94,9 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
     # Velocitat de reproducció canviada (0,5–3×): la barra de la finestra
     # principal té el seu propi selector i ha d'anar sincronitzada.
     velocitatCanviada = pyqtSignal(float)
+    # Els beats/downbeats QM són anotacions de l'àudio: si s'edita la WAV,
+    # la finestra n'ha d'actualitzar la còpia del projecte.
+    beatsChanged = pyqtSignal(list, list)
     def __init__(self, wav, acords, abc, bpm, bpb, tempo_fix=True, sortida=None,
                  beat_type=4, bpm_unit="negra",
                  latencia_cursor_ms=0.0, beat_unit="negra"):
@@ -179,6 +182,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.marcadors = pipeline.llegeix_marcadors(
             self._carpeta_acords(), self._durada_wav())
         self.qm_beats = []
+        self.qm_downbeats = []
         # Avís de factor 1,5×/2/3 silenciat per a este tram en esta sessió.
         # Mode de snap que decidix quina graella valida els clips: amb
         # «qm_beats» mana QM; en qualsevol altre mode mana BPM/compàs.
@@ -644,9 +648,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             return list(getattr(self, "qm_beats", None) or ()) or None
         return None
 
-    def set_snap_beats(self, beats=None):
+    def set_snap_beats(self, beats=None, downbeats=None):
         """Beats de QM per al snap manual i per al contracte de clips."""
         self.qm_beats = [float(b) for b in (beats or ())]
+        if downbeats is not None:
+            self.qm_downbeats = [float(b) for b in (downbeats or ())]
         if hasattr(self, "timeline"):
             self.timeline.set_snap_beats(beats)
 
@@ -929,6 +935,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             # Els marcadors humans també es desfan (es creen amb `+` en viu).
             "marcadors": list(getattr(self, "marcadors", []) or []),
             "marcador_tipus": dict(getattr(self, "marcador_tipus", {}) or {}),
+            "qm_beats": list(getattr(self, "qm_beats", []) or []),
+            "qm_downbeats": list(getattr(self, "qm_downbeats", []) or []),
         }
 
     def _estat_complet(self):
@@ -944,6 +952,13 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             self.marcadors = list(temps["marcadors"])
             self.marcador_tipus = dict(temps.get("marcador_tipus") or {})
             self._pinta_marcadors()
+        if "qm_beats" in temps:
+            self.qm_beats = list(temps.get("qm_beats") or [])
+            self.qm_downbeats = list(temps.get("qm_downbeats") or [])
+            if hasattr(self, "timeline"):
+                self.timeline.set_beats(self.qm_beats, self.qm_downbeats)
+                self.timeline.set_snap_beats(self.qm_beats)
+            self.beatsChanged.emit(self.qm_beats, self.qm_downbeats)
         tt = temps.get("tempo_trams")
         if tt is not None:
             self.tempo_trams = copy.deepcopy(list(tt))
@@ -1106,6 +1121,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.timeline.set_audio(self.audio)
         self.timeline.set_data(self.acords, self.seccions)
         self.timeline.set_marcadors(self.marcadors)
+        self.timeline.set_beats(self.qm_beats, self.qm_downbeats)
+        self.timeline.set_snap_beats(self.qm_beats)
         self._actualitza_temps()
         self.timeline.set_loop(self.loop_a, self.loop_b)
         self.timeline.set_position(self.pos, emit=False, snap=False)
@@ -1194,7 +1211,9 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if pla.get("aplica_inici"):
             extrems.append((float(pla.get("target_ini", 0.0)), "inici"))
         if pla.get("aplica_final"):
-            extrems.append((float(pla.get("target_fi", durada)), "final"))
+            extrems.append((float(pla.get("target_final_point",
+                                          pla.get("target_fi", durada))),
+                            "final"))
         for pos, tip in extrems:
             pos = round(max(0.0, min(pos, durada)), 6)
             abans = list(tr["marcadors"])
@@ -1204,6 +1223,17 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 if abs(float(mes) - pos) <= M.SEPARACIO_MIN:
                     tipus[round(float(mes), 6)] = tip
         tr["marcador_tipus"] = tipus
+
+    def _beats_desplacats(self, delta, durada):
+        """Beats/downbeats QM desplaçats amb l'àudio (i retallats si cal)."""
+        durada = float(durada)
+
+        def mou(llista):
+            return [round(float(t) + float(delta), 6)
+                    for t in (llista or ())
+                    if 0.0 <= float(t) + float(delta) <= durada]
+        return mou(getattr(self, "qm_beats", [])), mou(
+            getattr(self, "qm_downbeats", []))
 
     def _executa_audio_model(self, tr, escriu_audio, etiqueta):
         """Publica WAV + model com una sola operació atòmica i un sol undo."""
@@ -1249,6 +1279,10 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                         tr.get("marcador_tipus")
                         or {round(float(m), 6): "seccio"
                             for m in self.marcadors})
+                    if "qm_beats" in tr:
+                        self.qm_beats = list(tr.get("qm_beats") or [])
+                        self.qm_downbeats = list(
+                            tr.get("qm_downbeats") or [])
                     self._refresca_ui_audio()
                     self._publica_model_audio(model_tmp, noms, wav_temporal)
                 except Exception:
@@ -1260,6 +1294,9 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                     self.marcadors = list(temps_antic["marcadors"])
                     self.marcador_tipus = dict(
                         temps_antic.get("marcador_tipus") or {})
+                    self.qm_beats = list(temps_antic.get("qm_beats") or [])
+                    self.qm_downbeats = list(
+                        temps_antic.get("qm_downbeats") or [])
                     for k in ("bpm", "bpb", "beat_type",
                               "tempo_fix", "loop_a", "loop_b", "loop_on"):
                         setattr(self, k, temps_antic[k])
@@ -1272,6 +1309,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 self._audio_snapshot_current = snapshot_nou
                 self._undo_commit()
         self._neteja_snapshots_audio()
+        self.beatsChanged.emit(self.qm_beats, self.qm_downbeats)
         self.canvis.emit()
         self.log(f"àudio editat: {etiqueta}")
         self.infoMissatge.emit("Edició d'àudio aplicada")
@@ -1298,6 +1336,10 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 loop_on=self.loop_on)
             if operacio == audio_edit.RETALLA_FINAL:
                 tr["durada"] = delta
+            delta_beats = (delta if operacio in (
+                audio_edit.SILENCI_INICI, audio_edit.RETALLA_INICI) else 0.0)
+            tr["qm_beats"], tr["qm_downbeats"] = self._beats_desplacats(
+                delta_beats, tr["durada"])
             self._posa_transport_del_tram0(tr)
             self._executa_audio_model(
                 tr,
@@ -1320,6 +1362,10 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 durada, pla, pos=self.pos, loop_a=self.loop_a,
                 loop_b=self.loop_b, loop_on=self.loop_on)
             self._marca_extrems_quadratura(tr, pla)
+            delta_beats = (float(pla.get("delta_ini", 0.0))
+                           if pla.get("aplica_inici") else 0.0)
+            tr["qm_beats"], tr["qm_downbeats"] = self._beats_desplacats(
+                delta_beats, tr["durada"])
             self._posa_transport_del_tram0(tr)
             self._executa_audio_model(
                 tr,

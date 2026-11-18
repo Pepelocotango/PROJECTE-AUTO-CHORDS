@@ -193,11 +193,12 @@ class InfoBoxMixin:
             ("Ajustar el final de la WAV", [
                 ("Botó «Ajusta final WAV» de la barra: obri el diàleg només "
                  "pel final", ""),
-                ("Marca l'«Últim temps fort que no vols tallar»: el retall no "
-                 "passarà per davant", ""),
-                ("Tria quants compassos tindrà l'últim tram: conserva la cua "
-                 "i afig silenci o retalla el sobrant", ""),
-                ("En aplicar, crea un marcador «Final» al final de la WAV", ""),
+                ("Marca «On s'acaba la música»: ahí es talla l'últim tram i "
+                 "comença la cua", ""),
+                ("Tria quants compassos de cua vols: l'app allarga o retalla "
+                 "la WAV des del final", ""),
+                ("En aplicar, crea un marcador «Final» a l'inici de la cua",
+                 ""),
                 ("«Deixa K compassos després del fort» manté eixa cua; tot es "
                  "pot desfer amb Ctrl+Z", ""),
             ]),

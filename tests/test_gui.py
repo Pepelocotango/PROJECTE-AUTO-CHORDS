@@ -4185,9 +4185,14 @@ class TestEdicioAudioVisor(unittest.TestCase):
 
     def test_edit_audio_model_undo_i_redo_junts(self):
         from app import audio_edit
+        self.v.qm_beats = [1.0, 2.0]
+        self.v.qm_downbeats = [1.0]
+        self.v._undo_base = self.v._estat_complet()
         self.v.timeline.audioEditRequested.emit(
             audio_edit.SILENCI_INICI, 1000)
         self.assertAlmostEqual(self.v.audio["durada"], 9.0)
+        self.assertEqual(self.v.qm_beats, [2.0, 3.0])
+        self.assertEqual(self.v.qm_downbeats, [2.0])
         self.assertEqual(self.v.marcadors, [2.0, 7.0])
         self.assertEqual(self.v.pos, 4.0)
         self.assertEqual((self.v.loop_a, self.v.loop_b), (2.0, 7.0))
@@ -4208,12 +4213,16 @@ class TestEdicioAudioVisor(unittest.TestCase):
 
         self.v.undo()
         self.assertAlmostEqual(self.v.audio["durada"], 8.0)
+        self.assertEqual(self.v.qm_beats, [1.0, 2.0])
+        self.assertEqual(self.v.qm_downbeats, [1.0])
         self.assertEqual(self.v.marcadors, [1.0, 6.0])
         self.assertEqual(self.v.pos, 3.0)
         self.assertEqual((self.v.loop_a, self.v.loop_b), (1.0, 6.0))
         self.assertEqual(len(self.v._redo_stack), 1)
         self.v.redo()
         self.assertAlmostEqual(self.v.audio["durada"], 9.0)
+        self.assertEqual(self.v.qm_beats, [2.0, 3.0])
+        self.assertEqual(self.v.qm_downbeats, [2.0])
         self.assertEqual(self.v.marcadors, [2.0, 7.0])
         self.assertEqual(self.v.pos, 4.0)
         self.assertEqual((self.v.loop_a, self.v.loop_b), (2.0, 7.0))
@@ -4250,6 +4259,8 @@ class TestEdicioAudioVisor(unittest.TestCase):
                          pipeline.Clip(4.0, 8.0, ("G", "0"))]
         self.v.seccions = [(0.0, 4.0, "A", "A"), (4.0, 8.0, "B", "B")]
         self.v.timeline.set_data(self.v.acords, self.v.seccions)
+        self.v.qm_beats = [1.0, 2.0, 7.0]
+        self.v.qm_downbeats = [1.0, 7.0]
         self.v._undo_base = self.v._estat_complet()
         pla = audio_edit.planifica_extrems(
             8.0, 1000, trams, t_temps1=1.0, n_ini=1, n_fi=3,
@@ -4260,6 +4271,8 @@ class TestEdicioAudioVisor(unittest.TestCase):
             bytes0 = f.read()
         self.v.aplica_quadratura_extrems(pla)
         self.assertAlmostEqual(self.v.audio["durada"], 8.0, 9)
+        self.assertEqual(self.v.qm_beats, [2.0, 3.0, 8.0])
+        self.assertEqual(self.v.qm_downbeats, [2.0, 8.0])
         self.assertEqual(self.v.marcadors, [2.0, 7.0, 8.0])
         self.assertEqual(self.v.marcador_tipus[2.0], "inici")
         self.assertEqual(self.v.marcador_tipus[8.0], "final")
@@ -4276,11 +4289,15 @@ class TestEdicioAudioVisor(unittest.TestCase):
         self.v.undo()
         with open(self.wav, "rb") as f:
             self.assertEqual(f.read(), bytes0)
+        self.assertEqual(self.v.qm_beats, [1.0, 2.0, 7.0])
+        self.assertEqual(self.v.qm_downbeats, [1.0, 7.0])
         self.assertEqual(self.v.marcadors, [1.0, 6.0])
         self.assertEqual(self.v.pos, 3.0)
         self.v.redo()
         with open(self.wav, "rb") as f:
             self.assertEqual(f.read(), bytes1)
+        self.assertEqual(self.v.qm_beats, [2.0, 3.0, 8.0])
+        self.assertEqual(self.v.qm_downbeats, [2.0, 8.0])
         self.assertEqual(self.v.marcadors, [2.0, 7.0, 8.0])
         tipus_csv = pipeline.llegeix_marcadors_tipus(self.sortida)
         self.assertEqual(tipus_csv[2.0], "inici")
@@ -4301,6 +4318,24 @@ class TestEdicioAudioVisor(unittest.TestCase):
                   encoding="utf-8") as f:
             mapa = f.read()
         self.assertIn(",8.000000,", mapa)
+
+    def test_quadratura_final_talla_tram_i_marca_linici_de_la_cua(self):
+        from app import audio_edit, mapa_tempo
+        self.v.marcadors = []
+        self.v.marcador_tipus = {}
+        self.v.timeline.set_marcadors(self.v.marcadors)
+        self.v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 8.0, 120.0, "normal", "4/4", n=4)]
+        self.v._undo_base = self.v._estat_complet()
+        pla = audio_edit.planifica_extrems(
+            8.0, 1000, self.v.tempo_trams, aplica_inici=False,
+            aplica_final=True, t_final=4.0, n_fi=1)
+        self.v.aplica_quadratura_extrems(pla)
+        self.assertAlmostEqual(self.v.audio["durada"], 6.0, 9)
+        self.assertEqual([(t.ini, t.fi, t.n) for t in self.v.tempo_trams],
+                         [(0.0, 4.0, 2.0), (4.0, 6.0, 1.0)])
+        self.assertEqual(self.v.marcadors, [4.0])
+        self.assertEqual(self.v.marcador_tipus[4.0], "final")
 
     def test_quadratura_invalida_el_pcm_de_reproduccio(self):
         from app import audio_edit, mapa_tempo
@@ -4353,11 +4388,13 @@ class TestEdicioAudioVisor(unittest.TestCase):
             self.assertEqual(d.sp_n_ini.value(), 1)
             self.assertEqual(d.plan()["n_ini"], 1)
             self.assertIn("Nova durada", d.previsualitzacio.text())
+            d.g_ini.setChecked(False)
             d.g_fi.setChecked(True)
-            d.sp_n_fi.setValue(3)
+            d.sp_fort.setValue(4.0)
+            d.sp_n_fi.setValue(1)
             self.assertTrue(
                 d.botons.button(QDialogButtonBox.Ok).isEnabled())
-            self.assertAlmostEqual(d.plan()["delta_fi"], -1.0, 9)
+            self.assertAlmostEqual(d.plan()["delta_fi"], -2.0, 9)
             d.g_ini.setChecked(False)
             d.g_fi.setChecked(False)
             self.assertFalse(
@@ -4369,6 +4406,22 @@ class TestEdicioAudioVisor(unittest.TestCase):
         try:
             self.assertFalse(d.g_ini.isChecked())
             self.assertTrue(d.g_fi.isChecked())
+        finally:
+            d.close()
+        trams2 = [mapa_tempo.TramMapa(0.0, 3.529412, 68.0, "normal", "4/4"),
+                  mapa_tempo.TramMapa(3.529412, 258.856471, 68.617874,
+                                      "normal", "4/4")]
+        d = DialegQuadratura(
+            None, durada=258.856471, sr=44100, pos=100.0,
+            trams=trams2, mode="final")
+        try:
+            self.assertEqual(d.sp_n_fi.value(), 1)
+            self.assertEqual(d.plan()["n_cua"], 1)
+            self.assertEqual(d.plan()["n_fi"], 73)
+            d.sp_fort.setValue(258.856471 - 6.0)
+            d.sp_n_fi.setValue(2)
+            self.assertEqual(d.plan()["n_cua"], 2)
+            self.assertEqual(d.plan()["target_fi"], 258.85647153553737)
         finally:
             d.close()
 
@@ -6476,6 +6529,19 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr.undo()
         self.assertEqual(len(vr.tempo_trams), 1)
         self.assertEqual(len(vr.seccions), 1)
+
+    def test_beats_qm_actualitzen_projecte_en_editar_audio(self):
+        vr = self.w.visor_ref
+        self.w._beats_actuals = {"motor": "qm", "beats": [1.0],
+                                 "downbeats": [1.0]}
+        self.w.projecte.dades["analisi_beats"] = {
+            "motor": "qm", "beats": [1.0], "downbeats": [1.0]}
+        vr.beatsChanged.emit([2.0, 3.0], [2.0])
+        self.assertEqual(self.w._beats_actuals["beats"], [2.0, 3.0])
+        self.assertEqual(self.w._beats_actuals["downbeats"], [2.0])
+        self.assertEqual(
+            self.w.projecte.dades["analisi_beats"]["beats"], [2.0, 3.0])
+        self.assertTrue(self.w.dirty)
 
     def test_m_crea_un_marcador_lliure(self):
         vr = self.w.visor_ref

@@ -1,6 +1,6 @@
 """Diàleg per quadrar els extrems de la còpia WAV a compassos sencers."""
 from PyQt5.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
+    QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
     QGroupBox, QHBoxLayout, QLabel, QPushButton, QSpinBox, QVBoxLayout,
 )
 
@@ -35,6 +35,12 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         self._primer = self.trams[0]
         self._ultim = self.trams[-1]
         self._t1_defecte = max(0.0, min(float(pos), self.durada))
+        compas_fi = 4 * 60.0 / float(self._ultim.bpm)
+        self._t_final_defecte = max(
+            float(self._ultim.ini), self.durada - compas_fi)
+        self._n_fi_actual = audio_edit.calcula_n_cua(
+            self.durada, self._t_final_defecte, self._ultim.bpm,
+            self._ultim.num, self._ultim.den, "ceil")
 
         lay = QVBoxLayout(self)
         intro = QLabel(
@@ -51,7 +57,7 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         f_ini = QFormLayout(self.g_ini)
         self.sp_t1 = QDoubleSpinBox()
         self.sp_t1.setRange(0.0, max(0.0, self.durada))
-        self.sp_t1.setDecimals(3)
+        self.sp_t1.setDecimals(6)
         self.sp_t1.setSuffix(" s")
         self.sp_t1.setValue(self._t1_defecte)
         self.sp_t1.setToolTip(
@@ -60,7 +66,7 @@ class DialegQuadratura(GeometriaMixin, QDialog):
 
         self.sp_bpm_ini = QDoubleSpinBox()
         self.sp_bpm_ini.setRange(limits.BPM_MIN, limits.BPM_MAX)
-        self.sp_bpm_ini.setDecimals(3)
+        self.sp_bpm_ini.setDecimals(6)
         self.sp_bpm_ini.setValue(float(self._primer.bpm))
         self.sp_bpm_ini.setToolTip("BPM del compàs d'entrada, en negres/minut.")
         self.ed_compas_ini = CampText(
@@ -99,26 +105,24 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         lay.addWidget(self.g_ini)
 
         self.g_fi = QGroupBox(
-            "Final: quants compassos de cua o aplaudiments vols conservar?")
+            "Final: on acaba la música i quants compassos de cua vols?")
         self.g_fi.setCheckable(True)
         self.g_fi.setChecked(False)
         f_fi = QFormLayout(self.g_fi)
-        self.chk_fort = QCheckBox("Protegeix el darrer temps fort")
-        self.chk_fort.setToolTip(
-            "El retall no pot quedar-se abans d'este temps fort; es "
-            "conserva almenys un compàs de resolució després.")
-        f_fi.addRow(self.chk_fort)
         self.sp_fort = QDoubleSpinBox()
-        self.sp_fort.setRange(0.0, max(0.0, self.durada))
-        self.sp_fort.setDecimals(3)
+        self.sp_fort.setRange(float(self._ultim.ini),
+                              max(float(self._ultim.ini), self.durada))
+        self.sp_fort.setDecimals(6)
         self.sp_fort.setSuffix(" s")
-        self.sp_fort.setValue(max(0.0, self.durada - 0.001))
-        self.sp_fort.setEnabled(False)
-        f_fi.addRow("Últim temps fort que no vols tallar:", self.sp_fort)
+        self.sp_fort.setValue(self._t_final_defecte)
+        self.sp_fort.setToolTip(
+            "Punt on s'acaba la música i comença la cua o els aplaudiments. "
+            "El tall o l'estirament es fa des d'ací fins al final de la WAV.")
+        f_fi.addRow("On s'acaba la música (inici de la cua):", self.sp_fort)
 
         self.sp_bpm_fi = QDoubleSpinBox()
         self.sp_bpm_fi.setRange(limits.BPM_MIN, limits.BPM_MAX)
-        self.sp_bpm_fi.setDecimals(3)
+        self.sp_bpm_fi.setDecimals(6)
         self.sp_bpm_fi.setValue(float(self._ultim.bpm))
         self.sp_bpm_fi.setToolTip("BPM de l'últim tram, en negres/minut.")
         self.ed_compas_fi = CampText(
@@ -134,10 +138,15 @@ class DialegQuadratura(GeometriaMixin, QDialog):
 
         self.sp_n_fi = QSpinBox()
         self.sp_n_fi.setRange(1, 9999)
-        self.sp_n_fi.setValue(self._n_fi("ceil"))
+        self.sp_n_fi.setValue(self._n_fi_actual)
         self.sp_n_fi.setToolTip(
-            "Compassos de l'últim tram. Sempre respecta la protecció del fort.")
-        f_fi.addRow("Quants compassos tindrà l'últim tram:", self.sp_n_fi)
+            "N objectiu de l'últim tram. Si activeu la protecció del fort, "
+            "pot caldre apujar-lo; la previsualització mostra el resultat real.")
+        self.lb_n_fi_actual = QLabel(
+            f"La cua actual té {self._n_fi_actual} compassos sencers.")
+        self.lb_n_fi_actual.setObjectName("secundari")
+        f_fi.addRow("N final (objectiu):", self.sp_n_fi)
+        f_fi.addRow("", self.lb_n_fi_actual)
 
         fila = QHBoxLayout()
         b = QPushButton("Conserva tota la cua i afig silenci")
@@ -189,11 +198,8 @@ class DialegQuadratura(GeometriaMixin, QDialog):
             w.valueChanged.connect(self._actualitza)
         for w in (self.ed_compas_ini, self.ed_compas_fi):
             w.textChanged.connect(self._actualitza)
-        for w in (self.g_ini, self.g_fi, self.chk_fort):
-            if isinstance(w, QGroupBox):
-                w.toggled.connect(self._actualitza)
-            else:
-                w.toggled.connect(self._fort_canviat)
+        for w in (self.g_ini, self.g_fi):
+            w.toggled.connect(self._actualitza)
         mode = str(mode or "ambdos").strip().lower()
         if mode == "inici":
             self.g_ini.setChecked(True)
@@ -223,12 +229,10 @@ class DialegQuadratura(GeometriaMixin, QDialog):
 
     def _n_fi(self, mode):
         try:
-            bpm, num, den = self._bpm(self.ed_compas_fi,
-                                      self.sp_bpm_fi)
-            fort = self.sp_fort.value() if self.chk_fort.isChecked() else None
-            return audio_edit.calcula_n_fi(
-                self.durada, self._ultim.ini, bpm, num, den, mode,
-                t_ultim_fort=fort)
+            bpm, num, den = (float(self._ultim.bpm),
+                             int(self._ultim.num), int(self._ultim.den))
+            return audio_edit.calcula_n_cua(
+                self.durada, self.sp_fort.value(), bpm, num, den, mode)
         except Exception:
             return 1
 
@@ -239,20 +243,7 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         self.sp_n_fi.setValue(self._n_fi(mode))
 
     def _posa_k(self):
-        try:
-            bpm, num, den = self._bpm(self.ed_compas_fi,
-                                      self.sp_bpm_fi)
-            fort = (self.sp_fort.value() if self.chk_fort.isChecked()
-                    else self._ultim.ini)
-            self.sp_n_fi.setValue(audio_edit.n_fi_despres_fort(
-                fort, self._ultim.ini, bpm, num, den,
-                self.sp_k.value()))
-        except Exception:
-            pass
-
-    def _fort_canviat(self, actiu):
-        self.sp_fort.setEnabled(bool(actiu))
-        self._actualitza()
+        self.sp_n_fi.setValue(max(1, int(self.sp_k.value())))
 
     def _actualitza(self):
         self.avis_n.setVisible(self.g_ini.isChecked()
@@ -272,9 +263,14 @@ class DialegQuadratura(GeometriaMixin, QDialog):
                 text.append(
                     f"Final: {_mostra_delta(pla['silenci_fi']
                                             - pla['retalla_fi'], self.sr)} · "
-                    f"{pla['n_fi']} compassos a "
+                    f"objectiu {pla.get('n_cua', pla['n_fi'])} compassos "
+                    f"de cua a "
                     f"{pla['bpm_fi']:g} BPM ({pla['num_fi']}/"
                     f"{pla['den_fi']}).")
+                if pla.get("target_final_point") is not None:
+                    text.append(
+                        f"La cua començarà a "
+                        f"{pla['target_final_point']:.3f} s (compàs alineat).")
             tr = audio_edit.transforma_model_extrems(
                 [pipeline.Clip(0.0, self.durada, ("C", "0"))],
                 [(0.0, self.durada, "A", "A")], self.trams, [],
@@ -303,14 +299,9 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         if self.g_ini.isChecked():
             bpm_ini, num_ini, den_ini = self._bpm(
                 self.ed_compas_ini, self.sp_bpm_ini)
-        if self.g_fi.isChecked():
-            bpm, num, den = self._bpm(self.ed_compas_fi, self.sp_bpm_fi)
-            if (abs(bpm - self._ultim.bpm) > 1e-9
-                    or num != self._ultim.num or den != self._ultim.den):
-                raise ValueError(
-                    "El final només pot usar el BPM/compàs de l'últim tram "
-                    "(modifica'l abans al mapa)")
-        fort = self.sp_fort.value() if self.chk_fort.isChecked() else None
+        # Els camps del final són només lectura: `planifica_extrems` usa el
+        # tram exacte, no el valor arrodonit que mostra el QDoubleSpinBox.
+        fort = self.sp_fort.value() if self.g_fi.isChecked() else None
         return audio_edit.planifica_extrems(
             self.durada, self.sr, self.trams,
             t_temps1=self.sp_t1.value(),
@@ -319,7 +310,8 @@ class DialegQuadratura(GeometriaMixin, QDialog):
             n_fi=self.sp_n_fi.value(),
             aplica_inici=self.g_ini.isChecked(),
             aplica_final=self.g_fi.isChecked(),
-            bpm_ini=bpm_ini, num_ini=num_ini, den_ini=den_ini)
+            bpm_ini=bpm_ini, num_ini=num_ini, den_ini=den_ini,
+            t_final=fort)
 
     def plan(self):
         if self._pla is None:

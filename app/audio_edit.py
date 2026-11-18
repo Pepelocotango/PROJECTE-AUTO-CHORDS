@@ -171,9 +171,9 @@ def calcula_n_inici(t_temps1, bpm, num, den, mode="ceil", n=None):
     if mode not in MODES_INICI:
         raise ValueError(f"Mode d'inici desconegut: {mode!r}")
     if mode == "ceil":
-        return max(1, int(math.ceil(q - _TOL_PLA)))
+        return max(1, _sostre(q))
     if mode == "floor":
-        return max(0, int(math.floor(q + _TOL_PLA)))
+        return max(0, _terra(q))
     if mode == "un":
         return 1
     if mode == "zero":
@@ -197,7 +197,7 @@ def n_min_fi(t_ultim_fort, t_ini_ultim, bpm, num, den):
         raise ValueError("El compàs final no té durada")
     if fort <= start + _TOL_PLA:
         return 1
-    return max(1, int(math.ceil((fort - start) / compas - _TOL_PLA)) + 1)
+    return max(1, _sostre((fort - start) / compas) + 1)
 
 
 def calcula_n_fi(durada, t_ini_ultim, bpm, num, den, mode="ceil", n=None,
@@ -221,12 +221,35 @@ def calcula_n_fi(durada, t_ini_ultim, bpm, num, den, mode="ceil", n=None,
         raise ValueError(f"Mode final desconegut: {mode!r}")
     q = max(0.0, durada - start) / compas
     if mode == "ceil":
-        return max(minim, int(math.ceil(q - _TOL_PLA)))
+        return max(minim, _sostre(q))
     if mode == "floor":
-        return max(minim, int(math.floor(q + _TOL_PLA)))
+        return max(minim, _terra(q))
     if isinstance(n, bool) or not isinstance(n, int) or n < minim:
         raise ValueError(
             f"N final ha de ser un enter ≥ {minim} (protecció del temps fort)")
+    return int(n)
+
+
+def calcula_n_cua(durada, t_final, bpm, num, den, mode="ceil", n=None):
+    """Compassos de cua des del final musical fins al final de la WAV."""
+    durada = float(durada)
+    t = float(t_final)
+    if not (0.0 <= t <= durada + _TOL_PLA):
+        raise ValueError("El final de la música ha de ser dins la WAV")
+    bpm, num, den = _valida_tram_tempo(bpm, num, den)
+    compas = tempo_map.durada_compas(bpm, num, den)
+    if compas <= 0:
+        raise ValueError("El compàs final no té durada")
+    q = max(0.0, durada - t) / compas
+    mode = str(mode or "ceil").strip().lower()
+    if mode not in MODES_FINAL:
+        raise ValueError(f"Mode final desconegut: {mode!r}")
+    if mode == "ceil":
+        return max(1, _sostre(q))
+    if mode == "floor":
+        return max(1, _terra(q))
+    if isinstance(n, bool) or not isinstance(n, int) or n < 1:
+        raise ValueError("N de cua ha de ser un enter ≥ 1")
     return int(n)
 
 
@@ -244,9 +267,20 @@ def n_fi_despres_fort(t_ultim_fort, t_ini_ultim, bpm, num, den, k=1):
     start = float(t_ini_ultim)
     bpm, num, den = _valida_tram_tempo(bpm, num, den)
     compas = tempo_map.durada_compas(bpm, num, den)
-    q = max(0, int(math.ceil((float(t_ultim_fort) - start) / compas
-                             - _TOL_PLA)))
+    q = max(0, _sostre((float(t_ultim_fort) - start) / compas))
     return int(max(minim, q + k))
+
+
+def _sostre(q):
+    """`ceil` estable: un valor a tocar d'un enter no salta de compàs."""
+    r = round(float(q))
+    return int(r) if abs(float(q) - r) <= 1e-6 else int(math.ceil(q))
+
+
+def _terra(q):
+    """`floor` estable: un valor a tocar d'un enter no baixa de compàs."""
+    r = round(float(q))
+    return int(r) if abs(float(q) - r) <= 1e-6 else int(math.floor(q))
 
 
 def _frames(delta, sr):
@@ -256,7 +290,7 @@ def _frames(delta, sr):
 def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
                       t_ultim_fort=None, n_fi=1, aplica_inici=True,
                       aplica_final=False, bpm_ini=None, num_ini=None,
-                      den_ini=None):
+                      den_ini=None, t_final=None):
     """Calcula un pla d'extrems **sense tocar** àudio ni model.
 
     Retorna deltes exactes per al model i fotogrames per a la WAV. Les
@@ -320,41 +354,73 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
 
     if aplica_final:
         ult = trams[-1]
-        if t_ultim_fort is not None and (
-                not math.isfinite(float(t_ultim_fort))
-                or float(t_ultim_fort) < 0
-                or float(t_ultim_fort) > durada + _TOL_PLA):
-            raise ValueError("El temps fort final ha de ser dins la WAV")
-        # Si la introducció inicial arriba a l'últim tram, el final musical
-        # comença en la frontera de la intro, no en l'antic inici del tram.
-        start_fi = float(ult.ini) + delta_ini
-        if aplica_inici and int(n_ini) > 0:
-            start_fi = max(start_fi, float(pla["target_ini"]))
-        minim = n_min_fi(t_ultim_fort, start_fi, ult.bpm, ult.num, ult.den)
-        if isinstance(n_fi, bool) or not isinstance(n_fi, int) or n_fi < minim:
-            raise ValueError(
-                f"N final ha de ser un enter ≥ {minim} (protecció del fort)")
-        compas = tempo_map.durada_compas(ult.bpm, ult.num, ult.den)
-        target_fi = start_fi + int(n_fi) * compas
-        if t_ultim_fort is not None and target_fi < float(t_ultim_fort):
-            raise ValueError("El final retallaria el temps fort protegit")
-        delta_fi = target_fi - (durada + delta_ini)
-        frames = _frames(delta_fi, sr)
-        if frames > 0:
-            pla["silenci_fi"] = frames
-        elif frames < 0:
-            retalla = -frames
-            if retalla >= total:
-                raise ValueError("El retall final deixaria la WAV buida")
-            pla["retalla_fi"] = retalla
-        pla["n_fi"] = int(n_fi)
-        pla["delta_fi"] = delta_fi
-        pla["target_fi"] = target_fi
-        pla["bpm_fi"] = float(ult.bpm)
-        pla["num_fi"] = int(ult.num)
-        pla["den_fi"] = int(ult.den)
-        pla["beat_unit_fi"] = ult.beat_unit
-        pla["agrupacio_fi"] = ult.agrupacio
+        if t_final is not None:
+            # Mode cua: `t_final` és on s'acaba la música i `n_fi` són els
+            # compassos de cua que es volen conservar.
+            tf = float(t_final)
+            if not (float(ult.ini) - _TOL_PLA <= tf <= durada + _TOL_PLA):
+                raise ValueError(
+                    "El final de la música ha de ser dins l'últim tram")
+            compas = tempo_map.durada_compas(ult.bpm, ult.num, ult.den)
+            n_abans = max(0, int(round((tf - float(ult.ini)) / compas)))
+            tf_alin = float(ult.ini) + n_abans * compas
+            if not (1 <= int(n_fi) <= 9999):
+                raise ValueError("N de cua ha de ser un enter ≥ 1")
+            n_cua = int(n_fi)
+            target_fi = tf_alin + n_cua * compas
+            delta_fi = target_fi - (durada + delta_ini)
+            frames = _frames(delta_fi, sr)
+            if frames > 0:
+                pla["silenci_fi"] = frames
+            elif frames < 0:
+                retalla = -frames
+                if retalla >= total:
+                    raise ValueError("El retall final deixaria la WAV buida")
+                pla["retalla_fi"] = retalla
+            pla["n_fi"] = n_abans + n_cua
+            pla["n_cua"] = n_cua
+            pla["n_fi_abans"] = n_abans
+            pla["target_final_point"] = tf_alin + delta_ini
+            pla["t_final"] = tf
+            pla["delta_fi"] = delta_fi
+            pla["target_fi"] = target_fi + delta_ini
+            pla["bpm_fi"] = float(ult.bpm)
+            pla["num_fi"] = int(ult.num)
+            pla["den_fi"] = int(ult.den)
+            pla["beat_unit_fi"] = ult.beat_unit
+            pla["agrupacio_fi"] = ult.agrupacio
+        else:
+            start_fi = float(ult.ini) + delta_ini
+            if aplica_inici and int(n_ini) > 0:
+                start_fi = max(start_fi, float(pla["target_ini"]))
+            minim = n_min_fi(t_ultim_fort, start_fi, ult.bpm,
+                             ult.num, ult.den)
+            if isinstance(n_fi, bool) or not isinstance(n_fi, int) \
+                    or n_fi < minim:
+                raise ValueError(
+                    f"N final ha de ser un enter ≥ {minim} "
+                    "(protecció del fort)")
+            compas = tempo_map.durada_compas(ult.bpm, ult.num, ult.den)
+            target_orig = start_fi + int(n_fi) * compas
+            if t_ultim_fort is not None and target_orig < float(t_ultim_fort):
+                raise ValueError("El final retallaria el temps fort protegit")
+            delta_fi = target_orig - (durada + delta_ini)
+            frames = _frames(delta_fi, sr)
+            if frames > 0:
+                pla["silenci_fi"] = frames
+            elif frames < 0:
+                retalla = -frames
+                if retalla >= total:
+                    raise ValueError("El retall final deixaria la WAV buida")
+                pla["retalla_fi"] = retalla
+            pla["n_fi"] = int(n_fi)
+            pla["delta_fi"] = delta_fi
+            pla["target_fi"] = target_orig
+            pla["bpm_fi"] = float(ult.bpm)
+            pla["num_fi"] = int(ult.num)
+            pla["den_fi"] = int(ult.den)
+            pla["beat_unit_fi"] = ult.beat_unit
+            pla["agrupacio_fi"] = ult.agrupacio
 
     nou_final = durada + delta_ini + delta_fi
     nou_frames = (total - pla["retalla_ini"] + pla["silenci_ini"]
@@ -544,7 +610,20 @@ def transforma_model_extrems(acords, seccions, trams, marcadors, durada, pla,
             nou_loop_a = min(float(nou_loop_a), nou_final)
             nou_loop_b = min(float(nou_loop_b), nou_final)
         target_fi = float(pla["target_fi"])
-        if trams and float(trams[-1].ini) < target_fi - _TOL_PLA:
+        if trams and pla.get("target_final_point") is not None:
+            punt = float(pla["target_final_point"])
+            ult = trams[-1]
+            if punt > float(ult.ini) + _TOL_PLA:
+                esquerra = replace(ult, fi=punt,
+                                   n=int(pla.get("n_fi_abans", 0)) or None)
+                dreta = replace(ult, ini=punt, fi=target_fi,
+                                n=int(pla.get("n_cua", 1)))
+                trams[-1] = esquerra
+                trams.append(dreta)
+            else:
+                trams[-1] = replace(ult, fi=target_fi,
+                                    n=int(pla.get("n_cua", 1)))
+        elif trams and float(trams[-1].ini) < target_fi - _TOL_PLA:
             trams[-1] = replace(trams[-1], fi=target_fi,
                                 n=int(pla["n_fi"]))
         elif trams:

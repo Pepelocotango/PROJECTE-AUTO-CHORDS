@@ -117,7 +117,10 @@ el projecte de DAW queden ajornats.
   sincronització del model, desfer/refer i export amb FFmpeg implementats.
   **2026-11-18:** quadratura guiada d'inici/final a `N` compassos sencers
   (`Edita ▸ Quadra els extrems de la WAV…`), amb presets, previsualització i
-  una sola operació atòmica d'àudio + model.
+  una sola operació atòmica d'àudio + model. El final es tracta com una cua
+  independent: es talla l'últim tram al punt marcat i s'ajusta des del final;
+  s'afigen els marcadors visuals Inici/Final i els beats QM es desplacen amb
+  l'àudio.
 - **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
   `Analitza beats, downbeats i BPM` (F7) i **Beats/BPM** a la barra.
 - **Finestres**: la finestra principal i els diàlegs propis recorden geometria

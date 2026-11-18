@@ -127,6 +127,7 @@ class VisorUIMixin:
             # PROJECTE (no derivar-la del WAV, que viu a <projecte>/audio/).
             visor.sortida = self.sortida or pipeline.carpeta_sortida(wav)
             visor.canvis.connect(self._marca_dirty)   # edicions → projecte «brut»
+            visor.beatsChanged.connect(self._on_beats_desplacats)
             if hasattr(self, "tb_snap"):
                 self._canvia_snap()   # reaplica snap/divisió escollits
             self._replica_eina()      # reaplica eina + abast del rang

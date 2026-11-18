@@ -302,11 +302,27 @@ class AnalisiMixin:
             return
         self._beats_actuals = info
         try:
-            visor.timeline.set_beats(beats, downbeats if isinstance(
-                downbeats, list) else [])
-            visor.set_snap_beats(beats)
+            downbeats = downbeats if isinstance(downbeats, list) else []
+            visor.timeline.set_beats(beats, downbeats)
+            visor.set_snap_beats(beats, downbeats)
         except Exception as e:  # noqa: BLE001
             self.registra(f"beats: no s'han pogut restaurar ({e})")
+
+    def _on_beats_desplacats(self, beats, downbeats):
+        """Actualitza la còpia del projecte quan l'àudio mou els beats QM."""
+        beats = [float(t) for t in (beats or ())]
+        downbeats = [float(t) for t in (downbeats or ())]
+        if not beats and not downbeats and not self._beats_actuals:
+            return
+        info = dict(self._beats_actuals or {})
+        info["beats"] = beats
+        info["downbeats"] = downbeats
+        self._beats_actuals = info
+        if self.projecte is not None:
+            dades = dict(self.projecte.dades.get("analisi_beats") or {})
+            dades.update(beats=beats, downbeats=downbeats)
+            self.projecte.dades["analisi_beats"] = dades
+        self._marca_dirty()
 
     def _analitza_bpm(self):
         """Acció separada «Analitza beats, downbeats i BPM»: motor, sensibilitat i línies."""
@@ -353,7 +369,7 @@ class AnalisiMixin:
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
             vr.timeline.set_beats(beats, downbeats)
-            vr.set_snap_beats(beats)
+            vr.set_snap_beats(beats, downbeats)
         self.opcions["beats"] = dict(cfg)
         dialegs.desa_opcions(self.opcions)
         self._marca_dirty()
