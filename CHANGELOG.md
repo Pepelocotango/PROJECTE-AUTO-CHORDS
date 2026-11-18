@@ -48,6 +48,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - Els clips de tempo que quedaven després del tall s’eliminen; només queda el
   tram normal anterior + el tram final de cua.
 
+### Afegit — progrés visible durant l’anàlisi (2026-11-18)
+- En analitzar acords/estructura o beats QM, s’obri una finestra de progrés
+  modal («Auto Chords — treballant») a més de la barra d’estat.
+- Evita que l’app semble penjada mentre els plugins triguen; els botons queden
+  desactivats i la finestra es tanca en acabar o fallar.
+
 ### Canviat — el «+» tampoc pregunta si el tall QM és clar (2026-11-18)
 - Amb Snap Beats QM, si el cursor cau sobre un beat detectat i el costat
   esquerre queda a prop d'un `N` enter, es talla directament amb el BPM i

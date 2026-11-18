@@ -7,13 +7,46 @@ import copy
 import os
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox
+from PyQt5.QtWidgets import (
+    QApplication, QDialog, QMessageBox, QProgressDialog,
+)
 
 from . import beats as beats_mod, dialegs, ffmpeg, pipeline, projecte
 from .feines import Feina
 
 class AnalisiMixin:
     """Anàlisi, beats i revisió del snap."""
+
+    def _obre_progres(self, titol, maxim=100):
+        """Finestra de progrés visible mentre l'anàlisi treballa."""
+        self._tanca_progres()
+        dlg = QProgressDialog(titol, "", 0, int(maxim), self)
+        dlg.setWindowTitle("Auto Chords — treballant")
+        dlg.setWindowModality(Qt.WindowModal)
+        dlg.setMinimumDuration(0)
+        dlg.setAutoClose(False)
+        dlg.setAutoReset(False)
+        dlg.setCancelButton(None)
+        dlg.show()
+        QApplication.processEvents()
+        self._progres_analisi = dlg
+        return dlg
+
+    def _tanca_progres(self):
+        dlg = getattr(self, "_progres_analisi", None)
+        self._progres_analisi = None
+        if dlg is not None:
+            try:
+                dlg.close()
+                dlg.deleteLater()
+            except RuntimeError:
+                pass
+
+    def _progres_valor(self, valor):
+        self.barra.setValue(int(valor))
+        dlg = getattr(self, "_progres_analisi", None)
+        if dlg is not None:
+            dlg.setValue(int(valor))
 
     def _actualitza_info_wav(self, ruta, info=None):
         """Info (durada/Hz) a la barra d'estat. El títol el duu `_actualitza_titol`."""
@@ -142,8 +175,9 @@ class AnalisiMixin:
                            amb_acords=bool(_ana.get("acords", True)),
                            mapa=getattr(getattr(self, "visor_ref", None),
                                         "tempo_map", None))
+        self._obre_progres("Analitzant acords i estructura…")
         self.feina.missatge.connect(self.registra)
-        self.feina.progres.connect(self.barra.setValue)
+        self.feina.progres.connect(self._progres_valor)
         self.feina.feta.connect(self.acabada)
         self.feina.start()
 
@@ -213,12 +247,14 @@ class AnalisiMixin:
             amb_estructura=False,
             mapa=getattr(vr, "tempo_map", None),
             rang=rang, acords=list(getattr(vr, "acords", []) or []))
+        self._obre_progres("Analitzant acords al rang A–B…")
         self.feina.missatge.connect(self.registra)
-        self.feina.progres.connect(self.barra.setValue)
+        self.feina.progres.connect(self._progres_valor)
         self.feina.feta.connect(self.acabada)
         self.feina.start()
 
     def acabada(self, be, dada):
+        self._tanca_progres()
         self.b_exec.setEnabled(True)
         self.b_guia.setEnabled(True)
         self.b_audio_ini.setEnabled(True)
@@ -340,7 +376,10 @@ class AnalisiMixin:
         self.registra(
             f"Analitzant {'beats' if nomes_beats else 'BPM'}: "
             f"{cfg['motor']} · sensibilitat {cfg['sensibilitat']}/100…")
+        self._obre_progres("Analitzant beats i BPM…", 0)
         QApplication.setOverrideCursor(Qt.WaitCursor)
+        def _log_beats(text):
+            self.registra(text)
         try:
             res = beats_mod.detecta(
                 wav,
@@ -353,7 +392,7 @@ class AnalisiMixin:
                 bpm_max=opcions_bpm.get("max"),
                 preferit=(opcions_bpm.get("pref_min"),
                           opcions_bpm.get("pref_max")),
-                log=self.registra,
+                log=_log_beats,
                 nomes_beats=nomes_beats,
             )
         except Exception as e:  # noqa: BLE001
@@ -362,6 +401,7 @@ class AnalisiMixin:
             return
         finally:
             QApplication.restoreOverrideCursor()
+            self._tanca_progres()
 
         self._beats_actuals = res
         beats = list(res.get("beats") or ())

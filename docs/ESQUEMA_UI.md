@@ -72,7 +72,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.b_metro` · `self.vol_metro` · `self.cb_metro` | **metrònom** (icona `metronome`) · volum del clic · **patró** (Auto · Compàs · Temps · Grup). El clic per defecte segueix el **denominador** del compàs (`6/8` → 6 corxeres); la subdivisió és un control a part. Els accents de grup ixen de l’**agrupació de cada tram**: `6/8 = 3+3`, `5/8 = 5`, `7/8 = 7`, `12/8 = 3+3+3+3`… | `QPushButton` · `QSlider` · `QComboBox` |
 | — | `self.b_play_tb` | **play / pause** transport (icones `play` / `pause`) | `QPushButton` |
 | — | `self.cmb_vel_tb` · `visor.cmb_vel` | **velocitat de reproducció** (0,5 · 0,75 · 1 · 1,25 · 1,5 · 2 · 3×) amb el **to mantingut** (`ffmpeg atempo`); els dos selectors van sincronitzats per `velocitatCanviada` | `QComboBox` |
-| — | `self.barra` | **barra de progrés** | `QProgressBar` (a la status) |
+| — | `self.barra` · `self._progres_analisi` | **barra de progrés** | `QProgressBar` (a la status) · `QProgressDialog` modal mentre s’analitza |
 | — | `self.log` · `self.info_box` | **log** · **caixa d'informació «live»** | `QTextEdit` ×2 |
 | — | `self.log_dock` | dock **«Log · Informació»** (a baix) | `QDockWidget` |
 
