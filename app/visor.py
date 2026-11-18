@@ -1164,6 +1164,80 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                     f"{', '.join(errors_restauracio)}") from error
             raise
 
+    def _executa_audio_model(self, tr, escriu_audio, etiqueta):
+        """Publica WAV + model com una sola operació atòmica i un sol undo."""
+        sr = int(self.audio["sr"])
+        audio_dir = os.path.dirname(os.path.abspath(self.wav_path))
+        with tempfile.TemporaryDirectory(
+                prefix=".audio-edit-", dir=audio_dir) as audio_tmp:
+            wav_temporal = os.path.join(audio_tmp, "editada.wav")
+            durada_nova = escriu_audio(wav_temporal)
+            if abs(durada_nova - tr["durada"]) > 1.0 / sr:
+                raise ValueError(
+                    "la durada de l'àudio i del model no coincideixen")
+            audio_nou = llegeix_wav(wav_temporal)
+            with tempfile.TemporaryDirectory(
+                    prefix=".audio-model-", dir=self._carpeta_acords()
+                    ) as model_tmp:
+                noms = self._desa_model_audio_temporal(model_tmp, tr)
+                snapshot_antic = self._audio_snapshot_current
+                if snapshot_antic is None:
+                    snapshot_antic = self._crea_snapshot_audio(self.wav_path)
+                snapshot_nou = self._crea_snapshot_audio(wav_temporal)
+                abans = self._estat_complet()
+                self._undo_base = abans
+                self._audio_snapshot_current = snapshot_antic
+                self._undo_marca()
+                self._undo_pending_audio_meta = (
+                    snapshot_antic, self.pos, True)
+                audio_antic = self.audio
+                pos_antic = self.pos
+                try:
+                    self.audio = audio_nou
+                    self.acords = tr["acords"]
+                    self.seccions = tr["seccions"]
+                    self.tempo_trams = tr["trams"]
+                    self.pos = tr["pos"]
+                    self.loop_a, self.loop_b = tr["loop_a"], tr["loop_b"]
+                    self.loop_on = tr["loop_on"]
+                    self.bpm = tr["bpm"]
+                    self.bpb = tr["bpb"]
+                    self.beat_type = tr["beat_type"]
+                    self.marcadors = tr["marcadors"]
+                    self._refresca_ui_audio()
+                    self._publica_model_audio(model_tmp, noms, wav_temporal)
+                except Exception:
+                    self.audio = audio_antic
+                    self.pos = pos_antic
+                    (self.acords, self.seccions, temps_antic) = abans
+                    self.tempo_trams = copy.deepcopy(
+                        temps_antic["tempo_trams"])
+                    self.marcadors = list(temps_antic["marcadors"])
+                    for k in ("bpm", "bpb", "beat_type",
+                              "tempo_fix", "loop_a", "loop_b", "loop_on"):
+                        setattr(self, k, temps_antic[k])
+                    try:
+                        self._refresca_ui_audio()
+                    except Exception as e:
+                        self.log(f"restauració de la vista d'àudio: {e}")
+                    self._undo_commit()
+                    raise
+                self._audio_snapshot_current = snapshot_nou
+                self._undo_commit()
+        self._neteja_snapshots_audio()
+        self.canvis.emit()
+        self.log(f"àudio editat: {etiqueta}")
+        self.infoMissatge.emit("Edició d'àudio aplicada")
+
+    def _posa_transport_del_tram0(self, tr):
+        tr["bpm"] = float(self.bpm)
+        tr["bpb"] = int(self.bpb)
+        tr["beat_type"] = int(self.beat_type)
+        if tr["trams"] and int(tr["trams"][0][3]) > 0:
+            tr["bpm"] = float(tr["trams"][0][2])
+            tr["bpb"] = int(tr["trams"][0][3])
+            tr["beat_type"] = int(tr["trams"][0][4])
+
     def _on_audio_edit_requested(self, operacio, frames):
         """Aplica una edició d'extrem com una sola acció d'àudio + model."""
         try:
@@ -1177,82 +1251,39 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 loop_on=self.loop_on)
             if operacio == audio_edit.RETALLA_FINAL:
                 tr["durada"] = delta
-            tr["bpm"] = float(self.bpm)
-            tr["bpb"] = int(self.bpb)
-            if tr["trams"] and int(tr["trams"][0][3]) > 0:
-                tr["bpm"] = float(tr["trams"][0][2])
-                tr["bpb"] = int(tr["trams"][0][3])
-                tr["beat_type"] = int(tr["trams"][0][4])
-            else:
-                tr["beat_type"] = int(self.beat_type)
-            audio_dir = os.path.dirname(os.path.abspath(self.wav_path))
-            with tempfile.TemporaryDirectory(
-                    prefix=".audio-edit-", dir=audio_dir) as audio_tmp:
-                wav_temporal = os.path.join(audio_tmp, "editada.wav")
-                durada_nova = audio_edit.escriu_wav_editada(
-                    self.wav_path, wav_temporal, operacio, int(frames))
-                if abs(durada_nova - tr["durada"]) > 1.0 / sr:
-                    raise ValueError(
-                        "la durada de l'àudio i del model no coincideixen")
-                audio_nou = llegeix_wav(wav_temporal)
-                with tempfile.TemporaryDirectory(
-                        prefix=".audio-model-", dir=self._carpeta_acords()
-                        ) as model_tmp:
-                    noms = self._desa_model_audio_temporal(model_tmp, tr)
-                    snapshot_antic = self._audio_snapshot_current
-                    if snapshot_antic is None:
-                        snapshot_antic = self._crea_snapshot_audio(
-                            self.wav_path)
-                    snapshot_nou = self._crea_snapshot_audio(wav_temporal)
-                    abans = self._estat_complet()
-                    self._undo_base = abans
-                    self._audio_snapshot_current = snapshot_antic
-                    self._undo_marca()
-                    self._undo_pending_audio_meta = (
-                        snapshot_antic, self.pos, True)
-                    audio_antic = self.audio
-                    pos_antic = self.pos
-                    try:
-                        self.audio = audio_nou
-                        self.acords = tr["acords"]
-                        self.seccions = tr["seccions"]
-                        self.tempo_trams = tr["trams"]
-                        self.pos = tr["pos"]
-                        self.loop_a, self.loop_b = tr["loop_a"], tr["loop_b"]
-                        self.loop_on = tr["loop_on"]
-                        self.bpm = tr["bpm"]
-                        self.bpb = tr["bpb"]
-                        self.beat_type = tr["beat_type"]
-                        self.marcadors = tr["marcadors"]
-                        self._refresca_ui_audio()
-                        self._publica_model_audio(
-                            model_tmp, noms, wav_temporal)
-                    except Exception:
-                        self.audio = audio_antic
-                        self.pos = pos_antic
-                        (self.acords, self.seccions, temps_antic) = abans
-                        self.tempo_trams = copy.deepcopy(
-                            temps_antic["tempo_trams"])
-                        self.marcadors = list(temps_antic["marcadors"])
-                        for k in ("bpm", "bpb", "beat_type",
-                                  "tempo_fix", "loop_a", "loop_b", "loop_on"):
-                            setattr(self, k, temps_antic[k])
-                        try:
-                            self._refresca_ui_audio()
-                        except Exception as e:
-                            self.log(f"restauració de la vista d'àudio: {e}")
-                        self._undo_commit()
-                        raise
-                    self._audio_snapshot_current = snapshot_nou
-                    self._undo_commit()
-            self._neteja_snapshots_audio()
-            self.canvis.emit()
-            self.log(f"àudio editat: {operacio}, {frames} fotogrames")
-            self.infoMissatge.emit("Edició d'àudio aplicada")
+            self._posa_transport_del_tram0(tr)
+            self._executa_audio_model(
+                tr,
+                lambda tmp: audio_edit.escriu_wav_editada(
+                    self.wav_path, tmp, operacio, int(frames)),
+                f"{operacio}, {frames} fotogrames")
         except Exception as e:  # noqa: BLE001
             self._neteja_snapshots_audio()
             self.log(f"edició d'àudio ERROR: {e}")
             self.infoMissatge.emit(f"No s'ha pogut editar l'àudio: {e}")
+
+    def aplica_quadratura_extrems(self, pla):
+        """Aplica un pla d'inici/final; llança si alguna validació falla."""
+        if not (pla.get("aplica_inici") or pla.get("aplica_final")):
+            raise ValueError("Cal triar l'inici, el final o tots dos")
+        try:
+            durada = float(self.audio["durada"])
+            tr = audio_edit.transforma_model_extrems(
+                self.acords, self.seccions, self.tempo_trams, self.marcadors,
+                durada, pla, pos=self.pos, loop_a=self.loop_a,
+                loop_b=self.loop_b, loop_on=self.loop_on)
+            self._posa_transport_del_tram0(tr)
+            self._executa_audio_model(
+                tr,
+                lambda tmp: audio_edit.escriu_wav_extrems(
+                    self.wav_path, tmp, pla["retalla_ini"],
+                    pla["silenci_ini"], pla["retalla_fi"],
+                    pla["silenci_fi"]),
+                "quadratura d'extrems")
+            return True
+        except Exception:  # noqa: BLE001
+            self._neteja_snapshots_audio()
+            raise
 
     def _aplica_estat(self, estat, audio_meta=None):
         audio_restaurat = False

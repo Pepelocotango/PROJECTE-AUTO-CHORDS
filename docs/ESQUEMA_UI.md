@@ -88,7 +88,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | Menú | Accions |
 |------|---------|
 | **Fitxer** | Obre àudio… (Ctrl+O) · Obre projecte… · Obre recent… · Desa (Ctrl+S) · Desa com… · Desa una còpia… · Reverteix · **Restaura una còpia de seguretat…** · **Desa i exporta-ho tot…** (Ctrl+Shift+E) · Exporta WAV's… (Ctrl+E) · Exporta àudio… · Exporta la partitura… · **Exporta mapa de tempo (MIDI)…** · Inclou la partitura (xifrat) · Obre la carpeta de sortida · Surt (Ctrl+Q) |
-| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · **Parteix el tempo al cursor** (Enter) · **Parteix l'estructura al cursor** (0) · **Parteix tempo i estructura al cursor** (+) · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · Paràmetres… · Retard global de reproducció… |
+| **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · **Parteix el tempo al cursor** (Enter) · **Parteix l'estructura al cursor** (0) · **Parteix tempo i estructura al cursor** (+) · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · **Quadra els extrems de la WAV…** · Paràmetres… · Retard global de reproducció… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
 | **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza beats, downbeats i BPM (F7)** · Quantitza el model… · **Quantitza BPM** (Sense decimals · 1 decimal · 2 decimals) · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (M) · Esborra l'últim marcador · Inclou estructura |
@@ -107,6 +107,21 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   servir **`Fitxer ▸ Exporta àudio…`**.
 - Els derivats existents (`wavs_*`, `partitura/`, `mapa_tempo/`, CSVs) es
   **sobreescriuen**. En acabar s'obri la **carpeta del projecte**.
+
+### Quadra els extrems de la WAV…
+
+- **`Edita ▸ Quadra els extrems de la WAV…`** obri `DialegQuadratura`: ajusta
+  l'inici (silenci d'estudi, anacrusi, introducció o aplaudiments) i/o el final
+  (cua, *fade-out* o aplaudiments) a **N compassos sencers**. L'inici usa per
+  defecte el BPM/compàs del primer tram (es pot canviar al diàleg); el final
+  usa sempre els de l'últim tram.
+- Marca el **temps 1 real** i, opcionalment, el **darrer temps fort** que no es
+  pot tallar. Presets: conservar-ho tot completant per excés (`ceil`), retallar
+  la fracció sobrant (`floor`), 1 compàs, directe al temps 1 (`N=0`) i valor
+  manual. Al final, `K` compassos després del fort.
+- La previsualització mostra segons i **mostres** afegides/retallades, la nova
+  durada i els compassos/BPM resultants abans d'aplicar.
+- L'original no es toca: s'edita només la còpia de treball. L'operació és **atòmica** (WAV + acords + seccions + mapa + marcadors + CSVs) i un sol `Ctrl+Z`/`Ctrl+Y`.
 
 ### Exporta àudio… (Fase 6)
 

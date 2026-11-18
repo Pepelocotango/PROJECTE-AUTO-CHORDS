@@ -210,3 +210,210 @@ class TestTransformaModelAudio(unittest.TestCase):
         self.assertEqual(nou["acords"][-1].payload, pipeline.FORAT_ACORD)
         self.assertEqual(nou["seccions"][-1], (4.0, 10.0, "B", "B"))
         self.assertEqual(nou["trams"][-1], (4.0, 10.0, 90.0, 3, 4))
+
+
+class TestQuadraturaExtrems(unittest.TestCase):
+    """Càlcul pur de N i plans d'inici/final (sense Qt)."""
+
+    def setUp(self):
+        self.bpm = 110.345
+        self.durada = 10 * (4 * 60.0 / self.bpm)
+        self.trams = [(0.0, self.durada, self.bpm, 4, 4)]
+
+    def test_presets_inici_1_8s(self):
+        esperat = {"ceil": 1, "floor": 0, "un": 1, "zero": 0}
+        for mode, n in esperat.items():
+            with self.subTest(mode=mode):
+                self.assertEqual(edita.calcula_n_inici(
+                    1.8, self.bpm, 4, 4, mode), n)
+        self.assertEqual(edita.calcula_n_inici(
+            1.8, self.bpm, 4, 4, "manual", 3), 3)
+
+    def test_presets_inici_20s_aplaudiments(self):
+        self.assertEqual(edita.calcula_n_inici(
+            20.0, self.bpm, 4, 4, "ceil"), 10)
+        self.assertEqual(edita.calcula_n_inici(
+            20.0, self.bpm, 4, 4, "floor"), 9)
+        self.assertEqual(edita.calcula_n_inici(
+            20.0, self.bpm, 4, 4, "manual", 4), 4)
+
+    def test_plan_inici_completa_o_retalla(self):
+        p = edita.planifica_extrems(
+            self.durada, 44100, self.trams, t_temps1=20.0, n_ini=10)
+        self.assertEqual(p["n_ini"], 10)
+        self.assertGreater(p["silenci_ini"], 0)
+        self.assertEqual(p["retalla_ini"], 0)
+        self.assertAlmostEqual(p["delta_ini"],
+                               10 * (4 * 60.0 / self.bpm) - 20.0, 9)
+        p = edita.planifica_extrems(
+            self.durada, 44100, self.trams, t_temps1=20.0, n_ini=9)
+        self.assertGreater(p["retalla_ini"], 0)
+        self.assertEqual(p["silenci_ini"], 0)
+        self.assertAlmostEqual(p["delta_ini"],
+                               9 * (4 * 60.0 / self.bpm) - 20.0, 9)
+
+    def test_inici_permet_bpm_i_compas_d_entrada_diferents(self):
+        p = edita.planifica_extrems(
+            self.durada, 44100, self.trams, t_temps1=2.0, n_ini=1,
+            bpm_ini=120.0, num_ini=3, den_ini=4)
+        self.assertAlmostEqual(p["target_ini"], 3 * 60.0 / 120.0, 9)
+        tr = edita.transforma_model_extrems(
+            [pipeline.Clip(0.0, self.durada, ("C", "0"))],
+            [(0.0, self.durada, "A", "A")], self.trams, [],
+            self.durada, p)
+        self.assertEqual(tr["trams"][0].compassos, "3/4")
+        self.assertAlmostEqual(float(tr["trams"][0].bpm), 120.0, 9)
+        self.assertEqual(tr["trams"][0].n, 1)
+
+    def test_inici_zero_talla_fins_al_temps_1(self):
+        p = edita.planifica_extrems(
+            self.durada, 44100, self.trams, t_temps1=5.0, n_ini=0)
+        self.assertEqual(p["n_ini"], 0)
+        self.assertEqual(p["silenci_ini"], 0)
+        self.assertGreater(p["retalla_ini"], 0)
+        self.assertAlmostEqual(p["delta_ini"], -5.0, 9)
+
+    def test_plan_final_afegeix_silenci_si_la_cua_no_quadra(self):
+        trams = [(0.0, 20.0, self.bpm, 4, 4)]
+        p = edita.planifica_extrems(
+            20.0, 48000, trams, aplica_inici=False, aplica_final=True,
+            n_fi=10)
+        self.assertGreater(p["silenci_fi"], 0)
+        self.assertEqual(p["retalla_fi"], 0)
+        self.assertAlmostEqual(p["durada_nova"], 10 * 4 * 60.0 / self.bpm, 9)
+
+    def test_durada_massa_curta_es_rebutja(self):
+        with self.assertRaises(ValueError):
+            edita.planifica_extrems(
+                0.05, 44100, self.trams, t_temps1=0.04, n_ini=0)
+
+    def test_plan_final_ceil_floor_i_proteccio(self):
+        p = edita.planifica_extrems(
+            self.durada, 44100, self.trams, aplica_inici=False,
+            aplica_final=True, n_fi=10)
+        self.assertEqual(p["n_fi"], 10)
+        self.assertAlmostEqual(p["target_fi"], self.durada, 9)
+        p = edita.planifica_extrems(
+            self.durada, 44100, self.trams, aplica_inici=False,
+            aplica_final=True, n_fi=9)
+        self.assertAlmostEqual(p["delta_fi"],
+                               9 * (4 * 60.0 / self.bpm) - self.durada, 9)
+        with self.assertRaises(ValueError):
+            edita.planifica_extrems(
+                self.durada, 44100, self.trams, aplica_inici=False,
+                aplica_final=True, n_fi=8, t_ultim_fort=19.0)
+
+    def test_k_compassos_despres_del_fort(self):
+        n = edita.n_fi_despres_fort(
+            15.0, 0.0, self.bpm, 4, 4, 2)
+        minim = edita.n_min_fi(15.0, 0.0, self.bpm, 4, 4)
+        self.assertGreaterEqual(n, minim)
+        self.assertEqual(edita.n_fi_despres_fort(
+            15.0, 0.0, self.bpm, 4, 4, 1), minim)
+
+    def test_precisio_a_mostra_44100_i_48000(self):
+        for sr in (44100, 48000):
+            with self.subTest(sr=sr):
+                p = edita.planifica_extrems(
+                    self.durada, sr, self.trams, t_temps1=1.8, n_ini=1)
+                self.assertLessEqual(abs(
+                    p["durada_nova"] - p["durada_nova_frames"] / sr),
+                    1.0 / sr)
+
+    def test_model_inici_crea_intro_i_despres_musica(self):
+        acords = [pipeline.Clip(0.0, self.durada, ("C", "0"))]
+        seccions = [(0.0, self.durada, "A", "A")]
+        p = edita.planifica_extrems(
+            self.durada, 44100, self.trams, t_temps1=1.8, n_ini=1)
+        tr = edita.transforma_model_extrems(
+            acords, seccions, self.trams, [2.0], self.durada, p)
+        self.assertAlmostEqual(tr["durada"], p["durada_nova"], 9)
+        self.assertEqual(tr["acords"][0].payload, pipeline.FORAT_ACORD)
+        self.assertAlmostEqual(tr["acords"][0].fi, p["delta_ini"], 9)
+        self.assertAlmostEqual(float(tr["trams"][0].fi),
+                               p["target_ini"], 9)
+        self.assertEqual(tr["trams"][0].n, 1)
+        self.assertEqual(tr["marcadors"], [2.0 + p["delta_ini"]])
+        for t in tr["trams"]:
+            self.assertAlmostEqual(float(t.n), round(float(t.n)), 6)
+
+    def test_model_final_retalla_i_protegeix(self):
+        acords = [pipeline.Clip(0.0, self.durada, ("C", "0"))]
+        seccions = [(0.0, self.durada, "A", "A")]
+        p = edita.planifica_extrems(
+            self.durada, 44100, self.trams, aplica_inici=False,
+            aplica_final=True, n_fi=9, t_ultim_fort=15.0)
+        tr = edita.transforma_model_extrems(
+            acords, seccions, self.trams, [2.0], self.durada, p)
+        self.assertAlmostEqual(tr["durada"], p["target_fi"], 9)
+        self.assertAlmostEqual(float(tr["trams"][-1].fi), tr["durada"], 9)
+        self.assertGreaterEqual(float(tr["trams"][-1].fi), 15.0)
+        self.assertEqual(tr["trams"][-1].n, 9)
+        self.assertAlmostEqual(float(tr["acords"][-1].fi), tr["durada"], 9)
+
+    def test_model_final_ceil_conserva_bpm_i_tota_la_cua(self):
+        trams = [(0.0, 20.0, self.bpm, 4, 4)]
+        acords = [pipeline.Clip(0.0, 20.0, ("C", "0"))]
+        seccions = [(0.0, 20.0, "A", "A")]
+        p = edita.planifica_extrems(
+            20.0, 44100, trams, aplica_inici=False,
+            aplica_final=True, n_fi=10)
+        tr = edita.transforma_model_extrems(
+            acords, seccions, trams, [], 20.0, p)
+        self.assertAlmostEqual(tr["durada"], p["durada_nova"], 9)
+        self.assertAlmostEqual(float(tr["trams"][-1].bpm), self.bpm, 9)
+        self.assertEqual(tr["trams"][-1].n, 10)
+        self.assertAlmostEqual(float(tr["acords"][-1].fi), p["durada_nova"], 9)
+
+    def test_model_combinat_es_una_sola_transformacio(self):
+        acords = [pipeline.Clip(0.0, self.durada, ("C", "0"))]
+        seccions = [(0.0, self.durada, "A", "A")]
+        p = edita.planifica_extrems(
+            self.durada, 44100, self.trams, t_temps1=1.8, n_ini=1,
+            t_ultim_fort=15.0, n_fi=9, aplica_inici=True,
+            aplica_final=True)
+        tr = edita.transforma_model_extrems(
+            acords, seccions, self.trams, [], self.durada, p)
+        self.assertAlmostEqual(tr["durada"], p["durada_nova"], 9)
+        self.assertAlmostEqual(float(tr["trams"][0].fi), p["target_ini"], 9)
+        self.assertAlmostEqual(float(tr["trams"][-1].fi), tr["durada"], 9)
+        self.assertEqual(tr["trams"][-1].n, 9)
+
+
+class TestWavExtrems(unittest.TestCase):
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+        self.origen = os.path.join(self.td, "o.wav")
+        self.desti = os.path.join(self.td, "d.wav")
+
+    def tearDown(self):
+        shutil.rmtree(self.td, ignore_errors=True)
+
+    def test_combinat_a_mostra_exacta(self):
+        for sr in (44100, 48000):
+            with self.subTest(sr=sr):
+                _escriu_wav(self.origen, np.arange(sr, dtype="<i2"), sr=sr)
+                durada = edita.escriu_wav_extrems(
+                    self.origen, self.desti, silenci_ini=17,
+                    retalla_fi=23)
+                with wave.open(self.desti, "rb") as w:
+                    self.assertEqual(w.getnframes(), sr + 17 - 23)
+                self.assertAlmostEqual(durada, (sr - 6) / float(sr), 9)
+
+    def test_retall_inici_i_silenci_final(self):
+        _escriu_wav(self.origen, np.arange(1000, 11000, 1000), sr=1000)
+        edita.escriu_wav_extrems(
+            self.origen, self.desti, retalla_ini=2, silenci_fi=3)
+        _sr, _c, valors = _llegeix_wav(self.desti)
+        self.assertEqual(len(valors), 11)
+        self.assertEqual(valors[-3:, 0].tolist(), [0, 0, 0])
+
+    def test_invalid_no_toca_desti(self):
+        _escriu_wav(self.origen, np.arange(1000, dtype="<i2"))
+        with open(self.desti, "wb") as f:
+            f.write(b"preserva")
+        with self.assertRaises(ValueError):
+            edita.escriu_wav_extrems(
+                self.origen, self.desti, retalla_ini=1, silenci_ini=1)
+        with open(self.desti, "rb") as f:
+            self.assertEqual(f.read(), b"preserva")

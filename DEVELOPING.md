@@ -259,6 +259,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `dialeg_dreceres.py` | Diàleg per veure i canviar totes les dreceres de teclat. |
 | `dialeg_guia_rapida.py` | Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas. |
 | `dialeg_opcions.py` | Diàleg d'opcions d'autodetecció (BPM/acords/estructura). |
+| `dialeg_quadratura.py` | Diàleg per quadrar els extrems de la còpia WAV a compassos sencers. |
 | `dialeg_quantitza.py` | Diàleg de quantització a la graella. |
 | `dialeg_tall_qm.py` | Diàleg conjunt per triar les opcions d'un tall amb Beats QM. |
 | `dialeg_tempo_per_trams.py` | Diàleg de detecció de tempo per trams. |

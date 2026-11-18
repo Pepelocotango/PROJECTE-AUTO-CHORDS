@@ -31,6 +31,29 @@ class EdicioMixin:
             return False
         return vr.executa_edicio("duplica")
 
+    def _quadra_extrems_ui(self):
+        """Obre el diàleg que quadra inici/final de la WAV a compassos sencers."""
+        vr = getattr(self, "visor_ref", None)
+        if vr is None or not getattr(vr, "audio", None):
+            self.avisa_info("Auto Chords",
+                            "Obre un tema amb àudio abans de quadrar extrems.")
+            return False
+        try:
+            dlg = dialegs.DialegQuadratura(
+                self, durada=float(vr.audio["durada"]),
+                sr=int(vr.audio["sr"]), pos=float(vr.pos),
+                trams=vr.tempo_trams)
+            if dlg.exec_() != QDialog.Accepted:
+                return False
+            pla = dlg.plan()
+            vr.aplica_quadratura_extrems(pla)
+        except Exception as e:  # noqa: BLE001
+            self.avisa_crit("Quadratura d'extrems",
+                            f"No s'ha pogut aplicar: {e}")
+            return False
+        self.registra("extrems de la WAV quadrats a compassos sencers")
+        return True
+
     def _troba_i_reemplaca_ui(self):
         """Troba i reemplaça xifrats (acords) o etiquetes (estructura) a tot el tema."""
         vr = self.visor_ref

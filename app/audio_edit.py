@@ -1,5 +1,6 @@
 """Edició destructiva i segura dels extrems d'una WAV PCM 16 bits."""
 
+import math
 import os
 import tempfile
 import wave
@@ -7,7 +8,7 @@ from dataclasses import replace
 
 import numpy as np
 
-from app import mapa_tempo, pipeline, tempo_map
+from app import limits, mapa_tempo, pipeline, tempo_map
 
 RETALLA_INICI = "retalla_inici"
 RETALLA_FINAL = "retalla_final"
@@ -137,6 +138,458 @@ def _escriu_silenci(wav, frames, canals):
         quants = min(_BLOC_FRAMES, pendents)
         wav.writeframesraw(silenci[:quants * canals * 2])
         pendents -= quants
+
+
+# --- Quadratura guiada dels extrems a compassos sencers --------------------
+#: Presets de l'inici. `ceil` conserva tot el so i completa per excés;
+#: `floor` retalla la fracció sobrant; `un` deixa un compàs; `zero` talla fins
+#: al temps 1; `manual` usa el valor donat.
+MODES_INICI = ("ceil", "floor", "un", "zero", "manual")
+MODES_FINAL = ("ceil", "floor", "manual")
+_TOL_PLA = 1e-9
+
+
+def _valida_tram_tempo(bpm, num, den):
+    tempo_map.valida_tempo(float(bpm), int(num), int(den))
+    return float(bpm), int(num), int(den)
+
+
+def calcula_n_inici(t_temps1, bpm, num, den, mode="ceil", n=None):
+    """Compassos sencers que queden abans del temps 1 real.
+
+    `t_temps1` és el temps real de l'inici musical dins la WAV actual.
+    """
+    t = float(t_temps1)
+    if not math.isfinite(t) or t < 0:
+        raise ValueError("El temps 1 ha de ser un temps positiu de la WAV")
+    bpm, num, den = _valida_tram_tempo(bpm, num, den)
+    compas = tempo_map.durada_compas(bpm, num, den)
+    if compas <= 0:
+        raise ValueError("El compàs d'entrada no té durada")
+    q = t / compas
+    mode = str(mode or "ceil").strip().lower()
+    if mode not in MODES_INICI:
+        raise ValueError(f"Mode d'inici desconegut: {mode!r}")
+    if mode == "ceil":
+        return max(1, int(math.ceil(q - _TOL_PLA)))
+    if mode == "floor":
+        return max(0, int(math.floor(q + _TOL_PLA)))
+    if mode == "un":
+        return 1
+    if mode == "zero":
+        return 0
+    if isinstance(n, bool) or not isinstance(n, int) or n < 0:
+        raise ValueError("N inicial ha de ser un enter ≥ 0")
+    return int(n)
+
+
+def n_min_fi(t_ultim_fort, t_ini_ultim, bpm, num, den):
+    """Compassos mínims de l'últim tram per no tallar el temps fort final."""
+    start = float(t_ini_ultim)
+    if t_ultim_fort is None:
+        return 1
+    fort = float(t_ultim_fort)
+    if not math.isfinite(fort) or fort < 0:
+        raise ValueError("El temps fort final ha de ser positiu")
+    bpm, num, den = _valida_tram_tempo(bpm, num, den)
+    compas = tempo_map.durada_compas(bpm, num, den)
+    if compas <= 0:
+        raise ValueError("El compàs final no té durada")
+    if fort <= start + _TOL_PLA:
+        return 1
+    return max(1, int(math.ceil((fort - start) / compas - _TOL_PLA)) + 1)
+
+
+def calcula_n_fi(durada, t_ini_ultim, bpm, num, den, mode="ceil", n=None,
+                 t_ultim_fort=None):
+    """Compassos sencers de l'últim tram, respectant la protecció del fort."""
+    durada = float(durada)
+    start = float(t_ini_ultim)
+    if durada <= 0 or start < 0 or start >= durada + _TOL_PLA:
+        raise ValueError("L'últim tram no és dins la WAV")
+    bpm, num, den = _valida_tram_tempo(bpm, num, den)
+    compas = tempo_map.durada_compas(bpm, num, den)
+    if compas <= 0:
+        raise ValueError("El compàs final no té durada")
+    if t_ultim_fort is not None and (
+            not math.isfinite(float(t_ultim_fort))
+            or float(t_ultim_fort) > durada + _TOL_PLA):
+        raise ValueError("El temps fort final ha de ser dins la WAV")
+    minim = n_min_fi(t_ultim_fort, start, bpm, num, den)
+    mode = str(mode or "ceil").strip().lower()
+    if mode not in MODES_FINAL:
+        raise ValueError(f"Mode final desconegut: {mode!r}")
+    q = max(0.0, durada - start) / compas
+    if mode == "ceil":
+        return max(minim, int(math.ceil(q - _TOL_PLA)))
+    if mode == "floor":
+        return max(minim, int(math.floor(q + _TOL_PLA)))
+    if isinstance(n, bool) or not isinstance(n, int) or n < minim:
+        raise ValueError(
+            f"N final ha de ser un enter ≥ {minim} (protecció del temps fort)")
+    return int(n)
+
+
+def n_fi_despres_fort(t_ultim_fort, t_ini_ultim, bpm, num, den, k=1):
+    """`N` de l'últim tram: compassos fins al fort més `k` de cua.
+
+    `k=0` deixa la protecció mínima (un compàs de resolució); `k=1` deixa un
+    compàs de cua després del fort, etc.
+    """
+    if isinstance(k, bool) or not isinstance(k, int) or k < 0:
+        raise ValueError("K ha de ser un enter ≥ 0")
+    minim = n_min_fi(t_ultim_fort, t_ini_ultim, bpm, num, den)
+    if t_ultim_fort is None:
+        return int(max(1, k))
+    start = float(t_ini_ultim)
+    bpm, num, den = _valida_tram_tempo(bpm, num, den)
+    compas = tempo_map.durada_compas(bpm, num, den)
+    q = max(0, int(math.ceil((float(t_ultim_fort) - start) / compas
+                             - _TOL_PLA)))
+    return int(max(minim, q + k))
+
+
+def _frames(delta, sr):
+    return int(round(float(delta) * int(sr)))
+
+
+def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
+                      t_ultim_fort=None, n_fi=1, aplica_inici=True,
+                      aplica_final=False, bpm_ini=None, num_ini=None,
+                      den_ini=None):
+    """Calcula un pla d'extrems **sense tocar** àudio ni model.
+
+    Retorna deltes exactes per al model i fotogrames per a la WAV. Les
+    fronteres del model són exactes (`N` compassos); la WAV s'arredoneix a
+    mostra, amb una diferència màxima de mig fotograma per extrem.
+    """
+    durada = float(durada)
+    sr = int(sr)
+    if durada <= 0 or sr <= 0:
+        raise ValueError("La WAV ha de tindre durada i freqüència vàlides")
+    trams = [mapa_tempo.des_de_tupla(t) for t in (trams or ())]
+    if not trams:
+        raise ValueError("Cal un mapa de tempo/compàs per a quadrar extrems")
+    total = int(round(durada * sr))
+    pla = {
+        "aplica_inici": bool(aplica_inici),
+        "aplica_final": bool(aplica_final),
+        "n_ini": 0, "n_fi": 0,
+        "delta_ini": 0.0, "delta_fi": 0.0,
+        "target_ini": 0.0, "target_fi": durada,
+        "retalla_ini": 0, "silenci_ini": 0,
+        "retalla_fi": 0, "silenci_fi": 0,
+        "durada": durada, "sr": sr, "durada_nova": durada,
+        "durada_nova_frames": total,
+    }
+    delta_ini = delta_fi = 0.0
+
+    if aplica_inici:
+        if t_temps1 is None:
+            raise ValueError("Falta el temps 1 real")
+        t1 = float(t_temps1)
+        if not math.isfinite(t1) or t1 < 0 or t1 > durada + _TOL_PLA:
+            raise ValueError("El temps 1 ha de ser dins la WAV")
+        ent = trams[0]
+        if isinstance(n_ini, bool) or not isinstance(n_ini, int) or n_ini < 0:
+            raise ValueError("N inicial ha de ser un enter ≥ 0")
+        bpm_ent = ent.bpm if bpm_ini is None else bpm_ini
+        num_ent = ent.num if num_ini is None else num_ini
+        den_ent = ent.den if den_ini is None else den_ini
+        bpm_ent, num_ent, den_ent = _valida_tram_tempo(
+            bpm_ent, num_ent, den_ent)
+        compas = tempo_map.durada_compas(bpm_ent, num_ent, den_ent)
+        target = n_ini * compas
+        delta_ini = target - t1
+        frames = _frames(delta_ini, sr)
+        if frames > 0:
+            pla["silenci_ini"] = frames
+        elif frames < 0:
+            retalla = -frames
+            if retalla >= total:
+                raise ValueError("El retall inicial deixaria la WAV buida")
+            pla["retalla_ini"] = retalla
+        pla["n_ini"] = n_ini
+        pla["delta_ini"] = delta_ini
+        pla["target_ini"] = target
+        pla["bpm_ini"] = bpm_ent
+        pla["num_ini"] = num_ent
+        pla["den_ini"] = den_ent
+        pla["beat_unit_ini"] = ent.beat_unit
+        pla["agrupacio_ini"] = ent.agrupacio
+
+    if aplica_final:
+        ult = trams[-1]
+        if t_ultim_fort is not None and (
+                not math.isfinite(float(t_ultim_fort))
+                or float(t_ultim_fort) < 0
+                or float(t_ultim_fort) > durada + _TOL_PLA):
+            raise ValueError("El temps fort final ha de ser dins la WAV")
+        # Si la introducció inicial arriba a l'últim tram, el final musical
+        # comença en la frontera de la intro, no en l'antic inici del tram.
+        start_fi = float(ult.ini) + delta_ini
+        if aplica_inici and int(n_ini) > 0:
+            start_fi = max(start_fi, float(pla["target_ini"]))
+        minim = n_min_fi(t_ultim_fort, start_fi, ult.bpm, ult.num, ult.den)
+        if isinstance(n_fi, bool) or not isinstance(n_fi, int) or n_fi < minim:
+            raise ValueError(
+                f"N final ha de ser un enter ≥ {minim} (protecció del fort)")
+        compas = tempo_map.durada_compas(ult.bpm, ult.num, ult.den)
+        target_fi = start_fi + int(n_fi) * compas
+        if t_ultim_fort is not None and target_fi < float(t_ultim_fort):
+            raise ValueError("El final retallaria el temps fort protegit")
+        delta_fi = target_fi - (durada + delta_ini)
+        frames = _frames(delta_fi, sr)
+        if frames > 0:
+            pla["silenci_fi"] = frames
+        elif frames < 0:
+            retalla = -frames
+            if retalla >= total:
+                raise ValueError("El retall final deixaria la WAV buida")
+            pla["retalla_fi"] = retalla
+        pla["n_fi"] = int(n_fi)
+        pla["delta_fi"] = delta_fi
+        pla["target_fi"] = target_fi
+        pla["bpm_fi"] = float(ult.bpm)
+        pla["num_fi"] = int(ult.num)
+        pla["den_fi"] = int(ult.den)
+        pla["beat_unit_fi"] = ult.beat_unit
+        pla["agrupacio_fi"] = ult.agrupacio
+
+    nou_final = durada + delta_ini + delta_fi
+    nou_frames = (total - pla["retalla_ini"] + pla["silenci_ini"]
+                  - pla["retalla_fi"] + pla["silenci_fi"])
+    if nou_frames <= 0:
+        raise ValueError("L'edició deixaria la WAV buida")
+    if nou_final < limits.TEMPS_MIN_CLIP - _TOL_PLA:
+        raise ValueError(
+            f"La durada final ({nou_final:.4f}s) és inferior al mínim "
+            f"({limits.TEMPS_MIN_CLIP:.4f}s)")
+    if abs(nou_final - nou_frames / float(sr)) > 1.0 / sr + _TOL_PLA:
+        raise ValueError("El pla d'àudio i el model no quadren a mostra")
+    pla["durada_nova"] = nou_final
+    pla["durada_nova_frames"] = nou_frames
+    return pla
+
+
+def escriu_wav_extrems(origen, desti, retalla_ini=0, silenci_ini=0,
+                       retalla_fi=0, silenci_fi=0):
+    """Aplica inici i final en **una sola escriptura atòmica** de la WAV.
+
+    Els valors són fotogrames no negatius. Per a cada extrem, o es retalla o
+    s'afegeix silenci, no les dos coses alhora.
+    """
+    valors = (retalla_ini, silenci_ini, retalla_fi, silenci_fi)
+    if any(isinstance(v, bool) or not isinstance(v, int) or v < 0
+           for v in valors):
+        raise ValueError("Els fotogrames han de ser enters ≥ 0")
+    if retalla_ini and silenci_ini:
+        raise ValueError("No es pot retallar i afegir silenci a l'inici alhora")
+    if retalla_fi and silenci_fi:
+        raise ValueError("No es pot retallar i afegir silenci al final alhora")
+    if os.path.abspath(origen) == os.path.abspath(desti):
+        raise ValueError("l'edició necessita una destinació temporal diferent")
+    temporal = None
+    try:
+        with wave.open(origen, "rb") as wav:
+            total = wav.getnframes()
+            sr = wav.getframerate()
+            canals = wav.getnchannels()
+            if wav.getsampwidth() != 2 or wav.getcomptype() != "NONE":
+                raise ValueError("només es pot editar WAV PCM de 16 bits")
+            if sr <= 0 or canals <= 0 or total <= 0:
+                raise ValueError("la WAV no conté àudio vàlid")
+            inici = int(retalla_ini)
+            final = total - int(retalla_fi)
+            if inici >= final:
+                raise ValueError("el retall deixaria la WAV sense àudio")
+            nou_total = int(silenci_ini) + (final - inici) + int(silenci_fi)
+            if nou_total <= 0:
+                raise ValueError("el resultat deixaria la WAV sense àudio")
+            carpeta = os.path.dirname(os.path.abspath(desti))
+            fd, temporal = tempfile.mkstemp(
+                prefix=".audio-edit-", suffix=".wav", dir=carpeta)
+            os.close(fd)
+            with wave.open(temporal, "wb") as sortida:
+                sortida.setparams((canals, 2, sr, 0, "NONE", "not compressed"))
+                if silenci_ini:
+                    _escriu_silenci(sortida, int(silenci_ini), canals)
+                _copia_tram(wav, sortida, inici, final, int(silenci_ini),
+                            fade_in=bool(silenci_ini or retalla_ini),
+                            fade_out=bool(silenci_fi or retalla_fi))
+                if silenci_fi:
+                    _escriu_silenci(sortida, int(silenci_fi), canals)
+        with wave.open(temporal, "rb") as validada:
+            if (validada.getsampwidth() != 2
+                    or validada.getcomptype() != "NONE"
+                    or validada.getnframes() != nou_total):
+                raise wave.Error("la WAV editada no ha superat la validació")
+        os.replace(temporal, desti)
+        temporal = None
+        return nou_total / float(sr)
+    finally:
+        if temporal and os.path.exists(temporal):
+            os.unlink(temporal)
+
+
+def _desplaca_inici(clips, delta):
+    if delta > _TOL_PLA:
+        return ([pipeline.Clip(0.0, delta, pipeline.FORAT_ACORD)]
+                + [pipeline.Clip(c.ini + delta, c.fi + delta, c.payload)
+                   for c in clips])
+    if delta < -_TOL_PLA:
+        x = -delta
+        return [pipeline.Clip(max(0.0, c.ini - x), c.fi - x, c.payload)
+                for c in clips if c.fi > x]
+    return list(clips)
+
+
+def _desplaca_seccions(seccions, delta):
+    if delta > _TOL_PLA:
+        if seccions:
+            return ([(0.0, seccions[0][1] + delta) + tuple(seccions[0][2:])]
+                    + [(s[0] + delta, s[1] + delta) + tuple(s[2:])
+                       for s in seccions[1:]])
+        return seccions
+    if delta < -_TOL_PLA:
+        x = -delta
+        return [(max(0.0, s[0] - x), s[1] - x) + tuple(s[2:])
+                for s in seccions if s[1] > x]
+    return list(seccions)
+
+
+def transforma_model_extrems(acords, seccions, trams, marcadors, durada, pla,
+                             pos=0.0, loop_a=None, loop_b=None, loop_on=False):
+    """Transforma el model per al pla d'extrems, en una sola operació."""
+    durada = float(durada)
+    nou_final = float(pla["durada_nova"])
+    delta_ini = float(pla.get("delta_ini", 0.0)) if pla["aplica_inici"] else 0.0
+    delta_fi = float(pla.get("delta_fi", 0.0)) if pla["aplica_final"] else 0.0
+    clips_acord = pipeline.clips_d_acords(acords, durada)
+    clips_seccio = pipeline.clips_de_seccions(seccions)
+    trams = [mapa_tempo.des_de_tupla(t) for t in (trams or [])]
+    if not trams:
+        trams = [mapa_tempo.TramMapa(0.0, durada, 120.0, "normal", "4/4")]
+    marcadors = [float(t) for t in (marcadors or ())]
+    nova_pos = float(pos)
+    nou_loop_a, nou_loop_b, nou_loop_on = loop_a, loop_b, bool(loop_on)
+
+    if abs(delta_ini) > _TOL_PLA:
+        clips_acord = _desplaca_inici(clips_acord, delta_ini)
+        clips_seccio = _desplaca_seccions(clips_seccio, delta_ini)
+        trams = [replace(t, ini=float(t.ini) + delta_ini,
+                         fi=float(t.fi) + delta_ini)
+                 if delta_ini > 0 else t for t in trams]
+        if delta_ini < 0:
+            x = -delta_ini
+            trams = [replace(t, ini=max(0.0, float(t.ini) - x),
+                             fi=float(t.fi) - x)
+                     for t in trams if float(t.fi) > x]
+            if trams:
+                trams[0] = replace(trams[0], ini=0.0)
+        marcadors = [t + delta_ini for t in marcadors if t >= -delta_ini]
+        nova_pos = max(0.0, nova_pos + delta_ini)
+        if nou_loop_a is not None and nou_loop_b is not None:
+            nou_loop_a = max(0.0, float(nou_loop_a) + delta_ini)
+            nou_loop_b = max(0.0, float(nou_loop_b) + delta_ini)
+
+    # Els N compassos d'entrada són un bloc propi (o s'integren al primer si
+    # comparteixen BPM/compàs): el que hi ha abans del temps 1 no pot deformar
+    # el tempo musical posterior.
+    if pla["aplica_inici"] and int(pla.get("n_ini", 0)) > 0:
+        target = float(pla["target_ini"])
+        trams = [t for t in trams if float(t.fi) > target + _TOL_PLA]
+        if trams and float(trams[0].ini) < target - _TOL_PLA:
+            trams[0] = replace(trams[0], ini=target, n=None)
+        if trams and float(trams[0].ini) > target + _TOL_PLA:
+            trams[0] = replace(trams[0], ini=target, n=None)
+        intro = mapa_tempo.TramMapa(
+            0.0, target, float(pla["bpm_ini"]), "normal",
+            f"{int(pla['num_ini'])}/{int(pla['den_ini'])}",
+            pla.get("agrupacio_ini", ""), int(pla["n_ini"]),
+            pla.get("beat_unit_ini"))
+        pot_fusionar = False
+        if (trams and abs(float(trams[0].ini) - target) <= _TOL_PLA
+                and abs(float(trams[0].bpm) - intro.bpm) <= _TOL_PLA
+                and trams[0].num == intro.num and trams[0].den == intro.den
+                and trams[0].tipus == "normal"
+                and trams[0].agrupacio == intro.agrupacio
+                and trams[0].beat_unit == intro.beat_unit):
+            durada_dreta = float(trams[0].fi) - target
+            compas = tempo_map.durada_compas(
+                intro.bpm, intro.num, intro.den)
+            n_dreta = durada_dreta / compas if compas > 0 else 0.0
+            pot_fusionar = abs(n_dreta - round(n_dreta)) <= 1e-6
+        if pot_fusionar:
+            trams[0] = replace(trams[0], ini=0.0, n=None)
+        else:
+            trams = [intro] + trams
+
+    mid = durada + delta_ini
+    if pla["aplica_final"] and abs(delta_fi) > _TOL_PLA:
+        if delta_fi < 0:
+            clips_acord = [pipeline.Clip(c.ini, min(c.fi, nou_final), c.payload)
+                           for c in clips_acord if c.ini < nou_final]
+            clips_seccio = [(s[0], min(s[1], nou_final)) + tuple(s[2:])
+                            for s in clips_seccio if s[0] < nou_final]
+        else:
+            clips_acord.append(pipeline.Clip(
+                mid, nou_final, pipeline.FORAT_ACORD))
+            if clips_seccio:
+                ult = clips_seccio[-1]
+                clips_seccio[-1] = (ult[0], nou_final) + tuple(ult[2:])
+        marcadors = [t for t in marcadors if t <= nou_final]
+        nova_pos = min(nova_pos, nou_final)
+        if nou_loop_a is not None and nou_loop_b is not None:
+            nou_loop_a = min(float(nou_loop_a), nou_final)
+            nou_loop_b = min(float(nou_loop_b), nou_final)
+        target_fi = float(pla["target_fi"])
+        if trams and float(trams[-1].ini) < target_fi - _TOL_PLA:
+            trams[-1] = replace(trams[-1], fi=target_fi,
+                                n=int(pla["n_fi"]))
+        elif trams:
+            trams = [t for t in trams if float(t.ini) < nou_final - _TOL_PLA]
+            trams[-1] = replace(trams[-1], fi=nou_final,
+                                n=int(pla["n_fi"]))
+    elif not pla["aplica_final"]:
+        target_fi = nou_final
+        if trams:
+            trams[-1] = replace(trams[-1], fi=nou_final)
+
+    acords_nous = pipeline.normalitza_clips(
+        clips_acord, nou_final, pipeline.FORAT_ACORD,
+        arrodoneix=True, deriva_fi=True)
+    seccions_noves = pipeline.normalitza_clips(
+        clips_seccio, nou_final, pipeline.FORAT_SECCIO)
+    if not acords_nous:
+        acords_nous = [pipeline.Clip(0.0, nou_final, pipeline.FORAT_ACORD)]
+    if not seccions_noves:
+        seccions_noves = [pipeline.Clip(
+            0.0, nou_final, pipeline.FORAT_SECCIO)]
+    if (nou_loop_a is None or nou_loop_b is None
+            or nou_loop_b <= nou_loop_a):
+        nou_loop_a = nou_loop_b = None
+        nou_loop_on = False
+    trams, _avisos = mapa_tempo.normalitza_trams_map(trams, nou_final)
+    base5, ns, _avisos_aj = tempo_map.ajusta_compassos_sencers(
+        [tuple(t) for t in trams], estricte=True)
+    trams_meta = [
+        mapa_tempo.TramMapa(
+            float(t5[0]), float(t5[1]), float(t5[2]), t.tipus,
+            f"{int(t5[3])}/{int(t5[4])}", t.agrupacio, float(n),
+            t.beat_unit)
+        for t, t5, n in zip(trams, base5, ns)]
+    return {
+        "acords": acords_nous,
+        "seccions": pipeline.seccions_de_clips(seccions_noves),
+        "trams": trams_meta,
+        "marcadors": marcadors,
+        "durada": nou_final,
+        "pos": nova_pos,
+        "loop_a": nou_loop_a,
+        "loop_b": nou_loop_b,
+        "loop_on": nou_loop_on,
+    }
 
 
 def transforma_model(acords, seccions, trams, marcadors, durada,

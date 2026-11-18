@@ -22,8 +22,10 @@ projecte.
 
 També permet **editar els extrems de la còpia WAV de treball** dins d'un
 projecte, sense haver d'analitzar acords: retallar-los o afegir-hi silenci amb
-nanses, previsualització i desfer/refer. El silenci afegit es marca «N» (sense
-acord); les seccions es mantenen. També pots **exportar la còpia editada** a
+nanses, o **quadrar-los a `N` compassos sencers** (`Edita ▸ Quadra els extrems
+de la WAV…`) per a intros, anacrusis, aplaudiments i cues. Tot té
+previsualització i desfer/refer. El silenci afegit es marca «N» (sense acord);
+les seccions es mantenen. També pots **exportar la còpia editada** a
 WAV, MP3, FLAC, AAC/M4A, OGG o Opus des de `Fitxer ▸ Exporta àudio…`. L'abast
 acordat és a [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 
@@ -106,7 +108,7 @@ Les **dreceres** es poden veure i canviar a **Ajuda ▸ Configura les dreceres�
 - **REAPER / DAW**: per conservar la durada de la WAV, importa **primer** `mapa_tempo.mid`, accepta **«Importar mapa de tempo al proyecto»** i després importa la WAV en una segona pista. Si importes la WAV abans del MIDI, el *timebase* per defecte (**Beats**) pot canviar-ne la longitud/velocitat.
 - **Rubato**: selecciona un rang A–B o un clip del carril de BPM/compàs i marca’l com a rubato; només canvia la notació (`tipus=rubato`). El BPM, els compassos i la graella són els mateixos que els d’un tram normal, i no es genera cap avís d’aproximació.
 - **Projectes autocontinguts** («com un DAW»): en obrir un WAV, l'app pot crear una **carpeta que ho conté tot** (`.acproj` + còpia de l'`audio/` + CSVs + `backup/`); **Obre projecte / Obre recent**, **Desa** (`Ctrl+S`), **Desa com…**, **autosave** cada 60 s i **recuperació** si l'app cau. Detall: `app/projecte.py`.
-- **Edició d'àudio bàsica**: nanses per retallar els extrems o afegir-hi silenci a la còpia del projecte, amb snap commutable, previsualització i desfer/refer sincronitzat amb el model; l'original queda intacte. **`Exporta àudio…`** desa la còpia editada a WAV (16/24/32 bits), MP3, FLAC, AAC/M4A, OGG o Opus, amb els perfils que el `ffmpeg` del paquet sap escriure; vegeu [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
+- **Edició d'àudio bàsica**: nanses per retallar els extrems o afegir-hi silenci a la còpia del projecte, amb snap commutable, previsualització i desfer/refer sincronitzat amb el model; l'original queda intacte. **Quadratura guiada** d'inici/final a `N` compassos (intros, anacrusis, aplaudiments i cues), amb presets i protecció del darrer temps fort. **`Exporta àudio…`** desa la còpia editada a WAV (16/24/32 bits), MP3, FLAC, AAC/M4A, OGG o Opus, amb els perfils que el `ffmpeg` del paquet sap escriure; vegeu [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 - **Partitura de xifrats**: MusicXML sempre; PDF/MSCZ amb MuseScore.
 - La interfície (menús, barres, dreceres) és a [`docs/ESQUEMA_UI.md`](docs/ESQUEMA_UI.md).
 

@@ -114,6 +114,14 @@ class MenusMixin:
                   id_="edita.renomena")
         self._act(m, "Troba i reemplaça…", "Ctrl+H", self._troba_i_reemplaca_ui)
         m.addSeparator()
+        a = self._act(m, "Quadra els extrems de la WAV…", "",
+                      self._quadra_extrems_ui, id_="edita.quadra_extrems")
+        a.setStatusTip(
+            "Ajusta l'inici (silenci, anacrusi o aplaudiments) i el final "
+            "(cua o aplaudiments) a N compassos sencers, sense tocar l'àudio "
+            "original. Tot és una sola operació de desfer.")
+        a.setToolTip(a.statusTip())
+        m.addSeparator()
         self._act(m, "Parteix el tempo al cursor", "",
                   self._talla_tempo_cursor)
         self._act(m, "Parteix l'estructura al cursor", "",

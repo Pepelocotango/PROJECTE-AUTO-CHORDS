@@ -5,6 +5,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.3] — 2026-11-16
 
+### Afegit — quadratura guiada dels extrems a compassos sencers (2026-11-18)
+- Nou diàleg **`Edita ▸ Quadra els extrems de la WAV…`** per ajustar el bloc
+  inicial (silenci, anacrusi, introducció o aplaudiments) i el final (cua o
+  aplaudiments) a `N` compassos sencers, amb presets `ceil`/`floor`, `N=0`,
+  valor manual i protecció del darrer temps fort.
+- El càlcul és a mostra (`round` a 44,1/48 kHz), treballa només sobre la còpia
+  WAV i fa una sola escriptura atòmica amb fades de 4 ms.
+- Acords, seccions, mapa de tempo i marcadors es desplacen/retallen junts;
+  WAV + model + CSVs formen **un sol `Ctrl+Z`/`Ctrl+Y`**. Si una validació
+  falla, no es modifica res.
+- Previsualització en viu de segons/mostres, durada nova i compassos/BPM.
+
 ### Canviat — `3/8` amb pols de negra amb punt (2026-11-17)
 - `3/8` ara deriva **una sola pols de negra amb punt** (`negra_punt`) en
   lloc de tres corxeres: 1 pols per compàs i BPM visible a 1,5 negres per pols.

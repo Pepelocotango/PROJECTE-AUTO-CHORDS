@@ -4222,6 +4222,106 @@ class TestEdicioAudioVisor(unittest.TestCase):
         self.assertAlmostEqual(float(self.v.seccions[-1][1]), 7.0)
         self.assertAlmostEqual(float(self.v.tempo_trams[-1][1]), 7.0)
 
+    def test_quadratura_extrems_undo_i_redo_bytes_i_model(self):
+        from app import audio_edit, mapa_tempo
+        trams = [mapa_tempo.TramMapa(0.0, 8.0, 120.0, "normal", "4/4")]
+        self.v.acords = [pipeline.Clip(0.0, 4.0, ("C", "0")),
+                         pipeline.Clip(4.0, 8.0, ("G", "0"))]
+        self.v.seccions = [(0.0, 4.0, "A", "A"), (4.0, 8.0, "B", "B")]
+        self.v.timeline.set_data(self.v.acords, self.v.seccions)
+        self.v._undo_base = self.v._estat_complet()
+        pla = audio_edit.planifica_extrems(
+            8.0, 1000, trams, t_temps1=1.0, n_ini=1, n_fi=3,
+            aplica_inici=True, aplica_final=True)
+        self.assertAlmostEqual(pla["delta_ini"], 1.0, 9)
+        self.assertAlmostEqual(pla["delta_fi"], -1.0, 9)
+        with open(self.wav, "rb") as f:
+            bytes0 = f.read()
+        self.v.aplica_quadratura_extrems(pla)
+        self.assertAlmostEqual(self.v.audio["durada"], 8.0, 9)
+        self.assertEqual(self.v.marcadors, [2.0, 7.0])
+        self.assertEqual(self.v.pos, 4.0)
+        self.assertEqual((self.v.loop_a, self.v.loop_b), (2.0, 7.0))
+        self.assertEqual(len(self.v._undo_stack), 1)
+        self.assertAlmostEqual(float(self.v.tempo_trams[0].fi), 2.0, 9)
+        self.assertEqual(self.v.tempo_trams[0].n, 1)
+        self.assertAlmostEqual(float(self.v.tempo_trams[-1].fi), 8.0, 9)
+        self.assertEqual(self.v.tempo_trams[-1].n, 3)
+        with open(self.wav, "rb") as f:
+            bytes1 = f.read()
+        self.assertNotEqual(bytes1, bytes0)
+        self.v.undo()
+        with open(self.wav, "rb") as f:
+            self.assertEqual(f.read(), bytes0)
+        self.assertEqual(self.v.marcadors, [1.0, 6.0])
+        self.assertEqual(self.v.pos, 3.0)
+        self.v.redo()
+        with open(self.wav, "rb") as f:
+            self.assertEqual(f.read(), bytes1)
+        self.assertEqual(self.v.marcadors, [2.0, 7.0])
+        for ruta in ("acords.csv", "estructura_ABC.csv", "mapa_tempo.csv"):
+            self.assertTrue(os.path.isfile(os.path.join(self.sortida, ruta)))
+        desti = os.path.join(self.td, "export")
+        res = pipeline.exporta_total(
+            self.v.csv_acords, None, desti, self.v.bpm, self.v.bpb, 8000,
+            self.v.log, tempo_fix=self.v.tempo_fix, total_s=8.0,
+            acords=self.v.acords, seccions=self.v.seccions,
+            mapa_tempo=self.v.tempo_trams, den=self.v.beat_type)
+        self.assertTrue(os.path.isfile(res["acords_csv"]))
+        self.assertTrue(os.path.isfile(res["abc_csv"]))
+        self.assertTrue(os.path.isfile(os.path.join(
+            res["mapa_tempo_dir"], "mapa_tempo.csv")))
+        with open(res["mapa_tempo_dir"] + "/mapa_tempo.csv",
+                  encoding="utf-8") as f:
+            mapa = f.read()
+        self.assertIn(",8.000000,", mapa)
+
+    def test_quadratura_fallada_no_muta_ni_deixa_undo(self):
+        from app import audio_edit, mapa_tempo
+        trams = [mapa_tempo.TramMapa(0.0, 8.0, 120.0, "normal", "4/4")]
+        pla = audio_edit.planifica_extrems(
+            8.0, 1000, trams, t_temps1=1.0, n_ini=1, n_fi=3,
+            aplica_inici=True, aplica_final=True)
+        with open(self.wav, "rb") as f:
+            bytes0 = f.read()
+        reemplaca = os.replace
+
+        def falla_audio(origen, desti):
+            if os.path.abspath(desti) == os.path.abspath(self.wav):
+                raise OSError("fallada simulada")
+            return reemplaca(origen, desti)
+
+        with patch("app.visor.os.replace", side_effect=falla_audio):
+            with self.assertRaises(OSError):
+                self.v.aplica_quadratura_extrems(pla)
+        with open(self.wav, "rb") as f:
+            self.assertEqual(f.read(), bytes0)
+        self.assertAlmostEqual(self.v.audio["durada"], 8.0)
+        self.assertEqual(len(self.v._undo_stack), 0)
+
+    def test_dialeg_quadratura_previsualitza_i_valida(self):
+        from PyQt5.QtWidgets import QDialogButtonBox
+        from app import mapa_tempo
+        from app.dialeg_quadratura import DialegQuadratura
+        trams = [mapa_tempo.TramMapa(0.0, 8.0, 120.0, "normal", "4/4")]
+        d = DialegQuadratura(
+            None, durada=8.0, sr=1000, pos=1.0, trams=trams)
+        try:
+            self.assertEqual(d.sp_n_ini.value(), 1)
+            self.assertEqual(d.plan()["n_ini"], 1)
+            self.assertIn("Nova durada", d.previsualitzacio.text())
+            d.g_fi.setChecked(True)
+            d.sp_n_fi.setValue(3)
+            self.assertTrue(
+                d.botons.button(QDialogButtonBox.Ok).isEnabled())
+            self.assertAlmostEqual(d.plan()["delta_fi"], -1.0, 9)
+            d.g_ini.setChecked(False)
+            d.g_fi.setChecked(False)
+            self.assertFalse(
+                d.botons.button(QDialogButtonBox.Ok).isEnabled())
+        finally:
+            d.close()
+
     def test_fallada_de_publicacio_no_deixa_estats_divergents(self):
         from app import audio_edit
 

@@ -115,6 +115,9 @@ el projecte de DAW queden ajornats.
   el canvi és un altre undo. Els canvis d'unitat tenen undo real.
 - **Edició d'àudio (§13.9)**: importació, backups, retall/afegir als extrems,
   sincronització del model, desfer/refer i export amb FFmpeg implementats.
+  **2026-11-18:** quadratura guiada d'inici/final a `N` compassos sencers
+  (`Edita ▸ Quadra els extrems de la WAV…`), amb presets, previsualització i
+  una sola operació atòmica d'àudio + model.
 - **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
   `Analitza beats, downbeats i BPM` (F7) i **Beats/BPM** a la barra.
 - **Finestres**: la finestra principal i els diàlegs propis recorden geometria
@@ -142,14 +145,13 @@ el projecte de DAW queden ajornats.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
   Tags locals renumerats a `v0.9.x`; **cap push**.
-- **Suite**: `make check` complet executat (2026-11-18) amb **1626 tests**
-  (1 skip) i **tot OK**. Inclou les regressions de l'auditoria 2026-11-17
-  (undo, metadades, `N` enter, metrònom `x/16`, `C.B`, exportació i
-  validacions).
+- **Suite**: `make check` complet executat (2026-11-18) amb **1609 tests**
+  (1 skip) i **tot OK** després de la neteja de trams en segons. La quadratura
+  d'extrems afig regressions pròpies (plans, mostres, undo/redo i export).
 
 **Pendent:**
-- **Auditoria 2026-11-17**: queden per revisar els punts **4.x** (interfície,
-  dreceres i estat intern) i **5** (incoherències de documentació).
+- **Auditoria 2026-11-17**: punts **2.x–5** revisats i tancats (incloent-hi
+  D1–D8); pendent només la verificació visual del diàleg nou de quadratura.
 - **Publicar la release `v0.9.3`** quan l'operador ho ordene; `release.yml` crearà
   el tag des de `pyproject.toml`. Pujar els tags locals `v0.9.x` al remot només
   amb ordre explícita (mai push per iniciativa pròpia).
@@ -168,8 +170,8 @@ el projecte de DAW queden ajornats.
 - **Rubato avançat** i **export de projecte DAW**: ajornats sense data.
 - Corpus real de tempo pendent (l'avaluador sintètic funciona).
 - **Quantitza BPM** continua sent una operació separada del recalc guiat.
-- **Edició d'àudio**: proves visuals i el silenci automàtic per completar el
-  primer compàs (la restauració de backups ja és a la GUI).
+- **Edició d'àudio**: proves visuals del diàleg de quadratura d'extrems (la
+  funcionalitat i les regressions ja hi són).
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
 
 ### Pla de compassos compostos (tancat 2026-11-13)

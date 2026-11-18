@@ -74,7 +74,7 @@ PROJECTE AUTO CHORDS/
 │   └── share/     🟡  # (11 fitxers)
 ├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (1 fitxer)
 │   └── AUDITORIA_CODI_I_DOCS_2026-11-17.md 🟢
-├── app/                           🟢  # Codi de l'aplicació (PyQt5) (80 fitxers)
+├── app/                           🟢  # Codi de l'aplicació (PyQt5) (81 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
 │   ├── analisi_ui.py             🟢  # Accions d'anàlisi de la finestra (F3).
@@ -90,6 +90,7 @@ PROJECTE AUTO CHORDS/
 │   ├── dialeg_dreceres.py        🟢  # Diàleg per veure i canviar totes les dreceres de teclat.
 │   ├── dialeg_guia_rapida.py     🟢  # Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas.
 │   ├── dialeg_opcions.py         🟢  # Diàleg d'opcions d'autodetecció (BPM/acords/estructura).
+│   ├── dialeg_quadratura.py      🟢  # Diàleg per quadrar els extrems de la còpia WAV a compassos sencers.
 │   ├── dialeg_quantitza.py       🟢  # Diàleg de quantització a la graella.
 │   ├── dialeg_tall_qm.py         🟢  # Diàleg conjunt per triar les opcions d'un tall amb Beats QM.
 │   ├── dialeg_tempo_per_trams.py 🟢  # Diàleg de detecció de tempo per trams.
