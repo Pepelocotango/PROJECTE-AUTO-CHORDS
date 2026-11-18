@@ -1023,7 +1023,8 @@ def _graella_tram(tram, idx, durada=0.0):
 
 
 def valida_i_normalitza_compassos(trams, durada,
-                                  preserva_fi_idx=None, beats_qm=None):
+                                  preserva_fi_idx=None, beats_qm=None,
+                                  permet_ultim_fraccionari=False):
     """Valida el contracte de clips de tempo i retorna el mapa normalitzat.
 
     Contracte nou (`docs/REGLES_DE_LA_APP.md` §13.4):
@@ -1086,7 +1087,9 @@ def valida_i_normalitza_compassos(trams, durada,
             raise ValueError(
                 f"El tram {i + 1} no conté cap beat sencer de la graella")
         n_clip = compassos_del_clip(tram)
-        if abs(n_clip - round(n_clip)) > 1e-3 or round(n_clip) < 1:
+        if (not (permet_ultim_fraccionari and i == n - 1)
+                and (abs(n_clip - round(n_clip)) > 1e-3
+                     or round(n_clip) < 1)):
             raise ValueError(
                 f"El tram {i + 1} no té un nombre enter de compassos "
                 f"({n_clip:.3f}); ajusta N, el BPM o el compàs")
@@ -1409,7 +1412,7 @@ def _valida_bpm_edicio(bpm, costat):
 
 
 def _mapa_valida_sense_moure(out, durada, preserva_fi_idx=None,
-                             beats_qm=None):
+                             beats_qm=None, permet_ultim_fraccionari=False):
     """Valida el mapa **sense moure cap frontera**.
 
     Les operacions de l'usuari (`+`, re-tempo pel ratolí, «Detecta» d'un tram,
@@ -1420,7 +1423,8 @@ def _mapa_valida_sense_moure(out, durada, preserva_fi_idx=None,
     """
     return valida_i_normalitza_compassos(
         out, durada, preserva_fi_idx=preserva_fi_idx,
-        beats_qm=beats_qm)
+        beats_qm=beats_qm,
+        permet_ultim_fraccionari=permet_ultim_fraccionari)
 
 
 def canvia_bpm_local(trams, idx, bpm, durada, num=None, den=None,
@@ -1452,8 +1456,9 @@ def canvia_bpm_local(trams, idx, bpm, durada, num=None, den=None,
             out, durada,
             permet_ultim_fraccionari=permet_ultim_fraccionari)
     out = _millora_signatures_clips(out, durada, beats_qm, {i})
-    return _mapa_valida_sense_moure(out, durada,
-                                    beats_qm=beats_qm)
+    return _mapa_valida_sense_moure(
+        out, durada, beats_qm=beats_qm,
+        permet_ultim_fraccionari=permet_ultim_fraccionari)
 
 
 def _candidats_fit_clip(tram, i):
@@ -1684,7 +1689,8 @@ def retempo_tram_detectat(trams, idx, bpm_detectat, durada,
 def mou_frontera_retempo(trams, idx_frontera, nou_t, durada,
                          beats_qm=None, permissiu=False, ref_base=None,
                          avisos=None, beat_factor=1.0, meter_prior=None,
-                         unitats=None, classificacions=None, suggerides=None):
+                         unitats=None, classificacions=None, suggerides=None,
+                         permet_ultim_fraccionari=False):
     """Mou una frontera interior.
 
     Dos camins:
@@ -1761,7 +1767,9 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada,
                     "el tall o activa snap")
                 if text not in avisos:
                     avisos.append(text)
-        return valida_i_normalitza_permissiu(out, durada)
+        return valida_i_normalitza_permissiu(
+            out, durada,
+            permet_ultim_fraccionari=permet_ultim_fraccionari)
     out = _millora_signatures_clips(out, durada, beats_qm,
                                     {i - 1, i})
     out, _ns, _avisos = ajusta_compassos_sencers(out)
@@ -1877,7 +1885,8 @@ def _bpm_de_n(n, bq, dt):
 
 def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
                           factor=None, n_new=None,
-                          num=None, den=None, permissiu=False):
+                          num=None, den=None, permissiu=False,
+                          permet_ultim_fraccionari=False):
     """Reinterpreta el tram `idx` amb més/menys compassos, **sense moure'l**.
 
     Els segons (`ini`, `fi`) queden intactes, els veïns no es toquen i el BPM
@@ -1932,8 +1941,12 @@ def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
     out[i] = (float(ini), float(fi), float(bpm_new),
               int(num_final), int(den_final))
     if permissiu:
-        return valida_i_normalitza_permissiu(out, durada)
-    return valida_i_normalitza_compassos(out, durada, preserva_fi_idx=i)
+        return valida_i_normalitza_permissiu(
+            out, durada,
+            permet_ultim_fraccionari=permet_ultim_fraccionari)
+    return valida_i_normalitza_compassos(
+        out, durada, preserva_fi_idx=i,
+        permet_ultim_fraccionari=permet_ultim_fraccionari)
 
 
 #: Un tram més curt que això (50 ms) no té cap sentit musical: naix d'un `+`

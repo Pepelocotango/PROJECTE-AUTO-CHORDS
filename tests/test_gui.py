@@ -6579,8 +6579,11 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.aplica_tempo_trams(trams))
         vr.set_snap(on=True, divisio="qm_beats")
         vr.set_snap_beats([i * 0.5 for i in range(120)], [])
-        self.assertFalse(vr.edita_tempo_guiat(0, num=7, den=4))
-        self.assertEqual(vr.tempo_trams[0].compassos, "2/4")
+        # L'últim pot quedar fraccionari també amb QM.
+        self.assertTrue(vr.edita_tempo_guiat(0, num=7, den=4))
+        self.assertEqual(vr.tempo_trams[0].compassos, "7/4")
+        self.assertAlmostEqual(vr.tempo_trams[0].n, 120.0 / 7.0, 6)
+        self.assertTrue(vr.aplica_tempo_trams(trams))
         self.assertTrue(vr.edita_tempo_guiat(0, num=4, den=4))
         self.assertEqual(vr.tempo_trams[0].n, 30.0)
         self.assertFalse(vr.edita_tempo_guiat(0, bpm=100.0))
@@ -6700,10 +6703,11 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.edita_tempo_objectiu(1, 100.0, 4, 4))
         self.assertAlmostEqual(vr.tempo_trams[1][0], 2.0, places=9)
         self.assertAlmostEqual(vr.tempo_trams[1][1], 60.0, places=9)
-        # 58 s en 4/4: N=24 enter i BPM derivat 99,3103.
-        self.assertAlmostEqual(vr.tempo_trams[1][2], 24 * 4 * 60.0 / 58.0,
-                               places=5)
-        self.assertAlmostEqual(vr.tempo_trams[1].n, 24.0, places=5)
+        # 58 s en 4/4: el BPM manat es conserva i l'últim N pot ser
+        # fraccionari (58 s a 100 BPM = 24,1667 compassos).
+        self.assertAlmostEqual(vr.tempo_trams[1][2], 100.0, places=6)
+        self.assertAlmostEqual(vr.tempo_trams[1].n, 58.0 * 100.0 / 240.0,
+                               places=6)
 
     def test_marcador_durant_el_play_usa_el_cursor_del_so(self):
         """El cas real: prémer `M` mentre SONA (el cursor és el playhead)."""

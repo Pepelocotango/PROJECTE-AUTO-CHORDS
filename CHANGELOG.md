@@ -51,7 +51,8 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 ### Canviat — el TAP mana i l’últim clip pot ser fraccionari (2026-11-18)
 - El TAP ja no consulta ni bloqueja per QM: sempre aplica el BPM percebut.
 - L’últim clip de tempo pot quedar amb `N` fraccionari perquè el final de la
-  WAV és fix; la resta de clips continuen exigint `N` enter.
+  WAV és fix; la resta de clips continuen exigint `N` enter. L’excepció val per
+  a totes les edicions de la GUI (Editor, TAP, fronteres, talls, `+` i diàlegs).
 - Ajustat el contracte §13.4 i els normalitzadors per a esta excepció.
 
 ### Canviat — el tall final deixa només el clip final (2026-11-18)

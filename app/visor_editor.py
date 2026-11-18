@@ -217,9 +217,11 @@ class EditorMixin:
                 ok = bool(self.aplica_tempo_trams(nous))
             elif camp == "n":
                 n = float(self.ed_n.text().strip().replace(",", "."))
-                if n <= 0 or abs(n - round(n)) > 1e-3:
+                if n <= 0:
+                    raise ValueError("N ha de ser positiu.")
+                if i != len(self.tempo_trams) - 1 and abs(n - round(n)) > 1e-3:
                     raise ValueError("N ha de ser un enter positiu.")
-                ok = self.edita_tempo_guiat(i, n=int(round(n)))
+                ok = self.edita_tempo_guiat(i, n=n)
             else:
                 return False
         except (TypeError, ValueError, AttributeError) as e:
@@ -286,10 +288,11 @@ class EditorMixin:
             except (TypeError, ValueError):
                 n_actual = 0.0
         canvi_n = abs(n_val - float(n_actual)) > 1e-3
-        if abs(n_val - round(n_val)) > 1e-3:
+        if (i != len(trams) - 1
+                and abs(n_val - round(n_val)) > 1e-3):
             self.avis_editor(
-                "N ha de ser un nombre enter de compassos (cap clip pot "
-                "quedar amb N fraccionari).")
+                "N ha de ser un nombre enter de compassos; només l'últim "
+                "clip pot quedar amb N fraccionari.")
             return
         canvi_compas = (num, den) != (int(tr.num), int(tr.den))
         canvi_bpm_num = abs(bpm - float(tr.bpm)) > 5e-4

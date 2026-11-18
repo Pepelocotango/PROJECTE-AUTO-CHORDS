@@ -302,7 +302,7 @@ class TempoMixin:
                 nous = mapa_tempo.recalcula_tram_c(
                     trams, idx, self._durada_wav(),
                     bpm=float(bpm), num=int(num), den=int(den),
-                    camp="bpm")
+                    camp="bpm", permet_ultim_fraccionari=True)
             except ValueError as e:
                 self.avis_editor(f"Tempo: {e}")
                 return False
@@ -418,7 +418,7 @@ class TempoMixin:
             nous = mapa_tempo.recalcula_tram_c(
                 trams, idx, self._durada_wav(),
                 n=int(n), bpm=float(trams[idx].bpm), num=int(num),
-                den=int(den), camp="n")
+                den=int(den), camp="n", permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Compassos: {e}")
             return False
@@ -460,6 +460,9 @@ class TempoMixin:
         if bq <= 0:
             raise ValueError("El compàs no té durada")
         n = float(negres) / bq
+        if int(idx) == len(trams) - 1:
+            # L'últim clip pot quedar fraccionari: QM no l'ha de bloquejar.
+            return n
         if abs(n - round(n)) > 1e-6:
             raise ValueError(
                 f"Snap Beats QM: amb {int(num)}/{int(den)} el clip tindria "
@@ -508,14 +511,19 @@ class TempoMixin:
                         f"{n_t} compassos, el BPM ha de ser {bpm_t:.3f}, "
                         f"no {float(bpm):.3f}.")
             elif n is not None:
-                n_t = max(1, int(round(float(n))))
+                n_t = float(n)
+                if idx != len(trams) - 1:
+                    n_t = max(1, int(round(n_t)))
+                if n_t <= 0:
+                    raise ValueError("N ha de ser positiu.")
                 if bpm is None:
                     bpm_t = n_t * bq * 60.0 / dt
             else:
                 n_t = max(1, int(round(dt * bpm_t / (bq * 60.0))))
             nous = mapa_tempo.recalcula_tram_c(
                 trams, idx, self._durada_wav(), n=n_t, bpm=bpm_t,
-                num=num_t, den=den_t, camp="n")
+                num=num_t, den=den_t, camp="n",
+                permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Tempo: {e}")
             return False
@@ -970,7 +978,8 @@ class TempoMixin:
             if mode == "fix":
                 nous = tempo_map.canvia_compassos_tram(
                     trams, idx, n_new=int(res["n"]), num=int(res["num"]),
-                    den=int(res["den"]), durada=self._durada_wav())
+                    den=int(res["den"]), durada=self._durada_wav(),
+                    permet_ultim_fraccionari=True)
                 # El recalcul fix treballa amb 5 tuples: cal tornar-hi el
                 # tipus, l'agrupació i la unitat del tram original. El `n`
                 # nou el deriva la normalització del mapa.
@@ -979,7 +988,8 @@ class TempoMixin:
                 nous = mapa_tempo.recalcula_tram_c(
                     trams, idx, self._durada_wav(),
                     n=int(res["n"]), bpm=float(bpm_camp),
-                    num=int(res["num"]), den=int(res["den"]), camp="n")
+                    num=int(res["num"]), den=int(res["den"]), camp="n",
+                    permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Recalcul {mode}: {e}")
             return False
@@ -1091,6 +1101,7 @@ class TempoMixin:
                 trams, p_idx, float(t), self._durada_wav(),
                 beats_qm=self._beats_per_validacio(), permissiu=True,
                 ref_base=self.referencia_tempo_base(p_idx), avisos=avisos,
+                permet_ultim_fraccionari=True,
                 beat_factor=self.beat_factor(), unitats=unitats)
         except ValueError as e:
             self.avis_editor(f"Frontera de tempo: {e}")
@@ -1116,7 +1127,8 @@ class TempoMixin:
         try:
             nous = tempo_map.canvia_compassos_tram(
                 trams, idx, delta_compassos=delta_compassos,
-                durada=self._durada_wav(), factor=factor)
+                durada=self._durada_wav(), factor=factor,
+                permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Compassos: {e}")
             return False

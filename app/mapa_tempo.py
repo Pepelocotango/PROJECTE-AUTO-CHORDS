@@ -228,7 +228,8 @@ def a_tuples(trams):
 
 
 def recalcula_tram_c(trams, idx, durada, *, n=None, bpm=None,
-                     num=None, den=None, camp="bpm"):
+                     num=None, den=None, camp="bpm",
+                     permet_ultim_fraccionari=False):
     """Edita un clip mantenint **sempre `N` enter** (§13.4).
 
     - Trams interiors: `n` exacte (enter) → `fi` derivada; el veí conserva el
@@ -271,11 +272,13 @@ def recalcula_tram_c(trams, idx, durada, *, n=None, bpm=None,
                 tempo_recalc.n_de_durada(dur_fix, bpm, num, den)))
             if n_final <= 0:
                 raise ValueError("N ha de ser positiu")
-            n_final = float(max(1, tempo_map._enter_mes_proper(n_final)))
             bpm_final = tempo_recalc.bpm_de_n(n_final, num, den, dur_fix)
+        elif permet_ultim_fraccionari:
+            # L'últim pot quedar amb N fraccionari (TAP / edicions GUI).
+            n_final = max(1e-9, tempo_recalc.n_de_durada(
+                dur_fix, bpm, num, den))
+            bpm_final = bpm
         else:
-            # BPM/compàs demanats: es tria l'N enter més pròxim i es deriva
-            # el BPM perquè la fi (fixa) coincidisca.
             n_final = max(1, tempo_map._enter_mes_proper(
                 tempo_recalc.n_de_durada(dur_fix, bpm, num, den)))
             bpm_final = tempo_recalc.bpm_de_n(n_final, num, den, dur_fix)
