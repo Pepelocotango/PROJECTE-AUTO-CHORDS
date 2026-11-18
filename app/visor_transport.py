@@ -302,6 +302,8 @@ class TransportMixin:
         if mode not in metronom.MODES:
             mode = "auto"
         self.metro_mode = mode
+        if mode == "qm" and not getattr(self, "qm_beats", None):
+            self.log("metrònom: Beats QM sense beats detectats (F7).")
         if self.metro_forcat is not None:
             forc = self.metro_forcat
             bpm, bpb, offset, den, _mode = forc[:5]

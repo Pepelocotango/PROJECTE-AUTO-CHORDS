@@ -8,7 +8,7 @@ from dataclasses import replace
 
 import numpy as np
 
-from app import limits, mapa_tempo, pipeline, tempo_map
+from app import bpm_unit, limits, mapa_tempo, pipeline, tempo_map
 
 RETALLA_INICI = "retalla_inici"
 RETALLA_FINAL = "retalla_final"
@@ -154,6 +154,18 @@ def _valida_tram_tempo(bpm, num, den):
     return float(bpm), int(num), int(den)
 
 
+def _unitat_pols(unit, num, den, agrupacio=""):
+    """Normalitza i valida la unitat de pols per al compàs donat (L3)."""
+    base = unit or bpm_unit.unitat_per_defecte(num, den, agrupacio)
+    u = bpm_unit.normalitza(base)
+    if not bpm_unit.encaixa_en_compas(u, num, den):
+        sugg = bpm_unit.unitat_per_defecte(num, den, agrupacio)
+        raise ValueError(
+            f"La unitat {u} no encaixa amb el compàs {int(num)}/{int(den)}; "
+            f"tria {sugg} o canvia el compàs")
+    return u
+
+
 def calcula_n_inici(t_temps1, bpm, num, den, mode="ceil", n=None):
     """Compassos sencers que queden abans del temps 1 real.
 
@@ -291,7 +303,8 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
                       t_ultim_fort=None, n_fi=1, aplica_inici=True,
                       aplica_final=False, bpm_ini=None, num_ini=None,
                       den_ini=None, t_final=None, bpm_fi=None,
-                      num_fi=None, den_fi=None):
+                      num_fi=None, den_fi=None, beat_unit_ini=None,
+                      beat_unit_fi=None):
     """Calcula un pla d'extrems **sense tocar** àudio ni model.
 
     Retorna deltes exactes per al model i fotogrames per a la WAV. Les
@@ -333,6 +346,9 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
         den_ent = ent.den if den_ini is None else den_ini
         bpm_ent, num_ent, den_ent = _valida_tram_tempo(
             bpm_ent, num_ent, den_ent)
+        unit_ent = _unitat_pols(
+            beat_unit_ini or ent.beat_unit, num_ent, den_ent,
+            ent.agrupacio)
         compas = tempo_map.durada_compas(bpm_ent, num_ent, den_ent)
         target = n_ini * compas
         delta_ini = target - t1
@@ -350,7 +366,7 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
         pla["bpm_ini"] = bpm_ent
         pla["num_ini"] = num_ent
         pla["den_ini"] = den_ent
-        pla["beat_unit_ini"] = ent.beat_unit
+        pla["beat_unit_ini"] = unit_ent
         pla["agrupacio_ini"] = ent.agrupacio
 
     if aplica_final:
@@ -367,6 +383,9 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
             den_tail = ult.den if den_fi is None else den_fi
             bpm_tail, num_tail, den_tail = _valida_tram_tempo(
                 bpm_tail, num_tail, den_tail)
+            unit_tail = _unitat_pols(
+                beat_unit_fi or ult.beat_unit, num_tail, den_tail,
+                ult.agrupacio)
             compas = tempo_map.durada_compas(ult.bpm, ult.num, ult.den)
             n_abans = max(0, int(round((tf - float(ult.ini)) / compas)))
             # El punt és el que ha marcat l'usuari: no es mou. El tram normal
@@ -397,7 +416,7 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
             pla["bpm_fi"] = bpm_tail
             pla["num_fi"] = num_tail
             pla["den_fi"] = den_tail
-            pla["beat_unit_fi"] = ult.beat_unit
+            pla["beat_unit_fi"] = unit_tail
             pla["agrupacio_fi"] = ult.agrupacio
         else:
             start_fi = float(ult.ini) + delta_ini
@@ -408,6 +427,9 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
             den_tail = ult.den if den_fi is None else den_fi
             bpm_tail, num_tail, den_tail = _valida_tram_tempo(
                 bpm_tail, num_tail, den_tail)
+            unit_tail = _unitat_pols(
+                beat_unit_fi or ult.beat_unit, num_tail, den_tail,
+                ult.agrupacio)
             minim = n_min_fi(t_ultim_fort, start_fi, bpm_tail,
                              num_tail, den_tail)
             if isinstance(n_fi, bool) or not isinstance(n_fi, int) \
@@ -434,7 +456,7 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
             pla["bpm_fi"] = bpm_tail
             pla["num_fi"] = num_tail
             pla["den_fi"] = den_tail
-            pla["beat_unit_fi"] = ult.beat_unit
+            pla["beat_unit_fi"] = unit_tail
             pla["agrupacio_fi"] = ult.agrupacio
 
     nou_final = durada + delta_ini + delta_fi

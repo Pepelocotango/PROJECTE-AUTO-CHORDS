@@ -74,6 +74,7 @@ class VisorUIMixin:
             self.visor_ref = None
             self.b_exec.setEnabled(False)
             self.b_analitza_beats.setEnabled(False)
+            self.b_analitza_beats_clip.setEnabled(False)
             self.b_guia.setEnabled(False)
             self.b_audio_ini.setEnabled(False)
             self.b_audio_fi.setEnabled(False)
@@ -186,6 +187,7 @@ class VisorUIMixin:
             self.visor_widget.show()
             self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
             self.b_analitza_beats.setEnabled(True)
+            self.b_analitza_beats_clip.setEnabled(True)
             self.b_guia.setEnabled(True)
             self.b_audio_ini.setEnabled(True)
             self.b_audio_fi.setEnabled(True)

@@ -1,10 +1,10 @@
 """Diàleg per quadrar els extrems de la còpia WAV a compassos sencers."""
 from PyQt5.QtWidgets import (
-    QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
+    QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
     QGroupBox, QHBoxLayout, QLabel, QPushButton, QSpinBox, QVBoxLayout,
 )
 
-from app import audio_edit, limits, mapa_tempo, pipeline, tempo_map
+from app import audio_edit, bpm_unit, limits, mapa_tempo, pipeline, tempo_map
 from app.camp_text import CampText
 from app.finestres import GeometriaMixin
 
@@ -34,6 +34,8 @@ class DialegQuadratura(GeometriaMixin, QDialog):
             raise ValueError("Cal un mapa de tempo/compàs per a quadrar")
         self._primer = self.trams[0]
         self._ultim = self.trams[-1]
+        self._unit_ini = self._unitat_tram(self._primer)
+        self._unit_fi = self._unitat_tram(self._ultim)
         self._t1_defecte = max(0.0, min(float(pos), self.durada))
         self._t_final_defecte = max(
             0.0, min(float(pos), self.durada))
@@ -64,15 +66,23 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         f_ini.addRow("On comença la cançó (temps 1):", self.sp_t1)
 
         self.sp_bpm_ini = QDoubleSpinBox()
-        self.sp_bpm_ini.setRange(limits.BPM_MIN, limits.BPM_MAX)
         self.sp_bpm_ini.setDecimals(6)
-        self.sp_bpm_ini.setValue(float(self._primer.bpm))
-        self.sp_bpm_ini.setToolTip("BPM del compàs d'entrada, en negres/minut.")
+        self._configura_bpm_spin(self.sp_bpm_ini, self._unit_ini,
+                                 float(self._primer.bpm))
+        self.sp_bpm_ini.setToolTip(
+            "BPM del compàs d'entrada en la unitat de pols triada; "
+            "l'intern es recalcula en aplicar.")
         self.ed_compas_ini = CampText(
             f"{int(self._primer.num)}/{int(self._primer.den)}")
         self.ed_compas_ini.setToolTip("Compàs d'entrada de l'introducció.")
-        f_ini.addRow("BPM de l'inici:", self.sp_bpm_ini)
+        self.cb_unitat_ini = QComboBox()
+        self._omple_unitats(self.cb_unitat_ini, self._unit_ini)
+        self.cb_unitat_ini.setToolTip(
+            "Unitat amb què s'expressa el BPM de l'inici (negra, negra amb "
+            "punt, blanca…). Canviar-la manté el tempo intern.")
         f_ini.addRow("Compàs de l'inici:", self.ed_compas_ini)
+        f_ini.addRow("Unitat del BPM de l'inici:", self.cb_unitat_ini)
+        f_ini.addRow("BPM de l'inici:", self.sp_bpm_ini)
 
         self.sp_n_ini = QSpinBox()
         self.sp_n_ini.setRange(0, 9999)
@@ -119,18 +129,24 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         f_fi.addRow("On s'acaba la música (inici de la cua):", self.sp_fort)
 
         self.sp_bpm_fi = QDoubleSpinBox()
-        self.sp_bpm_fi.setRange(limits.BPM_MIN, limits.BPM_MAX)
         self.sp_bpm_fi.setDecimals(6)
-        self.sp_bpm_fi.setValue(float(self._ultim.bpm))
-        self.sp_bpm_fi.setToolTip("BPM de l'últim tram, en negres/minut.")
+        self._configura_bpm_spin(self.sp_bpm_fi, self._unit_fi,
+                                 float(self._ultim.bpm))
+        self.sp_bpm_fi.setToolTip(
+            "BPM del tram de cua en la unitat de pols triada; pot ser "
+            "diferent del tram normal anterior.")
         self.ed_compas_fi = CampText(
             f"{int(self._ultim.num)}/{int(self._ultim.den)}")
-        self.sp_bpm_fi.setToolTip(
-            "BPM del tram de cua. Pot ser diferent del tram normal anterior.")
         self.ed_compas_fi.setToolTip(
             "Compàs del tram de cua (4/4, 3/4, 6/8…).")
-        f_fi.addRow("BPM de l'últim tram:", self.sp_bpm_fi)
+        self.cb_unitat_fi = QComboBox()
+        self._omple_unitats(self.cb_unitat_fi, self._unit_fi)
+        self.cb_unitat_fi.setToolTip(
+            "Unitat amb què s'expressa el BPM de la cua. Canviar-la manté "
+            "el tempo intern.")
         f_fi.addRow("Compàs de l'últim tram:", self.ed_compas_fi)
+        f_fi.addRow("Unitat del BPM de la cua:", self.cb_unitat_fi)
+        f_fi.addRow("BPM de l'últim tram:", self.sp_bpm_fi)
 
         self.sp_n_fi = QSpinBox()
         self.sp_n_fi.setRange(1, 9999)
@@ -194,6 +210,12 @@ class DialegQuadratura(GeometriaMixin, QDialog):
             w.valueChanged.connect(self._actualitza)
         for w in (self.ed_compas_ini, self.ed_compas_fi):
             w.textChanged.connect(self._actualitza)
+        self.cb_unitat_ini.currentIndexChanged.connect(
+            lambda _i: self._canvia_unitat(self.cb_unitat_ini,
+                                           self.sp_bpm_ini, "_unit_ini"))
+        self.cb_unitat_fi.currentIndexChanged.connect(
+            lambda _i: self._canvia_unitat(self.cb_unitat_fi,
+                                           self.sp_bpm_fi, "_unit_fi"))
         for w in (self.g_ini, self.g_fi):
             w.toggled.connect(self._actualitza)
         mode = str(mode or "ambdos").strip().lower()
@@ -205,19 +227,69 @@ class DialegQuadratura(GeometriaMixin, QDialog):
             self.g_fi.setChecked(True)
         self._actualitza()
 
-    def _bpm(self, edit, spin):
-        valor = float(spin.value())
+    @staticmethod
+    def _unitat_tram(tr):
+        unit = getattr(tr, "beat_unit", None)
+        if not unit:
+            unit = bpm_unit.unitat_per_defecte(
+                int(tr.num), int(tr.den), getattr(tr, "agrupacio", ""))
+        return bpm_unit.normalitza(unit)
+
+    @staticmethod
+    def _omple_unitats(combo, unit):
+        for clau, etiqueta in bpm_unit.opcions():
+            combo.addItem(etiqueta, clau)
+        idx = combo.findData(bpm_unit.normalitza(unit))
+        if idx >= 0:
+            combo.setCurrentIndex(idx)
+
+    @staticmethod
+    def _configura_bpm_spin(spin, unit, bpm_intern):
+        unit = bpm_unit.normalitza(unit)
+        factor = bpm_unit.factor(unit)
+        spin.blockSignals(True)
+        spin.setRange(limits.BPM_MIN / factor, limits.BPM_MAX / factor)
+        spin.setValue(bpm_unit.de_quarter(float(bpm_intern), unit))
+        spin.blockSignals(False)
+
+    def _canvia_unitat(self, combo, spin, attr):
+        """Canvia la unitat de presentació mantenint el BPM intern."""
+        nou = bpm_unit.normalitza(combo.currentData())
+        vell = getattr(self, attr)
+        if nou == vell:
+            return
+        intern = bpm_unit.a_quarter(float(spin.value()), vell)
+        setattr(self, attr, nou)
+        self._configura_bpm_spin(spin, nou, intern)
+        self._actualitza()
+
+    def _bpm(self, edit, spin, unit=None):
+        valor = bpm_unit.a_quarter(
+            float(spin.value()), unit or bpm_unit.DEFECTE)
         text = edit.text().strip()
         if "/" not in text:
             raise ValueError("El compàs ha de ser num/den")
         num, den = (int(x) for x in text.split("/", 1))
         tempo_map.valida_tempo(valor, num, den)
-        return valor, num, den
+        u = bpm_unit.normalitza(unit or bpm_unit.DEFECTE)
+        if not bpm_unit.encaixa_en_compas(u, num, den):
+            sugg = bpm_unit.unitat_per_defecte(num, den)
+            raise ValueError(
+                f"La unitat {u} no encaixa amb el compàs {num}/{den}; "
+                f"tria {sugg} o canvia el compàs")
+        return valor, num, den, u
+
+    @staticmethod
+    def _bpm_text(bpm, unit):
+        u = bpm_unit.normalitza(unit)
+        return (f"{bpm_unit.de_quarter(float(bpm), u):g} "
+                f"{bpm_unit.etiqueta(u).lower()}/min "
+                f"({float(bpm):g} negres/min)")
 
     def _n_ini(self, mode):
         try:
-            bpm, num, den = self._bpm(self.ed_compas_ini,
-                                      self.sp_bpm_ini)
+            bpm, num, den, _u = self._bpm(
+                self.ed_compas_ini, self.sp_bpm_ini, self._unit_ini)
             return audio_edit.calcula_n_inici(
                 self.sp_t1.value(), bpm, num, den, mode)
         except Exception:
@@ -225,8 +297,8 @@ class DialegQuadratura(GeometriaMixin, QDialog):
 
     def _n_fi(self, mode):
         try:
-            bpm, num, den = self._bpm(self.ed_compas_fi,
-                                      self.sp_bpm_fi)
+            bpm, num, den, _u = self._bpm(
+                self.ed_compas_fi, self.sp_bpm_fi, self._unit_fi)
             return audio_edit.calcula_n_cua(
                 self.durada, self.sp_fort.value(), bpm, num, den, mode)
         except Exception:
@@ -253,23 +325,24 @@ class DialegQuadratura(GeometriaMixin, QDialog):
                     f"Inici: {_mostra_delta(pla['silenci_ini']
                                             - pla['retalla_ini'], self.sr)} · "
                     f"{pla['n_ini']} compassos a "
-                    f"{pla['bpm_ini']:g} BPM ({pla['num_ini']}/"
-                    f"{pla['den_ini']}).")
+                    f"{self._bpm_text(pla['bpm_ini'], pla.get('beat_unit_ini'))} "
+                    f"({pla['num_ini']}/{pla['den_ini']}).")
             if pla["aplica_final"]:
                 text.append(
                     f"Final: {_mostra_delta(pla['silenci_fi']
                                             - pla['retalla_fi'], self.sr)} · "
                     f"objectiu {pla.get('n_cua', pla['n_fi'])} compassos "
                     f"de cua a "
-                    f"{pla['bpm_fi']:g} BPM ({pla['num_fi']}/"
-                    f"{pla['den_fi']}).")
+                    f"{self._bpm_text(pla['bpm_fi'], pla.get('beat_unit_fi'))} "
+                    f"({pla['num_fi']}/{pla['den_fi']}).")
                 if pla.get("target_final_point") is not None:
                     tall = float(pla["target_final_point"])
                     rest = max(0.0, self.durada - tall)
                     text.append(
                         f"Queden {rest:.3f} s des del tall. Amb "
                         f"{pla['num_fi']}/{pla['den_fi']} a "
-                        f"{pla['bpm_fi']:g} BPM hi caben "
+                        f"{self._bpm_text(pla['bpm_fi'], pla.get('beat_unit_fi'))} "
+                        f"hi caben "
                         f"{rest / (float(pla['num_fi']) * 4.0 / float(pla['den_fi']) * 60.0 / pla['bpm_fi']):.3f} "
                         f"compassos; N final objectiu "
                         f"{pla.get('n_cua', pla['n_fi'])}.")
@@ -281,11 +354,13 @@ class DialegQuadratura(GeometriaMixin, QDialog):
             fi = tr["trams"][-1]
             text.append(
                 f"Tram inicial resultant: {float(ini.n):g} compassos a "
-                f"{float(ini.bpm):g} BPM ({ini.compassos}).")
+                f"{self._bpm_text(float(ini.bpm), ini.beat_unit)} "
+                f"({ini.compassos}).")
             if fi is not ini:
                 text.append(
                     f"Tram final resultant: {float(fi.n):g} compassos a "
-                    f"{float(fi.bpm):g} BPM ({fi.compassos}).")
+                    f"{self._bpm_text(float(fi.bpm), fi.beat_unit)} "
+                    f"({fi.compassos}).")
             text.append(f"Nova durada: {pla['durada_nova']:.3f} s.")
             self.previsualitzacio.setText(" ".join(text))
             self.botons.button(QDialogButtonBox.Ok).setEnabled(True)
@@ -297,14 +372,14 @@ class DialegQuadratura(GeometriaMixin, QDialog):
     def _calcula(self):
         if not (self.g_ini.isChecked() or self.g_fi.isChecked()):
             raise ValueError("Tria l'inici, el final o tots dos")
-        bpm_ini = num_ini = den_ini = None
+        bpm_ini = num_ini = den_ini = unit_ini = None
         if self.g_ini.isChecked():
-            bpm_ini, num_ini, den_ini = self._bpm(
-                self.ed_compas_ini, self.sp_bpm_ini)
-        bpm_fi = num_fi = den_fi = None
+            bpm_ini, num_ini, den_ini, unit_ini = self._bpm(
+                self.ed_compas_ini, self.sp_bpm_ini, self._unit_ini)
+        bpm_fi = num_fi = den_fi = unit_fi = None
         if self.g_fi.isChecked():
-            bpm_fi, num_fi, den_fi = self._bpm(
-                self.ed_compas_fi, self.sp_bpm_fi)
+            bpm_fi, num_fi, den_fi, unit_fi = self._bpm(
+                self.ed_compas_fi, self.sp_bpm_fi, self._unit_fi)
         fort = self.sp_fort.value() if self.g_fi.isChecked() else None
         return audio_edit.planifica_extrems(
             self.durada, self.sr, self.trams,
@@ -315,7 +390,9 @@ class DialegQuadratura(GeometriaMixin, QDialog):
             aplica_inici=self.g_ini.isChecked(),
             aplica_final=self.g_fi.isChecked(),
             bpm_ini=bpm_ini, num_ini=num_ini, den_ini=den_ini,
-            t_final=fort, bpm_fi=bpm_fi, num_fi=num_fi, den_fi=den_fi)
+            beat_unit_ini=unit_ini,
+            t_final=fort, bpm_fi=bpm_fi, num_fi=num_fi, den_fi=den_fi,
+            beat_unit_fi=unit_fi)
 
     def plan(self):
         if self._pla is None:

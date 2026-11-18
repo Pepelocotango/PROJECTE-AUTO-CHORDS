@@ -12,6 +12,10 @@ corxeres amb accents a 1 i 4, `9/8` → 9, `12/8` → 12, `4/4` → 4 negres,
 clicar només la unitat de pols del tram.
 Els accents de grup ixen de `tempo_map.agrupacio_compas()`: `6/8` → `3+3`,
 `7/8` → `7`, `5/8` → `5`, `8/8` → `8`, etc.
+
+El mode `qm` marca els **beats detectats per QM** (`beats=`), un a un i sense
+accents. No passa per la graella del mapa: els instants poden no coincidir amb
+cap compàs/beat teòric i es col·loquen allà on els ha detectat QM.
 """
 import numpy as np
 from app import bpm_unit, limits, tempo_map
@@ -20,7 +24,7 @@ from app import bpm_unit, limits, tempo_map
 BPM_MAX = limits.BPM_MAX
 
 # Patrons de clic. `auto` = tots els temps + accents de compàs i grup.
-MODES = ("auto", "compas", "temps", "grup")
+MODES = ("auto", "compas", "temps", "grup", "qm")
 
 # Durada d'un clic (ms) i freqüències (Hz): accent = temps 1 de cada compàs.
 CLIC_MS = 25.0
@@ -110,9 +114,60 @@ def _accent_grup(beat, num, den, agrupacio=None):
             and (int(beat) - 1) in _inicis_grups(num, den, agrupacio))
 
 
+def _normalitza_beats(beats):
+    """Beats absoluts en segons, finits, no negatius, ordenats i sense duplicats."""
+    out = []
+    for b in beats or ():
+        try:
+            t = float(b)
+        except (TypeError, ValueError):
+            continue
+        if np.isfinite(t) and t >= 0.0:
+            out.append(t)
+    out.sort()
+    nets = []
+    for t in out:
+        if not nets or t - nets[-1] > 1e-9:
+            nets.append(t)
+    return nets
+
+
+def _mescla_beats_qm(mono_bytes, sr, t_inici, beats, volum, factor):
+    """Marca els beats QM detectats, sense accents ni graella teòrica."""
+    if volum <= 0:
+        return mono_bytes
+    beats = _normalitza_beats(beats)
+    if not beats:
+        return mono_bytes
+    try:
+        sr = float(sr)
+        t_inici = float(t_inici)
+        factor = float(factor)
+    except (TypeError, ValueError):
+        return mono_bytes
+    if not np.isfinite(sr) or sr <= 0 or not np.isfinite(factor) or factor <= 0:
+        return mono_bytes
+    if not np.isfinite(t_inici):
+        return mono_bytes
+    buf = np.frombuffer(mono_bytes, dtype=np.int16).astype(np.float32)
+    if buf.size == 0:
+        return mono_bytes
+    dur = buf.size / sr * factor
+    clic = genera_clic(sr, False) * (32767.0 * float(volum))
+    for t_abs in beats:
+        t_b = (t_abs - t_inici) / factor
+        if 0.0 <= t_b < dur:
+            i = int(round(t_b * sr))
+            n = min(clic.size, buf.size - i)
+            if n > 0:
+                buf[i:i + n] += clic[:n]
+    np.clip(buf, -32768.0, 32767.0, out=buf)
+    return buf.astype(np.int16).tobytes()
+
+
 def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
                     volum=0.6, offset=0.0, mapa=None, factor=1.0,
-                    den=4, mode="auto", click_unit="auto"):
+                    den=4, mode="auto", click_unit="auto", beats=None):
     """Mescla els clics a la rodanxa `mono_bytes` (int16 mono, a partir de
     `t_inici` segons de la cançó) i retorna els bytes int16 resultants.
 
@@ -122,8 +177,11 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
       alternatiu per clicar només la unitat de cada tram (`12/8` → 4 negres
       amb punt).
     - `mode`: `auto` (tots els temps + accents de compàs i grup), `compas`
-      (només el primer temps), `temps` (tots els temps, sense accents de grup)
-      o `grup` (només compàs i inicis de grup en compassos compostos).
+      (només el primer temps), `temps` (tots els temps, sense accents de grup),
+      `grup` (només compàs i inicis de grup en compassos compostos) o `qm`
+      (beats QM de `beats`, sense accents; poden no coincidir amb la graella).
+    - `beats`: instants absoluts en segons dels beats detectats per QM. Només
+      s'utilitzen amb `mode="qm"`.
     - Només genera els clics que cauen dins la rodanxa (funciona des de
       qualsevol posició i amb el loop A/B).
     - Suma en float32 i fa clip a int16 per evitar desbordament.
@@ -133,6 +191,8 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
       els clics s'han de col·locar dividint per `factor` (si no, amb 2× el
       metrònom aniria a la meitat del tempo que sona). A 1,0× és idèntic.
     """
+    if mode == "qm":
+        return _mescla_beats_qm(mono_bytes, sr, t_inici, beats, volum, factor)
     valid = _es_valid(bpm, bpb, den)
     if valid is None or volum <= 0:
         return mono_bytes

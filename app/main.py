@@ -366,6 +366,16 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             "ni estructura.")
         self.b_analitza_beats.clicked.connect(self._analitza_bpm)
         self.b_analitza_beats.setEnabled(False)  # fins que hi haja WAV
+        self.b_analitza_beats_clip = QPushButton("Beats del clip")
+        self.b_analitza_beats_clip.setObjectName("secundari")
+        self.b_analitza_beats_clip.setIcon(icones.ico("target", 16))
+        self.b_analitza_beats_clip.setIconSize(icones.pm_mida(16))
+        self.b_analitza_beats_clip.setToolTip(
+            "Analitza només els beats amb Queen Mary dins del tram de tempo "
+            "seleccionat i actualitza les línies d'eixe tram.")
+        self.b_analitza_beats_clip.clicked.connect(
+            self._analitza_bpm_clip)
+        self.b_analitza_beats_clip.setEnabled(False)  # fins que hi haja WAV
 
         # 1a BARRA: en ORDRE DE FLUX de treball →
         #   1) Obre  ·  2) opcions de temps  ·  3) Analitza i Exporta (al final)
@@ -385,6 +395,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         barra.addSeparator()
         barra.addWidget(self.b_exec)
         barra.addWidget(self.b_analitza_beats)
+        barra.addWidget(self.b_analitza_beats_clip)
         self.b_desfer = QPushButton()
         self.b_desfer.setObjectName("secundari")
         self.b_desfer.setIcon(icones.ico("undo-2", 16))

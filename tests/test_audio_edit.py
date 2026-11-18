@@ -13,7 +13,7 @@ _ = _temporals
 import unittest  # noqa: E402
 import numpy as np  # noqa: E402
 from app import audio_edit as edita  # noqa: E402
-from app import pipeline  # noqa: E402
+from app import mapa_tempo, pipeline  # noqa: E402
 
 
 def _escriu_wav(ruta, valors, sr=1000):
@@ -264,6 +264,37 @@ class TestQuadraturaExtrems(unittest.TestCase):
         self.assertEqual(tr["trams"][0].compassos, "3/4")
         self.assertAlmostEqual(float(tr["trams"][0].bpm), 120.0, 9)
         self.assertEqual(tr["trams"][0].n, 1)
+
+    def test_unitat_de_pols_visible_es_propagada_al_model(self):
+        trams = [mapa_tempo.TramMapa(
+            0.0, 16.0, 120.0, "normal", "6/8", "", 8, "negra_punt")]
+        p = edita.planifica_extrems(
+            16.0, 1000, trams, t_temps1=2.0, n_ini=1,
+            bpm_ini=90.0, num_ini=6, den_ini=8,
+            beat_unit_ini="negra", aplica_inici=True,
+            aplica_final=False)
+        self.assertEqual(p["beat_unit_ini"], "negra")
+        tr = edita.transforma_model_extrems(
+            [pipeline.Clip(0.0, 16.0, ("C", "0"))],
+            [(0.0, 16.0, "A", "A")], trams, [], 16.0, p)
+        self.assertEqual(tr["trams"][0].beat_unit, "negra")
+        self.assertAlmostEqual(tr["trams"][0].bpm, 90.0, 9)
+        self.assertEqual(tr["trams"][0].n, 1)
+
+    def test_unitat_de_pols_de_la_cua_es_propagada(self):
+        trams = [mapa_tempo.TramMapa(
+            0.0, 16.0, 120.0, "normal", "6/8", "", 8, "negra_punt")]
+        p = edita.planifica_extrems(
+            16.0, 1000, trams, aplica_inici=False, aplica_final=True,
+            t_final=12.0, n_fi=1, bpm_fi=90.0, num_fi=6, den_fi=8,
+            beat_unit_fi="negra")
+        self.assertEqual(p["beat_unit_fi"], "negra")
+        tr = edita.transforma_model_extrems(
+            [pipeline.Clip(0.0, 16.0, ("C", "0"))],
+            [(0.0, 16.0, "A", "A")], trams, [], 16.0, p)
+        cua = tr["trams"][-1]
+        self.assertEqual(cua.beat_unit, "negra")
+        self.assertAlmostEqual(cua.bpm, 90.0, 9)
 
     def test_inici_zero_talla_fins_al_temps_1(self):
         p = edita.planifica_extrems(

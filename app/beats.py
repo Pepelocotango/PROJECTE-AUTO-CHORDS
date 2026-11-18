@@ -17,13 +17,20 @@ La sensibilitat és un valor 0–100:
 Per al motor intern es tradueix a `tightness` (100 → 10). Per a QM es tradueix
 a `alpha` (0.99 → 0.1). El valor és una comoditat d'usuari, no una mesura
 absoluta: cada motor té la seua escala interna.
+
+**QM i unitat de pols**: `bpb` és el nombre de beats QM per compàs i
+`inputtempo` el BPM d'eixos beats. Si el clip és `6/8` amb negra amb punt,
+s'envien `bpb=2` i `inputtempo=80` per a un BPM intern de 120; el BPM que
+retorna QM es torna a convertir a negres/minut. Si la unitat no cap al rang
+2–16 de QM, es cau a la unitat del denominador o a `qm-tempotracker` sense
+bars.
 """
 from __future__ import annotations
 
 import math
 import statistics
 
-from . import limits, pipeline, tempo, tempo_map
+from . import bpm_unit, limits, pipeline, tempo, tempo_map
 
 MOTORS = ("nostre", "qm")
 
@@ -114,41 +121,95 @@ def _detecta_nostre(wav, log, sensibilitat, bpb, den, bpm_hint,
     }
 
 
-def _detecta_qm(wav, log, sensibilitat, bpb, bpm_hint,
-                nomes_beats=False):
+def _unitat_denominador(den):
+    """Unitat simple del denominador (`4/den` negres) per al fallback QM."""
+    factor = 4.0 / float(den)
+    for clau, (_et, f) in bpm_unit.UNITATS.items():
+        if abs(float(f) - factor) <= 1e-9:
+            return clau
+    return bpm_unit.DEFECTE
+
+
+def _qm_beats_per_bar(bpb, den, beat_unit):
+    """Retorna `(bpb_qm, factor, unitat, pot_agrupar)`.
+
+    QM treballa amb els seus propis beats: `bpb` és quants n'hi ha per compàs
+    i `inputtempo` és el BPM d'eixos beats. Si la unitat percebuda no cap en el
+    rang 2–16 de QM, es cau a la unitat del denominador; si tampoc, es fa
+    tracking sense bars.
+    """
+    try:
+        bpb = int(bpb)
+        den = int(den)
+    except (TypeError, ValueError):
+        bpb, den = 4, 4
+    if bpb <= 0 or den <= 0:
+        bpb, den = 4, 4
+    unit = bpm_unit.normalitza(beat_unit or bpm_unit.DEFECTE)
+    factor = bpm_unit.factor(unit)
+    bar_quarters = bpb * 4.0 / float(den)
+    quin = bar_quarters / factor
+    n = int(round(quin))
+    if abs(quin - n) <= 1e-6 and 2 <= n <= 16:
+        return n, factor, unit, True
+    # Fallback: la unitat del denominador (6/8 → corxera, 4/4 → negra…).
+    unit = _unitat_denominador(den)
+    factor = bpm_unit.factor(unit)
+    n = int(round(bar_quarters / factor))
+    if 2 <= n <= 16:
+        return n, factor, unit, True
+    return None, factor, unit, False
+
+
+def _detecta_qm(wav, log, sensibilitat, bpb, den, bpm_hint,
+                nomes_beats=False, beat_unit=None):
     log(f"beats: motor QM · sensibilitat {sensibilitat:.0f}%")
     alpha = alpha_de_sensibilitat(sensibilitat)
+    bpb_qm, factor, unit, pot_agrupar = _qm_beats_per_bar(
+        bpb, den, beat_unit)
+    bpm_qm = float(bpm_hint or 120.0) / factor
     params = {
         "alpha": f"{alpha:.3f}",
-        "inputtempo": str(int(round(float(bpm_hint or 120.0)))),
+        "inputtempo": str(int(round(bpm_qm))),
         "constraintempo": "0",
     }
-    if not nomes_beats:
-        params["bpb"] = str(max(1, int(bpb)))
+    if not nomes_beats and pot_agrupar:
+        params["bpb"] = str(int(bpb_qm))
         beats = _qm_temps(_QM_BEATS, wav, params, log)
         bars = _qm_temps(_QM_BARS, wav, params, log)
-        bpm = pipeline.detecta_bpm_qm(wav, log)
-        if bpm is None:
-            bpm = _bpm_de_beats(beats)
+        bpm_qm = pipeline.detecta_bpm_qm(wav, log)
+        if bpm_qm is None:
+            bpm_qm = _bpm_de_beats(beats)
+        log(f"beats: QM bpb={bpb_qm} · inputtempo={params['inputtempo']} "
+            f"({unit})")
     else:
         # qm-tempotracker: només beats, sense bars ni bpb. El tempo intern
         # del tracker només servix per seguir el pols; no s'exporta.
         beats = _qm_temps(_QM_ONLY_BEATS, wav, params, log)
         bars = []
-        bpm = None
+        bpm_qm = None
+        if not nomes_beats:
+            log("beats: QM no pot agrupar compassos amb bpb fora de 2–16; "
+                "es fan només beats.")
+    bpm = None if bpm_qm is None else float(bpm_qm) * factor
     return {
         "motor": "qm",
-        "bpm": float(bpm) if bpm is not None else None,
+        "bpm": bpm,
         "beats": beats,
         "downbeats": bars,
         "sensibilitat": sensibilitat,
-        "parametre": {"alpha": alpha},
+        "parametre": {
+            "alpha": alpha,
+            "bpb": bpb_qm,
+            "inputtempo": params["inputtempo"],
+            "beat_unit": unit,
+        },
     }
 
 
 def detecta(wav, motor="qm", sensibilitat=50.0, bpb=4, den=4,
             bpm_hint=None, bpm_min=None, bpm_max=None, preferit=None,
-            log=None, nomes_beats=False):
+            log=None, nomes_beats=False, beat_unit=None):
     """Detecta BPM, beats i downbeats.
 
     Retorna un diccionari amb `motor`, `bpm`, `beats`, `downbeats`,
@@ -160,8 +221,8 @@ def detecta(wav, motor="qm", sensibilitat=50.0, bpb=4, den=4,
         raise ValueError(f"motor de beats desconegut: {motor!r}")
     sens = _limita_sensibilitat(sensibilitat)
     if motor == "qm":
-        return _detecta_qm(wav, log, sens, int(bpb), bpm_hint,
-                           nomes_beats=nomes_beats)
+        return _detecta_qm(wav, log, sens, int(bpb), int(den), bpm_hint,
+                           nomes_beats=nomes_beats, beat_unit=beat_unit)
     return _detecta_nostre(wav, log, sens, int(bpb), int(den), bpm_hint,
                            bpm_min, bpm_max, preferit,
                            nomes_beats=nomes_beats)

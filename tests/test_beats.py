@@ -97,6 +97,50 @@ class TestMotors(unittest.TestCase):
         params = qm.call_args.args[2]
         self.assertNotIn("bpb", params)
 
+    def test_qm_6_8_negra_amb_punt_usa_bpb_2_i_80(self):
+        with patch.object(beats, "_qm_temps", side_effect=[[0.1, 0.6],
+                                                           [0.1]]) as qm, \
+                patch.object(beats.pipeline, "detecta_bpm_qm",
+                             return_value=80.0):
+            res = beats.detecta(
+                "x.wav", motor="qm", sensibilitat=50,
+                bpb=6, den=8, bpm_hint=120.0,
+                beat_unit="negra_punt")
+        params = qm.call_args_list[0].args[2]
+        self.assertEqual(params["bpb"], "2")
+        self.assertEqual(params["inputtempo"], "80")
+        self.assertAlmostEqual(res["bpm"], 120.0)
+        self.assertEqual(res["parametre"]["bpb"], 2)
+        self.assertEqual(res["parametre"]["inputtempo"], "80")
+
+    def test_qm_6_8_corxera_usa_bpb_6_i_240(self):
+        with patch.object(beats, "_qm_temps", side_effect=[[0.1, 0.6],
+                                                           [0.1]]) as qm, \
+                patch.object(beats.pipeline, "detecta_bpm_qm",
+                             return_value=240.0):
+            res = beats.detecta(
+                "x.wav", motor="qm", sensibilitat=50,
+                bpb=6, den=8, bpm_hint=120.0,
+                beat_unit="corxera")
+        params = qm.call_args_list[0].args[2]
+        self.assertEqual(params["bpb"], "6")
+        self.assertEqual(params["inputtempo"], "240")
+        self.assertAlmostEqual(res["bpm"], 120.0)
+
+    def test_qm_3_8_fallback_al_denominador_si_bpb_1(self):
+        with patch.object(beats, "_qm_temps", side_effect=[[0.1, 0.6],
+                                                           [0.1]]) as qm, \
+                patch.object(beats.pipeline, "detecta_bpm_qm",
+                             return_value=240.0):
+            res = beats.detecta(
+                "x.wav", motor="qm", sensibilitat=50,
+                bpb=3, den=8, bpm_hint=120.0,
+                beat_unit="negra_punt")
+        params = qm.call_args_list[0].args[2]
+        self.assertEqual(params["bpb"], "3")
+        self.assertEqual(params["inputtempo"], "240")
+        self.assertAlmostEqual(res["bpm"], 120.0)
+
     def test_qm_passa_alpha_i_bpb(self):
         with patch.object(beats, "_qm_temps", side_effect=[[0.1, 0.6],
                                                            [0.1]]) as qm, \

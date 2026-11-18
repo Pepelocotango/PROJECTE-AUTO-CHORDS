@@ -5,13 +5,14 @@ del BPM detectat.
 """
 import copy
 import os
+import tempfile
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication, QDialog, QMessageBox, QProgressDialog,
 )
 
-from . import beats as beats_mod, dialegs, ffmpeg, pipeline, projecte
+from . import bpm_unit, beats as beats_mod, dialegs, ffmpeg, pipeline, projecte
 from .feines import Feina
 
 class AnalisiMixin:
@@ -156,6 +157,7 @@ class AnalisiMixin:
         self.barra.setValue(0)
         self.registra(f"Sortida: {self.sortida}")
         self.b_exec.setEnabled(False)
+        self.b_analitza_beats_clip.setEnabled(False)
         self.b_guia.setEnabled(False)        # res de guiat mentre s'analitza
         self.b_audio_ini.setEnabled(False)
         self.b_audio_fi.setEnabled(False)
@@ -233,6 +235,7 @@ class AnalisiMixin:
         self.registra(f"Analitzant acords al rang A–B "
                       f"({a:.3f}–{b:.3f}s)…")
         self.b_exec.setEnabled(False)
+        self.b_analitza_beats_clip.setEnabled(False)
         self.b_guia.setEnabled(False)
         self.b_audio_ini.setEnabled(False)
         self.b_audio_fi.setEnabled(False)
@@ -256,6 +259,7 @@ class AnalisiMixin:
     def acabada(self, be, dada):
         self._tanca_progres()
         self.b_exec.setEnabled(True)
+        self.b_analitza_beats_clip.setEnabled(True)
         self.b_guia.setEnabled(True)
         self.b_audio_ini.setEnabled(True)
         self.b_audio_fi.setEnabled(True)
@@ -360,16 +364,138 @@ class AnalisiMixin:
             self.projecte.dades["analisi_beats"] = dades
         self._marca_dirty()
 
+    @staticmethod
+    def _fusiona_beats_rang(vells, nous, ini, fi):
+        """Substituïx els beats de `[ini, fi)` pels nous, conservant la resta."""
+        ini, fi = float(ini), float(fi)
+        fora = [float(b) for b in (vells or ())
+                if not (ini - 1e-9 <= float(b) < fi - 1e-9)]
+        return sorted(set(fora + [float(b) for b in (nous or ())]))
+
+    def _analitza_bpm_clip(self):
+        """Analitza amb QM només el tram de tempo seleccionat."""
+        vr = getattr(self, "visor_ref", None)
+        wav = self.wav_edit.text().strip()
+        if vr is None or not wav or not os.path.isfile(wav):
+            self.avisa("Beats del clip", "Primer obri una WAV.")
+            return
+        kind, idx = vr.seleccio_activa()
+        if kind != "tempo" or not vr._index_valid("tempo", idx):
+            self.avisa("Beats del clip",
+                       "Selecciona un clip de la pista de tempo/compàs.")
+            return
+        tr = vr.tempo_trams[int(idx)]
+        ini = float(getattr(tr, "ini", tr[0]))
+        fi = float(getattr(tr, "fi", tr[1]))
+        if fi <= ini + 1e-6:
+            self.avisa("Beats del clip", "El tram seleccionat és buit.")
+            return
+        cfg = dict(self.opcions.get("beats") or {})
+        sens = float(cfg.get("sensibilitat", 50))
+        opcions_bpm = self.opcions.get("bpm") or {}
+        self._atura_si_sona("anàlisi de beats del clip")
+        tmpd = tempfile.mkdtemp(prefix="ac_qm_clip_")
+        wav_clip = os.path.join(tmpd, "clip.wav")
+        try:
+            pipeline.retalla_wav(wav, wav_clip, ini, fi)
+            self.registra(
+                f"Analitzant beats QM del clip {idx + 1} "
+                f"({ini:.3f}–{fi:.3f}s)…")
+            self._obre_progres("Analitzant beats QM del clip…", 0)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            try:
+                res = beats_mod.detecta(
+                    wav_clip,
+                    motor="qm",
+                    sensibilitat=sens,
+                    bpb=int(getattr(tr, "num", tr[3])),
+                    den=int(getattr(tr, "den", tr[4])),
+                    bpm_hint=float(getattr(tr, "bpm", tr[2])),
+                    bpm_min=opcions_bpm.get("min"),
+                    bpm_max=opcions_bpm.get("max"),
+                    preferit=(opcions_bpm.get("pref_min"),
+                              opcions_bpm.get("pref_max")),
+                    beat_unit=vr.unitat_de_tram(tr),
+                    log=self.registra,
+                    nomes_beats=False,
+                )
+            finally:
+                QApplication.restoreOverrideCursor()
+                self._tanca_progres()
+        except Exception as e:  # noqa: BLE001
+            self.registra(f"Beats del clip ERROR: {e}")
+            self.avisa_crit("Beats del clip",
+                            f"No s'ha pogut analitzar el tram: {e}")
+            return
+        finally:
+            pipeline.esborra_tmp([tmpd])
+        locals_b = [ini + float(t) for t in (res.get("beats") or ())
+                    if 0.0 <= float(t) < (fi - ini) - 1e-9]
+        locals_d = [ini + float(t) for t in (res.get("downbeats") or ())
+                    if 0.0 <= float(t) < (fi - ini) - 1e-9]
+        if not locals_b:
+            self.avisa_info("Beats del clip",
+                            "QM no ha detectat cap beat dins d'este tram.")
+            return
+        vells_b = list(getattr(vr, "qm_beats", None) or ())
+        vells_d = list(getattr(vr, "qm_downbeats", None) or ())
+        beats = self._fusiona_beats_rang(vells_b, locals_b, ini, fi)
+        downbeats = self._fusiona_beats_rang(vells_d, locals_d, ini, fi)
+        vr.timeline.set_beats(beats, downbeats)
+        vr.set_snap_beats(beats, downbeats)
+        info = dict(self._beats_actuals or {})
+        info.update({
+            "motor": "qm",
+            "mode": "clip",
+            "sensibilitat": sens,
+            "bpm": res.get("bpm"),
+            "beat_unit": vr.unitat_de_tram(tr),
+            "beats": beats,
+            "downbeats": downbeats,
+            "rang": [ini, fi],
+        })
+        self._beats_actuals = info
+        self._marca_dirty()
+        if self.projecte is not None:
+            dades = dict(self.projecte.dades.get("analisi_beats") or {})
+            dades.update(info)
+            self.projecte.dades["analisi_beats"] = dades
+            try:
+                self.projecte.desa()
+                self.dirty = False
+                self._actualitza_titol()
+            except OSError as e:
+                self.registra(f"beats del clip: no s'han pogut desar ({e})")
+        bpm_txt = (f" · BPM QM {res['bpm']:.2f}"
+                   if res.get("bpm") is not None else "")
+        self.registra(
+            f"{len(locals_b)} beats QM dins el clip {idx + 1}"
+            f" ({ini:.3f}–{fi:.3f}s){bpm_txt}")
+        self._missatge_info(
+            f"{len(locals_b)} beats QM al clip · BPM {bpm_txt or '—'}")
+
     def _analitza_bpm(self):
         """Acció separada «Analitza beats, downbeats i BPM»: motor, sensibilitat i línies."""
         wav = self.wav_edit.text().strip()
         if not wav or not os.path.isfile(wav):
             self.avisa("Analitza beats, downbeats i BPM", "Primer tria una WAV.")
             return
-        dlg = dialegs.DialegAnalitzaBPM(self, opcions=self.opcions)
+        vr = getattr(self, "visor_ref", None)
+        bpb = self._transport_bpb()
+        den = self._transport_beat_type()
+        beat_unit = bpm_unit.unitat_per_defecte(bpb, den)
+        try:
+            if vr is not None and getattr(vr, "tempo_trams", None):
+                beat_unit = vr.unitat_de_tram(vr.tempo_trams[0])
+        except (TypeError, ValueError, AttributeError):
+            pass
+        dlg = dialegs.DialegAnalitzaBPM(
+            self, opcions=self.opcions, num=bpb, den=den,
+            beat_unit=beat_unit, bpm=self._transport_bpm())
         if dlg.exec_() != QDialog.Accepted:
             return
         cfg = dlg.valors()
+        beat_unit = cfg.get("beat_unit") or beat_unit
         nomes_beats = cfg.get("mode") == "beats"
         opcions_bpm = self.opcions.get("bpm") or {}
         self._atura_si_sona("anàlisi de beats")
@@ -385,13 +511,14 @@ class AnalisiMixin:
                 wav,
                 motor=cfg["motor"],
                 sensibilitat=cfg["sensibilitat"],
-                bpb=self._transport_bpb(),
-                den=self._transport_beat_type(),
+                bpb=bpb,
+                den=den,
                 bpm_hint=self._transport_bpm(),
                 bpm_min=opcions_bpm.get("min"),
                 bpm_max=opcions_bpm.get("max"),
                 preferit=(opcions_bpm.get("pref_min"),
                           opcions_bpm.get("pref_max")),
+                beat_unit=beat_unit,
                 log=_log_beats,
                 nomes_beats=nomes_beats,
             )
@@ -422,6 +549,7 @@ class AnalisiMixin:
                 "sensibilitat": res.get("sensibilitat"),
                 "mode": cfg.get("mode"),
                 "bpm": bpm,
+                "beat_unit": beat_unit,
                 "beats": beats,
                 "downbeats": downbeats,
             }

@@ -155,7 +155,7 @@ def _opcio(ini, fi, bq, parts, base_bars=0, cross=False, beats=None,
     else:
         extranys = sum(n for _q, _num, _den, n in parts_amb_n)
     etiqueta = " + ".join(
-        f"{int(c.num)}/{int(c.den)} N={int(c.n)} ({float(c.bpm):.3f})"
+        f"{int(c.num)}/{int(c.den)} N={_fmt_n(c.n)} ({float(c.bpm):.3f})"
         for c in clips)
     return {
         "clips": clips,
@@ -168,11 +168,46 @@ def _opcio(ini, fi, bq, parts, base_bars=0, cross=False, beats=None,
     }
 
 
+def _fmt_n(n):
+    """Etiqueta de `N`: enter sense decimals; fraccionari amb 3 decimals."""
+    n = float(n)
+    if abs(n - round(n)) <= TOL:
+        return str(int(round(n)))
+    return f"{n:.3f}".rstrip("0").rstrip(".")
+
+
+def _opcio_ultima_fraccionaria(ini, fi, tr):
+    """Opció de cua per a l'últim clip: conserva BPM/compàs i deixa N obert."""
+    bpm, num, den, unit = _camps(tr)
+    bar = _bar_quarters(num, den) * 60.0 / float(bpm)
+    if bar <= TOL:
+        return None
+    n = (float(fi) - float(ini)) / bar
+    if n <= TOL or abs(n - round(n)) <= TOL:
+        return None
+    clip = mapa_tempo.TramMapa(
+        float(ini), float(fi), float(bpm),
+        getattr(tr, "tipus", "normal"), f"{int(num)}/{int(den)}",
+        getattr(tr, "agrupacio", ""), float(n),
+        getattr(tr, "beat_unit", None) or unit)
+    return {
+        "clips": [clip],
+        "etiqueta": f"{int(num)}/{int(den)} N={_fmt_n(n)} ({float(bpm):.3f})",
+        "n_extranys": 0,
+        "n_base": 0,
+        "n_clips": 1,
+        "es_4": int(den) == 4,
+        "cross": False,
+        "ultima_fraccionaria": True,
+    }
+
+
 def _afegeix(out, opcio):
     if opcio is None:
         return
     clau = tuple((round(float(c.ini), 6), round(float(c.fi), 6),
-                 round(float(c.bpm), 6), int(c.num), int(c.den), int(c.n))
+                 round(float(c.bpm), 6), int(c.num), int(c.den),
+                 round(float(c.n), 6))
                  for c in opcio["clips"])
     if clau not in {o["_clau"] for o in out}:
         opcio["_clau"] = clau
@@ -343,7 +378,7 @@ def opcions_tall_graella(trams, mapa, t, durada, referencia):
             if m[0] > 0 and m[1] > 0 and m not in bases:
                 bases.append(m)
         sides = []
-        for a, b in ((ini, t), (t, fi)):
+        for costat, (a, b) in enumerate(((ini, t), (t, fi))):
             times, factor, bq = polsos_graella(mapa, a, b)
             if bq <= TOL:
                 opcions = _opcio_sense_beats(a, b, referencia)
@@ -351,6 +386,11 @@ def opcions_tall_graella(trams, mapa, t, durada, referencia):
                 opcions = _opcions_costat(
                     a, b, bq, bases, beats=times,
                     factor=factor)
+            if costat == 1 and i == len(trams) - 1:
+                ultima = _opcio_ultima_fraccionaria(a, b, tr)
+                if ultima is not None:
+                    opcions = [ultima] + [o for o in opcions
+                                          if not o.get("ultima_fraccionaria")]
             if not opcions:
                 return None
             sides.append(opcions)
@@ -377,7 +417,7 @@ def opcions_tall(trams, t, durada, beats, referencia, beat_factor):
             if m[0] > 0 and m[1] > 0 and m not in bases:
                 bases.append(m)
         sides = []
-        for a, b in ((ini, t), (t, fi)):
+        for costat, (a, b) in enumerate(((ini, t), (t, fi))):
             n = _compta_beats(beats, a, b)
             if n <= 0:
                 opcions = _opcio_sense_beats(a, b, referencia)
@@ -388,6 +428,11 @@ def opcions_tall(trams, t, durada, beats, referencia, beat_factor):
                 opcions = _opcions_costat(
                     a, b, bq, bases, beats=beats_costat,
                     factor=beat_factor)
+            if costat == 1 and i == len(trams) - 1:
+                ultima = _opcio_ultima_fraccionaria(a, b, tr)
+                if ultima is not None:
+                    opcions = [ultima] + [o for o in opcions
+                                          if not o.get("ultima_fraccionaria")]
             if not opcions:
                 return None
             sides.append(opcions)

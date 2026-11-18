@@ -83,6 +83,24 @@ class TestTallQM(unittest.TestCase):
         self.assertAlmostEqual(factor, 1.5)
         self.assertAlmostEqual(bq, 6.0)
 
+    def test_opcions_tall_ultima_fraccionaria_preserva_bpm_local(self):
+        from app import mapa_tempo
+        trams = [mapa_tempo.TramMapa(
+            0.0, 99.9, 130.0, "normal", "4/4", "", 50, "negra")]
+        beats = [i * 0.5 for i in range(200)]
+        sides = tall_qm.opcions_tall(
+            trams, 10.0, 99.9, beats, (130.0, 4, 4), 1.0)
+        self.assertIsNotNone(sides)
+        self.assertEqual(len(sides[0]), 1)
+        dreta = sides[1][0]
+        self.assertTrue(dreta["ultima_fraccionaria"])
+        clip = dreta["clips"][0]
+        self.assertEqual(clip.compassos, "4/4")
+        self.assertAlmostEqual(clip.bpm, 130.0)
+        self.assertAlmostEqual(clip.n, (99.9 - 10.0) / (4 * 60.0 / 130.0))
+        self.assertFalse(float(clip.n).is_integer())
+        self.assertEqual(dreta["etiqueta"], "4/4 N=48.696 (130.000)")
+
     def test_opcions_tall_separa_esquerra_i_dreta(self):
         from app import mapa_tempo
         trams = [mapa_tempo.TramMapa(

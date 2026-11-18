@@ -3,6 +3,75 @@
 Format [Keep a Changelog](https://keepachangelog.com/ca/1.0.0/).
 Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
+## [0.9.4] — 2026-11-18
+
+### Estat — versió estable i punt de recuperació
+- Aquesta versió es considera **estable almenys a Linux** i queda com a
+  **punt de recuperació** per a futures iteracions.
+- No implica que macOS i Windows estiguen validats amb el mateix nivell; la
+  estabilitat multi-SO continua pendent de verificació.
+- Recull la feina de la línia 0.9.3 i els ajustos de tempo, quadratura i
+  exportació fets fins al 2026-11-18.
+
+### Afegit — selector de pols percebuda a «Analitza beats, downbeats i BPM» (2026-11-18)
+- El diàleg de F7 proposa automàticament la unitat de pols segons el compàs
+  (`6/8` → negra amb punt, `4/4` → negra, etc.) i mostra quin és el BPM
+  percebut equivalent a l’intern.
+- L’usuari pot canviar la pols a negra, negra amb punt, corxera… abans de
+  detectar; la tria s’envia al motor QM i afecta `bpb`/`inputtempo`.
+- La pols triada es desa amb les opcions de beats i queda reflectida al
+  diagnòstic de `analisi_beats`.
+
+### Corregit — QM amb la unitat de pols del compàs (2026-11-18)
+- QM ara rep una parella coherent de `bpb` i `inputtempo`: `bpb` és el nombre
+  de beats QM per compàs i `inputtempo` el BPM d’eixos beats, calculats a partir
+  de la unitat de pols del clip.
+- En `6/8` amb negra amb punt i 120 negres/minut interns, QM rep `bpb=2` i
+  `inputtempo=80` (abans rebia `bpb=6` i `120`).
+- El BPM que retorna QM es torna a convertir a negres/minut abans de guardar-lo.
+- S’aplica a F7 i a **Beats del clip**; si la unitat no cap al rang 2–16 de QM,
+  es fa el fallback a la unitat del denominador o a `qm-tempotracker` sense bars.
+
+### Afegit — «Beats del clip»: anàlisi QM del tram seleccionat (2026-11-18)
+- Nou botó **Beats del clip** a la barra superior. Analitza amb **Queen Mary
+  només el rang del clip de tempo seleccionat**, no tota la WAV.
+- Els beats/downbeats detectats es desplacen a temps absoluts i se substitueixen
+  només dins d’eixe rang; la resta de beats del tema es conserva.
+- El resultat actualitza les línies del visor, el Snap QM i
+  `analisi_beats` del projecte, sense tocar el mapa de tempo ni aplicar cap BPM.
+- Si no hi ha cap clip de tempo seleccionat, el botó ho indica i no analitza res.
+
+### Canviat — BPM percebut a «Quadra els extrems de la WAV» (2026-11-18)
+- El diàleg mostra i edita el **BPM en la unitat de pols** de cada extrem
+  (`negra`, `negra amb punt`, `blanca`, `corxera`…), no només el BPM intern en
+  negres/minut.
+- Cada costat té el seu selector d’unitat; canviar-lo conserva el tempo intern
+  i actualitza el número visible. Editar el número recalcula el BPM intern i
+  el pla de quadratura (N, durada objectiu i retall/silenci).
+- La unitat triada es propaga al tram d’introducció i al tram de cua del model;
+  si no encaixa amb el compàs, el diàleg rebutja el pla amb un missatge clar.
+- La previsualització mostra el BPM percebut i l’intern per a cada extrem.
+
+### Corregit — cua fraccionària de l’últim clip al motor de talls QM (2026-11-18)
+- El motor de candidats de `tall_qm` ara afig una opció específica per al
+  costat dret de l’últim clip: conserva el BPM i el compàs del clip i deixa
+  `N` fraccionari, sense obligar a buscar un nombre enter.
+- Si l’esquerra té una única opció i la dreta és l’últim clip, el tall
+  s’aplica sense obrir `DialegTallQM`; la cua resultant pot tindre un `N` com
+  `48.696` i conservar el BPM local.
+- El comportament també s’aplica al camí de graella sense beats QM.
+- Regressions afegides per al motor pur i per al tall complet sense diàleg.
+
+### Afegit — metrònom amb beats QM sense accents (2026-11-18)
+- El selector de patró del metrònom incorpora **Beats QM**: marca els instants
+  detectats per QM (`analisi_beats.beats`) un a un i **sense accents**.
+- No depén de la graella del mapa de tempo: si els beats QM no hi coincideixen,
+  el clic sona igualment en l’instant detectat.
+- Si no hi ha beats QM, el mode no genera clics i ho indica al log; la resta de
+  patrons (Auto, Compàs, Temps i Grup) no canvien.
+- El clic respecta el volum, el loop, la posició de reproducció i la velocitat
+  (factor), com la resta de patrons.
+
 ## [0.9.3] — 2026-11-16
 
 ### Afegit — marcadors «Inici» i «Final» de la quadratura (2026-11-18)

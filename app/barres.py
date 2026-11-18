@@ -120,14 +120,16 @@ class BarresMixin:
         bar.addWidget(self.vol_metro)
         self.cb_metro = QComboBox()
         for _et, _val in (("Auto", "auto"), ("Compàs", "compas"),
-                          ("Temps", "temps"), ("Grup", "grup")):
+                          ("Temps", "temps"), ("Grup", "grup"),
+                          ("Beats QM", "qm")):
             self.cb_metro.addItem(_et, _val)
         self.cb_metro.setCurrentIndex(0)
-        self.cb_metro.setMaximumWidth(82)
+        self.cb_metro.setMaximumWidth(96)
         self.cb_metro.setToolTip(
             "Patró del metrònom: Auto (temps + accents de compàs i grup), "
-            "Compàs (només el primer temps), Temps (sense accents de grup) "
-            "o Grup (només compàs i inicis de grup).")
+            "Compàs (només el primer temps), Temps (sense accents de grup), "
+            "Grup (només compàs i inicis de grup) o Beats QM (beats detectats "
+            "per QM, sense accents; poden no coincidir amb la graella).")
         self.cb_metro.currentIndexChanged.connect(self._canvia_mode_metro)
         bar.addWidget(self.cb_metro)
         bar.addSeparator()
@@ -257,7 +259,8 @@ class BarresMixin:
             self.vol_metro.setToolTip("Volum del clic del metrònom (%)")
             self.cb_metro.setToolTip(
                 "Patró del metrònom: Auto (compàs+grup+temps), Compàs, "
-                "Temps o Grup; els grups ixen del compàs de cada tram.")
+                "Temps, Grup o Beats QM; els grups ixen del compàs de cada "
+                "tram i els beats QM poden no coincidir amb la graella.")
             self.a_metro.setToolTip("Clic de metrònom")
             idx = self.cb_metro.findData(getattr(vr, "metro_mode", "auto"))
             if idx >= 0 and idx != self.cb_metro.currentIndex():

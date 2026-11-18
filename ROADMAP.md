@@ -5,8 +5,9 @@
 > Aquest fitxer descriu **estat i full de ruta**; no és el contracte ni la
 > descripció de producte. Tot en català · **GPL-3.0-or-later**.
 >
-> **v0.9.3** · Estat: **flux de producte estable i multi-SO** · Suite **verda**
-> (1.619 tests locals, 1 omés) + `pyflakes` net. El recompte viu és al CI.
+> **v0.9.4** · Estat: **flux de producte estable (almenys a Linux)** · **punt de
+> recuperació** per a futures iteracions · Suite **verda** (1.619 tests locals,
+> 1 omés) + `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -49,7 +50,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-17)
+## 2. Estat actual i relleu de sessió (2026-11-18)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -71,6 +72,11 @@ guiada) i **11** (flux del 90 %) queden **ajornades**.
 > L'**export MIDI del mapa de tempo** (`mapa_tempo.mid`) i la **restauració de
 > backups** ja estan implementats (2026-11-14); `.rpp`, cues WAV i clic de
 > referència queden com a complements opcionals.
+
+**Versió 0.9.4 (2026-11-18):** la versió puja a **0.9.4** i es documenta com a
+**estable almenys a Linux** i **punt de recuperació** per a futures iteracions.
+La resta de sistemes no es consideren validats al mateix nivell. El tag local
+de checkpoint es pot crear en publicar esta versió.
 
 **Versió i documentació (2026-11-16):** el projecte passa a **0.9.3** (renumeració
 de la línia 9.x a 0.9.x; tags locals `v0.9.0`, `v0.9.1-checkpoint` i
@@ -116,13 +122,20 @@ el projecte de DAW queden ajornats.
 - **Edició d'àudio (§13.9)**: importació, backups, retall/afegir als extrems,
   sincronització del model, desfer/refer i export amb FFmpeg implementats.
   **2026-11-18:** quadratura guiada d'inici/final a `N` compassos sencers
-  (`Edita ▸ Quadra els extrems de la WAV…`), amb presets, previsualització i
-  una sola operació atòmica d'àudio + model. El final es tracta com una cua
+  (`Edita ▸ Quadra els extrems de la WAV…`), amb presets, previsualització,
+  **BPM percebut editable per unitat de pols** i una sola operació atòmica
+  d'àudio + model. El final es tracta com una cua
   independent: es talla l'últim tram al punt marcat i s'ajusta des del final;
   s'afigen els marcadors visuals Inici/Final i els beats QM es desplacen amb
   l'àudio.
 - **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
-  `Analitza beats, downbeats i BPM` (F7) i **Beats/BPM** a la barra.
+  `Analitza beats, downbeats i BPM` (F7), **Beats/BPM** a la barra i
+  **Beats del clip** per analitzar amb QM només el tram de tempo seleccionat.
+  QM rep `bpb`/`inputtempo` en la unitat de pols del clip i retorna el BPM
+  convertit a negres/minut; el diàleg F7 proposa i permet canviar la pols
+  percebuda segons el compàs.
+- **Metrònom**: patrons **Auto**, **Compàs**, **Temps**, **Grup** i **Beats
+  QM** (beats detectats per QM, sense accents i sense dependre de la graella).
 - **Finestres**: la finestra principal i els diàlegs propis recorden geometria
   i estat entre sessions (`finestres.json` local); si no n'hi ha o queden fora
   de pantalla, es centren.
@@ -155,7 +168,7 @@ el projecte de DAW queden ajornats.
 **Pendent:**
 - **Auditoria 2026-11-17**: punts **2.x–5** revisats i tancats (incloent-hi
   D1–D8); pendent només la verificació visual del diàleg nou de quadratura.
-- **Publicar la release `v0.9.3`** quan l'operador ho ordene; `release.yml` crearà
+- **Publicar la release `v0.9.4`** quan l'operador ho ordene; `release.yml` crearà
   el tag des de `pyproject.toml`. Pujar els tags locals `v0.9.x` al remot només
   amb ordre explícita (mai push per iniciativa pròpia).
 - **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
@@ -175,6 +188,11 @@ el projecte de DAW queden ajornats.
 - **Quantitza BPM** continua sent una operació separada del recalc guiat.
 - **Edició d'àudio**: proves visuals del diàleg de quadratura d'extrems (la
   funcionalitat i les regressions ja hi són).
+- **Exportació (revisió del corpus, 2026-11-18)**: backlog a «Futures
+  millores — exportació, guia i sincronia» (QM downbeats, `acords.csv` vs
+  `manifest.csv`, guia HTML, capçalera BPM i mostreig). El mapa de tempo i el
+  `mapa_tempo.mid` verificat a REAPER es consideren correctes i **no es toquen**
+  sense una ordre explícita.
 - **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
 
 ### Pla de compassos compostos (tancat 2026-11-13)
@@ -221,6 +239,50 @@ el projecte de DAW queden ajornats.
 - **Referència conceptual:** REAPER lliga el cursor al rellotge del motor
   d'àudio, no a un cronòmetre de paret; usa buffers/períodes baixos i compensa
   la latència del dispositiu.
+
+### Futures millores — exportació, guia i sincronia (2026-11-18)
+
+> **Context:** revisió de l'exportació del corpus de proves
+> `Sitting On The Dock Of The Bay - Otis Redding -`. És un corpus de proves, no
+> un producte final: estos punts són **backlog**, no bloquejos. No s'ha de
+> canviar el mapa de tempo ni el MIDI sense OK de l'operador.
+
+- **Downbeats QM (decisió vigent):** el `mapa_tempo.csv` i el
+  `mapa_tempo.mid` són correctes; el flux REAPER (importar primer el MIDI i
+  després la WAV) està verificat i **no es toca**. Els downbeats detectats per
+  QM no són fiables en este corpus i queden com a limitació coneguda. Futur:
+  millorar/validar la detecció de downbeats amb corpus i decidir si algun dia
+  s'alineen amb el mapa; cap canvi ara.
+- **`acords.csv` vs `manifest.csv`:** el model té 79 clips i el manifest 77.
+  L'exportació fusiona el `G` adjacent de `11.546136–13.868420` i omet el `N`
+  final d'1 ms (`157.831854–157.832854`). Cal investigar si és una
+  normalització volguda o una divergència: decidir la font canònica, fer
+  reproduïble l'export i afegir una prova de regressió de recompte i
+  cobertura.
+- **Guia HTML:** `guia_acords.html` mostra 69 compassos, però el mapa, el MIDI
+  i la partitura en tenen 68. L'últim tram té `n = 3.000004` i el total
+  `68.000004`; la guia acaba pintant un compàs 69 fantasma que duplica el `G`
+  final. És un bug real, però no prioritari: la guia és una visualització
+  alternativa i no bloqueja l'export. Futur: corregir el recompte/frontera
+  final i validar 68 cel·les.
+- **Capçalera de la guia:** mostra el mateix BPM tres vegades
+  (`105.522 BPM · 105.522 negres/min · 105.522 negra/min`). Futur: deixar una
+  sola xifra o mostrar dos valors només quan la unitat de pols siga diferent de
+  la negra.
+- **Estructura:** no és un bug. En este corpus no s'ha analitzat; les seccions
+  es van tallar amb els clips de tempo o a mà i encara no estan treballades. No
+  donar-hi prioritat ara; queda pendent per a una futura anàlisi/etiquetatge.
+- **Mostreig i sincronia (brainstorming):** l'àudio font és 48 kHz estèreo i
+  els WAV exportats són 44,1 kHz mono. Cal valorar si convé preservar la
+  freqüència del projecte, exportar a 48 kHz o documentar 44,1 kHz com a
+  decisió. Implicacions a estudiar: resampleig en DAW, deriva acumulada en
+  clips llargs, precisió de fronteres, diferències entre DAWs i sincronia amb
+  el mapa de tempo. Sense decisió presa.
+- **No tocar (decisions vigents):** el `Set Tempo` redundant al final del MIDI
+  és acceptat i no prioritari; els detalls menors de la guia (`N` sense
+  etiqueta), el `N` inicial fora del marcador i l'absència de
+  `analisi.segments` al `.acproj` són deliberats en este corpus. No
+  canviar-los sense OK.
 
 ### Recalcul de tempo — estat (2026-11-08)
 

@@ -2784,8 +2784,13 @@ class ExportPipelineTests(unittest.TestCase):
         self.assertEqual(window.b_exec.text(), "Analitza")
         self.assertTrue(hasattr(window, "b_analitza_beats"))
         self.assertEqual(window.b_analitza_beats.text(), "Beats/BPM")
+        self.assertTrue(hasattr(window, "b_analitza_beats_clip"))
+        self.assertEqual(window.b_analitza_beats_clip.text(), "Beats del clip")
         self.assertIn("Analitza beats, downbeats i BPM",
                       window.b_analitza_beats.toolTip())
+        idx_qm = window.cb_metro.findData("qm")
+        self.assertGreaterEqual(idx_qm, 0)
+        self.assertEqual(window.cb_metro.itemText(idx_qm), "Beats QM")
         self.assertIn("Exporta WAV", window.a_exporta.text())
         self.assertTrue(hasattr(window, "a_exporta_part"))
         self.assertTrue(hasattr(window, "barra_transport"))
@@ -2795,6 +2800,48 @@ class ExportPipelineTests(unittest.TestCase):
         self.assertIn("Eina: intel·ligent", textos)
         self.assertFalse(hasattr(window, "barra_accions"))
         app.quit()
+
+    def test_beats_del_clip_analitza_nomes_el_rang_seleccionat(self):
+        from app import analisi_ui
+        app = app_main.QApplication.instance() or app_main.QApplication([])
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "tema.wav")
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(44100)
+                w.writeframes(b"\x00\x00" * 44100 * 20)
+            window = app_main.Finestra()
+            window.wav_edit.setText(wav)
+            window._carrega_visor(wav)
+            vr = window.visor_ref
+            vr.tempo_trams = [mapa_tempo.TramMapa(
+                2.0, 4.0, 120.0, "normal", "4/4", "", 1, "negra")]
+            vr.qm_beats = [1.0, 10.0]
+            vr.qm_downbeats = [1.0]
+            vr.seleccio_activa = lambda: ("tempo", 0)
+            vr._index_valid = lambda _k, _i: True
+            vist = {}
+
+            def _detecta(ruta, **kw):
+                vist.update(kw)
+                return {"motor": "qm", "bpm": 120.0,
+                        "beats": [0.5, 1.0], "downbeats": [0.0],
+                        "sensibilitat": kw.get("sensibilitat", 50)}
+
+            with patch.object(analisi_ui.beats_mod, "detecta", _detecta), \
+                    patch.object(analisi_ui.pipeline, "retalla_wav",
+                                 lambda *a, **k: None):
+                window._analitza_bpm_clip()
+            self.assertEqual(vist.get("motor"), "qm")
+            self.assertEqual(vist.get("bpb"), 4)
+            self.assertEqual(vist.get("beat_unit"), "negra")
+            self.assertAlmostEqual(vist.get("bpm_hint"), 120.0)
+            self.assertEqual(vr.qm_beats, [1.0, 2.5, 3.0, 10.0])
+            self.assertEqual(vr.qm_downbeats, [1.0, 2.0])
+            self.assertEqual(window._beats_actuals["mode"], "clip")
+            window.close()
+            app.quit()
 
     def test_metro_desactivat_en_mode_lliure(self):
         """El metrònom només està disponible en mode BPM · compàs."""
@@ -3608,6 +3655,41 @@ class MetronomTests(unittest.TestCase):
         f2 = self._freq(self._a_array(out)[self.SR:self.SR + n])
         self.assertGreater(f0, 1300)
         self.assertLess(f2, 1100)
+
+    def test_beats_qm_segueixen_els_instants_detectats_sense_accents(self):
+        from app import metronom
+        beats = [0.20, 0.73, 1.28, 1.91]
+        out = metronom.mescla_metronom(
+            self._silenci(2.2), self.SR, 0.0, 120.0, 4, volum=1.0,
+            mode="qm", beats=beats)
+        arr = self._a_array(out)
+        onsets = self._onsets(arr)
+        self.assertEqual(len(onsets), len(beats))
+        for got, esperat in zip(onsets, beats):
+            self.assertAlmostEqual(got, esperat, places=3)
+        n = int(self.SR * 0.02)
+        for t in beats:
+            i = int(t * self.SR)
+            self.assertLess(self._freq(arr[i:i + n]), 1100)
+
+    def test_beats_qm_amb_offset_de_reproduccio_i_factor(self):
+        from app import metronom
+        # Els beats són absoluts; la rodanxa comença a 0,5 s i va a 2×.
+        out = metronom.mescla_metronom(
+            self._silenci(1.2), self.SR, 0.5, 120.0, 4, volum=1.0,
+            factor=2.0, mode="qm", beats=[0.4, 1.0, 2.0])
+        onsets = self._onsets(self._a_array(out))
+        self.assertEqual(len(onsets), 2)
+        self.assertAlmostEqual(onsets[0], 0.25, places=3)
+        self.assertAlmostEqual(onsets[1], 0.75, places=3)
+
+    def test_beats_qm_sense_beats_no_canvia_l_audio(self):
+        from app import metronom
+        base = self._silenci(1.0)
+        self.assertEqual(
+            metronom.mescla_metronom(base, self.SR, 0.0, 120.0, 4,
+                                     volum=1.0, mode="qm", beats=[]),
+            base)
 
     def test_12_8_clica_dotze_corxeres_i_accentua_els_grups(self):
         from app import metronom

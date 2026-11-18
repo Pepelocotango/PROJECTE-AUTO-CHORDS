@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QSlider, QVBoxLayout,
 )
 
+from app import bpm_unit
 from .opcions import BEATS_DEFECTES, carrega_opcions
 
 from app.finestres import GeometriaMixin
@@ -16,10 +17,14 @@ class DialegAnalitzaBPM(GeometriaMixin, QDialog):
     finestra, perquè el diàleg no bloquege el fil de la GUI.
     """
 
-    def __init__(self, parent=None, opcions=None):
+    def __init__(self, parent=None, opcions=None, num=4, den=4,
+                 beat_unit=None, bpm=120.0):
         super().__init__(parent)
         self.setWindowTitle("Analitza beats, downbeats i BPM")
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(460)
+        self._num = int(num) if int(num) > 0 else 4
+        self._den = int(den) if int(den) > 0 else 4
+        self._bpm_intern = float(bpm or 120.0)
         base = opcions or carrega_opcions()
         d = dict(BEATS_DEFECTES)
         d.update(base.get("beats") or {})
@@ -55,6 +60,30 @@ class DialegAnalitzaBPM(GeometriaMixin, QDialog):
             "de Vamp. La sensibilitat s'adapta a cada motor.")
         form.addRow("Motor:", self.cb_motor)
 
+        self.cb_unitat = QComboBox()
+        self._unitat_suggerida = bpm_unit.unitat_per_defecte(
+            self._num, self._den)
+        for clau, etiqueta in bpm_unit.opcions():
+            if bpm_unit.encaixa_en_compas(clau, self._num, self._den):
+                self.cb_unitat.addItem(etiqueta, clau)
+        candidata = bpm_unit.normalitza(
+            beat_unit or d.get("beat_unit") or self._unitat_suggerida)
+        idx = self.cb_unitat.findData(candidata)
+        if idx < 0:
+            idx = self.cb_unitat.findData(self._unitat_suggerida)
+        self.cb_unitat.setCurrentIndex(max(0, idx))
+        self.cb_unitat.setToolTip(
+            "Pols que perceb el músic i que ha de seguir el detector QM. "
+            f"Per a {self._num}/{self._den} se suggerix "
+            f"{bpm_unit.etiqueta(self._unitat_suggerida).lower()}, però pots "
+            "triar negra, negra amb punt, corxera…")
+        form.addRow("Pols percebuda (BPM):", self.cb_unitat)
+        self.lb_bpm_percebut = QLabel("")
+        self.lb_bpm_percebut.setObjectName("secundari")
+        form.addRow("", self.lb_bpm_percebut)
+        self.cb_unitat.currentIndexChanged.connect(self._actualitza_pols)
+        self._actualitza_pols()
+
         self.sl = QSlider(Qt.Horizontal)
         self.sl.setRange(0, 100)
         self.sl.setValue(int(d.get("sensibilitat", 50)))
@@ -84,6 +113,14 @@ class DialegAnalitzaBPM(GeometriaMixin, QDialog):
         box.rejected.connect(self.reject)
         lay.addWidget(box)
 
+    def _actualitza_pols(self, *_a):
+        unit = self.cb_unitat.currentData() or bpm_unit.DEFECTE
+        visible = bpm_unit.de_quarter(self._bpm_intern, unit)
+        self.lb_bpm_percebut.setText(
+            f"BPM percebut: {visible:g} "
+            f"{bpm_unit.etiqueta(unit).lower()}/min "
+            f"(intern {self._bpm_intern:g} negres/min).")
+
     def _actualitza_sens(self):
         v = int(self.sl.value())
         if v < 34:
@@ -108,5 +145,6 @@ class DialegAnalitzaBPM(GeometriaMixin, QDialog):
             "motor": self.cb_motor.currentData(),
             "sensibilitat": int(self.sl.value()),
             "mode": mode,
+            "beat_unit": self.cb_unitat.currentData() or bpm_unit.DEFECTE,
             "aplica_bpm": bool(self.cb_aplica.isChecked()) and mode != "beats",
         }

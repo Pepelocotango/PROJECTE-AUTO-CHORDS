@@ -249,7 +249,11 @@ class MarcadorsMixin:
         """Filtra, pregunta si cal i retorna el mapa amb els clips triats."""
         from . import tall_qm
         costats = [tall_qm.selecciona_opcions(o) for o in costats]
-        if any(len(o) > 1 for o in costats):
+        # Si l'esquerra és única i la dreta de l'últim clip té la cua
+        # fraccionària, no cal preguntar: la cua preserva BPM/compàs i N obert.
+        cua_unica = (len(costats[0]) == 1 and costats[1]
+                     and costats[1][0].get("ultima_fraccionaria"))
+        if any(len(o) > 1 for o in costats) and not cua_unica:
             self._pausa_tall_qm()
             from .dialeg_tall_qm import DialegTallQM
             dlg = DialegTallQM(self, costats[0], costats[1])

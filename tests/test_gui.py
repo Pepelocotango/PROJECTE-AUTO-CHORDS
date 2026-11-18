@@ -1891,6 +1891,20 @@ class TestDialegAnalitzaBPM(_dialegs___Base):
         self.assertEqual(d.cb_motor.currentData(), "qm")
         self.assertEqual(d.valors()["motor"], "qm")
 
+    def test_pols_percebuda_suggerida_i_editable(self):
+        d = dialegs.DialegAnalitzaBPM(None, opcions={}, num=6, den=8,
+                                      bpm=120.0)
+        self.assertEqual(d.cb_unitat.currentData(), "negra_punt")
+        self.assertEqual(d.valors()["beat_unit"], "negra_punt")
+        self.assertIn("80", d.lb_bpm_percebut.text())
+        d.cb_unitat.setCurrentIndex(d.cb_unitat.findData("corxera"))
+        self.assertEqual(d.valors()["beat_unit"], "corxera")
+        self.assertIn("240", d.lb_bpm_percebut.text())
+
+    def test_pols_percebuda_4_4(self):
+        d = dialegs.DialegAnalitzaBPM(None, opcions={}, num=4, den=4)
+        self.assertEqual(d.cb_unitat.currentData(), "negra")
+
 
 class TestDialegTramTempo(_dialegs___Base):
     """Diàleg reduït: informació del clip + recalcul fix."""
@@ -4458,6 +4472,36 @@ class TestEdicioAudioVisor(unittest.TestCase):
         finally:
             d.close()
 
+    def test_dialeg_quadratura_bpm_percebut_i_unitat(self):
+        from app import mapa_tempo
+        from app.dialeg_quadratura import DialegQuadratura
+        trams = [mapa_tempo.TramMapa(
+            0.0, 12.0, 120.0, "normal", "6/8", "", 4, "negra_punt")]
+        d = DialegQuadratura(
+            None, durada=12.0, sr=1000, pos=1.0, trams=trams)
+        try:
+            # 120 negres/min = 80 negres amb punt/min.
+            self.assertEqual(d._unit_ini, "negra_punt")
+            self.assertAlmostEqual(d.sp_bpm_ini.value(), 80.0, 6)
+            self.assertEqual(d.plan()["bpm_ini"], 120.0)
+            self.assertEqual(d.plan()["beat_unit_ini"], "negra_punt")
+            # Canviar la unitat manté el tempo intern.
+            d.cb_unitat_ini.setCurrentIndex(
+                d.cb_unitat_ini.findData("negra"))
+            self.assertEqual(d._unit_ini, "negra")
+            self.assertAlmostEqual(d.sp_bpm_ini.value(), 120.0, 6)
+            self.assertEqual(d.plan()["bpm_ini"], 120.0)
+            self.assertEqual(d.plan()["beat_unit_ini"], "negra")
+            # Editar el BPM percebut recalcula l'intern i el pla.
+            d.sp_bpm_ini.setValue(90.0)
+            pla = d.plan()
+            self.assertAlmostEqual(pla["bpm_ini"], 90.0, 6)
+            self.assertEqual(pla["beat_unit_ini"], "negra")
+            self.assertAlmostEqual(pla["target_ini"], 2.0, 6)
+            self.assertIn("negra/min", d.previsualitzacio.text())
+        finally:
+            d.close()
+
     def test_fallada_de_publicacio_no_deixa_estats_divergents(self):
         from app import audio_edit
 
@@ -6504,7 +6548,9 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr.snap_on = True
         vr.snap_mode = "qm_beats"
         vr.qm_beats = [i * 0.5 for i in range(120)]
-        vr.loop_a, vr.loop_b = 10.5, 20.5
+        # B no cau en un múltiple exacte de compàs: el segon tall és ambigu
+        # i ha d'obrir diàleg per poder provar la cancel·lació atòmica.
+        vr.loop_a, vr.loop_b = 10.5, 19.5
         with patch("app.dialeg_tall_qm.DialegTallQM", _DialegFals):
             self.assertFalse(vr._parteix_tram_a_loop(0))
         self.assertEqual(len(vr.tempo_trams), 1)
@@ -6650,6 +6696,29 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(out[2].n, (60.0 - 11.536) /
                                (4 * 60.0 / out[1].bpm), 6)
         self.assertFalse(float(out[2].n).is_integer())
+
+    def test_tall_qm_ultima_fraccionaria_sense_dialeg(self):
+        """Si l'esquerra és única, la cua de l'últim clip no pregunta."""
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        trams = [mapa_tempo.TramMapa(
+            0.0, 99.9, 130.0, "normal", "4/4", "", 50, "negra")]
+        vr.tempo_trams = list(trams)
+        vr.snap_on = True
+        vr.snap_mode = "qm_beats"
+        vr.qm_beats = [i * 0.5 for i in range(200)]
+        with patch("app.dialeg_tall_qm.DialegTallQM",
+                   side_effect=AssertionError("no ha d'obrir diàleg")):
+            out = vr._parteix_tempo_nou(10.0, trams)
+        self.assertIsNotNone(out)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(out[0].compassos, "4/4")
+        self.assertAlmostEqual(out[0].n, 5.0)
+        self.assertEqual(out[1].compassos, "4/4")
+        self.assertAlmostEqual(out[1].bpm, 130.0)
+        self.assertAlmostEqual(
+            out[1].n, (99.9 - 10.0) / (4 * 60.0 / 130.0))
+        self.assertFalse(float(out[1].n).is_integer())
 
     def test_beats_qm_actualitzen_projecte_en_editar_audio(self):
         vr = self.w.visor_ref

@@ -4341,7 +4341,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                             tros, sr, pos / float(sr), mbpm, mbpb,
                             volum=self.metro_vol, offset=moff, mapa=None,
                             factor=factor, den=mden, mode=mmode,
-                            click_unit=mclick)
+                            click_unit=mclick,
+                            beats=getattr(self, "qm_beats", None))
                     else:
                         tros = metronom.mescla_metronom(
                             tros, sr, pos / float(sr), self.bpm, self.bpb,
@@ -4351,7 +4352,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                             factor=factor,
                             den=getattr(self, "beat_type", 4),
                             mode=getattr(self, "metro_mode", "auto"),
-                            click_unit="auto")
+                            click_unit="auto",
+                            beats=getattr(self, "qm_beats", None))
                 try:
                     proc.stdin.write(tros)
                 except (BrokenPipeError, ValueError):
