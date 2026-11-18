@@ -42,7 +42,7 @@ class TempsMixin:
 
     @staticmethod
     def _parse_compas(text, defecte_num=4, defecte_den=4):
-        """Accepta «4», «4/4», «3/4», «2/4», «1/4», «6/8»; `0/0` és rubato."""
+        """Accepta «4», «4/4», «3/4», «2/4», «1/4», «6/8»; `0/0` no és vàlid."""
         s = str(text).replace(" ", "").strip()
         if not s:
             raise ValueError("El compàs no pot estar buit")
@@ -86,6 +86,36 @@ class TempsMixin:
     def _beat_type_val(self):
         num, den = self._parse_compas(self.bpb.text())
         return tempo_map.valida_tempo(self._bpm_val(), num, den)[2]
+
+    def _transport_vals(self):
+        """BPM, numerador i denominador del **transport** (tram 0).
+
+        La barra «Temps» pot mostrar el clip seleccionat; els consumidors que
+        necessiten la referència inicial (anàlisi, exportació, recàrrega del
+        visor, desat del projecte) han de llegir estos valors, no els camps.
+        """
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None:
+            try:
+                # Sense clip seleccionat, la barra ÉS el transport i pot tindre
+                # edicions encara no aplicades; amb clip seleccionat, el tram 0
+                # és la referència i no s'ha de confondre amb eixe clip.
+                if int(vr.tempo_objectiu()) > 0:
+                    return (float(getattr(vr, "bpm")),
+                            int(getattr(vr, "bpb")),
+                            int(getattr(vr, "beat_type", 4) or 4))
+            except (TypeError, ValueError, AttributeError):
+                pass
+        return self._bpm_val(), self._bpb_val(), self._beat_type_val()
+
+    def _transport_bpm(self):
+        return self._transport_vals()[0]
+
+    def _transport_bpb(self):
+        return self._transport_vals()[1]
+
+    def _transport_beat_type(self):
+        return self._transport_vals()[2]
 
     def _cb_a_secs(self, text):
         """'C.B' o 'C.B.S' (compàs.beat.fusa) -> segons."""

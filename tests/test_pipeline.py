@@ -2404,7 +2404,7 @@ class TestMusicXmlMapa(unittest.TestCase):
         self.assertIn("<beats>3</beats><beat-type>4</beat-type>", xml)  # canvi
         self.assertIn('<measure number="3">', xml)
 
-    def test_rubato_marca_la_graella_aproximada(self):
+    def test_rubato_marca_la_notacio(self):
         events = [(0.0, "C", 4.0), (4.0, "G", 4.0)]
         xml = partitura.construeix_musicxml(
             events, [], bpb=4, bpm=120.0,
@@ -6720,7 +6720,7 @@ class TestRegla12ParitatExport(_regla12_export___Base):
         self.assertEqual(res.get("mapa_tempo_dir"), mapa)
         self.assertEqual(res.get("n_mapa_trams"), len(TRAMS))
 
-    def test_rubato_exporta_avis_i_conserva_tipus(self):
+    def test_rubato_nomes_canvia_el_tipus(self):
         trams = [
             mapa_tempo.TramMapa(0.0, 8.0, 120.0, "rubato", "4/4"),
             mapa_tempo.TramMapa(8.0, 16.0, 120.0, "normal", "4/4"),
@@ -6731,12 +6731,9 @@ class TestRegla12ParitatExport(_regla12_export___Base):
             text = f.read()
         self.assertIn("rubato", text)
         self.assertIn("4/4", text)
-        avis = res.get("mapa_tempo_avis")
-        self.assertTrue(avis and os.path.isfile(avis))
-        with open(avis, encoding="utf-8") as f:
-            text_avis = f.read()
-        self.assertIn("TRAMS MARCADES PER A NOTACIÓ", text_avis)
-        self.assertIn("4/4", text_avis)
+        self.assertNotIn("mapa_tempo_avis", res)
+        self.assertFalse(os.path.exists(os.path.join(
+            sortida, "mapa_tempo", "AVIS_APROXIMACIO.txt")))
 
     def test_el_mapa_exportat_es_el_del_model(self):
         """El que s'exporta és el MODEL (no una còpia vella del disc)."""

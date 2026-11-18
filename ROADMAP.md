@@ -57,7 +57,8 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 > [`CHANGELOG.md`](CHANGELOG.md). La definició de **què fa l'app i què queda
 > fora** és a [`AGENTS.md`](AGENTS.md#-abast-i-flux-de-lusuari--font-única).
 
-**Fases** del pla `00PER FER/PLA_SIMPLIFICACIO_TEMPO.md`: **0–7 fetes**. La **10**
+**Fases** del pla de simplificació de tempo (document històric, ja no al
+repositori): **0–7 fetes**. La **10**
 (motor de detecció amb corpus real) està **oberta i bloquejada pel corpus
 manual**; la **12** (congelació, higiene i CI) està **en curs**. La **8**
 (export MIDI del mapa de tempo) queda **feta (2026-11-14)**; **9** (anàlisi
@@ -348,13 +349,12 @@ Commit de referència: `68dcde1` (checkpoint v0.9.2).
 - **Fet (2026-11-02)**: **fase 6** — `Fitxer ▸ Exporta àudio…` amb diàleg
   natiu, perfils WAV/MP3/FLAC/AAC/OGG/Opus i detecció d'encoders en temps
   d'execució; escriptura atòmica i protecció de la còpia de treball.
-- **Fet (2026-11-01)**: fases **0–5** del
-  [`PLA_SIMPLIFICACIO_TEMPO`](00PER%20FER/PLA_SIMPLIFICACIO_TEMPO.md) —
-  línia base i avaluador, validació unificada, fuzzer i proposta de regles,
-  TAP robust, compàs vs secció i ajust d'un BPM per mínims quadrats.
-- **Fet (2026-11-02)**: **subplà de rubato complet (fases 1–5)** —
-  [`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md).
-  Inclou la fase 7 del pla de simplificació.
+- **Fet (2026-11-01)**: fases **0–5** del pla de simplificació de tempo
+  (document històric, ja no al repositori) — línia base i avaluador,
+  validació unificada, fuzzer i proposta de regles, TAP robust, compàs vs
+  secció i ajust d'un BPM per mínims quadrats.
+- **Fet (2026-11-02)**: **subplà de rubato complet (fases 1–5)** (document
+  històric, ja no al repositori). Inclou la fase 7 del pla de simplificació.
 - **Fet (2026-11-03)**: anàlisi del projecte de prova
   `AUTOCHORDS_01 POLICE_convertit`; model coherent, notació crua i límits del
   primer compàs documentats al subplà de rubato.
@@ -394,7 +394,7 @@ Commit de referència: `68dcde1` (checkpoint v0.9.2).
   [`docs/REGLES_DE_LA_APP.md` §13.9](docs/REGLES_DE_LA_APP.md).
 - **AJORNAT (sense data) — Rubato i doble graella avançada**: el que ja hi ha
   implementat es conserva; no s'amplia fins que l'operador ho decidisca. Vegeu
-  [`00PER FER/DECISIONS_RUBATO.md`](00PER%20FER/DECISIONS_RUBATO.md).
+  `CHANGELOG.md`.
 - **AJORNAT (sense data) — Millorar el motor de detecció (fase 10)**: puntuar
   downbeats amb els canvis d'acord i avaluar motors alternatius. Cap motor nou
   sense l'OK de l'operador. No es treballa ara.

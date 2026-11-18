@@ -1664,7 +1664,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         def _compas_beat(val):
             if val <= 0:
                 return 1, 1
-            if mapa is not None and not mapa.es_lliure(val):
+            if mapa is not None:
                 c, b, _sub = mapa.pos(val)
                 return c, b
             beats = val * self.bpm / 60.0
@@ -2243,7 +2243,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
     def quantitza_bpm(self, decimals=1):
         """Quantitza el BPM dels clips normals i re-encaixa les fronteres.
 
-        Els rubatos no es quantitzen; la seua finestra es pot desplaçar per
+        Els rubatos es quantitzen igual que els trams normals; només es
+        conserva el flag de notació. La seua finestra es pot desplaçar per
         mantindre el mapa contigu. Una sola operació de desfer.
         """
         abans = [tuple(t) for t in (self.tempo_trams or [])]
@@ -2911,7 +2912,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
              la vora que s'ha de substituir la deixava a 2 ms i la validació
              (≥ 10 ms) rebuixava l'operació sencera.
           2. **Graella** (BPM/offset) si no hi ha cap marca a prop.
-          `Alt` (Ctrl+Alt+V) se salta el snap, com el «hold N» del Final Cut.
         El bloc viatja **rígid** (com `Grid Relative` del Cubase): no s'arrodoneix
         cada element, per no deformar l'espaiat intern de la còpia.
         """
@@ -2929,9 +2929,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         cc, bf = buf.get("cursor_copy"), buf.get("bloc_fi")
         if cc is not None and bf is not None and abs(T - float(cc)) <= 1e-6:
             T = float(bf)
-        salta_snap = bool(QApplication.keyboardModifiers() & Qt.AltModifier)
-        if (hasattr(self, "timeline") and self.timeline._snap_on
-                and not salta_snap):
+        if hasattr(self, "timeline") and self.timeline._snap_on:
             # 1r) EVENTS: marca del model a prop → el seu instant EXACTE
             marca = self.timeline.snap_a_marca(T)
             if marca is not None:
@@ -3393,8 +3391,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         """Segons → compàs.temps[.fusa] segons el MAPA de tempo vigent."""
         mapa = getattr(self, "tempo_map", None)
         if mapa is not None:
-            if mapa.es_lliure(float(t)):
-                return "—"          # rubato: no hi ha compàs
             c, b, sub = mapa.pos(float(t))
             return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
         return _secs_a_cb_ui(t, self.bpm, self.bpb,

@@ -405,27 +405,27 @@ class RetempoTests(unittest.TestCase):
         self.assertAlmostEqual(out[0][1], self.DU - 0.5, places=6)
         self.assertEqual(out[1], (31.5, 32.0, 120.0, 4, 16))
 
-    def test_el_vei_metric_d_un_rubato_conserva_el_bpm(self):
-        trams = [(0.0, 10.0, 100.0, 0, 0), (10.0, 30.0, 120.0, 4, 4)]
+    def test_el_vei_metric_conserva_el_bpm(self):
+        trams = [(0.0, 10.0, 100.0, 4, 4), (10.0, 30.0, 120.0, 4, 4)]
         out = tempo_map.mou_frontera_retempo(trams, 1, 12.0, 30.0)
-        self.assertEqual(out[0][3:], (0, 0))          # rubato intacte
-        self.assertEqual(out[0][2], 100.0)            # BPM de notació
+        self.assertEqual(out[0][3:], (4, 4))
+        self.assertEqual(out[0][2], 100.0)
         self.assertEqual(out[1][2], 120.0)            # BPM conservat
         self.assertAlmostEqual(out[1][1], 30.0, places=6)
 
-    def test_el_vei_metric_d_un_rubato_pot_ser_curt(self):
-        trams = [(0.0, 10.0, 100.0, 0, 0), (10.0, 30.0, 120.0, 4, 4)]
+    def test_el_vei_metric_pot_ser_curt(self):
+        trams = [(0.0, 10.0, 100.0, 4, 4), (10.0, 30.0, 120.0, 4, 4)]
         out = tempo_map.mou_frontera_retempo(trams, 1, 29.5, 30.0)
         self.assertAlmostEqual(out[1][0], 29.5, places=6)
         self.assertEqual(out[1][2], 120.0)
 
-    def test_dos_rubatos_son_lliures(self):
+    def test_dos_trams_metrics_no_tenen_excepcio(self):
         # El drag no té cap excepció especial, però N ha de ser enter: a 1,0 s
-        # el clip cap en 1 compàs (BPM derivat) i el rubato es conserva.
-        trams = [(0.0, 10.0, 100.0, 0, 0), (10.0, 30.0, 100.0, 0, 0)]
+        # el clip cap en 1 compàs (BPM derivat).
+        trams = [(0.0, 10.0, 100.0, 4, 4), (10.0, 30.0, 100.0, 4, 4)]
         out = tempo_map.mou_frontera_retempo(trams, 1, 1.0, 30.0)
         self.assertAlmostEqual(out[0][1], 1.0, places=6)
-        self.assertEqual(out[0][3:], (0, 0))
+        self.assertEqual(out[0][3:], (4, 8))
         for clip in out:
             n = tempo_map.compassos_del_clip(clip)
             self.assertAlmostEqual(n, round(n), places=6, msg=clip)

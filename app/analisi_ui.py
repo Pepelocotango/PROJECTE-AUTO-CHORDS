@@ -131,8 +131,8 @@ class AnalisiMixin:
         _ana = self.opcions.get("analisi") or {}
         # Separació d'accions: «Analitza» només fa acords i estructura.
         # El BPM es detecta amb «Analitza BPM…» i es mostra com a capa.
-        self.feina = Feina(wav, self.sortida, self._bpm_val(),
-                           self._bpb_val(),
+        self.feina = Feina(wav, self.sortida, self._transport_bpm(),
+                           self._transport_bpb(),
                            bool(_ana.get("estructura", True)),
                            self.tempo_fix.isChecked(),
                            opcions=self.opcions,
@@ -203,7 +203,7 @@ class AnalisiMixin:
         self.a_exporta.setEnabled(False)
         self.a_exporta_part.setEnabled(False)
         self.feina = Feina(
-            wav, self.sortida, self._bpm_val(), self._bpb_val(),
+            wav, self.sortida, self._transport_bpm(), self._transport_bpb(),
             False, self.tempo_fix.isChecked(),
             opcions=self.opcions, amb_bpm=False, amb_acords=True,
             amb_estructura=False,
@@ -324,9 +324,9 @@ class AnalisiMixin:
                 wav,
                 motor=cfg["motor"],
                 sensibilitat=cfg["sensibilitat"],
-                bpb=self._bpb_val(),
-                den=self._beat_type_val(),
-                bpm_hint=self._bpm_val(),
+                bpb=self._transport_bpb(),
+                den=self._transport_beat_type(),
+                bpm_hint=self._transport_bpm(),
                 bpm_min=opcions_bpm.get("min"),
                 bpm_max=opcions_bpm.get("max"),
                 preferit=(opcions_bpm.get("pref_min"),

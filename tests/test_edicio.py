@@ -3239,8 +3239,8 @@ class TestRegla8TempsValids(_regles_or___Base):
         Auditoria 18-10-2026: abans `normalitza_cobertura` deixava passar un
         acord a -2 s i `normalitza_trams` un tram a -5 s amb bpm 0 (un CSV
         editat a mà o un projecte vell hi podien arribar).
-        Nota (22-10-2026): el compàs 0/0 ja NO és un error: és un tram **en
-        segons** (rubato), i s'ha de conservar.
+        Nota (2026-11-18): `0/0` no és vàlid; el normalitzador el repara a
+        un compàs 4/4 i manté un BPM vàlid. El rubato és només un flag.
         """
         from app import tempo_map as tempo
         ac, _sec = pipeline.normalitza_cobertura(
@@ -3255,8 +3255,8 @@ class TestRegla8TempsValids(_regles_or___Base):
             [(-5.0, 2.0, 0.0, 0, 0), (2.0, 30.0, 90.0, 3, 4)], 30.0)
         self.assertEqual(trams[0][0], 0.0)
         self.assertGreater(trams[0][2], 0)
-        self.assertEqual(trams[0][2], 100.0)          # referència de notació
-        self.assertEqual((trams[0][3], trams[0][4]), (0, 0))   # en segons
+        self.assertEqual(trams[0][2], 120.0)          # BPM de seguretat
+        self.assertEqual((trams[0][3], trams[0][4]), (4, 4))
 
     def test_estructura_amb_linies_malmeses_no_peta(self):
         """El lector de l'ABC (cami de CARREGA) ha de ser tan robust com el

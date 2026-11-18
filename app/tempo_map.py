@@ -44,7 +44,7 @@ BPM_EDIT_MAX = limits.BPM_MAX
 def valida_tempo(bpm, num, den):
     """Valida BPM i compàs; retorna `(bpm, num, den)` normalitzats.
 
-    `0/0` és l'única representació vàlida d'un tram en segons (rubato).
+    El rubato és només un flag de notació: `0/0` **no** és vàlid.
     """
     try:
         b = float(bpm)
@@ -68,10 +68,10 @@ def valida_tempo(bpm, num, den):
 
     numerador = _enter(num, "numerador")
     denominador = _enter(den, "denominador")
-    if numerador == 0 and denominador == 0:
-        return b, 0, 0
     if numerador == 0 or denominador == 0:
-        raise ValueError("El compàs ha de ser 0/0 per anar en segons")
+        raise ValueError(
+            "El compàs ha de ser num/den positiu; el rubato és només un "
+            "flag de notació i no s'escriu 0/0")
     if not limits.NUM_MIN <= numerador <= limits.NUM_MAX:
         raise ValueError(
             f"El numerador ha d'estar entre {limits.NUM_MIN} i "
@@ -102,6 +102,10 @@ class Tram:
         self.bpm = float(bpm)
         self.num = int(num)
         self.den = int(den)
+        if self.num <= 0 or self.den <= 0:
+            raise ValueError(
+                "El compàs ha de ser num/den positiu; el rubato és només "
+                "un flag de notació")
         self.agrupacio = str(agrupacio or "")
         unitat = str(beat_unit or "").strip()
         if not unitat:
@@ -158,24 +162,16 @@ class Tram:
         return agr or agrupacio_compas(self.num, self.den)
 
     @property
-    def lliure(self):
-        """True si el tros va **en segons** (sense compàs: `num`/`den` = 0)."""
-        return int(self.num) <= 0 or int(self.den) <= 0
-
-    @property
     def num_ef(self):
-        """Compàs efectiu per a l'aritmètica (4 si el tros és lliure)."""
-        return 4 if self.lliure else int(self.num)
+        return int(self.num)
 
     @property
     def den_ef(self):
-        """Denominador efectiu per a l'aritmètica (4 si el tros és lliure)."""
-        return 4 if self.lliure else int(self.den)
+        return int(self.den)
 
     @property
     def bpm_ef(self):
-        """BPM efectiu (100 si el tros és lliure: referència de notació)."""
-        return 100.0 if self.lliure else float(self.bpm)
+        return float(self.bpm)
 
 
 def _bar_quarters(num, den):
@@ -321,13 +317,9 @@ class TempoMap:
             agr = s[5] if len(s) > 5 else ""
             beat_unit = s[6] if len(s) > 6 else None
             if num <= 0 or den <= 0:
-                # Tros EN SEGONS: no té compàs. El BPM només és la referència
-                # de notació (100 per defecte).
-                num = den = 0
-                bpm = bpm if bpm > 0 else 100.0
-                agr = ""
-            elif den <= 0:
-                den = 4
+                raise ValueError(
+                    "El compàs ha de ser num/den positiu; el rubato és "
+                    "només un flag de notació")
             if bpm <= 0:
                 bpm = 120.0
             try:
@@ -422,7 +414,7 @@ class TempoMap:
         return self.tram(t).bpm
 
     def signatura(self, t):
-        """`(num, den)` del compàs a `t` (efectiu: 4/4 si el tros és lliure)."""
+        """`(num, den)` del compàs a `t`."""
         s = self.tram(t)
         return (s.num_ef, s.den_ef)
 
@@ -433,10 +425,6 @@ class TempoMap:
     def te_agrupacions_explicites(self):
         """True si algun tram té una agrupació explícita."""
         return any(bool(s.agrupacio) for s in self._trams)
-
-    def es_lliure(self, t):
-        """True si `t` cau en un tros **en segons** (sense compàs)."""
-        return self.tram(t).lliure
 
     def es_constant(self):
         """True si tots els trossos comparteixen tempo i compàs.
@@ -450,8 +438,7 @@ class TempoMap:
         s0 = self._trams[0]
         return all(abs(s.bpm_ef - s0.bpm_ef) < 1e-9
                    and s.num_ef == s0.num_ef and s.den_ef == s0.den_ef
-                   and s.agrupacio == s0.agrupacio
-                   and s.lliure == s0.lliure for s in self._trams)
+                   and s.agrupacio == s0.agrupacio for s in self._trams)
 
     def durations(self, t):
         """`(compàs_s, temps_s, mitja_negra_s)` de durada a l'instant `t`."""
@@ -471,9 +458,9 @@ class TempoMap:
         espaiat en segons varia amb el mapa.
         """
         t0, t1 = float(t0), float(t1)
-        if not any((not tr.lliure) and tr.fi > t0 + TOL and tr.ini < t1 - TOL
+        if not any(tr.fi > t0 + TOL and tr.ini < t1 - TOL
                    for tr in self._trams):
-            return []                 # tot el rang va en segons: sense graella
+            return []                 # cap tram del mapa cau dins del rang
         talls = self._talls_de_compas()
         out = []
         if kind == "bar":
@@ -481,9 +468,7 @@ class TempoMap:
             for k, tall in enumerate(talls):
                 if k % pas == 0 and t0 - TOL <= tall[1] <= t1 + TOL:
                     out.append(tall[1])
-            # Els trossos en segons no dibuixen res (rubato); la línia que
-            # obri el tros lliure sí que es conserva (límit del clip).
-            return [t for t in out if not self.es_lliure(t - TOL_COMPAS)]
+            return out
         if kind == "pulse":
             # Pols musical (beat_unit) ancorada a l'INICI DE CADA COMPÀS.
             # No n'hi ha prou amb q = k*pas_q: en un mapa 5/8 → 6/8 el segon
@@ -501,7 +486,7 @@ class TempoMap:
                     continue
                 q_next = (bars[k + 1][0] if k + 1 < len(bars)
                           else final_q)
-                if t_bar >= t1 - TOL or self.es_lliure(t_bar + TOL):
+                if t_bar >= t1 - TOL:
                     continue
                 tr = self.tram(t_bar + TOL)
                 unit = tr.beat_unit or bpm_unit.unitat_per_defecte(
@@ -534,11 +519,11 @@ class TempoMap:
                     break        # la frontera és del compàs següent
                 t = self.t_de_quarters(q)
                 if t > t1 + TOL:
-                    return [x for x in out if not self.es_lliure(x - TOL_COMPAS)]
+                    return out
                 if t >= t0 - TOL:
                     out.append(t)
                 j += 1
-        return [x for x in out if not self.es_lliure(x - TOL_COMPAS)]
+        return out
 
     # ── conversió temps ↔ negres (integració) ───────────────────────────────
     def _quarters_entre(self, a, b):
@@ -623,9 +608,8 @@ class TempoMap:
                 continue
             if s.ini >= t1 - TOL:
                 break
-            if s.lliure or (s.num_ef, s.den_ef) != sig:
-                return float(s.ini), ((4, 4) if s.lliure
-                                      else (s.num_ef, s.den_ef))
+            if (s.num_ef, s.den_ef) != sig:
+                return float(s.ini), (s.num_ef, s.den_ef)
         return None
 
     def _talls_de_compas(self):
@@ -732,9 +716,7 @@ class TempoMap:
         return (compas, max(1, min(num, b + 1)), min(8, sub))
 
     def label(self, t):
-        """Etiqueta `compàs.temps.subdivisió` (o `—` si va en segons)."""
-        if self.es_lliure(t):
-            return "—"
+        """Etiqueta `compàs.temps.subdivisió`."""
         c, b, s = self.pos(t)
         return "%d.%d.%d" % (c, b, s)
 
@@ -908,18 +890,14 @@ def neteja_trams(trams, durada, preserva_fi_idx=None):
         except (ValueError, IndexError, TypeError) as e:
             avisos.append(f"Un tram tenia tempo/compàs invàlid ({e}); "
                           "s'ha reparat.")
-            try:
-                num0, den0 = int(t[3]), int(t[4])
-            except (ValueError, TypeError, IndexError):
-                num0, den0 = 4, 4
-            num, den = (0, 0) if num0 == den0 == 0 else (4, 4)
+            num, den = 4, 4
             try:
                 bpm0 = float(t[2])
             except (ValueError, TypeError, IndexError):
                 bpm0 = float("nan")
             bpm = (bpm0 if math.isfinite(bpm0)
                    and limits.BPM_MIN <= bpm0 <= limits.BPM_MAX
-                   else (100.0 if num == den == 0 else BPM_DEFECTE))
+                   else BPM_DEFECTE)
         net.append((ini, fi0, bpm, num, den))
     if not net:
         return [], avisos
@@ -1080,23 +1058,15 @@ def valida_i_normalitza_compassos(trams, durada,
     nous = normalitza_trams(trams, durada, preserva_fi_idx=preserva_fi_idx)
     if not nous:
         raise ValueError("El mapa de tempo/compàs és buit")
-    if not any(int(t[3]) > 0 and int(t[4]) > 0 for t in nous):
-        return nous                       # tot el mapa va en segons/rubato
-
-    def _lliure(t):
-        return int(t[3]) <= 0 or int(t[4]) <= 0
-
     n = len(nous)
     for i, tram in enumerate(nous):
-        if _lliure(tram):
-            continue                       # rubato / en segons: lliure
         graella = (_graella_beats(nous, durada, beats_qm)
                    if beats_qm else _graella_tram(tram, i, durada))
         if len(graella) < 2:
             raise ValueError(
                 f"El tram {i + 1} no té cap graella de beats per a validar")
-        inici_lliure = (i == 0) or (i > 0 and _lliure(nous[i - 1]))
-        fi_lliure = (i == n - 1) or (i + 1 < n and _lliure(nous[i + 1]))
+        inici_lliure = (i == 0)
+        fi_lliure = (i == n - 1)
         if not inici_lliure:
             graella_esq = (_graella_beats(nous, durada, beats_qm)
                            if beats_qm
@@ -1272,11 +1242,6 @@ def _base_tram(tram, idx=None):
     return float(tram[0])
 
 
-def _es_lliure_tram(tram):
-    """True si el tram va **en segons** (`num`/`den` = 0)."""
-    return int(tram[3]) <= 0 or int(tram[4]) <= 0
-
-
 def valida_i_normalitza_permissiu(trams, durada):
     """Valida el mapa amb les regles permissives del model (F2).
 
@@ -1325,7 +1290,7 @@ def problemes_compassos_sencers(trams, durada=0.0,
         ini, fi, bpm, num, den = (float(tr[0]), float(tr[1]), float(tr[2]),
                                   int(tr[3]), int(tr[4]))
         if num <= 0 or den <= 0:
-            continue                    # compàs invàlid / tram en segons
+            continue                    # compàs invàlid
         try:
             n = compassos_del_clip(tr)
         except (TypeError, ValueError):
@@ -1804,7 +1769,7 @@ def _recalcula_costats(out, refs, durada, beats_qm=None,
     """
     beats = [float(b) for b in (beats_qm or ())]
     for idx, ref in refs:
-        if not (0 <= idx < len(out)) or _es_lliure_tram(out[idx]):
+        if not (0 <= idx < len(out)):
             continue
         ini, fi = float(out[idx][0]), float(out[idx][1])
         n_beats = tempo_recalc.n_negres_del_clip(
@@ -1917,9 +1882,6 @@ def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
     i = int(idx)
     if not (0 <= i < len(nous)):
         raise ValueError("El tram de tempo no existeix")
-    if _es_lliure_tram(nous[i]):
-        raise ValueError(
-            "Aquest clip va en segons: no té compassos per a canviar")
     ini, fi, _bpm, num0, den0 = nous[i]
     dt = float(fi) - float(ini)
     if dt <= TOL:

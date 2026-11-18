@@ -112,6 +112,13 @@ class InfoBoxMixin:
             self._info_html_actual = html
             self.info_box.setHtml(html)
 
+    def _drecera_info(self, clau, defecte=""):
+        """Drecera configurable per mostrar al rotatori."""
+        f = getattr(self, "_valor_drecera", None)
+        valor = (f(clau) if callable(f) else "") or defecte
+        return {"Space": "Espai", "Return": "Enter",
+                "Left": "←", "Right": "→"}.get(valor, valor)
+
     def _info_panells(self):
         """Panells de la caixa d'informacio per defecte: consells + dreceres.
 
@@ -139,7 +146,8 @@ class InfoBoxMixin:
                 ("Es temporal: Ctrl+arrossega · o fix: Eina marc", ""),
             ]),
             ("Duplicar un clip", [
-                ("Duplicar l'element seleccionat (o el grup)", "Ctrl+D"),
+                ("Duplicar l'element seleccionat (o el grup)",
+                 self._drecera_info("edita.duplica")),
                 ("L'arrossegament normal mou; no duplica", ""),
             ]),
             ("Moure i redimensionar", [
@@ -151,9 +159,11 @@ class InfoBoxMixin:
                 ("Alt+clic", "cap acció de l'app"),
             ]),
             ("Copiar, retallar i enganxar", [
-                ("Al cursor", "Ctrl+C / Ctrl+X / Ctrl+V"),
+                ("Al cursor",
+                 f"{self._drecera_info('edita.copia')} / "
+                 f"{self._drecera_info('edita.retalla')} / "
+                 f"{self._drecera_info('edita.enganxa')}"),
                 ("L'enganxat SUBSTITUEIX el tram: la cançó no creix mai", ""),
-                ("Enganxar saltant-se el snap", "Ctrl+Alt+V"),
             ]),
             ("Loop A-B", [
                 ("Crear-lo o editar-lo", "Arrossega sobre el regle"),
@@ -162,21 +172,30 @@ class InfoBoxMixin:
                 ("Loop a la selecció (unió dels 3 carrils)", "L"),
             ]),
             ("Transport", [
-                ("Play / aturar", "Espai"),
-                ("TAP del temps (tap tempo)", "T"),
-                ("Canviar d'eina del timeline (intel·ligent ⇄ marc)", "E"),
+                ("Play / aturar", self._drecera_info("global.play", "Espai")),
+                ("TAP del temps (tap tempo)",
+                 self._drecera_info("global.tap")),
+                ("Canviar d'eina del timeline (intel·ligent ⇄ marc)",
+                 self._drecera_info("global.eina")),
             ]),
             ("Tecla Esc (cancel·lar)", [
-                ("Rang en curs (rectangle) → l'anul·la", "Esc"),
-                ("Loop a mig marcar → el descarta", "Esc"),
+                ("Rang en curs (rectangle) → l'anul·la",
+                 self._drecera_info("timeline.esc", "Esc")),
+                ("Loop a mig marcar → el descarta",
+                 self._drecera_info("timeline.esc", "Esc")),
                 ("Loop actiu → el desactiva i ESBORRA (fora la caixa groga)",
-                 "Esc"),
-                ("Alguna cosa seleccionada → la buida", "Esc"),
+                 self._drecera_info("timeline.esc", "Esc")),
+                ("Alguna cosa seleccionada → la buida",
+                 self._drecera_info("timeline.esc", "Esc")),
             ]),
             ("Editar i desfer", [
-                ("Desfer / refer", "Ctrl+Z / Ctrl+Y"),
-                ("Reanomenar (clip o grup del tipus actiu)", "F2"),
-                ("Esborrar la selecció", "Del"),
+                ("Desfer / refer",
+                 f"{self._drecera_info('edita.desfer')} / "
+                 f"{self._drecera_info('edita.refer')}"),
+                ("Reanomenar (clip o grup del tipus actiu)",
+                 self._drecera_info("edita.renomena")),
+                ("Esborrar la selecció",
+                 self._drecera_info("edita.elimina")),
             ]),
             ("Zoom i navegació", [
                 ("Zoom", "Roda del ratolí"),
@@ -227,7 +246,7 @@ class InfoBoxMixin:
         ])
 
     def _info_defecte_html(self, ara, rota=True):
-        """HTML del panell actual de dreceres/consells (rotant cada ~14 s).
+        """HTML del panell actual de dreceres/consells (rotant cada ~8 s).
 
         `rota=False` congela el panell (ratoli sobre la caixa). I si hi ha una
         **pausa per clic** vigent (`_info_pausa_fins`), tampoc no rota.

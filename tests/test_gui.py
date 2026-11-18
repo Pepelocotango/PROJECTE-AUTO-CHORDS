@@ -763,6 +763,21 @@ class TestObreWavCreaProjecte(_Base):
         with open(mapa, encoding="utf-8") as fh:
             self.assertEqual(fh.read(), "antic\n")
 
+    def test_recarrega_del_visor_no_acumula_widgets(self):
+        f = _projectes_gui___finestra()
+        wav = _projectes_gui___wav()
+        _projectes_gui___obre_wav(f, wav)
+        vell = f.visor_widget
+        abans = f._stack.count()
+        f._carrega_visor(wav)
+        self.assertEqual(f._stack.count(), abans)
+        self.assertLess(f._stack.indexOf(vell), 0)
+        self.assertIsNot(f.visor_widget, vell)
+        self.assertIsNotNone(f.visor_ref)
+        self.assertIsNotNone(f._placeholder_visor)
+        f._mostra_placeholder_visor()
+        self.assertEqual(f._stack.count(), 1)
+
     def test_esborra_original_i_el_projecte_obre(self):
         f = _projectes_gui___finestra()
         wav = _projectes_gui___wav()
@@ -2576,6 +2591,18 @@ class TestInfoBoxConsells(unittest.TestCase):
             self.assertIn(esperat, titols)
         for t, parells in panells:
             self.assertLessEqual(len(parells), 5, f"«{t}» massa llarga")
+        w.close()
+
+    def test_dreceres_configurables_es_reflecteixen_al_rotatori(self):
+        w = _info_box_consells___finestra()
+        w._bindings["global.play"] = "P"
+        w._bindings["edita.duplica"] = "Ctrl+Alt+D"
+        text = " ".join(
+            f"{t} {v}" for _titol, parells in w._info_panells()
+            for t, v in parells)
+        self.assertIn("Play / aturar P", text)
+        self.assertIn("Ctrl+Alt+D", text)
+        self.assertNotIn("Play / aturar Espai", text)
         w.close()
 
     def test_panell_eina_segueix_l_eina_vigent(self):
@@ -5410,6 +5437,22 @@ class TestTempoPerTramsGui(unittest.TestCase):
         self.w.dirty = False       # sense prompt de tancament als tests
         self.w.close()
         shutil.rmtree(self.td, ignore_errors=True)
+
+    def test_transport_no_es_contamina_pel_clip_seleccionat(self):
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams([
+            (0.0, 10.0, 120.0, 4, 4),
+            (10.0, 20.0, 90.0, 3, 4)]))
+        vr.timeline.select_clip("tempo", 1)
+        self.w._sincronitza_temps_del_visor()
+        self.assertEqual(self.w.bpm.text(), "90.000")
+        self.assertEqual(self.w.bpb.text(), "3")
+        self.assertAlmostEqual(self.w._transport_bpm(), 120.0, places=6)
+        self.assertEqual(self.w._transport_bpb(), 4)
+        self.assertEqual(self.w._transport_beat_type(), 4)
+        self.assertEqual(self.w._dades_projecte()["tempo"],
+                         {"bpm": 120.0, "bpb": 4, "fix": True,
+                          "compas": "4/4"})
 
     def test_barra_rebutja_metre_invalid_sense_mutar_model(self):
         abans = [tuple(t) for t in self.w.visor_ref.tempo_trams]

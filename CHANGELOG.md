@@ -25,6 +25,50 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - El rètol de mode del regle mostra el compàs del mapa (`6/8`, `12/8`…) i no
   un transport `4/4` alié.
 
+### Canviat — rubato només de notació (2026-11-18)
+- Eliminat `AVIS_APROXIMACIO.txt` de l’exportació: el rubato no canvia BPM,
+  compassos ni graella i no ha de generar cap avís d’aproximació.
+- Alineats `README.md`, `docs/ESQUEMA_UI.md` i `docs/REGLES_DE_LA_APP.md`:
+  `tipus=rubato` només afecta la notació/exportació.
+
+### Netejat — restes internes de trams «en segons» (2026-11-18)
+- Eliminats `Tram.lliure`, `TempoMap.es_lliure` i les branques de graella /
+  validació que tractaven trams amb `num/den = 0/0`.
+- `Tram` també rebutja compàs no positiu; no queda cap camí intern que puga
+  crear un tram «en segons».
+
+### Corregit — caixa d’informació: dreceres configurables i rotació (2026-11-18)
+- El rotatori de consells mostra les dreceres reals de `_valor_drecera` per a
+  play, TAP, eina, copiar/retallar/enganxar, duplicar, desfer/refer,
+  reanomenar, eliminar, Esc i nudge.
+- La rotació real és de **8 s**; actualitzats el docstring i
+  `docs/ESQUEMA_UI.md`, que deien 14 s.
+
+### Canviat — `0/0` i «en segons» fora del model (2026-11-18)
+- `valida_tempo`, el parseig de la barra i `TempoMap` rebutgen `0/0`. El
+  rubato és només `tipus=rubato` amb un compàs normal.
+- El normalitzador d’entrades antigues amb `0/0` el repara a `4/4` amb un BPM
+  vàlid; ja no es conserva cap tram «en segons».
+- L’avaluador ja no convertix les anotacions de rubato a `0/0`.
+
+### Corregit — fuita de widgets en recarregar el visor (2026-11-18)
+- `_carrega_visor` tanca i elimina el visor anterior abans de crear-ne un de
+  nou; els widgets vells ja no s’acumulen a `_stack`.
+- El placeholder es crea una sola vegada i es reutilitza; tampoc no s’acumulen
+  pàgines buides.
+
+### Corregit — transport independent del clip seleccionat (2026-11-18)
+- Afegits `_transport_vals()`, `_transport_bpm()`, `_transport_bpb()` i
+  `_transport_beat_type()`: llegixen sempre el **tram 0**, no els camps de la
+  barra, que poden mostrar el clip seleccionat.
+- Analitza, Exporta, la recàrrega del visor i el desat del `.acproj` usen eixa
+  referència de transport. La barra continua editant el clip seleccionat.
+- Eliminat el pegat específic de `projecte_ui`.
+
+### Tret — enganxar sense snap (`Ctrl+Alt+V`) (2026-11-18)
+- Eliminada l’opció d’enganxar saltant-se el snap i la drecera `Ctrl+Alt+V`,
+  que no era abastable. `Ctrl+V` sempre aplica el snap normal.
+
 ### Corregit — BPM decimal a la guia HTML (2026-11-17)
 - La capçalera de `guia_acords.html` ja no trunca el BPM amb `%d`: `82.5`
   es conserva com a `82.5 BPM`, i `llegeix_bpm_bpb_de_guia` el recupera

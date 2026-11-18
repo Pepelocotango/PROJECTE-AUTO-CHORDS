@@ -231,8 +231,6 @@ def compassos_referencia(dades, durada):
             j += 1
         canvi = canvis[j]
         bpm, num, den = canvi[1], canvi[2], canvi[3]
-        if any(a <= mig < b for a, b in rubatos):
-            num, den = 0, 0
         trams.append((inici, fi, bpm, num, den))
 
     bars = [bar[1] for bar in TempoMap(trams).compassos()]

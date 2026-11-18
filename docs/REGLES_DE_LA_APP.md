@@ -100,9 +100,8 @@ una sola operació i un sol `Ctrl+Z`.
 ### 12. Paritat a l'exportació
 El paquet exportat tracta els **tres** tipus igual: acords (`acords.csv` +
 `wavs_acords/`) · estructura (`estructura_ABC.csv` + `wavs_estructura/`) · mapa
-de tempo/compàs (**`mapa_tempo/`** amb `mapa_tempo.csv`). La graella mètrica
-exportada pot ser **aproximada** i s'identifica com a tal; els CSV del projecte
-mantenen `0,0`.
+de tempo/compàs (**`mapa_tempo/`** amb `mapa_tempo.csv`). La graella
+exportada coincidix amb el model; els CSV del projecte mantenen `0,0`.
 
 ## 13. Temps, compàs i graella
 

@@ -66,9 +66,9 @@ class ExportMixin:
             csv_ac=csv_ac,
             csv_seg=None,
             sortida=self.sortida,
-            bpm=self._bpm_val(),
-            bpb=self._bpb_val(),
-            den=self._beat_type_val(),
+            bpm=self._transport_bpm(),
+            bpb=self._transport_bpb(),
+            den=self._transport_beat_type(),
             beat_unit=((vre.unitat_objectiu() if vre is not None
                         else "negra")),
             bpm_unit=((vre.unitat_objectiu() if vre is not None
@@ -314,9 +314,9 @@ class ExportMixin:
         try:
             ev = pipeline.events_partitura(
                 os.path.join(self.sortida, "acords.csv"),
-                self._bpm_val(), self._bpb_val(),
+                self._transport_bpm(), self._transport_bpb(),
                 durada=durada, mapa=mapa,
-                den=self._beat_type_val())
+                den=self._transport_beat_type())
         except (RuntimeError, OSError) as e:
             self.registra(f"partitura: el model encara no té acords ({e})")
         rubatos = [
@@ -328,9 +328,9 @@ class ExportMixin:
             res = partitura.exporta_partitura(
                 self.sortida,
                 log=self.registra,
-                bpm=self._bpm_val(),
-                bpb=self._bpb_val(),
-                beat_type=self._beat_type_val(),
+                bpm=self._transport_bpm(),
+                bpb=self._transport_bpb(),
+                beat_type=self._transport_beat_type(),
                 bpm_unit=(getattr(getattr(self, "visor_ref", None),
                                   "unitat_objectiu",
                                   lambda: "negra")()),

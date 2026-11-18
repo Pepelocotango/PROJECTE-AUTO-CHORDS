@@ -277,7 +277,6 @@ class MenusMixin:
             ("copiar / retallar / enganxar al cursor",
              f"{mostra('edita.copia')} / {mostra('edita.retalla')} / "
              f"{mostra('edita.enganxa')}"),
-            ("enganxar SALTANT-SE el snap", "Ctrl+Alt+V"),
             ("moure un clip un pas de graella (Alt = vora dreta)",
              "← / →"),
             ("Alt+clic", "cap acció de l'app (el sistema pot interceptar-lo)"),

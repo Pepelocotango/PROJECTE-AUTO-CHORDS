@@ -293,25 +293,6 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, sr, log,
         result["mapa_tempo_midi"] = tempo_midi.desa_mapa_midi(
             os.path.join(dest_mapa, tempo_midi.NOM_MAPA_MIDI), trams,
             marques=marques or (), log=log)
-        rubatos = [t for t in trams
-                   if getattr(t, "tipus", None) == "rubato"]
-        if rubatos:
-            ruta_avis = os.path.join(dest_mapa, "AVIS_APROXIMACIO.txt")
-
-            def _escriu_avis(f):
-                f.write(
-                    "RUBATO — TRAMS MARCADES PER A NOTACIÓ\n"
-                    "=====================================\n\n"
-                    "El rubato només canvia la notació/exportació; el tempo\n"
-                    "i els compassos són els mateixos que els d'un tram normal.\n\n"
-                    "inici_s\tfi_s\tbpm\tcompassos\n")
-                for tr in rubatos:
-                    f.write(f"{float(tr.ini):.6f}\t{float(tr.fi):.6f}\t"
-                            f"{float(tr.bpm):.6f}\t{tr.compassos}\n")
-            escriu_atomic(ruta_avis, _escriu_avis)
-            result["mapa_tempo_avis"] = ruta_avis
-            if log:
-                log(f"mapa de tempo/compàs: {len(rubatos)} rubato(s) marcats")
         if log:
             log(f"mapa de tempo/compàs exportat: {len(trams)} tram(s) a "
                 f"{dest_mapa}")

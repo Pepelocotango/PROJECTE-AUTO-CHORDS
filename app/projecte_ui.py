@@ -117,16 +117,8 @@ class ProjecteMixin:
     def _dades_projecte(self):
         # El document desa el TEMPO DEL TRANSPORT (tram 0), no el del clip de
         # tempo que estiga seleccionat en eixe moment (2B).
-        vr = getattr(self, "visor_ref", None)
-        if vr is not None and vr.tempo_objectiu() > 0:
-            bpm = float(getattr(vr, "bpm", 120.0))
-            bpb = int(getattr(vr, "bpb", 4) or 4)
-            den = int(getattr(vr, "beat_type", 4) or 4)
-        else:
-            # Sense clip de tempo seleccionat, la barra ÉS el transport: es
-            # desa el que hi ha escrit (encara que no s'haja premut Enter).
-            bpm, bpb = self._bpm_val(), self._bpb_val()
-            den = self._beat_type_val()
+        # El document desa el transport (tram 0), no el clip seleccionat.
+        bpm, bpb, den = self._transport_vals()
         return {
             "tempo": {"bpm": bpm, "bpb": bpb,
                       "fix": self.tempo_fix.isChecked(),

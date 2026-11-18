@@ -14,18 +14,47 @@ from . import ffmpeg, pipeline, theme, visor as visor_mod
 class VisorUIMixin:
     """Càrrega del visor i export disponible."""
 
+    def _buida_visor_actual(self):
+        """Tanca i elimina el visor anterior i qualsevol pàgina vella."""
+        vell_v = getattr(self, "visor_ref", None)
+        if vell_v is not None:
+            try:
+                vell_v.close()
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                vell_v.deleteLater()
+            except Exception:  # noqa: BLE001
+                pass
+        placeholder = getattr(self, "_placeholder_visor", None)
+        for i in reversed(range(self._stack.count())):
+            w = self._stack.widget(i)
+            if w is None or w is placeholder:
+                continue
+            self._stack.removeWidget(w)
+            w.setParent(None)
+            w.deleteLater()
+        self.visor_ref = None
+        self.visor_widget = None
+
     def _mostra_placeholder_visor(self):
-        cont = QWidget()
-        cont.setObjectName("placeholder_visor")
-        cont.setStyleSheet(f"QWidget {{ background: {theme.BG}; color: {theme.TEXT}; }}")
-        lay = QVBoxLayout(cont)
-        lay.setContentsMargins(20, 20, 20, 20)
-        label = QLabel("Sense WAV carregada\n\nSelecciona una WAV per activar el visor.")
-        label.setAlignment(Qt.AlignCenter)
-        label.setWordWrap(True)
-        lay.addWidget(label)
+        self._buida_visor_actual()
+        cont = getattr(self, "_placeholder_visor", None)
+        if cont is None:
+            cont = QWidget()
+            cont.setObjectName("placeholder_visor")
+            cont.setStyleSheet(
+                f"QWidget {{ background: {theme.BG}; color: {theme.TEXT}; }}")
+            lay = QVBoxLayout(cont)
+            lay.setContentsMargins(20, 20, 20, 20)
+            label = QLabel("Sense WAV carregada\n\n"
+                           "Selecciona una WAV per activar el visor.")
+            label.setAlignment(Qt.AlignCenter)
+            label.setWordWrap(True)
+            lay.addWidget(label)
+            self._placeholder_visor = cont
         if self._stack.indexOf(cont) < 0:
-            self._stack.insertWidget(0, cont)   # pagina 0 = placeholder
+            self._stack.insertWidget(0, cont)   # pàgina 0 = placeholder
         self._stack.setCurrentWidget(cont)
         self.visor_widget = None
 
@@ -39,6 +68,7 @@ class VisorUIMixin:
 
     def _carrega_visor(self, wav):
         self._atura_si_sona("recarrega del visor")
+        self._buida_visor_actual()
         if not wav or not os.path.isfile(wav):
             self.logger.warning("No s'ha pogut carregar la WAV: %s", wav)
             self.visor_ref = None
@@ -70,14 +100,14 @@ class VisorUIMixin:
                 os.path.abspath(wav),
                 acords_csv,
                 abc_csv,
-                self._bpm_val(),
-                self._bpb_val(),
+                self._transport_bpm(),
+                self._transport_bpb(),
                 tempo_fix=self.tempo_fix.isChecked(),
                 # La carpeta de sortida del PROJECTE va al constructor: així
                 # el visor no desa mai cap CSV a `audio/…` (carpeta derivada
                 # del WAV).
                 sortida=self.sortida or pipeline.carpeta_sortida(wav),
-                beat_type=self._beat_type_val(),
+                beat_type=self._transport_beat_type(),
                 latencia_cursor_ms=self._latencia_cursor_val(),
             )
             self.visor_ref = visor

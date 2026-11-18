@@ -118,9 +118,9 @@ accents actuals ixen de l'agrupació per defecte de l'app.
 | 2/8 | simple duple | corxera | 0.5 | 240 | 2 | 1 | corxera | 240 | 1 | 0.5 |  |
 | 3/8 | simple triple | corxera | 0.5 | 240 | 3 | 1 | negra punt | 80 | 1 | 0.75 | decisió de producte: 3/8 = 1 pols de negra amb punt |
 | 4/8 | simple quàdruple | corxera | 0.5 | 240 | 4 | 1 | corxera | 240 | 1 | 1 |  |
-| 5/8 | irregular/compost | grup variable | — | — | 5 | — | corxera | 240 | 1,4 | 1.25 | cal agrupació explícita; l'app usa 3+2 |
+| 5/8 | irregular/compost | grup variable | — | — | 5 | — | corxera | 240 | 1 | 1.25 | l'app usa 5 per defecte; es pot triar 3+2 o 2+3 |
 | 6/8 | compost duple | negra amb punt | 1.5 | 80 | 6 | 1,4 | negra punt | 80 | 1,4 | 1.5 |  |
-| 7/8 | irregular/compost | grup variable | — | — | 7 | — | corxera | 240 | 1,3,5 | 1.75 | cal agrupació explícita; l'app usa 2+2+3 |
+| 7/8 | irregular/compost | grup variable | — | — | 7 | — | corxera | 240 | 1 | 1.75 | l'app usa 7 per defecte; es pot triar 2+2+3, 3+2+2… |
 | 8/8 | irregular/compost | grup variable | — | — | 8 | — | corxera | 240 | 1 | 2 | l'app usa 8 per defecte; es pot triar 3+3+2 o 4+4 |
 | 9/8 | compost triple | negra amb punt | 1.5 | 80 | 9 | 1,4,7 | negra punt | 80 | 1,4,7 | 2.25 |  |
 | 10/8 | irregular/compost | grup variable | — | — | 10 | — | corxera | 240 | 1 | 2.5 | cal agrupació explícita; l'app usa 10 |
