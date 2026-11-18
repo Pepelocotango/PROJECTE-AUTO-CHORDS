@@ -20,7 +20,7 @@ SEPARACIO_MIN = 0.05
 
 
 def normalitza_marcadors(marques, durada):
-    """Llista ordenada, sense duplicats i dins de `(0, durada)`."""
+    """Llista ordenada, sense duplicats i dins de `[0, durada]`."""
     durada = float(durada or 0.0)
     out = []
     for m in marques or ():
@@ -28,7 +28,7 @@ def normalitza_marcadors(marques, durada):
             t = float(m)
         except (TypeError, ValueError):
             continue
-        if 0.0 < t < durada:
+        if 0.0 <= t <= durada:
             out.append(round(t, 6))
     out.sort()
     net = []
@@ -42,7 +42,7 @@ def afegeix(marques, t, durada, separacio_min=SEPARACIO_MIN):
     """Torna la llista amb `t` afegit (o la MATEIXA si no és vàlid o és rebot)."""
     durada = float(durada or 0.0)
     t = float(t)
-    if not (0.0 < t < durada):
+    if not (0.0 <= t <= durada):
         return list(marques or ())
     actuals = normalitza_marcadors(marques, durada)
     if any(abs(t - m) < float(separacio_min) for m in actuals):

@@ -34,8 +34,9 @@ class TestMarcadors(unittest.TestCase):
         self.assertEqual(m, [1.0, 2.0])
         m2 = M.afegeix(m, 2.02, 60.0)          # rebot (< 50 ms)
         self.assertEqual(m2, m)
-        self.assertEqual(M.afegeix(m, 0.0, 60.0), m)      # fora (inici)
-        self.assertEqual(M.afegeix(m, 60.0, 60.0), m)     # fora (final)
+        self.assertEqual(M.afegeix(m, 0.0, 60.0), [0.0, 1.0, 2.0])
+        self.assertEqual(M.afegeix(m, 60.0, 60.0), [1.0, 2.0, 60.0])
+        self.assertEqual(M.afegeix(m, 60.01, 60.0), m)     # fora
 
     def test_elimina_i_consultes(self):
         m = [1.0, 4.0, 9.0]

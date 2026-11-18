@@ -45,7 +45,7 @@ def desa_marcadors(carpeta, marques):
 
 
 def _escriu_marcadors(f, marques):
-    # Format nou (Fase 4): `t_s,tipus` (tipus = compas | seccio).
+    # Format nou (Fase 4): `t_s,tipus` (compas | seccio | marcador | inici | final).
     f.write("t_s,tipus\n")
     for item in marques or ():
         if isinstance(item, (tuple, list)):
@@ -99,7 +99,8 @@ def llegeix_marcadors_tipus(carpeta):
                 except ValueError:
                     continue
                 tipus = parts[1].strip() if len(parts) > 1 else "seccio"
-                if tipus not in ("compas", "seccio", "marcador"):
+                if tipus not in ("compas", "seccio", "marcador",
+                                 "inici", "final"):
                     tipus = "marcador"
                 out[round(t, 6)] = tipus
     except OSError:

@@ -124,6 +124,8 @@ class AnalisiMixin:
         self.registra(f"Sortida: {self.sortida}")
         self.b_exec.setEnabled(False)
         self.b_guia.setEnabled(False)        # res de guiat mentre s'analitza
+        self.b_audio_ini.setEnabled(False)
+        self.b_audio_fi.setEnabled(False)
         self.b_marker.setEnabled(False)
         self.b_marker_compas.setEnabled(False)
         self.a_exporta.setEnabled(False)
@@ -198,6 +200,8 @@ class AnalisiMixin:
                       f"({a:.3f}–{b:.3f}s)…")
         self.b_exec.setEnabled(False)
         self.b_guia.setEnabled(False)
+        self.b_audio_ini.setEnabled(False)
+        self.b_audio_fi.setEnabled(False)
         self.b_marker.setEnabled(False)
         self.b_marker_compas.setEnabled(False)
         self.a_exporta.setEnabled(False)
@@ -217,6 +221,8 @@ class AnalisiMixin:
     def acabada(self, be, dada):
         self.b_exec.setEnabled(True)
         self.b_guia.setEnabled(True)
+        self.b_audio_ini.setEnabled(True)
+        self.b_audio_fi.setEnabled(True)
         self.b_marker.setEnabled(True)
         self.b_marker_compas.setEnabled(True)
         self.a_exporta.setEnabled(True)

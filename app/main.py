@@ -222,6 +222,25 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_marker.setEnabled(False)
         self.b_marker.clicked.connect(self._talla_tempo_i_estructura_cursor)
 
+        # Dos accessos directes a la quadratura d'extrems: obrin el diàleg
+        # ja enfocat a l'inici o al final (no apliquen res sense confirmar).
+        self.b_audio_ini = QPushButton("Ajusta inici WAV")
+        self.b_audio_ini.setObjectName("secundari")
+        self.b_audio_ini.setToolTip(
+            "Obre «Quadra els extrems» per l'INICI: marca el temps 1 de la "
+            "cançó i afig o retalla silenci fins a un nombre enter de "
+            "compassos.")
+        self.b_audio_ini.setEnabled(False)
+        self.b_audio_ini.clicked.connect(
+            lambda: self._quadra_extrems_ui("inici"))
+        self.b_audio_fi = QPushButton("Ajusta final WAV")
+        self.b_audio_fi.setObjectName("secundari")
+        self.b_audio_fi.setToolTip(
+            "Obre «Quadra els extrems» pel FINAL: protegeix l'últim temps "
+            "fort i ajusta la cua o els aplaudiments a compassos sencers.")
+        self.b_audio_fi.setEnabled(False)
+        self.b_audio_fi.clicked.connect(
+            lambda: self._quadra_extrems_ui("final"))
         self.b_marker_compas = QPushButton("＋ Marcador")
         self.b_marker_compas.setObjectName("secundari")
         self.b_marker_compas.setIcon(icones.ico("map-pin", 16))
@@ -354,6 +373,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         barra.setObjectName("barra_principal")
         barra.setMovable(False)
         barra.addWidget(self.b_guia)
+        barra.addWidget(self.b_audio_ini)
+        barra.addWidget(self.b_audio_fi)
         barra.addWidget(self.b_marker)
         barra.addWidget(self.b_marker_compas)
         barra.addSeparator()

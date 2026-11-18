@@ -178,6 +178,29 @@ class InfoBoxMixin:
                 ("Canviar d'eina del timeline (intel·ligent ⇄ marc)",
                  self._drecera_info("global.eina")),
             ]),
+            ("Ajustar l'inici de la WAV", [
+                ("Botó «Ajusta inici WAV» de la barra: obri el diàleg només "
+                 "per l'inici", ""),
+                ("Marca «On comença la cançó (temps 1)»: on entra el compàs 1 "
+                 "després de la intro o els aplaudiments", ""),
+                ("Tria quants compassos hi ha abans: conserva el so i afig "
+                 "silenci, retalla el sobrant, 1 compàs o directe al temps 1",
+                 ""),
+                ("En aplicar, crea un marcador «Inici» al temps 1", ""),
+                ("La previsualització diu els segons i mostres que es toquen; "
+                 "l'original no es modifica", ""),
+            ]),
+            ("Ajustar el final de la WAV", [
+                ("Botó «Ajusta final WAV» de la barra: obri el diàleg només "
+                 "pel final", ""),
+                ("Marca l'«Últim temps fort que no vols tallar»: el retall no "
+                 "passarà per davant", ""),
+                ("Tria quants compassos tindrà l'últim tram: conserva la cua "
+                 "i afig silenci o retalla el sobrant", ""),
+                ("En aplicar, crea un marcador «Final» al final de la WAV", ""),
+                ("«Deixa K compassos després del fort» manté eixa cua; tot es "
+                 "pot desfer amb Ctrl+Z", ""),
+            ]),
             ("Tecla Esc (cancel·lar)", [
                 ("Rang en curs (rectangle) → l'anul·la",
                  self._drecera_info("timeline.esc", "Esc")),

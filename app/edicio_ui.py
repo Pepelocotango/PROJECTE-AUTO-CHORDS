@@ -31,7 +31,7 @@ class EdicioMixin:
             return False
         return vr.executa_edicio("duplica")
 
-    def _quadra_extrems_ui(self):
+    def _quadra_extrems_ui(self, mode="ambdos"):
         """Obre el diàleg que quadra inici/final de la WAV a compassos sencers."""
         vr = getattr(self, "visor_ref", None)
         if vr is None or not getattr(vr, "audio", None):
@@ -42,7 +42,7 @@ class EdicioMixin:
             dlg = dialegs.DialegQuadratura(
                 self, durada=float(vr.audio["durada"]),
                 sr=int(vr.audio["sr"]), pos=float(vr.pos),
-                trams=vr.tempo_trams)
+                trams=vr.tempo_trams, mode=mode)
             if dlg.exec_() != QDialog.Accepted:
                 return False
             pla = dlg.plan()

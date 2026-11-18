@@ -2393,9 +2393,17 @@ class EsquemaUiDocTests(unittest.TestCase):
         texts = [b.text()
                  for b in self.w.barra_principal.findChildren(QPushButton)]
         self.assertIn("Guia ràpida", texts)
+        self.assertIn("Ajusta inici WAV", texts)
+        self.assertIn("Ajusta final WAV", texts)
         self.assertIn("BPM · compàs", texts)
         self.assertLess(texts.index("Guia ràpida"),
+                        texts.index("Ajusta inici WAV"))
+        self.assertLess(texts.index("Ajusta inici WAV"),
+                        texts.index("Ajusta final WAV"))
+        self.assertLess(texts.index("Ajusta final WAV"),
                         texts.index("BPM · compàs"))
+        self.assertFalse(self.w.b_audio_ini.isEnabled())
+        self.assertFalse(self.w.b_audio_fi.isEnabled())
         # des del 21-10 el botó obri la GUIA (només informació); el treball
         # es fa amb marcadors en viu. Sense WAV el botó està desactivat.
         self.assertIsNotNone(getattr(self.w, "b_guia", None))
@@ -2587,10 +2595,23 @@ class TestInfoBoxConsells(unittest.TestCase):
         self.assertTrue(panells[0][0].startswith("Eina del timeline"))
         titols = [t for t, _p in panells]
         for esperat in ("Seleccionar clips", "Duplicar un clip", "Loop A-B",
-                        "Copiar, retallar i enganxar"):
+                        "Copiar, retallar i enganxar",
+                        "Ajustar l'inici de la WAV",
+                        "Ajustar el final de la WAV"):
             self.assertIn(esperat, titols)
         for t, parells in panells:
             self.assertLessEqual(len(parells), 5, f"«{t}» massa llarga")
+        w.close()
+
+    def test_botons_quadratura_obren_el_mode_correcte(self):
+        w = _info_box_consells___finestra()
+        with patch.object(dialegs, "DialegQuadratura") as dlg:
+            dlg.return_value.exec_.return_value = QW.QDialog.Rejected
+            w.b_audio_ini.click()
+            self.assertEqual(dlg.call_args.kwargs.get("mode"), "inici")
+            dlg.reset_mock()
+            w.b_audio_fi.click()
+            self.assertEqual(dlg.call_args.kwargs.get("mode"), "final")
         w.close()
 
     def test_dreceres_configurables_es_reflecteixen_al_rotatori(self):
@@ -4239,7 +4260,9 @@ class TestEdicioAudioVisor(unittest.TestCase):
             bytes0 = f.read()
         self.v.aplica_quadratura_extrems(pla)
         self.assertAlmostEqual(self.v.audio["durada"], 8.0, 9)
-        self.assertEqual(self.v.marcadors, [2.0, 7.0])
+        self.assertEqual(self.v.marcadors, [2.0, 7.0, 8.0])
+        self.assertEqual(self.v.marcador_tipus[2.0], "inici")
+        self.assertEqual(self.v.marcador_tipus[8.0], "final")
         self.assertEqual(self.v.pos, 4.0)
         self.assertEqual((self.v.loop_a, self.v.loop_b), (2.0, 7.0))
         self.assertEqual(len(self.v._undo_stack), 1)
@@ -4258,7 +4281,10 @@ class TestEdicioAudioVisor(unittest.TestCase):
         self.v.redo()
         with open(self.wav, "rb") as f:
             self.assertEqual(f.read(), bytes1)
-        self.assertEqual(self.v.marcadors, [2.0, 7.0])
+        self.assertEqual(self.v.marcadors, [2.0, 7.0, 8.0])
+        tipus_csv = pipeline.llegeix_marcadors_tipus(self.sortida)
+        self.assertEqual(tipus_csv[2.0], "inici")
+        self.assertEqual(tipus_csv[8.0], "final")
         for ruta in ("acords.csv", "estructura_ABC.csv", "mapa_tempo.csv"):
             self.assertTrue(os.path.isfile(os.path.join(self.sortida, ruta)))
         desti = os.path.join(self.td, "export")
@@ -4275,6 +4301,23 @@ class TestEdicioAudioVisor(unittest.TestCase):
                   encoding="utf-8") as f:
             mapa = f.read()
         self.assertIn(",8.000000,", mapa)
+
+    def test_quadratura_invalida_el_pcm_de_reproduccio(self):
+        from app import audio_edit, mapa_tempo
+        trams = [mapa_tempo.TramMapa(0.0, 8.0, 120.0, "normal", "4/4")]
+        pla = audio_edit.planifica_extrems(
+            8.0, 1000, trams, t_temps1=1.0, n_ini=1,
+            aplica_inici=True, aplica_final=False)
+        abans = self.v._mono_bytes()
+        self.assertEqual(len(abans), 8 * 1000 * 2)
+        self.v.aplica_quadratura_extrems(pla)
+        nou = self.v._mono_bytes()
+        self.assertEqual(len(nou), 9 * 1000 * 2)
+        self.assertEqual(nou[:2 * 1000], bytes(2 * 1000))
+        self.v.undo()
+        restaurat = self.v._mono_bytes()
+        self.assertEqual(len(restaurat), 8 * 1000 * 2)
+        self.assertEqual(restaurat, abans)
 
     def test_quadratura_fallada_no_muta_ni_deixa_undo(self):
         from app import audio_edit, mapa_tempo
@@ -4319,6 +4362,13 @@ class TestEdicioAudioVisor(unittest.TestCase):
             d.g_fi.setChecked(False)
             self.assertFalse(
                 d.botons.button(QDialogButtonBox.Ok).isEnabled())
+        finally:
+            d.close()
+        d = DialegQuadratura(
+            None, durada=8.0, sr=1000, pos=1.0, trams=trams, mode="final")
+        try:
+            self.assertFalse(d.g_ini.isChecked())
+            self.assertTrue(d.g_fi.isChecked())
         finally:
             d.close()
 
@@ -6575,6 +6625,19 @@ class TestAncoratgesFinestra(unittest.TestCase):
             os.path.join(self.td, "estructura_ABC.csv")))
 
     # -- velocitat de reproducció (0,5–3×, to mantingut) ------------------
+    def test_mono_bytes_reutilitza_el_mono_de_la_forma_d_ona(self):
+        """El primer play no ha de repetir la conversió estereo→mono."""
+        vr = self.w.visor_ref
+        vr._mono_cache = None
+        esperat = vr.audio["mono"].tobytes()
+        raw = vr.audio["raw"]
+        try:
+            vr.audio["raw"] = b""       # si el tornara a llegir, fallaria
+            self.assertEqual(vr._mono_bytes(), esperat)
+        finally:
+            vr.audio["raw"] = raw
+            vr._mono_cache = None
+
     def test_velocitat_1x_es_el_buffer_de_sempre(self):
         """A 1× no es renderitza res: es fa servir el PCM del visor."""
         vr = self.w.visor_ref

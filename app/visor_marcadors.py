@@ -261,7 +261,8 @@ class MarcadorsMixin:
         marques = M.afegeix(abans, t, self._durada_wav())
         if marques == abans:
             return False
-        tipus = tipus if tipus in ("marcador", "compas", "seccio") else "marcador"
+        tipus = (tipus if tipus in ("marcador", "compas", "seccio",
+                                    "inici", "final") else "marcador")
         self._undo_marca()
         self.marcadors = marques
         self.marcador_tipus[round(float(t), 6)] = tipus
@@ -302,7 +303,8 @@ class MarcadorsMixin:
 
     def converteix_marcador(self, t, tipus_nou):
         """Converteix el marcador més pròxim a `t` al tipus indicat."""
-        tipus_nou = tipus_nou if tipus_nou in ("compas", "seccio") else "seccio"
+        tipus_nou = (tipus_nou if tipus_nou in ("compas", "seccio",
+                                                "inici", "final") else "seccio")
         mi = self._marcador_a(t)
         if mi is None:
             return False
@@ -352,7 +354,7 @@ class MarcadorsMixin:
                 tipus[round(nou, 6)] = vell_t
         else:
             nou_t = str(item.text()).strip()
-            if nou_t not in ("marcador", "compas", "seccio"):
+            if nou_t not in ("marcador", "compas", "seccio", "inici", "final"):
                 self._pinta_marcadors()
                 return
             tipus[round(vell, 6)] = nou_t

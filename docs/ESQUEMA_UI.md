@@ -52,6 +52,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | ⓪ | `Finestra` | finestra principal | `QMainWindow` |
 | — | `self.b_marker` · `self.b_marker_compas` | **＋ Temps+Secció** (icona `compass`, tecla `+`): parteix **tempo i estructura** al cursor, sense crear cap marcador. **＋ Marcador** (icona `map-pin`, tecla `M`): crea només un marcador independent; no talla res. Sense WAV, desactivats | `QPushButton` |
 | — | `self.b_guia` | **Guia ràpida**: obri `DialegGuiaRapida` (informació, no toca el model). Els talls es fan amb `＋` / `Enter` / `0`; `M` afig marcadors independents. Sense WAV, desactivat | `QPushButton` |
+| — | `self.b_audio_ini` · `self.b_audio_fi` | **Ajusta inici WAV** · **Ajusta final WAV**: obrin `DialegQuadratura` ja enfocat a l'inici o al final. No apliquen res sense confirmar. Sense WAV, desactivats | `QPushButton` |
 | — | `self.b_exec` | **Analitza** (F5) | `QPushButton` (`#principal`) |
 | — | `self.b_analitza_beats` | **Beats/BPM** (icona `target`): obri **Analitza beats, downbeats i BPM** (F7) | `QPushButton` |
 | — | `self.b_desfer` · `self.b_refer` | **Desfer** · **Refer** (icones `undo-2` / `redo-2`) | `QPushButton` |
@@ -79,7 +80,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 | Barra | Contingut |
 |-------|-----------|
-| **Treball** (barra 1, fila 1) | **Guia ràpida** → **＋ Temps+Secció** → **＋ Marcador** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → **Analitza** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`). Obrir i exportar viuen al menú **Fitxer** |
+| **Treball** (barra 1, fila 1) | **Guia ràpida** → **Ajusta inici WAV** · **Ajusta final WAV** → **＋ Temps+Secció** → **＋ Marcador** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → **Analitza** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`). Obrir i exportar viuen al menú **Fitxer** |
 | **Temps** (barra 1, fila 2) | **TAP** · **BPM intern** (negres/minut) · **BPM del clip** en la seua unitat de pols (p. ex. `80` en `6/8` amb `negra amb punt`) · **Compàs** del clip (p. ex. `6/8`), tot **només lectura**. L'edició del BPM i del Compàs és a la **franja Editor**; en canviar només el compàs, per defecte es conserva el **BPM visible** (Cas B); la unitat de pols es deriva del compàs i es pot canviar al diàleg del clip. **×2/÷2** viu al **menú contextual del clip de tempo** |
 | **Transport** (fila 3) | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup]** · **[Quantitza]** · **[BPM…]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
@@ -115,10 +116,9 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
   (cua, *fade-out* o aplaudiments) a **N compassos sencers**. L'inici usa per
   defecte el BPM/compàs del primer tram (es pot canviar al diàleg); el final
   usa sempre els de l'últim tram.
-- Marca el **temps 1 real** i, opcionalment, el **darrer temps fort** que no es
-  pot tallar. Presets: conservar-ho tot completant per excés (`ceil`), retallar
-  la fracció sobrant (`floor`), 1 compàs, directe al temps 1 (`N=0`) i valor
-  manual. Al final, `K` compassos després del fort.
+- Els botons **Ajusta inici WAV** i **Ajusta final WAV** de la barra **Treball**
+  obrin el mateix diàleg amb només la part corresponent activada.
+- Marca **«On comença la cançó (temps 1)»** i, opcionalment, **«Últim temps fort que no vols tallar»**. Presets clars: **Conserva el so i afig silenci**, **Retalla el tros sobrant**, **Deixa 1 compàs d'introducció** i **Comença directament al temps 1**; al final, **Conserva tota la cua i afig silenci**, **Retalla la cua sobrant** i **Deixa K compassos després del fort**.
 - La previsualització mostra segons i **mostres** afegides/retallades, la nova
   durada i els compassos/BPM resultants abans d'aplicar.
 - L'original no es toca: s'edita només la còpia de treball. L'operació és **atòmica** (WAV + acords + seccions + mapa + marcadors + CSVs) i un sol `Ctrl+Z`/`Ctrl+Y`.
@@ -305,7 +305,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | ⑪ | `self.llista_ab` | **llista de seccions (ABC)** | `QListWidget` |
 | ⑫ | `ed_gran` · `ed_nom` · `ed_fam` · `ed_agr` · `ed_n` · `ed_rol_lbl` · `ed_ini` · `ed_cb` · `ed_aplica` · `ed_bpm_aplica` · `ed_compas_aplica` · `ed_n_aplica` · `ed_agr_aplica` | **franja Editor** (acord/secció: nom/família/inici; **tempo: BPM + compàs + agrupació + N + rol derivat + Ini (c) + Fi (c)**, amb **Aplica** propi al costat de BPM, Compàs, Agrupació i N per aplicar només eixa variable; els compassos irregulars mostren suggeriments d'agrupació) | `QLabel`/`QLineEdit`/`QPushButton` |
 | ⑭ | `self.llista_tempo` | **llista de clips de tempo/compàs** (`Inici (s)` · `Fi (s)` · `BPM` · `Compàs`; compàs del rubato, p. ex. `R 4/4`) | `QTableWidget` |
-| ⑮ | `self.llista_marcadors` | **llista de marcadors independents** (`Temps (s)` · `Tipus`): doble-clic edita, menú contextual elimina; no està lligada al tempo ni a l'estructura. Les quatre llistes ⑩⑪⑭⑮ comparteixen **una sola fila** | `QTableWidget` |
+| ⑮ | `self.llista_marcadors` | **llista de marcadors independents** (`Temps (s)` · `Tipus`): tipus `marcador`, `compas`, `seccio`, `inici` o `final`; doble-clic edita, menú contextual elimina; no està lligada al tempo ni a l'estructura. Les quatre llistes ⑩⑪⑭⑮ comparteixen **una sola fila** | `QTableWidget` |
 | ⑬ | `self.lliscador` · `self.temps` · `b_mut` · `volum` · `etiqueta` | **lliscador + estatus** | `QSlider`/`QLabel` |
 
 > 🥁 **El transport principal** (`b_play`, `b_stop`, `b_menys`, `b_mes`, `b_A`,

@@ -1092,10 +1092,17 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             if os.path.exists(temporal):
                 os.unlink(temporal)
         self.audio = nou_audio
+        self._invalida_cache_audio()
         self._audio_snapshot_current = ruta
         return True
 
+    def _invalida_cache_audio(self):
+        """El PCM de reproducció ha de reconstruir-se si canvia la WAV."""
+        self._mono_cache = None
+        self._vel_cache = {}
+
     def _refresca_ui_audio(self):
+        self._invalida_cache_audio()
         self.timeline.set_audio(self.audio)
         self.timeline.set_data(self.acords, self.seccions)
         self.timeline.set_marcadors(self.marcadors)
@@ -1121,7 +1128,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             model["seccions"], model["bpm"], self.log,
             lliure=not self.tempo_fix, bpb=model["bpb"], mapa=mapa)
         pipeline.desa_tempo_map(carpeta, model["trams"])
-        if pipeline.desa_marcadors(carpeta, model["marcadors"]) is None:
+        tipus = dict(model.get("marcador_tipus") or {})
+        marques = [
+            (m, tipus.get(round(float(m), 6), "seccio"))
+            for m in (model["marcadors"] or ())]
+        if pipeline.desa_marcadors(carpeta, marques) is None:
             raise OSError("no s'han pogut desar els marcadors")
         return ("acords.csv", "estructura_ABC.csv",
                 pipeline.NOM_MAPA_TEMPO, pipeline.NOM_MARCADORS)
@@ -1164,6 +1175,36 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                     f"{', '.join(errors_restauracio)}") from error
             raise
 
+    def _marca_extrems_quadratura(self, tr, pla):
+        """Afig «Inici»/«Final» i conserva els tipus dels marcadors existents."""
+        from . import marcadors as M
+        durada = float(tr["durada"])
+        delta = float(pla.get("delta_ini", 0.0)) if pla.get("aplica_inici") else 0.0
+        tipus = {}
+        for t, tip in (self.marcador_tipus or {}).items():
+            nt = float(t) + delta
+            if 0.0 <= nt <= durada:
+                tipus[round(nt, 6)] = tip
+        tr["marcadors"] = M.normalitza_marcadors(tr.get("marcadors"), durada)
+        for t in tr["marcadors"]:
+            tipus.setdefault(round(float(t), 6),
+                             self.marcador_tipus.get(round(float(t), 6),
+                                                     "seccio"))
+        extrems = []
+        if pla.get("aplica_inici"):
+            extrems.append((float(pla.get("target_ini", 0.0)), "inici"))
+        if pla.get("aplica_final"):
+            extrems.append((float(pla.get("target_fi", durada)), "final"))
+        for pos, tip in extrems:
+            pos = round(max(0.0, min(pos, durada)), 6)
+            abans = list(tr["marcadors"])
+            tr["marcadors"] = M.afegeix(abans, pos, durada)
+            if tr["marcadors"]:
+                mes = min(tr["marcadors"], key=lambda x: abs(float(x) - pos))
+                if abs(float(mes) - pos) <= M.SEPARACIO_MIN:
+                    tipus[round(float(mes), 6)] = tip
+        tr["marcador_tipus"] = tipus
+
     def _executa_audio_model(self, tr, escriu_audio, etiqueta):
         """Publica WAV + model com una sola operació atòmica i un sol undo."""
         sr = int(self.audio["sr"])
@@ -1204,6 +1245,10 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                     self.bpb = tr["bpb"]
                     self.beat_type = tr["beat_type"]
                     self.marcadors = tr["marcadors"]
+                    self.marcador_tipus = dict(
+                        tr.get("marcador_tipus")
+                        or {round(float(m), 6): "seccio"
+                            for m in self.marcadors})
                     self._refresca_ui_audio()
                     self._publica_model_audio(model_tmp, noms, wav_temporal)
                 except Exception:
@@ -1213,6 +1258,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                     self.tempo_trams = copy.deepcopy(
                         temps_antic["tempo_trams"])
                     self.marcadors = list(temps_antic["marcadors"])
+                    self.marcador_tipus = dict(
+                        temps_antic.get("marcador_tipus") or {})
                     for k in ("bpm", "bpb", "beat_type",
                               "tempo_fix", "loop_a", "loop_b", "loop_on"):
                         setattr(self, k, temps_antic[k])
@@ -1272,6 +1319,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 self.acords, self.seccions, self.tempo_trams, self.marcadors,
                 durada, pla, pos=self.pos, loop_a=self.loop_a,
                 loop_b=self.loop_b, loop_on=self.loop_on)
+            self._marca_extrems_quadratura(tr, pla)
             self._posa_transport_del_tram0(tr)
             self._executa_audio_model(
                 tr,
@@ -1302,8 +1350,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.timeline.set_data(self.acords, self.seccions)
         self._aplica_temps(temps)
         if audio_meta and audio_meta[0]:
+            tipus = dict(getattr(self, "marcador_tipus", {}) or {})
+            marques = [(m, tipus.get(round(float(m), 6), "seccio"))
+                       for m in (self.marcadors or ())]
             ruta_marcadors = pipeline.desa_marcadors(
-                self._carpeta_acords(), self.marcadors)
+                self._carpeta_acords(), marques)
             if ruta_marcadors is None:
                 self.log("undo d'àudio: no s'han pogut desar els marcadors")
         if audio_meta and audio_meta[2]:
@@ -1533,11 +1584,16 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         """
         if getattr(self, "_mono_cache", None) is not None:
             return self._mono_cache
-        mono = np.frombuffer(self.audio["raw"], dtype=np.int16)
-        ch = self.audio["canals"]
-        if ch > 1:
-            mono = mono.reshape(-1, ch).mean(axis=1).astype(np.int16)
-        self._mono_cache = mono.tobytes()
+        # `llegeix_wav` ja ha calculat la mescla mono (i la fa servir la
+        # forma d'ona). Reutilitzar-la evita repetir la conversió estereo→mono
+        # en el primer play: eixa feina retardava l'àudio respecte del cursor.
+        mono = self.audio.get("mono")
+        if mono is None:
+            mono = np.frombuffer(self.audio["raw"], dtype=np.int16)
+            ch = self.audio["canals"]
+            if ch > 1:
+                mono = mono.reshape(-1, ch).mean(axis=1).astype(np.int16)
+        self._mono_cache = np.asarray(mono, dtype=np.int16).tobytes()
         return self._mono_cache
 
     # transports

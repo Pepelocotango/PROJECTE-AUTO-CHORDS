@@ -927,6 +927,10 @@ class MarcadorsLayer(QGraphicsObject):
                 color = "#4da6e8"
             elif tipus == "marcador":
                 color = "#e8c04a"
+            elif tipus == "inici":
+                color = "#7bd88f"
+            elif tipus == "final":
+                color = "#ff9a6b"
             else:
                 color = MARCADOR_COLOR
             x = self._x_offset + (t - self._view_left) * self._pps
@@ -939,3 +943,8 @@ class MarcadorsLayer(QGraphicsObject):
             painter.setPen(Qt.NoPen)
             painter.drawPolygon(QPolygonF([
                 QPointF(x, 0), QPointF(x + 7, 0), QPointF(x, 8)]))
+            if tipus in ("inici", "final"):
+                painter.setPen(QPen(QColor(color), 1))
+                painter.setFont(QFont("Sans Serif", 8, QFont.Bold))
+                painter.drawText(QPointF(x + 9, 11),
+                                 "Inici" if tipus == "inici" else "Final")

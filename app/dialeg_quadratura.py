@@ -22,7 +22,7 @@ class DialegQuadratura(GeometriaMixin, QDialog):
     """
 
     def __init__(self, parent=None, durada=0.0, sr=44100, pos=0.0,
-                 trams=None):
+                 trams=None, mode="ambdos"):
         super().__init__(parent)
         self.setWindowTitle("Quadra els extrems de la WAV")
         self.setMinimumWidth(760)
@@ -38,14 +38,14 @@ class DialegQuadratura(GeometriaMixin, QDialog):
 
         lay = QVBoxLayout(self)
         intro = QLabel(
-            "Marca on cau el <b>temps 1 real</b> de la cançó (després de la "
-            "introducció, el silenci o els aplaudiments) i, si cal, on és el "
-            "<b>darrer temps fort</b> que no vols tallar. L'app ajusta només "
-            "la còpia de treball; l'àudio original no es toca.")
+            "Ajusta només la <b>còpia de treball</b> (l'àudio original no es "
+            "toca). Marca on entra la cançó i l'app afig o retalla el silenci "
+            "necessari perquè l'inici o el final queden en compassos sencers.")
         intro.setWordWrap(True)
         lay.addWidget(intro)
 
-        self.g_ini = QGroupBox("Inici: compassos sencers abans del temps 1")
+        self.g_ini = QGroupBox(
+            "Inici: quants compassos hi ha abans que comence la cançó?")
         self.g_ini.setCheckable(True)
         self.g_ini.setChecked(True)
         f_ini = QFormLayout(self.g_ini)
@@ -56,7 +56,7 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         self.sp_t1.setValue(self._t1_defecte)
         self.sp_t1.setToolTip(
             "Temps real on entra el compàs 1 de la cançó, dins la WAV actual.")
-        f_ini.addRow("Temps 1 real:", self.sp_t1)
+        f_ini.addRow("On comença la cançó (temps 1):", self.sp_t1)
 
         self.sp_bpm_ini = QDoubleSpinBox()
         self.sp_bpm_ini.setRange(limits.BPM_MIN, limits.BPM_MAX)
@@ -66,29 +66,40 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         self.ed_compas_ini = CampText(
             f"{int(self._primer.num)}/{int(self._primer.den)}")
         self.ed_compas_ini.setToolTip("Compàs d'entrada de l'introducció.")
-        f_ini.addRow("BPM d'entrada:", self.sp_bpm_ini)
-        f_ini.addRow("Compàs d'entrada:", self.ed_compas_ini)
+        f_ini.addRow("BPM de l'inici:", self.sp_bpm_ini)
+        f_ini.addRow("Compàs de l'inici:", self.ed_compas_ini)
 
         self.sp_n_ini = QSpinBox()
         self.sp_n_ini.setRange(0, 9999)
         self.sp_n_ini.setValue(self._n_ini("ceil"))
         self.sp_n_ini.setToolTip(
             "Compàs 1..N seran introducció; N=0 talla fins al temps 1.")
-        f_ini.addRow("N compassos inicials:", self.sp_n_ini)
+        f_ini.addRow("Quants compassos abans de la cançó:", self.sp_n_ini)
 
         fila = QHBoxLayout()
-        for text, mode in (
-                ("Conserva-ho tot (ceil)", "ceil"),
-                ("Retalla el sobrant (floor)", "floor"),
-                ("1 compàs", "un"),
-                ("Directe al temps 1 (0)", "zero")):
+        for text, tip, mode_preset in (
+                ("Conserva el so i afig silenci",
+                 "Conserva tot el so anterior i afig només el silenci que "
+                 "falta fins al pròxim compàs sencer.", "ceil"),
+                ("Retalla el tros sobrant",
+                 "Retalla només la part que sobra del compàs anterior; no "
+                 "afig silenci.", "floor"),
+                ("Deixa 1 compàs d'introducció",
+                 "Força exactament un compàs abans del temps 1; afig o "
+                 "retalla el que calga.", "un"),
+                ("Comença directament al temps 1",
+                 "Retalla tot el que hi ha abans del temps 1; no deixa cap "
+                 "compàs d'introducció.", "zero")):
             b = QPushButton(text)
-            b.clicked.connect(lambda _=False, m=mode: self._posa_n_ini(m))
+            b.setToolTip(tip)
+            b.clicked.connect(
+                lambda _=False, m=mode_preset: self._posa_n_ini(m))
             fila.addWidget(b)
         f_ini.addRow("", fila)
         lay.addWidget(self.g_ini)
 
-        self.g_fi = QGroupBox("Final: cua i aplaudiments en compassos sencers")
+        self.g_fi = QGroupBox(
+            "Final: quants compassos de cua o aplaudiments vols conservar?")
         self.g_fi.setCheckable(True)
         self.g_fi.setChecked(False)
         f_fi = QFormLayout(self.g_fi)
@@ -103,7 +114,7 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         self.sp_fort.setSuffix(" s")
         self.sp_fort.setValue(max(0.0, self.durada - 0.001))
         self.sp_fort.setEnabled(False)
-        f_fi.addRow("Temps fort final:", self.sp_fort)
+        f_fi.addRow("Últim temps fort que no vols tallar:", self.sp_fort)
 
         self.sp_bpm_fi = QDoubleSpinBox()
         self.sp_bpm_fi.setRange(limits.BPM_MIN, limits.BPM_MAX)
@@ -118,21 +129,27 @@ class DialegQuadratura(GeometriaMixin, QDialog):
             "BPM de l'últim tram (es canvia al mapa abans de quadrar).")
         self.ed_compas_fi.setToolTip(
             "Compàs de l'últim tram (es canvia al mapa abans de quadrar).")
-        f_fi.addRow("BPM final:", self.sp_bpm_fi)
-        f_fi.addRow("Compàs final:", self.ed_compas_fi)
+        f_fi.addRow("BPM de l'últim tram:", self.sp_bpm_fi)
+        f_fi.addRow("Compàs de l'últim tram:", self.ed_compas_fi)
 
         self.sp_n_fi = QSpinBox()
         self.sp_n_fi.setRange(1, 9999)
         self.sp_n_fi.setValue(self._n_fi("ceil"))
         self.sp_n_fi.setToolTip(
             "Compassos de l'últim tram. Sempre respecta la protecció del fort.")
-        f_fi.addRow("N compassos finals:", self.sp_n_fi)
+        f_fi.addRow("Quants compassos tindrà l'últim tram:", self.sp_n_fi)
 
         fila = QHBoxLayout()
-        b = QPushButton("Conserva tota la cua (ceil)")
+        b = QPushButton("Conserva tota la cua i afig silenci")
+        b.setToolTip(
+            "Manté tots els aplaudiments o la cua i afig només el silenci "
+            "que falta per al pròxim compàs sencer.")
         b.clicked.connect(lambda: self._posa_n_fi("ceil"))
         fila.addWidget(b)
-        b = QPushButton("Retalla el sobrant (floor)")
+        b = QPushButton("Retalla la cua sobrant")
+        b.setToolTip(
+            "Retalla només la fracció de compàs que sobra al final, sense "
+            "passar-se del temps fort protegit.")
         b.clicked.connect(lambda: self._posa_n_fi("floor"))
         fila.addWidget(b)
         f_fi.addRow("", fila)
@@ -142,7 +159,7 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         self.sp_k.setRange(0, 999)
         self.sp_k.setValue(1)
         self.sp_k.setToolTip("Compassos de cua després del temps fort final.")
-        b = QPushButton("K compassos després del fort")
+        b = QPushButton("Deixa K compassos després del fort")
         b.clicked.connect(self._posa_k)
         fila.addWidget(self.sp_k)
         fila.addWidget(b)
@@ -161,7 +178,7 @@ class DialegQuadratura(GeometriaMixin, QDialog):
 
         self.botons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.botons.button(QDialogButtonBox.Ok).setText("Aplica")
+        self.botons.button(QDialogButtonBox.Ok).setText("Aplica l'ajust")
         self.botons.button(QDialogButtonBox.Cancel).setText("Cancel·la")
         self.botons.accepted.connect(self.accept)
         self.botons.rejected.connect(self.reject)
@@ -177,6 +194,13 @@ class DialegQuadratura(GeometriaMixin, QDialog):
                 w.toggled.connect(self._actualitza)
             else:
                 w.toggled.connect(self._fort_canviat)
+        mode = str(mode or "ambdos").strip().lower()
+        if mode == "inici":
+            self.g_ini.setChecked(True)
+            self.g_fi.setChecked(False)
+        elif mode == "final":
+            self.g_ini.setChecked(False)
+            self.g_fi.setChecked(True)
         self._actualitza()
 
     def _bpm(self, edit, spin):

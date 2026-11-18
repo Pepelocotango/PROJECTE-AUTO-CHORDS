@@ -5,6 +5,36 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.3] — 2026-11-16
 
+### Afegit — marcadors «Inici» i «Final» de la quadratura (2026-11-18)
+- En aplicar la quadratura, s’afig un marcador **`inici`** al temps 1 i/o un
+  marcador **`final`** al final de la WAV, amb text visible al timeline.
+- Els marcadors poden caure als extrems `0` i `durada` (només la quadratura els
+  crea ahí; `M` continua refusant els extrems).
+- Els tipus de marcador es conserven en desar, en desfer/refer i en editar
+  l’àudio.
+
+### Canviat — accessos directes i textos clars per quadrar extrems (2026-11-18)
+- Afegits a la barra **Treball** els botons **Ajusta inici WAV** i **Ajusta
+  final WAV**; obrin `DialegQuadratura` amb només la part corresponent activa.
+- El rotatori de la caixa d’informació explica estos botons i les opcions del
+  diàleg (temps 1, temps fort, presets i previsualització).
+- Textos del diàleg reescrits per a músics: «On comença la cançó», «Quants
+  compassos abans de la cançó», «Conserva el so i afig silenci», «Retalla el
+  tros sobrant», «Conserva tota la cua i afig silenci», etc.
+
+### Corregit — primer play desincronitzat amb l’ona (2026-11-18)
+- La primera reproducció tardava perquè `_mono_bytes()` tornava a convertir
+  estèreo→mono; el rellotge del cursor ja havia començat a córrer. Ara reutilitza
+  la mescla mono que `llegeix_wav()` ja calcula per a la forma d’ona.
+- El primer play queda alineat; els següents ja ho estaven perquè el buffer
+  quedava cachejat.
+
+### Corregit — reproducció desincronitzada després d’editar la WAV (2026-11-18)
+- En editar o desfer una edició d’extrems, s’invalida el PCM mono cachejat i
+  els buffers de velocitat. Abans es continuava reproduint l’àudio anterior:
+  es veia el silenci nou a la representació, però no se sentia.
+- La invalidació també s’aplica en restaurar un snapshot d’undo.
+
 ### Afegit — quadratura guiada dels extrems a compassos sencers (2026-11-18)
 - Nou diàleg **`Edita ▸ Quadra els extrems de la WAV…`** per ajustar el bloc
   inicial (silenci, anacrusi, introducció o aplaudiments) i el final (cua o
