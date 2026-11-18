@@ -4447,14 +4447,10 @@ class TestEdicioAudioVisor(unittest.TestCase):
                   mapa_tempo.TramMapa(3.529412, 258.856471, 68.617874,
                                       "normal", "4/4")]
         d = DialegQuadratura(
-            None, durada=258.856471, sr=44100, pos=100.0,
+            None, durada=258.856471, sr=44100, pos=258.856471 - 6.0,
             trams=trams2, mode="final")
         try:
-            self.assertEqual(d.sp_n_fi.value(), 1)
-            self.assertEqual(d.plan()["n_cua"], 1)
-            self.assertEqual(d.plan()["n_fi"], 73)
-            d.sp_fort.setValue(258.856471 - 6.0)
-            d.sp_n_fi.setValue(2)
+            self.assertEqual(d.sp_n_fi.value(), 2)
             self.assertEqual(d.plan()["n_cua"], 2)
             self.assertAlmostEqual(
                 d.plan()["target_fi"],

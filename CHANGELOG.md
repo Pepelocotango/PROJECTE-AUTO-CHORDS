@@ -39,6 +39,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - El `+` torna a recalcular sempre els dos costats amb la referència del clip,
   com a `v0.9.1`, en lloc de provar primer una partició sense recalcul.
 
+### Canviat — el tall final és el cursor i la cua es calcula allà (2026-11-18)
+- En obrir `Ajusta final WAV`, el punt de tall per defecte és el cursor.
+- La previsualització diu quants segons queden fins al final, quants compassos
+  hi caben amb el compàs/BPM triats i quin serà el `N` final.
+- L’usuari pot canviar lliurement `N`, `BPM` i compàs de la cua; el tall no es
+  mou. En aplicar, la cançó s’allarga o s’escurça pel final.
+- Els clips de tempo que quedaven després del tall s’eliminen; només queda el
+  tram normal anterior + el tram final de cua.
+
+### Canviat — el tall final deixa només el clip final (2026-11-18)
+- En aplicar `Ajusta final WAV`, a partir del punt de tall es descarten els
+  clips d’acords i seccions que hi havia (es retallen els que creuen el punt)
+  i només queda un clip final buit (`N`) fins al nou final de la WAV.
+- Es mantenen els trams de tempo: tram normal a l’esquerra + tram de cua.
+
 ### Canviat — el final es quadra com una cua independent (2026-11-18)
 - `Ajusta final WAV` ara demana **on s’acaba la música** i quants compassos
   de **cua** es volen. L’app talla l’últim tram exactament en eixe

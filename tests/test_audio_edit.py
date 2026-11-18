@@ -377,7 +377,13 @@ class TestQuadraturaExtrems(unittest.TestCase):
         self.assertAlmostEqual(tr["durada"], 14.0, 9)
         self.assertEqual([(t.ini, t.fi, t.n) for t in tr["trams"]],
                          [(0.0, 12.0, 6.0), (12.0, 14.0, 1.0)])
-        self.assertAlmostEqual(tr["acords"][-1].fi, 14.0, 9)
+        self.assertEqual(
+            [(a.ini, a.fi) for a in tr["acords"]],
+            [(0.0, 12.0), (12.0, 14.0)])
+        self.assertIn("N", str(tr["acords"][-1].payload))
+        self.assertEqual(
+            [(s[0], s[1]) for s in tr["seccions"]],
+            [(0.0, 12.0), (12.0, 14.0)])
 
     def test_model_final_ceil_conserva_bpm_i_tota_la_cua(self):
         trams = [(0.0, 20.0, self.bpm, 4, 4)]
@@ -423,6 +429,23 @@ class TestQuadraturaExtrems(unittest.TestCase):
         self.assertAlmostEqual(
             esquerra.bpm, 6 * 4 * 60.0 / 11.0, 9)
         self.assertEqual(cua.n, 1.0)
+
+    def test_model_final_talla_dins_d_un_tram_anterior_i_esborra_la_resta(self):
+        trams = [(0.0, 8.0, 120.0, 4, 4), (8.0, 16.0, 120.0, 4, 4)]
+        acords = [pipeline.Clip(0.0, 8.0, ("C", "0")),
+                  pipeline.Clip(8.0, 16.0, ("G", "0"))]
+        seccions = [(0.0, 8.0, "A", "A"), (8.0, 16.0, "B", "B")]
+        p = edita.planifica_extrems(
+            16.0, 1000, trams, aplica_inici=False, aplica_final=True,
+            t_final=10.0, n_fi=1)
+        tr = edita.transforma_model_extrems(
+            acords, seccions, trams, [], 16.0, p)
+        self.assertEqual([(t.ini, t.fi, t.n) for t in tr["trams"]],
+                         [(0.0, 8.0, 4.0), (8.0, 10.0, 1.0),
+                          (10.0, 12.0, 1.0)])
+        self.assertEqual([(a.ini, a.fi) for a in tr["acords"]],
+                         [(0.0, 8.0), (8.0, 10.0), (10.0, 12.0)])
+        self.assertIn("N", str(tr["acords"][-1].payload))
 
     def test_model_final_admet_bpm_i_compas_propis_de_la_cua(self):
         trams = [(0.0, 16.0, 120.0, 4, 4)]

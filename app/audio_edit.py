@@ -359,9 +359,9 @@ def planifica_extrems(durada, sr, trams, t_temps1=None, n_ini=0,
             # Mode cua: `t_final` és on s'acaba la música i `n_fi` són els
             # compassos de cua que es volen conservar.
             tf = float(t_final)
-            if not (float(ult.ini) - _TOL_PLA <= tf <= durada + _TOL_PLA):
+            if not (0.0 <= tf <= durada + _TOL_PLA):
                 raise ValueError(
-                    "El final de la música ha de ser dins l'últim tram")
+                    "El punt de tall final ha de ser dins la WAV")
             bpm_tail = ult.bpm if bpm_fi is None else bpm_fi
             num_tail = ult.num if num_fi is None else num_fi
             den_tail = ult.den if den_fi is None else den_fi
@@ -607,44 +607,63 @@ def transforma_model_extrems(acords, seccions, trams, marcadors, durada, pla,
             trams = [intro] + trams
 
     mid = durada + delta_ini
-    if pla["aplica_final"] and abs(delta_fi) > _TOL_PLA:
-        if delta_fi < 0:
-            clips_acord = [pipeline.Clip(c.ini, min(c.fi, nou_final), c.payload)
-                           for c in clips_acord if c.ini < nou_final]
-            clips_seccio = [(s[0], min(s[1], nou_final)) + tuple(s[2:])
-                            for s in clips_seccio if s[0] < nou_final]
-        else:
+    if pla["aplica_final"]:
+        punt = pla.get("target_final_point")
+        if punt is not None:
+            # El tall del final és una frontera de model: tot el que hi ha
+            # després es descarta i només queda el clip final (N) fins al nou
+            # final de la WAV.
+            punt = float(punt)
+            clips_acord = [
+                pipeline.Clip(c.ini, min(c.fi, punt), c.payload)
+                for c in clips_acord if c.ini < punt - _TOL_PLA]
             clips_acord.append(pipeline.Clip(
-                mid, nou_final, pipeline.FORAT_ACORD))
-            if clips_seccio:
-                ult = clips_seccio[-1]
-                clips_seccio[-1] = (ult[0], nou_final) + tuple(ult[2:])
+                punt, nou_final, pipeline.FORAT_ACORD))
+            clips_seccio = [
+                (s[0], min(s[1], punt)) + tuple(s[2:])
+                for s in clips_seccio if s[0] < punt - _TOL_PLA]
+            clips_seccio.append(
+                (punt, nou_final) + tuple(
+                    (clips_seccio[-1][2:] if clips_seccio
+                     else (pipeline.FORAT_SECCIO,
+                           pipeline.FORAT_SECCIO))))
+        elif abs(delta_fi) > _TOL_PLA:
+            if delta_fi < 0:
+                clips_acord = [
+                    pipeline.Clip(c.ini, min(c.fi, nou_final), c.payload)
+                    for c in clips_acord if c.ini < nou_final]
+                clips_seccio = [
+                    (s[0], min(s[1], nou_final)) + tuple(s[2:])
+                    for s in clips_seccio if s[0] < nou_final]
+            else:
+                clips_acord.append(pipeline.Clip(
+                    mid, nou_final, pipeline.FORAT_ACORD))
+                if clips_seccio:
+                    ult = clips_seccio[-1]
+                    clips_seccio[-1] = (ult[0], nou_final) + tuple(ult[2:])
         marcadors = [t for t in marcadors if t <= nou_final]
         nova_pos = min(nova_pos, nou_final)
         if nou_loop_a is not None and nou_loop_b is not None:
             nou_loop_a = min(float(nou_loop_a), nou_final)
             nou_loop_b = min(float(nou_loop_b), nou_final)
         target_fi = float(pla["target_fi"])
-        if trams and pla.get("target_final_point") is not None:
-            punt = float(pla["target_final_point"])
-            ult = trams[-1]
-            if punt > float(ult.ini) + _TOL_PLA:
-                esquerra = replace(ult, fi=punt, n=None)
-                dreta = replace(
-                    ult, ini=punt, fi=target_fi,
-                    bpm=float(pla.get("bpm_fi", ult.bpm)),
-                    compassos=f"{int(pla.get('num_fi', ult.num))}/"
-                              f"{int(pla.get('den_fi', ult.den))}",
-                    n=int(pla.get("n_cua", 1)))
-                trams[-1] = esquerra
-                trams.append(dreta)
-            else:
-                trams[-1] = replace(
-                    ult, fi=target_fi,
-                    bpm=float(pla.get("bpm_fi", ult.bpm)),
-                    compassos=f"{int(pla.get('num_fi', ult.num))}/"
-                              f"{int(pla.get('den_fi', ult.den))}",
-                    n=int(pla.get("n_cua", 1)))
+        if trams and punt is not None:
+            punt = float(punt)
+            abans = []
+            for t in trams:
+                if float(t.ini) >= punt - _TOL_PLA:
+                    continue
+                if float(t.fi) > punt + _TOL_PLA:
+                    abans.append(replace(t, fi=punt, n=None))
+                else:
+                    abans.append(t)
+            dreta = mapa_tempo.TramMapa(
+                punt, target_fi,
+                float(pla.get("bpm_fi", 120.0)), "normal",
+                f"{int(pla.get('num_fi', 4))}/{int(pla.get('den_fi', 4))}",
+                "", int(pla.get("n_cua", 1)),
+                pla.get("beat_unit_fi"))
+            trams = abans + [dreta]
         elif trams and float(trams[-1].ini) < target_fi - _TOL_PLA:
             trams[-1] = replace(trams[-1], fi=target_fi,
                                 n=int(pla["n_fi"]))
@@ -652,7 +671,7 @@ def transforma_model_extrems(acords, seccions, trams, marcadors, durada, pla,
             trams = [t for t in trams if float(t.ini) < nou_final - _TOL_PLA]
             trams[-1] = replace(trams[-1], fi=nou_final,
                                 n=int(pla["n_fi"]))
-    elif not pla["aplica_final"]:
+    else:
         target_fi = nou_final
         if trams:
             trams[-1] = replace(trams[-1], fi=nou_final)

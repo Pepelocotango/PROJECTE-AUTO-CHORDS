@@ -35,9 +35,8 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         self._primer = self.trams[0]
         self._ultim = self.trams[-1]
         self._t1_defecte = max(0.0, min(float(pos), self.durada))
-        compas_fi = 4 * 60.0 / float(self._ultim.bpm)
         self._t_final_defecte = max(
-            float(self._ultim.ini), self.durada - compas_fi)
+            0.0, min(float(pos), self.durada))
         self._n_fi_actual = audio_edit.calcula_n_cua(
             self.durada, self._t_final_defecte, self._ultim.bpm,
             self._ultim.num, self._ultim.den, "ceil")
@@ -110,8 +109,7 @@ class DialegQuadratura(GeometriaMixin, QDialog):
         self.g_fi.setChecked(False)
         f_fi = QFormLayout(self.g_fi)
         self.sp_fort = QDoubleSpinBox()
-        self.sp_fort.setRange(float(self._ultim.ini),
-                              max(float(self._ultim.ini), self.durada))
+        self.sp_fort.setRange(0.0, max(0.0, self.durada))
         self.sp_fort.setDecimals(6)
         self.sp_fort.setSuffix(" s")
         self.sp_fort.setValue(self._t_final_defecte)
@@ -266,10 +264,15 @@ class DialegQuadratura(GeometriaMixin, QDialog):
                     f"{pla['bpm_fi']:g} BPM ({pla['num_fi']}/"
                     f"{pla['den_fi']}).")
                 if pla.get("target_final_point") is not None:
+                    tall = float(pla["target_final_point"])
+                    rest = max(0.0, self.durada - tall)
                     text.append(
-                        f"La cua començarà a "
-                        f"{pla['target_final_point']:.3f} s; el tram normal "
-                        "anterior es recalcula a compassos sencers.")
+                        f"Queden {rest:.3f} s des del tall. Amb "
+                        f"{pla['num_fi']}/{pla['den_fi']} a "
+                        f"{pla['bpm_fi']:g} BPM hi caben "
+                        f"{rest / (float(pla['num_fi']) * 4.0 / float(pla['den_fi']) * 60.0 / pla['bpm_fi']):.3f} "
+                        f"compassos; N final objectiu "
+                        f"{pla.get('n_cua', pla['n_fi'])}.")
             tr = audio_edit.transforma_model_extrems(
                 [pipeline.Clip(0.0, self.durada, ("C", "0"))],
                 [(0.0, self.durada, "A", "A")], self.trams, [],
