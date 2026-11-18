@@ -278,13 +278,14 @@ def detecta_bpm_detallat(wav_path, log, bpm_min=None, bpm_max=None,
 def detecta_tempo_per_trams(wav_path, log, durada, num=4, den=4,
                             cada_compassos=4, tolerancia=0.02,
                             bpm_min=None, bpm_max=None, preferit=None,
-                            tightness=30.0, bpm=None, offset=None):
+                            tightness=30.0, bpm=None, beat_unit=None):
     """Mapa de tempo complet: beats seguits + un BPM cada N compassos.
 
     Motor intern (numpy), pensat per a cançons amb **tempo variable**: cada
     bloc de `cada_compassos` compassos mesura el seu propi BPM i la frontera
-    cau sempre en una línia de compàs. Retorna `(trams, offset, bpm_base)`;
-    el mapa ja compleix el contracte de compassos enters.
+    cau sempre en una línia de compàs. Retorna `(trams, bpm_base)`; el mapa
+    ja compleix el contracte de compassos enters. L'alineació del primer beat
+    és interna i no forma part del model.
     """
     kw = {}
     if bpm_min is not None:
@@ -293,10 +294,10 @@ def detecta_tempo_per_trams(wav_path, log, durada, num=4, den=4,
         kw["bpm_max"] = bpm_max
     if preferit is not None:
         kw["preferit"] = preferit
-    trams, offset, base = tempo.mapa_tempo_automatic(
+    trams, _origen, base = tempo.mapa_tempo_automatic(
         wav_path, log, durada=durada, num=num, den=den,
         cada_compassos=cada_compassos, tolerancia=tolerancia,
-        tightness=tightness, bpm=bpm, offset=offset, **kw)
+        tightness=tightness, bpm=bpm, beat_unit=beat_unit, **kw)
     if trams:
         # Contracte §13.4: el detector pot deixar la cua amb N fraccionari
         # (l'últim tram s'allarga fins a la durada); s'arrodoneix N i es
@@ -310,8 +311,8 @@ def detecta_tempo_per_trams(wav_path, log, durada, num=4, den=4,
                 trams, durada)
         except ValueError as e:  # noqa: BLE001
             log(f"mapa: el resultat no complix el contracte ({e})")
-            return [], 0.0, base
-    return trams, offset, base
+            return [], base
+    return trams, base
 
 
 def _bpm_consens(wav_path, log, bpm_min, bpm_max, preferit):

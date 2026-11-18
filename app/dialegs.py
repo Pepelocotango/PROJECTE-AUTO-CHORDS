@@ -10,7 +10,6 @@ from .opcions import (  # noqa: F401
 from .dialeg_opcions import DialegOpcions  # noqa: F401
 from .dialeg_troba import DialegTrobaReemplaca  # noqa: F401
 from .dialeg_quantitza import DialegQuantitza  # noqa: F401
-from .dialeg_tempo_mapa import DialegTempoMapa  # noqa: F401
 from .dialeg_tram_tempo import DialegTramTempo  # noqa: F401
 from .dialeg_tempo_per_trams import DialegTempoPerTrams  # noqa: F401
 from .dialeg_analitza_bpm import DialegAnalitzaBPM  # noqa: F401
@@ -18,7 +17,7 @@ from .dialeg_tall_qm import DialegTallQM  # noqa: F401
 
 __all__ = [
     "DialegOpcions", "DialegTrobaReemplaca", "DialegQuantitza",
-    "DialegTempoMapa", "DialegTramTempo", "DialegTempoPerTrams",
+    "DialegTramTempo", "DialegTempoPerTrams",
     "DialegAnalitzaBPM", "DialegTallQM",
     "DEFECTES", "BEATS_DEFECTES", "FITXER_OPCIONS", "NOMS_CA", "AJUDA_CA",
     "VALORS_CA", "carrega_opcions", "desa_opcions",

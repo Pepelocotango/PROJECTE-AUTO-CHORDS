@@ -505,6 +505,34 @@ class ProjecteMixin:
             return "sobreescriu"
         return None
 
+    def _pregunta_carpeta_antiga(self, carpeta):
+        """Carpeta antiga sense projecte carregable: esborrar o cancel·lar.
+
+        No hi ha migració ni retrocompatibilitat. En mode no interactiu
+        s'escull sempre el camí no destructiu.
+        """
+        if not self._interactiu():
+            self.registra(
+                "carpeta antiga sense projecte compatible: no es migra "
+                "(cal confirmació per esborrar-la)")
+            return None
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("Carpeta antiga")
+        box.setText("Aquesta carpeta és d'un format antic i no es pot "
+                    "carregar.")
+        box.setInformativeText(
+            f"{carpeta}\n\n"
+            "No hi ha retrocompatibilitat. Si continues, la carpeta va a la "
+            "PAPERERA i es crea un projecte nou amb aquest àudio.\n"
+            "Si cancel·les, no es toca res.")
+        b_esb = box.addButton("Esborra i crea nou",
+                              QMessageBox.DestructiveRole)
+        box.addButton("Cancel·la", QMessageBox.RejectRole)
+        box.setDefaultButton(box.buttons()[-1])
+        box.exec_()
+        return "esborra" if box.clickedButton() is b_esb else None
+
     def _obri_des_de_wav(self, ruta):
         """Obre un àudio: reutilitza el projecte si ja n'hi ha, o en crea un."""
         if not self._pot_descartar():
@@ -534,6 +562,21 @@ class ProjecteMixin:
             self.registra(f"Projecte anterior a la paperera: {desti}")
 
         if not desti:
+            antiga = projecte.carpeta_autochords(ruta)
+            if antiga and os.listdir(antiga):
+                if self._pregunta_carpeta_antiga(antiga) != "esborra":
+                    return
+                if not plataforma.a_la_paperera(antiga):
+                    self.avisa(
+                        "Auto Chords",
+                        "No s'ha pogut enviar la carpeta antiga a la "
+                        "paperera, així que no es crea res.\n"
+                        f"Carpeta: {antiga}")
+                    return
+                desti = antiga
+                self.registra(f"Carpeta antiga a la paperera: {desti}")
+
+        if not desti:
             # Pregunta ON crear el projecte (per defecte, al costat del WAV).
             base = os.path.splitext(os.path.basename(ruta))[0]
             desti = self._demana_ubicacio_projecte(
@@ -548,12 +591,6 @@ class ProjecteMixin:
         self.registra("WAV nou → tempo inicial 120 BPM · 4/4 "
                       "(detecta'l o posa'l a mà)")
         bpm, bpb, compas = 120.0, 4, "4/4"
-        # Migració: si hi ha una AUTOCHORDS_<nom>/ vella al costat del WAV,
-        # n'importem els CSVs (i, si el destí és la mateixa carpeta, in situ).
-        antic = projecte.carpeta_autochords(ruta)
-        ca = os.path.join(antic, projecte.NOM_CSV_ACORDS) if antic else None
-        sa = os.path.join(antic, projecte.NOM_CSV_ESTRUCTURA) if antic else None
-        in_situ = bool(antic) and os.path.abspath(desti) == os.path.abspath(antic)
         if not ffmpeg.es_wav_pcm16(ruta):
             self.registra(f"Convertint «{os.path.basename(ruta)}» a WAV "
                           "dins del projecte (ffmpeg)…")
@@ -565,9 +602,7 @@ class ProjecteMixin:
                 bpm=bpm, bpb=bpb,
                 fix=self.tempo_fix.isChecked(),
                 opcions=self.opcions, compas=compas,
-                csv_acords=ca if ca and os.path.isfile(ca) else None,
-                csv_estructura=sa if sa and os.path.isfile(sa) else None,
-                permet_existent=in_situ, log=self.registra)
+                log=self.registra)
         except (projecte.ProjecteError, OSError) as e:
             self.logger.exception("No s'ha pogut crear el projecte des de %s",
                                   ruta)

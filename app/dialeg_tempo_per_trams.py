@@ -1,9 +1,10 @@
 """Diàleg de detecció de tempo per trams."""
 from PyQt5.QtWidgets import (
-    QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QLabel,
-    QSpinBox, QVBoxLayout,
+    QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
+    QLabel, QSpinBox, QVBoxLayout,
 )
 
+from app import bpm_unit
 from app.finestres import GeometriaMixin
 
 class DialegTempoPerTrams(GeometriaMixin, QDialog):
@@ -15,7 +16,7 @@ class DialegTempoPerTrams(GeometriaMixin, QDialog):
     """
 
     def __init__(self, parent, durada=0.0, num=4, den=4, cada=4,
-                 tolerancia=2):
+                 tolerancia=2, unit=None):
         super().__init__(parent)
         self.setWindowTitle("Detecta el tempo per trams")
         self.setMinimumWidth(460)
@@ -45,6 +46,22 @@ class DialegTempoPerTrams(GeometriaMixin, QDialog):
             "Els trams veïns amb menys diferència de BPM es fusionen en un de "
             "sol (evita mapes de mil trams per vibrato o micro-deriva).")
         form.addRow("Fusiona si el BPM difereix menys de:", self.sp_tol)
+        self.cb_unitat = QComboBox()
+        self.cb_unitat.setToolTip(
+            "Figura que segueix el detector de beats. En 2/2 pot ser blanca "
+            "o negra; en 3/8, corxera o negra amb punt. Si no ho tens clar, "
+            "deixa la unitat per defecte del compàs.")
+        for _clau, _et in bpm_unit.opcions():
+            if bpm_unit.encaixa_en_compas(_clau, int(num), int(den)):
+                self.cb_unitat.addItem(_et, _clau)
+        _unit = bpm_unit.normalitza(
+            unit or bpm_unit.unitat_per_defecte(int(num), int(den), ""))
+        _idx = self.cb_unitat.findData(_unit)
+        if _idx < 0:
+            _idx = 0
+        if _idx >= 0:
+            self.cb_unitat.setCurrentIndex(_idx)
+        form.addRow("Pols que segueix el detector:", self.cb_unitat)
         lay.addLayout(form)
         self.lb_info = QLabel(
             f"Durada del tema: {float(durada):.2f}s · compàs {int(num)}/"
@@ -64,3 +81,7 @@ class DialegTempoPerTrams(GeometriaMixin, QDialog):
         """`(cada_compassos, tolerancia_fraccio)`."""
         return (int(self.sp_cada.value()),
                 float(self.sp_tol.value()) / 100.0)
+
+    def unitat(self):
+        """Unitat del beat que segueix el detector."""
+        return self.cb_unitat.currentData() or bpm_unit.DEFECTE

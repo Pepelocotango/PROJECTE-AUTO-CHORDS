@@ -25,17 +25,157 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - El rètol de mode del regle mostra el compàs del mapa (`6/8`, `12/8`…) i no
   un transport `4/4` alié.
 
+### Corregit — BPM decimal a la guia HTML (2026-11-17)
+- La capçalera de `guia_acords.html` ja no trunca el BPM amb `%d`: `82.5`
+  es conserva com a `82.5 BPM`, i `llegeix_bpm_bpb_de_guia` el recupera
+  sense perdre decimals.
+
+### Corregit — validació de BPM, N i referència de fronteres (2026-11-17)
+- `TramMapa` rebutja BPM fora de **30–350**.
+- `normalitza_trams_map` valida `N` enter de manera **estricta**; si no hi ha
+  cap combinació vàlida, rebutja el mapa amb error clar en lloc de deixar un
+  `N` fraccionari.
+- `_recalcula_costats` prova els candidats alternatius quan el millor no
+  encaixa amb la `beat_unit`, abans de conservar el valor anterior.
+- `mou_frontera_retempo(..., ref_base=None)` usa el clip a l’esquerra del
+  seleccionat com a referència, segons §13.5.
+- Les còpies trencades del visor amb BPM 0 es reparen amb el transport; els
+  mapes desats invàlids es rebutgen.
+
+### Corregit — acords.csv en notació canònica (2026-11-17)
+- `desa_acords_csv` normalitza cada xifrat amb `saneja_nom_acord` abans
+  d’escriure (`Am` → `A-`, `Cmaj7` → `CMaj7`). Així el CSV i els WAVs
+  exportats coincidixen amb MusicXML.
+- Quan l’anàlisi no aplica cap opció de neteja, el CSV també es reescriu en
+  notació canònica; la caché crua de l’anàlisi es conserva sense tocar.
+
+### Corregit — exportació d’estructura amb mapa viu i denominador (2026-11-17)
+- `exporta_total` passa `mapa_viu` i `den` a `desa_abc_csv` i `fer_abc`, tant
+  si l’estructura ve del model viu com de `segments.csv`.
+- Així `estructura_ABC.csv` calcula `compas_ini`/`compas_fi` amb el mapa i el
+  compàs correctes; abans podia assumir tempo constant i `4/4`.
+
+### Corregit — graella pulse i metrònom ancorats al compàs (2026-11-17)
+- La graella `pulse` comença cada tram a l’inici del seu compàs, no en
+  múltiples globals de `q=0`. Així un mapa `5/8 → 6/8` no desplaça les línies
+  de negra amb punt 0,5 negres.
+- El metrònom amb unitat explícita recorre els compassos del mapa i hi ancorà
+  els clics; els accents de compàs i grup no canvien.
+
+### Corregit — conversions C.B ↔ segons segons el compàs (2026-11-17)
+- Les conversions `C.B ↔ segons` ara usen el **denominador** del compàs:
+  `6/8` → cada temps és una corxera; `2/2` → una blanca. Abans s'assumia
+  sempre una negra, i `6/8`/`2/2` donaven el doble o la meitat.
+- Eliminat el truncament a **60 s** de `temps_ui._cb_a_secs`.
+- Unificades les conversions a `app/temps_ui.py`; el fallback de `visor.py`
+  i `_fmt_compas` les usen també.
+
+### Canviat — el detector de beats rep la unitat de pols (2026-11-17)
+- `beats_a_trams` ara rep `beat_unit` i calcula quants beats detectats hi ha
+  per compàs (`beats_per_bar = bq / factor(beat_unit)`), en lloc d'assumir que
+  tots els beats són negres.
+- `mapa_tempo_automatic`, `detecta_tempo_per_trams` i `FilTempoTrams`
+  transporten eixa unitat; per defecte s'usa la del compàs.
+- El diàleg **«Detecta el tempo per trams»** té un selector **«Pols que segueix
+  el detector»** filtrat per les unitats que encaixen en el compàs. En `3/8`
+  es pot triar corxera (3 per compàs) o negra amb punt (1 per compàs); en
+  `2/2`, blanca (2) o negra (4).
+- El BPM intern continua calculant-se en negres/minut.
+
+### Corregit — beats_a_trams en compassos 2/2 i blocs enters (2026-11-17)
+- Els blocs de `beats_a_trams` ja no assumixen que cada beat siga un temps del
+  denominador: trien el primer nombre de compassos que equival a un nombre
+  enter de negres. Així `2/2` amb `cada_compassos=1` dona 120 BPM i no 240,
+  i `3/8` continua agrupant dos compassos per bloc.
+- El fallback de pocs beats usa el BPM dels beats seguits, no el compàs.
+
+### Corregit — canvi de compàs amb Enter/Aplica a l'Editor (2026-11-17)
+- Canviar el compàs amb el botó general **Aplica** o **Enter** ja aplica el
+  **Cas B**: conserva el BPM visible, deriva la unitat nova (si era
+  automàtica) i recalcula el BPM intern. Abans es quedava la unitat vella i el
+  BPM intern del camp, i no coincidia amb el botó petit de **Compàs**.
+- Si la unitat era explícita, es respecta.
+
+### Canviat — diàleg del tram reduït a informació + recalcul fix (2026-11-17)
+- El diàleg de doble clic d’un tram de tempo ja no edita el mapa: mostra la
+  **informació del clip** i un únic bloc **Recalcul fix** amb N, compàs, BPM,
+  la casella **N mana** i el botó **Recalcula**.
+- Eliminats del diàleg el **recalcul mòbil**, les opcions (Beats QM, Segons,
+  Unitat, Canviar compàs, N fix, En segons, Silencia avís), el Beat/TAP, el
+  canvi d’unitat, «Mantenir la pulsació», les alternatives, «Escolta la
+  proposta», «Ajusta» i OK/Cancel. El recalcul s’aplica amb **un sol desfer**;
+  el botó final és **Tanca**.
+- El recalcul mòbil continua a la franja Editor i arrossegant les fronteres.
+- El recalcul fix respecta els camps N i compàs; usa els beats QM si n’hi ha.
+
+### Corregit — metrònom en compassos x/16 (2026-11-17)
+- El camí de mapa variable o amb agrupació explícita recorre la graella a
+  **1/16** (0,25 negres) en lloc de 0,5. Així `4/16`, `6/16`, `7/16` i
+  `12/16` fan tots els clics del denominador; abans se'n perdia la meitat.
+- Afegit un test de regressió per a `4/16`, `6/16` i `7/16` amb agrupació
+  explícita.
+
+### Canviat — carpetes antigues: esborrar i crear nou, sense migració (2026-11-17)
+- En obrir un WAV amb una carpeta `AUTOCHORDS_<nom>/` que no conté un
+  projecte carregable, l'app avisa que **no hi ha retrocompatibilitat** i
+  oferix **enviar la carpeta a la paperera i crear un projecte nou** o
+  cancel·lar. No s'importen CSVs ni es migra cap dada.
+- Eliminada `importa_autochords()` i la lògica de migració *in situ*.
+- `Projecte.crea()` ja no accepta carpetes amb contingut ni paràmetres de
+  migració; sempre crea un projecte nou net.
+
+### Tret — format intern de tupla completa de 8 camps (2026-11-17)
+- Eliminades `a_tupla_completa` i `a_tuples_complets`: no s'usaven al flux de
+  l'app i no es vol mantindre compatibilitat amb formats interns antics.
+- `des_de_tupla` accepta només `TramMapa`/objectes amb atributs o tuples de
+  **5 camps** `(ini, fi, bpm, num, den)`; les tuples més llargues es rebutgen
+  amb un error clar. Les metadades viatgen en `TramMapa` o en columnes de CSV.
+
+### Corregit — N enter i metadades a l'edició d'àudio (2026-11-17)
+- Retallar o afegir silenci als extrems ja no deixa cap tram de tempo amb `N`
+  fraccionari: les fronteres temporals es mantenen i el BPM es recalcula
+  perquè `N` siga enter (si no hi ha cap BPM vàlid, l'operació es rebutja).
+- L'edició d'àudio conserva `tipus`, `agrupacio` i `beat_unit`; si el retall
+  elimina el primer tram, el nou primer tram pren la unitat del tram que
+  sobreviu, no la del tram esborrat.
+
+### Corregit — metadades en recalcul fix, duplicar i eliminar tempo (2026-11-17)
+- El «Recalcul fix», duplicar una selecció i eliminar trams de tempo ja no
+  perden `tipus` (rubato), `agrupacio` ni `beat_unit` en passar per funcions
+  que retornen 5 tuples; el resultat es reenganxa amb el mapa original.
+- En duplicar un bloc de tempo, la còpia hereta les metadades del bloc
+  d'origen desplaçades a la seua posició.
+- El `N` continua derivant-se de la durada i el compàs resultants; no es copia
+  cegament el valor antic.
+
+### Tret — diàleg global «Mapa de tempo i compàs» (2026-11-17)
+- Eliminat `DialegTempoMapa` i l'acció «Analitza ▸ Mapa de tempo i compàs…».
+  L'edició del mapa continua pel visor: tram seleccionat + «Ajusta», afegir
+  tram de tempo/compàs, partir/eliminar clips i arrossegar fronteres.
+
+### Corregit — Desfer als quatre botons «Aplica» de l'Editor (2026-11-17)
+- Els botons individuals `BPM`, `Compàs`, `Agrupació` i `N` obrin una operació
+  d'undo pròpia; cada clic es pot desfer amb `Ctrl+Z`.
+- Si l'aplicació falla o no canvia res, no es crea cap pas d'undo ni queda cap
+  marca `_undo_pending` penjada.
+- Els camins de partir/fusionar acords i seccions, i les edicions de l'Editor
+  que poden fallar amb `ValueError`, tanquen sempre l'operació amb
+  `finally: _undo_commit()`; un error ja no bloqueja el Desfer següent.
+
 ### Canviat — agrupació explícita a l'Editor i purga d'offset (2026-11-17)
 - La franja Editor té un **Aplica** propi per a **Agrupació**; canviar-la només
   actualitza eixa variable i, si la unitat era automàtica, deriva la pols
   corresponent.
 - Suggeriments d'agrupació per als compassos irregulars (`5/8`, `7/8`, `8/8`,
   `10/8`, `11/8`, `5/4`, `7/4`); no s'imposa cap agrupació universal.
-- Tret l'**offset de tempo** de la UI, `TimelineView`, el pipeline de derivats,
-  l'exportació i la construcció de `TempoMap`: el compàs 1 sempre és a **0 s**.
-  Els helpers de detecció, metrònom forçat i la feina d'anàlisi encara tenen
-  paràmetres auxiliars que sempre reben 0; `tempo_map` i `audio_edit` ja no
-  tenen offset de compàs.
+- Tret l'**offset de tempo** del model, la UI, `TimelineView`, el pipeline de
+  derivats, l'exportació i la construcció de `TempoMap`: el compàs 1 sempre és
+  a **0 s**. També s'ha tret del detector per trams, `FilTempoTrams`, `Feina`
+  i l'avaluador; l'alineació del primer beat queda com a detall intern de la
+  detecció. `tempo_map` i `audio_edit` ja no tenen offset de compàs.
+- Corregida una crida latent amb `offset` a la neteja d'acords d'un rang A–B
+  quan el snap estava actiu; ara `_snap_a_graella` rep només els paràmetres
+  vigents.
 - Corregida la prova de MusicXML `test_canvi_de_compas`: els events van en
   negres i el mapa en segons; ara el canvi `4/4 → 3/4` s'exporta al compàs 3.
 - En canviar el compàs des de la franja Editor, l'agrupació passa al valor per

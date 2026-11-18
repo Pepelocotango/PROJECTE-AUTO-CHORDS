@@ -101,7 +101,7 @@ class TestAvaluacioTempo(unittest.TestCase):
                             avalua_tempo.pipeline,
                             "detecta_tempo_per_trams",
                             return_value=(
-                                [(0.0, 20.0, 120.0, 4, 4),], 0.0, 120.0)):
+                                [(0.0, 20.0, 120.0, 4, 4),], 120.0)):
                         fila = avalua_tempo.avalua_canço(anotacio)
             self.assertEqual(fila["dins_70ms_pct"], 100.0)
             self.assertIsNone(fila["beat_f"])
@@ -140,7 +140,7 @@ class TestAvaluacioTempo(unittest.TestCase):
                                 "detecta_tempo_per_trams",
                                 return_value=(
                                     [(0.0, 8.0, 120.0, 4, 4),],
-                                    0.0, 120.0)):
+                                    120.0)):
                             fila = avalua_tempo.avalua_canço(anotacio)
             self.assertEqual(fila["beat_f"], 1.0)
             self.assertEqual(fila["beat_error_mitja_ms"], 0.0)

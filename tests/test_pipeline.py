@@ -1031,6 +1031,17 @@ class TestDesatAtomic(unittest.TestCase):
         self.assertIn("2.00", self._llegeix("acords.csv"))
         self.assertEqual(self._residus(), [])
 
+    def test_acords_escriu_notacio_canonica(self):
+        ruta = os.path.join(self.td, "acords.csv")
+        pipeline.desa_acords_csv(
+            ruta, [pipeline.Clip(0.0, 2.0, ("Am",)),
+                   pipeline.Clip(2.0, 4.0, ("Cmaj7",))])
+        with open(ruta, encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn("A-", text)
+        self.assertIn("CMaj7", text)
+        self.assertNotIn("Am", text)
+
     def test_acords_error_enmig_conserva_la_versio_anterior(self):
         ruta = os.path.join(self.td, "acords.csv")
         pipeline.desa_acords_csv(
@@ -1323,6 +1334,48 @@ def _export(acords, total_s):
     return ca, wavs, r
 
 
+class TestExportEstructuraMapa(unittest.TestCase):
+    def test_estructura_export_usa_el_mapa_i_el_denominador(self):
+        td = tempfile.mkdtemp()
+        ca = os.path.join(td, "acords.csv")
+        out = os.path.join(td, "out")
+        trams = [mapa_tempo.TramMapa(
+            0.0, 3.0, 120.0, "normal", "6/8", "3+3", 2, "negra_punt")]
+        pipeline.exporta_total(
+            csv_ac=ca, csv_seg=None, sortida=out, bpm=120.0, bpb=6,
+            sr=44100, log=lambda *_a: None, tempo_fix=True,
+            amb_estructura=True, total_s=3.0,
+            acords=[(0.0, "C", "0")],
+            seccions=[(0.0, 1.5, "A", "A"), (1.5, 3.0, "B", "B")],
+            mapa_tempo=trams, den=8)
+        with open(os.path.join(out, "estructura_ABC.csv"),
+                  encoding="utf-8") as f:
+            rows = list(csv.reader(f))
+        self.assertEqual(rows[2][5], "2.1.1")
+        self.assertEqual(rows[2][6], "3.1.1")
+
+    def test_estructura_des_de_segments_tambe_usa_el_mapa(self):
+        td = tempfile.mkdtemp()
+        ca = os.path.join(td, "acords.csv")
+        seg = os.path.join(td, "segments.csv")
+        out = os.path.join(td, "out")
+        with open(seg, "w", encoding="utf-8") as f:
+            f.write("0.0,1.5,1,A\n1.5,1.5,2,B\n")
+        trams = [mapa_tempo.TramMapa(
+            0.0, 3.0, 120.0, "normal", "6/8", "3+3", 2, "negra_punt")]
+        pipeline.exporta_total(
+            csv_ac=ca, csv_seg=seg, sortida=out, bpm=120.0, bpb=6,
+            sr=44100, log=lambda *_a: None, tempo_fix=True,
+            amb_estructura=True, total_s=3.0,
+            acords=[(0.0, "C", "0")], seccions=None,
+            mapa_tempo=trams, den=8)
+        with open(os.path.join(out, "estructura_ABC.csv"),
+                  encoding="utf-8") as f:
+            rows = list(csv.reader(f))
+        self.assertEqual(rows[2][5], "2.1.1")
+        self.assertEqual(rows[2][6], "3.1.1")
+
+
 class TestExportLimits(unittest.TestCase):
     def test_tot_N_zero_wavs(self):
         _ca, wavs, r = _export([(0.0, "N", "0")], 5.0)
@@ -1351,13 +1404,14 @@ class TestExportLimits(unittest.TestCase):
         self.assertEqual(len(wavs), 1)
         self.assertIn("0000.000s_0003.000s", wavs[0])  # fi = durada de la WAV
 
-    def test_nom_wav_usa_style(self):
-        """DOCUMENTA: l'export estilitza el nom → pot diferir del CSV."""
+    def test_nom_wav_i_csv_comparteixen_notacio_canonica(self):
+        """El CSV i els WAVs han d'usar la mateixa notació canònica."""
         ca, wavs, r = _export([(0.0, "Am", "0"), (2.0, "Cmaj7", "2")], 4.0)
         self.assertTrue(any("A-.wav" in w for w in wavs),
                         f"l'export estilitza (Am→A-): {wavs}")
         with open(ca, encoding="utf-8") as f:
-            self.assertIn("Am", f.read())
+            self.assertIn("A-", f.read())
+            self.assertNotIn("Am", f.read())
 
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_export_neteja_estructura.py
@@ -2208,6 +2262,20 @@ class TestMetricaCompasCompost(unittest.TestCase):
         self.assertIn("80.000", html)
         self.assertIn("negra amb punt", html)
 
+    def test_guia_conserva_el_bpm_decimal_i_el_lector_el_recupera(self):
+        import tempfile
+        td = tempfile.mkdtemp()
+        ruta = os.path.join(td, "acords.csv")
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write("inici,fi,acord\n0.0,3.0,C\n")
+        guia = pipeline.genera_guia_html(
+            ruta, 82.5, 4, durada=3.0)
+        with open(guia, encoding="utf-8") as f:
+            html = f.read()
+        self.assertIn("82.5 BPM", html)
+        self.assertEqual(partitura.llegeix_bpm_bpb_de_guia(guia),
+                         (82.5, 4))
+
     def test_fallback_constant_6_8_te_3_negres_per_compas(self):
         # 6/8 a 120: un compàs = 3 negres = 1,5 s (no 6 negres = 3 s).
         from app.tempo_map import durada_compas
@@ -2808,7 +2876,6 @@ class ExportPipelineTests(unittest.TestCase):
         v.seccions = [(0.0, 2.0, "A", "A"), (2.0, 3.0, "B", "B")]
         v.bpm = 120.0
         v.bpb = 4
-        v.offset = 0.0
         v.tempo_fix = True
         v.audio = {"durada": 4.0}
         v.log = lambda msg: None
@@ -2834,9 +2901,9 @@ class ExportPipelineTests(unittest.TestCase):
         app.quit()
 
     def test_canviar_bpm_mentre_sona_no_talla_l_audio(self):
-        """Canviar BPM/compàs/offset amb l'àudio sonant NO ha de reiniciar-lo.
+        """Canviar BPM/compàs amb l'àudio sonant NO ha de reiniciar-lo.
 
-        El fil d'alimentació llig `bpm`/`bpb`/`offset` (i el mapa de tempo) a
+        El fil d'alimentació llig `bpm`/`bpb` (i el mapa de tempo) a
         cada tros, així que el metrònom segueix la graella nova a l'instant.
         Abans es reiniciava el reproductor i se sentia un micro-tall (mateix
         defecte que el commutador del metrònom; reportat per l'operador).
@@ -3614,6 +3681,24 @@ class MetronomTests(unittest.TestCase):
         for t in (0.25, 0.5, 1.0):
             i = int(t * self.SR)
             self.assertLess(self._freq(arr[i:i + n]), 1100, t)
+
+    def test_compassos_16_cliquen_tots_els_temps_amb_agrupacio(self):
+        """x/16 amb agrupació explícita no pot perdre la meitat dels clics."""
+        from app import metronom
+        from app.tempo_map import TempoMap
+        for num, agr in ((4, "2+2"), (6, "3+3"), (7, "7")):
+            with self.subTest(compas=f"{num}/16"):
+                mapa = TempoMap([
+                    mapa_tempo.TramMapa(
+                        0.0, 1.0, 120.0, "normal", f"{num}/16", agr)])
+                out = metronom.mescla_metronom(
+                    self._silenci(1.0), self.SR, 0.0, 120.0, num,
+                    volum=1.0, den=16, mapa=mapa)
+                onsets = self._onsets(self._a_array(out))
+                esperats = [k * 0.125 for k in range(8)]
+                self.assertEqual(len(onsets), len(esperats))
+                for obtingut, esperat in zip(onsets, esperats):
+                    self.assertAlmostEqual(obtingut, esperat, places=3)
 
     def test_6_4_per_defecte_clica_sis_negres_amb_accents_3_3(self):
         from app import metronom
@@ -4680,7 +4765,7 @@ class PostprocTests(unittest.TestCase):
     def test_feina_guarda_el_mapa_per_a_l_analisi(self):
         from app.feines import Feina
         mapa = object()
-        f = Feina("tema.wav", "/tmp", 120.0, 4, 0.0, False, mapa=mapa)
+        f = Feina("tema.wav", "/tmp", 120.0, 4, False, mapa=mapa)
         self.assertIs(f.mapa, mapa)
 
     def test_snap_a_graella_rang_sense_capcalera(self):
@@ -4757,7 +4842,7 @@ class PostprocTests(unittest.TestCase):
                 with open(dest, "w", encoding="utf-8") as f:
                     f.write("2.1,D\n4.0,E\n")
 
-            f = Feina(wav, d, 120.0, 4, 0.0, False,
+            f = Feina(wav, d, 120.0, 4, False,
                       opcions={"clean": {"snap": False,
                                          "fusiona_iguals": True}},
                       mapa=None, rang=(4.0, 8.0),
@@ -5939,7 +6024,7 @@ class Resolucio1_32IExportTests(unittest.TestCase):
         acords = [x for x in files if x["tipus"] == "acord"]
         estructura = [x for x in files if x["tipus"] == "estructura"]
         self.assertEqual([x["fitxer"] for x in acords],
-                         ["1-1-1_C.wav", "1-1-3_G.wav", "1-1-5_Am.wav"])
+                         ["1-1-1_C.wav", "1-1-3_G.wav", "1-1-5_A-.wav"])
         self.assertEqual([x["inici_s"] for x in acords],
                          ["0.000000", "0.123456", "0.260000"])
         self.assertEqual([x["fi_s"] for x in acords],

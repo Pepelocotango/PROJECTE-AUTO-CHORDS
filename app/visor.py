@@ -41,6 +41,8 @@ from . import graella, icones, pipeline, theme  # noqa: F401
 from . import acord_audio  # noqa: E402
 from . import mapa_tempo  # noqa: E402
 from . import tempo_map  # noqa: E402
+from .temps_ui import cb_a_secs as _cb_a_secs_ui  # noqa: E402
+from .temps_ui import secs_a_cb as _secs_a_cb_ui  # noqa: E402
 from .timeline import TimelineView  # noqa: E402
 
 # Configuració centralitzada per al directori temporal (configurable)
@@ -178,7 +180,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             self._carpeta_acords(), self._durada_wav())
         self.qm_beats = []
         # Avís de factor 1,5×/2/3 silenciat per a este tram en esta sessió.
-        self._factor_sospitos_silenciats = set()
         # Mode de snap que decidix quina graella valida els clips: amb
         # «qm_beats» mana QM; en qualsevol altre mode mana BPM/compàs.
         self.snap_on = True
@@ -660,15 +661,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             c, b, sub = mapa.pos(float(s))
             return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
         # Fallback constant (offset inclòs i compassos negatius/count-in).
-        beat_len = 60.0 / self.bpm
-        p = int(round((float(s) - 0.0)
-                      / beat_len * 8))
-        SB = max(1, int(self.bpb)) * 8
-        compas = p // SB + 1
-        dins = p % SB
-        beat = dins // 8 + 1
-        sub = dins % 8 + 1
-        return f"{compas}.{beat}" if sub == 1 else f"{compas}.{beat}.{sub}"
+        return _secs_a_cb_ui(s, self.bpm, self.bpb,
+                             getattr(self, "beat_type", 4))
 
 
 
@@ -2786,6 +2780,17 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 # Les fronteres heretades poden quedar a unes mil·lèsimes de
                 # la línia de compàs: s'imanten abans de rebutjar (21-10).
                 cand_tp = tempo_map.repara_fronteres(cand_tp, durada)
+                # `repara_fronteres` retorna 5 tuples. La còpia ha d'heretar
+                # les metadades del bloc d'origen desplaçades a la seua
+                # posició; la resta del mapa conserva les metadades actuals.
+                origen = [mapa_tempo.des_de_tupla(t)
+                          for t in (self.tempo_trams or [])[first:last + 1]]
+                font = [mapa_tempo.TramMapa(
+                    float(t.ini) - ini0 + fi0, float(t.fi) - ini0 + fi0,
+                    float(t.bpm), t.tipus, t.compassos, t.agrupacio,
+                    getattr(t, "n", None), t.beat_unit) for t in origen]
+                cand_tp = mapa_tempo.reenganxa_metadades(
+                    font + list(self.tempo_trams or []), cand_tp)
         except ValueError as e:
             self.log(f"duplica selecció: canvi invalid, no s'ha fet res ({e})")
             self.avis_editor(f"Duplica: {e}")
@@ -2854,6 +2859,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 # Les fronteres heretades poden quedar a mil·lèsimes de la
                 # graella: s'imanten abans de rebutjar (21-10).
                 cand_tp = tempo_map.repara_fronteres(trams, durada)
+                cand_tp = mapa_tempo.reenganxa_metadades(
+                    self.tempo_trams or [], cand_tp)
             except ValueError as e:
                 self.avis_editor(f"Elimina tempo: {e}")
                 return
@@ -3390,15 +3397,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 return "—"          # rubato: no hi ha compàs
             c, b, sub = mapa.pos(float(t))
             return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
-        beat = 60.0 / max(self.bpm, 1e-9)
-        bpb = max(1, int(self.bpb))
-        p = int(round(float(t) / beat * 8))
-        SB = bpb * 8
-        c = p // SB + 1
-        dins = p % SB
-        b = dins // 8 + 1
-        sub = dins % 8 + 1
-        return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
+        return _secs_a_cb_ui(t, self.bpm, self.bpb,
+                             getattr(self, "beat_type", 4))
 
     def _cb_a_secs(self, text):
         """compàs.temps[.fusa] → segons segons el MAPA de tempo vigent."""
@@ -3416,9 +3416,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 _bar_s, beat_s, _sub_s = mapa.durations(t)
                 t += (sub - 1) / 8.0 * beat_s
             return max(0.0, float(t))
-        beat = 60.0 / max(self.bpm, 1e-9)
-        n = (c - 1) * max(1, int(self.bpb)) + (b - 1) + (sub - 1) / 8.0
-        return max(0.0, n * beat)
+        return _cb_a_secs_ui(text, self.bpm, self.bpb,
+                             getattr(self, "beat_type", 4))
 
 
     def _ajusta_bpm_compas(self):
@@ -3575,7 +3574,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         except ValueError as e:
             self.log(f"partir: canvi invalid ({e})")
             return False
-        self._undo_commit()
+        finally:
+            self._undo_commit()
         if hasattr(self, "timeline"):
             self.timeline.set_data(self.acords, self.seccions)
         self._omple_llista_ac()
@@ -3930,7 +3930,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         except ValueError as e:
             self.log(f"partir: canvi invalid ({e})")
             return False
-        self._undo_commit()
+        finally:
+            self._undo_commit()
         self._sincronitza_vista()
         if hasattr(self, "llista_ab"):
             self._actualitza_llista_abc()
@@ -3984,7 +3985,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         except ValueError as e:
             self.log(f"fusiona acord: {e}")
             return False
-        self._undo_commit()
+        finally:
+            self._undo_commit()
         if hasattr(self, "timeline"):
             self.timeline.set_data(self.acords, self.seccions)
         self._omple_llista_ac()
@@ -4009,7 +4011,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         except ValueError as e:
             self.log(f"fusiona secció: {e}")
             return False
-        self._undo_commit()
+        finally:
+            self._undo_commit()
         if hasattr(self, "timeline"):
             self.timeline.set_data(self.acords, self.seccions)
         self._actualitza_llista_abc()

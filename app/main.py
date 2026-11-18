@@ -1043,29 +1043,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             return
         vr.converteix_normal(idx)
 
-    def _tempo_mapa_ui(self):
-        """Mapa de tempo i compàs: canvis de BPM/compàs al llarg del tema."""
-        vr = self.visor_ref
-        if vr is None:
-            self.avisa_info("Auto Chords", "Obre un tema primer.")
-            return
-        den0 = int(getattr(vr, "beat_type", 4) or 4)
-        trams = getattr(vr, "tempo_trams", None) or [
-            (0.0, vr._durada_wav(), float(vr.bpm), int(vr.bpb), den0)]
-        if any(getattr(t, "tipus", None) == "rubato" for t in trams):
-            self._missatge_info(
-                "Aquest mapa té rubatos; l'editor de trams arribarà en la "
-                "fase 3.2. Els rubatos es mostren al visor com a derivats.")
-            return
-        dlg = dialegs.DialegTempoMapa(self, trams, vr._durada_wav())
-        if dlg.exec_() != QDialog.Accepted:
-            return
-        if not vr.aplica_tempo_validat(dlg.trams(), "Mapa de tempo"):
-            self.avisa_info("Auto Chords", "El mapa no és vàlid.")
-            return
-        self._sincronitza_temps_del_visor()
-        self.registra(f"mapa de tempo/compàs: {len(vr.tempo_trams)} tros(s)")
-
     def detecta_tempo_mapa(self, avis=True):
         """Inferir el mapa de tempo a partir dels temps (beats) detectats.
 
@@ -1123,19 +1100,22 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         durada = vr._durada_wav()
         dlg = dialegs.DialegTempoPerTrams(
             self, durada=durada, num=int(vr.bpb),
-            den=int(getattr(vr, "beat_type", 4) or 4))
+            den=int(getattr(vr, "beat_type", 4) or 4),
+            unit=vr.unitat_objectiu())
         if dlg.exec_() != QDialog.Accepted:
             return
         cada, tol = dlg.valors()
+        beat_unit = dlg.unitat()
         self._atura_si_sona("detecció de tempo per trams")
         b = self.opcions.get("bpm", {})
         self.registra(f"Detectant el tempo per trams (1 BPM cada {cada} "
-                      f"compassos, fusió {tol * 100:.1f} %)…")
+                      f"compassos, pols {beat_unit}, "
+                      f"fusió {tol * 100:.1f} %)…")
         fil = FilTempoTrams(
             wav, durada, int(vr.bpb), int(getattr(vr, "beat_type", 4) or 4),
             cada, tol, bpm_min=b.get("min"), bpm_max=b.get("max"),
             preferit=(b.get("pref_min"), b.get("pref_max")),
-            offset=0.0, parent=self)
+            beat_unit=beat_unit, parent=self)
         fil.feta.connect(self._tempo_trams_fet)
         fil.missatge.connect(self.registra)
         fil.finished.connect(

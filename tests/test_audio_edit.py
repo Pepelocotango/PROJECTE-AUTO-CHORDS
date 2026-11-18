@@ -144,6 +144,66 @@ class TestTransformaModelAudio(unittest.TestCase):
         self.assertEqual((nou["marcadors"], nou["pos"]),
                          ([3.0, 7.0], 5.0))
 
+    def test_retall_inici_mante_n_enter_i_ajusta_bpm(self):
+        trams = [(0.0, 8.0, 120.0, 4, 4)]
+        nou = edita.transforma_model(
+            [pipeline.Clip(0.0, 8.0, ("C", "0"))],
+            [(0.0, 8.0, "A", "A")], trams, [], 8.0,
+            edita.RETALLA_INICI, 1.0)
+        tram = nou["trams"][0]
+        self.assertAlmostEqual(tram.fi, 7.0, places=6)
+        self.assertAlmostEqual(float(tram.n), round(float(tram.n)),
+                               places=9)
+        self.assertAlmostEqual(float(tram.bpm), 4 * 4 * 60.0 / 7.0,
+                               places=6)
+
+    def test_retall_inici_elimina_primer_tram_i_conserva_unitat(self):
+        from app import mapa_tempo
+        trams = [
+            mapa_tempo.TramMapa(
+                0.0, 5.0, 120.0, "normal", "6/8", "", None, "negra_punt"),
+            mapa_tempo.TramMapa(
+                5.0, 15.0, 120.0, "normal", "4/4", "", None, "negra")]
+        nou = edita.transforma_model(
+            [pipeline.Clip(0.0, 15.0, ("C", "0"))],
+            [(0.0, 15.0, "A", "A")], trams, [], 15.0,
+            edita.RETALLA_INICI, 6.0)
+        tram = nou["trams"][0]
+        self.assertEqual(tram.beat_unit, "negra")
+        self.assertAlmostEqual(float(tram.ini), 0.0, places=6)
+        self.assertAlmostEqual(float(tram.fi), 9.0, places=6)
+
+    def test_silenci_inici_mante_metadades_i_n_enter(self):
+        from app import mapa_tempo
+        trams = [mapa_tempo.TramMapa(
+            0.0, 8.0, 120.0, "rubato", "4/4", "2+2", 4.0, "negra")]
+        nou = edita.transforma_model(
+            [pipeline.Clip(0.0, 8.0, ("C", "0"))],
+            [(0.0, 8.0, "A", "A")], trams, [], 8.0,
+            edita.SILENCI_INICI, 1.0)
+        tram = nou["trams"][0]
+        self.assertEqual(tram.tipus, "rubato")
+        self.assertEqual(tram.agrupacio, "2+2")
+        self.assertEqual(tram.beat_unit, "negra")
+        self.assertAlmostEqual(float(tram.n), round(float(tram.n)),
+                               places=9)
+
+    def test_cap_edicio_deixa_n_fraccionari(self):
+        from app import mapa_tempo
+        trams_base = [
+            mapa_tempo.TramMapa(0.0, 8.0, 120.0, "normal", "4/4"),
+            mapa_tempo.TramMapa(8.0, 16.0, 90.0, "normal", "3/4")]
+        for operacio in (edita.RETALLA_INICI, edita.RETALLA_FINAL,
+                         edita.SILENCI_INICI, edita.SILENCI_FINAL):
+            with self.subTest(operacio=operacio):
+                nou = edita.transforma_model(
+                    [pipeline.Clip(0.0, 16.0, ("C", "0"))],
+                    [(0.0, 16.0, "A", "A")], list(trams_base), [], 16.0,
+                    operacio, 1.0)
+                for tram in nou["trams"]:
+                    self.assertAlmostEqual(
+                        float(tram.n), round(float(tram.n)), places=9)
+
     def test_silenci_final_estén_tots_els_carrils(self):
         nou = self.transforma(edita.SILENCI_FINAL, 2.0)
         self.assertEqual(nou["durada"], 10.0)

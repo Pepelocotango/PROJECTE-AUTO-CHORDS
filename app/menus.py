@@ -182,8 +182,6 @@ class MenusMixin:
                   lambda: self._quantitza_bpm_ui(1))
         self._act(sub_q, "2 decimals", "",
                   lambda: self._quantitza_bpm_ui(2))
-        self._act(m, "Mapa de tempo i compàs…", "",
-                  self._tempo_mapa_ui)
         self._act(m, "Marca el rang A–B com a rubato", "",
                   self._marca_rubato_rang)
         self._act(m, "Converteix el tram de tempo a rubato", "",

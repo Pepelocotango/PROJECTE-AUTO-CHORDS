@@ -327,38 +327,30 @@ class TestDuplica(BaseProjecte):
             p.duplica(os.path.join(p.carpeta, "sub"))
 
 
-class TestMigracioAutochords(BaseProjecte):
-    def _autochords_antic(self):
+class TestCarpetaAntiga(BaseProjecte):
+    def test_crea_rebutja_carpeta_antiga_sense_tocar_el_mapa(self):
         wav = os.path.join(self.td, "tema.wav")
         _wav(wav)
-        carp = pipeline.carpeta_sortida(wav)      # AUTOCHORDS_tema/
+        carp = pipeline.carpeta_sortida(wav)
         os.makedirs(carp, exist_ok=True)
-        with open(os.path.join(carp, "acords.csv"), "w", encoding="utf-8") as f:
-            f.write("0.0,1.0,C\n1.0,5.0,Am\n")
-        with open(os.path.join(carp, "estructura_ABC.csv"), "w",
-                  encoding="utf-8") as f:
-            f.write("inici_s,fi_s,durada_s,lletra,família,compas_ini,compas_fi\n")
-            f.write("0.0,5.0,5.0,A,A,1.1,1.5\n")
-        return wav, carp
-
-    def test_importa_en_el_lloc(self):
-        wav, carp = self._autochords_antic()
-        p = projecte.importa_autochords(wav)
-        # a la MATEIXA carpeta, però ara amb àudio + document
-        self.assertEqual(os.path.abspath(p.carpeta), os.path.abspath(carp))
-        self.assertTrue(os.path.isfile(p.ruta_audio()))
-        self.assertTrue(os.path.isfile(p.ruta_acproj))
-        # els CSVs existents s'han conservat
-        self.assertTrue(os.path.isfile(p.ruta_csv_acords()))
-        self.assertTrue(os.path.isfile(p.ruta_csv_estructura()))
-        # i el projecte es pot obrir des del WAV
-        self.assertTrue(projecte.es_projecte(wav))
-
-    def test_sense_carpeta_autochords_peta(self):
-        wav = os.path.join(self.td, "net.wav")
-        _wav(wav)
+        mapa = os.path.join(carp, "mapa_tempo.csv")
+        antic = "inici,fi,bpm,tipus,compassos,agrupacio,n,beat_unit\n"
+        with open(mapa, "w", encoding="utf-8") as f:
+            f.write(antic)
         with self.assertRaises(projecte.ProjecteError):
-            projecte.importa_autochords(wav)
+            projecte.Projecte.crea(carp, wav)
+        with open(mapa, encoding="utf-8") as f:
+            self.assertEqual(f.read(), antic)
+
+    def test_carpeta_antiga_no_es_un_projecte(self):
+        wav = os.path.join(self.td, "tema.wav")
+        _wav(wav)
+        carp = pipeline.carpeta_sortida(wav)
+        os.makedirs(carp, exist_ok=True)
+        with open(os.path.join(carp, "acords.csv"), "w",
+                  encoding="utf-8") as f:
+            f.write("0.0,1.0,C\n")
+        self.assertFalse(projecte.es_projecte(wav))
 
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_projecte_backups.py
@@ -756,6 +748,20 @@ class TestObreWavCreaProjecte(_Base):
         self.assertIsNotNone(f.visor_ref, "s'hauria d'haver carregat el visor")
         self.assertIn("Projecte1", f.windowTitle())
         self.assertFalse(f.dirty)
+
+    def test_carpeta_antiga_no_es_migra_sense_confirmacio(self):
+        f = _projectes_gui___finestra()
+        wav = _projectes_gui___wav()
+        carp = pipeline.carpeta_sortida(wav)
+        os.makedirs(carp, exist_ok=True)
+        mapa = os.path.join(carp, "mapa_tempo.csv")
+        with open(mapa, "w", encoding="utf-8") as fh:
+            fh.write("antic\n")
+        f._obri_des_de_wav(wav)
+        self.assertIsNone(f.projecte)
+        self.assertTrue(os.path.isdir(carp))
+        with open(mapa, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "antic\n")
 
     def test_esborra_original_i_el_projecte_obre(self):
         f = _projectes_gui___finestra()
@@ -1467,7 +1473,7 @@ class TestCentratLlistes(unittest.TestCase):
 
 
 class TestAjustaGraellaBeats(unittest.TestCase):
-    """L'offset heretat no ha de deixar el mapa fora de graella per sempre."""
+    """La graella de snap ha de ser coherent amb les beats QM o el compàs."""
 
     @classmethod
     def setUpClass(cls):
@@ -1864,18 +1870,6 @@ class _dialegs___Base(unittest.TestCase):
         cls._app = QApplication.instance() or QApplication([])
 
 
-class TestDialegTempoMapaEnSegons(_dialegs___Base):
-    """`0/0` al mapa de tempo no crea rubato (fase 3.2)."""
-
-    def test_compas_zero_zero_es_rebutja(self):
-        d = dialegs.DialegTempoMapa(
-            None, trams=[(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 90.0, 4, 4)],
-            durada=8.0)
-        d.taula.item(1, 2).setText("0/0")
-        with self.assertRaises(ValueError):
-            d.trams()
-
-
 class TestDialegAnalitzaBPM(_dialegs___Base):
     def test_motor_per_defecte_es_qm(self):
         d = dialegs.DialegAnalitzaBPM(None, opcions={})
@@ -1884,10 +1878,11 @@ class TestDialegAnalitzaBPM(_dialegs___Base):
 
 
 class TestDialegTramTempo(_dialegs___Base):
-    """`valors()` — el compàs s'escriu «num/den» o «num»."""
+    """Diàleg reduït: informació del clip + recalcul fix."""
 
-    def _dlg(self, compas="4/4", bpm=120.0):
-        d = dialegs.DialegTramTempo(None, inici=4.0, bpm=bpm, num=4, den=4)
+    def _dlg(self, compas="4/4", bpm=120.0, **kw):
+        d = dialegs.DialegTramTempo(None, inici=4.0, bpm=bpm, num=4, den=4,
+                                    **kw)
         d.ed_compas.setText(compas)
         return d
 
@@ -1917,27 +1912,8 @@ class TestDialegTramTempo(_dialegs___Base):
     def test_compas_1_4_es_valid(self):
         self.assertEqual(self._dlg("1/4").valors(), (120.0, 1, 4))
 
-    def test_dialeg_mapa_accepta_1_4(self):
-        d = dialegs.DialegTempoMapa(
-            None, trams=[(0.0, 4.0, 120.0, 4, 4)], durada=4.0)
-        d.taula.item(0, 2).setText("1/4")
-        self.assertEqual(d.trams()[0][3:], (1, 4))
-
     def test_el_bpm_surt_del_camp(self):
         self.assertEqual(self._dlg(bpm=97.5).valors()[0], 97.5)
-
-    def test_mantenir_pulsacio_es_per_defecte_i_mostra_els_dos_bpm(self):
-        d = dialegs.DialegTramTempo(
-            None, inici=0.0, bpm=90.0, num=4, den=4, unit="negra",
-            durada=16.0)
-        self.assertTrue(d.mantenir_pulsacio())
-        d.ed_compas.setText("6/8")
-        text = d.lbl_previsio_pulsacio.text()
-        self.assertIn("Cas B", text)
-        self.assertIn("135", text)
-        self.assertIn("negra amb punt", text)
-        d.chk_mantenir_pulsacio.setChecked(False)
-        self.assertIn("Cas A", d.lbl_previsio_pulsacio.text())
 
     def test_unitat_negra_amb_punt(self):
         d = dialegs.DialegTramTempo(
@@ -1950,22 +1926,16 @@ class TestDialegTramTempo(_dialegs___Base):
             None, inici=0.0, bpm=120.0, num=4, den=4,
             n_actual=8, durada=16.582354)
         self.assertTrue(d.n_auto())
-        bpm, num, den, n = d.valors_n()
+        bpm, num, den = d.valors()
+        n = d.sp_n.value()
         self.assertEqual((num, den, n), (4, 4, 8))
         self.assertAlmostEqual(bpm, 8 * 4 * 60.0 / 16.582354, places=3)
         d.sp_n.setValue(10)
         d.ed_compas.setText("3/4")
-        bpm, num, den, n = d.valors_n()
+        bpm, num, den = d.valors()
+        n = d.sp_n.value()
         self.assertEqual((num, den, n), (3, 4, 10))
         self.assertAlmostEqual(bpm, 10 * 3 * 60.0 / 16.582354, places=3)
-
-    def test_clip_en_segons_es_rebutja_a_31(self):
-        """«En segons» no crea rubato des del diàleg de tram (fase 3.2)."""
-        d = dialegs.DialegTramTempo(None, inici=4.0, bpm=100.0, num=4, den=4)
-        d.chk_segons.setChecked(True)
-        self.assertFalse(d.ed_compas.isEnabled())
-        with self.assertRaises(ValueError):
-            d.valors()
 
     def test_info_clip_es_nomes_lectura_i_mostra_dades(self):
         info = {
@@ -1989,16 +1959,6 @@ class TestDialegTramTempo(_dialegs___Base):
                      "NO VÀLID", "Veí esquerre", "Beats QM", "VALIDACIÓ"):
             self.assertIn(frag, txt)
 
-    def test_boto_ajusta_emet_senyal_sense_tancar(self):
-        d = dialegs.DialegTramTempo(
-            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0)
-        rebut = []
-        d.aplicaRequested.connect(lambda: rebut.append(True))
-        d.b_ajusta.click()
-        self.assertEqual(rebut, [True])
-        self.assertNotEqual(d.result(), QW.QDialog.Accepted)
-
     def test_actualitza_estat_refresca_camps_i_info(self):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
@@ -2012,79 +1972,50 @@ class TestDialegTramTempo(_dialegs___Base):
             "beat_unit": "Negra", "snap": "—", "n_qm": None,
             "bpm_ok": True, "durada_ok": True, "min_durada": 0.042857,
         })
-        for sp in (d.sp_bpm, d.sp_bpm_mob):
-            self.assertAlmostEqual(sp.value(), 90.0, places=3)
-        for ed in (d.ed_compas, d.ed_compas_mob):
-            self.assertEqual(ed.text(), "3/4")
-        for sp in (d.sp_n, d.sp_n_mob):
-            self.assertEqual(sp.value(), 5)
+        self.assertAlmostEqual(d.sp_bpm.value(), 90.0, places=3)
+        self.assertEqual(d.ed_compas.text(), "3/4")
+        self.assertEqual(d.sp_n.value(), 5)
         txt = " ".join(lbl.text()
                        for lbl in d.info_clip.findChildren(QLabel))
         self.assertIn("90.000", txt)
         self.assertIn("3/4", txt)
 
-    def test_camps_fix_i_mobil_estan_sincronitzats(self):
-        d = dialegs.DialegTramTempo(
-            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0)
-        d.sp_n.setValue(6)
-        self.assertEqual(d.sp_n_mob.value(), 6)
-        d.ed_compas_mob.setText("5/4")
-        self.assertEqual(d.ed_compas.text(), "5/4")
-        self.assertAlmostEqual(d.sp_bpm.value(), d.sp_bpm_mob.value(),
-                               places=6)
-
-    def test_botons_recalcula_emeten_el_mode(self):
+    def test_recalcula_fix_emet_el_mode(self):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
             n_actual=2.0)
         rebuts = []
         d.recalculRequested.connect(rebuts.append)
         d.b_recalc_fix.click()
-        d.b_recalc_mob.click()
-        self.assertEqual(rebuts, ["fix", "mobil"])
+        self.assertEqual(rebuts, ["fix"])
         self.assertNotEqual(d.result(), QW.QDialog.Accepted)
 
-    def test_escolta_proposta_usa_els_valors_i_atura(self):
-        class _Pare(QW.QWidget):
-            def __init__(self):
-                super().__init__()
-                self.crides = []
-
-            def escolta_tram(self, *args):
-                self.crides.append(("escolta", args))
-                return True
-
-            def atura_escolta_tram(self):
-                self.crides.append(("atura",))
-                return True
-
-        pare = _Pare()
-        d = dialegs.DialegTramTempo(
-            pare, inici=10.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0, beat_unit="negra", unit="negra")
-        self.assertFalse(d.b_escolta.isHidden())
-        d.b_escolta.click()
-        self.assertEqual(pare.crides[0][0], "escolta")
-        args = pare.crides[0][1]
-        self.assertAlmostEqual(args[0], 10.0)
-        self.assertAlmostEqual(args[1], 14.0)
-        self.assertAlmostEqual(args[2], 120.0)
-        self.assertEqual(args[3:], (4, 4, "negra"))
-        self.assertEqual(d.b_escolta.text(), "Atura l'escolta")
-        d.b_escolta.click()
-        self.assertEqual(pare.crides[-1], ("atura",))
-        self.assertEqual(d.b_escolta.text(), "Escolta la proposta")
-        d.b_escolta.click()
-        d.accept()
-        self.assertEqual(pare.crides[-1], ("atura",))
-        self.assertEqual(d.result(), QW.QDialog.Accepted)
-
-    def test_escolta_amagada_sense_visor(self):
+    def test_opcions_fixes_del_recalcul(self):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
             n_actual=2.0)
-        self.assertTrue(d.b_escolta.isHidden())
+        self.assertEqual(d.opcions_recalc(), {
+            "beats": True, "segons": True, "unitat": True,
+            "compas": False, "n_fix": True, "rubato": False,
+        })
+
+    def test_nomes_queden_els_blocs_de_fix_i_info(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        titols = [g.title() for g in d.findChildren(QW.QGroupBox)]
+        self.assertIn("Recalcul fix", titols)
+        self.assertIn("Informació del clip (no editable)", titols)
+        for fora in ("Recalcul mòbil", "Opcions", "Ajuda"):
+            self.assertNotIn(fora, titols)
+
+    def test_no_queden_contols_del_recalcul_mobil(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        for attr in ("sp_n_mob", "ed_compas_mob", "sp_bpm_mob",
+                     "b_recalc_mob", "chk_beats", "chk_segons"):
+            self.assertFalse(hasattr(d, attr), attr)
 
     def test_escolta_tram_restaura_loop_metronom_i_reproduccio(self):
         class _Timeline:
@@ -2149,63 +2080,6 @@ class TestDialegTramTempo(_dialegs___Base):
         self.assertEqual(v.pos, 3.0)
         self.assertTrue(v.sona)
 
-    def test_opcions_recalc_per_defecte(self):
-        d = dialegs.DialegTramTempo(
-            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0)
-        self.assertEqual(d.opcions_recalc(), {
-            "beats": True, "segons": True, "unitat": True,
-            "compas": True, "n_fix": True, "rubato": False,
-            "silencia_factor": False,
-        })
-        d.chk_silencia_factor.setChecked(True)
-        self.assertTrue(d.opcions_recalc()["silencia_factor"])
-        d.chk_segons.setChecked(True)
-        self.assertFalse(d.b_recalc_fix.isEnabled())
-        self.assertFalse(d.b_recalc_mob.isEnabled())
-
-    def test_tres_blocs_de_la_columna_esquerra(self):
-        d = dialegs.DialegTramTempo(
-            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0)
-        titols = [g.title() for g in d.findChildren(QW.QGroupBox)]
-        for titol in ("Recalcul fix", "Recalcul mòbil", "Opcions",
-                      "Informació del clip (no editable)"):
-            self.assertIn(titol, titols)
-
-    def test_caselles_tenen_indicador_visible(self):
-        d = dialegs.DialegTramTempo(
-            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0)
-        self.assertIn("QCheckBox::indicator", d.styleSheet())
-        self.assertIn("QCheckBox::indicator:checked", d.styleSheet())
-
-    def test_beat_tap_selector_mostra_panell_inline(self):
-        from app import bpm_unit
-        d = dialegs.DialegTramTempo(
-            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0, beat_unit="corxera", unit="corxera")
-        self.assertEqual(d.cb_beat.count(), len(bpm_unit.UNITATS))
-        self.assertEqual(d.cb_beat.currentData(), "corxera")
-        d.cb_beat.setCurrentIndex(d.cb_beat.findData("blanca"))
-        self.assertFalse(d.grup_unitat.isHidden())
-        d.panell_unitat.rb_tempo.setChecked(True)
-        d._actualitza_panell_unitat()
-        self.assertAlmostEqual(d.sp_bpm.value(), 60.0, places=3)
-        d.actualitza_beat_unit("negra_punt")
-        self.assertEqual(d.cb_beat.currentData(), "negra_punt")
-
-    def test_ajuda_mostra_el_tooltip_del_giny(self):
-        d = dialegs.DialegTramTempo(
-            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0)
-        titols = [g.title() for g in d.findChildren(QW.QGroupBox)]
-        self.assertIn("Ajuda", titols)
-        QApplication.sendEvent(d.b_recalc_fix, QEvent(QEvent.Enter))
-        self.assertIn("Recalcul fix", d.ajuda.text())
-        QApplication.sendEvent(d.chk_beats, QEvent(QEvent.Enter))
-        self.assertIn("beats QM", d.ajuda.text())
-
     def test_show_centra_el_dialeg_a_la_pantalla(self):
         d = dialegs.DialegTramTempo(None, inici=4.0, bpm=120.0, num=4,
                                     den=4)
@@ -2223,97 +2097,31 @@ class TestDialegTramTempo(_dialegs___Base):
             d.close()
 
 
-class TestDialegTempoMapa(_dialegs___Base):
-    """Parsing compàs→segons i add/delete de trams (el que fa el diàleg)."""
-
-    TRAMS = [(0.0, 4.0, 120.0, 4, 4), (4.0, 8.0, 90.0, 4, 4)]
-
-    def _dlg(self, trams=None, durada=8.0):
-        return dialegs.DialegTempoMapa(
-            None, trams=list(self.TRAMS if trams is None else trams),
-            durada=durada)
-
-    def test_unitat_bpm_per_fila(self):
-        from app import mapa_tempo
-        trams = [
-            mapa_tempo.TramMapa(0.0, 4.0, 120.0, "normal", "6/8", "",
-                                None, "negra_punt"),
-            mapa_tempo.TramMapa(4.0, 8.0, 90.0, "normal", "4/4", "",
-                                None, "negra")]
-        d = dialegs.DialegTempoMapa(
-            None, trams=trams, durada=8.0, unit="negra_punt")
-        self.assertEqual(d.taula.item(0, 1).text(), "80")
-        self.assertEqual(d.taula.item(1, 1).text(), "90")
-        self.assertEqual(d.taula.cellWidget(0, 3).currentData(), "negra_punt")
-        self.assertEqual(d.taula.cellWidget(1, 3).currentData(), "negra")
-        out = d.trams()
-        self.assertEqual([round(float(t[2]), 6) for t in out], [120.0, 90.0])
-        self.assertEqual([t.beat_unit for t in out], ["negra_punt", "negra"])
-
-    def test_compas_a_segons(self):
-        """Amb 120 BPM i 4/4 el compàs fa 2 s: el 3 comença a 4,0 s."""
-        d = self._dlg()
-        self.assertAlmostEqual(d._temps_de_compas("3"), 4.0, places=6)
-
-    def test_compas_i_temps_escala_amb_el_mapa(self):
-        """«3.2» = compàs 3 + un temps MÉS, amb el tempo d'AQUELL tram.
-
-        El compàs 3 cau al segon tram (90 BPM): el temps hi fa 0,667 s, no 0,5
-        (els 120 BPM del primer). El diàleg ha de fer cas del MAPA, no del BPM
-        de la barra.
-        """
-        from app import tempo_map as tm
-        d = self._dlg()
-        mapa = tm.TempoMap(tm.normalitza_trams(self.TRAMS, 8.0))
-        self.assertAlmostEqual(d._temps_de_compas("3.2"),
-                               mapa.t_de_pos(3, 2), places=6)
-        self.assertAlmostEqual(d._temps_de_compas("3.2"), 4.0 + 2.0 / 3.0,
+class TestConversionsCompasSegons(unittest.TestCase):
+    def test_4_4(self):
+        from app.temps_ui import cb_a_secs, secs_a_cb
+        self.assertAlmostEqual(cb_a_secs("2.1", 120.0, 4, 4), 2.0,
                                places=6)
+        self.assertEqual(secs_a_cb(2.0, 120.0, 4, 4), "2.1")
 
-    def test_compas_1_es_l_inici(self):
-        self.assertAlmostEqual(self._dlg()._temps_de_compas("1"), 0.0, places=6)
+    def test_6_8(self):
+        from app.temps_ui import cb_a_secs, secs_a_cb
+        self.assertAlmostEqual(cb_a_secs("2.1", 120.0, 6, 8), 1.5,
+                               places=6)
+        self.assertAlmostEqual(cb_a_secs("2.2", 120.0, 6, 8), 1.75,
+                               places=6)
+        self.assertEqual(secs_a_cb(1.5, 120.0, 6, 8), "2.1")
 
-    def test_fila_invalid_es_rebutja_sense_reescriure_la_fila(self):
-        d = self._dlg()
-        original = d.taula.item(0, 2).text()
-        d.taula.item(0, 2).setText("4/32")
-        with self.assertRaisesRegex(ValueError, "denominador"):
-            d.trams()
-        self.assertEqual(d.taula.item(0, 2).text(), "4/32")
-        d.taula.item(0, 2).setText(original)
+    def test_2_2(self):
+        from app.temps_ui import cb_a_secs, secs_a_cb
+        self.assertAlmostEqual(cb_a_secs("2.1", 120.0, 2, 2), 2.0,
+                               places=6)
+        self.assertEqual(secs_a_cb(2.0, 120.0, 2, 2), "2.1")
 
-    def test_afegeix_un_tram_al_mig_del_darrer(self):
-        d = self._dlg()
-        d._afegeix()
-        trams = d.trams()
-        self.assertEqual(len(trams), 3)
-        self.assertAlmostEqual(float(trams[-1][0]), 6.0, places=6)  # (4+8)/2
-        self.assertEqual(float(trams[-1][2]), 90.0)   # hereta el tempo del tros
-
-    def test_elimina_no_toca_el_valor_inicial(self):
-        d = self._dlg()
-        d.taula.setCurrentCell(0, 0)
-        d._elimina()
-        self.assertEqual(len(d.trams()), 2, "la fila 0 és el valor inicial")
-
-    def test_elimina_un_tram_del_mig(self):
-        d = self._dlg(trams=[(0.0, 4.0, 120.0, 4, 4), (4.0, 6.0, 90.0, 3, 4),
-                             (6.0, 8.0, 100.0, 4, 4)])
-        d.taula.setCurrentCell(1, 0)
-        d._elimina()
-        trams = d.trams()
-        self.assertEqual(len(trams), 2)
-        self.assertAlmostEqual(float(trams[0][1]), 6.0, places=6)
-
-    def test_trams_sempre_contigus_i_coberts(self):
-        """El que entrega el diàleg és un mapa vàlid (regles #1/#2/#4)."""
-        d = self._dlg()
-        d._afegeix()
-        trams = d.trams()
-        self.assertEqual(float(trams[0][0]), 0.0)
-        self.assertAlmostEqual(float(trams[-1][1]), 8.0, places=6)
-        self.assertEqual([float(t[1]) for t in trams[:-1]],
-                         [float(t[0]) for t in trams[1:]])
+    def test_no_trunca_a_60_segons(self):
+        from app.temps_ui import cb_a_secs
+        self.assertAlmostEqual(cb_a_secs("121.1", 120.0, 4, 4), 240.0,
+                               places=6)
 
 
 class TestDialegOpcions(_dialegs___Base):
@@ -3018,7 +2826,7 @@ class _Doble:
         self.vol = 1.0
         self.metro_on = False
         self.metro_vol = 0.6
-        self.bpm, self.bpb, self.offset = 120.0, 4, 0.0
+        self.bpm, self.bpb = 120.0, 4
         self.velocitat = 1.0
         self._estirat = {}
 
@@ -4930,6 +4738,38 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         finally:
             v.close()
 
+    def test_aplica_general_canvi_compas_aplica_cas_b(self):
+        """Enter/Aplica general han de fer el mateix que el botó Compàs."""
+        v = _vista_segueix_model___visor()
+        try:
+            self.assertTrue(v.aplica_tempo_trams([
+                (0.0, 10.0, 120.0, 4, 4),
+                (10.0, 30.0, 90.0, 4, 4)]))
+            v._focus_editor("tempo", 0)
+            v.ed_fam.setText("6/8")
+            v._aplica_editor()
+            tr = v.tempo_trams[0]
+            self.assertEqual(tr.beat_unit, "negra_punt")
+            self.assertAlmostEqual(float(tr.bpm), 180.0, places=6)
+            self.assertAlmostEqual(float(v.bpm_mostra()), 120.0, places=6)
+        finally:
+            v.close()
+
+    def test_aplica_general_respecta_unitat_explicita(self):
+        from app import mapa_tempo
+        v = _vista_segueix_model___visor()
+        try:
+            self.assertTrue(v.aplica_tempo_trams([
+                mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4", "",
+                                    None, "corxera"),
+                mapa_tempo.TramMapa(10.0, 30.0, 90.0, "normal", "4/4")]))
+            v._focus_editor("tempo", 0)
+            v.ed_fam.setText("6/8")
+            v._aplica_editor()
+            self.assertEqual(v.tempo_trams[0].beat_unit, "corxera")
+        finally:
+            v.close()
+
     def test_botons_apliquen_nomes_la_seua_variable(self):
         v = _vista_segueix_model___visor()
         try:
@@ -4962,6 +4802,66 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             v.ed_n_aplica.click()
             self.assertEqual(tuple(v.tempo_trams[0][3:]), (3, 4))
             self.assertAlmostEqual(float(v.tempo_trams[0].n or 0), 4.0)
+        finally:
+            v.close()
+
+    def test_botons_aplica_individuals_tenen_undo(self):
+        def estat(t):
+            return (tuple(t), t.tipus, t.agrupacio, t.n, t.beat_unit)
+
+        casos = (
+            ("bpm", "ed_nom", "140"),
+            ("compas", "ed_fam", "6/8"),
+            ("agr", "ed_agr", "2+2"),
+            ("n", "ed_n", "3"),
+        )
+        for camp, widget, valor in casos:
+            with self.subTest(camp=camp):
+                v = _vista_segueix_model___visor()
+                try:
+                    self.assertTrue(v.aplica_tempo_trams([
+                        (0.0, 10.0, 120.0, 4, 4),
+                        (10.0, 20.0, 120.0, 4, 4)]))
+                    v._focus_editor("tempo", 0)
+                    getattr(v, widget).setText(valor)
+                    abans = [estat(t) for t in v.tempo_trams]
+                    n_abans = len(v._undo_stack)
+                    getattr(v, f"ed_{camp}_aplica").click()
+                    self.assertEqual(len(v._undo_stack), n_abans + 1)
+                    self.assertIsNone(v._undo_pending)
+                    self.assertNotEqual(
+                        [estat(t) for t in v.tempo_trams], abans)
+                    v.undo()
+                    self.assertEqual(
+                        [estat(t) for t in v.tempo_trams], abans)
+                    self.assertIsNone(v._undo_pending)
+                finally:
+                    v.close()
+
+    def test_aplica_error_i_no_op_no_deixen_undo(self):
+        def estat(t):
+            return (tuple(t), t.tipus, t.agrupacio, t.n, t.beat_unit)
+
+        v = _vista_segueix_model___visor()
+        try:
+            self.assertTrue(v.aplica_tempo_trams([
+                (0.0, 10.0, 120.0, 4, 4),
+                (10.0, 20.0, 120.0, 4, 4)]))
+            v._focus_editor("tempo", 0)
+            abans = [estat(t) for t in v.tempo_trams]
+            n_abans = len(v._undo_stack)
+            # Error de validació: ni canvi ni marca d'undo penjada.
+            v.ed_n.setText("1.5")
+            v.ed_n_aplica.click()
+            self.assertEqual([estat(t) for t in v.tempo_trams], abans)
+            self.assertEqual(len(v._undo_stack), n_abans)
+            self.assertIsNone(v._undo_pending)
+            # No-op: aplicar el mateix BPM tampoc no crea un pas d'undo.
+            v.ed_nom.setText("120")
+            v.ed_bpm_aplica.click()
+            self.assertEqual([estat(t) for t in v.tempo_trams], abans)
+            self.assertEqual(len(v._undo_stack), n_abans)
+            self.assertIsNone(v._undo_pending)
         finally:
             v.close()
 
@@ -5453,6 +5353,7 @@ class TestDialegTempoPerTrams(unittest.TestCase):
     def test_valors_per_defecte(self):
         d = dialegs.DialegTempoPerTrams(None, durada=180.0)
         self.assertEqual(d.valors(), (4, 0.02))
+        self.assertEqual(d.unitat(), "negra")
         self.assertIn("180.00", d.lb_info.text())
         d.deleteLater()
 
@@ -5462,6 +5363,24 @@ class TestDialegTempoPerTrams(unittest.TestCase):
         cada, tol = d.valors()
         self.assertEqual(cada, 1)
         self.assertAlmostEqual(tol, 0.055, places=6)
+        d.deleteLater()
+
+    def test_unitat_del_detector_es_filtra_i_es_pot_triar(self):
+        d = dialegs.DialegTempoPerTrams(
+            None, durada=60.0, num=3, den=8,
+            unit="negra_punt")
+        self.assertEqual(d.unitat(), "negra_punt")
+        opcions = [d.cb_unitat.itemData(i)
+                   for i in range(d.cb_unitat.count())]
+        self.assertIn("corxera", opcions)
+        self.assertIn("negra_punt", opcions)
+        d.cb_unitat.setCurrentIndex(d.cb_unitat.findData("corxera"))
+        self.assertEqual(d.unitat(), "corxera")
+        d.deleteLater()
+
+    def test_6_8_per_defecte_segueix_negra_amb_punt(self):
+        d = dialegs.DialegTempoPerTrams(None, durada=60.0, num=6, den=8)
+        self.assertEqual(d.unitat(), "negra_punt")
         d.deleteLater()
 
 
@@ -5525,15 +5444,18 @@ class TestTempoPerTramsGui(unittest.TestCase):
             def valors(self):
                 return (2, 0.03)
 
+            def unitat(self):
+                return "negra"
+
         with patch.object(app_main, "FilTempoTrams", _FilFals), \
                 patch.object(dialegs, "DialegTempoPerTrams", _DlgOK):
             w._detecta_tempo_per_trams()
         try:
             self.assertEqual(len(capturat), 1)
-            _wav, _dur, num, den, cada, tol, kw = capturat[0]
+            _wav, _dur, num, den, cada, tol, _kw = capturat[0]
             self.assertEqual(cada, 2)
             self.assertAlmostEqual(tol, 0.03)
-            self.assertEqual(kw.get("offset"), 0.0)   # offset_auto OFF
+            self.assertEqual(_kw.get("beat_unit"), "negra")
             self.assertIsNotNone(w._fil_trams)
         finally:
             # El fil no s'ha arrencat mai (start és no-op): n'hi ha prou de
@@ -5548,7 +5470,7 @@ class TestTempoPerTramsGui(unittest.TestCase):
         w = self.w
         vr = w.visor_ref
         from app import tempo_map
-        # amb offset 0.5 les línies de compàs comencen a 0.5
+        # el mapa pot començar en un temps distint de zero
         b1 = tempo_map.durada_compas(120.0, 4, 4)
         b2 = tempo_map.durada_compas(124.0, 4, 4)
         t1 = 0.5 + 4 * b1
@@ -5556,7 +5478,7 @@ class TestTempoPerTramsGui(unittest.TestCase):
         trams = [(0.0, t1, 120.0, 4, 4), (t1, t2, 124.0, 4, 4),
                  (t2, 20.0, 124.0, 4, 4)]
         abans = vr._undo_stack.__len__()
-        w._tempo_trams_fet({"trams": trams, "offset": 0.5, "bpm_base": 120.0})
+        w._tempo_trams_fet({"trams": trams, "bpm_base": 120.0})
         self.assertEqual(len(vr.tempo_trams), 3)
         self.assertEqual(len(vr._undo_stack), abans + 1)
         vr.undo()
@@ -5565,8 +5487,7 @@ class TestTempoPerTramsGui(unittest.TestCase):
     def test_sense_trams_avisa(self):
         w = self.w
         with patch.object(w, "avisa_info") as mock:
-            w._tempo_trams_fet({"trams": [], "offset": 0.0,
-                                "bpm_base": None})
+            w._tempo_trams_fet({"trams": [], "bpm_base": None})
         self.assertEqual(mock.call_count, 1)
 
 
@@ -5727,7 +5648,6 @@ class TestAncoratgesFinestra(unittest.TestCase):
         # Estat de partida CONEGUT: si l'app ha recuperat una sessió o un
         # projecte d'una prova anterior, el test ha de començar igualment net.
         vr0 = self.w.visor_ref
-        vr0.offset = 0.0
         vr0.aplica_tempo_trams([(0.0, 60.0, 120.0, 4, 4)])
         vr0.seccions = [(0.0, 60.0, "A", "A")]
         vr0.marcadors = []
@@ -6056,7 +5976,6 @@ class TestAncoratgesFinestra(unittest.TestCase):
         class _Dlg(dialegs.DialegTramTempo):
             def exec_(self):
                 vistos.append(self)
-                self.chk_compas_lliure.setChecked(False)
                 self.chk_n.setChecked(True)
                 self.sp_n.setValue(12)
                 self.ed_compas.setText("3/4")
@@ -6071,93 +5990,6 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.tempo_trams[1][3:], (3, 4))
         self.assertAlmostEqual(vr.tempo_trams[1][2], 108.0, places=6)
         self.assertEqual(vr.tempo_trams[2], trams[2])
-
-    def test_boto_recalcul_mobil_des_del_dialeg_mou_una_frontera(self):
-        vr = self.w.visor_ref
-        trams = [(0.0, 10.0, 120.0, 4, 4),
-                 (10.0, 30.0, 90.0, 3, 4),
-                 (30.0, 60.0, 120.0, 4, 4)]
-        self.assertTrue(vr.aplica_tempo_trams(trams))
-
-        class _Dlg(dialegs.DialegTramTempo):
-            def exec_(self):
-                self.chk_compas_lliure.setChecked(False)
-                self.chk_n.setChecked(True)
-                self.sp_n.setValue(12)
-                self.ed_compas.setText("3/4")
-                self.sp_bpm.setValue(100.0)
-                self.b_recalc_mob.click()
-                self.reject()
-                return QW.QDialog.Rejected
-
-        with patch.object(dialegs, "DialegTramTempo", _Dlg):
-            vr._on_tempo_edit(1)
-        self.assertAlmostEqual(vr.tempo_trams[1][1], 31.6, places=6)
-        self.assertAlmostEqual(vr.tempo_trams[2][0], 31.6, places=6)
-        self.assertAlmostEqual(vr.tempo_trams[1][2], 100.0, places=6)
-        self.assertEqual(vr.tempo_trams[1][3:], (3, 4))
-        self.assertAlmostEqual(vr.tempo_trams[2][2], 15 * 4 * 60 / 28.4,
-                               places=5)
-
-    def test_dialeg_canvi_compas_cas_b_per_defecte(self):
-        """En prémer Ajusta, el diàleg conserva el BPM visible (Cas B)."""
-        vr = self.w.visor_ref
-        self.assertTrue(vr.aplica_tempo_trams([(0.0, 60.0, 120.0, 4, 4)]))
-
-        class _Dlg(dialegs.DialegTramTempo):
-            def exec_(self):
-                self.ed_compas.setText("6/8")
-                self.b_ajusta.click()
-                self.reject()
-                return QW.QDialog.Rejected
-
-        with patch.object(dialegs, "DialegTramTempo", _Dlg):
-            vr._on_tempo_edit(0)
-        tr = vr.tempo_trams[0]
-        self.assertEqual(tr.beat_unit, "negra_punt")
-        self.assertAlmostEqual(float(tr.bpm), 180.0, places=6)
-        self.assertAlmostEqual(float(vr.bpm_mostra()), 120.0, places=6)
-
-    def test_dialeg_canvi_compas_cas_a_explicit(self):
-        """Desactivar «Mantenir la pulsació» conserva el BPM intern."""
-        vr = self.w.visor_ref
-        self.assertTrue(vr.aplica_tempo_trams([(0.0, 60.0, 120.0, 4, 4)]))
-
-        class _Dlg(dialegs.DialegTramTempo):
-            def exec_(self):
-                self.chk_mantenir_pulsacio.setChecked(False)
-                self.ed_compas.setText("6/8")
-                self.b_ajusta.click()
-                self.reject()
-                return QW.QDialog.Rejected
-
-        with patch.object(dialegs, "DialegTramTempo", _Dlg):
-            vr._on_tempo_edit(0)
-        tr = vr.tempo_trams[0]
-        self.assertEqual(tr.beat_unit, "negra_punt")
-        self.assertAlmostEqual(float(tr.bpm), 120.0, places=6)
-        self.assertAlmostEqual(float(vr.bpm_mostra()), 80.0, places=6)
-
-    def test_beat_tap_des_del_dialeg_actualitza_visor_i_barra(self):
-        vr = self.w.visor_ref
-        trams = [(0.0, 10.0, 120.0, 4, 4),
-                 (10.0, 30.0, 90.0, 3, 4),
-                 (30.0, 60.0, 120.0, 4, 4)]
-        self.assertTrue(vr.aplica_tempo_trams(trams))
-        vr.timeline.select_clip("tempo", 1)
-
-        class _Dlg(dialegs.DialegTramTempo):
-            def exec_(self):
-                self.cb_beat.setCurrentIndex(
-                    self.cb_beat.findData("negra_punt"))
-                self.b_ajusta.click()
-                self.reject()
-                return QW.QDialog.Rejected
-
-        with patch.object(dialegs, "DialegTramTempo", _Dlg):
-            vr._on_tempo_edit(1)
-        self.assertEqual(vr.tempo_trams[1].beat_unit, "negra_punt")
-        self.assertEqual(vr.unitat_objectiu(), "negra_punt")
 
     def test_el_marcador_no_arrossega_la_frontera_d_estructura(self):
         """Moure un marcador no canvia cap clip d'estructura."""
@@ -6591,7 +6423,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
                 patch.object(app_main.pipeline, "wav_info",
                              lambda p: {"durada": 60.0}):
             fil = app_main.Feina(w.wav_edit.text().strip(), self.td, 120.0, 4,
-                                 0.0, False, opcions={}, amb_bpm=False)
+                                 False, opcions={}, amb_bpm=False)
             fil.run()
         self.assertTrue(vist.get("chords"))
         self.assertNotIn("segments", vist)
@@ -6847,7 +6679,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
                 patch.object(app_main.pipeline, "wav_info",
                              lambda p: {"durada": 60.0}):
             fil = app_main.Feina(w.wav_edit.text().strip(), self.td, 120.0, 4,
-                                 0.0, True, opcions={})
+                                 True, opcions={})
             fil.run()
         self.assertTrue(vist.get("bpm"))
         self.assertEqual(fil.bpm_detectat, 101.0)
@@ -6874,7 +6706,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
                 patch.object(app_main.pipeline, "wav_info",
                              lambda p: {"durada": 60.0}):
             fil = app_main.Feina(w.wav_edit.text().strip(), self.td, 120.0, 4,
-                                 0.0, True, opcions={}, amb_acords=False)
+                                 True, opcions={}, amb_acords=False)
             fil.run()
         self.assertNotIn("chords", vist)
         self.assertIn("segments", vist)

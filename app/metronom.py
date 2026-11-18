@@ -244,14 +244,17 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
 
     # ── Amb un mapa de tempo/compàs VARIABLE (regla d'or #5: el mapa és la
     # font), els clics van als TEMPS DEL MAPA. Recorrem la graella a resolució
-    # de corxera (0,5 negres) i filtrem els punts que són inici de beat; així
+    # de 1/16 (0,25 negres) i filtrem els punts que són inici de beat; així
     # funciona amb qualsevol denominador 2/4/8/16, canvis de compàs i rubato.
     if mapa is not None and (not mapa.es_constant()
                              or mapa.te_agrupacions_explicites()):
         q = float(mapa.quarters(float(t_inici)))
         if click_unit == "auto":
             # Graella del denominador: hi ha clic a cada beat (s == 1).
-            q = float(np.floor(q * 2.0) / 2.0 - 1.0)
+            # 0,25 negres = 1/16: el denominador més xicotet admés. Un pas de
+            # 0,5 (corxera) es menjava la meitat dels temps en x/16.
+            pas_q = 0.25
+            q = float(np.floor(q / pas_q) * pas_q - pas_q)
             while True:
                 t_abs = float(mapa.t_de_quarters(q))
                 t_b = t_abs - float(t_inici)
@@ -270,28 +273,39 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
                             _grups_alineats(click_unit, num_m, den_m, agr_m))
                         if clica:
                             _posa(t_b, accent)
-                q += 0.5
+                q += pas_q
         else:
-            paso = _click_quarters(click_unit, _den)
-            q = float(np.floor(q / paso) * paso - paso)
-            while True:
-                t_abs = float(mapa.t_de_quarters(q))
-                t_b = t_abs - float(t_inici)
-                if t_b >= dur:
-                    break
-                if t_b >= 0.0:
-                    _c, b, s = mapa.pos(t_abs)
-                    num_m, den_m = mapa.signatura(t_abs)
-                    agr_m = mapa.agrupacio(t_abs)
-                    b = max(1, int(b))
-                    es_bar = (b == 1 and s == 1)
-                    es_grup = _accent_grup(b, num_m, den_m, agr_m)
-                    clica, accent = _decideix(
-                        es_bar, es_grup,
-                        _grups_alineats(click_unit, num_m, den_m, agr_m))
-                    if clica:
-                        _posa(t_b, accent)
-                q += paso
+            # Unitat de clic explícita: ancorada a l'inici de cada compàs.
+            # Un càlcul global `q = k*paso` desalinea mapes com 5/8 → 6/8.
+            bars = mapa.compassos()
+            q_start = float(mapa.quarters(float(t_inici)))
+            final_q = float(mapa.quarters(float(mapa.trams[-1].fi)))
+            for k, (q_bar, _t_bar, _num_b, den_b) in enumerate(bars):
+                q_next = (bars[k + 1][0] if k + 1 < len(bars)
+                          else final_q)
+                if q_next <= q_start - 1e-9:
+                    continue
+                paso = _click_quarters(click_unit, den_b)
+                n = max(0, int(np.floor((q_start - q_bar) / paso)) - 1)
+                q = float(q_bar) + n * paso
+                while q < q_next - 1e-9:
+                    t_abs = float(mapa.t_de_quarters(q))
+                    t_b = t_abs - float(t_inici)
+                    if t_b >= dur:
+                        break
+                    if t_b >= 0.0:
+                        _c, b, s = mapa.pos(t_abs)
+                        num_m, den_m = mapa.signatura(t_abs)
+                        agr_m = mapa.agrupacio(t_abs)
+                        b = max(1, int(b))
+                        es_bar = (b == 1 and s == 1)
+                        es_grup = _accent_grup(b, num_m, den_m, agr_m)
+                        clica, accent = _decideix(
+                            es_bar, es_grup,
+                            _grups_alineats(click_unit, num_m, den_m, agr_m))
+                        if clica:
+                            _posa(t_b, accent)
+                    q += paso
         np.clip(buf, -32768.0, 32767.0, out=buf)
         return buf.astype(np.int16).tobytes()
 

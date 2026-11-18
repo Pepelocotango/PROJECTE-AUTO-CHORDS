@@ -1549,6 +1549,147 @@ def _tria_menu(fn, text, *args):
     return trobat["ok"]
 
 
+class TestUndoFallit(_regla11_paritat___Base):
+    """Un error d'edició no pot deixar `_undo_pending` penjat."""
+
+    def _comprova_pipeline(self, fn, objectiu):
+        v = _regla11_paritat___visor()
+        try:
+            n_abans = len(v._undo_stack)
+            with patch.object(pipeline, objectiu,
+                              side_effect=ValueError("forçat")):
+                self.assertFalse(fn(v))
+            self.assertEqual(len(v._undo_stack), n_abans)
+            self.assertIsNone(v._undo_pending)
+        finally:
+            v.close()
+
+    def test_parteix_acord_fallit_no_deixa_undo(self):
+        self._comprova_pipeline(
+            lambda v: v.parteix_acord(0, 5.0), "parteix_clips")
+
+    def test_parteix_seccio_fallida_no_deixa_undo(self):
+        self._comprova_pipeline(
+            lambda v: v.parteix_seccio(0, 5.0), "parteix_clips")
+
+    def test_fusiona_acord_fallit_no_deixa_undo(self):
+        self._comprova_pipeline(
+            lambda v: v.fusiona_acord(0, "seguent"), "fusiona_clips")
+
+    def test_fusiona_seccio_fallida_no_deixa_undo(self):
+        self._comprova_pipeline(
+            lambda v: v.fusiona_seccio(0, "seguent"), "fusiona_seccions")
+
+    def test_editor_acord_fallit_no_deixa_undo(self):
+        v = _regla11_paritat___visor()
+        try:
+            v._ed_kind, v._ed_idx = "chord", 0
+            v.ed_ini.setText("0.0")
+            v.ed_nom.setText("C")
+            n_abans = len(v._undo_stack)
+            with patch.object(v, "_normalitza_acords",
+                              side_effect=ValueError("forçat")):
+                v._aplica_editor()
+            self.assertEqual(len(v._undo_stack), n_abans)
+            self.assertIsNone(v._undo_pending)
+        finally:
+            v.close()
+
+    def test_editor_seccio_fallida_no_deixa_undo(self):
+        v = _regla11_paritat___visor()
+        try:
+            v._ed_kind, v._ed_idx = "section", 0
+            v.ed_ini.setText("0.0")
+            v.ed_nom.setText("A")
+            v.ed_fam.setText("A")
+            n_abans = len(v._undo_stack)
+            with patch.object(v, "_normalitza_seccions",
+                              side_effect=ValueError("forçat")):
+                v._aplica_editor()
+            self.assertEqual(len(v._undo_stack), n_abans)
+            self.assertIsNone(v._undo_pending)
+        finally:
+            v.close()
+
+
+class TestMetadadesReparacions(_regla11_paritat___Base):
+    """Els recalculs i les reparacions no poden perdre metadades del tram."""
+
+    def test_duplicar_tram_conserva_metadades(self):
+        v = _regla11_paritat___visor()
+        try:
+            t0 = mapa_tempo.TramMapa(
+                0.0, 6.0, 120.0, "rubato", "4/4", "2+2", 3.0, "negra")
+            t1 = mapa_tempo.TramMapa(
+                6.0, 30.0, 90.0, "normal", "3/4", "", None, "negra")
+            self.assertTrue(v.aplica_tempo_trams([t0, t1]))
+            self.assertTrue(v._duplica_seleccio([("tempo", 0)]))
+            copia = next(t for t in v.tempo_trams
+                         if abs(float(t.ini) - 6.0) <= 1e-6)
+            self.assertEqual(copia.tipus, "rubato")
+            self.assertEqual(copia.agrupacio, "2+2")
+            self.assertEqual(copia.beat_unit, "negra")
+        finally:
+            v.close()
+
+    def test_eliminar_tram_conserva_metadades_del_que_queda(self):
+        v = _regla11_paritat___visor()
+        try:
+            t0 = mapa_tempo.TramMapa(
+                0.0, 10.0, 120.0, "rubato", "4/4", "2+2", 5.0, "negra")
+            t1 = mapa_tempo.TramMapa(
+                10.0, 30.0, 90.0, "normal", "3/4", "", None, "negra")
+            self.assertTrue(v.aplica_tempo_trams([t0, t1]))
+            v._elimina_seleccio([("tempo", 1)])
+            tram = v.tempo_trams[0]
+            self.assertEqual(tram.tipus, "rubato")
+            self.assertEqual(tram.agrupacio, "2+2")
+            self.assertEqual(tram.beat_unit, "negra")
+        finally:
+            v.close()
+
+    def test_recalcul_fix_conserva_metadades(self):
+        from app import tempo_map, tempo_recalc
+        v = _regla11_paritat___visor()
+        try:
+            v.aplica_tempo_trams([
+                mapa_tempo.TramMapa(
+                    0.0, 10.0, 120.0, "normal", "4/4", "", None, "negra"),
+                mapa_tempo.TramMapa(
+                    10.0, 20.0, 120.0, "rubato", "7/8", "2+2+3", 3.0,
+                    "corxera")])
+
+            class _Dlg:
+                def opcions_recalc(self):
+                    return {"silencia_factor": False, "rubato": False,
+                            "segons": True, "compas": True, "beats": False,
+                            "unitat": True, "n_fix": False}
+
+                def valors_camps(self):
+                    return (90.0, 7, 8, 4)
+
+                def unitat(self):
+                    return "corxera"
+
+                def set_assistencia(self, *a, **k):
+                    pass
+
+            classif = {"millor": {"bpm": 90.0, "num": 7, "den": 8, "n": 4},
+                       "nivell": "ALT", "avis": "", "candidats": []}
+            with patch.object(tempo_recalc,
+                              "recalculca_tram_amb_candidats",
+                              return_value=classif),                     patch.object(tempo_map, "canvia_compassos_tram",
+                                 return_value=[(0.0, 10.0, 120.0, 4, 4),
+                                               (10.0, 20.0, 90.0, 7, 8)]):
+                self.assertTrue(v._recalcula_tram_dialeg(_Dlg(), 1, "fix"))
+            tram = v.tempo_trams[1]
+            self.assertEqual(tram.tipus, "rubato")
+            self.assertEqual(tram.agrupacio, "2+2+3")
+            self.assertEqual(tram.beat_unit, "corxera")
+        finally:
+            v.close()
+
+
 class TestMenusParitat(_regla11_paritat___Base):
     def _amb_fila(self, fn):
         orig = QListWidget.indexAt
@@ -3049,7 +3190,7 @@ class TestRegla5FontDeVeritat(_regles_or___Base):
         self.assertEqual(len(files), len(v.acords))
         for fila, model in zip(files, v.acords):
             self.assertAlmostEqual(float(fila[0]), float(model[0]), places=2)
-            self.assertEqual(fila[2], model[2][0])
+            self.assertEqual(fila[2], pipeline.saneja_nom_acord(model[2][0]))
 
 
 class TestRegla6WavsNomesViaExporta(_regles_or___Base):
@@ -3439,7 +3580,7 @@ def _undo_llarg_tearDownModule():
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_undo_temps.py
 # ══════════════════════════════════════════════════════════════════════════
-"""A1: Desfer/Refer també ha de cobrir BPM, compàs, offset, mode i loop A-B.
+"""A1: Desfer/Refer també ha de cobrir BPM, compàs, mode i loop A-B.
 
 Abans `Visor._estat_edicio()` només desava `(acords, seccions)`: canviar el BPM
 o el loop era **irreversible** (Desfer no hi feia res). Ara la pila del

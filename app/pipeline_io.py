@@ -206,7 +206,7 @@ def desa_acords_csv(ruta, clips, durada=0.0):
             if not isinstance(c, Clip):
                 c = Clip(float(c[0]), float(c[1]), c[2])
             ini, fi = float(c.ini), float(c.fi)
-            nom = c.nom
+            nom = saneja_nom_acord(c.nom)
             w.writerow([f"{ini:.{TEMPS_DEC}f}", f"{fi:.{TEMPS_DEC}f}", nom])
     escriu_atomic(ruta, _escriu)
 def neteja_wavs(dest_dir):

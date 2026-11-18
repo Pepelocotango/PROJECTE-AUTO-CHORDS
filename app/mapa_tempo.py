@@ -87,6 +87,15 @@ class TramMapa:
         if tipus not in ("normal", "rubato"):
             raise ValueError(f"Tipus de tram no vàlid: {self.tipus!r}")
         object.__setattr__(self, "tipus", tipus)
+        try:
+            bpm = float(self.bpm)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"BPM de tram no vàlid: {self.bpm!r}") from e
+        if not (limits.BPM_MIN <= bpm <= limits.BPM_MAX):
+            raise ValueError(
+                f"BPM de tram fora de la banda {limits.BPM_MIN:g}–"
+                f"{limits.BPM_MAX:g}: {bpm:g}")
+        object.__setattr__(self, "bpm", bpm)
         text = str(self.compassos or "").strip()
         segs = _segments_compas(text)
         object.__setattr__(self, "compassos", text)
@@ -187,7 +196,13 @@ class TramMapa:
 
 
 def des_de_tupla(tram):
-    """Converteix una tupla antiga o un objecte amb atributs en `TramMapa`."""
+    """Converteix una tupla de **5 camps** o un objecte en `TramMapa`.
+
+    El format acceptat és l'únic que usa el motor:
+    `(ini, fi, bpm, num, den)`. Els tuples més llargs es rebutgen: les
+    metadades del model (`tipus`, `agrupacio`, `n`, `beat_unit`) viatgen en
+    `TramMapa` o en columnes de CSV, no en tuples.
+    """
     if isinstance(tram, TramMapa):
         return tram
     if (not isinstance(tram, (tuple, list))
@@ -199,27 +214,12 @@ def des_de_tupla(tram):
             getattr(tram, "agrupacio", ""),
             getattr(tram, "n", None),
             getattr(tram, "beat_unit", None))
-    agr = tram[5] if len(tram) > 5 else ""
-    n = tram[6] if len(tram) > 6 else None
-    beat_unit = tram[7] if len(tram) > 7 else None
-    # Tuples de 7 amb l'últim camp com a unitat (format nou de `Tram`).
-    if len(tram) == 7 and str(tram[6]) in bpm_unit.UNITATS:
-        n, beat_unit = None, tram[6]
-    ini, fi, bpm, num, den = tram[:5]
+    if len(tram) != 5:
+        raise ValueError(
+            f"El tram ha de ser una tupla de 5 camps, no {len(tram)}")
+    ini, fi, bpm, num, den = tram
     return TramMapa(float(ini), float(fi), float(bpm), "normal",
-                    f"{int(num)}/{int(den)}", agr, n, beat_unit)
-
-
-def a_tupla_completa(tram):
-    """Serialització completa d'un tram, `beat_unit` inclòs."""
-    t = des_de_tupla(tram)
-    return (float(t.ini), float(t.fi), float(t.bpm), t.tipus, t.compassos,
-            t.agrupacio, t.n, t.beat_unit)
-
-
-def a_tuples_complets(trams):
-    """Vista completa (8 camps) per als camins que han de preservar metadades."""
-    return [a_tupla_completa(t) for t in (trams or ())]
+                    f"{int(num)}/{int(den)}", "", None, None)
 
 
 def a_tuples(trams):
@@ -450,7 +450,7 @@ def normalitza_trams_map(trams, durada, log=None, fusiona=False):
     # Contracte §13.4: N enter a tots els clips. Si una duració deixa N
     # fraccionari, s'arrodoneix i es recalcula el BPM (amb avís).
     base5, ns, avisos_aj = tempo_map.ajusta_compassos_sencers(
-        [tuple(t) for t in net], estricte=False)
+        [tuple(t) for t in net], estricte=True)
     net = [replace(t, bpm=float(t5[2]),
                    compassos=f"{int(t5[3])}/{int(t5[4])}", n=float(n))
            for t, t5, n in zip(net, base5, ns)]

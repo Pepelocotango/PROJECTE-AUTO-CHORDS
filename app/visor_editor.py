@@ -176,14 +176,16 @@ class EditorMixin:
     def _aplica_editor_var(self, camp):
         """Aplica només una variable del clip de tempo seleccionat.
 
-        `camp`: `"bpm"`, `"compas"` o `"n"`. Els altres camps de l'Editor
-        s'ignoren totalment; el model aplica les seues regles de N enter.
+        `camp`: `"bpm"`, `"compas"`, `"agr"` o `"n"`. Els altres camps de
+        l'Editor s'ignoren totalment; el model aplica les seues regles de N
+        enter. Cada clic és una operació d'undo independent.
         """
         k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
         if k != "tempo" or not (0 <= i < len(self.tempo_trams or [])):
             self.avis_editor("Selecciona un clip de tempo abans d'aplicar.")
             return False
         tr = self.tempo_trams[i]
+        self._undo_marca()
         try:
             if camp == "bpm":
                 bpm = self.bpm_entrada(self.ed_nom.text())
@@ -226,6 +228,8 @@ class EditorMixin:
         except (TypeError, ValueError, AttributeError) as e:
             self.avis_editor(str(e))
             return False
+        finally:
+            self._undo_commit()
         self._actualitza_editor()
         return bool(ok)
 
@@ -290,15 +294,28 @@ class EditorMixin:
                 "N ha de ser un nombre enter de compassos (cap clip pot "
                 "quedar amb N fraccionari).")
             return
-        canvi_bpm = (abs(bpm - float(tr.bpm)) > 5e-4
-                     or (num, den) != (int(tr.num), int(tr.den)))
+        canvi_compas = (num, den) != (int(tr.num), int(tr.den))
+        canvi_bpm = (abs(bpm - float(tr.bpm)) > 5e-4 or canvi_compas)
         # En canviar el compàs, l'agrupació automàtica ha de passar a la del
         # compàs nou, encara que el camp no s'haja tocat.
-        if ((num, den) != (int(tr.num), int(tr.den))
-                and agr == getattr(tr, "agrupacio", "")):
+        if canvi_compas and agr == getattr(tr, "agrupacio", ""):
             agr = tempo_map.agrupacio_a_text(
                 tempo_map.agrupacio_compas(num, den))
         canvi_agr = agr != getattr(tr, "agrupacio", "")
+        # Cas B: el BPM del camp és el visible en la unitat VELLA. Si el
+        # compàs canvia, es deriva la unitat nova i es conserva el número
+        # visible; l'intern es recalcula. Així Enter/Aplica i el botó xicot
+        # de Compàs fan exactament el mateix.
+        unit_vella = self.unitat_de_tram(tr)
+        unit_nova = unit_vella
+        if canvi_compas:
+            bpm_visible = bpm_unit_mod.de_quarter(float(bpm), unit_vella)
+            provisional = mapa_tempo.TramMapa(
+                float(tr.ini), float(tr.fi), float(tr.bpm), tr.tipus,
+                f"{int(num)}/{int(den)}", agr, getattr(tr, "n", None),
+                unit_vella)
+            unit_nova = self._unitat_en_canvi_compas(tr, provisional, None)
+            bpm = bpm_unit_mod.a_quarter(bpm_visible, unit_nova)
 
         ini_nou = self._cb_a_secs(self.ed_cb.text())
         fi_nou = self._cb_a_secs(self.ed_cb_fi.text())
@@ -373,7 +390,7 @@ class EditorMixin:
                 nous[i] = mapa_tempo.TramMapa(
                     float(tr.ini), fi_sel, float(bpm), tr.tipus,
                     f"{int(num)}/{int(den)}", agr, float(n_val),
-                    tr.beat_unit)
+                    unit_nova)
                 agr_vei = (
                     vei.agrupacio
                     if (int(recalc["num"]), int(recalc["den"]))
@@ -464,7 +481,8 @@ class EditorMixin:
             except ValueError as e:
                 self.avis_editor(f"canvi invalid ({e})")
                 return
-            self._undo_commit()
+            finally:
+                self._undo_commit()
             self.timeline.set_data(self.acords, self.seccions)
             self._desa_i_regenera()
             self.log(f"editor: acord {i} -> {nom} @ {ini:.3f}s")
@@ -495,7 +513,8 @@ class EditorMixin:
             except ValueError as e:
                 self.avis_editor(f"canvi invalid ({e})")
                 return
-            self._undo_commit()
+            finally:
+                self._undo_commit()
             self.timeline.set_data(self.acords, self.seccions)
             self._regenera_abc_des_de_totes_les_seccions("editat des de l'editor")
             self.log(f"editor: seccio {i} -> {lletra} @ {ini:.3f}s")

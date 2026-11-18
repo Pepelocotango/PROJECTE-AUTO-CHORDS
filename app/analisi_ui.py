@@ -132,7 +132,7 @@ class AnalisiMixin:
         # Separació d'accions: «Analitza» només fa acords i estructura.
         # El BPM es detecta amb «Analitza BPM…» i es mostra com a capa.
         self.feina = Feina(wav, self.sortida, self._bpm_val(),
-                           self._bpb_val(), 0.0,
+                           self._bpb_val(),
                            bool(_ana.get("estructura", True)),
                            self.tempo_fix.isChecked(),
                            opcions=self.opcions,
@@ -204,7 +204,7 @@ class AnalisiMixin:
         self.a_exporta_part.setEnabled(False)
         self.feina = Feina(
             wav, self.sortida, self._bpm_val(), self._bpb_val(),
-            0.0, False, self.tempo_fix.isChecked(),
+            False, self.tempo_fix.isChecked(),
             opcions=self.opcions, amb_bpm=False, amb_acords=True,
             amb_estructura=False,
             mapa=getattr(vr, "tempo_map", None),

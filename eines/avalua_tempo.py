@@ -316,10 +316,9 @@ def avalua_canço(ruta_anotacio, num=4, den=4, cada_compassos=4,
     sig = next(((canvi[2], canvi[3]) for canvi in canvis
                 if canvi[2] > 0 and canvi[3] > 0),
                (int(dades.get("num", num)), int(dades.get("den", den))))
-    mapa_detectat = pipeline.detecta_tempo_per_trams(
+    trams, _base = pipeline.detecta_tempo_per_trams(
         ruta_audio, registre, durada, num=sig[0], den=sig[1],
-        cada_compassos=cada_compassos, offset=downbeat)
-    trams, offset = mapa_detectat[0], mapa_detectat[1]
+        cada_compassos=cada_compassos)
     detectats = ([bar[1] for bar in TempoMap(trams).compassos()]
                  if trams else [])
     graella = avalua_graella(esperats, detectats)

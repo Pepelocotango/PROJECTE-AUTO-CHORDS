@@ -22,7 +22,7 @@ _ = _temporals     # higiene: esborra els temporals en plegar
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from app import tempo, tempo_map  # noqa: E402
+from app import tempo, tempo_map, tempo_recalc  # noqa: E402
 
 SR = 22050
 
@@ -152,6 +152,61 @@ class BeatsATramsTests(unittest.TestCase):
         # el contracte de la graella s'ha de complir (N enter a tots els clips)
         val = valida_n_enter(trams, 32.0)
         self.assertEqual(len(val), len(trams))
+
+    def test_2_2_amb_un_compas_per_bloc_no_duplica_el_bpm(self):
+        beats = self._beats(120.0, 16.0)
+        trams, _off = tempo.beats_a_trams(
+            beats, 16.0, num=2, den=2, cada_compassos=1,
+            beat_unit="negra")
+        self.assertTrue(trams)
+        for t in trams:
+            self.assertLess(abs(t[2] - 120.0), 1.0, t)
+        valida_n_enter(trams, 16.0)
+
+    def test_2_2_blanca_dos_beats_per_compas(self):
+        beats = self._beats(60.0, 16.0)    # una blanca cada 1,0 s
+        trams, _off = tempo.beats_a_trams(
+            beats, 16.0, num=2, den=2, cada_compassos=1,
+            beat_unit="blanca")
+        self.assertTrue(trams)
+        for t in trams:
+            self.assertLess(abs(t[2] - 120.0), 1.0, t)
+        valida_n_enter(trams, 16.0)
+
+    def test_6_8_negra_punt_dos_beats_per_compas(self):
+        beats = self._beats(80.0, 12.0)    # una negra amb punt cada 0,75 s
+        trams, _off = tempo.beats_a_trams(
+            beats, 12.0, num=6, den=8, cada_compassos=1,
+            beat_unit="negra_punt")
+        self.assertTrue(trams)
+        for t in trams:
+            self.assertLess(abs(t[2] - 120.0), 1.0, t)
+        valida_n_enter(trams, 12.0)
+
+    def test_3_8_corxera_tres_beats_per_compas(self):
+        beats = self._beats(240.0, 12.0)   # una corxera cada 0,25 s
+        trams, _off = tempo.beats_a_trams(
+            beats, 12.0, num=3, den=8, cada_compassos=1,
+            beat_unit="corxera")
+        self.assertTrue(trams)
+        for t in trams:
+            self.assertLess(abs(t[2] - 120.0), 1.0, t)
+        valida_n_enter(trams, 12.0)
+
+    def test_3_8_negra_punt_un_beat_per_compas(self):
+        beats = self._beats(80.0, 12.0)    # una negra amb punt cada 0,75 s
+        trams, _off = tempo.beats_a_trams(
+            beats, 12.0, num=3, den=8, cada_compassos=1,
+            beat_unit="negra_punt")
+        self.assertTrue(trams)
+        for t in trams:
+            self.assertLess(abs(t[2] - 120.0), 1.0, t)
+        valida_n_enter(trams, 12.0)
+
+    def test_fallback_de_pocs_beats_usa_el_bpm_dels_beats(self):
+        trams, _off = tempo.beats_a_trams([0.0, 0.5, 1.0, 1.5], 10.0)
+        self.assertTrue(trams)
+        self.assertAlmostEqual(trams[0][2], 120.0, places=6)
 
     def test_mapa_segueix_un_canvi_de_tempo(self):
         """100 BPM mitja cançó i 130 la resta → dos trams distints."""
@@ -308,6 +363,30 @@ class RetempoTests(unittest.TestCase):
             tempo_map.mou_frontera_retempo(trams, 0, 1.0, self.DU)
         with self.assertRaises(ValueError):
             tempo_map.mou_frontera_retempo(trams, 2, 1.0, self.DU)
+
+    def test_ref_base_per_defecte_es_el_vei_esquerre_del_seleccionat(self):
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 90.0, 4, 4)]
+        automatic = tempo_map.mou_frontera_retempo(trams, 1, 12.0, 30.0)
+        explicit = tempo_map.mou_frontera_retempo(
+            trams, 1, 12.0, 30.0, ref_base=(120.0, 4, 4))
+        self.assertEqual(automatic, explicit)
+
+    def test_candidat_incompatible_amb_la_unitat_prova_els_altres(self):
+        from unittest.mock import patch
+        out = [(0.0, 10.0, 120.0, 4, 4), (10.0, 20.0, 90.0, 4, 4)]
+        refs = [(0, out[0]), (1, out[1])]
+        invalid = {"bpm": 100.0, "num": 4, "den": 4, "n": 5}
+        valid = {"bpm": 100.0, "num": 6, "den": 8, "n": 4}
+        with patch.object(tempo_recalc, "recalculca_tram",
+                          return_value=invalid), \
+                patch.object(tempo_recalc,
+                             "recalculca_tram_amb_candidats",
+                             return_value={"millor": valid,
+                                           "candidats": [valid]}):
+            res = tempo_map._recalcula_costats(
+                out, refs, 20.0, unitats={0: "negra", 1: "negra_punt"},
+                ref_base=(120.0, 4, 4))
+        self.assertEqual(res[1][3:], (6, 8))
 
     def test_clip_massa_curt_sense_qm_es_rebutja(self):
         # Un clip INTERIOR de 1 ms no cap ni amb el denominador més xic:

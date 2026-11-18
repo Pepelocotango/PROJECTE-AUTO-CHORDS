@@ -215,17 +215,13 @@ class Projecte:
     # -- creació --------------------------------------------------------
     @classmethod
     def crea(cls, carpeta, wav_origen, nom=None, bpm=120.0, bpb=4,
-             fix=False, opcions=None, vista=None, csv_acords=None,
-             csv_estructura=None, permet_existent=False, compas=None,
-             log=None):
+             fix=False, opcions=None, vista=None, compas=None, log=None):
         """Crea una carpeta de projecte AUTOCONTINGUDA a partir d'un àudio.
 
+        - La carpeta ha de ser buida o no existir.
         - Desa una WAV PCM 16 bits a `audio/`; converteix-hi l'entrada si cal.
-        - Opcionalment importa CSVs ja existents (migració).
+        - Crea el model inicial complet (acords, estructura i mapa de tempo).
         - Escriu el `.acproj` **atomicament** (últim pas).
-
-        `permet_existent=True` és per a la **migració** (carpeta ja amb
-        contingut, p. ex. una `AUTOCHORDS_<nom>/` antiga).
         """
         if not wav_origen or not os.path.isfile(wav_origen):
             raise ProjecteError(f"l'àudio no existeix: {wav_origen!r}")
@@ -234,7 +230,7 @@ class Projecte:
         # document (tempo/vista). Especialment en migració in situ.
         if _acproj_de_carpeta(carpeta) is not None:
             raise ProjecteError(f"ja hi ha un projecte a {carpeta!r}")
-        if not permet_existent and os.path.isdir(carpeta) and os.listdir(carpeta):
+        if os.path.isdir(carpeta) and os.listdir(carpeta):
             raise ProjecteError(
                 f"la carpeta {carpeta!r} ja té contingut i no és buida")
         nom = (nom or os.path.basename(carpeta)).strip() or "Projecte"
@@ -279,13 +275,6 @@ class Projecte:
             finally:
                 if not audio_dir_existeix and not os.listdir(audio_dir):
                     os.rmdir(audio_dir)
-        # Importa CSVs existents (migració), sense copiar-se a si mateixos.
-        csv_a = cls._csv(carpeta, NOM_CSV_ACORDS)
-        csv_s = cls._csv(carpeta, NOM_CSV_ESTRUCTURA)
-        for origen, desti in ((csv_acords, csv_a), (csv_estructura, csv_s)):
-            if origen and os.path.isfile(origen) and \
-                    os.path.abspath(origen) != os.path.abspath(desti):
-                shutil.copy2(origen, desti)
         # MODEL INICIAL COMPLET: un projecte acabat de crear ja serveix per
         # treballar i exportar **sense cap anàlisi** (decisió de l'operador,
         # 2026-10-19). Els CSVs cobreixen tota la cançó (regla d'or #4) i el
@@ -294,14 +283,14 @@ class Projecte:
             durada = float(pipeline.wav_info(dest_wav)["durada"])
         except Exception:  # noqa: BLE001  (wav il·legible: model de durada 0)
             durada = 0.0
-        if not os.path.isfile(csv_a):
-            pipeline.desa_acords_csv(
-                csv_a, [pipeline.Clip(0.0, durada, pipeline.FORAT_ACORD)],
-                durada)
-        if not os.path.isfile(csv_s):
-            pipeline.desa_abc_csv(
-                csv_s, [(0.0, durada, "A", "A")], float(bpm),
-                lambda *_a: None, lliure=not fix, bpb=int(bpb))
+        csv_a = cls._csv(carpeta, NOM_CSV_ACORDS)
+        csv_s = cls._csv(carpeta, NOM_CSV_ESTRUCTURA)
+        pipeline.desa_acords_csv(
+            csv_a, [pipeline.Clip(0.0, durada, pipeline.FORAT_ACORD)],
+            durada)
+        pipeline.desa_abc_csv(
+            csv_s, [(0.0, durada, "A", "A")], float(bpm),
+            lambda *_a: None, lliure=not fix, bpb=int(bpb))
         den = 4
         if compas and "/" in str(compas):
             try:
@@ -599,23 +588,3 @@ def carpeta_autochords(wav):
     """Carpeta `AUTOCHORDS_<nom>/` al costat del WAV, si existeix (o `None`)."""
     carp = pipeline.carpeta_sortida(wav)
     return carp if os.path.isdir(carp) else None
-
-
-def importa_autochords(wav, carpeta_desti=None, nom=None):
-    """Migra una `AUTOCHORDS_<nom>/` existent a un projecte **autocontingut**.
-
-    Per defecte ho fa **a la mateixa carpeta** (hi afegeix `audio/` i el
-    `.acproj`, conservant els CSVs i els exports). Retorna el `Projecte`.
-    """
-    origen = carpeta_autochords(wav)
-    if not origen:
-        raise ProjecteError(
-            "no hi ha cap carpeta AUTOCHORDS_ al costat del WAV")
-    desti = carpeta_desti or origen
-    ca = os.path.join(origen, NOM_CSV_ACORDS)
-    sa = os.path.join(origen, NOM_CSV_ESTRUCTURA)
-    return Projecte.crea(
-        desti, wav, nom=nom,
-        csv_acords=ca if os.path.isfile(ca) else None,
-        csv_estructura=sa if os.path.isfile(sa) else None,
-        permet_existent=True)

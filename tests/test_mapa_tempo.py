@@ -64,6 +64,12 @@ class TestTramMapa(unittest.TestCase):
         with self.assertRaises(ValueError):
             M.TramMapa(0.0, 4.0, 120.0, "lliure", "4/4")
 
+    def test_bpm_fora_de_banda_es_rebutja(self):
+        for bpm in (0.0, 29.999, 350.001, 999.0):
+            with self.subTest(bpm=bpm):
+                with self.assertRaisesRegex(ValueError, "BPM"):
+                    M.TramMapa(0.0, 4.0, bpm, "normal", "4/4")
+
     def test_agrupacio_invalida(self):
         with self.assertRaises(ValueError):
             M.TramMapa(0.0, 4.0, 120.0, "normal", "7/8", "3+3")
@@ -72,6 +78,15 @@ class TestTramMapa(unittest.TestCase):
         tm = M.des_de_tupla((0.0, 4.0, 120.0, 3, 8))
         self.assertEqual(tm.tipus, "normal")
         self.assertEqual(tm.compassos, "3/8")
+
+    def test_des_de_tupla_rebutja_formats_antics(self):
+        for tram in ((0.0, 4.0, 120.0, 4, 4, "2+2"),
+                     (0.0, 4.0, 120.0, 4, 4, "2+2", "negra"),
+                     (0.0, 4.0, 120.0, "normal", "4/4", "", None,
+                      "negra")):
+            with self.subTest(tram=tram):
+                with self.assertRaisesRegex(ValueError, "5 camps"):
+                    M.des_de_tupla(tram)
 
 
 class TestReglaCBA(unittest.TestCase):
@@ -114,6 +129,11 @@ class TestReglaCBA(unittest.TestCase):
 
 
 class TestNormalitzacio(unittest.TestCase):
+    def test_no_deixa_n_fraccionari_si_no_cap_a_la_banda(self):
+        tram = M.TramMapa(0.0, 0.01, 120.0, "normal", "4/4")
+        with self.assertRaises(ValueError):
+            M.normalitza_trams_map([tram], 0.01)
+
     def test_normal_sense_rubato_delega_en_el_model_antic(self):
         trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 4.0, 120.0, 4, 4)]
         out, avisos = M.normalitza_trams_map(trams, 4.0, fusiona=True)

@@ -72,8 +72,9 @@ PROJECTE AUTO CHORDS/
 │   ├── lib/       🟡  # (4.469 fitxers)
 │   ├── lib64/     🟡  # (4.469 fitxers)
 │   └── share/     🟡  # (11 fitxers)
-├── 00PER FER/                     🟡  # Plans, auditories i instruccions pendents (0 fitxers)
-├── app/                           🟢  # Codi de l'aplicació (PyQt5) (81 fitxers)
+├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (1 fitxer)
+│   └── AUDITORIA_CODI_I_DOCS_2026-11-17.md 🟢
+├── app/                           🟢  # Codi de l'aplicació (PyQt5) (80 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
 │   ├── analisi_ui.py             🟢  # Accions d'anàlisi de la finestra (F3).
@@ -91,7 +92,6 @@ PROJECTE AUTO CHORDS/
 │   ├── dialeg_opcions.py         🟢  # Diàleg d'opcions d'autodetecció (BPM/acords/estructura).
 │   ├── dialeg_quantitza.py       🟢  # Diàleg de quantització a la graella.
 │   ├── dialeg_tall_qm.py         🟢  # Diàleg conjunt per triar les opcions d'un tall amb Beats QM.
-│   ├── dialeg_tempo_mapa.py      🟢  # Diàleg del mapa de tempo per trams.
 │   ├── dialeg_tempo_per_trams.py 🟢  # Diàleg de detecció de tempo per trams.
 │   ├── dialeg_tram_tempo.py      🟢  # Diàleg per editar un tram de tempo/compàs.
 │   ├── dialeg_troba.py           🟢  # Diàleg de trobar i reemplaçar xifrats o etiquetes.

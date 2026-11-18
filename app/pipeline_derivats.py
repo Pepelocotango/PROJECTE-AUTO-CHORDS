@@ -268,7 +268,7 @@ def genera_guia_html(csv_path, bpm, bpb, workdir=None, durada=None,
 .b{position:relative;min-height:56px;padding:22px 8px 6px;border-right:1px solid #999;border-bottom:1px solid #999;font-weight:600}
 .b i{position:absolute;top:3px;left:6px;font:12px system-ui;color:#888}.b em{position:absolute;top:3px;right:6px;font:11px system-ui;color:#777;font-style:normal}.b span{margin-right:10px}.k{color:#aaa;font-weight:400}
 @media(prefers-color-scheme:dark){body{background:#111;color:#eee}}</style>
-<h3>%d BPM · %.3f negres/min · %.3f %s/min · %d/%d · gris = acord que ve del compàs anterior</h3><div class="g">%s</div>"""
+<h3>%g BPM · %.3f negres/min · %.3f %s/min · %d/%d · gris = acord que ve del compàs anterior</h3><div class="g">%s</div>"""
             % (bpm, bpm, bpm_mostra,
                bpm_unit_mod.etiqueta(unit_defecte).lower(), bpb, den,
                "".join(cells))

@@ -22,6 +22,8 @@ Provat amb:
 import struct
 import wave
 
+from app import bpm_unit
+
 import numpy as np
 
 # Rang plausible de BPM i «zona còmoda» (plateau del prior).
@@ -378,7 +380,7 @@ def _ibi_mediana(beats):
 
 
 def beats_a_trams(beats, durada, num=4, den=4, cada_compassos=4,
-                  tolerancia=0.01, offset=None):
+                  tolerancia=0.01, offset=None, beat_unit=None):
     """Mapa de tempo per blocs de compassos a partir dels beats seguits.
 
     Contracte de la graella: **cada tram ha de contindre un nombre enter de
@@ -389,11 +391,18 @@ def beats_a_trams(beats, durada, num=4, den=4, cada_compassos=4,
     cançó derive. El tram inicial pot ser parcial des de 0 fins a `offset`
     (compte enrere), que és l'única excepció permesa al començament.
 
+    `beat_unit` és la figura que segueix el detector (negra, negra amb punt,
+    corxera…). Si no es passa, s'usa la unitat per defecte del compàs. Això
+    evita assumir que tot beat detectat és una negra.
     Retorna `(trams, offset)`, amb `offset` = primer beat seguit. Els veïns
     amb BPM a menys de `tolerancia` (fracció) es fusionen.
     """
     durada = float(durada or 0.0)
     bq = float(num) * 4.0 / float(den or 4)
+    unit = bpm_unit.normalitza(
+        beat_unit or bpm_unit.unitat_per_defecte(num, den, ""))
+    q_per_beat = bpm_unit.factor(unit)
+    beats_per_bar = (bq / q_per_beat) if q_per_beat > 0 else bq
     ts = sorted({round(float(t), 6) for t in (beats or ())
                  if 0.0 <= float(t) < durada - 1e-6})
     if len(ts) < 4 or durada <= 0 or bq <= 0:
@@ -401,7 +410,16 @@ def beats_a_trams(beats, durada, num=4, den=4, cada_compassos=4,
     # `offset=None` = el compàs 1 cau al primer beat seguit (recomanat);
     # `offset=0` = la graella arrenca a 0 i la pickup s'absorbix al 1r tram.
     offset = float(ts[0]) if offset is None else float(offset)
-    pas = max(1, int(cada_compassos)) * int(num)
+    # Els beats detectats no sempre són negres: poden ser blanques, negres
+    # amb punt o corxeres. Triem el primer nombre de compassos >= `cada` que
+    # done un nombre enter de beats, perquè `pas` siga un índex vàlid.
+    cada = max(1, int(cada_compassos))
+    bars = cada
+    for _ in range(32):
+        if abs(bars * beats_per_bar - round(bars * beats_per_bar)) <= 1e-9:
+            break
+        bars += 1
+    pas = max(1, int(round(bars * beats_per_bar)))
     blocs = []                                   # (ini, fi, compassos, base)
     i = 0
     # Només blocs **sencers** de `pas` beats: la resta final no es mesura a
@@ -415,14 +433,15 @@ def beats_a_trams(beats, durada, num=4, den=4, cada_compassos=4,
         if ibi <= 0 or fi - base <= 0:
             i += pas
             continue
-        m = max(1, int(round((fi - base) / (bq * ibi))))
+        m = max(1, int(round((fi - base) / (beats_per_bar * ibi))))
         blocs.append((ini, fi, m, base))
         i += pas
     if not blocs:
         ibi = _ibi_mediana(ts)
         if ibi <= 0:
             return [], offset
-        return [(0.0, durada, bq * 60.0 / ibi, int(num), int(den))], offset
+        return [(0.0, durada, (60.0 / ibi) * q_per_beat,
+                 int(num), int(den))], offset
     # fusió de veïns amb BPM quasi igual (recalculant el total de compassos)
     out = []
     for ini, fi, m, base in blocs:
@@ -449,7 +468,7 @@ def mapa_tempo_automatic(wav_path, log=None, durada=None, num=4, den=4,
                          cada_compassos=4, tolerancia=0.01,
                          bpm_min=BPM_MIN, bpm_max=BPM_MAX,
                          preferit=BPM_PREFERIT, tightness=30.0, bpm=None,
-                         offset=None):
+                         offset=None, beat_unit=None):
     """Motor complet del mapa de tempo: BPM base → beats → trams.
 
     Retorna `(trams, offset, bpm_base)`; `([], 0.0, None)` si no ha pogut.
@@ -464,7 +483,8 @@ def mapa_tempo_automatic(wav_path, log=None, durada=None, num=4, den=4,
         durada = beats[-1] + 0.5
     trams, offset = beats_a_trams(beats, durada, num=num, den=den,
                                   cada_compassos=cada_compassos,
-                                  tolerancia=tolerancia, offset=offset)
+                                  tolerancia=tolerancia, offset=offset,
+                                  beat_unit=beat_unit)
     log(f"mapa: {len(trams)} tram(s) de tempo, offset {offset:.3f} s")
     return trams, offset, base
 

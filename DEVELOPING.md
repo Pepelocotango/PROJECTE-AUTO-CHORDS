@@ -261,7 +261,6 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `dialeg_opcions.py` | Diàleg d'opcions d'autodetecció (BPM/acords/estructura). |
 | `dialeg_quantitza.py` | Diàleg de quantització a la graella. |
 | `dialeg_tall_qm.py` | Diàleg conjunt per triar les opcions d'un tall amb Beats QM. |
-| `dialeg_tempo_mapa.py` | Diàleg del mapa de tempo per trams. |
 | `dialeg_tempo_per_trams.py` | Diàleg de detecció de tempo per trams. |
 | `dialeg_tram_tempo.py` | Diàleg per editar un tram de tempo/compàs. |
 | `dialeg_troba.py` | Diàleg de trobar i reemplaçar xifrats o etiquetes. |

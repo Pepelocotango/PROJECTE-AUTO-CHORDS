@@ -267,7 +267,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, sr, log,
             # des de `segments.csv` (que és el resultat CRU de l'anàlisi), sinó
             # del model editat → les edicions de seccions no es perden.
             desa_abc_csv(abc, seccions, bpm, log, lliure=not tempo_fix,
-                         bpb=bpb)
+                         bpb=bpb, mapa=mapa_viu, den=den)
             result["segments_csv"] = None
         else:
             csv_seg = os.path.abspath(csv_seg)
@@ -275,7 +275,7 @@ def exporta_total(csv_ac, csv_seg, sortida, bpm, bpb, sr, log,
                 raise FileNotFoundError(f"No trobo segments.csv: {csv_seg}")
             result["segments_csv"] = csv_seg
             fer_abc(csv_seg, abc, bpm, log, lliure=not tempo_fix, bpb=bpb,
-                    durada=total_s)
+                    durada=total_s, mapa=mapa_viu, den=den)
         dest_abc = os.path.join(sortida, "wavs_estructura")
         neteja_wavs(dest_abc)
         result["n_estructura_wavs"] = fer_wavs_estructura(

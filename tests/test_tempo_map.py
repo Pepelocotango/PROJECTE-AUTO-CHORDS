@@ -591,6 +591,15 @@ class TestGraellaAmbMapa(unittest.TestCase):
             [round(t, 3) for t in self.mapa.grid_lines(0.0, 8.0, "bar")],
             [0.0, 2.0, 4.0, 7.0])
 
+    def test_pulse_ancorada_a_l_inici_de_cada_compas(self):
+        """En un mapa 5/8 → 6/8 la pols no pot arrancar de q=0 global."""
+        mapa = TempoMap([(0.0, 1.25, 120.0, 5, 8),
+                         (1.25, 2.0, 120.0, 6, 8),
+                         (2.0, 2.75, 120.0, 6, 8)])
+        self.assertEqual(
+            [round(t, 3) for t in mapa.grid_lines(0.0, 3.0, "pulse")],
+            [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 2.0])
+
     def test_grid_lines_beat(self):
         self.assertEqual(
             [round(t, 3) for t in self.mapa.grid_lines(0.0, 5.0, "beat")],

@@ -3,11 +3,11 @@
 import os
 import tempfile
 import wave
+from dataclasses import replace
 
 import numpy as np
 
-from app import bpm_unit, mapa_tempo, pipeline
-from app.tempo_map import TempoMap
+from app import mapa_tempo, pipeline, tempo_map
 
 RETALLA_INICI = "retalla_inici"
 RETALLA_FINAL = "retalla_final"
@@ -160,17 +160,9 @@ def transforma_model(acords, seccions, trams, marcadors, durada,
 
     clips_acord = pipeline.clips_d_acords(acords, durada)
     clips_seccio = pipeline.clips_de_seccions(seccions)
-    trams_in = list(trams or [])
-    units = []
-    for t in trams_in:
-        try:
-            units.append(mapa_tempo.des_de_tupla(t).beat_unit)
-        except (TypeError, ValueError):
-            units.append("negra")
-    trams = [tuple(t) for t in trams_in]
+    trams = [mapa_tempo.des_de_tupla(t) for t in (trams or [])]
     if not trams:
-        trams = [(0.0, durada, 120.0, 4, 4)]
-        units = ["negra"]
+        trams = [mapa_tempo.TramMapa(0.0, durada, 120.0, "normal", "4/4")]
     marcadors = [float(t) for t in (marcadors or ())]
     nova_pos = float(pos)
     nou_loop_a, nou_loop_b = loop_a, loop_b
@@ -183,15 +175,14 @@ def transforma_model(acords, seccions, trams, marcadors, durada,
         clips_seccio = [
             pipeline.Clip(max(0.0, s.ini - delta), s.fi - delta, s.payload)
             for s in clips_seccio if s.fi > delta]
-        mapa = TempoMap(trams)
-        actiu = mapa.tram(delta)
-        nou_trams = [(0.0, actiu.fi - delta, actiu.bpm,
-                      actiu.num, actiu.den)]
-        for t in trams:
-            if t[0] >= actiu.fi - 1e-9 and t[1] > delta:
-                nou_trams.append((t[0] - delta, t[1] - delta,
-                                  t[2], t[3], t[4]))
-        trams = nou_trams
+        idx = next((i for i, t in enumerate(trams)
+                    if float(t.fi) > delta + 1e-12), None)
+        if idx is None:
+            raise ValueError("el retall deixaria la WAV sense tempo")
+        actiu = trams[idx]
+        trams = [replace(actiu, ini=0.0, fi=float(actiu.fi) - delta)] + [
+            replace(t, ini=float(t.ini) - delta, fi=float(t.fi) - delta)
+            for t in trams[idx + 1:]]
         marcadors = [t - delta for t in marcadors if t >= delta]
         nova_pos = max(0.0, nova_pos - delta)
         if nou_loop_a is not None and nou_loop_b is not None:
@@ -204,8 +195,8 @@ def transforma_model(acords, seccions, trams, marcadors, durada,
         clips_seccio = [
             pipeline.Clip(s.ini, min(s.fi, nou_final), s.payload)
             for s in clips_seccio if s.ini < nou_final]
-        trams = [(t[0], min(t[1], nou_final), *t[2:])
-                 for t in trams if t[0] < nou_final]
+        trams = [replace(t, fi=min(float(t.fi), nou_final))
+                 for t in trams if float(t.ini) < nou_final]
         marcadors = [t for t in marcadors if t <= nou_final]
         nova_pos = min(nova_pos, nou_final)
         if nou_loop_a is not None and nou_loop_b is not None:
@@ -224,9 +215,10 @@ def transforma_model(acords, seccions, trams, marcadors, durada,
                 for s in clips_seccio[1:]]
         if trams:
             trams = [
-                (0.0, trams[0][1] + delta, *trams[0][2:])
+                replace(trams[0], ini=0.0, fi=float(trams[0].fi) + delta)
             ] + [
-                (t[0] + delta, t[1] + delta, *t[2:])
+                replace(t, ini=float(t.ini) + delta,
+                        fi=float(t.fi) + delta)
                 for t in trams[1:]]
         marcadors = [t + delta for t in marcadors]
         nova_pos += delta
@@ -240,7 +232,7 @@ def transforma_model(acords, seccions, trams, marcadors, durada,
             ult = clips_seccio[-1]
             clips_seccio[-1] = pipeline.Clip(ult.ini, nou_final, ult.payload)
         if trams:
-            trams[-1] = (trams[-1][0], nou_final, *trams[-1][2:])
+            trams[-1] = replace(trams[-1], fi=nou_final)
     else:
         raise ValueError(f"operació d'àudio desconeguda: {operacio!r}")
 
@@ -259,13 +251,19 @@ def transforma_model(acords, seccions, trams, marcadors, durada,
         nou_loop_a = nou_loop_b = None
         nou_loop_on = False
 
-    trams_meta = []
-    for i, t in enumerate(trams):
-        unit = units[i] if i < len(units) else bpm_unit.unitat_per_defecte(
-            int(t[3]), int(t[4]))
-        trams_meta.append(mapa_tempo.TramMapa(
-            float(t[0]), float(t[1]), float(t[2]), "normal",
-            f"{int(t[3])}/{int(t[4])}", "", None, unit))
+    # §13.4/§13.9: N enter a tots els clips, també després d'una edició
+    # d'àudio. Les fronteres temporals són les que ha fixat l'edició; si N
+    # quedaria fraccionari, es recalcula el BPM. `estricte=True` fa fallar
+    # l'operació sencera abans de tocar l'àudio si no hi ha cap BPM vàlid.
+    trams, _avisos = mapa_tempo.normalitza_trams_map(trams, nou_final)
+    base5, ns, _avisos_aj = tempo_map.ajusta_compassos_sencers(
+        [tuple(t) for t in trams], estricte=True)
+    trams_meta = [
+        mapa_tempo.TramMapa(
+            float(t5[0]), float(t5[1]), float(t5[2]), t.tipus,
+            f"{int(t5[3])}/{int(t5[4])}", t.agrupacio, float(n),
+            t.beat_unit)
+        for t, t5, n in zip(trams, base5, ns)]
     return {
         "acords": acords_nous,
         "seccions": pipeline.seccions_de_clips(seccions_noves),

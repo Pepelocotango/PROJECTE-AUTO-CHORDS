@@ -114,6 +114,11 @@ def llegeix_bpm_bpb_de_guia(ruta):
         return None, None
     with open(ruta, encoding="utf-8") as f:
         cap = f.read(4000)
+    m = re.search(r"<h3>(\d+(?:\.\d+)?)\s*BPM.*?(\d+)\s*/\s*(\d+)",
+                  cap, re.S)
+    if m:
+        return float(m.group(1)), int(m.group(2))
+    # Format antic: «103 BPM · 4 temps/compàs».
     m = re.search(r"<h3>(\d+(?:\.\d+)?)\s*BPM\s*·\s*(\d+)\s*temps", cap)
     if not m:
         return None, None

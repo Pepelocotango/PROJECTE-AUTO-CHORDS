@@ -4,7 +4,7 @@ Extret de `app/visor.py`: objectiu de tempo, mapa de tempo per trams,
 validació, edició, rubato i conversió a trams normals.
 """
 from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QDialog, QMessageBox
+from PyQt5.QtWidgets import QMessageBox
 
 from . import bpm_unit as bpm_unit_mod
 from . import dialegs, limits, mapa_tempo, pipeline, tempo_map
@@ -55,17 +55,6 @@ class TempoMixin:
             else:
                 break
         return self.referencia_tempo_base(idx)
-
-    def silencia_factor_sospitos(self, idx, on=True):
-        """Silencia/activa l'avís de factor 1,5×/2/3 d'un tram (sessió)."""
-        idx = int(idx)
-        silenciats = getattr(self, "_factor_sospitos_silenciats", set())
-        if on:
-            silenciats.add(idx)
-        else:
-            silenciats.discard(idx)
-        self._factor_sospitos_silenciats = silenciats
-        return idx in silenciats
 
     def escolta_tram(self, ini, fi, bpm, num, den,
                      beat_unit=bpm_unit_mod.DEFECTE):
@@ -517,9 +506,27 @@ class TempoMixin:
         from app.tempo_map import TempoMap
         d = self._durada_wav()
         # Regles 1, 2, 4 i 8: aquest és el PUNT ÚNIC on es construeix el mapa.
-        # El normalitzador preserva `tipus`/`compassos` (rubato inclòs).
-        trams, avisos = mapa_tempo.normalitza_trams_map(
-            list(self.tempo_trams or []), d, log=self.log)
+        # El normalitzador preserva `tipus`/`compassos` (rubato inclòs). Un
+        # BPM 0/fora de banda en una còpia trencada es repara amb el transport
+        # abans de validar; els mapes desats invàlids es rebutgen en carregar.
+        entrada = []
+        for t in (self.tempo_trams or []):
+            if isinstance(t, mapa_tempo.TramMapa):
+                entrada.append(t)
+                continue
+            try:
+                bpm = float(t[2])
+            except (TypeError, ValueError, IndexError):
+                bpm = None
+            if bpm is None or not (limits.BPM_MIN <= bpm <= limits.BPM_MAX):
+                t = (t[0], t[1], float(self.bpm), *t[3:])
+            entrada.append(t)
+        try:
+            trams, avisos = mapa_tempo.normalitza_trams_map(
+                entrada, d, log=self.log)
+        except ValueError as e:
+            self.log(f"tempo: mapa no vàlid: {e}")
+            trams, avisos = [], [str(e)]
         if avisos and tuple(avisos) != getattr(self, "_avisos_tempo", ()):
             for _a in avisos:
                 self.log(f"tempo: {_a}")
@@ -581,8 +588,12 @@ class TempoMixin:
         `True` si s'ha aplicat.
         """
         entrada = list(trams or [])
-        nous, avisos = mapa_tempo.normalitza_trams_map(
-            entrada, self._durada_wav(), log=self.log)
+        try:
+            nous, avisos = mapa_tempo.normalitza_trams_map(
+                entrada, self._durada_wav(), log=self.log)
+        except ValueError as e:
+            self.log(f"tempo: mapa no vàlid: {e}")
+            return False
         for avís in avisos:
             self.log(f"tempo: {avís}")
         if not nous:
@@ -769,8 +780,6 @@ class TempoMixin:
             self.avis_editor("Recalcul: el clip no existeix.")
             return False
         opcions = dlg.opcions_recalc()
-        self.silencia_factor_sospitos(
-            idx, bool(opcions.get("silencia_factor")))
         if opcions.get("rubato"):
             self.avis_editor("Recalcul: el rubato no es recalcula ací.")
             return False
@@ -828,14 +837,6 @@ class TempoMixin:
             dlg.set_assistencia(text)
             self.avis_editor(text)
             return False
-        if idx in getattr(self, "_factor_sospitos_silenciats", set()):
-            motius_list = [m for m in (classif.get("motius") or [])
-                           if "factor" not in m]
-            if not motius_list:
-                nivell = "ALT"
-                motius = "avís de factor silenciat"
-            else:
-                motius = "; ".join(motius_list)
         if nivell != "ALT":
             alts = []
             for c in (classif.get("candidats") or [])[1:3]:
@@ -845,8 +846,7 @@ class TempoMixin:
             text = f"Recalcul {nivell}: {motius}"
             if alts:
                 text += " · alternatives: " + " | ".join(alts)
-            dlg.set_assistencia(
-                text, alternatives=(classif.get("candidats") or [])[1:4])
+            dlg.set_assistencia(text)
         else:
             dlg.set_assistencia(
                 f"Recalcul ALT: {float(res['bpm']):.3f} BPM · "
@@ -856,6 +856,10 @@ class TempoMixin:
                 nous = tempo_map.canvia_compassos_tram(
                     trams, idx, n_new=int(res["n"]), num=int(res["num"]),
                     den=int(res["den"]), durada=self._durada_wav())
+                # El recalcul fix treballa amb 5 tuples: cal tornar-hi el
+                # tipus, l'agrupació i la unitat del tram original. El `n`
+                # nou el deriva la normalització del mapa.
+                nous = mapa_tempo.reenganxa_metadades(trams, nous)
             else:
                 nous = mapa_tempo.recalcula_tram_c(
                     trams, idx, self._durada_wav(),
@@ -876,7 +880,7 @@ class TempoMixin:
         return ok
 
     def _on_tempo_edit(self, idx):
-        """Clic a un bloc de BPM/compàs → diàleg per editar-ne el valor."""
+        """Doble clic a un bloc de BPM/compàs → diàleg del recalcul fix."""
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)):
             return False
@@ -896,40 +900,10 @@ class TempoMixin:
             self, inici=s[0], bpm=s[2], num=s[3], den=s[4],
             inicial=(idx == 0), text_inici=lbl, unit=unit_tram,
             n_actual=n_actual, durada=durada,
-            info=self._info_clip_tempo(idx), beat_unit=unit_tram,
-            silencia_factor=(idx in getattr(
-                self, "_factor_sospitos_silenciats", set())))
-        darrers = {"valors": None}
-
-        def _valors_dialeg():
-            return dlg.valors_n() if dlg.n_auto() else dlg.valors()
-
-        def _aplica_actuals():
-            unit = dlg.unitat()
-            if dlg.n_auto():
-                bpm, num, den, n = dlg.valors_n()
-            else:
-                bpm, num, den = dlg.valors()
-            canvi_compas = (int(num), int(den)) != (
-                int(s.num), int(s.den))
-            if canvi_compas and not dlg.mantenir_pulsacio():
-                # Cas A explícit: conserva el BPM intern del clip.
-                return bool(self.edita_tempo_objectiu(
-                    idx, float(s.bpm), num, den, beat_unit=unit))
-            if dlg.mantenir_pulsacio() and canvi_compas:
-                # Cas B per defecte: el número visible mana; convertim el BPM
-                # del diàleg a la unitat antiga i en derivem la nova.
-                return bool(self.edita_compas_objectiu(
-                    idx, num, den, beat_unit=unit,
-                    bpm_visible=dlg.bpm_visible()))
-            if dlg.n_auto():
-                return bool(self.edita_n_compassos(
-                    idx, n, num, den, beat_unit=unit))
-            return bool(self.edita_tempo_objectiu(
-                idx, bpm, num, den, beat_unit=unit))
+            info=self._info_clip_tempo(idx), beat_unit=unit_tram)
+        aplicat = {"ok": False}
 
         def _executa(accio):
-            """Fa una acció amb desfer i captura els avisos per al diàleg."""
             avisos = []
             avis_original = self.avis_editor
             self.avis_editor = lambda text: (
@@ -948,25 +922,12 @@ class TempoMixin:
 
         def _refresca():
             dlg.actualitza_estat(self._info_clip_tempo(idx))
-            darrers["valors"] = _valors_dialeg()
-
-        def _on_aplica():
-            """«Ajusta»: aplica, refresca la informació i manté el diàleg."""
-            ok, avisos = _executa(_aplica_actuals)
-            if ok:
-                _refresca()
-                return True
-            QMessageBox.warning(
-                dlg, "Ajusta",
-                " ".join(avisos) or
-                "No s'ha pogut aplicar el canvi amb els valors actuals.")
-            return False
 
         def _on_recalcul(mode):
-            """«Recalcula» fix/mòbil: aplica, refresca i manté el diàleg."""
             ok, avisos = _executa(
                 lambda: self._recalcula_tram_dialeg(dlg, idx, mode))
             if ok:
+                aplicat["ok"] = True
                 _refresca()
                 return True
             QMessageBox.warning(
@@ -975,25 +936,9 @@ class TempoMixin:
                 "No s'ha pogut recalcular el tram amb estes opcions.")
             return False
 
-        dlg.aplicaRequested.connect(_on_aplica)
         dlg.recalculRequested.connect(_on_recalcul)
-        if dlg.exec_() != QDialog.Accepted:
-            return False
-        try:
-            valors = _valors_dialeg()
-        except ValueError as e:
-            QMessageBox.warning(self, "Tempo invàlid", str(e))
-            return False
-        # Si l'últim «Ajusta» ja va aplicar exactament estos valors, no es
-        # torna a aplicar: OK només tanca.
-        if darrers["valors"] == valors:
-            return True
-        self._undo_marca()
-        try:
-            ok = _aplica_actuals()
-        finally:
-            self._undo_commit()
-        return bool(ok)
+        dlg.exec_()
+        return bool(aplicat["ok"])
 
     def _on_tempo_mogut(self, idx, vora, t):
         """Vora d'un bloc de BPM/compàs arrossegada → **re-tempo** (el ratolí mana).

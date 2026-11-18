@@ -485,25 +485,40 @@ class TempoMap:
             # obri el tros lliure sí que es conserva (límit del clip).
             return [t for t in out if not self.es_lliure(t - TOL_COMPAS)]
         if kind == "pulse":
-            # Pols musical (beat_unit) dins de cada tram: en 6/8, negra amb
-            # punt (2 per compàs), independentment dels 6 clics del metrònom.
-            for tr in self._trams:
-                if tr.lliure or tr.fi <= t0 + TOL or tr.ini >= t1 - TOL:
+            # Pols musical (beat_unit) ancorada a l'INICI DE CADA COMPÀS.
+            # No n'hi ha prou amb q = k*pas_q: en un mapa 5/8 → 6/8 el segon
+            # compàs comença a q=2,5, que no és múltiple de 1,5 (negra amb
+            # punt) i la graella quedaria desplaçada.
+            bars = self.compassos()
+            if not bars:
+                return []
+            final_q = self.quarters(float(self._trams[-1].fi))
+            for k, (q_bar, t_bar, _num, _den) in enumerate(bars):
+                if (self.t_de_quarters(q_bar) < t0 - TOL
+                        and (k + 1 >= len(bars)
+                             or self.t_de_quarters(bars[k + 1][0])
+                             <= t0 + TOL)):
                     continue
+                q_next = (bars[k + 1][0] if k + 1 < len(bars)
+                          else final_q)
+                if t_bar >= t1 - TOL or self.es_lliure(t_bar + TOL):
+                    continue
+                tr = self.tram(t_bar + TOL)
                 unit = tr.beat_unit or bpm_unit.unitat_per_defecte(
                     tr.num_ef, tr.den_ef, tr.agrupacio)
                 pas_q = max(TOL, float(bpm_unit.factor(unit)))
-                q_ini = self.quarters(max(float(tr.ini), t0))
-                q_fi = self.quarters(min(float(tr.fi), t1))
-                k = int(math.ceil((q_ini - TOL) / pas_q))
-                while True:
-                    q = k * pas_q
-                    if q >= q_fi - TOL:
-                        break
-                    t = self.t_de_quarters(q)
-                    if t0 - TOL <= t <= t1 + TOL:
-                        out.append(t)
-                    k += 1
+                q_ini = max(q_bar, self.quarters(t0))
+                q_fi = min(q_next, self.quarters(t1))
+                if q_fi <= q_ini - TOL:
+                    continue
+                n = int(math.ceil((q_ini - q_bar) / pas_q - 1e-12))
+                q = q_bar + n * pas_q
+                while q < q_fi - TOL:
+                    if q < q_next - TOL:
+                        t = self.t_de_quarters(q)
+                        if t0 - TOL <= t <= t1 + TOL:
+                            out.append(t)
+                    q += pas_q
             return sorted(set(round(t, 9) for t in out))
         if frac is None:
             frac = 0.5 if kind == "sub" else 1.0
@@ -1708,6 +1723,12 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada,
     durada = float(durada or 0.0)
     nous = normalitza_trams(trams, durada)
     i = int(idx_frontera)
+    if ref_base is None and 0 < i < len(nous):
+        # §13.5: referència del clip a l'ESQUERRA del seleccionat. El
+        # seleccionat és i-1; per tant, la referència és i-2 (o el propi
+        # seleccionat si és el primer).
+        ref = nous[max(0, i - 2)]
+        ref_base = (float(ref[2]), int(ref[3]), int(ref[4]))
     if not (0 < i < len(nous)):
         raise ValueError("No hi ha cap frontera interior per a moure")
     a, b = nous[i - 1], nous[i]
@@ -1826,16 +1847,33 @@ def _recalcula_costats(out, refs, durada, beats_qm=None,
         unitat = (unitats or {}).get(int(idx))
         if (unitat is not None
                 and not bpm_unit.encaixa_en_compas(unitat, r["num"], r["den"])):
-            sugg = bpm_unit.unitat_per_defecte(r["num"], r["den"])
-            if classificacions is not None:
-                classificacions[int(idx)] = "BAIX"
-            if suggerides is not None:
-                suggerides[int(idx)] = sugg
-            if avisos is not None:
-                avisos.append(
-                    f"Clip {int(idx) + 1}: la unitat {unitat} no encaixa "
-                    f"amb {int(r['num'])}/{int(r['den'])}; suggerida {sugg}")
-            continue
+            # El millor candidat no encaixa amb la unitat del clip: provem la
+            # resta de candidats amb eixa unitat com a filtre, en compte de
+            # descartar el recalcul sencer.
+            alt = None
+            try:
+                classif = tempo_recalc.recalculca_tram_amb_candidats(
+                    fi - ini, bpm_ref, num_ref, den_ref,
+                    n_beats=n_beats, pas_beat=beat_factor,
+                    meter_prior=prior, unitat_actual=unitat)
+                alt = classif.get("millor")
+            except (TypeError, ValueError):
+                alt = None
+            if alt is not None and bpm_unit.encaixa_en_compas(
+                    unitat, alt["num"], alt["den"]):
+                r = alt
+            else:
+                sugg = bpm_unit.unitat_per_defecte(r["num"], r["den"])
+                if classificacions is not None:
+                    classificacions[int(idx)] = "BAIX"
+                if suggerides is not None:
+                    suggerides[int(idx)] = sugg
+                if avisos is not None:
+                    avisos.append(
+                        f"Clip {int(idx) + 1}: la unitat {unitat} no encaixa "
+                        f"amb {int(r['num'])}/{int(r['den'])}; "
+                        f"suggerida {sugg}")
+                continue
         if classificacions is not None:
             classificacions[int(idx)] = "ALT"
         if avisos is not None:

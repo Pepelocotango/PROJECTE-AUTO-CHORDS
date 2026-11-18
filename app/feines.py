@@ -73,13 +73,13 @@ class FilTempoTrams(QThread):
     """«Detecta el tempo per trams» en un fil (no bloqueja la GUI).
 
     Segueix els temps de tota la cançó (DP d'Ellis) i en fa un mapa de BPM
-    cada N compassos. Emet `{"trams", "offset", "bpm_base"}`.
+    cada N compassos. Emet `{"trams", "bpm_base"}`.
     """
     feta = pyqtSignal(object)
     missatge = pyqtSignal(str)
 
     def __init__(self, wav, durada, num, den, cada, tol, bpm_min=None,
-                 bpm_max=None, preferit=None, offset=None, parent=None):
+                 bpm_max=None, preferit=None, beat_unit=None, parent=None):
         super().__init__(parent)
         self._wav = wav
         self._durada = float(durada)
@@ -90,21 +90,20 @@ class FilTempoTrams(QThread):
         self._min = bpm_min
         self._max = bpm_max
         self._pref = preferit
-        self._offset = offset
+        self._beat_unit = beat_unit
 
     def log(self, t):
         self.missatge.emit(str(t))
 
     def run(self):
-        res = {"trams": [], "offset": 0.0, "bpm_base": None}
+        res = {"trams": [], "bpm_base": None}
         try:
-            trams, offset, base = pipeline.detecta_tempo_per_trams(
+            trams, base = pipeline.detecta_tempo_per_trams(
                 self._wav, self.log, self._durada, num=self._num,
                 den=self._den, cada_compassos=self._cada,
                 tolerancia=self._tol, bpm_min=self._min, bpm_max=self._max,
-                preferit=self._pref, offset=self._offset)
-            res = {"trams": trams, "offset": float(offset or 0.0),
-                   "bpm_base": base}
+                preferit=self._pref, beat_unit=self._beat_unit)
+            res = {"trams": trams, "bpm_base": base}
         except Exception as e:  # noqa: BLE001
             self.log(f"tempo per trams: ERROR ({e})")
         self.feta.emit(res)
@@ -115,7 +114,7 @@ class Feina(QThread):
     progres = pyqtSignal(int)
     feta = pyqtSignal(bool, str)
 
-    def __init__(self, wav, sortida, bpm, bpb, offset, amb_estructura,
+    def __init__(self, wav, sortida, bpm, bpb, amb_estructura,
                  tempo_fix=True, opcions=None, amb_bpm=True, amb_acords=True,
                  mapa=None, rang=None, acords=None):
         super().__init__()
@@ -128,7 +127,6 @@ class Feina(QThread):
         self.sortida = sortida
         self.bpm = bpm
         self.bpb = bpb
-        self.offset = offset
         self.amb_estructura = amb_estructura
         self.tempo_fix = tempo_fix
         self.opcions = opcions or {}
@@ -166,7 +164,7 @@ class Feina(QThread):
         if bool(cl.get("snap", False)):
             g = postproc.grid_de_opcions(cl)
             items = postproc._snap_a_graella(
-                items, durada, g, self.bpm, self.bpb, self.offset,
+                items, durada, g, self.bpm, self.bpb,
                 self.mapa, self.log, inici=a, fi=b, capcalera=False)
         return items
 
@@ -310,9 +308,15 @@ class Feina(QThread):
                         sense_baix=bool(cl.get("sense_baix", False)),
                         reduir=bool(cl.get("reduir", False)),
                         snap=bool(cl.get("snap", False)),
-                        bpm=self.bpm, bpb=self.bpb, offset=self.offset,
+                        bpm=self.bpm, bpb=self.bpb,
                         divisio=int(cl.get("divisio", 1)),
                         grid=cl.get("grid"), mapa=self.mapa,
+                        log=self.log, durada=durada_wav)
+                else:
+                    # Encara que no hi haja neteja, el MODEL ha de quedar en
+                    # notació canònica. El CRU ja s'ha guardat abans.
+                    postproc.processa_acords_csv(
+                        csv_ac, fusiona_iguals=False,
                         log=self.log, durada=durada_wav)
             else:
                 self.log("acords: OMESOS (es conserva el model actual)")
@@ -347,7 +351,7 @@ class Feina(QThread):
             self.analisi = {
                 "data": time.strftime("%Y-%m-%dT%H:%M:%S"),
                 "durada": durada_wav,
-                "bpm": self.bpm, "bpb": self.bpb, "offset": self.offset,
+                "bpm": self.bpm, "bpb": self.bpb,
                 "tempo_fix": self.tempo_fix,
                 "opcions": self.opcions,
                 "chords": self.raw_chords,

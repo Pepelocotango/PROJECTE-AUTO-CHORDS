@@ -98,21 +98,20 @@ el projecte de DAW queden ajornats.
   agrupació per defecte `5`, `7` i `8`; el metrònom continua clicant el
   denominador. La graella i el regle deixen de numerar `x/8`/`x/16` com si
   foren `x/4`; el canvi de compàs conserva el BPM visible per defecte (Cas B)
-  amb opció explícita de Cas A. Classificador **ALT/MITJÀ/BAIX** amb
-  candidats/alternatives i Assistència; L3/L4. Diàleg amb canvi d'unitat
-  **inline**, **silenci 1,5×/2/3**, **alternatives clicables** i **«Escolta la
-  proposta»** (bucle + metrònom proposat, amb restauració de l'estat previ).
-  Terminologia canònica: **«recalc fix»** (fronteres fixes) i **«recalc mòbil»**
-  (una frontera compartida) a `docs/REGLES_DE_LA_APP.md` §13.6. Detall de
-  decisions a `LOG_DIALEGS_AGENTS.txt` OC/533–OC/567 i
-  `docs/REGLES_DE_LA_APP.md` §13.
+  amb opció explícita de Cas A. Classificador **ALT/MITJÀ/BAIX** i
+  assistència del recalcul. Terminologia canònica: **«recalc fix»**
+  (fronteres fixes) i **«recalc mòbil»** (una frontera compartida) a
+  `docs/REGLES_DE_LA_APP.md` §13.6. Auditoria 2026-11-17: resolts els punts
+  **2.1–3.10** (undo, metadades, `N` enter, `x/16`, `C.B`, exportació i
+  validacions). Detall a `docs/REGLES_DE_LA_APP.md` §13.
 - **GUI de tempo**: la barra «Temps» mostra **BPM intern** (negres/minut),
   **BPM del clip** en la seua unitat i **Compàs**, tots només lectura; els
   valors s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
-  **Aplica** fa **recalc mòbil**; **Ajusta** obre el diàleg del tram (N,
-  compàs, BPM i unitat) amb **Mantenir la pulsació** activat per defecte. El
-  **TAP** aplica al clip. Canviar la unitat amb TAP obert tanca la sessió
-  (1 undo) i el canvi és un altre undo. Els canvis d'unitat tenen undo real.
+  **Aplica** fa **recalc mòbil**; **Ajusta** obre un diàleg reduït a
+  **informació del clip + recalc fix** (N, compàs, BPM i **N mana**). El
+  recalcul mòbil es fa des de l'Editor o arrossegant fronteres. El **TAP**
+  aplica al clip. Canviar la unitat amb TAP obert tanca la sessió (1 undo) i
+  el canvi és un altre undo. Els canvis d'unitat tenen undo real.
 - **Edició d'àudio (§13.9)**: importació, backups, retall/afegir als extrems,
   sincronització del model, desfer/refer i export amb FFmpeg implementats.
 - **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
@@ -142,11 +141,14 @@ el projecte de DAW queden ajornats.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
   Tags locals renumerats a `v0.9.x`; **cap push**.
-- **Suite**: `make check` complet executat (2026-11-17) amb **1608 tests**
-  (1 skip) i **tot OK**. Inclou la prova de canvi 4/4→3/4 de MusicXML i la
-  regressió d'agrupació en canviar el compàs.
+- **Suite**: `make check` complet executat (2026-11-18) amb **1626 tests**
+  (1 skip) i **tot OK**. Inclou les regressions de l'auditoria 2026-11-17
+  (undo, metadades, `N` enter, metrònom `x/16`, `C.B`, exportació i
+  validacions).
 
 **Pendent:**
+- **Auditoria 2026-11-17**: queden per revisar els punts **4.x** (interfície,
+  dreceres i estat intern) i **5** (incoherències de documentació).
 - **Publicar la release `v0.9.3`** quan l'operador ho ordene; `release.yml` crearà
   el tag des de `pyproject.toml`. Pujar els tags locals `v0.9.x` al remot només
   amb ordre explícita (mai push per iniciativa pròpia).
@@ -154,10 +156,10 @@ el projecte de DAW queden ajornats.
 - **Fase 12**: congelació, higiene i CI; inclou el **CI automàtic en push/PR**
   (proposat, encara no activat).
 - **Purga interna de l'`offset=0`**: feta a la UI, `TimelineView`, pipeline de
-  derivats, exportació, `TempoMap` i les funcions de càlcul de `tempo_map`.
-  Queden paràmetres auxiliars a la detecció de tempo (`pipeline_vamp`), el
-  metrònom forçat i la feina d'anàlisi; no els alimenta la UI (deute intern
-  sense efecte visible).
+  derivats, exportació, `TempoMap`, detecció per trams, `FilTempoTrams`,
+  `Feina` i avaluador. L'alineació del primer beat queda com a detall intern de
+  la detecció; el metrònom forçat conserva l'origen de la graella per a
+  l'audició guiada.
 - **Agrupació explícita dels compassos irregulars**: feta a la franja Editor
   amb camp + botó **Aplica** propi; per defecte `5/8` → `5`, `7/8` → `7` i
   `8/8` → `8`. Les altres agrupacions (`3+2`, `2+2+3`, `3+3+2`…) es poden

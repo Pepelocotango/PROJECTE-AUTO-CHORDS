@@ -5,6 +5,38 @@ delega la validació a `tempo_map`/`limits`.
 """
 from . import limits, tempo_map
 
+
+def _beat_seconds(bpm, den):
+    """Durada en segons d'un temps del denominador `den`."""
+    return (4.0 / max(1, int(den))) * 60.0 / max(float(bpm), 1e-9)
+
+
+def cb_a_secs(text, bpm, num, den):
+    """`C.B[.S]` → segons, amb el denominador del compàs."""
+    import re
+    m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)"
+                 r"(?:\s*[.,]\s*(\d+))?\s*$", str(text))
+    if not m:
+        return None
+    c, b = int(m.group(1)), int(m.group(2))
+    sub = int(m.group(3)) if m.group(3) else 1
+    sub = max(1, min(8, sub))
+    n = ((c - 1) * max(1, int(num)) + (b - 1) + (sub - 1) / 8.0)
+    return max(0.0, n * _beat_seconds(bpm, den))
+
+
+def secs_a_cb(t, bpm, num, den):
+    """Segons → `C.B[.S]`, amb el denominador del compàs."""
+    beat_len = _beat_seconds(bpm, den)
+    num = max(1, int(num))
+    p = int(round(max(0.0, float(t)) / beat_len * 8))
+    SB = num * 8
+    c = p // SB + 1
+    dins = p % SB
+    b = dins // 8 + 1
+    sub = dins % 8 + 1
+    return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
+
 class TempsMixin:
     """Camps de BPM/compàs i aplicació al visor."""
 
@@ -57,30 +89,13 @@ class TempsMixin:
 
     def _cb_a_secs(self, text):
         """'C.B' o 'C.B.S' (compàs.beat.fusa) -> segons."""
-        import re
-        m = re.match(r"\s*(-?\d+)\s*[.,]\s*(\d+)"
-                     r"(?:\s*[.,]\s*(\d+))?\s*$", str(text))
-        if not m:
-            return None
-        c, b = int(m.group(1)), int(m.group(2))
-        sub = int(m.group(3)) if m.group(3) else 1
-        sub = max(1, min(8, sub))
-        beat_len = 60.0 / max(self._bpm_val(), 1e-9)
-        n = ((c - 1) * max(1, self._bpb_val()) + (b - 1)
-             + (sub - 1) / 8.0)
-        return max(0.0, min(60.0, n * beat_len))
+        return cb_a_secs(text, self._bpm_val(), self._bpb_val(),
+                         self._beat_type_val())
 
     def _secs_a_cb(self, t):
         """Segons -> 'C.B' o 'C.B.S' (fusa) a la graella ORIGINAL."""
-        beat_len = 60.0 / max(self._bpm_val(), 1e-9)
-        bpb = max(1, self._bpb_val())
-        p = int(round(float(t) / beat_len * 8))
-        SB = bpb * 8
-        c = p // SB + 1
-        dins = p % SB
-        b = dins // 8 + 1
-        sub = dins % 8 + 1
-        return f"{c}.{b}" if sub == 1 else f"{c}.{b}.{sub}"
+        return secs_a_cb(t, self._bpm_val(), self._bpb_val(),
+                         self._beat_type_val())
 
     def _canvia_mode_temps(self, bpm_compas):
         """Canvia entre mode BPM·compàs i mode Lliure (hh:mm:ss)."""
