@@ -22,6 +22,23 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   compassos abans de la cançó», «Conserva el so i afig silenci», «Retalla el
   tros sobrant», «Conserva tota la cua i afig silenci», etc.
 
+### Corregit — la llista de marcadors segueix la quadratura i l’undo (2026-11-18)
+- En aplicar inici/final, els marcadors **Inici/Final** apareixen també a la
+  llista de marcadors, no només al timeline.
+- En desfer/refer es refresca la llista i es conserven els tipus `inici`/`final`
+  al CSV i a l’estat del projecte.
+
+### Canviat — recalcul musical: un camp, QM hard i N mana OFF (2026-11-18)
+- La franja Editor recalcula els camps que no s’han tocat si només canvies
+  BPM, compàs o N: prioritat **compàs > BPM > N**, amb la referència com a
+  desempat.
+- `N mana` ara està **desactivat per defecte** al diàleg del tram.
+- Amb **Snap = Beats QM**, els beats són una **restricció dura** per a Editor,
+  TAP, talls, fronteres i diàlegs: compàs i N han de quadrar amb els beats.
+- Sense Snap QM, els beats no intervenen.
+- El `+` torna a recalcular sempre els dos costats amb la referència del clip,
+  com a `v0.9.1`, en lloc de provar primer una partició sense recalcul.
+
 ### Canviat — el final es quadra com una cua independent (2026-11-18)
 - `Ajusta final WAV` ara demana **on s’acaba la música** i quants compassos
   de **cua** es volen. L’app talla l’últim tram exactament en eixe

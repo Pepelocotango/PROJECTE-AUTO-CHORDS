@@ -104,6 +104,25 @@ class TapMixin:
         bpm = taps_bpm * factor
         if vr is not None:
             _, _bpm, num, den = vr.tempo_objectiu_vals()
+            if vr._beats_per_validacio():
+                try:
+                    n_qm = vr._qm_n_enter(idx, num, den)
+                    dt = float(tr[1]) - float(tr[0]) if tr is not None else 0
+                    bq = float(num) * 4.0 / float(den)
+                    bpm_qm = (n_qm * bq * 60.0 / dt
+                              if n_qm and dt > 0 else None)
+                except ValueError as e:
+                    self.registra(f"tap tempo: {e}")
+                    self._missatge_info(str(e))
+                    self._tap_timer.start()
+                    return
+                if bpm_qm is not None and abs(bpm - bpm_qm) > 0.05:
+                    msg = (f"Snap Beats QM: el BPM ha de ser "
+                           f"{bpm_qm:.3f}; el tap ({bpm:.3f}) no s'aplica.")
+                    self.registra(msg)
+                    self._missatge_info(msg)
+                    self._tap_timer.start()
+                    return
             if vr.edita_tempo_objectiu(idx, bpm, num, den, desa=False):
                 self._tap_canviat = True
             self._sincronitza_temps_del_visor()

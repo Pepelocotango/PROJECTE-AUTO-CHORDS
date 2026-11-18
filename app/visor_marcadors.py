@@ -137,38 +137,16 @@ class MarcadorsMixin:
                     "Tall QM: no hi ha cap combinació vàlida amb la graella.")
                 return None
             return self._tria_opcions_tall_qm(trams, idx, costats)
-        kw = dict(beats_qm=None,
-                  permissiu=True, ref_base=None,
-                  beat_factor=self.beat_factor())
+        # Sense Snap QM: recalcula sempre els dos costats amb la referència
+        # del clip (com feia el «+» de v0.9.1). Així no queda una solució
+        # fraccionària ni s'accepta una partició pitjor només perquè ja era
+        # quasi sencera.
         try:
             out = tempo_map.parteix_tram_marcador(
-                trams, float(t), durada, recalculca=False, **kw)
-        except ValueError:
-            out = None
-        if out is not None and len(out) != len(trams):
-            # Si els dos costats queden en compassos sencers, no cal tocar
-            # el BPM. Si no, apliquem el recalcul guiat.
-            idx = next((i for i, tr in enumerate(trams)
-                        if float(tr[0]) + 1e-9 < float(t)
-                        < float(tr[1]) - 1e-9), None)
-            if idx is not None:
-                afectats = (idx, idx + 1)
-                fraccionari = False
-                for i in afectats:
-                    if i >= len(out) or int(out[i][3]) <= 0:
-                        continue
-                    try:
-                        nb = tempo_map.compassos_del_clip(out[i])
-                    except (TypeError, ValueError):
-                        continue
-                    if abs(nb - round(nb)) > 1e-6:
-                        fraccionari = True
-                        break
-                if not fraccionari:
-                    return out
-        try:
-            out = tempo_map.parteix_tram_marcador(
-                trams, float(t), durada, recalculca=True, **kw)
+                trams, float(t), durada, recalculca=True,
+                beats_qm=None, permissiu=True,
+                ref_base=self.referencia_tempo_a(t),
+                beat_factor=self.beat_factor())
         except ValueError:
             return None
         return out if len(out) != len(trams) else None

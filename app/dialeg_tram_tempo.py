@@ -85,7 +85,7 @@ QCheckBox::indicator:disabled {{
          self.sp_bpm) = self._crea_camps(form_fix)
         lay_fix.addLayout(form_fix)
         self.chk_n = QCheckBox("N mana (el BPM es recalcula)")
-        self.chk_n.setChecked(n_actual is not None and self._durada > 0)
+        self.chk_n.setChecked(False)
         self.chk_n.setEnabled(n_actual is not None and self._durada > 0)
         self.chk_n.setToolTip(
             "Si està activat, es respecten els compassos del camp N i el "
@@ -446,7 +446,7 @@ QCheckBox::indicator:disabled {{
                 self.sp_n.blockSignals(False)
         self.chk_n.blockSignals(True)
         try:
-            self.chk_n.setChecked(n_real is not None and self._durada > 0)
+            self.chk_n.setChecked(False)
             self.chk_n.setEnabled(n_real is not None and self._durada > 0)
         finally:
             self.chk_n.blockSignals(False)

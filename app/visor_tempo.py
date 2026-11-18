@@ -427,6 +427,101 @@ class TempoMixin:
                      f"({int(n)} compassos de {int(num)}/{int(den)})")
         return ok
 
+    def _qm_n_enter(self, idx, num, den):
+        """N que imposen els beats QM per al compàs triat (o error)."""
+        beats = list(self._beats_per_validacio() or ())
+        if not beats:
+            return None
+        trams = list(self.tempo_trams or [])
+        if not (0 <= int(idx) < len(trams)):
+            return None
+        tr = trams[int(idx)]
+        ini, fi = float(tr[0]), float(tr[1])
+        factor = self.beat_factor(self.unitat_de_tram(tr))
+        negres = tempo_recalc.n_negres_del_clip(beats, ini, fi, factor)
+        if negres is None:
+            raise ValueError(
+                "Snap Beats QM: no hi ha cap beat detectat dins del clip.")
+        bq = float(num) * 4.0 / float(den)
+        if bq <= 0:
+            raise ValueError("El compàs no té durada")
+        n = float(negres) / bq
+        if abs(n - round(n)) > 1e-6:
+            raise ValueError(
+                f"Snap Beats QM: amb {int(num)}/{int(den)} el clip tindria "
+                f"N={n:.3f}; no pot quedar així. Tria un compàs/N que "
+                "encaixe amb els beats.")
+        return int(round(n))
+
+    def edita_tempo_guiat(self, idx, *, bpm=None, num=None, den=None, n=None):
+        """Edita un clip recalcular els camps que no s'han fixat.
+
+        Prioritat: compàs > BPM > N > referència. Si Snap=Beats QM, els beats
+        són una restricció dura per a compàs i N.
+        """
+        trams = list(self.tempo_trams or [])
+        idx = int(idx)
+        if not (0 <= idx < len(trams)):
+            self.avis_editor("Aquest clip de tempo ja no existeix.")
+            return False
+        tr = trams[idx]
+        num_t = int(tr.num if num is None else num)
+        den_t = int(tr.den if den is None else den)
+        bpm_t = float(tr.bpm if bpm is None else bpm)
+        try:
+            bpm_t, num_t, den_t = tempo_map.valida_tempo(
+                bpm_t, num_t, den_t)
+        except ValueError as e:
+            self.avis_editor(f"Tempo: {e}")
+            return False
+        dt = float(tr[1]) - float(tr[0])
+        if dt <= tempo_map.TOL:
+            self.avis_editor("Tempo: el clip no té durada.")
+            return False
+        bq = float(num_t) * 4.0 / float(den_t)
+        try:
+            n_qm = self._qm_n_enter(idx, num_t, den_t)
+            if n_qm is not None:
+                if n is not None and int(round(float(n))) != n_qm:
+                    raise ValueError(
+                        f"Snap Beats QM: amb {int(num_t)}/{int(den_t)} el "
+                        f"N ha de ser {n_qm}, no {int(round(float(n)))}.")
+                n_t = n_qm
+                bpm_t = n_t * bq * 60.0 / dt
+                if bpm is not None and abs(bpm_t - float(bpm)) > 0.05:
+                    raise ValueError(
+                        f"Snap Beats QM: amb {int(num_t)}/{int(den_t)} i "
+                        f"{n_t} compassos, el BPM ha de ser {bpm_t:.3f}, "
+                        f"no {float(bpm):.3f}.")
+            elif n is not None:
+                n_t = max(1, int(round(float(n))))
+                if bpm is None:
+                    bpm_t = n_t * bq * 60.0 / dt
+            else:
+                n_t = max(1, int(round(dt * bpm_t / (bq * 60.0))))
+            nous = mapa_tempo.recalcula_tram_c(
+                trams, idx, self._durada_wav(), n=n_t, bpm=bpm_t,
+                num=num_t, den=den_t, camp="n")
+        except ValueError as e:
+            self.avis_editor(f"Tempo: {e}")
+            return False
+        unit = self._unitat_en_canvi_compas(tr, nous[idx], None)
+        nous = self._amb_unitat(nous, idx, unit)
+        if not self._valida_unitat_tram(nous[idx], "Tempo"):
+            return False
+        self.bpm = float(nous[0][2])
+        self.bpb = int(nous[0][3])
+        self.beat_type = int(nous[0][4])
+        ok = bool(self.aplica_tempo_trams(nous))
+        if ok:
+            self.log(
+                f"editor guiat tram {idx}: {float(tr[2]):.3f} → "
+                f"{float(self.tempo_trams[idx][2]):.3f} BPM · "
+                f"{int(self.tempo_trams[idx].num)}/"
+                f"{int(self.tempo_trams[idx].den)} · "
+                f"N={float(self.tempo_trams[idx].n):g}")
+        return ok
+
     def _repara_compas_no_enter(self, idx, bpm, num, den, n_compas,
                                 trams, desa=True):
         """Diàleg per reparar un canvi de compàs que deixa N no enter.
@@ -806,12 +901,17 @@ class TempoMixin:
             num_ref, den_ref = num_camp, den_camp
         n_beats = None
         pas_beat = 1.0
-        if opcions["beats"]:
+        qm_actiu = bool(self._beats_per_validacio())
+        if opcions["beats"] or qm_actiu:
             factor = self.beat_factor() if opcions["unitat"] else 1.0
             beats = list(getattr(self, "qm_beats", None) or ())
             n_beats = tempo_recalc.n_negres_del_clip(
                 beats, ini, fi, factor)
             pas_beat = factor
+            if qm_actiu and n_beats is None:
+                self.avis_editor(
+                    "Snap Beats QM: no hi ha cap beat detectat dins del clip.")
+                return False
         unit_tram = dlg.unitat()
         try:
             classif = tempo_recalc.recalculca_tram_amb_candidats(
@@ -821,7 +921,7 @@ class TempoMixin:
                 mode="mixt" if n_beats is not None else "graella",
                 bloca_compas=not opcions["compas"],
                 pas_beat=pas_beat,
-                ajusta_beats=bool(opcions["beats"]),
+                ajusta_beats=bool(opcions["beats"] or qm_actiu),
                 unitat_actual=unit_tram)
         except ValueError as e:
             self.avis_editor(f"Recalcul: {e}")
@@ -1006,6 +1106,17 @@ class TempoMixin:
             self.avis_editor(f"Compassos: {e}")
             return False
         nous = mapa_tempo.reenganxa_metadades(trams, nous)
+        if self._beats_per_validacio():
+            try:
+                n_qm = self._qm_n_enter(idx, nous[idx].num, nous[idx].den)
+            except ValueError as e:
+                self.avis_editor(str(e))
+                return False
+            if n_qm is not None and abs(float(nous[idx].n) - n_qm) > 1e-6:
+                self.avis_editor(
+                    f"Snap Beats QM: amb {int(nous[idx].num)}/"
+                    f"{int(nous[idx].den)} el N ha de ser {n_qm}.")
+                return False
         if [tuple(x) for x in nous] == [tuple(x) for x in trams]:
             return False
         # L3: un canvi de compàs no pot deixar la unitat del tram sense

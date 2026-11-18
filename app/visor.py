@@ -1120,7 +1120,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self._invalida_cache_audio()
         self.timeline.set_audio(self.audio)
         self.timeline.set_data(self.acords, self.seccions)
-        self.timeline.set_marcadors(self.marcadors)
+        self._pinta_marcadors()
         self.timeline.set_beats(self.qm_beats, self.qm_downbeats)
         self.timeline.set_snap_beats(self.qm_beats)
         self._actualitza_temps()

@@ -189,20 +189,17 @@ class EditorMixin:
         try:
             if camp == "bpm":
                 bpm = self.bpm_entrada(self.ed_nom.text())
-                bpm, num, den = tempo_map.valida_tempo(
+                bpm, _num, _den = tempo_map.valida_tempo(
                     bpm, int(tr.num), int(tr.den))
-                ok = self.edita_tempo_objectiu(i, bpm, num, den)
+                ok = self.edita_tempo_guiat(i, bpm=bpm)
             elif camp == "compas":
                 m = re.match(r"^\s*(\d+)\s*[/:]\s*(\d+)\s*$",
                              self.ed_fam.text().strip())
                 if not m:
                     raise ValueError("El compàs ha de ser num/den (p. ex. 6/8).")
                 num, den = int(m.group(1)), int(m.group(2))
-                bpm, num, den = tempo_map.valida_tempo(
-                    float(tr.bpm), num, den)
-                # Cas B per defecte: en canviar només el compàs, es conserva
-                # el BPM visible (la pulsació), no el número intern.
-                ok = self.edita_compas_objectiu(i, num, den)
+                tempo_map.valida_tempo(float(tr.bpm), num, den)
+                ok = self.edita_tempo_guiat(i, num=num, den=den)
             elif camp == "agr":
                 agr = tempo_map.valida_agrupacio(
                     self.ed_agr.text(), int(tr.num), int(tr.den))
@@ -222,7 +219,7 @@ class EditorMixin:
                 n = float(self.ed_n.text().strip().replace(",", "."))
                 if n <= 0 or abs(n - round(n)) > 1e-3:
                     raise ValueError("N ha de ser un enter positiu.")
-                ok = self.edita_n_compassos(i, n, int(tr.num), int(tr.den))
+                ok = self.edita_tempo_guiat(i, n=int(round(n)))
             else:
                 return False
         except (TypeError, ValueError, AttributeError) as e:
@@ -295,7 +292,8 @@ class EditorMixin:
                 "quedar amb N fraccionari).")
             return
         canvi_compas = (num, den) != (int(tr.num), int(tr.den))
-        canvi_bpm = (abs(bpm - float(tr.bpm)) > 5e-4 or canvi_compas)
+        canvi_bpm_num = abs(bpm - float(tr.bpm)) > 5e-4
+        canvi_bpm = (canvi_bpm_num or canvi_compas)
         # En canviar el compàs, l'agrupació automàtica ha de passar a la del
         # compàs nou, encara que el camp no s'haja tocat.
         if canvi_compas and agr == getattr(tr, "agrupacio", ""):
@@ -342,6 +340,46 @@ class EditorMixin:
             return
         if not (canvi_bpm or canvi_n or canvi_agr or mou_ini or mou_fi):
             return
+
+        # Un sol camp canviat → recalcula els altres amb el motor guiat
+        # (compàs > BPM > N), sense obligar l'usuari a encertar N.
+        if (not canvi_agr and not mou_ini and not mou_fi
+                and sum((canvi_compas, canvi_bpm_num, canvi_n)) == 1):
+            self._undo_marca()
+            try:
+                if canvi_compas:
+                    ok = self.edita_tempo_guiat(i, num=num, den=den)
+                elif canvi_bpm_num:
+                    ok = self.edita_tempo_guiat(i, bpm=bpm)
+                else:
+                    ok = self.edita_tempo_guiat(i, n=int(round(n_val)))
+            finally:
+                self._undo_commit()
+            self._actualitza_editor()
+            return bool(ok)
+
+        # Amb Snap Beats QM, qualsevol edició múltiple ha de quadrar amb els
+        # beats detectats; no es pot acceptar un N/BPM incompatible.
+        if self._beats_per_validacio():
+            try:
+                n_qm = self._qm_n_enter(i, num, den)
+            except ValueError as e:
+                self.avis_editor(str(e))
+                return
+            if n_qm is not None:
+                if int(round(n_val)) != n_qm:
+                    self.avis_editor(
+                        f"Snap Beats QM: amb {num}/{den} el N ha de ser "
+                        f"{n_qm}, no {int(round(n_val))}.")
+                    return
+                bq = float(num) * 4.0 / float(den)
+                bpm_qm = n_qm * bq * 60.0 / (
+                    float(tr[1]) - float(tr[0]))
+                if canvi_bpm_num and abs(bpm - bpm_qm) > 0.05:
+                    self.avis_editor(
+                        f"Snap Beats QM: amb {num}/{den} i N={n_qm}, el BPM "
+                        f"ha de ser {bpm_qm:.3f}, no {bpm:.3f}.")
+                    return
 
         d = self._durada_wav()
         self._undo_marca()
