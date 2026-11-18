@@ -6604,6 +6604,53 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(float(tr.n), round(float(tr.n)), 0)
         self.assertNotAlmostEqual(float(tr.n), round(float(tr.n)), 2)
 
+    def test_tall_simple_amb_qm_no_obre_dialeg_si_el_tall_es_de_compas(self):
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        trams = [mapa_tempo.TramMapa(
+            0.0, 16.0, 120.0, "normal", "4/4", n=8)]
+        vr.tempo_trams = list(trams)
+        vr.snap_on = True
+        vr.snap_mode = "qm_beats"
+        vr.qm_beats = [i * 0.5 for i in range(32)]
+        out = vr._parteix_tempo_nou(8.0, trams)
+        self.assertIsNotNone(out)
+        self.assertEqual([(t.ini, t.fi, t.n) for t in out],
+                         [(0.0, 8.0, 4.0), (8.0, 16.0, 4.0)])
+
+    def test_tall_qm_simple_amb_beat_fora_de_graella_i_cua_fraccionaria(self):
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        trams = [mapa_tempo.TramMapa(
+            0.0, 60.0, 120.0, "normal", "4/4", n=30)]
+        vr.tempo_trams = list(trams)
+        vr.snap_on = True
+        vr.snap_mode = "qm_beats"
+        vr.qm_beats = [8.1]
+        out = vr._parteix_tempo_nou(8.1, trams)
+        self.assertIsNotNone(out)
+        self.assertEqual(out[0].n, 4.0)
+        self.assertAlmostEqual(
+            out[1].n, (60.0 - 8.1) / (4 * 60.0 / out[0].bpm), 6)
+
+    def test_tall_qm_dreta_ultima_fraccionaria_encara_que_esquerra_no_enter(self):
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        trams = [mapa_tempo.TramMapa(
+                    0.0, 2.264, 105.512, "normal", "4/4", n=1),
+                 mapa_tempo.TramMapa(
+                    2.264, 60.0, 105.512, "normal", "4/4", n=26)]
+        vr.tempo_trams = list(trams)
+        vr.snap_on = True
+        vr.snap_mode = "qm_beats"
+        vr.qm_beats = [11.536]
+        out = vr._parteix_tempo_nou(11.536, trams)
+        self.assertIsNotNone(out)
+        self.assertEqual(out[1].n, 4.0)
+        self.assertAlmostEqual(out[2].n, (60.0 - 11.536) /
+                               (4 * 60.0 / out[1].bpm), 6)
+        self.assertFalse(float(out[2].n).is_integer())
+
     def test_beats_qm_actualitzen_projecte_en_editar_audio(self):
         vr = self.w.visor_ref
         self.w._beats_actuals = {"motor": "qm", "beats": [1.0],

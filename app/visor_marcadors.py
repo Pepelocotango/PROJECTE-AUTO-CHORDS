@@ -3,7 +3,7 @@
 Extret de `app/visor.py`: alta, moviment i esborrat. Els marcadors són
 anotacions independents: no participen en cap recalcul de tempo.
 """
-from . import pipeline, tempo_map
+from . import limits, mapa_tempo, pipeline, tempo_map
 
 class MarcadorsMixin:
     """Marcadors humans (anotacions)."""
@@ -86,6 +86,92 @@ class MarcadorsMixin:
             self.ves_a(pos)
             self.play_stop()
 
+    def _tall_simple_si_enter(self, t, trams):
+        """Partició òbvia: el tall cau en línia de compàs del clip actual.
+
+        Conserva BPM/compàs i deixa els dos costats amb `N` enter. Estalvia el
+        diàleg QM quan no hi ha res a decidir (el cas normal de «+»).
+        """
+        t = float(t)
+        for i, tr in enumerate(trams):
+            ini, fi = float(tr[0]), float(tr[1])
+            if not (ini + 1e-9 < t < fi - 1e-9):
+                continue
+            bpm, num, den = (float(getattr(tr, "bpm", tr[2])),
+                             int(getattr(tr, "num", tr[3])),
+                             int(getattr(tr, "den", tr[4])))
+            bar = tempo_map.durada_compas(bpm, num, den)
+            if bar <= tempo_map.TOL:
+                return None
+            nl = (t - ini) / bar
+            nr = (fi - t) / bar
+            if (abs(nl - round(nl)) > 1e-3
+                    or abs(nr - round(nr)) > 1e-3
+                    or round(nl) < 1 or round(nr) < 1):
+                return None
+            esq = mapa_tempo.TramMapa(
+                ini, t, bpm, getattr(tr, "tipus", "normal"),
+                f"{num}/{den}", getattr(tr, "agrupacio", ""),
+                int(round(nl)), getattr(tr, "beat_unit", None))
+            dreta = mapa_tempo.TramMapa(
+                t, fi, bpm, getattr(tr, "tipus", "normal"),
+                f"{num}/{den}", getattr(tr, "agrupacio", ""),
+                int(round(nr)), getattr(tr, "beat_unit", None))
+            self.log(
+                f"tall simple: {t:.3f}s · {num}/{den} · "
+                f"{int(round(nl))}+{int(round(nr))} compassos")
+            return trams[:i] + [esq, dreta] + trams[i + 1:]
+        return None
+
+    def _tall_qm_si_es_facil(self, t, trams, beats):
+        """Tall QM amb decisió òbvia: esquerra a compàs + dreta de cua.
+
+        Si el cursor cau sobre un beat QM i l'esquerra queda a prop d'un `N`
+        enter, no cal obrir el diàleg: es conserva BPM/compàs del clip i, si
+        el costat dret és l'últim, el seu `N` pot ser fraccionari.
+        """
+        t = float(t)
+        for i, tr in enumerate(trams):
+            ini, fi = float(tr[0]), float(tr[1])
+            if not (ini + 1e-9 < t < fi - 1e-9):
+                continue
+            bpm, num, den = (float(getattr(tr, "bpm", tr[2])),
+                             int(getattr(tr, "num", tr[3])),
+                             int(getattr(tr, "den", tr[4])))
+            bar = tempo_map.durada_compas(bpm, num, den)
+            if bar <= tempo_map.TOL:
+                return None
+            nl = (t - ini) / bar
+            nr = (fi - t) / bar
+            # L'esquerra és un clip NO final: admet poca tolerància i
+            # s'arredoneix a N enter; el normalitzador ajusta el BPM.
+            if abs(nl - round(nl)) > 0.12 or round(nl) < 1:
+                return None
+            ultim = (i == len(trams) - 1)
+            if not ultim and (abs(nr - round(nr)) > 0.12
+                              or round(nr) < 1):
+                return None
+            bq = float(num) * 4.0 / float(den)
+            bpm_esq = bq * int(round(nl)) * 60.0 / (t - ini)
+            if not (limits.BPM_MIN <= bpm_esq <= limits.BPM_MAX):
+                return None
+            bar_esq = (t - ini) / int(round(nl))
+            nr_esq = (fi - t) / bar_esq
+            esq = mapa_tempo.TramMapa(
+                ini, t, bpm_esq, getattr(tr, "tipus", "normal"),
+                f"{num}/{den}", getattr(tr, "agrupacio", ""),
+                int(round(nl)), getattr(tr, "beat_unit", None))
+            dreta = mapa_tempo.TramMapa(
+                t, fi, bpm_esq, getattr(tr, "tipus", "normal"),
+                f"{num}/{den}", getattr(tr, "agrupacio", ""),
+                (float(nr_esq) if ultim else float(round(nr_esq))),
+                getattr(tr, "beat_unit", None))
+            self.log(
+                f"tall QM simple: {t:.3f}s · {num}/{den} · "
+                f"{int(round(nl))}+{'cua ' + format(nr, '.3f') if ultim else int(round(nr))}")
+            return trams[:i] + [esq, dreta] + trams[i + 1:]
+        return None
+
     def _parteix_tempo_nou(self, t, trams=None):
         """Retorna el mapa partit a `t` o `None` si no cal/possible.
 
@@ -99,6 +185,11 @@ class MarcadorsMixin:
         beats = list(self._beats_per_validacio() or ())
         self._tall_qm_cancelat = False
         if beats:
+            rapid = self._tall_simple_si_enter(t, trams)
+            if rapid is None:
+                rapid = self._tall_qm_si_es_facil(t, trams, beats)
+            if rapid is not None:
+                return rapid
             from . import tall_qm
             self._inicia_tall_qm()
             try:
@@ -120,6 +211,9 @@ class MarcadorsMixin:
             return self._tria_opcions_tall_qm(trams, idx, costats)
         if (getattr(self, "snap_on", False)
                 and getattr(self, "snap_mode", "") == "qm_beats"):
+            rapid = self._tall_simple_si_enter(t, trams)
+            if rapid is not None:
+                return rapid
             from . import tall_qm
             self._inicia_tall_qm()
             try:

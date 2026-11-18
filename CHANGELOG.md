@@ -48,6 +48,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - Els clips de tempo que quedaven després del tall s’eliminen; només queda el
   tram normal anterior + el tram final de cua.
 
+### Canviat — el «+» tampoc pregunta si el tall QM és clar (2026-11-18)
+- Amb Snap Beats QM, si el cursor cau sobre un beat detectat i el costat
+  esquerre queda a prop d'un `N` enter, es talla directament amb el BPM i
+  compàs del clip.
+- El costat dret, si és l'últim clip, conserva eixe BPM/compàs i pot quedar
+  amb `N` fraccionari.
+- El diàleg QM queda només per als talls on l'esquerra no és clara.
+
+### Canviat — el «+» no pregunta si el tall ja és de compàs (2026-11-18)
+- Abans de obrir el diàleg QM, si el cursor cau en una línia de compàs del
+  clip actual i els dos costats queden amb `N` enter, es parteix directament
+  conservant BPM i compàs.
+- Així un tall clar `4/4 N=4` no demana res; el diàleg QM queda només per als
+  talls ambigüits.
+
 ### Canviat — el TAP mana i l’últim clip pot ser fraccionari (2026-11-18)
 - El TAP ja no consulta ni bloqueja per QM: sempre aplica el BPM percebut.
 - L’últim clip de tempo pot quedar amb `N` fraccionari perquè el final de la
