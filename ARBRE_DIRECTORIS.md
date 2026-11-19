@@ -72,8 +72,9 @@ PROJECTE AUTO CHORDS/
 │   ├── lib/       🟡  # (4.469 fitxers)
 │   ├── lib64/     🟡  # (4.469 fitxers)
 │   └── share/     🟡  # (11 fitxers)
-├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (1 fitxer)
-│   └── AUDITORIA_CODI_I_DOCS_2026-11-17.md 🟢
+├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (2 fitxers)
+│   ├── AUDITORIA_CODI_I_DOCS_2026-11-17.md 🟢
+│   └── PROPOSTA_DETECCIO_BPM.md           🟢
 ├── app/                           🟢  # Codi de l'aplicació (PyQt5) (81 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
