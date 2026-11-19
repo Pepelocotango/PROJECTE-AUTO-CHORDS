@@ -5022,7 +5022,8 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
     def test_editor_canvi_compas_actualitza_agrupacio_per_defecte(self):
         v = _vista_segueix_model___visor()
         try:
-            v.aplica_tempo_trams([(0.0, 40.0, 120.0, 4, 4)])
+            v.aplica_tempo_trams([(0.0, 20.0, 120.0, 4, 4),
+                                  (20.0, 40.0, 120.0, 4, 4)])
             v._focus_editor("tempo", 0)
             v.ed_fam.setText("7/8")
             v.ed_compas_aplica.click()
@@ -5144,6 +5145,44 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
                     self.assertIsNone(v._undo_pending)
                 finally:
                     v.close()
+
+    def test_botons_fix_i_mobil_conserven_o_mouen_fronteres(self):
+        v = _vista_segueix_model___visor()
+        try:
+            v.aplica_tempo_trams([
+                (0.0, 10.0, 120.0, 4, 4),
+                (10.0, 20.0, 120.0, 4, 4)])
+            v._focus_editor("tempo", 0)
+            # Fix: la fi del clip i l'inici del veí no es mouen.
+            v.ed_nom.setText("140")
+            v.ed_bpm_fix.click()
+            self.assertAlmostEqual(float(v.tempo_trams[0].fi), 10.0, 6)
+            self.assertAlmostEqual(float(v.tempo_trams[1].ini), 10.0, 6)
+            # Mòbil: N fix, BPM/compàs actuals, la frontera es mou.
+            v.aplica_tempo_trams([
+                (0.0, 10.0, 120.0, 4, 4),
+                (10.0, 20.0, 120.0, 4, 4)])
+            v._focus_editor("tempo", 0)
+            v.ed_n.setText("4")
+            v.ed_n_aplica.click()
+            self.assertAlmostEqual(float(v.tempo_trams[0].fi), 8.0, 6)
+            self.assertAlmostEqual(float(v.tempo_trams[1].ini), 8.0, 6)
+            self.assertEqual(v.tempo_trams[0].n, 4.0)
+        finally:
+            v.close()
+
+    def test_mobil_desactivat_a_l_ultim_clip(self):
+        v = _vista_segueix_model___visor()
+        try:
+            v._focus_editor("tempo", 1)
+            self.assertFalse(v.ed_bpm_aplica.isEnabled())
+            self.assertFalse(v.ed_compas_aplica.isEnabled())
+            self.assertFalse(v.ed_n_aplica.isEnabled())
+            self.assertTrue(v.ed_bpm_fix.isEnabled())
+            self.assertTrue(v.ed_compas_fix.isEnabled())
+            self.assertTrue(v.ed_n_fix.isEnabled())
+        finally:
+            v.close()
 
     def test_aplica_error_i_no_op_no_deixen_undo(self):
         def estat(t):

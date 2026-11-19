@@ -274,12 +274,21 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ed_nom.setMaximumWidth(90)
         self.ed_nom.setToolTip("Nom de l'acord o lletra de la secció")
         _eh.addWidget(self.ed_nom)
-        self.ed_bpm_aplica = QPushButton("Aplica")
+        self.ed_bpm_fix = QPushButton("[]")
+        self.ed_bpm_fix.setObjectName("secundari")
+        self.ed_bpm_fix.setMaximumWidth(34)
+        self.ed_bpm_fix.setToolTip(
+            "Aplica el BPM amb recalc FIX: conserva les fronteres i "
+            "recalcula N.")
+        self.ed_bpm_fix.clicked.connect(
+            lambda: self._aplica_editor_var_fix("bpm"))
+        self.ed_bpm_fix.setVisible(False)
+        _eh.addWidget(self.ed_bpm_fix)
+        self.ed_bpm_aplica = QPushButton("->")
         self.ed_bpm_aplica.setObjectName("secundari")
-        self.ed_bpm_aplica.setMaximumWidth(60)
+        self.ed_bpm_aplica.setMaximumWidth(34)
         self.ed_bpm_aplica.setToolTip(
-            "Aplica només el BPM del clip seleccionat (ignora Compàs, N i "
-            "la resta de camps).")
+            "Aplica el BPM amb recalc MÒBIL: mou la frontera amb el veí.")
         self.ed_bpm_aplica.clicked.connect(
             lambda: self._aplica_editor_var("bpm"))
         self.ed_bpm_aplica.setVisible(False)
@@ -290,12 +299,21 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ed_fam.setToolTip("Família de la secció (p. ex. N, A, B)")
         _eh.addWidget(self.ed_fam_lbl)
         _eh.addWidget(self.ed_fam)
-        self.ed_compas_aplica = QPushButton("Aplica")
+        self.ed_compas_fix = QPushButton("[]")
+        self.ed_compas_fix.setObjectName("secundari")
+        self.ed_compas_fix.setMaximumWidth(34)
+        self.ed_compas_fix.setToolTip(
+            "Aplica el Compàs amb recalc FIX: conserva les fronteres i "
+            "recalcula el BPM.")
+        self.ed_compas_fix.clicked.connect(
+            lambda: self._aplica_editor_var_fix("compas"))
+        self.ed_compas_fix.setVisible(False)
+        _eh.addWidget(self.ed_compas_fix)
+        self.ed_compas_aplica = QPushButton("->")
         self.ed_compas_aplica.setObjectName("secundari")
-        self.ed_compas_aplica.setMaximumWidth(60)
+        self.ed_compas_aplica.setMaximumWidth(34)
         self.ed_compas_aplica.setToolTip(
-            "Aplica només el Compàs del clip seleccionat (ignora BPM, N i "
-            "la resta de camps).")
+            "Aplica el Compàs amb recalc MÒBIL: mou la frontera amb el veí.")
         self.ed_compas_aplica.clicked.connect(
             lambda: self._aplica_editor_var("compas"))
         self.ed_compas_aplica.setVisible(False)
@@ -328,12 +346,21 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             "últim inclosos).")
         _eh.addWidget(self.ed_n_lbl)
         _eh.addWidget(self.ed_n)
-        self.ed_n_aplica = QPushButton("Aplica")
+        self.ed_n_fix = QPushButton("[]")
+        self.ed_n_fix.setObjectName("secundari")
+        self.ed_n_fix.setMaximumWidth(34)
+        self.ed_n_fix.setToolTip(
+            "Aplica N amb recalc FIX: conserva les fronteres; el BPM es "
+            "recalcula.")
+        self.ed_n_fix.clicked.connect(
+            lambda: self._aplica_editor_var_fix("n"))
+        self.ed_n_fix.setVisible(False)
+        _eh.addWidget(self.ed_n_fix)
+        self.ed_n_aplica = QPushButton("->")
         self.ed_n_aplica.setObjectName("secundari")
-        self.ed_n_aplica.setMaximumWidth(60)
+        self.ed_n_aplica.setMaximumWidth(34)
         self.ed_n_aplica.setToolTip(
-            "Aplica només N (compassos) del clip seleccionat; el BPM es "
-            "recalcula i el Compàs es conserva.")
+            "Aplica N amb recalc MÒBIL: mou la frontera amb el veí.")
         self.ed_n_aplica.clicked.connect(
             lambda: self._aplica_editor_var("n"))
         self.ed_n_aplica.setVisible(False)

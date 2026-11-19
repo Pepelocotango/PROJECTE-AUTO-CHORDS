@@ -13,6 +13,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - Recull la feina de la línia 0.9.3 i els ajustos de tempo, quadratura i
   exportació fets fins al 2026-11-18.
 
+### Canviat — franja Editor: recalc fix i mòbil per camp (2026-11-18)
+- A la franja Editor dels clips de tempo, **BPM**, **Compàs** i **N** tenen
+  ara dos botons: **`[]`** (recalc fix, conserva les fronteres) i **`->`**
+  (recalc mòbil, mou la frontera compartida amb el veí).
+- **Agrupació** conserva un sol **`Aplica`**, perquè no recalcula tempo.
+- El **`Aplica` general** i **`Ajusta`** es mantenen.
+- A l’últim clip, els botons `->` de BPM, Compàs i N queden desactivats perquè
+  la fi de la WAV no es pot moure; els `[]` continuen disponibles.
+
 ### Afegit — selector de pols percebuda a «Analitza beats, downbeats i BPM» (2026-11-18)
 - El diàleg de F7 proposa automàticament la unitat de pols segons el compàs
   (`6/8` → negra amb punt, `4/4` → negra, etc.) i mostra quin és el BPM

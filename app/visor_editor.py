@@ -6,7 +6,7 @@ d'acords, estructura i tempo/rubato.
 import re
 
 from . import bpm_unit as bpm_unit_mod
-from . import mapa_tempo, pipeline, tempo_map, tempo_recalc
+from . import limits, mapa_tempo, pipeline, tempo_map, tempo_recalc
 from .visor_io import nom_acord
 
 class EditorMixin:
@@ -32,8 +32,9 @@ class EditorMixin:
         self.ed_cb.setEnabled(True)
         self.ed_bpm_compas.setVisible(False)
         self.ed_bpm_compas.setEnabled(False)
-        for w in (self.ed_bpm_aplica, self.ed_compas_aplica,
-                  self.ed_n_aplica, self.ed_agr_aplica):
+        for w in (self.ed_bpm_fix, self.ed_bpm_aplica,
+                  self.ed_compas_fix, self.ed_compas_aplica,
+                  self.ed_n_fix, self.ed_n_aplica, self.ed_agr_aplica):
             w.setVisible(False)
         if k == "tempo" and 0 <= i < len(getattr(self, "tempo_trams", None) or []):
             tr = self.tempo_trams[i]
@@ -83,16 +84,24 @@ class EditorMixin:
             self._ed_cb_fi_text = self.ed_cb_fi.text()
             self.ed_bpm_compas.setVisible(True)
             self.ed_bpm_compas.setEnabled(True)
+            ultim = (i == len(self.tempo_trams) - 1)
             for w in (self.ed_nom, self.ed_fam, self.ed_agr, self.ed_n,
-                      self.ed_aplica, self.ed_bpm_aplica,
-                      self.ed_compas_aplica, self.ed_n_aplica,
-                      self.ed_agr_aplica):
+                      self.ed_aplica, self.ed_bpm_fix,
+                      self.ed_bpm_aplica, self.ed_compas_fix,
+                      self.ed_compas_aplica, self.ed_n_fix,
+                      self.ed_n_aplica, self.ed_agr_aplica):
                 w.setEnabled(True)
+            self.ed_bpm_fix.setVisible(True)
             self.ed_bpm_aplica.setVisible(True)
+            self.ed_compas_fix.setVisible(True)
             self.ed_compas_aplica.setVisible(True)
+            self.ed_n_fix.setVisible(True)
             self.ed_n_aplica.setVisible(True)
             self.ed_agr_aplica.setVisible(True)
-            ultim = (i == len(self.tempo_trams) - 1)
+            # El recalc mòbil no pot moure la fi de l'últim clip.
+            self.ed_bpm_aplica.setEnabled(not ultim)
+            self.ed_compas_aplica.setEnabled(not ultim)
+            self.ed_n_aplica.setEnabled(not ultim)
             self.ed_aplica.setEnabled(not ultim)
             self.ed_aplica.setToolTip(
                 ("Aplica no està disponible a l'últim clip: la fi de la WAV "
@@ -173,6 +182,262 @@ class EditorMixin:
             (12, 8): "3+3+3+3",
         }.get((num, den), "3+3" if num in (6, 9, 12) else "Auto")
 
+    @staticmethod
+    def _agr_en_canvi_compas(tr, num, den):
+        """Agrupació per defecte si el compàs canvia i la vella era automàtica."""
+        agr = getattr(tr, "agrupacio", "") or ""
+        if agr or (int(tr.num), int(tr.den)) == (int(num), int(den)):
+            return agr
+        return tempo_map.agrupacio_a_text(
+            tempo_map.agrupacio_compas(int(num), int(den)))
+
+    def _aplica_editor_var_fix(self, camp):
+        """Aplica només una variable amb **recalc fix** (fronteres fixes)."""
+        k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
+        if k != "tempo" or not (0 <= i < len(self.tempo_trams or [])):
+            self.avis_editor("Selecciona un clip de tempo abans d'aplicar.")
+            return False
+        trams = list(self.tempo_trams or [])
+        tr = trams[i]
+        ultim = (i == len(trams) - 1)
+        try:
+            ini, fi = float(tr[0]), float(tr[1])
+            dt = fi - ini
+            if dt <= tempo_map.TOL:
+                raise ValueError("El clip no té durada.")
+            num, den = (int(tr.num), int(tr.den))
+            bpm = float(tr.bpm)
+            if camp == "compas":
+                m = re.match(r"^\s*(\d+)\s*[/:]\s*(\d+)\s*$",
+                             self.ed_fam.text().strip())
+                if not m:
+                    raise ValueError("El compàs ha de ser num/den (p. ex. 6/8).")
+                num, den = int(m.group(1)), int(m.group(2))
+                bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
+            elif camp == "bpm":
+                bpm = self.bpm_entrada(self.ed_nom.text())
+                bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
+            elif camp == "n":
+                pass
+            else:
+                return False
+            bq = float(num) * 4.0 / float(den)
+            n_actual = getattr(tr, "n", None)
+            if n_actual is None:
+                n_actual = tempo_map.compassos_del_clip(tr)
+            n_actual = float(n_actual)
+            if camp == "bpm":
+                n_obj = dt * float(bpm) / (bq * 60.0)
+                bpm_obj = float(bpm)
+            elif camp == "n":
+                n_obj = float(self.ed_n.text().strip().replace(",", "."))
+                bpm_obj = None
+            else:
+                n_obj = n_actual
+                bpm_obj = None
+            if n_obj <= 0:
+                raise ValueError("N ha de ser positiu.")
+            n_qm = self._qm_n_enter(i, num, den)
+            if not ultim:
+                n_new = int(round(n_obj))
+                if camp == "n" and abs(n_obj - n_new) > 1e-3:
+                    raise ValueError(
+                        "N ha de ser un enter de compassos; només l'últim "
+                        "clip pot quedar amb N fraccionari.")
+                if n_new < 1:
+                    raise ValueError("N ha de ser com a mínim 1.")
+                if n_qm is not None and n_new != n_qm:
+                    raise ValueError(
+                        f"Snap Beats QM: amb {num}/{den} el N ha de ser "
+                        f"{n_qm}, no {n_new}.")
+                nous = tempo_map.canvia_compassos_tram(
+                    trams, i, n_new=n_new, num=num, den=den,
+                    durada=self._durada_wav())
+                nous = mapa_tempo.reenganxa_metadades(trams, nous)
+                if camp == "compas":
+                    agr = self._agr_en_canvi_compas(tr, num, den)
+                    nous[i] = mapa_tempo.TramMapa(
+                        nous[i].ini, nous[i].fi, nous[i].bpm, nous[i].tipus,
+                        nous[i].compassos, agr, nous[i].n, nous[i].beat_unit)
+            else:
+                # L'últim clip té la fi de la WAV fixa: es pot aplicar
+                # BPM/N/compàs directament, amb N fraccionari si cal.
+                if n_qm is not None and int(round(n_obj)) != n_qm:
+                    raise ValueError(
+                        f"Snap Beats QM: amb {num}/{den} el N ha de ser "
+                        f"{n_qm}, no {int(round(n_obj))}.")
+                if camp == "bpm":
+                    n_new = n_obj
+                    bpm_new = bpm_obj
+                elif camp == "n":
+                    n_new = n_obj
+                    bpm_new = n_new * bq * 60.0 / dt
+                else:
+                    n_new = n_actual
+                    bpm_new = n_new * bq * 60.0 / dt
+                if not (limits.BPM_MIN <= bpm_new <= limits.BPM_MAX):
+                    raise ValueError("El BPM resultant ix de la banda permesa")
+                provisional = mapa_tempo.TramMapa(
+                    ini, fi, bpm_new, tr.tipus, f"{num}/{den}",
+                    getattr(tr, "agrupacio", ""), float(n_new),
+                    getattr(tr, "beat_unit", None))
+                unit = self._unitat_en_canvi_compas(tr, provisional, None)
+                nous = list(trams)
+                nous[i] = mapa_tempo.TramMapa(
+                    ini, fi, bpm_new, tr.tipus, f"{num}/{den}",
+                    getattr(tr, "agrupacio", ""), float(n_new), unit)
+        except (TypeError, ValueError, AttributeError) as e:
+            self.avis_editor(str(e))
+            return False
+        # Si el compàs ha canviat, la unitat derivada s'actualitza.
+        unit = self._unitat_en_canvi_compas(tr, nous[i], None)
+        nous = self._amb_unitat(nous, i, unit)
+        if not self._valida_unitat_tram(nous[i], "Editor"):
+            return False
+        self._undo_marca()
+        try:
+            ok = bool(self.aplica_tempo_trams(nous))
+        finally:
+            self._undo_commit()
+        self._actualitza_editor()
+        return ok
+
+    def _edita_bpm_mobil(self, idx, bpm):
+        """Aplica BPM movent la frontera però conservant N i compàs."""
+        trams = list(self.tempo_trams or ())
+        idx = int(idx)
+        if not (0 <= idx < len(trams)):
+            self.avis_editor("Aquest clip de tempo ja no existeix.")
+            return False
+        if idx == len(trams) - 1:
+            self.avis_editor(
+                "El recalc mòbil no pot moure la fi de l'últim clip.")
+            return False
+        tr = trams[idx]
+        n_actual = getattr(tr, "n", None)
+        if n_actual is None:
+            n_actual = tempo_map.compassos_del_clip(tr)
+        n_actual = int(round(float(n_actual)))
+        if n_actual < 1:
+            self.avis_editor("N ha de ser com a mínim 1.")
+            return False
+        n_qm = self._qm_n_enter(idx, int(tr.num), int(tr.den))
+        if n_qm is not None and n_actual != n_qm:
+            self.avis_editor(
+                f"Snap Beats QM: amb {int(tr.num)}/{int(tr.den)} el N ha "
+                f"de ser {n_qm}, no {n_actual}.")
+            return False
+        try:
+            nous = mapa_tempo.recalcula_tram_c(
+                trams, idx, self._durada_wav(), n=n_actual,
+                bpm=float(bpm), num=int(tr.num), den=int(tr.den),
+                camp="n", permet_ultim_fraccionari=False)
+        except ValueError as e:
+            self.avis_editor(f"Tempo: {e}")
+            return False
+        if not self._valida_unitat_tram(nous[idx], "Tempo"):
+            return False
+        return bool(self.aplica_tempo_trams(nous))
+
+    def _edita_compas_mobil(self, idx, num, den):
+        """Aplica compàs movent la frontera: conserva N i el BPM visible."""
+        trams = list(self.tempo_trams or ())
+        idx = int(idx)
+        if not (0 <= idx < len(trams)):
+            self.avis_editor("Aquest clip de tempo ja no existeix.")
+            return False
+        if idx == len(trams) - 1:
+            self.avis_editor(
+                "El recalc mòbil no pot moure la fi de l'últim clip.")
+            return False
+        tr = trams[idx]
+        num, den = int(num), int(den)
+        try:
+            tempo_map.valida_tempo(float(tr.bpm), num, den)
+        except ValueError as e:
+            self.avis_editor(f"Tempo: {e}")
+            return False
+        n_actual = getattr(tr, "n", None)
+        if n_actual is None:
+            n_actual = tempo_map.compassos_del_clip(tr)
+        n_actual = int(round(float(n_actual)))
+        if n_actual < 1:
+            self.avis_editor("N ha de ser com a mínim 1.")
+            return False
+        n_qm = self._qm_n_enter(idx, num, den)
+        if n_qm is not None and n_actual != n_qm:
+            self.avis_editor(
+                f"Snap Beats QM: amb {num}/{den} el N ha de ser "
+                f"{n_qm}, no {n_actual}.")
+            return False
+        unit_vella = self.unitat_de_tram(tr)
+        agr_nova = self._agr_en_canvi_compas(tr, num, den)
+        bpm_visible = bpm_unit_mod.de_quarter(float(tr.bpm), unit_vella)
+        provisional = mapa_tempo.TramMapa(
+            float(tr.ini), float(tr.fi), float(tr.bpm), tr.tipus,
+            f"{num}/{den}", agr_nova,
+            getattr(tr, "n", None), unit_vella)
+        try:
+            unit_nova = self._unitat_en_canvi_compas(tr, provisional, None)
+            bpm_intern = bpm_unit_mod.a_quarter(bpm_visible, unit_nova)
+            try:
+                nous = mapa_tempo.recalcula_tram_c(
+                    trams, idx, self._durada_wav(), n=n_actual,
+                    bpm=bpm_intern, num=num, den=den,
+                    camp="n", permet_ultim_fraccionari=False)
+            except ValueError:
+                # En signaturas irregulars, mantindre el número visible pot
+                # fer inviable el veí; es conserva el tempo intern.
+                nous = mapa_tempo.recalcula_tram_c(
+                    trams, idx, self._durada_wav(), n=n_actual,
+                    bpm=float(tr.bpm), num=num, den=den,
+                    camp="n", permet_ultim_fraccionari=False)
+        except ValueError as e:
+            self.avis_editor(f"Tempo: {e}")
+            return False
+        nous = self._amb_unitat(nous, idx, unit_nova)
+        nous[idx] = mapa_tempo.TramMapa(
+            nous[idx].ini, nous[idx].fi, nous[idx].bpm, nous[idx].tipus,
+            nous[idx].compassos, agr_nova, nous[idx].n, nous[idx].beat_unit)
+        if not self._valida_unitat_tram(nous[idx], "Tempo"):
+            return False
+        return bool(self.aplica_tempo_trams(nous))
+
+    def _edita_n_mobil(self, idx, n):
+        """Aplica N movent la frontera compartida, amb BPM i compàs actuals."""
+        trams = list(self.tempo_trams or [])
+        idx = int(idx)
+        if not (0 <= idx < len(trams)):
+            self.avis_editor("Aquest clip de tempo ja no existeix.")
+            return False
+        if idx == len(trams) - 1:
+            self.avis_editor(
+                "El recalc mòbil no pot moure la fi de l'últim clip.")
+            return False
+        tr = trams[idx]
+        n = float(n)
+        n_int = int(round(n))
+        if n <= 0 or abs(n - n_int) > 1e-3:
+            self.avis_editor("N ha de ser un enter positiu.")
+            return False
+        n_qm = self._qm_n_enter(idx, int(tr.num), int(tr.den))
+        if n_qm is not None and n_int != n_qm:
+            self.avis_editor(
+                f"Snap Beats QM: amb {int(tr.num)}/{int(tr.den)} el N ha "
+                f"de ser {n_qm}, no {n_int}.")
+            return False
+        try:
+            nous = mapa_tempo.recalcula_tram_c(
+                trams, idx, self._durada_wav(), n=n_int,
+                bpm=float(tr.bpm), num=int(tr.num), den=int(tr.den),
+                camp="n", permet_ultim_fraccionari=False)
+        except ValueError as e:
+            self.avis_editor(f"Tempo: {e}")
+            return False
+        if not self._valida_unitat_tram(nous[idx], "Tempo"):
+            return False
+        return bool(self.aplica_tempo_trams(nous))
+
     def _aplica_editor_var(self, camp):
         """Aplica només una variable del clip de tempo seleccionat.
 
@@ -191,7 +456,7 @@ class EditorMixin:
                 bpm = self.bpm_entrada(self.ed_nom.text())
                 bpm, _num, _den = tempo_map.valida_tempo(
                     bpm, int(tr.num), int(tr.den))
-                ok = self.edita_tempo_guiat(i, bpm=bpm)
+                ok = self._edita_bpm_mobil(i, bpm)
             elif camp == "compas":
                 m = re.match(r"^\s*(\d+)\s*[/:]\s*(\d+)\s*$",
                              self.ed_fam.text().strip())
@@ -199,7 +464,7 @@ class EditorMixin:
                     raise ValueError("El compàs ha de ser num/den (p. ex. 6/8).")
                 num, den = int(m.group(1)), int(m.group(2))
                 tempo_map.valida_tempo(float(tr.bpm), num, den)
-                ok = self.edita_tempo_guiat(i, num=num, den=den)
+                ok = self._edita_compas_mobil(i, num, den)
             elif camp == "agr":
                 agr = tempo_map.valida_agrupacio(
                     self.ed_agr.text(), int(tr.num), int(tr.den))
@@ -221,7 +486,7 @@ class EditorMixin:
                     raise ValueError("N ha de ser positiu.")
                 if i != len(self.tempo_trams) - 1 and abs(n - round(n)) > 1e-3:
                     raise ValueError("N ha de ser un enter positiu.")
-                ok = self.edita_tempo_guiat(i, n=n)
+                ok = self._edita_n_mobil(i, n)
             else:
                 return False
         except (TypeError, ValueError, AttributeError) as e:
@@ -351,11 +616,11 @@ class EditorMixin:
             self._undo_marca()
             try:
                 if canvi_compas:
-                    ok = self.edita_tempo_guiat(i, num=num, den=den)
+                    ok = self._edita_compas_mobil(i, num, den)
                 elif canvi_bpm_num:
-                    ok = self.edita_tempo_guiat(i, bpm=bpm)
+                    ok = self._edita_bpm_mobil(i, bpm)
                 else:
-                    ok = self.edita_tempo_guiat(i, n=int(round(n_val)))
+                    ok = self._edita_n_mobil(i, int(round(n_val)))
             finally:
                 self._undo_commit()
             self._actualitza_editor()

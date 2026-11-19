@@ -111,7 +111,9 @@ el projecte de DAW queden ajornats.
   `docs/REGLES_DE_LA_APP.md` §13.6. Auditoria 2026-11-17: resolts els punts
   **2.1–3.10** (undo, metadades, `N` enter, `x/16`, `C.B`, exportació i
   validacions). Detall a `docs/REGLES_DE_LA_APP.md` §13.
-- **GUI de tempo**: la barra «Temps» mostra **BPM intern** (negres/minut),
+- **GUI de tempo**: la franja Editor té **`[]`** (recalc fix) i **`->`**
+  (recalc mòbil) per a BPM, Compàs i N; Agrupació té un sol Aplica. La barra
+  «Temps» mostra **BPM intern** (negres/minut),
   **BPM del clip** en la seua unitat i **Compàs**, tots només lectura; els
   valors s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
   **Aplica** fa **recalc mòbil**; **Ajusta** obre un diàleg reduït a
