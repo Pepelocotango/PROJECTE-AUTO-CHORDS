@@ -30,7 +30,7 @@ class TestTramMapa(unittest.TestCase):
         self.assertEqual(bpm_unit.unitat_per_defecte(3, 8, "3"),
                          "negra_punt")
         self.assertEqual(bpm_unit.unitat_per_defecte(3, 8, "1+1+1"),
-                         "corxera")
+                         "negra_punt")
         self.assertEqual(bpm_unit.unitat_per_defecte(5, 8), "corxera")
         self.assertEqual(bpm_unit.unitat_per_defecte(7, 8, "2+2+3"),
                          "corxera")

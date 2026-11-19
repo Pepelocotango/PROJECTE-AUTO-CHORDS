@@ -1038,8 +1038,8 @@ class TestBpmUnit(unittest.TestCase):
 
     def test_unitat_per_defecte_de_tots_els_compassos(self):
         esperat = {
-            (2, 6): "rodona_punt", (4, 6): "blanca_punt",
-            (8, 6): "negra_punt", (16, 6): "corxera_punt",
+            (2, 6): "blanca", (4, 6): "negra",
+            (8, 6): "negra_punt", (16, 6): "semicorxera",
         }
         for (den, num), unit in esperat.items():
             self.assertEqual(bpm_unit.unitat_per_defecte(num, den), unit)
@@ -1049,10 +1049,10 @@ class TestBpmUnit(unittest.TestCase):
         # 3/8 és l'excepció explícita: una sola pols de negra amb punt.
         self.assertEqual(bpm_unit.unitat_per_defecte(3, 8), "negra_punt")
         self.assertEqual(bpm_unit.unitat_per_defecte(3, 8, "1+1+1"),
-                         "corxera")
-        # Una agrupació explícita que no és de tres deixa de ser composta.
+                         "negra_punt")
+        # L'agrupació no canvia la unitat percebuda per defecte.
         self.assertEqual(bpm_unit.unitat_per_defecte(6, 8, "2+2+2"),
-                         "corxera")
+                         "negra_punt")
         self.assertEqual(bpm_unit.unitat_per_defecte(6, 4, "2+2+2"),
                          "negra")
         self.assertAlmostEqual(bpm_unit.factor("rodona_punt"), 6.0)

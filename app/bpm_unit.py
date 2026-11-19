@@ -26,68 +26,25 @@ UNITATS = {
 
 
 
-def _grups_per_defecte(num, den):
-    """Agrupació per defecte sense dependre de `tempo_map` (evita el cicle)."""
-    try:
-        num, den = int(num), int(den)
-    except (TypeError, ValueError):
-        return (4,)
-    if num <= 0 or den <= 0:
-        return (4,)
-    if num in (6, 9, 12):
-        return tuple([3] * (num // 3))
-    return (num,)
-
-
-def _parse_grups(agrupacio):
-    """`"3+3"`/`(3,3)` → `(3,3)`; buit/auto → `None`; invàlid → `None`."""
-    if agrupacio in (None, "", "auto"):
-        return None
-    if isinstance(agrupacio, (tuple, list)):
-        try:
-            valors = tuple(int(v) for v in agrupacio)
-        except (TypeError, ValueError):
-            return None
-    else:
-        text = str(agrupacio).strip().replace(" ", "")
-        if not text:
-            return None
-        try:
-            valors = tuple(int(v) for v in text.split("+"))
-        except (TypeError, ValueError):
-            return None
-    return valors if valors and all(v > 0 for v in valors) else None
-
-
 def _simple_per_den(den):
     return {2: "blanca", 4: "negra", 8: "corxera",
             16: "semicorxera"}.get(int(den), DEFECTE)
 
 
-def _compost_per_den(den):
-    return {2: "rodona_punt", 4: "blanca_punt", 8: "negra_punt",
-            16: "corxera_punt"}.get(int(den), DEFECTE)
-
-
-def _es_compost(num, den):
-    """True si la pols es deriva amb figura amb punt.
-
-    Els numeradors **6, 9 i 12** ho són per definició (compostos). A més,
-    **3/8** es tracta explícitament com una sola pols de negra amb punt
-    (decisió de producte, 2026-11-17).
-    """
-    return num in (6, 9, 12) or (num == 3 and den == 8)
-
-
 def unitat_per_defecte(num, den, agrupacio=None):
-    """Unitat de pols suggerida per a un compàs i una agrupació (L6).
+    """Unitat de pols percebuda per defecte segons el compàs.
 
-    És una funció **pura** (no importa `tempo_map`). Si `agrupacio` és buida,
-    usa la taula per defecte local, equivalent a `tempo_map.agrupacio_compas`.
+    Regla única (decisió 2026-11-18):
 
-    La pols dels compassos compostos (**6**, **9** i **12**, i **3/8**) és la
-    figura del denominador **amb punt**; si l'usuari ha triat una agrupació que
-    no és de tres, es respecta i es torna a la figura simple del denominador.
+    - ``x/8``: només ``3/8``, ``6/8``, ``9/8`` i ``12/8`` → negra amb punt;
+      la resta de ``x/8`` → corxera.
+    - ``x/4`` → sempre negra.
+    - ``x/2`` → sempre blanca.
+    - ``x/16`` → sempre semicorxera.
+
+    `agrupacio` es conserva a la signatura per compatibilitat, però **no**
+    canvia la unitat percebuda per defecte. Una unitat explícita del tram
+    sempre mana sobre esta funció.
     """
     try:
         num, den = int(num), int(den)
@@ -95,11 +52,8 @@ def unitat_per_defecte(num, den, agrupacio=None):
         return DEFECTE
     if num <= 0 or den <= 0:
         return DEFECTE
-    if _es_compost(num, den):
-        grups = _parse_grups(agrupacio) or _grups_per_defecte(num, den)
-        if all(g % 3 == 0 for g in grups):
-            return _compost_per_den(den)
-        return _simple_per_den(den)
+    if den == 8 and num in (3, 6, 9, 12):
+        return "negra_punt"
     return _simple_per_den(den)
 
 

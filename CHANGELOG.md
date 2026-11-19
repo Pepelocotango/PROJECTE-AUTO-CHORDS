@@ -107,6 +107,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   amb **recalc fix** (fronteres fixes i N recalculat).
 - Les proves cobreixen la inferència QM i els dos factors.
 
+### Canviat — taula única de pols percebuda (2026-11-18)
+- La unitat per defecte ja no depén de `6/9/12` ni de l’agrupació:
+  - `x/8`: només `3/8`, `6/8`, `9/8`, `12/8` → negra amb punt; la resta → corxera.
+  - `x/4`: sempre negra.
+  - `x/2`: sempre blanca.
+  - `x/16`: sempre semicorxera.
+- Afecta els valors per defecte de BPM percebut, QM, TAP, mapa de tempo,
+  metrònom i exportació. Una unitat explícita del tram continua manant.
+- Actualitzats els tests de `bpm_unit`, `mapa_tempo` i `tempo_map`.
+
 ## [0.9.3] — 2026-11-16
 
 ### Afegit — marcadors «Inici» i «Final» de la quadratura (2026-11-18)

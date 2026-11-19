@@ -4,6 +4,12 @@
 > accepta AUTO CHORDS (`1…12` / `2, 4, 8, 16`), amb la relació entre BPM intern,
 > BPM percebut, pols, clics de metrònom i exportació. **No és un contracte:** el
 > contracte és `docs/REGLES_DE_LA_APP.md` §13.
+>
+> **Decisió d'app 2026-11-18:** la pols percebuda per defecte és una taula
+> única: `x/8` → corxera, excepte `3/8`, `6/8`, `9/8` i `12/8` → negra amb
+> punt; `x/4` → negra; `x/2` → blanca; `x/16` → semicorxera. Les taules
+> teòriques d'esta recerca poden mostrar la pols «de manual»; mana la taula
+> de l'app i el contracte.
 
 ## 1. Conclusió
 

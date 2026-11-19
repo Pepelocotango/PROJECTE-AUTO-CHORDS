@@ -146,15 +146,17 @@ compassos sencers. El model és permissiu:
   `blanca_punt`, `blanca`, `negra_punt`, `negra`, `corxera_punt`, `corxera`,
   `semicorxera`). El BPM canònic continua
   sent **negres/minut**; la unitat només canvia la presentació i la conversió
-  dels beats detectats/TAP, no el so. Si falta, es deriva de l'agrupació
-  efectiva: els numeradors **6, 9 i 12** amb grups de 3 són compostos i la
-  pols és la figura del denominador amb punt (`x/2` → `rodona_punt`, `x/4` →
-  `blanca_punt`, `x/8` → `negra_punt`, `x/16` → `corxera_punt`); la resta de
-  numeradors usa la figura simple del denominador (`x/2` → `blanca`, `x/4` →
-  `negra`, `x/8` → `corxera`, `x/16` → `semicorxera`). Excepció explícita
-  (2026-11-17): **`3/8`** es tracta com una sola pols de **negra amb punt**
-  (`negra_punt`); només una agrupació explícita que no siga de 3 el torna a
-  `corxera`.
+  dels beats detectats/TAP, no el so. Si falta, es deriva de la taula de
+  pols percebuda (decisió 2026-11-18):
+
+  - **`x/8`**: `3/8`, `6/8`, `9/8` i `12/8` → **negra amb punt**; la resta
+    de `x/8` → **corxera**.
+  - **`x/4`**: sempre **negra**.
+  - **`x/2`**: sempre **blanca**.
+  - **`x/16`**: sempre **semicorxera**.
+
+  L'agrupació explícita **no canvia** esta unitat per defecte; només una
+  unitat explícita del tram mana sobre ella.
   El **BPM visible** seguix esta unitat de pols; el **metrònom per defecte
   clica el denominador** i accentua els inicis de grup: `6/8` → 6 corxeres amb
   accents a 1 i 4, `9/8` → 9, `12/8` → 12. Una unitat explícita
