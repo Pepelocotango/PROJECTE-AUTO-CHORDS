@@ -93,6 +93,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - El clic respecta el volum, el loop, la posició de reproducció i la velocitat
   (factor), com la resta de patrons.
 
+### Afegit — N amb QM infereix el compàs i botons x2/÷2 (2026-11-18)
+- Amb **Snap Beats QM**, canviar N ja no valida només el compàs actual: el
+  motor busca el compàs que fa encaixar N amb els beats. Un clip `4/4 N=14`
+  amb 56 beats, en posar `N=8`, passa a **7/4**.
+- La franja Editor incorpora **`x2`** i **`/2`** per doblar o dividir el BPM
+  amb **recalc fix** (fronteres fixes i N recalculat).
+- Les proves cobreixen la inferència QM i els dos factors.
+
 ## [0.9.3] — 2026-11-16
 
 ### Afegit — marcadors «Inici» i «Final» de la quadratura (2026-11-18)

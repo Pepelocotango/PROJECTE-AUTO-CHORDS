@@ -5212,6 +5212,48 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         finally:
             v.close()
 
+    def test_fix_n_amb_snap_qm_infereix_compas_7_4(self):
+        from app import mapa_tempo
+        v = _vista_segueix_model___visor()
+        try:
+            dur = 23.219938
+            v.tempo_trams = [
+                mapa_tempo.TramMapa(0.0, dur, 144.703229, "normal", "4/4",
+                                    "", 14.0, "negra"),
+                mapa_tempo.TramMapa(dur, dur + 20.0, 144.703229, "normal",
+                                    "4/4", "", 8.0, "negra")]
+            v.set_snap(True, "qm_beats")
+            v.qm_beats = [i * dur / 56.0 for i in range(57)]
+            v._focus_editor("tempo", 0)
+            v.ed_n.setText("8")
+            v.ed_n_fix.click()
+            tr = v.tempo_trams[0]
+            self.assertEqual(tr.compassos, "7/4")
+            self.assertAlmostEqual(float(tr.n), 8.0, 6)
+            self.assertAlmostEqual(float(tr.bpm), 144.703229, 6)
+            self.assertAlmostEqual(float(tr.fi), dur, 6)
+        finally:
+            v.close()
+
+    def test_botons_x2_i_div2_recalculen_n_amb_fronteres_fixes(self):
+        v = _vista_segueix_model___visor()
+        try:
+            v.aplica_tempo_trams([
+                (0.0, 20.0, 120.0, 4, 4),
+                (20.0, 40.0, 120.0, 4, 4)])
+            v._focus_editor("tempo", 0)
+            v.ed_bpm_x2.click()
+            self.assertAlmostEqual(float(v.tempo_trams[0].bpm), 240.0, 6)
+            self.assertAlmostEqual(float(v.tempo_trams[0].n), 20.0, 6)
+            self.assertAlmostEqual(float(v.tempo_trams[0].fi), 20.0, 6)
+            v._focus_editor("tempo", 0)
+            v.ed_bpm_div2.click()
+            self.assertAlmostEqual(float(v.tempo_trams[0].bpm), 120.0, 6)
+            self.assertAlmostEqual(float(v.tempo_trams[0].n), 10.0, 6)
+            self.assertAlmostEqual(float(v.tempo_trams[0].fi), 20.0, 6)
+        finally:
+            v.close()
+
     def test_mobil_desactivat_a_l_ultim_clip(self):
         v = _vista_segueix_model___visor()
         try:

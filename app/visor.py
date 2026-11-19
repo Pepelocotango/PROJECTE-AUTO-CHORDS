@@ -293,6 +293,25 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             lambda: self._aplica_editor_var("bpm"))
         self.ed_bpm_aplica.setVisible(False)
         _eh.addWidget(self.ed_bpm_aplica)
+        self.ed_bpm_x2 = QPushButton("x2")
+        self.ed_bpm_x2.setObjectName("secundari")
+        self.ed_bpm_x2.setMaximumWidth(34)
+        self.ed_bpm_x2.setToolTip(
+            "Dobla el BPM amb recalc fix: conserva les fronteres i recalcula N.")
+        self.ed_bpm_x2.clicked.connect(
+            lambda: self._aplica_bpm_factor(2.0))
+        self.ed_bpm_x2.setVisible(False)
+        _eh.addWidget(self.ed_bpm_x2)
+        self.ed_bpm_div2 = QPushButton("/2")
+        self.ed_bpm_div2.setObjectName("secundari")
+        self.ed_bpm_div2.setMaximumWidth(34)
+        self.ed_bpm_div2.setToolTip(
+            "Divideix el BPM entre 2 amb recalc fix: conserva les fronteres "
+            "i recalcula N.")
+        self.ed_bpm_div2.clicked.connect(
+            lambda: self._aplica_bpm_factor(0.5))
+        self.ed_bpm_div2.setVisible(False)
+        _eh.addWidget(self.ed_bpm_div2)
         self.ed_fam_lbl = QLabel("Família:")
         self.ed_fam = CampText()
         self.ed_fam.setMaximumWidth(50)

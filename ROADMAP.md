@@ -112,7 +112,9 @@ el projecte de DAW queden ajornats.
   **2.1–3.10** (undo, metadades, `N` enter, `x/16`, `C.B`, exportació i
   validacions). Detall a `docs/REGLES_DE_LA_APP.md` §13.
 - **GUI de tempo**: la franja Editor té **`[]`** (recalc fix) i **`->`**
-  (recalc mòbil) per a BPM, Compàs i N; Agrupació té un sol Aplica. La barra
+  (recalc mòbil) per a BPM, Compàs i N; **x2/÷2** per al BPM amb recalc fix;
+  Agrupació té un sol Aplica. Amb Snap QM, canviar N infereix el compàs que
+  encaixa amb els beats. La barra
   «Temps» mostra **BPM intern** (negres/minut),
   **BPM del clip** en la seua unitat i **Compàs**, tots només lectura; els
   valors s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
