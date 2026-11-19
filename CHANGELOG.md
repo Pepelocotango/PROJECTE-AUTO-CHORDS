@@ -93,6 +93,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - El clic respecta el volum, el loop, la posició de reproducció i la velocitat
   (factor), com la resta de patrons.
 
+### Canviat — x2 i ÷2 mantenen N enter amb recalc fix (2026-11-18)
+- Quan `x2` o `/2` donen un N fraccionari en un clip interior, s’arredoneix
+  N a l’enter més pròxim i s’ajusta el BPM perquè les fronteres continuen
+  fixes; el log indica el BPM real aplicat.
+- Si N ja és enter, el factor s’aplica exactament.
+
 ### Afegit — N amb QM infereix el compàs i botons x2/÷2 (2026-11-18)
 - Amb **Snap Beats QM**, canviar N ja no valida només el compàs actual: el
   motor busca el compàs que fa encaixar N amb els beats. Un clip `4/4 N=14`

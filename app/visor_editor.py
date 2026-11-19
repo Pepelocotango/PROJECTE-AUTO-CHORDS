@@ -344,17 +344,22 @@ class EditorMixin:
             n_obj = dt * bpm / (bq * 60.0)
             ultim = (i == len(trams) - 1)
             n_final = float(n_obj) if ultim else int(round(n_obj))
+            bpm_final = bpm
             if not ultim and abs(n_obj - n_final) > 1e-3:
-                raise ValueError(
-                    f"Amb este BPM i les fronteres fixes, el N seria "
-                    f"{n_obj:.3f}; no és enter.")
+                # Fronteres fixes + N enter: no es pot conservar alhora el
+                # factor exacte i un N enter. Prioritzem N enter (contracte)
+                # i ajustem el BPM al valor que hi cap.
+                bpm_final = n_final * bq * 60.0 / dt
+                self.log(
+                    f"BPM x{float(factor):g}: N={n_final} amb fronteres "
+                    f"fixes; BPM ajustat de {bpm:.3f} a {bpm_final:.3f}")
             n_qm = self._qm_n_enter(i, num, den)
             if n_qm is not None and int(round(n_final)) != n_qm:
                 raise ValueError(
                     f"Snap Beats QM: amb {num}/{den} el N ha de ser "
                     f"{n_qm}, no {int(round(n_final))}.")
             nou = mapa_tempo.TramMapa(
-                ini, fi, float(bpm), tr.tipus, f"{int(num)}/{int(den)}",
+                ini, fi, float(bpm_final), tr.tipus, f"{num}/{den}",
                 getattr(tr, "agrupacio", ""), float(n_final),
                 getattr(tr, "beat_unit", None))
             nous = list(trams)
