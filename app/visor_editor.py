@@ -195,79 +195,161 @@ class EditorMixin:
         return tempo_map.agrupacio_a_text(
             tempo_map.agrupacio_compas(int(num), int(den)))
 
-    def _aplica_editor_var_fix(self, camp):
-        """Aplica només una variable amb **recalc fix** (fronteres fixes).
+    @staticmethod
+    def _compassos_possibles():
+        for den in limits.DENOMINADORS_ADMESOS:
+            for num in range(1, limits.NUM_MAX + 1):
+                yield num, den
 
-        El camp triat mana: es conserva el seu valor exacte, no es mouen
-        `ini`/`fi` i es recalcula el que calga (N, BPM o compàs).
-        """
+    def _resol_fix_bpm(self, tr, bpm):
+        """BPM exacte amb fronteres fixes: tria N enter i compàs."""
+        ini, fi = float(tr.ini), float(tr.fi)
+        dt = fi - ini
+        n_actual = float(getattr(tr, "n", None) or
+                         tempo_map.compassos_del_clip(tr))
+        num0, den0 = int(tr.num), int(tr.den)
+        bq0 = float(num0) * 4.0 / float(den0)
+        ultim = (getattr(self, "_ed_idx", -1)
+                 == len(self.tempo_trams or []) - 1)
+        if ultim:
+            n = dt * float(bpm) / (bq0 * 60.0)
+            if n <= 0:
+                raise ValueError("N ha de ser positiu.")
+            return mapa_tempo.TramMapa(
+                ini, fi, float(bpm), tr.tipus, tr.compassos,
+                getattr(tr, "agrupacio", ""), float(n),
+                getattr(tr, "beat_unit", None))
+        candidats = []
+        for num, den in self._compassos_possibles():
+            bq = float(num) * 4.0 / float(den)
+            n_obj = dt * float(bpm) / (bq * 60.0)
+            n = int(round(n_obj))
+            if n < 1 or abs(n_obj - n) > 1e-3:
+                continue
+            try:
+                tempo_map.valida_tempo(float(bpm), num, den)
+            except ValueError:
+                continue
+            score = (0 if (num, den) == (num0, den0) else 1,
+                     abs(n - n_actual), abs(bq - bq0), num, den)
+            candidats.append((score, num, den, n, bq))
+        if not candidats:
+            raise ValueError(
+                f"Amb el BPM {float(bpm):.3f} i fronteres fixes no hi ha "
+                "cap N enter amb cap compàs admés.")
+        _score, num, den, n, bq = min(candidats)
+        agr = (self._agr_en_canvi_compas(tr, num, den))
+        unit = getattr(tr, "beat_unit", None)
+        if (num, den) != (num0, den0):
+            unit = bpm_unit_mod.unitat_per_defecte(num, den, agr)
+        return mapa_tempo.TramMapa(
+            ini, fi, float(bpm), tr.tipus, f"{num}/{den}", agr,
+            float(n), unit)
+
+    def _resol_fix_compas(self, tr, num, den):
+        """Compàs exacte: N s'adapta (enter) i el BPM es recalcula si cal."""
+        ini, fi = float(tr.ini), float(tr.fi)
+        dt = fi - ini
+        bq = float(num) * 4.0 / float(den)
+        n_obj = dt * float(tr.bpm) / (bq * 60.0)
+        ultim = (getattr(self, "_ed_idx", -1)
+                 == len(self.tempo_trams or []) - 1)
+        if ultim:
+            n = float(n_obj)
+            bpm = float(tr.bpm)
+        else:
+            n = int(round(n_obj))
+            if n < 1:
+                raise ValueError("N ha de ser com a mínim 1.")
+            bpm = (float(tr.bpm) if abs(n_obj - n) <= 1e-3
+                   else n * bq * 60.0 / dt)
+        try:
+            bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
+        except ValueError as e:
+            raise ValueError(str(e)) from e
+        agr = self._agr_en_canvi_compas(tr, num, den)
+        unit = self._unitat_en_canvi_compas(
+            tr, mapa_tempo.TramMapa(
+                ini, fi, bpm, tr.tipus, f"{num}/{den}", agr, n,
+                getattr(tr, "beat_unit", None)), None)
+        return mapa_tempo.TramMapa(
+            ini, fi, float(bpm), tr.tipus, f"{num}/{den}", agr,
+            float(n), unit)
+
+    def _resol_fix_n(self, tr, n):
+        """N exacte: busca compàs que conserve el BPM; si no, el recalcula."""
+        ini, fi = float(tr.ini), float(tr.fi)
+        dt = fi - ini
+        n = float(n)
+        ultim = (getattr(self, "_ed_idx", -1)
+                 == len(self.tempo_trams or []) - 1)
+        if not ultim and abs(n - round(n)) > 1e-3:
+            raise ValueError("N ha de ser un enter positiu.")
+        if n <= 0:
+            raise ValueError("N ha de ser positiu.")
+        num0, den0 = int(tr.num), int(tr.den)
+        bpm = float(tr.bpm)
+        if ultim and abs(n - round(n)) > 1e-3:
+            # Cua fraccionària: no cal buscar compàs; BPM actual i N exacte.
+            return mapa_tempo.TramMapa(
+                ini, fi, bpm, tr.tipus, tr.compassos,
+                getattr(tr, "agrupacio", ""), n,
+                getattr(tr, "beat_unit", None))
+        bq_objectiu = dt * bpm / (n * 60.0) if n > 0 else 0.0
+        candidats = []
+        for num, den in self._compassos_possibles():
+            bq = float(num) * 4.0 / float(den)
+            if abs(bq - bq_objectiu) <= 1e-6:
+                score = (0 if (num, den) == (num0, den0) else 1,
+                         abs(num - num0), abs(den - den0))
+                candidats.append((score, num, den))
+        if candidats:
+            _score, num, den = min(candidats)
+            agr = self._agr_en_canvi_compas(tr, num, den)
+            unit = getattr(tr, "beat_unit", None)
+            if (num, den) != (num0, den0):
+                unit = bpm_unit_mod.unitat_per_defecte(num, den, agr)
+            return mapa_tempo.TramMapa(
+                ini, fi, bpm, tr.tipus, f"{num}/{den}", agr, n, unit)
+        # Fallback: conservar compàs i recalcular BPM.
+        bq = float(num0) * 4.0 / float(den0)
+        bpm = n * bq * 60.0 / dt
+        try:
+            bpm, num, den = tempo_map.valida_tempo(bpm, num0, den0)
+        except ValueError as e:
+            raise ValueError(str(e)) from e
+        return mapa_tempo.TramMapa(
+            ini, fi, float(bpm), tr.tipus, f"{num}/{den}",
+            getattr(tr, "agrupacio", ""), n,
+            getattr(tr, "beat_unit", None))
+
+    def _aplica_editor_var_fix(self, camp):
+        """Aplica només una variable amb **recalc fix** (fronteres fixes)."""
         k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
         if k != "tempo" or not (0 <= i < len(self.tempo_trams or [])):
             self.avis_editor("Selecciona un clip de tempo abans d'aplicar.")
             return False
         trams = list(self.tempo_trams or [])
         tr = trams[i]
-        ultim = (i == len(trams) - 1)
         try:
-            ini, fi = float(tr[0]), float(tr[1])
-            dt = fi - ini
-            if dt <= tempo_map.TOL:
-                raise ValueError("El clip no té durada.")
-            num, den = int(tr.num), int(tr.den)
-            bpm = float(tr.bpm)
-            if camp == "compas":
+            if camp == "bpm":
+                bpm = self.bpm_entrada(self.ed_nom.text())
+                bpm, num, den = tempo_map.valida_tempo(
+                    bpm, int(tr.num), int(tr.den))
+                nou = self._resol_fix_bpm(tr, bpm)
+            elif camp == "compas":
                 m = re.match(r"^\s*(\d+)\s*[/:]\s*(\d+)\s*$",
                              self.ed_fam.text().strip())
                 if not m:
                     raise ValueError("El compàs ha de ser num/den (p. ex. 7/4).")
                 num, den = int(m.group(1)), int(m.group(2))
-                bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
-            elif camp == "bpm":
-                bpm = self.bpm_entrada(self.ed_nom.text())
-                bpm, num, den = tempo_map.valida_tempo(bpm, num, den)
-            elif camp != "n":
+                tempo_map.valida_tempo(float(tr.bpm), num, den)
+                nou = self._resol_fix_compas(tr, num, den)
+            elif camp == "n":
+                n = float(self.ed_n.text().strip().replace(",", "."))
+                nou = self._resol_fix_n(tr, n)
+            else:
                 return False
-            bq = float(num) * 4.0 / float(den)
-            n_actual = getattr(tr, "n", None)
-            if n_actual is None:
-                n_actual = tempo_map.compassos_del_clip(tr)
-            n_actual = float(n_actual)
-            if camp == "n":
-                n_obj = float(self.ed_n.text().strip().replace(",", "."))
-                bpm_obj = n_obj * bq * 60.0 / dt
-            else:
-                # BPM i compàs són exactes: N deriva de la durada fixa.
-                n_obj = dt * bpm / (bq * 60.0)
-                bpm_obj = float(bpm)
-            if n_obj <= 0:
-                raise ValueError("N ha de ser positiu.")
-            if ultim:
-                n_final = float(n_obj)
-            else:
-                n_final = int(round(n_obj))
-                if abs(n_obj - n_final) > 1e-3:
-                    if camp == "compas":
-                        raise ValueError(
-                            f"Amb el compàs {num}/{den} i el BPM actual, "
-                            f"el N seria {n_obj:.3f}, no enter; cal canviar "
-                            "el BPM o triar un altre compàs.")
-                    raise ValueError(
-                        f"Amb el BPM {bpm:.3f} i les fronteres fixes, el N "
-                        f"seria {n_obj:.3f}, no enter; cal canviar el BPM "
-                        "o triar un altre compàs.")
-            if not (limits.BPM_MIN <= bpm_obj <= limits.BPM_MAX):
-                raise ValueError("El BPM resultant ix de la banda permesa")
-            agr = (self._agr_en_canvi_compas(tr, num, den)
-                   if camp == "compas" else getattr(tr, "agrupacio", ""))
-            unit = self.unitat_de_tram(tr)
-            if camp == "compas":
-                provisional = mapa_tempo.TramMapa(
-                    ini, fi, bpm_obj, tr.tipus, f"{num}/{den}", agr,
-                    n_final, unit)
-                unit = self._unitat_en_canvi_compas(tr, provisional, None)
-            nou = mapa_tempo.TramMapa(
-                ini, fi, float(bpm_obj), tr.tipus, f"{num}/{den}", agr,
-                float(n_final), unit)
             nous = list(trams)
             nous[i] = nou
         except (TypeError, ValueError, AttributeError) as e:
@@ -292,31 +374,16 @@ class EditorMixin:
         trams = list(self.tempo_trams or [])
         tr = trams[i]
         try:
-            ini, fi = float(tr.ini), float(tr.fi)
-            dt = fi - ini
-            if dt <= tempo_map.TOL:
-                raise ValueError("El clip no té durada.")
             bpm = float(tr.bpm) * float(factor)
-            bpm, num, den = tempo_map.valida_tempo(
+            bpm, _num, _den = tempo_map.valida_tempo(
                 bpm, int(tr.num), int(tr.den))
-            bq = float(num) * 4.0 / float(den)
-            n_obj = dt * bpm / (bq * 60.0)
-            ultim = (i == len(trams) - 1)
-            n_final = float(n_obj) if ultim else int(round(n_obj))
-            bpm_final = bpm
-            if not ultim and abs(n_obj - n_final) > 1e-3:
-                bpm_final = n_final * bq * 60.0 / dt
-                self.log(
-                    f"BPM x{float(factor):g}: N={n_final} amb fronteres "
-                    f"fixes; BPM ajustat de {bpm:.3f} a {bpm_final:.3f}")
-            nou = mapa_tempo.TramMapa(
-                ini, fi, float(bpm_final), tr.tipus, f"{num}/{den}",
-                getattr(tr, "agrupacio", ""), float(n_final),
-                getattr(tr, "beat_unit", None))
+            nou = self._resol_fix_bpm(tr, bpm)
             nous = list(trams)
             nous[i] = nou
         except (TypeError, ValueError, AttributeError) as e:
             self.avis_editor(str(e))
+            return False
+        if not self._valida_unitat_tram(nous[i], "Editor"):
             return False
         self._undo_marca()
         try:

@@ -183,9 +183,11 @@ compassos sencers. El model és permissiu:
 - **Extrems fixes**: l'**inici del primer clip** és sempre **0** i el **final
   de l'últim** és sempre la **durada de la WAV**; no s'editen. La resta de
   fronteres són interiors i lliures.
-- **BPM derivat**: el BPM es deriva de `N`, el compàs i la duració. Si
-  l'usuari escriu un BPM que no dona `N` enter amb la duració actual, es
-  **rebutja amb avís** (no es deixa `N` fraccionari ni es mou la frontera).
+- **BPM derivat**: el BPM es deriva de `N`, el compàs i la duració. En el
+  recalc fix de l'Editor, el camp triat mana (`BPM`, `Compàs` o `N`) i els
+  altres dos s'adapten segons la prioritat indicada; si no hi ha cap combinació
+  vàlida, es **rebutja amb avís** sense moure fronteres ni deixar N fraccionari
+  (excepte l'últim clip).
 - **Fronteres interiors lliures**: poden caure on vulga l'usuari; el **snap és
   opcional** i no s'exigeix cap línia de beat. Els beats detectats **no
   intervenen en l'Editor de tempo**; només s'usen als **Talls QM** (`+`,

@@ -5212,8 +5212,8 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         finally:
             v.close()
 
-    def test_fix_n_amb_snap_qm_no_infereix_compas(self):
-        """QM només mana en els talls; l'Editor fa el recalc sense QM."""
+    def test_fix_n_infereix_compas_sense_qm(self):
+        """N fix busca compàs que conserve el BPM; no cal QM."""
         from app import mapa_tempo
         v = _vista_segueix_model___visor()
         try:
@@ -5229,9 +5229,9 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             v.ed_n.setText("8")
             v.ed_n_fix.click()
             tr = v.tempo_trams[0]
-            self.assertEqual(tr.compassos, "4/4")
+            self.assertEqual(tr.compassos, "7/4")
             self.assertAlmostEqual(float(tr.n), 8.0, 6)
-            self.assertAlmostEqual(float(tr.bpm), 8 * 4 * 60 / dur, 6)
+            self.assertAlmostEqual(float(tr.bpm), 144.703229, 6)
             self.assertAlmostEqual(float(tr.fi), dur, 6)
         finally:
             v.close()
@@ -5252,6 +5252,48 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             self.assertAlmostEqual(float(v.tempo_trams[0].bpm), 120.0, 6)
             self.assertAlmostEqual(float(v.tempo_trams[0].n), 10.0, 6)
             self.assertAlmostEqual(float(v.tempo_trams[0].fi), 20.0, 6)
+        finally:
+            v.close()
+
+    def test_fix_bpm_adapta_n_i_compas(self):
+        from app import mapa_tempo
+        v = _vista_segueix_model___visor()
+        try:
+            dur = 23.219938
+            v.tempo_trams = [
+                mapa_tempo.TramMapa(0.0, dur, 144.703229, "normal", "4/4",
+                                    "", 14.0, "negra"),
+                mapa_tempo.TramMapa(dur, dur + 20.0, 144.703229, "normal",
+                                    "4/4", "", 8.0, "negra")]
+            v._focus_editor("tempo", 0)
+            # 126.615... amb 7/8 dona N=14; amb 4/4 no dona N enter.
+            v.ed_nom.setText("126.615325")
+            v.ed_bpm_fix.click()
+            tr = v.tempo_trams[0]
+            self.assertEqual(tr.compassos, "7/8")
+            self.assertAlmostEqual(float(tr.n), 14.0, 6)
+            self.assertAlmostEqual(float(tr.bpm), 126.615325, 6)
+        finally:
+            v.close()
+
+    def test_fix_bpm_impossible_rebutja_sense_canvi(self):
+        from app import mapa_tempo
+        v = _vista_segueix_model___visor()
+        try:
+            dur = 23.219938
+            v.tempo_trams = [
+                mapa_tempo.TramMapa(0.0, dur, 144.703229, "normal", "4/4",
+                                    "", 14.0, "negra"),
+                mapa_tempo.TramMapa(dur, dur + 20.0, 144.703229, "normal",
+                                    "4/4", "", 8.0, "negra")]
+            abans = [(t.ini, t.fi, t.bpm, t.compassos, t.n)
+                     for t in v.tempo_trams]
+            v._focus_editor("tempo", 0)
+            v.ed_nom.setText("150.000")
+            v.ed_bpm_fix.click()
+            self.assertEqual(
+                [(t.ini, t.fi, t.bpm, t.compassos, t.n)
+                 for t in v.tempo_trams], abans)
         finally:
             v.close()
 

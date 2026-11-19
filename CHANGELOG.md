@@ -117,6 +117,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   metrònom i exportació. Una unitat explícita del tram continua manant.
 - Actualitzats els tests de `bpm_unit`, `mapa_tempo` i `tempo_map`.
 
+### Canviat — recalc fix amb adaptació de BPM/Compàs/N (2026-11-18)
+- `[]` BPM: BPM exacte; busca N enter i compàs que encaixen. Si no n’hi ha,
+  rebutja sense tocar res.
+- `[]` Compàs: compàs exacte; ajusta N a l’enter més pròxim i recalcula BPM si
+  cal.
+- `[]` N: N exacte; busca un compàs que conserve el BPM actual; si no n’hi ha,
+  conserva el compàs i recalcula el BPM.
+- `x2`/`/2` usen la mateixa lògica del BPM fix.
+- QM no intervé en estos recàlculs.
+
 ### Canviat — en canviar compàs, la unitat percebuda es recalcula sempre (2026-11-18)
 - Si un clip passa de `6/8` a `4/4`, la unitat passa de la que corresponga a
   `6/8` a **negra**; si passa a `7/4`, també a **negra**; si passa a `12/8`,
