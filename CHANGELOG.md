@@ -13,10 +13,22 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - Recull la feina de la línia 0.9.3 i els ajustos de tempo, quadratura i
   exportació fets fins al 2026-11-18.
 
+### Corregit — «BPM…» obri el selector de decimals (2026-11-18)
+- El botó **BPM…** de la barra de transport connectava el senyal `clicked`
+  directament i rebia el booleà de Qt com a `decimals`, de manera que aplicava
+  **0 decimals** sense obrir cap diàleg.
+- Ara passa `None` explícitament i obri el selector **Sense decimals / 1
+  decimal / 2 decimals**; si es cancel·la, no toca el mapa.
+- Regressió afegida per comprovar que el diàleg s'obri i que el valor triat
+  arriba a `visor.quantitza_bpm()`.
+
 ### Canviat — franja Editor: recalc fix i mòbil per camp (2026-11-18)
 - A la franja Editor dels clips de tempo, **BPM**, **Compàs** i **N** tenen
   ara dos botons: **`[]`** (recalc fix, conserva les fronteres) i **`->`**
   (recalc mòbil, mou la frontera compartida amb el veí).
+- Els `[]` apliquen el camp exacte: en canviar `4/4 N=14` a `7/4`, el N passa
+  a **8** i el BPM no canvia; les fronteres `ini/fi` no es mouen. Si el camp
+  exacte no permet un N enter a l’interior, es rebutja amb un avís.
 - **Agrupació** conserva un sol **`Aplica`**, perquè no recalcula tempo.
 - El **`Aplica` general** i **`Ajusta`** es mantenen.
 - A l’últim clip, els botons `->` de BPM, Compàs i N queden desactivats perquè

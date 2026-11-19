@@ -150,7 +150,10 @@ class BarresMixin:
             "Quantitza el BPM dels clips normals amb 0, 1 o 2 decimals i "
             "re-encaixa les fronteres amb beats sencers. Els rubatos no es "
             "quantitzen.")
-        self.b_quantitza_bpm.clicked.connect(self._quantitza_bpm_ui)
+        # `clicked` envia un bool; el convertim en `None` perquè el botó
+        # pregunte els decimals (0/1/2) en lloc d'aplicar 0 en silenci.
+        self.b_quantitza_bpm.clicked.connect(
+            lambda: self._quantitza_bpm_ui(None))
         bar.addWidget(self.b_quantitza_bpm)
         bar.addSeparator()
         bar.addWidget(QLabel("Graella:"))

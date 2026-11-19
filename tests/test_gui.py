@@ -2404,6 +2404,24 @@ class EsquemaUiDocTests(unittest.TestCase):
         self.assertIsNotNone(getattr(self.w, "b_quantitza_bpm", None))
         self.assertIsNotNone(getattr(self.w, "b_eina", None))
 
+    def test_boto_bpm_obre_selector_de_decimals(self):
+        """«BPM…» ha de preguntar 0/1/2 decimals, no aplicar 0 en silenci."""
+        vist = []
+
+        class _V:
+            tempo_fix = True
+
+            def quantitza_bpm(self, decimals):
+                vist.append(int(decimals))
+                return False
+
+        self.w.visor_ref = _V()
+        with patch.object(app_main.QInputDialog, "getItem",
+                          return_value=("1 decimal", True)) as get:
+            self.w.b_quantitza_bpm.click()
+        get.assert_called_once()
+        self.assertEqual(vist, [1])
+
     def test_boto_guia_rapida_muntat(self):
         """«Guia ràpida» viu a Treball, abans del mode BPM."""
         texts = [b.text()
@@ -5154,8 +5172,9 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
                 (10.0, 20.0, 120.0, 4, 4)])
             v._focus_editor("tempo", 0)
             # Fix: la fi del clip i l'inici del veí no es mouen.
-            v.ed_nom.setText("140")
+            v.ed_nom.setText("96")
             v.ed_bpm_fix.click()
+            self.assertAlmostEqual(float(v.tempo_trams[0].bpm), 96.0, 6)
             self.assertAlmostEqual(float(v.tempo_trams[0].fi), 10.0, 6)
             self.assertAlmostEqual(float(v.tempo_trams[1].ini), 10.0, 6)
             # Mòbil: N fix, BPM/compàs actuals, la frontera es mou.
@@ -5168,6 +5187,28 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             self.assertAlmostEqual(float(v.tempo_trams[0].fi), 8.0, 6)
             self.assertAlmostEqual(float(v.tempo_trams[1].ini), 8.0, 6)
             self.assertEqual(v.tempo_trams[0].n, 4.0)
+        finally:
+            v.close()
+
+    def test_fix_compas_7_4_conserva_bpm_i_recalcula_n(self):
+        from app import mapa_tempo
+        v = _vista_segueix_model___visor()
+        try:
+            dur = 23.219938
+            v.tempo_trams = [
+                mapa_tempo.TramMapa(0.0, dur, 144.703229, "normal", "4/4",
+                                    "", 14.0, "negra"),
+                mapa_tempo.TramMapa(dur, dur + 20.0, 144.703229, "normal",
+                                    "4/4", "", 8.0, "negra")]
+            v._focus_editor("tempo", 0)
+            v.ed_fam.setText("7/4")
+            v.ed_compas_fix.click()
+            tr = v.tempo_trams[0]
+            self.assertEqual(tr.compassos, "7/4")
+            self.assertAlmostEqual(float(tr.bpm), 144.703229, 6)
+            self.assertAlmostEqual(float(tr.n), 8.0, 6)
+            self.assertAlmostEqual(float(tr.fi), dur, 6)
+            self.assertAlmostEqual(float(v.tempo_trams[1].ini), dur, 6)
         finally:
             v.close()
 
