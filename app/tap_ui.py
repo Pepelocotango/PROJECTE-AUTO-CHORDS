@@ -38,13 +38,25 @@ class TapMixin:
             self._sincronitza_temps_del_visor()
         self._tap_canviat = False
 
-    def _tap_tempo(self):
+    def _tap_tempo(self, mobil=False):
         """Tap tempo (com als DAWs): intervals dels últims taps → BPM.
+
+        `mobil=False`: BPM i N amb fronteres fixes (TAP normal).
+        `mobil=True`: BPM exacte, N actual i fi del clip desplaçable; a
+        l'últim clip, N fraccionari.
 
         El destí és el **clip de tempo seleccionat**; sense un tram de
         BPM/compàs seleccionat, T no fa res. Una sessió de taps = una sola
         operació de desfer.
         """
+        mobil = bool(mobil)
+        if getattr(self, "_tap_mobil", False) != mobil:
+            if getattr(self, "_tap_sessio_oberta", False):
+                self._tanca_sessio_tap()
+            self._taps = []
+        self._tap_mobil = mobil
+        boto_tap = (getattr(self, "b_tap_mobil", None)
+                    if mobil else getattr(self, "b_tap", None))
         self._actualitza_desti_accions()
         ara = time.monotonic()
         vr = getattr(self, "visor_ref", None)
@@ -81,13 +93,13 @@ class TapMixin:
         if len(self._taps) > 8:
             self._taps = self._taps[-8:]         # finestra dels últims 8
         if len(self._taps) < 2:
-            self.b_tap.setText("TAP (1)")
+            boto_tap.setText("TAP (1)")
             self._tap_timer.start()
             return
         ivs = [b - a for a, b in zip(self._taps, self._taps[1:])]
         ivs = [x for x in ivs if 60.0 / limits.BPM_MAX <= x <= 2.0]
         if not ivs:
-            self.b_tap.setText(f"TAP ({len(self._taps)})")
+            boto_tap.setText(f"TAP ({len(self._taps)})")
             self._tap_timer.start()
             return
         # TAP robust (Fase 3): mediana + descart d'intervals clarament anòmals.
@@ -103,13 +115,19 @@ class TapMixin:
         factor = float(bpm_unit_mod.factor(unit)) if vr is not None else 1.0
         bpm = taps_bpm * factor
         if vr is not None:
-            _, _bpm, num, den = vr.tempo_objectiu_vals()
-            if vr.edita_tempo_objectiu(idx, bpm, num, den, desa=False):
+            if mobil:
+                ok = vr.edita_tempo_tap_mobil(idx, bpm)
+            else:
+                _, _bpm, num, den = vr.tempo_objectiu_vals()
+                ok = vr.edita_tempo_objectiu(
+                    idx, bpm, num, den, desa=False,
+                    permet_ultim_fraccionari=False)
+            if ok:
                 self._tap_canviat = True
             self._sincronitza_temps_del_visor()
         else:
             self._posa_bpm_quarter(bpm)
-        self.b_tap.setText(
+        boto_tap.setText(
             f"TAP ({len(self._taps)}) "
             f"{bpm_unit_mod.de_quarter(bpm, unit):.0f}")
         self.registra(f"tap tempo: {taps_bpm:.3f} taps/min · "

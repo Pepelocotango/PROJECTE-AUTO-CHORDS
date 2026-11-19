@@ -5281,7 +5281,7 @@ class TapTempoTests(unittest.TestCase):
         window._carrega_visor(wav)
         return window
 
-    def _taps_en(self, w, interval, n=5, inici=1000.0):
+    def _taps_en(self, w, interval, n=5, inici=1000.0, mobil=False):
         """Simula n taps separats `interval` segons (mock de monotonic)."""
         from unittest.mock import patch
         t = inici
@@ -5289,7 +5289,7 @@ class TapTempoTests(unittest.TestCase):
                                                            for i in range(n * 4)]):
             w._taps = []
             for _ in range(n):
-                w._tap_tempo()
+                w._tap_tempo(mobil)
         return w
 
     def test_taps_594ms_donen_101bpm(self):
@@ -5491,6 +5491,32 @@ class TapTempoTests(unittest.TestCase):
         v.undo()
         self.assertAlmostEqual(float(v.tempo_trams[1][2]), 180.0, places=3)
         w.close()
+
+    def test_tap_mobil_mou_la_fi_del_clip_interior(self):
+        w = self._finestra()
+        try:
+            v = self._mapa_dos_trams(w)
+            v.timeline.select_clip("tempo", 0)
+            self._taps_en(w, 0.6, mobil=True)
+            # ~100 BPM, compàs 4/4: la fi més pròxima cau a 8 s? 3.33 bars
+            # → N=3 i fi=7.2 s; es recalcula N i es mou la frontera.
+            self.assertAlmostEqual(float(v.tempo_trams[0].fi), 7.2, 6)
+            self.assertAlmostEqual(float(v.tempo_trams[1].ini), 7.2, 6)
+            self.assertAlmostEqual(float(v.tempo_trams[0].n), 3.0, 6)
+        finally:
+            w.close()
+
+    def test_tap_mobil_ultim_clip_deixa_n_fraccionari(self):
+        w = self._finestra()
+        try:
+            v = self._mapa_dos_trams(w)
+            v.timeline.select_clip("tempo", 1)
+            self._taps_en(w, 1.0, mobil=True)
+            tr = v.tempo_trams[1]
+            self.assertAlmostEqual(float(tr.fi), 10.0, 6)
+            self.assertFalse(float(tr.n).is_integer())
+        finally:
+            w.close()
 
     def test_tap_sonant_fa_loop_al_tram_seleccionat(self):
         w = self._finestra()

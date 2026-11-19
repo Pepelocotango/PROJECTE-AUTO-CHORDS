@@ -299,6 +299,13 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                               "2 s sense tocar = reinicia.")
         self.b_tap.clicked.connect(self._tap_tempo)
         hp.addWidget(self.b_tap)
+        self.b_tap_mobil = QPushButton("TAP→")
+        self.b_tap_mobil.setObjectName("secundari")
+        self.b_tap_mobil.setToolTip(
+            "Tap tempo mòbil: BPM exacte, conserva N i desplaça el fi del "
+            "clip seleccionat. A l'últim clip deixa N fraccionari.")
+        self.b_tap_mobil.clicked.connect(lambda: self._tap_tempo(True))
+        hp.addWidget(self.b_tap_mobil)
         self.bpm_intern_bar = QLabel("BPM intern: —")
         self.bpm_intern_bar.setObjectName("secundari")
         self.bpm_intern_bar.setMinimumWidth(128)
@@ -526,6 +533,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self._tap_target = None
         self._tap_sessio_oberta = False
         self._tap_canviat = False
+        self._tap_mobil = False
         self._actualitzant_temps = False
         self._tap_timer = QTimer(self)
         self._tap_timer.setSingleShot(True)

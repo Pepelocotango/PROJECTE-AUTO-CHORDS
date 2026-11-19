@@ -81,7 +81,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | Barra | Contingut |
 |-------|-----------|
 | **Treball** (barra 1, fila 1) | **Guia ràpida** → **Ajusta inici WAV** · **Ajusta final WAV** → **＋ Temps+Secció** → **＋ Marcador** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → **Analitza** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`). Obrir i exportar viuen al menú **Fitxer** |
-| **Temps** (barra 1, fila 2) | **TAP** · **BPM intern** (negres/minut) · **BPM del clip** en la seua unitat de pols (p. ex. `80` en `6/8` amb `negra amb punt`) · **Compàs** del clip (p. ex. `6/8`), tot **només lectura**. L'edició del BPM i del Compàs és a la **franja Editor**; en canviar només el compàs, per defecte es conserva el **BPM visible** (Cas B); la unitat de pols es deriva del compàs i es pot canviar al diàleg del clip. **×2/÷2** viu al **menú contextual del clip de tempo** |
+| **Temps** (barra 1, fila 2) | **TAP** · **TAP→** (mòbil: mou el fi del clip) · **BPM intern** (negres/minut) · **BPM del clip** en la seua unitat de pols (p. ex. `80` en `6/8` amb `negra amb punt`) · **Compàs** del clip (p. ex. `6/8`), tot **només lectura**. L'edició del BPM i del Compàs és a la **franja Editor**; en canviar només el compàs, per defecte es conserva el **BPM visible** (Cas B); la unitat de pols es deriva del compàs i es pot canviar al diàleg del clip. **×2/÷2** viu al **menú contextual del clip de tempo** |
 | **Transport** (fila 3) | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup/Beats QM]** · **[Quantitza]** · **[BPM…]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
 ### Menús
@@ -397,7 +397,8 @@ Per exemple, `4/4 N=14` → `7/4` deixa `N=8` i conserva el BPM. **`->`** aplica
   (Agrupació · N · Ini/Fi) també s'editen a la franja Editor. El
   transport intern del tram 0 se sincronitza des del model (`_sincronitza_temps_del_visor`),
   mai al revés.
-- **TAP** (tecla **T**): sempre mana i no té restricció QM; pot deixar l’últim clip amb `N` fraccionari. Patró estàndard dels DAWs — guarda els instants dels
+- **TAP** (tecla **T**): sempre mana i no té restricció QM; conserva les fronteres i manté `N` enter, també a l’últim clip.
+- **TAP→**: BPM exacte; mou el `fi` del clip seleccionat a la **línia de compàs més pròxima** amb el BPM nou i **recalcula N**. A l’últim clip la fi de la WAV no es mou i deixa `N` fraccionari. Comparteix la mateixa sessió robusta de taps. Patró estàndard dels DAWs — guarda els instants dels
   últims taps, **mediana dels intervals** → `60/∅`; **reset als 2 s** (LMMS);
   **descarta intervals fora de 30–350 BPM** i els clarament anòmals (±30 % de
   la mediana). La **unitat de pols del clip** indica el valor de cada tap:

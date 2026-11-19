@@ -278,7 +278,8 @@ class TempoMixin:
             _n(nou, 3), _n(nou, 4), agr_nou)
 
     def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True, repara=True,
-                             agrupacio=None, beat_unit=None):
+                             agrupacio=None, beat_unit=None,
+                             permet_ultim_fraccionari=True):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
         Contracte §13.4/§13.5: **tots** els clips mantenen `N` enter. En un
@@ -322,7 +323,7 @@ class TempoMixin:
                     [tuple(t) for t in trams], idx, float(bpm),
                     self._durada_wav(), num=num, den=den,
                     beats_qm=self._beats_per_validacio(), permissiu=True,
-                    permet_ultim_fraccionari=True)
+                    permet_ultim_fraccionari=permet_ultim_fraccionari)
             except ValueError as e:
                 self.avis_editor(f"Tempo: {e}")
                 return False
@@ -362,6 +363,60 @@ class TempoMixin:
         self.beat_type = int(nous[0][4])
         if desa:
             return bool(self.aplica_tempo_trams(nous))
+        self.tempo_trams = nous
+        self._actualitza_temps()
+        return True
+
+    def edita_tempo_tap_mobil(self, idx, bpm):
+        """TAP amb frontera mòbil: BPM exacte, N actual i fi desplaçable.
+
+        En un clip interior, mou `fi` a la línia de compàs més pròxima amb el
+        BPM nou i recalcula N (enter) i el veí; en l'últim clip, la fi de la
+        WAV no es mou i el N queda fraccionari.
+        No desa: la sessió de TAP ho fa en tancar-se.
+        """
+        trams = list(self.tempo_trams or [])
+        idx = int(idx)
+        if not (0 <= idx < len(trams)):
+            return False
+        tr = trams[idx]
+        try:
+            bpm, num, den = tempo_map.valida_tempo(
+                float(bpm), int(tr.num), int(tr.den))
+        except ValueError as e:
+            self.avis_editor(f"TAP mòbil: {e}")
+            return False
+        bq = float(num) * 4.0 / float(den)
+        dt = float(tr.fi) - float(tr.ini)
+        if bq <= 0 or dt <= 0:
+            return False
+        ultim = (idx == len(trams) - 1)
+        try:
+            if ultim:
+                n = dt * bpm / (bq * 60.0)
+                nous = list(trams)
+                nous[idx] = mapa_tempo.TramMapa(
+                    float(tr.ini), float(tr.fi), float(bpm),
+                    getattr(tr, "tipus", "normal"), f"{num}/{den}",
+                    getattr(tr, "agrupacio", ""), float(n),
+                    getattr(tr, "beat_unit", None))
+            else:
+                # Fi a la línia de compàs més pròxima amb el BPM nou;
+                # N es recalcula a partir d'eixa durada.
+                compas = bq * 60.0 / float(bpm)
+                n = max(1, int(round(dt / compas)))
+                nous = mapa_tempo.recalcula_tram_c(
+                    trams, idx, self._durada_wav(), n=n,
+                    bpm=float(bpm), num=num, den=den, camp="n",
+                    permet_ultim_fraccionari=False)
+        except ValueError as e:
+            self.avis_editor(f"TAP mòbil: {e}")
+            return False
+        if not self._valida_unitat_tram(nous[idx], "TAP"):
+            return False
+        self.bpm = float(nous[0][2])
+        self.bpb = int(nous[0][3])
+        self.beat_type = int(nous[0][4])
         self.tempo_trams = nous
         self._actualitza_temps()
         return True

@@ -151,6 +151,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   els recalculs interns.
 - Una agrupació explícita antiga no es conserva si el compàs canvia.
 
+### Afegit — segon TAP tempo amb frontera mòbil (2026-11-18)
+- Es manté el **TAP** normal: BPM i N amb les fronteres fixes; el N de
+  l’últim clip també es manté enter.
+- Nou **TAP→**: BPM exacte; mou el `fi` del clip seleccionat a la línia de
+  compàs més pròxima amb el BPM nou, recalcula N i desplaça l’inici del veí.
+  Si el clip és l’últim, la fi de la WAV no es mou i N queda fraccionari.
+- Les dues sessions comparteixen la mediana robusta, el límit de 2 s i un sol
+  undo per sessió.
+
 ## [0.9.3] — 2026-11-16
 
 ### Afegit — marcadors «Inici» i «Final» de la quadratura (2026-11-18)
