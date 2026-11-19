@@ -143,6 +143,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   cua final, quan **Snap = Beats QM** i hi ha beats detectats.
 - `F7` i **Beats del clip** continuen generant/mostrant els beats QM.
 
+### Canviat — canvi de compàs reseteja agrupació i pols (2026-11-18)
+- En canviar el compàs d’un clip de tempo, l’agrupació i la unitat percebuda
+  (`beat_unit`) es recalculen sempre amb els valors per defecte del compàs nou.
+- S’aplica a tots els camins: editor, `[]`/`->`, BPM/Compàs/N, `Ajusta`,
+  arrossegament de fronteres, `edita_tempo_objectiu`, `edita_n_compassos` i
+  els recalculs interns.
+- Una agrupació explícita antiga no es conserva si el compàs canvia.
+
 ## [0.9.3] — 2026-11-16
 
 ### Afegit — marcadors «Inici» i «Final» de la quadratura (2026-11-18)

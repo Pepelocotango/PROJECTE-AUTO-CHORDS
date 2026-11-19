@@ -156,7 +156,9 @@ compassos sencers. El model és permissiu:
   - **`x/16`**: sempre **semicorxera**.
 
   L'agrupació explícita **no canvia** esta unitat per defecte; només una
-  unitat explícita del tram mana sobre ella.
+  unitat explícita del tram mana sobre ella. En canviar el compàs `x/x`, tant
+  l'agrupació com la unitat percebuda es **resetejen** al valor per defecte del
+  compàs nou.
   El **BPM visible** seguix esta unitat de pols; el **metrònom per defecte
   clica el denominador** i accentua els inicis de grup: `6/8` → 6 corxeres amb
   accents a 1 i 4, `9/8` → 9, `12/8` → 12. Una unitat explícita

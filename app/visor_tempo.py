@@ -295,6 +295,18 @@ class TempoMixin:
                 0.0, self._durada_wav(), float(bpm), "normal",
                 f"{int(num)}/{int(den)}")]
         idx = min(max(0, int(idx)), len(trams) - 1)
+        compas_canviat = ((int(num), int(den)) !=
+                          (int(trams[idx].num), int(trams[idx].den)))
+        if compas_canviat and agrupacio is None:
+            # El motor no ha de vore l'agrupació vella sobre un compàs nou.
+            trams = list(trams)
+            tr0 = trams[idx]
+            agr0 = tempo_map.agrupacio_a_text(
+                tempo_map.agrupacio_compas(int(num), int(den)))
+            trams[idx] = mapa_tempo.TramMapa(
+                float(tr0.ini), float(tr0.fi), float(tr0.bpm), tr0.tipus,
+                f"{int(num)}/{int(den)}", agr0, getattr(tr0, "n", None),
+                getattr(tr0, "beat_unit", None))
         if desa:
             try:
                 nous = mapa_tempo.recalcula_tram_c(
@@ -334,6 +346,9 @@ class TempoMixin:
         nous = self._amb_unitat(nous, idx, unit)
         if not self._valida_unitat_tram(nous[idx], "Tempo"):
             return False
+        if (int(num), int(den)) != (int(trams[idx].num), int(trams[idx].den)):
+            agrupacio = tempo_map.agrupacio_a_text(
+                tempo_map.agrupacio_compas(int(num), int(den)))
         if agrupacio is not None:
             agr = tempo_map.valida_agrupacio(
                 agrupacio, nous[idx].num, nous[idx].den)
@@ -412,6 +427,17 @@ class TempoMixin:
         if not trams:
             return False
         idx = min(max(0, int(idx)), len(trams) - 1)
+        compas_canviat = ((int(num), int(den)) !=
+                          (int(trams[idx].num), int(trams[idx].den)))
+        if compas_canviat:
+            trams = list(trams)
+            tr0 = trams[idx]
+            agr0 = tempo_map.agrupacio_a_text(
+                tempo_map.agrupacio_compas(int(num), int(den)))
+            trams[idx] = mapa_tempo.TramMapa(
+                float(tr0.ini), float(tr0.fi), float(tr0.bpm), tr0.tipus,
+                f"{int(num)}/{int(den)}", agr0, getattr(tr0, "n", None),
+                getattr(tr0, "beat_unit", None))
         try:
             nous = mapa_tempo.recalcula_tram_c(
                 trams, idx, self._durada_wav(),
@@ -422,6 +448,13 @@ class TempoMixin:
             return False
         unit = self._unitat_en_canvi_compas(trams[idx], nous[idx], beat_unit)
         nous = self._amb_unitat(nous, idx, unit)
+        if (int(num), int(den)) != (int(trams[idx].num), int(trams[idx].den)):
+            agr = tempo_map.agrupacio_a_text(
+                tempo_map.agrupacio_compas(int(num), int(den)))
+            nou = nous[idx]
+            nous[idx] = mapa_tempo.TramMapa(
+                nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos, agr,
+                getattr(nou, "n", None), nou.beat_unit)
         if not self._valida_unitat_tram(nous[idx], "Compassos"):
             return False
         self.bpm = float(nous[0][2])
@@ -494,6 +527,17 @@ class TempoMixin:
             self.avis_editor("Tempo: el clip no té durada.")
             return False
         bq = float(num_t) * 4.0 / float(den_t)
+        compas_canviat = ((int(num_t), int(den_t)) !=
+                          (int(tr.num), int(tr.den)))
+        base = trams
+        if compas_canviat:
+            base = list(trams)
+            agr0 = tempo_map.agrupacio_a_text(
+                tempo_map.agrupacio_compas(int(num_t), int(den_t)))
+            base[idx] = mapa_tempo.TramMapa(
+                float(tr.ini), float(tr.fi), float(tr.bpm), tr.tipus,
+                f"{int(num_t)}/{int(den_t)}", agr0,
+                getattr(tr, "n", None), getattr(tr, "beat_unit", None))
         try:
             n_qm = self._qm_n_enter(idx, num_t, den_t)
             if n_qm is not None:
@@ -519,7 +563,7 @@ class TempoMixin:
             else:
                 n_t = max(1, int(round(dt * bpm_t / (bq * 60.0))))
             nous = mapa_tempo.recalcula_tram_c(
-                trams, idx, self._durada_wav(), n=n_t, bpm=bpm_t,
+                base, idx, self._durada_wav(), n=n_t, bpm=bpm_t,
                 num=num_t, den=den_t, camp="n",
                 permet_ultim_fraccionari=True)
         except ValueError as e:
@@ -527,6 +571,13 @@ class TempoMixin:
             return False
         unit = self._unitat_en_canvi_compas(tr, nous[idx], None)
         nous = self._amb_unitat(nous, idx, unit)
+        if (int(num_t), int(den_t)) != (int(tr.num), int(tr.den)):
+            agr = tempo_map.agrupacio_a_text(
+                tempo_map.agrupacio_compas(int(num_t), int(den_t)))
+            nou = nous[idx]
+            nous[idx] = mapa_tempo.TramMapa(
+                nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos, agr,
+                getattr(nou, "n", None), nou.beat_unit)
         if not self._valida_unitat_tram(nous[idx], "Tempo"):
             return False
         self.bpm = float(nous[0][2])
@@ -985,14 +1036,35 @@ class TempoMixin:
                 # nou el deriva la normalització del mapa.
                 nous = mapa_tempo.reenganxa_metadades(trams, nous)
             else:
+                base = trams
+                if ((int(res["num"]), int(res["den"])) !=
+                        (int(trams[idx].num), int(trams[idx].den))):
+                    base = list(trams)
+                    tr0 = base[idx]
+                    agr0 = tempo_map.agrupacio_a_text(
+                        tempo_map.agrupacio_compas(
+                            int(res["num"]), int(res["den"])))
+                    base[idx] = mapa_tempo.TramMapa(
+                        tr0.ini, tr0.fi, tr0.bpm, tr0.tipus,
+                        f"{int(res['num'])}/{int(res['den'])}", agr0,
+                        getattr(tr0, "n", None), tr0.beat_unit)
                 nous = mapa_tempo.recalcula_tram_c(
-                    trams, idx, self._durada_wav(),
+                    base, idx, self._durada_wav(),
                     n=int(res["n"]), bpm=float(bpm_camp),
                     num=int(res["num"]), den=int(res["den"]), camp="n",
                     permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Recalcul {mode}: {e}")
             return False
+        if (int(nous[idx].num), int(nous[idx].den)) != (
+                int(trams[idx].num), int(trams[idx].den)):
+            agr = tempo_map.agrupacio_a_text(
+                tempo_map.agrupacio_compas(
+                    int(nous[idx].num), int(nous[idx].den)))
+            nou = nous[idx]
+            nous[idx] = mapa_tempo.TramMapa(
+                nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos, agr,
+                getattr(nou, "n", None), nou.beat_unit)
         if [tuple(x) for x in nous] == [tuple(x) for x in trams]:
             self.log(f"recalcul {mode} tram {idx}: sense canvis")
             return True
@@ -1065,6 +1137,24 @@ class TempoMixin:
         dlg.exec_()
         return bool(aplicat["ok"])
 
+    def _reseteja_compas_canviat(self, antics, nous):
+        """Si un clip canvia de compàs, agrupació i unitat tornen al defecte."""
+        antics = list(antics or [])
+        out = []
+        for j, n in enumerate(nous or []):
+            if j < len(antics):
+                a = antics[j]
+                if (int(a.num), int(a.den)) != (int(n.num), int(n.den)):
+                    agr = tempo_map.agrupacio_a_text(
+                        tempo_map.agrupacio_compas(int(n.num), int(n.den)))
+                    unit = bpm_unit_mod.unitat_per_defecte(
+                        int(n.num), int(n.den), agr)
+                    n = mapa_tempo.TramMapa(
+                        n.ini, n.fi, n.bpm, n.tipus, n.compassos, agr,
+                        getattr(n, "n", None), unit)
+            out.append(n)
+        return out
+
     def _on_tempo_mogut(self, idx, vora, t):
         """Vora d'un bloc de BPM/compàs arrossegada → **re-tempo** (el ratolí mana).
 
@@ -1107,6 +1197,7 @@ class TempoMixin:
             self.avis_editor(f"Frontera de tempo: {e}")
             return
         nous = mapa_tempo.reenganxa_metadades(trams, nous)
+        nous = self._reseteja_compas_canviat(trams, nous)
         self._undo_marca()
         self.aplica_tempo_trams(nous)
         self._undo_commit()

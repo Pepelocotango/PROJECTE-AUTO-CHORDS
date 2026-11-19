@@ -5050,6 +5050,24 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         finally:
             v.close()
 
+    def test_editor_canvi_compas_reset_agrupacio_explicita(self):
+        from app import mapa_tempo
+        v = _vista_segueix_model___visor()
+        try:
+            v.aplica_tempo_trams([
+                mapa_tempo.TramMapa(0.0, 20.0, 180.0, "normal", "6/8",
+                                    "2+2+2", 10, "corxera"),
+                mapa_tempo.TramMapa(20.0, 40.0, 180.0, "normal", "6/8")])
+            v._focus_editor("tempo", 0)
+            v.ed_fam.setText("4/4")
+            v.ed_compas_aplica.click()
+            tr = v.tempo_trams[0]
+            self.assertEqual(tr.compassos, "4/4")
+            self.assertEqual(tr.agrupacio, "4")
+            self.assertEqual(tr.beat_unit, "negra")
+        finally:
+            v.close()
+
     def test_editor_canvi_compas_conserva_pulsacio_per_defecte(self):
         """El botó Compàs de l'Editor aplica el Cas B per defecte."""
         v = _vista_segueix_model___visor()

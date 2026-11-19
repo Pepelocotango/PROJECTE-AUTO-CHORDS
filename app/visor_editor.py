@@ -188,10 +188,9 @@ class EditorMixin:
 
     @staticmethod
     def _agr_en_canvi_compas(tr, num, den):
-        """Agrupació per defecte si el compàs canvia i la vella era automàtica."""
-        agr = getattr(tr, "agrupacio", "") or ""
-        if agr or (int(tr.num), int(tr.den)) == (int(num), int(den)):
-            return agr
+        """Agrupació per defecte si el compàs canvia; si no, conserva la vella."""
+        if (int(tr.num), int(tr.den)) == (int(num), int(den)):
+            return getattr(tr, "agrupacio", "") or ""
         return tempo_map.agrupacio_a_text(
             tempo_map.agrupacio_compas(int(num), int(den)))
 
@@ -458,17 +457,31 @@ class EditorMixin:
             getattr(tr, "n", None), unit_vella)
         try:
             unit_nova = self._unitat_en_canvi_compas(tr, provisional, None)
-            bpm_intern = bpm_unit_mod.a_quarter(bpm_visible, unit_nova)
+            # Si la unitat vella era l'explicita, conserva el BPM intern;
+            # si era la derivada, conserva el número visible (Cas B).
+            bpm_intern = (bpm_unit_mod.a_quarter(bpm_visible, unit_nova)
+                          if unit_vella == bpm_unit_mod.unitat_per_defecte(
+                              int(tr.num), int(tr.den),
+                              getattr(tr, "agrupacio", ""))
+                          else float(tr.bpm))
+            # El motor de recalcul ha de vore ja el compàs i l'agrupació nous;
+            # si li passem l'agrupació vella pot rebutjar el TramMapa abans
+            # d'arribar a normalitzar-lo.
+            base = list(trams)
+            base[idx] = mapa_tempo.TramMapa(
+                float(tr.ini), float(tr.fi), float(tr.bpm), tr.tipus,
+                f"{num}/{den}", agr_nova, getattr(tr, "n", None),
+                unit_vella)
             try:
                 nous = mapa_tempo.recalcula_tram_c(
-                    trams, idx, self._durada_wav(), n=n_actual,
+                    base, idx, self._durada_wav(), n=n_actual,
                     bpm=bpm_intern, num=num, den=den,
                     camp="n", permet_ultim_fraccionari=False)
             except ValueError:
                 # En signaturas irregulars, mantindre el número visible pot
                 # fer inviable el veí; es conserva el tempo intern.
                 nous = mapa_tempo.recalcula_tram_c(
-                    trams, idx, self._durada_wav(), n=n_actual,
+                    base, idx, self._durada_wav(), n=n_actual,
                     bpm=float(tr.bpm), num=num, den=den,
                     camp="n", permet_ultim_fraccionari=False)
         except ValueError as e:
@@ -637,7 +650,7 @@ class EditorMixin:
         canvi_bpm = (canvi_bpm_num or canvi_compas)
         # En canviar el compàs, l'agrupació automàtica ha de passar a la del
         # compàs nou, encara que el camp no s'haja tocat.
-        if canvi_compas and agr == getattr(tr, "agrupacio", ""):
+        if canvi_compas:
             agr = tempo_map.agrupacio_a_text(
                 tempo_map.agrupacio_compas(num, den))
         canvi_agr = agr != getattr(tr, "agrupacio", "")
