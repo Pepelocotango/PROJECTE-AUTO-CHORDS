@@ -256,11 +256,13 @@ class TempoMixin:
         return trams
 
     def _unitat_en_canvi_compas(self, vell, nou, beat_unit):
-        """Manté la unitat explícita; si era la derivada, deriva la nova.
+        """En canviar compàs/agrupació, aplica la unitat per defecte nova.
 
-        Així un clip 4/4 en negra que passa a 6/8 mostra i clica negra amb
-        punt (3+3), però un 6/8 que l'usuari ha posat explícitament en corxera
-        no es converteix a negra amb punt en passar a 9/8.
+        Decisió 2026-11-18: totes les conversions de compàs recalculem la
+        unitat percebuda segons la taula actual (x/4 → negra, x/2 → blanca,
+        x/8 → corxera amb les excepcions, x/16 → semicorxera). Només si el
+        compàs i l'agrupació no canvien es conserva la unitat existent. Un
+        `beat_unit` explícit passat per una API interna encara té prioritat.
         """
         def _n(t, i):
             return int(getattr(t, "num" if i == 3 else "den", t[i]))
@@ -270,12 +272,8 @@ class TempoMixin:
         if ((_n(vell, 3), _n(vell, 4), agr_vell)
                 == (_n(nou, 3), _n(nou, 4), agr_nou)):
             return beat_unit
-        actual = (self.unitat_de_tram(vell) if beat_unit is None
-                  else bpm_unit_mod.normalitza(beat_unit))
-        derivada_vella = bpm_unit_mod.unitat_per_defecte(
-            _n(vell, 3), _n(vell, 4), agr_vell)
-        if actual != derivada_vella:
-            return actual
+        if beat_unit is not None:
+            return bpm_unit_mod.normalitza(beat_unit)
         return bpm_unit_mod.unitat_per_defecte(
             _n(nou, 3), _n(nou, 4), agr_nou)
 
@@ -924,8 +922,10 @@ class TempoMixin:
             num_ref, den_ref = num_camp, den_camp
         n_beats = None
         pas_beat = 1.0
-        qm_actiu = bool(self._beats_per_validacio())
-        if opcions["beats"] or qm_actiu:
+        # El recalcul manual del diàleg del tram no consulta QM: QM queda
+        # reservat als talls (+/intro) amb Snap Beats QM.
+        qm_actiu = False
+        if opcions["beats"]:
             factor = self.beat_factor() if opcions["unitat"] else 1.0
             beats = list(getattr(self, "qm_beats", None) or ())
             n_beats = tempo_recalc.n_negres_del_clip(

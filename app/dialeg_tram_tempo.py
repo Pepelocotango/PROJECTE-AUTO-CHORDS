@@ -372,7 +372,8 @@ QCheckBox::indicator:disabled {{
     def opcions_recalc(self):
         """Opcions fixes del recalcul: només canvia si mana N."""
         return {
-            "beats": True,
+            # L'Editor ja no fa servir QM; els Talls QM tenen el seu propi flux.
+            "beats": False,
             "segons": True,
             "unitat": True,
             "compas": False,

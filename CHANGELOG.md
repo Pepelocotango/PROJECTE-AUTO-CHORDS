@@ -117,6 +117,22 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   metrònom i exportació. Una unitat explícita del tram continua manant.
 - Actualitzats els tests de `bpm_unit`, `mapa_tempo` i `tempo_map`.
 
+### Canviat — en canviar compàs, la unitat percebuda es recalcula sempre (2026-11-18)
+- Si un clip passa de `6/8` a `4/4`, la unitat passa de la que corresponga a
+  `6/8` a **negra**; si passa a `7/4`, també a **negra**; si passa a `12/8`,
+  a **negra amb punt**.
+- Una unitat explícita ja no es conserva en canviar de compàs: es recalcula
+  segons la taula de pols percebuda.
+- Amb unitat derivada es conserva el BPM visible (Cas B); amb unitat explícita
+  es conserva el BPM intern i canvia el número percebut.
+
+### Canviat — QM només als Talls QM (2026-11-18)
+- BPM, Compàs, N, `[]`, `->`, `x2`, `/2`, `Aplica` general i `Ajusta` ja **no
+  consulten ni validen QM**.
+- QM continua actiu als **Talls QM** (`+`, intro i talls normals), inclosa la
+  cua final, quan **Snap = Beats QM** i hi ha beats detectats.
+- `F7` i **Beats del clip** continuen generant/mostrant els beats QM.
+
 ## [0.9.3] — 2026-11-16
 
 ### Afegit — marcadors «Inici» i «Final» de la quadratura (2026-11-18)

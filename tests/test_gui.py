@@ -5025,7 +5025,7 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         finally:
             v.close()
 
-    def test_editor_agrupacio_deriva_la_unitat_si_era_automatica(self):
+    def test_editor_agrupacio_no_canvia_la_unitat_per_defecte(self):
         v = _vista_segueix_model___visor()
         try:
             self.assertTrue(v.aplica_tempo_trams([(0.0, 40.0, 120.0, 6, 8)]))
@@ -5033,7 +5033,7 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             v.ed_agr.setText("2+2+2")
             v.ed_agr_aplica.click()
             self.assertEqual(v.tempo_trams[0].agrupacio, "2+2+2")
-            self.assertEqual(v.tempo_trams[0].beat_unit, "corxera")
+            self.assertEqual(v.tempo_trams[0].beat_unit, "negra_punt")
         finally:
             v.close()
 
@@ -5081,7 +5081,7 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         finally:
             v.close()
 
-    def test_aplica_general_respecta_unitat_explicita(self):
+    def test_aplica_general_canvi_compas_recalcula_unitat(self):
         from app import mapa_tempo
         v = _vista_segueix_model___visor()
         try:
@@ -5092,7 +5092,7 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             v._focus_editor("tempo", 0)
             v.ed_fam.setText("6/8")
             v._aplica_editor()
-            self.assertEqual(v.tempo_trams[0].beat_unit, "corxera")
+            self.assertEqual(v.tempo_trams[0].beat_unit, "negra_punt")
         finally:
             v.close()
 
@@ -5212,7 +5212,8 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         finally:
             v.close()
 
-    def test_fix_n_amb_snap_qm_infereix_compas_7_4(self):
+    def test_fix_n_amb_snap_qm_no_infereix_compas(self):
+        """QM només mana en els talls; l'Editor fa el recalc sense QM."""
         from app import mapa_tempo
         v = _vista_segueix_model___visor()
         try:
@@ -5228,9 +5229,9 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             v.ed_n.setText("8")
             v.ed_n_fix.click()
             tr = v.tempo_trams[0]
-            self.assertEqual(tr.compassos, "7/4")
+            self.assertEqual(tr.compassos, "4/4")
             self.assertAlmostEqual(float(tr.n), 8.0, 6)
-            self.assertAlmostEqual(float(tr.bpm), 144.703229, 6)
+            self.assertAlmostEqual(float(tr.bpm), 8 * 4 * 60 / dur, 6)
             self.assertAlmostEqual(float(tr.fi), dur, 6)
         finally:
             v.close()
@@ -7126,11 +7127,11 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.edita_tempo_objectiu(0, 120.0, 6, 8))
         self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
         self.assertEqual(vr.bpm_mostra(), "80.000")
-        # Una tria explícita (corxera) no es converteix en passar a 12/8.
+        # En canviar de compàs, la unitat es recalcula per defecte.
         self.assertTrue(vr.canvia_unitat_tram(0, "corxera",
                                               mode="mantenir_tempo"))
         self.assertTrue(vr.edita_tempo_objectiu(0, 120.0, 12, 8))
-        self.assertEqual(vr.tempo_trams[0].beat_unit, "corxera")
+        self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
 
     def test_undo_unitat_tram(self):
         vr = self.w.visor_ref

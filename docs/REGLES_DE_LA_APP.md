@@ -160,12 +160,12 @@ compassos sencers. El model és permissiu:
   El **BPM visible** seguix esta unitat de pols; el **metrònom per defecte
   clica el denominador** i accentua els inicis de grup: `6/8` → 6 corxeres amb
   accents a 1 i 4, `9/8` → 9, `12/8` → 12. Una unitat explícita
-  (`corxera`, `semicorxera`…) mana sobre la derivada; el denominador només és
-  el fallback si la unitat no encaixa en el compàs. Canviar la signatura
-  actualitza la unitat si esta era la derivada. En canviar només el compàs,
-  per defecte es conserva el **BPM visible** (pulsació, Cas B) i es recalcula
-  el BPM intern; conservar el BPM intern (Cas A) és una opció explícita del
-  diàleg.
+  (`corxera`, `semicorxera`…) mana mentre no canvie el compàs; el denominador
+  només és el fallback si la unitat no encaixa en el compàs. En canviar la
+  signatura, la unitat passa sempre a la de la taula nova (`6/8` → negra amb
+  punt; `4/4` → negra…). Si la unitat vella era la derivada, es conserva el
+  **BPM visible** (Cas B); si era explícita, es conserva el **BPM intern** i
+  canvia el número percebut.
 - **Persistència**: `mapa_tempo.csv` porta `beat_unit` al final i es llig per
   noms; columna absent o valor desconegut = **rebuig**, valor buit =
   derivar+avisar. `.acproj` **FORMAT 5** només desa el model actual; els
@@ -187,8 +187,9 @@ compassos sencers. El model és permissiu:
   l'usuari escriu un BPM que no dona `N` enter amb la duració actual, es
   **rebutja amb avís** (no es deixa `N` fraccionari ni es mou la frontera).
 - **Fronteres interiors lliures**: poden caure on vulga l'usuari; el **snap és
-  opcional** i no s'exigeix cap línia de beat. Els beats detectats només
-  intervenen com a restricció amb **Snap Beats QM**.
+  opcional** i no s'exigeix cap línia de beat. Els beats detectats **no
+  intervenen en l'Editor de tempo**; només s'usen als **Talls QM** (`+`,
+  intro/normals) quan **Snap Beats QM** està actiu.
 - Entrada invàlida: es rebutja amb avís i sense mutació parcial. CSV extern
   invàlid: es repara i s'informa (incloent-hi l'ajust de `N`/BPM).
 
@@ -203,13 +204,14 @@ combinació de **compassos sencers** que més s'acosta a eixa referència: pot
 canviar el **BPM**, el **compàs** o el **nombre de compassos** (`N`). El compàs
 local mana en `n_previst`, en la regla del múltiple i en `bloca_compas`.
 
-Quan els **beats detectats** s'usen per validar (**Snap Beats QM**), el nombre
-de **negres** (ja amb la unitat del beat aplicada) és una **restricció forta**:
-7 negres han de ser `7/4` (o una combinació equivalent), no 2 compassos de
-`4/4` amb 8 negres. Si no s'usen o no n'hi ha, s'intenta inferir el nombre de
-negres a partir de la referència; si cau a prop d'un enter, s'aplica la mateixa
-restricció; si no, es recorre al càlcul per durada. Si no hi ha cap combinació,
-es conserva el valor anterior; si el resultat incomplix el mínim de durada (o
+**Talls QM (només `+`/intro/normals, no l'Editor)**: amb **Snap Beats QM**,
+el nombre de **negres** (ja amb la unitat del beat aplicada) és una
+**restricció forta**: 7 negres han de ser `7/4` (o una combinació equivalent),
+no 2 compassos de `4/4` amb 8 negres. Si no s'usen o no n'hi ha, s'intenta
+inferir el nombre de negres a partir de la referència; si cau a prop d'un
+enter, s'aplica la mateixa restricció; si no, es recorre al càlcul per durada.
+Si no hi ha cap combinació, es conserva el valor anterior; si el resultat
+incomplix el mínim de durada (o
 qualsevol altra regla permissiva), el gest es rebutja amb **avís** (mai un
 canvi silenciós).
 

@@ -234,10 +234,6 @@ class EditorMixin:
             n_actual = float(n_actual)
             if camp == "n":
                 n_obj = float(self.ed_n.text().strip().replace(",", "."))
-                inferit = self._inferir_compas_qm(i, n_obj)
-                if inferit is not None:
-                    num, den, _n_qm = inferit
-                    bq = float(num) * 4.0 / float(den)
                 bpm_obj = n_obj * bq * 60.0 / dt
             else:
                 # BPM i compàs són exactes: N deriva de la durada fixa.
@@ -245,13 +241,8 @@ class EditorMixin:
                 bpm_obj = float(bpm)
             if n_obj <= 0:
                 raise ValueError("N ha de ser positiu.")
-            n_qm = self._qm_n_enter(i, num, den)
             if ultim:
                 n_final = float(n_obj)
-                if n_qm is not None and int(round(n_final)) != n_qm:
-                    raise ValueError(
-                        f"Snap Beats QM: amb {num}/{den} el N ha de ser "
-                        f"{n_qm}, no {int(round(n_final))}.")
             else:
                 n_final = int(round(n_obj))
                 if abs(n_obj - n_final) > 1e-3:
@@ -264,10 +255,6 @@ class EditorMixin:
                         f"Amb el BPM {bpm:.3f} i les fronteres fixes, el N "
                         f"seria {n_obj:.3f}, no enter; cal canviar el BPM "
                         "o triar un altre compàs.")
-                if n_qm is not None and n_final != n_qm:
-                    raise ValueError(
-                        f"Snap Beats QM: amb {num}/{den} el N ha de ser "
-                        f"{n_qm}, no {n_final}.")
             if not (limits.BPM_MIN <= bpm_obj <= limits.BPM_MAX):
                 raise ValueError("El BPM resultant ix de la banda permesa")
             agr = (self._agr_en_canvi_compas(tr, num, den)
@@ -296,34 +283,6 @@ class EditorMixin:
         self._actualitza_editor()
         return ok
 
-    def _inferir_compas_qm(self, idx, n):
-        """Amb Snap QM, troba el compàs que fa encaixar N amb els beats."""
-        beats = list(self._beats_per_validacio() or ())
-        if not beats:
-            return None
-        trams = list(self.tempo_trams or [])
-        if not (0 <= int(idx) < len(trams)):
-            return None
-        tr = trams[int(idx)]
-        factor = self.beat_factor(self.unitat_de_tram(tr))
-        negres = tempo_recalc.n_negres_del_clip(
-            beats, float(tr.ini), float(tr.fi), factor)
-        if negres is None:
-            raise ValueError(
-                "Snap Beats QM: no hi ha cap beat detectat dins del clip.")
-        try:
-            res = tempo_recalc.recalculca_tram(
-                float(tr.fi) - float(tr.ini), float(tr.bpm),
-                int(tr.num), int(tr.den), n_ref=int(round(float(n))),
-                n_beats=float(negres), mode="beats", bloca_compas=False)
-        except ValueError as e:
-            raise ValueError(f"Snap Beats QM: {e}") from e
-        if res is None:
-            raise ValueError(
-                "Snap Beats QM: no hi ha cap compàs que encaixe amb "
-                f"N={int(round(float(n)))} i els beats detectats.")
-        return int(res["num"]), int(res["den"]), int(res["n"])
-
     def _aplica_bpm_factor(self, factor):
         """Dobla o dividix el BPM amb recalc fix (fronteres fixes)."""
         k, i = getattr(self, "_ed_kind", None), getattr(self, "_ed_idx", -1)
@@ -338,26 +297,18 @@ class EditorMixin:
             if dt <= tempo_map.TOL:
                 raise ValueError("El clip no té durada.")
             bpm = float(tr.bpm) * float(factor)
-            bpm, num, den = tempo_map.valida_tempo(bpm, int(tr.num),
-                                                   int(tr.den))
+            bpm, num, den = tempo_map.valida_tempo(
+                bpm, int(tr.num), int(tr.den))
             bq = float(num) * 4.0 / float(den)
             n_obj = dt * bpm / (bq * 60.0)
             ultim = (i == len(trams) - 1)
             n_final = float(n_obj) if ultim else int(round(n_obj))
             bpm_final = bpm
             if not ultim and abs(n_obj - n_final) > 1e-3:
-                # Fronteres fixes + N enter: no es pot conservar alhora el
-                # factor exacte i un N enter. Prioritzem N enter (contracte)
-                # i ajustem el BPM al valor que hi cap.
                 bpm_final = n_final * bq * 60.0 / dt
                 self.log(
                     f"BPM x{float(factor):g}: N={n_final} amb fronteres "
                     f"fixes; BPM ajustat de {bpm:.3f} a {bpm_final:.3f}")
-            n_qm = self._qm_n_enter(i, num, den)
-            if n_qm is not None and int(round(n_final)) != n_qm:
-                raise ValueError(
-                    f"Snap Beats QM: amb {num}/{den} el N ha de ser "
-                    f"{n_qm}, no {int(round(n_final))}.")
             nou = mapa_tempo.TramMapa(
                 ini, fi, float(bpm_final), tr.tipus, f"{num}/{den}",
                 getattr(tr, "agrupacio", ""), float(n_final),
@@ -393,12 +344,6 @@ class EditorMixin:
         n_actual = int(round(float(n_actual)))
         if n_actual < 1:
             self.avis_editor("N ha de ser com a mínim 1.")
-            return False
-        n_qm = self._qm_n_enter(idx, int(tr.num), int(tr.den))
-        if n_qm is not None and n_actual != n_qm:
-            self.avis_editor(
-                f"Snap Beats QM: amb {int(tr.num)}/{int(tr.den)} el N ha "
-                f"de ser {n_qm}, no {n_actual}.")
             return False
         try:
             nous = mapa_tempo.recalcula_tram_c(
@@ -436,12 +381,6 @@ class EditorMixin:
         n_actual = int(round(float(n_actual)))
         if n_actual < 1:
             self.avis_editor("N ha de ser com a mínim 1.")
-            return False
-        n_qm = self._qm_n_enter(idx, num, den)
-        if n_qm is not None and n_actual != n_qm:
-            self.avis_editor(
-                f"Snap Beats QM: amb {num}/{den} el N ha de ser "
-                f"{n_qm}, no {n_actual}.")
             return False
         unit_vella = self.unitat_de_tram(tr)
         agr_nova = self._agr_en_canvi_compas(tr, num, den)
@@ -493,20 +432,10 @@ class EditorMixin:
         if n <= 0 or abs(n - n_int) > 1e-3:
             self.avis_editor("N ha de ser un enter positiu.")
             return False
-        num, den = int(tr.num), int(tr.den)
         try:
-            inferit = self._inferir_compas_qm(idx, n_int)
-            if inferit is not None:
-                num, den, _n_qm = inferit
-            else:
-                n_qm = self._qm_n_enter(idx, num, den)
-                if n_qm is not None and n_int != n_qm:
-                    raise ValueError(
-                        f"Snap Beats QM: amb {num}/{den} el N ha de ser "
-                        f"{n_qm}, no {n_int}.")
             nous = mapa_tempo.recalcula_tram_c(
                 trams, idx, self._durada_wav(), n=n_int,
-                bpm=float(tr.bpm), num=num, den=den,
+                bpm=float(tr.bpm), num=int(tr.num), den=int(tr.den),
                 camp="n", permet_ultim_fraccionari=False)
         except ValueError as e:
             self.avis_editor(f"Tempo: {e}")
@@ -652,13 +581,20 @@ class EditorMixin:
         unit_vella = self.unitat_de_tram(tr)
         unit_nova = unit_vella
         if canvi_compas:
-            bpm_visible = bpm_unit_mod.de_quarter(float(bpm), unit_vella)
+            default_vella = bpm_unit_mod.unitat_per_defecte(
+                int(tr.num), int(tr.den), getattr(tr, "agrupacio", ""))
             provisional = mapa_tempo.TramMapa(
                 float(tr.ini), float(tr.fi), float(tr.bpm), tr.tipus,
                 f"{int(num)}/{int(den)}", agr, getattr(tr, "n", None),
                 unit_vella)
             unit_nova = self._unitat_en_canvi_compas(tr, provisional, None)
-            bpm = bpm_unit_mod.a_quarter(bpm_visible, unit_nova)
+            if unit_vella == default_vella:
+                # Cas B: només si la unitat era la per defecte es conserva el
+                # número visible. Amb una unitat explícita es conserva el BPM
+                # intern i canvia el número percebut amb la unitat nova.
+                bpm_visible = bpm_unit_mod.de_quarter(
+                    float(bpm), unit_vella)
+                bpm = bpm_unit_mod.a_quarter(bpm_visible, unit_nova)
 
         ini_nou = self._cb_a_secs(self.ed_cb.text())
         fi_nou = self._cb_a_secs(self.ed_cb_fi.text())
@@ -702,29 +638,6 @@ class EditorMixin:
                 self._undo_commit()
             self._actualitza_editor()
             return bool(ok)
-
-        # Amb Snap Beats QM, qualsevol edició múltiple ha de quadrar amb els
-        # beats detectats; no es pot acceptar un N/BPM incompatible.
-        if self._beats_per_validacio():
-            try:
-                n_qm = self._qm_n_enter(i, num, den)
-            except ValueError as e:
-                self.avis_editor(str(e))
-                return
-            if n_qm is not None:
-                if int(round(n_val)) != n_qm:
-                    self.avis_editor(
-                        f"Snap Beats QM: amb {num}/{den} el N ha de ser "
-                        f"{n_qm}, no {int(round(n_val))}.")
-                    return
-                bq = float(num) * 4.0 / float(den)
-                bpm_qm = n_qm * bq * 60.0 / (
-                    float(tr[1]) - float(tr[0]))
-                if canvi_bpm_num and abs(bpm - bpm_qm) > 0.05:
-                    self.avis_editor(
-                        f"Snap Beats QM: amb {num}/{den} i N={n_qm}, el BPM "
-                        f"ha de ser {bpm_qm:.3f}, no {bpm:.3f}.")
-                    return
 
         d = self._durada_wav()
         self._undo_marca()
