@@ -325,6 +325,7 @@ PROJECTE AUTO CHORDS/
 ├── .gitignore                     🟢  # Què no es versiona
 ├── AGENTS.md                      🟢  # Guia del projecte i contracte d'abast
 ├── ARBRE_DIRECTORIS.md            🟢  # Mapa de carpetes i fitxers (generat, no editar a mà)
+├── AUTO_CHORDS.bat                🟢  # Llançador de Windows (amb DLL i VAMP enllestits)
 ├── AUTO_CHORDS.sh                 🟢  # Llançador principal
 ├── AUTO_CHORDS_dev.sh             🟢  # Llançador de desenvolupament
 ├── CHANGELOG.md                   🟢  # Historial de canvis

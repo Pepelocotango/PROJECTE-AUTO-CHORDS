@@ -130,7 +130,10 @@ def escombra_residus(hores=12):
             ruta = os.path.join(arrel, nom)
             try:
                 st = os.stat(ruta)
-                if st.st_uid != os.getuid():
+                # A Windows no hi ha `getuid` (i no cal: tots els temporals
+                # del directori de l'usuari són seus).
+                uid = getattr(os, "getuid", None)
+                if uid is not None and st.st_uid != uid():
                     continue
                 if st.st_mtime >= ara - hores * 3600:
                     continue

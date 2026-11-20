@@ -764,18 +764,16 @@ class TestPosicionsMusicals(_Base):
         """Els acords/seccions han de llegir el compàs del MAPA, no del BPM 0."""
         v = _visor()
         try:
-            # Canvi de tempo a 3 s (N enter): el primer clip passa a 160 BPM
-            # (2 compassos) i el segon a 1680/27 ≈ 62.222 BPM (7 compassos).
-            # El clip de 10 s cau al compàs 4, temps 4, fusa 3.
+            # L'últim clip conserva els 60 BPM exactes amb N fraccionari
+            # (abans s'arrodonia a 62.222 per forçar N=7). El clip de 10 s
+            # cau al compàs 4, temps 4.
             v.aplica_tempo_trams([(0.0, 3.0, 120.0, 4, 4),
                                   (3.0, 30.0, 60.0, 4, 4)])
-            self.assertTrue(v.llista_ac.item(1).text().startswith("4.4.3"),
+            self.assertTrue(v.llista_ac.item(1).text().startswith("4.4"),
                             v.llista_ac.item(1).text())
-            self.assertIn("4.4.3", v.llista_ab.item(1).text())
-            self.assertEqual(v._secs_a_cb(10.0), "4.4.3")
-            # La graella de posició arredoneix a 1/32 de negra, així que el
-            # retorn pot diferir del segon exacte menys de 10 ms.
-            self.assertAlmostEqual(v._cb_a_secs("4.4.3"), 10.0, delta=0.01)
+            self.assertIn("4.4", v.llista_ab.item(1).text())
+            self.assertEqual(v._secs_a_cb(10.0), "4.4")
+            self.assertAlmostEqual(v._cb_a_secs("4.4"), 10.0, delta=0.01)
         finally:
             v.close()
 
@@ -977,10 +975,10 @@ class TestTempoEnViu(_Base):
                          [145.0, 144.0, 143.6])
         self.assertAlmostEqual(self.v.tempo_trams[-1].fi, 30.0, places=6)
         self.v.undo()
-        # La base del desfer ja ve normalitzada pel refresc del mapa: l'últim
-        # clip s'estén fins a la fi de la WAV i el seu BPM queda a 143.601.
+        # El desfer restaura els BPM exactes originals: l'últim clip conserva
+        # 144.348 amb N fraccionari (abans es normalitzava a 143.601).
         self.assertEqual([round(t.bpm, 3) for t in self.v.tempo_trams],
-                         [145.023, 143.984, 143.601])
+                         [145.023, 143.984, 144.348])
 
     def test_fusiona_normals_amb_rubato_preserva_el_rubato(self):
         self.v.tempo_trams = [

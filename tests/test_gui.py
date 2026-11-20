@@ -2025,8 +2025,9 @@ class TestDialegTramTempo(_dialegs___Base):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
             n_actual=2.0)
+        # QM ja no intervé en els recalculs: només als Talls QM (2026-11-18).
         self.assertEqual(d.opcions_recalc(), {
-            "beats": True, "segons": True, "unitat": True,
+            "beats": False, "segons": True, "unitat": True,
             "compas": False, "n_fix": False, "rubato": False,
         })
 
@@ -7178,7 +7179,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(float(vr.bpm_mostra()), 60.0, places=6)
 
     def test_canvi_de_compas_deriva_la_unitat_de_pols(self):
-        """4/4→6/8 en negra passa a negra amb punt; una unitat explícita es manté."""
+        """4/4→6/8 en negra passa a negra amb punt (unitat recalculada)."""
         from app import mapa_tempo
         vr = self.w.visor_ref
         self.assertTrue(vr.aplica_tempo_trams([
@@ -7193,6 +7194,17 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.edita_tempo_objectiu(0, 120.0, 12, 8))
         self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
 
+    def test_edicio_amb_tuples_antiques_no_peta(self):
+        """Regressió: el model pot arribar amb tuples de 5 camps del motor."""
+        vr = self.w.visor_ref
+        vr.tempo_trams = [(0.0, 10.0, 120.0, 4, 4),
+                          (10.0, 30.0, 100.0, 3, 4)]
+        vr._actualitza_temps()
+        self.assertTrue(vr.edita_tempo_objectiu(1, 110.0, 3, 4))
+        self.assertAlmostEqual(float(vr.tempo_trams[1][2]), 110.0, places=6)
+        # El recàlcul de unitat també ha de vore TramMapa, no tuples.
+        vr._reseteja_compas_canviat(vr.tempo_trams, vr.tempo_trams)
+
     def test_undo_unitat_tram(self):
         vr = self.w.visor_ref
         vr.aplica_tempo_trams([(0.0, 10.0, 120.0, 6, 8)])
@@ -7203,16 +7215,21 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr.undo()
         self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
 
-    def test_l3_rebutja_compas_incompatible_amb_la_unitat(self):
+    def test_canvi_de_compas_recalcula_la_unitat_explicita(self):
+        """Decisió 2026-11-18: en canviar compàs, la unitat es recalcula sempre.
+
+        Abans una unitat explícita (`blanca`) es conservava i L3 rebutjava el
+        canvi a 3/4 per incompatible. Ara l'agrupació i la unitat es tornen a
+        derivar del compàs nou (`negra`) i l'edició s'aplica sense avís.
+        """
         from app import mapa_tempo
         vr = self.w.visor_ref
         vr.aplica_tempo_trams([mapa_tempo.TramMapa(
             0.0, 10.0, 120.0, "normal", "4/4", "", None, "blanca")])
-        abans = [tuple(t) for t in vr.tempo_trams]
         with patch.object(vr, "avis_editor") as avis:
-            self.assertFalse(vr.edita_tempo_objectiu(0, 120.0, 3, 4))
-        self.assertEqual([tuple(t) for t in vr.tempo_trams], abans)
-        self.assertEqual(avis.call_count, 1)
+            self.assertTrue(vr.edita_tempo_objectiu(0, 120.0, 3, 4))
+        self.assertEqual(vr.tempo_trams[0].beat_unit, "negra")
+        self.assertEqual(avis.call_count, 0)
 
     def test_latencia_del_cursor_compensa_el_retard(self):
         """El cursor pot anar 100 ms per darrere del rellotge d'àudio."""

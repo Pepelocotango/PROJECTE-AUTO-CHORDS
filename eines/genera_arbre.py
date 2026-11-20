@@ -150,6 +150,7 @@ DESCRIPCIONS = {
     "requirements-dev.txt": "Eines de qualitat: pyflakes i coverage",
     "Makefile": "Comandes del projecte (test, lint, docs…)",
     "instal·la_local.sh": "Instal·lació local sense sudo",
+    "AUTO_CHORDS.bat": "Llançador de Windows (amb DLL i VAMP enllestits)",
     "AUTO_CHORDS.sh": "Llançador principal",
     "AUTO_CHORDS_dev.sh": "Llançador de desenvolupament",
     "dev_reload.py": "Recàrrega automàtica en dev",

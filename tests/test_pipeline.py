@@ -4039,28 +4039,29 @@ class CompasBeatSegonsTests(unittest.TestCase):
         window = app_main.Finestra()
         window.wav_edit.setText(wav)
         window._carrega_visor(wav)
-        # 30 s a 101 BPM 4/4 → N=13 i BPM derivat 104 (contracte §13.4).
+        # 30 s a 101 BPM 4/4: l'últim clip conserva el BPM exacte amb N
+        # fraccionari (abans s'arrodonia a N=13 i derivava 104).
         window.bpm.setText("101"); window.bpb.setText("4")
         window._aplica_parametres_temps()
         return window
 
     def test_compas_beat_a_segons(self):
-        # a 104 BPM 4/4, compas 5 beat 1 = 16 temps x 0.5769 = 9.23 s
+        # a 101 BPM 4/4, compas 5 beat 1 = 16 temps x 60/101 ≈ 9.505 s
         window = self._finestra()
         s = window._cb_a_secs("5.1")
-        self.assertAlmostEqual(s, 16 * (60.0 / 104.0), places=4)
+        self.assertAlmostEqual(s, 16 * (60.0 / 101.0), places=4)
         window.close()
 
     def test_segons_a_compas_beat(self):
         window = self._finestra()
-        self.assertEqual(window._secs_a_cb(16 * (60.0 / 104.0)), "5.1")
+        self.assertEqual(window._secs_a_cb(16 * (60.0 / 101.0)), "5.1")
         self.assertEqual(window._secs_a_cb(0.0), "1.1")
         window.close()
 
     def test_compas_beat_fusa(self):
         # 5.1.3 = compàs 5, temps 1, tercera fusa = 16,25 beats
         window = self._finestra()
-        t = (16 + 0.25) * (60.0 / 104.0)
+        t = (16 + 0.25) * (60.0 / 101.0)
         self.assertAlmostEqual(window._cb_a_secs("5.1.3"), t, places=4)
         self.assertEqual(window._secs_a_cb(t), "5.1.3")
         window.close()
@@ -5342,10 +5343,11 @@ class TapTempoTests(unittest.TestCase):
             w._tanca_sessio_tap()
             self.assertFalse(w.visor_ref._tap_en_curs)
             self.assertEqual(vist, [])
-            # Fora del TAP, l'avís continua existint: simulem un model amb N
-            # fraccionari (cap gest el pot produir ja, però una càrrega vella
-            # sí) i comprovem que el senyal s'emet.
-            w.visor_ref.tempo_trams = [(0.0, 10.0, 101.0, 4, 4)]
+            # Fora del TAP, l'avís continua existint per a un clip INTERIOR
+            # amb N fraccionari. L'últim clip ja pot ser fraccionari sense
+            # avís (decisió 2026-11-18).
+            w.visor_ref.tempo_trams = [(0.0, 5.0, 101.0, 4, 4),
+                                      (5.0, 10.0, 120.0, 4, 4)]
             w.visor_ref.comprova_mapa_sencers(forca=True)
             self.assertTrue(vist)
         finally:
@@ -5435,8 +5437,10 @@ class TapTempoTests(unittest.TestCase):
         v.timeline.select_clip("tempo", 1)
         w.bpm.setText("100")
         w._aplica_parametres_temps()
-        # 8–10 s en 3/4: 100 BPM dona N=1,111 → N=1 i BPM derivat 90.
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 90.0, places=6)
+        # L'últim clip conserva els 100 BPM exactes amb N fraccionari
+        # (abans s'arrodonia a N=1 i derivava 90).
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, places=6)
+        # El clip 0 no es toca: conserva els 90 BPM del mapa original.
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 90.0, places=6)
         v.timeline.clear_selection()
         w.bpm.setText("110")
@@ -6027,12 +6031,16 @@ class PipelineRunTests(unittest.TestCase):
 
     def test_run_aplica_timeout(self):
         from app import pipeline
+        # Sense `sleep`/`true` del sistema: ha de valer a Linux, macOS i
+        # Windows (l'intèrpret que corre la suite sempre hi és).
         with self.assertRaises(subprocess.TimeoutExpired):
-            pipeline.run(["sleep", "30"], lambda m: None, timeout=1)
+            pipeline.run([sys.executable, "-c", "import time; time.sleep(30)"],
+                         lambda m: None, timeout=1)
 
     def test_run_ok(self):
         from app import pipeline
-        p = pipeline.run(["true"], lambda m: None, timeout=5)
+        p = pipeline.run([sys.executable, "-c", "pass"], lambda m: None,
+                         timeout=5)
         self.assertEqual(p.returncode, 0)
 
 

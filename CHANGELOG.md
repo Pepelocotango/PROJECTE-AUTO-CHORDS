@@ -5,6 +5,23 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Afegit — llançador de Windows (2026-11-20)
+- `AUTO_CHORDS.bat`: equivalent a `AUTO_CHORDS.sh` per a Windows; posa
+  `portable/win-dlls` al `PATH` i `PYTHONUTF8=1` abans de cridar
+  `python -m app.main`, i usa el `.venv` si hi és (si no, `py`).
+- El fitxer de bloqueig d'instància única (`auto_chords_single_instance_*.lock`)
+  ja no apareix com a `??` en arrencar des del repo.
+
+### Corregit — edicions de tempo amb `TramMapa` i unitat de pols (2026-11-20)
+- Les edicions que lliguen `num`/`den`/`tipus` ara accepten tuples antigues de
+  5 camps del motor/desfer i les converteixen a `TramMapa`; abans petaven amb
+  `AttributeError: 'tuple' object has no attribute 'num'`.
+- En `edita_tempo_objectiu`/`edita_n_compassos`, el compàs vell es guarda
+  **abans** de resetar l'agrupació: així `_unitat_en_canvi_compas` compara
+  realment el compàs vell amb el nou i recalcula la unitat de pols (abans la
+  comparació sempre sortia igual i la unitat no es tornava a derivar).
+- Regressionat a `tests/test_gui.py`.
+
 ### Estat — versió estable i punt de recuperació
 - Aquesta versió es considera **estable almenys a Linux** i queda com a
   **punt de recuperació** per a futures iteracions.

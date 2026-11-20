@@ -19,7 +19,7 @@ class TempoMixin:
         Si el clip és el primer (idx 0) no té veí: s'usa el propi clip. La
         referència és sempre local; no hi ha cap BPM/compàs global.
         """
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not trams:
             return (float(self.bpm), int(self.bpb),
                     int(getattr(self, "beat_type", 4) or 4))
@@ -34,7 +34,7 @@ class TempoMixin:
 
     def referencia_tempo_unit(self, idx=None):
         """Unitat de pols del clip de referència (veí esquerre)."""
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not trams:
             return bpm_unit_mod.DEFECTE
         if idx is None:
@@ -45,7 +45,7 @@ class TempoMixin:
 
     def referencia_tempo_a(self, t):
         """Referència per a un tall al temps `t` (clip que el conté)."""
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not trams:
             return self.referencia_tempo_base(0)
         idx = 0
@@ -116,6 +116,15 @@ class TempoMixin:
             self.ves_a(float(estat["pos"]))
         return True
 
+    def _trams_map(self):
+        """`self.tempo_trams` com a `TramMapa` (accepta tuples antigues de 5).
+
+        El model pot arribar amb tuples de 5 camps (motor, desfer antic o codi
+        de proves); estes edicions lliguen `num`/`den`/`tipus` i han de vore
+        sempre `TramMapa`.
+        """
+        return [mapa_tempo.des_de_tupla(t) for t in (self.tempo_trams or ())]
+
     def unitat_de_tram(self, tram):
         """Unitat de pols d'un tram (objecte o tuple antiga de 5 camps)."""
         bu = getattr(tram, "beat_unit", None)
@@ -158,7 +167,7 @@ class TempoMixin:
         `mode="mantenir_numero"` conserva el número visible i recalcula el
         BPM intern; el recalc fix manté N enter i fronteres.
         """
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         idx = int(idx)
         if not (0 <= idx < len(trams)):
             return False
@@ -227,7 +236,7 @@ class TempoMixin:
 
     def tempo_objectiu_vals(self):
         """`(idx, bpm, num, den)` del tram objectiu (o del transport)."""
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         idx = self.tempo_objectiu()
         if not trams:
             return (idx, float(self.bpm), int(self.bpb),
@@ -290,14 +299,19 @@ class TempoMixin:
         Amb `desa=False` (TAP en viu) s'usa el camí permissiu: arrodoneix `N`
         i ajusta el BPM, sense moure les fronteres.
         """
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not trams:
             trams = [mapa_tempo.TramMapa(
                 0.0, self._durada_wav(), float(bpm), "normal",
                 f"{int(num)}/{int(den)}")]
         idx = min(max(0, int(idx)), len(trams) - 1)
+        # Còpia del tram ABANS de tocar-lo: `_unitat_en_canvi_compas` ha de
+        # comparar el compàs vell amb el nou (si mirem `trams[idx]` després
+        # del reset d'agrupació, la comparació sempre surt igual i la unitat
+        # de pols no es recalcula).
+        tram_vell = trams[idx]
         compas_canviat = ((int(num), int(den)) !=
-                          (int(trams[idx].num), int(trams[idx].den)))
+                          (int(tram_vell.num), int(tram_vell.den)))
         if compas_canviat and agrupacio is None:
             # El motor no ha de vore l'agrupació vella sobre un compàs nou.
             trams = list(trams)
@@ -343,7 +357,7 @@ class TempoMixin:
                     getattr(nous[idx], "agrupacio", ""),
                     float(dt) * float(t5[2]) / (bq * 60.0),
                     getattr(nous[idx], "beat_unit", None))
-        unit = self._unitat_en_canvi_compas(trams[idx], nous[idx], beat_unit)
+        unit = self._unitat_en_canvi_compas(tram_vell, nous[idx], beat_unit)
         nous = self._amb_unitat(nous, idx, unit)
         if not self._valida_unitat_tram(nous[idx], "Tempo"):
             return False
@@ -375,7 +389,7 @@ class TempoMixin:
         WAV no es mou i el N queda fraccionari.
         No desa: la sessió de TAP ho fa en tancar-se.
         """
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         idx = int(idx)
         if not (0 <= idx < len(trams)):
             return False
@@ -439,7 +453,7 @@ class TempoMixin:
         BPM visible actual del clip. Per al Cas A (conservar el BPM intern),
         cal cridar `edita_tempo_objectiu` directament.
         """
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         idx = int(idx)
         if not (0 <= idx < len(trams)):
             return False
@@ -478,12 +492,13 @@ class TempoMixin:
         recalcula el BPM. En l'últim/únic, N exacte i BPM recalculat amb el
         final fix.
         """
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not trams:
             return False
         idx = min(max(0, int(idx)), len(trams) - 1)
+        tram_vell = trams[idx]
         compas_canviat = ((int(num), int(den)) !=
-                          (int(trams[idx].num), int(trams[idx].den)))
+                          (int(tram_vell.num), int(tram_vell.den)))
         if compas_canviat:
             trams = list(trams)
             tr0 = trams[idx]
@@ -501,7 +516,7 @@ class TempoMixin:
         except ValueError as e:
             self.avis_editor(f"Compassos: {e}")
             return False
-        unit = self._unitat_en_canvi_compas(trams[idx], nous[idx], beat_unit)
+        unit = self._unitat_en_canvi_compas(tram_vell, nous[idx], beat_unit)
         nous = self._amb_unitat(nous, idx, unit)
         if (int(num), int(den)) != (int(trams[idx].num), int(trams[idx].den)):
             agr = tempo_map.agrupacio_a_text(
@@ -532,7 +547,7 @@ class TempoMixin:
         beats = list(self._beats_per_validacio() or ())
         if not beats:
             return None
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not (0 <= int(idx) < len(trams)):
             return None
         tr = trams[int(idx)]
@@ -562,7 +577,7 @@ class TempoMixin:
         Prioritat: compàs > BPM > N > referència. Si Snap=Beats QM, els beats
         són una restricció dura per a compàs i N.
         """
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         idx = int(idx)
         if not (0 <= idx < len(trams)):
             self.avis_editor("Aquest clip de tempo ja no existeix.")
@@ -883,7 +898,7 @@ class TempoMixin:
 
     def _info_clip_tempo(self, idx):
         """Tota la informació derivada del clip de tempo `idx` (per al diàleg)."""
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         idx = int(idx)
         if not (0 <= idx < len(trams)):
             return None
@@ -996,7 +1011,7 @@ class TempoMixin:
 
     def _recalcula_tram_dialeg(self, dlg, idx, mode):
         """«Recalcula» del diàleg: fix (fronteres fixes) o mòbil (una frontera)."""
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         idx = int(idx)
         if not (0 <= idx < len(trams)):
             self.avis_editor("Recalcul: el clip no existeix.")
@@ -1133,7 +1148,7 @@ class TempoMixin:
 
     def _on_tempo_edit(self, idx):
         """Doble clic a un bloc de BPM/compàs → diàleg del recalcul fix."""
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not (0 <= idx < len(trams)):
             return False
         s = trams[idx]
@@ -1194,9 +1209,10 @@ class TempoMixin:
 
     def _reseteja_compas_canviat(self, antics, nous):
         """Si un clip canvia de compàs, agrupació i unitat tornen al defecte."""
-        antics = list(antics or [])
+        antics = [mapa_tempo.des_de_tupla(a) for a in (antics or ())]
         out = []
-        for j, n in enumerate(nous or []):
+        for j, n in enumerate(nous or ()):
+            n = mapa_tempo.des_de_tupla(n)
             if j < len(antics):
                 a = antics[j]
                 if (int(a.num), int(a.den)) != (int(n.num), int(n.den)):
@@ -1222,7 +1238,7 @@ class TempoMixin:
         Si el marcador humà d'eixa frontera coincidia, es mou amb ella (§4.C),
         tot dins del **mateix** desfer.
         """
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not (0 <= idx < len(trams)):
             return
         # `idx` és el tram de la vora tocada; la frontera és el SEU inici
@@ -1266,7 +1282,7 @@ class TempoMixin:
         veïns no es toquen i el BPM es recalcula (`tempo_map.canvia_compassos_tram`).
         Un sol desfer. Retorna `True` si el mapa ha canviat.
         """
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         idx = -1 if idx is None else int(idx)
         if not (0 <= idx < len(trams)):
             return False
@@ -1317,7 +1333,7 @@ class TempoMixin:
 
     def _compassos_de(self, idx):
         """Compassos (arredonits) del tram `idx` del mapa viu (per a missatges)."""
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not (0 <= int(idx) < len(trams)):
             return 0
         try:
@@ -1353,7 +1369,7 @@ class TempoMixin:
             self.avis_editor("El rang del rubato ha de caure dins la WAV.")
             return False
         fi = min(fi, durada)
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not trams:
             return False
         for tall in (ini, fi):
@@ -1395,7 +1411,7 @@ class TempoMixin:
 
     def converteix_rubato(self, idx):
         """Marca el tram com a rubato conservant tots els camps."""
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not (0 <= idx < len(trams)):
             return False
         tr = trams[idx]
@@ -1414,7 +1430,7 @@ class TempoMixin:
 
     def converteix_normal(self, idx):
         """Treu el flag de rubato conservant tots els camps."""
-        trams = list(self.tempo_trams or [])
+        trams = self._trams_map()
         if not (0 <= idx < len(trams)):
             return False
         tr = trams[idx]

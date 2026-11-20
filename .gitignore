@@ -15,6 +15,8 @@ dist/
 # Qt / app
 *.log
 *.tmp
+# Bloqueig d'instància única (es crea en arrencar des del repo)
+auto_chords_single_instance_*.lock
 
 # Editors i sistema
 .vscode/

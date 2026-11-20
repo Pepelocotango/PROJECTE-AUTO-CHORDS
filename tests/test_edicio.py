@@ -941,8 +941,10 @@ class TestAncoraDeMarca(_copiar_enganxar___Base):
 
     def test_la_graella_mou_la_vora_del_bloc(self):
         v = _visor_otis()
-        # la marca és a 18.500 i la graella musical hi arrodoneix ~2 ms més enllà
-        self.assertAlmostEqual(v.timeline.snap(18.5), 18.461538, places=3)
+        # Amb `tempo_fix` es conserven els 105.315 BPM exactes (abans s'arrodonia
+        # a 104): 18,5 s cau més prop del beat 32 (18,231 s) que del 33.
+        self.assertAlmostEqual(v.timeline.snap(18.5), 32 * 60.0 / 105.315,
+                               places=3)
         v.close()
 
     def test_la_marca_manda(self):
@@ -1866,10 +1868,9 @@ class TestMenusParitat(_regla11_paritat___Base):
         self.assertEqual([(round(float(t[0]), 2), round(float(t[1]), 2))
                           for t in v.tempo_trams],
                          [(0.0, 7.0), (7.0, 10.0), (10.0, _regla11_paritat__DUR)])
-        # La frontera nova HERETA el compàs del tros on cau, però N ha de ser
-        # enter: el clip [7,10] a 4/4 tenia N=1.5 (120 BPM) i passa a N=2 amb
-        # el BPM derivat 160.
-        self.assertEqual(v.tempo_trams[1][2:4], (160.0, 4))
+        # Recalc adaptatiu (2026-11-18): el clip [7,10] conserva els 120 BPM
+        # i passa a 3/4, compàs que fa N=2 enter en eixos 3 s.
+        self.assertEqual(v.tempo_trams[1][2:4], (120.0, 3))
         v.undo()
         self.assertEqual(len(v.tempo_trams), 2)
 
@@ -3626,9 +3627,9 @@ class TestUndoTemps(_undo_temps___Base):
         self.assertAlmostEqual(float(v.bpm), 120.0, places=3)
         w.bpm.setText("101")
         w._aplica_parametres_temps()
-        # Contracte nou: 101 BPM a 4/4 sobre 30 s donaria N=12.625; s'arredoneix
-        # a N=13 i el BPM derivat és 104.
-        self.assertAlmostEqual(float(v.bpm), 104.0, places=3)
+        # L'últim clip pot quedar fraccionari (decisió 2026-11-18): 101 BPM
+        # s'aplica exactament; ja no s'arrodoneix a N=13 per derivar 104.
+        self.assertAlmostEqual(float(v.bpm), 101.0, places=3)
         w._undo_visor()
         self.assertAlmostEqual(float(v.bpm), 120.0, places=3,
                                msg="el BPM no s'ha desfet")
@@ -4627,9 +4628,10 @@ class TestLlistaTempo(_undo_temps___Base):
         v._aplica_editor()
         self.assertAlmostEqual(v.tempo_trams[1].fi, 22.0, places=6)
         self.assertAlmostEqual(v.tempo_trams[2].ini, 22.0, places=6)
-        # El veí conserva 4/4 de Ref. recalc; 8 s → N=4 i BPM 120.
-        self.assertAlmostEqual(v.tempo_trams[2].bpm, 120.0, places=6)
-        self.assertEqual(v.tempo_trams[2].n, 4)
+        # El veí conserva N=5 i 4/4 de Ref. recalc; amb 8 s el BPM derivat
+        # és 150 (decisió «el veí conserva N i recalcula el BPM»).
+        self.assertAlmostEqual(v.tempo_trams[2].bpm, 150.0, places=6)
+        self.assertEqual(v.tempo_trams[2].n, 5)
 
     def test_editor_rebutja_n_fraccionari_en_interior(self):
         _w, v = self._prepara()
@@ -4658,9 +4660,9 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual((v._ed_kind, v._ed_idx), ("tempo", 1))
         self.assertEqual(v.ed_nom_lbl.text(), "BPM:")
         self.assertEqual(v.ed_fam_lbl.text(), "Compàs:")
-        # Contracte nou: N enter. El tram 10–30 s a 3/4 amb 100 BPM tenia
-        # N=11.111; en normalitzar-se queda N=11 i el BPM derivat 99.
-        self.assertEqual(v.ed_nom.text(), "99.000")
+        # L'últim clip pot quedar fraccionari: el tram 10–30 s a 3/4 conserva
+        # els 100 BPM exactes (N=11.111) en lloc de derivar 99 en arrodonir.
+        self.assertEqual(v.ed_nom.text(), "100.000")
         self.assertEqual(v.ed_fam.text(), "3/4")
         self.assertTrue(v.ed_ini.isHidden())
         self.assertEqual(v.ed_cb_lbl.text(), "Ini (c):")
@@ -4717,18 +4719,24 @@ class TestLlistaTempo(_undo_temps___Base):
         self.assertEqual(v.tempo_trams[1].n, 5)
         self.assertAlmostEqual(float(v.tempo_trams[1].fi), 18.0, places=6)
         self.assertAlmostEqual(float(v.tempo_trams[1].bpm), 150.0, places=6)
-        # Veí: conserva 4/4 de Ref. recalc i ajusta BPM/N (12 s → N=6).
+        # Veí: conserva N=5 i 4/4 de Ref. recalc i ajusta el BPM (12 s → 100).
         self.assertEqual((int(v.tempo_trams[2].num),
                           int(v.tempo_trams[2].den)), (4, 4))
-        self.assertEqual(v.tempo_trams[2].n, 6)
+        self.assertEqual(v.tempo_trams[2].n, 5)
         self.assertAlmostEqual(float(v.tempo_trams[2].ini), 18.0, places=6)
-        self.assertAlmostEqual(float(v.tempo_trams[2].bpm), 120.0, places=6)
+        self.assertAlmostEqual(float(v.tempo_trams[2].bpm), 100.0, places=6)
         # La llista s'ha refrescat i la franja mostra el valor aplicat.
         self.assertIn("150", v.llista_tempo.item(1, 2).text())
         self.assertEqual(v.llista_tempo.item(1, 3).text(), "4/4")
 
-    def test_aplicar_al_vei_canvia_de_signatura_si_no_cap(self):
-        """Si no hi ha N vàlid amb el x/x de Ref. recalc, canvia de signatura."""
+    def test_aplicar_al_vei_rebutja_si_fora_de_banda(self):
+        """El veí conserva N; si el BPM derivat ix de banda, rebuig sense mutar.
+
+        Abans es canviava la signatura del veí perquè encaixara. Ara, amb el
+        recalc adaptatiu del 2026-11-18, el veí conserva N i compàs i només
+        recalcula el BPM; 0,3 s per a 5 compassos de 4/4 donaria 4000 BPM,
+        així que l'operació es rebutja amb un avís.
+        """
         _w, v = self._prepara()
         v.tempo_trams = [
             mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4", n=5),
@@ -4737,17 +4745,16 @@ class TestLlistaTempo(_undo_temps___Base):
         ]
         v._actualitza_temps()
         v._focus_editor("tempo", 1)
+        abans = [tuple(t) for t in v.tempo_trams]
         # 5 compassos de 4/4 en 19,7 s → fi 29,7; el veí queda amb 0,3 s.
         bpm = 5 * 4 * 60.0 / 19.7
         v.ed_nom.setText(f"{bpm:.6f}")
         v.ed_fam.setText("4/4")
-        v._aplica_editor()
-        self.assertAlmostEqual(float(v.tempo_trams[1].fi), 29.7, places=5)
-        self.assertNotEqual((int(v.tempo_trams[2].num),
-                             int(v.tempo_trams[2].den)), (4, 4))
-        self.assertGreaterEqual(float(v.tempo_trams[2].bpm), 30.0)
-        self.assertLessEqual(float(v.tempo_trams[2].bpm), 350.0)
-        self.assertAlmostEqual(float(v.tempo_trams[2].fi), 30.0, places=6)
+        with patch.object(v, "avis_editor") as av:
+            v._aplica_editor()
+            self.assertIn("fora de la banda de BPM", av.call_args[0][0])
+        self.assertEqual([tuple(t) for t in v.tempo_trams], abans,
+                         "el rebuig no ha de mutar cap clip")
 
     def test_talla_tempo_i_afegeix_tall_son_el_mateix_motor(self):
         """Enter (talla_tempo) i «Afegeix/Parteix aquí» han de coincidir."""
@@ -4856,13 +4863,14 @@ class TestLlistaTempo(_undo_temps___Base):
         v._actualitza_temps()
         v.aplica_tempo_trams([(0.0, 30.0, 140.0, 4, 4)])
         v._desa_i_regenera()
-        # Contracte nou: 140 BPM sobre 30 s a 4/4 donaria N=17.5; es fixa N=18
-        # i el BPM derivat és 144 (també al mapa i al CSV).
-        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 144.0, places=6)
-        self.assertAlmostEqual(v.tempo_map.bpm(0.0), 144.0, places=6)
+        # L'últim clip conserva els 140 BPM exactes amb N=17.5 fraccionari
+        # (decisió 2026-11-18); el punt únic de rederivació ha de propagar
+        # eixe mateix valor al mapa i al CSV.
+        self.assertAlmostEqual(float(v.tempo_trams[0][2]), 140.0, places=6)
+        self.assertAlmostEqual(v.tempo_map.bpm(0.0), 140.0, places=6)
         with open(os.path.join(v._carpeta_acords(), "mapa_tempo.csv"),
                   encoding="utf-8") as f:
-            self.assertIn("144", f.read())
+            self.assertIn("140", f.read())
 
     def test_el_mapa_viu_sempre_es_contigu_i_cobert(self):
         """Regla #2: cap operació del visor deixa forats ni encavalcaments.
