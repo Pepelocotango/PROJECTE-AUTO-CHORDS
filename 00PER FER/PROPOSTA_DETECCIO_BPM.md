@@ -46,7 +46,7 @@ Prova feta el 2026-11-19 sobre l'àudio de `CORPUS/foofighters 2`:
 | Detecció per trams | base **144,60**; final **143,27** |
 | Prova exploratòria de fase | millor pic **144,725**; 144,70 molt a prop |
 
-La cançó va estable al voltant de **144,7 BPM** i només té un final que
+La cançó va estable a **144,7 BPM** comprovat per el usuari i només té un final que
 ralentitza. El resultat **144,75 no és una mesura exacta**: és una cel·la de la
 graella de cerca.
 

@@ -276,11 +276,23 @@ def _normalitza_zip(path):
     os.replace(tmp, path)
 
 
+def _equivalent(desti, files):
+    """Cert si l'ODS existent ja té exactament el contingut esperat."""
+    if not os.path.isfile(desti):
+        return False
+    try:
+        return _llegeix_ods(desti) == _esperat(files)
+    except Exception:  # noqa: BLE001 - un ODS corrupte s'ha de regenerar
+        return False
+
+
 def genera(desti=DESTI, comprova=False):
     d = carrega()
     files = taules(d)
     if comprova:
         return _comprova(desti, files)
+    if _equivalent(desti, files):
+        return 0
     doc = OpenDocumentSpreadsheet()
     est = _estils(doc)
     for nom, rows in files:

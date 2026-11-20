@@ -17,6 +17,7 @@ una versió i no regenera el document, el CI peta).
 """
 import glob
 import os
+import subprocess
 import sys
 
 ARREL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -74,12 +75,26 @@ def _pins_requirements():
     return {k: v[0] for k, v in d.items()}
 
 
-def _plugins():
-    """Plugins Vamp compilats que hi ha al projecte (glob del repositori)."""
+def _tracked():
+    """Fitxers versionats, amb separador `/` (document estable entre SO)."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-z"], cwd=ARREL,
+            capture_output=True, check=True).stdout
+        return {os.fsdecode(p).replace(os.sep, "/")
+                for p in out.split(b"\0") if p}
+    except (OSError, subprocess.SubprocessError):
+        return set()
+
+
+def _plugins(tracked):
+    """Plugins Vamp versionats del projecte (no els artefactes locals)."""
     trobats = []
     for patro in ("*-local/*.so", "*-local/*.dylib", "*-local/*.dll"):
         for p in sorted(glob.glob(os.path.join(ARREL, patro))):
-            trobats.append(os.path.relpath(p, ARREL))
+            rel = os.path.relpath(p, ARREL).replace(os.sep, "/")
+            if rel in tracked:
+                trobats.append(rel)
     return trobats
 
 
@@ -98,8 +113,9 @@ def construeix():
         c = deps.get(clau, "")
         return f"{c[:12]}…" if c else "—"
 
-    host = os.path.isfile(os.path.join(ARREL, "vamp_host_local"))
-    plugins = _plugins()
+    tracked = _tracked()
+    host = "vamp_host_local" in tracked
+    plugins = _plugins(tracked)
 
     L = []
     L.append("# Components i versions")

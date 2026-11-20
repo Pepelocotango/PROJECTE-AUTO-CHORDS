@@ -19,5 +19,4 @@ if exist "%CD%\.venv\Scripts\python.exe" (
 "%PY%" -m app.main %*
 set "RC=%ERRORLEVEL%"
 
-endlocal
-exit /b %RC%
+endlocal & exit /b %RC%

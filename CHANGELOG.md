@@ -32,9 +32,23 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - **Projecte amb mapa_tempo.csv invàlid** avisa de manera visible i restaura la
   sessió anterior en lloc de deixar la finestra a mig obrir.
 - **Ctrl+E** no corre si ja hi ha una exportació en fil (isRunning()).
-- **«Exporta la partitura…»** reescriu cords.csv/estructura_ABC.csv des del
+- **«Exporta la partitura…»** reescriu acords.csv/estructura_ABC.csv des del
   model viu (pipeline.desa_csvs_model()) abans de generar la partitura.
-- Tests de regressió: 	ests/test_gui.py, 	ests/test_pipeline.py.
+- Tests de regressió: tests/test_gui.py, tests/test_pipeline.py.
+
+### Corregit — revisió del flux i documentació multiplataforma (2026-11-20)
+- El test de `Ctrl+E` durant una exportació en fil ja no deixa una `_Feina`
+  falsa sense `wait()`; la suite pot acabar neta.
+- `Exporta la partitura…` també rebutja l'operació si hi ha una exportació
+  asíncrona en curs, per no escriure els CSV alhora.
+- `_audio_dins_projecte()` resol enllaços i normalitza majúscules/minúscules
+  abans de decidir si un àudio és dins del projecte.
+- `AUTO_CHORDS.bat` conserva el codi de retorn en eixir del `setlocal`.
+- `ARBRE_DIRECTORIS.md` i `docs/COMPONENTS_I_VERSIONS.md` es generen només amb
+  fitxers versionats i rutes amb `/`, de manera que `make docs-check` és estable
+  a Linux, macOS i Windows.
+- `make docs` no reescriu l'ODS si el contingut ja és equivalent.
+- Verificació local: `make check` amb **1678 tests** (1 omès) i `pyflakes` net.
 
 ### Estat — versió estable i punt de recuperació
 - Aquesta versió es considera **estable almenys a Linux** i queda com a

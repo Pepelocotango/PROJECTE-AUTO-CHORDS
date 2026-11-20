@@ -379,6 +379,14 @@ class ExportMixin:
 
     def exporta_partitura_ara(self):
         """Accio de menu: genera NOMES la partitura de la sortida actual."""
+        fe = getattr(self, "feina_export", None)
+        if fe is not None and fe.isRunning():
+            self.avisa_info(
+                "Auto Chords",
+                "Ja hi ha una exportació en curs. Espera que acabe abans de "
+                "tornar a generar la partitura: les dues escriurien els "
+                "mateixos CSV i podrien corrompre el paquet.")
+            return
         if not self.sortida:
             self.avisa("Auto Chords",
                                 "Exporta primer (cal la carpeta de resultats).")

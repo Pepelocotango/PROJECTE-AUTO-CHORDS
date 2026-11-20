@@ -1234,10 +1234,25 @@ class TestExportAsync(_Base):
     def test_ctrl_e_no_corre_dins_export_en_fil(self):
         w = _finestra()
         w.feina_export = type("_Feina", (), {
-            "isRunning": lambda self: True})()
+            "isRunning": lambda self: True,
+            "wait": lambda self, ms=0: None,
+        })()
         with patch.object(w, "_prepara_export") as prepara, \
                 patch.object(w, "avisa_info") as avis:
             w.exporta()
+        prepara.assert_not_called()
+        self.assertTrue(avis.called)
+        w.close()
+
+    def test_partitura_no_escriu_csv_dins_export_en_fil(self):
+        w = _finestra()
+        w.feina_export = type("_Feina", (), {
+            "isRunning": lambda self: True,
+            "wait": lambda self, ms=0: None,
+        })()
+        with patch.object(w, "_prepara_export") as prepara, \
+                patch.object(w, "avisa_info") as avis:
+            w.exporta_partitura_ara()
         prepara.assert_not_called()
         self.assertTrue(avis.called)
         w.close()

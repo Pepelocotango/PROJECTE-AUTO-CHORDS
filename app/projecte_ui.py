@@ -490,8 +490,8 @@ class ProjecteMixin:
         """Cert si `ruta` és dins la carpeta que es vol enviar a la paperera."""
         if not ruta or not carpeta:
             return False
-        ruta = os.path.abspath(ruta)
-        carpeta = os.path.abspath(carpeta)
+        ruta = os.path.normcase(os.path.realpath(ruta))
+        carpeta = os.path.normcase(os.path.realpath(carpeta))
         try:
             return os.path.commonpath((ruta, carpeta)) == carpeta
         except ValueError:  # unitats diferents (Windows)

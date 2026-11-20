@@ -4,10 +4,12 @@
 
 - **Bloc generat:** entre els marcadors `<!-- GENERAT: arbre ... -->` i
   `<!-- /GENERAT: arbre -->` de `ARBRE_DIRECTORIS.md`. No editar-lo a mà.
-- **Versionat:** entrades preses del disc; 🟢 si `git ls-files` les conté,
-  🟡 si no (locals o ignorades).
-- **Carpetes grans o locals:** no es llisten recursivament (`DIRS_RESUM`):
-  una entrada amb recurs directe i el recompte de fitxers.
+- **Versionat:** només s'inclouen fitxers i carpetes que apareixen a
+  `git ls-files`. Els artefactes locals (`.venv/`, `portable/`, `*-local/`,
+  logs, locks…) no entren al document, perquè el resultat siga el mateix a
+  Linux, macOS i Windows.
+- **Carpetes grans:** es poden resumir amb `DIRS_RESUM` si algun dia són
+  versionades; hui no cal perquè les locals s'ometen.
 - **Descripcions:** diccionari `DESCRIPCIONS` per a les entrades no-Python;
   per als `app/*.py` i `tests/*.py`, el docstring (com `genera_moduls.py`).
   Les entrades del diccionari que no existeixen al disc s'ignoren.
@@ -214,13 +216,16 @@ def _llista_tracked() -> set:
     return noms
 
 
-def _compta_fitxers(ruta: str) -> int:
-    n = 0
-    for _arrel, dirs, fitxers in os.walk(ruta):
-        dirs[:] = [d for d in dirs if d not in EXCLOSOS_DIRS and
-                   d != "node_modules"]
-        n += len(fitxers)
-    return n
+def _compta_fitxers(ruta: str, tracked: set) -> int:
+    rel = os.path.relpath(ruta, ARREL).replace(os.sep, "/")
+    return sum(1 for p in tracked if p.startswith(rel + "/"))
+
+
+def _tracked_entry(ruta: str, tracked: set) -> bool:
+    rel = os.path.relpath(ruta, ARREL).replace(os.sep, "/")
+    if os.path.isdir(ruta):
+        return any(p == rel or p.startswith(rel + "/") for p in tracked)
+    return rel in tracked
 
 
 def _flag(ruta: str, es_dir: bool, tracked: set) -> str:
@@ -259,6 +264,8 @@ def _cami(linies: list, carpeta: str, prefix: str, tracked: set,
           dirs_primer: bool, nivell: int):
     """Llista recursiva d'una carpeta detallada."""
     noms = [n for n in os.listdir(carpeta) if n not in EXCLOSOS_DIRS]
+    noms = [n for n in noms
+            if _tracked_entry(os.path.join(carpeta, n), tracked)]
     if nivell == 0:
         noms = [n for n in noms if not _efimer(n)]
     ordre = _ordrena(noms, carpeta, dirs_primer)
@@ -275,7 +282,7 @@ def _cami(linies: list, carpeta: str, prefix: str, tracked: set,
         if es_dir:
             directoris = []
             if nivell == 0:
-                directoris.append(f"({_miler(_compta_fitxers(ruta))})")
+                directoris.append(f"({_miler(_compta_fitxers(ruta, tracked))})")
         else:
             directoris = []
         desc = _desc(os.path.relpath(ruta, ARREL), es_dir)
@@ -295,6 +302,8 @@ def _resum(linies: list, carpeta: str, prefix: str, tracked: set):
     """Una sola entrada de carpetas grans: recurs directe + recompte."""
     noms = [n for n in os.listdir(carpeta)
             if n not in EXCLOSOS_DIRS and n != "node_modules" and not _efimer(n)]
+    noms = [n for n in noms
+            if _tracked_entry(os.path.join(carpeta, n), tracked)]
     ordre = _ordrena(noms, carpeta, False)
     amplada = _amplada(n + ("/" if os.path.isdir(os.path.join(carpeta, n)) else "")
                        for n in ordre)
@@ -307,7 +316,7 @@ def _resum(linies: list, carpeta: str, prefix: str, tracked: set):
         flag = _flag(ruta, es_dir, tracked)
         desc = _desc(os.path.relpath(ruta, ARREL), es_dir)
         if es_dir:
-            recu = f"({_miler(_compta_fitxers(ruta))})"
+            recu = f"({_miler(_compta_fitxers(ruta, tracked))})"
             desc = desc + " " + recu if desc else recu
         _linia(linies, prefix, ram, nom_vis, flag, amplada, desc)
 

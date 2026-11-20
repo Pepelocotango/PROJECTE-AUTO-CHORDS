@@ -5698,6 +5698,16 @@ class TestProjecteAssociat(_Base):
         self.assertTrue(avis.called)
         self.assertTrue(os.path.isfile(intern), "l'original no s'ha de tocar")
 
+    def test_audio_dins_projecte_resol_enllacos(self):
+        f = _projectes_gui___finestra()
+        p = self._crea(f, _projectes_gui___wav())
+        enllac = os.path.join(self.td, "enllac_al_projecte.wav")
+        try:
+            os.symlink(p.ruta_audio(), enllac)
+        except (OSError, NotImplementedError):
+            self.skipTest("el sistema no permet enllaços simbòlics")
+        self.assertTrue(f._audio_dins_projecte(enllac, p.carpeta))
+
     def test_sobreescriu_deixa_la_carpeta_neta(self):
         f = _projectes_gui___finestra()
         wav = _projectes_gui___wav()
