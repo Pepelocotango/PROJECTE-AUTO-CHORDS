@@ -825,6 +825,27 @@ class TestDesa(_Base):
         self.assertTrue(os.path.isfile(f.projecte.ruta_audio()),
                         "la còpia també ha de ser autocontinguda")
 
+        # El projecte nou s'ha d'ACTIVAR del tot: no n'hi prou de canviar
+        # `f.projecte` (regla #5).
+        self.assertEqual(f.wav_edit.text(), f.projecte.ruta_audio())
+        self.assertEqual(os.path.abspath(f.visor_ref.wav_path),
+                         os.path.abspath(f.projecte.ruta_audio()))
+        self.assertEqual(os.path.abspath(f.visor_ref.sortida),
+                         f.projecte.carpeta)
+
+    def test_obre_projecte_invalid_avisa_i_restura_l_anterior(self):
+        f = _projectes_gui___finestra()
+        wav = _projectes_gui___wav()
+        p = _projectes_gui___obre_wav(f, wav)
+        with open(os.path.join(p.carpeta, "mapa_tempo.csv"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("inici,fi,bpm,tipus,compassos,agrupacio,n,beat_unit\n"
+                     "0.000000,2.000000,120.000000,normal,4/4,,1,unitat_bogus\n")
+        with patch.object(f, "avisa") as avis:
+            f._obre_ruta_projecte(p.ruta_acproj)
+        self.assertTrue(avis.called, "un CSV invalid s'ha d'avisar")
+        self.assertEqual(f.projecte.carpeta, p.carpeta)
+
     def test_desa_com_al_mateix_lloc_es_desa_normal(self):
         f = _projectes_gui___finestra()
         p = _projectes_gui___obre_wav(f, _projectes_gui___wav())
@@ -5659,6 +5680,24 @@ class TestProjecteAssociat(_Base):
         self.assertEqual(f.visor_ref.acords[0].nom, "Z",
                          "ha de manar el projecte, no l'àudio")
 
+    def test_no_sobrescriu_si_l_audio_es_la_copia_de_treball(self):
+        f = _projectes_gui___finestra()
+        wav = _projectes_gui___wav()
+        p = self._crea(f, wav)
+        intern = p.ruta_audio()
+        self.assertTrue(f._audio_dins_projecte(intern, p.carpeta))
+        with patch.object(f, "_projecte_associat", return_value=p), \
+                patch.object(f, "_pregunta_projecte_existent",
+                             return_value="sobrescriu"), \
+                patch.object(app_main.plataforma, "a_la_paperera") as paperera, \
+                patch.object(f, "avisa") as avis:
+            with patch.object(QFileDialog, "getOpenFileName",
+                              return_value=(intern, "")):
+                f.tria_wav()
+        paperera.assert_not_called()
+        self.assertTrue(avis.called)
+        self.assertTrue(os.path.isfile(intern), "l'original no s'ha de tocar")
+
     def test_sobreescriu_deixa_la_carpeta_neta(self):
         f = _projectes_gui___finestra()
         wav = _projectes_gui___wav()
@@ -7177,6 +7216,21 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(tr.beat_unit, "negra")
         self.assertAlmostEqual(float(tr.bpm), 60.0, places=6)
         self.assertAlmostEqual(float(vr.bpm_mostra()), 60.0, places=6)
+
+    def test_analisi_de_beats_consolida_la_base_d_undo(self):
+        """F7/Beats del clip no poden deixar l'undo base amb els beats vells."""
+        vr = self.w.visor_ref
+        vr.qm_beats = [1.0]
+        vr._undo_touch_base()
+        self.w._posa_beats_analisi(vr, [2.0, 4.0], [])
+        self.assertEqual([float(b) for b in vr.qm_beats], [2.0, 4.0])
+        self.assertEqual([float(b) for b in vr._undo_base[2]["qm_beats"]],
+                         [2.0, 4.0])
+        # Una edició posterior ha de desfer cap a l'estat POST-anàlisi, no
+        # restaurar els beats d'abans de F7.
+        vr.afegeix_marcador_lliure(12.0)
+        vr.undo()
+        self.assertEqual([float(b) for b in vr.qm_beats], [2.0, 4.0])
 
     def test_canvi_de_compas_deriva_la_unitat_de_pols(self):
         """4/4→6/8 en negra passa a negra amb punt (unitat recalculada)."""

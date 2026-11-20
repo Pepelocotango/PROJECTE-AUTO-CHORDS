@@ -43,6 +43,7 @@ from .pipeline_estructura import (
 from .pipeline_export import (
     fer_wavs_acords_lliures, fer_wavs_acords, escriu_manifest,
     exporta_total, regenera_wavs_acords, enriqueix_manifest,
+    desa_csvs_model,
 )
 from .pipeline_vamp import (
     APP_DIR, PROJ_DIR, VAMP_DIRS, HOST, STEPS, CHORDS_TRANSFORM, MOTORS_BPM, MOTORS_ESTRUCTURA,
@@ -74,6 +75,7 @@ __all__ = [
     "extract_segments", "filtra_seccions",
     "segments_locators", "events_partitura", "segments_exactes",
     "segments_export", "genera_guia_html", "pos_compas", "seq_abc",
+    "desa_csvs_model",
     "parteix_clips", "fusiona_clips", "parteix_acord", "fusiona_acords",
     "mou_bloc_acords", "redimensiona_acord", "redimensiona_clips",
     "redimensiona_seccio", "mou_bloc_clips", "mou_bloc_seccions",

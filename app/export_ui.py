@@ -211,6 +211,14 @@ class ExportMixin:
 
     def exporta(self):
         """Exporta de forma SÍNCRONA (la UI espera). Vegeu `exporta_async`."""
+        fe = getattr(self, "feina_export", None)
+        if fe is not None and fe.isRunning():
+            self.avisa_info(
+                "Auto Chords",
+                "Ja hi ha una exportació en curs. Espera que acabe abans de "
+                "tornar-la a llançar: les dues escriurien les mateixes "
+                "carpetes i poden corrompre el paquet.")
+            return
         kwargs = self._prepara_export()
         if kwargs is None:
             return
@@ -375,6 +383,19 @@ class ExportMixin:
             self.avisa("Auto Chords",
                                 "Exporta primer (cal la carpeta de resultats).")
             return
+        # Reescriu els CSV des del MODEL VIU abans de generar la partitura:
+        # `partitura.exporta_partitura` llig acords.csv i estructura_ABC.csv
+        # del disc, i sense això una edició posterior al darrer Ctrl+E no hi
+        # seria (regla d'or #4, «4 punts»).
+        kwargs = self._prepara_export()
+        if kwargs is None:
+            return
+        pipeline.desa_csvs_model(
+            self.sortida, kwargs.get("acords"), kwargs.get("seccions"),
+            kwargs.get("bpm"), kwargs.get("bpb"),
+            kwargs.get("total_s") or 0.0,
+            mapa_tempo=kwargs.get("mapa_tempo"), den=kwargs.get("den", 4),
+            log=self.registra)
         res = self._exporta_partitura()
         if not res or res.get("error"):
             self.avisa(

@@ -6,8 +6,8 @@
 > descripció de producte. Tot en català · **GPL-3.0-or-later**.
 >
 > **v0.9.4** · Estat: **flux de producte estable (almenys a Linux)** · **punt de
-> recuperació** per a futures iteracions · Suite **verda** (1.619 tests locals,
-> 1 omés) + `pyflakes` net. El recompte viu és al CI.
+> recuperació** per a futures iteracions · Suite **verda** (1.676 tests locals,
+> 13 omesos) + `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -50,7 +50,7 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-18)
+## 2. Estat actual i relleu de sessió (2026-11-20)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
@@ -165,8 +165,9 @@ el projecte de DAW queden ajornats.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
   Tags locals renumerats a `v0.9.x`; **cap push**.
-- **Suite**: `make check` complet executat (2026-11-18) amb **1609 tests**
-  (1 skip) i **tot OK** després de la neteja de trams en segons. La quadratura
+- **Corregit (2026-11-20) - flux de treball (6 greus)**: F7 + Ctrl+Z ja no esborra els beats (consolida la base d'undo); «Desa com...» activa del tot el projecte nou (regla #5); «Sobreescriu» no esborra mai l'audio obert; projecte amb mapa_tempo.csv invalid avisa i restaura la sessio anterior; Ctrl+E no corre durant l'export en fil; «Exporta la partitura...» reescriu els CSV des del model viu. Tests de regressio a 	ests/test_gui.py i 	ests/test_pipeline.py.
+- **Suite**: `make check` complet executat (2026-11-18) amb **1676 tests**
+  (13 omesos) i **tot OK** després de la neteja de trams en segons. La quadratura
   d'extrems afig regressions pròpies (plans, mostres, undo/redo i export).
 
 **Pendent:**

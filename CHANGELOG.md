@@ -22,6 +22,20 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   comparació sempre sortia igual i la unitat no es tornava a derivar).
 - Regressionat a `tests/test_gui.py`.
 
+### Corregit — flux de treball (6 greus) (2026-11-20)
+- **F7 + Ctrl+Z** ja no esborra els beats detectats: _posa_beats_analisi() consolida
+  la base d'undo després de set_beats/set_snap_beats (regla d'or #4).
+- **«Desa com…»** activa del tot el projecte nou via _activa_projecte(); abans
+  només canviava self.projecte/self.sortida i les edicions anaven a la carpeta vella.
+- **«Sobreescriu»** rebutja l'operació si l'àudio obert és la còpia de treball
+  del projecte (no envia mai a la paperera un fitxer de l'usuari).
+- **Projecte amb mapa_tempo.csv invàlid** avisa de manera visible i restaura la
+  sessió anterior en lloc de deixar la finestra a mig obrir.
+- **Ctrl+E** no corre si ja hi ha una exportació en fil (isRunning()).
+- **«Exporta la partitura…»** reescriu cords.csv/estructura_ABC.csv des del
+  model viu (pipeline.desa_csvs_model()) abans de generar la partitura.
+- Tests de regressió: 	ests/test_gui.py, 	ests/test_pipeline.py.
+
 ### Estat — versió estable i punt de recuperació
 - Aquesta versió es considera **estable almenys a Linux** i queda com a
   **punt de recuperació** per a futures iteracions.

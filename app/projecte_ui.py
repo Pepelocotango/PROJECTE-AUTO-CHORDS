@@ -180,12 +180,33 @@ class ProjecteMixin:
     def _obre_ruta_projecte(self, ruta):
         if not self._pot_descartar():
             return
+        anterior = self.projecte
         try:
             p = projecte.Projecte.obre(ruta)
-        except projecte.ProjecteError as e:
-            self.avisa("Auto Chords", f"No s'ha pogut obrir el projecte:\n{e}")
+            self._activa_projecte(p)
+            # `_carrega_visor` captura les excepcions del model i deixa
+            # `visor_ref=None`; en eixe cas l'obertura ha fallat igualment i
+            # cal restaurar la sessió anterior (l'avís visible ja l'ha posat
+            # `_carrega_visor`).
+            if getattr(self, "visor_ref", None) is None:
+                if anterior is not None:
+                    self._activa_projecte(anterior)
+                return
+        except (projecte.ProjecteError, ValueError, OSError) as e:
+            # Un `mapa_tempo.csv` invàlid (columna absent, `beat_unit`
+            # desconegut, rubato antic...) llança ValueError des de
+            # `llegeix_mapa_tempo` en carregar el visor. El projecte es rebutja
+            # sense tocar-lo, però cal avisar de manera visible i restaurar la
+            # sessió anterior: no es pot deixar la finestra a mig obrir.
+            self.avisa("Auto Chords",
+                       f"No s'ha pogut obrir el projecte:\n{e}\n\n"
+                       "El projecte no s'ha modificat.")
+            if anterior is not None:
+                try:
+                    self._activa_projecte(anterior)
+                except Exception:  # noqa: BLE001 - millor estat parcial que cap
+                    pass
             return
-        self._activa_projecte(p)
 
     def _obre_projecte(self):
         if not self._pot_descartar():
@@ -242,11 +263,11 @@ class ProjecteMixin:
         except (projecte.ProjecteError, OSError) as e:
             self.avisa("Auto Chords", f"No s'ha pogut desar com:\n{e}")
             return
-        self.projecte = nou
-        self.sortida = nou.carpeta
-        self.dirty = False
-        self._actualitza_titol()
-        self._afegeix_recent(nou.ruta_acproj)
+        # Cal ACTIVAR el projecte nou, no només substituir el camp: si no,
+        # `wav_edit`, `visor.wav_path`/`sortida`, el temporitzador d'autosave i
+        # el marcador de recuperació continuen apuntant al projecte vell i les
+        # edicions posteriors s'escriuen als CSV antics (regla #5).
+        self._activa_projecte(nou)
         self.registra(f"Projecte desat com: {nou.carpeta}")
 
     def _desa_copia(self):
@@ -464,6 +485,18 @@ class ProjecteMixin:
                 continue
         return None
 
+    @staticmethod
+    def _audio_dins_projecte(ruta, carpeta):
+        """Cert si `ruta` és dins la carpeta que es vol enviar a la paperera."""
+        if not ruta or not carpeta:
+            return False
+        ruta = os.path.abspath(ruta)
+        carpeta = os.path.abspath(carpeta)
+        try:
+            return os.path.commonpath((ruta, carpeta)) == carpeta
+        except ValueError:  # unitats diferents (Windows)
+            return False
+
     def _pregunta_projecte_existent(self, p):
         """Carrega / sobreescriu / cancel·la el projecte que ja té aquest àudio.
 
@@ -542,8 +575,19 @@ class ProjecteMixin:
                 self.registra(f"Projecte existent carregat: {previ.carpeta}")
                 return
             # SOBREESCRIURE: la carpeta vella a la paperera (recuperable) i es
-            # recrea allí mateix, sense restes de l'anterior.
+            # recrea allí mateix, sense restes de l'anterior. PERÒ si l'àudio
+            # que estem obrint ÉS la còpia de treball d'eixa carpeta, enviar-la
+            # a la paperera deixaria sense origen la creació del projecte i
+            # destruiria un fitxer de l'usuari: es rebutja sense tocar res.
             desti = previ.carpeta
+            if self._audio_dins_projecte(ruta, desti):
+                self.avisa(
+                    "Auto Chords",
+                    "L'àudio que obres és la còpia de treball d'aquest "
+                    "projecte, així que no se'l pot sobreescriure.\n"
+                    "Tria «Carrega el projecte» per continuar amb el projecte "
+                    "existent. No s'ha tocat cap fitxer.")
+                return
             if not plataforma.a_la_paperera(desti):
                 self.avisa(
                     "Auto Chords",
@@ -557,6 +601,12 @@ class ProjecteMixin:
             antiga = projecte.carpeta_autochords(ruta)
             if antiga and os.listdir(antiga):
                 if self._pregunta_carpeta_antiga(antiga) != "esborra":
+                    return
+                if self._audio_dins_projecte(ruta, antiga):
+                    self.avisa(
+                        "Auto Chords",
+                        "L'àudio que obres és dins la carpeta antiga que es "
+                        "volia esborrar. No s'ha tocat cap fitxer.")
                     return
                 if not plataforma.a_la_paperera(antiga):
                     self.avisa(

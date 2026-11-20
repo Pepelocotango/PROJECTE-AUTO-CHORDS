@@ -62,8 +62,10 @@
 
 ## Fitxers de plugins compilats al projecte
 
-- `nnls-chroma-linux64-local/nnls-chroma.so`
-- `qm-vamp-plugins-linux64-local/qm-vamp-plugins.so`
+- `nnls-chroma-linux64-local\nnls-chroma.so`
+- `qm-vamp-plugins-linux64-local\qm-vamp-plugins.so`
+- `nnls-chroma-win64-local\nnls-chroma.dll`
+- `qm-vamp-plugins-win64-local\qm-vamp-plugins.dll`
 
 ## Com s'actualitza
 

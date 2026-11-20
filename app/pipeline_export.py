@@ -22,6 +22,34 @@ from .pipeline_model import (
     FORAT_ACORD, clips_d_acords, normalitza_clips, normalitza_cobertura,
 )
 
+def desa_csvs_model(sortida, acords, seccions, bpm, bpb, durada,
+                    mapa_tempo=None, den=4, log=None):
+    """Reescriu `acords.csv` i `estructura_ABC.csv` des del MODEL VIU.
+
+    La partitura autònoma (`Fitxer ▸ Exporta la partitura…`) no pot llegir els
+    CSV del disc: si l'usuari ha editat acords o seccions després del darrer
+    Ctrl+E, faria servir dades velles (i barrejaria tempo viu amb acords
+    obsolets). Este punt únic reescriu els dos CSV exactament igual que ho fa
+    `exporta_total`, sense generar WAVs.
+    """
+    log = log or (lambda *_a, **_k: None)
+    sortida = os.path.abspath(sortida)
+    os.makedirs(sortida, exist_ok=True)
+    csv_ac = os.path.join(sortida, "acords.csv")
+    dur = float(durada or 0.0)
+    if acords is not None:
+        clips = normalitza_clips(clips_d_acords(acords, dur), dur,
+                                 FORAT_ACORD, arrodoneix=True,
+                                 deriva_fi=True, log=log)
+        desa_acords_csv(csv_ac, clips, dur)
+    if seccions is not None:
+        _, seccions = normalitza_cobertura([], seccions, dur, log=log)
+        desa_abc_csv(os.path.join(sortida, "estructura_ABC.csv"), seccions,
+                     bpm, log, lliure=False, bpb=bpb,
+                     mapa=mapa_tempo, den=den)
+    return csv_ac
+
+
 def fer_wavs_acords_lliures(csv_path, total_s, dest_dir, sr, log,
                             manifest=None):
     os.makedirs(dest_dir, exist_ok=True)

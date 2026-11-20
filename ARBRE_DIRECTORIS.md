@@ -42,13 +42,7 @@
 <!-- GENERAT: arbre — no editar a mà -->
 ```text
 PROJECTE AUTO CHORDS/
-├── .deps/                         🟡  # Dependències natives aïllades (no versionat) (15.800 fitxers)
-│   ├── libaubio-dev_0.4.9-4.4build1_amd64.deb 🟡
-│   ├── libboost1.83-dev_1.83.0-2.1ubuntu3.2_amd64.deb 🟡
-│   ├── libsndfile1-dev_1.2.2-1ubuntu5.24.04.1_amd64.deb 🟡
-│   ├── vamp-plugin-sdk_2.10.0-4build1_amd64.deb 🟡
-│   └── usr/                               🟡  # (15.796 fitxers)
-├── .github/                       🟢  # GitHub Actions (6 fitxers)
+├── .github/                           🟢  # GitHub Actions (6 fitxers)
 │   └── workflows/ 🟢  # Workflows de GitHub Actions
 │       ├── build-all.yml      🟢  # Compila els 3 SO i comprova l'inventari
 │       ├── build-appimage.yml 🟢  # Linux: AppImage
@@ -56,26 +50,15 @@ PROJECTE AUTO CHORDS/
 │       ├── build-windows.yml  🟢  # Windows x64: ZIP portable
 │       ├── qualitat.yml       🟢  # Fuzzer i proves sintètiques (no bloquejant)
 │       └── release.yml        🟢  # Release idempotent amb els últims artefactes verds
-├── .opencode/                     🟡  # Configuració local d'OpenCode (no versionada) (18 fitxers)
-│   ├── .gitignore        🟡
-│   ├── package-lock.json 🟡
-│   ├── package.json      🟡
-│   ├── README.md         🟡
-│   ├── agents/           🟡  # Agents d'OpenCode (6 fitxers)
-│   ├── command/          🟡  # Comandes locals d'OpenCode (3 fitxers)
-│   └── skills/           🟡  # Skills locals d'OpenCode (5 fitxers)
-├── .venv/                         🟡  # Entorn virtual de Python (no versionat) (4.512 fitxers)
-│   ├── .lock      🟡
+├── .venv/                             🟡  # Entorn virtual de Python (no versionat) (4.098 fitxers)
 │   ├── pyvenv.cfg 🟡
-│   ├── bin/       🟡  # (30 fitxers)
-│   ├── include/   🟡  # (0 fitxers)
-│   ├── lib/       🟡  # (4.469 fitxers)
-│   ├── lib64/     🟡  # (4.469 fitxers)
-│   └── share/     🟡  # (11 fitxers)
-├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (2 fitxers)
+│   ├── Include/   🟡  # (0 fitxers)
+│   ├── Lib/       🟡  # (4.069 fitxers)
+│   └── Scripts/   🟡  # (28 fitxers)
+├── 00PER FER/                         🟢  # Plans, auditories i instruccions pendents (2 fitxers)
 │   ├── AUDITORIA_CODI_I_DOCS_2026-11-17.md 🟢
 │   └── PROPOSTA_DETECCIO_BPM.md           🟢
-├── app/                           🟢  # Codi de l'aplicació (PyQt5) (81 fitxers)
+├── app/                               🟢  # Codi de l'aplicació (PyQt5) (81 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
 │   ├── analisi_ui.py             🟢  # Accions d'anàlisi de la finestra (F3).
@@ -157,7 +140,7 @@ PROJECTE AUTO CHORDS/
 │   ├── visor_transport.py        🟢  # Transport, loop, zoom, velocitat i metrònom del visor (F4).
 │   ├── visor_ui.py               🟢  # Càrrega del visor i estat d'exportació (F3).
 │   └── xifrat.py                 🟢  # Notació del xifrat d'acords — font ÚNICA (parseig + forma canònica).
-├── codi_font_chordino/            🟢  # Codi font del plugin Chordino (NNLS-Chroma) (40 fitxers)
+├── codi_font_chordino/                🟢  # Codi font del plugin Chordino (NNLS-Chroma) (40 fitxers)
 │   ├── .hgignore                     🟢
 │   ├── .hgtags                       🟢
 │   ├── .travis.yml                   🟢
@@ -199,7 +182,7 @@ PROJECTE AUTO CHORDS/
 │       ├── expected-v0.2.1.csv 🟢
 │       ├── expected.csv        🟢
 │       └── regression.sh       🟢
-├── docs/                          🟢  # Contracte i documentació viva (14 fitxers)
+├── docs/                              🟢  # Contracte i documentació viva (14 fitxers)
 │   ├── COMPONENTS_I_VERSIONS.md       🟢  # Inventari generat (`eines/genera_inventari.py`)
 │   ├── ESQUEMA_UI.html                🟢  # Generat des del `.md` (no editar)
 │   ├── ESQUEMA_UI.md                  🟢  # Font de l'esquema visual de la UI
@@ -215,7 +198,7 @@ PROJECTE AUTO CHORDS/
 │       ├── NOTACIO_XIFRAT.md                  🟢
 │       ├── PLA_MAPA_TEMPS.md                  🟢
 │       └── TAULA_COMPASSOS_X_X.md             🟢
-├── eines/                         🟢  # Build, empaquetat i cadena de subministrament (30 fitxers)
+├── eines/                             🟢  # Build, empaquetat i cadena de subministrament (30 fitxers)
 │   ├── AutoChords-win.spec       🟢  # PyInstaller (Windows)
 │   ├── avalua_tempo.py           🟢  # Avaluador sintètic del mapa de tempo
 │   ├── baixa_icones.sh           🟢  # Baixa les icones de Lucide
@@ -246,7 +229,7 @@ PROJECTE AUTO CHORDS/
 │   ├── smoke_macos.sh            🟢
 │   ├── vamp_host.cpp             🟢  # Host Vamp propi (C++)
 │   └── verifica_minos_macos.py   🟢
-├── icona/                         🟢  # Icones de l'aplicació (12 fitxers)
+├── icona/                             🟢  # Icones de l'aplicació (12 fitxers)
 │   ├── auto-chords-1024.png 🟢
 │   ├── auto-chords-128.png  🟢
 │   ├── auto-chords-256.png  🟢
@@ -259,7 +242,7 @@ PROJECTE AUTO CHORDS/
 │   ├── auto-chords.ico      🟢
 │   ├── auto-chords.png      🟢
 │   └── captura.png          🟢
-├── icones/                        🟢  # Icones SVG de la UI (Lucide, ISC) (21 fitxers)
+├── icones/                            🟢  # Icones SVG de la UI (Lucide, ISC) (21 fitxers)
 │   ├── arrow-left-to-line.svg  🟢
 │   ├── arrow-right-to-line.svg 🟢
 │   ├── compass.svg             🟢
@@ -281,20 +264,27 @@ PROJECTE AUTO CHORDS/
 │   ├── x.svg                   🟢
 │   ├── zoom-in.svg             🟢
 │   └── zoom-out.svg            🟢
-├── nnls-chroma-linux64-local/     🟢  # Plugin Chordino compilat (local) (4 fitxers)
+├── nnls-chroma-linux64-local/         🟢  # Plugin Chordino compilat (local) (4 fitxers)
 │   ├── chord.dict      🟢
 │   ├── nnls-chroma.cat 🟢
 │   ├── nnls-chroma.n3  🟢
 │   └── nnls-chroma.so  🟢
-├── portable/                      🟡  # Entorn portable local (regenerable) (5.951 fitxers)
-│   ├── bin/    🟡  # (2 fitxers)
-│   ├── lib/    🟡  # (9 fitxers)
-│   └── python/ 🟡  # (5.940 fitxers)
-├── qm-vamp-plugins-linux64-local/ 🟢  # Plugins Queen Mary compilats (local) (3 fitxers)
+├── nnls-chroma-win64-local/           🟡  # (3 fitxers)
+│   ├── nnls-chroma.cat 🟡
+│   ├── nnls-chroma.dll 🟡
+│   └── nnls-chroma.n3  🟡
+├── portable/                          🟡  # Entorn portable local (regenerable) (12 fitxers)
+│   ├── bin/      🟡  # (1 fitxer)
+│   └── win-dlls/ 🟡  # (11 fitxers)
+├── qm-vamp-plugins-linux64-local/     🟢  # Plugins Queen Mary compilats (local) (3 fitxers)
 │   ├── qm-vamp-plugins.cat 🟢
 │   ├── qm-vamp-plugins.n3  🟢
 │   └── qm-vamp-plugins.so  🟢
-├── tests/                         🟢  # Suite unittest offscreen (27 fitxers)
+├── qm-vamp-plugins-win64-local/       🟡  # (3 fitxers)
+│   ├── qm-vamp-plugins.cat 🟡
+│   ├── qm-vamp-plugins.dll 🟡
+│   └── qm-vamp-plugins.n3  🟡
+├── tests/                             🟢  # Suite unittest offscreen (27 fitxers)
 │   ├── _qt_neteja.py              🟢  # Neteja ORDENADA dels objectes Qt entre tests.
 │   ├── _temporals.py              🟢  # Higiene dels tests: cap temporal no s'ha de quedar pel disc.
 │   ├── test_ancoratges.py         🟢  # Suite de test — Marcadors humans i velocitat de reproducció.
@@ -322,31 +312,32 @@ PROJECTE AUTO CHORDS/
 │   ├── test_tempo_recalc.py       🟢  # Tests del motor pur de recalcul del mapa de temps (F0).
 │   ├── test_tempo_trams.py        🟢  # Motor de tempo per trams (app/tempo.py): candidats, beats i mapa.
 │   └── test_timeline_contracte.py 🟢  # Contracte de superfície de `app.timeline` (refactor F0).
-├── .gitignore                     🟢  # Què no es versiona
-├── AGENTS.md                      🟢  # Guia del projecte i contracte d'abast
-├── ARBRE_DIRECTORIS.md            🟢  # Mapa de carpetes i fitxers (generat, no editar a mà)
-├── AUTO_CHORDS.bat                🟢  # Llançador de Windows (amb DLL i VAMP enllestits)
-├── AUTO_CHORDS.sh                 🟢  # Llançador principal
-├── AUTO_CHORDS_dev.sh             🟢  # Llançador de desenvolupament
-├── CHANGELOG.md                   🟢  # Historial de canvis
-├── concatena.py                   🟢  # Genera un sol fitxer amb el codi indispensable
-├── dev_reload.py                  🟢  # Recàrrega automàtica en dev
-├── DEVELOPING.md                  🟢  # Entorn, mapa del codi, build i CI
-├── finestres.json                 🟡
-├── instal·la_local.sh             🟢  # Instal·lació local sense sudo
-├── LICENSE                        🟢  # GPL-3.0-or-later
-├── LLICENCIES_TERCERS.md          🟢  # Llicències de tercers
-├── Makefile                       🟢  # Comandes del projecte (test, lint, docs…)
-├── pyproject.toml                 🟢  # Metadades i pins del paquet
-├── README.md                      🟢  # Producte: visió, instal·lació i flux
-├── requirements-build.txt         🟢  # Pins addicionals del build
-├── requirements-dev.txt           🟢  # Eines de qualitat: pyflakes i coverage
-├── requirements.txt               🟢  # Dependències de Python (pins)
-├── ROADMAP.md                     🟢  # Full de ruta i estat actual (§2)
-├── ROADMAP_HISTORIA.md            🟢  # Historial del full de ruta (fases A–E i notes)
-├── SECURITY.md                    🟢  # Canal de report de vulnerabilitats
-├── vamp_host_local                🟢  # Host Vamp compilat (binari)
-└── wav_a_wavs.py                  🟢  # CLI: WAV → WAVs d'acord/secció
+├── .gitignore                         🟢  # Què no es versiona
+├── AGENTS.md                          🟢  # Guia del projecte i contracte d'abast
+├── ARBRE_DIRECTORIS.md                🟢  # Mapa de carpetes i fitxers (generat, no editar a mà)
+├── AUTO_CHORDS.bat                    🟢  # Llançador de Windows (amb DLL i VAMP enllestits)
+├── AUTO_CHORDS.sh                     🟢  # Llançador principal
+├── AUTO_CHORDS_dev.sh                 🟢  # Llançador de desenvolupament
+├── auto_chords_single_instance_CabinaNeapolis.lock 🟡
+├── CHANGELOG.md                       🟢  # Historial de canvis
+├── concatena.py                       🟢  # Genera un sol fitxer amb el codi indispensable
+├── dev_reload.py                      🟢  # Recàrrega automàtica en dev
+├── DEVELOPING.md                      🟢  # Entorn, mapa del codi, build i CI
+├── instal·la_local.sh                 🟢  # Instal·lació local sense sudo
+├── LICENSE                            🟢  # GPL-3.0-or-later
+├── LLICENCIES_TERCERS.md              🟢  # Llicències de tercers
+├── Makefile                           🟢  # Comandes del projecte (test, lint, docs…)
+├── pyproject.toml                     🟢  # Metadades i pins del paquet
+├── README.md                          🟢  # Producte: visió, instal·lació i flux
+├── requirements-build.txt             🟢  # Pins addicionals del build
+├── requirements-dev.txt               🟢  # Eines de qualitat: pyflakes i coverage
+├── requirements.txt                   🟢  # Dependències de Python (pins)
+├── ROADMAP.md                         🟢  # Full de ruta i estat actual (§2)
+├── ROADMAP_HISTORIA.md                🟢  # Historial del full de ruta (fases A–E i notes)
+├── SECURITY.md                        🟢  # Canal de report de vulnerabilitats
+├── vamp_host_local                    🟢  # Host Vamp compilat (binari)
+├── vamp_host_local.exe                🟡
+└── wav_a_wavs.py                      🟢  # CLI: WAV → WAVs d'acord/secció
 ```
 <!-- /GENERAT: arbre -->
 

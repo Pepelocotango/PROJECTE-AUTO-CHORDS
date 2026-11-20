@@ -348,6 +348,21 @@ class AnalisiMixin:
         except Exception as e:  # noqa: BLE001
             self.registra(f"beats: no s'han pogut restaurar ({e})")
 
+    def _posa_beats_analisi(self, vr, beats, downbeats):
+        """Posa els beats detectats al visor i consolida la base d'undo.
+
+        `qm_beats` forma part de l'estat d'undo (`visor.py:984`). Sense cridar
+        `_undo_touch_base()` ací, la propera edició capturaria l'estat PRE-F7
+        i el `Ctrl+Z` restauraria els beats vells, emission `beatsChanged` i
+        sobreescriuria `projecte.dades["analisi_beats"]` amb la llista buida.
+        """
+        if vr is None:
+            return
+        vr.timeline.set_beats(beats, downbeats)
+        vr.set_snap_beats(beats, downbeats)
+        if hasattr(vr, "_undo_touch_base"):
+            vr._undo_touch_base()
+
     def _on_beats_desplacats(self, beats, downbeats):
         """Actualitza la còpia del projecte quan l'àudio mou els beats QM."""
         beats = [float(t) for t in (beats or ())]
@@ -441,8 +456,7 @@ class AnalisiMixin:
         vells_d = list(getattr(vr, "qm_downbeats", None) or ())
         beats = self._fusiona_beats_rang(vells_b, locals_b, ini, fi)
         downbeats = self._fusiona_beats_rang(vells_d, locals_d, ini, fi)
-        vr.timeline.set_beats(beats, downbeats)
-        vr.set_snap_beats(beats, downbeats)
+        self._posa_beats_analisi(vr, beats, downbeats)
         info = dict(self._beats_actuals or {})
         info.update({
             "motor": "qm",
@@ -535,8 +549,7 @@ class AnalisiMixin:
         downbeats = list(res.get("downbeats") or ())
         vr = getattr(self, "visor_ref", None)
         if vr is not None:
-            vr.timeline.set_beats(beats, downbeats)
-            vr.set_snap_beats(beats, downbeats)
+            self._posa_beats_analisi(vr, beats, downbeats)
         self.opcions["beats"] = dict(cfg)
         dialegs.desa_opcions(self.opcions)
         self._marca_dirty()

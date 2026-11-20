@@ -1231,6 +1231,31 @@ class TestExportAsync(_Base):
             self._espera(w)
         w.close()
 
+    def test_ctrl_e_no_corre_dins_export_en_fil(self):
+        w = _finestra()
+        w.feina_export = type("_Feina", (), {
+            "isRunning": lambda self: True})()
+        with patch.object(w, "_prepara_export") as prepara, \
+                patch.object(w, "avisa_info") as avis:
+            w.exporta()
+        prepara.assert_not_called()
+        self.assertTrue(avis.called)
+        w.close()
+
+    def test_partitura_autonoma_refresca_el_csv_del_model(self):
+        w = _finestra()
+        kwargs = dict(acords=[], seccions=[], bpm=120.0, bpb=4,
+                      total_s=3.0, mapa_tempo=None, den=4)
+        with patch.object(w, "_prepara_export", return_value=kwargs), \
+                patch.object(pipeline, "desa_csvs_model") as refresca, \
+                patch.object(w, "_exporta_partitura",
+                             return_value={"musicxml": "x"}), \
+                patch.object(w, "avisa_info"), \
+                patch.object(w, "obre_carpeta"):
+            w.exporta_partitura_ara()
+        refresca.assert_called_once()
+        w.close()
+
     def test_error_al_fil_avisa(self):
         w = _finestra()
         with patch.object(pipeline, "exporta_total",

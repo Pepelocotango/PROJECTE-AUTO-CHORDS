@@ -213,11 +213,20 @@ class VisorUIMixin:
             self._sincronitza_temps_del_visor()
             # El visor acaba de crear camps de text: que tampoc capturen drops.
             self._desactiva_drops_fills()
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
             self.logger.exception("Crash en carregar el visor per %s", wav)
             self.registra(f"Visor ERROR: {traceback.format_exc()}")
             self.visor_ref = None
             self._mostra_placeholder_visor()
+            # Un model invàlid (p. ex. `mapa_tempo.csv` amb un beat_unit
+            # desconegut) ha de rebutjar-se amb un missatge VISIBLE: no n'hi
+            # prou amb el log (regla #1, «es repara i s'avisa, mai en silenci»).
+            if hasattr(self, "avisa"):
+                self.avisa("Auto Chords",
+                           "No s'ha pogut carregar el projecte: el seu model "
+                           "no és vàlid.\n"
+                           f"{type(e).__name__}: {str(e)[:300]}\n\n"
+                           "El projecte no s'ha modificat.")
 
     def _habilita_export(self):
         """Activa «Exporta WAV's»/«Exporta partitura» si el visor té MODEL.
