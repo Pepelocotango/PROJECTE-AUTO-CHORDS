@@ -2276,15 +2276,16 @@ class TestDialegTrobaReemplaca(_dialegs___Base):
 # ══════════════════════════════════════════════════════════════════════════
 """Tests dels valors per defecte del diàleg d'autodetecció (`app/dialegs.py`).
 
-Blinda la decisió de l'operador (2026-10-13): els defectes de fàbrica que
-mostra el diàleg en obrir-lo i als quals torna el botó «Restaura per defecte».
-Si algú els canvia sense voler, el CI peta.
+Blinda la decisió de l'operador (2026-10-13; rang de BPM 40–200 des del
+2026-11-21): els defectes de fàbrica que mostra el diàleg en obrir-lo i als
+quals torna el botó «Restaura per defecte». Si algú els canvia sense voler,
+el CI peta.
 """
 
 
 # Els 19 controls revisats amb l'operador (font única d'aquest acord).
 ESPERATS = {
-    "bpm": {"motor": "consens", "min": 60, "max": 180,
+    "bpm": {"motor": "consens", "min": 40, "max": 200,
             "pref_min": 85, "pref_max": 150},
     "chords": {"useNNLS": 1, "useHMM": 1, "rollon": 0.0, "tuningmode": 0,
                "whitening": 1.0, "s": 0.7},
@@ -2321,7 +2322,7 @@ class TestDefectes(unittest.TestCase):
         try:
             op = dialegs.carrega_opcions()
             self.assertEqual(op["bpm"]["motor"], "qm")      # sobreescrit
-            self.assertEqual(op["bpm"]["min"], 60)          # de defecte
+            self.assertEqual(op["bpm"]["min"], 40)          # de defecte
             self.assertEqual(op["clean"], ESPERATS["clean"])
         finally:
             dialegs.FITXER_OPCIONS = antic
@@ -5857,6 +5858,12 @@ class TestOpcionsRangBpm(unittest.TestCase):
     def setUp(self):
         self._app = QApplication.instance() or QApplication([])
 
+    def test_defectes_bpm_ampliats(self):
+        from app import opcions
+        b = opcions.DEFECTES["bpm"]
+        self.assertEqual((b["min"], b["max"], b["pref_min"],
+                          b["pref_max"]), (40, 200, 85, 150))
+
     def test_avisa_rang_estret(self):
         d = dialegs.DialegOpcions(None, tab="bpm", opcions={
             "bpm": {"motor": "consens", "min": 50, "max": 100,
@@ -5872,7 +5879,7 @@ class TestOpcionsRangBpm(unittest.TestCase):
         c = d._controls["bpm"]
         self.assertEqual((c["min"].value(), c["max"].value(),
                           c["pref_min"].value(), c["pref_max"].value()),
-                         (60, 180, 85, 150))
+                         (40, 200, 85, 150))
         self.assertEqual(d.lb_rang.text(), "")
         d.deleteLater()
 

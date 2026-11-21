@@ -4190,6 +4190,98 @@ class TempoTests(unittest.TestCase):
                     self.assertGreater(b, 160.0,
                                        f"bpm {bpm}: no pot ser la meitat")
 
+    def test_detecta_bpm_i_candidats_coincideixen(self):
+        import tempfile
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            ruta = self._wav_clics(td, 144.7, dur=30.0, silenci_ini=5.0)
+            b = tempo.detecta_bpm(ruta, lambda *a: None)
+            r = tempo.detecta_bpm_candidats(ruta, None, n=2)
+            self.assertIsNotNone(r["bpm"])
+            self.assertAlmostEqual(float(r["bpm"]), float(b), places=1)
+
+    def test_context_de_canco_plega_doble_en_un_tram(self):
+        """Un tram de 30 s d'un tema a ~98 no ha de donar 196."""
+        import tempfile
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            ruta = self._wav_clics(
+                td, 196.0, dur=30.0, silenci_ini=5.0, silenci_fi=3.0)
+            b = tempo.detecta_bpm(
+                ruta, lambda *a: None, context_s=200.0,
+                context_bpm=98.0)
+            self.assertIsNotNone(b)
+            self.assertLess(abs(b - 98.0), 1.5, f"detectat {b}")
+
+    def test_context_bpm_plega_ratio_dos_en_6_8(self):
+        """Pols 110 + context 55 (negra amb punt) → 55, no 110."""
+        import tempfile
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            ruta = self._wav_clics(
+                td, 110.0, dur=30.0, silenci_ini=5.0, silenci_fi=3.0)
+            b = tempo.detecta_bpm(
+                ruta, lambda *a: None, context_s=200.0,
+                context_bpm=55.0)
+            self.assertIsNotNone(b)
+            self.assertLess(abs(b - 55.0), 1.5, f"detectat {b}")
+
+    def test_context_bpm_de_tram_es_converteix_a_pols(self):
+        from app import tempo
+        vist = {}
+
+        def _fake(*_a, **kw):
+            vist.update(kw)
+            return 55.0
+
+        with patch.object(tempo, "detecta_bpm", side_effect=_fake):
+            b = pipeline.detecta_bpm_tram(
+                "x.wav", 0.0, 10.0, lambda *a: None,
+                context_s=200.0, context_bpm=82.5,
+                beat_unit="negra_punt")
+        self.assertAlmostEqual(vist["context_bpm"], 55.0, places=6)
+        self.assertAlmostEqual(b, 82.5, places=6)
+
+    def test_detecta_bpm_global_converteix_6_8(self):
+        from app import tempo
+        with patch.object(tempo, "detecta_bpm", return_value=55.0):
+            b = pipeline.detecta_bpm(
+                "x.wav", lambda *a: None, motor="nostre",
+                beat_unit="negra_punt")
+        self.assertAlmostEqual(b, 82.5, places=6)
+
+    def test_detecta_bpm_tram_converteix_6_8_a_quarter(self):
+        from app import tempo
+        with patch.object(tempo, "detecta_bpm", return_value=55.0):
+            b = pipeline.detecta_bpm_tram(
+                "x.wav", 0.0, 10.0, lambda *a: None,
+                context_s=200.0, beat_unit="negra_punt")
+        self.assertAlmostEqual(b, 82.5, places=6)
+
+    def test_octava_no_es_promou_a_doble_per_densitat(self):
+        """El tempograma decidix l'octava: 90,6 no ha de caure a 181,2."""
+        import tempfile
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            ruta = self._wav_clics(
+                td, 90.634, dur=30.0, silenci_ini=5.0, silenci_fi=3.0)
+            b = tempo.detecta_bpm(ruta, lambda *a: None)
+            self.assertIsNotNone(b)
+            self.assertLess(abs(b - 90.634), 1.5, f"detectat {b}")
+
+    def test_octava_fora_del_rang_habitual_amb_rang_ample(self):
+        """Amb 40–200, un 56 i un 188 no s'han de plegar a 112/94."""
+        import tempfile
+        from app import tempo
+        for bpm in (56.18, 188.088):
+            with tempfile.TemporaryDirectory() as td:
+                ruta = self._wav_clics(
+                    td, bpm, dur=30.0, silenci_ini=5.0, silenci_fi=3.0)
+                b = tempo.detecta_bpm(ruta, lambda *a: None)
+                self.assertIsNotNone(b, f"bpm {bpm}: None")
+                self.assertLess(abs(b - bpm), 1.2,
+                                f"bpm {bpm}: detectat {b}")
+
     def test_silenci_final_no_canvia_el_bpm(self):
         import tempfile
         from app import tempo
@@ -5116,7 +5208,7 @@ class DialegOpcionsTests(unittest.TestCase):
     def test_bpm_te_rang_i_preferit(self):
         d = dialegs.DialegOpcions(None)
         b = d.opcions()["bpm"]
-        self.assertEqual(b["min"], 60)
+        self.assertEqual(b["min"], 40)
         self.assertEqual(b["pref_min"], 85)    # plateau del prior
         self.assertEqual(b["motor"], "consens")   # defecte revisat 13-10
 

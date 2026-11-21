@@ -44,8 +44,8 @@ VALORS_CA = {
 FITXER_OPCIONS = config.OPCIONS_PATH
 
 # Valors per defecte de fàbrica del diàleg d'autodetecció. Revisats i fixats
-# amb l'operador (2026-10-13). Són els que es mostren la primera vegada i els
-# que restaura el botó «Restaura per defecte».
+# amb l'operador (2026-10-13; rang de BPM 40–200 des del 2026-11-21). Són els
+# que es mostren la primera vegada i els que restaura «Restaura per defecte».
 DEFECTES = {
     # ACORDS: coincideixen amb els defectes del descriptor del Chordino, però
     # els fixem explícitament perquè siguin estables (no depenen del plugin).

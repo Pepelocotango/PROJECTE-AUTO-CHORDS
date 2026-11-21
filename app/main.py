@@ -881,6 +881,23 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         te_tempo = (kind == "tempo" and vr is not None
                     and 0 <= idx < len(vr.tempo_trams or []))
         tr = vr.tempo_trams[idx] if te_tempo else None
+        context_s = None
+        if vr is not None:
+            try:
+                context_s = vr._durada_wav()
+            except Exception:  # noqa: BLE001
+                context_s = None
+        beat_unit = None
+        if vr is not None:
+            try:
+                beat_unit = vr.unitat_objectiu()
+            except Exception:  # noqa: BLE001
+                beat_unit = None
+        context_bpm = None
+        try:
+            context_bpm = float(self.bpm.text().strip().replace(",", "."))
+        except (TypeError, ValueError):
+            context_bpm = None
         # Selecció A–B: si hi ha loop marcat, el BPM surt NOMÉS d'eixe rang
         # (mana sobre el tram seleccionat i sobre el tema sencer).
         loop = self._loop_actiu()
@@ -897,18 +914,22 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                 bpm = pipeline.detecta_bpm_tram(
                     wav, loop[0], loop[1], self.registra,
                     bpm_min=b.get("min"), bpm_max=b.get("max"),
-                    preferit=(b.get("pref_min"), b.get("pref_max")))
+                    preferit=(b.get("pref_min"), b.get("pref_max")),
+                    context_s=context_s, beat_unit=beat_unit,
+                    context_bpm=context_bpm)
             elif te_tempo:
                 bpm = pipeline.detecta_bpm_tram(
                     wav, float(tr[0]), float(tr[1]), self.registra,
                     bpm_min=b.get("min"), bpm_max=b.get("max"),
-                    preferit=(b.get("pref_min"), b.get("pref_max")))
+                    preferit=(b.get("pref_min"), b.get("pref_max")),
+                    context_s=context_s, beat_unit=beat_unit,
+                    context_bpm=context_bpm)
             else:
                 bpm = pipeline.detecta_bpm(
                     wav, self.registra,
                     bpm_min=b.get("min"), bpm_max=b.get("max"),
                     preferit=(b.get("pref_min"), b.get("pref_max")),
-                    motor=b.get("motor", "nostre"))
+                    motor=b.get("motor", "nostre"), beat_unit=beat_unit)
         finally:
             QApplication.restoreOverrideCursor()
         if te_tempo:

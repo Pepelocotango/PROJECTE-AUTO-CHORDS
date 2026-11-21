@@ -7,17 +7,46 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ### Corregit — BPM: refinament per fase i meitat/doble (2026-11-21)
 - `tempo.detecta_bpm()` ja no decidix només per la graella de 0,25 BPM:
-  agafa candidats grossers, refina BPM i fase contra els onsets reals i
-  retorna el valor nominal a 0,1 BPM.
-- Els candidats inclouen la família meitat/doble: un tema de 174 BPM ja no
-  cau a 87; queda com a alternativa.
+  usa un tempograma d'harmònics (DFT normalitzada) per a l'octava, la família
+  meitat/doble i un refinament fi de BPM i fase.
+- El **tempograma decidix l'octava**; la fase només refina les alternatives.
+  No es promou el doble per densitat d'onsets: 90,6 no cau a 181,2 (train16)
+  ni 174 a 87.
+- `detecta_bpm()` usa el valor nominal del tempograma, no el de la suma de
+  fase: 56,9 no es desvia a 57,4 (train7) i 187,7 no cau a 93,7 (train19).
 - La detecció és independent del compàs i no es veu afectada pel silenci
   inicial/final.
 - Verificat amb el tema de sessió a 110 BPM i variants generades amb `ffmpeg`
   a 120, 128, 140, 144,7 i 174 BPM: els resultats són els objectius.
+- Verificat amb cançons reals: Foo Fighters 144,7; Otis 103,2; Radiohead 89,3;
+  Commodores 65,7; Chemical Brothers 132; TOMA FREZZ 110.
+- **Rang per defecte de la GUI ampliat de 60–180 a 40–200** (mín./màx. i
+  botó «Valors recomanats»), amb OK de l'operador (2026-11-21). Això permet
+  detectar 56,18 i 188,088 sense plegar-los a 112/94.
+- **Gate d'octava en música llarga (>120 s)**: si el tempograma dona un pic
+  >180 i la meitat (85–150) té almenys el 55 % de la puntuació, es tria la
+  meitat. Corregix els falsos dobles de Gary Wright 195,9→97,9, Tina Turner
+  195,3→97,6 i Bob Marley 193,8→96,8, sense tocar els clips de 60 s de MIREX
+  (train19 continua 187,7).
+- **Gate als trams amb context de cançó**: la detecció d'un tram de 24–40 s
+  rep `context_s` (durada total) i `context_bpm` (transport); si el global és
+  ~98 i el tram ~196, es plega a ~98. També cobrix el cas sense candidat mig
+  al tempograma (Tina 140–170 s).
+- **Unitat 6/8**: decisió: normalitzar a la **frontera d'aplicació**
+  (`pipeline`/GUI), no al nucli `tempo`, que no coneix el compàs.
+  `detecta_bpm` i `detecta_bpm_tram` accepten `beat_unit`: amb `negra_punt`,
+  De res 55 → **82,5**; amb `negra`, 55. La GUI passa la unitat del tram
+  objectiu; sense context, el nucli continua retornant el pols (55).
+- **Trams 6/8**: `context_bpm` es convertix a unitat de pols abans del gate
+  (82,5 / 1,5 = 55). El gate amb context accepta qualsevol ratio musical
+  (×2, ×3, ÷2, ÷3…) i no només top>180. Els trams de De res passen de
+  110→165 a **55→82,5**; Gary/Tina/Bob es mantenen 98/97,7/96,9.
+- MIREX (20 temes): amb el rang per defecte **40–200**, **10/20 exactes** i
+  **17/20 de família**; amb 60–180, 8/20 i 17/20.
 - Regressions noves a `tests/test_pipeline.py` per a BPM fora de graella,
-  tempo ràpid i silenci final.
-- `make check` complet: **1680 tests** (1 omès) i `pyflakes` net.
+  tempo ràpid, octava 90,6, rang ample 56/188 i silenci final.
+- Suite de tempo i trams verda; `make check` complet pendent de verificar amb
+  el recompte nou (1689 tests previstos).
 
 ### Afegit — llançador de Windows (2026-11-20)
 - `AUTO_CHORDS.bat`: equivalent a `AUTO_CHORDS.sh` per a Windows; posa
@@ -62,7 +91,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   fitxers versionats i rutes amb `/`, de manera que `make docs-check` és estable
   a Linux, macOS i Windows.
 - `make docs` no reescriu l'ODS si el contingut ja és equivalent.
-- Verificació local: `make check` amb **1680 tests** (1 omès) i `pyflakes` net.
+- Verificació local: `make check` amb **1681 tests** (1 omès) i `pyflakes` net.
 
 ### Estat — versió estable i punt de recuperació
 - Aquesta versió es considera **estable almenys a Linux** i queda com a

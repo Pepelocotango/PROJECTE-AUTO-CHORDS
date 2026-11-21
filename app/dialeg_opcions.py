@@ -123,7 +123,7 @@ class DialegOpcions(GeometriaMixin, QDialog):
         info.setWordWrap(True)
         info.setStyleSheet("color:#9aa6b8; font-size:11px;")
         f.addRow(info)
-        b_rec = QPushButton("Valors recomanats (60–180 · 85–150)")
+        b_rec = QPushButton("Valors recomanats (40–200 · 85–150)")
         b_rec.setToolTip(
             "Rang ample i zona còmoda: és el que evita que la detecció es "
             "quede amb la meitat o el doble del tempo real.")
@@ -139,9 +139,9 @@ class DialegOpcions(GeometriaMixin, QDialog):
         return w
 
     def _bpm_recomanat(self):
-        """Posa el rang recomanat (60–180 · 85–150) als quatre camps."""
+        """Posa el rang recomanat (40–200 · 85–150) als quatre camps."""
         c = self._controls.get("bpm", {})
-        for clau, valor in (("min", 60), ("max", 180), ("pref_min", 85),
+        for clau, valor in (("min", 40), ("max", 200), ("pref_min", 85),
                             ("pref_max", 150)):
             if clau in c:
                 c[clau].setValue(int(valor))

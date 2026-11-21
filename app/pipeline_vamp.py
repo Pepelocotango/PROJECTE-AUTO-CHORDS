@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import wave
 
-from app import plataforma, tempo, tempo_map
+from app import bpm_unit, plataforma, tempo, tempo_map
 from .pipeline_io import esborra_tmp
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -202,35 +202,45 @@ def detecta_bpm_qm(wav_path, log=None):
 
 
 def detecta_bpm(wav_path, log, bpm_min=None, bpm_max=None, preferit=None,
-                motor="nostre"):
+                motor="nostre", beat_unit=None):
     """Estima el BPM d'una WAV (numpy pur, vegeu app/tempo.py).
 
     Substitueix l'antic metode basat en el beat tracker d'aubio, que
     s'enganxava a un pols erroni en trossos del tema (p. ex. amb silenci
     inicial o directes). El nou mesura la periodicitat real de la musica.
     `bpm_min`/`bpm_max`/`preferit` son opcionals (dialeg d'opcions).
+    `beat_unit` convertix el pols detectat a negres/minut (De res 55→82,5
+    amb negra amb punt); el nucli `tempo` no coneix el compàs.
     """
     if motor == "qm":
-        return detecta_bpm_qm(wav_path, log)
-    if motor == "consens":
-        return _bpm_consens(wav_path, log, bpm_min, bpm_max, preferit)
-    kw = {}
-    if bpm_min is not None:
-        kw["bpm_min"] = bpm_min
-    if bpm_max is not None:
-        kw["bpm_max"] = bpm_max
-    if preferit is not None:
-        kw["preferit"] = preferit
-    return tempo.detecta_bpm(wav_path, log, **kw)
+        bpm = detecta_bpm_qm(wav_path, log)
+    elif motor == "consens":
+        bpm = _bpm_consens(wav_path, log, bpm_min, bpm_max, preferit)
+    else:
+        kw = {}
+        if bpm_min is not None:
+            kw["bpm_min"] = bpm_min
+        if bpm_max is not None:
+            kw["bpm_max"] = bpm_max
+        if preferit is not None:
+            kw["preferit"] = preferit
+        bpm = tempo.detecta_bpm(wav_path, log, **kw)
+    if bpm is not None and beat_unit:
+        bpm = bpm_unit.a_quarter(bpm, beat_unit)
+    return bpm
 
 
 def detecta_bpm_tram(wav_path, inici, fi, log, bpm_min=None, bpm_max=None,
-                     preferit=None):
+                     preferit=None, context_s=None, beat_unit=None,
+                     context_bpm=None):
     """BPM **dins d'un tram** (interval de segons), amb el motor intern.
 
     És la detecció local que usa el botó quan hi ha un tram de tempo
     seleccionat. El downbeat és l'inici del tram, per això no es busca un
-    downbeat a part. El motor qm/consens és global i no s'aplica ací.
+    downbeat a part. `context_s`/`context_bpm` eviten el doble en trams curts;
+    `beat_unit` convertix el pols detectat a negres/minut; `context_bpm` es
+    rep en negres/minut i es convertix a la unitat de pols abans del gate.
+    El motor qm/consens és global i no s'aplica ací.
     """
     kw = {}
     if bpm_min is not None:
@@ -239,12 +249,23 @@ def detecta_bpm_tram(wav_path, inici, fi, log, bpm_min=None, bpm_max=None,
         kw["bpm_max"] = bpm_max
     if preferit is not None:
         kw["preferit"] = preferit
-    return tempo.detecta_bpm(wav_path, log, inici=float(inici), fi=float(fi),
-                             **kw)
+    if context_s is not None:
+        kw["context_s"] = float(context_s)
+    if context_bpm is not None:
+        cb = float(context_bpm)
+        if beat_unit:
+            cb /= bpm_unit.factor(beat_unit)
+        kw["context_bpm"] = cb
+    bpm = tempo.detecta_bpm(wav_path, log, inici=float(inici), fi=float(fi),
+                            **kw)
+    if bpm is not None and beat_unit:
+        bpm = bpm_unit.a_quarter(bpm, beat_unit)
+    return bpm
 
 
 def detecta_bpm_tram_detallat(wav_path, inici, fi, log, bpm_min=None,
-                              bpm_max=None, preferit=None, n=3):
+                              bpm_max=None, preferit=None, n=3,
+                              context_s=None, beat_unit=None, context_bpm=None):
     """Com `detecta_bpm_tram`, però amb **alternatives i fiabilitat**.
 
     Retorna el diccionari de `tempo.detecta_bpm_candidats` (bpm, candidats,
@@ -258,12 +279,26 @@ def detecta_bpm_tram_detallat(wav_path, inici, fi, log, bpm_min=None,
         kw["bpm_max"] = bpm_max
     if preferit is not None:
         kw["preferit"] = preferit
-    return tempo.detecta_bpm_candidats(wav_path, log, inici=float(inici),
-                                       fi=float(fi), n=n, **kw)
+    if context_s is not None:
+        kw["context_s"] = float(context_s)
+    if context_bpm is not None:
+        cb = float(context_bpm)
+        if beat_unit:
+            cb /= bpm_unit.factor(beat_unit)
+        kw["context_bpm"] = cb
+    res = tempo.detecta_bpm_candidats(wav_path, log, inici=float(inici),
+                                      fi=float(fi), n=n, **kw)
+    if beat_unit and res.get("bpm") is not None:
+        f = bpm_unit.factor(beat_unit)
+        res["bpm"] = round(float(res["bpm"]) * f, 1)
+        res["candidats"] = [(b * f, c) for b, c in res.get("candidats", [])]
+        res["alternatives"] = [(b * f, c)
+                               for b, c in res.get("alternatives", [])]
+    return res
 
 
 def detecta_bpm_detallat(wav_path, log, bpm_min=None, bpm_max=None,
-                         preferit=None, n=3):
+                         preferit=None, n=3, beat_unit=None):
     """BPM del fitxer **sencer** amb alternatives (sense tros concret)."""
     kw = {}
     if bpm_min is not None:
@@ -272,7 +307,14 @@ def detecta_bpm_detallat(wav_path, log, bpm_min=None, bpm_max=None,
         kw["bpm_max"] = bpm_max
     if preferit is not None:
         kw["preferit"] = preferit
-    return tempo.detecta_bpm_candidats(wav_path, log, n=n, **kw)
+    res = tempo.detecta_bpm_candidats(wav_path, log, n=n, **kw)
+    if beat_unit and res.get("bpm") is not None:
+        f = bpm_unit.factor(beat_unit)
+        res["bpm"] = round(float(res["bpm"]) * f, 1)
+        res["candidats"] = [(b * f, c) for b, c in res.get("candidats", [])]
+        res["alternatives"] = [(b * f, c)
+                               for b, c in res.get("alternatives", [])]
+    return res
 
 
 def detecta_tempo_per_trams(wav_path, log, durada, num=4, den=4,

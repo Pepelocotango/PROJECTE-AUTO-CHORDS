@@ -27,8 +27,8 @@ from app import bpm_unit
 import numpy as np
 
 # Rang plausible de BPM i «zona còmoda» (plateau del prior).
-BPM_MIN = 60.0
-BPM_MAX = 180.0
+BPM_MIN = 40.0
+BPM_MAX = 200.0
 # Zona on el prior val 1,0; fora cau suaument. Abans era un biaix pla del
 # +15 % a 90-180, que NO resolia l'ambigüitat d'octava/subdivisió: en un tema
 # de soul amb corxera forta (Otis Redding) guanyava 179,8 en comptes de 103,5.
@@ -147,6 +147,53 @@ def _punt_comb(ac, bpm, harmonics=(1, 2, 3, 4), hop_s=HOP_S):
     return float(sc)
 
 
+def _candidats_tempograma(env, bpm_min, bpm_max, hop_s=HOP_S, n=5):
+    """Candidats de periodicitat per tempograma d'harmònics (DFT).
+
+    Puntua l'energia de la DFT de l'envolupant a la freqüència del BPM i als
+    harmònics 1–4, normalitzada pel fons local. Evita el biaix de la suma
+    d'onsets (més punts de graella = més punts) i el biaix de lag 0 de la
+    coautocorrelació.
+    """
+    x = np.asarray(env, dtype=float)
+    n = int(x.size) if n is None else int(n)
+    if x.size < 8:
+        return []
+    nfft = 8 * (1 << int(np.ceil(np.log2(max(8, x.size)))))
+    X = np.abs(np.fft.rfft(x * np.hanning(x.size), nfft))
+    fr = np.fft.rfftfreq(nfft, d=float(hop_s))
+    if fr.size < 2:
+        return []
+    df = float(fr[1])
+    ample = max(3, int(0.5 / df))
+    ample += (ample + 1) % 2
+    fons = np.convolve(X, np.ones(ample) / ample, mode="same") + 1e-12
+    lo = max(30.0, float(bpm_min or BPM_MIN))
+    hi = min(300.0, float(bpm_max or BPM_MAX))
+    if hi <= lo:
+        return []
+    grid = np.arange(lo, hi + 1e-9, 0.05)
+    puntuacio = np.zeros(grid.size, dtype=float)
+    for i, b in enumerate(grid):
+        f = float(b) / 60.0
+        s = 0.0
+        for m, pes in ((1, 1.0), (2, 0.5), (3, 1.0 / 3.0), (4, 0.25)):
+            idx = int(round(f * m / df))
+            if 1 <= idx < X.size:
+                s += pes * X[idx] / fons[idx]
+        puntuacio[i] = s
+    ordre = np.argsort(puntuacio)[::-1]
+    pics = []
+    for i in ordre:
+        b = float(grid[int(i)])
+        if all(abs(b - u) / u > 0.02 for u in pics):
+            pics.append(b)
+        if len(pics) >= int(n):
+            break
+    return [(float(b), float(puntuacio[int(np.argmin(np.abs(grid - b)))]))
+            for b in pics]
+
+
 def _punt_fase_x(x, bpm, phase, hop_s=HOP_S):
     """Suma d'onsets en una graella de beats amb fase `phase` (frames)."""
     n = int(x.size)
@@ -209,20 +256,20 @@ def _refina_bpm_fase(env, bpm, hop_s=HOP_S, radi=0.75):
     return millor[1], millor[0]
 
 
-def _hipotesis_bpm(env, bpm_min, bpm_max, preferit, n=5):
+def _hipotesis_bpm(env, bpm_min, bpm_max, preferit, n=5, extra=()):
     """Candidats amplis, amb família meitat/doble, sense decidir encara."""
     bpm_min = float(bpm_min or BPM_MIN)
     bpm_max = float(bpm_max or BPM_MAX)
     if bpm_max <= bpm_min:
         bpm_max = bpm_min + 1.0
-    base = []
+    base = [float(b) for b in extra]
     for pref in (preferit, None):
         for b, _c in candidats_bpm(env, bpm_min, bpm_max, pref,
                                    n=max(3, int(n)), pas=0.1):
             base.append(float(b))
     hip = []
     for b in base:
-        for factor in (1.0, 0.5, 2.0):
+        for factor in (1.0, 0.5, 2.0, 1/3, 3.0, 2/3, 1.5):
             v = b * factor
             if bpm_min - 1e-9 <= v <= bpm_max + 1e-9:
                 if not any(abs(v - u) / u <= 0.02 for u in hip):
@@ -230,36 +277,111 @@ def _hipotesis_bpm(env, bpm_min, bpm_max, preferit, n=5):
     return hip[:max(4, int(n) * 2)]
 
 
-def _candidats_fase(env, bpm_min, bpm_max, preferit, n=3, hop_s=HOP_S):
+def _candidats_fase(env, bpm_min, bpm_max, preferit, n=3, hop_s=HOP_S,
+                    context_s=None, context_bpm=None):
     """Candidats refinats per fase, amb confiança relativa."""
-    hip = _hipotesis_bpm(env, bpm_min, bpm_max, preferit, n=max(3, n * 2))
+    tg = _candidats_tempograma(env, bpm_min, bpm_max, n=12)
+    hip = _hipotesis_bpm(env, bpm_min, bpm_max, preferit,
+                         n=max(3, n * 2), extra=[b for b, _s in tg])
     # Per a la decisió escalar només calen els dos millors; per a les
     # alternatives es refinen uns quants més.
-    hip = hip[:max(2, int(n) + 1)]
+    hip = hip[:max(6, int(n) + 1)]
+    ac = _autocorrelacio(env)
     vals = []
     for b in hip:
         b2, sc = _refina_bpm_fase(env, b, hop_s=hop_s)
-        if b2 > 0 and sc > 0:
-            vals.append((b2, sc))
+        if b2 <= 0 or sc <= 0:
+            continue
+        coarse = _punt_comb(ac, b2, hop_s=hop_s) if ac is not None else 0.0
+        tscore = 0.0
+        nom = b2
+        for tb, ts in tg:
+            if abs(b2 - tb) / tb <= 0.02 and ts > tscore:
+                tscore = ts
+                nom = tb
+        vals.append((b2, sc, coarse, tscore, nom))
     if not vals:
         return []
-    vals.sort(key=lambda x: -x[1])
+    # El tempograma decidix l'octava; la fase nomes refina alternatives. La
+    # suma de fase creix amb la densitat d'onsets i, si decidira l'octava,
+    # afavoriria el doble (train7) o la meitat (train19).
+    vals.sort(key=lambda x: (-x[3], -x[2], -x[1]))
+    # En musica llarga, un pic >180 que tinga la meitat dins la zona comoda
+    # pot ser el doble d'un temps real (p. ex. 196 -> 98 en soul/pop). No
+    # s'aplica a clips curts de validacio (train7/19), on el BPM pot ser
+    # legitimament rapid.
+    durada_gate = env.size * hop_s
+    if context_s is not None:
+        durada_gate = max(durada_gate, float(context_s))
+    meitat = None
+    if durada_gate > 120.0 and tg:
+        top_b, top_s = tg[0]
+        # Amb context de canco, busca qualsevol ratio musical proper al pols
+        # global (2, 3, 1/2, 1/3...), no nomes el doble de >180. Aixi un
+        # tram 6/8 a 110 amb pols global 55 es plega a 55.
+        if context_bpm is not None:
+            try:
+                cb = float(context_bpm)
+            except (TypeError, ValueError):
+                cb = 0.0
+            if cb > 0:
+                ratios = (1.0, 0.5, 2.0, 1.0 / 3.0, 3.0, 2.0 / 3.0, 1.5)
+                candidats = [(top_b * f, f) for f in ratios
+                             if bpm_min - 1e-9 <= top_b * f <= bpm_max + 1e-9]
+                if candidats:
+                    target, factor = min(
+                        candidats, key=lambda x: abs(np.log2(x[0] / cb)))
+                    if (factor != 1.0
+                            and abs(np.log2(target / cb)) <= np.log2(1.05)):
+                        meitat = target
+        if meitat is None and top_b > 180.0:
+            for tb, ts in tg:
+                if (85.0 <= tb <= 150.0
+                        and abs(tb * 2.0 - top_b) / top_b <= 0.02
+                        and ts >= 0.55 * top_s):
+                    meitat = tb
+                    break
+        if (meitat is None and context_bpm is not None
+                and top_b > 180.0):
+            try:
+                cb = float(context_bpm)
+            except (TypeError, ValueError):
+                cb = 0.0
+            if 85.0 <= cb <= 150.0 and abs(top_b / 2.0 - cb) / cb <= 0.05:
+                meitat = top_b / 2.0
+    if meitat is not None:
+        idx = None
+        for i, v in enumerate(vals):
+            if abs(v[4] - meitat) / meitat <= 0.02:
+                idx = i
+                break
+        if idx is None:
+            b2, sc = _refina_bpm_fase(env, meitat, hop_s=hop_s)
+            if b2 > 0 and sc > 0:
+                coarse = (_punt_comb(ac, b2, hop_s=hop_s)
+                          if ac is not None else 0.0)
+                vals.append((b2, sc, coarse, tg[0][1], b2))
+                idx = len(vals) - 1
+        if idx is not None:
+            vals.insert(0, vals.pop(idx))
     top = vals[0][1]
     out = []
-    for b, sc in vals:
-        if any(abs(b - u) / u <= 0.02 for u, _s in out):
+    for _b, sc, _coarse, _tscore, nom in vals:
+        if any(abs(nom - u) / u <= 0.02 for u, _s in out):
             continue
-        out.append((b, sc / top))
+        out.append((nom, sc / top))
         if len(out) >= int(n):
             break
     return out
 
 
 def _millor_bpm_fase(env, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
-                     preferit=BPM_PREFERIT, hop_s=HOP_S):
+                     preferit=BPM_PREFERIT, hop_s=HOP_S, context_s=None,
+                     context_bpm=None):
     """Millor BPM després de refinar per fase (API interna)."""
     cands = _candidats_fase(env, bpm_min, bpm_max, preferit, n=1,
-                            hop_s=hop_s)
+                            hop_s=hop_s, context_s=context_s,
+                            context_bpm=context_bpm)
     return cands[0][0] if cands else None
 
 
@@ -301,7 +423,8 @@ def candidats_bpm(env, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
 
 def detecta_bpm_candidats(wav_path, log=None, bpm_min=BPM_MIN,
                           bpm_max=BPM_MAX, preferit=BPM_PREFERIT,
-                          inici=0.0, fi=None, n=3, amplia=True):
+                          inici=0.0, fi=None, n=3, amplia=True,
+                          context_s=None, context_bpm=None):
     """Detecció amb **alternatives**: guanyadora, candidates i fora de rang.
 
     Retorna un diccionari::
@@ -325,12 +448,13 @@ def detecta_bpm_candidats(wav_path, log=None, bpm_min=BPM_MIN,
     if env.size < 8:
         log("BPM: senyal massa curt o silenciós")
         return res
-    cands = _candidats_fase(env, bpm_min, bpm_max, preferit, n=n)
+    cands = _candidats_fase(env, bpm_min, bpm_max, preferit, n=n,
+                            context_s=context_s, context_bpm=context_bpm)
     if not cands:
         log("BPM: no s'ha trobat cap periodicitat clara")
         return res
     res["candidats"] = cands
-    res["bpm"] = cands[0][0]
+    res["bpm"] = round(float(cands[0][0]), 1)
     if amplia:
         ample = candidats_bpm(env, min(40.0, float(bpm_min or 40.0)),
                               max(240.0, float(bpm_max or 240.0)),
@@ -358,18 +482,23 @@ def _comb_bpm(env, hop_s=HOP_S, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
 
 
 def detecta_bpm(wav_path, log, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
-                preferit=BPM_PREFERIT, inici=0.0, fi=None):
+                preferit=BPM_PREFERIT, inici=0.0, fi=None, context_s=None,
+                context_bpm=None):
     """Estima el BPM d'una WAV (o d'un tros) amb numpy pur.
 
     `inici`/`fi` limiten l'anàlisi a un interval en segons (detecció dins d'un
     tram de tempo). Sense ells, analitza tota la WAV.
     `bpm_min`/`bpm_max` limiten la cerca; `preferit` premia el rang musical
-    habitual (per evitar el doble/meitat). Vegeu el dialeg d'opcions.
+    habitual (per evitar el doble/meitat). `context_s`/`context_bpm` son el
+    context de canco per al gate d'octava quan s'analitza un tram; `context_bpm`
+    va en la unitat de pols (el pipeline el convertix des de negres). Vegeu el
+    dialeg d'opcions.
     """
     try:
         env, sr = _envolupant_onsets(wav_path, inici=inici, fi=fi)
         bpm = _millor_bpm_fase(env, bpm_min=bpm_min, bpm_max=bpm_max,
-                               preferit=preferit)
+                               preferit=preferit, context_s=context_s,
+                               context_bpm=context_bpm)
         if bpm is None:
             log("BPM: senyal massa curt o silenciós")
             return None

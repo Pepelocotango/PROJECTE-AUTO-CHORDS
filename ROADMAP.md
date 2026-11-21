@@ -6,7 +6,7 @@
 > descripció de producte. Tot en català · **GPL-3.0-or-later**.
 >
 > **v0.9.4** · Estat: **flux de producte estable (almenys a Linux)** · **punt de
-> recuperació** per a futures iteracions · Suite local verificada: **1.680 tests** (1 omès) i `pyflakes` net. El recompte viu és al CI.
+> recuperació** per a futures iteracions · Suite local verificada abans del canvi de rang: **1.681 tests** (1 omès); el canvi BPM/rang pendent de `make check` complet (**1.684 previstos**). El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -164,10 +164,11 @@ el projecte de DAW queden ajornats.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
   Tags locals renumerats a `v0.9.x`; **cap push**.
-- **BPM (2026-11-21)**: refinament per fase sobre candidats grossers i família meitat/doble; `detecta_bpm` retorna 144,7 (no 144,75) i 174 (no 87). Verificat amb variants `ffmpeg` de 110, 120, 128, 140, 144,7 i 174 BPM, amb silencis inicials/finals.
+- **BPM (2026-11-21)**: tempograma d'harmònics per a l'octava + família meitat/doble; el tempograma decidix l'octava i la fase només refina alternatives. `detecta_bpm` retorna 144,7 (no 144,75), 174 (no 87), 56,9 (no 113) i 187,7 (no 93,7). **Rang per defecte de la GUI ampliat a 40–200** (abans 60–180), amb OK de l'operador. **Gate d'octava >120 s**: 195,9→97,9 (Gary Wright), 195,3→97,6 (Tina Turner), 193,8→96,8 (Bob Marley), sense tocar clips de 60 s (train19 187,7). **Gate als trams amb `context_s`/`context_bpm`** i **conversió 6/8 a negres a pipeline/GUI** (`negra_punt`: global De res 55→82,5; trams 110→82,5 amb context convertit a pols; el nucli `tempo` no coneix el compàs). MIREX: 10/20 exactes i 17/20 de família amb 40–200; 8/20 i 17/20 amb 60–180. Variants `ffmpeg` 110/120/128/140/144,7/174 i Foo 144,7, Otis 103,2, Radiohead 89,3, Commodores 65,7 i Chemical 132.
 - **Corregit (2026-11-20) - flux de treball (6 greus)**: F7 + Ctrl+Z ja no esborra els beats (consolida la base d'undo); «Desa com...» activa del tot el projecte nou (regla #5); «Sobreescriu» no esborra mai l'audio obert; projecte amb mapa_tempo.csv invalid avisa i restaura la sessio anterior; Ctrl+E no corre durant l'export en fil; «Exporta la partitura...» reescriu els CSV des del model viu. Tests de regressió a tests/test_gui.py i tests/test_pipeline.py.
-- **Suite**: `make check` complet local (2026-11-21) amb **1680 tests**
-  (1 omès) i **tot OK**. La quadratura
+- **Suite**: `make check` complet local (2026-11-21) amb **1681 tests**
+  (1 omès) i **tot OK** abans del canvi BPM/rang; ara hi ha **1689 previstos**
+  i cal repetir `make check`. La quadratura
   d'extrems afig regressions pròpies (plans, mostres, undo/redo i export).
 
 **Pendent:**
