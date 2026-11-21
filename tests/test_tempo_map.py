@@ -1158,6 +1158,46 @@ class TestMetronom(unittest.TestCase):
                                      factor=1.0)
         self.assertEqual(a, b)
 
+    def _freq_clic(self, mono, t, n_ms=20):
+        n = int(SR * n_ms / 1000.0)
+        i = int(round(t * SR))
+        arr = np.abs(np.frombuffer(mono, dtype=np.int16))[i:i + n]
+        espectre = np.abs(np.fft.rfft(arr.astype(np.float32)))
+        return np.fft.rfftfreq(arr.size, 1.0 / SR)[np.argmax(espectre)]
+
+    def test_mode_percebuts_en_6_8_clica_la_pols_sense_accents(self):
+        """BPM percebuts: 6/8 → negra amb punt (2 clics per compàs), tots
+        normals (sense accent de compàs ni de grup)."""
+        mapa = tm.TempoMap([(0.0, 1.6, 120.0, 6, 8)])
+        out = metronom.mescla_metronom(
+            _silenci(1.6), SR, 0.0, 120.0, 6, mapa=mapa, den=8,
+            mode="percebuts")
+        self.assertEqual(_clics(out), [0.0, 0.75, 1.5])
+        for t in (0.0, 0.75, 1.5):
+            self.assertLess(self._freq_clic(out, t), 1100, t)
+
+    def test_mode_percebuts_sense_mapa_usa_la_pols_del_compas(self):
+        """Fora del mapa, la pols percebuda ix del compàs del transport."""
+        out = metronom.mescla_metronom(
+            _silenci(1.6), SR, 0.0, 120.0, 6, den=8, mode="percebuts")
+        self.assertEqual(_clics(out), [0.0, 0.75, 1.5])
+
+    def test_mode_interns_clica_les_negres_sense_accents(self):
+        out = metronom.mescla_metronom(
+            _silenci(2.0), SR, 0.0, 120.0, 6, den=8, mode="interns")
+        self.assertEqual(_clics(out), [0.0, 0.5, 1.0, 1.5])
+        for t in (0.0, 0.5, 1.0, 1.5):
+            self.assertLess(self._freq_clic(out, t), 1100, t)
+
+    def test_mode_interns_en_3_8_clica_negres_encara_que_no_omplin_el_compas(
+            self):
+        """El BPM intern compta negres: a 3/8 el clic cau a cavall de compàs."""
+        mapa = tm.TempoMap([(0.0, 1.5, 120.0, 3, 8)])
+        out = metronom.mescla_metronom(
+            _silenci(1.5), SR, 0.0, 120.0, 3, mapa=mapa, den=8,
+            mode="interns")
+        self.assertEqual(_clics(out), [0.0, 0.5, 1.0])
+
 # ══════════════════════════════════════════════════════════════════════════
 # ORIGEN: test_graella.py
 # ══════════════════════════════════════════════════════════════════════════

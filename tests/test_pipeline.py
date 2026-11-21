@@ -2831,6 +2831,11 @@ class ExportPipelineTests(unittest.TestCase):
         idx_qm = window.cb_metro.findData("qm")
         self.assertGreaterEqual(idx_qm, 0)
         self.assertEqual(window.cb_metro.itemText(idx_qm), "Beats QM")
+        for clau, text in (("percebuts", "BPM percebuts"),
+                           ("interns", "BPM interns")):
+            idx = window.cb_metro.findData(clau)
+            self.assertGreaterEqual(idx, 0)
+            self.assertEqual(window.cb_metro.itemText(idx), text)
         self.assertIn("Exporta WAV", window.a_exporta.text())
         self.assertTrue(hasattr(window, "a_exporta_part"))
         self.assertTrue(hasattr(window, "barra_transport"))

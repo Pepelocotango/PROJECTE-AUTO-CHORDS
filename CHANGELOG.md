@@ -5,6 +5,18 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Afegit — Metrònom: patrons «BPM percebuts» i «BPM interns» (2026-11-21)
+- El selector de **patró** del metrònom incorpora dos modes nous, tots dos
+  **sense accents**:
+  - **BPM percebuts**: clica la **pols percebuda de cada tram** (`6/8` →
+    negra amb punt, `4/4` → negra…). Fora del mapa, usa la pols derivada del
+    compàs del transport.
+  - **BPM interns**: clica **negres** (el BPM intern en negres/minut), sense
+    exigir que la negra òmpliga el compàs; a `3/8` un clic pot caure a cavall
+    de compàs.
+- Tots dos respecten el mapa de tempo/compàs, el loop, qualsevol posició i la
+  velocitat 0,5–3×. Canviar de patró no reinicia el reproductor.
+
 ### Corregit — BPM: refinament per fase i meitat/doble (2026-11-21)
 - `tempo.detecta_bpm()` ja no decidix només per la graella de 0,25 BPM:
   usa un tempograma d'harmònics (DFT normalitzada) per a l'octava, la família

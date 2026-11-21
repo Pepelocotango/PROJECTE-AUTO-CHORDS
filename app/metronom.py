@@ -16,6 +16,10 @@ Els accents de grup ixen de `tempo_map.agrupacio_compas()`: `6/8` → `3+3`,
 El mode `qm` marca els **beats detectats per QM** (`beats=`), un a un i sense
 accents. No passa per la graella del mapa: els instants poden no coincidir amb
 cap compàs/beat teòric i es col·loquen allà on els ha detectat QM.
+
+Els modes `percebuts` i `interns` cliquen **sense accents** la pols percebuda de
+cada tram i la negra (BPM intern), respectivament. `interns` no exigix que la
+negra òmpliga el compàs: clica cada negra encara que caiga a cavall de compàs.
 """
 import numpy as np
 from app import bpm_unit, limits, tempo_map
@@ -24,7 +28,9 @@ from app import bpm_unit, limits, tempo_map
 BPM_MAX = limits.BPM_MAX
 
 # Patrons de clic. `auto` = tots els temps + accents de compàs i grup.
-MODES = ("auto", "compas", "temps", "grup", "qm")
+# `percebuts` i `interns` cliquen sense accents la unitat de pols del tram i la
+# negra (BPM intern), respectivament.
+MODES = ("auto", "compas", "temps", "grup", "qm", "percebuts", "interns")
 
 # Durada d'un clic (ms) i freqüències (Hz): accent = temps 1 de cada compàs.
 CLIC_MS = 25.0
@@ -178,8 +184,10 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
       amb punt).
     - `mode`: `auto` (tots els temps + accents de compàs i grup), `compas`
       (només el primer temps), `temps` (tots els temps, sense accents de grup),
-      `grup` (només compàs i inicis de grup en compassos compostos) o `qm`
-      (beats QM de `beats`, sense accents; poden no coincidir amb la graella).
+      `grup` (només compàs i inicis de grup en compassos compostos), `qm`
+      (beats QM de `beats`, sense accents; poden no coincidir amb la graella),
+      `percebuts` (unitat de pols percebuda de cada tram, sense accents) o
+      `interns` (negra, el BPM intern, sense accents).
     - `beats`: instants absoluts en segons dels beats detectats per QM. Només
       s'utilitzen amb `mode="qm"`.
     - Només genera els clics que cauen dins la rodanxa (funciona des de
@@ -199,18 +207,26 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
     _bpb, _den = valid
     mode = _normalitza_mode(mode)
     click_unit = _normalitza_click_unit(click_unit)
-    if click_unit == "pols" and mapa is None:
-        click_unit = "auto"
-    if click_unit not in ("auto", "pols"):
-        signatures = [(_bpb, _den)]
-        if mapa is not None:
-            signatures = [(int(t.num_ef), int(t.den_ef))
-                          for t in mapa.trams
-                          if int(t.num_ef) > 0 and int(t.den_ef) > 0]
-        if not signatures or not all(
-                bpm_unit.encaixa_en_compas(click_unit, n, d)
-                for n, d in signatures):
+    if mode == "percebuts":
+        # Pols percebuda de cada tram; sense mapa, la del compàs del transport.
+        click_unit = ("pols" if mapa is not None
+                      else bpm_unit.unitat_per_defecte(_bpb, _den))
+    elif mode == "interns":
+        # El BPM intern sempre compta negres, encara que no omplin el compàs.
+        click_unit = "negra"
+    else:
+        if click_unit == "pols" and mapa is None:
             click_unit = "auto"
+        if click_unit not in ("auto", "pols"):
+            signatures = [(_bpb, _den)]
+            if mapa is not None:
+                signatures = [(int(t.num_ef), int(t.den_ef))
+                              for t in mapa.trams
+                              if int(t.num_ef) > 0 and int(t.den_ef) > 0]
+            if not signatures or not all(
+                    bpm_unit.encaixa_en_compas(click_unit, n, d)
+                    for n, d in signatures):
+                click_unit = "auto"
     try:
         factor = float(factor)
     except (TypeError, ValueError):
@@ -232,6 +248,8 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
 
     def _decideix(es_bar, es_grup, grup_auto):
         """Retorna `(hi_ha_clic, es_accent)` per al patró triat."""
+        if mode in ("percebuts", "interns"):
+            return True, False
         if mode == "compas":
             return es_bar, es_bar
         if mode == "grup":
