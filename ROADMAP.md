@@ -6,7 +6,7 @@
 > descripció de producte. Tot en català · **GPL-3.0-or-later**.
 >
 > **v0.9.4** · Estat: **flux de producte estable (almenys a Linux)** · **punt de
-> recuperació** per a futures iteracions · Suite local verificada: **1.678 tests** (1 omès) i `pyflakes` net. El recompte viu és al CI. El recompte viu és al CI.
+> recuperació** per a futures iteracions · Suite local verificada: **1.680 tests** (1 omès) i `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -164,8 +164,9 @@ el projecte de DAW queden ajornats.
 - **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
   commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
   Tags locals renumerats a `v0.9.x`; **cap push**.
+- **BPM (2026-11-21)**: refinament per fase sobre candidats grossers i família meitat/doble; `detecta_bpm` retorna 144,7 (no 144,75) i 174 (no 87). Verificat amb variants `ffmpeg` de 110, 120, 128, 140, 144,7 i 174 BPM, amb silencis inicials/finals.
 - **Corregit (2026-11-20) - flux de treball (6 greus)**: F7 + Ctrl+Z ja no esborra els beats (consolida la base d'undo); «Desa com...» activa del tot el projecte nou (regla #5); «Sobreescriu» no esborra mai l'audio obert; projecte amb mapa_tempo.csv invalid avisa i restaura la sessio anterior; Ctrl+E no corre durant l'export en fil; «Exporta la partitura...» reescriu els CSV des del model viu. Tests de regressió a tests/test_gui.py i tests/test_pipeline.py.
-- **Suite**: `make check` complet local (2026-11-20) amb **1678 tests**
+- **Suite**: `make check` complet local (2026-11-21) amb **1680 tests**
   (1 omès) i **tot OK**. La quadratura
   d'extrems afig regressions pròpies (plans, mostres, undo/redo i export).
 

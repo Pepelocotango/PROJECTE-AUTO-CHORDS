@@ -4111,14 +4111,14 @@ class TempoTests(unittest.TestCase):
 
     SR = 22050
 
-    def _wav_clics(self, td, bpm, dur=20.0, silenci_ini=3.0):
-        """Genera una WAV amb clics periodics (i silenci inicial)."""
+    def _wav_clics(self, td, bpm, dur=20.0, silenci_ini=3.0, silenci_fi=0.0):
+        """Genera una WAV amb clics periodics (i silenci inicial/final)."""
         import wave
         n = int(self.SR * dur)
         a = np.zeros(n, dtype=np.int16)
         periode = 60.0 / bpm
         t = silenci_ini
-        while t < dur - 0.05:
+        while t < dur - silenci_fi - 0.05:
             i = int(t * self.SR)
             llarg = int(self.SR * 0.02)
             env = np.exp(-8.0 * np.arange(llarg) / llarg).astype(np.float32)
@@ -4173,6 +4173,33 @@ class TempoTests(unittest.TestCase):
             b = tempo.detecta_bpm(ruta, lambda m: None, inici=4.0, fi=8.0)
             self.assertIsNotNone(b)
             self.assertLess(abs(b - 120.0), 4.0, f"detectat {b}")
+
+    def test_bpm_fora_de_graella_i_tempo_rapid(self):
+        """El refinament per fase no ha de quedar-se a la graella ni a la meitat."""
+        import tempfile
+        from app import tempo
+        for bpm in (128.0, 140.0, 144.7, 174.0):
+            with tempfile.TemporaryDirectory() as td:
+                ruta = self._wav_clics(
+                    td, bpm, dur=30.0, silenci_ini=5.0, silenci_fi=3.0)
+                b = tempo.detecta_bpm(ruta, lambda *a: None)
+                self.assertIsNotNone(b, f"bpm {bpm}: None")
+                self.assertLess(abs(b - bpm), 0.6,
+                                f"bpm {bpm}: detectat {b}")
+                if bpm >= 170.0:
+                    self.assertGreater(b, 160.0,
+                                       f"bpm {bpm}: no pot ser la meitat")
+
+    def test_silenci_final_no_canvia_el_bpm(self):
+        import tempfile
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            sense = self._wav_clics(td, 144.7, dur=30.0, silenci_ini=5.0)
+            amb = self._wav_clics(
+                td, 144.7, dur=36.0, silenci_ini=5.0, silenci_fi=6.0)
+            b1 = tempo.detecta_bpm(sense, lambda *a: None)
+            b2 = tempo.detecta_bpm(amb, lambda *a: None)
+            self.assertLess(abs(b1 - b2), 0.2, (b1, b2))
 
     def test_detecta_bpm_silenci_retorna_none(self):
         import tempfile, wave

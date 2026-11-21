@@ -5,6 +5,20 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Corregit — BPM: refinament per fase i meitat/doble (2026-11-21)
+- `tempo.detecta_bpm()` ja no decidix només per la graella de 0,25 BPM:
+  agafa candidats grossers, refina BPM i fase contra els onsets reals i
+  retorna el valor nominal a 0,1 BPM.
+- Els candidats inclouen la família meitat/doble: un tema de 174 BPM ja no
+  cau a 87; queda com a alternativa.
+- La detecció és independent del compàs i no es veu afectada pel silenci
+  inicial/final.
+- Verificat amb el tema de sessió a 110 BPM i variants generades amb `ffmpeg`
+  a 120, 128, 140, 144,7 i 174 BPM: els resultats són els objectius.
+- Regressions noves a `tests/test_pipeline.py` per a BPM fora de graella,
+  tempo ràpid i silenci final.
+- `make check` complet: **1680 tests** (1 omès) i `pyflakes` net.
+
 ### Afegit — llançador de Windows (2026-11-20)
 - `AUTO_CHORDS.bat`: equivalent a `AUTO_CHORDS.sh` per a Windows; posa
   `portable/win-dlls` al `PATH` i `PYTHONUTF8=1` abans de cridar
@@ -48,7 +62,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   fitxers versionats i rutes amb `/`, de manera que `make docs-check` és estable
   a Linux, macOS i Windows.
 - `make docs` no reescriu l'ODS si el contingut ja és equivalent.
-- Verificació local: `make check` amb **1678 tests** (1 omès) i `pyflakes` net.
+- Verificació local: `make check` amb **1680 tests** (1 omès) i `pyflakes` net.
 
 ### Estat — versió estable i punt de recuperació
 - Aquesta versió es considera **estable almenys a Linux** i queda com a

@@ -147,6 +147,122 @@ def _punt_comb(ac, bpm, harmonics=(1, 2, 3, 4), hop_s=HOP_S):
     return float(sc)
 
 
+def _punt_fase_x(x, bpm, phase, hop_s=HOP_S):
+    """Suma d'onsets en una graella de beats amb fase `phase` (frames)."""
+    n = int(x.size)
+    if n < 8:
+        return 0.0
+    P = (60.0 / float(bpm)) / float(hop_s)
+    if P < 2.0:
+        return 0.0
+    phase = float(phase)
+    if phase < 0.0 or phase >= P:
+        phase = phase % P
+    k = np.arange(0, max(0, int((n - 1 - phase) / P) + 1), dtype=float)
+    idx = phase + k * P
+    if idx.size == 0:
+        return 0.0
+    return float(np.interp(idx, np.arange(n, dtype=float), x,
+                           left=0.0, right=0.0).sum())
+
+
+def _millor_fase_x(x, bpm, pas_fase_s=0.01, hop_s=HOP_S):
+    """Millor fase (en frames) per a un BPM, amb pas temporal configurable."""
+    P = (60.0 / float(bpm)) / float(hop_s)
+    if P < 2.0:
+        return 0.0, 0.0
+    pas = max(0.2, float(pas_fase_s) / float(hop_s))
+    millor = -1.0
+    fase_bona = 0.0
+    for phase in np.arange(0.0, P, pas):
+        sc = _punt_fase_x(x, bpm, phase, hop_s=hop_s)
+        if sc > millor:
+            millor = sc
+            fase_bona = float(phase)
+    return millor, fase_bona
+
+
+def _refina_bpm_fase(env, bpm, hop_s=HOP_S, radi=0.75):
+    """Refina un candidat amb cerca fina de BPM i fase.
+
+    La cerca grossera de candidats treballa amb una graella de 0,1–0,25 BPM.
+    Ací es corregix eixe biaix provant BPM i fase contra els onsets reals del
+    cos. Retorna `(bpm, puntuacio)`.
+    """
+    x = np.maximum(np.asarray(env, dtype=float), 0.0)
+    bpm = float(bpm)
+    if bpm <= 0 or x.size < 8:
+        return bpm, 0.0
+    lo = max(1.0, bpm - float(radi))
+    hi = bpm + float(radi)
+    millor = (-1.0, bpm, 0.0)
+    for b in np.arange(lo, hi + 1e-9, 0.1):
+        sc, ph = _millor_fase_x(x, b, pas_fase_s=0.01, hop_s=hop_s)
+        if sc > millor[0]:
+            millor = (sc, float(b), ph)
+    # Segona passada fina al voltant del millor BPM.
+    b0 = millor[1]
+    for b in np.arange(max(1.0, b0 - 0.1), b0 + 0.1 + 1e-9, 0.005):
+        sc, ph = _millor_fase_x(x, b, pas_fase_s=0.005, hop_s=hop_s)
+        if sc > millor[0]:
+            millor = (sc, float(b), ph)
+    return millor[1], millor[0]
+
+
+def _hipotesis_bpm(env, bpm_min, bpm_max, preferit, n=5):
+    """Candidats amplis, amb família meitat/doble, sense decidir encara."""
+    bpm_min = float(bpm_min or BPM_MIN)
+    bpm_max = float(bpm_max or BPM_MAX)
+    if bpm_max <= bpm_min:
+        bpm_max = bpm_min + 1.0
+    base = []
+    for pref in (preferit, None):
+        for b, _c in candidats_bpm(env, bpm_min, bpm_max, pref,
+                                   n=max(3, int(n)), pas=0.1):
+            base.append(float(b))
+    hip = []
+    for b in base:
+        for factor in (1.0, 0.5, 2.0):
+            v = b * factor
+            if bpm_min - 1e-9 <= v <= bpm_max + 1e-9:
+                if not any(abs(v - u) / u <= 0.02 for u in hip):
+                    hip.append(v)
+    return hip[:max(4, int(n) * 2)]
+
+
+def _candidats_fase(env, bpm_min, bpm_max, preferit, n=3, hop_s=HOP_S):
+    """Candidats refinats per fase, amb confiança relativa."""
+    hip = _hipotesis_bpm(env, bpm_min, bpm_max, preferit, n=max(3, n * 2))
+    # Per a la decisió escalar només calen els dos millors; per a les
+    # alternatives es refinen uns quants més.
+    hip = hip[:max(2, int(n) + 1)]
+    vals = []
+    for b in hip:
+        b2, sc = _refina_bpm_fase(env, b, hop_s=hop_s)
+        if b2 > 0 and sc > 0:
+            vals.append((b2, sc))
+    if not vals:
+        return []
+    vals.sort(key=lambda x: -x[1])
+    top = vals[0][1]
+    out = []
+    for b, sc in vals:
+        if any(abs(b - u) / u <= 0.02 for u, _s in out):
+            continue
+        out.append((b, sc / top))
+        if len(out) >= int(n):
+            break
+    return out
+
+
+def _millor_bpm_fase(env, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
+                     preferit=BPM_PREFERIT, hop_s=HOP_S):
+    """Millor BPM després de refinar per fase (API interna)."""
+    cands = _candidats_fase(env, bpm_min, bpm_max, preferit, n=1,
+                            hop_s=hop_s)
+    return cands[0][0] if cands else None
+
+
 def candidats_bpm(env, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
                   preferit=BPM_PREFERIT, n=3, hop_s=HOP_S, pas=0.1):
     """Els `n` millors BPM d'una envolupant, amb **fiabilitat** 0..1.
@@ -209,7 +325,7 @@ def detecta_bpm_candidats(wav_path, log=None, bpm_min=BPM_MIN,
     if env.size < 8:
         log("BPM: senyal massa curt o silenciós")
         return res
-    cands = candidats_bpm(env, bpm_min, bpm_max, preferit, n=n)
+    cands = _candidats_fase(env, bpm_min, bpm_max, preferit, n=n)
     if not cands:
         log("BPM: no s'ha trobat cap periodicitat clara")
         return res
@@ -252,11 +368,14 @@ def detecta_bpm(wav_path, log, bpm_min=BPM_MIN, bpm_max=BPM_MAX,
     """
     try:
         env, sr = _envolupant_onsets(wav_path, inici=inici, fi=fi)
-        bpm = _comb_bpm(env, bpm_min=bpm_min, bpm_max=bpm_max,
-                        preferit=preferit)
+        bpm = _millor_bpm_fase(env, bpm_min=bpm_min, bpm_max=bpm_max,
+                               preferit=preferit)
         if bpm is None:
             log("BPM: senyal massa curt o silenciós")
             return None
+        # El refinament pot donar 144,725; el valor nominal que es mostra i
+        # s'aplica és 144,7. Els detalls queden a `detecta_bpm_candidats`.
+        bpm = round(float(bpm), 1)
         log(f"BPM detectat: {bpm:.1f} (envolupant d'onsets, {sr} Hz, "
             f"{float(inici):.3f}–{float(fi) if fi is not None else 'fi'} s)")
         return bpm
@@ -350,8 +469,8 @@ def segueix_beats(wav_path, log=None, bpm=None, inici=0.0, fi=None,
         return [], None
     base = float(bpm) if bpm else None
     if not base:
-        c = candidats_bpm(env, bpm_min, bpm_max, preferit, n=1)
-        base = c[0][0] if c else None
+        c = _candidats_fase(env, bpm_min, bpm_max, preferit, n=1)
+        base = round(float(c[0][0]), 1) if c else None
     if not base:
         log("beats: no s'ha trobat cap periodicitat clara")
         return [], None
