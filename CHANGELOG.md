@@ -45,8 +45,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   **17/20 de família**; amb 60–180, 8/20 i 17/20.
 - Regressions noves a `tests/test_pipeline.py` per a BPM fora de graella,
   tempo ràpid, octava 90,6, rang ample 56/188 i silenci final.
-- Suite de tempo i trams verda; `make check` complet pendent de verificar amb
-  el recompte nou (1689 tests previstos).
+- `make check` complet: **1689 tests** (1 omès) i `pyflakes` net.
 
 ### Afegit — llançador de Windows (2026-11-20)
 - `AUTO_CHORDS.bat`: equivalent a `AUTO_CHORDS.sh` per a Windows; posa
