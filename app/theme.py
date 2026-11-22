@@ -40,6 +40,7 @@ TL_GRID_MEASURE = "#55677f"    # linia de compas
 TL_GRID_PULSE = "#6f839e"      # pols musical (negra amb punt en 6/8)
 TL_GRID_BEAT = "#3d4c60"       # linia de temps
 TL_GRID_SUB = "#303a48"        # subdivisio
+TL_BEAT_ONSET = "#c084fc"      # onsets detectats (lila; no confondre amb beats)
 TL_WAVE_MID = "#2f3640"        # linia central de l'ona
 CLIP_SECTION_BORDER = "#dfe7f5"
 # Metrònom: color de l'estat activat (botó/acció)

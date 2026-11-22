@@ -237,14 +237,12 @@ PROJECTE AUTO CHORDS/
 │   ├── auto-chords.ico      🟢
 │   ├── auto-chords.png      🟢
 │   └── captura.png          🟢
-├── icones/                        🟢  # Icones SVG de la UI (Lucide, ISC) (21 fitxers)
+├── icones/                        🟢  # Icones SVG de la UI (Lucide, ISC) (19 fitxers)
 │   ├── arrow-left-to-line.svg  🟢
 │   ├── arrow-right-to-line.svg 🟢
-│   ├── compass.svg             🟢
 │   ├── fast-forward.svg        🟢
 │   ├── focus.svg               🟢
 │   ├── LICENSE                 🟢  # Llicència ISC de Lucide
-│   ├── map-pin.svg             🟢
 │   ├── maximize.svg            🟢
 │   ├── metronome.svg           🟢
 │   ├── pause.svg               🟢

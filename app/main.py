@@ -213,15 +213,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             "en viu, fes servir ＋ o la tecla +; M afig només un marcador.")
         self.b_guia.setEnabled(False)          # fins que hi hagi WAV
         self.b_guia.clicked.connect(self._obre_guia_rapida)
-        self.b_marker = QPushButton("＋ Temps+Secció")
-        self.b_marker.setObjectName("secundari")
-        self.b_marker.setIcon(icones.ico("compass", 16))
-        self.b_marker.setIconSize(icones.pm_mida(16))
-        self.b_marker.setToolTip(
-            "Parteix el tempo i l'estructura al cursor (tecla +).")
-        self.b_marker.setEnabled(False)
-        self.b_marker.clicked.connect(self._talla_tempo_i_estructura_cursor)
-
         # Dos accessos directes a la quadratura d'extrems: obrin el diàleg
         # ja enfocat a l'inici o al final (no apliquen res sense confirmar).
         self.b_audio_ini = QPushButton("Ajusta inici WAV")
@@ -241,15 +232,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_audio_fi.setEnabled(False)
         self.b_audio_fi.clicked.connect(
             lambda: self._quadra_extrems_ui("final"))
-        self.b_marker_compas = QPushButton("＋ Marcador")
-        self.b_marker_compas.setObjectName("secundari")
-        self.b_marker_compas.setIcon(icones.ico("map-pin", 16))
-        self.b_marker_compas.setIconSize(icones.pm_mida(16))
-        self.b_marker_compas.setToolTip(
-            "Afig només un marcador al cursor (tecla M); no talla res.")
-        self.b_marker_compas.setEnabled(False)
-        self.b_marker_compas.clicked.connect(self._marcador_cursor)
-
         # 2. temps i paràmetres — BARRA compacta d'una sola línia (estil DAW)
         #    (abans era un QGroupBox «2 · Temps i paràmetres»)
         self.b_mode_bpm = QPushButton("BPM · compàs")
@@ -384,6 +366,25 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         self.b_analitza_beats_clip.clicked.connect(
             self._analitza_bpm_clip)
         self.b_analitza_beats_clip.setEnabled(False)  # fins que hi haja WAV
+        self.b_analitza_beats_loop = QPushButton("Beats A–B")
+        self.b_analitza_beats_loop.setObjectName("secundari")
+        self.b_analitza_beats_loop.setIcon(icones.ico("target", 16))
+        self.b_analitza_beats_loop.setIconSize(icones.pm_mida(16))
+        self.b_analitza_beats_loop.setToolTip(
+            "Analitza només els beats del loop A–B, amb motor i "
+            "sensibilitat com F7. Conserva els beats de fora del loop.")
+        self.b_analitza_beats_loop.clicked.connect(self._analitza_bpm_loop)
+        self.b_analitza_beats_loop.setEnabled(False)  # fins que hi haja WAV
+        self.b_analitza_onsets_loop = QPushButton("Onsets A–B")
+        self.b_analitza_onsets_loop.setObjectName("secundari")
+        self.b_analitza_onsets_loop.setIcon(icones.ico("target", 16))
+        self.b_analitza_onsets_loop.setIconSize(icones.pm_mida(16))
+        self.b_analitza_onsets_loop.setToolTip(
+            "Detecta onsets (sense BPM ni compassos) dins del loop A–B i "
+            "els marca com a beats. Usa la sensibilitat de les opcions de beats.")
+        self.b_analitza_onsets_loop.clicked.connect(
+            self._analitza_onsets_loop)
+        self.b_analitza_onsets_loop.setEnabled(False)  # fins que hi haja WAV
 
         # 1a BARRA: en ORDRE DE FLUX de treball →
         #   1) Obre  ·  2) opcions de temps  ·  3) Analitza i Exporta (al final)
@@ -393,8 +394,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         barra.addWidget(self.b_guia)
         barra.addWidget(self.b_audio_ini)
         barra.addWidget(self.b_audio_fi)
-        barra.addWidget(self.b_marker)
-        barra.addWidget(self.b_marker_compas)
         barra.addSeparator()
         barra.addWidget(self.b_mode_bpm)
         barra.addWidget(self.b_mode_lliure)
@@ -404,6 +403,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         barra.addWidget(self.b_exec)
         barra.addWidget(self.b_analitza_beats)
         barra.addWidget(self.b_analitza_beats_clip)
+        barra.addWidget(self.b_analitza_beats_loop)
+        barra.addWidget(self.b_analitza_onsets_loop)
         self.b_desfer = QPushButton()
         self.b_desfer.setObjectName("secundari")
         self.b_desfer.setIcon(icones.ico("undo-2", 16))

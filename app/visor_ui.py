@@ -75,11 +75,11 @@ class VisorUIMixin:
             self.b_exec.setEnabled(False)
             self.b_analitza_beats.setEnabled(False)
             self.b_analitza_beats_clip.setEnabled(False)
+            self.b_analitza_beats_loop.setEnabled(False)
+            self.b_analitza_onsets_loop.setEnabled(False)
             self.b_guia.setEnabled(False)
             self.b_audio_ini.setEnabled(False)
             self.b_audio_fi.setEnabled(False)
-            self.b_marker.setEnabled(False)
-            self.b_marker_compas.setEnabled(False)
             self._mostra_placeholder_visor()
             return
         try:
@@ -188,11 +188,11 @@ class VisorUIMixin:
             self.b_exec.setEnabled(True)     # hi ha WAV -> es pot analitzar
             self.b_analitza_beats.setEnabled(True)
             self.b_analitza_beats_clip.setEnabled(True)
+            self.b_analitza_beats_loop.setEnabled(True)
+            self.b_analitza_onsets_loop.setEnabled(True)
             self.b_guia.setEnabled(True)
             self.b_audio_ini.setEnabled(True)
             self.b_audio_fi.setEnabled(True)
-            self.b_marker.setEnabled(True)
-            self.b_marker_compas.setEnabled(True)
             # Si el visor ja porta MODEL (projecte obert, o anàlisi feta), les
             # exportacions també han d'estar disponibles. Abans només
             # s'activaven al final d'una ANÀLISI → OBRIR UN PROJECTE deixava

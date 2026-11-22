@@ -2465,10 +2465,12 @@ class EsquemaUiDocTests(unittest.TestCase):
         # es fa amb marcadors en viu. Sense WAV el botó està desactivat.
         self.assertIsNotNone(getattr(self.w, "b_guia", None))
         self.assertFalse(self.w.b_guia.isEnabled())
-        self.assertIn("＋ Temps+Secció", texts)  # el botó del tall hi és
-        self.assertFalse(self.w.b_marker.icon().isNull())
-        self.assertFalse(self.w.b_marker_compas.icon().isNull())
-        self.assertFalse(self.w.b_marker.isEnabled())
+        # Els botons de tall i marcador ja no viuen a la barra: la
+        # funcionalitat queda als menús i a les tecles + / M.
+        self.assertNotIn("＋ Temps+Secció", texts)
+        self.assertNotIn("＋ Marcador", texts)
+        self.assertFalse(hasattr(self.w, "b_marker"))
+        self.assertFalse(hasattr(self.w, "b_marker_compas"))
         with patch.object(app_main, "dialeg_guia_rapida") as mod:
             self.w._obre_guia_rapida()
         self.assertEqual(mod.DialegGuiaRapida.call_count, 1)
@@ -3671,21 +3673,12 @@ class TestTempoLayerZones(_timeline_layers___Base):
     def test_vores_i_cos_de_cada_bloc(self):
         capa = self._capa()
         # tram 0 [0,5) -> x 0..300 ; tram 1 [5,10) -> 300..600 ; 2 [10,20) -> 600..1200
-        # (a la frontera 300 és COMPARTIDA: el tram 0 respon «fi» i el tram 1
-        #  «ini»; tots dos són el mateix punt de canvi i el visor els tracta
-        #  igual. La comprovació d'«ini» es fa al tram 2, on el tram anterior no
-        #  pot respondre «fi» — si no, el test no distingiria les dues vores.)
         self.assertIn(capa._zona(301.0), [(0, "fi"), (1, "ini")])
         self.assertEqual(capa._zona(603.0), (2, "ini"))
         self.assertEqual(capa._zona(450.0), (1, "cos"))
         self.assertEqual(capa._zona(700.0), (2, "cos"))
 
     def test_la_nansa_te_8_px_de_marge(self):
-        """La frontera s'agarra 8 px a cada costat (nansa pintada al paint).
-
-        Abans el marge era d'1 px i, amb zoom normal, era impossible encertar
-        la frontera per moure-la; a més la nansa no es veia.
-        """
         capa = self._capa()
         self.assertEqual(capa._zona(300.0 - 7.0), (0, "fi"))
         self.assertEqual(capa._zona(300.0 + 7.0)[1], "ini")
@@ -3693,11 +3686,12 @@ class TestTempoLayerZones(_timeline_layers___Base):
         self.assertEqual(capa._zona(300.0 + 9.0), (1, "cos"))
 
     def test_els_extrems_no_tenen_vora_draggable(self):
-        """El PRIMER tram no té vora esquerra i l'ÚLTIM no en té de dreta: el
-        mapa sempre comença a 0 i acaba a la durada."""
         capa = self._capa()
         self.assertEqual(capa._zona(1.0), (0, "cos"))
         self.assertEqual(capa._zona(1199.0), (2, "cos"))
+        self.assertFalse(capa._pot_moure(0))
+        self.assertTrue(capa._pot_moure(1))
+        self.assertFalse(capa._pot_moure(2))
 
     def test_fora_del_mapa(self):
         capa = self._capa()
@@ -3710,17 +3704,12 @@ class TestTempoLayerZones(_timeline_layers___Base):
         self.assertEqual(buida._zona(450.0), (-1, None))
 
     def test_cursor_de_zona_com_les_altres_pistes(self):
-        """Paritat #11: ↔ a les vores, mà OBLERTA al cos, fletxa al buit.
-
-        Es prova la funció pura (PyQt5 no deixa fabricar un event de *hover*),
-        i que el *hover* la fa servir amb la zona que toca.
-        """
+        """Paritat #11: ↔ a les vores, mà oberta al cos, fletxa al buit."""
         capa = self._capa()
         self.assertEqual(capa._cursor_de_zona("ini"), Qt.SizeHorCursor)
         self.assertEqual(capa._cursor_de_zona("fi"), Qt.SizeHorCursor)
         self.assertEqual(capa._cursor_de_zona("cos"), Qt.OpenHandCursor)
         self.assertEqual(capa._cursor_de_zona(None), Qt.ArrowCursor)
-        # i la zona que calcula per a una x concreta
         self.assertEqual(capa._zona(450.0)[1], "cos")
 
 
@@ -3973,9 +3962,9 @@ class TestTempoLayerCursorAlClic(_timeline_layers___Base):
         capa = self._capa()
         destins = []
         capa.tramCursorRequested.connect(destins.append)
-        capa.mousePressEvent(_Ev(300.0, Qt.LeftButton))   # vora ini del tram 1
+        capa.mousePressEvent(_Ev(450.0, Qt.LeftButton))   # cos del tram 1
         capa._t_guia = 4.6                                # simulació d'arrossegada
-        capa.mouseReleaseEvent(_Ev(276.0, Qt.LeftButton))
+        capa.mouseReleaseEvent(_Ev(426.0, Qt.LeftButton))
         self.assertEqual(destins, [])
 
     def test_boto_dret_no_mou_el_cursor(self):

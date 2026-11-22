@@ -108,6 +108,190 @@ def _envolupant_onsets(wav_path, inici=0.0, fi=None, retorna_offset=False):
     return env, sr
 
 
+def _envolupant_onsets_energia(wav_path, inici=0.0, fi=None,
+                                retorna_offset=False):
+    """Envolupant de flux d'energia entre fotogrames (per a onsets).
+
+    Complementa `_envolupant_onsets`: calcula l'energia de cada fotograma i
+    en fa el flux positiu, de manera que detecta atacs que cauen just a
+    l'inici d'un fotograma (els clics curts hi poden caure).
+    """
+    with wave.open(wav_path, "rb") as w:
+        sr = w.getframerate()
+        ch = w.getnchannels()
+        nframes = w.getnframes()
+        i0 = max(0, min(nframes, int(round(float(inici or 0.0) * sr))))
+        i1 = nframes if fi is None else max(
+            i0, min(nframes, int(round(float(fi) * sr))))
+        w.setpos(i0)
+        d = np.frombuffer(w.readframes(i1 - i0), dtype=np.int16)
+    d = d.astype(np.float32)
+    if ch > 1:
+        d = d.reshape(-1, ch).mean(axis=1)
+    if d.size == 0:
+        if retorna_offset:
+            return np.zeros(0, dtype=np.float32), sr, float(inici or 0.0)
+        return np.zeros(0, dtype=np.float32), sr
+    hop = max(1, int(sr * HOP_S))
+    n = d.size // hop
+    if n < 4:
+        if retorna_offset:
+            return np.zeros(0, dtype=np.float32), sr, float(inici or 0.0)
+        return np.zeros(0, dtype=np.float32), sr
+    energia = np.abs(d[:n * hop].reshape(n, hop)).sum(axis=1)
+    env = np.diff(energia).clip(min=0)
+    env = env - env.mean()
+    t0 = float(inici or 0.0)
+    if env.size:
+        llindar = env.max() * 0.15
+        idx = np.where(env > llindar)[0]
+        if idx.size:
+            env = env[idx[0]:]
+            t0 += float(idx[0]) * HOP_S
+    if retorna_offset:
+        return env, sr, t0
+    return env, sr
+
+
+# --- refinament de l'inici d'un atac (domini temporal) ----------------------
+# `detecta_onsets` troba el pic de l'ODF a passos de 10 ms: serveix per saber
+# QUIN esdeveniment és, però no per situar-lo. Aquest pas el refina a la
+# resolució de la mostra.
+ATAC_FINESTRA_MS = 12.0  # envolupant de pic (causal); ≥ semiperíode d'un ~40 Hz
+ATAC_REL = 0.10          # llindar d'inici: 10 % del pic (−20 dB)
+
+
+def _llegeix_abs(wav_path, inici, fi):
+    """Valor absolut del senyal (màxim entre canals, sense cancel·lacions).
+
+    Retorna `(abs, sample_rate, t_inici_real)`. Només PCM de 16 bits, igual
+    que la resta del mòdul.
+    """
+    with wave.open(wav_path, "rb") as w:
+        if w.getsampwidth() != 2:
+            raise ValueError("només PCM de 16 bits")
+        sr = w.getframerate()
+        ch = w.getnchannels()
+        n = w.getnframes()
+        i0 = max(0, min(n, int(round(float(inici) * sr))))
+        i1 = max(i0, min(n, int(round(float(fi) * sr))))
+        w.setpos(i0)
+        d = np.frombuffer(w.readframes(i1 - i0), dtype=np.int16)
+    d = np.abs(d.astype(np.float32) / 32768.0)
+    if ch > 1:
+        d = d[:d.size // ch * ch].reshape(-1, ch).max(axis=1)
+    return d, sr, i0 / float(sr)
+
+
+def refina_inici_atac(wav_path, t_odf, enrere=0.05, avant=0.08,
+                      finestra_ms=ATAC_FINESTRA_MS, rel=ATAC_REL):
+    """Inici de l'atac (s) a partir del pic aproximat de l'ODF `t_odf`.
+
+    1. Envolupant de pic causal (màxim de les últimes `finestra_ms` ms).
+    2. Pic de l'envolupant dins de `[t_odf, t_odf + avant]`.
+    3. Llindar = `rel` × pic (mínim 3× el terra de soroll previ).
+    4. Retrocedeix des del pic fins que l'envolupant baixa del llindar o
+       arriba a la vall d'un so anterior. Resolució: una mostra.
+
+    Si no pot (format no suportat, senyal buit…) torna `t_odf` intacte.
+    """
+    try:
+        a, sr, t_ini = _llegeix_abs(wav_path, max(0.0, t_odf - enrere),
+                                    t_odf + avant + 0.01)
+    except Exception:  # noqa: BLE001
+        return float(t_odf)
+    w = max(2, int(sr * float(finestra_ms) / 1000.0))
+    if a.size < 2 * w:
+        return float(t_odf)
+    pad = np.concatenate([np.zeros(w - 1, dtype=a.dtype), a])
+    env = np.lib.stride_tricks.sliding_window_view(pad, w).max(axis=1)
+    lo = max(0, int(round((t_odf - t_ini - 0.005) * sr)))
+    hi = min(env.size, int(round((t_odf - t_ini + avant) * sr)) + 1)
+    if hi - lo < 2:
+        return float(t_odf)
+    ip = lo + int(np.argmax(env[lo:hi]))
+    pic = float(env[ip])
+    if pic <= 1e-4:
+        return float(t_odf)
+    terra = float(np.percentile(env[:ip + 1], 10))
+    llindar = min(max(float(rel) * pic, 3.0 * terra), 0.5 * pic)
+    # Retrocés: s'atura quan l'envolupant baixa del llindar (silenci previ) o,
+    # si hi ha un so anterior més fort que el llindar, a la vall que el separa
+    # de l'atac (l'envolupant torna a pujar >25 % per sobre del mínim).
+    i, imin, vmin = ip, ip, float(env[ip])
+    while i > 0:
+        v = float(env[i - 1])
+        if v <= llindar:
+            break
+        if v < vmin:
+            vmin, imin = v, i - 1
+        elif v > 1.25 * vmin:
+            i = imin
+            break
+        i -= 1
+    return round(t_ini + i / float(sr), 6)
+
+
+def detecta_onsets(wav_path, log=None, sensibilitat=50.0, inici=0.0,
+                   fi=None, min_sep=0.05, refina=False):
+    """Detecta onsets (no beats) en una WAV o un rang.
+
+    És una capa independent del BPM: només mira els pics de l'envolupant
+    d'onsets. `sensibilitat` 0 = llindar alt (menys onsets), 100 = llindar
+    baix (més onsets). `min_sep` és la separació mínima entre onsets en
+    segons. Retorna temps absoluts en segons.
+    """
+    log = log or (lambda *a: None)
+    try:
+        env, _sr, t0 = _envolupant_onsets_energia(
+            wav_path, inici=inici, fi=fi, retorna_offset=True)
+    except Exception as e:  # noqa: BLE001
+        log(f"onsets: no s'ha pogut llegir el senyal ({e})")
+        return []
+    x = np.maximum(np.asarray(env, dtype=float), 0.0)
+    if x.size < 4 or float(x.max()) <= 0.0:
+        return []
+    try:
+        sens = max(0.0, min(100.0, float(sensibilitat)))
+    except (TypeError, ValueError):
+        sens = 50.0
+    # A més sensibilitat, més baix el llindar. El màxim és una referència
+    # robusta per a loops curts amb pocs cops.
+    frac = 0.70 - 0.50 * (sens / 100.0)
+    llindar = max(float(np.percentile(x, 50)), frac * float(x.max()))
+    candidats = []
+    for i in range(x.size):
+        if x[i] < llindar:
+            continue
+        esq = x[i - 1] if i > 0 else -1.0
+        dre = x[i + 1] if i + 1 < x.size else -1.0
+        if x[i] >= esq and x[i] > dre:
+            candidats.append(i)
+    if not candidats:
+        return []
+    # Fusiona pics massa pròxims conservant el més fort.
+    radi = max(1, int(round(float(min_sep) / HOP_S)))
+    triats = []
+    for i in candidats:
+        if triats and i - triats[-1] <= radi:
+            if x[i] > x[triats[-1]]:
+                triats[-1] = i
+            continue
+        triats.append(i)
+    onsets = []
+    for i in triats:
+        t = round(float(t0) + float(i) * HOP_S, 6)
+        if refina:
+            t = refina_inici_atac(wav_path, t)
+        # El refinament no pot traure un onset fora del rang: si l'atac
+        # comença abans d'A, el loop no el conté.
+        if inici - 1e-9 <= t and (fi is None or t < fi - 1e-9):
+            onsets.append(t)
+    log(f"onsets: {len(onsets)} pic(s), sensibilitat {sens:.0f}/100"
+        f"{', atac refinat' if refina else ''}")
+    return onsets
+
+
 def _autocorrelacio(env):
     """Autocorrelació **normalitzada per la superposició** (N−lag).
 

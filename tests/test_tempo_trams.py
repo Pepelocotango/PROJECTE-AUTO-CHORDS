@@ -430,6 +430,43 @@ class RetempoTests(unittest.TestCase):
             n = tempo_map.compassos_del_clip(clip)
             self.assertAlmostEqual(n, round(n), places=6, msg=clip)
 
+    def test_mou_tram_sencer_conserva_el_seleccionat_i_recalcula_veins(self):
+        # 0–10 (5 compassos 4/4 a 120), 10–22 (5 a 100), 22–30 (4 a 120).
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 22.0, 100.0, 4, 4),
+                 (22.0, 30.0, 120.0, 4, 4)]
+        out = tempo_map.mou_tram_sencer(trams, 1, 12.0, 30.0)
+        self.assertAlmostEqual(out[1][0], 12.0, places=6)
+        self.assertAlmostEqual(out[1][1], 24.0, places=6)
+        self.assertAlmostEqual(out[1][2], 100.0, places=6)  # BPM intacte
+        self.assertEqual(out[1][3:], (4, 4))                # compàs intacte
+        self.assertAlmostEqual(out[0][1], 12.0, places=6)   # veí esquerre
+        self.assertAlmostEqual(out[2][0], 24.0, places=6)   # veí dret
+        for clip in out:
+            n = tempo_map.compassos_del_clip(clip)
+            self.assertAlmostEqual(n, round(n), places=6, msg=clip)
+
+    def test_mou_tram_sencer_rebutja_extrems_i_dos_clips(self):
+        dos = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 120.0, 4, 4)]
+        for idx in (0, 1):
+            with self.assertRaises(ValueError):
+                tempo_map.mou_tram_sencer(dos, idx, 5.0, 30.0)
+        tres = [(0.0, 10.0, 120.0, 4, 4), (10.0, 20.0, 120.0, 4, 4),
+                (20.0, 30.0, 120.0, 4, 4)]
+        with self.assertRaises(ValueError):
+            tempo_map.mou_tram_sencer(tres, 0, 5.0, 30.0)
+        with self.assertRaises(ValueError):
+            tempo_map.mou_tram_sencer(tres, 2, 15.0, 30.0)
+
+    def test_mou_tram_sencer_s_atura_abans_de_deixar_un_vei_curt(self):
+        tres = [(0.0, 10.0, 120.0, 4, 4), (10.0, 20.0, 120.0, 4, 4),
+                (20.0, 30.0, 120.0, 4, 4)]
+        out = tempo_map.mou_tram_sencer(tres, 1, -100.0, 30.0)
+        self.assertAlmostEqual(out[1][0], 2.0, places=6)  # 1 compàs a 120
+        self.assertAlmostEqual(out[0][1], 2.0, places=6)
+        out = tempo_map.mou_tram_sencer(tres, 1, 100.0, 30.0)
+        self.assertAlmostEqual(out[1][0], 18.0, places=6)
+        self.assertAlmostEqual(out[2][0], 28.0, places=6)
+
     def test_compassos_mes_menys_i_doblar(self):
         un = [(0.0, 8.0, 120.0, 4, 4)]
         out = tempo_map.canvia_compassos_tram(un, 0, 1, 8.0)

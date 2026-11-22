@@ -11,7 +11,7 @@ mkdir -p icones
 # Nomes les que l'app FA SERVIR de debo (verificat: `tests/test_icones.py`
 # comprova que totes es referencien i que no n'hi ha cap d'innecessaria).
 # Fora: `circle-gauge`, `mic` i `settings` (no s'usaven enlloc).
-NOMES="play pause square repeat-2 volume-x metronome target map-pin compass \
+NOMES="play pause square repeat-2 volume-x metronome target \
 zoom-in zoom-out rewind fast-forward maximize focus \
 arrow-left-to-line arrow-right-to-line music piano \
 undo-2 redo-2 x"

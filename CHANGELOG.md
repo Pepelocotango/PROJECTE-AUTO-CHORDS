@@ -5,6 +5,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Canviat — Drag dels clips de tempo (2026-11-22)
+- El **cos** d’un tram de tempo **interior** mou el bloc sencer: conserva
+  durada, BPM, compàs i `N`. Els veïns dret i esquerre es recalculen.
+- Les **vores interiors** continuen redimensionant una frontera; el cos mou
+  el bloc sencer. Coexisteixen els dos gestos.
+- El primer i l’últim tram no es mouen com a bloc perquè tenen l’inici o el
+  final de la WAV ancorats. Amb només dos clips, no es pot moure cap bloc,
+  però les vores interiors es poden redimensionar.
+- Si el moviment deixaria un veí per davall d’un compàs, s’atura en eixe
+  límit.
+
+### Canviat — barra Treball més neta (2026-11-22)
+- Trecs de la barra Treball els botons **«＋ Temps+Secció»** i **«＋ Marcador»**.
+  La funcionalitat es conserva als menús i a les tecles **+**, **Enter** i **M**.
+
 ### Afegit — Tap tempo amb «.» del teclat numèric (2026-11-22)
 - Nova drecera **`global.tap_numpad`** (es pot canviar a *Ajuda ▸ Dreceres*):
   el **`.` del teclat numèric** fa el mateix **tap tempo** que **`T`**, també
@@ -13,6 +28,38 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   en un camp** (BPM, nom d'acord…) el punt s'hi escriu i **no** fa cap tap.
   El punt de la fila superior no hi és afectat.
 - Regressió a `tests/test_pipeline.py` (`TapTempoTests`).
+
+### Afegit — Beats al loop A–B (2026-11-22)
+- Nou botó **«Beats A–B»** a la barra Treball. Analitza només el rang A–B
+  seleccionat, no la WAV sencera.
+- Reutilitza el diàleg de F7: permet triar **motor** (Nostre o Queen Mary),
+  **sensibilitat 0–100**, mode (`només beats` o `BPM + beats + downbeats`) i
+  pols percebuda.
+- Retalla temporalment el loop (mínim 1 s), detecta i **fusiona** els beats
+  dins `[A, B)`; els beats de fora es conserven.
+- No mou fronteres ni aplica el BPM al transport: el BPM detectat només
+  informa. El resultat es desa a `analisi_beats` i entra a l’undo.
+- Regressió a `tests/test_pipeline.py`.
+
+### Afegit — Onsets A–B (2026-11-22)
+- Nou botó **«Onsets A–B»** al costat de «Beats A–B». Detecta **només
+  onsets** dins del loop, sense calcula BPM ni compassos.
+- Usa l'envolupant de flux d'energia amb llindar adaptatiu (sensibilitat de
+  les opcions de beats) i una separació mínima de 50 ms.
+- Els onsets es guarden com una **capa independent** dins `[A,B)`; no toquen
+  els beats ni els downbeats. No aplica cap BPM.
+- Eixos beats es pinten amb un **color propi** (`theme.TL_BEAT_ONSET`, lila)
+  per no confondre'ls amb els beats detectats normals ni amb els downbeats.
+- L'atac es refina a **resolució de mostra** (opcional; actiu a Onsets A–B)
+  amb una envolupant de 12 ms i un llindar del 10 %. La sortida és estricta
+  dins `[A,B)`: si l'atac comença abans d'A, no es marca.
+- Onsets A–B accepta loops de **0,1–2 s**; els més llargs es rebutgen per
+  limitar el cost de refinar cada onset.
+- **Beats i onsets són capes independents**: generar beats no esborra els
+  onsets, i generar onsets no toca els beats ni els downbeats. Si cauen al
+  mateix instant, es dibuixen les dues línies amb colors semitransparents i
+  el resultat es veu com una mescla.
+- Regressió a `tests/test_pipeline.py`.
 
 ### Afegit — Metrònom: patrons «BPM percebuts» i «BPM interns» (2026-11-21)
 - El selector de **patró** del metrònom incorpora dos modes nous, tots dos
@@ -66,7 +113,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   **17/20 de família**; amb 60–180, 8/20 i 17/20.
 - Regressions noves a `tests/test_pipeline.py` per a BPM fora de graella,
   tempo ràpid, octava 90,6, rang ample 56/188 i silenci final.
-- `make check` complet: **1693 tests** (1 omès) i `pyflakes` net.
+- `make check` complet: **1706 tests** (1 omès) i `pyflakes` net.
 
 ### Afegit — llançador de Windows (2026-11-20)
 - `AUTO_CHORDS.bat`: equivalent a `AUTO_CHORDS.sh` per a Windows; posa

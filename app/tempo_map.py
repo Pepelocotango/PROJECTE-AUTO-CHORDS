@@ -1777,6 +1777,68 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada,
                                     beats_qm=beats_qm)
 
 
+def _min_durada_costat(tram):
+    """Durada mínima per a un costat: un compàs (o el mínim absolut)."""
+    try:
+        if getattr(tram, "tipus", None) == "rubato":
+            return limits.TEMPS_MIN_CLIP
+        return max(durada_compas(float(tram[2]), int(tram[3]), int(tram[4])),
+                   limits.TEMPS_MIN_CLIP)
+    except (TypeError, ValueError, IndexError):
+        return limits.TEMPS_MIN_CLIP
+
+
+def mou_tram_sencer(trams, idx, nou_ini, durada, beats_qm=None,
+                   avisos=None, beat_factor=1.0, unitats=None,
+                   classificacions=None, suggerides=None,
+                   permet_ultim_fraccionari=True):
+    """Mou un tram **interior** sencer, conservant la seua durada i tempo.
+
+    Les fronteres queden on l'usuari les posa, però el tram seleccionat no
+    canvia BPM, compàs ni N. Els dos veïns sí que canvien de durada i es
+    recalculen amb la mateixa lògica que el re-tempo de vores. El primer i
+    l'últim tram no es poden moure perquè un extrem està ancorat a la WAV.
+
+    Si el moviment deixaria un veí per davall d'un compàs, s'atura en eixe
+    límit. Retorna el mapa normalitzat o `ValueError`.
+    """
+    durada = float(durada or 0.0)
+    nous = normalitza_trams(trams, durada)
+    i = int(idx)
+    if len(nous) < 3 or not (0 < i < len(nous) - 1):
+        raise ValueError("Només es pot moure un tram interior; el primer i "
+                         "l'últim tenen l'inici o el final de la WAV ancorats")
+    a, b, c = nous[i - 1], nous[i], nous[i + 1]
+    dur = float(b[1]) - float(b[0])
+    if dur <= TOL:
+        raise ValueError("El tram no té durada")
+    minim_esq = _min_durada_costat(a)
+    minim_dre = _min_durada_costat(c)
+    lo = float(a[0]) + minim_esq
+    hi = float(c[1]) - minim_dre - dur
+    if hi < lo - TOL:
+        raise ValueError("No hi ha espai per a moure el tram sense deixar "
+                         "un veí massa curt")
+    target = min(max(float(nou_ini), lo), hi)
+    if abs(target - float(nou_ini)) > TOL:
+        if avisos is not None:
+            avisos.append(
+                f"Moviment limitat a {target:.3f}s perquè els veïns "
+                "mantinguen un compàs sencer")
+    new_fi = target + dur
+    out = list(nous)
+    out[i - 1] = (float(a[0]), target, float(a[2]), int(a[3]), int(a[4]))
+    out[i] = (target, new_fi, float(b[2]), int(b[3]), int(b[4]))
+    out[i + 1] = (new_fi, float(c[1]), float(c[2]), int(c[3]), int(c[4]))
+    out = _recalcula_costats(
+        out, [(i - 1, a), (i + 1, c)], durada, beats_qm=beats_qm,
+        ref_base=None, avisos=avisos, beat_factor=beat_factor,
+        unitats=unitats, classificacions=classificacions,
+        suggerides=suggerides)
+    return valida_i_normalitza_permissiu(
+        out, durada, permet_ultim_fraccionari=permet_ultim_fraccionari)
+
+
 def _recalcula_costats(out, refs, durada, beats_qm=None,
                        ref_base=None, avisos=None, beat_factor=1.0,
                        meter_prior=None, unitats=None, classificacions=None,

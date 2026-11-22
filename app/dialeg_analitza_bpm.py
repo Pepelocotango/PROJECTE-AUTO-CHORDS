@@ -19,9 +19,10 @@ class DialegAnalitzaBPM(InfoDialogMixin, GeometriaMixin, QDialog):
     """
 
     def __init__(self, parent=None, opcions=None, num=4, den=4,
-                 beat_unit=None, bpm=120.0):
+                 beat_unit=None, bpm=120.0, permet_aplica_bpm=True):
         super().__init__(parent)
         self.setWindowTitle("Analitza beats, downbeats i BPM")
+        self._permet_aplica_bpm = bool(permet_aplica_bpm)
         self.setMinimumWidth(460)
         self._num = int(num) if int(num) > 0 else 4
         self._den = int(den) if int(den) > 0 else 4
@@ -100,7 +101,8 @@ class DialegAnalitzaBPM(InfoDialogMixin, GeometriaMixin, QDialog):
         self.cb_aplica.setToolTip("Si esta activat, el BPM detectat s'aplica al transport quan el mapa te un sol tram.")
         self._aplica_bpm_record = bool(d.get("aplica_bpm", True))
         self.cb_aplica.setChecked(self._aplica_bpm_record)
-        form.addRow(self.cb_aplica)
+        if self._permet_aplica_bpm:
+            form.addRow(self.cb_aplica)
         self._actualitza_mode()
 
         nota = QLabel(
@@ -138,8 +140,9 @@ class DialegAnalitzaBPM(InfoDialogMixin, GeometriaMixin, QDialog):
 
     def _actualitza_mode(self):
         nomes = self.cb_mode.currentData() == "beats"
-        self.cb_aplica.setEnabled(not nomes)
-        if nomes:
+        actiu = self._permet_aplica_bpm and not nomes
+        self.cb_aplica.setEnabled(actiu)
+        if not actiu:
             self.cb_aplica.setChecked(False)
         elif hasattr(self, "_aplica_bpm_record"):
             self.cb_aplica.setChecked(self._aplica_bpm_record)
@@ -151,5 +154,7 @@ class DialegAnalitzaBPM(InfoDialogMixin, GeometriaMixin, QDialog):
             "sensibilitat": int(self.sl.value()),
             "mode": mode,
             "beat_unit": self.cb_unitat.currentData() or bpm_unit.DEFECTE,
-            "aplica_bpm": bool(self.cb_aplica.isChecked()) and mode != "beats",
+            "aplica_bpm": (bool(self.cb_aplica.isChecked())
+                           and mode != "beats"
+                           and self._permet_aplica_bpm),
         }

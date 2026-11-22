@@ -2826,6 +2826,12 @@ class ExportPipelineTests(unittest.TestCase):
         self.assertEqual(window.b_analitza_beats.text(), "Beats/BPM")
         self.assertTrue(hasattr(window, "b_analitza_beats_clip"))
         self.assertEqual(window.b_analitza_beats_clip.text(), "Beats del clip")
+        self.assertTrue(hasattr(window, "b_analitza_beats_loop"))
+        self.assertEqual(window.b_analitza_beats_loop.text(), "Beats A–B")
+        self.assertIn("loop A–B", window.b_analitza_beats_loop.toolTip())
+        self.assertTrue(hasattr(window, "b_analitza_onsets_loop"))
+        self.assertEqual(window.b_analitza_onsets_loop.text(), "Onsets A–B")
+        self.assertIn("sense BPM", window.b_analitza_onsets_loop.toolTip())
         self.assertIn("Analitza beats, downbeats i BPM",
                       window.b_analitza_beats.toolTip())
         idx_qm = window.cb_metro.findData("qm")
@@ -2887,6 +2893,131 @@ class ExportPipelineTests(unittest.TestCase):
             self.assertEqual(window._beats_actuals["mode"], "clip")
             window.close()
             app.quit()
+
+    def test_beats_loop_analitza_nomes_el_rang_i_accepta_motor_i_sensibilitat(self):
+        from app import analisi_ui
+        app = app_main.QApplication.instance() or app_main.QApplication([])
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "tema.wav")
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(44100)
+                w.writeframes(b"\x00\x00" * 44100 * 20)
+            window = app_main.Finestra()
+            window.wav_edit.setText(wav)
+            window._carrega_visor(wav)
+            vr = window.visor_ref
+            vr.loop_a, vr.loop_b = 2.0, 4.0
+            vr.qm_beats = [1.0, 10.0]
+            vr.qm_downbeats = [1.0]
+            vist = {}
+
+            class _Dialeg:
+                def __init__(self, *a, **kw):
+                    vist["dialog"] = kw
+
+                def setWindowTitle(self, titol):
+                    vist["titol"] = titol
+
+                def exec_(self):
+                    return QW.QDialog.Accepted
+
+                def valors(self):
+                    return {"motor": "nostre", "sensibilitat": 73,
+                            "mode": "bpm", "beat_unit": "negra",
+                            "aplica_bpm": False}
+
+            def _detecta(ruta, **kw):
+                vist["detecta"] = kw
+                return {"motor": "nostre", "bpm": 120.0,
+                        "beats": [0.5, 1.0, 2.5],
+                        "downbeats": [0.0], "sensibilitat": 73}
+
+            def _retalla(orig, dest, ini, fi):
+                vist["retalla"] = (orig, dest, ini, fi)
+
+            with patch.object(analisi_ui.dialegs,
+                              "DialegAnalitzaBPM", _Dialeg), \
+                    patch.object(analisi_ui.beats_mod, "detecta", _detecta), \
+                    patch.object(analisi_ui.pipeline, "retalla_wav", _retalla):
+                window._analitza_bpm_loop()
+            self.assertFalse(vist["dialog"]["permet_aplica_bpm"])
+            self.assertEqual(vist["titol"], "Analitza beats del loop A–B")
+            self.assertEqual(vist["retalla"][0], wav)
+            self.assertEqual(vist["retalla"][2:], (2.0, 4.0))
+            self.assertEqual(vist["detecta"]["motor"], "nostre")
+            self.assertEqual(vist["detecta"]["sensibilitat"], 73)
+            self.assertEqual(vist["detecta"]["bpb"], 4)
+            self.assertEqual(vist["detecta"]["den"], 4)
+            self.assertEqual(vist["detecta"]["beat_unit"], "negra")
+            self.assertFalse(vist["detecta"]["nomes_beats"])
+            self.assertEqual(vr.qm_beats, [1.0, 2.5, 3.0, 10.0])
+            self.assertEqual(vr.qm_downbeats, [1.0, 2.0])
+            self.assertEqual(window._beats_actuals["mode"], "loop")
+            self.assertEqual(window._beats_actuals["rang"], [2.0, 4.0])
+            window.close()
+        app.quit()
+
+    def test_detecta_onsets_troba_clics_aillats(self):
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "clics.wav")
+            sr = 44100
+            vals = [0] * (sr * 2)
+            for t in (0.2, 0.6):
+                i = int(t * sr)
+                for j in range(200):
+                    vals[i + j] = int(20000 * (1 - j / 200))
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(sr)
+                w.writeframes(struct.pack("<%dh" % len(vals), *vals))
+            onsets = tempo.detecta_onsets(wav, sensibilitat=50)
+            self.assertGreaterEqual(len(onsets), 2)
+            self.assertTrue(any(abs(t - 0.2) < 0.03 for t in onsets))
+            self.assertTrue(any(abs(t - 0.6) < 0.03 for t in onsets))
+
+    def test_onsets_loop_marca_nomes_els_onsets_del_rang(self):
+        from app import analisi_ui
+        app = app_main.QApplication.instance() or app_main.QApplication([])
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "tema.wav")
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(44100)
+                w.writeframes(b"\x00\x00" * 44100 * 20)
+            window = app_main.Finestra()
+            window.wav_edit.setText(wav)
+            window._carrega_visor(wav)
+            vr = window.visor_ref
+            vr.loop_a, vr.loop_b = 2.0, 4.0
+            vr.qm_beats = [1.0, 10.0]
+            vr.qm_downbeats = [1.0, 3.0, 10.0]
+            vist = {}
+
+            def _detecta(ruta, **kw):
+                vist.update(kw)
+                return [1.0, 2.1, 3.0, 4.2]
+
+            with patch.object(analisi_ui.tempo_mod, "detecta_onsets", _detecta):
+                window._analitza_onsets_loop()
+            self.assertEqual(vist.get("inici"), 2.0)
+            self.assertEqual(vist.get("fi"), 4.0)
+            self.assertEqual(vist.get("min_sep"), 0.05)
+            self.assertTrue(vist.get("refina"))
+            # Capes independents: els onsets no toquen beats ni downbeats.
+            self.assertEqual(vr.qm_beats, [1.0, 10.0])
+            self.assertEqual(vr.qm_downbeats, [1.0, 3.0, 10.0])
+            self.assertEqual(vr.qm_onsets, [2.1, 3.0])
+            # Generar beats tampoc no ha d'esborrar els onsets.
+            window._posa_beats_analisi(vr, [1.0, 10.0],
+                                       [1.0, 3.0, 10.0])
+            self.assertEqual(vr.qm_onsets, [2.1, 3.0])
+            window.close()
+        app.quit()
 
     def test_metro_desactivat_en_mode_lliure(self):
         """El metrònom només està disponible en mode BPM · compàs."""

@@ -407,6 +407,10 @@ class TimelineView(QGraphicsView):
         """Pinta/actualitza les línies de beats i downbeats detectats."""
         self._beat_layer.set_beats(beats, downbeats)
 
+    def set_onsets(self, onsets=None):
+        """Pinta/actualitza les línies d'onsets detectats."""
+        self._beat_layer.set_onsets(onsets)
+
     def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
                        beat_type: int = 4, mapa=None,
                        bpm_unit: str = "negra") -> None:

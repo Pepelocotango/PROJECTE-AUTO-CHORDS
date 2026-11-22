@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (
 )
 
 from . import bpm_unit, beats as beats_mod, dialegs, ffmpeg, pipeline, projecte
+from . import tempo as tempo_mod
 from .feines import Feina
 
 class AnalisiMixin:
@@ -158,11 +159,11 @@ class AnalisiMixin:
         self.registra(f"Sortida: {self.sortida}")
         self.b_exec.setEnabled(False)
         self.b_analitza_beats_clip.setEnabled(False)
+        self.b_analitza_beats_loop.setEnabled(False)
+        self.b_analitza_onsets_loop.setEnabled(False)
         self.b_guia.setEnabled(False)        # res de guiat mentre s'analitza
         self.b_audio_ini.setEnabled(False)
         self.b_audio_fi.setEnabled(False)
-        self.b_marker.setEnabled(False)
-        self.b_marker_compas.setEnabled(False)
         self.a_exporta.setEnabled(False)
         self.a_exporta_part.setEnabled(False)
         _ana = self.opcions.get("analisi") or {}
@@ -236,11 +237,11 @@ class AnalisiMixin:
                       f"({a:.3f}–{b:.3f}s)…")
         self.b_exec.setEnabled(False)
         self.b_analitza_beats_clip.setEnabled(False)
+        self.b_analitza_beats_loop.setEnabled(False)
+        self.b_analitza_onsets_loop.setEnabled(False)
         self.b_guia.setEnabled(False)
         self.b_audio_ini.setEnabled(False)
         self.b_audio_fi.setEnabled(False)
-        self.b_marker.setEnabled(False)
-        self.b_marker_compas.setEnabled(False)
         self.a_exporta.setEnabled(False)
         self.a_exporta_part.setEnabled(False)
         self.feina = Feina(
@@ -260,11 +261,11 @@ class AnalisiMixin:
         self._tanca_progres()
         self.b_exec.setEnabled(True)
         self.b_analitza_beats_clip.setEnabled(True)
+        self.b_analitza_beats_loop.setEnabled(True)
+        self.b_analitza_onsets_loop.setEnabled(True)
         self.b_guia.setEnabled(True)
         self.b_audio_ini.setEnabled(True)
         self.b_audio_fi.setEnabled(True)
-        self.b_marker.setEnabled(True)
-        self.b_marker_compas.setEnabled(True)
         self.a_exporta.setEnabled(True)
         self.a_exporta_part.setEnabled(True)
         self.registra("FET ✅ — ara pots revisar el visor i fer «Exporta WAV's».")
@@ -332,21 +333,29 @@ class AnalisiMixin:
         visor = visor or getattr(self, "visor_ref", None)
         dades = getattr(getattr(self, "projecte", None), "dades", None) or {}
         info = dades.get("analisi_beats")
-        if not visor or not isinstance(info, dict):
+        if not visor:
             self._beats_actuals = None
             return
+        if not isinstance(info, dict):
+            info = {}
         beats = info.get("beats")
         downbeats = info.get("downbeats")
         if not isinstance(beats, list):
+            beats = []
             self._beats_actuals = None
-            return
-        self._beats_actuals = info
+        else:
+            self._beats_actuals = info
         try:
             downbeats = downbeats if isinstance(downbeats, list) else []
-            visor.timeline.set_beats(beats, downbeats)
+            onsets_info = dades.get("analisi_onsets") or {}
+            onsets = onsets_info.get("onsets")
+            if onsets is None:
+                # Compatibilitat amb projectes desats abans de separar capes.
+                onsets = info.get("onsets") or []
             visor.set_snap_beats(beats, downbeats)
+            visor.set_onsets(onsets)
         except Exception as e:  # noqa: BLE001
-            self.registra(f"beats: no s'han pogut restaurar ({e})")
+            self.registra(f"beats/onsets: no s'han pogut restaurar ({e})")
 
     def _posa_beats_analisi(self, vr, beats, downbeats):
         """Posa els beats detectats al visor i consolida la base d'undo.
@@ -372,11 +381,16 @@ class AnalisiMixin:
         info = dict(self._beats_actuals or {})
         info["beats"] = beats
         info["downbeats"] = downbeats
+        vr = getattr(self, "visor_ref", None)
         self._beats_actuals = info
         if self.projecte is not None:
             dades = dict(self.projecte.dades.get("analisi_beats") or {})
             dades.update(beats=beats, downbeats=downbeats)
             self.projecte.dades["analisi_beats"] = dades
+            if vr is not None and hasattr(vr, "qm_onsets"):
+                od = dict(self.projecte.dades.get("analisi_onsets") or {})
+                od["onsets"] = list(vr.qm_onsets or ())
+                self.projecte.dades["analisi_onsets"] = od
         self._marca_dirty()
 
     @staticmethod
@@ -487,6 +501,213 @@ class AnalisiMixin:
             f" ({ini:.3f}–{fi:.3f}s){bpm_txt}")
         self._missatge_info(
             f"{len(locals_b)} beats QM al clip · BPM {bpm_txt or '—'}")
+
+    def _analitza_bpm_loop(self):
+        """Analitza beats només al loop A–B, amb motor i sensibilitat com F7.
+
+        No aplica el BPM al transport: el resultat és una capa de beats dins
+        del rang. Els beats de fora del loop es conserven.
+        """
+        titol = "Beats A–B"
+        wav = self.wav_edit.text().strip()
+        vr = getattr(self, "visor_ref", None)
+        if vr is None or not wav or not os.path.isfile(wav):
+            self.avisa(titol, "Primer obri una WAV.")
+            return
+        rang = vr._loop_vals()
+        if rang is None or (rang[1] - rang[0]) < 1.0:
+            self.avisa_info(
+                titol,
+                "Marca un loop A–B de com a mínim 1 s (regle o botons A/B) "
+                "abans d'analitzar.")
+            return
+        ini, fi = float(rang[0]), float(rang[1])
+        bpb = int(self._transport_bpb())
+        den = int(self._transport_beat_type())
+        bpm_hint = float(self._transport_bpm())
+        beat_unit = bpm_unit.unitat_per_defecte(bpb, den)
+        try:
+            tr = vr.tempo_map.tram(ini)
+            if tr is not None:
+                bpb = int(tr.num)
+                den = int(tr.den)
+                bpm_hint = float(tr.bpm)
+                beat_unit = vr.unitat_de_tram(tr)
+        except (AttributeError, TypeError, ValueError):
+            pass
+        dlg = dialegs.DialegAnalitzaBPM(
+            self, opcions=self.opcions, num=bpb, den=den,
+            beat_unit=beat_unit, bpm=bpm_hint, permet_aplica_bpm=False)
+        dlg.setWindowTitle("Analitza beats del loop A–B")
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        cfg = dlg.valors()
+        beat_unit = cfg.get("beat_unit") or beat_unit
+        nomes_beats = cfg.get("mode") == "beats"
+        opcions_bpm = self.opcions.get("bpm") or {}
+        self.opcions["beats"] = {
+            **dict(self.opcions.get("beats") or {}),
+            "motor": cfg["motor"],
+            "sensibilitat": cfg["sensibilitat"],
+            "mode": cfg["mode"],
+            "beat_unit": beat_unit,
+        }
+        dialegs.desa_opcions(self.opcions)
+        self._marca_dirty()
+        self._atura_si_sona("anàlisi de beats del loop A–B")
+        self.registra(
+            f"Analitzant beats del loop A–B ({ini:.3f}–{fi:.3f}s): "
+            f"{cfg['motor']} · sensibilitat {cfg['sensibilitat']}/100…")
+        tmpd = tempfile.mkdtemp(prefix="ac_beats_loop_")
+        wav_loop = os.path.join(tmpd, "loop.wav")
+        try:
+            pipeline.retalla_wav(wav, wav_loop, ini, fi)
+            self._obre_progres("Analitzant beats del loop A–B…", 0)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            try:
+                res = beats_mod.detecta(
+                    wav_loop,
+                    motor=cfg["motor"],
+                    sensibilitat=float(cfg["sensibilitat"]),
+                    bpb=bpb,
+                    den=den,
+                    bpm_hint=bpm_hint,
+                    bpm_min=opcions_bpm.get("min"),
+                    bpm_max=opcions_bpm.get("max"),
+                    preferit=(opcions_bpm.get("pref_min"),
+                              opcions_bpm.get("pref_max")),
+                    beat_unit=beat_unit,
+                    log=self.registra,
+                    nomes_beats=nomes_beats,
+                )
+            finally:
+                QApplication.restoreOverrideCursor()
+                self._tanca_progres()
+        except Exception as e:  # noqa: BLE001
+            self.registra(f"Beats A–B ERROR: {e}")
+            self.avisa_crit(titol, f"No s'ha pogut analitzar el loop: {e}")
+            return
+        finally:
+            pipeline.esborra_tmp([tmpd])
+        locals_b = [ini + float(t) for t in (res.get("beats") or ())
+                    if 0.0 <= float(t) < (fi - ini) - 1e-9]
+        locals_d = [ini + float(t) for t in (res.get("downbeats") or ())
+                    if 0.0 <= float(t) < (fi - ini) - 1e-9]
+        if not locals_b:
+            self.avisa_info(titol,
+                            "No s'ha detectat cap beat dins del loop A–B.")
+            return
+        vells_b = list(getattr(vr, "qm_beats", None) or ())
+        vells_d = list(getattr(vr, "qm_downbeats", None) or ())
+        beats = self._fusiona_beats_rang(vells_b, locals_b, ini, fi)
+        downbeats = self._fusiona_beats_rang(vells_d, locals_d, ini, fi)
+        self._posa_beats_analisi(vr, beats, downbeats)
+        info = dict(self._beats_actuals or {})
+        info.update({
+            "motor": res.get("motor"),
+            "mode": "loop",
+            "sensibilitat": res.get("sensibilitat"),
+            "bpm": res.get("bpm"),
+            "beat_unit": beat_unit,
+            "beats": beats,
+            "downbeats": downbeats,
+            "rang": [ini, fi],
+        })
+        self._beats_actuals = info
+        self._marca_dirty()
+        if self.projecte is not None:
+            dades = dict(self.projecte.dades.get("analisi_beats") or {})
+            dades.update(info)
+            self.projecte.dades["analisi_beats"] = dades
+            try:
+                self.projecte.desa()
+                self.dirty = False
+                self._actualitza_titol()
+            except OSError as e:
+                self.registra(f"beats A–B: no s'han pogut desar ({e})")
+        bpm = res.get("bpm")
+        bpm_txt = f" · BPM {bpm:.2f}" if bpm is not None else ""
+        self.registra(
+            f"{len(locals_b)} beats dins el loop A–B "
+            f"({ini:.3f}–{fi:.3f}s){bpm_txt}")
+        self._missatge_info(
+            f"{len(locals_b)} beats al loop A–B{bpm_txt}")
+
+    def _analitza_onsets_loop(self):
+        """Detecta onsets (sense BPM) només al loop A–B i els marca com beats."""
+        titol = "Onsets A–B"
+        wav = self.wav_edit.text().strip()
+        vr = getattr(self, "visor_ref", None)
+        if vr is None or not wav or not os.path.isfile(wav):
+            self.avisa(titol, "Primer obri una WAV.")
+            return
+        rang = vr._loop_vals()
+        if rang is None or (rang[1] - rang[0]) < 0.1:
+            self.avisa_info(
+                titol,
+                "Marca un loop A–B d'almenys 0,1 s abans de detectar onsets.")
+            return
+        if (rang[1] - rang[0]) > 2.0:
+            self.avisa_info(
+                titol,
+                "El loop és massa llarg per a Onsets A–B: el màxim és 2 s. "
+                "Marca un rang més curt o usa «Beats del clip».")
+            return
+        ini, fi = float(rang[0]), float(rang[1])
+        cfg = dict(self.opcions.get("beats") or {})
+        sens = float(cfg.get("sensibilitat", 50))
+        self._atura_si_sona("detecció d'onsets del loop A–B")
+        self.registra(
+            f"Detectant onsets del loop A–B ({ini:.3f}–{fi:.3f}s) · "
+            f"sensibilitat {sens:.0f}/100…")
+        self._obre_progres("Detectant onsets del loop A–B…", 0)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            onsets = tempo_mod.detecta_onsets(
+                wav, log=self.registra, sensibilitat=sens,
+                inici=ini, fi=fi, min_sep=0.05, refina=True)
+        except Exception as e:  # noqa: BLE001
+            self.registra(f"Onsets A–B ERROR: {e}")
+            self.avisa_crit(titol, f"No s'han pogut detectar onsets: {e}")
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
+            self._tanca_progres()
+        locals_b = [float(t) for t in onsets
+                    if ini - 1e-9 <= float(t) < fi - 1e-9]
+        if not locals_b:
+            self.avisa_info(titol,
+                            "No s'ha detectat cap onset dins del loop A–B.")
+            return
+        # Capa independent: no toca els beats ni els downbeats.
+        vr.set_onsets(locals_b)
+        if hasattr(vr, "_undo_touch_base"):
+            vr._undo_touch_base()
+        info = {
+            "motor": "onsets",
+            "mode": "onsets",
+            "sensibilitat": sens,
+            "bpm": None,
+            "beat_unit": vr.unitat_objectiu(),
+            "onsets": locals_b,
+            "rang": [ini, fi],
+            "parametre": {"min_sep": 0.05},
+        }
+        self._marca_dirty()
+        if self.projecte is not None:
+            dades = dict(self.projecte.dades.get("analisi_onsets") or {})
+            dades.update(info)
+            self.projecte.dades["analisi_onsets"] = dades
+            try:
+                self.projecte.desa()
+                self.dirty = False
+                self._actualitza_titol()
+            except OSError as e:
+                self.registra(f"onsets A–B: no s'han pogut desar ({e})")
+        self.registra(
+            f"{len(locals_b)} onsets dins el loop A–B "
+            f"({ini:.3f}–{fi:.3f}s), sense BPM")
+        self._missatge_info(f"{len(locals_b)} onsets al loop A–B")
 
     def _analitza_bpm(self):
         """Acció separada «Analitza beats, downbeats i BPM»: motor, sensibilitat i línies."""

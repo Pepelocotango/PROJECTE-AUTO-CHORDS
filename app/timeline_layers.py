@@ -241,6 +241,7 @@ class BeatLayer(QGraphicsItem):
         self._top = float(top)
         self._beats = []
         self._downbeats = set()
+        self._onsets = set()
         self.setZValue(-5)
         self.setPos(self._x_offset, self._top)
 
@@ -264,22 +265,44 @@ class BeatLayer(QGraphicsItem):
                            if math.isfinite(float(t))}
         self.update()
 
+    def set_onsets(self, onsets=None):
+        self._onsets = {round(float(t), 6) for t in (onsets or ())
+                        if math.isfinite(float(t))}
+        self.update()
+
     def clear(self):
         self._beats = []
         self._downbeats = set()
+        self._onsets = set()
         self.update()
 
     def paint(self, painter, option, widget=None):
-        if not self._beats:
+        if not self._beats and not self._onsets:
             return
         p = painter
         p.setRenderHint(QPainter.Antialiasing, False)
+        # Beats i downbeats: una mica transparents perquè, si un onset cau
+        # exactament damunt, les dues línies es vegen com una mescla.
         for t in self._beats:
             if t < self._view_left - 1e-9 or t > self._view_right + 1e-9:
                 continue
             es_down = t in self._downbeats
-            color = QColor("#ffd166" if es_down else "#e6a23c")
-            p.setPen(QPen(color, 2 if es_down else 1))
+            if es_down:
+                color, ample = QColor("#ffd166"), 2
+            else:
+                color, ample = QColor("#e6a23c"), 1
+            color.setAlpha(170)
+            p.setPen(QPen(color, ample))
+            x = (t - self._view_left) * self._pps
+            p.drawLine(QPointF(x, 0), QPointF(x, self._height))
+        # Els onsets són una capa independent: es pinten sempre, encara que
+        # coincidisquen amb un beat o un downbeat.
+        color = QColor(theme.TL_BEAT_ONSET)
+        color.setAlpha(170)
+        p.setPen(QPen(color, 1))
+        for t in sorted(self._onsets):
+            if t < self._view_left - 1e-9 or t > self._view_right + 1e-9:
+                continue
             x = (t - self._view_left) * self._pps
             p.drawLine(QPointF(x, 0), QPointF(x, self._height))
 
@@ -592,12 +615,13 @@ class TempoLayer(QGraphicsObject):
     """Pista EDITABLE del mapa de **BPM/compàs** (un bloc per tros del mapa).
 
     Només es mostra en mode **BPM·compàs** i amb mapa **variable** (amb un sol
-    tros no hi ha res a editar; tot es comporta com abans). Els gestos són els
-    mateixos que a la resta de pistes: **clic** a un bloc → diàleg per al BPM i
-    el compàs; **arrossegar una vora** → re-tempo (mana el punter: es conserven
-    els compassos dels dos costats i el BPM s'adapta, sense moure cap altre
-    tram — `docs/REGLES_DE_LA_APP.md` §13); **botó dret** → menú (afegir,
-    eliminar, fusionar i compassos +1/−1/×2/÷2).
+    tros no hi ha res a editar; tot es comporta com abans). **Clic** a un bloc →
+    selecció/diàleg; **arrossegar el cos** d'un tram interior → mou el bloc
+    sencer conservant durada, BPM, compàs i N, i recalcula els veïns;
+    **arrossegar una vora interior** → redimensiona només eixa frontera. Primer
+    i últim tram no es poden moure com a bloc perquè tenen un extrem ancorat a
+    la WAV. **Botó dret** → menú (afegir, eliminar, fusionar i compassos
+    +1/−1/×2/÷2).
     """
 
     tramSelected = pyqtSignal(int)         # selecció d'un bloc (índex)
@@ -694,7 +718,11 @@ class TempoLayer(QGraphicsObject):
         return -1
 
     def _zona(self, x):
-        """(índex, zona) — zona ∈ {ini, fi, cos, None}."""
+        """(índex, zona) — zona ∈ {ini, fi, cos, None}.
+
+        Les vores interiors continuen redimensionant una frontera; el cos mou
+        el bloc sencer si és interior. Els extrems de la WAV no tenen vora.
+        """
         i = self._idx_a(x)
         if i < 0:
             return -1, None
@@ -708,15 +736,14 @@ class TempoLayer(QGraphicsObject):
             return i, "fi"
         return i, "cos"
 
+    def _pot_moure(self, i):
+        """Cert per als blocs interiors; primer i últim estan ancorats."""
+        return (self._mapa is not None and 0 < int(i) < len(self._mapa.trams) - 1)
+
     # -- esdeveniments --------------------------------------------------
     @staticmethod
     def _cursor_de_zona(z):
-        """Cursor de cada zona — **idèntic** al d'acords i estructura (#11).
-
-        ↔ a les vores (es pot arrossegar), mà **oberta** al cos (mou el punt de
-        canvi) i fletxa al buit. És una funció pura a posta: així es pot provar
-        sense haver de fabricar un event de *hover* (PyQt5 no en deixa).
-        """
+        """Cursor de cada zona: ↔ a les vores, mà oberta al cos, fletxa al buit."""
         if z in ("ini", "fi"):
             return Qt.SizeHorCursor
         if z == "cos":
@@ -739,8 +766,13 @@ class TempoLayer(QGraphicsObject):
         return float(t)
 
     def hoverMoveEvent(self, ev):
-        _i, z = self._zona(ev.pos().x())
-        self.setCursor(self._cursor_de_zona(z))
+        i, z = self._zona(ev.pos().x())
+        if z in ("ini", "fi"):
+            self.setCursor(Qt.SizeHorCursor)
+        elif z == "cos" and self._pot_moure(i):
+            self.setCursor(Qt.OpenHandCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
         super().hoverMoveEvent(ev)
 
     def mousePressEvent(self, ev):
@@ -756,32 +788,47 @@ class TempoLayer(QGraphicsObject):
             return
         i, z = self._zona(ev.pos().x())
         self.tramSelected.emit(i)          # la selecció la mana el timeline
+        x0 = ev.pos().x()
         if z in ("ini", "fi"):
             self.setCursor(Qt.SizeHorCursor)
-        elif z == "cos":
+            self._press = ((i, z), x0, None, None)
+        elif z == "cos" and self._pot_moure(i):
             self.setCursor(Qt.ClosedHandCursor)
-        self._press = ((i, z), ev.pos().x())
+            t0 = self._view_left + x0 / max(self._pps, 1e-9)
+            self._press = ((i, z), x0, t0,
+                           float(self._mapa.trams[i].ini))
+        elif i >= 0:
+            # Primer/últim: no es mou el bloc, però el clic sense arrossegada
+            # ha de portar el cursor a l'inici.
+            self._press = ((i, z), x0, None, None)
+        else:
+            self._press = None
         ev.accept()
 
     def mouseMoveEvent(self, ev):
         if self._press is None:
             return
-        (i, z), x0 = self._press
-        # Les vores (i, en un DAW, el COS del bloc = el punt de canvi) mouen
-        # on comenca el tros; el primer bloc (index 0) te l'inici fix.
-        if ((z in ("ini", "fi")) or (z == "cos" and i > 0)) \
-                and abs(ev.pos().x() - x0) > 5:
+        (i, z), x0, t0, ini0 = self._press
+        if abs(ev.pos().x() - x0) <= 5:
+            ev.accept()
+            return
+        vista = None
+        esc = self.scene()
+        if esc is not None:
+            for v in esc.views():
+                vista = v
+                break
+        snap_bar = getattr(vista, "_snap_tempo_guia", None)
+        if z in ("ini", "fi"):
             t = self._view_left + ev.pos().x() / max(self._pps, 1e-9)
-            vista = None
-            esc = self.scene()
-            if esc is not None:
-                for v in esc.views():
-                    vista = v
-                    break
-            snap_bar = getattr(vista, "_snap_tempo_guia", None)
             self._t_guia = (snap_bar(i, z, t) if callable(snap_bar)
                             else self._snap_t(t))
-            self.update()
+        elif z == "cos" and self._pot_moure(i) and t0 is not None:
+            t = self._view_left + ev.pos().x() / max(self._pps, 1e-9)
+            ini_nova = ini0 + (t - t0)
+            self._t_guia = (snap_bar(i, z, ini_nova) if callable(snap_bar)
+                            else self._snap_t(ini_nova))
+        self.update()
         ev.accept()
 
     def mouseDoubleClickEvent(self, ev):
@@ -797,10 +844,14 @@ class TempoLayer(QGraphicsObject):
         self.update()
         if p is None:
             return
-        (i, z), _x0 = p
-        if guia is not None and i >= 0 and (z in ("ini", "fi")
-                                            or (z == "cos" and i > 0)):
-            self.tramMoved.emit(i, "ini" if z == "cos" else z, float(guia))
+        if len(p) == 4:
+            (i, z), _x0, _t0, _ini0 = p
+        else:
+            (i, z), _x0 = p
+        if guia is not None and i >= 0 and (
+                z in ("ini", "fi")
+                or (z == "cos" and self._pot_moure(i))):
+            self.tramMoved.emit(i, z, float(guia))
         elif i >= 0 and self._mapa is not None \
                 and i < len(self._mapa.trams):
             # Paritat amb els clips: clic sense arrossegada → cursor a

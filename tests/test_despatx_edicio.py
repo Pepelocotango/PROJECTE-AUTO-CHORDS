@@ -359,6 +359,11 @@ class TestFase2Gestos(_Base):
         v = _visor()
         try:
             tl = v.timeline
+            # Cal un tram interior: amb només dos, els dos extrems estan
+            # ancorats i no es pot arrossegar cap bloc.
+            v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
+                                  (10.0, 20.0, 120.0, 4, 4),
+                                  (20.0, 30.0, 120.0, 4, 4)])
             self.assertAlmostEqual(float(v.tempo_trams[1][0]), 10.0, places=6)
 
             def lx(t):
@@ -367,12 +372,13 @@ class TestFase2Gestos(_Base):
             v._undo_marca()
             tl._tempo_gest = True
             tl._tempo_mogut = False
-            tl._tempo_lane.mousePressEvent(_EvItem(lx(10.0)))
+            tl._tempo_lane.mousePressEvent(_EvItem(lx(15.0)))
             tl._tempo_lane.mouseMoveEvent(_EvItem(lx(12.0)))
             tl._tempo_lane.mouseReleaseEvent(_EvItem(lx(12.0)))
             self.assertTrue(tl._tempo_mogut)
             tl.editFinished.emit()
-            self.assertAlmostEqual(float(v.tempo_trams[1][0]), 12.0, places=2)
+            self.assertAlmostEqual(float(v.tempo_trams[1][0]), 7.0, places=2)
+            self.assertAlmostEqual(float(v.tempo_trams[1][1]), 17.0, places=2)
             v.undo()
             self.assertAlmostEqual(float(v.tempo_trams[1][0]), 10.0, places=2)
         finally:
@@ -429,11 +435,17 @@ class TestFase2Gestos(_Base):
         finally:
             v.close()
 
-    def test_cos_del_tram_de_tempo_mou_la_frontera_no_el_bloc(self):
-        """Decisió 3: el cos mou ON CANVIA el tempo (no un bloc de durada fixa)."""
+    def test_cos_del_tram_de_tempo_mou_el_bloc_sencer(self):
+        """El cos mou el bloc interior; el BPM/N/compàs del seleccionat no canvien."""
         v = _visor()
         try:
             tl = v.timeline
+            # Cal un tercer tram: amb només dos, tots dos tenen un extrem
+            # ancorat i cap bloc es pot moure.
+            v.aplica_tempo_trams([
+                (0.0, 10.0, 120.0, 4, 4),
+                (10.0, 20.0, 90.0, 3, 4),
+                (20.0, 30.0, 120.0, 4, 4)])
 
             def lx(t):
                 return (float(t) - tl._view_left) * tl._pps
@@ -445,14 +457,33 @@ class TestFase2Gestos(_Base):
             tl._tempo_lane.mouseMoveEvent(_EvItem(lx(12.0)))
             tl._tempo_lane.mouseReleaseEvent(_EvItem(lx(12.0)))
             tl.editFinished.emit()
-            # La frontera s'ha mogut a 12; el final del tram continua a 30.
-            self.assertAlmostEqual(float(v.tempo_trams[0][1]), 12.0, places=2)
-            self.assertAlmostEqual(float(v.tempo_trams[1][0]), 12.0, places=2)
-            self.assertAlmostEqual(float(v.tempo_trams[1][1]), 30.0, places=2)
-            # Amb la referència base manual (120 4/4), els dos costats es
-            # recalculem amb eixa referència; ja no mana el BPM del clip veí.
-            self.assertAlmostEqual(float(v.tempo_trams[0][2]), 120.0, places=4)
-            self.assertAlmostEqual(float(v.tempo_trams[1][2]), 120.0, places=4)
+            # El bloc 10–20 s'ha mogut 3 s a l'esquerra: 7–17, mateixa durada.
+            self.assertAlmostEqual(float(v.tempo_trams[1][0]), 7.0, places=2)
+            self.assertAlmostEqual(float(v.tempo_trams[1][1]), 17.0, places=2)
+            self.assertAlmostEqual(float(v.tempo_trams[1][2]), 90.0, places=4)
+            # Els veïns s'han ajustat.
+            self.assertAlmostEqual(float(v.tempo_trams[0][1]), 7.0, places=2)
+            self.assertAlmostEqual(float(v.tempo_trams[2][0]), 17.0, places=2)
+        finally:
+            v.close()
+
+    def test_amb_dos_clips_no_es_pot_arrossegar_cap_bloc(self):
+        """Els dos extrems estan ancorats: amb 2 clips no hi ha bloc interior."""
+        v = _visor()
+        try:
+            tl = v.timeline
+            abans = [tuple(t) for t in v.tempo_trams]
+            self.assertEqual(len(abans), 2)
+
+            def lx(t):
+                return (float(t) - tl._view_left) * tl._pps
+
+            for t in (5.0, 15.0):
+                tl._tempo_lane.mousePressEvent(_EvItem(lx(t)))
+                tl._tempo_lane.mouseMoveEvent(_EvItem(lx(t + 3.0)))
+                tl._tempo_lane.mouseReleaseEvent(_EvItem(lx(t + 3.0)))
+                tl.editFinished.emit()
+            self.assertEqual([tuple(t) for t in v.tempo_trams], abans)
         finally:
             v.close()
 

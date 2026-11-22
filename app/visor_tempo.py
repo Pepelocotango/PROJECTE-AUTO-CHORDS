@@ -1227,22 +1227,41 @@ class TempoMixin:
         return out
 
     def _on_tempo_mogut(self, idx, vora, t):
-        """Vora d'un bloc de BPM/compàs arrossegada → **re-tempo** (el ratolí mana).
+        """El cos d'un tram mou el bloc sencer; conserva el seu tempo.
 
-        El punter fixa els **segons**. Cada costat conserva el seu BPM/compàs
-        com a referència i el motor de recalcul busca compassos sencers: pot
-        ajustar el BPM, el compàs o el nombre de compassos. Si no hi ha cap
-        combinació vàlida, es queda el valor anterior i s'avisa. Els trams
-        posteriors no es mouen (sense *ripple*).
-
-        Si el marcador humà d'eixa frontera coincidia, es mou amb ella (§4.C),
-        tot dins del **mateix** desfer.
+        La GUI només emet `vora="cos"`: mou el bloc interior, manté durada,
+        BPM, compàs i N, i recalcula els veïns. Les vores ja no s'arrosseguen
+        (per canviar una frontera cal l'Editor o el diàleg). El camí antic
+        `"ini"`/`"fi"` es conserva per a crides internes i tests.
         """
         trams = self._trams_map()
         if not (0 <= idx < len(trams)):
             return
+        unitats = {j: self.unitat_de_tram(tr)
+                   for j, tr in enumerate(trams)}
+        if str(vora).strip().lower() == "cos":
+            avisos = []
+            try:
+                nous = tempo_map.mou_tram_sencer(
+                    trams, idx, float(t), self._durada_wav(),
+                    beats_qm=self._beats_per_validacio(), avisos=avisos,
+                    beat_factor=self.beat_factor(), unitats=unitats,
+                    permet_ultim_fraccionari=True)
+            except ValueError as e:
+                self.avis_editor(f"Bloc de tempo: {e}")
+                return
+            nous = mapa_tempo.reenganxa_metadades(trams, nous)
+            nous = self._reseteja_compas_canviat(trams, nous)
+            self._undo_marca()
+            self.aplica_tempo_trams(nous)
+            self._undo_commit()
+            for avis in avisos:
+                self.avis_editor(f"Bloc: {avis}")
+            return
+        # Les vores no s'arrosseguen des de la GUI (bloc sencer), però el
+        # mètode conserva el camí antic per a crides internes/tests.
         # `idx` és el tram de la vora tocada; la frontera és el SEU inici
-        # («ini»/«cos») o el del SEGÜENT («fi»). `mou_frontera_retempo` rep
+        # («ini») o el del SEGÜENT («fi»). `mou_frontera_retempo` rep
         # l'índex del tram de la DRETA (la frontera és el seu inici).
         p_idx = int(idx) if str(vora).strip().lower() == "ini" else int(idx) + 1
         if not (0 < p_idx < len(trams)):
@@ -1255,8 +1274,6 @@ class TempoMixin:
                     "La fi de l'últim clip marca el final de la WAV")
             return
         avisos = []
-        unitats = {j: self.unitat_de_tram(tr)
-                   for j, tr in enumerate(trams)}
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, p_idx, float(t), self._durada_wav(),
