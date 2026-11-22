@@ -59,8 +59,9 @@ PASSOS = (
 
 
 from app.finestres import GeometriaMixin
+from app.info_box import InfoDialogMixin
 
-class DialegGuiaRapida(GeometriaMixin, QDialog):
+class DialegGuiaRapida(InfoDialogMixin, GeometriaMixin, QDialog):
     """Welcome de 5 pantalles amb «Anterior» / «Següent» / «Tanca»."""
 
     def __init__(self, parent=None):
@@ -92,14 +93,17 @@ class DialegGuiaRapida(GeometriaMixin, QDialog):
 
         f = QHBoxLayout()
         self.b_ant = QPushButton("◀ Anterior")
+        self.b_ant.setToolTip("Pantalla anterior de la guia")
         self.b_ant.clicked.connect(self._anterior)
         f.addWidget(self.b_ant)
         f.addStretch(1)
         self.b_seg = QPushButton("Següent ▶")
+        self.b_seg.setToolTip("Pantalla seguent de la guia")
         self.b_seg.setDefault(True)
         self.b_seg.clicked.connect(self._seguent)
         f.addWidget(self.b_seg)
         self.b_tanca = QPushButton("Tanca")
+        self.b_tanca.setToolTip("Tanca la guia rapiada")
         self.b_tanca.clicked.connect(self.accept)
         f.addWidget(self.b_tanca)
         v.addLayout(f)

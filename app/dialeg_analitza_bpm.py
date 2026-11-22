@@ -9,8 +9,9 @@ from app import bpm_unit
 from .opcions import BEATS_DEFECTES, carrega_opcions
 
 from app.finestres import GeometriaMixin
+from app.info_box import InfoDialogMixin
 
-class DialegAnalitzaBPM(GeometriaMixin, QDialog):
+class DialegAnalitzaBPM(InfoDialogMixin, GeometriaMixin, QDialog):
     """Opcions de l'acció separada «Analitza BPM».
 
     No detecta res: només tria motor i sensibilitat. La detecció la fa la
@@ -85,6 +86,7 @@ class DialegAnalitzaBPM(GeometriaMixin, QDialog):
         self._actualitza_pols()
 
         self.sl = QSlider(Qt.Horizontal)
+        self.sl.setToolTip("Sensibilitat del detector de beats (0=estable, 100=sensible)")
         self.sl.setRange(0, 100)
         self.sl.setValue(int(d.get("sensibilitat", 50)))
         self.lb_sens = QLabel("")
@@ -95,6 +97,7 @@ class DialegAnalitzaBPM(GeometriaMixin, QDialog):
 
         self.cb_aplica = QCheckBox(
             "Aplica el BPM detectat al transport (si el mapa és d'un sol tram)")
+        self.cb_aplica.setToolTip("Si esta activat, el BPM detectat s'aplica al transport quan el mapa te un sol tram.")
         self._aplica_bpm_record = bool(d.get("aplica_bpm", True))
         self.cb_aplica.setChecked(self._aplica_bpm_record)
         form.addRow(self.cb_aplica)
@@ -109,6 +112,8 @@ class DialegAnalitzaBPM(GeometriaMixin, QDialog):
         lay.addLayout(form)
 
         box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        box.button(QDialogButtonBox.Ok).setToolTip("Accepta les opcions i tanca")
+        box.button(QDialogButtonBox.Cancel).setToolTip("Cancel.la i tanca")
         box.accepted.connect(self.accept)
         box.rejected.connect(self.reject)
         lay.addWidget(box)

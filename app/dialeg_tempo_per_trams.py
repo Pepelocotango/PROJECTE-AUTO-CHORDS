@@ -6,8 +6,9 @@ from PyQt5.QtWidgets import (
 
 from app import bpm_unit
 from app.finestres import GeometriaMixin
+from app.info_box import InfoDialogMixin
 
-class DialegTempoPerTrams(GeometriaMixin, QDialog):
+class DialegTempoPerTrams(InfoDialogMixin, GeometriaMixin, QDialog):
     """«Detecta el tempo per trams»: mapa de BPM cada N compassos.
 
     És l'acció automàtica per a cançons amb **tempo variable**: es detecta un
@@ -71,8 +72,10 @@ class DialegTempoPerTrams(GeometriaMixin, QDialog):
         botons = QDialogButtonBox(QDialogButtonBox.Ok
                                   | QDialogButtonBox.Cancel)
         botons.button(QDialogButtonBox.Ok).setText("Detecta")
+        botons.button(QDialogButtonBox.Ok).setToolTip("Detecta el mapa de tempo per trams amb els parametres triats.")
         botons.button(QDialogButtonBox.Ok).setDefault(True)
         botons.button(QDialogButtonBox.Cancel).setText("Cancel·la")
+        botons.button(QDialogButtonBox.Cancel).setToolTip("Cancel.la i tanca sense detectar.")
         botons.accepted.connect(self.accept)
         botons.rejected.connect(self.reject)
         lay.addWidget(botons)

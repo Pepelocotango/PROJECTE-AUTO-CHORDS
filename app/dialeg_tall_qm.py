@@ -1,5 +1,6 @@
 """Diàleg conjunt per triar les opcions d'un tall amb Beats QM."""
 from __future__ import annotations
+from app.info_box import InfoDialogMixin
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
@@ -8,7 +9,7 @@ from PyQt5.QtWidgets import (
 )
 
 
-class DialegTallQM(QDialog):
+class DialegTallQM(InfoDialogMixin, QDialog):
     """Dues columnes d'opcions, una per costat del tall.
 
     Si un costat només té una opció, es mostra com a resum fix. No hi ha cap

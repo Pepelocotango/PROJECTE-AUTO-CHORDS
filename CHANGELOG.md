@@ -57,7 +57,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   **17/20 de família**; amb 60–180, 8/20 i 17/20.
 - Regressions noves a `tests/test_pipeline.py` per a BPM fora de graella,
   tempo ràpid, octava 90,6, rang ample 56/188 i silenci final.
-- `make check` complet: **1689 tests** (1 omès) i `pyflakes` net.
+- `make check` complet: **1693 tests** (1 omès) i `pyflakes` net.
 
 ### Afegit — llançador de Windows (2026-11-20)
 - `AUTO_CHORDS.bat`: equivalent a `AUTO_CHORDS.sh` per a Windows; posa
@@ -103,6 +103,19 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   a Linux, macOS i Windows.
 - `make docs` no reescriu l'ODS si el contingut ja és equivalent.
 - Verificació local: `make check` amb **1681 tests** (1 omès) i `pyflakes` net.
+
+### Millora — tooltips i infobox centralitzada (2026-11-22)
+- Botons de la franja Editor amb icones (Fix, Mobil, x2, /2, Aplica, Ajusta).
+- Tooltips afegits a tots els controls sense cobertura dels dialegs.
+- Nou InfoDialogMixin: linia d'informacio a baix de cada dialeg modal.
+- Dreceres de l'infobox corregides (Desfer, Refer, Reanomena).
+- Terminologia unificada: recalc fix/mobil en minuscula.
+
+### Corregit — dialeg de dreceres (2026-11-22)
+- El dialeg "Dreceres de teclat" (nomes info) ara es un QDialog amb
+  QTextEdit amb scroll, en lloc d'un QMessageBox que es tallava.
+- La taula de l'editable te barra de scroll sempre visible i alcada maxima 320.
+- restaura() descarta la geometria desada si no cap a la pantalla.
 
 ### Estat — versió estable i punt de recuperació
 - Aquesta versió es considera **estable almenys a Linux** i queda com a

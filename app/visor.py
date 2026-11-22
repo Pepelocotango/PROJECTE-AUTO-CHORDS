@@ -274,37 +274,37 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ed_nom.setMaximumWidth(90)
         self.ed_nom.setToolTip("Nom de l'acord o lletra de la secció")
         _eh.addWidget(self.ed_nom)
-        self.ed_bpm_fix = QPushButton("[]")
+        self.ed_bpm_fix = QPushButton("🔒 Fix")
         self.ed_bpm_fix.setObjectName("secundari")
-        self.ed_bpm_fix.setMaximumWidth(34)
+        self.ed_bpm_fix.setMaximumWidth(70)
         self.ed_bpm_fix.setToolTip(
-            "Aplica el BPM amb recalc FIX: conserva les fronteres i "
+            "Aplica el BPM amb recalc fix: conserva les fronteres i "
             "recalcula N.")
         self.ed_bpm_fix.clicked.connect(
             lambda: self._aplica_editor_var_fix("bpm"))
         self.ed_bpm_fix.setVisible(False)
         _eh.addWidget(self.ed_bpm_fix)
-        self.ed_bpm_aplica = QPushButton("->")
+        self.ed_bpm_aplica = QPushButton("↔ Mòbil")
         self.ed_bpm_aplica.setObjectName("secundari")
-        self.ed_bpm_aplica.setMaximumWidth(34)
+        self.ed_bpm_aplica.setMaximumWidth(72)
         self.ed_bpm_aplica.setToolTip(
-            "Aplica el BPM amb recalc MÒBIL: mou la frontera amb el veí.")
+            "Aplica el BPM amb recalc mòbil: mou la frontera amb el veí.")
         self.ed_bpm_aplica.clicked.connect(
             lambda: self._aplica_editor_var("bpm"))
         self.ed_bpm_aplica.setVisible(False)
         _eh.addWidget(self.ed_bpm_aplica)
-        self.ed_bpm_x2 = QPushButton("x2")
+        self.ed_bpm_x2 = QPushButton("×2")
         self.ed_bpm_x2.setObjectName("secundari")
-        self.ed_bpm_x2.setMaximumWidth(34)
+        self.ed_bpm_x2.setMaximumWidth(56)
         self.ed_bpm_x2.setToolTip(
             "Dobla el BPM amb recalc fix: conserva les fronteres i recalcula N.")
         self.ed_bpm_x2.clicked.connect(
             lambda: self._aplica_bpm_factor(2.0))
         self.ed_bpm_x2.setVisible(False)
         _eh.addWidget(self.ed_bpm_x2)
-        self.ed_bpm_div2 = QPushButton("/2")
+        self.ed_bpm_div2 = QPushButton("÷2")
         self.ed_bpm_div2.setObjectName("secundari")
-        self.ed_bpm_div2.setMaximumWidth(34)
+        self.ed_bpm_div2.setMaximumWidth(56)
         self.ed_bpm_div2.setToolTip(
             "Divideix el BPM entre 2 amb recalc fix: conserva les fronteres "
             "i recalcula N.")
@@ -318,21 +318,21 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.ed_fam.setToolTip("Família de la secció (p. ex. N, A, B)")
         _eh.addWidget(self.ed_fam_lbl)
         _eh.addWidget(self.ed_fam)
-        self.ed_compas_fix = QPushButton("[]")
+        self.ed_compas_fix = QPushButton("🔒 Fix")
         self.ed_compas_fix.setObjectName("secundari")
-        self.ed_compas_fix.setMaximumWidth(34)
+        self.ed_compas_fix.setMaximumWidth(70)
         self.ed_compas_fix.setToolTip(
-            "Aplica el Compàs amb recalc FIX: conserva les fronteres i "
+            "Aplica el Compàs amb recalc fix: conserva les fronteres i "
             "recalcula el BPM.")
         self.ed_compas_fix.clicked.connect(
             lambda: self._aplica_editor_var_fix("compas"))
         self.ed_compas_fix.setVisible(False)
         _eh.addWidget(self.ed_compas_fix)
-        self.ed_compas_aplica = QPushButton("->")
+        self.ed_compas_aplica = QPushButton("↔ Mòbil")
         self.ed_compas_aplica.setObjectName("secundari")
-        self.ed_compas_aplica.setMaximumWidth(34)
+        self.ed_compas_aplica.setMaximumWidth(72)
         self.ed_compas_aplica.setToolTip(
-            "Aplica el Compàs amb recalc MÒBIL: mou la frontera amb el veí.")
+            "Aplica el Compàs amb recalc mòbil: mou la frontera amb el veí.")
         self.ed_compas_aplica.clicked.connect(
             lambda: self._aplica_editor_var("compas"))
         self.ed_compas_aplica.setVisible(False)
@@ -345,7 +345,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             "Grups de temps del compàs (p. ex. 3+3, 2+2+3). Buit = automàtic.")
         _eh.addWidget(self.ed_agr_lbl)
         _eh.addWidget(self.ed_agr)
-        self.ed_agr_aplica = QPushButton("Aplica")
+        self.ed_agr_aplica = QPushButton("✔ Aplica")
         self.ed_agr_aplica.setObjectName("secundari")
         self.ed_agr_aplica.setMaximumWidth(60)
         self.ed_agr_aplica.setToolTip(
@@ -365,21 +365,21 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             "últim inclosos).")
         _eh.addWidget(self.ed_n_lbl)
         _eh.addWidget(self.ed_n)
-        self.ed_n_fix = QPushButton("[]")
+        self.ed_n_fix = QPushButton("🔒 Fix")
         self.ed_n_fix.setObjectName("secundari")
-        self.ed_n_fix.setMaximumWidth(34)
+        self.ed_n_fix.setMaximumWidth(70)
         self.ed_n_fix.setToolTip(
-            "Aplica N amb recalc FIX: conserva les fronteres; el BPM es "
+            "Aplica N amb recalc fix: conserva les fronteres; el BPM es "
             "recalcula.")
         self.ed_n_fix.clicked.connect(
             lambda: self._aplica_editor_var_fix("n"))
         self.ed_n_fix.setVisible(False)
         _eh.addWidget(self.ed_n_fix)
-        self.ed_n_aplica = QPushButton("->")
+        self.ed_n_aplica = QPushButton("↔ Mòbil")
         self.ed_n_aplica.setObjectName("secundari")
-        self.ed_n_aplica.setMaximumWidth(34)
+        self.ed_n_aplica.setMaximumWidth(72)
         self.ed_n_aplica.setToolTip(
-            "Aplica N amb recalc MÒBIL: mou la frontera amb el veí.")
+            "Aplica N amb recalc mòbil: mou la frontera amb el veí.")
         self.ed_n_aplica.clicked.connect(
             lambda: self._aplica_editor_var("n"))
         self.ed_n_aplica.setVisible(False)
@@ -410,7 +410,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         _eh.addWidget(self.ed_cb_fi)
         self.ed_cb_fi_lbl.setVisible(False)
         self.ed_cb_fi.setVisible(False)
-        self.ed_aplica = QPushButton("Aplica")
+        self.ed_aplica = QPushButton("✔ Aplica")
         self.ed_aplica.setObjectName("principal")
         self.ed_aplica.setToolTip("Recalc mòbil: aplica els canvis (Enter)")
         self.ed_aplica.clicked.connect(self._aplica_editor)
@@ -418,7 +418,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # Acció explícita: conserva fronteres i compàs, i recalcula el BPM
         # perquè el clip tinga compassos sencers. Només en clips de tempo
         # normals; no canvia el comportament automàtic de la resta d'edició.
-        self.ed_bpm_compas = QPushButton("Ajusta")
+        self.ed_bpm_compas = QPushButton("⚙ Ajusta")
         self.ed_bpm_compas.setObjectName("secundari")
         self.ed_bpm_compas.setToolTip(
             "Obre el diàleg de BPM, compàs i compassos del clip seleccionat "
@@ -539,8 +539,10 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.b_stop.setToolTip("Atura i torna a l'inici")
         self.b_stop.clicked.connect(self.stop_inici)
         self.b_menys = QPushButton("−10s")
+        self.b_menys.setToolTip("Salta 10 s enrere")
         self.b_menys.clicked.connect(lambda: self.ves_a(self.pos - 10))
         self.b_mes = QPushButton("+10s")
+        self.b_mes.setToolTip("Salta 10 s endavant")
         self.b_mes.clicked.connect(lambda: self.ves_a(self.pos + 10))
         self.b_A = QPushButton()
         self.b_A.setIcon(icones.ico("arrow-left-to-line"))
@@ -557,9 +559,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.b_loop.clicked.connect(self.commuta_loop)
         self.b_zm = QPushButton()
         self.b_zm.setIcon(icones.ico("zoom-out"))
+        self.b_zm.setToolTip("Allunya (zoom out)")
         self.b_zm.clicked.connect(lambda: self.zoom(2.0))
         self.b_zp = QPushButton()
         self.b_zp.setIcon(icones.ico("zoom-in"))
+        self.b_zp.setToolTip("Apropa (zoom in)")
         self.b_zp.clicked.connect(lambda: self.zoom(0.5))
         self.b_zt = QPushButton()
         self.b_zt.setIcon(icones.ico("maximize"))
@@ -581,6 +585,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
 
         fila2 = QHBoxLayout()
         self.lliscador = QSlider(Qt.Horizontal)
+        self.lliscador.setToolTip("Posicio de reproduccio (arrossega per saltar)")
         self.lliscador.setRange(0, int(self.audio["durada"] * 100))
         self.lliscador.sliderMoved.connect(self._salt_lliscador)
         fila2.addWidget(self.lliscador, stretch=1)
@@ -589,6 +594,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.b_mut = QPushButton()
         self.b_mut.setIcon(icones.ico("volume-x"))
         self.b_mut.setObjectName("mute")
+        self.b_mut.setToolTip("Silencia / activa el so")
         self.b_mut.setCheckable(True)
         self.b_mut.clicked.connect(self.commuta_mut)
         fila2.addWidget(self.b_mut)

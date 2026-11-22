@@ -316,7 +316,22 @@ class MenusMixin:
         return "<br><br>".join(blocs)
 
     def _mostra_dreceres(self):
-        QMessageBox.information(self, "Dreceres de teclat", self._text_dreceres())
+        """Mostra totes les dreceres en un dialeg amb scroll (no es talla)."""
+        from PyQt5.QtWidgets import (
+            QDialog, QDialogButtonBox, QTextEdit, QVBoxLayout)
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Dreceres de teclat")
+        dlg.resize(720, 520)
+        lay = QVBoxLayout(dlg)
+        te = QTextEdit()
+        te.setReadOnly(True)
+        te.setHtml(self._text_dreceres())
+        lay.addWidget(te, 1)
+        botons = QDialogButtonBox(QDialogButtonBox.Close)
+        botons.rejected.connect(dlg.reject)
+        botons.accepted.connect(dlg.accept)
+        lay.addWidget(botons)
+        dlg.exec_()
 
     def _quant_a(self):
         text = (
