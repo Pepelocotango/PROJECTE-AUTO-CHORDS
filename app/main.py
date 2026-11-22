@@ -295,7 +295,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         hp.setSpacing(10)
         self.b_tap = QPushButton("TAP")
         self.b_tap.setObjectName("secundari")
-        self.b_tap.setToolTip("Tap tempo: marca el pols amb clics (o la tecla T). "
+        self.b_tap.setToolTip("Tap tempo: marca el pols amb clics (o les tecles "
+                              "T i . del teclat numèric). "
                               "2 s sense tocar = reinicia.")
         self.b_tap.clicked.connect(self._tap_tempo)
         hp.addWidget(self.b_tap)
@@ -1046,6 +1047,9 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                     return True
                 if self._coincideix_drecera("talla.estructura", ev):
                     self._talla_estructura_cursor()
+                    return True
+                if self._coincideix_drecera("global.tap_numpad", ev):
+                    self._tap_tempo()
                     return True
                 if self._coincideix_drecera("talla.tempo", ev):
                     if self._intro_te_funcio_propia(obj):

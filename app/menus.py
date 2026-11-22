@@ -257,7 +257,8 @@ class MenusMixin:
                 grups.append((accio.text().replace("&", ""), parells))
         def mostra(clau):
             seq = self._valor_drecera(clau)
-            return {"Space": "Espai", "Return": "Enter"}.get(seq, seq)
+            return {"Space": "Espai", "Return": "Enter",
+                    "Num+.": ". del teclat numèric"}.get(seq, seq)
 
         grups.append(("Ratolí i tecles del visor (combinacions)", [
             ("seleccionar un clip", "Clic a un clip"),
@@ -281,7 +282,8 @@ class MenusMixin:
             ("desplaçar la vista (pan)", "Botó dret arrossegant"),
             ("zoom", "Roda del ratolí"),
             ("play / pausa", mostra("global.play")),
-            ("TAP del temps (tap tempo)", mostra("global.tap")),
+            ("TAP del temps (tap tempo)",
+             f"{mostra('global.tap')} o {mostra('global.tap_numpad')}"),
             ("copiar / retallar / enganxar al cursor",
              f"{mostra('edita.copia')} / {mostra('edita.retalla')} / "
              f"{mostra('edita.enganxa')}"),

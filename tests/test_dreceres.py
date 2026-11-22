@@ -84,6 +84,27 @@ class TestDreceres(unittest.TestCase):
         self.assertEqual(
             d._editors["talla.plus"][1].keySequence().toString(), "+")
 
+    def test_punt_del_numeric_es_tap_i_el_de_la_fila_no(self):
+        punt = QKeyEvent(QEvent.KeyPress, Qt.Key_Period, Qt.KeypadModifier, ".")
+        self.assertTrue(dreceres.coincideix("Num+.", punt))
+        coma = QKeyEvent(QEvent.KeyPress, Qt.Key_Comma, Qt.KeypadModifier, ",")
+        self.assertTrue(dreceres.coincideix("Num+.", coma))
+        self.assertFalse(dreceres.coincideix(
+            "Num+.", QKeyEvent(QEvent.KeyPress, Qt.Key_Period,
+                               Qt.NoModifier, ".")))
+        self.assertFalse(dreceres.coincideix(
+            "Num+.", QKeyEvent(QEvent.KeyPress, Qt.Key_Period,
+                               Qt.KeypadModifier | Qt.ControlModifier, ".")))
+
+    def test_cataleg_te_el_tap_del_numeric(self):
+        f = self._finestra()
+        e = f._dreceres_cataleg["global.tap_numpad"]
+        self.assertEqual(e["defecte"], "Num+.")
+        self.assertIn("tap tempo", e["etiqueta"].lower())
+        self.assertTrue(dreceres.coincideix(
+            "Num+.", QKeyEvent(QEvent.KeyPress, Qt.Key_Period,
+                               Qt.KeypadModifier, ".")))
+
     def test_equivalencies_plus_return_i_delete(self):
         plus = QKeyEvent(QEvent.KeyPress, Qt.Key_Equal, Qt.ShiftModifier)
         self.assertTrue(dreceres.coincideix("+", plus))

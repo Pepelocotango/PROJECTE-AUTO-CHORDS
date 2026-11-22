@@ -5535,6 +5535,65 @@ class TapTempoTests(unittest.TestCase):
             w.close()
 
 
+    def _punt_numpad(self, w, tecla, mods=None):
+        """Envia una pulsació de tecla al filtre de la finestra."""
+        from PyQt5.QtCore import Qt
+        from PyQt5.QtTest import QTest
+        if mods is None:
+            mods = Qt.KeypadModifier
+        QTest.keyClick(w, tecla, mods)
+
+    def test_punt_del_teclat_numeric_fa_tap(self):
+        from unittest.mock import patch
+        from PyQt5.QtCore import Qt
+        w = self._finestra()
+        w.visor_ref.timeline.select_clip("tempo", 0)
+        with patch("app.main.time.monotonic",
+                   side_effect=[1000.0, 1000.5, 1001.0]):
+            w._taps = []
+            for _ in range(3):
+                self._punt_numpad(w, Qt.Key_Period)
+        self.assertEqual(len(w._taps), 3)
+        w._tanca_sessio_tap()
+        w.close()
+
+    def test_coma_del_teclat_numeric_tambe_fa_tap(self):
+        """Layouts europeus: el decimal del numèric pot ser `,`."""
+        from unittest.mock import patch
+        from PyQt5.QtCore import Qt
+        w = self._finestra()
+        w.visor_ref.timeline.select_clip("tempo", 0)
+        with patch("app.main.time.monotonic",
+                   side_effect=[1000.0, 1000.5]):
+            w._taps = []
+            for _ in range(2):
+                self._punt_numpad(w, Qt.Key_Comma)
+        self.assertEqual(len(w._taps), 2)
+        w._tanca_sessio_tap()
+        w.close()
+
+    def test_punt_de_la_fila_superior_no_fa_tap(self):
+        from PyQt5.QtCore import Qt
+        w = self._finestra()
+        w.visor_ref.timeline.select_clip("tempo", 0)
+        w._taps = []
+        self._punt_numpad(w, Qt.Key_Period, Qt.NoModifier)
+        self.assertEqual(w._taps, [])
+        w.close()
+
+    def test_punt_mentre_s_escriu_no_fa_tap(self):
+        from PyQt5.QtCore import QEvent, Qt
+        from PyQt5.QtGui import QKeyEvent
+        w = self._finestra()
+        w.visor_ref.timeline.select_clip("tempo", 0)
+        w._taps = []
+        # El filtre rep l'esdeveniment amb el camp de text com a receptor:
+        # mentre s'escriu, la tecla ha d'arribar al camp i no fer cap tap.
+        ev = QKeyEvent(QEvent.KeyPress, Qt.Key_Period, Qt.KeypadModifier, ".")
+        visor.QApplication.sendEvent(w.bpm, ev)
+        self.assertEqual(w._taps, [])
+        w.close()
+
     def test_reset_per_timeout(self):
         from unittest.mock import patch
         w = self._finestra()

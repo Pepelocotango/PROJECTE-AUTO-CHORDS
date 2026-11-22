@@ -29,6 +29,10 @@ DEFECTES = {
         "etiqueta": "Tap tempo", "grup": "Global",
         "defecte": "T", "tipus": "shortcut",
     },
+    "global.tap_numpad": {
+        "etiqueta": "Tap tempo (teclat numèric)", "grup": "Global",
+        "defecte": "Num+.", "tipus": "raw",
+    },
     "global.eina": {
         "etiqueta": "Canviar l'eina del timeline", "grup": "Global",
         "defecte": "E", "tipus": "shortcut",
@@ -164,4 +168,13 @@ def coincideix(seq, event, ignora_mods=0):
             if event.key() == Qt.Key_Equal \
                     and (event.modifiers() & Qt.ShiftModifier):
                 return True
+    # El «.» del teclat numèric pot arribar com a Key_Period o Key_Comma
+    # segons el layout (a Europa el decimal sol ser la coma). Ha de portar
+    # KeypadModifier: el punt de la fila superior NO és un tap.
+    if seq == "Num+.":
+        extra = int(event.modifiers()) & ~(
+            int(Qt.KeypadModifier) | int(ignora_mods))
+        if extra == 0 and (event.modifiers() & Qt.KeypadModifier) \
+                and event.key() in (Qt.Key_Period, Qt.Key_Comma):
+            return True
     return False

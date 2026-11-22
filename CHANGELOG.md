@@ -5,6 +5,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Afegit — Tap tempo amb «.» del teclat numèric (2026-11-22)
+- Nova drecera **`global.tap_numpad`** (es pot canviar a *Ajuda ▸ Dreceres*):
+  el **`.` del teclat numèric** fa el mateix **tap tempo** que **`T`**, també
+  amb **`,`** si el layout europeu envia la coma.
+- Passa pel filtre d'esdeveniments, no per un `QShortcut`: **mentre s'escriu
+  en un camp** (BPM, nom d'acord…) el punt s'hi escriu i **no** fa cap tap.
+  El punt de la fila superior no hi és afectat.
+- Regressió a `tests/test_pipeline.py` (`TapTempoTests`).
+
 ### Afegit — Metrònom: patrons «BPM percebuts» i «BPM interns» (2026-11-21)
 - El selector de **patró** del metrònom incorpora dos modes nous, tots dos
   **sense accents**:

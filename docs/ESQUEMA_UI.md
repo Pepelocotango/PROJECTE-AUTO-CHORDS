@@ -214,7 +214,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 
 > ⚠️ Les **dreceres** viuen a la **finestra principal** (`QShortcut`/`QAction`),
 > mai al visor incrustat (un `QShortcut` dins el visor no s'activa).
-> **Espai** = play/stop · **T** = tap tempo · **Ctrl+Z / Ctrl+Y**
+> **Espai** = play/stop · **T** o **`.` del teclat numèric** = tap tempo · **Ctrl+Z / Ctrl+Y**
 > = desfer/refer · **Del** = eliminar · **Ctrl+D** = duplicar · **F2** = reanomenar (clip o **grup del mateix tipus**) ·
 > **←/→** = **nudge** un pas de graella (**Alt+←/→** = vora dreta) ·
 > **Ctrl+O** = obrir WAV · **Ctrl+S** = desar · **Ctrl+E** = exportar ·
@@ -354,7 +354,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Previsualització d'àudio** | mostra el tram afectat mentre s'arrossega; en deixar anar, aplica l'edició a la còpia del projecte i sincronitza el model (una acció de desfer) |
 | **Roda ②** | **zoom** (centrat al clip seleccionat) |
 | **Espai** | **play / pausa** |
-| **T** | **tap tempo** |
+| **T** / **`.` del teclat numèric** | **tap tempo** (mentre s'escriu en un camp, no) |
 | **Ctrl+clic / Shift+clic** | **multi-selecció**: afegeix/treu del grup · **rang** (Shift = per temps, **sempre del carril**; per les 2 pistes, el **marquee**) |
 | **Ctrl+Shift (mantingut)** | passa temporalment a l'eina **marc**; en deixar anar, torna a l'eina anterior |
 | **Alt+clic** | **cap acció de l'app**. Alt només s'usa amb `Alt+←`/`Alt+→` (vora dreta); el sistema pot interceptar Alt+clic (moure la finestra / menú) |
