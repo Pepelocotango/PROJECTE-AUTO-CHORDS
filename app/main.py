@@ -277,16 +277,16 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         hp.setSpacing(10)
         self.b_tap = QPushButton("TAP")
         self.b_tap.setObjectName("secundari")
-        self.b_tap.setToolTip("Tap tempo: marca el pols amb clics (o les tecles "
-                              "T i . del teclat numèric). "
+        self.b_tap.setToolTip("Tap tempo: marca el pols amb clics (o la tecla T). "
                               "2 s sense tocar = reinicia.")
         self.b_tap.clicked.connect(self._tap_tempo)
         hp.addWidget(self.b_tap)
         self.b_tap_mobil = QPushButton("TAP→")
         self.b_tap_mobil.setObjectName("secundari")
         self.b_tap_mobil.setToolTip(
-            "Tap tempo mòbil: BPM exacte, conserva N i desplaça el fi del "
-            "clip seleccionat. A l'últim clip deixa N fraccionari.")
+            "Tap tempo mòbil (TAP→, o `.` del teclat numèric): BPM exacte, "
+            "conserva N i desplaça el fi del clip seleccionat. A l'últim clip "
+            "deixa N fraccionari.")
         self.b_tap_mobil.clicked.connect(lambda: self._tap_tempo(True))
         hp.addWidget(self.b_tap_mobil)
         self.bpm_intern_bar = QLabel("BPM intern: —")
@@ -1050,7 +1050,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                     self._talla_estructura_cursor()
                     return True
                 if self._coincideix_drecera("global.tap_numpad", ev):
-                    self._tap_tempo()
+                    self._tap_tempo(True)
                     return True
                 if self._coincideix_drecera("talla.tempo", ev):
                     if self._intro_te_funcio_propia(obj):

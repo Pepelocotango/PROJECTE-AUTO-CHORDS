@@ -16,6 +16,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - Si el moviment deixaria un veí per davall d’un compàs, s’atura en eixe
   límit.
 
+### Canviat — Dreceres TAP (2026-11-22)
+- **T** continua fent TAP amb fronteres fixes.
+- El **`.` del teclat numèric** ara fa **TAP→** (mòbil), no el TAP normal.
+- El `.` de la fila superior continua sense ser drecera.
+
 ### Canviat — barra Treball més neta (2026-11-22)
 - Trecs de la barra Treball els botons **«＋ Temps+Secció»** i **«＋ Marcador»**.
   La funcionalitat es conserva als menús i a les tecles **+**, **Enter** i **M**.
@@ -113,7 +118,7 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   **17/20 de família**; amb 60–180, 8/20 i 17/20.
 - Regressions noves a `tests/test_pipeline.py` per a BPM fora de graella,
   tempo ràpid, octava 90,6, rang ample 56/188 i silenci final.
-- `make check` complet: **1706 tests** (1 omès) i `pyflakes` net.
+- `make check` complet: **1707 tests** (1 omès) i `pyflakes` net.
 
 ### Afegit — llançador de Windows (2026-11-20)
 - `AUTO_CHORDS.bat`: equivalent a `AUTO_CHORDS.sh` per a Windows; posa

@@ -30,7 +30,7 @@ DEFECTES = {
         "defecte": "T", "tipus": "shortcut",
     },
     "global.tap_numpad": {
-        "etiqueta": "Tap tempo (teclat numèric)", "grup": "Global",
+        "etiqueta": "TAP→ (teclat numèric)", "grup": "Global",
         "defecte": "Num+.", "tipus": "raw",
     },
     "global.eina": {

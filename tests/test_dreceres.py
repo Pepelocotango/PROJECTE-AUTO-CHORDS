@@ -100,7 +100,7 @@ class TestDreceres(unittest.TestCase):
         f = self._finestra()
         e = f._dreceres_cataleg["global.tap_numpad"]
         self.assertEqual(e["defecte"], "Num+.")
-        self.assertIn("tap tempo", e["etiqueta"].lower())
+        self.assertIn("tap→", e["etiqueta"].lower())
         self.assertTrue(dreceres.coincideix(
             "Num+.", QKeyEvent(QEvent.KeyPress, Qt.Key_Period,
                                Qt.KeypadModifier, ".")))

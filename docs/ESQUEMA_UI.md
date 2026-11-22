@@ -397,7 +397,7 @@ Per exemple, `4/4 N=14` → `7/4` deixa `N=8` i conserva el BPM. **`->`** aplica
   transport intern del tram 0 se sincronitza des del model (`_sincronitza_temps_del_visor`),
   mai al revés.
 - **TAP** (tecla **T**): sempre mana i no té restricció QM; conserva les fronteres i manté `N` enter, també a l’últim clip.
-- **TAP→**: BPM exacte; mou el `fi` del clip seleccionat a la **línia de compàs més pròxima** amb el BPM nou i **recalcula N**. A l’últim clip la fi de la WAV no es mou i deixa `N` fraccionari. Comparteix la mateixa sessió robusta de taps. Patró estàndard dels DAWs — guarda els instants dels
+- **TAP→** (botó o `.` del teclat numèric): BPM exacte; mou el `fi` del clip seleccionat a la **línia de compàs més pròxima** amb el BPM nou i **recalcula N**. A l’últim clip la fi de la WAV no es mou i deixa `N` fraccionari. Comparteix la mateixa sessió robusta de taps. Patró estàndard dels DAWs — guarda els instants dels
   últims taps, **mediana dels intervals** → `60/∅`; **reset als 2 s** (LMMS);
   **descarta intervals fora de 30–350 BPM** i els clarament anòmals (±30 % de
   la mediana). La **unitat de pols del clip** indica el valor de cada tap:

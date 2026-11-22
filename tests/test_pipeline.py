@@ -5674,6 +5674,16 @@ class TapTempoTests(unittest.TestCase):
             mods = Qt.KeypadModifier
         QTest.keyClick(w, tecla, mods)
 
+    def test_punt_del_numeric_fa_tap_mobil(self):
+        """`.` del numèric = TAP→ (mòbil), no el TAP de fronteres fixes."""
+        from PyQt5.QtCore import Qt
+        w = self._finestra()
+        crides = []
+        w._tap_tempo = lambda mobil=False: crides.append(bool(mobil))
+        self._punt_numpad(w, Qt.Key_Period)
+        self.assertEqual(crides, [True])
+        w.close()
+
     def test_punt_del_teclat_numeric_fa_tap(self):
         from unittest.mock import patch
         from PyQt5.QtCore import Qt
