@@ -43,7 +43,7 @@ DEFECTES = {
     },
     "talla.tempo": {
         "etiqueta": "Parteix només el tempo al cursor", "grup": "Editor",
-        "defecte": "Return", "tipus": "raw",
+        "defecte": "End", "tipus": "raw",
     },
     "talla.estructura": {
         "etiqueta": "Parteix només l'estructura al cursor", "grup": "Editor",

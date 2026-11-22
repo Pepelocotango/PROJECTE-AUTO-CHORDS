@@ -6611,8 +6611,8 @@ class TestAncoratgesFinestra(unittest.TestCase):
             or round(float(vr.tempo_trams[0][2]), 3) != 120.0
             or round(float(vr.tempo_trams[1][2]), 3) != 120.0)
 
-    def test_plus_i_enter_funcionen_des_de_qualsevol_focus(self):
-        """«+» i Enter són dreceres de finestra; els camps de text manen."""
+    def test_plus_i_fin_funcionen_des_de_qualsevol_focus(self):
+        """«+» i Fin són dreceres de finestra; els camps de text manen."""
         from PyQt5.QtTest import QTest
         from PyQt5.QtCore import Qt
         # Graella Auto (sense dependre de beats QM) perquè el cursor tinga snap.
@@ -6628,10 +6628,13 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(len(vr.seccions), n_s + 1)
         vr.undo()
         QTest.qWait(1)
-        # Enter des de la mateixa llista talla només el tempo.
+        # Enter ja NO talla el tempo; Fin sí.
         vr.pos = 12.0
         vr.llista_ac.setFocus()
         QTest.keyClick(vr.llista_ac, Qt.Key_Return)
+        self.assertEqual(len(vr.tempo_trams), n_t)
+        self.assertEqual(len(vr.seccions), n_s)
+        QTest.keyClick(vr.llista_ac, Qt.Key_End)
         self.assertEqual(len(vr.tempo_trams), n_t + 1)
         self.assertEqual(len(vr.seccions), n_s)
         vr.undo()
@@ -6647,7 +6650,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
         QTest.qWait(1)
         vr.pos = 12.0
         vr.timeline.setFocus()
-        QTest.keyClick(vr.timeline, Qt.Key_Return)
+        QTest.keyClick(vr.timeline, Qt.Key_End)
         self.assertEqual(len(vr.tempo_trams), n_t + 1)
         self.assertEqual(len(vr.seccions), n_s)
 

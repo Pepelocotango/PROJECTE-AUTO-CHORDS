@@ -116,7 +116,7 @@ class InfoBoxMixin:
         """Drecera configurable per mostrar al rotatori."""
         f = getattr(self, "_valor_drecera", None)
         valor = (f(clau) if callable(f) else "") or defecte
-        return {"Space": "Espai", "Return": "Enter",
+        return {"Space": "Espai", "Return": "Enter", "End": "Fin",
                 "Left": "←", "Right": "→"}.get(valor, valor)
 
     def _info_panells(self):

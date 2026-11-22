@@ -69,7 +69,7 @@ class MarcadorsMixin:
         return ok
 
     def _talla_tempo_cursor(self):
-        """Enter: talla només el tempo al cursor."""
+        """Fin: talla només el tempo al cursor."""
         vr = getattr(self, "visor_ref", None)
         if vr is None:
             return False

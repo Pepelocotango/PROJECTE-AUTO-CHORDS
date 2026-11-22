@@ -316,7 +316,7 @@ class MarcadorsMixin:
         return True
 
     def talla_tempo(self, t):
-        """Enter: parteix només el clip de tempo (sense marcador/estructura)."""
+        """Fin: parteix només el clip de tempo (sense marcador/estructura)."""
         return self._talla(t, tempo=True)
 
     def talla_estructura(self, t):

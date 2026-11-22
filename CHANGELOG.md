@@ -16,6 +16,12 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 - Si el moviment deixaria un veí per davall d’un compàs, s’atura en eixe
   límit.
 
+### Canviat — Tall de tempo amb Fin (2026-11-22)
+- La drecera per **partir només el tempo** passa de **Enter** a **Fin**.
+- **Enter** continua funcionant per a botons, combos i diàlegs que tenen la
+  seua pròpia acció; ja no talla el tempo.
+- `Fin` es pot reconfigurar a **Ajuda ▸ Configura les dreceres…**.
+
 ### Canviat — Dreceres TAP (2026-11-22)
 - **T** continua fent TAP amb fronteres fixes.
 - El **`.` del teclat numèric** ara fa **TAP→** (mòbil), no el TAP normal.

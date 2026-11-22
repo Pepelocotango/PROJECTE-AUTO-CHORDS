@@ -257,7 +257,7 @@ class MenusMixin:
                 grups.append((accio.text().replace("&", ""), parells))
         def mostra(clau):
             seq = self._valor_drecera(clau)
-            return {"Space": "Espai", "Return": "Enter",
+            return {"Space": "Espai", "Return": "Enter", "End": "Fin",
                     "Num+.": ". del teclat numèric"}.get(seq, seq)
 
         grups.append(("Ratolí i tecles del visor (combinacions)", [

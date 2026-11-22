@@ -2421,7 +2421,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             self.avis_editor("Afegeix tempo: el punt no cau dins cap tram")
             return False
         abans = len(trams)
-        # MATEIX motor que Enter i «+»: `_parteix_tempo_nou` fa el primer
+        # MATEIX motor que Fin i «+»: `_parteix_tempo_nou` fa el primer
         # intent (conserva BPM/compàs) i, si cal, el recalcul guiat. Així
         # «Afegeix/Parteix aquí» i les dreceres no poden divergir.
         nous = self._parteix_tempo_nou(float(t))

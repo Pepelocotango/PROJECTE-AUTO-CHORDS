@@ -980,7 +980,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
     def eventFilter(self, obj, ev):
         """Filtre d'esdeveniments de la finestra.
 
-        1. Tecles de tall: **`+`** (tempo + estructura), **`Enter`** (només
+        1. Tecles de tall: **`+`** (tempo + estructura), **`Fin`** (només
            tempo), **`0`** (només estructura) i **`M`** (marcador lliure). Si
            s'està escrivint en un camp, la tecla s'hi escriu normalment.
         2. **Clic** dins la caixa d'informació (només lectura): pausa el
@@ -1026,7 +1026,7 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                     w = w.parentWidget()
                 if escrivint:
                     return False
-                # «+»/Enter són dreceres de la FINESTRA, no només del
+                # «+»/Fin són dreceres de la FINESTRA, no només del
                 # timeline: funcionen des de llistes, editor o qualsevol
                 # racó, tret dels camps de text (ja filtrats) i dels ginys
                 # que tenen una funció pròpia per a Enter (botons, combos,
@@ -1053,7 +1053,10 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                     self._tap_tempo(True)
                     return True
                 if self._coincideix_drecera("talla.tempo", ev):
-                    if self._intro_te_funcio_propia(obj):
+                    # La protecció d'Enter només té sentit si l'usuari ha
+                    # reassignat esta acció a Enter; Fin ha de funcionar des
+                    # de qualsevol focus que no siga un camp de text.
+                    if ev.key() in (Qt.Key_Return, Qt.Key_Enter)                             and self._intro_te_funcio_propia(obj):
                         return False
                     self._talla_tempo_cursor()
                     return True
