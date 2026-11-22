@@ -71,7 +71,7 @@ PROJECTE AUTO CHORDS/
 │   ├── config.py                 🟢  # Camins de l'app i tria d'un directori d'estat ESCRIPTIBLE.
 │   ├── dialeg_analitza_bpm.py    🟢  # Diàleg d'anàlisi de BPM/beats.
 │   ├── dialeg_canvi_unitat.py    🟢  # Canvi explícit d'unitat de pols (clip).
-│   ├── dialeg_dreceres.py        🟢  # Diàleg per veure i canviar totes les dreceres de teclat.
+│   ├── dialeg_dreceres.py        🟢  # —
 │   ├── dialeg_guia_rapida.py     🟢  # Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas.
 │   ├── dialeg_opcions.py         🟢  # Diàleg d'opcions d'autodetecció (BPM/acords/estructura).
 │   ├── dialeg_quadratura.py      🟢  # Diàleg per quadrar els extrems de la còpia WAV a compassos sencers.
@@ -323,6 +323,7 @@ PROJECTE AUTO CHORDS/
 ├── concatena.py                       🟢  # Genera un sol fitxer amb el codi indispensable
 ├── dev_reload.py                      🟢  # Recàrrega automàtica en dev
 ├── DEVELOPING.md                      🟢  # Entorn, mapa del codi, build i CI
+├── finestres.json                     🟡
 ├── instal·la_local.sh                 🟢  # Instal·lació local sense sudo
 ├── LICENSE                            🟢  # GPL-3.0-or-later
 ├── LLICENCIES_TERCERS.md              🟢  # Llicències de tercers

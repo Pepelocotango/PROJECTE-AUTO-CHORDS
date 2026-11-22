@@ -214,10 +214,10 @@ class InfoBoxMixin:
             ]),
             ("Editar i desfer", [
                 ("Desfer / refer",
-                 f"{self._drecera_info('edita.desfer')} / "
-                 f"{self._drecera_info('edita.refer')}"),
+                 f"{self._drecera_info('edita.desfer', 'Ctrl+Z')} / "
+                 f"{self._drecera_info('edita.refer', 'Ctrl+Y')}"),
                 ("Reanomenar (clip o grup del tipus actiu)",
-                 self._drecera_info("edita.renomena")),
+                 self._drecera_info("edita.renomena", "F2")),
                 ("Esborrar la selecció",
                  self._drecera_info("edita.elimina")),
             ]),
@@ -297,3 +297,62 @@ class InfoBoxMixin:
         peu = ("<br><br><i style='color:%s'>Ratolí per un botó → què fa · "
                "<b>clic aquí</b> → atura i passa de pàgina.</i>" % theme.MUTED)
         return cap + f"<br><b>{titol}</b><br>" + "<br>".join(files) + peu
+
+
+class InfoDialogMixin:
+    """Afegeix una linia d'informacio a baix de qualsevol dialeg modal.
+
+    Centralitza la info (com la caixa d'informacio de la finestra principal):
+    quan el ratoli passa per sobre d'un control, la linia mostra el seu
+    nom i tooltip. Aixi, els dialegs modals tambe tenen un punt unic
+    d'informacio, en lloc de dependre nomes del tooltip flotant de Qt.
+    """
+
+    _info_dialog_label = None
+
+    def showEvent(self, event):
+        if getattr(self, "_info_dialog_label", None) is not None:
+            # Ja creat: nomes cal deixar que el pare gestioni la geometria.
+            super().showEvent(event)
+            return
+        try:
+            # Crear la linia d'info ABANS del super().showEvent(), perque
+            # GeometriaMixin.restaura() centri el dialeg amb la mida final
+            # (inclosa la linia) i no quedi desplaçat uns pixels.
+            from PyQt5.QtCore import QTimer
+            from PyQt5.QtWidgets import QApplication, QLabel
+            from PyQt5.QtGui import QCursor
+            lbl = QLabel("")
+            lbl.setWordWrap(True)
+            lbl.setStyleSheet("color:#9aa6b8; font-size:11px; padding:4px;")
+            lbl.setMinimumHeight(24)
+            lay = self.layout()
+            if lay is not None:
+                lay.addWidget(lbl)
+            self._info_dialog_label = lbl
+
+            def _actualitza():
+                try:
+                    w = QApplication.widgetAt(QCursor.pos())
+                except Exception:  # noqa: BLE001
+                    return
+                x = w
+                while x is not None:
+                    tip = x.toolTip() if hasattr(x, "toolTip") else ""
+                    if tip:
+                        break
+                    x = x.parentWidget()
+                if x is not None and x.toolTip():
+                    nom = x.text() if hasattr(x, "text") else ""
+                    tip = x.toolTip()
+                    lbl.setText(f"{nom} — {tip}" if nom else tip)
+                else:
+                    lbl.setText("")
+
+            timer = QTimer(self)
+            timer.timeout.connect(_actualitza)
+            timer.start(250)
+            self._info_dialog_timer = timer
+        except Exception:  # noqa: BLE001
+            pass
+        super().showEvent(event)

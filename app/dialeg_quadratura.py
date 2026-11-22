@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (
 from app import audio_edit, bpm_unit, limits, mapa_tempo, pipeline, tempo_map
 from app.camp_text import CampText
 from app.finestres import GeometriaMixin
+from app.info_box import InfoDialogMixin
 
 
 def _mostra_delta(frames, sr):
@@ -14,7 +15,7 @@ def _mostra_delta(frames, sr):
     return f"{signe}{frames / float(sr):.3f} s ({signe}{frames} mostres)"
 
 
-class DialegQuadratura(GeometriaMixin, QDialog):
+class DialegQuadratura(InfoDialogMixin, GeometriaMixin, QDialog):
     """Ajusta l'inici i/o el final a `N` compassos sencers.
 
     No modifica res: només calcula un pla. El visor l'aplica de forma atòmica

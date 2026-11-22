@@ -4508,7 +4508,9 @@ class TestDreceresCompletes(unittest.TestCase):
         from unittest.mock import patch
         import PyQt5.QtWidgets as QW
         w = _dreceres_completes___finestra()
-        with patch.object(QW.QMessageBox, "information", return_value=None) as m:
+        # El dialeg ara es un QDialog amb QTextEdit (scroll), no un
+        # QMessageBox. Comprovem que s'executa sense petar.
+        with patch.object(QW.QDialog, "exec_", return_value=None) as m:
             w._mostra_dreceres()
         self.assertTrue(m.called)
 
@@ -4822,7 +4824,7 @@ class TestLlistaTempo(_undo_temps___Base):
         v._focus_editor("tempo", 0)
         self.assertFalse(v.ed_bpm_compas.isHidden())
         self.assertTrue(v.ed_bpm_compas.isEnabled())
-        self.assertEqual(v.ed_bpm_compas.text(), "Ajusta")
+        self.assertEqual(v.ed_bpm_compas.text(), "⚙ Ajusta")
         with patch.object(v, "_on_tempo_edit", return_value=True) as edit:
             v.ed_bpm_compas.click()
         edit.assert_called_once_with(0)

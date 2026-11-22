@@ -6,8 +6,9 @@ from PyQt5.QtWidgets import (
 from app import graella
 
 from app.finestres import GeometriaMixin
+from app.info_box import InfoDialogMixin
 
-class DialegQuantitza(GeometriaMixin, QDialog):
+class DialegQuantitza(InfoDialogMixin, GeometriaMixin, QDialog):
     """Quantització del model: abast + graella d'acords i d'estructura.
 
     No toca BPM, compàs ni el cru. Només decideix QUÈ es quantitza i
@@ -25,6 +26,7 @@ class DialegQuantitza(GeometriaMixin, QDialog):
         form = QFormLayout()
 
         self.cb_abast = QComboBox()
+        self.cb_abast.setToolTip("Abast de la quantitzacio: tot, seleccio, nomes acords o nomes estructura.")
         for text, clau in (("Tot (acords i estructura)", "tot"),
                            ("Només la selecció", "seleccio"),
                            ("Tot, només acords", "acords"),
@@ -35,9 +37,11 @@ class DialegQuantitza(GeometriaMixin, QDialog):
             self.cb_abast.setCurrentIndex(i)
 
         self.cb_acords = QComboBox()
+        self.cb_acords.setToolTip("Graella on encaixar els inicis dels acords (de corxera a 1 compas).")
         for et, clau in graella.GRID_ACORDS:
             self.cb_acords.addItem(et, clau)
         self.cb_estructura = QComboBox()
+        self.cb_estructura.setToolTip("Graella on encaixar els inicis de les seccions (d'1 a 64 compassos).")
         for et, clau in graella.GRID_ESTRUCTURA:
             self.cb_estructura.addItem(et, clau)
         # Valors inicials raonables: negra per a l'harmonia, 4 compassos per a
@@ -64,7 +68,9 @@ class DialegQuantitza(GeometriaMixin, QDialog):
         self.botons = QDialogButtonBox(QDialogButtonBox.Ok |
                                        QDialogButtonBox.Cancel)
         self.botons.button(QDialogButtonBox.Ok).setText("Quantitza")
+        self.botons.button(QDialogButtonBox.Ok).setToolTip("Aplica la quantitzacio amb la graella triada.")
         self.botons.button(QDialogButtonBox.Cancel).setText("Cancel·la")
+        self.botons.button(QDialogButtonBox.Cancel).setToolTip("Cancel.la i tanca sense aplicar.")
         self.botons.accepted.connect(self.accept)
         self.botons.rejected.connect(self.reject)
         lay.addWidget(self.botons)

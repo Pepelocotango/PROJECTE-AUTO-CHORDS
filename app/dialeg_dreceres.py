@@ -1,3 +1,4 @@
+from app.info_box import InfoDialogMixin
 """Diàleg per veure i canviar totes les dreceres de teclat."""
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence
@@ -10,13 +11,19 @@ from PyQt5.QtWidgets import (
 from . import dreceres
 
 
-class DialegDreceres(QDialog):
+class DialegDreceres(InfoDialogMixin, QDialog):
     """Taula editable de dreceres amb cerca, restauració i control de xocs."""
 
     def __init__(self, parent=None, entrades=None):
         super().__init__(parent)
         self.setWindowTitle("Dreceres de teclat")
         self.setMinimumSize(760, 520)
+        # La llista de dreceres pot ser llarga: no deixem que el dialeg creixi
+        # mes enla del que cap a la pantalla (la taula ja fa scroll intern).
+        from PyQt5.QtWidgets import QApplication
+        pantalla = QApplication.primaryScreen()
+        if pantalla is not None:
+            self.setMaximumHeight(600)
         self._entrades = list(entrades or ())
         self._editors = {}
         self.bindings = {}
@@ -38,6 +45,8 @@ class DialegDreceres(QDialog):
         self.taula.setSelectionMode(QAbstractItemView.SingleSelection)
         self.taula.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.taula.horizontalHeader().setStretchLastSection(True)
+        self.taula.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.taula.setMaximumHeight(320)
         self.taula.setColumnWidth(0, 380)
         self.taula.setColumnWidth(1, 190)
 
@@ -81,6 +90,23 @@ class DialegDreceres(QDialog):
         botons.accepted.connect(self.accept)
         botons.rejected.connect(self.reject)
         lay.addWidget(botons)
+
+
+    def showEvent(self, event):
+        # Sempre centrat i amb mida compacta: la taula fa scroll intern i no
+        # volem que una geometria desada massa alta talli el dialeg.
+        from PyQt5.QtWidgets import QApplication
+        super().showEvent(event)
+        try:
+            self.resize(760, 520)
+            scr = self.screen() or QApplication.primaryScreen()
+            if scr is not None:
+                g = scr.availableGeometry()
+                x = g.x() + (g.width() - self.width()) // 2
+                y = g.y() + (g.height() - self.height()) // 2
+                self.move(x, y)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _filtra(self, text):
         text = (text or "").strip().lower()

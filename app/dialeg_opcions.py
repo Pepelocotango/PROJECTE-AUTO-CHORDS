@@ -12,8 +12,9 @@ from .opcions import (
 )
 
 from app.finestres import GeometriaMixin
+from app.info_box import InfoDialogMixin
 
-class DialegOpcions(GeometriaMixin, QDialog):
+class DialegOpcions(InfoDialogMixin, GeometriaMixin, QDialog):
     """Diàleg amb pestanyes BPM / Acords / Estructura."""
 
     def __init__(self, parent=None, tab="acords", opcions=None):
@@ -41,8 +42,11 @@ class DialegOpcions(GeometriaMixin, QDialog):
         box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         restaurar = QPushButton("Restaura per defecte")
         restaurar.setObjectName("secundari")
+        restaurar.setToolTip("Torna tots els parametres als valors de fabrica.")
         restaurar.clicked.connect(self._restaura)
         box.addButton(restaurar, QDialogButtonBox.ResetRole)
+        box.button(QDialogButtonBox.Ok).setToolTip("Accepta les opcions i tanca.")
+        box.button(QDialogButtonBox.Cancel).setToolTip("Cancel.la i tanca sense aplicar.")
         box.accepted.connect(self.accept)
         box.rejected.connect(self.reject)
         lay.addWidget(box)
@@ -116,6 +120,7 @@ class DialegOpcions(GeometriaMixin, QDialog):
                 ("pref_max", "Rang preferit · màxim (BPM)",
                  (limits.BPM_MIN, limits.BPM_MAX, 1))):
             s = _spin(mn, mx, pas, d.get(clau, DEFECTES["bpm"][clau]), 0)
+            s.setToolTip(etiqueta)
             self._controls["bpm"][clau] = s
             f.addRow(QLabel(etiqueta), s)
         info = QLabel("El «preferit» premia el rang musical habitual "
@@ -273,9 +278,11 @@ class DialegOpcions(GeometriaMixin, QDialog):
         self._controls["structure"] = {}
         d = val or DEFECTES["structure"]
         s = _spin(0, 120, 0.5, d.get("durada_min", 0.0), 1)
+        s.setToolTip("Durada minima d'una seccio (en compassos).")
         self._controls["structure"]["durada_min"] = s
         f.addRow(QLabel("Durada mínima d'una secció (compassos)"), s)
         c = _checkbox(d.get("fusiona_iguals", True))
+        c.setToolTip("Fusiona trossos consecutius iguals de l'estructura.")
         self._controls["structure"]["fusiona_iguals"] = c
         f.addRow(QLabel("Fusiona trossos consecutius iguals"), c)
         info = QLabel("El qm-segmenter no té paràmetres ajustables: això "

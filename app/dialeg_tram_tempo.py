@@ -11,9 +11,10 @@ from app.camp_text import CampText
 from app import bpm_unit, limits, tempo_map, theme
 
 from app.finestres import GeometriaMixin
+from app.info_box import InfoDialogMixin
 
 
-class DialegTramTempo(GeometriaMixin, QDialog):
+class DialegTramTempo(InfoDialogMixin, GeometriaMixin, QDialog):
     """Edita un **tros** del mapa: BPM i compàs (on comença es mostra)."""
 
     #: «Recalcula»: mode «fix» o «mobil», amb les opcions del bloc Opcions.

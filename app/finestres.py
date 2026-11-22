@@ -128,6 +128,18 @@ def restaura(widget, clau=None, centra_si_falta=True):
             ok = bool(widget.restoreGeometry(_de_base64(text)))
         except (TypeError, ValueError, RuntimeError):
             ok = False
+    # Si la geometria desada no cap a la pantalla (p. ex. un dialeg que
+    # es va obrir molt alt), la descartem i centrem amb la mida per defecte.
+    try:
+        from PyQt5.QtWidgets import QApplication
+        scr = widget.screen() or QApplication.primaryScreen()
+        if ok and scr is not None:
+            avail = scr.availableGeometry()
+            if (widget.frameGeometry().height() > avail.height() - 40
+                    or widget.frameGeometry().width() > avail.width() - 40):
+                ok = False
+    except Exception:  # noqa: BLE001
+        pass
     if not ok or not _visible(widget):
         if centra_si_falta or text:
             _centra(widget)

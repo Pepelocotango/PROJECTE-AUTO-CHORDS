@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
 
 from app import bpm_unit, limits
 from app.finestres import GeometriaMixin
+from app.info_box import InfoDialogMixin
 
 
 class PanellCanviUnitat:
@@ -13,7 +14,9 @@ class PanellCanviUnitat:
     def __init__(self, parent=None):
         self.etiqueta = QLabel("")
         self.rb_tempo = QRadioButton("Mantén el tempo (canvia el número)")
+        self.rb_tempo.setToolTip("Conserva el BPM intern; el numero de compassos es recalcula.")
         self.rb_numero = QRadioButton("Mantén el número (canvia el tempo)")
+        self.rb_numero.setToolTip("Conserva el numero de compassos; el BPM intern es recalcula.")
         self.previsio = QLabel("")
         self.previsio.setWordWrap(True)
         self._bpm = 120.0
@@ -69,7 +72,7 @@ class PanellCanviUnitat:
         self.previsio.setText(text)
 
 
-class DialegCanviUnitat(GeometriaMixin, QDialog):
+class DialegCanviUnitat(InfoDialogMixin, GeometriaMixin, QDialog):
     """Modal petit per aplicar el canvi d'unitat amb Cancel·la."""
 
     def __init__(self, parent=None, etiqueta="Clip", bpm=120.0,
@@ -82,6 +85,8 @@ class DialegCanviUnitat(GeometriaMixin, QDialog):
             lay.addWidget(w)
         self.botons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.botons.button(QDialogButtonBox.Ok).setToolTip("Aplica el canvi d'unitat")
+        self.botons.button(QDialogButtonBox.Cancel).setToolTip("Cancel·la sense aplicar")
         self.botons.accepted.connect(self.accept)
         self.botons.rejected.connect(self.reject)
         lay.addWidget(self.botons)

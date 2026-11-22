@@ -6,8 +6,9 @@ from PyQt5.QtWidgets import (
 )
 
 from app.finestres import GeometriaMixin
+from app.info_box import InfoDialogMixin
 
-class DialegTrobaReemplaca(GeometriaMixin, QDialog):
+class DialegTrobaReemplaca(InfoDialogMixin, GeometriaMixin, QDialog):
     """Troba i reemplaça un xifrat (acords) o una etiqueta (estructura), a tot el tema."""
 
     def __init__(self, parent=None, camp="acords"):
@@ -17,12 +18,15 @@ class DialegTrobaReemplaca(GeometriaMixin, QDialog):
         lay = QVBoxLayout(self)
         form = QFormLayout()
         self.cb_camp = QComboBox()
+        self.cb_camp.setToolTip("Tria si busques en acords (xifrats) o en etiquetes d'estructura.")
         self.cb_camp.addItem("Acords (xifrats)", "acords")
         self.cb_camp.addItem("Estructura (etiquetes)", "estructura")
         self.cb_camp.setCurrentIndex(1 if camp == "estructura" else 0)
         self.ed_troba = CampText()
+        self.ed_troba.setToolTip("Text exacte a trobar (p. ex. Cmaj7 o A).")
         self.ed_troba.setPlaceholderText("p. ex. Cmaj7   ·   D")
         self.ed_reemplaca = CampText()
+        self.ed_reemplaca.setToolTip("Text pel qual substituir totes les aparicions trobades.")
         self.ed_reemplaca.setPlaceholderText("p. ex. C9   ·   estribillo")
         form.addRow("Camp:", self.cb_camp)
         form.addRow("Troba:", self.ed_troba)
@@ -33,6 +37,8 @@ class DialegTrobaReemplaca(GeometriaMixin, QDialog):
         avis.setWordWrap(True)
         lay.addWidget(avis)
         botons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        botons.button(QDialogButtonBox.Ok).setToolTip("Aplica la substitucio a tot el tema.")
+        botons.button(QDialogButtonBox.Cancel).setToolTip("Cancel.la i tanca sense substituir.")
         botons.accepted.connect(self.accept)
         botons.rejected.connect(self.reject)
         lay.addWidget(botons)
