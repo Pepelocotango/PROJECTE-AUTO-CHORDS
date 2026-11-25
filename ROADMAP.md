@@ -6,7 +6,7 @@
 > descripció de producte. Tot en català · **GPL-3.0-or-later**.
 >
 > **v0.9.4** · Estat: **flux de producte estable (almenys a Linux)** · **punt de
-> recuperació** per a futures iteracions · Suite local verificada: **1.721 tests** (1 omès) i `pyflakes` net. El recompte viu és al CI.
+> recuperació** per a futures iteracions · Suite local verificada: **1.727 tests** (1 omès) i `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -65,8 +65,11 @@ que els marcadors caiguen en una frontera (fail closed); l'últim clip pot queda
 fraccionari. El detector d'onsets té un gate de transitori opcional
 (`transiente_db`, 20 ms abans/després) i un de prominència; cap valor per
 defecte s'ha congelat sense calibratge real. El banc sintètic de Fase 0 i el
-document de disseny són a `00PER FER/` (locals, no contracte). Suite: **1.721
-tests** (1 omès).
+document de disseny són a `00PER FER/` (locals, no contracte). També hi ha el
+snap a **marcadors** i **onsets**, i els **candaus globals** de BPM/N/x-x
+(màxim dos, sense persistència). Des del 2026-11-25, **qualsevol edició permet
+l'últim clip amb `N` fraccionari**; l'única excepció és **Ajusta final WAV**.
+Suite: **1.727 tests** (1 omès).
 
 **Checklist per acabar la Guia ràpida (2026-11-25):**
 
