@@ -50,7 +50,7 @@ PROJECTE AUTO CHORDS/
 │       ├── build-windows.yml  🟢  # Windows x64: ZIP portable
 │       ├── qualitat.yml       🟢  # Fuzzer i proves sintètiques (no bloquejant)
 │       └── release.yml        🟢  # Release idempotent amb els últims artefactes verds
-├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (14 fitxers)
+├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (12 fitxers)
 │   ├── PROPOSTA_MAPA_TEMPS_ROBUST.md 🟢
 │   └── banc_onsets/                  🟢  # (11 fitxers)
 ├── app/                           🟢  # Codi de l'aplicació (PyQt5) (81 fitxers)

@@ -204,13 +204,16 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         # desvia igualment (vegeu `_drag_*`).
         self.setAcceptDrops(True)
 
-        # Botó «Guia ràpida»: explicació del flux (només informació, no toca
-        # el model). El treball real es fa amb marcadors en viu: `+`.
+        # Botó «Guia ràpida»: informació i accions assistides; les accions
+        # només apliquen amb confirmació. El treball fi es fa amb marcadors
+        # en viu: `+`.
         self.b_guia = QPushButton("Guia ràpida")
         self.b_guia.setObjectName("secundari")
         self.b_guia.setToolTip(
-            "Guia ràpida del flux de treball. Per tallar tempo i estructura "
-            "en viu, fes servir ＋ o la tecla +; M afig només un marcador.")
+            "Guia ràpida del flux de treball: proposa inici, final, BPM, "
+            "estabilitat i mapa; aplica només amb confirmació. Per tallar "
+            "tempo i estructura en viu, fes servir ＋ o la tecla +; M afig "
+            "només un marcador.")
         self.b_guia.setEnabled(False)          # fins que hi hagi WAV
         self.b_guia.clicked.connect(self._obre_guia_rapida)
         # Dos accessos directes a la quadratura d'extrems: obrin el diàleg

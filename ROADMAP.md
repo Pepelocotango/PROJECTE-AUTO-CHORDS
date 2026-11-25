@@ -68,6 +68,26 @@ defecte s'ha congelat sense calibratge real. El banc sintètic de Fase 0 i el
 document de disseny són a `00PER FER/` (locals, no contracte). Suite: **1.721
 tests** (1 omès).
 
+**Checklist per acabar la Guia ràpida (2026-11-25):**
+
+| Estat | Ítem |
+|---|---|
+| Fet | Marcadors `inici_analisi` / `final_analisi`, amb assistència d'onsets. |
+| Fet | Proposta de BPM i diagnòstic d'estabilitat (`e_max`, `e_final`, gap, inliers). |
+| Fet | Proposta i aplicació d'un mapa d'un sol BPM, amb confirmació i un sol desfer. |
+| Fet | Conservació dels clips de fora del rang i rebuig si els marcadors no cauen en una frontera. |
+| Fet | Gate de transitori i prominència configurables; valors per defecte encara no congelats. |
+| Pendent | Calibrar amb música real i decidir el valor per defecte de `transiente_db`. |
+| Pendent | Proposta de mapa per trams i canvis de compàs, no només un BPM global. |
+| Pendent | Partir un clip existent quan els marcadors no coincideixen amb una frontera. |
+| Pendent | Previsualització/diff més rica abans d'aplicar i validació explícita de la deriva. |
+| Pendent | Tests d'UI del flux complet i prova manual amb àudio real. |
+| Pendent | Tancar Fase 0: validació amb hash congelat i anotació independent. |
+
+**Decisions obertes:** conservar o substituir clips en aplicar un mapa; permetre
+`N` fraccionari a l'últim clip o arrodonir; bloquejar o només avisar si la
+deriva supera 20 ms; què fer si l'estabilitat és `NO ESTABLE`.
+
 **Fases** del pla de simplificació de tempo (document històric, ja no al
 repositori): **0–7 fetes**. La **10**
 (motor de detecció amb corpus real) està **oberta i bloquejada pel corpus
