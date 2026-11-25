@@ -306,7 +306,8 @@ class TempoMixin:
 
     def edita_tempo_objectiu(self, idx, bpm, num, den, desa=True, repara=True,
                              agrupacio=None, beat_unit=None,
-                             permet_ultim_fraccionari=True):
+                             permet_ultim_fraccionari=True,
+                             ignora_bloquejos=False):
         """Aplica BPM/compàs a un tram de tempo (0 = transport).
 
         Contracte §13.4/§13.5: **tots** els clips mantenen `N` enter. En un
@@ -395,20 +396,20 @@ class TempoMixin:
                 nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos, agr,
                 getattr(nou, "n", None), nou.beat_unit)
         if not desa:
-            errors = self._bloquejos_tempo_errors(nous)
-            if errors:
-                self.avis_editor(
-                    "Bloquejat: canvi de " + ", ".join(errors) + ".")
-                return False
-        # El transport només pren valors d'un tros normal.
-        self.bpm = float(nous[0][2])
-        self.bpb = int(nous[0][3])
-        self.beat_type = int(nous[0][4])
-        if desa:
-            return bool(self.aplica_tempo_trams(nous))
-        self.tempo_trams = nous
-        self._actualitza_temps()
-        return True
+            if not ignora_bloquejos:
+                errors = self._bloquejos_tempo_errors(nous)
+                if errors:
+                    self.avis_editor(
+                        "Bloquejat: canvi de " + ", ".join(errors) + ".")
+                    return False
+            self.bpm = float(nous[0][2])
+            self.bpb = int(nous[0][3])
+            self.beat_type = int(nous[0][4])
+            self.tempo_trams = nous
+            self._actualitza_temps()
+            return True
+        return bool(self.aplica_tempo_trams(
+            nous, ignora_bloquejos=ignora_bloquejos))
 
     def edita_tempo_tap_mobil(self, idx, bpm):
         """TAP amb frontera mòbil: BPM exacte, N actual i fi desplaçable.
@@ -563,9 +564,6 @@ class TempoMixin:
                 getattr(nou, "n", None), nou.beat_unit)
         if not self._valida_unitat_tram(nous[idx], "Compassos"):
             return False
-        self.bpm = float(nous[0][2])
-        self.bpb = int(nous[0][3])
-        self.beat_type = int(nous[0][4])
         if desa:
             ok = bool(self.aplica_tempo_trams(nous))
         else:
@@ -574,6 +572,9 @@ class TempoMixin:
                 self.avis_editor(
                     "Bloquejat: canvi de " + ", ".join(errors) + ".")
                 return False
+            self.bpm = float(nous[0][2])
+            self.bpb = int(nous[0][3])
+            self.beat_type = int(nous[0][4])
             self.tempo_trams = nous
             self._actualitza_temps()
             ok = True
@@ -653,9 +654,6 @@ class TempoMixin:
                 getattr(nou, "n", None), nou.beat_unit)
         if not self._valida_unitat_tram(nous[idx], "Tempo"):
             return False
-        self.bpm = float(nous[0][2])
-        self.bpb = int(nous[0][3])
-        self.beat_type = int(nous[0][4])
         ok = bool(self.aplica_tempo_trams(nous))
         if ok:
             self.log(

@@ -4547,6 +4547,15 @@ class TestEdicioAudioVisor(unittest.TestCase):
         self.assertEqual(self.v.pos, 4.0)
         self.assertEqual((self.v.loop_a, self.v.loop_b), (2.0, 7.0))
 
+    def test_edicio_audio_amb_candau_n_no_toca_audio_ni_model(self):
+        from app import audio_edit
+        self.v.set_bloquejos_tempo(n=True)
+        abans = [tuple(t) for t in self.v.tempo_trams]
+        durada = float(self.v.audio["durada"])
+        self.v._on_audio_edit_requested(audio_edit.RETALLA_INICI, 1000)
+        self.assertAlmostEqual(float(self.v.audio["durada"]), durada)
+        self.assertEqual([tuple(t) for t in self.v.tempo_trams], abans)
+
     def test_retalla_inici_desplaca_beats_cap_a_l_esquerra(self):
         from app import audio_edit
         self.v.qm_beats = [1.0, 2.0]
@@ -6989,6 +6998,19 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(tr.compassos, "4/4")
         self.assertAlmostEqual(float(tr.bpm), 120.0, places=6)
         self.assertAlmostEqual(float(tr.n), 10.0, places=6)
+
+    def test_duplicar_bloquejat_no_toca_altres_carrils(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        abans_ac = list(vr.acords)
+        abans_sec = list(vr.seccions)
+        with patch.object(vr, "aplica_tempo_trams", return_value=False):
+            self.assertFalse(vr._duplica_seleccio([("tempo", 0)]))
+        self.assertEqual(vr.acords, abans_ac)
+        self.assertEqual(vr.seccions, abans_sec)
 
     def test_dialeg_candau_n_rebutja_un_bpm_que_canvia_n(self):
         vr = self.w.visor_ref

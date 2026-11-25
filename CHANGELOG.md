@@ -5,6 +5,13 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Corregit — Candaus i atomicitat de les operacions (2026-11-25)
+- L’anàlisi automàtica aplica el BPM detectat ignorant els candaus, com marca
+  §13.10; l’aplicació confirmada per l’usuari sí que els respecta.
+- Les edicions de tempo no muten el transport si el mapa és rebutjat.
+- Duplicar i enganxar comproven els candaus abans de tocar acords o seccions.
+- Les edicions d’àudio validen el mapa resultant abans d’escriure la WAV.
+
 ### Canviat — Eliminada l’acció de rubato per rang (2026-11-25)
 - Eliminada `crea_rubato_rang()` i l’acció «Marca el rang A–B com a rubato».
 - El rubato queda com una anotació d’un sol clip: només canvia `tipus` i

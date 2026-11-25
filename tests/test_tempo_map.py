@@ -2106,6 +2106,33 @@ class TestBloquejosTempo(_Base):
         ]
         self.assertFalse(self.v.aplica_tempo_trams(compas_canviat))
 
+    def test_rebuig_no_muta_el_transport(self):
+        self.v.set_bloquejos_tempo(bpm=True)
+        abans = (float(self.v.bpm), int(self.v.bpb),
+                 int(self.v.beat_type), list(self.v.tempo_trams))
+        self.assertFalse(self.v.edita_tempo_objectiu(0, 144.0, 4, 4))
+        self.assertEqual((float(self.v.bpm), int(self.v.bpb),
+                          int(self.v.beat_type)), abans[:3])
+        self.assertEqual(list(self.v.tempo_trams), abans[3])
+
+        self.v.set_bloquejos_tempo(n=True)
+        self.assertFalse(self.v.edita_n_compassos(0, 6, 4, 4))
+        self.assertEqual((float(self.v.bpm), int(self.v.bpb),
+                          int(self.v.beat_type)), abans[:3])
+        self.assertEqual(list(self.v.tempo_trams), abans[3])
+
+        self.v.set_bloquejos_tempo(bpm=True)
+        self.assertFalse(self.v.edita_tempo_guiat(0, bpm=144.0))
+        self.assertEqual((float(self.v.bpm), int(self.v.bpb),
+                          int(self.v.beat_type)), abans[:3])
+        self.assertEqual(list(self.v.tempo_trams), abans[3])
+
+    def test_analisi_ignora_el_candau_bpm(self):
+        self.v.set_bloquejos_tempo(bpm=True)
+        self.assertTrue(self.v.edita_tempo_objectiu(
+            0, 144.0, 4, 4, ignora_bloquejos=True))
+        self.assertAlmostEqual(float(self.v.bpm), 144.0, places=6)
+
     def test_tall_amb_bpm_bloquejat_conserva_ultim_fraccionari(self):
         self.v.aplica_tempo_trams([
             M.TramMapa(0.0, 0.333134, 180.107704, "normal", "1/4", "", 1.0),

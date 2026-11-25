@@ -1379,6 +1379,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
 
     def _executa_audio_model(self, tr, escriu_audio, etiqueta):
         """Publica WAV + model com una sola operació atòmica i un sol undo."""
+        errors = self._bloquejos_tempo_errors(tr.get("trams") or [])
+        if errors:
+            raise ValueError(
+                "Bloquejat: canvi de " + ", ".join(errors)
+                + ". No s'ha tocat l'àudio ni el model.")
         sr = int(self.audio["sr"])
         audio_dir = os.path.dirname(os.path.abspath(self.wav_path))
         with tempfile.TemporaryDirectory(
@@ -3094,12 +3099,20 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             self.log(f"duplica selecció: canvi invalid, no s'ha fet res ({e})")
             self.avis_editor(f"Duplica: {e}")
             return False
+        if cand_tp:
+            errors = self._bloquejos_tempo_errors(cand_tp)
+            if errors:
+                self.avis_editor(
+                    "Duplica: bloquejat el canvi de " + ", ".join(errors)
+                    + ". No s'ha duplicat res.")
+                return False
         self._undo_marca()
+        if cand_tp and not self.aplica_tempo_trams(cand_tp):
+            self._undo_commit()
+            return False
         self.acords = cand_ac
         if idx_sec:
             self.seccions = cand_sec
-        if cand_tp:
-            self.aplica_tempo_trams(cand_tp)
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)
         try:
@@ -3301,12 +3314,21 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             self.avis_editor("Enganxat: res a canviar (el bloc coincideix "
                              "amb el model actual).")
             return
+        if noves_trams is not None:
+            errors = self._bloquejos_tempo_errors(cand_tp)
+            if errors:
+                self.avis_editor(
+                    "Enganxa: bloquejat el canvi de " + ", ".join(errors)
+                    + ". No s'ha enganxat res.")
+                return
         self._undo_marca()
+        if noves_trams is not None and cand_tp:
+            if not self.aplica_tempo_trams(cand_tp):
+                self._undo_commit()
+                return
         self.acords = cand_ac
         if noves_seccions is not None:
             self.seccions = cand_sec
-        if noves_trams is not None and cand_tp:
-            self.aplica_tempo_trams(cand_tp)
         self._normalitza_cobertura()
         self._undo_commit()
         self.timeline.set_data(self.acords, self.seccions)

@@ -840,4 +840,4 @@ class AnalisiMixin:
             self.registra(f"BPM detectat: no s'aplica al mapa ({len(trams)} "
                           "trams); fes servir «Detecta el tempo per trams»")
             return
-        self._aplica_parametres_temps()
+        self._aplica_parametres_temps(ignora_bloquejos=True)

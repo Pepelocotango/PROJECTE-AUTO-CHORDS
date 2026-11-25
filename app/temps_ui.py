@@ -135,7 +135,7 @@ class TempsMixin:
         self.tempo_fix.setChecked(bool(bpm_compas))
         self._actualitza_metro_ui()
 
-    def _aplica_parametres_temps(self):
+    def _aplica_parametres_temps(self, ignora_bloquejos=False):
         """Aplica BPM/compàs al VISOR, al clip de tempo objectiu.
 
         Decisió 2B (2026-10-19): si hi ha un tram de tempo seleccionat, els
@@ -179,7 +179,8 @@ class TempsMixin:
                 and den == int(_den)):
             return
         vr._undo_marca()
-        ok = vr.edita_tempo_objectiu(idx, bpm, num, den)
+        ok = vr.edita_tempo_objectiu(
+            idx, bpm, num, den, ignora_bloquejos=ignora_bloquejos)
         vr._undo_commit()
         if ok:
             self.registra(f"tempo: tram {idx} → {bpm:.3f} BPM · "
