@@ -165,6 +165,12 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             arrodoneix=True, deriva_fi=True, log=self.log)
         _, self.seccions = pipeline.normalitza_cobertura(
             [], self.seccions, self._durada_wav(), log=self.log)
+        if self.acords != _a0 or self.seccions != _s0:
+            # La finestra encara no ha connectat `infoMissatge`: emetem-ho en
+            # el següent cicle perquè l'avís sí que arribe a la UI.
+            QTimer.singleShot(0, lambda: self.infoMissatge.emit(
+                "Model normalitzat en carregar: cobertura i marques "
+                "canòniques ajustades."))
         # Mapa de TEMPO i COMPÀS: dels CSVs del projecte o, si no n'hi
         # ha, un **sol tros** amb el BPM·compàs actual (zero canvi visible).
         self._avisos_csv_tempo = []
@@ -912,7 +918,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             arrodoneix=True, deriva_fi=True, log=self.log)
         _, self.seccions = pipeline.normalitza_cobertura(
             [], self.seccions, d, log=self.log)
-        return self.acords != a0 or self.seccions != s0
+        canviat = self.acords != a0 or self.seccions != s0
+        if canviat:
+            self.infoMissatge.emit(
+                "Model normalitzat: cobertura i marques canòniques ajustades.")
+        return canviat
 
     def _index_valid(self, kind, idx):
         """L'índex `idx` encara existeix al carril `kind`? (per re-seleccionar)."""
@@ -1910,6 +1920,13 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             return self.unitat_de_tram(trams[0])
         return bpm_unit_mod.DEFECTE
 
+    def unitat_tram0(self):
+        """Unitat de pols del primer tram, independent de la selecció."""
+        trams = list(self.tempo_trams or [])
+        if trams:
+            return self.unitat_de_tram(trams[0])
+        return bpm_unit_mod.DEFECTE
+
     def bpm_mostra(self, bpm=None, decimals=3, unit=None):
         """BPM intern (negres/min) → text en la unitat activa."""
         b = self.bpm if bpm is None else bpm
@@ -1967,10 +1984,11 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
 
     def _actualitza_temps(self):
         self._refresca_tempo_map()
-        self.timeline.set_tempo_mode(self.tempo_fix, self.bpm, self.bpb,
-                                     beat_type=getattr(self, "beat_type", 4),
-                                     mapa=self.tempo_map,
-                                     bpm_unit=self.bpm_unit)
+        self.timeline.set_tempo_mode(
+            self.tempo_fix, self.bpm, self.bpb,
+            beat_type=getattr(self, "beat_type", 4),
+            mapa=self.tempo_map, bpm_unit=self.bpm_unit,
+            tempo_trams=self.tempo_trams)
         # En mode Lliure el metrònom no té sentit: l'apaguem (i si sona,
         # reengega sense clic des de la posició actual).
         if not self.tempo_fix and getattr(self, "metro_on", False):
@@ -3300,10 +3318,25 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                        if nous_acords is not None else list(self.acords))
             cand_sec = (self._valida_canvis_seccions(noves_seccions)
                         if noves_seccions is not None else list(self.seccions))
-            cand_tp = (tempo_map.valida_i_normalitza_compassos(
-                noves_trams, durada, permet_ultim_fraccionari=True)
-                if noves_trams is not None
-                else list(self.tempo_trams or []))
+            if noves_trams is not None:
+                # Les fronteres de l'enganxat són lliures (§13.4): no exigim
+                # línia de beat. Normalitzem només N/cobertura i tornem a
+                # enganxar les metadades del bloc (rubato, agrupació, unitat).
+                cand_tp, avisos_tp = mapa_tempo.normalitza_trams_map(
+                    noves_trams, durada, permet_ultim_fraccionari=True)
+                for avis in avisos_tp:
+                    self.log(f"enganxa tempo: {avis}")
+                font = [mapa_tempo.TramMapa(
+                    T + float(t[0]), T + float(t[1]), float(t[2]),
+                    getattr(t, "tipus", "normal"),
+                    f"{int(t[3])}/{int(t[4])}",
+                    getattr(t, "agrupacio", ""), getattr(t, "n", None),
+                    getattr(t, "beat_unit", None))
+                    for t in trams_buf]
+                cand_tp = mapa_tempo.reenganxa_metadades(
+                    font + list(self.tempo_trams or []), cand_tp)
+            else:
+                cand_tp = list(self.tempo_trams or [])
         except ValueError as e:
             self.log(f"enganxa: canvi invalid, no s'ha fet res ({e})")
             self.avis_editor(f"Enganxat no fet: {e}")
@@ -3861,6 +3894,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         nova[idx] = (ini, fi, L, F)
         nova = self._contiguitat_seccions(nova, idx)
         self.seccions = self._normalitza_seccions(nova)
+        self._normalitza_cobertura()
         if hasattr(self, "timeline"):
             self.timeline.set_data(self.acords, self.seccions)
         if hasattr(self, "llista_ab"):

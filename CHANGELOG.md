@@ -5,6 +5,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Corregit — Cobertura, enganxat de tempo i exportació (2026-11-25)
+- Editar l’inici de la primera secció ja no deixa un forat: la cobertura es
+  normalitza immediatament.
+- Enganxar un bloc de tempo conserva `tipus` (rubato), `agrupacio`, `n` i
+  `beat_unit`, i no exigeix fronteres en línia de beat.
+- Les reparacions de cobertura emeten un avís visible i no només un log.
+- L’exportació i la partitura usen la unitat de pols del tram 0, no la del
+  clip seleccionat.
+
 ### Corregit — Candaus i atomicitat de les operacions (2026-11-25)
 - L’anàlisi automàtica aplica el BPM detectat ignorant els candaus, com marca
   §13.10; l’aplicació confirmada per l’usuari sí que els respecta.

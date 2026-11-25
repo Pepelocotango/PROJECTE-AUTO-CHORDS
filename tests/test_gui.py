@@ -7012,6 +7012,63 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.acords, abans_ac)
         self.assertEqual(vr.seccions, abans_sec)
 
+    def test_seccio_0_no_deixa_forat_inicial(self):
+        vr = self.w.visor_ref
+        vr.seccions = [(0.0, 30.0, "A", "A"), (30.0, 60.0, "B", "B")]
+        vr.timeline.set_data(vr.acords, vr.seccions)
+        vr._undo_touch_base()
+        self.assertTrue(vr.mou_seccio(0, 5.0, 30.0))
+        self.assertAlmostEqual(float(vr.seccions[0][0]), 0.0, places=6)
+        self.assertAlmostEqual(float(vr.seccions[0][1]), 5.0, places=6)
+        self.assertAlmostEqual(float(vr.seccions[-1][1]), 60.0, places=6)
+        for a, b in zip(vr.seccions, vr.seccions[1:]):
+            self.assertAlmostEqual(float(a[1]), float(b[0]), places=6)
+
+    def test_normalitzacio_de_cobertura_emet_avis_visible(self):
+        vr = self.w.visor_ref
+        vr.seccions = [(5.0, 60.0, "A", "A")]
+        vistos = []
+        vr.infoMissatge.connect(vistos.append)
+        self.assertTrue(vr._normalitza_cobertura())
+        self.assertTrue(vistos)
+        self.assertIn("normalitzat", vistos[-1].lower())
+
+    def test_copy_de_tempo_conserva_metadades(self):
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams([
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "rubato", "7/8",
+                                "2+2+3", 4.0, "negra_punt"),
+            mapa_tempo.TramMapa(10.0, 60.0, 120.0, "normal", "4/4",
+                                "", 20.0, "negra"),
+        ]))
+        vr.timeline.select_clip("tempo", 0)
+        vr.timeline.copy_selection()
+        tr = vr.timeline._clipboard["tempo"][0]
+        self.assertEqual((tr.tipus, tr.agrupacio, tr.beat_unit),
+                         ("rubato", "2+2+3", "negra_punt"))
+
+    def test_enganxar_tempo_conserva_metadades(self):
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams([
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4",
+                                "", 5.0, "negra"),
+            mapa_tempo.TramMapa(10.0, 20.0, 120.0, "rubato", "7/8",
+                                "2+2+3", 5.0, "negra_punt"),
+            mapa_tempo.TramMapa(20.0, 60.0, 120.0, "normal", "4/4",
+                                "", 20.0, "negra"),
+        ]))
+        vr.timeline.select_clip("tempo", 1)
+        vr.timeline._snap_on = False
+        vr.timeline.copy_selection()
+        buf = dict(vr.timeline._clipboard)
+        vr._enganxa_seleccio(buf, 20.0)
+        tr = next(t for t in vr.tempo_trams
+                  if abs(float(t.ini) - 20.0) <= 1e-6)
+        self.assertEqual((tr.tipus, tr.agrupacio, tr.beat_unit),
+                         ("rubato", "2+2+3", "negra_punt"))
+
     def test_dialeg_candau_n_rebutja_un_bpm_que_canvia_n(self):
         vr = self.w.visor_ref
         trams = [(0.0, 10.0, 120.0, 4, 4),

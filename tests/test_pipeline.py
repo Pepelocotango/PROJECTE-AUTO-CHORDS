@@ -1476,6 +1476,21 @@ class TestExportEstructuraIndependentDeAnalisi(unittest.TestCase):
         p.start()
         self.addCleanup(p.stop)
 
+    def test_export_usa_un_la_unitat_del_tram_0(self):
+        w, _s = _export_neteja_estructura___finestra(amb_estructura=False)
+        vr = w.visor_ref
+        vr.aplica_tempo_trams([
+            mapa_tempo.TramMapa(0.0, 1.5, 120.0, "normal", "6/8", "",
+                                None, "negra_punt"),
+            mapa_tempo.TramMapa(1.5, 3.0, 120.0, "normal", "4/4", "",
+                                None, "negra"),
+        ])
+        vr.timeline.select_clip("tempo", 1)
+        kw = w._prepara_export()
+        self.assertEqual(kw["beat_unit"], "negra_punt")
+        self.assertEqual(kw["bpm_unit"], "negra_punt")
+        w.close()
+
     def test_marca_d_analisi_off_no_treu_estructura_de_l_export(self):
         w, s = _export_neteja_estructura___finestra(amb_estructura=False)
         kw = w._prepara_export()

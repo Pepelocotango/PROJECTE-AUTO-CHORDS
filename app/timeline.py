@@ -57,6 +57,7 @@ from app import graella  # noqa: E402
 from app import marcadors as M  # noqa: E402  (tipus/separació dels marcadors)
 from app import pipeline  # noqa: E402  (DESTÍ del moviment d'un bloc, §6.3)
 from app import tempo_map  # noqa: E402  (pas de nudge = compàs sencer)
+from app import mapa_tempo  # noqa: E402  (metadades del bloc de tempo)
 from app import dreceres  # noqa: E402
 from app import timeline_geometry as geo  # noqa: E402
 
@@ -430,12 +431,13 @@ class TimelineView(QGraphicsView):
 
     def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
                        beat_type: int = 4, mapa=None,
-                       bpm_unit: str = "negra") -> None:
+                       bpm_unit: str = "negra", tempo_trams=None) -> None:
         self._tempo_fix = bool(tempo_fix)
         self._bpm = float(bpm)
         self._bpb = int(bpb)
         self._beat_type = int(beat_type or 4)
         self._mapa = mapa
+        self._tempo_model = list(tempo_trams or ())
         self._bpm_unit = bpm_unit
         self._ruler.update_mode(self._tempo_fix, self._bpm, self._bpb,
                                 self._beat_type, mapa, bpm_unit=bpm_unit)
@@ -1294,9 +1296,12 @@ class TimelineView(QGraphicsView):
                 ini, fi, lletra, fam = self._seccions[idx]
                 sections.append((float(ini), float(fi), str(lletra), str(fam)))
             elif kind == "tempo":
-                tr = self._trams_tempo()
-                if 0 <= idx < len(tr):
-                    tempo_bloc.append(tuple(tr[idx]))
+                model = list(getattr(self, "_tempo_model", ()) or ())
+                if not model:
+                    mapa = getattr(self, "_mapa", None)
+                    model = list(getattr(mapa, "trams", ()) or ())
+                if 0 <= idx < len(model):
+                    tempo_bloc.append(model[idx])
         if not chords and not sections and not tempo_bloc:
             return
         chords.sort(key=lambda x: x[0])
@@ -1321,8 +1326,12 @@ class TimelineView(QGraphicsView):
                             if sections else 0.0),
             # Trams de BPM/compàs: relatius al SEU propi inici (com els
             # altres carrils) + la llargada del bloc.
-            "tempo": [(float(t[0]) - inici_tp, float(t[1]) - inici_tp,
-                       t[2], t[3], t[4]) for t in tempo_bloc],
+            "tempo": [mapa_tempo.TramMapa(
+                float(t[0]) - inici_tp, float(t[1]) - inici_tp,
+                float(t[2]), getattr(t, "tipus", "normal"),
+                f"{int(t[3])}/{int(t[4])}",
+                getattr(t, "agrupacio", ""), getattr(t, "n", None),
+                getattr(t, "beat_unit", None)) for t in tempo_bloc],
             "tempo_len": ((max(float(t[1]) for t in tempo_bloc) - inici_tp)
                           if tempo_bloc else 0.0),
             "bloc_fi": bloc_fi,

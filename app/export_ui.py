@@ -69,9 +69,9 @@ class ExportMixin:
             bpm=self._transport_bpm(),
             bpb=self._transport_bpb(),
             den=self._transport_beat_type(),
-            beat_unit=((vre.unitat_objectiu() if vre is not None
+            beat_unit=((vre.unitat_tram0() if vre is not None
                         else "negra")),
-            bpm_unit=((vre.unitat_objectiu() if vre is not None
+            bpm_unit=((vre.unitat_tram0() if vre is not None
                        else "negra")),
             sr=44100,
             tempo_fix=self.tempo_fix.isChecked(),
@@ -340,7 +340,7 @@ class ExportMixin:
                 bpb=self._transport_bpb(),
                 beat_type=self._transport_beat_type(),
                 bpm_unit=(getattr(getattr(self, "visor_ref", None),
-                                  "unitat_objectiu",
+                                  "unitat_tram0",
                                   lambda: "negra")()),
                 wav=wav,
                 new_system_each=4,     # 4 compassos per línia (lead sheet)

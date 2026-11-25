@@ -917,6 +917,7 @@ class EditorMixin:
                 # Manté la contigüitat (#2) com el drag del timeline.
                 nova = self._contiguitat_seccions(nova, i)
                 self.seccions = self._normalitza_seccions(nova)
+                self._normalitza_cobertura()
             except ValueError as e:
                 self.avis_editor(f"canvi invalid ({e})")
                 return
