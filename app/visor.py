@@ -3764,7 +3764,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 beats_qm=None, permissiu=True,
                 ref_base=ref_base,
                 avisos=avisos,
-                beat_factor=self.beat_factor())
+                beat_factor=self.beat_factor(),
+                permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Frontera: {e}")
             return None

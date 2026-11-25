@@ -1752,8 +1752,13 @@ def mou_frontera_retempo(trams, idx_frontera, nou_t, durada,
                 tempo_recalc.n_negres_del_clip(
                     beats, b[0], b[1], beat_factor,
                     tol=tempo_recalc.TOL_BEATS))
+        refs = [(i - 1, a), (i, b)]
+        # Si la frontera és l'inici de l'últim clip, el costat dret no es
+        # recalcula: conserva BPM/compàs i pot quedar amb N fraccionari.
+        if permet_ultim_fraccionari and i == len(out) - 1:
+            refs = [(i - 1, a)]
         out = _recalcula_costats(
-            out, [(i - 1, a), (i, b)], durada, beats_qm=beats_qm,
+            out, refs, durada, beats_qm=beats_qm,
             ref_base=ref_base, avisos=avisos, beat_factor=beat_factor,
             meter_prior=meter_prior, unitats=unitats,
             classificacions=classificacions, suggerides=suggerides)

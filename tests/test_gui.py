@@ -6643,6 +6643,39 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertAlmostEqual(float(ultim.n), 50.0 / (4 * 60.0 / 130.0),
                                places=6)
 
+    def test_mou_frontera_penultim_allarga_un_compas(self):
+        """Allargar el penúltim +1 compàs deixa l'últim amb N fraccionari."""
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        bpm = 131.0
+        bar = 4.0 * 60.0 / bpm
+        b1, b2 = 5.0 * bar, 10.0 * bar
+        trams = [
+            mapa_tempo.TramMapa(0.0, b1, bpm, "normal", "4/4", "", 5.0,
+                                "negra"),
+            mapa_tempo.TramMapa(b1, b2, bpm, "normal", "4/4", "", 5.0,
+                                "negra"),
+            mapa_tempo.TramMapa(b2, 60.0, bpm, "normal", "4/4", "", None,
+                                "negra"),
+        ]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        vr.set_bloquejos_tempo(bpm=True)
+        # Allarga el penúltim exactament un compàs: l'últim conserva BPM i N
+        # fraccionari.
+        nous = vr._mou_frontera_ui(
+            vr.tempo_trams, 2, b2 + bar, 60.0, ref_idx=1)
+        self.assertIsNotNone(nous)
+        self.assertTrue(vr.aplica_tempo_trams(nous))
+        _primer, penultim, ultim = vr.tempo_trams
+        self.assertAlmostEqual(float(penultim[1]), b2 + bar, places=6)
+        self.assertAlmostEqual(float(penultim[2]), bpm, places=6)
+        self.assertAlmostEqual(float(penultim.n), 6.0, places=6)
+        self.assertAlmostEqual(float(ultim[0]), b2 + bar, places=6)
+        self.assertAlmostEqual(float(ultim[1]), 60.0, places=6)
+        self.assertAlmostEqual(float(ultim[2]), bpm, places=6)
+        self.assertAlmostEqual(float(ultim.n), (60.0 - (b2 + bar)) / bar,
+                               places=6)
+
     def test_eliminar_frontera_el_vei_dret_ocupa_l_espai(self):
         vr = self.w.visor_ref
         b1, final = 3.330396, 16.582354

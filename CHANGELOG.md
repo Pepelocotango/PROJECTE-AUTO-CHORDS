@@ -5,6 +5,10 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Corregit — Frontera de l'últim clip de tempo (2026-11-25)
+- En moure la frontera d'entrada de l'últim clip, el costat dret conserva
+  BPM/compàs i pot quedar amb `N` fraccionari; ja no se'l força a un `N` enter.
+
 ### Corregit — Eliminació abans de l'últim clip de tempo (2026-11-25)
 - Si el veí dret que absorbeix el buit és l'últim clip, conserva BPM, compàs i
   unitat, i queda amb `N` fraccionari.
