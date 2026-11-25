@@ -2,9 +2,9 @@
 from PyQt5.QtCore import QEvent, Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
-    QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox, QPushButton,
-    QSpinBox, QVBoxLayout, QWidget,
+    QButtonGroup, QCheckBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
+    QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel,
+    QMessageBox, QPushButton, QRadioButton, QVBoxLayout, QWidget,
 )
 
 from app.camp_text import CampText
@@ -16,16 +16,21 @@ from app.info_box import InfoDialogMixin
 
 
 class DialegTramTempo(InfoDialogMixin, GeometriaMixin, QDialog):
-    """Edita un **tros** del mapa: BPM i compàs (on comença es mostra)."""
+    """Inspector d'un tram del mapa: informació, mètrica, estructura i tipus."""
 
-    #: «Recalcula»: mode «fix» o «mobil», amb les opcions del bloc Opcions.
-    recalculRequested = pyqtSignal(str)
+    #: Aplica un camp mètric: «bpm», «compas» o «n».
+    campRequested = pyqtSignal(str)
+    #: Operacions mètriques: «mes1», «menys1», «x2» o «div2».
+    operacioRequested = pyqtSignal(str)
+    #: Converteix a rubato (`True`) o a normal (`False`).
+    rubatoRequested = pyqtSignal(bool)
     #: Canvi explícit d'unitat: (unitat_nova, «mantenir_tempo»/«mantenir_numero»).
     unitatRequested = pyqtSignal(str, str)
     def __init__(self, parent=None, inici=0.0, bpm=120.0, num=4, den=4,
                  inicial=False, text_inici=None, unit=bpm_unit.DEFECTE,
                  n_actual=None, durada=None, info=None,
-                 beat_unit=bpm_unit.DEFECTE):
+                 beat_unit=bpm_unit.DEFECTE, es_ultim=False,
+                 es_rubato=False):
         super().__init__(parent)
         self._unit = bpm_unit.normalitza(unit)
         self._durada = float(durada) if durada is not None else 0.0
@@ -36,6 +41,8 @@ class DialegTramTempo(InfoDialogMixin, GeometriaMixin, QDialog):
         self._num0 = int(num)
         self._den0 = int(den)
         self._inicial = bool(inicial)
+        self._es_ultim = bool(es_ultim)
+        self._es_rubato = bool(es_rubato)
         self._beat_unit = bpm_unit.normalitza(beat_unit)
         self._unit_inicial = self._unit
         self._bpm_manual = False
@@ -82,33 +89,82 @@ QCheckBox::indicator:disabled {{
         col_ed.addWidget(avis)
 
         self._den_defecte = int(den) if int(den) > 0 else 4
-        grup_fix = QGroupBox("Recalcul fix")
-        lay_fix = QVBoxLayout(grup_fix)
+        grup_mode = QGroupBox("Mode de recalcul")
+        lay_mode = QHBoxLayout(grup_mode)
+        self.rb_fix = QRadioButton("Recalcul fix")
+        self.rb_fix.setToolTip(
+            "Les fronteres no es mouen: es fixa el camp que mana i es "
+            "deriva la resta.")
+        self.rb_mobil = QRadioButton("Recalcul mòbil")
+        self.rb_mobil.setToolTip(
+            "Mou la fi del clip seleccionat i recalcula el veí dret.")
+        self.rb_mobil.setEnabled(not self._es_ultim)
+        if self._es_ultim:
+            self.rb_mobil.setToolTip(
+                "No disponible a l'últim clip: la fi de la WAV és fixa.")
+        self.grup_mode = QButtonGroup(self)
+        self.grup_mode.addButton(self.rb_fix)
+        self.grup_mode.addButton(self.rb_mobil)
+        self.rb_fix.setChecked(True)
+        lay_mode.addWidget(self.rb_fix)
+        lay_mode.addWidget(self.rb_mobil)
+        col_ed.addWidget(grup_mode)
+
+        grup_metric = QGroupBox("Mètrica i candaus")
+        lay_metric = QVBoxLayout(grup_metric)
         form_fix = QFormLayout()
         (self.sp_n, self.ed_compas,
          self.sp_bpm) = self._crea_camps(form_fix)
         self._lbl_bpm = form_fix.labelForField(self.sp_bpm)
-        lay_fix.addLayout(form_fix)
-        self.chk_n = QCheckBox("N mana (el BPM es recalcula)")
-        self.chk_n.setChecked(False)
-        self.chk_n.setEnabled(n_actual is not None and self._durada > 0)
-        self.chk_n.setToolTip(
-            "Si està activat, es respecten els compassos del camp N i el "
-            "BPM es recalcula per encaixar-hi. Si està desactivat, el BPM "
-            "és l'objectiu i el motor tria el N enter més pròxim.")
-        lay_fix.addWidget(self.chk_n)
-        self.b_recalc_fix = QPushButton("Recalcula")
-        self.b_recalc_fix.setToolTip(
-            "Recalcul fix: manté l'inici i la fi del clip i deriva el BPM.")
-        self.b_recalc_fix.clicked.connect(lambda: self._recalcula("fix"))
-        lay_fix.addWidget(self.b_recalc_fix)
+        lay_metric.addLayout(form_fix)
+        self.chk_lock_bpm = QCheckBox("Bloqueja BPM")
+        self.chk_lock_compas = QCheckBox("Bloqueja compàs")
+        self.chk_lock_n = QCheckBox("Bloqueja N")
+        lay_candaus = QHBoxLayout()
+        for w in (self.chk_lock_bpm, self.chk_lock_compas, self.chk_lock_n):
+            w.setToolTip("Màxim dos candaus; el resultat no pot canviar-los.")
+            lay_candaus.addWidget(w)
+        lay_metric.addLayout(lay_candaus)
+        self.b_aplica_bpm = QPushButton("Aplica BPM")
+        self.b_aplica_compas = QPushButton("Aplica compàs")
+        self.b_aplica_n = QPushButton("Aplica N")
+        lay_aplica = QHBoxLayout()
+        for w, camp in ((self.b_aplica_bpm, "bpm"),
+                        (self.b_aplica_compas, "compas"),
+                        (self.b_aplica_n, "n")):
+            w.clicked.connect(lambda _=False, c=camp: self.campRequested.emit(c))
+            lay_aplica.addWidget(w)
+        lay_metric.addLayout(lay_aplica)
         self.ajuda = QLabel(
-            "Prem «Recalcula» per aplicar el recalcul fix. El recalcul mòbil "
-            "es fa des de la franja Editor o arrossegant les fronteres.")
+            "Els candaus protegeixen els camps; si una operació els canvia, "
+            "es rebutja. Les operacions +1/−1/×2/÷2 no mouen fronteres.")
         self.ajuda.setWordWrap(True)
         self.ajuda.setObjectName("secundari")
-        lay_fix.addWidget(self.ajuda)
-        col_ed.addWidget(grup_fix)
+        lay_metric.addWidget(self.ajuda)
+        col_ed.addWidget(grup_metric)
+
+        grup_ops = QGroupBox("Operacions mètriques (segons fixos)")
+        lay_ops = QHBoxLayout(grup_ops)
+        self.b_mes1 = QPushButton("+1 compàs")
+        self.b_menys1 = QPushButton("−1 compàs")
+        self.b_x2 = QPushButton("×2")
+        self.b_div2 = QPushButton("÷2")
+        for w, op in ((self.b_mes1, "mes1"), (self.b_menys1, "menys1"),
+                      (self.b_x2, "x2"), (self.b_div2, "div2")):
+            w.clicked.connect(lambda _=False, o=op: self.operacioRequested.emit(o))
+            lay_ops.addWidget(w)
+        col_ed.addWidget(grup_ops)
+
+        grup_rubato = QGroupBox("Tipus")
+        lay_rubato = QHBoxLayout(grup_rubato)
+        self.chk_rubato = QCheckBox("Rubato")
+        self.chk_rubato.setChecked(self._es_rubato)
+        self.chk_rubato.setToolTip(
+            "Converteix el clip a rubato o a normal; no recalcula BPM/N/compàs.")
+        self.chk_rubato.clicked.connect(
+            lambda v: self.rubatoRequested.emit(bool(v)))
+        lay_rubato.addWidget(self.chk_rubato)
+        col_ed.addWidget(grup_rubato)
 
         grup_unitat = QGroupBox("Unitat de pols")
         lay_unitat = QVBoxLayout(grup_unitat)
@@ -133,10 +189,9 @@ QCheckBox::indicator:disabled {{
         col_ed.addWidget(grup_unitat)
         col_ed.addStretch(1)
 
-        self.chk_n.toggled.connect(self._n_canviat)
-        self.sp_n.valueChanged.connect(self._actualitza_bpm_n)
-        self.ed_compas.textChanged.connect(self._actualitza_bpm_n)
-        self._n_canviat(self.chk_n.isChecked())
+        for w in (self.chk_lock_bpm, self.chk_lock_compas, self.chk_lock_n):
+            w.toggled.connect(lambda _v, w=w: self._actualitza_candaus(w))
+        self._actualitza_candaus()
 
         # --- columna dreta: informació completa, NOMÉS lectura.
         grup_info = QGroupBox("Informació del clip (no editable)")
@@ -218,21 +273,23 @@ QCheckBox::indicator:disabled {{
         sp_bpm.setDecimals(3)
         sp_bpm.setValue(bpm_unit.de_quarter(self._bpm0, self._unit))
         sp_bpm.setToolTip(
-            "BPM del clip en la unitat activa. El recalc fix el deriva de "
-            "l'N, el compàs i la durada.")
+            "BPM del clip en la unitat activa. «Aplica BPM» l'usa com a "
+            "objectiu amb fronteres fixes.")
         ed_compas = CampText(f"{self._num0}/{self._den0}")
         ed_compas.setPlaceholderText("4/4, 3/4, 2/4, 1/4…")
         ed_compas.setToolTip(
             "Compàs del clip en format num/den (numerador 1–12; "
             "denominador 2, 4, 8 o 16).")
-        sp_n = QSpinBox()
-        sp_n.setRange(1, 9999)
+        sp_n = QDoubleSpinBox()
+        sp_n.setRange(0.001, 9999.0)
+        sp_n.setDecimals(3)
+        sp_n.setSingleStep(1.0)
         sp_n.setValue(
-            max(1, int(round(self._n_actual)))
-            if self._n_actual is not None else 1)
+            max(0.001, float(self._n_actual))
+            if self._n_actual is not None else 1.0)
         sp_n.setToolTip(
-            "Nombre de compassos del clip. Amb «N mana», el BPM es recalcula "
-            "perquè N compassos hi caben sense moure les fronteres.")
+            "Nombre de compassos del clip. Els interiors han de ser enters; "
+            "l'últim pot quedar fraccionari.")
         sp_n.setEnabled(self._n_actual is not None and self._durada > 0)
         form.addRow("N compassos:", sp_n)
         form.addRow("Compàs:", ed_compas)
@@ -274,6 +331,7 @@ QCheckBox::indicator:disabled {{
             "n": self._n_actual, "n_real": n_real, "n_enter": n_enter,
             "n_valid": (n_real is not None and n_enter is not None
                         and abs(float(n_real) - float(n_enter)) <= 1e-6),
+            "n_fracc": False,
             "bpm": bpm,
             "bpm_mostra": bpm_unit.de_quarter(bpm, self._unit),
             "bpm_unit": bpm_unit.etiqueta(self._unit),
@@ -322,6 +380,7 @@ QCheckBox::indicator:disabled {{
         n_enter = info.get("n_enter")
         n_desat = info.get("n")
         n_valid = bool(info.get("n_valid"))
+        n_fracc = bool(info.get("n_fracc"))
         bq = float(info.get("bar_quarters") or 0.0)
         dur_compas = float(info.get("durada_compas") or 0.0)
         unit = str(info.get("bpm_unit") or "")
@@ -385,7 +444,8 @@ QCheckBox::indicator:disabled {{
              "Durada mín.", f"{'OK' if info.get('durada_ok') else 'MASSA CURT'}"
                             f" ({num_txt(durada, 3)} ≥"
                             f" {num_txt(info.get('min_durada'), 3)} s)"),
-            ("N enter", "OK" if n_valid else "NO", None, None),
+            ("N enter", ("OK" if n_valid and not n_fracc else
+                          ("OK (cua)" if n_fracc else "NO")), None, None),
         ]
         return files
 
@@ -428,29 +488,54 @@ QCheckBox::indicator:disabled {{
         """`(bpm, num, den, n)` tal com estan als camps, sense derivar res."""
         num, den = self._parse_compas()
         bpm = bpm_unit.a_quarter(float(self.sp_bpm.value()), self._unit)
-        return bpm, int(num), int(den), int(self.sp_n.value())
+        return bpm, int(num), int(den), float(self.sp_n.value())
 
-    def opcions_recalc(self):
-        """Opcions fixes del recalcul: només canvia si mana N."""
+    def mode(self):
+        """«fix» (fronteres fixes) o «mobil» (mou la fi i el veí dret)."""
+        return "mobil" if self.rb_mobil.isChecked() else "fix"
+
+    def locks(self):
+        """Camps protegits: `{"bpm": bool, "n": bool, "compas": bool}`."""
         return {
-            # L'Editor ja no fa servir QM; els Talls QM tenen el seu propi flux.
-            "beats": False,
-            "segons": True,
-            "unitat": True,
-            "compas": False,
-            "n_fix": self.n_auto(),
-            "rubato": False,
+            "bpm": bool(self.chk_lock_bpm.isChecked()),
+            "n": bool(self.chk_lock_n.isChecked()),
+            "compas": bool(self.chk_lock_compas.isChecked()),
         }
 
-    def _recalcula(self, mode):
-        """Valida els camps i demana el recalcul fix."""
-        try:
-            bpm, num, den, _n = self.valors_camps()
-            tempo_map.valida_tempo(bpm, num, den)
-        except ValueError as e:
-            QMessageBox.warning(self, "Tempo invàlid", str(e))
-            return
-        self.recalculRequested.emit(str(mode))
+    def _actualitza_candaus(self, canviada=None):
+        """Màxim dos candaus i estat dels camps/botons."""
+        caselles = (self.chk_lock_bpm, self.chk_lock_compas,
+                    self.chk_lock_n)
+        if canviada is not None and sum(c.isChecked() for c in caselles) > 2:
+            canviada.blockSignals(True)
+            canviada.setChecked(False)
+            canviada.blockSignals(False)
+        # BPM+N no té motor compartit per derivar el compàs: no es poden
+        # bloquejar alhora.
+        if self.chk_lock_bpm.isChecked() and self.chk_lock_n.isChecked():
+            if canviada in (self.chk_lock_bpm, self.chk_lock_n):
+                canviada.blockSignals(True)
+                canviada.setChecked(False)
+                canviada.blockSignals(False)
+            else:
+                self.chk_lock_n.blockSignals(True)
+                self.chk_lock_n.setChecked(False)
+                self.chk_lock_n.blockSignals(False)
+        n_actius = sum(c.isChecked() for c in caselles)
+        for c in caselles:
+            c.setEnabled(n_actius < 2 or c.isChecked())
+        if self.chk_lock_bpm.isChecked():
+            self.chk_lock_n.setEnabled(False)
+        if self.chk_lock_n.isChecked():
+            self.chk_lock_bpm.setEnabled(False)
+        self.sp_bpm.setEnabled(not self.chk_lock_bpm.isChecked())
+        self.ed_compas.setEnabled(not self.chk_lock_compas.isChecked())
+        n_ok = (self._n_actual is not None and self._durada > 0)
+        self.sp_n.setEnabled(n_ok and not self.chk_lock_n.isChecked())
+        self.b_aplica_bpm.setEnabled(not self.chk_lock_bpm.isChecked())
+        self.b_aplica_compas.setEnabled(
+            not self.chk_lock_compas.isChecked())
+        self.b_aplica_n.setEnabled(n_ok and not self.chk_lock_n.isChecked())
 
     def unitat(self):
         """Unitat de pols que s'aplicarà amb Aplicar/OK."""
@@ -501,17 +586,16 @@ QCheckBox::indicator:disabled {{
             self.sp_n.blockSignals(True)
             try:
                 self.sp_n.setValue(
-                    min(9999, max(1, int(round(float(n_real))))))
+                    min(9999.0, max(0.001, float(n_real))))
             except (TypeError, ValueError):
                 pass
             finally:
                 self.sp_n.blockSignals(False)
-        self.chk_n.blockSignals(True)
-        try:
-            self.chk_n.setChecked(False)
-            self.chk_n.setEnabled(n_real is not None and self._durada > 0)
-        finally:
-            self.chk_n.blockSignals(False)
+        self._es_rubato = (str(info.get("tipus") or "") == "rubato")
+        self.chk_rubato.blockSignals(True)
+        self.chk_rubato.setChecked(self._es_rubato)
+        self.chk_rubato.blockSignals(False)
+        self._actualitza_candaus()
         self._refresca_graella_info()
 
     def _refresca_graella_info(self):
@@ -542,10 +626,6 @@ QCheckBox::indicator:disabled {{
     def closeEvent(self, ev):
         super().closeEvent(ev)
 
-    def n_auto(self):
-        """Cert si l'usuari vol que N mane i el BPM es recalcule."""
-        return bool(self.chk_n.isChecked() and self.chk_n.isEnabled())
-
     def _parse_compas(self):
         num, den = 4, self._den_defecte
         txt = (self.ed_compas.text() or "").strip().replace(" ", "")
@@ -561,36 +641,9 @@ QCheckBox::indicator:disabled {{
             raise ValueError(f"El compàs «{txt}» no és vàlid")
         return num, den
 
-    def _actualitza_bpm_n(self, *_a):
-        if not self.n_auto() or self._durada <= 0:
-            return
-        try:
-            num, den = self._parse_compas()
-            bq = float(num) * 4.0 / float(den)
-            bpm = float(self.sp_n.value()) * bq * 60.0 / self._durada
-            bpm = tempo_map.valida_tempo(bpm, num, den)[0]
-        except (ValueError, ZeroDivisionError):
-            return
-        self.sp_bpm.blockSignals(True)
-        try:
-            self.sp_bpm.setValue(bpm_unit.de_quarter(bpm, self._unit))
-        finally:
-            self.sp_bpm.blockSignals(False)
-
-    def _n_canviat(self, actiu):
-        actiu = bool(actiu) and self._durada > 0
-        self.sp_n.setEnabled(actiu)
-        self.sp_bpm.setEnabled(True)
-        if actiu:
-            self._actualitza_bpm_n()
-
     def valors(self):
-        """`(bpm, num, den)`; «num/den» o «num»."""
+        """`(bpm, num, den)` llegits dels camps, sense derivar N."""
         num, den = self._parse_compas()
-        if self.n_auto():
-            bpm = (float(self.sp_n.value())
-                   * (float(num) * 4.0 / float(den)) * 60.0 / self._durada)
-            return tempo_map.valida_tempo(bpm, num, den)
         return tempo_map.valida_tempo(
             bpm_unit.a_quarter(float(self.sp_bpm.value()), self._unit),
             num, den)

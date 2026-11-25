@@ -200,7 +200,7 @@ class EditorMixin:
             for num in range(1, limits.NUM_MAX + 1):
                 yield num, den
 
-    def _resol_fix_bpm(self, tr, bpm):
+    def _resol_fix_bpm(self, tr, bpm, idx=None):
         """BPM exacte amb fronteres fixes: tria N enter i compàs."""
         ini, fi = float(tr.ini), float(tr.fi)
         dt = fi - ini
@@ -208,7 +208,7 @@ class EditorMixin:
                          tempo_map.compassos_del_clip(tr))
         num0, den0 = int(tr.num), int(tr.den)
         bq0 = float(num0) * 4.0 / float(den0)
-        ultim = (getattr(self, "_ed_idx", -1)
+        ultim = ((getattr(self, "_ed_idx", -1) if idx is None else idx)
                  == len(self.tempo_trams or []) - 1)
         if ultim:
             n = dt * float(bpm) / (bq0 * 60.0)
@@ -246,13 +246,13 @@ class EditorMixin:
             ini, fi, float(bpm), tr.tipus, f"{num}/{den}", agr,
             float(n), unit)
 
-    def _resol_fix_compas(self, tr, num, den):
+    def _resol_fix_compas(self, tr, num, den, idx=None):
         """Compàs exacte: N s'adapta (enter) i el BPM es recalcula si cal."""
         ini, fi = float(tr.ini), float(tr.fi)
         dt = fi - ini
         bq = float(num) * 4.0 / float(den)
         n_obj = dt * float(tr.bpm) / (bq * 60.0)
-        ultim = (getattr(self, "_ed_idx", -1)
+        ultim = ((getattr(self, "_ed_idx", -1) if idx is None else idx)
                  == len(self.tempo_trams or []) - 1)
         if ultim:
             n = float(n_obj)
@@ -276,12 +276,12 @@ class EditorMixin:
             ini, fi, float(bpm), tr.tipus, f"{num}/{den}", agr,
             float(n), unit)
 
-    def _resol_fix_n(self, tr, n):
+    def _resol_fix_n(self, tr, n, idx=None):
         """N exacte: busca compàs que conserve el BPM; si no, el recalcula."""
         ini, fi = float(tr.ini), float(tr.fi)
         dt = fi - ini
         n = float(n)
-        ultim = (getattr(self, "_ed_idx", -1)
+        ultim = ((getattr(self, "_ed_idx", -1) if idx is None else idx)
                  == len(self.tempo_trams or []) - 1)
         if not ultim and abs(n - round(n)) > 1e-3:
             raise ValueError("N ha de ser un enter positiu.")

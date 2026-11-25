@@ -1650,48 +1650,6 @@ class TestMetadadesReparacions(_regla11_paritat___Base):
         finally:
             v.close()
 
-    def test_recalcul_fix_conserva_metadades(self):
-        from app import tempo_map, tempo_recalc
-        v = _regla11_paritat___visor()
-        try:
-            v.aplica_tempo_trams([
-                mapa_tempo.TramMapa(
-                    0.0, 10.0, 120.0, "normal", "4/4", "", None, "negra"),
-                mapa_tempo.TramMapa(
-                    10.0, 20.0, 120.0, "rubato", "7/8", "2+2+3", 3.0,
-                    "corxera")])
-
-            class _Dlg:
-                def opcions_recalc(self):
-                    return {"silencia_factor": False, "rubato": False,
-                            "segons": True, "compas": True, "beats": False,
-                            "unitat": True, "n_fix": False}
-
-                def valors_camps(self):
-                    return (90.0, 7, 8, 4)
-
-                def unitat(self):
-                    return "corxera"
-
-                def set_assistencia(self, *a, **k):
-                    pass
-
-            classif = {"millor": {"bpm": 90.0, "num": 7, "den": 8, "n": 4},
-                       "nivell": "ALT", "avis": "", "candidats": []}
-            with patch.object(tempo_recalc,
-                              "recalculca_tram_amb_candidats",
-                              return_value=classif),                     patch.object(tempo_map, "canvia_compassos_tram",
-                                 return_value=[(0.0, 10.0, 120.0, 4, 4),
-                                               (10.0, 20.0, 90.0, 7, 8)]):
-                self.assertTrue(v._recalcula_tram_dialeg(_Dlg(), 1, "fix"))
-            tram = v.tempo_trams[1]
-            self.assertEqual(tram.tipus, "rubato")
-            self.assertEqual(tram.agrupacio, "2+2+3")
-            self.assertEqual(tram.beat_unit, "corxera")
-        finally:
-            v.close()
-
-
 class TestMenusParitat(_regla11_paritat___Base):
     def _amb_fila(self, fn):
         orig = QListWidget.indexAt

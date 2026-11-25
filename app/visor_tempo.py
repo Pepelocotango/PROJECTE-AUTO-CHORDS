@@ -837,7 +837,17 @@ class TempoMixin:
         if not nous:
             return False
         if not ignora_bloquejos:
+            # Els candaus globals sempre manen; els locals del diàleg
+            # s'hi sumen i només vigilen el clip seleccionat.
             errors = self._bloquejos_tempo_errors(nous, antics=antics)
+            local = getattr(self, "_bloquejos_tempo_dialog", None)
+            if local is not None:
+                bloquejos, idx_local = local
+                for err in self._bloquejos_tempo_errors(
+                        nous, antics=antics, bloquejos=bloquejos,
+                        idx=idx_local):
+                    if err not in errors:
+                        errors.append(err)
             if errors:
                 text = ("Bloquejat: canvi de " + ", ".join(errors)
                         + ". Desactiva el candau o ajusta l'operació.")
@@ -932,9 +942,12 @@ class TempoMixin:
             n_real = None
         n_enter = None
         n_valid = False
+        n_fracc = False
         if n_real is not None:
             n_enter = max(1, tempo_map._enter_mes_proper(float(n_real)))
             n_valid = abs(float(n_real) - float(n_enter)) <= 1e-6
+            n_fracc = bool(not n_valid and idx == len(trams) - 1)
+            n_valid = bool(n_valid or n_fracc)
         try:
             bq = float(num) * 4.0 / float(den) if den else 0.0
             dur_compas = tempo_map.durada_compas(bpm, num, den)
@@ -996,7 +1009,7 @@ class TempoMixin:
             "bar_quarters": bq, "durada_compas": dur_compas,
             "agrupacio": agr, "agrupacio_ef": agr_ef,
             "n": n_desat, "n_real": n_real, "n_enter": n_enter,
-            "n_valid": n_valid,
+            "n_valid": n_valid, "n_fracc": n_fracc,
             "bpm": bpm,
             "bpm_mostra": bpm_unit_mod.de_quarter(
                 bpm, self.unitat_de_tram(tr)),
@@ -1022,149 +1035,6 @@ class TempoMixin:
             "min_durada": limits.TEMPS_MIN_CLIP,
         }
 
-    def _recalcula_tram_dialeg(self, dlg, idx, mode):
-        """«Recalcula» del diàleg: fix (fronteres fixes) o mòbil (una frontera)."""
-        trams = self._trams_map()
-        idx = int(idx)
-        if not (0 <= idx < len(trams)):
-            self.avis_editor("Recalcul: el clip no existeix.")
-            return False
-        opcions = dlg.opcions_recalc()
-        if opcions.get("rubato"):
-            self.avis_editor("Recalcul: el rubato no es recalcula ací.")
-            return False
-        try:
-            bpm_camp, num_camp, den_camp, n_camp = dlg.valors_camps()
-            bpm_camp, num_camp, den_camp = tempo_map.valida_tempo(
-                bpm_camp, num_camp, den_camp)
-        except ValueError as e:
-            self.avis_editor(f"Recalcul: {e}")
-            return False
-        tr = trams[idx]
-        ini, fi = float(tr[0]), float(tr[1])
-        durada_real = fi - ini
-        if opcions["segons"]:
-            durada = durada_real
-        else:
-            bq = float(num_camp) * 4.0 / float(den_camp)
-            durada = float(n_camp) * bq * 60.0 / float(bpm_camp)
-        if durada <= tempo_map.TOL:
-            self.avis_editor("Recalcul: la durada de referència no és vàlida.")
-            return False
-        bpm_ref, num_ref, den_ref = self.referencia_tempo_base(idx)
-        if not opcions["compas"]:
-            num_ref, den_ref = num_camp, den_camp
-        n_beats = None
-        pas_beat = 1.0
-        # El recalcul manual del diàleg del tram no consulta QM: QM queda
-        # reservat als talls (+/intro) amb Snap Beats QM.
-        qm_actiu = False
-        if opcions["beats"]:
-            factor = self.beat_factor() if opcions["unitat"] else 1.0
-            beats = list(getattr(self, "qm_beats", None) or ())
-            n_beats = tempo_recalc.n_negres_del_clip(
-                beats, ini, fi, factor)
-            pas_beat = factor
-            if qm_actiu and n_beats is None:
-                self.avis_editor(
-                    "Snap Beats QM: no hi ha cap beat detectat dins del clip.")
-                return False
-        unit_tram = dlg.unitat()
-        try:
-            classif = tempo_recalc.recalculca_tram_amb_candidats(
-                durada, bpm_ref, num_ref, den_ref,
-                n_ref=int(n_camp) if opcions["n_fix"] else None,
-                n_beats=n_beats,
-                mode="mixt" if n_beats is not None else "graella",
-                bloca_compas=not opcions["compas"],
-                pas_beat=pas_beat,
-                ajusta_beats=bool(opcions["beats"] or qm_actiu),
-                unitat_actual=unit_tram)
-        except ValueError as e:
-            self.avis_editor(f"Recalcul: {e}")
-            return False
-        res = classif.get("millor")
-        nivell = classif.get("nivell") or "BAIX"
-        motius = classif.get("avis") or ""
-        if res is None:
-            sugg = classif.get("unitat_suggerida")
-            text = "Recalcul BAIX: " + (motius or "cap combinació vàlida")
-            if sugg:
-                text += f" · unitat suggerida: {sugg}"
-            dlg.set_assistencia(text)
-            self.avis_editor(text)
-            return False
-        if nivell != "ALT":
-            alts = []
-            for c in (classif.get("candidats") or [])[1:3]:
-                alts.append(
-                    f"{float(c['bpm']):.3f} {int(c['num'])}/"
-                    f"{int(c['den'])} N={int(c['n'])}")
-            text = f"Recalcul {nivell}: {motius}"
-            if alts:
-                text += " · alternatives: " + " | ".join(alts)
-            dlg.set_assistencia(text)
-        else:
-            dlg.set_assistencia(
-                f"Recalcul ALT: {float(res['bpm']):.3f} BPM · "
-                f"{int(res['num'])}/{int(res['den'])} · N={int(res['n'])}")
-        try:
-            if mode == "fix":
-                nous = tempo_map.canvia_compassos_tram(
-                    trams, idx, n_new=int(res["n"]), num=int(res["num"]),
-                    den=int(res["den"]), durada=self._durada_wav(),
-                    permet_ultim_fraccionari=True)
-                # El recalcul fix treballa amb 5 tuples: cal tornar-hi el
-                # tipus, l'agrupació i la unitat del tram original. El `n`
-                # nou el deriva la normalització del mapa.
-                nous = mapa_tempo.reenganxa_metadades(trams, nous)
-            else:
-                base = trams
-                if ((int(res["num"]), int(res["den"])) !=
-                        (int(trams[idx].num), int(trams[idx].den))):
-                    base = list(trams)
-                    tr0 = base[idx]
-                    agr0 = tempo_map.agrupacio_a_text(
-                        tempo_map.agrupacio_compas(
-                            int(res["num"]), int(res["den"])))
-                    base[idx] = mapa_tempo.TramMapa(
-                        tr0.ini, tr0.fi, tr0.bpm, tr0.tipus,
-                        f"{int(res['num'])}/{int(res['den'])}", agr0,
-                        getattr(tr0, "n", None), tr0.beat_unit)
-                nous = mapa_tempo.recalcula_tram_c(
-                    base, idx, self._durada_wav(),
-                    n=int(res["n"]), bpm=float(bpm_camp),
-                    num=int(res["num"]), den=int(res["den"]), camp="n",
-                    permet_ultim_fraccionari=True)
-        except ValueError as e:
-            self.avis_editor(f"Recalcul {mode}: {e}")
-            return False
-        if (int(nous[idx].num), int(nous[idx].den)) != (
-                int(trams[idx].num), int(trams[idx].den)):
-            agr = tempo_map.agrupacio_a_text(
-                tempo_map.agrupacio_compas(
-                    int(nous[idx].num), int(nous[idx].den)))
-            nou = nous[idx]
-            try:
-                unit = self._unitat_en_canvi_compas(
-                    trams[idx], nou, None)
-            except ValueError as e:
-                self.avis_editor(f"Recalcul {mode}: {e}")
-                return False
-            nous[idx] = mapa_tempo.TramMapa(
-                nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos, agr,
-                getattr(nou, "n", None), unit)
-        if [tuple(x) for x in nous] == [tuple(x) for x in trams]:
-            self.log(f"recalcul {mode} tram {idx}: sense canvis")
-            return True
-        ok = bool(self.aplica_tempo_trams(nous))
-        if ok:
-            self.log(
-                f"recalcul {mode} tram {idx}: {float(tr[2]):.3f} → "
-                f"{float(self.tempo_trams[idx][2]):.3f} BPM · "
-                f"{int(res['num'])}/{int(res['den'])} · N={int(res['n'])}")
-        return ok
-
     def canvia_unitat_ui(self, idx):
         """Obre el diàleg de canvi d'unitat de pols d'un clip de tempo."""
         trams = self._trams_map()
@@ -1183,7 +1053,7 @@ class TempoMixin:
         return bool(self.canvia_unitat_tram(idx, unit_nova, mode))
 
     def _on_tempo_edit(self, idx):
-        """Doble clic a un bloc de BPM/compàs → diàleg del recalcul fix."""
+        """Inspector del clip de tempo: delega tota edició als motors vius."""
         trams = self._trams_map()
         if not (0 <= idx < len(trams)):
             return False
@@ -1199,19 +1069,28 @@ class TempoMixin:
             durada = 0.0
             n_actual = None
         unit_tram = self.unitat_de_tram(s)
+        es_ultim = (idx == len(trams) - 1)
+        es_rubato = getattr(s, "tipus", "normal") == "rubato"
         dlg = dialegs.DialegTramTempo(
             self, inici=s[0], bpm=s[2], num=s[3], den=s[4],
             inicial=(idx == 0), text_inici=lbl, unit=unit_tram,
             n_actual=n_actual, durada=durada,
-            info=self._info_clip_tempo(idx), beat_unit=unit_tram)
+            info=self._info_clip_tempo(idx), beat_unit=unit_tram,
+            es_ultim=es_ultim, es_rubato=es_rubato)
         aplicat = {"ok": False}
 
-        def _executa(accio):
+        def _executa(accio, locks=None, amb_undo=True):
             avisos = []
             avis_original = self.avis_editor
             self.avis_editor = lambda text: (
                 avisos.append(str(text)), avis_original(text))
-            self._undo_marca()
+            abans = (self.bpm, self.bpb, self.beat_type)
+            abans_trams = [tuple(t) for t in (self.tempo_trams or [])]
+            actius = dict(locks or {})
+            self._bloquejos_tempo_dialog = (
+                (actius, idx) if any(actius.values()) else None)
+            if amb_undo:
+                self._undo_marca()
             try:
                 try:
                     ok = accio()
@@ -1219,12 +1098,129 @@ class TempoMixin:
                     avisos.append(str(e))
                     ok = False
             finally:
-                self._undo_commit()
+                self._bloquejos_tempo_dialog = None
+                if amb_undo:
+                    self._undo_commit()
                 self.avis_editor = avis_original
-            return bool(ok), avisos
+            if not ok:
+                self.bpm, self.bpb, self.beat_type = abans
+            canviat = [tuple(t) for t in (self.tempo_trams or [])] != abans_trams
+            return bool(ok), avisos, bool(canviat)
 
         def _refresca():
             dlg.actualitza_estat(self._info_clip_tempo(idx))
+
+        def _on_camp(camp):
+            try:
+                bpm, num, den, n = dlg.valors_camps()
+                tempo_map.valida_tempo(bpm, num, den)
+            except ValueError as e:
+                QMessageBox.warning(dlg, "Tempo invàlid", str(e))
+                return False
+            locks = dlg.locks()
+            if locks.get(camp):
+                QMessageBox.warning(
+                    dlg, "Camp bloquejat",
+                    "El camp està bloquejat; desactiva el candau abans "
+                    "d'aplicar-lo.")
+                return False
+            mode = dlg.mode()
+            if (camp == "n" and not es_ultim
+                    and abs(n - round(n)) > 1e-3):
+                QMessageBox.warning(
+                    dlg, "N invàlid",
+                    "N ha de ser un enter positiu als clips interiors.")
+                return False
+            if mode == "mobil" and es_ultim:
+                QMessageBox.warning(
+                    dlg, "Recalcul mòbil",
+                    "L'últim clip no pot moure la fi de la WAV.")
+                return False
+            if mode == "fix":
+                def accio():
+                    trams = list(self.tempo_trams or [])
+                    tr = trams[idx]
+                    if camp == "bpm":
+                        nou = self._resol_fix_bpm(tr, bpm, idx=idx)
+                    elif camp == "compas":
+                        nou = self._resol_fix_compas(
+                            tr, num, den, idx=idx)
+                    else:
+                        return bool(self.canvia_compassos_tram(
+                            idx, n_new=n, num=num, den=den))
+                    trams[idx] = nou
+                    return bool(self.aplica_tempo_trams(trams))
+            elif camp == "bpm":
+                accio = lambda: self._edita_bpm_mobil(idx, bpm)
+            elif camp == "compas":
+                accio = lambda: self._edita_compas_mobil(idx, num, den)
+            else:
+                accio = lambda: self._edita_n_mobil(idx, n)
+            # `canvia_compassos_tram` ja obri/tanca el seu propi desfer.
+            amb_undo = not (mode == "fix" and camp == "n")
+            ok, avisos, canviat = _executa(
+                accio, locks, amb_undo=amb_undo)
+            if ok:
+                aplicat["ok"] = True
+                _refresca()
+                if not canviat:
+                    self.log("Aplica: sense canvis")
+                return True
+            if not canviat and not avisos:
+                self.log("Aplica: sense canvis")
+                return True
+            QMessageBox.warning(
+                dlg, "Aplica",
+                " ".join(avisos) or
+                "No s'ha pogut aplicar el camp amb estes opcions.")
+            return False
+
+        def _on_operacio(op):
+            mapa = {
+                "mes1": {"delta_compassos": 1},
+                "menys1": {"delta_compassos": -1},
+                "x2": {"factor": 2.0},
+                "div2": {"factor": 0.5},
+            }
+            kw = mapa.get(op)
+            if kw is None:
+                return False
+            ok, avisos, canviat = _executa(
+                lambda: self.canvia_compassos_tram(idx, **kw),
+                dlg.locks(), amb_undo=False)
+            if ok:
+                aplicat["ok"] = True
+                _refresca()
+                if not canviat:
+                    self.log("Operació mètrica: sense canvis")
+                return True
+            if not canviat and not avisos:
+                self.log("Operació mètrica: sense canvis")
+                return True
+            QMessageBox.warning(
+                dlg, "Operació mètrica",
+                " ".join(avisos) or "No s'ha pogut aplicar l'operació.")
+            return False
+
+        def _on_rubato(desitjat):
+            if bool(desitjat) == bool(dlg._es_rubato):
+                return
+            ok, avisos, canviat = _executa(
+                (lambda: self.converteix_rubato(idx)) if desitjat else
+                (lambda: self.converteix_normal(idx)),
+                amb_undo=False)
+            if ok:
+                aplicat["ok"] = True
+                _refresca()
+                if not canviat:
+                    self.log("Tipus: sense canvis")
+            else:
+                dlg.chk_rubato.blockSignals(True)
+                dlg.chk_rubato.setChecked(bool(dlg._es_rubato))
+                dlg.chk_rubato.blockSignals(False)
+                QMessageBox.warning(
+                    dlg, "Tipus",
+                    " ".join(avisos) or "No s'ha pogut canviar el tipus.")
 
         def _on_unitat(unit, mode):
             ok = bool(self.canvia_unitat_tram(idx, unit, mode))
@@ -1240,20 +1236,9 @@ class TempoMixin:
                     "No s'ha pogut canviar la unitat; no s'ha tocat res.")
             return ok
 
-        def _on_recalcul(mode):
-            ok, avisos = _executa(
-                lambda: self._recalcula_tram_dialeg(dlg, idx, mode))
-            if ok:
-                aplicat["ok"] = True
-                _refresca()
-                return True
-            QMessageBox.warning(
-                dlg, "Recalcula",
-                " ".join(avisos) or
-                "No s'ha pogut recalcular el tram amb estes opcions.")
-            return False
-
-        dlg.recalculRequested.connect(_on_recalcul)
+        dlg.campRequested.connect(_on_camp)
+        dlg.operacioRequested.connect(_on_operacio)
+        dlg.rubatoRequested.connect(_on_rubato)
         dlg.unitatRequested.connect(_on_unitat)
         dlg.exec_()
         return bool(aplicat["ok"])
@@ -1358,12 +1343,14 @@ class TempoMixin:
         for avis in avisos:
             self.avis_editor(f"Frontera: {avis}")
 
-    def canvia_compassos_tram(self, idx, delta_compassos=0, factor=None):
+    def canvia_compassos_tram(self, idx, delta_compassos=0, factor=None,
+                              n_new=None, num=None, den=None):
         """Correcció **mètrica** discreta d'un tram de tempo (§4.C del flux).
 
         `+1`/`−1` compassos o `×2`/`÷2`: els **segons queden immòbils**, els
-        veïns no es toquen i el BPM es recalcula (`tempo_map.canvia_compassos_tram`).
-        Un sol desfer. Retorna `True` si el mapa ha canviat.
+        veïns no es toquen, el compàs es conserva i el BPM es recalcula
+        (`tempo_map.canvia_compassos_tram`). A l'últim clip es respecta el `N`
+        fraccionari. Un sol desfer. Retorna `True` si el mapa ha canviat.
         """
         trams = self._trams_map()
         idx = -1 if idx is None else int(idx)
@@ -1372,8 +1359,8 @@ class TempoMixin:
         try:
             nous = tempo_map.canvia_compassos_tram(
                 trams, idx, delta_compassos=delta_compassos,
-                durada=self._durada_wav(), factor=factor,
-                permet_ultim_fraccionari=True)
+                durada=self._durada_wav(), factor=factor, n_new=n_new,
+                num=num, den=den, permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Compassos: {e}")
             return False

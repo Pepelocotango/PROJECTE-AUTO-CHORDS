@@ -5,6 +5,14 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Canviat — Inspector únic del clip de tempo (2026-11-25)
+- El diàleg del clip de tempo ara reuneix el mode **recalcul fix / mòbil**, els
+  camps **BPM, compàs i N** amb candaus (màxim 2), unitat de pols i rubato.
+- Les accions deleguen en els motors existents; el diàleg no calcula N/BPM ni
+  prioritza camps pel seu compte.
+- Les operacions **+1/−1/×2/÷2** mantenen el compàs i els segons, canvien N i
+  BPM, i respecten el `N` fraccionari de l'últim clip.
+
 ### Corregit — Cua fraccionària a totes les edicions d'àudio (2026-11-25)
 - `transforma_model` ja no força `N` enter a l'últim clip en retallar o afegir
   silenci; només «Ajusta final WAV» (`transforma_model_extrems` amb

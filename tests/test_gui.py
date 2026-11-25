@@ -1971,24 +1971,69 @@ class TestDialegTramTempo(_dialegs___Base):
         self.assertAlmostEqual(d.sp_bpm.value(), 55.0, places=3)
         self.assertEqual(d.valors(), (82.5, 12, 8))
 
-    def test_n_mana_recalcula_el_bpm(self):
+    def test_mode_fix_per_defecte_i_mobil_disponible(self):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4,
             n_actual=8, durada=16.582354)
-        self.assertFalse(d.n_auto())          # per defecte, N no mana
-        d.chk_n.setChecked(True)
-        self.assertTrue(d.n_auto())
-        bpm, num, den = d.valors()
-        n = d.sp_n.value()
-        self.assertEqual((num, den, n), (4, 4, 8))
-        self.assertAlmostEqual(bpm, 8 * 4 * 60.0 / 16.582354, places=3)
-        d.sp_n.setValue(10)
-        d.ed_compas.setText("3/4")
-        bpm, num, den = d.valors()
-        n = d.sp_n.value()
-        self.assertEqual((num, den, n), (3, 4, 10))
-        self.assertAlmostEqual(bpm, 10 * 3 * 60.0 / 16.582354, places=3)
+        self.assertEqual(d.mode(), "fix")
+        self.assertTrue(d.rb_mobil.isEnabled())
+        d.rb_mobil.setChecked(True)
+        self.assertEqual(d.mode(), "mobil")
 
+    def test_mobil_desactivat_a_l_ultim_clip(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4,
+            n_actual=8, durada=16.582354, es_ultim=True)
+        self.assertFalse(d.rb_mobil.isEnabled())
+        self.assertEqual(d.mode(), "fix")
+
+    def test_candaus_maxim_dos(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4,
+            n_actual=8, durada=16.582354)
+        self.assertEqual(d.locks(), {"bpm": False, "n": False,
+                                     "compas": False})
+        d.chk_lock_bpm.setChecked(True)
+        d.chk_lock_compas.setChecked(True)
+        self.assertEqual(d.locks(), {"bpm": True, "n": False,
+                                     "compas": True})
+        self.assertFalse(d.chk_lock_n.isEnabled())
+        d.chk_lock_bpm.setChecked(False)
+        self.assertTrue(d.chk_lock_n.isEnabled())
+
+    def test_bpm_i_n_no_es_poden_bloquejar_alhora(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4,
+            n_actual=8, durada=16.582354)
+        d.chk_lock_bpm.setChecked(True)
+        d.chk_lock_n.setChecked(True)
+        self.assertFalse(d.chk_lock_n.isChecked())
+        self.assertFalse(d.chk_lock_n.isEnabled())
+
+    def test_camps_bloquejats_no_es_poden_aplicar(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4,
+            n_actual=8, durada=16.582354)
+        d.chk_lock_n.setChecked(True)
+        self.assertFalse(d.sp_n.isEnabled())
+        self.assertFalse(d.b_aplica_n.isEnabled())
+        self.assertTrue(d.b_aplica_bpm.isEnabled())
+
+    def test_emet_les_operacions_i_el_tipus(self):
+        d = dialegs.DialegTramTempo(
+            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
+            n_actual=2.0)
+        camps, ops, rubato = [], [], []
+        d.campRequested.connect(camps.append)
+        d.operacioRequested.connect(ops.append)
+        d.rubatoRequested.connect(rubato.append)
+        d.b_aplica_bpm.click()
+        d.b_mes1.click()
+        d.b_x2.click()
+        d.chk_rubato.click()
+        self.assertEqual(camps, ["bpm"])
+        self.assertEqual(ops, ["mes1", "x2"])
+        self.assertEqual(rubato, [True])
     def test_info_clip_es_nomes_lectura_i_mostra_dades(self):
         info = {
             "idx": 2, "total": 5, "rol": "interior", "tipus": "normal",
@@ -2011,6 +2056,23 @@ class TestDialegTramTempo(_dialegs___Base):
                      "NO VÀLID", "Veí esquerre", "Beats QM", "VALIDACIÓ"):
             self.assertIn(frag, txt)
 
+    def test_info_mostra_cua_fraccionaria_com_a_valida(self):
+        info = {
+            "idx": 2, "total": 2, "rol": "últim", "tipus": "normal",
+            "ini": 10.0, "fi": 20.5, "durada": 10.5,
+            "compassos": "4/4", "n": 5.25, "n_real": 5.25,
+            "n_enter": 5, "n_valid": True, "n_fracc": True,
+            "bpm": 120.0, "bpm_mostra": 120.0, "bpm_unit": "Negra",
+            "vei_bpm": 120.0, "vei_compas": "4/4", "beats_frontera": [],
+            "bpm_ok": True, "durada_ok": True, "min_durada": 0.042857,
+        }
+        d = dialegs.DialegTramTempo(
+            None, inici=10.0, bpm=120.0, num=4, den=4, durada=10.5,
+            n_actual=5.25, info=info, es_ultim=True)
+        txt = " ".join(lbl.text()
+                       for lbl in d.info_clip.findChildren(QLabel))
+        self.assertIn("OK (cua)", txt)
+
     def test_actualitza_estat_refresca_camps_i_info(self):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
@@ -2032,35 +2094,15 @@ class TestDialegTramTempo(_dialegs___Base):
         self.assertIn("90.000", txt)
         self.assertIn("3/4", txt)
 
-    def test_recalcula_fix_emet_el_mode(self):
-        d = dialegs.DialegTramTempo(
-            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0)
-        rebuts = []
-        d.recalculRequested.connect(rebuts.append)
-        d.b_recalc_fix.click()
-        self.assertEqual(rebuts, ["fix"])
-        self.assertNotEqual(d.result(), QW.QDialog.Accepted)
-
-    def test_opcions_fixes_del_recalcul(self):
-        d = dialegs.DialegTramTempo(
-            None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
-            n_actual=2.0)
-        # QM ja no intervé en els recalculs: només als Talls QM (2026-11-18).
-        self.assertEqual(d.opcions_recalc(), {
-            "beats": False, "segons": True, "unitat": True,
-            "compas": False, "n_fix": False, "rubato": False,
-        })
-
-    def test_nomes_queden_els_blocs_de_fix_i_info(self):
+    def test_queden_els_blocs_de_la_feina(self):
         d = dialegs.DialegTramTempo(
             None, inici=0.0, bpm=120.0, num=4, den=4, durada=4.0,
             n_actual=2.0)
         titols = [g.title() for g in d.findChildren(QW.QGroupBox)]
-        self.assertIn("Recalcul fix", titols)
-        self.assertIn("Informació del clip (no editable)", titols)
-        for fora in ("Recalcul mòbil", "Opcions", "Ajuda"):
-            self.assertNotIn(fora, titols)
+        for titol in ("Mode de recalcul", "Mètrica i candaus",
+                      "Operacions mètriques (segons fixos)",
+                      "Unitat de pols", "Informació del clip (no editable)"):
+            self.assertIn(titol, titols)
 
     def test_no_queden_contols_del_recalcul_mobil(self):
         d = dialegs.DialegTramTempo(
@@ -6838,10 +6880,9 @@ class TestAncoratgesFinestra(unittest.TestCase):
         class _Dlg(dialegs.DialegTramTempo):
             def exec_(self):
                 vistos.append(self)
-                self.chk_n.setChecked(True)
                 self.sp_n.setValue(12)
                 self.ed_compas.setText("3/4")
-                self.b_recalc_fix.click()
+                self.b_aplica_n.click()
                 self.reject()
                 return QW.QDialog.Rejected
 
@@ -6852,6 +6893,135 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.tempo_trams[1][3:], (3, 4))
         self.assertAlmostEqual(vr.tempo_trams[1][2], 108.0, places=6)
         self.assertEqual(vr.tempo_trams[2], trams[2])
+        vr.undo()
+        self.assertEqual([tuple(t) for t in vr.tempo_trams], trams)
+
+    def test_dialeg_candau_n_rebutja_un_bpm_que_canvia_n(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.chk_lock_n.setChecked(True)
+                self.sp_bpm.setValue(100.0)
+                self.b_aplica_bpm.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg),                 patch.object(QW.QMessageBox, "warning"):
+            vr._on_tempo_edit(1)
+        self.assertEqual([tuple(t) for t in vr.tempo_trams], trams)
+
+    def test_dialeg_mobil_mou_la_fi_i_recalcula_el_vei(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.rb_mobil.setChecked(True)
+                self.sp_bpm.setValue(100.0)
+                self.b_aplica_bpm.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg),                 patch.object(QW.QMessageBox, "warning"):
+            vr._on_tempo_edit(1)
+        self.assertLess(float(vr.tempo_trams[1][1]), 30.0)
+        self.assertAlmostEqual(float(vr.tempo_trams[2][0]),
+                               float(vr.tempo_trams[1][1]), places=6)
+
+    def test_x2_i_div2_no_canvien_el_compas_i_respecten_n_fraccionari(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 60.0, 130.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        abans = float(vr.tempo_trams[1].n)
+        self.assertTrue(vr.canvia_compassos_tram(1, factor=2.0))
+        self.assertEqual(vr.tempo_trams[1].compassos, "4/4")
+        self.assertAlmostEqual(float(vr.tempo_trams[1].n), abans * 2.0,
+                               places=6)
+        self.assertAlmostEqual(float(vr.tempo_trams[1].bpm), 260.0,
+                               places=6)
+
+    def test_dialeg_aplica_n_sense_canvis_no_avisa(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.sp_n.setValue(10.0)
+                self.b_aplica_n.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg),                 patch.object(QW.QMessageBox, "warning") as warning:
+            vr._on_tempo_edit(1)
+        warning.assert_not_called()
+        self.assertEqual([tuple(t) for t in vr.tempo_trams], trams)
+
+    def test_dialeg_n_fraccionari_interior_es_rebutja(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.sp_n.setValue(5.5)
+                self.b_aplica_n.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg),                 patch.object(QW.QMessageBox, "warning"):
+            vr._on_tempo_edit(1)
+        self.assertEqual([tuple(t) for t in vr.tempo_trams], trams)
+
+    def test_dialeg_operacio_x2_es_un_sol_desfer(self):
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams(
+            [(0.0, 10.0, 120.0, 4, 4), (10.0, 60.0, 130.0, 4, 4)]))
+        abans = float(vr.tempo_trams[1].bpm)
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.b_x2.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg):
+            vr._on_tempo_edit(1)
+        self.assertAlmostEqual(float(vr.tempo_trams[1].bpm),
+                               abans * 2.0, places=6)
+        vr.undo()
+        self.assertAlmostEqual(float(vr.tempo_trams[1].bpm), abans,
+                               places=6)
+
+    def test_dialeg_rubato_converteix_el_clip(self):
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams(
+            [(0.0, 60.0, 120.0, 4, 4)]))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.chk_rubato.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg):
+            vr._on_tempo_edit(0)
+        self.assertEqual(vr.tempo_trams[0].tipus, "rubato")
+        vr.undo()
+        self.assertEqual(vr.tempo_trams[0].tipus, "normal")
 
     def test_el_marcador_no_arrossega_la_frontera_d_estructura(self):
         """Moure un marcador no canvia cap clip d'estructura."""

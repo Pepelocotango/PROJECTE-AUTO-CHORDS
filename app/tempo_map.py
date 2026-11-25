@@ -1992,12 +1992,13 @@ def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
     interna del bloc (8 s amb 4 compassos a 60 BPM → ×2 = 8 compassos a 120).
 
     - `delta_compassos`: suma algebraica (+1, −1…).
-    - `factor`: multiplica N (2 = ×2, 0.5 = ÷2), arredonit a l'enter més pròxim.
+    - `factor`: multiplica N (2 = ×2, 0.5 = ÷2), arredonit a l'enter més
+      pròxim, excepte a l'últim clip si `permet_ultim_fraccionari=True`.
     - `n_new`: fixa directament el nombre de compassos (camp «N compassos»).
     - `num`/`den`: compàs nou opcional; si no, es conserva el del clip.
 
-    Retorna el mapa normalitzat i validat; `ValueError` si N baixa d'1 o el BPM
-    ix de la banda raonable.
+    El compàs i els segons **no canvien**. Retorna el mapa normalitzat i
+    validat; `ValueError` si N baixa d'1 o el BPM ix de la banda raonable.
     """
     durada = float(durada or 0.0)
     nous = normalitza_trams(trams, durada)
@@ -2008,31 +2009,44 @@ def canvia_compassos_tram(trams, idx, delta_compassos=0, durada=0.0,
     dt = float(fi) - float(ini)
     if dt <= TOL:
         raise ValueError("El tram no té durada")
-    n_act = _enter_mes_proper(max(1.0, compassos_del_clip(nous[i])))
+    ultim_fracc = bool(permet_ultim_fraccionari
+                       and i == len(nous) - 1)
+    n_act = float(compassos_del_clip(nous[i]))
+    if not ultim_fracc:
+        n_act = float(_enter_mes_proper(max(1.0, n_act)))
     if n_new is not None:
-        n_final = int(n_new)
+        n_final = float(n_new)
     elif factor is not None:
         f = float(factor)
         if f <= 0:
             raise ValueError("El factor de compassos ha de ser positiu")
-        n_final = _enter_mes_proper(n_act * f)
+        n_final = n_act * f
     else:
-        n_final = n_act + int(delta_compassos)
+        n_final = n_act + float(delta_compassos)
+    if not ultim_fracc:
+        n_final = float(_enter_mes_proper(n_final))
     if n_final < 1:
         raise ValueError("El tram ha de tindre com a mínim un compàs")
     num_final = int(num) if num is not None else int(num0)
     den_final = int(den) if den is not None else int(den0)
     if n_final == n_act and (num_final, den_final) == (int(num0), int(den0)):
         return nous
-    try:
-        res = tempo_recalc.recalculca_tram(
-            dt, _bpm, int(num_final), int(den_final), n_ref=n_final,
-            mode="graella", bloca_compas=True)
-    except ValueError as e:
-        raise ValueError(f"Compàs triat: {e}") from e
-    if res is None:
-        raise ValueError("El compàs triat no dona cap BPM vàlid")
-    bpm_new = _valida_bpm_edicio(float(res["bpm"]), "triat")
+    if ultim_fracc and abs(n_final - round(n_final)) > TOL:
+        bq = _bar_quarters(int(num_final), int(den_final))
+        if bq <= TOL:
+            raise ValueError("El compàs triat no té durada")
+        bpm_new = _valida_bpm_edicio(n_final * bq * 60.0 / dt, "triat")
+    else:
+        try:
+            res = tempo_recalc.recalculca_tram(
+                dt, _bpm, int(num_final), int(den_final),
+                n_ref=int(round(n_final)), mode="graella",
+                bloca_compas=True)
+        except ValueError as e:
+            raise ValueError(f"Compàs triat: {e}") from e
+        if res is None:
+            raise ValueError("El compàs triat no dona cap BPM vàlid")
+        bpm_new = _valida_bpm_edicio(float(res["bpm"]), "triat")
     bpm_new, num_final, den_final = valida_tempo(
         bpm_new, num_final, den_final)
     out = list(nous)

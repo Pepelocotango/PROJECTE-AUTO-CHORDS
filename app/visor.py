@@ -695,14 +695,16 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             raise ValueError("Com a màxim hi pot haver dos candaus actius")
         self.bloquejos_tempo = estat
 
-    def _bloquejos_tempo_errors(self, nous, antics=None):
+    def _bloquejos_tempo_errors(self, nous, antics=None, bloquejos=None,
+                                idx=None):
         """Camps bloquejats que canviarien en aplicar `nous` (llista buida = OK).
 
-        `antics` permet excloure clips eliminats: si un clip desapareix, el seu
-        BPM/N no s'ha de comparar contra el veí que n'absorbeix el temps.
+        `antics` permet excloure clips eliminats. `bloquejos`/`idx` són per als
+        candaus locals del diàleg: només comproven el clip seleccionat.
         """
         from app import mapa_tempo
-        actius = getattr(self, "bloquejos_tempo", {}) or {}
+        actius = (getattr(self, "bloquejos_tempo", {}) or {}
+                  if bloquejos is None else dict(bloquejos))
         if not any(actius.values()):
             return []
         origen = self.tempo_trams if antics is None else antics
@@ -711,15 +713,27 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if not vell:
             return []
         tol = 1e-6
-        # El BPM pot moure's unes mil·lèsimes en partir un clip a una línia
-        # de compàs (arrodoniment de N). No és un canvi musical: no bloquegem
-        # una edició per eixa diferència numèrica.
         tol_bpm = 1e-3
 
         def _n(tr):
-            # Sempre derivat de la durada/BPM: el camp `n` pot ser metadada
-            # heretada d'una operació anterior.
             return float(tempo_map.compassos_del_clip(tr))
+
+        if idx is not None:
+            i = int(idx)
+            if i < 0 or i >= len(vell) or i >= len(nou):
+                return []
+            v, x = vell[i], nou[i]
+            errors = []
+            if (actius.get("bpm")
+                    and abs(float(x.bpm) - float(v.bpm)) > tol_bpm):
+                errors.append("BPM")
+            if (actius.get("compas")
+                    and (int(x.num), int(x.den)) !=
+                    (int(v.num), int(v.den))):
+                errors.append("compàs")
+            if actius.get("n") and abs(_n(x) - _n(v)) > tol:
+                errors.append("N")
+            return errors
 
         errors = []
         for v in vell:
