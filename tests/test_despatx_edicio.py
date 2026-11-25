@@ -999,15 +999,13 @@ class TestTempoEnViu(_Base):
         self.v._refresca_tempo_map()
         self.v._undo_touch_base()
         self.assertTrue(self.v.quantitza_bpm(1))
-        # Contracte nou: en quantitzar el BPM, cada clip conserva N enter; com
-        # que l'últim s'ajusta a la fi de la WAV (30 s), el seu BPM deriva a
-        # 143.6 per quadrar els 10 compassos.
+        # §13.9: en quantitzar el BPM, l'últim conserva el valor quantitzat i
+        # pot quedar amb N fraccionari; només els interiors tanquen en enters.
         self.assertEqual([round(t.bpm, 1) for t in self.v.tempo_trams],
-                         [145.0, 144.0, 143.6])
+                         [145.0, 144.0, 144.3])
         self.assertAlmostEqual(self.v.tempo_trams[-1].fi, 30.0, places=6)
         self.v.undo()
-        # El desfer restaura els BPM exactes originals: l'últim clip conserva
-        # 144.348 amb N fraccionari (abans es normalitzava a 143.601).
+        # El desfer restaura els BPM exactes originals.
         self.assertEqual([round(t.bpm, 3) for t in self.v.tempo_trams],
                          [145.023, 143.984, 144.348])
 

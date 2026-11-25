@@ -1351,6 +1351,8 @@ def ajusta_compassos_sencers(trams, tolerancia=1e-9, estricte=True,
       `ValueError`; amb `estricte=False` deixa el clip com estava i avisa
       (per a càrregues/refrescos de la GUI: mai un crash, però l'avís és
       visible i `problemes_compassos_sencers` el continuarà detectant).
+    - Cap clip pot quedar per davall de `limits.TEMPS_MIN_CLIP`, encara que
+      siga l'últim i tinga `N` fraccionari.
 
     """
     out, ns, avisos = [], [], []
@@ -1361,6 +1363,10 @@ def ajusta_compassos_sencers(trams, tolerancia=1e-9, estricte=True,
         dt = fi - ini
         if dt <= TOL:
             raise ValueError(f"El clip {i + 1} no té durada")
+        if dt < limits.TEMPS_MIN_CLIP - TOL:
+            raise ValueError(
+                f"El clip {i + 1} ({dt:.4f}s) és més curt que el mínim "
+                f"({limits.TEMPS_MIN_CLIP:.4f}s)")
         bq = _bar_quarters(num, den)
         if bq <= TOL:
             raise ValueError(f"El clip {i + 1} té un compàs sense durada")

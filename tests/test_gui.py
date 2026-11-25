@@ -4494,6 +4494,18 @@ class TestEdicioAudioVisor(unittest.TestCase):
         self.assertEqual(self.v.pos, 4.0)
         self.assertEqual((self.v.loop_a, self.v.loop_b), (2.0, 7.0))
 
+    def test_retalla_inici_desplaca_beats_cap_a_l_esquerra(self):
+        from app import audio_edit
+        self.v.qm_beats = [1.0, 2.0]
+        self.v.qm_downbeats = [1.0]
+        self.v.qm_onsets = [1.5]
+        self.v._undo_base = self.v._estat_complet()
+        self.v._on_audio_edit_requested(audio_edit.RETALLA_INICI, 1000)
+        self.assertAlmostEqual(self.v.audio["durada"], 7.0)
+        self.assertEqual(self.v.qm_beats, [0.0, 1.0])
+        self.assertEqual(self.v.qm_downbeats, [0.0])
+        self.assertEqual(self.v.qm_onsets, [0.5])
+
     def test_historial_mixt_mante_laudio_en_desar_i_refer(self):
         from app import audio_edit
         self.v._on_audio_edit_requested(audio_edit.SILENCI_FINAL, 1000)

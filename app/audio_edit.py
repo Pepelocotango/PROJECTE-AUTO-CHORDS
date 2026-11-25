@@ -712,9 +712,13 @@ def transforma_model_extrems(acords, seccions, trams, marcadors, durada, pla,
             or nou_loop_b <= nou_loop_a):
         nou_loop_a = nou_loop_b = None
         nou_loop_on = False
-    trams, _avisos = mapa_tempo.normalitza_trams_map(trams, nou_final)
+    forca_final = bool(pla.get("aplica_final"))
+    permet_fracc = not forca_final
+    trams, _avisos = mapa_tempo.normalitza_trams_map(
+        trams, nou_final, permet_ultim_fraccionari=permet_fracc)
     base5, ns, _avisos_aj = tempo_map.ajusta_compassos_sencers(
-        [tuple(t) for t in trams], estricte=True)
+        [tuple(t) for t in trams], estricte=True,
+        permet_ultim_fraccionari=permet_fracc)
     trams_meta = [
         mapa_tempo.TramMapa(
             float(t5[0]), float(t5[1]), float(t5[2]), t.tipus,
@@ -846,13 +850,14 @@ def transforma_model(acords, seccions, trams, marcadors, durada,
         nou_loop_a = nou_loop_b = None
         nou_loop_on = False
 
-    # §13.4/§13.9: N enter a tots els clips, també després d'una edició
-    # d'àudio. Les fronteres temporals són les que ha fixat l'edició; si N
-    # quedaria fraccionari, es recalcula el BPM. `estricte=True` fa fallar
-    # l'operació sencera abans de tocar l'àudio si no hi ha cap BPM vàlid.
-    trams, _avisos = mapa_tempo.normalitza_trams_map(trams, nou_final)
+    # §13.9: només «Ajusta final WAV» (el diàleg amb `aplica_final=True`)
+    # força N enter a l'últim clip. La resta d'edicions d'àudio poden deixar
+    # la cua amb N fraccionari.
+    trams, _avisos = mapa_tempo.normalitza_trams_map(
+        trams, nou_final, permet_ultim_fraccionari=True)
     base5, ns, _avisos_aj = tempo_map.ajusta_compassos_sencers(
-        [tuple(t) for t in trams], estricte=True)
+        [tuple(t) for t in trams], estricte=True,
+        permet_ultim_fraccionari=True)
     trams_meta = [
         mapa_tempo.TramMapa(
             float(t5[0]), float(t5[1]), float(t5[2]), t.tipus,

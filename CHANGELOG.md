@@ -5,6 +5,16 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Corregit — Cua fraccionària a totes les edicions d'àudio (2026-11-25)
+- `transforma_model` ja no força `N` enter a l'últim clip en retallar o afegir
+  silenci; només «Ajusta final WAV» (`transforma_model_extrems` amb
+  `aplica_final=True`) tanca la cua a compassos sencers.
+- `quantitza_bpm` conserva el BPM quantitzat de l'últim clip i permet `N`
+  fraccionari.
+- La normalització comprova la durada mínima de 43 ms també quan l'últim clip
+  queda fraccionari.
+- Retallar l'inici desplaça els beats/downbeats/onsets QM cap a l'esquerra.
+
 ### Corregit — Frontera de l'últim clip de tempo (2026-11-25)
 - En moure la frontera d'entrada de l'últim clip, el costat dret conserva
   BPM/compàs i pot quedar amb `N` fraccionari; ja no se'l força a un `N` enter.

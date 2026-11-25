@@ -300,14 +300,11 @@ class TestQuantitzaBpm(unittest.TestCase):
         durada = ini
         out = M.quantitza_bpm(trams, durada, decimals=1)
         self.assertEqual([round(t.bpm, 1) for t in out],
-                         [145.0, 144.0, 144.4])
+                         [145.0, 144.0, 144.3])
         self.assertAlmostEqual(out[-1].fi, durada, places=9)
+        # L'últim conserva el BPM quantitzat i pot quedar amb N fraccionari;
+        # només els interiors han de tancar en compassos sencers.
         for t in out[:-1]:
-            self.assertAlmostEqual(
-                (t.fi - t.ini) * t.bpm / (4 * 60.0), 4.0, places=6)
-        # L'últim final és la WAV i N hi ha de ser enter; per això el seu
-        # BPM es deriva de la durada restant (no és el valor quantitzat pur).
-        for t in out:
             n = (t.fi - t.ini) * t.bpm / (4 * 60.0)
             self.assertAlmostEqual(n, round(n), places=6)
 
@@ -321,20 +318,20 @@ class TestQuantitzaBpm(unittest.TestCase):
                 ini = fi
             return out, ini
 
-        # El primer clip conserva el valor quantitzat (146.0 / 145.3): això
-        # prova l'arrodoniment half-up. L'últim ha d'ajustar el BPM perquè
-        # el seu final és la WAV i N ha de quedar enter.
+        # El primer i l'últim conserven el valor quantitzat (half-up); l'últim
+        # pot quedar amb N fraccionari perquè el final de la WAV és fix.
         ts, d = trams((145.5, 144.5))
         out = M.quantitza_bpm(ts, d, decimals=0)
         self.assertEqual(out[0].bpm, 146.0)
-        self.assertAlmostEqual(out[1].bpm, 144.0102039619521, places=6)
-        self.assertEqual(out[1].n, 4.0)
+        self.assertEqual(out[1].bpm, 145.0)
+        self.assertAlmostEqual(out[1].fi, d, places=9)
+        self.assertNotAlmostEqual(out[1].n, round(out[1].n), places=6)
 
         ts, d = trams((145.25, 144.25))
         out = M.quantitza_bpm(ts, d, decimals=1)
         self.assertEqual(out[0].bpm, 145.3)
-        self.assertAlmostEqual(out[1].bpm, 144.2007199091987, places=6)
-        self.assertEqual(out[1].n, 4.0)
+        self.assertEqual(out[1].bpm, 144.3)
+        self.assertAlmostEqual(out[1].fi, d, places=9)
 
     def test_quantitza_zero_i_dos_decimals(self):
         bq = 4.0
@@ -346,10 +343,10 @@ class TestQuantitzaBpm(unittest.TestCase):
             ini = fi
         out0 = M.quantitza_bpm(trams, ini, decimals=0)
         self.assertEqual([round(t.bpm, 6) for t in out0],
-                         [145.0, 144.0, 144.354711])
+                         [145.0, 144.0, 144.0])
         out2 = M.quantitza_bpm(trams, ini, decimals=2)
         self.assertEqual([round(t.bpm, 2) for t in out2],
                          [145.02, 143.98, 144.35])
-        for t in out0 + out2:
+        for t in out0[:-1] + out2[:-1]:
             n = (t.fi - t.ini) * t.bpm / (4 * 60.0)
             self.assertAlmostEqual(n, round(n), places=6)

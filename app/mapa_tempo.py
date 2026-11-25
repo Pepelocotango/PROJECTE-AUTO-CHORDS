@@ -539,8 +539,8 @@ def quantitza_bpm(trams, durada, decimals=1):
     Conserva el nombre enter de compassos de cada clip i recalcula el seu fi;
     els inicis dels clips següents es desplacen en conseqüència. Els rubatos es
     quantitzen igual que els normals: només es conserva el flag `tipus` i la
-    resta de metadades. L'últim tram acaba a `durada` (excepció permesa a
-    l'últim final).
+    resta de metadades. L'últim tram acaba a `durada` i conserva el BPM
+    quantitzat; pot quedar amb `N` fraccionari.
     """
     durada = float(durada or 0.0)
     decimals = max(0, int(decimals))
@@ -571,14 +571,14 @@ def quantitza_bpm(trams, durada, decimals=1):
             raise ValueError(
                 "La quantització deixa l'últim clip fora de la WAV; "
                 "reduïx el nombre de compassos o el BPM.")
-        # L'últim final és la WAV; si el BPM quantitzat deixa N fraccionari,
-        # el normalitzador ajusta el BPM perquè complica el contracte §13.4.
+        # L'últim final és la WAV; conserva el BPM quantitzat i pot quedar
+        # amb N fraccionari (només «Ajusta final WAV» força N enter).
         if abs(last.fi - durada) > 1e-9:
             out[-1] = TramMapa(last.ini, durada, last.bpm, last.tipus,
                                last.compassos, last.agrupacio, last.n,
                                last.beat_unit)
     base5, ns, _avisos = tempo_map.ajusta_compassos_sencers(
-        [tuple(t) for t in out])
+        [tuple(t) for t in out], permet_ultim_fraccionari=True)
     return [replace(t, bpm=float(t5[2]),
                     compassos=f"{int(t5[3])}/{int(t5[4])}", n=float(n))
             for t, t5, n in zip(out, base5, ns)]

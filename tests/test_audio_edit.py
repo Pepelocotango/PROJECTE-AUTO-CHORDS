@@ -144,7 +144,7 @@ class TestTransformaModelAudio(unittest.TestCase):
         self.assertEqual((nou["marcadors"], nou["pos"]),
                          ([3.0, 7.0], 5.0))
 
-    def test_retall_inici_mante_n_enter_i_ajusta_bpm(self):
+    def test_retall_inici_conserva_bpm_i_deixa_cua_fraccionaria(self):
         trams = [(0.0, 8.0, 120.0, 4, 4)]
         nou = edita.transforma_model(
             [pipeline.Clip(0.0, 8.0, ("C", "0"))],
@@ -152,10 +152,8 @@ class TestTransformaModelAudio(unittest.TestCase):
             edita.RETALLA_INICI, 1.0)
         tram = nou["trams"][0]
         self.assertAlmostEqual(tram.fi, 7.0, places=6)
-        self.assertAlmostEqual(float(tram.n), round(float(tram.n)),
-                               places=9)
-        self.assertAlmostEqual(float(tram.bpm), 4 * 4 * 60.0 / 7.0,
-                               places=6)
+        self.assertAlmostEqual(float(tram.n), 3.5, places=9)
+        self.assertAlmostEqual(float(tram.bpm), 120.0, places=6)
 
     def test_retall_inici_elimina_primer_tram_i_conserva_unitat(self):
         from app import mapa_tempo
@@ -173,7 +171,7 @@ class TestTransformaModelAudio(unittest.TestCase):
         self.assertAlmostEqual(float(tram.ini), 0.0, places=6)
         self.assertAlmostEqual(float(tram.fi), 9.0, places=6)
 
-    def test_silenci_inici_mante_metadades_i_n_enter(self):
+    def test_silenci_inici_mante_metadades_i_cua_fraccionaria(self):
         from app import mapa_tempo
         trams = [mapa_tempo.TramMapa(
             0.0, 8.0, 120.0, "rubato", "4/4", "2+2", 4.0, "negra")]
@@ -185,10 +183,10 @@ class TestTransformaModelAudio(unittest.TestCase):
         self.assertEqual(tram.tipus, "rubato")
         self.assertEqual(tram.agrupacio, "2+2")
         self.assertEqual(tram.beat_unit, "negra")
-        self.assertAlmostEqual(float(tram.n), round(float(tram.n)),
-                               places=9)
+        self.assertAlmostEqual(float(tram.n), 4.5, places=9)
 
-    def test_cap_edicio_deixa_n_fraccionari(self):
+    def test_edicio_audio_nomes_deixa_fraccionari_l_ultim(self):
+        """§13.9: les edicions d'àudio ordinàries no tanquen la cua."""
         from app import mapa_tempo
         trams_base = [
             mapa_tempo.TramMapa(0.0, 8.0, 120.0, "normal", "4/4"),
@@ -200,9 +198,16 @@ class TestTransformaModelAudio(unittest.TestCase):
                     [pipeline.Clip(0.0, 16.0, ("C", "0"))],
                     [(0.0, 16.0, "A", "A")], list(trams_base), [], 16.0,
                     operacio, 1.0)
-                for tram in nou["trams"]:
+                for tram in nou["trams"][:-1]:
                     self.assertAlmostEqual(
                         float(tram.n), round(float(tram.n)), places=9)
+
+    def test_edicio_audio_rebutja_un_ultim_massa_curt(self):
+        with self.assertRaisesRegex(ValueError, "més curt que el mínim"):
+            edita.transforma_model(
+                [pipeline.Clip(0.0, 8.0, ("C", "0"))],
+                [(0.0, 8.0, "A", "A")], [(0.0, 8.0, 120.0, 4, 4)],
+                [], 8.0, edita.RETALLA_FINAL, 0.03)
 
     def test_silenci_final_estén_tots_els_carrils(self):
         nou = self.transforma(edita.SILENCI_FINAL, 2.0)
@@ -377,8 +382,10 @@ class TestQuadraturaExtrems(unittest.TestCase):
                                p["target_ini"], 9)
         self.assertEqual(tr["trams"][0].n, 1)
         self.assertEqual(tr["marcadors"], [2.0 + p["delta_ini"]])
-        for t in tr["trams"]:
+        for t in tr["trams"][:-1]:
             self.assertAlmostEqual(float(t.n), round(float(t.n)), 6)
+        self.assertNotAlmostEqual(
+            float(tr["trams"][-1].n), round(float(tr["trams"][-1].n)), 6)
 
     def test_model_final_retalla_i_protegeix(self):
         acords = [pipeline.Clip(0.0, self.durada, ("C", "0"))]

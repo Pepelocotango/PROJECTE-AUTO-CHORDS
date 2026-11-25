@@ -1467,8 +1467,12 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                 loop_on=self.loop_on)
             if operacio == audio_edit.RETALLA_FINAL:
                 tr["durada"] = delta
-            delta_beats = (delta if operacio in (
-                audio_edit.SILENCI_INICI, audio_edit.RETALLA_INICI) else 0.0)
+            if operacio == audio_edit.RETALLA_INICI:
+                delta_beats = -delta
+            elif operacio == audio_edit.SILENCI_INICI:
+                delta_beats = delta
+            else:
+                delta_beats = 0.0
             (tr["qm_beats"], tr["qm_downbeats"],
              tr["qm_onsets"]) = self._beats_desplacats(
                 delta_beats, tr["durada"])
