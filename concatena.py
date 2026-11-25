@@ -8,8 +8,8 @@
 #   `ROADMAP.md`, `DEVELOPING.md`, les regles d'or, l'esquema d'UI i els docs
 #   de comportament), després el CODI: `app/`, `eines/` (scripts de build +
 #   host C++ + `deps_fixades.env`), `.github/workflows/` (CI), les dades de
-#   build (`pyproject.toml`, `requirements*.txt`, `instal·la_local.sh`), els
-#   llançadors, els scripts CLI i `tests/`.
+#   build (`pyproject.toml`, `requirements*.txt`, `instal·la_local.sh`,
+#   `Makefile`), els llançadors (Linux/Windows/dev), els scripts CLI i `tests/`.
 #
 # EXCLOU la resta (no indispensable): CHANGELOG/LLICENCIES, els docs no
 #   essencials, el codi de tercers (`codi_font_chordino/`), binaris i plugins,
@@ -30,8 +30,10 @@ INCLOU = [
     "README.md",            # visió general + com executar
     "ROADMAP.md",           # full de ruta (abast, fases, futur)
     "DEVELOPING.md",        # setup, entorn i desenvolupament
+    "docs/README.md",       # índex de la documentació
     "docs/REGLES_DE_LA_APP.md",   # ⚠️ regles d'or (invariants) — IMPRESCINDIBLE
     "docs/ESQUEMA_UI.md",   # menús, botons, dreceres i diàlegs reals
+    "docs/COMPONENTS_I_VERSIONS.md",  # inventari de components i versions
     # 3b. Context Tier A — contractes de comportament
     "docs/recerca/NOTACIO_XIFRAT.md",  # forma canònica del xifrat
     "docs/TIPUS_XIFRAT_ACORDS.md",  # els tipus + graus + <kind> MusicXML
@@ -45,8 +47,9 @@ INCLOU = [
     "requirements-build.txt",  # pins del build (font única pels 3 workflows CI)
     "requirements-dev.txt", # eines de desenvolupament i tests
     "instal·la_local.sh",   # setup local (sense sudo)
-    "AUTO_CHORDS.sh",       # llançador
-    "AUTO_CHORDS.desktop",  # drecera d'escriptori
+    "Makefile",             # comandes del projecte (font de veritat del build)
+    "AUTO_CHORDS.sh",       # llançador Linux
+    "AUTO_CHORDS.bat",      # llançador Windows
     "AUTO_CHORDS_dev.sh",   # llançador de dev (recarrega automàtica)
     "dev_reload.py",        # recàrrega en viu usada pel llançador de dev
     "wav_a_wavs.py",        # CLI wav -> wavs
@@ -56,21 +59,23 @@ INCLOU = [
 ]
 
 # --- Què NO que hi va (si apareix dins un directori inclòs) ----------------
-EXCLOSOS_DIRS = {"__pycache__", ".venv", ".git", ".deps", "temp", "OLD", "docs"}
+EXCLOSOS_DIRS = {"__pycache__", ".venv", ".git", ".deps", "temp", "OLD"}
 EXCLOSOS_NOMS = {"opcions_detecta.json", "auto_chords.log"}
 
 # --- Extensions de text que concatenem -------------------------------------
 EXTENSIONS = {
-    ".py", ".sh", ".cpp", ".h", ".c",          # codi
+    ".py", ".sh", ".bat", ".cpp", ".h", ".c",  # codi
     ".toml", ".txt", ".cfg", ".ini", ".spec",  # build/config
     ".yml", ".yaml",                            # CI/workflows
     ".md",                                      # docs (els de la whitelist)
     ".desktop", ".json", ".env",
 }
+NOMS_SENSE_EXT = {"Makefile"}
 
 
 def es_text(nom):
-    return os.path.splitext(nom)[1].lower() in EXTENSIONS
+    return (os.path.splitext(nom)[1].lower() in EXTENSIONS
+            or nom in NOMS_SENSE_EXT)
 
 
 def recorre():
@@ -111,7 +116,8 @@ def main():
         for i, r in enumerate(fitxers, 1):
             path = os.path.join(ARREL, r)
             try:
-                contingut = open(path, encoding="utf-8").read()
+                with open(path, encoding="utf-8") as fh:
+                    contingut = fh.read()
             except (UnicodeDecodeError, OSError):
                 continue
             total_linies += contingut.count("\n") + 1
