@@ -38,6 +38,9 @@ METODES_TIMELINEVIEW = (
     # Geometria i snap
     "_temps_a_x", "_x_to_time", "_loop_mode_at", "snap", "set_snap",
     "_snap", "_snap_step", "nudge", "_nudge",
+    # Marcadors humans (drag des de la franja inferior)
+    "_cursor_a_posicio", "_marcador_grabat", "_snap_marcador",
+    "_marcador_temps_segur",
     # Selecció i rangs
     "select_clip", "selecciona", "toggle_selection", "extend_selection",
     "clear_selection", "keys_dins_rang", "keys_dins_marc",

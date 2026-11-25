@@ -66,6 +66,12 @@ MIN_SEC_LEN_S = 0.001    # durada mínima d'una secció (1 ms)
 # MARCA del model. És el «snap distance» dels DAWs (Reaper), i el que fa que
 # l'snap als events sigui visual i no un valor de temps fix.
 SNAP_MARCA_PX = 10.0
+# Zona per AGAFAR i arrossegar els marcadors humans: la franja de davall de
+# tots els carrils (també el regle de temps absolut). Així el drag d'un
+# marcador no competix amb els clips ni amb el clic de cursor sobre l'ona.
+MARCADOR_GRAB_TOP = LANE_ACC_TOP + LANE_H
+MARCADOR_GRAB_BOT = TOTAL_H
+MARCADOR_GRAB_PX = 8.0
 
 
 # -----------------------------------------------------------------------------

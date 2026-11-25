@@ -954,6 +954,20 @@ class MarcadorsLayer(QGraphicsObject):
         self._marques = out
         self.update()
 
+    def mou_preview(self, old_t, new_t):
+        """Mou un marcador en PREVISUALITZACIÓ (conserva el tipus).
+
+        El model no es toca: el Visor repinta des de `marcadors` en deixar
+        anar el ratolí. Retorna `True` si el marcador existia.
+        """
+        old_t = float(old_t)
+        for i, (t, tipus) in enumerate(self._marques):
+            if abs(float(t) - old_t) <= 1e-6:
+                self._marques[i] = (float(new_t), tipus)
+                self.update()
+                return True
+        return False
+
     def update_geometry(self, pps, x_offset, view_left=0.0, view_right=None):
         self._pps = float(pps)
         self._x_offset = float(x_offset)

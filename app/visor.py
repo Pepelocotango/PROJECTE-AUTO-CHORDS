@@ -235,6 +235,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.timeline.chordEditRequested.connect(self._on_chord_edit_requested)
         self.timeline.sectionMoved.connect(self._on_section_moved)
         self.timeline.sectionRenamed.connect(self._on_section_renamed)
+        self.timeline.markerMoved.connect(self._on_marker_moved)
         self.timeline.sectionDeleteRequested.connect(self._elimina_seccio_index)
         self.timeline.multiDeleteRequested.connect(self._elimina_seleccio)
         self.timeline.pasteRequested.connect(self._enganxa_seleccio)
@@ -1518,14 +1519,13 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         self.seccions = copy.deepcopy(seccions)
         self.timeline.set_data(self.acords, self.seccions)
         self._aplica_temps(temps)
-        if audio_meta and audio_meta[0]:
-            tipus = dict(getattr(self, "marcador_tipus", {}) or {})
-            marques = [(m, tipus.get(round(float(m), 6), "seccio"))
-                       for m in (self.marcadors or ())]
-            ruta_marcadors = pipeline.desa_marcadors(
-                self._carpeta_acords(), marques)
-            if ruta_marcadors is None:
-                self.log("undo d'àudio: no s'han pogut desar els marcadors")
+        # Els marcadors també es desfan/refan: el CSV ha de seguir el model.
+        tipus = dict(getattr(self, "marcador_tipus", {}) or {})
+        marques = [(m, tipus.get(round(float(m), 6), "seccio"))
+                   for m in (self.marcadors or ())]
+        carpeta = self._carpeta_acords()
+        if carpeta and pipeline.desa_marcadors(carpeta, marques) is None:
+            self.log("undo/refer: no s'han pogut desar els marcadors")
         if audio_meta and audio_meta[2]:
             self.timeline.set_position(self.pos, emit=False, snap=False)
             self.lliscador.setRange(0, int(self.audio["durada"] * 100))

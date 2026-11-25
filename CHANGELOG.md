@@ -5,6 +5,19 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Afegit — Arrossegar marcadors humans al timeline (2026-11-25)
+- Els marcadors humans es poden **moure arrossegant-los** des de la **franja
+  de davall dels carrils** (també el regle de temps absolut): el punter canvia
+  a ↔ quan hi ha un marcador davall, i la resta del timeline continua igual.
+- El moviment aplica el **snap actiu** (graella, marcadors, onsets o QM). Amb
+  «Marcadors» no s'enganxa al propi marcador i no fusiona dos marcadors.
+- Es conserva el **tipus** del marcador (`compas`, `seccio`, `inici`/`final`,
+  `inici_analisi`/`final_analisi`, `marcador`) i no es toquen acords, seccions
+  ni el mapa de tempo.
+- El drag és una sola operació de desfer; en desfer/refer també es reescriu
+  `marcadors.csv` perquè el CSV seguisca el model.
+- Tests de regressió de zona d'agafada, snap, tipus, separació mínima i undo.
+
 ### Canviat — Eliminació de clips amb absorció pel veí dret (2026-11-25)
 - En eliminar un clip d'acords, estructura o tempo, el buit l'absorbeix el
   clip de la **dreta**, que passa a començar on començava el clip eliminat.

@@ -46,13 +46,15 @@ from app import theme      # noqa: E402  (paleta centralitzada)
 from app.timeline_base import (   # noqa: E402,F401
     CHORD_ACTIVE_FILL, CURSOR_COLOR, GUIDE_COLOR, LANE_ACC_TOP, LANE_BG_A,
     LANE_BG_B, LANE_H, LANE_SEC_TOP, LANE_TEMPO_H, LANE_TEMPO_TOP,
-    LEFT_PAD, MIN_GAP_S,
+    LEFT_PAD, MARCADOR_GRAB_BOT, MARCADOR_GRAB_PX, MARCADOR_GRAB_TOP,
+    MIN_GAP_S,
     MIN_SEC_LEN_S, PIXELS_PER_SECOND_DEFAULT, RIGHT_PAD, RULER_H,
     SELECTION_COLOR, SNAP_MARCA_PX, TIME_RULER_H, TIME_RULER_TOP, TOTAL_H,
     WAVEFORM_H, fmt_pos, grid_levels, loop_after_drag, snap_step, snap_time,
 )
 from app import audio_edit  # noqa: E402
 from app import graella  # noqa: E402
+from app import marcadors as M  # noqa: E402  (tipus/separació dels marcadors)
 from app import pipeline  # noqa: E402  (DESTÍ del moviment d'un bloc, §6.3)
 from app import tempo_map  # noqa: E402  (pas de nudge = compàs sencer)
 from app import dreceres  # noqa: E402
@@ -118,6 +120,7 @@ class TimelineView(QGraphicsView):
     editCancelled = pyqtSignal()          # press sense moviment (tanca l'undo)
     audioEditRequested = pyqtSignal(str, int)
     loopChanged = pyqtSignal(float, float)  # nou loop A/B (segons)
+    markerMoved = pyqtSignal(float, float)  # (t_vell, t_nou) drag d'un marcador
     playRequested = pyqtSignal()          # espai premut
     escapePressed = pyqtSignal()          # Esc (el resol el visor, per ordre)
     chordTimeMoved = pyqtSignal(int, float)
@@ -187,6 +190,9 @@ class TimelineView(QGraphicsView):
                 return f"↔ Mou el FINAL de la secció «{et}»"
             return (f"✋ Mou la secció «{et}» · doble-clic: editar · "
                     "botó dret: menú")
+        if self._marcador_grabat(p) is not None:
+            return ("↔ Arrossega el marcador (aplica el snap actiu) · "
+                    "no toca acords, seccions ni el mapa de tempo")
         # zona buida (ona)
         if self._cursor is not None and abs(p.x() - self._cursor.scenePos().x()) < 5:
             return "CURSOR: clic per moure'l · arrossega el regle per fer un loop"
@@ -258,6 +264,10 @@ class TimelineView(QGraphicsView):
         self._loop_a0 = None       # A/B de partida de l'arrossegada
         self._loop_b0 = None
         self._loop_t0 = None       # temps on va començar (per a 'move')
+        # Drag d'un marcador humà des de la franja de davall dels carrils:
+        # {"old": t_original, "cur": t_actual}. Només previsualitza; el model
+        # (i el desat) els resol el Visor en deixar anar (`markerMoved`).
+        self._marcador_gest = None
 
         # escena
         self._scene = QGraphicsScene(self)
@@ -769,6 +779,76 @@ class TimelineView(QGraphicsView):
         if m == "move":
             return Qt.SizeAllCursor
         return Qt.ArrowCursor
+
+    def _cursor_a_posicio(self, pos_vista):
+        """Cursor del ratolí per a una posició de la vista (sense gest actiu)."""
+        sp = self.mapToScene(pos_vista)
+        if self._marcador_grabat(sp) is not None:
+            return Qt.SizeHorCursor
+        if self._audio_edge_en(sp):
+            return Qt.SizeHorCursor
+        if sp.y() < RULER_H:
+            return self._cursor_regle(sp.x())
+        return Qt.ArrowCursor
+
+    def _marcador_grabat(self, punt):
+        """Temps del marcador humà davall `punt` (scene), o `None`.
+
+        Només s'agafa a la **franja de davall dels carrils**
+        (`MARCADOR_GRAB_TOP..MARCADOR_GRAB_BOT`): la resta del timeline queda
+        per als clips, el cursor i el loop.
+        """
+        if not self._snap_marcadors:
+            return None
+        if not (MARCADOR_GRAB_TOP <= float(punt.y()) <= MARCADOR_GRAB_BOT):
+            return None
+        millor = min(self._snap_marcadors,
+                     key=lambda m: abs(self._temps_a_x(m) - float(punt.x())))
+        if abs(self._temps_a_x(millor) - float(punt.x())) <= MARCADOR_GRAB_PX:
+            return float(millor)
+        return None
+
+    def _snap_marcador(self, t: float, exclou: float) -> float:
+        """Snap per al drag d'un marcador, sense enganxar-se a si mateix.
+
+        Amb el snap «marcadors» s'elimina de la llista el marcador que
+        s'arrossega; la resta de modes deleguen en el snap normal del timeline.
+        """
+        if not self._snap_on:
+            return float(t)
+        if self._snap_div_nom == "marcadors":
+            valors = [v for v in self._snap_marcadors
+                      if abs(float(v) - float(exclou)) > 1e-6]
+            return self._snap_a_llista(t, valors)
+        return self._snap(t)
+
+    def _marcador_temps_segur(self, t: float, exclou: float,
+                              actual: float) -> float:
+        """Clampa `t` dins la WAV i evita perdre marcadors per separació mínima.
+
+        Si el destí cau massa prop d'un altre marcador, s'aproxima a la vora
+        lliure (`SEPARACIO_MIN`); si no hi ha cap vora vàlida, es conserva
+        `actual` (el moviment no avança cap a una posició que fusionaria dos
+        marcadors).
+        """
+        t = max(0.0, min(self._durada, float(t)))
+        sep = float(M.SEPARACIO_MIN)
+        altres = [float(v) for v in self._snap_marcadors
+                  if abs(float(v) - float(exclou)) > 1e-6]
+        if not any(abs(t - v) < sep for v in altres):
+            return t
+        proper = min(altres, key=lambda v: abs(v - t))
+        # Un microsegon de marge: `SEPARACIO_MIN` és el llindar EXACTE que
+        # aplica `normalitza_marcadors`, i la coma flotant pot quedar-hi just
+        # per davall (i aleshores es perdria un marcador).
+        marge = sep + 1e-6
+        candidats = [proper - marge, proper + marge]
+        candidats = [c for c in candidats
+                     if 0.0 <= c <= self._durada
+                     and all(abs(c - v) > sep for v in altres)]
+        if not candidats:
+            return float(actual)
+        return min(candidats, key=lambda c: abs(c - t))
 
     def _emit_edit_finished(self) -> None:
         """Fi de drag -> amaga la guia i reporta al visor."""
@@ -1723,6 +1803,17 @@ class TimelineView(QGraphicsView):
                 self.setFocus()
                 event.accept()
                 return
+            # Drag d'un marcador humà (només a la franja de davall els carrils).
+            marcador = self._marcador_grabat(sp)
+            if marcador is not None:
+                self.setFocus()
+                self._marcador_gest = {
+                    "old": marcador, "cur": marcador,
+                    "dx": float(sp.x() - self._temps_a_x(marcador)),
+                }
+                self.viewport().setCursor(Qt.SizeHorCursor)
+                event.accept()
+                return
             it = self.itemAt(event.pos())
             if isinstance(it, TempoLayer):
                 # Pista de BPM/compas (eina intel·ligent): l'escena la gestiona.
@@ -1791,6 +1882,18 @@ class TimelineView(QGraphicsView):
         super().mouseDoubleClickEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
+        if self._marcador_gest is not None:
+            sp = self.mapToScene(event.pos())
+            old = float(self._marcador_gest["old"])
+            x = float(sp.x()) - float(self._marcador_gest["dx"])
+            t = self._snap_marcador(self._x_to_time(x), old)
+            t = self._marcador_temps_segur(
+                t, old, self._marcador_gest["cur"])
+            if abs(t - self._marcador_gest["cur"]) > 1e-9:
+                self._marcadors.mou_preview(self._marcador_gest["cur"], t)
+                self._marcador_gest["cur"] = t
+            event.accept()
+            return
         if self._audio_gesture is not None:
             t = self._temps_arrossegament_audio(event)
             self._audio_gesture["target"] = t
@@ -1830,15 +1933,11 @@ class TimelineView(QGraphicsView):
             self._update_loop_item()
             event.accept()
             return
-        # Feedback de cursor sobre el regle (només si no arrosseguem res).
+        # Feedback de cursor sobre el regle i la franja de marcadors (només si
+        # no arrosseguem res).
         if not (getattr(self, "_loop_drag", False)
                 or getattr(self, "_pan_drag", False)):
-            sp = self.mapToScene(event.pos())
-            edge = self._audio_edge_en(sp)
-            self.viewport().setCursor(
-                Qt.SizeHorCursor if edge else
-                (self._cursor_regle(sp.x()) if sp.y() < RULER_H
-                 else Qt.ArrowCursor))
+            self.viewport().setCursor(self._cursor_a_posicio(event.pos()))
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
@@ -1846,6 +1945,21 @@ class TimelineView(QGraphicsView):
             m = QApplication.keyboardModifiers()
             if not ((m & Qt.ControlModifier) and (m & Qt.ShiftModifier)):
                 self._restaura_eina_temporal()
+        if event.button() == Qt.LeftButton and self._marcador_gest is not None:
+            gest = self._marcador_gest
+            self._marcador_gest = None
+            old = float(gest["old"])
+            sp = self.mapToScene(event.pos())
+            x = float(sp.x()) - float(gest["dx"])
+            t = self._snap_marcador(self._x_to_time(x), old)
+            t = self._marcador_temps_segur(t, old, gest["cur"])
+            if abs(t - float(gest["cur"])) > 1e-9:
+                self._marcadors.mou_preview(gest["cur"], t)
+            self.viewport().setCursor(self._cursor_a_posicio(event.pos()))
+            if abs(t - old) > 1e-9:
+                self.markerMoved.emit(old, t)
+            event.accept()
+            return
         if event.button() == Qt.LeftButton and self._audio_gesture is not None:
             gest = self._audio_gesture
             t = self._temps_arrossegament_audio(event)

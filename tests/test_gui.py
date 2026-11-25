@@ -4157,6 +4157,203 @@ class TestInteraccioRegle(unittest.TestCase):
         self.assertGreater(tl._loop_b, 20.0)                     # B s'ha mogut
 
 
+class TestArrossegaMarcadorsTimeline(unittest.TestCase):
+    """Drag dels marcadors humans des de la franja de davall els carrils."""
+
+    def setUp(self):
+        if not os.environ.get("DISPLAY") and not os.environ.get("QT_QPA_PLATFORM"):
+            os.environ["QT_QPA_PLATFORM"] = "offscreen"
+        self._qapp = QApplication.instance() or QApplication([])
+        from app.timeline import TimelineView
+        audio = {"durada": 60.0, "sr": 44100, "canals": 1,
+                 "mono": np.zeros(2000, dtype=np.int16)}
+        self.tl = TimelineView(audio, [], [], 120.0, 4, True)
+        self.tl.resize(800, 400)
+        self.tl.set_snap(False)
+        self.tl.set_marcadors([(1.0, "seccio"), (6.0, "inici")])
+        self.moguts = []
+        self.tl.markerMoved.connect(
+            lambda a, b: self.moguts.append((a, b)))
+
+    def tearDown(self):
+        self.tl.close()
+
+    def _punt(self, t, y=None):
+        from PyQt5.QtCore import QPointF
+        from app.timeline_base import MARCADOR_GRAB_TOP
+        y = MARCADOR_GRAB_TOP + 5 if y is None else y
+        return self.tl.mapFromScene(
+            QPointF(self.tl._temps_a_x(t), y))
+
+    def _ev(self, tipus, t, y=None, boto=Qt.LeftButton,
+            botons=Qt.LeftButton):
+        from PyQt5.QtCore import QPointF
+        from PyQt5.QtGui import QMouseEvent
+        return QMouseEvent(tipus, QPointF(self._punt(t, y)), boto,
+                           botons, Qt.NoModifier)
+
+    def test_agafa_nomes_a_la_franja_inferior(self):
+        from PyQt5.QtCore import QPointF
+        from app.timeline_base import (LANE_ACC_TOP, MARCADOR_GRAB_TOP)
+        self.assertEqual(
+            self.tl._marcador_grabat(QPointF(
+                self.tl._temps_a_x(1.0), MARCADOR_GRAB_TOP + 5)), 1.0)
+        self.assertIsNone(
+            self.tl._marcador_grabat(QPointF(
+                self.tl._temps_a_x(1.0), LANE_ACC_TOP + 5)))
+
+    def test_cursor_canvia_nomes_a_la_franja(self):
+        from PyQt5.QtCore import Qt as QtCore
+        from app.timeline_base import LANE_ACC_TOP
+        self.assertEqual(self.tl._cursor_a_posicio(self._punt(1.0)),
+                         QtCore.SizeHorCursor)
+        self.assertEqual(
+            self.tl._cursor_a_posicio(self._punt(1.0, LANE_ACC_TOP + 5)),
+            QtCore.ArrowCursor)
+
+    def test_arrossega_previsualitza_i_emet_en_deixar_anar(self):
+        from PyQt5.QtCore import QEvent
+        self.tl.mousePressEvent(
+            self._ev(QEvent.MouseButtonPress, 1.0))
+        self.assertIsNotNone(self.tl._marcador_gest)
+        self.tl.mouseMoveEvent(
+            self._ev(QEvent.MouseMove, 3.0, boto=Qt.NoButton,
+                     botons=Qt.LeftButton))
+        self.assertAlmostEqual(self.tl._marcadors._marques[0][0], 3.0,
+                               delta=0.1)
+        self.assertEqual(self.tl._marcadors._marques[0][1], "seccio")
+        self.assertEqual(self.moguts, [])
+        self.tl.mouseReleaseEvent(
+            self._ev(QEvent.MouseButtonRelease, 3.0))
+        self.assertEqual(len(self.moguts), 1)
+        self.assertAlmostEqual(self.moguts[0][0], 1.0, places=6)
+        self.assertAlmostEqual(self.moguts[0][1], 3.0, delta=0.1)
+
+    def test_snap_de_graella_encaixa_el_marcador(self):
+        from PyQt5.QtCore import QEvent
+        self.tl.set_snap(True, "negra")
+        self.tl.mousePressEvent(
+            self._ev(QEvent.MouseButtonPress, 1.0))
+        self.tl.mouseMoveEvent(
+            self._ev(QEvent.MouseMove, 3.2, boto=Qt.NoButton,
+                     botons=Qt.LeftButton))
+        self.tl.mouseReleaseEvent(
+            self._ev(QEvent.MouseButtonRelease, 3.2))
+        self.assertEqual(len(self.moguts), 1)
+        self.assertAlmostEqual(self.moguts[0][1], 3.0, places=6)
+
+    def test_snap_marcadors_no_s_enganxa_a_si_mateix(self):
+        self.tl.set_marcadors([(1.0, "seccio")])
+        self.tl.set_snap(True, "marcadors")
+        self.assertAlmostEqual(self.tl._snap_marcador(3.0, 1.0), 3.0,
+                               places=6)
+
+    def test_no_fusiona_dos_marcadors(self):
+        from app import marcadors as M
+        self.tl.set_marcadors([(1.0, "seccio"), (5.0, "inici")])
+        nou = self.tl._marcador_temps_segur(5.001, 1.0, 3.0)
+        self.assertGreater(nou, 5.0)
+        self.assertEqual(
+            len(M.normalitza_marcadors([1.0, 5.0, nou], 60.0)), 3)
+
+    def test_release_sense_moviment_no_emet(self):
+        from PyQt5.QtCore import QEvent
+        self.tl.mousePressEvent(
+            self._ev(QEvent.MouseButtonPress, 1.0))
+        self.tl.mouseReleaseEvent(
+            self._ev(QEvent.MouseButtonRelease, 1.0))
+        self.assertEqual(self.moguts, [])
+
+
+class TestArrossegaMarcadorsVisor(unittest.TestCase):
+    """El drag del timeline mou el model i conserva el tipus (undo inclòs)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        from app.timeline_base import MARCADOR_GRAB_TOP
+        self._grab = MARCADOR_GRAB_TOP
+        self.td = tempfile.mkdtemp()
+        self.wav = os.path.join(self.td, "tema.wav")
+        with wave.open(self.wav, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(1000)
+            w.writeframes(np.zeros(8000, dtype="<i2").tobytes())
+        self.sortida = os.path.join(self.td, "projecte")
+        os.makedirs(self.sortida)
+        self.v = visor_mod.Visor(
+            self.wav, None, None, 120, 4, sortida=self.sortida)
+        self.v.marcadors = [1.0, 6.0]
+        self.v.marcador_tipus = {1.0: "seccio", 6.0: "marcador"}
+        self.v._pinta_marcadors()
+        self.v._undo_base = self.v._estat_complet()
+        self.tl = self.v.timeline
+        self.tl.resize(800, 400)
+        self.tl.set_snap(False)
+
+    def tearDown(self):
+        self.v.close()
+
+    def _punt(self, t, y=None):
+        from PyQt5.QtCore import QPointF
+        y = self._grab + 5 if y is None else y
+        return self.tl.mapFromScene(
+            QPointF(self.tl._temps_a_x(t), y))
+
+    def _ev(self, tipus, t, y=None, boto=Qt.LeftButton,
+            botons=Qt.LeftButton):
+        from PyQt5.QtCore import QPointF
+        from PyQt5.QtGui import QMouseEvent
+        return QMouseEvent(tipus, QPointF(self._punt(t, y)), boto,
+                           botons, Qt.NoModifier)
+
+    def _arrossega(self, inici, final):
+        from PyQt5.QtCore import QEvent
+        self.tl.mousePressEvent(
+            self._ev(QEvent.MouseButtonPress, inici))
+        self.tl.mouseMoveEvent(
+            self._ev(QEvent.MouseMove, final, boto=Qt.NoButton,
+                     botons=Qt.LeftButton))
+        self.tl.mouseReleaseEvent(
+            self._ev(QEvent.MouseButtonRelease, final))
+
+    def test_mou_conserva_tipus_undo_i_csv(self):
+        self._arrossega(1.0, 3.0)
+        self.assertEqual(len(self.v.marcadors), 2)
+        nou = self.v.marcadors[0]
+        self.assertAlmostEqual(nou, 3.0, delta=0.1)
+        self.assertEqual(self.v.marcador_tipus[nou], "seccio")
+        self.assertEqual(self.v.marcador_tipus[6.0], "marcador")
+        self.assertNotIn(1.0, self.v.marcadors)
+        tipus_csv = pipeline.llegeix_marcadors_tipus(self.sortida)
+        self.assertEqual(tipus_csv[round(nou, 6)], "seccio")
+        self.assertEqual(len(self.v._undo_stack), 1)
+        self.v.undo()
+        self.assertEqual(self.v.marcadors, [1.0, 6.0])
+        self.assertEqual(self.v.marcador_tipus[1.0], "seccio")
+        self.assertEqual(
+            pipeline.llegeix_marcadors_tipus(self.sortida)[1.0], "seccio")
+
+    def test_snap_graella_en_deixar_anar(self):
+        self.tl.set_snap(True, "negra")
+        self._arrossega(1.0, 3.2)
+        self.assertIn(3.0, self.v.marcadors)
+        self.assertEqual(self.v.marcador_tipus[3.0], "seccio")
+
+    def test_fora_de_la_franja_no_mou_el_marcador(self):
+        from PyQt5.QtCore import QEvent
+        from app.timeline_base import LANE_ACC_TOP
+        self.tl.mousePressEvent(
+            self._ev(QEvent.MouseButtonPress, 1.0, LANE_ACC_TOP + 5))
+        self.assertIsNone(self.tl._marcador_gest)
+        self.tl.mouseReleaseEvent(
+            self._ev(QEvent.MouseButtonRelease, 1.0, LANE_ACC_TOP + 5))
+        self.assertEqual(self.v.marcadors, [1.0, 6.0])
+
+
 class TestNansesAudioTimeline(unittest.TestCase):
     def setUp(self):
         if not os.environ.get("DISPLAY") and not os.environ.get("QT_QPA_PLATFORM"):

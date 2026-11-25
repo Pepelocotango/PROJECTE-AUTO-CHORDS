@@ -343,6 +343,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Doble-clic llista ⑭** | porta el clip de tempo a la franja Editor (BPM + compàs) |
 | **Doble-clic llista ⑮** | edita el temps o el tipus del marcador |
 | **Botó dret llista ⑮** / **Del** | elimina el marcador seleccionat |
+| **Franja inferior (sota els carrils) — línia de marcador** | `hover` = ↔ · arrossegar → **mou el marcador humà** amb el **snap actiu** (graella, marcadors, onsets o QM), conservant-ne el **tipus**; no toca acords, seccions ni el mapa de tempo i és una sola acció de desfer |
 | **Zona buida ② + botó dret** | **pan** (desplaçar la vista) |
 | **Botó dret SOBRE un clip** | **selecciona** el clip i obri el **menú contextual** — **el mateix joc a les 3 pistes** (regla #11): **Afegeix acord/secció aquí** · Duplica · Elimina · Reanomena · Parteix l'acord/la secció… · Partir per la meitat · **Parteix a la selecció A–B** (només amb loop marcat) · Retalla · Copia · Enganxa |
 | **Pista de tempo ③ — clic** | **selecciona** el tram de tempo/compàs i hi posa el cursor **exactament al seu inici** (paritat amb els clips ④⑤; sense snap, perquè les fronteres del mapa poden ser lliures) |

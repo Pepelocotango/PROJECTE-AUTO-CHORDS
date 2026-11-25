@@ -57,6 +57,17 @@ class MarcadorsMixin:
         self.log(f"marcador mogut: {t_vell:.3f} → {t_nou:.3f}s")
         return True
 
+    def _on_marker_moved(self, old_t, new_t):
+        """Drag d'un marcador al timeline: mou'l conservant el tipus.
+
+        Una sola operació de desfer; la persistència (marcadors.csv) i el
+        repintat els fa `_mou_marcador`.
+        """
+        self._undo_marca()
+        ok = self._mou_marcador(float(old_t), float(new_t))
+        self._undo_commit()
+        return ok
+
     def _inicia_tall_qm(self):
         """Guarda l'estat de play abans de qualsevol diàleg del tall QM."""
         if getattr(self, "_tall_qm_actiu", False):
