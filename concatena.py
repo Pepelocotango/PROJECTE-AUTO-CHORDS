@@ -2,7 +2,13 @@
 # concatena.py — Genera UN sol fitxer amb NOMÉS el codi/config indispensable del
 # projecte, perquè un altre agent/LLM el pugui ENTENDRE i EXECUTAR.
 #
-# Ús: python3 concatena.py [sortida.txt]   (defecte: CODI_concatenat.txt)
+# Ús: python3 concatena.py [--codi] [sortida.txt]
+#   (defecte: CODI_concatenat.txt; amb --codi: CODI_codi.txt)
+#
+# --codi  perfil reduït centrat en els clips de temps (tempo/compàs/graella/
+#         metrònom/marcadors/talls): inclou TOT `app/`, els tests del domini i
+#         els docs de temps, i deixa fora CI, generadors, llançadors i els tests
+#         generals (test_pipeline) i de xifrat/partitura.
 #
 # INCLOU (whitelist), EN ORDRE: primer el CONTEXT (`AGENTS.md`, `README.md`,
 #   `ROADMAP.md`, `DEVELOPING.md`, les regles d'or, l'esquema d'UI i els docs
@@ -20,8 +26,6 @@ import sys
 from datetime import datetime
 
 ARREL = os.path.dirname(os.path.abspath(__file__))
-SORTIDA = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-    ARREL, "CODI_concatenat.txt")
 
 # --- Què SÍ que hi va (whitelist, relatiu a l'arrel) -----------------------
 INCLOU = [
@@ -58,6 +62,40 @@ INCLOU = [
     "tests",
 ]
 
+# --- Perfil reduït `--codi`: clips de temps (tempo/compàs/graella) ---------
+# Tot `app/` hi és perquè la UI i el motor dels clips es necessiten entre si.
+DOCS_TEMPS = [
+    "docs/REGLES_DE_LA_APP.md",   # regles d'or (contracte)
+    "docs/ESQUEMA_UI.md",         # menús, dreceres i diàlegs de tempo/compàs
+    "docs/recerca/TAULA_COMPASSOS_X_X.md",
+    "docs/recerca/GRAELLA_PPQ_TEMPS.md",
+    "docs/recerca/COMPASSOS_COMPOSTOS_BPM_METRONOM.md",
+    "docs/recerca/guia_tecnica_downbeat_onsets_beats.md",
+    "docs/recerca/PLA_MAPA_TEMPS.md",
+]
+TESTS_TEMPS = [
+    "tests/_temporals.py", "tests/_qt_neteja.py",
+    "tests/test_edicio.py", "tests/test_despatx_edicio.py",
+    "tests/test_tempo_map.py", "tests/test_tempo_trams.py",
+    "tests/test_tempo_recalc.py", "tests/test_mapa_tempo.py",
+    "tests/test_tempo_midi.py", "tests/test_tall_qm.py",
+    "tests/test_dialeg_tall_qm.py", "tests/test_beats.py",
+    "tests/test_ancoratges.py", "tests/test_avalua_tempo.py",
+    "tests/test_audio_edit.py", "tests/test_timeline_contracte.py",
+    "tests/test_pipeline_contracte.py", "tests/test_gui.py",
+]
+PROFIL_CODI = [
+    "AGENTS.md", "DEVELOPING.md",
+    *DOCS_TEMPS,
+    "app",
+    "eines/deps_fixades.env", "eines/vamp_host.cpp",
+    "eines/avalua_tempo.py", "eines/explica_bpm.py",
+    "pyproject.toml", "requirements.txt", "requirements-build.txt",
+    "requirements-dev.txt", "Makefile",
+    *TESTS_TEMPS,
+    "concatena.py",
+]
+
 # --- Què NO que hi va (si apareix dins un directori inclòs) ----------------
 EXCLOSOS_DIRS = {"__pycache__", ".venv", ".git", ".deps", "temp", "OLD"}
 EXCLOSOS_NOMS = {"opcions_detecta.json", "auto_chords.log"}
@@ -78,9 +116,9 @@ def es_text(nom):
             or nom in NOMS_SENSE_EXT)
 
 
-def recorre():
+def recorre(inclou):
     """Retorna les rutes (relatives) dels fitxers a concatenar, en ordre."""
-    for item in INCLOU:
+    for item in inclou:
         cami = os.path.join(ARREL, item)
         if os.path.isfile(cami):
             if es_text(item):
@@ -99,12 +137,12 @@ def recorre():
                 yield os.path.normpath(rel)
 
 
-def main():
-    fitxers = list(recorre())
+def main(inclou, sortida, titol):
+    fitxers = list(recorre(inclou))
     amb_data = datetime.now().strftime("%Y-%m-%d %H:%M")
-    with open(SORTIDA, "w", encoding="utf-8") as f:
+    with open(sortida, "w", encoding="utf-8") as f:
         f.write("=" * 78 + "\n")
-        f.write("PROJECTE AUTO CHORDS — CODI CONCATENAT (només l'indispensable)\n")
+        f.write(f"PROJECTE AUTO CHORDS — {titol}\n")
         f.write(f"Generat: {amb_data}\n")
         f.write(f"Fitxers: {len(fitxers)}\n")
         f.write("=" * 78 + "\n\n")
@@ -127,10 +165,18 @@ def main():
             f.write(contingut)
             if not contingut.endswith("\n"):
                 f.write("\n")
-    mida = os.path.getsize(SORTIDA)
-    print(f"✅ {SORTIDA}")
+    mida = os.path.getsize(sortida)
+    print(f"✅ {sortida}")
     print(f"   {len(fitxers)} fitxers · {total_linies} línies · {mida/1024:.0f} KB")
 
 
 if __name__ == "__main__":
-    main()
+    args = sys.argv[1:]
+    codi = "--codi" in args
+    args = [a for a in args if a != "--codi"]
+    if codi:
+        main(PROFIL_CODI, args[0] if args else os.path.join(ARREL, "CODI_codi.txt"),
+             "CODI CONCATENAT · perfil clips de temps")
+    else:
+        main(INCLOU, args[0] if args else os.path.join(ARREL, "CODI_concatenat.txt"),
+             "CODI CONCATENAT (només l'indispensable)")
