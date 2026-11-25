@@ -2133,6 +2133,30 @@ class TestDialegTramTempo(_dialegs___Base):
         self.assertEqual(v.pos, 3.0)
         self.assertTrue(v.sona)
 
+    def test_unitat_incrustada_emet_el_canvi(self):
+        d = dialegs.DialegTramTempo(
+            None, bpm=120.0, num=6, den=8, unit="negra_punt",
+            beat_unit="negra_punt")
+        vist = []
+        d.unitatRequested.connect(lambda u, m: vist.append((u, m)))
+        self.assertFalse(d.b_aplica_unitat.isEnabled())
+        i = d.panell_unitat.cb_unitat.findData("corxera")
+        d.panell_unitat.cb_unitat.setCurrentIndex(i)
+        self.assertTrue(d.b_aplica_unitat.isEnabled())
+        d.b_aplica_unitat.click()
+        self.assertEqual(vist, [("corxera", "mantenir_tempo")])
+
+    def test_dialeg_canvi_unitat_retorna_la_unitat_triada(self):
+        d = dialegs.DialegCanviUnitat(
+            None, etiqueta="Tram 1", bpm=120.0,
+            unit_vella="negra_punt", unit_nova="negra_punt")
+        i = d.panell.cb_unitat.findData("corxera")
+        d.panell.cb_unitat.setCurrentIndex(i)
+        bpm, unit, mode = d.resultat()
+        self.assertAlmostEqual(bpm, 120.0, places=6)
+        self.assertEqual(unit, "corxera")
+        self.assertEqual(mode, "mantenir_tempo")
+
     def test_show_centra_el_dialeg_a_la_pantalla(self):
         d = dialegs.DialegTramTempo(None, inici=4.0, bpm=120.0, num=4,
                                     den=4)
@@ -5062,7 +5086,7 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
         finally:
             v.close()
 
-    def test_editor_canvi_compas_reset_agrupacio_explicita(self):
+    def test_editor_canvi_compas_conserva_unitat_explicita_compatible(self):
         from app import mapa_tempo
         v = _vista_segueix_model___visor()
         try:
@@ -5076,12 +5100,12 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             tr = v.tempo_trams[0]
             self.assertEqual(tr.compassos, "4/4")
             self.assertEqual(tr.agrupacio, "4")
-            self.assertEqual(tr.beat_unit, "negra")
+            self.assertEqual(tr.beat_unit, "corxera")
         finally:
             v.close()
 
-    def test_editor_canvi_compas_conserva_pulsacio_per_defecte(self):
-        """El botó Compàs de l'Editor aplica el Cas B per defecte."""
+    def test_editor_canvi_compas_conserva_bpm_intern(self):
+        """El botó Compàs conserva el BPM intern; canvia el visible."""
         v = _vista_segueix_model___visor()
         try:
             v._focus_editor("tempo", 0)
@@ -5089,13 +5113,13 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             v.ed_compas_aplica.click()
             tr = v.tempo_trams[0]
             self.assertEqual(tr.beat_unit, "negra_punt")
-            self.assertAlmostEqual(float(tr.bpm), 180.0, places=6)
-            self.assertAlmostEqual(float(v.bpm_mostra()), 120.0, places=6)
+            self.assertAlmostEqual(float(tr.bpm), 120.0, places=6)
+            self.assertAlmostEqual(float(v.bpm_mostra()), 80.0, places=6)
         finally:
             v.close()
 
-    def test_aplica_general_canvi_compas_aplica_cas_b(self):
-        """Enter/Aplica general han de fer el mateix que el botó Compàs."""
+    def test_aplica_general_canvi_compas_conserva_bpm_intern(self):
+        """Enter/Aplica general conserva el BPM intern, com el botó Compàs."""
         v = _vista_segueix_model___visor()
         try:
             self.assertTrue(v.aplica_tempo_trams([
@@ -5106,12 +5130,12 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             v._aplica_editor()
             tr = v.tempo_trams[0]
             self.assertEqual(tr.beat_unit, "negra_punt")
-            self.assertAlmostEqual(float(tr.bpm), 180.0, places=6)
-            self.assertAlmostEqual(float(v.bpm_mostra()), 120.0, places=6)
+            self.assertAlmostEqual(float(tr.bpm), 120.0, places=6)
+            self.assertAlmostEqual(float(v.bpm_mostra()), 80.0, places=6)
         finally:
             v.close()
 
-    def test_aplica_general_canvi_compas_recalcula_unitat(self):
+    def test_aplica_general_canvi_compas_conserva_unitat_explicita(self):
         from app import mapa_tempo
         v = _vista_segueix_model___visor()
         try:
@@ -5122,7 +5146,7 @@ class TestValidacioTempoVisor(_vista_segueix_model___Base):
             v._focus_editor("tempo", 0)
             v.ed_fam.setText("6/8")
             v._aplica_editor()
-            self.assertEqual(v.tempo_trams[0].beat_unit, "negra_punt")
+            self.assertEqual(v.tempo_trams[0].beat_unit, "corxera")
         finally:
             v.close()
 
@@ -6399,7 +6423,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.tempo_trams[2][3:], (7, 4))
         self.assertAlmostEqual(vr.tempo_trams[2][0], 34.0, places=6)
 
-    def test_eliminar_frontera_recalcula_el_clip_fusionat(self):
+    def test_eliminar_frontera_el_vei_dret_ocupa_l_espai(self):
         vr = self.w.visor_ref
         b1, final = 3.330396, 16.582354
         beats = ([i * b1 / 8 for i in range(8)]
@@ -6411,12 +6435,12 @@ class TestAncoratgesFinestra(unittest.TestCase):
                  (final, 60.0, 138.561, 4, 4)]
         self.assertTrue(vr.aplica_tempo_trams(trams))
         self.assertTrue(vr._elimina_tram(1))
-        merged = vr.tempo_trams[0]
-        self.assertAlmostEqual(float(merged[1]), final, places=6)
-        self.assertEqual(merged[3:], (4, 4))
-        self.assertAlmostEqual(float(merged[2]), 144.732, places=3)
-        self.assertAlmostEqual(
-            tm._compassos_del_tram(merged, 0), 10.0, places=3)
+        esq = vr.tempo_trams[0]
+        dret = vr.tempo_trams[1]
+        self.assertAlmostEqual(float(esq[1]), b1, places=6)
+        self.assertAlmostEqual(float(dret[0]), b1, places=6)
+        self.assertAlmostEqual(float(dret[1]), 60.0, places=6)
+        self.assertEqual(dret[3:], (4, 4))
 
     def test_reparacio_amb_negra_amb_punt_9_8(self):
         """La reparació també ha d'aplicar la unitat del beat (4,5 negres)."""
@@ -7038,6 +7062,38 @@ class TestAncoratgesFinestra(unittest.TestCase):
             vr._on_tempo_mogut(0, "fi", 10.5)
         self.assertIsNone(vist["beats"])
 
+    def test_no_elimina_tots_els_clips_de_tempo(self):
+        vr = self.w.visor_ref
+        self.assertTrue(vr.aplica_tempo_trams([
+            (0.0, 30.0, 120.0, 4, 4), (30.0, 60.0, 90.0, 4, 4)]))
+        with patch.object(vr, "avis_editor") as avis:
+            vr._elimina_seleccio([("tempo", 0), ("tempo", 1)])
+        self.assertEqual(len(vr.tempo_trams), 2)
+        self.assertGreater(avis.call_count, 0)
+
+    def test_menu_contextual_tempo_te_canvi_unitat(self):
+        vr = self.w.visor_ref
+        menu = vr._menu_contextual("tempo", 0, 0.0)
+        textos = [a.text() for a in menu.actions()]
+        self.assertIn("Canvia unitat de pols…", textos)
+
+    def test_frontera_fi_usa_la_referencia_del_clip_anterior(self):
+        """En moure el fi del clip 1, la referència és el clip 0, no l'1."""
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4), (10.0, 22.0, 100.0, 4, 4),
+                 (22.0, 30.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        vist = {}
+        original = tm.mou_frontera_retempo
+
+        def _fake(*args, **kwargs):
+            vist["ref_base"] = kwargs.get("ref_base")
+            return original(*args, **kwargs)
+
+        with patch.object(tm, "mou_frontera_retempo", _fake):
+            vr._on_tempo_mogut(1, "fi", 20.0)
+        self.assertEqual(vist["ref_base"], (120.0, 4, 4))
+
     def test_frontera_de_tempo_no_arrossega_marcador_ni_estructura(self):
         """Moure una frontera de tempo no toca marcadors ni seccions."""
         vr = self.w.visor_ref
@@ -7207,8 +7263,8 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertIn("corxera", self.w.bpm_bar.text())
 
 
-    def test_canvi_de_compas_cas_b_per_defecte_conserva_la_pulsacio(self):
-        """4/4 120 → 6/8: el visible continua a 120 i l'intern passa a 180."""
+    def test_canvi_de_compas_conserva_bpm_intern_4_4_a_6_8(self):
+        """4/4 120 → 6/8: l'intern continua a 120 i el visible passa a 80."""
         from app import mapa_tempo
         vr = self.w.visor_ref
         self.assertTrue(vr.aplica_tempo_trams([
@@ -7217,11 +7273,11 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.edita_compas_objectiu(0, 6, 8))
         tr = vr.tempo_trams[0]
         self.assertEqual(tr.beat_unit, "negra_punt")
-        self.assertAlmostEqual(float(tr.bpm), 180.0, places=6)
-        self.assertAlmostEqual(float(vr.bpm_mostra()), 120.0, places=6)
+        self.assertAlmostEqual(float(tr.bpm), 120.0, places=6)
+        self.assertAlmostEqual(float(vr.bpm_mostra()), 80.0, places=6)
 
-    def test_canvi_de_compas_cas_b_6_8_a_4_4(self):
-        """6/8 ♩.80 (intern 120) → 4/4: el visible continua a 80 i l'intern baixa a 80."""
+    def test_canvi_de_compas_conserva_bpm_intern_6_8_a_4_4(self):
+        """6/8 ♩.80 (intern 120) → 4/4: l'intern continua a 120 i el visible passa a 120."""
         from app import mapa_tempo
         vr = self.w.visor_ref
         self.assertTrue(vr.aplica_tempo_trams([
@@ -7230,8 +7286,8 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.edita_compas_objectiu(0, 4, 4))
         tr = vr.tempo_trams[0]
         self.assertEqual(tr.beat_unit, "negra")
-        self.assertAlmostEqual(float(tr.bpm), 80.0, places=6)
-        self.assertAlmostEqual(float(vr.bpm_mostra()), 80.0, places=6)
+        self.assertAlmostEqual(float(tr.bpm), 120.0, places=6)
+        self.assertAlmostEqual(float(vr.bpm_mostra()), 120.0, places=6)
 
     def test_canvi_unitat_mantenir_numero(self):
         """Flux «Mantén el número»: 6/8 ♩.60 → negra 60, intern 60."""
@@ -7272,11 +7328,11 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.edita_tempo_objectiu(0, 120.0, 6, 8))
         self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
         self.assertEqual(vr.bpm_mostra(), "80.000")
-        # En canviar de compàs, la unitat es recalcula per defecte.
+        # Una unitat explícita compatible es conserva en el canvi següent.
         self.assertTrue(vr.canvia_unitat_tram(0, "corxera",
                                               mode="mantenir_tempo"))
         self.assertTrue(vr.edita_tempo_objectiu(0, 120.0, 12, 8))
-        self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
+        self.assertEqual(vr.tempo_trams[0].beat_unit, "corxera")
 
     def test_edicio_amb_tuples_antiques_no_peta(self):
         """Regressió: el model pot arribar amb tuples de 5 camps del motor."""
@@ -7299,21 +7355,16 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr.undo()
         self.assertEqual(vr.tempo_trams[0].beat_unit, "negra_punt")
 
-    def test_canvi_de_compas_recalcula_la_unitat_explicita(self):
-        """Decisió 2026-11-18: en canviar compàs, la unitat es recalcula sempre.
-
-        Abans una unitat explícita (`blanca`) es conservava i L3 rebutjava el
-        canvi a 3/4 per incompatible. Ara l'agrupació i la unitat es tornen a
-        derivar del compàs nou (`negra`) i l'edició s'aplica sense avís.
-        """
+    def test_canvi_de_compas_rebutja_unitat_explicita_incompatible(self):
+        """Una unitat explícita incompatible no es reseteja en silenci."""
         from app import mapa_tempo
         vr = self.w.visor_ref
         vr.aplica_tempo_trams([mapa_tempo.TramMapa(
             0.0, 10.0, 120.0, "normal", "4/4", "", None, "blanca")])
         with patch.object(vr, "avis_editor") as avis:
-            self.assertTrue(vr.edita_tempo_objectiu(0, 120.0, 3, 4))
-        self.assertEqual(vr.tempo_trams[0].beat_unit, "negra")
-        self.assertEqual(avis.call_count, 0)
+            self.assertFalse(vr.edita_tempo_objectiu(0, 120.0, 3, 4))
+        self.assertEqual(vr.tempo_trams[0].beat_unit, "blanca")
+        self.assertGreater(avis.call_count, 0)
 
     def test_latencia_del_cursor_compensa_el_retard(self):
         """El cursor pot anar 100 ms per darrere del rellotge d'àudio."""

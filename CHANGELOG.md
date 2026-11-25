@@ -5,6 +5,33 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Canviat — Eliminació de clips amb absorció pel veí dret (2026-11-25)
+- En eliminar un clip d'acords, estructura o tempo, el buit l'absorbeix el
+  clip de la **dreta**, que passa a començar on començava el clip eliminat.
+- Si s'elimina l'últim clip, l'anterior s'estira fins al final.
+- Si el carril queda buit, es conserva el forat canònic (`N` o `-`).
+- Al mapa de tempo no es permet eliminar l'únic clip.
+- L'eliminació múltiple valida abans el mapa de tempo i evita canvis parcials.
+
+### Canviat — Unitat de pols en canviar de compàs (2026-11-25)
+- Un canvi de compàs conserva sempre el **BPM intern**; només es recalcula el
+  BPM visible/pols.
+- La unitat derivada passa a la derivada del compàs nou.
+- Una unitat explícita compatible es conserva.
+- Una unitat explícita incompatible rebutja el canvi i proposa la derivada.
+- Nova acció **Canvia unitat de pols…** al menú contextual del clip de tempo i
+  al diàleg del tram, amb els modes **Mantén el tempo** i **Mantén el número**.
+
+### Corregit — Moviment de bloc del mapa de tempo (2026-11-25)
+- Arrossegar el cos d'un clip mou el bloc sencer i recalcula **els dos veïns**.
+- Si qualsevol dels dos veïns no pot quedar amb `N` enter i una unitat
+  compatible, es rebutja el moviment sencer sense canvi parcial; l'últim veí
+  pot quedar amb `N` fraccionari.
+- La referència del recalc en moure el `fi` d'un clip seleccionat és el clip
+  anterior, no el propi clip.
+- Test de regressió per al rebuig d'un veí impossible i per a la referència
+  del `fi` amb tres clips.
+
 ### Corregit — l'últim clip pot quedar fraccionari a les edicions (2026-11-25)
 - Tallar (`+`), partir, fusionar, enganxar i altres edicions del mapa ja no
   forcen `N` enter a l'últim clip.

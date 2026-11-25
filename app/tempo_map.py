@@ -1804,8 +1804,10 @@ def mou_tram_sencer(trams, idx, nou_ini, durada, beats_qm=None,
 
     Les fronteres queden on l'usuari les posa, però el tram seleccionat no
     canvia BPM, compàs ni N. Els dos veïns sí que canvien de durada i es
-    recalculen amb la mateixa lògica que el re-tempo de vores. El primer i
-    l'últim tram no es poden moure perquè un extrem està ancorat a la WAV.
+    recalculen amb la mateixa lògica que el re-tempo de vores; si qualsevol
+    dels dos no pot quedar vàlid, es rebutja el moviment sencer. L'últim veí
+    pot quedar amb `N` fraccionari. El primer i l'últim tram no es poden moure
+    perquè un extrem està ancorat a la WAV.
 
     Si el moviment deixaria un veí per davall d'un compàs, s'atura en eixe
     límit. Retorna el mapa normalitzat o `ValueError`.
@@ -1842,7 +1844,8 @@ def mou_tram_sencer(trams, idx, nou_ini, durada, beats_qm=None,
         out, [(i - 1, a), (i + 1, c)], durada, beats_qm=beats_qm,
         ref_base=None, avisos=avisos, beat_factor=beat_factor,
         unitats=unitats, classificacions=classificacions,
-        suggerides=suggerides)
+        suggerides=suggerides, estricte=True,
+        permet_ultim_fraccionari=permet_ultim_fraccionari)
     return valida_i_normalitza_permissiu(
         out, durada, permet_ultim_fraccionari=permet_ultim_fraccionari)
 
@@ -1850,15 +1853,19 @@ def mou_tram_sencer(trams, idx, nou_ini, durada, beats_qm=None,
 def _recalcula_costats(out, refs, durada, beats_qm=None,
                        ref_base=None, avisos=None, beat_factor=1.0,
                        meter_prior=None, unitats=None, classificacions=None,
-                       suggerides=None):
+                       suggerides=None, estricte=False,
+                       permet_ultim_fraccionari=False):
     """Recalcula BPM/compàs dels costats amb una referència.
 
     `refs`: `[(idx, tram_referencia), …]`. Si `ref_base=(bpm, num, den)` no és
     `None`, **tots** els costats usen eixa referència manual (BPM/compàs base
-    del tema); si no, cada costat conserva la referència del seu clip. S'ometen
-    els rubatos i els trams on no hi ha cap
-    combinació vàlida. Si hi ha beats detectats dins del clip, el seu nombre
-    restringix `N` i el compàs (i poden corregir la referència base).
+    del tema); si no, cada costat conserva la referència del seu clip. Si
+    `estricte=True`, qualsevol costat que no puga quedar amb `N` enter i una
+    unitat compatible fa fallar l'operació; si no, se salta el costat. Si
+    `permet_ultim_fraccionari=True`, l'últim clip pot quedar amb `N`
+    fraccionari i no bloqueja el moviment. Si hi ha beats detectats dins del
+    clip, el seu nombre restringix `N` i el compàs (i poden corregir la
+    referència base).
     """
     beats = [float(b) for b in (beats_qm or ())]
     for idx, ref in refs:
@@ -1901,6 +1908,12 @@ def _recalcula_costats(out, refs, durada, beats_qm=None,
         if r is None:
             if classificacions is not None:
                 classificacions[int(idx)] = "BAIX"
+            ultim_fraccionari = (
+                permet_ultim_fraccionari and int(idx) == len(out) - 1)
+            if estricte and not ultim_fraccionari:
+                raise ValueError(
+                    f"El veí {int(idx) + 1} no pot quedar amb compassos "
+                    "sencers; el moviment no s'ha aplicat")
             continue
         unitat = (unitats or {}).get(int(idx))
         if (unitat is not None
@@ -1931,6 +1944,10 @@ def _recalcula_costats(out, refs, durada, beats_qm=None,
                         f"Clip {int(idx) + 1}: la unitat {unitat} no encaixa "
                         f"amb {int(r['num'])}/{int(r['den'])}; "
                         f"suggerida {sugg}")
+                if estricte:
+                    raise ValueError(
+                        f"El veí {int(idx) + 1} no encaixa amb la unitat "
+                        f"{unitat}; el moviment no s'ha aplicat")
                 continue
         if classificacions is not None:
             classificacions[int(idx)] = "ALT"
@@ -2230,19 +2247,23 @@ def fusiona_trams(trams, i, amb="seguent"):
 
 
 def elimina_tall(trams, idx):
-    """Treu el tros `idx` del mapa (els veïns n'ocupen l'espai).
+    """Treu el tros `idx` del mapa: el buit l'absorbeix el tros de la dreta.
 
-    El mapa **sempre** comença a 0: si el tros eliminat era el PRIMER, el nou
-    primer s'hi **ancora** (abans quedava a l'inici vell i `normalitza_trams`
-    hi afegia un tros duplicat — mai es podia arribar a un sol tram).
+    El tros posterior passa a començar on començava el tros eliminat. Si
+    s'elimina l'últim, no hi ha dreta i l'anterior s'estira. El mapa sempre
+    comença a 0.
     """
     trams = list(trams or [])
     if not (0 <= idx < len(trams)):
         return trams
-    out = trams[:idx] + trams[idx + 1:]
-    if idx == 0 and out:
-        out[0] = (0.0,) + tuple(out[0][1:])
-    return out
+    c = trams.pop(idx)
+    if idx < len(trams):
+        n = trams[idx]
+        trams[idx] = (float(c[0]),) + tuple(n[1:])
+    elif idx > 0:
+        p = trams[idx - 1]
+        trams[idx - 1] = (float(p[0]), float(c[1])) + tuple(p[2:])
+    return trams
 
 
 def infereix_trams_beat(temps, durada, num=4, den=4, tol=0.12, finestra=3):

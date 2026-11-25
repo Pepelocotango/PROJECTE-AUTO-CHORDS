@@ -2380,6 +2380,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             act("compas_menys1", "Restar 1 compàs (−1)", te)
             act("compas_x2", "Doblar compassos (×2)", te)
             act("compas_div2", "Dividir compassos (÷2)", te)
+            act("unitat", "Canvia unitat de pols…", te)
             # Rubato: conversions explícites (fase 3.2).
             es_rub = te and getattr(self.tempo_trams[idx], "tipus", None) == "rubato"
             menu.addSeparator()
@@ -2418,6 +2419,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if clau in ("converteix_marcador_compas", "converteix_marcador_seccio"):
             tipus = "compas" if clau.endswith("compas") else "seccio"
             return self.converteix_marcador(float(t), tipus)
+        if clau == "unitat":
+            return self.canvia_unitat_ui(idx)
         if clau == "rubato":
             return self.converteix_rubato(idx)
         if clau == "normal":
@@ -2561,10 +2564,14 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
 
 
     def _aplica_mapa_reparat(self, nous, msg, preserva_rubato=True,
-                             recalcul_idx=None):
+                             recalcul_idx=None, antics=None):
         """Aplica un mapa i, si les fronteres hereten mil·lèsimes fora de
         graella, les imanta abans de rebutjar (bug 21-10: eliminar/fusionar/
-        duplicar un tram fallava després de l'Anàlisi guiat)."""
+        duplicar un tram fallava després de l'Anàlisi guiat).
+
+        `antics` permet reenganxar les metadades dels trams que sobreviuen; per
+        defecte s'usa el mapa viu.
+        """
         durada = self._durada_wav()
         # El recalcul va ABANS de validar/reparar fronteres, però DESPRÉS de
         # normalitzar: una eliminació deixa un forat i el clip afectat només
@@ -2596,7 +2603,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             else:
                 self.log(f"{msg}: fronteres imantades a la línia de compàs")
         if preserva_rubato:
-            fi = mapa_tempo.reenganxa_metadades(self.tempo_trams or [], fi)
+            origen = (self.tempo_trams or []) if antics is None else antics
+            fi = mapa_tempo.reenganxa_metadades(origen, fi)
         # Estes operacions (elimina/fusiona) poden canviar el nombre de trams
         # encara que el mapa tinga rubatos; la preservació de dalt manté el
         # tipus i el guard genèric no ha de bloquejar el gest de l'usuari.
@@ -2640,17 +2648,21 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         return out
 
     def _elimina_tram(self, idx):
-        """Elimina un tram del mapa (els veïns n'ocupen l'espai)."""
+        """Elimina un tram: el buit l'absorbeix el tram de la dreta.
+
+        Si s'elimina l'últim, no hi ha dreta i l'anterior s'estira. El veí
+        absorbit es recalcula; si no pot quedar vàlid, no s'aplica res.
+        """
         trams = list(self.tempo_trams or [])
         if not (0 <= idx < len(trams)) or len(trams) <= 1:
             return False
+        idx = int(idx)
+        antics = [t for j, t in enumerate(trams) if j != idx]
+        recalcul_idx = idx if idx < len(trams) - 1 else max(0, idx - 1)
         self._undo_marca()
-        # Si s'elimina el mateix rubato, no el re-enganxem a un tram veí.
-        preserva = getattr(trams[idx], "tipus", None) != "rubato"
         ok = self._aplica_mapa_reparat(
             tempo_map.elimina_tall(trams, idx), "Elimina tempo",
-            preserva_rubato=preserva,
-            recalcul_idx=max(0, int(idx) - 1))
+            preserva_rubato=True, recalcul_idx=recalcul_idx, antics=antics)
         self._undo_commit()
         return ok
 
@@ -3112,28 +3124,55 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if not idx_ac and not idx_sec and not idx_tp:
             return
         durada = self._durada_wav()
+        antics_ac = list(self.acords)
+        antics_sec = list(self.seccions)
+        cand_ac = list(antics_ac)
+        for i in idx_ac:
+            cand_ac = pipeline.elimina_clips(
+                cand_ac, i, durada, pipeline.FORAT_ACORD)
+        cand_sec = list(antics_sec)
+        for i in idx_sec:
+            cand_sec = pipeline.elimina_seccio(cand_sec, i, durada)
         cand_tp = None
         if idx_tp:
+            if len(idx_tp) >= len(self.tempo_trams or []):
+                self.avis_editor(
+                    "Elimina tempo: no es pot eliminar l'únic clip de tempo.")
+                return
             trams = list(self.tempo_trams or [])
             for i in idx_tp:
                 trams = tempo_map.elimina_tall(trams, i)
+            idx_tp_set = set(idx_tp)
+            antics_tp = [t for j, t in enumerate(self.tempo_trams or [])
+                         if j not in idx_tp_set]
             try:
                 # Les fronteres heretades poden quedar a mil·lèsimes de la
                 # graella: s'imanten abans de rebutjar (21-10).
                 cand_tp = tempo_map.repara_fronteres(
                     trams, durada, permet_ultim_fraccionari=True)
                 cand_tp = mapa_tempo.reenganxa_metadades(
-                    self.tempo_trams or [], cand_tp)
+                    antics_tp, cand_tp)
             except ValueError as e:
                 self.avis_editor(f"Elimina tempo: {e}")
                 return
+            errors = self._bloquejos_tempo_errors(cand_tp)
+            if errors:
+                self.avis_editor(
+                    "Bloquejat: canvi de " + ", ".join(errors)
+                    + ". No s'ha eliminat res.")
+                return
         self._undo_marca()
-        for i in idx_ac:
-            self._elimina_acord(i)
-        for i in idx_sec:
-            self._elimina_seccio(i)
+        self.acords = cand_ac
+        self.seccions = cand_sec
         if cand_tp:
-            self.aplica_tempo_trams(cand_tp)
+            if not self.aplica_tempo_trams(cand_tp):
+                self.acords = antics_ac
+                self.seccions = antics_sec
+                self._undo_commit()
+                self.avis_editor(
+                    "Elimina: el mapa de tempo no s'ha pogut aplicar; "
+                    "no s'ha eliminat res.")
+                return
         self._undo_commit()
         # INVARIANT #4 INSTANTANI: si l'esborrat ha deixat el model sense acords
         # (o sense estructura), s'hi torna a posar la marca canònica a 0 («N» /
@@ -3690,18 +3729,23 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         return bool(self._on_tempo_edit(idx))
 
 
-    def _mou_frontera_ui(self, trams, idx_frontera, t, durada):
+    def _mou_frontera_ui(self, trams, idx_frontera, t, durada,
+                         ref_idx=None):
         """Mou una frontera des de la franja Editor (re-tempo §13.6).
 
+        `idx_frontera` és el tram de la DRETA. `ref_idx` és el clip seleccionat
+        que servix de referència: si no es passa, s'usa el clip de la dreta.
         Retorna el mapa nou o `None` si no es pot (amb avís). Si el punter
         demanava un instant impossible, s'aplica el més a prop i s'avisa.
         """
         avisos = []
+        ref_base = self.referencia_tempo_base(
+            idx_frontera if ref_idx is None else ref_idx)
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, int(idx_frontera), float(t), durada,
                 beats_qm=self._beats_per_validacio(), permissiu=True,
-                ref_base=self.referencia_tempo_base(idx_frontera),
+                ref_base=ref_base,
                 avisos=avisos,
                 beat_factor=self.beat_factor())
         except ValueError as e:

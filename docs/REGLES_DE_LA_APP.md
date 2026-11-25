@@ -45,6 +45,11 @@ de la WAV** en qualsevol mode i amb o sense snap: el primer clip arrenca a **0**
 (capçalera «N» si cal) i l'últim arriba a la durada. La regla **mana sobre el
 snap**, que només quantitza límits **interiors**.
 
+En eliminar un clip, el buit l'absorbeix el clip de la **dreta**: el posterior
+passa a començar on començava el clip eliminat. Si s'elimina l'últim clip, no
+hi ha dreta i l'anterior s'estira fins al final. Si el carril queda buit, hi va
+el forat canònic (`N` o `-`). Al mapa de tempo no es pot eliminar l'únic clip.
+
 ### 5. Una sola font de veritat
 El model viu al **backend**, no al visor. El visor en guarda una **còpia** que
 **mai no mana**; tota mutació passa primer pel backend. Les còpies derivades
@@ -157,18 +162,21 @@ compassos sencers. El model és permissiu:
   - **`x/16`**: sempre **semicorxera**.
 
   L'agrupació explícita **no canvia** esta unitat per defecte; només una
-  unitat explícita del tram mana sobre ella. En canviar el compàs `x/x`, tant
-  l'agrupació com la unitat percebuda es **resetejen** al valor per defecte del
-  compàs nou.
-  El **BPM visible** seguix esta unitat de pols; el **metrònom per defecte
-  clica el denominador** i accentua els inicis de grup: `6/8` → 6 corxeres amb
-  accents a 1 i 4, `9/8` → 9, `12/8` → 12. Una unitat explícita
-  (`corxera`, `semicorxera`…) mana mentre no canvie el compàs; el denominador
-  només és el fallback si la unitat no encaixa en el compàs. En canviar la
-  signatura, la unitat passa sempre a la de la taula nova (`6/8` → negra amb
-  punt; `4/4` → negra…). Si la unitat vella era la derivada, es conserva el
-  **BPM visible** (Cas B); si era explícita, es conserva el **BPM intern** i
-  canvia el número percebut.
+  unitat explícita del tram mana sobre ella. En canviar el compàs `x/x`,
+  l'agrupació passa al valor per defecte del compàs nou i la unitat resultant
+  seguix esta regla:
+
+  - si la unitat vella era la **derivada**, passa a la derivada del compàs nou;
+  - si era **explícita i compatible**, es conserva;
+  - si era **explícita i incompatible**, no s'aplica res: es proposa la
+    unitat derivada i l'usuari decideix.
+
+  El **BPM intern no canvia mai** en un canvi de compàs: només es recalcula el
+  **BPM visible** amb la unitat resultant. El **metrònom per defecte clica el
+  denominador** i accentua els inicis de grup: `6/8` → 6 corxeres amb accents
+  a 1 i 4, `9/8` → 9, `12/8` → 12. Una unitat explícita
+  (`corxera`, `semicorxera`…) mana mentre siga compatible; el denominador
+  només és el fallback si la unitat no encaixa en el compàs.
 - **Persistència**: `mapa_tempo.csv` porta `beat_unit` al final i es llig per
   noms; columna absent o valor desconegut = **rebuig**, valor buit =
   derivar+avisar. `.acproj` **FORMAT 5** només desa el model actual; els
@@ -248,10 +256,17 @@ tal qual.
    operació. No es mouen l'altre extrem del clip seleccionat ni cap frontera no
    adjacent.
 
-**Mai es mouen dues fronteres en una sola operació manual.** Les operacions
-estructurals (partir, fusionar, eliminar o duplicar) i la reparació/càrrega
-poden reajustar diverses fronteres per restaurar `N` enter; **no són ni
-«recalc fix» ni «recalc mòbil»** i no es presenten com a tals.
+**Moure un bloc sencer** és una operació estructural, no un recalc: es mouen
+les **dues fronteres** del clip seleccionat, que conserva BPM, compàs, `N`,
+unitat i durada. Els **dos veïns** s'han de recalcular; si qualsevol dels dos
+no pot quedar amb `N` enter i una unitat compatible, es **rebutja el moviment
+sencer** amb avís i no es deixa cap canvi parcial. Excepció: l'**últim clip**
+pot quedar amb `N` fraccionari, com a la resta d'edicions.
+
+**En un recalc manual mòbil no es mouen dues fronteres.** Les operacions
+estructurals (partir, fusionar, eliminar, duplicar o moure un bloc) i la
+reparació/càrrega poden reajustar diverses fronteres per restaurar `N` enter;
+**no són ni «recalc fix» ni «recalc mòbil»** i no es presenten com a tals.
 
 - **Unitat incompatible**: si un canvi de compàs (manual o per recalc) deixa
   la unitat del clip fora de `encaixa_en_compas`, **no s'aplica res**; es

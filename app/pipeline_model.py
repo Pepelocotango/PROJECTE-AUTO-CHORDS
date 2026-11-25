@@ -339,26 +339,31 @@ def mou_bloc_clips(clips, first, last, dt, durada, forat, log=None):
         log(f"moviment: bloc {first}-{last} → {a2:.2f}-{b2:.2f}s")
     return nou
 def elimina_clips(clips, idx, durada, forat):
-    """Nucli únic d'ESBORRAR un clip (§6.4: l'anterior s'estira; sense veí, forat).
+    """Nucli únic d'ESBORRAR un clip (§6.4: el posterior absorbeix el buit).
 
-    El clip `idx` s'esborra i l'**anterior s'estira** per tapar el forat (mateixa
-    lògica que l'origen d'un moviment, §6.3). Si NO hi ha anterior (el clip 0),
-    el forat el tapa el **normalitzador** amb `forat` (`N`/`-`) sense moure cap
-    altre clip (important: esborrar la «N» de capçalera no ha de desplaçar l'acord
-    següent). Si el carril queda **buit**, hi va el clip canònic `forat` de 0 a
-    `durada` (regla d'or #4). Retorna clips NOUS; no muta l'entrada.
+    El clip `idx` s'esborra i el **clip de la dreta** passa a començar on
+    començava el clip eliminat. Així el buit l'absorbeix el posterior, no
+    l'anterior. Si el clip eliminat és l'últim, no hi ha posterior i l'anterior
+    s'estira fins al final; si el carril queda **buit**, hi va el clip canònic
+    `forat` de 0 a `durada` (regla d'or #4). Retorna clips NOUS; no muta
+    l'entrada.
     """
     out = [Clip(c.ini, c.fi, c.payload) for c in (clips or ())]
     if not (0 <= idx < len(out)):
         return out
     c = out.pop(idx)
-    if idx > 0 and out:
+    if idx < len(out):
+        p = out[idx]
+        out[idx] = Clip(c.ini, p.fi, p.payload)
+    elif idx > 0 and out:
         p = out[idx - 1]
         out[idx - 1] = Clip(p.ini, c.fi, p.payload)
     out = normalitza_clips(out, durada, forat)
     if not out:
         out = [Clip(0.0, float(durada or c.fi), tuple(forat))]
     return out
+
+
 def duplica_clips(clips, idx, marge=MIN_GAP_TEMPS):
     """Nucli únic de DUPLICAR un clip: es **parteix pel mig** en dos d'iguals.
 

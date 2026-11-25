@@ -3729,19 +3729,19 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         self.assertEqual(len(v.acords), n)      # undo el restaura
         v.close()
 
-    def test_delete_seccio_el_vei_ocupa_l_espai(self):
-        """En esborrar una secció, el previ s'estén (invariant de contigüitat)."""
+    def test_delete_seccio_el_vei_dret_ocupa_l_espai(self):
+        """En esborrar una secció, el següent comença on començava la secció."""
         from PyQt5.QtGui import QKeyEvent
         from PyQt5.QtCore import QEvent, Qt
         v, _ = self._make_visor_with_data()
         n = len(v.seccions)
-        fi_alliberada = v.seccions[1][1]
+        ini_alliberada = v.seccions[1][0]
         v.timeline.select_clip("section", 1)
         v.timeline.keyPressEvent(
             QKeyEvent(QEvent.KeyPress, Qt.Key_Delete, Qt.NoModifier))
         self.assertEqual(len(v.seccions), n - 1)
-        # el fi del previ ara arriba on arribava el de la seccio esborrada
-        self.assertAlmostEqual(v.seccions[0][1], fi_alliberada, places=3)
+        # el següent comença on començava la secció esborrada
+        self.assertAlmostEqual(v.seccions[1][0], ini_alliberada, places=3)
         v.undo()
         self.assertEqual(len(v.seccions), n)
         v.close()
@@ -3967,12 +3967,10 @@ class VisorTimelineIntegrationTests(unittest.TestCase):
         v, _ = self._make_visor_with_data()
         n_antes = len(v.acords)
         v._elimina_acord_index(0)
-        # (Regla d'or #4 · cobertura) En eliminar el 1r clip (a 0), la
-        # normalització hi torna a posar la «N» a 0 → el recompte es manté;
-        # el que importa és que el TIMELINE quadri amb el model i arrenqui a 0.
+        # El següent absorbeix el buit i passa a 0; el timeline ha de quadrar.
         self.assertEqual(len(v.timeline._chord_items), len(v.acords))
         self.assertAlmostEqual(float(v.acords[0][0]), 0.0)
-        self.assertEqual(v.acords[0][2][0], "N")
+        self.assertEqual(v.acords[0][2][0], "Am")
         self.assertLessEqual(len(v.acords), n_antes)      # no creix mai
         v.close()
 

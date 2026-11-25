@@ -1,6 +1,6 @@
 """Canvi explícit d'unitat de pols (clip)."""
 from PyQt5.QtWidgets import (
-    QDialog, QDialogButtonBox, QLabel, QRadioButton, QVBoxLayout,
+    QComboBox, QDialog, QDialogButtonBox, QLabel, QRadioButton, QVBoxLayout,
 )
 
 from app import bpm_unit, limits
@@ -13,6 +13,12 @@ class PanellCanviUnitat:
 
     def __init__(self, parent=None):
         self.etiqueta = QLabel("")
+        self._lbl_nova = QLabel("Unitat nova:")
+        self.cb_unitat = QComboBox()
+        for clau, etiqueta in bpm_unit.opcions():
+            self.cb_unitat.addItem(etiqueta, clau)
+        self.cb_unitat.setToolTip(
+            "Unitat de pols que s'aplicarà en acceptar.")
         self.rb_tempo = QRadioButton("Mantén el tempo (canvia el número)")
         self.rb_tempo.setToolTip("Conserva el BPM intern; el numero de compassos es recalcula.")
         self.rb_numero = QRadioButton("Mantén el número (canvia el tempo)")
@@ -24,29 +30,42 @@ class PanellCanviUnitat:
         self._u1 = bpm_unit.DEFECTE
         self.rb_tempo.setChecked(True)
         self.rb_tempo.toggled.connect(self._actualitza)
-        self._widgets = [self.etiqueta, self.rb_tempo, self.rb_numero,
-                         self.previsio]
+        self.cb_unitat.currentIndexChanged.connect(self._actualitza)
+        self._widgets = [self.etiqueta, self._lbl_nova, self.cb_unitat,
+                         self.rb_tempo, self.rb_numero, self.previsio]
 
     def set_dades(self, etiqueta, bpm_quarter, unit_vella, unit_nova):
         self._bpm = float(bpm_quarter)
         self._u0 = bpm_unit.normalitza(unit_vella)
         self._u1 = bpm_unit.normalitza(unit_nova)
-        self.etiqueta.setText(
-            f"{etiqueta}: {bpm_unit.etiqueta(self._u0)} → "
-            f"{bpm_unit.etiqueta(self._u1)}")
+        idx = self.cb_unitat.findData(self._u1)
+        if idx >= 0:
+            self.cb_unitat.blockSignals(True)
+            self.cb_unitat.setCurrentIndex(idx)
+            self.cb_unitat.blockSignals(False)
         self._actualitza()
 
     def mode(self):
         return "mantenir_tempo" if self.rb_tempo.isChecked() else \
             "mantenir_numero"
 
+    def unitat(self):
+        """Unitat nova seleccionada al desplegable."""
+        return bpm_unit.normalitza(
+            self.cb_unitat.currentData() or self._u1)
+
     def resultat(self):
+        u1 = self.unitat()
+        self._u1 = u1
         if self.mode() == "mantenir_tempo":
             bpm = float(self._bpm)
         else:
             visible = bpm_unit.de_quarter(self._bpm, self._u0)
-            bpm = bpm_unit.a_quarter(visible, self._u1)
-        return float(bpm), self._u1
+            bpm = bpm_unit.a_quarter(visible, u1)
+        self.etiqueta.setText(
+            f"{bpm_unit.etiqueta(self._u0)} → "
+            f"{bpm_unit.etiqueta(u1)}")
+        return float(bpm), u1
 
     def es_valid(self):
         bpm, _u = self.resultat()
@@ -93,6 +112,8 @@ class DialegCanviUnitat(InfoDialogMixin, GeometriaMixin, QDialog):
         self.panell.set_dades(etiqueta, bpm, unit_vella, unit_nova)
         self.panell.rb_tempo.toggled.connect(self._actualitza_ok)
         self.panell.rb_numero.toggled.connect(self._actualitza_ok)
+        self.panell.cb_unitat.currentIndexChanged.connect(
+            self._actualitza_ok)
         self._actualitza_ok()
 
     def _actualitza_ok(self, *_a):

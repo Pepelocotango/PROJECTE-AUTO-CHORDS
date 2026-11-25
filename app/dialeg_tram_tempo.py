@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
 
 from app.camp_text import CampText
 from app import bpm_unit, limits, tempo_map, theme
+from app.dialeg_canvi_unitat import PanellCanviUnitat
 
 from app.finestres import GeometriaMixin
 from app.info_box import InfoDialogMixin
@@ -19,6 +20,8 @@ class DialegTramTempo(InfoDialogMixin, GeometriaMixin, QDialog):
 
     #: «Recalcula»: mode «fix» o «mobil», amb les opcions del bloc Opcions.
     recalculRequested = pyqtSignal(str)
+    #: Canvi explícit d'unitat: (unitat_nova, «mantenir_tempo»/«mantenir_numero»).
+    unitatRequested = pyqtSignal(str, str)
     def __init__(self, parent=None, inici=0.0, bpm=120.0, num=4, den=4,
                  inicial=False, text_inici=None, unit=bpm_unit.DEFECTE,
                  n_actual=None, durada=None, info=None,
@@ -84,6 +87,7 @@ QCheckBox::indicator:disabled {{
         form_fix = QFormLayout()
         (self.sp_n, self.ed_compas,
          self.sp_bpm) = self._crea_camps(form_fix)
+        self._lbl_bpm = form_fix.labelForField(self.sp_bpm)
         lay_fix.addLayout(form_fix)
         self.chk_n = QCheckBox("N mana (el BPM es recalcula)")
         self.chk_n.setChecked(False)
@@ -105,6 +109,28 @@ QCheckBox::indicator:disabled {{
         self.ajuda.setObjectName("secundari")
         lay_fix.addWidget(self.ajuda)
         col_ed.addWidget(grup_fix)
+
+        grup_unitat = QGroupBox("Unitat de pols")
+        lay_unitat = QVBoxLayout(grup_unitat)
+        self.panell_unitat = PanellCanviUnitat(self)
+        for w in self.panell_unitat._widgets:
+            lay_unitat.addWidget(w)
+        self.b_aplica_unitat = QPushButton("Aplica unitat")
+        self.b_aplica_unitat.setToolTip(
+            "Aplica només el canvi d'unitat; no recalcula BPM, compàs ni N.")
+        self.b_aplica_unitat.clicked.connect(self._aplica_unitat)
+        lay_unitat.addWidget(self.b_aplica_unitat)
+        self.panell_unitat.set_dades(
+            "Unitat del clip", self._bpm0, self._beat_unit,
+            self._beat_unit)
+        self.panell_unitat.cb_unitat.currentIndexChanged.connect(
+            self._actualitza_boto_unitat)
+        self.panell_unitat.rb_tempo.toggled.connect(
+            self._actualitza_boto_unitat)
+        self.panell_unitat.rb_numero.toggled.connect(
+            self._actualitza_boto_unitat)
+        self._actualitza_boto_unitat()
+        col_ed.addWidget(grup_unitat)
         col_ed.addStretch(1)
 
         self.chk_n.toggled.connect(self._n_canviat)
@@ -148,6 +174,40 @@ QCheckBox::indicator:disabled {{
                 if hasattr(self, "ajuda") and self.ajuda.text() != tip:
                     self.ajuda.setText(tip)
         return super().eventFilter(obj, ev)
+
+    def _actualitza_boto_unitat(self, *_a):
+        """Activa «Aplica unitat» només si hi ha un canvi vàlid."""
+        if not hasattr(self, "b_aplica_unitat"):
+            return
+        canvi = self.panell_unitat.unitat() != self._beat_unit
+        self.b_aplica_unitat.setEnabled(
+            bool(canvi and self.panell_unitat.es_valid()))
+
+    def _aplica_unitat(self):
+        """Demana l'aplicació del canvi d'unitat seleccionat."""
+        unit = self.panell_unitat.unitat()
+        if unit == self._beat_unit:
+            return
+        self.unitatRequested.emit(unit, self.panell_unitat.mode())
+
+    def refresca_unitat(self, bpm, unit):
+        """Actualitza el diàleg després d'un canvi d'unitat aplicat."""
+        unit = bpm_unit.normalitza(unit)
+        self._beat_unit = unit
+        self._unit = unit
+        self._bpm0 = float(bpm)
+        factor = bpm_unit.factor(unit)
+        self.sp_bpm.blockSignals(True)
+        self.sp_bpm.setRange(limits.BPM_MIN / factor,
+                             limits.BPM_MAX / factor)
+        self.sp_bpm.setValue(bpm_unit.de_quarter(self._bpm0, unit))
+        self.sp_bpm.blockSignals(False)
+        if self._lbl_bpm is not None:
+            self._lbl_bpm.setText(
+                f"BPM ({bpm_unit.etiqueta(unit).lower()}):")
+        self.panell_unitat.set_dades(
+            "Unitat del clip", self._bpm0, unit, unit)
+        self._actualitza_boto_unitat()
 
     def _crea_camps(self, form):
         """Crea el joc N/compàs/BPM del recalcul fix."""

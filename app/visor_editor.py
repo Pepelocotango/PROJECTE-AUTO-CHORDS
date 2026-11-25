@@ -238,9 +238,10 @@ class EditorMixin:
                 "cap N enter amb cap compàs admés.")
         _score, num, den, n, bq = min(candidats)
         agr = (self._agr_en_canvi_compas(tr, num, den))
-        unit = getattr(tr, "beat_unit", None)
-        if (num, den) != (num0, den0):
-            unit = bpm_unit_mod.unitat_per_defecte(num, den, agr)
+        unit = self._unitat_en_canvi_compas(
+            tr, mapa_tempo.TramMapa(
+                ini, fi, float(bpm), tr.tipus, f"{num}/{den}", agr,
+                float(n), getattr(tr, "beat_unit", None)), None)
         return mapa_tempo.TramMapa(
             ini, fi, float(bpm), tr.tipus, f"{num}/{den}", agr,
             float(n), unit)
@@ -305,9 +306,10 @@ class EditorMixin:
         if candidats:
             _score, num, den = min(candidats)
             agr = self._agr_en_canvi_compas(tr, num, den)
-            unit = getattr(tr, "beat_unit", None)
-            if (num, den) != (num0, den0):
-                unit = bpm_unit_mod.unitat_per_defecte(num, den, agr)
+            unit = self._unitat_en_canvi_compas(
+                tr, mapa_tempo.TramMapa(
+                    ini, fi, bpm, tr.tipus, f"{num}/{den}", agr, n,
+                    getattr(tr, "beat_unit", None)), None)
             return mapa_tempo.TramMapa(
                 ini, fi, bpm, tr.tipus, f"{num}/{den}", agr, n, unit)
         # Fallback: conservar compàs i recalcular BPM.
@@ -424,7 +426,7 @@ class EditorMixin:
         return bool(self.aplica_tempo_trams(nous))
 
     def _edita_compas_mobil(self, idx, num, den):
-        """Aplica compàs movent la frontera: conserva N i el BPM visible."""
+        """Aplica compàs movent la frontera: conserva N i el BPM intern."""
         trams = list(self.tempo_trams or ())
         idx = int(idx)
         if not (0 <= idx < len(trams)):
@@ -450,40 +452,22 @@ class EditorMixin:
             return False
         unit_vella = self.unitat_de_tram(tr)
         agr_nova = self._agr_en_canvi_compas(tr, num, den)
-        bpm_visible = bpm_unit_mod.de_quarter(float(tr.bpm), unit_vella)
         provisional = mapa_tempo.TramMapa(
             float(tr.ini), float(tr.fi), float(tr.bpm), tr.tipus,
             f"{num}/{den}", agr_nova,
             getattr(tr, "n", None), unit_vella)
         try:
             unit_nova = self._unitat_en_canvi_compas(tr, provisional, None)
-            # Si la unitat vella era l'explicita, conserva el BPM intern;
-            # si era la derivada, conserva el número visible (Cas B).
-            bpm_intern = (bpm_unit_mod.a_quarter(bpm_visible, unit_nova)
-                          if unit_vella == bpm_unit_mod.unitat_per_defecte(
-                              int(tr.num), int(tr.den),
-                              getattr(tr, "agrupacio", ""))
-                          else float(tr.bpm))
-            # El motor de recalcul ha de vore ja el compàs i l'agrupació nous;
-            # si li passem l'agrupació vella pot rebutjar el TramMapa abans
-            # d'arribar a normalitzar-lo.
+            # El compàs no toca el BPM intern; només es recalcula el visible.
             base = list(trams)
             base[idx] = mapa_tempo.TramMapa(
                 float(tr.ini), float(tr.fi), float(tr.bpm), tr.tipus,
                 f"{num}/{den}", agr_nova, getattr(tr, "n", None),
                 unit_vella)
-            try:
-                nous = mapa_tempo.recalcula_tram_c(
-                    base, idx, self._durada_wav(), n=n_actual,
-                    bpm=bpm_intern, num=num, den=den,
-                    camp="n", permet_ultim_fraccionari=True)
-            except ValueError:
-                # En signaturas irregulars, mantindre el número visible pot
-                # fer inviable el veí; es conserva el tempo intern.
-                nous = mapa_tempo.recalcula_tram_c(
-                    base, idx, self._durada_wav(), n=n_actual,
-                    bpm=float(tr.bpm), num=num, den=den,
-                    camp="n", permet_ultim_fraccionari=True)
+            nous = mapa_tempo.recalcula_tram_c(
+                base, idx, self._durada_wav(), n=n_actual,
+                bpm=float(tr.bpm), num=num, den=den,
+                camp="n", permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Tempo: {e}")
             return False
@@ -654,27 +638,19 @@ class EditorMixin:
             agr = tempo_map.agrupacio_a_text(
                 tempo_map.agrupacio_compas(num, den))
         canvi_agr = agr != getattr(tr, "agrupacio", "")
-        # Cas B: el BPM del camp és el visible en la unitat VELLA. Si el
-        # compàs canvia, es deriva la unitat nova i es conserva el número
-        # visible; l'intern es recalcula. Així Enter/Aplica i el botó xicot
-        # de Compàs fan exactament el mateix.
-        unit_vella = self.unitat_de_tram(tr)
-        unit_nova = unit_vella
+        # El BPM del camp és intern. En canviar el compàs no es toca: només
+        # es recalcula la unitat de pols i, per tant, el número visible.
+        unit_nova = self.unitat_de_tram(tr)
         if canvi_compas:
-            default_vella = bpm_unit_mod.unitat_per_defecte(
-                int(tr.num), int(tr.den), getattr(tr, "agrupacio", ""))
             provisional = mapa_tempo.TramMapa(
                 float(tr.ini), float(tr.fi), float(tr.bpm), tr.tipus,
                 f"{int(num)}/{int(den)}", agr, getattr(tr, "n", None),
-                unit_vella)
-            unit_nova = self._unitat_en_canvi_compas(tr, provisional, None)
-            if unit_vella == default_vella:
-                # Cas B: només si la unitat era la per defecte es conserva el
-                # número visible. Amb una unitat explícita es conserva el BPM
-                # intern i canvia el número percebut amb la unitat nova.
-                bpm_visible = bpm_unit_mod.de_quarter(
-                    float(bpm), unit_vella)
-                bpm = bpm_unit_mod.a_quarter(bpm_visible, unit_nova)
+                unit_nova)
+            try:
+                unit_nova = self._unitat_en_canvi_compas(tr, provisional, None)
+            except ValueError as e:
+                self.avis_editor(f"Tempo: {e}")
+                return
 
         ini_nou = self._cb_a_secs(self.ed_cb.text())
         fi_nou = self._cb_a_secs(self.ed_cb_fi.text())
@@ -724,11 +700,13 @@ class EditorMixin:
         try:
             mapa = trams
             if mou_ini:
-                mapa = self._mou_frontera_ui(mapa, i, ini_nou, d)
+                mapa = self._mou_frontera_ui(
+                    mapa, i, ini_nou, d, ref_idx=i)
             if mapa is None:
                 return
             if mou_fi:
-                mapa = self._mou_frontera_ui(mapa, i + 1, fi_nou, d)
+                mapa = self._mou_frontera_ui(
+                    mapa, i + 1, fi_nou, d, ref_idx=i)
             if mapa is None:
                 return
             if mapa is not trams:

@@ -58,7 +58,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.b_desfer` · `self.b_refer` | **Desfer** · **Refer** (icones `undo-2` / `redo-2`) | `QPushButton` |
 | — | (al transport; `self.b_zs` al visor) | **Zoom a la selecció** (icona `focus`, sense text) | `QPushButton` |
 | — | `self.b_mode_bpm` · `self.b_mode_lliure` | selector **BPM · compàs / hh:mm:ss** (abans deia «Lliure») | `QPushButton` (checkable) |
-| — | `self.bpm_intern_bar` · `self.bpm_bar` · `self.compas_bar` | **BPM intern** (negres/minut), **BPM del clip** (en la seua unitat de pols) i **Compàs** del clip, tots **només lectura**. La unitat de pols es deriva del compàs; l'opció avançada viu al diàleg del clip | `QLabel` ×3 |
+| — | `self.bpm_intern_bar` · `self.bpm_bar` · `self.compas_bar` | **BPM intern** (negres/minut), **BPM del clip** (en la seua unitat de pols) i **Compàs** del clip, tots **només lectura**. La unitat de pols es deriva del compàs; es pot canviar des del menú contextual del clip i des del diàleg del clip | `QLabel` ×3 |
 | — | `self.bpm` · `self.bpb` | **BPM** i **Compàs** **interns del transport**: NO es munten a cap barra; l'edició visible és a la **franja Editor** del clip de tempo seleccionat (tram 0 inclòs) | `QLineEdit` (no visible) |
 | — | `self.lb_desti_accions` | **destí visible**: `TAP: … · Edita a la franja: …`; indica si s’edita un tram o el transport (tram 0) | `QLabel` |
 | — | `self.b_tap` | **TAP** (tecla **T**) | `QPushButton` |
@@ -81,7 +81,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | Barra | Contingut |
 |-------|-----------|
 | **Treball** (barra 1, fila 1) | **Guia ràpida** (amb **Proposa inici** / **Proposa final** / **Proposa mapa** / **Aplica mapa**) → **Ajusta inici WAV** · **Ajusta final WAV** → **selector temps** (**BPM·compàs** / **hh:mm:ss**) → **Analitza** → **Desfer** (icona `undo-2`) · **Refer** (icona `redo-2`). Obrir i exportar viuen al menú **Fitxer** |
-| **Temps** (barra 1, fila 2) | **TAP** · **TAP→** (mòbil: mou el fi del clip) · **BPM intern** (negres/minut) · **BPM del clip** en la seua unitat de pols (p. ex. `80` en `6/8` amb `negra amb punt`) · **Compàs** del clip (p. ex. `6/8`), tot **només lectura**. L'edició del BPM i del Compàs és a la **franja Editor**; en canviar només el compàs, per defecte es conserva el **BPM visible** (Cas B); la unitat de pols es deriva del compàs i es pot canviar al diàleg del clip. **×2/÷2** viu al **menú contextual del clip de tempo** |
+| **Temps** (barra 1, fila 2) | **TAP** · **TAP→** (mòbil: mou el fi del clip) · **BPM intern** (negres/minut) · **BPM del clip** en la seua unitat de pols (p. ex. `80` en `6/8` amb `negra amb punt`) · **Compàs** del clip (p. ex. `6/8`), tot **només lectura**. L'edició del BPM i del Compàs és a la **franja Editor**; en canviar només el compàs, el **BPM intern no canvia** i el visible es recalcula. La unitat de pols es pot canviar des del menú contextual del clip i des del diàleg del clip. **×2/÷2** viu al **menú contextual del clip de tempo** |
 | **Transport** (fila 3) | **`play`/`pause`** (play/pausa) · `square` · `rewind` · `fast-forward` · `arrow-left-to-line` (A) · `arrow-right-to-line` (B) · `repeat-2` (loop) · **`x` (neteja el loop)** · `zoom-out` · `zoom-in` · `maximize` (Tot) · **`focus` (zoom a la selecció)** · `volume-x` (mute) · **selector de velocitat (0,5–3×, to mantingut)** · `metronome` · volum del clic · **[patró Auto/Compàs/Temps/Grup/Beats QM/BPM percebuts/BPM interns]** · **[Quantitza]** · **[BPM…]** · **[Snap]** (interruptor) · **[selector de divisió de graella]** · **[Eina: intel·ligent]** (commutador; passa a «Eina: marc» — també amb la tecla `E` i al menú Selecciona) |
 
 ### Menús
@@ -387,13 +387,16 @@ Per exemple, `4/4 N=14` → `7/4` deixa `N=8` i conserva el BPM. **`->`** aplica
 - **BPM** = la velocitat en **negres/minut**, com als DAW. La **unitat de pols**
   (`beat_unit`) és per tram i només canvia la presentació: en `6/8`, una negra
   amb punt a `80` s’escriu `120` negres/min internes i `80` en la unitat. La
-  unitat es deriva del compàs i de l'agrupació; el diàleg del tram conserva
-  l'opció avançada per canviar-la.
+  unitat es deriva del compàs i de l'agrupació; es pot canviar des del menú
+  contextual del clip (acció **Canvia unitat de pols…**) i des del panell
+  **Unitat de pols** del diàleg del tram.
 - **On s'edita**: la barra «Temps» mostra **el BPM del clip** en la seua
   unitat de pols i el **Compàs** del clip, tots dos de només lectura. L'edició
   del BPM i del Compàs es fa a la **franja Editor** del clip de tempo
-  seleccionat. La unitat de pols es deriva automàticament del compàs, amb
-  l'opció avançada al diàleg del clip. La resta de camps
+  seleccionat. La unitat de pols es deriva automàticament del compàs; es pot
+  canviar al menú contextual del clip o al panell **Unitat de pols** del
+  diàleg del tram, amb els modes **Mantén el tempo** i **Mantén el número**.
+  La resta de camps
   (Agrupació · N · Ini/Fi) també s'editen a la franja Editor. El
   transport intern del tram 0 se sincronitza des del model (`_sincronitza_temps_del_visor`),
   mai al revés.

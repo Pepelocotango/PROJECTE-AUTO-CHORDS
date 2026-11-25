@@ -775,9 +775,8 @@ class TestEdicioMapa(unittest.TestCase):
                  (20.0, 30.0, 140.0, 4, 4)]
         mig = tmm.normalitza_trams(tmm.elimina_tall(trams, 1), 30.0)
         self.assertEqual([(t[0], t[1], t[2]) for t in mig],
-                         [(0.0, 20.0, 120.0), (20.0, 30.0, 140.0)])
-        # esborrar el 1r: el que era el 2n passa a ser el 1r i s'ancora a 0
-        # (amb el SEU tempo, no amb el del tros esborrat)
+                         [(0.0, 6.0, 120.0), (6.0, 30.0, 140.0)])
+        # esborrar el 1r: el següent comença a 0 i conserva el SEU tempo
         un = tmm.normalitza_trams(tmm.elimina_tall(trams, 0), 30.0)
         self.assertEqual([(t[0], t[1], t[2]) for t in un],
                          [(0.0, 20.0, 90.0), (20.0, 30.0, 140.0)])

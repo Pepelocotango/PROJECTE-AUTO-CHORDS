@@ -445,6 +445,51 @@ class RetempoTests(unittest.TestCase):
             n = tempo_map.compassos_del_clip(clip)
             self.assertAlmostEqual(n, round(n), places=6, msg=clip)
 
+    def test_mou_tram_sencer_rebutja_si_un_vei_interior_no_es_pot_recalcular(self):
+        """El bloc no s'aplica si un veí que no és l'últim no pot quedar vàlid."""
+        from unittest.mock import patch
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 22.0, 100.0, 4, 4),
+                 (22.0, 34.0, 100.0, 4, 4),
+                 (34.0, 40.0, 120.0, 4, 4)]
+        original = tempo_recalc.recalculca_tram
+        crides = []
+
+        def _fake(*args, **kwargs):
+            crides.append(args)
+            if len(crides) == 1:
+                return original(*args, **kwargs)
+            return None
+
+        with patch.object(tempo_recalc, "recalculca_tram", _fake):
+            with self.assertRaises(ValueError):
+                tempo_map.mou_tram_sencer(trams, 1, 12.0, 40.0)
+        self.assertEqual(len(crides), 2)
+
+    def test_mou_tram_sencer_accepta_ultim_vei_fraccionari(self):
+        """L'últim veí pot quedar amb N fraccionari encara que no hi haja enter."""
+        from unittest.mock import patch
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 22.0, 100.0, 4, 4),
+                 (22.0, 30.0, 120.0, 4, 4)]
+        original = tempo_recalc.recalculca_tram
+        crides = []
+
+        def _fake(*args, **kwargs):
+            crides.append(args)
+            if len(crides) == 1:
+                return original(*args, **kwargs)
+            return None
+
+        with patch.object(tempo_recalc, "recalculca_tram", _fake):
+            out = tempo_map.mou_tram_sencer(trams, 1, 11.0, 30.0)
+        self.assertEqual(len(crides), 2)
+        self.assertAlmostEqual(out[1][0], 11.0, places=6)
+        self.assertAlmostEqual(out[2][0], 23.0, places=6)
+        self.assertAlmostEqual(out[2][2], 120.0, places=6)
+        n = tempo_map.compassos_del_clip(out[2])
+        self.assertAlmostEqual(n, 3.5, places=6)
+
     def test_mou_tram_sencer_rebutja_extrems_i_dos_clips(self):
         dos = [(0.0, 10.0, 120.0, 4, 4), (10.0, 30.0, 120.0, 4, 4)]
         for idx in (0, 1):

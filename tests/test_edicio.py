@@ -1415,11 +1415,11 @@ class TestVisorParitat(_regla11_paritat___Base):
 
         base = estat()
         v._elimina_seleccio([("chord", 0), ("section", 1), ("tempo", 1)])
-        self.assertEqual(estat(), (["N", "Am", "F"], ["A", "C"], [1]))
+        self.assertEqual(estat(), (["Am", "F"], ["A", "C"], [1]))
         v.undo()
         self.assertEqual(estat(), base)
         v.redo()
-        self.assertEqual(estat(), (["N", "Am", "F"], ["A", "C"], [1]))
+        self.assertEqual(estat(), (["Am", "F"], ["A", "C"], [1]))
         v.undo()
         self.assertEqual(estat(), base)
         # copia mixta (acord + tram) i enganxa: tot de cop, un sol desfer
@@ -1746,7 +1746,8 @@ class TestMenusParitat(_regla11_paritat___Base):
         # Accions EXCLUSIVES del carril ③ (correcció mètrica discreta, §4.C del
         # flux de tempo variable): no tenen sentit als clips d'acords/seccions.
         extres_tercera = {"compas_mes1", "compas_menys1", "compas_x2",
-                          "compas_div2", "rubato", "normal", "rubato_rang"}
+                          "compas_div2", "unitat", "rubato", "normal",
+                          "rubato_rang"}
         base_claus, base_actiu = jocs["TL acords"]
         self.assertEqual(base_claus, [
             "afegeix", "duplica", "elimina", "reanomena", "parteix", "meitat",
@@ -1761,7 +1762,7 @@ class TestMenusParitat(_regla11_paritat___Base):
                 # ③ sí que porta els 4 extres, en bloc i darrere de «fusiona».
                 self.assertEqual([c for c in claus if c in extres_tercera],
                                  ["compas_mes1", "compas_menys1",
-                                  "compas_x2", "compas_div2",
+                                  "compas_x2", "compas_div2", "unitat",
                                   "rubato", "normal", "rubato_rang"])
                 base_actiu = [e for c, e in zip(claus, actiu)
                               if c not in extres_tercera]
@@ -1789,8 +1790,8 @@ class TestMenusParitat(_regla11_paritat___Base):
                             f"«{etq}»: amb un clip anterior, ha d'estar activa")
 
     def test_els_menus_tenen_les_tretze_accions_esperades(self):
-        """La llista blanca de les 13 accions + les 4 de compassos i 3 de
-        rubato del ③. Canviar-la és una decisió (regla #11).
+        """La llista blanca de les 13 accions + les 4 de compassos, la
+        unitat i les 3 de rubato del ③. Canviar-la és una decisió (regla #11).
         """
         v = _regla11_paritat___visor()
         v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
@@ -1805,8 +1806,8 @@ class TestMenusParitat(_regla11_paritat___Base):
             "Fusionar amb anterior", "Fusionar amb següent",
             "Afegir 1 compàs (+1)", "Restar 1 compàs (−1)",
             "Doblar compassos (×2)", "Dividir compassos (÷2)",
-            "Converteix a rubato", "Converteix a normal",
-            "Marca el rang A–B com a rubato",
+            "Canvia unitat de pols…", "Converteix a rubato",
+            "Converteix a normal", "Marca el rang A–B com a rubato",
             "Retalla", "Copia", "Enganxa", "Loop a la selecció",
         ])
 
@@ -1839,12 +1840,13 @@ class TestMenusParitat(_regla11_paritat___Base):
         _v, ac, se, tp = self._tres_menus()
         extres = {"Afegir 1 compàs (+1)", "Restar 1 compàs (−1)",
                   "Doblar compassos (×2)", "Dividir compassos (÷2)",
+                  "Canvia unitat de pols…",
                   "Converteix a rubato", "Converteix a normal",
                   "Marca el rang A–B com a rubato"}
         tp_comu = [x for x in tp if x[0] not in extres]
         self.assertEqual(len(ac), len(se))
-        self.assertEqual(len(ac), len(tp) - 7,
-                         f"③ ha de tindre 7 accions més (compassos+rubato):\n"
+        self.assertEqual(len(ac), len(tp) - 8,
+                         f"③ ha de tindre 8 accions més (compassos+unitat+rubato):\n"
                          f"④/⑤={ac}\n③={tp}")
         self.assertEqual({x[0] for x in tp if x[0] in extres}, extres)
         self.assertEqual([e for _t, e in ac], [e for _t, e in se])
@@ -3040,22 +3042,23 @@ class TestCoberturaViu(unittest.TestCase):
         v.td = td
         return v
 
-    def test_eliminar_el_primer_acord_deixa_la_capcalera_N(self):
+    def test_eliminar_el_primer_acord_el_seguent_arriba_a_zero(self):
         v = self._visor()
         # en carregar, el visor ja normalitza la cobertura → «N» a 0.
         self.assertAlmostEqual(float(v.acords[0][0]), 0.0)
         self.assertEqual(v.acords[0][2][0], "N")
         self.assertEqual(len(v.acords), 3)          # N(0) · C(0.5) · G(1.5)
-        # (B) Eliminar el 1r acord → ha de tornar a aparèixer la «N» a 0.
+        # Eliminar el 1r: el següent absorbeix el buit i passa a 0.
         v._elimina_acord(0)
         v._desa_i_regenera()
         self.assertAlmostEqual(float(v.acords[0][0]), 0.0)
-        self.assertEqual(v.acords[0][2][0], "N")
+        self.assertEqual(v.acords[0][2][0], "C")
+        self.assertEqual(len(v.acords), 2)
         with open(v.csv_acords, encoding="utf-8") as f:
             primera = f.readline().strip()
         cols = primera.split(",")
         self.assertEqual(cols[0], "0.000000")
-        self.assertEqual(cols[2], "N")
+        self.assertEqual(cols[2], "C")
 
     def test_export_usa_el_model_no_el_csv_vell(self):
         v = self._visor(seccions=[(0.0, 3.0, "A", "A")])

@@ -150,12 +150,14 @@ No cal guardar un «BPM mostrat» separat: es deriva de `qpm` i `beat_unit`.
 - **Intern sempre `qpm`**; la UI mostra la unitat del tram.
 - Mostrar sempre la figura: `♩.=80`, no `80` sol.
 - En `6/8`, `9/8`, `12/8` amb grups de 3, la unitat per defecte és `♩.`.
-- **Cas A — conservar el tempo intern:** canviar només el compàs manté `qpm`;
-  el BPM visible canvia amb la unitat. És el mode explícit «conservar el tempo
-  intern» del diàleg.
-- **Cas B — conservar la pulsació (per defecte):** en canviar el compàs es
-  conserva el **BPM visible** en la unitat de pulsació; `qpm` es recalcula.
-  Exemple: `4/4` a 90 negres/min → `6/8` amb `♩.=90`, intern 135 negres/min.
+- **Canvi de compàs:** conserva sempre `qpm`; només es recalcula el BPM
+  visible amb la unitat resultant. No hi ha un mode «conservar la pulsació»
+  en canviar el compàs.
+- **Unitat resultant:** si la unitat vella era la derivada, passa a la
+  derivada del compàs nou; si era explícita i compatible, es conserva; si és
+  incompatible, no s'aplica el canvi i es proposa la derivada.
+- **Canvi explícit d'unitat:** el diàleg oferix «conservar el tempo intern»
+  (`qpm` fix) o «conservar el número» (BPM visible fix, `qpm` recalculat).
 - Si es vol conservar la durada del compàs, és una acció explícita.
 - Tap tempo: la unitat del tap és la del tram; convertir a `qpm` i mostrar les
   dues xifres.
