@@ -5,6 +5,15 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Corregit — l'últim clip pot quedar fraccionari a les edicions (2026-11-25)
+- Tallar (`+`), partir, fusionar, enganxar i altres edicions del mapa ja no
+  forcen `N` enter a l'últim clip.
+- El tall conserva el BPM i el compàs del clip original i deixa la cua amb
+  `N` fraccionari; això permet tallar a 4.1.1 amb el BPM bloquejat.
+- Excepció mantinguda: **Ajusta final WAV** continua tancant l'últim clip amb
+  `N` enter.
+- Test de regressió amb el mapa real de `The Human League – Don't You Want Me`.
+
 ### Afegit — Candaus globals de BPM, N i compàs (2026-11-25)
 - Tres botons checkables a la barra «Temps»: **BPM**, **N** i **x/x**.
 - Bloquegen els canvis d'eixe camp a tot el mapa; màxim dos actius.

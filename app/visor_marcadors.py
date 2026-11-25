@@ -246,8 +246,9 @@ class MarcadorsMixin:
             out = tempo_map.parteix_tram_marcador(
                 trams, float(t), durada, recalculca=True,
                 beats_qm=None, permissiu=True,
-                ref_base=self.referencia_tempo_a(t),
-                beat_factor=self.beat_factor())
+                ref_base=None,
+                beat_factor=self.beat_factor(),
+                permet_ultim_fraccionari=True)
         except ValueError:
             return None
         return out if len(out) != len(trams) else None

@@ -121,7 +121,7 @@ class TapMixin:
                 _, _bpm, num, den = vr.tempo_objectiu_vals()
                 ok = vr.edita_tempo_objectiu(
                     idx, bpm, num, den, desa=False,
-                    permet_ultim_fraccionari=False)
+                    permet_ultim_fraccionari=True)
             if ok:
                 self._tap_canviat = True
             self._sincronitza_temps_del_visor()

@@ -1592,7 +1592,7 @@ def parteix_tram_marcador(trams, t, durada, bpm_ref=None,
                           beats_qm=None, permissiu=False, recalculca=False,
                           ref_base=None, avisos=None, beat_factor=1.0,
                           meter_prior=None, unitats=None, classificacions=None,
-                          suggerides=None):
+                          suggerides=None, permet_ultim_fraccionari=False):
     """Parteix el mapa a `t` conservant BPM i compàs com a referència.
 
     Contracte nou (§13.4): **les dos parts han de tindre `N` enter**. El
@@ -1618,13 +1618,21 @@ def parteix_tram_marcador(trams, t, durada, bpm_ref=None,
                         (t, fi, bpm, num, den)]
         if permissiu:
             if recalculca:
+                refs = [(i, s), (i + 1, s)]
+                # L'últim clip pot conservar el BPM i el N fraccionari: no
+                # el fem passar pel recalcul d'N enter si el tall cau dins
+                # l'últim tram.
+                if permet_ultim_fraccionari and i + 1 == len(out) - 1:
+                    refs = [(i, s)]
                 out = _recalcula_costats(
-                    out, [(i, s), (i + 1, s)], durada,
+                    out, refs, durada,
                     beats_qm=beats_qm, ref_base=ref_base, avisos=avisos,
                     beat_factor=beat_factor, meter_prior=meter_prior,
                     unitats=unitats, classificacions=classificacions,
                     suggerides=suggerides)
-            return valida_i_normalitza_permissiu(out, durada)
+            return valida_i_normalitza_permissiu(
+                out, durada,
+                permet_ultim_fraccionari=permet_ultim_fraccionari)
         out = _millora_signatures_clips(out, durada, beats_qm,
                                         {i, i + 1})
         return _mapa_valida_sense_moure(out, durada,
@@ -2040,7 +2048,7 @@ def neteja_trams_curts(trams, minim=NETEJA_TRAM_S):
     return out
 
 
-def refit_trams(trams, durada):
+def refit_trams(trams, durada, permet_ultim_fraccionari=False):
     """Repara el mapa **recalculant** el BPM de cada tram amb N enter.
 
     Cada frontera és la fi del tram de l'esquerra: si es conserva el nombre de
@@ -2070,10 +2078,11 @@ def refit_trams(trams, durada):
             res.append((ini, fi, bpm, num, den))
             continue
         res.append((ini, fi, bpm2, num, den))
-    return valida_i_normalitza_compassos(res, durada)
+    return valida_i_normalitza_compassos(
+        res, durada, permet_ultim_fraccionari=permet_ultim_fraccionari)
 
 
-def repara_fronteres(trams, durada):
+def repara_fronteres(trams, durada, permet_ultim_fraccionari=False):
     """Fa vàlid un mapa **imantant** les fronteres que no cauen a la graella.
 
     Les operacions sobre el mapa (eliminar, fusionar o duplicar un tram)
@@ -2096,7 +2105,9 @@ def repara_fronteres(trams, durada):
     for _ in range(2 * len(out) + 2):
         try:
             return _comprova_banda(
-                valida_i_normalitza_compassos(out, durada))
+                valida_i_normalitza_compassos(
+                    out, durada,
+                    permet_ultim_fraccionari=permet_ultim_fraccionari))
         except ValueError as e:
             error = e
         pitjor = None
@@ -2118,7 +2129,9 @@ def repara_fronteres(trams, durada):
             break
     # Últim recurs: conservar les fronteres i recalcular els BPM (N enter).
     try:
-        return _comprova_banda(refit_trams(out, durada))
+        return _comprova_banda(refit_trams(
+            out, durada,
+            permet_ultim_fraccionari=permet_ultim_fraccionari))
     except ValueError:
         pass
     raise error if error is not None else ValueError("Mapa de tempo invàlid")

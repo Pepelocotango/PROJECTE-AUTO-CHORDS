@@ -69,8 +69,8 @@ class EditorMixin:
                     n_val = 0.0
             self.ed_n.setText(f"{float(n_val):.3f}")
             self.ed_n.setToolTip(
-                "Nombre de compassos: sempre un enter (tots els clips, "
-                "primer i últim inclosos).")
+                "Nombre de compassos: enter a tots els clips excepte "
+                "l'últim, que pot quedar fraccionari per la cua de la WAV.")
             rol = tempo_map.rol_tram(self.tempo_trams, i)
             self.ed_rol_lbl.setText(f"Rol: {rol}")
             self.ed_rol_lbl.setVisible(True)
@@ -415,7 +415,7 @@ class EditorMixin:
             nous = mapa_tempo.recalcula_tram_c(
                 trams, idx, self._durada_wav(), n=n_actual,
                 bpm=float(bpm), num=int(tr.num), den=int(tr.den),
-                camp="n", permet_ultim_fraccionari=False)
+                camp="n", permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Tempo: {e}")
             return False
@@ -476,14 +476,14 @@ class EditorMixin:
                 nous = mapa_tempo.recalcula_tram_c(
                     base, idx, self._durada_wav(), n=n_actual,
                     bpm=bpm_intern, num=num, den=den,
-                    camp="n", permet_ultim_fraccionari=False)
+                    camp="n", permet_ultim_fraccionari=True)
             except ValueError:
                 # En signaturas irregulars, mantindre el número visible pot
                 # fer inviable el veí; es conserva el tempo intern.
                 nous = mapa_tempo.recalcula_tram_c(
                     base, idx, self._durada_wav(), n=n_actual,
                     bpm=float(tr.bpm), num=num, den=den,
-                    camp="n", permet_ultim_fraccionari=False)
+                    camp="n", permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Tempo: {e}")
             return False
@@ -516,7 +516,7 @@ class EditorMixin:
             nous = mapa_tempo.recalcula_tram_c(
                 trams, idx, self._durada_wav(), n=n_int,
                 bpm=float(tr.bpm), num=int(tr.num), den=int(tr.den),
-                camp="n", permet_ultim_fraccionari=False)
+                camp="n", permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Tempo: {e}")
             return False

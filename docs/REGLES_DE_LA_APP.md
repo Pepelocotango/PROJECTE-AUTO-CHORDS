@@ -111,7 +111,8 @@ el **veí esquerre** com a referència i busca compassos sencers; les
 fronteres interiors són lliures (snap opcional) i només cal una durada mínima
 d'un compàs 1/16 a 350 BPM (≈43 ms); els clips de tempo/compàs tenen un
 nombre enter de compassos (`N`), **excepte l'últim**, que pot quedar fraccionari
-quan el final de la WAV és fix (TAP i ajustos de BPM); el primer inici (0) i
+quan el final de la WAV és fix (qualsevol edició del mapa); **Ajusta final WAV**
+és l'única excepció que força `N` enter a l'últim clip; el primer inici (0) i
 l'últim final (durada de la WAV) són fixes.*
 
 ### 13.1 Els segons són la font de veritat de l'àudio
@@ -175,10 +176,13 @@ compassos sencers. El model és permissiu:
 - **Durada mínima**: cap clip pot ser més curt que un compàs **`1/16`** a 350
   BPM (≈ **43 ms**).
 - **N enter sempre, excepte l'últim**: tots els clips de tempo/compàs
-  (primer, interiors i rubato inclòs) han de contindre un **nombre enter de
-  compassos** (`N ≥ 1`). L'**últim clip** pot quedar amb `N` fraccionari
-  perquè el final de la WAV és fix: és el cas del **TAP** i dels ajustos de
-  BPM. Si una altra edició deixa `N` fraccionari en un clip no final,
+  (primer, interiors, penúltim i rubato inclòs) han de contindre un **nombre
+  enter de compassos** (`N ≥ 1`). L'**últim clip** pot quedar amb `N`
+  fraccionari perquè el final de la WAV és fix: **qualsevol edició del mapa**
+  ho pot deixar així (talls, unions, TAP, BPM, N, compàs, enganxat, etc.).
+  L'única excepció és **Ajusta final WAV**, que tanca deliberadament l'últim
+  clip amb `N` enter perquè quadra el final de la WAV a compassos sencers. Si
+  una edició deixa `N` fraccionari en un clip que **no és l'últim**,
   s'**arrodoneix `N`** i es **recalcula el BPM**; si el BPM resultant ix de
   30–350 o el clip queda per davall del mínim, l'operació es **rebutja amb
   avís**.
@@ -224,7 +228,12 @@ La frontera la col·loca el músic; el snap és **opcional** i és el snap norma
 timeline. No hi ha obligació que les fronteres caiguen en una línia de beat.
 Amb el snap apagat, inici i fi es mouen lliurement dins la WAV; el que no pot
 passar és que un clip quede per davall del **mínim d'un compàs 1/16 a 350 BPM**
-(§13.4), que `N` no siga enter o que un extrem isca de la WAV.
+(§13.4), que `N` no siga enter (excepte l'últim clip) o que un extrem isca de
+la WAV.
+
+El snap pot ser a la **graella musical**, als **marcadors humans** o als
+**onsets detectats**. Marcadors i onsets són capes independents; si la capa
+triada és buida, el snap no inventa cap posició i deixa el temps lliure.
 
 **Terminologia obligatòria:** **«recalc fix»** i **«recalc mòbil»**. Són les
 dos úniques famílies de recalcul manual; qualsevol agent ha d'usar estos noms
@@ -282,9 +291,32 @@ Els **marcadors** són anotacions visuals independents del model, segons §13.6.
 - Després de cada operació, acords, seccions i mapa continuen ordenats, contigus
   i cobrint `[0, durada]`. Els trams de tempo/compàs resultants mantenen `N`
   enter a tots els clips; l'últim pot quedar fraccionari (§13.4).
+- **Ajusta final WAV** és l'única operació que força `N` enter a l'últim clip:
+  quadra el final de la WAV a compassos sencers. La resta d'edicions d'àudio
+  poden deixar la cua amb `N` fraccionari.
 - L'edició d'àudio és una acció explícita diferent d'un canvi de tempo: §13.1
   continua vigent per al tempo, però retallar/inserir transforma els temps perquè
   les marques seguisquen el mateix so. Les restriccions de §13.6 no autoritzen ni
   prohibeixen esta operació.
 - L'àudio i el model són **atòmics** i formen un **sol desfer/refer**. Un error
   no pot deixar àudio i model en estats diferents.
+
+### 13.10 Candaus de protecció del mapa de tempo
+
+La GUI pot protegir tres camps del mapa amb **tres candaus independents**:
+**BPM intern**, **N de compassos** i **compàs `x/x`**.
+
+- Són **globals**: afecten tots els clips de tempo/compàs del mapa.
+- Es poden activar com a màxim **dos alhora**; el tercer queda deshabilitat.
+- Comencen **desactivats** i **no es guarden** entre sessions ni al projecte.
+- **Undo/redo** no queden bloquejats: els candaus protegeixen edicions noves,
+  no la història.
+- Tota edició que produïsca un mapa nou comprova el resultat:
+  - si un camp bloquejat canvia, es **rebutja l'operació sencera** amb avís;
+  - si el resultat conserva els camps bloquejats, l'operació s'accepta;
+  - mai hi ha canvi parcial ni canvi silenciós.
+- Els veïns recalculats també compten: si l'operació canvia el camp bloquejat
+  d'un veí, es rebutja.
+- L'**anàlisi automàtica** no queda bloquejada: pot executar-se i, si aplica
+  el resultat automàticament, els candaus no l'aturen. Si l'usuari ha de
+  confirmar l'aplicació, eixa aplicació sí que respecta els candaus.

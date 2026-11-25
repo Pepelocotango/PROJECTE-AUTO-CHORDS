@@ -363,7 +363,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Ctrl+C / Ctrl+X / Ctrl+V** | **copiar / retallar / enganxar** la selecció — l'enganxat **sobreescriu** el tram (regla #4: la cançó no pot créixer); si no mous el cursor, enganxa just **després** del bloc i deixa el bloc enganxat **seleccionat** |
 | **F2** | **reanomena** el clip seleccionat, o **tot el grup del tipus actiu** (N acords → un nom · M seccions → una lletra); amb selecció **mixta** es renombren només els del tipus del clip actiu (opció A), i el bloc queda **seleccionat** |
 | **Editor ⑫ + «Aplica»** | amb **multi-selecció**, el camp **Nom** s'aplica a **tots els seleccionats del tipus actiu** (estil fulla de càlcul); l'inici NO s'aplica en bloc. En un clip de tempo, **`[]`** al costat de **BPM**, **Compàs** o **N** aplica eixa variable amb **recalc fix** (fronteres fixes) i adapta les altres:
-- **BPM**: BPM exacte → N enter + compàs; si no hi ha combinació, rebutja.
+- **BPM**: BPM exacte → N enter + compàs; a l’últim clip pot quedar N fraccionari.
 - **Compàs**: compàs exacte → N enter més pròxim + BPM recalculat si cal.
 - **N**: N exacte → compàs que conserve el BPM; si no n’hi ha, compàs actual + BPM recalculat.
 Per exemple, `4/4 N=14` → `7/4` deixa `N=8` i conserva el BPM. **`->`** aplica-la amb **recalc mòbil** (mou la frontera compartida). L'Editor **no consulta QM**; els beats QM només s'apliquen als **Talls QM** (`+`, intro/normals) amb Snap Beats QM. **`x2`/`/2`** doblen o dividixen el BPM amb la mateixa lògica del BPM fix. **Agrupació** té un sol **Aplica** perquè no recalcula tempo. El botó **Aplica** general fa el recalc mòbil si només ha canviat un camp. A l’últim clip, els `->` queden desactivats perquè la fi de la WAV és fixa. Amb **Snap = Beats QM**, els beats són una restricció forta **només per als Talls QM** (`+`, intro/normals); l'Editor, les fronteres, els diàlegs i el TAP no consulten QM. L’últim clip pot quedar amb `N` fraccionari perquè el final de la WAV és fix |
@@ -397,7 +397,7 @@ Per exemple, `4/4 N=14` → `7/4` deixa `N=8` i conserva el BPM. **`->`** aplica
   (Agrupació · N · Ini/Fi) també s'editen a la franja Editor. El
   transport intern del tram 0 se sincronitza des del model (`_sincronitza_temps_del_visor`),
   mai al revés.
-- **TAP** (tecla **T**): sempre mana i no té restricció QM; conserva les fronteres i manté `N` enter, també a l’últim clip.
+- **TAP** (tecla **T**): sempre mana i no té restricció QM; conserva les fronteres i pot deixar `N` fraccionari a l’últim clip.
 - **TAP→** (botó o `.` del teclat numèric): BPM exacte; mou el `fi` del clip seleccionat a la **línia de compàs més pròxima** amb el BPM nou i **recalcula N**. A l’últim clip la fi de la WAV no es mou i deixa `N` fraccionari. Comparteix la mateixa sessió robusta de taps. Patró estàndard dels DAWs — guarda els instants dels
   últims taps, **mediana dels intervals** → `60/∅`; **reset als 2 s** (LMMS);
   **descarta intervals fora de 30–350 BPM** i els clarament anòmals (±30 % de

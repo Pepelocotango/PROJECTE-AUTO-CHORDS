@@ -2107,6 +2107,20 @@ class TestBloquejosTempo(_Base):
         ]
         self.assertFalse(self.v.aplica_tempo_trams(compas_canviat))
 
+    def test_tall_amb_bpm_bloquejat_conserva_ultim_fraccionari(self):
+        self.v.aplica_tempo_trams([
+            M.TramMapa(0.0, 0.333134, 180.107704, "normal", "1/4", "", 1.0),
+            M.TramMapa(0.333134, 20.0, 117.65, "normal", "4/4", "", 9.8),
+        ])
+        self.v.set_bloquejos_tempo(bpm=True)
+        nous = self.v._parteix_tempo_nou(4.413)
+        self.assertIsNotNone(nous)
+        self.assertEqual(len(nous), 3)
+        self.assertAlmostEqual(float(nous[-1][2]), 117.65, places=3)
+        self.assertTrue(self.v.aplica_tempo_trams(nous))
+        self.assertAlmostEqual(float(self.v.tempo_trams[-1].bpm), 117.65,
+                               places=3)
+
     def test_bpm_bloquejat_permet_partir_si_el_bpm_no_canvia(self):
         self.v.set_bloquejos_tempo(bpm=True)
         partit = [

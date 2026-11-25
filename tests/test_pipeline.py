@@ -5779,9 +5779,8 @@ class TapTempoTests(unittest.TestCase):
         # El TAP només actua amb un tram de tempo seleccionat (2026-11-01).
         w.visor_ref.timeline.select_clip("tempo", 0)
         self._taps_en(w, 0.594)          # 101,01 BPM mesurats
-        # Contracte §13.4: el clip de 10 s a 4/4 no pot tindre N fraccionari;
-        # 101 BPM dona N=4,208 → N=4 i BPM derivat 96.
-        self.assertAlmostEqual(w._bpm_val(), 96.0, delta=0.01)
+        # L'últim clip pot conservar el BPM exacte amb N fraccionari.
+        self.assertAlmostEqual(w._bpm_val(), 101.01, delta=0.01)
         w.close()
 
     def test_taps_500ms_donen_120bpm(self):
@@ -6007,8 +6006,8 @@ class TapTempoTests(unittest.TestCase):
         n0 = len(v._undo_stack)
         self._taps_en(w, 0.6)
         w._tanca_sessio_tap()
-        # 2 s en 3/4 a ~100 taps/min → N=1 i BPM derivat 90.
-        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 90.0, delta=3.0)
+        # L'últim clip conserva el BPM dels taps amb N fraccionari.
+        self.assertAlmostEqual(float(v.tempo_trams[1][2]), 100.0, delta=1.0)
         self.assertAlmostEqual(float(v.tempo_trams[0][2]), 90.0, places=6)
         self.assertEqual(len(v._undo_stack), n0 + 1,
                          "la sessió de taps ha de ser UNA operació d'undo")

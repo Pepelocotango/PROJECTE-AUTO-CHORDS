@@ -899,7 +899,8 @@ class TempoMixin:
         entrada = list(trams or [])
         try:
             nous = tempo_map.valida_i_normalitza_permissiu(
-                entrada, self._durada_wav())
+                entrada, self._durada_wav(),
+                permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"{msg}: {e}")
             return False
@@ -916,7 +917,8 @@ class TempoMixin:
         """
         durada = self._durada_wav()
         try:
-            return tempo_map.valida_i_normalitza_permissiu(trams, durada)
+            return tempo_map.valida_i_normalitza_permissiu(
+                trams, durada, permet_ultim_fraccionari=True)
         except ValueError as e:
             if msg:
                 self.log(f"{msg}: el mapa no complix el contracte de clips "
@@ -1421,7 +1423,8 @@ class TempoMixin:
                 continue
             try:
                 trams = tempo_map.parteix_tram_marcador(
-                    trams, tall, durada, permissiu=True)
+                    trams, tall, durada, permissiu=True,
+                    permet_ultim_fraccionari=True)
             except ValueError as e:
                 self.avis_editor(f"Rubato: {e}")
                 return False

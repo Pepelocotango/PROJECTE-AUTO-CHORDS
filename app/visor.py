@@ -706,6 +706,10 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if not vell:
             return []
         tol = 1e-6
+        # El BPM pot moure's unes mil·lèsimes en partir un clip a una línia
+        # de compàs (arrodoniment de N). No és un canvi musical: no bloquegem
+        # una edició per eixa diferència numèrica.
+        tol_bpm = 1e-3
 
         def _n(tr):
             # Sempre derivat de la durada/BPM: el camp `n` pot ser metadada
@@ -722,7 +726,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                     errors.append("N")
                 continue
             if actius.get("bpm") and any(
-                    abs(float(x.bpm) - float(v.bpm)) > tol
+                    abs(float(x.bpm) - float(v.bpm)) > tol_bpm
                     for x in solapats) and "BPM" not in errors:
                 errors.append("BPM")
             if actius.get("compas") and any(
@@ -2571,10 +2575,12 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             nous = self._recalcula_clip_tempo(nous, recalcul_idx, msg)
         try:
             fi = tempo_map.valida_i_normalitza_compassos(
-                nous, durada, beats_qm=self._beats_per_validacio())
+                nous, durada, beats_qm=self._beats_per_validacio(),
+                permet_ultim_fraccionari=True)
         except ValueError as e:
             try:
-                fi = tempo_map.repara_fronteres(nous, durada)
+                fi = tempo_map.repara_fronteres(
+                    nous, durada, permet_ultim_fraccionari=True)
             except ValueError:
                 # El mapa heretat pot tindre una frontera antiga invàlida en
                 # un tram que esta operació no toca. No bloquegem eliminar/
@@ -3034,7 +3040,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             if cand_tp is not None:
                 # Les fronteres heretades poden quedar a unes mil·lèsimes de
                 # la línia de compàs: s'imanten abans de rebutjar (21-10).
-                cand_tp = tempo_map.repara_fronteres(cand_tp, durada)
+                cand_tp = tempo_map.repara_fronteres(
+                    cand_tp, durada, permet_ultim_fraccionari=True)
                 # `repara_fronteres` retorna 5 tuples. La còpia ha d'heretar
                 # les metadades del bloc d'origen desplaçades a la seua
                 # posició; la resta del mapa conserva les metadades actuals.
@@ -3113,7 +3120,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             try:
                 # Les fronteres heretades poden quedar a mil·lèsimes de la
                 # graella: s'imanten abans de rebutjar (21-10).
-                cand_tp = tempo_map.repara_fronteres(trams, durada)
+                cand_tp = tempo_map.repara_fronteres(
+                    trams, durada, permet_ultim_fraccionari=True)
                 cand_tp = mapa_tempo.reenganxa_metadades(
                     self.tempo_trams or [], cand_tp)
             except ValueError as e:
@@ -3215,7 +3223,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             cand_sec = (self._valida_canvis_seccions(noves_seccions)
                         if noves_seccions is not None else list(self.seccions))
             cand_tp = (tempo_map.valida_i_normalitza_compassos(
-                noves_trams, durada)
+                noves_trams, durada, permet_ultim_fraccionari=True)
                 if noves_trams is not None
                 else list(self.tempo_trams or []))
         except ValueError as e:
@@ -4039,7 +4047,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             else:
                 try:
                     trams = tempo_map.parteix_tram_marcador(
-                        trams, t, self._durada_wav(), beats_qm=None)
+                        trams, t, self._durada_wav(), beats_qm=None,
+                        permet_ultim_fraccionari=True)
                     tall = t
                 except ValueError as e:
                     # Normalment vol dir que A i B s'imanten al MATEIX
@@ -4094,7 +4103,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         else:
             try:
                 nous = tempo_map.parteix_tram_marcador(
-                    trams, t, self._durada_wav(), beats_qm=None)
+                    trams, t, self._durada_wav(), beats_qm=None,
+                    permet_ultim_fraccionari=True)
             except ValueError as e:
                 self.log(f"partir per la meitat: {e}")
                 self.avis_editor(f"Partir tempo: {e}")
