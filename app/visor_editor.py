@@ -200,13 +200,24 @@ class EditorMixin:
             for num in range(1, limits.NUM_MAX + 1):
                 yield num, den
 
-    def _resol_fix_bpm(self, tr, bpm, idx=None):
-        """BPM exacte amb fronteres fixes: tria N enter i compàs."""
+    def _resol_fix_bpm(self, tr, bpm, idx=None, num=None, den=None):
+        """BPM exacte amb fronteres fixes: tria N enter i compàs.
+
+        Si `num`/`den` arriben, eixe compàs és preferent i únic: si el BPM
+        exacte no hi dona un N enter (excepte l'últim clip), es rebutja.
+        Sense compàs explícit es busca el compàs admissible més pròxim.
+        """
         ini, fi = float(tr.ini), float(tr.fi)
         dt = fi - ini
         n_actual = float(getattr(tr, "n", None) or
                          tempo_map.compassos_del_clip(tr))
-        num0, den0 = int(tr.num), int(tr.den)
+        te_compas = num is not None and den is not None
+        num0 = int(num if te_compas else tr.num)
+        den0 = int(den if te_compas else tr.den)
+        try:
+            bpm = tempo_map.valida_tempo(float(bpm), num0, den0)[0]
+        except ValueError as e:
+            raise ValueError(str(e)) from e
         bq0 = float(num0) * 4.0 / float(den0)
         ultim = ((getattr(self, "_ed_idx", -1) if idx is None else idx)
                  == len(self.tempo_trams or []) - 1)
@@ -214,10 +225,29 @@ class EditorMixin:
             n = dt * float(bpm) / (bq0 * 60.0)
             if n <= 0:
                 raise ValueError("N ha de ser positiu.")
+            agr = self._agr_en_canvi_compas(tr, num0, den0)
+            unit = self._unitat_en_canvi_compas(
+                tr, mapa_tempo.TramMapa(
+                    ini, fi, float(bpm), tr.tipus, f"{num0}/{den0}", agr,
+                    float(n), getattr(tr, "beat_unit", None)), None)
             return mapa_tempo.TramMapa(
-                ini, fi, float(bpm), tr.tipus, tr.compassos,
-                getattr(tr, "agrupacio", ""), float(n),
-                getattr(tr, "beat_unit", None))
+                ini, fi, float(bpm), tr.tipus, f"{num0}/{den0}",
+                agr, float(n), unit)
+        if te_compas:
+            n_obj = dt * float(bpm) / (bq0 * 60.0)
+            n = int(round(n_obj))
+            if n < 1 or abs(n_obj - n) > 1e-3:
+                raise ValueError(
+                    f"Amb {num0}/{den0} i {float(bpm):.3f} BPM, N queda "
+                    f"fraccionari ({n_obj:.3f}); canvia el compàs o el BPM.")
+            agr = self._agr_en_canvi_compas(tr, num0, den0)
+            unit = self._unitat_en_canvi_compas(
+                tr, mapa_tempo.TramMapa(
+                    ini, fi, float(bpm), tr.tipus, f"{num0}/{den0}", agr,
+                    float(n), getattr(tr, "beat_unit", None)), None)
+            return mapa_tempo.TramMapa(
+                ini, fi, float(bpm), tr.tipus, f"{num0}/{den0}",
+                agr, float(n), unit)
         candidats = []
         for num, den in self._compassos_possibles():
             bq = float(num) * 4.0 / float(den)
@@ -394,8 +424,8 @@ class EditorMixin:
         self._actualitza_editor()
         return ok
 
-    def _edita_bpm_mobil(self, idx, bpm):
-        """Aplica BPM movent la frontera però conservant N i compàs."""
+    def _edita_bpm_mobil(self, idx, bpm, num=None, den=None):
+        """Aplica BPM movent la frontera; `num/den` és el compàs objectiu."""
         trams = list(self.tempo_trams or ())
         idx = int(idx)
         if not (0 <= idx < len(trams)):
@@ -406,6 +436,13 @@ class EditorMixin:
                 "El recalc mòbil no pot moure la fi de l'últim clip.")
             return False
         tr = trams[idx]
+        num = int(tr.num if num is None else num)
+        den = int(tr.den if den is None else den)
+        try:
+            bpm, num, den = tempo_map.valida_tempo(float(bpm), num, den)
+        except ValueError as e:
+            self.avis_editor(f"Tempo: {e}")
+            return False
         n_actual = getattr(tr, "n", None)
         if n_actual is None:
             n_actual = tempo_map.compassos_del_clip(tr)
@@ -413,14 +450,30 @@ class EditorMixin:
         if n_actual < 1:
             self.avis_editor("N ha de ser com a mínim 1.")
             return False
+        unit_vella = self.unitat_de_tram(tr)
+        agr_nova = self._agr_en_canvi_compas(tr, num, den)
+        provisional = mapa_tempo.TramMapa(
+            float(tr.ini), float(tr.fi), float(tr.bpm), tr.tipus,
+            f"{num}/{den}", agr_nova,
+            getattr(tr, "n", None), unit_vella)
         try:
+            unit_nova = self._unitat_en_canvi_compas(tr, provisional, None)
+            base = list(trams)
+            base[idx] = mapa_tempo.TramMapa(
+                float(tr.ini), float(tr.fi), float(tr.bpm), tr.tipus,
+                f"{num}/{den}", agr_nova, getattr(tr, "n", None),
+                unit_vella)
             nous = mapa_tempo.recalcula_tram_c(
-                trams, idx, self._durada_wav(), n=n_actual,
-                bpm=float(bpm), num=int(tr.num), den=int(tr.den),
+                base, idx, self._durada_wav(), n=n_actual,
+                bpm=float(bpm), num=num, den=den,
                 camp="n", permet_ultim_fraccionari=True)
         except ValueError as e:
             self.avis_editor(f"Tempo: {e}")
             return False
+        nous = self._amb_unitat(nous, idx, unit_nova)
+        nous[idx] = mapa_tempo.TramMapa(
+            nous[idx].ini, nous[idx].fi, nous[idx].bpm, nous[idx].tipus,
+            nous[idx].compassos, agr_nova, nous[idx].n, nous[idx].beat_unit)
         if not self._valida_unitat_tram(nous[idx], "Tempo"):
             return False
         return bool(self.aplica_tempo_trams(nous))

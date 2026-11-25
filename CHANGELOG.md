@@ -10,6 +10,8 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
   camps **BPM, compàs i N** amb candaus (màxim 2), unitat de pols i rubato.
 - Les accions deleguen en els motors existents; el diàleg no calcula N/BPM ni
   prioritza camps pel seu compte.
+- `Aplica BPM` usa el compàs escrit com a objectiu en els modes fix i mòbil;
+  si el BPM exacte no dona un `N` enter, no s'aplica res.
 - Les operacions **+1/−1/×2/÷2** mantenen el compàs i els segons, canvien N i
   BPM, i respecten el `N` fraccionari de l'últim clip.
 

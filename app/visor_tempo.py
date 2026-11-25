@@ -1141,7 +1141,8 @@ class TempoMixin:
                     trams = list(self.tempo_trams or [])
                     tr = trams[idx]
                     if camp == "bpm":
-                        nou = self._resol_fix_bpm(tr, bpm, idx=idx)
+                        nou = self._resol_fix_bpm(
+                            tr, bpm, idx=idx, num=num, den=den)
                     elif camp == "compas":
                         nou = self._resol_fix_compas(
                             tr, num, den, idx=idx)
@@ -1151,7 +1152,8 @@ class TempoMixin:
                     trams[idx] = nou
                     return bool(self.aplica_tempo_trams(trams))
             elif camp == "bpm":
-                accio = lambda: self._edita_bpm_mobil(idx, bpm)
+                accio = lambda: self._edita_bpm_mobil(
+                    idx, bpm, num=num, den=den)
             elif camp == "compas":
                 accio = lambda: self._edita_compas_mobil(idx, num, den)
             else:

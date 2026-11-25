@@ -6896,6 +6896,89 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr.undo()
         self.assertEqual([tuple(t) for t in vr.tempo_trams], trams)
 
+    def test_dialeg_bpm_fix_usa_el_compas_del_camp(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.ed_compas.setText("4/4")
+                self.sp_bpm.setValue(120.0)
+                self.b_aplica_bpm.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg),                 patch.object(QW.QMessageBox, "warning"):
+            vr._on_tempo_edit(1)
+        tr = vr.tempo_trams[1]
+        self.assertEqual(tr.compassos, "4/4")
+        self.assertAlmostEqual(float(tr.bpm), 120.0, places=6)
+        self.assertAlmostEqual(float(tr.n), 10.0, places=6)
+
+    def test_dialeg_bpm_fix_rebutja_compas_incompatible(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.ed_compas.setText("3/4")
+                self.sp_bpm.setValue(100.0)
+                self.b_aplica_bpm.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg),                 patch.object(QW.QMessageBox, "warning"):
+            vr._on_tempo_edit(1)
+        self.assertEqual([tuple(t) for t in vr.tempo_trams], trams)
+
+    def test_dialeg_bpm_amb_compas_bloquejat_incompatible_rebutja(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.chk_lock_compas.setChecked(True)
+                self.sp_bpm.setValue(100.0)
+                self.b_aplica_bpm.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg),                 patch.object(QW.QMessageBox, "warning"):
+            vr._on_tempo_edit(1)
+        self.assertEqual([tuple(t) for t in vr.tempo_trams], trams)
+
+    def test_dialeg_bpm_mobil_usa_el_compas_del_camp(self):
+        vr = self.w.visor_ref
+        trams = [(0.0, 10.0, 120.0, 4, 4),
+                 (10.0, 30.0, 90.0, 3, 4),
+                 (30.0, 60.0, 120.0, 4, 4)]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+
+        class _Dlg(dialegs.DialegTramTempo):
+            def exec_(self):
+                self.rb_mobil.setChecked(True)
+                self.ed_compas.setText("4/4")
+                self.sp_bpm.setValue(120.0)
+                self.b_aplica_bpm.click()
+                self.reject()
+                return QW.QDialog.Rejected
+
+        with patch.object(dialegs, "DialegTramTempo", _Dlg),                 patch.object(QW.QMessageBox, "warning"):
+            vr._on_tempo_edit(1)
+        tr = vr.tempo_trams[1]
+        self.assertEqual(tr.compassos, "4/4")
+        self.assertAlmostEqual(float(tr.bpm), 120.0, places=6)
+        self.assertAlmostEqual(float(tr.n), 10.0, places=6)
+
     def test_dialeg_candau_n_rebutja_un_bpm_que_canvia_n(self):
         vr = self.w.visor_ref
         trams = [(0.0, 10.0, 120.0, 4, 4),

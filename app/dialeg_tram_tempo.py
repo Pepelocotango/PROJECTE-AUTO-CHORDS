@@ -134,6 +134,13 @@ QCheckBox::indicator:disabled {{
                         (self.b_aplica_n, "n")):
             w.clicked.connect(lambda _=False, c=camp: self.campRequested.emit(c))
             lay_aplica.addWidget(w)
+        self.b_aplica_bpm.setToolTip(
+            "Aplica el BPM exacte amb el compàs escrit; si no hi ha N enter, "
+            "es rebutja sense tocar res.")
+        self.b_aplica_compas.setToolTip(
+            "Aplica el compàs escrit; N/BPM s'adapten segons el motor.")
+        self.b_aplica_n.setToolTip(
+            "Aplica N i el compàs escrit; el BPM es recalcula si cal.")
         lay_metric.addLayout(lay_aplica)
         self.ajuda = QLabel(
             "Els candaus protegeixen els camps; si una operació els canvia, "
@@ -274,7 +281,8 @@ QCheckBox::indicator:disabled {{
         sp_bpm.setValue(bpm_unit.de_quarter(self._bpm0, self._unit))
         sp_bpm.setToolTip(
             "BPM del clip en la unitat activa. «Aplica BPM» l'usa com a "
-            "objectiu amb fronteres fixes.")
+            "objectiu exacte juntament amb el compàs del camp; si no dona "
+            "N enter, no s'aplica res.")
         ed_compas = CampText(f"{self._num0}/{self._den0}")
         ed_compas.setPlaceholderText("4/4, 3/4, 2/4, 1/4…")
         ed_compas.setToolTip(
