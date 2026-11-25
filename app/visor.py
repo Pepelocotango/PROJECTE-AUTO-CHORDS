@@ -695,14 +695,18 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             raise ValueError("Com a màxim hi pot haver dos candaus actius")
         self.bloquejos_tempo = estat
 
-    def _bloquejos_tempo_errors(self, nous):
-        """Camps bloquejats que canviarien en aplicar `nous` (llista buida = OK)."""
+    def _bloquejos_tempo_errors(self, nous, antics=None):
+        """Camps bloquejats que canviarien en aplicar `nous` (llista buida = OK).
+
+        `antics` permet excloure clips eliminats: si un clip desapareix, el seu
+        BPM/N no s'ha de comparar contra el veí que n'absorbeix el temps.
+        """
         from app import mapa_tempo
         actius = getattr(self, "bloquejos_tempo", {}) or {}
         if not any(actius.values()):
             return []
-        vell = [mapa_tempo.des_de_tupla(t)
-                for t in (self.tempo_trams or ())]
+        origen = self.tempo_trams if antics is None else antics
+        vell = [mapa_tempo.des_de_tupla(t) for t in (origen or ())]
         nou = [mapa_tempo.des_de_tupla(t) for t in (nous or ())]
         if not vell:
             return []
@@ -750,7 +754,12 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             self.timeline.set_snap(on=on, divisio=divisio)
 
     def _beats_per_validacio(self):
-        """Graella de beats que valida els clips (None = BPM/compàs)."""
+        """Beats QM per als **Talls QM** (None = graella del mapa).
+
+        Només s'activa amb Snap = Beats QM, snap encès i beats detectats.
+        L'Editor, els drags, els recalcs, les eliminacions i els diàlegs no
+        l'han de consultar.
+        """
         if (getattr(self, "snap_on", True)
                 and getattr(self, "snap_mode", "") == "qm_beats"):
             return list(getattr(self, "qm_beats", None) or ()) or None
@@ -2582,7 +2591,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             nous = self._recalcula_clip_tempo(nous, recalcul_idx, msg)
         try:
             fi = tempo_map.valida_i_normalitza_compassos(
-                nous, durada, beats_qm=self._beats_per_validacio(),
+                nous, durada, beats_qm=None,
                 permet_ultim_fraccionari=True)
         except ValueError as e:
             try:
@@ -2608,18 +2617,25 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # Estes operacions (elimina/fusiona) poden canviar el nombre de trams
         # encara que el mapa tinga rubatos; la preservació de dalt manté el
         # tipus i el guard genèric no ha de bloquejar el gest de l'usuari.
-        return bool(self.aplica_tempo_trams(fi, forcat=True))
+        return bool(self.aplica_tempo_trams(
+            fi, forcat=True, antics=antics))
 
     def _recalcula_clip_tempo(self, trams, idx, msg):
         """Recalcula un clip afectat per una fusió/eliminació.
 
         Usa la **referència base manual** i els beats detectats; si el clip no
-        pot quedar en compassos sencers, avisa i el deixa com està. Així una
-        eliminació de frontera no deixa un N fraccionari heretat del clip veí.
+        pot quedar en compassos sencers, avisa i el deixa com està. L'últim
+        clip no es recalcula: conserva BPM/compàs/unitat i pot quedar amb `N`
+        fraccionari.
         """
         trams = [tuple(t) for t in (trams or [])]
         i = int(idx)
         if not (0 <= i < len(trams)):
+            return trams
+        if i == len(trams) - 1:
+            self.log(
+                f"{msg}: el clip {i + 1} és l'últim; conserva BPM, compàs "
+                "i N fraccionari")
             return trams
         tram = trams[i]
         if int(tram[3]) <= 0 or int(tram[4]) <= 0:
@@ -2627,7 +2643,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         try:
             out = tempo_map._recalcula_costats(
                 trams, [(i, tram)], self._durada_wav(),
-                beats_qm=self._beats_per_validacio(),
+                beats_qm=None,
                 ref_base=self.referencia_tempo_base(i),
                 beat_factor=self.beat_factor())
         except Exception as e:  # noqa: BLE001
@@ -3155,7 +3171,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             except ValueError as e:
                 self.avis_editor(f"Elimina tempo: {e}")
                 return
-            errors = self._bloquejos_tempo_errors(cand_tp)
+            errors = self._bloquejos_tempo_errors(
+                cand_tp, antics=antics_tp)
             if errors:
                 self.avis_editor(
                     "Bloquejat: canvi de " + ", ".join(errors)
@@ -3744,7 +3761,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, int(idx_frontera), float(t), durada,
-                beats_qm=self._beats_per_validacio(), permissiu=True,
+                beats_qm=None, permissiu=True,
                 ref_base=ref_base,
                 avisos=avisos,
                 beat_factor=self.beat_factor())

@@ -49,6 +49,8 @@ En eliminar un clip, el buit l'absorbeix el clip de la **dreta**: el posterior
 passa a començar on començava el clip eliminat. Si s'elimina l'últim clip, no
 hi ha dreta i l'anterior s'estira fins al final. Si el carril queda buit, hi va
 el forat canònic (`N` o `-`). Al mapa de tempo no es pot eliminar l'únic clip.
+Si el veí que absorbeix és l'últim clip, conserva BPM, compàs i unitat, i pot
+quedar amb `N` fraccionari; no se'n força el recalcul.
 
 ### 5. Una sola font de veritat
 El model viu al **backend**, no al visor. El visor en guarda una **còpia** que
@@ -204,8 +206,10 @@ compassos sencers. El model és permissiu:
   (excepte l'últim clip).
 - **Fronteres interiors lliures**: poden caure on vulga l'usuari; el **snap és
   opcional** i no s'exigeix cap línia de beat. Els beats detectats **no
-  intervenen en l'Editor de tempo**; només s'usen als **Talls QM** (`+`,
-  intro/normals) quan **Snap Beats QM** està actiu.
+  intervenen en l'Editor de tempo, els drags, els recalcs, les eliminacions ni
+  els diàlegs**. Només s'usen als **Talls QM** (`+`, `Fin`, Afegeix/Parteix
+  aquí, Partir per la meitat i A–B) quan **Snap Beats QM** està actiu **i hi ha
+  beats detectats**; sense beats, estos talls usen la graella del mapa.
 - Entrada invàlida: es rebutja amb avís i sense mutació parcial. CSV extern
   invàlid: es repara i s'informa (incloent-hi l'ajust de `N`/BPM).
 
@@ -220,12 +224,14 @@ combinació de **compassos sencers** que més s'acosta a eixa referència: pot
 canviar el **BPM**, el **compàs** o el **nombre de compassos** (`N`). El compàs
 local mana en `n_previst`, en la regla del múltiple i en `bloca_compas`.
 
-**Talls QM (només `+`/intro/normals, no l'Editor)**: amb **Snap Beats QM**,
-el nombre de **negres** (ja amb la unitat del beat aplicada) és una
-**restricció forta**: 7 negres han de ser `7/4` (o una combinació equivalent),
-no 2 compassos de `4/4` amb 8 negres. Si no s'usen o no n'hi ha, s'intenta
-inferir el nombre de negres a partir de la referència; si cau a prop d'un
-enter, s'aplica la mateixa restricció; si no, es recorre al càlcul per durada.
+**Talls QM (`+`, `Fin`, Afegeix/Parteix aquí, Partir per la meitat i A–B; no
+l'Editor)**: amb **Snap Beats QM** i beats detectats, el nombre de **negres**
+(ja amb la unitat del beat aplicada) és una **restricció forta**: 7 negres han
+de ser `7/4` (o una combinació equivalent), no 2 compassos de `4/4` amb 8
+negres. Si no hi ha beats, el tall usa la graella del mapa. Si no s'usen o no
+n'hi ha, s'intenta inferir el nombre de negres a partir de la referència; si cau
+a prop d'un enter, s'aplica la mateixa restricció; si no, es recorre al càlcul
+per durada.
 Si no hi ha cap combinació, es conserva el valor anterior; si el resultat
 incomplix el mínim de durada (o
 qualsevol altra regla permissiva), el gest es rebutja amb **avís** (mai un

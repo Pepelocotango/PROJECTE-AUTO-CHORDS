@@ -191,8 +191,7 @@ class TempoMixin:
                 tr.agrupacio, tr.n, unit)
             try:
                 nous5 = tempo_map.ajusta_bpm_a_compassos(
-                    tmp, idx, self._durada_wav(),
-                    beats_qm=self._beats_per_validacio())
+                    tmp, idx, self._durada_wav(), beats_qm=None)
             except ValueError as e:
                 self.avis_editor(f"Unitat: {e}")
                 return False
@@ -355,7 +354,7 @@ class TempoMixin:
                 nous5 = tempo_map.canvia_bpm_local(
                     [tuple(t) for t in trams], idx, float(bpm),
                     self._durada_wav(), num=num, den=den,
-                    beats_qm=self._beats_per_validacio(), permissiu=True,
+                    beats_qm=None, permissiu=True,
                     permet_ultim_fraccionari=permet_ultim_fraccionari)
             except ValueError as e:
                 self.avis_editor(f"Tempo: {e}")
@@ -584,40 +583,11 @@ class TempoMixin:
                      f"({int(n)} compassos de {int(num)}/{int(den)})")
         return ok
 
-    def _qm_n_enter(self, idx, num, den):
-        """N que imposen els beats QM per al compàs triat (o error)."""
-        beats = list(self._beats_per_validacio() or ())
-        if not beats:
-            return None
-        trams = self._trams_map()
-        if not (0 <= int(idx) < len(trams)):
-            return None
-        tr = trams[int(idx)]
-        ini, fi = float(tr[0]), float(tr[1])
-        factor = self.beat_factor(self.unitat_de_tram(tr))
-        negres = tempo_recalc.n_negres_del_clip(beats, ini, fi, factor)
-        if negres is None:
-            raise ValueError(
-                "Snap Beats QM: no hi ha cap beat detectat dins del clip.")
-        bq = float(num) * 4.0 / float(den)
-        if bq <= 0:
-            raise ValueError("El compàs no té durada")
-        n = float(negres) / bq
-        if int(idx) == len(trams) - 1:
-            # L'últim clip pot quedar fraccionari: QM no l'ha de bloquejar.
-            return n
-        if abs(n - round(n)) > 1e-6:
-            raise ValueError(
-                f"Snap Beats QM: amb {int(num)}/{int(den)} el clip tindria "
-                f"N={n:.3f}; no pot quedar així. Tria un compàs/N que "
-                "encaixe amb els beats.")
-        return int(round(n))
-
     def edita_tempo_guiat(self, idx, *, bpm=None, num=None, den=None, n=None):
         """Edita un clip recalcular els camps que no s'han fixat.
 
-        Prioritat: compàs > BPM > N > referència. Si Snap=Beats QM, els beats
-        són una restricció dura per a compàs i N.
+        Prioritat: compàs > BPM > N > referència. No consulta QM: els beats
+        QM només s'usen als Talls QM.
         """
         trams = self._trams_map()
         idx = int(idx)
@@ -651,20 +621,7 @@ class TempoMixin:
                 f"{int(num_t)}/{int(den_t)}", agr0,
                 getattr(tr, "n", None), getattr(tr, "beat_unit", None))
         try:
-            n_qm = self._qm_n_enter(idx, num_t, den_t)
-            if n_qm is not None:
-                if n is not None and int(round(float(n))) != n_qm:
-                    raise ValueError(
-                        f"Snap Beats QM: amb {int(num_t)}/{int(den_t)} el "
-                        f"N ha de ser {n_qm}, no {int(round(float(n)))}.")
-                n_t = n_qm
-                bpm_t = n_t * bq * 60.0 / dt
-                if bpm is not None and abs(bpm_t - float(bpm)) > 0.05:
-                    raise ValueError(
-                        f"Snap Beats QM: amb {int(num_t)}/{int(den_t)} i "
-                        f"{n_t} compassos, el BPM ha de ser {bpm_t:.3f}, "
-                        f"no {float(bpm):.3f}.")
-            elif n is not None:
+            if n is not None:
                 n_t = float(n)
                 if idx != len(trams) - 1:
                     n_t = max(1, int(round(n_t)))
@@ -718,7 +675,7 @@ class TempoMixin:
         o cancel·lar. Retorna el resultat de l'opció aplicada.
         """
         tram = trams[int(idx)]
-        ini, fi = float(tram[0]), float(tram[1])
+        fi = float(tram[1])
         base = tempo_map._base_tram(tram, int(idx))
         dt = fi - base
         num, den = int(num), int(den)
@@ -733,14 +690,11 @@ class TempoMixin:
                 bpm_ajust = None
 
         bpm_vei, num_vei, den_vei = self.referencia_tempo_base(idx)
-        beats = [float(b) for b in (self._beats_per_validacio() or ())]
         factor = self.beat_factor()
-        n_beats = tempo_recalc.n_negres_del_clip(
-            beats, ini, fi, factor) if beats else None
         canon = None
         try:
             canon = tempo_recalc.recalculca_tram(
-                dt, bpm_vei, num_vei, den_vei, n_beats=n_beats,
+                dt, bpm_vei, num_vei, den_vei, n_beats=None,
                 pas_beat=factor)
         except (TypeError, ValueError):
             canon = None
@@ -863,7 +817,7 @@ class TempoMixin:
         return issues
 
     def aplica_tempo_trams(self, trams, forcat=False,
-                           ignora_bloquejos=False):
+                           ignora_bloquejos=False, antics=None):
         """Aplica un mapa de tempo/compàs nou (des del diàleg).
 
         Normalitza (contigu, cobreix la WAV), actualitza el **transport** amb el
@@ -883,7 +837,7 @@ class TempoMixin:
         if not nous:
             return False
         if not ignora_bloquejos:
-            errors = self._bloquejos_tempo_errors(nous)
+            errors = self._bloquejos_tempo_errors(nous, antics=antics)
             if errors:
                 text = ("Bloquejat: canvi de " + ", ".join(errors)
                         + ". Desactiva el candau o ajusta l'operació.")
@@ -1348,7 +1302,7 @@ class TempoMixin:
             try:
                 nous = tempo_map.mou_tram_sencer(
                     trams, idx, float(t), self._durada_wav(),
-                    beats_qm=self._beats_per_validacio(), avisos=avisos,
+                    beats_qm=None, avisos=avisos,
                     beat_factor=self.beat_factor(), unitats=unitats,
                     permet_ultim_fraccionari=True)
             except ValueError as e:
@@ -1385,7 +1339,7 @@ class TempoMixin:
         try:
             nous = tempo_map.mou_frontera_retempo(
                 trams, p_idx, float(t), self._durada_wav(),
-                beats_qm=self._beats_per_validacio(), permissiu=True,
+                beats_qm=None, permissiu=True,
                 ref_base=self.referencia_tempo_base(idx), avisos=avisos,
                 permet_ultim_fraccionari=True,
                 beat_factor=self.beat_factor(), unitats=unitats)
@@ -1424,17 +1378,6 @@ class TempoMixin:
             self.avis_editor(f"Compassos: {e}")
             return False
         nous = mapa_tempo.reenganxa_metadades(trams, nous)
-        if self._beats_per_validacio():
-            try:
-                n_qm = self._qm_n_enter(idx, nous[idx].num, nous[idx].den)
-            except ValueError as e:
-                self.avis_editor(str(e))
-                return False
-            if n_qm is not None and abs(float(nous[idx].n) - n_qm) > 1e-6:
-                self.avis_editor(
-                    f"Snap Beats QM: amb {int(nous[idx].num)}/"
-                    f"{int(nous[idx].den)} el N ha de ser {n_qm}.")
-                return False
         if [tuple(x) for x in nous] == [tuple(x) for x in trams]:
             return False
         # L3: un canvi de compàs no pot deixar la unitat del tram sense

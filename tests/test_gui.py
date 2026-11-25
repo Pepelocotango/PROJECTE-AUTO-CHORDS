@@ -6620,6 +6620,29 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(vr.tempo_trams[2][3:], (7, 4))
         self.assertAlmostEqual(vr.tempo_trams[2][0], 34.0, places=6)
 
+    def test_eliminar_abans_de_l_ultim_conserva_bpm_i_4_4(self):
+        """El veí dret últim absorbeix el buit sense canviar BPM ni compàs."""
+        from app import mapa_tempo
+        vr = self.w.visor_ref
+        trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4", "", 5.0,
+                                "negra"),
+            mapa_tempo.TramMapa(10.0, 12.0, 100.0, "normal", "3/4", "", 1.0,
+                                "negra"),
+            mapa_tempo.TramMapa(12.0, 60.0, 130.0, "normal", "4/4", "", 26.0,
+                                "negra"),
+        ]
+        self.assertTrue(vr.aplica_tempo_trams(trams))
+        vr.set_bloquejos_tempo(bpm=True)
+        self.assertTrue(vr._elimina_tram(1))
+        ultim = vr.tempo_trams[1]
+        self.assertAlmostEqual(float(ultim[0]), 10.0, places=6)
+        self.assertAlmostEqual(float(ultim[1]), 60.0, places=6)
+        self.assertAlmostEqual(float(ultim[2]), 130.0, places=6)
+        self.assertEqual(ultim[3:], (4, 4))
+        self.assertAlmostEqual(float(ultim.n), 50.0 / (4 * 60.0 / 130.0),
+                               places=6)
+
     def test_eliminar_frontera_el_vei_dret_ocupa_l_espai(self):
         vr = self.w.visor_ref
         b1, final = 3.330396, 16.582354
@@ -6924,10 +6947,13 @@ class TestAncoratgesFinestra(unittest.TestCase):
         # 21 + 39 beats: cap costat és pura; el motor ha de proposar opcions.
         vr.tempo_trams = [mapa_tempo.TramMapa(
             0.0, 60.0, 120.0, "normal", "4/4", "", 30, "negra")]
+        # L'undo ha restaurat els beats antics (buits); reactiva'ls per al
+        # segon tall, que és el que ha d'entrar al motor QM.
+        vr.qm_beats = [i * 0.5 for i in range(120)]
         with patch("app.dialeg_tall_qm.DialegTallQM", _DialegFals):
             out = vr._parteix_tempo_nou(10.5)
         self.assertIsNotNone(out)
-        self.assertGreater(len(out), 2)
+        self.assertGreaterEqual(len(out), 2)
         self.assertAlmostEqual(float(out[0].ini), 0.0)
         self.assertAlmostEqual(float(out[-1].fi), 60.0)
 
@@ -7029,8 +7055,8 @@ class TestAncoratgesFinestra(unittest.TestCase):
             self.assertFalse(vr._parteix_tram_a_loop(0))
         self.assertEqual(len(vr.tempo_trams), 1)
 
-    def test_tall_qm_sense_beats_usa_graella_actual(self):
-        """Snap QM sense beats: el motor compta els polsos del mapa actual."""
+    def test_tall_sense_beats_no_usa_qm(self):
+        """Snap QM sense beats: el tall usa la graella del mapa, no QM."""
         from app import mapa_tempo
         vr = self.w.visor_ref
         vr.tempo_trams = [mapa_tempo.TramMapa(
@@ -7039,7 +7065,9 @@ class TestAncoratgesFinestra(unittest.TestCase):
         vr.snap_on = True
         vr.snap_mode = "qm_beats"
         vr.qm_beats = []
-        self.assertTrue(vr.talla_tempo(10.0))
+        with patch("app.dialeg_tall_qm.DialegTallQM",
+                   side_effect=AssertionError("no ha d'obrir diàleg QM")):
+            self.assertTrue(vr.talla_tempo(10.0))
         self.assertEqual(len(vr.tempo_trams), 2)
         self.assertAlmostEqual(float(vr.tempo_trams[0].fi), 10.0)
 
@@ -7085,7 +7113,7 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertEqual(len(vr.tempo_trams), 1)
         self.assertEqual(len(vr.seccions), 1)
 
-    def test_editor_recalcula_el_que_falta_i_qm_mana_quan_toca(self):
+    def test_editor_recalcula_el_que_falta_sense_qm(self):
         from app import mapa_tempo
         vr = self.w.visor_ref
         trams = [mapa_tempo.TramMapa(
@@ -7099,15 +7127,14 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self.assertTrue(vr.aplica_tempo_trams(trams))
         vr.set_snap(on=True, divisio="qm_beats")
         vr.set_snap_beats([i * 0.5 for i in range(120)], [])
-        # L'últim pot quedar fraccionari també amb QM.
+        # L'Editor no consulta QM: N s'arredoneix al nombre enter habitual.
         self.assertTrue(vr.edita_tempo_guiat(0, num=7, den=4))
         self.assertEqual(vr.tempo_trams[0].compassos, "7/4")
-        self.assertAlmostEqual(vr.tempo_trams[0].n, 120.0 / 7.0, 6)
+        self.assertAlmostEqual(vr.tempo_trams[0].n, 17.0, 6)
         self.assertTrue(vr.aplica_tempo_trams(trams))
         self.assertTrue(vr.edita_tempo_guiat(0, num=4, den=4))
         self.assertEqual(vr.tempo_trams[0].n, 30.0)
-        self.assertFalse(vr.edita_tempo_guiat(0, bpm=100.0))
-        self.assertAlmostEqual(vr.tempo_trams[0].bpm, 120.0, 6)
+        self.assertTrue(vr.edita_tempo_guiat(0, bpm=100.0))
 
     def test_tap_mana_i_el_ultim_clip_pot_quedar_fraccionari(self):
         from app import mapa_tempo

@@ -5,6 +5,22 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Corregit — Eliminació abans de l'últim clip de tempo (2026-11-25)
+- Si el veí dret que absorbeix el buit és l'últim clip, conserva BPM, compàs i
+  unitat, i queda amb `N` fraccionari.
+- Ja no es recalcula a un compàs/BPM diferent ni el candau de BPM bloqueja una
+  eliminació que no canvia el BPM dels clips supervivents.
+- El candau compara només els clips que sobreviuen; els clips eliminats no
+  falsegen el canvi de BPM.
+
+### Canviat — Beats QM només als talls amb beats detectats (2026-11-25)
+- QM queda limitat als **Talls QM**: `+`, `Fin`, Afegeix/Parteix aquí, Partir
+  per la meitat i A–B.
+- Només s'activa amb Snap = Beats QM, snap encès i beats detectats.
+- Sense beats, estos talls usen la graella del mapa.
+- L'Editor, els drags, els `+1/-1`, els recalcs, les eliminacions, els diàlegs i
+  el TAP ja no consulten QM.
+
 ### Afegit — Arrossegar marcadors humans al timeline (2026-11-25)
 - Els marcadors humans es poden **moure arrossegant-los** des de la **franja
   de davall dels carrils** (també el regle de temps absolut): el punter canvia

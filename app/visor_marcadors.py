@@ -193,9 +193,10 @@ class MarcadorsMixin:
     def _parteix_tempo_nou(self, t, trams=None):
         """Retorna el mapa partit a `t` o `None` si no cal/possible.
 
-        Amb Snap QM usa el motor de candidats de `tall_qm`: beats per costat,
-        BPM/compàs/N i diàleg si hi ha més d'una opció. Sense QM conserva el
-        camí anterior. `trams` permet encadenar talls sense aplicar-los.
+        Amb Snap Beats QM **i beats detectats** usa el motor de candidats de
+        `tall_qm`: beats per costat, BPM/compàs/N i diàleg si hi ha més d'una
+        opció. Sense beats QM conserva el camí de graella. `trams` permet
+        encadenar talls sense aplicar-los.
         """
         base = self.tempo_trams if trams is None else trams
         trams = list(base or [])
@@ -227,32 +228,10 @@ class MarcadorsMixin:
                     "Tall QM: no hi ha cap combinació exacta per a este punt.")
                 return None
             return self._tria_opcions_tall_qm(trams, idx, costats)
-        if (getattr(self, "snap_on", False)
-                and getattr(self, "snap_mode", "") == "qm_beats"):
-            rapid = self._tall_simple_si_enter(t, trams)
-            if rapid is not None:
-                return rapid
-            from . import tall_qm
-            self._inicia_tall_qm()
-            try:
-                idx = next(i for i, tr in enumerate(trams)
-                           if float(tr[0]) + 1e-9 < float(t)
-                           < float(tr[1]) - 1e-9)
-            except StopIteration:
-                return None
-            costats = tall_qm.opcions_tall_graella(
-                trams, getattr(self, "tempo_map", None),
-                float(t), durada, self.referencia_tempo_a(t))
-            if costats is None:
-                self._cancel·la_tall_qm()
-                self.avis_editor(
-                    "Tall QM: no hi ha cap combinació vàlida amb la graella.")
-                return None
-            return self._tria_opcions_tall_qm(trams, idx, costats)
-        # Sense Snap QM: recalcula sempre els dos costats amb la referència
-        # del clip (com feia el «+» de v0.9.1). Així no queda una solució
-        # fraccionària ni s'accepta una partició pitjor només perquè ja era
-        # quasi sencera.
+        # Sense QM (o sense beats QM): recalcula sempre els dos costats amb la
+        # referència del clip (com feia el «+» de v0.9.1). Així no queda una
+        # solució fraccionària ni s'accepta una partició pitjor només perquè
+        # ja era quasi sencera.
         try:
             out = tempo_map.parteix_tram_marcador(
                 trams, float(t), durada, recalculca=True,
