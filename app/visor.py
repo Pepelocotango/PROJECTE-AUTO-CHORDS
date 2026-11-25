@@ -4563,7 +4563,7 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                             factor=factor,
                             den=getattr(self, "beat_type", 4),
                             mode=getattr(self, "metro_mode", "auto"),
-                            click_unit="auto",
+                            click_unit="pols",
                             beats=getattr(self, "qm_beats", None))
                 try:
                     proc.stdin.write(tros)

@@ -5,6 +5,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Canviat — Metrònom amb la unitat de pols explícita (2026-11-25)
+- El metrònom normal usa la unitat de pols de cada tram; si no encaixa amb el
+  compàs, cau al denominador. Així `6/8` amb `negra_punt` clica 2 cops per
+  compàs, no 6.
+
 ### Canviat — Inspector únic del clip de tempo (2026-11-25)
 - El diàleg del clip de tempo ara reuneix el mode **recalcul fix / mòbil**, els
   camps **BPM, compàs i N** amb candaus (màxim 2), unitat de pols i rubato.

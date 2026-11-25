@@ -3026,6 +3026,17 @@ def _max_run_zeros(data):
 
 
 class TestLoopContinu(unittest.TestCase):
+    def test_alimenta_metronom_usa_la_unitat_de_pols(self):
+        doble = _Doble(np.full(2000, 1000, dtype=np.int16), 1000)
+        doble.metro_on = True
+        proc = _FakeProc(10_000_000)
+        with patch.object(visor_mod.metronom, "mescla_metronom",
+                          side_effect=lambda mono, *a, **k: mono) as m:
+            Visor._alimenta(doble, proc, 0.0, 0)
+        self.assertTrue(m.called)
+        for crida in m.call_args_list:
+            self.assertEqual(crida.kwargs.get("click_unit"), "pols")
+
     def test_a_2x_el_fil_esgota_tota_la_canco(self):
         """A 2× el buffer dura la meitat: el fil ha de recórrer la cançó
         SENcera (abans es quedava a mig camí: índex de buffer mal calculat)."""

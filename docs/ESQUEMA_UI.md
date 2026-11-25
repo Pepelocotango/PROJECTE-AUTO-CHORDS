@@ -69,7 +69,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | — | `self.panell_xifrat` · `self.dock_xifrat` | **panell «Tipus d'acord»** (arrel · baix · 92 tipus · ▶ Escoltar · timbre) | `PanellXifrat` en un `QDockWidget` |
 | — | `self.tb_loop` · `self.tb_neteja_loop` · `self.tb_mut` | **loop** (icona `repeat-2`) · **neteja el loop** (icona `x`) · **mute** (icona `volume-x`) | `QPushButton` |
 | — | `self.tb_snap` · `self.cb_graella` | **Snap** (interruptor: encaixar a la graella) + **divisió del grid i del snap**: **Marcadors** · **Onsets** · **Beats QM** · Auto (zoom) · Negra (1/4) · Corxera (1/8) · Semicorxera (1/16) · Fusa (1/32) · **Treset de negra (2/3) · Treset de corxera (1/3) · Treset de semicorxera (1/6)** · **1 · 2 · 4 · 6 · 8 · 12 · 16 · 24 · 32 · 48 · 64 compassos**. El selector **força el grid** encara que el snap estigui apagat; «Auto» torna a manar pel zoom. **Marcadors** encaixa el cursor i les edicions al marcador humà més pròxim; **Onsets** fa el mateix amb els onsets detectats (si no n'hi ha, no inventa cap posició). **Beats QM** fa que el cursor, els clips i els talls (`+`/`Fin`/`Afegeix/Parteix`/`meitat`/`A–B`) s'encaixen a les línies de beats de QM; `0` només afecta l'estructura. Només s'aplica amb snap actiu, mode Beats QM i **beats detectats**; sense beats, els talls usen la graella del mapa. `M` respecta el Snap actiu. Si el tall `+` cau exactament en una línia de compàs i els dos costats queden amb `N` enter, s'aplica directament sense diàleg QM. Amb QM, si cau sobre un beat i l'esquerra queda a prop d'un `N` enter, també es resol directament; la cua final pot quedar fraccionària. Si l'esquerra té una única opció i la dreta és l'últim clip, el motor de talls aplica la cua fraccionària directament, conservant el BPM/compàs local. | `QPushButton` (checkable) · `QComboBox` |
-| — | `self.b_metro` · `self.vol_metro` · `self.cb_metro` | **metrònom** (icona `metronome`) · volum del clic · **patró** (Auto · Compàs · Temps · Grup · Beats QM · BPM percebuts · BPM interns). El clic per defecte segueix el **denominador** del compàs (`6/8` → 6 corxeres); la subdivisió és un control a part. Els accents de grup ixen de l’**agrupació de cada tram**: `6/8 = 3+3`, `5/8 = 5`, `7/8 = 7`, `12/8 = 3+3+3+3`… **BPM percebuts** clica la pols percebuda de cada tram i **BPM interns** clica negres (el BPM intern); tots dos sense accents | `QPushButton` · `QSlider` · `QComboBox` |
+| — | `self.b_metro` · `self.vol_metro` · `self.cb_metro` | **metrònom** (icona `metronome`) · volum del clic · **patró** (Auto · Compàs · Temps · Grup · Beats QM · BPM percebuts · BPM interns). El clic per defecte segueix la **unitat de pols explícita** del tram (`6/8` amb `negra_punt` → 2 clics); si no encaixa amb el compàs, cau al **denominador** (`6/8` → 6 corxeres). La subdivisió és un control a part. Els accents de grup ixen de l’**agrupació de cada tram**: `6/8 = 3+3`, `5/8 = 5`, `7/8 = 7`, `12/8 = 3+3+3+3`… **BPM percebuts** clica la pols percebuda de cada tram i **BPM interns** clica negres (el BPM intern); tots dos sense accents | `QPushButton` · `QSlider` · `QComboBox` |
 | — | `self.b_play_tb` | **play / pause** transport (icones `play` / `pause`) | `QPushButton` |
 | — | `self.cmb_vel_tb` · `visor.cmb_vel` | **velocitat de reproducció** (0,5 · 0,75 · 1 · 1,25 · 1,5 · 2 · 3×) amb el **to mantingut** (`ffmpeg atempo`); els dos selectors van sincronitzats per `velocitatCanviada` | `QComboBox` |
 | — | `self.barra` · `self._progres_analisi` | **barra de progrés** | `QProgressBar` (a la status) · `QProgressDialog` modal mentre s’analitza |
@@ -429,9 +429,10 @@ Per exemple, `4/4 N=14` → `7/4` deixa `N=8` i conserva el BPM. **`->`** aplica
 
 - Només en mode **BPM · compàs** (gris a Lliure).
 - Volum propi (60 % per defecte); el mute/volum de la cançó **no** l'afecta.
-- El clic per defecte segueix el **denominador del tram**: `6/8` clica 6
-  corxeres amb accents a 1 i 4. La **subdivisió** de grup és un control a
-  part. Accent de
+- El clic per defecte segueix la **unitat de pols explícita del tram**
+  (`6/8` amb `negra_punt` → 2 clics). Si no encaixa amb el compàs, usa el
+  **denominador** (`6/8` → 6 corxeres) amb accents a 1 i 4. La **subdivisió**
+  de grup és un control a part. Accent de
   compàs (temps 1) ≈ 1500 Hz; resta ≈ 1000 Hz.
 - **Patrons**: `Auto` (per defecte) = pols del tram + accents de compàs i grup; `Compàs` =
   només el primer temps; `Temps` = Compàs + Temps, sense accents de grup;

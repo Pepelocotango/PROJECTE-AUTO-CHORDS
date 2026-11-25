@@ -5,11 +5,11 @@ de fer servir un segon reproductor o un QTimer (que derivaria respecte a la
 cançó). Veure `app/visor.py` (_engega_des_de / _mono_bytes).
 
 La graella base és la del regle del visor: el beat és el **denominador** del
-compàs (`4/den` negres). La GUI usa `click_unit="auto"`: clica el
-**denominador** de cada tram i accentua els inicis de grup (`6/8` → 6
-corxeres amb accents a 1 i 4, `9/8` → 9, `12/8` → 12, `4/4` → 4 negres,
-`2/2` → 2 blanques). `click_unit="pols"` queda com a mode alternatiu per
-clicar només la unitat de pols del tram.
+compàs (`4/den` negres). La GUI usa `click_unit="pols"`: clica la unitat de
+pols explícita de cada tram si encaixa amb el compàs, i cau al **denominador**
+(`4/den`) si no. Així `6/8` amb `negra_punt` → 2 clics amb accents de grup, i
+`4/4` → 4 negres. `click_unit="auto"` continua disponible per clicar sempre el
+denominador.
 Els accents de grup ixen de `tempo_map.agrupacio_compas()`: `6/8` → `3+3`,
 `7/8` → `7`, `5/8` → `5`, `8/8` → `8`, etc.
 
@@ -178,10 +178,9 @@ def mescla_metronom(mono_bytes, sr, t_inici, bpm, bpb,
     `t_inici` segons de la cançó) i retorna els bytes int16 resultants.
 
     - `bpb` és el **numerador** del compàs i `den` el **denominador**. El beat
-      fa `(4/den) * 60/bpm` segons. La GUI usa `click_unit="auto"` i clica el
-      denominador (`12/8` → 12 corxeres); `click_unit="pols"` és el mode
-      alternatiu per clicar només la unitat de cada tram (`12/8` → 4 negres
-      amb punt).
+      fa `(4/den) * 60/bpm` segons. La GUI usa `click_unit="pols"`: clica la
+      unitat explícita de cada tram si encaixa (`12/8` amb `negra_punt` → 4
+      clics) i, si no, el denominador (`12/8` → 12 corxeres).
     - `mode`: `auto` (tots els temps + accents de compàs i grup), `compas`
       (només el primer temps), `temps` (tots els temps, sense accents de grup),
       `grup` (només compàs i inicis de grup en compassos compostos), `qm`
