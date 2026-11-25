@@ -296,10 +296,10 @@ normal pel que fa a camps, graella, validació, edició i exportació de dades.
 - BPM, N, compàs, agrupació, inici i fi són els mateixos camps que un tram
   normal i es poden editar directament.
 - La marca “Rubato” només afecta la partitura/exportació de notació.
-- Convertir a rubato o a normal només canvia `tipus`; no deriva BPM ni parteix
-  el clip.
-- Els rubatos **hereten la unitat del primer tram musical**; `beat_unit` és
-  un camp més i no canvia el flag `tipus`.
+- Convertir a rubato o a normal només canvia `tipus`; no deriva BPM, no canvia
+  compàs, N, `beat_unit` ni `agrupacio` i no parteix el clip.
+- El rubato es pot marcar o desmarcar en **qualsevol clip** (primer, interior,
+  últim o únic). No hereta cap camp del mapa.
 - Un projecte amb rubatos antics de seqüència es rebutja amb error clar.
 
 ### 13.8 Detecció i marcadors

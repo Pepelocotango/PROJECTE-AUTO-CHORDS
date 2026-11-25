@@ -5,6 +5,11 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Canviat — Eliminada l’acció de rubato per rang (2026-11-25)
+- Eliminada `crea_rubato_rang()` i l’acció «Marca el rang A–B com a rubato».
+- El rubato queda com una anotació d’un sol clip: només canvia `tipus` i
+  conserva BPM, compàs, N, unitat de pols i agrupació.
+
 ### Canviat — Metrònom amb la unitat de pols explícita (2026-11-25)
 - El metrònom normal usa la unitat de pols de cada tram; si no encaixa amb el
   compàs, cau al denominador. Així `6/8` amb `negra_punt` clica 2 cops per

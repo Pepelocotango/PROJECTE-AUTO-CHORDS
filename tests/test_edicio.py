@@ -1704,8 +1704,7 @@ class TestMenusParitat(_regla11_paritat___Base):
         # Accions EXCLUSIVES del carril ③ (correcció mètrica discreta, §4.C del
         # flux de tempo variable): no tenen sentit als clips d'acords/seccions.
         extres_tercera = {"compas_mes1", "compas_menys1", "compas_x2",
-                          "compas_div2", "unitat", "rubato", "normal",
-                          "rubato_rang"}
+                          "compas_div2", "unitat", "rubato", "normal"}
         base_claus, base_actiu = jocs["TL acords"]
         self.assertEqual(base_claus, [
             "afegeix", "duplica", "elimina", "reanomena", "parteix", "meitat",
@@ -1721,7 +1720,7 @@ class TestMenusParitat(_regla11_paritat___Base):
                 self.assertEqual([c for c in claus if c in extres_tercera],
                                  ["compas_mes1", "compas_menys1",
                                   "compas_x2", "compas_div2", "unitat",
-                                  "rubato", "normal", "rubato_rang"])
+                                  "rubato", "normal"])
                 base_actiu = [e for c, e in zip(claus, actiu)
                               if c not in extres_tercera]
             else:
@@ -1749,7 +1748,7 @@ class TestMenusParitat(_regla11_paritat___Base):
 
     def test_els_menus_tenen_les_tretze_accions_esperades(self):
         """La llista blanca de les 13 accions + les 4 de compassos, la
-        unitat i les 3 de rubato del ③. Canviar-la és una decisió (regla #11).
+        unitat i les 2 de rubato del ③. Canviar-la és una decisió (regla #11).
         """
         v = _regla11_paritat___visor()
         v.aplica_tempo_trams([(0.0, 10.0, 120.0, 4, 4),
@@ -1765,7 +1764,7 @@ class TestMenusParitat(_regla11_paritat___Base):
             "Afegir 1 compàs (+1)", "Restar 1 compàs (−1)",
             "Doblar compassos (×2)", "Dividir compassos (÷2)",
             "Canvia unitat de pols…", "Converteix a rubato",
-            "Converteix a normal", "Marca el rang A–B com a rubato",
+            "Converteix a normal",
             "Retalla", "Copia", "Enganxa", "Loop a la selecció",
         ])
 
@@ -1799,12 +1798,11 @@ class TestMenusParitat(_regla11_paritat___Base):
         extres = {"Afegir 1 compàs (+1)", "Restar 1 compàs (−1)",
                   "Doblar compassos (×2)", "Dividir compassos (÷2)",
                   "Canvia unitat de pols…",
-                  "Converteix a rubato", "Converteix a normal",
-                  "Marca el rang A–B com a rubato"}
+                  "Converteix a rubato", "Converteix a normal"}
         tp_comu = [x for x in tp if x[0] not in extres]
         self.assertEqual(len(ac), len(se))
-        self.assertEqual(len(ac), len(tp) - 8,
-                         f"③ ha de tindre 8 accions més (compassos+unitat+rubato):\n"
+        self.assertEqual(len(ac), len(tp) - 7,
+                         f"③ ha de tindre 7 accions més (compassos+unitat+rubato):\n"
                          f"④/⑤={ac}\n③={tp}")
         self.assertEqual({x[0] for x in tp if x[0] in extres}, extres)
         self.assertEqual([e for _t, e in ac], [e for _t, e in se])
@@ -4520,6 +4518,28 @@ class TestRubatoAccions(_undo_temps___Base):
         self.assertAlmostEqual(normal.bpm, 120.0, places=6)
         self.assertAlmostEqual(normal.ini, 10.0)
         self.assertAlmostEqual(normal.fi, 30.0)
+        w.close()
+
+    def test_converteix_rubato_conserva_beat_unit_i_agrupacio(self):
+        w, v = self._prepara()
+        v.tempo_trams = [
+            mapa_tempo.TramMapa(0.0, 10.0, 120.0, "normal", "4/4", "",
+                                None, "negra"),
+            mapa_tempo.TramMapa(10.0, 30.0, 120.0, "normal", "7/8",
+                                "2+2+3", None, "corxera"),
+        ]
+        v._actualitza_temps()
+        abans = v.tempo_trams[1]
+        self.assertTrue(v.converteix_rubato(1))
+        rub = v.tempo_trams[1]
+        self.assertEqual((rub.tipus, rub.beat_unit, rub.agrupacio),
+                         ("rubato", "corxera", "2+2+3"))
+        self.assertEqual((rub.bpm, rub.compassos, rub.n),
+                         (abans.bpm, abans.compassos, abans.n))
+        self.assertTrue(v.converteix_normal(1))
+        normal = v.tempo_trams[1]
+        self.assertEqual((normal.beat_unit, normal.agrupacio),
+                         ("corxera", "2+2+3"))
         w.close()
 
     def test_converteix_rubato_nomes_canvia_el_flag(self):

@@ -1130,19 +1130,6 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
 
     # ---- accions d'edició des del menú (reutilitzen la lògica existent) ----
 
-    def _marca_rubato_rang(self):
-        """Marca el rang A–B com a rubato (fase 3.2)."""
-        vr = getattr(self, "visor_ref", None)
-        if vr is None:
-            self._missatge_info("Obre un tema abans de marcar un rubato.")
-            return
-        loop = vr._loop_vals()
-        if loop is None:
-            self._missatge_info(
-                "Marca primer un rang A–B (arrossega el regle o usa A/B).")
-            return
-        vr.crea_rubato_rang(*loop)
-
     def _converteix_rubato_ui(self):
         """Converteix el tram de tempo seleccionat a rubato."""
         vr = getattr(self, "visor_ref", None)

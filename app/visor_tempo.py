@@ -1418,59 +1418,6 @@ class TempoMixin:
     # ---------------- RUBATO (fase 3.2) ----------------
     _EPS_RUBATO = 1e-6
 
-    def crea_rubato_rang(self, ini, fi):
-        """Partix el mapa als extrems del rang i marca els trams com a rubato."""
-        durada = self._durada_wav()
-        try:
-            ini, fi = float(ini), float(fi)
-        except (TypeError, ValueError):
-            self.avis_editor("El rang del rubato no és vàlid.")
-            return False
-        if not (0.0 <= ini < fi <= durada + self._EPS_RUBATO):
-            self.avis_editor("El rang del rubato ha de caure dins la WAV.")
-            return False
-        fi = min(fi, durada)
-        trams = self._trams_map()
-        if not trams:
-            return False
-        for tall in (ini, fi):
-            if tall <= tempo_map.TOL or tall >= durada - tempo_map.TOL:
-                continue
-            try:
-                trams = tempo_map.parteix_tram_marcador(
-                    trams, tall, durada, permissiu=True,
-                    permet_ultim_fraccionari=True)
-            except ValueError as e:
-                self.avis_editor(f"Rubato: {e}")
-                return False
-        nous = []
-        tocat = False
-        for tr in trams:
-            dins = (float(tr[0]) >= ini - tempo_map.TOL
-                    and float(tr[1]) <= fi + tempo_map.TOL)
-            if dins:
-                tocat = True
-                nous.append(mapa_tempo.TramMapa(
-                    float(tr[0]), float(tr[1]), float(tr[2]), "rubato",
-                    f"{int(tr[3])}/{int(tr[4])}", "",
-                    getattr(tr, "n", None), tr.beat_unit))
-            else:
-                nous.append(mapa_tempo.TramMapa(
-                    float(tr[0]), float(tr[1]), float(tr[2]),
-                    getattr(tr, "tipus", "normal"),
-                    f"{int(tr[3])}/{int(tr[4])}",
-                    getattr(tr, "agrupacio", ""),
-                    getattr(tr, "n", None), tr.beat_unit))
-        if not tocat:
-            self.avis_editor("El rang no conté cap tram de tempo.")
-            return False
-        self._undo_marca()
-        ok = self.aplica_tempo_trams(nous, forcat=True)
-        self._undo_commit()
-        if ok:
-            self.log(f"rubato: rang {ini:.3f}–{fi:.3f}s marcat")
-        return bool(ok)
-
     def converteix_rubato(self, idx):
         """Marca el tram com a rubato conservant tots els camps."""
         trams = self._trams_map()

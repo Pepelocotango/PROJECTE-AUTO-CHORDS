@@ -92,7 +92,7 @@ Títol: «**Auto Chords**» — o «**<nom del projecte> — Auto Chords**» qua
 | **Edita** | Desfer (Ctrl+Z) · Refer (Ctrl+Y) · Refer (alternatiu) · Retalla (Ctrl+X) · Copia (Ctrl+C) · Enganxa (Ctrl+V) · Afegeix acord… · Afegeix secció… · Parteix l'acord al cursor… · Parteix la secció al cursor… · Afegeix tram de tempo/compàs… · Parteix el tram al cursor… · **Parteix el tempo al cursor** (Fin) · **Parteix l'estructura al cursor** (0) · **Parteix tempo i estructura al cursor** (+) · Elimina element (Del) · Duplica element (Ctrl+D) · Reanomena element (F2) · Troba i reemplaça… (Ctrl+H) · **Quadra els extrems de la WAV…** · Paràmetres… · Retard global de reproducció… |
 | **Selecciona** | Selecciona l'acord del cursor · Selecciona la secció del cursor · Selecciona el tram de tempo/compàs del cursor · Loop a la selecció (L) · Marca inici de loop (A) (Ctrl+[) · Marca fi de loop (B) (Ctrl+]) · Neteja el loop · Activa/desactiva loop · Eina de marc (rubber-band) |
 | **Visualitza** | Zoom + (Ctrl++) · Zoom − (Ctrl+−) · Zoom total (Ctrl+0) · Mostra el log · Mostra els tipus d'acord · Metrònom |
-| **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza beats, downbeats i BPM (F7)** · **Beats del clip** (QM només al tram de tempo seleccionat)· Quantitza el model… · **Quantitza BPM** (Sense decimals · 1 decimal · 2 decimals) · Marca el rang A–B com a rubato · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (M) · **Marca l'inici de l'anàlisi** · **Marca el final de l'anàlisi** · Esborra l'últim marcador · Inclou estructura |
+| **Analitza** | Analitza l'àudio (acords + estructura) (F5) · **Analitza només els acords… (F6)** · **Analitza acords al rang A–B…** · **Analitza beats, downbeats i BPM (F7)** · **Beats del clip** (QM només al tram de tempo seleccionat)· Quantitza el model… · **Quantitza BPM** (Sense decimals · 1 decimal · 2 decimals) · Converteix el tram de tempo a rubato · Converteix el rubato a normal · Detecta el tempo per trams… · Detecta el mapa de tempo (per beats)… · Afegeix un marcador (M) · **Marca l'inici de l'anàlisi** · **Marca el final de l'anàlisi** · Esborra l'últim marcador · Inclou estructura |
 | **Ajuda** | Dreceres de teclat · **Configura les dreceres…** · Obre la carpeta del registre · Quant a Auto Chords |
 
 ### Desa i exporta-ho tot… (Ctrl+Shift+E)
@@ -416,14 +416,13 @@ Per exemple, `4/4 N=14` → `7/4` deixa `N=8` i conserva el BPM. **`->`** aplica
 
 ### Rubato
 
-- Es crea amb **`Analitza ▸ Marca el rang A–B com a rubato`**, **`Converteix
-  el tram de tempo a rubato`** o les mateixes accions del menú contextual del
-  carril ③.
-- El clip de rubato té **inici i fi en segons invariables**, un **sol compàs**
-  i la **unitat heretada del primer tram musical**; a l’Editor els camps són
-  editables com en un tram normal (el rubato només és un flag de notació).
+- Es marca o desmarca amb **`Converteix el tram de tempo a rubato`**, **`Converteix
+  el rubato a normal`** o les mateixes accions del menú contextual del carril ③.
+- El rubato és només una anotació: conserva **BPM, compàs, N, unitat de pols i
+  agrupació** del clip. No hereta res ni canvia cap camp; només canvia `tipus`.
 - La graella del rubato és la mateixa que la d’un tram normal. El rubato
-  només canvia la notació; no genera cap fitxer d’aproximació.
+  només canvia la notació; no genera cap fitxer d’aproximació ni cap operació
+  de mapa.
 
 ## 4. Metrònom 🥁
 

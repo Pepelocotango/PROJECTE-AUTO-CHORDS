@@ -2413,8 +2413,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             menu.addSeparator()
             act("rubato", "Converteix a rubato", te and not es_rub)
             act("normal", "Converteix a normal", te and es_rub)
-            act("rubato_rang", "Marca el rang A–B com a rubato",
-                loop is not None)
         menu.addSeparator()
         act("retalla", "Retalla", te)
         act("copia", "Copia", te)
@@ -2452,13 +2450,6 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
             return self.converteix_rubato(idx)
         if clau == "normal":
             return self.converteix_normal(idx)
-        if clau == "rubato_rang":
-            loop = self._loop_vals()
-            if loop is None:
-                self.avis_editor(
-                    "Marca abans un rang A–B (o arrossega el regle).")
-                return False
-            return self.crea_rubato_rang(*loop)
         mapa = {
             "afegeix": ("afegeix", {"t": float(t)}),
             "duplica": ("duplica", {}),
