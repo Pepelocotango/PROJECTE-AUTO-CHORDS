@@ -2979,6 +2979,190 @@ class ExportPipelineTests(unittest.TestCase):
             self.assertTrue(any(abs(t - 0.2) < 0.03 for t in onsets))
             self.assertTrue(any(abs(t - 0.6) < 0.03 for t in onsets))
 
+    def test_onsets_ab_afegeix_marge_i_detector_base_es_estricte(self):
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "marge.wav")
+            sr = 44100
+            vals = [0] * (sr * 2)
+            for t in (0.49, 0.80):
+                i = int(t * sr)
+                for j in range(200):
+                    vals[i + j] = int(20000 * (1 - j / 200))
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(sr)
+                w.writeframes(struct.pack("<%dh" % len(vals), *vals))
+            estrictes = tempo.detecta_onsets(
+                wav, sensibilitat=50, inici=0.50, fi=0.90)
+            self.assertTrue(any(abs(t - 0.80) < 0.03 for t in estrictes))
+            self.assertFalse(any(abs(t - 0.49) < 0.03 for t in estrictes))
+            amb_marge = tempo.onsets_ab(
+                wav, 0.50, 0.90, marge=0.03, sensibilitat=50)
+            self.assertTrue(any(abs(t - 0.49) < 0.03 for t in amb_marge))
+            self.assertTrue(any(abs(t - 0.80) < 0.03 for t in amb_marge))
+
+    def test_proposa_onsets_ordena_per_proximitat(self):
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "proposta.wav")
+            sr = 44100
+            vals = [0] * (sr * 2)
+            for t in (0.8, 0.95, 1.0):
+                i = int(t * sr)
+                for j in range(200):
+                    vals[i + j] = int(20000 * (1 - j / 200))
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(sr)
+                w.writeframes(struct.pack("<%dh" % len(vals), *vals))
+            res = tempo.proposa_onsets(wav, 0.94, finestra=0.2, n=3)
+            self.assertTrue(res)
+            self.assertTrue(abs(res[0] - 0.95) < 0.03)
+            self.assertLessEqual(len(res), 3)
+
+    def test_proposa_mapa_bpm_calcula_compassos(self):
+        from app import tempo
+        r = tempo.proposa_mapa_bpm(8.0, 120.0, 4, 4)
+        self.assertEqual(r["n_enter"], 4)
+        self.assertTrue(r["n_enter_valid"])
+        self.assertAlmostEqual(r["bpm_ajust"], 120.0, 6)
+        self.assertIsNone(tempo.proposa_mapa_bpm(0.0, 120.0, 4, 4))
+
+    def test_transiente_minim_rebutja_soroll_i_conserva_clics(self):
+        from app import tempo
+        import random
+        random.seed(7)
+        with tempfile.TemporaryDirectory() as td:
+            soroll = os.path.join(td, "soroll.wav")
+            clic = os.path.join(td, "clic.wav")
+            sr = 44100
+            vals = [random.randint(-300, 300) for _ in range(sr * 2)]
+            with wave.open(soroll, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(sr)
+                w.writeframes(struct.pack("<%dh" % len(vals), *vals))
+            vals = [0] * (sr * 2)
+            i = int(0.5 * sr)
+            for j in range(200):
+                vals[i + j] = int(20000 * (1 - j / 200))
+            with wave.open(clic, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(sr)
+                w.writeframes(struct.pack("<%dh" % len(vals), *vals))
+            self.assertEqual(
+                tempo.detecta_onsets(soroll, transiente_db=5.0), [])
+            ons = tempo.detecta_onsets(clic, transiente_db=5.0)
+            self.assertTrue(any(abs(t - 0.5) < 0.03 for t in ons))
+
+    def test_proposa_onsets_accepta_prominencia(self):
+        from app import tempo
+        import random
+        random.seed(7)
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "soroll.wav")
+            sr = 44100
+            vals = [random.randint(-300, 300) for _ in range(sr * 2)]
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(sr)
+                w.writeframes(struct.pack("<%dh" % len(vals), *vals))
+            self.assertEqual(
+                tempo.proposa_onsets(wav, 0.5, prominencia_db=8.0), [])
+
+    def test_detecta_onsets_rebutja_pcm24(self):
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "pcm24.wav")
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(3)
+                w.setframerate(44100)
+                w.writeframes(b"\x00\x00\x00" * 100)
+            with self.assertRaises(ValueError):
+                tempo.detecta_onsets(wav)
+
+    def test_detecta_onsets_estereo_en_oposicio_de_fase(self):
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "oposicio.wav")
+            sr = 44100
+            vals = []
+            for n in range(sr * 2):
+                v = 0
+                for t in (0.3, 1.1):
+                    i = int(t * sr)
+                    if i <= n < i + 200:
+                        v = int(20000 * (1 - (n - i) / 200))
+                vals.extend((v, -v))
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(2)
+                w.setsampwidth(2)
+                w.setframerate(sr)
+                w.writeframes(struct.pack("<%dh" % len(vals), *vals))
+            onsets = tempo.detecta_onsets(wav, sensibilitat=50)
+            self.assertTrue(any(abs(t - 0.3) < 0.03 for t in onsets))
+            self.assertTrue(any(abs(t - 1.1) < 0.03 for t in onsets))
+
+    def test_diagnostica_estabilitat_amb_clics_constants(self):
+        from app import tempo
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "estable.wav")
+            sr = 44100
+            vals = [0] * (sr * 5)
+            for k in range(9):
+                t = 0.2 + k * 0.5
+                i = int(t * sr)
+                for j in range(200):
+                    vals[i + j] = int(20000 * (1 - j / 200))
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(sr)
+                w.writeframes(struct.pack("<%dh" % len(vals), *vals))
+            res = tempo.diagnostica_estabilitat(
+                wav, 0.1, 4.5, bpm=120.0, t_ancla=0.2)
+            self.assertEqual(res["estat"], "ESTABLE")
+            self.assertAlmostEqual(res["bpm"], 120.0, 3)
+            self.assertLessEqual(res["e_max"], 0.020)
+            self.assertIsNotNone(res["t0"])
+            self.assertLessEqual(abs(res["gap"]), 0.020)
+
+    def test_prominencia_minima_rebutja_soroll(self):
+        from app import tempo
+        import random
+        random.seed(7)
+        with tempfile.TemporaryDirectory() as td:
+            wav = os.path.join(td, "soroll.wav")
+            sr = 44100
+            vals = [random.randint(-300, 300) for _ in range(sr * 2)]
+            with wave.open(wav, "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(sr)
+                w.writeframes(struct.pack("<%dh" % len(vals), *vals))
+            sense = tempo.detecta_onsets(
+                wav, sensibilitat=50, prominencia_db=8.0)
+            self.assertEqual(sense, [])
+
+    def test_rang_analisi_dels_marcadors(self):
+        from app import marcadors as M
+        tipus = {1.0: "inici_analisi", 2.0: "final_analisi",
+                 3.0: "marcador"}
+        self.assertEqual(M.rang_analisi([1.0, 2.0, 3.0], tipus, 10.0),
+                         (1.0, 2.0))
+        self.assertIsNone(M.rang_analisi([1.0], {1.0: "inici_analisi"}, 10.0))
+        self.assertIsNone(M.rang_analisi([2.0, 1.0], {
+            1.0: "final_analisi", 2.0: "inici_analisi"}, 10.0))
+        self.assertTrue(M.es_tipus_valid("inici_analisi"))
+        self.assertTrue(M.es_tipus_valid("final_analisi"))
+        self.assertFalse(M.es_tipus_valid("desconegut"))
+
     def test_onsets_loop_marca_nomes_els_onsets_del_rang(self):
         from app import analisi_ui
         app = app_main.QApplication.instance() or app_main.QApplication([])
@@ -2998,24 +3182,26 @@ class ExportPipelineTests(unittest.TestCase):
             vr.qm_downbeats = [1.0, 3.0, 10.0]
             vist = {}
 
-            def _detecta(ruta, **kw):
+            def _detecta(ruta, a, b, **kw):
                 vist.update(kw)
-                return [1.0, 2.1, 3.0, 4.2]
+                vist["a"], vist["b"] = a, b
+                return [1.98, 2.1, 3.0, 4.2]
 
-            with patch.object(analisi_ui.tempo_mod, "detecta_onsets", _detecta):
+            with patch.object(analisi_ui.tempo_mod, "onsets_ab", _detecta):
                 window._analitza_onsets_loop()
-            self.assertEqual(vist.get("inici"), 2.0)
-            self.assertEqual(vist.get("fi"), 4.0)
+            self.assertEqual(vist.get("a"), 2.0)
+            self.assertEqual(vist.get("b"), 4.0)
+            self.assertEqual(vist.get("marge"), 0.03)
             self.assertEqual(vist.get("min_sep"), 0.05)
             self.assertTrue(vist.get("refina"))
             # Capes independents: els onsets no toquen beats ni downbeats.
             self.assertEqual(vr.qm_beats, [1.0, 10.0])
             self.assertEqual(vr.qm_downbeats, [1.0, 3.0, 10.0])
-            self.assertEqual(vr.qm_onsets, [2.1, 3.0])
+            self.assertEqual(vr.qm_onsets, [1.98, 2.1, 3.0])
             # Generar beats tampoc no ha d'esborrar els onsets.
             window._posa_beats_analisi(vr, [1.0, 10.0],
                                        [1.0, 3.0, 10.0])
-            self.assertEqual(vr.qm_onsets, [2.1, 3.0])
+            self.assertEqual(vr.qm_onsets, [1.98, 2.1, 3.0])
             window.close()
         app.quit()
 

@@ -662,10 +662,16 @@ class AnalisiMixin:
             f"sensibilitat {sens:.0f}/100…")
         self._obre_progres("Detectant onsets del loop A–B…", 0)
         QApplication.setOverrideCursor(Qt.WaitCursor)
+        marge = 0.03
+        prom = float(cfg.get("prominencia_db", 0.0) or 0.0)
+        trans = float(cfg.get("transiente_db", 0.0) or 0.0)
+        kw_prom = {"prominencia_db": prom if prom > 0 else None}
+        if trans > 0:
+            kw_prom["transiente_db"] = trans
         try:
-            onsets = tempo_mod.detecta_onsets(
-                wav, log=self.registra, sensibilitat=sens,
-                inici=ini, fi=fi, min_sep=0.05, refina=True)
+            onsets = tempo_mod.onsets_ab(
+                wav, ini, fi, marge=marge, log=self.registra,
+                sensibilitat=sens, min_sep=0.05, refina=True, **kw_prom)
         except Exception as e:  # noqa: BLE001
             self.registra(f"Onsets A–B ERROR: {e}")
             self.avisa_crit(titol, f"No s'han pogut detectar onsets: {e}")
@@ -674,7 +680,7 @@ class AnalisiMixin:
             QApplication.restoreOverrideCursor()
             self._tanca_progres()
         locals_b = [float(t) for t in onsets
-                    if ini - 1e-9 <= float(t) < fi - 1e-9]
+                    if ini - marge - 1e-9 <= float(t) < fi - 1e-9]
         if not locals_b:
             self.avisa_info(titol,
                             "No s'ha detectat cap onset dins del loop A–B.")
@@ -691,7 +697,9 @@ class AnalisiMixin:
             "beat_unit": vr.unitat_objectiu(),
             "onsets": locals_b,
             "rang": [ini, fi],
-            "parametre": {"min_sep": 0.05},
+            "parametre": {"min_sep": 0.05, "marge_inici": marge,
+                          "prominencia_db": prom,
+                          "transiente_db": trans},
         }
         self._marca_dirty()
         if self.projecte is not None:
@@ -705,8 +713,8 @@ class AnalisiMixin:
             except OSError as e:
                 self.registra(f"onsets A–B: no s'han pogut desar ({e})")
         self.registra(
-            f"{len(locals_b)} onsets dins el loop A–B "
-            f"({ini:.3f}–{fi:.3f}s), sense BPM")
+            f"{len(locals_b)} onsets al loop A–B "
+            f"({ini:.3f}–{fi:.3f}s, marge {marge:.2f}s), sense BPM")
         self._missatge_info(f"{len(locals_b)} onsets al loop A–B")
 
     def _analitza_bpm(self):

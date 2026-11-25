@@ -50,9 +50,9 @@ PROJECTE AUTO CHORDS/
 │       ├── build-windows.yml  🟢  # Windows x64: ZIP portable
 │       ├── qualitat.yml       🟢  # Fuzzer i proves sintètiques (no bloquejant)
 │       └── release.yml        🟢  # Release idempotent amb els últims artefactes verds
-├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (2 fitxers)
-│   ├── AUDITORIA_CODI_I_DOCS_2026-11-17.md 🟢
-│   └── PROPOSTA_DETECCIO_BPM.md           🟢
+├── 00PER FER/                     🟢  # Plans, auditories i instruccions pendents (14 fitxers)
+│   ├── PROPOSTA_MAPA_TEMPS_ROBUST.md 🟢
+│   └── banc_onsets/                  🟢  # (11 fitxers)
 ├── app/                           🟢  # Codi de l'aplicació (PyQt5) (81 fitxers)
 │   ├── __init__.py               🟢  # Auto Chords — paquet de l'aplicació.
 │   ├── acord_audio.py            🟢  # Àudio per ESCOLTAR un tipus d'acord — piano elèctric sintetitzat (numpy pur).
@@ -67,7 +67,7 @@ PROJECTE AUTO CHORDS/
 │   ├── dialeg_analitza_bpm.py    🟢  # Diàleg d'anàlisi de BPM/beats.
 │   ├── dialeg_canvi_unitat.py    🟢  # Canvi explícit d'unitat de pols (clip).
 │   ├── dialeg_dreceres.py        🟢  # —
-│   ├── dialeg_guia_rapida.py     🟢  # Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas.
+│   ├── dialeg_guia_rapida.py     🟢  # Guia ràpida d'«Anàlisi guiat» — informació i accions assistides.
 │   ├── dialeg_opcions.py         🟢  # Diàleg d'opcions d'autodetecció (BPM/acords/estructura).
 │   ├── dialeg_quadratura.py      🟢  # Diàleg per quadrar els extrems de la còpia WAV a compassos sencers.
 │   ├── dialeg_quantitza.py       🟢  # Diàleg de quantització a la graella.

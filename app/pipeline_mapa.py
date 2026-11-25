@@ -100,7 +100,8 @@ def llegeix_marcadors_tipus(carpeta):
                     continue
                 tipus = parts[1].strip() if len(parts) > 1 else "seccio"
                 if tipus not in ("compas", "seccio", "marcador",
-                                 "inici", "final"):
+                                 "inici", "final", "inici_analisi",
+                                 "final_analisi"):
                     tipus = "marcador"
                 out[round(t, 6)] = tipus
     except OSError:

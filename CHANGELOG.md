@@ -5,6 +5,89 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Afegit — Marcadors d'anàlisi independents (2026-11-24)
+- Nous tipus de marcador **`inici_analisi`** i **`final_analisi`**.
+- Nous accents **Analitza ▸ Marca l'inici de l'anàlisi** i **Marca el final de
+  l'anàlisi**; no tallen clips ni modifiquen el mapa.
+- Es desen a `marcadors.csv` i s'etiqueten al timeline.
+- Nova funció `marcadors.rang_analisi` per obtindre el rang sense tocar el
+  model de tempo.
+- Nova funció `tempo.proposa_onsets` i botons **Proposa inici** / **Proposa
+  final** dins la **Guia ràpida**; proposen candidats i l'usuari tria.
+- Nou botó **Proposa BPM** dins la **Guia ràpida**: usa el rang
+  `inici_analisi`/`final_analisi` i mostra fins a 3 candidats de BPM; no aplica
+  res automàticament.
+- Nou botó **Comprova estabilitat** i funció `tempo.diagnostica_estabilitat`:
+  ajusta un BPM constant als onsets del rang i mostra `ESTABLE` o
+  `ESTABLE AMB RESERVA` amb `e_max`, `e_final`, gap i inliers; no aplica res.
+- El diagnòstic calcula el **gap** entre el marcador d'inici i la graella
+  ajustada; si supera 20 ms, la Guia ho avisa.
+- Nova funció `tempo.proposa_mapa_bpm` i botó **Proposa mapa** a la Guia:
+  mostra N, BPM ajustat i si N és enter; no aplica cap mapa.
+- Nou botó **Aplica BPM** a la Guia: aplica el BPM triat amb confirmació. Si
+  hi ha un clip de tempo seleccionat, l’aplica a eixe clip sense moure
+  fronteres; si no, avisa que substituirà el mapa per un sol clip.
+
+### Afegit — Proposta i aplicació de mapa des de la Guia (2026-11-24)
+- La Guia ràpida proposa un mapa d'un sol BPM per al rang d'anàlisi.
+- Si ja hi ha mapa, substituïx només els clips del rang i conserva els de
+  fora; si els marcadors no cauen en una frontera, rebutja la proposta.
+- Nou botó **Aplica mapa**, amb confirmació i un sol pas de desfer.
+- Sense mapa, proposa un clip de tota la WAV.
+- Tests de la proposta, preservació i rebuig de rangs no alineats.
+
+### Afegit — Transitori mínim a les opcions de Beats/Onsets (2026-11-24)
+- El diàleg «Analitza BPM» incorpora **Transitori mínim (dB)**.
+- Les propostes de la Guia i els onsets A–B el passen al detector quan és > 0.
+- Es desa amb la resta d'opcions de beats; 0 = desactivat.
+
+### Afegit — Gate de transitori opcional als onsets (2026-11-24)
+- `detecta_onsets` accepta `transiente_db`: compara el RMS de 20 ms abans i
+  després del candidat.
+- Permet descartar soroll, tons sostinguts i cues sense atac.
+- És opcional i no canvia el resultat per defecte.
+- Test amb soroll i clic.
+
+### Afegit — Prominència a les propostes de la Guia (2026-11-24)
+- `tempo.proposa_onsets` accepta `prominencia_db`.
+- La Guia ràpida aplica la prominència configurada a **Proposa inici** i
+  **Proposa final**.
+
+### Afegit — Prominència configurable a Onsets A–B (2026-11-24)
+- El diàleg d'anàlisi de beats incorpora **Prominència mínima (dB)**.
+- `Onsets A–B` la passa a `onsets_ab`; 0 = desactivada.
+- Es desa amb les opcions de beats i amb el resultat de l'anàlisi.
+
+### Afegit — Prominència mínima opcional als onsets (2026-11-24)
+- `detecta_onsets` i `onsets_ab` accepten `prominencia_db` (opcional).
+- El filtre compara el pic amb el percentil 90 del flux; permet descartar
+  soroll o tons sostinguts.
+- Test de regressió amb soroll blanc i llindar de 8 dB.
+
+### Corregit — Rebuig explícit de float32 als onsets (2026-11-24)
+- La comprovació de PCM16 es fa abans d'obrir el contingut amb `wave`.
+- Un WAV float32 o un contenidor no suportat dona un error clar, no una
+  llista buida silenciosa.
+
+### Corregit — Format PCM16 explícit als onsets (2026-11-24)
+- El detector d'onsets rebutja explícitament WAV que no siguen PCM16.
+- `detecta_onsets` ja no convertix un error de format en una llista buida.
+- Test de regressió amb un WAV PCM24.
+
+### Corregit — Estèreo en oposició de fase als onsets (2026-11-24)
+- L'envolupant d'onsets passa a mono amb **màxim del valor absolut dels
+  canals**, no amb la mitjana. Un senyal `L = −R` ja no desapareix.
+- Test de regressió amb dos clics en oposició de fase.
+
+### Canviat — Onsets A–B amb context i marge (2026-11-24)
+- `tempo.detecta_onsets` llig **50 ms de context previ** per tindre terra de
+  soroll i refinar l'atac; el resultat continua filtrat estrictament dins
+  `[inici, fi)`.
+- Nova funció pura **`tempo.onsets_ab`**: inclou els onsets fins a **30 ms
+  abans d'A**, perquè un atac confirmat amb snap no desaparega.
+- **Onsets A–B** usa eixa funció; la resta de beats i downbeats no es toquen.
+- El paràmetre `marge_inici` es desa amb l'anàlisi d'onsets.
+
 ### Canviat — Drag dels clips de tempo (2026-11-22)
 - El **cos** d’un tram de tempo **interior** mou el bloc sencer: conserva
   durada, BPM, compàs i `N`. Els veïns dret i esquerre es recalculen.

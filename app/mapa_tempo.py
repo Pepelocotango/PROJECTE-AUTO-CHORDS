@@ -465,6 +465,66 @@ def normalitza_trams_map(trams, durada, log=None, fusiona=False,
     return net, avisos
 
 
+def proposa_mapa_rang(trams, inici, fi, bpm, num, den, durada, *,
+                     beat_unit=None, agrupacio="", tipus="normal",
+                     tolerancia_frontera=1e-3):
+    """Proposa un mapa d'un sol BPM per al rang d'anàlisi.
+
+    Si el mapa és buit, proposa un sol clip de `0` a la WAV. Si ja hi ha mapa,
+    només substituïx els clips que cauen dins del rang i **preserva els de
+    fora**, però exigix que `inici` i `fi` coincidisquen amb fronteres
+    existents (fail closed: no parteix clips en silenci).
+
+    Retorna `(trams, avisos)` amb `TramMapa` normalitzats. No aplica res.
+    """
+    from app import tempo
+
+    durada = float(durada or 0.0)
+    inici = max(0.0, min(float(inici), durada))
+    fi = max(0.0, min(float(fi), durada))
+    if durada <= 0 or fi <= inici:
+        raise ValueError("El rang d'anàlisi no és vàlid")
+    if not (limits.BPM_MIN <= float(bpm) <= limits.BPM_MAX):
+        raise ValueError("El BPM proposat no és vàlid")
+    resum = tempo.proposa_mapa_bpm(fi - inici, bpm, num, den)
+    if not resum:
+        raise ValueError("No s'ha pogut calcular el mapa del rang")
+
+    actuals = [des_de_tupla(t) for t in (trams or ())]
+    if not actuals:
+        proposta = [TramMapa(0.0, durada, float(bpm), tipus,
+                             f"{int(num)}/{int(den)}", agrupacio, None,
+                             beat_unit)]
+        return normalitza_trams_map(
+            proposta, durada, permet_ultim_fraccionari=True)
+
+    tol = max(0.0, float(tolerancia_frontera))
+    fronteres = [0.0, durada]
+    for t in actuals:
+        fronteres.extend((float(t.ini), float(t.fi)))
+
+    def _encaixa(x):
+        return min(fronteres, key=lambda b: abs(float(x) - float(b)))
+
+    a = _encaixa(inici)
+    b = _encaixa(fi)
+    if abs(a - inici) > tol or abs(b - fi) > tol:
+        raise ValueError(
+            "Els marcadors d'anàlisi han de coincidir amb una frontera del "
+            "mapa; mou-los a un canvi de tempo o aplica-ho a tot el mapa")
+    if b - a < limits.TEMPS_MIN_CLIP:
+        raise ValueError("El rang és massa curt per a un clip de tempo")
+
+    conservats = [
+        t for t in actuals
+        if float(t.fi) <= a + tol or float(t.ini) >= b - tol]
+    cos = TramMapa(a, b, float(bpm), tipus, f"{int(num)}/{int(den)}",
+                   agrupacio, None, beat_unit)
+    proposta = sorted(conservats + [cos], key=lambda t: (t.ini, t.fi))
+    return normalitza_trams_map(
+        proposta, durada, permet_ultim_fraccionari=True)
+
+
 def _arrodoneix_bpm(bpm, decimals):
     """Arredonix un BPM positiu amb ROUND_HALF_UP (0,5 sempre cap amunt)."""
     decimals = max(0, int(decimals))

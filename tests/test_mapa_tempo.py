@@ -248,6 +248,45 @@ if __name__ == "__main__":      # pragma: no cover
     unittest.main()
 
 
+class TestProposaMapaRang(unittest.TestCase):
+    def test_sense_mapa_proposa_un_clip_de_tota_la_wav(self):
+        out, avisos = M.proposa_mapa_rang([], 4.0, 12.0, 120.0, 4, 4, 12.0)
+        self.assertEqual(len(out), 1)
+        self.assertEqual((out[0].ini, out[0].fi), (0.0, 12.0))
+        self.assertAlmostEqual(out[0].bpm, 120.0, places=6)
+        self.assertEqual(avisos, [])
+
+    def test_conserva_els_clips_de_fora_i_substituix_el_rang(self):
+        trams = [
+            M.TramMapa(0.0, 4.0, 120.0, "normal", "4/4"),
+            M.TramMapa(4.0, 8.0, 100.0, "normal", "4/4"),
+            M.TramMapa(8.0, 12.0, 90.0, "normal", "4/4"),
+        ]
+        out, _avisos = M.proposa_mapa_rang(
+            trams, 4.0, 8.0, 180.0, 4, 4, 12.0)
+        self.assertEqual(len(out), 3)
+        self.assertAlmostEqual(out[0].bpm, 120.0, places=6)
+        self.assertAlmostEqual(out[1].bpm, 180.0, places=6)
+        self.assertAlmostEqual(out[2].bpm, 90.0, places=6)
+        self.assertEqual([(t.ini, t.fi) for t in out],
+                         [(0.0, 4.0), (4.0, 8.0), (8.0, 12.0)])
+
+    def test_rang_que_no_encaixa_amb_frontera_es_rebutja(self):
+        trams = [M.TramMapa(0.0, 4.0, 120.0, "normal", "4/4"),
+                 M.TramMapa(4.0, 8.0, 100.0, "normal", "4/4")]
+        with self.assertRaisesRegex(ValueError, "frontera"):
+            M.proposa_mapa_rang(trams, 3.5, 8.0, 120.0, 4, 4, 8.0)
+
+    def test_el_rang_pot_ser_lultim_i_quedar_fraccionari(self):
+        trams = [M.TramMapa(0.0, 4.0, 120.0, "normal", "4/4")]
+        out, _avisos = M.proposa_mapa_rang(
+            trams, 4.0, 9.0, 100.0, 4, 4, 9.0)
+        self.assertEqual(len(out), 2)
+        self.assertAlmostEqual(out[-1].fi, 9.0, places=9)
+        n = (out[-1].fi - out[-1].ini) * out[-1].bpm / (4 * 60.0)
+        self.assertGreater(n, 0.0)
+
+
 class TestQuantitzaBpm(unittest.TestCase):
     def test_quantitza_tres_normals_a_un_decimal(self):
         bq = 4.0

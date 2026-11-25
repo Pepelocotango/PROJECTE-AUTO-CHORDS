@@ -1,8 +1,8 @@
 """Diàleg d'anàlisi de BPM/beats."""
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel,
-    QSlider, QVBoxLayout,
+    QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
+    QFormLayout, QLabel, QSlider, QVBoxLayout,
 )
 
 from app import bpm_unit
@@ -95,6 +95,28 @@ class DialegAnalitzaBPM(InfoDialogMixin, GeometriaMixin, QDialog):
         self._actualitza_sens()
         form.addRow("Sensibilitat:", self.sl)
         form.addRow("", self.lb_sens)
+        self.sp_prom = QDoubleSpinBox()
+        self.sp_prom.setRange(0.0, 40.0)
+        self.sp_prom.setSingleStep(1.0)
+        self.sp_decimals = 1
+        self.sp_prom.setDecimals(self.sp_decimals)
+        self.sp_prom.setSuffix(" dB")
+        self.sp_prom.setValue(float(d.get("prominencia_db", 0.0)))
+        self.sp_prom.setToolTip(
+            "Prominència mínima del pic respecte del percentil 90. "
+            "0 = desactivat.")
+        form.addRow("Prominència mínima:", self.sp_prom)
+
+        self.sp_trans = QDoubleSpinBox()
+        self.sp_trans.setRange(0.0, 24.0)
+        self.sp_trans.setSingleStep(1.0)
+        self.sp_trans.setDecimals(1)
+        self.sp_trans.setSuffix(" dB")
+        self.sp_trans.setValue(float(d.get("transiente_db", 0.0)))
+        self.sp_trans.setToolTip(
+            "Augment mínim de RMS entre els 20 ms abans i després de "
+            "l'onset. 0 = desactivat.")
+        form.addRow("Transitori mínim:", self.sp_trans)
 
         self.cb_aplica = QCheckBox(
             "Aplica el BPM detectat al transport (si el mapa és d'un sol tram)")
@@ -152,6 +174,8 @@ class DialegAnalitzaBPM(InfoDialogMixin, GeometriaMixin, QDialog):
         return {
             "motor": self.cb_motor.currentData(),
             "sensibilitat": int(self.sl.value()),
+            "prominencia_db": float(self.sp_prom.value()),
+            "transiente_db": float(self.sp_trans.value()),
             "mode": mode,
             "beat_unit": self.cb_unitat.currentData() or bpm_unit.DEFECTE,
             "aplica_bpm": (bool(self.cb_aplica.isChecked())

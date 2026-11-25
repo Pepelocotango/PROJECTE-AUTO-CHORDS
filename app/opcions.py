@@ -74,7 +74,8 @@ DEFECTES = {
 # Valors per defecte de l'acció separada «Analitza BPM». No formen part del
 # diàleg d'anàlisi d'acords/estructura: són una acció independent.
 BEATS_DEFECTES = {"motor": "qm", "sensibilitat": 50,
-                  "mode": "beats", "aplica_bpm": True}
+                  "mode": "beats", "aplica_bpm": True,
+                  "prominencia_db": 0.0, "transiente_db": 0.0}
 
 
 

@@ -203,6 +203,10 @@ class MenusMixin:
         m.addSeparator()
         self._act(m, "Afegeix un marcador (M)", "",
                   self._marcador_cursor)
+        self._act(m, "Marca l'inici de l'anàlisi", "",
+                  lambda: self._marca_analisi_cursor("inici_analisi"))
+        self._act(m, "Marca el final de l'anàlisi", "",
+                  lambda: self._marca_analisi_cursor("final_analisi"))
         self._act(m, "Esborra l'últim marcador", "",
                   self._esborra_ultim_marcador)
         m.addSeparator()

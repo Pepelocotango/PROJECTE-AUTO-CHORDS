@@ -35,6 +35,28 @@ BPM_MAX = 200.0
 BPM_PREFERIT = (85.0, 150.0)
 PRIOR_SIGMA = 0.5     # amplada de la caiguda fora del plateau, en octaves
 HOP_S = 0.01          # resolució temporal de l'envolupant (10 ms)
+CONTEXT_ONSETS_S = 0.05  # context previ per tindre terra i refinar l'atac
+
+
+def _comprova_pcm16(w):
+    """Els detectors directes només accepten PCM16."""
+    if int(w.getsampwidth()) != 2:
+        raise ValueError(
+            "El detector d'onsets només accepta WAV PCM16; convertix el "
+            "fitxer abans d'analitzar-lo.")
+
+
+def _valida_wav_pcm16(wav_path):
+    """Comprova el contenidor abans que `wave` puga amagar l'error."""
+    try:
+        with wave.open(str(wav_path), "rb") as w:
+            _comprova_pcm16(w)
+    except ValueError:
+        raise
+    except Exception as e:  # noqa: BLE001
+        raise ValueError(
+            "El detector d'onsets només accepta WAV PCM16; convertix el "
+            "fitxer abans d'analitzar-lo.") from e
 
 
 def _prior(bpm, preferit=BPM_PREFERIT):
@@ -57,6 +79,21 @@ def _prior(bpm, preferit=BPM_PREFERIT):
     return float(np.exp(-0.5 * (x / PRIOR_SIGMA) ** 2))
 
 
+def _llegeix_mono_abs(wav_path):
+    """Senyal absolut a mono (màxim dels canals), per a gates de transitori."""
+    with wave.open(str(wav_path), "rb") as w:
+        _comprova_pcm16(w)
+        sr = w.getframerate()
+        ch = w.getnchannels()
+        d = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+    d = d.astype(np.float32)
+    if ch > 1:
+        d = np.max(np.abs(d.reshape(-1, ch)), axis=1)
+    else:
+        d = np.abs(d)
+    return d, sr
+
+
 def _envolupant_onsets(wav_path, inici=0.0, fi=None, retorna_offset=False):
     """Envolupant d'onsets (flux espectral simplificat) a passos de HOP_S.
 
@@ -70,6 +107,7 @@ def _envolupant_onsets(wav_path, inici=0.0, fi=None, retorna_offset=False):
     fitxer): el beat tracking ho necessita per donar temps absoluts.
     """
     with wave.open(wav_path, "rb") as w:
+        _comprova_pcm16(w)
         sr = w.getframerate()
         ch = w.getnchannels()
         nframes = w.getnframes()
@@ -80,7 +118,9 @@ def _envolupant_onsets(wav_path, inici=0.0, fi=None, retorna_offset=False):
         d = np.frombuffer(w.readframes(i1 - i0), dtype=np.int16)
     d = d.astype(np.float32)
     if ch > 1:
-        d = d.reshape(-1, ch).mean(axis=1)
+        d = np.max(np.abs(d.reshape(-1, ch)), axis=1)
+    else:
+        d = np.abs(d)
     if d.size == 0:
         if retorna_offset:
             return np.zeros(0, dtype=np.float32), sr, float(inici or 0.0)
@@ -117,6 +157,7 @@ def _envolupant_onsets_energia(wav_path, inici=0.0, fi=None,
     l'inici d'un fotograma (els clics curts hi poden caure).
     """
     with wave.open(wav_path, "rb") as w:
+        _comprova_pcm16(w)
         sr = w.getframerate()
         ch = w.getnchannels()
         nframes = w.getnframes()
@@ -127,7 +168,9 @@ def _envolupant_onsets_energia(wav_path, inici=0.0, fi=None,
         d = np.frombuffer(w.readframes(i1 - i0), dtype=np.int16)
     d = d.astype(np.float32)
     if ch > 1:
-        d = d.reshape(-1, ch).mean(axis=1)
+        d = np.max(np.abs(d.reshape(-1, ch)), axis=1)
+    else:
+        d = np.abs(d)
     if d.size == 0:
         if retorna_offset:
             return np.zeros(0, dtype=np.float32), sr, float(inici or 0.0)
@@ -233,7 +276,8 @@ def refina_inici_atac(wav_path, t_odf, enrere=0.05, avant=0.08,
 
 
 def detecta_onsets(wav_path, log=None, sensibilitat=50.0, inici=0.0,
-                   fi=None, min_sep=0.05, refina=False):
+                   fi=None, min_sep=0.05, refina=False,
+                   prominencia_db=None, transiente_db=None):
     """Detecta onsets (no beats) en una WAV o un rang.
 
     És una capa independent del BPM: només mira els pics de l'envolupant
@@ -242,9 +286,14 @@ def detecta_onsets(wav_path, log=None, sensibilitat=50.0, inici=0.0,
     segons. Retorna temps absoluts en segons.
     """
     log = log or (lambda *a: None)
+    _valida_wav_pcm16(wav_path)
+    inici = float(inici)
+    ctx = max(0.0, inici - CONTEXT_ONSETS_S)
     try:
         env, _sr, t0 = _envolupant_onsets_energia(
-            wav_path, inici=inici, fi=fi, retorna_offset=True)
+            wav_path, inici=ctx, fi=fi, retorna_offset=True)
+    except ValueError:
+        raise
     except Exception as e:  # noqa: BLE001
         log(f"onsets: no s'ha pogut llegir el senyal ({e})")
         return []
@@ -269,6 +318,44 @@ def detecta_onsets(wav_path, log=None, sensibilitat=50.0, inici=0.0,
             candidats.append(i)
     if not candidats:
         return []
+    if prominencia_db is not None:
+        try:
+            umbral_db = float(prominencia_db)
+        except (TypeError, ValueError):
+            umbral_db = None
+        if umbral_db is not None:
+            # Referència robusta: el flux alt (p90) no arriba al pic d'un
+            # clic net; en soroll, el pic queda a pocs dB del p90.
+            terra = max(float(np.percentile(x, 90)), 1e-9)
+            candidats = [i for i in candidats
+                         if 20.0 * np.log10(max(float(x[i]), 1e-9) / terra)
+                         >= umbral_db]
+    if not candidats:
+        return []
+    if transiente_db is not None:
+        try:
+            umbral_tr = float(transiente_db)
+        except (TypeError, ValueError):
+            umbral_tr = None
+        if umbral_tr is not None:
+            audio, sr = _llegeix_mono_abs(wav_path)
+            b = max(1, int(round(0.020 * sr)))
+            a = max(1, int(round(0.020 * sr)))
+            filtrats = []
+            for i in candidats:
+                t = float(t0) + float(i) * HOP_S
+                j = int(round(t * sr))
+                pre = audio[max(0, j - b):j]
+                post = audio[j:min(audio.size, j + a)]
+                if pre.size == 0 or post.size == 0:
+                    continue
+                rp = float(np.sqrt(np.mean(pre * pre) + 1e-12))
+                ra = float(np.sqrt(np.mean(post * post) + 1e-12))
+                if 20.0 * np.log10(ra / rp) >= umbral_tr:
+                    filtrats.append(i)
+            candidats = filtrats
+    if not candidats:
+        return []
     # Fusiona pics massa pròxims conservant el més fort.
     radi = max(1, int(round(float(min_sep) / HOP_S)))
     triats = []
@@ -290,6 +377,177 @@ def detecta_onsets(wav_path, log=None, sensibilitat=50.0, inici=0.0,
     log(f"onsets: {len(onsets)} pic(s), sensibilitat {sens:.0f}/100"
         f"{', atac refinat' if refina else ''}")
     return onsets
+
+
+def proposa_onsets(wav_path, t, *, finestra=0.35, n=3,
+                   sensibilitat=50.0, refina=True, log=None,
+                   prominencia_db=None, transiente_db=None):
+    """Proposa fins a ``n`` onsets ordenats per proximitat a ``t``.
+
+    És la base de l'ancoratge guiat: l'usuari fa un clic aproximat i la app
+    proposa els atacs més pròxims dins d'una finestra curta. No aplica res.
+    """
+    t = float(t)
+    finestra = max(0.01, float(finestra))
+    a = max(0.0, t - finestra)
+    b = t + finestra
+    onsets = detecta_onsets(
+        wav_path, log=log, sensibilitat=sensibilitat,
+        inici=a, fi=b, min_sep=0.05, refina=refina,
+        prominencia_db=prominencia_db, transiente_db=transiente_db)
+    return sorted(onsets, key=lambda x: abs(float(x) - t))[:max(1, int(n))]
+
+
+def proposa_mapa_bpm(durada, bpm, num, den):
+    """Resum d'un mapa d'un sol BPM per a un tram, sense aplicar-lo.
+
+    Retorna el nombre de compassos, el més pròxim enter i el BPM que faria
+    encaixar eixe enter. No modifica cap model.
+    """
+    durada = float(durada)
+    bpm = float(bpm)
+    num = int(num)
+    den = int(den)
+    if durada <= 0 or bpm <= 0 or num <= 0 or den <= 0:
+        return None
+    bq = num * 4.0 / den
+    n = durada * bpm / (bq * 60.0)
+    n_enter = max(1, int(round(n)))
+    bpm_ajust = n_enter * bq * 60.0 / durada
+    return {
+        "durada": durada,
+        "n": n,
+        "n_enter": n_enter,
+        "bpm": bpm,
+        "bpm_ajust": bpm_ajust,
+        "delta_bpm": bpm_ajust - bpm,
+        "n_enter_valid": abs(n - n_enter) <= 0.01,
+    }
+
+
+def diagnostica_estabilitat(wav_path, a, b, *, bpm=None, log=None,
+                            tolerancia_s=0.020, tol_inlier_s=0.050,
+                            t_ancla=None):
+    """Diagnòstic provisional d'un sol BPM sobre un rang.
+
+    No aplica cap mapa: ajusta una graella constant als onsets detectats i
+    retorna mètriques. Els llindars encara s'han de calibrar a la Fase 0.
+    """
+    a = float(a)
+    b = float(b)
+    if not (b > a):
+        return {"estat": "NO_ESTABLE", "motiu": "rang buit",
+                "bpm": None, "e_max": None, "e_final": None, "n": 0}
+    onsets = detecta_onsets(
+        wav_path, log=log, sensibilitat=50.0, inici=a, fi=b,
+        min_sep=0.05, refina=False)
+    if len(onsets) < 4:
+        return {"estat": "NO_ESTABLE", "motiu": "pocs onsets",
+                "bpm": None, "e_max": None, "e_final": None,
+                "n": len(onsets)}
+    if bpm is None:
+        cand = detecta_bpm_candidats(
+            wav_path, log=log, inici=a, fi=b, context_s=b - a)
+        bpm = cand.get("bpm")
+    try:
+        bpm = float(bpm)
+    except (TypeError, ValueError):
+        bpm = None
+    if not bpm or bpm <= 0:
+        return {"estat": "NO_ESTABLE", "motiu": "sense BPM",
+                "bpm": None, "e_max": None, "e_final": None,
+                "n": len(onsets)}
+    y = np.asarray(onsets, dtype=float)
+    t0 = float(y[0])
+    P = 60.0 / bpm
+    good = np.ones(y.size, dtype=bool)
+    for _ in range(12):
+        k = np.rint((y - t0) / P)
+        r = y - (t0 + k * P)
+        nk = np.abs(r) <= float(tol_inlier_s)
+        if nk.sum() < 4:
+            break
+        if np.array_equal(nk, good):
+            good = nk
+            break
+        good = nk
+        A = np.vstack([np.ones(int(good.sum())), k[good]]).T
+        try:
+            t0, P = np.linalg.lstsq(A, y[good], rcond=None)[0]
+        except np.linalg.LinAlgError:
+            break
+        if P <= 0:
+            break
+    if P <= 0:
+        return {"estat": "NO_ESTABLE", "motiu": "ajust invàlid",
+                "bpm": None, "e_max": None, "e_final": None,
+                "n": len(onsets)}
+    k = np.rint((y - t0) / P)
+    r = y - (t0 + k * P)
+    dins = np.abs(r) <= float(tol_inlier_s)
+    if not dins.any():
+        e_max = e_final = None
+    else:
+        e_max = float(np.max(np.abs(r[dins])))
+        e_final = float(abs(r[dins][-1]))
+    bpm_fit = 60.0 / P
+    ratio = float(dins.sum()) / float(y.size)
+    estable = bool(e_max is not None and e_max <= float(tolerancia_s)
+                   and ratio >= 0.5)
+    gap = t_grid = None
+    if t_ancla is not None:
+        t_ancla = float(t_ancla)
+        k = round((t_ancla - t0) / P)
+        t_grid = float(t0 + k * P)
+        gap = t_ancla - t_grid
+    return {
+        "estat": "ESTABLE" if estable else "ESTABLE AMB RESERVA",
+        "motiu": "" if estable else "residus o cobertura insuficients",
+        "bpm": bpm_fit,
+        "e_max": e_max,
+        "e_final": e_final,
+        "n": len(onsets),
+        "n_inliers": int(dins.sum()),
+        "ratio": ratio,
+        "t0": float(t0),
+        "period": float(P),
+        "gap": gap,
+        "t_grid": t_grid,
+    }
+
+
+def proposa_bpm(wav_path, a, b, *, log=None, bpm_min=None, bpm_max=None,
+                preferit=None, n=3):
+    """Proposa candidats de BPM per al rang d'anàlisi (no aplica res)."""
+    a = float(a)
+    b = float(b)
+    if not (b > a):
+        return {"bpm": None, "candidats": [], "alternatives": []}
+    return detecta_bpm_candidats(
+        wav_path, log=log, bpm_min=bpm_min, bpm_max=bpm_max,
+        preferit=preferit, inici=a, fi=b, n=max(1, int(n)),
+        context_s=b - a)
+
+
+def onsets_ab(wav_path, a, b, *, marge=0.03, sensibilitat=50.0,
+              refina=False, min_sep=0.05, log=None, prominencia_db=None,
+              transiente_db=None):
+    """Onsets d'una finestra A–B amb marge explícit a l'inici.
+
+    El detector base treballa estrictament dins ``[inici, fi)``. Esta funció
+    inclou, a més, els onsets del marge anterior a ``a`` (per defecte 30 ms)
+    que el refinament pot deixar just abans d'A. No és una propietat del
+    detector base.
+    """
+    a = float(a)
+    b = float(b)
+    marge = max(0.0, float(marge))
+    if not (b > a):
+        return []
+    return detecta_onsets(
+        wav_path, log=log, sensibilitat=sensibilitat,
+        inici=max(0.0, a - marge), fi=b, min_sep=min_sep, refina=refina,
+        prominencia_db=prominencia_db, transiente_db=transiente_db)
 
 
 def _autocorrelacio(env):

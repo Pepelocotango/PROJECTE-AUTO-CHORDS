@@ -8,6 +8,13 @@ from . import limits, mapa_tempo, pipeline, tempo_map
 class MarcadorsMixin:
     """Marcadors humans (anotacions)."""
 
+    def rang_analisi(self):
+        """Retorna el rang dels marcadors d'anàlisi, o `None`."""
+        from app import marcadors as M
+        return M.rang_analisi(
+            self.marcadors or (), self.marcador_tipus or {},
+            self._durada_wav())
+
     def _marcador_a(self, t, tol=0.05):
         """Índex del marcador humà que coincideix amb `t` (o `None`).
 
@@ -337,8 +344,7 @@ class MarcadorsMixin:
         marques = M.afegeix(abans, t, self._durada_wav())
         if marques == abans:
             return False
-        tipus = (tipus if tipus in ("marcador", "compas", "seccio",
-                                    "inici", "final") else "marcador")
+        tipus = (tipus if tipus in M.TIPUS_VALIDS else "marcador")
         self._undo_marca()
         self.marcadors = marques
         self.marcador_tipus[round(float(t), 6)] = tipus
@@ -379,8 +385,8 @@ class MarcadorsMixin:
 
     def converteix_marcador(self, t, tipus_nou):
         """Converteix el marcador més pròxim a `t` al tipus indicat."""
-        tipus_nou = (tipus_nou if tipus_nou in ("compas", "seccio",
-                                                "inici", "final") else "seccio")
+        from app import marcadors as M
+        tipus_nou = (tipus_nou if tipus_nou in M.TIPUS_VALIDS else "seccio")
         mi = self._marcador_a(t)
         if mi is None:
             return False
@@ -430,7 +436,7 @@ class MarcadorsMixin:
                 tipus[round(nou, 6)] = vell_t
         else:
             nou_t = str(item.text()).strip()
-            if nou_t not in ("marcador", "compas", "seccio", "inici", "final"):
+            if not M.es_tipus_valid(nou_t):
                 self._pinta_marcadors()
                 return
             tipus[round(vell, 6)] = nou_t

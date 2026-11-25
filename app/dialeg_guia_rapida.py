@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas.
+"""Guia ràpida d'«Anàlisi guiat» — informació i accions assistides.
 
-Substituïx el flux interactiu (v2 per trams i v3 per ancoratges, tots dos en
-*stand by*): el treball real es fa amb **marcadors en viu** (`+`). Esta finestra
-no toca el model: només explica, en 5 pantalles, com treballar.
+Les accions de la barra inferior deleguen al visor: proposen onsets, BPM,
+estabilitat i mapa, però no apliquen res sense confirmació. El treball fi
+continua fent-se amb els **marcadors en viu** (`+`).
 """
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QDialog, QHBoxLayout, QLabel, QPushButton,
@@ -91,6 +91,52 @@ class DialegGuiaRapida(InfoDialogMixin, GeometriaMixin, QDialog):
         self._punts.setStyleSheet("color: #777;")
         v.addWidget(self._punts)
 
+        fa = QHBoxLayout()
+        self.b_prop_inici = QPushButton("Proposa inici")
+        self.b_prop_inici.setToolTip(
+            "Proposa els onsets més pròxims al cursor o al marcador d'inici")
+        self.b_prop_final = QPushButton("Proposa final")
+        self.b_prop_final.setToolTip(
+            "Proposa els onsets més pròxims al cursor o al marcador final")
+        self.b_prop_inici.clicked.connect(
+            lambda: self._proposa("inici_analisi"))
+        self.b_prop_final.clicked.connect(
+            lambda: self._proposa("final_analisi"))
+        self.b_prop_bpm = QPushButton("Proposa BPM")
+        self.b_prop_bpm.setToolTip(
+            "Proposa candidats de BPM per al rang d'anàlisi; no aplica res")
+        self.b_prop_bpm.clicked.connect(self._proposa_bpm)
+        self.b_estabilitat = QPushButton("Comprova estabilitat")
+        self.b_estabilitat.setToolTip(
+            "Ajusta un BPM constant al rang i mostra e(t); no aplica res")
+        self.b_estabilitat.clicked.connect(self._comprova_estabilitat)
+        self.b_mapa = QPushButton("Proposa mapa")
+        self.b_mapa.setToolTip(
+            "Proposa un mapa d'un sol BPM; conserva els clips de fora del "
+            "rang i no aplica res")
+        self.b_mapa.clicked.connect(self._proposa_mapa)
+        self.b_aplica_bpm = QPushButton("Aplica BPM")
+        self.b_aplica_bpm.setToolTip(
+            "Aplica el BPM triat al mapa si només té un clip; demana confirmació")
+        self.b_aplica_bpm.clicked.connect(self._aplica_bpm)
+        self.b_aplica_mapa = QPushButton("Aplica mapa")
+        self.b_aplica_mapa.setToolTip(
+            "Aplica la proposta de mapa amb confirmació; conserva els clips "
+            "fora del rang")
+        self.b_aplica_mapa.clicked.connect(self._aplica_mapa)
+        fa.addWidget(self.b_prop_inici)
+        fa.addWidget(self.b_prop_final)
+        fa.addWidget(self.b_prop_bpm)
+        fa.addWidget(self.b_estabilitat)
+        fa.addWidget(self.b_mapa)
+        fa.addWidget(self.b_aplica_bpm)
+        fa.addWidget(self.b_aplica_mapa)
+        fa.addStretch(1)
+        self.lb_guia = QLabel("")
+        self.lb_guia.setObjectName("secundari")
+        fa.addWidget(self.lb_guia)
+        v.addLayout(fa)
+
         f = QHBoxLayout()
         self.b_ant = QPushButton("◀ Anterior")
         self.b_ant.setToolTip("Pantalla anterior de la guia")
@@ -108,6 +154,42 @@ class DialegGuiaRapida(InfoDialogMixin, GeometriaMixin, QDialog):
         f.addWidget(self.b_tanca)
         v.addLayout(f)
         self._actualitza()
+
+    def _proposa(self, tipus):
+        pare = self.parent()
+        if pare is not None and hasattr(pare, "_proposa_onsets_guia"):
+            pare._proposa_onsets_guia(tipus)
+
+    def _proposa_bpm(self):
+        pare = self.parent()
+        if pare is not None and hasattr(pare, "_proposa_bpm_guia"):
+            text = pare._proposa_bpm_guia()
+            if text:
+                self.lb_guia.setText(text)
+
+    def _comprova_estabilitat(self):
+        pare = self.parent()
+        if pare is not None and hasattr(pare, "_diagnostica_estabilitat_guia"):
+            text = pare._diagnostica_estabilitat_guia()
+            if text:
+                self.lb_guia.setText(text)
+
+    def _proposa_mapa(self):
+        pare = self.parent()
+        if pare is not None and hasattr(pare, "_proposa_mapa_guia"):
+            text = pare._proposa_mapa_guia()
+            if text:
+                self.lb_guia.setText(text)
+
+    def _aplica_bpm(self):
+        pare = self.parent()
+        if pare is not None and hasattr(pare, "_aplica_bpm_guia"):
+            pare._aplica_bpm_guia()
+
+    def _aplica_mapa(self):
+        pare = self.parent()
+        if pare is not None and hasattr(pare, "_aplica_mapa_guia"):
+            pare._aplica_mapa_guia()
 
     # -- navegació --------------------------------------------------------
     def _idx(self):

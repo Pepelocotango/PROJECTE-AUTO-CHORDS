@@ -257,7 +257,7 @@ Vegeu **`LLICENCIES_TERCERS.md`**.
 | `dialeg_analitza_bpm.py` | Diàleg d'anàlisi de BPM/beats. |
 | `dialeg_canvi_unitat.py` | Canvi explícit d'unitat de pols (clip). |
 | `dialeg_dreceres.py` | — |
-| `dialeg_guia_rapida.py` | Guia ràpida d'«Anàlisi guiat» — **només informació**, pas a pas. |
+| `dialeg_guia_rapida.py` | Guia ràpida d'«Anàlisi guiat» — informació i accions assistides. |
 | `dialeg_opcions.py` | Diàleg d'opcions d'autodetecció (BPM/acords/estructura). |
 | `dialeg_quadratura.py` | Diàleg per quadrar els extrems de la còpia WAV a compassos sencers. |
 | `dialeg_quantitza.py` | Diàleg de quantització a la graella. |

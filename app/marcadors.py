@@ -18,6 +18,13 @@ alta, baixa i consulta. La persistència i el model viu són a `pipeline` i
 #: Dos marcadors més a prop que això són el mateix colp (rebot de la tecla).
 SEPARACIO_MIN = 0.05
 
+#: Tipus admesos al projecte i al CSV de marcadors.
+TIPUS_VALIDS = (
+    "marcador", "compas", "seccio", "inici", "final",
+    "inici_analisi", "final_analisi",
+)
+TIPUS_ANALISI = ("inici_analisi", "final_analisi")
+
 
 def normalitza_marcadors(marques, durada):
     """Llista ordenada, sense duplicats i dins de `[0, durada]`."""
@@ -83,3 +90,42 @@ def anterior(marques, t):
         if float(m) < float(t) - 1e-9:
             out = float(m)
     return out
+
+
+def rang_analisi(marques, tipus, durada=0.0):
+    """Retorna `(inici_analisi, final_analisi)` o `None`.
+
+    Els marcadors d'anàlisi són anotacions independents; esta funció només
+    en calcula el rang. Si falten, estan duplicats o no són coherents, retorna
+    `None` i el cridador ha de demanar a l'usuari que els defense.
+    """
+    if not isinstance(tipus, dict):
+        return None
+    inici = []
+    final = []
+    for t, tp in tipus.items():
+        if tp not in TIPUS_ANALISI:
+            continue
+        try:
+            v = float(t)
+        except (TypeError, ValueError):
+            continue
+        if tp == "inici_analisi":
+            inici.append(v)
+        else:
+            final.append(v)
+    if len(inici) != 1 or len(final) != 1:
+        return None
+    a, b = float(inici[0]), float(final[0])
+    if b <= a:
+        return None
+    if a < 0.0:
+        return None
+    if durada:
+        b = min(b, float(durada))
+    return (a, b)
+
+
+def es_tipus_valid(tipus):
+    """Cert si el tipus de marcador és dels que entén el projecte."""
+    return str(tipus or "").strip() in TIPUS_VALIDS

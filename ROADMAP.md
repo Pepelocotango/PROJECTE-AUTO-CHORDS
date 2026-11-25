@@ -6,7 +6,7 @@
 > descripció de producte. Tot en català · **GPL-3.0-or-later**.
 >
 > **v0.9.4** · Estat: **flux de producte estable (almenys a Linux)** · **punt de
-> recuperació** per a futures iteracions · Suite local verificada: **1.707 tests** (1 omès) i `pyflakes` net. El recompte viu és al CI.
+> recuperació** per a futures iteracions · Suite local verificada: **1.721 tests** (1 omès) i `pyflakes` net. El recompte viu és al CI.
 >
 > 📌 Aquest fitxer és el full **viu**. L'històric (Fases A–E, anàlisi multi-SO,
 > graella/PPQ, obertura tecnològica, brainstorms originals, notes…) és a
@@ -49,13 +49,24 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-20)
+## 2. Estat actual i relleu de sessió (2026-11-25)
 
 > **Norma per a agents:** qualsevol agent que treballi en el codi ha
 > d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
 > incrementalment: reflectir l'estat actual, no l'historial). L'historial viu al
 > [`CHANGELOG.md`](CHANGELOG.md). La definició de **què fa l'app i què queda
 > fora** és a [`AGENTS.md`](AGENTS.md#-abast-i-flux-de-lusuari--font-única).
+
+**Relleu 2026-11-25 — mapa de temps assistit (en curs):** la Guia ràpida ja
+marca l'inici/final de l'anàlisi amb assistència d'onsets, proposa BPM,
+diagnostica estabilitat (`e_max`, `e_final`, gap, inliers) i proposa/aplica un
+mapa d'un sol BPM. La proposta conserva els clips de fora del rang i exigeix
+que els marcadors caiguen en una frontera (fail closed); l'últim clip pot quedar
+fraccionari. El detector d'onsets té un gate de transitori opcional
+(`transiente_db`, 20 ms abans/després) i un de prominència; cap valor per
+defecte s'ha congelat sense calibratge real. El banc sintètic de Fase 0 i el
+document de disseny són a `00PER FER/` (locals, no contracte). Suite: **1.721
+tests** (1 omès).
 
 **Fases** del pla de simplificació de tempo (document històric, ja no al
 repositori): **0–7 fetes**. La **10**
