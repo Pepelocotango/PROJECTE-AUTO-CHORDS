@@ -6215,6 +6215,25 @@ class TestAncoratgesFinestra(unittest.TestCase):
         self._p_motor.stop()
         shutil.rmtree(self.td, ignore_errors=True)
 
+    def test_candaus_tempo_max_dos_i_sincronitzats_amb_el_visor(self):
+        w = self.w
+        vr = w.visor_ref
+        self.assertFalse(any(w._bloquejos_tempo.values()))
+        self.assertFalse(any(vr.bloquejos_tempo.values()))
+        w._lock_buttons["bpm"].click()
+        self.assertTrue(w._bloquejos_tempo["bpm"])
+        self.assertTrue(vr.bloquejos_tempo["bpm"])
+        w._lock_buttons["n"].click()
+        self.assertTrue(w._bloquejos_tempo["n"])
+        self.assertTrue(vr.bloquejos_tempo["n"])
+        self.assertFalse(w._lock_buttons["compas"].isEnabled())
+        w._lock_buttons["compas"].click()
+        self.assertFalse(w._bloquejos_tempo["compas"])
+        self.assertEqual(sum(w._bloquejos_tempo.values()), 2)
+        w._lock_buttons["bpm"].click()
+        self.assertTrue(w._lock_buttons["compas"].isEnabled())
+        self.assertFalse(w._bloquejos_tempo["bpm"])
+
     def test_el_marcador_es_independent_del_tempo_i_de_l_estructura(self):
         """Els marcadors són anotacions: no viatgen amb fronteres ni moren amb elles."""
         vr = self.w.visor_ref

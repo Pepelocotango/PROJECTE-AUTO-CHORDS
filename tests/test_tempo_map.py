@@ -23,6 +23,7 @@ import numpy as np
 from app import bpm_unit
 from app import metronom
 from app import tempo_map as tm
+from app import mapa_tempo as M
 import tempfile
 import wave
 from app import graella
@@ -1522,6 +1523,22 @@ class TestSnap(_Base):
         self.assertAlmostEqual(v.timeline._snap(2.13), 4.0, places=6)
         v.close()
 
+    def test_snap_a_marcadors_i_onsets(self):
+        v = _snap___visor()
+        v.timeline.set_marcadors([(1.234, "seccio"), (8.765, "marcador")])
+        v.timeline.set_onsets([2.111, 2.999])
+        v.timeline.set_snap(on=True, divisio="marcadors")
+        self.assertAlmostEqual(v.timeline._snap(1.22), 1.234, places=6)
+        self.assertAlmostEqual(v.timeline._snap(8.70), 8.765, places=6)
+        v.timeline.set_snap(on=True, divisio="onsets")
+        self.assertAlmostEqual(v.timeline._snap(2.09), 2.111, places=6)
+        self.assertAlmostEqual(v.timeline._snap(2.98), 2.999, places=6)
+        # Sense candidats, no inventa cap posició.
+        v.timeline.set_marcadors([])
+        v.timeline.set_snap(on=True, divisio="marcadors")
+        self.assertAlmostEqual(v.timeline._snap(5.0), 5.0, places=6)
+        v.close()
+
     def test_cursor_segueix_snap(self):
         """Amb snap actiu, el cursor s'encaixa a la graella (en clicar/moure'l)."""
         v = _snap___visor()
@@ -2048,3 +2065,54 @@ class TestZeroZeroRebutjat(unittest.TestCase):
         trams = [(0.0, 2.0, 120.0, 4, 4), (2.0, 6.0, 100.0, 0, 0)]
         with self.assertRaises(ValueError):
             pipeline.desa_tempo_map(td, trams)
+
+
+class TestBloquejosTempo(_Base):
+    def setUp(self):
+        self.v = _snap___visor()
+        self.base = [
+            M.TramMapa(0.0, 10.0, 120.0, "normal", "4/4", "", 5.0),
+            M.TramMapa(10.0, 20.0, 120.0, "normal", "4/4", "", 5.0),
+        ]
+        self.assertTrue(self.v.aplica_tempo_trams(self.base))
+        self.v.set_bloquejos_tempo()
+
+    def tearDown(self):
+        self.v.close()
+
+    def test_bpm_bloquejat_rebutja_i_analisi_pot_ignorar(self):
+        self.v.set_bloquejos_tempo(bpm=True)
+        canviat = [
+            M.TramMapa(0.0, 10.0, 144.0, "normal", "4/4", "", 6.0),
+            M.TramMapa(10.0, 20.0, 144.0, "normal", "4/4", "", 6.0),
+        ]
+        self.assertFalse(self.v.aplica_tempo_trams(canviat))
+        self.assertEqual(float(self.v.tempo_trams[0].bpm), 120.0)
+        self.assertTrue(self.v.aplica_tempo_trams(
+            canviat, ignora_bloquejos=True))
+        self.assertAlmostEqual(float(self.v.tempo_trams[0].bpm), 144.0,
+                               places=6)
+
+    def test_n_i_compas_bloquejats(self):
+        self.v.set_bloquejos_tempo(n=True)
+        n_canviat = [
+            M.TramMapa(0.0, 12.0, 120.0, "normal", "4/4", "", 6.0),
+            M.TramMapa(12.0, 20.0, 120.0, "normal", "4/4", "", 4.0),
+        ]
+        self.assertFalse(self.v.aplica_tempo_trams(n_canviat))
+        self.v.set_bloquejos_tempo(compas=True)
+        compas_canviat = [
+            M.TramMapa(0.0, 10.0, 120.0, "normal", "3/4", "", 5.0),
+            M.TramMapa(10.0, 20.0, 120.0, "normal", "3/4", "", 5.0),
+        ]
+        self.assertFalse(self.v.aplica_tempo_trams(compas_canviat))
+
+    def test_bpm_bloquejat_permet_partir_si_el_bpm_no_canvia(self):
+        self.v.set_bloquejos_tempo(bpm=True)
+        partit = [
+            M.TramMapa(0.0, 4.0, 120.0, "normal", "4/4", "", 2.0),
+            M.TramMapa(4.0, 10.0, 120.0, "normal", "4/4", "", 3.0),
+            M.TramMapa(10.0, 20.0, 120.0, "normal", "4/4", "", 5.0),
+        ]
+        self.assertTrue(self.v.aplica_tempo_trams(partit))
+        self.assertEqual(len(self.v.tempo_trams), 3)

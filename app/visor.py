@@ -189,6 +189,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # «qm_beats» mana QM; en qualsevol altre mode mana BPM/compàs.
         self.snap_on = True
         self.snap_mode = ""
+        # Candaus de protecció del mapa de tempo (estat de sessió).
+        self.bloquejos_tempo = {"bpm": False, "n": False, "compas": False}
         self.marcador_tipus = pipeline.llegeix_marcadors_tipus(
             self._carpeta_acords())        # Els projectes vells poden portar fronteres de tempo fora de compàs.
         # No es rebutgen en carregar, però l'usuari ha de saber que eixe mapa
@@ -684,6 +686,54 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         # autocontingut), és allà on van els CSV/export. Si no, es deriva del
         # WAV (comportament de llegat / visor standalone).
         return getattr(self, "sortida", "") or pipeline.carpeta_sortida(self.wav_path)
+
+    def set_bloquejos_tempo(self, bpm=False, n=False, compas=False):
+        """Activa/desactiva els candaus globals del mapa (màxim dos)."""
+        estat = {"bpm": bool(bpm), "n": bool(n), "compas": bool(compas)}
+        if sum(estat.values()) > 2:
+            raise ValueError("Com a màxim hi pot haver dos candaus actius")
+        self.bloquejos_tempo = estat
+
+    def _bloquejos_tempo_errors(self, nous):
+        """Camps bloquejats que canviarien en aplicar `nous` (llista buida = OK)."""
+        from app import mapa_tempo
+        actius = getattr(self, "bloquejos_tempo", {}) or {}
+        if not any(actius.values()):
+            return []
+        vell = [mapa_tempo.des_de_tupla(t)
+                for t in (self.tempo_trams or ())]
+        nou = [mapa_tempo.des_de_tupla(t) for t in (nous or ())]
+        if not vell:
+            return []
+        tol = 1e-6
+
+        def _n(tr):
+            # Sempre derivat de la durada/BPM: el camp `n` pot ser metadada
+            # heretada d'una operació anterior.
+            return float(tempo_map.compassos_del_clip(tr))
+
+        errors = []
+        for v in vell:
+            solapats = [x for x in nou
+                        if float(x.fi) > float(v.ini) + tol
+                        and float(x.ini) < float(v.fi) - tol]
+            if not solapats:
+                if actius.get("n") and "N" not in errors:
+                    errors.append("N")
+                continue
+            if actius.get("bpm") and any(
+                    abs(float(x.bpm) - float(v.bpm)) > tol
+                    for x in solapats) and "BPM" not in errors:
+                errors.append("BPM")
+            if actius.get("compas") and any(
+                    (int(x.num), int(x.den)) != (int(v.num), int(v.den))
+                    for x in solapats) and "compàs" not in errors:
+                errors.append("compàs")
+            if actius.get("n") and any(
+                    abs(_n(x) - _n(v)) > tol for x in solapats
+                    ) and "N" not in errors:
+                errors.append("N")
+        return errors
 
     def set_snap(self, on=None, divisio=None):
         """Snap de la graella: interruptor (`on`) i divisió (`divisio`, nom)."""
@@ -2470,7 +2520,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
                      f"{int(decimals)} decimal(s)")
         return bool(ok)
 
-    def retempo_tram_detectat(self, idx, bpm_detectat):
+    def retempo_tram_detectat(self, idx, bpm_detectat,
+                              ignora_bloquejos=False):
         """«Detecta» sobre un tram seleccionat: BPM nou **sense ripple**.
 
         Les fronteres del clip (i les dels veïns) **no es mouen**: el BPM
@@ -2494,7 +2545,8 @@ class Visor(QMainWindow, LlistesMixin, EditorMixin,
         if [tuple(x) for x in nous] == [tuple(x) for x in trams]:
             return False
         self._undo_marca()
-        ok = self.aplica_tempo_trams(nous)
+        ok = self.aplica_tempo_trams(
+            nous, ignora_bloquejos=ignora_bloquejos)
         self._undo_commit()
         if ok:
             self.log(f"BPM del tram {idx} detectat: {float(bpm_detectat):.3f} "

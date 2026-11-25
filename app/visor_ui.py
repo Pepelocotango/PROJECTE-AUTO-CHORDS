@@ -114,6 +114,8 @@ class VisorUIMixin:
                 latencia_cursor_ms=self._latencia_cursor_val(),
             )
             self.visor_ref = visor
+            if hasattr(self, "_aplica_bloquejos_tempo_visor"):
+                self._aplica_bloquejos_tempo_visor()
             if hasattr(self, "_registra_drecera") \
                     and hasattr(visor, "_sc_del_marcador"):
                 self._registra_drecera(

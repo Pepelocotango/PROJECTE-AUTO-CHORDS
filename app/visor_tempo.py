@@ -371,6 +371,12 @@ class TempoMixin:
             nous[idx] = mapa_tempo.TramMapa(
                 nou.ini, nou.fi, nou.bpm, nou.tipus, nou.compassos, agr,
                 getattr(nou, "n", None), nou.beat_unit)
+        if not desa:
+            errors = self._bloquejos_tempo_errors(nous)
+            if errors:
+                self.avis_editor(
+                    "Bloquejat: canvi de " + ", ".join(errors) + ".")
+                return False
         # El transport només pren valors d'un tros normal.
         self.bpm = float(nous[0][2])
         self.bpb = int(nous[0][3])
@@ -427,6 +433,11 @@ class TempoMixin:
             self.avis_editor(f"TAP mòbil: {e}")
             return False
         if not self._valida_unitat_tram(nous[idx], "TAP"):
+            return False
+        errors = self._bloquejos_tempo_errors(nous)
+        if errors:
+            self.avis_editor(
+                "Bloquejat: canvi de " + ", ".join(errors) + ".")
             return False
         self.bpm = float(nous[0][2])
         self.bpb = int(nous[0][3])
@@ -533,6 +544,11 @@ class TempoMixin:
         if desa:
             ok = bool(self.aplica_tempo_trams(nous))
         else:
+            errors = self._bloquejos_tempo_errors(nous)
+            if errors:
+                self.avis_editor(
+                    "Bloquejat: canvi de " + ", ".join(errors) + ".")
+                return False
             self.tempo_trams = nous
             self._actualitza_temps()
             ok = True
@@ -816,7 +832,8 @@ class TempoMixin:
             self.mapaInconsistent.emit(text)
         return issues
 
-    def aplica_tempo_trams(self, trams, forcat=False):
+    def aplica_tempo_trams(self, trams, forcat=False,
+                           ignora_bloquejos=False):
         """Aplica un mapa de tempo/compàs nou (des del diàleg).
 
         Normalitza (contigu, cobreix la WAV), actualitza el **transport** amb el
@@ -835,6 +852,14 @@ class TempoMixin:
             self.log(f"tempo: {avís}")
         if not nous:
             return False
+        if not ignora_bloquejos:
+            errors = self._bloquejos_tempo_errors(nous)
+            if errors:
+                text = ("Bloquejat: canvi de " + ", ".join(errors)
+                        + ". Desactiva el candau o ajusta l'operació.")
+                self.log(text)
+                self.avis_editor(text)
+                return False
         # El transport només pren valors d'un tros normal: un rubato no ha de
         # canviar el BPM/compàs de la barra.
         self.bpm = float(nous[0][2])
@@ -861,7 +886,8 @@ class TempoMixin:
         self.log(f"mapa de tempo/compàs: {len(nous)} tros(s)")
         return True
 
-    def aplica_tempo_validat(self, trams, msg="Tempo"):
+    def aplica_tempo_validat(self, trams, msg="Tempo",
+                             ignora_bloquejos=False):
         """Aplica un mapa amb la validació permissiva del model (F2).
 
         Exigeix BPM/compàs vàlids, contigüitat, cobertura, el mínim d'un
@@ -878,7 +904,8 @@ class TempoMixin:
             self.avis_editor(f"{msg}: {e}")
             return False
         nous = mapa_tempo.reenganxa_metadades(entrada, nous)
-        return bool(self.aplica_tempo_trams(nous))
+        return bool(self.aplica_tempo_trams(
+            nous, ignora_bloquejos=ignora_bloquejos))
 
     def _normalitza_mapa_viu(self, trams, msg=None):
         """Mapa validat per a un gest en viu (permissiu, F2).

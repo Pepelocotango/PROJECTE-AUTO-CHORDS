@@ -5,6 +5,21 @@ Versions amb tag git (`v0.1-punt-control` … `v0.9.2-checkpoint`).
 
 ## [0.9.4] — 2026-11-18
 
+### Afegit — Candaus globals de BPM, N i compàs (2026-11-25)
+- Tres botons checkables a la barra «Temps»: **BPM**, **N** i **x/x**.
+- Bloquegen els canvis d'eixe camp a tot el mapa; màxim dos actius.
+- Comencen desactivats i no es guarden entre sessions.
+- L’anàlisi automàtica pot executar-se i aplicar-se sense tindre’ls en compte;
+  les aplicacions confirmades per l’usuari sí que els respecten.
+- Undo/redo no queden bloquejats.
+- Rebuig complet si una operació canvia un camp bloquejat.
+
+### Afegit — Snap a marcadors i a onsets (2026-11-25)
+- El selector de graella incorpora **Marcadors** i **Onsets**.
+- El cursor i les edicions s'encaixen a l'element més pròxim d'eixa capa.
+- Si la capa és buida, no es mou el temps.
+- Test de regressió a `tests/test_tempo_map.py`.
+
 ### Afegit — Marcadors d'anàlisi independents (2026-11-24)
 - Nous tipus de marcador **`inici_analisi`** i **`final_analisi`**.
 - Nous accents **Analitza ▸ Marca l'inici de l'anàlisi** i **Marca el final de

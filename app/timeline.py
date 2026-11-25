@@ -219,6 +219,8 @@ class TimelineView(QGraphicsView):
         self._snap_on = True       # interruptor de snap
         self._snap_div_nom = ""    # "" = automàtic (zoom); o "corxera"…
         self._snap_qm_beats = []   # beats de QM per al snap «qm_beats»
+        self._snap_marcadors = []  # marcadors humans per al snap «marcadors»
+        self._snap_onsets = []     # onsets detectats per al snap «onsets»
         self._follow = False       # seguir el cursor durant el play
         self._sel = ("", -1)      # clip seleccionat (kind, index)
         self._multi: set = set()   # multi-selecció: {(kind, index), ...}
@@ -402,6 +404,9 @@ class TimelineView(QGraphicsView):
     def set_marcadors(self, marques):
         """Pinta els marcadors humans (llista de temps en segons)."""
         self._marcadors.set_marcadors(marques)
+        self._snap_marcadors = sorted(
+            float(m[0] if isinstance(m, (tuple, list)) else m)
+            for m in (marques or ()))
 
     def set_beats(self, beats=None, downbeats=None):
         """Pinta/actualitza les línies de beats i downbeats detectats."""
@@ -410,6 +415,8 @@ class TimelineView(QGraphicsView):
     def set_onsets(self, onsets=None):
         """Pinta/actualitza les línies d'onsets detectats."""
         self._beat_layer.set_onsets(onsets)
+        self._snap_onsets = sorted(
+            float(t) for t in (onsets or ()) if float(t) >= 0.0)
 
     def set_tempo_mode(self, tempo_fix: bool, bpm: float, bpb: int,
                        beat_type: int = 4, mapa=None,
@@ -1958,10 +1965,22 @@ class TimelineView(QGraphicsView):
         return snap_step(self._tempo_fix, self._bpm, self._bpb, self._pps,
                          mapa=getattr(self, "_mapa", None))
 
+    @staticmethod
+    def _snap_a_llista(t: float, valors) -> float:
+        """Encaixa a l'element més pròxim de `valors`; si no n'hi ha, deixa `t`."""
+        candidats = [float(v) for v in (valors or ()) if float(v) >= 0.0]
+        if not candidats:
+            return float(t)
+        return min(candidats, key=lambda v: (abs(v - float(t)), v))
+
     def _snap(self, t: float) -> float:
         """Encaixa `t` a la graella (o el deixa tal qual si el snap és OFF)."""
         if not self._snap_on:
             return float(t)
+        if self._snap_div_nom == "marcadors":
+            return self._snap_a_llista(t, self._snap_marcadors)
+        if self._snap_div_nom == "onsets":
+            return self._snap_a_llista(t, self._snap_onsets)
         if self._snap_div_nom == "qm_beats" and self._snap_qm_beats:
             # Snap a la línia de QM més pròxima. És una eina manual: no
             # canvia el model ni agrupa en compassos.

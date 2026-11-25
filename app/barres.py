@@ -172,6 +172,8 @@ class BarresMixin:
         self.cb_graella.setMinimumContentsLength(10)
         self.cb_graella.setMaximumWidth(150)
         for et, val in (
+                ("Marcadors", "marcadors"),
+                ("Onsets", "onsets"),
                 ("Beats QM", "qm_beats"),
                 ("Auto (zoom)", ""), ("Negra (1/4)", "negra"),
                 ("Corxera (1/8)", "corxera"),
@@ -223,6 +225,10 @@ class BarresMixin:
             vr.set_snap_beats(beats or [])
             if not beats:
                 self.registra("Snap QM: no hi ha beats detectats.")
+        elif mode == "marcadors" and not getattr(vr, "marcadors", None):
+            self.registra("Snap Marcadors: no hi ha marcadors.")
+        elif mode == "onsets" and not getattr(vr, "qm_onsets", None):
+            self.registra("Snap Onsets: no hi ha onsets detectats.")
         vr.set_snap(on=self.tb_snap.isChecked(), divisio=mode)
 
     def _toggle_metro(self, on=None):

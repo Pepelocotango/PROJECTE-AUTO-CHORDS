@@ -292,6 +292,18 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             "deixa N fraccionari.")
         self.b_tap_mobil.clicked.connect(lambda: self._tap_tempo(True))
         hp.addWidget(self.b_tap_mobil)
+        # Candaus de protecció del mapa: globals, independents i sense
+        # persistència; màxim dos actius alhora.
+        self._bloquejos_tempo = {"bpm": False, "n": False, "compas": False}
+        self._lock_buttons = {}
+        for clau, text, tip in (
+                ("bpm", "BPM", "Bloqueja el BPM intern de tots els clips"),
+                ("n", "N", "Bloqueja el nombre de compassos de tots els clips"),
+                ("compas", "x/x", "Bloqueja el compàs de tots els clips")):
+            b = self._crea_boto_bloqueig(clau, text, tip)
+            self._lock_buttons[clau] = b
+            setattr(self, f"b_lock_{clau}", b)
+            hp.addWidget(b)
         self.bpm_intern_bar = QLabel("BPM intern: —")
         self.bpm_intern_bar.setObjectName("secundari")
         self.bpm_intern_bar.setMinimumWidth(128)
@@ -853,6 +865,47 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
     # ---------------- MARCADORS EN VIU (compàs i secció) ----------------
 
 
+    def _crea_boto_bloqueig(self, clau, text, tip):
+        b = QPushButton(text)
+        b.setObjectName("secundari")
+        b.setCheckable(True)
+        b.setMaximumWidth(72)
+        b.setIcon(icones.ico("lock-open", 14))
+        b.setIconSize(icones.pm_mida(14))
+        b.setToolTip(f"{tip}. Màxim dos candaus actius alhora.")
+        b.toggled.connect(
+            lambda on, c=clau: self._canvia_bloqueig_tempo(c, on))
+        return b
+
+    def _actualitza_boto_bloqueig(self, clau=None):
+        n_act = sum(bool(v) for v in self._bloquejos_tempo.values())
+        for c, b in self._lock_buttons.items():
+            actiu = bool(self._bloquejos_tempo.get(c))
+            b.setIcon(icones.ico("lock" if actiu else "lock-open", 14))
+            b.setIconSize(icones.pm_mida(14))
+            # Amb dos candaus actius, el tercer queda deshabilitat.
+            b.setEnabled(actiu or n_act < 2)
+
+    def _canvia_bloqueig_tempo(self, clau, on):
+        """Actualitza un candau; prohibix el tercer actiu."""
+        if on and sum(bool(v) for v in self._bloquejos_tempo.values()) >= 2:
+            b = self._lock_buttons.get(clau)
+            if b is not None:
+                b.blockSignals(True)
+                b.setChecked(False)
+                b.blockSignals(False)
+            self._actualitza_boto_bloqueig(clau)
+            self.registra("Bloquejos de tempo: màxim dos actius alhora.")
+            return
+        self._bloquejos_tempo[clau] = bool(on)
+        self._actualitza_boto_bloqueig(clau)
+        self._aplica_bloquejos_tempo_visor()
+
+    def _aplica_bloquejos_tempo_visor(self):
+        vr = getattr(self, "visor_ref", None)
+        if vr is not None and hasattr(vr, "set_bloquejos_tempo"):
+            vr.set_bloquejos_tempo(**self._bloquejos_tempo)
+
     def _obre_guia_rapida(self):
         """Guia de benvinguda (només informació, sense tocar el model)."""
         dlg = dialeg_guia_rapida.DialegGuiaRapida(self)
@@ -939,7 +992,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
             QApplication.restoreOverrideCursor()
         if te_tempo:
             if bpm:
-                ok = vr.retempo_tram_detectat(idx, bpm)
+                ok = vr.retempo_tram_detectat(
+                    idx, bpm, ignora_bloquejos=True)
                 if ok:
                     self._sincronitza_temps_del_visor()
                     aplicat = float(vr.tempo_trams[idx][2])
@@ -1151,7 +1205,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
         if len(trams) <= 1:
             self.registra("detecta tempo: és constant (cap canvi)")
             return 0
-        if vr.aplica_tempo_validat(trams, "Mapa de tempo detectat"):
+        if vr.aplica_tempo_validat(
+                trams, "Mapa de tempo detectat", ignora_bloquejos=True):
             self._sincronitza_temps_del_visor()
             self.registra(f"mapa de tempo inferit: {len(trams)} tros(s)")
             return len(trams)
@@ -1206,7 +1261,8 @@ class Finestra(QMainWindow, InfoBoxMixin, DragDropMixin, MenusMixin,
                             "(potser l'àudio no té pols clar).")
             return
         vr._undo_marca()
-        ok = vr.aplica_tempo_validat(trams, "Mapa de tempo per trams")
+        ok = vr.aplica_tempo_validat(
+            trams, "Mapa de tempo per trams", ignora_bloquejos=True)
         vr._undo_commit()
         if not ok:
             self.avisa_info("Tempo per trams",
