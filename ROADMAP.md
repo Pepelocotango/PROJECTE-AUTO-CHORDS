@@ -49,192 +49,47 @@ de la GUI**; l'embolcall (avui **PyQt5**) es pot canviar. Restricció:
 
 ---
 
-## 2. Estat actual i relleu de sessió (2026-11-25)
+## 2. Estat actual i relleu de sessió (2026-11-26)
 
-> **Norma per a agents:** qualsevol agent que treballi en el codi ha
-> d'**actualitzar aquesta secció** en plegar (reescriure-la, **no**
-> incrementalment: reflectir l'estat actual, no l'historial). L'historial viu al
-> [`CHANGELOG.md`](CHANGELOG.md). La definició de **què fa l'app i què queda
-> fora** és a [`AGENTS.md`](AGENTS.md#-abast-i-flux-de-lusuari--font-única).
+> **Norma per a agents:** actualitzar esta secció en plegar (reescriure-la, no
+> incrementalment). L'historial de canvis és al [`CHANGELOG.md`](CHANGELOG.md);
+> l'abast de producte, a [`AGENTS.md`](AGENTS.md).
 
-**Relleu 2026-11-25 — mapa de temps assistit (en curs):** la Guia ràpida ja
-marca l'inici/final de l'anàlisi amb assistència d'onsets, proposa BPM,
-diagnostica estabilitat (`e_max`, `e_final`, gap, inliers) i proposa/aplica un
-mapa d'un sol BPM. La proposta conserva els clips de fora del rang i exigeix
-que els marcadors caiguen en una frontera (fail closed); l'últim clip pot quedar
-fraccionari. El detector d'onsets té un gate de transitori opcional
-(`transiente_db`, 20 ms abans/després) i un de prominència; cap valor per
-defecte s'ha congelat sense calibratge real. El banc sintètic de Fase 0 i el
-document de disseny són a `00PER FER/` (locals, no contracte). També hi ha el
-snap a **marcadors** i **onsets**, i els **candaus globals** de BPM/N/x-x
-(màxim dos, sense persistència). Des del 2026-11-25, **qualsevol edició permet
-l'últim clip amb `N` fraccionari**; l'única excepció és **Ajusta final WAV**.
-Suite: **1.727 tests** (1 omès).
+**Relleu 2026-11-26 — revisió de Gemini tancada (9/9):** s'han revisat i
+resolt els nou punts de `00PER FER/revisio gemini.md` amb commits locals:
 
-**Checklist per acabar la Guia ràpida (2026-11-25):**
+- mapa de tempo: una sola frontera per operació manual, referència del veí
+  esquerre, QM només als talls, `N` fraccionari només a l'últim clip;
+- diàleg de tempo convertit en inspector: mode **fix/mòbil**, camps BPM/N/
+  compàs amb candaus (màxim 2), unitat, rubato, operacions `+1/−1/×2/÷2` i
+  `Aplica BPM` amb el compàs del camp; sense motors propis al diàleg;
+- rubato = només anotació d'un clip (eliminada l'acció per rang i l'herència
+  de unitat);
+- metrònom normal amb `click_unit="pols"`: unitat explícita per tram i
+  fallback al denominador;
+- candaus i atomicitat: anàlisi automàtica bypassa candaus, edicions de tempo
+  no muten el transport si es rebutgen, duplicar/enganxar es prevalidan i les
+  edicions d'àudio validen abans d'escriure la WAV;
+- cobertura inicial, metadades en enganxar tempo, avisos de normalització i
+  export amb la unitat del tram 0.
 
-| Estat | Ítem |
-|---|---|
-| Fet | Marcadors `inici_analisi` / `final_analisi`, amb assistència d'onsets. |
-| Fet | Proposta de BPM i diagnòstic d'estabilitat (`e_max`, `e_final`, gap, inliers). |
-| Fet | Proposta i aplicació d'un mapa d'un sol BPM, amb confirmació i un sol desfer. |
-| Fet | Conservació dels clips de fora del rang i rebuig si els marcadors no cauen en una frontera. |
-| Fet | Gate de transitori i prominència configurables; valors per defecte encara no congelats. |
-| Pendent | Calibrar amb música real i decidir el valor per defecte de `transiente_db`. |
-| Pendent | Proposta de mapa per trams i canvis de compàs, no només un BPM global. |
-| Pendent | Partir un clip existent quan els marcadors no coincideixen amb una frontera. |
-| Pendent | Previsualització/diff més rica abans d'aplicar i validació explícita de la deriva. |
-| Pendent | Tests d'UI del flux complet i prova manual amb àudio real. |
-| Pendent | Tancar Fase 0: validació amb hash congelat i anotació independent. |
-
-**Decisions obertes:** conservar o substituir clips en aplicar un mapa; permetre
-`N` fraccionari a l'últim clip o arrodonir; bloquejar o només avisar si la
-deriva supera 20 ms; què fer si l'estabilitat és `NO ESTABLE`.
-
-**Fases** del pla de simplificació de tempo (document històric, ja no al
-repositori): **0–7 fetes**. La **10**
-(motor de detecció amb corpus real) està **oberta i bloquejada pel corpus
-manual**; la **12** (congelació, higiene i CI) està **en curs**. La **8**
-(export MIDI del mapa de tempo) queda **feta (2026-11-14)**; **9** (anàlisi
-guiada) i **11** (flux del 90 %) queden **ajornades**.
-
-> **Prioritat:** simplificar el producte. L'abast vigent és a
-> [`AGENTS.md` §Abast i flux](AGENTS.md#-abast-i-flux-de-lusuari--font-única):
-> només el nucli (obrir → analitzar opcional → editar 3 pistes → exportar →
-> desar). La **fase 10** i el **rubato avançat** queden **ajornats sense data**.
-> L'**export MIDI del mapa de tempo** (`mapa_tempo.mid`) i la **restauració de
-> backups** ja estan implementats (2026-11-14); `.rpp`, cues WAV i clic de
-> referència queden com a complements opcionals.
-
-**Versió 0.9.4 (2026-11-18):** la versió puja a **0.9.4** i es documenta com a
-**estable almenys a Linux** i **punt de recuperació** per a futures iteracions.
-La resta de sistemes no es consideren validats al mateix nivell. El tag local
-de checkpoint es pot crear en publicar esta versió.
-
-**Versió i documentació (2026-11-16):** el projecte passa a **0.9.3** (renumeració
-de la línia 9.x a 0.9.x; tags locals `v0.9.0`, `v0.9.1-checkpoint` i
-`v0.9.2-checkpoint`; el remot no en tenia cap i l'última release pública és
-`v0.7.1`). `README.md` és la **vista de producte**; `AGENTS.md` §«Abast i flux»
-mana sobre abast i flux; els invariants són a `docs/REGLES_DE_LA_APP.md`. El
-**mapa de tempo a MIDI** és **dins d'abast**; l'export MIDI d'acords/seccions i
-el projecte de DAW queden ajornats.
-
-**Estat actual:**
-- **Nucli**: obrir → analitzar opcional → editar 3 pistes → exportar → desar.
-  Visor DAW amb acords, estructura i tempo/compàs; desfer/refer complet.
-- **Tempo/compàs**: mapa per trams amb `N` per tram, rols derivats, mínim
-  d'**1/16 a 350 BPM** (≈43 ms), rubato com a flag i motor C/B/A. El **BPM
-  intern és sempre en negres/minut**. **S1/S2/S3 i P6 tancats (2026-11-13/14)**:
-  unitat de pols per tram (`beat_unit`), presentació/TAP en la unitat activa,
-  rang intern 30–350, format `.acproj` **5** i CSV amb `beat_unit`, exportació
-  amb manifest de 10 columnes i partitura/metrònom per unitat, i recalc amb
-  **compàs local i referència del veí esquerre** (sense BPM global).
-  **2026-11-16: fora pre-roll, offset i Ref. recalc**; el compàs 1 cau sempre a
-  **0 s** i el primer clip també ha de tindre `N` enter.
-  **2026-11-17:** pols completa per a tots els compassos acceptats
-  (`1…12` / `2, 4, 8, 16`): `rodona_punt`, `blanca_punt`, `negra_punt` i
-  `corxera_punt`; `3/8` és 1 pols de negra amb punt; els compostos amb denominador 2/4/16
-  reben la pols amb punt i l'agrupació `3+3…`; `5/8`, `7/8` i `8/8` tenen
-  agrupació per defecte `5`, `7` i `8`; el metrònom continua clicant el
-  denominador. La graella i el regle deixen de numerar `x/8`/`x/16` com si
-  foren `x/4`; el canvi de compàs conserva el BPM visible per defecte (Cas B)
-  amb opció explícita de Cas A. Classificador **ALT/MITJÀ/BAIX** i
-  assistència del recalcul. Terminologia canònica: **«recalc fix»**
-  (fronteres fixes) i **«recalc mòbil»** (una frontera compartida) a
-  `docs/REGLES_DE_LA_APP.md` §13.6. Auditoria 2026-11-17: resolts els punts
-  **2.1–3.10** (undo, metadades, `N` enter, `x/16`, `C.B`, exportació i
-  validacions). Detall a `docs/REGLES_DE_LA_APP.md` §13.
-- **GUI de tempo**: la franja Editor té **`[]`** (recalc fix) i **`->`**
-  (recalc mòbil) per a BPM, Compàs i N; **x2/÷2** per al BPM amb recalc fix;
-  Agrupació té un sol Aplica. Amb Snap QM, canviar N infereix el compàs que
-  encaixa amb els beats. La barra
-  «Temps» mostra **BPM intern** (negres/minut),
-  **BPM del clip** en la seua unitat i **Compàs**, tots només lectura; els
-  valors s'editen a la **franja Editor** del clip seleccionat (tram 0 inclòs).
-  **Aplica** fa **recalc mòbil**; **Ajusta** obre un diàleg reduït a
-  **informació del clip + recalc fix** (N, compàs, BPM i **N mana**). El
-  recalcul mòbil es fa des de l'Editor o arrossegant fronteres. El **TAP**
-  aplica al clip. Canviar la unitat amb TAP obert tanca la sessió (1 undo) i
-  el canvi és un altre undo. Els canvis d'unitat tenen undo real.
-- **Edició d'àudio (§13.9)**: importació, backups, retall/afegir als extrems,
-  sincronització del model, desfer/refer i export amb FFmpeg implementats.
-  **2026-11-18:** quadratura guiada d'inici/final a `N` compassos sencers
-  (`Edita ▸ Quadra els extrems de la WAV…`), amb presets, previsualització,
-  **BPM percebut editable per unitat de pols** i una sola operació atòmica
-  d'àudio + model. El final es tracta com una cua
-  independent: es talla l'últim tram al punt marcat i s'ajusta des del final;
-  s'afigen els marcadors visuals Inici/Final i els beats QM es desplacen amb
-  l'àudio.
-- **Anàlisi**: Chordino + qm-segmenter + BPM/beats QM amb `vamp_host_local`;
-  `Analitza beats, downbeats i BPM` (F7), **Beats/BPM** a la barra i
-  **Beats del clip** per analitzar amb QM només el tram de tempo seleccionat.
-  QM rep `bpb`/`inputtempo` en la unitat de pols del clip i retorna el BPM
-  convertit a negres/minut; el diàleg F7 proposa i permet canviar la pols
-  percebuda segons el compàs.
-- **Metrònom**: patrons **Auto**, **Compàs**, **Temps**, **Grup** i **Beats
-  QM** (beats detectats per QM, sense accents i sense dependre de la graella).
-- **Finestres**: la finestra principal i els diàlegs propis recorden geometria
-  i estat entre sessions (`finestres.json` local); si no n'hi ha o queden fora
-  de pantalla, es centren.
-- **Export / DAW**: `mapa_tempo.mid` (SMF tipus 1 amb `Set Tempo`,
-  `Time Signature` i markers; **sense «Fi»**, amb un `Set Tempo` redundant al
-  final per dimensionar l'item) surt dins `mapa_tempo/` o sol des del menú;
-  flux REAPER verificat (importar **primer** el MIDI, acceptar el mapa de tempo
-  i després la WAV). El paquet de `Ctrl+E` inclou **sempre** l'estructura si el
-  model en té (regla #12), independentment de «Inclou estructura» (opció
-  d'anàlisi). **`Fitxer ▸ Desa i exporta-ho tot…` (`Ctrl+Shift+E`)** desa el
-  projecte i, en un fil, exporta el paquet complet + **partitura sempre**
-  (MusicXML; PDF/MSCZ si hi ha MuseScore), sense la WAV sencera, sobreescrivint
-  els derivats i obrint la carpeta del projecte. La partitura amb canvi de
-  compàs/unitat calcula bé la unitat i no afig un compàs final buit. Backups
-  restauráveis des de la GUI.
-- **Talls QM**: motor de candidats per a Snap QM (`base` pura, base +
-  extrany, secció sencera i canvi a `/4`), diàleg conjunt i integració a `+`,
-  Enter, Afegeix, meitat i A–B; màxim 2 clips per costat. Inclou fallback de
-  graella sense QM, interpolació dels beats reals, pausa/reprén atòmics del
-  play i cancel·lació sense aplicar res.
-- **Configuració d'usuari**: totes les dreceres són editables a **Ajuda ▸
-  Configura les dreceres…** i es desen a `dreceres.json`.
-- **Manteniment**: `make commit MSG="..."` (add → docs → commit-check →
-  commit), `make docs-check` amb 8 generadors, `AGENTS`/`DEVELOPING` al dia.
-  Tags locals renumerats a `v0.9.x`; **cap push**.
-- **BPM (2026-11-21)**: tempograma d'harmònics per a l'octava + família meitat/doble; el tempograma decidix l'octava i la fase només refina alternatives. `detecta_bpm` retorna 144,7 (no 144,75), 174 (no 87), 56,9 (no 113) i 187,7 (no 93,7). **Rang per defecte de la GUI ampliat a 40–200** (abans 60–180), amb OK de l'operador. **Gate d'octava >120 s**: 195,9→97,9 (Gary Wright), 195,3→97,6 (Tina Turner), 193,8→96,8 (Bob Marley), sense tocar clips de 60 s (train19 187,7). **Gate als trams amb `context_s`/`context_bpm`** i **conversió 6/8 a negres a pipeline/GUI** (`negra_punt`: global De res 55→82,5; trams 110→82,5 amb context convertit a pols; el nucli `tempo` no coneix el compàs). MIREX: 10/20 exactes i 17/20 de família amb 40–200; 8/20 i 17/20 amb 60–180. Variants `ffmpeg` 110/120/128/140/144,7/174 i Foo 144,7, Otis 103,2, Radiohead 89,3, Commodores 65,7 i Chemical 132.
-- **Beats A–B (2026-11-22)**: botó a la barra Treball per analitzar només el loop A–B amb el mateix diàleg de F7 (motor, sensibilitat, mode i pols). Retalla el rang, fusiona els beats dins `[A,B)` i conserva els de fora; no aplica el BPM al transport ni mou fronteres. **Onsets A–B** detecta només onsets del loop, sense BPM ni compassos, en una capa independent (lila) que no toca els beats. Regressió a `tests/test_pipeline.py`.
-- **Drag de clips de tempo (2026-11-22)**: el cos d’un tram interior mou el bloc sencer i conserva durada, BPM, compàs i `N`; els veïns es recalculen. Les vores interiors redimensionen; el cos mou el bloc. Primer/últim tram no es mouen com a bloc, i amb 2 clips no hi ha bloc interior. El moviment s’atura abans de deixar un veí per davall d’un compàs. Regressió a `tests/test_tempo_trams.py` i `tests/test_despatx_edicio.py`.
-- **Corregit (2026-11-20) - flux de treball (6 greus)**: F7 + Ctrl+Z ja no esborra els beats (consolida la base d'undo); «Desa com...» activa del tot el projecte nou (regla #5); «Sobreescriu» no esborra mai l'audio obert; projecte amb mapa_tempo.csv invalid avisa i restaura la sessio anterior; Ctrl+E no corre durant l'export en fil; «Exporta la partitura...» reescriu els CSV des del model viu. Tests de regressió a tests/test_gui.py i tests/test_pipeline.py.
-- **Suite**: `make check` complet local (2026-11-22) amb **1707 tests**
-  (1 omès) i **tot OK**. La quadratura
-  d'extrems afig regressions pròpies (plans, mostres, undo/redo i export).
+**Estat verificat:** `make check` complet local (2026-11-26) amb **1.773
+tests** (1 omès), `pyflakes` net i tots els `docs-check` OK. Versió **0.9.4**,
+punt de recuperació; sense push.
 
 **Pendent:**
-- **Auditoria 2026-11-17**: punts **2.x–5** revisats i tancats (incloent-hi
-  D1–D8); pendent només la verificació visual del diàleg nou de quadratura.
-- **Publicar la release `v0.9.4`** quan l'operador ho ordene; `release.yml` crearà
-  el tag des de `pyproject.toml`. Pujar els tags locals `v0.9.x` al remot només
-  amb ordre explícita (mai push per iniciativa pròpia).
-- **Fase 10**: motor de detecció amb corpus real (bloquejat pel corpus manual).
-- **Fase 12**: congelació, higiene i CI; inclou el **CI automàtic en push/PR**
-  (proposat, encara no activat).
-- **Purga interna de l'`offset=0`**: feta a la UI, `TimelineView`, pipeline de
-  derivats, exportació, `TempoMap`, detecció per trams, `FilTempoTrams`,
-  `Feina` i avaluador. L'alineació del primer beat queda com a detall intern de
-  la detecció; el metrònom forçat conserva l'origen de la graella per a
-  l'audició guiada.
-- **Agrupació explícita dels compassos irregulars**: feta a la franja Editor
-  amb camp + botó **Aplica** propi; per defecte `5/8` → `5`, `7/8` → `7` i
-  `8/8` → `8`. Les altres agrupacions (`3+2`, `2+2+3`, `3+3+2`…) es poden
-  triar explícitament.
-- **Rubato avançat** i **export de projecte DAW**: ajornats sense data.
-- Corpus real de tempo pendent (l'avaluador sintètic funciona).
-- **Quantitza BPM** continua sent una operació separada del recalc guiat.
-- **Edició d'àudio**: proves visuals del diàleg de quadratura d'extrems (la
-  funcionalitat i les regressions ja hi són).
-- **Exportació (revisió del corpus, 2026-11-18)**: backlog a «Futures
-  millores — exportació, guia i sincronia» (QM downbeats, `acords.csv` vs
-  `manifest.csv`, guia HTML, capçalera BPM i mostreig). El mapa de tempo i el
-  `mapa_tempo.mid` verificat a REAPER es consideren correctes i **no es toquen**
-  sense una ordre explícita.
-- **Motor d'àudio natiu amb rellotge de reproducció** (futur; detall davall).
+- Publicar `v0.9.4` quan l'operador ho ordene (tags locals sense pujar).
+- Fase 10: motor de detecció amb corpus real (bloquejat pel corpus manual).
+- Fase 12: congelació, higiene i CI; CI automàtic en push/PR encara no activat.
+- Calibrar la Guia ràpida amb música real (`transiente_db`, estabilitat).
+- Backlog d'exportació/guia i proves visuals de quadratura d'extrems.
+- Motor d'àudio natiu i rubato avançat: ajornats sense data.
+- Verificació manual del diàleg de tempo i del metrònom amb l'app oberta.
+
+**Decisions vigents:** `N` enter a tots els clips excepte l'últim; només
+**Ajusta final WAV** força la cua entera. El rubato no hereta ni canvia cap
+camp. Els candaus són globals, màxim dos; l'anàlisi automàtica no en queda
+bloquejada. L'export usa sempre la unitat del tram 0.
 
 ### Pla de compassos compostos (tancat 2026-11-13)
 
